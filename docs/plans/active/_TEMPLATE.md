@@ -13,10 +13,12 @@ worktree: ../wt/<task-slug>
 ## Acceptance Criteria (수용 기준)
 - [ ] <체크 가능한 항목>
 - [ ] <체크 가능한 항목>
-- [ ] `./scripts/check.sh` 통과
-- [ ] UI 변경이면 스크린샷 첨부
+- [ ] `npm run check` 통과 (typecheck · lint · structural · tests · 파일크기)
+- [ ] UI 변경이면 모바일/PC 스크린샷 첨부
+- [ ] 관련 `docs/domains/*.md` status 업데이트
 
 ## Context (참고)
+- [[docs/architecture.md]]
 - [[docs/domains/<domain>.md]]
 - 관련 ADR: [[docs/decisions/NNNN-*.md]]
 

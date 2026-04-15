@@ -1,9 +1,22 @@
 logs/agent/*
 !logs/agent/.gitkeep
 node_modules/
+.next/
+out/
 dist/
 build/
-.venv/
-__pycache__/
-*.pyc
+*.tsbuildinfo
+next-env.d.ts
 .DS_Store
+
+# secrets — NEVER commit
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!.eslintrc.json
+!components.json
+.env
+.env.*
+!.env.example
+

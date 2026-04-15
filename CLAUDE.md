@@ -1,8 +1,11 @@
-# Dev Harness — Claude 코딩 에이전트용 하네스
+# 세일즈PT 영업일지 — Claude 개발 하네스
 
-> OpenAI의 **Harness Engineering** 방법론(Codex 운영 방식)을 Claude Code 환경에 맞춰 옮긴 개발 시스템 문서.
+> **프로젝트**: 세일즈피티 수강생을 위한 반응형 웹앱. 4대 지표(생산/컨택/미팅/계약) 기록 + 게이미피케이션 + 대시보드. Google Sheets 가 유일한 DB, Next.js 풀스택.
+> **스택**: Next.js 15 (App Router) · TypeScript · Tailwind · NextAuth(Google) · googleapis · Recharts · Vitest
+> **배포**: 자체 도메인 + 자체 VPS (Caddy + Docker). 스토어 배포 X, PWA 지원.
+>
 > 이 파일은 **지도(map)** 이다. 백과사전이 아니다. 상세 규칙은 `docs/`의 원천으로 연결된다.
-> 길이 목표: ~100줄. 이 이상 커지면 `docs/`로 분리한다.
+> 길이 목표: ~150줄. 이 이상 커지면 `docs/`로 분리한다.
 
 ---
 
@@ -32,25 +35,31 @@
 
 ```
 .
-├── CLAUDE.md              # 이 파일. 지도.
-├── AGENTS.md              # (선택) Codex 호환 포인터. CLAUDE.md와 동일 소스 참조.
-├── docs/                  # ★ 지식의 원천. 모든 심화 규칙은 여기.
-│   ├── architecture.md    #   도메인·레이어 맵
-│   ├── domains/           #   도메인별 설계문서 (검증상태 포함)
-│   ├── quality.md         #   도메인·레이어별 품질 등급표
-│   ├── playbooks/         #   반복 작업 런북 (마이그레이션, 리팩터 등)
-│   └── decisions/         #   ADR — 왜 그렇게 했는가
-├── src/                   # 코드. 아래 레이어 규칙 준수.
+├── CLAUDE.md                 # 이 파일. 지도.
+├── docs/                     # ★ 지식의 원천.
+│   ├── architecture.md       #   레이어·Sheets 경계
+│   ├── domains/              #   기능 단위 설계문서 (status 프론트매터)
+│   ├── quality.md            #   도메인×레이어 품질 매트릭스
+│   ├── playbooks/            #   start-task / setup-sheets / fix-harness / deploy-vps
+│   ├── decisions/            #   ADR — 불변
+│   └── plans/                #   active / completed — 작업 계획
+├── lib/                      # ★ 비즈니스 로직 (레이어 규칙 강제)
+│   ├── types/                #   Zod 모델. 다른 레이어 import 금지.
+│   ├── config/               #   env · 시트 A1 범위.
+│   ├── repo/                 #   googleapis 전용 구역. Sheets I/O.
+│   └── service/              #   유스케이스 (게이미피케이션 포함).
+├── app/                      # Next.js App Router (UI + Runtime)
+│   ├── api/                  #   Route Handlers — Service 만 호출.
+│   ├── (app)/                #   로그인 후 화면
+│   └── (auth)/               #   로그인 / 온보딩
+├── components/               # UI 프리미티브·블록 (Repo 직접 import 금지)
 ├── tests/
-│   ├── unit/              #   단위
-│   ├── integration/       #   실제 DB/외부 I/O
-│   └── structural/        # ★ 레이어·의존성 구조 테스트 (하네스 핵심)
-└── scripts/
-    ├── check.sh           # 에이전트가 PR 전 반드시 돌리는 단일 진입점
-    └── agent-review.sh    # 자기 리뷰 루프 트리거
+│   └── structural/           # ★ Vitest — 레이어·Sheets 격리 테스트
+├── scripts/check.sh          # 단일 진입점. pre-commit 에서 호출.
+└── .githooks/pre-commit      # 메인 직접커밋·plan 없는 커밋 차단
 ```
 
-**원칙**: Claude가 파일을 찾아 헤매야 하면 하네스 실패다. `docs/`의 인덱스는 항상 최신이어야 한다.
+**원칙**: Claude가 파일을 찾아 헤매야 하면 하네스 실패다. `docs/` 인덱스는 항상 최신.
 
 ---
 
@@ -59,14 +68,25 @@
 의존성은 **단방향**으로만 흐른다:
 
 ```
-Types → Config → Repo → Service → Runtime → UI
+types → config → repo → service → app(api·ui) → components
 ```
 
-- 상위 레이어는 하위 레이어를 import 할 수 없다.
-- 이 규칙은 **주석이 아니라 `tests/structural/`의 실행되는 테스트**로 강제한다.
-- 위반 시 린터/테스트 에러 메시지는 **"어떻게 고쳐야 하는지"까지 포함**한다 (remediation-as-error).
+핵심 규칙 (`tests/structural/layers.test.ts` 가 강제):
 
-예: `❌ src/ui/foo.ts가 src/repo/db.ts를 직접 import. → Service 레이어를 거쳐 호출하세요. 참고: docs/architecture.md#ui-boundary`
+1. **상위 레이어 import 금지** — 하위는 상위를 참조할 수 없음.
+2. **Sheets 격리** — `googleapis` / `google-auth-library` 는 **오직 `lib/repo/` 에서만** import.
+3. **대시보드 탭 쓰기 금지** — `SHEET_RANGES.dashboard` 를 `appendRows` / `batchUpdate` 근처에서 쓰면 실패. 대시보드는 수식이 계산한다. 쓰기는 `daily` / `contracts` / `db` 섹션으로만.
+4. **경로별칭 고정**: `@/types` · `@/config` · `@/repo/*` · `@/service`. 상대경로 import 는 피한다.
+
+예: `❌ components/Chart.tsx 가 googleapis 를 import. → lib/repo/ 에 메서드를 추가해 Service 경유로 호출하세요. 참고: docs/architecture.md#퍼시스턴스-google-sheets`
+
+## 2.5 프로젝트 도메인 제약 (추가)
+
+- **SSOT(Single Source of Truth)는 Google Sheets.** 별도 DB·Redis·ORM 금지.
+- **수강생마다 개별 시트.** `email → spreadsheetId` 매핑은 **마스터 레지스트리 시트** 한 개에 저장 (`lib/repo/users.ts`).
+- **대시보드(탭1)는 읽기 전용.** 기존 시트의 수식이 자동 갱신한다. 재구현 X, 데이터만 읽어 Recharts 로 다시 그린다.
+- **반응형은 모바일 우선.** 모바일 = 입력 중심, PC = 대시보드·트레이닝 중심. 두 화면은 같은 API를 쓰되 다른 레이아웃.
+- **게이미피케이션 로직은 `lib/service/gamification.ts` 단일 파일.** XP 가중치 수정은 ADR 작성 후.
 
 ---
 
@@ -87,11 +107,13 @@ Types → Config → Repo → Service → Runtime → UI
 
 에이전트는 커밋 또는 PR을 열기 전 다음 과정과 훅(Husky 등)을 반드시 통과해야 한다. 시스템 레벨에서 물리적으로 차단되면(에러 발생 시) 강제로 우회하지 말고, 로그를 분석해 자신을 교정한다.
 
-- [ ] **Pre-commit Hook 통과 여부:** 계획(Plan) 문서 없이 작성된 코드, 메인 브랜치 직접 수정 시도는 Husky 훅에 의해 자동 차단된다.
-- [ ] 타입체크 & 린트 (remediation 메시지 포함 커스텀 규칙)
-- [ ] **구조 테스트 & 파일 크기 제한** (`tests/structural/`) — 레이어 위반 및 허용 파일 용량 감지
-- [ ] 단위 테스트 / 통합 테스트 (변경된 도메인 한정)
-- [ ] 문서 드리프트 검사 — `docs/`에서 언급한 파일/심볼이 실제 존재하는지
+- [ ] **Pre-commit Hook 통과:** main 직접 커밋, plan 없는 `lib/`·`app/` 변경은 `.githooks/pre-commit` 에 의해 자동 차단.
+- [ ] `npm run typecheck` — TypeScript strict
+- [ ] `npm run lint` — ESLint (remediation 메시지 포함 커스텀 규칙)
+- [ ] `npm run test:structural` — 레이어·Sheets 격리
+- [ ] `npm run test` — 단위·통합
+- [ ] 파일 크기 ≤ 500줄 (check.sh 가 검사)
+- [ ] 문서 드리프트 — `docs/` 에서 언급한 파일/심볼이 실재
 
 **하나라도 빨갛게 뜨면 PR 금지.** 스크립트나 훅을 우회하지 않는다. 스크립트가 잘못되었다면 스크립트를 고친다.
 ---

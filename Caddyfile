@@ -1,0 +1,19 @@
+# Caddy — 자동 HTTPS 리버스 프록시.
+# 환경변수 DOMAIN 이 없으면 도메인 리터럴로 바꿔 두세요.
+
+{$DOMAIN:salespt.example.com} {
+	encode zstd gzip
+	reverse_proxy app:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
