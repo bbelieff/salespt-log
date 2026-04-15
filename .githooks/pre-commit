@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit — Guardrail.
+# 1) main/master 직접 커밋 차단
+# 2) docs/plans/active/ 에 활성 계획 없는 커밋 차단 (단, plan/docs/meta 변경은 허용)
+# 3) scripts/check.sh 실행
+#
+# 우회하지 말 것. 실패 시 하네스를 고칠 것.
+
+set -e
+branch="$(git symbolic-ref --short HEAD 2>/dev/null || echo detached)"
+
+# 1) 메인 브랜치 보호
+if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+  echo "❌ pre-commit: main/master에 직접 커밋 금지. 워크트리+브랜치를 만드세요."
+  echo "   → git worktree add ../wt/<slug> -b feat/<slug>"
+  exit 1
+fi
+
+# 2) 코드 변경이 있다면 active plan 필수
+changed=$(git diff --cached --name-only)
+code_changed=$(echo "$changed" | grep -E '^(src/|tests/)' || true)
+plan_present=$(ls -A docs/plans/active 2>/dev/null | grep -v .gitkeep || true)
+
+if [ -n "$code_changed" ] && [ -z "$plan_present" ]; then
+  echo "❌ pre-commit: src/ 또는 tests/ 변경이 있는데 docs/plans/active/ 에 활성 계획이 없습니다."
+  echo "   → 먼저 docs/plans/active/<slug>.md 에 계획을 작성하세요. (CLAUDE.md §3-3)"
+  exit 1
+fi
+
+# 3) check.sh
+if [ -x scripts/check.sh ]; then
+  bash scripts/check.sh
+fi

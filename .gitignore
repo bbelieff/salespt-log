@@ -1,0 +1,9 @@
+logs/agent/*
+!logs/agent/.gitkeep
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
