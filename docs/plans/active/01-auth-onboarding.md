@@ -12,6 +12,8 @@ worktree: ../wt/01-auth-onboarding
 
 ## Acceptance Criteria
 - [ ] `app/api/auth/[...nextauth]/route.ts` — NextAuth v5 Google provider 동작
+- [ ] Google scope: `openid email profile` **+ `https://www.googleapis.com/auth/calendar.events`** (플랜 02 에서 필요)
+- [ ] `access_token` / `refresh_token` 을 세션 또는 별도 저장소(초기엔 JWT 암호화 세션)에 보관. 만료 시 자동 갱신
 - [ ] 로그인 성공 시 `auth()` 세션에 `email` 존재
 - [ ] 첫 접속: `resolveUser(email)` 이 null 이면 `/onboarding` 으로 리디렉션
 - [ ] 온보딩: 기수 select + 이름 select (레지스트리에서 해당 기수 필터) → 서버 액션으로 `email ↔ spreadsheetId` 저장
