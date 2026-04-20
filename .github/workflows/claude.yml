@@ -1,0 +1,56 @@
+name: Claude Code
+
+on:
+  # 이슈/PR/리뷰 코멘트에 @claude 멘션 시 작동
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+  # 수동 실행 (gh workflow run claude.yml -f prompt="...")
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: '작업 지시'
+        required: true
+        type: string
+
+jobs:
+  claude:
+    # 멘션이 있을 때만 실행 (워크플로 디스패치는 항상 실행)
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # 파일 편집 + 푸시
+      pull-requests: write  # PR 생성/코멘트
+      issues: write         # 이슈 코멘트
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 디스패치 모드: prompt 입력 사용
+          prompt: ${{ github.event.inputs.prompt || '' }}
+          # 자동 허용할 도구 (위험한 것은 제외)
+          allowed_tools: |
+            Bash(git:*),Bash(gh:*),Bash(npm:*),Bash(node:*),
+            Read,Write,Edit,Glob,Grep,WebFetch,WebSearch
+        env:
+          # 시트 접근이 필요할 때 사용 (선택)
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
