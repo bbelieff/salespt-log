@@ -35,8 +35,11 @@
 
 ### 🔧 기능 구현할 때
 1. **MVP 범위**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 화면별 기능
-2. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
-3. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
+2. **사용자 여정**: [user-journeys.md](./domains/user-journeys.md) - 6개 핵심 시나리오
+3. **화면 설계**: [wireframes.md](./domains/wireframes.md) - 4개 탭 와이어프레임
+4. **예외 처리**: [edge-cases.md](./domains/edge-cases.md) - 엣지케이스 대응 방안
+5. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
+6. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
 
 ### 🚀 배포와 운영
 1. **VPS 배포**: [deploy-vps.md](./playbooks/deploy-vps.md)
@@ -57,6 +60,9 @@
 | [state-machines.md](./domains/state-machines.md) | verified | Meeting/Payment/DBOrder 상태 전이 | 개발자 |
 | [api-spec.md](./domains/api-spec.md) | verified | REST API 엔드포인트 명세 | 개발자 |
 | [storyboard-mvp.md](./domains/storyboard-mvp.md) | draft | 화면별 기능과 사용자 스토리 | PM, 개발자 |
+| [user-journeys.md](./domains/user-journeys.md) | draft | 6개 핵심 사용자 시나리오와 단계별 플로우 | 개발자, 기획자 |
+| [wireframes.md](./domains/wireframes.md) | draft | 4개 탭별 와이어프레임과 UI 인터랙션 | 개발자, 디자이너 |
+| [edge-cases.md](./domains/edge-cases.md) | draft | 예외 상황과 엣지케이스별 대응 방안 | 개발자, QA |
 
 ### ⚖️ decisions/ (ADR - 불변)
 | 문서 | 제목 | 결정 날짜 |
@@ -100,6 +106,16 @@ _현재 완료된 계획 없음_
 - **문서 요약 카드**: 맨 위에 목적과 대상 명시
 - **관련 문서 링크**: 연결된 문서들과의 관계
 - **Status 프론트매터**: domains/ 문서는 상태 표시
+
+---
+
+## 🎯 이런 상황엔 이 문서를 읽으세요
+
+- **"사용자 입장에서 화면을 그리고 싶다"** → [wireframes.md](./domains/wireframes.md)
+- **"예외 상황을 어떻게 처리할지 모르겠다"** → [edge-cases.md](./domains/edge-cases.md)
+- **"새 기능 설계 전 비슷한 시나리오 찾고 싶다"** → [user-journeys.md](./domains/user-journeys.md)
+- **"API 에러 코드가 무슨 의미인지 모르겠다"** → [api-spec.md](./domains/api-spec.md)
+- **"데이터가 어떤 시트에 저장되는지 헷갈린다"** → [er-diagram.md](./domains/er-diagram.md)
 
 ---
 
