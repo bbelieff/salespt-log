@@ -33,10 +33,11 @@
 4. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
 
 ### 📊 데이터 모델을 이해하고 싶을 때
-1. **전체 개요**: [data-model.md](./domains/data-model.md) - Google Sheets 매핑
-2. **관계 구조**: [er-diagram.md](./domains/er-diagram.md) - 엔티티 관계도
-3. **상태 흐름**: [state-machines.md](./domains/state-machines.md) - 비즈니스 로직
-4. **API 연동**: [api-spec.md](./domains/api-spec.md) - 엔드포인트 명세
+1. **전체 개요**: [data-model.md](./domains/data-model.md) - Google Sheets 매핑 + ADR-0003 4탭 구조
+2. **시트 구조**: [sheet-structure.md](./domains/sheet-structure.md) - 업체관리/수납관리/영업관리/대시보드 탭 상세
+3. **관계 구조**: [er-diagram.md](./domains/er-diagram.md) - 엔티티 관계도
+4. **상태 흐름**: [state-machines.md](./domains/state-machines.md) - 비즈니스 로직
+5. **API 연동**: [api-spec.md](./domains/api-spec.md) - 엔드포인트 명세
 
 ### 🔧 기능 구현할 때
 1. **MVP 범위**: [scope.md](./scope.md) - 8주 수강생 전용 IN/OUT 테이블
@@ -69,10 +70,11 @@
 ### 🎯 domains/ (기능별 설계)
 | 문서 | Status | 한 줄 요약 | 대상 |
 |------|--------|------------|------|
-| [data-model.md](./domains/data-model.md) | draft | Google Sheets 1:1 매핑과 TypeScript 모델 | 개발자 |
-| [er-diagram.md](./domains/er-diagram.md) | verified | 엔티티 관계도와 시트 매핑 | 개발자 |
-| [state-machines.md](./domains/state-machines.md) | verified | Meeting/Payment/DBOrder 상태 전이 | 개발자 |
-| [api-spec.md](./domains/api-spec.md) | verified | REST API 엔드포인트 명세 (동적 계산 원칙) | 개발자 |
+| [data-model.md](./domains/data-model.md) | draft | Google Sheets 1:1 매핑과 TypeScript 모델 (ADR-0003 업데이트) | 개발자 |
+| [sheet-structure.md](./domains/sheet-structure.md) | draft | 4개 시트 탭별 컬럼 정의와 웹 쓰기/시트 수식 구분 | 개발자 |
+| [er-diagram.md](./domains/er-diagram.md) | draft | 엔티티 관계도와 시트 매핑 (ADR-0003 업데이트) | 개발자 |
+| [state-machines.md](./domains/state-machines.md) | draft | Meeting/Payment/DBOrder 상태 전이 (ADR-0003 업데이트) | 개발자 |
+| [api-spec.md](./domains/api-spec.md) | draft | REST API 엔드포인트 명세 (ADR-0003 업데이트) | 개발자 |
 | [storyboard-mvp.md](./domains/storyboard-mvp.md) | draft | 화면별 기능과 사용자 스토리 | PM, 개발자 |
 | [user-journeys.md](./domains/user-journeys.md) | draft | 7개 핵심 사용자 시나리오 (유예 기간 포함) | 개발자, 기획자 |
 | [wireframes.md](./domains/wireframes.md) | draft | 4개 탭별 와이어프레임 (편집 제한 포함) | 개발자, 디자이너 |
@@ -83,6 +85,7 @@
 |------|------|-----------|
 | [0001-adopt-harness.md](./decisions/0001-adopt-harness.md) | 하네스 엔지니어링 도입 | 2026-04-17 |
 | [0002-stack-nextjs-sheets.md](./decisions/0002-stack-nextjs-sheets.md) | Next.js + Google Sheets 스택 선택 | 2026-04-17 |
+| [0003-company-tab-split.md](./decisions/0003-company-tab-split.md) | 업체관리·수납관리 탭 분리 | 2026-04-21 |
 
 ### 📋 plans/ (작업 계획)
 #### active/ (진행 중)
@@ -136,6 +139,7 @@ _현재 완료된 계획 없음_
 - **"예외 상황을 어떻게 처리할지 모르겠다"** → [edge-cases.md](./domains/edge-cases.md)
 - **"새 기능 설계 전 비슷한 시나리오 찾고 싶다"** → [user-journeys.md](./domains/user-journeys.md)
 - **"API 에러 코드가 무슨 의미인지 모르겠다"** → [api-spec.md](./domains/api-spec.md)
+- **"시트 구조 이해하고 싶을 때"** → [sheet-structure.md](./domains/sheet-structure.md)
 - **"데이터가 어떤 시트에 저장되는지 헷갈린다"** → [er-diagram.md](./domains/er-diagram.md)
 - **"이 기능은 언제 구현하면 되지?"** → [future/extensions.md](./future/extensions.md)
 

@@ -9,15 +9,17 @@
 
 # API 명세
 
-## 엔드포인트 개요
+## 엔드포인트 개요 (ADR-0003 업데이트)
 
 | Method | Path | Body | Response | 시트 작업 | 인증 | Rate Limit |
 |--------|------|------|----------|-----------|------|------------|
-| GET | `/api/daily/:date` | - | `DailyView` | 01 영업관리 read | ✅ | 60/min |
-| POST | `/api/daily/:date` | `DailyEntry` | `{ok, savedRows}` | 01 영업관리 write 4 rows | ✅ | 30/min |
-| POST | `/api/meeting` | `Meeting` | `{id}` | 앱_미팅예약 append | ✅ | 30/min |
-| PATCH | `/api/meeting/:id` | `MeetingUpdate` | `{ok}` | 앱_미팅예약 update | ✅ | 30/min |
-| POST | `/api/payment/:date` | `Payment` | `{ok}` | 01 영업관리 Q~T | ✅ | 30/min |
+| GET | `/api/daily/:date` | - | `DailyView` | 영업관리 집계뷰 read | ✅ | 60/min |
+| POST | `/api/daily/:date` | `DailyEntry` | `{ok, savedRows}` | 영업관리 E~H,M만 write | ✅ | 30/min |
+| POST | `/api/meeting` | `Meeting` | `{id}` | **업체관리 탭** append | ✅ | 30/min |
+| PATCH | `/api/meeting/:id` | `MeetingUpdate` | `{ok}` | **업체관리 탭** update | ✅ | 30/min |
+| GET | `/api/meetings` | query params | `Meeting[]` | **업체관리 탭** query | ✅ | 60/min |
+| POST | `/api/payment` | `Payment` | `{id}` | **수납관리 탭** append | ✅ | 30/min |
+| GET | `/api/payments` | query params | `Payment[]` | **수납관리 탭** query | ✅ | 60/min |
 | POST | `/api/db-order` | `DBOrder` | `{id}` | DB관리 append | ✅ | 30/min |
 | GET | `/api/summary` | - | `Summary` | 대시보드 read | ✅ | 120/min |
 | GET | `/api/schedule` | - | `Schedule` | N1, C248 | ✅ | 60/min |
@@ -55,15 +57,29 @@
   },
   "meetings": [
     {
-      "id": "meeting_001",
-      "date": "2026-04-21",
-      "time": "14:00",
-      "channel": "매입DB",
-      "vendor": "ABC업체",
-      "region": "서울",
-      "status": "예약",
+      "id": "uuid-001",
+      "예약일": "2026-04-20",
+      "예약시각": "14:30:00",
+      "미팅날짜": "2026-04-21",
+      "미팅시간": "14:00",
+      "채널": "매입DB",
+      "업체명": "ABC업체",
+      "장소": "서울",
+      "예약비고": "초기 상담",
+      "상태": "예약",
       "계약여부": false,
-      "수임비": 0
+      "수임비": 0,
+      "계약비고": ""
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-001",
+      "수납날짜": "2026-04-21",
+      "승인건수": 2,
+      "수납건수": 2,
+      "수납금액": 150,
+      "기관비고": "A기관 2건"
     }
   ],
   "summary": {
@@ -126,49 +142,52 @@
 ---
 
 ### 3. POST `/api/meeting`
-**용도**: 새 미팅 예약 생성
+**용도**: 새 미팅 예약 생성 (ADR-0003 업데이트)
 
 **Request Body** (`Meeting`):
 ```json
 {
-  "date": "2026-04-21",
-  "time": "14:00",
-  "channel": "매입DB",
-  "vendor": "ABC업체",
-  "region": "서울",
-  "note": "초기 상담"
+  "예약일": "2026-04-20",
+  "예약시각": "14:30:00",
+  "미팅날짜": "2026-04-21", 
+  "미팅시간": "14:00",
+  "채널": "매입DB",
+  "업체명": "ABC업체",
+  "장소": "서울",
+  "예약비고": "초기 상담"
 }
 ```
 
 **Response**:
 ```json
 {
-  "id": "meeting_001",
+  "id": "uuid-generated",
   "message": "미팅 예약 생성 완료"
 }
 ```
 
 **Google Sheets 작업**:
-- `앱_미팅예약` 탭에 새 행 추가
-- status는 자동으로 "예약"으로 설정
+- **업체관리 탭**에 새 행 추가 (A~M열)
+- A열에 UUID 자동 생성, J열 상태는 "예약"으로 기본 설정
+- 영업관리 탭의 I~L, N~P 컬럼은 시트 수식이 자동 업데이트
 
 **에러 코드**:
-- `400`: 필수 필드 누락, 잘못된 날짜/시간 형식
+- `400`: 필수 필드 누락, 잘못된 날짜/시간 형식, 유효하지 않은 채널명
 - `401`: 인증 실패
 - `500`: Google Sheets 쓰기 오류
 
 ---
 
 ### 4. PATCH `/api/meeting/:id`
-**용도**: 기존 미팅 상태 업데이트
+**용도**: 기존 미팅 상태 업데이트 (ADR-0003 업데이트)
 
 **Parameters**:
-- `id`: 미팅 식별자
+- `id`: UUID 미팅 식별자
 
 **Request Body** (`MeetingUpdate`):
 ```json
 {
-  "status": "완료",
+  "상태": "완료",
   "계약여부": true,
   "수임비": 50,
   "계약비고": "ABC업체 계약 체결"
@@ -184,53 +203,122 @@
 ```
 
 **Google Sheets 작업**:
-- `앱_미팅예약` 탭에서 해당 행 업데이트
-- 상태 변경 시 `01 영업관리` 탭의 집계 데이터 자동 갱신
+- **업체관리 탭**에서 해당 ID 행의 J~M열 업데이트
+- 상태 변경 시 **영업관리 탭**의 집계 컬럼(I~L, N~P)이 시트 수식으로 자동 갱신
 
 **에러 코드**:
-- `400`: 잘못된 상태 값, 수임비 형식 오류
+- `400`: 잘못된 상태 값("예약"|"완료"|"취소"), 수임비 형식 오류
 - `401`: 인증 실패
 - `404`: 존재하지 않는 미팅 ID
 - `500`: Google Sheets 업데이트 오류
 
 ---
 
-### 5. POST `/api/payment/:date`
-**용도**: 수납 데이터 입력
+### 5. GET `/api/meetings`
+**용도**: 미팅 목록 조회 (ADR-0003 신규)
 
-**Parameters**:
-- `date`: YYYY-MM-DD 형식
+**Query Parameters**:
+- `date`: YYYY-MM-DD (필수)
+- `dateType`: "reservation" | "meeting" (기본값: "meeting")
+
+**Response** (`Meeting[]`):
+```json
+[
+  {
+    "id": "uuid-001",
+    "예약일": "2026-04-20",
+    "예약시각": "14:30:00",
+    "미팅날짜": "2026-04-21",
+    "미팅시간": "14:00",
+    "채널": "매입DB",
+    "업체명": "ABC업체",
+    "장소": "서울",
+    "예약비고": "초기 상담",
+    "상태": "예약",
+    "계약여부": false,
+    "수임비": 0,
+    "계약비고": ""
+  }
+]
+```
+
+**Google Sheets 작업**:
+- **업체관리 탭**에서 날짜 기준 필터링
+- `dateType=reservation`: B열(예약일) 기준
+- `dateType=meeting`: D열(미팅날짜) 기준
+
+**에러 코드**:
+- `400`: 잘못된 날짜 형식, 유효하지 않은 dateType
+- `401`: 인증 실패
+- `500`: Google Sheets 읽기 오류
+
+---
+
+### 6. POST `/api/payment`
+**용도**: 수납 데이터 입력 (ADR-0003 업데이트)
 
 **Request Body** (`Payment`):
 ```json
 {
+  "수납날짜": "2026-04-21",
   "승인건수": 2,
   "수납건수": 2,
   "수납금액": 150,
-  "비고": "A기관 2건"
+  "기관비고": "A기관 2건"
 }
 ```
 
 **Response**:
 ```json
 {
-  "ok": true,
+  "id": "pay-uuid-generated",
   "message": "수납 데이터 저장 완료"
 }
 ```
 
 **Google Sheets 작업**:
-- `01 영업관리` 탭 Q~T열에 데이터 입력
-- 해당 날짜 첫 번째 행에 일별 데이터로 저장
+- **수납관리 탭**에 새 행 추가 (A~F열)
+- A열에 UUID 자동 생성
+- **영업관리 탭** Q~T열은 시트 수식이 자동 업데이트
 
 **에러 코드**:
-- `400`: 음수 값, 필수 필드 누락
+- `400`: 음수 값, 필수 필드 누락, 잘못된 날짜 형식
 - `401`: 인증 실패
 - `500`: Google Sheets 쓰기 오류
 
 ---
 
-### 6. POST `/api/db-order`
+### 7. GET `/api/payments`
+**용도**: 수납 목록 조회 (ADR-0003 신규)
+
+**Query Parameters**:
+- `date`: YYYY-MM-DD (필수)
+
+**Response** (`Payment[]`):
+```json
+[
+  {
+    "id": "pay-001",
+    "수납날짜": "2026-04-21",
+    "승인건수": 2,
+    "수납건수": 2,
+    "수납금액": 150,
+    "기관비고": "A기관 2건"
+  }
+]
+```
+
+**Google Sheets 작업**:
+- **수납관리 탭**에서 B열(수납날짜) 기준 필터링
+
+**에러 코드**:
+- `400`: 잘못된 날짜 형식
+- `401`: 인증 실패
+- `500`: Google Sheets 읽기 오류
+
+---
+
+### 8. POST `/api/db-order`
 **용도**: DB 주문 생성
 
 **Request Body** (`DBOrder`):
@@ -261,7 +349,7 @@
 
 ---
 
-### 7. GET `/api/summary`
+### 9. GET `/api/summary`
 **용도**: 대시보드 요약 데이터 조회
 
 **Response** (`Summary`):
@@ -296,7 +384,7 @@
 
 ---
 
-### 8. GET `/api/schedule`
+### 10. GET `/api/schedule`
 **용도**: 수강 일정 정보 조회 (동적 계산)
 
 **Response** (`Schedule`):

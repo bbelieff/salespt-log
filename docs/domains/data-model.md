@@ -22,31 +22,28 @@ last_review: 2026-04-17
 
 > **원칙**: Google Sheets `01 영업관리` 탭이 SSOT. 백엔드는 시트 행/열을 그대로 모델링하고, 모든 프론트 탭은 같은 API에서 데이터를 받는다. 이 일관성이 깨지면 탭마다 표시가 다른 버그가 발생한다.
 
-## 시트 컬럼 매핑
+## 새로운 4탭 구조 개요
 
-`01 영업관리` 시트에서 하루 = 4행(채널별), 컬럼은 다음과 같이 4개 박스로 그룹화됨:
+[ADR-0003](../decisions/0003-company-tab-split.md)에 따라 기존 영업관리 탭을 4개 탭으로 분리:
 
-| 컬럼 | 헤더 | 박스 | 비고 |
+1. **업체관리 탭** (신규): 1행 = 1미팅, 미팅 데이터 SSOT
+2. **수납관리 탭** (신규): 1행 = 1일 수납기록, 독립 워크플로우  
+3. **영업관리 탭** (변경): 집계 전용 뷰, 하루 = 4행(채널별)
+4. **대시보드 탭** (기존): 읽기 전용 차트
+
+### 영업관리 탭 컬럼 (집계 뷰로 역할 변경)
+
+| 컬럼 | 헤더 | 데이터 출처 | 비고 |
 |---|---|---|---|
-| B | 요일 | (날짜) | 자동 |
-| C | 날짜 | (날짜) | 자동 |
-| D | 채널 | (날짜) | 매입DB / 직접생산 / 현수막 / 콜·지·기·소 |
-| E | 생산건 수 | **컨택관리** | 채널별 |
-| F | 유입건 수 | **컨택관리** | 채널별 |
-| G | 컨택진행 수 | **컨택관리** | 채널별 |
-| H | 컨택성공 수 | **컨택관리** | 채널별 (= 미팅예약 건수) |
-| I | 미팅예약 기록 | **컨택관리** | 수식 자동 (앱_미팅예약 탭에서 TEXTJOIN) |
-| J | 오늘 미팅 일정 | **일정·계약관리** | 일별 (첫 행에만) |
-| K | 오늘 미팅 수 | **일정·계약관리** | 일별, =COUNTA(I열) |
-| L | 미팅 완료 수 | **일정·계약관리** | 일별, 미팅 후 입력 |
-| M | 특이사항(변동,변수) | **일정·계약관리** | 일별 |
-| N | 계약건 수 | **일정·계약관리** | 일별 |
-| O | 수임비 금액 | **일정·계약관리** | 일별 (계약별 수임비 합계) |
-| P | 비고(계약업체명+수임비) | **일정·계약관리** | 일별 |
-| Q | 승인건 수 | **수납관리** | 일별 |
-| R | 수납건 수 | **수납관리** | 일별 |
-| S | 수납금액 | **수납관리** | 일별 |
-| T | 비고(기관, 접수내용) | **수납관리** | 일별 |
+| B | 요일 | 시트 수식 | =TEXT(C열,"ddd") |
+| C | 날짜 | 시트 수식 | 자동 생성 |
+| D | 채널 | 시트 수식 | 매입DB/직접생산/현수막/콜·지·기·소 |
+| E-H | 생산/유입/컨택진행/컨택성공 | **웹 직접 입력** | 채널별 |
+| I | 미팅예약 기록 | **업체관리 탭 → 시트 수식** | 예약일 기준 TEXTJOIN |
+| J-L | 오늘미팅일정/수/완료수 | **업체관리 탭 → 시트 수식** | 미팅날짜 기준 |
+| M | 특이사항 | **웹 직접 입력** | 일별 메모 |
+| N-P | 계약건수/수임비/비고 | **업체관리 탭 → 시트 수식** | 미팅날짜 기준 |
+| Q-T | 승인건수/수납건수/금액/비고 | **수납관리 탭 → 시트 수식** | 수납날짜 기준 |
 
 ## 상단 요약 (1-6행) — 자동 계산
 
@@ -71,45 +68,66 @@ type ChannelRow = {
   컨택성공: number;
 };
 
-// 미팅 1건 (앱_미팅예약 탭의 한 행)
+// 미팅 1건 (업체관리 탭의 한 행) - ADR-0003
 type Meeting = {
-  id: string;          // 행 식별자
-  date: string;        // YYYY-MM-DD
-  time: string;        // HH:MM
-  channel: ChannelKey;
-  vendor: string;
-  region: string;
-  note: string;        // 미팅별 메모 (시트 I열의 TEXTJOIN으로 합쳐짐)
-
-  // 일정·계약관리 탭에서 추가 입력
-  status: '예약'|'완료'|'취소';
-  계약여부: boolean;     // 계약 성사 시 true
-  수임비: number;        // 계약별 수임비 (만원)
-  계약비고: string;
+  id: string;           // A열: UUID 행 식별자
+  예약일: string;        // B열: YYYY-MM-DD, 미팅 예약한 날
+  예약시각: string;      // C열: HH:MM:SS, 정렬용
+  미팅날짜: string;       // D열: YYYY-MM-DD, 실제 미팅 진행 날
+  미팅시간: string;       // E열: HH:MM, 고객과 약속한 시간
+  채널: ChannelKey;     // F열
+  업체명: string;        // G열
+  장소: string;         // H열: 구·동 단위
+  예약비고: string;      // I열: 미팅 예약 시 메모
+  상태: '예약'|'완료'|'취소';  // J열
+  계약여부: boolean;     // K열: 계약 성사 시 true
+  수임비: number;        // L열: 계약별 수임비 (만원)
+  계약비고: string;      // M열: 계약 관련 메모
 };
 
-// 한 날짜의 일별 데이터 (J~P, Q~T 합쳐서)
+// 수납 1건 (수납관리 탭의 한 행) - ADR-0003 신규
+type Payment = {
+  id: string;           // A열: UUID 행 식별자
+  수납날짜: string;      // B열: YYYY-MM-DD
+  승인건수: number;      // C열: 승인 받은 건 수
+  수납건수: number;      // D열: 실제 입금된 건 수
+  수납금액: number;      // E열: 입금 총액 (만원)
+  기관비고: string;      // F열: 승인기관, 접수내용 메모
+};
+
+// 한 날짜의 영업관리 탭 집계 뷰 - ADR-0003 변경
 type DailyEntry = {
-  date: string;        // YYYY-MM-DD (PK)
-  요일: string;
-  // 컨택관리 (E~H, 채널 4개)
+  date: string;         // C열: YYYY-MM-DD (PK)
+  요일: string;         // B열: 시트 수식
+  // 컨택관리 (E~H, 채널 4개) - 웹 직접 입력
   channels: ChannelRow[];
-  // 일정·계약관리 (J~P, 일별 합산)
-  특이사항: string;     // M
-  // 수납관리 (Q~T, 일별)
+  // 특이사항 (M열) - 웹 직접 입력
+  특이사항: string;
+  // 미팅 관련 (I~L, N~P) - 업체관리 탭 → 시트 수식
+  미팅: {
+    예약기록: string;    // I열: 예약일 기준 TEXTJOIN
+    오늘일정: string;    // J열: 미팅날짜 기준 TEXTJOIN  
+    오늘미팅수: number;  // K열: =COUNTA(J열)
+    완료수: number;      // L열: 상태='완료' COUNT
+    계약건수: number;    // N열: 계약여부=TRUE COUNT
+    수임비: number;      // O열: 수임비 SUM
+    계약비고: string;    // P열: 계약비고 TEXTJOIN
+  };
+  // 수납 관련 (Q~T) - 수납관리 탭 → 시트 수식
   수납: {
-    승인건수: number;   // Q
-    수납건수: number;   // R
-    수납금액: number;   // S
-    비고: string;       // T (기관, 접수내용)
+    승인건수: number;   // Q열
+    수납건수: number;   // R열
+    수납금액: number;   // S열
+    비고: string;       // T열
   };
 };
 
-// API에서 한 날짜 종합 응답 (모든 탭이 이걸 받음)
+// API에서 한 날짜 종합 응답 (모든 탭이 이걸 받음) - ADR-0003 업데이트
 type DailyView = {
-  daily: DailyEntry;
-  meetings: Meeting[];     // 별도 시트(앱_미팅예약)
-  summary: {               // 상단 요약 (자동 계산)
+  daily: DailyEntry;        // 영업관리 탭 집계 뷰
+  meetings: Meeting[];      // 업체관리 탭 원본 데이터
+  payments: Payment[];      // 수납관리 탭 원본 데이터  
+  summary: {                // 상단 요약 (자동 계산)
     생산총합: number;
     유입총합: number;
     컨택총합: number;
@@ -129,35 +147,54 @@ type DailyView = {
 };
 ```
 
-## 탭별 데이터 출처
+## 탭별 데이터 출처 (ADR-0003 업데이트)
 
-| 탭 | 사용 필드 | 쓰기 가능? |
-|---|---|---|
-| 대시보드 | summary 전체, today's daily | ❌ 읽기만 |
-| 컨택관리 | daily.channels (E~H) + meetings | ✅ 쓰기 |
-| 일정·계약관리 | meetings (status/계약/수임비) + daily.특이사항 | ✅ 쓰기 |
-| 수납관리 | daily.수납 (Q~T) | ✅ 쓰기 |
-| DB관리 | summary.채널효율 + 누적 DB 잔여 | ❌ 읽기만 (자동 계산) |
-| MY | 사용자 메타 + summary | ❌ 읽기만 |
+| 웹앱 탭 | 사용 필드 | 쓰기 가능? | 데이터 원천 |
+|---|---|---|---|
+| 대시보드 | summary 전체 | ❌ 읽기만 | 영업관리 탭 수식 |
+| 컨택관리 | daily.channels (E~H) | ✅ 쓰기 | 영업관리 탭 직접 |
+| 일정·계약관리 | meetings 배열 + daily.특이사항 | ✅ 쓰기 | 업체관리 탭 + 영업관리.M |
+| 수납관리 | payments 배열 | ✅ 쓰기 | 수납관리 탭 직접 |
+| DB관리 | summary.채널효율 | ❌ 읽기만 | 영업관리 탭 수식 |
+| MY | 사용자 메타 + summary | ❌ 읽기만 | 시트 메타데이터 |
 
-## API 엔드포인트 (예정)
-
-```
-GET  /api/daily/:date          → DailyView
-POST /api/daily/:date          → 채널 합계 + 특이사항 저장
-POST /api/meeting              → 미팅 1건 추가 (앱_미팅예약 탭)
-PATCH /api/meeting/:id         → 미팅 상태/계약/수임비 업데이트
-POST /api/payment/:date        → 수납 입력
-GET  /api/summary              → 상단 요약 (대시보드, DB관리에서 사용)
-GET  /api/schedule             → 수강시작일/수료일 + 주차 정보
-```
-
-## 프론트 데이터 흐름
+## API 엔드포인트 (ADR-0003 업데이트)
 
 ```
-[Sheets] ↔ lib/repo/sheets.ts ↔ lib/service/daily.ts ↔ /api/daily ↔ React Query cache ↔ 모든 탭
+// 종합 뷰
+GET  /api/daily/:date                    → DailyView (영업관리 집계뷰)
+
+// 영업관리 탭 (컨택 + 특이사항만)
+POST /api/daily/:date                    → E~H(채널데이터) + M(특이사항) 저장
+
+// 업체관리 탭 (미팅 CRUD)  
+POST /api/meeting                        → 새 미팅 추가
+PATCH /api/meeting/:id                   → 미팅 상태/계약/수임비 업데이트
+GET  /api/meetings?date=YYYY-MM-DD&dateType=reservation|meeting
+                                         → 예약일 or 미팅날짜 기준 조회
+
+// 수납관리 탭 (수납 CRUD)
+POST /api/payment                        → 새 수납 추가  
+GET  /api/payments?date=YYYY-MM-DD       → 해당일 수납 조회
+
+// 요약 데이터
+GET  /api/summary                        → 상단 요약 (대시보드용)
+GET  /api/schedule                       → 수강시작일/수료일 + 주차 정보
 ```
 
-- React Query로 `['daily', date]` 키에 캐시 → 모든 탭이 같은 데이터를 봄
-- 한 탭에서 mutate하면 invalidate → 모든 탭 자동 새로고침
-- 프로토타입 단계에서는 `dayStore` 객체가 이 캐시 역할
+## 프론트 데이터 흐름 (ADR-0003 업데이트)
+
+```
+4개 시트 탭 → lib/repo/sheets.ts → lib/service/daily.ts → API 라우터 → React Query cache → 웹앱 탭들
+
+업체관리 탭 ↘
+수납관리 탭 → [시트 수식] → 영업관리 탭 → /api/daily/:date → ['daily', date] 캐시 → 모든 탭
+영업관리 탭 ↗                      ↘
+대시보드 탭 ←←←←←←←← [시트 수식] ←←←←↙
+```
+
+### 캐싱 전략
+- React Query `['daily', date]`: 영업관리 집계뷰 + 요약 데이터
+- React Query `['meetings', date, type]`: 업체관리 탭 미팅 목록  
+- React Query `['payments', date]`: 수납관리 탭 수납 목록
+- 한 탭에서 mutate → 관련 캐시 invalidate → 모든 탭 자동 새로고침

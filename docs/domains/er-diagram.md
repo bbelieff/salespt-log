@@ -48,28 +48,30 @@ erDiagram
     }
 
     Meeting {
-        string id PK "행 식별자"
+        string id PK "UUID 행 식별자"
         string userId FK "User.email"
-        date date "미팅 날짜"
-        string time "미팅 시간 (HH:MM)"
-        string channel "채널"
-        string vendor "업체명"
-        string region "지역"
-        string note "미팅 메모"
-        string status "예약|완료|취소"
+        date 예약일 "미팅을 예약한 날"
+        time 예약시각 "정렬용 시각"
+        date 미팅날짜 "실제 미팅 진행 날"
+        time 미팅시간 "고객과 약속한 시간"
+        string 채널 "매입DB|직접생산|현수막|콜·지·기·소"
+        string 업체명 "고객 업체명"
+        string 장소 "미팅 장소"
+        string 예약비고 "미팅 예약 시 메모"
+        string 상태 "예약|완료|취소"
         boolean 계약여부 "계약 성사 여부"
         int 수임비 "수임비 (만원)"
-        string 계약비고 "계약 관련 비고"
+        string 계약비고 "계약 관련 메모"
     }
 
     Payment {
-        string id PK "userId + date"
+        string id PK "UUID 행 식별자"
         string userId FK "User.email"
-        date date "수납일"
-        int 승인건수 "승인건 수"
-        int 수납건수 "수납건 수"
-        int 수납금액 "수납금액"
-        string 비고 "기관, 접수내용"
+        date 수납날짜 "수납일"
+        int 승인건수 "승인 받은 건 수"
+        int 수납건수 "실제 입금된 건 수"
+        int 수납금액 "입금 총액 (만원)"
+        string 기관비고 "승인기관, 접수내용"
     }
 
     DBOrder {
@@ -88,39 +90,54 @@ erDiagram
     User ||--o{ DBOrder : "orders"
     
     DailyEntry ||--o{ ChannelRow : "contains"
-    Meeting }o--|| DailyEntry : "belongs_to_date"
-    Payment }o--|| DailyEntry : "belongs_to_date"
+    Meeting }o--o{ DailyEntry : "예약일/미팅날짜 양쪽 연결"
+    Payment }o--|| DailyEntry : "수납날짜 기준"
 ```
 
-## Google Sheets 매핑
+## Google Sheets 매핑 (ADR-0003 업데이트)
 
-### 01 영업관리 탭
-- **DailyEntry**: 하루 = 4행 (채널별), 날짜는 B-C열
-- **ChannelRow**: D열(채널), E-H열(생산/유입/컨택진행/컨택성공)
-- **Meeting 요약**: I열 (미팅예약 기록, TEXTJOIN으로 집계)
-- **일정·계약관리**: J-P열 (미팅일정/완료수/특이사항/계약건수/수임비/비고)
-- **Payment**: Q-T열 (승인/수납건수/금액/비고)
+### 새로운 4탭 구조
 
-### 앱_미팅예약 탭
-- **Meeting**: 전체 필드 매핑
-- 각 행 = Meeting 1건
-- A열부터 순차적으로 date, time, channel, vendor, region, note, status, 계약여부, 수임비, 계약비고
+#### 1. 대시보드 탭 (읽기 전용)
+- 자동 계산된 요약 데이터, 차트
+- 영업관리 탭의 수식을 참조하여 생성
 
-### 대시보드 탭 (읽기 전용)
-- 1-6행: 자동 계산된 요약 데이터
-- SUM, 효율 계산 수식으로 01 영업관리 탭 참조
+#### 2. 업체관리 탭 (신규, Meeting 엔티티 SSOT)
+- **Meeting**: A~M열 전체 필드 매핑
+- 각 행 = Meeting 1건 (1미팅 = 1행 정규화)
+- A(id), B(예약일), C(예약시각), D(미팅날짜), E(미팅시간), F(채널), G(업체명), H(장소), I(예약비고), J(상태), K(계약여부), L(수임비), M(계약비고)
 
-### DB관리 탭
-- **DBOrder**: A열부터 date, channel, quantity, status
-- 채널별 효율성 지표는 01 영업관리 탭에서 자동 계산
+#### 3. 수납관리 탭 (신규, Payment 엔티티 독립 관리)
+- **Payment**: A~F열 전체 필드 매핑  
+- 각 행 = 1일 수납 기록
+- A(id), B(수납날짜), C(승인건수), D(수납건수), E(수납금액), F(기관비고)
 
-### 마스터 레지스트리 시트
+#### 4. 영업관리 탭 (집계 뷰로 역할 변경)
+- **DailyEntry**: 하루 = 4행 (채널별), B~T열
+- **ChannelRow**: E~H열(생산/유입/컨택진행/컨택성공) - 웹 직접 입력
+- **Meeting 집계**: I~L, N~P열 - 업체관리 탭 → 시트 수식 자동
+- **Payment 집계**: Q~T열 - 수납관리 탭 → 시트 수식 자동
+- **특이사항**: M열 - 웹 직접 입력
+
+### 데이터 흐름
+```
+업체관리 탭 (Meeting 원본) ↘
+                          → 영업관리 탭 (집계 뷰) → 대시보드 탭
+수납관리 탭 (Payment 원본) ↗
+```
+
+### 마스터 레지스트리 시트 (기존 유지)
 - **User**: email → spreadsheetId 매핑
 - 수강생별 개별 시트 관리
 
-## 데이터 흐름 특징
+## 데이터 흐름 특징 (ADR-0003 업데이트)
 
 1. **단일 진실 출처**: Google Sheets가 유일한 데이터베이스
-2. **시트 간 연동**: 수식을 통한 자동 집계 (TEXTJOIN, SUM 등)
-3. **읽기/쓰기 분리**: 대시보드/DB관리는 읽기 전용, 나머지는 입력 가능
-4. **사용자별 격리**: 수강생마다 개별 spreadsheetId로 데이터 분리
+2. **데이터 정규화**: Meeting과 Payment를 별도 탭으로 분리 (1행 = 1엔티티)
+3. **시트 수식 활용**: 업체관리/수납관리 → 영업관리 자동 집계
+4. **독립적 관계**: Meeting과 Payment는 서로 독립 (외래키 없음)
+5. **이중 날짜 매핑**: Meeting은 예약일과 미팅날짜 양쪽에서 DailyEntry와 연결
+6. **읽기/쓰기 분리**: 
+   - 웹 직접 쓰기: 업체관리, 수납관리, 영업관리 E~H/M
+   - 시트 수식 자동: 영업관리 I~L/N~T, 대시보드
+7. **사용자별 격리**: 수강생마다 개별 spreadsheetId로 데이터 분리
