@@ -297,25 +297,58 @@
 ---
 
 ### 8. GET `/api/schedule`
-**용도**: 수강 일정 정보 조회
+**용도**: 수강 일정 정보 조회 (동적 계산)
 
 **Response** (`Schedule`):
 ```json
 {
   "startDate": "2026-01-01",
-  "endDate": "2026-12-31",
-  "currentWeek": 16,
-  "dday": 248
+  "endDate": "2026-02-25",
+  "editEndDate": "2026-03-11",
+  "currentWeek": 3,
+  "dDay": 45,
+  "editDDay": 59,
+  "periodType": "course",
+  "weekLabel": "3주차"
 }
 ```
 
+**응답 필드 설명**:
+- `startDate`: 시트 N1에서 읽은 수강시작일
+- `endDate`: startDate + 55일 (8주 수료일)
+- `editEndDate`: startDate + 69일 (편집 가능 마감일)
+- `currentWeek`: 1~8 (수강 기간), 또는 null (유예/종료)
+- `dDay`: 수료일까지 남은 일수 (음수 가능)
+- `editDDay`: 편집 마감까지 남은 일수 (음수 가능)
+- `periodType`: "before" | "course" | "grace" | "archived"
+- `weekLabel`: UI 표시용 라벨 ("3주차" | "📌 유예" | "종료")
+
 **Google Sheets 작업**:
-- N1 (수강시작일), N2 (수료일) 셀 읽기
-- C248 (D-day) 계산 결과 읽기
+- N1 (수강시작일) 셀 읽기
+- 서버에서 모든 날짜 계산 수행 (하드코딩 금지)
 
 **에러 코드**:
 - `401`: 인증 실패
 - `500`: Google Sheets 읽기 오류
+
+---
+
+## MVP 스코프 제약
+
+### 기간 제한 API 동작
+모든 날짜 관련 API는 다음 제약을 따릅니다:
+
+1. **수강 시작 전**: 읽기 전용 응답, 입력 API는 400 에러
+2. **수강 기간 (1~8주)**: 모든 API 정상 동작
+3. **마감 유예 (9~10주)**: 미팅/계약/수납 API만 허용, 나머지는 400 에러
+4. **완전 종료 (11주~)**: 모든 쓰기 API 403 에러, 읽기만 허용
+
+### 동적 계산 원칙
+- 모든 기간 계산은 시트 N1 기준으로 서버에서 수행
+- 클라이언트에 하드코딩된 날짜 금지
+- `GET /api/schedule`이 모든 기간 정보를 제공
+
+---
 
 ## 인증 및 보안
 

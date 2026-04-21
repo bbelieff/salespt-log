@@ -9,23 +9,28 @@
 
 # 📚 Documentation Index
 
+⚠️ **이 프로젝트는 8주 수강생 전용 MVP입니다. 스코프는 [scope.md](./scope.md) 참조**
+
 세일즈PT 영업일지 프로젝트의 모든 문서를 정리한 인덱스입니다.
 
 ## 📁 폴더 구조
 
 | 폴더 | 설명 | 대상 독자 | 수정 권한 |
 |------|------|-----------|-----------|
+| **`scope.md`** | **MVP 스코프 정의와 용어** | **전체 팀** | **핵심 문서** |
 | `domains/` | 기능별 설계 문서 | 개발자 | status에 따라 |
 | `decisions/` | 아키텍처 결정 기록 (ADR) | 전체 팀 | 불변 (새 ADR로 supersede) |
 | `plans/` | 작업 계획서 | 개발자, PM | active ↔ completed 이동 |
 | `playbooks/` | 운영 매뉴얼 | 개발자 | 수시 업데이트 |
+| `future/` | 향후 확장 기능 로드맵 | 전체 팀 | 트리거 기반 업데이트 |
 
 ## 📋 상황별 문서 가이드
 
 ### 🏗️ 개발을 시작할 때
 1. **프로젝트 개요**: [CLAUDE.md](../CLAUDE.md) - 하네스 철학과 전체 구조
-2. **아키텍처**: [architecture.md](./architecture.md) - 레이어 규칙과 제약
-3. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
+2. **MVP 스코프**: [scope.md](./scope.md) - 8주 수강생 전용 경계와 용어
+3. **아키텍처**: [architecture.md](./architecture.md) - 레이어 규칙과 제약
+4. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
 
 ### 📊 데이터 모델을 이해하고 싶을 때
 1. **전체 개요**: [data-model.md](./domains/data-model.md) - Google Sheets 매핑
@@ -34,12 +39,13 @@
 4. **API 연동**: [api-spec.md](./domains/api-spec.md) - 엔드포인트 명세
 
 ### 🔧 기능 구현할 때
-1. **MVP 범위**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 화면별 기능
-2. **사용자 여정**: [user-journeys.md](./domains/user-journeys.md) - 6개 핵심 시나리오
-3. **화면 설계**: [wireframes.md](./domains/wireframes.md) - 4개 탭 와이어프레임
-4. **예외 처리**: [edge-cases.md](./domains/edge-cases.md) - 엣지케이스 대응 방안
-5. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
-6. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
+1. **MVP 범위**: [scope.md](./scope.md) - 8주 수강생 전용 IN/OUT 테이블
+2. **화면별 기능**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 스토리보드
+3. **사용자 여정**: [user-journeys.md](./domains/user-journeys.md) - 7개 핵심 시나리오
+4. **화면 설계**: [wireframes.md](./domains/wireframes.md) - 4개 탭 와이어프레임
+5. **예외 처리**: [edge-cases.md](./domains/edge-cases.md) - 엣지케이스 대응 방안
+6. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
+7. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
 
 ### 🚀 배포와 운영
 1. **VPS 배포**: [deploy-vps.md](./playbooks/deploy-vps.md)
@@ -50,7 +56,15 @@
 1. **하네스 도입**: [0001-adopt-harness.md](./decisions/0001-adopt-harness.md)
 2. **기술 스택**: [0002-stack-nextjs-sheets.md](./decisions/0002-stack-nextjs-sheets.md)
 
+### 🔮 향후 확장 기능
+1. **확장 로드맵**: [future/extensions.md](./future/extensions.md) - P2/P3/P4 기능 우선순위
+
 ## 📄 전체 문서 목록
+
+### 📋 핵심 문서
+| 문서 | 한 줄 요약 | 대상 |
+|------|------------|------|
+| **[scope.md](./scope.md)** | **8주 수강생 전용 MVP 스코프 및 용어 정의** | **전체 팀** |
 
 ### 🎯 domains/ (기능별 설계)
 | 문서 | Status | 한 줄 요약 | 대상 |
@@ -58,11 +72,11 @@
 | [data-model.md](./domains/data-model.md) | draft | Google Sheets 1:1 매핑과 TypeScript 모델 | 개발자 |
 | [er-diagram.md](./domains/er-diagram.md) | verified | 엔티티 관계도와 시트 매핑 | 개발자 |
 | [state-machines.md](./domains/state-machines.md) | verified | Meeting/Payment/DBOrder 상태 전이 | 개발자 |
-| [api-spec.md](./domains/api-spec.md) | verified | REST API 엔드포인트 명세 | 개발자 |
+| [api-spec.md](./domains/api-spec.md) | verified | REST API 엔드포인트 명세 (동적 계산 원칙) | 개발자 |
 | [storyboard-mvp.md](./domains/storyboard-mvp.md) | draft | 화면별 기능과 사용자 스토리 | PM, 개발자 |
-| [user-journeys.md](./domains/user-journeys.md) | draft | 6개 핵심 사용자 시나리오와 단계별 플로우 | 개발자, 기획자 |
-| [wireframes.md](./domains/wireframes.md) | draft | 4개 탭별 와이어프레임과 UI 인터랙션 | 개발자, 디자이너 |
-| [edge-cases.md](./domains/edge-cases.md) | draft | 예외 상황과 엣지케이스별 대응 방안 | 개발자, QA |
+| [user-journeys.md](./domains/user-journeys.md) | draft | 7개 핵심 사용자 시나리오 (유예 기간 포함) | 개발자, 기획자 |
+| [wireframes.md](./domains/wireframes.md) | draft | 4개 탭별 와이어프레임 (편집 제한 포함) | 개발자, 디자이너 |
+| [edge-cases.md](./domains/edge-cases.md) | draft | 예외 상황 (기간 제한 케이스 보강) | 개발자, QA |
 
 ### ⚖️ decisions/ (ADR - 불변)
 | 문서 | 제목 | 결정 날짜 |
@@ -89,6 +103,11 @@ _현재 완료된 계획 없음_
 | [deploy-vps.md](./playbooks/deploy-vps.md) | VPS 배포 및 Caddy 설정 | 배포 시 |
 | [fix-harness.md](./playbooks/fix-harness.md) | 하네스 문제 해결 | 에이전트 실수 반복 시 |
 
+### 🔮 future/ (향후 확장)
+| 문서 | 한 줄 요약 | 업데이트 방식 |
+|------|------------|---------------|
+| [extensions.md](./future/extensions.md) | P2/P3/P4 확장 기능 로드맵과 트리거 조건 | 트리거 충족 시 |
+
 ## 🔄 문서 관리 규칙
 
 ### Status 관리 (domains/ 문서)
@@ -111,11 +130,14 @@ _현재 완료된 계획 없음_
 
 ## 🎯 이런 상황엔 이 문서를 읽으세요
 
+- **"이 기능이 MVP 스코프에 포함되나?"** → [scope.md](./scope.md)
+- **"8주/10주 기간 제한을 어떻게 구현하지?"** → [scope.md](./scope.md) + [edge-cases.md](./domains/edge-cases.md)
 - **"사용자 입장에서 화면을 그리고 싶다"** → [wireframes.md](./domains/wireframes.md)
 - **"예외 상황을 어떻게 처리할지 모르겠다"** → [edge-cases.md](./domains/edge-cases.md)
 - **"새 기능 설계 전 비슷한 시나리오 찾고 싶다"** → [user-journeys.md](./domains/user-journeys.md)
 - **"API 에러 코드가 무슨 의미인지 모르겠다"** → [api-spec.md](./domains/api-spec.md)
 - **"데이터가 어떤 시트에 저장되는지 헷갈린다"** → [er-diagram.md](./domains/er-diagram.md)
+- **"이 기능은 언제 구현하면 되지?"** → [future/extensions.md](./future/extensions.md)
 
 ---
 
