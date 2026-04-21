@@ -15,6 +15,7 @@
 
 | 폴더 | 설명 | 대상 독자 | 수정 권한 |
 |------|------|-----------|-----------|
+| `design/` | 디자인 시스템 (토큰, 컴포넌트, 쇼케이스) | 개발자, 디자이너 | 토큰 변경 시 전체 동기화 |
 | `domains/` | 기능별 설계 문서 | 개발자 | status에 따라 |
 | `decisions/` | 아키텍처 결정 기록 (ADR) | 전체 팀 | 불변 (새 ADR로 supersede) |
 | `plans/` | 작업 계획서 | 개발자, PM | active ↔ completed 이동 |
@@ -25,7 +26,8 @@
 ### 🏗️ 개발을 시작할 때
 1. **프로젝트 개요**: [CLAUDE.md](../CLAUDE.md) - 하네스 철학과 전체 구조
 2. **아키텍처**: [architecture.md](./architecture.md) - 레이어 규칙과 제약
-3. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
+3. **디자인 시스템**: [design/README.md](./design/README.md) - 색상, 컴포넌트, 쇼케이스
+4. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
 
 ### 📊 데이터 모델을 이해하고 싶을 때
 1. **전체 개요**: [data-model.md](./domains/data-model.md) - Google Sheets 매핑
@@ -111,6 +113,9 @@ _현재 완료된 계획 없음_
 
 ## 🎯 이런 상황엔 이 문서를 읽으세요
 
+- **"UI 색/간격 찾고 싶다"** → [design/tokens.md](./design/tokens.md)
+- **"새 버튼/카드 만들고 싶다"** → [design/components.md](./design/components.md)
+- **"디자인을 브라우저로 눈으로 보고 싶다"** → [design/preview.html](./design/preview.html)
 - **"사용자 입장에서 화면을 그리고 싶다"** → [wireframes.md](./domains/wireframes.md)
 - **"예외 상황을 어떻게 처리할지 모르겠다"** → [edge-cases.md](./domains/edge-cases.md)
 - **"새 기능 설계 전 비슷한 시나리오 찾고 싶다"** → [user-journeys.md](./domains/user-journeys.md)
