@@ -376,10 +376,11 @@
       <!-- 스테퍼 입력 -->
       <div class="bg-white rounded-lg p-6">
         <h3 class="text-lg font-semibold mb-4">Stepper Input</h3>
-        <div class="flex items-center gap-2">
-          <button class="stepper-btn bg-gray-200 hover:bg-gray-300 text-gray-700">-</button>
-          <input type="number" class="stepper-val" value="12">
-          <button class="stepper-btn bg-blue-500 hover:bg-blue-600 text-white">+</button>
+        <p class="text-xs text-gray-500 mb-3">−/+ 버튼으로 증감, 숫자 직접 클릭하면 타이핑 가능. 음수 안 됨.</p>
+        <div class="flex items-center gap-2" data-stepper>
+          <button type="button" class="stepper-btn bg-gray-200 hover:bg-gray-300 text-gray-700" data-step="-1" aria-label="감소">−</button>
+          <input type="number" class="stepper-val" value="12" min="0" inputmode="numeric">
+          <button type="button" class="stepper-btn bg-blue-500 hover:bg-blue-600 text-white" data-step="1" aria-label="증가">+</button>
         </div>
       </div>
       
@@ -632,6 +633,24 @@
   </footer>
 
   <script>
+    // ===== 스테퍼 (Number Input) 동작 =====
+    // data-stepper 속성 붙은 그룹 안의 +/- 버튼을 자동 바인딩.
+    // 음수 방지: min 속성 또는 기본 0 하한.
+    document.querySelectorAll('[data-stepper]').forEach(group => {
+      const input = group.querySelector('.stepper-val');
+      if (!input) return;
+      const min = input.min !== '' ? parseInt(input.min) : 0;
+      group.querySelectorAll('[data-step]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const delta = parseInt(btn.dataset.step);
+          const cur = parseInt(input.value || '0');
+          const next = Math.max(min, cur + delta);
+          input.value = next;
+          input.dispatchEvent(new Event('input', { bubbles: true })); // 다른 리스너도 통지
+        });
+      });
+    });
+
     // 채널 탭 전환 기능
     function switchChannel(channelId) {
       // 모든 탭 비활성화
