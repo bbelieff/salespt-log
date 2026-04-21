@@ -4,7 +4,21 @@ owner: belie
 last_review: 2026-04-17
 ---
 
+> **📄 이 문서는 무엇인가요?**
+> - **한 줄 요약**: 세일즈PT 영업일지의 백엔드 데이터 모델과 Google Sheets 1:1 매핑 설명
+> - **누가 읽나요**: 개발자
+> - **어떤 기능·작업과 연결?**: 백엔드 API 구현, Google Sheets 연동, 프론트엔드 데이터 흐름
+> - **읽고 나면 알 수 있는 것**:
+>   - Google Sheets와 TypeScript 모델의 정확한 매핑
+>   - 각 탭별 데이터 입출력 권한과 흐름
+> - **관련 문서**: [ER 다이어그램](./er-diagram.md), [상태 전이도](./state-machines.md), [API 명세](./api-spec.md)
+
 # 백엔드 데이터 모델 — 경영일지 시트 1:1 매핑
+
+## 관련 문서
+- [ER 다이어그램](./er-diagram.md)
+- [상태 전이도](./state-machines.md)
+- [API 명세](./api-spec.md)
 
 > **원칙**: Google Sheets `01 영업관리` 탭이 SSOT. 백엔드는 시트 행/열을 그대로 모델링하고, 모든 프론트 탭은 같은 API에서 데이터를 받는다. 이 일관성이 깨지면 탭마다 표시가 다른 버그가 발생한다.
 
