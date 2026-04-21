@@ -18,12 +18,14 @@
 | 2 | **네트워크** | 시트 쓰기 중 네트워크 끊김 | 3회 재시도 후 실패 토스트 | 5xx, timeout | 🔴 "인터넷 연결을 확인해주세요" + [재시도] 버튼 | localStorage에 임시저장 → 재연결 시 복구 제안 |
 | 3 | **동시성** | 다른 탭에서 같은 날짜 수정 | 저장 시 충돌 감지 | 409 Conflict | 🟡 "다른 곳에서 수정된 데이터가 있습니다. 새로고침하시겠습니까?" | 사용자 선택: 덮어쓰기 vs 새로고침 |
 | 4 | **권한** | 타 수강생 시트 접근 시도 | 403 차단 + 권한 에러 | 403 Forbidden | 🔴 "접근 권한이 없습니다" | 로그아웃 → 재로그인 유도 |
-| 5 | **기간 제한** | 수강 시작 전 날짜 진입 | 입력 필드 비활성화 | - (클라이언트 체크) | 🟡 "수강 시작 전입니다 (시작일: 2026-03-01)" 배너 | 날짜 네비로 수강 기간 내 이동 |
-| 6 | **기간 제한** | 수료일 이후 입력 시도 | 읽기 전용 모드 전환 | - (클라이언트 체크) | 🟡 "수료를 축하합니다! 🎉 (읽기 전용)" 배너 | 데이터 조회만 가능 |
-| 7 | **오프라인** | 네트워크 완전 끊김 | localStorage 임시저장 + 재연결 시 동기화 | - (네트워크 없음) | 🟡 "오프라인 모드입니다" + 📡 재연결 대기 | 자동 재연결 감지 → 동기화 제안 |
-| 8 | **논리 검증** | 미팅 수 불일치 (컨택성공=3, 슬롯 2개) | 저장 시 확인 모달 | - (클라이언트 체크) | 🟡 "컨택성공보다 미팅이 적습니다. 저장하시겠습니까?" | 사용자 확인 후 저장 허용 |
-| 9 | **필수값** | 계약=true인데 수임비=0 | 저장 불가 + 포커스 이동 | - (클라이언트 검증) | 🔴 "계약 시 수임비를 입력해주세요" | 수임비 필드로 자동 포커스 |
-| 10 | **중복 감지** | 같은 업체·금액·날짜 DB주문 | 확인 모달 표시 | 409 Conflict | 🟡 "중복 주문입니다. 계속하시겠습니까?" | 사용자 선택: 계속 vs 취소 |
+| 5 | **기간 제한** | 수강 시작 전 날짜 진입 | 입력 필드 비활성화 | - (클라이언트 체크) | 🟡 "수강 시작 전입니다 (시작일: 시트 N1 동적 계산)" 배너 | 날짜 네비로 수강 기간 내 이동 |
+| 6 | **기간 제한** | 수강 중 (1~8주) 접근 | 모든 기능 완전 활성 | - (정상 동작) | 정상 UI, 파란색 주차 표시 | 모든 편집 가능 |
+| 7 | **기간 제한** | 마감 유예 (9~10주) 접근 | 미팅/계약/수납 편집 가능 | - (클라이언트 체크) | 🟡 "📌 마감 유예 기간" 앰버색 배지 | 제한적 편집, 별도 집계 |
+| 8 | **기간 제한** | 완전 종료 (11주~) 접근 | 완전 읽기 전용 모드 | - (클라이언트 체크) | 🟡 "수강 완료, 기록 종료 🎉" 회색 배너 | 데이터 조회만 가능 |
+| 9 | **오프라인** | 네트워크 완전 끊김 | localStorage 임시저장 + 재연결 시 동기화 | - (네트워크 없음) | 🟡 "오프라인 모드입니다" + 📡 재연결 대기 | 자동 재연결 감지 → 동기화 제안 |
+| 10 | **논리 검증** | 미팅 수 불일치 (컨택성공=3, 슬롯 2개) | 저장 시 확인 모달 | - (클라이언트 체크) | 🟡 "컨택성공보다 미팅이 적습니다. 저장하시겠습니까?" | 사용자 확인 후 저장 허용 |
+| 11 | **필수값** | 계약=true인데 수임비=0 | 저장 불가 + 포커스 이동 | - (클라이언트 검증) | 🔴 "계약 시 수임비를 입력해주세요" | 수임비 필드로 자동 포커스 |
+| 12 | **중복 감지** | 같은 업체·금액·날짜 DB주문 | 확인 모달 표시 | 409 Conflict | 🟡 "중복 주문입니다. 계속하시겠습니까?" | 사용자 선택: 계속 vs 취소 |
 
 ---
 
@@ -187,40 +189,90 @@ flowchart TD
 
 ---
 
-### 5. 기간 제한 (수강 전/후)
+### 5. 기간 제한 (수강 전/중/유예/후)
 
-**수강 시작 전 접근**:
+**동적 기간 계산**:
 ```javascript
-function validateAccessDate(targetDate, userSchedule) {
-  const startDate = new Date(userSchedule.startDate);
-  const endDate = new Date(userSchedule.endDate);
+function calculateCoursePeriods(courseStartDate) {
+  const startDate = new Date(courseStartDate); // 시트 N1에서 읽기
+  const courseEndDate = new Date(startDate.getTime() + (55 * 24 * 60 * 60 * 1000)); // +55일
+  const editEndDate = new Date(startDate.getTime() + (69 * 24 * 60 * 60 * 1000)); // +69일
+  
+  return {
+    courseStart: startDate,
+    courseEnd: courseEndDate,
+    editEnd: editEndDate
+  };
+}
+
+function validateAccessDate(targetDate, periods) {
   const target = new Date(targetDate);
   
-  if (target < startDate) {
+  if (target < periods.courseStart) {
     return {
       valid: false,
-      message: `수강 시작 전입니다 (시작일: ${formatDate(startDate)})`,
-      action: 'redirect_to_start'
+      type: 'before_course',
+      message: `수강 시작 전입니다 (시작일: ${formatDate(periods.courseStart)})`,
+      action: 'readonly_with_banner',
+      color: 'amber'
     };
   }
   
-  if (target > endDate) {
+  if (target <= periods.courseEnd) {
+    const weekNumber = Math.floor((target - periods.courseStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
     return {
-      valid: false,
-      message: `수료를 축하합니다! 🎉`,
-      action: 'readonly_mode'
+      valid: true,
+      type: 'course_period',
+      weekNumber,
+      message: `${weekNumber}주차`,
+      action: 'full_edit',
+      color: 'blue'
     };
   }
   
-  return { valid: true };
+  if (target <= periods.editEnd) {
+    const daysSinceEnd = Math.floor((target - periods.courseEnd) / (24 * 60 * 60 * 1000));
+    return {
+      valid: true,
+      type: 'grace_period',
+      message: `📌 마감 유예 ${daysSinceEnd}일째`,
+      action: 'limited_edit',
+      color: 'amber'
+    };
+  }
+  
+  return {
+    valid: false,
+    type: 'archived',
+    message: `수강 완료, 기록 종료 🎉`,
+    action: 'readonly_archived',
+    color: 'gray'
+  };
 }
 ```
 
-**수료 후 접근**:
-- 모든 입력 필드 비활성화
-- "수료 완료" 배너 표시
-- 데이터 조회는 허용 (대시보드, 과거 기록)
-- 새 데이터 입력은 차단
+**각 기간별 UX 처리**:
+
+1. **수강 시작 전**: 
+   - 모든 입력 필드 비활성화
+   - 앰버색 배너: "수강 시작 전입니다"
+   - 데이터 조회만 허용
+
+2. **수강 기간 (1~8주)**:
+   - 모든 기능 완전 활성화
+   - 파란색 주차 배지 표시
+   - 정상 통계 집계
+
+3. **마감 유예 (9~10주)**:
+   - 미팅/계약/수납 탭만 편집 가능
+   - 앰버색 "📌 마감 유예" 배지
+   - 별도 집계 영역에 표시
+   - 주차 네비에서 별도 섹션
+
+4. **완전 종료 (11주~)**:
+   - 모든 입력 완전 비활성화
+   - 회색 "수강 완료" 배너
+   - 읽기 전용 모드, 과거 데이터만 조회
 
 ---
 
