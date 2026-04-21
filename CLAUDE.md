@@ -99,6 +99,12 @@ types → config → repo → service → app(api·ui) → components
 - **SSOT(Single Source of Truth)는 Google Sheets.** 별도 DB·Redis·ORM 금지.
 - **수강생마다 개별 시트.** `email → spreadsheetId` 매핑은 **마스터 레지스트리 시트** 한 개에 저장 (`lib/repo/users.ts`).
 - **대시보드(탭1)는 읽기 전용.** 기존 시트의 수식이 자동 갱신한다. 재구현 X, 데이터만 읽어 Recharts 로 다시 그린다.
+- **시트 탭 구조**:
+  - 웹 직접 쓰기: 업체관리(미팅), 수납관리, 영업관리 E~H/M
+  - 시트 수식 자동: 영업관리 I~L/N~T, 대시보드
+  - 웹이 영업관리 I~L/N~T에 직접 쓰면 린터로 차단
+- **업체관리 탭**: 1행=1미팅. append/update 단위로만.
+- **표시문자열 2종**: 업체관리 N(날짜 포함)·O(날짜 제외) 두 수식 컬럼 유지.
 - **반응형은 모바일 우선.** 모바일 = 입력 중심, PC = 대시보드·트레이닝 중심. 두 화면은 같은 API를 쓰되 다른 레이아웃.
 - **게이미피케이션 로직은 `lib/service/gamification.ts` 단일 파일.** XP 가중치 수정은 ADR 작성 후.
 

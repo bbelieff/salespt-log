@@ -15,9 +15,11 @@
 |--------|------|------|----------|-----------|------|------------|
 | GET | `/api/daily/:date` | - | `DailyView` | 01 영업관리 read | ✅ | 60/min |
 | POST | `/api/daily/:date` | `DailyEntry` | `{ok, savedRows}` | 01 영업관리 write 4 rows | ✅ | 30/min |
-| POST | `/api/meeting` | `Meeting` | `{id}` | 앱_미팅예약 append | ✅ | 30/min |
-| PATCH | `/api/meeting/:id` | `MeetingUpdate` | `{ok}` | 앱_미팅예약 update | ✅ | 30/min |
-| POST | `/api/payment/:date` | `Payment` | `{ok}` | 01 영업관리 Q~T | ✅ | 30/min |
+| POST | `/api/meeting` | `Meeting` | `{id}` | 업체관리 append | ✅ | 30/min |
+| PATCH | `/api/meeting/:id` | `MeetingUpdate` | `{ok}` | 업체관리 update | ✅ | 30/min |
+| GET | `/api/meetings` | - | `Meeting[]` | 업체관리 read | ✅ | 60/min |
+| POST | `/api/payment` | `Payment` | `{id}` | 수납관리 append | ✅ | 30/min |
+| GET | `/api/payments` | - | `Payment[]` | 수납관리 read | ✅ | 60/min |
 | POST | `/api/db-order` | `DBOrder` | `{id}` | DB관리 append | ✅ | 30/min |
 | GET | `/api/summary` | - | `Summary` | 대시보드 read | ✅ | 120/min |
 | GET | `/api/schedule` | - | `Schedule` | N1, C248 | ✅ | 60/min |
@@ -131,12 +133,12 @@
 **Request Body** (`Meeting`):
 ```json
 {
-  "date": "2026-04-21",
-  "time": "14:00",
+  "미팅날짜": "2026-04-21",
+  "미팅시간": "14:00",
   "channel": "매입DB",
-  "vendor": "ABC업체",
-  "region": "서울",
-  "note": "초기 상담"
+  "업체명": "ABC업체",
+  "장소": "서울 강남",
+  "예약비고": "초기 상담"
 }
 ```
 
@@ -149,8 +151,9 @@
 ```
 
 **Google Sheets 작업**:
-- `앱_미팅예약` 탭에 새 행 추가
-- status는 자동으로 "예약"으로 설정
+- `업체관리` 탭에 새 행 추가
+- 예약일/예약시각은 서버에서 자동 설정
+- 상태는 자동으로 "예약"으로 설정
 
 **에러 코드**:
 - `400`: 필수 필드 누락, 잘못된 날짜/시간 형식
@@ -168,10 +171,10 @@
 **Request Body** (`MeetingUpdate`):
 ```json
 {
-  "status": "완료",
+  "상태": "완료",
   "계약여부": true,
-  "수임비": 50,
-  "계약비고": "ABC업체 계약 체결"
+  "수임비": 500,
+  "계약비고": "ABC업체 프랜차이즈 계약 체결"
 }
 ```
 
@@ -184,8 +187,8 @@
 ```
 
 **Google Sheets 작업**:
-- `앱_미팅예약` 탭에서 해당 행 업데이트
-- 상태 변경 시 `01 영업관리` 탭의 집계 데이터 자동 갱신
+- `업체관리` 탭에서 해당 행 업데이트 (J~M열)
+- 상태 변경 시 `영업관리` 탭의 수식 집계 자동 갱신
 
 **에러 코드**:
 - `400`: 잘못된 상태 값, 수임비 형식 오류
@@ -195,33 +198,68 @@
 
 ---
 
-### 5. POST `/api/payment/:date`
-**용도**: 수납 데이터 입력
+### 5. GET `/api/meetings`
+**용도**: 미팅 목록 조회
 
-**Parameters**:
-- `date`: YYYY-MM-DD 형식
+**Query Parameters**:
+- `date`: YYYY-MM-DD (특정 날짜 필터)
+- `dateType`: "reservation" | "meeting" (예약일 vs 미팅날짜 기준)
+- `status`: "예약" | "완료" | "취소" (상태 필터)
+
+**Response**:
+```json
+{
+  "meetings": [
+    {
+      "id": "uuid-1",
+      "예약일": "2026-04-20",
+      "예약시각": "09:15",
+      "미팅날짜": "2026-04-21",
+      "미팅시간": "14:00",
+      "channel": "매입DB",
+      "업체명": "ABC업체",
+      "장소": "서울 강남",
+      "상태": "완료",
+      "계약여부": true,
+      "수임비": 500,
+      "표시상세": "4/21 14:00 ABC업체 서울강남",
+      "표시요약": "14:00 ABC업체 서울강남"
+    }
+  ]
+}
+```
+
+**Google Sheets 작업**:
+- `업체관리` 탭 전체 행 읽기
+- 필터 조건에 따른 데이터 반환
+
+---
+
+### 6. POST `/api/payment`
+**용도**: 수납 데이터 입력
 
 **Request Body** (`Payment`):
 ```json
 {
+  "수납날짜": "2026-04-21",
   "승인건수": 2,
   "수납건수": 2,
-  "수납금액": 150,
-  "비고": "A기관 2건"
+  "수납금액": 1500,
+  "기관접수내용": "서울시청 개인회생 2건"
 }
 ```
 
 **Response**:
 ```json
 {
-  "ok": true,
+  "id": "payment_uuid",
   "message": "수납 데이터 저장 완료"
 }
 ```
 
 **Google Sheets 작업**:
-- `01 영업관리` 탭 Q~T열에 데이터 입력
-- 해당 날짜 첫 번째 행에 일별 데이터로 저장
+- `수납관리` 탭에 새 행 추가
+- 영업관리 Q~T열은 수식으로 자동 집계
 
 **에러 코드**:
 - `400`: 음수 값, 필수 필드 누락
@@ -230,7 +268,35 @@
 
 ---
 
-### 6. POST `/api/db-order`
+### 7. GET `/api/payments`
+**용도**: 수납 목록 조회
+
+**Query Parameters**:
+- `date`: YYYY-MM-DD (특정 날짜 필터)
+
+**Response**:
+```json
+{
+  "payments": [
+    {
+      "id": "payment_uuid",
+      "수납날짜": "2026-04-21",
+      "승인건수": 2,
+      "수납건수": 2,
+      "수납금액": 1500,
+      "기관접수내용": "서울시청 개인회생 2건"
+    }
+  ]
+}
+```
+
+**Google Sheets 작업**:
+- `수납관리` 탭 전체 행 읽기
+- 날짜 필터에 따른 데이터 반환
+
+---
+
+### 8. POST `/api/db-order`
 **용도**: DB 주문 생성
 
 **Request Body** (`DBOrder`):
@@ -261,7 +327,7 @@
 
 ---
 
-### 7. GET `/api/summary`
+### 9. GET `/api/summary`
 **용도**: 대시보드 요약 데이터 조회
 
 **Response** (`Summary`):
@@ -296,7 +362,7 @@
 
 ---
 
-### 8. GET `/api/schedule`
+### 10. GET `/api/schedule`
 **용도**: 수강 일정 정보 조회 (동적 계산)
 
 **Response** (`Schedule`):
