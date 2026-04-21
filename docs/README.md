@@ -1,0 +1,106 @@
+> **📄 이 문서는 무엇인가요?**
+> - **한 줄 요약**: 세일즈PT 영업일지 docs/ 폴더의 전체 문서 인덱스와 사용 가이드
+> - **누가 읽나요**: 전체 팀 (개발자, PM, 수강생)
+> - **어떤 기능·작업과 연결?**: 문서 네비게이션, 지식 베이스 활용
+> - **읽고 나면 알 수 있는 것**:
+>   - 상황별 참고할 문서 위치
+>   - 각 폴더의 역할과 문서 구조
+> - **관련 문서**: 모든 하위 문서와 연결
+
+# 📚 Documentation Index
+
+세일즈PT 영업일지 프로젝트의 모든 문서를 정리한 인덱스입니다.
+
+## 📁 폴더 구조
+
+| 폴더 | 설명 | 대상 독자 | 수정 권한 |
+|------|------|-----------|-----------|
+| `domains/` | 기능별 설계 문서 | 개발자 | status에 따라 |
+| `decisions/` | 아키텍처 결정 기록 (ADR) | 전체 팀 | 불변 (새 ADR로 supersede) |
+| `plans/` | 작업 계획서 | 개발자, PM | active ↔ completed 이동 |
+| `playbooks/` | 운영 매뉴얼 | 개발자 | 수시 업데이트 |
+
+## 📋 상황별 문서 가이드
+
+### 🏗️ 개발을 시작할 때
+1. **프로젝트 개요**: [CLAUDE.md](../CLAUDE.md) - 하네스 철학과 전체 구조
+2. **아키텍처**: [architecture.md](./architecture.md) - 레이어 규칙과 제약
+3. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
+
+### 📊 데이터 모델을 이해하고 싶을 때
+1. **전체 개요**: [data-model.md](./domains/data-model.md) - Google Sheets 매핑
+2. **관계 구조**: [er-diagram.md](./domains/er-diagram.md) - 엔티티 관계도
+3. **상태 흐름**: [state-machines.md](./domains/state-machines.md) - 비즈니스 로직
+4. **API 연동**: [api-spec.md](./domains/api-spec.md) - 엔드포인트 명세
+
+### 🔧 기능 구현할 때
+1. **MVP 범위**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 화면별 기능
+2. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
+3. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
+
+### 🚀 배포와 운영
+1. **VPS 배포**: [deploy-vps.md](./playbooks/deploy-vps.md)
+2. **Google Sheets 설정**: [setup-sheets.md](./playbooks/setup-sheets.md)
+3. **하네스 문제 해결**: [fix-harness.md](./playbooks/fix-harness.md)
+
+### 🤔 의사결정 히스토리
+1. **하네스 도입**: [0001-adopt-harness.md](./decisions/0001-adopt-harness.md)
+2. **기술 스택**: [0002-stack-nextjs-sheets.md](./decisions/0002-stack-nextjs-sheets.md)
+
+## 📄 전체 문서 목록
+
+### 🎯 domains/ (기능별 설계)
+| 문서 | Status | 한 줄 요약 | 대상 |
+|------|--------|------------|------|
+| [data-model.md](./domains/data-model.md) | draft | Google Sheets 1:1 매핑과 TypeScript 모델 | 개발자 |
+| [er-diagram.md](./domains/er-diagram.md) | verified | 엔티티 관계도와 시트 매핑 | 개발자 |
+| [state-machines.md](./domains/state-machines.md) | verified | Meeting/Payment/DBOrder 상태 전이 | 개발자 |
+| [api-spec.md](./domains/api-spec.md) | verified | REST API 엔드포인트 명세 | 개발자 |
+| [storyboard-mvp.md](./domains/storyboard-mvp.md) | draft | 화면별 기능과 사용자 스토리 | PM, 개발자 |
+
+### ⚖️ decisions/ (ADR - 불변)
+| 문서 | 제목 | 결정 날짜 |
+|------|------|-----------|
+| [0001-adopt-harness.md](./decisions/0001-adopt-harness.md) | 하네스 엔지니어링 도입 | 2026-04-17 |
+| [0002-stack-nextjs-sheets.md](./decisions/0002-stack-nextjs-sheets.md) | Next.js + Google Sheets 스택 선택 | 2026-04-17 |
+
+### 📋 plans/ (작업 계획)
+#### active/ (진행 중)
+| 계획 | 우선순위 | 담당자 | 마감일 |
+|------|----------|--------|--------|
+| [01-auth-onboarding.md](./plans/active/01-auth-onboarding.md) | P0 | belie | 2026-04-25 |
+| [02-meeting-booking.md](./plans/active/02-meeting-booking.md) | P1 | belie | 2026-04-30 |
+| [03-meeting-results.md](./plans/active/03-meeting-results.md) | P1 | belie | 2026-05-05 |
+
+#### completed/ (완료)
+_현재 완료된 계획 없음_
+
+### 🛠️ playbooks/ (운영 매뉴얼)
+| 매뉴얼 | 용도 | 실행 시점 |
+|--------|------|-----------|
+| [start-task.md](./playbooks/start-task.md) | 새 작업 시작 환경 구성 | 매 작업 시작 시 |
+| [setup-sheets.md](./playbooks/setup-sheets.md) | Google Sheets API 설정 | 프로젝트 초기 설정 |
+| [deploy-vps.md](./playbooks/deploy-vps.md) | VPS 배포 및 Caddy 설정 | 배포 시 |
+| [fix-harness.md](./playbooks/fix-harness.md) | 하네스 문제 해결 | 에이전트 실수 반복 시 |
+
+## 🔄 문서 관리 규칙
+
+### Status 관리 (domains/ 문서)
+- **draft**: 초안, 검토 필요
+- **verified**: 검토 완료, 안정
+- **stale**: 코드와 불일치, 업데이트 필요
+
+### 업데이트 규칙
+1. **코드 변경 시**: 관련 domains/ 문서의 status를 stale로 강등
+2. **월 1회**: 전체 문서 lint (고아 문서, 죽은 링크 점검)
+3. **ADR은 불변**: 새로운 결정은 새 ADR로 작성
+
+### 문서 작성 필수 요소
+모든 `.md` 문서는 다음 요소를 포함해야 함:
+- **문서 요약 카드**: 맨 위에 목적과 대상 명시
+- **관련 문서 링크**: 연결된 문서들과의 관계
+- **Status 프론트매터**: domains/ 문서는 상태 표시
+
+---
+
+💡 **TIP**: 특정 문서를 찾지 못하겠다면, 이 README의 "상황별 문서 가이드"를 먼저 확인하세요!
