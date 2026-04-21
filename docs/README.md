@@ -20,6 +20,7 @@
 | `decisions/` | 아키텍처 결정 기록 (ADR) | 전체 팀 | 불변 (새 ADR로 supersede) |
 | `plans/` | 작업 계획서 | 개발자, PM | active ↔ completed 이동 |
 | `playbooks/` | 운영 매뉴얼 | 개발자 | 수시 업데이트 |
+| `future/` | 향후 확장 기능 계획 | 개발자, PM | MVP 이후 백로그 |
 
 ## 📋 상황별 문서 가이드
 
@@ -36,12 +37,14 @@
 4. **API 연동**: [api-spec.md](./domains/api-spec.md) - 엔드포인트 명세
 
 ### 🔧 기능 구현할 때
-1. **MVP 범위**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 화면별 기능
-2. **사용자 여정**: [user-journeys.md](./domains/user-journeys.md) - 6개 핵심 시나리오
-3. **화면 설계**: [wireframes.md](./domains/wireframes.md) - 4개 탭 와이어프레임
-4. **예외 처리**: [edge-cases.md](./domains/edge-cases.md) - 엣지케이스 대응 방안
-5. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
-6. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
+1. **MVP 스코프**: [scope.md](./scope.md) - 8주 수강생 전용 범위 정의
+2. **MVP 범위**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 화면별 기능
+3. **사용자 여정**: [user-journeys.md](./domains/user-journeys.md) - 6개 핵심 시나리오
+4. **화면 설계**: [wireframes.md](./domains/wireframes.md) - 4개 탭 와이어프레임
+5. **예외 처리**: [edge-cases.md](./domains/edge-cases.md) - 엣지케이스 대응 방안
+6. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
+7. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
+8. **향후 확장**: [future/extensions.md](./future/extensions.md) - MVP 외 기능 계획
 
 ### 🚀 배포와 운영
 1. **VPS 배포**: [deploy-vps.md](./playbooks/deploy-vps.md)
@@ -113,6 +116,8 @@ _현재 완료된 계획 없음_
 
 ## 🎯 이런 상황엔 이 문서를 읽으세요
 
+- **"이 기능이 MVP 범위인가?"** → [scope.md](./scope.md)
+- **"MVP에서 제거된 기능이 왜 제거됐나?"** → [future/extensions.md](./future/extensions.md)
 - **"UI 색/간격 찾고 싶다"** → [design/tokens.md](./design/tokens.md)
 - **"새 버튼/카드 만들고 싶다"** → [design/components.md](./design/components.md)
 - **"디자인을 브라우저로 눈으로 보고 싶다"** → [design/preview.html](./design/preview.html)

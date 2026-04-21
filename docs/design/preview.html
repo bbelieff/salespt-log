@@ -43,18 +43,6 @@
       transition: width 0.8s ease; 
     }
     
-    .dot { 
-      width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; 
-      display: inline-block; margin: 0 1px; 
-    }
-    
-    .cal-cell { 
-      width: 14.28%; aspect-ratio: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; cursor: pointer;
-      border-radius: 8px; font-size: 14px;
-    }
-    .cal-cell:hover { background: #f1f5f9; }
-    .cal-cell.today-cell { background: #3b82f6; color: white; border-radius: 50%; }
     
     .toast { 
       position: fixed; top: 20px; left: 50%; 
@@ -472,24 +460,8 @@
             </div>
           </div>
           <div class="space-y-2">
-            <div class="text-sm font-medium mb-2">캘린더 셀</div>
-            <div class="flex gap-2">
-              <div class="cal-cell">
-                <span class="text-sm font-medium">16</span>
-                <div class="flex gap-0.5 mt-1">
-                  <span class="dot"></span>
-                  <span class="dot"></span>
-                </div>
-              </div>
-              <div class="cal-cell today-cell">
-                <span class="text-sm font-medium">17</span>
-              </div>
-              <div class="cal-cell">
-                <span class="text-sm font-medium">18</span>
-                <div class="flex gap-0.5 mt-1">
-                  <span class="dot"></span>
-                </div>
-              </div>
+            <div class="text-center p-4 bg-gray-100 rounded-lg text-gray-500">
+              📅 일정·계약 탭은 MVP 범위 외 (향후 확장)
             </div>
           </div>
         </div>

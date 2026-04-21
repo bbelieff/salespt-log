@@ -49,15 +49,6 @@
 </button>
 ```
 
-### Icon Button
-아이콘만 있는 버튼 (네비게이션, 설정 등).
-
-**구현 예시:**
-```html
-<button class="w-11 h-11 rounded-full hover:bg-gray-100 flex items-center justify-content transition-colors">
-  ⚙️
-</button>
-```
 
 ### Stepper Button
 숫자 증감 버튼 (+/-).
@@ -386,72 +377,28 @@
 
 **현재 사용 위치:** 저장 성공/실패 피드백
 
-### Alert (경고)
-모달형 경고 메시지.
+
+### Simple Form Card
+간단한 인라인 폼 카드 (미팅 추가 등).
 
 **구현 예시:**
 ```html
-<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-xl p-6 mx-4 max-w-sm w-full">
-    <h3 class="font-semibold text-gray-900 mb-2">저장하지 않은 변경사항</h3>
-    <p class="text-gray-600 mb-4">변경사항이 손실될 수 있습니다. 저장하시겠습니까?</p>
+<div class="bg-white rounded-lg p-4 border border-gray-200 mb-4">
+  <h3 class="font-semibold text-lg mb-3">미팅 추가</h3>
+  <div class="space-y-3">
+    <input type="text" placeholder="업체명" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+    <input type="time" value="14:00" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+    <textarea placeholder="비고" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none"></textarea>
     <div class="flex gap-2">
-      <button class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg">저장</button>
+      <button class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg">추가</button>
       <button class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg">취소</button>
     </div>
   </div>
 </div>
 ```
 
-### Bottom Sheet
-하단에서 올라오는 모달.
-
-**구현 예시:**
-```html
-<div class="bottomsheet-overlay" onclick="closeBottomSheet()"></div>
-<div class="bottomsheet">
-  <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto my-3"></div>
-  <div class="px-4 pb-4">
-    <h3 class="font-semibold text-lg mb-4">미팅 추가</h3>
-    <!-- 폼 내용 -->
-  </div>
-</div>
-```
-
-**CSS 정의:**
-```css
-.bottomsheet-overlay { 
-  position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 90; 
-}
-.bottomsheet {
-  position: fixed; bottom: 0; left: 0; right: 0; background: white;
-  border-radius: 16px 16px 0 0; z-index: 100; transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 85vh; overflow-y: auto;
-}
-.bottomsheet.open { transform: translateY(0); }
-```
-
 **현재 사용 위치:** 미팅 추가 폼
 
-### Modal (중앙 모달)
-화면 중앙 모달 다이얼로그.
-
-**구현 예시:**
-```html
-<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-xl max-w-md w-full max-h-screen overflow-y-auto">
-    <div class="p-6">
-      <h2 class="text-xl font-semibold mb-4">모달 제목</h2>
-      <p class="text-gray-600 mb-6">모달 내용</p>
-      <div class="flex justify-end gap-2">
-        <button class="px-4 py-2 text-gray-600">취소</button>
-        <button class="px-4 py-2 bg-blue-500 text-white rounded-lg">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
-```
 
 ## 7. Data Display
 
@@ -503,39 +450,6 @@
 }
 ```
 
-### Calendar Cell
-캘린더 날짜 셀.
-
-**구현 예시:**
-```html
-<div class="cal-cell">
-  <span class="text-sm font-medium">17</span>
-  <div class="flex gap-0.5 mt-1">
-    <span class="dot"></span>
-    <span class="dot"></span>
-  </div>
-</div>
-
-<!-- 오늘 날짜 -->
-<div class="cal-cell today-cell">
-  <span class="text-sm font-medium">17</span>
-</div>
-```
-
-**CSS 정의:**
-```css
-.cal-cell { 
-  width: 14.28%; aspect-ratio: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; cursor: pointer;
-  border-radius: 8px; font-size: 14px;
-}
-.cal-cell:hover { background: #f1f5f9; }
-.cal-cell.today-cell { background: #3b82f6; color: white; border-radius: 50%; }
-.dot { 
-  width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; 
-  display: inline-block; margin: 0 1px; 
-}
-```
 
 ### Meeting Card
 미팅 정보 카드.
@@ -596,4 +510,4 @@ button:focus, input:focus, select:focus {
 1. **일관성**: 같은 용도에는 같은 컴포넌트 사용
 2. **접근성**: 44px 터치 타겟, 키보드 네비게이션 지원
 3. **반응형**: 모바일 우선, 375px 기준 설계
-4. **성능**: 애니메이션은 transform/opacity 위주로 사용
+4. **MVP 원칙**: 8주 수강생에게 필요한 기능만 포함, 복잡한 UI 제거

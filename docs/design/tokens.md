@@ -85,7 +85,6 @@ font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif;
 | lg | `text-lg` | 18px | 28px | 카드 제목 |
 | xl | `text-xl` | 20px | 28px | 섹션 제목 |
 | 2xl | `text-2xl` | 24px | 32px | 페이지 제목 |
-| 3xl | `text-3xl` | 30px | 36px | 헬로 카드 메인 텍스트 |
 
 ### 폰트 굵기
 | 용도 | Tailwind Class | Weight | 사용처 |
@@ -135,16 +134,17 @@ shadow-lg shadow-blue-500/25   /* 파란색 25% 투명도 */
 shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 ```
 
-## Breakpoints (반응형)
+## Breakpoints (반응형) - 8주 MVP 범위
 
-| 이름 | Min Width | 설명 | 우선순위 |
+| 이름 | Min Width | 설명 | MVP 우선순위 |
 |------|-----------|------|----------|
-| base | 375px | 모바일 기본 | Primary |
+| base | 375px | 모바일 기본 | **Primary (8주 수강생)** |
 | sm | 640px | 큰 모바일 | Secondary |
 | md | 768px | 태블릿 | Secondary |
 | lg | 1024px+ | 데스크탑 | Secondary |
 
-**설계 원칙**: 모바일 우선 (Mobile First) - 375px 기준으로 설계 후 확장
+**MVP 설계 원칙**: 모바일 우선 (Mobile First) - 375px 기준 단일 버전만 지원  
+**제외**: md/lg 브레이크포인트는 MVP 이후 대응 (데스크톱 버전은 향후 확장)
 
 ## 상호작용 (Interaction)
 
@@ -192,8 +192,9 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 
 ---
 
-💡 **중요 원칙**
+💡 **MVP 원칙 (8주 수강생 전용)**
 1. **임의 값 금지**: `text-[15px]` 같은 arbitrary value 사용 금지
 2. **채널 색상 고정**: 4개 채널 색상은 절대 변경하지 말 것
 3. **재무 색상 일관성**: 양수/음수에 따른 색상 규칙 준수
-4. **토큰 우선**: 새로운 색상이 필요하면 토큰 먼저 정의
+4. **반응형 제한**: 모바일 우선, 375px 기준 단일 버전만 (데스크톱은 향후)
+5. **토큰 우선**: 새로운 색상이 필요하면 토큰 먼저 정의

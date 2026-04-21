@@ -167,8 +167,6 @@ types → config → repo → service → app(api·ui) → components
 - 채널 4색(매입DB/직접생산/현수막/콜·지·기·소)은 고정 — 변경 금지.
 - 디자인 변경 시 `docs/design/preview.html` 도 같이 업데이트.
 
----
-
 ## 7. 이 하네스 자체의 관리
 
 이 파일과 `docs/`도 **하네스의 일부**다.
