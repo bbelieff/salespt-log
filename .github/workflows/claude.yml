@@ -10,11 +10,11 @@ on:
     types: [submitted]
   issues:
     types: [opened, assigned]
-  # 수동 실행 (gh workflow run claude.yml -f prompt="...")
+  # 수동 실행 (gh workflow run claude.yml -f direct_prompt="...")
   workflow_dispatch:
     inputs:
-      prompt:
-        description: '작업 지시'
+      direct_prompt:
+        description: '작업 지시 (Claude에게 직접 전달)'
         required: true
         type: string
 
@@ -45,8 +45,8 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # 디스패치 모드: prompt 입력 사용
-          prompt: ${{ github.event.inputs.prompt || '' }}
+          # 디스패치 모드: direct_prompt 입력 사용 (claude-code-action@beta 스펙)
+          direct_prompt: ${{ github.event.inputs.direct_prompt || '' }}
           # 자동 허용할 도구 (위험한 것은 제외)
           allowed_tools: |
             Bash(git:*),Bash(gh:*),Bash(npm:*),Bash(node:*),
