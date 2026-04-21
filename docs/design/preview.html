@@ -16,13 +16,20 @@
       font-weight: 700; cursor: pointer; user-select: none; transition: all 0.15s; 
     }
     .stepper-btn:active { transform: scale(0.9); }
-    .stepper-val { 
-      width: 48px; text-align: center; font-size: 20px; font-weight: 700; 
-      border: none; background: transparent; cursor: pointer; 
+    .stepper-val {
+      width: 48px; text-align: center; font-size: 20px; font-weight: 700;
+      border: none; background: transparent; cursor: pointer;
+      -moz-appearance: textfield; /* Firefox 네이티브 스피너 제거 */
     }
-    .stepper-val:focus { 
-      outline: 2px solid #3b82f6; border-radius: 8px; 
-      background: white; cursor: text; 
+    /* Chrome/Edge/Safari 네이티브 스피너(상하 화살표) 제거 — 커스텀 +/- 버튼만 사용 */
+    .stepper-val::-webkit-outer-spin-button,
+    .stepper-val::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .stepper-val:focus {
+      outline: 2px solid #3b82f6; border-radius: 8px;
+      background: white; cursor: text;
     }
     
     .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }

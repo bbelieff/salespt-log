@@ -98,24 +98,34 @@
 ### Number Input (Stepper)
 숫자 입력 + 스테퍼 조합.
 
+**원칙 — UI 중복 방지 ⚠️**:
+- 증감 수단은 **커스텀 +/- 버튼 하나만** 사용.
+- HTML 기본 `<input type="number">`의 **네이티브 스피너(상하 화살표)는 CSS로 반드시 숨긴다.**
+  이유: 좌우 +/- 버튼과 상하 화살표가 동시에 보이면 사용자 의도가 모호해지고,
+  모바일에서는 상하 스피너가 터치하기 너무 작다.
+- 숫자를 직접 타이핑하고 싶으면 숫자 자체를 클릭 → focus 상태에서 입력.
+
 **구현 예시:**
 ```html
 <div class="flex items-center gap-2">
   <button class="stepper-btn bg-gray-200 hover:bg-gray-300 text-gray-700">-</button>
-  <input 
-    type="number" 
-    class="stepper-val"
-    value="12"
-  >
+  <input type="number" class="stepper-val" value="12" inputmode="numeric">
   <button class="stepper-btn bg-blue-500 hover:bg-blue-600 text-white">+</button>
 </div>
 ```
 
-**CSS 정의:**
+**CSS 정의 (네이티브 스피너 제거 필수):**
 ```css
 .stepper-val {
   width: 48px; text-align: center; font-size: 20px; font-weight: 700;
   border: none; background: transparent; cursor: pointer;
+  -moz-appearance: textfield; /* Firefox 스피너 제거 */
+}
+/* Chrome/Edge/Safari 스피너 제거 — 이 두 셀렉터 반드시 포함 */
+.stepper-val::-webkit-outer-spin-button,
+.stepper-val::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .stepper-val:focus {
   outline: 2px solid #3b82f6; border-radius: 8px;
@@ -123,7 +133,11 @@
 }
 ```
 
-**현재 사용 위치:** 생산, 유입, 컨택 수치 입력
+**접근성**:
+- 키보드 방향키(↑/↓)는 브라우저가 여전히 값 증감 지원 (스피너만 시각적으로 숨김)
+- 모바일에서 숫자 키패드 노출: `inputmode="numeric"` 속성 유지
+
+**현재 사용 위치:** 컨택관리 탭(생산/유입/컨택진행/컨택성공), 수납관리 탭(승인·수납 건수)
 
 ### Date Input
 날짜 선택 입력 필드.
