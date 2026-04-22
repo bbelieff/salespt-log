@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>세일즈PT 디자인 시스템 쇼케이스</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+    * { font-family: 'Noto Sans KR', sans-serif; }
+    
+    /* 프로토타입에서 가져온 CSS */
+    .stepper-btn { 
+      width: 36px; height: 36px; border-radius: 50%; display: flex; 
+      align-items: center; justify-content: center; font-size: 20px; 
+      font-weight: 700; cursor: pointer; user-select: none; transition: all 0.15s; 
+    }
+    .stepper-btn:active { transform: scale(0.9); }
+    .stepper-val {
+      width: 48px; text-align: center; font-size: 20px; font-weight: 700;
+      border: none; background: transparent; cursor: pointer;
+      -moz-appearance: textfield; /* Firefox 네이티브 스피너 제거 */
+    }
+    /* Chrome/Edge/Safari 네이티브 스피너(상하 화살표) 제거 — 커스텀 +/- 버튼만 사용 */
+    .stepper-val::-webkit-outer-spin-button,
+    .stepper-val::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .stepper-val:focus {
+      outline: 2px solid #3b82f6; border-radius: 8px;
+      background: white; cursor: text;
+    }
+    
+    .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+    .badge-purchase { background: #dbeafe; color: #1d4ed8; }
+    .badge-direct { background: #dcfce7; color: #16a34a; }
+    .badge-banner { background: #fef3c7; color: #d97706; }
+    .badge-referral { background: #f3e8ff; color: #7c3aed; }
+    
+    .metric-card { 
+      background: white; border-radius: 12px; padding: 16px; 
+      text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); 
+    }
+    
+    .xp-bar { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; }
+    .xp-fill { 
+      height: 100%; border-radius: 4px; 
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6); 
+      transition: width 0.8s ease; 
+    }
+    
+    .dot { 
+      width: 6px; height: 6px; border-radius: 50%; background: #3b82f6; 
+      display: inline-block; margin: 0 1px; 
+    }
+    
+    .cal-cell { 
+      width: 14.28%; aspect-ratio: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; cursor: pointer;
+      border-radius: 8px; font-size: 14px;
+    }
+    .cal-cell:hover { background: #f1f5f9; }
+    .cal-cell.today-cell { background: #3b82f6; color: white; border-radius: 50%; }
+    
+    .toast { 
+      position: fixed; top: 20px; left: 50%; 
+      transform: translateX(-50%) translateY(0);
+      background: #1e293b; color: white; padding: 12px 20px;
+      border-radius: 12px; font-size: 14px; z-index: 200;
+    }
+    
+    .bottomsheet { 
+      background: white; border-radius: 16px 16px 0 0; 
+      box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* 부드러운 스크롤 */
+    html { scroll-behavior: smooth; }
+    
+    /* 색상 샘플 */
+    .color-sample { 
+      width: 60px; height: 60px; border-radius: 8px; 
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 500;
+    }
+    
+    /* 간격 샘플 */
+    .spacing-box { 
+      background: #3b82f6; border-radius: 4px; 
+    }
+    
+    /* 탭 전환 */
+    .channel-content { display: none; }
+    .channel-content.active { display: block; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- 네비게이션 헤더 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-gray-900">세일즈PT 디자인 시스템</h1>
+        <nav class="hidden md:flex space-x-6">
+          <a href="#colors" class="text-sm text-gray-600 hover:text-blue-600">색상</a>
+          <a href="#typography" class="text-sm text-gray-600 hover:text-blue-600">타이포</a>
+          <a href="#spacing" class="text-sm text-gray-600 hover:text-blue-600">간격</a>
+          <a href="#components" class="text-sm text-gray-600 hover:text-blue-600">컴포넌트</a>
+          <a href="#financial" class="text-sm text-gray-600 hover:text-blue-600">재무</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-12">
+    
+    <!-- 색상 섹션 -->
+    <section id="colors" class="space-y-6">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">색상 시스템</h2>
+        <p class="text-gray-600">브랜드, 채널, 시맨틱 색상 팔레트</p>
+      </div>
+      
+      <!-- 브랜드 색상 -->
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Brand Colors</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center">
+            <div class="color-sample bg-blue-500 text-white mb-2">#3b82f6</div>
+            <div class="text-sm font-medium">Primary</div>
+            <div class="text-xs text-gray-500">blue-500</div>
+          </div>
+          <div class="text-center">
+            <div class="color-sample bg-blue-700 text-white mb-2">#1d4ed8</div>
+            <div class="text-sm font-medium">Primary Dark</div>
+            <div class="text-xs text-gray-500">blue-700</div>
+          </div>
+          <div class="text-center">
+            <div class="color-sample bg-blue-50 text-blue-700 border border-blue-200 mb-2">#eff6ff</div>
+            <div class="text-sm font-medium">Primary Light</div>
+            <div class="text-xs text-gray-500">blue-50</div>
+          </div>
+          <div class="text-center">
+            <div class="color-sample bg-gradient-to-r from-blue-500 to-purple-600 text-white mb-2">Grad</div>
+            <div class="text-sm font-medium">Gradient</div>
+            <div class="text-xs text-gray-500">blue → purple</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 시맨틱 색상 -->
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Semantic Colors</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center">
+            <div class="color-sample bg-green-600 text-white mb-2">#16a34a</div>
+            <div class="text-sm font-medium">Success</div>
+            <div class="text-xs text-gray-500">green-600</div>
+          </div>
+          <div class="text-center">
+            <div class="color-sample bg-amber-500 text-white mb-2">#f59e0b</div>
+            <div class="text-sm font-medium">Warning</div>
+            <div class="text-xs text-gray-500">amber-500</div>
+          </div>
+          <div class="text-center">
+            <div class="color-sample bg-red-500 text-white mb-2">#ef4444</div>
+            <div class="text-sm font-medium">Danger</div>
+            <div class="text-xs text-gray-500">red-500</div>
+          </div>
+          <div class="text-center">
+            <div class="color-sample bg-blue-400 text-white mb-2">#60a5fa</div>
+            <div class="text-sm font-medium">Info</div>
+            <div class="text-xs text-gray-500">blue-400</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 채널 색상 -->
+      <div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">채널별 색상 (고정 4종)</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-lg border text-center">
+            <div class="color-sample bg-blue-100 text-blue-700 mb-2">DB</div>
+            <div class="text-sm font-medium mb-1">매입DB</div>
+            <span class="badge badge-purchase">매입DB</span>
+          </div>
+          <div class="bg-white p-4 rounded-lg border text-center">
+            <div class="color-sample bg-green-100 text-green-700 mb-2">생산</div>
+            <div class="text-sm font-medium mb-1">직접생산</div>
+            <span class="badge badge-direct">직접생산</span>
+          </div>
+          <div class="bg-white p-4 rounded-lg border text-center">
+            <div class="color-sample bg-amber-100 text-amber-700 mb-2">현수막</div>
+            <div class="text-sm font-medium mb-1">현수막</div>
+            <span class="badge badge-banner">현수막</span>
+          </div>
+          <div class="bg-white p-4 rounded-lg border text-center">
+            <div class="color-sample bg-purple-100 text-purple-700 mb-2">콜·지</div>
+            <div class="text-sm font-medium mb-1">콜·지·기·소</div>
+            <span class="badge badge-referral">콜·지·기·소</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 타이포그래피 섹션 -->
+    <section id="typography" class="space-y-6">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">타이포그래피</h2>
+        <p class="text-gray-600">Noto Sans KR 기반 텍스트 시스템</p>
+      </div>
+      
+      <div class="bg-white rounded-lg p-6 space-y-4">
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-xs</div>
+          <div class="text-xs">황금치킨 방이동점 미팅 (12px, 16px)</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-sm</div>
+          <div class="text-sm">황금치킨 방이동점 미팅 (14px, 20px)</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-base</div>
+          <div class="text-base">황금치킨 방이동점 미팅 (16px, 24px)</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-lg</div>
+          <div class="text-lg">황금치킨 방이동점 미팅 (18px, 28px)</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-xl</div>
+          <div class="text-xl">황금치킨 방이동점 미팅 (20px, 28px)</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-2xl</div>
+          <div class="text-2xl">황금치킨 방이동점 미팅 (24px, 32px)</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-16 text-right text-xs text-gray-500">text-3xl</div>
+          <div class="text-3xl">황금치킨 방이동점 미팅 (30px, 36px)</div>
+        </div>
+      </div>
+      
+      <!-- 폰트 굵기 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">폰트 굵기</h3>
+        <div class="space-y-2">
+          <div class="font-normal">font-normal (400) - 기본 본문 텍스트</div>
+          <div class="font-medium">font-medium (500) - 라벨, 버튼 텍스트</div>
+          <div class="font-semibold">font-semibold (600) - 카드 제목, 탭</div>
+          <div class="font-bold">font-bold (700) - 헤더, 강조 텍스트</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 간격 섹션 -->
+    <section id="spacing" class="space-y-6">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">간격 시스템</h2>
+        <p class="text-gray-600">4px 기반 간격 체계</p>
+      </div>
+      
+      <div class="bg-white rounded-lg p-6 space-y-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 text-xs text-gray-500">gap-1</div>
+          <div class="flex gap-1">
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+          </div>
+          <div class="text-sm text-gray-500">4px</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-12 text-xs text-gray-500">gap-2</div>
+          <div class="flex gap-2">
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+          </div>
+          <div class="text-sm text-gray-500">8px</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-12 text-xs text-gray-500">gap-3</div>
+          <div class="flex gap-3">
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+          </div>
+          <div class="text-sm text-gray-500">12px</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-12 text-xs text-gray-500">gap-4</div>
+          <div class="flex gap-4">
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+          </div>
+          <div class="text-sm text-gray-500">16px</div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-12 text-xs text-gray-500">gap-6</div>
+          <div class="flex gap-6">
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+            <div class="spacing-box w-4 h-4"></div>
+          </div>
+          <div class="text-sm text-gray-500">24px</div>
+        </div>
+      </div>
+      
+      <!-- Border Radius & Shadow -->
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg p-6">
+          <h3 class="text-lg font-semibold mb-4">Border Radius</h3>
+          <div class="space-y-3">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-8 bg-blue-500 rounded-lg"></div>
+              <div class="text-sm">rounded-lg (8px)</div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-8 bg-blue-500 rounded-xl"></div>
+              <div class="text-sm">rounded-xl (12px)</div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-8 bg-blue-500 rounded-2xl"></div>
+              <div class="text-sm">rounded-2xl (16px)</div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="w-8 h-8 bg-blue-500 rounded-full"></div>
+              <div class="text-sm">rounded-full (50%)</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-lg p-6">
+          <h3 class="text-lg font-semibold mb-4">Shadow</h3>
+          <div class="space-y-3">
+            <div class="w-full h-12 bg-white shadow-sm border rounded-lg flex items-center px-3 text-sm">
+              shadow-sm
+            </div>
+            <div class="w-full h-12 bg-white shadow-lg rounded-lg flex items-center px-3 text-sm">
+              shadow-lg
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 컴포넌트 섹션 -->
+    <section id="components" class="space-y-8">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">컴포넌트 라이브러리</h2>
+        <p class="text-gray-600">실제 사용되는 모든 UI 컴포넌트</p>
+      </div>
+      
+      <!-- 버튼 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Buttons</h3>
+        <div class="flex flex-wrap gap-4">
+          <button class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors">
+            💾 Primary
+          </button>
+          <button class="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors">
+            Secondary
+          </button>
+          <button class="px-2 py-1 text-blue-600 hover:text-blue-700 font-medium transition-colors">
+            Ghost
+          </button>
+          <button class="w-11 h-11 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors">
+            ⚙️
+          </button>
+        </div>
+      </div>
+      
+      <!-- 스테퍼 입력 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Stepper Input</h3>
+        <p class="text-xs text-gray-500 mb-3">−/+ 버튼으로 증감, 숫자 직접 클릭하면 타이핑 가능. 음수 안 됨.</p>
+        <div class="flex items-center gap-2" data-stepper>
+          <button type="button" class="stepper-btn bg-gray-200 hover:bg-gray-300 text-gray-700" data-step="-1" aria-label="감소">−</button>
+          <input type="number" class="stepper-val" value="12" min="0" inputmode="numeric">
+          <button type="button" class="stepper-btn bg-blue-500 hover:bg-blue-600 text-white" data-step="1" aria-label="증가">+</button>
+        </div>
+      </div>
+      
+      <!-- 입력 필드 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Input Fields</h3>
+        <div class="grid md:grid-cols-2 gap-4">
+          <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" placeholder="업체명">
+          <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" value="2026-04-17">
+          <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+            <option>매입DB</option>
+            <option>직접생산</option>
+            <option>현수막</option>
+            <option>콜·지·기·소</option>
+          </select>
+          <textarea class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none" rows="2" placeholder="특이사항"></textarea>
+        </div>
+      </div>
+      
+      <!-- 카드 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Cards</h3>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-white rounded-lg p-4 shadow-sm border">
+            <h4 class="font-semibold text-gray-900 mb-2">Basic Card</h4>
+            <p class="text-gray-600 text-sm">기본 카드 스타일</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="font-semibold text-blue-900 mb-2">Highlighted Card</h4>
+            <p class="text-blue-700 text-sm">강조된 카드 스타일</p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h4 class="font-semibold text-amber-900 mb-2">⚠️ Warning Card</h4>
+            <p class="text-amber-700 text-sm">경고 카드 스타일</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="font-semibold text-blue-900 mb-2">ℹ️ Info Card</h4>
+            <p class="text-blue-700 text-sm">정보 카드 스타일</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 배지 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Badges</h3>
+        <div class="space-y-4">
+          <div>
+            <div class="text-sm font-medium text-gray-700 mb-2">채널 배지</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="badge badge-purchase">매입DB</span>
+              <span class="badge badge-direct">직접생산</span>
+              <span class="badge badge-banner">현수막</span>
+              <span class="badge badge-referral">콜·지·기·소</span>
+            </div>
+          </div>
+          <div>
+            <div class="text-sm font-medium text-gray-700 mb-2">상태 배지</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">예약</span>
+              <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">완료</span>
+              <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded">취소</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 피드백 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Feedback</h3>
+        <div class="space-y-4">
+          <div class="toast relative">저장 완료! +45 XP</div>
+          <div class="bottomsheet p-4 max-w-sm">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3"></div>
+            <h4 class="font-semibold text-lg mb-2">미팅 추가</h4>
+            <p class="text-gray-600 text-sm">바텀시트 컴포넌트</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 데이터 표시 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Data Display</h3>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="metric-card">
+            <div class="text-2xl font-bold text-gray-900 mb-1">125</div>
+            <div class="text-sm text-gray-500">총 생산</div>
+            <div class="text-xs text-green-600 mt-1">+12 (+10.6%)</div>
+          </div>
+          <div class="space-y-2">
+            <div class="text-sm font-medium">XP Progress</div>
+            <div class="xp-bar">
+              <div class="xp-fill" style="width: 65%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500">
+              <span>1,300 XP</span>
+              <span>2,000 XP</span>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="text-sm font-medium mb-2">캘린더 셀</div>
+            <div class="flex gap-2">
+              <div class="cal-cell">
+                <span class="text-sm font-medium">16</span>
+                <div class="flex gap-0.5 mt-1">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+              </div>
+              <div class="cal-cell today-cell">
+                <span class="text-sm font-medium">17</span>
+              </div>
+              <div class="cal-cell">
+                <span class="text-sm font-medium">18</span>
+                <div class="flex gap-0.5 mt-1">
+                  <span class="dot"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 미팅 카드 -->
+      <div class="bg-white rounded-lg p-6">
+        <h3 class="text-lg font-semibold mb-4">Meeting Card</h3>
+        <div class="bg-white rounded-lg p-4 border border-gray-200">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <div class="font-semibold text-gray-900">황금치킨 방이동점</div>
+              <div class="text-sm text-gray-500">13:00 ~ 14:00</div>
+            </div>
+            <span class="badge badge-banner">현수막</span>
+          </div>
+          <div class="text-sm text-gray-600 mb-2">
+            📍 서울 강남구
+          </div>
+          <div class="text-sm text-gray-500 mb-3">
+            📝 첫 상담, 메뉴 소개 필요
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">예약</span>
+            <button class="text-xs text-blue-600 hover:text-blue-700">수정</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 재무 시각화 섹션 -->
+    <section id="financial" class="space-y-6">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">재무 시각화</h2>
+        <p class="text-gray-600">수익/손실에 따른 색상 규칙</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold">양수 (이익) 케이스</h3>
+          <div class="bg-white p-3 rounded-lg border text-gray-900">
+            <div class="text-sm text-gray-600">총매출 (+)</div>
+            <div class="text-xl font-bold">1,250만원</div>
+          </div>
+          <div class="bg-red-50 text-red-600 p-3 rounded-lg">
+            <div class="text-sm">총비용 (−)</div>
+            <div class="text-xl font-bold">-850만원</div>
+          </div>
+          <div class="bg-blue-50 text-blue-700 p-3 rounded-lg">
+            <div class="text-sm">영업이익 (=)</div>
+            <div class="text-xl font-bold">+400만원</div>
+          </div>
+        </div>
+        
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold">음수 (손실) 케이스</h3>
+          <div class="bg-white p-3 rounded-lg border text-gray-900">
+            <div class="text-sm text-gray-600">총매출 (+)</div>
+            <div class="text-xl font-bold">750만원</div>
+          </div>
+          <div class="bg-red-50 text-red-600 p-3 rounded-lg">
+            <div class="text-sm">총비용 (−)</div>
+            <div class="text-xl font-bold">-950만원</div>
+          </div>
+          <div class="bg-red-50 text-red-600 p-3 rounded-lg">
+            <div class="text-sm">영업이익 (=)</div>
+            <div class="text-xl font-bold">-200만원</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 채널 탭 전환 데모 -->
+    <section class="space-y-6">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">채널 탭 전환 데모</h2>
+        <p class="text-gray-600">4개 채널별 색상 반영 확인</p>
+      </div>
+      
+      <div class="bg-white rounded-lg p-6">
+        <!-- 탭 헤더 -->
+        <div class="flex border-b border-gray-200 mb-6">
+          <button onclick="switchChannel('purchase')" class="channel-tab flex-1 py-2 px-3 text-sm font-medium border-b-2 border-blue-500 text-blue-600" data-channel="purchase">
+            매입DB
+          </button>
+          <button onclick="switchChannel('direct')" class="channel-tab flex-1 py-2 px-3 text-sm font-medium text-gray-500 hover:text-gray-700" data-channel="direct">
+            직접생산
+          </button>
+          <button onclick="switchChannel('banner')" class="channel-tab flex-1 py-2 px-3 text-sm font-medium text-gray-500 hover:text-gray-700" data-channel="banner">
+            현수막
+          </button>
+          <button onclick="switchChannel('referral')" class="channel-tab flex-1 py-2 px-3 text-sm font-medium text-gray-500 hover:text-gray-700" data-channel="referral">
+            콜·지·기·소
+          </button>
+        </div>
+        
+        <!-- 탭 내용 -->
+        <div id="channel-purchase" class="channel-content active">
+          <div class="text-center p-8 bg-blue-50 rounded-lg">
+            <span class="badge badge-purchase text-lg px-4 py-2">매입DB</span>
+            <div class="mt-4 text-blue-700">매입DB 채널의 컨텐츠가 여기에 표시됩니다.</div>
+          </div>
+        </div>
+        <div id="channel-direct" class="channel-content">
+          <div class="text-center p-8 bg-green-50 rounded-lg">
+            <span class="badge badge-direct text-lg px-4 py-2">직접생산</span>
+            <div class="mt-4 text-green-700">직접생산 채널의 컨텐츠가 여기에 표시됩니다.</div>
+          </div>
+        </div>
+        <div id="channel-banner" class="channel-content">
+          <div class="text-center p-8 bg-amber-50 rounded-lg">
+            <span class="badge badge-banner text-lg px-4 py-2">현수막</span>
+            <div class="mt-4 text-amber-700">현수막 채널의 컨텐츠가 여기에 표시됩니다.</div>
+          </div>
+        </div>
+        <div id="channel-referral" class="channel-content">
+          <div class="text-center p-8 bg-purple-50 rounded-lg">
+            <span class="badge badge-referral text-lg px-4 py-2">콜·지·기·소</span>
+            <div class="mt-4 text-purple-700">콜·지·기·소 채널의 컨텐츠가 여기에 표시됩니다.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t mt-12">
+    <div class="max-w-4xl mx-auto px-4 py-6 text-center text-gray-500">
+      <p>세일즈PT 영업일지 디자인 시스템 v1.0</p>
+      <p class="text-sm mt-1">Tailwind CSS + Noto Sans KR</p>
+    </div>
+  </footer>
+
+  <script>
+    // ===== 스테퍼 (Number Input) 동작 =====
+    // data-stepper 속성 붙은 그룹 안의 +/- 버튼을 자동 바인딩.
+    // 음수 방지: min 속성 또는 기본 0 하한.
+    document.querySelectorAll('[data-stepper]').forEach(group => {
+      const input = group.querySelector('.stepper-val');
+      if (!input) return;
+      const min = input.min !== '' ? parseInt(input.min) : 0;
+      group.querySelectorAll('[data-step]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const delta = parseInt(btn.dataset.step);
+          const cur = parseInt(input.value || '0');
+          const next = Math.max(min, cur + delta);
+          input.value = next;
+          input.dispatchEvent(new Event('input', { bubbles: true })); // 다른 리스너도 통지
+        });
+      });
+    });
+
+    // 채널 탭 전환 기능
+    function switchChannel(channelId) {
+      // 모든 탭 비활성화
+      document.querySelectorAll('.channel-tab').forEach(tab => {
+        tab.classList.remove('border-blue-500', 'text-blue-600', 'border-green-500', 'text-green-600', 'border-amber-500', 'text-amber-600', 'border-purple-500', 'text-purple-600');
+        tab.classList.add('text-gray-500');
+      });
+      
+      // 모든 컨텐츠 숨김
+      document.querySelectorAll('.channel-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      // 선택된 탭 활성화
+      const activeTab = document.querySelector(`[data-channel="${channelId}"]`);
+      const colors = {
+        purchase: ['border-blue-500', 'text-blue-600'],
+        direct: ['border-green-500', 'text-green-600'], 
+        banner: ['border-amber-500', 'text-amber-600'],
+        referral: ['border-purple-500', 'text-purple-600']
+      };
+      
+      activeTab.classList.remove('text-gray-500');
+      activeTab.classList.add(...colors[channelId]);
+      
+      // 선택된 컨텐츠 표시
+      document.getElementById(`channel-${channelId}`).classList.add('active');
+    }
+  </script>
+</body>
+</html>

@@ -19,6 +19,7 @@
 |------|------|-----------|-----------|
 | **`scope.md`** | **MVP 스코프 정의와 용어** | **전체 팀** | **핵심 문서** |
 | `domains/` | 기능별 설계 문서 | 개발자 | status에 따라 |
+| `design/` | 디자인 토큰·컴포넌트 카탈로그·쇼케이스 | 개발자, 디자이너 | 토큰 변경 시 컴포넌트·preview 함께 업데이트 |
 | `decisions/` | 아키텍처 결정 기록 (ADR) | 전체 팀 | 불변 (새 ADR로 supersede) |
 | `plans/` | 작업 계획서 | 개발자, PM | active ↔ completed 이동 |
 | `playbooks/` | 운영 매뉴얼 | 개발자 | 수시 업데이트 |
@@ -47,6 +48,13 @@
 5. **예외 처리**: [edge-cases.md](./domains/edge-cases.md) - 엣지케이스 대응 방안
 6. **품질 기준**: [quality.md](./quality.md) - 도메인×레이어 매트릭스
 7. **활성 계획**: [plans/active/](./plans/active/) - 현재 진행 중인 작업
+
+### 🎨 UI 색/간격 찾거나 새 컴포넌트 만들 때
+1. **디자인 토큰**: [design/tokens.md](./design/tokens.md) - 색·타이포·간격 시스템
+2. **컴포넌트 카탈로그**: [design/components.md](./design/components.md) - 41개 컴포넌트 스펙
+3. **브라우저로 눈으로 보기**: [design/preview.html](./design/preview.html) - 인터랙티브 쇼케이스
+   실행: `npx serve docs/design -l 5556` → http://localhost:5556/preview.html
+4. **사용 가이드**: [design/README.md](./design/README.md) - 디자인 시스템 활용법
 
 ### 🚀 배포와 운영
 1. **VPS 배포**: [deploy-vps.md](./playbooks/deploy-vps.md)
