@@ -51,6 +51,25 @@ jobs:
           allowed_tools: |
             Bash(git:*),Bash(gh:*),Bash(npm:*),Bash(node:*),
             Read,Write,Edit,Glob,Grep,WebFetch,WebSearch
+          # 브랜치 접두: 기본 "claude/" 대신 의미있는 영문 prefix 사용
+          # → 작업 유형별로 docs/, feat/, fix/ 접두가 나오도록 custom_instructions에서 지시
+          branch_prefix: 'work/'
+          # 커밋·브랜치 네이밍 규칙 + 문서 규칙 주입
+          custom_instructions: |
+            ## 브랜치 네이밍 규칙 (반드시 준수)
+            - 기본 접두 `work/`는 적절하지 않으니 작업 성격에 맞게 변경:
+              - 문서만 변경 → `docs/<의미있는-kebab-case>` (예: `docs/sheet-architecture`)
+              - 새 기능 → `feat/<의미있는-kebab-case>` (예: `feat/meeting-results-ui`)
+              - 버그 수정 → `fix/<의미있는-kebab-case>` (예: `fix/stepper-spinner`)
+              - 리팩터링 → `refactor/<...>`
+            - 이슈 번호/타임스탬프를 브랜치명에 넣지 말 것
+            - 영문 kebab-case, 뒷부분은 2~5 단어로 의미 파악 가능하게
+            - 이슈 본문에 "브랜치명: ..." 지시가 있으면 그것을 최우선 채택
+
+            ## 문서 작성 규칙
+            - 모든 `.md` 문서 맨 위에 "📄 이 문서는 무엇인가요?" 요약 카드 포함
+            - 디자인 변경 시 docs/design/tokens.md, components.md, preview.html 동기화
+            - CLAUDE.md의 규칙을 위반하지 말 것 (6.5 문서·디자인 규칙, 2.5 MVP 스코프)
         env:
           # 시트 접근이 필요할 때 사용 (선택)
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
