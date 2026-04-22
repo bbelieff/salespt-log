@@ -166,7 +166,19 @@ types → config → repo → service → app(api·ui) → components
 
 ---
 
-## 6.5 문서·디자인 규칙
+## 6.5 문서·디자인·브랜치 규칙
+
+### 브랜치 네이밍 (에이전트 포함, 기계검증 대상)
+- **금지**: `claude/issue-N-YYYYMMDD-HHMM` 같은 자동 생성 불투명 브랜치명
+- **필수**: 접두어 + 의미 있는 kebab-case
+  - `docs/<slug>` — 문서만 변경 (예: `docs/sheet-architecture`)
+  - `feat/<slug>` — 새 기능 (예: `feat/meeting-results-ui`)
+  - `fix/<slug>` — 버그 수정 (예: `fix/stepper-spinner`)
+  - `refactor/<slug>` — 리팩터링
+  - `chore/<slug>` — 설정·CI·의존성 (예: `chore/branch-naming-guardrail`)
+- **slug 규칙**: 영문 kebab-case, 2~5 단어, 무엇을 하는지 읽고 바로 이해 가능
+- **이슈 번호/타임스탬프 포함 금지** — PR 설명에 `Closes #N` 대신 기재
+- Claude Action은 `.github/workflows/claude.yml`의 `branch_prefix` + `custom_instructions`로 강제
 
 ### 문서 작성
 모든 `.md` 문서는 맨 위에 "문서 요약 카드" 포함 필수. 없으면 PR 반려.
