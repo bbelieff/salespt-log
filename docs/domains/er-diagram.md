@@ -48,28 +48,32 @@ erDiagram
     }
 
     Meeting {
-        string id PK "행 식별자"
+        string id PK "UUID 식별자"
         string userId FK "User.email"
-        date date "미팅 날짜"
-        string time "미팅 시간 (HH:MM)"
+        date 예약일 "예약을 잡은 날"
+        time 예약시각 "예약 기록 시점"
+        date 미팅날짜 "실제 미팅 진행일"
+        time 미팅시간 "미팅 진행 시간"
         string channel "채널"
-        string vendor "업체명"
-        string region "지역"
-        string note "미팅 메모"
-        string status "예약|완료|취소"
+        string 업체명 "미팅 대상 업체"
+        string 장소 "미팅 장소"
+        string 예약비고 "예약 시 메모"
+        string 상태 "예약|완료|취소"
         boolean 계약여부 "계약 성사 여부"
         int 수임비 "수임비 (만원)"
         string 계약비고 "계약 관련 비고"
+        string 표시상세 "날짜 포함 표시"
+        string 표시요약 "날짜 제외 표시"
     }
 
     Payment {
-        string id PK "userId + date"
+        string id PK "UUID 식별자"
         string userId FK "User.email"
-        date date "수납일"
+        date 수납날짜 "수납 발생일"
         int 승인건수 "승인건 수"
         int 수납건수 "수납건 수"
-        int 수납금액 "수납금액"
-        string 비고 "기관, 접수내용"
+        int 수납금액 "수납금액 (만원)"
+        string 기관접수내용 "기관, 접수내용"
     }
 
     DBOrder {
@@ -94,25 +98,32 @@ erDiagram
 
 ## Google Sheets 매핑
 
-### 01 영업관리 탭
-- **DailyEntry**: 하루 = 4행 (채널별), 날짜는 B-C열
-- **ChannelRow**: D열(채널), E-H열(생산/유입/컨택진행/컨택성공)
-- **Meeting 요약**: I열 (미팅예약 기록, TEXTJOIN으로 집계)
-- **일정·계약관리**: J-P열 (미팅일정/완료수/특이사항/계약건수/수임비/비고)
-- **Payment**: Q-T열 (승인/수납건수/금액/비고)
-
-### 앱_미팅예약 탭
-- **Meeting**: 전체 필드 매핑
-- 각 행 = Meeting 1건
-- A열부터 순차적으로 date, time, channel, vendor, region, note, status, 계약여부, 수임비, 계약비고
-
 ### 대시보드 탭 (읽기 전용)
 - 1-6행: 자동 계산된 요약 데이터
-- SUM, 효율 계산 수식으로 01 영업관리 탭 참조
+- SUM, 효율 계산 수식으로 영업관리 탭 참조
 
-### DB관리 탭
-- **DBOrder**: A열부터 date, channel, quantity, status
-- 채널별 효율성 지표는 01 영업관리 탭에서 자동 계산
+### 영업관리 탭 (생산 입력 + 수식 집계)
+- **DailyEntry**: 하루 = 4행 (채널별), 날짜는 A-C열
+- **ChannelRow**: D열(채널), E-H열(생산/유입/컨택진행/컨택성공) ← **웹 직접 쓰기**
+- **Meeting 집계**: I-L열 ← **업체관리 탭 수식** (TEXTJOIN, COUNTIFS)
+- **Payment 집계**: Q-T열 ← **수납관리 탭 수식** (SUMIFS)
+- **특이사항**: M열 ← **웹 직접 쓰기**
+
+### 업체관리 탭 (신설) 🆕
+- **Meeting**: 1행 = 1미팅
+- A열: id (UUID), B열: 예약일, C열: 예약시각
+- D열: 미팅날짜, E열: 미팅시간, F열: 채널
+- G열: 업체명, H열: 장소, I열: 예약비고
+- J열: 상태, K열: 계약여부, L열: 수임비, M열: 계약비고
+- **N열: 표시_상세** (수식), **O열: 표시_요약** (수식)
+
+### 수납관리 탭 (신설) 🆕
+- **Payment**: 1행 = 1수납 기록
+- A열: id (UUID), B열: 수납날짜
+- C열: 승인건수, D열: 수납건수, E열: 수납금액, F열: 기관접수내용
+
+### 회고노트 탭 (기존 유지)
+- 자유 텍스트 입력
 
 ### 마스터 레지스트리 시트
 - **User**: email → spreadsheetId 매핑
@@ -121,6 +132,8 @@ erDiagram
 ## 데이터 흐름 특징
 
 1. **단일 진실 출처**: Google Sheets가 유일한 데이터베이스
-2. **시트 간 연동**: 수식을 통한 자동 집계 (TEXTJOIN, SUM 등)
-3. **읽기/쓰기 분리**: 대시보드/DB관리는 읽기 전용, 나머지는 입력 가능
-4. **사용자별 격리**: 수강생마다 개별 spreadsheetId로 데이터 분리
+2. **계층적 수식 집계**: 업체관리/수납관리 → (수식) → 영업관리 → (수식) → 대시보드
+3. **쓰기 제한**: 웹은 업체관리/수납관리/영업관리(E~H,M)만 직접 쓰기
+4. **1엔티티=1행**: Meeting, Payment는 정규화된 행 단위 저장
+5. **예약일 vs 미팅날짜**: 생산 지표(예약일) ≠ 컨택 지표(미팅날짜) 분리
+6. **사용자별 격리**: 수강생마다 개별 spreadsheetId로 데이터 분리

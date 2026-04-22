@@ -25,9 +25,9 @@ stateDiagram-v2
     계약실패 --> [*] : 미팅 종료
     취소 --> [*] : 취소 처리 완료
     
-    note right of 예약 : 초기 상태\n앱_미팅예약 시트에 추가
-    note right of 완료 : 일정·계약관리 탭에서\n상태 업데이트
-    note right of 계약성사 : 계약여부 = true\n수임비 금액 입력
+    note right of 예약 : 초기 상태\n업체관리 시트에 추가\n예약일/예약시각 자동 설정
+    note right of 완료 : 업체관리 탭에서\n상태 업데이트 (J열)
+    note right of 계약성사 : 계약여부 = true (K열)\n수임비 금액 입력 (L열)
 ```
 
 ## 2. Payment 상태 전이
@@ -49,9 +49,9 @@ stateDiagram-v2
     반려 --> [*] : 처리 종료
     수납취소 --> [*] : 취소 처리 완료
     
-    note right of 미승인 : 수납관리 탭\n승인건수 입력
+    note right of 미승인 : 수납관리 탭\n승인건수 입력 (C열)
     note right of 승인 : 승인 처리 후\n승인건수 증가
-    note right of 수납완료 : 수납건수, 수납금액\n최종 입력
+    note right of 수납완료 : 수납건수(D열), 수납금액(E열)\n기관접수내용(F열) 입력
 ```
 
 ## 3. DailyEntry 저장 상태 전이
@@ -75,7 +75,7 @@ stateDiagram-v2
     
     note right of draft : 프론트엔드 로컬 상태\n실시간 입력 반영
     note right of 검증중 : 클라이언트 측 유효성 검사\n필수값, 숫자 형식 등
-    note right of 저장중 : API 호출 진행\nGoogle Sheets 업데이트
+    note right of 저장중 : API 호출 진행\n영업관리 E~H,M 열 업데이트
 ```
 
 ## 4. DBOrder 상태 전이
@@ -114,13 +114,18 @@ stateDiagram-v2
 - **DBOrder**: 주문 입력, 확정 처리, 취소 요청
 
 ### 시스템 이벤트 트리거
-- **Meeting**: Google Sheets 자동 집계 (TEXTJOIN)
-- **Payment**: 기관 시스템 연동 (승인/반려)
+- **Meeting**: 업체관리 → 영업관리 수식 집계 (TEXTJOIN, COUNTIFS)
+- **Payment**: 수납관리 → 영업관리 수식 집계 (SUMIFS), 기관 연동 (승인/반려)
 - **DailyEntry**: 클라이언트 검증, API 응답
 - **DBOrder**: 재고 관리 시스템, 관리자 처리
 
 ### 상태 전이 제약 조건
-1. **Meeting**: 예약 → 완료 전환 시 date/time 검증 필수
-2. **Payment**: 승인 → 수납완료 시 금액 일치성 검증
-3. **DailyEntry**: 필수 필드 (date, channels) 검증
+1. **Meeting**: 예약 → 완료 전환 시 미팅날짜/미팅시간 검증 필수
+2. **Payment**: 승인 → 수납완료 시 금액 일치성 검증, 수납날짜 유효성
+3. **DailyEntry**: 필수 필드 (date, channels) 검증, 영업관리 E~H,M 열만 쓰기
 4. **DBOrder**: 재고 수량 확인 후 확정 처리
+
+### 새로운 제약 조건 (ADR-0003)
+1. **영업관리 I~L, N~T 수식 컬럼**: 웹에서 직접 쓰기 시도 시 400 에러
+2. **예약일 vs 미팅날짜**: 예약일(생산 지표) ≠ 미팅날짜(컨택 지표) 구분 강제
+3. **표시문자열 수식**: N열(날짜 포함), O열(날짜 제외) 자동 생성만

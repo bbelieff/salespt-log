@@ -1,7 +1,7 @@
 ---
-status: draft
+status: verified
 owner: belie
-last_review: 2026-04-17
+last_review: 2026-04-21
 ---
 
 > **📄 이 문서는 무엇인가요?**
@@ -20,7 +20,7 @@ last_review: 2026-04-17
 - [상태 전이도](./state-machines.md)
 - [API 명세](./api-spec.md)
 
-> **원칙**: Google Sheets `01 영업관리` 탭이 SSOT. 백엔드는 시트 행/열을 그대로 모델링하고, 모든 프론트 탭은 같은 API에서 데이터를 받는다. 이 일관성이 깨지면 탭마다 표시가 다른 버그가 발생한다.
+> **원칙**: Google Sheets가 SSOT이되 **데이터 흐름이 변경됨**: `웹 → 업체관리/수납관리 → (수식) → 영업관리 → (수식) → 대시보드`. 업체관리(1미팅=1행)가 미팅 데이터 원본이고, 영업관리는 수식으로 집계만 받는다.
 
 ## 시트 컬럼 매핑
 
@@ -71,21 +71,37 @@ type ChannelRow = {
   컨택성공: number;
 };
 
-// 미팅 1건 (앱_미팅예약 탭의 한 행)
+// 미팅 1건 (업체관리 탭의 한 행)
 type Meeting = {
-  id: string;          // 행 식별자
-  date: string;        // YYYY-MM-DD
-  time: string;        // HH:MM
-  channel: ChannelKey;
-  vendor: string;
-  region: string;
-  note: string;        // 미팅별 메모 (시트 I열의 TEXTJOIN으로 합쳐짐)
+  id: string;          // UUID (A열)
+  예약일: string;       // YYYY-MM-DD, 예약을 잡은 날 (B열)
+  예약시각: string;     // HH:MM, 예약 기록 시점 (C열)
+  미팅날짜: string;     // YYYY-MM-DD, 실제 미팅 날 (D열)
+  미팅시간: string;     // HH:MM, 미팅 진행 시간 (E열)
+  channel: ChannelKey; // 채널 (F열)
+  업체명: string;       // 미팅 대상 (G열)
+  장소: string;        // 미팅 장소 (H열)
+  예약비고: string;     // 예약 시 메모 (I열)
 
-  // 일정·계약관리 탭에서 추가 입력
-  status: '예약'|'완료'|'취소';
-  계약여부: boolean;     // 계약 성사 시 true
-  수임비: number;        // 계약별 수임비 (만원)
-  계약비고: string;
+  // 미팅 완료 후 업데이트
+  상태: '예약'|'완료'|'취소';  // J열
+  계약여부: boolean;           // K열
+  수임비: number;             // 만원 (L열)
+  계약비고: string;           // M열
+  
+  // 수식 생성 (읽기 전용)
+  표시상세: string;           // N열: "4/25 13:00 ○○치킨 방이동"
+  표시요약: string;           // O열: "13:00 ○○치킨 방이동"
+};
+
+// 수납 1건 (수납관리 탭의 한 행)
+type Payment = {
+  id: string;          // UUID (A열)
+  수납날짜: string;     // YYYY-MM-DD (B열)
+  승인건수: number;     // C열
+  수납건수: number;     // D열
+  수납금액: number;     // 만원 (E열)
+  기관접수내용: string; // F열
 };
 
 // 한 날짜의 일별 데이터 (J~P, Q~T 합쳐서)
@@ -131,33 +147,40 @@ type DailyView = {
 
 ## 탭별 데이터 출처
 
-| 탭 | 사용 필드 | 쓰기 가능? |
-|---|---|---|
-| 대시보드 | summary 전체, today's daily | ❌ 읽기만 |
-| 컨택관리 | daily.channels (E~H) + meetings | ✅ 쓰기 |
-| 일정·계약관리 | meetings (status/계약/수임비) + daily.특이사항 | ✅ 쓰기 |
-| 수납관리 | daily.수납 (Q~T) | ✅ 쓰기 |
-| DB관리 | summary.채널효율 + 누적 DB 잔여 | ❌ 읽기만 (자동 계산) |
-| MY | 사용자 메타 + summary | ❌ 읽기만 |
+| 탭 | 직접 쓰기 대상 | 수식 집계 | 역할 변경 |
+|---|---|---|---|
+| 대시보드 | 없음 | ← 영업관리 | ❌ 읽기 전용 |
+| 영업관리 | E~H, M | I~L, N~T | ✅ 생산+수식집계 |
+| **업체관리** | A~M (1미팅=1행) | N~O (표시문자열) | 🆕 신설 |
+| **수납관리** | A~F | 없음 | 🆕 신설 |
+| 회고노트 | 전체 | 없음 | 기존 유지 |
 
 ## API 엔드포인트 (예정)
 
 ```
-GET  /api/daily/:date          → DailyView
-POST /api/daily/:date          → 채널 합계 + 특이사항 저장
-POST /api/meeting              → 미팅 1건 추가 (앱_미팅예약 탭)
-PATCH /api/meeting/:id         → 미팅 상태/계약/수임비 업데이트
-POST /api/payment/:date        → 수납 입력
-GET  /api/summary              → 상단 요약 (대시보드, DB관리에서 사용)
-GET  /api/schedule             → 수강시작일/수료일 + 주차 정보
+GET  /api/daily/:date                    → DailyView (영업관리 탭 읽기)
+POST /api/daily/:date                    → 채널 합계 + 특이사항 저장 (영업관리 E~H, M)
+POST /api/meeting                        → 미팅 1건 추가 (업체관리 탭 append)
+PATCH /api/meeting/:id                   → 미팅 상태/계약/수임비 업데이트 (업체관리 J~M)
+GET /api/meetings?date=YYYY-MM-DD&dateType=reservation|meeting → 미팅 조회
+POST /api/payment                        → 수납 1건 추가 (수납관리 탭 append)
+GET /api/payments?date=YYYY-MM-DD        → 수납 조회
+GET  /api/summary                        → 상단 요약 (대시보드 사용)
+GET  /api/schedule                       → 수강시작일/수료일 + 주차 정보
 ```
 
 ## 프론트 데이터 흐름
 
 ```
-[Sheets] ↔ lib/repo/sheets.ts ↔ lib/service/daily.ts ↔ /api/daily ↔ React Query cache ↔ 모든 탭
+[업체관리/수납관리 탭] ↔ lib/repo/sheets.ts ↔ lib/service/meeting.ts ↔ /api/meeting ↔ React Query
+                              ↓ (수식)
+[영업관리 탭] ↔ lib/repo/sheets.ts ↔ lib/service/daily.ts ↔ /api/daily ↔ React Query
+                              ↓ (수식)  
+[대시보드 탭] ← 읽기 전용
 ```
 
-- React Query로 `['daily', date]` 키에 캐시 → 모든 탭이 같은 데이터를 봄
-- 한 탭에서 mutate하면 invalidate → 모든 탭 자동 새로고침
-- 프로토타입 단계에서는 `dayStore` 객체가 이 캐시 역할
+### 주요 변경사항
+- **웹 쓰기**: 업체관리/수납관리 탭만
+- **수식 집계**: 영업관리 I~L,N~T ← 업체관리/수납관리
+- **캐시 키**: `['meetings', date]`, `['payments', date]`, `['daily', date]` 분리
+- **무결성**: 1미팅=1행으로 개별 편집 가능
