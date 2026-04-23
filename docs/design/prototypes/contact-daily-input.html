@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<!-- Design: 컨택관리 탭 v1 -->
+<!-- Source: Claude.ai Project (세일즈PT 영업일지 MVP) 2026-04-22 -->
+<!-- Status: verified (decision frozen) -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>컨택관리 · 세일즈PT 영업일지</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+
+  * { font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: #f8fafc; margin: 0; padding: 0; }
+
+  /* ── Stepper (components.md 정의 그대로) ─────────── */
+  .stepper-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; cursor: pointer;
+    user-select: none; transition: all 0.15s;
+  }
+  .stepper-btn:active { transform: scale(0.9); }
+
+  .stepper-val {
+    width: 44px; text-align: center; font-size: 18px; font-weight: 700;
+    border: none; background: transparent; cursor: pointer;
+    -moz-appearance: textfield;
+  }
+  .stepper-val::-webkit-outer-spin-button,
+  .stepper-val::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .stepper-val:focus {
+    outline: 2px solid #3b82f6; border-radius: 8px;
+    background: white; cursor: text;
+  }
+
+  /* ── 채널 배지 (components.md 정의 그대로) ─────────── */
+  .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+  .badge-purchase { background: #dbeafe; color: #1d4ed8; }
+  .badge-direct   { background: #dcfce7; color: #16a34a; }
+  .badge-banner   { background: #fef3c7; color: #d97706; }
+  .badge-referral { background: #f3e8ff; color: #7c3aed; }
+
+  /* ── 고정 영역 ─────────── */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; }
+  .save-bar   { position: fixed; bottom: 64px; left: 0; right: 0; z-index: 49; }
+  .content-area { padding-bottom: 152px; }
+
+  /* ── 토스트 ─────────── */
+  .toast {
+    position: fixed; bottom: 152px; left: 50%; transform: translateX(-50%);
+    background: rgba(17, 24, 39, 0.95); color: white;
+    padding: 12px 20px; border-radius: 12px;
+    font-size: 14px; font-weight: 500;
+    z-index: 100; opacity: 0; transition: all 0.3s;
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+
+  /* ── 페이드 ─────────── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.2s ease; }
+
+  /* ── 채널 탭 밑줄 ─────────── */
+  .channel-tab { position: relative; transition: all 0.2s; }
+  .channel-tab .underline {
+    position: absolute; bottom: -1px; left: 12%; right: 12%; height: 3px;
+    border-radius: 2px 2px 0 0; opacity: 0; transition: opacity 0.2s;
+  }
+  .channel-tab.active .underline { opacity: 1; }
+
+  /* ── 스피너 (저장중) ─────────── */
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header class="bg-white shadow-sm sticky top-0 z-40">
+  <div class="flex items-center justify-between px-2 py-3">
+    <button onclick="moveWeek(-1)"
+      class="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-600 active:scale-90 transition-all"
+      aria-label="이전 주차">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+    </button>
+    <div class="text-center flex-1">
+      <div class="text-base font-bold text-gray-900" id="week-title">PRM 5기 · 이수강 · 1주차</div>
+      <div class="text-xs text-gray-400 mt-0.5">(예시: PRM 5기 기준)</div>
+    </div>
+    <button onclick="moveWeek(1)"
+      class="w-11 h-11 flex items-center justify-center text-gray-400 hover:text-gray-600 active:scale-90 transition-all"
+      aria-label="다음 주차">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+  <div class="px-2 pb-2.5 grid grid-cols-7 gap-1" id="day-bar"></div>
+</header>
+
+<main class="content-area px-4 pt-4">
+  <div class="bg-blue-50 border-l-4 border-blue-500 rounded-r-xl px-3 py-2 mb-3">
+    <span class="text-sm font-semibold text-blue-800" id="selected-date-label">4월 22일 (수) — 오늘</span>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-3">
+    <div class="flex border-b border-gray-100" id="channel-tabs"></div>
+    <div id="channel-panel" class="fade-in"></div>
+  </div>
+
+  <div class="mb-3">
+    <div class="flex items-center justify-between mb-2 px-1">
+      <span class="text-sm font-semibold text-gray-700" id="meeting-slots-title">미팅 예약 칸반</span>
+      <span class="text-xs text-gray-400">컨택성공 1건 = 슬롯 1개</span>
+    </div>
+    <div id="meeting-slots"></div>
+  </div>
+</main>
+
+<div class="save-bar bg-gradient-to-t from-white via-white to-transparent pt-3 pb-3 px-4">
+  <button id="save-btn" onclick="saveDaily()"
+    class="w-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed">
+    <span id="save-btn-text">💾 저장하기</span>
+  </button>
+</div>
+
+<nav class="bottom-nav bg-white border-t border-gray-100 flex">
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-blue-600">
+    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1H4v8h12V6z"/><path d="M6 9h8v1H6V9z"/></svg>
+    <span class="text-xs font-semibold">컨택관리</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+    <span class="text-xs">일정·계약</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    <span class="text-xs">캘린더</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span class="text-xs">수납</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+    <span class="text-xs">DB관리</span>
+  </button>
+</nav>
+
+<div id="toast" class="toast">저장 완료</div>
+
+<script>
+const USER_INFO = { cohort: 'PRM 5기', name: '이수강' };
+const COURSE_START = new Date(2026, 3, 17);
+const TODAY = new Date(2026, 3, 23);
+const DAY_NAMES = ['금', '토', '일', '월', '화', '수', '목'];
+const WEEKEND_IDX = [1, 2];
+
+const CHANNELS = [
+  { id: 'purchase', name: '매입DB', color: 'blue',
+    desc: 'DB생산업체로부터 구매',
+    helps: { prod: '구매한 DB 수', inflow: '오늘 전달받은 DB 수', contact: '부재 제외, 실제 통화 수', success: '미팅 예약 확정된 수' } },
+  { id: 'direct', name: '직접생산', color: 'green',
+    desc: '메타·구글·당근 등',
+    helps: { prod: '오늘 생산된 DB 수', inflow: '오늘 유입된 DB 수 (보통=생산)', contact: '부재 제외, 실제 통화 수', success: '미팅 예약 확정된 수' } },
+  { id: 'banner', name: '현수막', color: 'amber',
+    desc: '오프라인 현수막 광고',
+    helps: { prod: '오늘 부착·노출된 현수막 수', inflow: '오늘 유입된 문의 수', contact: '부재 제외, 실제 통화 수', success: '미팅 예약 확정된 수' } },
+  { id: 'referral', name: '콜·지·기·소', color: 'purple',
+    desc: '콜드콜·지인·기존고객·소개',
+    helps: { prod: '발굴한 컨택대상 수 (=유입)', inflow: '컨택대상 수 (생산과 동일)', contact: '부재 제외, 실제 통화 수', success: '미팅 예약 확정된 수' } }
+];
+
+const COLOR_CLASS = {
+  blue:   { bg50: 'bg-blue-50', bg100: 'bg-blue-100', bg500: 'bg-blue-500', text600: 'text-blue-600', text700: 'text-blue-700', under: 'bg-blue-500', hover: 'hover:bg-blue-600', border: 'border-blue-200', borderL500: 'border-blue-500' },
+  green:  { bg50: 'bg-green-50', bg100: 'bg-green-100', bg500: 'bg-green-500', text600: 'text-green-600', text700: 'text-green-700', under: 'bg-green-500', hover: 'hover:bg-green-600', border: 'border-green-200', borderL500: 'border-green-500' },
+  amber:  { bg50: 'bg-amber-50', bg100: 'bg-amber-100', bg500: 'bg-amber-500', text600: 'text-amber-600', text700: 'text-amber-700', under: 'bg-amber-500', hover: 'hover:bg-amber-600', border: 'border-amber-200', borderL500: 'border-amber-500' },
+  purple: { bg50: 'bg-purple-50', bg100: 'bg-purple-100', bg500: 'bg-purple-500', text600: 'text-purple-600', text700: 'text-purple-700', under: 'bg-purple-500', hover: 'hover:bg-purple-600', border: 'border-purple-200', borderL500: 'border-purple-500' }
+};
+const BADGE_CLASS = { blue: 'badge-purchase', green: 'badge-direct', amber: 'badge-banner', purple: 'badge-referral' };
+
+let currentWeek = getWeekNumber(TODAY);
+let selectedDayIdx = jsDayToWeekIdx(TODAY);
+let selectedChannel = 0;
+const data = {};
+
+function jsDayToWeekIdx(date) { return (date.getDay() - 5 + 7) % 7; }
+function getWeekNumber(date) { return Math.floor((date - COURSE_START) / 86400000 / 7) + 1; }
+function getWeekStartDate(weekNum) { const d = new Date(COURSE_START); d.setDate(d.getDate() + (weekNum - 1) * 7); return d; }
+function getDateOfWeek(weekNum, dayIdx) { const d = getWeekStartDate(weekNum); d.setDate(d.getDate() + dayIdx); return d; }
+function fmtMD(date) { return `${date.getMonth() + 1}월 ${date.getDate()}일`; }
+function isToday(date) { return date.toDateString() === TODAY.toDateString(); }
+function getKey(weekNum, dayIdx, channelIdx) { return `${weekNum}_${dayIdx}_${CHANNELS[channelIdx].id}`; }
+function getCellData(weekNum, dayIdx, channelIdx) {
+  const key = getKey(weekNum, dayIdx, channelIdx);
+  if (!data[key]) data[key] = { prod: 0, inflow: 0, contact: 0, success: 0 };
+  return data[key];
+}
+function getChannelSum(weekNum, dayIdx, metric) {
+  let sum = 0;
+  for (let ch = 0; ch < 4; ch++) sum += getCellData(weekNum, dayIdx, ch)[metric];
+  return sum;
+}
+function validateAndCap(cell) {
+  if (cell.success > cell.contact) cell.success = cell.contact;
+  syncSlots(cell);
+}
+function syncSlots(cell) {
+  if (!cell.slots) cell.slots = [];
+  while (cell.slots.length < cell.success) cell.slots.push({ meetingDate: '', meetingTime: '', company: '', location: '' });
+  while (cell.slots.length > cell.success) cell.slots.pop();
+}
+
+function renderHeader() {
+  document.getElementById('week-title').textContent = `${USER_INFO.cohort} · ${USER_INFO.name} · ${currentWeek}주차`;
+  const bar = document.getElementById('day-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const date = getDateOfWeek(currentWeek, i);
+    const isWeekend = WEEKEND_IDX.includes(i);
+    const today = isToday(date);
+    const selected = i === selectedDayIdx;
+    const btn = document.createElement('button');
+    btn.onclick = () => selectDay(i);
+    btn.className = `relative flex flex-col items-center justify-center py-1.5 rounded-xl transition-all active:scale-95 ${selected ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30' : 'bg-gray-50 hover:bg-gray-100'}`;
+    const dayNameColor = selected ? 'text-white' : (isWeekend ? 'text-red-500' : 'text-gray-500');
+    const dateColor = selected ? 'text-white' : 'text-gray-800';
+    btn.innerHTML = `<span class="text-xs font-medium ${dayNameColor}">${DAY_NAMES[i]}</span><span class="text-base font-bold ${dateColor} leading-tight">${date.getDate()}</span>${today ? `<span class="absolute -top-1.5 ${selected ? 'bg-white text-blue-600' : 'bg-blue-500 text-white'} text-xs font-bold px-1.5 py-px rounded-full leading-none">오늘</span>` : ''}`;
+    bar.appendChild(btn);
+  }
+  const sel = getDateOfWeek(currentWeek, selectedDayIdx);
+  const todayMark = isToday(sel) ? ' — 오늘' : '';
+  document.getElementById('selected-date-label').textContent = `${fmtMD(sel)} (${DAY_NAMES[selectedDayIdx]})${todayMark}`;
+}
+
+function renderChannelTabs() {
+  const tabs = document.getElementById('channel-tabs');
+  tabs.innerHTML = '';
+  CHANNELS.forEach((ch, idx) => {
+    const cls = COLOR_CLASS[ch.color];
+    const active = idx === selectedChannel;
+    const cell = getCellData(currentWeek, selectedDayIdx, idx);
+    const total = cell.prod + cell.inflow + cell.contact + cell.success;
+    const btn = document.createElement('button');
+    btn.onclick = () => selectChannel(idx);
+    btn.className = `channel-tab flex-1 py-2.5 px-1 transition-all ${active ? cls.bg50 : 'bg-white hover:bg-gray-50'}`;
+    const nameColor = active ? cls.text700 : 'text-gray-500';
+    const badgeBg = active ? cls.bg100 : 'bg-gray-100';
+    const badgeText = active ? cls.text700 : 'text-gray-500';
+    btn.innerHTML = `<div class="flex flex-col items-center gap-1"><span class="text-xs font-bold ${nameColor}">${ch.name}</span>${total > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-px rounded-full ${badgeBg} ${badgeText} leading-none">${total}</span>` : `<span class="text-[10px] text-gray-300 leading-none">·</span>`}</div><span class="underline ${cls.under}"></span>`;
+    if (active) btn.classList.add('active');
+    tabs.appendChild(btn);
+  });
+}
+
+function renderChannelPanel() {
+  const panel = document.getElementById('channel-panel');
+  const ch = CHANNELS[selectedChannel];
+  const cls = COLOR_CLASS[ch.color];
+  const cell = getCellData(currentWeek, selectedDayIdx, selectedChannel);
+  const metrics = [
+    { key: 'prod', label: '생산', help: ch.helps.prod, upstream: null },
+    { key: 'inflow', label: '유입', help: ch.helps.inflow, upstream: null },
+    { key: 'contact', label: '컨택진행', help: ch.helps.contact, upstream: null },
+    { key: 'success', label: '컨택성공', help: ch.helps.success, upstream: 'contact' }
+  ];
+  panel.innerHTML = `
+    <div class="${cls.bg50} px-3 py-2 flex items-center gap-2 border-b ${cls.border}">
+      <span class="badge ${BADGE_CLASS[ch.color]}">${ch.name}</span>
+      <span class="text-xs text-gray-500 truncate">${ch.desc}</span>
+    </div>
+    <div class="flex items-stretch border-b border-gray-100 bg-gray-50">
+      <div class="w-3/5 px-3 py-1.5 text-xs font-semibold text-gray-500">채널 입력</div>
+      <div class="w-2/5 px-2 py-1.5 text-xs font-semibold text-gray-500 text-center border-l border-gray-200">오늘 컨택활동</div>
+    </div>
+    ${metrics.map((m, mi) => {
+      const total = getChannelSum(currentWeek, selectedDayIdx, m.key);
+      const atLimit = m.upstream && cell[m.key] >= cell[m.upstream];
+      const plusClass = atLimit ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : `${cls.bg500} text-white ${cls.hover}`;
+      return `<div class="flex items-stretch ${mi < metrics.length - 1 ? 'border-b border-gray-50' : ''}"><div class="w-3/5 px-3 py-3 flex items-center justify-between min-w-0"><div class="min-w-0 pr-1"><div class="text-sm font-medium text-gray-800">${m.label}</div><div class="text-xs text-gray-400 truncate">${m.help}</div></div><div class="flex items-center gap-1 shrink-0"><button class="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200" onclick="step('${m.key}', -1)" aria-label="${m.label} 감소">−</button><input type="number" inputmode="numeric" min="0" class="stepper-val" id="val-${m.key}" value="${cell[m.key]}" onchange="setVal('${m.key}', this.value)" aria-label="${m.label} 수치"><button class="stepper-btn ${plusClass}" onclick="step('${m.key}', 1)" ${atLimit ? 'aria-disabled="true"' : ''} aria-label="${m.label} 증가">＋</button></div></div><div class="w-2/5 py-3 text-center border-l border-gray-100 flex flex-col items-center justify-center"><div class="text-2xl font-bold ${total > 0 ? 'text-gray-800' : 'text-gray-300'} leading-none">${total}</div><div class="text-xs text-gray-400 mt-1">${m.label}</div></div></div>`;
+    }).join('')}
+  `;
+}
+
+function renderMeetingSlots() {
+  const container = document.getElementById('meeting-slots');
+  const titleEl = document.getElementById('meeting-slots-title');
+  const reservedDate = getDateOfWeek(currentWeek, selectedDayIdx);
+  const reservedMd = fmtMD(reservedDate);
+  CHANNELS.forEach((_, idx) => { const cell = getCellData(currentWeek, selectedDayIdx, idx); syncSlots(cell); });
+  const allSlots = [];
+  CHANNELS.forEach((ch, channelIdx) => {
+    const cell = getCellData(currentWeek, selectedDayIdx, channelIdx);
+    cell.slots.forEach((slot, slotIdx) => allSlots.push({ channel: ch, channelIdx, slotIdx, slot }));
+  });
+  titleEl.textContent = allSlots.length > 0 ? `미팅 예약 칸반 · ${allSlots.length}건` : '미팅 예약 칸반';
+  if (allSlots.length === 0) {
+    container.innerHTML = `<div class="bg-white rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center"><div class="text-sm text-gray-400">컨택성공을 입력하면<br/>미팅 예약 슬롯이 자동 생성됩니다</div></div>`;
+    return;
+  }
+  container.innerHTML = allSlots.map((s, i) => {
+    const cls = COLOR_CLASS[s.channel.color];
+    const slot = s.slot;
+    const esc = v => (v || '').toString().replace(/"/g, '&quot;');
+    return `<div class="bg-white rounded-xl shadow-sm mb-2 overflow-hidden border-l-4 ${cls.borderL500}"><div class="${cls.bg50} px-3 py-1.5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-400">#${i + 1}</span><span class="badge ${BADGE_CLASS[s.channel.color]}">${s.channel.name}</span></div><span class="text-xs text-gray-500">예약생성 ${reservedMd}</span></div><div class="p-3 space-y-2"><div class="flex gap-2"><div class="flex-1 min-w-0"><label class="text-xs text-gray-500 block mb-1">미팅 날짜</label><input type="date" class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500" value="${esc(slot.meetingDate)}" onchange="updateSlot(${s.channelIdx}, ${s.slotIdx}, 'meetingDate', this.value)"></div><div class="shrink-0" style="width:110px"><label class="text-xs text-gray-500 block mb-1">시간</label><input type="time" class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500" value="${esc(slot.meetingTime)}" onchange="updateSlot(${s.channelIdx}, ${s.slotIdx}, 'meetingTime', this.value)"></div></div><div><label class="text-xs text-gray-500 block mb-1">업체명</label><input type="text" class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500" placeholder="예: ○○마트" value="${esc(slot.company)}" onchange="updateSlot(${s.channelIdx}, ${s.slotIdx}, 'company', this.value)"></div><div><label class="text-xs text-gray-500 block mb-1">장소</label><input type="text" class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500" placeholder="예: 잠실" value="${esc(slot.location)}" onchange="updateSlot(${s.channelIdx}, ${s.slotIdx}, 'location', this.value)"></div></div></div>`;
+  }).join('');
+}
+
+function updateSlot(channelIdx, slotIdx, field, value) {
+  const cell = getCellData(currentWeek, selectedDayIdx, channelIdx);
+  if (!cell.slots) cell.slots = [];
+  if (cell.slots[slotIdx]) cell.slots[slotIdx][field] = value;
+}
+
+function moveWeek(delta) {
+  const next = currentWeek + delta;
+  if (next < 1) { showToast('1주차가 첫 주입니다'); return; }
+  if (next > 10) { showToast('10주차 이후는 편집할 수 없습니다'); return; }
+  currentWeek = next;
+  renderAll();
+}
+function selectDay(idx) { selectedDayIdx = idx; renderAll(); }
+function selectChannel(idx) { selectedChannel = idx; renderChannelTabs(); renderChannelPanel(); }
+
+function step(metric, delta) {
+  const cell = getCellData(currentWeek, selectedDayIdx, selectedChannel);
+  const next = Math.max(0, cell[metric] + delta);
+  if (delta > 0 && metric === 'success' && next > cell.contact) {
+    showToast('⚠ 컨택성공은 컨택진행보다 클 수 없어요');
+    return;
+  }
+  cell[metric] = next;
+  if (delta < 0 || metric === 'success') validateAndCap(cell);
+  renderChannelTabs(); renderChannelPanel(); renderMeetingSlots();
+}
+
+function setVal(metric, value) {
+  const cell = getCellData(currentWeek, selectedDayIdx, selectedChannel);
+  let next = Math.max(0, parseInt(value) || 0);
+  if (metric === 'success' && next > cell.contact) {
+    next = cell.contact;
+    showToast(`⚠ 컨택진행(${cell.contact})까지만 입력 가능`);
+  }
+  cell[metric] = next;
+  validateAndCap(cell);
+  renderChannelTabs(); renderChannelPanel(); renderMeetingSlots();
+}
+
+function saveDaily() {
+  const btn = document.getElementById('save-btn');
+  const txt = document.getElementById('save-btn-text');
+  btn.disabled = true;
+  txt.innerHTML = '<span class="spinner"></span> 시트 저장중...';
+  setTimeout(() => { btn.disabled = false; txt.textContent = '💾 저장하기'; showToast('✅ 저장 완료'); }, 2000);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function renderAll() { renderHeader(); renderChannelTabs(); renderChannelPanel(); renderMeetingSlots(); }
+
+(function seedDemo() {
+  const c0 = getCellData(currentWeek, selectedDayIdx, 0); c0.prod = 5; c0.inflow = 3; c0.contact = 5; c0.success = 2;
+  const c1 = getCellData(currentWeek, selectedDayIdx, 1); c1.prod = 3; c1.inflow = 3; c1.contact = 2; c1.success = 0;
+  const c2 = getCellData(currentWeek, selectedDayIdx, 2); c2.prod = 2; c2.inflow = 1; c2.contact = 1; c2.success = 1;
+  const c3 = getCellData(currentWeek, selectedDayIdx, 3); c3.prod = 0; c3.inflow = 0; c3.contact = 0; c3.success = 0;
+})();
+
+renderAll();
+</script>
+</body>
+</html>
