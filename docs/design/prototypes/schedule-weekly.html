@@ -890,9 +890,10 @@ function commitAction(id, action) {
   else if (action === 'done') {
     if (!inputs.사유 || !inputs.사유.trim()) { showToast('⚠ 계약 못한 이유를 적어주세요'); return; }
     m.상태 = '완료';
-    appendMeetingResult(m, '완료(계약X)', inputs.사유.trim());
+    // ⭐ "업체명, 사유" 형식으로 누적 (사용자 시트 사양)
+    appendMeetingResult(m, '완료(계약X)', `${m.업체명}, ${inputs.사유.trim()}`);
     console.log('[PATCH /api/meeting]', { id, 상태: '완료', 미팅결과: m.미팅결과 });
-    console.log('[APPEND /api/sheet/영업관리/M]', { day: m.미팅날짜, channel: m.channel, line: inputs.사유 });
+    console.log('[자동집계 영업관리!M]', { day: m.미팅날짜, channel: m.channel, line: `[완료(계약X)] ${m.업체명}, ${inputs.사유}` });
     showToast('🟠 완료 처리 (계약X)');
   }
 
@@ -911,22 +912,24 @@ function commitAction(id, action) {
       상태: '예약',
       수임비: 0, 계약조건: '', 미팅결과: ''
     });
-    // 2) 기존 카드는 [변경] 상태로 (미팅결과 M열에 누적)
+    // 2) 기존 카드는 [변경] 상태로 (미팅결과 P열에 누적)
     m.상태 = '변경';
-    appendMeetingResult(m, '일정변경', `${inputs.새날짜} ${inputs.새시간}로 변경`);
+    // ⭐ "업체명, 새날짜 새시간" 형식으로 누적 (사용자 시트 사양)
+    appendMeetingResult(m, '일정변경', `${m.업체명}, ${inputs.새날짜} ${inputs.새시간}로 변경`);
     console.log('[POST /api/meeting]', { id: newId, ...meetings[meetings.length-1] });
     console.log('[PATCH /api/meeting]', { id, 상태: '변경', 미팅결과: m.미팅결과 });
-    console.log('[APPEND /api/sheet/영업관리/M]', { day: m.미팅날짜, channel: m.channel, line: `→ ${inputs.새날짜} ${inputs.새시간}` });
-    console.log('[WRITE /api/sheet/영업관리]', { day: inputs.새날짜, channel: m.channel, columns: 'J,K' });
+    console.log('[자동집계 영업관리!M]', { day: m.미팅날짜, channel: m.channel, line: `[변경] ${m.업체명}, → ${inputs.새날짜} ${inputs.새시간}` });
+    console.log('[자동집계 영업관리!J,K]', { day: inputs.새날짜, channel: m.channel, 새행추가: 'J=시간업체명장소, K=+1' });
     showToast(`📅 ${inputs.새날짜}로 변경됨`);
   }
 
   else if (action === 'cancel') {
     if (!inputs.사유 || !inputs.사유.trim()) { showToast('⚠ 취소 사유를 적어주세요'); return; }
     m.상태 = '취소';
-    appendMeetingResult(m, '취소', inputs.사유.trim());
+    // ⭐ "업체명, 사유" 형식으로 누적 (사용자 시트 사양). 취소는 L열(미팅완료수)에 카운트 안 됨.
+    appendMeetingResult(m, '취소', `${m.업체명}, ${inputs.사유.trim()}`);
     console.log('[PATCH /api/meeting]', { id, 상태: '취소', 미팅결과: m.미팅결과 });
-    console.log('[APPEND /api/sheet/영업관리/M]', { day: m.미팅날짜, channel: m.channel, line: inputs.사유 });
+    console.log('[자동집계 영업관리!M]', { day: m.미팅날짜, channel: m.channel, line: `[취소] ${m.업체명}, ${inputs.사유}` });
     showToast('🔴 취소 처리됨');
   }
 

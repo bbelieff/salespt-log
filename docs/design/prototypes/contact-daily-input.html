@@ -836,9 +836,9 @@ function registerSlot(channelIdx, slotIdx) {
   if (!cell.slots || !cell.slots[slotIdx]) return;
   const slot = cell.slots[slotIdx];
 
-  // 기본 정보 검증
-  if (!slot.meetingDate || !slot.meetingTime || !slot.company) {
-    showToast('⚠ 미팅 일정·시간·업체명은 필수입니다');
+  // 기본 정보 검증 (장소도 필수)
+  if (!slot.meetingDate || !slot.meetingTime || !slot.company || !slot.location) {
+    showToast('⚠ 미팅 일정·시간·업체명·장소는 필수입니다');
     return;
   }
 
