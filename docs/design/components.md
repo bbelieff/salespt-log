@@ -139,30 +139,132 @@
 
 **현재 사용 위치:** 컨택관리 탭(생산/유입/컨택진행/컨택성공), 수납관리 탭(승인·수납 건수)
 
-### Date Input
-날짜 선택 입력 필드.
+### Date Input (커스텀 표시 박스 + native picker) ⭐
+**문제**: `<input type="date">`는 표시 형식을 바꿀 수 없음 (`MM/DD/YYYY` 또는 브라우저 기본). 한국어 UX는 `2026-04-25 (목)` 형태로 요일까지 보여줘야 함.
 
-**구현 예시:**
+**해법**: native input을 0×0 크기로 숨기고 커스텀 박스가 표시 담당. 박스 클릭 시 `showPicker()`로 native picker만 띄움.
+
+**HTML 패턴:**
 ```html
-<input 
-  type="date" 
-  class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-  value="2026-04-17"
->
+<div class="date-display-box" onclick="openDatePicker('meeting-date-input')">
+  <span class="date-text" id="date-text">2026-04-25</span>
+  <span class="date-suffix" id="date-suffix">(토)</span>
+  <span class="ml-auto text-gray-400">📅</span>
+  <input type="date" class="date-input-hidden" id="meeting-date-input"
+    value="2026-04-25" onchange="refreshDateBox(this, 'date-text', 'date-suffix')">
+</div>
 ```
 
-### Time Input
-시간 선택 입력 필드 (15분 단위).
-
-**구현 예시:**
-```html
-<input 
-  type="time" 
-  class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-  value="14:30"
-  step="900"
->
+**CSS:**
+```css
+.date-display-box {
+  position: relative; display: flex; align-items: center; gap: 4px;
+  padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px;
+  background: white; cursor: pointer; font-size: 14px; user-select: none;
+}
+.date-display-box:hover { border-color: #93c5fd; }
+.date-display-box:focus-within {
+  border-color: #3b82f6; outline: 2px solid #3b82f6; outline-offset: -2px;
+}
+.date-display-box .date-text { color: #1f2937; font-weight: 600; }
+.date-display-box .date-text.empty { color: #9ca3af; font-weight: 400; }
+.date-display-box .date-suffix { color: #4b5563; font-weight: 600; }
+/* native input을 진짜로 안 보이게 */
+.date-display-box .date-input-hidden {
+  position: absolute; left: 0; top: 0; width: 0; height: 0;
+  opacity: 0; border: 0; padding: 0; margin: 0; pointer-events: none;
+}
 ```
+
+**JS:**
+```js
+function openDatePicker(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.style.pointerEvents = 'auto';   // pointer-events 잠시 켰다가
+  try {
+    if (typeof input.showPicker === 'function') input.showPicker();
+    else { input.focus(); input.click(); }
+  } catch (e) { input.focus(); input.click(); }
+  setTimeout(() => { input.style.pointerEvents = 'none'; }, 0);
+}
+
+function refreshDateBox(inputEl, textId, suffixId) {
+  const DAY_KO = ['일','월','화','수','목','금','토'];
+  const text = document.getElementById(textId);
+  const suffix = document.getElementById(suffixId);
+  const v = inputEl.value;
+  if (v) {
+    text.textContent = v; text.classList.remove('empty');
+    const day = DAY_KO[new Date(v).getDay()];
+    suffix.textContent = day ? `(${day})` : '';
+  } else {
+    text.textContent = '날짜 선택'; text.classList.add('empty');
+    suffix.textContent = '';
+  }
+}
+```
+
+**브라우저 호환**: `showPicker()` Chrome 99+, Safari 16.4+, Firefox 101+. 미지원 시 `input.click()`으로 폴백.
+
+**현재 사용 위치**: 컨택관리 탭(미팅 일정), 일정·계약 탭(일정 수정·일정 변경)
+
+---
+
+### Time Input (시·분 select 강제) ⭐
+**문제**: `<input type="time" step="900">`은 15분 단위를 일부 모바일 브라우저(특히 iOS)가 무시하고 1분 단위 picker를 띄움.
+
+**해법**: 시(0~23) select와 분(00·15·30·45) select 두 개로 강제 분리.
+
+**HTML 패턴:**
+```html
+<div class="flex items-center gap-1">
+  <select class="time-select" required onchange="updateTime('h', this.value)" aria-label="시">
+    <option value="" disabled hidden>시</option>
+    <option value="00">00</option><option value="01">01</option>
+    <!-- ... 23까지 -->
+  </select>
+  <span class="text-gray-500 font-bold">:</span>
+  <select class="time-select" required onchange="updateTime('m', this.value)" aria-label="분">
+    <option value="" disabled hidden>분</option>
+    <option value="00">00</option><option value="15">15</option>
+    <option value="30">30</option><option value="45">45</option>
+  </select>
+</div>
+```
+
+**CSS:**
+```css
+.time-select {
+  flex: 1; padding: 8px 4px;
+  font-size: 14px; font-weight: 600;
+  border: 1px solid #e5e7eb; border-radius: 8px;
+  background: white; cursor: pointer;
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  text-align: center; text-align-last: center;
+  min-width: 0;
+}
+.time-select:focus { outline: 2px solid #3b82f6; border-color: transparent; }
+.time-select:invalid { color: #9ca3af; }   /* 미선택 placeholder 색 */
+```
+
+**JS (시·분 결합 로직):**
+```js
+function updateTime(part, value) {
+  const [hh = '', mm = ''] = (slot.meetingTime || '').split(':');
+  const newHH = part === 'h' ? value : hh;
+  const newMM = part === 'm' ? value : mm;
+  // 둘 다 입력되어야 유효 시간으로 저장
+  slot.meetingTime = (newHH && newMM) ? `${newHH}:${newMM}` : '';
+}
+```
+
+**대안 비교**:
+- `<input type="time">`: ❌ 모바일 step 무시, 폼 일관성 깨짐
+- 두 select: ✅ 모든 브라우저 동일 동작, 15분 단위 강제
+- 커스텀 picker (모달 등): 과도한 구현, MVP에 불필요
+
+**현재 사용 위치**: 컨택관리 탭 미팅 카드, 일정·계약 탭 일정 변경 폼
 
 ### Select Dropdown
 드롭다운 선택 필드.
@@ -606,8 +708,164 @@ button:focus, input:focus, select:focus {
 
 ---
 
+## 8. 미팅 카드 시스템 ⭐ (일정·계약 탭 전용)
+
+### MeetingCard (5가지 상태)
+일정·계약 탭에서 미팅 1건 = 카드 1개. 상태별 색상은 [tokens.md "미팅 카드 5가지 상태"](./tokens.md#미팅-카드-5가지-상태-색상-) 참조.
+
+**구조:**
+```html
+<div class="meeting-card card-{state} rounded-xl mb-2 overflow-hidden">
+  <!-- 헤더: 상태 아이콘 + 시간 + 업체 + 장소 + 수임비 + 펼침 화살표 -->
+  <button class="w-full px-3 py-3 flex items-center gap-2 text-left">
+    <span>🟡</span>             <!-- 상태 아이콘 -->
+    <span class="font-bold">14:00</span>
+    <span class="font-semibold flex-1 truncate">○○부동산</span>
+    <span class="text-xs text-gray-500">잠실</span>
+    <!-- 계약 상태일 때만: -->
+    <span class="text-xs font-bold text-green-700">300만원</span>
+    <svg class="w-4 h-4 transition-transform">⌄</svg>
+  </button>
+  <!-- 펼친 본문 (선택 시) -->
+  <div class="expand-body border-t px-3 py-3 space-y-3">...</div>
+</div>
+```
+
+**상태별 헤더 아이콘:**
+| 상태 | 아이콘 | 카드 클래스 |
+|---|---|---|
+| 예약 | 🟡 | `card-reserved` |
+| 계약 | 💵 | `card-contract` |
+| 완료(계약X) | 🟠 | `card-done` |
+| 변경 | 📅 | `card-rescheduled` |
+| 취소 | 🔴 | `card-canceled` (제목 `line-through`) |
+
+### MeetingCard 신규/등록완료 토글 (컨택관리 탭)
+컨택관리 탭의 미팅 카드는 두 모드:
+
+| 모드 | 상태 | UI | 액션 버튼 |
+|---|---|---|---|
+| 신규 | `saved=false` | 강제 펼침 + 좌측 회색 보더 | [✓ 등록] [✕ 삭제] |
+| 등록완료 | `saved=true` | 한 줄 접힘 + 좌측 파란 보더 + 클릭하여 펼침 | [💾 수정 완료] [✕ 삭제] |
+
+```js
+// 신규 카드는 등록 시 검증
+if (!slot.meetingDate || !slot.meetingTime || !slot.company) {
+  showToast('⚠ 미팅 일정·시간·업체명은 필수입니다');
+  return;
+}
+slot.saved = true;
+```
+
+### InlineActionForm (4가지 액션)
+일정·계약 탭에서 예약 카드의 4가지 액션 (계약/완료/변경/취소). **모달 X, 카드 안 인라인 폼.**
+
+**버튼 그리드:**
+```html
+<div class="grid grid-cols-2 gap-2 pt-1">
+  <button onclick="setPendingAction('xxx', 'contract')"
+    class="py-2.5 text-sm font-bold rounded-lg bg-green-50 text-green-700">
+    💵 계약
+  </button>
+  <button onclick="setPendingAction('xxx', 'done')"
+    class="py-2.5 text-sm font-bold rounded-lg bg-orange-50 text-orange-700">
+    🟠 완료 (계약X)
+  </button>
+  <button onclick="setPendingAction('xxx', 'reschedule')"
+    class="py-2.5 text-sm font-bold rounded-lg bg-purple-50 text-purple-700">
+    📅 변경
+  </button>
+  <button onclick="setPendingAction('xxx', 'cancel')"
+    class="py-2.5 text-sm font-bold rounded-lg bg-red-50 text-red-700">
+    🔴 취소
+  </button>
+</div>
+```
+
+**선택된 액션의 인라인 폼:** 색상은 [tokens.md 액션 폼 강조 색상](./tokens.md#액션-폼-강조-색상-인라인-입력-폼) 참조.
+- **계약**: 수임비 (만원, 필수) + 계약조건 (선택) + 확정 버튼 → 시트 `K=TRUE, L=수임비, M=계약조건`
+- **완료**: 사유 (필수, M열 누적) + 확정 버튼 → `J=완료`
+- **변경**: 새 날짜 + 새 시간 (필수) + 확정 버튼 → 새 카드 자동 생성, 기존은 `J=변경`
+- **취소**: 사유 (필수, M열 누적) + 확정 버튼 → `J=취소`
+
+**확정 후 동작**: `pendingAction.delete(id)` + 카드 자동 접힘 + 토스트.
+
+### 미팅결과 누적 (시트 M열)
+모든 액션의 메모는 timestamp + 태그를 prepend로 누적:
+```js
+function appendMeetingResult(m, tag, content) {
+  const stamp = `${YYYY}-${MM}-${DD} ${hh}:${mm}`;
+  const newLine = `[${tag} · ${stamp}] ${content}`;
+  m.미팅결과 = m.미팅결과 ? `${newLine}\n${m.미팅결과}` : newLine;
+}
+```
+
+읽기 전용 영역으로 카드 펼침에 표시 (시간순 역방향 = 최신 위).
+
+---
+
+## 9. 레이아웃 컴포넌트 (일정·계약 탭)
+
+### DaySection (요일 그룹 박스)
+7일을 시각적으로 묶고 그 날의 미팅 카드를 하위로 배치.
+
+```html
+<div class="day-section is-today">  <!-- is-today면 파랑 강조 -->
+  <div class="day-header">
+    <span>4월 23일</span>
+    <span class="text-blue-700">(목)</span>
+    <span class="today-badge">오늘</span>
+    <span class="ml-auto text-xs">3건</span>
+  </div>
+  <div class="meeting-card">...</div>   <!-- 카드는 좌측 18px 들여쓰기 + 가지선 -->
+</div>
+```
+
+**CSS:**
+```css
+.day-section {
+  background: #f1f5f9; border-radius: 14px;
+  padding: 12px 12px 8px; margin-bottom: 14px;
+  border-left: 5px solid #cbd5e1;
+}
+.day-section.is-today {
+  background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%);
+  border-left: 5px solid #2563eb;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.22);
+}
+.day-section .meeting-card {
+  margin-left: 18px;             /* 위계 들여쓰기 */
+  position: relative;
+}
+.day-section .meeting-card::before {  /* 좌측 가지선 */
+  content: ''; position: absolute;
+  left: -10px; top: 50%; width: 8px;
+  border-top: 2px solid rgba(0,0,0,0.10);
+}
+```
+
+### SummaryBar (상단 요약 바)
+주간 진척도 한눈에. 일정·계약 탭 상단 sticky 영역 아래에 배치.
+
+```html
+<div class="bg-white rounded-xl px-3 py-2.5 mb-3 shadow-sm flex items-center justify-between">
+  <div class="flex items-center gap-3 text-xs">
+    <span><span class="text-gray-400">전체</span> <b>8</b></span>
+    <span><span class="text-blue-500">예약</span> <b class="text-blue-700">3</b></span>
+    <span><span class="text-green-500">완료</span> <b class="text-green-700">2</b></span>
+    <span><span class="text-red-500">취소</span> <b class="text-red-600">1</b></span>
+  </div>
+  <div class="text-xs flex items-center gap-1">
+    <span>💵</span><b class="text-green-700">300</b><span class="text-gray-400">만원</span>
+  </div>
+</div>
+```
+
+---
+
 💡 **컴포넌트 사용 원칙**
 1. **일관성**: 같은 용도에는 같은 컴포넌트 사용
 2. **접근성**: 44px 터치 타겟, 키보드 네비게이션 지원
 3. **반응형**: 모바일 우선, 375px 기준 설계
 4. **성능**: 애니메이션은 transform/opacity 위주로 사용
+5. **레퍼런스**: 새 화면 디자인 전 `docs/design/prototypes/` 의 확정 시안을 먼저 확인

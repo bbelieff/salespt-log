@@ -51,12 +51,36 @@
 | 총비용 (−) | - | `text-red-600 bg-red-50` | 비용은 항상 음수 표시 |
 | 영업이익 (=) | `text-blue-700 bg-blue-50` | `text-red-600 bg-red-50` | 계산 결과에 따라 |
 
-#### 상태별 색상
-| 상태 | 색상 | 클래스 | 적용 대상 |
-|------|------|-------|----------|
-| 예약 | 파란색 | `text-blue-600 bg-blue-50` | 미팅 예약 상태 |
-| 완료 | 초록색 | `text-green-600 bg-green-50` | 미팅 완료, 계약 성사 |
-| 취소 | 빨간색 | `text-red-600 bg-red-50` | 취소된 미팅 |
+#### 미팅 카드 5가지 상태 색상 ⭐
+일정·계약 탭에서 사용. **노쇼·미처리 미팅이 시각적으로 즉시 보이게** 하는 게 목적.
+
+| 상태 | 의미 | 카드 배경 | 좌측 4px 보더 | 텍스트 강조 |
+|---|---|---|---|---|
+| 🟡 **예약** (reserved) | 액션 미선택, 처리 대기 | `bg-yellow-50` (#fffbeb) | `border-yellow-400` (#fbbf24) | `text-yellow-800` |
+| 💵 **계약** (contract) | 계약 성사 (가장 좋은 결과) | `bg-green-100` (#dcfce7) | `border-green-600` (#16a34a) + `shadow-lg shadow-green-500/15` | `text-green-700` |
+| 🟠 **완료** (done, 계약X) | 미팅했으나 계약 X (시각 강조) | `bg-orange-50` (#fff7ed) | `border-orange-400` (#fb923c) | `text-orange-700` |
+| 📅 **변경** (rescheduled) | 일정 변경됨 (무효 + 정보 보존) | `bg-purple-50` (#faf5ff) | `border-purple-500` (#a855f7) + `opacity-85` | `text-purple-700` |
+| 🔴 **취소** (canceled) | 취소·노쇼 | `bg-red-50` (#fef2f2) | `border-red-500` (#ef4444) + `opacity-72` | `text-red-700` (제목은 `line-through text-gray-400`) |
+
+> **노란색이 "예약 대기"인 이유**: 흰 배경이면 처리해야 할 미팅이 시각적으로 안 띈다. 노랑 = "여기 봐야 함" 신호.
+> **주황색이 "완료(계약X)"인 이유**: 미팅은 성공이지만 계약 실패 → 좋은 상태 아님을 강조해 추적 유도.
+
+#### 액션 폼 강조 색상 (인라인 입력 폼)
+| 액션 | 폼 배경 | 폼 보더 | 확정 버튼 |
+|---|---|---|---|
+| 💵 계약 | `bg-green-50` | `border-2 border-green-300` | gradient `from-green-600 to-green-700` |
+| 🟠 완료 | `bg-orange-50` | `border-2 border-orange-300` | `bg-orange-500 hover:bg-orange-600` |
+| 📅 변경 | `bg-purple-50` | `border-2 border-purple-300` | `bg-purple-500 hover:bg-purple-600` |
+| 🔴 취소 | `bg-red-50` | `border-2 border-red-300` | `bg-red-500 hover:bg-red-600` |
+
+#### 기존 단순 상태별 색상 (배지·라벨용)
+미팅 카드가 아닌 **인라인 텍스트 배지**일 때:
+
+| 상태 | 색상 | 클래스 |
+|------|------|-------|
+| 예약 | 파란색 | `text-blue-600 bg-blue-50` |
+| 완료 | 초록색 | `text-green-600 bg-green-50` |
+| 취소 | 빨간색 | `text-red-600 bg-red-50` |
 
 ### 중립 색상
 | 용도 | Tailwind Class | Hex | 사용처 |
