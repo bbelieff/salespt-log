@@ -1,9 +1,10 @@
 ---
 slug: sheet-realign-actual-structure
-status: active
+status: completed
 created: 2026-04-27
-worktree: ../wt/sheet-realign
-pr: refactor/sheet-realign-actual-structure
+completed: 2026-04-27
+worktree: ../wt/sheet-realign (정리됨)
+pr: refactor/sheet-realign-actual-structure (머지됨, commit 538284e)
 ---
 
 # PR 1.5 — SHEET_RANGES를 실제 시트 구조에 정렬
