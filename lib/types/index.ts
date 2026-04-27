@@ -2,9 +2,13 @@
  * Layer: types — 도메인 모델 (Zod).
  * 이 레이어는 다른 레이어를 import 하지 않는다. (구조 테스트가 강제)
  *
- * SSOT:
- *   - docs/domains/data-model.md
- *   - docs/domains/sheet-structure.md
+ * SSOT (권위):
+ *   - docs/domains/data-model.md (v4)
+ *   - docs/domains/sheet-structure.md (v4)
+ *
+ * 필드명 컨벤션 (data-model.md v4):
+ *   - 시스템 필드(id, channel) → 영어
+ *   - 시트 도메인 필드(예약일, 미팅날짜, 상태 등) → 한국어 (시트 컬럼명과 1:1)
  */
 import { z } from "zod";
 
@@ -19,8 +23,8 @@ export const CHANNEL_ORDER: readonly Channel[] = [
   "콜·지·기·소",
 ] as const;
 
-// ── 4지표 (컨택관리 탭 — 채널마다 4개) ──────────────────────────
-// data-model.md 기준: 영업관리 E=생산 / F=유입 / G=컨택진행 / H=컨택성공
+// ── 4지표 (컨택관리 — 채널마다 4개) ──────────────────────────
+// data-model.md 기준: 01 영업관리 E=생산 / F=유입 / G=컨택진행 / H=컨택성공
 export const MetricKey = z.enum(["production", "inflow", "contactProgress", "contactSuccess"]);
 export type MetricKey = z.infer<typeof MetricKey>;
 
@@ -31,61 +35,70 @@ export const METRIC_LABEL: Record<MetricKey, string> = {
   contactSuccess: "컨택성공",
 };
 
-// ── 미팅 상태 (5종 — schedule-weekly v2 / calendar v3) ─────────
+// ── 미팅 상태 (5종) ─────────────────────────────────────────
 export const MeetingState = z.enum(["예약", "계약", "완료", "변경", "취소"]);
 export type MeetingState = z.infer<typeof MeetingState>;
 
-// ── 미팅 (업체관리 탭 1행 = 1미팅) ──────────────────────────────
-// 시트 매핑 (sheet-structure.md §3):
-//   A=id, B=예약일, C=예약시각, D=미팅날짜, E=미팅시간, F=채널,
+// ── 미팅 (04 업체관리(앱자동작성용) 1행 = 1미팅) ────────────────
+// 시트 매핑 (sheet-structure.md §3, 19컬럼 A~S):
+//   A=id, B=예약일, C=예약시각, D=미팅날짜, E=미팅시간, F=channel,
 //   G=업체명, H=장소, I=예약비고, J=상태, K=계약여부, L=수임비,
-//   M=미팅사유 (`업체명, 이유` 1줄), N=표시상세(수식), O=표시요약(수식),
-//   P=계약조건, Q=계약합성라인(수식)
+//   M=미팅사유 (`업체명, 이유` 1줄),
+//   N=표시상세(수식), O=표시요약(수식),
+//   P=계약조건, Q=계약합성라인(수식),
+//   R=previousMeetingId, S=주차(수식)
 //
-// ⚠️ N/O/Q는 시트 수식 자동 — 웹은 쓰지 않음 (이 타입에 미포함).
+// ⚠️ N/O/Q/S는 시트 수식 자동 — 웹은 쓰지 않음. 읽기만 (optional).
 export const Meeting = z.object({
   id: z.string(),
-  reservationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 형식"), // B열: 예약 잡은 날
-  reservationTime: z.string().regex(/^\d{2}:\d{2}$/, "HH:MM 형식"), // C열: 예약 기록 시각
-  meetingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 형식"), // D열
-  meetingTime: z.string().regex(/^\d{2}:\d{2}$/, "HH:MM 형식 (15분 단위)"), // E열
-  channel: Channel, // F열
-  vendor: z.string().min(1, "업체명 필수"), // G열
-  location: z.string().min(1, "장소 필수"), // H열 — 2026-04-24 시트 사양 검증에서 필수화
-  reservationNote: z.string().max(500).optional(), // I열
-  state: MeetingState.default("예약"), // J열
-  isContract: z.boolean().default(false), // K열 — J="계약"과 동기화 (호환용)
-  fee: z.number().int().nonnegative().default(0), // L열, 만원 단위
-  // M열: 미팅사유 — `업체명, 이유` 1줄. [완료]/[변경]/[취소] 시 작성, [계약]은 안 적음.
-  // 영업관리!M으로 시트 수식 자동 누적.
-  meetingReason: z.string().default(""),
-  // P열: 계약조건 — 계약 시만 (예: "6개월 분할, 부가세 별도")
-  contractTerms: z.string().default(""),
+  예약일: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"), // B
+  예약시각: z.string().regex(/^\d{2}:\d{2}$/, "HH:MM"), // C
+  미팅날짜: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"), // D
+  미팅시간: z.string().regex(/^\d{2}:\d{2}$/, "HH:MM (15분 단위)"), // E
+  channel: Channel, // F
+  업체명: z.string().min(1, "업체명 필수"), // G
+  장소: z.string().min(1, "장소 필수"), // H — 2026-04-24 사양에서 필수
+  예약비고: z.string().max(500).default(""), // I
+  상태: MeetingState.default("예약"), // J
+  계약여부: z.boolean().default(false), // K — J="계약"과 동기화 (호환용)
+  수임비: z.number().int().nonnegative().default(0), // L (만원)
+  미팅사유: z.string().default(""), // M `업체명, 이유` 1줄
+  계약조건: z.string().default(""), // P (계약 시만)
+
+  // 시트 수식 자동 (읽기 전용, 옵셔널)
+  표시상세: z.string().optional(), // N
+  표시요약: z.string().optional(), // O
+  계약합성라인: z.string().optional(), // Q
+
+  // 변경 추적 + 주차 (실제 시트의 R·S — v4 SSOT 누락분, repo는 유지)
+  previousMeetingId: z.string().optional(), // R
+  주차: z.number().int().min(1).max(10).optional(), // S (수식)
 });
 export type Meeting = z.infer<typeof Meeting>;
 
-// ── 영업관리 탭 1행 = (날짜, 채널) 4지표 카운트 ─────────────────
-// 실제 시트(`01 영업관리`) 구조: 8주차 × 7일 × 4채널 = 28행 블록 × 8.
-// 컬럼 (한 블록 내 일별 4행):
-//   요일 / 날짜 / 채널 / 생산건수 / 유입건수 / 컨택진행수 / 컨택성공수 |
-//   잡힌일정체크 / 오늘미팅일정 / 오늘미팅수 / 미팅완료수 / 비고 |
-//   계약건수 / 수임비금액 / 비고 |
-//   승인건수 / 수납건수 / 수납금액 / 비고(기관·접수내용)
-//
-// 웹은 4지표 컬럼만 직접 쓴다. 미팅·계약·수납 합계는 시트 수식이
-// 04 업체관리(앱자동작성용) 탭에서 자동 집계.
-//
-// ⚠️ 수납은 별도 탭 아니라 영업관리의 "실적관리" 컬럼 그룹에 통합되어 있음
-// (별도 PaymentRow 타입 없음).
+// ── 영업관리 1행 = (날짜, 채널) 4지표 카운트 ─────────────────
+// 01 영업관리 매주 28행 블록 안의 한 행. 웹은 4지표(E~H)만 직접 쓰기.
+// I~P는 시트 수식 자동 집계 (절대 쓰기 금지).
 export const ChannelDailyRow = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   channel: Channel,
-  production: z.number().int().nonnegative().default(0),
-  inflow: z.number().int().nonnegative().default(0),
-  contactProgress: z.number().int().nonnegative().default(0),
-  contactSuccess: z.number().int().nonnegative().default(0),
+  production: z.number().int().nonnegative().default(0), // E
+  inflow: z.number().int().nonnegative().default(0), // F
+  contactProgress: z.number().int().nonnegative().default(0), // G
+  contactSuccess: z.number().int().nonnegative().default(0), // H
 });
 export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
+
+// ── 일별 실적(수납) — 01 영업관리!Q~T에 통합 (data-model.md v4) ─
+// 별도 수납관리 탭 없음. 1일 = 1레코드 (4채널 행과 별개로 1일에 한 묶음).
+export const DailyRevenue = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  approvalCount: z.number().int().nonnegative().default(0), // Q 승인건수
+  paymentCount: z.number().int().nonnegative().default(0), // R 수납건수
+  paymentAmount: z.number().int().nonnegative().default(0), // S 수납금액 (만원)
+  agencyNote: z.string().default(""), // T 비고(기관·접수내용)
+});
+export type DailyRevenue = z.infer<typeof DailyRevenue>;
 
 // ── 사용자 — 마스터 레지스트리 ─────────────────────────────────
 export const User = z.object({
