@@ -64,24 +64,19 @@ export const Meeting = z.object({
 });
 export type Meeting = z.infer<typeof Meeting>;
 
-// ── 수납 한 행 (수납관리 탭 1행 = 1입금) ────────────────────────
-// 시트 매핑 (sheet-structure.md §4):
-//   A=id, B=수납날짜, C=승인건수, D=수납건수, E=수납금액(만원), F=기관·접수내용
-export const PaymentRow = z.object({
-  id: z.string(),
-  paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // B열
-  approvalCount: z.number().int().nonnegative(), // C열
-  paymentCount: z.number().int().nonnegative(), // D열
-  paymentAmount: z.number().int().nonnegative(), // E열, 만원
-  agencyNote: z.string().max(500).default(""), // F열
-});
-export type PaymentRow = z.infer<typeof PaymentRow>;
-
 // ── 영업관리 탭 1행 = (날짜, 채널) 4지표 카운트 ─────────────────
-// 시트 매핑 (sheet-structure.md §2):
-//   A=날짜, B=요일(수식), C=일차(수식), D=채널,
-//   E=생산, F=유입, G=컨택진행, H=컨택성공  ← 웹 직접 쓰기
-//   I~T = 시트 수식 자동 집계 (절대 쓰기 금지)
+// 실제 시트(`01 영업관리`) 구조: 8주차 × 7일 × 4채널 = 28행 블록 × 8.
+// 컬럼 (한 블록 내 일별 4행):
+//   요일 / 날짜 / 채널 / 생산건수 / 유입건수 / 컨택진행수 / 컨택성공수 |
+//   잡힌일정체크 / 오늘미팅일정 / 오늘미팅수 / 미팅완료수 / 비고 |
+//   계약건수 / 수임비금액 / 비고 |
+//   승인건수 / 수납건수 / 수납금액 / 비고(기관·접수내용)
+//
+// 웹은 4지표 컬럼만 직접 쓴다. 미팅·계약·수납 합계는 시트 수식이
+// 04 업체관리(앱자동작성용) 탭에서 자동 집계.
+//
+// ⚠️ 수납은 별도 탭 아니라 영업관리의 "실적관리" 컬럼 그룹에 통합되어 있음
+// (별도 PaymentRow 타입 없음).
 export const ChannelDailyRow = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   channel: Channel,
