@@ -10,7 +10,7 @@
  * PR 1 시점: 시그니처만 새 모델로 정렬, 구현 디테일은 PR 2/3에서 채운다.
  */
 import type {
-  ChannelMetricEntry,
+  ChannelDailyRow,
   Meeting,
   MetricKey,
 } from "@/types";
@@ -77,12 +77,12 @@ function computeStreak(dates: string[]): { current: number; best: number } {
 }
 
 /**
- * 영업관리 카운트 + 업체관리 미팅을 받아 통계로 합산.
- * @param entries 영업관리 탭의 (날짜·채널·지표·카운트) 레코드들
+ * 영업관리 행(날짜×채널, 4지표 카운트) + 업체관리 미팅을 받아 통계로 합산.
+ * @param rows 영업관리 탭의 1행 = (날짜, 채널) + 4지표 카운트
  * @param meetings 업체관리 탭의 미팅 레코드들
  */
 export function summarize(
-  entries: ChannelMetricEntry[],
+  rows: ChannelDailyRow[],
   meetings: Meeting[],
 ): Stats {
   const totals: Record<MetricKey, number> = {
@@ -92,9 +92,16 @@ export function summarize(
     contactSuccess: 0,
   };
   let xp = 0;
-  for (const e of entries) {
-    totals[e.metric] += e.count;
-    xp += e.count * XP_WEIGHT[e.metric];
+  for (const r of rows) {
+    totals.production += r.production;
+    totals.inflow += r.inflow;
+    totals.contactProgress += r.contactProgress;
+    totals.contactSuccess += r.contactSuccess;
+    xp +=
+      r.production * XP_WEIGHT.production +
+      r.inflow * XP_WEIGHT.inflow +
+      r.contactProgress * XP_WEIGHT.contactProgress +
+      r.contactSuccess * XP_WEIGHT.contactSuccess;
   }
 
   const meetingsByState = { 예약: 0, 완료: 0, 계약: 0, 변경: 0, 취소: 0 };
@@ -109,7 +116,7 @@ export function summarize(
   }
 
   const dateSet = new Set<string>();
-  for (const e of entries) dateSet.add(e.date);
+  for (const r of rows) dateSet.add(r.date);
   for (const m of meetings) dateSet.add(m.meetingDate);
   const dates = [...dateSet].sort();
   const { current, best } = computeStreak(dates);
