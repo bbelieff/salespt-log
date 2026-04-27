@@ -121,7 +121,7 @@ describe("dashboard is read-only", () => {
     expect(
       bad,
       `대시보드 탭은 수식이 계산하므로 쓰기 금지.\n` +
-        `→ 고치는 법: 쓰기는 daily / contracts / db 섹션으로만. ` +
+        `→ 고치는 법: 쓰기는 sales(E~H 입력영역) / meetings / payments / retro 섹션으로만. ` +
         `참고: docs/architecture.md#퍼시스턴스-google-sheets\n` +
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);

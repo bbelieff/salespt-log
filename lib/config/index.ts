@@ -1,6 +1,13 @@
 /**
  * Layer: config — 환경변수와 시트 주소(A1 range). 로직 없음.
  * 구조 테스트가 이 레이어의 상위 import를 차단한다.
+ *
+ * 시트 구조: docs/domains/sheet-structure.md
+ *   - 대시보드 (읽기 전용 — 수식이 계산)
+ *   - 영업관리 (4채널×4지표 카운트, E~H 직접 쓰기 / I~T 수식)
+ *   - 업체관리 (1행 = 1미팅, append/update)
+ *   - 수납관리 (1행 = 1입금, append)
+ *   - 회고노트 (자유 텍스트, 1행 = 1주차)
  */
 
 function required(name: string): string {
@@ -29,32 +36,45 @@ export const registry = {
 
 /**
  * 수강생 개인 시트의 섹션별 A1 범위.
- * 실제 시트 구조(병합·소계 포함)에 맞춰 "논리 테이블"의 셀 범위를 박아둔다.
- * ⚠️ 시트 구조가 바뀌면 여기만 고친다. Repo 코드는 건드리지 않는다.
+ * 시트 구조가 바뀌면 여기만 고친다. Repo 코드는 건드리지 않는다.
  */
 export const SHEET_RANGES = {
-  // 탭1 (대시보드) — 기본 읽기 전용. 메트릭만 읽어가는 용도.
+  // ── 대시보드 (읽기 전용) ───────────────────────────────────
   dashboard: {
-    tab: "성과관리",        // 실제 탭 이름 확정 시 교체
-    summary: "B2:N10",    // 요약 카드용
+    tab: "대시보드",
+    summary: "B2:N20", // 요약 카드 영역 (Recharts 입력)
+    period: "N1", // 수강시작일 + 기간 메타 (수식)
   },
-  // 탭2 — 계약 로그 (append 대상)
-  contracts: {
-    tab: "계약관리",
-    logHeader: "A8:J8",
-    logRange: "A9:J",
+
+  // ── 영업관리 (채널×지표 카운트) ────────────────────────────
+  // E~H: 웹 직접 쓰기 (날짜, 채널, 지표, 카운트)
+  // I~T: 시트 수식 자동 (절대 쓰기 금지 — 구조 테스트가 차단)
+  sales: {
+    tab: "영업관리",
+    headerRow: "A1:T1",
+    inputRange: "E2:H", // 웹이 append/update 가능한 영역
+    formulaRange: "I2:T", // 수식 영역 (참고용 — 쓰기 금지)
   },
-  // 탭3 — DB 관리 (각 섹션 append 대상)
-  db: {
-    tab: "DB관리",
-    purchase: "A4:F",      // 매입DB
-    direct: "H4:M",        // 직접생산
-    banner: "A15:G",       // 현수막
+
+  // ── 업체관리 (1행 = 1미팅) ─────────────────────────────────
+  meetings: {
+    tab: "업체관리",
+    headerRow: "A1:Q1",
+    range: "A2:Q", // append + update 대상
   },
-  // 일일 입력 — 수강생이 앱에서 적은 DailyEntry를 쌓는 별도 탭(앱 전용)
-  daily: {
-    tab: "앱_일일입력",
-    header: "A1:F1",
+
+  // ── 수납관리 (1행 = 1입금, 6컬럼) ──────────────────────────
+  // A=id, B=수납날짜, C=승인건수, D=수납건수, E=수납금액, F=기관·접수내용
+  payments: {
+    tab: "수납관리",
+    headerRow: "A1:F1",
     range: "A2:F",
+  },
+
+  // ── 회고노트 (1행 = 1주차) ─────────────────────────────────
+  retro: {
+    tab: "회고노트",
+    headerRow: "A1:D1",
+    range: "A2:D",
   },
 } as const;
