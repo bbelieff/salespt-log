@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
-<!-- Design: 캘린더 탭 v1 -->
+<!-- Design: 캘린더 탭 v3 (셀 미팅 정보 표시 + DB관리 아이콘 카트) -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -19,30 +19,21 @@
   .badge-banner   { background: #fef3c7; color: #d97706; }
   .badge-referral { background: #f3e8ff; color: #7c3aed; }
 
-  /* ── 채널 점 (캘린더 셀용) ─────────── */
-  .ch-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    display: inline-block; flex-shrink: 0;
-  }
-  .ch-dot-blue   { background: #3b82f6; }
-  .ch-dot-green  { background: #16a34a; }
-  .ch-dot-amber  { background: #f59e0b; }
-  .ch-dot-purple { background: #a855f7; }
-
-  /* ── 캘린더 셀 (1:1 정사각형) ─────────── */
+  /* ── 캘린더 셀 (1:1.7 세로 직사각형, 미팅 정보 표시 공간) ─────────── */
   .cal-cell {
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 1.7;
     display: flex; flex-direction: column;
     align-items: center; justify-content: flex-start;
-    padding: 4px 2px;
-    border-radius: 8px;
+    padding: 4px 2px 3px;
+    border-radius: 6px;
     cursor: pointer;
     user-select: none;
     transition: all 0.15s;
     position: relative;
     background: transparent;
+    overflow: hidden;
   }
-  .cal-cell:active { transform: scale(0.94); }
+  .cal-cell:active { transform: scale(0.96); }
 
   /* 다른 달 (월 그리드 채우기용) */
   .cal-cell.other-month {
@@ -60,11 +51,12 @@
 
   /* 날짜 숫자 (오늘은 파란 배경 동그라미) */
   .date-num {
-    font-size: 13px; font-weight: 600;
-    width: 26px; height: 26px;
+    font-size: 12px; font-weight: 600;
+    width: 22px; height: 22px;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%;
     color: #374151;
+    flex-shrink: 0;
   }
   .cal-cell.is-sun .date-num { color: #ef4444; }
   .cal-cell.is-sat .date-num { color: #ef4444; }
@@ -76,7 +68,7 @@
     background: #3b82f6;
     color: white;
     font-weight: 700;
-    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 2px 5px rgba(59, 130, 246, 0.35);
   }
 
   /* 선택된 날짜 — 파란 테두리 (오늘과 중첩 시 둘 다 보이게) */
@@ -86,16 +78,37 @@
     outline-offset: -2px;
   }
 
-  /* 점 컨테이너 */
-  .cal-dots {
-    display: flex; align-items: center; justify-content: center;
-    gap: 2px; margin-top: 3px;
-    min-height: 8px;
-    flex-wrap: nowrap;
+  /* ── 미팅 박스 (시간 + 업체명) — 셀 안 표시 ─────────── */
+  .meeting-pill {
+    font-size: 9px;
+    line-height: 1.25;
+    padding: 1px 3px;
+    border-radius: 2px;
+    margin-top: 1.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: left;
+    letter-spacing: -0.2px;
   }
-  .cal-dots .more {
-    font-size: 9px; font-weight: 600;
-    color: #6b7280; line-height: 1; margin-left: 1px;
+  .meeting-pill .pill-time {
+    font-weight: 700;
+    margin-right: 2px;
+  }
+  .meeting-pill.ch-purchase  { background: #dbeafe; color: #1d4ed8; }
+  .meeting-pill.ch-direct    { background: #dcfce7; color: #15803d; }
+  .meeting-pill.ch-banner    { background: #fef3c7; color: #b45309; }
+  .meeting-pill.ch-referral  { background: #f3e8ff; color: #7c3aed; }
+
+  .meeting-more {
+    font-size: 9px;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 2px;
+    line-height: 1.2;
+    width: 100%;
   }
 
   /* 요일 헤더 */
@@ -185,10 +198,10 @@
 <!-- ============================================================
      2. 본문
      ============================================================ -->
-<main class="content-area px-4 pt-3">
+<main class="content-area px-3 pt-3">
 
   <!-- 2-1. 캘린더 그리드 -->
-  <div class="bg-white rounded-2xl shadow-sm p-3 mb-3">
+  <div class="bg-white rounded-2xl shadow-sm p-2 mb-3">
     <!-- 요일 헤더 -->
     <div class="grid grid-cols-7 mb-1">
       <div class="day-header is-weekend">일</div>
@@ -201,14 +214,14 @@
     </div>
 
     <!-- 6주 × 7일 그리드 -->
-    <div class="grid grid-cols-7 gap-1" id="cal-grid"></div>
+    <div class="grid grid-cols-7 gap-0.5" id="cal-grid"></div>
 
-    <!-- 채널 범례 -->
-    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-1 flex-wrap text-xs">
-      <span class="flex items-center gap-1"><span class="ch-dot ch-dot-blue"></span><span class="text-gray-500">매입DB</span></span>
-      <span class="flex items-center gap-1"><span class="ch-dot ch-dot-green"></span><span class="text-gray-500">직접생산</span></span>
-      <span class="flex items-center gap-1"><span class="ch-dot ch-dot-amber"></span><span class="text-gray-500">현수막</span></span>
-      <span class="flex items-center gap-1"><span class="ch-dot ch-dot-purple"></span><span class="text-gray-500">콜·지·기·소</span></span>
+    <!-- 채널 범례 (배지 형태로 통일) -->
+    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-around gap-1 flex-wrap">
+      <span class="badge badge-purchase">매입DB</span>
+      <span class="badge badge-direct">직접생산</span>
+      <span class="badge badge-banner">현수막</span>
+      <span class="badge badge-referral">콜·지·기·소</span>
     </div>
   </div>
 
@@ -245,9 +258,19 @@
      3. 하단 탭 바 (5개) — 캘린더 활성
      ============================================================ -->
 <nav class="bottom-nav bg-white border-t border-gray-100 flex">
-  <!-- 1. 컨택관리 -->
+  <!-- 1. 컨택관리 — G-3 아이콘 (수화기 + 우상단 캘린더 + 일정 점 4개) -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"/></svg>
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="translate(-1, 5.5) scale(0.68)"/>
+      <rect x="14.5" y="0.5" width="9" height="9" rx="1.4" fill="white" stroke="currentColor" stroke-width="1.7"/>
+      <line x1="14.5" y1="3.3" x2="23.5" y2="3.3" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="16.8" y1="0.5" x2="16.8" y2="2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      <line x1="21.2" y1="0.5" x2="21.2" y2="2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      <circle cx="17" cy="5.7" r="0.85" fill="currentColor" stroke="none"/>
+      <circle cx="19" cy="5.7" r="0.85" fill="currentColor" stroke="none"/>
+      <circle cx="21" cy="5.7" r="0.85" fill="currentColor" stroke="none"/>
+      <circle cx="17" cy="7.8" r="0.85" fill="currentColor" stroke="none"/>
+    </svg>
     <span class="text-xs">컨택관리</span>
   </button>
   <!-- 2. 일정·계약 -->
@@ -265,9 +288,19 @@
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     <span class="text-xs">수납</span>
   </button>
-  <!-- 5. DB관리 -->
+  <!-- 5. DB관리 — E. 카트 + DB박스 (DB 매입+생산 기록) -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <!-- 카트 바퀴 -->
+      <circle cx="9" cy="20" r="1.3"/>
+      <circle cx="17" cy="20" r="1.3"/>
+      <!-- 카트 손잡이 + 몸체 -->
+      <path d="M3 4 L5 4 L7 13 L18 13 L20 6 L7 6"/>
+      <!-- 카트 위 박스 (DB 묶음) -->
+      <rect x="9" y="7.5" width="7" height="4.5" rx="0.5" fill="white"/>
+      <line x1="9" y1="10" x2="16" y2="10"/>
+      <line x1="11" y1="7.5" x2="11" y2="12"/>
+    </svg>
     <span class="text-xs">DB관리</span>
   </button>
 </nav>
@@ -281,29 +314,27 @@
    ============================================================ */
 const USER_INFO    = { cohort: 'PRM 5기', name: '이수강' };
 const COURSE_START = new Date(2026, 3, 17); // 4월 17일 (금) — 수강 시작
-const COURSE_END   = addDaysPure(COURSE_START, 55); // 시작 + 55일 = 수료일 (6/11)
-const EDIT_END     = addDaysPure(COURSE_START, 69); // 시작 + 69일 = 편집 종료 (6/25)
+const COURSE_END   = addDaysPure(COURSE_START, 55); // 시작 + 55일 = 수료일
+const EDIT_END     = addDaysPure(COURSE_START, 69); // 시작 + 69일 = 편집 종료
 const TODAY        = new Date(2026, 3, 22); // 4월 22일 (수) — 오늘
 
-/* 채널 → 배지 클래스 */
+/* 채널 → 배지 클래스 (선택된 날짜 카드용) */
 const BADGE_CLASS = {
   '매입DB': 'badge-purchase', '직접생산': 'badge-direct',
   '현수막': 'badge-banner',   '콜·지·기·소': 'badge-referral'
 };
-/* 채널 → 점 클래스 */
-const DOT_CLASS = {
-  '매입DB': 'ch-dot-blue', '직접생산': 'ch-dot-green',
-  '현수막': 'ch-dot-amber', '콜·지·기·소': 'ch-dot-purple'
+/* 채널 → 셀 미팅 박스 클래스 */
+const PILL_CLASS = {
+  '매입DB': 'ch-purchase', '직접생산': 'ch-direct',
+  '현수막': 'ch-banner',   '콜·지·기·소': 'ch-referral'
 };
-/* 채널 정렬 순서 (점 표시 일관성용) */
-const CHANNEL_ORDER = ['매입DB', '직접생산', '현수막', '콜·지·기·소'];
 
 /* 한글 요일 (JS getDay: 일=0, ..., 토=6) */
 const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
 /* ============================================================
-   업체관리 탭의 D(미팅날짜) + F(채널) 데이터 (읽기 전용 데모)
-   schedule-weekly v2의 미팅 데이터와 일관성 유지 + 4월 보강
+   업체관리 탭의 D(미팅날짜) + F(채널) + G(업체명) + E(미팅시간) 데이터
+   schedule-weekly v2 + 4월 보강 데모
    ============================================================ */
 const meetings = [
   // 4/17 (금) — 첫날, 현수막 계약 + 현수막 완료
@@ -311,24 +342,24 @@ const meetings = [
     업체명: '○○부동산', 장소: '잠실', 상태: '계약', 수임비: 300 },
   { id: 'm2', 미팅날짜: '2026-04-17', 미팅시간: '14:00', channel: '현수막',
     업체명: '△△식당', 장소: '방이동', 상태: '완료', 수임비: 0 },
-  // 4/18 (토) — 직접생산 예약
+  // 4/18 (토)
   { id: 'm3', 미팅날짜: '2026-04-18', 미팅시간: '11:00', channel: '직접생산',
     업체명: '□□카페', 장소: '홍대', 상태: '예약', 수임비: 0 },
-  // 4/20 (월) — 변경 (보라)
+  // 4/20 (월) — 변경 (셀에는 안 보임, 하단 카드에는 보임)
   { id: 'm4', 미팅날짜: '2026-04-20', 미팅시간: '15:30', channel: '콜·지·기·소',
     업체명: '◇◇마트', 장소: '강남', 상태: '변경', 수임비: 0 },
-  // 4/22 (수, 오늘) — 예약 2건 (서로 다른 채널)
+  // 4/22 (수, 오늘) — 예약 2건
   { id: 'm5', 미팅날짜: '2026-04-22', 미팅시간: '09:00', channel: '매입DB',
     업체명: '▽▽의원', 장소: '서초', 상태: '예약', 수임비: 0 },
   { id: 'm6', 미팅날짜: '2026-04-22', 미팅시간: '13:30', channel: '현수막',
     업체명: '☆☆세탁소', 장소: '성수', 상태: '예약', 수임비: 0 },
-  // 4/23 (목) — 취소
+  // 4/23 (목) — 취소 (셀에는 안 보임, 하단 카드에는 보임)
   { id: 'm8', 미팅날짜: '2026-04-23', 미팅시간: '11:00', channel: '직접생산',
     업체명: '◎◎스튜디오', 장소: '한남동', 상태: '취소', 수임비: 0 },
   // 4/24 (금) — 4/20 변경분 새 카드
   { id: 'm4_new', 미팅날짜: '2026-04-24', 미팅시간: '10:00', channel: '콜·지·기·소',
     업체명: '◇◇마트', 장소: '강남', 상태: '예약', 수임비: 0 },
-  // 4/27 (월) — 5건 (점 3개 + "+2" 시연)
+  // 4/27 (월) — 5건 (3개 표시 + "+2" 시연)
   { id: 'm9',  미팅날짜: '2026-04-27', 미팅시간: '09:00', channel: '매입DB',   업체명: 'A업체', 장소: '서초', 상태: '예약', 수임비: 0 },
   { id: 'm10', 미팅날짜: '2026-04-27', 미팅시간: '11:00', channel: '직접생산', 업체명: 'B업체', 장소: '강서', 상태: '예약', 수임비: 0 },
   { id: 'm11', 미팅날짜: '2026-04-27', 미팅시간: '13:00', channel: '현수막',   업체명: 'C업체', 장소: '강북', 상태: '예약', 수임비: 0 },
@@ -399,6 +430,14 @@ function getWeekLabel(date) {
   return `${w}주차`;
 }
 
+/* HTML 이스케이프 */
+function escHtml(v) {
+  return (v || '').toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 /* ============================================================
    렌더: 캘린더 그리드 (6주 × 7일 = 42칸)
    ============================================================ */
@@ -407,18 +446,15 @@ function renderCalendar() {
   document.getElementById('month-label').textContent =
     `${currentMonth.year}년 ${currentMonth.month + 1}월`;
 
-  // 월 네비 활성/비활성 (편집 기간 외 월로 못 가게)
+  // 월 네비 활성/비활성
   updateMonthNavState();
 
   // 그리드 생성
   const grid = document.getElementById('cal-grid');
   grid.innerHTML = '';
 
-  // 해당 월 1일의 요일 (일=0, ..., 토=6)
   const firstDay = new Date(currentMonth.year, currentMonth.month, 1);
   const startWeekday = firstDay.getDay();
-
-  // 그리드 시작일 = 해당 월 1일에서 startWeekday만큼 앞으로 (이전 달 일부 포함)
   const gridStart = addDaysPure(firstDay, -startWeekday);
 
   let hasDisabled = false;
@@ -446,30 +482,27 @@ function renderCalendar() {
     if (dow === 0) cell.classList.add('is-sun');
     if (dow === 6) cell.classList.add('is-sat');
 
-    // 미팅 점 (편집 가능 + 같은 달일 때만)
-    let dotsHTML = '<div class="cal-dots">';
+    // 미팅 박스 (편집 가능 + 같은 달일 때만, 변경/취소 제외)
+    let pillsHTML = '';
     if (inMonth && inEdit) {
-      const dayMeetings = meetings.filter(m => m.미팅날짜 === isoDate);
-      if (dayMeetings.length > 0) {
-        // 채널 순서대로 정렬
-        const sorted = dayMeetings.slice().sort((a, b) =>
-          CHANNEL_ORDER.indexOf(a.channel) - CHANNEL_ORDER.indexOf(b.channel)
-        );
-        const visible = Math.min(sorted.length, 3);
-        for (let j = 0; j < visible; j++) {
-          dotsHTML += `<span class="ch-dot ${DOT_CLASS[sorted[j].channel]}"></span>`;
-        }
-        if (sorted.length > 3) {
-          dotsHTML += `<span class="more">+${sorted.length - 3}</span>`;
-        }
+      const dayMeetings = meetings
+        .filter(m => m.미팅날짜 === isoDate)
+        .filter(m => !['변경', '취소'].includes(m.상태))
+        .sort((a, b) => a.미팅시간.localeCompare(b.미팅시간));
+
+      const visible = Math.min(dayMeetings.length, 3);
+      for (let j = 0; j < visible; j++) {
+        const m = dayMeetings[j];
+        const cls = PILL_CLASS[m.channel];
+        const company = escHtml(m.업체명);
+        pillsHTML += `<div class="meeting-pill ${cls}"><span class="pill-time">${m.미팅시간}</span>${company}</div>`;
+      }
+      if (dayMeetings.length > 3) {
+        pillsHTML += `<div class="meeting-more">+${dayMeetings.length - 3}</div>`;
       }
     }
-    dotsHTML += '</div>';
 
-    cell.innerHTML = `
-      <div class="date-num">${cellDate.getDate()}</div>
-      ${dotsHTML}
-    `;
+    cell.innerHTML = `<div class="date-num">${cellDate.getDate()}</div>${pillsHTML}`;
 
     if (inMonth && inEdit) {
       cell.onclick = () => selectDate(isoDate);
@@ -480,7 +513,6 @@ function renderCalendar() {
     grid.appendChild(cell);
   }
 
-  // 편집 외 안내 배너 표시 여부
   document.getElementById('edit-banner').classList.toggle('hidden', !hasDisabled);
 }
 
@@ -489,13 +521,11 @@ function updateMonthNavState() {
   const prevBtn = document.getElementById('prev-month-btn');
   const nextBtn = document.getElementById('next-month-btn');
 
-  // 이전 달의 마지막 날이 수강시작일보다 이전이면 → 비활성
   const prevYear  = currentMonth.month === 0 ? currentMonth.year - 1 : currentMonth.year;
   const prevMonth = currentMonth.month === 0 ? 11 : currentMonth.month - 1;
   const prevMonthLastDay = new Date(prevYear, prevMonth + 1, 0);
   const canGoPrev = prevMonthLastDay.getTime() >= COURSE_START.getTime();
 
-  // 다음 달의 첫 날이 편집종료일보다 이후면 → 비활성
   const nextYear  = currentMonth.month === 11 ? currentMonth.year + 1 : currentMonth.year;
   const nextMonth = currentMonth.month === 11 ? 0 : currentMonth.month + 1;
   const nextMonthFirstDay = new Date(nextYear, nextMonth, 1);
@@ -508,7 +538,7 @@ function updateMonthNavState() {
 }
 
 /* ============================================================
-   렌더: 선택된 날짜 미팅 요약
+   렌더: 선택된 날짜 미팅 요약 (모든 상태 표시)
    ============================================================ */
 function renderDaySummary() {
   const date = fromISODate(selectedDate);
@@ -520,6 +550,7 @@ function renderDaySummary() {
     `${fmtMD(date)} (${dayKo})${todayMark}`;
   document.getElementById('selected-period-label').textContent = getWeekLabel(date);
 
+  // 하단 카드는 모든 상태 다 표시 (변경/취소 포함)
   const dayMeetings = meetings
     .filter(m => m.미팅날짜 === selectedDate)
     .sort((a, b) => a.미팅시간.localeCompare(b.미팅시간));
@@ -538,7 +569,6 @@ function renderDaySummary() {
     list.innerHTML = dayMeetings.map(m => renderMeetingMini(m)).join('');
   }
 
-  // 일정·계약 이동 버튼 라벨/비활성
   const goBtn = document.getElementById('go-schedule-btn');
   const goLabel = document.getElementById('go-schedule-label');
   if (!inEdit) {
@@ -553,7 +583,7 @@ function renderDaySummary() {
   }
 }
 
-/* 미팅 한 줄 미니 카드 (일정·계약 탭과 동일한 상태별 색) */
+/* 미팅 한 줄 미니 카드 */
 function renderMeetingMini(m) {
   const stateMap = {
     '예약':   { card: 'card-reserved',    icon: '🟡' },
@@ -570,15 +600,13 @@ function renderMeetingMini(m) {
     ? `<span class="text-xs font-bold text-green-700 shrink-0">${m.수임비}만원</span>`
     : '';
 
-  const esc = v => (v || '').toString().replace(/</g, '&lt;');
-
   return `
     <div class="${s.card} rounded-lg px-3 py-2 flex items-center gap-2 fade-in">
       <span class="shrink-0 text-base leading-none">${s.icon}</span>
-      <span class="text-xs font-bold ${timeCls} shrink-0">${esc(m.미팅시간)}</span>
-      <span class="badge ${BADGE_CLASS[m.channel]} shrink-0">${esc(m.channel)}</span>
-      <span class="text-xs font-semibold ${titleCls} truncate flex-1">${esc(m.업체명)}</span>
-      <span class="text-xs ${placeCls} truncate shrink-0 max-w-16">${esc(m.장소)}</span>
+      <span class="text-xs font-bold ${timeCls} shrink-0">${escHtml(m.미팅시간)}</span>
+      <span class="badge ${BADGE_CLASS[m.channel]} shrink-0">${escHtml(m.channel)}</span>
+      <span class="text-xs font-semibold ${titleCls} truncate flex-1">${escHtml(m.업체명)}</span>
+      <span class="text-xs ${placeCls} truncate shrink-0 max-w-16">${escHtml(m.장소)}</span>
       ${feeBadge}
     </div>
   `;
@@ -593,13 +621,11 @@ function moveMonth(delta) {
   if (newMonth < 0)  { newYear--; newMonth = 11; }
   if (newMonth > 11) { newYear++; newMonth = 0;  }
 
-  // 이동 후 그 달의 마지막 날이 수강시작일 이전이면 못 감
   const lastDay = new Date(newYear, newMonth + 1, 0);
   if (lastDay.getTime() < COURSE_START.getTime()) {
     showToast('수강 시작 전입니다');
     return;
   }
-  // 이동 후 그 달의 첫 날이 편집종료일 이후면 못 감
   const firstDay = new Date(newYear, newMonth, 1);
   if (firstDay.getTime() > EDIT_END.getTime()) {
     showToast('편집 종료 후입니다');
