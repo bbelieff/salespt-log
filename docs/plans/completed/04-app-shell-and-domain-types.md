@@ -1,9 +1,13 @@
 ---
 slug: app-shell-and-domain-types
-status: active
+status: completed
 created: 2026-04-27
-worktree: ../wt/app-shell
-pr: feat/app-shell-and-domain-types
+completed: 2026-04-27
+worktree: ../wt/app-shell (정리됨)
+pr: feat/app-shell-and-domain-types (머지됨)
+commits:
+  - 46c9f43 feat(app-shell): 5-tab navigation + sync domain types
+  - 75a32d6 fix(types): align domain model with SSOT handoff
 ---
 
 # PR 1 — 5탭 앱 셸 + 도메인 타입/시트 주소 동기화
