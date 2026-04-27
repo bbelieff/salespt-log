@@ -403,38 +403,34 @@ function updateTime(part, value) {
 
 ## 5. Navigation
 
-### Bottom Navigation (모바일)
-하단 탭 네비게이션 (4개 탭).
+### Bottom Navigation (모바일) ⭐ 5탭 + 의미 SVG 아이콘 고정
 
-**구현 예시:**
-```html
-<nav class="bottom-nav bg-white border-t border-gray-100 px-4 py-2">
-  <div class="flex justify-around">
-    <button class="flex flex-col items-center gap-1 py-2 text-blue-600">
-      <span class="text-sm">📊</span>
-      <span class="text-xs font-medium">컨택관리</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 py-2 text-gray-400">
-      <span class="text-sm">📅</span>
-      <span class="text-xs">일정·계약</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 py-2 text-gray-400">
-      <span class="text-sm">💰</span>
-      <span class="text-xs">수납관리</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 py-2 text-gray-400">
-      <span class="text-sm">📊</span>
-      <span class="text-xs">DB관리</span>
-    </button>
-  </div>
-</nav>
-```
+하단 탭 네비게이션 = **5개 고정**: 컨택관리 / 일정·계약 / 캘린더 / 수납 / DB관리.
+아이콘은 **이모지 금지, SVG 고정**. 각 아이콘은 탭의 의미를 함축하므로 임의 변경 금지 (변경 시 ADR 필요).
+
+**아이콘 의미·결정 기록:**
+| 탭 | 아이콘 의미 | 디자인 출처 |
+|---|---|---|
+| 컨택관리 | 수화기(전화) + 우상단 캘린더 + 점 4개(채널 슬롯) — "전화로 컨택 → 일정 → 4채널 관리" | calendar-monthly v3, 후보 G/G-1/G-2 중 G-3 채택 |
+| 일정·계약 | 클립보드 + 체크 — 미팅 진행/계약 처리 | Heroicons clipboard-check |
+| 캘린더 | 월간 그리드 — 한 달 전체 시각화 | Heroicons calendar (filled) |
+| 수납 | 코인 + $ — 수임비 입금 처리 | Heroicons currency-dollar |
+| DB관리 | 카트 + 위에 DB박스 — "DB 매입(카트) + 생산(박스 채워가기)" | calendar-monthly v3, E안 채택 |
+
+**활성 탭 색**: `text-blue-600 + font-semibold`, 비활성: `text-gray-400 hover:text-gray-600`.
+**각 버튼**: `flex-1 py-2 flex flex-col items-center gap-0.5`, 아이콘 `w-5 h-5`, 라벨 `text-xs`.
+
+**SVG 정본은 `docs/design/prototypes/calendar-monthly.html` 의 `<nav class="bottom-nav">` 영역.** 다른 시안에 옮길 때는 그 마크업을 그대로 복사. React 포팅 시 `components/TabBar.tsx` 단일 파일로 분리.
 
 **CSS 정의:**
 ```css
 .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; }
-.content-area { padding-bottom: 72px; }
+.content-area { padding-bottom: 76px; }   /* 5탭 높이에 맞춰 76px */
 ```
+
+**원칙:**
+- 5개 탭 순서·라벨·아이콘은 **고정**. 추가/제거/순서변경 = ADR 필요.
+- 같은 SVG 코드를 여러 시안에 복붙해야 한다면 **이미 분리 시점**. React 포팅 시 즉시 컴포넌트화.
 
 ### Tab Navigation (채널 전환)
 상단 채널 탭 (4개 채널).
