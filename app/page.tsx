@@ -10,8 +10,14 @@ export default function HomePage() {
         <br />
         대시보드가 저절로 채워집니다.
       </p>
-      <div className="mt-8 rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
-        부트스트랩 상태. 다음 plan 에서 로그인·온보딩 화면을 붙입니다.
+      <a
+        href="/contact"
+        className="mt-8 rounded-xl bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
+      >
+        시작하기 →
+      </a>
+      <div className="rounded-xl border border-dashed border-slate-300 p-6 text-xs text-slate-500">
+        로그인·온보딩 (별도 PR)은 추후 추가됩니다. 지금은 5탭 셸 동작 확인용.
       </div>
     </main>
   );
