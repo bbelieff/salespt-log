@@ -115,6 +115,27 @@ export default function ContactPage() {
   };
 
   /**
+   * 채널의 metric을 functional setState로 ±delta 만큼 조정.
+   * setMetric은 외부에서 nextValue를 계산해 넘기는 방식이라 stale closure 위험.
+   * 이 헬퍼는 항상 최신 draft를 사용해 Math.max 적용.
+   */
+  const adjustMetric = (
+    channel: Channel,
+    key: keyof ChannelDailyRowMetrics,
+    delta: number,
+  ) => {
+    setDraft((d) => {
+      const cur = d[channel];
+      const newValue = Math.max(0, cur[key] + delta);
+      const next: ChannelDailyRowMetrics = { ...cur, [key]: newValue };
+      if (next.contactSuccess > next.contactProgress) {
+        next.contactSuccess = next.contactProgress;
+      }
+      return { ...d, [channel]: next };
+    });
+  };
+
+  /**
    * step(channel, key, delta) — 시안 동작 매칭:
    *   컨택성공 +1: 그 채널에 빈 신규 슬롯 자동 생성
    *   컨택성공 -1:
@@ -144,7 +165,7 @@ export default function ContactPage() {
           예약비고: "",
         };
         setNewSlots((s) => [...s, empty]);
-        setMetric(ch, "contactSuccess", cur2 + 1);
+        adjustMetric(ch, "contactSuccess", +1);
       } else {
         // -1
         const news = newSlotsForChannel(ch);
@@ -152,7 +173,7 @@ export default function ContactPage() {
           // 마지막 신규 슬롯 제거
           const last = news[news.length - 1]!;
           setNewSlots((s) => s.filter((x) => x.tempId !== last.tempId));
-          setMetric(ch, "contactSuccess", Math.max(0, cur2 - 1));
+          adjustMetric(ch, "contactSuccess", -1);
         } else {
           // 등록완료 슬롯 중 마지막 → API 삭제
           const saved = savedByChannel[ch];
@@ -164,10 +185,8 @@ export default function ContactPage() {
       return;
     }
 
-    // 다른 키 단순 ±1
-    let next = Math.max(0, cur2 + delta);
-    setMetric(ch, key, next);
-    void next;
+    // 다른 키 단순 ±1 (functional)
+    adjustMetric(ch, key, delta);
   };
 
   const setVal = (key: keyof ChannelDailyRowMetrics, value: number) => {
@@ -182,9 +201,7 @@ export default function ContactPage() {
     const target = newSlots.find((s) => s.tempId === tempId);
     if (!target) return;
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
-    // 컨택성공 -1
-    const cur = draft[target.channel];
-    setMetric(target.channel, "contactSuccess", Math.max(0, cur.contactSuccess - 1));
+    adjustMetric(target.channel, "contactSuccess", -1);
     showToast("✕ 삭제 · 컨택성공 -1");
   };
 
@@ -236,15 +253,19 @@ export default function ContactPage() {
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?`)) return;
     try {
+      // 1) 시트에서 미팅 행 클리어
       await removeMeeting.mutateAsync(meeting.id);
-      // 컨택성공 -1
-      const cur = draft[meeting.channel];
-      setMetric(
-        meeting.channel,
-        "contactSuccess",
-        Math.max(0, cur.contactSuccess - 1),
-      );
-      showToast("✕ 삭제 · 컨택성공 -1");
+      // 2) 컨택성공 -1 (functional setState — stale closure 안전)
+      adjustMetric(meeting.channel, "contactSuccess", -1);
+      // 3) 4지표를 시트에 즉시 저장 (등록 시와 동일한 atomic 패턴)
+      //    setDraft가 반영된 후의 최신 값을 functional updater로 읽어 mutate.
+      //    setDraft는 비동기이므로 다음 tick에 saveMetrics 호출.
+      setDraft((latest) => {
+        // 사이드 이펙트: 저장은 비동기로 분리
+        void saveMetrics.mutateAsync(latest);
+        return latest;
+      });
+      showToast("✕ 삭제 · 컨택성공 -1 (시트 동기화됨)");
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);
     }
