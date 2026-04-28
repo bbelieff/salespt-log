@@ -45,6 +45,8 @@ async function resolveSheet(email: string): Promise<string> {
 export interface ContactDayView {
   date: string;
   weekIndex: number; // 1~10
+  /** 수강시작일 (YYYY-MM-DD) — UI에서 7일 요일 바 매핑에 사용 */
+  courseStart: string;
   channels: Record<Channel, ChannelDailyRowMetrics>;
   meetings: Meeting[];
 }
@@ -101,7 +103,17 @@ export async function loadDay(
     };
   }
 
-  return { date, weekIndex: week, channels, meetings };
+  const csISO = `${courseStart.getFullYear()}-${String(
+    courseStart.getMonth() + 1,
+  ).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
+
+  return {
+    date,
+    weekIndex: week,
+    courseStart: csISO,
+    channels,
+    meetings,
+  };
 }
 
 /**

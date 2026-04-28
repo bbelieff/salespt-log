@@ -1,11 +1,12 @@
 /**
  * 컨택관리 탭 — 4채널 4지표 입력 + 미팅 슬롯 등록.
- * 정본: docs/design/prototypes/contact-daily-input.html (v7)
+ * 정본: docs/design/prototypes/contact-daily-input.html (v7) — 픽셀 매칭 포팅.
  *
- * 데이터 흐름:
- *   - useDay(date) → ContactDayView (4채널 metrics + 그날 미팅들)
- *   - useSaveMetrics(date) → 4지표 저장
- *   - useAppendMeeting / usePatchMeeting / useRemoveMeeting → 미팅 CRUD
+ * 핵심 모델 (시안과 동일):
+ *   - 컨택성공 = (등록 완료 미팅 수) + (신규 슬롯 수) per 채널
+ *   - 컨택성공 +1 → 빈 신규 슬롯 자동 생성 (선택 채널)
+ *   - 신규 슬롯 [등록] → API POST → 등록완료 슬롯으로 전환 (서버측 미팅으로 합류)
+ *   - [삭제] (신규/등록완료 모두) → 슬롯 제거 + 컨택성공 -1
  */
 "use client";
 
@@ -19,36 +20,14 @@ import {
   useSaveMetrics,
 } from "@/query/contact-hooks";
 import type { ChannelDailyRowMetrics } from "@/service";
-import MetricStepper from "@/components/ui/MetricStepper";
-import ChannelBadge from "@/components/ui/ChannelBadge";
-import MeetingSlotCard, {
+import WeekHeader from "./_components/WeekHeader";
+import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
+import MeetingSlotItem, {
   type NewSlot,
-} from "./_components/MeetingSlotCard";
+} from "./_components/MeetingSlotItem";
 import { fmtISO } from "./_lib/week";
 
-const METRIC_LABELS: Array<{
-  key: keyof ChannelDailyRowMetrics;
-  label: string;
-  hint?: string;
-}> = [
-  { key: "production", label: "생산" },
-  { key: "inflow", label: "유입" },
-  { key: "contactProgress", label: "컨택진행" },
-  {
-    key: "contactSuccess",
-    label: "컨택성공",
-    hint: "= 미팅예약 슬롯 수",
-  },
-];
-
 const TODAY_ISO = fmtISO(new Date());
-
-function uuid(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 const EMPTY_METRICS: ChannelDailyRowMetrics = {
   production: 0,
@@ -57,18 +36,28 @@ const EMPTY_METRICS: ChannelDailyRowMetrics = {
   contactSuccess: 0,
 };
 
+const EMPTY_BY_CHANNEL = (): Record<Channel, ChannelDailyRowMetrics> => ({
+  매입DB: { ...EMPTY_METRICS },
+  직접생산: { ...EMPTY_METRICS },
+  현수막: { ...EMPTY_METRICS },
+  "콜·지·기·소": { ...EMPTY_METRICS },
+});
+
+function uuid(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function ContactPage() {
   const [date, setDate] = useState<string>(TODAY_ISO);
   const [activeChannel, setActiveChannel] = useState<Channel>("매입DB");
   const [toast, setToast] = useState<string>("");
-  const [newSlotsByChannel, setNewSlotsByChannel] = useState<
-    Record<Channel, NewSlot[]>
-  >({
-    매입DB: [],
-    직접생산: [],
-    현수막: [],
-    "콜·지·기·소": [],
-  });
+  const [draft, setDraft] = useState<Record<Channel, ChannelDailyRowMetrics>>(
+    EMPTY_BY_CHANNEL,
+  );
+  const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
 
   const dayQuery = useDay(date);
   const saveMetrics = useSaveMetrics(date);
@@ -76,19 +65,18 @@ export default function ContactPage() {
   const patchMeeting = usePatchMeeting(date);
   const removeMeeting = useRemoveMeeting(date);
 
-  const serverChannels = dayQuery.data?.channels;
-  const [draft, setDraft] = useState<Record<Channel, ChannelDailyRowMetrics>>({
-    매입DB: { ...EMPTY_METRICS },
-    직접생산: { ...EMPTY_METRICS },
-    현수막: { ...EMPTY_METRICS },
-    "콜·지·기·소": { ...EMPTY_METRICS },
-  });
-
+  // 서버 데이터 로드 시 draft 동기화
   useEffect(() => {
-    if (serverChannels) setDraft(serverChannels);
-  }, [serverChannels]);
+    if (dayQuery.data) {
+      setDraft(dayQuery.data.channels);
+      // 날짜 바뀌면 신규 슬롯도 비움
+      setNewSlots([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayQuery.data?.date]);
 
-  const channelMeetings = useMemo(() => {
+  // 채널별 등록완료 미팅
+  const savedByChannel = useMemo(() => {
     const result: Record<Channel, Meeting[]> = {
       매입DB: [],
       직접생산: [],
@@ -101,110 +89,187 @@ export default function ContactPage() {
     return result;
   }, [dayQuery.data]);
 
+  const newSlotsForChannel = (ch: Channel) =>
+    newSlots.filter((s) => s.channel === ch);
+
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 2000);
+    setTimeout(() => setToast(""), 2200);
   };
 
-  const updateMetric = (
+  // ── 4지표 stepper ────────────────────────────────────────
+  const setMetric = (
     channel: Channel,
     key: keyof ChannelDailyRowMetrics,
-    value: number,
+    nextValue: number,
   ) => {
     setDraft((d) => {
-      const next = { ...d, [channel]: { ...d[channel], [key]: value } };
-      const ch = next[channel];
-      if (ch.contactSuccess > ch.contactProgress) {
-        ch.contactSuccess = ch.contactProgress;
+      const cur = d[channel];
+      const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
+      // 컨택성공 ≤ 컨택진행 클램프
+      if (next.contactSuccess > next.contactProgress) {
+        next.contactSuccess = next.contactProgress;
       }
-      return next;
+      return { ...d, [channel]: next };
     });
   };
 
-  const handleSaveMetrics = async () => {
-    try {
-      await saveMetrics.mutateAsync(draft);
-      showToast("저장 완료");
-    } catch (e) {
-      showToast(`저장 실패: ${(e as Error).message}`);
-    }
-  };
+  /**
+   * step(channel, key, delta) — 시안 동작 매칭:
+   *   컨택성공 +1: 그 채널에 빈 신규 슬롯 자동 생성
+   *   컨택성공 -1:
+   *     - 신규 슬롯 있으면 마지막 거 제거
+   *     - 없으면 등록완료 슬롯 마지막 거 → API DELETE
+   *   다른 키는 단순 ±1
+   */
+  const step = (key: keyof ChannelDailyRowMetrics, delta: number) => {
+    const ch = activeChannel;
+    const cur = draft[ch];
+    const cur2 = cur[key];
 
-  const addNewSlot = () => {
-    setNewSlotsByChannel((all) => ({
-      ...all,
-      [activeChannel]: [
-        ...all[activeChannel],
-        {
+    if (key === "contactSuccess") {
+      if (delta > 0) {
+        if (cur2 >= cur.contactProgress) {
+          showToast("⚠ 컨택성공은 컨택진행보다 클 수 없어요");
+          return;
+        }
+        // 신규 슬롯 자동 생성
+        const empty: NewSlot = {
           tempId: uuid(),
+          channel: ch,
           미팅날짜: date,
           미팅시간: "",
           업체명: "",
           장소: "",
           예약비고: "",
-        },
-      ],
-    }));
+        };
+        setNewSlots((s) => [...s, empty]);
+        setMetric(ch, "contactSuccess", cur2 + 1);
+      } else {
+        // -1
+        const news = newSlotsForChannel(ch);
+        if (news.length > 0) {
+          // 마지막 신규 슬롯 제거
+          const last = news[news.length - 1]!;
+          setNewSlots((s) => s.filter((x) => x.tempId !== last.tempId));
+          setMetric(ch, "contactSuccess", Math.max(0, cur2 - 1));
+        } else {
+          // 등록완료 슬롯 중 마지막 → API 삭제
+          const saved = savedByChannel[ch];
+          const last = saved[saved.length - 1];
+          if (last) handleRemoveSavedMeeting(last);
+          else showToast("이 채널의 컨택성공이 이미 0입니다");
+        }
+      }
+      return;
+    }
+
+    // 다른 키 단순 ±1
+    let next = Math.max(0, cur2 + delta);
+    setMetric(ch, key, next);
+    void next;
   };
 
-  const updateNewSlot = (channel: Channel, tempId: string, next: NewSlot) => {
-    setNewSlotsByChannel((all) => ({
-      ...all,
-      [channel]: all[channel].map((s) => (s.tempId === tempId ? next : s)),
-    }));
+  const setVal = (key: keyof ChannelDailyRowMetrics, value: number) => {
+    setMetric(activeChannel, key, Math.max(0, value));
   };
 
-  const cancelNewSlot = (channel: Channel, tempId: string) => {
-    setNewSlotsByChannel((all) => ({
-      ...all,
-      [channel]: all[channel].filter((s) => s.tempId !== tempId),
-    }));
+  // ── 슬롯 액션 ────────────────────────────────────────────
+  const updateNewSlot = (tempId: string, next: NewSlot) =>
+    setNewSlots((s) => s.map((x) => (x.tempId === tempId ? next : x)));
+
+  const removeNewSlot = (tempId: string) => {
+    const target = newSlots.find((s) => s.tempId === tempId);
+    if (!target) return;
+    setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
+    // 컨택성공 -1
+    const cur = draft[target.channel];
+    setMetric(target.channel, "contactSuccess", Math.max(0, cur.contactSuccess - 1));
+    showToast("✕ 삭제 · 컨택성공 -1");
   };
 
-  const registerNewSlot = async (meeting: Meeting) => {
+  const registerNewSlot = async (tempId: string) => {
+    const slot = newSlots.find((s) => s.tempId === tempId);
+    if (!slot) return;
+    if (!slot.미팅날짜 || !slot.미팅시간 || !slot.업체명.trim() || !slot.장소.trim()) {
+      showToast("⚠ 미팅 일정·시간·업체명·장소는 필수입니다");
+      return;
+    }
+    const now = new Date();
+    const meeting: Meeting = {
+      id: slot.tempId,
+      예약일: TODAY_ISO,
+      예약시각: now.toTimeString().slice(0, 5),
+      미팅날짜: slot.미팅날짜,
+      미팅시간: slot.미팅시간,
+      channel: slot.channel,
+      업체명: slot.업체명.trim(),
+      장소: slot.장소.trim(),
+      예약비고: slot.예약비고.trim(),
+      상태: "예약",
+      계약여부: false,
+      수임비: 0,
+      미팅사유: "",
+      계약조건: "",
+    };
     try {
       await appendMeeting.mutateAsync(meeting);
-      const ch = draft[meeting.channel];
-      updateMetric(
-        meeting.channel,
-        "contactSuccess",
-        Math.min(ch.contactSuccess + 1, ch.contactProgress),
-      );
-      cancelNewSlot(meeting.channel, meeting.id);
-      showToast("미팅 등록됨");
+      // 등록 후 신규 슬롯에서 제거 (서버 invalidate로 등록완료 카드로 합류)
+      setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
+      showToast("✓ 등록 완료");
     } catch (e) {
       showToast(`등록 실패: ${(e as Error).message}`);
     }
   };
 
-  const handlePatchMeeting = async (
-    id: string,
-    partial: Partial<Omit<Meeting, "id">>,
-  ) => {
-    try {
-      await patchMeeting.mutateAsync({ id, partial });
-      showToast("수정 완료");
-    } catch (e) {
-      showToast(`수정 실패: ${(e as Error).message}`);
-    }
-  };
-
-  const handleRemoveMeeting = async (meeting: Meeting) => {
+  const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?`)) return;
     try {
       await removeMeeting.mutateAsync(meeting.id);
-      const ch = draft[meeting.channel];
-      updateMetric(
+      // 컨택성공 -1
+      const cur = draft[meeting.channel];
+      setMetric(
         meeting.channel,
         "contactSuccess",
-        Math.max(0, ch.contactSuccess - 1),
+        Math.max(0, cur.contactSuccess - 1),
       );
-      showToast("미팅 삭제됨");
+      showToast("✕ 삭제 · 컨택성공 -1");
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);
     }
   };
 
+  const handlePatchSavedMeeting = async (
+    id: string,
+    partial: Partial<Omit<Meeting, "id">>,
+  ) => {
+    try {
+      await patchMeeting.mutateAsync({ id, partial });
+      showToast("💾 수정 완료");
+    } catch (e) {
+      showToast(`수정 실패: ${(e as Error).message}`);
+    }
+  };
+
+  // ── 저장 ─────────────────────────────────────────────────
+  const handleSave = async () => {
+    try {
+      await saveMetrics.mutateAsync(draft);
+      showToast("✅ 저장 완료");
+    } catch (e) {
+      showToast(`저장 실패: ${(e as Error).message}`);
+    }
+  };
+
+  // ── 주차/날짜 네비 ───────────────────────────────────────
+  const moveWeek = (deltaWeeks: number) => {
+    if (!dayQuery.data) return;
+    const cur = new Date(date);
+    cur.setDate(cur.getDate() + deltaWeeks * 7);
+    setDate(fmtISO(cur));
+  };
+
+  // ── 렌더 ─────────────────────────────────────────────────
   if (dayQuery.isLoading) {
     return (
       <section className="px-4 pt-6 text-sm text-slate-500">
@@ -221,172 +286,115 @@ export default function ContactPage() {
       </section>
     );
   }
+  if (!dayQuery.data) return null;
 
-  const currentChannel = draft[activeChannel];
-  const totals = CHANNEL_ORDER.reduce(
-    (acc, ch) => {
-      const m = draft[ch];
-      acc.production += m.production;
-      acc.inflow += m.inflow;
-      acc.contactProgress += m.contactProgress;
-      acc.contactSuccess += m.contactSuccess;
-      return acc;
-    },
-    { ...EMPTY_METRICS },
-  );
+  const { weekIndex, courseStart } = dayQuery.data;
+
+  // 모든 채널 슬롯을 채널 순서대로 합쳐서 렌더 (시안과 동일)
+  const allSlots: Array<
+    | { kind: "saved"; meeting: Meeting }
+    | { kind: "new"; slot: NewSlot }
+  > = [];
+  for (const ch of CHANNEL_ORDER) {
+    for (const m of savedByChannel[ch]) allSlots.push({ kind: "saved", meeting: m });
+    for (const s of newSlotsForChannel(ch)) allSlots.push({ kind: "new", slot: s });
+  }
 
   return (
-    <section className="px-4 pt-4 pb-4">
-      <header className="mb-3 flex items-baseline justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-slate-900">
-            {date.slice(5).replace("-", "월 ")}일
-            <span className="ml-2 text-xs text-slate-400">
-              {dayQuery.data?.weekIndex}주차
-            </span>
-          </h1>
-        </div>
-        <input
-          type="date"
-          className="rounded border border-gray-300 px-2 py-1 text-xs"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
+    <>
+      <WeekHeader
+        weekIndex={weekIndex}
+        courseStart={courseStart}
+        selectedDate={date}
+        todayISO={TODAY_ISO}
+        cohortName={undefined}
+        onPrevWeek={() => moveWeek(-1)}
+        onNextWeek={() => moveWeek(1)}
+        onSelectDay={setDate}
+      />
+
+      <main className="px-4 pt-4 pb-[160px]">
+        <ChannelTabsAndPanel
+          active={activeChannel}
+          draft={draft}
+          onSelectChannel={setActiveChannel}
+          onStep={step}
+          onSetVal={setVal}
         />
-      </header>
 
-      {/* 채널 탭 */}
-      <div className="mb-3 flex border-b border-gray-200">
-        {CHANNEL_ORDER.map((ch) => {
-          const active = ch === activeChannel;
-          return (
-            <button
-              key={ch}
-              type="button"
-              onClick={() => setActiveChannel(ch)}
-              className={`flex-1 py-2 transition-colors ${
-                active ? "border-b-2 border-blue-500" : ""
-              }`}
-            >
-              <ChannelBadge channel={ch} />
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 4지표 입력 + 합계 */}
-      <div className="mb-3 grid grid-cols-[3fr_2fr] gap-3 rounded-xl bg-white p-3 shadow-sm">
-        <div className="space-y-3">
-          <div className="text-xs font-semibold text-gray-500">
-            {activeChannel} 입력
+        {/* 미팅 슬롯 리스트 */}
+        <div className="mb-3">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <span className="text-sm font-semibold text-gray-700">
+              미팅예약하기
+              {allSlots.length > 0 ? ` · ${allSlots.length}건` : ""}
+            </span>
+            <span className="text-xs text-gray-400">
+              컨택성공 1건 = 미팅예약 1건
+            </span>
           </div>
-          {METRIC_LABELS.map(({ key, label, hint }) => {
-            const cap =
-              key === "contactSuccess" &&
-              currentChannel.contactSuccess >= currentChannel.contactProgress;
-            return (
-              <div key={key} className="flex items-center gap-2">
-                <div className="w-20 shrink-0">
-                  <div className="text-sm font-medium text-gray-700">
-                    {label}
-                  </div>
-                  {hint && (
-                    <div className="text-[10px] text-gray-400">{hint}</div>
-                  )}
-                </div>
-                <MetricStepper
-                  value={currentChannel[key]}
-                  onChange={(v) => updateMetric(activeChannel, key, v)}
-                  ariaLabel={`${activeChannel} ${label}`}
-                  capped={cap}
-                  cappedHint={
-                    cap ? "컨택성공은 컨택진행을 넘을 수 없어요" : undefined
-                  }
-                  max={
-                    key === "contactSuccess"
-                      ? currentChannel.contactProgress
-                      : undefined
-                  }
-                />
+
+          {allSlots.length === 0 ? (
+            <div className="rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-6 text-center">
+              <div className="text-sm text-gray-400">
+                컨택성공을 입력하면
+                <br />
+                미팅예약 카드가 자동 생성됩니다
               </div>
-            );
-          })}
-        </div>
-        <div className="space-y-2 border-l border-gray-100 pl-3">
-          <div className="text-xs font-semibold text-gray-500">오늘 총합</div>
-          {METRIC_LABELS.map(({ key, label }) => (
-            <div
-              key={key}
-              className="flex items-baseline justify-between text-sm"
-            >
-              <span className="text-gray-500">{label}</span>
-              <span className="font-bold text-gray-900">{totals[key]}</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={handleSaveMetrics}
-        disabled={saveMetrics.isPending}
-        className="mb-4 w-full rounded-lg bg-blue-500 py-2.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-50"
-      >
-        {saveMetrics.isPending ? "저장 중…" : "💾 4지표 저장"}
-      </button>
-
-      {/* 미팅 슬롯 리스트 (활성 채널만) */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">
-            {activeChannel} 미팅 예약
-          </h2>
-          <button
-            type="button"
-            onClick={addNewSlot}
-            className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
-          >
-            + 새 미팅
-          </button>
-        </div>
-
-        {channelMeetings[activeChannel].length === 0 &&
-          newSlotsByChannel[activeChannel].length === 0 && (
-            <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center text-xs text-gray-400">
-              등록된 미팅이 없습니다
-            </div>
+          ) : (
+            allSlots.map((entry, i) =>
+              entry.kind === "saved" ? (
+                <MeetingSlotItem
+                  key={entry.meeting.id}
+                  mode="saved"
+                  index={i}
+                  meeting={entry.meeting}
+                  onPatch={(p) => handlePatchSavedMeeting(entry.meeting.id, p)}
+                  onRemove={() => handleRemoveSavedMeeting(entry.meeting)}
+                />
+              ) : (
+                <MeetingSlotItem
+                  key={entry.slot.tempId}
+                  mode="new"
+                  index={i}
+                  slot={entry.slot}
+                  reservationDate={TODAY_ISO}
+                  onChange={(next) => updateNewSlot(entry.slot.tempId, next)}
+                  onRegister={() => registerNewSlot(entry.slot.tempId)}
+                  onRemove={() => removeNewSlot(entry.slot.tempId)}
+                />
+              ),
+            )
           )}
+        </div>
+      </main>
 
-        {channelMeetings[activeChannel].map((m) => (
-          <MeetingSlotCard
-            key={m.id}
-            mode="saved"
-            meeting={m}
-            onPatch={(p) => handlePatchMeeting(m.id, p)}
-            onRemove={() => handleRemoveMeeting(m)}
-          />
-        ))}
-
-        {newSlotsByChannel[activeChannel].map((s) => (
-          <MeetingSlotCard
-            key={s.tempId}
-            mode="new"
-            channel={activeChannel}
-            reservationDate={TODAY_ISO}
-            reservationTime={new Date().toTimeString().slice(0, 5)}
-            slot={s}
-            minDate={date}
-            onChange={(next) => updateNewSlot(activeChannel, s.tempId, next)}
-            onRegister={registerNewSlot}
-            onCancel={() => cancelNewSlot(activeChannel, s.tempId)}
-          />
-        ))}
+      {/* 고정 저장 버튼 (탭바 위) */}
+      <div className="fixed bottom-[64px] left-0 right-0 z-[49] bg-gradient-to-t from-white via-white to-transparent px-4 pb-3 pt-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saveMetrics.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 py-3.5 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-600 active:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
+        >
+          {saveMetrics.isPending ? (
+            <>
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              시트 저장중...
+            </>
+          ) : (
+            <>💾 저장하기</>
+          )}
+        </button>
       </div>
 
+      {/* Toast */}
       {toast && (
-        <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900/95 px-4 py-2 text-sm text-white shadow-lg">
+        <div className="fixed bottom-[152px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}
-    </section>
+    </>
   );
 }
