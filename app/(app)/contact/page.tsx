@@ -190,7 +190,7 @@ export default function ContactPage() {
 
   const registerNewSlot = async (tempId: string) => {
     const slot = newSlots.find((s) => s.tempId === tempId);
-    if (!slot) return;
+    if (!slot) return; // 이미 등록 진행중이거나 사라진 슬롯 → 무시 (이중 클릭 방지)
     if (!slot.미팅날짜 || !slot.미팅시간 || !slot.업체명.trim() || !slot.장소.trim()) {
       showToast("⚠ 미팅 일정·시간·업체명·장소는 필수입니다");
       return;
@@ -212,12 +212,15 @@ export default function ContactPage() {
       미팅사유: "",
       계약조건: "",
     };
+    // 즉시(낙관적) 신규 슬롯에서 제거 → 버튼이 사라져 두 번 클릭 불가
+    // 실패 시 복원
+    setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
       await appendMeeting.mutateAsync(meeting);
-      // 등록 후 신규 슬롯에서 제거 (서버 invalidate로 등록완료 카드로 합류)
-      setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
       showToast("✓ 등록 완료");
     } catch (e) {
+      // 복원
+      setNewSlots((s) => [...s, slot]);
       showToast(`등록 실패: ${(e as Error).message}`);
     }
   };

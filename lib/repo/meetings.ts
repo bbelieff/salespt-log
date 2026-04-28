@@ -276,12 +276,16 @@ export async function findByDate(
   const all = (res.data.values ?? []) as unknown[][];
   const targetCol = type === "reservation" ? COL.예약일 : COL.미팅날짜;
   const result: Meeting[] = [];
+  // 같은 id가 여러 행에 있으면 첫 번째만 사용 (방어적 dedupe)
+  const seenIds = new Set<string>();
   for (const r of all) {
-    // 날짜는 serial일 수 있으므로 변환 후 비교
     const rowDate = serialToISODate(r[targetCol]);
     if (rowDate !== date) continue;
     const parsed = rowToMeeting(r);
-    if (parsed) result.push(parsed);
+    if (!parsed) continue;
+    if (seenIds.has(parsed.id)) continue;
+    seenIds.add(parsed.id);
+    result.push(parsed);
   }
   return result;
 }
