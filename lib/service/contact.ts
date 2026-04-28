@@ -84,7 +84,11 @@ export async function loadDay(
   }
 
   const { rows } = await readWeek(spreadsheetId, week);
-  const meetings = await findByDate(spreadsheetId, date, "meeting");
+  // ⭐ 컨택관리 탭은 "예약일(컨택한 날)" 기준으로 미팅 조회.
+  // 4/28에 컨택해서 4/29에 잡힌 미팅도 4/28 view에 보여야 함.
+  // 미팅날짜 기준 조회는 일정·계약 탭(PR 3) 몫.
+  // SSOT: sheet-structure.md §2 영업관리!I = 예약일 TEXTJOIN
+  const meetings = await findByDate(spreadsheetId, date, "reservation");
 
   // 그 날짜의 4채널만 필터
   const dayRows = rows.filter((r) => r.date === date);

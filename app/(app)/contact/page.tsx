@@ -198,7 +198,9 @@ export default function ContactPage() {
     const now = new Date();
     const meeting: Meeting = {
       id: slot.tempId,
-      예약일: TODAY_ISO,
+      // 예약일 = 페이지 선택 날짜 (컨택한 날). 사용자가 4/27 view에서
+      // 등록하면 예약일=4/27, 미팅날짜는 슬롯의 값(4/29 등 자유).
+      예약일: date,
       예약시각: now.toTimeString().slice(0, 5),
       미팅날짜: slot.미팅날짜,
       미팅시간: slot.미팅시간,
@@ -222,13 +224,8 @@ export default function ContactPage() {
       //    → 컨택성공이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
       await saveMetrics.mutateAsync(draft);
       showToast("✓ 등록 완료 (시트 동기화됨)");
-
-      // 3) 미팅 날짜가 페이지 selected date와 다르면 자동 이동
-      //    "사라진 것처럼 보이는" UX 혼란 방지
-      if (slot.미팅날짜 !== date) {
-        setDate(slot.미팅날짜);
-        showToast(`📅 ${slot.미팅날짜}로 이동`);
-      }
+      // 컨택관리 탭은 예약일 기준 조회. 미팅날짜가 다른 날이어도
+      // 이 화면에 슬롯이 그대로 남는다 (예약일 = 현재 page date 동일).
     } catch (e) {
       // 복원
       setNewSlots((s) => [...s, slot]);
