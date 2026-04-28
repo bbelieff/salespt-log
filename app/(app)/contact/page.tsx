@@ -65,12 +65,31 @@ export default function ContactPage() {
   const patchMeeting = usePatchMeeting(date);
   const removeMeeting = useRemoveMeeting(date);
 
-  // 서버 데이터 로드 시 draft 동기화
+  // 서버 데이터 로드 시 draft 동기화 + 일관성 체크
   useEffect(() => {
-    if (dayQuery.data) {
-      setDraft(dayQuery.data.channels);
-      // 날짜 바뀌면 신규 슬롯도 비움
-      setNewSlots([]);
+    if (!dayQuery.data) return;
+    setDraft(dayQuery.data.channels);
+    setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
+
+    // 일관성 체크: 시트 H열(컨택성공)과 04 업체관리 그날 미팅 수가 일치하는지
+    // 불일치 시 사용자에게 알림 (자동 정정은 안 함 — 사용자가 직접 - 클릭으로 정정)
+    const inconsistencies: string[] = [];
+    for (const ch of CHANNEL_ORDER) {
+      const sheetSuccess = dayQuery.data.channels[ch].contactSuccess;
+      const meetingCount = dayQuery.data.meetings.filter(
+        (m) => m.channel === ch,
+      ).length;
+      if (sheetSuccess > meetingCount) {
+        inconsistencies.push(`${ch}: 컨택성공 ${sheetSuccess} vs 미팅 ${meetingCount}건`);
+      }
+    }
+    if (inconsistencies.length > 0) {
+      const msg =
+        "⚠ 시트 일관성 경고: " +
+        inconsistencies.join(", ") +
+        ". '−' 버튼으로 정정 가능";
+      setToast(msg);
+      setTimeout(() => setToast(""), 5000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
@@ -178,8 +197,21 @@ export default function ContactPage() {
           // 등록완료 슬롯 중 마지막 → API 삭제
           const saved = savedByChannel[ch];
           const last = saved[saved.length - 1];
-          if (last) handleRemoveSavedMeeting(last);
-          else showToast("이 채널의 컨택성공이 이미 0입니다");
+          if (last) {
+            handleRemoveSavedMeeting(last);
+          } else if (cur2 > 0) {
+            // 시트 일관성 깨진 상태: 미팅 카드는 없는데 컨택성공만 남음.
+            // (이전 테스트에서 슬롯 등록 안 하고 저장한 등 이전 잔재)
+            // → 직접 -1 + 시트 동기화로 정상화
+            adjustMetric(ch, "contactSuccess", -1);
+            setDraft((latest) => {
+              void saveMetrics.mutateAsync(latest);
+              return latest;
+            });
+            showToast("컨택성공 -1 (시트 일관성 정정)");
+          } else {
+            showToast("이 채널의 컨택성공이 이미 0입니다");
+          }
         }
       }
       return;
