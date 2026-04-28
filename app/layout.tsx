@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "세일즈PT 영업일지",
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body className="min-h-dvh bg-slate-50 font-sans text-slate-900 antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

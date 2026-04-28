@@ -16,11 +16,15 @@ function required(name: string): string {
   return v;
 }
 
-export const authConfig = {
+// ⚠️ 모든 secret은 lazy로. 모듈 로드 시점이 아닌 첫 호출 시점에만 검증.
+// (Next.js build의 "collect page data" 단계가 라우트 모듈을 로드할 때
+//  env vars 없으면 build가 깨지는 것을 방지)
+
+export const authConfig = () => ({
   secret: required("AUTH_SECRET"),
   googleId: required("AUTH_GOOGLE_ID"),
   googleSecret: required("AUTH_GOOGLE_SECRET"),
-} as const;
+});
 
 export const serviceAccount = () => ({
   client_email: required("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
@@ -29,10 +33,10 @@ export const serviceAccount = () => ({
 });
 
 // 마스터 레지스트리 — email → { cohort, name, spreadsheetId }
-export const registry = {
+export const registry = () => ({
   spreadsheetId: required("SHEETS_REGISTRY_ID"),
   tab: process.env.SHEETS_REGISTRY_TAB ?? "users",
-} as const;
+});
 
 /**
  * 수강생 개인 시트의 섹션별 A1 범위.

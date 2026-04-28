@@ -20,6 +20,8 @@ export default defineConfig({
       { find: /^@\/config\/(.*)$/, replacement: root("lib/config/$1") },
       { find: /^@\/repo\/(.*)$/, replacement: root("lib/repo/$1") },
       { find: /^@\/service\/(.*)$/, replacement: root("lib/service/$1") },
+      { find: /^@\/auth\/(.*)$/, replacement: root("lib/auth/$1") },
+      { find: /^@\/query\/(.*)$/, replacement: root("lib/query/$1") },
       { find: /^@\/(.*)$/, replacement: root("$1") },
     ],
   },

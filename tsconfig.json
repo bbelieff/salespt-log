@@ -24,6 +24,8 @@
       "@/service/*": ["./lib/service/*"],
       "@/types/*": ["./lib/types/*"],
       "@/config/*": ["./lib/config/*"],
+      "@/auth/*": ["./lib/auth/*"],
+      "@/query/*": ["./lib/query/*"],
       "@/*": ["./*"]
     }
   },
