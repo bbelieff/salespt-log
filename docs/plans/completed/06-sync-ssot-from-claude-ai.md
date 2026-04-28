@@ -1,9 +1,10 @@
 ---
 slug: sync-ssot-from-claude-ai
-status: active
+status: completed
 created: 2026-04-28
-worktree: ../wt/ssot-sync
-pr: docs/sync-ssot-from-claude-ai
+completed: 2026-04-28
+worktree: ../wt/ssot-sync (정리됨)
+pr: docs/sync-ssot-from-claude-ai (머지됨, commit edb49b9)
 ---
 
 # PR — claude.ai SSOT v4 동기화
