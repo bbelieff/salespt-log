@@ -155,18 +155,43 @@ function rowToMeeting(r: unknown[]): Meeting | null {
 
 // ── Public API ─────────────────────────────────────────────────
 
-/** 미팅 1건 append. id 중복 검증은 호출 측 책임. */
+/**
+ * 헤더 다음 첫 번째 빈 행 번호(1-based) 찾기.
+ *
+ * `values.append INSERT_ROWS`는 K열(계약여부) 같이 데이터 검증으로
+ * FALSE가 채워진 phantom 행들도 "데이터 있는 행"으로 보고 그 너머에
+ * append하기 때문에, A열(id) 기준으로 진짜 빈 행을 찾는 패턴 필요.
+ */
+async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: ID_COL_RANGE,
+  });
+  const ids = (res.data.values ?? []).map((r) => String(r[0] ?? "").trim());
+  for (let i = 0; i < ids.length; i++) {
+    if (!ids[i]) return i + 2; // 데이터 시작은 행 2
+  }
+  return ids.length + 2; // 모두 차있으면 끝에 추가
+}
+
+/**
+ * 미팅 1건 append. id 중복 검증은 호출 측 책임.
+ *
+ * `values.append`로 INSERT_ROWS 하지 않고, A열(id) 기준 빈 행을 찾아
+ * 정확히 그 행에 update. K열 phantom FALSE 영향 X.
+ */
 export async function appendMeeting(
   spreadsheetId: string,
   meeting: Meeting,
 ): Promise<void> {
   const validated = Meeting.parse(meeting);
   const row = meetingToRow(validated);
-  await sheetsClient().spreadsheets.values.append({
+  const targetRow = await findFirstEmptyRow(spreadsheetId);
+  const range = `${tabRef(TAB)}!A${targetRow}:S${targetRow}`;
+  await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: RANGE_ALL,
+    range,
     valueInputOption: "USER_ENTERED",
-    insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
   });
 }
