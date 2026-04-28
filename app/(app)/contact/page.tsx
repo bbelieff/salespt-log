@@ -216,8 +216,19 @@ export default function ContactPage() {
     // 실패 시 복원
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
+      // 1) 미팅 등록 (04 업체관리)
       await appendMeeting.mutateAsync(meeting);
-      showToast("✓ 등록 완료");
+      // 2) 동시에 4지표도 시트에 저장 (01 영업관리)
+      //    → 컨택성공이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
+      await saveMetrics.mutateAsync(draft);
+      showToast("✓ 등록 완료 (시트 동기화됨)");
+
+      // 3) 미팅 날짜가 페이지 selected date와 다르면 자동 이동
+      //    "사라진 것처럼 보이는" UX 혼란 방지
+      if (slot.미팅날짜 !== date) {
+        setDate(slot.미팅날짜);
+        showToast(`📅 ${slot.미팅날짜}로 이동`);
+      }
     } catch (e) {
       // 복원
       setNewSlots((s) => [...s, slot]);
@@ -256,6 +267,14 @@ export default function ContactPage() {
 
   // ── 저장 ─────────────────────────────────────────────────
   const handleSave = async () => {
+    // 가드: 미등록 신규 슬롯이 있으면 저장 차단
+    // (저장하면 컨택성공 N이 시트에 가는데 미팅 슬롯이 시트에 없으면 일관성 깨짐)
+    if (newSlots.length > 0) {
+      showToast(
+        `⚠ 미등록 미팅 ${newSlots.length}건 — 먼저 [✓ 등록] 또는 [✕ 삭제]를 진행하세요`,
+      );
+      return;
+    }
     try {
       await saveMetrics.mutateAsync(draft);
       showToast("✅ 저장 완료");
