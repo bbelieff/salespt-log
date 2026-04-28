@@ -16,6 +16,56 @@ function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
 }
 
+// ── 시트 직렬값 ↔ ISO 변환 ─────────────────────────────────────
+// USER_ENTERED로 쓴 "2026-04-28" / "10:00"은 시트가 자동으로 날짜·시간 값으로
+// 변환해 저장. 다시 읽을 때 FORMATTED_VALUE는 로케일 형식 (예: "2026. 4. 28.")
+// 으로 와서 zod regex와 안 맞음 → SERIAL_NUMBER로 받아 ISO로 복원.
+
+function serialToISODate(v: unknown): string {
+  if (typeof v === "string") {
+    // 이미 "YYYY-MM-DD" 텍스트라면 그대로
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    // "M/D/YYYY" 또는 "YYYY/M/D" 같은 변종 → Date 파싱 시도
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) return toISO(d);
+    return "";
+  }
+  if (typeof v === "number") {
+    // Sheets serial: days since 1899-12-30
+    const ms = (v - 25569) * 86_400_000;
+    const d = new Date(ms);
+    if (Number.isNaN(d.getTime())) return "";
+    return toISO(d);
+  }
+  return "";
+}
+
+function serialToHHMM(v: unknown): string {
+  if (typeof v === "string") {
+    if (/^\d{2}:\d{2}$/.test(v)) return v;
+    // "10:00:00" → "10:00"
+    const m = v.match(/^(\d{2}):(\d{2})/);
+    if (m) return `${m[1]}:${m[2]}`;
+    return "";
+  }
+  if (typeof v === "number") {
+    // 0~1 사이 분수 = 하루 중 비율. 또는 정수 + 분수 (날짜+시간 합쳐진 경우)
+    const fraction = ((v % 1) + 1) % 1; // 음수 안전
+    const totalMinutes = Math.round(fraction * 24 * 60);
+    const h = Math.floor(totalMinutes / 60) % 24;
+    const m = totalMinutes % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${day}`;
+}
+
 const TAB = SHEET_RANGES.meetings.tab;
 const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.meetings.range}`; // A2:S
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`; // id 검색용
@@ -73,13 +123,16 @@ function meetingToRow(m: Meeting): (string | number | boolean)[] {
 }
 
 /** 시트 1행 배열 → Meeting (parse 실패 시 null). */
-function rowToMeeting(r: (string | number | boolean)[]): Meeting | null {
+function rowToMeeting(r: unknown[]): Meeting | null {
+  const idStr = String(r[COL.id] ?? "");
+  if (!idStr) return null;
+
   const parsed = Meeting.safeParse({
-    id: String(r[COL.id] ?? ""),
-    예약일: String(r[COL.예약일] ?? ""),
-    예약시각: String(r[COL.예약시각] ?? ""),
-    미팅날짜: String(r[COL.미팅날짜] ?? ""),
-    미팅시간: String(r[COL.미팅시간] ?? ""),
+    id: idStr,
+    예약일: serialToISODate(r[COL.예약일]),
+    예약시각: serialToHHMM(r[COL.예약시각]),
+    미팅날짜: serialToISODate(r[COL.미팅날짜]),
+    미팅시간: serialToHHMM(r[COL.미팅시간]),
     channel: String(r[COL.channel] ?? ""),
     업체명: String(r[COL.업체명] ?? ""),
     장소: String(r[COL.장소] ?? ""),
@@ -147,10 +200,12 @@ export async function findById(
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
   });
   const r = res.data.values?.[0];
   if (!r) return null;
-  return rowToMeeting(r as (string | number | boolean)[]);
+  return rowToMeeting(r as unknown[]);
 }
 
 /**
@@ -215,12 +270,16 @@ export async function findByDate(
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range: RANGE_ALL,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
   });
-  const all = (res.data.values ?? []) as (string | number | boolean)[][];
+  const all = (res.data.values ?? []) as unknown[][];
   const targetCol = type === "reservation" ? COL.예약일 : COL.미팅날짜;
   const result: Meeting[] = [];
   for (const r of all) {
-    if (String(r[targetCol] ?? "") !== date) continue;
+    // 날짜는 serial일 수 있으므로 변환 후 비교
+    const rowDate = serialToISODate(r[targetCol]);
+    if (rowDate !== date) continue;
     const parsed = rowToMeeting(r);
     if (parsed) result.push(parsed);
   }
