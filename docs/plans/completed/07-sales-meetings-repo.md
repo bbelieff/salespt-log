@@ -1,9 +1,10 @@
 ---
 slug: sales-meetings-repo
-status: active
+status: completed
 created: 2026-04-28
-worktree: ../wt/contact-tab
-pr: feat/sales-meetings-repo
+completed: 2026-04-28
+worktree: ../wt/contact-tab (정리됨)
+pr: feat/sales-meetings-repo (머지됨, commit 5451f85)
 ---
 
 # PR 2a — 컨택탭 백엔드 (sales + meetings repo)
