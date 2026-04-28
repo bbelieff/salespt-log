@@ -137,6 +137,13 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
   });
 
   const collapsedTime = meeting.미팅시간 || "—:—";
+  // 미팅날짜를 "M/d" 형식으로 (예약일이 다를 때 시각 정보 부족 방지)
+  const collapsedDate = (() => {
+    if (!meeting.미팅날짜) return "";
+    const m = meeting.미팅날짜.match(/^\d{4}-(\d{2})-(\d{2})$/);
+    if (!m) return meeting.미팅날짜;
+    return `${parseInt(m[1]!, 10)}/${parseInt(m[2]!, 10)}`;
+  })();
 
   return (
     <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-blue-400 bg-white shadow-sm">
@@ -153,13 +160,16 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
           {meeting.channel}
         </span>
         <span className="shrink-0 text-base leading-none">🔵</span>
+        <span className="shrink-0 text-xs font-semibold text-gray-500">
+          {collapsedDate}
+        </span>
         <span className="shrink-0 text-sm font-bold text-gray-700">
           {collapsedTime}
         </span>
         <span className="flex-1 truncate text-sm font-semibold text-gray-900">
           {meeting.업체명 || "(업체 미입력)"}
         </span>
-        <span className="max-w-20 shrink-0 truncate text-xs text-gray-500">
+        <span className="max-w-16 shrink-0 truncate text-xs text-gray-500">
           {meeting.장소}
         </span>
         <svg
