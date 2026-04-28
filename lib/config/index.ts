@@ -55,13 +55,35 @@ export const SHEET_RANGES = {
     summary: "B2:N20", // 요약 카드 영역 (Recharts 입력)
   },
 
-  // ── 영업관리 (수식 자동 집계, 8주차 × 28행 블록) ───────────
-  // 웹은 4지표(생산/유입/컨택진행/컨택성공)만 정확한 행에 update.
-  // N1 = 수강시작일 (사용자가 새 기수마다 직접 입력) → 시트 수식이 각 주차 날짜 자동 채움.
-  // 행 좌표 lookup은 PR 2의 lib/repo/sales.ts에서 처리 (날짜·채널 → 행번호 매핑).
+  // ── 영업관리 (8주차 × 28행 블록) ───────────────────────────
+  // 웹 직접 쓰기: E~H (4지표) + Q~T (실적관리/수납)
+  // 시트 수식 자동: I~P (절대 쓰기 금지 — formulaCols로 가드)
+  //
+  // 좌표 측정 (사용자 시트 2026-04-28):
+  //   1주차 토요일 매입DB = E10 → BLOCK_START = 10
+  //   2주차 토요일 매입DB = E44 → BLOCK_STRIDE = 34
+  //   8주차 첫 행 = 10 + 7×34 = 248
+  //
+  // 한 주 28행 (7일 × 4채널) + 6행 (헤더·합계·여백) = 34행 stride
   sales: {
     tab: "01 영업관리",
     startDateCell: "N1", // 수강시작일 — repo가 읽어서 주차 계산
+    blockStart: 10, // 1주차 첫 데이터 행 (토요일 매입DB)
+    blockStride: 34, // 주차 간 행 간격
+    metricCols: {
+      production: "E",
+      inflow: "F",
+      contactProgress: "G",
+      contactSuccess: "H",
+    },
+    revenueCols: {
+      approvalCount: "Q",
+      paymentCount: "R",
+      paymentAmount: "S",
+      agencyNote: "T",
+    },
+    // ⚠️ 시트 수식 자동 — 웹 쓰기 금지. repo가 런타임 가드로 차단.
+    formulaCols: ["I", "J", "K", "L", "M", "N", "O", "P"] as const,
   },
 
   // ── 업체관리 (1행 = 1미팅, 19컬럼 A~S) ─────────────────────
