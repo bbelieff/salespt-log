@@ -107,17 +107,17 @@ export function summarize(
   const meetingsByState = { 예약: 0, 완료: 0, 계약: 0, 변경: 0, 취소: 0 };
   let feeTotal = 0;
   for (const m of meetings) {
-    meetingsByState[m.state] += 1;
-    if (m.state === "완료") xp += MEETING_XP.완료;
-    if (m.state === "계약") {
+    meetingsByState[m.상태] += 1;
+    if (m.상태 === "완료") xp += MEETING_XP.완료;
+    if (m.상태 === "계약") {
       xp += MEETING_XP.계약;
-      feeTotal += m.fee;
+      feeTotal += m.수임비;
     }
   }
 
   const dateSet = new Set<string>();
   for (const r of rows) dateSet.add(r.date);
-  for (const m of meetings) dateSet.add(m.meetingDate);
+  for (const m of meetings) dateSet.add(m.미팅날짜);
   const dates = [...dateSet].sort();
   const { current, best } = computeStreak(dates);
 
