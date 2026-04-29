@@ -292,6 +292,25 @@ export async function findByDate(
   date: string,
   type: "reservation" | "meeting" = "meeting",
 ): Promise<Meeting[]> {
+  const map = await findByDateRange(spreadsheetId, [date], type);
+  return map.get(date) ?? [];
+}
+
+/**
+ * 여러 날짜를 한 번의 시트 read로 조회. 일정·계약 탭의 주간 뷰처럼
+ * 7일치를 한꺼번에 가져올 때 quota 절약 (7 read → 1 read).
+ *
+ * 반환: dates의 각 항목을 key로 하는 Meeting[] map. 빠진 날짜는 빈 배열.
+ */
+export async function findByDateRange(
+  spreadsheetId: string,
+  dates: string[],
+  type: "reservation" | "meeting" = "meeting",
+): Promise<Map<string, Meeting[]>> {
+  const wanted = new Set(dates);
+  const result = new Map<string, Meeting[]>();
+  for (const d of dates) result.set(d, []);
+
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range: RANGE_ALL,
@@ -300,17 +319,16 @@ export async function findByDate(
   });
   const all = (res.data.values ?? []) as unknown[][];
   const targetCol = type === "reservation" ? COL.예약일 : COL.미팅날짜;
-  const result: Meeting[] = [];
-  // 같은 id가 여러 행에 있으면 첫 번째만 사용 (방어적 dedupe)
+  // dedupe: 같은 id 첫 번째만
   const seenIds = new Set<string>();
   for (const r of all) {
     const rowDate = serialToISODate(r[targetCol]);
-    if (rowDate !== date) continue;
+    if (!wanted.has(rowDate)) continue;
     const parsed = rowToMeeting(r);
     if (!parsed) continue;
     if (seenIds.has(parsed.id)) continue;
     seenIds.add(parsed.id);
-    result.push(parsed);
+    result.get(rowDate)!.push(parsed);
   }
   return result;
 }

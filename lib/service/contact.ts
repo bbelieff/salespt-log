@@ -17,6 +17,7 @@ import {
   appendMeeting,
   clearMeeting,
   findByDate,
+  findByDateRange,
   findById,
   updateMeeting,
 } from "@/repo/meetings";
@@ -117,6 +118,67 @@ export async function loadDay(
     courseStart: csISO,
     channels,
     meetings,
+  };
+}
+
+// ── 일정·계약 탭 (PR 03) ────────────────────────────────────────
+
+export interface ScheduleWeekView {
+  weekStart: string; // YYYY-MM-DD (수강시작일과 같은 요일)
+  weekIndex: number;
+  courseStart: string;
+  /** 7개 슬롯 (weekStart=0 ... weekStart+6=6). 미팅날짜 기준. */
+  daysByMeetingDate: Array<{ date: string; meetings: Meeting[] }>;
+}
+
+/**
+ * 한 주의 모든 미팅을 미팅날짜(D열) 기준으로 조회.
+ * weekStart는 수강시작일과 같은 요일이어야 함 (검증).
+ *
+ * 컨택관리 탭은 예약일 기준이지만, 일정·계약 탭은 **미팅날짜 기준** —
+ * 그 날 실제로 미팅이 잡혀있는 카드를 보여주기 위함.
+ */
+export async function loadWeekMeetings(
+  email: string,
+  weekStart: string,
+): Promise<ScheduleWeekView> {
+  const spreadsheetId = await resolveSheet(email);
+  const courseStart = await readCourseStart(spreadsheetId);
+  const wsDate = parseISO(weekStart);
+  const week = weekIndexOf(wsDate, courseStart);
+  if (week < 1 || week > 10) {
+    throw new Error(`[schedule] 편집 가능 기간 외: ${weekStart}`);
+  }
+
+  // 7일 ISO 날짜 생성
+  const dates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wsDate);
+    d.setDate(wsDate.getDate() + i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    dates.push(`${y}-${m}-${dd}`);
+  }
+
+  // 한 번의 시트 read로 7일치 미팅 (미팅날짜 기준) — quota 절약
+  const map = await findByDateRange(spreadsheetId, dates, "meeting");
+  const daysByMeetingDate = dates.map((d) => ({
+    date: d,
+    meetings: (map.get(d) ?? []).sort((a, b) =>
+      a.미팅시간.localeCompare(b.미팅시간),
+    ),
+  }));
+
+  const csISO = `${courseStart.getFullYear()}-${String(
+    courseStart.getMonth() + 1,
+  ).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
+
+  return {
+    weekStart,
+    weekIndex: week,
+    courseStart: csISO,
+    daysByMeetingDate,
   };
 }
 

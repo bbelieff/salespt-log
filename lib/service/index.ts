@@ -21,3 +21,9 @@ export {
   type ContactDayView,
   type ChannelDailyRowMetrics,
 } from "./contact";
+
+// 일정·계약 탭 유스케이스 (PR 03)
+export {
+  loadWeekMeetings,
+  type ScheduleWeekView,
+} from "./contact";

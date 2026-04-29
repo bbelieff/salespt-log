@@ -21,10 +21,15 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { Channel, Meeting } from "@/types";
-import type { ChannelDailyRowMetrics, ContactDayView } from "@/service";
+import type {
+  ChannelDailyRowMetrics,
+  ContactDayView,
+  ScheduleWeekView,
+} from "@/service";
 
 // ── 키 ────────────────────────────────────────────────────────
 export const dayKey = (date: string) => ["day", date] as const;
+export const weekKey = (weekStart: string) => ["week", weekStart] as const;
 
 // ── 페치 헬퍼 ─────────────────────────────────────────────────
 async function fetchJSON<T>(
@@ -56,6 +61,18 @@ export function useDay(date: string): UseQueryResult<ContactDayView> {
   });
 }
 
+/** 일정·계약 탭 — 한 주(7일) 미팅 (미팅날짜 기준). */
+export function useWeekMeetings(
+  weekStart: string,
+): UseQueryResult<ScheduleWeekView> {
+  return useQuery({
+    queryKey: weekKey(weekStart),
+    queryFn: () =>
+      fetchJSON<ScheduleWeekView>(`/api/meetings/week/${weekStart}`),
+    enabled: !!weekStart,
+  });
+}
+
 // ── Mutation 입력 타입 ────────────────────────────────────────
 export interface SaveMetricsArgs {
   date: string;
@@ -66,12 +83,16 @@ export interface AppendMeetingArgs {
   meeting: Meeting;
 }
 export interface PatchMeetingArgs {
+  /** 컨택탭 캐시 invalidate용 (현재 view date). 일정·계약 탭에서 호출 시 빈 문자열 가능. */
   date: string;
+  /** 일정·계약 탭 캐시 invalidate용 (선택). 컨택탭에서 호출 시 미설정 OK. */
+  weekStart?: string;
   id: string;
   partial: Partial<Omit<Meeting, "id">>;
 }
 export interface RemoveMeetingArgs {
   date: string;
+  weekStart?: string;
   id: string;
 }
 
@@ -116,8 +137,10 @@ export function usePatchMeeting() {
         method: "PATCH",
         body: JSON.stringify(partial),
       }),
-    onSuccess: (_, { date }) =>
-      qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date, weekStart }) => {
+      if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
+      if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
+    },
   });
 }
 
