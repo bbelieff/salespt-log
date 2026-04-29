@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -13,6 +14,8 @@
     "check": "bash scripts/check.sh"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.100.5",
+    "@tanstack/react-query-devtools": "^5.100.5",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "googleapis": "^144.0.0",

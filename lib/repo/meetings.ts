@@ -16,6 +16,56 @@ function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
 }
 
+// ── 시트 직렬값 ↔ ISO 변환 ─────────────────────────────────────
+// USER_ENTERED로 쓴 "2026-04-28" / "10:00"은 시트가 자동으로 날짜·시간 값으로
+// 변환해 저장. 다시 읽을 때 FORMATTED_VALUE는 로케일 형식 (예: "2026. 4. 28.")
+// 으로 와서 zod regex와 안 맞음 → SERIAL_NUMBER로 받아 ISO로 복원.
+
+function serialToISODate(v: unknown): string {
+  if (typeof v === "string") {
+    // 이미 "YYYY-MM-DD" 텍스트라면 그대로
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    // "M/D/YYYY" 또는 "YYYY/M/D" 같은 변종 → Date 파싱 시도
+    const d = new Date(v);
+    if (!Number.isNaN(d.getTime())) return toISO(d);
+    return "";
+  }
+  if (typeof v === "number") {
+    // Sheets serial: days since 1899-12-30
+    const ms = (v - 25569) * 86_400_000;
+    const d = new Date(ms);
+    if (Number.isNaN(d.getTime())) return "";
+    return toISO(d);
+  }
+  return "";
+}
+
+function serialToHHMM(v: unknown): string {
+  if (typeof v === "string") {
+    if (/^\d{2}:\d{2}$/.test(v)) return v;
+    // "10:00:00" → "10:00"
+    const m = v.match(/^(\d{2}):(\d{2})/);
+    if (m) return `${m[1]}:${m[2]}`;
+    return "";
+  }
+  if (typeof v === "number") {
+    // 0~1 사이 분수 = 하루 중 비율. 또는 정수 + 분수 (날짜+시간 합쳐진 경우)
+    const fraction = ((v % 1) + 1) % 1; // 음수 안전
+    const totalMinutes = Math.round(fraction * 24 * 60);
+    const h = Math.floor(totalMinutes / 60) % 24;
+    const m = totalMinutes % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  return "";
+}
+
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${day}`;
+}
+
 const TAB = SHEET_RANGES.meetings.tab;
 const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.meetings.range}`; // A2:S
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`; // id 검색용
@@ -73,13 +123,16 @@ function meetingToRow(m: Meeting): (string | number | boolean)[] {
 }
 
 /** 시트 1행 배열 → Meeting (parse 실패 시 null). */
-function rowToMeeting(r: (string | number | boolean)[]): Meeting | null {
+function rowToMeeting(r: unknown[]): Meeting | null {
+  const idStr = String(r[COL.id] ?? "");
+  if (!idStr) return null;
+
   const parsed = Meeting.safeParse({
-    id: String(r[COL.id] ?? ""),
-    예약일: String(r[COL.예약일] ?? ""),
-    예약시각: String(r[COL.예약시각] ?? ""),
-    미팅날짜: String(r[COL.미팅날짜] ?? ""),
-    미팅시간: String(r[COL.미팅시간] ?? ""),
+    id: idStr,
+    예약일: serialToISODate(r[COL.예약일]),
+    예약시각: serialToHHMM(r[COL.예약시각]),
+    미팅날짜: serialToISODate(r[COL.미팅날짜]),
+    미팅시간: serialToHHMM(r[COL.미팅시간]),
     channel: String(r[COL.channel] ?? ""),
     업체명: String(r[COL.업체명] ?? ""),
     장소: String(r[COL.장소] ?? ""),
@@ -102,18 +155,43 @@ function rowToMeeting(r: (string | number | boolean)[]): Meeting | null {
 
 // ── Public API ─────────────────────────────────────────────────
 
-/** 미팅 1건 append. id 중복 검증은 호출 측 책임. */
+/**
+ * 헤더 다음 첫 번째 빈 행 번호(1-based) 찾기.
+ *
+ * `values.append INSERT_ROWS`는 K열(계약여부) 같이 데이터 검증으로
+ * FALSE가 채워진 phantom 행들도 "데이터 있는 행"으로 보고 그 너머에
+ * append하기 때문에, A열(id) 기준으로 진짜 빈 행을 찾는 패턴 필요.
+ */
+async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: ID_COL_RANGE,
+  });
+  const ids = (res.data.values ?? []).map((r) => String(r[0] ?? "").trim());
+  for (let i = 0; i < ids.length; i++) {
+    if (!ids[i]) return i + 2; // 데이터 시작은 행 2
+  }
+  return ids.length + 2; // 모두 차있으면 끝에 추가
+}
+
+/**
+ * 미팅 1건 append. id 중복 검증은 호출 측 책임.
+ *
+ * `values.append`로 INSERT_ROWS 하지 않고, A열(id) 기준 빈 행을 찾아
+ * 정확히 그 행에 update. K열 phantom FALSE 영향 X.
+ */
 export async function appendMeeting(
   spreadsheetId: string,
   meeting: Meeting,
 ): Promise<void> {
   const validated = Meeting.parse(meeting);
   const row = meetingToRow(validated);
-  await sheetsClient().spreadsheets.values.append({
+  const targetRow = await findFirstEmptyRow(spreadsheetId);
+  const range = `${tabRef(TAB)}!A${targetRow}:S${targetRow}`;
+  await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: RANGE_ALL,
+    range,
     valueInputOption: "USER_ENTERED",
-    insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
   });
 }
@@ -147,10 +225,12 @@ export async function findById(
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
   });
   const r = res.data.values?.[0];
   if (!r) return null;
-  return rowToMeeting(r as (string | number | boolean)[]);
+  return rowToMeeting(r as unknown[]);
 }
 
 /**
@@ -215,14 +295,22 @@ export async function findByDate(
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range: RANGE_ALL,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
   });
-  const all = (res.data.values ?? []) as (string | number | boolean)[][];
+  const all = (res.data.values ?? []) as unknown[][];
   const targetCol = type === "reservation" ? COL.예약일 : COL.미팅날짜;
   const result: Meeting[] = [];
+  // 같은 id가 여러 행에 있으면 첫 번째만 사용 (방어적 dedupe)
+  const seenIds = new Set<string>();
   for (const r of all) {
-    if (String(r[targetCol] ?? "") !== date) continue;
+    const rowDate = serialToISODate(r[targetCol]);
+    if (rowDate !== date) continue;
     const parsed = rowToMeeting(r);
-    if (parsed) result.push(parsed);
+    if (!parsed) continue;
+    if (seenIds.has(parsed.id)) continue;
+    seenIds.add(parsed.id);
+    result.push(parsed);
   }
   return result;
 }

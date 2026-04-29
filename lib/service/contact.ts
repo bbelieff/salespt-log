@@ -8,10 +8,10 @@
  */
 import { findUserByEmail } from "@/repo/users";
 import {
+  batchWriteChannelDailyRows,
   readCourseStart,
   readWeek,
   weekIndexOf,
-  writeChannelDailyRow,
 } from "@/repo/sales";
 import {
   appendMeeting,
@@ -45,6 +45,8 @@ async function resolveSheet(email: string): Promise<string> {
 export interface ContactDayView {
   date: string;
   weekIndex: number; // 1~10
+  /** 수강시작일 (YYYY-MM-DD) — UI에서 7일 요일 바 매핑에 사용 */
+  courseStart: string;
   channels: Record<Channel, ChannelDailyRowMetrics>;
   meetings: Meeting[];
 }
@@ -82,7 +84,11 @@ export async function loadDay(
   }
 
   const { rows } = await readWeek(spreadsheetId, week);
-  const meetings = await findByDate(spreadsheetId, date, "meeting");
+  // ⭐ 컨택관리 탭은 "예약일(컨택한 날)" 기준으로 미팅 조회.
+  // 4/28에 컨택해서 4/29에 잡힌 미팅도 4/28 view에 보여야 함.
+  // 미팅날짜 기준 조회는 일정·계약 탭(PR 3) 몫.
+  // SSOT: sheet-structure.md §2 영업관리!I = 예약일 TEXTJOIN
+  const meetings = await findByDate(spreadsheetId, date, "reservation");
 
   // 그 날짜의 4채널만 필터
   const dayRows = rows.filter((r) => r.date === date);
@@ -101,7 +107,17 @@ export async function loadDay(
     };
   }
 
-  return { date, weekIndex: week, channels, meetings };
+  const csISO = `${courseStart.getFullYear()}-${String(
+    courseStart.getMonth() + 1,
+  ).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
+
+  return {
+    date,
+    weekIndex: week,
+    courseStart: csISO,
+    channels,
+    meetings,
+  };
 }
 
 /**
@@ -115,21 +131,26 @@ export async function saveContactMetrics(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
 
+  // 4채널을 한 번의 batchUpdate로 저장 (readCourseStart 1회만 호출).
+  // 이전: 채널별 writeChannelDailyRow 루프 → readCourseStart 4회 = 4 Read
+  // 현재: batchWriteChannelDailyRows → readCourseStart 1회 = 1 Read
+  const rows: ChannelDailyRow[] = [];
   for (const channel of CHANNEL_ORDER) {
     const m = channels[channel];
     if (!m) continue;
-    // 검증·자동 보정
     const success = Math.min(m.contactSuccess, m.contactProgress);
-    const row = ChannelDailyRow.parse({
-      date,
-      channel,
-      production: m.production,
-      inflow: m.inflow,
-      contactProgress: m.contactProgress,
-      contactSuccess: success,
-    });
-    await writeChannelDailyRow(spreadsheetId, row);
+    rows.push(
+      ChannelDailyRow.parse({
+        date,
+        channel,
+        production: m.production,
+        inflow: m.inflow,
+        contactProgress: m.contactProgress,
+        contactSuccess: success,
+      }),
+    );
   }
+  await batchWriteChannelDailyRows(spreadsheetId, rows);
 }
 
 /** 새 미팅 1건 등록. 컨택성공 +1은 별도 호출 (saveContactMetrics)에서 처리. */
