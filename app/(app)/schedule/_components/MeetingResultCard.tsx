@@ -2,10 +2,11 @@
  * MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태).
  * 정본: docs/design/prototypes/schedule-weekly.html
  *
- * Phase 1: 계약/완료/취소 인라인 액션. 변경 버튼은 disabled (Phase 2).
+ * Phase 2: 4-action 모두 활성 (계약/완료/변경/취소).
+ * 처리완료 카드(reserved 외)는 결과 표시만, 액션 그리드 숨김.
  *
  * 헤더(접힘 시): 상태아이콘 시간 업체명 장소 [수임비요약] ▼
- * 펼침: 채널 배지 + 4-action 버튼 + (선택된 액션의) 인라인 폼
+ * 펼침: 채널 배지 + 결과요약 + (예약 상태일 때만) 4-action 버튼 + 인라인 폼
  */
 "use client";
 
@@ -20,6 +21,7 @@ import {
 import ContractForm from "./ContractForm";
 import DoneForm from "./DoneForm";
 import CancelForm from "./CancelForm";
+import RescheduleForm from "./RescheduleForm";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -28,19 +30,26 @@ const CHANNEL_BADGE: Record<Channel, string> = {
   "콜·지·기·소": "badge badge-referral",
 };
 
-type Action = "contract" | "done" | "cancel" | null;
+type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 
 interface Props {
   meeting: Meeting;
   pending: boolean;
   onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
+  /** 일정 변경: 새 미팅 append + 원본 patch (호출 측이 transaction 처리). */
+  onReschedule: (newDate: string, newTime: string, reason: string) => void;
 }
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
-export default function MeetingResultCard({ meeting, pending, onPatch }: Props) {
+export default function MeetingResultCard({
+  meeting,
+  pending,
+  onPatch,
+  onReschedule,
+}: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
@@ -94,6 +103,18 @@ export default function MeetingResultCard({ meeting, pending, onPatch }: Props) 
     setAction(null);
     setOpen(false);
   };
+  const handleReschedule = (
+    newDate: string,
+    newTime: string,
+    reason: string,
+  ) => {
+    onReschedule(newDate, newTime, reason);
+    setAction(null);
+    setOpen(false);
+  };
+
+  // 예약 상태에서만 액션 그리드 노출 (이미 처리된 카드는 결과만 표시)
+  const showActions = state === "reserved";
 
   return (
     <div
@@ -175,41 +196,42 @@ export default function MeetingResultCard({ meeting, pending, onPatch }: Props) 
             </div>
           )}
 
-          {/* 4-action 버튼 그리드 (변경은 Phase 2 — disabled) */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <ActionButton
-              label="💵 계약"
-              active={action === "contract"}
-              activeCls="bg-green-600 text-white shadow-md ring-2 ring-green-300"
-              idleCls="bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
-              onClick={() => pickAction("contract")}
-            />
-            <ActionButton
-              label="🟠 완료"
-              hint="(계약X)"
-              active={action === "done"}
-              activeCls="bg-orange-500 text-white shadow-md ring-2 ring-orange-300"
-              idleCls="bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200"
-              onClick={() => pickAction("done")}
-            />
-            <ActionButton
-              label="📅 변경"
-              hint="(Phase 2)"
-              active={false}
-              activeCls=""
-              idleCls="bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-              disabled
-            />
-            <ActionButton
-              label="🔴 취소"
-              active={action === "cancel"}
-              activeCls="bg-red-500 text-white shadow-md ring-2 ring-red-300"
-              idleCls="bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-              onClick={() => pickAction("cancel")}
-            />
-          </div>
+          {/* 4-action 버튼 그리드 (예약 상태일 때만) */}
+          {showActions && (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <ActionButton
+                label="💵 계약"
+                active={action === "contract"}
+                activeCls="bg-green-600 text-white shadow-md ring-2 ring-green-300"
+                idleCls="bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                onClick={() => pickAction("contract")}
+              />
+              <ActionButton
+                label="🟠 완료"
+                hint="(계약X)"
+                active={action === "done"}
+                activeCls="bg-orange-500 text-white shadow-md ring-2 ring-orange-300"
+                idleCls="bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200"
+                onClick={() => pickAction("done")}
+              />
+              <ActionButton
+                label="📅 변경"
+                active={action === "reschedule"}
+                activeCls="bg-purple-500 text-white shadow-md ring-2 ring-purple-300"
+                idleCls="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200"
+                onClick={() => pickAction("reschedule")}
+              />
+              <ActionButton
+                label="🔴 취소"
+                active={action === "cancel"}
+                activeCls="bg-red-500 text-white shadow-md ring-2 ring-red-300"
+                idleCls="bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                onClick={() => pickAction("cancel")}
+              />
+            </div>
+          )}
 
-          {action === "contract" && (
+          {showActions && action === "contract" && (
             <ContractForm
               initialFee={meeting.수임비}
               initialTerms={meeting.계약조건}
@@ -217,7 +239,7 @@ export default function MeetingResultCard({ meeting, pending, onPatch }: Props) 
               pending={pending}
             />
           )}
-          {action === "done" && (
+          {showActions && action === "done" && (
             <DoneForm
               initialReason={meeting.미팅사유}
               vendor={meeting.업체명}
@@ -225,13 +247,34 @@ export default function MeetingResultCard({ meeting, pending, onPatch }: Props) 
               pending={pending}
             />
           )}
-          {action === "cancel" && (
+          {showActions && action === "reschedule" && (
+            <RescheduleForm
+              initialDate={meeting.미팅날짜}
+              initialTime={meeting.미팅시간}
+              vendor={meeting.업체명}
+              onConfirm={handleReschedule}
+              pending={pending}
+            />
+          )}
+          {showActions && action === "cancel" && (
             <CancelForm
               initialReason={meeting.미팅사유}
               vendor={meeting.업체명}
               onConfirm={handleCancel}
               pending={pending}
             />
+          )}
+
+          {/* 처리 완료 카드 — 변경됨 카드는 다음 카드 링크 안내 */}
+          {!showActions && state === "rescheduled" && (
+            <div className="rounded-md bg-purple-50 px-2 py-1.5 text-xs text-purple-700">
+              📅 일정이 변경되었습니다. 새 일정의 카드를 확인하세요.
+              {meeting.미팅사유 && (
+                <div className="mt-0.5 text-gray-600">
+                  사유: {meeting.미팅사유}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

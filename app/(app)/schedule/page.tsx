@@ -1,23 +1,33 @@
 /**
- * 일정·계약 탭 (PR 03 / Phase 1).
+ * 일정·계약 탭 (PR 03 / Phase 2).
  * 정본: docs/design/prototypes/schedule-weekly.html
  *
  * 흐름:
  *   - useWeekMeetings(weekStart) → ScheduleWeekView (7일 미팅, 미팅날짜 기준)
- *   - 카드 클릭 → 펼침 → 액션 선택(계약/완료/취소) → 폼 입력 → 확정
- *   - usePatchMeeting().mutateAsync({weekStart, id, partial}) → invalidate week-key
- *
- * Phase 2에서 추가될 것: 변경(reschedule) 액션, 일정 수정 details
+ *   - 카드 클릭 → 펼침 → 액션 선택(계약/완료/변경/취소) → 폼 입력 → 확정
+ *   - 계약/완료/취소: usePatchMeeting → invalidate week-key
+ *   - 변경: useAppendMeeting(새 미팅) + usePatchMeeting(원본=변경) 순차 → invalidate week
  */
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
-import { usePatchMeeting, useWeekMeetings } from "@/query/contact-hooks";
+import {
+  useAppendMeeting,
+  usePatchMeeting,
+  useWeekMeetings,
+} from "@/query/contact-hooks";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
 import { addDays, fmtISO, parseISO } from "./_lib/week";
+
+function uuid(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -32,6 +42,7 @@ export default function SchedulePage() {
 
   const weekQuery = useWeekMeetings(weekStart);
   const patchMeeting = usePatchMeeting();
+  const appendMeeting = useAppendMeeting();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -76,6 +87,65 @@ export default function SchedulePage() {
       showToast("✓ 저장 완료");
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  /**
+   * 일정 변경 트랜잭션:
+   *  1) 새 미팅 row append (id=uuid, 모든 필드 복사 + 새 미팅날짜/시간
+   *     + 상태="예약" + previousMeetingId=원본 id)
+   *  2) 원본 미팅 patch (상태="변경" + 미팅사유=변경사유)
+   *
+   * append 성공 후에만 patch 시도. patch 실패 시 안내(시트에 두 row 모두 "예약"
+   * 상태로 남아있어 사용자 manual fix 필요).
+   */
+  const handleReschedule = async (
+    original: Meeting,
+    newDate: string,
+    newTime: string,
+    reason: string,
+  ) => {
+    setPendingId(original.id);
+    const newId = uuid();
+    const newMeeting: Meeting = {
+      ...original,
+      id: newId,
+      미팅날짜: newDate,
+      미팅시간: newTime,
+      상태: "예약",
+      계약여부: false,
+      수임비: 0,
+      미팅사유: "",
+      계약조건: "",
+      previousMeetingId: original.id,
+      // 시트 수식 컬럼은 자동 — 보내지 않음
+      표시상세: undefined,
+      표시요약: undefined,
+      계약합성라인: undefined,
+      주차: undefined,
+    };
+    try {
+      await appendMeeting.mutateAsync({
+        date: original.예약일, // 컨택탭 day-key invalidate
+        meeting: newMeeting,
+      });
+      try {
+        await patchMeeting.mutateAsync({
+          date: "",
+          weekStart,
+          id: original.id,
+          partial: { 상태: "변경", 미팅사유: reason },
+        });
+        showToast("✓ 일정 변경 완료");
+      } catch (e) {
+        showToast(
+          `⚠ 새 미팅은 추가됐으나 원본 표시 실패: ${(e as Error).message} — 시트에서 직접 원본 행 J열 "변경"으로 수정 필요`,
+        );
+      }
+    } catch (e) {
+      showToast(`변경 실패 (새 미팅 추가 안 됨): ${(e as Error).message}`);
     } finally {
       setPendingId(null);
     }
@@ -150,6 +220,7 @@ export default function SchedulePage() {
               todayISO={TODAY_ISO}
               pendingId={pendingId}
               onPatch={handlePatch}
+              onReschedule={handleReschedule}
             />
           </div>
         ))}
