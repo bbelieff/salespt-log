@@ -35,21 +35,26 @@ const SALES_LAST_ROW = SALES_BLOCK_START + 7 * SALES_BLOCK_STRIDE + 27;
 
 const SALES_FORMULA_COLS = ["I", "J", "K", "L", "M", "N", "O", "P"] as const;
 
-// ── 04 업체관리 ARRAYFORMULA들 (이 탭은 사용자 manual 입력 컬럼 없음) ─
-const MEETINGS_ARRAYFORMULAS: Array<{ cell: string; formula: string }> = [
-  {
-    cell: "N2",
-    formula: `=ARRAYFORMULA(IF(D2:D="","",TEXT(D2:D,"M/d")&", "&TEXT(E2:E,"HH:MM")&", "&G2:G&", "&H2:H))`,
-  },
-  {
-    cell: "O2",
-    formula: `=ARRAYFORMULA(IF(E2:E="","",TEXT(E2:E,"HH:MM")&", "&G2:G&", "&H2:H))`,
-  },
-  {
-    cell: "Q2",
-    formula: `=ARRAYFORMULA(IF(J2:J="계약", G2:G&", "&L2:L&", "&P2:P, ""))`,
-  },
-];
+// ── 04 업체관리 per-row 수식 ─────────────────────────────────────
+// ARRAYFORMULA를 안 쓰는 이유: 한국 로케일 + 시트 잔재(checkbox/data validation
+// 등) 환경에서 spill이 막혀 #REF! 발생. per-row IF로 가면 spill 자체가
+// 필요 없어 #REF! 원천 차단.
+const MEETINGS_LAST_ROW = 1000; // 최대 미팅 1000건 가정
+
+function meetingsRowFormulas(r: number): {
+  N: string;
+  O: string;
+  Q: string;
+} {
+  return {
+    // N: 표시_상세 — 미팅날짜 포함 ("5/1, 14:00, 에이스, 잠실나루")
+    N: `=IF(D${r}="","",TEXT(D${r},"M/d")&", "&TEXT(E${r},"HH:mm")&", "&G${r}&", "&H${r})`,
+    // O: 표시_요약 — 미팅날짜 제외 ("14:00, 에이스, 잠실나루")
+    O: `=IF(E${r}="","",TEXT(E${r},"HH:mm")&", "&G${r}&", "&H${r})`,
+    // Q: 계약합성라인 — 상태가 "계약"일 때만
+    Q: `=IF(J${r}="계약",G${r}&", "&L${r}&", "&P${r},"")`,
+  };
+}
 
 // ── 데이터 행 식별 (C 컬럼 = 날짜) ───────────────────────────────
 async function readDataRows(spreadsheetId: string): Promise<number[]> {
@@ -113,10 +118,22 @@ export async function installFormulas(
   const dataRows = await readDataRows(spreadsheetId);
   const data: Array<{ range: string; values: string[][] }> = [];
 
-  // 04 업체관리 ARRAYFORMULA들
-  for (const f of MEETINGS_ARRAYFORMULAS) {
-    data.push({ range: `${M_REF}!${f.cell}`, values: [[f.formula]] });
+  // 04 업체관리 — per-row 수식 (N2:N1000, O2:O1000, Q2:Q1000)
+  // 한 번의 batchUpdate에 1000행 × 1컬럼 배열로 push.
+  const nRows: string[][] = [];
+  const oRows: string[][] = [];
+  const qRows: string[][] = [];
+  for (let r = 2; r <= MEETINGS_LAST_ROW; r++) {
+    const f = meetingsRowFormulas(r);
+    nRows.push([f.N]);
+    oRows.push([f.O]);
+    qRows.push([f.Q]);
   }
+  data.push(
+    { range: `${M_REF}!N2:N${MEETINGS_LAST_ROW}`, values: nRows },
+    { range: `${M_REF}!O2:O${MEETINGS_LAST_ROW}`, values: oRows },
+    { range: `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`, values: qRows },
+  );
 
   // 01 영업관리 — 데이터 행에만 per-row 수식 (8개 컬럼)
   for (const r of dataRows) {
@@ -140,7 +157,7 @@ export async function installFormulas(
   return {
     installed: data.length,
     details: [
-      `04 업체관리: N2/O2/Q2 ARRAYFORMULA (3개)`,
+      `04 업체관리: N/O/Q 컬럼 per-row 수식 (각 ${MEETINGS_LAST_ROW - 1}행)`,
       `01 영업관리: 데이터 행 ${dataRows.length}개 × 8 컬럼 (I~P) = ${dataRows.length * 8}개 셀`,
       `합계행/헤더/빈 행은 건드리지 않음 (사용자 SUM 수식 보존)`,
     ],
@@ -164,11 +181,12 @@ export async function installFormulas(
 export async function uninstallFormulas(
   spreadsheetId: string,
 ): Promise<{ cleared: number }> {
-  // ── 1단계: 업체관리 N/O/Q 컬럼 전체 비우기 (batchClear — 진짜 빈 셀) ─
+  // ── 1단계: 업체관리 N/O/Q 컬럼 비우기 (batchClear — 진짜 빈 셀) ─
+  // 범위는 install이 쓰는 N2:N1000과 정확히 매칭.
   const meetingsRanges = [
-    `${M_REF}!N2:N`,
-    `${M_REF}!O2:O`,
-    `${M_REF}!Q2:Q`,
+    `${M_REF}!N2:N${MEETINGS_LAST_ROW}`,
+    `${M_REF}!O2:O${MEETINGS_LAST_ROW}`,
+    `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`,
   ];
   await sheetsClient().spreadsheets.values.batchClear({
     spreadsheetId,
