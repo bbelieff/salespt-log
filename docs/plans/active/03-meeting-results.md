@@ -2,123 +2,122 @@
 slug: 03-meeting-results
 status: active
 created: 2026-04-20
-updated: 2026-04-20
-worktree: ../wt/03-meeting-results
-depends_on: 02-meeting-booking
+updated: 2026-04-29
+worktree: ../wt/meeting-results
+depends_on: 08-contact-tab-ui
 ---
+
+> **📄 이 문서는 무엇인가요?**
+> - **한 줄 요약**: 일정·계약 탭에서 미팅 결과(상태/계약/수임비/취소)를 인라인으로 입력·저장하는 기능
+> - **누가 읽나요**: 개발자 (구현 가이드)
+> - **어떤 기능·작업과 연결?**: `app/(app)/schedule/`, `lib/repo/meetings.ts` (`updateMeeting`), `lib/query/contact-hooks.ts` (`usePatchMeeting`)
+> - **읽고 나면 알 수 있는 것**: Phase 1/2/3 분할, 데이터 흐름, 5상태 모델
+> - **관련 문서**: [[docs/domains/sheet-structure.md]] §3 업체관리, [[docs/design/prototypes/schedule-weekly.html]]
 
 # 03 — 미팅별 결과 입력 (상태·계약·수임비)
 
 ## Executive Summary
-`prototype/index.html`의 "일정·계약" 탭에 미팅별 결과 입력 UI를 추가한다. 현재는 캘린더 + 미팅 리스트만 표시하고 있으나, 미팅 완료 후 상태(예약/완료/취소), 계약 여부, 수임비, 계약 비고를 기록할 수 있도록 한다. 입력된 데이터는 시트의 J~P열에 반영되어 대시보드 "총매출" 자동 갱신에 기여한다.
+일정·계약 탭에 미팅별 결과 입력 UI를 추가한다. 컨택관리 탭은 "미팅을 잡는 입구"고, 일정·계약 탭은 "미팅 후 결과 처리장"이다. 5상태 카드(예약/계약/완료/변경/취소) + 인라인 액션 폼으로 시트 J/K/L/M/P 컬럼을 갱신한다.
 
-## Requirements
+## Phase 분할
 
-### 기능 요구사항
-1. **미팅 카드 확장 UI**: 기존 미팅 리스트에서 각 미팅 카드 클릭 시 결과 입력 영역이 아코디언 방식으로 펼쳐짐
-2. **결과 필드 입력**: 
-   - 상태: 예약/완료/취소 (드롭다운)
-   - 계약여부: boolean (체크박스)
-   - 수임비: number (만원 단위, 계약여부=true일 때만 활성화)
-   - 계약비고: text (업체명+결제조건 등)
-3. **저장 및 갱신**: 저장 시 `dayStore[date].meetings[i]` 업데이트, 대시보드 총매출 자동 갱신
-4. **검증**: 계약여부=true인데 수임비=0이면 경고 표시
+이 plan은 prototype `schedule-weekly.html` (991 lines) 기준이고 한 PR로는 무리. 3개 PR로 분할:
 
-### 데이터 요구사항 (시트 매핑)
+### Phase 1 — 결과 입력 핵심 (이번 PR `feat/meeting-results`)
+- **3-action**: 💵 계약 / 🟠 완료(계약X) / 🔴 취소
+- API: `GET /api/meetings/week/[weekStart]` (한 주치 미팅 조회, 미팅날짜 기준)
+- Service: `loadWeekMeetings(email, weekStart)` — 7일 × all channels
+- Hook: `useWeekMeetings(weekStart)` (stateless, key by weekStart)
+- 페이지: `/schedule` — 주차 네비 + 7일 그룹 + 5상태 카드
+- 카드 펼침 → 4-action 버튼 그리드 (변경 버튼은 disabled+ "Phase 2" 라벨)
+- 계약 폼: 수임비(만원) + 계약조건 → `상태=계약, 계약여부=true, 수임비, 계약조건` patch
+- 완료 폼: 미팅사유(텍스트) → `상태=완료, 미팅사유` patch
+- 취소 폼: 사유(선택) → `상태=취소, 미팅사유` patch
+- 상단 요약 바: 총건/예약/완료/취소 카운트 + 수임비 합계
 
-미팅별 결과 데이터는 기존 `앱_미팅예약` 탭에 컬럼을 추가하여 저장:
+### Phase 2 — 변경(reschedule) + 일정 수정
+- 변경 액션: 새 미팅 row append + 이전 카드 `상태=변경` + `previousMeetingId` 체이닝
+- 일정 수정: 날짜/시간/업체/장소/예약비고 (펼침 내 details)
+- 미팅결과 누적: M열에 줄바꿈 누적 ("회차N: 사유" 형식)
 
-| 기존 컬럼 | 추가 컬럼 | 타입 | 매핑 | 비고 |
-|---|---|---|---|---|
-| A-G | H: status | 예약/완료/취소 | Meeting.status | 드롭다운 |
-| | I: 계약여부 | boolean | Meeting.계약여부 | 체크박스 |
-| | J: 수임비 | number | Meeting.수임비 | 만원 단위, 계약여부=true시만 |
-| | K: 계약비고 | text | Meeting.계약비고 | 업체명+결제조건 |
+### Phase 3 — 캘린더 탭 + 폴리싱
+- 월간뷰 캘린더 페이지
+- 시안 픽셀 매칭 폴리싱 (애니메이션, 모달, 색상 토큰화)
 
-### UI/UX 요구사항
-1. **모바일 우선 설계**: 기존 캘린더 레이아웃 유지, 미팅 카드만 확장
-2. **아코디언 애니메이션**: 미팅 카드 탭 시 결과 입력 섹션이 부드럽게 펼쳐짐
-3. **조건부 활성화**: 계약여부 체크 시에만 수임비 입력 필드 활성화
-4. **즉시 반영**: 저장 후 캘린더 화면에서 미팅 카드에 상태 표시 (배지 또는 아이콘)
-
-### 기술적 제약사항
-1. **프로토타입 범위**: `prototype/index.html` 내에서만 구현, 실제 시트 연동 없이 `dayStore` 객체 사용
-2. **기존 구조 유지**: `renderCalSelected()` 함수 기반 구조 활용, 새로운 렌더링 함수 추가
-3. **데이터 일관성**: 미팅별 결과는 `Meeting` 객체에 추가 필드로 저장
-
-## Acceptance Criteria
+## Acceptance Criteria (Phase 1)
 
 ### 필수 기능
-- [ ] 미팅 카드 클릭 시 결과 입력 섹션 토글 (아코디언)
-- [ ] 상태 드롭다운: 예약(기본값)/완료/취소
-- [ ] 계약여부 체크박스
-- [ ] 수임비 입력 필드 (계약여부=true시만 활성화)
-- [ ] 계약비고 텍스트 입력
-- [ ] 저장 버튼 클릭 시 `dayStore` 업데이트
-- [ ] 검증: 계약여부=true && 수임비=0일 때 경고 메시지
-
-### 데이터 연동
-- [ ] 저장된 결과가 대시보드 "총매출"에 반영 (기존 `calculateFinancialSummary()` 함수 확장)
-- [ ] 미팅 상태별 시각적 표시 (완료: 초록색, 취소: 회색 등)
-- [ ] 미팅 목록에서 계약 성사 건은 별도 표시 (💰 아이콘 등)
-
-### UI/UX 품질
-- [ ] 60fps 아코디언 애니메이션
-- [ ] 모바일 터치 최적화 (최소 44px 터치 영역)
-- [ ] 저장 중 로딩 상태 표시
-- [ ] 저장 완료 후 토스트 메시지
-- [ ] 입력 검증 실시간 피드백
+- [ ] `/schedule` 페이지: 주차 네비, 7일 day-section, 미팅 카드 리스트
+- [ ] 카드 헤더: 시간 + 업체명 + 장소 + (계약 시) 수임비 요약
+- [ ] 5상태별 색상 (reserved=노랑, contract=초록, done=주황, rescheduled=보라, canceled=빨강)
+- [ ] 카드 클릭 → 펼침/접힘 토글
+- [ ] 펼침 본문: 채널 배지 + 4-action 버튼 (변경은 disabled)
+- [ ] 계약 액션: 수임비(필수) + 계약조건(선택) → 확정 → 시트 update
+- [ ] 완료 액션: 미팅사유 → 확정 → 시트 update
+- [ ] 취소 액션: 사유(선택) → 확정 → 시트 update
+- [ ] 확정 후 카드 색상 즉시 반영 (optimistic + invalidate)
+- [ ] 상단 요약 바: 총건/예약/완료/취소/수임비합계
+- [ ] 수임비=0인데 계약 시도 시 경고 (저장 차단)
 
 ### 코드 품질
-- [ ] 기존 `renderCalSelected()` 함수와 일관된 코딩 스타일
-- [ ] 새로운 함수: `renderMeetingResults()`, `saveMeetingResult()`, `validateMeetingResult()`
-- [ ] 주석으로 기능 구분 명시
-- [ ] `dayStore` 스키마 확장 문서화
+- [ ] 파일당 ≤500줄 (check.sh 통과)
+- [ ] structural / unit 테스트 통과
+- [ ] mutation hook stateless (week-key 보존, race 방지)
+- [ ] `repo/meetings.ts`의 `updateMeeting` 재사용 — 신규 backend 작성 X
 
 ## Technical Design
 
-### 데이터 모델 확장 (프로토타입)
-```javascript
-// 기존 Meeting 객체에 추가
-const meeting = {
-  // 기존 필드...
-  date: "2026-04-20",
-  hour: 14,
-  min: 30,
-  vendor: "○○치킨",
-  region: "방이동",
-  
-  // 추가 필드
-  status: "예약",        // 예약|완료|취소
-  계약여부: false,       // boolean
-  수임비: 0,            // number (만원)
-  계약비고: ""          // string
-};
+### 데이터 흐름
+
+```
+schedule/page.tsx
+  └─ useWeekMeetings(weekStart) → GET /api/meetings/week/[weekStart]
+       └─ loadWeekMeetings(email, weekStart)
+            └─ findByDate(spreadsheetId, eachDate, "meeting") × 7
+       
+  카드 액션 확정
+  └─ usePatchMeeting().mutateAsync({weekStart, id, partial})
+       └─ patchMeeting(email, id, partial)
+            └─ updateMeeting(spreadsheetId, id, partial)
+       └─ onSuccess: invalidate ['week', weekStart]
 ```
 
-### 함수 설계
-1. **`expandMeetingCard(meetingIndex)`**: 미팅 카드 결과 입력 섹션 토글
-2. **`renderMeetingResultForm(meeting, index)`**: 결과 입력 폼 HTML 생성
-3. **`saveMeetingResult(meetingIndex)`**: 결과 저장 및 `dayStore` 업데이트
-4. **`validateMeetingResult(data)`**: 입력 검증 (계약여부 vs 수임비)
-5. **`updateFinancialSummary()`**: 기존 함수 확장, 수임비 합계 반영
+### 시트 매핑 (이미 존재 — 백엔드 신규 X)
 
-### UI 컴포넌트
-1. **결과 입력 폼**: 각 미팅 카드 하단에 숨겨진 섹션
-2. **상태 드롭다운**: 커스텀 스타일링으로 일관성 유지
-3. **수임비 입력**: 기존 스테퍼 버튼 스타일 재사용
-4. **저장 버튼**: 기존 저장 버튼과 동일한 디자인
+| 컬럼 | 필드 | Phase 1 액션 영향 |
+|---|---|---|
+| J | 상태 | 계약/완료/취소 |
+| K | 계약여부 | 계약 시 true |
+| L | 수임비 | 계약 시 입력값 |
+| M | 미팅사유 | 완료/취소 시 입력값 |
+| P | 계약조건 | 계약 시 입력값 |
 
-## Context
-- [[docs/domains/data-model.md]] — Meeting 타입 정의 및 시트 컬럼 매핑
-- [[docs/plans/active/02-meeting-booking.md]] — 미팅 예약 기능 (선행 작업)
-- [[prototype/index.html]] — 현재 "일정·계약" 탭 구현 (`renderCalSelected` 함수)
+### 컴포넌트 구조
 
-## TBD — 구현 전 확정 필요
-- [ ] 미팅 결과 수정/삭제 기능 포함 여부 (Phase 1 vs Phase 2)
-- [ ] 계약 성사 시 추가 알림/축하 효과 필요성
-- [ ] 취소된 미팅의 시각적 처리 방식 (회색 처리 vs 숨김)
-- [ ] 일괄 상태 변경 기능 (선택한 여러 미팅을 한번에 "완료" 처리 등)
+```
+app/(app)/schedule/
+  page.tsx                      # 주 컨테이너
+  _components/
+    SummaryBar.tsx              # 총건/예약/완료/취소/수임비
+    DaySection.tsx              # 1일 박스 (헤더 + 카드 리스트)
+    MeetingResultCard.tsx       # 5상태 카드 + 펼침 액션 영역
+    ContractForm.tsx            # 💵 계약 인라인 폼
+    DoneForm.tsx                # 🟠 완료 인라인 폼
+    CancelForm.tsx              # 🔴 취소 인라인 폼
+  _lib/
+    week.ts                     # 주차 유틸 (contact 것과 동일 — 추후 lib/util로 통합)
+    state-map.ts                # 상태 ↔ 색상/아이콘 매핑
+
+lib/service/
+  contact.ts                    # loadWeekMeetings 추가
+
+lib/query/
+  contact-hooks.ts              # useWeekMeetings + 기존 usePatchMeeting 재사용
+
+app/api/meetings/week/[weekStart]/
+  route.ts                      # GET
+```
 
 ## Log
-- 2026-04-20 초기 플랜 작성. 요구사항 분석 및 기술적 설계 완료.
+- 2026-04-20 초기 플랜 작성 (prototype 시절)
+- 2026-04-29 Phase 분할 확정 + 실제 Next.js 구조에 맞춰 재작성
