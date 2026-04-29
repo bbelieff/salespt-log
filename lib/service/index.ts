@@ -33,3 +33,6 @@ export {
   loadMonthMeetings,
   type CalendarMonthView,
 } from "./contact";
+
+// 수납 탭 유스케이스 (PR 09)
+export { loadDailyRevenue, saveDailyRevenue } from "./payment";
