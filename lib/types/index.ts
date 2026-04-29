@@ -100,6 +100,57 @@ export const DailyRevenue = z.object({
 });
 export type DailyRevenue = z.infer<typeof DailyRevenue>;
 
+// ── DB관리 — 4채널 raw log (PR 09 db-management) ────────────────
+// 시트 매핑: docs/domains/sheet-structure.md §5
+// 앱은 raw 입력만 (수식 컬럼은 안 씀).
+// 공통 메타: row(1-based 시트 행 번호) — UI에서 update/clear 식별자
+
+export const DBPurchase = z.object({
+  row: z.number().int().min(2).optional(),
+  구매일: z.string().default(""),
+  업체명: z.string().default(""),
+  개당단가: z.number().nonnegative().default(0),
+  주문개수: z.number().int().nonnegative().default(0),
+  주문금액: z.number().nonnegative().optional(), // E열 수식 — 읽기만
+  기타: z.string().default(""),
+});
+export type DBPurchase = z.infer<typeof DBPurchase>;
+
+export const DBProduction = z.object({
+  row: z.number().int().min(2).optional(),
+  날짜: z.string().default(""),
+  소재: z.string().default(""),
+  기간예산: z.number().nonnegative().default(0),
+  생산개수: z.number().int().nonnegative().default(0),
+  개당단가: z.number().nonnegative().optional(), // N열 수식 (예산÷개수)
+  기타: z.string().default(""),
+});
+export type DBProduction = z.infer<typeof DBProduction>;
+
+export const DBBanner = z.object({
+  row: z.number().int().min(2).optional(),
+  날짜: z.string().default(""),
+  업체명: z.string().default(""),
+  도착일: z.string().default(""),
+  개당단가: z.number().nonnegative().default(0),
+  주문개수: z.number().int().nonnegative().default(0),
+  주문금액: z.number().nonnegative().optional(),
+  기타: z.string().default(""),
+});
+export type DBBanner = z.infer<typeof DBBanner>;
+
+export const DBLead = z.object({
+  row: z.number().int().min(2).optional(),
+  구분: z.string().default(""), // 콜드콜/지인/기고객/소개 (자유입력)
+  접수일: z.string().default(""),
+  대표자명: z.string().default(""),
+  업체명: z.string().default(""),
+  소개처: z.string().default(""),
+  연락처: z.string().default(""),
+  조건: z.string().default(""),
+});
+export type DBLead = z.infer<typeof DBLead>;
+
 // ── 사용자 — 마스터 레지스트리 ─────────────────────────────────
 export const User = z.object({
   email: z.string().email(),

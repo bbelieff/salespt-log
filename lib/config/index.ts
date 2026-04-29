@@ -99,4 +99,44 @@ export const SHEET_RANGES = {
     headerRow: "A1:S1",
     range: "A2:S", // append + update 대상
   },
+
+  // ── DB관리 (4채널 raw log, 비용 + 영업기회) ───────────────
+  // 앱은 raw 입력만. 합계/평균단가 수식은 시트 자체에 이미 박혀있음.
+  // 합계 행("합계" 텍스트 시작)은 절대 덮어쓰지 않음.
+  // SSOT: docs/domains/sheet-structure.md §5
+  dbManagement: {
+    tab: "03 DB관리",
+    headerRow: 1,
+    // 데이터 영역 상한 (사용자가 합계 행을 row 100 이후에 두면 모두 데이터로 인식).
+    // 너무 크게 잡으면 read 비용↑, 너무 작게 잡으면 합계 행 만남.
+    maxRow: 100,
+    sections: {
+      매입DB: {
+        startCol: "B",
+        endCol: "G",
+        cols: ["구매일", "업체명", "개당단가", "주문개수", "주문금액", "기타"] as const,
+        // E열(주문금액)은 시트 수식 — 앱이 직접 쓰지 않음
+        formulaCols: ["주문금액"] as const,
+      },
+      직접생산: {
+        startCol: "I",
+        endCol: "N",
+        cols: ["날짜", "소재", "기간예산", "생산개수", "개당단가", "기타"] as const,
+        // M열(개당단가) = 기간예산 ÷ 생산개수 시트 수식
+        formulaCols: ["개당단가"] as const,
+      },
+      현수막: {
+        startCol: "P",
+        endCol: "V",
+        cols: ["날짜", "업체명", "도착일", "개당단가", "주문개수", "주문금액", "기타"] as const,
+        formulaCols: ["주문금액"] as const,
+      },
+      "콜·지·기·소": {
+        startCol: "X",
+        endCol: "AD",
+        cols: ["구분", "접수일", "대표자명", "업체명", "소개처", "연락처", "조건"] as const,
+        formulaCols: [] as const, // 비용 X, 정보만 — 수식 없음
+      },
+    },
+  },
 } as const;

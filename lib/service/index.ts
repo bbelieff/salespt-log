@@ -36,3 +36,21 @@ export {
 
 // 수납 탭 유스케이스 (PR 09)
 export { loadDailyRevenue, saveDailyRevenue } from "./payment";
+
+// DB관리 탭 유스케이스 (PR 09 db-management — 4채널 raw log)
+export {
+  loadDBOverview,
+  addPurchase,
+  patchPurchase,
+  removePurchase,
+  addProduction,
+  patchProduction,
+  removeProduction,
+  addBanner,
+  patchBanner,
+  removeBanner,
+  addLead,
+  patchLead,
+  removeLead,
+  type DBOverview,
+} from "./db";
