@@ -201,14 +201,10 @@ export default function ContactPage() {
             handleRemoveSavedMeeting(last);
           } else if (cur2 > 0) {
             // 시트 일관성 깨진 상태: 미팅 카드는 없는데 컨택성공만 남음.
-            // (이전 테스트에서 슬롯 등록 안 하고 저장한 등 이전 잔재)
-            // → 직접 -1 + 시트 동기화로 정상화
+            // → 로컬 -1 조정만 하고 저장은 [저장하기] 버튼에 위임.
+            // (자동 saveMetrics 제거 — Quota 초과 방지)
             adjustMetric(ch, "contactSuccess", -1);
-            setDraft((latest) => {
-              void saveMetrics.mutateAsync(latest);
-              return latest;
-            });
-            showToast("컨택성공 -1 (시트 일관성 정정)");
+            showToast("컨택성공 -1 · [저장하기]로 시트에 반영하세요");
           } else {
             showToast("이 채널의 컨택성공이 이미 0입니다");
           }

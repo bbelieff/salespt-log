@@ -8,10 +8,10 @@
  */
 import { findUserByEmail } from "@/repo/users";
 import {
+  batchWriteChannelDailyRows,
   readCourseStart,
   readWeek,
   weekIndexOf,
-  writeChannelDailyRow,
 } from "@/repo/sales";
 import {
   appendMeeting,
@@ -131,21 +131,26 @@ export async function saveContactMetrics(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
 
+  // 4채널을 한 번의 batchUpdate로 저장 (readCourseStart 1회만 호출).
+  // 이전: 채널별 writeChannelDailyRow 루프 → readCourseStart 4회 = 4 Read
+  // 현재: batchWriteChannelDailyRows → readCourseStart 1회 = 1 Read
+  const rows: ChannelDailyRow[] = [];
   for (const channel of CHANNEL_ORDER) {
     const m = channels[channel];
     if (!m) continue;
-    // 검증·자동 보정
     const success = Math.min(m.contactSuccess, m.contactProgress);
-    const row = ChannelDailyRow.parse({
-      date,
-      channel,
-      production: m.production,
-      inflow: m.inflow,
-      contactProgress: m.contactProgress,
-      contactSuccess: success,
-    });
-    await writeChannelDailyRow(spreadsheetId, row);
+    rows.push(
+      ChannelDailyRow.parse({
+        date,
+        channel,
+        production: m.production,
+        inflow: m.inflow,
+        contactProgress: m.contactProgress,
+        contactSuccess: success,
+      }),
+    );
   }
+  await batchWriteChannelDailyRows(spreadsheetId, rows);
 }
 
 /** 새 미팅 1건 등록. 컨택성공 +1은 별도 호출 (saveContactMetrics)에서 처리. */

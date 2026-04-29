@@ -148,37 +148,50 @@ export async function writeChannelDailyRow(
   spreadsheetId: string,
   row: ChannelDailyRow,
 ): Promise<void> {
-  const validated = ChannelDailyRow.parse(row);
-  const courseStart = await readCourseStart(spreadsheetId);
-  const targetDate = parseISO(validated.date);
-  const sheetRow = salesRowFor(targetDate, validated.channel, courseStart);
+  await batchWriteChannelDailyRows(spreadsheetId, [row]);
+}
+
+/**
+ * 여러 행의 4지표(E~H)를 한 번의 batchUpdate로 저장.
+ * readCourseStart를 1회만 호출 → Sheets Read quota 절약.
+ * saveContactMetrics (4채널 동시 저장 시) 4 Read → 1 Read.
+ */
+export async function batchWriteChannelDailyRows(
+  spreadsheetId: string,
+  rows: ChannelDailyRow[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const courseStart = await readCourseStart(spreadsheetId); // 1 Read
 
   const cols = SHEET_RANGES.sales.metricCols;
-  // E~H 가드
   for (const col of [
     cols.production,
     cols.inflow,
     cols.contactProgress,
     cols.contactSuccess,
   ]) {
-    assertWritableCol(col, "writeChannelDailyRow");
+    assertWritableCol(col, "batchWriteChannelDailyRows");
   }
 
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!${cols.production}${sheetRow}:${cols.contactSuccess}${sheetRow}`;
-  await sheetsClient().spreadsheets.values.update({
+  const tab = tabRef(SHEET_RANGES.sales.tab);
+  const data = rows.map((row) => {
+    const validated = ChannelDailyRow.parse(row);
+    const targetDate = parseISO(validated.date);
+    const sheetRow = salesRowFor(targetDate, validated.channel, courseStart);
+    return {
+      range: `${tab}!${cols.production}${sheetRow}:${cols.contactSuccess}${sheetRow}`,
+      values: [[
+        validated.production,
+        validated.inflow,
+        validated.contactProgress,
+        validated.contactSuccess,
+      ]],
+    };
+  });
+
+  await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        [
-          validated.production,
-          validated.inflow,
-          validated.contactProgress,
-          validated.contactSuccess,
-        ],
-      ],
-    },
+    requestBody: { valueInputOption: "USER_ENTERED", data },
   });
 }
 
