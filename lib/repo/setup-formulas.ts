@@ -149,43 +149,47 @@ export async function installFormulas(
 
 /**
  * 모든 설치된 수식을 제거.
- * 영업관리 데이터 행 I~P 클리어 + 04 업체관리 N2/O2/Q2 클리어.
+ * `batchClear`로 셀을 진짜 비움 (값=""을 쓰면 ARRAYFORMULA spill blocker가 됨).
  *
  * ⚠️ 합계행에 있던 사용자 SUM 수식은 v1 installer가 ARRAYFORMULA spill로 깨뜨렸을
  * 가능성 있음. 이 함수는 v1이 깨뜨린 수식을 자동 복원하지 못함 (원본 모름).
  * 사용자가 직접 합계행 수식을 다시 입력해야 함.
+ *
+ * 클리어 범위:
+ *   - 04 업체관리: N2:N, O2:O, Q2:Q (컬럼 전체 — spill blocker 잔재 제거)
+ *   - 01 영업관리: 데이터행 후보 전 범위 I~P (BLOCK_START~LAST_ROW)
+ *
+ * 합계행을 안 건드리려면 영업관리는 셀 단위로 데이터행만 클리어.
  */
 export async function uninstallFormulas(
   spreadsheetId: string,
 ): Promise<{ cleared: number }> {
-  const data: Array<{ range: string; values: string[][] }> = [];
+  // ── 1단계: 업체관리 N/O/Q 컬럼 전체 비우기 (batchClear — 진짜 빈 셀) ─
+  const meetingsRanges = [
+    `${M_REF}!N2:N`,
+    `${M_REF}!O2:O`,
+    `${M_REF}!Q2:Q`,
+  ];
+  await sheetsClient().spreadsheets.values.batchClear({
+    spreadsheetId,
+    requestBody: { ranges: meetingsRanges },
+  });
 
-  // 04 업체관리: N2/O2/Q2의 ARRAYFORMULA 클리어 (전 컬럼 비움)
-  for (const col of ["N", "O", "Q"]) {
-    data.push({
-      range: `${M_REF}!${col}2`,
-      values: [[""]],
+  // ── 2단계: 영업관리 I~P 데이터행 비우기 (합계행은 안 건드림) ─
+  // C 컬럼 읽어서 "데이터 행"만 식별 후 그 행만 클리어.
+  const dataRows = await readDataRows(spreadsheetId);
+  const salesRanges: string[] = [];
+  for (const r of dataRows) {
+    for (const col of SALES_FORMULA_COLS) {
+      salesRanges.push(`${tabRef(SALES_TAB)}!${col}${r}`);
+    }
+  }
+  if (salesRanges.length > 0) {
+    await sheetsClient().spreadsheets.values.batchClear({
+      spreadsheetId,
+      requestBody: { ranges: salesRanges },
     });
   }
 
-  // 01 영업관리 데이터 행 + 그 외 모든 행 I~P 클리어
-  // (v1이 어디까지 spill했는지 모르니 안전하게 SALES_BLOCK_START~SALES_LAST_ROW 전체 비움)
-  for (let r = SALES_BLOCK_START; r <= SALES_LAST_ROW; r++) {
-    for (const col of SALES_FORMULA_COLS) {
-      data.push({
-        range: `${tabRef(SALES_TAB)}!${col}${r}`,
-        values: [[""]],
-      });
-    }
-  }
-
-  await sheetsClient().spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: "USER_ENTERED",
-      data,
-    },
-  });
-
-  return { cleared: data.length };
+  return { cleared: meetingsRanges.length + salesRanges.length };
 }
