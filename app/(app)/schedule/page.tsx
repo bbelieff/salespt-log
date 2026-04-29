@@ -132,11 +132,20 @@ export default function SchedulePage() {
         meeting: newMeeting,
       });
       try {
+        // 미팅사유 누적: 기존이 있으면 회차 prefix 추가
+        const prev = (original.미팅사유 ?? "").trim();
+        const trimmed = reason.trim();
+        const accumulated =
+          !trimmed
+            ? prev
+            : !prev
+              ? trimmed
+              : `${prev}\n${prev.split("\n").length + 1}회차: ${trimmed}`;
         await patchMeeting.mutateAsync({
           date: "",
           weekStart,
           id: original.id,
-          partial: { 상태: "변경", 미팅사유: reason },
+          partial: { 상태: "변경", 미팅사유: accumulated },
         });
         showToast("✓ 일정 변경 완료");
       } catch (e) {

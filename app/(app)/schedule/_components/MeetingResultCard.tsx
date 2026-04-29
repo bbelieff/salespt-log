@@ -3,10 +3,12 @@
  * 정본: docs/design/prototypes/schedule-weekly.html
  *
  * Phase 2: 4-action 모두 활성 (계약/완료/변경/취소).
- * 처리완료 카드(reserved 외)는 결과 표시만, 액션 그리드 숨김.
+ * Phase 3a: 예약 카드 펼침에 일정 수정 details 추가.
+ * 처리완료 카드(reserved 외)는 결과 표시만, 액션·수정 모두 숨김.
  *
  * 헤더(접힘 시): 상태아이콘 시간 업체명 장소 [수임비요약] ▼
- * 펼침: 채널 배지 + 결과요약 + (예약 상태일 때만) 4-action 버튼 + 인라인 폼
+ * 펼침(reserved): 채널 배지 + 일정 수정 details + 4-action + 인라인 폼
+ * 펼침(처리됨): 채널 배지 + 결과요약 (액션 X)
  */
 "use client";
 
@@ -22,6 +24,7 @@ import ContractForm from "./ContractForm";
 import DoneForm from "./DoneForm";
 import CancelForm from "./CancelForm";
 import RescheduleForm from "./RescheduleForm";
+import BasicEditDetails from "./BasicEditDetails";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -85,11 +88,23 @@ export default function MeetingResultCard({
     setAction(null);
     setOpen(false);
   };
+  // 미팅사유 누적: 기존 값이 있으면 "회차N: " prefix 붙여 줄바꿈으로 append.
+  // 빈 값이면 그대로. 사용자가 의도해서 빈 reason을 넣어도 누적 안 함.
+  const accumulateReason = (newReason: string): string => {
+    const trimmed = newReason.trim();
+    const prev = (meeting.미팅사유 ?? "").trim();
+    if (!trimmed) return prev;
+    if (!prev) return trimmed;
+    // 이전 줄 수 카운트하여 회차 번호 산정
+    const round = prev.split("\n").length + 1;
+    return `${prev}\n${round}회차: ${trimmed}`;
+  };
+
   const handleDone = (reason: string) => {
     onPatch({
       상태: "완료",
       계약여부: false,
-      미팅사유: reason,
+      미팅사유: accumulateReason(reason),
     });
     setAction(null);
     setOpen(false);
@@ -98,7 +113,7 @@ export default function MeetingResultCard({
     onPatch({
       상태: "취소",
       계약여부: false,
-      미팅사유: reason,
+      미팅사유: accumulateReason(reason),
     });
     setAction(null);
     setOpen(false);
@@ -191,9 +206,28 @@ export default function MeetingResultCard({
                 </>
               )}
               {(state === "done" || state === "canceled") && meeting.미팅사유 && (
-                <div className="text-gray-600">사유: {meeting.미팅사유}</div>
+                <div className="whitespace-pre-wrap text-gray-600">
+                  사유: {meeting.미팅사유}
+                </div>
               )}
             </div>
+          )}
+
+          {/* 일정 수정 details (예약 카드만) */}
+          {showActions && (
+            <BasicEditDetails
+              initial={{
+                미팅날짜: meeting.미팅날짜,
+                미팅시간: meeting.미팅시간,
+                업체명: meeting.업체명,
+                장소: meeting.장소,
+                예약비고: meeting.예약비고,
+              }}
+              onSave={(partial) => {
+                onPatch(partial);
+              }}
+              pending={pending}
+            />
           )}
 
           {/* 4-action 버튼 그리드 (예약 상태일 때만) */}
@@ -270,7 +304,7 @@ export default function MeetingResultCard({
             <div className="rounded-md bg-purple-50 px-2 py-1.5 text-xs text-purple-700">
               📅 일정이 변경되었습니다. 새 일정의 카드를 확인하세요.
               {meeting.미팅사유 && (
-                <div className="mt-0.5 text-gray-600">
+                <div className="mt-0.5 whitespace-pre-wrap text-gray-600">
                   사유: {meeting.미팅사유}
                 </div>
               )}
