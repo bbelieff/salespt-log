@@ -3,6 +3,14 @@
  *
  * 캐시 키:
  *   - ['day', date]            → ContactDayView
+ *
+ * ⚠️ 중요: mutation 훅은 stateless (date를 hook 인자로 받지 않음).
+ * date는 mutateAsync 호출 시 인자로 전달.
+ *   - 이전: useSaveMetrics(date) → mutationFn이 date를 클로저로 캡처 →
+ *           re-render 시 새 date로 갱신되어 race condition 발생
+ *           (4/29 등록 중 5/1 navigate 시 5/1 row에 4/29 draft 저장됨)
+ *   - 현재: useSaveMetrics() → mutateAsync({date, channels}) → 호출 시점의
+ *           date가 그대로 mutationFn에 전달되어 closure stale 없음
  */
 "use client";
 
@@ -39,7 +47,7 @@ async function fetchJSON<T>(
   return data as T;
 }
 
-// ── 쿼리/뮤테이션 ────────────────────────────────────────────
+// ── 쿼리 ──────────────────────────────────────────────────────
 export function useDay(date: string): UseQueryResult<ContactDayView> {
   return useQuery({
     queryKey: dayKey(date),
@@ -48,53 +56,77 @@ export function useDay(date: string): UseQueryResult<ContactDayView> {
   });
 }
 
-export function useSaveMetrics(date: string) {
+// ── Mutation 입력 타입 ────────────────────────────────────────
+export interface SaveMetricsArgs {
+  date: string;
+  channels: Partial<Record<Channel, ChannelDailyRowMetrics>>;
+}
+export interface AppendMeetingArgs {
+  date: string; // 캐시 invalidate용 (현재 view date)
+  meeting: Meeting;
+}
+export interface PatchMeetingArgs {
+  date: string;
+  id: string;
+  partial: Partial<Omit<Meeting, "id">>;
+}
+export interface RemoveMeetingArgs {
+  date: string;
+  id: string;
+}
+
+// ── 뮤테이션 ──────────────────────────────────────────────────
+export function useSaveMetrics() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (channels: Partial<Record<Channel, ChannelDailyRowMetrics>>) =>
+    mutationFn: ({ date, channels }: SaveMetricsArgs) =>
       fetchJSON<{ ok: true }>(`/api/daily/${date}`, {
         method: "POST",
         body: JSON.stringify(channels),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date }) =>
+      qc.invalidateQueries({ queryKey: dayKey(date) }),
   });
 }
 
-export function useAppendMeeting(date: string) {
+export function useAppendMeeting() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (meeting: Meeting) =>
+    mutationFn: ({ meeting }: AppendMeetingArgs) =>
       fetchJSON<{ ok: true; id: string }>(`/api/meeting`, {
         method: "POST",
         body: JSON.stringify(meeting),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date, meeting }) => {
+      // 예약일 기준 view 캐시 invalidate (그 view에 등록 카드가 보여야 함).
+      // 미팅날짜가 다른 날이면 그 날도 invalidate (일정·계약 탭 대비).
+      qc.invalidateQueries({ queryKey: dayKey(date) });
+      if (meeting.미팅날짜 && meeting.미팅날짜 !== date) {
+        qc.invalidateQueries({ queryKey: dayKey(meeting.미팅날짜) });
+      }
+    },
   });
 }
 
-export function usePatchMeeting(date: string) {
+export function usePatchMeeting() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      partial,
-    }: {
-      id: string;
-      partial: Partial<Omit<Meeting, "id">>;
-    }) =>
+    mutationFn: ({ id, partial }: PatchMeetingArgs) =>
       fetchJSON<{ ok: true }>(`/api/meeting/${id}`, {
         method: "PATCH",
         body: JSON.stringify(partial),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date }) =>
+      qc.invalidateQueries({ queryKey: dayKey(date) }),
   });
 }
 
-export function useRemoveMeeting(date: string) {
+export function useRemoveMeeting() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
+    mutationFn: ({ id }: RemoveMeetingArgs) =>
       fetchJSON<{ ok: true }>(`/api/meeting/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date }) =>
+      qc.invalidateQueries({ queryKey: dayKey(date) }),
   });
 }

@@ -60,10 +60,12 @@ export default function ContactPage() {
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
 
   const dayQuery = useDay(date);
-  const saveMetrics = useSaveMetrics(date);
-  const appendMeeting = useAppendMeeting(date);
-  const patchMeeting = usePatchMeeting(date);
-  const removeMeeting = useRemoveMeeting(date);
+  // ⚠️ stateless mutations: date를 hook 인자가 아니라 mutate args로 전달.
+  // (hook 인자로 받으면 navigate 도중 race condition으로 잘못된 row 오염)
+  const saveMetrics = useSaveMetrics();
+  const appendMeeting = useAppendMeeting();
+  const patchMeeting = usePatchMeeting();
+  const removeMeeting = useRemoveMeeting();
 
   // 서버 데이터 로드 시 draft 동기화 + 일관성 체크
   useEffect(() => {
@@ -259,18 +261,22 @@ export default function ContactPage() {
       미팅사유: "",
       계약조건: "",
     };
+    // 클로저로 등록 시점의 date를 잡음 (이후 navigate에 영향 안 받음)
+    const dateAtClick = date;
+    const draftAtClick = draft;
     // 즉시(낙관적) 신규 슬롯에서 제거 → 버튼이 사라져 두 번 클릭 불가
     // 실패 시 복원
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
       // 1) 미팅 등록 (04 업체관리)
-      await appendMeeting.mutateAsync(meeting);
-      // 2) 동시에 4지표도 시트에 저장 (01 영업관리)
+      await appendMeeting.mutateAsync({ date: dateAtClick, meeting });
+      // 2) 동시에 4지표도 시트에 저장 (01 영업관리 — dateAtClick row)
       //    → 컨택성공이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
-      await saveMetrics.mutateAsync(draft);
+      await saveMetrics.mutateAsync({
+        date: dateAtClick,
+        channels: draftAtClick,
+      });
       showToast("✓ 등록 완료 (시트 동기화됨)");
-      // 컨택관리 탭은 예약일 기준 조회. 미팅날짜가 다른 날이어도
-      // 이 화면에 슬롯이 그대로 남는다 (예약일 = 현재 page date 동일).
     } catch (e) {
       // 복원
       setNewSlots((s) => [...s, slot]);
@@ -280,17 +286,19 @@ export default function ContactPage() {
 
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?`)) return;
+    const dateAtClick = date;
     try {
       // 1) 시트에서 미팅 행 클리어
-      await removeMeeting.mutateAsync(meeting.id);
+      await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
       // 2) 컨택성공 -1 (functional setState — stale closure 안전)
       adjustMetric(meeting.channel, "contactSuccess", -1);
-      // 3) 4지표를 시트에 즉시 저장 (등록 시와 동일한 atomic 패턴)
-      //    setDraft가 반영된 후의 최신 값을 functional updater로 읽어 mutate.
-      //    setDraft는 비동기이므로 다음 tick에 saveMetrics 호출.
+      // 3) 4지표를 시트에 즉시 저장. functional updater로 latest draft 읽어
+      //    명시적으로 dateAtClick row에 저장 (navigate race 방지).
       setDraft((latest) => {
-        // 사이드 이펙트: 저장은 비동기로 분리
-        void saveMetrics.mutateAsync(latest);
+        void saveMetrics.mutateAsync({
+          date: dateAtClick,
+          channels: latest,
+        });
         return latest;
       });
       showToast("✕ 삭제 · 컨택성공 -1 (시트 동기화됨)");
@@ -303,8 +311,9 @@ export default function ContactPage() {
     id: string,
     partial: Partial<Omit<Meeting, "id">>,
   ) => {
+    const dateAtClick = date;
     try {
-      await patchMeeting.mutateAsync({ id, partial });
+      await patchMeeting.mutateAsync({ date: dateAtClick, id, partial });
       showToast("💾 수정 완료");
     } catch (e) {
       showToast(`수정 실패: ${(e as Error).message}`);
@@ -321,8 +330,9 @@ export default function ContactPage() {
       );
       return;
     }
+    const dateAtClick = date;
     try {
-      await saveMetrics.mutateAsync(draft);
+      await saveMetrics.mutateAsync({ date: dateAtClick, channels: draft });
       showToast("✅ 저장 완료");
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
