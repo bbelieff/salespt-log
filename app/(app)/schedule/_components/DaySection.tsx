@@ -14,6 +14,12 @@ interface Props {
   todayISO: string;
   pendingId: string | null;
   onPatch: (id: string, partial: Partial<Omit<Meeting, "id">>) => void;
+  onReschedule: (
+    meeting: Meeting,
+    newDate: string,
+    newTime: string,
+    reason: string,
+  ) => void;
 }
 
 export default function DaySection({
@@ -22,6 +28,7 @@ export default function DaySection({
   todayISO,
   pendingId,
   onPatch,
+  onReschedule,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -78,6 +85,7 @@ export default function DaySection({
             meeting={m}
             pending={pendingId === m.id}
             onPatch={(partial) => onPatch(m.id, partial)}
+            onReschedule={(d2, t, r) => onReschedule(m, d2, t, r)}
           />
         ))
       )}
