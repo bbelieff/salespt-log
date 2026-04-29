@@ -238,6 +238,37 @@ export async function writeDailyRevenue(
 }
 
 /**
+ * 한 날짜의 일별 실적(Q~T) 1개 행만 읽기.
+ * 매입DB 행(첫 채널 행)에서만 가져옴 — `writeDailyRevenue`와 매칭.
+ * 빈 행이면 zero-value DailyRevenue 반환 (UI가 0으로 시작하도록).
+ */
+export async function readDailyRevenue(
+  spreadsheetId: string,
+  date: string,
+): Promise<DailyRevenue> {
+  const courseStart = await readCourseStart(spreadsheetId);
+  const targetDate = parseISO(date);
+  const sheetRow = salesRowFor(targetDate, "매입DB", courseStart);
+
+  const cols = SHEET_RANGES.sales.revenueCols;
+  const range = `${tabRef(SHEET_RANGES.sales.tab)}!${cols.approvalCount}${sheetRow}:${cols.agencyNote}${sheetRow}`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const r = (res.data.values?.[0] ?? []) as (string | number)[];
+  return DailyRevenue.parse({
+    date,
+    approvalCount: Number(r[0] ?? 0) || 0,
+    paymentCount: Number(r[1] ?? 0) || 0,
+    paymentAmount: Number(r[2] ?? 0) || 0,
+    agencyNote: String(r[3] ?? ""),
+  });
+}
+
+/**
  * 한 주차 분량의 4지표 4채널 (28개 행)을 읽음.
  * 결과: 일별×채널별 ChannelDailyRow + 일별 DailyRevenue (7개).
  */
