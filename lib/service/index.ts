@@ -27,3 +27,9 @@ export {
   loadWeekMeetings,
   type ScheduleWeekView,
 } from "./contact";
+
+// 캘린더 탭 유스케이스 (PR 03 / Phase 4)
+export {
+  loadMonthMeetings,
+  type CalendarMonthView,
+} from "./contact";

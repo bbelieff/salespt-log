@@ -45,9 +45,17 @@ depends_on: 08-contact-tab-ui
 - ✅ 미팅결과 누적: 완료/취소/변경 시 기존 미팅사유에 "N회차: 사유" 줄바꿈 append
 - ✅ 결과 표시 whitespace-pre-wrap (줄바꿈 보존)
 
-### Phase 4 — 캘린더 탭 + 폴리싱
-- 월간뷰 캘린더 페이지 (`/calendar`)
-- 시안 픽셀 매칭 폴리싱 (애니메이션, 모달, 색상 토큰화)
+### Phase 4 — 캘린더 탭 (월간뷰)
+- ✅ `/calendar` 페이지 — 6×7 그리드 + 선택일 미팅 리스트
+- ✅ 새 백엔드: `loadMonthMeetings`, `GET /api/meetings/month/[yyyymm]`
+- ✅ 새 훅: `useMonthMeetings`
+- ✅ 셀별 상태 dot (계약=초록, 완료=주황, 변경=보라, 취소=빨강, 예약=노랑)
+- ✅ 읽기 전용 — 선택일 카드 클릭 시 /schedule로 점프 안내
+
+### Phase 5 — 폴리싱 (선택)
+- 시안 픽셀 매칭 (애니메이션, 모달, 색상 토큰화)
+- state-map 통합 (lib/util로)
+- 대시보드 탭 (별도 plan)
 
 ## Acceptance Criteria (Phase 1)
 

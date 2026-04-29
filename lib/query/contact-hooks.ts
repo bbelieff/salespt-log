@@ -22,6 +22,7 @@ import {
 } from "@tanstack/react-query";
 import type { Channel, Meeting } from "@/types";
 import type {
+  CalendarMonthView,
   ChannelDailyRowMetrics,
   ContactDayView,
   ScheduleWeekView,
@@ -30,6 +31,7 @@ import type {
 // ── 키 ────────────────────────────────────────────────────────
 export const dayKey = (date: string) => ["day", date] as const;
 export const weekKey = (weekStart: string) => ["week", weekStart] as const;
+export const monthKey = (yyyyMM: string) => ["month", yyyyMM] as const;
 
 // ── 페치 헬퍼 ─────────────────────────────────────────────────
 async function fetchJSON<T>(
@@ -70,6 +72,18 @@ export function useWeekMeetings(
     queryFn: () =>
       fetchJSON<ScheduleWeekView>(`/api/meetings/week/${weekStart}`),
     enabled: !!weekStart,
+  });
+}
+
+/** 캘린더 탭 — 한 달 미팅 (yyyy-MM, 미팅날짜 기준, 읽기 전용). */
+export function useMonthMeetings(
+  yyyyMM: string,
+): UseQueryResult<CalendarMonthView> {
+  return useQuery({
+    queryKey: monthKey(yyyyMM),
+    queryFn: () =>
+      fetchJSON<CalendarMonthView>(`/api/meetings/month/${yyyyMM}`),
+    enabled: !!yyyyMM,
   });
 }
 
