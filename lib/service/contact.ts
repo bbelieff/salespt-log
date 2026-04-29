@@ -121,6 +121,48 @@ export async function loadDay(
   };
 }
 
+// ── 캘린더 탭 (PR 03 / Phase 4) ─────────────────────────────────
+
+export interface CalendarMonthView {
+  yyyyMM: string; // "2026-04"
+  /** 월의 모든 날짜 (YYYY-MM-DD) → 그 날 미팅 (미팅날짜 기준). */
+  daysByMeetingDate: Array<{ date: string; meetings: Meeting[] }>;
+}
+
+/**
+ * 한 달의 모든 미팅을 미팅날짜 기준으로 조회.
+ * yyyyMM은 "YYYY-MM" 형식. 1번의 시트 read로 31일치 조회.
+ */
+export async function loadMonthMeetings(
+  email: string,
+  yyyyMM: string,
+): Promise<CalendarMonthView> {
+  const m = yyyyMM.match(/^(\d{4})-(\d{2})$/);
+  if (!m) throw new Error(`[calendar] yyyyMM 포맷 오류: ${yyyyMM}`);
+  const year = Number(m[1]);
+  const month = Number(m[2]); // 1~12
+  const spreadsheetId = await resolveSheet(email);
+
+  // 그 달의 모든 날짜 생성 (1일 ~ 마지막날)
+  const lastDay = new Date(year, month, 0).getDate();
+  const dates: string[] = [];
+  for (let d = 1; d <= lastDay; d++) {
+    const dd = String(d).padStart(2, "0");
+    const mm = String(month).padStart(2, "0");
+    dates.push(`${year}-${mm}-${dd}`);
+  }
+
+  const map = await findByDateRange(spreadsheetId, dates, "meeting");
+  const daysByMeetingDate = dates.map((d) => ({
+    date: d,
+    meetings: (map.get(d) ?? []).sort((a, b) =>
+      a.미팅시간.localeCompare(b.미팅시간),
+    ),
+  }));
+
+  return { yyyyMM, daysByMeetingDate };
+}
+
 // ── 일정·계약 탭 (PR 03) ────────────────────────────────────────
 
 export interface ScheduleWeekView {
