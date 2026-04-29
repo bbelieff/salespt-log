@@ -40,10 +40,13 @@ depends_on: 08-contact-tab-ui
 - ✅ 처리완료 카드(reserved 외)는 액션 그리드 숨김, 결과 요약만 표시
 - 일정 수정 / 미팅결과 누적은 Phase 3로 분리
 
-### Phase 3 — 일정 수정 + M열 누적 + 캘린더 탭 + 폴리싱
-- 일정 수정 details: 날짜/시간/업체/장소/예약비고 (펼침 내)
-- 미팅결과 누적: M열에 "회차N: 사유" append
-- 월간뷰 캘린더 페이지
+### Phase 3 — 일정 수정 + M열 누적
+- ✅ 일정 수정 details: 날짜/시간/업체명/장소/예약비고 (BasicEditDetails — reserved 카드만)
+- ✅ 미팅결과 누적: 완료/취소/변경 시 기존 미팅사유에 "N회차: 사유" 줄바꿈 append
+- ✅ 결과 표시 whitespace-pre-wrap (줄바꿈 보존)
+
+### Phase 4 — 캘린더 탭 + 폴리싱
+- 월간뷰 캘린더 페이지 (`/calendar`)
 - 시안 픽셀 매칭 폴리싱 (애니메이션, 모달, 색상 토큰화)
 
 ## Acceptance Criteria (Phase 1)
