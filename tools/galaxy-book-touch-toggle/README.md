@@ -97,7 +97,7 @@ Get-PnpDevice -Class HIDClass |
 | 증상 | 원인 / 해결 |
 |---|---|
 | UAC 창이 두 번 뜸 | 정상. .bat → .ps1 전환에서 1회만 떠야 함. 두 번 뜨면 PowerShell 정책 점검 |
-| "장치를 찾을 수 없습니다" | 장치이름이 영문이 아닐 수 있음 → `Get-PnpDevice` 결과에서 키워드 확인 후 PS1 의 `-match` 패턴 수정 |
+| "장치를 찾을 수 없습니다" | 영문/한글("HID 규격 터치 스크린") 모두 잡도록 패턴이 들어가 있음. 그래도 안 잡히면 `Get-PnpDevice -Class HIDClass | ? FriendlyName -match '터치|touch' | ft Status, FriendlyName` 결과 확인 후 PS1 정규식 보강 |
 | 터치패드만 따로 안 꺼짐 | 모델별로 PnP 클래스가 달라 `HIDClass` + `Mouse` 둘 다 시도. 그래도 미검출이면 장치이름을 알려주세요 |
 | 핫키 안 먹음 | 바로가기를 시작 메뉴 폴더로 옮기거나 `Win+R` → `shell:Programs` 후 그 폴더에 복사 |
 

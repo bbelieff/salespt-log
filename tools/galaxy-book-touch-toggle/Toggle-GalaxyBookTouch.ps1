@@ -6,9 +6,9 @@
     현재 상태를 감지해서 켜져 있으면 끄고, 꺼져 있으면 켭니다.
     관리자 권한이 필요하며, .bat 런처가 자동으로 권한을 상승시킵니다.
 
-    탐지 대상:
-      - HID-compliant touch screen (터치스크린)
-      - HID-compliant touch pad / I2C HID Device 중 터치패드 (옵션)
+    탐지 대상 (영문 / 한글 Windows 모두):
+      - HID-compliant touch screen / "HID 규격 터치 스크린"
+      - HID-compliant touch pad / Precision Touchpad / "터치 패드" (옵션)
 
 .PARAMETER Target
     'Screen' (기본): 터치스크린만 토글
@@ -64,16 +64,19 @@ function Show-Toast {
 function Get-TouchDevices {
     param([string]$Kind)
 
+    # 영문/한글 Windows 모두 매칭. 한국어 갤럭시북 기본 표시명: "HID 규격 터치 스크린".
     switch ($Kind) {
         'Screen' {
+            $pattern = 'touch ?screen|터치\s*스크린'
             Get-PnpDevice -Class HIDClass -ErrorAction SilentlyContinue |
-                Where-Object { $_.FriendlyName -match 'touch screen|touchscreen' }
+                Where-Object { $_.FriendlyName -match $pattern }
         }
         'Pad' {
+            $pattern = 'touch ?pad|precision touchpad|터치\s*패드|정밀\s*터치'
             $hid = Get-PnpDevice -Class HIDClass -ErrorAction SilentlyContinue |
-                Where-Object { $_.FriendlyName -match 'touch pad|touchpad|precision touchpad' }
+                Where-Object { $_.FriendlyName -match $pattern }
             $mouse = Get-PnpDevice -Class Mouse -ErrorAction SilentlyContinue |
-                Where-Object { $_.FriendlyName -match 'touch pad|touchpad|precision' }
+                Where-Object { $_.FriendlyName -match $pattern }
             @($hid) + @($mouse) | Where-Object { $_ }
         }
     }
