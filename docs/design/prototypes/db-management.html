@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DB관리 · 세일즈PT 영업일지</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+  * { font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: #f8fafc; margin: 0; padding: 0; }
+
+  /* 하단 네비 고정 */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; }
+  .content-area { padding-bottom: 80px; }
+
+  /* 채널 배지 */
+  .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500; display: inline-block; }
+  .badge-purchase { background: #dbeafe; color: #1d4ed8; }
+  .badge-direct   { background: #dcfce7; color: #16a34a; }
+  .badge-banner   { background: #fef3c7; color: #d97706; }
+  .badge-referral { background: #f3e8ff; color: #7c3aed; }
+
+  /* 채널 토글 (4-segment) */
+  .ch-tab {
+    flex: 1; padding: 10px 4px;
+    text-align: center; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; user-select: none;
+    transition: all 0.18s;
+    min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ch-tab:active { transform: scale(0.96); }
+  /* 콜·지·기·소만 — 글자 수 많아 폰트 축소 */
+  .ch-tab[data-ch="referral"] {
+    font-size: 11px;
+    letter-spacing: -0.5px;
+  }
+  /* 비활성 — 연한 배경 + 채널색 글자 */
+  .ch-tab.ch-purchase { background: #eff6ff; color: #1d4ed8; }
+  .ch-tab.ch-direct   { background: #f0fdf4; color: #16a34a; }
+  .ch-tab.ch-banner   { background: #fffbeb; color: #b45309; }
+  .ch-tab.ch-referral { background: #faf5ff; color: #7c3aed; }
+  /* 활성 — 진한 채널색 + 흰 글자 + 그림자 */
+  .ch-tab.active.ch-purchase { background: #1d4ed8; color: white; box-shadow: 0 4px 10px rgba(29,78,216,0.30); }
+  .ch-tab.active.ch-direct   { background: #16a34a; color: white; box-shadow: 0 4px 10px rgba(22,163,74,0.30); }
+  .ch-tab.active.ch-banner   { background: #d97706; color: white; box-shadow: 0 4px 10px rgba(217,119,6,0.30); }
+  .ch-tab.active.ch-referral { background: #7c3aed; color: white; box-shadow: 0 4px 10px rgba(124,58,237,0.30); }
+
+  /* 데이터 행 카드 */
+  .row-card {
+    background: white; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 12px; transition: all 0.15s;
+    cursor: pointer;
+  }
+  .row-card:hover { border-color: #cbd5e1; }
+  .row-card.expanded {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    border-color: #93c5fd;
+    cursor: default;
+  }
+  .row-num {
+    font-size: 10px; font-weight: 700;
+    background: #f1f5f9; color: #475569;
+    padding: 2px 6px; border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+  }
+
+  /* 자동계산 (수식) 컬럼 */
+  .auto-field {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px dashed #d97706 !important;
+    cursor: not-allowed !important;
+    font-weight: 600;
+  }
+  .auto-label {
+    font-size: 9px; font-weight: 700;
+    background: #fef3c7; color: #92400e;
+    padding: 1px 4px; border-radius: 3px;
+    letter-spacing: -0.2px;
+  }
+
+  /* 토스트 */
+  .toast {
+    position: fixed; top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-120px);
+    background: #1e293b; color: white;
+    padding: 12px 20px; border-radius: 12px;
+    font-size: 14px; z-index: 200;
+    transition: transform 0.3s ease;
+    max-width: 90%; text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* 폼 필드 */
+  .field-input {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 14px; background: white;
+    min-height: 40px;
+  }
+  .field-input:focus { outline: 2px solid #3b82f6; border-color: #3b82f6; }
+  .field-label {
+    font-size: 11px; font-weight: 500; color: #4b5563;
+    margin-bottom: 4px; display: flex; align-items: center; gap: 4px;
+    line-height: 1.3;
+  }
+
+  /* 합계 카드 — 채널색 좌측 보더 */
+  .summary-card { border-left-width: 4px; border-left-style: solid; }
+
+  /* 종합 카드 채널 점 */
+  .ch-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .num-mono { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 토스트 ==================== -->
+<div id="toast" class="toast">저장 완료</div>
+
+<!-- ==================== 슬림 브랜드 바 (모든 탭 공통) ==================== -->
+<header class="bg-white border-b border-gray-100 px-4 h-12 flex items-center justify-between sticky top-0 z-50">
+  <button onclick="showToast('대시보드 탭으로 이동')" class="flex items-center gap-2 cursor-pointer hover:opacity-80">
+    <img src="/assets/logo-symbol.png"
+         onerror="this.onerror=null;this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAANUUlEQVR4nO1afXCV1Zn/Pee87/1KcvMBBEIQFCF8BD8gglNHSeIHtbOt1bL3Vjt2XetaR3eXVrt+dFbmEoed3YFFOxWwdqo7ajtD70VrqVqxjklk2d0qdAchQQMRSJCWJJDLTW5y733POc/+ce9FgQRykws4O/nN3Ln/vOec5/md83yeA4xjHOMYxzjG8WUB5embcYwUXx42icDGENk2AzzcR2DHsQEoIhruo9yWzcckYwGHQoIaGsyB55+f67z44m+cvxxNwZJgBoGQ5oIAAoyXWSTmzfl03htvLQeRoeGZGjGssaswNjQ1NQkAJrV16/KJHZ1zo44DSWfui2Kg1JL4czQWISLdWFtroblZjXV9MdYJxgIGqK68nJlZ6AMHl/c5jklJ6QwQmVN+gozDRnf5fAo33/xrAKirqzP5kOGiEMDM1FhbazUBkiIR3fH8+kWevv6rB5gBZpsAccqPiX2A5EmTPpi/enUbAxKtrXkx3wtqAsxMIBJEpAEoKijA0Vdeubxv489+4OqPAVIOY9MMWBbbZRM7jr7zzuX0tVvbEYmA0wQxxuALLpgT5EBAUiSiAaAjGi3jFSsCTmfHPfovXYtkNOpOKcVEQxh/djzALssiLitL0qTyd6wl1/zk0nXr3oNSYDARRhcVzjsBmV0nAswh5lLzrW/9ULft+54v1jctFe9HAgBLaUB0TnNkZiatqUBIcIkfqfnzX5j1298+ACKTUSZnEs6rCYRCIUFEBh4P7//ud+50rl74bwVdXTP6UylEiRRsWxBAYB6RLyIigm1zP9jQ8V6e8OGO+/Zef4NnHvPfRNKnR+cq43k7Adn43sHsdZYvf8G18093Jfv6kJJSQQhJzGNbmwhQKlVaUODqWbL4ews2b/6Pxtpaqz7H0HheCAiFQqKhocFEmcuOLfvqG55du75yQmsNyyIaYreZiAkwYGYgHR5BJM5FEhMZr1KITy5vQ0vLVdVETq5mkHcCsjYPZl/7Lcu2+nbtui4KOCSEDT5VNiZiGGOk1tIjBGwpASIYrTGoNRwpNQkhTx93Coxhy1dA+rqlV83d9PJH2ZM3Unnz7gMiwaAIWpbe+4071pW1tFx3DDyc8hBKUZHbJfvLywcGi/w7BljvhjZxcntmUrz/+sKuo1P6Uw6TlDQsCUTaq5XVe6L7agAfZTPLkcqbVwKyoW7f44/X2a++9v3jyaQi2x5CebClFKi4xEkuueZp/4MP/rxi2bIDSCYzUlmIOk7p8bvvXunZ9p8PJwcGDIQ4u6McHCwcjcx5JSASiQBCIvnOuz/2RKNg2yYaYudIaRbFxRC33xaY+fTTW7BpE0KAqMtmpkqhhKgXBb5H2m5YutTzwYc1CSk1AyLjJ/ikrTMrMgaQsn80MuctFeZQSAQB3bl2zVWuvtjNfcxMzPKM7wBdKIVQ02e8PvOZZ7a8Bbg5FBINgKkHVPa3o6bG5vgAaaZtbssCOw7ZSpHXGFEElkVEVrEQVpFledx+v+WpquoEgO7y8pycYN5OQNb24tu33+RPJMQJIdRQ8xOYBQmwwEEwY/owXrtm505NUvJereay1wvyeJNKUL8jqYsNH4Hb00NeX5f0+7sT06Yem3XffX/Ec88hGInkVCTlLQo0AlY9oPYsXrKhtKPjoRjzkAQwwNIYiJKSqLjj9m9evm7dNhhzco7uQIAD4bAhIgYRWu59YGGRV6rC+voYbrwxWlZRcQJKATrnnGdI5I2AMCCDRLpl8eLNxQcPLY8BmoAzTABIk2AbTVxcouXsql9R9ZUbL/v3f/2ABHH2PDAgEQggWz+cNl4AoCaAUFsLAKhvbtYYRSqc9xPQsrBmQ8mRzx6MMWucxcSYiEkpKpIW4l4vaELZLkytfNNft/S9yT/60R9JUH9GHdozf75dvWqVRiBgMvVSXtphQD4JyKShbX8dvNf33//1YiyVUkR0dh9DxMxsyBjpYYbLtuH4/VDFxQdFaelb4qorfz9jzZo/EFESSJ8KGkW+f1YR8jURc7qa7eXe4qPX3tpmt7VNSrrdeqhIMOR4IkPMhpUSLkB4bRvK50PKX9zmnj79l+qB+1+e+fWvHwoBYlV6sbycgryFQSLicCAgSqk06lr+zb8TU6dqVyopGezwCITN1AgWWZZwbNvEmFW8r8+Iw51V1o4PnzKPPv6/+4PBxxpcLkPp7CIvm5f3WiAcCMhgJKLbV668Rby99Rfuzw5P70skodN5PZBOZka+LpFhY4wwxir2eHBi1sxXfU3N370kbRY8mh7AKdOPZfBwCAMyCOjOeHyauefeHyT3ttxbGI1NcJKDGGSAhVBMNKKKLwsmYtLameRyubrnVG2Y19T0D2FmGRyjTzgvTdEgoMOBgLykoODwjM3hR92bN1+pli79+9SsWdtQVqr8LrdVyCyF4xAbo0HnVoKYCVLaxxIJJTo6H9q/evWCIKA5FBqTDmPKBDmd2GHVqlW0CkC2U9vU1UXo6gLX1Ng7AcyYN+8IgI1wuzceev7Z6sTb7y3DoY5ldOJEbXFfzKsGE4gDDCl5qH7B5wsyGSnhTyQo+m7jDQD25Fr9nY5RE8DpngwjE5cbzvYtMyEYFIhEDP3t91sAtMC2n4k2vn157KVNX3Na9wasw4eXyv5+SkjJ4lymqTUo1jsRAOpGq0AGoyaAhGDW2t3x5ps+8f77BcqYieLEiYmDh/9cyKlUuTDOBC8wxVm88A0i+gOHQkwAcygkmpqaRF1zs6Hrb2oHsB5u9/p9K1bUc1Pzzz0HD8xKkjB0NvMUgo3tjgJA02gVyCBnAhgBSYjoj//qGz/87IorH44nEx5yVJEkeF0M+JSCYAY5Cq7iIphbb94C4KR5ZLo1BkhXkBkymNaubexobLwj9eBD20V3d5GRkmmIk8DMIiklUWVFK5B79Xc6co4CGbsXn1x73W5/28fz+iwbAMMwwASTSVC02xiRmFKx/+iej66oJzpro5KZqaW62l7Q3p7aUzWnzXfkyOyEZZnT/QETseU4UJWVscJt78+cXlJyPJOAjZqEnDwoMxMB3PnSz6aY3p5LY5ZltBRGC8GQAiSEAJFkImkJYYFNdz2R2gHYHAqJLyQvxABxKCQaa2utJiK5oLU1te+JR28rGBicnQDOUD4jgC6wLHJNv+TX08vKjocBOdaMMCcCIsGgAIDEm1tneRJJLyOdwQ1xVMUgs3EnEgsP/fSnN1wDONTQ8MXrbCaAqaHB1Dc3q3qfTx18+J+WI/KbF1W0l2HJM48+EduOQ/FJE+N8992r2RgKhEIX9no8kPlXPccneI1BIt3OPgMEkBYCoi9WmPrFC299+u1vr6Xq6t95Vq5sq3C545xKiq6WFl9yy5Z5iQ921lB315205fVa7u2Fsm2c0UYjAiml/MXFdmxp3arZd93VGQ4EZLChYcyF0aiigLA9GZMfHgSQQ4Ll4cOFvp6ehr4PdzQMvPLLIy2XXhptmTPXkkYXWaCKgsFBqGQCcYZBuod4yrRMBNLaKXG57OiiRb+q2rh+Hfd0Scqx8zMcciNg/nwGAFdV1YHEvn3EiaSgM0/rSRBA2rY55jgayaTlJpoqiKaCAQNGipljQmgIiwh8Rv+fiQwphRKPx+5ftHBT1aub70nfOcCA8tMTGG0UsPcuuXaXt7197qBtj7zkPfUqm4YKc8DJCxPtNcbiwiLor1y7dvbrrz+GRIKYGfkqhYHR1AKBgCCilLdm0SOytBQilSJO3/efE5RWOvvwYShHZ8CsLOWQ35KWqZy6N3FT/Vdnb9r0GCcSIt/KZ2TKHeFAQAY3b9Z777//Ufd7TWvoeA8GSSpIkXOFB4CJ2bDWwkMk3LaNRFlZN6pmP9f32mtrriaKn49OUBajLoezTdD9Tzx5k9i+7Seuzo4F6I9jkA0cIc45MRtjBBvhYsDtsuF4fXD8/t2mcvIr8p8feWnW9bd2gflkf2G0cp4LY+oHZOt+ZnZ1/PixOxLb/+c26u6p4+PHKnT6ldvQNs7MHq+XHJ9vQJSVHTS29Ttr8eJ3Z65d20xETnbuAJCXp3DnFeFA4HMHKCU+ufGWTYfLJ3Nr+WS1t3wyn/5rnVSuD1RO40/v/M6TPY2N05jZ9cX5GmtrLR7r24EckJeFwuGwnLRhA835x/srY0/+Syt1dfm0bfMQMZ0t5RBXVByr2r17BhHFgXRLvS4QYEQiF3zH83I1Ftiwgai5We2/7LLbi+NxX1QIRcwWkGllMRsATMaoAhKu2NTK35OU8R01NXbNzp2KAIVIJB+i5Iz8tMSamw1sG6nWj29PDQ4qFkLDGA2tYaVS5GUjiwhWkZQeOXmK8NXXhWEM1cycedFtfMwmkPXSh556qppfenmP7O2FcHugLYlBtwtUWNSrgRbhL/rENWFCS7KyctecZ59toszLrouNvJgAM8v9K1bc6S4paUtMrdglyso+US7Xn+xFV3x62RMrPyO3uwep1OcD1q/Px7JfHhAR2sPhYmYWGOIhBwPUCFiNtbUWfzFq/H9EGJCNSCvKoZC4kCHtooIzXZ6LLcc4xjGOcYxjHCPH/wGWkXVQDFlhYwAAAABJRU5ErkJggg=='"
+         alt="세일즈PT" class="w-7 h-7 object-contain">
+    <span class="font-semibold text-gray-900 text-sm">세일즈PT 경영일지</span>
+  </button>
+  <button onclick="showToast('마이페이지로 이동')" class="cursor-pointer hover:opacity-70 px-2 py-1.5">
+    <span class="text-sm text-gray-600 font-medium">5기 이수강</span>
+  </button>
+</header>
+
+<!-- ==================== 페이지 배너 ==================== -->
+<div class="bg-slate-100 border-b border-slate-200 px-4 h-12 flex items-center gap-3 sticky top-[48px] z-40">
+  <div class="w-1 h-5 bg-slate-500 rounded-sm"></div>
+  <h1 class="text-sm font-semibold text-slate-700">📊 DB관리</h1>
+</div>
+
+<!-- ==================== 메인 ==================== -->
+<main class="content-area px-4 pt-3">
+
+  <!-- 종합 카드 — 4채널 한눈에 -->
+  <div id="overall-card" class="bg-white rounded-xl shadow-sm p-4 mb-3"></div>
+
+  <!-- 채널 4-segment 토글 -->
+  <div class="flex gap-1.5 mb-3">
+    <button class="ch-tab ch-purchase active" data-ch="purchase" onclick="switchChannel('purchase')">매입DB</button>
+    <button class="ch-tab ch-direct"   data-ch="direct"   onclick="switchChannel('direct')">직접생산</button>
+    <button class="ch-tab ch-banner"   data-ch="banner"   onclick="switchChannel('banner')">현수막</button>
+    <button class="ch-tab ch-referral" data-ch="referral" onclick="switchChannel('referral')">콜·지·기·소</button>
+  </div>
+
+  <!-- 힌트 카드 -->
+  <div id="hint-card" class="rounded-xl px-3 py-2.5 mb-3 flex items-start gap-2 border">
+    <span class="text-base shrink-0">💡</span>
+    <p id="hint-text" class="text-xs leading-relaxed flex-1"></p>
+  </div>
+
+  <!-- 합계 카드 (선택 채널) -->
+  <div id="summary-card" class="summary-card bg-white rounded-xl shadow-sm p-4 mb-4"></div>
+
+  <!-- 행 리스트 헤더 -->
+  <div class="flex items-center justify-between mb-2 px-1">
+    <h3 class="text-sm font-semibold text-gray-700" id="row-count-label">목록</h3>
+  </div>
+
+  <!-- 행 리스트 -->
+  <div id="row-list" class="space-y-2"></div>
+
+  <!-- 추가 버튼 -->
+  <button id="add-row-btn" onclick="openAddForm()" class="w-full mt-3 py-3 bg-white border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-400 hover:text-blue-600 font-medium text-sm transition-colors">
+    + 추가
+  </button>
+
+  <!-- 추가 폼 (초기 hidden) -->
+  <div id="add-form-container" class="hidden mt-3 bg-white rounded-xl shadow-md p-4 border-2 border-blue-200"></div>
+
+</main>
+
+<!-- ==================== 하단 5탭 네비 ==================== -->
+<nav class="bottom-nav bg-white border-t border-gray-100 flex">
+  <!-- 1. 컨택관리 -->
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="translate(-1, 5.5) scale(0.68)"/>
+      <rect x="14.5" y="0.5" width="9" height="9" rx="1.4" fill="white" stroke="currentColor" stroke-width="1.7"/>
+      <line x1="14.5" y1="3.3" x2="23.5" y2="3.3" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="16.8" y1="0.5" x2="16.8" y2="2"/>
+      <line x1="21.2" y1="0.5" x2="21.2" y2="2"/>
+      <circle cx="17" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="19" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="21" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="17" cy="7.8" r="0.85" fill="currentColor"/>
+    </svg>
+    <span class="text-xs">컨택관리</span>
+  </button>
+  <!-- 2. 일정·계약 -->
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+    </svg>
+    <span class="text-xs">일정·계약</span>
+  </button>
+  <!-- 3. 캘린더 -->
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd"
+            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+            clip-rule="evenodd"/>
+    </svg>
+    <span class="text-xs">캘린더</span>
+  </button>
+  <!-- 4. 수납 -->
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <span class="text-xs">수납</span>
+  </button>
+  <!-- 5. DB관리 (active) -->
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-blue-600">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <circle cx="9" cy="20" r="1.3"/>
+      <circle cx="17" cy="20" r="1.3"/>
+      <path d="M3 4 L5 4 L7 13 L18 13 L20 6 L7 6"/>
+      <rect x="9" y="7.5" width="7" height="4.5" rx="0.5" fill="white"/>
+      <line x1="9" y1="10" x2="16" y2="10"/>
+      <line x1="11" y1="7.5" x2="11" y2="12"/>
+    </svg>
+    <span class="text-xs font-semibold">DB관리</span>
+  </button>
+</nav>
+
+<script>
+// =============================================================
+// [STEP 1/4] 채널 메타데이터
+// -------------------------------------------------------------
+// 4채널의 시각/문구/필드 스키마/합계 공식을 한 곳에 모음.
+// recordsLabel = 채널별 "목록" 자연어 (구매/생산/제작/영업기회)
+// =============================================================
+const CHANNELS = {
+  purchase: {
+    name: '매입DB',
+    cls: 'purchase',
+    color: '#1d4ed8',
+    bgLight: '#eff6ff',
+    borderLight: '#bfdbfe',
+    textDark: '#1d4ed8',
+    recordsLabel: '구매목록',
+    countUnit: '건',
+    hint: '외부에서 매입한 DB 비용',
+    isCost: true,
+    fields: [
+      { key: '구매일',  label: '구매일',   type: 'date' },
+      { key: '업체명',  label: '업체명',   type: 'text', placeholder: '예: 디비딩프로' },
+      { key: '개당단가', label: '부가세 제외 개당단가', type: 'number', unit: '원' },
+      { key: '주문개수', label: '주문개수', type: 'number', unit: '건' },
+      { key: '주문금액', label: '부가세 제외 주문금액', type: 'number', unit: '원',
+        formula: true,
+        calc: (r) => (Number(r.개당단가)||0) * (Number(r.주문개수)||0) },
+      { key: '기타', label: '기타', type: 'text', placeholder: '메모', span: 2 },
+    ],
+    summarize: (rows) => {
+      const totalCost  = rows.reduce((s,r) => s + (Number(r.개당단가)||0)*(Number(r.주문개수)||0), 0);
+      const totalCount = rows.reduce((s,r) => s + (Number(r.주문개수)||0), 0);
+      const avgUnit    = totalCount > 0 ? Math.round(totalCost / totalCount) : 0;
+      return { totalCost, totalCount, avgUnit, unitLabel: '건' };
+    }
+  },
+  direct: {
+    name: '직접생산',
+    cls: 'direct',
+    color: '#16a34a',
+    bgLight: '#f0fdf4',
+    borderLight: '#bbf7d0',
+    textDark: '#15803d',
+    recordsLabel: '생산목록',
+    countUnit: '건',
+    hint: '광고비·메타 등 직접 집행 비용',
+    isCost: true,
+    fields: [
+      { key: '날짜',    label: '날짜',    type: 'date' },
+      { key: '소재',    label: '소재',    type: 'text', placeholder: '예: 메타, 구글' },
+      { key: '기간예산', label: '기간예산', type: 'number', unit: '원' },
+      { key: '생산개수', label: '생산개수', type: 'number', unit: '건' },
+      { key: '개당단가', label: '부가세 제외 개당단가', type: 'number', unit: '원',
+        formula: true,
+        calc: (r) => {
+          const b = Number(r.기간예산)||0, c = Number(r.생산개수)||0;
+          return c > 0 ? Math.round(b/c) : 0;
+        }},
+      { key: '기타', label: '기타', type: 'text', placeholder: '메모', span: 2 },
+    ],
+    summarize: (rows) => {
+      const totalCost  = rows.reduce((s,r) => s + (Number(r.기간예산)||0), 0);
+      const totalCount = rows.reduce((s,r) => s + (Number(r.생산개수)||0), 0);
+      const avgUnit    = totalCount > 0 ? Math.round(totalCost / totalCount) : 0;
+      return { totalCost, totalCount, avgUnit, unitLabel: '건' };
+    }
+  },
+  banner: {
+    name: '현수막',
+    cls: 'banner',
+    color: '#d97706',
+    bgLight: '#fffbeb',
+    borderLight: '#fde68a',
+    textDark: '#b45309',
+    recordsLabel: '제작목록',
+    countUnit: '장',
+    hint: '현수막 제작 및 배송 비용',
+    isCost: true,
+    fields: [
+      { key: '날짜',    label: '발주일',  type: 'date' },
+      { key: '업체명',  label: '업체명',  type: 'text', placeholder: '예: (주)코리아광고' },
+      { key: '도착일',  label: '도착일',  type: 'date' },
+      { key: '개당단가', label: '부가세 제외 개당단가', type: 'number', unit: '원' },
+      { key: '주문개수', label: '주문개수', type: 'number', unit: '장' },
+      { key: '주문금액', label: '부가세 제외 주문금액', type: 'number', unit: '원',
+        formula: true,
+        calc: (r) => (Number(r.개당단가)||0) * (Number(r.주문개수)||0) },
+      { key: '기타', label: '기타', type: 'text', placeholder: '메모', span: 2 },
+    ],
+    summarize: (rows) => {
+      const totalCost  = rows.reduce((s,r) => s + (Number(r.개당단가)||0)*(Number(r.주문개수)||0), 0);
+      const totalCount = rows.reduce((s,r) => s + (Number(r.주문개수)||0), 0);
+      const avgUnit    = totalCount > 0 ? Math.round(totalCost / totalCount) : 0;
+      return { totalCost, totalCount, avgUnit, unitLabel: '장' };
+    }
+  },
+  referral: {
+    name: '콜·지·기·소',
+    cls: 'referral',
+    color: '#7c3aed',
+    bgLight: '#faf5ff',
+    borderLight: '#e9d5ff',
+    textDark: '#7c3aed',
+    recordsLabel: '영업기회',
+    countUnit: '건',
+    hint: '콜드콜·지인·기고객·소개 등의 영업기회',
+    isCost: false,
+    fields: [
+      { key: '구분',    label: '구분',    type: 'select', options: ['콜드콜','지인','기고객','소개'] },
+      { key: '접수일',  label: '접수일',  type: 'date' },
+      { key: '대표자명', label: '대표자명', type: 'text', placeholder: '예: 김믿음' },
+      { key: '업체명',  label: '업체명',  type: 'text', placeholder: '예: ㈜에이스' },
+      { key: '소개처',  label: '소개처',  type: 'text', placeholder: '예: 잠실' },
+      { key: '연락처',  label: '연락처',  type: 'text', placeholder: '010-0000-0000' },
+      { key: '조건',    label: '조건',    type: 'text', placeholder: '메모', span: 2 },
+    ],
+    summarize: (rows) => ({ count: rows.length })
+  }
+};
+
+// =============================================================
+// [STEP 2/4] In-memory store — 채널별 더미 데이터
+// rowNum = 시트 실제 행번호 (백엔드 동기화용, UI에는 노출 X)
+// =============================================================
+const dbStore = {
+  purchase: [
+    { rowNum: 2, 구매일: '2026-04-10', 업체명: '디비딩프로', 개당단가: 18000, 주문개수: 10, 기타: '잠실 4월권' },
+    { rowNum: 3, 구매일: '2026-04-22', 업체명: 'DB나라',     개당단가: 22000, 주문개수: 6,  기타: '강남권' },
+  ],
+  direct: [
+    { rowNum: 2, 날짜: '2026-04-15', 소재: '메타',  기간예산: 500000, 생산개수: 100, 기타: '리타겟' },
+    { rowNum: 3, 날짜: '2026-04-25', 소재: '구글',  기간예산: 300000, 생산개수: 60,  기타: '키워드 신규' },
+  ],
+  banner: [
+    { rowNum: 2, 날짜: '2026-04-08', 업체명: '(주)코리아광고', 도착일: '2026-04-12', 개당단가: 10000, 주문개수: 30, 기타: '잠실 지구대' },
+  ],
+  referral: [
+    { rowNum: 2, 구분: '지인', 접수일: '2026-04-12', 대표자명: '김믿음', 업체명: '㈜에이스',  소개처: '잠실',  연락처: '010-1234-5678', 조건: '월 500 견적' },
+    { rowNum: 3, 구분: '소개', 접수일: '2026-04-18', 대표자명: '이부자', 업체명: '믿음치킨',  소개처: '5기 박○○', 연락처: '010-9876-5432', 조건: '점주 직접 상담 원함' },
+  ],
+};
+
+let currentCh   = 'purchase';
+let expandedIdx = -1;
+let addFormOpen = false;
+
+// =============================================================
+// [STEP 3/4] 렌더 함수
+// =============================================================
+
+/** 채널 전환 */
+function switchChannel(ch) {
+  currentCh   = ch;
+  expandedIdx = -1;
+  addFormOpen = false;
+  document.querySelectorAll('.ch-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.ch === ch);
+  });
+  renderAll();
+}
+
+/** 종합·힌트·합계·리스트·버튼 한꺼번에 다시 그리기 */
+function renderAll() {
+  renderOverall();
+  renderHint();
+  renderSummary();
+  renderRows();
+  // 추가 폼 닫고 외부 버튼 보이게
+  const ch = CHANNELS[currentCh];
+  document.getElementById('add-form-container').classList.add('hidden');
+  const btn = document.getElementById('add-row-btn');
+  btn.classList.remove('hidden');
+  btn.textContent = `+ ${ch.recordsLabel} 추가`;
+}
+
+/** 종합 카드 — 4채널 한눈에 (표 + 합계 행) */
+function renderOverall() {
+  const items = Object.keys(CHANNELS).map(key => {
+    const ch = CHANNELS[key];
+    const rows = dbStore[key];
+    if (ch.isCost) {
+      const s = ch.summarize(rows);
+      return { key, name: ch.name, cls: ch.cls, color: ch.color,
+               count: s.totalCount, unit: s.unitLabel, cost: s.totalCost, isCost: true };
+    }
+    return { key, name: ch.name, cls: ch.cls, color: ch.color,
+             count: rows.length, unit: '건', cost: null, isCost: false };
+  });
+
+  const totalCost  = items.reduce((s,it) => s + (it.cost || 0), 0);
+  const totalCount = items.reduce((s,it) => s + it.count, 0);
+
+  const rowsHTML = items.map(it => `
+    <div class="flex items-center justify-between py-1.5 ${it.key === currentCh ? 'bg-gray-50 -mx-2 px-2 rounded-md' : ''}">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="ch-dot" style="background:${it.color}"></span>
+        <span class="text-sm text-gray-700 truncate">${it.name}</span>
+      </div>
+      <div class="flex items-baseline gap-3 shrink-0">
+        <span class="text-sm text-gray-500 num-mono">${formatWon(it.count)}${it.unit}</span>
+        <span class="text-sm font-semibold num-mono w-24 text-right ${it.isCost ? 'text-red-600' : 'text-gray-300'}">
+          ${it.isCost ? '₩'+formatWon(it.cost) : '–'}
+        </span>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('overall-card').innerHTML = `
+    <div class="mb-2">
+      <div class="text-sm font-semibold text-gray-800">전체 종합</div>
+    </div>
+    ${rowsHTML}
+    <div class="border-t border-gray-100 mt-2 pt-2 flex items-center justify-between">
+      <span class="text-sm font-semibold text-gray-800">총 매입 합계</span>
+      <div class="flex items-baseline gap-3">
+        <span class="text-sm text-gray-600 num-mono">${formatWon(totalCount)}건</span>
+        <span class="text-base font-bold text-red-600 num-mono w-24 text-right">₩${formatWon(totalCost)}</span>
+      </div>
+    </div>
+  `;
+}
+
+/** 힌트 카드 (채널색 라이트톤) */
+function renderHint() {
+  const ch = CHANNELS[currentCh];
+  const card = document.getElementById('hint-card');
+  card.style.background    = ch.bgLight;
+  card.style.borderColor   = ch.borderLight;
+  card.style.color         = ch.textDark;
+  document.getElementById('hint-text').innerHTML = ch.hint;
+}
+
+/** 합계 카드 (선택 채널) */
+function renderSummary() {
+  const ch   = CHANNELS[currentCh];
+  const rows = dbStore[currentCh];
+  const card = document.getElementById('summary-card');
+  card.style.borderLeftColor = ch.color;
+
+  if (ch.isCost) {
+    const s = ch.summarize(rows);
+    card.innerHTML = `
+      <div class="flex items-center gap-2 mb-3">
+        <span class="badge badge-${ch.cls}">${ch.name}</span>
+        <span class="text-sm font-semibold text-gray-700">합계</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <div class="text-xs text-gray-500 mb-0.5">총비용</div>
+          <div class="text-xl font-bold text-red-600 num-mono">₩${formatWon(s.totalCost)}</div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-0.5">평균단가</div>
+          <div class="text-xl font-bold text-gray-900 num-mono">₩${formatWon(s.avgUnit)}</div>
+        </div>
+      </div>
+      <div class="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 flex justify-between">
+        <span>${rows.length}개 ${ch.recordsLabel}</span>
+        <span>총 ${formatWon(s.totalCount)}${s.unitLabel}</span>
+      </div>
+    `;
+  } else {
+    const s = ch.summarize(rows);
+    card.innerHTML = `
+      <div class="flex items-center gap-2 mb-3">
+        <span class="badge badge-${ch.cls}">${ch.name}</span>
+        <span class="text-sm font-semibold text-gray-700">영업기회</span>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <div class="text-3xl font-bold text-purple-700 num-mono">${s.count}</div>
+        <div class="text-base text-gray-700">건</div>
+      </div>
+    `;
+  }
+}
+
+/** 한국 콤마 형식 */
+function formatWon(n) {
+  if (n === null || n === undefined || n === '') return '0';
+  return Math.round(Number(n)||0).toLocaleString('ko-KR');
+}
+
+/** 행 리스트 */
+function renderRows() {
+  const ch   = CHANNELS[currentCh];
+  const rows = dbStore[currentCh];
+  document.getElementById('row-count-label').textContent = ch.recordsLabel;
+
+  const list = document.getElementById('row-list');
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="bg-white rounded-xl p-6 text-center text-sm text-gray-400 border border-dashed border-gray-200">아직 ${ch.recordsLabel}이 없습니다</div>`;
+    return;
+  }
+  list.innerHTML = rows.map((r, i) => renderRow(r, i, i === expandedIdx)).join('');
+}
+
+/** 행 1개 — 접힘 / 펼침 */
+function renderRow(row, idx, expanded) {
+  const ch = CHANNELS[currentCh];
+  const displayNum = String(idx + 1).padStart(2, '0'); // 01, 02, ...
+
+  // ----- 접힘 -----
+  if (!expanded) {
+    const s = makeRowSummary(row);
+    let rightHTML = '';
+    if (s.right) {
+      rightHTML = `<div class="text-sm font-bold ${ch.isCost ? 'text-red-600' : 'text-gray-900'} shrink-0 num-mono">${s.right}</div>`;
+    } else if (s.rightBadge) {
+      rightHTML = `<span class="badge badge-${ch.cls} shrink-0">${s.rightBadge}</span>`;
+    }
+    return `
+      <div class="row-card flex items-center gap-2.5" onclick="expandRow(${idx})">
+        <span class="row-num shrink-0">${displayNum}</span>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-semibold text-gray-900 truncate">${escapeHtml(s.title)}</div>
+          <div class="text-xs text-gray-500 truncate mt-0.5">${escapeHtml(s.sub)}</div>
+        </div>
+        ${rightHTML}
+        <span class="text-gray-300 text-lg shrink-0 leading-none">›</span>
+      </div>
+    `;
+  }
+
+  // ----- 펼침 -----
+  return `
+    <div class="row-card expanded">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="row-num">${displayNum}</span>
+          <span class="badge badge-${ch.cls}">${ch.name}</span>
+        </div>
+        <button onclick="collapseRow()" class="text-gray-400 hover:text-gray-700 text-xl w-8 h-8 leading-none" aria-label="접기">×</button>
+      </div>
+      ${renderFieldsForm(row, idx)}
+      <div class="flex gap-2 mt-3">
+        <button onclick="deleteRow(${idx})" class="px-4 py-2.5 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">🗑 삭제</button>
+        <button onclick="saveRow(${idx})" class="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors">💾 저장</button>
+      </div>
+    </div>
+  `;
+}
+
+/** 접힘 한 줄 요약 (채널별) */
+function makeRowSummary(row) {
+  if (currentCh === 'purchase') {
+    const cost = (Number(row.개당단가)||0) * (Number(row.주문개수)||0);
+    return {
+      title: row.업체명 || '(이름 없음)',
+      sub:   `${row.구매일 || '-'} · ${formatWon(row.개당단가)}원 × ${row.주문개수||0}건`,
+      right: `₩${formatWon(cost)}`
+    };
+  }
+  if (currentCh === 'direct') {
+    return {
+      title: row.소재 || '(소재 없음)',
+      sub:   `${row.날짜 || '-'} · ${row.생산개수||0}건`,
+      right: `₩${formatWon(row.기간예산)}`
+    };
+  }
+  if (currentCh === 'banner') {
+    const cost = (Number(row.개당단가)||0) * (Number(row.주문개수)||0);
+    return {
+      title: row.업체명 || '(이름 없음)',
+      sub:   `${row.날짜 || '-'} 발주 · ${row.도착일 || '-'} 도착 · ${row.주문개수||0}장`,
+      right: `₩${formatWon(cost)}`
+    };
+  }
+  return {
+    title: `${row.대표자명 || '-'} · ${row.업체명 || '-'}`,
+    sub:   `${row.접수일 || '-'} · ${row.소개처 || ''}${row.조건 ? ' · ' + row.조건 : ''}`,
+    rightBadge: row.구분
+  };
+}
+
+/** 폼 (편집/추가 공용) */
+function renderFieldsForm(row, idx) {
+  const ch = CHANNELS[currentCh];
+  const formId = (idx === null || idx === undefined) ? 'add-form' : `edit-form-${idx}`;
+
+  const fields = ch.fields.map(f => {
+    const id  = `${formId}-${f.key}`;
+    const val = row[f.key] ?? '';
+    const colSpan = f.span === 2 ? 'col-span-2' : '';
+
+    // 자동계산 컬럼
+    if (f.formula) {
+      const calcVal = f.calc(row);
+      return `
+        <div class="${colSpan}">
+          <label class="field-label">
+            <span>${f.label}</span>
+            <span class="auto-label">🔒 자동</span>
+          </label>
+          <input id="${id}" data-key="${f.key}" type="text" disabled
+                 class="field-input auto-field num-mono"
+                 value="${calcVal ? formatWon(calcVal) + (f.unit ? ' ' + f.unit : '') : '-'}">
+        </div>`;
+    }
+
+    // 셀렉트
+    if (f.type === 'select') {
+      return `
+        <div class="${colSpan}">
+          <label class="field-label">${f.label}</label>
+          <select id="${id}" data-key="${f.key}" class="field-input" onchange="recalcFormulas('${formId}')">
+            ${f.options.map(o => `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
+        </div>`;
+    }
+
+    // 일반 input (text / number / date)
+    return `
+      <div class="${colSpan}">
+        <label class="field-label">
+          <span>${f.label}${f.unit ? ` <span class="text-gray-300">(${f.unit})</span>` : ''}</span>
+        </label>
+        <input id="${id}" data-key="${f.key}" type="${f.type}"
+               class="field-input ${f.type === 'number' ? 'num-mono' : ''}"
+               value="${val !== '' ? escapeAttr(String(val)) : ''}"
+               ${f.placeholder ? `placeholder="${f.placeholder}"` : ''}
+               ${f.type === 'number' ? 'inputmode="numeric"' : ''}
+               oninput="recalcFormulas('${formId}')">
+      </div>`;
+  }).join('');
+
+  return `<div class="grid grid-cols-2 gap-2.5">${fields}</div>`;
+}
+
+/** 입력 변경 시 수식 컬럼 실시간 갱신 */
+function recalcFormulas(formId) {
+  const ch = CHANNELS[currentCh];
+  const data = {};
+  ch.fields.forEach(f => {
+    if (f.formula) return;
+    const el = document.getElementById(`${formId}-${f.key}`);
+    if (!el) return;
+    data[f.key] = (f.type === 'number') ? (Number(el.value) || 0) : el.value;
+  });
+  ch.fields.filter(f => f.formula).forEach(f => {
+    const el = document.getElementById(`${formId}-${f.key}`);
+    if (!el) return;
+    const v = f.calc(data);
+    el.value = v ? `${formatWon(v)}${f.unit ? ' ' + f.unit : ''}` : '-';
+  });
+}
+
+/** 행 펼치기 */
+function expandRow(idx) {
+  expandedIdx = idx;
+  addFormOpen = false;
+  document.getElementById('add-form-container').classList.add('hidden');
+  const btn = document.getElementById('add-row-btn');
+  btn.classList.remove('hidden');
+  btn.textContent = `+ ${CHANNELS[currentCh].recordsLabel} 추가`;
+  renderRows();
+  setTimeout(() => {
+    document.querySelectorAll('.row-card.expanded')[0]
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
+function collapseRow() {
+  expandedIdx = -1;
+  renderRows();
+}
+
+/** 저장 */
+function saveRow(idx) {
+  const ch  = CHANNELS[currentCh];
+  const row = dbStore[currentCh][idx];
+  const formId = `edit-form-${idx}`;
+  ch.fields.forEach(f => {
+    if (f.formula) return;
+    const el = document.getElementById(`${formId}-${f.key}`);
+    if (!el) return;
+    row[f.key] = (f.type === 'number') ? (Number(el.value) || 0) : el.value;
+  });
+  expandedIdx = -1;
+  renderAll();
+  showToast('저장되었습니다 📌');
+}
+
+/** 삭제 — iframe 환경에서 native confirm()이 차단되므로 커스텀 모달 사용 */
+async function deleteRow(idx) {
+  const ch = CHANNELS[currentCh];
+  const row = dbStore[currentCh][idx];
+  const label = row.업체명 || row.소재 || row.대표자명 || `${String(idx+1).padStart(2,'0')}번`;
+  const ok = await customConfirm(
+    `${ch.recordsLabel} 삭제`,
+    `'${label}' 을(를) 삭제할까요?`
+  );
+  if (!ok) return;
+  dbStore[currentCh].splice(idx, 1);
+  expandedIdx = -1;
+  renderAll();
+  showToast('삭제되었습니다 🗑');
+}
+
+/** 커스텀 confirm — components.md Alert 패턴 (Promise 반환) */
+function customConfirm(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[300] p-4';
+    overlay.style.animation = 'fadeIn 0.15s ease';
+    overlay.innerHTML = `
+      <div class="bg-white rounded-xl p-5 max-w-sm w-full shadow-xl">
+        <h3 class="font-semibold text-gray-900 text-base mb-1">${escapeHtml(title)}</h3>
+        <p class="text-gray-600 text-sm mb-4 leading-relaxed">${escapeHtml(message)}</p>
+        <div class="flex gap-2">
+          <button data-action="cancel" class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">취소</button>
+          <button data-action="ok" class="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold">삭제</button>
+        </div>
+      </div>
+    `;
+    const close = (result) => { overlay.remove(); resolve(result); };
+    overlay.querySelector('[data-action="cancel"]').onclick = () => close(false);
+    overlay.querySelector('[data-action="ok"]').onclick     = () => close(true);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+    document.body.appendChild(overlay);
+  });
+}
+
+/** 추가 폼 열기 */
+function openAddForm() {
+  addFormOpen = true;
+  expandedIdx = -1;
+  document.getElementById('add-row-btn').classList.add('hidden');
+  document.getElementById('add-form-container').classList.remove('hidden');
+  renderAddForm();
+  renderRows();
+  setTimeout(() => {
+    document.getElementById('add-form-container')
+      .scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
+/** 추가 폼 닫기 */
+function closeAddForm() {
+  addFormOpen = false;
+  document.getElementById('add-form-container').classList.add('hidden');
+  const btn = document.getElementById('add-row-btn');
+  btn.classList.remove('hidden');
+  btn.textContent = `+ ${CHANNELS[currentCh].recordsLabel} 추가`;
+}
+
+/** 추가 폼 본문 */
+function renderAddForm() {
+  const ch = CHANNELS[currentCh];
+  const today = new Date().toISOString().slice(0, 10);
+  const blank = {};
+  ch.fields.forEach(f => {
+    if (f.type === 'date')        blank[f.key] = today;
+    else if (f.type === 'number') blank[f.key] = '';
+    else if (f.type === 'select') blank[f.key] = f.options[0];
+    else                          blank[f.key] = '';
+  });
+
+  document.getElementById('add-form-container').innerHTML = `
+    <div class="flex items-center gap-2 mb-3">
+      <span class="badge badge-${ch.cls}">${ch.name}</span>
+      <span class="text-sm font-semibold text-gray-700">${ch.recordsLabel} 추가</span>
+    </div>
+    ${renderFieldsForm(blank, null)}
+    <div class="flex gap-2 mt-3">
+      <button onclick="closeAddForm()" class="px-4 py-2.5 text-gray-600 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50">취소</button>
+      <button onclick="addRow()" class="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600">+ 추가</button>
+    </div>
+  `;
+}
+
+/** 추가 폼 → store에 push */
+function addRow() {
+  const ch = CHANNELS[currentCh];
+  const newRow = {};
+  ch.fields.forEach(f => {
+    if (f.formula) return;
+    const el = document.getElementById(`add-form-${f.key}`);
+    if (!el) return;
+    newRow[f.key] = (f.type === 'number') ? (Number(el.value) || 0) : el.value;
+  });
+  const last = dbStore[currentCh].slice(-1)[0];
+  newRow.rowNum = last ? last.rowNum + 1 : 2; // 시트 동기화용 (UI에는 안 보임)
+  dbStore[currentCh].push(newRow);
+  addFormOpen = false;
+  renderAll();
+  showToast(`${ch.recordsLabel}이 추가되었습니다 ✨`);
+}
+
+/** 토스트 */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/** HTML 이스케이프 */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function escapeAttr(s) {
+  return String(s ?? '').replace(/"/g, '&quot;');
+}
+
+// =============================================================
+// [STEP 4/4] 초기 렌더
+// =============================================================
+renderAll();
+</script>
+
+</body>
+</html>
