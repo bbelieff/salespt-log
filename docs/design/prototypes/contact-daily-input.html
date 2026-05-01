@@ -159,10 +159,30 @@
 </head>
 <body>
 
+<!-- ==================== 슬림 브랜드 바 (모든 탭 공통) ==================== -->
+<header class="bg-white border-b border-gray-100 px-4 h-12 flex items-center justify-between sticky top-0 z-50">
+  <button onclick="alert('대시보드 탭으로 이동')" class="flex items-center gap-2 cursor-pointer hover:opacity-80">
+    <img src="/assets/logo-symbol.png"
+         onerror="this.onerror=null;this.src='data:image/png;base64,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'"
+         alt="세일즈PT" class="w-7 h-7 object-contain">
+    <span class="font-semibold text-gray-900 text-sm">세일즈PT 경영일지</span>
+  </button>
+  <button onclick="alert('마이페이지로 이동')" class="cursor-pointer hover:opacity-70 px-2 py-1.5">
+    <span class="text-sm text-gray-600 font-medium">5기 이수강</span>
+  </button>
+</header>
+
+<!-- ==================== 페이지 배너 ==================== -->
+<div class="bg-slate-100 border-b border-slate-200 px-4 h-12 flex items-center gap-3 sticky top-[48px] z-40">
+  <div class="w-1 h-5 bg-slate-500 rounded-sm"></div>
+  <h1 class="text-sm font-semibold text-slate-700">📋 컨택관리</h1>
+</div>
+
+
 <!-- ============================================================
      1. 헤더: 주차 네비 + 요일 바
      ============================================================ -->
-<header class="bg-white shadow-sm sticky top-0 z-40">
+<header class="bg-white shadow-sm sticky top-[96px] z-30">
   <!-- 1-1. 주차 타이틀 + 좌우 화살표 -->
   <div class="flex items-center justify-between px-2 py-3">
     <button onclick="moveWeek(-1)"
@@ -174,7 +194,7 @@
     </button>
 
     <div class="text-center flex-1">
-      <div class="text-base font-bold text-gray-900" id="week-title">PRM 5기 · 이수강 · 1주차</div>
+      <div class="text-base font-bold text-gray-900" id="week-title">1주차</div>
       <div class="text-xs text-gray-400 mt-0.5">(예시: PRM 5기 기준)</div>
     </div>
 
@@ -238,36 +258,55 @@
      4. 하단 탭 바 (5개)
      ============================================================ -->
 <nav class="bottom-nav bg-white border-t border-gray-100 flex">
-  <!-- 1. 컨택관리 (현재 탭) -->
+  <!-- 1. 컨택관리 -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-blue-600">
-    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm14 1H4v8h12V6z"/><path d="M6 9h8v1H6V9z"/></svg>
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="translate(-1, 5.5) scale(0.68)"/>
+      <rect x="14.5" y="0.5" width="9" height="9" rx="1.4" fill="white" stroke="currentColor" stroke-width="1.7"/>
+      <line x1="14.5" y1="3.3" x2="23.5" y2="3.3" stroke="currentColor" stroke-width="1.5"/>
+      <line x1="16.8" y1="0.5" x2="16.8" y2="2"/>
+      <line x1="21.2" y1="0.5" x2="21.2" y2="2"/>
+      <circle cx="17" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="19" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="21" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="17" cy="7.8" r="0.85" fill="currentColor"/>
+    </svg>
     <span class="text-xs font-semibold">컨택관리</span>
   </button>
-  <!-- 2. 일정·계약 (리스트·계약 기록) -->
+  <!-- 2. 일정·계약 -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
     </svg>
     <span class="text-xs">일정·계약</span>
   </button>
-  <!-- 3. 캘린더 (월별 달력 뷰) -->
+  <!-- 3. 캘린더 -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd"
+            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+            clip-rule="evenodd"/>
     </svg>
     <span class="text-xs">캘린더</span>
   </button>
   <!-- 4. 수납 -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
     </svg>
     <span class="text-xs">수납</span>
   </button>
-  <!-- 5. DB관리 -->
+  <!-- 5. DB관리 (active) -->
   <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <circle cx="9" cy="20" r="1.3"/>
+      <circle cx="17" cy="20" r="1.3"/>
+      <path d="M3 4 L5 4 L7 13 L18 13 L20 6 L7 6"/>
+      <rect x="9" y="7.5" width="7" height="4.5" rx="0.5" fill="white"/>
+      <line x1="9" y1="10" x2="16" y2="10"/>
+      <line x1="11" y1="7.5" x2="11" y2="12"/>
     </svg>
     <span class="text-xs">DB관리</span>
   </button>
@@ -447,7 +486,7 @@ function syncSlots(cell) {
 function renderHeader() {
   // 주차 타이틀: "PRM 5기 · 이수강 · N주차"
   document.getElementById('week-title').textContent =
-    `${USER_INFO.cohort} · ${USER_INFO.name} · ${currentWeek}주차`;
+    `${currentWeek}주차`;
 
   // 요일 바 (금→목)
   const bar = document.getElementById('day-bar');
@@ -836,9 +875,9 @@ function registerSlot(channelIdx, slotIdx) {
   if (!cell.slots || !cell.slots[slotIdx]) return;
   const slot = cell.slots[slotIdx];
 
-  // 기본 정보 검증 (장소도 필수)
-  if (!slot.meetingDate || !slot.meetingTime || !slot.company || !slot.location) {
-    showToast('⚠ 미팅 일정·시간·업체명·장소는 필수입니다');
+  // 기본 정보 검증
+  if (!slot.meetingDate || !slot.meetingTime || !slot.company) {
+    showToast('⚠ 미팅 일정·시간·업체명은 필수입니다');
     return;
   }
 
