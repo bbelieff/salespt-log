@@ -17,6 +17,7 @@ import {
   usePatchMeeting,
   useWeekMeetings,
 } from "@/query/contact-hooks";
+import { useAddContractPayment } from "@/query/contract-payment-hooks";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -43,6 +44,7 @@ export default function SchedulePage() {
   const weekQuery = useWeekMeetings(weekStart);
   const patchMeeting = usePatchMeeting();
   const appendMeeting = useAppendMeeting();
+  const addContractPayment = useAddContractPayment();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -84,7 +86,34 @@ export default function SchedulePage() {
         id,
         partial,
       });
-      showToast("✓ 저장 완료");
+
+      // Fan-out: 계약 액션이면 02 계약수납관리에 row 자동 생성
+      // 04 업체관리 patch 성공 후에만 시도. 실패 시 안내만 (메인 흐름 유지).
+      if (partial.상태 === "계약" && weekQuery.data) {
+        const meeting = weekQuery.data.daysByMeetingDate
+          .flatMap((d) => d.meetings)
+          .find((m) => m.id === id);
+        if (meeting) {
+          try {
+            await addContractPayment.mutateAsync({
+              계약일: meeting.미팅날짜,
+              업체명: meeting.업체명,
+              수임비: partial.수임비 ?? meeting.수임비 ?? 0,
+            });
+            showToast("✓ 계약 확정 + 계약수납 row 생성됨");
+          } catch (e) {
+            showToast(
+              `⚠ 계약은 저장됐으나 계약수납 row 생성 실패: ${(e as Error).message} — 계약수납 탭에서 수동으로 추가 필요`,
+            );
+            return;
+          }
+        } else {
+          showToast("✓ 저장 완료 (meeting lookup 실패 — fan-out 생략)");
+          return;
+        }
+      } else {
+        showToast("✓ 저장 완료");
+      }
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
     } finally {
