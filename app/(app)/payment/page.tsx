@@ -1,330 +1,228 @@
 /**
- * 수납 탭 (PR 09) — 일별 실적 입력.
- * 시트: 영업관리!Q~T (매입DB 행에만)
+ * 계약수납 탭 (PR 11 contract-payment-tab UI).
+ * 정본: docs/plans/active/11-contract-payment-tab.md
  *
- * 흐름:
- *   useDailyRevenue(date) → GET /api/payment/[date]
- *   draft 변경 → [💾 저장] → useSaveDailyRevenue.mutateAsync({date, revenue})
+ * 시트: 02 계약수납관리 (A~AA)
+ *   - C/D/E 자동 연동 (계약일/업체명/수임비) — 일정·계약 탭 계약 액션 시 자동 생성
+ *   - F~L 7 체크박스 (서류 6 + 플러그이관 1)
+ *   - M~Q / R~V / W~AA: 3 분할 수납
  *
- * 검증:
- *   - paymentCount > approvalCount → UI에서 자동 클램프
- *   - paymentCount=0 인데 paymentAmount>0 → 저장 시 경고 (서버측에서 0 강제)
+ * URL: /payment 유지 (Architecture C — Plan 결정)
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import type { ContractPayment } from "@/types";
 import {
-  useDailyRevenue,
-  useSaveDailyRevenue,
-} from "@/query/contact-hooks";
-import MetricStepper from "@/components/ui/MetricStepper";
-
-const TODAY_ISO = (() => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-})();
-
-interface Draft {
-  approvalCount: number;
-  paymentCount: number;
-  paymentAmount: number;
-  agencyNote: string;
-}
-
-const EMPTY_DRAFT: Draft = {
-  approvalCount: 0,
-  paymentCount: 0,
-  paymentAmount: 0,
-  agencyNote: "",
-};
+  usePatchContractPayment,
+  useRemoveContractPayment,
+  useContractPayments,
+} from "@/query/contract-payment-hooks";
+import ContractRow from "./_components/ContractRow";
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
-function shiftDate(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(y!, m! - 1, d!);
-  date.setDate(date.getDate() + days);
-  const yy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
+interface ConfirmTarget {
+  row: number;
+  label: string;
 }
 
 export default function PaymentPage() {
-  const [date, setDate] = useState<string>(TODAY_ISO);
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const list = useContractPayments();
+  const patch = usePatchContractPayment();
+  const remove = useRemoveContractPayment();
+
+  const [pendingRow, setPendingRow] = useState<number | null>(null);
   const [toast, setToast] = useState("");
-
-  const dayQuery = useDailyRevenue(date);
-  const save = useSaveDailyRevenue();
-
-  // 서버 데이터 로드 시 draft 동기화
-  useEffect(() => {
-    if (!dayQuery.data) return;
-    setDraft({
-      approvalCount: dayQuery.data.approvalCount,
-      paymentCount: dayQuery.data.paymentCount,
-      paymentAmount: dayQuery.data.paymentAmount,
-      agencyNote: dayQuery.data.agencyNote,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dayQuery.data?.date]);
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
   };
 
-  const setApproval = (n: number) =>
-    setDraft((d) => {
-      const approval = Math.max(0, n);
-      const payment = Math.min(d.paymentCount, approval);
-      const amount = payment > 0 ? d.paymentAmount : 0;
-      return {
-        ...d,
-        approvalCount: approval,
-        paymentCount: payment,
-        paymentAmount: amount,
-      };
-    });
-
-  const setPayment = (n: number) =>
-    setDraft((d) => {
-      const payment = Math.max(0, Math.min(n, d.approvalCount));
-      const amount = payment > 0 ? d.paymentAmount : 0;
-      return { ...d, paymentCount: payment, paymentAmount: amount };
-    });
-
-  const setAmount = (n: number) =>
-    setDraft((d) => ({ ...d, paymentAmount: Math.max(0, n) }));
-
-  const setNote = (v: string) =>
-    setDraft((d) => ({ ...d, agencyNote: v }));
-
-  const handleSave = async () => {
-    if (draft.paymentCount > 0 && draft.paymentAmount === 0) {
-      showToast("⚠ 수납건수가 있는데 금액이 0입니다 — 확인 후 저장하세요");
-      return;
-    }
+  const handleSave = async (next: ContractPayment) => {
+    if (!next.row) return;
+    setPendingRow(next.row);
     try {
-      await save.mutateAsync({
-        date,
-        revenue: draft,
-      });
-      showToast("✅ 저장 완료");
+      await patch.mutateAsync({ row: next.row, data: next });
+      showToast("✓ 저장 완료");
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingRow(null);
     }
   };
 
-  const moveDate = (delta: number) => setDate((cur) => shiftDate(cur, delta));
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
+    const target = confirmTarget;
+    setConfirmTarget(null);
+    setPendingRow(target.row);
+    try {
+      await remove.mutateAsync(target.row);
+      showToast("삭제되었습니다 🗑");
+    } catch (e) {
+      showToast(`삭제 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingRow(null);
+    }
+  };
 
-  if (dayQuery.isLoading) {
-    return (
-      <section className="px-4 pt-6 text-sm text-slate-500">
-        불러오는 중…
-      </section>
-    );
-  }
-  if (dayQuery.isError) {
-    return (
-      <section className="px-4 pt-6">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          ⚠ 불러오기 실패: {(dayQuery.error as Error).message}
-        </div>
-      </section>
-    );
-  }
-
-  const monthDay = `${parseInt(date.slice(5, 7), 10)}월 ${parseInt(date.slice(8, 10), 10)}일`;
+  const rows = list.data?.rows ?? [];
+  const totalContract = rows.reduce((s, cp) => s + (cp.수임비 || 0), 0);
+  const totalReceived = rows.reduce(
+    (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
+    0,
+  );
+  const totalApproved = rows.reduce(
+    (s, cp) =>
+      s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
+    0,
+  );
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white shadow-sm">
-        <div className="flex items-center justify-between px-2 py-3">
-          <button
-            type="button"
-            onClick={() => moveDate(-1)}
-            className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
-            aria-label="전날"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </button>
-          <div className="flex-1 text-center">
-            <div className="text-base font-bold text-gray-900">
-              💰 수납 · {monthDay}
-              {date === TODAY_ISO && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
-                  오늘
-                </span>
-              )}
-            </div>
-            <div className="mt-0.5 text-xs text-gray-400">
-              영업관리 시트 Q~T (매입DB 행)
-            </div>
+      {/* 슬림 브랜드 바 */}
+      <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-gray-100 bg-white px-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded text-base font-bold text-red-600">
+            $
           </div>
-          <button
-            type="button"
-            onClick={() => moveDate(1)}
-            className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
-            aria-label="다음날"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
+          <span className="text-sm font-semibold text-gray-900">
+            세일즈PT 경영일지
+          </span>
         </div>
+        <span className="text-sm font-medium text-gray-600">5기 이수강</span>
       </header>
 
-      <main className="px-4 pb-[160px] pt-4">
-        <div className="space-y-3">
-          <FieldRow
-            label="승인건수"
-            hint="오늘 승인 받은 건수 (Q열)"
-            field={
-              <MetricStepper
-                value={draft.approvalCount}
-                onChange={setApproval}
-                ariaLabel="승인건수"
-              />
-            }
-          />
-          <FieldRow
-            label="수납건수"
-            hint="오늘 수납된 건수 · 승인건수 이하 (R열)"
-            field={
-              <MetricStepper
-                value={draft.paymentCount}
-                onChange={setPayment}
-                max={draft.approvalCount}
-                ariaLabel="수납건수"
-                capped={draft.paymentCount >= draft.approvalCount}
-                cappedHint="승인건수 이하만 가능"
-              />
-            }
-          />
-          <FieldRow
-            label="수납금액"
-            hint="단위: 만원 (S열)"
-            field={
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={draft.paymentAmount}
-                  disabled={draft.paymentCount === 0}
-                  onChange={(e) => setAmount(Number(e.target.value) || 0)}
-                  className="w-28 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-right text-base font-semibold focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100"
-                />
-                <span className="text-sm font-semibold text-gray-600">
-                  만원
-                </span>
-                {draft.paymentAmount > 0 && (
-                  <span className="ml-auto text-xs text-gray-500">
-                    = {fmtMoney(draft.paymentAmount * 10000)}원
-                  </span>
-                )}
-              </div>
-            }
-          />
-          <FieldRow
-            label="비고"
-            hint="기관·접수내용 (T열)"
-            field={
-              <textarea
-                rows={3}
-                value={draft.agencyNote}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="예: 신협 → 부동산 (○○대표), 입금 확인됨"
-                className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            }
-          />
-
-          <div className="rounded-2xl bg-green-50 p-4">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-semibold text-green-800">
-                💰 오늘 수납
-              </span>
-              <span className="text-lg font-bold text-green-700">
-                {fmtMoney(draft.paymentAmount)}만원
-              </span>
-            </div>
-            <div className="mt-1 text-xs text-gray-600">
-              승인 {draft.approvalCount}건 · 수납 {draft.paymentCount}건
-            </div>
-          </div>
-        </div>
-      </main>
-
-      <div className="fixed bottom-[64px] left-0 right-0 z-[49] bg-gradient-to-t from-white via-white to-transparent px-4 pb-3 pt-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={save.isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 py-3.5 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-600 active:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
-        >
-          {save.isPending ? (
-            <>
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              시트 저장중...
-            </>
-          ) : (
-            <>💾 저장하기</>
-          )}
-        </button>
+      {/* 페이지 배너 */}
+      <div className="sticky top-12 z-40 flex h-12 items-center gap-3 border-b border-slate-200 bg-slate-100 px-4">
+        <div className="h-5 w-1 rounded-sm bg-slate-500" />
+        <h1 className="text-sm font-semibold text-slate-700">💰 계약수납</h1>
       </div>
 
+      <main className="px-4 pb-[80px] pt-3">
+        {/* 전체 요약 카드 */}
+        <div className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
+          <div className="mb-1 text-sm font-semibold text-gray-800">
+            전체 계약수납 현황
+          </div>
+          <div className="mb-2 text-xs text-gray-500">
+            계약 {rows.length}건 · 수임비 합계{" "}
+            <span
+              className="font-semibold text-gray-800"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {fmtMoney(totalContract)}만원
+            </span>
+          </div>
+          {totalApproved > 0 && (
+            <div className="rounded-lg bg-green-50 p-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs font-semibold text-green-800">
+                  💰 누적 수납
+                </span>
+                <span
+                  className="text-base font-bold text-green-700"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  {fmtMoney(totalReceived)}원
+                </span>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between text-xs text-gray-600">
+                <span>승인금액 합계</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {fmtMoney(totalApproved)}원 (
+                  {Math.round((totalReceived / totalApproved) * 100)}%)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 안내 */}
+        <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          💡 일정·계약 탭에서 미팅을 <b>💵 계약</b>으로 처리하면 여기 자동 추가됩니다.
+        </div>
+
+        {/* 리스트 */}
+        {list.isLoading ? (
+          <div className="text-sm text-slate-500">불러오는 중…</div>
+        ) : list.isError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            ⚠ 불러오기 실패: {(list.error as Error).message}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
+            아직 계약이 없습니다 — 일정·계약 탭에서 💵 계약 액션 시 자동 추가
+          </div>
+        ) : (
+          <div>
+            {rows.map((cp) => (
+              <ContractRow
+                key={cp.row}
+                cp={cp}
+                pending={pendingRow === cp.row}
+                onSave={handleSave}
+                onDeleteRequest={() => {
+                  if (cp.row) {
+                    setConfirmTarget({
+                      row: cp.row,
+                      label: cp.업체명 || `시트 row ${cp.row}`,
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* 토스트 */}
       {toast && (
-        <div className="fixed bottom-[152px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
+        <div className="fixed left-1/2 top-5 z-[200] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}
-    </>
-  );
-}
 
-function FieldRow({
-  label,
-  hint,
-  field,
-}: {
-  label: string;
-  hint: string;
-  field: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl bg-white p-3 shadow-sm">
-      <div className="mb-2">
-        <div className="text-sm font-bold text-gray-900">{label}</div>
-        <div className="text-xs text-gray-500">{hint}</div>
-      </div>
-      {field}
-    </div>
+      {/* 삭제 확인 모달 */}
+      {confirmTarget && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setConfirmTarget(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-base font-semibold text-gray-900">
+              계약수납 삭제
+            </h3>
+            <p className="mb-4 text-sm leading-relaxed text-gray-600">
+              {`'${confirmTarget.label}' 계약수납 row를 비울까요? (시트 row ${confirmTarget.row} 전체 clear)`}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmTarget(null)}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
