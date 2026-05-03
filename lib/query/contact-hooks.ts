@@ -20,7 +20,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import type { Channel, DailyRevenue, Meeting } from "@/types";
+import type { Channel, Meeting } from "@/types";
 import type {
   CalendarMonthView,
   ChannelDailyRowMetrics,
@@ -32,7 +32,6 @@ import type {
 export const dayKey = (date: string) => ["day", date] as const;
 export const weekKey = (weekStart: string) => ["week", weekStart] as const;
 export const monthKey = (yyyyMM: string) => ["month", yyyyMM] as const;
-export const paymentKey = (date: string) => ["payment", date] as const;
 
 // ── 페치 헬퍼 ─────────────────────────────────────────────────
 async function fetchJSON<T>(
@@ -88,34 +87,9 @@ export function useMonthMeetings(
   });
 }
 
-/** 수납 탭 — 한 날짜의 일별 실적(승인/수납/금액/비고). */
-export function useDailyRevenue(
-  date: string,
-): UseQueryResult<DailyRevenue> {
-  return useQuery({
-    queryKey: paymentKey(date),
-    queryFn: () => fetchJSON<DailyRevenue>(`/api/payment/${date}`),
-    enabled: !!date,
-  });
-}
-
-export interface SaveDailyRevenueArgs {
-  date: string;
-  revenue: Omit<DailyRevenue, "date">;
-}
-
-export function useSaveDailyRevenue() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ date, revenue }: SaveDailyRevenueArgs) =>
-      fetchJSON<{ ok: true }>(`/api/payment/${date}`, {
-        method: "POST",
-        body: JSON.stringify(revenue),
-      }),
-    onSuccess: (_, { date }) =>
-      qc.invalidateQueries({ queryKey: paymentKey(date) }),
-  });
-}
+// 수납 탭(useDailyRevenue / useSaveDailyRevenue / paymentKey)은
+// PR #38·39·40에서 contract-payment로 모델 재정의되어 폐기됨.
+// 새 훅: lib/query/contract-payment-hooks.ts
 
 // ── Mutation 입력 타입 ────────────────────────────────────────
 export interface SaveMetricsArgs {

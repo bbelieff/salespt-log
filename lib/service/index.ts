@@ -34,8 +34,8 @@ export {
   type CalendarMonthView,
 } from "./contact";
 
-// 수납 탭 유스케이스 (PR 09)
-export { loadDailyRevenue, saveDailyRevenue } from "./payment";
+// 수납탭은 PR #38·39·40에서 계약수납탭(02 계약수납관리)으로 모델 재정의됨.
+// 일별 합계 모델(loadDailyRevenue / saveDailyRevenue)은 폐기.
 
 // DB관리 탭 유스케이스 (PR 09 db-management — 4채널 raw log)
 export {

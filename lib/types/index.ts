@@ -89,16 +89,8 @@ export const ChannelDailyRow = z.object({
 });
 export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
 
-// ── 일별 실적(수납) — 01 영업관리!Q~T에 통합 (data-model.md v4) ─
-// 별도 수납관리 탭 없음. 1일 = 1레코드 (4채널 행과 별개로 1일에 한 묶음).
-export const DailyRevenue = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  approvalCount: z.number().int().nonnegative().default(0), // Q 승인건수
-  paymentCount: z.number().int().nonnegative().default(0), // R 수납건수
-  paymentAmount: z.number().int().nonnegative().default(0), // S 수납금액 (만원)
-  agencyNote: z.string().default(""), // T 비고(기관·접수내용)
-});
-export type DailyRevenue = z.infer<typeof DailyRevenue>;
+// 일별 실적(DailyRevenue, 영업관리!Q~T)은 PR #38·39·40에서 02 계약수납관리로
+// 모델 재정의되며 폐기됨. ContractPayment 타입 참조.
 
 // ── DB관리 — 4채널 raw log (PR 09 db-management) ────────────────
 // 시트 매핑: docs/domains/sheet-structure.md §5

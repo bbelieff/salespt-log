@@ -12,7 +12,6 @@ import {
   ChannelDailyRow,
   CHANNEL_ORDER,
   Channel,
-  DailyRevenue,
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
 
@@ -196,86 +195,14 @@ export async function batchWriteChannelDailyRows(
 }
 
 /**
- * 일별 실적(수납) Q~T를 그 날의 매입DB 행(첫 채널)에 기록.
- * 가정: 한 날짜에 Q~T는 1개 값만 존재 (4채널 행 중 첫 행에만).
- */
-export async function writeDailyRevenue(
-  spreadsheetId: string,
-  revenue: DailyRevenue,
-): Promise<void> {
-  const validated = DailyRevenue.parse(revenue);
-  const courseStart = await readCourseStart(spreadsheetId);
-  const targetDate = parseISO(validated.date);
-  // 매입DB 행 (그 날짜의 첫 채널 행)
-  const sheetRow = salesRowFor(targetDate, "매입DB", courseStart);
-
-  const cols = SHEET_RANGES.sales.revenueCols;
-  for (const col of [
-    cols.approvalCount,
-    cols.paymentCount,
-    cols.paymentAmount,
-    cols.agencyNote,
-  ]) {
-    assertWritableCol(col, "writeDailyRevenue");
-  }
-
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!${cols.approvalCount}${sheetRow}:${cols.agencyNote}${sheetRow}`;
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [
-        [
-          validated.approvalCount,
-          validated.paymentCount,
-          validated.paymentAmount,
-          validated.agencyNote,
-        ],
-      ],
-    },
-  });
-}
-
-/**
- * 한 날짜의 일별 실적(Q~T) 1개 행만 읽기.
- * 매입DB 행(첫 채널 행)에서만 가져옴 — `writeDailyRevenue`와 매칭.
- * 빈 행이면 zero-value DailyRevenue 반환 (UI가 0으로 시작하도록).
- */
-export async function readDailyRevenue(
-  spreadsheetId: string,
-  date: string,
-): Promise<DailyRevenue> {
-  const courseStart = await readCourseStart(spreadsheetId);
-  const targetDate = parseISO(date);
-  const sheetRow = salesRowFor(targetDate, "매입DB", courseStart);
-
-  const cols = SHEET_RANGES.sales.revenueCols;
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!${cols.approvalCount}${sheetRow}:${cols.agencyNote}${sheetRow}`;
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const r = (res.data.values?.[0] ?? []) as (string | number)[];
-  return DailyRevenue.parse({
-    date,
-    approvalCount: Number(r[0] ?? 0) || 0,
-    paymentCount: Number(r[1] ?? 0) || 0,
-    paymentAmount: Number(r[2] ?? 0) || 0,
-    agencyNote: String(r[3] ?? ""),
-  });
-}
-
-/**
  * 한 주차 분량의 4지표 4채널 (28개 행)을 읽음.
- * 결과: 일별×채널별 ChannelDailyRow + 일별 DailyRevenue (7개).
+ * Q~T(deprecated 일별 실적)는 더 이상 read하지 않음 — PR #38·39+에서
+ * 02 계약수납관리로 모델 이전됨.
  */
 export async function readWeek(
   spreadsheetId: string,
   weekIndex: number,
-): Promise<{ rows: ChannelDailyRow[]; revenues: DailyRevenue[] }> {
+): Promise<{ rows: ChannelDailyRow[] }> {
   if (weekIndex < 1 || weekIndex > 10) {
     throw new Error(`주차 범위 밖: ${weekIndex} (1~10)`);
   }
@@ -286,8 +213,8 @@ export async function readWeek(
     (weekIndex - 1) * SHEET_RANGES.sales.blockStride;
   const endRow = startRow + 27; // 28행
 
-  // C(날짜) ~ T(수납비고)까지 한 번에 읽기
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!C${startRow}:T${endRow}`;
+  // C(날짜) ~ H(컨택성공)까지만 read — Q~T(일별 실적)는 deprecated
+  const range = `${tabRef(SHEET_RANGES.sales.tab)}!C${startRow}:H${endRow}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -297,11 +224,9 @@ export async function readWeek(
   const data = (res.data.values ?? []) as (string | number | boolean)[][];
 
   const rows: ChannelDailyRow[] = [];
-  const revenues: DailyRevenue[] = [];
   for (let i = 0; i < 28; i++) {
     const r = data[i] ?? [];
-    // 컬럼 인덱스 (C 기준 0): C=0날짜, D=1채널, E=2생산, F=3유입, G=4컨택진행, H=5컨택성공,
-    // I=6 ... P=13, Q=14, R=15, S=16, T=17
+    // 컬럼 인덱스 (C 기준 0): C=0날짜, D=1채널, E=2생산, F=3유입, G=4컨택진행, H=5컨택성공
     const dateRaw = r[0];
     const channelRaw = r[1];
     if (dateRaw === undefined || channelRaw === undefined) continue;
@@ -317,25 +242,10 @@ export async function readWeek(
       contactSuccess: Number(r[5] ?? 0),
     });
     if (parsed.success) rows.push(parsed.data);
-
-    // 매입DB 행(채널 0번, 4행 단위 첫 행)에서만 revenue 추출
-    const dayIdxInWeek = Math.floor(i / 4);
-    const channelIdxInDay = i % 4;
-    if (channelIdxInDay === 0) {
-      const rev = DailyRevenue.safeParse({
-        date: dateStr,
-        approvalCount: Number(r[14] ?? 0),
-        paymentCount: Number(r[15] ?? 0),
-        paymentAmount: Number(r[16] ?? 0),
-        agencyNote: String(r[17] ?? ""),
-      });
-      if (rev.success) revenues.push(rev.data);
-      void dayIdxInWeek; // (currently unused; reserved for future ordering logic)
-    }
   }
 
-  void courseStart; // (currently unused in this read path; kept for symmetry/validation)
-  return { rows, revenues };
+  void courseStart;
+  return { rows };
 }
 
 function serialOrStringToISO(v: string | number | boolean): string | null {
