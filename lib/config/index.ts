@@ -100,6 +100,36 @@ export const SHEET_RANGES = {
     range: "A2:S", // append + update 대상
   },
 
+  // ── 계약수납관리 (1행 = 1계약, A~AA) ─────────────────────────
+  // 일정·계약 탭에서 계약 액션 시 row 자동 생성 (C/D/E 자동 채움).
+  // 사용자가 계약수납탭에서 F~L (체크박스 7) + M~AA (분할수납 3) 입력.
+  // SSOT: docs/domains/sheet-structure.md §4 (이전 02 계약관리 → 02 계약수납관리)
+  contractPayment: {
+    tab: "02 계약수납관리",
+    headerRows: 2, // 1=그룹 헤더, 2=필드 헤더, 3행~ = 데이터
+    firstDataRow: 3,
+    range: "A3:AA", // 데이터 영역
+    // 자동 연동 컬럼 — 계약 액션 시 04 업체관리에서 채움
+    autoCols: { 계약일: "C", 업체명: "D", 수임비: "E" },
+    // 7 체크박스
+    checkboxCols: ["F", "G", "H", "I", "J", "K", "L"] as const,
+    checkboxLabels: [
+      "공동인증서",
+      "임대차계약서",
+      "신분증",
+      "드라이브 업로드",
+      "사업계획서 초안발송",
+      "컨설팅 5종서류 발송",
+      "플러그 이관",
+    ] as const,
+    // 3 분할 수납 슬롯 (각 슬롯 5필드: 진행기관/현황/승인금액/수납액/수납일)
+    paymentSlots: [
+      { startCol: "M", endCol: "Q" }, // 수납1
+      { startCol: "R", endCol: "V" }, // 수납2
+      { startCol: "W", endCol: "AA" }, // 수납3
+    ] as const,
+  },
+
   // ── DB관리 (4채널 raw log, 비용 + 영업기회) ───────────────
   // 앱은 raw 입력만. 합계/평균단가 수식은 시트 자체에 이미 박혀있음.
   // 합계 행("합계" 텍스트 시작)은 절대 덮어쓰지 않음.

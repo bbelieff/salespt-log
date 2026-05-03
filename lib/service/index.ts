@@ -54,3 +54,11 @@ export {
   removeLead,
   type DBOverview,
 } from "./db";
+
+// 계약수납 탭 유스케이스 (PR 11 contract-payment-tab)
+export {
+  loadContractPayments,
+  addFromContract,
+  patchContractPayment,
+  removeContractPayment,
+} from "./contract-payment";

@@ -160,3 +160,48 @@ export const User = z.object({
   role: z.enum(["trainee", "trainer", "admin"]).default("trainee"),
 });
 export type User = z.infer<typeof User>;
+
+// ── 계약수납 (PR 11 contract-payment-tab) ──────────────────────
+// 시트 매핑: docs/domains/sheet-structure.md §4 — 02 계약수납관리 A~AA
+// 자동 연동: 일정·계약 탭 계약 액션 시 04 업체관리에서 C/D/E 가져옴
+// 사용자 입력: F~L (체크박스 7) + M~AA (분할수납 3슬롯 × 5필드)
+
+/** 분할 수납 1 슬롯 (진행기관/현황/승인금액/수납액/수납일). */
+export const PaymentSlot = z.object({
+  진행기관: z.string().default(""),
+  현황: z.string().default(""),
+  승인금액: z.number().nonnegative().default(0),
+  수납액: z.number().nonnegative().default(0),
+  수납일: z.string().default(""), // YYYY-MM-DD 또는 빈 문자열
+});
+export type PaymentSlot = z.infer<typeof PaymentSlot>;
+
+const EMPTY_SLOT: PaymentSlot = {
+  진행기관: "",
+  현황: "",
+  승인금액: 0,
+  수납액: 0,
+  수납일: "",
+};
+
+/** 1 계약 row. row=시트 행번호, 자동연동 3필드 + 체크박스 7 + 수납슬롯 3. */
+export const ContractPayment = z.object({
+  row: z.number().int().min(3).optional(), // 시트 row (3행~)
+  // 자동 연동 (04 업체관리에서)
+  계약일: z.string().default(""),
+  업체명: z.string().default(""),
+  수임비: z.number().nonnegative().default(0),
+  // 7 체크박스 (서류 6 + 플러그 이관 1)
+  공동인증서: z.boolean().default(false),
+  임대차계약서: z.boolean().default(false),
+  신분증: z.boolean().default(false),
+  드라이브업로드: z.boolean().default(false),
+  사업계획서초안발송: z.boolean().default(false),
+  컨설팅5종서류발송: z.boolean().default(false),
+  플러그이관: z.boolean().default(false),
+  // 3 분할 수납
+  수납1: PaymentSlot.default(EMPTY_SLOT),
+  수납2: PaymentSlot.default(EMPTY_SLOT),
+  수납3: PaymentSlot.default(EMPTY_SLOT),
+});
+export type ContractPayment = z.infer<typeof ContractPayment>;
