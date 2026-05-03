@@ -153,31 +153,25 @@ related: 03-meeting-results (일정·계약 탭 — 계약 액션 발신 측)
 ### Act
 - 회고 + plan completed로 이동
 
-## Architecture Options (Design 단계 결정 대상)
+## Architecture Decision ✅ Option C 채택
 
-> Plan PR 머지 후 Design 단계에서 사용자가 선택. 미리 보기 차원에서 정리.
+**선택 (Checkpoint 3, 사용자 결정 2026-05-02)**: **C. 실용적 균형**
 
-### Option A — 최소 변경 (URL 유지 + 기존 paths 재사용)
-- `/payment` URL 유지, 페이지만 재작성
-- 기존 `lib/service/payment.ts` 재활용 + `loadDailyRevenue` 폐기
-- 일정·계약 탭의 `handleContract`에 fan-out 추가
-- **장점**: 라우팅·import 영향 최소
-- **단점**: "payment"라는 URL이 의미 잃음 (계약 단위가 핵심)
+### 채택 내용
+- **URL**: `/payment` 유지 (라우팅 안정)
+- **TabBar 라벨**: "수납" 유지 (UI 안정)
+- **백엔드 도메인**: 새 `lib/service/contract-payment.ts` 신설 (도메인 명확)
+- **기존 9-payment 코드**: archive — `lib/service/payment.ts`는 `loadDailyRevenue`/`saveDailyRevenue` 폐기 단계로 deprecated 표시 후 cleanup
+- **페이지 컴포넌트**: `app/(app)/payment/page.tsx` 새로 작성 + `_lib`/`_components` 분리
 
-### Option B — 깔끔한 분리 (URL 변경 + 새 도메인)
-- `/contract-payment` URL 신규
-- `/payment`는 redirect (또는 폐기)
-- `lib/service/contract-payment.ts` 신규 도메인
-- TabBar 5탭 라벨 "수납" → "계약수납"
-- **장점**: 도메인 명료, 검색·라우팅 직관적
-- **단점**: TabBar 변경 + 기존 URL 호환성
+### 채택 사유
+- URL/TabBar 변경은 모바일 사용자 muscle memory 깨뜨림 → 안정성 우선
+- 백엔드는 도메인 명확 (`contract-payment` ≠ 일별 수납) → 검색·import 직관적
+- cutover 단순 (URL 라우팅 변경 불필요, page.tsx만 교체)
 
-### Option C — 실용적 균형 (URL 유지 + 도메인 분리) — 추천
-- `/payment` URL 유지 (TabBar "수납" 라벨도 유지 — 짧음)
-- 백엔드는 새 도메인 `lib/service/contract-payment.ts` (명확)
-- 페이지 컴포넌트는 새로 작성, 기존 9-payment 코드는 archive
-- **장점**: URL/TabBar 안정 + 도메인 명료 + cutover 단순
-- **단점**: URL과 도메인명 약간 mismatch (수용 가능)
+### 채택 안 한 옵션 사유
+- A: 백엔드 service까지 재활용하면 도메인 의미 잃음 — URL 유지하지만 service는 분리해야 함
+- B: TabBar 라벨 변경 시 기존 사용자 혼란 (라벨 짧아도 5탭 폭 영향)
 
 ## Risks / 결정 필요
 
