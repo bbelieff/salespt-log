@@ -38,36 +38,27 @@ related:
 | **SUCCESS** | / 진입 시 영업이익/율 카드 + 채널별 퍼널 차트 + 8주차 추이 한 화면에 표시, dev 모드에서 실데이터 확인 |
 | **SCOPE** | 읽기 전용. 시트 셀 직접 read + Recharts 렌더링. 입력/저장 X. 인증/배포 OUT. |
 
-## 핵심 데이터 흐름
+## 핵심 데이터 흐름 (단순화)
 
 ```
-시트 (이미 자동집계됨, 앱은 read만)
-  대시보드(자동작성) 탭         → 카드 KPI 직접 read
-  01 영업관리!J3:L6              → 채널별 생산총합/계약총합/계약당단가
-  01 영업관리 8주차 합계 라인     → 주차별 생산/유입/컨택진행/컨택성공/계약/활동량
-  04 업체관리!L (계약 상태만)     → 수임비 합계
-  03 DB관리 채널별 합계          → 비용 합계
+시트 (이미 모든 집계 완료, 앱은 대시보드 탭만 read)
+  대시보드(자동작성) 탭 → 카드 KPI + 차트 데이터 모두 여기서
 
-앱 (Recharts 그리기)
-  Card        영업이익 = 수임비 합계 − (매입DB + 직접생산 + 현수막) 합계
-  Card        영업이익률 = 영업이익 / 수임비 합계
-  Card        총매출(수임비) / 총비용 / 누적 수납액
-  BarChart    채널별 퍼널 (생산→유입→컨택→미팅→계약)
-  LineChart   8주차 추이 (활동량 또는 영업이익 누적)
-  PieChart    비용 구성 (매입DB / 직접생산 / 현수막 비율)
+앱 (Recharts + 카드)
+  대시보드 탭의 셀들을 React 컴포넌트에 매핑
+  영업이익 = D21 − E21
+  영업이익률 = 영업이익 / D21
+  그 외 카드/차트 셀은 prototype에서 확정
 ```
 
-## 시트 read 전략 (quota 절약)
+## 시트 read 전략
 
-### 단일 batchGet으로 1회 read
-다음 영역 전부를 1번의 `spreadsheets.values.batchGet`으로 가져옴:
-- `대시보드(자동작성)!A1:Z30` (전체 카드 영역 — 사용자 확정 후 좁힘 가능)
-- `01 영업관리!J3:L6` (채널 4행 × 3컬럼)
-- `01 영업관리 8주차 합계 라인` (사용자 확정 — 어느 row?)
+### 단일 1회 read
+`대시보드(자동작성)!A1:Z40` (또는 prototype 확정 후 정확 범위로 좁힘)
 
-API: `GET /api/dashboard` → 모든 데이터 한 번에 fetch + 클라이언트 매핑.
+API: `GET /api/dashboard` → 시트 영역 read + 클라이언트 매핑.
 
-캐시 키: `["dashboard"]`. invalidate는 다른 탭 mutation 후 자동 — 단, **너무 자주 invalidate 안 함** (수동 새로고침 버튼 또는 5분 stale).
+캐시: `["dashboard"]`, **5분 stale** (Q5 자동). React Query stale 정책으로 자동 refetch.
 
 ## Acceptance Criteria
 
@@ -77,11 +68,14 @@ API: `GET /api/dashboard` → 모든 데이터 한 번에 fetch + 클라이언�
 
 ### 백엔드
 - [ ] `lib/types`에 `DashboardView` 타입 (카드 + 차트 데이터)
-- [ ] `lib/repo/dashboard.ts` — `readDashboard(spreadsheetId)`: batchGet으로 모든 영역 1회 read
-- [ ] `lib/service/dashboard.ts` — `loadDashboard(email)`: 시트 데이터를 Recharts 친화 형태로 매핑
+- [ ] `lib/repo/dashboard.ts` — `readDashboard(spreadsheetId)`: 대시보드 탭 1회 read
+- [ ] `lib/service/dashboard.ts` — `loadDashboard(email)`: 셀 좌표 → 도메인 객체 매핑
+  - mapKPI (영업이익/율/총매출/총비용 카드)
+  - mapChannelMatrix (채널별 퍼널 차트 데이터)
+  - mapWeeklyTrend (8주차 추이 차트 데이터)
 - [ ] `app/api/dashboard/route.ts` — GET
-- [ ] `lib/query/dashboard-hooks.ts` — `useDashboard()` (5분 stale)
-- [ ] `recharts` 의존성 추가 (이미 package.json에 있음 — 사용만)
+- [ ] `lib/query/dashboard-hooks.ts` — `useDashboard()` (staleTime: 5분)
+- [ ] `recharts` 의존성 (이미 package.json — 사용만)
 
 ### 프론트
 - [ ] `/` 페이지 — `app/(app)/page.tsx` 작성 (현재 미구현 또는 placeholder)
@@ -146,50 +140,53 @@ API: `GET /api/dashboard` → 모든 데이터 한 번에 fetch + 클라이언�
 
 ## Risks / 결정 필요
 
-### R1. 시트 자동집계 셀 위치 ⏳
-대시보드 자동작성 탭의 정확한 카드 셀, 영업관리 8주차 합계 row, DB관리 합계 셀 위치 — 사용자 확정 필요.
-- **대응**: Design 단계에서 사용자가 시트 캡처 또는 셀 좌표 알려주기.
+### R1. 대시보드 셀 매핑 ⏳
+영업이익(D21−E21) 외 다른 카드/차트의 정확 셀 좌표.
+- **대응**: prototype에서 결정. 시안 디자이너가 시트 보고 셀 명시.
 
 ### R2. Recharts 모바일 width
-390px 폭에서 BarChart 5개 채널 표시 시 라벨 잘림.
-- **대응**: ResponsiveContainer + axis 회전 또는 가로 스크롤.
+390px 폭에서 차트 라벨 잘림.
+- **대응**: ResponsiveContainer + axis 회전.
 
 ### R3. read quota
-새로고침 버튼 누를 때마다 read. 사용자가 자주 누르면 quota 영향.
-- **대응**: 5분 stale + 새로고침 후 1분 cooldown 또는 toast 안내.
+5분 stale로 충분 (사용자 매일 진입 시 1회 read만).
 
-### R4. 영업이익 계산 정확성
-영업이익 = 수임비 − DB비용. 단, 수임비 출처가 04 업체관리!L인지, 시트 자동집계 어딘가에 있는지 확정 필요.
-- **대응**: 사용자 답변(Q4) 후 service 매핑 확정.
+### R4. ✅ 영업이익 계산 확정
+대시보드 탭 D21 − E21. 수임비/비용 직접 집계 안 함.
 
-### R5. 누적 수납액 표시 의미
-계약수납탭의 수납액 합계가 "수임비 회수 진척"인지 별도 매출인지.
-- **plan 문서 확인**: 11-contract-payment-tab.md — "수납액은 회수 진척용. 영업이익에는 수임비를 사용".
-- **대응**: 카드는 정보 표시만, 영업이익 계산엔 수임비 사용.
+### R5. ✅ 누적 수납액
+시트 대시보드 탭에 이미 있음. read만.
 
-## 사용자 답변 필요 (Checkpoint 1·2)
+## 사용자 답변 정리 (Checkpoint 1·2 확정)
 
-### Q1. 대시보드 자동작성 탭 — 어떤 카드를 어디서 가져오나?
-시트의 "대시보드(자동작성)" 탭에 이미 표시되는 항목들 중 우리 앱이 read해야 할 카드/차트는?
-- (a) 그대로 시트 layout 따라 — 셀 좌표 명시 필요
-- (b) 우리가 새로 정의 — 영업관리 / 계약수납 / DB관리에서 직접 집계
-- (c) 혼합
+| Q | 답 | 의미 |
+|---|---|---|
+| Q1 | **시트 그대로** | 대시보드(자동작성) 탭 layout을 그대로 따름. 우리가 별도 집계 X |
+| Q2 | (prototype 확정) | 8주차 추이도 대시보드 탭에서 직접 read — 영업관리 J3:L6 등 별도 영역 신경 X |
+| Q3 | **C (Hybrid)** | 1 read + service 도메인 매핑 분리 |
+| Q4 | **대시보드!D21 − E21** | 총매출(D21) − 총비용(E21) = 영업이익. 대시보드 탭에서 직접 read |
+| Q5 | **자동** | 진입 시 자동 fetch + 5분 stale |
 
-### Q2. 영업관리 8주차 합계 — 어느 row?
-주차별 추이 그릴 때 8개 row 필요. blockStart=10이고 stride=34라면 합계 행이 row 38, 72, 106... 같은 패턴? 사용자 확정.
+## 핵심 단순화
 
-### Q3. Architecture — A/B/C 중?
-Option C (Hybrid) 추천 — 1 read + service 도메인 분리.
+Q1·Q4 답변으로 모델 단순화:
 
-### Q4. 영업이익 계산 출처
-- (a) 04 업체관리!L 합계 (계약 상태 row만)
-- (b) 시트 자동집계 셀 (대시보드 또는 영업관리 어딘가)
-- (c) 둘 다 표시 (검증용)
+- **영업관리 J3:L6 read 불필요** — 시트 대시보드 탭에 이미 자동집계되어 있음
+- **04 업체관리 직접 집계 불필요** — 마찬가지
+- **앱은 대시보드(자동작성) 탭만 read** — 한 번의 batchGet이면 충분
+- **영업이익 = D21 − E21** — 시트 자동집계 결과 그대로 사용
 
-### Q5. 새로고침 정책
-- (a) 진입 시 자동 fetch + 5분 stale
-- (b) 진입 시 자동 + 사용자 새로고침 버튼
-- (c) 사용자 명시 새로고침만 (자동 X)
+→ Architecture C가 더 단순화됨: 1 read (대시보드 탭만) + 시트 셀 좌표 → React 컴포넌트 매핑
+
+## 다음 결정 필요 (Design 단계)
+
+### D1. 대시보드 셀 매핑 상세
+- 영업이익 = D21 − E21 ✅
+- 그 외 카드/차트 셀은? (예: 채널별 퍼널 어디? 8주차 추이 어디?)
+- **대응**: prototype HTML이 답을 가져옴 — prototype 디자이너가 시트 layout 그대로 보고 셀 좌표 명시할 것
+
+### D2. 카드/차트 layout
+- prototype에서 결정
 
 ## 의존성 / 선행 조건
 
@@ -201,3 +198,6 @@ Option C (Hybrid) 추천 — 1 read + service 도메인 분리.
 
 ## Log
 - 2026-05-05 Plan 초안 — 대시보드 PDCA 시작
+- 2026-05-05 사용자 답변 5/5 정리:
+  - Q1=시트그대로, Q2=prototype에서 확정, Q3=C(Hybrid), Q4=대시보드!D21-E21, Q5=자동
+  - 영업관리/04 업체관리 직접 집계 제거 → 대시보드 탭 1회 read로 단순화
