@@ -100,34 +100,36 @@ export const SHEET_RANGES = {
     range: "A2:S", // append + update 대상
   },
 
-  // ── 계약수납관리 (1행 = 1계약, A~AA) ─────────────────────────
+  // ── 계약수납관리 v2 (1행 = 1계약, A~AD) ─────────────────────
   // 일정·계약 탭에서 계약 액션 시 row 자동 생성 (C/D/E 자동 채움).
-  // 사용자가 계약수납탭에서 F~L (체크박스 7) + M~AA (분할수납 3) 입력.
-  // SSOT: docs/domains/sheet-structure.md §4 (이전 02 계약관리 → 02 계약수납관리)
+  // 사용자가 계약수납탭에서 F~L (체크박스 7, "ㅇ" 표기) + M~AD (분할수납 3슬롯×6필드) 입력.
+  // SSOT: docs/domains/sheet-structure.md §4 v2
   contractPayment: {
     tab: "02 계약수납관리",
     headerRows: 2, // 1=그룹 헤더, 2=필드 헤더, 3행~ = 데이터
     firstDataRow: 3,
-    range: "A3:AA", // 데이터 영역
-    // 자동 연동 컬럼 — 계약 액션 시 04 업체관리에서 채움
+    range: "A3:AD", // 데이터 영역 (v2: AA→AD, +3 컬럼 = 슬롯당 진행률 1개 추가)
+    // 자동 연동 컬럼 — 계약 액션 시 04 업체관리에서 채움 (D/G/L → C/D/E)
     autoCols: { 계약일: "C", 업체명: "D", 수임비: "E" },
-    // 7 체크박스
+    // 7 체크박스 ("ㅇ" / "" 표기)
     checkboxCols: ["F", "G", "H", "I", "J", "K", "L"] as const,
     checkboxLabels: [
       "공동인증서",
       "임대차계약서",
       "신분증",
-      "드라이브 업로드",
-      "사업계획서 초안발송",
-      "컨설팅 5종서류 발송",
-      "플러그 이관",
+      "드라이브업로드",
+      "사업계획서초안발송",
+      "컨설팅5종서류발송",
+      "플러그이관",
     ] as const,
-    // 3 분할 수납 슬롯 (각 슬롯 5필드: 진행기관/현황/승인금액/수납액/수납일)
+    // 3 분할 수납 슬롯 (v2: 각 슬롯 6필드 — 진행기관/진행률/현황/승인금액/수납액/수납일)
     paymentSlots: [
-      { startCol: "M", endCol: "Q" }, // 수납1
-      { startCol: "R", endCol: "V" }, // 수납2
-      { startCol: "W", endCol: "AA" }, // 수납3
+      { startCol: "M", endCol: "R" }, // 수납1: M~R
+      { startCol: "S", endCol: "X" }, // 수납2: S~X
+      { startCol: "Y", endCol: "AD" }, // 수납3: Y~AD
     ] as const,
+    // 진행률 dropdown 컬럼 (시트 data validation: "0%/20%/40%/60%/80%/100%" 텍스트)
+    progressCols: ["N", "T", "Z"] as const,
   },
 
   // ── DB관리 (4채널 raw log, 비용 + 영업기회) ───────────────

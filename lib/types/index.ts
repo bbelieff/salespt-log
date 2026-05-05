@@ -153,14 +153,29 @@ export const User = z.object({
 });
 export type User = z.infer<typeof User>;
 
-// ── 계약수납 (PR 11 contract-payment-tab) ──────────────────────
-// 시트 매핑: docs/domains/sheet-structure.md §4 — 02 계약수납관리 A~AA
-// 자동 연동: 일정·계약 탭 계약 액션 시 04 업체관리에서 C/D/E 가져옴
-// 사용자 입력: F~L (체크박스 7) + M~AA (분할수납 3슬롯 × 5필드)
+// ── 계약수납 v2 (PR 11 contract-payment-tab) ───────────────────
+// 시트 매핑: docs/domains/sheet-structure.md §4 v2 — 02 계약수납관리 A~AD
+// 자동 연동: 일정·계약 탭 계약 액션 시 04 업체관리!D/G/L에서 C/D/E
+// 사용자 입력: F~L (체크박스 7, "ㅇ"/"" 표기) + M~AD (분할수납 3슬롯 × 6필드)
 
-/** 분할 수납 1 슬롯 (진행기관/현황/승인금액/수납액/수납일). */
+/** 진행률 dropdown — 시트 N/T/Z 컬럼 data validation과 정확히 일치. */
+export const Progress = z.enum([
+  "",
+  "0%",
+  "20%",
+  "40%",
+  "60%",
+  "80%",
+  "100%",
+]);
+export type Progress = z.infer<typeof Progress>;
+
+/** 분할 수납 1 슬롯 (v2: 6필드 — 진행률 추가).
+ *  시트 매핑: M~R / S~X / Y~AD (slot 1/2/3).
+ */
 export const PaymentSlot = z.object({
   진행기관: z.string().default(""),
+  진행률: Progress.default(""),
   현황: z.string().default(""),
   승인금액: z.number().nonnegative().default(0),
   수납액: z.number().nonnegative().default(0),
@@ -170,6 +185,7 @@ export type PaymentSlot = z.infer<typeof PaymentSlot>;
 
 const EMPTY_SLOT: PaymentSlot = {
   진행기관: "",
+  진행률: "",
   현황: "",
   승인금액: 0,
   수납액: 0,
