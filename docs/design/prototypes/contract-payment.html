@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>세일즈PT 경영일지 — 계약수납 v7</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { colors: { brand: '#d71617' } } },
+    safelist: [
+      // 슬롯 색상 동적 클래스 (Tailwind CDN 보호)
+      'bg-teal-300','bg-teal-500','bg-teal-700','bg-teal-50','bg-teal-100','bg-teal-600',
+      'text-teal-700',
+      'bg-cyan-300','bg-cyan-500','bg-cyan-700','bg-cyan-50','bg-cyan-100','bg-cyan-600',
+      'text-cyan-700',
+      'bg-fuchsia-300','bg-fuchsia-500','bg-fuchsia-700','bg-fuchsia-50','bg-fuchsia-100','bg-fuchsia-600',
+      'text-fuchsia-700',
+      // 카드 좌측 보더 (활성 슬롯 색)
+      'border-l-4','border-l-green-500','border-l-teal-500','border-l-cyan-500','border-l-fuchsia-500'
+    ]
+  }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+  * { font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: #f8fafc; margin: 0; padding: 0; }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; }
+  .content-area { padding-bottom: 80px; }
+
+  .card-body { display: none; }
+  .card-body.open { display: block; animation: slideDown 0.2s ease; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card-chevron { transition: transform 0.2s; }
+  .card-chevron.open { transform: rotate(180deg); }
+
+  .toast {
+    position: fixed; top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: #1e293b; color: white; padding: 12px 20px;
+    border-radius: 12px; font-size: 14px; z-index: 200;
+    transition: transform 0.3s ease;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: none; z-index: 100;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-overlay.open { display: flex; animation: fadeIn 0.15s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .field-input {
+    width: 100%; padding: 0 8px; height: 36px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-size: 13px; color: #111827;
+    background: white; transition: border-color 0.15s;
+  }
+  .field-input:focus { outline: none; border-color: #3b82f6; }
+  .field-input::placeholder { color: #9ca3af; }
+
+  /* 동기화 영역의 입력 (파랑톤) */
+  .sync-input {
+    background: white; border-color: #bfdbfe;
+  }
+  .sync-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+
+  /* + 수납 추가 버튼 (점선 outline) */
+  .add-slot-btn {
+    width: 100%; min-height: 44px; padding: 10px;
+    border: 1.5px dashed #cbd5e1; border-radius: 10px;
+    color: #64748b; font-size: 13px; font-weight: 500;
+    background: transparent; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .add-slot-btn:hover { border-color: #94a3b8; color: #475569; background: #f8fafc; }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 토스트 ==================== -->
+<div id="toast" class="toast">저장 완료</div>
+
+<!-- ==================== 슬림 브랜드 바 ==================== -->
+<header class="bg-white border-b border-gray-100 h-12 sticky top-0 z-50 flex items-center justify-between px-4">
+  <div class="flex items-center gap-2">
+    <img src="data:image/png;base64,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" alt="SalesPT" class="w-8 h-8 object-contain" />
+    <span class="font-semibold text-gray-900 text-sm">세일즈PT 경영일지</span>
+  </div>
+  <div class="flex items-center gap-1.5">
+    <span class="text-xs text-gray-500">5기</span>
+    <span class="text-sm font-medium text-gray-800">이수강</span>
+  </div>
+</header>
+
+<!-- ==================== 페이지 배너 ==================== -->
+<div class="bg-slate-100 border-b border-slate-200 h-12 sticky top-12 z-40 flex items-center gap-3 px-4">
+  <div class="w-1 h-5 bg-slate-500 rounded-full"></div>
+  <div class="flex items-center gap-2">
+    <span class="text-base">💰</span>
+    <span class="font-semibold text-slate-700">계약수납</span>
+  </div>
+  <span class="ml-auto text-xs text-slate-500">02 계약수납관리</span>
+</div>
+
+<!-- ==================== 메인 ==================== -->
+<main class="content-area px-4 pt-4">
+
+  <!-- 1. 전체 요약 카드 -->
+  <div class="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-100">
+    <div class="grid gap-3 text-center" style="grid-template-columns: 2.5fr 4.5fr 3fr;">
+      <div>
+        <div class="text-xs text-gray-500 mb-1">계약</div>
+        <div class="text-xl font-bold text-gray-900"><span id="sum-count">0</span><span class="text-sm font-medium text-gray-500">건</span></div>
+      </div>
+      <div class="border-x border-gray-100">
+        <div class="text-xs text-gray-500 mb-1">총매출</div>
+        <div class="text-xl font-bold text-gray-900" id="sum-fee">₩0</div>
+        <div class="text-xs text-gray-400 mt-0.5">수임비 + 수수료</div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 mb-1">수납 진척</div>
+        <div class="text-xl font-bold text-blue-600" id="sum-progress">0%</div>
+      </div>
+    </div>
+    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+      <span class="text-gray-500">누적 수납 / 승인</span>
+      <span class="text-gray-700 font-medium">
+        <span id="sum-paid">₩0</span>
+        <span class="text-gray-400 mx-1">/</span>
+        <span id="sum-approved">₩0</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- 2. 안내 카드 -->
+  <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3 flex items-start gap-2">
+    <span class="text-blue-500 text-base flex-shrink-0 leading-none mt-0.5">💡</span>
+    <p class="text-xs text-blue-700 leading-relaxed">
+      <strong>일정·계약</strong> 탭에서 미팅을 <strong class="text-blue-800">💵 계약</strong> 처리하면 자동 추가됩니다.
+    </p>
+  </div>
+
+  <!-- 3. 계약 row 리스트 -->
+  <div id="contract-list" class="space-y-3"></div>
+
+</main>
+
+<!-- ==================== 삭제 확인 모달 ==================== -->
+<div id="confirmModal" class="modal-overlay">
+  <div class="bg-white rounded-xl max-w-sm w-full overflow-hidden shadow-2xl">
+    <div class="p-5">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xl">🗑</span>
+        <h3 class="font-semibold text-gray-900 text-base">계약 행을 삭제할까요?</h3>
+      </div>
+      <p class="text-sm text-gray-600 leading-relaxed">
+        <strong id="del-target" class="text-gray-900">-</strong> 계약과 연결된<br>
+        서류 7건·수납 슬롯이 모두 삭제됩니다. <span class="text-red-600">되돌릴 수 없습니다.</span>
+      </p>
+    </div>
+    <div class="flex border-t border-gray-100">
+      <button onclick="closeConfirm()" class="flex-1 h-12 text-gray-600 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors">취소</button>
+      <button onclick="confirmDelete()" class="flex-1 h-12 text-red-600 font-semibold border-l border-gray-100 hover:bg-red-50 active:bg-red-100 transition-colors">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 하단 5탭 네비 ==================== -->
+<nav class="bottom-nav bg-white border-t border-gray-100 flex">
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="translate(-1, 5.5) scale(0.68)"/>
+      <rect x="14.5" y="0.5" width="9" height="9" rx="1.4" fill="white" stroke="currentColor" stroke-width="1.7"/>
+      <line x1="14.5" y1="3.3" x2="23.5" y2="3.3" stroke-width="1.5"/>
+      <line x1="16.8" y1="0.5" x2="16.8" y2="2"/><line x1="21.2" y1="0.5" x2="21.2" y2="2"/>
+      <circle cx="17" cy="5.7" r="0.85" fill="currentColor"/><circle cx="19" cy="5.7" r="0.85" fill="currentColor"/>
+      <circle cx="21" cy="5.7" r="0.85" fill="currentColor"/><circle cx="17" cy="7.8" r="0.85" fill="currentColor"/>
+    </svg>
+    <span class="text-xs">컨택관리</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+    </svg>
+    <span class="text-xs">일정·계약</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+    </svg>
+    <span class="text-xs">캘린더</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-blue-600">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <span class="text-xs font-semibold">수납</span>
+  </button>
+  <button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>
+      <path d="M3 4 L5 4 L7 13 L18 13 L20 6 L7 6"/>
+      <rect x="9" y="7.5" width="7" height="4.5" rx="0.5" fill="white"/>
+      <line x1="9" y1="10" x2="16" y2="10"/><line x1="11" y1="7.5" x2="11" y2="12"/>
+    </svg>
+    <span class="text-xs">DB관리</span>
+  </button>
+</nav>
+
+<script>
+/* ============================================================
+   세일즈PT 영업일지 — 계약수납 v9
+   변경(v8→v9):
+   - SummaryCard 3분할 비율: 2.5:4:3.5 → 2.5:4.5:3 (25%:45%:30%)
+   ============================================================ */
+
+const docKeys = ['certauth','lease','idcard','drive','plan','consult5','plug'];
+const docLabels = {
+  certauth:'공동인증서', lease:'임대차계약서', idcard:'신분증',
+  drive:'드라이브 업로드', plan:'사업계획서 초안',
+  consult5:'컨설팅 5종 발송', plug:'플러그 이관'
+};
+
+/* 슬롯별 컬러 시스템 (1<2<3 점점 강렬) ----------------------
+   채널 4색(blue/green/amber/purple) + 비용 red 와 충돌 없음 */
+const SLOT_STYLES = {
+  0: { name:'수납 1', family:'teal',
+       chip:'bg-teal-100 text-teal-700',
+       chipFull:'bg-teal-600 text-white',
+       segLow:'bg-teal-300', segMid:'bg-teal-500', segHigh:'bg-teal-700' },
+  1: { name:'수납 2', family:'cyan',
+       chip:'bg-cyan-100 text-cyan-700',
+       chipFull:'bg-cyan-600 text-white',
+       segLow:'bg-cyan-300', segMid:'bg-cyan-500', segHigh:'bg-cyan-700' },
+  2: { name:'수납 3', family:'fuchsia',
+       chip:'bg-fuchsia-100 text-fuchsia-700',
+       chipFull:'bg-fuchsia-600 text-white',
+       segLow:'bg-fuchsia-300', segMid:'bg-fuchsia-500', segHigh:'bg-fuchsia-700' }
+};
+
+/* 더미 데이터 ----------------------------------------------- */
+const store = {
+  contracts: [
+    {
+      id: 1,
+      contractDate: '2026-04-15',
+      company: '(주)믿음치킨',
+      fee: 5000000,           // 원 (= 500만원)
+      commission: 500000,     // 원 (= 50만원)
+      docs: { certauth:true, lease:true, idcard:true, drive:true, plan:true, consult5:false, plug:false },
+      payments: [
+        { 기관:'미소재단',     현황:'수납 완료',   승인:3000000, 수납:2000000, 일자:'2026-04-22', 진행도:80 },
+        { 기관:'신용보증재단', 현황:'실사 진행 중', 승인:3000000, 수납:0,       일자:'',          진행도:40 },
+        { 기관:'',             현황:'',           승인:0,       수납:0,       일자:'',          진행도:0  }
+      ],
+      visiblePayments: 2,
+      expanded: true
+    },
+    {
+      id: 2,
+      contractDate: '2026-04-20',
+      company: '○○부동산',
+      fee: 3000000,
+      commission: 300000,
+      docs: { certauth:true, lease:true, idcard:true, drive:true, plan:true, consult5:true, plug:true },
+      payments: [
+        { 기관:'미소재단',         현황:'수납 완료', 승인:2000000, 수납:2000000, 일자:'2026-04-22', 진행도:100 },
+        { 기관:'신용보증재단',     현황:'수납 완료', 승인:3000000, 수납:3000000, 일자:'2026-04-25', 진행도:100 },
+        { 기관:'지역신용보증재단', 현황:'수납 완료', 승인:1500000, 수납:1500000, 일자:'2026-04-27', 진행도:100 }
+      ],
+      visiblePayments: 3,
+      expanded: false
+    },
+    {
+      id: 3,
+      contractDate: '2026-04-22',
+      company: '△△식당',
+      fee: 2000000,
+      commission: 200000,
+      docs: { certauth:false, lease:false, idcard:false, drive:false, plan:false, consult5:false, plug:false },
+      payments: [
+        { 기관:'', 현황:'', 승인:0, 수납:0, 일자:'', 진행도:0 },
+        { 기관:'', 현황:'', 승인:0, 수납:0, 일자:'', 진행도:0 },
+        { 기관:'', 현황:'', 승인:0, 수납:0, 일자:'', 진행도:0 }
+      ],
+      visiblePayments: 1,
+      expanded: false
+    }
+  ],
+  pendingDeleteId: null
+};
+
+/* 유틸 ---------------------------------------------------- */
+function formatDate(iso) {
+  if (!iso) return '-';
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(m)}/${parseInt(d)}`;
+}
+// 모든 금액은 원 단위로 입력·표시
+function formatMoney(n) { return '₩' + (n||0).toLocaleString(); }
+function formatManwon(n) { return '₩' + (n||0).toLocaleString(); }
+function escapeHtml(s) {
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* [1] 천 단위 콤마 포맷 (input value 표시용) ----------------- */
+function formatComma(n) {
+  if (n === null || n === undefined || n === '' || n === 0) return '';
+  return Number(n).toLocaleString('en-US');  // 1234567 → "1,234,567"
+}
+
+/* 콤마 입력 핸들러 — 모든 금액 input의 oninput에서 호출
+   - 콤마 제거 → 숫자 추출 → store 저장
+   - 콤마 다시 넣어 input.value 갱신 + 커서 위치 보정 */
+function handleMoneyInput(input, kind, id, slotIdxOrField, fieldOrNull) {
+  const oldVal = input.value;
+  const cursorPos = input.selectionStart || 0;
+
+  // 숫자만 추출 (콤마, 비숫자 제거)
+  const digits = oldVal.replace(/[^\d]/g, '');
+  const num = digits ? parseInt(digits, 10) : 0;
+  const newVal = num ? num.toLocaleString('en-US') : '';
+
+  // input value 갱신 (콤마 포함)
+  input.value = newVal;
+
+  // 커서 위치 보정 — 콤마 개수 차이만큼 이동
+  const oldCommas = (oldVal.slice(0, cursorPos).match(/,/g) || []).length;
+  const newCommas = (newVal.slice(0, cursorPos).match(/,/g) || []).length;
+  const newPos = Math.max(0, Math.min(newVal.length, cursorPos + (newCommas - oldCommas)));
+  try { input.setSelectionRange(newPos, newPos); } catch(e) {}
+
+  // store 저장 + 부분 업데이트 호출 (input DOM은 이미 갱신했으므로 추가 패치 불필요)
+  if (kind === 'slot') {
+    // slotIdxOrField = slotIdx, fieldOrNull = field
+    const c = store.contracts.find(c => c.id === id);
+    if (!c) return;
+    c.payments[slotIdxOrField][fieldOrNull] = num;
+    patchPaySummary(c);
+    patchCardHeader(c);
+    patchSummary();
+  } else if (kind === 'sync') {
+    // slotIdxOrField = field
+    const c = store.contracts.find(c => c.id === id);
+    if (!c) return;
+    c[slotIdxOrField] = num;
+    patchCardHeader(c);
+    patchSummary();
+  }
+}
+
+/* 진척 계산 ---------------------------------------------- */
+function docProgress(c) {
+  const checked = docKeys.filter(k => c.docs[k]).length;
+  return { checked, total:7, pct: Math.round((checked/7)*100) };
+}
+function payProgress(c) {
+  let approved = 0, paid = 0;
+  c.payments.forEach(p => { approved += (+p.승인||0); paid += (+p.수납||0); });
+  const pct = approved > 0 ? Math.round((paid/approved)*100) : 0;
+  return { approved, paid, pct };
+}
+function avgSlotProgress(c) {
+  // 보이는 슬롯만 평균 (헤더 배지에 사용)
+  const visible = c.payments.slice(0, c.visiblePayments);
+  if (!visible.length) return 0;
+  const sum = visible.reduce((s,p) => s + (+p.진행도||0), 0);
+  return Math.round(sum / visible.length);
+}
+function isComplete(c) {
+  const dp = docProgress(c);
+  const avg = avgSlotProgress(c);
+  return dp.checked === 7 && c.visiblePayments >= 1 && avg >= 100;
+}
+
+/* [3] 활성 슬롯 인덱스 = 진행도 > 0 인 슬롯 중 가장 높은 인덱스
+   - 보이는 슬롯(visiblePayments) 범위 내에서만 검사
+   - -1이면 시작 전 (보더 없음) */
+function getActiveSlotIndex(c) {
+  for (let i = c.visiblePayments - 1; i >= 0; i--) {
+    if ((+c.payments[i].진행도 || 0) > 0) return i;
+  }
+  return -1;
+}
+
+/* 카드 좌측 보더 클래스 결정
+   - 완료: green-500
+   - 진행 중: 활성 슬롯 family-500 (teal/cyan/fuchsia)
+   - 시작 전: 보더 없음 */
+function getCardBorderClasses(c) {
+  if (isComplete(c)) return ['border-l-4', 'border-l-green-500'];
+  const idx = getActiveSlotIndex(c);
+  if (idx === -1) return [];
+  const family = SLOT_STYLES[idx].family;  // 'teal' | 'cyan' | 'fuchsia'
+  return ['border-l-4', `border-l-${family}-500`];
+}
+
+const ALL_BORDER_CLASSES = ['border-l-4','border-l-green-500','border-l-teal-500','border-l-cyan-500','border-l-fuchsia-500'];
+
+/* 헤더 배지 색 ------------------------------------------ */
+function docBadgeClass(checked) {
+  if (checked === 7) return 'text-green-600 bg-green-50';
+  if (checked === 0) return 'text-gray-400 bg-gray-50';
+  return 'text-blue-600 bg-blue-50';
+}
+function payBadgeClass(avgPct) {
+  if (avgPct === 0) return 'text-gray-400 bg-gray-50';
+  if (avgPct >= 100) return 'text-green-600 bg-green-50';
+  return 'text-blue-600 bg-blue-50';
+}
+
+/* 진행도 단계별 색 ----------------------------------------
+   0% = 회색, 20-40% = light, 60-80% = mid, 100% = dark    */
+function getActiveSegClass(slotIdx, pct) {
+  if (pct === 0) return 'bg-gray-300';
+  const s = SLOT_STYLES[slotIdx];
+  if (pct <= 40) return s.segLow;
+  if (pct <= 80) return s.segMid;
+  return s.segHigh;
+}
+function getSlotChipClass(slotIdx, pct) {
+  const s = SLOT_STYLES[slotIdx];
+  return pct >= 100 ? s.chipFull : s.chip;
+}
+
+/* ============================================================
+   렌더링
+   ============================================================ */
+
+function renderSummary() {
+  const list = store.contracts;
+  document.getElementById('sum-count').textContent = list.length;
+
+  // [1] 총매출 = 수임비 + 수수료 합산
+  const total = list.reduce((s,c) => s + (c.fee||0) + (c.commission||0), 0);
+  document.getElementById('sum-fee').textContent = formatManwon(total);
+
+  let totalApproved = 0, totalPaid = 0;
+  list.forEach(c => {
+    const pp = payProgress(c);
+    totalApproved += pp.approved;
+    totalPaid += pp.paid;
+  });
+  const overall = totalApproved > 0 ? Math.round((totalPaid/totalApproved)*100) : 0;
+  const el = document.getElementById('sum-progress');
+  el.textContent = overall + '%';
+  el.className = 'text-xl font-bold ' + (overall >= 100 ? 'text-green-600' : overall === 0 ? 'text-gray-400' : 'text-blue-600');
+
+  document.getElementById('sum-paid').textContent = formatMoney(totalPaid);
+  document.getElementById('sum-approved').textContent = formatMoney(totalApproved);
+}
+
+/* 진행도 바 — 단일 연속 바, 좌→우로 채움 (5등분 클릭 영역) ----- */
+function renderVolumeBar(c, slotIdx) {
+  const slot = c.payments[slotIdx];
+  const pct = +slot.진행도 || 0;
+  const fillClass = getActiveSegClass(slotIdx, pct);
+
+  // 클릭 영역 5등분 (각 영역 = 20%, 같은 % 다시 누르면 0% 토글)
+  let clickAreas = '';
+  for (let i = 1; i <= 5; i++) {
+    const target = i * 20;
+    const next = (pct === target) ? 0 : target;
+    clickAreas += `<button onclick="setProgress(${c.id}, ${slotIdx}, ${next})"
+      class="flex-1 hover:bg-white/30 transition-colors"
+      title="${target}%" aria-label="진행도 ${target}%"></button>`;
+  }
+
+  return `
+    <div data-role="volume-bar">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-xs text-gray-500">진행도</span>
+        <span class="text-xs font-semibold ${pct === 0 ? 'text-gray-400' : pct >= 100 ? 'text-green-600' : 'text-gray-700'}">${pct}%</span>
+      </div>
+      <!-- 시각 바 + 클릭 영역 (overlay 구조) -->
+      <div class="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+        <!-- 채움 div (좌→우 width 애니메이션) -->
+        <div class="absolute inset-y-0 left-0 ${fillClass} rounded-full"
+             style="width: ${pct}%; transition: width 0.3s ease-out, background-color 0.2s;"></div>
+        <!-- 클릭 영역 (투명 5등분) -->
+        <div class="absolute inset-0 flex">${clickAreas}</div>
+      </div>
+      <!-- 눈금 마커 -->
+      <div class="flex justify-between mt-1 text-gray-400 px-0.5" style="font-size:10px;">
+        <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
+      </div>
+    </div>
+  `;
+}
+
+/* 수납 슬롯 카드 -------------------------------------------- */
+function renderSlot(c, i) {
+  const slot = c.payments[i];
+  const style = SLOT_STYLES[i];
+  const pct = +slot.진행도 || 0;
+  const chipClass = getSlotChipClass(i, pct);
+
+  return `
+    <div class="rounded-lg border border-gray-200 p-3 bg-white" data-slot="${i}">
+      <div class="flex items-center justify-between mb-2.5">
+        <div class="flex items-center gap-1.5">
+          <div data-role="slot-chip" class="w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center leading-none ${chipClass}">${i+1}</div>
+          <span class="text-sm font-semibold text-gray-800">${style.name}</span>
+        </div>
+        ${i > 0 ? `<button onclick="removeSlot(${c.id}, ${i})" class="text-xs text-gray-400 hover:text-red-500" title="이 수납 제거" aria-label="수납 제거">✕</button>` : ''}
+      </div>
+
+      <!-- [3] 진행도 볼륨바 -->
+      <div class="mb-3" data-role="volume-bar-wrap">
+        ${renderVolumeBar(c, i)}
+      </div>
+
+      <div class="space-y-1.5">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-500 mb-0.5">진행기관</label>
+            <input type="text" value="${escapeHtml(slot.기관)}"
+                   data-key="${c.id}-${i}-기관"
+                   oninput="updateSlot(${c.id}, ${i}, '기관', this.value)"
+                   class="field-input" placeholder="-">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-0.5">현황 <span class="text-gray-400">(진행도 설명)</span></label>
+            <input type="text" value="${escapeHtml(slot.현황)}"
+                   data-key="${c.id}-${i}-현황"
+                   oninput="updateSlot(${c.id}, ${i}, '현황', this.value)"
+                   class="field-input" placeholder="예: 실사 진행 중">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-gray-500 mb-0.5">승인금액 (원)</label>
+            <input type="text" inputmode="numeric" value="${formatComma(slot.승인)}"
+                   data-key="${c.id}-${i}-승인"
+                   oninput="handleMoneyInput(this, 'slot', ${c.id}, ${i}, '승인')"
+                   class="field-input" placeholder="3,000,000">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-0.5">수납액 (원)</label>
+            <input type="text" inputmode="numeric" value="${formatComma(slot.수납)}"
+                   data-key="${c.id}-${i}-수납"
+                   oninput="handleMoneyInput(this, 'slot', ${c.id}, ${i}, '수납')"
+                   class="field-input" placeholder="2,000,000">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-0.5">수납일</label>
+          <input type="date" value="${slot.일자}"
+                 data-key="${c.id}-${i}-일자"
+                 oninput="updateSlot(${c.id}, ${i}, '일자', this.value)"
+                 class="field-input">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* 카드 렌더 ------------------------------------------------ */
+function renderCard(c, idx) {
+  const dp = docProgress(c);
+  const pp = payProgress(c);
+  const avgPct = avgSlotProgress(c);
+  const complete = isComplete(c);
+  const expandedClass = c.expanded ? 'open' : '';
+  const borderClass = getCardBorderClasses(c).join(' ');
+
+  // 7체크 그리드
+  const docBoxes = docKeys.map(key => {
+    const checked = c.docs[key];
+    return `
+      <button data-doc="${key}" onclick="toggleDoc(${c.id}, '${key}')"
+              class="flex items-center gap-1.5 px-2 py-2 rounded-lg border ${checked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'} text-left transition-colors" style="min-height:44px;">
+        <div data-role="check-inner" class="w-5 h-5 rounded border-2 ${checked ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white'} flex items-center justify-center flex-shrink-0">
+          ${checked ? '<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : ''}
+        </div>
+        <span data-role="check-label" class="text-xs leading-tight ${checked ? 'text-blue-700 font-medium' : 'text-gray-700'}">${docLabels[key]}</span>
+      </button>
+    `;
+  }).join('');
+
+  // [6] 보이는 수납 슬롯만 렌더
+  const slots = [];
+  for (let i = 0; i < c.visiblePayments; i++) slots.push(renderSlot(c, i));
+
+  // + 수납 추가 버튼 (visiblePayments < 3 일 때만)
+  let addBtn = '';
+  if (c.visiblePayments < 3) {
+    addBtn = `<button onclick="addSlot(${c.id})" class="add-slot-btn">
+      <span style="font-size:16px;line-height:1;">+</span>
+      <span>수납 추가 (${c.visiblePayments + 1}회차)</span>
+    </button>`;
+  }
+
+  return `
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${borderClass}" data-id="${c.id}">
+
+      <!-- 접힘 헤더 -->
+      <button onclick="toggleCard(${c.id})"
+              class="w-full flex items-center gap-2 p-3 hover:bg-gray-50 active:bg-gray-100 text-left transition-colors" style="min-height:60px;">
+        <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center flex-shrink-0">${idx+1}</div>
+        <div class="flex-1 min-w-0">
+          <div data-role="company-name" class="font-semibold text-gray-900 text-sm truncate flex items-center gap-1.5">
+            ${escapeHtml(c.company)}
+            ${complete ? '<span class="text-xs text-green-600">✓</span>' : ''}
+          </div>
+          <div data-role="header-sub" class="text-xs text-gray-500 mt-0.5">${formatDate(c.contractDate)} · 매출 ${formatManwon((c.fee||0)+(c.commission||0))}</div>
+        </div>
+        <div class="flex flex-col items-end gap-1 flex-shrink-0">
+          <span data-role="doc-badge" class="px-1.5 py-0.5 rounded text-xs font-medium ${docBadgeClass(dp.checked)}">📋 ${dp.checked}/7</span>
+          <span data-role="pay-badge" class="px-1.5 py-0.5 rounded text-xs font-medium ${payBadgeClass(avgPct)}">💰 ${avgPct === 0 ? '—' : avgPct + '%'}</span>
+        </div>
+        <svg class="w-4 h-4 text-gray-400 flex-shrink-0 card-chevron ${expandedClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+
+      <!-- 펼침 본문 -->
+      <div class="card-body ${expandedClass} border-t border-gray-100 p-3 space-y-3">
+
+        <!-- [2] 업체정보 (일정·계약 양방향 동기화) -->
+        <div class="bg-blue-50 rounded-lg px-3 py-2.5 border border-blue-100">
+          <div class="flex items-center gap-1 mb-2 text-xs text-blue-700">
+            <span class="font-medium">🏢 업체정보</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs text-gray-500 mb-0.5">계약일</label>
+              <input type="date" value="${c.contractDate}"
+                     data-key="${c.id}-contractDate"
+                     oninput="updateSync(${c.id}, 'contractDate', this.value)"
+                     class="field-input sync-input">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-0.5">업체명</label>
+              <input type="text" value="${escapeHtml(c.company)}"
+                     data-key="${c.id}-company"
+                     oninput="updateSync(${c.id}, 'company', this.value)"
+                     class="field-input sync-input">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-0.5">수임비 (원)</label>
+              <input type="text" inputmode="numeric" value="${formatComma(c.fee)}"
+                     data-key="${c.id}-fee"
+                     oninput="handleMoneyInput(this, 'sync', ${c.id}, 'fee')"
+                     class="field-input sync-input" placeholder="5,000,000">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-0.5">수수료 (원)</label>
+              <input type="text" inputmode="numeric" value="${formatComma(c.commission)}"
+                     data-key="${c.id}-commission"
+                     oninput="handleMoneyInput(this, 'sync', ${c.id}, 'commission')"
+                     class="field-input sync-input" placeholder="500,000">
+            </div>
+          </div>
+        </div>
+
+        <!-- 📋 서류 진행 -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-gray-800">📋 서류 진행</span>
+            <span class="text-xs text-gray-500"><span data-role="doc-count" class="font-semibold ${dp.checked === 7 ? 'text-green-600' : dp.checked === 0 ? 'text-gray-400' : 'text-blue-600'}">${dp.checked}</span> / 7</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            ${docBoxes}
+          </div>
+        </div>
+
+        <!-- [5] 수납 현황 (구: 분할 수납) -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-gray-800">💰 수납 현황</span>
+            <span data-role="pay-summary" class="text-xs text-gray-500">
+              <span class="text-gray-700 font-medium">${formatMoney(pp.paid)}</span>
+              <span class="text-gray-400 mx-0.5">/</span>
+              <span class="text-gray-700 font-medium">${formatMoney(pp.approved)}</span>
+            </span>
+          </div>
+          <div class="space-y-2">
+            ${slots.join('')}
+            ${addBtn}
+          </div>
+        </div>
+
+        <!-- 액션 -->
+        <div class="flex gap-2 pt-1">
+          <button onclick="saveContract(${c.id})"
+                  class="flex-1 h-11 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-lg transition-colors active:scale-95">
+            💾 저장
+          </button>
+          <button onclick="askDelete(${c.id})"
+                  class="h-11 px-4 bg-white hover:bg-red-50 border border-red-300 text-red-600 font-medium rounded-lg transition-colors active:scale-95">
+            🗑 삭제
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function renderList() {
+  document.getElementById('contract-list').innerHTML =
+    store.contracts.map((c, i) => renderCard(c, i)).join('');
+}
+function renderAll() { renderSummary(); renderList(); }
+
+/* ============================================================
+   인터랙션 (부분 업데이트 — DOM 교체 없이 store + 표시만 갱신)
+   ============================================================ */
+
+/* --- 부분 업데이트 헬퍼 ----------------------------------- */
+
+// 상단 요약 카드 4개 값만 갱신
+function patchSummary() {
+  const list = store.contracts;
+  document.getElementById('sum-count').textContent = list.length;
+  const total = list.reduce((s,c) => s + (+c.fee||0) + (+c.commission||0), 0);
+  document.getElementById('sum-fee').textContent = formatManwon(total);
+
+  let approved = 0, paid = 0;
+  list.forEach(c => {
+    const pp = payProgress(c);
+    approved += pp.approved; paid += pp.paid;
+  });
+  const overall = approved > 0 ? Math.round((paid/approved)*100) : 0;
+  const el = document.getElementById('sum-progress');
+  el.textContent = overall + '%';
+  el.className = 'text-xl font-bold ' + (overall >= 100 ? 'text-green-600' : overall === 0 ? 'text-gray-400' : 'text-blue-600');
+  document.getElementById('sum-paid').textContent = formatMoney(paid);
+  document.getElementById('sum-approved').textContent = formatMoney(approved);
+}
+
+// 카드 헤더(업체명·날짜·매출·배지·✓·좌측보더) 갱신
+function patchCardHeader(c) {
+  const card = document.querySelector(`[data-id="${c.id}"]`);
+  if (!card) return;
+  const dp = docProgress(c);
+  const avgPct = avgSlotProgress(c);
+  const complete = isComplete(c);
+
+  // 좌측 보더: 기존 보더 클래스 모두 제거 후 새로 부여
+  ALL_BORDER_CLASSES.forEach(cls => card.classList.remove(cls));
+  getCardBorderClasses(c).forEach(cls => card.classList.add(cls));
+
+  // 업체명 + ✓
+  const nameEl = card.querySelector('[data-role="company-name"]');
+  if (nameEl) {
+    nameEl.innerHTML = escapeHtml(c.company) + (complete ? ' <span class="text-xs text-green-600">✓</span>' : '');
+  }
+  // 계약일 · 매출
+  const subEl = card.querySelector('[data-role="header-sub"]');
+  if (subEl) {
+    subEl.textContent = `${formatDate(c.contractDate)} · 매출 ${formatManwon((+c.fee||0)+(+c.commission||0))}`;
+  }
+  // 서류 배지
+  const docBadge = card.querySelector('[data-role="doc-badge"]');
+  if (docBadge) {
+    docBadge.className = 'px-1.5 py-0.5 rounded text-xs font-medium ' + docBadgeClass(dp.checked);
+    docBadge.textContent = `📋 ${dp.checked}/7`;
+  }
+  // 수납 배지
+  const payBadge = card.querySelector('[data-role="pay-badge"]');
+  if (payBadge) {
+    payBadge.className = 'px-1.5 py-0.5 rounded text-xs font-medium ' + payBadgeClass(avgPct);
+    payBadge.textContent = `💰 ${avgPct === 0 ? '—' : avgPct + '%'}`;
+  }
+}
+
+// 서류 카운트 텍스트 (펼침 영역 안)
+function patchDocCount(c) {
+  const card = document.querySelector(`[data-id="${c.id}"]`);
+  if (!card) return;
+  const dp = docProgress(c);
+  const el = card.querySelector('[data-role="doc-count"]');
+  if (el) {
+    el.className = 'font-semibold ' + (dp.checked === 7 ? 'text-green-600' : dp.checked === 0 ? 'text-gray-400' : 'text-blue-600');
+    el.textContent = dp.checked;
+  }
+}
+
+// 체크박스 한 개 시각 갱신 (DOM은 그대로, 클래스만)
+function patchDocBox(c, key) {
+  const card = document.querySelector(`[data-id="${c.id}"]`);
+  if (!card) return;
+  const btn = card.querySelector(`[data-doc="${key}"]`);
+  if (!btn) return;
+  const checked = c.docs[key];
+  btn.className = `flex items-center gap-1.5 px-2 py-2 rounded-lg border ${checked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'} text-left transition-colors`;
+  btn.style.minHeight = '44px';
+  const inner = btn.querySelector('[data-role="check-inner"]');
+  if (inner) {
+    inner.className = `w-5 h-5 rounded border-2 ${checked ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white'} flex items-center justify-center flex-shrink-0`;
+    inner.innerHTML = checked
+      ? '<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
+      : '';
+  }
+  const lbl = btn.querySelector('[data-role="check-label"]');
+  if (lbl) {
+    lbl.className = `text-xs leading-tight ${checked ? 'text-blue-700 font-medium' : 'text-gray-700'}`;
+  }
+}
+
+// 수납 섹션 합계 텍스트 갱신
+function patchPaySummary(c) {
+  const card = document.querySelector(`[data-id="${c.id}"]`);
+  if (!card) return;
+  const pp = payProgress(c);
+  const el = card.querySelector('[data-role="pay-summary"]');
+  if (el) {
+    el.innerHTML = `
+      <span class="text-gray-700 font-medium">${formatMoney(pp.paid)}</span>
+      <span class="text-gray-400 mx-0.5">/</span>
+      <span class="text-gray-700 font-medium">${formatMoney(pp.approved)}</span>
+    `;
+  }
+}
+
+// 한 슬롯의 볼륨바와 헤더 chip만 다시 그리기 (input은 건드리지 않음)
+function patchSlotProgress(c, slotIdx) {
+  const card = document.querySelector(`[data-id="${c.id}"]`);
+  if (!card) return;
+  const slotEl = card.querySelector(`[data-slot="${slotIdx}"]`);
+  if (!slotEl) return;
+  const slot = c.payments[slotIdx];
+  const pct = +slot.진행도 || 0;
+
+  // 헤더 chip
+  const chip = slotEl.querySelector('[data-role="slot-chip"]');
+  if (chip) {
+    chip.className = 'w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center leading-none ' + getSlotChipClass(slotIdx, pct);
+  }
+  // 볼륨바 컨테이너만 교체
+  const bar = slotEl.querySelector('[data-role="volume-bar"]');
+  if (bar) bar.outerHTML = renderVolumeBar(c, slotIdx);
+}
+
+/* --- 인터랙션 ------------------------------------------- */
+
+function toggleCard(id) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  c.expanded = !c.expanded;
+  renderList();
+}
+
+function toggleDoc(id, key) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  c.docs[key] = !c.docs[key];
+  // 부분 업데이트만 (풀 리렌더 X — 부드럽게)
+  patchDocBox(c, key);
+  patchDocCount(c);
+  patchCardHeader(c);
+}
+
+// ★ 핵심: 입력은 store만 갱신, 입력 DOM은 절대 교체하지 않음
+function updateSlot(id, slotIdx, field, value) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  c.payments[slotIdx][field] = value;
+  // 입력칸 자체는 그대로 두고, 합계와 헤더만 갱신
+  patchPaySummary(c);
+  patchCardHeader(c);
+  patchSummary();
+}
+
+function updateSync(id, field, value) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  c[field] = value;
+  patchCardHeader(c);
+  patchSummary();
+  // 실제 구현: 일정·계약 탭 양방향 동기화 PATCH
+}
+
+/* [3] 진행도 설정 (UI + 시트 저장) ------------------------- */
+function setProgress(id, slotIdx, pct) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  c.payments[slotIdx].진행도 = pct;
+  patchSlotProgress(c, slotIdx);
+  patchCardHeader(c);
+
+  // 시트 저장 (React 포팅 시 PATCH /api/contract-payment/:id/progress 호출)
+  saveProgressToSheet(id, slotIdx, pct);
+}
+
+/* 진행률 시트 저장 placeholder ----------------------------
+   시트 02 계약수납관리 — 각 슬롯의 진행률 컬럼(드롭박스)에 저장
+   - 슬롯1 진행률 → N열 (가정, Claude Code가 검증 필요)
+   - 슬롯2 진행률 → T열 (가정)
+   - 슬롯3 진행률 → Z열 (가정)
+   - 드롭박스 옵션: '', '20%', '40%', '60%', '80%', '100%' (가정)
+   prototype에서는 console.log로 시뮬레이션, 실제 React 단계에서 fetch 호출 */
+const PROGRESS_COLS = ['N', 'T', 'Z'];  // ★ Claude Code가 시트 보고 검증 필요
+function saveProgressToSheet(contractId, slotIdx, pct) {
+  const col = PROGRESS_COLS[slotIdx];
+  const value = pct === 0 ? '' : `${pct}%`;
+  console.log(`[saveProgressToSheet] contractId=${contractId}, slot=${slotIdx+1}, col=${col}, value="${value}"`);
+  // TODO(react): await fetch('/api/contract-payment/' + contractId + '/progress', {
+  //   method: 'PATCH',
+  //   body: JSON.stringify({ slotIdx, value })
+  // });
+}
+
+/* [6] 슬롯 추가/제거 (구조 변화 → 풀 리렌더) ---------------- */
+function addSlot(id) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c || c.visiblePayments >= 3) return;
+  c.visiblePayments += 1;
+  renderAll();
+  showToast(`수납 ${c.visiblePayments}회차가 추가되었습니다`);
+}
+function removeSlot(id, slotIdx) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c || slotIdx === 0) return;
+  c.payments[slotIdx] = { 기관:'', 현황:'', 승인:0, 수납:0, 일자:'', 진행도:0 };
+  if (slotIdx === c.visiblePayments - 1) {
+    c.visiblePayments -= 1;
+  }
+  renderAll();
+}
+
+function saveContract(id) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  showToast(`💾 ${c.company} 저장 완료`);
+}
+
+/* 삭제 모달 ------------------------------------------------ */
+function askDelete(id) {
+  const c = store.contracts.find(c => c.id === id);
+  if (!c) return;
+  store.pendingDeleteId = id;
+  document.getElementById('del-target').textContent = c.company;
+  document.getElementById('confirmModal').classList.add('open');
+}
+function closeConfirm() {
+  store.pendingDeleteId = null;
+  document.getElementById('confirmModal').classList.remove('open');
+}
+function confirmDelete() {
+  const id = store.pendingDeleteId;
+  if (id == null) return closeConfirm();
+  const c = store.contracts.find(c => c.id === id);
+  const name = c ? c.company : '';
+  store.contracts = store.contracts.filter(c => c.id !== id);
+  store.pendingDeleteId = null;
+  closeConfirm();
+  renderAll();
+  showToast(`🗑 ${name} 삭제됨`);
+}
+
+/* 토스트 -------------------------------------------------- */
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+document.getElementById('confirmModal').addEventListener('click', (e) => {
+  if (e.target.id === 'confirmModal') closeConfirm();
+});
+
+renderAll();
+</script>
+
+</body>
+</html>
