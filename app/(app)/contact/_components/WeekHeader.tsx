@@ -50,7 +50,7 @@ export default function WeekHeader({
   const todayDate = parseISO(todayISO);
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm">
+    <header className="sticky top-24 z-30 bg-white shadow-sm">
       {/* 주차 타이틀 + 좌우 화살표 */}
       <div className="flex items-center justify-between px-2 py-3">
         <button

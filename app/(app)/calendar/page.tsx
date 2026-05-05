@@ -76,7 +76,7 @@ export default function CalendarPage() {
   return (
     <>
       <TopHeader pageEmoji="📅" pageTitle="캘린더" pageSubtitle="04 업체관리" />
-      <header className="bg-white shadow-sm">
+      <header className="sticky top-24 z-30 bg-white shadow-sm">
         <div className="flex items-center justify-between px-2 py-3">
           <button
             type="button"

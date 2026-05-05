@@ -86,6 +86,12 @@ async function readSection<T>(
   startCol: string,
   endCol: string,
   parser: (r: unknown[]) => T,
+  /**
+   * 사용자 입력 필드 기준으로 의미있는 row인지 판단.
+   * 시트의 수식 컬럼(주문금액·개당단가 등)은 row 인정 기준에서 제외 — UI에
+   * "추가" 버튼으로 명시적으로 만든 record만 표시하기 위함.
+   */
+  isMeaningful: (parsed: T) => boolean,
 ): Promise<RawSectionData<T>> {
   const range = `${T}!${startCol}${FIRST_DATA_ROW}:${endCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({
@@ -99,18 +105,17 @@ async function readSection<T>(
   for (let i = 0; i < values.length; i++) {
     const r = values[i] ?? [];
     if (isSumRow(r[0])) continue; // 합계 행 skip
-    // 모든 셀이 비어있으면 건너뜀 (truly empty)
-    const hasContent = r.some(
-      (c) => c !== undefined && c !== null && String(c).trim() !== "",
-    );
-    if (!hasContent) continue;
     const parsed = parser(r);
+    // 사용자가 입력한 필드 기준 필터 — 수식 셀(예: 주문금액)만 채워진
+    // phantom row는 "추가 버튼으로 명시 추가한 row만 표시" 원칙에 따라 숨김.
+    if (!isMeaningful(parsed)) continue;
     rows.push({ ...parsed, row: FIRST_DATA_ROW + i });
   }
   return { rows };
 }
 
 // ── 매입DB (B:G) ──────────────────────────────────────────────
+// 사용자 입력: 구매일/업체명/개당단가/주문개수/기타. 수식: 주문금액(E열).
 export async function readPurchases(spreadsheetId: string) {
   return readSection<DBPurchase>(
     spreadsheetId,
@@ -124,10 +129,17 @@ export async function readPurchases(spreadsheetId: string) {
       주문금액: toNum(r[4]),
       기타: toStr(r[5]),
     }),
+    (p) =>
+      Boolean(p.구매일) ||
+      Boolean(p.업체명) ||
+      p.개당단가 > 0 ||
+      p.주문개수 > 0 ||
+      Boolean(p.기타),
   );
 }
 
 // ── 직접생산 (I:N) ────────────────────────────────────────────
+// 사용자 입력: 날짜/소재/기간예산/생산개수/기타. 수식: 개당단가(M열=예산÷개수).
 export async function readProductions(spreadsheetId: string) {
   return readSection<DBProduction>(
     spreadsheetId,
@@ -141,10 +153,17 @@ export async function readProductions(spreadsheetId: string) {
       개당단가: toNum(r[4]),
       기타: toStr(r[5]),
     }),
+    (p) =>
+      Boolean(p.날짜) ||
+      Boolean(p.소재) ||
+      p.기간예산 > 0 ||
+      p.생산개수 > 0 ||
+      Boolean(p.기타),
   );
 }
 
 // ── 현수막 (P:V) ──────────────────────────────────────────────
+// 사용자 입력: 날짜/업체명/도착일/개당단가/주문개수/기타. 수식: 주문금액.
 export async function readBanners(spreadsheetId: string) {
   return readSection<DBBanner>(
     spreadsheetId,
@@ -159,10 +178,18 @@ export async function readBanners(spreadsheetId: string) {
       주문금액: toNum(r[5]),
       기타: toStr(r[6]),
     }),
+    (p) =>
+      Boolean(p.날짜) ||
+      Boolean(p.업체명) ||
+      Boolean(p.도착일) ||
+      p.개당단가 > 0 ||
+      p.주문개수 > 0 ||
+      Boolean(p.기타),
   );
 }
 
 // ── 콜·지·기·소 (X:AD) ─────────────────────────────────────────
+// 모든 컬럼이 사용자 입력 (수식 없음).
 export async function readLeads(spreadsheetId: string) {
   return readSection<DBLead>(
     spreadsheetId,
@@ -177,6 +204,14 @@ export async function readLeads(spreadsheetId: string) {
       연락처: toStr(r[5]),
       조건: toStr(r[6]),
     }),
+    (p) =>
+      Boolean(p.구분) ||
+      Boolean(p.접수일) ||
+      Boolean(p.대표자명) ||
+      Boolean(p.업체명) ||
+      Boolean(p.소개처) ||
+      Boolean(p.연락처) ||
+      Boolean(p.조건),
   );
 }
 
