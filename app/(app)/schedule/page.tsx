@@ -150,9 +150,15 @@ export default function SchedulePage() {
   ) => {
     setPendingId(original.id);
     const newId = uuid();
+    // 변경 미팅은 업체명 앞에 "(변경) " prefix를 붙여 한눈에 식별 가능하게 함.
+    // 이미 한 번 변경된 카드(이미 prefix 있음)는 중복 추가 방지.
+    const prefixedName = original.업체명.startsWith("(변경)")
+      ? original.업체명
+      : `(변경) ${original.업체명}`;
     const newMeeting: Meeting = {
       ...original,
       id: newId,
+      업체명: prefixedName,
       미팅날짜: newDate,
       미팅시간: newTime,
       상태: "예약",
