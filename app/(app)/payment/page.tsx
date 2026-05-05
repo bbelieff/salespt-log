@@ -72,7 +72,7 @@ export default function PaymentPage() {
   };
 
   const rows = list.data?.rows ?? [];
-  const totalContract = rows.reduce((s, cp) => s + (cp.수임비 || 0), 0);
+  // 총매출 = 수임비 + 수수료(=Q+W+AC = 슬롯별 승인금액 합) — v2 SSOT
   const totalReceived = rows.reduce(
     (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
     0,
@@ -82,6 +82,10 @@ export default function PaymentPage() {
       s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
     0,
   );
+  const totalRevenue =
+    rows.reduce((s, cp) => s + (cp.수임비 || 0), 0) + totalApproved;
+  const overallPct =
+    totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
 
   return (
     <>
@@ -105,42 +109,61 @@ export default function PaymentPage() {
       </div>
 
       <main className="px-4 pb-[80px] pt-3">
-        {/* 전체 요약 카드 */}
-        <div className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
-          <div className="mb-1 text-sm font-semibold text-gray-800">
-            전체 계약수납 현황
-          </div>
-          <div className="mb-2 text-xs text-gray-500">
-            계약 {rows.length}건 · 수임비 합계{" "}
-            <span
-              className="font-semibold text-gray-800"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {fmtMoney(totalContract)}만원
-            </span>
-          </div>
-          {totalApproved > 0 && (
-            <div className="rounded-lg bg-green-50 p-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs font-semibold text-green-800">
-                  💰 누적 수납
-                </span>
-                <span
-                  className="text-base font-bold text-green-700"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
-                >
-                  {fmtMoney(totalReceived)}원
-                </span>
-              </div>
-              <div className="mt-1 flex items-baseline justify-between text-xs text-gray-600">
-                <span>승인금액 합계</span>
-                <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {fmtMoney(totalApproved)}원 (
-                  {Math.round((totalReceived / totalApproved) * 100)}%)
-                </span>
+        {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}
+        <div className="mb-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div
+            className="grid gap-3 text-center"
+            style={{ gridTemplateColumns: "2.5fr 4.5fr 3fr" }}
+          >
+            <div>
+              <div className="mb-1 text-xs text-gray-500">계약</div>
+              <div
+                className="text-xl font-bold text-gray-900"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                {rows.length}
+                <span className="text-sm font-medium text-gray-500">건</span>
               </div>
             </div>
-          )}
+            <div className="border-x border-gray-100">
+              <div className="mb-1 text-xs text-gray-500">총매출</div>
+              <div
+                className="text-xl font-bold text-gray-900"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                ₩{fmtMoney(totalRevenue)}
+              </div>
+              <div className="mt-0.5 text-xs text-gray-400">
+                수임비 + 수수료
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 text-xs text-gray-500">수납 진척</div>
+              <div
+                className={`text-xl font-bold ${
+                  overallPct >= 100
+                    ? "text-green-600"
+                    : overallPct === 0
+                      ? "text-gray-400"
+                      : "text-blue-600"
+                }`}
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                {overallPct}%
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
+            <span className="text-gray-500">누적 수납 / 승인</span>
+            <span
+              className="font-medium text-gray-700"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              ₩{fmtMoney(totalReceived)}
+              <span className="mx-1 text-gray-400">/</span>
+              ₩{fmtMoney(totalApproved)}
+            </span>
+          </div>
         </div>
 
         {/* 안내 */}
@@ -161,10 +184,11 @@ export default function PaymentPage() {
           </div>
         ) : (
           <div>
-            {rows.map((cp) => (
+            {rows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
                 cp={cp}
+                ordinal={i + 1}
                 pending={pendingRow === cp.row}
                 onSave={handleSave}
                 onDeleteRequest={() => {
