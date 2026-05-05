@@ -1,18 +1,26 @@
 /**
- * ContractRow — 1 계약수납 row 카드 (접힘/펼침).
+ * ContractRow v2 — 1 계약수납 row 카드 (접힘/펼침).
  *
- * 접힘: 업체명 + 계약일·수임비 + 체크 진척(N/7) + 수납 진척(₩수납/₩승인)
- * 펼침: 7 체크박스 + 3 수납 슬롯 + 저장/삭제 버튼
+ * v9 prototype 매칭:
+ *   - 좌측 보더 = 활성 슬롯 색 (teal/cyan/fuchsia) 또는 완료 시 green
+ *   - visiblePayments (1~3): + 수납 추가 / ✕ 제거 버튼
+ *   - 슬롯별 색 진행도 (PaymentSlotForm 내부)
+ *   - 헤더: 순번 배지 + 업체명 + ✓(완료) + 계약일·매출 + 📋배지 + 💰배지
+ *
+ * 시트 매핑: 02 계약수납관리 1 row
+ *   - C/D/E (계약일/업체명/수임비) — 자동 연동, read-only 표시
+ *   - F~L 7 체크박스 / M~AD 3 슬롯 × 6필드
  */
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ContractPayment } from "@/types";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
 
 interface Props {
   cp: ContractPayment;
+  ordinal: number; // 1-based, 헤더 순번 배지
   pending: boolean;
   onSave: (next: ContractPayment) => void;
   onDeleteRequest: () => void;
@@ -29,14 +37,42 @@ function fmtDate(s: string): string {
   return `${parseInt(m[2]!, 10)}/${parseInt(m[3]!, 10)}`;
 }
 
+function progressPct(p: string): number {
+  if (!p || p === "0%") return 0;
+  return parseInt(p, 10);
+}
+
+/** 슬롯에 의미있는 데이터가 있는지 (visiblePayments 초기값 계산용). */
+function hasSlotData(slot: ContractPayment["수납1"]): boolean {
+  return Boolean(
+    slot.진행기관 ||
+      slot.현황 ||
+      slot.수납일 ||
+      slot.승인금액 > 0 ||
+      slot.수납액 > 0 ||
+      (slot.진행률 && slot.진행률 !== "0%"),
+  );
+}
+
+/** 데이터 기반 초기 visiblePayments — 슬롯3 데이터 있으면 3, 슬롯2 있으면 2, else 1. */
+function initialVisiblePayments(cp: ContractPayment): 1 | 2 | 3 {
+  if (hasSlotData(cp.수납3)) return 3;
+  if (hasSlotData(cp.수납2)) return 2;
+  return 1;
+}
+
 export default function ContractRow({
   cp,
+  ordinal,
   pending,
   onSave,
   onDeleteRequest,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ContractPayment>(cp);
+  const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
+    initialVisiblePayments(cp),
+  );
 
   const totalApproved =
     draft.수납1.승인금액 + draft.수납2.승인금액 + draft.수납3.승인금액;
@@ -44,60 +80,115 @@ export default function ContractRow({
     draft.수납1.수납액 + draft.수납2.수납액 + draft.수납3.수납액;
   const docsDone = checkedCount(draft);
 
-  const allDone = docsDone === TOTAL_CHECKBOXES && totalReceived > 0;
+  // 진행도 평균 (보이는 슬롯만)
+  const visibleSlots = useMemo(
+    () => [draft.수납1, draft.수납2, draft.수납3].slice(0, visiblePayments),
+    [draft, visiblePayments],
+  );
+  const avgPct = useMemo(() => {
+    if (!visibleSlots.length) return 0;
+    const sum = visibleSlots.reduce(
+      (s, slot) => s + progressPct(slot.진행률),
+      0,
+    );
+    return Math.round(sum / visibleSlots.length);
+  }, [visibleSlots]);
+
+  const isComplete =
+    docsDone === TOTAL_CHECKBOXES && visiblePayments >= 1 && avgPct >= 100;
+
+  // 활성 슬롯 인덱스 = 진행률 > 0 인 슬롯 중 가장 큰 인덱스
+  const activeSlotIdx = useMemo(() => {
+    for (let i = visiblePayments - 1; i >= 0; i--) {
+      if (progressPct(visibleSlots[i]?.진행률 ?? "") > 0) return i;
+    }
+    return -1;
+  }, [visibleSlots, visiblePayments]);
+
+  // 좌측 보더 클래스
+  const borderClass = isComplete
+    ? "border-l-4 border-l-green-500"
+    : activeSlotIdx === 0
+      ? "border-l-4 border-l-teal-500"
+      : activeSlotIdx === 1
+        ? "border-l-4 border-l-cyan-500"
+        : activeSlotIdx === 2
+          ? "border-l-4 border-l-fuchsia-500"
+          : "";
+
+  const docBadgeClass =
+    docsDone === TOTAL_CHECKBOXES
+      ? "text-green-600 bg-green-50"
+      : docsDone === 0
+        ? "text-gray-400 bg-gray-50"
+        : "text-blue-600 bg-blue-50";
+
+  const payBadgeClass =
+    avgPct === 0
+      ? "text-gray-400 bg-gray-50"
+      : avgPct >= 100
+        ? "text-green-600 bg-green-50"
+        : "text-blue-600 bg-blue-50";
+
+  const handleAddSlot = () => {
+    if (visiblePayments < 3) {
+      setVisiblePayments((v) => (v + 1) as 1 | 2 | 3);
+    }
+  };
+  const handleRemoveSlot = (slotIdx: 1 | 2 | 3) => {
+    if (slotIdx === 1) return; // 슬롯1은 제거 불가
+    const emptySlot: ContractPayment["수납1"] = {
+      진행기관: "",
+      진행률: "",
+      현황: "",
+      승인금액: 0,
+      수납액: 0,
+      수납일: "",
+    };
+    setDraft((d) => ({ ...d, [`수납${slotIdx}`]: emptySlot }));
+    if (slotIdx === visiblePayments) {
+      setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
+    }
+  };
 
   return (
     <div
-      className={`mb-2 overflow-hidden rounded-xl border bg-white shadow-sm transition-all ${
-        allDone ? "border-green-300" : "border-gray-200"
-      }`}
+      className={`mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ${borderClass}`}
     >
       {/* 헤더 (접힘) */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors active:bg-black/5"
+        className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-gray-50 active:bg-gray-100"
+        style={{ minHeight: 60 }}
         aria-expanded={open}
       >
-        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-slate-600 num-mono"
-              style={{ fontVariantNumeric: "tabular-nums" }}>
-          row{cp.row}
-        </span>
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+          {ordinal}
+        </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold text-gray-900">
+          <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-gray-900">
             {cp.업체명 || "(업체명 없음)"}
+            {isComplete && <span className="text-xs text-green-600">✓</span>}
           </div>
-          <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-500">
-            <span>{fmtDate(cp.계약일)}</span>
-            <span>·</span>
-            <span className="num-mono" style={{ fontVariantNumeric: "tabular-nums" }}>
-              수임비 {fmtMoney(cp.수임비)}원
-            </span>
+          <div
+            className="mt-0.5 text-xs text-gray-500"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {fmtDate(cp.계약일)} · 수임비 ₩{fmtMoney(cp.수임비)}
           </div>
         </div>
-        <div className="shrink-0 text-right text-[11px]">
-          <div className="flex items-center gap-1">
-            <span
-              className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
-                docsDone === TOTAL_CHECKBOXES
-                  ? "bg-green-100 text-green-700"
-                  : "bg-amber-100 text-amber-700"
-              }`}
-            >
-              📋 {docsDone}/{TOTAL_CHECKBOXES}
-            </span>
-            {totalApproved > 0 && (
-              <span
-                className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
-                  totalReceived >= totalApproved
-                    ? "bg-green-100 text-green-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}
-              >
-                💰 {Math.round((totalReceived / totalApproved) * 100)}%
-              </span>
-            )}
-          </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${docBadgeClass}`}
+          >
+            📋 {docsDone}/{TOTAL_CHECKBOXES}
+          </span>
+          <span
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${payBadgeClass}`}
+          >
+            💰 {avgPct === 0 ? "—" : `${avgPct}%`}
+          </span>
         </div>
         <svg
           className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
@@ -118,33 +209,71 @@ export default function ContractRow({
 
       {/* 펼침 */}
       {open && (
-        <div className="space-y-3 border-t border-gray-200 px-3 py-3">
+        <div className="space-y-3 border-t border-gray-100 p-3">
           {/* 자동 연동 정보 (read-only) */}
-          <div className="rounded-md bg-gray-50 p-2 text-[11px] text-gray-500">
-            🔗 자동 연동: 04 업체관리에서 가져옴 (수정 불가)
-            <div className="mt-0.5 text-gray-700">
-              <span className="font-medium">{cp.업체명}</span> · {cp.계약일} · 수임비{" "}
-              <span className="num-mono font-medium" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {fmtMoney(cp.수임비)}원
-              </span>
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5">
+            <div className="mb-1 flex items-center gap-1 text-xs text-blue-700">
+              <span className="font-medium">🏢 업체정보 (자동 연동)</span>
+            </div>
+            <div
+              className="text-xs text-gray-700"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              <span className="font-semibold text-gray-900">{cp.업체명}</span>
+              <span className="mx-1.5 text-gray-400">·</span>
+              {cp.계약일 || "—"}
+              <span className="mx-1.5 text-gray-400">·</span>
+              수임비 ₩{fmtMoney(cp.수임비)}
             </div>
           </div>
 
           {/* 7 체크박스 */}
           <div>
-            <div className="mb-2 text-xs font-bold text-gray-700">
-              📋 서류 진행 (계약 직후 + 실무진행)
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-800">
+                📋 서류 진행
+              </span>
+              <span className="text-xs text-gray-500">
+                <span
+                  className={`font-semibold ${
+                    docsDone === TOTAL_CHECKBOXES
+                      ? "text-green-600"
+                      : docsDone === 0
+                        ? "text-gray-400"
+                        : "text-blue-600"
+                  }`}
+                >
+                  {docsDone}
+                </span>{" "}
+                / {TOTAL_CHECKBOXES}
+              </span>
             </div>
             <CheckboxList
               draft={draft}
-              onChange={(key, next) => setDraft((d) => ({ ...d, [key]: next }))}
+              onChange={(key, next) =>
+                setDraft((d) => ({ ...d, [key]: next }))
+              }
             />
           </div>
 
-          {/* 3 수납 슬롯 */}
+          {/* 수납 현황 */}
           <div>
-            <div className="mb-2 text-xs font-bold text-gray-700">
-              💰 분할 수납 (최대 3건)
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-800">
+                💰 수납 현황
+              </span>
+              <span
+                className="text-xs text-gray-500"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                <span className="font-medium text-gray-700">
+                  ₩{fmtMoney(totalReceived)}
+                </span>
+                <span className="mx-0.5 text-gray-400">/</span>
+                <span className="font-medium text-gray-700">
+                  ₩{fmtMoney(totalApproved)}
+                </span>
+              </span>
             </div>
             <div className="space-y-2">
               <PaymentSlotForm
@@ -152,16 +281,38 @@ export default function ContractRow({
                 slot={draft.수납1}
                 onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
               />
-              <PaymentSlotForm
-                index={2}
-                slot={draft.수납2}
-                onChange={(next) => setDraft((d) => ({ ...d, 수납2: next }))}
-              />
-              <PaymentSlotForm
-                index={3}
-                slot={draft.수납3}
-                onChange={(next) => setDraft((d) => ({ ...d, 수납3: next }))}
-              />
+              {visiblePayments >= 2 && (
+                <PaymentSlotForm
+                  index={2}
+                  slot={draft.수납2}
+                  removable={visiblePayments === 2}
+                  onChange={(next) =>
+                    setDraft((d) => ({ ...d, 수납2: next }))
+                  }
+                  onRemove={() => handleRemoveSlot(2)}
+                />
+              )}
+              {visiblePayments >= 3 && (
+                <PaymentSlotForm
+                  index={3}
+                  slot={draft.수납3}
+                  removable
+                  onChange={(next) =>
+                    setDraft((d) => ({ ...d, 수납3: next }))
+                  }
+                  onRemove={() => handleRemoveSlot(3)}
+                />
+              )}
+              {visiblePayments < 3 && (
+                <button
+                  type="button"
+                  onClick={handleAddSlot}
+                  className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                >
+                  <span className="text-base leading-none">+</span>
+                  <span>수납 추가 ({visiblePayments + 1}회차)</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -169,19 +320,19 @@ export default function ContractRow({
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              onClick={onDeleteRequest}
+              onClick={() => onSave(draft)}
               disabled={pending}
-              className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+              className="h-11 flex-1 rounded-lg bg-blue-500 text-sm font-semibold text-white transition-colors hover:bg-blue-600 active:bg-blue-700 active:scale-95 disabled:bg-gray-300"
             >
-              🗑 삭제
+              {pending ? "저장중..." : "💾 저장"}
             </button>
             <button
               type="button"
-              onClick={() => onSave(draft)}
+              onClick={onDeleteRequest}
               disabled={pending}
-              className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300"
+              className="h-11 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 disabled:opacity-50"
             >
-              {pending ? "저장중..." : "💾 저장"}
+              🗑 삭제
             </button>
           </div>
         </div>
