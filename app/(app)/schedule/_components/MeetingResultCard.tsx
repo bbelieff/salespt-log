@@ -113,6 +113,7 @@ export default function MeetingResultCard({
       미팅사유: accumulateReason(reason),
     });
     setAction(null);
+    setEditMode(false);
     setOpen(false);
   };
   const handleCancel = (reason: string) => {
@@ -122,6 +123,7 @@ export default function MeetingResultCard({
       미팅사유: accumulateReason(reason),
     });
     setAction(null);
+    setEditMode(false);
     setOpen(false);
   };
   const handleReschedule = (
@@ -231,14 +233,71 @@ export default function MeetingResultCard({
             </div>
           )}
 
-          {/* 계약 카드 수정 모드 — ContractForm 재사용 (수임비/계약조건 patch) */}
+          {/* 계약 카드 수정 모드 — 수임비/조건 편집 + 상태 변경(취소·완료) 옵션 */}
           {state === "contract" && editMode && (
-            <ContractForm
-              initialFee={meeting.수임비}
-              initialTerms={meeting.계약조건}
-              onConfirm={handleContract}
-              pending={pending}
-            />
+            <div className="space-y-2">
+              {/* 수임비/계약조건 편집 */}
+              <ContractForm
+                initialFee={meeting.수임비}
+                initialTerms={meeting.계약조건}
+                onConfirm={handleContract}
+                pending={pending}
+              />
+              {/* 상태 변경 옵션 — 보류/환수 등은 취소(사유 기록)로 처리 */}
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="mb-2 text-xs font-medium text-gray-600">
+                  상태 변경 (취소·환수·보류 등은 취소로 사유와 함께 기록)
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <ActionButton
+                    label="🟠 완료로"
+                    hint="(계약 해지)"
+                    active={action === "done"}
+                    activeCls="bg-orange-500 text-white shadow-md ring-2 ring-orange-300"
+                    idleCls="bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200"
+                    onClick={() => pickAction("done")}
+                  />
+                  <ActionButton
+                    label="🔴 취소로"
+                    hint="(보류·환수)"
+                    active={action === "cancel"}
+                    activeCls="bg-red-500 text-white shadow-md ring-2 ring-red-300"
+                    idleCls="bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                    onClick={() => pickAction("cancel")}
+                  />
+                </div>
+                {action === "done" && (
+                  <div className="mt-2">
+                    <DoneForm
+                      initialReason={meeting.미팅사유}
+                      vendor={meeting.업체명}
+                      onConfirm={handleDone}
+                      pending={pending}
+                    />
+                  </div>
+                )}
+                {action === "cancel" && (
+                  <div className="mt-2">
+                    <CancelForm
+                      initialReason={meeting.미팅사유}
+                      vendor={meeting.업체명}
+                      onConfirm={handleCancel}
+                      pending={pending}
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMode(false);
+                  setAction(null);
+                }}
+                className="w-full rounded-md border border-gray-300 bg-white py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                ↩ 수정 취소
+              </button>
+            </div>
           )}
 
           {/* 일정 수정 details (예약 카드만) */}
