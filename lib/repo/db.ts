@@ -22,7 +22,13 @@ import { sheetsClient } from "./sheets-client";
 const TAB = SHEET_RANGES.dbManagement.tab;
 const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
 const HEADER_ROW = SHEET_RANGES.dbManagement.headerRow;
-const FIRST_DATA_ROW = HEADER_ROW + 1;
+const FIRST_DATA_ROW = HEADER_ROW + 1; // 매입DB/직접생산/현수막 = 2
+
+/** 섹션별 데이터 시작 row override.
+ *  실제 시트 검증 결과 (★★★세일즈PT 양식, 2026-05-06):
+ *  - 매입DB / 직접생산 / 현수막 = 2 (헤더 1 + 데이터 2~)
+ *  - 콜·지·기·소 = 4 (헤더 + 안내 행 1~3, 데이터 4~) */
+const FIRST_DATA_ROW_LEAD = 4;
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -92,8 +98,9 @@ async function readSection<T>(
    * "추가" 버튼으로 명시적으로 만든 record만 표시하기 위함.
    */
   isMeaningful: (parsed: T) => boolean,
+  firstDataRow: number = FIRST_DATA_ROW,
 ): Promise<RawSectionData<T>> {
-  const range = `${T}!${startCol}${FIRST_DATA_ROW}:${endCol}${MAX_ROW}`;
+  const range = `${T}!${startCol}${firstDataRow}:${endCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -109,7 +116,7 @@ async function readSection<T>(
     // 사용자가 입력한 필드 기준 필터 — 수식 셀(예: 주문금액)만 채워진
     // phantom row는 "추가 버튼으로 명시 추가한 row만 표시" 원칙에 따라 숨김.
     if (!isMeaningful(parsed)) continue;
-    rows.push({ ...parsed, row: FIRST_DATA_ROW + i });
+    rows.push({ ...parsed, row: firstDataRow + i });
   }
   return { rows };
 }
@@ -186,6 +193,7 @@ export async function readBanners(spreadsheetId: string) {
 // ⚠️ "구분" 컬럼은 dropdown(콜드콜/지인/기고객/소개) data validation으로 인해
 //    빈 row에도 기본값이 미리 박혀있을 수 있음 → 인정 기준에서 제외.
 // 필터: 대표자명 OR 업체명 OR 연락처 중 하나는 반드시 사용자가 입력해야 인정.
+// 데이터 시작 row = 4 (1~3행은 섹션 안내/헤더).
 export async function readLeads(spreadsheetId: string) {
   return readSection<DBLead>(
     spreadsheetId,
@@ -202,6 +210,7 @@ export async function readLeads(spreadsheetId: string) {
     }),
     (p) =>
       Boolean(p.대표자명) || Boolean(p.업체명) || Boolean(p.연락처),
+    FIRST_DATA_ROW_LEAD,
   );
 }
 
@@ -226,8 +235,9 @@ async function findFirstEmptyRow(
   startCol: string,
   endCol: string,
   isPhantom: (r: unknown[]) => boolean,
+  firstDataRow: number = FIRST_DATA_ROW,
 ): Promise<{ row: number; needInsert: boolean }> {
-  const range = `${T}!${startCol}${FIRST_DATA_ROW}:${endCol}${MAX_ROW}`;
+  const range = `${T}!${startCol}${firstDataRow}:${endCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -237,9 +247,9 @@ async function findFirstEmptyRow(
     const r = values[i] ?? [];
     const first = r[0];
     if (isSumRow(first)) {
-      return { row: FIRST_DATA_ROW + i, needInsert: true };
+      return { row: firstDataRow + i, needInsert: true };
     }
-    if (isPhantom(r)) return { row: FIRST_DATA_ROW + i, needInsert: false };
+    if (isPhantom(r)) return { row: firstDataRow + i, needInsert: false };
   }
   return { row: MAX_ROW + 1, needInsert: false };
 }
@@ -382,6 +392,7 @@ export async function appendLead(
     SPEC.콜지기소.startCol,
     SPEC.콜지기소.endCol,
     phantomLead,
+    FIRST_DATA_ROW_LEAD,
   );
   if (needInsert)
     throw new Error(`[db.ts] 콜·지·기·소 영역 가득 — 합계 행을 옮겨주세요.`);
