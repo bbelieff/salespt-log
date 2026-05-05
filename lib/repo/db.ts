@@ -212,10 +212,20 @@ export async function readLeads(spreadsheetId: string) {
  * "합계" 행 위에서만 찾음 (합계 행 만나면 그 위 첫 빈 row 반환).
  * 빈 row 없으면 합계 row 자체를 반환 → 호출 측이 행 insert해야 함.
  */
+/**
+ * 첫 빈 데이터 행 찾기.
+ *
+ * read 측의 isMeaningful 필터와 동일한 기준을 사용해야 함 — 그렇지 않으면
+ * 시트의 dropdown 기본값/체크박스 FALSE/수식 결과로 채워진 phantom row를
+ * "이미 사용 중"으로 오인하여 영역 가득 에러 발생.
+ *
+ * isPhantom(r) === true 이면 "사용자 입력 데이터 없음 → 비어있는 row로 간주".
+ */
 async function findFirstEmptyRow(
   spreadsheetId: string,
   startCol: string,
   endCol: string,
+  isPhantom: (r: unknown[]) => boolean,
 ): Promise<{ row: number; needInsert: boolean }> {
   const range = `${T}!${startCol}${FIRST_DATA_ROW}:${endCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({
@@ -227,17 +237,21 @@ async function findFirstEmptyRow(
     const r = values[i] ?? [];
     const first = r[0];
     if (isSumRow(first)) {
-      // 합계 행 도달 — 그 자리에 insert해야 함 (현재는 row 자체 반환, 호출자가 처리)
       return { row: FIRST_DATA_ROW + i, needInsert: true };
     }
-    const hasContent = r.some(
-      (c) => c !== undefined && c !== null && String(c).trim() !== "",
-    );
-    if (!hasContent) return { row: FIRST_DATA_ROW + i, needInsert: false };
+    if (isPhantom(r)) return { row: FIRST_DATA_ROW + i, needInsert: false };
   }
-  // 데이터 영역 끝까지 모두 차있으면 maxRow+1 (절대 도달 안 한다고 가정)
   return { row: MAX_ROW + 1, needInsert: false };
 }
+
+// ── isPhantom: 사용자 입력 기준 빈 row 판정 (read isMeaningful의 negation) ──
+const isISODateStr = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+const phantomPurchase = (r: unknown[]) => !isISODateStr(serialToISODate(r[0]));
+const phantomProduction = (r: unknown[]) => !isISODateStr(serialToISODate(r[0]));
+const phantomBanner = (r: unknown[]) => !isISODateStr(serialToISODate(r[0]));
+const phantomLead = (r: unknown[]) =>
+  !toStr(r[2]) && !toStr(r[3]) && !toStr(r[5]); // 대표자명·업체명·연락처 모두 빈값
 
 interface SectionWriteSpec {
   startCol: string;
@@ -294,6 +308,7 @@ export async function appendPurchase(
     spreadsheetId,
     SPEC.매입DB.startCol,
     SPEC.매입DB.endCol,
+    phantomPurchase,
   );
   if (needInsert) {
     throw new Error(
@@ -319,6 +334,7 @@ export async function appendProduction(
     spreadsheetId,
     SPEC.직접생산.startCol,
     SPEC.직접생산.endCol,
+    phantomProduction,
   );
   if (needInsert)
     throw new Error(`[db.ts] 직접생산 영역 가득 — 합계 행을 옮겨주세요.`);
@@ -341,6 +357,7 @@ export async function appendBanner(
     spreadsheetId,
     SPEC.현수막.startCol,
     SPEC.현수막.endCol,
+    phantomBanner,
   );
   if (needInsert)
     throw new Error(`[db.ts] 현수막 영역 가득 — 합계 행을 옮겨주세요.`);
@@ -364,6 +381,7 @@ export async function appendLead(
     spreadsheetId,
     SPEC.콜지기소.startCol,
     SPEC.콜지기소.endCol,
+    phantomLead,
   );
   if (needInsert)
     throw new Error(`[db.ts] 콜·지·기·소 영역 가득 — 합계 행을 옮겨주세요.`);
