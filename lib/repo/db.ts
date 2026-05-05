@@ -114,8 +114,15 @@ async function readSection<T>(
   return { rows };
 }
 
+/** 유효한 YYYY-MM-DD 형식인지 — 헤더 row의 "구매일"·"날짜" 같은
+ *  텍스트와 실제 사용자 입력 날짜를 구분하는 핵심 검사. */
+function isISODate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
 // ── 매입DB (B:G) ──────────────────────────────────────────────
 // 사용자 입력: 구매일/업체명/개당단가/주문개수/기타. 수식: 주문금액(E열).
+// 필터: 구매일이 유효한 ISO 날짜인 row만 — 헤더("구매일")/예시 row 차단.
 export async function readPurchases(spreadsheetId: string) {
   return readSection<DBPurchase>(
     spreadsheetId,
@@ -129,17 +136,13 @@ export async function readPurchases(spreadsheetId: string) {
       주문금액: toNum(r[4]),
       기타: toStr(r[5]),
     }),
-    (p) =>
-      Boolean(p.구매일) ||
-      Boolean(p.업체명) ||
-      p.개당단가 > 0 ||
-      p.주문개수 > 0 ||
-      Boolean(p.기타),
+    (p) => isISODate(p.구매일),
   );
 }
 
 // ── 직접생산 (I:N) ────────────────────────────────────────────
 // 사용자 입력: 날짜/소재/기간예산/생산개수/기타. 수식: 개당단가(M열=예산÷개수).
+// 필터: 날짜 ISO 유효성 + 헤더 차단.
 export async function readProductions(spreadsheetId: string) {
   return readSection<DBProduction>(
     spreadsheetId,
@@ -153,17 +156,13 @@ export async function readProductions(spreadsheetId: string) {
       개당단가: toNum(r[4]),
       기타: toStr(r[5]),
     }),
-    (p) =>
-      Boolean(p.날짜) ||
-      Boolean(p.소재) ||
-      p.기간예산 > 0 ||
-      p.생산개수 > 0 ||
-      Boolean(p.기타),
+    (p) => isISODate(p.날짜),
   );
 }
 
 // ── 현수막 (P:V) ──────────────────────────────────────────────
 // 사용자 입력: 날짜/업체명/도착일/개당단가/주문개수/기타. 수식: 주문금액.
+// 필터: 날짜 ISO 유효성.
 export async function readBanners(spreadsheetId: string) {
   return readSection<DBBanner>(
     spreadsheetId,
@@ -178,18 +177,15 @@ export async function readBanners(spreadsheetId: string) {
       주문금액: toNum(r[5]),
       기타: toStr(r[6]),
     }),
-    (p) =>
-      Boolean(p.날짜) ||
-      Boolean(p.업체명) ||
-      Boolean(p.도착일) ||
-      p.개당단가 > 0 ||
-      p.주문개수 > 0 ||
-      Boolean(p.기타),
+    (p) => isISODate(p.날짜),
   );
 }
 
 // ── 콜·지·기·소 (X:AD) ─────────────────────────────────────────
 // 모든 컬럼이 사용자 입력 (수식 없음).
+// ⚠️ "구분" 컬럼은 dropdown(콜드콜/지인/기고객/소개) data validation으로 인해
+//    빈 row에도 기본값이 미리 박혀있을 수 있음 → 인정 기준에서 제외.
+// 필터: 대표자명 OR 업체명 OR 연락처 중 하나는 반드시 사용자가 입력해야 인정.
 export async function readLeads(spreadsheetId: string) {
   return readSection<DBLead>(
     spreadsheetId,
@@ -205,13 +201,7 @@ export async function readLeads(spreadsheetId: string) {
       조건: toStr(r[6]),
     }),
     (p) =>
-      Boolean(p.구분) ||
-      Boolean(p.접수일) ||
-      Boolean(p.대표자명) ||
-      Boolean(p.업체명) ||
-      Boolean(p.소개처) ||
-      Boolean(p.연락처) ||
-      Boolean(p.조건),
+      Boolean(p.대표자명) || Boolean(p.업체명) || Boolean(p.연락처),
   );
 }
 
