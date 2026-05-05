@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import type { Meeting } from "@/types";
 import { useMonthMeetings } from "@/query/contact-hooks";
 import MonthGrid from "./_components/MonthGrid";
+import TopHeader from "@/components/TopHeader";
 import {
   CARD_ICON,
   meetingStateToCardState,
@@ -74,7 +75,8 @@ export default function CalendarPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white shadow-sm">
+      <TopHeader pageEmoji="📅" pageTitle="캘린더" pageSubtitle="04 업체관리" />
+      <header className="bg-white shadow-sm">
         <div className="flex items-center justify-between px-2 py-3">
           <button
             type="button"

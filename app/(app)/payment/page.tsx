@@ -19,6 +19,7 @@ import {
   useContractPayments,
 } from "@/query/contract-payment-hooks";
 import ContractRow from "./_components/ContractRow";
+import TopHeader from "@/components/TopHeader";
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -89,24 +90,11 @@ export default function PaymentPage() {
 
   return (
     <>
-      {/* 슬림 브랜드 바 */}
-      <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-gray-100 bg-white px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded text-base font-bold text-red-600">
-            $
-          </div>
-          <span className="text-sm font-semibold text-gray-900">
-            세일즈PT 경영일지
-          </span>
-        </div>
-        <span className="text-sm font-medium text-gray-600">5기 이수강</span>
-      </header>
-
-      {/* 페이지 배너 */}
-      <div className="sticky top-12 z-40 flex h-12 items-center gap-3 border-b border-slate-200 bg-slate-100 px-4">
-        <div className="h-5 w-1 rounded-sm bg-slate-500" />
-        <h1 className="text-sm font-semibold text-slate-700">💰 계약수납</h1>
-      </div>
+      <TopHeader
+        pageEmoji="💰"
+        pageTitle="계약수납"
+        pageSubtitle="02 계약수납관리"
+      />
 
       <main className="px-4 pb-[80px] pt-3">
         {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}

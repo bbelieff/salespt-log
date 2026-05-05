@@ -21,6 +21,7 @@ import { useAddContractPayment } from "@/query/contract-payment-hooks";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
+import TopHeader from "@/components/TopHeader";
 import { addDays, fmtISO, parseISO } from "./_lib/week";
 
 function uuid(): string {
@@ -232,6 +233,11 @@ export default function SchedulePage() {
 
   return (
     <>
+      <TopHeader
+        pageEmoji="📋"
+        pageTitle="일정·계약"
+        pageSubtitle="04 업체관리"
+      />
       <WeekHeader
         weekIndex={weekIndex}
         weekStart={weekStart}
