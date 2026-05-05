@@ -59,6 +59,7 @@ export {
 export {
   loadContractPayments,
   addFromContract,
+  syncContractFee,
   patchContractPayment,
   removeContractPayment,
 } from "./contract-payment";

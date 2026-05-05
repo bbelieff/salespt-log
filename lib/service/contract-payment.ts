@@ -11,6 +11,7 @@ import {
   appendFromContract,
   clearRow,
   readAll,
+  syncFeeFromContract,
   updateUserFields,
 } from "@/repo/contract-payment";
 import type { ContractPayment } from "@/types";
@@ -39,6 +40,18 @@ export async function addFromContract(
 ): Promise<{ row: number }> {
   const spreadsheetId = await resolveSheet(email);
   return appendFromContract(spreadsheetId, data);
+}
+
+/**
+ * 04 업체관리의 수임비 수정이 02 계약수납관리!E에 sync되도록.
+ * (계약일+업체명) 매칭 row 없으면 null — 호출자가 처리.
+ */
+export async function syncContractFee(
+  email: string,
+  data: { 계약일: string; 업체명: string; 수임비: number },
+): Promise<{ row: number } | null> {
+  const spreadsheetId = await resolveSheet(email);
+  return syncFeeFromContract(spreadsheetId, data);
 }
 
 /** 사용자 입력 영역(F~AA) patch. */

@@ -17,7 +17,10 @@ import {
   usePatchMeeting,
   useWeekMeetings,
 } from "@/query/contact-hooks";
-import { useAddContractPayment } from "@/query/contract-payment-hooks";
+import {
+  useAddContractPayment,
+  useSyncContractFee,
+} from "@/query/contract-payment-hooks";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -46,6 +49,7 @@ export default function SchedulePage() {
   const patchMeeting = usePatchMeeting();
   const appendMeeting = useAppendMeeting();
   const addContractPayment = useAddContractPayment();
+  const syncContractFee = useSyncContractFee();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -122,6 +126,30 @@ export default function SchedulePage() {
         } else {
           showToast("✓ 저장 완료 (meeting lookup 실패 — fan-out 생략)");
           return;
+        }
+      } else if (
+        wasAlreadyContract &&
+        partial.수임비 !== undefined &&
+        prevMeeting &&
+        partial.수임비 !== prevMeeting.수임비
+      ) {
+        // 이미 계약 상태인 카드의 수임비가 변경된 경우 →
+        // 02 계약수납관리 매칭 row(E열)도 sync update.
+        try {
+          const result = await syncContractFee.mutateAsync({
+            계약일: prevMeeting.미팅날짜,
+            업체명: prevMeeting.업체명,
+            수임비: partial.수임비,
+          });
+          showToast(
+            result.synced
+              ? "✓ 저장 완료 + 계약수납 수임비 sync"
+              : "✓ 저장 완료 (계약수납 매칭 row 없음 — 시트에서 수동 확인)",
+          );
+        } catch (e) {
+          showToast(
+            `⚠ 미팅은 저장됐으나 계약수납 sync 실패: ${(e as Error).message}`,
+          );
         }
       } else {
         showToast("✓ 저장 완료");
