@@ -35,7 +35,7 @@ export default function WeekHeader({
   const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm">
+    <header className="sticky top-24 z-30 bg-white shadow-sm">
       <div className="flex items-center justify-between px-2 py-3">
         <button
           type="button"

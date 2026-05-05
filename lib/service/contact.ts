@@ -80,11 +80,13 @@ export async function loadDay(
   const courseStart = await readCourseStart(spreadsheetId);
   const targetDate = parseISO(date);
   const week = weekIndexOf(targetDate, courseStart);
-  if (week < 1 || week > 10) {
-    throw new Error(`[contact] 편집 가능 기간 외: ${date}`);
-  }
+  // 편집 가능 기간(1~10주) 밖이면 4지표는 빈 값으로, 미팅만 read.
+  // 조회는 항상 가능, 쓰기는 saveContactMetrics 단계에서 가드.
+  const inRange = week >= 1 && week <= 10;
 
-  const { rows } = await readWeek(spreadsheetId, week);
+  const { rows } = inRange
+    ? await readWeek(spreadsheetId, week)
+    : { rows: [] };
   // ⭐ 컨택관리 탭은 "예약일(컨택한 날)" 기준으로 미팅 조회.
   // 4/28에 컨택해서 4/29에 잡힌 미팅도 4/28 view에 보여야 함.
   // 미팅날짜 기준 조회는 일정·계약 탭(PR 3) 몫.
@@ -187,10 +189,10 @@ export async function loadWeekMeetings(
   const spreadsheetId = await resolveSheet(email);
   const courseStart = await readCourseStart(spreadsheetId);
   const wsDate = parseISO(weekStart);
+  // 편집 가능 기간 가드는 쓰기 시점(saveContactMetrics/appendNewMeeting)에만 적용.
+  // 조회는 항상 가능 — findByDateRange는 week 인덱스에 의존하지 않아 안전.
+  // weekIndex는 표시용이므로 음수/10 초과도 그대로 노출.
   const week = weekIndexOf(wsDate, courseStart);
-  if (week < 1 || week > 10) {
-    throw new Error(`[schedule] 편집 가능 기간 외: ${weekStart}`);
-  }
 
   // 7일 ISO 날짜 생성
   const dates: string[] = [];
