@@ -56,6 +56,8 @@ export default function MeetingResultCard({
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
+  /** 계약/완료 상태에서도 수임비/계약조건/사유를 다시 편집할 수 있게 하는 토글. */
+  const [editMode, setEditMode] = useState(false);
 
   const isCanceled = state === "canceled";
   const titleCls = isCanceled
@@ -89,6 +91,7 @@ export default function MeetingResultCard({
       계약조건: terms,
     });
     setAction(null);
+    setEditMode(false);
     setOpen(false);
   };
   // 미팅사유 누적: 기존 값이 있으면 "회차N: " prefix 붙여 줄바꿈으로 append.
@@ -191,18 +194,27 @@ export default function MeetingResultCard({
           </div>
 
           {/* 결과 정보 (이미 처리된 카드에 한해 표시) */}
-          {state !== "reserved" && (state === "contract" || meeting.미팅사유) && (
+          {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">
               {state === "contract" && (
                 <>
-                  <div className="text-gray-500">
-                    수임비:{" "}
-                    <b
-                      className="text-green-700"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-gray-500">
+                      수임비:{" "}
+                      <b
+                        className="text-green-700"
+                        style={{ fontVariantNumeric: "tabular-nums" }}
+                      >
+                        ₩{fmtMoney(meeting.수임비)}
+                      </b>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditMode(true)}
+                      className="shrink-0 rounded-md border border-green-300 bg-white px-2 py-0.5 text-[11px] font-medium text-green-700 hover:bg-green-50"
                     >
-                      ₩{fmtMoney(meeting.수임비)}
-                    </b>
+                      ✏️ 수정
+                    </button>
                   </div>
                   {meeting.계약조건 && (
                     <div className="mt-0.5 text-gray-600">
@@ -217,6 +229,16 @@ export default function MeetingResultCard({
                 </div>
               )}
             </div>
+          )}
+
+          {/* 계약 카드 수정 모드 — ContractForm 재사용 (수임비/계약조건 patch) */}
+          {state === "contract" && editMode && (
+            <ContractForm
+              initialFee={meeting.수임비}
+              initialTerms={meeting.계약조건}
+              onConfirm={handleContract}
+              pending={pending}
+            />
           )}
 
           {/* 일정 수정 details (예약 카드만) */}

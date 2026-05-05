@@ -17,6 +17,16 @@ export default {
     "border-l-teal-500", "border-l-cyan-500", "border-l-fuchsia-500", "border-l-green-500",
   ],
   theme: {
+    // 모바일 우선 브레이크포인트 — display-reference-v2.html 매핑
+    // (수강생 기기: iPhone 12~17 / Galaxy S21~S26 = 360~480px)
+    screens: {
+      xs: "360px", // Galaxy S22~S26 기본 (최소 폭)
+      sm: "390px", // iPhone 12~16, 16e, 17e
+      md: "402px", // iPhone 17 / 17 Pro / 16 Pro
+      lg: "430px", // iPhone Pro Max / Plus
+      xl: "480px", // Galaxy S25/S26 Ultra (QHD+)
+      "2xl": "768px", // 태블릿 진입
+    },
     extend: {
       fontFamily: {
         sans: ["Pretendard", "ui-sans-serif", "system-ui", "sans-serif"],
