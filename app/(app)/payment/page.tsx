@@ -73,7 +73,12 @@ export default function PaymentPage() {
   };
 
   const rows = list.data?.rows ?? [];
-  // 총매출 = 수임비 + 수수료(=Q+W+AC = 슬롯별 승인금액 합) — v2 SSOT
+  // 단위는 모두 원. 단어 약속:
+  //   수임비합     = sum(cp.수임비)            — 04 업체관리!L에서 동기화된 계약 금액
+  //   수납액합     = sum(슬롯별 수납액 = Q+W+AC) — "수수료" (= 실제 입금된 부가 수수료) 합
+  //   승인금액합   = sum(슬롯별 승인금액)        — 진행 중인 수납 약정 총액 (목표)
+  //   총매출       = 수임비합 + 수납액합        — v2 SSOT (수수료=수납액합)
+  //   수납진척     = 수납액합 / 승인금액합
   const totalReceived = rows.reduce(
     (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
     0,
@@ -83,8 +88,8 @@ export default function PaymentPage() {
       s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
     0,
   );
-  const totalRevenue =
-    rows.reduce((s, cp) => s + (cp.수임비 || 0), 0) + totalApproved;
+  const totalContract = rows.reduce((s, cp) => s + (cp.수임비 || 0), 0);
+  const totalRevenue = totalContract + totalReceived;
   const overallPct =
     totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
 

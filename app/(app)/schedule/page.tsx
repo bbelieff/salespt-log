@@ -81,6 +81,13 @@ export default function SchedulePage() {
   ) => {
     setPendingId(id);
     try {
+      // patch 전에 현재 미팅 상태를 lookup — fan-out 중복 방지에 필요.
+      // (예약→계약 전환에만 새 row 생성, 계약→계약 수정 시는 skip)
+      const prevMeeting = weekQuery.data?.daysByMeetingDate
+        .flatMap((d) => d.meetings)
+        .find((m) => m.id === id);
+      const wasAlreadyContract = prevMeeting?.상태 === "계약";
+
       await patchMeeting.mutateAsync({
         date: "", // 일정·계약 탭에선 day-key 무관
         weekStart,
@@ -88,9 +95,13 @@ export default function SchedulePage() {
         partial,
       });
 
-      // Fan-out: 계약 액션이면 02 계약수납관리에 row 자동 생성
-      // 04 업체관리 patch 성공 후에만 시도. 실패 시 안내만 (메인 흐름 유지).
-      if (partial.상태 === "계약" && weekQuery.data) {
+      // Fan-out: NEW 계약 액션일 때만 02 계약수납관리에 row 자동 생성.
+      // 이미 계약 상태였던 카드의 수임비/조건 수정은 fan-out 안 함 (중복 row 방지).
+      if (
+        partial.상태 === "계약" &&
+        !wasAlreadyContract &&
+        weekQuery.data
+      ) {
         const meeting = weekQuery.data.daysByMeetingDate
           .flatMap((d) => d.meetings)
           .find((m) => m.id === id);

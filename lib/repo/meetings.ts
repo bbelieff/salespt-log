@@ -111,12 +111,18 @@ function meetingToRow(m: Meeting): (string | number | boolean)[] {
   row[COL.channel] = m.channel;
   row[COL.업체명] = m.업체명;
   row[COL.장소] = m.장소;
-  row[COL.예약비고] = m.예약비고 ?? "";
+  // 예약비고도 자유 텍스트 — plain text 강제.
+  row[COL.예약비고] = m.예약비고 ? `'${m.예약비고}` : "";
   row[COL.상태] = m.상태;
   row[COL.계약여부] = m.계약여부;
   row[COL.수임비] = m.수임비;
-  row[COL.미팅사유] = m.미팅사유 ?? "";
-  row[COL.계약조건] = m.계약조건 ?? "";
+  // 미팅사유도 자유 텍스트 — 동일하게 plain text 강제 (apostrophe prefix).
+  row[COL.미팅사유] = m.미팅사유 ? `'${m.미팅사유}` : "";
+  // 계약조건은 자유 텍스트 — "5%" 같은 문자열이 USER_ENTERED 모드에서 0.05(백분율)로
+  // 자동 변환되는 것을 막기 위해 apostrophe(') prefix로 plain text 강제.
+  // Sheets는 ' 시작 문자열을 텍스트로 저장하고, 화면 표시 시 ' 자체는 노출하지 않음.
+  // 빈 문자열은 그대로 둠 (apostrophe만 박혀있으면 안 보이지만 의미상 빈 셀이 자연스러움).
+  row[COL.계약조건] = m.계약조건 ? `'${m.계약조건}` : "";
   row[COL.previousMeetingId] = m.previousMeetingId ?? "";
   // 표시상세/표시요약/계약합성라인/주차는 시트 수식이 채움 → 빈 문자열 유지
   return row;
