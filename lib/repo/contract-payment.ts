@@ -1,28 +1,31 @@
 /**
- * Layer: repo — 02 계약수납관리 시트 I/O.
+ * Layer: repo — 02 계약수납관리 시트 I/O (v2: 30컬럼 A~AD).
  *
  * 1행 = 그룹 헤더, 2행 = 필드 헤더, 3행~ = 데이터.
- * 컬럼 매핑 (SSOT: docs/domains/sheet-structure.md §4):
+ * 컬럼 매핑 (SSOT: docs/domains/sheet-structure.md §4 v2):
  *   A: 공란
  *   B: 순번 (자동 — read만, append 시 Sheet rows 인덱스 그대로)
- *   C: 계약일       D: 업체명       E: 수임비          (자동 연동, 계약 액션 시점)
- *   F~L: 체크박스 7개 (공동인증서/임대차계약서/신분증/드라이브업로드/사업계획서초안발송/컨설팅5종서류발송/플러그이관)
- *   M~Q: 수납1 (진행기관/현황/승인금액/수납액/수납일)
- *   R~V: 수납2
- *   W~AA: 수납3
+ *   C: 계약일       D: 업체명       E: 수임비          (자동 연동, 04 업체관리 D/G/L에서)
+ *   F~L: 체크박스 7개 ("ㅇ"/"" 표기, true→"ㅇ" / false→"")
+ *        공동인증서/임대차계약서/신분증/드라이브업로드/사업계획서초안발송/컨설팅5종서류발송/플러그이관
+ *   M~R: 수납1 (진행기관/진행률/현황/승인금액/수납액/수납일)
+ *   S~X: 수납2
+ *   Y~AD: 수납3
+ *   진행률 컬럼(N/T/Z): 시트 data validation = "0%/20%/40%/60%/80%/100%" 텍스트 dropdown
  *
  * 가드레일:
  *   • 1행·2행(헤더)은 절대 쓰지 않음 — append/update는 row≥3.
  *   • B(순번)는 시트 수식 또는 사용자가 직접 — 앱은 빈 문자열 send.
+ *   • 수수료는 별도 컬럼이 아니라 Q+W+AC(슬롯별 승인금액 합)의 클라이언트 파생값.
  */
 import { SHEET_RANGES } from "@/config";
-import { ContractPayment, type PaymentSlot } from "@/types";
+import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { sheetsClient } from "./sheets-client";
 
 const CFG = SHEET_RANGES.contractPayment;
 const TAB = CFG.tab;
 const FIRST_DATA_ROW = CFG.firstDataRow;
-const RANGE_ALL = `${tabRef(TAB)}!A${FIRST_DATA_ROW}:AA`;
+const RANGE_ALL = `${tabRef(TAB)}!A${FIRST_DATA_ROW}:AD`;
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -78,7 +81,36 @@ function toStr(v: unknown): string {
   return String(v);
 }
 
-// ── A~AA 한 행을 ContractPayment 객체로 ───────────────────────
+/** 체크박스 write — true→"ㅇ", false→"". 시트의 한글 표기 유지. */
+function boolToCheck(b: boolean): string {
+  return b ? "ㅇ" : "";
+}
+
+/** 진행률 read — 시트 셀이 "100%"/"60%" 텍스트 또는 숫자(0.6)일 수 있음.
+ *  Progress enum 값으로 정규화. unmatched는 빈 문자열로. */
+function toProgress(v: unknown): Progress {
+  if (typeof v === "number" && Number.isFinite(v)) {
+    // 0~1 범위 (셀 서식 = 백분율) 또는 0~100 범위 모두 허용
+    const pct = v <= 1 ? Math.round(v * 100) : Math.round(v);
+    const candidate = `${pct}%`;
+    const parsed = Progress.safeParse(candidate);
+    return parsed.success ? parsed.data : "";
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (s === "") return "";
+    // "100%" 그대로 일치
+    const parsed = Progress.safeParse(s);
+    if (parsed.success) return parsed.data;
+    // "100" → "100%" 보정
+    const numOnly = Progress.safeParse(`${s}%`);
+    if (numOnly.success) return numOnly.data;
+    return "";
+  }
+  return "";
+}
+
+// ── A~AD 한 행을 ContractPayment 객체로 ───────────────────────
 function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
   // 모든 셀이 비어있으면 skip
   const hasContent = r.some(
@@ -86,13 +118,15 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
   );
   if (!hasContent) return null;
 
-  // 컬럼 인덱스 (A=0, B=1, C=2, ..., AA=26)
+  // 컬럼 인덱스 (A=0, B=1, C=2, ..., AA=26, AD=29)
+  // v2 슬롯: M=12 / S=18 / Y=24, 각 6필드.
   const slot = (start: number): PaymentSlot => ({
     진행기관: toStr(r[start]),
-    현황: toStr(r[start + 1]),
-    승인금액: toNum(r[start + 2]),
-    수납액: toNum(r[start + 3]),
-    수납일: serialToISODate(r[start + 4]),
+    진행률: toProgress(r[start + 1]),
+    현황: toStr(r[start + 2]),
+    승인금액: toNum(r[start + 3]),
+    수납액: toNum(r[start + 4]),
+    수납일: serialToISODate(r[start + 5]),
   });
 
   const parsed = ContractPayment.safeParse({
@@ -107,45 +141,49 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
     사업계획서초안발송: toBool(r[9]),
     컨설팅5종서류발송: toBool(r[10]),
     플러그이관: toBool(r[11]),
-    수납1: slot(12), // M=12
-    수납2: slot(17), // R=17
-    수납3: slot(22), // W=22
+    수납1: slot(12), // M=12 (M~R)
+    수납2: slot(18), // S=18 (S~X)
+    수납3: slot(24), // Y=24 (Y~AD)
   });
   return parsed.success ? parsed.data : null;
 }
 
-// ── ContractPayment → A~AA 셀 배열 ────────────────────────────
+// ── ContractPayment → A~AD 셀 배열 (30 컬럼) ──────────────────
 function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
-  const out = new Array(27).fill(""); // A~AA
+  const out = new Array(30).fill(""); // A~AD = 30 컬럼
   // A 공란, B 순번 — 빈 문자열 (시트 자동 또는 사용자 책임)
   out[2] = cp.계약일;
   out[3] = cp.업체명;
   out[4] = cp.수임비;
-  out[5] = cp.공동인증서;
-  out[6] = cp.임대차계약서;
-  out[7] = cp.신분증;
-  out[8] = cp.드라이브업로드;
-  out[9] = cp.사업계획서초안발송;
-  out[10] = cp.컨설팅5종서류발송;
-  out[11] = cp.플러그이관;
-  // 수납1 (M~Q = 12~16)
+  // F~L 체크박스 7개 — "ㅇ"/"" 표기
+  out[5] = boolToCheck(cp.공동인증서);
+  out[6] = boolToCheck(cp.임대차계약서);
+  out[7] = boolToCheck(cp.신분증);
+  out[8] = boolToCheck(cp.드라이브업로드);
+  out[9] = boolToCheck(cp.사업계획서초안발송);
+  out[10] = boolToCheck(cp.컨설팅5종서류발송);
+  out[11] = boolToCheck(cp.플러그이관);
+  // 수납1 (M~R = 12~17): 진행기관/진행률/현황/승인금액/수납액/수납일
   out[12] = cp.수납1.진행기관;
-  out[13] = cp.수납1.현황;
-  out[14] = cp.수납1.승인금액;
-  out[15] = cp.수납1.수납액;
-  out[16] = cp.수납1.수납일;
-  // 수납2 (R~V = 17~21)
-  out[17] = cp.수납2.진행기관;
-  out[18] = cp.수납2.현황;
-  out[19] = cp.수납2.승인금액;
-  out[20] = cp.수납2.수납액;
-  out[21] = cp.수납2.수납일;
-  // 수납3 (W~AA = 22~26)
-  out[22] = cp.수납3.진행기관;
-  out[23] = cp.수납3.현황;
-  out[24] = cp.수납3.승인금액;
-  out[25] = cp.수납3.수납액;
-  out[26] = cp.수납3.수납일;
+  out[13] = cp.수납1.진행률;
+  out[14] = cp.수납1.현황;
+  out[15] = cp.수납1.승인금액;
+  out[16] = cp.수납1.수납액;
+  out[17] = cp.수납1.수납일;
+  // 수납2 (S~X = 18~23)
+  out[18] = cp.수납2.진행기관;
+  out[19] = cp.수납2.진행률;
+  out[20] = cp.수납2.현황;
+  out[21] = cp.수납2.승인금액;
+  out[22] = cp.수납2.수납액;
+  out[23] = cp.수납2.수납일;
+  // 수납3 (Y~AD = 24~29)
+  out[24] = cp.수납3.진행기관;
+  out[25] = cp.수납3.진행률;
+  out[26] = cp.수납3.현황;
+  out[27] = cp.수납3.승인금액;
+  out[28] = cp.수납3.수납액;
+  out[29] = cp.수납3.수납일;
   return out;
 }
 
@@ -211,7 +249,7 @@ export async function appendFromContract(
   return { row };
 }
 
-/** 사용자 입력 영역(F~AA) update — 한 row 통째로. */
+/** 사용자 입력 영역(F~AD) update — 한 row 통째로. */
 export async function updateUserFields(
   spreadsheetId: string,
   cp: ContractPayment,
@@ -221,9 +259,9 @@ export async function updateUserFields(
     throw new Error("[contract-payment] row 번호 필수 (≥3)");
   }
   const fullRow = cpToRow(validated);
-  // F~AA = idx 5~26
-  const userArea = fullRow.slice(5, 27);
-  const range = `${tabRef(TAB)}!F${validated.row}:AA${validated.row}`;
+  // F~AD = idx 5~29 (25 columns: 7 체크박스 + 18 슬롯 필드)
+  const userArea = fullRow.slice(5, 30);
+  const range = `${tabRef(TAB)}!F${validated.row}:AD${validated.row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range,
@@ -232,7 +270,7 @@ export async function updateUserFields(
   });
 }
 
-/** row 식별로 한 row clear (A~AA 모두 비움). */
+/** row 식별로 한 row clear (A~AD 모두 비움). */
 export async function clearRow(
   spreadsheetId: string,
   row: number,
@@ -240,7 +278,7 @@ export async function clearRow(
   if (row < FIRST_DATA_ROW) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(TAB)}!A${row}:AA${row}`;
+  const range = `${tabRef(TAB)}!A${row}:AD${row}`;
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,
