@@ -68,8 +68,11 @@ export default function MeetingResultCard({
 
   const feeSummary =
     state === "contract" && meeting.수임비 > 0 ? (
-      <span className="shrink-0 text-xs font-bold text-green-700">
-        {fmtMoney(meeting.수임비)}만원
+      <span
+        className="shrink-0 text-xs font-bold text-green-700"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        ₩{fmtMoney(meeting.수임비)}
       </span>
     ) : null;
 
@@ -194,8 +197,11 @@ export default function MeetingResultCard({
                 <>
                   <div className="text-gray-500">
                     수임비:{" "}
-                    <b className="text-green-700">
-                      {fmtMoney(meeting.수임비)}만원
+                    <b
+                      className="text-green-700"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      ₩{fmtMoney(meeting.수임비)}
                     </b>
                   </div>
                   {meeting.계약조건 && (

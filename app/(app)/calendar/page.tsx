@@ -95,8 +95,11 @@ export default function CalendarPage() {
             {monthSummary && monthSummary.total > 0 && (
               <div className="mt-0.5 text-xs text-gray-400">
                 미팅 {monthSummary.total}건 · 계약 {monthSummary.contract}건 ·{" "}
-                <span className="font-semibold text-green-700">
-                  {fmtMoney(monthSummary.fee)}만원
+                <span
+                  className="font-semibold text-green-700"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  ₩{fmtMoney(monthSummary.fee)}
                 </span>
               </div>
             )}
@@ -180,8 +183,11 @@ export default function CalendarPage() {
                           {m.장소}
                         </span>
                         {state === "contract" && m.수임비 > 0 && (
-                          <span className="shrink-0 text-xs font-bold text-green-700">
-                            {fmtMoney(m.수임비)}만원
+                          <span
+                            className="shrink-0 text-xs font-bold text-green-700"
+                            style={{ fontVariantNumeric: "tabular-nums" }}
+                          >
+                            ₩{fmtMoney(m.수임비)}
                           </span>
                         )}
                       </li>

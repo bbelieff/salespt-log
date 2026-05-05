@@ -61,7 +61,7 @@ export const Meeting = z.object({
   예약비고: z.string().max(500).default(""), // I
   상태: MeetingState.default("예약"), // J
   계약여부: z.boolean().default(false), // K — J="계약"과 동기화 (호환용)
-  수임비: z.number().int().nonnegative().default(0), // L (만원)
+  수임비: z.number().int().nonnegative().default(0), // L (원) — v2 단위 통일
   미팅사유: z.string().default(""), // M `업체명, 이유` 1줄
   계약조건: z.string().default(""), // P (계약 시만)
 

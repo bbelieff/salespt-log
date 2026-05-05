@@ -35,8 +35,11 @@ export default function SummaryBar({ meetings }: Props) {
       </div>
       <div className="mt-2.5 flex items-center justify-between rounded-xl bg-green-50 px-3 py-2 text-sm">
         <span className="font-semibold text-green-800">💰 수임비 합계</span>
-        <span className="text-base font-bold text-green-700">
-          {fmtMoney(fee)}만원
+        <span
+          className="text-base font-bold text-green-700"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          ₩{fmtMoney(fee)}
         </span>
       </div>
     </div>
