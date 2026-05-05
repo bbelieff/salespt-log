@@ -112,11 +112,16 @@ function toProgress(v: unknown): Progress {
 
 // ── A~AD 한 행을 ContractPayment 객체로 ───────────────────────
 function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
-  // 모든 셀이 비어있으면 skip
-  const hasContent = r.some(
-    (c) => c !== undefined && c !== null && String(c).trim() !== "",
-  );
-  if (!hasContent) return null;
+  // C/D/E (계약일/업체명/수임비) 중 하나라도 의미있게 채워진 row만 인정.
+  // 시트에 미리 박혀있는 F~L 체크박스 data validation의 기본값(FALSE)이나
+  // M~AD 슬롯의 default 0 으로는 row 인정 X — "(업체명 없음)" phantom row 방지.
+  // (round-trip 검증에서 발견된 이슈 — fix/contract-payment-empty-rows)
+  const 계약일Cell = toStr(r[2]).trim();
+  const 업체명Cell = toStr(r[3]).trim();
+  const 수임비Cell = toNum(r[4]);
+  const hasMeaningfulContent =
+    계약일Cell !== "" || 업체명Cell !== "" || 수임비Cell > 0;
+  if (!hasMeaningfulContent) return null;
 
   // 컬럼 인덱스 (A=0, B=1, C=2, ..., AA=26, AD=29)
   // v2 슬롯: M=12 / S=18 / Y=24, 각 6필드.
