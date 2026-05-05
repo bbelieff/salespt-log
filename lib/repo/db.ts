@@ -260,15 +260,19 @@ const phantomLead = (r: unknown[]) =>
 interface SectionWriteSpec {
   startCol: string;
   endCol: string;
-  /** 시트 수식이 자동 계산하는 컬럼의 0-based 인덱스 (값 대신 빈 문자열 보냄). */
-  formulaIndices: number[];
+  /** idx → (row) → "=D4*E4" 수식 문자열. web이 직접 박아넣어 시트 템플릿 의존 제거. */
+  formulas: Record<number, (row: number) => string>;
 }
 
+// 매입DB.F=D×E / 직접생산.M=K÷L (IFERROR) / 현수막.U=S×T / 콜·지·기·소: 수식 없음
 const SPEC = {
-  매입DB: { startCol: "B", endCol: "G", formulaIndices: [4] }, // 주문금액 = idx 4 (E)
-  직접생산: { startCol: "I", endCol: "N", formulaIndices: [4] }, // 개당단가 = idx 4 (M)
-  현수막: { startCol: "P", endCol: "V", formulaIndices: [5] }, // 주문금액 = idx 5 (U)
-  콜지기소: { startCol: "X", endCol: "AD", formulaIndices: [] },
+  매입DB: { startCol: "B", endCol: "G",
+    formulas: { 4: (r: number) => `=D${r}*E${r}` } },
+  직접생산: { startCol: "I", endCol: "N",
+    formulas: { 4: (r: number) => `=IFERROR(K${r}/L${r},0)` } },
+  현수막: { startCol: "P", endCol: "V",
+    formulas: { 5: (r: number) => `=S${r}*T${r}` } },
+  콜지기소: { startCol: "X", endCol: "AD", formulas: {} },
 } as const satisfies Record<string, SectionWriteSpec>;
 
 async function writeRow(
@@ -277,10 +281,11 @@ async function writeRow(
   row: number,
   values: (string | number)[],
 ): Promise<void> {
-  // 수식 컬럼은 빈 문자열로 (시트 수식 보존)
-  const out = values.map((v, i) =>
-    spec.formulaIndices.includes(i) ? "" : v,
-  );
+  // 수식 컬럼은 spec.formulas에 정의된 수식 문자열로 치환 (시트 템플릿 누락 방지).
+  const out = values.map((v, i) => {
+    const formulaFor = spec.formulas[i];
+    return formulaFor ? formulaFor(row) : v;
+  });
   const range = `${T}!${spec.startCol}${row}:${spec.endCol}${row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
