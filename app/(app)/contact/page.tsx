@@ -22,6 +22,7 @@ import {
 import type { ChannelDailyRowMetrics } from "@/service";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
+import TopHeader from "@/components/TopHeader";
 import MeetingSlotItem, {
   type NewSlot,
 } from "./_components/MeetingSlotItem";
@@ -380,6 +381,7 @@ export default function ContactPage() {
 
   return (
     <>
+      <TopHeader pageEmoji="📞" pageTitle="컨택관리" pageSubtitle="01 영업관리" />
       <WeekHeader
         weekIndex={weekIndex}
         courseStart={courseStart}

@@ -106,9 +106,11 @@ export const SHEET_RANGES = {
   // SSOT: docs/domains/sheet-structure.md §4 v2
   contractPayment: {
     tab: "02 계약수납관리",
-    headerRows: 2, // 1=그룹 헤더, 2=필드 헤더, 3행~ = 데이터
-    firstDataRow: 3,
-    range: "A3:AD", // 데이터 영역 (v2: AA→AD, +3 컬럼 = 슬롯당 진행률 1개 추가)
+    // 1~5행 = 헤더 + 예시/안내 row (실제 시트 검증 결과 — 사용자 ★★★세일즈PT 양식),
+    // 6행~ = 실제 데이터. headerRows·firstDataRow 변경 시 같이 업데이트.
+    headerRows: 5,
+    firstDataRow: 6,
+    range: "A6:AD", // 데이터 영역 (v2: AA→AD, +3 컬럼 = 슬롯당 진행률 1개 추가)
     // 자동 연동 컬럼 — 계약 액션 시 04 업체관리에서 채움 (D/G/L → C/D/E)
     autoCols: { 계약일: "C", 업체명: "D", 수임비: "E" },
     // 7 체크박스 ("ㅇ" / "" 표기)

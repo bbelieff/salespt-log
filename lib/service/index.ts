@@ -62,3 +62,6 @@ export {
   patchContractPayment,
   removeContractPayment,
 } from "./contract-payment";
+
+// 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)
+export { loadMe, type MeProfile } from "./me";

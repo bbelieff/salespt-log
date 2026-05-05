@@ -28,6 +28,7 @@ import ChannelTabs from "./_components/ChannelTabs";
 import { CostSummary, LeadSummary } from "./_components/SummaryCard";
 import RowList from "./_components/RowList";
 import RowForm from "./_components/RowForm";
+import TopHeader from "@/components/TopHeader";
 import ConfirmModal from "./_components/ConfirmModal";
 
 type BackendRow = { row: number } & Record<string, unknown>;
@@ -199,24 +200,7 @@ export default function DbPage() {
 
   return (
     <>
-      {/* 슬림 브랜드 바 */}
-      <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-gray-100 bg-white px-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded text-base font-bold text-red-600">
-            $
-          </div>
-          <span className="text-sm font-semibold text-gray-900">
-            세일즈PT 경영일지
-          </span>
-        </div>
-        <span className="text-sm font-medium text-gray-600">5기 이수강</span>
-      </header>
-
-      {/* 페이지 배너 */}
-      <div className="sticky top-12 z-40 flex h-12 items-center gap-3 border-b border-slate-200 bg-slate-100 px-4">
-        <div className="h-5 w-1 rounded-sm bg-slate-500" />
-        <h1 className="text-sm font-semibold text-slate-700">📊 DB관리</h1>
-      </div>
+      <TopHeader pageEmoji="📊" pageTitle="DB관리" pageSubtitle="03 DB관리" />
 
       <main className="px-4 pb-[80px] pt-3">
         <OverallCard
