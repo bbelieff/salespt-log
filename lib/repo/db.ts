@@ -22,13 +22,8 @@ import { sheetsClient } from "./sheets-client";
 const TAB = SHEET_RANGES.dbManagement.tab;
 const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
 const HEADER_ROW = SHEET_RANGES.dbManagement.headerRow;
-const FIRST_DATA_ROW = HEADER_ROW + 1; // 매입DB/직접생산/현수막 = 2
-
-/** 섹션별 데이터 시작 row override.
- *  실제 시트 검증 결과 (★★★세일즈PT 양식, 2026-05-06):
- *  - 매입DB / 직접생산 / 현수막 = 2 (헤더 1 + 데이터 2~)
- *  - 콜·지·기·소 = 4 (헤더 + 안내 행 1~3, 데이터 4~) */
-const FIRST_DATA_ROW_LEAD = 4;
+// 실제 시트 검증(★★★세일즈PT 양식, 2026-05-06): 4채널 모두 1~3행 헤더, 4행~ 데이터.
+const FIRST_DATA_ROW = HEADER_ROW + 1;
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -210,7 +205,6 @@ export async function readLeads(spreadsheetId: string) {
     }),
     (p) =>
       Boolean(p.대표자명) || Boolean(p.업체명) || Boolean(p.연락처),
-    FIRST_DATA_ROW_LEAD,
   );
 }
 
@@ -392,7 +386,6 @@ export async function appendLead(
     SPEC.콜지기소.startCol,
     SPEC.콜지기소.endCol,
     phantomLead,
-    FIRST_DATA_ROW_LEAD,
   );
   if (needInsert)
     throw new Error(`[db.ts] 콜·지·기·소 영역 가득 — 합계 행을 옮겨주세요.`);

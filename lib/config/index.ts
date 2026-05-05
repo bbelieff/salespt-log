@@ -140,7 +140,9 @@ export const SHEET_RANGES = {
   // SSOT: docs/domains/sheet-structure.md §5
   dbManagement: {
     tab: "03 DB관리",
-    headerRow: 1,
+    // 1~3행 = 섹션 타이틀 + 컬럼 헤더 + 안내 row, 4행~ = 실제 데이터 (4채널 동일).
+    // FIRST_DATA_ROW = headerRow + 1 = 4.
+    headerRow: 3,
     // 데이터 영역 상한 (사용자가 합계 행을 row 100 이후에 두면 모두 데이터로 인식).
     // 너무 크게 잡으면 read 비용↑, 너무 작게 잡으면 합계 행 만남.
     maxRow: 100,
