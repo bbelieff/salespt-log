@@ -1,16 +1,17 @@
 /**
  * MonthGrid — 6×7 캘린더 그리드.
- * 각 셀: 날짜 + 그 날 미팅 dot/카운트.
+ *
+ * 정본: docs/design/prototypes/calendar-monthly.html (Google Calendar 스타일 pill).
+ * 각 셀: 날짜 + 그 날 미팅 pill 최대 3개 (시간 + 업체명) + "+N" 오버플로.
  * 클릭 시 셀 강조 + onSelectDate(date).
  */
 "use client";
 
-import type { Meeting } from "@/types";
+import type { Channel, Meeting } from "@/types";
 import {
   buildMonthGrid,
   dayLabelHeader,
 } from "../_lib/month";
-import { meetingStateToCardState } from "../_lib/state-map";
 
 interface Props {
   yyyyMM: string;
@@ -20,6 +21,16 @@ interface Props {
   meetingsByDate: Map<string, Meeting[]>;
   onSelectDate: (date: string) => void;
 }
+
+const VISIBLE_PILL_COUNT = 3;
+
+/** 채널별 pill 색상 — prototype의 PILL_CLASS 매핑. */
+const PILL_CLS: Record<Channel, string> = {
+  매입DB: "bg-blue-100 text-blue-700",
+  직접생산: "bg-green-100 text-green-700",
+  현수막: "bg-amber-100 text-amber-700",
+  "콜·지·기·소": "bg-purple-100 text-purple-700",
+};
 
 export default function MonthGrid({
   yyyyMM,
@@ -50,76 +61,64 @@ export default function MonthGrid({
       {/* 6 weeks × 7 days = 42 cells */}
       <div className="grid grid-cols-7 gap-0.5">
         {cells.map((c) => {
-          const meetings = meetingsByDate.get(c.date) ?? [];
-          const count = meetings.length;
+          // 변경/취소 제외 + 시간 오름차순 정렬 (prototype 사양).
+          const dayMeetings = (meetingsByDate.get(c.date) ?? [])
+            .filter((m) => m.상태 !== "변경" && m.상태 !== "취소")
+            .sort((a, b) => a.미팅시간.localeCompare(b.미팅시간));
+          const visible = dayMeetings.slice(0, VISIBLE_PILL_COUNT);
+          const overflow = dayMeetings.length - visible.length;
+
           const isToday = c.date === todayISO;
           const isSelected = c.date === selectedDate;
           const dimmed = !c.inMonth;
-
-          // 미팅 상태별 dot 색 (최대 4개까지 표시)
-          const dots = meetings.slice(0, 4).map((m) => {
-            const s = meetingStateToCardState(m.상태);
-            const cls =
-              s === "contract"
-                ? "bg-green-600"
-                : s === "done"
-                  ? "bg-orange-400"
-                  : s === "rescheduled"
-                    ? "bg-purple-500"
-                    : s === "canceled"
-                      ? "bg-red-500"
-                      : "bg-amber-400";
-            return cls;
-          });
+          const hasMeetings = dayMeetings.length > 0;
 
           const cellBg = isSelected
-            ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
+            ? "bg-blue-50 ring-2 ring-blue-500"
             : isToday
-              ? "bg-blue-50 ring-2 ring-blue-400"
-              : count > 0
+              ? "bg-blue-50/60 ring-1 ring-blue-300"
+              : hasMeetings
                 ? "bg-white"
                 : "bg-gray-50";
 
-          const dayCls = isSelected
-            ? "text-white"
-            : dimmed
-              ? "text-gray-300"
-              : c.dow === 0
-                ? "text-red-500"
-                : c.dow === 6
-                  ? "text-blue-500"
-                  : "text-gray-800";
+          const dayCls = dimmed
+            ? "text-gray-300"
+            : c.dow === 0
+              ? "text-red-500"
+              : c.dow === 6
+                ? "text-blue-500"
+                : "text-gray-800";
 
           return (
             <button
               key={c.date}
               type="button"
               onClick={() => onSelectDate(c.date)}
-              className={`relative flex aspect-square min-h-12 flex-col items-center justify-start gap-1 rounded-lg p-1 transition-all active:scale-95 ${cellBg}`}
+              className={`relative flex min-h-[68px] flex-col items-stretch gap-0.5 overflow-hidden rounded-md p-1 text-left transition-all active:scale-[0.98] ${cellBg}`}
             >
               <span
-                className={`text-xs font-bold leading-none ${dayCls}`}
+                className={`text-[11px] font-bold leading-none ${dayCls}`}
               >
                 {c.day}
               </span>
-              {count > 0 && (
-                <div className="flex flex-wrap items-center justify-center gap-0.5">
-                  {dots.map((cls, i) => (
-                    <span
-                      key={i}
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        isSelected ? "bg-white" : cls
-                      }`}
-                    />
-                  ))}
-                  {count > 4 && (
-                    <span
-                      className={`text-[10px] font-bold leading-none ${
-                        isSelected ? "text-white" : "text-gray-500"
-                      }`}
+              {c.inMonth && hasMeetings && (
+                <div className="flex flex-col gap-0.5">
+                  {visible.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 text-[9px] leading-tight ${
+                        PILL_CLS[m.channel]
+                      } ${m.상태 === "완료" ? "opacity-70" : ""}`}
+                      title={`${m.미팅시간} ${m.업체명} · ${m.상태}`}
                     >
-                      +{count - 4}
-                    </span>
+                      <span className="font-bold">{m.미팅시간}</span>
+                      <span className="truncate">{m.업체명}</span>
+                    </div>
+                  ))}
+                  {overflow > 0 && (
+                    <div className="text-center text-[9px] font-semibold leading-tight text-gray-500">
+                      +{overflow}
+                    </div>
                   )}
                 </div>
               )}
