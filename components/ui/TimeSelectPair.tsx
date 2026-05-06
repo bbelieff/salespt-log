@@ -1,18 +1,20 @@
 /**
- * TimeSelectPair — 시(09~22) + 분(00·15·30·45) 분리 select.
+ * TimeSelectPair — 시(08~21) + 분(00·15·30·45) 분리 select.
  * 정본: docs/design/components.md §2 Time Input
  *
  * iOS Safari가 <input type="time" step="900">의 step을 무시하므로
  * 15분 단위 강제를 위해 select 2개로 분리.
+ *
+ * 기본 영업시간: 08~21시 (00~07, 22~23 제외 — 야간/심야 미팅 없음 가정).
  */
 "use client";
 
 interface Props {
   value: string; // "HH:MM" 또는 ""
   onChange: (next: string) => void;
-  /** 영업시간 시작 (기본 09) */
+  /** 영업시간 시작 (기본 08) */
   hourMin?: number;
-  /** 영업시간 끝 (기본 22, 포함) */
+  /** 영업시간 끝 (기본 21, 포함) */
   hourMax?: number;
   ariaLabel?: string;
 }
@@ -32,8 +34,8 @@ function splitHHMM(v: string): [string, string] {
 export default function TimeSelectPair({
   value,
   onChange,
-  hourMin = 9,
-  hourMax = 22,
+  hourMin = 8,
+  hourMax = 21,
   ariaLabel,
 }: Props) {
   const [hh, mm] = splitHHMM(value);
