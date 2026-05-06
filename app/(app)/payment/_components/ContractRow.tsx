@@ -94,6 +94,18 @@ export default function ContractRow({
     return Math.round(sum / visibleSlots.length);
   }, [visibleSlots]);
 
+  // 접힘 헤더 sub: 진행 중 기관 (진행률 100% 미만 + 진행기관명 있음).
+  // 예: "미소재단(60%)·신용보증재단(40%)" — 카드 한 줄에 truncate.
+  const ongoingAgencies = useMemo(() => {
+    return visibleSlots
+      .filter((slot) => {
+        const pct = progressPct(slot.진행률);
+        return slot.진행기관.trim() !== "" && pct < 100;
+      })
+      .map((slot) => `${slot.진행기관}(${progressPct(slot.진행률)}%)`)
+      .join(" · ");
+  }, [visibleSlots]);
+
   const isComplete =
     docsDone === TOTAL_CHECKBOXES && visiblePayments >= 1 && avgPct >= 100;
 
@@ -176,7 +188,20 @@ export default function ContractRow({
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {fmtDate(cp.계약일)} · 수임비 ₩{fmtMoney(cp.수임비)}
+            {totalReceived > 0 && (
+              <>
+                {" · "}
+                <span className="text-green-700">
+                  수수료 ₩{fmtMoney(totalReceived)}
+                </span>
+              </>
+            )}
           </div>
+          {ongoingAgencies && (
+            <div className="mt-0.5 truncate text-[11px] text-blue-600">
+              🔄 {ongoingAgencies}
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span
