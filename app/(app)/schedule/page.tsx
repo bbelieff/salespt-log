@@ -282,17 +282,20 @@ export default function SchedulePage() {
         pageTitle="일정·계약"
         pageSubtitle="04 업체관리"
       />
-      <WeekHeader
-        weekIndex={weekIndex}
-        weekStart={weekStart}
-        todayISO={TODAY_ISO}
-        countsByDay={countsByDay}
-        onPrevWeek={() => moveWeek(-1)}
-        onNextWeek={() => moveWeek(1)}
-        onClickDay={scrollToDay}
-      />
-
-      <SummaryBar meetings={allMeetings} />
+      {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
+          (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
+      <div className="sticky top-24 z-30">
+        <WeekHeader
+          weekIndex={weekIndex}
+          weekStart={weekStart}
+          todayISO={TODAY_ISO}
+          countsByDay={countsByDay}
+          onPrevWeek={() => moveWeek(-1)}
+          onNextWeek={() => moveWeek(1)}
+          onClickDay={scrollToDay}
+        />
+        <SummaryBar meetings={allMeetings} />
+      </div>
 
       <main className="px-4 pb-[80px] pt-1">
         {daysByMeetingDate.map((day, i) => (
