@@ -35,9 +35,20 @@ export default function DaySection({
   const isWeekend = dow === 0 || dow === 6;
   const isToday = date === todayISO;
 
-  const sectionCls = isToday
-    ? "bg-gradient-to-b from-blue-100 to-blue-50 border-l-[5px] border-blue-600 shadow-md shadow-blue-600/15"
-    : "bg-slate-100 border-l-[5px] border-slate-300";
+  // 페이지 배경(bg-slate-100)과 명확히 분리:
+  //  - 오늘: 파란 그라데이션 + 강한 좌측 보더 + shadow
+  //  - 평일: 흰 카드 + shadow-sm + 좌측 회색 보더
+  //  - 주말: 흰 카드 + shadow-sm + 좌측 빨강(일)/파랑(토) 강조 보더
+  const todayBorder = isToday
+    ? "border-l-[5px] border-blue-600 shadow-md shadow-blue-600/20"
+    : dow === 0
+      ? "border-l-[5px] border-red-300 shadow-sm"
+      : dow === 6
+        ? "border-l-[5px] border-blue-300 shadow-sm"
+        : "border-l-[5px] border-slate-300 shadow-sm";
+  const sectionBg = isToday
+    ? "bg-gradient-to-b from-blue-100 to-blue-50"
+    : "bg-white";
   const dayNameCls = isToday
     ? "text-blue-700"
     : isWeekend
@@ -47,21 +58,21 @@ export default function DaySection({
 
   return (
     <section
-      className={`mb-3.5 rounded-2xl px-3 pb-2 pt-3 ${sectionCls}`}
+      className={`mb-3 rounded-xl px-3 pb-2 pt-3 ${sectionBg} ${todayBorder}`}
     >
       <header
         className={`mb-2.5 flex items-center gap-2 border-b ${
           isToday
             ? "border-blue-600/25"
-            : "border-dashed border-black/10"
+            : "border-dashed border-gray-200"
         } pb-2`}
       >
-        <span className={`text-base font-bold ${dateCls}`}>{fmtMD(d)}</span>
-        <span className={`text-base font-semibold ${dayNameCls}`}>
+        <span className={`text-sm font-bold ${dateCls}`}>{fmtMD(d)}</span>
+        <span className={`text-sm font-semibold ${dayNameCls}`}>
           ({dayLabelKO(d)})
         </span>
         {isToday && (
-          <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+          <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
             오늘
           </span>
         )}
@@ -75,8 +86,8 @@ export default function DaySection({
       </header>
 
       {meetings.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-center">
-          <span className="text-xs text-gray-400">미팅 없음</span>
+        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-2 text-center">
+          <span className="text-[11px] text-gray-400">미팅 없음</span>
         </div>
       ) : (
         meetings.map((m) => (

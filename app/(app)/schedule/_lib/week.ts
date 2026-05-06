@@ -1,6 +1,15 @@
 /**
  * 일정·계약 탭 주차 유틸 (날짜 하드코딩 X — courseStart 인자 기반).
+ *
+ * v2: 한 주 = 금요일~목요일 (숙제검사 목요일 마감 기준).
+ *   - weekStart = 그 주의 금요일
+ *   - 7일 = 금/토/일/월/화/수/목
+ *   - weekIndex 1 = courseStart를 포함하는 첫 금~목 주
+ *
  * 컨택탭 _lib/week.ts 와 동일 로직 — TODO(future): lib/util/week.ts 로 통합
+ *
+ * ⚠️ 백엔드(lib/repo/sales.ts)는 여전히 courseStart-DOW 기준 — 시트 row 매핑 보존.
+ *    UI는 Fri 기준으로 표시·네비게이션. 시트 데이터는 동일 (날짜 기준 read).
  */
 
 const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -27,16 +36,30 @@ export function addDays(d: Date, n: number): Date {
   return next;
 }
 
+/** 주어진 날짜를 포함하는 주의 금요일(주 시작일) 반환.
+ *  JS getDay(): 0=일,1=월,2=화,3=수,4=목,5=금,6=토
+ *  offset to last Friday: 금=0/토=1/일=2/월=3/화=4/수=5/목=6 */
+export function friOf(d: Date): Date {
+  const dow = d.getDay();
+  const offset = (dow + 2) % 7;
+  return addDays(d, -offset);
+}
+
+/** 주차 인덱스 — courseStart를 포함하는 금~목 주가 1주차. */
 export function weekIndexOf(date: Date, courseStart: Date): number {
-  const diff = diffDays(date, courseStart);
+  const csFri = friOf(courseStart);
+  const dateFri = friOf(date);
+  const diff = diffDays(dateFri, csFri);
   if (diff < 0) return 0;
   return Math.floor(diff / 7) + 1;
 }
 
+/** 그 주차의 첫 날(금요일). */
 export function weekStartOf(date: Date, courseStart: Date): Date {
   const w = weekIndexOf(date, courseStart);
-  if (w === 0) return courseStart;
-  return addDays(courseStart, (w - 1) * 7);
+  const csFri = friOf(courseStart);
+  if (w === 0) return csFri;
+  return addDays(csFri, (w - 1) * 7);
 }
 
 export function dayLabelKO(d: Date): string {

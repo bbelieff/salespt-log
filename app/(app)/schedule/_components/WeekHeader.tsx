@@ -41,16 +41,16 @@ export default function WeekHeader({
 
   return (
     <header className="sticky top-24 z-30 bg-white shadow-sm">
-      {/* 주차 네비 — 컴팩트 (py-1.5, h-8 버튼) */}
-      <div className="flex items-center justify-between px-2 py-1.5">
+      {/* 주차 네비 — 원래 크기 회복 (py-3, h-11), 단 타이틀만 한 줄로 */}
+      <div className="flex items-center justify-between px-2 py-3">
         <button
           type="button"
           onClick={onPrevWeek}
-          className="flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
           aria-label="이전 주차"
         >
           <svg
-            className="h-4 w-4"
+            className="h-5 w-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -63,23 +63,23 @@ export default function WeekHeader({
             />
           </svg>
         </button>
-        <div className="flex flex-1 items-baseline justify-center gap-1.5">
-          <span className="text-sm font-bold text-gray-900">
+        <div className="flex flex-1 items-baseline justify-center gap-2">
+          <span className="text-base font-bold text-gray-900">
             {cohortName ? `${cohortName} · ` : ""}
             {weekIndex}주차
           </span>
-          <span className="text-[11px] text-gray-400">
+          <span className="text-xs text-gray-400">
             {fmtMD(ws)} ~ {fmtMD(addDays(ws, 6))}
           </span>
         </div>
         <button
           type="button"
           onClick={onNextWeek}
-          className="flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
           aria-label="다음 주차"
         >
           <svg
-            className="h-4 w-4"
+            className="h-5 w-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -94,8 +94,8 @@ export default function WeekHeader({
         </button>
       </div>
 
-      {/* 7일 그리드 — 한 줄당 컴팩트 (요일+숫자 horizontal) */}
-      <div className="grid grid-cols-7 gap-0.5 px-2 pb-1.5">
+      {/* 7일 그리드 — 원래 크기 (요일/숫자 stack, 보기 좋은 사이즈) */}
+      <div className="grid grid-cols-7 gap-1 px-2 pb-2.5">
         {days.map((d, i) => {
           const iso = `${d.getFullYear()}-${String(
             d.getMonth() + 1,
@@ -109,7 +109,7 @@ export default function WeekHeader({
               key={iso}
               type="button"
               onClick={() => onClickDay(i)}
-              className={`relative flex items-center justify-center gap-0.5 rounded-md py-1 transition-all active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
                 isToday
                   ? "bg-blue-500 text-white shadow-sm shadow-blue-500/30"
                   : count > 0
@@ -118,9 +118,9 @@ export default function WeekHeader({
               }`}
             >
               <span
-                className={`text-[10px] font-medium ${
+                className={`text-xs font-medium ${
                   isToday
-                    ? "text-white/90"
+                    ? "text-white"
                     : isWeekend
                       ? "text-red-500"
                       : "text-gray-500"
@@ -129,7 +129,7 @@ export default function WeekHeader({
                 {JS_DAY_KO[dow]}
               </span>
               <span
-                className={`text-sm font-bold leading-none ${
+                className={`text-base font-bold leading-tight ${
                   isToday ? "text-white" : "text-gray-800"
                 }`}
               >
@@ -137,7 +137,7 @@ export default function WeekHeader({
               </span>
               {count > 0 && (
                 <span
-                  className={`absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${
+                  className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none ${
                     isToday
                       ? "bg-white text-blue-600"
                       : "bg-blue-500 text-white"

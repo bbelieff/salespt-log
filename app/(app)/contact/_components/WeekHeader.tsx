@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { addDays, dayLabelKO, fmtMD, parseISO } from "../_lib/week";
+import { addDays, dayLabelKO, fmtMD, friOf, parseISO } from "../_lib/week";
 
 const JS_DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -31,9 +31,12 @@ export default function WeekHeader({
   onNextWeek,
   onSelectDay,
 }: Props) {
+  // v2: 한 주 = 금~목 (숙제검사 목요일 마감 기준).
+  // weekStart는 courseStart 포함 첫 금요일 + (weekIndex-1)*7
   const cs = parseISO(courseStart);
-  const startDow = cs.getDay(); // 0~6 (일~토)
-  const weekStart = addDays(cs, (weekIndex - 1) * 7);
+  const csFri = friOf(cs); // courseStart의 금요일 정렬
+  const startDow = csFri.getDay(); // 항상 5(금)
+  const weekStart = addDays(csFri, (weekIndex - 1) * 7);
 
   // 7일 슬롯: 첫 슬롯이 weekStart, 7번째까지 +6
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -63,14 +66,14 @@ export default function WeekHeader({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex-1 text-center">
-          <div className="text-base font-bold text-gray-900">
+        <div className="flex flex-1 items-baseline justify-center gap-2">
+          <span className="text-base font-bold text-gray-900">
             {cohortName ? `${cohortName} · ` : ""}
             {weekIndex}주차
-          </div>
-          <div className="mt-0.5 text-xs text-gray-400">
+          </span>
+          <span className="text-xs text-gray-400">
             {fmtMD(weekStart)} ~ {fmtMD(addDays(weekStart, 6))}
-          </div>
+          </span>
         </div>
         <button
           type="button"
