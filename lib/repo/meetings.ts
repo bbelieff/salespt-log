@@ -184,7 +184,12 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
  * 미팅 1건 append. id 중복 검증은 호출 측 책임.
  *
  * `values.append`로 INSERT_ROWS 하지 않고, A열(id) 기준 빈 행을 찾아
- * 정확히 그 행에 update. K열 phantom FALSE 영향 X.
+ * 정확히 그 행에 batch update. K열 phantom FALSE 영향 X.
+ *
+ * ⚠️ 중요: A:S 전체를 한 번에 update하면 시트의 N/O/Q/S 수식 셀까지 빈 문자열로
+ *  덮어써져 표시상세/표시요약/계약합성라인/주차 수식이 사라짐 (user-reported bug).
+ *  → 사용자 입력 영역만 split write: A:M (id~미팅사유) / P (계약조건) / R (previousMeetingId).
+ *  → 시트 템플릿의 N/O/Q/S 수식 보존됨 → 01 영업관리 I/J도 자동 sync.
  */
 export async function appendMeeting(
   spreadsheetId: string,
@@ -193,12 +198,40 @@ export async function appendMeeting(
   const validated = Meeting.parse(meeting);
   const row = meetingToRow(validated);
   const targetRow = await findFirstEmptyRow(spreadsheetId);
-  const range = `${tabRef(TAB)}!A${targetRow}:S${targetRow}`;
-  await sheetsClient().spreadsheets.values.update({
+  await writeMeetingRowSplit(spreadsheetId, targetRow, row);
+}
+
+/**
+ * Meeting row 배열을 시트에 split write — 수식 컬럼(N/O/Q/S) 보존.
+ * append/update 양쪽에서 동일 패턴 사용.
+ */
+async function writeMeetingRowSplit(
+  spreadsheetId: string,
+  sheetRow: number,
+  fullRow: (string | number | boolean)[],
+): Promise<void> {
+  const A_to_M = fullRow.slice(0, 13); // A=0 ~ M=12 (사용자 입력)
+  const P_only = [fullRow[COL.계약조건]]; // P=15
+  const R_only = [fullRow[COL.previousMeetingId]]; // R=17
+  await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] },
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data: [
+        {
+          range: `${tabRef(TAB)}!A${sheetRow}:M${sheetRow}`,
+          values: [A_to_M],
+        },
+        {
+          range: `${tabRef(TAB)}!P${sheetRow}`,
+          values: [P_only as (string | number | boolean)[]],
+        },
+        {
+          range: `${tabRef(TAB)}!R${sheetRow}`,
+          values: [R_only as (string | number | boolean)[]],
+        },
+      ],
+    },
   });
 }
 
@@ -259,35 +292,8 @@ export async function updateMeeting(
   const merged: Meeting = Meeting.parse({ ...current, ...partial });
   const fullRow = meetingToRow(merged);
 
-  // 수식 컬럼은 빈 문자열로 보내면 시트가 기존 수식을 덮어쓸 수 있음 →
-  // 해당 셀은 update 범위에서 제외하고 두 번 나눠 쓰기.
-  // 간단 처리: A~M (수식 N/O 제외 직전), P (계약조건), R (previousMeetingId) 만 update.
-  // (Q 수식은 시트 자동, S 수식도 자동, N/O 수식 자동)
-
-  const A_to_M = fullRow.slice(0, 13); // A=0 ~ M=12
-  const P_only = [fullRow[COL.계약조건]];
-  const R_only = [fullRow[COL.previousMeetingId]];
-
-  await sheetsClient().spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: "USER_ENTERED",
-      data: [
-        {
-          range: `${tabRef(TAB)}!A${sheetRow}:M${sheetRow}`,
-          values: [A_to_M],
-        },
-        {
-          range: `${tabRef(TAB)}!P${sheetRow}`,
-          values: [P_only as (string | number | boolean)[]],
-        },
-        {
-          range: `${tabRef(TAB)}!R${sheetRow}`,
-          values: [R_only as (string | number | boolean)[]],
-        },
-      ],
-    },
-  });
+  // 수식 컬럼(N/O/Q/S) 보존을 위해 split write — appendMeeting과 동일 헬퍼 재사용.
+  await writeMeetingRowSplit(spreadsheetId, sheetRow, fullRow);
 
   void FORMULA_COL_INDICES; // 인덱스 정의 보존 (다른 호출자가 참조 가능)
 }
