@@ -40,7 +40,8 @@ export default function WeekHeader({
   const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
 
   return (
-    <header className="sticky top-24 z-30 bg-white shadow-sm">
+    <header className="bg-white">
+      {/* 부모(schedule/page.tsx)에서 sticky top-24로 묶음 — 자체 sticky 제거 */}
       {/* 주차 네비 — 원래 크기 회복 (py-3, h-11), 단 타이틀만 한 줄로 */}
       <div className="flex items-center justify-between px-2 py-3">
         <button

@@ -1,11 +1,13 @@
 /**
  * SummaryBar — 주간 요약 (5칸 카운터 + 주간 매출 합계).
  *
- * v3:
- *  - sticky top — WeekHeader 아래에 고정 표시
- *  - 흰색 배경
- *  - 5칸 라벨: 미팅총건 / 미팅예정 / 미팅완료 / 미팅취소 / 계약(강조)
- *  - 매출 = 수임비 + 수수료 — 분리 표시
+ * v4:
+ *  - sticky 제거 (부모 schedule/page.tsx에서 WeekHeader와 함께 묶어 sticky 처리)
+ *  - 5칸 의미 그룹 구분선:
+ *      [미팅총건] | [미팅예정] ‖ [미팅완료] | [미팅취소] | [계약 강조]
+ *      ‖ = 결과 그룹과의 두꺼운 구분선
+ *  - "변경" 상태 미팅도 미팅예정에 포함 (재예약된 미팅도 진행 예정)
+ *  - 수임비/수수료 분리 표시
  *
  * SSOT: docs/domains/sheet-structure.md §4 v2 (수수료 = Q+W+AC = 슬롯별 수납액)
  */
@@ -25,7 +27,10 @@ function fmtMoney(n: number): string {
 
 export default function SummaryBar({ meetings }: Props) {
   const total = meetings.length;
-  const reserved = meetings.filter((m) => m.상태 === "예약").length;
+  // 미팅예정 — "예약" + "변경" 모두 포함 (변경된 미팅도 다음 일정 예정 상태)
+  const reserved = meetings.filter(
+    (m) => m.상태 === "예약" || m.상태 === "변경",
+  ).length;
   const contract = meetings.filter((m) => m.상태 === "계약").length;
   const done = meetings.filter((m) => m.상태 === "완료").length;
   const canceled = meetings.filter((m) => m.상태 === "취소").length;
@@ -36,7 +41,6 @@ export default function SummaryBar({ meetings }: Props) {
     .reduce((s, m) => s + (m.수임비 || 0), 0);
 
   // 수수료 합 — 02 계약수납관리의 슬롯별 수납액(Q+W+AC) 합.
-  // 이번 주 계약 미팅과 (계약일+업체명) 매칭되는 row만 합산.
   const cpQuery = useContractPayments();
   const commissionSum = useMemo(() => {
     const rows = cpQuery.data?.rows ?? [];
@@ -58,23 +62,35 @@ export default function SummaryBar({ meetings }: Props) {
   const revenueSum = feeSum + commissionSum;
 
   return (
-    // sticky top — WeekHeader(top-24, 약 116px 높이) 바로 아래.
-    // top-[210px] = top-24(96) + WeekHeader height(~114).
-    // z-20 으로 day section보다 위, WeekHeader(z-30)보다 아래.
-    <div className="sticky top-[210px] z-20 mb-3 border-y border-gray-200 bg-white shadow-sm">
-      {/* 5칸 카운터 — 미팅총건 / 미팅예정 / 미팅완료 / 미팅취소 / 계약(강조) */}
-      <div className="grid grid-cols-5 gap-1 px-3 pb-2 pt-2.5 text-center">
-        <Cell label="미팅총건" value={total} cls="text-gray-900" />
-        <Cell label="미팅예정" value={reserved} cls="text-amber-600" />
-        <Cell label="미팅완료" value={done} cls="text-orange-600" />
-        <Cell label="미팅취소" value={canceled} cls="text-red-500" />
-        <Cell
-          label="계약"
-          value={contract}
-          cls="text-green-700"
-          highlight
-        />
+    <div className="border-y border-gray-200 bg-white shadow-sm">
+      {/* 5칸 카운터 — 의미상 두 덩어리:
+          ① 미팅총건 | ② 미팅예정    ‖    ③ 미팅완료 | ④ 미팅취소 | ⑤ 계약(강조)
+                                    ↑ 결과 그룹 구분선 (border-l-2)
+          ① ② 사이는 얇은 보더, ③④⑤ 사이도 얇은 보더, ② ↔ ③ 사이는 두꺼운 보더 */}
+      <div className="flex items-stretch px-2 pb-2 pt-2.5">
+        <CellWrap>
+          <Cell label="미팅총건" value={total} cls="text-gray-900" />
+        </CellWrap>
+        <CellWrap thinDivider>
+          <Cell label="미팅예정" value={reserved} cls="text-amber-600" />
+        </CellWrap>
+        {/* 두꺼운 구분선 (결과 그룹 시작) */}
+        <CellWrap thickDivider>
+          <Cell label="미팅완료" value={done} cls="text-orange-600" />
+        </CellWrap>
+        <CellWrap thinDivider>
+          <Cell label="미팅취소" value={canceled} cls="text-red-500" />
+        </CellWrap>
+        <CellWrap thinDivider>
+          <Cell
+            label="계약"
+            value={contract}
+            cls="text-green-700"
+            highlight
+          />
+        </CellWrap>
       </div>
+
       {/* 주간 매출 — 수임비/수수료 분리 + 합계 */}
       <div className="border-t border-gray-100 px-4 py-2">
         <div className="flex items-center justify-between text-sm">
@@ -107,6 +123,23 @@ export default function SummaryBar({ meetings }: Props) {
   );
 }
 
+function CellWrap({
+  children,
+  thinDivider,
+  thickDivider,
+}: {
+  children: React.ReactNode;
+  thinDivider?: boolean;
+  thickDivider?: boolean;
+}) {
+  const border = thickDivider
+    ? "border-l-2 border-gray-300"
+    : thinDivider
+      ? "border-l border-gray-100"
+      : "";
+  return <div className={`flex flex-1 px-1 ${border}`}>{children}</div>;
+}
+
 function Cell({
   label,
   value,
@@ -121,7 +154,7 @@ function Cell({
   if (highlight) {
     // 계약 강조 — 녹색 박스 + 굵은 폰트
     return (
-      <div className="rounded-lg bg-green-100 py-0.5 ring-1 ring-green-300">
+      <div className="flex-1 rounded-lg bg-green-100 py-0.5 text-center ring-1 ring-green-300">
         <div className={`text-xl font-extrabold leading-tight ${cls}`}>
           {value}
         </div>
@@ -130,7 +163,7 @@ function Cell({
     );
   }
   return (
-    <div>
+    <div className="flex-1 text-center">
       <div className={`text-lg font-bold leading-tight ${cls}`}>{value}</div>
       <div className="text-[11px] text-gray-500">{label}</div>
     </div>
