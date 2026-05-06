@@ -7,8 +7,12 @@
  * 로고는 /public/salespt-logo.png — 워드마크가 이미 포함되어 있어서
  * "세일즈PT" 텍스트는 별도 표시하지 않고 "경영일지"만 표기.
  *
+ * 반응형 (display-reference-v2.html 기준):
+ *   - xs(360, Galaxy): "경영일지" 숨김 (로고 워드마크에 이미 포함) + 폰트 축소
+ *   - sm(390, iPhone 12~16/17e): "경영일지" 표시 + sm 폰트
+ *   - md+(402+, iPhone 17/Pro/Pro Max): 동일 (여유 있음)
+ *
  * 사용처: contact / schedule / calendar / payment / db 5개 페이지.
- * 데이터: useMe() 훅이 시트 01 영업관리!B3/C3/N1 SSOT에서 가져옴.
  */
 "use client";
 
@@ -16,9 +20,9 @@ import { useMe } from "@/query/me-hook";
 import DDayBadge from "./DDayBadge";
 
 interface Props {
-  pageEmoji: string; // 예: "💰"
-  pageTitle: string; // 예: "계약수납"
-  pageSubtitle?: string; // 우측 보조 텍스트 (예: "02 계약수납관리")
+  pageEmoji: string;
+  pageTitle: string;
+  pageSubtitle?: string;
 }
 
 /** 시트 B3가 "7"이면 "7기"로, "7기"면 그대로 유지. */
@@ -48,43 +52,46 @@ export default function TopHeader({
 
   return (
     <>
-      {/* 슬림 브랜드 바 (1줄: 로고 / 경영일지 / D-day / 사용자) */}
-      <header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-3">
-        {/* 좌: 로고 + 경영일지 */}
-        <div className="flex shrink-0 items-center gap-1.5 overflow-hidden">
+      {/* 슬림 브랜드 바 (1줄: 로고 / 경영일지 / D-day / 사용자)
+          gap 좁게 + min-w-0 truncate로 360px에서도 안 깨지게. */}
+      <header className="sticky top-0 z-50 flex h-12 items-center gap-1.5 border-b border-gray-100 bg-white px-2 sm:gap-2 sm:px-3">
+        {/* 좌: 로고 + 경영일지 (xs는 로고만) */}
+        <div className="flex min-w-0 shrink items-center gap-1 sm:gap-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/salespt-logo.png"
             alt="세일즈PT"
-            className="h-7 w-auto object-contain"
+            className="h-6 w-auto shrink-0 object-contain sm:h-7"
           />
-          <span className="truncate text-xs font-semibold text-gray-900 sm:text-sm">
+          <span className="hidden truncate text-xs font-semibold text-gray-900 sm:inline sm:text-sm">
             경영일지
           </span>
         </div>
 
-        {/* 중앙: D-day 카운터 */}
-        <div className="flex shrink-0 justify-center">
+        {/* 중앙: D-day 카운터 — 고정 크기 */}
+        <div className="flex shrink-0">
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
         </div>
 
-        {/* 우: 사용자 */}
-        <div className="flex min-w-0 justify-end">
-          <span className="truncate text-xs font-bold text-gray-900 sm:text-sm">
+        {/* 우: 사용자 — 남은 공간 차지하며 우측 정렬, truncate */}
+        <div className="flex min-w-0 flex-1 justify-end">
+          <span className="truncate text-[11px] font-bold text-gray-900 sm:text-sm">
             {display}
           </span>
         </div>
       </header>
 
       {/* 페이지 배너 */}
-      <div className="sticky top-12 z-40 flex h-12 items-center gap-3 border-b border-slate-200 bg-slate-100 px-4">
-        <div className="h-5 w-1 rounded-sm bg-slate-500" />
-        <h1 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-          <span className="text-base leading-none">{pageEmoji}</span>
-          <span>{pageTitle}</span>
+      <div className="sticky top-12 z-40 flex h-12 items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 sm:gap-3 sm:px-4">
+        <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
+        <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
+          <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
+          <span className="truncate">{pageTitle}</span>
         </h1>
         {pageSubtitle && (
-          <span className="ml-auto text-xs text-slate-500">{pageSubtitle}</span>
+          <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
+            {pageSubtitle}
+          </span>
         )}
       </div>
     </>
