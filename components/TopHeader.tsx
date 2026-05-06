@@ -63,13 +63,13 @@ export default function TopHeader({
           className="h-6 w-auto shrink-0 object-contain sm:h-7"
         />
 
-        {/* 2. 사용자 — 남은 공간 채우면서 truncate */}
-        <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-gray-900 sm:text-sm">
+        {/* 2. 사용자 — font-black (900) 최상위 강조 */}
+        <span className="min-w-0 flex-1 truncate text-[11px] font-black text-gray-900 sm:text-sm">
           {display}
         </span>
 
-        {/* 3. 경영일지 (xs 숨김 — 로고 워드마크와 중복) */}
-        <span className="hidden shrink-0 text-xs font-semibold text-gray-900 sm:inline sm:text-sm">
+        {/* 3. 경영일지 (xs 숨김) — font-black (900) */}
+        <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
           경영일지
         </span>
 
@@ -78,10 +78,10 @@ export default function TopHeader({
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
         </div>
 
-        {/* 5. 대시보드 바로가기 버튼 — 우측 끝 (검정 pill, 세련된 스타일) */}
+        {/* 5. 대시보드 바로가기 버튼 — 흰 배경 + 빨간 폰트 (font-bold 700) */}
         <Link
           href="/"
-          className="group inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-gray-800 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
+          className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-red-500 bg-white px-2.5 py-1 text-[11px] font-bold text-red-600 shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
           aria-label="대시보드로 이동"
         >
           <span>대시보드</span>
