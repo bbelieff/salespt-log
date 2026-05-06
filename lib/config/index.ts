@@ -54,9 +54,13 @@ export const registry = () => ({
  */
 export const SHEET_RANGES = {
   // ── 대시보드 (읽기 전용) ───────────────────────────────────
+  // 모든 셀이 시트 수식 자동 집계 — 앱은 1회 batchGet으로 읽기만.
+  // 셀 좌표 SSOT: docs/domains/sheet-structure.md §1
+  // 확정된 좌표 (Q4): 영업이익 = D21 - E21 (총매출 D21, 총비용 E21)
+  // 나머지 카드/차트 좌표는 prototype에서 확정 — service 레이어에서 매핑.
   dashboard: {
     tab: "대시보드(자동작성)",
-    summary: "B2:N20", // 요약 카드 영역 (Recharts 입력)
+    summary: "A1:Z40", // 요약 카드 + 차트 데이터 영역 (Recharts 입력)
   },
 
   // ── 영업관리 (8주차 × 28행 블록) ───────────────────────────

@@ -213,3 +213,51 @@ export const ContractPayment = z.object({
   수납3: PaymentSlot.default(EMPTY_SLOT),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
+
+// ── Dashboard view (PR 12 dashboard-tab) ───────────────────────
+// 시트 매핑: 대시보드(자동작성) 탭 — 모든 셀이 시트 수식 자동 집계.
+// 앱은 read-only로 셀 좌표 → DashboardView 객체 매핑 후 Recharts 렌더.
+//
+// 셀 좌표 SSOT: docs/domains/sheet-structure.md §1 (사용자 시트 검증 후 확정).
+// Q4 답변: 영업이익 = 대시보드!D21 - 대시보드!E21
+//
+// ⚠️ 다른 카드/차트 셀 좌표는 prototype에서 확정. 현재는 인터페이스 형태만 정의.
+
+/** 4 KPI 카드 — 영업이익/총매출/총비용/누적수임비 */
+export interface DashboardKPI {
+  영업이익: number; // D21 - E21
+  영업이익률: number; // (D21-E21) / D21 * 100, 0~100
+  총매출: number; // D21
+  총비용: number; // E21
+  누적수임비: number; // TODO: 셀 좌표 확정 (prototype)
+}
+
+/** 채널별 4지표 — 채널 퍼널 차트 데이터 */
+export interface DashboardChannelMatrix {
+  채널: "매입DB" | "직접생산" | "현수막" | "콜·지·기·소";
+  생산: number;
+  유입: number;
+  컨택진행: number;
+  컨택성공: number;
+}
+
+/** 주차별 추이 — 8주 LineChart */
+export interface DashboardWeeklyPoint {
+  주차: number; // 1~8
+  영업이익: number;
+  활동량: number; // 생산+유입+컨택진행+컨택성공 합 (4채널)
+}
+
+/** 비용 구성 — 3 비용 채널 PieChart */
+export interface DashboardCostBreakdown {
+  채널: "매입DB" | "직접생산" | "현수막";
+  비용: number;
+}
+
+/** 대시보드 1회 read 응답 — Recharts/카드에 그대로 매핑 가능. */
+export interface DashboardView {
+  kpi: DashboardKPI;
+  channelMatrix: DashboardChannelMatrix[]; // 길이 4
+  weeklyTrend: DashboardWeeklyPoint[]; // 길이 8
+  costBreakdown: DashboardCostBreakdown[]; // 길이 3
+}

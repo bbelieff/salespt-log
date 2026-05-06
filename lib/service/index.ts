@@ -66,3 +66,6 @@ export {
 
 // 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)
 export { loadMe, type MeProfile } from "./me";
+
+// 대시보드 탭 유스케이스 (PR 12 dashboard-tab — read-only)
+export { loadDashboard } from "./dashboard";
