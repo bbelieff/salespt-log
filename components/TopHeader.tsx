@@ -16,6 +16,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { useMe } from "@/query/me-hook";
 import DDayBadge from "./DDayBadge";
 
@@ -76,6 +77,29 @@ export default function TopHeader({
         <div className="flex shrink-0">
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
         </div>
+
+        {/* 5. 대시보드 바로가기 버튼 — 우측 끝 (검정 pill, 세련된 스타일) */}
+        <Link
+          href="/"
+          className="group inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-gray-800 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
+          aria-label="대시보드로 이동"
+        >
+          <span>대시보드</span>
+          <svg
+            className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </Link>
       </header>
 
       {/* 페이지 배너 */}
