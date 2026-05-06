@@ -53,10 +53,12 @@ export default function TopHeader({
 
   return (
     <>
-      {/* 슬림 브랜드 바 (1줄): 로고 → [사용자 / 경영일지 / D-day 동일 간격] → (조금 떨어진) 대시보드
-          gap-2로 모든 요소 균등 8px 간격, 대시보드 버튼만 ml-2 추가로 약 16px 떨어짐 */}
-      <header className="sticky top-0 z-50 flex h-12 items-center gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
-        {/* 1. 로고 — 고정 */}
+      {/* 슬림 브랜드 바 — 의미상 4개 덩어리:
+            ① 로고 / ② [사용자 + 경영일지] / ③ D-day / ④ 대시보드 버튼
+          justify-between으로 4 그룹이 row를 균등 분할.
+          그룹 간 간격은 자동(remaining space), 그룹 내부(②)만 gap-1.5로 타이트 묶음. */}
+      <header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
+        {/* ① 로고 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/salespt-logo.png"
@@ -64,26 +66,25 @@ export default function TopHeader({
           className="h-6 w-auto shrink-0 object-contain sm:h-7"
         />
 
-        {/* 2. 사용자 — font-black (900) 최상위 강조 */}
-        <span className="min-w-0 flex-1 truncate text-[11px] font-black text-gray-900 sm:text-sm">
-          {display}
-        </span>
+        {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트) */}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="min-w-0 truncate text-[11px] font-black text-gray-900 sm:text-sm">
+            {display}
+          </span>
+          <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
+            경영일지
+          </span>
+        </div>
 
-        {/* 3. 경영일지 (xs 숨김) — font-black (900) */}
-        <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
-          경영일지
-        </span>
-
-        {/* 4. D-day 카운터 — 고정 */}
+        {/* ③ D-day 카운터 */}
         <div className="flex shrink-0">
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
         </div>
 
-        {/* 5. 대시보드 버튼 — 흰 배경 + 빨간 글자 (브랜드 #d71617). ml-2로 약간 떨어진 위치.
-            세일즈PT 로고 색과 통일하면서, 흰배경으로 헤더에 부담 없이 자연스럽게 배치. */}
+        {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 (브랜드 #d71617) */}
         <Link
           href="/"
-          className="group ml-2 inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d71617] bg-white px-2.5 py-1 text-[11px] font-bold text-[#d71617] shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
+          className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d71617] bg-white px-2.5 py-1 text-[11px] font-bold text-[#d71617] shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
           aria-label="대시보드로 이동"
         >
           <span>대시보드</span>
