@@ -53,8 +53,9 @@ export default function TopHeader({
 
   return (
     <>
-      {/* 슬림 브랜드 바 (1줄, 새 순서): 로고 → 사용자 → 경영일지 → D-day */}
-      <header className="sticky top-0 z-50 flex h-12 items-center gap-1.5 border-b border-gray-100 bg-white px-2 sm:gap-2 sm:px-3">
+      {/* 슬림 브랜드 바 (1줄): 로고 → [사용자 / 경영일지 / D-day 동일 간격] → (조금 떨어진) 대시보드
+          gap-2로 모든 요소 균등 8px 간격, 대시보드 버튼만 ml-2 추가로 약 16px 떨어짐 */}
+      <header className="sticky top-0 z-50 flex h-12 items-center gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
         {/* 1. 로고 — 고정 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -78,11 +79,11 @@ export default function TopHeader({
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
         </div>
 
-        {/* 5. 대시보드 바로가기 버튼 — 세일즈PT 브랜드 빨강 배경 + 검정 폰트
-            (로고 $의 빨강 #d71617과 통일감 / 검정 글자로 강한 대비 / shadow로 음영) */}
+        {/* 5. 대시보드 버튼 — 흰 배경 + 빨간 글자 (브랜드 #d71617). ml-2로 약간 떨어진 위치.
+            세일즈PT 로고 색과 통일하면서, 흰배경으로 헤더에 부담 없이 자연스럽게 배치. */}
         <Link
           href="/"
-          className="group inline-flex shrink-0 items-center gap-1 rounded-full bg-[#d71617] px-2.5 py-1 text-[11px] font-bold text-black shadow-md shadow-red-900/30 ring-1 ring-black/10 transition-all hover:bg-[#c01314] hover:shadow-lg hover:shadow-red-900/40 active:scale-95 active:shadow-sm sm:px-3 sm:py-1.5 sm:text-xs"
+          className="group ml-2 inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d71617] bg-white px-2.5 py-1 text-[11px] font-bold text-[#d71617] shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
           aria-label="대시보드로 이동"
         >
           <span>대시보드</span>
