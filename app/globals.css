@@ -6,6 +6,17 @@
   --app-safe-bottom: env(safe-area-inset-bottom);
 }
 
+/**
+ * 폰트 정책 — 전체 앱 Noto Sans KR (next/font/google).
+ *
+ * 중요도별 weight (Tailwind 유틸리티):
+ *   - font-black     (900)  최상위 강조 — 페이지 타이틀, D-day 숫자, 사용자명
+ *   - font-extrabold (800)  중요 수치   — 매출 합계, 핵심 KPI
+ *   - font-bold      (700)  강조       — 카드 헤더, 버튼, 라벨 강조
+ *   - font-semibold  (600)  중간 강조   — 섹션 라벨, 필드명
+ *   - font-medium    (500)  미세 강조   — 보조 라벨
+ *   - font-normal    (400)  본문       — 기본 텍스트
+ */
 html,
 body {
   height: 100%;

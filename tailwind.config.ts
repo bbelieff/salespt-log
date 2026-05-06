@@ -29,7 +29,18 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Pretendard", "ui-sans-serif", "system-ui", "sans-serif"],
+        // 전체 앱 기본 폰트: Noto Sans KR (한국어 가독성 + 전체 일관성)
+        // next/font/google이 CSS 변수 --font-noto-sans-kr로 노출.
+        // Pretendard, system-ui는 fallback (네트워크 실패 대비).
+        sans: [
+          "var(--font-noto-sans-kr)",
+          "Pretendard",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        // 명시적 alias — 코드에서 font-noto로 호출 가능 (의도 명확).
+        noto: ["var(--font-noto-sans-kr)", "ui-sans-serif", "sans-serif"],
       },
       colors: {
         brand: {
