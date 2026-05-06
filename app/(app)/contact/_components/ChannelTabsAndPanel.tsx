@@ -8,8 +8,14 @@
  */
 "use client";
 
+import { useEffect, useState } from "react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
+import {
+  loadChannelOrder,
+  moveChannel,
+  saveChannelOrder,
+} from "../_lib/channel-order";
 
 const CHANNEL_META: Record<
   Channel,
@@ -142,27 +148,79 @@ export default function ChannelTabsAndPanel({
   const cls = COLOR_CLASS[ch.color];
   const cell = draft[active];
 
+  // 사용자별 채널 순서 (localStorage 저장). 초기는 default CHANNEL_ORDER로
+  // SSR/CSR hydration mismatch 방지, mount 후 localStorage 값으로 업데이트.
+  const [order, setOrder] = useState<Channel[]>(() => [...CHANNEL_ORDER]);
+  const [dragFrom, setDragFrom] = useState<Channel | null>(null);
+  const [dragOver, setDragOver] = useState<Channel | null>(null);
+
+  useEffect(() => {
+    setOrder(loadChannelOrder());
+  }, []);
+
+  const handleDrop = (target: Channel) => {
+    if (!dragFrom || dragFrom === target) {
+      setDragFrom(null);
+      setDragOver(null);
+      return;
+    }
+    const next = moveChannel(order, dragFrom, target);
+    setOrder(next);
+    saveChannelOrder(next);
+    setDragFrom(null);
+    setDragOver(null);
+  };
+
+  // 합계 계산은 순서 무관 — CHANNEL_ORDER로 4채널 모두 sum
   const channelSum = (key: keyof ChannelDailyRowMetrics): number =>
     CHANNEL_ORDER.reduce((acc, c) => acc + draft[c][key], 0);
 
   return (
     <div className="mb-3 overflow-hidden rounded-2xl bg-white shadow-sm">
-      {/* 채널 탭 */}
+      {/* 채널 탭 — 길게 누른 후 드래그하여 순서 변경 (자동 저장) */}
       <div className="flex border-b border-gray-100">
-        {CHANNEL_ORDER.map((c) => {
+        {order.map((c) => {
           const meta = CHANNEL_META[c];
           const colorCls = COLOR_CLASS[meta.color];
           const isActive = c === active;
           const total = totalOf(draft[c]);
+          const isDragOver = dragOver === c && dragFrom !== c;
+          const isDragging = dragFrom === c;
           return (
             <button
               key={c}
               type="button"
               onClick={() => onSelectChannel(c)}
+              draggable
+              onDragStart={(e) => {
+                setDragFrom(c);
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", c);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dragOver !== c) setDragOver(c);
+              }}
+              onDragLeave={() => {
+                if (dragOver === c) setDragOver(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(c);
+              }}
+              onDragEnd={() => {
+                setDragFrom(null);
+                setDragOver(null);
+              }}
               className={`relative flex-1 px-1 py-2.5 transition-all ${
                 isActive ? colorCls.bg50 : "bg-white hover:bg-gray-50"
+              } ${isDragging ? "opacity-40" : ""} ${
+                isDragOver ? "ring-2 ring-inset ring-blue-300" : ""
               }`}
               aria-pressed={isActive}
+              aria-grabbed={isDragging}
+              title="드래그하여 순서 변경"
             >
               <div className="flex flex-col items-center gap-1">
                 <span
