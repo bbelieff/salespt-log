@@ -273,8 +273,6 @@ function DateTimeRow({
         <TimeSelectPair
           value={미팅시간}
           onChange={onTime}
-          hourMin={0}
-          hourMax={23}
           ariaLabel="미팅 시간"
         />
       </div>
