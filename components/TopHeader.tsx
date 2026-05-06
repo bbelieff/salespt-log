@@ -78,10 +78,11 @@ export default function TopHeader({
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
         </div>
 
-        {/* 5. 대시보드 바로가기 버튼 — 흰 배경 + 빨간 폰트 (font-bold 700) */}
+        {/* 5. 대시보드 바로가기 버튼 — 세일즈PT 브랜드 빨강 배경 + 검정 폰트
+            (로고 $의 빨강 #d71617과 통일감 / 검정 글자로 강한 대비 / shadow로 음영) */}
         <Link
           href="/"
-          className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-red-500 bg-white px-2.5 py-1 text-[11px] font-bold text-red-600 shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
+          className="group inline-flex shrink-0 items-center gap-1 rounded-full bg-[#d71617] px-2.5 py-1 text-[11px] font-bold text-black shadow-md shadow-red-900/30 ring-1 ring-black/10 transition-all hover:bg-[#c01314] hover:shadow-lg hover:shadow-red-900/40 active:scale-95 active:shadow-sm sm:px-3 sm:py-1.5 sm:text-xs"
           aria-label="대시보드로 이동"
         >
           <span>대시보드</span>
