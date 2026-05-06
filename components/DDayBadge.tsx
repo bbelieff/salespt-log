@@ -80,14 +80,26 @@ export default function DDayBadge({ weekTargetISO }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-[10px] font-bold tracking-tight text-gray-500">
-        {prefix}
-      </span>
-      <div className="flex items-center gap-0.5">
-        <DigitBox digit={tens} cls={cls} />
-        <DigitBox digit={ones} cls={cls} />
-      </div>
+    <div className="flex items-center gap-0.5">
+      {/* "D" 박스 + 부호("-" 또는 "+") 박스 — 숫자와 동일한 철제달력 스타일 */}
+      <CharBox char="D" cls={cls} />
+      <CharBox char={prefix === "D-" ? "−" : "+"} cls={cls} />
+      <DigitBox digit={tens} cls={cls} />
+      <DigitBox digit={ones} cls={cls} />
+    </div>
+  );
+}
+
+function CharBox({ char, cls }: { char: string; cls: string }) {
+  return (
+    <div
+      className={`relative flex h-6 w-5 items-center justify-center rounded-sm font-mono text-[14px] font-extrabold leading-none ${cls}`}
+    >
+      <span
+        className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-px border-t border-black/30"
+        aria-hidden
+      />
+      {char}
     </div>
   );
 }
