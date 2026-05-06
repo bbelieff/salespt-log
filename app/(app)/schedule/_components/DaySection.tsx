@@ -37,15 +37,13 @@ export default function DaySection({
 
   // 페이지 배경(bg-slate-100)과 명확히 분리:
   //  - 오늘: 파란 그라데이션 + 강한 좌측 보더 + shadow
-  //  - 평일: 흰 카드 + shadow-sm + 좌측 회색 보더
-  //  - 주말: 흰 카드 + shadow-sm + 좌측 빨강(일)/파랑(토) 강조 보더
+  //  - 주말(토/일): 빨강 좌측 보더 (휴일 강조)
+  //  - 평일: 회색 좌측 보더
   const todayBorder = isToday
     ? "border-l-[5px] border-blue-600 shadow-md shadow-blue-600/20"
-    : dow === 0
+    : isWeekend
       ? "border-l-[5px] border-red-300 shadow-sm"
-      : dow === 6
-        ? "border-l-[5px] border-blue-300 shadow-sm"
-        : "border-l-[5px] border-slate-300 shadow-sm";
+      : "border-l-[5px] border-slate-300 shadow-sm";
   const sectionBg = isToday
     ? "bg-gradient-to-b from-blue-100 to-blue-50"
     : "bg-white";
@@ -58,7 +56,9 @@ export default function DaySection({
 
   return (
     <section
-      className={`mb-3 rounded-xl px-3 pb-2 pt-3 ${sectionBg} ${todayBorder}`}
+      // scroll-margin-top: WeekHeader(top-24=96px) + WeekHeader 내부 + SummaryBar 합산 ~280px
+      // 위로 스크롤(앞 요일 클릭) 시 sticky 헤더에 가려지지 않도록 여유 확보.
+      className={`mb-3 rounded-xl px-3 pb-2 pt-3 scroll-mt-[280px] ${sectionBg} ${todayBorder}`}
     >
       <header
         className={`mb-2.5 flex items-center gap-2 border-b ${
