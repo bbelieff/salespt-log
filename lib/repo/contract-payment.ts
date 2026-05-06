@@ -326,7 +326,11 @@ export async function updateUserFields(
   });
 }
 
-/** row 식별로 한 row clear (A~AD 모두 비움). */
+/** row 식별로 한 row clear (C~AD만 비움 — A 공란/B 순번 수식 보존).
+ *
+ *  버그 fix: 이전에는 A~AD 전체 clear → 사용자 시트의 B(순번) 수식까지
+ *  지워버려 row 번호가 사라지는 문제 있었음. ARRAY 수식·순번 자동계산 보존.
+ */
 export async function clearRow(
   spreadsheetId: string,
   row: number,
@@ -334,7 +338,7 @@ export async function clearRow(
   if (row < FIRST_DATA_ROW) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(TAB)}!A${row}:AD${row}`;
+  const range = `${tabRef(TAB)}!C${row}:AD${row}`;
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,
