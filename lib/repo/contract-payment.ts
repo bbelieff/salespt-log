@@ -234,6 +234,57 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
 }
 
 /**
+ * (계약일, 업체명) 쌍으로 매칭되는 첫 row를 찾음. sync 업데이트용.
+ * 같은 (계약일, 업체명)이 여러 row인 경우 가장 빠른(작은 row 번호) 것 반환.
+ */
+async function findRowByLink(
+  spreadsheetId: string,
+  계약일: string,
+  업체명: string,
+): Promise<number | null> {
+  const range = `${tabRef(TAB)}!C${FIRST_DATA_ROW}:D`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const values = (res.data.values ?? []) as unknown[][];
+  for (let i = 0; i < values.length; i++) {
+    const r = values[i] ?? [];
+    const cellDate = serialToISODate(r[0]);
+    const cellName = toStr(r[1]).trim();
+    if (cellDate === 계약일 && cellName === 업체명.trim()) {
+      return FIRST_DATA_ROW + i;
+    }
+  }
+  return null;
+}
+
+/**
+ * 04 업체관리에서 수임비가 수정됐을 때, 매칭되는 02 계약수납관리 row의
+ * E열(수임비)을 sync 업데이트. (계약일+업체명)으로 매칭.
+ *
+ * 매칭 row 없으면 null 반환 — 호출 측에서 fan-out으로 새 row 생성하거나
+ * 사용자에게 안내 가능.
+ */
+export async function syncFeeFromContract(
+  spreadsheetId: string,
+  data: { 계약일: string; 업체명: string; 수임비: number },
+): Promise<{ row: number } | null> {
+  const row = await findRowByLink(spreadsheetId, data.계약일, data.업체명);
+  if (!row) return null;
+  const range = `${tabRef(TAB)}!E${row}`;
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[data.수임비]] },
+  });
+  return { row };
+}
+
+/**
  * 계약 액션 시 자동 호출: 새 row append (C/D/E만 채움, F~AA는 빈 값).
  * 사용자는 계약수납탭에서 추가 입력.
  */

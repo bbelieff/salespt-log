@@ -63,6 +63,22 @@ export function useAddContractPayment() {
   });
 }
 
+/**
+ * 이미 계약 상태인 미팅 카드의 수임비를 수정한 경우 호출.
+ * (계약일+업체명) 매칭 row의 E열만 sync 업데이트. 매칭 없으면 synced: false.
+ */
+export function useSyncContractFee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddFromContractArgs) =>
+      fetchJSON<{ ok: true; synced: boolean; row?: number }>(
+        `/api/contract-payment`,
+        { method: "PATCH", body: JSON.stringify(data) },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cpKey() }),
+  });
+}
+
 export interface PatchArgs {
   row: number;
   data: ContractPayment;
