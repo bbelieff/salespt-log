@@ -66,14 +66,14 @@ export default function WeekHeader({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex-1 text-center">
-          <div className="text-base font-bold text-gray-900">
+        <div className="flex flex-1 items-baseline justify-center gap-2">
+          <span className="text-base font-bold text-gray-900">
             {cohortName ? `${cohortName} · ` : ""}
             {weekIndex}주차
-          </div>
-          <div className="mt-0.5 text-xs text-gray-400">
+          </span>
+          <span className="text-xs text-gray-400">
             {fmtMD(weekStart)} ~ {fmtMD(addDays(weekStart, 6))}
-          </div>
+          </span>
         </div>
         <button
           type="button"
