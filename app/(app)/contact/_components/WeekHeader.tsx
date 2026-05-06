@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { addDays, dayLabelKO, fmtMD, parseISO } from "../_lib/week";
+import { addDays, dayLabelKO, fmtMD, friOf, parseISO } from "../_lib/week";
 
 const JS_DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -31,9 +31,12 @@ export default function WeekHeader({
   onNextWeek,
   onSelectDay,
 }: Props) {
+  // v2: 한 주 = 금~목 (숙제검사 목요일 마감 기준).
+  // weekStart는 courseStart 포함 첫 금요일 + (weekIndex-1)*7
   const cs = parseISO(courseStart);
-  const startDow = cs.getDay(); // 0~6 (일~토)
-  const weekStart = addDays(cs, (weekIndex - 1) * 7);
+  const csFri = friOf(cs); // courseStart의 금요일 정렬
+  const startDow = csFri.getDay(); // 항상 5(금)
+  const weekStart = addDays(csFri, (weekIndex - 1) * 7);
 
   // 7일 슬롯: 첫 슬롯이 weekStart, 7번째까지 +6
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));

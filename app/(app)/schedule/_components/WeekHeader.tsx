@@ -41,12 +41,12 @@ export default function WeekHeader({
 
   return (
     <header className="sticky top-24 z-30 bg-white shadow-sm">
-      {/* 주차 네비 — 컴팩트 (py-1.5, h-8 버튼) */}
-      <div className="flex items-center justify-between px-2 py-1.5">
+      {/* 주차 네비 — 중간 컴팩트 (py-2, h-9 버튼) */}
+      <div className="flex items-center justify-between px-2 py-2">
         <button
           type="button"
           onClick={onPrevWeek}
-          className="flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-9 w-9 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
           aria-label="이전 주차"
         >
           <svg
@@ -75,7 +75,7 @@ export default function WeekHeader({
         <button
           type="button"
           onClick={onNextWeek}
-          className="flex h-8 w-8 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-9 w-9 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
           aria-label="다음 주차"
         >
           <svg
@@ -94,8 +94,8 @@ export default function WeekHeader({
         </button>
       </div>
 
-      {/* 7일 그리드 — 한 줄당 컴팩트 (요일+숫자 horizontal) */}
-      <div className="grid grid-cols-7 gap-0.5 px-2 pb-1.5">
+      {/* 7일 그리드 — 요일/숫자 stack (작은 폰트 + 작은 패딩) */}
+      <div className="grid grid-cols-7 gap-0.5 px-2 pb-2">
         {days.map((d, i) => {
           const iso = `${d.getFullYear()}-${String(
             d.getMonth() + 1,
@@ -109,7 +109,7 @@ export default function WeekHeader({
               key={iso}
               type="button"
               onClick={() => onClickDay(i)}
-              className={`relative flex items-center justify-center gap-0.5 rounded-md py-1 transition-all active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 transition-all active:scale-95 ${
                 isToday
                   ? "bg-blue-500 text-white shadow-sm shadow-blue-500/30"
                   : count > 0

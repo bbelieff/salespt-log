@@ -52,32 +52,29 @@ export default function TopHeader({
 
   return (
     <>
-      {/* 슬림 브랜드 바 (1줄: 로고 / 경영일지 / D-day / 사용자)
-          gap 좁게 + min-w-0 truncate로 360px에서도 안 깨지게. */}
+      {/* 슬림 브랜드 바 (1줄, 새 순서): 로고 → 사용자 → 경영일지 → D-day */}
       <header className="sticky top-0 z-50 flex h-12 items-center gap-1.5 border-b border-gray-100 bg-white px-2 sm:gap-2 sm:px-3">
-        {/* 좌: 로고 + 경영일지 (xs는 로고만) */}
-        <div className="flex min-w-0 shrink items-center gap-1 sm:gap-1.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/salespt-logo.png"
-            alt="세일즈PT"
-            className="h-6 w-auto shrink-0 object-contain sm:h-7"
-          />
-          <span className="hidden truncate text-xs font-semibold text-gray-900 sm:inline sm:text-sm">
-            경영일지
-          </span>
-        </div>
+        {/* 1. 로고 — 고정 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/salespt-logo.png"
+          alt="세일즈PT"
+          className="h-6 w-auto shrink-0 object-contain sm:h-7"
+        />
 
-        {/* 중앙: D-day 카운터 — 고정 크기 */}
+        {/* 2. 사용자 — 남은 공간 채우면서 truncate */}
+        <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-gray-900 sm:text-sm">
+          {display}
+        </span>
+
+        {/* 3. 경영일지 (xs 숨김 — 로고 워드마크와 중복) */}
+        <span className="hidden shrink-0 text-xs font-semibold text-gray-900 sm:inline sm:text-sm">
+          경영일지
+        </span>
+
+        {/* 4. D-day 카운터 — 고정 */}
         <div className="flex shrink-0">
           <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
-        </div>
-
-        {/* 우: 사용자 — 남은 공간 차지하며 우측 정렬, truncate */}
-        <div className="flex min-w-0 flex-1 justify-end">
-          <span className="truncate text-[11px] font-bold text-gray-900 sm:text-sm">
-            {display}
-          </span>
         </div>
       </header>
 

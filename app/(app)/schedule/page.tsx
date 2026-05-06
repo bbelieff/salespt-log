@@ -25,7 +25,7 @@ import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
 import TopHeader from "@/components/TopHeader";
-import { addDays, fmtISO, parseISO } from "./_lib/week";
+import { addDays, fmtISO, friOf, parseISO, weekIndexOf } from "./_lib/week";
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -54,22 +54,15 @@ export default function SchedulePage() {
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  // 처음 로드 후 courseStart 기준으로 weekStart를 그 주의 시작일로 정렬.
-  // (사용자가 4/30(목) 접속하면 weekStart는 4/25(토)로 자동 정렬)
+  // 처음 로드 후 weekStart를 그 주의 금요일(Fri-Thu 주)로 정렬.
+  // 예: 사용자가 4/30(목)에 접속 → weekStart = 4/24(금)
   const aligned = useRef(false);
   useEffect(() => {
     if (!weekQuery.data || aligned.current) return;
     aligned.current = true;
-    const { courseStart } = weekQuery.data;
-    const cs = parseISO(courseStart);
     const today = parseISO(TODAY_ISO);
-    const diffDays = Math.round(
-      (today.getTime() - cs.getTime()) / 86_400_000,
-    );
-    if (diffDays < 0) return; // 수강 시작 전
-    const weekIdx = Math.floor(diffDays / 7);
-    const correctStart = addDays(cs, weekIdx * 7);
-    const correctIso = fmtISO(correctStart);
+    const todayFri = friOf(today);
+    const correctIso = fmtISO(todayFri);
     if (correctIso !== weekStart) setWeekStart(correctIso);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekQuery.data?.courseStart]);
@@ -274,7 +267,13 @@ export default function SchedulePage() {
   }
   if (!weekQuery.data) return null;
 
-  const { weekIndex, daysByMeetingDate } = weekQuery.data;
+  const { courseStart: courseStartISO, daysByMeetingDate } = weekQuery.data;
+  // weekIndex는 UI 기준(Fri-Thu)으로 재계산 — 백엔드는 courseStart-DOW 기준이라
+  // UI 표시용으로 일관성 위해 재계산.
+  const weekIndex = weekIndexOf(
+    parseISO(weekStart),
+    parseISO(courseStartISO),
+  );
 
   return (
     <>

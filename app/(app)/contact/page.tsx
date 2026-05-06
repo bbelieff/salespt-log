@@ -26,7 +26,7 @@ import TopHeader from "@/components/TopHeader";
 import MeetingSlotItem, {
   type NewSlot,
 } from "./_components/MeetingSlotItem";
-import { fmtISO } from "./_lib/week";
+import { fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -367,7 +367,9 @@ export default function ContactPage() {
   }
   if (!dayQuery.data) return null;
 
-  const { weekIndex, courseStart } = dayQuery.data;
+  const { courseStart } = dayQuery.data;
+  // weekIndex는 UI 기준(Fri-Thu)으로 재계산 — 백엔드는 courseStart-DOW 기준.
+  const weekIndex = weekIndexOf(parseISO(date), parseISO(courseStart));
 
   // 모든 채널 슬롯을 채널 순서대로 합쳐서 렌더 (시안과 동일)
   const allSlots: Array<
