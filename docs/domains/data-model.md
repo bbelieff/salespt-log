@@ -76,6 +76,35 @@ last_review: 2026-04-27
 > **단일 SSOT**: 모든 (app) 탭 상단 `TopHeader`에 표시되는 4 그룹의 데이터 출처.
 > 디자인 규격은 [components.md](../design/components.md) §8 TopHeader, 색·z-index는 [tokens.md](../design/tokens.md) 참조.
 
+### 인증 흐름 (현재 → MVP 출시)
+
+```
+[현재 — auth stub]   STUB_USER_EMAIL env  → email
+[MVP — NextAuth]     Google OAuth session → session.user.email
+                                            ↓ (둘 다 동일하게 사용)
+                     마스터 레지스트리 users 탭 (lib/repo/users.ts)
+                     email → { cohort, name, spreadsheetId, role }
+                                            ↓
+                     개인 시트 01 영업관리!B3, C3, N1 (실제 표시값 SSOT)
+```
+
+> ⚠️ **NextAuth session에서 직접 가져오는 것은 `email` 한 개만**. cohort/name은 절대
+> Google session에서 안 옴 (Google 계정 이름 ≠ 수강생 본명·기수). 항상 시트 B3/C3가 우선.
+> 마스터 레지스트리의 cohort/name은 시트 fetch 실패 시 fallback일 뿐.
+
+### 마스터 레지스트리 구조
+
+- **위치**: 별도 시트, `SHEETS_REGISTRY_ID` env로 지정
+- **탭**: `users` (env `SHEETS_REGISTRY_TAB`로 override 가능)
+- **컬럼** (A~E):
+  | 컬럼 | 필드 | 예 |
+  |---|---|---|
+  | A | email | `belief@example.com` |
+  | B | cohort | `7기` (또는 `7`) |
+  | C | name | `김믿음` |
+  | D | spreadsheetId | Google Sheets URL의 ID |
+  | E | role | `trainee` / `trainer` / `admin` (default `trainee`) |
+
 ### 출처 매핑
 
 | 표시 요소 | 시트 좌표 | 형식 변환 |
@@ -115,7 +144,22 @@ formatDisplay(cohort, name) = "{cohort} {name} 대표님"
 
 ### D-day 계산 규칙 (DDayBadge)
 
-- **기준**: `weekTargetISO − today` (브라우저 로컬 자정)
+**기준일 결정 (중요 — 모호함 정리)**:
+
+| 옵션 | offset | 의미 | MVP 채택? |
+|---|---|---|---|
+| 수강시작일 (N1) | +0d | 시작점 | — |
+| **7주차 끝 (D-day target)** | **+49d** | **발표·평가일** | ✅ **채택** |
+| 수료일 (N2) | +55d | 8주차 끝, 수강 종료 | ❌ |
+| 편집 종료일 | +69d | 8주 + 2주 마감 유예 | ❌ |
+
+**채택 결정**: `weekTargetISO = courseStartISO + 49d`. 사용자가 가장 의식하는 마일스톤이
+**7주차 발표/평가**이므로 그쪽으로 카운트다운. 수료일(N2)은 6일 더 뒤지만 표시하지 않음.
+
+**라벨 없음**: 텍스트는 `D-N`만 노출. `"수료 D-N"` / `"종강 D-N"` 같은 prefix 라벨 **사용 안 함**
+(공간 협소 + 의미가 7주차 D-day인데 "수료" 라벨 붙이면 오해 발생).
+
+- **계산**: `weekTargetISO − today` (브라우저 로컬 자정 기준 정수 일수 차이)
 - **표시**:
   - 양수 N: `D-N` (남은 일수, 검정 박스 흰 글자 — 카운트다운 적극 강조)
   - 0: `D-DAY` (브랜드 빨강 #d71617 강조)

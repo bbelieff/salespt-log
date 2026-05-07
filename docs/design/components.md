@@ -877,7 +877,44 @@ function getTimeValue(hourId, minuteId) {
 ## 8. App Shell
 
 모든 (app) 탭(컨택관리/일정·계약/캘린더/수납/DB관리)이 공유하는 최상단 셸.
-구현 파일: `components/TopHeader.tsx`, `components/DDayBadge.tsx`.
+
+**구조 (한 컴포넌트, 2 sticky 영역)**:
+
+```
+┌─────────────────────────────────────────────────────────┐ ← TopHeader (h-12, top-0, z-50)
+│ [logo] [기수 이름 대표님 · 경영일지] [D-23] [대시보드 →] │   슬림 브랜드 바
+├─────────────────────────────────────────────────────────┤ ← PageBanner   (h-12, top-12, z-40)
+│ ▍ 📞 컨택관리                              01 영업관리 │   페이지 식별
+└─────────────────────────────────────────────────────────┘
+   본문 영역 ─────────────────────────────────────────────
+```
+
+**구현 파일**:
+- `components/TopHeader.tsx` — **두 sticky 영역을 한 컴포넌트로 묶음**
+  (TopHeader = 슬림 브랜드 바 + PageBanner. 별도 `<PageBanner />` 컴포넌트 없음)
+- `components/DDayBadge.tsx` — TopHeader 그룹 ③에서 import
+
+**API**:
+```tsx
+<TopHeader pageEmoji="📞" pageTitle="컨택관리" pageSubtitle="01 영업관리" />
+```
+
+| Prop | 타입 | 필수 | 비고 |
+|---|---|---|---|
+| `pageEmoji` | string | ✅ | PageBanner 좌측 이모지. 탭별 고정값 (아래 표) |
+| `pageTitle` | string | ✅ | PageBanner 한글 라벨 |
+| `pageSubtitle` | string \| undefined | — | PageBanner 우측 회색 보조 (시트 탭 출처 등) |
+
+**탭별 고정 props** (5개 탭 일관성):
+
+| 페이지 | pageEmoji | pageTitle | pageSubtitle |
+|---|---|---|---|
+| 컨택관리 (`/contact`) | 📞 | 컨택관리 | `01 영업관리` |
+| 일정·계약 (`/schedule`) | 📅 | 일정·계약 | `04 업체관리` |
+| 캘린더 (`/calendar`) | 🗓️ | 캘린더 | `04 업체관리` |
+| 수납 (`/payment`) | 💰 | 수납 | `02 계약수납관리` |
+| DB관리 (`/db`) | 🗂️ | DB관리 | `03 DB관리` |
+| 대시보드 (`/`) | — | (TopHeader 표시 안 함, 자체 헤더) | — |
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
@@ -891,10 +928,16 @@ function getTimeValue(hourId, minuteId) {
 
 | 그룹 | 내용 | 데이터 출처 | 비고 |
 |---|---|---|---|
-| ① 로고 | `/public/salespt-logo.png` (워드마크 포함) | 정적 이미지 | `h-6 sm:h-7 w-auto object-contain` |
+| ① 로고 | **`/salespt-logo.png`** (PNG, 워드마크 포함) | `public/salespt-logo.png` 정적 자산 | `h-6 sm:h-7 w-auto object-contain`. **SVG 인라인 아님 — PNG 파일**. "세일즈PT" 워드마크가 이미지에 포함되어 있어서 별도 텍스트 워드마크 추가하지 않음 |
 | ② 사용자 + 라벨 | `formatDisplay(cohort, name)` + `"경영일지"` | `useMe()` ([data-model.md](../domains/data-model.md#사용자-프로필--d-day-topheader-ssot)) | 그룹 내부만 `gap-1.5` 타이트 묶음. xs(<sm)에선 `"경영일지"` 숨김(워드마크에 포함됨) |
 | ③ D-day | `<DDayBadge />` | `me.weekTargetISO` | 아래 §DDayBadge 참고 |
 | ④ 대시보드 버튼 | "대시보드 →" Link to `/` | — | 흰 배경 + **brand red #d71617** 테두리/글자, hover `bg-red-50` |
+
+**대시보드 버튼 동작 사양**:
+- 표시 위치: **모든 (app) 탭의 우상단** (5개 탭 동일 — contact/schedule/calendar/payment/db).
+- 활성/비활성 상태 **없음** — 항상 동일하게 노출 (대시보드(`/`)는 별도 화면, 같은 화면 내에서 활성화될 일이 없음).
+- 대시보드 페이지(`/`) 자체에서는 TopHeader **표시 안 함** (자체 헤더 사용 — PR 12 dashboard-tab에서 정의).
+- 탭 표시(active 표시)는 하단 `BottomNav`(§5)의 책임. TopHeader는 브랜드/사용자/D-day/대시보드 진입 4가지만 다룬다.
 
 **HTML/Tailwind 규격** (안정 버전, 변경 시 PR로 동시 갱신):
 
@@ -959,6 +1002,40 @@ function getTimeValue(hourId, minuteId) {
 **한도**: 두 자리 박스 가정으로 99일까지. 7주(49일) 기준이라 충분.
 
 **현재 사용 위치**: TopHeader 그룹 ③ 단독.
+
+### PageBanner (TopHeader 내부 두 번째 sticky 영역)
+
+**용도**: 슬림 브랜드 바 바로 아래 붙어 현재 페이지가 어느 탭인지 식별. 별도 컴포넌트가 아니라
+**TopHeader.tsx 내부의 두 번째 `<div sticky>`**. props는 `pageEmoji` / `pageTitle` / `pageSubtitle` (TopHeader가 전달).
+
+**HTML/Tailwind 규격**:
+
+```tsx
+{/* 페이지 배너 — TopHeader 내부, 슬림 바 바로 아래 */}
+<div className="sticky top-12 z-40 flex h-12 items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 sm:gap-3 sm:px-4">
+  {/* 좌측 세로 막대 */}
+  <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
+
+  {/* 이모지 + 제목 */}
+  <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
+    <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
+    <span className="truncate">{pageTitle}</span>
+  </h1>
+
+  {/* 보조(시트 탭 출처 등, 우측 회색) */}
+  {pageSubtitle && (
+    <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
+      {pageSubtitle}
+    </span>
+  )}
+</div>
+```
+
+**디자인 규격**:
+- 높이: `h-12` (슬림 바와 동일). 두 영역 합쳐 96px 고정.
+- 배경: `bg-slate-100` (슬림 바의 `bg-white`와 시각 구분).
+- 좌측 액센트 바: `w-1 h-5 bg-slate-500` (페이지 안에 들어왔다는 시각 신호).
+- 적층: `sticky top-12 z-40` (슬림 바 바로 아래, 본문 위) — [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
 
 ---
 
