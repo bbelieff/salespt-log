@@ -133,9 +133,25 @@ types → config → repo → service → app(api·ui) → components
 - [ ] `npm run test:structural` — 레이어·Sheets 격리
 - [ ] `npm run test` — 단위·통합
 - [ ] 파일 크기 ≤ 500줄 (check.sh 가 검사)
-- [ ] 문서 드리프트 — `docs/` 에서 언급한 파일/심볼이 실재
+- [ ] **SSOT 드리프트** (`scripts/doc-drift.sh` — Hashimoto 가드레일) — 코드의 컴포넌트/타입/시트키가 4개 SSOT 문서에 등재되어 있는지 검증. 면제는 `docs/.ssot-grandfathered.md` 에 박제된 심볼만.
 
 **하나라도 빨갛게 뜨면 PR 금지.** 스크립트나 훅을 우회하지 않는다. 스크립트가 잘못되었다면 스크립트를 고친다.
+
+### SSOT 4 문서 (단일 진실원천)
+
+새 컴포넌트·타입·시트 좌표는 다음 4 문서 중 적절한 곳에 **반드시** 등재 후 코드 추가:
+
+| 코드 영역 | SSOT 문서 |
+|---|---|
+| `components/**` + `app/(app)/**/_components/**` | `docs/design/components.md` |
+| `lib/types/index.ts` exports (Zod) | `docs/domains/data-model.md` |
+| `lib/config/SHEET_RANGES.*` 키 | `docs/domains/sheet-structure.md` |
+| 색·간격·z-index·typography arbitrary value | `docs/design/tokens.md` |
+
+**원칙: "현재 코드가 진실, SSOT는 그걸 반영한다."**
+- 검사 방향은 코드 → SSOT 한 방향만. 옛 plan/wireframe 문서는 SSOT 아님.
+- 반대 방향(SSOT에 있는데 코드에 없음)은 검사 안 함 — 그래야 옛 설계로 끌려가지 않음.
+- 기존 누락분은 `docs/.ssot-grandfathered.md` 에 박제하여 점진 backfill. 새 PR이 추가하는 누락은 절대 면제 안 됨.
 ---
 
 ## 5. 문서화 규칙 (Docs as System of Record)
