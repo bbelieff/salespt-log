@@ -84,7 +84,7 @@ export default function TopHeader({
         {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 (브랜드 #d71617) */}
         <Link
           href="/"
-          className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d71617] bg-white px-2.5 py-1 text-[11px] font-bold text-[#d71617] shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
+          className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-red bg-white px-2.5 py-1 text-[11px] font-bold text-brand-red shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
           aria-label="대시보드로 이동"
         >
           <span>대시보드</span>

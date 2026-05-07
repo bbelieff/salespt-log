@@ -24,9 +24,10 @@
 | Primary Light | `blue-50` | #eff6ff | 카드 selected 상태 |
 | Gradient | `from-blue-500 to-purple-600` | - | 대시보드 카드 |
 
-> **brand-red 토큰화 (Q2 A 결정 2026-05-08)**: `tailwind.config.ts` 의 `theme.extend.colors.brand.red = '#d71617'` 로 등록.
-> 사용처에선 `bg-brand-red` / `text-brand-red` / `border-brand-red` 클래스 사용. **arbitrary `[#d71617]` 신규 사용 금지** (CLAUDE.md 정책 일치).
-> 기존 코드의 `[#d71617]` 발생 위치는 코드 follow-up PR(`refactor/brand-red-token`)에서 일괄 치환.
+> **brand-red 토큰** (Q2 A 결정 2026-05-08, 코드 정합 완료): `tailwind.config.ts` 의
+> `theme.extend.colors.brand.red = '#d71617'` 로 등록.
+> 사용처에선 `bg-brand-red` / `text-brand-red` / `border-brand-red` 클래스 사용.
+> **arbitrary `[#d71617]` 사용 금지** (CLAUDE.md 정책 일치).
 
 ### Semantic Colors
 의미별 색상:

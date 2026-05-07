@@ -49,10 +49,10 @@ export default {
           500: "#5b6cff",
           600: "#4a59e6",
           700: "#3644b8",
-          // ⭐ 세일즈PT 브랜드 레드 (Q2 A 결정 2026-05-08)
+          // ⭐ 세일즈PT 브랜드 레드 (Q2 A 결정 2026-05-08, 코드 정합 완료)
           //   사용: bg-brand-red / text-brand-red / border-brand-red
           //   사용처: 로고($ 심볼), D-DAY 강조, 대시보드 버튼 글자/테두리
-          //   기존 코드의 [#d71617] 사용처는 별도 refactor PR에서 일괄 치환.
+          //   arbitrary [#d71617] 사용 금지 (CLAUDE.md 정책 일치)
           red: "#d71617",
         },
       },
