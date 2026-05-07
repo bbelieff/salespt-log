@@ -914,7 +914,7 @@ function getTimeValue(hourId, minuteId) {
 | 캘린더 (`/calendar`) | 🗓️ | 캘린더 | `04 업체관리` |
 | 수납 (`/payment`) | 💰 | 수납 | `02 계약수납관리` |
 | DB관리 (`/db`) | 🗂️ | DB관리 | `03 DB관리` |
-| 대시보드 (`/`) | — | (TopHeader 표시 안 함, 자체 헤더) | — |
+| 대시보드 (`/`) | 📊 | 대시보드 | `8주 누적` (Q3 A 결정 — 5탭과 동일한 TopHeader 사용. ④ 대시보드 버튼 자리만 변형 — 아래 §대시보드 변형 참조) |
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
@@ -935,9 +935,16 @@ function getTimeValue(hourId, minuteId) {
 
 **대시보드 버튼 동작 사양**:
 - 표시 위치: **모든 (app) 탭의 우상단** (5개 탭 동일 — contact/schedule/calendar/payment/db).
-- 활성/비활성 상태 **없음** — 항상 동일하게 노출 (대시보드(`/`)는 별도 화면, 같은 화면 내에서 활성화될 일이 없음).
-- 대시보드 페이지(`/`) 자체에서는 TopHeader **표시 안 함** (자체 헤더 사용 — PR 12 dashboard-tab에서 정의).
+- 활성/비활성 상태 **없음** — 항상 동일하게 노출.
+- **대시보드 페이지(`/`) 자체에서도 동일한 TopHeader 사용** — 단, ④ 대시보드 버튼은 **현 페이지 표시 라벨**(비활성 링크)로 대체 (Q3 결정 2026-05-08, 옵션 A).
 - 탭 표시(active 표시)는 하단 `BottomNav`(§5)의 책임. TopHeader는 브랜드/사용자/D-day/대시보드 진입 4가지만 다룬다.
+
+**대시보드 페이지(`/`) TopHeader 변형 (Q3 A)**:
+- 슬림 바 + PageBanner 구조 그대로 (5탭과 일관성).
+- ④ 자리: `<Link href="/">대시보드 →</Link>` 대신 현 페이지 라벨 또는 빈 칸:
+  - 옵션 A1: 그냥 비움 (가장 단순, 시각 일관성)
+  - 옵션 A2: `📊 대시보드` 텍스트만 (현재 위치 표시) — 권장
+- PageBanner: `pageEmoji="📊"`, `pageTitle="대시보드"`, `pageSubtitle="8주 누적"` (prototype 기준)
 
 **HTML/Tailwind 규격** (안정 버전, 변경 시 PR로 동시 갱신):
 
@@ -1036,6 +1043,127 @@ function getTimeValue(hourId, minuteId) {
 - 배경: `bg-slate-100` (슬림 바의 `bg-white`와 시각 구분).
 - 좌측 액센트 바: `w-1 h-5 bg-slate-500` (페이지 안에 들어왔다는 시각 신호).
 - 적층: `sticky top-12 z-40` (슬림 바 바로 아래, 본문 위) — [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
+
+---
+
+## 9. Dashboard
+
+대시보드 페이지(`/`) 전용 컴포넌트. 핸드오프: `docs/handoff/inbox/dashboard-2026-05-07/`.
+
+**디렉토리 구조**:
+```
+app/(app)/dashboard/page.tsx                # 대시보드 메인 페이지 (TopHeader 사용 — §8 변형)
+components/dashboard/
+  ├── DashboardProgressBanner.tsx           # 메인 배너 (h-12 sticky top-24, 진행도 + 매출/비용)
+  ├── FinanceSummaryBoxes.tsx               # 매출 / 비용 1:1 grid 박스
+  ├── OperatingProfitCard.tsx               # 영업이익 카드 (좌측 border-l-4 blue-500)
+  ├── FunnelChart.tsx                       # 6단계 영업퍼널 SVG (생산→유입→컨택진행→미팅예약→미팅완료→계약)
+  ├── ProductivityIndicators.tsx            # 생산성 지표 4개 (indigo gradient: 입구 옅음 → 종착 진함)
+  ├── WeeklyDualChart.tsx                   # 8주차 듀얼 차트 (활동량 + 영업이익, 영업이익 음수도 표시)
+  └── ChannelCostDonut.tsx                  # 채널별 비용 도넛 + 콜·지·기·소 별도 박스
+```
+
+### 9-1. DashboardProgressBanner
+
+**용도**: 대시보드 메인 배너. PageBanner(top-12) 바로 아래 sticky.
+
+**위치 / 적층**:
+- `sticky top-24 z-30` — TopHeader(top-0) + PageBanner(top-12) + 본 배너(top-24).
+- 자식 sticky 각각 금지 — TopHeader처럼 부모 묶기 패턴.
+- z-index 추가 (메인 배너 = z-30): [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
+
+**Props**:
+- `cohort: string` — `"6기"` (formatCohort 적용)
+- `today: string` — MM/DD (`"5/4"`)
+- `weekday: string` — 한글 한 글자 (`"월"`)
+- `currentWeek: number` — 1~8
+- `progressPercent: number` — `(today − N1) / 57 × 100`, 0~100
+- `graduationDate: string` — `"6/6"` MM/DD (graduationISO에서 추출)
+- `revenue: number` — 총매출
+- `cost: number` — 총비용
+- `feeIncome: number` — 수임비
+- `commissionIncome: number` — 수수료
+
+**상단 라벨 형식 (Belief 결정 2026-05-07)**:
+```
+현재 [today] ([요일]) · [N주차] 진행중
+```
+- 그룹 1 (`현재 5/4 (월)`): `text-base font-extrabold text-gray-900 tabular-nums`
+- 구분자 (`·`): `text-base text-gray-300`
+- 그룹 2 (`4주차 진행중`): `text-base font-extrabold text-blue-600`
+
+**진행바 디자인**:
+- 배경: `h-2 bg-gray-200 rounded-full`
+- 진행: `bg-gradient-to-r from-blue-400 to-blue-600 rounded-full`
+- 끝점 빛나는 SVG: 5겹 amber halo (외곽/중간/메인 dot/안쪽 빛/광택)
+- 진행바 위/아래 마진: `mb-3` / 컨테이너 패딩: `pt-3 pb-2.5`
+
+**하단 우측**: `🎓 [graduationDate] 종강총회` (= 수료일 통합 표시)
+
+### 9-2. FinanceSummaryBoxes
+
+**용도**: 매출/비용 1:1 grid (`grid grid-cols-2 gap-3`). 비용 박스 ₩4,800,000 짤림 방지로 1:1 (이전 3:2 폐기).
+
+**디자인**:
+- 매출 박스: `bg-white border border-gray-200` + 좌측에 `w-4 h-4 rounded-full bg-gray-200 text-gray-700` ＋ 배지
+- 비용 박스: `bg-white border border-gray-200` + 좌측에 `w-4 h-4 rounded-full bg-red-100 text-red-600` − 배지
+
+### 9-3. OperatingProfitCard
+
+**용도**: 영업이익 (= 매출 − 비용) 단독 카드.
+
+**디자인**:
+- 좌측 `border-l-4 border-blue-500`
+- 좌측에 `w-4 h-4 rounded-full bg-blue-100 text-blue-600` ＝ 배지
+- 큰 영업이익 금액 (`text-2xl font-extrabold`)
+- 부연: "영업이익률 N%" (소수 1자리)
+- 매출/비용/영업이익 세 박스의 **+/−/= 배지 산술 흐름** 시각 통일
+
+### 9-4. FunnelChart (6단계 영업퍼널)
+
+**용도**: 6단계 stacked funnel SVG (4채널 × 6단계 = 24 cells stacked bar).
+
+**SVG 좌표 (prototype 기준)**: `viewBox="0 0 358 250"`, 사다리꼴 높이 **15px** (이전 30px 폐기 — 컴팩트 + funnel 시각 균형).
+
+**Props**:
+- `stages: Array<{ name: string; total: number; channels: { 매입DB: number; 직접생산: number; 현수막: number; '콜·지·기·소': number } }>` — 6 항목
+
+**채널 색**: tokens.md §채널별 색상 (4종 고정, blue/green/amber/purple)
+
+**전체 전환율 표시**: 하단에 "유입 → 계약 8.2%" (= 계약 ÷ 유입). 생산 제외.
+
+### 9-5. ProductivityIndicators
+
+**용도**: 생산성 지표 4개 (DB 퀄리티 / 컨택숙련도 / 미팅숙련도 / 영업생산성).
+
+**그라데이션** (입구 옅음 → 종착 진함):
+- DB 퀄리티: `text-indigo-300`
+- 컨택숙련도: `text-indigo-500`
+- 미팅숙련도: `text-indigo-700`
+- **영업생산성**: `bg-gradient-to-r from-indigo-500 to-purple-600` 강조 박스 (종합 지표 = 종착점)
+
+**섹션 제목 액센트 바**: `w-1 h-5 rounded-full bg-indigo-500` + `font-extrabold`
+
+### 9-6. WeeklyDualChart (8주차 듀얼)
+
+**용도**: 8주차 활동량 + 영업이익 LineChart.
+
+**SVG**: `viewBox="0 0 358 200"`. 영업이익 음수(1~2주차 적자)도 빨강으로 표시.
+
+**섹션 제목 액센트**: `w-1 h-5 rounded-full bg-slate-500` (시간 추이 톤, PageBanner와 동일).
+
+### 9-7. ChannelCostDonut
+
+**용도**: 채널별 비용 도넛 (3채널 — 매입DB/직접생산/현수막) + 콜·지·기·소 별도 박스.
+
+**SVG**: `viewBox="0 0 358 165"`.
+
+**섹션 제목 액센트**: `w-1 h-5 rounded-full bg-red-500` (비용 메인 컬러).
+
+**콜·지·기·소 처리**:
+- 도넛 자체에는 포함 X (비용 0이라 segment 그릴 수 없음).
+- **별도 박스로**: 점선 dot + "비용 발생 없음" + 수임비 (₩2,100,000 prototype 더미)
+- "100% 순익률" 같은 결론 표현 사용 X (사실 정보만)
 
 ---
 

@@ -17,16 +17,16 @@
 
 | 용도 | Tailwind Class | Hex | 사용처 |
 |------|---------------|-----|--------|
-| **Brand Red** ⭐ | `[#d71617]` (arbitrary) | **#d71617** | 세일즈PT 로고($ 심볼)·D-DAY 강조·대시보드 버튼 글자/테두리 |
+| **Brand Red** ⭐ | `bg-brand-red` / `text-brand-red` / `border-brand-red` | **#d71617** | 세일즈PT 로고($ 심볼)·D-DAY 강조·대시보드 버튼 글자/테두리 |
 | Brand Red Hover | `red-50` | #fef2f2 | 대시보드 버튼 hover 배경 |
 | Primary | `blue-500` | #3b82f6 | 메인 버튼, 링크, 활성 탭 |
 | Primary Dark | `blue-700` | #1d4ed8 | 버튼 hover, 강조 텍스트 |
 | Primary Light | `blue-50` | #eff6ff | 카드 selected 상태 |
 | Gradient | `from-blue-500 to-purple-600` | - | 대시보드 카드 |
 
-> **#d71617 예외**: tokens.md는 원칙적으로 arbitrary value를 금지하지만 (`text-[15px]` 등),
-> **브랜드 색 #d71617는 Tailwind 팔레트에 동등 hue가 없어 arbitrary로 고정 사용**한다.
-> 신규 사용 시 항상 `[#d71617]` 형태로만 작성, 다른 hex로 분기 금지.
+> **brand-red 토큰화 (Q2 A 결정 2026-05-08)**: `tailwind.config.ts` 의 `theme.extend.colors.brand.red = '#d71617'` 로 등록.
+> 사용처에선 `bg-brand-red` / `text-brand-red` / `border-brand-red` 클래스 사용. **arbitrary `[#d71617]` 신규 사용 금지** (CLAUDE.md 정책 일치).
+> 기존 코드의 `[#d71617]` 발생 위치는 코드 follow-up PR(`refactor/brand-red-token`)에서 일괄 치환.
 
 ### Semantic Colors
 의미별 색상:
@@ -162,8 +162,9 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 | 레이어 | 컴포넌트 | z-index | top | 높이 |
 |---|---|---|---|---|
 | 1 (최상단) | `TopHeader` (슬림 브랜드 바) | `z-50` | `top-0` | `h-12` (48px) |
-| 2 | 페이지 배너 (예: 일정·계약 `WeekHeader + SummaryBar` wrapper) | `z-40` | `top-12` (48px) | 가변 |
-| 3 | 모달/Toast/Sheet 등 floating | `z-50` 이상 (별도) | — | — |
+| 2 | 페이지 배너 (TopHeader 내부 `<div>`. 일정·계약은 `WeekHeader + SummaryBar` wrapper로 변형) | `z-40` | `top-12` (48px) | 가변 |
+| 3 | 대시보드 메인 배너 (`DashboardProgressBanner` — 대시보드 페이지 한정) | `z-30` | `top-24` (96px) | `h-12+` |
+| 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상 (별도) | — | — |
 | 0 | 본문 `main` | (없음) | — | — |
 | -1 | `BottomNav` (모바일) | `z-50` (fixed bottom) | bottom-0 | `h-[60px]` |
 
