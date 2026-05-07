@@ -71,6 +71,65 @@ last_review: 2026-04-27
 - **M~N열 2-6행 [성과관리]**: 수임비/승인수수료/매출 총합
 - **N1**: 수강시작일, **N2**: 수료일
 
+## 사용자 프로필 + D-day (TopHeader SSOT) ⭐
+
+> **단일 SSOT**: 모든 (app) 탭 상단 `TopHeader`에 표시되는 4 그룹의 데이터 출처.
+> 디자인 규격은 [components.md](../design/components.md) §8 TopHeader, 색·z-index는 [tokens.md](../design/tokens.md) 참조.
+
+### 출처 매핑
+
+| 표시 요소 | 시트 좌표 | 형식 변환 |
+|---|---|---|
+| **기수** (`cohort`) | `01 영업관리!B3` | 숫자만(`"7"`)이면 `"7기"`로 보정 / 이미 `"7기"`면 유지 |
+| **이름** (`name`) | `01 영업관리!C3` | 그대로 |
+| **수강시작일** (`courseStartISO`) | `01 영업관리!N1` | YYYY-MM-DD ISO |
+| **수료일** (참고) | `01 영업관리!N2` | YYYY-MM-DD ISO. 시트 자동 (`= N1 + 55`) |
+| **D-day target** (`weekTargetISO`) | — (계산값) | **`courseStartISO + 49일`** (= 7주차 D-day). MVP 스코프 §2.5의 8주(55일) 중 7주차 끝점이 발표·평가일 |
+
+> **email → spreadsheetId** 매핑은 별도 마스터 레지스트리 시트(`SHEETS_REGISTRY_ID`)의 `users` 탭 (email/cohort/name/spreadsheetId/role).
+> 마스터의 cohort/name은 fallback. 실제 표시는 항상 개인 시트의 B3/C3가 우선.
+
+### MeProfile 타입
+
+```typescript
+// lib/service/me.ts
+export interface MeProfile {
+  email: string;
+  cohort: string;          // "7기"  ← 01 영업관리!B3 (formatCohort 정규화)
+  name: string;            // "김믿음" ← 01 영업관리!C3
+  courseStartISO: string;  // "2026-03-15" ← 01 영업관리!N1
+  weekTargetISO: string;   // courseStart + 49d (7주차 D-day)
+}
+```
+
+### 표시 문자열 규칙 (TopHeader 그룹 ②)
+
+```
+formatDisplay(cohort, name) = "{cohort} {name} 대표님"
+  cohort 비어있고 name 있음  → "{name} 대표님"
+  cohort 있고 name 비어있음  → "{cohort}"
+  둘 다 비어있음             → "—"
+```
+
+예: `"7기 김믿음 대표님"` (정상) / `"김믿음 대표님"` (cohort 비어있음) / `"—"` (둘 다 없음, 로딩/에러)
+
+### D-day 계산 규칙 (DDayBadge)
+
+- **기준**: `weekTargetISO − today` (브라우저 로컬 자정)
+- **표시**:
+  - 양수 N: `D-N` (남은 일수, 검정 박스 흰 글자 — 카운트다운 적극 강조)
+  - 0: `D-DAY` (브랜드 빨강 #d71617 강조)
+  - 음수 N: `D+|N|` (지난 일수, 회색조)
+  - 데이터 없음 (loading/error): `D-—` (회색 placeholder)
+- **갱신**: 30분 polling (자정 넘어가는 케이스 대응, 정확성 less critical).
+- **두자리 박스 분할**: 10의 자리 / 1의 자리. 7주(49일) 가정으로 99일 한도 충분.
+
+### 캐싱
+
+- React Query key: `["me"]`
+- staleTime: **1시간** (B3/C3/N1은 거의 안 바뀜)
+- `useMe()` 훅 (`lib/query/me-hook.ts`) 한 곳에서만 fetch. TopHeader가 컴포넌트별 fetch 안 함.
+
 ## 미팅 상태 enum (5가지) ⭐
 
 미팅의 라이프사이클은 **5가지 상태**로 표현된다. UI 색상은 [tokens.md](./tokens.md), 시트 컬럼 매핑은 [sheet-structure.md](./sheet-structure.md) 참조.

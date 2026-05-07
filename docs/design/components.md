@@ -874,6 +874,94 @@ function getTimeValue(hourId, minuteId) {
 
 ---
 
+## 8. App Shell
+
+모든 (app) 탭(컨택관리/일정·계약/캘린더/수납/DB관리)이 공유하는 최상단 셸.
+구현 파일: `components/TopHeader.tsx`, `components/DDayBadge.tsx`.
+
+### TopHeader (슬림 브랜드 바) ⭐
+
+**용도**: 5개 탭 페이지 최상단 sticky 브랜드 바. 사용자/D-day/대시보드 진입 한 줄.
+
+**구조** — 한 줄, `h-12` (48px), `justify-between`으로 4 그룹 균등 분할:
+
+```
+[① 로고 png]   [② {기수} {이름} 대표님 · 경영일지]   [③ DDayBadge]   [④ 대시보드 →]
+```
+
+| 그룹 | 내용 | 데이터 출처 | 비고 |
+|---|---|---|---|
+| ① 로고 | `/public/salespt-logo.png` (워드마크 포함) | 정적 이미지 | `h-6 sm:h-7 w-auto object-contain` |
+| ② 사용자 + 라벨 | `formatDisplay(cohort, name)` + `"경영일지"` | `useMe()` ([data-model.md](../domains/data-model.md#사용자-프로필--d-day-topheader-ssot)) | 그룹 내부만 `gap-1.5` 타이트 묶음. xs(<sm)에선 `"경영일지"` 숨김(워드마크에 포함됨) |
+| ③ D-day | `<DDayBadge />` | `me.weekTargetISO` | 아래 §DDayBadge 참고 |
+| ④ 대시보드 버튼 | "대시보드 →" Link to `/` | — | 흰 배경 + **brand red #d71617** 테두리/글자, hover `bg-red-50` |
+
+**HTML/Tailwind 규격** (안정 버전, 변경 시 PR로 동시 갱신):
+
+```tsx
+<header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
+  {/* ① 로고 */}
+  <img src="/salespt-logo.png" alt="세일즈PT"
+       className="h-6 w-auto shrink-0 object-contain sm:h-7" />
+
+  {/* ② 사용자 + 경영일지 — 한 그룹 */}
+  <div className="flex min-w-0 items-center gap-1.5">
+    <span className="min-w-0 truncate text-[11px] font-black text-gray-900 sm:text-sm">
+      {display}  {/* "7기 김믿음 대표님" */}
+    </span>
+    <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
+      경영일지
+    </span>
+  </div>
+
+  {/* ③ D-day */}
+  <div className="flex shrink-0">
+    <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
+  </div>
+
+  {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 */}
+  <Link href="/"
+        className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d71617] bg-white px-2.5 py-1 text-[11px] font-bold text-[#d71617] shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
+    <span>대시보드</span>
+    <svg className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /* arrow */ />
+  </Link>
+</header>
+```
+
+**의미 그룹 간격 원칙**:
+- 4 그룹은 `justify-between`으로 균등 분배(자동 여백) — `gap-2`는 최소 안전 간격.
+- ② 그룹 **내부**만 `gap-1.5`로 타이트하게 묶어 한 덩어리로 보이게.
+- 그룹 ↔ 그룹 사이는 `gap-1.5` 같은 작은 값으로 **추가 묶기 금지**(④가 우측 끝에 명확히 떨어져야 함).
+
+**반응형 (display-reference-v2.html 기준)**:
+- xs(<640, Galaxy 360px): "경영일지" 숨김(`hidden sm:inline`), 폰트 `text-[11px]`/`text-xs`
+- sm(≥640, iPhone 12~17e): "경영일지" 표시, 폰트 `sm:text-sm`
+- md+ : 동일 (여유)
+
+**적층 (sticky)**: `top-0 z-50`. 그 아래 페이지 배너는 `top-12 z-40`. → [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
+
+### DDayBadge
+
+**용도**: TopHeader ③에 들어가는 카운트다운 배지. 7주차 D-day(`courseStart + 49일`)까지 남은 일수.
+
+**표시 규칙** ([data-model.md §D-day 계산 규칙](../domains/data-model.md#d-day-계산-규칙-ddaybadge) SSOT):
+
+| 상태 | 텍스트 | 색상 | 비고 |
+|---|---|---|---|
+| 양수 N (남음) | `D-N` (두 자리 박스 분할: 10의 자리 / 1의 자리) | 검정 박스 / 흰 글자 | 카운트다운 강조 |
+| 0 | `D-DAY` | **brand red #d71617** | 발표일 강조 |
+| 음수 N (지남) | `D+\|N\|` | 회색조 | 지난 일수 |
+| loading/error | `D-—` | `bg-gray-100 text-gray-400` | placeholder |
+
+**갱신**: 30분 polling(`setInterval` 30 * 60 * 1000ms)으로 자정 넘어가는 케이스 대응.
+**Hydration**: SSR mismatch 방지 위해 `today`는 `useEffect` 안에서만 계산(초기 렌더는 placeholder).
+
+**한도**: 두 자리 박스 가정으로 99일까지. 7주(49일) 기준이라 충분.
+
+**현재 사용 위치**: TopHeader 그룹 ③ 단독.
+
+---
+
 ## 접근성 가이드라인
 
 ### 터치 타겟
