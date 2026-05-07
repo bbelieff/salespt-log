@@ -56,32 +56,45 @@
 
 ### 2-2. D-day (DDayBadge)
 
-| 후보 | offset | MVP 채택? |
-|---|---|---|
-| 수강시작일 N1 (1주차 시작 금) | +0d | — |
-| 7주차 끝 (금) | +49d | ❌ |
-| **종강총회일 (8주차 토)** | **+50d** | ✅ **채택** |
-| 수료일 N2 (8주차 끝 목) | +55d | ❌ |
-| 편집 종료 | +69d | ❌ |
+**기준일 = 종강총회일** (8주차 토요일).
+
+| 후보 | offset | 의미 | MVP 채택? |
+|---|---|---|---|
+| 수강시작일 N1 | +0d | 1주차 시작 (금요일) | — |
+| 7주차 끝 | +49d | 발표·평가 (금요일) | ❌ |
+| **종강총회일** | **+50d** | **종강총회 (8주차 토)** | ✅ **채택** |
+| 수료일 N2 | +55d | 수강 종료 (8주차 목) | ❌ |
+| 편집 종료 | +69d | 8주 + 2주 마감 유예 | ❌ |
 
 ```
 graduationISO = courseStartISO + 50d
-remain = graduationISO - today   (브라우저 자정 기준 정수 일수)
+remain = graduationISO − today   (브라우저 자정 기준 정수 일수)
 ```
 
-**예시 (6기)**: N1=2026-04-17(금) → graduationISO=2026-06-06(토, 종강총회).
+**검증 예시 (6기)**:
+- N1 (1주차 시작) = `2026-04-17` (금)
+- + 50d = **`2026-06-06` (토) ← graduationISO (종강총회)**
+- N2 (수료일) = `2026-06-11` (목) ← 표시 안 함, D-day 아님
 
-> ⚠️ **코드 follow-up**: 현재 코드(`lib/service/me.ts`)는 `weekTargetISO`/`+49d`로 되어있음.
-> 이 SSOT 머지 후 별도 `fix/dday-graduation-anchor` 브랜치에서 `graduationISO`/`+50d`로 일괄 rename 예정.
+**표시 규칙**:
 
-| remain | 표시 | 색 |
+| remain | 텍스트 | 색 |
 |---|---|---|
-| > 0 | `D-N` (두자리 박스 분할) | 검정 박스 / 흰 글자 |
-| 0 | `D-DAY` | brand red #d71617 |
+| > 0 | `D-N` (두자리 박스 분할: 10의 자리 / 1의 자리) | 검정 박스 / 흰 글자 |
+| 0 | `D-DAY` | brand red `#d71617` |
 | < 0 | `D+\|N\|` | 회색조 |
-| 데이터 없음 | `D-—` | gray placeholder |
+| 데이터 없음 (loading/error) | `D-—` | `bg-gray-100 text-gray-400` |
 
-**라벨 prefix 안 붙임**: `"수료 D-N"` / `"종강 D-N"` 사용 안 함 (의미는 7주차인데 "수료"는 오해 발생).
+**라벨 prefix 금지**: `"종강 D-N"` / `"수료 D-N"` 사용 안 함 (공간 협소 + 종강총회/수료일 혼동 방지). 항상 `D-N`만.
+
+**갱신 / Hydration**: 30분 polling으로 자정 경계 처리. SSR mismatch 방지 위해 `today`는 `useEffect`에서만 계산(초기 렌더 placeholder).
+
+> ⚠️ **코드 follow-up (이번 docs PR 머지 후 별도 `fix/dday-graduation-anchor` PR로)**:
+> - `lib/service/me.ts` — `WEEK_TARGET_OFFSET_DAYS = 49` → `GRADUATION_OFFSET_DAYS = 50`
+> - `MeProfile.weekTargetISO` → `graduationISO`
+> - `DDayBadge` prop `weekTargetISO` → `graduationISO`
+> - 호출부 (`TopHeader.tsx`, hooks, API route) 일괄 동기화
+> - 6기 fixture 단위 테스트 1개 추가
 
 ### 2-3. 캐싱
 
@@ -182,3 +195,31 @@ staleTime **1시간** (B3/C3/N1 거의 안 바뀜). TopHeader는 컴포넌트별
 
 - 대시보드 페이지(`/`) 자체 헤더 디자인 — PR 12 dashboard-tab에서 prototype 확정 후.
 - D-day 0(`D-DAY`) 시각 효과 — 현재 brand red만, 진동/맥동 효과는 미정.
+- `lib/service/me.ts` 코드 정합성 (49→50, weekTargetISO→graduationISO) — `fix/dday-graduation-anchor` 브랜치.
+
+## 8. 변경 이력 (Changelog)
+
+| 일자 | 커밋 | 내용 |
+|---|---|---|
+| 2026-05-07 | `8a903d8` | 최초 등록 — TopHeader/DDayBadge/brand red/sticky 적층 |
+| 2026-05-07 | `d784118` | 보강 — PageBanner 명시, 로고 경로(`/salespt-logo.png`), 인증 흐름, 마스터 레지스트리 컬럼 |
+| 2026-05-07 | `633a370` | **D-day 정정 — 7주차(+49d) → 종강총회일(+50d, 8주차 토)**. 6기 예시 추가 |
+
+---
+
+## ✅ Prototype 작성자 체크리스트
+
+이 핸드오프를 prompt로 받았다면 **다음 모두**가 prototype HTML/JSX에 반영됐는지 확인:
+
+- [ ] 슬림 바 4 그룹 순서: 로고 / [사용자+경영일지] / D-day / 대시보드 — `justify-between`
+- [ ] 로고 경로 `/salespt-logo.png` (PNG, SVG 인라인 X)
+- [ ] 사용자 표시 = `formatDisplay(cohort, name)` 4분기 (정상/name만/cohort만/—)
+- [ ] D-day = **종강총회일 (`courseStart + 50d`, 8주차 토)** — 7주차/수료일 아님
+- [ ] D-day 텍스트는 `D-N` / `D-DAY` / `D+\|N\|` / `D-—`만 — 라벨 prefix X
+- [ ] 대시보드 버튼: 흰 배경 + `border-[#d71617]` + `text-[#d71617]` + hover `bg-red-50`
+- [ ] 슬림 바 sticky `top-0 z-50`, PageBanner sticky `top-12 z-40` (적층 분리)
+- [ ] PageBanner는 별도 컴포넌트 X — TopHeader 안의 두 번째 sticky `<div>`
+- [ ] 5탭 props 표 그대로 (`/contact` 📞 컨택관리 / `01 영업관리` 등)
+- [ ] 대시보드 페이지(`/`)는 TopHeader 미사용 — 자체 헤더 별도
+
+위 모두 ✅ 면 SSOT 일치.
