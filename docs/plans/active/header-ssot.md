@@ -38,3 +38,16 @@ Hashimoto 원칙으로 SSOT를 박아 재발 차단.
 3. components.md → §8 App Shell 신설, TopHeader/DDayBadge 등록
 4. typecheck/structural/tests 통과 확인 (docs만 변경이라 영향 없음)
 5. 커밋·푸시·PR
+
+## Follow-up (별도 PR 필요)
+
+본 docs PR 머지 후 `fix/dday-graduation-anchor` 브랜치에서 코드 정합성 맞춤:
+
+- `lib/service/me.ts`:
+  - `WEEK_TARGET_OFFSET_DAYS = 49` → `GRADUATION_OFFSET_DAYS = 50`
+  - `MeProfile.weekTargetISO` → `graduationISO`
+  - 주석/JSDoc 업데이트 ("7주차 D-day" → "종강총회일")
+- `components/DDayBadge.tsx`: prop `weekTargetISO` → `graduationISO`
+- `components/TopHeader.tsx`: 호출부 동기화
+- `app/api/me/route.ts` / `lib/query/me-hook.ts`: 응답 타입 정합 (대부분 변경 없음, 타입스크립트가 잡음)
+- 6기 예시 fixture로 단위 테스트 1개 추가 (`courseStart=2026-04-17` → `graduation=2026-06-06`)

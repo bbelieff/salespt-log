@@ -58,15 +58,21 @@
 
 | 후보 | offset | MVP 채택? |
 |---|---|---|
-| 수강시작일 N1 | +0d | — |
-| **7주차 D-day** | **+49d** | ✅ **채택** (발표·평가 기준) |
-| 수료일 N2 | +55d | ❌ |
+| 수강시작일 N1 (1주차 시작 금) | +0d | — |
+| 7주차 끝 (금) | +49d | ❌ |
+| **종강총회일 (8주차 토)** | **+50d** | ✅ **채택** |
+| 수료일 N2 (8주차 끝 목) | +55d | ❌ |
 | 편집 종료 | +69d | ❌ |
 
 ```
-weekTargetISO = courseStartISO + 49d
-remain = weekTargetISO - today  (브라우저 자정 기준 정수 일수)
+graduationISO = courseStartISO + 50d
+remain = graduationISO - today   (브라우저 자정 기준 정수 일수)
 ```
+
+**예시 (6기)**: N1=2026-04-17(금) → graduationISO=2026-06-06(토, 종강총회).
+
+> ⚠️ **코드 follow-up**: 현재 코드(`lib/service/me.ts`)는 `weekTargetISO`/`+49d`로 되어있음.
+> 이 SSOT 머지 후 별도 `fix/dday-graduation-anchor` 브랜치에서 `graduationISO`/`+50d`로 일괄 rename 예정.
 
 | remain | 표시 | 색 |
 |---|---|---|
@@ -119,9 +125,9 @@ staleTime **1시간** (B3/C3/N1 거의 안 바뀜). TopHeader는 컴포넌트별
     </span>
   </div>
 
-  {/* ③ D-day */}
+  {/* ③ D-day — graduationISO = courseStart + 50d (종강총회) */}
   <div className="flex shrink-0">
-    <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
+    <DDayBadge graduationISO={me.data?.graduationISO} />
   </div>
 
   {/* ④ 대시보드 버튼 — 흰 배경 + brand red */}
@@ -167,8 +173,8 @@ staleTime **1시간** (B3/C3/N1 거의 안 바뀜). TopHeader는 컴포넌트별
   ② 그룹만 `gap-1.5` 타이트, 나머지는 `justify-between` 자동 분배. 그룹 ↔ 그룹을 추가로 묶지 않음 (④가 우측 끝에 떨어져야 함).
 - **대시보드 버튼**: 흰 배경 + brand red 글자/테두리 (사용자 결정 — "흰배경에 빨간글씨가 나은거 같아").
   빨강 배경 음영 시도 → 거절됨.
-- **D-day = 7주차** (`+49d`), 수료일(N2) 아님: 사용자가 의식하는 가장 큰 마일스톤이 7주차 발표·평가.
-- **D-day 라벨 없음**: `"수료 D-N"` 같은 prefix 안 붙임 (공간 + 의미 모호 방지).
+- **D-day = 종강총회일** (`+50d`, 8주차 토), 7주차 끝(+49d)·수료일 N2(+55d) 아님: 수강생이 의식하는 단일 마일스톤이 종강총회.
+- **D-day 라벨 없음**: `"종강 D-N"` / `"수료 D-N"` 같은 prefix 안 붙임 (공간 + 종강총회/수료일 혼동 방지).
 - **자식 각각 sticky 금지 → 부모에 묶기**: 일정·계약 탭에서 WeekHeader+SummaryBar drift 발생 후 학습한 패턴 (PR #198da19).
 - **PageBanner는 별도 컴포넌트 X**: TopHeader.tsx 안의 두 번째 sticky `<div>`. props로 emoji/title/subtitle 받음.
 

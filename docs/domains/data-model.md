@@ -111,9 +111,9 @@ last_review: 2026-04-27
 |---|---|---|
 | **기수** (`cohort`) | `01 영업관리!B3` | 숫자만(`"7"`)이면 `"7기"`로 보정 / 이미 `"7기"`면 유지 |
 | **이름** (`name`) | `01 영업관리!C3` | 그대로 |
-| **수강시작일** (`courseStartISO`) | `01 영업관리!N1` | YYYY-MM-DD ISO |
-| **수료일** (참고) | `01 영업관리!N2` | YYYY-MM-DD ISO. 시트 자동 (`= N1 + 55`) |
-| **D-day target** (`weekTargetISO`) | — (계산값) | **`courseStartISO + 49일`** (= 7주차 D-day). MVP 스코프 §2.5의 8주(55일) 중 7주차 끝점이 발표·평가일 |
+| **수강시작일** (`courseStartISO`) | `01 영업관리!N1` | YYYY-MM-DD ISO. 1주차 시작일 (보통 금요일) |
+| **수료일** (참고) | `01 영업관리!N2` | YYYY-MM-DD ISO. 시트 자동 (`= N1 + 55`). **D-day 기준 아님** |
+| **D-day target** (`graduationISO`) | — (계산값) | **`courseStartISO + 50일`** = **종강총회일** (보통 8주차 토요일) |
 
 > **email → spreadsheetId** 매핑은 별도 마스터 레지스트리 시트(`SHEETS_REGISTRY_ID`)의 `users` 탭 (email/cohort/name/spreadsheetId/role).
 > 마스터의 cohort/name은 fallback. 실제 표시는 항상 개인 시트의 B3/C3가 우선.
@@ -126,10 +126,16 @@ export interface MeProfile {
   email: string;
   cohort: string;          // "7기"  ← 01 영업관리!B3 (formatCohort 정규화)
   name: string;            // "김믿음" ← 01 영업관리!C3
-  courseStartISO: string;  // "2026-03-15" ← 01 영업관리!N1
-  weekTargetISO: string;   // courseStart + 49d (7주차 D-day)
+  courseStartISO: string;  // "2026-04-17" ← 01 영업관리!N1 (1주차 시작, 금)
+  graduationISO: string;   // courseStart + 50d = 종강총회일 (보통 토요일)
 }
 ```
+
+> **⚠️ 코드 follow-up 필요**: 현재 `lib/service/me.ts` 는 상수 `WEEK_TARGET_OFFSET_DAYS = 49`,
+> 필드명 `weekTargetISO` 로 되어있음. 이 SSOT 머지 후 별도 `fix/dday-graduation-anchor` 브랜치에서:
+> 1. 49 → 50 으로 변경
+> 2. 상수명 `WEEK_TARGET_OFFSET_DAYS` → `GRADUATION_OFFSET_DAYS`
+> 3. 필드명 `weekTargetISO` → `graduationISO` (DDayBadge prop 포함 일괄 rename)
 
 ### 표시 문자열 규칙 (TopHeader 그룹 ②)
 
@@ -148,18 +154,26 @@ formatDisplay(cohort, name) = "{cohort} {name} 대표님"
 
 | 옵션 | offset | 의미 | MVP 채택? |
 |---|---|---|---|
-| 수강시작일 (N1) | +0d | 시작점 | — |
-| **7주차 끝 (D-day target)** | **+49d** | **발표·평가일** | ✅ **채택** |
-| 수료일 (N2) | +55d | 8주차 끝, 수강 종료 | ❌ |
+| 수강시작일 (N1) | +0d | 1주차 시작 (금요일) | — |
+| 7주차 끝 | +49d | 발표·평가일 (금요일) | ❌ |
+| **종강총회일 (D-day target)** | **+50d** | **종강총회 (8주차 토요일)** | ✅ **채택** |
+| 수료일 (N2) | +55d | 8주차 끝 = 수강 종료 (목요일) | ❌ |
 | 편집 종료일 | +69d | 8주 + 2주 마감 유예 | ❌ |
 
-**채택 결정**: `weekTargetISO = courseStartISO + 49d`. 사용자가 가장 의식하는 마일스톤이
-**7주차 발표/평가**이므로 그쪽으로 카운트다운. 수료일(N2)은 6일 더 뒤지만 표시하지 않음.
+**채택 결정**: `graduationISO = courseStartISO + 50d`. 사용자(수강생)가 가장 의식하는 단일 마일스톤은
+**종강총회**이므로 그쪽으로 카운트다운. 수료일 N2(+55d)는 시트가 자동 계산해 보존하지만 D-day와는 무관.
 
-**라벨 없음**: 텍스트는 `D-N`만 노출. `"수료 D-N"` / `"종강 D-N"` 같은 prefix 라벨 **사용 안 함**
-(공간 협소 + 의미가 7주차 D-day인데 "수료" 라벨 붙이면 오해 발생).
+**예시 (6기)**:
+```
+N1 (수강시작·1주차 시작) = 2026-04-17 (금)
++ 50일                   = 2026-06-06 (토)  ← 종강총회 (graduationISO)
+N2 (수료일·8주차 끝)     = 2026-06-11 (목)  ← 표시 안 함
+```
 
-- **계산**: `weekTargetISO − today` (브라우저 로컬 자정 기준 정수 일수 차이)
+**라벨 없음**: 텍스트는 `D-N`만 노출. `"종강 D-N"` / `"수료 D-N"` 같은 prefix 라벨 **사용 안 함**
+(공간 협소 + 종강총회/수료일 혼동 방지).
+
+- **계산**: `graduationISO − today` (브라우저 로컬 자정 기준 정수 일수 차이)
 - **표시**:
   - 양수 N: `D-N` (남은 일수, 검정 박스 흰 글자 — 카운트다운 적극 강조)
   - 0: `D-DAY` (브랜드 빨강 #d71617 강조)

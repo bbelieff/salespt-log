@@ -930,7 +930,7 @@ function getTimeValue(hourId, minuteId) {
 |---|---|---|---|
 | ① 로고 | **`/salespt-logo.png`** (PNG, 워드마크 포함) | `public/salespt-logo.png` 정적 자산 | `h-6 sm:h-7 w-auto object-contain`. **SVG 인라인 아님 — PNG 파일**. "세일즈PT" 워드마크가 이미지에 포함되어 있어서 별도 텍스트 워드마크 추가하지 않음 |
 | ② 사용자 + 라벨 | `formatDisplay(cohort, name)` + `"경영일지"` | `useMe()` ([data-model.md](../domains/data-model.md#사용자-프로필--d-day-topheader-ssot)) | 그룹 내부만 `gap-1.5` 타이트 묶음. xs(<sm)에선 `"경영일지"` 숨김(워드마크에 포함됨) |
-| ③ D-day | `<DDayBadge />` | `me.weekTargetISO` | 아래 §DDayBadge 참고 |
+| ③ D-day | `<DDayBadge />` | `me.graduationISO` (= `courseStartISO + 50d`, 종강총회일) | 아래 §DDayBadge 참고 |
 | ④ 대시보드 버튼 | "대시보드 →" Link to `/` | — | 흰 배경 + **brand red #d71617** 테두리/글자, hover `bg-red-50` |
 
 **대시보드 버튼 동작 사양**:
@@ -959,7 +959,7 @@ function getTimeValue(hourId, minuteId) {
 
   {/* ③ D-day */}
   <div className="flex shrink-0">
-    <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
+    <DDayBadge graduationISO={me.data?.graduationISO} />
   </div>
 
   {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 */}
@@ -985,7 +985,7 @@ function getTimeValue(hourId, minuteId) {
 
 ### DDayBadge
 
-**용도**: TopHeader ③에 들어가는 카운트다운 배지. 7주차 D-day(`courseStart + 49일`)까지 남은 일수.
+**용도**: TopHeader ③에 들어가는 카운트다운 배지. **종강총회일**(`courseStart + 50일`, 8주차 토요일)까지 남은 일수.
 
 **표시 규칙** ([data-model.md §D-day 계산 규칙](../domains/data-model.md#d-day-계산-규칙-ddaybadge) SSOT):
 
@@ -999,7 +999,7 @@ function getTimeValue(hourId, minuteId) {
 **갱신**: 30분 polling(`setInterval` 30 * 60 * 1000ms)으로 자정 넘어가는 케이스 대응.
 **Hydration**: SSR mismatch 방지 위해 `today`는 `useEffect` 안에서만 계산(초기 렌더는 placeholder).
 
-**한도**: 두 자리 박스 가정으로 99일까지. 7주(49일) 기준이라 충분.
+**한도**: 두 자리 박스 가정으로 99일까지. 종강총회까지 50일 기준이라 충분.
 
 **현재 사용 위치**: TopHeader 그룹 ③ 단독.
 
