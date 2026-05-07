@@ -187,7 +187,7 @@ export async function batchWriteChannelDailyRows(
     cols.production,
     cols.inflow,
     cols.contactProgress,
-    cols.contactSuccess,
+    cols.meetingReservation,
   ]) {
     assertWritableCol(col, "batchWriteChannelDailyRows");
   }
@@ -198,12 +198,12 @@ export async function batchWriteChannelDailyRows(
     const targetDate = parseISO(validated.date);
     const sheetRow = salesRowFor(targetDate, validated.channel, courseStart);
     return {
-      range: `${tab}!${cols.production}${sheetRow}:${cols.contactSuccess}${sheetRow}`,
+      range: `${tab}!${cols.production}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
       values: [[
         validated.production,
         validated.inflow,
         validated.contactProgress,
-        validated.contactSuccess,
+        validated.meetingReservation,
       ]],
     };
   });
@@ -233,7 +233,7 @@ export async function readWeek(
     (weekIndex - 1) * SHEET_RANGES.sales.blockStride;
   const endRow = startRow + 27; // 28행
 
-  // C(날짜) ~ H(컨택성공)까지만 read — Q~T(일별 실적)는 deprecated
+  // C(날짜) ~ H(미팅예약)까지만 read — Q~T(일별 실적)는 deprecated
   const range = `${tabRef(SHEET_RANGES.sales.tab)}!C${startRow}:H${endRow}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -246,7 +246,7 @@ export async function readWeek(
   const rows: ChannelDailyRow[] = [];
   for (let i = 0; i < 28; i++) {
     const r = data[i] ?? [];
-    // 컬럼 인덱스 (C 기준 0): C=0날짜, D=1채널, E=2생산, F=3유입, G=4컨택진행, H=5컨택성공
+    // 컬럼 인덱스 (C 기준 0): C=0날짜, D=1채널, E=2생산, F=3유입, G=4컨택진행, H=5미팅예약
     const dateRaw = r[0];
     const channelRaw = r[1];
     if (dateRaw === undefined || channelRaw === undefined) continue;
@@ -259,7 +259,7 @@ export async function readWeek(
       production: Number(r[2] ?? 0),
       inflow: Number(r[3] ?? 0),
       contactProgress: Number(r[4] ?? 0),
-      contactSuccess: Number(r[5] ?? 0),
+      meetingReservation: Number(r[5] ?? 0),
     });
     if (parsed.success) rows.push(parsed.data);
   }

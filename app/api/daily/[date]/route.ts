@@ -18,7 +18,7 @@ const MetricsBody = z.record(
     production: z.number().int().nonnegative(),
     inflow: z.number().int().nonnegative(),
     contactProgress: z.number().int().nonnegative(),
-    contactSuccess: z.number().int().nonnegative(),
+    meetingReservation: z.number().int().nonnegative(),
   }),
 );
 

@@ -17,7 +17,7 @@ interface Props {
   min?: number;
   max?: number;
   ariaLabel?: string;
-  /** 컨택성공 같은 cap이 걸린 경우 + 버튼 비활성. */
+  /** 미팅예약 같은 cap이 걸린 경우 + 버튼 비활성. */
   capped?: boolean;
   cappedHint?: string;
 }

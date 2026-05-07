@@ -24,15 +24,16 @@ export const CHANNEL_ORDER: readonly Channel[] = [
 ] as const;
 
 // ── 4지표 (컨택관리 — 채널마다 4개) ──────────────────────────
-// data-model.md 기준: 01 영업관리 E=생산 / F=유입 / G=컨택진행 / H=컨택성공
-export const MetricKey = z.enum(["production", "inflow", "contactProgress", "contactSuccess"]);
+// data-model.md 기준: 01 영업관리 E=생산 / F=유입 / G=컨택진행 / H=미팅 예약건 수
+// (구 "컨택성공", 시트 디스커버리 2026-05-08 변경, refactor PR 2026-05-08 코드 정합)
+export const MetricKey = z.enum(["production", "inflow", "contactProgress", "meetingReservation"]);
 export type MetricKey = z.infer<typeof MetricKey>;
 
 export const METRIC_LABEL: Record<MetricKey, string> = {
   production: "생산",
   inflow: "유입",
   contactProgress: "컨택진행",
-  contactSuccess: "컨택성공",
+  meetingReservation: "미팅예약",
 };
 
 // ── 미팅 상태 (5종) ─────────────────────────────────────────
@@ -85,7 +86,7 @@ export const ChannelDailyRow = z.object({
   production: z.number().int().nonnegative().default(0), // E
   inflow: z.number().int().nonnegative().default(0), // F
   contactProgress: z.number().int().nonnegative().default(0), // G
-  contactSuccess: z.number().int().nonnegative().default(0), // H
+  meetingReservation: z.number().int().nonnegative().default(0), // H
 });
 export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
 

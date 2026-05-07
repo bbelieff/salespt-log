@@ -3,7 +3,7 @@
  * UI/Runtime 은 이 모듈의 결과만 본다.
  *
  * MVP 산식 (docs/decisions/0002-xp-weights.md 에서 튜닝):
- *   - 4지표(생산/유입/컨택진행/컨택성공) → XP 가산
+ *   - 4지표(생산/유입/컨택진행/미팅예약) → XP 가산
  *   - 미팅 진행(완료/계약) → XP 가산
  *   - 계약 → 큰 XP + 수임비 가산
  *
@@ -20,7 +20,7 @@ export const XP_WEIGHT: Record<MetricKey, number> = {
   production: 1,
   inflow: 2,
   contactProgress: 3,
-  contactSuccess: 10,
+  meetingReservation: 10,
 };
 
 // 미팅 상태별 추가 XP (4지표와 별개)
@@ -89,19 +89,19 @@ export function summarize(
     production: 0,
     inflow: 0,
     contactProgress: 0,
-    contactSuccess: 0,
+    meetingReservation: 0,
   };
   let xp = 0;
   for (const r of rows) {
     totals.production += r.production;
     totals.inflow += r.inflow;
     totals.contactProgress += r.contactProgress;
-    totals.contactSuccess += r.contactSuccess;
+    totals.meetingReservation += r.meetingReservation;
     xp +=
       r.production * XP_WEIGHT.production +
       r.inflow * XP_WEIGHT.inflow +
       r.contactProgress * XP_WEIGHT.contactProgress +
-      r.contactSuccess * XP_WEIGHT.contactSuccess;
+      r.meetingReservation * XP_WEIGHT.meetingReservation;
   }
 
   const meetingsByState = { 예약: 0, 완료: 0, 계약: 0, 변경: 0, 취소: 0 };

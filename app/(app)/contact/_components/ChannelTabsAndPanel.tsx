@@ -21,7 +21,7 @@ const CHANNEL_META: Record<
   Channel,
   {
     desc: string;
-    helps: { production: string; inflow: string; contactProgress: string; contactSuccess: string };
+    helps: { production: string; inflow: string; contactProgress: string; meetingReservation: string };
     color: "blue" | "green" | "amber" | "purple";
     badgeClass: string;
   }
@@ -32,7 +32,7 @@ const CHANNEL_META: Record<
       production: "구매한 DB 수",
       inflow: "오늘 전달받은 DB 수",
       contactProgress: "부재 제외, 실제 통화 수",
-      contactSuccess: "미팅 예약 확정된 수",
+      meetingReservation: "미팅 예약 확정된 수",
     },
     color: "blue",
     badgeClass: "badge badge-purchase",
@@ -43,7 +43,7 @@ const CHANNEL_META: Record<
       production: "오늘 생산된 DB 수",
       inflow: "오늘 유입된 DB 수 (보통=생산)",
       contactProgress: "부재 제외, 실제 통화 수",
-      contactSuccess: "미팅 예약 확정된 수",
+      meetingReservation: "미팅 예약 확정된 수",
     },
     color: "green",
     badgeClass: "badge badge-direct",
@@ -54,7 +54,7 @@ const CHANNEL_META: Record<
       production: "오늘 부착·노출된 현수막 수",
       inflow: "오늘 유입된 문의 수",
       contactProgress: "부재 제외, 실제 통화 수",
-      contactSuccess: "미팅 예약 확정된 수",
+      meetingReservation: "미팅 예약 확정된 수",
     },
     color: "amber",
     badgeClass: "badge badge-banner",
@@ -65,7 +65,7 @@ const CHANNEL_META: Record<
       production: "발굴한 컨택대상 수 (=유입)",
       inflow: "컨택대상 수 (생산과 동일)",
       contactProgress: "부재 제외, 실제 통화 수",
-      contactSuccess: "미팅 예약 확정된 수",
+      meetingReservation: "미팅 예약 확정된 수",
     },
     color: "purple",
     badgeClass: "badge badge-referral",
@@ -122,7 +122,7 @@ const METRICS: Array<{
   { key: "production", label: "생산" },
   { key: "inflow", label: "유입" },
   { key: "contactProgress", label: "컨택진행" },
-  { key: "contactSuccess", label: "컨택성공", upstream: "contactProgress" },
+  { key: "meetingReservation", label: "미팅예약", upstream: "contactProgress" },
 ];
 
 interface Props {
@@ -134,7 +134,7 @@ interface Props {
 }
 
 function totalOf(m: ChannelDailyRowMetrics): number {
-  return m.production + m.inflow + m.contactProgress + m.contactSuccess;
+  return m.production + m.inflow + m.contactProgress + m.meetingReservation;
 }
 
 export default function ChannelTabsAndPanel({

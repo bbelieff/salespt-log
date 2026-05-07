@@ -78,7 +78,7 @@ export const SHEET_RANGES = {
       production: "E",
       inflow: "F",
       contactProgress: "G",
-      contactSuccess: "H",
+      meetingReservation: "H", // 시트 헤더 "미팅 예약건 수" (구 "컨택성공")
     },
     revenueCols: {
       approvalCount: "Q",

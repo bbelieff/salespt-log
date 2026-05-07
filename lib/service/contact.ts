@@ -56,14 +56,14 @@ export interface ChannelDailyRowMetrics {
   production: number;
   inflow: number;
   contactProgress: number;
-  contactSuccess: number;
+  meetingReservation: number;
 }
 
 const EMPTY_METRICS: ChannelDailyRowMetrics = {
   production: 0,
   inflow: 0,
   contactProgress: 0,
-  contactSuccess: 0,
+  meetingReservation: 0,
 };
 
 // ── Public API ─────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export async function loadDay(
       production: r.production,
       inflow: r.inflow,
       contactProgress: r.contactProgress,
-      contactSuccess: r.contactSuccess,
+      meetingReservation: r.meetingReservation,
     };
   }
 
@@ -228,7 +228,7 @@ export async function loadWeekMeetings(
 
 /**
  * 4지표 4채널을 그 날짜에 update.
- * 검증: 컨택성공 ≤ 컨택진행 (위반 시 자동 보정).
+ * 검증: 미팅예약 ≤ 컨택진행 (위반 시 자동 보정).
  */
 export async function saveContactMetrics(
   email: string,
@@ -244,7 +244,7 @@ export async function saveContactMetrics(
   for (const channel of CHANNEL_ORDER) {
     const m = channels[channel];
     if (!m) continue;
-    const success = Math.min(m.contactSuccess, m.contactProgress);
+    const success = Math.min(m.meetingReservation, m.contactProgress);
     rows.push(
       ChannelDailyRow.parse({
         date,
@@ -252,14 +252,14 @@ export async function saveContactMetrics(
         production: m.production,
         inflow: m.inflow,
         contactProgress: m.contactProgress,
-        contactSuccess: success,
+        meetingReservation: success,
       }),
     );
   }
   await batchWriteChannelDailyRows(spreadsheetId, rows);
 }
 
-/** 새 미팅 1건 등록. 컨택성공 +1은 별도 호출 (saveContactMetrics)에서 처리. */
+/** 새 미팅 1건 등록. 미팅예약 +1은 별도 호출 (saveContactMetrics)에서 처리. */
 export async function appendNewMeeting(
   email: string,
   meeting: Meeting,
@@ -279,7 +279,7 @@ export async function patchMeeting(
   await updateMeeting(spreadsheetId, id, partial);
 }
 
-/** 미팅 삭제 (행 클리어). 컨택성공 -1은 호출 측 책임. */
+/** 미팅 삭제 (행 클리어). 미팅예약 -1은 호출 측 책임. */
 export async function removeMeeting(
   email: string,
   id: string,
