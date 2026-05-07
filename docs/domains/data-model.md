@@ -111,9 +111,10 @@ last_review: 2026-04-27
 |---|---|---|
 | **기수** (`cohort`) | `01 영업관리!B3` | 숫자만(`"7"`)이면 `"7기"`로 보정 / 이미 `"7기"`면 유지 |
 | **이름** (`name`) | `01 영업관리!C3` | 그대로 |
-| **수강시작일** (`courseStartISO`) | `01 영업관리!N1` | YYYY-MM-DD ISO. 1주차 시작일 (보통 금요일) |
-| **수료일** (참고) | `01 영업관리!N2` | YYYY-MM-DD ISO. 시트 자동 (`= N1 + 55`). **D-day 기준 아님** |
-| **D-day target** (`graduationISO`) | — (계산값) | **`courseStartISO + 50일`** = **종강총회일** (보통 8주차 토요일) |
+| **수강시작일** (`courseStartISO`) | `01 영업관리!N1` | YYYY-MM-DD ISO. **1주차 시작일 = 금요일** |
+| **수료일** = **종강총회일** | `01 영업관리!N2` 또는 동적 계산 | YYYY-MM-DD ISO. **`= N1 + 57일` (수료일 = 종강총회 같은 날)** |
+| **D-day target** (`graduationISO`) | — (계산값) | **`courseStartISO + 57일`** = 종강총회일 (= 수료일) |
+| **현재 주차** (`currentWeek`) | — (계산값) | `Math.floor((today − N1) / 7) + 1`. 각 주차는 **금~목 7일** |
 
 > **email → spreadsheetId** 매핑은 별도 마스터 레지스트리 시트(`SHEETS_REGISTRY_ID`)의 `users` 탭 (email/cohort/name/spreadsheetId/role).
 > 마스터의 cohort/name은 fallback. 실제 표시는 항상 개인 시트의 B3/C3가 우선.
@@ -124,18 +125,19 @@ last_review: 2026-04-27
 // lib/service/me.ts
 export interface MeProfile {
   email: string;
-  cohort: string;          // "7기"  ← 01 영업관리!B3 (formatCohort 정규화)
+  cohort: string;          // "6기"  ← 01 영업관리!B3 (formatCohort 정규화)
   name: string;            // "김믿음" ← 01 영업관리!C3
-  courseStartISO: string;  // "2026-04-17" ← 01 영업관리!N1 (1주차 시작, 금)
-  graduationISO: string;   // courseStart + 50d = 종강총회일 (보통 토요일)
+  courseStartISO: string;  // "2026-04-10" ← 01 영업관리!N1 (1주차 시작, 금)
+  graduationISO: string;   // courseStart + 57d = 종강총회일 (= 수료일)
 }
 ```
 
 > **⚠️ 코드 follow-up 필요**: 현재 `lib/service/me.ts` 는 상수 `WEEK_TARGET_OFFSET_DAYS = 49`,
 > 필드명 `weekTargetISO` 로 되어있음. 이 SSOT 머지 후 별도 `fix/dday-graduation-anchor` 브랜치에서:
-> 1. 49 → 50 으로 변경
+> 1. 49 → **57** 로 변경
 > 2. 상수명 `WEEK_TARGET_OFFSET_DAYS` → `GRADUATION_OFFSET_DAYS`
 > 3. 필드명 `weekTargetISO` → `graduationISO` (DDayBadge prop 포함 일괄 rename)
+> 4. 6기 fixture 단위 테스트: `courseStart=2026-04-10` → `graduation=2026-06-06`
 
 ### 표시 문자열 규칙 (TopHeader 그룹 ②)
 
@@ -150,28 +152,28 @@ formatDisplay(cohort, name) = "{cohort} {name} 대표님"
 
 ### D-day 계산 규칙 (DDayBadge)
 
-**기준일 결정 (중요 — 모호함 정리)**:
+**기준일 = 종강총회일 (= 수료일, 같은 날)**
 
 | 옵션 | offset | 의미 | MVP 채택? |
 |---|---|---|---|
 | 수강시작일 (N1) | +0d | 1주차 시작 (금요일) | — |
-| 7주차 끝 | +49d | 발표·평가일 (금요일) | ❌ |
-| **종강총회일 (D-day target)** | **+50d** | **종강총회 (8주차 토요일)** | ✅ **채택** |
-| 수료일 (N2) | +55d | 8주차 끝 = 수강 종료 (목요일) | ❌ |
+| 7주차 끝 | +49d | 7주차 평가 (금요일) | ❌ |
+| **종강총회일 = 수료일 (D-day target)** | **+57d** | **종강총회 = 수료 (8주차 끝 + 2일, 토요일)** | ✅ **채택** |
 | 편집 종료일 | +69d | 8주 + 2주 마감 유예 | ❌ |
 
-**채택 결정**: `graduationISO = courseStartISO + 50d`. 사용자(수강생)가 가장 의식하는 단일 마일스톤은
-**종강총회**이므로 그쪽으로 카운트다운. 수료일 N2(+55d)는 시트가 자동 계산해 보존하지만 D-day와는 무관.
+**채택 결정**: `graduationISO = courseStartISO + 57d`. 사용자(수강생)가 가장 의식하는 단일 마일스톤은
+**종강총회**. 수료일 N2도 같은 날 (시트가 `=N1+57` 수식으로 자동 계산하거나 직접 입력).
 
-**예시 (6기)**:
+**예시 (6기) — 검증됨**:
 ```
-N1 (수강시작·1주차 시작) = 2026-04-17 (금)
-+ 50일                   = 2026-06-06 (토)  ← 종강총회 (graduationISO)
-N2 (수료일·8주차 끝)     = 2026-06-11 (목)  ← 표시 안 함
+N1 (수강시작·1주차 시작) = 2026-04-10 (금)
++ 57일                   = 2026-06-06 (토) ← 종강총회 = 수료일 (같은 날, graduationISO)
+
+분해 검증: 4월 잔여 20d + 5월 31d + 6월 6d = 57일 ✓
 ```
 
 **라벨 없음**: 텍스트는 `D-N`만 노출. `"종강 D-N"` / `"수료 D-N"` 같은 prefix 라벨 **사용 안 함**
-(공간 협소 + 종강총회/수료일 혼동 방지).
+(공간 협소 + 라벨 분리해도 같은 날이라 불필요).
 
 - **계산**: `graduationISO − today` (브라우저 로컬 자정 기준 정수 일수 차이)
 - **표시**:
@@ -181,6 +183,36 @@ N2 (수료일·8주차 끝)     = 2026-06-11 (목)  ← 표시 안 함
   - 데이터 없음 (loading/error): `D-—` (회색 placeholder)
 - **갱신**: 30분 polling (자정 넘어가는 케이스 대응, 정확성 less critical).
 - **두자리 박스 분할**: 10의 자리 / 1의 자리. 7주(49일) 가정으로 99일 한도 충분.
+
+### 주차 계산 규칙 ⭐
+
+**1주차는 N1(금요일)부터, 각 주차는 금~목 7일.**
+
+```
+currentWeek = Math.floor((today − N1) / 7) + 1
+```
+
+**6기 검증 표** (N1 = 2026-04-10 금):
+
+| 주차 | 시작 (금) | 끝 (목) |
+|---|---|---|
+| 1주차 | 4/10 | 4/16 |
+| 2주차 | 4/17 | 4/23 |
+| 3주차 | 4/24 | 4/30 |
+| 4주차 | 5/1  | 5/7  |
+| 5주차 | 5/8  | 5/14 |
+| 6주차 | 5/15 | 5/21 |
+| 7주차 | 5/22 | 5/28 |
+| 8주차 | 5/29 | 6/4  |
+| **종강총회 = 수료** | **6/6 (토)** = N1 + 57d (8주차 끝 + 2일) |
+
+**검증 예시** (6기, today=2026-05-04 일요일 기준):
+- `(5/4 − 4/10) / 7 = 24/7 = 3.43 → floor = 3 → +1 = 4주차` ✓
+- 진행률: `24/57 ≈ 42%` ✓
+- D-day: `6/6 − 5/4 = D-33` ✓
+
+> **N1이 항상 금요일이라는 가정**. 다른 요일이면 시작/끝 로직 다시 잡아야 함.
+> 시트 디스커버리 시 N1 요일 검증 필수.
 
 ### 캐싱
 
