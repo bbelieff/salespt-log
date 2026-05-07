@@ -17,10 +17,16 @@
 
 | 용도 | Tailwind Class | Hex | 사용처 |
 |------|---------------|-----|--------|
-| Primary | `blue-500` | #3b82f6 | 로고, 메인 버튼, 링크 |
+| **Brand Red** ⭐ | `[#d71617]` (arbitrary) | **#d71617** | 세일즈PT 로고($ 심볼)·D-DAY 강조·대시보드 버튼 글자/테두리 |
+| Brand Red Hover | `red-50` | #fef2f2 | 대시보드 버튼 hover 배경 |
+| Primary | `blue-500` | #3b82f6 | 메인 버튼, 링크, 활성 탭 |
 | Primary Dark | `blue-700` | #1d4ed8 | 버튼 hover, 강조 텍스트 |
 | Primary Light | `blue-50` | #eff6ff | 카드 selected 상태 |
-| Gradient | `from-blue-500 to-purple-600` | - | 헤더 배경, 대시보드 카드 |
+| Gradient | `from-blue-500 to-purple-600` | - | 대시보드 카드 |
+
+> **#d71617 예외**: tokens.md는 원칙적으로 arbitrary value를 금지하지만 (`text-[15px]` 등),
+> **브랜드 색 #d71617는 Tailwind 팔레트에 동등 hue가 없어 arbitrary로 고정 사용**한다.
+> 신규 사용 시 항상 `[#d71617]` 형태로만 작성, 다른 hex로 분기 금지.
 
 ### Semantic Colors
 의미별 색상:
@@ -148,6 +154,24 @@ font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif;
 shadow-lg shadow-blue-500/25   /* 파란색 25% 투명도 */
 shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 ```
+
+## Z-Index & Sticky 적층 ⭐
+
+화면에 sticky/fixed 요소가 여럿일 때 순서·top 좌표를 고정한다. 각 페이지는 이 표대로만 쌓는다.
+
+| 레이어 | 컴포넌트 | z-index | top | 높이 |
+|---|---|---|---|---|
+| 1 (최상단) | `TopHeader` (슬림 브랜드 바) | `z-50` | `top-0` | `h-12` (48px) |
+| 2 | 페이지 배너 (예: 일정·계약 `WeekHeader + SummaryBar` wrapper) | `z-40` | `top-12` (48px) | 가변 |
+| 3 | 모달/Toast/Sheet 등 floating | `z-50` 이상 (별도) | — | — |
+| 0 | 본문 `main` | (없음) | — | — |
+| -1 | `BottomNav` (모바일) | `z-50` (fixed bottom) | bottom-0 | `h-[60px]` |
+
+**규칙**:
+- 페이지 배너가 두 영역(예: WeekHeader + SummaryBar)이라도 **반드시 한 부모에 묶어 단일 sticky**.
+  자식 각각에 `sticky`를 주면 스크롤 시 약간 어긋남(drift) 발생 — 수정 이력 PR #198da19.
+- `top-12`는 슬림 바 높이와 1:1 매칭 — 슬림 바 높이를 바꾸면 이 값도 동시에 바꾼다.
+- 모달은 별도 z-stack(`z-50` 이상). 슬림 바를 가려야 정상.
 
 ## Breakpoints (반응형)
 

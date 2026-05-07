@@ -71,6 +71,155 @@ last_review: 2026-04-27
 - **M~N열 2-6행 [성과관리]**: 수임비/승인수수료/매출 총합
 - **N1**: 수강시작일, **N2**: 수료일
 
+## 사용자 프로필 + D-day (TopHeader SSOT) ⭐
+
+> **단일 SSOT**: 모든 (app) 탭 상단 `TopHeader`에 표시되는 4 그룹의 데이터 출처.
+> 디자인 규격은 [components.md](../design/components.md) §8 TopHeader, 색·z-index는 [tokens.md](../design/tokens.md) 참조.
+
+### 인증 흐름 (현재 → MVP 출시)
+
+```
+[현재 — auth stub]   STUB_USER_EMAIL env  → email
+[MVP — NextAuth]     Google OAuth session → session.user.email
+                                            ↓ (둘 다 동일하게 사용)
+                     마스터 레지스트리 users 탭 (lib/repo/users.ts)
+                     email → { cohort, name, spreadsheetId, role }
+                                            ↓
+                     개인 시트 01 영업관리!B3, C3, N1 (실제 표시값 SSOT)
+```
+
+> ⚠️ **NextAuth session에서 직접 가져오는 것은 `email` 한 개만**. cohort/name은 절대
+> Google session에서 안 옴 (Google 계정 이름 ≠ 수강생 본명·기수). 항상 시트 B3/C3가 우선.
+> 마스터 레지스트리의 cohort/name은 시트 fetch 실패 시 fallback일 뿐.
+
+### 마스터 레지스트리 구조
+
+- **위치**: 별도 시트, `SHEETS_REGISTRY_ID` env로 지정
+- **탭**: `users` (env `SHEETS_REGISTRY_TAB`로 override 가능)
+- **컬럼** (A~E):
+  | 컬럼 | 필드 | 예 |
+  |---|---|---|
+  | A | email | `belief@example.com` |
+  | B | cohort | `7기` (또는 `7`) |
+  | C | name | `김믿음` |
+  | D | spreadsheetId | Google Sheets URL의 ID |
+  | E | role | `trainee` / `trainer` / `admin` (default `trainee`) |
+
+### 출처 매핑
+
+| 표시 요소 | 시트 좌표 | 형식 변환 |
+|---|---|---|
+| **기수** (`cohort`) | `01 영업관리!B3` | 숫자만(`"7"`)이면 `"7기"`로 보정 / 이미 `"7기"`면 유지 |
+| **이름** (`name`) | `01 영업관리!C3` | 그대로 |
+| **수강시작일** (`courseStartISO`) | `01 영업관리!N1` | YYYY-MM-DD ISO. **1주차 시작일 = 금요일** |
+| **수료일** = **종강총회일** | `01 영업관리!N2` 또는 동적 계산 | YYYY-MM-DD ISO. **`= N1 + 57일` (수료일 = 종강총회 같은 날)** |
+| **D-day target** (`graduationISO`) | — (계산값) | **`courseStartISO + 57일`** = 종강총회일 (= 수료일) |
+| **현재 주차** (`currentWeek`) | — (계산값) | `Math.floor((today − N1) / 7) + 1`. 각 주차는 **금~목 7일** |
+
+> **email → spreadsheetId** 매핑은 별도 마스터 레지스트리 시트(`SHEETS_REGISTRY_ID`)의 `users` 탭 (email/cohort/name/spreadsheetId/role).
+> 마스터의 cohort/name은 fallback. 실제 표시는 항상 개인 시트의 B3/C3가 우선.
+
+### MeProfile 타입
+
+```typescript
+// lib/service/me.ts
+export interface MeProfile {
+  email: string;
+  cohort: string;          // "6기"  ← 01 영업관리!B3 (formatCohort 정규화)
+  name: string;            // "김믿음" ← 01 영업관리!C3
+  courseStartISO: string;  // "2026-04-10" ← 01 영업관리!N1 (1주차 시작, 금)
+  graduationISO: string;   // courseStart + 57d = 종강총회일 (= 수료일)
+}
+```
+
+> **⚠️ 코드 follow-up 필요**: 현재 `lib/service/me.ts` 는 상수 `WEEK_TARGET_OFFSET_DAYS = 49`,
+> 필드명 `weekTargetISO` 로 되어있음. 이 SSOT 머지 후 별도 `fix/dday-graduation-anchor` 브랜치에서:
+> 1. 49 → **57** 로 변경
+> 2. 상수명 `WEEK_TARGET_OFFSET_DAYS` → `GRADUATION_OFFSET_DAYS`
+> 3. 필드명 `weekTargetISO` → `graduationISO` (DDayBadge prop 포함 일괄 rename)
+> 4. 6기 fixture 단위 테스트: `courseStart=2026-04-10` → `graduation=2026-06-06`
+
+### 표시 문자열 규칙 (TopHeader 그룹 ②)
+
+```
+formatDisplay(cohort, name) = "{cohort} {name} 대표님"
+  cohort 비어있고 name 있음  → "{name} 대표님"
+  cohort 있고 name 비어있음  → "{cohort}"
+  둘 다 비어있음             → "—"
+```
+
+예: `"7기 김믿음 대표님"` (정상) / `"김믿음 대표님"` (cohort 비어있음) / `"—"` (둘 다 없음, 로딩/에러)
+
+### D-day 계산 규칙 (DDayBadge)
+
+**기준일 = 종강총회일 (= 수료일, 같은 날)**
+
+| 옵션 | offset | 의미 | MVP 채택? |
+|---|---|---|---|
+| 수강시작일 (N1) | +0d | 1주차 시작 (금요일) | — |
+| 7주차 끝 | +49d | 7주차 평가 (금요일) | ❌ |
+| **종강총회일 = 수료일 (D-day target)** | **+57d** | **종강총회 = 수료 (8주차 끝 + 2일, 토요일)** | ✅ **채택** |
+| 편집 종료일 | +69d | 8주 + 2주 마감 유예 | ❌ |
+
+**채택 결정**: `graduationISO = courseStartISO + 57d`. 사용자(수강생)가 가장 의식하는 단일 마일스톤은
+**종강총회**. 수료일 N2도 같은 날 (시트가 `=N1+57` 수식으로 자동 계산하거나 직접 입력).
+
+**예시 (6기) — 검증됨**:
+```
+N1 (수강시작·1주차 시작) = 2026-04-10 (금)
++ 57일                   = 2026-06-06 (토) ← 종강총회 = 수료일 (같은 날, graduationISO)
+
+분해 검증: 4월 잔여 20d + 5월 31d + 6월 6d = 57일 ✓
+```
+
+**라벨 없음**: 텍스트는 `D-N`만 노출. `"종강 D-N"` / `"수료 D-N"` 같은 prefix 라벨 **사용 안 함**
+(공간 협소 + 라벨 분리해도 같은 날이라 불필요).
+
+- **계산**: `graduationISO − today` (브라우저 로컬 자정 기준 정수 일수 차이)
+- **표시**:
+  - 양수 N: `D-N` (남은 일수, 검정 박스 흰 글자 — 카운트다운 적극 강조)
+  - 0: `D-DAY` (브랜드 빨강 #d71617 강조)
+  - 음수 N: `D+|N|` (지난 일수, 회색조)
+  - 데이터 없음 (loading/error): `D-—` (회색 placeholder)
+- **갱신**: 30분 polling (자정 넘어가는 케이스 대응, 정확성 less critical).
+- **두자리 박스 분할**: 10의 자리 / 1의 자리. 7주(49일) 가정으로 99일 한도 충분.
+
+### 주차 계산 규칙 ⭐
+
+**1주차는 N1(금요일)부터, 각 주차는 금~목 7일.**
+
+```
+currentWeek = Math.floor((today − N1) / 7) + 1
+```
+
+**6기 검증 표** (N1 = 2026-04-10 금):
+
+| 주차 | 시작 (금) | 끝 (목) |
+|---|---|---|
+| 1주차 | 4/10 | 4/16 |
+| 2주차 | 4/17 | 4/23 |
+| 3주차 | 4/24 | 4/30 |
+| 4주차 | 5/1  | 5/7  |
+| 5주차 | 5/8  | 5/14 |
+| 6주차 | 5/15 | 5/21 |
+| 7주차 | 5/22 | 5/28 |
+| 8주차 | 5/29 | 6/4  |
+| **종강총회 = 수료** | **6/6 (토)** = N1 + 57d (8주차 끝 + 2일) |
+
+**검증 예시** (6기, today=2026-05-04 일요일 기준):
+- `(5/4 − 4/10) / 7 = 24/7 = 3.43 → floor = 3 → +1 = 4주차` ✓
+- 진행률: `24/57 ≈ 42%` ✓
+- D-day: `6/6 − 5/4 = D-33` ✓
+
+> **N1이 항상 금요일이라는 가정**. 다른 요일이면 시작/끝 로직 다시 잡아야 함.
+> 시트 디스커버리 시 N1 요일 검증 필수.
+
+### 캐싱
+
+- React Query key: `["me"]`
+- staleTime: **1시간** (B3/C3/N1은 거의 안 바뀜)
+- `useMe()` 훅 (`lib/query/me-hook.ts`) 한 곳에서만 fetch. TopHeader가 컴포넌트별 fetch 안 함.
+
 ## 미팅 상태 enum (5가지) ⭐
 
 미팅의 라이프사이클은 **5가지 상태**로 표현된다. UI 색상은 [tokens.md](./tokens.md), 시트 컬럼 매핑은 [sheet-structure.md](./sheet-structure.md) 참조.
