@@ -138,8 +138,10 @@ staleTime **1시간** (B3/C3/N1 거의 안 바뀜). TopHeader는 컴포넌트별
 
 ## 4. 색·z-index 토큰
 
-- **Brand Red `#d71617`** — `[#d71617]` arbitrary로 고정 (Tailwind 팔레트에 동등 hue 없음)
+- **Brand Red `#d71617`** — Tailwind 토큰 `brand-red` (tailwind.config.ts theme.extend.colors.brand.red)
+  - 클래스: `bg-brand-red` / `text-brand-red` / `border-brand-red`
   - 사용처: 로고($ 심볼), `D-DAY` 강조, 대시보드 버튼 글자/테두리, hover `bg-red-50`
+  - arbitrary `[#d71617]` 신규 사용 금지 (CLAUDE.md 정책 일치)
 - **Z-stack**:
   - 슬림 바: `top-0 z-50`
   - PageBanner: `top-12 z-40`
@@ -173,7 +175,7 @@ staleTime **1시간** (B3/C3/N1 거의 안 바뀜). TopHeader는 컴포넌트별
 
   {/* ④ 대시보드 버튼 — 흰 배경 + brand red */}
   <Link href="/"
-        className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-[#d71617] bg-white px-2.5 py-1 text-[11px] font-bold text-[#d71617] shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
+        className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-red bg-white px-2.5 py-1 text-[11px] font-bold text-brand-red shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
     <span>대시보드</span>
     <svg className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /* arrow path */ />
   </Link>
@@ -247,7 +249,7 @@ staleTime **1시간** (B3/C3/N1 거의 안 바뀜). TopHeader는 컴포넌트별
 - [ ] D-day = **종강총회일 = 수료일 (`courseStart + 57d`, 토요일, 같은 날)**
 - [ ] 주차 계산: `currentWeek = floor((today − N1) / 7) + 1`. **각 주차 금~목 7일**. N1은 금요일
 - [ ] D-day 텍스트는 `D-N` / `D-DAY` / `D+\|N\|` / `D-—`만 — 라벨 prefix X
-- [ ] 대시보드 버튼: 흰 배경 + `border-[#d71617]` + `text-[#d71617]` + hover `bg-red-50`
+- [ ] 대시보드 버튼: 흰 배경 + `border-brand-red` + `text-brand-red` + hover `bg-red-50`
 - [ ] 슬림 바 sticky `top-0 z-50`, PageBanner sticky `top-12 z-40` (적층 분리)
 - [ ] PageBanner는 별도 컴포넌트 X — TopHeader 안의 두 번째 sticky `<div>`
 - [ ] 5탭 props 표 그대로 (`/contact` 📞 컨택관리 / `01 영업관리` 등)
