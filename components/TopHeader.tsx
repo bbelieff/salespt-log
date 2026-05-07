@@ -78,7 +78,7 @@ export default function TopHeader({
 
         {/* ③ D-day 카운터 */}
         <div className="flex shrink-0">
-          <DDayBadge weekTargetISO={me.data?.weekTargetISO} />
+          <DDayBadge graduationISO={me.data?.graduationISO} />
         </div>
 
         {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 (브랜드 #d71617) */}

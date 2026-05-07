@@ -1,8 +1,8 @@
 /**
  * DDayBadge — 슬림 브랜드 바 중앙에 표시되는 D-day 카운터 위젯.
  *
- * 데이터: useMe()의 weekTargetISO (= 수강시작일 + 49일, 7주차 D-day target).
- * 계산: target - today (브라우저 로컬 자정 기준).
+ * 데이터: useMe()의 graduationISO (= 수강시작일 + 57일, 종강총회일 = 수료일).
+ * 계산: graduationISO − today (브라우저 로컬 자정 기준).
  *
  * 표시 규칙:
  *  - 양수 N: D-N (남은 일수, 검정 박스 흰 글자)
@@ -11,14 +11,14 @@
  *  - 데이터 없음: "D-—"
  *
  * 디자인 참조: 철제 카운트다운 달력 — 두 자리 숫자 박스 분할 (10의 자리 / 1의 자리).
- *   2자리 한도(99일) 가정. 7주(49일) 기준이라 충분.
+ *   2자리 한도(99일) 가정. 종강총회 57일 기준이라 충분.
  */
 "use client";
 
 import { useEffect, useState } from "react";
 
 interface Props {
-  weekTargetISO: string | undefined; // YYYY-MM-DD or undefined (loading)
+  graduationISO: string | undefined; // YYYY-MM-DD or undefined (loading)
 }
 
 function todayISO(): string {
@@ -38,7 +38,7 @@ function daysBetween(fromISO: string, toISO: string): number {
   return Math.round((toUTC - fromUTC) / 86_400_000);
 }
 
-export default function DDayBadge({ weekTargetISO }: Props) {
+export default function DDayBadge({ graduationISO }: Props) {
   // hydration mismatch 방지 — 클라이언트에서만 today 계산
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function DDayBadge({ weekTargetISO }: Props) {
     return () => clearInterval(t);
   }, []);
 
-  if (!weekTargetISO || !today) {
+  if (!graduationISO || !today) {
     // 로딩 placeholder
     return (
       <div className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-400">
@@ -57,7 +57,7 @@ export default function DDayBadge({ weekTargetISO }: Props) {
     );
   }
 
-  const remain = daysBetween(today, weekTargetISO);
+  const remain = daysBetween(today, graduationISO);
   const abs = Math.abs(remain);
   const tens = Math.floor(abs / 10);
   const ones = abs % 10;
