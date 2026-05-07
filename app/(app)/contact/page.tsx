@@ -3,10 +3,10 @@
  * 정본: docs/design/prototypes/contact-daily-input.html (v7) — 픽셀 매칭 포팅.
  *
  * 핵심 모델 (시안과 동일):
- *   - 컨택성공 = (등록 완료 미팅 수) + (신규 슬롯 수) per 채널
- *   - 컨택성공 +1 → 빈 신규 슬롯 자동 생성 (선택 채널)
+ *   - 미팅예약 = (등록 완료 미팅 수) + (신규 슬롯 수) per 채널
+ *   - 미팅예약 +1 → 빈 신규 슬롯 자동 생성 (선택 채널)
  *   - 신규 슬롯 [등록] → API POST → 등록완료 슬롯으로 전환 (서버측 미팅으로 합류)
- *   - [삭제] (신규/등록완료 모두) → 슬롯 제거 + 컨택성공 -1
+ *   - [삭제] (신규/등록완료 모두) → 슬롯 제거 + 미팅예약 -1
  */
 "use client";
 
@@ -34,7 +34,7 @@ const EMPTY_METRICS: ChannelDailyRowMetrics = {
   production: 0,
   inflow: 0,
   contactProgress: 0,
-  contactSuccess: 0,
+  meetingReservation: 0,
 };
 
 const EMPTY_BY_CHANNEL = (): Record<Channel, ChannelDailyRowMetrics> => ({
@@ -74,16 +74,16 @@ export default function ContactPage() {
     setDraft(dayQuery.data.channels);
     setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
 
-    // 일관성 체크: 시트 H열(컨택성공)과 04 업체관리 그날 미팅 수가 일치하는지
+    // 일관성 체크: 시트 H열(미팅예약)과 04 업체관리 그날 미팅 수가 일치하는지
     // 불일치 시 사용자에게 알림 (자동 정정은 안 함 — 사용자가 직접 - 클릭으로 정정)
     const inconsistencies: string[] = [];
     for (const ch of CHANNEL_ORDER) {
-      const sheetSuccess = dayQuery.data.channels[ch].contactSuccess;
+      const sheetSuccess = dayQuery.data.channels[ch].meetingReservation;
       const meetingCount = dayQuery.data.meetings.filter(
         (m) => m.channel === ch,
       ).length;
       if (sheetSuccess > meetingCount) {
-        inconsistencies.push(`${ch}: 컨택성공 ${sheetSuccess} vs 미팅 ${meetingCount}건`);
+        inconsistencies.push(`${ch}: 미팅예약 ${sheetSuccess} vs 미팅 ${meetingCount}건`);
       }
     }
     if (inconsistencies.length > 0) {
@@ -128,9 +128,9 @@ export default function ContactPage() {
     setDraft((d) => {
       const cur = d[channel];
       const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
-      // 컨택성공 ≤ 컨택진행 클램프
-      if (next.contactSuccess > next.contactProgress) {
-        next.contactSuccess = next.contactProgress;
+      // 미팅예약 ≤ 컨택진행 클램프
+      if (next.meetingReservation > next.contactProgress) {
+        next.meetingReservation = next.contactProgress;
       }
       return { ...d, [channel]: next };
     });
@@ -150,8 +150,8 @@ export default function ContactPage() {
       const cur = d[channel];
       const newValue = Math.max(0, cur[key] + delta);
       const next: ChannelDailyRowMetrics = { ...cur, [key]: newValue };
-      if (next.contactSuccess > next.contactProgress) {
-        next.contactSuccess = next.contactProgress;
+      if (next.meetingReservation > next.contactProgress) {
+        next.meetingReservation = next.contactProgress;
       }
       return { ...d, [channel]: next };
     });
@@ -159,8 +159,8 @@ export default function ContactPage() {
 
   /**
    * step(channel, key, delta) — 시안 동작 매칭:
-   *   컨택성공 +1: 그 채널에 빈 신규 슬롯 자동 생성
-   *   컨택성공 -1:
+   *   미팅예약 +1: 그 채널에 빈 신규 슬롯 자동 생성
+   *   미팅예약 -1:
    *     - 신규 슬롯 있으면 마지막 거 제거
    *     - 없으면 등록완료 슬롯 마지막 거 → API DELETE
    *   다른 키는 단순 ±1
@@ -170,10 +170,10 @@ export default function ContactPage() {
     const cur = draft[ch];
     const cur2 = cur[key];
 
-    if (key === "contactSuccess") {
+    if (key === "meetingReservation") {
       if (delta > 0) {
         if (cur2 >= cur.contactProgress) {
-          showToast("⚠ 컨택성공은 컨택진행보다 클 수 없어요");
+          showToast("⚠ 미팅예약은 컨택진행보다 클 수 없어요");
           return;
         }
         // 신규 슬롯 자동 생성
@@ -187,7 +187,7 @@ export default function ContactPage() {
           예약비고: "",
         };
         setNewSlots((s) => [...s, empty]);
-        adjustMetric(ch, "contactSuccess", +1);
+        adjustMetric(ch, "meetingReservation", +1);
       } else {
         // -1
         const news = newSlotsForChannel(ch);
@@ -195,7 +195,7 @@ export default function ContactPage() {
           // 마지막 신규 슬롯 제거
           const last = news[news.length - 1]!;
           setNewSlots((s) => s.filter((x) => x.tempId !== last.tempId));
-          adjustMetric(ch, "contactSuccess", -1);
+          adjustMetric(ch, "meetingReservation", -1);
         } else {
           // 등록완료 슬롯 중 마지막 → API 삭제
           const saved = savedByChannel[ch];
@@ -203,13 +203,13 @@ export default function ContactPage() {
           if (last) {
             handleRemoveSavedMeeting(last);
           } else if (cur2 > 0) {
-            // 시트 일관성 깨진 상태: 미팅 카드는 없는데 컨택성공만 남음.
+            // 시트 일관성 깨진 상태: 미팅 카드는 없는데 미팅예약만 남음.
             // → 로컬 -1 조정만 하고 저장은 [저장하기] 버튼에 위임.
             // (자동 saveMetrics 제거 — Quota 초과 방지)
-            adjustMetric(ch, "contactSuccess", -1);
-            showToast("컨택성공 -1 · [저장하기]로 시트에 반영하세요");
+            adjustMetric(ch, "meetingReservation", -1);
+            showToast("미팅예약 -1 · [저장하기]로 시트에 반영하세요");
           } else {
-            showToast("이 채널의 컨택성공이 이미 0입니다");
+            showToast("이 채널의 미팅예약이 이미 0입니다");
           }
         }
       }
@@ -232,8 +232,8 @@ export default function ContactPage() {
     const target = newSlots.find((s) => s.tempId === tempId);
     if (!target) return;
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
-    adjustMetric(target.channel, "contactSuccess", -1);
-    showToast("✕ 삭제 · 컨택성공 -1");
+    adjustMetric(target.channel, "meetingReservation", -1);
+    showToast("✕ 삭제 · 미팅예약 -1");
   };
 
   const registerNewSlot = async (tempId: string) => {
@@ -272,7 +272,7 @@ export default function ContactPage() {
       // 1) 미팅 등록 (04 업체관리)
       await appendMeeting.mutateAsync({ date: dateAtClick, meeting });
       // 2) 동시에 4지표도 시트에 저장 (01 영업관리 — dateAtClick row)
-      //    → 컨택성공이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
+      //    → 미팅예약이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
       await saveMetrics.mutateAsync({
         date: dateAtClick,
         channels: draftAtClick,
@@ -291,8 +291,8 @@ export default function ContactPage() {
     try {
       // 1) 시트에서 미팅 행 클리어
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
-      // 2) 컨택성공 -1 (functional setState — stale closure 안전)
-      adjustMetric(meeting.channel, "contactSuccess", -1);
+      // 2) 미팅예약 -1 (functional setState — stale closure 안전)
+      adjustMetric(meeting.channel, "meetingReservation", -1);
       // 3) 4지표를 시트에 즉시 저장. functional updater로 latest draft 읽어
       //    명시적으로 dateAtClick row에 저장 (navigate race 방지).
       setDraft((latest) => {
@@ -302,7 +302,7 @@ export default function ContactPage() {
         });
         return latest;
       });
-      showToast("✕ 삭제 · 컨택성공 -1 (시트 동기화됨)");
+      showToast("✕ 삭제 · 미팅예약 -1 (시트 동기화됨)");
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);
     }
@@ -324,7 +324,7 @@ export default function ContactPage() {
   // ── 저장 ─────────────────────────────────────────────────
   const handleSave = async () => {
     // 가드: 미등록 신규 슬롯이 있으면 저장 차단
-    // (저장하면 컨택성공 N이 시트에 가는데 미팅 슬롯이 시트에 없으면 일관성 깨짐)
+    // (저장하면 미팅예약 N이 시트에 가는데 미팅 슬롯이 시트에 없으면 일관성 깨짐)
     if (newSlots.length > 0) {
       showToast(
         `⚠ 미등록 미팅 ${newSlots.length}건 — 먼저 [✓ 등록] 또는 [✕ 삭제]를 진행하세요`,
@@ -412,14 +412,14 @@ export default function ContactPage() {
               {allSlots.length > 0 ? ` · ${allSlots.length}건` : ""}
             </span>
             <span className="text-xs text-gray-400">
-              컨택성공 1건 = 미팅예약 1건
+              미팅예약 1건 = 미팅예약 1건
             </span>
           </div>
 
           {allSlots.length === 0 ? (
             <div className="rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-6 text-center">
               <div className="text-sm text-gray-400">
-                컨택성공을 입력하면
+                미팅예약을 입력하면
                 <br />
                 미팅예약 카드가 자동 생성됩니다
               </div>

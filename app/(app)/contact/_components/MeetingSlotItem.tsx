@@ -118,7 +118,7 @@ function NewItem({
           primaryLabel="✓ 등록"
           onPrimary={onRegister}
           onRemove={onRemove}
-          hint="삭제 시 채널의 컨택성공 수치도 함께 1 감소합니다"
+          hint="삭제 시 채널의 미팅예약 수치도 함께 1 감소합니다"
         />
       </div>
     </div>
