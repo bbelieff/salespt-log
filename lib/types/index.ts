@@ -214,3 +214,50 @@ export const ContractPayment = z.object({
   수납3: PaymentSlot.default(EMPTY_SLOT),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
+
+// ── Dashboard view types (PR 12 dashboard-page) ─────────────────
+// SSOT: docs/domains/data-model.md §대시보드 데이터 출처
+// 대시보드 탭은 read-only (시트 수식 자동 집계). 코드는 service에서 1회 batchGet 후 매핑.
+
+/** 4 KPI 카드 — 영업이익/이익률/총매출/총비용/누적수임비 */
+export interface DashboardKPI {
+  영업이익: number; // = 총매출 − 총비용
+  영업이익률: number; // (영업이익 / 총매출) × 100
+  총매출: number; // 대시보드 D21 (= '01 영업관리'!N6)
+  총비용: number; // 대시보드 E21 (좌표 디스커버리 필요)
+  누적수임비: number; // TODO: 셀 좌표 디스커버리
+}
+
+/** 채널별 6단계 funnel matrix — stacked bar 데이터 */
+export interface DashboardChannelMatrix {
+  채널: "매입DB" | "직접생산" | "현수막" | "콜·지·기·소";
+  생산: number;
+  유입: number;
+  컨택진행: number;
+  미팅예약: number; // 영업관리 H 채널별 합계
+  미팅완료: number; // 04 업체관리 J in (완료, 계약) 채널별 COUNTIFS
+  계약: number; // 04 업체관리 K=TRUE 채널별 COUNTIFS
+}
+
+/** 주차별 추이 — 8주 LineChart */
+export interface DashboardWeeklyPoint {
+  주차: number; // 1~8
+  영업이익: number; // 만원, 음수 가능 (1~2주차 적자)
+  활동량: number; // 생산+유입+컨택진행+미팅예약 합 (4채널)
+}
+
+/** 비용 구성 — 3 비용 채널 (콜·지·기·소 제외) PieChart/Donut */
+export interface DashboardCostBreakdown {
+  채널: "매입DB" | "직접생산" | "현수막";
+  비용: number; // 만원
+}
+
+/** 대시보드 1회 read 응답 — Recharts/카드에 그대로 매핑 가능. */
+export interface DashboardView {
+  kpi: DashboardKPI;
+  channelMatrix: DashboardChannelMatrix[]; // 길이 4
+  weeklyTrend: DashboardWeeklyPoint[]; // 길이 8
+  costBreakdown: DashboardCostBreakdown[]; // 길이 3
+  /** 콜·지·기·소 수임비 별도 (도넛 외부 표시) */
+  콜지기소수임비: number;
+}
