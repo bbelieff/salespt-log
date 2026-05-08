@@ -417,14 +417,20 @@ type Slot = {
 > **읽기 전용**: 대시보드 탭은 모든 셀이 시트 수식 자동 집계.
 > 코드 식별자(타입): `DashboardView` / `DashboardKPI` / `DashboardChannelMatrix` / `DashboardWeeklyPoint` / `DashboardCostBreakdown` (`lib/types/index.ts`)
 
-### 확정된 셀 매핑 (시트 디스커버리 2026-05-08)
+### 확정된 셀 매핑 (wiring 2026-05-08)
 
-| 항목 | 대시보드 셀 | 실제 출처 | 비고 |
-|---|---|---|---|
-| 총매출 | D21 | `='01 영업관리'!N6` | 영업관리 N6 수임비 합계 셀에서 가져옴 |
-| 총비용 | E21 | (디스커버리 필요) | 채널별 비용 합계 추정 |
-| 영업이익 | — (계산) | `D21 − E21` | React 동적 계산 |
-| 영업이익률 | — (계산) | `(D21 − E21) / D21 × 100` | React 동적 계산 |
+웹은 **영업관리 + DB관리 raw 셀 직접 read**. 대시보드 탭은 시각적 요약용 (사용자 보기용).
+
+| 항목 | 시트 출처 | 비고 |
+|---|---|---|
+| KPI (수임비/수수료/매출/비용/이익/이익률) | 대시보드 `B21:G21` | 영업관리 자체 집계 미러 |
+| Funnel 6단계 합계 | `01 영업관리!E1:E6` | 생산/유입/컨택/미팅예약/미팅완료/계약 |
+| 5지표 % | `01 영업관리!I2:I6` | 시트 자체 계산 |
+| 채널별 6단계 stacking (24셀) | `01 영업관리!R1:U6` | 행=단계, 열=R매입DB/S직접생산/T현수막/U콜지기소 |
+| 채널별 (생산/계약) 합계 | `01 영업관리!K3:L6` | 4채널 (참고) |
+| 주차별 계약수 (8주) | `01 영업관리!N{38,72,106,140,174,208,242,276}` | stride 34 |
+| 주차별 활동량 (8주) | 대시보드 `H33:H40` | C33:H40의 6번째 컬럼 |
+| 채널별 비용 (3채널) | `03 DB관리!F56`/`K56`/`U56` | 매입DB/직접생산/현수막 |
 
 ### 대시보드 view 코드 매핑
 
@@ -447,13 +453,12 @@ interface DashboardChannelMatrix {
   미팅완료: number;       // 04 업체관리에서 COUNTIFS
   계약: number;
 }
-// ⚠ 코드 식별자 정정 필요: 5필드(생산/유입/컨택진행/컨택성공) → 6필드 (미팅예약·미팅완료·계약 분리)
-//   별도 PR refactor/dashboard-funnel-6stage 에서 처리.
+// 6필드 — 시트 01 영업관리!R1:U6 (24셀 stacking) 에서 read.
 
 interface DashboardWeeklyPoint {
   주차: number;           // 1~8
-  영업이익: number;
-  활동량: number;         // 생산+유입+컨택진행+미팅예약 합 (4채널)
+  계약수: number;         // 사용자 결정 2026-05-08: 영업이익 → 계약수
+  활동량: number;         // 대시보드 H33:H40 (영업관리 가중치 합계)
 }
 
 interface DashboardCostBreakdown {
@@ -463,21 +468,17 @@ interface DashboardCostBreakdown {
 
 interface DashboardView {
   kpi: DashboardKPI;
-  channelMatrix: DashboardChannelMatrix[];   // 길이 4
+  channelMatrix: DashboardChannelMatrix[];   // 길이 4 (R1:U6 stacking)
   weeklyTrend: DashboardWeeklyPoint[];       // 길이 8
   costBreakdown: DashboardCostBreakdown[];   // 길이 3 (콜·지·기·소 제외)
-  // 콜·지·기·소 수임비는 별도 표시 (도넛 외부)
-  콜지기소수임비: number;
+  콜지기소수임비: number;                    // 0 (UI에서 박스 제거됨)
 }
 ```
 
-### 미해결 (시트 디스커버리 후속 필요)
+### Phase 2 후속 (선택)
 
-- 채널별 6단계 24 cells (4채널 × 6단계) 위치 — 영업관리에 분해 영역 있는지, 또는 04 업체관리 GROUPBY 가능한지
-- 8주차 활동량 8 cells / 영업이익 8 cells 위치
-- 채널별 비용 3 cells (매입DB/직접생산/현수막) 위치
-- 콜·지·기·소 수임비 별도 셀 또는 채널별 수임비 분해
-- 누적수임비 KPI 셀
+- 누적수임비 KPI: 현재 `B21` (수임비) 사용 중. 추후 별도 누적 셀 필요 시 추가.
+- 콜·지·기·소 비용/수임비: 채널 기획상 비용 X. 필요 시 별도 셀 추가 후 wiring.
 
 ## TypeScript 식별자 인덱스 ⭐
 
