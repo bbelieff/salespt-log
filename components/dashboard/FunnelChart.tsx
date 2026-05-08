@@ -107,12 +107,14 @@ export default function FunnelChart({ matrix }: Props) {
             return seg;
           });
 
-          // 사다리꼴: 현재 단계 끝 → 다음 단계 시작 (가운데 정렬되도록)
+          // 사다리꼴: prototype 정본은 left-aligned (좌측 고정, 우측만 좁아짐).
+          //   top: BAR_X ~ BAR_X+totalW
+          //   bottom: BAR_X ~ BAR_X+nextW
           const nextW = i < STAGES.length - 1 ? stageWidth(STAGES[i + 1]!) : 0;
           const trapTopLeft = BAR_X;
           const trapTopRight = BAR_X + totalW;
-          const trapBotLeft = BAR_X + (totalW - nextW) / 2;
-          const trapBotRight = trapBotLeft + nextW;
+          const trapBotLeft = BAR_X;
+          const trapBotRight = BAR_X + nextW;
 
           return (
             <g key={stage}>

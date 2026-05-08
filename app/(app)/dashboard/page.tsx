@@ -28,7 +28,7 @@ import OperatingProfitCard from "@/components/dashboard/OperatingProfitCard";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
-import ChannelCostDonut from "@/components/dashboard/ChannelCostDonut";
+import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
 
 function todayISO(): string {
   const d = new Date();
@@ -125,9 +125,9 @@ export default function DashboardPage() {
             <FunnelChart matrix={dash.data.channelMatrix} />
             <ProductivityIndicators matrix={dash.data.channelMatrix} />
             <WeeklyDualChart points={dash.data.weeklyTrend} />
-            <ChannelCostDonut
-              breakdown={dash.data.costBreakdown}
-              콜지기소수임비={dash.data.콜지기소수임비}
+            <ChannelPerformance
+              costBreakdown={dash.data.costBreakdown}
+              matrix={dash.data.channelMatrix}
             />
           </>
         )}
