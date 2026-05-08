@@ -127,6 +127,23 @@ export default function ChannelPerformance({ costBreakdown, matrix }: Props) {
   }));
   const inflowTotal = inflowSlices.reduce((s, x) => s + x.value, 0);
 
+  // 채널별 계약단가 = 채널 비용 ÷ 채널 계약건수 (= 1계약 따는 데 든 비용)
+  // 콜·지·기·소는 비용 0 (도넛 좌측에 없음) — 별도 처리
+  const costByChannel = new Map<string, number>();
+  costBreakdown.forEach((b) => costByChannel.set(b.채널, b.비용));
+  const cpcRows = matrix.map((m) => {
+    const cost = costByChannel.get(m.채널) ?? 0;
+    const cpc = m.계약 > 0 ? cost / m.계약 : 0;
+    return {
+      채널: m.채널,
+      color: CH_COLOR[m.채널] ?? "#94a3b8",
+      contracts: m.계약,
+      cost,
+      cpc,
+      hasCost: cost > 0,
+    };
+  });
+
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm">
       {/* 섹션 제목 */}
@@ -208,6 +225,54 @@ export default function ChannelPerformance({ costBreakdown, matrix }: Props) {
               );
             })}
           </ul>
+        </div>
+      </div>
+
+      {/* === 채널별 계약단가 (1계약당 비용) — 좌우 도넛 아래 full-width === */}
+      <div className="mt-4 rounded-lg bg-slate-50 p-3">
+        <div className="mb-2 flex items-center gap-1.5">
+          <span className="text-xs">💼</span>
+          <span className="text-xs font-semibold text-gray-700">
+            채널별 계약단가
+          </span>
+          <span className="ml-1 text-[10px] text-gray-400">
+            1계약당 들어간 비용 (낮을수록 효율적)
+          </span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {cpcRows.map((r) => (
+            <div
+              key={r.채널}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1.5"
+            >
+              <div className="flex items-center gap-1">
+                <span
+                  className="inline-block h-2 w-2 rounded-sm"
+                  style={{ backgroundColor: r.color }}
+                />
+                <span className="truncate text-[10px] font-semibold text-gray-700">
+                  {r.채널}
+                </span>
+              </div>
+              <div
+                className="mt-0.5 text-sm font-extrabold text-gray-900"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                {!r.hasCost ? (
+                  <span className="text-gray-400">—</span>
+                ) : r.contracts === 0 ? (
+                  <span className="text-gray-400">—</span>
+                ) : (
+                  fmtMan(r.cpc)
+                )}
+              </div>
+              <div className="text-[9px] text-gray-400">
+                {r.hasCost
+                  ? `${fmtMan(r.cost)} ÷ ${r.contracts}건`
+                  : "비용 없음"}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
