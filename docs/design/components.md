@@ -1167,6 +1167,82 @@ components/dashboard/
 
 ---
 
+## 10. Page-Local Components (탭별 전용)
+
+§1~§7은 재사용 가능 디자인 시스템 (HTML 예시 위주). §8/§9는 App Shell·Dashboard 페이지 셸.
+**§10**은 5개 (app) 탭에서만 쓰는 React 구현 컴포넌트 등재 (page-local). 외부 디자이너가 새 화면을
+만들 때 중복 생성 방지가 목적.
+
+> 등재 정책: 파일 위치·역할·핵심 props만 1~3줄로. 자세한 디자인 토큰/JSX는 §1~§7 참조.
+
+### 10-1. 공통 (`components/` + `components/ui/`)
+
+| 컴포넌트 | 파일 | 역할 / Props |
+|---|---|---|
+| **TabBar** | `components/TabBar.tsx` | 모바일 BottomNav 5탭 (§5). 활성 라우트 강조, SVG `currentColor` 패턴 |
+| **MetricStepper** | `components/ui/MetricStepper.tsx` | §2 Number Input(Stepper) 의 React 구현. Props: `value` / `onChange` / `min` / `max` / 채널 색 |
+| **ChannelBadge** | `components/ui/ChannelBadge.tsx` | §4 채널 배지 4종 진입점. Props: `channel: Channel` (4종 enum) |
+| **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |
+| **TimeSelectPair** | `components/ui/TimeSelectPair.tsx` | §2 Time Input — 시·분 분리 select (15분 단위 강제) |
+
+### 10-2. contact 탭 (`app/(app)/contact/_components/`)
+
+| 컴포넌트 | 역할 / Props |
+|---|---|
+| **WeekHeader** | 주차 네비 (이전/다음 화살표 + 7일 그리드 + 일자 클릭 = 그 day 이동). Props: `weekStart` / `onWeekChange` / `meetings` |
+| **ChannelTabsAndPanel** | 4채널 전환 탭 + 패널 컨테이너. 탭 전환 시 그 채널의 4지표 폼 표시. 컨택탭 핵심 UI |
+| **MeetingSlotItem** | 컨택탭 미팅 슬롯 입력 카드 (신규). Props: `slot: NewSlot` / `onSave` / `onRemove`. [등록] 시 미팅 append |
+| **MeetingSlotCard** | 등록 완료 슬롯 표시 카드 (read-only). Props: `meeting: Meeting`. [삭제]는 미팅 + meetingReservation -1 |
+
+### 10-3. schedule 탭 (`app/(app)/schedule/_components/`)
+
+| 컴포넌트 | 역할 / Props |
+|---|---|
+| **WeekHeader** | 일정·계약 주차 네비 (컨택과 변형: 일자 클릭 = `scrollIntoView`, 주차 변경 X) |
+| **SummaryBar** | 주간 5칸 카운터 (미팅총건/미팅예정/미팅완료/미팅취소/계약) + 매출 합계 배너. sticky 부모 묶기 |
+| **DaySection** | 일별 미팅 섹션. 오늘 강조 좌측바 (`border-l-blue-500`). 토요일 좌측바 빨강 |
+| **MeetingResultCard** | Full 미팅 카드 (4종 액션 버튼 — 계약/완료/변경/취소 + 기본편집). Props: `meeting` / 액션 콜백 |
+| **BasicEditDetails** | 기본 정보 편집 폼 (액션 폼 5종 중 하나). 미팅 데이터 patch |
+| **CancelForm** | 취소 액션 폼 — 취소 사유 입력 (`업체명, 이유` 형식) |
+| **ContractForm** | 계약 액션 폼 — 수임비 + 계약조건 입력. 02 계약수납관리 row 자동 생성 트리거 |
+| **DoneForm** | 완료(미팅했으나 미계약) 액션 폼 — 완료 사유 입력 |
+| **RescheduleForm** | 변경(재예약) 액션 폼 — 새 미팅 row 자동 생성 + 기존 row.previousMeetingId 보존 |
+
+### 10-4. calendar 탭 (`app/(app)/calendar/_components/`)
+
+| 컴포넌트 | 역할 / Props |
+|---|---|
+| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 dot). Props: `yyyyMM` / `meetingsByDate` / `selectedDate` / `onSelectDate`. 클릭 시 schedule로 점프 |
+
+### 10-5. db 탭 (`app/(app)/db/_components/`)
+
+> 4채널 raw log 입력 (매입DB/직접생산/현수막/콜·지·기·소).
+
+| 컴포넌트 | 역할 / Props |
+|---|---|
+| **ChannelTabs** | DB탭 4채널 전환 탭 (컨택탭과 다른 변형 — raw 모드) |
+| **ConfirmModal** | 삭제 확인 모달 (raw row 삭제 시) |
+| **OverallCard** | 4채널 합계 카드 (총 비용 + 채널별 분해) |
+| **SummaryCard** | 채널별 요약 카드 (해당 채널의 합계·평균단가) |
+| **RowList** | DB row 목록 컨테이너 |
+| **RowCard** | DB raw row 표시 카드 (read-only). 클릭 시 RowForm으로 편집 |
+| **RowForm** | DB raw row 입력/편집 폼 (4채널 각각 다른 필드 — DBPurchase/DBProduction/DBBanner/DBLead) |
+
+### 10-6. payment 탭 (`app/(app)/payment/_components/`)
+
+> 02 계약수납관리 — 1계약 = 1행, 자동연동 3 + 체크박스 7 + 분할 수납 슬롯 3.
+
+| 컴포넌트 | 역할 / Props |
+|---|---|
+| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장 |
+| **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
+| **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
+
+> **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):
+> 수납1 = teal / 수납2 = cyan / 수납3 = fuchsia. 카드 좌측 보더로 활성 슬롯 시각 구분.
+
+---
+
 ## 접근성 가이드라인
 
 ### 터치 타겟

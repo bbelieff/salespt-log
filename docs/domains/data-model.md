@@ -479,6 +479,45 @@ interface DashboardView {
 - 콜·지·기·소 수임비 별도 셀 또는 채널별 수임비 분해
 - 누적수임비 KPI 셀
 
+## TypeScript 식별자 인덱스 ⭐
+
+> `lib/types/index.ts` Zod 스키마 1:1 매핑. doc-drift.sh가 이 식별자명을 grep함.
+> 새 타입 추가 시 이 표에 등재 후 코드 수정.
+
+### 코어
+| 식별자 | 종류 | 정의 위치 / 의미 |
+|---|---|---|
+| `Channel` | z.enum | 4채널 enum: `매입DB` / `직접생산` / `현수막` / `콜·지·기·소`. 변경 금지 |
+| `MetricKey` | z.enum | 4지표 enum: `production` / `inflow` / `contactProgress` / `meetingReservation` |
+| `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
+| `Meeting` | z.object | 1미팅=1행 (04 업체관리, 19컬럼 A~S) |
+| `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
+| `User` | z.object | 마스터 레지스트리 row (email/cohort/name/spreadsheetId/role) |
+
+### 계약수납 v2 (02 계약수납관리)
+| 식별자 | 종류 | 의미 |
+|---|---|---|
+| `Progress` | z.enum | 진행률 6단계: `""` / `0%` / `20%` / `40%` / `60%` / `80%` / `100%` |
+| `PaymentSlot` | z.object | 분할 수납 1슬롯 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일) |
+| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 = M~AD) |
+
+### DB관리 (03 DB관리)
+| 식별자 | 종류 | 의미 |
+|---|---|---|
+| `DBPurchase` | z.object | 매입DB raw row (B~G) |
+| `DBProduction` | z.object | 직접생산 raw row (I~N) |
+| `DBBanner` | z.object | 현수막 raw row (P~V) |
+| `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) |
+
+### 대시보드 view (코드 식별자 — `lib/types/index.ts` 또는 `lib/service/dashboard.ts` 예정)
+| 식별자 | 종류 | 의미 |
+|---|---|---|
+| `DashboardKPI` | interface | 4 KPI (영업이익/이익률/총매출/총비용/누적수임비) |
+| `DashboardChannelMatrix` | interface | 채널별 funnel matrix (4채널 × N단계). 6단계 확장은 별도 PR |
+| `DashboardWeeklyPoint` | interface | 주차별 추이 1점 (주차/영업이익/활동량) |
+| `DashboardCostBreakdown` | interface | 채널별 비용 1행 (3채널, 콜·지·기·소 제외) |
+| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost) |
+
 ## API 엔드포인트 (예정)
 
 ```
