@@ -3,10 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "bash scripts/dev-with-watch.sh",
+    "dev": "node scripts/dev-with-watch.mjs",
     "dev:no-watch": "next dev",
-    "dev:watch": "bash scripts/dev-watch-master.sh",
-    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && bash scripts/dev-with-watch.sh",
+    "dev:watch-bash": "bash scripts/dev-watch-master.sh",
+    "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && node scripts/dev-with-watch.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
