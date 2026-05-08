@@ -5,14 +5,17 @@
  *
  * 구조:
  *   TopHeader (5탭 동일)
- *     ├─ 슬림 바 (top-0 z-50, ④ 자리에 자기 페이지 라벨)
- *     └─ PageBanner (top-12 z-40, 📊 대시보드)
- *   DashboardProgressBanner (top-24 z-30 sticky)
- *   본문:
- *     - FunnelChart (6단계)
- *     - ProductivityIndicators (4지표)
+ *     ├─ 슬림 바 (top-0 z-50)
+ *     └─ PageBanner (top-12 z-40, 📊 대시보드 / 8주 누적)
+ *   DashboardProgressBanner (top-24 z-30 sticky) — 진행도 + 매출/비용
+ *   본문 (`<main>` p-4 space-y-4):
+ *     - OperatingProfitCard (별도 큰 카드, KPI 강조)
+ *     - FunnelChart (6단계 stacked + 사다리꼴 connector)
+ *     - ProductivityIndicators (4지표, indigo gradient)
  *     - WeeklyDualChart (8주차)
- *     - ChannelCostDonut (3채널 + 콜·지·기·소)
+ *     - ChannelCostDonut (3채널 + 콜·지·기·소 별도)
+ *
+ * me.data 없어도 dash.data 만으로 모든 섹션 렌더 (배너만 fallback 처리).
  */
 "use client";
 
@@ -21,6 +24,7 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
+import OperatingProfitCard from "@/components/dashboard/OperatingProfitCard";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
@@ -35,7 +39,6 @@ function todayISO(): string {
 }
 
 function fmtMD(iso: string): string {
-  // YYYY-MM-DD → "M/D"
   const [, m, d] = iso.split("-").map((s) => parseInt(s, 10));
   return `${m}/${d}`;
 }
@@ -56,13 +59,12 @@ export default function DashboardPage() {
 
   const today = todayISO();
 
-  // 주차 / 진행률 / 종강총회 라벨 계산 (data-model.md 공식)
+  // 진행도 라벨 — me 없으면 prototype 더미(6기 5/4) fallback
   const banner = useMemo(() => {
-    const courseStart = me.data?.courseStartISO;
-    const graduation = me.data?.graduationISO;
-    if (!courseStart || !graduation) return null;
+    const courseStart = me.data?.courseStartISO ?? "2026-04-10";
+    const graduation = me.data?.graduationISO ?? "2026-06-06";
     const elapsed = daysBetween(courseStart, today);
-    const total = daysBetween(courseStart, graduation); // 57
+    const total = daysBetween(courseStart, graduation); // 57 기대
     const currentWeek = Math.max(1, Math.min(8, Math.floor(elapsed / 7) + 1));
     const progressPercent = Math.max(0, Math.min(100, (elapsed / total) * 100));
     const weekday = KO_DAY[new Date(today + "T00:00").getDay()] ?? "";
@@ -70,32 +72,39 @@ export default function DashboardPage() {
       today: fmtMD(today),
       weekday,
       currentWeek,
+      startDate: fmtMD(courseStart),
       progressPercent,
       graduationDate: fmtMD(graduation),
     };
   }, [me.data, today]);
 
+  // 계약 건수 (matrix.계약 합) — OperatingProfitCard 보조 텍스트
+  const contractCount = useMemo(() => {
+    if (!dash.data) return undefined;
+    return dash.data.channelMatrix.reduce((s, m) => s + m.계약, 0);
+  }, [dash.data]);
+
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle="8주 누적" />
 
-      {dash.data && banner && me.data && (
+      {dash.data && (
         <DashboardProgressBanner
-          cohort={me.data.cohort}
           today={banner.today}
           weekday={banner.weekday}
           currentWeek={banner.currentWeek}
+          startDate={banner.startDate}
           progressPercent={banner.progressPercent}
           graduationDate={banner.graduationDate}
           revenue={dash.data.kpi.총매출}
           cost={dash.data.kpi.총비용}
-          // 수임비/수수료는 시트 디스커버리 후 별도 매핑. 임시: 매출의 67%를 수임비, 33%를 수수료
+          // 수임비/수수료는 시트 디스커버리 후 별도 매핑. 임시: 67/33 분할
           feeIncome={Math.round(dash.data.kpi.총매출 * 0.67)}
           commissionIncome={Math.round(dash.data.kpi.총매출 * 0.33)}
         />
       )}
 
-      <div className="space-y-3 p-3">
+      <div className="space-y-4 p-4">
         {dash.isLoading && (
           <div className="rounded-md bg-white p-4 text-center text-sm text-gray-500 shadow-sm">
             대시보드 데이터 로딩 중…
@@ -108,6 +117,11 @@ export default function DashboardPage() {
         )}
         {dash.data && (
           <>
+            <OperatingProfitCard
+              revenue={dash.data.kpi.총매출}
+              cost={dash.data.kpi.총비용}
+              contractCount={contractCount}
+            />
             <FunnelChart matrix={dash.data.channelMatrix} />
             <ProductivityIndicators matrix={dash.data.channelMatrix} />
             <WeeklyDualChart points={dash.data.weeklyTrend} />
