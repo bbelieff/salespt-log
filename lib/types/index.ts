@@ -239,11 +239,11 @@ export interface DashboardChannelMatrix {
   계약: number; // 04 업체관리 K=TRUE 채널별 COUNTIFS
 }
 
-/** 주차별 추이 — 8주 LineChart */
+/** 주차별 추이 — 8주 LineChart (사용자 결정 2026-05-08: 영업이익 → 계약수) */
 export interface DashboardWeeklyPoint {
   주차: number; // 1~8
-  영업이익: number; // 만원, 음수 가능 (1~2주차 적자)
-  활동량: number; // 생산+유입+컨택진행+미팅예약 합 (4채널)
+  계약수: number; // 시트 01 영업관리!N{38,72,106,140,174,208,242,276}
+  활동량: number; // 시트 대시보드(자동작성) III. 주차별 마지막 컬럼
 }
 
 /** 비용 구성 — 3 비용 채널 (콜·지·기·소 제외) PieChart/Donut */
