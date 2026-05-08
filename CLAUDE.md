@@ -217,6 +217,29 @@ types → config → repo → service → app(api·ui) → components
 
 ---
 
+## 6.6 Dev Server 자동 동기화 (Hashimoto 가드)
+
+**문제**: 사용자가 GitHub에서 PR 머지 → 로컬 worktree(`wt/<x>/`)는 옛 commit 그대로 →
+브라우저 새로고침해도 옛 화면. 매번 수동 pull + 재시작 필요.
+
+**해결 (2026-05-08 — `chore/dev-auto-sync` PR)**:
+
+- `npm run dev` 실행 시 `scripts/dev-with-watch.sh` 가 두 프로세스 병렬 실행:
+  1. `next dev` — Next.js dev server (foreground 콘솔)
+  2. `scripts/dev-watch-master.sh` — 30초마다 `origin/master` poll → 변경 시 `git pull --ff-only`
+- Next.js 가 파일 변경 자동 hot-reload 하므로 **재시작 불필요**.
+- Ctrl+C 한 번에 둘 다 종료 (trap 처리).
+
+**npm scripts**:
+- `npm run dev` — watcher + dev server (기본)
+- `npm run dev:no-watch` — watcher 없이 (오프라인 작업 시)
+- `npm run dev:watch` — watcher 단독
+
+**원칙**: 같은 "왜 새로고침 안 되지?" 질문이 두 번 나오는 순간 = harness issue.
+환경을 고쳐 사용자가 다시 묻지 않게 한다.
+
+---
+
 ## 7. 이 하네스 자체의 관리
 
 이 파일과 `docs/`도 **하네스의 일부**다.
