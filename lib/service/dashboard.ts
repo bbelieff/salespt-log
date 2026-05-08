@@ -3,20 +3,16 @@
  *
  * SSOT: docs/domains/data-model.md §대시보드 데이터 출처
  *
- * 흐름 (시트 wiring 완료 2026-05-08):
- *   email → findUserByEmail → spreadsheetId
- *        → readDashboard(spreadsheetId) (1회 batchGet 5 ranges)
- *        → cell → DashboardView 매핑
- *
- * 시트 데이터 위치 (대시보드(자동작성) 탭):
- *   I.   재무        B21:G21
- *   II.  funnel 합계  B25:B30 (6단계)
- *   II.  5지표       H25:H29 (시트 % 그대로 사용)
- *   III. 8주차       C33:H40 (8 row × 6 col)
- *   IV.  채널별 성과  B45:E48 (4채널 × 생산/계약/계약단가)
- *
- * 채널별 6단계 stacking 데이터는 시트에 없음 (Phase 2 — 별도 wiring).
- * 현재 funnel 채널 분배는 채널별 계약 비율로 추정 (정확치 X, 시각용).
+ * 매핑 (사용자 결정 2026-05-08):
+ *   - KPI:        대시보드 B21:G21
+ *   - Funnel:     01 영업관리!E1:E6 (6단계 합계)
+ *   - 5지표:     01 영업관리!I2:I6 (시트 자체 계산)
+ *   - 채널 생산/계약: 01 영업관리!K3:L6 (4채널)
+ *   - 채널 유입/컨택/미팅예약/미팅완료: 시트 셀 미정 — 채널별 계약 비율로 비례 분배
+ *   - 주차별 계약수: 01 영업관리!N{38,72,106,140,174,208,242,276}
+ *   - 주차별 활동량: 대시보드 C33:H40 (6번째 컬럼)
+ *   - 채널 비용: 03 DB관리!F56/K56/U56
+ *   - 콜·지·기·소 수임비 박스: 제거 (사용자 결정)
  */
 import type {
   DashboardView,
@@ -42,88 +38,55 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
 
   const data = await readDashboard(user.spreadsheetId);
 
-  // === KPI: 시트 B21~G21 (수임비, 수수료, 총매출, 총비용, 영업이익, 영업이익률) ===
+  // === KPI: 대시보드 B21:G21 ===
   const fee = num(data.finance[0]);
   const revenue = num(data.finance[2]);
   const cost = num(data.finance[3]);
   const profit = num(data.finance[4]);
-  // 시트 G21 영업이익률은 0~1 (소수) 또는 % (정수). 0~1이면 *100.
   const rateRaw = num(data.finance[5]);
   const profitRate = rateRaw <= 1 ? rateRaw * 100 : rateRaw;
 
-  // === Funnel 합계: 시트 B25~B30 (생산/유입/컨택/미팅예약/미팅완료/계약) ===
+  // === Funnel 합계: 01 영업관리!E1:E6 ===
   const 유입T = num(data.funnelTotals[1]);
   const 컨택T = num(data.funnelTotals[2]);
   const 미팅예약T = num(data.funnelTotals[3]);
   const 미팅완료T = num(data.funnelTotals[4]);
 
-  // === 채널별 성과: B45~E48 (생산/계약/계약단가) ===
-  // matrix 6단계 중 시트에 직접 있는 것은 생산/계약뿐.
-  // 나머지 4단계 (유입/컨택/미팅예약/미팅완료)는 채널별 계약 비율로 비례 분배.
-  // (정확하진 않지만 stacked funnel 시각화용 — Phase 2 에서 정확화)
-  const perfByChannel = new Map<string, { 생산: number; 계약: number; 단가: number }>();
-  for (const row of data.channelPerf) {
-    const [name, 생산, 계약, 단가] = row;
-    perfByChannel.set(String(name), {
-      생산: num(생산),
-      계약: num(계약),
-      단가: num(단가),
-    });
-  }
-
-  // 시트 채널명 → 코드 채널명 매핑
-  const sheetToCh: Record<string, DashboardChannelMatrix["채널"]> = {
-    매입DB: "매입DB",
-    직접생산: "직접생산",
-    현수막: "현수막",
-    "지인,기고객,소개": "콜·지·기·소",
-    "콜·지·기·소": "콜·지·기·소",
-  };
-
-  type ChVals = { 생산: number; 계약: number; 단가: number };
-  const resolved: Record<DashboardChannelMatrix["채널"], ChVals> = Object.fromEntries(
-    CHANNELS.map((c) => [c, { 생산: 0, 계약: 0, 단가: 0 }]),
-  ) as Record<DashboardChannelMatrix["채널"], ChVals>;
-  for (const [sheetName, vals] of perfByChannel) {
-    const ch = sheetToCh[sheetName];
-    if (ch) resolved[ch] = vals;
-  }
-
-  // 채널 분배 비율 (계약 우선, 없으면 생산 기준)
-  const totalContract = CHANNELS.reduce((s, c) => s + resolved[c].계약, 0);
-  const totalProduction = CHANNELS.reduce((s, c) => s + resolved[c].생산, 0);
+  // === 채널별 (생산/계약): 01 영업관리!K3:L6 — 매입DB/직접생산/현수막/콜지기소 순 ===
+  // matrix 6단계 중 시트에 직접 있는 건 생산/계약뿐.
+  // 나머지 4단계 (유입/컨택/미팅예약/미팅완료) = 채널별 계약 비율로 비례 분배 (Phase 2 정확화).
+  const ch = data.channelKL;
+  const totalContract = ch.reduce((s, c) => s + c.계약, 0);
+  const totalProduction = ch.reduce((s, c) => s + c.생산, 0);
   const denom = totalContract || totalProduction || 1;
-  const ratio = (ch: DashboardChannelMatrix["채널"]) =>
-    (totalContract > 0 ? resolved[ch].계약 : resolved[ch].생산) / denom;
+  const ratio = (i: number) =>
+    (totalContract > 0 ? ch[i]?.계약 ?? 0 : ch[i]?.생산 ?? 0) / denom;
 
-  const channelMatrix: DashboardChannelMatrix[] = CHANNELS.map((ch) => {
-    const r = ratio(ch);
+  const channelMatrix: DashboardChannelMatrix[] = CHANNELS.map((cName, i) => {
+    const r = ratio(i);
     return {
-      채널: ch,
-      생산: resolved[ch].생산,
+      채널: cName,
+      생산: ch[i]?.생산 ?? 0,
       유입: Math.round(유입T * r),
       컨택진행: Math.round(컨택T * r),
       미팅예약: Math.round(미팅예약T * r),
       미팅완료: Math.round(미팅완료T * r),
-      계약: resolved[ch].계약,
+      계약: ch[i]?.계약 ?? 0,
     };
   });
 
-  // === 8주차: C33~H40 — 6번째 컬럼 = 활동량 ===
-  const weeklyTrend = data.weekly.map((row, i) => ({
+  // === Weekly: 01 영업관리 주차별 계약수 + 대시보드 활동량 ===
+  const weeklyTrend = Array.from({ length: 8 }, (_, i) => ({
     주차: i + 1,
-    영업이익: 0, // 시트에 주차별 영업이익 없음 — Phase 2
-    활동량: num(row[5]),
+    계약수: num(data.weeklyContracts[i]),
+    활동량: num(data.weeklyActivity[i]),
   }));
-  while (weeklyTrend.length < 8) {
-    weeklyTrend.push({ 주차: weeklyTrend.length + 1, 영업이익: 0, 활동량: 0 });
-  }
 
-  // === 비용 분해: 시트에 채널별 비용 직접 없음 — Phase 2 (03 DB관리 탭) ===
+  // === 비용 분해: 03 DB관리!F56/K56/U56 ===
   const costBreakdown: DashboardCostBreakdown[] = [
-    { 채널: "매입DB", 비용: 0 },
-    { 채널: "직접생산", 비용: 0 },
-    { 채널: "현수막", 비용: 0 },
+    { 채널: "매입DB", 비용: num(data.costByChannel[0]) },
+    { 채널: "직접생산", 비용: num(data.costByChannel[1]) },
+    { 채널: "현수막", 비용: num(data.costByChannel[2]) },
   ];
 
   return {
@@ -135,8 +98,8 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
       누적수임비: fee,
     },
     channelMatrix,
-    weeklyTrend: weeklyTrend.slice(0, 8),
+    weeklyTrend,
     costBreakdown,
-    콜지기소수임비: 0, // Phase 2
+    콜지기소수임비: 0, // 사용자 결정 2026-05-08: 박스 제거 (UI 무시)
   };
 }
