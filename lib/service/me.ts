@@ -5,21 +5,19 @@
  *  - 마스터 레지스트리 users 탭 → email/spreadsheetId 매핑.
  *  - 사용자 개인 시트 01 영업관리!B3:C3 → 기수/이름 (표시값 SSOT).
  *  - 사용자 개인 시트 01 영업관리!N1 → 수강시작일 (1주차 시작, 금요일).
- *  - 종강총회일 (= 수료일, 같은 날, 토요일) = N1 + 57일.
+ *  - **사용자 개인 시트 01 영업관리!N2 → 종강총회일 (= 수료일, 토요일)**
+ *    시트는 보통 `=N1+57` 수식이거나 직접 입력. 코드는 그대로 읽기만.
  *
  * 사용처:
  *  - TopHeader 컴포넌트 — 모든 탭 상단 "{기수} {이름} 대표님" 표시
- *  - DDayBadge — 종강총회일까지 남은 일수 카운트다운
+ *  - DDayBadge — 종강총회일(N2)까지 남은 일수 카운트다운 (D-N = N2 − today)
  */
 import { findUserByEmail } from "@/repo/users";
-import { readProfile } from "@/repo/sales";
-import { readCourseStart } from "@/repo/sales";
+import { readProfile, readCourseStart, readGraduation } from "@/repo/sales";
 
 /**
- * 종강총회일 = 수강시작일 + 57일 (토요일).
- * = 수료일과 같은 날. data-model.md §D-day 계산 규칙 SSOT.
- *
- * 검증 (6기): N1=2026-04-10(금) → +57d = 2026-06-06(토) ✓
+ * 참고 상수: 시트 N2가 보통 `=N1+57` 수식인 경우의 offset.
+ * 코드는 N2를 직접 읽으므로 이 값을 사용하지 않지만, fixture 테스트에서 검증용으로 유지.
  */
 export const GRADUATION_OFFSET_DAYS = 57;
 
@@ -29,7 +27,7 @@ export interface MeProfile {
   name: string; // 예: "김믿음" (시트 C3)
   /** 수강시작일 (YYYY-MM-DD) — N1 셀. 1주차 시작 (금요일). */
   courseStartISO: string;
-  /** 종강총회일 = 수료일 (YYYY-MM-DD = courseStart + 57d, 토). */
+  /** 종강총회일 = 수료일 (YYYY-MM-DD) — **N2 직접 읽기** (시트 수식 또는 직접 입력). */
   graduationISO: string;
 }
 
@@ -46,7 +44,10 @@ function addDays(d: Date, days: number): Date {
   return next;
 }
 
-/** 테스트용 export — 외부에선 loadMe() 사용. */
+/**
+ * 테스트용 export — 시트 N2가 `=N1+57` 가정에서 graduation 계산.
+ * 실제 loadMe()는 N2를 직접 읽으므로 이 함수를 사용하지 않음.
+ */
 export function computeGraduationISO(courseStartISO: string): string {
   const [y, m, d] = courseStartISO.split("-").map(Number) as [
     number,
@@ -62,11 +63,12 @@ export async function loadMe(email: string): Promise<MeProfile> {
   if (!user) {
     throw new Error(`[me] 사용자(${email})를 찾을 수 없습니다.`);
   }
-  const [profile, courseStart] = await Promise.all([
+  // 시트에서 N1, N2를 동시에 읽음 (graduation은 N2 직접 — N1+57 계산 X)
+  const [profile, courseStart, graduation] = await Promise.all([
     readProfile(user.spreadsheetId),
     readCourseStart(user.spreadsheetId),
+    readGraduation(user.spreadsheetId),
   ]);
-  const graduation = addDays(courseStart, GRADUATION_OFFSET_DAYS);
   return {
     email: user.email,
     cohort: profile.cohort || user.cohort,

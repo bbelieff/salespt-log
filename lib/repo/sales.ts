@@ -143,6 +143,41 @@ export async function readCourseStart(
 }
 
 /**
+ * 영업관리 N2에서 종강총회일(=수료일) 직접 읽기.
+ * data-model.md SSOT: N2는 시트 수식 `=N1+57` 또는 직접 입력.
+ * 헤더 D-day 와 메인 배너 종강총회일 표시에 사용.
+ */
+export async function readGraduation(
+  spreadsheetId: string,
+): Promise<Date> {
+  const range = `${tabRef(SHEET_RANGES.sales.tab)}!N2`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const raw = res.data.values?.[0]?.[0];
+  if (raw === undefined || raw === null || raw === "") {
+    throw new Error(
+      `[sales.ts] ${range}에 종강총회일이 비어있습니다. 시트 N2에 입력 또는 수식(=N1+57) 설정 필요.`,
+    );
+  }
+  if (typeof raw === "number") {
+    const ms = (raw - 25569) * 86_400_000;
+    return new Date(ms);
+  }
+  if (typeof raw === "string") {
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(`[sales.ts] N2 파싱 실패: ${raw}`);
+    }
+    return parsed;
+  }
+  throw new Error(`[sales.ts] N2 형식 미지원: ${typeof raw}`);
+}
+
+/**
  * 영업관리 B3/C3에서 사용자 프로필(기수/이름) 읽기.
  * 사용자가 시트에 직접 입력한 값 — 마스터 레지스트리(users 탭)와 별개의 SSOT.
  * 헤더 컴포넌트가 "{기수} {이름}" 표시에 사용.
