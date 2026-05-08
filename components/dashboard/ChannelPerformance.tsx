@@ -1,0 +1,215 @@
+/**
+ * ChannelPerformance — 채널별 성과 (좌: 비용 도넛 / 우: DB유입 도넛, 좌우 대칭).
+ *
+ * SSOT: docs/design/components.md §9-7
+ *
+ * 좌: 채널별 비용 (3채널: 매입DB/직접생산/현수막, 콜·지·기·소 제외)
+ *     - 가운데: 총비용 (만원)
+ *     - 도넛 밑: 채널별 비용 + % 라벨
+ * 우: 채널별 DB유입 (4채널 — 콜·지·기·소 포함)
+ *     - 가운데: 총유입 건수
+ *     - 도넛 밑: 채널별 유입 + % 라벨
+ *
+ * 채널 색: 매입DB=#3b82f6 / 직접생산=#16a34a / 현수막=#f59e0b / 콜·지·기·소=#8b5cf6
+ */
+"use client";
+
+import type {
+  DashboardChannelMatrix,
+  DashboardCostBreakdown,
+} from "@/types";
+
+interface Props {
+  costBreakdown: DashboardCostBreakdown[]; // 3 (매입DB/직접생산/현수막)
+  matrix: DashboardChannelMatrix[]; // 4 채널 (유입 추출)
+}
+
+const CH_COLOR: Record<string, string> = {
+  매입DB: "#3b82f6",
+  직접생산: "#16a34a",
+  현수막: "#f59e0b",
+  "콜·지·기·소": "#8b5cf6",
+};
+
+function fmtMan(원: number): string {
+  return `${Math.round(원 / 10_000).toLocaleString("ko-KR")}만`;
+}
+function fmtCount(n: number): string {
+  return n.toLocaleString("ko-KR");
+}
+
+interface Slice {
+  label: string;
+  value: number;
+  color: string;
+}
+
+function DonutSvg({
+  slices,
+  centerLabel,
+  centerValue,
+  centerValueColor,
+}: {
+  slices: Slice[];
+  centerLabel: string;
+  centerValue: string;
+  centerValueColor: string;
+}) {
+  const total = slices.reduce((s, x) => s + x.value, 0);
+  const cx = 85;
+  const cy = 80;
+  const r = 48;
+  const stroke = 20;
+  const C = 2 * Math.PI * r; // ≈ 301.6
+
+  let offset = 0;
+  return (
+    <svg viewBox="0 0 170 160" className="w-full" aria-hidden>
+      <g transform={`rotate(-90 ${cx} ${cy})`}>
+        {slices.map((s) => {
+          const portion = total > 0 ? s.value / total : 0;
+          const dash = portion * C;
+          const el = (
+            <circle
+              key={s.label}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={stroke}
+              strokeDasharray={`${dash} ${C}`}
+              strokeDashoffset={-offset}
+            />
+          );
+          offset += dash;
+          return el;
+        })}
+      </g>
+      <text
+        x={cx}
+        y={cy - 4}
+        textAnchor="middle"
+        fontSize="11"
+        fill="#94a3b8"
+      >
+        {centerLabel}
+      </text>
+      <text
+        x={cx}
+        y={cy + 16}
+        textAnchor="middle"
+        fontSize="18"
+        fontWeight={800}
+        fill={centerValueColor}
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {centerValue}
+      </text>
+    </svg>
+  );
+}
+
+export default function ChannelPerformance({ costBreakdown, matrix }: Props) {
+  // 좌: 비용 (3채널)
+  const costSlices: Slice[] = costBreakdown.map((b) => ({
+    label: b.채널,
+    value: b.비용,
+    color: CH_COLOR[b.채널] ?? "#94a3b8",
+  }));
+  const costTotal = costSlices.reduce((s, x) => s + x.value, 0);
+
+  // 우: DB유입 (4채널)
+  const inflowSlices: Slice[] = matrix.map((m) => ({
+    label: m.채널,
+    value: m.유입,
+    color: CH_COLOR[m.채널] ?? "#94a3b8",
+  }));
+  const inflowTotal = inflowSlices.reduce((s, x) => s + x.value, 0);
+
+  return (
+    <section className="rounded-2xl bg-white p-4 shadow-sm">
+      {/* 섹션 제목 */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="h-5 w-1 rounded-full bg-red-500" />
+        <h2 className="text-base font-extrabold text-gray-900">채널별 성과</h2>
+        <span className="ml-auto text-xs text-gray-400">8주 누적</span>
+      </div>
+
+      {/* 좌우 대칭 도넛 2개 */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* === 좌: 채널별 비용 === */}
+        <div>
+          <div className="mb-1 text-center text-xs font-semibold text-gray-700">
+            채널별 비용
+          </div>
+          <DonutSvg
+            slices={costSlices}
+            centerLabel="총비용"
+            centerValue={`−${fmtMan(costTotal)}`}
+            centerValueColor="#dc2626"
+          />
+          <ul
+            className="mt-2 space-y-1 text-xs"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {costSlices.map((s) => {
+              const pct = costTotal > 0 ? (s.value / costTotal) * 100 : 0;
+              return (
+                <li key={s.label} className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: s.color }}
+                  />
+                  <span className="font-semibold text-gray-700">{s.label}</span>
+                  <span className="ml-auto font-bold text-gray-900">
+                    {fmtMan(s.value)}
+                  </span>
+                  <span className="w-10 text-right text-gray-500">
+                    {pct.toFixed(1)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* === 우: 채널별 DB유입 === */}
+        <div>
+          <div className="mb-1 text-center text-xs font-semibold text-gray-700">
+            채널별 DB유입
+          </div>
+          <DonutSvg
+            slices={inflowSlices}
+            centerLabel="총유입"
+            centerValue={fmtCount(inflowTotal)}
+            centerValueColor="#1d4ed8"
+          />
+          <ul
+            className="mt-2 space-y-1 text-xs"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            {inflowSlices.map((s) => {
+              const pct = inflowTotal > 0 ? (s.value / inflowTotal) * 100 : 0;
+              return (
+                <li key={s.label} className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: s.color }}
+                  />
+                  <span className="font-semibold text-gray-700">{s.label}</span>
+                  <span className="ml-auto font-bold text-gray-900">
+                    {fmtCount(s.value)}
+                  </span>
+                  <span className="w-10 text-right text-gray-500">
+                    {pct.toFixed(1)}%
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}

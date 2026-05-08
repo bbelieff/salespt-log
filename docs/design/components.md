@@ -1060,7 +1060,7 @@ components/dashboard/
   ├── FunnelChart.tsx                       # 6단계 영업퍼널 SVG (생산→유입→컨택진행→미팅예약→미팅완료→계약)
   ├── ProductivityIndicators.tsx            # 생산성 지표 4개 (indigo gradient: 입구 옅음 → 종착 진함)
   ├── WeeklyDualChart.tsx                   # 8주차 듀얼 차트 (활동량 + 영업이익, 영업이익 음수도 표시)
-  └── ChannelCostDonut.tsx                  # 채널별 비용 도넛 + 콜·지·기·소 별도 박스
+  └── ChannelPerformance.tsx                # 채널별 성과 (좌: 비용 도넛 / 우: DB유입 도넛 — 좌우 대칭)
 ```
 
 ### 9-1. DashboardProgressBanner
@@ -1152,18 +1152,27 @@ components/dashboard/
 
 **섹션 제목 액센트**: `w-1 h-5 rounded-full bg-slate-500` (시간 추이 톤, PageBanner와 동일).
 
-### 9-7. ChannelCostDonut
+### 9-7. ChannelPerformance
 
-**용도**: 채널별 비용 도넛 (3채널 — 매입DB/직접생산/현수막) + 콜·지·기·소 별도 박스.
+**용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`).
 
-**SVG**: `viewBox="0 0 358 165"`.
+**구조**:
+- **좌**: 채널별 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외)
+  - 가운데: `−총비용` (만원 단위, brand red)
+  - 도넛 밑: 채널별 비용 + % 라벨 리스트
+- **우**: 채널별 DB유입 도넛 (4채널 — 콜·지·기·소 포함)
+  - 가운데: 총유입 건수 (blue-700)
+  - 도넛 밑: 채널별 유입 + % 라벨 리스트
 
-**섹션 제목 액센트**: `w-1 h-5 rounded-full bg-red-500` (비용 메인 컬러).
+**SVG (각 도넛)**: `viewBox="0 0 170 160"`, `cx=85 cy=80 r=48 stroke=20`, `rotate(-90)` 12시 시작.
 
-**콜·지·기·소 처리**:
-- 도넛 자체에는 포함 X (비용 0이라 segment 그릴 수 없음).
-- **별도 박스로**: 점선 dot + "비용 발생 없음" + 수임비 (₩2,100,000 prototype 더미)
-- "100% 순익률" 같은 결론 표현 사용 X (사실 정보만)
+**섹션 제목 액센트**: `w-1 h-5 rounded-full bg-red-500`.
+
+**Props**:
+- `costBreakdown: DashboardCostBreakdown[]` — 3 (cost only)
+- `matrix: DashboardChannelMatrix[]` — 4 (matrix.유입 사용)
+
+**제거**: 콜·지·기·소 수임비 별도 박스 (사용자 결정 2026-05-08 — 빼버림).
 
 ---
 
