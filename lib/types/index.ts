@@ -235,7 +235,7 @@ export interface DashboardChannelMatrix {
   유입: number;
   컨택진행: number;
   미팅예약: number; // 영업관리 H 채널별 합계
-  미팅완료: number; // 04 업체관리 J in (완료, 계약) 채널별 COUNTIFS
+  미팅완료: number; // = 영업관리!L (시트 자동 집계, 상태 IN ["계약","완료"]) — 취소·변경 제외
   계약: number; // 04 업체관리 K=TRUE 채널별 COUNTIFS
 }
 

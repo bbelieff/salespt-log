@@ -1,16 +1,17 @@
 /**
- * ProductivityIndicators — 생산성 지표 4개 (DB퀄리티/컨택숙련도/미팅숙련도/영업생산성).
+ * ProductivityIndicators — 생산성 지표 4개 (DB퀄리티/컨택성공률/미팅숙련도/영업생산성).
  *
  * SSOT: docs/design/components.md §9-5
- * 디자인 정본: prototype line 435~493
+ * 정의 정본: docs/domains/data-model.md §생산성 지표 (사용자 결정 2026-05-08)
  *
- * 구조: 4개 stacked linear progress bars (수직 정렬)
- *   각 행: 라벨 + 보조(가는 회색) + 우측 % + 진행바
- *   1) DB 퀄리티     — 유입 → 컨택진행      (indigo-300 진행바, indigo-600 %)
- *   2) 컨택숙련도   — 컨택진행 → 미팅예약  (indigo-500 진행바, indigo-700 %)
- *   3) 미팅숙련도   — 미팅완료 → 계약       (indigo-700 진행바, indigo-800 %)
- *   4) 영업생산성   — 컨택진행 → 계약 (강조) bg-gradient indigo-50→purple-50, "종합" 배지,
- *                                              indigo-500→purple-600 그라데이션 진행바
+ * 4지표 (라벨/공식 통일):
+ *   1) DB 퀄리티      = 컨택진행 ÷ 유입         (들어온 DB가 부재/거절 없이 컨택된 비율)
+ *   2) 컨택성공률    = 미팅예약 ÷ 컨택진행     (컨택 → 미팅예약 전환 — 구 "컨택숙련도")
+ *   3) 미팅숙련도    = 계약 ÷ 미팅완료         (미팅완료 = 계약+완료+취소, 결과 정해진 미팅)
+ *   4) 영업생산성    = 계약 ÷ 컨택진행 (강조)  (종합 — 통화부터 계약까지)
+ *
+ * ⚠ 미팅완료 정의 변경: 기존 "계약+완료" → 신 "계약+완료+취소" (변경만 제외).
+ *    DashboardChannelMatrix.미팅완료 필드값이 이 의미로 채워져야 함.
  */
 "use client";
 
@@ -37,10 +38,10 @@ export default function ProductivityIndicators({ matrix }: Props) {
   const meetingCompleted = sum("미팅완료");
   const contract = sum("계약");
 
-  const dbQuality = ratio(contactProgress, inflow);
-  const contactSkill = ratio(meetingReservation, contactProgress);
-  const meetingSkill = ratio(contract, meetingCompleted);
-  const salesProductivity = ratio(contract, contactProgress);
+  const dbQuality = ratio(contactProgress, inflow); // 컨택진행 ÷ 유입
+  const contactSuccessRate = ratio(meetingReservation, contactProgress); // 미팅예약 ÷ 컨택진행
+  const meetingSkill = ratio(contract, meetingCompleted); // 계약 ÷ 미팅완료(=계약+완료+취소)
+  const salesProductivity = ratio(contract, contactProgress); // 계약 ÷ 컨택진행
 
   return (
     <section className="rounded-2xl bg-white p-4 shadow-sm">
@@ -59,15 +60,15 @@ export default function ProductivityIndicators({ matrix }: Props) {
           pctCls="text-indigo-600"
         />
         <Row
-          label="컨택숙련도"
+          label="컨택성공률"
           formula="컨택진행 → 미팅예약"
-          value={contactSkill}
+          value={contactSuccessRate}
           barCls="bg-indigo-500"
           pctCls="text-indigo-700"
         />
         <Row
           label="미팅숙련도"
-          formula="미팅완료 → 계약"
+          formula="미팅완료(계약+완료+취소) → 계약"
           value={meetingSkill}
           barCls="bg-indigo-700"
           pctCls="text-indigo-800"
