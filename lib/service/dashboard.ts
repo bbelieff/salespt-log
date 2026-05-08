@@ -37,13 +37,16 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
 
   const data = await readDashboard(user.spreadsheetId);
 
-  // === KPI: 대시보드 B21:G21 ===
+  // === KPI: 대시보드 B21:G21 + 03 DB관리 비용 ===
+  // 비용은 03 DB관리 채널별 합으로 직접 계산 (단일 진실원천).
+  // 시트 대시보드!E21 수식이 콜·지·기·소 포함하거나 다른 row 참조 시
+  // 메인 배너 비용 ↔ 채널별 비용 도넛이 어긋나는 문제를 원천 차단.
+  // 이익은 매출 − 3채널 비용으로 재계산해 정합성 유지.
   const fee = num(data.finance[0]);
   const revenue = num(data.finance[2]);
-  const cost = num(data.finance[3]);
-  const profit = num(data.finance[4]);
-  const rateRaw = num(data.finance[5]);
-  const profitRate = rateRaw <= 1 ? rateRaw * 100 : rateRaw;
+  const cost = data.costByChannel.reduce((s, c) => s + num(c), 0);
+  const profit = revenue - cost;
+  const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
 
   // === 채널별 6단계 stacking: 01 영업관리!R1:U6 (사용자 박은 24셀) ===
   // R1:U6 layout — 6행(단계) × 4열(채널: R=매입DB, S=직접생산, T=현수막, U=콜지기소)
@@ -75,7 +78,7 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
 
   return {
     kpi: {
-      영업이익: profit || revenue - cost,
+      영업이익: profit,
       영업이익률: profitRate,
       총매출: revenue,
       총비용: cost,
