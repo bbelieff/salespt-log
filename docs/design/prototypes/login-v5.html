@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ko">
+<!-- Design: 로그인 인트로 v5 (로고 중심 — $ 모티프) — 2026-05-09
+     로고 분석:
+     - 빨강 $ 심볼 (메인 그래픽) + 검정 "세일즈" + 빨강 "PT" + 검정 "Sales Personal Training"
+     - 흰 배경에 빨강·검정 듀얼톤
+     - $ 사인 = 사업·돈의 시각 메타포
+
+     v5 컨셉:
+     - 흰 배경 베이스 (로고의 검정 텍스트 살림)
+     - $ 사인을 인터랙티브 그래픽으로 활용
+     - 빨강(#d71617)을 액센트, 검정을 텍스트
+     - 로고가 화면 중심
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>경영일지 — v5 (로고 중심)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap');
+  * { font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; color: #0a0a0a; }
+
+  :root {
+    --brand-red: #d71617;
+    --brand-red-soft: #ff6b6b;
+    --ink: #0a0a0a;
+  }
+  .text-brand-red { color: var(--brand-red); }
+  .bg-brand-red { background-color: var(--brand-red); }
+
+  /* ═════════ 1. $ 사인 패턴 배경 (subtle) ═════════ */
+  .dollar-pattern {
+    position: fixed; inset: 0; z-index: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><text x='100' y='150' font-family='Arial Black' font-size='160' font-weight='900' fill='%23d71617' fill-opacity='0.04' text-anchor='middle'>$</text></svg>");
+    background-size: 200px 200px;
+    pointer-events: none;
+    animation: patternDrift 40s linear infinite;
+  }
+  @keyframes patternDrift {
+    0%   { background-position: 0 0; }
+    100% { background-position: 200px 200px; }
+  }
+
+  /* ═════════ 2. 큰 $ 사인 floating (slide 1) ═════════ */
+  .dollar-hero {
+    position: relative;
+    width: 280px; height: 280px;
+    margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dollar-mark {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 240px;
+    font-weight: 900;
+    color: var(--brand-red);
+    line-height: 1;
+    text-shadow:
+      0 0 0 var(--brand-red),
+      0 4px 0 rgba(215,22,23,0.7),
+      0 8px 0 rgba(215,22,23,0.5),
+      0 12px 0 rgba(215,22,23,0.3),
+      0 16px 24px rgba(215,22,23,0.25);
+    animation: dollarBob 3.5s ease-in-out infinite, dollarColorShift 8s ease-in-out infinite;
+    cursor: pointer;
+    user-select: none;
+  }
+  @keyframes dollarBob {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50%      { transform: translateY(-12px) rotate(2deg); }
+  }
+  @keyframes dollarColorShift {
+    0%, 100% { color: var(--brand-red); }
+    50%      { color: #ff3838; }
+  }
+
+  /* Spinning ring around $ */
+  .dollar-ring {
+    position: absolute; inset: 0;
+    border: 2px dashed rgba(215,22,23,0.3);
+    border-radius: 50%;
+    animation: ringSpin 20s linear infinite;
+  }
+  @keyframes ringSpin { to { transform: rotate(360deg); } }
+
+  .dollar-ring-2 {
+    position: absolute; inset: -16px;
+    border: 1.5px solid rgba(215,22,23,0.15);
+    border-top-color: rgba(215,22,23,0.6);
+    border-radius: 50%;
+    animation: ringSpin 12s linear infinite reverse;
+  }
+
+  /* Sparkle dots */
+  .sparkle {
+    position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--brand-red);
+    box-shadow: 0 0 12px var(--brand-red);
+    animation: sparkle 2s ease-in-out infinite;
+  }
+  @keyframes sparkle {
+    0%, 100% { transform: scale(0); opacity: 0; }
+    50%      { transform: scale(1); opacity: 1; }
+  }
+
+  /* ═════════ 3. 4지표 막대 (slide 2) ═════════ */
+  .metric-stage {
+    position: relative;
+    width: 280px; height: 280px;
+    margin: 0 auto;
+    display: flex; align-items: flex-end; justify-content: space-around;
+    padding: 40px 30px;
+  }
+  .metric-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .metric-bar2 {
+    width: 36px; border-radius: 8px 8px 2px 2px;
+    background: linear-gradient(180deg, var(--brand-red), #b91212);
+    box-shadow: 0 -4px 16px rgba(215,22,23,0.4);
+    transform-origin: bottom;
+    animation: barGrow2 1.2s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .metric-col:nth-child(1) .metric-bar2 { height: 80px;  animation-delay: 0.1s; }
+  .metric-col:nth-child(2) .metric-bar2 { height: 130px; animation-delay: 0.25s; }
+  .metric-col:nth-child(3) .metric-bar2 { height: 170px; animation-delay: 0.4s; }
+  .metric-col:nth-child(4) .metric-bar2 { height: 210px; animation-delay: 0.55s; background: linear-gradient(180deg, #ff3838, #d71617); box-shadow: 0 -4px 24px rgba(215,22,23,0.6); }
+  @keyframes barGrow2 {
+    0%   { transform: scaleY(0); }
+    100% { transform: scaleY(1); }
+  }
+  .metric-label2 {
+    font-size: 11px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  /* ═════════ 4. 차트 라인 (slide 3) ═════════ */
+  .chart-stage {
+    position: relative;
+    width: 280px; height: 280px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .chart-stage svg { width: 100%; height: 100%; overflow: visible; }
+  .chart-line {
+    fill: none;
+    stroke: var(--brand-red);
+    stroke-width: 4;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: drawLine 2s ease-out 0.3s forwards;
+    filter: drop-shadow(0 4px 12px rgba(215,22,23,0.4));
+  }
+  @keyframes drawLine { to { stroke-dashoffset: 0; } }
+  .chart-area {
+    fill: url(#redGrad);
+    opacity: 0;
+    animation: fadeArea 1s ease-out 1.5s forwards;
+  }
+  @keyframes fadeArea { to { opacity: 1; } }
+  .chart-dot {
+    fill: var(--brand-red); stroke: white; stroke-width: 3;
+    opacity: 0;
+    animation: popDot 0.4s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes popDot { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+  /* ═════════ 5. 7기 멤버 (slide 4) ═════════ */
+  .members-stage {
+    position: relative;
+    width: 280px; height: 280px;
+    margin: 0 auto;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    padding: 30px 20px;
+    align-content: center;
+  }
+  .member-chip {
+    aspect-ratio: 1;
+    border-radius: 16px;
+    background: white;
+    border: 2px solid var(--brand-red);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: var(--ink);
+    box-shadow: 0 4px 12px rgba(215,22,23,0.15);
+    animation: memberPop 0.4s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .member-chip:nth-child(1) { animation-delay: 0.05s; }
+  .member-chip:nth-child(2) { animation-delay: 0.10s; }
+  .member-chip:nth-child(3) { animation-delay: 0.15s; }
+  .member-chip:nth-child(4) { animation-delay: 0.20s; }
+  .member-chip:nth-child(5) { animation-delay: 0.25s; }
+  .member-chip:nth-child(6) { animation-delay: 0.30s; }
+  .member-chip:nth-child(7) { animation-delay: 0.35s; }
+  .member-chip:nth-child(8) { animation-delay: 0.40s; }
+  .member-chip.you {
+    background: var(--brand-red); color: white;
+    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(215,22,23,0.4);
+  }
+  @keyframes memberPop {
+    0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .member-chip.you {
+    animation: memberPop 0.4s cubic-bezier(.2,.8,.2,1) both, youHighlight 1.5s ease-in-out 0.5s infinite;
+  }
+  @keyframes youHighlight {
+    0%, 100% { box-shadow: 0 8px 24px rgba(215,22,23,0.4); }
+    50%      { box-shadow: 0 8px 32px rgba(215,22,23,0.7), 0 0 0 4px rgba(215,22,23,0.15); }
+  }
+
+  /* ═════════ 6. 슬라이드 fade ═════════ */
+  .slide { display: none; }
+  .slide.active {
+    display: block;
+    animation: slideFade 0.6s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes slideFade {
+    0%   { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═════════ 7. 페이지 로고 (헤더) ═════════ */
+  .logo-strip {
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px 0;
+  }
+  .logo-img {
+    height: 36px; width: auto;
+    transition: transform 0.3s;
+  }
+  .logo-img:hover { transform: scale(1.05); }
+
+  /* ═════════ 8. CTA — 빨강 큰 버튼 ═════════ */
+  .btn-primary {
+    width: 100%; height: 56px;
+    background: var(--brand-red); color: white;
+    border-radius: 14px;
+    font-size: 16px; font-weight: 800; letter-spacing: -0.02em;
+    display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+    box-shadow: 0 8px 24px rgba(215,22,23,0.35);
+    transition: all 0.18s cubic-bezier(.2,.8,.2,1);
+    position: relative; overflow: hidden;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(215,22,23,0.5); }
+  .btn-primary:active { transform: translateY(0) scale(0.98); }
+  .btn-primary::before {
+    content: ''; position: absolute; top: var(--ry, 50%); left: var(--rx, 50%);
+    width: 0; height: 0; background: rgba(255,255,255,0.4);
+    border-radius: 50%; transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .btn-primary.ripple::before { animation: ripple 0.6s ease-out; }
+  @keyframes ripple {
+    0%   { width: 0; height: 0; opacity: 1; }
+    100% { width: 600px; height: 600px; opacity: 0; }
+  }
+
+  /* ═════════ 9. Pagination dots ═════════ */
+  .dots { display: flex; gap: 8px; justify-content: center; align-items: center; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(215,22,23,0.2);
+    transition: all 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+  .dot.active {
+    width: 32px; border-radius: 4px;
+    background: var(--brand-red);
+  }
+
+  /* ═════════ 10. Auto-progress bar ═════════ */
+  .auto-progress {
+    height: 3px;
+    background: rgba(215,22,23,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .auto-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--brand-red), var(--brand-red-soft));
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  /* ═════════ 11. Confetti ═════════ */
+  .confetti {
+    position: fixed; pointer-events: none; z-index: 80;
+    width: 8px; height: 14px;
+    animation: confettiFall 2.5s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-20vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ═════════ 12. Splash ═════════ */
+  .splash {
+    position: fixed; inset: 0; z-index: 90;
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    animation: splashOut 0.6s ease-in 1.4s forwards;
+  }
+  @keyframes splashOut { to { opacity: 0; visibility: hidden; } }
+  .splash-logo {
+    width: 220px; height: auto;
+    animation: splashIn 1.4s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes splashIn {
+    0%   { opacity: 0; transform: scale(0.7); filter: blur(20px); }
+    50%  { opacity: 1; transform: scale(1.05); filter: blur(0); }
+    100% { transform: scale(1); }
+  }
+
+  /* ═════════ 13. Self-claim ═════════ */
+  .cohort-pill {
+    position: relative;
+    display: inline-flex; gap: 4px;
+    background: #f3f4f6;
+    border-radius: 14px;
+    padding: 4px;
+    width: 100%;
+  }
+  .cohort-indicator {
+    position: absolute; top: 4px; bottom: 4px;
+    background: var(--brand-red);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(215,22,23,0.3);
+    transition: transform 0.4s cubic-bezier(.4,1.4,.4,1), width 0.4s cubic-bezier(.4,1.4,.4,1);
+    z-index: 0;
+  }
+  .cohort-pill button {
+    flex: 1;
+    position: relative; z-index: 1;
+    padding: 12px 0;
+    font-size: 13px; font-weight: 700; color: #6b7280;
+    transition: color 0.25s;
+    background: transparent; border: 0;
+  }
+  .cohort-pill button.active { color: white !important; }
+
+  .name-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  }
+  .name-chip {
+    padding: 14px 12px; border-radius: 12px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    font-size: 14px; font-weight: 700; color: var(--ink);
+    transition: all 0.2s;
+    text-align: center;
+    cursor: pointer;
+  }
+  .name-chip:hover { border-color: var(--brand-red); transform: translateY(-2px); }
+  .name-chip.selected {
+    background: var(--brand-red);
+    border-color: var(--brand-red);
+    color: white;
+    box-shadow: 0 6px 20px rgba(215,22,23,0.3);
+    transform: translateY(-2px);
+  }
+  @keyframes chipWave {
+    0%   { box-shadow: 0 0 0 0 rgba(215,22,23,0.5), 0 6px 20px rgba(215,22,23,0.3); }
+    100% { box-shadow: 0 0 0 12px rgba(215,22,23,0), 0 6px 20px rgba(215,22,23,0.3); }
+  }
+  .name-chip.wave { animation: chipWave 0.6s ease-out; }
+
+  /* ═════════ State toggle ═════════ */
+  [data-state] { display: none; }
+  [data-state].active { display: flex; }
+  .state-nav {
+    position: fixed; top: 8px; right: 8px; z-index: 100;
+    background: rgba(0,0,0,.85); color: white; border-radius: 10px;
+    padding: 6px 8px; font-size: 11px; display: flex; gap: 6px;
+  }
+  .state-nav button {
+    background: rgba(255,255,255,.1); padding: 4px 10px; border-radius: 6px;
+    color: white; font-weight: 700;
+  }
+  .state-nav button.active { background: var(--brand-red); }
+</style>
+</head>
+<body>
+
+<!-- Subtle $ pattern background -->
+<div class="dollar-pattern"></div>
+
+<!-- Splash: 풀 로고 등장 -->
+<div class="splash">
+  <img src="../../../public/salespt-logo.png" alt="세일즈PT" class="splash-logo">
+</div>
+
+<!-- State nav -->
+<nav class="state-nav">
+  <button onclick="location.reload()" style="background:rgba(255,255,255,.2);">↻</button>
+  <button data-go="onboard" class="active">1) 온보딩</button>
+  <button data-go="login">2) 로그인</button>
+  <button data-go="claim">3) Claim</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATE 1: Onboarding (4 슬라이드, 로고 + $ 모티프)
+     ═══════════════════════════════════════════════════════════ -->
+<main data-state="onboard" class="active relative z-10 min-h-dvh flex-col" style="display:flex;">
+
+  <!-- 헤더: 로고 -->
+  <div class="logo-strip">
+    <img src="../../../public/salespt-logo.png" alt="세일즈PT" class="logo-img">
+  </div>
+
+  <!-- Hero (슬라이드 영역) -->
+  <div class="flex-1 flex items-center justify-center px-6">
+
+    <!-- Slide 1: 큰 $ 사인 (로고 강조) -->
+    <div class="slide active" data-slide="0">
+      <div class="dollar-hero" data-tap-advance>
+        <div class="dollar-ring"></div>
+        <div class="dollar-ring-2"></div>
+        <div class="sparkle" style="top: 10%; left: 12%; animation-delay: 0s;"></div>
+        <div class="sparkle" style="top: 80%; left: 88%; animation-delay: 0.4s;"></div>
+        <div class="sparkle" style="top: 20%; left: 85%; animation-delay: 0.8s;"></div>
+        <div class="sparkle" style="top: 75%; left: 10%; animation-delay: 1.2s;"></div>
+        <span class="dollar-mark" id="dollarMark">$</span>
+      </div>
+    </div>
+
+    <!-- Slide 2: 4지표 막대 -->
+    <div class="slide" data-slide="1">
+      <div class="metric-stage" data-tap-advance>
+        <div class="metric-col">
+          <div class="metric-bar2"></div>
+          <span class="metric-label2">생산</span>
+        </div>
+        <div class="metric-col">
+          <div class="metric-bar2"></div>
+          <span class="metric-label2">컨택</span>
+        </div>
+        <div class="metric-col">
+          <div class="metric-bar2"></div>
+          <span class="metric-label2">미팅</span>
+        </div>
+        <div class="metric-col">
+          <div class="metric-bar2"></div>
+          <span class="metric-label2 text-brand-red">계약</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: 차트 라인 -->
+    <div class="slide" data-slide="2">
+      <div class="chart-stage" data-tap-advance>
+        <svg viewBox="0 0 240 200" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#d71617" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#d71617" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="0" y1="50" x2="240" y2="50" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="2 4"/>
+          <line x1="0" y1="100" x2="240" y2="100" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="2 4"/>
+          <line x1="0" y1="150" x2="240" y2="150" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="2 4"/>
+          <!-- Area under -->
+          <path class="chart-area" d="M0,160 L40,140 L80,110 L120,80 L160,90 L200,50 L240,30 L240,200 L0,200 Z"/>
+          <!-- Line -->
+          <path class="chart-line" d="M0,160 L40,140 L80,110 L120,80 L160,90 L200,50 L240,30"/>
+          <!-- Dots -->
+          <circle class="chart-dot" cx="0"   cy="160" r="5" style="animation-delay: 1.0s;"/>
+          <circle class="chart-dot" cx="40"  cy="140" r="5" style="animation-delay: 1.15s;"/>
+          <circle class="chart-dot" cx="80"  cy="110" r="5" style="animation-delay: 1.30s;"/>
+          <circle class="chart-dot" cx="120" cy="80"  r="5" style="animation-delay: 1.45s;"/>
+          <circle class="chart-dot" cx="160" cy="90"  r="5" style="animation-delay: 1.60s;"/>
+          <circle class="chart-dot" cx="200" cy="50"  r="5" style="animation-delay: 1.75s;"/>
+          <circle class="chart-dot" cx="240" cy="30"  r="6" fill="#d71617" stroke="#fff" stroke-width="3" style="animation-delay: 1.90s;"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Slide 4: 7기 멤버 -->
+    <div class="slide" data-slide="3">
+      <div class="members-stage" data-tap-advance>
+        <div class="member-chip">김OO</div>
+        <div class="member-chip">박OO</div>
+        <div class="member-chip">이OO</div>
+        <div class="member-chip">최OO</div>
+        <div class="member-chip">정OO</div>
+        <div class="member-chip">강OO</div>
+        <div class="member-chip">조OO</div>
+        <div class="member-chip you">YOU</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 캡션 + dots + CTA -->
+  <div class="px-6 pb-10">
+    <!-- 캡션 -->
+    <div class="text-center min-h-[110px] mb-5">
+      <div class="caption" data-slide-cap="0">
+        <h1 class="text-3xl font-black text-ink mb-2 leading-tight tracking-tight" style="color:#0a0a0a;">
+          매일의 <span class="text-brand-red">$</span> 가<br>
+          쌓여 사업이 됩니다
+        </h1>
+        <p class="text-sm text-gray-500 leading-relaxed">
+          세일즈피티 7기 경영일지에 오신 걸 환영합니다.
+        </p>
+      </div>
+      <div class="caption hidden" data-slide-cap="1">
+        <h1 class="text-3xl font-black mb-2 leading-tight tracking-tight" style="color:#0a0a0a;">
+          하루 <span class="text-brand-red">4가지</span>만
+        </h1>
+        <p class="text-sm text-gray-500 leading-relaxed">
+          생산 → 컨택 → 미팅 → <span class="text-brand-red font-bold">계약</span><br>
+          매일 4단계 영업 깔때기를 기록합니다.
+        </p>
+      </div>
+      <div class="caption hidden" data-slide-cap="2">
+        <h1 class="text-3xl font-black mb-2 leading-tight tracking-tight" style="color:#0a0a0a;">
+          대시보드는 <span class="text-brand-red">자동</span>
+        </h1>
+        <p class="text-sm text-gray-500 leading-relaxed">
+          입력만 하면 8주 추이와 채널별 성과가<br>
+          저절로 시각화됩니다.
+        </p>
+      </div>
+      <div class="caption hidden" data-slide-cap="3">
+        <h1 class="text-3xl font-black mb-2 leading-tight tracking-tight" style="color:#0a0a0a;">
+          <span class="text-brand-red">7기</span> 동료들과 함께
+        </h1>
+        <p class="text-sm text-gray-500 leading-relaxed">
+          본인의 자리는 이미 준비되어 있습니다.<br>
+          지금 시작해 보세요.
+        </p>
+      </div>
+    </div>
+
+    <!-- Auto progress -->
+    <div class="auto-progress">
+      <div class="auto-progress-fill" id="autoProgressFill"></div>
+    </div>
+
+    <!-- Pagination dots -->
+    <div class="dots mb-5">
+      <button class="dot active" data-dot="0"></button>
+      <button class="dot" data-dot="1"></button>
+      <button class="dot" data-dot="2"></button>
+      <button class="dot" data-dot="3"></button>
+    </div>
+
+    <!-- CTA -->
+    <button class="btn-primary" id="btnGetStarted">
+      <span>다음</span>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M1 7H13M13 7L7 1M13 7L7 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATE 2: 로그인
+     ═══════════════════════════════════════════════════════════ -->
+<main data-state="login" class="bg-white min-h-dvh flex-col relative z-10" style="display:none;">
+  <div class="flex-1 flex flex-col px-6 pt-12 pb-8">
+
+    <!-- 큰 로고 (페이지 메인) -->
+    <div class="text-center mb-2">
+      <img src="../../../public/salespt-logo.png" alt="세일즈PT" id="loginLogo"
+           style="width: 240px; height: auto; margin: 0 auto;">
+    </div>
+    <p class="text-xs text-gray-400 font-bold tracking-[0.3em] text-center uppercase mb-12">
+      경영일지 · 7th Batch
+    </p>
+
+    <!-- 헤더 -->
+    <div class="text-center mb-10">
+      <h1 class="text-3xl font-black mb-2 tracking-tight" style="color:#0a0a0a;">
+        반가워요 <span class="text-brand-red">$</span>
+      </h1>
+      <p class="text-sm text-gray-500">세일즈피티 경영일지에 로그인합니다.</p>
+    </div>
+
+    <!-- Google login -->
+    <button class="w-full inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-gray-200 bg-white px-5 py-4 text-sm font-bold text-gray-800 shadow-sm hover:shadow-lg hover:border-gray-300 transition active:scale-[0.99] mb-3"
+            id="btnGoogle">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      <span>Google 계정으로 시작하기</span>
+    </button>
+
+    <p class="text-[11px] text-gray-400 text-center leading-relaxed mt-4">
+      세일즈피티 수강생 전용 서비스 ·
+      <span class="text-gray-600 font-medium">트레이너에게 받은 링크로 접속</span>
+    </p>
+
+    <div class="flex-1"></div>
+
+    <p class="text-[10px] tracking-widest text-gray-300 uppercase text-center">© SalesPT v1.0</p>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATE 3: Self-claim
+     ═══════════════════════════════════════════════════════════ -->
+<main data-state="claim" class="bg-white min-h-dvh flex-col relative z-10" style="display:none;">
+  <div class="flex-1 flex flex-col px-6 pt-10 pb-8">
+
+    <!-- 작은 로고 -->
+    <div class="logo-strip" style="padding: 0 0 16px 0;">
+      <img src="../../../public/salespt-logo.png" alt="세일즈PT" class="logo-img" style="height:32px;">
+    </div>
+
+    <!-- 헤더 -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-black mb-2 tracking-tight" style="color:#0a0a0a;">
+        처음 오셨네요 <span class="text-brand-red">$</span>
+      </h1>
+      <p class="text-sm text-gray-500">기수와 본인 이름을 알려주세요.</p>
+    </div>
+
+    <!-- 로그인된 이메일 -->
+    <div class="mb-7 flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-3 text-xs text-blue-800 border border-blue-100">
+      <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+      </svg>
+      <span class="font-medium truncate">belief@gmail.com 으로 로그인됨</span>
+    </div>
+
+    <!-- 기수 -->
+    <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-widest">기수</label>
+    <div class="cohort-pill mb-7" id="cohortPill">
+      <span class="cohort-indicator" id="cohortIndicator"></span>
+      <button>5기</button>
+      <button>6기</button>
+      <button class="active">7기</button>
+      <button>8기</button>
+    </div>
+
+    <!-- 이름 chips -->
+    <label class="block text-xs font-black text-gray-700 mb-2 uppercase tracking-widest">본인 선택</label>
+    <div class="name-grid mb-2">
+      <button class="name-chip">김OO</button>
+      <button class="name-chip selected">박OO</button>
+      <button class="name-chip">이OO</button>
+      <button class="name-chip">최OO</button>
+      <button class="name-chip">정OO</button>
+      <button class="name-chip">강OO</button>
+      <button class="name-chip">조OO</button>
+      <button class="name-chip">윤OO</button>
+    </div>
+    <p class="mt-3 text-[11px] text-gray-400 leading-relaxed">
+      목록에 본인 이름이 없다면 트레이너에게 문의해 주세요.
+    </p>
+
+    <div class="flex-1 min-h-[20px]"></div>
+
+    <button class="btn-primary mb-3">
+      <span>시작하기</span>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M1 7H13M13 7L7 1M13 7L7 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <button class="w-full text-xs text-gray-400 hover:text-gray-600 underline-offset-2 hover:underline py-2">
+      다른 Google 계정으로 로그인
+    </button>
+  </div>
+</main>
+
+<script>
+  const haptic = (ms = 10) => navigator.vibrate?.(ms);
+
+  // ── Carousel ─────────────────────────────────────────
+  let cur = 0;
+  const N_SLIDES = 4;
+  const SLIDE_MS = 4500;
+  const slides = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.dot');
+  const caps = document.querySelectorAll('.caption');
+  const btnGet = document.getElementById('btnGetStarted');
+  const progFill = document.getElementById('autoProgressFill');
+  let autoT = null, progT = null;
+
+  function startAuto() {
+    clearTimeout(autoT); clearInterval(progT);
+    const start = Date.now();
+    progFill.style.width = '0%';
+    progT = setInterval(() => {
+      const pct = Math.min(100, ((Date.now() - start) / SLIDE_MS) * 100);
+      progFill.style.width = pct + '%';
+    }, 50);
+    autoT = setTimeout(() => {
+      if (cur < N_SLIDES - 1) go(cur + 1);
+      else stopAuto();
+    }, SLIDE_MS);
+  }
+  function stopAuto() {
+    clearTimeout(autoT); clearInterval(progT);
+    autoT = progT = null;
+    progFill.style.width = '0%';
+  }
+
+  function go(idx, fromUser = false) {
+    cur = (idx + N_SLIDES) % N_SLIDES;
+    slides.forEach((s, i) => s.classList.toggle('active', i === cur));
+    dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+    caps.forEach((c, i) => c.classList.toggle('hidden', i !== cur));
+    btnGet.querySelector('span').textContent = (cur === N_SLIDES - 1) ? '시작하기' : '다음';
+    if (fromUser) haptic(8);
+    if (cur === N_SLIDES - 1) { stopAuto(); burstConfetti(); }
+    else startAuto();
+  }
+  dots.forEach((d, i) => d.addEventListener('click', () => go(i, true)));
+
+  btnGet.addEventListener('click', (e) => {
+    rippleAt(btnGet, e); haptic(12);
+    if (cur < N_SLIDES - 1) go(cur + 1, true);
+    else switchState('login');
+  });
+
+  // ── Tap to advance hero ──────────────────────────────
+  document.querySelectorAll('[data-tap-advance]').forEach((el) => {
+    el.addEventListener('click', () => {
+      if (cur < N_SLIDES - 1) go(cur + 1, true);
+      else switchState('login');
+    });
+  });
+
+  // ── Swipe ────────────────────────────────────────────
+  const onboard = document.querySelector('[data-state="onboard"]');
+  let startX = null, startT = 0;
+  onboard.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; startT = Date.now(); }, { passive: true });
+  onboard.addEventListener('touchend', (e) => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dt = Date.now() - startT;
+    if (Math.abs(dx) > 40 || (Math.abs(dx) > 20 && dt < 250)) go(cur + (dx < 0 ? 1 : -1), true);
+    startX = null;
+  });
+
+  // ── $ 사인 클릭 — easter egg ─────────────────────────
+  let dollarTaps = 0;
+  document.getElementById('dollarMark').addEventListener('click', (e) => {
+    e.stopPropagation();
+    dollarTaps++;
+    haptic(10);
+    burstConfetti(15);
+    if (dollarTaps >= 5) {
+      // 5번 누르면 메가 burst
+      burstConfetti(120);
+      dollarTaps = 0;
+    }
+  });
+
+  // ── Ripple ───────────────────────────────────────────
+  function rippleAt(el, ev) {
+    const r = el.getBoundingClientRect();
+    const x = (ev.clientX || (ev.touches?.[0]?.clientX) || r.width/2) - r.left;
+    const y = (ev.clientY || (ev.touches?.[0]?.clientY) || r.height/2) - r.top;
+    el.style.setProperty('--rx', x + 'px');
+    el.style.setProperty('--ry', y + 'px');
+    el.classList.remove('ripple'); void el.offsetWidth;
+    el.classList.add('ripple');
+    setTimeout(() => el.classList.remove('ripple'), 600);
+  }
+
+  // ── Magnetic CTA ─────────────────────────────────────
+  document.querySelectorAll('.btn-primary').forEach((btn) => {
+    btn.addEventListener('mousemove', (e) => {
+      const r = btn.getBoundingClientRect();
+      const x = (e.clientX - r.left - r.width / 2) / r.width;
+      const y = (e.clientY - r.top - r.height / 2) / r.height;
+      btn.style.transform = `translate(${x * 6}px, ${y * 4 - 2}px)`;
+    });
+    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+  });
+
+  // ── Confetti ─────────────────────────────────────────
+  function burstConfetti(count = 60) {
+    const colors = ['#d71617', '#ff6b6b', '#0a0a0a', '#fbbf24', '#ffffff'];
+    for (let i = 0; i < count; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (Math.random() * 100) + '%';
+      c.style.top = '-5vh';
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.animationDuration = (1.6 + Math.random() * 1.6) + 's';
+      c.style.animationDelay = (Math.random() * 0.4) + 's';
+      c.style.transform = `rotate(${Math.random() * 360}deg)`;
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 3500);
+    }
+  }
+
+  // ── Cohort indicator ─────────────────────────────────
+  function moveCohortIndicator() {
+    const pill = document.getElementById('cohortPill');
+    const ind = document.getElementById('cohortIndicator');
+    const active = pill?.querySelector('button.active');
+    if (!pill || !ind || !active) return;
+    const pr = pill.getBoundingClientRect();
+    const ar = active.getBoundingClientRect();
+    ind.style.transform = `translateX(${ar.left - pr.left - 4}px)`;
+    ind.style.width = ar.width + 'px';
+  }
+  document.querySelectorAll('.cohort-pill button').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.cohort-pill button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      moveCohortIndicator();
+      haptic(8);
+    });
+  });
+
+  // ── Name chip wave ───────────────────────────────────
+  document.querySelectorAll('.name-chip').forEach((c) => {
+    c.addEventListener('click', () => {
+      document.querySelectorAll('.name-chip').forEach((x) => { x.classList.remove('selected', 'wave'); });
+      c.classList.add('selected', 'wave');
+      haptic(8);
+      setTimeout(() => c.classList.remove('wave'), 600);
+    });
+  });
+
+  // ── State toggle ─────────────────────────────────────
+  function switchState(target) {
+    document.querySelectorAll('[data-state]').forEach((s) => {
+      const isActive = s.dataset.state === target;
+      s.classList.toggle('active', isActive);
+      s.style.display = isActive ? 'flex' : 'none';
+    });
+    document.querySelectorAll('.state-nav button[data-go]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.go === target);
+    });
+    if (target === 'claim') requestAnimationFrame(moveCohortIndicator);
+    if (target === 'onboard') go(0);
+  }
+  document.querySelectorAll('.state-nav button[data-go]').forEach((btn) => {
+    btn.addEventListener('click', () => switchState(btn.dataset.go));
+  });
+
+  // ── Boot ─────────────────────────────────────────────
+  setTimeout(() => { startAuto(); moveCohortIndicator(); }, 1700);
+  window.addEventListener('resize', moveCohortIndicator);
+</script>
+</body>
+</html>
