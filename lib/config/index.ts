@@ -71,7 +71,8 @@ export const SHEET_RANGES = {
   // 한 주 28행 (7일 × 4채널) + 6행 (헤더·합계·여백) = 34행 stride
   sales: {
     tab: "01 영업관리",
-    startDateCell: "N1", // 수강시작일 — repo가 읽어서 주차 계산
+    startDateCell: "O1", // 수강시작일 — repo가 읽어서 주차 계산 (N1은 "시작일" 라벨)
+    graduationDateCell: "O2", // 종강총회일 — N2는 "종강총회" 라벨, 값은 O2
     blockStart: 10, // 1주차 첫 데이터 행 (토요일 매입DB)
     blockStride: 34, // 주차 간 행 간격
     metricCols: {
