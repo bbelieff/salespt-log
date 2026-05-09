@@ -259,14 +259,17 @@ function FieldDate({
   value: string;
   onChange: (v: string) => void;
 }) {
+  // iOS Safari 의 <input type="date"> 는 placeholder 폭(yyyy/mm/dd)으로
+  // intrinsic width 를 잡아 grid cell 을 뚫고 나옴. 부모 div 에 min-w-0,
+  // input 에 appearance-none 을 주어 grid 폭에 맞춰 shrink 되도록 강제.
   return (
-    <div>
+    <div className="min-w-0">
       <label className={FIELD_LABEL_CLASS}>{label}</label>
       <input
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={FIELD_INPUT_CLASS}
+        className={`${FIELD_INPUT_CLASS} appearance-none`}
       />
     </div>
   );
