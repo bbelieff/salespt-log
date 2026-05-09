@@ -116,6 +116,10 @@ export default function WeekHeader({
                   : count > 0
                     ? "bg-blue-50 hover:bg-blue-100"
                     : "bg-gray-50 hover:bg-gray-100"
+              } ${
+                !isToday && isWeekend
+                  ? "border border-red-300"
+                  : ""
               }`}
             >
               <span
