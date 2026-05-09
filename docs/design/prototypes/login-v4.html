@@ -246,6 +246,148 @@
   }
   .state-nav button.active { background: #d71617; }
 
+  /* ═════ INTERACTIVE LAYER ═════ */
+
+  /* 3D tilt hero */
+  .hero-stage {
+    transform-style: preserve-3d;
+    transition: transform 0.15s ease-out;
+    cursor: grab;
+  }
+  .hero-stage:active { cursor: grabbing; }
+
+  /* Logo breathe */
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 4px 20px rgba(0,0,0,0.6)); }
+    50%      { transform: scale(1.04); filter: drop-shadow(0 8px 32px rgba(255,107,107,0.5)); }
+  }
+  .logo-breathe { animation: breathe 3.2s ease-in-out infinite; }
+
+  /* Logo spin (easter egg) */
+  @keyframes spin360 {
+    0%   { transform: rotate(0deg) scale(1); }
+    50%  { transform: rotate(180deg) scale(1.15); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  .logo-spin { animation: spin360 0.9s cubic-bezier(.2,.8,.2,1); }
+
+  /* Magnetic CTA */
+  .btn-primary {
+    transition: transform 0.18s cubic-bezier(.2,.8,.2,1), box-shadow 0.18s;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::before {
+    content: ''; position: absolute; top: var(--ry, 50%); left: var(--rx, 50%);
+    width: 0; height: 0; background: rgba(255,255,255,0.4);
+    border-radius: 50%; transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .btn-primary.ripple::before {
+    animation: ripple 0.6s ease-out;
+  }
+  @keyframes ripple {
+    0%   { width: 0; height: 0; opacity: 1; }
+    100% { width: 500px; height: 500px; opacity: 0; }
+  }
+
+  /* Auto-progress bar */
+  .auto-progress {
+    position: relative;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .auto-progress-fill {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    background: linear-gradient(90deg, #d71617, #ff6b6b);
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  /* Confetti */
+  .confetti {
+    position: fixed; pointer-events: none; z-index: 80;
+    width: 8px; height: 12px;
+    animation: confettiFall 2.5s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(-20vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Cohort pill animated indicator */
+  .cohort-pill {
+    position: relative;
+  }
+  .cohort-indicator {
+    position: absolute; top: 4px; bottom: 4px;
+    background: #d71617;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(215,22,23,0.25);
+    transition: transform 0.35s cubic-bezier(.4,1.4,.4,1), width 0.35s cubic-bezier(.4,1.4,.4,1);
+    z-index: 0;
+  }
+  .cohort-pill button {
+    position: relative; z-index: 1;
+    transition: color 0.2s;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .cohort-pill button.active {
+    background: transparent !important;
+    color: white !important;
+  }
+
+  /* Name chip wave on select */
+  @keyframes chipWave {
+    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(215,22,23,0.4); }
+    50%  { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(215,22,23,0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(215,22,23,0); }
+  }
+  .name-chip.wave { animation: chipWave 0.5s ease-out; }
+
+  /* Cursor trail on hero */
+  .cursor-trail {
+    position: fixed; pointer-events: none; z-index: 70;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #d71617;
+    box-shadow: 0 0 12px #d71617, 0 0 24px rgba(215,22,23,0.6);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.4s ease-out, opacity 0.6s;
+  }
+
+  /* Parallax dot lights inside hero */
+  .float-dot {
+    position: absolute; border-radius: 50%;
+    pointer-events: none;
+    transition: transform 0.4s ease-out;
+  }
+
+  /* Tap to advance hint pulse */
+  @keyframes tapHint {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50%      { transform: scale(1.1); opacity: 1; }
+  }
+  .tap-hint {
+    position: absolute; bottom: 12px; right: 12px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 16px;
+    animation: tapHint 1.6s ease-in-out infinite;
+  }
+
+  /* Drag offset visual */
+  .slides-track {
+    transition: transform 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+  .slides-track.dragging {
+    transition: none;
+  }
+
   /* Splash */
   .splash {
     position: fixed; inset: 0; z-index: 90;
@@ -295,18 +437,20 @@
     <!-- Carousel slides -->
     <!-- Slide 1: Brand intro (flame + logo) -->
     <div class="slide active" data-slide="0">
-      <div class="hero-stage">
+      <div class="hero-stage" data-tilt>
         <div class="hero-flame"></div>
         <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-          <img src="../../../public/salespt-logo.png" alt="세일즈PT"
-               style="width:140px; height:auto; filter: drop-shadow(0 4px 20px rgba(0,0,0,0.6));">
+          <img src="../../../public/salespt-logo.png" alt="세일즈PT" id="heroLogo"
+               class="logo-breathe"
+               style="width:140px; height:auto; cursor: pointer;">
         </div>
+        <span class="tap-hint">→</span>
       </div>
     </div>
 
     <!-- Slide 2: 4지표 funnel -->
     <div class="slide" data-slide="1">
-      <div class="hero-stage">
+      <div class="hero-stage" data-tilt>
         <div class="hero-funnel">
           <div class="funnel-bar"></div>
           <div class="funnel-bar"></div>
@@ -319,7 +463,7 @@
 
     <!-- Slide 3: Dashboard chart -->
     <div class="slide" data-slide="2">
-      <div class="hero-stage">
+      <div class="hero-stage" data-tilt>
         <div class="hero-dashboard"></div>
         <div class="chart-bars">
           <div class="chart-bar"></div>
@@ -336,7 +480,7 @@
 
     <!-- Slide 4: Celebration -->
     <div class="slide" data-slide="3">
-      <div class="hero-stage">
+      <div class="hero-stage" data-tilt>
         <div class="hero-celebration">
           <div class="trophy">🏆</div>
         </div>
@@ -346,6 +490,11 @@
 
   <!-- 캡션 + dots + CTA (검정 배경) -->
   <div class="flex-1 flex flex-col justify-end px-6 pb-10 pt-8">
+    <!-- Auto-progress bar -->
+    <div class="auto-progress" id="autoProgress">
+      <div class="auto-progress-fill" id="autoProgressFill"></div>
+    </div>
+
     <!-- Pagination dots -->
     <div class="dots mb-6">
       <button class="dot active" data-dot="0"></button>
@@ -475,7 +624,8 @@
 
     <!-- 기수 segmented (디벨롭: dropdown 대신 큰 토글) -->
     <label class="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">기수</label>
-    <div class="cohort-pill mb-7">
+    <div class="cohort-pill mb-7" id="cohortPill">
+      <span class="cohort-indicator" id="cohortIndicator"></span>
       <button>5기</button>
       <button>6기</button>
       <button class="active">7기</button>
@@ -517,48 +667,210 @@
 </main>
 
 <script>
+  // ═════════════════════════════════════════════════════
+  // 🎯 INTERACTIVE LAYER
+  // ═════════════════════════════════════════════════════
+  const haptic = (ms = 10) => navigator.vibrate?.(ms);
+
   // ── Carousel ─────────────────────────────────────────
   let cur = 0;
   const N_SLIDES = 4;
+  const SLIDE_MS = 4500;
   const slides = document.querySelectorAll('.slide');
   const dots = document.querySelectorAll('.dot');
   const caps = document.querySelectorAll('.caption');
   const btnGet = document.getElementById('btnGetStarted');
+  const progFill = document.getElementById('autoProgressFill');
 
-  function go(idx) {
+  let autoT = null, progT = null, progStart = 0;
+
+  function startAuto() {
+    clearInterval(autoT); clearInterval(progT);
+    progStart = Date.now();
+    progFill.style.width = '0%';
+    progT = setInterval(() => {
+      const pct = Math.min(100, ((Date.now() - progStart) / SLIDE_MS) * 100);
+      progFill.style.width = pct + '%';
+    }, 50);
+    autoT = setTimeout(() => {
+      if (cur < N_SLIDES - 1) {
+        go(cur + 1);
+      } else {
+        stopAuto();
+      }
+    }, SLIDE_MS);
+  }
+  function stopAuto() {
+    clearInterval(autoT); clearInterval(progT);
+    autoT = progT = null;
+    progFill.style.width = '0%';
+  }
+
+  function go(idx, fromUser = false) {
     cur = (idx + N_SLIDES) % N_SLIDES;
     slides.forEach((s, i) => s.classList.toggle('active', i === cur));
     dots.forEach((d, i) => d.classList.toggle('active', i === cur));
     caps.forEach((c, i) => c.classList.toggle('hidden', i !== cur));
-    btnGet.querySelector('span').textContent = (cur === N_SLIDES - 1) ? '시작하기' : '다음';
-  }
-  dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
-
-  // 자동 진행
-  let auto = setInterval(() => {
-    if (cur < N_SLIDES - 1) go(cur + 1);
-    else clearInterval(auto);
-  }, 3500);
-
-  btnGet.addEventListener('click', () => {
-    clearInterval(auto);
-    if (cur < N_SLIDES - 1) go(cur + 1);
-    else {
-      // 마지막 슬라이드: 로그인으로 이동
-      switchState('login');
+    btnGet.querySelector('span').textContent = (cur === N_SLIDES - 1) ? '시작하기 →' : '다음';
+    if (fromUser) haptic(8);
+    if (cur === N_SLIDES - 1) {
+      stopAuto();
+      // Confetti burst
+      burstConfetti();
+    } else {
+      startAuto();
     }
+  }
+  dots.forEach((d, i) => d.addEventListener('click', () => go(i, true)));
+
+  btnGet.addEventListener('click', (e) => {
+    rippleAt(btnGet, e);
+    haptic(12);
+    if (cur < N_SLIDES - 1) go(cur + 1, true);
+    else switchState('login');
   });
 
-  // Swipe gesture (touch)
+  // ── 3D Tilt on hero stages ───────────────────────────
+  document.querySelectorAll('[data-tilt]').forEach((el) => {
+    let raf = null;
+    const onMove = (clientX, clientY) => {
+      const r = el.getBoundingClientRect();
+      const x = ((clientX - r.left) / r.width  - 0.5) * 2;  // -1..1
+      const y = ((clientY - r.top)  / r.height - 0.5) * 2;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        el.style.transform = `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02)`;
+      });
+    };
+    const reset = () => {
+      el.style.transform = '';
+    };
+    el.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+    el.addEventListener('mouseleave', reset);
+    el.addEventListener('touchmove', (e) => {
+      const t = e.touches[0];
+      onMove(t.clientX, t.clientY);
+    }, { passive: true });
+    el.addEventListener('touchend', reset);
+
+    // Tap to advance
+    el.addEventListener('click', () => {
+      if (cur < N_SLIDES - 1) go(cur + 1, true);
+      else switchState('login');
+    });
+  });
+
+  // ── Swipe with visual feedback ───────────────────────
   const onboard = document.querySelector('[data-state="onboard"]');
-  let startX = 0;
-  onboard.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; });
+  let startX = null, startT = 0;
+  onboard.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX; startT = Date.now();
+  }, { passive: true });
   onboard.addEventListener('touchend', (e) => {
+    if (startX === null) return;
     const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 50) {
-      clearInterval(auto);
-      go(cur + (dx < 0 ? 1 : -1));
+    const dt = Date.now() - startT;
+    if (Math.abs(dx) > 40 || (Math.abs(dx) > 20 && dt < 250)) {
+      go(cur + (dx < 0 ? 1 : -1), true);
     }
+    startX = null;
+  });
+
+  // ── Ripple effect ────────────────────────────────────
+  function rippleAt(el, ev) {
+    const r = el.getBoundingClientRect();
+    const x = (ev.clientX || (ev.touches?.[0]?.clientX) || r.width/2) - r.left;
+    const y = (ev.clientY || (ev.touches?.[0]?.clientY) || r.height/2) - r.top;
+    el.style.setProperty('--rx', x + 'px');
+    el.style.setProperty('--ry', y + 'px');
+    el.classList.remove('ripple');
+    void el.offsetWidth;
+    el.classList.add('ripple');
+    setTimeout(() => el.classList.remove('ripple'), 600);
+  }
+
+  // ── Magnetic CTA (pointer follow) ────────────────────
+  document.querySelectorAll('.btn-primary').forEach((btn) => {
+    btn.addEventListener('mousemove', (e) => {
+      const r = btn.getBoundingClientRect();
+      const x = (e.clientX - r.left - r.width / 2) / r.width;
+      const y = (e.clientY - r.top - r.height / 2) / r.height;
+      btn.style.transform = `translate(${x * 6}px, ${y * 4 - 1}px)`;
+    });
+    btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+  });
+
+  // ── Confetti burst ───────────────────────────────────
+  function burstConfetti() {
+    const colors = ['#d71617', '#ff6b6b', '#fbbf24', '#4ade80', '#60a5fa', '#ffffff'];
+    for (let i = 0; i < 60; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (Math.random() * 100) + '%';
+      c.style.top = '-5vh';
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.animationDuration = (1.6 + Math.random() * 1.6) + 's';
+      c.style.animationDelay = (Math.random() * 0.4) + 's';
+      c.style.transform = `rotate(${Math.random() * 360}deg)`;
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 3500);
+    }
+  }
+
+  // ── Logo easter egg: long press → spin ──────────────
+  const heroLogo = document.getElementById('heroLogo');
+  let pressT = null;
+  if (heroLogo) {
+    heroLogo.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      pressT = setTimeout(() => {
+        heroLogo.classList.remove('logo-breathe');
+        heroLogo.classList.add('logo-spin');
+        haptic(20);
+        burstConfetti();
+        setTimeout(() => {
+          heroLogo.classList.remove('logo-spin');
+          heroLogo.classList.add('logo-breathe');
+        }, 900);
+      }, 600);
+    });
+    const cancelPress = () => clearTimeout(pressT);
+    heroLogo.addEventListener('pointerup', cancelPress);
+    heroLogo.addEventListener('pointerleave', cancelPress);
+    heroLogo.addEventListener('pointercancel', cancelPress);
+  }
+
+  // ── Cohort segmented indicator ───────────────────────
+  function moveCohortIndicator() {
+    const pill = document.getElementById('cohortPill');
+    const ind = document.getElementById('cohortIndicator');
+    const active = pill?.querySelector('button.active');
+    if (!pill || !ind || !active) return;
+    const pr = pill.getBoundingClientRect();
+    const ar = active.getBoundingClientRect();
+    ind.style.transform = `translateX(${ar.left - pr.left - 4}px)`;
+    ind.style.width = ar.width + 'px';
+  }
+  document.querySelectorAll('.cohort-pill button').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.cohort-pill button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      moveCohortIndicator();
+      haptic(8);
+    });
+  });
+
+  // ── Name chip wave ───────────────────────────────────
+  document.querySelectorAll('.name-chip').forEach((c) => {
+    c.addEventListener('click', () => {
+      document.querySelectorAll('.name-chip').forEach((x) => {
+        x.classList.remove('selected');
+        x.classList.remove('wave');
+      });
+      c.classList.add('selected', 'wave');
+      haptic(8);
+      setTimeout(() => c.classList.remove('wave'), 500);
+    });
   });
 
   // ── State toggle ─────────────────────────────────────
@@ -571,25 +883,23 @@
     document.querySelectorAll('.state-nav button[data-go]').forEach((b) => {
       b.classList.toggle('active', b.dataset.go === target);
     });
+    if (target === 'claim') {
+      requestAnimationFrame(() => moveCohortIndicator());
+    }
+    if (target === 'onboard') {
+      go(0);
+    }
   }
   document.querySelectorAll('.state-nav button[data-go]').forEach((btn) => {
     btn.addEventListener('click', () => switchState(btn.dataset.go));
   });
 
-  // ── Cohort pill toggle ───────────────────────────────
-  document.querySelectorAll('.cohort-pill button').forEach((b) => {
-    b.addEventListener('click', () => {
-      document.querySelectorAll('.cohort-pill button').forEach((x) => x.classList.remove('active'));
-      b.classList.add('active');
-    });
-  });
-  // ── Name chip toggle ─────────────────────────────────
-  document.querySelectorAll('.name-chip').forEach((c) => {
-    c.addEventListener('click', () => {
-      document.querySelectorAll('.name-chip').forEach((x) => x.classList.remove('selected'));
-      c.classList.add('selected');
-    });
-  });
+  // ── Boot ─────────────────────────────────────────────
+  setTimeout(() => {
+    startAuto();
+    moveCohortIndicator();
+  }, 1500);
+  window.addEventListener('resize', moveCohortIndicator);
 </script>
 </body>
 </html>
