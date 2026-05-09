@@ -135,15 +135,41 @@ function FieldCell({
 
   // 일반 input
   const numCls = field.type === "number" ? "num-mono" : "";
+  // 금액 필드(unit="원"): 천 단위 콤마 표시 + numeric keyboard.
+  // 입력은 text로 받되 onChange 시 콤마 strip 후 숫자만 부모로 전달.
+  const isMoney = field.type === "number" && field.unit === "원";
   // number 필드: value가 0(default)이면 input은 빈 문자열로 표시 — UX 개선
-  const inputValue =
-    field.type === "number"
-      ? value === 0 || value === undefined || value === null
+  const numericValue = field.type === "number" ? Number(value ?? 0) : 0;
+  const isEmpty =
+    value === 0 || value === undefined || value === null || value === "";
+  const inputValue = isMoney
+    ? isEmpty
+      ? ""
+      : numericValue.toLocaleString("ko-KR")
+    : field.type === "number"
+      ? isEmpty
         ? ""
         : String(value)
       : String(value ?? "");
   // iOS Safari date input intrinsic-width 오버플로 방지: 부모 min-w-0 + appearance-none.
   const dateOverflowFix = field.type === "date" ? "appearance-none" : "";
+  // 금액은 type="text" 로 — type="number"는 콤마 표시 시 invalid 처리됨.
+  const inputType =
+    field.type === "date"
+      ? "date"
+      : isMoney
+        ? "text"
+        : field.type === "number"
+          ? "number"
+          : "text";
+  const handleChange = (raw: string) => {
+    if (isMoney) {
+      // 비숫자(콤마·공백·문자) 모두 strip → 부모 setField 가 Number() 캐스트.
+      onChange(raw.replace(/[^\d]/g, ""));
+    } else {
+      onChange(raw);
+    }
+  };
   return (
     <div className={`min-w-0 ${colSpan}`}>
       <label className="mb-1 flex items-center gap-1 text-[11px] font-medium leading-tight text-gray-600">
@@ -155,12 +181,12 @@ function FieldCell({
         </span>
       </label>
       <input
-        type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
+        type={inputType}
         inputMode={field.type === "number" ? "numeric" : undefined}
-        min={field.type === "number" ? 0 : undefined}
+        min={field.type === "number" && !isMoney ? 0 : undefined}
         value={inputValue}
         placeholder={field.placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`}
         style={
           field.type === "number"
