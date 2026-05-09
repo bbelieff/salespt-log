@@ -142,8 +142,10 @@ function FieldCell({
         ? ""
         : String(value)
       : String(value ?? "");
+  // iOS Safari date input intrinsic-width 오버플로 방지: 부모 min-w-0 + appearance-none.
+  const dateOverflowFix = field.type === "date" ? "appearance-none" : "";
   return (
-    <div className={colSpan}>
+    <div className={`min-w-0 ${colSpan}`}>
       <label className="mb-1 flex items-center gap-1 text-[11px] font-medium leading-tight text-gray-600">
         <span>
           {field.label}
@@ -159,7 +161,7 @@ function FieldCell({
         value={inputValue}
         placeholder={field.placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls}`}
+        className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`}
         style={
           field.type === "number"
             ? { fontVariantNumeric: "tabular-nums" }

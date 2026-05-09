@@ -14,7 +14,9 @@ import TabBar from "@/components/TabBar";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-slate-100">
-      <main className="pb-[76px]">{children}</main>
+      <main style={{ paddingBottom: "calc(76px + env(safe-area-inset-bottom))" }}>
+        {children}
+      </main>
       <TabBar />
     </div>
   );
