@@ -126,7 +126,7 @@ export default function WeekHeader({
               </span>
               {isToday && (
                 <span
-                  className={`absolute -top-1.5 rounded-full px-1.5 py-px text-xs font-bold leading-none ${
+                  className={`absolute -top-1.5 rounded-full px-1 py-px text-[10px] font-bold leading-none ${
                     isSelected ? "bg-white text-blue-600" : "bg-blue-500 text-white"
                   }`}
                 >
