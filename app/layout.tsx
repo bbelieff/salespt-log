@@ -13,7 +13,7 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "세일즈PT 영업일지",
+  title: "세일즈PT 경영일지",
   description: "수강생을 위한 직관적인 영업 현황 기록 · 대시보드",
 };
 

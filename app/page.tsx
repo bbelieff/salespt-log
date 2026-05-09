@@ -4,7 +4,7 @@ export default function HomePage() {
       <div className="rounded-full bg-brand-500 px-4 py-1 text-sm font-semibold text-white">
         세일즈PT
       </div>
-      <h1 className="text-3xl font-bold tracking-tight">영업일지</h1>
+      <h1 className="text-3xl font-bold tracking-tight">경영일지</h1>
       <p className="text-slate-600">
         하루 4개 지표만 기록해도,
         <br />
