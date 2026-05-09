@@ -3,7 +3,7 @@
  *
  * 가드레일:
  *   • 4지표(E~H)와 실적(Q~T)만 쓰기 허용. I~P는 시트 수식 — 쓰기 시도 시 throw.
- *   • 좌표는 N1(수강시작일) + (주차, 요일, 채널) 공식으로 계산. 날짜 하드코딩 X.
+ *   • 좌표는 O1(수강시작일) + (주차, 요일, 채널) 공식으로 계산. 날짜 하드코딩 X.
  *
  * SSOT: docs/domains/sheet-structure.md §2
  */
@@ -106,7 +106,7 @@ function tabRef(tab: string): string {
 // ── 시트 I/O ──────────────────────────────────────────────────
 
 /**
- * 수강시작일을 N1에서 읽음.
+ * 수강시작일을 O1에서 읽음 (N1은 "시작일" 라벨, 값은 O1).
  * 시트는 보통 날짜 셀로 저장되며 "M/d" 또는 "yyyy-mm-dd" 등 다양한 표기 가능 →
  * UNFORMATTED_VALUE를 받아 직렬값(epoch days since 1899-12-30)으로 파싱.
  */
@@ -135,22 +135,22 @@ export async function readCourseStart(
   if (typeof raw === "string") {
     const parsed = new Date(raw);
     if (Number.isNaN(parsed.getTime())) {
-      throw new Error(`[sales.ts] N1 파싱 실패: ${raw}`);
+      throw new Error(`[sales.ts] O1(수강시작일) 파싱 실패: ${raw}`);
     }
     return parsed;
   }
-  throw new Error(`[sales.ts] N1 형식 미지원: ${typeof raw}`);
+  throw new Error(`[sales.ts] O1 형식 미지원: ${typeof raw}`);
 }
 
 /**
- * 영업관리 N2에서 종강총회일(=수료일) 직접 읽기.
- * data-model.md SSOT: N2는 시트 수식 `=N1+57` 또는 직접 입력.
+ * 영업관리 O2에서 종강총회일(=수료일) 직접 읽기 (N2는 "종강총회" 라벨).
+ * data-model.md SSOT: O2는 시트 수식 `=O1+57` 또는 직접 입력.
  * 헤더 D-day 와 메인 배너 종강총회일 표시에 사용.
  */
 export async function readGraduation(
   spreadsheetId: string,
 ): Promise<Date> {
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!N2`;
+  const range = `${tabRef(SHEET_RANGES.sales.tab)}!${SHEET_RANGES.sales.graduationDateCell}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -160,7 +160,7 @@ export async function readGraduation(
   const raw = res.data.values?.[0]?.[0];
   if (raw === undefined || raw === null || raw === "") {
     throw new Error(
-      `[sales.ts] ${range}에 종강총회일이 비어있습니다. 시트 N2에 입력 또는 수식(=N1+57) 설정 필요.`,
+      `[sales.ts] ${range}에 종강총회일이 비어있습니다. 시트 O2에 입력 또는 수식(=O1+57) 설정 필요.`,
     );
   }
   if (typeof raw === "number") {
@@ -170,11 +170,11 @@ export async function readGraduation(
   if (typeof raw === "string") {
     const parsed = new Date(raw);
     if (Number.isNaN(parsed.getTime())) {
-      throw new Error(`[sales.ts] N2 파싱 실패: ${raw}`);
+      throw new Error(`[sales.ts] O2(종강총회) 파싱 실패: ${raw}`);
     }
     return parsed;
   }
-  throw new Error(`[sales.ts] N2 형식 미지원: ${typeof raw}`);
+  throw new Error(`[sales.ts] O2 형식 미지원: ${typeof raw}`);
 }
 
 /**
