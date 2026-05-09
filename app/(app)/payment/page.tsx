@@ -75,17 +75,24 @@ export default function PaymentPage() {
   const rows = list.data?.rows ?? [];
   // 단위는 모두 원. 단어 약속:
   //   수임비합     = sum(cp.수임비)            — 04 업체관리!L에서 동기화된 계약 금액
-  //   수납액합     = sum(슬롯별 수납액 = Q+W+AC) — "수수료" (= 실제 입금된 부가 수수료) 합
-  //   승인금액합   = sum(슬롯별 승인금액)        — 진행 중인 수납 약정 총액 (목표)
+  //   수납액합     = sum(활성 슬롯별 수납액)    — "수수료" 합. 활성=진행기관 입력됨.
+  //   승인금액합   = sum(활성 슬롯별 승인금액)  — 진행 중인 수납 약정 총액 (모수)
   //   총매출       = 수임비합 + 수납액합        — v2 SSOT (수수료=수납액합)
   //   수납진척     = 수납액합 / 승인금액합
+  //
+  // 활성 슬롯 정의 (사용자 결정 2026-05-09): `slot.진행기관` 이 비어있으면
+  // 분자·분모 모두에서 제외. 시트는 1계약당 슬롯 3개를 미리 만들어두므로
+  // 미입력 슬롯이 모수를 부풀려 수납진척%가 왜곡되는 문제를 차단.
+  const isActiveSlot = (slot: { 진행기관?: string }) =>
+    Boolean(slot.진행기관 && slot.진행기관.trim());
+  const activeSlots = (cp: (typeof rows)[number]) =>
+    [cp.수납1, cp.수납2, cp.수납3].filter(isActiveSlot);
   const totalReceived = rows.reduce(
-    (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
+    (s, cp) => s + activeSlots(cp).reduce((a, sl) => a + sl.수납액, 0),
     0,
   );
   const totalApproved = rows.reduce(
-    (s, cp) =>
-      s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
+    (s, cp) => s + activeSlots(cp).reduce((a, sl) => a + sl.승인금액, 0),
     0,
   );
   const totalContract = rows.reduce((s, cp) => s + (cp.수임비 || 0), 0);
