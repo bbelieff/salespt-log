@@ -197,6 +197,25 @@ export async function readProfile(
   };
 }
 
+/**
+ * 영업관리 B3/C3에 기수/이름 쓰기.
+ * Self-claim 흐름에서 사용 — 시트 템플릿이 빈 상태로 만들어진 경우 web 이 직접 작성.
+ */
+export async function writeProfile(
+  spreadsheetId: string,
+  cohort: string,
+  name: string,
+): Promise<void> {
+  const range = `${tabRef(SHEET_RANGES.sales.tab)}!B3:C3`;
+  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[cohortNum, name.trim()]] },
+  });
+}
+
 /** 한 행의 4지표(E~H) update. */
 export async function writeChannelDailyRow(
   spreadsheetId: string,
