@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
@@ -6,4 +8,15 @@ const nextConfig = {
   typedRoutes: true,
 };
 
-export default nextConfig;
+// Sentry wrapper — DSN 미설정 시에도 무해.
+// 소스맵 업로드는 SENTRY_AUTH_TOKEN 있을 때만 (현재 미설정 — 추후 추가 가능)
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: "salespt",
+  project: "javascript-nextjs",
+  // 클라이언트 번들 크기 절약
+  hideSourceMaps: true,
+  disableLogger: true,
+  // 인증 토큰 없으면 업로드 스킵 (빌드 실패 방지)
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+});
