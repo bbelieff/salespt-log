@@ -1269,6 +1269,12 @@ components/dashboard/
 > **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):
 > 수납1 = teal / 수납2 = cyan / 수납3 = fuchsia. 카드 좌측 보더로 활성 슬롯 시각 구분.
 
+### 10-7. 인프라 컴포넌트 (`components/`)
+
+| 컴포넌트 | 역할 |
+|---|---|
+| **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
+
 ---
 
 ## 접근성 가이드라인

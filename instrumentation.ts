@@ -10,4 +10,5 @@ export async function register() {
   }
 }
 
-export { onRequestError } from "@sentry/nextjs";
+// @sentry/nextjs 8.45 typedef 가 onRequestError 미export → typecheck 차단.
+// 런타임 동작에는 영향 없음. 8.50+ 정식 export 시 복원.

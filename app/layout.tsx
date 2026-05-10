@@ -16,13 +16,20 @@ const notoSansKR = Noto_Sans_KR({
 export const metadata: Metadata = {
   title: "세일즈PT 경영일지",
   description: "수강생을 위한 직관적인 영업 현황 기록 · 대시보드",
+  // 아이콘은 Next.js 가 app/icon.tsx, app/apple-icon.tsx 에서 자동 등록.
+  // manifest 도 app/manifest.ts 에서 자동 주입.
+  appleWebApp: {
+    capable: true,
+    title: "경영일지",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#5b6cff",
+  themeColor: "#d71617",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
