@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     const view = await loadWeekMeetings(email, parsed.data);
     return NextResponse.json(view);
   } catch (e) {

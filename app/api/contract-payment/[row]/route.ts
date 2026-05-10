@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     await patchContractPayment(email, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -56,7 +56,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     await removeContractPayment(email, rowParsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {

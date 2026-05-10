@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     const view = await loadDay(email, parsed.data);
     return NextResponse.json(view);
   } catch (e) {
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     await saveContactMetrics(email, dateParsed.data, bodyParsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {

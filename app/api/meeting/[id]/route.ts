@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     await patchMeeting(email, id, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -39,7 +39,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
     if (!id) {
       return NextResponse.json({ error: "id 필수" }, { status: 400 });
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     await removeMeeting(email, id);
     return NextResponse.json({ ok: true });
   } catch (e) {

@@ -10,7 +10,7 @@ import { getCurrentUserEmail } from "@/auth/stub";
 
 export async function GET() {
   try {
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     const view = await loadDashboard(email);
     return NextResponse.json(view);
   } catch (e) {

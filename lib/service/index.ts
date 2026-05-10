@@ -10,6 +10,9 @@ export async function resolveUser(email: string) {
 
 export { summarize, type Stats } from "./gamification";
 
+// Self-claim 유스케이스 (PR-B2)
+export { claimAccount, ClaimError, type ClaimResult } from "./auth";
+
 // 컨택탭 유스케이스 (PR 2a)
 export {
   loadDay,
