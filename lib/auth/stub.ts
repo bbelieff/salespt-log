@@ -1,18 +1,32 @@
 /**
- * 인증 stub — PR A1 (auth flow)이 머지되기 전까지 사용.
+ * 인증 어댑터 — NextAuth `auth()` 위에 비동기 헬퍼.
  *
- * 환경변수 STUB_USER_EMAIL을 현재 사용자 email로 가정.
- * PR A1 머지 후 이 파일은 `auth()` (NextAuth)로 1줄 교체.
+ * Phase 1 (STUB) → Phase 2 (NextAuth) 마이그레이션 완료:
+ *   - getCurrentUserEmail()
+ *       기존: process.env.STUB_USER_EMAIL 반환 (단일 사용자, 로컬 dev)
+ *       현재: NextAuth 세션 쿠키에서 email 추출 (다중 사용자, production)
+ *   - STUB_USER_EMAIL 폴백 유지 (로컬 dev / 빌드 시 호출 보호)
+ *
+ * ⚠️ 시그니처 변경: sync → async. 모든 호출자도 await 로 갱신.
  */
+import { auth } from "@/auth";
 
-export function getCurrentUserEmail(): string {
-  const email = process.env.STUB_USER_EMAIL;
-  if (!email) {
-    throw new Error(
-      "[auth stub] STUB_USER_EMAIL 환경변수가 비어있습니다. " +
-        ".env.local에 마스터 레지스트리에 등록된 사용자 email을 설정하세요. " +
-        "예: STUB_USER_EMAIL=test@example.com",
-    );
-  }
-  return email;
+/**
+ * 현재 로그인 사용자의 email 반환.
+ *
+ * 우선순위:
+ *  1. NextAuth 세션 쿠키 (production / authenticated)
+ *  2. STUB_USER_EMAIL 환경변수 (dev fallback)
+ *
+ * 미인증 시 throw — 호출 측이 catch 해서 401 또는 /login redirect.
+ */
+export async function getCurrentUserEmail(): Promise<string> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (email) return email;
+
+  const stubEmail = process.env.STUB_USER_EMAIL;
+  if (stubEmail) return stubEmail;
+
+  throw new Error("[auth] 로그인이 필요합니다.");
 }

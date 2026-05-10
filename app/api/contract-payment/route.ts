@@ -25,7 +25,7 @@ const ContractFeeBody = z.object({
 
 export async function GET() {
   try {
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     const rows = await loadContractPayments(email);
     return NextResponse.json({ rows });
   } catch (e) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     const result = await addFromContract(email, parsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     const result = await syncContractFee(email, parsed.data);
     if (!result) {
       return NextResponse.json({ ok: true, synced: false });

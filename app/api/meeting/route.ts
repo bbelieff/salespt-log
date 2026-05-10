@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
     await appendNewMeeting(email, parsed.data);
     return NextResponse.json({ ok: true, id: parsed.data.id });
   } catch (e) {

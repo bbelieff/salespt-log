@@ -14,7 +14,7 @@ import { installFormulas, uninstallFormulas } from "@/repo/setup-formulas";
 import { getCurrentUserEmail } from "@/auth/stub";
 
 async function resolveSpreadsheetId(): Promise<string> {
-  const email = getCurrentUserEmail();
+  const email = await getCurrentUserEmail();
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`등록되지 않은 사용자: ${email}`);
   return user.spreadsheetId;

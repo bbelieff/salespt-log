@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const { channel } = await ctx.params;
     const decoded = decodeURIComponent(channel);
     const body = await req.json();
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
 
     let result: { row: number };
     switch (decoded) {

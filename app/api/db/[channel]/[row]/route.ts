@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       );
     }
     const body = await req.json();
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
 
     switch (decoded) {
       case "매입DB": {
@@ -107,7 +107,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = getCurrentUserEmail();
+    const email = await getCurrentUserEmail();
 
     switch (decoded) {
       case "매입DB":
