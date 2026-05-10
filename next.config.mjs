@@ -2,7 +2,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  // ⚠️ output: "standalone" 제거됨 — PM2 + `next start` 호환 안 됨
+  //    (모든 dynamic route 가 silently 404 반환). 필요 시 standalone 으로 가려면
+  //    PM2 ecosystem 의 script 를 ".next/standalone/server.js" 로 변경.
   reactStrictMode: true,
   // Next 15.5+: experimental.typedRoutes 는 typedRoutes 로 이동
   typedRoutes: true,
