@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<!-- Design: 로그인 인트로 v7 (Premium Minimal) — 2026-05-10
+     레퍼런스: 3dicons.co (open source 3D icon style)
+     사용자 피드백:
+     - v6 촌스러움 → 미니멀 프리미엄으로 전환
+     - 로고 시퀀스만 유지 (splash → 메인)
+     - 돈 떨어짐 / "매일의 $가 쌓이는 곳" 카피 제거
+     - "세일즈피티 경영일지에 오신 걸 환영합니다" 톤
+     - 7기 하드코딩 X (다음 기수도)
+     - Google 공식 sign-in 버튼 스타일
+
+     디자인 원칙:
+     - 흰 배경 + 화이트스페이스 max
+     - Focal point 1개 (로고)
+     - 부드러운 색감, soft shadow
+     - 카피 최소
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>경영일지</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=Roboto:wght@500&display=swap');
+  * { font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  body { margin: 0; padding: 0; overflow: hidden; background: #ffffff; color: #0a0a0a; }
+
+  :root {
+    --red: #d71617;
+    --ink: #0a0a0a;
+    --gray-50: #fafafa;
+    --gray-100: #f5f5f5;
+    --gray-200: #e5e5e5;
+    --gray-300: #d4d4d4;
+    --gray-400: #a3a3a3;
+    --gray-500: #737373;
+    --gray-700: #404040;
+    --gray-900: #171717;
+  }
+
+  /* ═════ Subtle bg gradient (3dicons.co 톤) ═════ */
+  .bg-soft {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(215,22,23,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% 110%, rgba(0,0,0,0.025) 0%, transparent 60%),
+      #ffffff;
+  }
+
+  /* ═════ Splash sequence ═════ */
+  .splash {
+    position: fixed; inset: 0; z-index: 95;
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    animation: splashOut 0.8s cubic-bezier(.4,0,.2,1) 1.6s forwards;
+  }
+  @keyframes splashOut { to { opacity: 0; visibility: hidden; transform: scale(1.05); } }
+  .splash img {
+    width: 240px; height: auto;
+    animation: splashIn 1.4s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes splashIn {
+    0%   { opacity: 0; transform: scale(0.8); filter: blur(16px); }
+    50%  { opacity: 1; filter: blur(0); }
+    70%  { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+
+  /* ═════ Stage layout ═════ */
+  .stage {
+    position: relative; z-index: 10;
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: 0 32px;
+    opacity: 0;
+    animation: stageIn 0.9s cubic-bezier(.2,.8,.2,1) 1.9s forwards;
+  }
+  @keyframes stageIn {
+    0%   { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═════ Logo (메인) ═════ */
+  .logo-wrap {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px 0 40px;
+  }
+  .logo-wrap img {
+    width: 100%; max-width: 280px; height: auto;
+    filter: drop-shadow(0 12px 32px rgba(215,22,23,0.08))
+            drop-shadow(0 4px 12px rgba(0,0,0,0.04));
+    animation: logoFloat 6s ease-in-out infinite;
+  }
+  @keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
+  /* ═════ Welcome 카피 ═════ */
+  .welcome {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .welcome h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--gray-900);
+    line-height: 1.4;
+  }
+
+  /* ═════ Google 공식 sign-in 버튼 (구글 가이드라인 준수) ═════ */
+  /* 참고: developers.google.com/identity/branding-guidelines */
+  .gsi-button {
+    width: 100%;
+    height: 52px;
+    background: white;
+    color: #1f1f1f;
+    border: 1px solid var(--gray-300);
+    border-radius: 26px;
+    font-family: 'Roboto', 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .gsi-button:hover {
+    background: #f8f9fa;
+    border-color: var(--gray-400);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  }
+  .gsi-button:active {
+    background: var(--gray-100);
+    transform: scale(0.99);
+  }
+  .gsi-icon {
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+  }
+
+  /* ═════ Footer ═════ */
+  .foot {
+    text-align: center;
+    padding: 16px 0 32px;
+    color: var(--gray-400);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .foot .dot { color: var(--gray-300); margin: 0 6px; }
+
+  /* ═════ Claim state (미니멀) ═════ */
+  .cohort-pill {
+    position: relative;
+    display: inline-flex;
+    background: var(--gray-100);
+    border-radius: 12px;
+    padding: 4px;
+    width: 100%;
+  }
+  .cohort-indicator {
+    position: absolute; top: 4px; bottom: 4px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+    transition: transform 0.4s cubic-bezier(.4,1.4,.4,1), width 0.4s cubic-bezier(.4,1.4,.4,1);
+    z-index: 0;
+  }
+  .cohort-pill button {
+    flex: 1; position: relative; z-index: 1;
+    padding: 10px 0;
+    font-size: 13px; font-weight: 600;
+    color: var(--gray-500);
+    transition: color 0.25s;
+    background: transparent; border: 0;
+    cursor: pointer;
+  }
+  .cohort-pill button.active { color: var(--ink) !important; font-weight: 700; }
+
+  .name-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .name-chip {
+    padding: 14px 12px;
+    border-radius: 12px;
+    background: var(--gray-50);
+    border: 1.5px solid transparent;
+    font-size: 14px; font-weight: 600;
+    color: var(--gray-700);
+    transition: all 0.18s cubic-bezier(.4,0,.2,1);
+    text-align: center;
+    cursor: pointer;
+  }
+  .name-chip:hover {
+    background: white;
+    border-color: var(--gray-200);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .name-chip.selected {
+    background: white;
+    border-color: var(--red);
+    color: var(--red);
+    box-shadow: 0 4px 16px rgba(215,22,23,0.12);
+  }
+
+  /* CTA — claim 단계 */
+  .btn-claim {
+    width: 100%;
+    height: 52px;
+    background: var(--ink);
+    color: white;
+    border-radius: 26px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-claim:hover { background: #1a1a1a; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .btn-claim:active { transform: translateY(0) scale(0.99); }
+  .btn-claim:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+
+  /* States */
+  [data-state] { display: none; }
+  [data-state].active { display: flex; }
+
+  .state-nav {
+    position: fixed; top: 8px; right: 8px; z-index: 100;
+    background: rgba(0,0,0,.85); color: white; border-radius: 10px;
+    padding: 6px 8px; font-size: 11px; display: flex; gap: 6px;
+  }
+  .state-nav button {
+    background: rgba(255,255,255,.1); padding: 4px 10px; border-radius: 6px;
+    color: white; font-weight: 700;
+  }
+  .state-nav button.active { background: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="bg-soft"></div>
+
+<!-- Splash: 로고 등장 시퀀스 -->
+<div class="splash">
+  <img src="../../../public/salespt-logo.png" alt="세일즈PT">
+</div>
+
+<!-- State nav -->
+<nav class="state-nav">
+  <button onclick="location.reload()" style="background:rgba(255,255,255,.2);">↻</button>
+  <button data-go="login" class="active">1) 로그인</button>
+  <button data-go="claim">2) Claim</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATE 1: 로그인 (로고 중앙, 미니멀)
+     ═══════════════════════════════════════════════════════════ -->
+<main data-state="login" class="active stage">
+
+  <!-- 로고 -->
+  <div class="logo-wrap">
+    <img src="../../../public/salespt-logo.png" alt="세일즈PT" id="mainLogo">
+  </div>
+
+  <!-- Welcome -->
+  <div class="welcome">
+    <h1>세일즈피티 경영일지에<br>오신 걸 환영합니다</h1>
+  </div>
+
+  <!-- Google 공식 sign-in -->
+  <button class="gsi-button" id="btnGoogle" type="button">
+    <svg class="gsi-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+    <span>Google 계정으로 로그인</span>
+  </button>
+
+  <!-- Footer -->
+  <div class="foot">
+    <span>세일즈피티 수강생 전용</span>
+    <span class="dot">·</span>
+    <span>v1.0</span>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATE 2: Self-claim (미니멀)
+     ═══════════════════════════════════════════════════════════ -->
+<main data-state="claim" class="stage" style="display:none;">
+
+  <!-- 작은 로고 -->
+  <div class="pt-12 pb-6 text-center">
+    <img src="../../../public/salespt-logo.png" alt="세일즈PT" style="height: 32px; width: auto; margin: 0 auto;">
+  </div>
+
+  <!-- Welcome -->
+  <div class="welcome" style="margin-bottom: 32px;">
+    <h1>안녕하세요</h1>
+    <p class="text-sm text-gray-500 mt-2">기수와 본인 이름을 알려주세요.</p>
+  </div>
+
+  <!-- 기수 -->
+  <label class="block text-xs font-bold mb-2 uppercase tracking-wider" style="color:var(--gray-500);">기수</label>
+  <div class="cohort-pill mb-7" id="cohortPill">
+    <span class="cohort-indicator" id="cohortIndicator"></span>
+    <button>5기</button>
+    <button>6기</button>
+    <button class="active">7기</button>
+    <button>8기</button>
+  </div>
+
+  <!-- 이름 chips -->
+  <label class="block text-xs font-bold mb-2 uppercase tracking-wider" style="color:var(--gray-500);">본인 선택</label>
+  <div class="name-grid mb-2">
+    <button class="name-chip">김OO</button>
+    <button class="name-chip selected">박OO</button>
+    <button class="name-chip">이OO</button>
+    <button class="name-chip">최OO</button>
+    <button class="name-chip">정OO</button>
+    <button class="name-chip">강OO</button>
+    <button class="name-chip">조OO</button>
+    <button class="name-chip">윤OO</button>
+  </div>
+  <p class="text-[11px] mt-3" style="color:var(--gray-400);">
+    목록에 본인 이름이 없다면 트레이너에게 문의해 주세요.
+  </p>
+
+  <div class="flex-1"></div>
+
+  <button class="btn-claim mb-6">
+    <span>시작하기</span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M1 7H13M13 7L7 1M13 7L7 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</main>
+
+<script>
+  const haptic = (ms = 8) => navigator.vibrate?.(ms);
+
+  // ── State toggle ─────────────────────────────────────
+  function switchState(target) {
+    document.querySelectorAll('[data-state]').forEach((s) => {
+      const isActive = s.dataset.state === target;
+      s.classList.toggle('active', isActive);
+      s.style.display = isActive ? 'flex' : 'none';
+    });
+    document.querySelectorAll('.state-nav button[data-go]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.go === target);
+    });
+    if (target === 'claim') requestAnimationFrame(moveCohortIndicator);
+  }
+  document.querySelectorAll('.state-nav button[data-go]').forEach((btn) => {
+    btn.addEventListener('click', () => switchState(btn.dataset.go));
+  });
+
+  // ── Google button ────────────────────────────────────
+  document.getElementById('btnGoogle').addEventListener('click', () => {
+    haptic(10);
+    // 실 구현 시 NextAuth signin('google') 호출
+  });
+
+  // ── Cohort segmented indicator ───────────────────────
+  function moveCohortIndicator() {
+    const pill = document.getElementById('cohortPill');
+    const ind = document.getElementById('cohortIndicator');
+    const active = pill?.querySelector('button.active');
+    if (!pill || !ind || !active) return;
+    const pr = pill.getBoundingClientRect();
+    const ar = active.getBoundingClientRect();
+    ind.style.transform = `translateX(${ar.left - pr.left - 4}px)`;
+    ind.style.width = ar.width + 'px';
+  }
+  document.querySelectorAll('.cohort-pill button').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.cohort-pill button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      moveCohortIndicator();
+      haptic();
+    });
+  });
+
+  // ── Name chip select ─────────────────────────────────
+  document.querySelectorAll('.name-chip').forEach((c) => {
+    c.addEventListener('click', () => {
+      document.querySelectorAll('.name-chip').forEach((x) => x.classList.remove('selected'));
+      c.classList.add('selected');
+      haptic();
+    });
+  });
+
+  // ── Boot ─────────────────────────────────────────────
+  setTimeout(moveCohortIndicator, 100);
+  window.addEventListener('resize', moveCohortIndicator);
+</script>
+</body>
+</html>
