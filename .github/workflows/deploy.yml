@@ -32,7 +32,7 @@ jobs:
             cd /opt/salespt-log
             echo "::group::Pulling"
             git fetch --all
-            git reset --hard origin/main
+            git reset --hard origin/master
             echo "::endgroup::"
             echo "::group::Installing"
             npm ci --silent
