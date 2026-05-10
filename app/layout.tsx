@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
+import Analytics from "@/components/Analytics";
 
 // 전체 앱 기본 폰트 — Noto Sans KR.
 // 중요도별 weight 정책: 400(본문)/500(미세)/600(중간)/700(강조)/800(중요)/900(최상위)
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" className={notoSansKR.variable}>
       <body className="min-h-dvh bg-slate-50 font-sans text-slate-900 antialiased">
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
