@@ -138,21 +138,25 @@
     margin-left: -22px; margin-top: -22px;
   }
 
-  /* 로고 둘러 8방향 원형 배치 (반지름 175px) — 매 45°
-     transform은 등장 애니메이션이 차지하므로 top/left로 위치 잡음 */
-  .e1 { top: calc(50% - 175px); left: 50%;                   animation-delay: 2.0s, 2.5s; animation-duration: 0.8s, 4s; }
-  .e2 { top: calc(50% - 124px); left: calc(50% + 124px);     animation-delay: 2.2s, 3.5s; animation-duration: 0.8s, 5s; }
-  .e3 { top: 50%;               left: calc(50% + 175px);     animation-delay: 2.4s, 4.0s; animation-duration: 0.8s, 4.5s; }
-  .e4 { top: calc(50% + 124px); left: calc(50% + 124px);     animation-delay: 2.6s, 4.5s; animation-duration: 0.8s, 5.5s; }
-  .e5 { top: calc(50% + 175px); left: 50%;                   animation-delay: 2.8s, 5.0s; animation-duration: 0.8s, 4s; }
-  .e6 { top: calc(50% + 124px); left: calc(50% - 124px);     animation-delay: 3.0s, 5.5s; animation-duration: 0.8s, 5s; }
-  .e7 { top: 50%;               left: calc(50% - 175px);     animation-delay: 3.2s, 6.0s; animation-duration: 0.8s, 4.5s; }
-  .e8 { top: calc(50% - 124px); left: calc(50% - 124px);     animation-delay: 3.4s, 6.5s; animation-duration: 0.8s, 5s; }
+  /* 로고 둘러 8방향 원형 배치 — 매 45°
+     반지름 = min(140px, 38vw) — 모바일에서도 화면 안에 들어옴 */
+  .emoji-orbit {
+    --r: min(140px, 38vw);
+    --d: calc(var(--r) * 0.707);  /* 45° 대각선 */
+  }
+  .e1 { top: calc(50% - var(--r));  left: 50%;                       animation-delay: 2.0s, 2.5s; animation-duration: 0.8s, 4s; }
+  .e2 { top: calc(50% - var(--d));  left: calc(50% + var(--d));      animation-delay: 2.2s, 3.5s; animation-duration: 0.8s, 5s; }
+  .e3 { top: 50%;                   left: calc(50% + var(--r));      animation-delay: 2.4s, 4.0s; animation-duration: 0.8s, 4.5s; }
+  .e4 { top: calc(50% + var(--d));  left: calc(50% + var(--d));      animation-delay: 2.6s, 4.5s; animation-duration: 0.8s, 5.5s; }
+  .e5 { top: calc(50% + var(--r));  left: 50%;                       animation-delay: 2.8s, 5.0s; animation-duration: 0.8s, 4s; }
+  .e6 { top: calc(50% + var(--d));  left: calc(50% - var(--d));      animation-delay: 3.0s, 5.5s; animation-duration: 0.8s, 5s; }
+  .e7 { top: 50%;                   left: calc(50% - var(--r));      animation-delay: 3.2s, 6.0s; animation-duration: 0.8s, 4.5s; }
+  .e8 { top: calc(50% - var(--d));  left: calc(50% - var(--d));      animation-delay: 3.4s, 6.5s; animation-duration: 0.8s, 5s; }
 
   /* 로고 */
   .logo-hero {
     position: relative; z-index: 5;
-    width: 100%; max-width: 280px;
+    width: 80%; max-width: 220px;
     cursor: pointer;
     transition: transform 0.18s cubic-bezier(.2,.8,.2,1);
     filter: drop-shadow(0 12px 32px rgba(215,22,23,0.10))
