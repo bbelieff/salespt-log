@@ -1269,10 +1269,11 @@ components/dashboard/
 > **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):
 > 수납1 = teal / 수납2 = cyan / 수납3 = fuchsia. 카드 좌측 보더로 활성 슬롯 시각 구분.
 
-### 10-7. 인프라 컴포넌트 (`components/`)
+### 10-7. 인증·인트로 + 인프라 (`components/auth/` + `components/`)
 
-| 컴포넌트 | 역할 |
+| 컴포넌트 | 역할 / Props |
 |---|---|
+| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 
 ---
