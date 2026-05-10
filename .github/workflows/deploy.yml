@@ -1,0 +1,56 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (just to know the SHA)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy on VPS
+        run: |
+          ssh -i ~/.ssh/id_ed25519 root@${{ secrets.VPS_HOST }} '
+            set -e
+            cd /opt/salespt-log
+            echo "::group::Pulling"
+            git fetch --all
+            git reset --hard origin/main
+            echo "::endgroup::"
+            echo "::group::Installing"
+            npm ci --silent
+            echo "::endgroup::"
+            echo "::group::Building"
+            npm run build
+            echo "::endgroup::"
+            echo "::group::Restarting"
+            pm2 restart salespt-log --update-env
+            pm2 save
+            echo "::endgroup::"
+            echo "::group::Health"
+            sleep 3
+            curl -sS -o /dev/null -w "Local HTTP %{http_code}\n" http://127.0.0.1:3000
+            echo "::endgroup::"
+          '
+
+      - name: Public health check
+        run: |
+          sleep 5
+          curl -sS -o /dev/null -w "https://salesptlog.online → HTTP %{http_code}\n" https://salesptlog.online
