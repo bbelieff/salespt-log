@@ -91,6 +91,40 @@
     display: flex; align-items: center; justify-content: center;
     position: relative;
     padding: 48px 0;
+    --r: min(140px, 38vw);            /* 이모지 반지름 */
+    --r-d: calc(var(--r) * 0.707);    /* 45° 대각선 성분 */
+  }
+
+  /* ═════ 파랑 글래스 도넛 — 이모지가 그 안에 떠 있음 ═════ */
+  .glass-donut {
+    position: absolute;
+    width: calc(var(--r) * 2 + 100px);
+    height: calc(var(--r) * 2 + 100px);
+    border-radius: 50%;
+    background: linear-gradient(135deg,
+      rgba(147, 197, 253, 0.35) 0%,
+      rgba(96, 165, 250, 0.20) 50%,
+      rgba(191, 219, 254, 0.40) 100%);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 12px 40px rgba(59, 130, 246, 0.18),
+      0 4px 12px rgba(59, 130, 246, 0.10),
+      inset 0 1px 1px rgba(255, 255, 255, 0.6);
+    /* 도넛 모양: 가운데 구멍 = 이모지 안쪽 경계 */
+    mask: radial-gradient(circle at center,
+      transparent calc(var(--r) - 44px),
+      black calc(var(--r) - 42px));
+    -webkit-mask: radial-gradient(circle at center,
+      transparent calc(var(--r) - 44px),
+      black calc(var(--r) - 42px));
+    pointer-events: none;
+    animation: donutPulse 6s ease-in-out infinite;
+  }
+  @keyframes donutPulse {
+    0%, 100% { transform: scale(1); opacity: 0.95; }
+    50%      { transform: scale(1.02); opacity: 1; }
   }
   .logo-aura {
     position: absolute;
@@ -123,9 +157,9 @@
     filter: drop-shadow(0 8px 20px rgba(0,0,0,0.18));
   }
   @keyframes emojiPop {
-    0%   { opacity: 0; transform: scale(0) rotate(-180deg); }
-    60%  { opacity: 1; transform: scale(1.15) rotate(20deg); }
-    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    0%   { opacity: 0; transform: scale(0); }
+    60%  { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
   }
   @keyframes emojiFloat {
     0%, 100% { translate: 0 0; }
@@ -138,20 +172,15 @@
     margin-left: -22px; margin-top: -22px;
   }
 
-  /* 로고 둘러 8방향 원형 배치 — 매 45°
-     반지름 = min(140px, 38vw) — 모바일에서도 화면 안에 들어옴 */
-  .emoji-orbit {
-    --r: min(140px, 38vw);
-    --d: calc(var(--r) * 0.707);  /* 45° 대각선 */
-  }
-  .e1 { top: calc(50% - var(--r));  left: 50%;                       animation-delay: 2.0s, 2.5s; animation-duration: 0.8s, 4s; }
-  .e2 { top: calc(50% - var(--d));  left: calc(50% + var(--d));      animation-delay: 2.2s, 3.5s; animation-duration: 0.8s, 5s; }
-  .e3 { top: 50%;                   left: calc(50% + var(--r));      animation-delay: 2.4s, 4.0s; animation-duration: 0.8s, 4.5s; }
-  .e4 { top: calc(50% + var(--d));  left: calc(50% + var(--d));      animation-delay: 2.6s, 4.5s; animation-duration: 0.8s, 5.5s; }
-  .e5 { top: calc(50% + var(--r));  left: 50%;                       animation-delay: 2.8s, 5.0s; animation-duration: 0.8s, 4s; }
-  .e6 { top: calc(50% + var(--d));  left: calc(50% - var(--d));      animation-delay: 3.0s, 5.5s; animation-duration: 0.8s, 5s; }
-  .e7 { top: 50%;                   left: calc(50% - var(--r));      animation-delay: 3.2s, 6.0s; animation-duration: 0.8s, 4.5s; }
-  .e8 { top: calc(50% - var(--d));  left: calc(50% - var(--d));      animation-delay: 3.4s, 6.5s; animation-duration: 0.8s, 5s; }
+  /* 로고 둘러 8방향 원형 배치 — 매 45° (--r/--r-d 는 .logo-stage 에서 정의) */
+  .e1 { top: calc(50% - var(--r));    left: 50%;                       animation-delay: 2.0s, 2.5s; animation-duration: 0.8s, 4s; }
+  .e2 { top: calc(50% - var(--r-d));  left: calc(50% + var(--r-d));    animation-delay: 2.2s, 3.5s; animation-duration: 0.8s, 5s; }
+  .e3 { top: 50%;                     left: calc(50% + var(--r));      animation-delay: 2.4s, 4.0s; animation-duration: 0.8s, 4.5s; }
+  .e4 { top: calc(50% + var(--r-d));  left: calc(50% + var(--r-d));    animation-delay: 2.6s, 4.5s; animation-duration: 0.8s, 5.5s; }
+  .e5 { top: calc(50% + var(--r));    left: 50%;                       animation-delay: 2.8s, 5.0s; animation-duration: 0.8s, 4s; }
+  .e6 { top: calc(50% + var(--r-d));  left: calc(50% - var(--r-d));    animation-delay: 3.0s, 5.5s; animation-duration: 0.8s, 5s; }
+  .e7 { top: 50%;                     left: calc(50% - var(--r));      animation-delay: 3.2s, 6.0s; animation-duration: 0.8s, 4.5s; }
+  .e8 { top: calc(50% - var(--r-d));  left: calc(50% - var(--r-d));    animation-delay: 3.4s, 6.5s; animation-duration: 0.8s, 5s; }
 
   /* 로고 */
   .logo-hero {
@@ -308,6 +337,7 @@
 
   <div class="logo-stage" id="logoStage">
     <div class="logo-aura"></div>
+    <div class="glass-donut"></div>
 
     <!-- 5탭 3D 이모지 -->
     <div class="emoji-orbit e1" data-tab="컨택관리">
