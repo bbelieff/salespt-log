@@ -15,7 +15,7 @@
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { adminEmails } from "@/config";
-import { findUserByEmail } from "@/repo/users";
+import { findUserByEmail, parseAssignedTrainers } from "@/repo/users";
 
 const AS_COOKIE = "salespt_as";
 
@@ -53,7 +53,14 @@ export async function getEffectiveRole(
   return { role: u.role, status: u.status };
 }
 
-/** impersonation 권한 게이트. */
+/**
+ * impersonation 권한 게이트.
+ *   - 본인 (self): OK
+ *   - admin: 누구든
+ *   - active trainer: 자기가 (다중) 담당 매핑에 포함된 trainee 만
+ *
+ * 2026-05-11: 단일 매칭 (===) → parseAssignedTrainers().includes() 로 수정.
+ */
 export async function canImpersonate(
   sessionEmail: string,
   targetEmail: string,
@@ -64,7 +71,9 @@ export async function canImpersonate(
   if (!session || session.role !== "trainer" || session.status !== "active") return false;
   const target = await findUserByEmail(targetEmail);
   if (!target || target.role !== "trainee") return false;
-  return target.assignedTrainer.toLowerCase() === sessionEmail.toLowerCase();
+  return parseAssignedTrainers(target.assignedTrainer).includes(
+    sessionEmail.toLowerCase(),
+  );
 }
 
 /** 현재 작업 대상 — impersonation 적용. 미인증 시 throw. */
