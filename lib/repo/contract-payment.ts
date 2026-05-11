@@ -23,9 +23,47 @@ import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { sheetsClient } from "./sheets-client";
 
 const CFG = SHEET_RANGES.contractPayment;
-const TAB = CFG.tab;
-const FIRST_DATA_ROW = CFG.firstDataRow;
-const RANGE_ALL = `${tabRef(TAB)}!A${FIRST_DATA_ROW}:AD`;
+
+/**
+ * 02 계약수납 탭 alias.
+ * 7기 양식: `02 계약수납관리` (R1=비고, R2~R5=헤더+예시, R6~ 실데이터)
+ * 6기 양식: `02 계약관리`   (R1~R4=헤더+예시, R5~ 실데이터)
+ * 두 양식의 컬럼 의미·순서는 완전 동일 — 첫 데이터 행 위치만 1 시프트.
+ */
+const TAB_ALIASES: ReadonlyArray<{ tab: string; firstDataRow: number }> = [
+  { tab: CFG.tab, firstDataRow: CFG.firstDataRow }, // 7기 (코드 기본)
+  { tab: "02 계약관리", firstDataRow: 5 },           // 6기 (legacy)
+];
+
+const layoutCache = new Map<string, { tab: string; firstDataRow: number }>();
+
+/**
+ * spreadsheetId 의 02 탭 layout 동적 결정.
+ * 시트 메타 1회 조회 후 in-process Map 캐시 (프로세스 lifetime).
+ */
+async function resolveLayout(
+  spreadsheetId: string,
+): Promise<{ tab: string; firstDataRow: number }> {
+  const cached = layoutCache.get(spreadsheetId);
+  if (cached) return cached;
+  const meta = await sheetsClient().spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets(properties(title))",
+  });
+  const titles = new Set(
+    (meta.data.sheets ?? []).map((s) => s.properties?.title ?? ""),
+  );
+  for (const alias of TAB_ALIASES) {
+    if (titles.has(alias.tab)) {
+      layoutCache.set(spreadsheetId, alias);
+      return alias;
+    }
+  }
+  // 둘 다 없으면 기본값 — 호출 시 sheets API 가 에러로 알려줌.
+  const fallback = TAB_ALIASES[0]!;
+  layoutCache.set(spreadsheetId, fallback);
+  return fallback;
+}
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -194,11 +232,13 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
 
 // ── Public API ─────────────────────────────────────────────────
 
-/** 02 계약수납관리 모든 행 read (3행~). */
+/** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
+  const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
+  const range = `${tabRef(tab)}!A${firstDataRow}:AD`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
-    range: RANGE_ALL,
+    range,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
@@ -206,7 +246,7 @@ export async function readAll(spreadsheetId: string): Promise<ContractPayment[]>
   const out: ContractPayment[] = [];
   for (let i = 0; i < values.length; i++) {
     const r = values[i] ?? [];
-    const cp = rowToCP(r, FIRST_DATA_ROW + i);
+    const cp = rowToCP(r, firstDataRow + i);
     if (cp) out.push(cp);
   }
   return out;
@@ -217,8 +257,9 @@ export async function readAll(spreadsheetId: string): Promise<ContractPayment[]>
  * append용 — 합계 행 없는 시트라 단순.
  */
 async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
+  const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
   // C(계약일) 컬럼만 읽어서 빈 행 탐색 (자동 연동 필드라 데이터 행 식별 OK)
-  const range = `${tabRef(TAB)}!C${FIRST_DATA_ROW}:C`;
+  const range = `${tabRef(tab)}!C${firstDataRow}:C`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -227,10 +268,10 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
   for (let i = 0; i < values.length; i++) {
     const v = values[i]?.[0];
     if (v === undefined || v === null || String(v).trim() === "") {
-      return FIRST_DATA_ROW + i;
+      return firstDataRow + i;
     }
   }
-  return FIRST_DATA_ROW + values.length;
+  return firstDataRow + values.length;
 }
 
 /**
@@ -242,7 +283,8 @@ async function findRowByLink(
   계약일: string,
   업체명: string,
 ): Promise<number | null> {
-  const range = `${tabRef(TAB)}!C${FIRST_DATA_ROW}:D`;
+  const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
+  const range = `${tabRef(tab)}!C${firstDataRow}:D`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -255,7 +297,7 @@ async function findRowByLink(
     const cellDate = serialToISODate(r[0]);
     const cellName = toStr(r[1]).trim();
     if (cellDate === 계약일 && cellName === 업체명.trim()) {
-      return FIRST_DATA_ROW + i;
+      return firstDataRow + i;
     }
   }
   return null;
@@ -274,7 +316,8 @@ export async function syncFeeFromContract(
 ): Promise<{ row: number } | null> {
   const row = await findRowByLink(spreadsheetId, data.계약일, data.업체명);
   if (!row) return null;
-  const range = `${tabRef(TAB)}!E${row}`;
+  const { tab } = await resolveLayout(spreadsheetId);
+  const range = `${tabRef(tab)}!E${row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range,
@@ -293,7 +336,8 @@ export async function appendFromContract(
   data: { 계약일: string; 업체명: string; 수임비: number },
 ): Promise<{ row: number }> {
   const row = await findFirstEmptyRow(spreadsheetId);
-  const range = `${tabRef(TAB)}!C${row}:E${row}`;
+  const { tab } = await resolveLayout(spreadsheetId);
+  const range = `${tabRef(tab)}!C${row}:E${row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range,
@@ -317,7 +361,8 @@ export async function updateUserFields(
   const fullRow = cpToRow(validated);
   // F~AD = idx 5~29 (25 columns: 7 체크박스 + 18 슬롯 필드)
   const userArea = fullRow.slice(5, 30);
-  const range = `${tabRef(TAB)}!F${validated.row}:AD${validated.row}`;
+  const { tab } = await resolveLayout(spreadsheetId);
+  const range = `${tabRef(tab)}!F${validated.row}:AD${validated.row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range,
@@ -335,10 +380,11 @@ export async function clearRow(
   spreadsheetId: string,
   row: number,
 ): Promise<void> {
-  if (row < FIRST_DATA_ROW) {
+  const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
+  if (row < firstDataRow) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(TAB)}!C${row}:AD${row}`;
+  const range = `${tabRef(tab)}!C${row}:AD${row}`;
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,
