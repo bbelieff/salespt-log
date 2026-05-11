@@ -13,8 +13,8 @@ import {
 } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
-// 승인·배정 액션 직후 즉시 반영을 위해 강제 동적 렌더.
-export const dynamic = "force-dynamic";
+// 30s 캐시 + 액션 endpoint 에서 revalidatePath 로 즉시 무효화.
+export const revalidate = 30;
 
 export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();

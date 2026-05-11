@@ -1,6 +1,11 @@
 /**
- * ImpersonationBanner — admin 페이지 상단에 현재 impersonation 대상 표시 + 해제 버튼.
- * 클라이언트 컴포넌트 (POST /api/admin/switch + router.refresh).
+ * ImpersonationBanner — /admin 랜딩 상단에 현재 impersonation 대상 표시.
+ *
+ * 주 액션: 배너 클릭 → /dashboard (그 시트로 진입).
+ * 부 액션: 우측 작은 ✕ → 해제 (POST /api/admin/switch null).
+ *
+ * 2026-05-11: 이전엔 "해제" 메인 버튼만 있어 쓸모 적었음. 클릭으로 그 시트로
+ * 바로 진입하는 게 본 의도.
  */
 "use client";
 
@@ -17,7 +22,12 @@ export default function ImpersonationBanner({
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
-  async function clear() {
+  function visit() {
+    router.push("/dashboard");
+  }
+
+  async function clear(e: React.MouseEvent) {
+    e.stopPropagation();
     setBusy(true);
     try {
       await fetch("/api/admin/switch", {
@@ -33,20 +43,31 @@ export default function ImpersonationBanner({
   }
 
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={visit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") visit();
+      }}
+      className="mb-4 flex cursor-pointer items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm transition-all hover:border-red-300 hover:bg-red-100"
+      title="클릭하여 이 시트로 진입"
+    >
       <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
         Impersonating
       </span>
       <span className="min-w-0 flex-1 truncate text-red-800">
-        현재 <strong>{impersonating}</strong> 으로 시트 보기 중
+        <strong>{impersonating}</strong> 으로 시트 이동 →
       </span>
       <button
         type="button"
         onClick={clear}
         disabled={busy}
-        className="shrink-0 rounded-full border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+        aria-label="impersonation 해제"
+        title="해제 (본인 모드로 돌아가기)"
+        className="shrink-0 rounded-full border border-red-200 bg-white px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
       >
-        {busy ? "..." : "해제"}
+        {busy ? "…" : "✕"}
       </button>
     </div>
   );

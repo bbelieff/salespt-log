@@ -4,6 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { approveTrainer, findUserByEmail } from "@/repo/users";
 
 export async function POST(req: Request) {
@@ -17,5 +18,6 @@ export async function POST(req: Request) {
   const u = await findUserByEmail(target);
   if (!u || u.role !== "trainer") return NextResponse.json({ error: "not_trainer" }, { status: 404 });
   await approveTrainer(target);
+  revalidateAdminPages();
   return NextResponse.json({ approved: target });
 }

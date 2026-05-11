@@ -4,6 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { deleteUserByEmail, findUserByEmail } from "@/repo/users";
 
 export async function POST(req: Request) {
@@ -19,5 +20,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not_trainer" }, { status: 404 });
   }
   await deleteUserByEmail(target);
+  revalidateAdminPages();
   return NextResponse.json({ rejected: target });
 }

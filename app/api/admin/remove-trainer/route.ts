@@ -10,6 +10,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { removeTrainerCompletely, findUserByEmail } from "@/repo/users";
 
 export async function POST(req: Request) {
@@ -29,5 +30,6 @@ export async function POST(req: Request) {
   }
 
   await removeTrainerCompletely(target);
+  revalidateAdminPages();
   return NextResponse.json({ removed: target });
 }
