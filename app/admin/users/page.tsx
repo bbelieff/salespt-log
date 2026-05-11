@@ -1,21 +1,36 @@
 /**
- * /admin/users — Admin 사용자 선택 (impersonation 진입점).
+ * /admin/users — 수강생 관리 (Admin 전용).
  *
- * 기존 /admin 의 기능을 이 경로로 이동 — /admin 은 두 분기 랜딩이 됨 (PR ε).
+ * 한 화면에서:
+ *   - 등록된 수강생 전체 (기수별 그룹)
+ *   - 각자: 이름·이메일·기수·담당 트레이너(이름들)·시작일·종강일
+ *   - "시트 열기" 버튼 → impersonation 진입.
  */
 import { redirect } from "next/navigation";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { listAllUsers } from "@/repo/users";
-import { enrichUsersWithSheetCohort } from "@/service";
+import { enrichUsersWithDates } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !isAdminEmail(sessionEmail)) {
     redirect("/");
   }
-  const registryUsers = await listAllUsers();
-  // 표시 라벨 SSOT: 각 사용자 개인 시트 B3 (cohort). registry 값은 fallback (PR β).
-  const users = await enrichUsersWithSheetCohort(registryUsers);
-  return <AdminUserPicker users={users} sessionEmail={sessionEmail} />;
+  const all = await listAllUsers();
+  const trainees = all.filter((u) => u.role === "trainee");
+  const activeTrainers = all.filter(
+    (u) => u.role === "trainer" && u.status === "active",
+  );
+  // 표시 라벨 SSOT: 각 수강생 개인 시트 B3/C3/O1/O2.
+  const enriched = await enrichUsersWithDates(trainees);
+  return (
+    <AdminUserPicker
+      users={enriched}
+      activeTrainers={activeTrainers}
+      sessionEmail={sessionEmail}
+    />
+  );
 }

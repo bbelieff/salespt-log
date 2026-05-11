@@ -2,15 +2,21 @@
  * POST /api/admin/switch  → impersonation cookie set/unset.
  *
  * Body: { email: string | null }
- *   - email = "x@y.com"  → admin이 그 사용자를 보고 편집 (cookie set)
- *   - email = null       → impersonation 해제 (admin 본인으로 돌아감)
+ *   - email = "x@y.com"  → 그 사용자를 보고 편집 (cookie set)
+ *   - email = null       → impersonation 해제 (본인으로 돌아감)
  *
- * Admin only. 비-Admin 은 403.
+ * 권한 (canImpersonate):
+ *   - 본인(self) → 항상 OK (의미는 없지만 noop)
+ *   - admin → 누구든
+ *   - active trainer → 자기가 담당하는 trainee 만
+ *
+ * 2026-05-11: 이전엔 admin only 였음. 트레이너가 본인 담당 trainee 시트 못 열던
+ * 버그 fix — canImpersonate() 위임.
  */
 import { NextResponse } from "next/server";
 import {
   getSessionEmail,
-  isAdminEmail,
+  canImpersonate,
   setImpersonation,
 } from "@/auth/identity";
 import { findUserByEmail } from "@/repo/users";
@@ -19,9 +25,6 @@ export async function POST(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
-  if (!isAdminEmail(sessionEmail)) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   let body: { email?: string | null } = {};
@@ -37,10 +40,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ impersonating: null });
   }
 
-  // 대상 등록 여부 검증 (registry 에 있어야 함)
+  // 대상 등록 여부
   const user = await findUserByEmail(String(target));
   if (!user) {
     return NextResponse.json({ error: "target_not_registered" }, { status: 404 });
+  }
+
+  // 권한 검사 (admin / 담당 trainer / self)
+  const allowed = await canImpersonate(sessionEmail, user.email);
+  if (!allowed) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   await setImpersonation(user.email);

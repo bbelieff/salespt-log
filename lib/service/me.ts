@@ -109,6 +109,41 @@ export async function enrichUsersWithSheetCohort<T extends { cohort: string; nam
   return Promise.all(tasks);
 }
 
+/**
+ * enrichUsersWithSheetCohort 의 확장 — cohort/name 외 시작일/종강일(O1/O2)
+ * 까지 채움. 수강생관리 화면(/admin/users)이 한 줄 카드에 모든 정보를 표시할 때
+ * 사용. 동일하게 cachedReadBundle 재활용 (별도 API 호출 없음).
+ */
+export interface EnrichedUserWithDates {
+  cohort: string;
+  name: string;
+  spreadsheetId: string;
+  courseStartISO: string;
+  graduationISO: string;
+}
+
+export async function enrichUsersWithDates<
+  T extends { cohort: string; name: string; spreadsheetId: string },
+>(users: T[]): Promise<Array<T & { courseStartISO: string; graduationISO: string }>> {
+  const tasks = users.map(async (u) => {
+    const defaults = { ...u, courseStartISO: "", graduationISO: "" };
+    if (!u.spreadsheetId) return defaults;
+    try {
+      const bundle = await cachedReadBundle(u.spreadsheetId);
+      return {
+        ...u,
+        cohort: bundle.cohort || u.cohort,
+        name: bundle.name || u.name,
+        courseStartISO: toISO(bundle.courseStart),
+        graduationISO: toISO(bundle.graduation),
+      };
+    } catch {
+      return defaults;
+    }
+  });
+  return Promise.all(tasks);
+}
+
 export async function loadMe(email: string): Promise<MeProfile> {
   const user = await findUserByEmail(email);
   if (!user) {
