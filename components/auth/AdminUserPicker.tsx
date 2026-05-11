@@ -45,11 +45,30 @@ function parseAssigned(field: string | undefined): string[] {
   );
 }
 
-/** "2026-04-10" → "4/10". 빈 값 → "—". */
-function fmtDate(iso: string | undefined): string {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "—";
-  const parts = iso.split("-");
-  return `${parseInt(parts[1]!)}/${parseInt(parts[2]!)}`;
+/** "2026-04-10" → "26/04/10". 빈 값 → null. */
+function fmtDateYY(iso: string | undefined): string | null {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [y, m, d] = iso.split("-");
+  return `${y!.slice(-2)}/${m}/${d}`;
+}
+
+/** 기수 진행률 (%) + D-day 계산. start~end 사이 today 기준. */
+function cohortProgress(
+  startISO: string | undefined,
+  endISO: string | undefined,
+): { pct: number | null; dday: number | null } {
+  if (!startISO || !endISO) return { pct: null, dday: null };
+  const start = new Date(startISO).getTime();
+  const end = new Date(endISO).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    return { pct: null, dday: null };
+  }
+  const now = Date.now();
+  const totalMs = end - start;
+  const elapsedMs = Math.max(0, Math.min(totalMs, now - start));
+  const pct = Math.round((elapsedMs / totalMs) * 100);
+  const dday = Math.ceil((end - now) / 86_400_000);
+  return { pct, dday };
 }
 
 export default function AdminUserPicker({
@@ -243,10 +262,38 @@ function CohortSection({
   onPick: (email: string) => void;
   archived?: boolean;
 }) {
+  // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
+  const rep = list.find((u) => u.courseStartISO && u.graduationISO);
+  const start = fmtDateYY(rep?.courseStartISO);
+  const end = fmtDateYY(rep?.graduationISO);
+  const { pct, dday } = cohortProgress(
+    rep?.courseStartISO,
+    rep?.graduationISO,
+  );
   return (
     <section>
-      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-        {cohort}기 · {list.length}명{archived && " (보관)"}
+      <h2 className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs font-bold uppercase tracking-wider text-gray-500">
+        <span>
+          {cohort}기 · {list.length}명{archived && " (보관)"}
+        </span>
+        {start && end && (
+          <span className="font-normal normal-case text-gray-400">
+            개강 <span className="font-semibold text-gray-600">{start}</span>{" "}
+            ~ 종강 <span className="font-semibold text-gray-600">{end}</span>
+            {pct !== null && (
+              <>
+                {" · "}진행률{" "}
+                <span className="font-semibold text-gray-600">{pct}%</span>
+                {dday !== null && (
+                  <span className="ml-1 font-semibold text-brand-red">
+                    D{dday >= 0 ? "-" : "+"}
+                    {Math.abs(dday)}
+                  </span>
+                )}
+              </>
+            )}
+          </span>
+        )}
       </h2>
       <ul className="space-y-2">
         {list.map((u) => {
@@ -267,25 +314,9 @@ function CohortSection({
                   </span>
                   <span className="text-[11px] text-gray-400">{u.email}</span>
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
-                  <span>
-                    <span className="text-gray-400">담당</span>{" "}
-                    <span className="font-semibold">{trainerNames}</span>
-                  </span>
-                  <span className="text-gray-300">·</span>
-                  <span>
-                    <span className="text-gray-400">시작</span>{" "}
-                    <span className="font-semibold">
-                      {fmtDate(u.courseStartISO)}
-                    </span>
-                  </span>
-                  <span className="text-gray-300">·</span>
-                  <span>
-                    <span className="text-gray-400">종강</span>{" "}
-                    <span className="font-semibold">
-                      {fmtDate(u.graduationISO)}
-                    </span>
-                  </span>
+                <div className="mt-1.5 text-[11px] text-gray-600">
+                  <span className="text-gray-400">담당</span>{" "}
+                  <span className="font-semibold">{trainerNames}</span>
                 </div>
               </div>
               <button
