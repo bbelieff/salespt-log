@@ -30,7 +30,12 @@ export async function POST(req: Request) {
   const { cohort, name } = (body ?? {}) as { cohort?: unknown; name?: unknown };
   const cohortStr = String(cohort ?? "").trim();
   const nameStr = String(name ?? "").trim();
-  if (!cohortStr || !nameStr || !/^\d+$/.test(cohortStr.replace(/기\s*$/, ""))) {
+  // 수강생: 숫자. 트레이너: "T"/"t" (claimAccount 가 cohort=T 면 trainer pending 으로 등록).
+  if (
+    !cohortStr ||
+    !nameStr ||
+    !/^(\d+|[Tt])$/.test(cohortStr.replace(/기\s*$/, ""))
+  ) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
 
