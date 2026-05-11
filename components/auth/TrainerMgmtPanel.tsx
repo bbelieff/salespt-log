@@ -18,7 +18,6 @@ import {
   SectionAssign,
   SectionManagement,
   SectionTraineeList,
-  SectionTrainerList,
 } from "./TrainerMgmtSections";
 
 export default function TrainerMgmtPanel({
@@ -137,6 +136,11 @@ export default function TrainerMgmtPanel({
           }}
         />
 
+        {/* 트레이너 명단 섹션 제거 — SectionAssign 카드가 동일 정보(트레이너+담당
+            수강생 트리)를 담고 있고 편집까지 가능. 중복 UI 정리. */}
+        <SectionTraineeList trainees={trainees} activeTrainers={activeTrainers} />
+
+        {/* 관리부서를 맨 아래로 — 일상 작업(승인·배정)에서 손이 닿을 빈도 낮음. */}
         <SectionManagement
           staff={managementStaff}
           busy={busy}
@@ -152,11 +156,6 @@ export default function TrainerMgmtPanel({
             call("/api/admin/remove-trainer", { email }, `remove:${email}`);
           }}
         />
-
-        {/* 순서: 트레이너 명단 먼저 → 수강생 명단 */}
-        <SectionTrainerList trainers={activeTrainers} trainees={trainees} />
-
-        <SectionTraineeList trainees={trainees} activeTrainers={activeTrainers} />
       </div>
     </main>
   );
