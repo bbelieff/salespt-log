@@ -9,7 +9,7 @@
  */
 import { redirect } from "next/navigation";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
-import { adminEmails } from "@/config";
+import { adminEmails, adminNames } from "@/config";
 import { listPendingTrainers, listAllUsers } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
@@ -26,20 +26,29 @@ export default async function AdminTrainersPage() {
 
   // ADMIN_EMAILS 중 registry row 가 없는 경우는 가짜 row 합성 — 사용자가 명단
   // 에서 본인을 못 보는 경우 방지 (이전: leadbzcenter, xorud910115 등 미등록).
-  const adminLc = adminEmails(); // 이미 lowercase
+  const adminLc = adminEmails();
+  const adminNameMap = adminNames(); // env ADMIN_NAMES 매핑.
   const allEmailsLc = new Set(all.map((u) => u.email.toLowerCase()));
   const synthAdmins = adminLc
     .filter((e) => !allEmailsLc.has(e))
     .map((e) => ({
       email: e,
       cohort: "",
-      name: e.split("@")[0] || e,
+      // 이름 우선순위: ADMIN_NAMES env → email split @ before fallback.
+      name: adminNameMap[e] ?? e.split("@")[0] ?? e,
       spreadsheetId: "",
       role: "admin" as const,
       status: "active" as const,
       assignedTrainer: "",
     }));
-  const fullList = [...all, ...synthAdmins];
+  // registry 에 있는 admin row 도 ADMIN_NAMES 우선 (registry name 이 빈 경우 fallback).
+  const fullList = [...all, ...synthAdmins].map((u) => {
+    const lc = u.email.toLowerCase();
+    if (!adminLc.includes(lc)) return u;
+    const overrideName = adminNameMap[lc];
+    if (!overrideName) return u;
+    return { ...u, name: u.name || overrideName };
+  });
 
   // 활성 트레이너 풀:
   //   - role==="trainer" + status==="active"  (정식 트레이너)

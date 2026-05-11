@@ -61,20 +61,42 @@ export default function TopHeader({
           justify-between으로 4 그룹이 row를 균등 분할.
           그룹 간 간격은 자동(remaining space), 그룹 내부(②)만 gap-1.5로 타이트 묶음. */}
       <header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
-        {/* ① 로고 — 클릭 시 로그아웃 팝업 토글 */}
-        <button
-          type="button"
-          onClick={() => setPopupOpen((v) => !v)}
-          className="shrink-0 rounded transition-transform active:scale-95"
-          aria-label="계정 메뉴 열기"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/salespt-logo.png"
-            alt="세일즈PT"
-            className="h-6 w-auto object-contain sm:h-7"
-          />
-        </button>
+        {/* ① 로고 — 클릭 시 로그아웃 팝업 토글.
+              sessionRole 이 admin/trainer 면 로고 옆에 작은 "← 메뉴" 백버튼 추가
+              (impersonation 중에도 마스터 메뉴로 빠르게 복귀 가능). */}
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setPopupOpen((v) => !v)}
+            className="rounded transition-transform active:scale-95"
+            aria-label="계정 메뉴 열기"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/salespt-logo.png"
+              alt="세일즈PT"
+              className="h-6 w-auto object-contain sm:h-7"
+            />
+          </button>
+          {me.data?.sessionRole === "admin" && (
+            <Link
+              href="/admin"
+              aria-label="마스터 메뉴로 돌아가기"
+              className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-100 sm:text-xs"
+            >
+              ← 메뉴
+            </Link>
+          )}
+          {me.data?.sessionRole === "trainer" && (
+            <Link
+              href="/trainer"
+              aria-label="트레이너 페이지로 돌아가기"
+              className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-100 sm:text-xs"
+            >
+              ← 메뉴
+            </Link>
+          )}
+        </div>
 
         {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트) */}
         <div className="flex min-w-0 items-center gap-1.5">
