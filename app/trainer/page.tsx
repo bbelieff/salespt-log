@@ -7,7 +7,11 @@
  * 관리하지만, 페이지 레벨 RSC 캐시 때문에 안 보이는 케이스 방지.
  */
 import { redirect } from "next/navigation";
-import { getSessionEmail, getEffectiveRole, isAdminEmail } from "@/auth/identity";
+import {
+  getSessionEmail,
+  getEffectiveRole,
+  canViewAdminPages,
+} from "@/auth/identity";
 import { findUserByEmail, listTraineesForTrainer } from "@/repo/users";
 import { enrichUsersWithSheetCohort } from "@/service";
 import { cohortMasterSheetId } from "@/config";
@@ -58,13 +62,17 @@ export default async function TrainerPage() {
     ? `https://docs.google.com/spreadsheets/d/${masterId}/edit`
     : "";
 
+  // 관리자(admin) 또는 관리부서(management) 면 마스터 메뉴 진입 가능.
+  // 기존엔 isAdminEmail 만 체크해서 관리부서/일관성 깨짐 → canViewAdminPages 로 통일.
+  const canBackToAdmin = await canViewAdminPages(sessionEmail);
+
   return (
     <TrainerLanding
       sessionEmail={sessionEmail}
       trainerName={trainer?.name ?? sessionEmail}
       trainees={trainees}
       masterSheetUrl={masterSheetUrl}
-      isAdmin={isAdminEmail(sessionEmail)}
+      canBackToAdmin={canBackToAdmin}
     />
   );
 }
