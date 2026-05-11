@@ -60,12 +60,11 @@ export async function GET() {
       sessionRole,
       impersonating: admin && activeEmail !== sessionEmail ? activeEmail : null,
     });
-    // 브라우저/CDN private cache: 30초 fresh + 5분 stale-while-revalidate.
-    // 프로필은 거의 변하지 않으므로 페이지 전환 시 304/메모리 캐시로 즉시 응답.
-    res.headers.set(
-      "Cache-Control",
-      "private, max-age=30, stale-while-revalidate=300",
-    );
+    // 브라우저 HTTP 캐시 비활성 (no-store) — impersonation 변경 시 React Query
+    // invalidateQueries 만으로는 브라우저 캐시를 못 비워 옛 사용자 응답이 반환
+    // 되던 버그 fix. 서버 측에서는 lib/repo unstable_cache + lib/service
+    // cachedReadBundle 가 충분히 빠른 응답 보장 (~10-50ms).
+    res.headers.set("Cache-Control", "private, no-store, must-revalidate");
     return res;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
