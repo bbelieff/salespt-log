@@ -1275,6 +1275,7 @@ components/dashboard/
 |---|---|
 | **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
 | **AdminUserPicker** | Admin 전용 사용자 선택 화면. Props: `users: User[]`, `sessionEmail: string`. 기수별 그룹핑 + 검색. 클릭 시 POST /api/admin/switch → /dashboard. |
+| **TrainerLanding** | 트레이너 메인. Props: `sessionEmail`, `trainerName`, `trainees: User[]`, `masterSheetUrl`, `isAdmin`. 담당 수강생 목록 + 마스터 시트 링크. 클릭 시 impersonation 진입. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 
 ---

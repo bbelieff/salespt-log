@@ -1,95 +1,156 @@
 /**
- * Layer: repo — 마스터 레지스트리(수강생 ↔ 시트 매핑) I/O.
+ * Layer: repo — 마스터 레지스트리 (사용자 + 시트 매핑 + 역할 + 상태).
+ *
+ * 시트 컬럼 (확장 — 2026-05-11 role-system PR):
+ *   A: email
+ *   B: cohort        ("7" / "T" / "")
+ *   C: name
+ *   D: spreadsheetId (trainee 만 채움)
+ *   E: role          ("trainee" / "trainer" / "admin")
+ *   F: status        ("active" / "pending")
+ *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
  */
 import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName } from "./drive-client";
 
-/** users 탭 헤더: email | cohort | name | spreadsheetId | role */
-const HEADER_RANGE = (tab: string) => `${tab}!A1:E1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:E`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:G1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:G`;
+
+function parseRow(r: unknown[]): User | null {
+  const parsed = User.safeParse({
+    email: r[0],
+    cohort: r[1] ?? "",
+    name: r[2] ?? "",
+    spreadsheetId: r[3] ?? "",
+    role: (r[4] as User["role"]) ?? "trainee",
+    status: (r[5] as User["status"]) ?? "active",
+    assignedTrainer: r[6] ?? "",
+  });
+  return parsed.success ? parsed.data : null;
+}
 
 export async function findUserByEmail(email: string): Promise<User | null> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   for (const r of rows) {
-    if (r[0]?.toLowerCase() === email.toLowerCase()) {
-      const parsed = User.safeParse({
-        email: r[0],
-        cohort: r[1] ?? "",
-        name: r[2] ?? "",
-        spreadsheetId: r[3] ?? "",
-        role: (r[4] as User["role"]) ?? "trainee",
-      });
-      return parsed.success ? parsed.data : null;
+    if (typeof r[0] === "string" && r[0].toLowerCase() === email.toLowerCase()) {
+      return parseRow(r);
     }
   }
   return null;
 }
 
-/** Admin 전용: 등록된 모든 사용자 (정렬: 기수 desc, 이름 asc). */
+/** 전체 사용자 (정렬: 트레이너/admin 먼저, 그 다음 기수 desc, 이름 asc) */
 export async function listAllUsers(): Promise<User[]> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const users: User[] = [];
   for (const r of rows) {
-    if (!r[0]) continue; // email 없으면 미클레임 row (skip)
-    const parsed = User.safeParse({
-      email: r[0],
-      cohort: r[1] ?? "",
-      name: r[2] ?? "",
-      spreadsheetId: r[3] ?? "",
-      role: (r[4] as User["role"]) ?? "trainee",
-    });
-    if (parsed.success) users.push(parsed.data);
+    if (!r[0]) continue;
+    const u = parseRow(r);
+    if (u) users.push(u);
   }
+  const rolePriority: Record<User["role"], number> = { admin: 0, trainer: 1, trainee: 2 };
   users.sort((a, b) => {
+    if (rolePriority[a.role] !== rolePriority[b.role]) {
+      return rolePriority[a.role] - rolePriority[b.role];
+    }
     const ca = parseInt(String(a.cohort).replace(/기\s*$/, "")) || 0;
     const cb = parseInt(String(b.cohort).replace(/기\s*$/, "")) || 0;
-    if (ca !== cb) return cb - ca; // 최신 기수 먼저
+    if (ca !== cb) return cb - ca;
     return a.name.localeCompare(b.name, "ko");
   });
   return users;
 }
 
-export async function listCohortMembers(cohort: string): Promise<User[]> {
+/** 트레이너 한 명이 담당하는 수강생 목록. */
+export async function listTraineesForTrainer(trainerEmail: string): Promise<User[]> {
+  const all = await listAllUsers();
+  const lc = trainerEmail.toLowerCase();
+  return all.filter(
+    (u) => u.role === "trainee" && u.assignedTrainer.toLowerCase() === lc,
+  );
+}
+
+/** 승인 대기 중인 트레이너 목록. */
+export async function listPendingTrainers(): Promise<User[]> {
+  const all = await listAllUsers();
+  return all.filter((u) => u.role === "trainer" && u.status === "pending");
+}
+
+/**
+ * sheetRow (1-based) 의 한 컬럼만 update.
+ * 다른 컬럼은 그대로 유지 — 부분 update 안전.
+ */
+async function updateCell(
+  email: string,
+  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G",
+  value: string,
+): Promise<void> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
-  const users: User[] = [];
-  for (const r of rows) {
-    if (r[1] === cohort) {
-      const parsed = User.safeParse({
-        email: r[0],
-        cohort: r[1],
-        name: r[2] ?? "",
-        spreadsheetId: r[3] ?? "",
-        role: (r[4] as User["role"]) ?? "trainee",
+  const lc = email.toLowerCase();
+  for (let i = 0; i < rows.length; i++) {
+    if (typeof rows[i]?.[0] === "string" && (rows[i]![0] as string).toLowerCase() === lc) {
+      const sheetRow = i + 2;
+      await sheetsClient().spreadsheets.values.update({
+        spreadsheetId: reg.spreadsheetId,
+        range: `${reg.tab}!${colLetter}${sheetRow}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [[value]] },
       });
-      if (parsed.success) users.push(parsed.data);
+      return;
     }
   }
-  return users;
+  throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+}
+
+/** Admin 전용: 트레이너 승인 (status pending → active) */
+export async function approveTrainer(email: string): Promise<void> {
+  await updateCell(email, "F", "active");
+}
+
+/** Admin 전용: 수강생에게 트레이너 배정 */
+export async function assignTrainerToTrainee(
+  traineeEmail: string,
+  trainerEmail: string,
+): Promise<void> {
+  await updateCell(traineeEmail, "G", trainerEmail.toLowerCase());
+}
+
+/** Admin 전용: 역할 변경 (trainee ↔ trainer ↔ admin) */
+export async function setUserRole(email: string, role: User["role"]): Promise<void> {
+  await updateCell(email, "E", role);
 }
 
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
   const validated = User.parse(u);
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [validated.email, validated.cohort, validated.name, validated.spreadsheetId, validated.role],
+    [
+      validated.email,
+      validated.cohort,
+      validated.name,
+      validated.spreadsheetId,
+      validated.role,
+      validated.status,
+      validated.assignedTrainer,
+    ],
   ]);
 }
 
 /**
- * Drive API 파일명 검색 — 기수+이름으로 시트 찾기.
+ * Drive API 파일명 검색 — 수강생 시트 찾기.
  * 패턴: `세일즈PT_ {cohort}기 {name} 수강생 경영일지`
- *
- * 반환: spreadsheetId 또는 null (0개/복수 매칭 시 호출자가 안내).
+ * cohort=T(트레이너) 인 경우 null 반환 (검색 안 함).
  */
 export async function findSheetByCohortName(
   cohort: string,
   name: string,
 ): Promise<string | null> {
+  if (String(cohort).trim().toUpperCase() === "T") return null;
   const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
   const exactName = `세일즈PT_ ${cohortNum}기 ${cleanName} 수강생 경영일지`;
@@ -97,39 +158,40 @@ export async function findSheetByCohortName(
 }
 
 /**
- * Self-claim — registry 에서 (cohort, name) 매칭 row 의 email 컬럼 갱신.
- * 미존재 시 새 row append (Drive 검색으로 spreadsheetId 알아낸 경우).
+ * Self-claim — registry 에 (cohort, name) row 있으면 email/role/status 갱신,
+ * 없으면 새 row append.
  *
- * 동작:
- *   1. registry 에 (cohort, name) row 있으면 그 row 의 email 갱신
- *   2. 없으면 새 row append (email, cohort, name, spreadsheetId, 'trainee')
+ * 신규: trainer 모드 (cohort=T) 추가.
+ *   - 수강생: row 가 보통 트레이너에 의해 미리 만들어져 있음 (assignedTrainer 도 사전 배정)
+ *   - 트레이너: 자기 self-claim 시 row 새로 생성 (status=pending)
  */
 export async function claimRegistry(
   email: string,
   cohort: string,
   name: string,
   spreadsheetId: string,
+  role: User["role"] = "trainee",
+  status: User["status"] = "active",
 ): Promise<void> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
-  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
+  const cohortNorm = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
 
-  // (cohort, name) 매칭 row 찾기
   let matchIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i] ?? [];
     const c = String(r[1] ?? "").replace(/기\s*$/, "").trim();
     const n = String(r[2] ?? "").trim();
-    if (c === cohortNum && n === cleanName) {
+    if (c === cohortNorm && n === cleanName) {
       matchIdx = i;
       break;
     }
   }
 
   if (matchIdx >= 0) {
-    // 기존 row email 컬럼 update (A 컬럼)
-    const sheetRow = matchIdx + 2; // header 1행 + 0-index → +2
+    // 기존 row email 갱신 (역할·상태는 admin 이 별도 관리하므로 덮어쓰지 않음)
+    const sheetRow = matchIdx + 2;
     await sheetsClient().spreadsheets.values.update({
       spreadsheetId: reg.spreadsheetId,
       range: `${reg.tab}!A${sheetRow}`,
@@ -137,9 +199,8 @@ export async function claimRegistry(
       requestBody: { values: [[email]] },
     });
   } else {
-    // 새 row append
     await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-      [email, cohortNum, cleanName, spreadsheetId, "trainee"],
+      [email, cohortNorm, cleanName, spreadsheetId, role, status, ""],
     ]);
   }
 }
@@ -150,6 +211,11 @@ export async function ensureRegistryHeader(): Promise<void> {
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
   await appendRows(reg.spreadsheetId, HEADER_RANGE(reg.tab), [
-    ["email", "cohort", "name", "spreadsheetId", "role"],
+    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer"],
   ]);
+}
+
+export async function listCohortMembers(cohort: string): Promise<User[]> {
+  const all = await listAllUsers();
+  return all.filter((u) => String(u.cohort) === String(cohort) && u.role === "trainee");
 }

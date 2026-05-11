@@ -18,7 +18,8 @@ export default auth((req) => {
     pathname.startsWith("/calendar") ||
     pathname.startsWith("/payment") ||
     pathname.startsWith("/db") ||
-    pathname.startsWith("/admin");
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/trainer");
   if (isProtected && !req.auth) {
     const url = new URL("/", req.url);
     return NextResponse.redirect(url);
