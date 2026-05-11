@@ -38,6 +38,12 @@ jobs:
             npm ci --silent
             echo "::endgroup::"
             echo "::group::Building"
+            # 빌드 OOM 방지: heap 4GB + Sentry 경고 억제
+            # VPS 3.8GB RAM 이라 swap 도 활성화 권장 (수동: fallocate -l 4G /swapfile && ...)
+            export NODE_OPTIONS="--max-old-space-size=4096"
+            export SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING=1
+            # 이전 빌드 잔재 제거 (BUILD_ID 누락 방지)
+            rm -rf .next
             npm run build
             echo "::endgroup::"
             echo "::group::Restarting"
