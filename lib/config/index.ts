@@ -38,6 +38,9 @@ export const registry = () => ({
   tab: process.env.SHEETS_REGISTRY_TAB ?? "users",
 });
 
+/** registry 스프레드시트 내 cohorts 탭 이름 (기수별 active/archived 상태). */
+export const cohortsTab = (): string => process.env.SHEETS_COHORTS_TAB ?? "cohorts";
+
 /**
  * 기수 전체 현황 마스터 시트 (트레이너·관리자 조회용).
  * registry 와는 별개 — 사람·시트 매핑은 registry, 기수 단위 KPI/대시보드는 여기.
