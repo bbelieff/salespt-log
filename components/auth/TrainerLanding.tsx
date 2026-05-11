@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
   email: string;
@@ -30,6 +31,7 @@ export default function TrainerLanding({
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
 
   async function pick(email: string) {
@@ -40,6 +42,8 @@ export default function TrainerLanding({
       body: JSON.stringify({ email }),
     });
     if (res.ok) {
+      // 헤더 me 캐시 무효화 — impersonation 대상 데이터로 즉시 갱신.
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.push("/dashboard");
       router.refresh();
     } else {

@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ImpersonationBanner({
   impersonating,
@@ -13,6 +14,7 @@ export default function ImpersonationBanner({
   impersonating: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
   async function clear() {
@@ -23,6 +25,7 @@ export default function ImpersonationBanner({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: null }),
       });
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.refresh();
     } finally {
       setBusy(false);

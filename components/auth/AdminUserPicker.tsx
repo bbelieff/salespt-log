@@ -12,6 +12,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
   email: string;
@@ -29,6 +30,7 @@ export default function AdminUserPicker({
   sessionEmail: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -70,6 +72,9 @@ export default function AdminUserPicker({
         setBusy(null);
         return;
       }
+      // impersonation 후 헤더의 me 데이터(cohort/name/D-day)가 옛 사용자 그대로
+      // 남는 버그 방지 — React Query me 캐시 강제 무효화.
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.push("/dashboard");
       router.refresh();
     } catch (e) {

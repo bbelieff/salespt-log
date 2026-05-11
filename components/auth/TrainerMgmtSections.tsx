@@ -113,11 +113,13 @@ export function SectionAssign({
   trainees,
   busy,
   onSave,
+  onRemoveTrainer,
 }: {
   trainers: PanelUser[];
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
+  onRemoveTrainer?: (email: string) => void;
 }) {
   return (
     <section>
@@ -141,6 +143,7 @@ export function SectionAssign({
               trainees={trainees}
               busy={busy}
               onSave={onSave}
+              onRemoveTrainer={onRemoveTrainer}
             />
           ))}
         </div>
@@ -154,11 +157,13 @@ function TrainerAssignCard({
   trainees,
   busy,
   onSave,
+  onRemoveTrainer,
 }: {
   trainer: PanelUser;
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
+  onRemoveTrainer?: (email: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const trainerLc = trainer.email.toLowerCase();
@@ -198,29 +203,42 @@ function TrainerAssignCard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50"
-      >
-        <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-gray-900">
-            {trainer.name || trainer.email}
-          </div>
-          <div className="truncate text-[11px] text-gray-500">
-            {trainer.email} · 담당 {assignedCount}명
-          </div>
-        </div>
-        <svg
-          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
+      <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-bold text-gray-900">
+              {trainer.name || trainer.email}
+            </div>
+            <div className="truncate text-[11px] text-gray-500">
+              {trainer.email} · 담당 {assignedCount}명
+            </div>
+          </div>
+          <svg
+            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {onRemoveTrainer && (
+          <button
+            type="button"
+            onClick={() => onRemoveTrainer(trainer.email)}
+            disabled={busy !== null}
+            className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+            title="이 트레이너를 퇴출 (담당 매핑 자동 정리 + row 삭제)"
+          >
+            {busy === `remove:${trainer.email}` ? "..." : "퇴출"}
+          </button>
+        )}
+      </div>
       {open && (
         <div className="border-t border-gray-100 bg-gray-50 p-3">
           {/* 전체 일괄 토글 — 트레이너 연습용 시트 등 모두 배정 필요할 때. */}
@@ -314,8 +332,21 @@ function TrainerAssignCard({
 }
 
 /* ─────────────────────── Section 3 ─────────────────────── */
-export function SectionTraineeList({ trainees }: { trainees: PanelUser[] }) {
+export function SectionTraineeList({
+  trainees,
+  activeTrainers,
+}: {
+  trainees: PanelUser[];
+  activeTrainers: PanelUser[];
+}) {
   const grouped = groupByCohort(trainees);
+  // email → 이름 매핑 (담당 표시용). 이름 없으면 email 그대로.
+  const nameByEmail = new Map<string, string>();
+  for (const t of activeTrainers) {
+    nameByEmail.set(t.email.toLowerCase(), t.name || t.email);
+  }
+  const resolveTrainerName = (e: string) =>
+    nameByEmail.get(e.toLowerCase()) ?? e;
   return (
     <section>
       <h2 className="mb-4 text-lg font-black tracking-tight text-gray-900">
@@ -345,6 +376,7 @@ export function SectionTraineeList({ trainees }: { trainees: PanelUser[] }) {
               <ul className="ml-3 space-y-1 text-xs">
                 {list.map((s) => {
                   const assigned = parseAssigned(s.assignedTrainer);
+                  const names = assigned.map(resolveTrainerName);
                   return (
                     <li key={s.email}>
                       <div className="text-gray-800">
@@ -352,7 +384,7 @@ export function SectionTraineeList({ trainees }: { trainees: PanelUser[] }) {
                         <span className="text-gray-400">({s.email})</span>
                       </div>
                       <div className="ml-4 text-[10px] text-gray-500">
-                        {assigned.length > 0 ? `담당: ${assigned.join(", ")}` : "미배정"}
+                        {names.length > 0 ? `담당: ${names.join(", ")}` : "미배정"}
                       </div>
                     </li>
                   );
@@ -423,8 +455,7 @@ export function SectionTrainerList({
                         <ul className="ml-3 space-y-0.5 text-xs">
                           {list.map((s) => (
                             <li key={s.email} className="text-gray-700">
-                              ㄴ {s.name || s.email}{" "}
-                              <span className="text-gray-400">({s.email})</span>
+                              ㄴ {s.name || s.email}
                             </li>
                           ))}
                         </ul>
