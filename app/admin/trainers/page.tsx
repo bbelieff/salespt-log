@@ -64,7 +64,14 @@ export default async function AdminTrainersPage() {
   const isManagement = (u: { cohort: string }) => u.cohort.trim() === "관리";
   const activeTrainers = activeAll.filter((u) => !isManagement(u));
   const managementStaff = activeAll.filter(isManagement);
-  const trainees = all.filter((u) => u.role === "trainee");
+  // 진짜 수강생만 — admin email / cohort="T" / cohort="관리" 인 row 는 제외.
+  const trainees = all.filter((u) => {
+    if (u.role !== "trainee") return false;
+    if (adminSet.has(u.email.toLowerCase())) return false;
+    const c = u.cohort.trim();
+    if (c === "T" || c.toUpperCase() === "T" || c === "관리") return false;
+    return true;
+  });
 
   return (
     <TrainerMgmtPanel

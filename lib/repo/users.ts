@@ -195,9 +195,11 @@ export async function setUserRole(email: string, role: User["role"]): Promise<vo
 export async function setTrainerDepartment(
   email: string,
   department: "trainer" | "management",
+  options?: { fallbackName?: string },
 ): Promise<void> {
+  const lc = email.toLowerCase();
   if (department === "management") {
-    const lc = email.toLowerCase();
+    // 기존 담당 매핑 정리.
     const all = await listAllUsers();
     for (const u of all) {
       if (u.role !== "trainee") continue;
@@ -208,10 +210,32 @@ export async function setTrainerDepartment(
         current.filter((e) => e !== lc),
       );
     }
-    await updateCell(email, "B", "관리");
-  } else {
-    await updateCell(email, "B", "T");
   }
+  const cohortValue = department === "management" ? "관리" : "T";
+
+  // registry 에 row 있는지 확인. 없으면 자동 생성 (admin synth row 케이스).
+  const reg = registry();
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const exists = rows.some(
+    (r) => typeof r[0] === "string" && r[0].toLowerCase() === lc,
+  );
+  if (exists) {
+    await updateCell(email, "B", cohortValue);
+    return;
+  }
+  // 신규 row append — admin synth 가 처음 관리부서/트레이너로 등록되는 케이스.
+  await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
+    [
+      lc,
+      cohortValue,
+      options?.fallbackName ?? lc.split("@")[0] ?? lc,
+      "",
+      "trainer",
+      "active",
+      "",
+    ],
+  ]);
+  invalidateRegistry();
 }
 
 /**
