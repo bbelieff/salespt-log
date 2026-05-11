@@ -67,6 +67,27 @@ export const adminEmails = (): string[] => {
 };
 
 /**
+ * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).
+ *
+ * 포맷: `"email1:name1,email2:name2"` (또는 `email1=name1`).
+ *   예: ADMIN_NAMES="beliefkimkim@gmail.com:김믿음,leadbzcenter@gmail.com:이00,xorud910115@gmail.com:김00"
+ *
+ * 트레이너 명단 등에서 admin row 의 표시 이름이 email 앞부분으로 떨어지는 것을
+ * 방지. registry users 탭에 admin row 가 있다면 그 name 을 우선, 없으면 이 env
+ * 매핑, 그것도 없으면 email split("@")[0] fallback.
+ */
+export const adminNames = (): Record<string, string> => {
+  const raw = process.env.ADMIN_NAMES ?? "";
+  const out: Record<string, string> = {};
+  for (const pair of raw.split(",")) {
+    const m = pair.match(/^\s*([^:=]+@[^:=]+)\s*[:=]\s*(.+?)\s*$/);
+    if (!m) continue;
+    out[m[1]!.toLowerCase()] = m[2]!;
+  }
+  return out;
+};
+
+/**
  * 수강생 개인 시트의 섹션별 A1 범위.
  * 시트 구조가 바뀌면 여기만 고친다. Repo 코드는 건드리지 않는다.
  *
