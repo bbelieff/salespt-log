@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSessionEmail, getEffectiveRole, isAdminEmail } from "@/auth/identity";
 import { findUserByEmail, listTraineesForTrainer } from "@/repo/users";
+import { enrichUsersWithSheetCohort } from "@/service";
 import { registry } from "@/config";
 import TrainerLanding from "@/components/auth/TrainerLanding";
 
@@ -32,7 +33,9 @@ export default async function TrainerPage() {
   }
 
   const trainer = await findUserByEmail(sessionEmail);
-  const trainees = await listTraineesForTrainer(sessionEmail);
+  const traineesRegistry = await listTraineesForTrainer(sessionEmail);
+  // 표시 라벨 SSOT: 각 수강생 개인 시트 B3 (cohort). registry 값은 fallback.
+  const trainees = await enrichUsersWithSheetCohort(traineesRegistry);
   const masterSheetUrl = `https://docs.google.com/spreadsheets/d/${registry().spreadsheetId}/edit`;
 
   return (

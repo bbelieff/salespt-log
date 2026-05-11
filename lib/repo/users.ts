@@ -1,12 +1,13 @@
 /**
  * Layer: repo — 마스터 레지스트리 (사용자 + 시트 매핑 + 역할 + 상태).
  *
- * 시트 컬럼 (확장 — 2026-05-11 role-system PR):
+ * 시트 컬럼:
  *   A: email
- *   B: cohort        ("7" / "T" / "")
- *   C: name
+ *   B: cohort        — **DEPRECATED (2026-05-11)**. 표시 라벨은 개인 시트 B3 SSOT.
+ *                       자동 채우기/읽기 X. 역사적 데이터로만 보존.
+ *   C: name          — 마찬가지로 deprecated. 개인 시트 C3 가 진실.
  *   D: spreadsheetId (trainee 만 채움)
- *   E: role          ("trainee" / "trainer" / "admin")
+ *   E: role          ("trainee" / "trainer" / "admin") — **식별·라우팅 SSOT**
  *   F: status        ("active" / "pending")
  *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
  */

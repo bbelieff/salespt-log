@@ -7,6 +7,7 @@
 import { redirect } from "next/navigation";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { listAllUsers } from "@/repo/users";
+import { enrichUsersWithSheetCohort } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
 
 export default async function AdminPage() {
@@ -14,6 +15,8 @@ export default async function AdminPage() {
   if (!sessionEmail || !isAdminEmail(sessionEmail)) {
     redirect("/");
   }
-  const users = await listAllUsers();
+  const registryUsers = await listAllUsers();
+  // 표시 라벨 SSOT: 각 사용자 개인 시트 B3 (cohort). registry 값은 fallback.
+  const users = await enrichUsersWithSheetCohort(registryUsers);
   return <AdminUserPicker users={users} sessionEmail={sessionEmail} />;
 }
