@@ -5,6 +5,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -55,21 +56,31 @@ export default function TrainerLanding({
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Trainer
             </div>
-            <div className="mt-0.5 text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
               {trainerName} · {sessionEmail}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
-          >
-            로그아웃
-          </button>
+          {/* admin 이면 마스터 메뉴 진입, 그 외엔 로그아웃 — 한 줄에 깔끔하게. */}
+          {isAdmin ? (
+            <Link
+              href="/admin"
+              className="shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+            >
+              ← 마스터 메뉴
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="shrink-0 whitespace-nowrap text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+            >
+              로그아웃
+            </button>
+          )}
         </div>
       </header>
 
@@ -98,24 +109,6 @@ export default function TrainerLanding({
               <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
             </svg>
           </a>
-        )}
-
-        {/* Admin 전용 진입점 */}
-        {isAdmin && (
-          <div className="flex flex-wrap gap-2">
-            <a
-              href="/admin"
-              className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
-            >
-              마스터 메뉴 →
-            </a>
-            <a
-              href="/admin/trainers"
-              className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
-            >
-              트레이너 관리 →
-            </a>
-          </div>
         )}
 
         {/* 담당 수강생 — 클릭 시 impersonate → /dashboard (5탭 UI) */}

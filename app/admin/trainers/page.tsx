@@ -8,7 +8,11 @@
  *   4. 관리부서 명단    — B 컬럼="관리" 인원
  */
 import { redirect } from "next/navigation";
-import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import {
+  getSessionEmail,
+  canViewAdminPages,
+  isAdminEmail,
+} from "@/auth/identity";
 import { adminEmails, adminNames } from "@/config";
 import { listPendingTrainers, listAllUsers } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
@@ -17,7 +21,8 @@ export const revalidate = 30;
 
 export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();
-  if (!sessionEmail || !isAdminEmail(sessionEmail)) redirect("/");
+  if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) redirect("/");
+  const viewOnly = !isAdminEmail(sessionEmail);
 
   const [pending, all] = await Promise.all([
     listPendingTrainers(),
@@ -73,6 +78,7 @@ export default async function AdminTrainersPage() {
       activeTrainers={activeTrainers}
       managementStaff={managementStaff}
       trainees={trainees}
+      viewOnly={viewOnly}
     />
   );
 }

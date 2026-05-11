@@ -5,7 +5,11 @@
  * 시트 탭이 없으면 ensure 로 자동 생성.
  */
 import { redirect } from "next/navigation";
-import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import {
+  getSessionEmail,
+  canViewAdminPages,
+  isAdminEmail,
+} from "@/auth/identity";
 import { listAllUsers } from "@/repo/users";
 import { listCohorts, ensureCohortsTab, type CohortStatus } from "@/repo/cohorts";
 import CohortMgmtPanel from "@/components/auth/CohortMgmtPanel";
@@ -14,7 +18,8 @@ export const revalidate = 30;
 
 export default async function AdminCohortsPage() {
   const sessionEmail = await getSessionEmail();
-  if (!sessionEmail || !isAdminEmail(sessionEmail)) redirect("/");
+  if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) redirect("/");
+  const viewOnly = !isAdminEmail(sessionEmail);
 
   const all = await listAllUsers();
   // trainee 들이 사용 중인 cohort label 집합.
@@ -59,6 +64,7 @@ export default async function AdminCohortsPage() {
         ...c,
         traineeCount: traineeCountByLabel.get(c.label) ?? 0,
       }))}
+      viewOnly={viewOnly}
     />
   );
 }

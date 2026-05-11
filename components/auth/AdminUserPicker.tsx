@@ -76,11 +76,14 @@ export default function AdminUserPicker({
   activeTrainers,
   sessionEmail,
   archivedCohorts = [],
+  viewOnly = false,
 }: {
   users: Trainee[];
   activeTrainers: Trainer[];
   sessionEmail: string;
   archivedCohorts?: string[];
+  /** 관리부서 멤버 = read-only (시트 열기 버튼 숨김 + 액션 차단). */
+  viewOnly?: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -211,6 +214,7 @@ export default function AdminUserPicker({
               busy={busy}
               nameByEmail={nameByEmail}
               onPick={pick}
+              viewOnly={viewOnly}
             />
           ))}
 
@@ -254,6 +258,7 @@ function CohortSection({
   nameByEmail,
   onPick,
   archived = false,
+  viewOnly = false,
 }: {
   cohort: string;
   list: Trainee[];
@@ -261,6 +266,7 @@ function CohortSection({
   nameByEmail: Map<string, string>;
   onPick: (email: string) => void;
   archived?: boolean;
+  viewOnly?: boolean;
 }) {
   // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
   const rep = list.find((u) => u.courseStartISO && u.graduationISO);
@@ -319,14 +325,16 @@ function CohortSection({
                   <span className="font-semibold">{trainerNames}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => onPick(u.email)}
-                disabled={busy !== null}
-                className="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-              >
-                {busy === u.email ? "여는 중..." : "시트 열기 →"}
-              </button>
+              {!viewOnly && (
+                <button
+                  type="button"
+                  onClick={() => onPick(u.email)}
+                  disabled={busy !== null}
+                  className="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                >
+                  {busy === u.email ? "여는 중..." : "시트 열기 →"}
+                </button>
+              )}
             </li>
           );
         })}

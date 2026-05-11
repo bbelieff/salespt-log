@@ -115,6 +115,7 @@ export function SectionAssign({
   onSave,
   onRemoveTrainer,
   onMoveToManagement,
+  viewOnly = false,
 }: {
   trainers: PanelUser[];
   trainees: PanelUser[];
@@ -122,6 +123,7 @@ export function SectionAssign({
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
   onRemoveTrainer?: (email: string) => void;
   onMoveToManagement?: (email: string) => void;
+  viewOnly?: boolean;
 }) {
   return (
     <section>
@@ -147,6 +149,7 @@ export function SectionAssign({
               onSave={onSave}
               onRemoveTrainer={onRemoveTrainer}
               onMoveToManagement={onMoveToManagement}
+              viewOnly={viewOnly}
             />
           ))}
         </div>
@@ -162,6 +165,7 @@ function TrainerAssignCard({
   onSave,
   onRemoveTrainer,
   onMoveToManagement,
+  viewOnly = false,
 }: {
   trainer: PanelUser;
   trainees: PanelUser[];
@@ -169,6 +173,7 @@ function TrainerAssignCard({
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
   onRemoveTrainer?: (email: string) => void;
   onMoveToManagement?: (email: string) => void;
+  viewOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const trainerLc = trainer.email.toLowerCase();
@@ -343,8 +348,8 @@ function TrainerAssignCard({
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={busy === key}
-                            onChange={() => toggle(s)}
+                            disabled={busy === key || viewOnly}
+                            onChange={() => !viewOnly && toggle(s)}
                             className="h-4 w-4 rounded border-gray-300 text-brand-red focus:ring-red-200"
                           />
                           <span className="min-w-0 flex-1 truncate font-semibold text-gray-800">

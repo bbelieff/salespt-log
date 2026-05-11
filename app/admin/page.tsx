@@ -14,19 +14,20 @@ import { redirect } from "next/navigation";
 import {
   getSessionEmail,
   getActiveUserEmail,
+  canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
 
-// impersonation 상태 즉시 반영을 위해 동적 렌더.
 export const dynamic = "force-dynamic";
 
 export default async function AdminLandingPage() {
   const sessionEmail = await getSessionEmail();
-  if (!sessionEmail || !isAdminEmail(sessionEmail)) {
+  if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) {
     redirect("/");
   }
+  const isMaster = isAdminEmail(sessionEmail);
   const activeEmail = await getActiveUserEmail();
   const impersonating =
     activeEmail !== sessionEmail ? activeEmail : null;
@@ -37,7 +38,7 @@ export default async function AdminLandingPage() {
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
-              Master
+              {isMaster ? "Master" : "관리부서"}
             </div>
             <div className="mt-0.5 text-sm font-semibold text-gray-900">
               {sessionEmail}
@@ -51,10 +52,12 @@ export default async function AdminLandingPage() {
         {impersonating && <ImpersonationBanner impersonating={impersonating} />}
 
         <h1 className="text-2xl font-black tracking-tight text-gray-900">
-          마스터 메뉴
+          {isMaster ? "마스터 메뉴" : "관리부서 메뉴"}
         </h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          어떤 작업을 하시겠어요?
+          {isMaster
+            ? "어떤 작업을 하시겠어요?"
+            : "수강생 관리·트레이너 관리·기수 조회 가능 (변경 권한 X)."}
         </p>
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -97,18 +100,21 @@ export default async function AdminLandingPage() {
             </div>
           </Link>
 
-          <Link
-            href="/trainer"
-            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
-          >
-            <div className="text-3xl">📊</div>
-            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
-              트레이너 페이지
-            </div>
-            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
-              마스터 시트 + 내 담당 수강생(있다면).
-            </div>
-          </Link>
+          {/* 트레이너 페이지 — 마스터만 (관리부서는 본인 트레이너 페이지 따로). */}
+          {isMaster && (
+            <Link
+              href="/trainer"
+              className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            >
+              <div className="text-3xl">📊</div>
+              <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+                트레이너 페이지
+              </div>
+              <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+                마스터 시트 + 내 담당 수강생(있다면).
+              </div>
+            </Link>
+          )}
         </div>
       </div>
     </main>

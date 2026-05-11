@@ -26,12 +26,15 @@ export default function TrainerMgmtPanel({
   activeTrainers,
   managementStaff,
   trainees,
+  viewOnly = false,
 }: {
   sessionEmail: string;
   pendingTrainers: PanelUser[];
   activeTrainers: PanelUser[];
   managementStaff: PanelUser[];
   trainees: PanelUser[];
+  /** 관리부서 read-only — 액션 버튼 모두 숨김. */
+  viewOnly?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -85,80 +88,107 @@ export default function TrainerMgmtPanel({
           </div>
         )}
 
-        {/* 1. 트레이너 요청관리 */}
-        <SectionPending
-          pending={pendingTrainers}
-          busy={busy}
-          onApprove={(email) =>
-            call("/api/admin/approve-trainer", { email }, `approve:${email}`)
-          }
-          onReject={(email) => {
-            if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
-            call("/api/admin/reject-trainer", { email }, `reject:${email}`);
-          }}
-        />
+        {viewOnly && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+            🔒 조회 권한 — 관리부서 모드. 변경 액션은 admin 만 수행 가능합니다.
+          </div>
+        )}
 
-        {/* 2. 트레이너 담당부여 */}
+        {/* 1. 트레이너 요청관리 — pending row 노출은 모두에게, 액션 버튼은 admin 만. */}
+        {!viewOnly && (
+          <SectionPending
+            pending={pendingTrainers}
+            busy={busy}
+            onApprove={(email) =>
+              call("/api/admin/approve-trainer", { email }, `approve:${email}`)
+            }
+            onReject={(email) => {
+              if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
+              call("/api/admin/reject-trainer", { email }, `reject:${email}`);
+            }}
+          />
+        )}
+
+        {/* 2. 트레이너 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
         <SectionAssign
           trainers={activeTrainers}
           trainees={trainees}
           busy={busy}
-          onSave={(traineeEmail, trainerEmails, key) =>
-            call(
-              "/api/admin/assign-trainee",
-              { traineeEmail, trainerEmails },
-              key,
-            )
+          onSave={
+            viewOnly
+              ? () => {}
+              : (traineeEmail, trainerEmails, key) =>
+                  call(
+                    "/api/admin/assign-trainee",
+                    { traineeEmail, trainerEmails },
+                    key,
+                  )
           }
-          onMoveToManagement={(email) => {
-            if (
-              !confirm(
-                `${email} 을 관리부서로 이동시키시겠습니까?\n\n` +
-                  `· 담당 매핑은 자동 정리됩니다.\n` +
-                  `· 언제든 트레이너로 다시 이동 가능합니다.`,
-              )
-            )
-              return;
-            call(
-              "/api/admin/set-trainer-dept",
-              { email, department: "management" },
-              `dept:${email}`,
-            );
-          }}
-          onRemoveTrainer={(email) => {
-            if (
-              !confirm(
-                `${email} 트레이너를 퇴출시키시겠습니까?\n\n` +
-                  `· 그가 담당하던 모든 수강생의 배정에서 자동 제거됩니다.\n` +
-                  `· trainer row 자체가 삭제됩니다.`,
-              )
-            )
-              return;
-            call("/api/admin/remove-trainer", { email }, `remove:${email}`);
-          }}
+          onMoveToManagement={
+            viewOnly
+              ? undefined
+              : (email) => {
+                  if (
+                    !confirm(
+                      `${email} 을 관리부서로 이동시키시겠습니까?\n\n` +
+                        `· 담당 매핑은 자동 정리됩니다.\n` +
+                        `· 언제든 트레이너로 다시 이동 가능합니다.`,
+                    )
+                  )
+                    return;
+                  call(
+                    "/api/admin/set-trainer-dept",
+                    { email, department: "management" },
+                    `dept:${email}`,
+                  );
+                }
+          }
+          onRemoveTrainer={
+            viewOnly
+              ? undefined
+              : (email) => {
+                  if (
+                    !confirm(
+                      `${email} 트레이너를 퇴출시키시겠습니까?\n\n` +
+                        `· 그가 담당하던 모든 수강생의 배정에서 자동 제거됩니다.\n` +
+                        `· trainer row 자체가 삭제됩니다.`,
+                    )
+                  )
+                    return;
+                  call("/api/admin/remove-trainer", { email }, `remove:${email}`);
+                }
+          }
+          viewOnly={viewOnly}
         />
 
-        {/* 3. 수강생 명단 */}
+        {/* 3. 수강생 명단 (조회 only) */}
         <SectionTraineeList
           trainees={trainees}
           activeTrainers={activeTrainers}
         />
 
-        {/* 4. 관리부서 명단 */}
+        {/* 4. 관리부서 명단 — viewOnly 면 액션 버튼 숨김. */}
         <SectionManagement
           staff={managementStaff}
           busy={busy}
-          onMoveToTrainer={(email) =>
-            call(
-              "/api/admin/set-trainer-dept",
-              { email, department: "trainer" },
-              `dept:${email}`,
-            )
+          onMoveToTrainer={
+            viewOnly
+              ? undefined
+              : (email) =>
+                  call(
+                    "/api/admin/set-trainer-dept",
+                    { email, department: "trainer" },
+                    `dept:${email}`,
+                  )
           }
-          onRemove={(email) => {
-            if (!confirm(`${email} row 를 삭제하시겠습니까?`)) return;
-            call("/api/admin/remove-trainer", { email }, `remove:${email}`);
-          }}
+          onRemove={
+            viewOnly
+              ? undefined
+              : (email) => {
+                  if (!confirm(`${email} row 를 삭제하시겠습니까?`)) return;
+                  call("/api/admin/remove-trainer", { email }, `remove:${email}`);
+                }
+          }
         />
       </div>
     </main>
