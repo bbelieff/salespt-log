@@ -17,8 +17,10 @@ export default function ClaimPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 수강생: 숫자(기수). 트레이너: "T" 또는 "t" (sheet 검색 건너뜀).
   const valid =
-    /^\d+$/.test(cohort.replace(/기\s*$/, "").trim()) && name.trim().length >= 2;
+    /^(\d+|[Tt])$/.test(cohort.replace(/기\s*$/, "").trim()) &&
+    name.trim().length >= 2;
 
   async function handleSubmit() {
     setLoading(true);
@@ -47,8 +49,10 @@ export default function ClaimPage() {
         setLoading(false);
         return;
       }
-      // 성공: 대시보드로
-      router.push("/dashboard");
+      // 성공: 루트로 보내 app/page.tsx 의 role 기반 라우팅에 위임.
+      // (수강생 → /dashboard, 트레이너 pending → /trainer 대기 화면)
+      router.push("/");
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
       setLoading(false);
@@ -92,13 +96,13 @@ export default function ClaimPage() {
               기수
             </label>
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min={1}
-              max={99}
-              placeholder="예: 7"
+              maxLength={3}
+              placeholder="예: 7  (트레이너는 T)"
               value={cohort}
               onChange={(e) => setCohort(e.target.value)}
+              pattern="^(\d+|[Tt])$"
               className="h-13 w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100"
               style={{ height: 52 }}
               autoComplete="off"
@@ -128,6 +132,11 @@ export default function ClaimPage() {
                 세일즈PT_ 기수 이름 수강생 경영일지
               </code>
               )
+            </span>
+            <br />
+            <span className="mt-1 inline-block text-gray-500">
+              트레이너로 가입하시면 기수에 <strong>T</strong> 입력 → 관리자 승인 후
+              사용 가능.
             </span>
           </p>
         </div>
