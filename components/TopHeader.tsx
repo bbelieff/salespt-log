@@ -17,6 +17,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
 import DDayBadge from "./DDayBadge";
 
@@ -50,6 +52,7 @@ export default function TopHeader({
 }: Props) {
   const me = useMe();
   const display = formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
+  const [popupOpen, setPopupOpen] = useState(false);
 
   return (
     <>
@@ -58,13 +61,20 @@ export default function TopHeader({
           justify-between으로 4 그룹이 row를 균등 분할.
           그룹 간 간격은 자동(remaining space), 그룹 내부(②)만 gap-1.5로 타이트 묶음. */}
       <header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
-        {/* ① 로고 */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/salespt-logo.png"
-          alt="세일즈PT"
-          className="h-6 w-auto shrink-0 object-contain sm:h-7"
-        />
+        {/* ① 로고 — 클릭 시 로그아웃 팝업 토글 */}
+        <button
+          type="button"
+          onClick={() => setPopupOpen((v) => !v)}
+          className="shrink-0 rounded transition-transform active:scale-95"
+          aria-label="계정 메뉴 열기"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/salespt-logo.png"
+            alt="세일즈PT"
+            className="h-6 w-auto object-contain sm:h-7"
+          />
+        </button>
 
         {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트) */}
         <div className="flex min-w-0 items-center gap-1.5">
@@ -104,6 +114,47 @@ export default function TopHeader({
           </svg>
         </Link>
       </header>
+
+      {/* 로고 클릭 팝업 — 로그아웃 + 내 시트 열기 */}
+      {popupOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-[55]"
+            onClick={() => setPopupOpen(false)}
+          />
+          <div className="fixed left-3 top-14 z-[56] w-64 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
+            <div className="border-b border-gray-100 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-brand-red">
+                  {me.data?.name?.[0] ?? "?"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-bold text-gray-900">{display}</div>
+                  <div className="truncate text-[11px] text-gray-500">
+                    {me.data?.email ?? ""}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPopupOpen(false);
+                signOut({ callbackUrl: "/" });
+              }}
+              className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+              <span>로그아웃</span>
+            </button>
+            <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-[10px] text-gray-400">
+              © SalesPT · v1.0
+            </div>
+          </div>
+        </>
+      )}
 
       {/* 페이지 배너 */}
       <div className="sticky top-12 z-40 flex h-12 items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 sm:gap-3 sm:px-4">
