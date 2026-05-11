@@ -23,9 +23,11 @@ interface Cohort {
 export default function CohortMgmtPanel({
   sessionEmail,
   cohorts,
+  viewOnly = false,
 }: {
   sessionEmail: string;
   cohorts: Cohort[];
+  viewOnly?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export default function CohortMgmtPanel({
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
-              Master · 기수 관리
+              {viewOnly ? "관리부서 · 기수 조회" : "Master · 기수 관리"}
             </div>
             <div className="mt-0.5 text-sm font-semibold text-gray-900">
               {sessionEmail}
@@ -76,6 +78,11 @@ export default function CohortMgmtPanel({
       </header>
 
       <div className="mx-auto max-w-3xl space-y-10 px-6 py-8">
+        {viewOnly && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+            🔒 조회 권한 — 관리부서 모드. 변경 액션은 admin 만 수행 가능합니다.
+          </div>
+        )}
         {err && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {err}
@@ -110,24 +117,26 @@ export default function CohortMgmtPanel({
                       </div>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => {
-                      if (
-                        !confirm(
-                          `${c.label}기 를 보관 처리 하시겠습니까?\n\n` +
-                            `· 수강생 관리·트레이너 명단의 "활성 기수" 그룹에서 숨김.\n` +
-                            `· "보관 기수" 섹션에서 언제든 다시 활성화 가능.`,
+                  {!viewOnly && (
+                    <button
+                      type="button"
+                      disabled={busy !== null}
+                      onClick={() => {
+                        if (
+                          !confirm(
+                            `${c.label}기 를 보관 처리 하시겠습니까?\n\n` +
+                              `· 수강생 관리·트레이너 명단의 "활성 기수" 그룹에서 숨김.\n` +
+                              `· "보관 기수" 섹션에서 언제든 다시 활성화 가능.`,
+                          )
                         )
-                      )
-                        return;
-                      toggle(c.label, "archived");
-                    }}
-                    className="shrink-0 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-                  >
-                    {busy === c.label ? "..." : "보관 처리"}
-                  </button>
+                          return;
+                        toggle(c.label, "archived");
+                      }}
+                      className="shrink-0 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                    >
+                      {busy === c.label ? "..." : "보관 처리"}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -160,14 +169,16 @@ export default function CohortMgmtPanel({
                       </span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => toggle(c.label, "active")}
-                    className="shrink-0 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                  >
-                    {busy === c.label ? "..." : "활성화"}
-                  </button>
+                  {!viewOnly && (
+                    <button
+                      type="button"
+                      disabled={busy !== null}
+                      onClick={() => toggle(c.label, "active")}
+                      className="shrink-0 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      {busy === c.label ? "..." : "활성화"}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

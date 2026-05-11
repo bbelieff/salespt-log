@@ -42,6 +42,32 @@ export async function getSessionEmail(): Promise<string | null> {
 
 export type EffectiveRole = "admin" | "trainer" | "trainee";
 
+/**
+ * 관리부서 멤버 — registry trainer row 중 B 컬럼(cohort)="관리".
+ * 권한: /admin/users, /admin/trainers, /admin/cohorts **조회 가능** (편집 X).
+ */
+export async function isManagementMember(
+  email: string | null | undefined,
+): Promise<boolean> {
+  if (!email) return false;
+  const u = await findUserByEmail(email);
+  return (
+    !!u &&
+    u.role === "trainer" &&
+    u.status === "active" &&
+    u.cohort.trim() === "관리"
+  );
+}
+
+/** admin OR management — 조회 권한 게이트. */
+export async function canViewAdminPages(
+  email: string | null | undefined,
+): Promise<boolean> {
+  if (!email) return false;
+  if (isAdminEmail(email)) return true;
+  return isManagementMember(email);
+}
+
 /** admin env 우선, 그 다음 registry. 미등록 = trainee. */
 export async function getEffectiveRole(
   email: string | null | undefined,
