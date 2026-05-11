@@ -70,6 +70,45 @@ const cachedReadBundle = unstable_cache(
   { revalidate: 60, tags: ["me-bundle"] },
 );
 
+/**
+ * 사용자 목록을 받아 각자의 개인 시트 B3/C3 에서 cohort/name 을 읽어 덮어쓴다.
+ *
+ * 이유: 마스터 레지스트리(users 탭)의 cohort 컬럼은 self-claim 또는 admin
+ * 수동 입력으로 채워져 종종 표기 불일치(예: "PRM5" vs "5", "6기" vs "6")가 생긴다.
+ * **개인 시트 B3 가 SSOT** — 표시 라벨은 시트 값을 따른다.
+ *
+ * 동작:
+ *   - spreadsheetId 없는 row (trainer with cohort="T", admin) → 그대로 통과.
+ *   - 시트 읽기 실패 (권한/삭제) → registry 값 유지, 에러 로그.
+ *   - 시트 B3 가 빈 문자열 → registry 값 fallback.
+ *
+ * 비용: 사용자 N 명 × cachedReadBundle(60s 캐시) = 첫 호출만 N roundtrip,
+ * 이후 60초 동안 0 roundtrip. 병렬 호출.
+ */
+export async function enrichUsersWithSheetCohort<T extends { cohort: string; name: string; spreadsheetId: string }>(
+  users: T[],
+): Promise<T[]> {
+  const tasks = users.map(async (u) => {
+    if (!u.spreadsheetId) return u;
+    try {
+      const bundle = await cachedReadBundle(u.spreadsheetId);
+      return {
+        ...u,
+        cohort: bundle.cohort || u.cohort,
+        name: bundle.name || u.name,
+      };
+    } catch (e) {
+      // 시트 접근 실패 — registry 값 그대로 사용.
+      console.warn(
+        `[me] enrich 실패 (spreadsheetId=${u.spreadsheetId}, email=${("email" in u ? (u as { email: string }).email : "?")}):`,
+        e instanceof Error ? e.message : e,
+      );
+      return u;
+    }
+  });
+  return Promise.all(tasks);
+}
+
 export async function loadMe(email: string): Promise<MeProfile> {
   const user = await findUserByEmail(email);
   if (!user) {

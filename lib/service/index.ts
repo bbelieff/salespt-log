@@ -68,7 +68,7 @@ export {
 } from "./contract-payment";
 
 // 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)
-export { loadMe, type MeProfile } from "./me";
+export { loadMe, enrichUsersWithSheetCohort, type MeProfile } from "./me";
 
 // 대시보드 view (PR feat/dashboard-page — read-only, 시트 디스커버리 후 wiring)
 export { loadDashboard } from "./dashboard";
