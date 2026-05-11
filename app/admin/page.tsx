@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import LogoutButton from "@/components/auth/LogoutButton";
 
 export default async function AdminLandingPage() {
   const sessionEmail = await getSessionEmail();
@@ -31,14 +32,7 @@ export default async function AdminLandingPage() {
               {sessionEmail}
             </div>
           </div>
-          <form action="/api/auth/signout" method="post">
-            <button
-              type="submit"
-              className="text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
-            >
-              로그아웃
-            </button>
-          </form>
+          <LogoutButton />
         </div>
       </header>
 
