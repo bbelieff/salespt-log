@@ -24,9 +24,20 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   return adminEmails().includes(email.toLowerCase());
 }
 
+/**
+ * 실제 로그인한 사용자 email (impersonation 무시).
+ *
+ * STUB_USER_EMAIL fallback 은 **dev 전용** — 프로덕션에서 이게 살아있으면
+ * 미들웨어(쿠키 기반)와 server component(STUB fallback) 간 인증 판정이 어긋나
+ * `/` ↔ `/admin` 무한 리다이렉트 루프 발생. (incident: 2026-05-11 ERR_TOO_MANY_REDIRECTS)
+ */
 export async function getSessionEmail(): Promise<string | null> {
   const session = await auth();
-  return session?.user?.email ?? process.env.STUB_USER_EMAIL ?? null;
+  if (session?.user?.email) return session.user.email;
+  if (process.env.NODE_ENV !== "production" && process.env.STUB_USER_EMAIL) {
+    return process.env.STUB_USER_EMAIL;
+  }
+  return null;
 }
 
 export type EffectiveRole = "admin" | "trainer" | "trainee";
