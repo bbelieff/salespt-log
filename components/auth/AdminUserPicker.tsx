@@ -56,10 +56,12 @@ export default function AdminUserPicker({
   users,
   activeTrainers,
   sessionEmail,
+  archivedCohorts = [],
 }: {
   users: Trainee[];
   activeTrainers: Trainer[];
   sessionEmail: string;
+  archivedCohorts?: string[];
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -75,7 +77,13 @@ export default function AdminUserPicker({
     return m;
   }, [activeTrainers]);
 
-  const grouped = useMemo(() => {
+  const archivedSet = useMemo(
+    () => new Set(archivedCohorts.map((c) => c.trim())),
+    [archivedCohorts],
+  );
+
+  /** active + archived 두 그룹으로 분리 후 각각 기수별 정렬. */
+  const { activeGroups, archivedGroups } = useMemo(() => {
     const filtered = users.filter((u) => {
       if (!q.trim()) return true;
       const k = q.trim().toLowerCase();
@@ -85,17 +93,22 @@ export default function AdminUserPicker({
         String(u.cohort).includes(k)
       );
     });
-    const map = new Map<string, Trainee[]>();
+    const activeMap = new Map<string, Trainee[]>();
+    const archivedMap = new Map<string, Trainee[]>();
     for (const u of filtered) {
       const k = String(u.cohort).replace(/기\s*$/, "").trim() || "—";
-      const arr = map.get(k) ?? [];
+      const bucket = archivedSet.has(k) ? archivedMap : activeMap;
+      const arr = bucket.get(k) ?? [];
       arr.push(u);
-      map.set(k, arr);
+      bucket.set(k, arr);
     }
-    return Array.from(map.entries()).sort(
-      (a, b) => (parseInt(b[0]) || 0) - (parseInt(a[0]) || 0),
-    );
-  }, [users, q]);
+    const sortFn = (a: [string, Trainee[]], b: [string, Trainee[]]) =>
+      (parseInt(b[0]) || 0) - (parseInt(a[0]) || 0);
+    return {
+      activeGroups: Array.from(activeMap.entries()).sort(sortFn),
+      archivedGroups: Array.from(archivedMap.entries()).sort(sortFn),
+    };
+  }, [users, q, archivedSet]);
 
   async function pick(email: string) {
     setBusy(email);
@@ -166,74 +179,127 @@ export default function AdminUserPicker({
         )}
 
         <div className="mt-8 space-y-8">
-          {grouped.length === 0 && (
+          {activeGroups.length === 0 && archivedGroups.length === 0 && (
             <p className="text-sm text-gray-400">검색 결과 없음.</p>
           )}
-          {grouped.map(([cohort, list]) => (
-            <section key={cohort}>
-              <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
-                {cohort}기 · {list.length}명
-              </h2>
-              <ul className="space-y-2">
-                {list.map((u) => {
-                  const assigned = parseAssigned(u.assignedTrainer);
-                  const trainerNames =
-                    assigned.length > 0
-                      ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
-                      : "미배정";
-                  return (
-                    <li
-                      key={u.email}
-                      className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-center"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span className="text-sm font-black text-gray-900">
-                            {u.name || "(이름 없음)"}
-                          </span>
-                          <span className="text-[11px] text-gray-400">
-                            {u.email}
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
-                          <span>
-                            <span className="text-gray-400">담당</span>{" "}
-                            <span className="font-semibold">
-                              {trainerNames}
-                            </span>
-                          </span>
-                          <span className="text-gray-300">·</span>
-                          <span>
-                            <span className="text-gray-400">시작</span>{" "}
-                            <span className="font-semibold">
-                              {fmtDate(u.courseStartISO)}
-                            </span>
-                          </span>
-                          <span className="text-gray-300">·</span>
-                          <span>
-                            <span className="text-gray-400">종강</span>{" "}
-                            <span className="font-semibold">
-                              {fmtDate(u.graduationISO)}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => pick(u.email)}
-                        disabled={busy !== null}
-                        className="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-                      >
-                        {busy === u.email ? "여는 중..." : "시트 열기 →"}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+
+          {/* 활성 기수 그룹 */}
+          {activeGroups.map(([cohort, list]) => (
+            <CohortSection
+              key={cohort}
+              cohort={cohort}
+              list={list}
+              busy={busy}
+              nameByEmail={nameByEmail}
+              onPick={pick}
+            />
           ))}
+
+          {/* 보관된 기수 — collapsed (details) */}
+          {archivedGroups.length > 0 && (
+            <details className="group rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
+              <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
+                <span className="text-sm font-bold text-gray-700">
+                  📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)
+                </span>
+                <svg className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="space-y-6 border-t border-gray-200 px-4 py-4">
+                {archivedGroups.map(([cohort, list]) => (
+                  <CohortSection
+                    key={cohort}
+                    cohort={cohort}
+                    list={list}
+                    busy={busy}
+                    nameByEmail={nameByEmail}
+                    onPick={pick}
+                    archived
+                  />
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       </div>
     </main>
+  );
+}
+
+/* ─────────────────────────── 기수별 섹션 ─────────────────────────── */
+function CohortSection({
+  cohort,
+  list,
+  busy,
+  nameByEmail,
+  onPick,
+  archived = false,
+}: {
+  cohort: string;
+  list: Trainee[];
+  busy: string | null;
+  nameByEmail: Map<string, string>;
+  onPick: (email: string) => void;
+  archived?: boolean;
+}) {
+  return (
+    <section>
+      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
+        {cohort}기 · {list.length}명{archived && " (보관)"}
+      </h2>
+      <ul className="space-y-2">
+        {list.map((u) => {
+          const assigned = parseAssigned(u.assignedTrainer);
+          const trainerNames =
+            assigned.length > 0
+              ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
+              : "미배정";
+          return (
+            <li
+              key={u.email}
+              className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-sm font-black text-gray-900">
+                    {u.name || "(이름 없음)"}
+                  </span>
+                  <span className="text-[11px] text-gray-400">{u.email}</span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
+                  <span>
+                    <span className="text-gray-400">담당</span>{" "}
+                    <span className="font-semibold">{trainerNames}</span>
+                  </span>
+                  <span className="text-gray-300">·</span>
+                  <span>
+                    <span className="text-gray-400">시작</span>{" "}
+                    <span className="font-semibold">
+                      {fmtDate(u.courseStartISO)}
+                    </span>
+                  </span>
+                  <span className="text-gray-300">·</span>
+                  <span>
+                    <span className="text-gray-400">종강</span>{" "}
+                    <span className="font-semibold">
+                      {fmtDate(u.graduationISO)}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onPick(u.email)}
+                disabled={busy !== null}
+                className="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+              >
+                {busy === u.email ? "여는 중..." : "시트 열기 →"}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

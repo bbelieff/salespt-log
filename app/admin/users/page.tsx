@@ -9,11 +9,10 @@
 import { redirect } from "next/navigation";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { listAllUsers } from "@/repo/users";
+import { getArchivedCohortSet } from "@/repo/cohorts";
 import { enrichUsersWithDates } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
 
-// force-dynamic 제거 — 페이지 전환마다 N 시트 호출(수강생 수만큼)이 큰 부담.
-// 30초 revalidate + 변경 액션(/api/admin/*) 에서 revalidatePath 로 즉시 무효화.
 export const revalidate = 30;
 
 export default async function AdminUsersPage() {
@@ -21,18 +20,24 @@ export default async function AdminUsersPage() {
   if (!sessionEmail || !isAdminEmail(sessionEmail)) {
     redirect("/");
   }
-  const all = await listAllUsers();
+  const [all, archivedSet] = await Promise.all([
+    listAllUsers(),
+    getArchivedCohortSet(),
+  ]);
   const trainees = all.filter((u) => u.role === "trainee");
   const activeTrainers = all.filter(
     (u) => u.role === "trainer" && u.status === "active",
   );
   // 표시 라벨 SSOT: 각 수강생 개인 시트 B3/C3/O1/O2.
   const enriched = await enrichUsersWithDates(trainees);
+  // archived 기수 label set 을 client 로 전달 → 별도 collapsed 섹션 렌더.
+  const archivedLabels = Array.from(archivedSet);
   return (
     <AdminUserPicker
       users={enriched}
       activeTrainers={activeTrainers}
       sessionEmail={sessionEmail}
+      archivedCohorts={archivedLabels}
     />
   );
 }

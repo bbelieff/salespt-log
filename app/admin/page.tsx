@@ -57,7 +57,7 @@ export default async function AdminLandingPage() {
           어떤 작업을 하시겠어요?
         </p>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/admin/users"
             className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
@@ -81,6 +81,19 @@ export default async function AdminLandingPage() {
             </div>
             <div className="mt-1 text-xs text-gray-500 leading-relaxed">
               요청 승인/거절, 수강생 담당 부여.
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/cohorts"
+            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+          >
+            <div className="text-3xl">📅</div>
+            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+              기수 관리
+            </div>
+            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+              기수별 활성/보관 토글. 보관 기수도 언제든 열어볼 수 있습니다.
             </div>
           </Link>
 

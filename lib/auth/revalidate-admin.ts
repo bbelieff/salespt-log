@@ -10,4 +10,5 @@ import { revalidatePath } from "next/cache";
 export function revalidateAdminPages() {
   revalidatePath("/admin/users");
   revalidatePath("/admin/trainers");
+  revalidatePath("/admin/cohorts");
 }
