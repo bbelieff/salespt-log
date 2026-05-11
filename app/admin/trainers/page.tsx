@@ -24,13 +24,30 @@ export default async function AdminTrainersPage() {
     listAllUsers(),
   ]);
 
+  // ADMIN_EMAILS 중 registry row 가 없는 경우는 가짜 row 합성 — 사용자가 명단
+  // 에서 본인을 못 보는 경우 방지 (이전: leadbzcenter, xorud910115 등 미등록).
+  const adminLc = adminEmails(); // 이미 lowercase
+  const allEmailsLc = new Set(all.map((u) => u.email.toLowerCase()));
+  const synthAdmins = adminLc
+    .filter((e) => !allEmailsLc.has(e))
+    .map((e) => ({
+      email: e,
+      cohort: "",
+      name: e.split("@")[0] || e,
+      spreadsheetId: "",
+      role: "admin" as const,
+      status: "active" as const,
+      assignedTrainer: "",
+    }));
+  const fullList = [...all, ...synthAdmins];
+
   // 활성 트레이너 풀:
   //   - role==="trainer" + status==="active"  (정식 트레이너)
   //   - email ∈ ADMIN_EMAILS                  (마스터 본인 — 트레이너처럼 담당 받음)
-  const adminLc = new Set(adminEmails());
-  const activeAll = all.filter((u) => {
+  const adminSet = new Set(adminLc);
+  const activeAll = fullList.filter((u) => {
     if (u.role === "trainer" && u.status === "active") return true;
-    if (adminLc.has(u.email.toLowerCase())) return true;
+    if (adminSet.has(u.email.toLowerCase())) return true;
     return false;
   });
 
