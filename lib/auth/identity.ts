@@ -1,18 +1,21 @@
 /**
- * 인증·신원 헬퍼 — Admin impersonation 지원.
+ * 인증·신원·권한 헬퍼.
  *
- * 두 가지 개념:
- *   - sessionEmail: 실제 로그인한 Google 계정 (NextAuth session)
- *   - activeEmail:  현재 작업 대상 사용자 email
- *     · 일반 사용자: sessionEmail 과 동일
- *     · Admin:      cookie `as=<email>` 있으면 그 사용자, 없으면 sessionEmail
+ * 역할:
+ *   - admin   (env ADMIN_EMAILS): 모든 사용자 조회·편집
+ *   - trainer (registry role=trainer, status=active): 본인 + 담당 수강생
+ *   - trainee: 본인만
+ *   - pending trainer (status=pending): 승인 대기 화면만
  *
- * 모든 API route 는 `getActiveUserEmail()` 사용. 그러면 admin이 impersonate 한 사용자
- * 데이터를 자동으로 읽고/쓴다. Audit 용으로 sessionEmail 도 별도 얻을 수 있다.
+ * Impersonation (cookie `salespt_as`):
+ *   - admin: 누구든 OK
+ *   - trainer: 자기 담당 수강생만
+ *   - trainee: 불가
  */
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { adminEmails } from "@/config";
+import { findUserByEmail } from "@/repo/users";
 
 const AS_COOKIE = "salespt_as";
 
@@ -21,43 +24,71 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   return adminEmails().includes(email.toLowerCase());
 }
 
-/** 실제 로그인한 사용자 email (impersonation 무시). */
 export async function getSessionEmail(): Promise<string | null> {
   const session = await auth();
   return session?.user?.email ?? process.env.STUB_USER_EMAIL ?? null;
 }
 
-/**
- * 현재 작업 대상 email — admin 이 다른 사람을 보고 있으면 그 사람.
- * 미인증 시 throw.
- */
+export type EffectiveRole = "admin" | "trainer" | "trainee";
+
+/** admin env 우선, 그 다음 registry. 미등록 = trainee. */
+export async function getEffectiveRole(
+  email: string | null | undefined,
+): Promise<{ role: EffectiveRole; status: "active" | "pending" }> {
+  if (!email) return { role: "trainee", status: "active" };
+  if (isAdminEmail(email)) return { role: "admin", status: "active" };
+  const u = await findUserByEmail(email);
+  if (!u) return { role: "trainee", status: "active" };
+  return { role: u.role, status: u.status };
+}
+
+/** impersonation 권한 게이트. */
+export async function canImpersonate(
+  sessionEmail: string,
+  targetEmail: string,
+): Promise<boolean> {
+  if (sessionEmail.toLowerCase() === targetEmail.toLowerCase()) return true;
+  if (isAdminEmail(sessionEmail)) return true;
+  const session = await findUserByEmail(sessionEmail);
+  if (!session || session.role !== "trainer" || session.status !== "active") return false;
+  const target = await findUserByEmail(targetEmail);
+  if (!target || target.role !== "trainee") return false;
+  return target.assignedTrainer.toLowerCase() === sessionEmail.toLowerCase();
+}
+
+/** 현재 작업 대상 — impersonation 적용. 미인증 시 throw. */
 export async function getActiveUserEmail(): Promise<string> {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) throw new Error("[auth] 로그인이 필요합니다.");
-  if (!isAdminEmail(sessionEmail)) return sessionEmail;
 
-  // Admin: cookie 로 impersonate 대상 확인
   const jar = await cookies();
   const as = jar.get(AS_COOKIE)?.value;
-  return as && as.includes("@") ? as.toLowerCase() : sessionEmail;
+  if (!as || !as.includes("@")) return sessionEmail;
+
+  const allowed = await canImpersonate(sessionEmail, as);
+  if (!allowed) return sessionEmail;
+  return as.toLowerCase();
 }
 
-/** Admin only: impersonation cookie set/unset. UI 라우터 핸들러에서 사용. */
+/** admin/trainer 만 impersonation 설정 가능. 권한 위반 시 throw. */
 export async function setImpersonation(target: string | null): Promise<void> {
   const sessionEmail = await getSessionEmail();
-  if (!isAdminEmail(sessionEmail)) {
-    throw new Error("[auth] Admin 권한이 필요합니다.");
-  }
+  if (!sessionEmail) throw new Error("[auth] 로그인이 필요합니다.");
+
   const jar = await cookies();
-  if (target && target.includes("@")) {
-    jar.set(AS_COOKIE, target.toLowerCase(), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30, // 30일
-    });
-  } else {
+  if (!target) {
     jar.delete(AS_COOKIE);
+    return;
   }
+  const allowed = await canImpersonate(sessionEmail, target);
+  if (!allowed) {
+    throw new Error("[auth] 이 사용자를 조회할 권한이 없습니다.");
+  }
+  jar.set(AS_COOKIE, target.toLowerCase(), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
 }

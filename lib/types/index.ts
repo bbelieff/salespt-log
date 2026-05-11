@@ -147,10 +147,14 @@ export type DBLead = z.infer<typeof DBLead>;
 // ── 사용자 — 마스터 레지스트리 ─────────────────────────────────
 export const User = z.object({
   email: z.string().email(),
-  cohort: z.string(), // 예: "PRM 5기"
+  cohort: z.string(), // 예: "7" (수강생) / "T" (트레이너) / 빈값(admin)
   name: z.string(),
-  spreadsheetId: z.string(), // 본인 전용 시트 ID
+  spreadsheetId: z.string(), // 트레이너·admin 은 빈 문자열 허용
   role: z.enum(["trainee", "trainer", "admin"]).default("trainee"),
+  /** active=정상, pending=트레이너 self-claim 후 관리자 승인 대기 */
+  status: z.enum(["active", "pending"]).default("active"),
+  /** 수강생 row 의 담당 트레이너 email (관리자가 배정). 빈값 = 미배정. */
+  assignedTrainer: z.string().default(""),
 });
 export type User = z.infer<typeof User>;
 

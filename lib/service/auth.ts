@@ -1,12 +1,15 @@
 /**
- * Layer: service — 인증·계정 매칭 (Self-claim).
+ * Layer: service — Self-claim (수강생 / 트레이너 두 경로).
  *
- * 흐름:
- *   1. Drive API로 시트 이름 정확 일치 검색 (`세일즈PT_ N기 이름 수강생 경영일지`)
- *   2. 매칭 시트 1개면 → registry email 갱신 + 시트 B3/C3 자동 작성
- *   3. 0개/복수면 → ClaimError 로 호출 측에 안내 위임
+ * 수강생 (cohort = 숫자):
+ *   1. Drive API 시트 이름 정확 일치 검색 (`세일즈PT_ N기 이름 수강생 경영일지`)
+ *   2. 매칭 1개 → registry email 갱신 + 시트 B3/C3 작성
+ *   3. 0개/복수 → ClaimError("not_found")
  *
- * SSOT: docs/plans/active/login-prototype.md
+ * 트레이너 (cohort = "T"):
+ *   1. Drive 검색 X (트레이너는 본인 시트 없음)
+ *   2. registry 에 role=trainer, status=pending 으로 신규 append
+ *   3. 관리자가 /admin 에서 승인 → status=active 로 전환
  */
 import {
   findSheetByCohortName,
@@ -29,19 +32,15 @@ export interface ClaimResult {
   cohort: string;
   name: string;
   spreadsheetId: string;
+  role: "trainee" | "trainer";
+  status: "active" | "pending";
 }
 
-/**
- * Self-claim 트랜잭션:
- *  - 이미 등록된 email 이면 그대로 반환 (idempotent — 재로그인 시 중복 작업 X)
- *  - 신규: Drive 검색 → registry update → 시트 B3/C3 작성 → 반환
- */
 export async function claimAccount(
   email: string,
   cohort: string,
   name: string,
 ): Promise<ClaimResult> {
-  // Idempotent: 이미 등록된 email 이면 그대로 반환
   const existing = await findUserByEmail(email);
   if (existing) {
     return {
@@ -49,20 +48,39 @@ export async function claimAccount(
       cohort: existing.cohort,
       name: existing.name,
       spreadsheetId: existing.spreadsheetId,
+      role: existing.role === "admin" ? "trainer" : existing.role,
+      status: existing.status,
     };
   }
 
-  // Drive 검색
-  const spreadsheetId = await findSheetByCohortName(cohort, name);
-  if (!spreadsheetId) {
-    throw new ClaimError("not_found");
+  const cohortTrim = String(cohort).trim();
+  const isTrainer = cohortTrim.toUpperCase() === "T";
+
+  if (isTrainer) {
+    await claimRegistry(email, "T", name, "", "trainer", "pending");
+    return {
+      email,
+      cohort: "T",
+      name: name.trim(),
+      spreadsheetId: "",
+      role: "trainer",
+      status: "pending",
+    };
   }
 
-  // registry 갱신 + 시트 프로필 작성 — 둘 다 성공해야 완료.
-  // Drive API search 가 1개 매칭만 통과하므로 ambiguous 는 not_found 로 흡수.
-  await claimRegistry(email, cohort, name, spreadsheetId);
-  await writeProfile(spreadsheetId, cohort, name);
+  const spreadsheetId = await findSheetByCohortName(cohortTrim, name);
+  if (!spreadsheetId) throw new ClaimError("not_found");
 
-  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
-  return { email, cohort: cohortNum, name: name.trim(), spreadsheetId };
+  await claimRegistry(email, cohortTrim, name, spreadsheetId, "trainee", "active");
+  await writeProfile(spreadsheetId, cohortTrim, name);
+
+  const cohortNum = cohortTrim.replace(/기\s*$/, "").trim();
+  return {
+    email,
+    cohort: cohortNum,
+    name: name.trim(),
+    spreadsheetId,
+    role: "trainee",
+    status: "active",
+  };
 }
