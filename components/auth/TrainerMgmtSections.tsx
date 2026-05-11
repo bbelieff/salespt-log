@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export interface PanelUser {
   email: string;
@@ -114,12 +114,14 @@ export function SectionAssign({
   busy,
   onSave,
   onRemoveTrainer,
+  onMoveToManagement,
 }: {
   trainers: PanelUser[];
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
   onRemoveTrainer?: (email: string) => void;
+  onMoveToManagement?: (email: string) => void;
 }) {
   return (
     <section>
@@ -144,6 +146,7 @@ export function SectionAssign({
               busy={busy}
               onSave={onSave}
               onRemoveTrainer={onRemoveTrainer}
+              onMoveToManagement={onMoveToManagement}
             />
           ))}
         </div>
@@ -158,44 +161,61 @@ function TrainerAssignCard({
   busy,
   onSave,
   onRemoveTrainer,
+  onMoveToManagement,
 }: {
   trainer: PanelUser;
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
   onRemoveTrainer?: (email: string) => void;
+  onMoveToManagement?: (email: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const trainerLc = trainer.email.toLowerCase();
+
+  // 옵티미스틱 토글 — 체크박스 클릭 즉시 시각 반영 (서버 응답 전).
+  // trainees prop 갱신 시 useEffect 로 클리어 (서버가 진실).
+  const [optimistic, setOptimistic] = useState<Map<string, boolean>>(new Map());
+  useEffect(() => {
+    setOptimistic(new Map());
+  }, [trainees]);
+
+  function isChecked(t: PanelUser): boolean {
+    if (optimistic.has(t.email)) return optimistic.get(t.email)!;
+    return parseAssigned(t.assignedTrainer).includes(trainerLc);
+  }
+
   const assignedCount = useMemo(
-    () =>
-      trainees.filter((s) =>
-        parseAssigned(s.assignedTrainer).includes(trainerLc),
-      ).length,
-    [trainees, trainerLc],
+    () => trainees.filter(isChecked).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [trainees, trainerLc, optimistic],
   );
 
   function toggle(t: PanelUser) {
+    const newChecked = !isChecked(t);
+    setOptimistic((prev) => new Map(prev).set(t.email, newChecked));
     const current = parseAssigned(t.assignedTrainer);
-    const next = current.includes(trainerLc)
-      ? current.filter((e) => e !== trainerLc)
-      : [...current, trainerLc];
+    const next = newChecked
+      ? Array.from(new Set([...current, trainerLc]))
+      : current.filter((e) => e !== trainerLc);
     onSave(t.email, next, `assign:${trainer.email}:${t.email}`);
   }
 
-  /** 대상 trainees 에 대해 이 trainer 를 add/remove 일괄 적용. */
   function bulkApply(targets: PanelUser[], state: "add" | "remove") {
+    const newOpt = new Map(optimistic);
     for (const t of targets) {
-      const current = parseAssigned(t.assignedTrainer);
-      const has = current.includes(trainerLc);
+      const has = isChecked(t);
       if (state === "add" && has) continue;
       if (state === "remove" && !has) continue;
+      newOpt.set(t.email, state === "add");
+      const current = parseAssigned(t.assignedTrainer);
       const next =
         state === "add"
-          ? [...current, trainerLc]
+          ? Array.from(new Set([...current, trainerLc]))
           : current.filter((e) => e !== trainerLc);
       onSave(t.email, next, `assign:${trainer.email}:${t.email}`);
     }
+    setOptimistic(newOpt);
   }
 
   const grouped = groupByCohort(trainees);
@@ -227,11 +247,28 @@ function TrainerAssignCard({
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
+        {onMoveToManagement && (
+          <button
+            type="button"
+            onClick={() => onMoveToManagement(trainer.email)}
+            disabled={
+              busy === `dept:${trainer.email}` ||
+              busy === `remove:${trainer.email}`
+            }
+            className="shrink-0 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            title="이 사람을 관리부서로 이동 (담당 매핑 자동 정리)"
+          >
+            {busy === `dept:${trainer.email}` ? "..." : "관리부서"}
+          </button>
+        )}
         {onRemoveTrainer && (
           <button
             type="button"
             onClick={() => onRemoveTrainer(trainer.email)}
-            disabled={busy !== null}
+            disabled={
+              busy === `dept:${trainer.email}` ||
+              busy === `remove:${trainer.email}`
+            }
             className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
             title="이 트레이너를 퇴출 (담당 매핑 자동 정리 + row 삭제)"
           >
@@ -295,10 +332,9 @@ function TrainerAssignCard({
                   </div>
                   <div className="space-y-1">
                     {list.map((s) => {
-                      const checked = parseAssigned(s.assignedTrainer).includes(
-                        trainerLc,
-                      );
+                      const checked = isChecked(s);
                       const key = `assign:${trainer.email}:${s.email}`;
+                      // disabled 는 본인 셀이 진행 중일 때만 — 다른 셀 차단 X.
                       return (
                         <label
                           key={s.email}
@@ -307,7 +343,7 @@ function TrainerAssignCard({
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={busy !== null}
+                            disabled={busy === key}
                             onChange={() => toggle(s)}
                             className="h-4 w-4 rounded border-gray-300 text-brand-red focus:ring-red-200"
                           />
@@ -398,76 +434,5 @@ export function SectionTraineeList({
   );
 }
 
-/* ─────────────────────── Section 4 ─────────────────────── */
-export function SectionTrainerList({
-  trainers,
-  trainees,
-}: {
-  trainers: PanelUser[];
-  trainees: PanelUser[];
-}) {
-  return (
-    <section>
-      <h2 className="mb-4 text-lg font-black tracking-tight text-gray-900">
-        트레이너 명단 ({trainers.length})
-      </h2>
-      <div className="space-y-2">
-        {trainers.map((tr) => {
-          const trainerLc = tr.email.toLowerCase();
-          const myTrainees = trainees.filter((s) =>
-            parseAssigned(s.assignedTrainer).includes(trainerLc),
-          );
-          const grouped = groupByCohort(myTrainees);
-          return (
-            <details
-              key={tr.email}
-              className="group overflow-hidden rounded-xl border border-gray-200 bg-white open:bg-gray-50"
-            >
-              <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-gray-900">
-                    {tr.name || tr.email}
-                  </div>
-                  <div className="truncate text-[11px] text-gray-500">
-                    {tr.email} · 담당 {myTrainees.length}명
-                  </div>
-                </div>
-                <svg
-                  className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="border-t border-gray-100 p-3">
-                {grouped.length === 0 ? (
-                  <p className="py-2 text-center text-xs text-gray-400">담당 수강생 없음</p>
-                ) : (
-                  <div className="space-y-3">
-                    {grouped.map(([cohort, list]) => (
-                      <div key={cohort}>
-                        <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                          {cohort}기
-                        </div>
-                        <ul className="ml-3 space-y-0.5 text-xs">
-                          {list.map((s) => (
-                            <li key={s.email} className="text-gray-700">
-                              ㄴ {s.name || s.email}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </details>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
+// Section 4 (관리부서 명단) → ./TrainerMgmtManagement 분리 (파일 크기 가드).
+export { SectionManagement } from "./TrainerMgmtManagement";

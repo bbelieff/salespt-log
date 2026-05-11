@@ -136,7 +136,7 @@ export default function TopHeader({
                 </div>
               </div>
             </div>
-            {me.data?.isAdmin && (
+            {me.data?.sessionRole === "admin" && (
               <Link
                 href="/admin"
                 onClick={() => setPopupOpen(false)}
@@ -145,7 +145,19 @@ export default function TopHeader({
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
-                <span>다른 수강생 선택 →</span>
+                <span>관리자 페이지 →</span>
+              </Link>
+            )}
+            {me.data?.sessionRole === "trainer" && (
+              <Link
+                href="/trainer"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span>트레이너 페이지 →</span>
               </Link>
             )}
             <button
@@ -168,40 +180,8 @@ export default function TopHeader({
         </>
       )}
 
-      {/* Admin / Trainer 상시 상태바 — 권한자가 본인 시트를 보고 있을 때도 항상 노출.
-            관리자/트레이너 페이지로 빠져나갈 수 있는 진입점을 영구적으로 제공한다. */}
-      {(me.data?.sessionRole === "admin" || me.data?.sessionRole === "trainer") && (
-        <div
-          className={`sticky top-12 z-[45] flex h-8 items-center gap-2 border-b px-3 text-[11px] font-semibold ${
-            me.data?.impersonating
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-amber-200 bg-amber-50 text-amber-800"
-          }`}
-        >
-          <span
-            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white ${
-              me.data?.sessionRole === "admin" ? "bg-red-600" : "bg-amber-600"
-            }`}
-          >
-            {me.data?.sessionRole === "admin" ? "Master" : "Trainer"}
-          </span>
-          <span className="min-w-0 truncate">
-            {me.data?.impersonating ? (
-              <>
-                <strong>{display}</strong> 으로 보는 중
-              </>
-            ) : (
-              <>본인 시트 보기 중</>
-            )}
-          </span>
-          <Link
-            href={me.data?.sessionRole === "admin" ? "/admin" : "/trainer"}
-            className="ml-auto shrink-0 rounded-full border border-current px-2 py-0.5 text-[10px] font-bold underline-offset-2 hover:underline"
-          >
-            {me.data?.sessionRole === "admin" ? "관리자 페이지" : "트레이너 페이지"}
-          </Link>
-        </div>
-      )}
+      {/* Admin/Trainer 상태바 제거 — TopHeader 가 이미 impersonation 대상의
+            cohort·이름·D-day 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
       {/* 페이지 배너 */}
       <div className="sticky top-12 z-40 flex h-12 items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 sm:gap-3 sm:px-4">

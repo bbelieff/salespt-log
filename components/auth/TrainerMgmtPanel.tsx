@@ -1,11 +1,11 @@
 /**
  * TrainerMgmtPanel — Admin 트레이너 관리 UI 컨테이너.
  *
- * 섹션은 ./TrainerMgmtSections.tsx 로 분리 (파일 크기 가드 — 500줄 cap).
- *   1) SectionPending     — pending 트레이너 승인/거절
- *   2) SectionAssign      — 트레이너별 카드 + 수강생 다중 체크박스
- *   3) SectionTraineeList — 수강생 명단 (기수별 아코디언)
- *   4) SectionTrainerList — 트레이너 명단 (담당 수강생 아코디언)
+ * 섹션 순서 (사용자 요구):
+ *   1) SectionPending     — 트레이너 요청관리 (pending 승인/거절)
+ *   2) SectionAssign      — 트레이너 담당부여 (트레이너 카드 + 다중 체크)
+ *   3) SectionTraineeList — 수강생 명단
+ *   4) SectionManagement  — 관리부서 명단
  */
 "use client";
 
@@ -16,19 +16,21 @@ import {
   type PanelUser,
   SectionPending,
   SectionAssign,
+  SectionManagement,
   SectionTraineeList,
-  SectionTrainerList,
 } from "./TrainerMgmtSections";
 
 export default function TrainerMgmtPanel({
   sessionEmail,
   pendingTrainers,
   activeTrainers,
+  managementStaff,
   trainees,
 }: {
   sessionEmail: string;
   pendingTrainers: PanelUser[];
   activeTrainers: PanelUser[];
+  managementStaff: PanelUser[];
   trainees: PanelUser[];
 }) {
   const router = useRouter();
@@ -83,6 +85,7 @@ export default function TrainerMgmtPanel({
           </div>
         )}
 
+        {/* 1. 트레이너 요청관리 */}
         <SectionPending
           pending={pendingTrainers}
           busy={busy}
@@ -95,6 +98,7 @@ export default function TrainerMgmtPanel({
           }}
         />
 
+        {/* 2. 트레이너 담당부여 */}
         <SectionAssign
           trainers={activeTrainers}
           trainees={trainees}
@@ -106,6 +110,21 @@ export default function TrainerMgmtPanel({
               key,
             )
           }
+          onMoveToManagement={(email) => {
+            if (
+              !confirm(
+                `${email} 을 관리부서로 이동시키시겠습니까?\n\n` +
+                  `· 담당 매핑은 자동 정리됩니다.\n` +
+                  `· 언제든 트레이너로 다시 이동 가능합니다.`,
+              )
+            )
+              return;
+            call(
+              "/api/admin/set-trainer-dept",
+              { email, department: "management" },
+              `dept:${email}`,
+            );
+          }}
           onRemoveTrainer={(email) => {
             if (
               !confirm(
@@ -119,10 +138,28 @@ export default function TrainerMgmtPanel({
           }}
         />
 
-        {/* 순서: 트레이너 명단 먼저 → 수강생 명단 */}
-        <SectionTrainerList trainers={activeTrainers} trainees={trainees} />
+        {/* 3. 수강생 명단 */}
+        <SectionTraineeList
+          trainees={trainees}
+          activeTrainers={activeTrainers}
+        />
 
-        <SectionTraineeList trainees={trainees} activeTrainers={activeTrainers} />
+        {/* 4. 관리부서 명단 */}
+        <SectionManagement
+          staff={managementStaff}
+          busy={busy}
+          onMoveToTrainer={(email) =>
+            call(
+              "/api/admin/set-trainer-dept",
+              { email, department: "trainer" },
+              `dept:${email}`,
+            )
+          }
+          onRemove={(email) => {
+            if (!confirm(`${email} row 를 삭제하시겠습니까?`)) return;
+            call("/api/admin/remove-trainer", { email }, `remove:${email}`);
+          }}
+        />
       </div>
     </main>
   );
