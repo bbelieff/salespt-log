@@ -86,12 +86,32 @@ export async function listAllUsers(): Promise<User[]> {
   return users;
 }
 
-/** 트레이너 한 명이 담당하는 수강생 목록. */
+/**
+ * registry G 컬럼(assignedTrainer)의 콤마 구분 트레이너 email 리스트 파싱.
+ * 정규화: trim + lowercase + dedupe + 빈 문자열 제거.
+ *
+ * 2026-05-11 변경: 단일 → 다중 (1 trainee 가 여러 트레이너에게 동시 배정 가능).
+ * 기존 시트의 단일 email 값도 그대로 호환 (split 이 길이 1 배열 반환).
+ */
+export function parseAssignedTrainers(field: string | null | undefined): string[] {
+  if (!field) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of field.split(",")) {
+    const e = raw.trim().toLowerCase();
+    if (!e || seen.has(e)) continue;
+    seen.add(e);
+    out.push(e);
+  }
+  return out;
+}
+
+/** 트레이너 한 명이 담당하는 수강생 목록 (다중 배정 inclusion 검사). */
 export async function listTraineesForTrainer(trainerEmail: string): Promise<User[]> {
   const all = await listAllUsers();
   const lc = trainerEmail.toLowerCase();
   return all.filter(
-    (u) => u.role === "trainee" && u.assignedTrainer.toLowerCase() === lc,
+    (u) => u.role === "trainee" && parseAssignedTrainers(u.assignedTrainer).includes(lc),
   );
 }
 
@@ -137,7 +157,21 @@ export async function approveTrainer(email: string): Promise<void> {
   await updateCell(email, "F", "active");
 }
 
-/** Admin 전용: 수강생에게 트레이너 배정 */
+/**
+ * Admin 전용: 한 수강생의 assignedTrainer (다중) 통째로 갱신.
+ * trainerEmails 가 빈 배열 → G 컬럼 빈 문자열 (담당 해제).
+ */
+export async function setTraineeAssignments(
+  traineeEmail: string,
+  trainerEmails: string[],
+): Promise<void> {
+  const normalized = Array.from(
+    new Set(trainerEmails.map((e) => e.trim().toLowerCase()).filter(Boolean)),
+  );
+  await updateCell(traineeEmail, "G", normalized.join(","));
+}
+
+/** @deprecated 단일 배정용. setTraineeAssignments 권장. */
 export async function assignTrainerToTrainee(
   traineeEmail: string,
   trainerEmail: string,
