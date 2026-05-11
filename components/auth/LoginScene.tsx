@@ -5,6 +5,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import WebviewWarning from "./WebviewWarning";
 
 const FLUENT = "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets";
 const EMOJIS = [
@@ -26,6 +27,9 @@ const POS = [
 export default function LoginScene() {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-white">
+      {/* in-app 웹뷰(카톡·네이버·인스타 등) 감지 시 오버레이로 외부 브라우저 유도. */}
+      <WebviewWarning />
+
       {/* aurora bg */}
       <div
         className="pointer-events-none fixed inset-0 z-0"
