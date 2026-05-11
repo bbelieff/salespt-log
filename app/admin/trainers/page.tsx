@@ -24,14 +24,20 @@ export default async function AdminTrainersPage() {
     listPendingTrainers(),
     listAllUsers(),
   ]);
-  const trainers = all.filter((u) => u.role === "trainer" && u.status === "active");
+  const activeAll = all.filter((u) => u.role === "trainer" && u.status === "active");
+  // B 컬럼 분기: "관리" 면 관리부서, 그 외(T/빈문자열)는 일반 트레이너.
+  const isManagement = (u: { cohort: string }) =>
+    u.cohort.trim() === "관리";
+  const activeTrainers = activeAll.filter((u) => !isManagement(u));
+  const managementStaff = activeAll.filter(isManagement);
   const trainees = all.filter((u) => u.role === "trainee");
 
   return (
     <TrainerMgmtPanel
       sessionEmail={sessionEmail}
       pendingTrainers={pending}
-      activeTrainers={trainers}
+      activeTrainers={activeTrainers}
+      managementStaff={managementStaff}
       trainees={trainees}
     />
   );

@@ -16,6 +16,7 @@ import {
   type PanelUser,
   SectionPending,
   SectionAssign,
+  SectionManagement,
   SectionTraineeList,
   SectionTrainerList,
 } from "./TrainerMgmtSections";
@@ -24,11 +25,13 @@ export default function TrainerMgmtPanel({
   sessionEmail,
   pendingTrainers,
   activeTrainers,
+  managementStaff,
   trainees,
 }: {
   sessionEmail: string;
   pendingTrainers: PanelUser[];
   activeTrainers: PanelUser[];
+  managementStaff: PanelUser[];
   trainees: PanelUser[];
 }) {
   const router = useRouter();
@@ -106,6 +109,21 @@ export default function TrainerMgmtPanel({
               key,
             )
           }
+          onMoveToManagement={(email) => {
+            if (
+              !confirm(
+                `${email} 을 관리부서로 이동시키시겠습니까?\n\n` +
+                  `· 담당 매핑은 자동 정리됩니다.\n` +
+                  `· 언제든 트레이너로 다시 이동 가능합니다.`,
+              )
+            )
+              return;
+            call(
+              "/api/admin/set-trainer-dept",
+              { email, department: "management" },
+              `dept:${email}`,
+            );
+          }}
           onRemoveTrainer={(email) => {
             if (
               !confirm(
@@ -115,6 +133,22 @@ export default function TrainerMgmtPanel({
               )
             )
               return;
+            call("/api/admin/remove-trainer", { email }, `remove:${email}`);
+          }}
+        />
+
+        <SectionManagement
+          staff={managementStaff}
+          busy={busy}
+          onMoveToTrainer={(email) =>
+            call(
+              "/api/admin/set-trainer-dept",
+              { email, department: "trainer" },
+              `dept:${email}`,
+            )
+          }
+          onRemove={(email) => {
+            if (!confirm(`${email} row 를 삭제하시겠습니까?`)) return;
             call("/api/admin/remove-trainer", { email }, `remove:${email}`);
           }}
         />

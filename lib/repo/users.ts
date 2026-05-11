@@ -185,6 +185,37 @@ export async function setUserRole(email: string, role: User["role"]): Promise<vo
 }
 
 /**
+ * Admin 전용: 트레이너 소속 부서 변경 (B 컬럼 재활용).
+ *   - "trainer" → B="T"     (담당 배정 가능)
+ *   - "management" → B="관리" (담당 배정 대상에서 제외)
+ *
+ * role 은 trainer 그대로 유지 — 라우팅/인증 영향 없음.
+ * 관리부서로 이동 시 기존 담당 매핑(trainee.G)은 자동 정리.
+ */
+export async function setTrainerDepartment(
+  email: string,
+  department: "trainer" | "management",
+): Promise<void> {
+  if (department === "management") {
+    // 기존 담당 trainee 들의 G 에서 이 trainer email 제거 (cleanup).
+    const lc = email.toLowerCase();
+    const all = await listAllUsers();
+    for (const u of all) {
+      if (u.role !== "trainee") continue;
+      const current = parseAssignedTrainers(u.assignedTrainer);
+      if (!current.includes(lc)) continue;
+      await setTraineeAssignments(
+        u.email,
+        current.filter((e) => e !== lc),
+      );
+    }
+    await updateCell(email, "B", "관리");
+  } else {
+    await updateCell(email, "B", "T");
+  }
+}
+
+/**
  * Admin 전용: registry 에서 email row 물리 삭제 (Sheets API rows.delete).
  * 트레이너 거절·중복 정리 용도. 호출 후 cache 무효화.
  */
