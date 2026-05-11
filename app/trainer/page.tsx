@@ -22,9 +22,11 @@ export default async function TrainerPage() {
 
   const { role, status } = await getEffectiveRole(sessionEmail);
 
-  if (role === "admin") redirect("/admin");
-  if (role !== "trainer") redirect("/");
-  if (status === "pending") {
+  // admin 도 트레이너 페이지 열람 가능 (마스터 메뉴에서 "트레이너 페이지" 선택 시).
+  // admin 은 본인이 담당 trainee 가 없을 수 있어 빈 목록 보일 수 있음 — 정상.
+  const isAdmin = role === "admin";
+  if (!isAdmin && role !== "trainer") redirect("/");
+  if (!isAdmin && status === "pending") {
     return (
       <main className="min-h-dvh bg-gray-50 flex items-center justify-center p-6">
         <div className="max-w-sm text-center">
@@ -44,6 +46,8 @@ export default async function TrainerPage() {
   }
 
   const trainer = await findUserByEmail(sessionEmail);
+  // admin 이면 본인 email 로 담당 trainee 검색 (보통 없음 — 또는 admin email 을
+  // 일부러 assignedTrainer 로 지정한 경우만 표시).
   const traineesRegistry = await listTraineesForTrainer(sessionEmail);
   // 표시 라벨 SSOT: 각 수강생 개인 시트 B3 (cohort). registry 값은 fallback.
   const trainees = await enrichUsersWithSheetCohort(traineesRegistry);
