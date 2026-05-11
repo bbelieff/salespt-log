@@ -28,6 +28,31 @@ export async function findUserByEmail(email: string): Promise<User | null> {
   return null;
 }
 
+/** Admin 전용: 등록된 모든 사용자 (정렬: 기수 desc, 이름 asc). */
+export async function listAllUsers(): Promise<User[]> {
+  const reg = registry();
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const users: User[] = [];
+  for (const r of rows) {
+    if (!r[0]) continue; // email 없으면 미클레임 row (skip)
+    const parsed = User.safeParse({
+      email: r[0],
+      cohort: r[1] ?? "",
+      name: r[2] ?? "",
+      spreadsheetId: r[3] ?? "",
+      role: (r[4] as User["role"]) ?? "trainee",
+    });
+    if (parsed.success) users.push(parsed.data);
+  }
+  users.sort((a, b) => {
+    const ca = parseInt(String(a.cohort).replace(/기\s*$/, "")) || 0;
+    const cb = parseInt(String(b.cohort).replace(/기\s*$/, "")) || 0;
+    if (ca !== cb) return cb - ca; // 최신 기수 먼저
+    return a.name.localeCompare(b.name, "ko");
+  });
+  return users;
+}
+
 export async function listCohortMembers(cohort: string): Promise<User[]> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
