@@ -23,20 +23,21 @@ type Webview =
   | "instagram"
   | "facebook"
   | "line"
-  | "generic"
   | null;
 
 function detect(ua: string): Webview {
   const s = ua.toLowerCase();
+  // 명시적 webview UA 만 매칭. 정식 모바일 브라우저는 false-positive 방지.
+  //
+  // 이전 버전은 "iOS + Safari UA 아님" 을 generic webview 로 분류했는데,
+  // 그 결과 iOS Chrome(CriOS)·Firefox(FxiOS)·Edge(EdgiOS) 정식 브라우저까지
+  // 잘못 경고 노출. 카톡 "다른 브라우저로 열기" 한 정상 사용자도 차단.
+  // (incident: 2026-05-11 iOS Chrome 사용자 보고)
   if (s.includes("kakaotalk")) return "kakao";
   if (s.includes("naver")) return "naver";
   if (s.includes("instagram")) return "instagram";
   if (s.includes("fban") || s.includes("fbav") || s.includes("fbsv")) return "facebook";
   if (s.includes(" line/")) return "line";
-  // iOS WKWebView 일반 감지 — Safari 가 아닌데 mobile/iPhone 인 경우
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-  if (isIOS && !isSafari) return "generic";
   return null;
 }
 
@@ -46,7 +47,6 @@ const LABEL: Record<Exclude<Webview, null>, string> = {
   instagram: "인스타그램",
   facebook: "페이스북",
   line: "라인",
-  generic: "앱 내 브라우저",
 };
 
 export default function WebviewWarning() {
