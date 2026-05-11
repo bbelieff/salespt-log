@@ -39,6 +39,14 @@ export const registry = () => ({
 });
 
 /**
+ * 기수 전체 현황 마스터 시트 (트레이너·관리자 조회용).
+ * registry 와는 별개 — 사람·시트 매핑은 registry, 기수 단위 KPI/대시보드는 여기.
+ * env SHEETS_COHORT_MASTER_ID 미설정 시 빈 문자열 → UI 에서 링크 미노출.
+ */
+export const cohortMasterSheetId = (): string =>
+  process.env.SHEETS_COHORT_MASTER_ID ?? "";
+
+/**
  * Admin (마스터) 이메일 목록.
  * env ADMIN_EMAILS="a@x.com,b@y.com" (콤마 구분). 미설정 시 빈 배열.
  *
