@@ -1276,7 +1276,8 @@ components/dashboard/
 | **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
 | **AdminUserPicker** | Admin 전용 사용자 선택 화면. Props: `users: User[]`, `sessionEmail: string`. 기수별 그룹핑 + 검색. 클릭 시 POST /api/admin/switch → /dashboard. |
 | **TrainerLanding** | 트레이너 메인. Props: `sessionEmail`, `trainerName`, `trainees: User[]`, `masterSheetUrl`, `isAdmin`. 담당 수강생 목록 + 마스터 시트 링크. 클릭 시 impersonation 진입. |
-| **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 두 섹션 — pending 트레이너 승인/거절(POST /api/admin/{approve,reject}-trainer) + trainee 담당 트레이너 셀렉터(POST /api/admin/assign-trainee). |
+| **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 4 섹션 (TrainerMgmtSections 분리) — pending 승인/거절, 트레이너별 다중 배정 체크박스, 수강생 명단 아코디언, 트레이너 명단 아코디언. |
+| **TrainerMgmtSections** | TrainerMgmtPanel 4 섹션 분리 모음 (파일 크기 가드). SectionPending / SectionAssign / SectionTraineeList / SectionTrainerList + parseAssigned, groupByCohort 유틸. |
 | **LogoutButton** | NextAuth 5 `signOut()` 즉시 호출 클라이언트 버튼 (form POST 우회). Props: `className?`, `label?`. 서버 컴포넌트 페이지(/admin 등)에서 import. |
 | **ImpersonationBanner** | Admin 페이지 상단 impersonation 상태 표시 + 해제 버튼. Props: `impersonating: string`. 클릭 → POST /api/admin/switch `{email:null}` → router.refresh. |
 | **WebviewWarning** | 카카오톡·네이버·인스타·페북 등 in-app 웹뷰 감지 시 풀스크린 오버레이 노출. Props 없음. KakaoTalk 안드로이드는 `kakaotalk://web/openExternal?url=` scheme 으로 외부 Chrome 점프, 그 외는 단계 안내 + URL 복사. Google OAuth가 webview UA를 차단(disallowed_useragent)하는 문제 우회. |
