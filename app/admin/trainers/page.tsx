@@ -13,6 +13,9 @@ import {
 } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
+// 승인·배정 액션 직후 즉시 반영을 위해 강제 동적 렌더.
+export const dynamic = "force-dynamic";
+
 export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !isAdminEmail(sessionEmail)) redirect("/");
