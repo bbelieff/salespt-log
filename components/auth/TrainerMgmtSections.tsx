@@ -178,7 +178,23 @@ function TrainerAssignCard({
     onSave(t.email, next, `assign:${trainer.email}:${t.email}`);
   }
 
+  /** 대상 trainees 에 대해 이 trainer 를 add/remove 일괄 적용. */
+  function bulkApply(targets: PanelUser[], state: "add" | "remove") {
+    for (const t of targets) {
+      const current = parseAssigned(t.assignedTrainer);
+      const has = current.includes(trainerLc);
+      if (state === "add" && has) continue;
+      if (state === "remove" && !has) continue;
+      const next =
+        state === "add"
+          ? [...current, trainerLc]
+          : current.filter((e) => e !== trainerLc);
+      onSave(t.email, next, `assign:${trainer.email}:${t.email}`);
+    }
+  }
+
   const grouped = groupByCohort(trainees);
+  const bulkBusy = busy?.startsWith(`assign:${trainer.email}:`) ?? false;
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -207,14 +223,57 @@ function TrainerAssignCard({
       </button>
       {open && (
         <div className="border-t border-gray-100 bg-gray-50 p-3">
+          {/* 전체 일괄 토글 — 트레이너 연습용 시트 등 모두 배정 필요할 때. */}
+          {trainees.length > 0 && (
+            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-gray-200 pb-2 text-[11px]">
+              <span className="mr-auto text-gray-500">일괄 토글:</span>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => bulkApply(trainees, "add")}
+                className="rounded-full border border-red-200 bg-white px-2.5 py-1 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                전체 선택
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => bulkApply(trainees, "remove")}
+                className="rounded-full border border-gray-300 bg-white px-2.5 py-1 font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                전체 해제
+              </button>
+            </div>
+          )}
+
           {grouped.length === 0 ? (
             <p className="py-3 text-center text-xs text-gray-400">수강생 없음</p>
           ) : (
             <div className="space-y-3">
               {grouped.map(([cohort, list]) => (
                 <div key={cohort}>
-                  <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                    {cohort}기 · {list.length}명
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                    <span>
+                      {cohort}기 · {list.length}명
+                    </span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        disabled={bulkBusy}
+                        onClick={() => bulkApply(list, "add")}
+                        className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-[9px] font-bold normal-case text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        기수 선택
+                      </button>
+                      <button
+                        type="button"
+                        disabled={bulkBusy}
+                        onClick={() => bulkApply(list, "remove")}
+                        className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[9px] font-bold normal-case text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        기수 해제
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     {list.map((s) => {
