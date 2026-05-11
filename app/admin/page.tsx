@@ -11,14 +11,25 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import {
+  getSessionEmail,
+  getActiveUserEmail,
+  isAdminEmail,
+} from "@/auth/identity";
 import LogoutButton from "@/components/auth/LogoutButton";
+import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
+
+// impersonation 상태 즉시 반영을 위해 동적 렌더.
+export const dynamic = "force-dynamic";
 
 export default async function AdminLandingPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !isAdminEmail(sessionEmail)) {
     redirect("/");
   }
+  const activeEmail = await getActiveUserEmail();
+  const impersonating =
+    activeEmail !== sessionEmail ? activeEmail : null;
 
   return (
     <main className="min-h-dvh bg-gray-50">
@@ -37,6 +48,8 @@ export default async function AdminLandingPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-6 py-10">
+        {impersonating && <ImpersonationBanner impersonating={impersonating} />}
+
         <h1 className="text-2xl font-black tracking-tight text-gray-900">
           마스터 메뉴
         </h1>
