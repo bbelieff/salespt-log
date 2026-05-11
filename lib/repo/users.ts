@@ -12,7 +12,7 @@
  *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
  */
 import { unstable_cache, revalidateTag } from "next/cache";
-import { registry } from "@/config";
+import { registry, adminEmails, adminNames } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName } from "./drive-client";
@@ -196,8 +196,10 @@ export async function setTrainerDepartment(
   email: string,
   department: "trainer" | "management",
 ): Promise<void> {
+  const lc = email.toLowerCase();
+  const cohortValue = department === "management" ? "관리" : "T";
+
   if (department === "management") {
-    const lc = email.toLowerCase();
     const all = await listAllUsers();
     for (const u of all) {
       if (u.role !== "trainee") continue;
@@ -208,10 +210,36 @@ export async function setTrainerDepartment(
         current.filter((e) => e !== lc),
       );
     }
-    await updateCell(email, "B", "관리");
-  } else {
-    await updateCell(email, "B", "T");
   }
+
+  // 기존 row 가 있으면 B 컬럼만 부분 update, 없으면 신규 append.
+  // **Synth admin** 케이스 — ADMIN_EMAILS 에 있지만 registry 에 없는 admin
+  // (예: leadbzcenter, xorud910115) 도 관리부서로 보낼 수 있어야 함.
+  // 이전: updateCell 이 "email registry 에 없음" 으로 throw → 웹에서 버튼 먹통.
+  const reg = registry();
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const exists = rows.some(
+    (r) => typeof r[0] === "string" && (r[0] as string).toLowerCase() === lc,
+  );
+  if (exists) {
+    await updateCell(email, "B", cohortValue);
+    return;
+  }
+
+  // Synth admin → registry 에 새 row append. role=trainer (라우팅 의미),
+  // status=active, spreadsheetId/assignedTrainer 는 빈값.
+  // 이름은 ADMIN_NAMES env 매핑 우선, 없으면 email local-part.
+  const nameMap = adminNames();
+  const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
+  await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
+    [lc, cohortValue, fallbackName, "", "trainer", "active", ""],
+  ]);
+  invalidateRegistry();
+}
+
+/** 어떤 email 이 setTrainerDepartment 의 합법 대상인지 (registry trainer OR admin synth). */
+export function isAdminSynthCandidate(email: string): boolean {
+  return adminEmails().includes(email.toLowerCase());
 }
 
 /**
