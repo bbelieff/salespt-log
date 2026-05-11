@@ -99,7 +99,7 @@ export default function ClaimPage() {
               type="text"
               inputMode="numeric"
               maxLength={3}
-              placeholder="예: 7  (트레이너는 T)"
+              placeholder="기수를 입력하세요"
               value={cohort}
               onChange={(e) => setCohort(e.target.value)}
               pattern="^(\d+|[Tt])$"
@@ -114,7 +114,7 @@ export default function ClaimPage() {
             </label>
             <input
               type="text"
-              placeholder="예: 김상목"
+              placeholder="수강생 성명을 입력하세요"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100"
