@@ -233,6 +233,30 @@ export async function deleteUserByEmail(email: string): Promise<void> {
   invalidateRegistry();
 }
 
+/**
+ * Admin 전용: 트레이너 퇴출 — 담당 매핑 cleanup 후 row 삭제.
+ *
+ *  1. 모든 trainee 의 G 컬럼(assignedTrainer)에서 이 trainer email 제거.
+ *  2. trainer row 자체 삭제.
+ *
+ * pending 거절(reject-trainer)이 단순 row 삭제인 반면 이 함수는 active
+ * 트레이너 박탈 + 잔존 매핑 정리. 호출 후 cache 무효화.
+ */
+export async function removeTrainerCompletely(trainerEmail: string): Promise<void> {
+  const lc = trainerEmail.toLowerCase();
+  const all = await listAllUsers();
+  for (const u of all) {
+    if (u.role !== "trainee") continue;
+    const current = parseAssignedTrainers(u.assignedTrainer);
+    if (!current.includes(lc)) continue;
+    await setTraineeAssignments(
+      u.email,
+      current.filter((e) => e !== lc),
+    );
+  }
+  await deleteUserByEmail(trainerEmail);
+}
+
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
   const validated = User.parse(u);

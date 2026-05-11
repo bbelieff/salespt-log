@@ -106,11 +106,23 @@ export default function TrainerMgmtPanel({
               key,
             )
           }
+          onRemoveTrainer={(email) => {
+            if (
+              !confirm(
+                `${email} 트레이너를 퇴출시키시겠습니까?\n\n` +
+                  `· 그가 담당하던 모든 수강생의 배정에서 자동 제거됩니다.\n` +
+                  `· trainer row 자체가 삭제됩니다.`,
+              )
+            )
+              return;
+            call("/api/admin/remove-trainer", { email }, `remove:${email}`);
+          }}
         />
 
-        <SectionTraineeList trainees={trainees} />
-
+        {/* 순서: 트레이너 명단 먼저 → 수강생 명단 */}
         <SectionTrainerList trainers={activeTrainers} trainees={trainees} />
+
+        <SectionTraineeList trainees={trainees} activeTrainers={activeTrainers} />
       </div>
     </main>
   );
