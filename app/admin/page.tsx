@@ -64,10 +64,10 @@ export default async function AdminLandingPage() {
           >
             <div className="text-3xl">🗂️</div>
             <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
-              수강생 시트 보기
+              수강생 관리
             </div>
             <div className="mt-1 text-xs text-gray-500 leading-relaxed">
-              모든 등록 사용자 목록. 클릭하면 그 사람의 5탭 UI를 조회·편집.
+              등록 수강생 현황 — 담당 트레이너·시작일·종강일 + 시트 진입.
             </div>
           </Link>
 

@@ -13,6 +13,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import {
   setTraineeAssignments,
   findUserByEmail,
@@ -65,5 +66,6 @@ export async function POST(req: Request) {
   }
 
   await setTraineeAssignments(trainee, trainerEmails);
+  revalidateAdminPages();
   return NextResponse.json({ assigned: { trainee, trainers: trainerEmails } });
 }

@@ -19,6 +19,7 @@ import {
   canImpersonate,
   setImpersonation,
 } from "@/auth/identity";
+import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { findUserByEmail } from "@/repo/users";
 
 export async function POST(req: Request) {
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
 
   if (target === null || target === "" || target === undefined) {
     await setImpersonation(null);
+    revalidateAdminPages();
     return NextResponse.json({ impersonating: null });
   }
 
@@ -53,6 +55,7 @@ export async function POST(req: Request) {
   }
 
   await setImpersonation(user.email);
+  revalidateAdminPages();
   return NextResponse.json({
     impersonating: user.email,
     cohort: user.cohort,

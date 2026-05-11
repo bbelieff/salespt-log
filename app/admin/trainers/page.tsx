@@ -1,20 +1,19 @@
 /**
  * /admin/trainers — Admin 전용 트레이너 관리.
  *
- * 두 섹션:
- *   1. 트레이너 요청 관리 — status=pending 목록 → 승인 / 거절
- *   2. 트레이너 담당 부여 — trainee 목록 + 각 trainee 의 assignedTrainer 변경 셀렉터
+ * 섹션 순서:
+ *   1. 트레이너 요청관리 — status=pending 승인/거절
+ *   2. 트레이너 담당부여 — 트레이너 카드 + 수강생 다중 체크박스
+ *   3. 수강생 명단      — 기수별 아코디언
+ *   4. 관리부서 명단    — B 컬럼="관리" 인원
  */
 import { redirect } from "next/navigation";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
-import {
-  listPendingTrainers,
-  listAllUsers,
-} from "@/repo/users";
+import { adminEmails } from "@/config";
+import { listPendingTrainers, listAllUsers } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
-// 승인·배정 액션 직후 즉시 반영을 위해 강제 동적 렌더.
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();
@@ -24,14 +23,29 @@ export default async function AdminTrainersPage() {
     listPendingTrainers(),
     listAllUsers(),
   ]);
-  const trainers = all.filter((u) => u.role === "trainer" && u.status === "active");
+
+  // 활성 트레이너 풀:
+  //   - role==="trainer" + status==="active"  (정식 트레이너)
+  //   - email ∈ ADMIN_EMAILS                  (마스터 본인 — 트레이너처럼 담당 받음)
+  const adminLc = new Set(adminEmails());
+  const activeAll = all.filter((u) => {
+    if (u.role === "trainer" && u.status === "active") return true;
+    if (adminLc.has(u.email.toLowerCase())) return true;
+    return false;
+  });
+
+  // B 컬럼="관리" 면 관리부서, 그 외(T/빈/숫자)는 일반 트레이너.
+  const isManagement = (u: { cohort: string }) => u.cohort.trim() === "관리";
+  const activeTrainers = activeAll.filter((u) => !isManagement(u));
+  const managementStaff = activeAll.filter(isManagement);
   const trainees = all.filter((u) => u.role === "trainee");
 
   return (
     <TrainerMgmtPanel
       sessionEmail={sessionEmail}
       pendingTrainers={pending}
-      activeTrainers={trainers}
+      activeTrainers={activeTrainers}
+      managementStaff={managementStaff}
       trainees={trainees}
     />
   );

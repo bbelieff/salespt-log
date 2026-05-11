@@ -12,7 +12,9 @@ import { listAllUsers } from "@/repo/users";
 import { enrichUsersWithDates } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
 
-export const dynamic = "force-dynamic";
+// force-dynamic 제거 — 페이지 전환마다 N 시트 호출(수강생 수만큼)이 큰 부담.
+// 30초 revalidate + 변경 액션(/api/admin/*) 에서 revalidatePath 로 즉시 무효화.
+export const revalidate = 30;
 
 export default async function AdminUsersPage() {
   const sessionEmail = await getSessionEmail();
