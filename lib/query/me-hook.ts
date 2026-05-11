@@ -33,5 +33,10 @@ export function useMe(): UseQueryResult<MeView> {
     queryFn: fetchMe,
     staleTime: 60 * 60 * 1000, // 1시간
     gcTime: 60 * 60 * 1000,
+    // 페이지 전환·포커스 복귀·재연결 시 자동 refetch 차단 — 헤더 깜빡임/지연 방지.
+    // 시트 변경은 1시간 이상 stale 후에만 재조회 (혹은 mutation 후 invalidateQueries).
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 }

@@ -53,13 +53,20 @@ export async function GET() {
   // 정상 프로필 로드
   try {
     const me = await loadMe(activeEmail);
-    return NextResponse.json({
+    const res = NextResponse.json({
       ...me,
       isAdmin: admin,
       sessionEmail,
       sessionRole,
       impersonating: admin && activeEmail !== sessionEmail ? activeEmail : null,
     });
+    // 브라우저/CDN private cache: 30초 fresh + 5분 stale-while-revalidate.
+    // 프로필은 거의 변하지 않으므로 페이지 전환 시 304/메모리 캐시로 즉시 응답.
+    res.headers.set(
+      "Cache-Control",
+      "private, max-age=30, stale-while-revalidate=300",
+    );
+    return res;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
