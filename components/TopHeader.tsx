@@ -136,6 +136,18 @@ export default function TopHeader({
                 </div>
               </div>
             </div>
+            {me.data?.isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span>다른 수강생 선택 →</span>
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -154,6 +166,24 @@ export default function TopHeader({
             </div>
           </div>
         </>
+      )}
+
+      {/* Admin impersonation 배너 */}
+      {me.data?.impersonating && (
+        <div className="sticky top-12 z-[45] flex h-8 items-center gap-2 border-b border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-700">
+          <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+            Master 모드
+          </span>
+          <span className="truncate">
+            <strong>{display}</strong> 으로 보는 중
+          </span>
+          <Link
+            href="/admin"
+            className="ml-auto shrink-0 underline underline-offset-2 hover:text-red-900"
+          >
+            바꾸기
+          </Link>
+        </div>
       )}
 
       {/* 페이지 배너 */}

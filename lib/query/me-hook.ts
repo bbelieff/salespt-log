@@ -7,18 +7,25 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { MeProfile } from "@/service";
 
+/** /api/me 확장 — admin 메타 포함. */
+export interface MeView extends MeProfile {
+  isAdmin?: boolean;
+  sessionEmail?: string;
+  impersonating?: string | null;
+}
+
 const meKey = () => ["me"] as const;
 
-async function fetchMe(): Promise<MeProfile> {
+async function fetchMe(): Promise<MeView> {
   const res = await fetch("/api/me");
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error ?? `me fetch ${res.status}`);
   }
-  return (await res.json()) as MeProfile;
+  return (await res.json()) as MeView;
 }
 
-export function useMe(): UseQueryResult<MeProfile> {
+export function useMe(): UseQueryResult<MeView> {
   return useQuery({
     queryKey: meKey(),
     queryFn: fetchMe,

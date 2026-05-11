@@ -39,6 +39,23 @@ export const registry = () => ({
 });
 
 /**
+ * Admin (마스터) 이메일 목록.
+ * env ADMIN_EMAILS="a@x.com,b@y.com" (콤마 구분). 미설정 시 빈 배열.
+ *
+ * Admin 권한:
+ *   - registry 등록 안 되어 있어도 로그인 허용 (claim 건너뜀)
+ *   - 다른 사용자 시트 조회·편집 (impersonation, /api/admin/switch)
+ *   - /api/admin/users 로 전체 등록자 목록 조회
+ */
+export const adminEmails = (): string[] => {
+  const raw = process.env.ADMIN_EMAILS ?? "";
+  return raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+};
+
+/**
  * 수강생 개인 시트의 섹션별 A1 범위.
  * 시트 구조가 바뀌면 여기만 고친다. Repo 코드는 건드리지 않는다.
  *
