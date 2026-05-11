@@ -10,8 +10,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface User {
@@ -36,7 +36,9 @@ export default function AdminUserPicker({
   const [q, setQ] = useState("");
 
   const grouped = useMemo(() => {
-    const filtered = users.filter((u) => {
+    // 수강생만 노출 — 트레이너/admin/관리부서는 이 화면에서 시트 조회 대상 아님.
+    const onlyTrainees = users.filter((u) => u.role === "trainee");
+    const filtered = onlyTrainees.filter((u) => {
       if (!q.trim()) return true;
       const k = q.trim().toLowerCase();
       return (
@@ -47,7 +49,7 @@ export default function AdminUserPicker({
     });
     const map = new Map<string, User[]>();
     for (const u of filtered) {
-      const k = String(u.cohort).replace(/기\s*$/, "").trim();
+      const k = String(u.cohort).replace(/기\s*$/, "").trim() || "—";
       const arr = map.get(k) ?? [];
       arr.push(u);
       map.set(k, arr);
@@ -89,19 +91,18 @@ export default function AdminUserPicker({
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
-              Master · Admin
+              Master · 수강생 시트 보기
             </div>
             <div className="mt-0.5 text-sm font-semibold text-gray-900">
               {sessionEmail}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+          <Link
+            href="/admin"
+            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
-            로그아웃
-          </button>
+            ← 마스터 메뉴
+          </Link>
         </div>
       </header>
 
