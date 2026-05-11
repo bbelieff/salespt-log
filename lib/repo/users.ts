@@ -149,6 +149,55 @@ export async function setUserRole(email: string, role: User["role"]): Promise<vo
   await updateCell(email, "E", role);
 }
 
+/**
+ * Admin 전용: registry 에서 email row 물리 삭제 (Sheets API rows.delete).
+ * 트레이너 거절·중복 정리 용도. 호출 후 cache 무효화.
+ */
+export async function deleteUserByEmail(email: string): Promise<void> {
+  const reg = registry();
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const lc = email.toLowerCase();
+  let matchIdx = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if (typeof rows[i]?.[0] === "string" && (rows[i]![0] as string).toLowerCase() === lc) {
+      matchIdx = i;
+      break;
+    }
+  }
+  if (matchIdx < 0) {
+    throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+  }
+  // Sheets API batchUpdate — 행 삭제는 sheetId 가 필요. 메타로 조회.
+  const meta = await sheetsClient().spreadsheets.get({
+    spreadsheetId: reg.spreadsheetId,
+    fields: "sheets(properties(sheetId,title))",
+  });
+  const sheet = meta.data.sheets?.find((s) => s.properties?.title === reg.tab);
+  const sheetId = sheet?.properties?.sheetId;
+  if (sheetId === undefined || sheetId === null) {
+    throw new Error(`[users] registry 탭(${reg.tab}) 의 sheetId 를 찾을 수 없습니다.`);
+  }
+  const sheetRow = matchIdx + 1; // header(row 0) + 1
+  await sheetsClient().spreadsheets.batchUpdate({
+    spreadsheetId: reg.spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: sheetRow,
+              endIndex: sheetRow + 1,
+            },
+          },
+        },
+      ],
+    },
+  });
+  invalidateRegistry();
+}
+
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
   const validated = User.parse(u);
