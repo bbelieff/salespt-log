@@ -28,7 +28,12 @@ export async function GET() {
   const admin = isAdminEmail(sessionEmail);
   const activeEmail = await getActiveUserEmail();
 
+  // 세션 사용자(impersonation 무시) — 실제 role 확인용
+  const sessionUser = sessionEmail === activeEmail ? null : await findUserByEmail(sessionEmail);
   const user = await findUserByEmail(activeEmail);
+  const sessionRole: "admin" | "trainer" | "trainee" = admin
+    ? "admin"
+    : ((sessionUser ?? user)?.role ?? "trainee");
 
   // 비-Admin + 미등록 = claim 필요
   if (!user && !admin) {
@@ -41,6 +46,7 @@ export async function GET() {
       status: "admin_no_target",
       email: sessionEmail,
       isAdmin: true,
+      sessionRole,
     });
   }
 
@@ -51,6 +57,7 @@ export async function GET() {
       ...me,
       isAdmin: admin,
       sessionEmail,
+      sessionRole,
       impersonating: admin && activeEmail !== sessionEmail ? activeEmail : null,
     });
   } catch (e) {

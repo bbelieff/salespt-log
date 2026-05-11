@@ -11,6 +11,8 @@ import type { MeProfile } from "@/service";
 export interface MeView extends MeProfile {
   isAdmin?: boolean;
   sessionEmail?: string;
+  /** 세션 사용자(impersonation 무시)의 실제 role — admin/trainer/trainee. */
+  sessionRole?: "admin" | "trainer" | "trainee";
   impersonating?: string | null;
 }
 

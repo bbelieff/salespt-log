@@ -168,20 +168,37 @@ export default function TopHeader({
         </>
       )}
 
-      {/* Admin impersonation 배너 */}
-      {me.data?.impersonating && (
-        <div className="sticky top-12 z-[45] flex h-8 items-center gap-2 border-b border-red-200 bg-red-50 px-3 text-[11px] font-semibold text-red-700">
-          <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
-            Master 모드
+      {/* Admin / Trainer 상시 상태바 — 권한자가 본인 시트를 보고 있을 때도 항상 노출.
+            관리자/트레이너 페이지로 빠져나갈 수 있는 진입점을 영구적으로 제공한다. */}
+      {(me.data?.sessionRole === "admin" || me.data?.sessionRole === "trainer") && (
+        <div
+          className={`sticky top-12 z-[45] flex h-8 items-center gap-2 border-b px-3 text-[11px] font-semibold ${
+            me.data?.impersonating
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-amber-200 bg-amber-50 text-amber-800"
+          }`}
+        >
+          <span
+            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white ${
+              me.data?.sessionRole === "admin" ? "bg-red-600" : "bg-amber-600"
+            }`}
+          >
+            {me.data?.sessionRole === "admin" ? "Master" : "Trainer"}
           </span>
-          <span className="truncate">
-            <strong>{display}</strong> 으로 보는 중
+          <span className="min-w-0 truncate">
+            {me.data?.impersonating ? (
+              <>
+                <strong>{display}</strong> 으로 보는 중
+              </>
+            ) : (
+              <>본인 시트 보기 중</>
+            )}
           </span>
           <Link
-            href="/admin"
-            className="ml-auto shrink-0 underline underline-offset-2 hover:text-red-900"
+            href={me.data?.sessionRole === "admin" ? "/admin" : "/trainer"}
+            className="ml-auto shrink-0 rounded-full border border-current px-2 py-0.5 text-[10px] font-bold underline-offset-2 hover:underline"
           >
-            바꾸기
+            {me.data?.sessionRole === "admin" ? "관리자 페이지" : "트레이너 페이지"}
           </Link>
         </div>
       )}
