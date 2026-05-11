@@ -12,8 +12,9 @@
  *  - TopHeader 컴포넌트 — 모든 탭 상단 "{기수} {이름} 대표님" 표시
  *  - DDayBadge — 종강총회일(O2)까지 남은 일수 카운트다운 (D-N = O2 − today)
  */
+import { unstable_cache } from "next/cache";
 import { findUserByEmail } from "@/repo/users";
-import { readProfile, readCourseStart, readGraduation } from "@/repo/sales";
+import { readProfileBundle } from "@/repo/sales";
 
 /**
  * 참고 상수: 시트 O2가 보통 `=O1+57` 수식인 경우의 offset.
@@ -58,22 +59,29 @@ export function computeGraduationISO(courseStartISO: string): string {
   return toISO(addDays(start, GRADUATION_OFFSET_DAYS));
 }
 
+/**
+ * spreadsheetId → bundle(profile + dates) 캐시 — 60초.
+ * 시트 B3/C3/O1/O2 변경은 매우 드물고(수강 시작 시 1회) 페이지 전환 시 매번
+ * 다시 읽으면 헤더 표시 지연 주범. 60초 stale 허용.
+ */
+const cachedReadBundle = unstable_cache(
+  async (spreadsheetId: string) => readProfileBundle(spreadsheetId),
+  ["me-bundle"],
+  { revalidate: 60, tags: ["me-bundle"] },
+);
+
 export async function loadMe(email: string): Promise<MeProfile> {
   const user = await findUserByEmail(email);
   if (!user) {
     throw new Error(`[me] 사용자(${email})를 찾을 수 없습니다.`);
   }
-  // 시트에서 O1, O2를 동시에 읽음 (graduation은 O2 직접 — O1+57 계산 X)
-  const [profile, courseStart, graduation] = await Promise.all([
-    readProfile(user.spreadsheetId),
-    readCourseStart(user.spreadsheetId),
-    readGraduation(user.spreadsheetId),
-  ]);
+  // 단일 batchGet (B3:C3 + O1 + O2) + 60s 메모이즈.
+  const bundle = await cachedReadBundle(user.spreadsheetId);
   return {
     email: user.email,
-    cohort: profile.cohort || user.cohort,
-    name: profile.name || user.name,
-    courseStartISO: toISO(courseStart),
-    graduationISO: toISO(graduation),
+    cohort: bundle.cohort || user.cohort,
+    name: bundle.name || user.name,
+    courseStartISO: toISO(bundle.courseStart),
+    graduationISO: toISO(bundle.graduation),
   };
 }

@@ -10,6 +10,7 @@
  *   F: status        ("active" / "pending")
  *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
  */
+import { unstable_cache, revalidateTag } from "next/cache";
 import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
@@ -31,9 +32,29 @@ function parseRow(r: unknown[]): User | null {
   return parsed.success ? parsed.data : null;
 }
 
+const REGISTRY_TAG = "registry";
+
+/**
+ * 레지스트리 전체 row 캐시 — 60초 stale.
+ * 페이지 전환마다 /api/me 가 호출 → findUserByEmail 가 전체 스캔 →
+ * Sheets API roundtrip 300~800ms. 레지스트리는 admin 액션 외에는 거의 변하지
+ * 않으므로 60초 캐시 적절. 쓰기 시 revalidateTag("registry") 로 즉시 무효화.
+ */
+const cachedRegistryRows = unstable_cache(
+  async (): Promise<string[][]> => {
+    const reg = registry();
+    return readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  },
+  ["registry-rows"],
+  { revalidate: 60, tags: [REGISTRY_TAG] },
+);
+
+function invalidateRegistry(): void {
+  revalidateTag(REGISTRY_TAG);
+}
+
 export async function findUserByEmail(email: string): Promise<User | null> {
-  const reg = registry();
-  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const rows = await cachedRegistryRows();
   for (const r of rows) {
     if (typeof r[0] === "string" && r[0].toLowerCase() === email.toLowerCase()) {
       return parseRow(r);
@@ -44,8 +65,7 @@ export async function findUserByEmail(email: string): Promise<User | null> {
 
 /** 전체 사용자 (정렬: 트레이너/admin 먼저, 그 다음 기수 desc, 이름 asc) */
 export async function listAllUsers(): Promise<User[]> {
-  const reg = registry();
-  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const rows = await cachedRegistryRows();
   const users: User[] = [];
   for (const r of rows) {
     if (!r[0]) continue;
@@ -83,6 +103,9 @@ export async function listPendingTrainers(): Promise<User[]> {
 /**
  * sheetRow (1-based) 의 한 컬럼만 update.
  * 다른 컬럼은 그대로 유지 — 부분 update 안전.
+ *
+ * 쓰기 직전에는 최신값이 필요해 캐시를 우회 (직접 readRange).
+ * 쓰기 직후 revalidateTag("registry") 로 캐시 무효화.
  */
 async function updateCell(
   email: string,
@@ -101,6 +124,7 @@ async function updateCell(
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [[value]] },
       });
+      invalidateRegistry();
       return;
     }
   }
@@ -139,6 +163,7 @@ export async function registerUser(u: User): Promise<void> {
       validated.assignedTrainer,
     ],
   ]);
+  invalidateRegistry();
 }
 
 /**
@@ -174,6 +199,7 @@ export async function claimRegistry(
   status: User["status"] = "active",
 ): Promise<void> {
   const reg = registry();
+  // 쓰기 직전에는 최신값 필요 → 캐시 우회 (직접 readRange).
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const cohortNorm = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
@@ -203,6 +229,7 @@ export async function claimRegistry(
       [email, cohortNorm, cleanName, spreadsheetId, role, status, ""],
     ]);
   }
+  invalidateRegistry();
 }
 
 // Header helper — 레지스트리 시트를 처음 만들 때 1회 실행.

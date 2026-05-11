@@ -198,6 +198,62 @@ export async function readProfile(
 }
 
 /**
+ * loadMe 전용 — B3:C3 (프로필) + O1 (수강시작일) + O2 (종강총회일) 을
+ * **단일 batchGet** 호출로 가져옴.
+ *
+ * 기존 readProfile/readCourseStart/readGraduation 을 Promise.all 로 호출하면
+ * 3회 round-trip 발생 → 헤더 로드 지연 주범. batchGet 으로 1회 호출.
+ */
+export async function readProfileBundle(spreadsheetId: string): Promise<{
+  cohort: string;
+  name: string;
+  courseStart: Date;
+  graduation: Date;
+}> {
+  const tab = tabRef(SHEET_RANGES.sales.tab);
+  const ranges = [
+    `${tab}!B3:C3`,
+    `${tab}!${SHEET_RANGES.sales.startDateCell}`,
+    `${tab}!${SHEET_RANGES.sales.graduationDateCell}`,
+  ];
+  const res = await sheetsClient().spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const ranges_ = res.data.valueRanges ?? [];
+  const profileRow = (ranges_[0]?.values?.[0] ?? []) as unknown[];
+  const startRaw = ranges_[1]?.values?.[0]?.[0];
+  const gradRaw = ranges_[2]?.values?.[0]?.[0];
+
+  return {
+    cohort: String(profileRow[0] ?? "").trim(),
+    name: String(profileRow[1] ?? "").trim(),
+    courseStart: parseSerialOrString(startRaw, "O1(수강시작일)"),
+    graduation: parseSerialOrString(gradRaw, "O2(종강총회)"),
+  };
+}
+
+function parseSerialOrString(raw: unknown, label: string): Date {
+  if (raw === undefined || raw === null || raw === "") {
+    throw new Error(`[sales.ts] ${label}이 비어있습니다.`);
+  }
+  if (typeof raw === "number") {
+    const ms = (raw - 25569) * 86_400_000;
+    return new Date(ms);
+  }
+  if (typeof raw === "string") {
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(`[sales.ts] ${label} 파싱 실패: ${raw}`);
+    }
+    return parsed;
+  }
+  throw new Error(`[sales.ts] ${label} 형식 미지원: ${typeof raw}`);
+}
+
+/**
  * 영업관리 B3/C3에 기수/이름 쓰기.
  * Self-claim 흐름에서 사용 — 시트 템플릿이 빈 상태로 만들어진 경우 web 이 직접 작성.
  */
