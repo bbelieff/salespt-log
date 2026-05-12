@@ -16,69 +16,24 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface Trainee {
-  email: string;
-  cohort: string;
-  name: string;
-  spreadsheetId: string;
-  role: string;
-  assignedTrainer?: string;
-  courseStartISO?: string;
-  graduationISO?: string;
-}
-
-interface Trainer {
-  email: string;
-  name: string;
-}
-
-function parseAssigned(field: string | undefined): string[] {
-  if (!field) return [];
-  return Array.from(
-    new Set(
-      field
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  );
-}
-
-/** "2026-04-10" → "26/04/10". 빈 값 → null. */
-function fmtDateYY(iso: string | undefined): string | null {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const [y, m, d] = iso.split("-");
-  return `${y!.slice(-2)}/${m}/${d}`;
-}
-
-/** 기수 진행률 (%) + D-day 계산. start~end 사이 today 기준. */
-function cohortProgress(
-  startISO: string | undefined,
-  endISO: string | undefined,
-): { pct: number | null; dday: number | null } {
-  if (!startISO || !endISO) return { pct: null, dday: null };
-  const start = new Date(startISO).getTime();
-  const end = new Date(endISO).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-    return { pct: null, dday: null };
-  }
-  const now = Date.now();
-  const totalMs = end - start;
-  const elapsedMs = Math.max(0, Math.min(totalMs, now - start));
-  const pct = Math.round((elapsedMs / totalMs) * 100);
-  const dday = Math.ceil((end - now) / 86_400_000);
-  return { pct, dday };
-}
+import {
+  type Trainee,
+  type Trainer,
+  CohortSection,
+  ReservedSection,
+} from "./AdminUserPickerSections";
 
 export default function AdminUserPicker({
   users,
+  reservedUsers = [],
   activeTrainers,
   sessionEmail,
   archivedCohorts = [],
   viewOnly = false,
 }: {
   users: Trainee[];
+  /** 유보 처리된 trainees (registry B="유보"). enrich 안 됨 — cohort/이름 raw. */
+  reservedUsers?: Trainee[];
   activeTrainers: Trainer[];
   sessionEmail: string;
   archivedCohorts?: string[];
@@ -90,6 +45,62 @@ export default function AdminUserPicker({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
+
+  /** 공통 액션 helper — body POST 후 me 캐시 무효화 + 라우터 refresh. */
+  async function postAction(
+    url: string,
+    body: Record<string, unknown>,
+    targetEmail: string,
+  ): Promise<boolean> {
+    setBusy(targetEmail);
+    setError(null);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `HTTP ${res.status}`);
+        setBusy(null);
+        return false;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.refresh();
+      setBusy(null);
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "네트워크 오류");
+      setBusy(null);
+      return false;
+    }
+  }
+
+  async function reserve(email: string) {
+    await postAction(
+      "/api/admin/set-trainee-reserved",
+      { email, reserved: true },
+      email,
+    );
+  }
+  async function restore(email: string) {
+    await postAction(
+      "/api/admin/set-trainee-reserved",
+      { email, reserved: false },
+      email,
+    );
+  }
+  async function purge(email: string, name: string) {
+    if (
+      !window.confirm(
+        `정말 "${name || email}" 를 영구 퇴출하시겠어요?\n등록 row 가 삭제됩니다 (시트 자체는 유지).`,
+      )
+    ) {
+      return;
+    }
+    await postAction("/api/admin/remove-trainee", { email }, email);
+  }
 
   const nameByEmail = useMemo(() => {
     const m = new Map<string, string>();
@@ -201,9 +212,11 @@ export default function AdminUserPicker({
         )}
 
         <div className="mt-8 space-y-8">
-          {activeGroups.length === 0 && archivedGroups.length === 0 && (
-            <p className="text-sm text-gray-400">검색 결과 없음.</p>
-          )}
+          {activeGroups.length === 0 &&
+            archivedGroups.length === 0 &&
+            reservedUsers.length === 0 && (
+              <p className="text-sm text-gray-400">검색 결과 없음.</p>
+            )}
 
           {/* 활성 기수 그룹 */}
           {activeGroups.map(([cohort, list]) => (
@@ -214,6 +227,7 @@ export default function AdminUserPicker({
               busy={busy}
               nameByEmail={nameByEmail}
               onPick={pick}
+              onReserve={reserve}
               viewOnly={viewOnly}
             />
           ))}
@@ -238,11 +252,26 @@ export default function AdminUserPicker({
                     busy={busy}
                     nameByEmail={nameByEmail}
                     onPick={pick}
+                    onReserve={reserve}
                     archived
+                    viewOnly={viewOnly}
                   />
                 ))}
               </div>
             </details>
+          )}
+
+          {/* 유보 수강생 — collapsed. 정규 명단·기수 그룹에서 빠진 trainee.
+              관리자는 여기서 "복귀" 또는 "퇴출"(row 삭제) 선택 가능. */}
+          {reservedUsers.length > 0 && (
+            <ReservedSection
+              list={reservedUsers}
+              busy={busy}
+              nameByEmail={nameByEmail}
+              onRestore={restore}
+              onPurge={purge}
+              viewOnly={viewOnly}
+            />
           )}
         </div>
       </div>
@@ -250,95 +279,3 @@ export default function AdminUserPicker({
   );
 }
 
-/* ─────────────────────────── 기수별 섹션 ─────────────────────────── */
-function CohortSection({
-  cohort,
-  list,
-  busy,
-  nameByEmail,
-  onPick,
-  archived = false,
-  viewOnly = false,
-}: {
-  cohort: string;
-  list: Trainee[];
-  busy: string | null;
-  nameByEmail: Map<string, string>;
-  onPick: (email: string) => void;
-  archived?: boolean;
-  viewOnly?: boolean;
-}) {
-  // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
-  const rep = list.find((u) => u.courseStartISO && u.graduationISO);
-  const start = fmtDateYY(rep?.courseStartISO);
-  const end = fmtDateYY(rep?.graduationISO);
-  const { pct, dday } = cohortProgress(
-    rep?.courseStartISO,
-    rep?.graduationISO,
-  );
-  return (
-    <section>
-      <h2 className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs font-bold uppercase tracking-wider text-gray-500">
-        <span>
-          {cohort}기 · {list.length}명{archived && " (보관)"}
-        </span>
-        {start && end && (
-          <span className="font-normal normal-case text-gray-400">
-            개강 <span className="font-semibold text-gray-600">{start}</span>{" "}
-            ~ 종강 <span className="font-semibold text-gray-600">{end}</span>
-            {pct !== null && (
-              <>
-                {" · "}진행률{" "}
-                <span className="font-semibold text-gray-600">{pct}%</span>
-                {dday !== null && (
-                  <span className="ml-1 font-semibold text-brand-red">
-                    D{dday >= 0 ? "-" : "+"}
-                    {Math.abs(dday)}
-                  </span>
-                )}
-              </>
-            )}
-          </span>
-        )}
-      </h2>
-      <ul className="space-y-2">
-        {list.map((u) => {
-          const assigned = parseAssigned(u.assignedTrainer);
-          const trainerNames =
-            assigned.length > 0
-              ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
-              : "미배정";
-          return (
-            <li
-              key={u.email}
-              className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"}`}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-sm font-black text-gray-900">
-                    {u.name || "(이름 없음)"}
-                  </span>
-                  <span className="text-[11px] text-gray-400">{u.email}</span>
-                </div>
-                <div className="mt-1.5 text-[11px] text-gray-600">
-                  <span className="text-gray-400">담당</span>{" "}
-                  <span className="font-semibold">{trainerNames}</span>
-                </div>
-              </div>
-              {!viewOnly && (
-                <button
-                  type="button"
-                  onClick={() => onPick(u.email)}
-                  disabled={busy !== null}
-                  className="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-                >
-                  {busy === u.email ? "여는 중..." : "시트 열기 →"}
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}

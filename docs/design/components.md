@@ -1274,7 +1274,8 @@ components/dashboard/
 | 컴포넌트 | 역할 / Props |
 |---|---|
 | **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
-| **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `activeTrainers`, `sessionEmail`. 행 카드: 이름·email·기수·담당 트레이너 이름·시작일·종강일 + [시트 열기]. 클릭 → POST /api/admin/switch → /dashboard. 뒤로가기 헤더 링크. |
+| **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 행 카드: 이름·email·기수·담당 + [유보] + [시트 열기]. 유보 섹션은 collapsible — [복귀]/[퇴출](confirm). POST /api/admin/switch · /api/admin/set-trainee-reserved · /api/admin/remove-trainee. |
+| **AdminUserPickerSections** | AdminUserPicker 의 CohortSection + ReservedSection + parseAssigned/fmtDateYY/cohortProgress 유틸 분리 (500줄 cap). Trainee/Trainer 타입 re-export. |
 | **TrainerLanding** | 트레이너 메인. Props: `sessionEmail`, `trainerName`, `trainees: User[]`, `masterSheetUrl`, `isAdmin`. 담당 수강생 목록 + 마스터 시트 링크. 클릭 시 impersonation 진입. |
 | **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 4 섹션 (TrainerMgmtSections 분리) — pending 승인/거절, 트레이너별 다중 배정 체크박스, 수강생 명단 아코디언, 트레이너 명단 아코디언. |
 | **TrainerMgmtSections** | TrainerMgmtPanel 의 SectionPending / SectionAssign / SectionTraineeList + parseAssigned, groupByCohort, PanelUser 유틸. SectionManagement 는 TrainerMgmtManagement 에서 re-export. |
