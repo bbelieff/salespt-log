@@ -124,7 +124,7 @@ export default function ClaimPage() {
           </div>
 
           <p className="text-[11px] leading-relaxed text-gray-400">
-            트레이너가 만든 본인 시트와 자동 연결됩니다.
+            본인 수강생 시트와 자동 연결됩니다.
             <br />
             <span className="text-gray-600">
               (시트 이름:{" "}
@@ -132,11 +132,6 @@ export default function ClaimPage() {
                 세일즈PT_ 기수 이름 수강생 경영일지
               </code>
               )
-            </span>
-            <br />
-            <span className="mt-1 inline-block text-gray-500">
-              트레이너로 가입하시면 기수에 <strong>T</strong> 입력 → 관리자 승인 후
-              사용 가능.
             </span>
           </p>
         </div>

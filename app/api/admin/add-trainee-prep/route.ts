@@ -14,8 +14,10 @@
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import { getServerAccessToken } from "@/auth/google-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
+import { shareSheetWithServiceAccount } from "@/repo/drive-client";
 
 export async function POST(req: Request) {
   const sessionEmail = await getSessionEmail();
@@ -58,6 +60,19 @@ export async function POST(req: Request) {
   }
 
   const result = await addTraineePrepRow(cohort, name, spreadsheetId, assigned);
+
+  // **자동 시트 공유** — admin OAuth token 으로 그 시트에 Service Account 를
+  // writer 로 추가. 수동 시트 공유 작업 제거. admin 이 owner/editor 인 시트만
+  // 성공 — 권한 부족 시 안내 메시지를 응답에 포함.
+  const userToken = await getServerAccessToken();
+  let share: { shared: boolean; alreadyShared?: boolean; error?: string } = {
+    shared: false,
+    error: "no_oauth_token (재로그인 필요 — OAuth scope 확장 적용)",
+  };
+  if (userToken) {
+    share = await shareSheetWithServiceAccount(spreadsheetId, userToken);
+  }
+
   revalidateAdminPages();
   return NextResponse.json({
     ok: true,
@@ -65,5 +80,6 @@ export async function POST(req: Request) {
     name,
     spreadsheetId,
     created: result.created,
+    share,
   });
 }

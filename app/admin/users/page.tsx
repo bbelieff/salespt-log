@@ -28,7 +28,12 @@ import { getArchivedCohortSet } from "@/repo/cohorts";
 import { enrichUsersWithDates } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
 
-export const revalidate = 30;
+// **force-dynamic** — 매 요청마다 fresh registry 데이터.
+// 이전엔 revalidate=30 이라 self-claim 직후 admin 이 새로고침해도 옛 데이터가
+// 30초간 stuck — "수강생 요청관리 섹션이 안 보인다" 사고 (2026-05-12).
+// 비용: Sheets API 호출이 매 진입마다 발생하지만 admin N명 한정이라 무부담.
+// 데이터 layer 캐시(unstable_cache 60s)는 그대로 유지 — invalidateRegistry 가 처리.
+export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   const sessionEmail = await getSessionEmail();

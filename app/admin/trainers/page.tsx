@@ -17,7 +17,9 @@ import { adminEmails, adminNames } from "@/config";
 import { listPendingTrainers, listAllUsers } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
-export const revalidate = 30;
+// /admin/users 와 동일한 정책 — force-dynamic. self-claim/admin 액션 직후
+// 즉시 반영. (2026-05-12 캐시 stale 사고 후속)
+export const dynamic = "force-dynamic";
 
 export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();

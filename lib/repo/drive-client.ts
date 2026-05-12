@@ -23,6 +23,49 @@ export function driveClient(): drive_v3.Drive {
 }
 
 /**
+ * 사용자 OAuth access_token 으로 시트 공유 권한을 Service Account 에 추가.
+ *
+ * 이유: 트레이너/admin 이 만든 시트는 보통 SA 와 공유되지 않아 Drive 검색·데이터
+ * read 가 모두 실패 ("매칭되는 시트를 찾지 못했습니다" 사고 2026-05-12).
+ * admin 이 prep row 등록할 때 본인 OAuth token 으로 그 시트에 SA 를 writer 로
+ * 자동 추가 — 수동 시트 공유 작업 제거.
+ *
+ * 권한: 호출자(=admin)가 그 시트의 owner 또는 editor 여야 성공. viewer 면 fail.
+ * fail 시 안내 메시지 반환 — 사용자가 시트 소유자에게 권한 부여 요청.
+ *
+ * NOTE: googleapis 는 lib/repo/ 전용 — structural test 준수.
+ */
+export async function shareSheetWithServiceAccount(
+  spreadsheetId: string,
+  userAccessToken: string,
+): Promise<{ shared: boolean; alreadyShared: boolean; error?: string }> {
+  const sa = serviceAccount();
+  const oauth = new google.auth.OAuth2();
+  oauth.setCredentials({ access_token: userAccessToken });
+  const drive = google.drive({ version: "v3", auth: oauth });
+  try {
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: {
+        role: "writer",
+        type: "user",
+        emailAddress: sa.client_email,
+      },
+      supportsAllDrives: true,
+      sendNotificationEmail: false,
+    });
+    return { shared: true, alreadyShared: false };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // 이미 공유돼 있으면 409 또는 비슷한 메시지 — 멱등 처리.
+    if (/already.*shared|permission.*exists|duplicate/i.test(msg)) {
+      return { shared: true, alreadyShared: true };
+    }
+    return { shared: false, alreadyShared: false, error: msg };
+  }
+}
+
+/**
  * 파일명 정확 일치로 스프레드시트 1개 찾기.
  * 트레이너가 만든 시트 이름 규칙: `세일즈PT_ N기 이름 수강생 경영일지`.
  *
