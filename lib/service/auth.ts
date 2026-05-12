@@ -21,6 +21,7 @@
  */
 import {
   findSheetByCohortName,
+  findExistingSheetIdByCohortName,
   claimRegistry,
   findUserByEmail,
 } from "@/repo/users";
@@ -76,14 +77,21 @@ export async function claimAccount(
     };
   }
 
-  const spreadsheetId = await findSheetByCohortName(cohortTrim, name);
+  // 멀티 계정 per 시트: 같은 (cohort, name) 으로 이미 누군가 등록되어 있으면
+  // 그 spreadsheetId 재사용 (Drive 매칭 우회 — 시트 이름이 prep 패턴과
+  // 달라도 추가 계정 OK). 신규는 Drive 검색 fallback.
+  const existingSheetId = await findExistingSheetIdByCohortName(cohortTrim, name);
+  const spreadsheetId =
+    existingSheetId ?? (await findSheetByCohortName(cohortTrim, name));
   if (!spreadsheetId) throw new ClaimError("not_found");
 
-  // claimRegistry 는 (cohort,name) 매칭되는 prep row 가 있으면 email 만 갱신
-  // (status 보존 — 보통 active), 없으면 인자대로 새 row append.
-  // 새 row 인 경우만 pending 으로 — admin 승인 후 활성.
+  // claimRegistry 는 prep row(빈 email) 발견 시 그 자리 채움, 다른 계정으로
+  // 점유된 row 있으면 새 row append(같은 spreadsheetId 공유), 신규면 fresh append.
   await claimRegistry(email, cohortTrim, name, spreadsheetId, "trainee", "pending");
-  await writeProfile(spreadsheetId, cohortTrim, name);
+  // 첫 등록자만 시트 B3/C3 작성 (이미 등록된 사람 있으면 덮어쓰지 않음).
+  if (!existingSheetId) {
+    await writeProfile(spreadsheetId, cohortTrim, name);
+  }
 
   // 실제 등록된 status 를 다시 읽어 정확한 결과 반환 (prep row 매칭이면 active,
   // 신규 append 면 pending).
