@@ -29,14 +29,18 @@ function parseRow(r: unknown[]): User | null {
   const rawRole = String(r[4] ?? "").trim();
   const role: User["role"] =
     rawRole === "trainer" || rawRole === "admin" ? rawRole : "trainee";
+  // 2026-05-13 사고: 시트 cohort 컬럼이 number 로 형변환된 경우 (UNFORMATTED_VALUE
+  // 가 그대로 노출) Zod z.string() 가 거부 → parseRow null → 무한루프.
+  // sheets-client.readRange 가 경계에서 정규화하지만 defense-in-depth 로 여기서도
+  // 강제. String(null) = "null" 회피 위해 ?? "" 먼저.
   const parsed = User.safeParse({
-    email: r[0],
-    cohort: r[1] ?? "",
-    name: r[2] ?? "",
-    spreadsheetId: r[3] ?? "",
+    email: String(r[0] ?? ""),
+    cohort: String(r[1] ?? ""),
+    name: String(r[2] ?? ""),
+    spreadsheetId: String(r[3] ?? ""),
     role,
     status,
-    assignedTrainer: r[6] ?? "",
+    assignedTrainer: String(r[6] ?? ""),
   });
   return parsed.success ? parsed.data : null;
 }

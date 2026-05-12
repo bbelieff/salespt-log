@@ -33,7 +33,17 @@ export async function readRange(
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
-  return (res.data.values ?? []) as string[][];
+  // **CRITICAL** — Sheets API + UNFORMATTED_VALUE 는 셀 타입 그대로 반환
+  // (숫자 셀 → JS number, boolean 셀 → JS boolean). 함수 반환 타입은 string[][]
+  // 인데 실제로는 (string|number|boolean|null)[][] 였음. 2026-05-13 사고:
+  // registry 의 cohort 컬럼이 "7" 입력해도 시트가 자동으로 number 7 로 형변환 →
+  // parseRow 의 `cohort: r[1] ?? ""` 가 number 그대로 Zod z.string() 에 전달 →
+  // 검증 실패 → findUserByEmail null → /claim 무한루프. 경계에서 강제 정규화
+  // (모든 셀을 string 으로) 해서 호출자가 raw 타입 만질 일 없게 함. null/undefined
+  // 는 빈 문자열로 흡수.
+  return (res.data.values ?? []).map((row) =>
+    row.map((cell) => (cell == null ? "" : String(cell))),
+  );
 }
 
 export async function appendRows(
