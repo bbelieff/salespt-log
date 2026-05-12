@@ -2,6 +2,7 @@
  * /admin/users — 수강생 관리 (Admin 전용).
  *
  * 한 화면에서:
+ *   - **승인 대기 수강생** — status=pending. [승인]/[거절] 버튼.
  *   - 등록된 수강생 (기수별 그룹) — 활성 + 보관 + **유보**
  *   - 각자: 이름·이메일·기수·담당 트레이너(이름들)·시작일·종강일
  *   - "시트 열기" 버튼 → impersonation 진입.
@@ -18,7 +19,11 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
-import { listAllUsers, isReservedTrainee } from "@/repo/users";
+import {
+  listAllUsers,
+  listPendingTrainees,
+  isReservedTrainee,
+} from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
 import { enrichUsersWithDates } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
@@ -32,25 +37,33 @@ export default async function AdminUsersPage() {
   }
   // 관리부서 멤버는 read-only.
   const viewOnly = !isAdminEmail(sessionEmail);
-  const [all, archivedSet] = await Promise.all([
+  const [all, archivedSet, pendingTrainees] = await Promise.all([
     listAllUsers(),
     getArchivedCohortSet(),
+    listPendingTrainees(),
   ]);
-  const allTrainees = all.filter((u) => u.role === "trainee");
+  // 정식 trainee 만 (admin 승인 완료, status=active).
+  // pending 은 별도 섹션에서만 처리하므로 정규 그룹에서 제외.
+  const activeApprovedTrainees = all.filter(
+    (u) => u.role === "trainee" && u.status === "active",
+  );
   // 유보 vs 정규 — registry B 컬럼 raw 값으로 분기 (enrich 전).
   // 유보는 개인 시트 B3 SSOT 로 덮어쓰지 않고 sentinel "유보" 유지 → UI 가 별도 섹션 분류.
-  const reservedTrainees = allTrainees.filter(isReservedTrainee);
-  const activeTrainees = allTrainees.filter((u) => !isReservedTrainee(u));
+  const reservedTrainees = activeApprovedTrainees.filter(isReservedTrainee);
+  const regularTrainees = activeApprovedTrainees.filter(
+    (u) => !isReservedTrainee(u),
+  );
 
   const activeTrainers = all.filter(
     (u) => u.role === "trainer" && u.status === "active",
   );
-  const enriched = await enrichUsersWithDates(activeTrainees);
+  const enriched = await enrichUsersWithDates(regularTrainees);
   const archivedLabels = Array.from(archivedSet);
   return (
     <AdminUserPicker
       users={enriched}
       reservedUsers={reservedTrainees}
+      pendingUsers={pendingTrainees}
       activeTrainers={activeTrainers}
       sessionEmail={sessionEmail}
       archivedCohorts={archivedLabels}

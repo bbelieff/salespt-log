@@ -16,7 +16,7 @@ import { findUserByEmail, listTraineesForTrainer } from "@/repo/users";
 import { enrichUsersWithSheetCohort } from "@/service";
 import { cohortMasterSheetId } from "@/config";
 import TrainerLanding from "@/components/auth/TrainerLanding";
-import LogoutButton from "@/components/auth/LogoutButton";
+import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
 export const dynamic = "force-dynamic";
 
@@ -32,20 +32,7 @@ export default async function TrainerPage() {
   if (!isAdmin && role !== "trainer") redirect("/");
   if (!isAdmin && status === "pending") {
     return (
-      <main className="min-h-dvh bg-gray-50 flex items-center justify-center p-6">
-        <div className="max-w-sm text-center">
-          <h1 className="text-2xl font-black text-gray-900 mb-2">승인 대기 중</h1>
-          <p className="text-sm text-gray-500">
-            관리자 승인 후 담당 수강생을 조회할 수 있습니다.
-          </p>
-          <div className="mt-6">
-            <LogoutButton
-              className="text-sm text-gray-700 underline-offset-2 hover:underline"
-              label="로그아웃"
-            />
-          </div>
-        </div>
-      </main>
+      <PendingApprovalScreen subtitle="관리자 승인 후 담당 수강생을 조회할 수 있습니다." />
     );
   }
 

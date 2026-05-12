@@ -1274,13 +1274,14 @@ components/dashboard/
 | 컴포넌트 | 역할 / Props |
 |---|---|
 | **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
-| **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 행 카드: 이름·email·기수·담당 + [유보] + [시트 열기]. 유보 섹션은 collapsible — [복귀]/[퇴출](confirm). POST /api/admin/switch · /api/admin/set-trainee-reserved · /api/admin/remove-trainee. |
-| **AdminUserPickerSections** | AdminUserPicker 의 CohortSection + ReservedSection + parseAssigned/fmtDateYY/cohortProgress 유틸 분리 (500줄 cap). Trainee/Trainer 타입 re-export. |
+| **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `pendingUsers?` (승인 대기), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 섹션: 승인 대기 → 활성 기수 → 보관 → 유보. 카드 액션: [승인]/[거절]/[유보]/[시트 열기]. POST /api/admin/switch · approve-trainee · reject-trainee · set-trainee-reserved · remove-trainee. |
+| **AdminUserPickerSections** | AdminUserPicker 의 CohortSection + ReservedSection + PendingTraineesSection + parseAssigned/fmtDateYY/cohortProgress 유틸 분리 (500줄 cap). Trainee/Trainer 타입 re-export. |
 | **TrainerLanding** | 트레이너 메인. Props: `sessionEmail`, `trainerName`, `trainees: User[]`, `masterSheetUrl`, `isAdmin`. 담당 수강생 목록 + 마스터 시트 링크. 클릭 시 impersonation 진입. |
 | **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 4 섹션 (TrainerMgmtSections 분리) — pending 승인/거절, 트레이너별 다중 배정 체크박스, 수강생 명단 아코디언, 트레이너 명단 아코디언. |
 | **TrainerMgmtSections** | TrainerMgmtPanel 의 SectionPending / SectionAssign / SectionTraineeList + parseAssigned, groupByCohort, PanelUser 유틸. SectionManagement 는 TrainerMgmtManagement 에서 re-export. |
 | **TrainerMgmtManagement** | 관리부서 명단 섹션 (`/admin/trainers` 하단). Props: `staff`, `busy`, `onMoveToTrainer`, `onRemove`. 파일 크기 가드. |
 | **LogoutButton** | NextAuth 5 `signOut()` 즉시 호출 클라이언트 버튼 (form POST 우회). Props: `className?`, `label?`. 서버 컴포넌트 페이지(/admin 등)에서 import. |
+| **PendingApprovalScreen** | 승인 대기 안내 화면 (트레이너·수강생 공용). Props: `subtitle?` (역할별 안내 한 줄). 사용처: `app/page.tsx` (pending trainee), `app/trainer/page.tsx` (pending trainer), `app/(app)/layout.tsx` (직접 URL 진입 차단). 로그아웃 버튼만 노출. |
 | **ImpersonationBanner** | Admin 페이지 상단 impersonation 상태 표시 + 해제 버튼. Props: `impersonating: string`. 클릭 → POST /api/admin/switch `{email:null}` → router.refresh. |
 | **WebviewWarning** | 카카오톡·네이버·인스타·페북 등 in-app 웹뷰 감지 시 풀스크린 오버레이 노출. Props 없음. KakaoTalk 안드로이드는 `kakaotalk://web/openExternal?url=` scheme 으로 외부 Chrome 점프, 그 외는 단계 안내 + URL 복사. Google OAuth가 webview UA를 차단(disallowed_useragent)하는 문제 우회. |
 | **CohortMgmtPanel** | Admin 전용 기수 관리 (`/admin/cohorts`). Props: `sessionEmail`, `cohorts: {label, status, note, traineeCount}[]`. 활성/보관 두 섹션 + 토글 버튼. POST /api/admin/set-cohort-status. |

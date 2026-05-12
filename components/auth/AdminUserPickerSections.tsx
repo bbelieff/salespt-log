@@ -257,3 +257,72 @@ export function ReservedSection({
     </details>
   );
 }
+
+/* ──────────────── 승인 대기 수강생 섹션 (pending) ──────────────── */
+//
+// 트레이너 SectionPending(components/auth/TrainerMgmtSections.tsx) 와 동일한
+// 패턴 — admin 이 [승인]/[거절] 클릭. 거절은 registry row 영구 삭제(reject API
+// 가 pending 일 때만 허용 — 활성 수강생 실수 삭제 가드).
+export function PendingTraineesSection({
+  list,
+  busy,
+  onApprove,
+  onReject,
+  viewOnly = false,
+}: {
+  list: Trainee[];
+  busy: string | null;
+  onApprove: (email: string) => void;
+  onReject: (email: string, name: string) => void;
+  viewOnly?: boolean;
+}) {
+  if (list.length === 0) return null;
+  return (
+    <section>
+      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-700">
+        ⏳ 승인 대기 수강생 · {list.length}명
+      </h2>
+      <ul className="space-y-2">
+        {list.map((u) => (
+          <li
+            key={u.email}
+            className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-sm font-black text-gray-900">
+                  {u.name || "(이름 없음)"}
+                </span>
+                <span className="text-[11px] text-gray-400">{u.email}</span>
+              </div>
+              <div className="mt-1.5 text-[11px] text-gray-600">
+                <span className="text-gray-400">기수</span>{" "}
+                <span className="font-semibold">{u.cohort || "—"}</span>
+              </div>
+            </div>
+            {!viewOnly && (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onApprove(u.email)}
+                  disabled={busy !== null}
+                  className="rounded-full bg-green-600 px-3 py-2 text-xs font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {busy === u.email ? "..." : "승인"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReject(u.email, u.name)}
+                  disabled={busy !== null}
+                  className="rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  거절
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

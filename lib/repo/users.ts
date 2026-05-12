@@ -121,6 +121,12 @@ export async function listPendingTrainers(): Promise<User[]> {
   return all.filter((u) => u.role === "trainer" && u.status === "pending");
 }
 
+/** 승인 대기 중인 수강생 목록. */
+export async function listPendingTrainees(): Promise<User[]> {
+  const all = await listAllUsers();
+  return all.filter((u) => u.role === "trainee" && u.status === "pending");
+}
+
 /**
  * sheetRow (1-based) 의 한 컬럼만 update.
  * 다른 컬럼은 그대로 유지 — 부분 update 안전.
@@ -154,6 +160,11 @@ async function updateCell(
 
 /** Admin 전용: 트레이너 승인 (status pending → active) */
 export async function approveTrainer(email: string): Promise<void> {
+  await updateCell(email, "F", "active");
+}
+
+/** Admin 전용: 수강생 승인 (status pending → active). 트레이너 승인과 동일 로직. */
+export async function approveTrainee(email: string): Promise<void> {
   await updateCell(email, "F", "active");
 }
 

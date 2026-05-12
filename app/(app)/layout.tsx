@@ -4,14 +4,50 @@
  * 모든 (app)/* 페이지는 자동으로 하단 TabBar 를 갖는다.
  * content-area 패딩은 TabBar(76px) 와 겹치지 않도록 76px.
  *
+ * 권한 가드 (server component):
+ *   - 미로그인 → /
+ *   - pending trainee → 대기 화면 (직접 URL 입력으로 /dashboard 진입 차단).
+ *   - admin 은 impersonation 으로 진입할 수 있어 통과.
+ *   - active trainee/trainer 통과.
+ *
  * 페이지 배경: bg-slate-100 (#f1f5f9)
- *   - 흰 카드(bg-white)와 명도 차이를 넓혀 리소스가 명확히 분리되어 보이도록.
- *   - slate 팔레트 유지로 채널 4색·강조색과의 일관성 보존.
- *   - 이전 bg-slate-50(#f8fafc)은 흰 카드와 너무 비슷해 카드가 떠보이지 않음.
  */
+import { redirect } from "next/navigation";
 import TabBar from "@/components/TabBar";
+import {
+  getSessionEmail,
+  getActiveUserEmail,
+  isAdminEmail,
+} from "@/auth/identity";
+import { findUserByEmail } from "@/repo/users";
+import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const sessionEmail = await getSessionEmail();
+  if (!sessionEmail) redirect("/");
+
+  // admin 본인은 통과 (impersonation 으로 누구든 진입 가능).
+  if (!isAdminEmail(sessionEmail)) {
+    // 활성 대상(impersonation 적용)이 pending 이면 대기 화면.
+    const activeEmail = await getActiveUserEmail();
+    const u = await findUserByEmail(activeEmail);
+    if (u && u.status === "pending") {
+      return (
+        <PendingApprovalScreen
+          subtitle={
+            u.role === "trainer"
+              ? "관리자 승인 후 담당 수강생을 조회할 수 있습니다."
+              : "관리자 승인 후 경영일지를 작성할 수 있습니다."
+          }
+        />
+      );
+    }
+  }
+
   return (
     <div className="min-h-dvh bg-slate-100">
       <main style={{ paddingBottom: "calc(76px + env(safe-area-inset-bottom))" }}>
