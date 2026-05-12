@@ -51,7 +51,16 @@ const cachedRegistryRows = unstable_cache(
 );
 
 function invalidateRegistry(): void {
-  revalidateTag(REGISTRY_TAG);
+  // Render-safe — Server Component 의 render phase 에서 호출되면 Next.js 15+
+  // 가 throw 한다 (production digest 크래시). 현재는 Route Handler 에서만
+  // 도달하지만, 미래 server component 가 실수로 write 함수를 import 하면
+  // 같은 사고 재현. 비용 0 인 방어적 try/catch.
+  // 참고: lib/repo/cohorts.ts invalidateCohorts() 동일 패턴.
+  try {
+    revalidateTag(REGISTRY_TAG);
+  } catch {
+    // Render context — 무시. 데이터는 unstable_cache revalidate(60s) 로 자연 갱신.
+  }
 }
 
 export async function findUserByEmail(email: string): Promise<User | null> {

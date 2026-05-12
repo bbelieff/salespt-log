@@ -127,3 +127,66 @@ describe("dashboard is read-only", () => {
     ).toEqual([]);
   });
 });
+
+// ── 테스트 4: revalidateTag / revalidatePath 는 render-safe 해야 한다 ──
+//
+// Next.js 15+ 의 Server Component render phase 에서 revalidateTag/Path 를
+// 직접 호출하면 throw 한다 (production digest 크래시).
+// 사고 이력: 2026-05-12 /admin/cohorts digest 4050334537 — ensureCohortsTab
+// 이 server component 에서 호출되며 revalidateTag(COHORTS_TAG) throw.
+//
+// 가드 정책: revalidateTag/revalidatePath 호출 라인은 반드시 try/catch 블록
+// 안에 있어야 한다. lib/, app/, components/ 전 영역 적용.
+// 면제: 테스트/스크립트 파일.
+describe("render-safe revalidations", () => {
+  it("revalidateTag/Path 호출 라인은 try/catch 로 감싸야 한다", () => {
+    const scanDirs = ["lib", "app", "components"];
+    const bad: string[] = [];
+    for (const d of scanDirs) {
+      const abs = join(ROOT, d);
+      let files: string[] = [];
+      try {
+        files = walk(abs);
+      } catch {
+        continue;
+      }
+      for (const file of files) {
+        const src = readFileSync(file, "utf8");
+        const lines = src.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i] ?? "";
+          // import 라인 제외.
+          if (/^\s*import\b/.test(line)) continue;
+          // 주석 라인 제외 — //, /*, *, * ... */
+          if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue;
+          // 코드 위치를 분석하기 위해 인라인 // 주석 제거 후 검사.
+          const codeOnly = line.replace(/\/\/.*$/, "");
+          if (!/\b(revalidateTag|revalidatePath)\s*\(/.test(codeOnly)) continue;
+          // 같은 함수 안에 try { ... revalidate* ... } 블록이 있는지 휴리스틱:
+          // 호출 라인 직전 20줄 안에 `try {` 가 있고, 그 사이 닫는 `}` 갯수 <= `{` 갯수.
+          let foundTry = false;
+          for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+            const ln = lines[j] ?? "";
+            if (/^\s*try\s*\{/.test(ln)) {
+              foundTry = true;
+              break;
+            }
+          }
+          if (!foundTry) {
+            bad.push(`${relative(ROOT, file)}:${i + 1}  ${line.trim()}`);
+          }
+        }
+      }
+    }
+    expect(
+      bad,
+      `revalidateTag / revalidatePath 가 try/catch 없이 호출됨.\n` +
+        `→ Next.js 15 Server Component render phase 에서 호출되면 throw.\n` +
+        `   디지스트 4050334537 사고와 동일 패턴.\n` +
+        `→ 고치는 법: 호출을 try/catch 로 감싸세요. 예시:\n` +
+        `     try { revalidateTag("foo"); } catch { /* render context */ }\n` +
+        `   참고: lib/repo/cohorts.ts invalidateCohorts() 동일 패턴.\n` +
+        bad.map((b) => "  • " + b).join("\n"),
+    ).toEqual([]);
+  });
+});
