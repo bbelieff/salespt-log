@@ -62,6 +62,33 @@ export function cohortProgress(
   return { pct, dday };
 }
 
+/**
+ * 같은 spreadsheetId 를 공유하는 다른 계정 이메일 리스트 반환 (자기 자신 제외).
+ * 같은 시트에 여러 계정이 연결되어 있을 때 카드에 표시용.
+ */
+function siblingEmails(
+  u: Trainee,
+  linkedBySheet?: Map<string, string[]>,
+): string[] {
+  if (!linkedBySheet || !u.spreadsheetId) return [];
+  const all = linkedBySheet.get(u.spreadsheetId) ?? [];
+  const meLc = u.email.toLowerCase();
+  return all.filter((e) => e.toLowerCase() !== meLc);
+}
+
+/** "🔗 +N (email1, email2)" 작은 배지 — 시트 공유 표시. */
+function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
+  if (siblings.length === 0) return null;
+  return (
+    <span
+      title={`같은 시트 공유: ${siblings.join(", ")}`}
+      className="ml-1 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700"
+    >
+      🔗 +{siblings.length}
+    </span>
+  );
+}
+
 /* ─────────────────────────── 기수별 섹션 ─────────────────────────── */
 export function CohortSection({
   cohort,
@@ -70,6 +97,7 @@ export function CohortSection({
   nameByEmail,
   onPick,
   onReserve,
+  linkedBySheet,
   archived = false,
   viewOnly = false,
 }: {
@@ -80,6 +108,8 @@ export function CohortSection({
   onPick: (email: string) => void;
   /** "유보" 버튼 클릭 핸들러. admin 만 노출 (viewOnly=false). */
   onReserve: (email: string) => void;
+  /** 같은 spreadsheetId 의 모든 email 리스트 — 다중 계정 배지 표시용. */
+  linkedBySheet?: Map<string, string[]>;
   archived?: boolean;
   viewOnly?: boolean;
 }) {
@@ -134,6 +164,7 @@ export function CohortSection({
                     {u.name || "(이름 없음)"}
                   </span>
                   <span className="text-[11px] text-gray-400">{u.email}</span>
+                  <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
                 </div>
                 <div className="mt-1.5 text-[11px] text-gray-600">
                   <span className="text-gray-400">담당</span>{" "}
@@ -176,6 +207,7 @@ export function ReservedSection({
   nameByEmail,
   onRestore,
   onPurge,
+  linkedBySheet,
   viewOnly = false,
 }: {
   list: Trainee[];
@@ -183,6 +215,7 @@ export function ReservedSection({
   nameByEmail: Map<string, string>;
   onRestore: (email: string) => void;
   onPurge: (email: string, name: string) => void;
+  linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
 }) {
   return (
@@ -223,6 +256,7 @@ export function ReservedSection({
                     {u.name || "(이름 없음)"}
                   </span>
                   <span className="text-[11px] text-gray-400">{u.email}</span>
+                  <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
                 </div>
                 <div className="mt-1.5 text-[11px] text-gray-600">
                   <span className="text-gray-400">담당</span>{" "}
@@ -268,12 +302,14 @@ export function PendingTraineesSection({
   busy,
   onApprove,
   onReject,
+  linkedBySheet,
   viewOnly = false,
 }: {
   list: Trainee[];
   busy: string | null;
   onApprove: (email: string) => void;
   onReject: (email: string, name: string) => void;
+  linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
 }) {
   if (list.length === 0) return null;
@@ -294,6 +330,7 @@ export function PendingTraineesSection({
                   {u.name || "(이름 없음)"}
                 </span>
                 <span className="text-[11px] text-gray-400">{u.email}</span>
+                <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
               </div>
               <div className="mt-1.5 text-[11px] text-gray-600">
                 <span className="text-gray-400">기수</span>{" "}

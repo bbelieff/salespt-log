@@ -50,7 +50,8 @@ const cachedRegistryRows = unstable_cache(
   { revalidate: 60, tags: [REGISTRY_TAG] },
 );
 
-function invalidateRegistry(): void {
+// sibling 파일에서도 사용 — claimRegistry (users-claim.ts).
+export function invalidateRegistry(): void {
   revalidateTag(REGISTRY_TAG);
 }
 
@@ -383,6 +384,33 @@ export async function registerUser(u: User): Promise<void> {
 }
 
 /**
+ * registry 에서 (cohort, name) 으로 이미 등록된 spreadsheetId 조회.
+ *
+ * 멀티 계정 per 시트 — 첫 사용자가 등록한 후 직원/파트너가 같은 (cohort, name)
+ * 으로 self-claim 할 때, Drive 매칭(시트 이름 정확 일치)을 거치지 않고 기존
+ * row 의 spreadsheetId 를 그대로 재사용. 시트 이름이 prep 패턴과 달라도
+ * (`세일즈PT_ 4기 손기학 수강생 경영일지(new)` 같이) 추가 계정 등록 가능.
+ *
+ * 동일 (cohort, name) 의 여러 row 들이 모두 같은 spreadsheetId 여야 정상.
+ * 첫 비어있지 않은 spreadsheetId 반환.
+ */
+export async function findExistingSheetIdByCohortName(
+  cohort: string,
+  name: string,
+): Promise<string | null> {
+  const all = await cachedRegistryRows();
+  const cohortNorm = String(cohort).replace(/기\s*$/, "").trim();
+  const cleanName = name.trim();
+  for (const r of all) {
+    const c = String(r[1] ?? "").replace(/기\s*$/, "").trim();
+    const n = String(r[2] ?? "").trim();
+    const sid = String(r[3] ?? "").trim();
+    if (c === cohortNorm && n === cleanName && sid) return sid;
+  }
+  return null;
+}
+
+/**
  * Drive API 파일명 검색 — 수강생 시트 찾기.
  * 패턴: `세일즈PT_ {cohort}기 {name} 수강생 경영일지`
  * cohort=T(트레이너) 인 경우 null 반환 (검색 안 함).
@@ -398,55 +426,9 @@ export async function findSheetByCohortName(
   return findSheetByExactName(exactName);
 }
 
-/**
- * Self-claim — registry 에 (cohort, name) row 있으면 email/role/status 갱신,
- * 없으면 새 row append.
- *
- * 신규: trainer 모드 (cohort=T) 추가.
- *   - 수강생: row 가 보통 트레이너에 의해 미리 만들어져 있음 (assignedTrainer 도 사전 배정)
- *   - 트레이너: 자기 self-claim 시 row 새로 생성 (status=pending)
- */
-export async function claimRegistry(
-  email: string,
-  cohort: string,
-  name: string,
-  spreadsheetId: string,
-  role: User["role"] = "trainee",
-  status: User["status"] = "active",
-): Promise<void> {
-  const reg = registry();
-  // 쓰기 직전에는 최신값 필요 → 캐시 우회 (직접 readRange).
-  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
-  const cohortNorm = String(cohort).replace(/기\s*$/, "").trim();
-  const cleanName = name.trim();
-
-  let matchIdx = -1;
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i] ?? [];
-    const c = String(r[1] ?? "").replace(/기\s*$/, "").trim();
-    const n = String(r[2] ?? "").trim();
-    if (c === cohortNorm && n === cleanName) {
-      matchIdx = i;
-      break;
-    }
-  }
-
-  if (matchIdx >= 0) {
-    // 기존 row email 갱신 (역할·상태는 admin 이 별도 관리하므로 덮어쓰지 않음)
-    const sheetRow = matchIdx + 2;
-    await sheetsClient().spreadsheets.values.update({
-      spreadsheetId: reg.spreadsheetId,
-      range: `${reg.tab}!A${sheetRow}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[email]] },
-    });
-  } else {
-    await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-      [email, cohortNorm, cleanName, spreadsheetId, role, status, ""],
-    ]);
-  }
-  invalidateRegistry();
-}
+// claimRegistry 는 lib/repo/users-claim.ts 로 분리 (500줄 cap).
+// 외부 호출부 호환성 위해 그대로 re-export.
+export { claimRegistry } from "./users-claim";
 
 // Header helper — 레지스트리 시트를 처음 만들 때 1회 실행.
 export async function ensureRegistryHeader(): Promise<void> {

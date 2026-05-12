@@ -130,6 +130,23 @@ export default function AdminUserPicker({
     return m;
   }, [activeTrainers]);
 
+  /** spreadsheetId → 그 시트에 연결된 모든 email 리스트. 다중 계정 배지 표시.
+      users(활성) + reservedUsers(유보) + pendingUsers(승인 대기) 전부 포함 —
+      섹션이 달라도 같은 시트면 묶어서 인지하게. */
+  const linkedBySheet = useMemo(() => {
+    const m = new Map<string, string[]>();
+    const add = (u: Trainee) => {
+      if (!u.spreadsheetId) return;
+      const arr = m.get(u.spreadsheetId) ?? [];
+      arr.push(u.email);
+      m.set(u.spreadsheetId, arr);
+    };
+    users.forEach(add);
+    reservedUsers.forEach(add);
+    pendingUsers.forEach(add);
+    return m;
+  }, [users, reservedUsers, pendingUsers]);
+
   const archivedSet = useMemo(
     () => new Set(archivedCohorts.map((c) => c.trim())),
     [archivedCohorts],
@@ -245,6 +262,7 @@ export default function AdminUserPicker({
             busy={busy}
             onApprove={approve}
             onReject={reject}
+            linkedBySheet={linkedBySheet}
             viewOnly={viewOnly}
           />
 
@@ -258,6 +276,7 @@ export default function AdminUserPicker({
               nameByEmail={nameByEmail}
               onPick={pick}
               onReserve={reserve}
+              linkedBySheet={linkedBySheet}
               viewOnly={viewOnly}
             />
           ))}
@@ -283,6 +302,7 @@ export default function AdminUserPicker({
                     nameByEmail={nameByEmail}
                     onPick={pick}
                     onReserve={reserve}
+                    linkedBySheet={linkedBySheet}
                     archived
                     viewOnly={viewOnly}
                   />
@@ -300,6 +320,7 @@ export default function AdminUserPicker({
               nameByEmail={nameByEmail}
               onRestore={restore}
               onPurge={purge}
+              linkedBySheet={linkedBySheet}
               viewOnly={viewOnly}
             />
           )}
