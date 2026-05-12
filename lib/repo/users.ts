@@ -21,13 +21,23 @@ const HEADER_RANGE = (tab: string) => `${tab}!A1:G1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:G`;
 
 function parseRow(r: unknown[]): User | null {
+  // **CRITICAL** — 시트 status 컬럼(F)이 빈 문자열인 row 가 흔하다 (옛 prep row).
+  // Zod enum ["active","pending"] 이 "" 매칭 실패 → row drop → 사용자가 로그인 시
+  // findUserByEmail null → /claim 으로 튕김. 2026-05-12 사고 (수강생 전원 차단).
+  // 빈 문자열·미지정 모두 "active" 로 정규화 (admin 이 의도적으로 pending 마킹한
+  // 경우는 명시적 "pending" 문자열 — 정확 매칭).
+  const rawStatus = String(r[5] ?? "").trim();
+  const status: User["status"] = rawStatus === "pending" ? "pending" : "active";
+  const rawRole = String(r[4] ?? "").trim();
+  const role: User["role"] =
+    rawRole === "trainer" || rawRole === "admin" ? rawRole : "trainee";
   const parsed = User.safeParse({
     email: r[0],
     cohort: r[1] ?? "",
     name: r[2] ?? "",
     spreadsheetId: r[3] ?? "",
-    role: (r[4] as User["role"]) ?? "trainee",
-    status: (r[5] as User["status"]) ?? "active",
+    role,
+    status,
     assignedTrainer: r[6] ?? "",
   });
   return parsed.success ? parsed.data : null;
