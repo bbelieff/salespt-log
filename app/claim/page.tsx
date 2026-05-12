@@ -51,8 +51,12 @@ export default function ClaimPage() {
       }
       // 성공: 루트로 보내 app/page.tsx 의 role 기반 라우팅에 위임.
       // (수강생 → /dashboard, 트레이너 pending → /trainer 대기 화면)
-      router.push("/");
-      router.refresh();
+      //
+      // **full reload (window.location)** — Next.js client-side router 의
+      // RSC payload 캐시를 완전히 우회. 이전엔 router.push("/") 후 옛 payload 가
+      // findUserByEmail null 결과 그대로 보여서 다시 /claim 으로 튕기는 사고
+      // (2026-05-13). server 측 force-dynamic + revalidatePath 와 함께 3중 보강.
+      window.location.href = "/";
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
       setLoading(false);
