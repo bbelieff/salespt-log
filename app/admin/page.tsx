@@ -17,6 +17,7 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
+import { listPendingTrainees, listPendingTrainers } from "@/repo/users";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
 
@@ -31,6 +32,11 @@ export default async function AdminLandingPage() {
   const activeEmail = await getActiveUserEmail();
   const impersonating =
     activeEmail !== sessionEmail ? activeEmail : null;
+  // 카드 우측 상단 알림 배지 — 진입 전에도 한눈에 보이게.
+  const [pendingTrainees, pendingTrainers] = await Promise.all([
+    listPendingTrainees(),
+    listPendingTrainers(),
+  ]);
 
   return (
     <main className="min-h-dvh bg-gray-50">
@@ -63,8 +69,13 @@ export default async function AdminLandingPage() {
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/admin/users"
-            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            className="group relative rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
+            {pendingTrainees.length > 0 && (
+              <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                ⏳ 승인 대기 {pendingTrainees.length}
+              </span>
+            )}
             <div className="text-3xl">🗂️</div>
             <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
               수강생 관리
@@ -76,8 +87,13 @@ export default async function AdminLandingPage() {
 
           <Link
             href="/admin/trainers"
-            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            className="group relative rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
+            {pendingTrainers.length > 0 && (
+              <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                ⏳ 승인 대기 {pendingTrainers.length}
+              </span>
+            )}
             <div className="text-3xl">👥</div>
             <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
               트레이너 관리

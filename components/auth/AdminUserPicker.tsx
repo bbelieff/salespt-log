@@ -230,8 +230,7 @@ export default function AdminUserPicker({
           수강생 관리
         </h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          기수별 등록된 수강생 ({users.length}명). 시트 열기 클릭 시 그 수강생의
-          5탭 UI 진입.
+          기수별 등록된 수강생 ({users.length}명)
         </p>
 
         <input
