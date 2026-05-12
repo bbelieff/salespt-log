@@ -127,7 +127,14 @@ export async function enrichUsersWithDates<
 >(users: T[]): Promise<Array<T & { courseStartISO: string; graduationISO: string }>> {
   const tasks = users.map(async (u) => {
     const defaults = { ...u, courseStartISO: "", graduationISO: "" };
-    if (!u.spreadsheetId) return defaults;
+    const who = ("email" in u ? (u as { email: string }).email : "?");
+    if (!u.spreadsheetId) {
+      // Hashimoto 가드: silent skip 금지 — registry 매핑 누락은 명시적으로 로그.
+      console.warn(
+        `[me] enrichUsersWithDates skip — spreadsheetId 없음 (email=${who}, cohort=${u.cohort})`,
+      );
+      return defaults;
+    }
     try {
       const bundle = await cachedReadBundle(u.spreadsheetId);
       return {
@@ -137,7 +144,13 @@ export async function enrichUsersWithDates<
         courseStartISO: toISO(bundle.courseStart),
         graduationISO: toISO(bundle.graduation),
       };
-    } catch {
+    } catch (e) {
+      // 시트 접근/파싱 실패 — defaults 반환하되, 원인을 로그에 남겨야
+      // "왜 배너가 안 보이지?" 질문을 두 번 듣지 않는다 (CLAUDE.md §0).
+      console.warn(
+        `[me] enrichUsersWithDates 실패 (email=${who}, sheet=${u.spreadsheetId}, cohort=${u.cohort}):`,
+        e instanceof Error ? e.message : e,
+      );
       return defaults;
     }
   });
