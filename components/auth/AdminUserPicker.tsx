@@ -24,6 +24,10 @@ import {
   PendingTraineesSection,
   TraineePrepForm,
 } from "./AdminUserPickerSections";
+import {
+  type PrepItem,
+  BulkPrepForm,
+} from "./TraineePrepBulkForm";
 
 export default function AdminUserPicker({
   users,
@@ -118,6 +122,43 @@ export default function AdminUserPicker({
       { cohort, name, spreadsheetUrl },
       `prep:${cohort}:${name}`,
     );
+  }
+
+  /** 일괄 prep row 등록 — paste 파싱된 items. 응답 요약 alert. */
+  async function addPrepBulk(items: PrepItem[]) {
+    setBusy(`bulk:${items.length}`);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/bulk-add-trainee-prep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? `HTTP ${res.status}`);
+        setBusy(null);
+        return;
+      }
+      const { created = 0, updated = 0, failed = [] } = data;
+      const summary =
+        `등록 완료 — 신규 ${created}명 / 업데이트 ${updated}명` +
+        (failed.length > 0
+          ? `\n실패 ${failed.length}건: ${failed
+              .map(
+                (f: { cohort: string; name: string; error: string }) =>
+                  `${f.cohort}기 ${f.name} (${f.error})`,
+              )
+              .join(", ")}`
+          : "");
+      window.alert(summary);
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "네트워크 오류");
+    } finally {
+      setBusy(null);
+    }
   }
 
   /** 승인 대기 → 활성. 트레이너 승인과 동일한 패턴. */
@@ -270,8 +311,13 @@ export default function AdminUserPicker({
               <p className="text-sm text-gray-400">검색 결과 없음.</p>
             )}
 
-          {/* 신규 수강생 사전 등록 — 시트 URL → prep row. viewOnly 면 숨김. */}
-          {!viewOnly && <TraineePrepForm busy={busy !== null} onSubmit={addPrep} />}
+          {/* 신규 수강생 사전 등록 — 단일 + 일괄 두 폼. viewOnly 면 숨김. */}
+          {!viewOnly && (
+            <>
+              <BulkPrepForm busy={busy !== null} onSubmit={addPrepBulk} />
+              <TraineePrepForm busy={busy !== null} onSubmit={addPrep} />
+            </>
+          )}
 
           {/* 승인 대기 — 가장 위. admin 즉시 처리 유도. */}
           <PendingTraineesSection

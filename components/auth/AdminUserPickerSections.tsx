@@ -292,7 +292,9 @@ export function ReservedSection({
   );
 }
 
-/* ──────────────── 신규 수강생 사전 등록 폼 ──────────────── */
+/* BulkPrepForm + parsePrepText 는 ./TraineePrepBulkForm.tsx 로 분리 (500줄 cap). */
+
+/* ──────────────── 신규 수강생 사전 등록 폼 (단일) ──────────────── */
 //
 // admin 이 시트 URL + (기수, 이름) 입력 → registry prep row 생성.
 // 본인이 self-claim 시 (기수, 이름) 매칭으로 즉시 활성. Drive 자동 검색·시트
