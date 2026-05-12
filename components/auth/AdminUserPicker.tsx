@@ -28,6 +28,7 @@ import {
   type PrepItem,
   BulkPrepForm,
 } from "./TraineePrepBulkForm";
+import SheetAccessAdminCard from "./SheetAccessAdminCard";
 
 export default function AdminUserPicker({
   users,
@@ -153,44 +154,6 @@ export default function AdminUserPicker({
           : "");
       window.alert(summary);
       await queryClient.invalidateQueries({ queryKey: ["me"] });
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "네트워크 오류");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  /** 등록된 모든 시트에 Service Account 자동 공유 — 마이그레이션 일회용. */
-  async function shareAllSheets() {
-    if (
-      !window.confirm(
-        "등록된 모든 수강생 시트에 Service Account 권한을 자동 추가합니다. 계속할까요?",
-      )
-    )
-      return;
-    setBusy("share-all");
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/share-all-sheets", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.hint ?? data.error ?? `HTTP ${res.status}`);
-      } else {
-        const { processed, shared, alreadyShared, shareFailed = [] } = data;
-        window.alert(
-          `처리: ${processed}개 시트\n신규 공유: ${shared}개\n이미 공유됨: ${alreadyShared}개` +
-            (shareFailed.length > 0
-              ? `\n실패 ${shareFailed.length}개:\n` +
-                shareFailed
-                  .map(
-                    (f: { sheetId: string; error: string }) =>
-                      `  - ${f.sheetId.slice(0, 12)}... : ${f.error}`,
-                  )
-                  .join("\n")
-              : ""),
-        );
-      }
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
@@ -389,25 +352,7 @@ export default function AdminUserPicker({
             <>
               <BulkPrepForm busy={busy !== null} onSubmit={addPrepBulk} />
               <TraineePrepForm busy={busy !== null} onSubmit={addPrep} />
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-purple-800">
-                    🔗 모든 등록 시트에 권한 자동 공유
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-purple-700/80">
-                    Service Account 가 모든 수강생 시트에 접근할 수 있도록
-                    일괄 권한 추가. OAuth scope 확장 후 한 번만 실행.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={shareAllSheets}
-                  disabled={busy !== null}
-                  className="rounded-full bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {busy === "share-all" ? "공유 중..." : "일괄 공유 실행"}
-                </button>
-              </div>
+              <SheetAccessAdminCard />
             </>
           )}
 

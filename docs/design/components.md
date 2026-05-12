@@ -1283,6 +1283,7 @@ components/dashboard/
 | **TrainerMgmtManagement** | 관리부서 명단 섹션 (`/admin/trainers` 하단). Props: `staff`, `busy`, `onMoveToTrainer`, `onRemove`. 파일 크기 가드. |
 | **LogoutButton** | NextAuth 5 `signOut()` 즉시 호출 클라이언트 버튼 (form POST 우회). Props: `className?`, `label?`. 서버 컴포넌트 페이지(/admin 등)에서 import. |
 | **PendingApprovalScreen** | 승인 대기 안내 화면 (트레이너·수강생 공용). Props: `subtitle?` (역할별 안내 한 줄). 사용처: `app/page.tsx` (pending trainee), `app/trainer/page.tsx` (pending trainer), `app/(app)/layout.tsx` (직접 URL 진입 차단). 로그아웃 버튼만 노출. |
+| **SheetAccessAdminCard** | 시트 권한 진단 + 일괄 공유 admin 카드. [접근 점검] → GET /api/admin/sheet-access-check (SA 가 모든 시트 read 가능한지). [일괄 공유 실행] → POST /api/admin/share-all-sheets (admin OAuth token 으로 SA writer 권한 자동 추가). props 없음. AdminUserPicker 500줄 cap 회피로 분리. |
 | **ImpersonationBanner** | Admin 페이지 상단 impersonation 상태 표시 + 해제 버튼. Props: `impersonating: string`. 클릭 → POST /api/admin/switch `{email:null}` → router.refresh. |
 | **WebviewWarning** | 카카오톡·네이버·인스타·페북 등 in-app 웹뷰 감지 시 풀스크린 오버레이 노출. Props 없음. KakaoTalk 안드로이드는 `kakaotalk://web/openExternal?url=` scheme 으로 외부 Chrome 점프, 그 외는 단계 안내 + URL 복사. Google OAuth가 webview UA를 차단(disallowed_useragent)하는 문제 우회. |
 | **CohortMgmtPanel** | Admin 전용 기수 관리 (`/admin/cohorts`). Props: `sessionEmail`, `cohorts: {label, status, note, traineeCount}[]`. 활성/보관 두 섹션 + 토글 버튼. POST /api/admin/set-cohort-status. |
