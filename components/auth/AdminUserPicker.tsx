@@ -21,11 +21,13 @@ import {
   type Trainer,
   CohortSection,
   ReservedSection,
+  PendingTraineesSection,
 } from "./AdminUserPickerSections";
 
 export default function AdminUserPicker({
   users,
   reservedUsers = [],
+  pendingUsers = [],
   activeTrainers,
   sessionEmail,
   archivedCohorts = [],
@@ -34,6 +36,8 @@ export default function AdminUserPicker({
   users: Trainee[];
   /** 유보 처리된 trainees (registry B="유보"). enrich 안 됨 — cohort/이름 raw. */
   reservedUsers?: Trainee[];
+  /** 승인 대기 trainees (status=pending). admin 이 승인/거절. */
+  pendingUsers?: Trainee[];
   activeTrainers: Trainer[];
   sessionEmail: string;
   archivedCohorts?: string[];
@@ -100,6 +104,22 @@ export default function AdminUserPicker({
       return;
     }
     await postAction("/api/admin/remove-trainee", { email }, email);
+  }
+
+  /** 승인 대기 → 활성. 트레이너 승인과 동일한 패턴. */
+  async function approve(email: string) {
+    await postAction("/api/admin/approve-trainee", { email }, email);
+  }
+  /** 승인 대기 → 거절(row 삭제). confirm 후 진행. */
+  async function reject(email: string, name: string) {
+    if (
+      !window.confirm(
+        `"${name || email}" 의 가입 요청을 거절하시겠어요?\n등록 row 가 삭제됩니다.`,
+      )
+    ) {
+      return;
+    }
+    await postAction("/api/admin/reject-trainee", { email }, email);
   }
 
   const nameByEmail = useMemo(() => {
@@ -214,9 +234,19 @@ export default function AdminUserPicker({
         <div className="mt-8 space-y-8">
           {activeGroups.length === 0 &&
             archivedGroups.length === 0 &&
-            reservedUsers.length === 0 && (
+            reservedUsers.length === 0 &&
+            pendingUsers.length === 0 && (
               <p className="text-sm text-gray-400">검색 결과 없음.</p>
             )}
+
+          {/* 승인 대기 — 가장 위. admin 즉시 처리 유도. */}
+          <PendingTraineesSection
+            list={pendingUsers}
+            busy={busy}
+            onApprove={approve}
+            onReject={reject}
+            viewOnly={viewOnly}
+          />
 
           {/* 활성 기수 그룹 */}
           {activeGroups.map(([cohort, list]) => (

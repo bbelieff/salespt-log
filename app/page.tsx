@@ -7,8 +7,9 @@
  *   - trainer pending → /trainer (대기 화면)
  *   - trainer (active)→ /trainer (담당 수강생 목록). impersonation 쿠키는 직접
  *                       /dashboard 진입 시에만 효과 — 트레이너 랜딩 우선.
- *   - trainee + 등록 완료   → /dashboard
- *   - trainee + 미등록      → /claim
+ *   - trainee active   → /dashboard
+ *   - trainee pending  → PendingApprovalScreen (관리자 승인 대기)
+ *   - trainee 미등록   → /claim
  *
  * 변경 (fix/admin-always-land):
  *  - 이전: admin 이 impersonation 쿠키 있으면 즉시 /dashboard 진입.
@@ -21,6 +22,7 @@ import { redirect } from "next/navigation";
 import { findUserByEmail } from "@/repo/users";
 import { getSessionEmail, getEffectiveRole } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
+import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
 export default async function HomePage() {
   const sessionEmail = await getSessionEmail();
@@ -38,6 +40,13 @@ export default async function HomePage() {
 
   // trainee
   const user = await findUserByEmail(sessionEmail);
-  if (user) redirect("/dashboard");
-  redirect("/claim");
+  if (!user) redirect("/claim");
+  // 트레이너처럼 수강생도 admin 승인 필요 (2026-05-12).
+  // 기존 active trainee 들은 영향 없음 (이미 status=active).
+  if (user.status === "pending") {
+    return (
+      <PendingApprovalScreen subtitle="관리자 승인 후 경영일지를 작성할 수 있습니다." />
+    );
+  }
+  redirect("/dashboard");
 }
