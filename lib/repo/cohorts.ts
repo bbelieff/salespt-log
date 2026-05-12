@@ -37,7 +37,16 @@ const cachedCohortsRows = unstable_cache(
 );
 
 function invalidateCohorts(): void {
-  revalidateTag(COHORTS_TAG);
+  // Server Component 의 render phase 에서 호출되면 Next.js 15+ 가 throw 한다.
+  // ensureCohortsTab() 은 Server Component (예: /admin/cohorts) 에서 호출되므로
+  // try/catch 로 render context 호출은 무시. 데이터는 unstable_cache 의
+  // `revalidate: 60` 에 따라 자연 갱신된다.
+  // Server Action / Route Handler 에서 호출되는 setCohortStatus() 는 정상 동작.
+  try {
+    revalidateTag(COHORTS_TAG);
+  } catch {
+    // Render context — 무시.
+  }
 }
 
 export async function listCohorts(): Promise<Cohort[]> {
