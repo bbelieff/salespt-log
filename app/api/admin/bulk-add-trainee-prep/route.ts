@@ -6,14 +6,15 @@
  * 일괄 prep row 등록. 각 item 은 addTraineePrepRow 와 동일 인자.
  * 순차 처리 — Sheets API rate limit 안전.
  *
+ * 시트 공유는 코드 자동화 X — admin 이 Drive 폴더에 시트들을 모으고 그 폴더를
+ * SA email 과 한 번 공유 (편집자) → 폴더 안 시트 자동 권한 상속.
+ *
  * 응답: { ok, created, updated, failed: [{cohort,name,error}] }
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
-import { getServerAccessToken } from "@/auth/google-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
-import { shareSheetWithServiceAccount } from "@/repo/drive-client";
 
 interface Item {
   cohort?: unknown;
@@ -45,15 +46,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // OAuth token 한 번 추출 — 모든 item 의 시트에 SA 자동 공유 trigger 에 사용.
-  const userToken = await getServerAccessToken();
-
   let created = 0;
   let updated = 0;
-  let shared = 0;
-  let shareSkipped = 0;
   const failed: { cohort: string; name: string; error: string }[] = [];
-  const shareFailed: { cohort: string; name: string; error: string }[] = [];
 
   for (const it of body.items) {
     const cohort = String(it.cohort ?? "").trim();
@@ -79,31 +74,9 @@ export async function POST(req: Request) {
         name,
         error: e instanceof Error ? e.message : "unknown",
       });
-      continue;
-    }
-
-    // 자동 SA 공유 — admin token 있을 때만.
-    if (userToken) {
-      const s = await shareSheetWithServiceAccount(sheetId, userToken);
-      if (s.shared) shared++;
-      else shareFailed.push({ cohort, name, error: s.error ?? "unknown" });
-    } else {
-      shareSkipped++;
     }
   }
 
   revalidateAdminPages();
-  return NextResponse.json({
-    ok: true,
-    created,
-    updated,
-    failed,
-    shared,
-    shareSkipped,
-    shareFailed,
-    shareHint:
-      shareSkipped > 0
-        ? "admin OAuth scope 확장이 필요합니다. 로그아웃 후 재로그인하세요."
-        : undefined,
-  });
+  return NextResponse.json({ ok: true, created, updated, failed });
 }
