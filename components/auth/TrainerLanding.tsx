@@ -23,13 +23,14 @@ export default function TrainerLanding({
   trainerName,
   trainees,
   masterSheetUrl,
-  isAdmin,
+  canBackToAdmin,
 }: {
   sessionEmail: string;
   trainerName: string;
   trainees: User[];
   masterSheetUrl: string;
-  isAdmin: boolean;
+  /** admin(ADMIN_EMAILS) OR 관리부서(cohort="관리") → 마스터 메뉴로 복귀 가능. */
+  canBackToAdmin: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -64,8 +65,9 @@ export default function TrainerLanding({
               {trainerName} · {sessionEmail}
             </div>
           </div>
-          {/* admin 이면 마스터 메뉴 진입, 그 외엔 로그아웃 — 한 줄에 깔끔하게. */}
-          {isAdmin ? (
+          {/* 관리자/관리부서 → "← 마스터 메뉴" (다른 admin 페이지와 동일한 핑크 핕 버튼).
+              순수 트레이너 → "로그아웃" (이 화면 외엔 트레이너용 페이지 없음 — 로그아웃 경로 필수). */}
+          {canBackToAdmin ? (
             <Link
               href="/admin"
               className="shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
