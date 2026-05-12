@@ -377,6 +377,7 @@ export function PendingTraineesSection({
   list,
   busy,
   onApprove,
+  onApproveAll,
   onReject,
   linkedBySheet,
   viewOnly = false,
@@ -384,6 +385,8 @@ export function PendingTraineesSection({
   list: Trainee[];
   busy: string | null;
   onApprove: (email: string) => void;
+  /** "모두 승인" — 한 번에 처리. confirm 후 실행. */
+  onApproveAll?: () => void;
   onReject: (email: string, name: string) => void;
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
@@ -391,8 +394,18 @@ export function PendingTraineesSection({
   if (list.length === 0) return null;
   return (
     <section>
-      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-700">
-        ⏳ 승인 대기 수강생 · {list.length}명
+      <h2 className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
+        <span>⏳ 승인 대기 수강생 · {list.length}명</span>
+        {!viewOnly && onApproveAll && list.length > 1 && (
+          <button
+            type="button"
+            onClick={onApproveAll}
+            disabled={busy !== null}
+            className="rounded-full bg-green-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            모두 승인 ({list.length})
+          </button>
+        )}
       </h2>
       <ul className="space-y-2">
         {list.map((u) => (
