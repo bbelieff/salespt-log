@@ -11,13 +11,18 @@
  *
  * 본인이 /claim 에서 같은 (cohort, name) 입력 시 → email 만 채워져서 즉시 active.
  * Drive 시트 이름 정확 일치 검사 우회 — admin 이 명시적 매핑.
+ *
+ * 시트 공유 정책 (2026-05-12):
+ *   - SA 자동 공유는 OAuth drive scope 가 필요하지만, 그 scope 가 모든 사용자에게
+ *     sensitive 권한 동의를 강제 + Testing 모드 외부 사용자 차단.
+ *   - 운영 방식 변경: admin 이 Drive 폴더 하나에 모든 시트를 모으고 그 폴더를
+ *     SA email 과 공유 (편집자) → 그 폴더 안 시트는 자동 권한 상속.
+ *   - 코드 자동화 제거 — 사용자/수강생 OAuth drive scope 동의 요청 0.
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
-import { getServerAccessToken } from "@/auth/google-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
-import { shareSheetWithServiceAccount } from "@/repo/drive-client";
 
 export async function POST(req: Request) {
   const sessionEmail = await getSessionEmail();
@@ -48,7 +53,6 @@ export async function POST(req: Request) {
   }
 
   const spreadsheetId = extractSpreadsheetId(urlOrId);
-  // Google Drive file ID 는 보통 30~50자 영숫자+`-_`. 최소 20자 검증.
   if (!/^[a-zA-Z0-9_-]{20,}$/.test(spreadsheetId)) {
     return NextResponse.json(
       {
@@ -60,19 +64,6 @@ export async function POST(req: Request) {
   }
 
   const result = await addTraineePrepRow(cohort, name, spreadsheetId, assigned);
-
-  // **자동 시트 공유** — admin OAuth token 으로 그 시트에 Service Account 를
-  // writer 로 추가. 수동 시트 공유 작업 제거. admin 이 owner/editor 인 시트만
-  // 성공 — 권한 부족 시 안내 메시지를 응답에 포함.
-  const userToken = await getServerAccessToken();
-  let share: { shared: boolean; alreadyShared?: boolean; error?: string } = {
-    shared: false,
-    error: "no_oauth_token (재로그인 필요 — OAuth scope 확장 적용)",
-  };
-  if (userToken) {
-    share = await shareSheetWithServiceAccount(spreadsheetId, userToken);
-  }
-
   revalidateAdminPages();
   return NextResponse.json({
     ok: true,
@@ -80,6 +71,5 @@ export async function POST(req: Request) {
     name,
     spreadsheetId,
     created: result.created,
-    share,
   });
 }
