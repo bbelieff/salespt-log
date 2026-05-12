@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { claimAccount, ClaimError } from "@/service/auth";
+import { revalidateAdminPages } from "@/auth/revalidate-admin";
 
 export async function POST(req: Request) {
   let email: string;
@@ -41,6 +42,10 @@ export async function POST(req: Request) {
 
   try {
     const result = await claimAccount(email, cohortStr, nameStr);
+    // claim 후 admin 페이지 RSC 캐시 즉시 무효화 — admin 이 새로고침하면 바로
+    // 승인 대기 섹션에 노출. 이전엔 registry-rows 데이터 캐시만 무효화되어
+    // /admin/users(revalidate=30) 가 옛 데이터를 보여줬음.
+    revalidateAdminPages();
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof ClaimError) {
