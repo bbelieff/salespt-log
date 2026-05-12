@@ -24,6 +24,13 @@ import { getSessionEmail, getEffectiveRole } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
+// **force-dynamic** — claim 직후 router.push("/") 했을 때 옛 캐시가 보이면
+// 안 됨. 사고 (2026-05-13): 새 사용자가 /claim 성공해도 홈 server component
+// 캐시가 stale 이라 findUserByEmail null → 다시 redirect("/claim") → 사용자가
+// "필드만 reset 되고 안 들어가진다" 인식. force-dynamic + claim API 의 revalidatePath
+// 둘 다 보강.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) return <LoginScene />;

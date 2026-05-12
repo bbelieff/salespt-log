@@ -10,6 +10,7 @@
  *   500 { error: ... }                             — 기타
  */
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { claimAccount, ClaimError } from "@/service/auth";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
@@ -42,10 +43,15 @@ export async function POST(req: Request) {
 
   try {
     const result = await claimAccount(email, cohortStr, nameStr);
-    // claim 후 admin 페이지 RSC 캐시 즉시 무효화 — admin 이 새로고침하면 바로
-    // 승인 대기 섹션에 노출. 이전엔 registry-rows 데이터 캐시만 무효화되어
-    // /admin/users(revalidate=30) 가 옛 데이터를 보여줬음.
+    // claim 후 캐시 즉시 무효화:
+    //   - admin 페이지: 승인 대기 섹션 즉시 노출.
+    //   - 홈 페이지("/"): claim 성공한 사용자가 router.push("/") 후 server
+    //     component 다시 실행될 때 fresh registry 데이터 — 옛 캐시면 findUserByEmail
+    //     null → redirect("/claim") 무한 루프 (2026-05-13 사고).
+    //   - /claim: 자기 자신도 무효화 (다시 진입 시 fresh).
+    //   - layout 레벨로 호출 — 전체 트리.
     revalidateAdminPages();
+    revalidatePath("/", "layout");
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof ClaimError) {
