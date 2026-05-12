@@ -50,3 +50,46 @@ export async function findSheetByExactName(
   if (files.length !== 1) return null;
   return files[0]?.id ?? null;
 }
+
+/**
+ * prefix 매칭 — 파일명이 `{prefix}` 로 시작하는 시트 찾기.
+ * 시트 이름 끝에 `(new)`, `v2`, ` 사본` 같은 suffix 가 붙은 케이스 처리용
+ * (사용자가 시트 복제·이름변경 자유롭게 가능).
+ *
+ * 매칭 정책:
+ *   - prefix 와 정확히 같은 이름 있으면 그것 우선 (suffix 없는 원본).
+ *   - 그 외엔 이름 가장 짧은 것 우선 (suffix 길이 최소 = 가장 가까운 매칭).
+ *   - 5개 초과 매칭이면 ambiguous → null (호출 측이 사용자에게 명확화 요청).
+ *
+ * Drive q `name contains` 는 토큰 매칭이라 한국어·공백 포함 prefix 도 OK.
+ */
+export async function findSheetByNamePrefix(
+  prefix: string,
+): Promise<string | null> {
+  const drive = driveClient();
+  const safe = prefix.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q:
+      `name contains '${safe}' ` +
+      `and mimeType = 'application/vnd.google-apps.spreadsheet' ` +
+      `and trashed = false`,
+    fields: "files(id, name)",
+    pageSize: 20,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  const files = (res.data.files ?? []).filter(
+    (f): f is { id: string; name: string } =>
+      typeof f.name === "string" &&
+      typeof f.id === "string" &&
+      f.name.startsWith(prefix),
+  );
+  if (files.length === 0) return null;
+  // 정확 매칭(suffix 없는 원본) 우선.
+  const exact = files.find((f) => f.name === prefix);
+  if (exact) return exact.id;
+  // 그 외엔 이름 길이 짧은 순(가장 적은 suffix) 우선.
+  if (files.length > 5) return null; // 너무 많으면 ambiguous.
+  files.sort((a, b) => a.name.length - b.name.length);
+  return files[0]?.id ?? null;
+}

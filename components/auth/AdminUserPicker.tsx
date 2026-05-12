@@ -22,6 +22,7 @@ import {
   CohortSection,
   ReservedSection,
   PendingTraineesSection,
+  TraineePrepForm,
 } from "./AdminUserPickerSections";
 
 export default function AdminUserPicker({
@@ -104,6 +105,19 @@ export default function AdminUserPicker({
       return;
     }
     await postAction("/api/admin/remove-trainee", { email }, email);
+  }
+
+  /** 신규 수강생 prep row 등록 — 시트 URL + (기수, 이름). */
+  async function addPrep(
+    cohort: string,
+    name: string,
+    spreadsheetUrl: string,
+  ) {
+    await postAction(
+      "/api/admin/add-trainee-prep",
+      { cohort, name, spreadsheetUrl },
+      `prep:${cohort}:${name}`,
+    );
   }
 
   /** 승인 대기 → 활성. 트레이너 승인과 동일한 패턴. */
@@ -255,6 +269,9 @@ export default function AdminUserPicker({
             pendingUsers.length === 0 && (
               <p className="text-sm text-gray-400">검색 결과 없음.</p>
             )}
+
+          {/* 신규 수강생 사전 등록 — 시트 URL → prep row. viewOnly 면 숨김. */}
+          {!viewOnly && <TraineePrepForm busy={busy !== null} onSubmit={addPrep} />}
 
           {/* 승인 대기 — 가장 위. admin 즉시 처리 유도. */}
           <PendingTraineesSection
