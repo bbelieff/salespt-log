@@ -243,6 +243,45 @@ export function isAdminSynthCandidate(email: string): boolean {
 }
 
 /**
+ * 유보 처리 sentinel — registry B(cohort) 컬럼에 박는 값.
+ * 트레이너의 "T"/"관리" 와 같은 패턴: B 컬럼은 "라벨 + 분류 sentinel" 겸용.
+ * "유보" 인 trainee 는 admin/users 의 정규 기수 그룹에서 제외, 별도 섹션에서만 노출.
+ */
+export const TRAINEE_RESERVED_SENTINEL = "유보";
+
+/** 등록 row 의 B 컬럼이 유보 sentinel 인지 검사. trim 후 비교. */
+export function isReservedTrainee(u: { cohort: string; role: string }): boolean {
+  return u.role === "trainee" && u.cohort.trim() === TRAINEE_RESERVED_SENTINEL;
+}
+
+/**
+ * Admin 전용: trainee 유보 토글.
+ *   - reserved=true  → registry B = "유보"
+ *   - reserved=false → registry B = "" (복귀; 표시 라벨은 개인 시트 B3 SSOT 에서 채움)
+ *
+ * row 가 없는 trainee 는 throw — setTrainerDepartment 와 달리 trainee 의 synth
+ * 케이스는 의미가 없음 (개인 시트가 있어야 trainee 임).
+ */
+export async function setTraineeReservation(
+  email: string,
+  reserved: boolean,
+): Promise<void> {
+  await updateCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
+}
+
+/**
+ * Admin 전용: trainee 완전 퇴출 — registry row 물리 삭제.
+ * 트레이너 퇴출(removeTrainerCompletely) 처럼 매핑 cleanup 은 필요 없음
+ * (trainee.G 는 trainee 자신의 컬럼이라 다른 row 가 참조하지 않음).
+ *
+ * 보통 유보 상태에서만 호출 (UI 가 가드) — 정규 명단에서 바로 삭제 방지 의도.
+ * 단, 시트 자체는 건드리지 않음 (Google 시트 권한·데이터는 그대로).
+ */
+export async function removeTraineeCompletely(email: string): Promise<void> {
+  await deleteUserByEmail(email);
+}
+
+/**
  * Admin 전용: registry 에서 email row 물리 삭제 (Sheets API rows.delete).
  * 트레이너 거절·중복 정리 용도. 호출 후 cache 무효화.
  */
