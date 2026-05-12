@@ -15,19 +15,27 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
-import { findSheetByExactName } from "./drive-client";
+import { findSheetByExactName, findSheetByNamePrefix } from "./drive-client";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:G1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:G`;
 
 function parseRow(r: unknown[]): User | null {
+  // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
+  // 재현 (2026-05-12). nullish coalescing(??) 이 "" 통과시켜 Zod enum fail.
+  // 명시적 normalize 로 빈 값·미지정을 default 로 흡수.
+  const rawStatus = String(r[5] ?? "").trim();
+  const status: User["status"] = rawStatus === "pending" ? "pending" : "active";
+  const rawRole = String(r[4] ?? "").trim();
+  const role: User["role"] =
+    rawRole === "trainer" || rawRole === "admin" ? rawRole : "trainee";
   const parsed = User.safeParse({
     email: r[0],
     cohort: r[1] ?? "",
     name: r[2] ?? "",
     spreadsheetId: r[3] ?? "",
-    role: (r[4] as User["role"]) ?? "trainee",
-    status: (r[5] as User["status"]) ?? "active",
+    role,
+    status,
     assignedTrainer: r[6] ?? "",
   });
   return parsed.success ? parsed.data : null;
@@ -412,7 +420,12 @@ export async function findExistingSheetIdByCohortName(
 
 /**
  * Drive API 파일명 검색 — 수강생 시트 찾기.
- * 패턴: `세일즈PT_ {cohort}기 {name} 수강생 경영일지`
+ *
+ * 매칭 전략 (순서대로 시도):
+ *   1. exact: `세일즈PT_ {N}기 {name} 수강생 경영일지` 정확 일치.
+ *   2. prefix: 동일 prefix 로 시작하고 suffix 만 추가된 경우 (예: `(new)`,
+ *      ` 사본`, ` v2`). 사용자가 시트 복제·이름 변경 자유롭게 가능.
+ *
  * cohort=T(트레이너) 인 경우 null 반환 (검색 안 함).
  */
 export async function findSheetByCohortName(
@@ -423,12 +436,18 @@ export async function findSheetByCohortName(
   const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
   const exactName = `세일즈PT_ ${cohortNum}기 ${cleanName} 수강생 경영일지`;
-  return findSheetByExactName(exactName);
+  const exact = await findSheetByExactName(exactName);
+  if (exact) return exact;
+  // exact 매칭 실패 → prefix 매칭 fallback. `(new)`, ` 사본` 등 suffix 흡수.
+  return findSheetByNamePrefix(exactName);
 }
 
 // claimRegistry 는 lib/repo/users-claim.ts 로 분리 (500줄 cap).
 // 외부 호출부 호환성 위해 그대로 re-export.
 export { claimRegistry } from "./users-claim";
+
+// Admin prep row 등록은 lib/repo/users-prep.ts 로 분리 (500줄 cap).
+export { addTraineePrepRow } from "./users-prep";
 
 // Header helper — 레지스트리 시트를 처음 만들 때 1회 실행.
 export async function ensureRegistryHeader(): Promise<void> {

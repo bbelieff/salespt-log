@@ -292,6 +292,82 @@ export function ReservedSection({
   );
 }
 
+/* BulkPrepForm + parsePrepText 는 ./TraineePrepBulkForm.tsx 로 분리 (500줄 cap). */
+
+/* ──────────────── 신규 수강생 사전 등록 폼 (단일) ──────────────── */
+//
+// admin 이 시트 URL + (기수, 이름) 입력 → registry prep row 생성.
+// 본인이 self-claim 시 (기수, 이름) 매칭으로 즉시 활성. Drive 자동 검색·시트
+// 이름 일치 의존 없음 — 사용자가 시트 이름을 자유롭게 (예: `(new)` suffix).
+export function TraineePrepForm({
+  busy,
+  onSubmit,
+}: {
+  busy: boolean;
+  onSubmit: (
+    cohort: string,
+    name: string,
+    spreadsheetUrl: string,
+  ) => Promise<void>;
+}) {
+  return (
+    <details className="rounded-2xl border border-sky-200 bg-sky-50/50">
+      <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-sky-800 hover:bg-sky-100">
+        ➕ 신규 수강생 사전 등록 (시트 URL → 자동 매핑)
+      </summary>
+      <form
+        className="space-y-2 border-t border-sky-200 px-4 py-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const cohort = String(fd.get("cohort") ?? "").trim();
+          const name = String(fd.get("name") ?? "").trim();
+          const url = String(fd.get("spreadsheetUrl") ?? "").trim();
+          if (!cohort || !name || !url) return;
+          await onSubmit(cohort, name, url);
+          (e.currentTarget as HTMLFormElement).reset();
+        }}
+      >
+        <p className="text-[11px] text-gray-500">
+          시트 URL 을 입력하면 자동으로 spreadsheetId 추출. 본인이 같은 기수·이름
+          으로 로그인하면 즉시 활성 (Drive 검색 우회).
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[80px_1fr]">
+          <input
+            name="cohort"
+            type="text"
+            inputMode="numeric"
+            placeholder="기수"
+            required
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+          />
+          <input
+            name="name"
+            type="text"
+            placeholder="이름 (예: 손기학)"
+            required
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+          />
+        </div>
+        <input
+          name="spreadsheetUrl"
+          type="text"
+          placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+          required
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+        >
+          {busy ? "등록 중..." : "사전 등록"}
+        </button>
+      </form>
+    </details>
+  );
+}
+
 /* ──────────────── 승인 대기 수강생 섹션 (pending) ──────────────── */
 //
 // 트레이너 SectionPending(components/auth/TrainerMgmtSections.tsx) 와 동일한
@@ -301,6 +377,7 @@ export function PendingTraineesSection({
   list,
   busy,
   onApprove,
+  onApproveAll,
   onReject,
   linkedBySheet,
   viewOnly = false,
@@ -308,6 +385,8 @@ export function PendingTraineesSection({
   list: Trainee[];
   busy: string | null;
   onApprove: (email: string) => void;
+  /** "모두 승인" — 한 번에 처리. confirm 후 실행. */
+  onApproveAll?: () => void;
   onReject: (email: string, name: string) => void;
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
@@ -315,8 +394,18 @@ export function PendingTraineesSection({
   if (list.length === 0) return null;
   return (
     <section>
-      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-700">
-        ⏳ 승인 대기 수강생 · {list.length}명
+      <h2 className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
+        <span>⏳ 승인 대기 수강생 · {list.length}명</span>
+        {!viewOnly && onApproveAll && list.length > 1 && (
+          <button
+            type="button"
+            onClick={onApproveAll}
+            disabled={busy !== null}
+            className="rounded-full bg-green-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            모두 승인 ({list.length})
+          </button>
+        )}
       </h2>
       <ul className="space-y-2">
         {list.map((u) => (

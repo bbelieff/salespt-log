@@ -1275,7 +1275,8 @@ components/dashboard/
 |---|---|
 | **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
 | **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `pendingUsers?` (승인 대기), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 섹션: 승인 대기 → 활성 기수 → 보관 → 유보. 카드 액션: [승인]/[거절]/[유보]/[시트 열기]. POST /api/admin/switch · approve-trainee · reject-trainee · set-trainee-reserved · remove-trainee. |
-| **AdminUserPickerSections** | AdminUserPicker 의 CohortSection + ReservedSection + PendingTraineesSection + parseAssigned/fmtDateYY/cohortProgress 유틸 분리 (500줄 cap). Trainee/Trainer 타입 re-export. |
+| **AdminUserPickerSections** | AdminUserPicker 의 CohortSection + ReservedSection + PendingTraineesSection + TraineePrepForm + parseAssigned/fmtDateYY/cohortProgress 유틸 분리 (500줄 cap). Trainee/Trainer 타입 re-export. |
+| **TraineePrepBulkForm** | 일괄 사전 등록 폼. `parsePrepText` 가 `세일즈PT_ N기 이름 수강생 경영일지` 헤더 + URL 페어 또는 TSV 라인 → `PrepItem[]` 파싱. POST /api/admin/bulk-add-trainee-prep. 500줄 cap 회피로 별도 파일. |
 | **TrainerLanding** | 트레이너 메인. Props: `sessionEmail`, `trainerName`, `trainees: User[]`, `masterSheetUrl`, `isAdmin`. 담당 수강생 목록 + 마스터 시트 링크. 클릭 시 impersonation 진입. |
 | **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 4 섹션 (TrainerMgmtSections 분리) — pending 승인/거절, 트레이너별 다중 배정 체크박스, 수강생 명단 아코디언, 트레이너 명단 아코디언. |
 | **TrainerMgmtSections** | TrainerMgmtPanel 의 SectionPending / SectionAssign / SectionTraineeList + parseAssigned, groupByCohort, PanelUser 유틸. SectionManagement 는 TrainerMgmtManagement 에서 re-export. |
