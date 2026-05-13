@@ -63,12 +63,42 @@ export function computeGraduationISO(courseStartISO: string): string {
  * spreadsheetId → bundle(profile + dates) 캐시 — 60초.
  * 시트 B3/C3/O1/O2 변경은 매우 드물고(수강 시작 시 1회) 페이지 전환 시 매번
  * 다시 읽으면 헤더 표시 지연 주범. 60초 stale 허용.
+ *
+ * **2026-05-13 사고 fix**: unstable_cache 가 결과를 JSON 직렬화 → Date 객체가
+ * ISO string 으로 복원됨 → cache hit 시 `bundle.courseStart` 가 string →
+ * 호출자(`toISO`)가 `string.getFullYear()` 호출 → "a.getFullYear is not a
+ * function" 500 에러. cache 내부에서 number(ms) 만 저장하고 호출 부에서 Date 로
+ * 복원. JSON 직렬화 안전한 primitive 만 캐시.
  */
 const cachedReadBundle = unstable_cache(
-  async (spreadsheetId: string) => readProfileBundle(spreadsheetId),
+  async (spreadsheetId: string) => {
+    const b = await readProfileBundle(spreadsheetId);
+    return {
+      cohort: b.cohort,
+      name: b.name,
+      courseStartMs: b.courseStart.getTime(),
+      graduationMs: b.graduation.getTime(),
+    };
+  },
   ["me-bundle"],
   { revalidate: 60, tags: ["me-bundle"] },
 );
+
+/** cachedReadBundle 결과를 Date 포함 형태로 복원. */
+async function readBundle(spreadsheetId: string): Promise<{
+  cohort: string;
+  name: string;
+  courseStart: Date;
+  graduation: Date;
+}> {
+  const b = await cachedReadBundle(spreadsheetId);
+  return {
+    cohort: b.cohort,
+    name: b.name,
+    courseStart: new Date(b.courseStartMs),
+    graduation: new Date(b.graduationMs),
+  };
+}
 
 /**
  * 사용자 목록을 받아 각자의 개인 시트 B3/C3 에서 cohort/name 을 읽어 덮어쓴다.
@@ -91,7 +121,7 @@ export async function enrichUsersWithSheetCohort<T extends { cohort: string; nam
   const tasks = users.map(async (u) => {
     if (!u.spreadsheetId) return u;
     try {
-      const bundle = await cachedReadBundle(u.spreadsheetId);
+      const bundle = await readBundle(u.spreadsheetId);
       return {
         ...u,
         cohort: bundle.cohort || u.cohort,
@@ -136,7 +166,7 @@ export async function enrichUsersWithDates<
       return defaults;
     }
     try {
-      const bundle = await cachedReadBundle(u.spreadsheetId);
+      const bundle = await readBundle(u.spreadsheetId);
       return {
         ...u,
         cohort: bundle.cohort || u.cohort,
@@ -163,7 +193,7 @@ export async function loadMe(email: string): Promise<MeProfile> {
     throw new Error(`[me] 사용자(${email})를 찾을 수 없습니다.`);
   }
   // 단일 batchGet (B3:C3 + O1 + O2) + 60s 메모이즈.
-  const bundle = await cachedReadBundle(user.spreadsheetId);
+  const bundle = await readBundle(user.spreadsheetId);
   return {
     email: user.email,
     cohort: bundle.cohort || user.cohort,
