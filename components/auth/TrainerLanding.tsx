@@ -44,8 +44,10 @@ export default function TrainerLanding({
       body: JSON.stringify({ email }),
     });
     if (res.ok) {
-      // 헤더 me 캐시 무효화 — impersonation 대상 데이터로 즉시 갱신.
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      // impersonation 변경 시 useMe staleTime/refetchOnMount:false 와 충돌 —
+      // invalidate 만으로 refetch 안 일어남. 캐시 통째 제거해서 다음 mount 시
+      // fresh fetch 강제. (2026-05-13 헤더 데이터 비어있음 사고)
+      queryClient.removeQueries({ queryKey: ["me"] });
       router.push("/dashboard");
       router.refresh();
     } else {

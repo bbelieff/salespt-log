@@ -285,7 +285,11 @@ export default function AdminUserPicker({
         setBusy(null);
         return;
       }
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      // impersonation 변경 시에는 invalidate 만으로는 부족 — useMe 가
+      // refetchOnMount: false + staleTime: 1h 라서 dashboard 진입 시 stale
+      // (admin 본인의) 캐시 그대로 사용. 캐시 통째 제거해서 다음 mount 시
+      // fresh fetch 강제. (2026-05-13 헤더 데이터 비어있음 사고)
+      queryClient.removeQueries({ queryKey: ["me"] });
       router.push("/dashboard");
       router.refresh();
     } catch (e) {

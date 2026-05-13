@@ -35,7 +35,9 @@ export default function ImpersonationBanner({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: null }),
       });
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      // impersonation 해제 시 useMe staleTime/refetchOnMount:false 와 충돌 —
+      // invalidate 만으로는 refetch 안 일어남. 캐시 통째 제거.
+      queryClient.removeQueries({ queryKey: ["me"] });
       router.refresh();
     } finally {
       setBusy(false);
