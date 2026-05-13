@@ -286,11 +286,14 @@ export default function AdminUserPicker({
         setBusy(null);
         return;
       }
-      // impersonation 변경 시에는 invalidate 만으로는 부족 — useMe 가
-      // refetchOnMount: false + staleTime: 1h 라서 dashboard 진입 시 stale
-      // (admin 본인의) 캐시 그대로 사용. 캐시 통째 제거해서 다음 mount 시
-      // fresh fetch 강제. (2026-05-13 헤더 데이터 비어있음 사고)
-      queryClient.removeQueries({ queryKey: ["me"] });
+      // impersonation 변경 시에는 ['me'] 외에 trainee 별 데이터 캐시도 모두
+      // 비워야 함. dashboard/contact/db/contract-payment/meetings 같은 hooks 가
+      // 각자 staleTime + refetchOnMount: false 설정이라 cache hit 시 첫 trainee
+      // 데이터 그대로 유지 → 두번째 trainee picker 클릭해도 본문이 안 바뀜.
+      // (2026-05-13 "여러 수강생 번갈아 조회 시 첫 사람 시트 고정" 사고)
+      // queryClient.clear() 가 가장 robust — 새 trainee data hook 추가돼도
+      // 자동 적용. 부작용은 admin 페이지로 돌아갈 때 1회 fetch latency 뿐.
+      queryClient.clear();
       router.push("/dashboard");
       router.refresh();
     } catch (e) {

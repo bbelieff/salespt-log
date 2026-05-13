@@ -35,9 +35,10 @@ export default function ImpersonationBanner({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: null }),
       });
-      // impersonation 해제 시 useMe staleTime/refetchOnMount:false 와 충돌 —
-      // invalidate 만으로는 refetch 안 일어남. 캐시 통째 제거.
-      queryClient.removeQueries({ queryKey: ["me"] });
+      // impersonation 해제 시 ['me'] 외에 trainee 별 데이터 캐시도 모두
+      // 비워야 함 — admin 본인 페이지로 돌아갔는데 옛 trainee dashboard
+      // 데이터가 남아 있으면 admin 화면이 잠시 그 데이터로 깜빡임.
+      queryClient.clear();
       router.refresh();
     } finally {
       setBusy(false);
