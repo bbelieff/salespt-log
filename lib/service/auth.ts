@@ -30,7 +30,7 @@ import {
   claimRegistry,
   findUserByEmail,
 } from "@/repo/users";
-import { writeProfile, readProfileBundle } from "@/repo/sales";
+import { writeProfile, readProfileBundle, readProfile } from "@/repo/sales";
 import type { CachedLabels } from "@/repo/users-claim";
 
 export type ClaimErrorReason = "not_found" | "ambiguous";
@@ -147,9 +147,19 @@ export async function claimAccount(
     "pending",
     cached,
   );
-  // 첫 등록자만 시트 B3/C3 작성 (이미 등록된 사람 있으면 덮어쓰지 않음).
+  // 시트 B3/C3 작성 — 멱등 동작.
+  //   - 신규 시트(existingSheetId === null): 무조건 write
+  //   - prep row 매칭(existingSheetId 있음): admin 이 시트를 복제만 하고 B3/C3
+  //     안 채운 경우가 흔함 → 빈 셀만 채움. 이미 채워진 셀은 다른 계정의
+  //     이름일 수 있어 덮어쓰지 않음 (multi-account-per-sheet 케이스 보존).
+  // (2026-05-13 7기 5명 + 4기 손기학 C3 비어있음 사고 후 도입)
   if (!existingSheetId) {
     await writeProfile(spreadsheetId, cohortTrim, name);
+  } else {
+    const profile = await readProfile(spreadsheetId);
+    if (!profile.cohort || !profile.name) {
+      await writeProfile(spreadsheetId, cohortTrim, name);
+    }
   }
 
   // 실제 등록된 status 를 다시 읽어 정확한 결과 반환 (prep row 매칭이면 active,
