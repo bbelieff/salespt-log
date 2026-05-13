@@ -109,15 +109,17 @@ export function CohortSection({
     rep?.courseStartISO,
     rep?.graduationISO,
   );
-  return (
+  // 기수 박스: 배경에서 더 잘 구분되게 slate 톤 + 진한 테두리. open 상태일 때
+  // 헤더 영역에 좌측 indigo accent bar 로 무게감. (2026-05-13 시인성 개선)
     <PersistentDetails
       persistKey={`cohort:${cohort}${archived ? ":archived" : ""}`}
       defaultOpen
-      className="group rounded-2xl border border-gray-200 bg-white open:bg-gray-50/30"
+      className="group rounded-2xl border-2 border-slate-300 bg-slate-100 shadow-sm open:bg-white open:shadow-md"
     >
-      <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-3 hover:bg-gray-50">
+      <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-t-xl border-l-4 border-indigo-500 bg-slate-50 px-4 py-3 group-open:bg-white hover:bg-slate-100">
+
         <svg
-          className="h-3 w-3 shrink-0 text-gray-400 transition-transform group-open:rotate-90"
+          className="h-3.5 w-3.5 shrink-0 text-indigo-500 transition-transform group-open:rotate-90"
           fill="none"
           stroke="currentColor"
           strokeWidth={2.5}
@@ -126,19 +128,27 @@ export function CohortSection({
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
-          {cohort}기 · {list.length}명{archived && " (보관)"}
+        <span className="text-base font-black tracking-tight text-gray-900">
+          {cohort}기
         </span>
+        <span className="text-xs font-bold text-indigo-700">
+          · {list.length}명
+        </span>
+        {archived && (
+          <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
+            보관
+          </span>
+        )}
         {start && end && (
-          <span className="text-[11px] font-normal text-gray-400">
-            개강 <span className="font-semibold text-gray-600">{start}</span>{" "}
-            ~ 종강 <span className="font-semibold text-gray-600">{end}</span>
+          <span className="ml-1 text-xs font-medium text-gray-500">
+            개강 <span className="font-bold text-gray-800">{start}</span>{" "}
+            ~ 종강 <span className="font-bold text-gray-800">{end}</span>
             {pct !== null && (
               <>
                 {" · "}진행률{" "}
-                <span className="font-semibold text-gray-600">{pct}%</span>
+                <span className="font-bold text-gray-800">{pct}%</span>
                 {dday !== null && (
-                  <span className="ml-1 font-semibold text-brand-red">
+                  <span className="ml-1 rounded-md bg-red-50 px-1.5 py-0.5 font-black text-brand-red">
                     D{dday >= 0 ? "-" : "+"}
                     {Math.abs(dday)}
                   </span>
