@@ -46,12 +46,13 @@ export async function setUserSortOrders(
     });
   }
   if (updates.length > 0) {
+    // registry RAW (PR D) — 숫자 문자열 "3" 도 그대로 텍스트 저장. parseRow parseInt 로 복원.
     for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
       const chunk = updates.slice(i, i + CHUNK_SIZE);
       await sheetsClient().spreadsheets.values.batchUpdate({
         spreadsheetId: reg.spreadsheetId,
         requestBody: {
-          valueInputOption: "USER_ENTERED",
+          valueInputOption: "RAW",
           data: chunk,
         },
       });

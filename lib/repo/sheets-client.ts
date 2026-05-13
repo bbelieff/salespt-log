@@ -46,16 +46,31 @@ export async function readRange(
   );
 }
 
+/**
+ * Sheets append wrapper.
+ *
+ * valueInputOption 정책:
+ *   - **default "USER_ENTERED"** — 미팅/계약수납/DB관리 등 trainee 개인 시트 쓰기.
+ *     수식·날짜 자동 인식 필수 (예: "=N1+57" 수식 보존, "2026-04-12" → 날짜 셀).
+ *   - **"RAW"** — registry 시트 쓰기. ISO 날짜 문자열("2026-04-12") 이 Sheets 의
+ *     자동 date inference 로 시리얼 넘버(46122)로 변환되는 사고 방지 (PR D, 2026-05-14).
+ *     숫자형 문자열("7" cohort_label) 도 같은 이유로 RAW 가 안전. registry 는 모든
+ *     값을 plain string 으로 다룬다.
+ *
+ * 호출자는 명시적으로 옵션을 넘기지 않으면 USER_ENTERED 가 적용된다. registry 쓰기 사이트는
+ * 반드시 `{ valueInputOption: "RAW" }` 전달.
+ */
 export async function appendRows(
   spreadsheetId: string,
   range: string,
   rows: (string | number | boolean)[][],
+  options?: { valueInputOption?: "USER_ENTERED" | "RAW" },
 ): Promise<void> {
   if (rows.length === 0) return;
   await sheetsClient().spreadsheets.values.append({
     spreadsheetId,
     range,
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: options?.valueInputOption ?? "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: rows },
   });
