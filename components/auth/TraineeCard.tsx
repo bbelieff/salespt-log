@@ -14,7 +14,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
-import { parseAssigned, type Trainee } from "./AdminUserPickerTypes";
+import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
 
 /** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
  *  unknown 으로 받아 TraineeCard 가 dnd-kit 에 직접 의존 안 하게 차단. */
@@ -57,6 +57,8 @@ export default function TraineeCard({
   dragStyle,
   dragRef,
   isDragging,
+  onAssignTrainers,
+  activeTrainers,
 }: {
   u: Trainee;
   archived: boolean;
@@ -77,11 +79,51 @@ export default function TraineeCard({
   dragRef?: (el: HTMLElement | null) => void;
   /** 드래그 중 시각 피드백. */
   isDragging?: boolean;
+  /** 트레이너 multi-select 변경 — assignedTrainer 컬럼 전체 update.
+   *  /admin/trainers 의 TrainerAssignCard 와 동일 API 호출하므로 last-write-wins. */
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  /** 활성 트레이너 풀 — 펼침 시 체크박스 후보. */
+  activeTrainers?: Trainer[];
 }) {
-  const assigned = parseAssigned(u.assignedTrainer);
+  // 옵티미스틱 토글 — 체크박스 클릭 즉시 시각 반영 (서버 응답 전).
+  // prop(u.assignedTrainer) 갱신 시 useEffect 로 클리어.
+  const [optimistic, setOptimistic] = useState<Map<string, boolean>>(new Map());
+  useEffect(() => {
+    setOptimistic(new Map());
+  }, [u.assignedTrainer]);
+
+  function isChecked(trainerEmailLc: string): boolean {
+    if (optimistic.has(trainerEmailLc)) return optimistic.get(trainerEmailLc)!;
+    return parseAssigned(u.assignedTrainer).includes(trainerEmailLc);
+  }
+
+  function toggleTrainer(trainerEmailLc: string) {
+    if (!onAssignTrainers) return;
+    const newChecked = !isChecked(trainerEmailLc);
+    setOptimistic((prev) => new Map(prev).set(trainerEmailLc, newChecked));
+    const current = parseAssigned(u.assignedTrainer);
+    const next = newChecked
+      ? Array.from(new Set([...current, trainerEmailLc]))
+      : current.filter((e) => e !== trainerEmailLc);
+    onAssignTrainers(u.email, next);
+  }
+
+  // 펼침 토글.
+  const [trainerOpen, setTrainerOpen] = useState(false);
+
+  // 현재 배정된 트레이너 라벨 (옵티미스틱 반영).
+  const assignedLc = (activeTrainers ?? []).map((t) => t.email.toLowerCase());
+  const checkedLcs = assignedLc.filter(isChecked);
+  // 옛 assigned 중 activeTrainers 에 없는 케이스 (트레이너 퇴출 잔재) 도 포함해서 표시.
+  const allChecked = Array.from(
+    new Set([...checkedLcs, ...parseAssigned(u.assignedTrainer)]),
+  ).filter((lc) => {
+    if (optimistic.has(lc) && !optimistic.get(lc)) return false;
+    return true;
+  });
   const trainerNames =
-    assigned.length > 0
-      ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
+    allChecked.length > 0
+      ? allChecked.map((e) => nameByEmail.get(e) ?? e).join(", ")
       : "미배정";
 
   // team input 로컬 state — prop 갱신 시 sync.
@@ -98,25 +140,27 @@ export default function TraineeCard({
     onSetTeam(u.email, trimmed);
   }
 
+  const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
+
   return (
     <div
       ref={dragRef}
       style={dragStyle}
       {...(dragAttributes ?? {})}
-      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"} ${isDragging ? "opacity-50 ring-2 ring-indigo-300" : ""}`}
+      className={`overflow-hidden rounded-xl border ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"} ${isDragging ? "opacity-50 ring-2 ring-indigo-300" : ""}`}
     >
-      {dragListeners && (
-        <button
-          type="button"
-          aria-label="드래그하여 순서 변경"
-          title="드래그하여 박스 내 순서 변경"
-          // dnd-kit listeners spread — pointer/touch/keyboard 트리거를 핸들로 격리.
-          {...dragListeners}
-          className="hidden cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing sm:inline-flex sm:items-center sm:self-stretch"
-        >
-          <span className="text-base leading-none">⋮⋮</span>
-        </button>
-      )}
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        {dragListeners && (
+          <button
+            type="button"
+            aria-label="드래그하여 순서 변경"
+            title="드래그하여 박스 내 순서 변경"
+            {...dragListeners}
+            className="hidden cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing sm:inline-flex sm:items-center sm:self-stretch"
+          >
+            <span className="text-base leading-none">⋮⋮</span>
+          </button>
+        )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-black text-gray-900">
@@ -126,10 +170,31 @@ export default function TraineeCard({
           <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
-          <span>
-            <span className="text-gray-400">담당</span>{" "}
-            <span className="font-semibold">{trainerNames}</span>
-          </span>
+          {canAssign ? (
+            <button
+              type="button"
+              onClick={() => setTrainerOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+              title="담당 트레이너 변경 — 토글 즉시 저장"
+            >
+              <span>담당</span>
+              <span className="font-bold">{trainerNames}</span>
+              <svg
+                className={`h-3 w-3 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          ) : (
+            <span>
+              <span className="text-gray-400">담당</span>{" "}
+              <span className="font-semibold">{trainerNames}</span>
+            </span>
+          )}
           {!viewOnly && (
             <span className="inline-flex items-center gap-1">
               <span className="text-gray-400">팀</span>
@@ -187,6 +252,38 @@ export default function TraineeCard({
           >
             {busy === u.email ? "여는 중..." : "웹앱 →"}
           </button>
+        </div>
+      )}
+      </div>
+      {canAssign && trainerOpen && (
+        <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+            담당 트레이너 — 토글 즉시 저장
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(activeTrainers ?? []).map((t) => {
+              const lc = t.email.toLowerCase();
+              const checked = isChecked(lc);
+              const isBusy = busy === `assign:${u.email}`;
+              return (
+                <button
+                  key={t.email}
+                  type="button"
+                  onClick={() => toggleTrainer(lc)}
+                  disabled={isBusy}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-bold transition disabled:opacity-50 ${
+                    checked
+                      ? "border-indigo-500 bg-indigo-500 text-white"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                  title={t.email}
+                >
+                  {checked ? "✓ " : ""}
+                  {t.name || t.email}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

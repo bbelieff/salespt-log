@@ -84,6 +84,8 @@ export function CohortSection({
   onReserve,
   onSetTeam,
   onReorder,
+  onAssignTrainers,
+  activeTrainers,
   linkedBySheet,
   archived = false,
   viewOnly = false,
@@ -100,6 +102,10 @@ export function CohortSection({
   /** PR C-1: 박스 내 드래그 정렬 결과 핸들러. emails = 새 순서.
    *  미제공이면 dnd 비활성 (read-only / archived). */
   onReorder?: (emails: string[]) => void | Promise<void>;
+  /** 트레이너 multi-select 변경 — TraineeCard 의 펼침에서 토글. */
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  /** 활성 트레이너 풀 — TraineeCard 의 트레이너 선택 후보. */
+  activeTrainers?: Trainer[];
   /** 같은 spreadsheetId 의 모든 email 리스트 — 다중 계정 배지 표시용. */
   linkedBySheet?: Map<string, string[]>;
   archived?: boolean;
@@ -174,6 +180,8 @@ export function CohortSection({
         onReserve={onReserve}
         onSetTeam={onSetTeam}
         onReorder={onReorder}
+        onAssignTrainers={onAssignTrainers}
+        activeTrainers={activeTrainers}
       />
     </PersistentDetails>
   );
@@ -192,6 +200,8 @@ function CohortBody({
   onReserve,
   onSetTeam,
   onReorder,
+  onAssignTrainers,
+  activeTrainers,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
   cohort: string;
@@ -205,6 +215,8 @@ function CohortBody({
   onReserve: (email: string) => void;
   onSetTeam: (email: string, team: string) => void;
   onReorder?: (emails: string[]) => void | Promise<void>;
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  activeTrainers?: Trainer[];
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
@@ -221,6 +233,8 @@ function CohortBody({
         onReserve={onReserve}
         onSetTeam={onSetTeam}
         onReorder={onReorder}
+        onAssignTrainers={onAssignTrainers}
+        activeTrainers={activeTrainers}
       />
       {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
       {teamGroups.map(([teamName, members]) => (
@@ -245,6 +259,8 @@ function CohortBody({
               onReserve={onReserve}
               onSetTeam={onSetTeam}
               onReorder={onReorder}
+              onAssignTrainers={onAssignTrainers}
+              activeTrainers={activeTrainers}
             />
           </div>
         </PersistentDetails>
