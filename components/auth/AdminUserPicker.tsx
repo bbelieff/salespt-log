@@ -26,6 +26,7 @@ import {
 import { type PrepItem } from "./TraineePrepBulkForm";
 import UnifiedPrepCard from "./UnifiedPrepCard";
 import InstallFormulasButton from "./InstallFormulasButton";
+import MigrateCacheButton from "./MigrateCacheButton";
 
 export default function AdminUserPicker({
   users,
@@ -320,6 +321,7 @@ export default function AdminUserPicker({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {!viewOnly && <MigrateCacheButton />}
             {!viewOnly && <InstallFormulasButton />}
             <Link
               href="/admin"
