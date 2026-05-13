@@ -17,6 +17,11 @@
  *   J: name_label     (시트 C3 캐시 — "김상목" 등.)
  *   K: course_start_iso (시트 O1 ISO date — YYYY-MM-DD.)
  *   L: graduation_iso   (시트 O2 ISO date — YYYY-MM-DD.)
+ *   M: sort_order     (admin 수동 정렬, PR C-1 도입. 0 = 미정렬(이름 알파 fallback),
+ *                      >0 = explicit ASC. (cohort, team) 박스 단위 의미.
+ *                      dnd-kit 드래그 시 box 내 N 카드에 1..N 일괄 재할당.
+ *                      /admin/users + /admin/trainers 공유 — 둘 다 같은 M 컬럼 사용
+ *                      하되 각 페이지가 다른 role row 집합을 정렬하므로 충돌 없음.)
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
@@ -24,8 +29,8 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNamePrefix } from "./drive-client";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:L1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:M1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 
 function parseRow(r: unknown[]): User | null {
   // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
@@ -55,6 +60,17 @@ function parseRow(r: unknown[]): User | null {
     nameLabel: String(r[9] ?? "").trim(),
     courseStartISO: String(r[10] ?? "").trim(),
     graduationISO: String(r[11] ?? "").trim(),
+    // PR C-1 sort_order — Sheets UNFORMATTED_VALUE 가 number 또는 "" 반환.
+    // parseInt 가 NaN 이면 0 (Zod default). 음수 입력은 Zod nonnegative 가 reject
+    // → parseRow null → 다른 row 들 영향 받지 않게 catch.
+    sortOrder: (() => {
+      const raw = r[12];
+      if (typeof raw === "number" && Number.isFinite(raw)) return Math.max(0, Math.floor(raw));
+      const s = String(raw ?? "").trim();
+      if (s === "") return 0;
+      const n = parseInt(s, 10);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    })(),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -91,7 +107,16 @@ export async function findUserByEmail(email: string): Promise<User | null> {
   return null;
 }
 
-/** 전체 사용자 (정렬: 트레이너/admin 먼저, 그 다음 기수 desc, 이름 asc) */
+/**
+ * 전체 사용자 정렬:
+ *   1. role (admin → trainer → trainee)
+ *   2. cohort desc (숫자 추출)
+ *   3. **sortOrder (PR C-1)** — explicit > 0 우선 ASC, 0 (미정렬) 은 box 하단
+ *   4. 이름 asc (한국어 콜레이션, 동일 sortOrder 내 알파 fallback)
+ *
+ * sortOrder 의미는 같은 (cohort, team) 박스 안 — 박스 외부와는 비교 안 함. UI 는
+ * 박스 단위로 grouping 한 뒤 이 정렬 결과를 그대로 사용 → 박스 내 dnd 결과 반영.
+ */
 export async function listAllUsers(): Promise<User[]> {
   const rows = await cachedRegistryRows();
   const users: User[] = [];
@@ -108,6 +133,10 @@ export async function listAllUsers(): Promise<User[]> {
     const ca = parseInt(String(a.cohort).replace(/기\s*$/, "")) || 0;
     const cb = parseInt(String(b.cohort).replace(/기\s*$/, "")) || 0;
     if (ca !== cb) return cb - ca;
+    // sortOrder: 0 → infinity (bottom), >0 → as-is. Same value → name ASC.
+    const sa = a.sortOrder > 0 ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+    const sb = b.sortOrder > 0 ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+    if (sa !== sb) return sa - sb;
     return a.name.localeCompare(b.name, "ko");
   });
   return users;
@@ -281,7 +310,7 @@ export async function setTrainerDepartment(
   const nameMap = adminNames();
   const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", ""],
+    [lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", ""],
   ]);
   invalidateRegistry();
 }
@@ -318,90 +347,13 @@ export async function setTraineeReservation(
   await updateCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
 }
 
-/**
- * Admin 전용: trainee 완전 퇴출 — registry row 물리 삭제.
- * 트레이너 퇴출(removeTrainerCompletely) 처럼 매핑 cleanup 은 필요 없음
- * (trainee.G 는 trainee 자신의 컬럼이라 다른 row 가 참조하지 않음).
- *
- * 보통 유보 상태에서만 호출 (UI 가 가드) — 정규 명단에서 바로 삭제 방지 의도.
- * 단, 시트 자체는 건드리지 않음 (Google 시트 권한·데이터는 그대로).
- */
-export async function removeTraineeCompletely(email: string): Promise<void> {
-  await deleteUserByEmail(email);
-}
-
-/**
- * Admin 전용: registry 에서 email row 물리 삭제 (Sheets API rows.delete).
- * 트레이너 거절·중복 정리 용도. 호출 후 cache 무효화.
- */
-export async function deleteUserByEmail(email: string): Promise<void> {
-  const reg = registry();
-  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
-  const lc = email.toLowerCase();
-  let matchIdx = -1;
-  for (let i = 0; i < rows.length; i++) {
-    if (typeof rows[i]?.[0] === "string" && (rows[i]![0] as string).toLowerCase() === lc) {
-      matchIdx = i;
-      break;
-    }
-  }
-  if (matchIdx < 0) {
-    throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
-  }
-  // Sheets API batchUpdate — 행 삭제는 sheetId 가 필요. 메타로 조회.
-  const meta = await sheetsClient().spreadsheets.get({
-    spreadsheetId: reg.spreadsheetId,
-    fields: "sheets(properties(sheetId,title))",
-  });
-  const sheet = meta.data.sheets?.find((s) => s.properties?.title === reg.tab);
-  const sheetId = sheet?.properties?.sheetId;
-  if (sheetId === undefined || sheetId === null) {
-    throw new Error(`[users] registry 탭(${reg.tab}) 의 sheetId 를 찾을 수 없습니다.`);
-  }
-  const sheetRow = matchIdx + 1; // header(row 0) + 1
-  await sheetsClient().spreadsheets.batchUpdate({
-    spreadsheetId: reg.spreadsheetId,
-    requestBody: {
-      requests: [
-        {
-          deleteDimension: {
-            range: {
-              sheetId,
-              dimension: "ROWS",
-              startIndex: sheetRow,
-              endIndex: sheetRow + 1,
-            },
-          },
-        },
-      ],
-    },
-  });
-  invalidateRegistry();
-}
-
-/**
- * Admin 전용: 트레이너 퇴출 — 담당 매핑 cleanup 후 row 삭제.
- *
- *  1. 모든 trainee 의 G 컬럼(assignedTrainer)에서 이 trainer email 제거.
- *  2. trainer row 자체 삭제.
- *
- * pending 거절(reject-trainer)이 단순 row 삭제인 반면 이 함수는 active
- * 트레이너 박탈 + 잔존 매핑 정리. 호출 후 cache 무효화.
- */
-export async function removeTrainerCompletely(trainerEmail: string): Promise<void> {
-  const lc = trainerEmail.toLowerCase();
-  const all = await listAllUsers();
-  for (const u of all) {
-    if (u.role !== "trainee") continue;
-    const current = parseAssignedTrainers(u.assignedTrainer);
-    if (!current.includes(lc)) continue;
-    await setTraineeAssignments(
-      u.email,
-      current.filter((e) => e !== lc),
-    );
-  }
-  await deleteUserByEmail(trainerEmail);
-}
+// 물리 삭제 + 매핑 cleanup 은 lib/repo/users-delete.ts 로 분리 (500줄 cap).
+// 외부 호출부 호환성 위해 그대로 re-export.
+export {
+  deleteUserByEmail,
+  removeTraineeCompletely,
+  removeTrainerCompletely,
+} from "./users-delete";
 
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
@@ -420,10 +372,14 @@ export async function registerUser(u: User): Promise<void> {
       validated.nameLabel,
       validated.courseStartISO,
       validated.graduationISO,
+      String(validated.sortOrder), // M: number → string (USER_ENTERED 가 number 로 해석)
     ],
   ]);
   invalidateRegistry();
 }
+
+// PR C-1: sortOrder(M) 일괄 update 는 lib/repo/users-sort.ts 로 분리 (500줄 cap).
+export { setUserSortOrders } from "./users-sort";
 
 /**
  * registry 에서 (cohort, name) 으로 이미 등록된 spreadsheetId 조회.
@@ -489,7 +445,7 @@ export async function ensureRegistryHeader(): Promise<void> {
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
   await appendRows(reg.spreadsheetId, HEADER_RANGE(reg.tab), [
-    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso"],
+    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order"],
   ]);
 }
 

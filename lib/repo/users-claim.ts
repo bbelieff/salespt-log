@@ -21,7 +21,7 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 
-const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 
 /**
  * PR B-2: registry I~L 캐시 컬럼 값 (호출자가 시트 fetch 후 미리 변환해 넘김).
@@ -95,6 +95,7 @@ export async function claimRegistry(
   }
 
   // 3) 시트 공유 추가 계정 — sheetId 는 기존 row 재사용. cached 도 같이 박음.
+  //    sortOrder(M) 은 0 (미정렬) — admin 이 드래그로 직접 부여.
   if (matchedRows.length > 0) {
     const sharedSheetId = matchedRows[0]!.sheetId || spreadsheetId;
     await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
@@ -111,13 +112,14 @@ export async function claimRegistry(
         cached.nameLabel,
         cached.courseStartISO,
         cached.graduationISO,
+        "0",
       ],
     ]);
     invalidateRegistry();
     return;
   }
 
-  // 4) 완전 신규 — cached 포함 12 컬럼 append.
+  // 4) 완전 신규 — cached 포함 13 컬럼 append (M=sortOrder, 0 default).
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
     [
       email,
@@ -132,6 +134,7 @@ export async function claimRegistry(
       cached.nameLabel,
       cached.courseStartISO,
       cached.graduationISO,
+      "0",
     ],
   ]);
   invalidateRegistry();

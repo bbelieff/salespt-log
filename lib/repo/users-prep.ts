@@ -18,7 +18,7 @@ import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 import { readProfileBundle } from "./sales";
 
-const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 
 /**
  * 시트 URL / open URL / raw ID 어떤 형태든 spreadsheetId 추출.
@@ -139,6 +139,7 @@ export async function addTraineePrepRow(
       cached.nameLabel,
       cached.courseStartISO,
       cached.graduationISO,
+      "0", // M: sortOrder — admin 드래그로 부여 (PR C-1)
     ],
   ]);
   invalidateRegistry();

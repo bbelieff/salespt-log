@@ -23,7 +23,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { readProfileBundle } from "./sales";
 import { invalidateRegistry } from "./users";
 
-const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 const CHUNK_SIZE = 100; // Sheets API batchUpdate 안전 청크 크기.
 
 export interface MigrateFailed {

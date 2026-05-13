@@ -167,6 +167,11 @@ export const User = z.object({
   courseStartISO: z.string().default(""),
   /** 시트 O2 ISO date (YYYY-MM-DD) 캐시. 빈값이면 fallback. */
   graduationISO: z.string().default(""),
+  /** 박스 내 admin 수동 정렬 순서 (M 컬럼). 0 = 미정렬 (이름 알파 fallback, box 하단),
+   *  >0 = explicit ASC. dnd-kit 드래그 후 box 내 카드들에 1..N 일괄 재할당.
+   *  PR C-1 (2026-05-13). 같은 (cohort, team) 박스 단위로 의미 부여 — 다른 박스 간에는
+   *  비교 안 함. */
+  sortOrder: z.number().int().nonnegative().default(0),
 });
 export type User = z.infer<typeof User>;
 

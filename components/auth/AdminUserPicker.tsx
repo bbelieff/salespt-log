@@ -100,6 +100,36 @@ export default function AdminUserPicker({
       `team:${email}`,
     );
   }
+
+  /** PR C-1: 박스 내 드래그 정렬 결과 → 1..N 의 sortOrder 일괄 매핑.
+   *  서버는 setUserSortOrders 로 M 컬럼만 batchUpdate. busy 표시는 가벼운
+   *  토큰 ("reorder") — 카드별 busy 상태와 별개로 화면 잠그지 않음. */
+  async function reorder(emails: string[]) {
+    if (emails.length === 0) return;
+    const orders = emails.map((email, idx) => ({ email, sortOrder: idx + 1 }));
+    setBusy("reorder");
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/set-user-sort-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orders }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `HTTP ${res.status}`);
+        setBusy(null);
+        return;
+      }
+      // 캐시 무효화 + 새 정렬 반영. 카드 local state 가 useEffect 로 sync.
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "네트워크 오류");
+    } finally {
+      setBusy(null);
+    }
+  }
   async function restore(email: string) {
     await postAction(
       "/api/admin/set-trainee-reserved",
@@ -394,6 +424,7 @@ export default function AdminUserPicker({
               onPick={pick}
               onReserve={reserve}
               onSetTeam={setTeam}
+              onReorder={viewOnly ? undefined : reorder}
               linkedBySheet={linkedBySheet}
               viewOnly={viewOnly}
             />
