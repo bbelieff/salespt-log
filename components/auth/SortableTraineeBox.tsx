@@ -10,7 +10,7 @@
 
 import TraineeCard from "./TraineeCard";
 import SortableList from "./SortableList";
-import type { Trainee } from "./AdminUserPickerTypes";
+import type { Trainee, Trainer } from "./AdminUserPickerTypes";
 
 interface BoxCommonProps {
   archived: boolean;
@@ -21,6 +21,8 @@ interface BoxCommonProps {
   onPick: (email: string) => void;
   onReserve: (email: string) => void;
   onSetTeam: (email: string, team: string) => void;
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  activeTrainers?: Trainer[];
 }
 
 export default function SortableTraineeBox({
