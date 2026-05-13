@@ -19,7 +19,7 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 
-const DATA_RANGE = (tab: string) => `${tab}!A2:H`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
 
 export async function claimRegistry(
   email: string,
@@ -74,7 +74,7 @@ export async function claimRegistry(
   if (matchedRows.length > 0) {
     const sharedSheetId = matchedRows[0]!.sheetId || spreadsheetId;
     await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-      [email, cohortNorm, cleanName, sharedSheetId, role, status, "", ""],
+      [email, cohortNorm, cleanName, sharedSheetId, role, status, "", "", "", "", "", ""],
     ]);
     invalidateRegistry();
     return;
@@ -82,7 +82,7 @@ export async function claimRegistry(
 
   // 4) 완전 신규.
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [email, cohortNorm, cleanName, spreadsheetId, role, status, "", ""],
+    [email, cohortNorm, cleanName, spreadsheetId, role, status, "", "", "", "", "", ""],
   ]);
   invalidateRegistry();
 }

@@ -161,13 +161,39 @@ export interface EnrichedUserWithDates {
 }
 
 export async function enrichUsersWithDates<
-  T extends { cohort: string; name: string; spreadsheetId: string },
+  T extends {
+    cohort: string;
+    name: string;
+    spreadsheetId: string;
+    cohortLabel?: string;
+    nameLabel?: string;
+    courseStartISO?: string;
+    graduationISO?: string;
+  },
 >(users: T[]): Promise<Array<T & { courseStartISO: string; graduationISO: string }>> {
   const tasks = users.map(async (u) => {
     const defaults = { ...u, courseStartISO: "", graduationISO: "" };
     const who = ("email" in u ? (u as { email: string }).email : "?");
+
+    // PR B-1: registry cached 컬럼 (cohortLabel/nameLabel/courseStartISO/graduationISO)
+    // 4개 모두 채워져 있으면 시트 fetch 0회 — 평시 목표.
+    // 하나라도 빈 값이면 시트 fetch fallback (점진 마이그레이션).
+    const cachedComplete =
+      (u.cohortLabel ?? "").trim() !== "" &&
+      (u.nameLabel ?? "").trim() !== "" &&
+      (u.courseStartISO ?? "").trim() !== "" &&
+      (u.graduationISO ?? "").trim() !== "";
+    if (cachedComplete) {
+      return {
+        ...u,
+        cohort: u.cohortLabel ?? u.cohort,
+        name: u.nameLabel ?? u.name,
+        courseStartISO: u.courseStartISO ?? "",
+        graduationISO: u.graduationISO ?? "",
+      };
+    }
+
     if (!u.spreadsheetId) {
-      // Hashimoto 가드: silent skip 금지 — registry 매핑 누락은 명시적으로 로그.
       console.warn(
         `[me] enrichUsersWithDates skip — spreadsheetId 없음 (email=${who}, cohort=${u.cohort})`,
       );
@@ -183,8 +209,6 @@ export async function enrichUsersWithDates<
         graduationISO: toISO(bundle.graduation),
       };
     } catch (e) {
-      // 시트 접근/파싱 실패 — defaults 반환하되, 원인을 로그에 남겨야
-      // "왜 배너가 안 보이지?" 질문을 두 번 듣지 않는다 (CLAUDE.md §0).
       console.warn(
         `[me] enrichUsersWithDates 실패 (email=${who}, sheet=${u.spreadsheetId}, cohort=${u.cohort}):`,
         e instanceof Error ? e.message : e,
