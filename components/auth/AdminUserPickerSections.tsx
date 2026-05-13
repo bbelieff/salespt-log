@@ -182,13 +182,25 @@ export function CohortSection({
                   >
                     {busy === u.email ? "..." : "유보"}
                   </button>
+                  {u.spreadsheetId && (
+                    <a
+                      href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="구글 시트 원본 새 탭으로 열기"
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      📊 시트 ↗
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={() => onPick(u.email)}
                     disabled={busy !== null}
+                    title="웹앱 (5탭 UI) 으로 진입 — impersonation"
                     className="rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
                   >
-                    {busy === u.email ? "여는 중..." : "시트 열기 →"}
+                    {busy === u.email ? "여는 중..." : "웹앱 →"}
                   </button>
                 </div>
               )}
@@ -265,6 +277,17 @@ export function ReservedSection({
               </div>
               {!viewOnly && (
                 <div className="flex shrink-0 items-center gap-1.5">
+                  {u.spreadsheetId && (
+                    <a
+                      href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="구글 시트 원본 새 탭으로 열기"
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      📊 시트 ↗
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={() => onRestore(u.email)}
