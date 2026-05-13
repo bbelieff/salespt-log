@@ -91,6 +91,14 @@ export default function AdminUserPicker({
       email,
     );
   }
+  /** 수강생 팀명 변경 — inline input Enter/blur 시 호출. */
+  async function setTeam(email: string, team: string) {
+    await postAction(
+      "/api/admin/set-trainee-team",
+      { email, team },
+      `team:${email}`,
+    );
+  }
   async function restore(email: string) {
     await postAction(
       "/api/admin/set-trainee-reserved",
@@ -383,6 +391,7 @@ export default function AdminUserPicker({
               nameByEmail={nameByEmail}
               onPick={pick}
               onReserve={reserve}
+              onSetTeam={setTeam}
               linkedBySheet={linkedBySheet}
               viewOnly={viewOnly}
             />
@@ -409,6 +418,7 @@ export default function AdminUserPicker({
                     nameByEmail={nameByEmail}
                     onPick={pick}
                     onReserve={reserve}
+                    onSetTeam={setTeam}
                     linkedBySheet={linkedBySheet}
                     archived
                     viewOnly={viewOnly}

@@ -155,6 +155,8 @@ export const User = z.object({
   status: z.enum(["active", "pending"]).default("active"),
   /** 수강생 row 의 담당 트레이너 email (관리자가 배정). 빈값 = 미배정. */
   assignedTrainer: z.string().default(""),
+  /** 기수 내 팀 (예: "서울", "부산"). 빈값 = 미배정 → 기수 박스 내 개별 카드. */
+  team: z.string().default(""),
 });
 export type User = z.infer<typeof User>;
 

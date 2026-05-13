@@ -10,6 +10,8 @@
  *   E: role          ("trainee" / "trainer" / "admin") — **식별·라우팅 SSOT**
  *   F: status        ("active" / "pending")
  *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
+ *   H: team           (기수 내 팀 — "서울"/"부산" 등 임의. 빈값 = 미배정.
+ *                      신규 컬럼 2026-05-13. 기존 row 빈값 → 미배정 default.)
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
@@ -17,8 +19,8 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNamePrefix } from "./drive-client";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:G1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:G`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:H1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:H`;
 
 function parseRow(r: unknown[]): User | null {
   // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
@@ -41,6 +43,7 @@ function parseRow(r: unknown[]): User | null {
     role,
     status,
     assignedTrainer: String(r[6] ?? ""),
+    team: String(r[7] ?? ""),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -149,7 +152,7 @@ export async function listPendingTrainees(): Promise<User[]> {
  */
 async function updateCell(
   email: string,
-  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G",
+  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H",
   value: string,
 ): Promise<void> {
   const reg = registry();
@@ -201,6 +204,17 @@ export async function assignTrainerToTrainee(
   trainerEmail: string,
 ): Promise<void> {
   await updateCell(traineeEmail, "G", trainerEmail.toLowerCase());
+}
+
+/**
+ * Admin 전용: 수강생 팀 (H 컬럼) 설정. 빈 문자열 = 미배정 (기수 박스 내 개별 카드).
+ * trim 후 저장 — admin 이 같은 팀명 다른 띄어쓰기로 입력해도 같은 그룹.
+ */
+export async function setTraineeTeam(
+  traineeEmail: string,
+  team: string,
+): Promise<void> {
+  await updateCell(traineeEmail, "H", team.trim());
 }
 
 /** Admin 전용: 역할 변경 (trainee ↔ trainer ↔ admin) */
@@ -256,7 +270,7 @@ export async function setTrainerDepartment(
   const nameMap = adminNames();
   const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [lc, cohortValue, fallbackName, "", "trainer", "active", ""],
+    [lc, cohortValue, fallbackName, "", "trainer", "active", "", ""],
   ]);
   invalidateRegistry();
 }
@@ -390,6 +404,7 @@ export async function registerUser(u: User): Promise<void> {
       validated.role,
       validated.status,
       validated.assignedTrainer,
+      validated.team,
     ],
   ]);
   invalidateRegistry();
@@ -459,7 +474,7 @@ export async function ensureRegistryHeader(): Promise<void> {
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
   await appendRows(reg.spreadsheetId, HEADER_RANGE(reg.tab), [
-    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer"],
+    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team"],
   ]);
 }
 

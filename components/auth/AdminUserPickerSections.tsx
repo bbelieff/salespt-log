@@ -8,6 +8,8 @@
  */
 "use client";
 
+import TraineeCard from "./TraineeCard";
+
 export interface Trainee {
   email: string;
   cohort: string;
@@ -15,6 +17,8 @@ export interface Trainee {
   spreadsheetId: string;
   role: string;
   assignedTrainer?: string;
+  /** 기수 내 팀 (예: "서울", "부산"). 빈값 = 미배정. */
+  team?: string;
   courseStartISO?: string;
   graduationISO?: string;
 }
@@ -89,6 +93,27 @@ function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   );
 }
 
+/** team 별로 trainees 그룹화. 미배정(team="") 은 별도 분리.
+ *  반환: { unassigned: [], teamGroups: [[name, list], ...] (등록 순서 보존) } */
+function groupByTeam(list: Trainee[]): {
+  unassigned: Trainee[];
+  teamGroups: Array<[string, Trainee[]]>;
+} {
+  const unassigned: Trainee[] = [];
+  const map = new Map<string, Trainee[]>();
+  for (const u of list) {
+    const t = (u.team ?? "").trim();
+    if (!t) {
+      unassigned.push(u);
+      continue;
+    }
+    const arr = map.get(t) ?? [];
+    arr.push(u);
+    map.set(t, arr);
+  }
+  return { unassigned, teamGroups: Array.from(map.entries()) };
+}
+
 /* ─────────────────────────── 기수별 섹션 ─────────────────────────── */
 export function CohortSection({
   cohort,
@@ -97,6 +122,7 @@ export function CohortSection({
   nameByEmail,
   onPick,
   onReserve,
+  onSetTeam,
   linkedBySheet,
   archived = false,
   viewOnly = false,
@@ -108,6 +134,8 @@ export function CohortSection({
   onPick: (email: string) => void;
   /** "유보" 버튼 클릭 핸들러. admin 만 노출 (viewOnly=false). */
   onReserve: (email: string) => void;
+  /** 팀명 변경 핸들러 — Enter 또는 blur 시 호출. 빈 문자열 = 미배정. */
+  onSetTeam: (email: string, team: string) => void;
   /** 같은 spreadsheetId 의 모든 email 리스트 — 다중 계정 배지 표시용. */
   linkedBySheet?: Map<string, string[]>;
   archived?: boolean;
@@ -156,69 +184,90 @@ export function CohortSection({
           </span>
         )}
       </summary>
-      <ul className="space-y-2 border-t border-gray-100 px-4 py-3">
-        {list.map((u) => {
-          const assigned = parseAssigned(u.assignedTrainer);
-          const trainerNames =
-            assigned.length > 0
-              ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
-              : "미배정";
-          return (
-            <li
-              key={u.email}
-              className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"}`}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-sm font-black text-gray-900">
-                    {u.name || "(이름 없음)"}
-                  </span>
-                  <span className="text-[11px] text-gray-400">{u.email}</span>
-                  <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
-                </div>
-                <div className="mt-1.5 text-[11px] text-gray-600">
-                  <span className="text-gray-400">담당</span>{" "}
-                  <span className="font-semibold">{trainerNames}</span>
-                </div>
-              </div>
-              {!viewOnly && (
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onReserve(u.email)}
-                    disabled={busy !== null}
-                    title="명단에서 숨김 (유보로 이동, row 는 살아있음)"
-                    className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                  >
-                    {busy === u.email ? "..." : "유보"}
-                  </button>
-                  {u.spreadsheetId && (
-                    <a
-                      href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="구글 시트 원본 새 탭으로 열기"
-                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
-                    >
-                      📊 시트 ↗
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onPick(u.email)}
-                    disabled={busy !== null}
-                    title="웹앱 (5탭 UI) 으로 진입 — impersonation"
-                    className="rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-                  >
-                    {busy === u.email ? "여는 중..." : "웹앱 →"}
-                  </button>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <CohortBody
+        list={list}
+        archived={archived}
+        viewOnly={viewOnly}
+        busy={busy}
+        nameByEmail={nameByEmail}
+        linkedBySheet={linkedBySheet}
+        onPick={onPick}
+        onReserve={onReserve}
+        onSetTeam={onSetTeam}
+      />
     </details>
+  );
+}
+
+/** CohortSection 의 body — team 별 그룹화. 미배정 카드 먼저, team 박스 다음. */
+function CohortBody({
+  list,
+  archived,
+  viewOnly,
+  busy,
+  nameByEmail,
+  linkedBySheet,
+  onPick,
+  onReserve,
+  onSetTeam,
+}: {
+  list: Trainee[];
+  archived: boolean;
+  viewOnly: boolean;
+  busy: string | null;
+  nameByEmail: Map<string, string>;
+  linkedBySheet?: Map<string, string[]>;
+  onPick: (email: string) => void;
+  onReserve: (email: string) => void;
+  onSetTeam: (email: string, team: string) => void;
+}) {
+  const { unassigned, teamGroups } = groupByTeam(list);
+  return (
+    <div className="space-y-2 border-t border-gray-100 px-4 py-3">
+      {/* 미배정 trainees — 박스 없이 개별 카드. */}
+      {unassigned.map((u) => (
+        <TraineeCard
+          key={u.email}
+          u={u}
+          archived={archived}
+          viewOnly={viewOnly}
+          busy={busy}
+          nameByEmail={nameByEmail}
+          linkedBySheet={linkedBySheet}
+          onPick={onPick}
+          onReserve={onReserve}
+          onSetTeam={onSetTeam}
+        />
+      ))}
+      {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
+      {teamGroups.map(([teamName, members]) => (
+        <details
+          key={teamName}
+          open
+          className="rounded-xl border border-indigo-200 bg-indigo-50/30 open:bg-white"
+        >
+          <summary className="cursor-pointer px-3 py-2 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50">
+            🏷️ {teamName} · {members.length}명
+          </summary>
+          <div className="space-y-2 border-t border-indigo-100 px-3 py-2">
+            {members.map((u) => (
+              <TraineeCard
+                key={u.email}
+                u={u}
+                archived={archived}
+                viewOnly={viewOnly}
+                busy={busy}
+                nameByEmail={nameByEmail}
+                linkedBySheet={linkedBySheet}
+                onPick={onPick}
+                onReserve={onReserve}
+                onSetTeam={onSetTeam}
+              />
+            ))}
+          </div>
+        </details>
+      ))}
+    </div>
   );
 }
 
@@ -325,81 +374,7 @@ export function ReservedSection({
   );
 }
 
-/* BulkPrepForm + parsePrepText 는 ./TraineePrepBulkForm.tsx 로 분리 (500줄 cap). */
-
-/* ──────────────── 신규 수강생 사전 등록 폼 (단일) ──────────────── */
-//
-// admin 이 시트 URL + (기수, 이름) 입력 → registry prep row 생성.
-// 본인이 self-claim 시 (기수, 이름) 매칭으로 즉시 활성. Drive 자동 검색·시트
-// 이름 일치 의존 없음 — 사용자가 시트 이름을 자유롭게 (예: `(new)` suffix).
-export function TraineePrepForm({
-  busy,
-  onSubmit,
-}: {
-  busy: boolean;
-  onSubmit: (
-    cohort: string,
-    name: string,
-    spreadsheetUrl: string,
-  ) => Promise<void>;
-}) {
-  return (
-    <details className="rounded-2xl border border-sky-200 bg-sky-50/50">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-sky-800 hover:bg-sky-100">
-        ➕ 신규 수강생 사전 등록 (시트 URL → 자동 매핑)
-      </summary>
-      <form
-        className="space-y-2 border-t border-sky-200 px-4 py-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const fd = new FormData(e.currentTarget);
-          const cohort = String(fd.get("cohort") ?? "").trim();
-          const name = String(fd.get("name") ?? "").trim();
-          const url = String(fd.get("spreadsheetUrl") ?? "").trim();
-          if (!cohort || !name || !url) return;
-          await onSubmit(cohort, name, url);
-          (e.currentTarget as HTMLFormElement).reset();
-        }}
-      >
-        <p className="text-[11px] text-gray-500">
-          시트 URL 을 입력하면 자동으로 spreadsheetId 추출. 본인이 같은 기수·이름
-          으로 로그인하면 즉시 활성 (Drive 검색 우회).
-        </p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[80px_1fr]">
-          <input
-            name="cohort"
-            type="text"
-            inputMode="numeric"
-            placeholder="기수"
-            required
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
-          />
-          <input
-            name="name"
-            type="text"
-            placeholder="이름 (예: 손기학)"
-            required
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
-          />
-        </div>
-        <input
-          name="spreadsheetUrl"
-          type="text"
-          placeholder="https://docs.google.com/spreadsheets/d/.../edit"
-          required
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-full bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
-        >
-          {busy ? "등록 중..." : "사전 등록"}
-        </button>
-      </form>
-    </details>
-  );
-}
+/* TraineePrepForm 은 UnifiedPrepCard 로 통합됨 (PR feat/admin-users-ui-compact). */
 
 /* ──────────────── 승인 대기 수강생 섹션 (pending) ──────────────── */
 //
