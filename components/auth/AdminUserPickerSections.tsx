@@ -2,69 +2,28 @@
  * AdminUserPicker 의 sub-component 들.
  * 메인 파일(AdminUserPicker.tsx)이 500줄 cap 을 넘어 분리.
  *
- * - Trainee/Trainer 타입 + parseAssigned/fmtDateYY/cohortProgress 공용 유틸
  * - CohortSection: 기수별 카드 리스트 (활성/보관 둘 다 사용)
  * - ReservedSection: 유보 처리된 trainee 만 모은 collapsible
+ * - PendingTraineesSection: 승인 대기 수강생
+ *
+ * **순환 의존 차단** (2026-05-13): Trainee/Trainer 타입 + parseAssigned 등
+ * 공용 헬퍼는 ./AdminUserPickerTypes.ts 로 분리. 이 파일은 TraineeCard 를
+ * import 하고 TraineeCard 는 Types 를 import → 사이클 없음.
  */
 "use client";
 
 import TraineeCard from "./TraineeCard";
+import {
+  type Trainee,
+  type Trainer,
+  parseAssigned,
+  fmtDateYY,
+  cohortProgress,
+} from "./AdminUserPickerTypes";
 
-export interface Trainee {
-  email: string;
-  cohort: string;
-  name: string;
-  spreadsheetId: string;
-  role: string;
-  assignedTrainer?: string;
-  /** 기수 내 팀 (예: "서울", "부산"). 빈값 = 미배정. */
-  team?: string;
-  courseStartISO?: string;
-  graduationISO?: string;
-}
-
-export interface Trainer {
-  email: string;
-  name: string;
-}
-
-export function parseAssigned(field: string | undefined): string[] {
-  if (!field) return [];
-  return Array.from(
-    new Set(
-      field
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  );
-}
-
-/** "2026-04-10" → "26/04/10". 빈 값 → null. */
-export function fmtDateYY(iso: string | undefined): string | null {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const [y, m, d] = iso.split("-");
-  return `${y!.slice(-2)}/${m}/${d}`;
-}
-
-/** 기수 진행률 (%) + D-day 계산. start~end 사이 today 기준. */
-export function cohortProgress(
-  startISO: string | undefined,
-  endISO: string | undefined,
-): { pct: number | null; dday: number | null } {
-  if (!startISO || !endISO) return { pct: null, dday: null };
-  const start = new Date(startISO).getTime();
-  const end = new Date(endISO).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-    return { pct: null, dday: null };
-  }
-  const now = Date.now();
-  const totalMs = end - start;
-  const elapsedMs = Math.max(0, Math.min(totalMs, now - start));
-  const pct = Math.round((elapsedMs / totalMs) * 100);
-  const dday = Math.ceil((end - now) / 86_400_000);
-  return { pct, dday };
-}
+// 호환성을 위한 re-export — 옛 import 경로 유지.
+export { parseAssigned, fmtDateYY, cohortProgress };
+export type { Trainee, Trainer };
 
 /**
  * 같은 spreadsheetId 를 공유하는 다른 계정 이메일 리스트 반환 (자기 자신 제외).

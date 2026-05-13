@@ -12,7 +12,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { parseAssigned, type Trainee } from "./AdminUserPickerSections";
+import { parseAssigned, type Trainee } from "./AdminUserPickerTypes";
 
 function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   if (siblings.length === 0) return null;
