@@ -28,6 +28,7 @@ import {
   type PrepItem,
   BulkPrepForm,
 } from "./TraineePrepBulkForm";
+import InstallFormulasCard from "./InstallFormulasCard";
 
 export default function AdminUserPicker({
   users,
@@ -354,6 +355,7 @@ export default function AdminUserPicker({
             <>
               <BulkPrepForm busy={busy !== null} onSubmit={addPrepBulk} />
               <TraineePrepForm busy={busy !== null} onSubmit={addPrep} />
+              <InstallFormulasCard />
               {/* 시트 공유는 코드 자동화 X — admin 이 Drive 폴더 단위로 한 번만
                   공유. 자세한 절차는 운영 문서 (docs/runbook/sheet-sharing.md). */}
             </>
