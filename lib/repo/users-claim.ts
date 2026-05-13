@@ -8,11 +8,13 @@
  * 결정 흐름 — (cohort, name) 매칭 row 들을 스캔:
  *   1. 같은 email row 있음 → 이미 등록됨, 멱등 skip.
  *   2. email 빈 prep row (admin 사전 등록) → 그 row 의 A 컬럼만 채움.
- *   3. 다른 email 로 점유된 row 있음 → 새 row append (같은 sheetId 공유).
- *   4. 매칭 row 자체가 없음 → 인자대로 새 row append (완전 신규).
+ *      (I~L 캐시는 addTraineePrepRow 가 이미 stamp 했으므로 건드리지 않음.)
+ *   3. 다른 email 로 점유된 row 있음 → 새 row append (같은 sheetId 공유,
+ *      cached I~L 도 함께 stamp — PR B-2).
+ *   4. 매칭 row 자체가 없음 → 인자대로 새 row append (완전 신규, cached I~L 포함).
  *
  * 트레이너 모드(cohort=T)도 동일 로직 — 단 sheetId 는 항상 "" (트레이너는
- * 본인 시트 없음).
+ * 본인 시트 없음). cached 는 빈값.
  */
 import { registry } from "@/config";
 import { User } from "@/types";
@@ -21,6 +23,25 @@ import { invalidateRegistry } from "./users";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
 
+/**
+ * PR B-2: registry I~L 캐시 컬럼 값 (호출자가 시트 fetch 후 미리 변환해 넘김).
+ * 모두 빈 문자열이면 캐시 stamp 안 함 (= 빈값 stamp 와 동일 — append 행에는
+ * 무조건 12 컬럼 들어가야 함). 시트 read 실패 시 호출자가 EMPTY 전달.
+ */
+export interface CachedLabels {
+  cohortLabel: string;
+  nameLabel: string;
+  courseStartISO: string;
+  graduationISO: string;
+}
+
+const EMPTY_CACHED: CachedLabels = {
+  cohortLabel: "",
+  nameLabel: "",
+  courseStartISO: "",
+  graduationISO: "",
+};
+
 export async function claimRegistry(
   email: string,
   cohort: string,
@@ -28,6 +49,7 @@ export async function claimRegistry(
   spreadsheetId: string,
   role: User["role"] = "trainee",
   status: User["status"] = "active",
+  cached: CachedLabels = EMPTY_CACHED,
 ): Promise<void> {
   const reg = registry();
   // 쓰기 직전 → 캐시 우회 (직접 readRange).
@@ -56,7 +78,9 @@ export async function claimRegistry(
     return;
   }
 
-  // 2) admin prep row 갱신.
+  // 2) admin prep row 갱신 — A(email) 만 채움.
+  // I~L 캐시는 prep 시 stamp 됐거나 빈값. 빈값이면 PR B-3 sync 버튼이 backfill.
+  // 여기서 다시 시트 fetch 해서 메우면 claim 경로가 무거워지므로 별도 처리.
   const prep = matchedRows.find((r) => r.emailLc === "");
   if (prep) {
     const sheetRow = prep.rowIdx + 2;
@@ -70,19 +94,45 @@ export async function claimRegistry(
     return;
   }
 
-  // 3) 시트 공유 추가 계정 — sheetId 는 기존 row 재사용.
+  // 3) 시트 공유 추가 계정 — sheetId 는 기존 row 재사용. cached 도 같이 박음.
   if (matchedRows.length > 0) {
     const sharedSheetId = matchedRows[0]!.sheetId || spreadsheetId;
     await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-      [email, cohortNorm, cleanName, sharedSheetId, role, status, "", "", "", "", "", ""],
+      [
+        email,
+        cohortNorm,
+        cleanName,
+        sharedSheetId,
+        role,
+        status,
+        "",
+        "",
+        cached.cohortLabel,
+        cached.nameLabel,
+        cached.courseStartISO,
+        cached.graduationISO,
+      ],
     ]);
     invalidateRegistry();
     return;
   }
 
-  // 4) 완전 신규.
+  // 4) 완전 신규 — cached 포함 12 컬럼 append.
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [email, cohortNorm, cleanName, spreadsheetId, role, status, "", "", "", "", "", ""],
+    [
+      email,
+      cohortNorm,
+      cleanName,
+      spreadsheetId,
+      role,
+      status,
+      "",
+      "",
+      cached.cohortLabel,
+      cached.nameLabel,
+      cached.courseStartISO,
+      cached.graduationISO,
+    ],
   ]);
   invalidateRegistry();
 }
