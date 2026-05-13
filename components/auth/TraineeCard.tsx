@@ -12,7 +12,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { parseAssigned, type Trainee } from "./AdminUserPickerTypes";
+import {
+  parseAssigned,
+  type Trainee,
+  type Trainer,
+} from "./AdminUserPickerTypes";
 
 function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   if (siblings.length === 0) return null;
@@ -46,6 +50,8 @@ export default function TraineeCard({
   onPick,
   onReserve,
   onSetTeam,
+  onAssignTrainers,
+  activeTrainers,
 }: {
   u: Trainee;
   archived: boolean;
@@ -56,11 +62,51 @@ export default function TraineeCard({
   onPick: (email: string) => void;
   onReserve: (email: string) => void;
   onSetTeam: (email: string, team: string) => void;
+  /** 트레이너 multi-select 변경 — assignedTrainer 컬럼 전체 update.
+   *  /admin/trainers 의 TrainerAssignCard 와 동일 API 호출하므로 last-write-wins. */
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  /** 활성 트레이너 풀 — 펼침 시 체크박스 후보. */
+  activeTrainers?: Trainer[];
 }) {
-  const assigned = parseAssigned(u.assignedTrainer);
+  // 옵티미스틱 토글 — 체크박스 클릭 즉시 시각 반영 (서버 응답 전).
+  // prop(u.assignedTrainer) 갱신 시 useEffect 로 클리어.
+  const [optimistic, setOptimistic] = useState<Map<string, boolean>>(new Map());
+  useEffect(() => {
+    setOptimistic(new Map());
+  }, [u.assignedTrainer]);
+
+  function isChecked(trainerEmailLc: string): boolean {
+    if (optimistic.has(trainerEmailLc)) return optimistic.get(trainerEmailLc)!;
+    return parseAssigned(u.assignedTrainer).includes(trainerEmailLc);
+  }
+
+  function toggleTrainer(trainerEmailLc: string) {
+    if (!onAssignTrainers) return;
+    const newChecked = !isChecked(trainerEmailLc);
+    setOptimistic((prev) => new Map(prev).set(trainerEmailLc, newChecked));
+    const current = parseAssigned(u.assignedTrainer);
+    const next = newChecked
+      ? Array.from(new Set([...current, trainerEmailLc]))
+      : current.filter((e) => e !== trainerEmailLc);
+    onAssignTrainers(u.email, next);
+  }
+
+  // 펼침 토글.
+  const [trainerOpen, setTrainerOpen] = useState(false);
+
+  // 현재 배정된 트레이너 라벨 (옵티미스틱 반영).
+  const assignedLc = (activeTrainers ?? []).map((t) => t.email.toLowerCase());
+  const checkedLcs = assignedLc.filter(isChecked);
+  // 옛 assigned 중 activeTrainers 에 없는 케이스 (트레이너 퇴출 잔재) 도 포함해서 표시.
+  const allChecked = Array.from(
+    new Set([...checkedLcs, ...parseAssigned(u.assignedTrainer)]),
+  ).filter((lc) => {
+    if (optimistic.has(lc) && !optimistic.get(lc)) return false;
+    return true;
+  });
   const trainerNames =
-    assigned.length > 0
-      ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
+    allChecked.length > 0
+      ? allChecked.map((e) => nameByEmail.get(e) ?? e).join(", ")
       : "미배정";
 
   // team input 로컬 state — prop 갱신 시 sync.
@@ -77,10 +123,13 @@ export default function TraineeCard({
     onSetTeam(u.email, trimmed);
   }
 
+  const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
+
   return (
     <div
-      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"}`}
+      className={`overflow-hidden rounded-xl border ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"}`}
     >
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-black text-gray-900">
@@ -90,10 +139,31 @@ export default function TraineeCard({
           <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
-          <span>
-            <span className="text-gray-400">담당</span>{" "}
-            <span className="font-semibold">{trainerNames}</span>
-          </span>
+          {canAssign ? (
+            <button
+              type="button"
+              onClick={() => setTrainerOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+              title="담당 트레이너 변경 — 토글 즉시 저장"
+            >
+              <span>담당</span>
+              <span className="font-bold">{trainerNames}</span>
+              <svg
+                className={`h-3 w-3 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          ) : (
+            <span>
+              <span className="text-gray-400">담당</span>{" "}
+              <span className="font-semibold">{trainerNames}</span>
+            </span>
+          )}
           {!viewOnly && (
             <span className="inline-flex items-center gap-1">
               <span className="text-gray-400">팀</span>
@@ -151,6 +221,38 @@ export default function TraineeCard({
           >
             {busy === u.email ? "여는 중..." : "웹앱 →"}
           </button>
+        </div>
+      )}
+      </div>
+      {canAssign && trainerOpen && (
+        <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+            담당 트레이너 — 토글 즉시 저장
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(activeTrainers ?? []).map((t) => {
+              const lc = t.email.toLowerCase();
+              const checked = isChecked(lc);
+              const isBusy = busy === `assign:${u.email}`;
+              return (
+                <button
+                  key={t.email}
+                  type="button"
+                  onClick={() => toggleTrainer(lc)}
+                  disabled={isBusy}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-bold transition disabled:opacity-50 ${
+                    checked
+                      ? "border-indigo-500 bg-indigo-500 text-white"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                  title={t.email}
+                >
+                  {checked ? "✓ " : ""}
+                  {t.name || t.email}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

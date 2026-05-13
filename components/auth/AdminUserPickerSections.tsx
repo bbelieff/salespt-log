@@ -83,6 +83,8 @@ export function CohortSection({
   onPick,
   onReserve,
   onSetTeam,
+  onAssignTrainers,
+  activeTrainers,
   linkedBySheet,
   archived = false,
   viewOnly = false,
@@ -96,6 +98,10 @@ export function CohortSection({
   onReserve: (email: string) => void;
   /** 팀명 변경 핸들러 — Enter 또는 blur 시 호출. 빈 문자열 = 미배정. */
   onSetTeam: (email: string, team: string) => void;
+  /** 트레이너 multi-select 변경 — TraineeCard 의 펼침에서 토글. */
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  /** 활성 트레이너 풀 — TraineeCard 의 트레이너 선택 후보. */
+  activeTrainers?: Trainer[];
   /** 같은 spreadsheetId 의 모든 email 리스트 — 다중 계정 배지 표시용. */
   linkedBySheet?: Map<string, string[]>;
   archived?: boolean;
@@ -169,6 +175,8 @@ export function CohortSection({
         onPick={onPick}
         onReserve={onReserve}
         onSetTeam={onSetTeam}
+        onAssignTrainers={onAssignTrainers}
+        activeTrainers={activeTrainers}
       />
     </PersistentDetails>
   );
@@ -186,6 +194,8 @@ function CohortBody({
   onPick,
   onReserve,
   onSetTeam,
+  onAssignTrainers,
+  activeTrainers,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
   cohort: string;
@@ -198,6 +208,8 @@ function CohortBody({
   onPick: (email: string) => void;
   onReserve: (email: string) => void;
   onSetTeam: (email: string, team: string) => void;
+  onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
+  activeTrainers?: Trainer[];
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
@@ -215,6 +227,8 @@ function CohortBody({
           onPick={onPick}
           onReserve={onReserve}
           onSetTeam={onSetTeam}
+          onAssignTrainers={onAssignTrainers}
+          activeTrainers={activeTrainers}
         />
       ))}
       {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
@@ -241,6 +255,8 @@ function CohortBody({
                 onPick={onPick}
                 onReserve={onReserve}
                 onSetTeam={onSetTeam}
+                onAssignTrainers={onAssignTrainers}
+                activeTrainers={activeTrainers}
               />
             ))}
           </div>

@@ -276,6 +276,21 @@ export default function AdminUserPicker({
     };
   }, [users, q, archivedSet]);
 
+  /**
+   * trainee 카드의 트레이너 multi-select 변경 핸들러.
+   * /admin/trainers 의 TrainerAssignCard 와 동일한 API (/api/admin/assign-trainee)
+   * 호출 → assignedTrainer 컬럼 전체 update. 트레이너 측·수강생 측 어느 쪽에서
+   * 토글하든 last-write-wins 자동 보장 (단일 source = trainee row 의 G 컬럼).
+   * (2026-05-13 양방향 배정 도입)
+   */
+  async function assignTrainers(traineeEmail: string, trainerEmails: string[]) {
+    await postAction(
+      "/api/admin/assign-trainee",
+      { traineeEmail, trainerEmails },
+      `assign:${traineeEmail}`,
+    );
+  }
+
   async function pick(email: string) {
     setBusy(email);
     setError(null);
@@ -392,6 +407,8 @@ export default function AdminUserPicker({
               onPick={pick}
               onReserve={reserve}
               onSetTeam={setTeam}
+              onAssignTrainers={assignTrainers}
+              activeTrainers={activeTrainers}
               linkedBySheet={linkedBySheet}
               viewOnly={viewOnly}
             />
@@ -419,6 +436,8 @@ export default function AdminUserPicker({
                     onPick={pick}
                     onReserve={reserve}
                     onSetTeam={setTeam}
+                    onAssignTrainers={assignTrainers}
+                    activeTrainers={activeTrainers}
                     linkedBySheet={linkedBySheet}
                     archived
                     viewOnly={viewOnly}
