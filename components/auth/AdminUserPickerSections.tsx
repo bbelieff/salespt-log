@@ -13,6 +13,7 @@
 "use client";
 
 import TraineeCard from "./TraineeCard";
+import PersistentDetails from "./PersistentDetails";
 import {
   type Trainee,
   type Trainer,
@@ -109,7 +110,11 @@ export function CohortSection({
     rep?.graduationISO,
   );
   return (
-    <details className="group rounded-2xl border border-gray-200 bg-white open:bg-gray-50/30" open>
+    <PersistentDetails
+      persistKey={`cohort:${cohort}${archived ? ":archived" : ""}`}
+      defaultOpen
+      className="group rounded-2xl border border-gray-200 bg-white open:bg-gray-50/30"
+    >
       <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-3 hover:bg-gray-50">
         <svg
           className="h-3 w-3 shrink-0 text-gray-400 transition-transform group-open:rotate-90"
@@ -144,6 +149,7 @@ export function CohortSection({
         )}
       </summary>
       <CohortBody
+        cohort={cohort}
         list={list}
         archived={archived}
         viewOnly={viewOnly}
@@ -154,12 +160,13 @@ export function CohortSection({
         onReserve={onReserve}
         onSetTeam={onSetTeam}
       />
-    </details>
+    </PersistentDetails>
   );
 }
 
 /** CohortSection 의 body — team 별 그룹화. 미배정 카드 먼저, team 박스 다음. */
 function CohortBody({
+  cohort,
   list,
   archived,
   viewOnly,
@@ -170,6 +177,8 @@ function CohortBody({
   onReserve,
   onSetTeam,
 }: {
+  /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
+  cohort: string;
   list: Trainee[];
   archived: boolean;
   viewOnly: boolean;
@@ -200,9 +209,10 @@ function CohortBody({
       ))}
       {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
       {teamGroups.map(([teamName, members]) => (
-        <details
+        <PersistentDetails
           key={teamName}
-          open
+          persistKey={`team:${cohort}:${teamName}${archived ? ":archived" : ""}`}
+          defaultOpen
           className="rounded-xl border border-indigo-200 bg-indigo-50/30 open:bg-white"
         >
           <summary className="cursor-pointer px-3 py-2 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50">
@@ -224,7 +234,7 @@ function CohortBody({
               />
             ))}
           </div>
-        </details>
+        </PersistentDetails>
       ))}
     </div>
   );
@@ -249,7 +259,11 @@ export function ReservedSection({
   viewOnly?: boolean;
 }) {
   return (
-    <details className="group rounded-2xl border border-amber-200 bg-amber-50/40 open:bg-white">
+    <PersistentDetails
+      persistKey="reserved"
+      defaultOpen={false}
+      className="group rounded-2xl border border-amber-200 bg-amber-50/40 open:bg-white"
+    >
       <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-amber-50">
         <span className="text-sm font-bold text-amber-800">
           🗂️ 유보 수강생 ({list.length}명)
@@ -329,7 +343,7 @@ export function ReservedSection({
           );
         })}
       </div>
-    </details>
+    </PersistentDetails>
   );
 }
 
