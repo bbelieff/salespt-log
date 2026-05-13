@@ -60,6 +60,30 @@ export default function TrainerMgmtPanel({
     }
   }
 
+  /** PR C-2: 트레이너 카드 드래그 정렬 결과 → registry M(sortOrder) 일괄 update.
+   *  /admin/users 의 reorder() 와 동일 endpoint 재사용 (공유 M 컬럼, 다른 row 집합). */
+  async function reorderTrainers(emails: string[]) {
+    if (emails.length === 0) return;
+    const orders = emails.map((email, idx) => ({ email, sortOrder: idx + 1 }));
+    setBusy("reorder-trainers");
+    setErr(null);
+    try {
+      const res = await fetch("/api/admin/set-user-sort-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orders }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setErr(d.error ?? `HTTP ${res.status}`);
+      } else {
+        router.refresh();
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
@@ -114,6 +138,7 @@ export default function TrainerMgmtPanel({
           trainers={activeTrainers}
           trainees={trainees}
           busy={busy}
+          onReorder={viewOnly ? undefined : reorderTrainers}
           onSave={
             viewOnly
               ? () => {}
