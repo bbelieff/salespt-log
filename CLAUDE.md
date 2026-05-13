@@ -137,6 +137,11 @@ types → config → repo → service → app(api·ui) → components
 
 **하나라도 빨갛게 뜨면 PR 금지.** 스크립트나 훅을 우회하지 않는다. 스크립트가 잘못되었다면 스크립트를 고친다.
 
+**CI 자동 검증** (`.github/workflows/typecheck.yml`, 2026-05-13 도입): PR 생성 +
+master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. 로컬 pre-commit
+통과해도 CI 에서 한 번 더 검증 (예: pre-commit 가 비활성화된 워크트리, stash pop
+후 commit 누락 등). PR #171 같은 master 빌드 실패 사고 재발 방지.
+
 ### SSOT 4 문서 (단일 진실원천)
 
 새 컴포넌트·타입·시트 좌표는 다음 4 문서 중 적절한 곳에 **반드시** 등재 후 코드 추가:

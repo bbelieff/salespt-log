@@ -1,0 +1,49 @@
+name: Typecheck & QA
+
+# 목적: PR/푸시 시 정적 검증 자동화 — typecheck + lint + structural + unit
+# tests + 파일크기 + SSOT 드리프트 + plan 존재. PR #171 처럼 stash pop 후
+# syntax 누락 채 머지되어 master 빌드 실패하는 사고 재발 방지.
+#
+# 단일 진입점 정책 (CLAUDE.md §4): scripts/check.sh 가 로컬·CI 공통 검증. 한 곳에서
+# 검사 항목 추가하면 양쪽 자동 적용 — 정합성 유지. UX 측면에서 step 분리하고
+# 싶더라도 검증 항목 추가 시 두 곳 수정해야 하는 비용이 더 큼.
+#
+# 정책:
+#   - master 푸시 + 모든 PR (master 대상) 에서 실행.
+#   - check.sh 실패 → 워크플로 fail → PR 머지 차단 (브랜치 보호 별도).
+#   - npm ci 캐시 + Node 20 (deploy.yml 과 동일).
+#   - timeout 10분 (현재 check.sh ~30초 — 여유 충분).
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# 같은 ref 에 새 푸시 들어오면 이전 run 취소 — 중복 검증 비용 절약.
+concurrency:
+  group: typecheck-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Run check.sh (typecheck + lint + tests + file size + doc-drift + plan)
+        run: bash scripts/check.sh
