@@ -1,14 +1,6 @@
 /**
  * AdminUserPicker — 수강생 관리 화면 (Admin 전용).
- *
- * Props:
- *   - users: 등록된 수강생 (기수·시작일·종강일 enrich 완료)
- *   - activeTrainers: 활성 트레이너 (담당 이름 매핑용)
- *   - sessionEmail: 현재 로그인한 admin email
- *
- * 카드 정보 (한 row):
- *   이름 / 이메일 / 기수 / 담당 트레이너 (이름들) / 시작일 / 종강일 / [시트 열기]
- * 클릭 시 → POST /api/admin/switch → /dashboard (impersonation 진입)
+ * 카드: 이름·email·기수·담당·시작/종강일·[시트] → click → impersonation.
  */
 "use client";
 
@@ -355,36 +347,44 @@ export default function AdminUserPicker({
 
   return (
     <main className="min-h-dvh bg-gray-50">
+      {/* 헤더 — 모바일에서 가로 공간 부족으로 깨지지 않도록 sync/수식복원 버튼은
+          본문 h1 옆으로 이동 (PR fix/admin-roster-and-mobile, 2026-05-14). */}
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 수강생 관리
             </div>
-            <div className="mt-0.5 text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
               {sessionEmail}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {!viewOnly && <MigrateCacheButton />}
-            {!viewOnly && <InstallFormulasButton />}
-            <Link
-              href="/admin"
-              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
-            >
-              ← 마스터 메뉴
-            </Link>
-          </div>
+          <Link
+            href="/admin"
+            className="shrink-0 rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          >
+            ← 마스터 메뉴
+          </Link>
         </div>
       </header>
 
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <h1 className="text-2xl font-black tracking-tight text-gray-900">
-          수강생 관리
-        </h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          기수별 등록된 수강생 ({users.length}명)
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-black tracking-tight text-gray-900">
+              수강생 관리
+            </h1>
+            <p className="mt-1.5 text-sm text-gray-500">
+              기수별 등록된 수강생 ({users.length}명)
+            </p>
+          </div>
+          {!viewOnly && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <MigrateCacheButton />
+              <InstallFormulasButton />
+            </div>
+          )}
+        </div>
 
         <input
           type="text"

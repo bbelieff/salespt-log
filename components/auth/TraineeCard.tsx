@@ -149,18 +149,24 @@ export default function TraineeCard({
       {...(dragAttributes ?? {})}
       className={`overflow-hidden rounded-xl border ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"} ${isDragging ? "opacity-50 ring-2 ring-indigo-300" : ""}`}
     >
-      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+      <div className="flex items-stretch gap-2 p-3 sm:gap-3 sm:p-4">
         {dragListeners && (
+          // 드래그 핸들 — 모바일에서도 노출 (이전엔 `hidden sm:inline-flex` 라
+          // 모바일에서 보이지 않아 순서 변경 불가). touch-action: none 으로 page
+          // scroll 와 충돌 차단 — dnd-kit TouchSensor long-press(200ms)+8px tolerance
+          // 와 자연스럽게 연동. (2026-05-14)
           <button
             type="button"
             aria-label="드래그하여 순서 변경"
             title="드래그하여 박스 내 순서 변경"
             {...dragListeners}
-            className="hidden cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing sm:inline-flex sm:items-center sm:self-stretch"
+            style={{ touchAction: "none" }}
+            className="inline-flex w-7 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
           >
             <span className="text-base leading-none">⋮⋮</span>
           </button>
         )}
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-black text-gray-900">
@@ -254,6 +260,7 @@ export default function TraineeCard({
           </button>
         </div>
       )}
+        </div>
       </div>
       {canAssign && trainerOpen && (
         <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
