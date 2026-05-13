@@ -122,7 +122,8 @@ export default function TrainerLanding({
             내 수강생 경영일지 확인
           </h1>
           <p className="mt-1.5 text-sm text-gray-500">
-            이름을 누르면 그 수강생의 시트(5탭)로 진입합니다.
+            <b>웹앱</b> = impersonation 으로 5탭 UI 진입, <b>📊 시트</b> = 원본 구글
+            시트 새 탭.
           </p>
 
           <div className="mt-6">
@@ -131,27 +132,41 @@ export default function TrainerLanding({
                 아직 배정된 수강생이 없습니다. 관리자에게 문의해 주세요.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {trainees.map((u) => (
-                  <button
+                  <div
                     key={u.email}
-                    type="button"
-                    onClick={() => pick(u.email)}
-                    disabled={busy !== null}
-                    className="group rounded-xl border border-gray-200 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md disabled:opacity-50"
+                    className="rounded-xl border border-gray-200 bg-white p-3 transition-all hover:border-red-300 hover:shadow-md"
                   >
                     <div className="text-xs font-bold uppercase tracking-wider text-gray-400">
                       {u.cohort ? `${u.cohort}기` : "—"}
                     </div>
-                    <div className="mt-0.5 text-sm font-bold text-gray-900 group-hover:text-red-600">
+                    <div className="mt-0.5 text-sm font-bold text-gray-900">
                       {u.name || u.email}
                     </div>
-                    {busy === u.email && (
-                      <div className="mt-1 text-[10px] font-semibold text-red-600">
-                        열기 중...
-                      </div>
-                    )}
-                  </button>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => pick(u.email)}
+                        disabled={busy !== null}
+                        title="웹앱 (5탭 UI) 으로 진입"
+                        className="rounded-full bg-gray-900 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-black disabled:opacity-50"
+                      >
+                        {busy === u.email ? "여는 중..." : "웹앱 →"}
+                      </button>
+                      {u.spreadsheetId && (
+                        <a
+                          href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="구글 시트 원본 새 탭으로 열기"
+                          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                        >
+                          📊 시트 ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
