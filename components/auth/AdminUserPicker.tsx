@@ -22,13 +22,10 @@ import {
   CohortSection,
   ReservedSection,
   PendingTraineesSection,
-  TraineePrepForm,
 } from "./AdminUserPickerSections";
-import {
-  type PrepItem,
-  BulkPrepForm,
-} from "./TraineePrepBulkForm";
-import InstallFormulasCard from "./InstallFormulasCard";
+import { type PrepItem } from "./TraineePrepBulkForm";
+import UnifiedPrepCard from "./UnifiedPrepCard";
+import InstallFormulasButton from "./InstallFormulasButton";
 
 export default function AdminUserPicker({
   users,
@@ -314,12 +311,15 @@ export default function AdminUserPicker({
               {sessionEmail}
             </div>
           </div>
-          <Link
-            href="/admin"
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
-          >
-            ← 마스터 메뉴
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            {!viewOnly && <InstallFormulasButton />}
+            <Link
+              href="/admin"
+              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            >
+              ← 마스터 메뉴
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -353,15 +353,13 @@ export default function AdminUserPicker({
               <p className="text-sm text-gray-400">검색 결과 없음.</p>
             )}
 
-          {/* 신규 수강생 사전 등록 — 단일 + 일괄 두 폼 + 일괄 공유 버튼. */}
+          {/* 신규 수강생 사전 등록 — 단일/일괄 모드 토글 통합 카드. */}
           {!viewOnly && (
-            <>
-              <BulkPrepForm busy={busy !== null} onSubmit={addPrepBulk} />
-              <TraineePrepForm busy={busy !== null} onSubmit={addPrep} />
-              <InstallFormulasCard />
-              {/* 시트 공유는 코드 자동화 X — admin 이 Drive 폴더 단위로 한 번만
-                  공유. 자세한 절차는 운영 문서 (docs/runbook/sheet-sharing.md). */}
-            </>
+            <UnifiedPrepCard
+              busy={busy !== null}
+              onSubmitSingle={addPrep}
+              onSubmitBulk={addPrepBulk}
+            />
           )}
 
           {/* 승인 대기 — 가장 위. admin 즉시 처리 유도. [모두 승인] 일괄. */}
