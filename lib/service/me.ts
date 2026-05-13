@@ -60,11 +60,19 @@ export function computeGraduationISO(courseStartISO: string): string {
 }
 
 /**
- * spreadsheetId → bundle(profile + dates) 캐시 — 60초.
+ * spreadsheetId → bundle(profile + dates) 캐시 — 10분 (600초).
  * 시트 B3/C3/O1/O2 변경은 매우 드물고(수강 시작 시 1회) 페이지 전환 시 매번
- * 다시 읽으면 헤더 표시 지연 주범. 60초 stale 허용.
+ * 다시 읽으면 헤더 표시 지연 주범 + Sheets API quota (60 reads/min/user) 압박.
  *
- * **2026-05-13 사고 fix**: unstable_cache 가 결과를 JSON 직렬화 → Date 객체가
+ * **2026-05-13 quota 사고**: /admin/users 진입 시 23 trainee 시트 read.
+ * cache 60s + admin 새로고침 빈번 + PM2 restart 시 cache 비움 → 분당 60 read
+ * 한도 초과 → 500 "Quota exceeded for Read requests per minute per user".
+ * 캐시 시간 60s → 600s 로 늘려 quota 압박 1/10 감소.
+ * trade-off: 시트 B3/C3/O1/O2 직접 수정 시 최대 10분 지연 반영. admin prep 후
+ * 거의 변경 안 되는 데이터라 실용상 무관. 즉시 반영 필요한 화면은 명시적
+ * `revalidateTag("me-bundle")` 호출 가능.
+ *
+ * **2026-05-13 사고 fix (앞)**: unstable_cache 가 결과를 JSON 직렬화 → Date 객체가
  * ISO string 으로 복원됨 → cache hit 시 `bundle.courseStart` 가 string →
  * 호출자(`toISO`)가 `string.getFullYear()` 호출 → "a.getFullYear is not a
  * function" 500 에러. cache 내부에서 number(ms) 만 저장하고 호출 부에서 Date 로
@@ -81,7 +89,7 @@ const cachedReadBundle = unstable_cache(
     };
   },
   ["me-bundle"],
-  { revalidate: 60, tags: ["me-bundle"] },
+  { revalidate: 600, tags: ["me-bundle"] },
 );
 
 /** cachedReadBundle 결과를 Date 포함 형태로 복원. */
