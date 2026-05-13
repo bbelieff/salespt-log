@@ -157,6 +157,16 @@ export const User = z.object({
   assignedTrainer: z.string().default(""),
   /** 기수 내 팀 (예: "서울", "부산"). 빈값 = 미배정 → 기수 박스 내 개별 카드. */
   team: z.string().default(""),
+  /** 시트 B3 캐시 (예: "PRM 7기"). 빈값이면 enrichUsersWithDates 가 fallback 으로
+   *  시트 fetch. PR B (2026-05-13) 에서 도입 — registry SSOT 가 시트 SSOT 의
+   *  주요 메타를 그림자로 저장해 평시 시트 read 0회 달성. */
+  cohortLabel: z.string().default(""),
+  /** 시트 C3 캐시 (예: "김상목"). 빈값이면 fallback. */
+  nameLabel: z.string().default(""),
+  /** 시트 O1 ISO date (YYYY-MM-DD) 캐시. 빈값이면 fallback. */
+  courseStartISO: z.string().default(""),
+  /** 시트 O2 ISO date (YYYY-MM-DD) 캐시. 빈값이면 fallback. */
+  graduationISO: z.string().default(""),
 });
 export type User = z.infer<typeof User>;
 

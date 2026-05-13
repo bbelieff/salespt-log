@@ -12,6 +12,11 @@
  *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
  *   H: team           (기수 내 팀 — "서울"/"부산" 등 임의. 빈값 = 미배정.
  *                      신규 컬럼 2026-05-13. 기존 row 빈값 → 미배정 default.)
+ *   I: cohort_label   (시트 B3 캐시 — "PRM 7기" 등. 빈값이면 enrichUsersWithDates
+ *                      가 fallback 으로 시트 fetch. PR B-1 도입.)
+ *   J: name_label     (시트 C3 캐시 — "김상목" 등.)
+ *   K: course_start_iso (시트 O1 ISO date — YYYY-MM-DD.)
+ *   L: graduation_iso   (시트 O2 ISO date — YYYY-MM-DD.)
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
@@ -19,8 +24,8 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNamePrefix } from "./drive-client";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:H1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:H`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:L1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
 
 function parseRow(r: unknown[]): User | null {
   // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
@@ -44,6 +49,12 @@ function parseRow(r: unknown[]): User | null {
     status,
     assignedTrainer: String(r[6] ?? ""),
     team: String(r[7] ?? ""),
+    // PR B-1 cached 컬럼 — Sheets UNFORMATTED_VALUE 가 number/Date 반환 가능 →
+    // 반드시 String() 정규화 (오늘 cohort number 사고 패턴 재발 방지).
+    cohortLabel: String(r[8] ?? "").trim(),
+    nameLabel: String(r[9] ?? "").trim(),
+    courseStartISO: String(r[10] ?? "").trim(),
+    graduationISO: String(r[11] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -270,7 +281,7 @@ export async function setTrainerDepartment(
   const nameMap = adminNames();
   const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [lc, cohortValue, fallbackName, "", "trainer", "active", "", ""],
+    [lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", ""],
   ]);
   invalidateRegistry();
 }
@@ -405,6 +416,10 @@ export async function registerUser(u: User): Promise<void> {
       validated.status,
       validated.assignedTrainer,
       validated.team,
+      validated.cohortLabel,
+      validated.nameLabel,
+      validated.courseStartISO,
+      validated.graduationISO,
     ],
   ]);
   invalidateRegistry();
@@ -474,7 +489,7 @@ export async function ensureRegistryHeader(): Promise<void> {
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
   await appendRows(reg.spreadsheetId, HEADER_RANGE(reg.tab), [
-    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team"],
+    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso"],
   ]);
 }
 

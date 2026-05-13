@@ -11,7 +11,7 @@ import { registry } from "@/config";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 
-const DATA_RANGE = (tab: string) => `${tab}!A2:H`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:L`;
 
 /**
  * 시트 URL / open URL / raw ID 어떤 형태든 spreadsheetId 추출.
@@ -57,7 +57,7 @@ export async function addTraineePrepRow(
     }
   }
   await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    ["", cohortNorm, cleanName, spreadsheetId, "trainee", "active", assignedTrainer, ""],
+    ["", cohortNorm, cleanName, spreadsheetId, "trainee", "active", assignedTrainer, "", "", "", "", ""],
   ]);
   invalidateRegistry();
   return { created: true };
