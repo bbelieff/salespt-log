@@ -60,11 +60,14 @@ export async function GET() {
       sessionRole,
       impersonating: admin && activeEmail !== sessionEmail ? activeEmail : null,
     });
-    // 브라우저/CDN private cache: 30초 fresh + 5분 stale-while-revalidate.
-    // 프로필은 거의 변하지 않으므로 페이지 전환 시 304/메모리 캐시로 즉시 응답.
+    // **never cache** — 브라우저 HTTP 캐시가 impersonation cookie 변경을 무시하고
+    // 이전 trainee 의 응답을 그대로 반환하는 사고가 있었음 (2026-05-13).
+    // useMe 의 React Query staleTime: 1h 가 client 측 캐싱을 담당하므로 server
+    // 응답 자체는 매번 fresh 해야 cookie 변경이 즉시 반영됨.
+    // private + no-store + must-revalidate 3중 안전.
     res.headers.set(
       "Cache-Control",
-      "private, max-age=30, stale-while-revalidate=300",
+      "private, no-store, no-cache, must-revalidate",
     );
     return res;
   } catch (e) {
