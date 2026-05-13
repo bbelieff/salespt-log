@@ -122,13 +122,23 @@ export function CohortSection({
     rep?.graduationISO,
   );
   return (
-    <section>
-      <h2 className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs font-bold uppercase tracking-wider text-gray-500">
-        <span>
+    <details className="group rounded-2xl border border-gray-200 bg-white open:bg-gray-50/30" open>
+      <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-3 hover:bg-gray-50">
+        <svg
+          className="h-3 w-3 shrink-0 text-gray-400 transition-transform group-open:rotate-90"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
           {cohort}기 · {list.length}명{archived && " (보관)"}
         </span>
         {start && end && (
-          <span className="font-normal normal-case text-gray-400">
+          <span className="text-[11px] font-normal text-gray-400">
             개강 <span className="font-semibold text-gray-600">{start}</span>{" "}
             ~ 종강 <span className="font-semibold text-gray-600">{end}</span>
             {pct !== null && (
@@ -145,8 +155,8 @@ export function CohortSection({
             )}
           </span>
         )}
-      </h2>
-      <ul className="space-y-2">
+      </summary>
+      <ul className="space-y-2 border-t border-gray-100 px-4 py-3">
         {list.map((u) => {
           const assigned = parseAssigned(u.assignedTrainer);
           const trainerNames =
@@ -208,7 +218,7 @@ export function CohortSection({
           );
         })}
       </ul>
-    </section>
+    </details>
   );
 }
 
