@@ -226,20 +226,33 @@ function TrainerAssignCard({
   const grouped = groupByCohort(trainees);
   const bulkBusy = busy?.startsWith(`assign:${trainer.email}:`) ?? false;
 
+  // 박스 위계 — 수강생관리의 CohortSection 과 동일 패턴 (border-2 + slate 톤 +
+  // 좌측 indigo accent + shadow). 시각 일관성. (2026-05-13 위계 통일)
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
+    <div
+      className={`overflow-hidden rounded-2xl border-2 border-slate-300 shadow-sm ${
+        open ? "bg-white shadow-md" : "bg-slate-100"
+      }`}
+    >
+      <div
+        className={`flex items-center gap-3 border-l-4 border-indigo-500 px-4 py-3 ${
+          open ? "bg-white" : "bg-slate-50"
+        } hover:bg-slate-100`}
+      >
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
         >
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold text-gray-900">
+            <div className="truncate text-base font-black tracking-tight text-gray-900">
               {trainer.name || trainer.email}
+              <span className="ml-1.5 text-xs font-bold text-indigo-700">
+                · 담당 {assignedCount}명
+              </span>
             </div>
-            <div className="truncate text-[11px] text-gray-500">
-              {trainer.email} · 담당 {assignedCount}명
+            <div className="truncate text-xs text-gray-500">
+              {trainer.email}
             </div>
           </div>
           <svg

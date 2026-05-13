@@ -14,7 +14,11 @@ import {
   isAdminEmail,
 } from "@/auth/identity";
 import { adminEmails, adminNames } from "@/config";
-import { listPendingTrainers, listAllUsers } from "@/repo/users";
+import {
+  listPendingTrainers,
+  listAllUsers,
+  isReservedTrainee,
+} from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
 // /admin/users 와 동일한 정책 — force-dynamic. self-claim/admin 액션 직후
@@ -71,7 +75,12 @@ export default async function AdminTrainersPage() {
   const isManagement = (u: { cohort: string }) => u.cohort.trim() === "관리";
   const activeTrainers = activeAll.filter((u) => !isManagement(u));
   const managementStaff = activeAll.filter(isManagement);
-  const trainees = all.filter((u) => u.role === "trainee");
+  // 유보(cohort="유보") 수강생은 담당 배정 후보에서 제외.
+  // 유보는 일시적 대기 상태 — 담당 트레이너 배정 대상 아님. 복귀(/admin/users 의
+  // [복귀]) 또는 퇴출 후 정규 trainee 로 돌아왔을 때만 배정 가능.
+  const trainees = all.filter(
+    (u) => u.role === "trainee" && !isReservedTrainee(u),
+  );
 
   return (
     <TrainerMgmtPanel
