@@ -103,10 +103,11 @@ export async function addTraineePrepRow(
     const n = String(r[2] ?? "").trim();
     if (c === cohortNorm && n === cleanName) {
       const sheetRow = i + 2;
+      // registry batchUpdate → RAW (PR D). ISO 날짜가 자동 시리얼화되는 사고 방지.
       await sheetsClient().spreadsheets.values.batchUpdate({
         spreadsheetId: reg.spreadsheetId,
         requestBody: {
-          valueInputOption: "USER_ENTERED",
+          valueInputOption: "RAW",
           data: [
             { range: `${reg.tab}!D${sheetRow}`, values: [[spreadsheetId]] },
             {
@@ -125,8 +126,11 @@ export async function addTraineePrepRow(
       return { created: false };
     }
   }
-  await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [
+  // registry append → RAW (PR D).
+  await appendRows(
+    reg.spreadsheetId,
+    DATA_RANGE(reg.tab),
+    [[
       "",
       cohortNorm,
       cleanName,
@@ -140,8 +144,9 @@ export async function addTraineePrepRow(
       cached.courseStartISO,
       cached.graduationISO,
       "0", // M: sortOrder — admin 드래그로 부여 (PR C-1)
-    ],
-  ]);
+    ]],
+    { valueInputOption: "RAW" },
+  );
   invalidateRegistry();
   return { created: true };
 }

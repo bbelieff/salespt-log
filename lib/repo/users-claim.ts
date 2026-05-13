@@ -84,10 +84,11 @@ export async function claimRegistry(
   const prep = matchedRows.find((r) => r.emailLc === "");
   if (prep) {
     const sheetRow = prep.rowIdx + 2;
+    // registry 쓰기 → RAW (PR D).
     await sheetsClient().spreadsheets.values.update({
       spreadsheetId: reg.spreadsheetId,
       range: `${reg.tab}!A${sheetRow}`,
-      valueInputOption: "USER_ENTERED",
+      valueInputOption: "RAW",
       requestBody: { values: [[email]] },
     });
     invalidateRegistry();
@@ -98,8 +99,10 @@ export async function claimRegistry(
   //    sortOrder(M) 은 0 (미정렬) — admin 이 드래그로 직접 부여.
   if (matchedRows.length > 0) {
     const sharedSheetId = matchedRows[0]!.sheetId || spreadsheetId;
-    await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-      [
+    await appendRows(
+      reg.spreadsheetId,
+      DATA_RANGE(reg.tab),
+      [[
         email,
         cohortNorm,
         cleanName,
@@ -113,15 +116,18 @@ export async function claimRegistry(
         cached.courseStartISO,
         cached.graduationISO,
         "0",
-      ],
-    ]);
+      ]],
+      { valueInputOption: "RAW" },
+    );
     invalidateRegistry();
     return;
   }
 
   // 4) 완전 신규 — cached 포함 13 컬럼 append (M=sortOrder, 0 default).
-  await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [
+  await appendRows(
+    reg.spreadsheetId,
+    DATA_RANGE(reg.tab),
+    [[
       email,
       cohortNorm,
       cleanName,
@@ -135,7 +141,8 @@ export async function claimRegistry(
       cached.courseStartISO,
       cached.graduationISO,
       "0",
-    ],
-  ]);
+    ]],
+    { valueInputOption: "RAW" },
+  );
   invalidateRegistry();
 }

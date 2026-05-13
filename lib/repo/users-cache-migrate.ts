@@ -101,12 +101,15 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
     const courseStartISO = String(r[10] ?? "").trim();
     const graduationISO = String(r[11] ?? "").trim();
 
-    // 이미 4종 모두 채워짐 → skip.
+    // 이미 4종 모두 채워졌고 K/L 이 정상 ISO 형식이면 skip.
+    // K/L 이 "46122" 같은 시리얼 number 문자열이면 (PR D 이전 USER_ENTERED 사고
+    // 로 잘못 저장된 row) re-stamp 해서 자동 복구.
+    const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
     const alreadyCached =
       cohortLabel !== "" &&
       nameLabel !== "" &&
-      courseStartISO !== "" &&
-      graduationISO !== "";
+      ISO_DATE.test(courseStartISO) &&
+      ISO_DATE.test(graduationISO);
     if (alreadyCached) {
       skipped++;
       continue;
@@ -142,13 +145,14 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
     updated++;
   }
 
-  // 청크 단위로 batchUpdate (100 row/call).
+  // 청크 단위로 batchUpdate (100 row/call). RAW — registry 는 자동 type inference 금지
+  // (PR D). USER_ENTERED 였을 때 ISO 날짜가 시리얼 넘버로 변환되는 사고 발생.
   for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
     const chunk = updates.slice(i, i + CHUNK_SIZE);
     await sheetsClient().spreadsheets.values.batchUpdate({
       spreadsheetId: reg.spreadsheetId,
       requestBody: {
-        valueInputOption: "USER_ENTERED",
+        valueInputOption: "RAW",
         data: chunk,
       },
     });

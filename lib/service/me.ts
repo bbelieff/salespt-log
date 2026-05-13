@@ -177,12 +177,15 @@ export async function enrichUsersWithDates<
 
     // PR B-1: registry cached 컬럼 (cohortLabel/nameLabel/courseStartISO/graduationISO)
     // 4개 모두 채워져 있으면 시트 fetch 0회 — 평시 목표.
-    // 하나라도 빈 값이면 시트 fetch fallback (점진 마이그레이션).
+    // 하나라도 빈 값이거나 K/L 이 ISO 형식이 아니면 fallback (점진 마이그레이션).
+    // PR D (2026-05-14): K/L 이 "46122" 같은 시리얼 number 문자열이면 cached 인정 X
+    // → 시트 fetch fallback. admin 이 [🔄 동기화] 누르면 정상 ISO 로 backfill.
+    const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
     const cachedComplete =
       (u.cohortLabel ?? "").trim() !== "" &&
       (u.nameLabel ?? "").trim() !== "" &&
-      (u.courseStartISO ?? "").trim() !== "" &&
-      (u.graduationISO ?? "").trim() !== "";
+      ISO_DATE.test((u.courseStartISO ?? "").trim()) &&
+      ISO_DATE.test((u.graduationISO ?? "").trim());
     if (cachedComplete) {
       return {
         ...u,

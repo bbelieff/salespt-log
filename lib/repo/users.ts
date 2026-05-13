@@ -201,10 +201,11 @@ async function updateCell(
   for (let i = 0; i < rows.length; i++) {
     if (typeof rows[i]?.[0] === "string" && (rows[i]![0] as string).toLowerCase() === lc) {
       const sheetRow = i + 2;
+      // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
       await sheetsClient().spreadsheets.values.update({
         spreadsheetId: reg.spreadsheetId,
         range: `${reg.tab}!${colLetter}${sheetRow}`,
-        valueInputOption: "USER_ENTERED",
+        valueInputOption: "RAW",
         requestBody: { values: [[value]] },
       });
       invalidateRegistry();
@@ -309,9 +310,13 @@ export async function setTrainerDepartment(
   // 이름은 ADMIN_NAMES env 매핑 우선, 없으면 email local-part.
   const nameMap = adminNames();
   const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
-  await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", ""],
-  ]);
+  // registry append → RAW (PR D).
+  await appendRows(
+    reg.spreadsheetId,
+    DATA_RANGE(reg.tab),
+    [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", ""]],
+    { valueInputOption: "RAW" },
+  );
   invalidateRegistry();
 }
 
@@ -358,8 +363,11 @@ export {
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
   const validated = User.parse(u);
-  await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [
-    [
+  // registry append → RAW (PR D). ISO 날짜/숫자형 라벨이 auto-inference 로 변환되는 사고 방지.
+  await appendRows(
+    reg.spreadsheetId,
+    DATA_RANGE(reg.tab),
+    [[
       validated.email,
       validated.cohort,
       validated.name,
@@ -372,9 +380,10 @@ export async function registerUser(u: User): Promise<void> {
       validated.nameLabel,
       validated.courseStartISO,
       validated.graduationISO,
-      String(validated.sortOrder), // M: number → string (USER_ENTERED 가 number 로 해석)
-    ],
-  ]);
+      String(validated.sortOrder),
+    ]],
+    { valueInputOption: "RAW" },
+  );
   invalidateRegistry();
 }
 
@@ -444,9 +453,12 @@ export async function ensureRegistryHeader(): Promise<void> {
   const reg = registry();
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
-  await appendRows(reg.spreadsheetId, HEADER_RANGE(reg.tab), [
-    ["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order"],
-  ]);
+  await appendRows(
+    reg.spreadsheetId,
+    HEADER_RANGE(reg.tab),
+    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order"]],
+    { valueInputOption: "RAW" },
+  );
 }
 
 export async function listCohortMembers(cohort: string): Promise<User[]> {
