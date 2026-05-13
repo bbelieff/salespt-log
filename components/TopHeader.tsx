@@ -80,8 +80,8 @@ export default function TopHeader({
           </button>
           {me.data?.sessionRole === "admin" && (
             <Link
-              href="/admin"
-              aria-label="마스터 메뉴로 돌아가기"
+              href="/admin/users"
+              aria-label="수강생 관리로 돌아가기"
               className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-100 sm:text-xs"
             >
               ← 메뉴
