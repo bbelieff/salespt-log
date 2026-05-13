@@ -44,10 +44,11 @@ export default function TrainerLanding({
       body: JSON.stringify({ email }),
     });
     if (res.ok) {
-      // impersonation 변경 시 useMe staleTime/refetchOnMount:false 와 충돌 —
-      // invalidate 만으로 refetch 안 일어남. 캐시 통째 제거해서 다음 mount 시
-      // fresh fetch 강제. (2026-05-13 헤더 데이터 비어있음 사고)
-      queryClient.removeQueries({ queryKey: ["me"] });
+      // impersonation 변경 시 ['me'] 외에 trainee 별 데이터 캐시(dashboard/
+      // contact/db/contract-payment/meetings)도 모두 비워야 함. 그렇지 않으면
+      // 트레이너가 담당 수강생 번갈아 클릭해도 첫 trainee 데이터 그대로 표시.
+      // (2026-05-13 사고)
+      queryClient.clear();
       router.push("/dashboard");
       router.refresh();
     } else {
