@@ -6,13 +6,19 @@
  *   - 정보: 이름·email·다중계정 배지·담당 트레이너
  *   - 팀명 inline input (Enter/blur 시 자동 저장)
  *   - [유보] / [📊 시트 ↗] / [웹앱 →]
+ *   - **PR C-1**: dragListeners 가 있으면 좌측 [⋮⋮] 드래그 핸들 렌더링.
+ *     핸들만 dnd-kit 의 listeners 받아 카드 본문 클릭(버튼) 과 분리.
  *
  * 500줄 cap 회피로 별도 파일.
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
 import { parseAssigned, type Trainee } from "./AdminUserPickerTypes";
+
+/** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
+ *  unknown 으로 받아 TraineeCard 가 dnd-kit 에 직접 의존 안 하게 차단. */
+export type DragHandleListeners = HTMLAttributes<HTMLElement> | undefined;
 
 function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   if (siblings.length === 0) return null;
@@ -46,6 +52,11 @@ export default function TraineeCard({
   onPick,
   onReserve,
   onSetTeam,
+  dragListeners,
+  dragAttributes,
+  dragStyle,
+  dragRef,
+  isDragging,
 }: {
   u: Trainee;
   archived: boolean;
@@ -56,6 +67,16 @@ export default function TraineeCard({
   onPick: (email: string) => void;
   onReserve: (email: string) => void;
   onSetTeam: (email: string, team: string) => void;
+  /** PR C-1: dnd-kit useSortable listeners. 좌측 핸들에만 부착 — 본문 버튼 클릭 보존. */
+  dragListeners?: DragHandleListeners;
+  /** dnd-kit attributes (aria-roledescription 등). 루트 div 에 spread. */
+  dragAttributes?: HTMLAttributes<HTMLElement>;
+  /** dnd-kit transform/transition CSS. */
+  dragStyle?: CSSProperties;
+  /** dnd-kit setNodeRef. */
+  dragRef?: (el: HTMLElement | null) => void;
+  /** 드래그 중 시각 피드백. */
+  isDragging?: boolean;
 }) {
   const assigned = parseAssigned(u.assignedTrainer);
   const trainerNames =
@@ -79,8 +100,23 @@ export default function TraineeCard({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"}`}
+      ref={dragRef}
+      style={dragStyle}
+      {...(dragAttributes ?? {})}
+      className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"} ${isDragging ? "opacity-50 ring-2 ring-indigo-300" : ""}`}
     >
+      {dragListeners && (
+        <button
+          type="button"
+          aria-label="드래그하여 순서 변경"
+          title="드래그하여 박스 내 순서 변경"
+          // dnd-kit listeners spread — pointer/touch/keyboard 트리거를 핸들로 격리.
+          {...dragListeners}
+          className="hidden cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing sm:inline-flex sm:items-center sm:self-stretch"
+        >
+          <span className="text-base leading-none">⋮⋮</span>
+        </button>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-black text-gray-900">

@@ -12,7 +12,7 @@
  */
 "use client";
 
-import TraineeCard from "./TraineeCard";
+import SortableTraineeBox from "./SortableTraineeBox";
 import PersistentDetails from "./PersistentDetails";
 import {
   type Trainee,
@@ -83,6 +83,7 @@ export function CohortSection({
   onPick,
   onReserve,
   onSetTeam,
+  onReorder,
   linkedBySheet,
   archived = false,
   viewOnly = false,
@@ -96,6 +97,9 @@ export function CohortSection({
   onReserve: (email: string) => void;
   /** 팀명 변경 핸들러 — Enter 또는 blur 시 호출. 빈 문자열 = 미배정. */
   onSetTeam: (email: string, team: string) => void;
+  /** PR C-1: 박스 내 드래그 정렬 결과 핸들러. emails = 새 순서.
+   *  미제공이면 dnd 비활성 (read-only / archived). */
+  onReorder?: (emails: string[]) => void | Promise<void>;
   /** 같은 spreadsheetId 의 모든 email 리스트 — 다중 계정 배지 표시용. */
   linkedBySheet?: Map<string, string[]>;
   archived?: boolean;
@@ -169,6 +173,7 @@ export function CohortSection({
         onPick={onPick}
         onReserve={onReserve}
         onSetTeam={onSetTeam}
+        onReorder={onReorder}
       />
     </PersistentDetails>
   );
@@ -186,6 +191,7 @@ function CohortBody({
   onPick,
   onReserve,
   onSetTeam,
+  onReorder,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
   cohort: string;
@@ -198,25 +204,24 @@ function CohortBody({
   onPick: (email: string) => void;
   onReserve: (email: string) => void;
   onSetTeam: (email: string, team: string) => void;
+  onReorder?: (emails: string[]) => void | Promise<void>;
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
     <div className="space-y-2 border-t border-gray-100 px-4 py-3">
-      {/* 미배정 trainees — 박스 없이 개별 카드. */}
-      {unassigned.map((u) => (
-        <TraineeCard
-          key={u.email}
-          u={u}
-          archived={archived}
-          viewOnly={viewOnly}
-          busy={busy}
-          nameByEmail={nameByEmail}
-          linkedBySheet={linkedBySheet}
-          onPick={onPick}
-          onReserve={onReserve}
-          onSetTeam={onSetTeam}
-        />
-      ))}
+      {/* 미배정 trainees — 박스 없이 개별 카드. PR C-1: 박스 단위 dnd. */}
+      <SortableTraineeBox
+        members={unassigned}
+        archived={archived}
+        viewOnly={viewOnly}
+        busy={busy}
+        nameByEmail={nameByEmail}
+        linkedBySheet={linkedBySheet}
+        onPick={onPick}
+        onReserve={onReserve}
+        onSetTeam={onSetTeam}
+        onReorder={onReorder}
+      />
       {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
       {teamGroups.map(([teamName, members]) => (
         <PersistentDetails
@@ -229,20 +234,18 @@ function CohortBody({
             🏷️ {teamName} · {members.length}명
           </summary>
           <div className="space-y-2 border-t border-indigo-100 px-3 py-2">
-            {members.map((u) => (
-              <TraineeCard
-                key={u.email}
-                u={u}
-                archived={archived}
-                viewOnly={viewOnly}
-                busy={busy}
-                nameByEmail={nameByEmail}
-                linkedBySheet={linkedBySheet}
-                onPick={onPick}
-                onReserve={onReserve}
-                onSetTeam={onSetTeam}
-              />
-            ))}
+            <SortableTraineeBox
+              members={members}
+              archived={archived}
+              viewOnly={viewOnly}
+              busy={busy}
+              nameByEmail={nameByEmail}
+              linkedBySheet={linkedBySheet}
+              onPick={onPick}
+              onReserve={onReserve}
+              onSetTeam={onSetTeam}
+              onReorder={onReorder}
+            />
           </div>
         </PersistentDetails>
       ))}
