@@ -1,20 +1,20 @@
 /**
- * PersistentDetails — `<details>` 의 펼침/닫힘 상태를 localStorage 에 영구 저장.
+ * PersistentDetails — `<details>` 의 펼침/닫힘 상태를 localStorage 에 영구 저장
+ * + 전 브라우저 동작하는 펼침/접힘 height 애니메이션.
  *
  * 사용처: /admin/users 의 기수 박스 · 팀 박스 · 유보 섹션.
- *   매번 페이지 새로고침 시 모든 박스가 default(`open`) 로 리셋되어 admin 이 매번
- *   접어야 하는 불편 (2026-05-13 사용자 보고).
  *
  * 동작:
- *   - **서버 렌더**: `defaultOpen` 그대로 렌더. localStorage 접근 불가.
- *   - **클라이언트 첫 렌더**: localStorage 동기 read → 저장값으로 즉시 open 결정.
- *     서버와 다르면 `suppressHydrationWarning` 으로 React 경고 무음. SSR HTML 은
- *     React 가 commit phase 에 정정.
- *   - 사용자 토글 시 onToggle 이 localStorage 갱신.
+ *   - **localStorage 영속**: 닫아둔 박스는 새로고침·재진입해도 닫힘 유지.
+ *   - **JS height 애니메이션** (2026-05-14): 이전 `::details-content` CSS 방식은
+ *     Chrome 131+ 전용이라 모바일(iOS Safari·삼성인터넷)에서 애니메이션 안 됨.
+ *     summary 클릭을 가로채 `<div>` wrapper 의 height 를 직접 transition →
+ *     전 브라우저 동작. prefers-reduced-motion 은 즉시 토글.
+ *   - **중첩 안전**: summary 의 onClick 으로 처리 → 자식 details 의 토글이 부모
+ *     까지 전파되던 사고(2026-05-14) 원천 차단 (summary 는 형제 subtree).
  *
- * 이전 구현 (useEffect 로 정정) 은 첫 paint 가 default 로 잠깐 비치고 useEffect 가
- * 정정하는 flash 가 있어서 "수강생 관리 나갔다 들어오면 펼쳐짐" 사용자 사고
- * 의 원인으로 추정 (2026-05-14). 동기 read 로 flash 제거.
+ * 구조: children[0] = <summary>, children[1:] = 콘텐츠 → 콘텐츠를 애니메이션
+ * wrapper <div> 로 감쌈.
  *
  * 저장 형식: 단일 JSON object 키 `salespt:admin:collapsed`.
  *   `{ "cohort:7": true, "team:7:서울": false, "reserved": true }` 형태.
@@ -22,15 +22,19 @@
 "use client";
 
 import {
-  useEffect,
+  Children,
+  cloneElement,
+  isValidElement,
+  useLayoutEffect,
   useRef,
   useState,
   type DetailsHTMLAttributes,
+  type MouseEvent,
   type ReactNode,
-  type SyntheticEvent,
 } from "react";
 
 const STORAGE_KEY = "salespt:admin:collapsed";
+const ANIM_MS = 240;
 
 function readStore(): Record<string, boolean> {
   if (typeof window === "undefined") return {};
@@ -53,11 +57,16 @@ function writeStore(state: Record<string, boolean>): void {
   }
 }
 
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 interface Props
   extends Omit<DetailsHTMLAttributes<HTMLDetailsElement>, "open" | "onToggle"> {
   /** 저장 키 — 같은 영역(예: "cohort:7") 은 항상 같은 키 사용해야 복원됨. */
   persistKey: string;
-  /** SSR 및 첫 paint 시 사용. localStorage 에 저장값 있으면 클라이언트에서 즉시 덮어씀. */
+  /** SSR 및 localStorage 에 저장값 없을 때 사용. */
   defaultOpen?: boolean;
   children: ReactNode;
 }
@@ -68,56 +77,102 @@ export default function PersistentDetails({
   children,
   ...rest
 }: Props) {
-  // Lazy initializer — 클라이언트 첫 render 에서 localStorage 동기 read.
-  // SSR 에서는 window 없음 → defaultOpen 반환 → server HTML 은 defaultOpen 으로.
-  // 클라이언트 hydration 시 stored value 사용 → SSR HTML 과 다를 수 있음 →
-  // <details suppressHydrationWarning> 으로 경고 무음. React 는 commit phase
-  // 에 DOM 정정. (이전 useEffect 패턴은 첫 paint 에 default 가 잠깐 보이는
-  // flash 가 있어서 사용자가 "복귀 시 펼쳐짐" 으로 인지하는 사고 유발.)
+  // 초기 open — 클라이언트 첫 render 에서 localStorage 동기 read.
   const [open, setOpen] = useState<boolean>(() => {
     if (typeof window === "undefined") return defaultOpen;
     const store = readStore();
     return persistKey in store ? (store[persistKey] ?? defaultOpen) : defaultOpen;
   });
 
-  // persistKey 변경 (드물지만 동적 키 케이스) 시에도 재적용.
-  const lastPersistKey = useRef(persistKey);
-  useEffect(() => {
-    if (lastPersistKey.current === persistKey) return;
-    lastPersistKey.current = persistKey;
-    const store = readStore();
-    if (persistKey in store) {
-      setOpen(store[persistKey] ?? defaultOpen);
-    } else {
-      setOpen(defaultOpen);
-    }
-  }, [persistKey, defaultOpen]);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const animatingRef = useRef(false);
 
-  function handleToggle(e: SyntheticEvent<HTMLDetailsElement>) {
-    // 중첩 <details> (기수 박스 안의 팀 박스) 의 toggle 이 부모 핸들러까지
-    // 전파되던 사고 (2026-05-14): 팀 박스 닫으면 기수 박스도 같이 닫힘.
-    //   - `e.target !== e.currentTarget` → 자식 details 발 이벤트 무시.
-    //   - `e.currentTarget.open` → 항상 "이 details" 의 상태만 읽음 (target 아님).
-    if (e.target !== e.currentTarget) return;
-    const next = e.currentTarget.open;
-    if (next === open) return; // React prop sync 로 인한 self-fire 무시.
-    setOpen(next);
+  // DOM `open` 속성을 React 상태와 동기화 — **애니메이션 중엔 skip** (handler 가
+  // 직접 제어). useLayoutEffect 라 paint 전 적용 → 첫 render flash 없음.
+  // JSX 에 `open` prop 을 안 넣어서 hydration mismatch 도 없음.
+  useLayoutEffect(() => {
+    if (animatingRef.current) return;
+    const d = detailsRef.current;
+    if (d && d.open !== open) d.open = open;
+  });
+
+  function persist(next: boolean) {
     const store = readStore();
     store[persistKey] = next;
     writeStore(store);
   }
 
+  function handleSummaryClick(e: MouseEvent<HTMLElement>) {
+    // native 즉시 토글 차단 — 우리가 애니메이션 후 details.open 직접 set.
+    e.preventDefault();
+    if (animatingRef.current) return; // 애니메이션 중 재클릭 무시
+    const details = detailsRef.current;
+    const content = contentRef.current;
+    if (!details || !content) return;
+
+    const closing = details.open;
+    const reduce = prefersReducedMotion();
+
+    if (reduce) {
+      details.open = !closing;
+      setOpen(!closing);
+      persist(!closing);
+      return;
+    }
+
+    animatingRef.current = true;
+
+    if (closing) {
+      // 닫기: 현재 높이 → 0. details.open 은 애니메이션 끝까지 true 유지.
+      content.style.overflow = "hidden";
+      content.style.height = `${content.scrollHeight}px`;
+      void content.offsetHeight; // reflow
+      content.style.transition = `height ${ANIM_MS}ms ease`;
+      content.style.height = "0px";
+      const onEnd = () => {
+        content.removeEventListener("transitionend", onEnd);
+        details.open = false;
+        content.style.height = "";
+        content.style.transition = "";
+        content.style.overflow = "";
+        animatingRef.current = false;
+        setOpen(false);
+        persist(false);
+      };
+      content.addEventListener("transitionend", onEnd);
+    } else {
+      // 열기: details.open 먼저 true (콘텐츠 렌더) → 0 → scrollHeight → auto.
+      details.open = true;
+      content.style.overflow = "hidden";
+      content.style.height = "0px";
+      void content.offsetHeight; // reflow
+      content.style.transition = `height ${ANIM_MS}ms ease`;
+      content.style.height = `${content.scrollHeight}px`;
+      const onEnd = () => {
+        content.removeEventListener("transitionend", onEnd);
+        content.style.height = "";
+        content.style.transition = "";
+        content.style.overflow = "";
+        animatingRef.current = false;
+        setOpen(true);
+        persist(true);
+      };
+      content.addEventListener("transitionend", onEnd);
+    }
+  }
+
+  // children[0] = <summary>, 나머지 = 콘텐츠.
+  const childArray = Children.toArray(children);
+  const summary = childArray[0];
+  const content = childArray.slice(1);
+
   return (
-    <details
-      {...rest}
-      // pd-animated: ::details-content 펼침/접힘 transition (globals.css).
-      //   미지원 브라우저는 native 즉시 토글로 graceful degrade.
-      className={`pd-animated ${rest.className ?? ""}`}
-      open={open}
-      onToggle={handleToggle}
-      suppressHydrationWarning
-    >
-      {children}
+    <details ref={detailsRef} {...rest} suppressHydrationWarning>
+      {isValidElement<{ onClick?: (e: MouseEvent<HTMLElement>) => void }>(summary)
+        ? cloneElement(summary, { onClick: handleSummaryClick })
+        : summary}
+      <div ref={contentRef}>{content}</div>
     </details>
   );
 }

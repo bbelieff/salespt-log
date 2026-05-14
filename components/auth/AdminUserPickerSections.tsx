@@ -46,7 +46,7 @@ function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   return (
     <span
       title={`같은 시트 공유: ${siblings.join(", ")}`}
-      className="ml-1 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700"
+      className="ml-1 text-[10px] font-medium text-sky-600"
     >
       🔗 +{siblings.length}
     </span>
@@ -349,7 +349,7 @@ export function ReservedSection({
                       title="구글 시트 원본 새 탭으로 열기"
                       className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
                     >
-                      📊 시트 ↗
+                      📊 시트
                     </a>
                   )}
                   <button
