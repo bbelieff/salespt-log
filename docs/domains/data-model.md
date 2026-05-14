@@ -72,7 +72,7 @@ last_review: 2026-04-27
 - **N1**: "시작일" 라벨 텍스트 (참조 X)
 - **O1**: 수강시작일 (1주차 시작, 금) — `startDateCell` (사용자 시트 2026-05-09 변경)
 - **N2**: "종강총회" 라벨 텍스트 (참조 X)
-- **O2**: 수료일 = 종강총회일 — `graduationDateCell`, 수식 `=O1+57` 가능
+- **O2**: 수료일 = 종강총회일 — `graduationDateCell`. 7기+ `=O1+50`, 6기 legacy `=O1+57` (ADR-0005). 코드는 O2 직접값만 읽음.
 - **N6**: 총매출 합계 — 대시보드 D21이 이 셀을 참조 (`='01 영업관리'!N6`)
 
 ## 6단계 영업퍼널 ⭐ (대시보드 SSOT)
@@ -168,17 +168,15 @@ export interface MeProfile {
   email: string;
   cohort: string;          // "6기"  ← 01 영업관리!B3 (formatCohort 정규화)
   name: string;            // "김믿음" ← 01 영업관리!C3
-  courseStartISO: string;  // "2026-04-10" ← 01 영업관리!N1 (1주차 시작, 금)
-  graduationISO: string;   // courseStart + 57d = 종강총회일 (= 수료일)
+  courseStartISO: string;  // "2026-05-15" ← 01 영업관리!O1 (1주차 시작, 금)
+  graduationISO: string;   // 7기+: O1 + 50d = 종강총회일(= 수료일). 6기 legacy: O1+57. ADR-0005
 }
 ```
 
-> **⚠️ 코드 follow-up 필요**: 현재 `lib/service/me.ts` 는 상수 `WEEK_TARGET_OFFSET_DAYS = 49`,
-> 필드명 `weekTargetISO` 로 되어있음. 이 SSOT 머지 후 별도 `fix/dday-graduation-anchor` 브랜치에서:
-> 1. 49 → **57** 로 변경
-> 2. 상수명 `WEEK_TARGET_OFFSET_DAYS` → `GRADUATION_OFFSET_DAYS`
-> 3. 필드명 `weekTargetISO` → `graduationISO` (DDayBadge prop 포함 일괄 rename)
-> 4. 6기 fixture 단위 테스트: `courseStart=2026-04-10` → `graduation=2026-06-06`
+> **종강총회 offset (ADR-0005)**: 7기+ 는 `O1 + 50` (O1 = 1주차 강의시작일 금요일,
+> 종강총회 = 8주차 시작 다음날 토). 6기 이하 legacy 는 `O1 + 57` (O1 이 ~1주 앞서
+> 세팅된 옛 방식). 코드(`me.ts`, `sales.ts:readGraduation`)는 시트 O2 직접값만
+> 신뢰하고 offset 을 강제하지 않음. `GRADUATION_OFFSET_DAYS = 50` 은 fixture 전용.
 
 ### 표시 문자열 규칙 (TopHeader 그룹 ②)
 

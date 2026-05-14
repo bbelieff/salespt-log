@@ -144,7 +144,8 @@ export async function readCourseStart(
 
 /**
  * 영업관리 O2에서 종강총회일(=수료일) 직접 읽기 (N2는 "종강총회" 라벨).
- * data-model.md SSOT: O2는 시트 수식 `=O1+57` 또는 직접 입력.
+ * ADR-0005: O2 는 7기+ `=O1+50`, 6기 legacy `=O1+57` 또는 직접 입력.
+ * 코드는 O2 직접값만 신뢰 — offset 강제 안 함.
  * 헤더 D-day 와 메인 배너 종강총회일 표시에 사용.
  */
 export async function readGraduation(
@@ -160,7 +161,7 @@ export async function readGraduation(
   const raw = res.data.values?.[0]?.[0];
   if (raw === undefined || raw === null || raw === "") {
     throw new Error(
-      `[sales.ts] ${range}에 종강총회일이 비어있습니다. 시트 O2에 입력 또는 수식(=O1+57) 설정 필요.`,
+      `[sales.ts] ${range}에 종강총회일이 비어있습니다. 시트 O2에 입력 또는 수식(7기+ =O1+50, ADR-0005) 설정 필요.`,
     );
   }
   if (typeof raw === "number") {

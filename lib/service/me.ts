@@ -6,7 +6,7 @@
  *  - 사용자 개인 시트 01 영업관리!B3:C3 → 기수/이름 (표시값 SSOT).
  *  - 사용자 개인 시트 01 영업관리!O1 → 수강시작일 (1주차 시작, 금요일).
  *  - **사용자 개인 시트 01 영업관리!O2 → 종강총회일 (= 수료일, 토요일)**
- *    시트는 보통 `=O1+57` 수식이거나 직접 입력. 코드는 그대로 읽기만.
+ *    7기+: O2 = `=O1+50`. 6기 legacy: `=O1+57` (ADR-0005). 코드는 그대로 읽기만.
  *
  * 사용처:
  *  - TopHeader 컴포넌트 — 모든 탭 상단 "{기수} {이름} 대표님" 표시
@@ -17,10 +17,12 @@ import { findUserByEmail } from "@/repo/users";
 import { readProfileBundle } from "@/repo/sales";
 
 /**
- * 참고 상수: 시트 O2가 보통 `=O1+57` 수식인 경우의 offset.
- * 코드는 O2를 직접 읽으므로 이 값을 사용하지 않지만, fixture 테스트에서 검증용으로 유지.
+ * 종강총회 offset (7기+ 현행 모델): O2 = O1 + 50. ADR-0005 참조.
+ * production loadMe() 는 시트 O2 를 직접 읽으므로 이 상수를 쓰지 않음 —
+ * fixture 테스트(computeGraduationISO) 검증용으로만 유지.
+ * 6기 이하 legacy 는 O1+57 이지만 그 시트들은 O2 직접값이 진실이라 상수화 안 함.
  */
-export const GRADUATION_OFFSET_DAYS = 57;
+export const GRADUATION_OFFSET_DAYS = 50;
 
 export interface MeProfile {
   email: string;
