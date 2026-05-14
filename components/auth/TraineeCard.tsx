@@ -177,16 +177,19 @@ export default function TraineeCard({
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
           {canAssign ? (
+            // whitespace-nowrap: 좁은 너비에서 한글 character-by-character wrap 차단
+            // ("담 / 당 / 미 / 배 / 정" 세로 깨짐 사고 2026-05-14). 부모는 flex-wrap
+            // 이라 button 단위로만 wrap.
             <button
               type="button"
               onClick={() => setTrainerOpen((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
               title="담당 트레이너 변경 — 토글 즉시 저장"
             >
               <span>담당</span>
               <span className="font-bold">{trainerNames}</span>
               <svg
-                className={`h-3 w-3 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
+                className={`h-3 w-3 shrink-0 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2.5}
@@ -196,7 +199,7 @@ export default function TraineeCard({
               </svg>
             </button>
           ) : (
-            <span>
+            <span className="whitespace-nowrap">
               <span className="text-gray-400">담당</span>{" "}
               <span className="font-semibold">{trainerNames}</span>
             </span>

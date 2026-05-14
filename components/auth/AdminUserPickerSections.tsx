@@ -122,12 +122,15 @@ export function CohortSection({
   // 기수 박스: 배경에서 더 잘 구분되게 slate 톤 + 진한 테두리. open 상태일 때
   // 헤더 영역에 좌측 indigo accent bar 로 무게감. (2026-05-13 시인성 개선)
   return (
+    // overflow-hidden: outer rounded-2xl + summary rectangular bottom corner 의
+    // 라운드 mismatch 로 닫힘 상태에서 모서리에 slate-100 sliver 가 비치는
+    // 사고 (2026-05-14) — 외곽이 inner content 를 자기 모양으로 clip 하도록.
     <PersistentDetails
       persistKey={`cohort:${cohort}${archived ? ":archived" : ""}`}
       defaultOpen
-      className="group rounded-2xl border-2 border-slate-300 bg-slate-100 shadow-sm open:bg-white open:shadow-md"
+      className="group overflow-hidden rounded-2xl border-2 border-slate-300 bg-slate-100 shadow-sm open:bg-white open:shadow-md"
     >
-      <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-t-xl border-l-4 border-indigo-500 bg-slate-50 px-4 py-3 group-open:bg-white hover:bg-slate-100">
+      <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-indigo-500 bg-slate-50 px-4 py-3 group-open:bg-white hover:bg-slate-100">
         <svg
           className="h-3.5 w-3.5 shrink-0 text-indigo-500 transition-transform group-open:rotate-90"
           fill="none"
@@ -242,7 +245,7 @@ function CohortBody({
           key={teamName}
           persistKey={`team:${cohort}:${teamName}${archived ? ":archived" : ""}`}
           defaultOpen
-          className="rounded-xl border border-indigo-200 bg-indigo-50/30 open:bg-white"
+          className="overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50/30 open:bg-white"
         >
           <summary className="cursor-pointer px-3 py-2 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50">
             🏷️ {teamName} · {members.length}명
@@ -291,7 +294,7 @@ export function ReservedSection({
     <PersistentDetails
       persistKey="reserved"
       defaultOpen={false}
-      className="group rounded-2xl border border-amber-200 bg-amber-50/40 open:bg-white"
+      className="group overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/40 open:bg-white"
     >
       <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-amber-50">
         <span className="text-sm font-bold text-amber-800">
