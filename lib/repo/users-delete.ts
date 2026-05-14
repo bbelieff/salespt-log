@@ -85,7 +85,9 @@ export async function removeTraineeCompletely(email: string): Promise<void> {
  * Admin 전용: 트레이너 퇴출 — 담당 매핑 cleanup 후 row 삭제.
  *
  *  1. 모든 trainee 의 G 컬럼(assignedTrainer)에서 이 trainer email 제거.
- *  2. trainer row 자체 삭제.
+ *  2. trainer row 가 있으면 삭제. synth admin (registry row 없음) 은 삭제할
+ *     row 가 없으므로 매핑 cleanup 만 하고 종료 — deleteUserByEmail 은 row 없으면
+ *     throw 하므로 존재 확인 후 호출. (2026-05-14 "김믿음 핸들" 사고 후속)
  *
  * pending 거절(reject-trainer)이 단순 row 삭제인 반면 이 함수는 active
  * 트레이너 박탈 + 잔존 매핑 정리. 호출 후 cache 무효화.
@@ -102,5 +104,8 @@ export async function removeTrainerCompletely(trainerEmail: string): Promise<voi
       current.filter((e) => e !== lc),
     );
   }
-  await deleteUserByEmail(trainerEmail);
+  const hasRow = all.some((u) => u.email.toLowerCase() === lc);
+  if (hasRow) {
+    await deleteUserByEmail(trainerEmail);
+  }
 }
