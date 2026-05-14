@@ -149,12 +149,15 @@ export default function TraineeCard({
       {...(dragAttributes ?? {})}
       className={`overflow-hidden rounded-xl border ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"} ${isDragging ? "opacity-50 ring-2 ring-indigo-300" : ""}`}
     >
+      {/* 2행 풀폭 레이아웃 (2026-05-14 재배치) — 이전엔 데스크탑에서 info-block
+          (3줄) 옆에 buttons-block(1줄) 이 세로 중앙 정렬돼 버튼 위아래 빈 공간이
+          컸음. Row1 = 이름↔액션버튼 (justify-between), Row2 = 팀+담당 (flex-1)
+          → 두 행 모두 풀폭, 공간 손실 제거. 담당이 트레이너 다수로 아랫쪽으로
+          늘어나도 Row1 버튼은 위에 고정이라 가려지지 않음. */}
       <div className="flex items-stretch gap-2 p-3 sm:gap-3 sm:p-4">
         {dragListeners && (
-          // 드래그 핸들 — 모바일에서도 노출 (이전엔 `hidden sm:inline-flex` 라
-          // 모바일에서 보이지 않아 순서 변경 불가). touch-action: none 으로 page
-          // scroll 와 충돌 차단 — dnd-kit TouchSensor long-press(200ms)+8px tolerance
-          // 와 자연스럽게 연동. (2026-05-14)
+          // 드래그 핸들 — 모바일에서도 노출. touch-action: none 으로 page scroll
+          // 충돌 차단 (dnd-kit TouchSensor long-press 와 연동). (2026-05-14)
           <button
             type="button"
             aria-label="드래그하여 순서 변경"
@@ -166,109 +169,106 @@ export default function TraineeCard({
             <span className="text-base leading-none">⋮⋮</span>
           </button>
         )}
-        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        {/* 이름 + 다중계정 배지. email 은 일부러 숨김 — 관리 화면에서 가독성 우선
-            (사용자 피드백 2026-05-14). 같은 시트 공유 정보는 +N 배지 hover 로 확인. */}
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-sm font-black text-gray-900">
-            {u.name || "(이름 없음)"}
-          </span>
-          <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
-        </div>
-        {/* 팀 (윗줄, compact) → 담당 (아랫줄, 카드 우측 끝까지 + 줄바꿈 허용).
-            담당이 트레이너 여러 명으로 늘어나도 위로(이름) 위치는 고정, 아래로 (다음
-            카드 방향) 확장 → 같은 row 의 [유보/시트/웹앱] 버튼을 가리지 않음.
-            (사용자 피드백 2026-05-14: "취지가 아래로 긴게 들어가게 하는거야") */}
-        {!viewOnly && (
-          <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-600">
-            <span className="text-gray-400">팀</span>
-            <input
-              type="text"
-              value={team}
-              onChange={(e) => setTeam(e.target.value)}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              placeholder="미배정"
-              className={`rounded border px-1.5 py-0.5 text-[11px] outline-none ${
-                dirty
-                  ? "border-indigo-400 bg-indigo-50"
-                  : "border-gray-200 bg-white"
-              } focus:border-indigo-500`}
-              style={{ width: 70 }}
-            />
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          {/* Row 1: 이름 + 다중계정 배지 ↔ 액션 버튼 (유보/시트/웹앱).
+              email 은 숨김 — 관리 화면 가독성 (시트 공유는 +N 배지 hover). */}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <div className="flex min-w-0 items-baseline gap-x-2">
+              <span className="text-sm font-black text-gray-900">
+                {u.name || "(이름 없음)"}
+              </span>
+              <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
+            </div>
+            {!viewOnly && (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onReserve(u.email)}
+                  disabled={busy !== null}
+                  title="명단에서 숨김 (유보로 이동, row 는 살아있음)"
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {busy === u.email ? "..." : "유보"}
+                </button>
+                {u.spreadsheetId && (
+                  <a
+                    href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="구글 시트 원본 새 탭으로 열기"
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                  >
+                    📊 시트 ↗
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onPick(u.email)}
+                  disabled={busy !== null}
+                  title="웹앱 (5탭 UI) 으로 진입 — impersonation"
+                  className="rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                >
+                  {busy === u.email ? "여는 중..." : "웹앱 →"}
+                </button>
+              </div>
+            )}
           </div>
-        )}
-        <div className="mt-1 text-[11px] text-gray-600">
-          {canAssign ? (
-            <button
-              type="button"
-              onClick={() => setTrainerOpen((v) => !v)}
-              className="flex w-full items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
-              title="담당 트레이너 변경 — 토글 즉시 저장"
-            >
-              <span className="shrink-0">담당:</span>
-              <span className="min-w-0 flex-1 break-words font-bold">
-                {trainerNames}
+          {/* Row 2: 팀 (compact) + 담당 (flex-1, 카드 우측 끝까지 + 줄바꿈). */}
+          <div className="flex flex-wrap items-start gap-x-3 gap-y-1 text-[11px] text-gray-600">
+            {!viewOnly && (
+              <span className="inline-flex shrink-0 items-center gap-1">
+                <span className="text-gray-400">팀</span>
+                <input
+                  type="text"
+                  value={team}
+                  onChange={(e) => setTeam(e.target.value)}
+                  onBlur={commit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  placeholder="미배정"
+                  className={`rounded border px-1.5 py-0.5 text-[11px] outline-none ${
+                    dirty
+                      ? "border-indigo-400 bg-indigo-50"
+                      : "border-gray-200 bg-white"
+                  } focus:border-indigo-500`}
+                  style={{ width: 70 }}
+                />
               </span>
-              <svg
-                className={`mt-0.5 h-3 w-3 shrink-0 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
+            )}
+            {canAssign ? (
+              <button
+                type="button"
+                onClick={() => setTrainerOpen((v) => !v)}
+                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+                title="담당 트레이너 변경 — 토글 즉시 저장"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          ) : (
-            <span className="flex w-full items-start gap-1">
-              <span className="shrink-0 text-gray-400">담당:</span>
-              <span className="min-w-0 flex-1 break-words font-semibold">
-                {trainerNames}
+                <span className="shrink-0">담당:</span>
+                <span className="min-w-0 flex-1 break-words font-bold">
+                  {trainerNames}
+                </span>
+                <svg
+                  className={`mt-0.5 h-3 w-3 shrink-0 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            ) : (
+              <span className="flex min-w-0 flex-1 items-start gap-1">
+                <span className="shrink-0 text-gray-400">담당:</span>
+                <span className="min-w-0 flex-1 break-words font-semibold">
+                  {trainerNames}
+                </span>
               </span>
-            </span>
-          )}
-        </div>
-      </div>
-      {!viewOnly && (
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onReserve(u.email)}
-            disabled={busy !== null}
-            title="명단에서 숨김 (유보로 이동, row 는 살아있음)"
-            className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-          >
-            {busy === u.email ? "..." : "유보"}
-          </button>
-          {u.spreadsheetId && (
-            <a
-              href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="구글 시트 원본 새 탭으로 열기"
-              className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
-            >
-              📊 시트 ↗
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={() => onPick(u.email)}
-            disabled={busy !== null}
-            title="웹앱 (5탭 UI) 으로 진입 — impersonation"
-            className="rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-          >
-            {busy === u.email ? "여는 중..." : "웹앱 →"}
-          </button>
-        </div>
-      )}
+            )}
+          </div>
         </div>
       </div>
       {canAssign && trainerOpen && (
