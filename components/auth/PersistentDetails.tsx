@@ -94,7 +94,12 @@ export default function PersistentDetails({
   }, [persistKey, defaultOpen]);
 
   function handleToggle(e: SyntheticEvent<HTMLDetailsElement>) {
-    const next = (e.target as HTMLDetailsElement).open;
+    // 중첩 <details> (기수 박스 안의 팀 박스) 의 toggle 이 부모 핸들러까지
+    // 전파되던 사고 (2026-05-14): 팀 박스 닫으면 기수 박스도 같이 닫힘.
+    //   - `e.target !== e.currentTarget` → 자식 details 발 이벤트 무시.
+    //   - `e.currentTarget.open` → 항상 "이 details" 의 상태만 읽음 (target 아님).
+    if (e.target !== e.currentTarget) return;
+    const next = e.currentTarget.open;
     if (next === open) return; // React prop sync 로 인한 self-fire 무시.
     setOpen(next);
     const store = readStore();
@@ -105,6 +110,9 @@ export default function PersistentDetails({
   return (
     <details
       {...rest}
+      // pd-animated: ::details-content 펼침/접힘 transition (globals.css).
+      //   미지원 브라우저는 native 즉시 토글로 graceful degrade.
+      className={`pd-animated ${rest.className ?? ""}`}
       open={open}
       onToggle={handleToggle}
       suppressHydrationWarning

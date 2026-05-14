@@ -166,3 +166,31 @@ body {
   color: #6b7280;
   font-weight: 600;
 }
+
+/* PersistentDetails 펼침/접힘 부드러운 전환 (2026-05-14 사용자 피드백).
+   "갑자기 많은 픽셀이 닫히고 열리는 화면전환" 혼란 완화 — 기수/팀/유보 박스.
+   ::details-content + interpolate-size 는 Chrome 131+/모던 브라우저 (admin
+   전용 화면이라 커버리지 충분). 미지원 브라우저는 native 즉시 토글로
+   graceful degrade — 동작은 동일, 애니메이션만 생략. */
+.pd-animated {
+  interpolate-size: allow-keywords;
+}
+.pd-animated::details-content {
+  block-size: 0;
+  overflow: clip;
+  opacity: 0;
+  transition:
+    block-size 0.24s ease,
+    opacity 0.2s ease,
+    content-visibility 0.24s;
+  transition-behavior: allow-discrete;
+}
+.pd-animated[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-animated::details-content {
+    transition: none;
+  }
+}
