@@ -56,25 +56,40 @@ function meetingsRowFormulas(r: number): {
   };
 }
 
-// ── 데이터 행 식별 (C 컬럼 = 날짜) ───────────────────────────────
-async function readDataRows(spreadsheetId: string): Promise<number[]> {
-  const range = `${tabRef(SALES_TAB)}!C${SALES_BLOCK_START}:C${SALES_LAST_ROW}`;
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const values = res.data.values ?? [];
-  const dataRows: number[] = [];
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i]?.[0];
-    // 데이터 행: C 셀이 number(date serial). 합계/헤더는 string ("주차별합계" 등) 또는 empty.
-    if (typeof v === "number" && v > 0) {
-      dataRows.push(SALES_BLOCK_START + i);
+// ── 데이터 행 식별 — 결정론적 계산 (2026-05-14) ─────────────────
+//
+// 영업관리 시트 구조는 고정 공식:
+//   row = blockStart + (week-1)*blockStride + dayIdx*4 + channelIdx
+// (sales.ts:salesRowFor 가 쓰기에 쓰는 바로 그 공식). 8주 × 7일 × 4채널
+// = 224 데이터 행.
+//
+// **이전 구현 (readDataRows) 문제**: C 컬럼을 읽어서 "숫자(날짜 serial)인
+// 행"만 데이터 행으로 인식. C 셀이 비었거나 텍스트면 그 행은 누락 → I~P
+// 수식이 안 깔림. 수식복원 사고 + 버전복원 후 일부 C 셀 상태가 흐트러져
+// "각 채널별 미팅예약기록 셀에 수식이 없다" 사고 발생.
+//
+// 결정론적 계산은 C 셀 상태와 무관하게 224개 구조적 데이터 행을 항상
+// 정확히 산출 — 합계/헤더 행은 공식상 절대 포함 안 됨. 시트 read 0회.
+const SALES_WEEKS = 8;
+const SALES_DAYS_PER_WEEK = 7;
+const SALES_CHANNELS = 4;
+
+/** 영업관리 데이터 행 결정론적 산출. 단위 테스트용으로 export. */
+export function computeDataRows(): number[] {
+  const rows: number[] = [];
+  for (let week = 1; week <= SALES_WEEKS; week++) {
+    for (let dayIdx = 0; dayIdx < SALES_DAYS_PER_WEEK; dayIdx++) {
+      for (let channelIdx = 0; channelIdx < SALES_CHANNELS; channelIdx++) {
+        rows.push(
+          SALES_BLOCK_START +
+            (week - 1) * SALES_BLOCK_STRIDE +
+            dayIdx * 4 +
+            channelIdx,
+        );
+      }
     }
   }
-  return dataRows;
+  return rows;
 }
 
 // ── 영업관리 한 행에 들어갈 8개 수식 ─────────────────────────────
@@ -137,7 +152,7 @@ export function isSafeToOverwrite(current: unknown): boolean {
 export async function installFormulas(
   spreadsheetId: string,
 ): Promise<InstallReport> {
-  const dataRows = await readDataRows(spreadsheetId);
+  const dataRows = computeDataRows();
 
   // Pre-read: FORMULA mode 로 타겟 범위 현재 내용 가져옴.
   //   - 04 업체관리 N/O/Q 컬럼 (1~1000행).
@@ -253,14 +268,14 @@ export async function installFormulas(
  *
  * 클리어 범위:
  *   - 04 업체관리: N2:N, O2:O, Q2:Q
- *   - 01 영업관리: 데이터행 I~P (합계행은 안 건드림 — readDataRows 가 식별)
+ *   - 01 영업관리: 데이터행 I~P (합계행은 안 건드림 — computeDataRows 가 식별)
  *
  * **CLAUDE.md §2 규칙 5**: 모든 bulk-write 는 user raw 데이터 보존 의무.
  */
 export async function uninstallFormulas(
   spreadsheetId: string,
 ): Promise<{ cleared: number; preserved: number; preservedCells: string[] }> {
-  const dataRows = await readDataRows(spreadsheetId);
+  const dataRows = computeDataRows();
 
   // Pre-read FORMULA mode — install 과 동일 패턴.
   const [meetingsExisting, salesExisting] = await Promise.all([
