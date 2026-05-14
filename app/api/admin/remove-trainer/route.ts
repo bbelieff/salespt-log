@@ -11,7 +11,11 @@
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
-import { removeTrainerCompletely, findUserByEmail } from "@/repo/users";
+import {
+  removeTrainerCompletely,
+  findUserByEmail,
+  isAdminSynthCandidate,
+} from "@/repo/users";
 
 export async function POST(req: Request) {
   const sessionEmail = await getSessionEmail();
@@ -24,8 +28,14 @@ export async function POST(req: Request) {
   const target = String(body.email ?? "").trim();
   if (!target) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
 
+  // registry trainer row OR ADMIN_EMAILS 멤버 허용. assign-trainee / set-trainer-dept
+  // 와 동일 정책 — admin row state·role 무관. synth admin (row 없음) 은
+  // removeTrainerCompletely 가 매핑 cleanup 만 수행 (삭제할 row 없음).
+  // 이전엔 `!u || u.role !== "trainer"` 라 admin 거부 → "김믿음 핸들" 사고 (2026-05-14).
   const u = await findUserByEmail(target);
-  if (!u || u.role !== "trainer") {
+  const isTrainerRow = !!u && u.role === "trainer";
+  const isAdmin = isAdminSynthCandidate(target);
+  if (!isTrainerRow && !isAdmin) {
     return NextResponse.json({ error: "not_trainer" }, { status: 404 });
   }
 

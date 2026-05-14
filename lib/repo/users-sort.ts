@@ -8,19 +8,24 @@
  * 호출자가 알고 있고 (drag 한 박스의 멤버 emails 만), 여기는 row 매칭 + M 컬럼
  * batchUpdate 만. 다른 컬럼은 절대 건드리지 않음.
  *
+ * **synth admin 자동 row 생성 (2026-05-14)**: ADMIN_EMAILS 멤버인데 registry
+ * row 가 없으면 드래그 정렬이 silent skip 되던 사고 ("김믿음 핸들 안 먹힘" 3회
+ * 반복 보고). row 없는 admin 은 trainer row 를 append (M 에 sortOrder 포함) →
+ * 이후 모든 row 기반 작업 (assign/dept/remove/sort) 이 일관되게 동작.
+ *
  * 청크: PR B-3 migrate 와 동일하게 100 row/call.
  */
-import { registry } from "@/config";
-import { readRange, sheetsClient } from "./sheets-client";
-import { invalidateRegistry } from "./users";
+import { registry, adminNames } from "@/config";
+import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { invalidateRegistry, isAdminSynthCandidate } from "./users";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 const CHUNK_SIZE = 100;
 
 export async function setUserSortOrders(
   orders: { email: string; sortOrder: number }[],
-): Promise<{ updated: number; skipped: number }> {
-  if (orders.length === 0) return { updated: 0, skipped: 0 };
+): Promise<{ updated: number; skipped: number; created: number }> {
+  if (orders.length === 0) return { updated: 0, skipped: 0, created: 0 };
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const emailToRow = new Map<string, number>();
@@ -28,25 +33,60 @@ export async function setUserSortOrders(
     const e = String(rows[i]?.[0] ?? "").trim().toLowerCase();
     if (e) emailToRow.set(e, i + 2); // header offset
   }
+
+  const nameMap = adminNames();
   const updates: { range: string; values: unknown[][] }[] = [];
+  // synth admin (registry row 없는 ADMIN_EMAILS 멤버) → 새 trainer row append.
+  // 드래그 정렬이 row 기반이라 row 없으면 정렬이 저장 안 되던 사고 (2026-05-14).
+  const appendData: (string | number | boolean)[][] = [];
   let skipped = 0;
+
   for (const o of orders) {
-    const sheetRow = emailToRow.get(o.email.toLowerCase());
-    if (!sheetRow) {
-      skipped++;
-      continue;
-    }
+    const lc = o.email.toLowerCase();
     if (!Number.isFinite(o.sortOrder) || o.sortOrder < 0) {
       skipped++;
       continue;
     }
-    updates.push({
-      range: `${reg.tab}!M${sheetRow}`,
-      values: [[String(Math.floor(o.sortOrder))]],
+    const sheetRow = emailToRow.get(lc);
+    if (sheetRow) {
+      // 기존 row → M 컬럼만 update.
+      updates.push({
+        range: `${reg.tab}!M${sheetRow}`,
+        values: [[String(Math.floor(o.sortOrder))]],
+      });
+    } else if (isAdminSynthCandidate(lc)) {
+      // synth admin → 새 trainer row append. M 에 sortOrder 포함 (별도 update 불필요).
+      // cohort="T" (담당 가능 트레이너 — "관리" 아님), role="trainer".
+      // setTrainerDepartment 의 synth append 와 동일 스키마 + M 컬럼.
+      const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
+      appendData.push([
+        lc,
+        "T",
+        fallbackName,
+        "",
+        "trainer",
+        "active",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        String(Math.floor(o.sortOrder)),
+      ]);
+    } else {
+      // 등록 안 된 일반 email — skip (트레이니도 admin 도 아닌데 들어온 경우).
+      skipped++;
+    }
+  }
+
+  if (appendData.length > 0) {
+    // registry RAW (PR D) — 숫자 문자열 "3" 도 텍스트 그대로. parseRow 가 parseInt 복원.
+    await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), appendData, {
+      valueInputOption: "RAW",
     });
   }
   if (updates.length > 0) {
-    // registry RAW (PR D) — 숫자 문자열 "3" 도 그대로 텍스트 저장. parseRow parseInt 로 복원.
     for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
       const chunk = updates.slice(i, i + CHUNK_SIZE);
       await sheetsClient().spreadsheets.values.batchUpdate({
@@ -57,7 +97,13 @@ export async function setUserSortOrders(
         },
       });
     }
+  }
+  if (updates.length > 0 || appendData.length > 0) {
     invalidateRegistry();
   }
-  return { updated: updates.length, skipped };
+  return {
+    updated: updates.length,
+    skipped,
+    created: appendData.length,
+  };
 }
