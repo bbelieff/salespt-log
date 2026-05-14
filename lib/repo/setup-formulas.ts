@@ -105,61 +105,141 @@ function formulasForRow(r: number): Record<string, string> {
 
 export interface InstallReport {
   installed: number;
+  preserved: number;
+  preservedCells: string[];
   details: string[];
 }
 
 /**
- * 시트에 모든 자동 집계 수식을 일괄 설치 (안전 모드).
+ * 셀 값이 덮어쓰기 안전한지 검사. 단위 테스트용으로 export.
+ *   - empty/null/"" → 안전 (쓸 곳 없음)
+ *   - "=..." formula → 안전 (옛 수식 → 새 수식 교체)
+ *   - 그 외 (raw text, number) → **위험** (사용자 수동 입력 보존 필요)
+ *
+ * Sheets API `valueRenderOption: "FORMULA"` 로 read 한 결과 기준.
+ *   - FORMULA mode 는 수식은 그대로 "=..." 문자열 반환, 일반 값은 raw.
+ */
+export function isSafeToOverwrite(current: unknown): boolean {
+  if (current === undefined || current === null || current === "") return true;
+  if (typeof current === "string" && current.startsWith("=")) return true;
+  return false;
+}
+
+/**
+ * 시트에 모든 자동 집계 수식을 일괄 설치 (안전 모드 v2 — 2026-05-14 사고 후).
  * 멱등(idempotent) — 다시 호출해도 같은 수식으로 덮어씀.
+ *
+ * **사용자 데이터 보호 (2026-05-14)**: 옛 기수의 admin 수동 백필 데이터가
+ * 영업관리 I/J/K/L/N/O 에 raw text 로 들어가 있던 케이스를 v1 이 덮어써 사고
+ * 발생. v2 는 각 타겟 셀을 **FORMULA mode 로 pre-read** 해 raw 값이 있으면
+ * skip + report `preservedCells` 에 누적. 수식·빈 셀만 덮어씀.
  */
 export async function installFormulas(
   spreadsheetId: string,
 ): Promise<InstallReport> {
   const dataRows = await readDataRows(spreadsheetId);
+
+  // Pre-read: FORMULA mode 로 타겟 범위 현재 내용 가져옴.
+  //   - 04 업체관리 N/O/Q 컬럼 (1~1000행).
+  //   - 01 영업관리 I~P 컬럼 (데이터 행만).
+  const [meetingsExisting, salesExisting] = await Promise.all([
+    sheetsClient().spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: [
+        `${M_REF}!N2:N${MEETINGS_LAST_ROW}`,
+        `${M_REF}!O2:O${MEETINGS_LAST_ROW}`,
+        `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`,
+      ],
+      valueRenderOption: "FORMULA",
+    }),
+    dataRows.length > 0
+      ? sheetsClient().spreadsheets.values.get({
+          spreadsheetId,
+          range: `${tabRef(SALES_TAB)}!I${SALES_BLOCK_START}:P${SALES_LAST_ROW}`,
+          valueRenderOption: "FORMULA",
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const nExisting = meetingsExisting.data.valueRanges?.[0]?.values ?? [];
+  const oExisting = meetingsExisting.data.valueRanges?.[1]?.values ?? [];
+  const qExisting = meetingsExisting.data.valueRanges?.[2]?.values ?? [];
+  const salesExistingRows = salesExisting?.data.values ?? [];
+
   const data: Array<{ range: string; values: string[][] }> = [];
+  const preservedCells: string[] = [];
 
-  // 04 업체관리 — per-row 수식 (N2:N1000, O2:O1000, Q2:Q1000)
-  // 한 번의 batchUpdate에 1000행 × 1컬럼 배열로 push.
-  const nRows: string[][] = [];
-  const oRows: string[][] = [];
-  const qRows: string[][] = [];
+  // 04 업체관리 — per-cell guard.
   for (let r = 2; r <= MEETINGS_LAST_ROW; r++) {
+    const i = r - 2;
     const f = meetingsRowFormulas(r);
-    nRows.push([f.N]);
-    oRows.push([f.O]);
-    qRows.push([f.Q]);
-  }
-  data.push(
-    { range: `${M_REF}!N2:N${MEETINGS_LAST_ROW}`, values: nRows },
-    { range: `${M_REF}!O2:O${MEETINGS_LAST_ROW}`, values: oRows },
-    { range: `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`, values: qRows },
-  );
-
-  // 01 영업관리 — 데이터 행에만 per-row 수식 (8개 컬럼)
-  for (const r of dataRows) {
-    const formulas = formulasForRow(r);
-    for (const col of SALES_FORMULA_COLS) {
-      data.push({
-        range: `${tabRef(SALES_TAB)}!${col}${r}`,
-        values: [[formulas[col]!]],
-      });
+    const nCur = nExisting[i]?.[0];
+    const oCur = oExisting[i]?.[0];
+    const qCur = qExisting[i]?.[0];
+    if (isSafeToOverwrite(nCur)) {
+      data.push({ range: `${M_REF}!N${r}`, values: [[f.N]] });
+    } else {
+      preservedCells.push(`업체관리 N${r}`);
+    }
+    if (isSafeToOverwrite(oCur)) {
+      data.push({ range: `${M_REF}!O${r}`, values: [[f.O]] });
+    } else {
+      preservedCells.push(`업체관리 O${r}`);
+    }
+    if (isSafeToOverwrite(qCur)) {
+      data.push({ range: `${M_REF}!Q${r}`, values: [[f.Q]] });
+    } else {
+      preservedCells.push(`업체관리 Q${r}`);
     }
   }
 
-  await sheetsClient().spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: "USER_ENTERED",
-      data,
-    },
-  });
+  // 01 영업관리 — 데이터 행만, per-cell guard.
+  // salesExistingRows[i] 의 컬럼 인덱스: I=0, J=1, K=2, L=3, M=4, N=5, O=6, P=7.
+  const COL_IDX: Record<string, number> = {
+    I: 0,
+    J: 1,
+    K: 2,
+    L: 3,
+    M: 4,
+    N: 5,
+    O: 6,
+    P: 7,
+  };
+  for (const r of dataRows) {
+    const formulas = formulasForRow(r);
+    const rowIdx = r - SALES_BLOCK_START;
+    const rowVals = salesExistingRows[rowIdx] ?? [];
+    for (const col of SALES_FORMULA_COLS) {
+      const current = rowVals[COL_IDX[col]!];
+      if (isSafeToOverwrite(current)) {
+        data.push({
+          range: `${tabRef(SALES_TAB)}!${col}${r}`,
+          values: [[formulas[col]!]],
+        });
+      } else {
+        preservedCells.push(`영업관리 ${col}${r}`);
+      }
+    }
+  }
+
+  if (data.length > 0) {
+    await sheetsClient().spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data,
+      },
+    });
+  }
 
   return {
     installed: data.length,
+    preserved: preservedCells.length,
+    preservedCells,
     details: [
-      `04 업체관리: N/O/Q 컬럼 per-row 수식 (각 ${MEETINGS_LAST_ROW - 1}행)`,
-      `01 영업관리: 데이터 행 ${dataRows.length}개 × 8 컬럼 (I~P) = ${dataRows.length * 8}개 셀`,
-      `합계행/헤더/빈 행은 건드리지 않음 (사용자 SUM 수식 보존)`,
+      `04 업체관리: N/O/Q 컬럼 ${MEETINGS_LAST_ROW - 1}행 검사`,
+      `01 영업관리: 데이터 행 ${dataRows.length}개 × 8 컬럼 (I~P) 검사`,
+      `사용자 수동 입력 (raw text/number) ${preservedCells.length}개 셀 보존 — 수식·빈 셀만 덮어씀`,
     ],
   };
 }

@@ -19,6 +19,8 @@ interface SuccessItem {
   name: string;
   cohort: string;
   installed: number;
+  preserved: number;
+  preservedCells: string[];
 }
 interface FailedItem {
   email: string;
@@ -34,8 +36,9 @@ export default function InstallFormulasButton() {
   async function installAll() {
     if (
       !window.confirm(
-        "모든 수강생 시트에 04 업체관리 + 01 영업관리 자동 수식을 일괄 재설치합니다.\n" +
-          "기존 수식은 덮어쓰지만 사용자 입력 데이터는 건드리지 않습니다.\n" +
+        "모든 수강생 시트에 04 업체관리 + 01 영업관리 자동 수식을 일괄 재설치합니다.\n\n" +
+          "✓ 사용자 raw 입력값은 자동 보존됩니다 (수식·빈 셀만 덮어씀).\n" +
+          "  (2026-05-14 안전 가드 도입 — 옛 admin 수동 백필 데이터 사고 후)\n\n" +
           "약 1분 소요. 계속하시겠습니까?",
       )
     )
@@ -52,6 +55,18 @@ export default function InstallFormulasButton() {
       }
       const success: SuccessItem[] = data.success ?? [];
       const failed: FailedItem[] = data.failed ?? [];
+      // 보존된 셀 보고 — 사용자가 raw 값 입력해둔 시트가 있으면 명시.
+      const withPreserved = success.filter((s) => s.preserved > 0);
+      const preservedSummary =
+        withPreserved.length > 0
+          ? `\n\n⚠️ 사용자 raw 입력 보존된 시트 ${withPreserved.length}개:\n` +
+            withPreserved
+              .map(
+                (s) =>
+                  `  · ${s.cohort}기 ${s.name}: ${s.preserved}개 셀 (${s.preservedCells.slice(0, 5).join(", ")}${s.preservedCells.length > 5 ? " 외" : ""})`,
+              )
+              .join("\n")
+          : "";
       const summary =
         `처리: ${data.processed ?? 0}개 시트\n` +
         `✓ 성공: ${success.length}개` +
@@ -62,7 +77,8 @@ export default function InstallFormulasButton() {
                 (f) => `  · ${f.cohort}기 ${f.name}: ${f.error.slice(0, 80)}`,
               )
               .join("\n")
-          : "");
+          : "") +
+        preservedSummary;
       window.alert(summary);
       router.refresh();
     } catch (e) {
