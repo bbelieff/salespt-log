@@ -449,7 +449,7 @@ export default function AdminUserPicker({
 
           {/* 보관된 기수 — collapsed (details) */}
           {archivedGroups.length > 0 && (
-            <details className="group rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
+            <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
               <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
                 <span className="text-sm font-bold text-gray-700">
                   📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)

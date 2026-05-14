@@ -56,15 +56,18 @@ export async function POST(req: Request) {
   }
 
   // 각 trainer 검증.
-  //   - registry row 가 trainer 면 OK
-  //   - row 없어도 ADMIN_EMAILS 에 있으면 synth admin → OK (마스터는 트레이너처럼
-  //     담당 받음. set-trainer-dept 와 동일한 정책.)
-  // 이전엔 (1)만 허용 → 마스터에게 담당 배정 시 not_trainer 사고 (2026-05-14).
+  //   (1) registry row 가 trainer 면 OK
+  //   (2) ADMIN_EMAILS 멤버는 registry row 유무·role 과 무관하게 OK
+  //       (마스터는 트레이너처럼 담당 받음. role="admin" row 가 있어도 동일.)
+  //
+  // 사고 (2026-05-14): 1차 fix 는 `!t && isAdminSynthCandidate(te)` 였는데
+  // beliefkimkim 이 registry 에 role="admin" row 가 존재 → t 가 truthy →
+  // 1차 fix 가 안 먹어서 not_trainer 재발. (2) 는 row state 무관하게 통과.
   for (const te of trainerEmails) {
     const t = await findUserByEmail(te);
     const isTrainerRow = !!t && t.role === "trainer";
-    const isSynthAdmin = !t && isAdminSynthCandidate(te);
-    if (!isTrainerRow && !isSynthAdmin) {
+    const isAdminEmail = isAdminSynthCandidate(te);
+    if (!isTrainerRow && !isAdminEmail) {
       return NextResponse.json(
         { error: "not_trainer", invalid: te },
         { status: 404 },
