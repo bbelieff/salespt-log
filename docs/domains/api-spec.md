@@ -380,9 +380,9 @@
 ```
 
 **응답 필드 설명**:
-- `startDate`: 시트 N1에서 읽은 수강시작일
-- `endDate`: startDate + 55일 (8주 수료일)
-- `editEndDate`: startDate + 69일 (편집 가능 마감일)
+- `startDate`: 시트 O1에서 읽은 수강시작일 (1주차 시작, 금)
+- `endDate`: 종강총회일 = 시트 O2 직접값. 7기+ `=O1+50`, 6기 legacy `=O1+57` (ADR-0005)
+- `editEndDate`: startDate + 69일 (편집 가능 마감일) ※ 7기+ 재조정은 ADR-0005 후속 미정
 - `currentWeek`: 1~8 (수강 기간), 또는 null (유예/종료)
 - `dDay`: 수료일까지 남은 일수 (음수 가능)
 - `editDDay`: 편집 마감까지 남은 일수 (음수 가능)
