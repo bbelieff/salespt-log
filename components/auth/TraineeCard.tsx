@@ -168,55 +168,56 @@ export default function TraineeCard({
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
+        {/* 이름 + 다중계정 배지. email 은 일부러 숨김 — 관리 화면에서 가독성 우선
+            (사용자 피드백 2026-05-14). 같은 시트 공유 정보는 +N 배지 hover 로 확인. */}
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-black text-gray-900">
             {u.name || "(이름 없음)"}
           </span>
-          <span className="text-[11px] text-gray-400">{u.email}</span>
           <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
         </div>
-        {/* 팀 (compact) → 담당 (flex-1, 카드 우측 끝까지 확장).
-            담당 트레이너 여러 명이어도 가로 공간 충분 → wrap 깨짐 없음.
-            (이전엔 담당 먼저+팀 뒤, 둘 다 compact → 담당 좁아서 char wrap 위험.)
-            긴 trainerNames 는 truncate 로 ellipsis. (2026-05-14) */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
-          {!viewOnly && (
-            <span className="inline-flex shrink-0 items-center gap-1">
-              <span className="text-gray-400">팀</span>
-              <input
-                type="text"
-                value={team}
-                onChange={(e) => setTeam(e.target.value)}
-                onBlur={commit}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    (e.target as HTMLInputElement).blur();
-                  }
-                }}
-                placeholder="미배정"
-                className={`rounded border px-1.5 py-0.5 text-[11px] outline-none ${
-                  dirty
-                    ? "border-indigo-400 bg-indigo-50"
-                    : "border-gray-200 bg-white"
-                } focus:border-indigo-500`}
-                style={{ width: 70 }}
-              />
-            </span>
-          )}
+        {/* 팀 (윗줄, compact) → 담당 (아랫줄, 카드 우측 끝까지 + 줄바꿈 허용).
+            담당이 트레이너 여러 명으로 늘어나도 위로(이름) 위치는 고정, 아래로 (다음
+            카드 방향) 확장 → 같은 row 의 [유보/시트/웹앱] 버튼을 가리지 않음.
+            (사용자 피드백 2026-05-14: "취지가 아래로 긴게 들어가게 하는거야") */}
+        {!viewOnly && (
+          <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-gray-600">
+            <span className="text-gray-400">팀</span>
+            <input
+              type="text"
+              value={team}
+              onChange={(e) => setTeam(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              placeholder="미배정"
+              className={`rounded border px-1.5 py-0.5 text-[11px] outline-none ${
+                dirty
+                  ? "border-indigo-400 bg-indigo-50"
+                  : "border-gray-200 bg-white"
+              } focus:border-indigo-500`}
+              style={{ width: 70 }}
+            />
+          </div>
+        )}
+        <div className="mt-1 text-[11px] text-gray-600">
           {canAssign ? (
             <button
               type="button"
               onClick={() => setTrainerOpen((v) => !v)}
-              className="inline-flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+              className="flex w-full items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
               title="담당 트레이너 변경 — 토글 즉시 저장"
             >
-              <span className="shrink-0">담당</span>
-              <span className="min-w-0 flex-1 truncate font-bold">
+              <span className="shrink-0">담당:</span>
+              <span className="min-w-0 flex-1 break-words font-bold">
                 {trainerNames}
               </span>
               <svg
-                className={`h-3 w-3 shrink-0 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
+                className={`mt-0.5 h-3 w-3 shrink-0 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2.5}
@@ -226,9 +227,9 @@ export default function TraineeCard({
               </svg>
             </button>
           ) : (
-            <span className="inline-flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
-              <span className="shrink-0 text-gray-400">담당</span>
-              <span className="min-w-0 flex-1 truncate font-semibold">
+            <span className="flex w-full items-start gap-1">
+              <span className="shrink-0 text-gray-400">담당:</span>
+              <span className="min-w-0 flex-1 break-words font-semibold">
                 {trainerNames}
               </span>
             </span>
