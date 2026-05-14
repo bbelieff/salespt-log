@@ -245,49 +245,99 @@ export async function installFormulas(
 }
 
 /**
- * 모든 설치된 수식을 제거.
- * `batchClear`로 셀을 진짜 비움 (값=""을 쓰면 ARRAYFORMULA spill blocker가 됨).
+ * 모든 설치된 수식을 제거 (안전 모드 v2 — 2026-05-14 사고 후).
  *
- * ⚠️ 합계행에 있던 사용자 SUM 수식은 v1 installer가 ARRAYFORMULA spill로 깨뜨렸을
- * 가능성 있음. 이 함수는 v1이 깨뜨린 수식을 자동 복원하지 못함 (원본 모름).
- * 사용자가 직접 합계행 수식을 다시 입력해야 함.
+ * v1 은 N/O/Q + I~P 전 범위 batchClear 라 사용자 raw 입력값도 같이 날렸음 (install
+ * 사고와 동일 패턴). v2 는 install 과 동일하게 셀별 pre-read 후 raw 값 cell 은
+ * skip — **수식만 비우고 사용자 작성값은 보존**.
  *
  * 클리어 범위:
- *   - 04 업체관리: N2:N, O2:O, Q2:Q (컬럼 전체 — spill blocker 잔재 제거)
- *   - 01 영업관리: 데이터행 후보 전 범위 I~P (BLOCK_START~LAST_ROW)
+ *   - 04 업체관리: N2:N, O2:O, Q2:Q
+ *   - 01 영업관리: 데이터행 I~P (합계행은 안 건드림 — readDataRows 가 식별)
  *
- * 합계행을 안 건드리려면 영업관리는 셀 단위로 데이터행만 클리어.
+ * **CLAUDE.md §2 규칙 5**: 모든 bulk-write 는 user raw 데이터 보존 의무.
  */
 export async function uninstallFormulas(
   spreadsheetId: string,
-): Promise<{ cleared: number }> {
-  // ── 1단계: 업체관리 N/O/Q 컬럼 비우기 (batchClear — 진짜 빈 셀) ─
-  // 범위는 install이 쓰는 N2:N1000과 정확히 매칭.
-  const meetingsRanges = [
-    `${M_REF}!N2:N${MEETINGS_LAST_ROW}`,
-    `${M_REF}!O2:O${MEETINGS_LAST_ROW}`,
-    `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`,
-  ];
-  await sheetsClient().spreadsheets.values.batchClear({
-    spreadsheetId,
-    requestBody: { ranges: meetingsRanges },
-  });
-
-  // ── 2단계: 영업관리 I~P 데이터행 비우기 (합계행은 안 건드림) ─
-  // C 컬럼 읽어서 "데이터 행"만 식별 후 그 행만 클리어.
+): Promise<{ cleared: number; preserved: number; preservedCells: string[] }> {
   const dataRows = await readDataRows(spreadsheetId);
-  const salesRanges: string[] = [];
-  for (const r of dataRows) {
-    for (const col of SALES_FORMULA_COLS) {
-      salesRanges.push(`${tabRef(SALES_TAB)}!${col}${r}`);
+
+  // Pre-read FORMULA mode — install 과 동일 패턴.
+  const [meetingsExisting, salesExisting] = await Promise.all([
+    sheetsClient().spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: [
+        `${M_REF}!N2:N${MEETINGS_LAST_ROW}`,
+        `${M_REF}!O2:O${MEETINGS_LAST_ROW}`,
+        `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`,
+      ],
+      valueRenderOption: "FORMULA",
+    }),
+    dataRows.length > 0
+      ? sheetsClient().spreadsheets.values.get({
+          spreadsheetId,
+          range: `${tabRef(SALES_TAB)}!I${SALES_BLOCK_START}:P${SALES_LAST_ROW}`,
+          valueRenderOption: "FORMULA",
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const nExisting = meetingsExisting.data.valueRanges?.[0]?.values ?? [];
+  const oExisting = meetingsExisting.data.valueRanges?.[1]?.values ?? [];
+  const qExisting = meetingsExisting.data.valueRanges?.[2]?.values ?? [];
+  const salesExistingRows = salesExisting?.data.values ?? [];
+
+  // batchClear 는 단위가 range — 각 cell 단위로 clear 필요 시 개별 range 로 push.
+  const clearRanges: string[] = [];
+  const preservedCells: string[] = [];
+
+  // 04 업체관리 — per-cell 검사.
+  for (let r = 2; r <= MEETINGS_LAST_ROW; r++) {
+    const i = r - 2;
+    if (isSafeToOverwrite(nExisting[i]?.[0])) {
+      clearRanges.push(`${M_REF}!N${r}`);
+    } else {
+      preservedCells.push(`업체관리 N${r}`);
+    }
+    if (isSafeToOverwrite(oExisting[i]?.[0])) {
+      clearRanges.push(`${M_REF}!O${r}`);
+    } else {
+      preservedCells.push(`업체관리 O${r}`);
+    }
+    if (isSafeToOverwrite(qExisting[i]?.[0])) {
+      clearRanges.push(`${M_REF}!Q${r}`);
+    } else {
+      preservedCells.push(`업체관리 Q${r}`);
     }
   }
-  if (salesRanges.length > 0) {
+
+  // 01 영업관리 데이터 행 — per-cell 검사.
+  const COL_IDX: Record<string, number> = {
+    I: 0, J: 1, K: 2, L: 3, M: 4, N: 5, O: 6, P: 7,
+  };
+  for (const r of dataRows) {
+    const rowIdx = r - SALES_BLOCK_START;
+    const rowVals = salesExistingRows[rowIdx] ?? [];
+    for (const col of SALES_FORMULA_COLS) {
+      const current = rowVals[COL_IDX[col]!];
+      if (isSafeToOverwrite(current)) {
+        clearRanges.push(`${tabRef(SALES_TAB)}!${col}${r}`);
+      } else {
+        preservedCells.push(`영업관리 ${col}${r}`);
+      }
+    }
+  }
+
+  if (clearRanges.length > 0) {
     await sheetsClient().spreadsheets.values.batchClear({
       spreadsheetId,
-      requestBody: { ranges: salesRanges },
+      requestBody: { ranges: clearRanges },
     });
   }
 
-  return { cleared: meetingsRanges.length + salesRanges.length };
+  return {
+    cleared: clearRanges.length,
+    preserved: preservedCells.length,
+    preservedCells,
+  };
 }
