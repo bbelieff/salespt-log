@@ -25,6 +25,10 @@ interface SuccessItem {
   name: string;
   cohort: string;
   installed: number;
+  /** 사용자 raw 값 보존된 셀 개수 (2026-05-14 사고 후 안전 가드). */
+  preserved: number;
+  /** 보존된 셀 A1 ref list (최대 50개까지만 클라이언트로 보냄). */
+  preservedCells: string[];
 }
 interface FailedItem {
   email: string;
@@ -67,6 +71,8 @@ export async function POST() {
         name: u.name,
         cohort: u.cohort,
         installed: report.installed,
+        preserved: report.preserved,
+        preservedCells: report.preservedCells.slice(0, 50),
       });
     } catch (e) {
       failed.push({
