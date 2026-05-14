@@ -117,12 +117,15 @@ export default function TrainerAssignCard({
         } hover:bg-slate-100`}
       >
         {dragListeners && (
+          // 드래그 핸들 — 모바일 노출 + touch-action: none 으로 page scroll 충돌 차단.
+          // TraineeCard 와 동일 패턴 (PR fix/admin-roster-and-mobile, 2026-05-14).
           <button
             type="button"
             aria-label="드래그하여 트레이너 카드 순서 변경"
             title="드래그하여 순서 변경"
             {...dragListeners}
-            className="hidden cursor-grab select-none rounded px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing sm:inline-flex sm:items-center sm:self-stretch"
+            style={{ touchAction: "none" }}
+            className="inline-flex w-7 shrink-0 cursor-grab select-none items-center justify-center self-stretch rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
           >
             <span className="text-base leading-none">⋮⋮</span>
           </button>

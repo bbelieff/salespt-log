@@ -17,6 +17,7 @@ import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import {
   setTraineeAssignments,
   findUserByEmail,
+  isAdminSynthCandidate,
 } from "@/repo/users";
 
 export async function POST(req: Request) {
@@ -54,10 +55,16 @@ export async function POST(req: Request) {
     trainerEmails = single ? [single] : [];
   }
 
-  // 각 trainer 존재 + role=trainer 검증.
+  // 각 trainer 검증.
+  //   - registry row 가 trainer 면 OK
+  //   - row 없어도 ADMIN_EMAILS 에 있으면 synth admin → OK (마스터는 트레이너처럼
+  //     담당 받음. set-trainer-dept 와 동일한 정책.)
+  // 이전엔 (1)만 허용 → 마스터에게 담당 배정 시 not_trainer 사고 (2026-05-14).
   for (const te of trainerEmails) {
     const t = await findUserByEmail(te);
-    if (!t || t.role !== "trainer") {
+    const isTrainerRow = !!t && t.role === "trainer";
+    const isSynthAdmin = !t && isAdminSynthCandidate(te);
+    if (!isTrainerRow && !isSynthAdmin) {
       return NextResponse.json(
         { error: "not_trainer", invalid: te },
         { status: 404 },

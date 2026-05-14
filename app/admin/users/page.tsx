@@ -19,6 +19,7 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
+import { adminEmails, adminNames } from "@/config";
 import {
   listAllUsers,
   listPendingTrainees,
@@ -59,9 +60,46 @@ export default async function AdminUsersPage() {
     (u) => !isReservedTrainee(u),
   );
 
-  const activeTrainers = all.filter(
-    (u) => u.role === "trainer" && u.status === "active",
-  );
+  // 활성 트레이너 풀 — /admin/trainers 와 동일한 합성·필터 규칙:
+  //   (1) ADMIN_EMAILS 멤버 중 registry row 없는 사람은 synth admin row 합성
+  //       (마스터가 본인을 명단·드롭다운에서 못 보는 사고 방지).
+  //   (2) registry trainer + status=active OR ADMIN_EMAILS 멤버.
+  //   (3) 관리부서(cohort="관리") 는 트레이너 풀에서 제외 — 담당 배정 대상 아님.
+  // 이전엔 (2)·(3) 누락. 김믿음(admin) 누락 + 관리부서 잘못 표시 사고 (2026-05-14).
+  const adminLc = adminEmails();
+  const adminNameMap = adminNames();
+  const allEmailsLc = new Set(all.map((u) => u.email.toLowerCase()));
+  const synthAdmins = adminLc
+    .filter((e) => !allEmailsLc.has(e))
+    .map((e) => ({
+      email: e,
+      cohort: "",
+      name: adminNameMap[e] ?? e.split("@")[0] ?? e,
+      spreadsheetId: "",
+      role: "admin" as const,
+      status: "active" as const,
+      assignedTrainer: "",
+      team: "",
+      cohortLabel: "",
+      nameLabel: "",
+      courseStartISO: "",
+      graduationISO: "",
+      sortOrder: 0,
+    }));
+  const adminSet = new Set(adminLc);
+  const fullList = [...all, ...synthAdmins].map((u) => {
+    const lc = u.email.toLowerCase();
+    if (!adminSet.has(lc)) return u;
+    const override = adminNameMap[lc];
+    return override ? { ...u, name: u.name || override } : u;
+  });
+  const isManagement = (u: { cohort: string }) => u.cohort.trim() === "관리";
+  const activeTrainers = fullList.filter((u) => {
+    if (isManagement(u)) return false;
+    if (u.role === "trainer" && u.status === "active") return true;
+    if (adminSet.has(u.email.toLowerCase())) return true;
+    return false;
+  });
   const enriched = await enrichUsersWithDates(regularTrainees);
   const archivedLabels = Array.from(archivedSet);
   return (
