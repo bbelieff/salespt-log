@@ -7,10 +7,11 @@
  * 로고는 /public/salespt-logo.png — 워드마크가 이미 포함되어 있어서
  * "세일즈PT" 텍스트는 별도 표시하지 않고 "경영일지"만 표기.
  *
- * 반응형 (display-reference-v2.html 기준):
- *   - xs(360, Galaxy): "경영일지" 숨김 (로고 워드마크에 이미 포함) + 폰트 축소
- *   - sm(390, iPhone 12~16/17e): "경영일지" 표시 + sm 폰트
- *   - md+(402+, iPhone 17/Pro/Pro Max): 동일 (여유 있음)
+ * 반응형 (2026-05-16 갱신 — 모바일에서 이름 truncate 방지 우선):
+ *   - xs~xl (360~480, 모든 폰): "경영일지" **숨김** → 사용자명이 화면 폭 최대로 표시
+ *     (로고 워드마크에 "세일즈PT" 가 이미 포함되어 의미 중복 해소)
+ *   - 2xl+ (768+, 태블릿/데스크탑): "경영일지" 표시 (폭 여유)
+ *   tailwind.config.ts 의 커스텀 screens: sm=390 / xl=480 / 2xl=768 — 폰은 sm~xl 범위.
  *
  * 사용처: contact / schedule / calendar / payment / db 5개 페이지.
  */
@@ -117,7 +118,9 @@ export default function TopHeader({
               {display}
             </span>
           )}
-          <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
+          {/* "경영일지" — 폰은 전 사이즈 숨김 (이름 truncate 방지), 2xl(768px+) 부터 표시.
+                tailwind.config.ts 의 sm(390)·xl(480) 은 모두 폰 → 2xl 만 태블릿+. */}
+          <span className="hidden shrink-0 text-xs font-black text-gray-900 2xl:inline 2xl:text-sm">
             경영일지
           </span>
         </div>
