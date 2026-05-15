@@ -23,6 +23,8 @@ interface BoxCommonProps {
   onSetTeam: (email: string, team: string) => void;
   onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
   activeTrainers?: Trainer[];
+  /** 트레이너 뷰 — 본인 email (lowercase). TraineeCard 로 그대로 전달. */
+  trainerEmailLc?: string;
 }
 
 export default function SortableTraineeBox({

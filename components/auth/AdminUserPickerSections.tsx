@@ -89,6 +89,7 @@ export function CohortSection({
   linkedBySheet,
   archived = false,
   viewOnly = false,
+  trainerEmailLc,
 }: {
   cohort: string;
   list: Trainee[];
@@ -110,6 +111,9 @@ export function CohortSection({
   linkedBySheet?: Map<string, string[]>;
   archived?: boolean;
   viewOnly?: boolean;
+  /** 트레이너 뷰 — 본인 email (lowercase). viewOnly 일 때 본인 담당 trainee 만
+   *  시트/웹앱 버튼 노출. TraineeCard 까지 plumb. */
+  trainerEmailLc?: string;
 }) {
   // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
   const rep = list.find((u) => u.courseStartISO && u.graduationISO);
@@ -185,6 +189,7 @@ export function CohortSection({
         onReorder={onReorder}
         onAssignTrainers={onAssignTrainers}
         activeTrainers={activeTrainers}
+        trainerEmailLc={trainerEmailLc}
       />
     </PersistentDetails>
   );
@@ -205,6 +210,7 @@ function CohortBody({
   onReorder,
   onAssignTrainers,
   activeTrainers,
+  trainerEmailLc,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
   cohort: string;
@@ -220,6 +226,7 @@ function CohortBody({
   onReorder?: (emails: string[]) => void | Promise<void>;
   onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
   activeTrainers?: Trainer[];
+  trainerEmailLc?: string;
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
@@ -238,6 +245,7 @@ function CohortBody({
         onReorder={onReorder}
         onAssignTrainers={onAssignTrainers}
         activeTrainers={activeTrainers}
+        trainerEmailLc={trainerEmailLc}
       />
       {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
       {teamGroups.map(([teamName, members]) => (
@@ -264,6 +272,7 @@ function CohortBody({
               onReorder={onReorder}
               onAssignTrainers={onAssignTrainers}
               activeTrainers={activeTrainers}
+              trainerEmailLc={trainerEmailLc}
             />
           </div>
         </PersistentDetails>
