@@ -32,6 +32,8 @@ export interface MeProfile {
   courseStartISO: string;
   /** 종강총회일 = 수료일 (YYYY-MM-DD) — **O2 직접 읽기** (시트 수식 또는 직접 입력). */
   graduationISO: string;
+  /** 사용자 개인 시트 ID — TopHeader 의 이름 → 구글 시트 링크용. 미등록(admin) 시 "". */
+  spreadsheetId: string;
 }
 
 function toISO(d: Date): string {
@@ -237,5 +239,6 @@ export async function loadMe(email: string): Promise<MeProfile> {
     name: bundle.name || user.name,
     courseStartISO: toISO(bundle.courseStart),
     graduationISO: toISO(bundle.graduation),
+    spreadsheetId: user.spreadsheetId,
   };
 }

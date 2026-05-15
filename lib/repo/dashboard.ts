@@ -13,14 +13,15 @@
  *           rows: 1=생산, 2=유입, 3=컨택, 4=미팅예약, 5=미팅완료, 6=계약
  *           cols: R=매입DB, S=직접생산, T=현수막, U=콜·지·기·소
  *
- * 03 DB관리 탭:
- *   F56 / K56 / U56 — 매입DB / 직접생산 / 현수막 비용
- *
  * 대시보드(자동작성) 탭:
  *   B21:G21 — 재무 (수임비/수수료/매출/비용/이익/이익률)
  *   C33:H40 — 8주차 활동량 (6번째 컬럼)
  *
- * 1회 batchGet 으로 모든 영역 read.
+ * 03 DB관리 비용은 별도 — `lib/service/dashboard.ts` 가 db.ts 의 readPurchases /
+ * readProductions / readBanners 로 raw row 합산 (2026-05-15 사고: 김미란 시트
+ * F56/K56/U56 SUM 수식 누락으로 대시보드 비용 0 → 시트 템플릿 의존 제거, 서버 단일진실원천).
+ *
+ * 1회 batchGet 으로 영업관리 + 대시보드 영역 read.
  */
 import { sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
@@ -40,13 +41,10 @@ export interface DashboardSheetData {
   weeklyContracts: number[];
   /** 대시보드 C33:H40 8주차 활동량 (6번째 컬럼) */
   weeklyActivity: number[];
-  /** 03 DB관리 채널별 비용: [매입DB F56, 직접생산 K56, 현수막 U56] */
-  costByChannel: number[];
 }
 
 const SALES_TAB = SHEET_RANGES.sales.tab;
 const DASH_TAB = SHEET_RANGES.dashboard.tab;
-const DB_TAB = SHEET_RANGES.dbManagement.tab;
 
 function tabRef(t: string) {
   return /[ ()]/.test(t) ? `'${t}'` : t;
@@ -68,9 +66,6 @@ export async function readDashboard(
     `${tabRef(SALES_TAB)}!R1:U6`, // [4] 채널별 6단계 stacking
     ...WEEK_ROWS.map((r) => `${tabRef(SALES_TAB)}!N${r}`), // [5..12] 주차별 계약수
     `${tabRef(DASH_TAB)}!C33:H40`, // [13] 8주차 활동량
-    `${tabRef(DB_TAB)}!F56`, // [14] 매입DB 비용
-    `${tabRef(DB_TAB)}!K56`, // [15] 직접생산 비용
-    `${tabRef(DB_TAB)}!U56`, // [16] 현수막 비용
   ];
 
   const res = await sheetsClient().spreadsheets.values.batchGet({
@@ -95,11 +90,6 @@ export async function readDashboard(
 
   const weeklyContracts = WEEK_ROWS.map((_, i) => num(get(5 + i)[0]?.[0]));
   const weeklyActivity = get(13).map((row) => num(row[5]));
-  const costByChannel = [
-    num(get(14)[0]?.[0]),
-    num(get(15)[0]?.[0]),
-    num(get(16)[0]?.[0]),
-  ];
 
   return {
     finance,
@@ -109,6 +99,5 @@ export async function readDashboard(
     channelStacking,
     weeklyContracts,
     weeklyActivity,
-    costByChannel,
   };
 }

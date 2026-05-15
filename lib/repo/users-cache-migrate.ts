@@ -96,24 +96,13 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
     const cohort = String(r[1] ?? "").trim();
     const name = String(r[2] ?? "").trim();
     const sheetId = String(r[3] ?? "").trim();
-    const cohortLabel = String(r[8] ?? "").trim();
-    const nameLabel = String(r[9] ?? "").trim();
-    const courseStartISO = String(r[10] ?? "").trim();
-    const graduationISO = String(r[11] ?? "").trim();
 
-    // 이미 4종 모두 채워졌고 K/L 이 정상 ISO 형식이면 skip.
-    // K/L 이 "46122" 같은 시리얼 number 문자열이면 (PR D 이전 USER_ENTERED 사고
-    // 로 잘못 저장된 row) re-stamp 해서 자동 복구.
-    const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-    const alreadyCached =
-      cohortLabel !== "" &&
-      nameLabel !== "" &&
-      ISO_DATE.test(courseStartISO) &&
-      ISO_DATE.test(graduationISO);
-    if (alreadyCached) {
-      skipped++;
-      continue;
-    }
+    // ★ 강제 재로드 시맨틱 (2026-05-15) — 사용자: "[기수설명탭] 동기화 해도 일자가 안 바뀜".
+    // 옛 동작은 K/L 이 ISO 형식이기만 하면 stale 이라도 skip → [🔄 동기화] 버튼이 실질적
+    // 효과 없었음. 동기화 버튼의 직관적 의미("시트에서 다시 읽어 캐시 갱신") 에 맞춰
+    // spreadsheetId 가 있는 모든 row 는 무조건 re-fetch + K/L overwrite.
+    // (옛 PR B-3 의 backfill skip 로직 — 7기 O2=O1+50 같은 sheet-side 정정 반영 막힘
+    //  → 제거. 시간 측면에서도 unstable_cache me-bundle 600s 가 quota 압박 흡수.)
 
     // 시트 없는 row (트레이너/admin) → skip.
     if (!sheetId) {
