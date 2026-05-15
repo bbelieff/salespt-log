@@ -1,11 +1,13 @@
 /**
- * TraineeCard — /admin/users 의 개별 수강생 카드.
+ * TraineeCard — /admin/users (admin) + /trainer (trainer view) 공통 수강생 카드.
  *
  * AdminUserPickerSections.tsx 의 CohortSection / 팀 박스 안에서 사용.
  * 카드 안 액션:
  *   - 정보: 이름·email·다중계정 배지·담당 트레이너
- *   - 팀명 inline input (Enter/blur 시 자동 저장)
- *   - [유보] / [📊 시트] / [웹앱 →]
+ *   - 팀명 inline input (Enter/blur 시 자동 저장) — admin only
+ *   - **[유보]**: admin only (`!viewOnly`)
+ *   - **[📊 시트] / [웹앱 →]**: admin (`!viewOnly`) OR trainer 본인 담당
+ *     (`trainerEmailLc` 가 `u.assignedTrainer` 에 포함될 때) — 트레이너 뷰 지원
  *   - **PR C-1**: dragListeners 가 있으면 좌측 [⋮⋮] 드래그 핸들 렌더링.
  *     핸들만 dnd-kit 의 listeners 받아 카드 본문 클릭(버튼) 과 분리.
  *
@@ -59,6 +61,7 @@ export default function TraineeCard({
   isDragging,
   onAssignTrainers,
   activeTrainers,
+  trainerEmailLc,
 }: {
   u: Trainee;
   archived: boolean;
@@ -84,6 +87,9 @@ export default function TraineeCard({
   onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
   /** 활성 트레이너 풀 — 펼침 시 체크박스 후보. */
   activeTrainers?: Trainer[];
+  /** 트레이너 뷰 — 본인 email (lowercase). 본인 담당 trainee 의 시트/웹앱만 노출.
+   *  미제공이면 viewOnly 모드에서 시트/웹앱 다 안 보임 (관리부서 read-only 등). */
+  trainerEmailLc?: string;
 }) {
   // 옵티미스틱 토글 — 체크박스 클릭 즉시 시각 반영 (서버 응답 전).
   // prop(u.assignedTrainer) 갱신 시 useEffect 로 클리어.
@@ -140,6 +146,13 @@ export default function TraineeCard({
     onSetTeam(u.email, trimmed);
   }
 
+  // 트레이너 뷰 — viewOnly 일 때 본인 담당 수강생만 시트/웹앱 버튼 노출.
+  const isAssignedToTrainer =
+    !!trainerEmailLc &&
+    parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase());
+  const showReserveBtn = !viewOnly;
+  const showSheetWebBtns = !viewOnly || isAssignedToTrainer;
+
   const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
 
   return (
@@ -154,7 +167,7 @@ export default function TraineeCard({
           컸음. Row1 = 이름↔액션버튼 (justify-between), Row2 = 팀+담당 (flex-1)
           → 두 행 모두 풀폭, 공간 손실 제거. 담당이 트레이너 다수로 아랫쪽으로
           늘어나도 Row1 버튼은 위에 고정이라 가려지지 않음. */}
-      <div className="flex items-stretch gap-1.5 p-3 sm:gap-2 sm:p-4">
+      <div className="flex items-stretch gap-1 p-3 sm:gap-1.5 sm:p-4">
         {dragListeners && (
           // 드래그 핸들 — 모바일에서도 노출. touch-action: none 으로 page scroll
           // 충돌 차단 (dnd-kit TouchSensor long-press 와 연동). (2026-05-14)
@@ -164,7 +177,7 @@ export default function TraineeCard({
             title="드래그하여 박스 내 순서 변경"
             {...dragListeners}
             style={{ touchAction: "none" }}
-            className="inline-flex w-5 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+            className="inline-flex w-4 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
           >
             <span className="text-base leading-none">⋮⋮</span>
           </button>
@@ -172,49 +185,53 @@ export default function TraineeCard({
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {/* Row 1: 이름 + 다중계정 배지 ↔ 액션 버튼 (유보/시트/웹앱).
               email 은 숨김 — 관리 화면 가독성 (시트 공유는 +N 배지 hover). */}
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex items-center justify-between gap-x-2">
             <div className="flex min-w-0 items-baseline gap-x-2">
-              <span className="text-sm font-black text-gray-900">
+              <span className="truncate text-sm font-black text-gray-900">
                 {u.name || "(이름 없음)"}
               </span>
               <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
             </div>
-            {!viewOnly && (
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onReserve(u.email)}
-                  disabled={busy !== null}
-                  title="명단에서 숨김 (유보로 이동, row 는 살아있음)"
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                >
-                  {busy === u.email ? "..." : "유보"}
-                </button>
-                {u.spreadsheetId && (
+            {(showReserveBtn || showSheetWebBtns) && (
+              <div className="flex shrink-0 items-center gap-1">
+                {showReserveBtn && (
+                  <button
+                    type="button"
+                    onClick={() => onReserve(u.email)}
+                    disabled={busy !== null}
+                    title="명단에서 숨김 (유보로 이동, row 는 살아있음)"
+                    className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    {busy === u.email ? "..." : "유보"}
+                  </button>
+                )}
+                {showSheetWebBtns && u.spreadsheetId && (
                   <a
                     href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
                     target="_blank"
                     rel="noopener noreferrer"
                     title="구글 시트 원본 새 탭으로 열기"
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
                   >
                     📊 시트
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() => onPick(u.email)}
-                  disabled={busy !== null}
-                  title="웹앱 (5탭 UI) 으로 진입 — impersonation"
-                  className="rounded-full bg-gray-900 px-4 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-                >
-                  {busy === u.email ? "여는 중..." : "웹앱 →"}
-                </button>
+                {showSheetWebBtns && (
+                  <button
+                    type="button"
+                    onClick={() => onPick(u.email)}
+                    disabled={busy !== null}
+                    title="웹앱 (5탭 UI) 으로 진입 — impersonation"
+                    className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                  >
+                    {busy === u.email ? "여는 중..." : "웹앱 →"}
+                  </button>
+                )}
               </div>
             )}
           </div>
           {/* Row 2: 팀 (compact) + 담당 (flex-1, 카드 우측 끝까지 + 줄바꿈). */}
-          <div className="flex flex-wrap items-start gap-x-3 gap-y-1 text-[11px] text-gray-600">
+          <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-[11px] text-gray-600">
             {!viewOnly && (
               <span className="inline-flex shrink-0 items-center gap-1">
                 <span className="text-gray-400">팀</span>
@@ -243,7 +260,7 @@ export default function TraineeCard({
               <button
                 type="button"
                 onClick={() => setTrainerOpen((v) => !v)}
-                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
                 <span className="shrink-0">담당:</span>
