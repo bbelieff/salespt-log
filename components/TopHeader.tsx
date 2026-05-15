@@ -98,11 +98,25 @@ export default function TopHeader({
           )}
         </div>
 
-        {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트) */}
+        {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트).
+              spreadsheetId 가 있으면 사용자 이름 → 본인 구글 시트 새 탭으로 직접 열기
+              (수강생/impersonation 대상의 시트 빠른 접근). admin 본인 미등록 시 plain span. */}
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="min-w-0 truncate text-[11px] font-black text-gray-900 sm:text-sm">
-            {display}
-          </span>
+          {me.data?.spreadsheetId ? (
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="내 구글 시트 새 탭으로 열기"
+              className="min-w-0 truncate text-[11px] font-black text-gray-900 hover:underline sm:text-sm"
+            >
+              {display}
+            </a>
+          ) : (
+            <span className="min-w-0 truncate text-[11px] font-black text-gray-900 sm:text-sm">
+              {display}
+            </span>
+          )}
           <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
             경영일지
           </span>
