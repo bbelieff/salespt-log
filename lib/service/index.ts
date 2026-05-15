@@ -72,7 +72,9 @@ export {
   loadMe,
   enrichUsersWithSheetCohort,
   enrichUsersWithDates,
+  enrichUsersWithStats,
   type MeProfile,
+  type TraineeFunnelStats,
 } from "./me";
 
 // 대시보드 view (PR feat/dashboard-page — read-only, 시트 디스커버리 후 wiring)

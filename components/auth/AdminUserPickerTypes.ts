@@ -18,6 +18,9 @@ export interface Trainee {
   team?: string;
   courseStartISO?: string;
   graduationISO?: string;
+  /** 8주 누적 funnel (시트 01 영업관리!E4/E5/E6). admin/trainer 카드 표시용.
+   *  enrichUsersWithStats 가 채움. spreadsheetId 없거나 fetch 실패 시 undefined. */
+  stats?: { 미팅예정: number; 미팅완료: number; 계약: number };
 }
 
 export interface Trainer {

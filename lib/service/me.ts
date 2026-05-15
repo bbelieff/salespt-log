@@ -90,9 +90,11 @@ const cachedReadBundle = unstable_cache(
       name: b.name,
       courseStartMs: b.courseStart.getTime(),
       graduationMs: b.graduation.getTime(),
+      // 2026-05-16: stats(E4:E6) 추가 — admin/trainer 카드의 "예정·완료·계약" 표시용.
+      stats: b.stats,
     };
   },
-  ["me-bundle"],
+  ["me-bundle-v2"], // v2: stats 필드 포함 (이전 캐시 entries 와 schema 다름)
   { revalidate: 600, tags: ["me-bundle"] },
 );
 
@@ -102,6 +104,7 @@ async function readBundle(spreadsheetId: string): Promise<{
   name: string;
   courseStart: Date;
   graduation: Date;
+  stats: { 미팅예정: number; 미팅완료: number; 계약: number };
 }> {
   const b = await cachedReadBundle(spreadsheetId);
   return {
@@ -109,6 +112,8 @@ async function readBundle(spreadsheetId: string): Promise<{
     name: b.name,
     courseStart: new Date(b.courseStartMs),
     graduation: new Date(b.graduationMs),
+    // 옛 캐시 entries 호환 — stats 없으면 0 으로 fallback.
+    stats: b.stats ?? { 미팅예정: 0, 미팅완료: 0, 계약: 0 },
   };
 }
 
@@ -221,6 +226,42 @@ export async function enrichUsersWithDates<
         e instanceof Error ? e.message : e,
       );
       return defaults;
+    }
+  });
+  return Promise.all(tasks);
+}
+
+/**
+ * enrichUsersWithDates 의 보조 — 각 사용자 시트의 8주 funnel 누적 (E4:E6) 을
+ * 가져와 `stats` 필드를 추가. admin/trainer 페이지 수강생 카드 표시용.
+ *
+ * `readBundle` 공유 → enrichUsersWithDates 가 이미 sheet read 했으면 cache hit
+ * (별도 API 호출 0회). registry cache fast-path 로 dates 만 채운 trainee 는
+ * 여기서 처음 sheet fetch.
+ *
+ * spreadsheetId 없음 / fetch 실패 → stats 미설정 (undefined). 컴포넌트는 optional.
+ */
+export interface TraineeFunnelStats {
+  미팅예정: number;
+  미팅완료: number;
+  계약: number;
+}
+
+export async function enrichUsersWithStats<T extends { spreadsheetId: string }>(
+  users: T[],
+): Promise<Array<T & { stats?: TraineeFunnelStats }>> {
+  const tasks = users.map(async (u) => {
+    if (!u.spreadsheetId) return u;
+    const who = "email" in u ? (u as { email: string }).email : "?";
+    try {
+      const bundle = await readBundle(u.spreadsheetId);
+      return { ...u, stats: bundle.stats };
+    } catch (e) {
+      console.warn(
+        `[me] enrichUsersWithStats 실패 (email=${who}, sheet=${u.spreadsheetId}):`,
+        e instanceof Error ? e.message : e,
+      );
+      return u;
     }
   });
   return Promise.all(tasks);

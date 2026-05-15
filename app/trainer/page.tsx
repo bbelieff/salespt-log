@@ -22,7 +22,7 @@ import {
   isReservedTrainee,
 } from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
-import { enrichUsersWithDates } from "@/service";
+import { enrichUsersWithDates, enrichUsersWithStats } from "@/service";
 import TrainerCohortView from "@/components/auth/TrainerCohortView";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
@@ -58,6 +58,8 @@ export default async function TrainerPage() {
     (u) => !isReservedTrainee(u),
   );
   const enriched = await enrichUsersWithDates(regularTrainees);
+  // 8주 funnel stats (E4:E6) — 카드의 "예정/완료/계약" 표시용. cache 공유.
+  const withStats = await enrichUsersWithStats(enriched);
 
   // activeTrainers — /admin/users 와 동일 합성·필터 규칙:
   //   (1) ADMIN_EMAILS 멤버 중 registry row 없는 사람은 synth admin row 합성.
@@ -121,7 +123,7 @@ export default async function TrainerPage() {
     <TrainerCohortView
       sessionEmail={sessionEmail}
       trainerName={trainerName}
-      trainees={enriched}
+      trainees={withStats}
       activeTrainers={activeTrainers}
       masterSheetUrl={masterSheetUrl}
       canBackToAdmin={canBackToAdmin}
