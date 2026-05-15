@@ -162,7 +162,7 @@ export default function TrainerLanding({
                           title="구글 시트 원본 새 탭으로 열기"
                           className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
                         >
-                          📊 시트 ↗
+                          📊 시트
                         </a>
                       )}
                     </div>

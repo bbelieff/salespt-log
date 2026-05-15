@@ -5,7 +5,7 @@
  * 카드 안 액션:
  *   - 정보: 이름·email·다중계정 배지·담당 트레이너
  *   - 팀명 inline input (Enter/blur 시 자동 저장)
- *   - [유보] / [📊 시트 ↗] / [웹앱 →]
+ *   - [유보] / [📊 시트] / [웹앱 →]
  *   - **PR C-1**: dragListeners 가 있으면 좌측 [⋮⋮] 드래그 핸들 렌더링.
  *     핸들만 dnd-kit 의 listeners 받아 카드 본문 클릭(버튼) 과 분리.
  *
@@ -25,7 +25,7 @@ function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   return (
     <span
       title={`같은 시트 공유: ${siblings.join(", ")}`}
-      className="ml-1 inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700"
+      className="ml-1 text-[10px] font-medium text-sky-600"
     >
       🔗 +{siblings.length}
     </span>
@@ -154,7 +154,7 @@ export default function TraineeCard({
           컸음. Row1 = 이름↔액션버튼 (justify-between), Row2 = 팀+담당 (flex-1)
           → 두 행 모두 풀폭, 공간 손실 제거. 담당이 트레이너 다수로 아랫쪽으로
           늘어나도 Row1 버튼은 위에 고정이라 가려지지 않음. */}
-      <div className="flex items-stretch gap-2 p-3 sm:gap-3 sm:p-4">
+      <div className="flex items-stretch gap-1.5 p-3 sm:gap-2 sm:p-4">
         {dragListeners && (
           // 드래그 핸들 — 모바일에서도 노출. touch-action: none 으로 page scroll
           // 충돌 차단 (dnd-kit TouchSensor long-press 와 연동). (2026-05-14)
@@ -164,7 +164,7 @@ export default function TraineeCard({
             title="드래그하여 박스 내 순서 변경"
             {...dragListeners}
             style={{ touchAction: "none" }}
-            className="inline-flex w-7 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+            className="inline-flex w-5 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
           >
             <span className="text-base leading-none">⋮⋮</span>
           </button>
@@ -198,7 +198,7 @@ export default function TraineeCard({
                     title="구글 시트 원본 새 탭으로 열기"
                     className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
                   >
-                    📊 시트 ↗
+                    📊 시트
                   </a>
                 )}
                 <button
@@ -230,12 +230,12 @@ export default function TraineeCard({
                     }
                   }}
                   placeholder="미배정"
-                  className={`rounded border px-1.5 py-0.5 text-[11px] outline-none ${
+                  className={`rounded border px-1 py-0.5 text-[11px] outline-none ${
                     dirty
                       ? "border-indigo-400 bg-indigo-50"
                       : "border-gray-200 bg-white"
                   } focus:border-indigo-500`}
-                  style={{ width: 70 }}
+                  style={{ width: `calc(${Math.max(3, team.length + 1)}em + 0.75rem)` }}
                 />
               </span>
             )}
