@@ -230,6 +230,25 @@ export default function TraineeCard({
               </div>
             )}
           </div>
+          {/* Row 1.5: 8주 누적 funnel (예정·완료·계약) — admin/trainer 빠른 진도 확인용.
+              stats 없는 trainee (spreadsheetId 미설정 / fetch 실패) 는 렌더 안 함.
+              SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
+          {u.stats && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+              <span>
+                📅 예정{" "}
+                <span className="font-bold text-amber-700">{u.stats.미팅예정}</span>
+              </span>
+              <span>
+                ✓ 완료{" "}
+                <span className="font-bold text-indigo-700">{u.stats.미팅완료}</span>
+              </span>
+              <span>
+                💼 계약{" "}
+                <span className="font-bold text-green-700">{u.stats.계약}</span>
+              </span>
+            </div>
+          )}
           {/* Row 2: 팀 (compact) + 담당 (flex-1, 카드 우측 끝까지 + 줄바꿈). */}
           <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-[11px] text-gray-600">
             {!viewOnly && (

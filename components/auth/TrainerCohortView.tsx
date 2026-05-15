@@ -19,6 +19,7 @@ import { signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CohortSection,
+  parseAssigned,
   type Trainee,
   type Trainer,
 } from "./AdminUserPickerSections";
@@ -47,8 +48,27 @@ export default function TrainerCohortView({
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** "내 수강생만 보기" 토글. 기본 false (전체 명단). */
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
 
   const trainerEmailLc = sessionEmail.toLowerCase();
+
+  /** 본인 담당 수강생 수 — 토글 라벨에 표시. */
+  const myCount = useMemo(
+    () =>
+      trainees.filter((u) =>
+        parseAssigned(u.assignedTrainer).includes(trainerEmailLc),
+      ).length,
+    [trainees, trainerEmailLc],
+  );
+
+  /** showOnlyMine 토글에 따라 전체 명단 or 본인 담당만. */
+  const visibleTrainees = useMemo(() => {
+    if (!showOnlyMine) return trainees;
+    return trainees.filter((u) =>
+      parseAssigned(u.assignedTrainer).includes(trainerEmailLc),
+    );
+  }, [trainees, showOnlyMine, trainerEmailLc]);
 
   async function pick(email: string) {
     setBusy(email);
@@ -102,11 +122,11 @@ export default function TrainerCohortView({
     [archivedCohorts],
   );
 
-  /** active vs archived 기수 분리 + 기수번호 desc 정렬. */
+  /** active vs archived 기수 분리 + 기수번호 desc 정렬 (visibleTrainees 기준). */
   const { activeGroups, archivedGroups } = useMemo(() => {
     const activeMap = new Map<string, Trainee[]>();
     const archivedMap = new Map<string, Trainee[]>();
-    for (const u of trainees) {
+    for (const u of visibleTrainees) {
       const k = String(u.cohort).replace(/기\s*$/, "").trim() || "—";
       const bucket = archivedSet.has(k) ? archivedMap : activeMap;
       const arr = bucket.get(k) ?? [];
@@ -119,7 +139,7 @@ export default function TrainerCohortView({
       activeGroups: Array.from(activeMap.entries()).sort(sortFn),
       archivedGroups: Array.from(archivedMap.entries()).sort(sortFn),
     };
-  }, [trainees, archivedSet]);
+  }, [visibleTrainees, archivedSet]);
 
   return (
     <main className="min-h-dvh bg-gray-50">
@@ -188,10 +208,26 @@ export default function TrainerCohortView({
           <h1 className="text-2xl font-black tracking-tight text-gray-900">
             수강생 명단
           </h1>
-          <p className="mt-1.5 text-sm text-gray-500">
-            전체 {trainees.length}명. 본인 담당 카드만 <b>📊 시트</b> · <b>웹앱 →</b>
-            버튼이 활성화됩니다.
-          </p>
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-gray-500">
+              {showOnlyMine
+                ? `내 담당 ${myCount}명`
+                : `전체 ${trainees.length}명 (내 담당 ${myCount}명)`}
+              . 본인 담당 카드만 <b>📊 시트</b> · <b>웹앱 →</b> 활성화.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowOnlyMine((v) => !v)}
+              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                showOnlyMine
+                  ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
+                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+              title={showOnlyMine ? "전체 명단으로 돌아가기" : `내 담당 ${myCount}명만 표시`}
+            >
+              {showOnlyMine ? `✓ 내 수강생만 (${myCount})` : "내 수강생만 보기"}
+            </button>
+          </div>
         </section>
 
         {error && (

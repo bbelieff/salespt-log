@@ -199,23 +199,30 @@ export async function readProfile(
 }
 
 /**
- * loadMe 전용 — B3:C3 (프로필) + O1 (수강시작일) + O2 (종강총회일) 을
+ * loadMe + enrichUsersWithDates 공용 — B3:C3 (프로필) + O1 (수강시작일) +
+ * O2 (종강총회일) + **E4:E6 (8주 funnel 누적: 미팅예약/미팅완료/계약)** 을
  * **단일 batchGet** 호출로 가져옴.
  *
  * 기존 readProfile/readCourseStart/readGraduation 을 Promise.all 로 호출하면
- * 3회 round-trip 발생 → 헤더 로드 지연 주범. batchGet 으로 1회 호출.
+ * round-trip 발생 → 헤더 로드 지연 + Sheets quota 압박. batchGet 1회 + 4 ranges
+ * 로 통합 (range 추가는 quota 영향 없음 — batchGet 1 call 단위).
+ *
+ * **2026-05-16** — stats(E4:E6) 추가 — admin/trainer 페이지 수강생 카드에서
+ * "예정·완료·계약" 8주 누적 표시용. /schedule funnel 과 동일 SSOT.
  */
 export async function readProfileBundle(spreadsheetId: string): Promise<{
   cohort: string;
   name: string;
   courseStart: Date;
   graduation: Date;
+  stats: { 미팅예정: number; 미팅완료: number; 계약: number };
 }> {
   const tab = tabRef(SHEET_RANGES.sales.tab);
   const ranges = [
     `${tab}!B3:C3`,
     `${tab}!${SHEET_RANGES.sales.startDateCell}`,
     `${tab}!${SHEET_RANGES.sales.graduationDateCell}`,
+    `${tab}!E4:E6`, // 8주 누적 funnel: E4=미팅예약, E5=미팅완료, E6=계약
   ];
   const res = await sheetsClient().spreadsheets.values.batchGet({
     spreadsheetId,
@@ -227,12 +234,20 @@ export async function readProfileBundle(spreadsheetId: string): Promise<{
   const profileRow = (ranges_[0]?.values?.[0] ?? []) as unknown[];
   const startRaw = ranges_[1]?.values?.[0]?.[0];
   const gradRaw = ranges_[2]?.values?.[0]?.[0];
+  const statsRows = ranges_[3]?.values ?? [];
+  const statsNum = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) ? v : 0;
 
   return {
     cohort: String(profileRow[0] ?? "").trim(),
     name: String(profileRow[1] ?? "").trim(),
     courseStart: parseSerialOrString(startRaw, "O1(수강시작일)"),
     graduation: parseSerialOrString(gradRaw, "O2(종강총회)"),
+    stats: {
+      미팅예정: statsNum(statsRows[0]?.[0]),
+      미팅완료: statsNum(statsRows[1]?.[0]),
+      계약: statsNum(statsRows[2]?.[0]),
+    },
   };
 }
 

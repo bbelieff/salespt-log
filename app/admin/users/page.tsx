@@ -26,7 +26,7 @@ import {
   isReservedTrainee,
 } from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
-import { enrichUsersWithDates } from "@/service";
+import { enrichUsersWithDates, enrichUsersWithStats } from "@/service";
 import AdminUserPicker from "@/components/auth/AdminUserPicker";
 
 // **force-dynamic** — 매 요청마다 fresh registry 데이터.
@@ -101,10 +101,14 @@ export default async function AdminUsersPage() {
     return false;
   });
   const enriched = await enrichUsersWithDates(regularTrainees);
+  // 8주 funnel stats (E4/E5/E6) — 카드의 "예정/완료/계약" 표시용.
+  // unstable_cache (me-bundle-v2, 600s) 공유라 enrichUsersWithDates 가 이미 sheet
+  // fetch 한 경우 cache hit (별도 호출 0회).
+  const withStats = await enrichUsersWithStats(enriched);
   const archivedLabels = Array.from(archivedSet);
   return (
     <AdminUserPicker
-      users={enriched}
+      users={withStats}
       reservedUsers={reservedTrainees}
       pendingUsers={pendingTrainees}
       activeTrainers={activeTrainers}
