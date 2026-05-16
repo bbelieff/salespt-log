@@ -41,6 +41,8 @@ interface Props {
   onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
   /** 일정 변경: 새 미팅 append + 원본 patch (호출 측이 transaction 처리). */
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
+  /** 미팅 결과 되돌리기 (2026-05-17 [2a]). 호출 측이 서버 revert + cascade 처리. */
+  onRevert?: () => void;
 }
 
 function fmtMoney(n: number): string {
@@ -52,6 +54,7 @@ export default function MeetingResultCard({
   pending,
   onPatch,
   onReschedule,
+  onRevert,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
@@ -386,6 +389,46 @@ export default function MeetingResultCard({
               onConfirm={handleCancel}
               pending={pending}
             />
+          )}
+
+          {/* 미팅 결과 되돌리기 (2026-05-17 [2a]) — 닫힌 카드(계약/완료/취소/변경) 에 노출 */}
+          {!showActions && onRevert && state !== "rescheduled" && (
+            <button
+              type="button"
+              onClick={() => {
+                const label =
+                  state === "contract"
+                    ? "계약 → 예약 (수임비/조건 초기화 + 02 계약수납관리 row 삭제)"
+                    : state === "done"
+                      ? "완료 → 예약 (사유 초기화)"
+                      : "취소 → 예약 (사유 초기화)";
+                if (window.confirm(`미팅 결과를 되돌릴까요?\n\n${label}`)) {
+                  onRevert();
+                }
+              }}
+              disabled={pending}
+              className="w-full rounded-md border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              ↩️ 미팅 결과 되돌리기
+            </button>
+          )}
+          {!showActions && onRevert && state === "rescheduled" && (
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "일정 변경을 되돌릴까요?\n\n변경 → 예약 (변경으로 생긴 새 미팅 카드 삭제)",
+                  )
+                ) {
+                  onRevert();
+                }
+              }}
+              disabled={pending}
+              className="w-full rounded-md border border-purple-300 bg-white py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-50 disabled:opacity-50"
+            >
+              ↩️ 일정 변경 되돌리기 (새 미팅 삭제)
+            </button>
           )}
 
           {/* 처리 완료 카드 — 변경됨 카드는 다음 카드 링크 안내 */}

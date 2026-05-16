@@ -162,6 +162,33 @@ export function usePatchMeeting() {
   });
 }
 
+export interface RevertMeetingArgs {
+  /** 일정·계약 탭 캐시 invalidate */
+  weekStart?: string;
+  /** 컨택탭 캐시 invalidate (선택) */
+  date?: string;
+  id: string;
+}
+
+/**
+ * 미팅 결과 되돌리기 (2026-05-17 [2a]).
+ * 서버에서 상태별 cascade 수행 → 응답으로 cascade 요약 반환 (UI 토스트용).
+ */
+export function useRevertMeeting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: RevertMeetingArgs) =>
+      fetchJSON<{ ok: true; status: string; cascade: string }>(
+        `/api/meeting/${id}/revert`,
+        { method: "POST" },
+      ),
+    onSuccess: (_, { date, weekStart }) => {
+      if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
+      if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
+    },
+  });
+}
+
 export function useRemoveMeeting() {
   const qc = useQueryClient();
   return useMutation({

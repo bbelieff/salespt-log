@@ -21,8 +21,10 @@ import {
   findByDateRange,
   findByDateRangeBoth,
   findById,
+  findByPreviousMeetingId,
   updateMeeting,
 } from "@/repo/meetings";
+import { clearRowByLink as clearContractPaymentByLink } from "@/repo/contract-payment";
 import {
   Channel,
   ChannelDailyRow,
@@ -312,6 +314,73 @@ export async function removeMeeting(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
   await clearMeeting(spreadsheetId, id);
+}
+
+/**
+ * 미팅 결과 되돌리기 (2026-05-17 [2a]).
+ *
+ * 상태별 cascade:
+ *  - 계약 → 예약: 수임비/계약조건/계약여부 초기화 + 02 계약수납관리 매칭 row clear
+ *  - 완료/취소 → 예약: 미팅사유 초기화
+ *  - 변경 → 예약: 변경으로 생긴 자식 미팅(previousMeetingId=original.id) 삭제 + 원본 예약 복원
+ *
+ * 반환: 어떤 cascade 가 일어났는지 요약 (UI 토스트용).
+ */
+export async function revertMeeting(
+  email: string,
+  id: string,
+): Promise<{ status: string; cascade: string }> {
+  const spreadsheetId = await resolveSheet(email);
+  const m = await findById(spreadsheetId, id);
+  if (!m) throw new Error(`[revert] 미팅 못 찾음: ${id}`);
+  const prevState = m.상태;
+
+  if (prevState === "계약") {
+    await updateMeeting(spreadsheetId, id, {
+      상태: "예약",
+      계약여부: false,
+      수임비: 0,
+      계약조건: "",
+    });
+    const clearedRow = await clearContractPaymentByLink(
+      spreadsheetId,
+      m.미팅날짜,
+      m.업체명,
+    );
+    return {
+      status: "예약",
+      cascade:
+        clearedRow !== null
+          ? `02 계약수납관리 row ${clearedRow} clear`
+          : "02 계약수납관리 매칭 row 없음 (이미 정리됨)",
+    };
+  }
+
+  if (prevState === "완료" || prevState === "취소") {
+    await updateMeeting(spreadsheetId, id, {
+      상태: "예약",
+      계약여부: false,
+      미팅사유: "",
+    });
+    return { status: "예약", cascade: "사유 초기화" };
+  }
+
+  if (prevState === "변경") {
+    const child = await findByPreviousMeetingId(spreadsheetId, id);
+    let cascadeMsg = "변경 자식 미팅 없음";
+    if (child) {
+      await clearMeeting(spreadsheetId, child.id);
+      cascadeMsg = `변경 자식 미팅(${child.업체명}) 삭제`;
+    }
+    await updateMeeting(spreadsheetId, id, {
+      상태: "예약",
+      미팅사유: "",
+    });
+    return { status: "예약", cascade: cascadeMsg };
+  }
+
+  // 이미 예약이거나 알 수 없는 상태 → 노옵
+  return { status: prevState, cascade: "되돌릴 항목 없음" };
 }
 
 /** id로 미팅 조회. */

@@ -392,6 +392,37 @@ export async function findByDateRangeBoth(
   return { byMeetingDate, byReservationDate };
 }
 
+/**
+ * previousMeetingId 가 originalId 인 미팅을 찾는다 (변경 cascade 용).
+ * 일정 변경 시 새 미팅이 previousMeetingId=원본 으로 append 됨 →
+ * 변경 되돌리기에서 그 새 미팅을 식별·삭제하기 위함.
+ * 2026-05-17 ([2a] 미팅결과 되돌리기).
+ */
+export async function findByPreviousMeetingId(
+  spreadsheetId: string,
+  originalId: string,
+): Promise<Meeting | null> {
+  const range = `${tabRef(TAB)}!A2:S`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const rows = (res.data.values ?? []) as unknown[][];
+  for (const r of rows) {
+    const prev = String(r[COL.previousMeetingId] ?? "");
+    if (prev === originalId) {
+      try {
+        return rowToMeeting(r);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 /** id로 행 클리어 (실제 삭제 아니라 빈 값으로 update). */
 export async function clearMeeting(
   spreadsheetId: string,

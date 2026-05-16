@@ -20,6 +20,7 @@ export {
   appendNewMeeting,
   patchMeeting,
   removeMeeting,
+  revertMeeting,
   getMeetingById,
   type ContactDayView,
   type ChannelDailyRowMetrics,
