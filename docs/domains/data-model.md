@@ -502,7 +502,7 @@ interface DashboardView {
 |---|---|---|
 | `Progress` | z.enum | 진행률 6단계: `""` / `0%` / `20%` / `40%` / `60%` / `80%` / `100%` |
 | `PaymentSlot` | z.object | 분할 수납 1슬롯 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일) |
-| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 = M~AD) |
+| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 + 메모 2 = A~AF, 2026-05-17 [4] AE/AF 추가: 로드맵메모/메모사항) |
 
 ### DB관리 (03 DB관리)
 | 식별자 | 종류 | 의미 |
