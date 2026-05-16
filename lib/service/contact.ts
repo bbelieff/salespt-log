@@ -11,6 +11,7 @@ import {
   batchWriteChannelDailyRows,
   readCourseStart,
   readWeek,
+  readWeekFunnel,
   weekIndexOf,
 } from "@/repo/sales";
 import {
@@ -173,6 +174,14 @@ export interface ScheduleWeekView {
   courseStart: string;
   /** 7개 슬롯 (weekStart=0 ... weekStart+6=6). 미팅날짜 기준. */
   daysByMeetingDate: Array<{ date: string; meetings: Meeting[] }>;
+  /** 영업관리 E~H 의 그 주 합계 — 생산/유입/컨택진행/미팅예약.
+   *  컨택탭 헤더 funnel 표시용 (2026-05-16). 일정·계약 탭은 안 씀. */
+  weekFunnel: {
+    생산: number;
+    유입: number;
+    컨택진행: number;
+    미팅예약: number;
+  };
 }
 
 /**
@@ -205,8 +214,11 @@ export async function loadWeekMeetings(
     dates.push(`${y}-${m}-${dd}`);
   }
 
-  // 한 번의 시트 read로 7일치 미팅 (미팅날짜 기준) — quota 절약
-  const map = await findByDateRange(spreadsheetId, dates, "meeting");
+  // 7일치 미팅 read + 영업관리 E~H 주 합계 read — 병렬 (총 2 sheet reads).
+  const [map, weekFunnel] = await Promise.all([
+    findByDateRange(spreadsheetId, dates, "meeting"),
+    readWeekFunnel(spreadsheetId, week),
+  ]);
   const daysByMeetingDate = dates.map((d) => ({
     date: d,
     meetings: (map.get(d) ?? []).sort((a, b) =>
@@ -223,6 +235,7 @@ export async function loadWeekMeetings(
     weekIndex: week,
     courseStart: csISO,
     daysByMeetingDate,
+    weekFunnel,
   };
 }
 

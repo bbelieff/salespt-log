@@ -16,6 +16,9 @@ interface Props {
   selectedDate: string; // YYYY-MM-DD
   todayISO: string;
   cohortName?: string; // 예: "PRM 5기 · 김믿음"
+  /** 각 요일의 미팅 수 (배열 길이 = 7). 0 이면 badge 안 보임.
+   *  2026-05-16 추가: 일정·계약 탭과 동일하게 컨택탭 일자 박스에도 노출. */
+  countsByDay?: number[];
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onSelectDay: (date: string) => void;
@@ -27,6 +30,7 @@ export default function WeekHeader({
   selectedDate,
   todayISO,
   cohortName,
+  countsByDay,
   onPrevWeek,
   onNextWeek,
   onSelectDay,
@@ -53,7 +57,9 @@ export default function WeekHeader({
   const todayDate = parseISO(todayISO);
 
   return (
-    <header className="sticky top-24 z-30 bg-white shadow-sm">
+    // sticky 는 parent(page.tsx) 에서 처리 — WeekFunnelBar 와 한 그룹으로 묶기 위해
+    // (일정·계약 탭의 WeekHeader+SummaryBar 패턴과 동일, 2026-05-16).
+    <header className="bg-white">
       {/* 주차 타이틀 + 좌우 화살표 */}
       <div className="flex items-center justify-between px-2 py-3">
         <button
@@ -94,6 +100,7 @@ export default function WeekHeader({
           const isSelected = iso === selectedDate;
           const isToday = iso === todayISO;
           const isWeekend = weekendIdx.includes(i);
+          const count = countsByDay?.[i] ?? 0;
           return (
             <button
               key={iso}
@@ -131,6 +138,18 @@ export default function WeekHeader({
                   }`}
                 >
                   오늘
+                </span>
+              )}
+              {count > 0 && (
+                // 미팅 수 badge — 일정·계약 탭과 동일 위치/스타일 (2026-05-16).
+                <span
+                  className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none ${
+                    isSelected
+                      ? "bg-white text-blue-600"
+                      : "bg-blue-500 text-white"
+                  }`}
+                >
+                  {count}
                 </span>
               )}
             </button>

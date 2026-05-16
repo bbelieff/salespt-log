@@ -73,6 +73,48 @@ export function salesRowFor(
   );
 }
 
+/**
+ * 한 주의 영업관리 E~H (생산/유입/컨택진행/미팅예약) 합계 — 컨택탭 헤더의
+ * 금주 채널 funnel 표시용 (2026-05-16).
+ *
+ * 시트의 weekly sum cell 에 의존하지 않고, 그 주차의 28 데이터 row (7일 × 4채널)
+ * 를 직접 합산. 셀병합 또는 옛 template 의 sum 셀 누락에도 robust.
+ *
+ * 1주차 row range: rows 10..37 (blockStart=10, 28 data rows).
+ * 1 batchGet 1 range — quota 1 read.
+ */
+export async function readWeekFunnel(
+  spreadsheetId: string,
+  week: number,
+): Promise<{ 생산: number; 유입: number; 컨택진행: number; 미팅예약: number }> {
+  // 편집 가능 기간 (1~10주) 밖이면 0 반환 — 안전 fallback.
+  if (week < 1 || week > 10) {
+    return { 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0 };
+  }
+  const startRow =
+    SHEET_RANGES.sales.blockStart +
+    (week - 1) * SHEET_RANGES.sales.blockStride;
+  const endRow = startRow + 27; // 28 data rows (7일 × 4채널)
+  const range = `${tabRef(SHEET_RANGES.sales.tab)}!E${startRow}:H${endRow}`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const values = res.data.values ?? [];
+  const sumCol = (idx: number): number =>
+    values.reduce<number>((acc, row) => {
+      const v = row?.[idx];
+      return acc + (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    }, 0);
+  return {
+    생산: sumCol(0),
+    유입: sumCol(1),
+    컨택진행: sumCol(2),
+    미팅예약: sumCol(3),
+  };
+}
+
 // ── 가드: 시트 수식 컬럼 쓰기 차단 ────────────────────────────
 function assertWritableCol(col: string, context: string): void {
   if (

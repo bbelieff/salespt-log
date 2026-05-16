@@ -1217,7 +1217,8 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **WeekHeader** | 주차 네비 (이전/다음 화살표 + 7일 그리드 + 일자 클릭 = 그 day 이동). Props: `weekStart` / `onWeekChange` / `meetings` |
+| **WeekHeader** | 컨택탭 주차 네비 (이전/다음 화살표 + 7일 그리드 + 일자 클릭 = 그 day 이동). Props: `weekIndex`, `courseStart`, `selectedDate`, `todayISO`, `countsByDay?`, `onPrevWeek`, `onNextWeek`, `onSelectDay`. **2026-05-16**: `countsByDay?` 추가 — 일자 박스에 미팅 수 badge (일정·계약 탭과 동일 시각). sticky 는 parent (page.tsx) 가 WeekFunnelBar 와 묶어서 처리. |
+| **WeekFunnelBar** | 컨택탭 주간 채널 funnel 합계 표시 (헤더 sticky 그룹의 일부, 2026-05-16). Props: `weekFunnel: { 생산, 유입, 컨택진행, 미팅예약 }`. SSOT: 시트 01 영업관리!E~H 의 28 데이터 row (7일 × 4채널) 합산 (`readWeekFunnel`). 4칸 균등 분할 + 큰 숫자 + 색 강조 (gray/amber/indigo/green). |
 | **ChannelTabsAndPanel** | 4채널 전환 탭 + 패널 컨테이너. 탭 전환 시 그 채널의 4지표 폼 표시. 컨택탭 핵심 UI |
 | **MeetingSlotItem** | 컨택탭 미팅 슬롯 입력 카드 (신규). Props: `slot: NewSlot` / `onSave` / `onRemove`. [등록] 시 미팅 append |
 | **MeetingSlotCard** | 등록 완료 슬롯 표시 카드 (read-only). Props: `meeting: Meeting`. [삭제]는 미팅 + meetingReservation -1 |
