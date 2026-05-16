@@ -220,8 +220,119 @@ const ruleO1O2Validity: DiagnosticRule = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────
+// Rule 4: 04 업체관리 N/O/Q 수식 누락 (2026-05-16, 김선주/이장현 사고 추가 진단)
+//
+// 영업관리 I/J 수식이 04 업체관리!N/O 의 TEXTJOIN 결과. 04 업체관리 row 가
+// 추가됐는데 N/O/Q 수식이 누락이면 영업관리 I/J 결과 비어 보임. 사용자 보고
+// "미팅카드 생성해도 I/J 안 채워짐" root cause 진단용.
+//
+// detect: 04 업체관리 B/D (예약일/미팅날짜) 와 N/O/Q (수식 컬럼) FORMULA mode
+//   read. 데이터 있는 row (B 또는 D 값 있음) 중 N/O/Q 가 수식 아닌 cell 카운트.
+//   - 빈 cell: install 가능 (fix)
+//   - raw 값: install 가드(isSafeToOverwrite)로 skip 됨 — 수동 정리 필요
+//
+// fix: installFormulas — 04 업체관리 N/O/Q 도 함께 처리됨 (raw 값 보존).
+// ─────────────────────────────────────────────────────────────
+const ruleMeetingsFormulasMissing: DiagnosticRule = {
+  id: "meetings-formulas-missing",
+  label: "04 업체관리 표시 수식(N/O/Q) 누락",
+  severity: "error",
+  async detect(spreadsheetId) {
+    const M_REF = tabRef(MEETINGS_TAB);
+    const res = await sheetsClient().spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: [
+        `${M_REF}!B2:B1000`,
+        `${M_REF}!D2:D1000`,
+        `${M_REF}!N2:N1000`,
+        `${M_REF}!O2:O1000`,
+        `${M_REF}!Q2:Q1000`,
+      ],
+      valueRenderOption: "FORMULA",
+    });
+    const ranges = res.data.valueRanges ?? [];
+    const bCol = ranges[0]?.values ?? [];
+    const dCol = ranges[1]?.values ?? [];
+    const nCol = ranges[2]?.values ?? [];
+    const oCol = ranges[3]?.values ?? [];
+    const qCol = ranges[4]?.values ?? [];
+
+    const isFormula = (v: unknown) =>
+      typeof v === "string" && v.startsWith("=");
+    const isEmpty = (v: unknown) =>
+      v === undefined || v === null || v === "";
+    const isRaw = (v: unknown) => !isFormula(v) && !isEmpty(v);
+    const hasVal = (v: unknown) => !isEmpty(v);
+
+    let dataRows = 0;
+    let missingN = 0,
+      missingO = 0,
+      missingQ = 0;
+    let rawN = 0,
+      rawO = 0,
+      rawQ = 0;
+
+    for (let i = 0; i < 999; i++) {
+      const b = bCol[i]?.[0];
+      const d = dCol[i]?.[0];
+      if (!hasVal(b) && !hasVal(d)) continue;
+      dataRows++;
+      const n = nCol[i]?.[0];
+      const o = oCol[i]?.[0];
+      const q = qCol[i]?.[0];
+      if (!isFormula(n)) {
+        if (isRaw(n)) rawN++;
+        else missingN++;
+      }
+      if (!isFormula(o)) {
+        if (isRaw(o)) rawO++;
+        else missingO++;
+      }
+      if (!isFormula(q)) {
+        if (isRaw(q)) rawQ++;
+        else missingQ++;
+      }
+    }
+
+    const totalMissing = missingN + missingO + missingQ;
+    const totalRaw = rawN + rawO + rawQ;
+    if (totalMissing === 0 && totalRaw === 0) return null;
+
+    const parts: string[] = [];
+    parts.push(`데이터 row ${dataRows}개`);
+    if (totalMissing > 0) {
+      parts.push(`수식 누락 N=${missingN} O=${missingO} Q=${missingQ}`);
+    }
+    if (totalRaw > 0) {
+      parts.push(`raw 값 (fix 시 skip) N=${rawN} O=${rawO} Q=${rawQ}`);
+    }
+    const advice = totalMissing > 0
+      ? "[🔧 fix] 가능 (빈 cell 만 install, raw 값 보존)"
+      : "수동 정리 필요 (raw 값 보호 가드로 자동 install 불가)";
+    return {
+      ruleId: this.id,
+      label: this.label,
+      severity: this.severity,
+      detail: parts.join(" — ") + ". " + advice,
+      fixable: totalMissing > 0,
+    };
+  },
+  async fix(spreadsheetId): Promise<{ summary: string }> {
+    const report: InstallReport = await installFormulas(spreadsheetId);
+    return {
+      summary:
+        `수식 설치: ${report.installed} cells, raw 값 보존: ${report.preserved} cells` +
+        (report.preservedCells.length > 0
+          ? ` (예: ${report.preservedCells.slice(0, 3).join(", ")}${report.preservedCells.length > 3 ? "..." : ""})`
+          : ""),
+    };
+  },
+};
+
 const RULES: DiagnosticRule[] = [
   ruleFormulaRestore,
+  ruleMeetingsFormulasMissing,
   ruleMetricMeetingMismatch,
   ruleO1O2Validity,
 ];
