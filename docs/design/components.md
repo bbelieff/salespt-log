@@ -1235,6 +1235,7 @@ components/dashboard/
 | **ContractForm** | 계약 액션 폼 — 수임비 + 계약조건 입력. 02 계약수납관리 row 자동 생성 트리거 |
 | **DoneForm** | 완료(미팅했으나 미계약) 액션 폼 — 완료 사유 입력 |
 | **RescheduleForm** | 변경(재예약) 액션 폼 — 새 미팅 row 자동 생성 + 기존 row.previousMeetingId 보존 |
+| **AddMeetingForm** | 추가 미팅 폼 (2026-05-17 [2b]) — 완료/취소/계약 카드에서 같은 업체로 새 미팅. Props: `vendor`, `defaultDate`, `onConfirm(newDate, newTime)`, `onCancel`, `pending`. 채널/장소 동일, 상태=예약, previousMeetingId 없음 (독립 미팅). |
 
 ### 10-4. calendar 탭 (`app/(app)/calendar/_components/`)
 

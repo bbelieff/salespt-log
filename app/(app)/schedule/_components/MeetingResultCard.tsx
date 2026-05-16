@@ -25,6 +25,7 @@ import DoneForm from "./DoneForm";
 import CancelForm from "./CancelForm";
 import RescheduleForm from "./RescheduleForm";
 import BasicEditDetails from "./BasicEditDetails";
+import AddMeetingForm from "./AddMeetingForm";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -43,6 +44,8 @@ interface Props {
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
   /** 미팅 결과 되돌리기 (2026-05-17 [2a]). 호출 측이 서버 revert + cascade 처리. */
   onRevert?: () => void;
+  /** 추가 미팅 (2026-05-17 [2b]): 완료/취소/계약 카드에서 같은 업체로 새 미팅 잡기. */
+  onAddMeeting?: (newDate: string, newTime: string) => void;
 }
 
 function fmtMoney(n: number): string {
@@ -55,12 +58,15 @@ export default function MeetingResultCard({
   onPatch,
   onReschedule,
   onRevert,
+  onAddMeeting,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
   /** 계약/완료 상태에서도 수임비/계약조건/사유를 다시 편집할 수 있게 하는 토글. */
   const [editMode, setEditMode] = useState(false);
+  /** 추가 미팅 폼 표시 (2026-05-17 [2b]). */
+  const [addOpen, setAddOpen] = useState(false);
 
   const isCanceled = state === "canceled";
   const titleCls = isCanceled
@@ -430,6 +436,36 @@ export default function MeetingResultCard({
               ↩️ 일정 변경 되돌리기 (새 미팅 삭제)
             </button>
           )}
+
+          {/* 추가 미팅 (2026-05-17 [2b]) — 완료/취소/계약 카드에 노출 */}
+          {!showActions &&
+            onAddMeeting &&
+            (state === "done" || state === "canceled" || state === "contract") && (
+              <>
+                {!addOpen && (
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    disabled={pending}
+                    className="w-full rounded-md border border-blue-300 bg-white py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                  >
+                    ➕ 추가 미팅 잡기 (같은 업체)
+                  </button>
+                )}
+                {addOpen && (
+                  <AddMeetingForm
+                    vendor={meeting.업체명.replace(/^\(변경\)\s*/, "")}
+                    defaultDate={new Date().toISOString().slice(0, 10)}
+                    onConfirm={(d2, t2) => {
+                      onAddMeeting(d2, t2);
+                      setAddOpen(false);
+                    }}
+                    onCancel={() => setAddOpen(false)}
+                    pending={pending}
+                  />
+                )}
+              </>
+            )}
 
           {/* 처리 완료 카드 — 변경됨 카드는 다음 카드 링크 안내 */}
           {!showActions && state === "rescheduled" && (
