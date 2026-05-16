@@ -89,27 +89,58 @@ export function computeDataRows(): number[] {
   return rows;
 }
 
+/**
+ * 4채널 일별 row 블록의 **매입DB row** (primary date cell) 계산.
+ * 1일 = 4 row 블록 (매입DB / 직접생산 / 현수막 / 콜·지·기·소).
+ *
+ * **2026-05-16 버그 fix (이장현 시트)**: 6기 이월 시트 다수가 영업관리 C 컬럼에
+ * cell 병합 (1일치 4 row 가 같은 날짜로 visually 표시). sheets 가 non-primary
+ * merge cell 참조 시 empty 반환 → 수식의 `$C{r}` (r=직접생산/현수막/콜지기소 row)
+ * 가 empty → FILTER/COUNTIFS 매칭 실패 → 결과 항상 빈 cell.
+ *
+ * **fix**: 4 row 블록의 매입DB row (primary date cell) 을 계산해서 모든 수식이
+ * `$C{primaryDayRow}` 참조. cell 병합 여부와 무관하게 항상 정확한 날짜 매칭.
+ * unmerged 시트도 동일 동작 (4 row 가 모두 같은 날짜 = 같은 매칭 결과).
+ *
+ * 공식: dayPrimaryRow = blockStart + blockIdx*blockStride + dayIdx*4
+ *   blockIdx = floor((r - blockStart) / blockStride)
+ *   posInBlock = (r - blockStart) % blockStride  // 0..27 for data rows
+ *   dayIdx = floor(posInBlock / 4)
+ */
+export function dayPrimaryRow(r: number): number {
+  const blockIdx = Math.floor(
+    (r - SALES_BLOCK_START) / SALES_BLOCK_STRIDE,
+  );
+  const posInBlock = (r - SALES_BLOCK_START) % SALES_BLOCK_STRIDE;
+  const dayIdx = Math.floor(posInBlock / 4);
+  return SALES_BLOCK_START + blockIdx * SALES_BLOCK_STRIDE + dayIdx * 4;
+}
+
 // ── 영업관리 한 행에 들어갈 8개 수식 ─────────────────────────────
 function formulasForRow(r: number): Record<string, string> {
   // SORT(FILTER(...)) 패턴 — 같은 셀 내 라인은 시간 빠른 것이 위로
   // (TEXT(D,"M/d")&", "&TEXT(E,"HH:MM")&... 형식이라 lex sort = 시간순 sort)
+  //
+  // **$C 좌표는 dayPrimaryRow 사용 (2026-05-16 cell-merge fix)** — 자세한 이유는
+  // 위 dayPrimaryRow JSDoc 참조. $D{r} 은 r 그대로 (채널 라벨은 row 별 고유).
+  const dpr = dayPrimaryRow(r);
   return {
-    // I: 미팅예약기록 — 04업체관리!B(예약일)=$C{r}, F(채널)=$D{r}, !N(표시상세) TEXTJOIN
-    I: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!N:N,(${M_REF}!B:B=$C${r})*(${M_REF}!F:F=$D${r})))),"")`,
-    // J: 오늘미팅일정 — 04업체관리!D(미팅날짜)=$C{r}, F=$D{r}, !O(표시요약) TEXTJOIN
-    J: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!O:O,(${M_REF}!D:D=$C${r})*(${M_REF}!F:F=$D${r})))),"")`,
+    // I: 미팅예약기록 — 04업체관리!B(예약일)=$C{dpr}, F(채널)=$D{r}, !N(표시상세) TEXTJOIN
+    I: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!N:N,(${M_REF}!B:B=$C${dpr})*(${M_REF}!F:F=$D${r})))),"")`,
+    // J: 오늘미팅일정 — 04업체관리!D(미팅날짜)=$C{dpr}, F=$D{r}, !O(표시요약) TEXTJOIN
+    J: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!O:O,(${M_REF}!D:D=$C${dpr})*(${M_REF}!F:F=$D${r})))),"")`,
     // K: 오늘미팅수 — COUNTIFS by 미팅날짜+채널
-    K: `=COUNTIFS(${M_REF}!D:D,$C${r},${M_REF}!F:F,$D${r})`,
+    K: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r})`,
     // L: 미팅완료수 — 계약 + 완료
-    L: `=COUNTIFS(${M_REF}!D:D,$C${r},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${r},${M_REF}!F:F,$D${r},${M_REF}!J:J,"완료")`,
+    L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"완료")`,
     // M: 미팅사유 자동 집계
-    M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,(${M_REF}!D:D=$C${r})*(${M_REF}!F:F=$D${r}))),"")`,
+    M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,(${M_REF}!D:D=$C${dpr})*(${M_REF}!F:F=$D${r}))),"")`,
     // N: 계약건수
-    N: `=COUNTIFS(${M_REF}!D:D,$C${r},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
+    N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
     // O: 수임비합계
-    O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${r},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
+    O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
     // P: 계약비고 — 04업체관리!Q(계약합성라인) TEXTJOIN
-    P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${r})*(${M_REF}!F:F=$D${r})*(${M_REF}!J:J="계약"))),"")`,
+    P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${dpr})*(${M_REF}!F:F=$D${r})*(${M_REF}!J:J="계약"))),"")`,
   };
 }
 
