@@ -22,7 +22,6 @@ import {
 } from "@/query/contact-hooks";
 import type { ChannelDailyRowMetrics } from "@/service";
 import WeekHeader from "./_components/WeekHeader";
-import WeekFunnelBar from "./_components/WeekFunnelBar";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import MeetingSlotItem, {
@@ -397,7 +396,7 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" pageSubtitle="01 영업관리" />
-      {/* WeekHeader + WeekFunnelBar 를 sticky 한 그룹으로 묶음 (일정·계약 탭과 동일 패턴). */}
+      {/* WeekHeader 단독 sticky — 주차합계는 날짜 라벨에 inline (2026-05-17, WeekFunnelBar 통합). */}
       <div className="sticky top-24 z-30 bg-white shadow-sm">
         <WeekHeader
           weekIndex={weekIndex}
@@ -406,11 +405,11 @@ export default function ContactPage() {
           todayISO={TODAY_ISO}
           cohortName={undefined}
           countsByDay={countsByDay}
+          weekFunnel={weekFunnel}
           onPrevWeek={() => moveWeek(-1)}
           onNextWeek={() => moveWeek(1)}
           onSelectDay={setDate}
         />
-        <WeekFunnelBar weekFunnel={weekFunnel} />
       </div>
 
       <main className="px-4 pt-4 pb-[160px]">

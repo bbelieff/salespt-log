@@ -19,6 +19,13 @@ interface Props {
   /** 각 요일의 미팅 수 (배열 길이 = 7). 0 이면 badge 안 보임.
    *  2026-05-16 추가: 일정·계약 탭과 동일하게 컨택탭 일자 박스에도 노출. */
   countsByDay?: number[];
+  /** 주차 합계 — 4채널 합산 funnel (2026-05-17 이전 WeekFunnelBar 통합). */
+  weekFunnel?: {
+    생산: number;
+    유입: number;
+    컨택진행: number;
+    미팅예약: number;
+  };
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onSelectDay: (date: string) => void;
@@ -31,6 +38,7 @@ export default function WeekHeader({
   todayISO,
   cohortName,
   countsByDay,
+  weekFunnel,
   onPrevWeek,
   onNextWeek,
   onSelectDay,
@@ -157,13 +165,30 @@ export default function WeekHeader({
         })}
       </div>
 
-      {/* 선택된 날짜 라벨 */}
+      {/* 선택된 날짜 라벨 + 주차합계 inline (2026-05-17, WeekFunnelBar 통합) */}
       <div className="px-4 pb-3">
-        <div className="rounded-r-xl border-l-4 border-blue-500 bg-blue-50 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-r-xl border-l-4 border-blue-500 bg-blue-50 px-3 py-2">
           <span className="text-sm font-semibold text-blue-800">
             {fmtMD(selectedDay)} ({dayLabelKO(selectedDay)})
             {selectedDate === todayISO ? " — 오늘" : ""}
           </span>
+          {weekFunnel && (
+            <span className="flex flex-wrap items-center gap-x-2 text-xs font-medium">
+              <span className="text-blue-700/70">주차합계 :</span>
+              <span className="text-gray-800">
+                생산 <span className="font-bold">{weekFunnel.생산}</span>
+              </span>
+              <span className="text-amber-700">
+                유입 <span className="font-bold">{weekFunnel.유입}</span>
+              </span>
+              <span className="text-indigo-700">
+                컨택진행 <span className="font-bold">{weekFunnel.컨택진행}</span>
+              </span>
+              <span className="text-green-700">
+                미팅예약 <span className="font-bold">{weekFunnel.미팅예약}</span>
+              </span>
+            </span>
+          )}
         </div>
       </div>
       {/* 사용된 종속성: startDow 참조 (요일 매핑 계산 의도 보존) */}
