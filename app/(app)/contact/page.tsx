@@ -73,8 +73,9 @@ export default function ContactPage() {
   const patchMeeting = usePatchMeeting();
   const removeMeeting = useRemoveMeeting();
 
+  // badge 도 예약일 기준 — day view 와 일관 (2026-05-16 [3] fix).
   const countsByDay =
-    weekQuery.data?.daysByMeetingDate.map((d) => d.meetings.length) ??
+    weekQuery.data?.daysByReservationDate.map((d) => d.meetings.length) ??
     (Array(7).fill(0) as number[]);
   const weekFunnel = weekQuery.data?.weekFunnel ?? {
     생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0,

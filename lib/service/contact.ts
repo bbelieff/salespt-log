@@ -19,6 +19,7 @@ import {
   clearMeeting,
   findByDate,
   findByDateRange,
+  findByDateRangeBoth,
   findById,
   updateMeeting,
 } from "@/repo/meetings";
@@ -172,8 +173,12 @@ export interface ScheduleWeekView {
   weekStart: string; // YYYY-MM-DD (수강시작일과 같은 요일)
   weekIndex: number;
   courseStart: string;
-  /** 7개 슬롯 (weekStart=0 ... weekStart+6=6). 미팅날짜 기준. */
+  /** 7개 슬롯, **미팅날짜** 기준 — 일정·계약 탭 cards (그 날 실제 미팅 있는 카드). */
   daysByMeetingDate: Array<{ date: string; meetings: Meeting[] }>;
+  /** 7개 슬롯, **예약일** 기준 — 컨택탭 badge + 일자 cards (2026-05-16 추가).
+   *  컨택탭 day view 가 `예약일=date` 필터인데 badge 가 미팅날짜 기준이라
+   *  불일치 사고 (사용자 보고 5/14 badge 1 인데 카드 없음) → 두 기준 분리. */
+  daysByReservationDate: Array<{ date: string; meetings: Meeting[] }>;
   /** 영업관리 E~H 의 그 주 합계 — 생산/유입/컨택진행/미팅예약.
    *  컨택탭 헤더 funnel 표시용 (2026-05-16). 일정·계약 탭은 안 씀. */
   weekFunnel: {
@@ -214,16 +219,23 @@ export async function loadWeekMeetings(
     dates.push(`${y}-${m}-${dd}`);
   }
 
-  // 7일치 미팅 read + 영업관리 E~H 주 합계 read — 병렬 (총 2 sheet reads).
-  const [map, weekFunnel] = await Promise.all([
-    findByDateRange(spreadsheetId, dates, "meeting"),
+  // 1 sheet read 에서 두 기준 (예약일/미팅날짜) 동시 추출 + 영업관리 E~H 주 합계.
+  // **2026-05-16**: `findByDateRangeBoth` 로 컨택탭 badge(예약일) + 일정·계약 탭
+  // cards(미팅날짜) 의 두 view 를 한 read 로 — 사용자 보고 [3] (5/14 badge=1
+  // 인데 카드 없음) 의 view 불일치 사고 fix.
+  const [{ byMeetingDate, byReservationDate }, weekFunnel] = await Promise.all([
+    findByDateRangeBoth(spreadsheetId, dates),
     readWeekFunnel(spreadsheetId, week),
   ]);
+  const sortByTime = (a: Meeting, b: Meeting) =>
+    a.미팅시간.localeCompare(b.미팅시간);
   const daysByMeetingDate = dates.map((d) => ({
     date: d,
-    meetings: (map.get(d) ?? []).sort((a, b) =>
-      a.미팅시간.localeCompare(b.미팅시간),
-    ),
+    meetings: (byMeetingDate.get(d) ?? []).sort(sortByTime),
+  }));
+  const daysByReservationDate = dates.map((d) => ({
+    date: d,
+    meetings: (byReservationDate.get(d) ?? []).sort(sortByTime),
   }));
 
   const csISO = `${courseStart.getFullYear()}-${String(
@@ -235,6 +247,7 @@ export async function loadWeekMeetings(
     weekIndex: week,
     courseStart: csISO,
     daysByMeetingDate,
+    daysByReservationDate,
     weekFunnel,
   };
 }
