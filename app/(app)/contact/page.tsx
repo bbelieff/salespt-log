@@ -18,15 +18,17 @@ import {
   usePatchMeeting,
   useRemoveMeeting,
   useSaveMetrics,
+  useWeekMeetings,
 } from "@/query/contact-hooks";
 import type { ChannelDailyRowMetrics } from "@/service";
 import WeekHeader from "./_components/WeekHeader";
+import WeekFunnelBar from "./_components/WeekFunnelBar";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import MeetingSlotItem, {
   type NewSlot,
 } from "./_components/MeetingSlotItem";
-import { fmtISO, parseISO, weekIndexOf } from "./_lib/week";
+import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -61,12 +63,22 @@ export default function ContactPage() {
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
 
   const dayQuery = useDay(date);
+  // 2026-05-16: 주 단위 fetch — 일자 badges + 금주 채널 funnel (일정·계약 탭과 동일 SSOT).
+  const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
+  const weekQuery = useWeekMeetings(weekStartISO);
   // ⚠️ stateless mutations: date를 hook 인자가 아니라 mutate args로 전달.
   // (hook 인자로 받으면 navigate 도중 race condition으로 잘못된 row 오염)
   const saveMetrics = useSaveMetrics();
   const appendMeeting = useAppendMeeting();
   const patchMeeting = usePatchMeeting();
   const removeMeeting = useRemoveMeeting();
+
+  const countsByDay =
+    weekQuery.data?.daysByMeetingDate.map((d) => d.meetings.length) ??
+    (Array(7).fill(0) as number[]);
+  const weekFunnel = weekQuery.data?.weekFunnel ?? {
+    생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0,
+  };
 
   // 서버 데이터 로드 시 draft 동기화 + 일관성 체크
   useEffect(() => {
@@ -384,16 +396,21 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" pageSubtitle="01 영업관리" />
-      <WeekHeader
-        weekIndex={weekIndex}
-        courseStart={courseStart}
-        selectedDate={date}
-        todayISO={TODAY_ISO}
-        cohortName={undefined}
-        onPrevWeek={() => moveWeek(-1)}
-        onNextWeek={() => moveWeek(1)}
-        onSelectDay={setDate}
-      />
+      {/* WeekHeader + WeekFunnelBar 를 sticky 한 그룹으로 묶음 (일정·계약 탭과 동일 패턴). */}
+      <div className="sticky top-24 z-30 bg-white shadow-sm">
+        <WeekHeader
+          weekIndex={weekIndex}
+          courseStart={courseStart}
+          selectedDate={date}
+          todayISO={TODAY_ISO}
+          cohortName={undefined}
+          countsByDay={countsByDay}
+          onPrevWeek={() => moveWeek(-1)}
+          onNextWeek={() => moveWeek(1)}
+          onSelectDay={setDate}
+        />
+        <WeekFunnelBar weekFunnel={weekFunnel} />
+      </div>
 
       <main className="px-4 pt-4 pb-[160px]">
         <ChannelTabsAndPanel
