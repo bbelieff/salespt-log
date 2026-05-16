@@ -95,8 +95,41 @@ const cachedReadBundle = unstable_cache(
     };
   },
   ["me-bundle-v2"], // v2: stats 필드 포함 (이전 캐시 entries 와 schema 다름)
-  { revalidate: 600, tags: ["me-bundle"] },
+  // 2026-05-16: TTL 600s → 1800s (30분) — quota 압박 완화.
+  // PR #198 stats 도입 후 페이지 진입 시 모든 trainee 시트 fetch 필요 →
+  // 콜드 캐시 60명 burst 가 Sheets API 60 reads/min/SA 한도 근접 위험.
+  // TTL 늘려 cold-start 빈도 1시간당 2회 → 1회로 감소. 동시성 제한(pMapBundle)
+  // 과 함께 quota 안전. trade-off: 시트 직접 수정 시 최대 30분 지연 (admin 액션
+  // 후엔 invalidateTag("me-bundle") 호출하면 즉시 갱신).
+  { revalidate: 1800, tags: ["me-bundle"] },
 );
+
+/**
+ * 시트 시퀀스 fetch 동시성 제한 (2026-05-16) — Sheets API quota 60 reads/min/SA
+ * 한도 보호. concurrency 5 → 60명 cold-start 시 ~12 waves × 5 동시 = 부드러운 rate.
+ * Promise.all 60 동시 burst 는 한도 즉시 hit → 503 retry 폭주 사고 가능.
+ *
+ * 결과 순서는 입력 순서 보존 (results[i] 배열 위치).
+ */
+async function pMapBundle<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency = 5,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i]!);
+    }
+  }
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, () => worker()),
+  );
+  return results;
+}
 
 /** cachedReadBundle 결과를 Date 포함 형태로 복원. */
 async function readBundle(spreadsheetId: string): Promise<{
@@ -135,7 +168,8 @@ async function readBundle(spreadsheetId: string): Promise<{
 export async function enrichUsersWithSheetCohort<T extends { cohort: string; name: string; spreadsheetId: string }>(
   users: T[],
 ): Promise<T[]> {
-  const tasks = users.map(async (u) => {
+  // pMapBundle (concurrency 5) — 60명 cold-start 시에도 Sheets quota burst 방지.
+  return pMapBundle(users, async (u) => {
     if (!u.spreadsheetId) return u;
     try {
       const bundle = await readBundle(u.spreadsheetId);
@@ -153,7 +187,6 @@ export async function enrichUsersWithSheetCohort<T extends { cohort: string; nam
       return u;
     }
   });
-  return Promise.all(tasks);
 }
 
 /**
@@ -180,7 +213,8 @@ export async function enrichUsersWithDates<
     graduationISO?: string;
   },
 >(users: T[]): Promise<Array<T & { courseStartISO: string; graduationISO: string }>> {
-  const tasks = users.map(async (u) => {
+  // pMapBundle (concurrency 5) — Sheets quota 보호 (PR #198 stats 추가 이후 더 중요).
+  return pMapBundle(users, async (u) => {
     const defaults = { ...u, courseStartISO: "", graduationISO: "" };
     const who = ("email" in u ? (u as { email: string }).email : "?");
 
@@ -228,7 +262,6 @@ export async function enrichUsersWithDates<
       return defaults;
     }
   });
-  return Promise.all(tasks);
 }
 
 /**
@@ -250,7 +283,9 @@ export interface TraineeFunnelStats {
 export async function enrichUsersWithStats<T extends { spreadsheetId: string }>(
   users: T[],
 ): Promise<Array<T & { stats?: TraineeFunnelStats }>> {
-  const tasks = users.map(async (u) => {
+  // pMapBundle (concurrency 5) — 콜드 캐시 시 60명 burst → 12 waves × 5 동시.
+  // Sheets API 60 reads/min/SA 한도 안전 범위 (PR #198 stats 추가 후 critical).
+  return pMapBundle(users, async (u) => {
     if (!u.spreadsheetId) return u;
     const who = "email" in u ? (u as { email: string }).email : "?";
     try {
@@ -264,7 +299,6 @@ export async function enrichUsersWithStats<T extends { spreadsheetId: string }>(
       return u;
     }
   });
-  return Promise.all(tasks);
 }
 
 export async function loadMe(email: string): Promise<MeProfile> {
