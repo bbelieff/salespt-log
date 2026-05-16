@@ -8,6 +8,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeDataRows,
+  dayPrimaryRow,
   isSafeToOverwrite,
 } from "../../lib/repo/setup-formulas";
 
@@ -116,5 +117,59 @@ describe("computeDataRows — deterministic data row 생성", () => {
     expect(rows).toContain(11); // 직접생산 — 6기 시트에서 누락됐던 row
     expect(rows).toContain(12); // 현수막
     expect(rows).toContain(13); // 콜·지·기·소
+  });
+});
+
+/**
+ * 단위 테스트: dayPrimaryRow (2026-05-16, 이장현 cell 병합 시트 사고 fix).
+ *
+ * 4 row 일별 블록의 매입DB(primary date cell) row 계산. 6기 cell 병합 시트의
+ * 직접생산/현수막/콜지기소 row 에서 $C 참조가 empty 되던 사고 fix —
+ * formulasForRow 가 $C{r} → $C{dayPrimaryRow(r)} 로 변경.
+ */
+describe("dayPrimaryRow — cell 병합 시트 $C 참조 fix", () => {
+  it("매입DB row(10) 자기자신 = primary", () => {
+    expect(dayPrimaryRow(10)).toBe(10);
+  });
+
+  it("직접생산 row(11) → primary = 10 (1주 1일 매입DB)", () => {
+    expect(dayPrimaryRow(11)).toBe(10);
+  });
+
+  it("현수막 row(12) → primary = 10", () => {
+    expect(dayPrimaryRow(12)).toBe(10);
+  });
+
+  it("콜·지·기·소 row(13) → primary = 10", () => {
+    expect(dayPrimaryRow(13)).toBe(10);
+  });
+
+  it("1주 2일 매입DB(14) → primary = 14", () => {
+    expect(dayPrimaryRow(14)).toBe(14);
+  });
+
+  it("1주 2일 콜·지·기·소(17) → primary = 14", () => {
+    expect(dayPrimaryRow(17)).toBe(14);
+  });
+
+  it("1주 7일 매입DB(34) → primary = 34", () => {
+    expect(dayPrimaryRow(34)).toBe(34);
+  });
+
+  it("1주 7일 콜·지·기·소(37) → primary = 34", () => {
+    expect(dayPrimaryRow(37)).toBe(34);
+  });
+
+  it("2주 1일 매입DB(44) → primary = 44 (blockStride 34 건너뜀)", () => {
+    expect(dayPrimaryRow(44)).toBe(44);
+  });
+
+  it("2주 1일 콜·지·기·소(47) → primary = 44", () => {
+    expect(dayPrimaryRow(47)).toBe(44);
+  });
+
+  it("8주 7일 콜·지·기·소(275) → primary = 272", () => {
+    // 8주 시작 = 10 + 7*34 = 248. 7일 시작 = 248 + 6*4 = 272. 콜지기소 = 275.
+    expect(dayPrimaryRow(275)).toBe(272);
   });
 });
