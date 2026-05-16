@@ -56,25 +56,37 @@ function meetingsRowFormulas(r: number): {
   };
 }
 
-// ── 데이터 행 식별 (C 컬럼 = 날짜) ───────────────────────────────
-async function readDataRows(spreadsheetId: string): Promise<number[]> {
-  const range = `${tabRef(SALES_TAB)}!C${SALES_BLOCK_START}:C${SALES_LAST_ROW}`;
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const values = res.data.values ?? [];
-  const dataRows: number[] = [];
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i]?.[0];
-    // 데이터 행: C 셀이 number(date serial). 합계/헤더는 string ("주차별합계" 등) 또는 empty.
-    if (typeof v === "number" && v > 0) {
-      dataRows.push(SALES_BLOCK_START + i);
+// ── 데이터 행 식별 (deterministic — 2026-05-16) ──────────────────
+//
+// 영업관리 레이아웃은 박힌 공식이다 (PR #192 `salesRowFor`와 동일):
+//   row = blockStart(10) + week * blockStride(34) + dayIdx * 4 + channelIdx
+// 매 주 28 data rows (7일 × 4채널) → 총 224 rows (8주).
+//
+// **2026-05-16 변경 (6기 셀병합 사고)**: 이전 구현은 C 컬럼을 sheets API 로
+// 읽어 number(date serial) 인 row 만 데이터 행으로 인식했다. 그런데 6기 이월
+// 시트 다수가 영업관리 C 컬럼에 **cell 병합** (예: C10:C13 = 매주 1일치 4채널
+// row 가 같은 날짜로 visually 표시) 으로 셋업됨. sheets API 의 values.get 은
+// 병합 non-primary cell 을 empty 로 반환 → 매입DB row (각 day 의 첫 row) 만
+// 데이터 행으로 인식 → installFormulas 가 4채널 중 1채널만 처리.
+// 결과: 김선주/이장현 미팅카드 → 영업관리 I 열 매입DB row 만 동작, 나머지
+// 3채널 row 누락 사고 (2026-05-16 시연 중 발견).
+//
+// → C 컬럼 read 제거. 박힌 공식으로 결정적 row 생성. 시트 cell 병합 여부와
+// 무관하게 224 rows 모두 install 시도. raw 값 cell 은 `isSafeToOverwrite` 가
+// 여전히 skip (사용자 작성값 보존). 합계/헤더 row 는 공식상 범위 밖이라 자연
+// 제외 (week 마다 0..27 offset 만 사용, 28..33 은 합계/헤더).
+export function computeDataRows(): number[] {
+  const rows: number[] = [];
+  for (let week = 0; week < 8; week++) {
+    for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+      for (let channelIdx = 0; channelIdx < 4; channelIdx++) {
+        rows.push(
+          SALES_BLOCK_START + week * SALES_BLOCK_STRIDE + dayIdx * 4 + channelIdx,
+        );
+      }
     }
   }
-  return dataRows;
+  return rows;
 }
 
 // ── 영업관리 한 행에 들어갈 8개 수식 ─────────────────────────────
@@ -137,7 +149,7 @@ export function isSafeToOverwrite(current: unknown): boolean {
 export async function installFormulas(
   spreadsheetId: string,
 ): Promise<InstallReport> {
-  const dataRows = await readDataRows(spreadsheetId);
+  const dataRows = computeDataRows();
 
   // Pre-read: FORMULA mode 로 타겟 범위 현재 내용 가져옴.
   //   - 04 업체관리 N/O/Q 컬럼 (1~1000행).
@@ -253,14 +265,14 @@ export async function installFormulas(
  *
  * 클리어 범위:
  *   - 04 업체관리: N2:N, O2:O, Q2:Q
- *   - 01 영업관리: 데이터행 I~P (합계행은 안 건드림 — readDataRows 가 식별)
+ *   - 01 영업관리: 데이터행 I~P (합계행은 안 건드림 — computeDataRows 가 박힌 공식으로 식별)
  *
  * **CLAUDE.md §2 규칙 5**: 모든 bulk-write 는 user raw 데이터 보존 의무.
  */
 export async function uninstallFormulas(
   spreadsheetId: string,
 ): Promise<{ cleared: number; preserved: number; preservedCells: string[] }> {
-  const dataRows = await readDataRows(spreadsheetId);
+  const dataRows = computeDataRows();
 
   // Pre-read FORMULA mode — install 과 동일 패턴.
   const [meetingsExisting, salesExisting] = await Promise.all([
