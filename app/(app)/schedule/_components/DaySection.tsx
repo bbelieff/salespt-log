@@ -20,6 +20,8 @@ interface Props {
     newTime: string,
     reason: string,
   ) => void;
+  /** 미팅 결과 되돌리기 (2026-05-17 [2a]). */
+  onRevert?: (id: string) => void;
 }
 
 export default function DaySection({
@@ -29,6 +31,7 @@ export default function DaySection({
   pendingId,
   onPatch,
   onReschedule,
+  onRevert,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -97,6 +100,7 @@ export default function DaySection({
             pending={pendingId === m.id}
             onPatch={(partial) => onPatch(m.id, partial)}
             onReschedule={(d2, t, r) => onReschedule(m, d2, t, r)}
+            onRevert={onRevert ? () => onRevert(m.id) : undefined}
           />
         ))
       )}

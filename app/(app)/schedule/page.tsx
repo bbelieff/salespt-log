@@ -15,6 +15,7 @@ import type { Meeting } from "@/types";
 import {
   useAppendMeeting,
   usePatchMeeting,
+  useRevertMeeting,
   useWeekMeetings,
 } from "@/query/contact-hooks";
 import {
@@ -48,6 +49,7 @@ export default function SchedulePage() {
   const weekQuery = useWeekMeetings(weekStart);
   const patchMeeting = usePatchMeeting();
   const appendMeeting = useAppendMeeting();
+  const revertMeeting = useRevertMeeting();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -228,6 +230,22 @@ export default function SchedulePage() {
     }
   };
 
+  /**
+   * 미팅 결과 되돌리기 (2026-05-17 [2a]).
+   * 서버에서 상태별 cascade 처리 후 응답에서 cascade 요약 받아 토스트.
+   */
+  const handleRevert = async (id: string) => {
+    setPendingId(id);
+    try {
+      const result = await revertMeeting.mutateAsync({ id, weekStart });
+      showToast(`✓ 되돌림 (${result.status}) — ${result.cascade}`);
+    } catch (e) {
+      showToast(`되돌리기 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   const moveWeek = (delta: number) => {
     const cur = parseISO(weekStart);
     setWeekStart(fmtISO(addDays(cur, delta * 7)));
@@ -312,6 +330,7 @@ export default function SchedulePage() {
               pendingId={pendingId}
               onPatch={handlePatch}
               onReschedule={handleReschedule}
+              onRevert={handleRevert}
             />
           </div>
         ))}

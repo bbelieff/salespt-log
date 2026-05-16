@@ -371,6 +371,21 @@ export async function updateUserFields(
   });
 }
 
+/**
+ * (계약일, 업체명) 매칭 row clear. 미팅 계약 되돌리기 cascade 용 (2026-05-17 [2a]).
+ * 매칭되는 row 없으면 null 반환, 있으면 clearRow 후 row 번호 반환.
+ */
+export async function clearRowByLink(
+  spreadsheetId: string,
+  계약일: string,
+  업체명: string,
+): Promise<number | null> {
+  const row = await findRowByLink(spreadsheetId, 계약일, 업체명);
+  if (row === null) return null;
+  await clearRow(spreadsheetId, row);
+  return row;
+}
+
 /** row 식별로 한 row clear (C~AD만 비움 — A 공란/B 순번 수식 보존).
  *
  *  버그 fix: 이전에는 A~AD 전체 clear → 사용자 시트의 B(순번) 수식까지
