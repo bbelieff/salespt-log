@@ -345,6 +345,53 @@ export async function findByDateRange(
   return result;
 }
 
+/**
+ * 한 번의 시트 read 로 **두 기준 (예약일/미팅날짜) 동시 추출** (2026-05-16).
+ *
+ * 컨택탭 일자 badges 는 `예약일` 필터 (그 날 일자 카드 = 그 날 예약된 미팅).
+ * 일정·계약 탭 일자 cards 는 `미팅날짜` 필터 (그 날 실제 미팅 있는 미팅).
+ * 두 view 가 같은 데이터에서 다른 기준으로 필터링 → 1 sheet read 로 둘 다 추출.
+ *
+ * 사용처: `loadWeekMeetings` (컨택탭 badge + 일정·계약 탭 cards 모두 필요).
+ */
+export async function findByDateRangeBoth(
+  spreadsheetId: string,
+  dates: string[],
+): Promise<{
+  byMeetingDate: Map<string, Meeting[]>;
+  byReservationDate: Map<string, Meeting[]>;
+}> {
+  const wanted = new Set(dates);
+  const byMeetingDate = new Map<string, Meeting[]>();
+  const byReservationDate = new Map<string, Meeting[]>();
+  for (const d of dates) {
+    byMeetingDate.set(d, []);
+    byReservationDate.set(d, []);
+  }
+
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: RANGE_ALL,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const all = (res.data.values ?? []) as unknown[][];
+  const seenIds = new Set<string>();
+  for (const r of all) {
+    const parsed = rowToMeeting(r);
+    if (!parsed) continue;
+    if (seenIds.has(parsed.id)) continue;
+    seenIds.add(parsed.id);
+    const meetingDate = serialToISODate(r[COL.미팅날짜]);
+    const reservationDate = serialToISODate(r[COL.예약일]);
+    if (wanted.has(meetingDate))
+      byMeetingDate.get(meetingDate)!.push(parsed);
+    if (wanted.has(reservationDate))
+      byReservationDate.get(reservationDate)!.push(parsed);
+  }
+  return { byMeetingDate, byReservationDate };
+}
+
 /** id로 행 클리어 (실제 삭제 아니라 빈 값으로 update). */
 export async function clearMeeting(
   spreadsheetId: string,
