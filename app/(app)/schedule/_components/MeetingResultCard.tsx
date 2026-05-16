@@ -158,6 +158,10 @@ export default function MeetingResultCard({
         <span className={`shrink-0 text-sm font-bold ${timeCls}`}>
           {meeting.미팅시간}
         </span>
+        {/* 채널 배지 — 닫힌(접힌) 카드에서도 항상 노출 (2026-05-17, 사용자 요청 [2c]) */}
+        <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
+          {meeting.channel}
+        </span>
         <span className={`flex-1 truncate text-sm font-semibold ${titleCls}`}>
           {meeting.업체명}
         </span>
@@ -186,10 +190,8 @@ export default function MeetingResultCard({
 
       {open && (
         <div className="space-y-3 border-t border-gray-200/60 px-3 py-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
-              {meeting.channel}
-            </span>
+          {/* 채널 배지는 헤더에 노출 (2026-05-17 [2c]) — 펼침 시 상태 라벨만 표시 */}
+          <div className="flex items-center justify-end text-xs">
             <span className="text-gray-400">
               현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b>
             </span>
