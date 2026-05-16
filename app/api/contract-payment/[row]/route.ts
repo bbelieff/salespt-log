@@ -8,6 +8,7 @@ import { ContractPayment } from "@/types";
 import {
   patchContractPayment,
   removeContractPayment,
+  removeContractPaymentWithCascade,
 } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
 
@@ -46,7 +47,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   }
 }
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+export async function DELETE(req: NextRequest, ctx: RouteContext) {
   try {
     const { row } = await ctx.params;
     const rowParsed = RowParam.safeParse(row);
@@ -57,6 +58,15 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
       );
     }
     const email = await getCurrentUserEmail();
+    // 2026-05-17 [3]: ?cascade=meeting 이면 매칭 미팅 계약→예약 revert
+    const cascade = req.nextUrl.searchParams.get("cascade") === "meeting";
+    if (cascade) {
+      const result = await removeContractPaymentWithCascade(
+        email,
+        rowParsed.data,
+      );
+      return NextResponse.json({ ok: true, ...result });
+    }
     await removeContractPayment(email, rowParsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {

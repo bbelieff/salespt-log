@@ -66,6 +66,7 @@ export {
   syncContractFee,
   patchContractPayment,
   removeContractPayment,
+  removeContractPaymentWithCascade,
 } from "./contract-payment";
 
 // 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)
