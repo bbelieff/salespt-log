@@ -12,6 +12,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ContractPayment } from "@/types";
 import {
   usePatchContractPayment,
@@ -30,7 +31,13 @@ interface ConfirmTarget {
   label: string;
 }
 
+interface PostDeleteNavTarget {
+  미팅날짜: string;
+  업체명: string;
+}
+
 export default function PaymentPage() {
+  const router = useRouter();
   const list = useContractPayments();
   const patch = usePatchContractPayment();
   const remove = useRemoveContractPayment();
@@ -38,6 +45,12 @@ export default function PaymentPage() {
   const [pendingRow, setPendingRow] = useState<number | null>(null);
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  /** 2026-05-17 [3]: 삭제 확인 모달의 cascade 옵션 (계약→예약 revert). */
+  const [cascadeOpt, setCascadeOpt] = useState(true);
+  /** 2026-05-17 [3]: 삭제 후 바로가기 팝업 (cascade 발생 시). */
+  const [postDeleteNav, setPostDeleteNav] = useState<PostDeleteNavTarget | null>(
+    null,
+  );
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -60,11 +73,25 @@ export default function PaymentPage() {
   const handleConfirmDelete = async () => {
     if (!confirmTarget) return;
     const target = confirmTarget;
+    const cascade = cascadeOpt;
     setConfirmTarget(null);
     setPendingRow(target.row);
     try {
-      await remove.mutateAsync(target.row);
-      showToast("삭제되었습니다 🗑");
+      const res = await remove.mutateAsync({ row: target.row, cascade });
+      if (cascade && res.미팅날짜 && res.meetingId) {
+        // cascade 성공 + 매칭 미팅 발견 → 바로가기 팝업 노출
+        setPostDeleteNav({
+          미팅날짜: res.미팅날짜,
+          업체명: target.label,
+        });
+        showToast(`삭제 + ${res.cascade ?? "cascade"} ✓`);
+      } else {
+        showToast(
+          cascade
+            ? `삭제 ✓ — ${res.cascade ?? "cascade 결과 없음"}`
+            : "삭제되었습니다 🗑",
+        );
+      }
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);
     } finally {
@@ -205,7 +232,7 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {/* 삭제 확인 모달 */}
+      {/* 삭제 확인 모달 — 2026-05-17 [3]: cascade 옵션 추가 */}
       {confirmTarget && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
@@ -218,9 +245,25 @@ export default function PaymentPage() {
             <h3 className="mb-1 text-base font-semibold text-gray-900">
               계약수납 삭제
             </h3>
-            <p className="mb-4 text-sm leading-relaxed text-gray-600">
+            <p className="mb-3 text-sm leading-relaxed text-gray-600">
               {`'${confirmTarget.label}' 계약수납 row를 비울까요? (시트 row ${confirmTarget.row} 전체 clear)`}
             </p>
+            <label className="mb-4 flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-700">
+              <input
+                type="checkbox"
+                checked={cascadeOpt}
+                onChange={(e) => setCascadeOpt(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>
+                <b>매칭 미팅도 계약 → 예약으로 되돌리기</b> (cascade)
+                <br />
+                <span className="text-gray-500">
+                  04 업체관리에서 (계약일=미팅날짜, 업체명) 매칭되는 계약 row 의
+                  상태/수임비/계약조건 초기화.
+                </span>
+              </span>
+            </label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -235,6 +278,47 @@ export default function PaymentPage() {
                 className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600"
               >
                 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 삭제 후 바로가기 팝업 — 2026-05-17 [3] */}
+      {postDeleteNav && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setPostDeleteNav(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-base font-semibold text-gray-900">
+              ✓ 삭제 + cascade 완료
+            </h3>
+            <p className="mb-4 text-sm leading-relaxed text-gray-600">
+              {`'${postDeleteNav.업체명}' 미팅이 예약 상태로 되돌아갔습니다 (${postDeleteNav.미팅날짜}).`}
+              <br />
+              해당 미팅 카드로 이동하시겠어요?
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPostDeleteNav(null)}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                현재 화면 유지
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPostDeleteNav(null);
+                  router.push("/schedule");
+                }}
+                className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600"
+              >
+                📅 일정·계약으로 이동
               </button>
             </div>
           </div>

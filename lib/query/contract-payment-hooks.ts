@@ -97,13 +97,30 @@ export function usePatchContractPayment() {
   });
 }
 
+/**
+ * 수납 row 삭제. cascade=true 면 매칭 미팅 계약→예약 revert (2026-05-17 [3]).
+ * 응답에 cascade 결과 + 매칭 미팅 식별자 포함.
+ */
+export interface RemoveArgs {
+  row: number;
+  cascade?: boolean;
+}
+export interface RemoveResponse {
+  ok: true;
+  cascade?: string;
+  meetingId?: string | null;
+  미팅날짜?: string | null;
+}
 export function useRemoveContractPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (row: number) =>
-      fetchJSON<{ ok: true }>(`/api/contract-payment/${row}`, {
-        method: "DELETE",
-      }),
+    mutationFn: ({ row, cascade }: RemoveArgs) => {
+      const qs = cascade ? "?cascade=meeting" : "";
+      return fetchJSON<RemoveResponse>(
+        `/api/contract-payment/${row}${qs}`,
+        { method: "DELETE" },
+      );
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: cpKey() }),
   });
 }
