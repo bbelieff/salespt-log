@@ -95,7 +95,7 @@ export default function WeekHeader({
         </button>
       </div>
 
-      {/* 7일 그리드 — 원래 크기 (요일/숫자 stack, 보기 좋은 사이즈) */}
+      {/* 7일 그리드 — 컨택탭 WeekHeader 와 동일 디자인 (2026-05-17 [A1] 일관성) */}
       <div className="grid grid-cols-7 gap-1 px-2 pb-2.5">
         {days.map((d, i) => {
           const iso = `${d.getFullYear()}-${String(
@@ -112,15 +112,10 @@ export default function WeekHeader({
               onClick={() => onClickDay(i)}
               className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
                 isToday
-                  ? "bg-blue-500 text-white shadow-sm shadow-blue-500/30"
-                  : count > 0
-                    ? "bg-blue-50 hover:bg-blue-100"
-                    : "bg-gray-50 hover:bg-gray-100"
-              } ${
-                !isToday && isWeekend
-                  ? "border border-red-300"
-                  : ""
+                  ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
+                  : "bg-gray-50 hover:bg-gray-100"
               }`}
+              aria-label={`${d.getDate()}일${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >
               <span
                 className={`text-xs font-medium ${
@@ -140,6 +135,12 @@ export default function WeekHeader({
               >
                 {d.getDate()}
               </span>
+              {/* "오늘" 플로팅 배지 — 컨택탭 일관성 (2026-05-17 [A1]) */}
+              {isToday && (
+                <span className="absolute -top-1.5 rounded-full bg-white px-1 py-px text-[10px] font-bold leading-none text-blue-600">
+                  오늘
+                </span>
+              )}
               {count > 0 && (
                 <span
                   className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none ${
