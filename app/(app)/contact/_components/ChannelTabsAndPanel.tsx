@@ -285,60 +285,61 @@ export default function ChannelTabsAndPanel({
                 <div className="text-sm font-medium text-gray-800">{m.label}</div>
                 <div className="truncate text-xs text-gray-400">{help}</div>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
-                {/* 2026-05-17 [C-1]: 생산 키에만 -10 빠른 가산 */}
-                {m.key === "production" && (
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-600 hover:bg-gray-200 disabled:opacity-40"
-                    onClick={() => onStep(m.key, -10)}
-                    disabled={cell[m.key] <= 0}
-                    aria-label="생산 10 감소"
-                    title="10개 한꺼번에 감소"
+                    className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    onClick={() => onStep(m.key, -1)}
+                    aria-label={`${m.label} 감소`}
                   >
-                    −10
+                    −
                   </button>
-                )}
-                <button
-                  type="button"
-                  className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  onClick={() => onStep(m.key, -1)}
-                  aria-label={`${m.label} 감소`}
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  className="stepper-val"
-                  value={cell[m.key]}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
-                  }}
-                  aria-label={`${m.label} 수치`}
-                />
-                <button
-                  type="button"
-                  className={`stepper-btn ${plusClass}`}
-                  onClick={() => onStep(m.key, 1)}
-                  aria-disabled={atLimit ? true : undefined}
-                  aria-label={`${m.label} 증가`}
-                >
-                  ＋
-                </button>
-                {/* 2026-05-17 [C-1]: 생산 키에만 +10 빠른 가산 */}
-                {m.key === "production" && (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className="stepper-val"
+                    value={cell[m.key]}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
+                    }}
+                    aria-label={`${m.label} 수치`}
+                  />
                   <button
                     type="button"
-                    className="rounded-full bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-200"
-                    onClick={() => onStep(m.key, 10)}
-                    aria-label="생산 10 증가"
-                    title="10개 한꺼번에 증가"
+                    className={`stepper-btn ${plusClass}`}
+                    onClick={() => onStep(m.key, 1)}
+                    aria-disabled={atLimit ? true : undefined}
+                    aria-label={`${m.label} 증가`}
                   >
-                    +10
+                    ＋
                   </button>
+                </div>
+                {/* 2026-05-17: 생산 ±10 — 기존 ± 버튼 아래로 (모바일 미관 + 라벨 줄바꿈 방지). */}
+                {m.key === "production" && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-bold text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                      onClick={() => onStep(m.key, -10)}
+                      disabled={cell[m.key] <= 0}
+                      aria-label="생산 10 감소"
+                      title="10개 한꺼번에 감소"
+                    >
+                      −10
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 hover:bg-blue-200"
+                      onClick={() => onStep(m.key, 10)}
+                      aria-label="생산 10 증가"
+                      title="10개 한꺼번에 증가"
+                    >
+                      +10
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

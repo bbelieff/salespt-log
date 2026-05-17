@@ -51,7 +51,7 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
         const res = await fetch("/api/admin/set-trainee-reserved", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, action: "reserve" }),
+          body: JSON.stringify({ email, reserved: true }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));

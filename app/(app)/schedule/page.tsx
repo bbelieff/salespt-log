@@ -306,16 +306,16 @@ export default function SchedulePage() {
   });
 
   /**
-   * 날짜 클릭 시 세로 스크롤 (2026-05-17 [A4] fix).
-   * 주 시작 = 금요일. 인덱스 매핑:
-   *   0=금, 1=토, 2=일, 3=월 → 상단 (block: "start") — 일주일 시작 쪽
-   *   4=화, 5=수, 6=목 → 하단 (block: "end") — 일주일 끝 쪽
-   * 이전: 모든 idx 가 block: "start" → 화~목 클릭 시 화면 너무 위로 가서 동작 어색.
+   * 날짜 클릭 시 세로 스크롤 (2026-05-17 [6] 재조정).
+   * 주 시작 = 금요일. 인덱스 매핑 (사용자 명세):
+   *   금/토/일 (idx 0~2) → 상단 (block: "start")
+   *   월/화/수/목 (idx 3~6) → 하단 (block: "end")
+   * 이전 [A4]: 월(idx 3)이 start 였음 → 사용자 정정.
    */
   const scrollToDay = (idx: number) => {
     const el = dayRefs.current[idx];
     if (!el) return;
-    const block: ScrollLogicalPosition = idx >= 4 ? "end" : "start";
+    const block: ScrollLogicalPosition = idx >= 3 ? "end" : "start";
     el.scrollIntoView({ behavior: "smooth", block });
   };
 

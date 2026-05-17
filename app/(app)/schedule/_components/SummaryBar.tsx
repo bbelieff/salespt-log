@@ -57,19 +57,32 @@ export default function SummaryBar({ meetings }: Props) {
 
   return (
     <div className="border-y border-gray-200 bg-white shadow-sm">
-      {/* 단일 row — 5 카운터 + 매출. 모바일 좁을 시 flex-wrap. */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2">
-        <Counter label="총건" value={total} cls="text-gray-900" />
-        <Counter label="예정" value={reserved} cls="text-amber-600" />
-        <Divider />
-        <Counter label="완료" value={done} cls="text-orange-600" />
-        <Counter label="취소" value={canceled} cls="text-red-500" />
-        <Counter label="계약" value={contract} cls="text-green-700" highlight />
-        <RevenueChip
-          revenueSum={revenueSum}
-          feeSum={feeSum}
-          commissionSum={commissionSum}
-        />
+      {/* 2026-05-17 [5] 재정돈: row 1 = 5 카운터 균등, row 2 = 매출 (정신없는 wrap 회피). */}
+      <div className="px-3 py-2">
+        <div className="grid grid-cols-5 gap-1">
+          <Counter label="총건" value={total} cls="text-gray-900" />
+          <Counter label="예정" value={reserved} cls="text-amber-600" />
+          <Counter label="완료" value={done} cls="text-orange-600" />
+          <Counter label="취소" value={canceled} cls="text-red-500" />
+          <Counter label="계약" value={contract} cls="text-green-700" highlight />
+        </div>
+        {revenueSum > 0 && (
+          <div className="mt-1.5 flex items-baseline justify-end gap-2 border-t border-gray-100 pt-1.5 text-xs">
+            <span className="font-medium text-green-700">💰 매출</span>
+            <span
+              className="text-sm font-extrabold text-green-700"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              ₩{fmtMoney(revenueSum)}
+            </span>
+            <span
+              className="text-[10px] text-gray-500"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              수임 ₩{fmtMoney(feeSum)} · 수수료 ₩{fmtMoney(commissionSum)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -86,50 +99,22 @@ function Counter({
   cls: string;
   highlight?: boolean;
 }) {
-  const baseCls = highlight
-    ? "rounded-md bg-green-100 ring-1 ring-green-300 px-1.5"
-    : "";
+  const wrapCls = highlight
+    ? "rounded-md bg-green-100 ring-1 ring-green-300"
+    : "rounded-md";
   return (
-    <span
-      className={`inline-flex items-baseline gap-1 px-1 ${baseCls}`}
+    <div
+      className={`flex flex-col items-center py-1 ${wrapCls}`}
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
-      <span className={`text-base font-extrabold leading-none ${cls}`}>
+      <span className={`text-lg font-extrabold leading-none ${cls}`}>
         {value}
       </span>
-      <span className={`text-[10px] ${highlight ? "font-bold text-green-700" : "text-gray-500"}`}>
+      <span
+        className={`mt-0.5 text-[10px] ${highlight ? "font-bold text-green-700" : "text-gray-500"}`}
+      >
         {label}
       </span>
-    </span>
-  );
-}
-
-function Divider() {
-  return <span className="h-4 w-px bg-gray-300" />;
-}
-
-function RevenueChip({
-  revenueSum,
-  feeSum,
-  commissionSum,
-}: {
-  revenueSum: number;
-  feeSum: number;
-  commissionSum: number;
-}) {
-  return (
-    <span
-      className="ml-auto inline-flex flex-wrap items-baseline gap-x-1.5 rounded-md bg-green-50 px-2 py-0.5 text-xs ring-1 ring-green-200"
-      style={{ fontVariantNumeric: "tabular-nums" }}
-      title={`수임비 ₩${fmtMoney(feeSum)} + 수수료 ₩${fmtMoney(commissionSum)}`}
-    >
-      <span className="font-semibold text-green-700">💰</span>
-      <span className="text-sm font-extrabold text-green-700">
-        ₩{fmtMoney(revenueSum)}
-      </span>
-      <span className="text-[10px] text-gray-500">
-        (수임 ₩{fmtMoney(feeSum)} + 수수료 ₩{fmtMoney(commissionSum)})
-      </span>
-    </span>
+    </div>
   );
 }
