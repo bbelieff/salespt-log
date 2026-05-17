@@ -22,6 +22,7 @@ import {
   useAddContractPayment,
   useSyncContractFee,
 } from "@/query/contract-payment-hooks";
+import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -298,6 +299,12 @@ export default function SchedulePage() {
     setWeekStart(fmtISO(addDays(cur, delta * 7)));
   };
 
+  // 2026-05-17 [A3]: 좌우 스와이프로 주 이동.
+  const weekSwipe = useSwipe({
+    onSwipeLeft: () => moveWeek(1),
+    onSwipeRight: () => moveWeek(-1),
+  });
+
   /**
    * 날짜 클릭 시 세로 스크롤 (2026-05-17 [A4] fix).
    * 주 시작 = 금요일. 인덱스 매핑:
@@ -358,7 +365,7 @@ export default function SchedulePage() {
       />
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
-      <div className="sticky top-24 z-30">
+      <div className="sticky top-24 z-30" {...weekSwipe}>
         <WeekHeader
           weekIndex={weekIndex}
           weekStart={weekStart}

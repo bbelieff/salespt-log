@@ -21,6 +21,7 @@ import {
   useWeekMeetings,
 } from "@/query/contact-hooks";
 import type { ChannelDailyRowMetrics } from "@/service";
+import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
@@ -62,17 +63,14 @@ export default function ContactPage() {
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
 
   const dayQuery = useDay(date);
-  // 2026-05-16: 주 단위 fetch — 일자 badges + 금주 채널 funnel (일정·계약 탭과 동일 SSOT).
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
-  // ⚠️ stateless mutations: date를 hook 인자가 아니라 mutate args로 전달.
-  // (hook 인자로 받으면 navigate 도중 race condition으로 잘못된 row 오염)
+  // stateless mutations: date 는 mutate args 로 전달 (race condition 방지).
   const saveMetrics = useSaveMetrics();
   const appendMeeting = useAppendMeeting();
   const patchMeeting = usePatchMeeting();
   const removeMeeting = useRemoveMeeting();
 
-  // badge 도 예약일 기준 — day view 와 일관 (2026-05-16 [3] fix).
   const countsByDay =
     weekQuery.data?.daysByReservationDate.map((d) => d.meetings.length) ??
     (Array(7).fill(0) as number[]);
@@ -80,14 +78,12 @@ export default function ContactPage() {
     생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0,
   };
 
-  // 서버 데이터 로드 시 draft 동기화 + 일관성 체크
   useEffect(() => {
     if (!dayQuery.data) return;
     setDraft(dayQuery.data.channels);
     setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
 
-    // 일관성 체크: 시트 H열(미팅예약)과 04 업체관리 그날 미팅 수가 일치하는지
-    // 불일치 시 사용자에게 알림 (자동 정정은 안 함 — 사용자가 직접 - 클릭으로 정정)
+    // 일관성 체크: 시트 H ↔ 04 업체관리 row 수 비교, 불일치 시 알림 (자동 정정 X).
     const inconsistencies: string[] = [];
     for (const ch of CHANNEL_ORDER) {
       const sheetSuccess = dayQuery.data.channels[ch].meetingReservation;
@@ -215,9 +211,7 @@ export default function ContactPage() {
           if (last) {
             handleRemoveSavedMeeting(last);
           } else if (cur2 > 0) {
-            // 시트 일관성 깨진 상태: 미팅 카드는 없는데 미팅예약만 남음.
-            // → 로컬 -1 조정만 하고 저장은 [저장하기] 버튼에 위임.
-            // (자동 saveMetrics 제거 — Quota 초과 방지)
+            // 시트 일관성 깨짐(미팅 카드 X, 미팅예약 N) → 로컬 -1, 저장은 [저장] 위임.
             adjustMetric(ch, "meetingReservation", -1);
             showToast("미팅예약 -1 · [저장하기]로 시트에 반영하세요");
           } else {
@@ -258,8 +252,7 @@ export default function ContactPage() {
     const now = new Date();
     const meeting: Meeting = {
       id: slot.tempId,
-      // 예약일 = 페이지 선택 날짜 (컨택한 날). 사용자가 4/27 view에서
-      // 등록하면 예약일=4/27, 미팅날짜는 슬롯의 값(4/29 등 자유).
+      // 예약일 = 페이지 선택 날짜 (컨택한 날), 미팅날짜 = 슬롯 입력값.
       예약일: date,
       예약시각: now.toTimeString().slice(0, 5),
       미팅날짜: slot.미팅날짜,
@@ -274,11 +267,9 @@ export default function ContactPage() {
       미팅사유: "",
       계약조건: "",
     };
-    // 클로저로 등록 시점의 date를 잡음 (이후 navigate에 영향 안 받음)
     const dateAtClick = date;
     const draftAtClick = draft;
-    // 즉시(낙관적) 신규 슬롯에서 제거 → 버튼이 사라져 두 번 클릭 불가
-    // 실패 시 복원
+    // 낙관적 제거 + 실패 시 복원
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
       // 1) 미팅 등록 (04 업체관리)
@@ -360,6 +351,12 @@ export default function ContactPage() {
     setDate(fmtISO(cur));
   };
 
+  // 2026-05-17 [A3]: 좌우 스와이프로 주 이동 — 왼쪽 = 다음, 오른쪽 = 이전 (모바일 관습).
+  const weekSwipe = useSwipe({
+    onSwipeLeft: () => moveWeek(1),
+    onSwipeRight: () => moveWeek(-1),
+  });
+
   // ── 렌더 ─────────────────────────────────────────────────
   if (dayQuery.isLoading) {
     return (
@@ -396,8 +393,11 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" pageSubtitle="01 영업관리" />
-      {/* WeekHeader 단독 sticky — 주차합계는 날짜 라벨에 inline (2026-05-17, WeekFunnelBar 통합). */}
-      <div className="sticky top-24 z-30 bg-white shadow-sm">
+      {/* WeekHeader 단독 sticky. 2026-05-17 [A3]: 좌우 스와이프로 주 이동. */}
+      <div
+        className="sticky top-24 z-30 bg-white shadow-sm"
+        {...weekSwipe}
+      >
         <WeekHeader
           weekIndex={weekIndex}
           courseStart={courseStart}
