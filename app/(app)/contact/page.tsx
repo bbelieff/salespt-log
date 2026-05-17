@@ -1,13 +1,4 @@
-/**
- * 컨택관리 탭 — 4채널 4지표 입력 + 미팅 슬롯 등록.
- * 정본: docs/design/prototypes/contact-daily-input.html (v7) — 픽셀 매칭 포팅.
- *
- * 핵심 모델 (시안과 동일):
- *   - 미팅예약 = (등록 완료 미팅 수) + (신규 슬롯 수) per 채널
- *   - 미팅예약 +1 → 빈 신규 슬롯 자동 생성 (선택 채널)
- *   - 신규 슬롯 [등록] → API POST → 등록완료 슬롯으로 전환 (서버측 미팅으로 합류)
- *   - [삭제] (신규/등록완료 모두) → 슬롯 제거 + 미팅예약 -1
- */
+/** 컨택관리 탭 — 4채널 4지표 + 미팅 슬롯. SSOT: docs/design/prototypes/contact-daily-input.html v7. */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -21,6 +12,13 @@ import {
   useWeekMeetings,
 } from "@/query/contact-hooks";
 import type { ChannelDailyRowMetrics } from "@/service";
+import { useDBOverview } from "@/query/db-hooks";
+import { useRouter } from "next/navigation";
+import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
+import {
+  findProductionMismatch,
+  type ProductionMismatch,
+} from "./_lib/dbProductionCheck";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
@@ -65,8 +63,10 @@ export default function ContactPage() {
   const dayQuery = useDay(date);
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
-  // stateless mutations: date 는 mutate args 로 전달 (race condition 방지).
   const saveMetrics = useSaveMetrics();
+  const router = useRouter();
+  const dbOverview = useDBOverview();
+  const [dbMismatch, setDbMismatch] = useState<ProductionMismatch | null>(null);
   const appendMeeting = useAppendMeeting();
   const patchMeeting = usePatchMeeting();
   const removeMeeting = useRemoveMeeting();
@@ -83,7 +83,6 @@ export default function ContactPage() {
     setDraft(dayQuery.data.channels);
     setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
 
-    // 일관성 체크: 시트 H ↔ 04 업체관리 row 수 비교, 불일치 시 알림 (자동 정정 X).
     const inconsistencies: string[] = [];
     for (const ch of CHANNEL_ORDER) {
       const sheetSuccess = dayQuery.data.channels[ch].meetingReservation;
@@ -105,7 +104,6 @@ export default function ContactPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
 
-  // 채널별 등록완료 미팅
   const savedByChannel = useMemo(() => {
     const result: Record<Channel, Meeting[]> = {
       매입DB: [],
@@ -127,7 +125,6 @@ export default function ContactPage() {
     setTimeout(() => setToast(""), 2200);
   };
 
-  // ── 4지표 stepper ────────────────────────────────────────
   const setMetric = (
     channel: Channel,
     key: keyof ChannelDailyRowMetrics,
@@ -136,7 +133,6 @@ export default function ContactPage() {
     setDraft((d) => {
       const cur = d[channel];
       const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
-      // 미팅예약 ≤ 컨택진행 클램프
       if (next.meetingReservation > next.contactProgress) {
         next.meetingReservation = next.contactProgress;
       }
@@ -144,11 +140,7 @@ export default function ContactPage() {
     });
   };
 
-  /**
-   * 채널의 metric을 functional setState로 ±delta 만큼 조정.
-   * setMetric은 외부에서 nextValue를 계산해 넘기는 방식이라 stale closure 위험.
-   * 이 헬퍼는 항상 최신 draft를 사용해 Math.max 적용.
-   */
+  /** 채널 metric ±delta 조정 (functional setState — stale closure 안전). */
   const adjustMetric = (
     channel: Channel,
     key: keyof ChannelDailyRowMetrics,
@@ -165,14 +157,7 @@ export default function ContactPage() {
     });
   };
 
-  /**
-   * step(channel, key, delta) — 시안 동작 매칭:
-   *   미팅예약 +1: 그 채널에 빈 신규 슬롯 자동 생성
-   *   미팅예약 -1:
-   *     - 신규 슬롯 있으면 마지막 거 제거
-   *     - 없으면 등록완료 슬롯 마지막 거 → API DELETE
-   *   다른 키는 단순 ±1
-   */
+  /** step(key, delta): 미팅예약 +1 → 신규 슬롯 생성, -1 → 슬롯 제거 또는 API DELETE. */
   const step = (key: keyof ChannelDailyRowMetrics, delta: number) => {
     const ch = activeChannel;
     const cur = draft[ch];
@@ -184,7 +169,6 @@ export default function ContactPage() {
           showToast("⚠ 미팅예약은 컨택진행보다 클 수 없어요");
           return;
         }
-        // 신규 슬롯 자동 생성
         const empty: NewSlot = {
           tempId: uuid(),
           channel: ch,
@@ -197,21 +181,17 @@ export default function ContactPage() {
         setNewSlots((s) => [...s, empty]);
         adjustMetric(ch, "meetingReservation", +1);
       } else {
-        // -1
         const news = newSlotsForChannel(ch);
         if (news.length > 0) {
-          // 마지막 신규 슬롯 제거
           const last = news[news.length - 1]!;
           setNewSlots((s) => s.filter((x) => x.tempId !== last.tempId));
           adjustMetric(ch, "meetingReservation", -1);
         } else {
-          // 등록완료 슬롯 중 마지막 → API 삭제
           const saved = savedByChannel[ch];
           const last = saved[saved.length - 1];
           if (last) {
             handleRemoveSavedMeeting(last);
           } else if (cur2 > 0) {
-            // 시트 일관성 깨짐(미팅 카드 X, 미팅예약 N) → 로컬 -1, 저장은 [저장] 위임.
             adjustMetric(ch, "meetingReservation", -1);
             showToast("미팅예약 -1 · [저장하기]로 시트에 반영하세요");
           } else {
@@ -222,7 +202,6 @@ export default function ContactPage() {
       return;
     }
 
-    // 다른 키 단순 ±1 (functional)
     adjustMetric(ch, key, delta);
   };
 
@@ -230,7 +209,6 @@ export default function ContactPage() {
     setMetric(activeChannel, key, Math.max(0, value));
   };
 
-  // ── 슬롯 액션 ────────────────────────────────────────────
   const updateNewSlot = (tempId: string, next: NewSlot) =>
     setNewSlots((s) => s.map((x) => (x.tempId === tempId ? next : x)));
 
@@ -252,7 +230,6 @@ export default function ContactPage() {
     const now = new Date();
     const meeting: Meeting = {
       id: slot.tempId,
-      // 예약일 = 페이지 선택 날짜 (컨택한 날), 미팅날짜 = 슬롯 입력값.
       예약일: date,
       예약시각: now.toTimeString().slice(0, 5),
       미팅날짜: slot.미팅날짜,
@@ -269,12 +246,9 @@ export default function ContactPage() {
     };
     const dateAtClick = date;
     const draftAtClick = draft;
-    // 낙관적 제거 + 실패 시 복원
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
-      // 1) 미팅 등록 (04 업체관리)
       await appendMeeting.mutateAsync({ date: dateAtClick, meeting });
-      // 2) 동시에 4지표도 시트에 저장 (01 영업관리 — dateAtClick row)
       //    → 미팅예약이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
       await saveMetrics.mutateAsync({
         date: dateAtClick,
@@ -282,7 +256,6 @@ export default function ContactPage() {
       });
       showToast("✓ 등록 완료 (시트 동기화됨)");
     } catch (e) {
-      // 복원
       setNewSlots((s) => [...s, slot]);
       showToast(`등록 실패: ${(e as Error).message}`);
     }
@@ -292,11 +265,8 @@ export default function ContactPage() {
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?`)) return;
     const dateAtClick = date;
     try {
-      // 1) 시트에서 미팅 행 클리어
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
-      // 2) 미팅예약 -1 (functional setState — stale closure 안전)
       adjustMetric(meeting.channel, "meetingReservation", -1);
-      // 3) 4지표를 시트에 즉시 저장. functional updater로 latest draft 읽어
       //    명시적으로 dateAtClick row에 저장 (navigate race 방지).
       setDraft((latest) => {
         void saveMetrics.mutateAsync({
@@ -324,9 +294,7 @@ export default function ContactPage() {
     }
   };
 
-  // ── 저장 ─────────────────────────────────────────────────
   const handleSave = async () => {
-    // 가드: 미등록 신규 슬롯이 있으면 저장 차단
     // (저장하면 미팅예약 N이 시트에 가는데 미팅 슬롯이 시트에 없으면 일관성 깨짐)
     if (newSlots.length > 0) {
       showToast(
@@ -338,12 +306,15 @@ export default function ContactPage() {
     try {
       await saveMetrics.mutateAsync({ date: dateAtClick, channels: draft });
       showToast("✅ 저장 완료");
+      if (dbOverview.data) {
+        const m = findProductionMismatch(dbOverview.data, dateAtClick, draft);
+        if (m) setDbMismatch(m);
+      }
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
     }
   };
 
-  // ── 주차/날짜 네비 ───────────────────────────────────────
   const moveWeek = (deltaWeeks: number) => {
     if (!dayQuery.data) return;
     const cur = new Date(date);
@@ -351,13 +322,11 @@ export default function ContactPage() {
     setDate(fmtISO(cur));
   };
 
-  // 2026-05-17 [A3]: 좌우 스와이프로 주 이동 — 왼쪽 = 다음, 오른쪽 = 이전 (모바일 관습).
   const weekSwipe = useSwipe({
     onSwipeLeft: () => moveWeek(1),
     onSwipeRight: () => moveWeek(-1),
   });
 
-  // ── 렌더 ─────────────────────────────────────────────────
   if (dayQuery.isLoading) {
     return (
       <section className="px-4 pt-6 text-sm text-slate-500">
@@ -494,6 +463,28 @@ export default function ContactPage() {
           {toast}
         </div>
       )}
+
+      {/* 2026-05-17 [C-2]: DB ↔ 생산 불일치 안내 */}
+      <CrossTabHintModal
+        open={dbMismatch !== null}
+        title="⚠ DB관리 입력 확인 필요"
+        body={
+          dbMismatch && (
+            <>
+              <b>{dbMismatch.channel}</b> 생산 입력값(<b>{dbMismatch.expected}</b>)이{" "}
+              DB관리 시트 합(<b>{dbMismatch.actual}</b>)과 다릅니다.
+              <br />
+              DB관리 탭에서 구매목록을 추가하셨나요?
+            </>
+          )
+        }
+        navLabel="🗂 DB관리로 이동"
+        onNavigate={() => {
+          setDbMismatch(null);
+          router.push("/db");
+        }}
+        onClose={() => setDbMismatch(null)}
+      />
     </>
   );
 }
