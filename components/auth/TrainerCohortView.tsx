@@ -14,7 +14,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -44,7 +43,6 @@ export default function TrainerCohortView({
   canBackToAdmin: boolean;
   archivedCohorts?: string[];
 }) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +68,10 @@ export default function TrainerCohortView({
     );
   }, [trainees, showOnlyMine, trainerEmailLc]);
 
+  /**
+   * 웹앱 버튼 — 2026-05-17 정정: 시트 버튼처럼 새 탭으로 열기.
+   *  AdminUserPicker.pick() 과 동일 — impersonation cookie set + window.open.
+   */
   async function pick(email: string) {
     setBusy(email);
     setError(null);
@@ -85,10 +87,9 @@ export default function TrainerCohortView({
         setBusy(null);
         return;
       }
-      // impersonation 변경 시 trainee 별 데이터 캐시 모두 클리어 (AdminUserPicker 와 동일).
       queryClient.clear();
-      router.push("/dashboard");
-      router.refresh();
+      window.open("/dashboard", "_blank", "noopener,noreferrer");
+      setBusy(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
       setBusy(null);

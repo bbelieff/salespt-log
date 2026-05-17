@@ -300,12 +300,7 @@ export default function AdminUserPicker({
   }, [users, q, archivedSet]);
 
   /**
-   * trainee 카드의 트레이너 multi-select 변경 핸들러.
-   * /admin/trainers 의 TrainerAssignCard 와 동일한 API (/api/admin/assign-trainee)
-   * 호출 → assignedTrainer 컬럼 전체 update. 트레이너 측·수강생 측 어느 쪽에서
-   * 토글하든 last-write-wins 자동 보장 (단일 source = trainee row 의 G 컬럼).
-   * (2026-05-13 양방향 배정 도입)
-   */
+   * trainee 트레이너 multi-select 핸들러 — /api/admin/assign-trainee (양방향 배정). */
   async function assignTrainers(traineeEmail: string, trainerEmails: string[]) {
     await postAction(
       "/api/admin/assign-trainee",
@@ -314,6 +309,12 @@ export default function AdminUserPicker({
     );
   }
 
+  /**
+   * 웹앱 버튼 — 2026-05-17 정정: 시트 버튼처럼 새 탭으로 열기.
+   *  1) POST switch (impersonation cookie set)
+   *  2) window.open('/dashboard', '_blank') — 새 탭
+   *  3) admin/users 탭 그대로 유지 (router.push 안 함)
+   */
   async function pick(email: string) {
     setBusy(email);
     setError(null);
@@ -329,10 +330,9 @@ export default function AdminUserPicker({
         setBusy(null);
         return;
       }
-      // impersonation 시 trainee 데이터 캐시 모두 invalidate (사고 #2026-05-13 재발 방지).
       queryClient.clear();
-      router.push("/dashboard");
-      router.refresh();
+      window.open("/dashboard", "_blank", "noopener,noreferrer");
+      setBusy(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
       setBusy(null);
