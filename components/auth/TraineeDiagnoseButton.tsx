@@ -22,6 +22,38 @@ interface Props {
   name: string;
 }
 
+/**
+ * 룰별 평문 설명 (2026-05-17 [B1] — 사용자가 모달 결과 보고 무슨 의미인지 알게).
+ * 룰 추가 시 여기도 같이 update.
+ */
+const RULE_EXPLANATION: Record<string, { what: string; why: string; action: string }> = {
+  "formula-needs-restore": {
+    what: "영업관리 탭의 I열 (4지표 자동 집계 수식) 이 누락됐거나 옛 패턴 ($C{r}) 입니다.",
+    why: "이 수식이 비어있으면 일일 합계·주차별 funnel 이 0 으로 표시됩니다.",
+    action: "[fix] 클릭 → installFormulas 자동 복원 (사용자 raw 입력은 보존).",
+  },
+  "meetings-formulas-missing": {
+    what: "04 업체관리 탭의 N/O/Q 열 (표시 수식) 이 누락됐습니다.",
+    why: "미팅 카드 생성해도 영업관리 I/J 열에 미팅 표시 문자열이 안 채워집니다.",
+    action: "[fix] 클릭 → 빈 cell 에만 수식 install (raw 값은 보존).",
+  },
+  "metric-vs-meeting-mismatch": {
+    what: "영업관리 H열 합계와 04 업체관리의 실제 미팅 row 수가 다릅니다.",
+    why: "사용자가 미팅카드 만든 횟수 != 시트의 H 컬럼 카운트 — 사고 흔적.",
+    action: "자동 fix 불가. 시트에서 H 컬럼 ↔ 04 업체관리 row 수동 비교 필요.",
+  },
+  "o1-o2-validity": {
+    what: "시트 O1 (수강시작일) / O2 (종강총회일) 값이 비었거나 offset 이 50/57 일이 아닙니다.",
+    why: "주차 계산·D-day 가 어긋남.",
+    action: "시트 O1/O2 직접 열어서 날짜 수정 (7기+: O2=O1+50일, 6기 legacy: +57일).",
+  },
+  "revenue-mismatch": {
+    what: "대시보드 D21 (시트 수식 매출) ≠ 02 계약수납관리 row 수임비 합 (실제 데이터).",
+    why: "대시보드 KPI 와 수납탭이 다른 매출액을 표시 → 사용자 혼란.",
+    action: "자동 fix 불가. 시트 D21 수식의 SUM 범위 / row 누락 직접 확인 필요.",
+  },
+};
+
 export default function TraineeDiagnoseButton({ email, name }: Props) {
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<DiagnosticResult[] | null>(null);
@@ -104,14 +136,19 @@ export default function TraineeDiagnoseButton({ email, name }: Props) {
             className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-black text-gray-900">
-                🔍 {name} 시트 진단
-              </h3>
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-black text-gray-900">
+                  🔍 {name} 시트 진단
+                </h3>
+                <div className="mt-0.5 break-all text-[11px] text-gray-500">
+                  {email}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-xs text-gray-400 hover:text-gray-700"
+                className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-800"
               >
                 ✕ 닫기
               </button>
@@ -122,37 +159,57 @@ export default function TraineeDiagnoseButton({ email, name }: Props) {
               </p>
             ) : (
               <div className="space-y-2">
-                {results.map((r) => (
-                  <div
-                    key={r.ruleId}
-                    className={`rounded-xl border p-3 ${severityColor[r.severity]}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-bold">
-                          {r.severity === "error" ? "🚨" : r.severity === "warn" ? "⚠️" : "ℹ️"}{" "}
-                          {r.label}
+                {results.map((r) => {
+                  const exp = RULE_EXPLANATION[r.ruleId];
+                  return (
+                    <div
+                      key={r.ruleId}
+                      className={`rounded-xl border p-3 ${severityColor[r.severity]}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-bold">
+                            {r.severity === "error" ? "🚨" : r.severity === "warn" ? "⚠️" : "ℹ️"}{" "}
+                            {r.label}
+                          </div>
+                          {exp ? (
+                            <div className="mt-2 space-y-1.5 rounded-lg bg-white/70 p-2 text-xs text-gray-800">
+                              <div>
+                                <b className="text-gray-900">무엇이</b>: {exp.what}
+                              </div>
+                              <div>
+                                <b className="text-gray-900">왜 문제</b>: {exp.why}
+                              </div>
+                              <div>
+                                <b className="text-gray-900">해결</b>: {exp.action}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-1 text-xs">{r.detail}</div>
+                          )}
+                          {exp && (
+                            <div className="mt-1.5 text-[11px] opacity-70">
+                              상세: {r.detail}
+                            </div>
+                          )}
+                          <div className="mt-1 font-mono text-[10px] opacity-50">
+                            id: {r.ruleId}
+                          </div>
                         </div>
-                        <div className="mt-1 text-[11px] opacity-80">
-                          {r.detail}
-                        </div>
-                        <div className="mt-1 text-[10px] font-mono opacity-60">
-                          id: {r.ruleId}
-                        </div>
+                        {r.fixable && (
+                          <button
+                            type="button"
+                            onClick={() => runFix(r.ruleId)}
+                            disabled={fixingRuleId !== null}
+                            className="shrink-0 rounded-full bg-gray-900 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-black disabled:opacity-50"
+                          >
+                            {fixingRuleId === r.ruleId ? "fix 중..." : "🔧 fix"}
+                          </button>
+                        )}
                       </div>
-                      {r.fixable && (
-                        <button
-                          type="button"
-                          onClick={() => runFix(r.ruleId)}
-                          disabled={fixingRuleId !== null}
-                          className="shrink-0 rounded-full bg-gray-900 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-black disabled:opacity-50"
-                        >
-                          {fixingRuleId === r.ruleId ? "fix 중..." : "🔧 fix"}
-                        </button>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {error && (
