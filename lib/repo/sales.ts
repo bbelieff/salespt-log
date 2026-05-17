@@ -411,18 +411,24 @@ export async function readWeek(
   });
   const data = (res.data.values ?? []) as (string | number | boolean)[][];
 
+  // 2026-05-18 fix (오승진 5/16 콜지기소 사고):
+  // 셀병합 시트는 4채널 중 첫 row 만 C열에 날짜, 나머지 3개 row C는 빈 cell.
+  // 옛 코드는 dateRaw === undefined → skip 으로 인해 직접생산/현수막/콜지기소가
+  // 읽기에서 누락됨. carryDate 도입 — C 빈 셀이면 직전 row 의 날짜 사용 (병합 cell 동일 의미).
   const rows: ChannelDailyRow[] = [];
+  let carryDate: string | null = null;
   for (let i = 0; i < 28; i++) {
     const r = data[i] ?? [];
-    // 컬럼 인덱스 (C 기준 0): C=0날짜, D=1채널, E=2생산, F=3유입, G=4컨택진행, H=5미팅예약
     const dateRaw = r[0];
     const channelRaw = r[1];
-    if (dateRaw === undefined || channelRaw === undefined) continue;
-
-    const dateStr = serialOrStringToISO(dateRaw);
-    if (!dateStr) continue;
+    // C cell 에 날짜 있으면 carry 갱신 (다음 빈 cell 들이 이걸 상속)
+    if (dateRaw !== undefined && dateRaw !== "") {
+      const ds = serialOrStringToISO(dateRaw);
+      if (ds) carryDate = ds;
+    }
+    if (!carryDate || channelRaw === undefined || channelRaw === "") continue;
     const parsed = ChannelDailyRow.safeParse({
-      date: dateStr,
+      date: carryDate,
       channel: String(channelRaw),
       production: Number(r[2] ?? 0),
       inflow: Number(r[3] ?? 0),
