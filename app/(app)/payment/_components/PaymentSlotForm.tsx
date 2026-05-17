@@ -170,41 +170,46 @@ export default function PaymentSlotForm({
         </div>
       </div>
 
-      {/* 입력 필드 (2x grid + 수납일 단독) */}
+      {/* 입력 필드 — 2026-05-17 재구성:
+          진행기관 → 메모 → (진행률 + 진행내용) → (승인금액 + 수납일 + 수납액) */}
       <div className="space-y-1.5">
+        <FieldText
+          label="진행기관"
+          value={slot.진행기관}
+          placeholder="예: 미소재단"
+          onChange={(v) => set("진행기관", v)}
+        />
+        <FieldText
+          label="메모"
+          value={slot.메모}
+          placeholder="이 수납기관 관련 메모"
+          onChange={(v) => set("메모", v)}
+        />
         <div className="grid grid-cols-2 gap-2">
-          <FieldText
-            label="진행기관"
-            value={slot.진행기관}
-            placeholder="예: 미소재단"
-            onChange={(v) => set("진행기관", v)}
-          />
           <FieldSelect
             label="진행률"
             value={slot.진행률}
             options={PROGRESS_OPTIONS}
             onChange={(v) => set("진행률", v as Progress)}
           />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
           <FieldText
-            label="실무진행"
+            label="진행내용"
             value={slot.현황}
             placeholder="예: 실사 진행 중"
             onChange={(v) => set("현황", v)}
           />
-          <FieldDate
-            label="수납일"
-            value={slot.수납일}
-            onChange={(v) => set("수납일", v)}
-          />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <FieldMoney
             label="승인금액 (원)"
             value={slot.승인금액}
             placeholder="3,000,000"
             onChange={(v) => set("승인금액", v)}
+          />
+          <FieldDate
+            label="수납일"
+            value={slot.수납일}
+            onChange={(v) => set("수납일", v)}
           />
           <FieldMoney
             label="수납액 (원)"
