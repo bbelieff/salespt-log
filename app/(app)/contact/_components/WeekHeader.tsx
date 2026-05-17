@@ -124,7 +124,8 @@ export default function WeekHeader({
               aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >
               {isToday && (
-                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black px-1 text-center text-[9px] font-extrabold leading-[14px] tracking-wider text-white">
+                /* 2026-05-18: 뱃지 가림 방지 — 왼쪽 정렬 + 우측 padding 으로 뱃지 영역 회피. */
+                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black pl-1.5 pr-5 text-left text-[9px] font-extrabold leading-[14px] tracking-wider text-white">
                   TODAY
                 </span>
               )}
