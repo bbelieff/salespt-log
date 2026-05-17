@@ -30,6 +30,8 @@ import RowList from "./_components/RowList";
 import RowForm from "./_components/RowForm";
 import TopHeader from "@/components/TopHeader";
 import ConfirmModal from "./_components/ConfirmModal";
+import { useRouter } from "next/navigation";
+import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 
 type BackendRow = { row: number } & Record<string, unknown>;
 
@@ -53,6 +55,7 @@ interface ConfirmTarget {
 }
 
 export default function DbPage() {
+  const router = useRouter();
   const [activeCh, setActiveCh] = useState<ChannelKey>("purchase");
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -60,6 +63,10 @@ export default function DbPage() {
   const [pendingRow, setPendingRow] = useState<number | "add" | null>(null);
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  // 2026-05-17 [DB-1/DB-2]: 추가 후 컨택탭 생산 입력 안내 (현수막 제외).
+  const [productionHint, setProductionHint] = useState<{
+    channel: ChannelKey;
+  } | null>(null);
 
   const overview = useDBOverview();
   const append = useAppendDB();
@@ -123,6 +130,11 @@ export default function DbPage() {
       });
       setAddOpen(false);
       showToast(`${ch.recordsLabel}이 추가되었습니다 ✨`);
+      // 2026-05-17 [DB-1/DB-2]: 현수막 외 채널은 컨택탭 생산 입력 안내.
+      // 현수막은 게시한날=생산이라 별도 입력 불필요.
+      if (activeCh !== "banner") {
+        setProductionHint({ channel: activeCh });
+      }
     } catch (e) {
       showToast(`추가 실패: ${(e as Error).message}`);
     } finally {
@@ -330,6 +342,25 @@ export default function DbPage() {
           onCancel={() => setConfirmTarget(null)}
         />
       )}
+
+      {/* 2026-05-17 [DB-1]: 추가 후 컨택탭 생산 입력 안내 */}
+      <CrossTabHintModal
+        open={productionHint !== null}
+        title="✏️ 컨택관리에 생산 입력하셨나요?"
+        body={
+          <>
+            <b>{productionHint ? KEY_TO_BACKEND[productionHint.channel] : ""}</b>{" "}
+            구매목록 추가됐어요. 컨택관리 탭의 해당 일자/채널에{" "}
+            <b>생산</b>도 기록해야 합니다.
+          </>
+        }
+        navLabel="📞 컨택관리로 이동"
+        onNavigate={() => {
+          setProductionHint(null);
+          router.push("/contact");
+        }}
+        onClose={() => setProductionHint(null)}
+      />
     </>
   );
 }

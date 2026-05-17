@@ -1212,6 +1212,7 @@ components/dashboard/
 | **ChannelBadge** | `components/ui/ChannelBadge.tsx` | §4 채널 배지 4종 진입점. Props: `channel: Channel` (4종 enum) |
 | **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |
 | **TimeSelectPair** | `components/ui/TimeSelectPair.tsx` | §2 Time Input — 시·분 분리 select (15분 단위 강제) |
+| **CrossTabHintModal** | `components/ui/CrossTabHintModal.tsx` | 탭 간 cascade 안내 모달 (2026-05-17 [DB-1/C-2]). Props: `open`, `title`, `body: ReactNode`, `navLabel`, `onNavigate`, `onClose`. [화면 유지 / 바로가기] 통일 패턴. |
 
 ### 10-2. contact 탭 (`app/(app)/contact/_components/`)
 
