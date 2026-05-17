@@ -24,6 +24,8 @@ interface Props {
   onNextWeek: () => void;
   /** 클릭 시 그 day section으로 스크롤. */
   onClickDay: (dayIdx: number) => void;
+  /** 2026-05-18 [2]: 슬라이드 방향 — 다음 주(right) / 이전 주(left) / null. */
+  slideDir?: "right" | "left" | null;
 }
 
 export default function WeekHeader({
@@ -35,6 +37,7 @@ export default function WeekHeader({
   onPrevWeek,
   onNextWeek,
   onClickDay,
+  slideDir,
 }: Props) {
   const ws = parseISO(weekStart);
   const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
@@ -95,8 +98,13 @@ export default function WeekHeader({
         </button>
       </div>
 
-      {/* 7일 그리드 — 컨택탭 WeekHeader 와 동일 디자인 (2026-05-17 [A1] 일관성) */}
-      <div className="grid grid-cols-7 gap-1 px-2 pb-2.5">
+      {/* 7일 그리드 — 주차 변경 시 슬라이드 인 (2026-05-18 [2]). */}
+      <div
+        key={weekStart}
+        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 ${
+          slideDir === "right" ? "week-slide-right" : slideDir === "left" ? "week-slide-left" : ""
+        }`}
+      >
         {days.map((d, i) => {
           const iso = `${d.getFullYear()}-${String(
             d.getMonth() + 1,
@@ -110,9 +118,10 @@ export default function WeekHeader({
               key={iso}
               type="button"
               onClick={() => onClickDay(i)}
-              className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
+              /* 2026-05-18 [1]: 모든 cell pt-3.5 (TODAY strip 영역 reserve) → 주차 간 cell 높이 동일. */
+              className={`relative flex flex-col items-center justify-center rounded-xl pb-1.5 pt-3.5 transition-all active:scale-95 ${
                 isToday
-                  ? "border-2 border-black bg-gray-50 pt-3.5"
+                  ? "border-2 border-black bg-gray-50"
                   : "bg-gray-50 hover:bg-gray-100"
               }`}
               aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}

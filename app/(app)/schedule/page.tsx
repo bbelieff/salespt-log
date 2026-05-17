@@ -294,9 +294,13 @@ export default function SchedulePage() {
     }
   };
 
+  /** 2026-05-18 [2]: 주차 슬라이드 방향 — 다음 주(right) / 이전 주(left). 220ms 후 reset. */
+  const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
   const moveWeek = (delta: number) => {
+    setSlideDir(delta > 0 ? "right" : "left");
     const cur = parseISO(weekStart);
     setWeekStart(fmtISO(addDays(cur, delta * 7)));
+    setTimeout(() => setSlideDir(null), 260);
   };
 
   // 2026-05-17 [A3]: 좌우 스와이프로 주 이동.
@@ -374,6 +378,7 @@ export default function SchedulePage() {
           onPrevWeek={() => moveWeek(-1)}
           onNextWeek={() => moveWeek(1)}
           onClickDay={scrollToDay}
+          slideDir={slideDir}
         />
         <SummaryBar meetings={allMeetings} />
       </div>

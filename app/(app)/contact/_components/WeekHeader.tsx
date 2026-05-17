@@ -29,6 +29,8 @@ interface Props {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onSelectDay: (date: string) => void;
+  /** 2026-05-18 [2]: 슬라이드 방향. */
+  slideDir?: "right" | "left" | null;
 }
 
 export default function WeekHeader({
@@ -42,6 +44,7 @@ export default function WeekHeader({
   onPrevWeek,
   onNextWeek,
   onSelectDay,
+  slideDir,
 }: Props) {
   // v2: 한 주 = 금~목 (숙제검사 목요일 마감 기준).
   // weekStart는 courseStart 포함 첫 금요일 + (weekIndex-1)*7
@@ -102,7 +105,12 @@ export default function WeekHeader({
       </div>
 
       {/* 요일 바 */}
-      <div className="grid grid-cols-7 gap-1 px-2 pb-2.5">
+      <div
+        key={`${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`}
+        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 ${
+          slideDir === "right" ? "week-slide-right" : slideDir === "left" ? "week-slide-left" : ""
+        }`}
+      >
         {days.map((d, i) => {
           const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
           const isSelected = iso === selectedDate;
@@ -115,11 +123,12 @@ export default function WeekHeader({
               key={iso}
               type="button"
               onClick={() => onSelectDay(iso)}
-              className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
+              /* 2026-05-18 [1]: 모든 cell pt-3.5 → 주차 간 높이 동일 (TODAY strip 영역 reserve). */
+              className={`relative flex flex-col items-center justify-center rounded-xl pb-1.5 pt-3.5 transition-all active:scale-95 ${
                 isSelected
                   ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
                   : "bg-gray-50 hover:bg-gray-100"
-              } ${isToday ? "border-2 border-black pt-3.5" : ""}`}
+              } ${isToday ? "border-2 border-black" : ""}`}
               aria-pressed={isSelected}
               aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >

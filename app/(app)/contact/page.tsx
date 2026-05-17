@@ -315,11 +315,15 @@ export default function ContactPage() {
     }
   };
 
+  /** 2026-05-18 [2]: 슬라이드 방향 state. */
+  const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
   const moveWeek = (deltaWeeks: number) => {
     if (!dayQuery.data) return;
+    setSlideDir(deltaWeeks > 0 ? "right" : "left");
     const cur = new Date(date);
     cur.setDate(cur.getDate() + deltaWeeks * 7);
     setDate(fmtISO(cur));
+    setTimeout(() => setSlideDir(null), 260);
   };
 
   const weekSwipe = useSwipe({
@@ -378,6 +382,7 @@ export default function ContactPage() {
           onPrevWeek={() => moveWeek(-1)}
           onNextWeek={() => moveWeek(1)}
           onSelectDay={setDate}
+          slideDir={slideDir}
         />
       </div>
 
