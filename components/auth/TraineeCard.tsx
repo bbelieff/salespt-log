@@ -53,7 +53,7 @@ export default function TraineeCard({
   nameByEmail,
   linkedBySheet,
   onPick,
-  onReserve,
+  onReserve: _onReserve, // 2026-05-17 [A5]: 헤더 통합 후 미사용 (prop 호환 유지)
   onSetTeam,
   dragListeners,
   dragAttributes,
@@ -199,17 +199,8 @@ export default function TraineeCard({
                   // 2026-05-16: 시트 진단 (admin only). 누적 룰 카탈로그.
                   <TraineeDiagnoseButton email={u.email} name={u.name} />
                 )}
-                {showReserveBtn && (
-                  <button
-                    type="button"
-                    onClick={() => onReserve(u.email)}
-                    disabled={busy !== null}
-                    title="명단에서 숨김 (유보로 이동, row 는 살아있음)"
-                    className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                  >
-                    {busy === u.email ? "..." : "유보"}
-                  </button>
-                )}
+                {/* 2026-05-17 [A5]: 카드별 유보버튼 제거 → 헤더 BulkReserveButton 으로 통합.
+                    onReserve prop 은 컴파일 호환 위해 유지 (호출 측 영향 최소화). */}
                 {showSheetWebBtns && u.spreadsheetId && (
                   <a
                     href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
