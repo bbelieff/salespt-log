@@ -341,6 +341,38 @@ export default function ContractRow({
             </div>
           </div>
 
+          {/* 추가 메모 필드 (2026-05-17 [4]) — 시트 AE/AF */}
+          <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                로드맵 메모 <span className="font-normal text-gray-400">· 시트 AE</span>
+              </label>
+              <textarea
+                rows={2}
+                value={draft.로드맵메모}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
+                }
+                placeholder="진행 로드맵·일정 메모"
+                className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                메모사항 <span className="font-normal text-gray-400">· 시트 AF</span>
+              </label>
+              <input
+                type="text"
+                value={draft.메모사항}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, 메모사항: e.target.value }))
+                }
+                placeholder="기타 메모"
+                className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
           {/* 액션 */}
           <div className="flex gap-2 pt-1">
             <button

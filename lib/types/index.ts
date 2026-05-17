@@ -233,6 +233,11 @@ export const ContractPayment = z.object({
   수납1: PaymentSlot.default(EMPTY_SLOT),
   수납2: PaymentSlot.default(EMPTY_SLOT),
   수납3: PaymentSlot.default(EMPTY_SLOT),
+  // 2026-05-17 [4]: 추가 메모 필드 — 시트 AE/AF 컬럼.
+  /** 로드맵 메모 (2 row textarea) — 시트 AE */
+  로드맵메모: z.string().default(""),
+  /** 메모사항 (1 row input) — 시트 AF */
+  메모사항: z.string().default(""),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 

@@ -188,7 +188,7 @@ export default function PaymentSlotForm({
         </div>
         <div className="grid grid-cols-2 gap-2">
           <FieldText
-            label="현황"
+            label="실무진행"
             value={slot.현황}
             placeholder="예: 실사 진행 중"
             onChange={(v) => set("현황", v)}

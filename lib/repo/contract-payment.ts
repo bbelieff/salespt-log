@@ -187,13 +187,16 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
     수납1: slot(12), // M=12 (M~R)
     수납2: slot(18), // S=18 (S~X)
     수납3: slot(24), // Y=24 (Y~AD)
+    // 2026-05-17 [4]: 추가 메모 필드 — AE=30, AF=31.
+    로드맵메모: toStr(r[30]),
+    메모사항: toStr(r[31]),
   });
   return parsed.success ? parsed.data : null;
 }
 
-// ── ContractPayment → A~AD 셀 배열 (30 컬럼) ──────────────────
+// ── ContractPayment → A~AF 셀 배열 (32 컬럼, 2026-05-17 [4] 메모 추가) ─
 function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
-  const out = new Array(30).fill(""); // A~AD = 30 컬럼
+  const out = new Array(32).fill(""); // A~AF = 32 컬럼
   // A 공란, B 순번 — 빈 문자열 (시트 자동 또는 사용자 책임)
   out[2] = cp.계약일;
   out[3] = cp.업체명;
@@ -227,6 +230,9 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
   out[27] = cp.수납3.승인금액;
   out[28] = cp.수납3.수납액;
   out[29] = cp.수납3.수납일;
+  // 2026-05-17 [4]: AE=30 로드맵메모, AF=31 메모사항.
+  out[30] = cp.로드맵메모;
+  out[31] = cp.메모사항;
   return out;
 }
 
@@ -235,7 +241,7 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
 /** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!A${firstDataRow}:AD`;
+  const range = `${tabRef(tab)}!A${firstDataRow}:AF`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -359,10 +365,10 @@ export async function updateUserFields(
     throw new Error("[contract-payment] row 번호 필수 (≥3)");
   }
   const fullRow = cpToRow(validated);
-  // F~AD = idx 5~29 (25 columns: 7 체크박스 + 18 슬롯 필드)
-  const userArea = fullRow.slice(5, 30);
+  // F~AF = idx 5~31 (27 columns: 7 체크박스 + 18 슬롯 필드 + 2 메모, 2026-05-17 [4])
+  const userArea = fullRow.slice(5, 32);
   const { tab } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!F${validated.row}:AD${validated.row}`;
+  const range = `${tabRef(tab)}!F${validated.row}:AF${validated.row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range,
@@ -399,7 +405,7 @@ export async function clearRow(
   if (row < firstDataRow) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(tab)}!C${row}:AD${row}`;
+  const range = `${tabRef(tab)}!C${row}:AF${row}`;
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,
