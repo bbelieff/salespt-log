@@ -19,6 +19,7 @@ import { type PrepItem } from "./TraineePrepBulkForm";
 import UnifiedPrepCard from "./UnifiedPrepCard";
 import InstallFormulasButton from "./InstallFormulasButton";
 import MigrateCacheButton from "./MigrateCacheButton";
+import BulkReserveButton from "./BulkReserveButton";
 
 export default function AdminUserPicker({
   users,
@@ -113,7 +114,6 @@ export default function AdminUserPicker({
         setBusy(null);
         return;
       }
-      // 캐시 무효화 + 새 정렬 반영. 카드 local state 가 useEffect 로 sync.
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.refresh();
     } catch (e) {
@@ -329,13 +329,7 @@ export default function AdminUserPicker({
         setBusy(null);
         return;
       }
-      // impersonation 변경 시에는 ['me'] 외에 trainee 별 데이터 캐시도 모두
-      // 비워야 함. dashboard/contact/db/contract-payment/meetings 같은 hooks 가
-      // 각자 staleTime + refetchOnMount: false 설정이라 cache hit 시 첫 trainee
-      // 데이터 그대로 유지 → 두번째 trainee picker 클릭해도 본문이 안 바뀜.
-      // (2026-05-13 "여러 수강생 번갈아 조회 시 첫 사람 시트 고정" 사고)
-      // queryClient.clear() 가 가장 robust — 새 trainee data hook 추가돼도
-      // 자동 적용. 부작용은 admin 페이지로 돌아갈 때 1회 fetch latency 뿐.
+      // impersonation 시 trainee 데이터 캐시 모두 invalidate (사고 #2026-05-13 재발 방지).
       queryClient.clear();
       router.push("/dashboard");
       router.refresh();
@@ -347,8 +341,6 @@ export default function AdminUserPicker({
 
   return (
     <main className="min-h-dvh bg-gray-50">
-      {/* 헤더 — 모바일에서 가로 공간 부족으로 깨지지 않도록 sync/수식복원 버튼은
-          본문 h1 옆으로 이동 (PR fix/admin-roster-and-mobile, 2026-05-14). */}
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0">
@@ -380,6 +372,18 @@ export default function AdminUserPicker({
           </div>
           {!viewOnly && (
             <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {/* 2026-05-17 [A5]: 카드별 유보 버튼 → 헤더 통합 */}
+              <BulkReserveButton
+                trainees={users.map((u) => ({
+                  email: u.email,
+                  name: u.name,
+                  cohort: u.cohort ?? "",
+                }))}
+                onDone={() => {
+                  queryClient.invalidateQueries();
+                  router.refresh();
+                }}
+              />
               <MigrateCacheButton />
               <InstallFormulasButton />
             </div>
@@ -408,7 +412,6 @@ export default function AdminUserPicker({
               <p className="text-sm text-gray-400">검색 결과 없음.</p>
             )}
 
-          {/* 신규 수강생 사전 등록 — 단일/일괄 모드 토글 통합 카드. */}
           {!viewOnly && (
             <UnifiedPrepCard
               busy={busy !== null}
@@ -417,7 +420,6 @@ export default function AdminUserPicker({
             />
           )}
 
-          {/* 승인 대기 — 가장 위. admin 즉시 처리 유도. [모두 승인] 일괄. */}
           <PendingTraineesSection
             list={pendingUsers}
             busy={busy}
@@ -428,7 +430,6 @@ export default function AdminUserPicker({
             viewOnly={viewOnly}
           />
 
-          {/* 활성 기수 그룹 */}
           {activeGroups.map(([cohort, list]) => (
             <CohortSection
               key={cohort}
@@ -447,7 +448,6 @@ export default function AdminUserPicker({
             />
           ))}
 
-          {/* 보관된 기수 — collapsed (details) */}
           {archivedGroups.length > 0 && (
             <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
               <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
