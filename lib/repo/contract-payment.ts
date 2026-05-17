@@ -161,15 +161,17 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
     계약일Cell !== "" || 업체명Cell !== "" || 수임비Cell > 0;
   if (!hasMeaningfulContent) return null;
 
-  // 컬럼 인덱스 (A=0, B=1, C=2, ..., AA=26, AD=29)
-  // v2 슬롯: M=12 / S=18 / Y=24, 각 6필드.
-  const slot = (start: number): PaymentSlot => ({
+  // 컬럼 인덱스 (A=0..., AE=30, AF=31, AG=32, AH=33).
+  // 슬롯 데이터: M=12 / S=18 / Y=24, 각 6필드.
+  // 슬롯 메모 (2026-05-17): AF=31 / AG=32 / AH=33.
+  const slot = (start: number, memoCol: number): PaymentSlot => ({
     진행기관: toStr(r[start]),
     진행률: toProgress(r[start + 1]),
     현황: toStr(r[start + 2]),
     승인금액: toNum(r[start + 3]),
     수납액: toNum(r[start + 4]),
     수납일: serialToISODate(r[start + 5]),
+    메모: toStr(r[memoCol]),
   });
 
   const parsed = ContractPayment.safeParse({
@@ -184,19 +186,18 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
     사업계획서초안발송: toBool(r[9]),
     컨설팅5종서류발송: toBool(r[10]),
     플러그이관: toBool(r[11]),
-    수납1: slot(12), // M=12 (M~R)
-    수납2: slot(18), // S=18 (S~X)
-    수납3: slot(24), // Y=24 (Y~AD)
-    // 2026-05-17 [4]: 추가 메모 필드 — AE=30, AF=31.
-    로드맵메모: toStr(r[30]),
-    메모사항: toStr(r[31]),
+    수납1: slot(12, 31), // M~R + AF
+    수납2: slot(18, 32), // S~X + AG
+    수납3: slot(24, 33), // Y~AD + AH
+    로드맵메모: toStr(r[30]), // AE
   });
   return parsed.success ? parsed.data : null;
 }
 
-// ── ContractPayment → A~AF 셀 배열 (32 컬럼, 2026-05-17 [4] 메모 추가) ─
+// ── ContractPayment → A~AH 셀 배열 (34 컬럼, 2026-05-17 v3) ──────
+// 변경: 카드 메모사항(AF) 제거 → 슬롯별 메모 (AF/AG/AH) 도입.
 function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
-  const out = new Array(32).fill(""); // A~AF = 32 컬럼
+  const out = new Array(34).fill(""); // A~AH = 34 컬럼
   // A 공란, B 순번 — 빈 문자열 (시트 자동 또는 사용자 책임)
   out[2] = cp.계약일;
   out[3] = cp.업체명;
@@ -230,9 +231,13 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
   out[27] = cp.수납3.승인금액;
   out[28] = cp.수납3.수납액;
   out[29] = cp.수납3.수납일;
-  // 2026-05-17 [4]: AE=30 로드맵메모, AF=31 메모사항.
+  // 2026-05-17 v3:
+  // AE=30 로드맵메모 (카드)
+  // AF=31 / AG=32 / AH=33 슬롯별 메모
   out[30] = cp.로드맵메모;
-  out[31] = cp.메모사항;
+  out[31] = cp.수납1.메모;
+  out[32] = cp.수납2.메모;
+  out[33] = cp.수납3.메모;
   return out;
 }
 
@@ -241,7 +246,7 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
 /** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!A${firstDataRow}:AF`;
+  const range = `${tabRef(tab)}!A${firstDataRow}:AH`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -365,10 +370,10 @@ export async function updateUserFields(
     throw new Error("[contract-payment] row 번호 필수 (≥3)");
   }
   const fullRow = cpToRow(validated);
-  // F~AF = idx 5~31 (27 columns: 7 체크박스 + 18 슬롯 필드 + 2 메모, 2026-05-17 [4])
-  const userArea = fullRow.slice(5, 32);
+  // F~AH = idx 5~33 (29 columns: 7 체크박스 + 18 슬롯 + AE 로드맵 + AF/AG/AH 슬롯메모).
+  const userArea = fullRow.slice(5, 34);
   const { tab } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!F${validated.row}:AF${validated.row}`;
+  const range = `${tabRef(tab)}!F${validated.row}:AH${validated.row}`;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range,
@@ -405,7 +410,7 @@ export async function clearRow(
   if (row < firstDataRow) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(tab)}!C${row}:AF${row}`;
+  const range = `${tabRef(tab)}!C${row}:AH${row}`;
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,

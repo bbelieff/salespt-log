@@ -156,6 +156,7 @@ export default function ContractRow({
       승인금액: 0,
       수납액: 0,
       수납일: "",
+      메모: "",
     };
     setDraft((d) => ({ ...d, [`수납${slotIdx}`]: emptySlot }));
     if (slotIdx === visiblePayments) {
@@ -281,6 +282,25 @@ export default function ContractRow({
             />
           </div>
 
+          {/* 2026-05-17: 로드맵 메모 — 카드 차원, 슬롯들 위에 위치 */}
+          <div className="rounded-lg border border-gray-200 bg-amber-50 p-3">
+            <label className="mb-1 block text-xs font-semibold text-amber-800">
+              📍 로드맵 메모{" "}
+              <span className="font-normal text-amber-600/70">
+                · 전체 수납기관 진행 로드맵 (시트 AE)
+              </span>
+            </label>
+            <textarea
+              rows={2}
+              value={draft.로드맵메모}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
+              }
+              placeholder="예: 1단계 자금 6월말 → 2단계 8월 신청 → ..."
+              className="w-full resize-none rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"
+            />
+          </div>
+
           {/* 수납 현황 */}
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -338,38 +358,6 @@ export default function ContractRow({
                   <span>수납 추가 ({visiblePayments + 1}회차)</span>
                 </button>
               )}
-            </div>
-          </div>
-
-          {/* 추가 메모 필드 (2026-05-17 [4]) — 시트 AE/AF */}
-          <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                로드맵 메모 <span className="font-normal text-gray-400">· 시트 AE</span>
-              </label>
-              <textarea
-                rows={2}
-                value={draft.로드맵메모}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
-                }
-                placeholder="진행 로드맵·일정 메모"
-                className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                메모사항 <span className="font-normal text-gray-400">· 시트 AF</span>
-              </label>
-              <input
-                type="text"
-                value={draft.메모사항}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, 메모사항: e.target.value }))
-                }
-                placeholder="기타 메모"
-                className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-              />
             </div>
           </div>
 
