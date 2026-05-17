@@ -148,7 +148,8 @@ export default function WeekHeader({
                 {d.getDate()}
               </span>
               {count > 0 && (
-                <span className="absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold leading-none text-white shadow">
+                /* 2026-05-18: negative offset 으로 cell 코너 바깥에 띄움 → border 두께 무관, today/non-today 동일 위치. */
+                <span className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold leading-none text-white shadow">
                   {count}
                 </span>
               )}
