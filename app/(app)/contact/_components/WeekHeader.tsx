@@ -157,8 +157,9 @@ export default function WeekHeader({
                 {d.getDate()}
               </span>
               {count > 0 && (
+                /* 2026-05-18: negative offset 으로 cell 코너 바깥 — border 두께 무관 동일 위치. */
                 <span
-                  className={`absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none shadow ${
+                  className={`absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none shadow ${
                     isSelected
                       ? "bg-white text-blue-600"
                       : "bg-blue-500 text-white"
