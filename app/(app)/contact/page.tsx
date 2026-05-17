@@ -381,7 +381,12 @@ export default function ContactPage() {
         />
       </div>
 
-      <main className="px-4 pt-4 pb-[160px]">
+      {/* 2026-05-18 [1]: 스와이프/주차 이동 시 본문 fade 인터랙션 (헤더는 고정). */}
+      <main
+        className={`px-4 pt-4 pb-[160px] transition-opacity duration-200 ${
+          dayQuery.isFetching ? "opacity-50" : "opacity-100"
+        }`}
+      >
         <ChannelTabsAndPanel
           active={activeChannel}
           draft={draft}
