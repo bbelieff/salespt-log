@@ -25,6 +25,21 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* ── 위클리 슬라이드 인터랙션 (2026-05-18) ─────────────────
+ * 좌우 스와이프 / [이전·다음 주] 클릭 시 7-day 그리드가 옆으로 슬라이드.
+ * key={weekStart} 변경 시 unmount/remount → 새 그리드가 in-from-{right|left} 로 등장.
+ */
+@keyframes slide-in-from-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes slide-in-from-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.week-slide-right { animation: slide-in-from-right 220ms ease-out; }
+.week-slide-left  { animation: slide-in-from-left  220ms ease-out; }
+
 /* ── 채널 배지 (docs/design/components.md §4) ─────────────── */
 .badge {
   font-size: 11px;
