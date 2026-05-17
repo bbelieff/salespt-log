@@ -246,6 +246,53 @@ export default function SchedulePage() {
     }
   };
 
+  /**
+   * 추가 미팅 (2026-05-17 [2b]).
+   * 완료/취소/계약 카드에서 같은 업체로 새 미팅 row append.
+   * 채널/장소/예약비고 동일, 새 id, 상태=예약, previousMeetingId 없음 (독립 미팅).
+   */
+  const handleAddMeeting = async (
+    base: Meeting,
+    newDate: string,
+    newTime: string,
+  ) => {
+    setPendingId(base.id);
+    const newId = uuid();
+    // 업체명에서 "(변경)" prefix 가 있으면 제거 (추가 미팅은 변경 흐름 아님).
+    const cleanVendor = base.업체명.replace(/^\(변경\)\s*/, "");
+    const todayISO = fmtISO(new Date());
+    const newMeeting: Meeting = {
+      ...base,
+      id: newId,
+      예약일: todayISO,
+      예약시각: new Date().toTimeString().slice(0, 5),
+      업체명: cleanVendor,
+      미팅날짜: newDate,
+      미팅시간: newTime,
+      상태: "예약",
+      계약여부: false,
+      수임비: 0,
+      미팅사유: "",
+      계약조건: "",
+      previousMeetingId: "", // 독립 미팅 — 체이닝 안 함
+      표시상세: undefined,
+      표시요약: undefined,
+      계약합성라인: undefined,
+      주차: undefined,
+    };
+    try {
+      await appendMeeting.mutateAsync({
+        date: newMeeting.예약일,
+        meeting: newMeeting,
+      });
+      showToast(`✓ 추가 미팅 생성: ${cleanVendor} ${newDate} ${newTime}`);
+    } catch (e) {
+      showToast(`추가 미팅 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   const moveWeek = (delta: number) => {
     const cur = parseISO(weekStart);
     setWeekStart(fmtISO(addDays(cur, delta * 7)));
@@ -331,6 +378,7 @@ export default function SchedulePage() {
               onPatch={handlePatch}
               onReschedule={handleReschedule}
               onRevert={handleRevert}
+              onAddMeeting={handleAddMeeting}
             />
           </div>
         ))}

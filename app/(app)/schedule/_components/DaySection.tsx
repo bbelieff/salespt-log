@@ -22,6 +22,8 @@ interface Props {
   ) => void;
   /** 미팅 결과 되돌리기 (2026-05-17 [2a]). */
   onRevert?: (id: string) => void;
+  /** 추가 미팅 (2026-05-17 [2b]). */
+  onAddMeeting?: (meeting: Meeting, newDate: string, newTime: string) => void;
 }
 
 export default function DaySection({
@@ -32,6 +34,7 @@ export default function DaySection({
   onPatch,
   onReschedule,
   onRevert,
+  onAddMeeting,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -101,6 +104,9 @@ export default function DaySection({
             onPatch={(partial) => onPatch(m.id, partial)}
             onReschedule={(d2, t, r) => onReschedule(m, d2, t, r)}
             onRevert={onRevert ? () => onRevert(m.id) : undefined}
+            onAddMeeting={
+              onAddMeeting ? (d2, t2) => onAddMeeting(m, d2, t2) : undefined
+            }
           />
         ))
       )}
