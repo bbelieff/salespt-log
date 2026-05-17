@@ -286,6 +286,19 @@ export default function ChannelTabsAndPanel({
                 <div className="truncate text-xs text-gray-400">{help}</div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                {/* 2026-05-17 [C-1]: 생산 키에만 -10 빠른 가산 */}
+                {m.key === "production" && (
+                  <button
+                    type="button"
+                    className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                    onClick={() => onStep(m.key, -10)}
+                    disabled={cell[m.key] <= 0}
+                    aria-label="생산 10 감소"
+                    title="10개 한꺼번에 감소"
+                  >
+                    −10
+                  </button>
+                )}
                 <button
                   type="button"
                   className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -315,6 +328,18 @@ export default function ChannelTabsAndPanel({
                 >
                   ＋
                 </button>
+                {/* 2026-05-17 [C-1]: 생산 키에만 +10 빠른 가산 */}
+                {m.key === "production" && (
+                  <button
+                    type="button"
+                    className="rounded-full bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-200"
+                    onClick={() => onStep(m.key, 10)}
+                    aria-label="생산 10 증가"
+                    title="10개 한꺼번에 증가"
+                  >
+                    +10
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex w-2/5 flex-col items-center justify-center border-l-2 bg-indigo-50 py-3 text-center">
