@@ -109,18 +109,28 @@ export default function WeekHeader({
           const isToday = iso === todayISO;
           const isWeekend = weekendIdx.includes(i);
           const count = countsByDay?.[i] ?? 0;
+          // 2026-05-17 [4]: today = 두꺼운 위 테두리 + TODAY 라벨, 선택 = bg-blue
+          const todayBorder = isToday
+            ? "border-2 border-t-[6px] border-blue-600"
+            : "";
           return (
             <button
               key={iso}
               type="button"
               onClick={() => onSelectDay(iso)}
-              className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center overflow-hidden rounded-xl py-1.5 transition-all active:scale-95 ${
                 isSelected
                   ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
                   : "bg-gray-50 hover:bg-gray-100"
-              }`}
+              } ${todayBorder} ${isToday ? "pt-2" : ""}`}
               aria-pressed={isSelected}
+              aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >
+              {isToday && (
+                <span className="absolute left-0 right-0 top-0 -mt-[1px] text-center text-[8px] font-extrabold leading-[6px] tracking-wider text-white">
+                  TODAY
+                </span>
+              )}
               <span
                 className={`text-xs font-medium ${
                   isSelected
@@ -139,17 +149,7 @@ export default function WeekHeader({
               >
                 {d.getDate()}
               </span>
-              {isToday && (
-                <span
-                  className={`absolute -top-1.5 rounded-full px-1 py-px text-[10px] font-bold leading-none ${
-                    isSelected ? "bg-white text-blue-600" : "bg-blue-500 text-white"
-                  }`}
-                >
-                  오늘
-                </span>
-              )}
               {count > 0 && (
-                // 미팅 수 badge — 일정·계약 탭과 동일 위치/스타일 (2026-05-16).
                 <span
                   className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none ${
                     isSelected

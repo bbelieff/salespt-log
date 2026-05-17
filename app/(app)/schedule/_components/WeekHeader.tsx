@@ -110,17 +110,23 @@ export default function WeekHeader({
               key={iso}
               type="button"
               onClick={() => onClickDay(i)}
-              className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center overflow-hidden rounded-xl py-1.5 transition-all active:scale-95 ${
                 isToday
-                  ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
+                  ? "border-2 border-t-[6px] border-blue-600 bg-blue-50 pt-2"
                   : "bg-gray-50 hover:bg-gray-100"
               }`}
-              aria-label={`${d.getDate()}일${count > 0 ? ` · 미팅 ${count}건` : ""}`}
+              aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >
+              {/* 2026-05-17 [4]: today 라벨을 두꺼운 상단 테두리 영역에 (배지 stack 회피). */}
+              {isToday && (
+                <span className="absolute left-0 right-0 top-0 -mt-[1px] text-center text-[8px] font-extrabold leading-[6px] tracking-wider text-white">
+                  TODAY
+                </span>
+              )}
               <span
                 className={`text-xs font-medium ${
                   isToday
-                    ? "text-white"
+                    ? "text-blue-700"
                     : isWeekend
                       ? "text-red-500"
                       : "text-gray-500"
@@ -130,25 +136,13 @@ export default function WeekHeader({
               </span>
               <span
                 className={`text-base font-bold leading-tight ${
-                  isToday ? "text-white" : "text-gray-800"
+                  isToday ? "text-blue-900" : "text-gray-800"
                 }`}
               >
                 {d.getDate()}
               </span>
-              {/* "오늘" 플로팅 배지 — 컨택탭 일관성 (2026-05-17 [A1]) */}
-              {isToday && (
-                <span className="absolute -top-1.5 rounded-full bg-white px-1 py-px text-[10px] font-bold leading-none text-blue-600">
-                  오늘
-                </span>
-              )}
               {count > 0 && (
-                <span
-                  className={`absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none ${
-                    isToday
-                      ? "bg-white text-blue-600"
-                      : "bg-blue-500 text-white"
-                  }`}
-                >
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold leading-none text-white">
                   {count}
                 </span>
               )}

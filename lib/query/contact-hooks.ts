@@ -60,6 +60,8 @@ export function useDay(date: string): UseQueryResult<ContactDayView> {
     queryKey: dayKey(date),
     queryFn: () => fetchJSON<ContactDayView>(`/api/daily/${date}`),
     enabled: !!date,
+    // 2026-05-17: 주차 스와이프 시 깜빡임 제거 — 이전 데이터 유지 후 새 데이터로 swap.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -72,6 +74,8 @@ export function useWeekMeetings(
     queryFn: () =>
       fetchJSON<ScheduleWeekView>(`/api/meetings/week/${weekStart}`),
     enabled: !!weekStart,
+    // 2026-05-17: 동일 — 주차 이동 시 빈 화면 방지.
+    placeholderData: (prev) => prev,
   });
 }
 
