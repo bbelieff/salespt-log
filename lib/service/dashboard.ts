@@ -4,7 +4,7 @@
  * SSOT: docs/domains/data-model.md §대시보드 데이터 출처
  *
  * 매핑 (사용자 결정 2026-05-08):
- *   - KPI:        대시보드 B21:G21
+ *   - KPI 누적수임비: 대시보드 B21 (수임비 cell — 시트 수식 유지)
  *   - Funnel:     01 영업관리!E1:E6 (6단계 합계)
  *   - 5지표:     01 영업관리!I2:I6 (시트 자체 계산)
  *   - 채널 6단계 stacking: 01 영업관리!R1:U6 (6단계×4채널 24셀)
@@ -13,6 +13,11 @@
  *   - 채널 비용: 03 DB관리 raw row 합산 (db.ts readPurchases/readProductions/readBanners).
  *     **2026-05-15 변경 (김미란 사고)**: 옛 F56/K56/U56 SUM cell 의존 → 서버 sum 으로 교체.
  *     일부 시트 (예: 김미란) 에 SUM 수식이 없거나 잘못된 경우에도 정확한 비용 계산 보장.
+ *   - **총매출 (2026-05-16 변경, 수납↔대시보드 매출 불일치 사고)**:
+ *     옛 대시보드!D21 (시트 수식) 의존 → `readAll(contract-payment)` row 수임비 합산.
+ *     PR #195 비용 통일 패턴과 동일 — 시트 템플릿마다 D21 수식이 N행 합 한도가 다르거나
+ *     특정 row 누락하는 케이스 발견 → 수납탭 표시 총매출과 대시보드 KPI 매출이 어긋남.
+ *     서버에서 02 계약수납관리 row 직접 합산이 단일 진실원천.
  *   - 콜·지·기·소 수임비 박스: 제거 (사용자 결정)
  */
 import type {
@@ -23,6 +28,7 @@ import type {
 import { findUserByEmail } from "@/repo/users";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
+import { readAll as readContractPayments } from "@/repo/contract-payment";
 
 const CHANNELS: DashboardChannelMatrix["채널"][] = [
   "매입DB",
@@ -45,11 +51,12 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
   //   - readBanners: 현수막 P:V — 주문금액(U) 합 = 현수막 비용
   // 옛 F56/K56/U56 SUM cell 의존 제거 — 시트 템플릿마다 SUM 수식 유무 차이로 비용 0
   // 표시되던 사고 (2026-05-15, 김미란 케이스) 원천 차단.
-  const [data, purchases, productions, banners] = await Promise.all([
+  const [data, purchases, productions, banners, payments] = await Promise.all([
     readDashboard(user.spreadsheetId),
     readPurchases(user.spreadsheetId),
     readProductions(user.spreadsheetId),
     readBanners(user.spreadsheetId),
+    readContractPayments(user.spreadsheetId),
   ]);
 
   const purchaseCost = purchases.rows.reduce((s, p) => s + num(p.주문금액), 0);
@@ -60,12 +67,13 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
   const bannerCost = banners.rows.reduce((s, b) => s + num(b.주문금액), 0);
   const costByChannel = [purchaseCost, productionCost, bannerCost];
 
-  // === KPI: 대시보드 B21:G21 + 채널 비용 (서버 sum) ===
-  // 시트 대시보드!E21 수식이 콜·지·기·소 포함하거나 다른 row 참조 시
-  // 메인 배너 비용 ↔ 채널별 비용 도넛이 어긋나는 문제를 원천 차단.
+  // === KPI: 누적수임비 (시트 B21) + 매출 (서버 sum) + 비용 (서버 sum) ===
+  // 매출은 02 계약수납관리 row 수임비 합 (단일 진실원천, 2026-05-16):
+  //   - 옛 D21 시트 수식: 일부 양식에서 row 누락 / 범위 불일치 (수납탭과 어긋남)
+  //   - 서버 sum: 수납탭이 표시하는 동일 row 데이터원천 → 절대 어긋날 수 없음
   // 이익은 매출 − 3채널 비용으로 재계산해 정합성 유지.
   const fee = num(data.finance[0]);
-  const revenue = num(data.finance[2]);
+  const revenue = payments.reduce((s, p) => s + num(p.수임비), 0);
   const cost = costByChannel.reduce((s, c) => s + c, 0);
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;

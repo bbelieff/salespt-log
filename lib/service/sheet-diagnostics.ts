@@ -21,9 +21,11 @@ import {
   dayPrimaryRow,
   type InstallReport,
 } from "@/repo/setup-formulas";
+import { readAll as readContractPayments } from "@/repo/contract-payment";
 
 const SALES_TAB = SHEET_RANGES.sales.tab;
 const MEETINGS_TAB = SHEET_RANGES.meetings.tab;
+const DASH_TAB = SHEET_RANGES.dashboard.tab;
 const SALES_BLOCK_START = SHEET_RANGES.sales.blockStart;
 const SALES_BLOCK_STRIDE = SHEET_RANGES.sales.blockStride;
 
@@ -330,11 +332,59 @@ const ruleMeetingsFormulasMissing: DiagnosticRule = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────
+// Rule 5: 대시보드 D21 매출 vs 02 계약수납관리 row 수임비 합 불일치
+// (2026-05-16, "수납탭과 대시보드 매출합이 다름" 사고 추가 진단)
+//
+// 대시보드!D21 은 시트 수식. 일부 양식에서 N 행 합 범위가 잘못됐거나
+// row 누락하는 케이스 발견 → 수납탭이 표시하는 동일 row 수임비 sum 과 어긋남.
+// PR #206 로 service/dashboard.ts 는 이미 서버 sum 사용 — 본 룰은 시트 수식
+// 자체가 오염되어 있는지 감지하기 위함 (시트 직접 보는 사용자가 혼란).
+//
+// detect: D21 (UNFORMATTED) vs readContractPayments(수임비) sum. 정수 비교.
+// fix: 없음 (시트 수식 자동 수정은 위험 — admin 이 D21 수식 수동 조정).
+// ─────────────────────────────────────────────────────────────
+const ruleRevenueMismatch: DiagnosticRule = {
+  id: "revenue-mismatch",
+  label: "대시보드 매출(D21) vs 02 계약수납관리 수임비 합 불일치",
+  severity: "warn",
+  async detect(spreadsheetId) {
+    const [dashRes, payments] = await Promise.all([
+      sheetsClient().spreadsheets.values.get({
+        spreadsheetId,
+        range: `${tabRef(DASH_TAB)}!D21`,
+        valueRenderOption: "UNFORMATTED_VALUE",
+      }),
+      readContractPayments(spreadsheetId),
+    ]);
+    const d21Raw = dashRes.data.values?.[0]?.[0];
+    const d21 = typeof d21Raw === "number" && Number.isFinite(d21Raw) ? d21Raw : 0;
+    const serverSum = payments.reduce((s, p) => {
+      const v = typeof p.수임비 === "number" && Number.isFinite(p.수임비) ? p.수임비 : 0;
+      return s + v;
+    }, 0);
+    // round to integer (사용자 시트 단위 만 단위 / 정수 가정).
+    const diff = Math.abs(d21 - serverSum);
+    if (diff < 1) return null;
+    return {
+      ruleId: this.id,
+      label: this.label,
+      severity: this.severity,
+      detail:
+        `대시보드 D21=${d21.toLocaleString()} vs 02계약수납관리 수임비합=${serverSum.toLocaleString()}` +
+        ` (차이 ${diff.toLocaleString()}, row ${payments.length}개). ` +
+        `대시보드 KPI 는 서버 sum 사용 — 시트 D21 수식이 row 누락/범위 오류일 가능성. 시트 D21 수동 확인 필요`,
+      fixable: false,
+    };
+  },
+};
+
 const RULES: DiagnosticRule[] = [
   ruleFormulaRestore,
   ruleMeetingsFormulasMissing,
   ruleMetricMeetingMismatch,
   ruleO1O2Validity,
+  ruleRevenueMismatch,
 ];
 
 /**
