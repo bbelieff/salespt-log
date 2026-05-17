@@ -1,14 +1,6 @@
 /**
  * MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태).
- * 정본: docs/design/prototypes/schedule-weekly.html
- *
- * Phase 2: 4-action 모두 활성 (계약/완료/변경/취소).
- * Phase 3a: 예약 카드 펼침에 일정 수정 details 추가.
- * 처리완료 카드(reserved 외)는 결과 표시만, 액션·수정 모두 숨김.
- *
- * 헤더(접힘 시): 상태아이콘 시간 업체명 장소 [수임비요약] ▼
- * 펼침(reserved): 채널 배지 + 일정 수정 details + 4-action + 인라인 폼
- * 펼침(처리됨): 채널 배지 + 결과요약 (액션 X)
+ * 닫힌 카드 액션: [2a] 되돌리기 + [2b] 추가 미팅.
  */
 "use client";
 
@@ -87,11 +79,9 @@ export default function MeetingResultCard({
       </span>
     ) : null;
 
-  // 액션 버튼 — 토글: 같은 액션 클릭 시 닫힘
   const pickAction = (a: Exclude<Action, null>) =>
     setAction((cur) => (cur === a ? null : a));
 
-  // 패치 헬퍼들
   const handleContract = (fee: number, terms: string) => {
     onPatch({
       상태: "계약",
@@ -103,14 +93,12 @@ export default function MeetingResultCard({
     setEditMode(false);
     setOpen(false);
   };
-  // 미팅사유 누적: 기존 값이 있으면 "회차N: " prefix 붙여 줄바꿈으로 append.
-  // 빈 값이면 그대로. 사용자가 의도해서 빈 reason을 넣어도 누적 안 함.
+  // 미팅사유 회차 누적 (빈 reason 은 그대로).
   const accumulateReason = (newReason: string): string => {
     const trimmed = newReason.trim();
     const prev = (meeting.미팅사유 ?? "").trim();
     if (!trimmed) return prev;
     if (!prev) return trimmed;
-    // 이전 줄 수 카운트하여 회차 번호 산정
     const round = prev.split("\n").length + 1;
     return `${prev}\n${round}회차: ${trimmed}`;
   };
@@ -145,14 +133,12 @@ export default function MeetingResultCard({
     setOpen(false);
   };
 
-  // 예약 상태에서만 액션 그리드 노출 (이미 처리된 카드는 결과만 표시)
   const showActions = state === "reserved";
 
   return (
     <div
       className={`relative ml-4 mb-2 overflow-hidden rounded-xl shadow-sm ${CARD_CLS[state]}`}
     >
-      {/* 가지선 (day-section과 카드 연결) */}
       <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-gray-200" />
 
       <button
@@ -167,7 +153,6 @@ export default function MeetingResultCard({
         <span className={`shrink-0 text-sm font-bold ${timeCls}`}>
           {meeting.미팅시간}
         </span>
-        {/* 채널 배지 — 닫힌(접힌) 카드에서도 항상 노출 (2026-05-17, 사용자 요청 [2c]) */}
         <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
           {meeting.channel}
         </span>
@@ -199,14 +184,12 @@ export default function MeetingResultCard({
 
       {open && (
         <div className="space-y-3 border-t border-gray-200/60 px-3 py-3">
-          {/* 채널 배지는 헤더에 노출 (2026-05-17 [2c]) — 펼침 시 상태 라벨만 표시 */}
           <div className="flex items-center justify-end text-xs">
             <span className="text-gray-400">
               현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b>
             </span>
           </div>
 
-          {/* 결과 정보 (이미 처리된 카드에 한해 표시) */}
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">
               {state === "contract" && (
