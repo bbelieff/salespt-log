@@ -298,9 +298,18 @@ export default function SchedulePage() {
     setWeekStart(fmtISO(addDays(cur, delta * 7)));
   };
 
+  /**
+   * 날짜 클릭 시 세로 스크롤 (2026-05-17 [A4] fix).
+   * 주 시작 = 금요일. 인덱스 매핑:
+   *   0=금, 1=토, 2=일, 3=월 → 상단 (block: "start") — 일주일 시작 쪽
+   *   4=화, 5=수, 6=목 → 하단 (block: "end") — 일주일 끝 쪽
+   * 이전: 모든 idx 가 block: "start" → 화~목 클릭 시 화면 너무 위로 가서 동작 어색.
+   */
   const scrollToDay = (idx: number) => {
     const el = dayRefs.current[idx];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!el) return;
+    const block: ScrollLogicalPosition = idx >= 4 ? "end" : "start";
+    el.scrollIntoView({ behavior: "smooth", block });
   };
 
   // 메모: 모든 미팅 평탄화 (요약 바 입력)
