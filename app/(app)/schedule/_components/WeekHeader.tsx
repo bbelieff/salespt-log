@@ -110,23 +110,23 @@ export default function WeekHeader({
               key={iso}
               type="button"
               onClick={() => onClickDay(i)}
-              className={`relative flex flex-col items-center justify-center overflow-hidden rounded-xl py-1.5 transition-all active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center rounded-xl py-1.5 transition-all active:scale-95 ${
                 isToday
-                  ? "border-2 border-t-[6px] border-blue-600 bg-blue-50 pt-2"
+                  ? "border-2 border-black bg-gray-50 pt-3.5"
                   : "bg-gray-50 hover:bg-gray-100"
               }`}
               aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >
-              {/* 2026-05-17 [4]: today 라벨을 두꺼운 상단 테두리 영역에 (배지 stack 회피). */}
+              {/* 2026-05-18: TODAY 라벨을 두꺼운 위 테두리 영역 내부에 — 검은 strip + 흰 글자. */}
               {isToday && (
-                <span className="absolute left-0 right-0 top-0 -mt-[1px] text-center text-[8px] font-extrabold leading-[6px] tracking-wider text-white">
+                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black px-1 text-center text-[9px] font-extrabold leading-[14px] tracking-wider text-white">
                   TODAY
                 </span>
               )}
               <span
                 className={`text-xs font-medium ${
                   isToday
-                    ? "text-blue-700"
+                    ? "text-gray-700"
                     : isWeekend
                       ? "text-red-500"
                       : "text-gray-500"
@@ -134,15 +134,11 @@ export default function WeekHeader({
               >
                 {JS_DAY_KO[dow]}
               </span>
-              <span
-                className={`text-base font-bold leading-tight ${
-                  isToday ? "text-blue-900" : "text-gray-800"
-                }`}
-              >
+              <span className="text-base font-bold leading-tight text-gray-800">
                 {d.getDate()}
               </span>
               {count > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold leading-none text-white">
+                <span className="absolute right-0.5 top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold leading-none text-white shadow">
                   {count}
                 </span>
               )}

@@ -317,9 +317,9 @@ export default function ChannelTabsAndPanel({
                     ＋
                   </button>
                 </div>
-                {/* 2026-05-17: 생산 ±10 — 기존 ± 버튼 아래로 (모바일 미관 + 라벨 줄바꿈 방지). */}
+                {/* 2026-05-18: 생산 ±10 — 각각 − / + 버튼 바로 아래 정렬 (간격 = stepper-val 만큼 가운데 spacer). */}
                 {m.key === "production" && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex w-full items-center justify-between">
                     <button
                       type="button"
                       className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-bold text-gray-600 hover:bg-gray-200 disabled:opacity-40"
