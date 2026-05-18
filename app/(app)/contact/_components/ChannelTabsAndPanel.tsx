@@ -322,7 +322,7 @@ export default function ChannelTabsAndPanel({
                   <div className="flex w-full items-center justify-between">
                     <button
                       type="button"
-                      className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-bold text-gray-600 hover:bg-gray-200 disabled:opacity-40"
+                      className="rounded-full bg-gray-200 px-2.5 py-0.5 text-[11px] font-bold text-gray-800 hover:bg-gray-300 disabled:opacity-40"
                       onClick={() => onStep(m.key, -10)}
                       disabled={cell[m.key] <= 0}
                       aria-label="생산 10 감소"
