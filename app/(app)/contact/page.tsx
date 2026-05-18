@@ -261,21 +261,20 @@ export default function ContactPage() {
   };
 
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
-    if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?`)) return;
+    // 2026-05-18 Phase 1: cascade — confirm + 계약카드 자동 삭제.
+    const hasContract = meeting.상태 === "계약";
+    const extra = hasContract ? `\n· 수납탭 계약카드 1건 (₩${(meeting.수임비 ?? 0).toLocaleString()})` : "";
+    if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`)) return;
     const dateAtClick = date;
     try {
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
       adjustMetric(meeting.channel, "meetingReservation", -1);
-      // 2026-05-18 fix: 해당 채널만 partial 저장 (전체 draft 전송 시 stale 0 으로 덮어쓰는 사고).
       const targetCh = meeting.channel;
       setDraft((latest) => {
-        void saveMetrics.mutateAsync({
-          date: dateAtClick,
-          channels: { [targetCh]: latest[targetCh] },
-        });
+        void saveMetrics.mutateAsync({ date: dateAtClick, channels: { [targetCh]: latest[targetCh] } });
         return latest;
       });
-      showToast("✕ 삭제 · 미팅예약 -1 (시트 동기화됨)");
+      showToast(hasContract ? "✕ 미팅 + 계약카드 삭제 (미팅예약 -1)" : "✕ 삭제 · 미팅예약 -1");
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);
     }
