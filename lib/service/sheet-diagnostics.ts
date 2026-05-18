@@ -341,105 +341,107 @@ const ruleRevenueMismatch: DiagnosticRule = {
   },
 };
 
-// Rule 6: 셀병합이 데이터 쓰기 영역에 있음 (2026-05-18, 오승진 5/16 콜지기소 사고).
-//
-// 영업관리 E~T (4지표 + 수식 컬럼) 혹은 04 업체관리 A~S, 02 계약수납관리 A~AH
-// 에 셀병합이 있으면, 웹의 시트 쓰기가 merge group 의 마스터 cell 로 가서
-// 다른 row 데이터를 덮어쓰거나 안 적힌 것처럼 보이는 사고 발생.
-//
-// detect: spreadsheets.get fields=sheets(merges) 로 모든 시트의 merge 가져와
-//   쓰기 대상 탭 (sales/meetings/contractPayment/dbManagement) 의 데이터 row
-//   영역과 겹치는 merge 카운트.
-// fix: unmergeCells request batch — 모든 검출된 merge 해제.
-//   (사용자의 셀병합 의도는 시각적 표현일 뿐, 데이터 무결성보다 중요하지 않음.)
+// Rule 6: 데이터 쓰기 영역과 충돌하는 셀병합 (detect-only, PR #229 declaw).
+// 위험 = 데이터 row × 쓰기 컬럼이 교차하는 multi-row merge.
+//   영업관리 E~H × row 10~277, 미팅/수납 data row (row>=2) multi-row.
+// 제외: 가로 merge (헤더), C 열 날짜 묶음, header. fix 없음 (detect-only).
+const SALES_FIRST_DATA_ROW0 = 9; // row 10 (0-based 9)
+const SALES_LAST_DATA_ROW0 = 277; // row 278 (exclusive end)
+const SALES_WRITE_COL_MIN = 4; // E (0-based)
+const SALES_WRITE_COL_MAX = 8; // H+1 (exclusive)
+
+function colToA1(idx0: number): string {
+  let n = idx0;
+  let s = "";
+  do {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return s;
+}
+
+function rangeA1(sc: number, sr: number, ec: number, er: number): string {
+  // sc/sr/ec/er = 0-based; ec/er = exclusive
+  const startCol = colToA1(sc);
+  const startRow = sr + 1;
+  const endCol = colToA1(ec - 1);
+  const endRow = er;
+  if (sc === ec - 1 && sr === er - 1) return `${startCol}${startRow}`;
+  return `${startCol}${startRow}:${endCol}${endRow}`;
+}
+
 const ruleSheetMerges: DiagnosticRule = {
   id: "sheet-merges-conflict",
-  label: "데이터 쓰기 영역에 셀병합 존재 (쓰기 실패 원인)",
-  severity: "error",
+  label: "데이터 쓰기 영역과 충돌하는 셀병합 (detect-only)",
+  severity: "warn",
   async detect(spreadsheetId) {
     const res = await sheetsClient().spreadsheets.get({
       spreadsheetId,
       fields: "sheets(properties(sheetId,title),merges)",
     });
     const sheets = res.data.sheets ?? [];
-    const targetTabs = new Set([
-      SHEET_RANGES.sales.tab,
+    const salesTab = SHEET_RANGES.sales.tab;
+    const dataRowTabs = new Set([
       SHEET_RANGES.meetings.tab,
       SHEET_RANGES.contractPayment.tab,
-      SHEET_RANGES.dbManagement.tab,
-      // 6기 legacy 02 계약수납관리 별칭
       "02 계약관리",
     ]);
+    const byTab: Record<string, string[]> = {};
     let total = 0;
-    const byTab: Record<string, number> = {};
+
     for (const sh of sheets) {
       const title = sh.properties?.title ?? "";
-      if (!targetTabs.has(title)) continue;
       const merges = sh.merges ?? [];
       if (merges.length === 0) continue;
-      byTab[title] = merges.length;
-      total += merges.length;
-    }
-    if (total === 0) return null;
-    const parts = Object.entries(byTab).map(([t, n]) => `${t}: ${n}개`);
-    return {
-      ruleId: this.id,
-      label: this.label,
-      severity: this.severity,
-      detail:
-        `데이터 쓰기 대상 탭에 셀병합 ${total}개 — ${parts.join(", ")}. ` +
-        `웹의 시트 쓰기가 merge 마스터 cell 로 가서 다른 row 를 덮어쓰거나 ` +
-        `쓰기가 사라진 것처럼 보이는 사고 (오승진 5/16 콜지기소 등). ` +
-        `[🔧 fix] 클릭 시 모든 병합 해제 — 시각적 병합 효과는 사라지지만 데이터 무결성 회복.`,
-      fixable: true,
-    };
-  },
-  async fix(spreadsheetId): Promise<{ summary: string }> {
-    const res = await sheetsClient().spreadsheets.get({
-      spreadsheetId,
-      fields: "sheets(properties(sheetId,title),merges)",
-    });
-    const sheets = res.data.sheets ?? [];
-    const targetTabs = new Set([
-      SHEET_RANGES.sales.tab,
-      SHEET_RANGES.meetings.tab,
-      SHEET_RANGES.contractPayment.tab,
-      SHEET_RANGES.dbManagement.tab,
-      "02 계약관리",
-    ]);
-    const requests: { unmergeCells: { range: { sheetId: number; startRowIndex: number; endRowIndex: number; startColumnIndex: number; endColumnIndex: number } } }[] = [];
-    let unmergedCount = 0;
-    const byTab: Record<string, number> = {};
-    for (const sh of sheets) {
-      const title = sh.properties?.title ?? "";
-      const sheetId = sh.properties?.sheetId;
-      if (!targetTabs.has(title) || sheetId === undefined || sheetId === null) continue;
-      const merges = sh.merges ?? [];
+
       for (const m of merges) {
         const sr = m.startRowIndex;
         const er = m.endRowIndex;
         const sc = m.startColumnIndex;
         const ec = m.endColumnIndex;
-        if (typeof sr !== "number" || typeof er !== "number" || typeof sc !== "number" || typeof ec !== "number") continue;
-        requests.push({
-          unmergeCells: {
-            range: { sheetId, startRowIndex: sr, endRowIndex: er, startColumnIndex: sc, endColumnIndex: ec },
-          },
-        });
-        unmergedCount++;
-        byTab[title] = (byTab[title] ?? 0) + 1;
+        if (
+          typeof sr !== "number" ||
+          typeof er !== "number" ||
+          typeof sc !== "number" ||
+          typeof ec !== "number"
+        ) continue;
+
+        const rowSpan = er - sr;
+        if (rowSpan <= 1) continue; // 가로 merge (헤더/라벨) — 무시
+
+        let dangerous = false;
+        if (title === salesTab) {
+          // 영업관리: E~H × data row 와 교차하는 multi-row merge 만 위험
+          const colsOverlap = sc < SALES_WRITE_COL_MAX && ec > SALES_WRITE_COL_MIN;
+          const rowsOverlap = sr < SALES_LAST_DATA_ROW0 && er > SALES_FIRST_DATA_ROW0;
+          if (colsOverlap && rowsOverlap) dangerous = true;
+        } else if (dataRowTabs.has(title)) {
+          // 미팅/수납: data row (row >= 2, 0-based >= 1) multi-row merge
+          if (sr >= 1) dangerous = true;
+        }
+
+        if (!dangerous) continue;
+        const a1 = rangeA1(sc, sr, ec, er);
+        (byTab[title] ??= []).push(a1);
+        total++;
       }
     }
-    if (requests.length === 0) {
-      return { summary: "셀병합 없음 (이미 정상)" };
-    }
-    await sheetsClient().spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: { requests },
+
+    if (total === 0) return null;
+    const parts = Object.entries(byTab).map(([t, arr]) => {
+      const sample = arr.slice(0, 5).join(", ");
+      const more = arr.length > 5 ? ` 외 ${arr.length - 5}개` : "";
+      return `${t}: ${arr.length}개 (${sample}${more})`;
     });
-    const parts = Object.entries(byTab).map(([t, n]) => `${t}: ${n}개`);
     return {
-      summary: `셀병합 ${unmergedCount}개 해제 — ${parts.join(", ")}`,
+      ruleId: this.id,
+      label: this.label,
+      severity: this.severity,
+      detail:
+        `데이터 쓰기 영역과 교차하는 multi-row 셀병합 ${total}개 — ${parts.join(" / ")}. ` +
+        `자동 해제는 위험 (사용자 시각 디자인 파괴) — 시트에서 직접 확인·해제 권장. ` +
+        `영업관리 C열 날짜 4-row 묶음 등은 정상이라 제외됨.`,
+      fixable: false,
     };
   },
 };
