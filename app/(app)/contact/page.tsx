@@ -249,7 +249,6 @@ export default function ContactPage() {
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
       await appendMeeting.mutateAsync({ date: dateAtClick, meeting });
-      //    → 미팅예약이 시트와 UI 일관성 유지 (한 명령으로 일관 보장)
       await saveMetrics.mutateAsync({
         date: dateAtClick,
         channels: draftAtClick,
@@ -267,11 +266,12 @@ export default function ContactPage() {
     try {
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
       adjustMetric(meeting.channel, "meetingReservation", -1);
-      //    명시적으로 dateAtClick row에 저장 (navigate race 방지).
+      // 2026-05-18 fix: 해당 채널만 partial 저장 (전체 draft 전송 시 stale 0 으로 덮어쓰는 사고).
+      const targetCh = meeting.channel;
       setDraft((latest) => {
         void saveMetrics.mutateAsync({
           date: dateAtClick,
-          channels: latest,
+          channels: { [targetCh]: latest[targetCh] },
         });
         return latest;
       });

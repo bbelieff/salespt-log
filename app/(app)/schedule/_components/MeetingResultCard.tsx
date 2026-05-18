@@ -184,7 +184,12 @@ export default function MeetingResultCard({
 
       {open && (
         <div className="space-y-3 border-t border-gray-200/60 px-3 py-3">
-          <div className="flex items-center justify-end text-xs">
+          <div className="flex items-center justify-between text-xs">
+            {/* 2026-05-18 [1]: 예약일 표시 — 언제 잡은 미팅인지 추적 + 컨택관리에서 그날 삭제 가능. */}
+            <span className="text-gray-500">
+              📅 예약일{" "}
+              <b className="text-gray-800">{meeting.예약일 || "—"}</b>
+            </span>
             <span className="text-gray-400">
               현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b>
             </span>
@@ -227,17 +232,14 @@ export default function MeetingResultCard({
             </div>
           )}
 
-          {/* 계약 카드 수정 모드 — 수임비/조건 편집 + 상태 변경(취소·완료) 옵션 */}
           {state === "contract" && editMode && (
             <div className="space-y-2">
-              {/* 수임비/계약조건 편집 */}
               <ContractForm
                 initialFee={meeting.수임비}
                 initialTerms={meeting.계약조건}
                 onConfirm={handleContract}
                 pending={pending}
               />
-              {/* 상태 변경 옵션 — 보류/환수 등은 취소(사유 기록)로 처리 */}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <div className="mb-2 text-xs font-medium text-gray-600">
                   상태 변경 (취소·환수·보류 등은 취소로 사유와 함께 기록)
@@ -294,7 +296,6 @@ export default function MeetingResultCard({
             </div>
           )}
 
-          {/* 일정 수정 details (예약 카드만) */}
           {showActions && (
             <BasicEditDetails
               initial={{
@@ -311,7 +312,6 @@ export default function MeetingResultCard({
             />
           )}
 
-          {/* 4-action 버튼 그리드 (예약 상태일 때만) */}
           {showActions && (
             <div className="grid grid-cols-2 gap-2 pt-1">
               <ActionButton
@@ -380,7 +380,6 @@ export default function MeetingResultCard({
             />
           )}
 
-          {/* 미팅 결과 되돌리기 (2026-05-17 [2a]) — 닫힌 카드(계약/완료/취소/변경) 에 노출 */}
           {!showActions && onRevert && state !== "rescheduled" && (
             <button
               type="button"
@@ -420,7 +419,6 @@ export default function MeetingResultCard({
             </button>
           )}
 
-          {/* 추가 미팅 (2026-05-17 [2b]) — 완료/취소/계약 카드에 노출 */}
           {!showActions &&
             onAddMeeting &&
             (state === "done" || state === "canceled" || state === "contract") && (
@@ -450,7 +448,6 @@ export default function MeetingResultCard({
               </>
             )}
 
-          {/* 처리 완료 카드 — 변경됨 카드는 다음 카드 링크 안내 */}
           {!showActions && state === "rescheduled" && (
             <div className="rounded-md bg-purple-50 px-2 py-1.5 text-xs text-purple-700">
               📅 일정이 변경되었습니다. 새 일정의 카드를 확인하세요.
