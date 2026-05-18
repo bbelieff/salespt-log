@@ -49,8 +49,7 @@ export default function CancelForm({
 
       <div>
         <label className="mb-1 block text-xs text-gray-600">
-          취소 사유{" "}
-          <span className="font-normal text-gray-400">· 시트 M열</span>
+          취소 사유
         </label>
         <textarea
           rows={2}

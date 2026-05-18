@@ -56,8 +56,7 @@ export default function DoneForm({
 
       <div>
         <label className="mb-1 block text-xs text-gray-600">
-          미팅사유{" "}
-          <span className="font-normal text-gray-400">· 시트 M열</span>
+          미팅사유
         </label>
         <textarea
           rows={2}

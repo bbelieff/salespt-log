@@ -15,6 +15,7 @@ import type { Meeting } from "@/types";
 import {
   useAppendMeeting,
   usePatchMeeting,
+  useRemoveMeeting,
   useRevertMeeting,
   useWeekMeetings,
 } from "@/query/contact-hooks";
@@ -50,6 +51,7 @@ export default function SchedulePage() {
   const weekQuery = useWeekMeetings(weekStart);
   const patchMeeting = usePatchMeeting();
   const appendMeeting = useAppendMeeting();
+  const removeMeeting = useRemoveMeeting();
   const revertMeeting = useRevertMeeting();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
@@ -296,6 +298,40 @@ export default function SchedulePage() {
 
   /** 2026-05-18 [2]: 주차 슬라이드 방향 — 다음 주(right) / 이전 주(left). 220ms 후 reset. */
   const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
+  /**
+   * 일정 삭제 (2026-05-19) — 컨택탭 cascade 와 동일.
+   * confirm: "함께 사라지는 것" 명시. cascade: 계약카드 (있으면) + 미팅카드.
+   */
+  const handleDelete = async (meeting: Meeting) => {
+    const hasContract = meeting.상태 === "계약";
+    const extra = hasContract
+      ? `\n· 수납탭 계약카드 1건 (₩${(meeting.수임비 ?? 0).toLocaleString()})`
+      : "";
+    if (
+      !confirm(
+        `'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`,
+      )
+    )
+      return;
+    setPendingId(meeting.id);
+    try {
+      // DELETE 라우트가 cascade 처리 (PR #241). UI 측은 invalidate 만 의존.
+      await removeMeeting.mutateAsync({
+        date: meeting.예약일 || meeting.미팅날짜,
+        id: meeting.id,
+      });
+      showToast(
+        hasContract
+          ? `✕ ${meeting.업체명} 미팅 + 계약카드 삭제`
+          : `✕ ${meeting.업체명} 미팅 삭제`,
+      );
+    } catch (e) {
+      showToast(`삭제 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   const moveWeek = (delta: number) => {
     setSlideDir(delta > 0 ? "right" : "left");
     const cur = parseISO(weekStart);
@@ -400,6 +436,7 @@ export default function SchedulePage() {
               onReschedule={handleReschedule}
               onRevert={handleRevert}
               onAddMeeting={handleAddMeeting}
+              onDelete={handleDelete}
             />
           </div>
         ))}

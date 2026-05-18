@@ -103,8 +103,7 @@ export default function RescheduleForm({
 
       <div>
         <label className="mb-1 block text-xs text-gray-600">
-          변경 사유{" "}
-          <span className="font-normal text-gray-400">· 시트 M열</span>
+          변경 사유
         </label>
         <textarea
           rows={2}

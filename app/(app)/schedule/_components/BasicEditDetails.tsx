@@ -1,15 +1,16 @@
 /**
- * BasicEditDetails — 미팅 기본 정보(날짜/시간/업체명/장소/예약비고) 수정.
+ * BasicEditDetails — 미팅 기본 정보(날짜/시간/업체명/장소/예약비고) 수정 + 일정 삭제.
  * 정본: docs/design/prototypes/schedule-weekly.html `details` 섹션
  *
  * 펼침 시 입력 필드 노출 → "수정 완료" 클릭 → onSave(partial) 호출.
- * 변경된 필드만 patch (미수정 필드는 보내지 않음).
+ * "일정 삭제" 클릭 → onDelete() 호출 (호출 측이 cascade + confirm 처리).
  *
  * 예약 상태 카드에서만 사용 (처리완료 카드는 수정 불가 — 새 row 만들거나 시트 직접).
  */
 "use client";
 
 import { useState } from "react";
+import TimePicker15 from "@/components/ui/TimePicker15";
 
 interface Initial {
   미팅날짜: string;
@@ -22,12 +23,14 @@ interface Initial {
 interface Props {
   initial: Initial;
   onSave: (partial: Partial<Initial>) => void;
+  onDelete?: () => void;
   pending: boolean;
 }
 
 export default function BasicEditDetails({
   initial,
   onSave,
+  onDelete,
   pending,
 }: Props) {
   const [draft, setDraft] = useState<Initial>({ ...initial });
@@ -61,27 +64,20 @@ export default function BasicEditDetails({
 
       <div className="mt-2 space-y-2">
         <div className="flex gap-2">
-          <div className="min-w-0 flex-1">
+          <div className="shrink-0" style={{ width: 130 }}>
             <label className="mb-1 block text-xs text-gray-500">미팅 날짜</label>
             <input
               type="date"
               value={draft.미팅날짜}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, 미팅날짜: e.target.value }))
-              }
+              onChange={(e) => setDraft((d) => ({ ...d, 미팅날짜: e.target.value }))}
               className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
-          <div className="shrink-0" style={{ width: 110 }}>
+          <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs text-gray-500">시간</label>
-            <input
-              type="time"
-              step={900}
+            <TimePicker15
               value={draft.미팅시간}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, 미팅시간: e.target.value }))
-              }
-              className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+              onChange={(v) => setDraft((d) => ({ ...d, 미팅시간: v }))}
             />
           </div>
         </div>
@@ -91,9 +87,7 @@ export default function BasicEditDetails({
           <input
             type="text"
             value={draft.업체명}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, 업체명: e.target.value }))
-            }
+            onChange={(e) => setDraft((d) => ({ ...d, 업체명: e.target.value }))}
             className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -103,9 +97,7 @@ export default function BasicEditDetails({
           <input
             type="text"
             value={draft.장소}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, 장소: e.target.value }))
-            }
+            onChange={(e) => setDraft((d) => ({ ...d, 장소: e.target.value }))}
             className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -113,14 +105,11 @@ export default function BasicEditDetails({
         <div>
           <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-gray-600">
             <span>📝 예약비고</span>
-            <span className="font-normal text-gray-400">· 시트 I열</span>
           </label>
           <textarea
             rows={2}
             value={draft.예약비고}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, 예약비고: e.target.value }))
-            }
+            onChange={(e) => setDraft((d) => ({ ...d, 예약비고: e.target.value }))}
             placeholder="예: 사장님 부재 시간, 지참서류 등"
             className="w-full resize-none rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
@@ -132,18 +121,26 @@ export default function BasicEditDetails({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={submit}
-          disabled={pending || !hasChanges}
-          className="w-full rounded-lg bg-blue-500 py-2 text-sm font-bold text-white transition-all hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
-        >
-          {pending
-            ? "저장중..."
-            : hasChanges
-              ? "💾 수정 완료"
-              : "변경사항 없음"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={pending || !hasChanges}
+            className="flex-1 rounded-lg bg-blue-500 py-2 text-sm font-bold text-white transition-all hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            {pending ? "저장중..." : hasChanges ? "💾 수정 완료" : "변경사항 없음"}
+          </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={pending}
+              className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              🗑️ 일정 삭제
+            </button>
+          )}
+        </div>
       </div>
     </details>
   );

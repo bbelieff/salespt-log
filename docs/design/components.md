@@ -207,6 +207,10 @@ function updateDateDisplay(native, displayId) {
 
 **현재 사용 위치:** 컨택관리 미팅예약 폼(미팅날짜), 일정·계약 변경 폼
 
+### TimePicker15 (시 select + 15분 segmented) ⭐
+
+components/ui/TimePicker15.tsx — 일정/추가미팅 폼 공용. HH select + [00|15|30|45] 4 버튼.
+
 ### Time Input (시 + 분 select 분리) ⭐
 
 **왜 select 분리가 필요한가**:

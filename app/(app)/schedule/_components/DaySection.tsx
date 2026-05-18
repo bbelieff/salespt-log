@@ -24,6 +24,8 @@ interface Props {
   onRevert?: (id: string) => void;
   /** 추가 미팅 (2026-05-17 [2b]). */
   onAddMeeting?: (meeting: Meeting, newDate: string, newTime: string) => void;
+  /** 일정 삭제 (2026-05-19) — cascade. */
+  onDelete?: (meeting: Meeting) => void;
 }
 
 export default function DaySection({
@@ -35,6 +37,7 @@ export default function DaySection({
   onReschedule,
   onRevert,
   onAddMeeting,
+  onDelete,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -107,6 +110,7 @@ export default function DaySection({
             onAddMeeting={
               onAddMeeting ? (d2, t2) => onAddMeeting(m, d2, t2) : undefined
             }
+            onDelete={onDelete ? () => onDelete(m) : undefined}
           />
         ))
       )}

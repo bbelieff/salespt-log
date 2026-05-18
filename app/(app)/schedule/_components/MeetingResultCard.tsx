@@ -38,6 +38,7 @@ interface Props {
   onRevert?: () => void;
   /** 추가 미팅 (2026-05-17 [2b]): 완료/취소/계약 카드에서 같은 업체로 새 미팅 잡기. */
   onAddMeeting?: (newDate: string, newTime: string) => void;
+  onDelete?: () => void;
 }
 
 function fmtMoney(n: number): string {
@@ -51,6 +52,7 @@ export default function MeetingResultCard({
   onReschedule,
   onRevert,
   onAddMeeting,
+  onDelete,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
@@ -308,6 +310,7 @@ export default function MeetingResultCard({
               onSave={(partial) => {
                 onPatch(partial);
               }}
+              onDelete={onDelete}
               pending={pending}
             />
           )}

@@ -4,10 +4,13 @@
  * 사용: 닫힌 미팅카드(완료/취소/계약)에서 [➕ 추가미팅] 클릭 시 인라인 폼.
  * 동작 (호출 측): appendMeeting 호출 — 새 uuid, 같은 채널/업체/장소,
  *   미팅날짜·시간만 새 입력. 상태=예약, previousMeetingId 없음 (독립 미팅).
+ *
+ * 2026-05-19: 날짜 필드 축소 + TimePicker15 + 과거 날짜 차단.
  */
 "use client";
 
 import { useState } from "react";
+import TimePicker15 from "@/components/ui/TimePicker15";
 
 interface Props {
   vendor: string;
@@ -33,6 +36,10 @@ export default function AddMeetingForm({
       setWarn("새 날짜와 시간을 모두 입력해주세요");
       return;
     }
+    if (newDate < defaultDate) {
+      setWarn("과거 날짜는 선택할 수 없습니다");
+      return;
+    }
     setWarn("");
     onConfirm(newDate, newTime);
   };
@@ -47,24 +54,19 @@ export default function AddMeetingForm({
       </div>
 
       <div className="flex gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="shrink-0" style={{ width: 130 }}>
           <label className="mb-1 block text-xs text-gray-600">새 날짜</label>
           <input
             type="date"
             value={newDate}
+            min={defaultDate}
             onChange={(e) => setNewDate(e.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
-        <div className="shrink-0" style={{ width: 110 }}>
+        <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs text-gray-600">새 시간</label>
-          <input
-            type="time"
-            step={900}
-            value={newTime}
-            onChange={(e) => setNewTime(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-          />
+          <TimePicker15 value={newTime} onChange={setNewTime} />
         </div>
       </div>
 
