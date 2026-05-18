@@ -1,19 +1,5 @@
-/**
- * Layer: service — 개별 trainee 시트 진단/픽스 카탈로그.
- *
- * **설계 (2026-05-16)**: 60명 일괄 진단은 비효율 + 노이즈. 사용자 보고된 사고를
- * **개별 trainee 단위로** 진단·픽스 하는 framework. PR 마다 새 룰 누적 → 동일
- * 패턴이 다른 trainee 에서 발생해도 자동 감지·픽스 (Hashimoto 가드).
- *
- * 룰 추가 절차:
- *   1. 새 사고 발견 → root cause 진단
- *   2. RULES 배열에 `DiagnosticRule` 푸시 — detect(sheetId) + fix?(sheetId)
- *   3. 머지 → 그 패턴은 다음부터 자동 감지·픽스
- *
- * UI: `components/auth/TraineeCard.tsx` 의 [🔍 진단] 버튼 (admin only).
- * 클릭 → POST /api/admin/diagnose-sheet → DiagnosticResult[] 표시 →
- * fixable 룰 옆 [🔧 fix] → POST /api/admin/fix-sheet.
- */
+/** Layer: service — 개별 trainee 시트 진단/픽스 카탈로그 (Hashimoto 누적 룰).
+ *  RULES 배열에 push → admin TraineeCard [🔍 진단] / [🔧 fix] 자동 노출. */
 import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "@/repo/sheets-client";
 import {
@@ -55,16 +41,7 @@ interface DiagnosticRule {
   fix?: (spreadsheetId: string) => Promise<{ summary: string }>;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Rule 1: 영업관리 수식 누락 OR 옛 $C{r} 패턴 (PR #202 이전)
-//
-// detect: I10:I275 FORMULA mode 로 read → 각 row 수식 검사:
-//   - 빈 cell: 누락 (PR #200 이전 — 매입DB row 만 install 됐던 케이스)
-//   - $C{r} 패턴 with r != dayPrimaryRow(r): 옛 좌표 (PR #202 이전)
-//   - $C{dayPrimaryRow(r)} 패턴: 정상
-//
-// fix: installFormulas — 모든 row 새 수식으로 재설치 (raw 값 보존 가드 유지).
-// ─────────────────────────────────────────────────────────────
+// Rule 1: 영업관리 수식 누락/옛 $C{r} 패턴. fix=installFormulas (raw 값 보존).
 const ruleFormulaRestore: DiagnosticRule = {
   id: "formula-needs-restore",
   label: "영업관리 수식 누락/옛 패턴",
@@ -131,13 +108,7 @@ const ruleFormulaRestore: DiagnosticRule = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────
-// Rule 2: 영업관리 미팅예약 합계 (H) vs 04 업체관리 미팅 row 수 불일치
-//
-// detect: 영업관리 H10:H275 합계 vs 04 업체관리 row 중 예약일 있는 row 수.
-// 불일치 시 warn — saveMetrics 가 partial fail 했거나 시트가 손상.
-// fix: 없음 (자동 수정 위험 — 사용자가 수동 비교 필요).
-// ─────────────────────────────────────────────────────────────
+// Rule 2: 영업관리 H 합계 vs 04 업체관리 미팅 row 수 불일치 (fix 없음).
 const ruleMetricMeetingMismatch: DiagnosticRule = {
   id: "metric-vs-meeting-mismatch",
   label: "미팅예약 metric vs 업체관리 row 수 불일치",
@@ -180,12 +151,7 @@ const ruleMetricMeetingMismatch: DiagnosticRule = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────
-// Rule 3: O1/O2 유효성
-//
-// detect: 영업관리 O1/O2 cell 값 확인. 빈 cell 이거나 잘못된 offset(O2-O1 != 50 or 57).
-// fix: 없음 (수동 — 6기/7기 의도에 따라 admin 결정 필요).
-// ─────────────────────────────────────────────────────────────
+// Rule 3: O1/O2 (수강시작일/종강총회일) 유효성. fix 없음 (수동).
 const ruleO1O2Validity: DiagnosticRule = {
   id: "o1-o2-validity",
   label: "O1/O2 (수강시작일/종강총회일) 유효성",
@@ -222,7 +188,6 @@ const ruleO1O2Validity: DiagnosticRule = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────
 // Rule 4: 04 업체관리 N/O/Q 수식 누락 (2026-05-16, 김선주/이장현 사고 추가 진단)
 //
 // 영업관리 I/J 수식이 04 업체관리!N/O 의 TEXTJOIN 결과. 04 업체관리 row 가
@@ -235,7 +200,6 @@ const ruleO1O2Validity: DiagnosticRule = {
 //   - raw 값: install 가드(isSafeToOverwrite)로 skip 됨 — 수동 정리 필요
 //
 // fix: installFormulas — 04 업체관리 N/O/Q 도 함께 처리됨 (raw 값 보존).
-// ─────────────────────────────────────────────────────────────
 const ruleMeetingsFormulasMissing: DiagnosticRule = {
   id: "meetings-formulas-missing",
   label: "04 업체관리 표시 수식(N/O/Q) 누락",
@@ -332,7 +296,6 @@ const ruleMeetingsFormulasMissing: DiagnosticRule = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────
 // Rule 5: 대시보드 D21 매출 vs 02 계약수납관리 row 수임비 합 불일치
 // (2026-05-16, "수납탭과 대시보드 매출합이 다름" 사고 추가 진단)
 //
@@ -343,7 +306,6 @@ const ruleMeetingsFormulasMissing: DiagnosticRule = {
 //
 // detect: D21 (UNFORMATTED) vs readContractPayments(수임비) sum. 정수 비교.
 // fix: 없음 (시트 수식 자동 수정은 위험 — admin 이 D21 수식 수동 조정).
-// ─────────────────────────────────────────────────────────────
 const ruleRevenueMismatch: DiagnosticRule = {
   id: "revenue-mismatch",
   label: "대시보드 매출(D21) vs 02 계약수납관리 수임비 합 불일치",
@@ -379,7 +341,111 @@ const ruleRevenueMismatch: DiagnosticRule = {
   },
 };
 
+// Rule 6: 셀병합이 데이터 쓰기 영역에 있음 (2026-05-18, 오승진 5/16 콜지기소 사고).
+//
+// 영업관리 E~T (4지표 + 수식 컬럼) 혹은 04 업체관리 A~S, 02 계약수납관리 A~AH
+// 에 셀병합이 있으면, 웹의 시트 쓰기가 merge group 의 마스터 cell 로 가서
+// 다른 row 데이터를 덮어쓰거나 안 적힌 것처럼 보이는 사고 발생.
+//
+// detect: spreadsheets.get fields=sheets(merges) 로 모든 시트의 merge 가져와
+//   쓰기 대상 탭 (sales/meetings/contractPayment/dbManagement) 의 데이터 row
+//   영역과 겹치는 merge 카운트.
+// fix: unmergeCells request batch — 모든 검출된 merge 해제.
+//   (사용자의 셀병합 의도는 시각적 표현일 뿐, 데이터 무결성보다 중요하지 않음.)
+const ruleSheetMerges: DiagnosticRule = {
+  id: "sheet-merges-conflict",
+  label: "데이터 쓰기 영역에 셀병합 존재 (쓰기 실패 원인)",
+  severity: "error",
+  async detect(spreadsheetId) {
+    const res = await sheetsClient().spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets(properties(sheetId,title),merges)",
+    });
+    const sheets = res.data.sheets ?? [];
+    const targetTabs = new Set([
+      SHEET_RANGES.sales.tab,
+      SHEET_RANGES.meetings.tab,
+      SHEET_RANGES.contractPayment.tab,
+      SHEET_RANGES.dbManagement.tab,
+      // 6기 legacy 02 계약수납관리 별칭
+      "02 계약관리",
+    ]);
+    let total = 0;
+    const byTab: Record<string, number> = {};
+    for (const sh of sheets) {
+      const title = sh.properties?.title ?? "";
+      if (!targetTabs.has(title)) continue;
+      const merges = sh.merges ?? [];
+      if (merges.length === 0) continue;
+      byTab[title] = merges.length;
+      total += merges.length;
+    }
+    if (total === 0) return null;
+    const parts = Object.entries(byTab).map(([t, n]) => `${t}: ${n}개`);
+    return {
+      ruleId: this.id,
+      label: this.label,
+      severity: this.severity,
+      detail:
+        `데이터 쓰기 대상 탭에 셀병합 ${total}개 — ${parts.join(", ")}. ` +
+        `웹의 시트 쓰기가 merge 마스터 cell 로 가서 다른 row 를 덮어쓰거나 ` +
+        `쓰기가 사라진 것처럼 보이는 사고 (오승진 5/16 콜지기소 등). ` +
+        `[🔧 fix] 클릭 시 모든 병합 해제 — 시각적 병합 효과는 사라지지만 데이터 무결성 회복.`,
+      fixable: true,
+    };
+  },
+  async fix(spreadsheetId): Promise<{ summary: string }> {
+    const res = await sheetsClient().spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets(properties(sheetId,title),merges)",
+    });
+    const sheets = res.data.sheets ?? [];
+    const targetTabs = new Set([
+      SHEET_RANGES.sales.tab,
+      SHEET_RANGES.meetings.tab,
+      SHEET_RANGES.contractPayment.tab,
+      SHEET_RANGES.dbManagement.tab,
+      "02 계약관리",
+    ]);
+    const requests: { unmergeCells: { range: { sheetId: number; startRowIndex: number; endRowIndex: number; startColumnIndex: number; endColumnIndex: number } } }[] = [];
+    let unmergedCount = 0;
+    const byTab: Record<string, number> = {};
+    for (const sh of sheets) {
+      const title = sh.properties?.title ?? "";
+      const sheetId = sh.properties?.sheetId;
+      if (!targetTabs.has(title) || sheetId === undefined || sheetId === null) continue;
+      const merges = sh.merges ?? [];
+      for (const m of merges) {
+        const sr = m.startRowIndex;
+        const er = m.endRowIndex;
+        const sc = m.startColumnIndex;
+        const ec = m.endColumnIndex;
+        if (typeof sr !== "number" || typeof er !== "number" || typeof sc !== "number" || typeof ec !== "number") continue;
+        requests.push({
+          unmergeCells: {
+            range: { sheetId, startRowIndex: sr, endRowIndex: er, startColumnIndex: sc, endColumnIndex: ec },
+          },
+        });
+        unmergedCount++;
+        byTab[title] = (byTab[title] ?? 0) + 1;
+      }
+    }
+    if (requests.length === 0) {
+      return { summary: "셀병합 없음 (이미 정상)" };
+    }
+    await sheetsClient().spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+    const parts = Object.entries(byTab).map(([t, n]) => `${t}: ${n}개`);
+    return {
+      summary: `셀병합 ${unmergedCount}개 해제 — ${parts.join(", ")}`,
+    };
+  },
+};
+
 const RULES: DiagnosticRule[] = [
+  ruleSheetMerges, // 2026-05-18 [6] — 다른 룰보다 먼저 검출 (셀병합은 다른 사고의 root cause)
   ruleFormulaRestore,
   ruleMeetingsFormulasMissing,
   ruleMetricMeetingMismatch,
