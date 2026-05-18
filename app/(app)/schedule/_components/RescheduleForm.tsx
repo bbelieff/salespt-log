@@ -39,6 +39,7 @@ export default function RescheduleForm({
   onConfirm,
   pending,
 }: Props) {
+  const todayISO = new Date().toISOString().slice(0, 10);
   const [newDate, setNewDate] = useState(initialDate);
   const [newTime, setNewTime] = useState(initialTime);
   const [reason, setReason] = useState("");
@@ -47,6 +48,10 @@ export default function RescheduleForm({
   const submit = () => {
     if (!newDate || !newTime) {
       setWarn("새 날짜와 시간을 모두 입력해주세요");
+      return;
+    }
+    if (newDate < todayISO) {
+      setWarn("과거 날짜는 선택할 수 없습니다");
       return;
     }
     if (newDate === initialDate && newTime === initialTime) {
@@ -73,6 +78,7 @@ export default function RescheduleForm({
           <input
             type="date"
             value={newDate}
+            min={todayISO}
             onChange={(e) => setNewDate(e.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
           />

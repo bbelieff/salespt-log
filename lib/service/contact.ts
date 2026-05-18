@@ -9,6 +9,7 @@
 import { findUserByEmail } from "@/repo/users";
 import {
   batchWriteChannelDailyRows,
+  decrementMeetingReservation,
   readCourseStart,
   readWeek,
   readWeekFunnel,
@@ -307,10 +308,7 @@ export async function patchMeeting(
   await updateMeeting(spreadsheetId, id, partial);
 }
 
-/**
- * 자손 미팅 transitive cascade — post-order (손자 먼저 → 아들).
- * 자식이 계약 상태면 02 row 도 함께 clear. 카운트 반환.
- */
+/** 자손 미팅 transitive cascade (post-order). 자식 계약이면 02 row 도 clear. */
 async function cascadeDescendantMeetings(
   spreadsheetId: string,
   parentId: string,
@@ -374,11 +372,14 @@ export async function removeMeetingWithCascade(
   // 3) 본인 clear.
   await clearMeeting(spreadsheetId, id);
 
-  const parts: string[] = [];
-  if (descCount > 0) parts.push(`자손 미팅 ${descCount}건 cascade 삭제`);
-  if (descPaymentRows > 0) parts.push(`자손 계약카드 ${descPaymentRows}건 삭제`);
-  if (removedPaymentRow !== null) parts.push(`본인 계약카드 1건 (row ${removedPaymentRow}) 삭제`);
-  if (parts.length === 0) parts.push("미팅카드만 삭제");
+  // 4) 영업관리 H -1 (좌표 계산 실패 시 skip).
+  if (m.예약일 && m.channel) {
+    try { await decrementMeetingReservation(spreadsheetId, m.예약일, m.channel); } catch { /* skip */ }
+  }
+  const parts: string[] = ["영업관리 H -1"];
+  if (descCount > 0) parts.push(`자손 미팅 ${descCount}건 cascade`);
+  if (descPaymentRows > 0) parts.push(`자손 계약 ${descPaymentRows}건`);
+  if (removedPaymentRow !== null) parts.push(`본인 계약카드 삭제`);
 
   return {
     cascade: parts.join(", "),
