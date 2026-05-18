@@ -316,6 +316,33 @@ export async function installFormulas(
     }
   }
 
+  // 영업관리 M3:M5 비율 수식 (생산효율 — 03 DB관리 합계행 / L3~L5).
+  // 2026-05-18 추가 — 사용자가 시트 작업 중 실수로 지우는 사고 방지 (수식복원에 포함).
+  // L3~L5 의 분모 / 03 DB관리 채널 sum 의 분자. raw 값 있으면 보존.
+  const M345_FORMULAS: Record<number, string> = {
+    3: "='03 DB관리'!F56/L3",
+    4: "='03 DB관리'!K56/L4",
+    5: "='03 DB관리'!U56/L5",
+  };
+  const m345Res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tabRef(SALES_TAB)}!M3:M5`,
+    valueRenderOption: "FORMULA",
+  });
+  const m345Existing = m345Res.data.values ?? [];
+  for (let i = 0; i < 3; i++) {
+    const r = 3 + i;
+    const cur = m345Existing[i]?.[0];
+    if (isSafeToOverwrite(cur)) {
+      data.push({
+        range: `${tabRef(SALES_TAB)}!M${r}`,
+        values: [[M345_FORMULAS[r]!]],
+      });
+    } else {
+      preservedCells.push(`영업관리 M${r}`);
+    }
+  }
+
   if (data.length > 0) {
     await sheetsClient().spreadsheets.values.batchUpdate({
       spreadsheetId,
