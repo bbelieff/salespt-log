@@ -53,9 +53,9 @@ const RULE_EXPLANATION: Record<string, { what: string; why: string; action: stri
     action: "자동 fix 불가. 시트 D21 수식의 SUM 범위 / row 누락 직접 확인 필요.",
   },
   "sheet-merges-conflict": {
-    what: "영업관리 / 04 업체관리 / 02 계약수납관리 / 03 DB관리 탭에 셀병합 존재.",
-    why: "웹의 시트 쓰기가 merge 마스터 cell 로 가서 다른 row 를 덮어쓰거나 사라짐 (예: 오승진 5/16 콜지기소 미팅카드 시트 미반영 사고). 계약 fan-out 도 같은 이유로 02 계약수납관리에 누락 가능.",
-    action: "[🔧 fix] 클릭 → 모든 검출된 병합 해제. 시각적 병합 효과는 사라지지만 데이터 무결성 회복.",
+    what: "데이터 쓰기 영역(영업관리 E~H × row 10~277, 미팅/수납 data row)과 교차하는 multi-row 셀병합이 있습니다.",
+    why: "이런 병합이 있으면 웹의 쓰기가 마스터 cell 로 redirect 되어 다른 row 를 덮어쓸 수 있음. C열 날짜 4-row 묶음 같은 정상 병합은 제외됨.",
+    action: "자동 해제 불가 (시각 디자인 파괴 위험). 시트에서 detail 의 A1 좌표 직접 확인 후 해제 판단.",
   },
 };
 
