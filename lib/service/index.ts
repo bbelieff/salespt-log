@@ -20,6 +20,7 @@ export {
   appendNewMeeting,
   patchMeeting,
   removeMeeting,
+  removeMeetingWithCascade,
   revertMeeting,
   getMeetingById,
   type ContactDayView,

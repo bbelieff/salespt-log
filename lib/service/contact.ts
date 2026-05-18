@@ -307,13 +307,62 @@ export async function patchMeeting(
   await updateMeeting(spreadsheetId, id, partial);
 }
 
-/** 미팅 삭제 (행 클리어). 미팅예약 -1은 호출 측 책임. */
+/** 미팅 삭제 (행 클리어). 미팅예약 -1은 호출 측 책임. cascade 없음. */
 export async function removeMeeting(
   email: string,
   id: string,
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
   await clearMeeting(spreadsheetId, id);
+}
+
+/**
+ * 미팅 삭제 + 자식 계약카드 cascade 삭제 (2026-05-18, Phase 1).
+ *
+ * 사용자 정책 (docs/plans/active/cascade-edge-cases.md):
+ *  - 부모 (미팅) 삭제 시 자식 (계약카드) 자동 cascade.
+ *  - L1 (컨택 미팅예약 카운트) -1 은 호출 측 책임.
+ *
+ * 흐름:
+ *  1) 미팅 fetch → (미팅날짜, 업체명) cascade key
+ *  2) 미팅 상태 === "계약" 이면 02 계약수납관리 매칭 row 찾기 → clear
+ *  3) 미팅 clear (L2)
+ *
+ * 반환: cascade summary (UI confirm/toast 용).
+ */
+export async function removeMeetingWithCascade(
+  email: string,
+  id: string,
+): Promise<{
+  cascade: string;
+  removedPaymentRow: number | null;
+  업체명: string;
+  미팅날짜: string;
+  상태: string;
+}> {
+  const spreadsheetId = await resolveSheet(email);
+  const m = await findById(spreadsheetId, id);
+  if (!m) throw new Error(`[removeMeetingWithCascade] 미팅 못 찾음: ${id}`);
+
+  let removedPaymentRow: number | null = null;
+  if (m.상태 === "계약" && m.미팅날짜 && m.업체명) {
+    removedPaymentRow = await clearContractPaymentByLink(
+      spreadsheetId,
+      m.미팅날짜,
+      m.업체명,
+    );
+  }
+  await clearMeeting(spreadsheetId, id);
+
+  return {
+    cascade: removedPaymentRow
+      ? `수납탭 계약카드 1건 함께 삭제됨 (row ${removedPaymentRow})`
+      : "계약카드 없음 — 미팅카드만 삭제",
+    removedPaymentRow,
+    업체명: m.업체명,
+    미팅날짜: m.미팅날짜,
+    상태: m.상태,
+  };
 }
 
 /**
