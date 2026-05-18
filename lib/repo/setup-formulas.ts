@@ -165,12 +165,12 @@ function formulasForRow(r: number): Record<string, string> {
     // (2026-05-18 사고: 매입DB row 마스터 → 콜지기소 등 다른 채널 J 결과 누락).
     // 4 row 모두 동일 수식 install — 셀병합 마스터에 통합 결과 표시.
     J: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!O:O,${M_REF}!D:D=$C${dpr}))),"")`,
-    // K: 오늘미팅수 — COUNTIFS by 미팅날짜+채널
-    K: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r})`,
-    // L: 미팅완료수 — 계약 + 완료
-    L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"완료")`,
-    // M: 미팅사유 자동 집계
-    M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,(${M_REF}!D:D=$C${dpr})*(${M_REF}!F:F=$D${r}))),"")`,
+    // K: 오늘미팅수 — 미팅날짜만 매칭 (J~M 4채널 셀병합 통합 표시).
+    K: `=COUNTIF(${M_REF}!D:D,$C${dpr})`,
+    // L: 미팅완료수 — 미팅날짜만 매칭, 계약+완료 (J~M 통합).
+    L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"완료")`,
+    // M: 미팅사유 자동 집계 — 미팅날짜만 매칭 (J~M 통합).
+    M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,${M_REF}!D:D=$C${dpr})),"")`,
     // N: 계약건수
     N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
     // O: 수임비합계

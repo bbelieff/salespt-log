@@ -20,9 +20,13 @@ created: 2026-05-18
 - (주)밤볼 5/16 콜지기소 미팅 — J 마스터 (매입DB row) 가 콜지기소 채널을 filter out → 누락
 
 ## Fix
-- J 수식 채널 필터 제거: `=IFERROR(TEXTJOIN(...,SORT(FILTER(O:O, D:D=$C{dpr}))),"")`
-- 4 row 모두 동일 수식 install (각 r 별 다른 채널 신경 안 씀)
-- 셀병합 마스터에 4채널 통합 미팅 일정 표시
+- **J, K, L, M 모두** 채널 필터 제거 (사용자 확인: J~M 4채널 셀병합)
+  - J: `FILTER(O:O, D:D=$C{dpr})` — 통합 일정 list
+  - K: `COUNTIF(D:D, $C{dpr})` — 통합 미팅 수
+  - L: `COUNTIFS(D:D=$C{dpr}, J:J="계약") + COUNTIFS(D:D=$C{dpr}, J:J="완료")` — 통합 완료 수
+  - M: `FILTER(M:M, D:D=$C{dpr})` — 통합 미팅사유
+- N (계약건수), O (수임비합계), P (계약비고) 는 **채널별 유지** (셀병합 X)
+- 4 row 모두 동일 수식 install — 셀병합 마스터에 통합 결과 표시
 
 ## Acceptance
 - [ ] check.sh 통과
