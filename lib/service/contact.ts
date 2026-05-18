@@ -432,6 +432,38 @@ export async function revertMeeting(
   return { status: prevState, cascade: "되돌릴 항목 없음" };
 }
 
+/**
+ * 케이스 종료 되살리기 (2026-05-19).
+ *
+ * 완료/취소/계약 카드의 자식 추가미팅(previousMeetingId 매칭) 을 삭제하여
+ * 케이스를 다시 진행 가능 상태로 복원. 부모 상태는 유지.
+ * 자식이 계약 상태면 02 계약수납관리 row 도 cascade clear.
+ */
+export async function reviveCaseClosure(
+  email: string,
+  parentId: string,
+): Promise<{ cascade: string; childId: string | null }> {
+  const spreadsheetId = await resolveSheet(email);
+  const child = await findByPreviousMeetingId(spreadsheetId, parentId);
+  if (!child) {
+    return { cascade: "자식 미팅 없음 — 되살릴 항목 없음", childId: null };
+  }
+  let cascade02 = "";
+  if (child.상태 === "계약" && child.미팅날짜 && child.업체명) {
+    const row = await clearContractPaymentByLink(
+      spreadsheetId,
+      child.미팅날짜,
+      child.업체명,
+    );
+    if (row !== null) cascade02 = ` + 02 row ${row} clear`;
+  }
+  await clearMeeting(spreadsheetId, child.id);
+  return {
+    cascade: `자식 미팅(${child.업체명}) 삭제${cascade02}`,
+    childId: child.id,
+  };
+}
+
 /** id로 미팅 조회. */
 export async function getMeetingById(
   email: string,

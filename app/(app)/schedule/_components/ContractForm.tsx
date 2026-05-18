@@ -92,9 +92,6 @@ export default function ContractForm({
             원
           </span>
         </div>
-        <div className="mt-1 text-xs text-gray-500">
-          → 영업관리 <b>O열</b>에 합산
-        </div>
       </div>
 
       <div>

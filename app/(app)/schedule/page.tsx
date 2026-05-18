@@ -15,7 +15,9 @@ import type { Meeting } from "@/types";
 import {
   useAppendMeeting,
   usePatchMeeting,
+  useRemoveMeeting,
   useRevertMeeting,
+  useReviveCaseClosure,
   useWeekMeetings,
 } from "@/query/contact-hooks";
 import {
@@ -50,7 +52,9 @@ export default function SchedulePage() {
   const weekQuery = useWeekMeetings(weekStart);
   const patchMeeting = usePatchMeeting();
   const appendMeeting = useAppendMeeting();
+  const removeMeeting = useRemoveMeeting();
   const revertMeeting = useRevertMeeting();
+  const reviveCaseClosure = useReviveCaseClosure();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -248,9 +252,10 @@ export default function SchedulePage() {
   };
 
   /**
-   * 추가 미팅 (2026-05-17 [2b]).
+   * 추가 미팅 (2026-05-17 [2b], 2026-05-19 갱신).
    * 완료/취소/계약 카드에서 같은 업체로 새 미팅 row append.
-   * 채널/장소/예약비고 동일, 새 id, 상태=예약, previousMeetingId 없음 (독립 미팅).
+   * 채널/장소/예약비고 동일, 새 id, 상태=예약, **previousMeetingId=원본 id**.
+   * → 원본 카드는 "케이스 종료" 표시 + 추가미팅 버튼 hide (자식 1건만 허용).
    */
   const handleAddMeeting = async (
     base: Meeting,
@@ -275,7 +280,7 @@ export default function SchedulePage() {
       수임비: 0,
       미팅사유: "",
       계약조건: "",
-      previousMeetingId: "", // 독립 미팅 — 체이닝 안 함
+      previousMeetingId: base.id, // 2026-05-19: 원본 → 새 미팅 체인 (케이스 종료 표시)
       표시상세: undefined,
       표시요약: undefined,
       계약합성라인: undefined,
@@ -296,6 +301,62 @@ export default function SchedulePage() {
 
   /** 2026-05-18 [2]: 주차 슬라이드 방향 — 다음 주(right) / 이전 주(left). 220ms 후 reset. */
   const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
+  /**
+   * 일정 삭제 (2026-05-19) — 컨택탭 cascade 와 동일.
+   * confirm: "함께 사라지는 것" 명시. cascade: 계약카드 (있으면) + 미팅카드.
+   */
+  const handleDelete = async (meeting: Meeting) => {
+    const hasContract = meeting.상태 === "계약";
+    const extra = hasContract
+      ? `\n· 수납탭 계약카드 1건 (₩${(meeting.수임비 ?? 0).toLocaleString()})`
+      : "";
+    if (
+      !confirm(
+        `'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`,
+      )
+    )
+      return;
+    setPendingId(meeting.id);
+    try {
+      // DELETE 라우트가 cascade 처리 (PR #241). UI 측은 invalidate 만 의존.
+      await removeMeeting.mutateAsync({
+        date: meeting.예약일 || meeting.미팅날짜,
+        id: meeting.id,
+      });
+      showToast(
+        hasContract
+          ? `✕ ${meeting.업체명} 미팅 + 계약카드 삭제`
+          : `✕ ${meeting.업체명} 미팅 삭제`,
+      );
+    } catch (e) {
+      showToast(`삭제 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  /** 케이스 종료 되살리기 (2026-05-19) — 자식 추가미팅 삭제. */
+  const handleReviveCase = async (meeting: Meeting) => {
+    if (
+      !confirm(
+        `'${meeting.업체명}' 케이스를 되살릴까요?\n\n자식 추가미팅 카드가 삭제됩니다 (계약 있었으면 계약카드도 함께 삭제).`,
+      )
+    )
+      return;
+    setPendingId(meeting.id);
+    try {
+      const result = await reviveCaseClosure.mutateAsync({
+        id: meeting.id,
+        weekStart,
+      });
+      showToast(`✓ 되살림 — ${result.cascade}`);
+    } catch (e) {
+      showToast(`되살리기 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   const moveWeek = (delta: number) => {
     setSlideDir(delta > 0 ? "right" : "left");
     const cur = parseISO(weekStart);
@@ -328,6 +389,16 @@ export default function SchedulePage() {
     if (!weekQuery.data) return [] as Meeting[];
     return weekQuery.data.daysByMeetingDate.flatMap((d) => d.meetings);
   }, [weekQuery.data]);
+
+  // 2026-05-19: 추가미팅 자식 추적 — previousMeetingId 매칭 set.
+  // 원본 카드가 "케이스 종료" 표시되어야 하는지 판단용.
+  const followUpParentIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMeetings) {
+      if (m.previousMeetingId) set.add(m.previousMeetingId);
+    }
+    return set;
+  }, [allMeetings]);
 
   const countsByDay = useMemo(() => {
     if (!weekQuery.data) return Array(7).fill(0) as number[];
@@ -400,6 +471,9 @@ export default function SchedulePage() {
               onReschedule={handleReschedule}
               onRevert={handleRevert}
               onAddMeeting={handleAddMeeting}
+              onDelete={handleDelete}
+              followUpParentIds={followUpParentIds}
+              onReviveCase={handleReviveCase}
             />
           </div>
         ))}

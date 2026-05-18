@@ -257,7 +257,7 @@ export default function ContractRow({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-gray-800">
-                📋 서류 진행
+                📋 실무 진행
               </span>
               <span className="text-xs text-gray-500">
                 <span

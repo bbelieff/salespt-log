@@ -32,12 +32,12 @@ interface Props {
   meeting: Meeting;
   pending: boolean;
   onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
-  /** 일정 변경: 새 미팅 append + 원본 patch (호출 측이 transaction 처리). */
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
-  /** 미팅 결과 되돌리기 (2026-05-17 [2a]). 호출 측이 서버 revert + cascade 처리. */
   onRevert?: () => void;
-  /** 추가 미팅 (2026-05-17 [2b]): 완료/취소/계약 카드에서 같은 업체로 새 미팅 잡기. */
   onAddMeeting?: (newDate: string, newTime: string) => void;
+  onDelete?: () => void;
+  hasFollowUp?: boolean;
+  onReviveCase?: () => void;
 }
 
 function fmtMoney(n: number): string {
@@ -51,13 +51,14 @@ export default function MeetingResultCard({
   onReschedule,
   onRevert,
   onAddMeeting,
+  onDelete,
+  hasFollowUp,
+  onReviveCase,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
-  /** 계약/완료 상태에서도 수임비/계약조건/사유를 다시 편집할 수 있게 하는 토글. */
   const [editMode, setEditMode] = useState(false);
-  /** 추가 미팅 폼 표시 (2026-05-17 [2b]). */
   const [addOpen, setAddOpen] = useState(false);
 
   const isCanceled = state === "canceled";
@@ -71,12 +72,7 @@ export default function MeetingResultCard({
 
   const feeSummary =
     state === "contract" && meeting.수임비 > 0 ? (
-      <span
-        className="shrink-0 text-xs font-bold text-green-700"
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        ₩{fmtMoney(meeting.수임비)}
-      </span>
+      <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>₩{fmtMoney(meeting.수임비)}</span>
     ) : null;
 
   const pickAction = (a: Exclude<Action, null>) =>
@@ -123,12 +119,8 @@ export default function MeetingResultCard({
     setEditMode(false);
     setOpen(false);
   };
-  const handleReschedule = (
-    newDate: string,
-    newTime: string,
-    reason: string,
-  ) => {
-    onReschedule(newDate, newTime, reason);
+  const handleReschedule = (d: string, t: string, r: string) => {
+    onReschedule(d, t, r);
     setAction(null);
     setOpen(false);
   };
@@ -308,6 +300,7 @@ export default function MeetingResultCard({
               onSave={(partial) => {
                 onPatch(partial);
               }}
+              onDelete={onDelete}
               pending={pending}
             />
           )}
@@ -419,8 +412,18 @@ export default function MeetingResultCard({
             </button>
           )}
 
+          {!showActions && hasFollowUp && (state === "done" || state === "canceled" || state === "contract") && (
+            <div className="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-2 py-1.5 text-xs text-gray-600">
+              <span>🔚 케이스 종료 — 추가 미팅 카드에서 진행</span>
+              {onReviveCase && (
+                <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">↩️ 되살리기</button>
+              )}
+            </div>
+          )}
+
           {!showActions &&
             onAddMeeting &&
+            !hasFollowUp &&
             (state === "done" || state === "canceled" || state === "contract") && (
               <>
                 {!addOpen && (

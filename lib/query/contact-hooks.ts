@@ -141,12 +141,13 @@ export function useAppendMeeting() {
         body: JSON.stringify(meeting),
       }),
     onSuccess: (_, { date, meeting }) => {
-      // 예약일 기준 view 캐시 invalidate (그 view에 등록 카드가 보여야 함).
-      // 미팅날짜가 다른 날이면 그 날도 invalidate (일정·계약 탭 대비).
       qc.invalidateQueries({ queryKey: dayKey(date) });
       if (meeting.미팅날짜 && meeting.미팅날짜 !== date) {
         qc.invalidateQueries({ queryKey: dayKey(meeting.미팅날짜) });
       }
+      // 2026-05-19 fix: 일정탭 week view 도 invalidate — 추가미팅이 일정탭에
+      // 안 보이던 버그. weekStart 계산 없이 전체 week 무효화.
+      qc.invalidateQueries({ queryKey: ["week"] });
     },
   });
 }
@@ -193,12 +194,32 @@ export function useRevertMeeting() {
   });
 }
 
+/** 케이스 종료 되살리기 (2026-05-19) — 자식 추가미팅 삭제. */
+export function useReviveCaseClosure() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; weekStart?: string }) =>
+      fetchJSON<{ ok: true; cascade: string; childId: string | null }>(
+        `/api/meeting/${id}/revive-case`,
+        { method: "POST" },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["week"] });
+      qc.invalidateQueries({ queryKey: ["payments"] });
+    },
+  });
+}
+
 export function useRemoveMeeting() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: RemoveMeetingArgs) =>
       fetchJSON<{ ok: true }>(`/api/meeting/${id}`, { method: "DELETE" }),
-    onSuccess: (_, { date }) =>
-      qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date }) => {
+      qc.invalidateQueries({ queryKey: dayKey(date) });
+      qc.invalidateQueries({ queryKey: ["week"] });
+      // 02 계약수납관리 cascade (PR #241) 후 수납탭도 무효화.
+      qc.invalidateQueries({ queryKey: ["payments"] });
+    },
   });
 }
