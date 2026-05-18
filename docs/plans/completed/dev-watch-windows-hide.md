@@ -1,7 +1,10 @@
 ---
 slug: dev-watch-windows-hide
-status: active
+status: completed
 created: 2026-05-18
+completed: 2026-05-18
+pr: 234
+commit: 5040f31
 worktree: ../wt/dev-watch-hide
 ---
 
