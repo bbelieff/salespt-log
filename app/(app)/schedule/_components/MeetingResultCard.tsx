@@ -37,6 +37,7 @@ interface Props {
   onAddMeeting?: (newDate: string, newTime: string) => void;
   onDelete?: () => void;
   hasFollowUp?: boolean;
+  onReviveCase?: () => void;
 }
 
 function fmtMoney(n: number): string {
@@ -52,6 +53,7 @@ export default function MeetingResultCard({
   onAddMeeting,
   onDelete,
   hasFollowUp,
+  onReviveCase,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
@@ -70,12 +72,7 @@ export default function MeetingResultCard({
 
   const feeSummary =
     state === "contract" && meeting.수임비 > 0 ? (
-      <span
-        className="shrink-0 text-xs font-bold text-green-700"
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        ₩{fmtMoney(meeting.수임비)}
-      </span>
+      <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>₩{fmtMoney(meeting.수임비)}</span>
     ) : null;
 
   const pickAction = (a: Exclude<Action, null>) =>
@@ -416,7 +413,12 @@ export default function MeetingResultCard({
           )}
 
           {!showActions && hasFollowUp && (state === "done" || state === "canceled" || state === "contract") && (
-            <div className="rounded-md bg-gray-100 px-2 py-1.5 text-xs text-gray-600">🔚 케이스 종료 — 후속 추가 미팅 카드에서 진행하세요</div>
+            <div className="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-2 py-1.5 text-xs text-gray-600">
+              <span>🔚 케이스 종료 — 추가 미팅 카드에서 진행</span>
+              {onReviveCase && (
+                <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">↩️ 되살리기</button>
+              )}
+            </div>
           )}
 
           {!showActions &&

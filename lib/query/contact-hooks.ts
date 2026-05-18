@@ -194,6 +194,22 @@ export function useRevertMeeting() {
   });
 }
 
+/** 케이스 종료 되살리기 (2026-05-19) — 자식 추가미팅 삭제. */
+export function useReviveCaseClosure() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; weekStart?: string }) =>
+      fetchJSON<{ ok: true; cascade: string; childId: string | null }>(
+        `/api/meeting/${id}/revive-case`,
+        { method: "POST" },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["week"] });
+      qc.invalidateQueries({ queryKey: ["payments"] });
+    },
+  });
+}
+
 export function useRemoveMeeting() {
   const qc = useQueryClient();
   return useMutation({

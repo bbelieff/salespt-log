@@ -28,6 +28,8 @@ interface Props {
   onDelete?: (meeting: Meeting) => void;
   /** 자식 미팅을 가진 원본 미팅 id 셋 (2026-05-19) — 케이스 종료 표시용. */
   followUpParentIds?: Set<string>;
+  /** 케이스 종료 되살리기 (2026-05-19). */
+  onReviveCase?: (meeting: Meeting) => void;
 }
 
 export default function DaySection({
@@ -41,6 +43,7 @@ export default function DaySection({
   onAddMeeting,
   onDelete,
   followUpParentIds,
+  onReviveCase,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -115,6 +118,7 @@ export default function DaySection({
             }
             onDelete={onDelete ? () => onDelete(m) : undefined}
             hasFollowUp={followUpParentIds?.has(m.id) ?? false}
+            onReviveCase={onReviveCase ? () => onReviveCase(m) : undefined}
           />
         ))
       )}

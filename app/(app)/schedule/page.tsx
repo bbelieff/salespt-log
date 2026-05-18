@@ -17,6 +17,7 @@ import {
   usePatchMeeting,
   useRemoveMeeting,
   useRevertMeeting,
+  useReviveCaseClosure,
   useWeekMeetings,
 } from "@/query/contact-hooks";
 import {
@@ -53,6 +54,7 @@ export default function SchedulePage() {
   const appendMeeting = useAppendMeeting();
   const removeMeeting = useRemoveMeeting();
   const revertMeeting = useRevertMeeting();
+  const reviveCaseClosure = useReviveCaseClosure();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -333,6 +335,28 @@ export default function SchedulePage() {
     }
   };
 
+  /** 케이스 종료 되살리기 (2026-05-19) — 자식 추가미팅 삭제. */
+  const handleReviveCase = async (meeting: Meeting) => {
+    if (
+      !confirm(
+        `'${meeting.업체명}' 케이스를 되살릴까요?\n\n자식 추가미팅 카드가 삭제됩니다 (계약 있었으면 계약카드도 함께 삭제).`,
+      )
+    )
+      return;
+    setPendingId(meeting.id);
+    try {
+      const result = await reviveCaseClosure.mutateAsync({
+        id: meeting.id,
+        weekStart,
+      });
+      showToast(`✓ 되살림 — ${result.cascade}`);
+    } catch (e) {
+      showToast(`되살리기 실패: ${(e as Error).message}`);
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   const moveWeek = (delta: number) => {
     setSlideDir(delta > 0 ? "right" : "left");
     const cur = parseISO(weekStart);
@@ -449,6 +473,7 @@ export default function SchedulePage() {
               onAddMeeting={handleAddMeeting}
               onDelete={handleDelete}
               followUpParentIds={followUpParentIds}
+              onReviveCase={handleReviveCase}
             />
           </div>
         ))}

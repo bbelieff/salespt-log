@@ -22,6 +22,7 @@ export {
   removeMeeting,
   removeMeetingWithCascade,
   revertMeeting,
+  reviveCaseClosure,
   getMeetingById,
   type ContactDayView,
   type ChannelDailyRowMetrics,
