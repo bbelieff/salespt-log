@@ -23,7 +23,8 @@ const isWindows = process.platform === "win32";
 const next = spawn(
   isWindows ? "npx.cmd" : "npx",
   ["--no", "--", "next", "dev"],
-  { stdio: "inherit", shell: false },
+  // windowsHide: stdio:inherit 라 새 콘솔이 안 생기지만, 일관성·방어적 차원에서 명시.
+  { stdio: "inherit", shell: false, windowsHide: true },
 );
 
 next.on("exit", (code) => {
@@ -35,7 +36,9 @@ next.on("exit", (code) => {
 let watcherActive = true;
 
 function gitOutput(args) {
-  const r = spawnSync("git", args, { encoding: "utf8" });
+  // windowsHide: Windows에서 spawnSync 기본 false → git.exe 가 콘솔 창을 잠깐
+  // 띄웠다 닫는 "파파박" 깜빡임 발생. POSIX 에서는 no-op 라 안전하게 항상 true.
+  const r = spawnSync("git", args, { encoding: "utf8", windowsHide: true });
   return { code: r.status ?? 1, stdout: (r.stdout ?? "").trim(), stderr: (r.stderr ?? "").trim() };
 }
 
@@ -57,7 +60,7 @@ async function watchOnce() {
     gitOutput(["diff", "--cached", "--quiet"]).code !== 0;
   if (dirty) {
     console.log("   ⚠ 작업 변경사항 있음 — stash 후 진행");
-    spawnSync("git", ["stash", "push", "-u", "-m", `dev-watch ${Date.now()}`], { stdio: "ignore" });
+    spawnSync("git", ["stash", "push", "-u", "-m", `dev-watch ${Date.now()}`], { stdio: "ignore", windowsHide: true });
   }
 
   const pulled = gitOutput(["pull", "origin", "master", "--ff-only", "--quiet"]);
