@@ -35,6 +35,38 @@ const SALES_LAST_ROW = SALES_BLOCK_START + 7 * SALES_BLOCK_STRIDE + 27;
 
 const SALES_FORMULA_COLS = ["I", "J", "K", "L", "M", "N", "O", "P"] as const;
 
+// ── 영업관리 D 컬럼 채널 라벨 정상화 (2026-05-18, 콜·지·기·소 하이픈 사고) ──
+// 6/7기 시트 다수의 영업관리 D 컬럼 콜지기소 라벨이 "콜-지-기-소" (hyphen
+// U+002D) 으로 박혀있음 → 코드 enum "콜·지·기·소" (middle dot U+00B7) 와 매칭
+// 실패 → I/J/K 수식의 `F:F=$D{r}` 비교가 0 결과 → 모든 콜지기소 미팅이 영업관리
+// 표시 영역에서 누락. installFormulas 가 라벨도 함께 정상화.
+const CHANNEL_LABELS = ["매입DB", "직접생산", "현수막", "콜·지·기·소"] as const;
+
+/** 채널 라벨 비교용 — 모든 separator (middle dot 류 + hyphen 류) 제거. */
+function normalizeChannelSep(s: string): string {
+  // separator 단일 문자 — unicode escape 사용 (범위 해석 회피).
+  // U+00B7 · / U+2027 ‧ / U+30FB ・ / U+318D ㆍ /
+  // U+002D - / U+2010 ‐ / U+2011 ‑ / U+2012 ‒ / U+2013 – / U+2014 —
+  return s
+    .replace(/[-·‧・ㆍ‐‑‒–—]/g, "")
+    .trim();
+}
+
+/**
+ * D 컬럼 라벨 cell 을 정상 라벨로 덮어써도 안전한지 판단.
+ *   - 빈 cell / 수식 → 덮어쓰기
+ *   - 이미 정확한 라벨 → skip (write 안 함)
+ *   - separator 만 다른 stale variant ("콜-지-기-소") → 덮어쓰기
+ *   - 그 외 raw text → 보존 (사용자가 의도적으로 다른 텍스트 박은 경우)
+ */
+export function shouldFixChannelLabel(current: unknown, expected: string): boolean {
+  if (current === undefined || current === null || current === "") return true;
+  if (typeof current !== "string") return false;
+  if (current === expected) return false;
+  if (current.startsWith("=")) return true;
+  return normalizeChannelSep(current) === normalizeChannelSep(expected);
+}
+
 // ── 04 업체관리 per-row 수식 ─────────────────────────────────────
 // ARRAYFORMULA를 안 쓰는 이유: 한국 로케일 + 시트 잔재(checkbox/data validation
 // 등) 환경에서 spill이 막혀 #REF! 발생. per-row IF로 가면 spill 자체가
@@ -184,7 +216,7 @@ export async function installFormulas(
 
   // Pre-read: FORMULA mode 로 타겟 범위 현재 내용 가져옴.
   //   - 04 업체관리 N/O/Q 컬럼 (1~1000행).
-  //   - 01 영업관리 I~P 컬럼 (데이터 행만).
+  //   - 01 영업관리 I~P 컬럼 (데이터 행만) + D 컬럼 채널 라벨.
   const [meetingsExisting, salesExisting] = await Promise.all([
     sheetsClient().spreadsheets.values.batchGet({
       spreadsheetId,
@@ -196,9 +228,12 @@ export async function installFormulas(
       valueRenderOption: "FORMULA",
     }),
     dataRows.length > 0
-      ? sheetsClient().spreadsheets.values.get({
+      ? sheetsClient().spreadsheets.values.batchGet({
           spreadsheetId,
-          range: `${tabRef(SALES_TAB)}!I${SALES_BLOCK_START}:P${SALES_LAST_ROW}`,
+          ranges: [
+            `${tabRef(SALES_TAB)}!I${SALES_BLOCK_START}:P${SALES_LAST_ROW}`,
+            `${tabRef(SALES_TAB)}!D${SALES_BLOCK_START}:D${SALES_LAST_ROW}`,
+          ],
           valueRenderOption: "FORMULA",
         })
       : Promise.resolve(null),
@@ -207,7 +242,8 @@ export async function installFormulas(
   const nExisting = meetingsExisting.data.valueRanges?.[0]?.values ?? [];
   const oExisting = meetingsExisting.data.valueRanges?.[1]?.values ?? [];
   const qExisting = meetingsExisting.data.valueRanges?.[2]?.values ?? [];
-  const salesExistingRows = salesExisting?.data.values ?? [];
+  const salesExistingRows = salesExisting?.data.valueRanges?.[0]?.values ?? [];
+  const salesDLabels = salesExisting?.data.valueRanges?.[1]?.values ?? [];
 
   const data: Array<{ range: string; values: string[][] }> = [];
   const preservedCells: string[] = [];
@@ -262,6 +298,21 @@ export async function installFormulas(
       } else {
         preservedCells.push(`영업관리 ${col}${r}`);
       }
+    }
+    // D 컬럼 채널 라벨 정상화 (콜·지·기·소 하이픈 사고 fix, 2026-05-18).
+    const posInBlock = (r - SALES_BLOCK_START) % SALES_BLOCK_STRIDE;
+    const channelIdx = posInBlock % 4;
+    const expectedLabel = CHANNEL_LABELS[channelIdx]!;
+    const dCur = salesDLabels[rowIdx]?.[0];
+    if (shouldFixChannelLabel(dCur, expectedLabel)) {
+      if (dCur !== expectedLabel) {
+        data.push({
+          range: `${tabRef(SALES_TAB)}!D${r}`,
+          values: [[expectedLabel]],
+        });
+      }
+    } else if (typeof dCur === "string" && dCur !== expectedLabel) {
+      preservedCells.push(`영업관리 D${r} (=${dCur})`);
     }
   }
 
