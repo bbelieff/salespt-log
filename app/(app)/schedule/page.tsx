@@ -250,9 +250,10 @@ export default function SchedulePage() {
   };
 
   /**
-   * 추가 미팅 (2026-05-17 [2b]).
+   * 추가 미팅 (2026-05-17 [2b], 2026-05-19 갱신).
    * 완료/취소/계약 카드에서 같은 업체로 새 미팅 row append.
-   * 채널/장소/예약비고 동일, 새 id, 상태=예약, previousMeetingId 없음 (독립 미팅).
+   * 채널/장소/예약비고 동일, 새 id, 상태=예약, **previousMeetingId=원본 id**.
+   * → 원본 카드는 "케이스 종료" 표시 + 추가미팅 버튼 hide (자식 1건만 허용).
    */
   const handleAddMeeting = async (
     base: Meeting,
@@ -277,7 +278,7 @@ export default function SchedulePage() {
       수임비: 0,
       미팅사유: "",
       계약조건: "",
-      previousMeetingId: "", // 독립 미팅 — 체이닝 안 함
+      previousMeetingId: base.id, // 2026-05-19: 원본 → 새 미팅 체인 (케이스 종료 표시)
       표시상세: undefined,
       표시요약: undefined,
       계약합성라인: undefined,
@@ -365,6 +366,16 @@ export default function SchedulePage() {
     return weekQuery.data.daysByMeetingDate.flatMap((d) => d.meetings);
   }, [weekQuery.data]);
 
+  // 2026-05-19: 추가미팅 자식 추적 — previousMeetingId 매칭 set.
+  // 원본 카드가 "케이스 종료" 표시되어야 하는지 판단용.
+  const followUpParentIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMeetings) {
+      if (m.previousMeetingId) set.add(m.previousMeetingId);
+    }
+    return set;
+  }, [allMeetings]);
+
   const countsByDay = useMemo(() => {
     if (!weekQuery.data) return Array(7).fill(0) as number[];
     return weekQuery.data.daysByMeetingDate.map((d) => d.meetings.length);
@@ -437,6 +448,7 @@ export default function SchedulePage() {
               onRevert={handleRevert}
               onAddMeeting={handleAddMeeting}
               onDelete={handleDelete}
+              followUpParentIds={followUpParentIds}
             />
           </div>
         ))}

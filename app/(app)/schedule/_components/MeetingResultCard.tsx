@@ -32,13 +32,11 @@ interface Props {
   meeting: Meeting;
   pending: boolean;
   onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
-  /** 일정 변경: 새 미팅 append + 원본 patch (호출 측이 transaction 처리). */
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
-  /** 미팅 결과 되돌리기 (2026-05-17 [2a]). 호출 측이 서버 revert + cascade 처리. */
   onRevert?: () => void;
-  /** 추가 미팅 (2026-05-17 [2b]): 완료/취소/계약 카드에서 같은 업체로 새 미팅 잡기. */
   onAddMeeting?: (newDate: string, newTime: string) => void;
   onDelete?: () => void;
+  hasFollowUp?: boolean;
 }
 
 function fmtMoney(n: number): string {
@@ -53,13 +51,12 @@ export default function MeetingResultCard({
   onRevert,
   onAddMeeting,
   onDelete,
+  hasFollowUp,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
-  /** 계약/완료 상태에서도 수임비/계약조건/사유를 다시 편집할 수 있게 하는 토글. */
   const [editMode, setEditMode] = useState(false);
-  /** 추가 미팅 폼 표시 (2026-05-17 [2b]). */
   const [addOpen, setAddOpen] = useState(false);
 
   const isCanceled = state === "canceled";
@@ -125,12 +122,8 @@ export default function MeetingResultCard({
     setEditMode(false);
     setOpen(false);
   };
-  const handleReschedule = (
-    newDate: string,
-    newTime: string,
-    reason: string,
-  ) => {
-    onReschedule(newDate, newTime, reason);
+  const handleReschedule = (d: string, t: string, r: string) => {
+    onReschedule(d, t, r);
     setAction(null);
     setOpen(false);
   };
@@ -422,8 +415,13 @@ export default function MeetingResultCard({
             </button>
           )}
 
+          {!showActions && hasFollowUp && (state === "done" || state === "canceled" || state === "contract") && (
+            <div className="rounded-md bg-gray-100 px-2 py-1.5 text-xs text-gray-600">🔚 케이스 종료 — 후속 추가 미팅 카드에서 진행하세요</div>
+          )}
+
           {!showActions &&
             onAddMeeting &&
+            !hasFollowUp &&
             (state === "done" || state === "canceled" || state === "contract") && (
               <>
                 {!addOpen && (

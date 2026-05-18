@@ -26,6 +26,8 @@ interface Props {
   onAddMeeting?: (meeting: Meeting, newDate: string, newTime: string) => void;
   /** 일정 삭제 (2026-05-19) — cascade. */
   onDelete?: (meeting: Meeting) => void;
+  /** 자식 미팅을 가진 원본 미팅 id 셋 (2026-05-19) — 케이스 종료 표시용. */
+  followUpParentIds?: Set<string>;
 }
 
 export default function DaySection({
@@ -38,6 +40,7 @@ export default function DaySection({
   onRevert,
   onAddMeeting,
   onDelete,
+  followUpParentIds,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -111,6 +114,7 @@ export default function DaySection({
               onAddMeeting ? (d2, t2) => onAddMeeting(m, d2, t2) : undefined
             }
             onDelete={onDelete ? () => onDelete(m) : undefined}
+            hasFollowUp={followUpParentIds?.has(m.id) ?? false}
           />
         ))
       )}
