@@ -15,6 +15,7 @@
 "use client";
 
 import { useState } from "react";
+import TimePicker15 from "@/components/ui/TimePicker15";
 
 interface Props {
   initialDate: string; // YYYY-MM-DD
@@ -67,7 +68,7 @@ export default function RescheduleForm({
       </div>
 
       <div className="flex gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="shrink-0" style={{ width: 130 }}>
           <label className="mb-1 block text-xs text-gray-600">새 날짜</label>
           <input
             type="date"
@@ -76,15 +77,9 @@ export default function RescheduleForm({
             className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
           />
         </div>
-        <div className="shrink-0" style={{ width: 110 }}>
+        <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs text-gray-600">새 시간</label>
-          <input
-            type="time"
-            step={900}
-            value={newTime}
-            onChange={(e) => setNewTime(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
-          />
+          <TimePicker15 value={newTime} onChange={setNewTime} />
         </div>
       </div>
 
