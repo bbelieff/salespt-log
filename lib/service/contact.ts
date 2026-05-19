@@ -9,6 +9,7 @@
 import { findUserByEmail } from "@/repo/users";
 import {
   batchWriteChannelDailyRows,
+  decrementMeetingReservation,
   readCourseStart,
   readWeek,
   readWeekFunnel,
@@ -307,6 +308,28 @@ export async function patchMeeting(
   await updateMeeting(spreadsheetId, id, partial);
 }
 
+/** 자손 미팅 transitive cascade (post-order). 자식 계약이면 02 row 도 clear. */
+async function cascadeDescendantMeetings(
+  spreadsheetId: string,
+  parentId: string,
+): Promise<{ count: number; paymentRows: number }> {
+  let count = 0;
+  let paymentRows = 0;
+  async function walk(pid: string): Promise<void> {
+    const c = await findByPreviousMeetingId(spreadsheetId, pid);
+    if (!c) return;
+    await walk(c.id);
+    if (c.상태 === "계약" && c.미팅날짜 && c.업체명) {
+      const row = await clearContractPaymentByLink(spreadsheetId, c.미팅날짜, c.업체명);
+      if (row !== null) paymentRows++;
+    }
+    await clearMeeting(spreadsheetId, c.id);
+    count++;
+  }
+  await walk(parentId);
+  return { count, paymentRows };
+}
+
 /** 미팅 삭제 (행 클리어). 미팅예약 -1은 호출 측 책임. cascade 없음. */
 export async function removeMeeting(
   email: string,
@@ -316,26 +339,14 @@ export async function removeMeeting(
   await clearMeeting(spreadsheetId, id);
 }
 
-/**
- * 미팅 삭제 + 자식 계약카드 cascade 삭제 (2026-05-18, Phase 1).
- *
- * 사용자 정책 (docs/plans/active/cascade-edge-cases.md):
- *  - 부모 (미팅) 삭제 시 자식 (계약카드) 자동 cascade.
- *  - L1 (컨택 미팅예약 카운트) -1 은 호출 측 책임.
- *
- * 흐름:
- *  1) 미팅 fetch → (미팅날짜, 업체명) cascade key
- *  2) 미팅 상태 === "계약" 이면 02 계약수납관리 매칭 row 찾기 → clear
- *  3) 미팅 clear (L2)
- *
- * 반환: cascade summary (UI confirm/toast 용).
- */
+/** 미팅 + 자손 transitive cascade + 본인 계약 02 row cascade. L1 -1은 호출 측. */
 export async function removeMeetingWithCascade(
   email: string,
   id: string,
 ): Promise<{
   cascade: string;
   removedPaymentRow: number | null;
+  removedDescendantCount: number;
   업체명: string;
   미팅날짜: string;
   상태: string;
@@ -344,6 +355,11 @@ export async function removeMeetingWithCascade(
   const m = await findById(spreadsheetId, id);
   if (!m) throw new Error(`[removeMeetingWithCascade] 미팅 못 찾음: ${id}`);
 
+  // 1) Descendants 재귀 삭제.
+  const { count: descCount, paymentRows: descPaymentRows } =
+    await cascadeDescendantMeetings(spreadsheetId, id);
+
+  // 2) 본인이 계약이면 02 row cascade.
   let removedPaymentRow: number | null = null;
   if (m.상태 === "계약" && m.미팅날짜 && m.업체명) {
     removedPaymentRow = await clearContractPaymentByLink(
@@ -352,13 +368,23 @@ export async function removeMeetingWithCascade(
       m.업체명,
     );
   }
+
+  // 3) 본인 clear.
   await clearMeeting(spreadsheetId, id);
 
+  // 4) 영업관리 H -1 (좌표 계산 실패 시 skip).
+  if (m.예약일 && m.channel) {
+    try { await decrementMeetingReservation(spreadsheetId, m.예약일, m.channel); } catch { /* skip */ }
+  }
+  const parts: string[] = ["영업관리 H -1"];
+  if (descCount > 0) parts.push(`자손 미팅 ${descCount}건 cascade`);
+  if (descPaymentRows > 0) parts.push(`자손 계약 ${descPaymentRows}건`);
+  if (removedPaymentRow !== null) parts.push(`본인 계약카드 삭제`);
+
   return {
-    cascade: removedPaymentRow
-      ? `수납탭 계약카드 1건 함께 삭제됨 (row ${removedPaymentRow})`
-      : "계약카드 없음 — 미팅카드만 삭제",
+    cascade: parts.join(", "),
     removedPaymentRow,
+    removedDescendantCount: descCount,
     업체명: m.업체명,
     미팅날짜: m.미팅날짜,
     상태: m.상태,
@@ -415,17 +441,13 @@ export async function revertMeeting(
   }
 
   if (prevState === "변경") {
-    const child = await findByPreviousMeetingId(spreadsheetId, id);
-    let cascadeMsg = "변경 자식 미팅 없음";
-    if (child) {
-      await clearMeeting(spreadsheetId, child.id);
-      cascadeMsg = `변경 자식 미팅(${child.업체명}) 삭제`;
-    }
-    await updateMeeting(spreadsheetId, id, {
-      상태: "예약",
-      미팅사유: "",
-    });
-    return { status: "예약", cascade: cascadeMsg };
+    // 2026-05-19: 손자까지 transitive cascade (1→2→3 체인 전부 삭제).
+    const { count } = await cascadeDescendantMeetings(spreadsheetId, id);
+    await updateMeeting(spreadsheetId, id, { 상태: "예약", 미팅사유: "" });
+    return {
+      status: "예약",
+      cascade: count > 0 ? `변경 자손 미팅 ${count}건 cascade 삭제` : "변경 자식 미팅 없음",
+    };
   }
 
   // 이미 예약이거나 알 수 없는 상태 → 노옵
@@ -448,18 +470,20 @@ export async function reviveCaseClosure(
   if (!child) {
     return { cascade: "자식 미팅 없음 — 되살릴 항목 없음", childId: null };
   }
+  // 2026-05-19: 자식의 자손까지 transitive cascade.
+  const { count: descCount } = await cascadeDescendantMeetings(
+    spreadsheetId,
+    child.id,
+  );
   let cascade02 = "";
   if (child.상태 === "계약" && child.미팅날짜 && child.업체명) {
-    const row = await clearContractPaymentByLink(
-      spreadsheetId,
-      child.미팅날짜,
-      child.업체명,
-    );
-    if (row !== null) cascade02 = ` + 02 row ${row} clear`;
+    const row = await clearContractPaymentByLink(spreadsheetId, child.미팅날짜, child.업체명);
+    if (row !== null) cascade02 = ` + 02 row ${row}`;
   }
   await clearMeeting(spreadsheetId, child.id);
+  const descMsg = descCount > 0 ? ` (자손 ${descCount}건 포함)` : "";
   return {
-    cascade: `자식 미팅(${child.업체명}) 삭제${cascade02}`,
+    cascade: `자식 미팅(${child.업체명}) 삭제${descMsg}${cascade02}`,
     childId: child.id,
   };
 }

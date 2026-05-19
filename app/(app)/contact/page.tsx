@@ -267,13 +267,10 @@ export default function ContactPage() {
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`)) return;
     const dateAtClick = date;
     try {
+      // 2026-05-19: server-side cascade — H -1 도 서버 (race 회피).
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
+      // local draft 도 -1 (즉시 반영, dayQuery refetch 까지 깜빡임 회피).
       adjustMetric(meeting.channel, "meetingReservation", -1);
-      const targetCh = meeting.channel;
-      setDraft((latest) => {
-        void saveMetrics.mutateAsync({ date: dateAtClick, channels: { [targetCh]: latest[targetCh] } });
-        return latest;
-      });
       showToast(hasContract ? "✕ 미팅 + 계약카드 삭제 (미팅예약 -1)" : "✕ 삭제 · 미팅예약 -1");
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);

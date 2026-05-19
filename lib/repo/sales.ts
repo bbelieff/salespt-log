@@ -383,6 +383,42 @@ export async function batchWriteChannelDailyRows(
 }
 
 /**
+ * 영업관리 H 컬럼 (미팅예약 카운트) 을 채널×날짜 기준 -1 (2026-05-19).
+ *
+ * 일정탭에서 미팅카드 삭제 시 영업관리 H -1 처리. 컨택탭의 client-side
+ * adjustMetric 와 동일 effect 를 server-side 에서 idempotent 하게 보장.
+ * 0 미만으로 가지 않음 (이미 0이면 no-op).
+ */
+export async function decrementMeetingReservation(
+  spreadsheetId: string,
+  date: string,
+  channel: Channel,
+): Promise<{ before: number; after: number }> {
+  const courseStart = await readCourseStart(spreadsheetId);
+  const sheetRow = salesRowFor(parseISO(date), channel, courseStart);
+  const col = SHEET_RANGES.sales.metricCols.meetingReservation;
+  assertWritableCol(col, "decrementMeetingReservation");
+  const tab = tabRef(SHEET_RANGES.sales.tab);
+  const range = `${tab}!${col}${sheetRow}`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const cur = Number(res.data.values?.[0]?.[0] ?? 0);
+  const before = Number.isFinite(cur) ? cur : 0;
+  const after = Math.max(0, before - 1);
+  if (after === before) return { before, after };
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[after]] },
+  });
+  return { before, after };
+}
+
+/**
  * 한 주차 분량의 4지표 4채널 (28개 행)을 읽음.
  * Q~T(deprecated 일별 실적)는 더 이상 read하지 않음 — PR #38·39+에서
  * 02 계약수납관리로 모델 이전됨.
