@@ -6,8 +6,11 @@
  *   • 셀 단위 update 금지 — batchUpdate / values.update / values.append 사용.
  *   • 반환은 dict 가 아니라 lib/types 의 Zod 모델.
  *
- * 2026-05-19: Sheets API quota 429 자동 retry (exponential backoff). 60 read
- * req/min/user 초과 시 모든 호출이 transparent 하게 재시도.
+ * 2026-05-19: Sheets API 429 quota 자동 retry. PR #244 의 Proxy 접근은
+ * googleapis 의 non-configurable read-only 속성과 invariant 충돌 → 모든 호출
+ * 실패. 명시적 메서드 wrapping 으로 변경 — spreadsheets.values.{get,batchGet,
+ * update,batchUpdate,append,clear,batchClear} + spreadsheets.{get,batchUpdate}
+ * 만 instance 속성으로 shadow 하여 retry 적용.
  */
 import { google, type sheets_v4 } from "googleapis";
 import { serviceAccount } from "@/config";
@@ -22,10 +25,7 @@ function isRateLimitError(e: unknown): boolean {
   return /Quota exceeded/i.test(msg) || /Rate Limit Exceeded/i.test(msg);
 }
 
-/**
- * 429 시 exponential backoff (1s → 2s → 4s → 8s, jitter 포함, 최대 4 시도).
- * 분당 quota window = 60s 이므로 한 wave 내에 reset 됨.
- */
+/** 429 시 exponential backoff (1s → 2s → 4s → 8s, jitter ±250ms). */
 async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
   const MAX_ATTEMPTS = 4;
   try {
@@ -38,26 +38,32 @@ async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
   }
 }
 
-/**
- * 모든 메서드 호출에 withRetry 자동 적용 (Proxy 재귀).
- * spreadsheets.values.get / batchUpdate / etc. 깊이 무관 자동 wrapping.
- */
-function wrapWithRetry<T extends object>(obj: T): T {
-  return new Proxy(obj, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (typeof value === "function") {
-        return (...args: unknown[]) =>
-          withRetry(() =>
-            (value as (...a: unknown[]) => Promise<unknown>).apply(target, args),
-          );
-      }
-      if (value !== null && typeof value === "object") {
-        return wrapWithRetry(value as object);
-      }
-      return value;
-    },
-  }) as T;
+/** 객체의 지정 메서드를 instance 속성으로 shadow 하여 retry wrapper 적용. */
+function patchMethods<T extends object>(obj: T, names: readonly string[]): void {
+  for (const name of names) {
+    const orig = (obj as unknown as Record<string, unknown>)[name];
+    if (typeof orig !== "function") continue;
+    const bound = (orig as (...a: unknown[]) => Promise<unknown>).bind(obj);
+    (obj as unknown as Record<string, unknown>)[name] = (...args: unknown[]) =>
+      withRetry(() => bound(...args));
+  }
+}
+
+function patchClient(client: sheets_v4.Sheets): sheets_v4.Sheets {
+  patchMethods(client.spreadsheets.values, [
+    "get",
+    "batchGet",
+    "batchGetByDataFilter",
+    "update",
+    "batchUpdate",
+    "batchUpdateByDataFilter",
+    "append",
+    "clear",
+    "batchClear",
+    "batchClearByDataFilter",
+  ]);
+  patchMethods(client.spreadsheets, ["get", "batchUpdate", "getByDataFilter"]);
+  return client;
 }
 
 export function sheetsClient(): sheets_v4.Sheets {
@@ -68,7 +74,7 @@ export function sheetsClient(): sheets_v4.Sheets {
     key: sa.private_key,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
-  cached = wrapWithRetry(google.sheets({ version: "v4", auth }));
+  cached = patchClient(google.sheets({ version: "v4", auth }));
   return cached;
 }
 
