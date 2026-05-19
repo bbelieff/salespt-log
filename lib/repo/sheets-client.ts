@@ -5,11 +5,60 @@
  *   • googleapis 는 오직 lib/repo/ 에서만 import.
  *   • 셀 단위 update 금지 — batchUpdate / values.update / values.append 사용.
  *   • 반환은 dict 가 아니라 lib/types 의 Zod 모델.
+ *
+ * 2026-05-19: Sheets API quota 429 자동 retry (exponential backoff). 60 read
+ * req/min/user 초과 시 모든 호출이 transparent 하게 재시도.
  */
 import { google, type sheets_v4 } from "googleapis";
 import { serviceAccount } from "@/config";
 
 let cached: sheets_v4.Sheets | null = null;
+
+function isRateLimitError(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const err = e as { code?: number; status?: number; message?: string };
+  if (err.code === 429 || err.status === 429) return true;
+  const msg = String(err.message ?? "");
+  return /Quota exceeded/i.test(msg) || /Rate Limit Exceeded/i.test(msg);
+}
+
+/**
+ * 429 시 exponential backoff (1s → 2s → 4s → 8s, jitter 포함, 최대 4 시도).
+ * 분당 quota window = 60s 이므로 한 wave 내에 reset 됨.
+ */
+async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
+  const MAX_ATTEMPTS = 4;
+  try {
+    return await fn();
+  } catch (e) {
+    if (!isRateLimitError(e) || attempt >= MAX_ATTEMPTS - 1) throw e;
+    const delay = 1000 * Math.pow(2, attempt) + Math.floor(Math.random() * 250);
+    await new Promise((r) => setTimeout(r, delay));
+    return withRetry(fn, attempt + 1);
+  }
+}
+
+/**
+ * 모든 메서드 호출에 withRetry 자동 적용 (Proxy 재귀).
+ * spreadsheets.values.get / batchUpdate / etc. 깊이 무관 자동 wrapping.
+ */
+function wrapWithRetry<T extends object>(obj: T): T {
+  return new Proxy(obj, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value === "function") {
+        return (...args: unknown[]) =>
+          withRetry(() =>
+            (value as (...a: unknown[]) => Promise<unknown>).apply(target, args),
+          );
+      }
+      if (value !== null && typeof value === "object") {
+        return wrapWithRetry(value as object);
+      }
+      return value;
+    },
+  }) as T;
+}
 
 export function sheetsClient(): sheets_v4.Sheets {
   if (cached) return cached;
@@ -19,7 +68,7 @@ export function sheetsClient(): sheets_v4.Sheets {
     key: sa.private_key,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
-  cached = google.sheets({ version: "v4", auth });
+  cached = wrapWithRetry(google.sheets({ version: "v4", auth }));
   return cached;
 }
 
