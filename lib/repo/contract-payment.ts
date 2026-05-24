@@ -397,6 +397,27 @@ export async function clearRowByLink(
   return row;
 }
 
+/**
+ * (계약일, 업체명) link key 갱신 — 미팅 수정 시 계약카드 sync (2026-05-19 Phase 3).
+ * old 매칭 row 찾아 C(계약일)/D(업체명) 새 값으로 update. 없으면 null.
+ */
+export async function updateLinkFields(
+  spreadsheetId: string,
+  old: { 계약일: string; 업체명: string },
+  next: { 계약일: string; 업체명: string },
+): Promise<number | null> {
+  const row = await findRowByLink(spreadsheetId, old.계약일, old.업체명);
+  if (row === null) return null;
+  const { tab } = await resolveLayout(spreadsheetId);
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range: `${tabRef(tab)}!C${row}:D${row}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[next.계약일, next.업체명]] },
+  });
+  return row;
+}
+
 /** row 식별로 한 row clear (C~AD만 비움 — A 공란/B 순번 수식 보존).
  *
  *  버그 fix: 이전에는 A~AD 전체 clear → 사용자 시트의 B(순번) 수식까지
