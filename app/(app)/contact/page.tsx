@@ -23,9 +23,8 @@ import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
-import MeetingSlotItem, {
-  type NewSlot,
-} from "./_components/MeetingSlotItem";
+import MeetingSlotItem, { type NewSlot } from "./_components/MeetingSlotItem";
+import MeetingPickerModal from "./_components/MeetingPickerModal";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 
 const TODAY_ISO = fmtISO(new Date());
@@ -59,6 +58,7 @@ export default function ContactPage() {
     EMPTY_BY_CHANNEL,
   );
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
+  const [pickerMeetings, setPickerMeetings] = useState<Meeting[] | null>(null);
 
   const dayQuery = useDay(date);
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
@@ -188,9 +188,11 @@ export default function ContactPage() {
           adjustMetric(ch, "meetingReservation", -1);
         } else {
           const saved = savedByChannel[ch];
-          const last = saved[saved.length - 1];
-          if (last) {
-            handleRemoveSavedMeeting(last);
+          // Phase 4: 2건 이상이면 선택 팝업, 1건이면 바로 삭제.
+          if (saved.length > 1) {
+            setPickerMeetings(saved);
+          } else if (saved.length === 1) {
+            handleRemoveSavedMeeting(saved[0]!);
           } else if (cur2 > 0) {
             adjustMetric(ch, "meetingReservation", -1);
             showToast("미팅예약 -1 · [저장하기]로 시트에 반영하세요");
@@ -261,15 +263,13 @@ export default function ContactPage() {
   };
 
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
-    // 2026-05-18 Phase 1: cascade — confirm + 계약카드 자동 삭제.
     const hasContract = meeting.상태 === "계약";
     const extra = hasContract ? `\n· 수납탭 계약카드 1건 (₩${(meeting.수임비 ?? 0).toLocaleString()})` : "";
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`)) return;
     const dateAtClick = date;
     try {
-      // 2026-05-19: server-side cascade — H -1 도 서버 (race 회피).
+      // server-side cascade (H -1 포함). draft 도 -1 즉시 반영.
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
-      // local draft 도 -1 (즉시 반영, dayQuery refetch 까지 깜빡임 회피).
       adjustMetric(meeting.channel, "meetingReservation", -1);
       showToast(hasContract ? "✕ 미팅 + 계약카드 삭제 (미팅예약 -1)" : "✕ 삭제 · 미팅예약 -1");
     } catch (e) {
@@ -291,11 +291,8 @@ export default function ContactPage() {
   };
 
   const handleSave = async () => {
-    // (저장하면 미팅예약 N이 시트에 가는데 미팅 슬롯이 시트에 없으면 일관성 깨짐)
     if (newSlots.length > 0) {
-      showToast(
-        `⚠ 미등록 미팅 ${newSlots.length}건 — 먼저 [✓ 등록] 또는 [✕ 삭제]를 진행하세요`,
-      );
+      showToast(`⚠ 미등록 미팅 ${newSlots.length}건 — 먼저 [✓ 등록] 또는 [✕ 삭제]를 진행하세요`);
       return;
     }
     const dateAtClick = date;
@@ -346,9 +343,7 @@ export default function ContactPage() {
   if (!dayQuery.data) return null;
 
   const { courseStart } = dayQuery.data;
-  // weekIndex는 UI 기준(Fri-Thu)으로 재계산 — 백엔드는 courseStart-DOW 기준.
   const weekIndex = weekIndexOf(parseISO(date), parseISO(courseStart));
-
   // 모든 채널 슬롯을 채널 순서대로 합쳐서 렌더 (시안과 동일)
   const allSlots: Array<
     | { kind: "saved"; meeting: Meeting }
@@ -491,6 +486,13 @@ export default function ContactPage() {
         }}
         onClose={() => setDbMismatch(null)}
       />
+      {pickerMeetings && (
+        <MeetingPickerModal
+          meetings={pickerMeetings}
+          onPick={(m) => { setPickerMeetings(null); handleRemoveSavedMeeting(m); }}
+          onClose={() => setPickerMeetings(null)}
+        />
+      )}
     </>
   );
 }
