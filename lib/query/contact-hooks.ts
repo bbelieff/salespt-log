@@ -163,6 +163,9 @@ export function usePatchMeeting() {
     onSuccess: (_, { date, weekStart }) => {
       if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
       if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
+      // 2026-05-19 Phase 2: 계약→非계약 transition 시 02 row cascade →
+      // 수납탭 캐시도 무효화.
+      qc.invalidateQueries({ queryKey: ["payments"] });
     },
   });
 }

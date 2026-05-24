@@ -78,16 +78,14 @@ export default function MeetingResultCard({
   const pickAction = (a: Exclude<Action, null>) =>
     setAction((cur) => (cur === a ? null : a));
 
-  const handleContract = (fee: number, terms: string) => {
-    onPatch({
-      상태: "계약",
-      계약여부: true,
-      수임비: fee,
-      계약조건: terms,
-    });
+  const closeAfter = () => {
     setAction(null);
     setEditMode(false);
     setOpen(false);
+  };
+  const handleContract = (fee: number, terms: string) => {
+    onPatch({ 상태: "계약", 계약여부: true, 수임비: fee, 계약조건: terms });
+    closeAfter();
   };
   // 미팅사유 회차 누적 (빈 reason 은 그대로).
   const accumulateReason = (newReason: string): string => {
@@ -98,26 +96,19 @@ export default function MeetingResultCard({
     const round = prev.split("\n").length + 1;
     return `${prev}\n${round}회차: ${trimmed}`;
   };
-
+  // Phase 2: 계약 → 완료/취소 전환 시 계약카드 삭제 경고.
+  const confirmContractDrop = (): boolean =>
+    state !== "contract" ||
+    window.confirm(`상태 변경 시 수납탭 계약카드 1건 삭제 (₩${meeting.수임비.toLocaleString()}). 진행?`);
   const handleDone = (reason: string) => {
-    onPatch({
-      상태: "완료",
-      계약여부: false,
-      미팅사유: accumulateReason(reason),
-    });
-    setAction(null);
-    setEditMode(false);
-    setOpen(false);
+    if (!confirmContractDrop()) return;
+    onPatch({ 상태: "완료", 계약여부: false, 미팅사유: accumulateReason(reason) });
+    closeAfter();
   };
   const handleCancel = (reason: string) => {
-    onPatch({
-      상태: "취소",
-      계약여부: false,
-      미팅사유: accumulateReason(reason),
-    });
-    setAction(null);
-    setEditMode(false);
-    setOpen(false);
+    if (!confirmContractDrop()) return;
+    onPatch({ 상태: "취소", 계약여부: false, 미팅사유: accumulateReason(reason) });
+    closeAfter();
   };
   const handleReschedule = (d: string, t: string, r: string) => {
     onReschedule(d, t, r);
