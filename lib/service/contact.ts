@@ -298,13 +298,20 @@ export async function appendNewMeeting(
   await appendMeeting(spreadsheetId, validated);
 }
 
-/** 미팅 부분 업데이트 (상태 변경 / 수임비 / 사유 등). */
+/** 미팅 부분 업데이트. Phase 2: 계약→非계약 전환 시 02 계약카드 cascade clear. */
 export async function patchMeeting(
   email: string,
   id: string,
   partial: Partial<Omit<Meeting, "id">>,
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
+  // 상태 전이 감지: 계약 → 非계약 이면 계약카드 cascade.
+  if (partial.상태 && partial.상태 !== "계약") {
+    const cur = await findById(spreadsheetId, id);
+    if (cur?.상태 === "계약" && cur.미팅날짜 && cur.업체명) {
+      await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명);
+    }
+  }
   await updateMeeting(spreadsheetId, id, partial);
 }
 
@@ -358,21 +365,13 @@ export async function removeMeetingWithCascade(
   // 1) Descendants 재귀 삭제.
   const { count: descCount, paymentRows: descPaymentRows } =
     await cascadeDescendantMeetings(spreadsheetId, id);
-
   // 2) 본인이 계약이면 02 row cascade.
   let removedPaymentRow: number | null = null;
   if (m.상태 === "계약" && m.미팅날짜 && m.업체명) {
-    removedPaymentRow = await clearContractPaymentByLink(
-      spreadsheetId,
-      m.미팅날짜,
-      m.업체명,
-    );
+    removedPaymentRow = await clearContractPaymentByLink(spreadsheetId, m.미팅날짜, m.업체명);
   }
-
-  // 3) 본인 clear.
+  // 3) 본인 clear + 4) 영업관리 H -1 (좌표 실패 시 skip).
   await clearMeeting(spreadsheetId, id);
-
-  // 4) 영업관리 H -1 (좌표 계산 실패 시 skip).
   if (m.예약일 && m.channel) {
     try { await decrementMeetingReservation(spreadsheetId, m.예약일, m.channel); } catch { /* skip */ }
   }
