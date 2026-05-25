@@ -25,7 +25,10 @@ import {
   findByPreviousMeetingId,
   updateMeeting,
 } from "@/repo/meetings";
-import { clearRowByLink as clearContractPaymentByLink } from "@/repo/contract-payment";
+import {
+  clearRowByLink as clearContractPaymentByLink,
+  updateLinkFields as updateContractLink,
+} from "@/repo/contract-payment";
 import {
   Channel,
   ChannelDailyRow,
@@ -222,10 +225,7 @@ export async function loadWeekMeetings(
     dates.push(`${y}-${m}-${dd}`);
   }
 
-  // 1 sheet read 에서 두 기준 (예약일/미팅날짜) 동시 추출 + 영업관리 E~H 주 합계.
-  // **2026-05-16**: `findByDateRangeBoth` 로 컨택탭 badge(예약일) + 일정·계약 탭
-  // cards(미팅날짜) 의 두 view 를 한 read 로 — 사용자 보고 [3] (5/14 badge=1
-  // 인데 카드 없음) 의 view 불일치 사고 fix.
+  // 1 read 로 예약일/미팅날짜 두 view 동시 추출 (2026-05-16 view 불일치 fix).
   const [{ byMeetingDate, byReservationDate }, weekFunnel] = await Promise.all([
     findByDateRangeBoth(spreadsheetId, dates),
     readWeekFunnel(spreadsheetId, week),
@@ -266,9 +266,7 @@ export async function saveContactMetrics(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
 
-  // 4채널을 한 번의 batchUpdate로 저장 (readCourseStart 1회만 호출).
-  // 이전: 채널별 writeChannelDailyRow 루프 → readCourseStart 4회 = 4 Read
-  // 현재: batchWriteChannelDailyRows → readCourseStart 1회 = 1 Read
+  // 4채널 1회 batchUpdate (readCourseStart 1회).
   const rows: ChannelDailyRow[] = [];
   for (const channel of CHANNEL_ORDER) {
     const m = channels[channel];
@@ -298,18 +296,27 @@ export async function appendNewMeeting(
   await appendMeeting(spreadsheetId, validated);
 }
 
-/** 미팅 부분 업데이트. Phase 2: 계약→非계약 전환 시 02 계약카드 cascade clear. */
+/** 미팅 부분 업데이트. Phase2: 계약→非계약 시 02 clear. Phase3: 계약 유지+link 변경 시 02 sync. */
 export async function patchMeeting(
   email: string,
   id: string,
   partial: Partial<Omit<Meeting, "id">>,
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
-  // 상태 전이 감지: 계약 → 非계약 이면 계약카드 cascade.
-  if (partial.상태 && partial.상태 !== "계약") {
+  const droppingContract = partial.상태 !== undefined && partial.상태 !== "계약";
+  const linkChange = partial.미팅날짜 !== undefined || partial.업체명 !== undefined;
+  if (droppingContract || linkChange) {
     const cur = await findById(spreadsheetId, id);
     if (cur?.상태 === "계약" && cur.미팅날짜 && cur.업체명) {
-      await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명);
+      if (droppingContract) {
+        await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명);
+      } else {
+        await updateContractLink(
+          spreadsheetId,
+          { 계약일: cur.미팅날짜, 업체명: cur.업체명 },
+          { 계약일: partial.미팅날짜 ?? cur.미팅날짜, 업체명: partial.업체명 ?? cur.업체명 },
+        );
+      }
     }
   }
   await updateMeeting(spreadsheetId, id, partial);
@@ -391,14 +398,8 @@ export async function removeMeetingWithCascade(
 }
 
 /**
- * 미팅 결과 되돌리기 (2026-05-17 [2a]).
- *
- * 상태별 cascade:
- *  - 계약 → 예약: 수임비/계약조건/계약여부 초기화 + 02 계약수납관리 매칭 row clear
- *  - 완료/취소 → 예약: 미팅사유 초기화
- *  - 변경 → 예약: 변경으로 생긴 자식 미팅(previousMeetingId=original.id) 삭제 + 원본 예약 복원
- *
- * 반환: 어떤 cascade 가 일어났는지 요약 (UI 토스트용).
+ * 미팅 결과 되돌리기 (2026-05-17 [2a]). 계약→예약: 02 row clear.
+ * 완료/취소→예약: 사유 초기화. 변경→예약: 자손 미팅 cascade 삭제.
  */
 export async function revertMeeting(
   email: string,
