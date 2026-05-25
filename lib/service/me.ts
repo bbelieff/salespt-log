@@ -95,13 +95,11 @@ const cachedReadBundle = unstable_cache(
     };
   },
   ["me-bundle-v2"], // v2: stats 필드 포함 (이전 캐시 entries 와 schema 다름)
-  // 2026-05-16: TTL 600s → 1800s (30분) — quota 압박 완화.
-  // PR #198 stats 도입 후 페이지 진입 시 모든 trainee 시트 fetch 필요 →
-  // 콜드 캐시 60명 burst 가 Sheets API 60 reads/min/SA 한도 근접 위험.
-  // TTL 늘려 cold-start 빈도 1시간당 2회 → 1회로 감소. 동시성 제한(pMapBundle)
-  // 과 함께 quota 안전. trade-off: 시트 직접 수정 시 최대 30분 지연 (admin 액션
-  // 후엔 invalidateTag("me-bundle") 호출하면 즉시 갱신).
-  { revalidate: 1800, tags: ["me-bundle"] },
+  // 2026-05-19: TTL 1800s(30분) → 600s(10분). 수강생관리 카드 합계(E4:E6 미팅
+  // 누적)가 최대 30분 늦게 반영돼 "연동 안 됨" 처럼 보이던 사용자 보고. 10분으로
+  // 단축. 콜드스타트 quota burst 는 PR #244/#245 의 429 retry(backoff) + pMapBundle
+  // 동시성 제한으로 흡수. 즉시 반영 필요 시 invalidateTag("me-bundle").
+  { revalidate: 600, tags: ["me-bundle"] },
 );
 
 /**
