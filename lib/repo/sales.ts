@@ -241,16 +241,8 @@ export async function readProfile(
 }
 
 /**
- * loadMe + enrichUsersWithDates 공용 — B3:C3 (프로필) + O1 (수강시작일) +
- * O2 (종강총회일) + **E4:E6 (8주 funnel 누적: 미팅예약/미팅완료/계약)** 을
- * **단일 batchGet** 호출로 가져옴.
- *
- * 기존 readProfile/readCourseStart/readGraduation 을 Promise.all 로 호출하면
- * round-trip 발생 → 헤더 로드 지연 + Sheets quota 압박. batchGet 1회 + 4 ranges
- * 로 통합 (range 추가는 quota 영향 없음 — batchGet 1 call 단위).
- *
- * **2026-05-16** — stats(E4:E6) 추가 — admin/trainer 페이지 수강생 카드에서
- * "예정·완료·계약" 8주 누적 표시용. /schedule funnel 과 동일 SSOT.
+ * loadMe + enrichUsersWithDates 공용 — B3:C3 + O1 + O2 + 8주 funnel 데이터
+ * 블록을 단일 batchGet 으로. stats 는 데이터 컬럼 직접 합산 (sumFunnelDataRows).
  */
 export async function readProfileBundle(spreadsheetId: string): Promise<{
   cohort: string;
@@ -260,11 +252,16 @@ export async function readProfileBundle(spreadsheetId: string): Promise<{
   stats: { 미팅예정: number; 미팅완료: number; 계약: number };
 }> {
   const tab = tabRef(SHEET_RANGES.sales.tab);
+  const blockStart = SHEET_RANGES.sales.blockStart;
+  const blockStride = SHEET_RANGES.sales.blockStride;
+  const lastRow = blockStart + 7 * blockStride + 27; // 8주차 마지막 데이터 행
   const ranges = [
     `${tab}!B3:C3`,
     `${tab}!${SHEET_RANGES.sales.startDateCell}`,
     `${tab}!${SHEET_RANGES.sales.graduationDateCell}`,
-    `${tab}!E4:E6`, // 8주 누적 funnel: E4=미팅예약, E5=미팅완료, E6=계약
+    // 2026-05-19: E4:E6 (header 합산 셀) 은 시트마다 비어 전원 0 사고 → 데이터
+    // 컬럼 직접 합산으로 전환. E~N 224 데이터 row 만 합산 (trailer row 제외).
+    `${tab}!E${blockStart}:N${lastRow}`,
   ];
   const res = await sheetsClient().spreadsheets.values.batchGet({
     spreadsheetId,
@@ -276,21 +273,39 @@ export async function readProfileBundle(spreadsheetId: string): Promise<{
   const profileRow = (ranges_[0]?.values?.[0] ?? []) as unknown[];
   const startRaw = ranges_[1]?.values?.[0]?.[0];
   const gradRaw = ranges_[2]?.values?.[0]?.[0];
-  const statsRows = ranges_[3]?.values ?? [];
-  const statsNum = (v: unknown) =>
-    typeof v === "number" && Number.isFinite(v) ? v : 0;
+  const funnelRows = (ranges_[3]?.values ?? []) as unknown[][];
 
   return {
     cohort: String(profileRow[0] ?? "").trim(),
     name: String(profileRow[1] ?? "").trim(),
     courseStart: parseSerialOrString(startRaw, "O1(수강시작일)"),
     graduation: parseSerialOrString(gradRaw, "O2(종강총회)"),
-    stats: {
-      미팅예정: statsNum(statsRows[0]?.[0]),
-      미팅완료: statsNum(statsRows[1]?.[0]),
-      계약: statsNum(statsRows[2]?.[0]),
-    },
+    stats: sumFunnelDataRows(funnelRows, blockStride),
   };
+}
+
+/**
+ * 영업관리 E~N 데이터 블록 8주 누적 funnel 합산 (2026-05-19, E 기준 H=3/L=7/N=9).
+ * 미팅예정=ΣH(웹), 미팅완료=ΣL, 계약=ΣN. 각 주 28 데이터 row 만 (trailer 제외).
+ */
+function sumFunnelDataRows(
+  rows: unknown[][],
+  blockStride: number,
+): { 미팅예정: number; 미팅완료: number; 계약: number } {
+  const num = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) ? v : 0;
+  let 미팅예정 = 0;
+  let 미팅완료 = 0;
+  let 계약 = 0;
+  for (let week = 0; week < 8; week++) {
+    for (let offset = 0; offset < 28; offset++) {
+      const r = rows[week * blockStride + offset] ?? [];
+      미팅예정 += num(r[3]); // H
+      미팅완료 += num(r[7]); // L
+      계약 += num(r[9]); // N
+    }
+  }
+  return { 미팅예정, 미팅완료, 계약 };
 }
 
 function parseSerialOrString(raw: unknown, label: string): Date {
@@ -383,11 +398,8 @@ export async function batchWriteChannelDailyRows(
 }
 
 /**
- * 영업관리 H 컬럼 (미팅예약 카운트) 을 채널×날짜 기준 -1 (2026-05-19).
- *
- * 일정탭에서 미팅카드 삭제 시 영업관리 H -1 처리. 컨택탭의 client-side
- * adjustMetric 와 동일 effect 를 server-side 에서 idempotent 하게 보장.
- * 0 미만으로 가지 않음 (이미 0이면 no-op).
+ * 영업관리 H (미팅예약) 을 채널×날짜 -1 (일정탭 삭제 cascade, 2026-05-19).
+ * 0 미만 no-op.
  */
 export async function decrementMeetingReservation(
   spreadsheetId: string,
