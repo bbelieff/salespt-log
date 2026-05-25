@@ -1226,6 +1226,7 @@ components/dashboard/
 | **ChannelTabsAndPanel** | 4채널 전환 탭 + 패널 컨테이너. 탭 전환 시 그 채널의 4지표 폼 표시. 컨택탭 핵심 UI |
 | **MeetingSlotItem** | 컨택탭 미팅 슬롯 입력 카드 (신규). Props: `slot: NewSlot` / `onSave` / `onRemove`. [등록] 시 미팅 append |
 | **MeetingSlotCard** | 등록 완료 슬롯 표시 카드 (read-only). Props: `meeting: Meeting`. [삭제]는 미팅 + meetingReservation -1 |
+| **MeetingPickerModal** | 미팅예약 -1 시 삭제할 미팅 선택 모달 (Phase 4). Props: `meetings` / `onPick` / `onClose`. 선택 시 cascade 삭제 |
 
 ### 10-3. schedule 탭 (`app/(app)/schedule/_components/`)
 
