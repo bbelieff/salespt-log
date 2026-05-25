@@ -94,7 +94,7 @@ const cachedReadBundle = unstable_cache(
       stats: b.stats,
     };
   },
-  ["me-bundle-v2"], // v2: stats 필드 포함 (이전 캐시 entries 와 schema 다름)
+  ["me-bundle-v3"], // v3: stats 를 E4:E6 → E~N 데이터 컬럼 합산으로 변경 (전원 0 사고 fix)
   // 2026-05-19: TTL 1800s(30분) → 600s(10분). 수강생관리 카드 합계(E4:E6 미팅
   // 누적)가 최대 30분 늦게 반영돼 "연동 안 됨" 처럼 보이던 사용자 보고. 10분으로
   // 단축. 콜드스타트 quota burst 는 PR #244/#245 의 429 retry(backoff) + pMapBundle
