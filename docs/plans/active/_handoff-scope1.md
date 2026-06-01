@@ -82,8 +82,9 @@ gh pr create --fill --base master
 ```
 하나라도 빨가면 PR 금지. 디자인 변경했으면 `preview.html` 동기화 확인.
 
-## 5) ⚠️ 코드 밖 선결사항 (belie 직접, 코드로 해결 불가)
-- **SA(`GOOGLE_SERVICE_ACCOUNT_EMAIL`)를 각 수강생 Drive 부모 폴더에 최소 `viewer`로 공유**해야 폴더 탐색이 동작. 현재 코드는 Sheets만 SA로 접근. Drive 폴더 권한은 시트 밖이라 레포에서 확인 불가. → 공유 안 돼 있으면 (c)/(d)는 권한오류 → (g) [다시 연결]로 graceful 처리하되, 정상화는 공유 설정이 전제.
+## 5) ⚠️ 코드 밖 선결사항 (belie 직접, 코드로 해결 불가) — ✅ 완료
+- **SA(`masterbot@saleslog-494703.iam.gserviceaccount.com`) Drive 부모 폴더 공유 = 완료. 권한 = `editor`** (Scope 2/3 대비 미리 부여). → 폴더 탐색 동작 전제 충족.
+- 🚧 **Scope 1 가드 (editor 권한이라 더 중요)**: 권한은 editor 지만 **Scope 1 코드는 Drive 읽기(`files.list`)만 호출**한다. **`files.create`/`update`/`delete` 등 Drive 쓰기 API 절대 호출 금지** — ADR-0007 "연결 only(생성 안 함)" 원칙. 폴더 생성은 Scope 2~3 에서만. (editor 권한이 있다고 Scope 1 에서 폴더를 만들면 ADR 위반 + 취소계약 빈 폴더 사고.)
 
 ## 6) 범위 밖 (이번 스콥에서 건드리지 말 것)
 - `02 계약수납관리`·`04 업체관리` 구조/수식 (불변; 슬롯 값 쓰기는 기존 **`F~AH`**만 — 옛 표기 `F~AA` 아님, 정본 `lib/repo/contract-payment.ts`).
