@@ -25,7 +25,10 @@ function fmtWhen(예정일자: string, 예정시각: string): string {
 
 interface Props {
   contractRef: string;
+  /** 저장본 진행기관 — ToDo 키. 비어있으면 추가 비활성. */
   institutionRef: string;
+  /** draft(편집 중) 진행기관 — 입력했지만 미저장인 경우 안내 분기용. */
+  draftInstitution?: string;
   companyName: string;
   todos: Todo[];
 }
@@ -33,6 +36,7 @@ interface Props {
 export default function TodoSection({
   contractRef,
   institutionRef,
+  draftInstitution,
   companyName,
   todos,
 }: Props) {
@@ -40,6 +44,14 @@ export default function TodoSection({
   const patch = usePatchTodo();
   const remove = useRemoveTodo();
   const canAdd = institutionRef.trim() !== "";
+  // 진행기관을 입력만 하고 [저장] 안 함 → 저장 유도 (미저장 진행기관에 투두를
+  // 달면 새로고침 후 슬롯에서 사라지므로 저장된 진행기관에만 추가 허용).
+  const draftOnly = !canAdd && (draftInstitution ?? "").trim() !== "";
+  const addLabel = canAdd
+    ? "ToDo 추가"
+    : draftOnly
+      ? "진행기관 저장 후 추가"
+      : "진행기관 입력 후 추가";
 
   return (
     <div
@@ -58,19 +70,21 @@ export default function TodoSection({
               key={t.id}
               className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5"
             >
-              <input
-                type="checkbox"
-                checked={t.완료여부}
-                onChange={(e) =>
-                  patch.mutate({
-                    contractRef,
-                    id: t.id,
-                    partial: { 완료여부: e.target.checked },
-                  })
-                }
-                className="h-3.5 w-3.5 shrink-0 rounded accent-gray-700"
-                aria-label="완료 토글"
-              />
+              <label className="-m-1 flex shrink-0 cursor-pointer items-center p-1">
+                <input
+                  type="checkbox"
+                  checked={t.완료여부}
+                  onChange={(e) =>
+                    patch.mutate({
+                      contractRef,
+                      id: t.id,
+                      partial: { 완료여부: e.target.checked },
+                    })
+                  }
+                  className="h-4 w-4 rounded accent-gray-700"
+                  aria-label="완료 토글"
+                />
+              </label>
               <span
                 className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${TYPE_BADGE[t.type]}`}
               >
@@ -106,7 +120,7 @@ export default function TodoSection({
         className="mt-1.5 flex min-h-[36px] w-full items-center justify-center gap-1 rounded-lg border-[1.5px] border-dashed border-amber-300 bg-transparent text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
       >
         <span className="text-sm leading-none">+</span>
-        <span>{canAdd ? "ToDo 추가" : "진행기관 입력 후 추가"}</span>
+        <span>{addLabel}</span>
       </button>
 
       {showModal && (

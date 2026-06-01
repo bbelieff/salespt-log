@@ -332,6 +332,7 @@ export default function ContractRow({
                 slot={draft.수납1}
                 contractRef={contractRef}
                 companyName={cp.업체명}
+                savedInstitution={cp.수납1.진행기관}
                 todos={allTodos}
                 onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
               />
@@ -342,6 +343,7 @@ export default function ContractRow({
                   removable={visiblePayments === 2}
                   contractRef={contractRef}
                   companyName={cp.업체명}
+                  savedInstitution={cp.수납2.진행기관}
                   todos={allTodos}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납2: next }))
@@ -356,6 +358,7 @@ export default function ContractRow({
                   removable
                   contractRef={contractRef}
                   companyName={cp.업체명}
+                  savedInstitution={cp.수납3.진행기관}
                   todos={allTodos}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납3: next }))

@@ -78,12 +78,13 @@ related: practice-and-drive
 
 ### 6.1 데이터 키 (Plan §10 미해결 → 확정)
 - **`contractRef` = `${계약일}|${업체명}`** — 02 계약의 안정 식별자. 시트 행번호(row) **아님**(행 이동/정렬에 강건, 02는 append 위주라 (계약일,업체명) 쌍이 사실상 고유). payment UI에서 `cp.계약일 + "|" + cp.업체명` 으로 합성.
-- **`institutionRef` = 슬롯 `진행기관` 텍스트** (ToDo 생성 시점 스냅샷). 진행기관이 빈 슬롯에는 ToDo 추가 비활성(진행기관 입력 후 활성).
-- 슬롯 ToDo 조회 = `todos.filter(t => t.contractRef === cr && t.institutionRef === slot.진행기관)`.
+- **`institutionRef` = 슬롯의 **저장본(cp)** `진행기관` 텍스트** (생성 시점 스냅샷). ⚠️ **draft(미저장) 진행기관에는 투두를 달지 않는다** — 미저장 진행기관에 묶으면 새로고침 후 슬롯 진행기관이 빈값이라 매칭 실패(투두가 캘린더엔 보이고 슬롯에선 사라짐, 2026-06 QA). 진행기관 입력 + **[저장]** 후에만 ToDo 추가 활성.
+- 슬롯 ToDo 조회/생성 = **저장본** 진행기관 기준: `todos.filter(t => t.contractRef === cr && t.institutionRef === cp.수납N.진행기관)`.
 - 엣지(동일 계약 내 두 슬롯이 같은 진행기관) → 두 슬롯이 ToDo 공유. 의미상 동일 기관이라 수용(드묾). 슬롯 인덱스 분리는 YAGNI.
 
 ### 6.2 `05 실무투두` 시트 (앱 자동 생성)
-- 신규 탭 `05 실무투두`. **앱 자동 생성** — `ensureTodoTab(sid)`: `spreadsheets.get`으로 탭 존재 확인 → 없으면 `batchUpdate{addSheet}` + 헤더행 `A1:M1` write. 모든 append/read 진입 전에 1회(존재 시 no-op, in-process 캐시로 중복 호출 방지).
+- 신규 탭 `05 실무투두`. **앱 자동 생성** — `ensureTodoTab(sid)`: `spreadsheets.get`으로 탭 존재 확인 → 없으면 `batchUpdate{addSheet}` + 헤더행 `A1:M1` write. 모든 append/read 진입 전에 호출.
+- ⚠️ **동시 호출 직렬화 필수** — month·listTodos·create 가 거의 동시에 부르면 "확인→addSheet" TOCTOU race 로 `05 실무투두_conflictNNN` 중복 탭이 생김(2026-06 QA). **spreadsheetId별 in-flight promise 캐시**로 첫 호출만 생성하도록 직렬화 + addSheet 실패는 무시. (단순 boolean 캐시는 race 못 막음.)
 - 컬럼 A~M (13, 부록 F):
 
 | A | B | C | D | E | F | G | H | I | J | K | L | M |
