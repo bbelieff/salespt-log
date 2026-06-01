@@ -34,6 +34,10 @@ export interface MeProfile {
   graduationISO: string;
   /** 사용자 개인 시트 ID — TopHeader 의 이름 → 구글 시트 링크용. 미등록(admin) 시 "". */
   spreadsheetId: string;
+  /** 01 피드백업체 폴더 ID (registry O). 빈값 = 미연결. */
+  feedbackFolderId?: string;
+  /** Drive 연결 상태: "ok" / "" / "error" (registry P). */
+  driveLinkStatus?: string;
 }
 
 function toISO(d: Date): string {
@@ -313,5 +317,7 @@ export async function loadMe(email: string): Promise<MeProfile> {
     courseStartISO: toISO(bundle.courseStart),
     graduationISO: toISO(bundle.graduation),
     spreadsheetId: user.spreadsheetId,
+    feedbackFolderId: user.feedbackFolderId,
+    driveLinkStatus: user.driveLinkStatus,
   };
 }

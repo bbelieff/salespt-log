@@ -450,8 +450,19 @@ H / O / W: spacer (비움). A: 비움.
 | C | name | `김믿음` |
 | D | spreadsheetId | 개인 시트 ID |
 | E | role | `trainee` / `trainer` / `admin` (default `trainee`) |
+| F | status | `active` / `pending` |
+| G | assignedTrainer | 담당 트레이너 email (콤마 구분 다중) |
+| H | team | 기수 내 팀 (빈값 = 미배정) |
+| I | cohort_label | 시트 B3 캐시 ("PRM 7기") |
+| J | name_label | 시트 C3 캐시 ("김상목") |
+| K | course_start_iso | 시트 O1 ISO date |
+| L | graduation_iso | 시트 O2 ISO date |
+| M | sort_order | admin 수동 정렬 (0=미정렬) |
+| N | drive_parent_path | Drive 부모 폴더 경로/URL (온보딩 입력, ADR-0007) |
+| O | feedback_folder_id | 01 피드백업체 폴더 ID (자동 탐색) |
+| P | drive_link_status | ok / (빈값=미연결) / error |
 
-`lib/repo/users.ts` 가 이 탭만 read.
+`lib/repo/users.ts` 가 이 탭만 read. 범위: `A2:P`.
 
 ---
 

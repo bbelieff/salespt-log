@@ -40,7 +40,7 @@ const TABS: Tab[] = [
   },
   {
     href: "/payment" as Route,
-    label: "수납",
+    label: "실무/수납",
     match: (p) => p.startsWith("/payment"),
     Icon: PaymentIcon,
   },

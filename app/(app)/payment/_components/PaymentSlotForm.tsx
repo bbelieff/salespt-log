@@ -16,7 +16,7 @@ import type { PaymentSlot, Progress } from "@/types";
 
 const SLOT_STYLES = {
   1: {
-    name: "수납 1",
+    name: "진행 1",
     family: "teal" as const,
     chip: "bg-teal-100 text-teal-700",
     chipFull: "bg-teal-600 text-white",
@@ -25,7 +25,7 @@ const SLOT_STYLES = {
     segHigh: "bg-teal-700",
   },
   2: {
-    name: "수납 2",
+    name: "진행 2",
     family: "cyan" as const,
     chip: "bg-cyan-100 text-cyan-700",
     chipFull: "bg-cyan-600 text-white",
@@ -34,7 +34,7 @@ const SLOT_STYLES = {
     segHigh: "bg-cyan-700",
   },
   3: {
-    name: "수납 3",
+    name: "진행 3",
     family: "fuchsia" as const,
     chip: "bg-fuchsia-100 text-fuchsia-700",
     chipFull: "bg-fuchsia-600 text-white",
@@ -193,7 +193,7 @@ export default function PaymentSlotForm({
             onChange={(v) => set("진행률", v as Progress)}
           />
           <FieldText
-            label="진행내용"
+            label="현황"
             value={slot.현황}
             placeholder="예: 실사 진행 중"
             onChange={(v) => set("현황", v)}

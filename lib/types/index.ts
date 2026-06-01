@@ -172,6 +172,12 @@ export const User = z.object({
    *  PR C-1 (2026-05-13). 같은 (cohort, team) 박스 단위로 의미 부여 — 다른 박스 간에는
    *  비교 안 함. */
   sortOrder: z.number().int().nonnegative().default(0),
+  /** Drive 부모 폴더 경로/URL (온보딩 입력, registry N). */
+  driveParentPath: z.string().default(""),
+  /** 01 피드백업체 폴더 ID (자동 탐색 결과, registry O). */
+  feedbackFolderId: z.string().default(""),
+  /** Drive 연결 상태: "ok" / "" (미연결) / "error" (registry P). */
+  driveLinkStatus: z.string().default(""),
 });
 export type User = z.infer<typeof User>;
 

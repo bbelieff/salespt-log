@@ -257,7 +257,7 @@ export default function ContractRow({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-gray-800">
-                📋 실무 진행
+                📋 계약 후 프로세스
               </span>
               <span className="text-xs text-gray-500">
                 <span
@@ -305,7 +305,7 @@ export default function ContractRow({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-gray-800">
-                💰 수납 현황
+                📈 실무 진행
               </span>
               <span
                 className="text-xs text-gray-500"
@@ -355,7 +355,7 @@ export default function ContractRow({
                   className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
                 >
                   <span className="text-base leading-none">+</span>
-                  <span>수납 추가 ({visiblePayments + 1}회차)</span>
+                  <span>진행 추가 ({visiblePayments + 1}회차)</span>
                 </button>
               )}
             </div>

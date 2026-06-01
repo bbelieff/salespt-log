@@ -1272,9 +1272,10 @@ components/dashboard/
 | **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장 |
 | **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
+| **DriveLinkBar** | Drive 바로가기 + 플러그 바로가기 버튼. 미연결 시 재연결 폼. ADR-0007. |
 
 > **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):
-> 수납1 = teal / 수납2 = cyan / 수납3 = fuchsia. 카드 좌측 보더로 활성 슬롯 시각 구분.
+> 진행1 = teal / 진행2 = cyan / 진행3 = fuchsia. 카드 좌측 보더로 활성 슬롯 시각 구분.
 
 ### 10-7. 인증·인트로 + 인프라 (`components/auth/` + `components/`)
 

@@ -212,7 +212,7 @@ export default function DbPage() {
 
   return (
     <>
-      <TopHeader pageEmoji="📊" pageTitle="DB관리" pageSubtitle="03 DB관리" />
+      <TopHeader pageEmoji="📊" pageTitle="DB관리" />
 
       <main className="px-4 pb-[80px] pt-3">
         <OverallCard

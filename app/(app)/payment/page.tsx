@@ -21,6 +21,7 @@ import {
 } from "@/query/contract-payment-hooks";
 import ContractRow from "./_components/ContractRow";
 import TopHeader from "@/components/TopHeader";
+import DriveLinkBar from "./_components/DriveLinkBar";
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -124,8 +125,7 @@ export default function PaymentPage() {
     <>
       <TopHeader
         pageEmoji="💰"
-        pageTitle="계약수납"
-        pageSubtitle="02 계약수납관리"
+        pageTitle="실무/수납"
       />
 
       <main className="px-4 pb-[80px] pt-3">
@@ -185,6 +185,9 @@ export default function PaymentPage() {
             </span>
           </div>
         </div>
+
+        {/* Drive + 플러그 바로가기 */}
+        <DriveLinkBar />
 
         {/* 안내 */}
         <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
