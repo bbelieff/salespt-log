@@ -34,11 +34,11 @@ export {
   type ScheduleWeekView,
 } from "./contact";
 
-// 캘린더 탭 유스케이스 (PR 03 / Phase 4)
+// 캘린더 탭 유스케이스 (Scope 2 — 04 미팅 + 05 투두 머지, contact 에서 분리)
 export {
   loadMonthMeetings,
   type CalendarMonthView,
-} from "./contact";
+} from "./calendar";
 
 // 수납탭은 PR #38·39·40에서 계약수납탭(02 계약수납관리)으로 모델 재정의됨.
 // 일별 합계 모델(loadDailyRevenue / saveDailyRevenue)은 폐기.
@@ -70,6 +70,15 @@ export {
   removeContractPayment,
   removeContractPaymentWithCascade,
 } from "./contract-payment";
+
+// 실무투두 유스케이스 (Scope 2 — 05 실무투두)
+export {
+  listTodos,
+  createTodo,
+  patchTodo,
+  removeTodo,
+  type CreateTodoInput,
+} from "./todos";
 
 // 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)
 export {
