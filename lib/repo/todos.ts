@@ -155,28 +155,47 @@ function rowToTodo(r: unknown[]): Todo | null {
 
 // ── 탭 자동 생성 ───────────────────────────────────────────────
 
-// spreadsheetId 별 in-process 캐시 — 같은 프로세스에서 탭 존재 재확인 회피.
-const tabEnsured = new Set<string>();
+// spreadsheetId 별 in-flight/완료 promise — 같은 프로세스의 동시 호출을 직렬화.
+// 캘린더 month + 슬롯 listTodos + create 가 거의 동시에 ensureTodoTab 을 부르면
+// "탭 존재 확인 → addSheet" TOCTOU race 로 셋 다 생성하여 "05 실무투두_conflictNNN"
+// 중복 탭이 생기던 버그 (2026-06 QA). promise 캐시로 첫 호출만 실제 생성하도록 직렬화.
+const ensuring = new Map<string, Promise<void>>();
 
 /**
- * `05 실무투두` 탭이 없으면 생성(addSheet) + 헤더행 write.
- * 모든 read/write 진입 전 1회 호출 (존재 시 no-op). cohorts.ts 패턴.
+ * `05 실무투두` 탭 보장 (없으면 addSheet + 헤더행). 모든 read/write 진입 전 호출.
+ * 동시 호출은 같은 promise 를 공유 → addSheet 는 1회만 (중복 탭 방지).
  */
-export async function ensureTodoTab(spreadsheetId: string): Promise<void> {
-  if (tabEnsured.has(spreadsheetId)) return;
+export function ensureTodoTab(spreadsheetId: string): Promise<void> {
+  let p = ensuring.get(spreadsheetId);
+  if (!p) {
+    p = doEnsureTodoTab(spreadsheetId).catch((e) => {
+      ensuring.delete(spreadsheetId); // 실패 시 캐시 제거 → 다음 호출 재시도
+      throw e;
+    });
+    ensuring.set(spreadsheetId, p);
+  }
+  return p;
+}
 
+async function doEnsureTodoTab(spreadsheetId: string): Promise<void> {
   const meta = await sheetsClient().spreadsheets.get({
     spreadsheetId,
     fields: "sheets(properties(title))",
   });
   const exists = meta.data.sheets?.some((s) => s.properties?.title === TAB);
   if (!exists) {
-    await sheetsClient().spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: [{ addSheet: { properties: { title: TAB } } }],
-      },
-    });
+    // 다른 경로로 이미 동시 생성된 경우 Sheets 가 _conflict 탭을 만들 수 있으므로
+    // addSheet 실패는 무시(이미 존재로 간주).
+    try {
+      await sheetsClient().spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [{ addSheet: { properties: { title: TAB } } }],
+        },
+      });
+    } catch {
+      /* 이미 존재 — 무시 */
+    }
   }
 
   // 헤더 확인 → 없으면 write (RAW: 헤더 텍스트 자동 변환 방지).
@@ -192,8 +211,6 @@ export async function ensureTodoTab(spreadsheetId: string): Promise<void> {
       requestBody: { values: [HEADER] },
     });
   }
-
-  tabEnsured.add(spreadsheetId);
 }
 
 // ── 행 위치 헬퍼 ───────────────────────────────────────────────

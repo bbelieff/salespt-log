@@ -76,6 +76,9 @@ interface Props {
   companyName?: string;
   /** 이 계약 전체 ToDo — 슬롯이 institutionRef(=진행기관)로 필터. */
   todos?: Todo[];
+  /** 저장본(cp) 진행기관 — ToDo 키. draft(미저장)가 아닌 저장값과만 묶어 정합성 유지
+   *  (미저장 진행기관에 투두를 달면 새로고침 후 매칭 실패 → 슬롯에서 사라지던 버그). */
+  savedInstitution?: string;
 }
 
 function fmtComma(n: number): string {
@@ -92,6 +95,7 @@ export default function PaymentSlotForm({
   contractRef,
   companyName,
   todos,
+  savedInstitution,
 }: Props) {
   const style = SLOT_STYLES[index];
   const pct = progressToPct(slot.진행률);
@@ -194,14 +198,16 @@ export default function PaymentSlotForm({
           placeholder="이 수납기관 관련 메모"
           onChange={(v) => set("메모", v)}
         />
-        {/* ToDo 섹션 (Scope 2) — 메모와 진행률 사이, 이 기관(슬롯) 단위 */}
+        {/* ToDo 섹션 (Scope 2) — 메모와 진행률 사이, 이 기관(슬롯) 단위.
+            키는 저장본(cp) 진행기관 — draft(미저장)가 아니라 저장값과만 묶음. */}
         {contractRef && (
           <TodoSection
             contractRef={contractRef}
-            institutionRef={slot.진행기관}
+            institutionRef={savedInstitution ?? ""}
+            draftInstitution={slot.진행기관}
             companyName={companyName ?? ""}
             todos={(todos ?? []).filter(
-              (t) => t.institutionRef === slot.진행기관,
+              (t) => t.institutionRef === (savedInstitution ?? ""),
             )}
           />
         )}

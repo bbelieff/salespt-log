@@ -84,7 +84,7 @@ export interface PatchTodoArgs {
   partial: Partial<Omit<Todo, "id">>;
 }
 
-/** ToDo 부분 수정 (완료 토글 등). */
+/** ToDo 부분 수정 (완료 토글 등). 낙관적 업데이트로 체크 즉시 반영(서버 왕복 대기 X). */
 export function usePatchTodo() {
   const qc = useQueryClient();
   return useMutation({
@@ -93,7 +93,20 @@ export function usePatchTodo() {
         method: "PATCH",
         body: JSON.stringify(partial),
       }),
-    onSuccess: (_, { contractRef }) => {
+    onMutate: async ({ contractRef, id, partial }) => {
+      await qc.cancelQueries({ queryKey: todosKey(contractRef) });
+      const prev = qc.getQueryData<ListResponse>(todosKey(contractRef));
+      if (prev) {
+        qc.setQueryData<ListResponse>(todosKey(contractRef), {
+          todos: prev.todos.map((t) => (t.id === id ? { ...t, ...partial } : t)),
+        });
+      }
+      return { prev, contractRef };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(todosKey(ctx.contractRef), ctx.prev);
+    },
+    onSettled: (_d, _e, { contractRef }) => {
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
     },
