@@ -19,6 +19,7 @@
 2. **온보딩**(경영일지 URL 입력 단계)에 Drive 부모 폴더 경로를 함께 등록 → `01 피드백업체` 폴더를 **자동 탐색**(prefix 매칭) → `feedback_folder_id` 저장.
 3. **[Drive 바로가기]** 버튼 → `01 피드백업체` 폴더를 새 탭으로 열기.
 4. **권한**: 서비스 계정(SA)이 부모 폴더에 최소 **viewer**. 온보딩 시 admin이 SA 이메일을 부모 폴더에 공유. 폴더 생성·권한 자동 부여는 범위 밖.
+   - **운영 현황(2026-06)**: SA 는 실제로 **editor** 로 공유됨(Scope 2/3 폴더 생성 대비 선부여). **그러나 Scope 1 코드는 Drive 읽기(`files.list`)만 호출** — `create`/`update`/`delete` 등 쓰기 API 금지(연결 only 원칙). editor 권한이 있어도 Scope 1 에서 폴더를 만들면 본 ADR 위반.
 5. 탐색 실패 시 상태 배지 + **[다시 연결]**(경로 재입력).
 
 ## Alternatives considered
