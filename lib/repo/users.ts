@@ -29,8 +29,8 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNamePrefix } from "./drive-client";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:M1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:P1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:P`;
 
 function parseRow(r: unknown[]): User | null {
   // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
@@ -71,6 +71,9 @@ function parseRow(r: unknown[]): User | null {
       const n = parseInt(s, 10);
       return Number.isFinite(n) && n >= 0 ? n : 0;
     })(),
+    driveParentPath: String(r[13] ?? "").trim(),
+    feedbackFolderId: String(r[14] ?? "").trim(),
+    driveLinkStatus: String(r[15] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -192,7 +195,7 @@ export async function listPendingTrainees(): Promise<User[]> {
  */
 async function updateCell(
   email: string,
-  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H",
+  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "N" | "O" | "P",
   value: string,
 ): Promise<void> {
   const reg = registry();
@@ -314,7 +317,7 @@ export async function setTrainerDepartment(
   await appendRows(
     reg.spreadsheetId,
     DATA_RANGE(reg.tab),
-    [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", ""]],
+    [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", "", "", "", ""]],
     { valueInputOption: "RAW" },
   );
   invalidateRegistry();
@@ -352,6 +355,19 @@ export async function setTraineeReservation(
   await updateCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
 }
 
+/**
+ * Drive 연결 정보 일괄 업데이트 (N/O/P 컬럼).
+ * ADR-0007: Scope 1은 Drive 읽기만 — 쓰기 API 절대 호출 금지.
+ */
+export async function updateDriveLink(
+  email: string,
+  data: { driveParentPath?: string; feedbackFolderId?: string; driveLinkStatus?: string },
+): Promise<void> {
+  if (data.driveParentPath !== undefined) await updateCell(email, "N", data.driveParentPath);
+  if (data.feedbackFolderId !== undefined) await updateCell(email, "O", data.feedbackFolderId);
+  if (data.driveLinkStatus !== undefined) await updateCell(email, "P", data.driveLinkStatus);
+}
+
 // 물리 삭제 + 매핑 cleanup 은 lib/repo/users-delete.ts 로 분리 (500줄 cap).
 // 외부 호출부 호환성 위해 그대로 re-export.
 export {
@@ -381,6 +397,9 @@ export async function registerUser(u: User): Promise<void> {
       validated.courseStartISO,
       validated.graduationISO,
       String(validated.sortOrder),
+      validated.driveParentPath,
+      validated.feedbackFolderId,
+      validated.driveLinkStatus,
     ]],
     { valueInputOption: "RAW" },
   );
@@ -456,7 +475,7 @@ export async function ensureRegistryHeader(): Promise<void> {
   await appendRows(
     reg.spreadsheetId,
     HEADER_RANGE(reg.tab),
-    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order"]],
+    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status"]],
     { valueInputOption: "RAW" },
   );
 }

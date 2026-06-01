@@ -436,7 +436,6 @@ export default function SchedulePage() {
       <TopHeader
         pageEmoji="📋"
         pageTitle="일정·계약"
-        pageSubtitle="04 업체관리"
       />
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
