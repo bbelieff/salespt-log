@@ -138,12 +138,13 @@ related: 11-contract-payment-tab, 12-dashboard
 
 ## 8. Scope 분할 (3개)
 
-### ✅ Scope 1 — Drive 바로가기 + UI 정리 (이번 스콥)
+### ✅ Scope 1 — Drive 바로가기 + UI 정리 (**완료 — PR #255, `ae7dd50`**)
 - 온보딩 Drive 경로 입력 → registry → `01 피드백업체` 탐색·저장(폴더용 신규 drive 함수).
 - 요약카드: 누적 중앙 + [Drive 바로가기] + [플러그 바로가기](임시), 둘 다 새 탭.
 - **명칭 변경 일람(§4b) 적용** + 탭바 라벨(부록 A) + **탭 배너 시트참조 제거(부록 D)**.
 - [다시 연결]/권한 안내.
 - **DoD**: 등록 수강생 1클릭으로 `01 피드백업체` 이동, 명칭/배너 정리 반영, `npm run check` 통과.
+- **구현 요약 (2026-06-01 머지)**: registry N/O/P(driveParentPath/feedbackFolderId/driveLinkStatus) + `findFolderByNamePrefix`(folder mimeType, parent scope) + `POST /api/drive-link` + `DriveLinkBar` 컴포넌트 + 탭/배너/슬롯 명칭 변경 + 5탭 pageSubtitle 제거. 핸드오프 → `docs/plans/completed/_handoff-scope1.md`.
 
 ### Scope 2 — 05 실무투두 + 캘린더
 - **`05 실무투두` 탭 신설** + ToDo 행(키 자동). 슬롯 내 ToDo 섹션 + Pluuug 팝업 + 신규 `lib/repo/todos.ts`.
