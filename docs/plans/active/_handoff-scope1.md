@@ -1,8 +1,14 @@
 # 🤝 핸드오프 — Scope 1 (Drive 바로가기 + UI 정리) 착수 프롬프트
 
+> ⚠️ **업데이트 (PR #251 머지 후, 2026-06)**
+> - **기획 문서 7개 + 이 handoff 는 이미 master 에 배치 완료** (PR #251). → **§2 (문서 배치) 전부 SKIP.** 레포 `docs/` 에서 직접 읽으면 됨.
+> - **기준 커밋 = 최신 `origin/master`** (PR #251 머지본, `2314ac6` 아님). worktree 는 `origin/master` 에서 딴다.
+> - 정정 반영됨: 02 웹 쓰기 = **F~AH** (옛 F~AA 아님) · 5탭에 대시보드 없음(캘린더가 5번째, 대시보드는 헤더 버튼) · `findSheetByNamePrefix` 는 spreadsheet 전용 → **폴더용 신규 함수 필요**.
+> - 시작: 아래 §0 self-check → §1 worktree(`origin/master` 기준) → **§3 구현부터**.
+
 > **이 파일을 새 Claude Code 세션 첫 메시지로 붙여넣으세요.**
 > 대상 레포: `dev-harness`(=github.com/bbelieff/salespt-log) · OS: Windows / Git Bash(MINGW64)
-> 기준 커밋: **`master@2314ac6`** (cascade Phase1~5 + 합계 fix까지 머지된 안정점, PR #246~#250 반영). 새 스콥은 이 커밋 위에 worktree로 쌓는다.
+> 기준 커밋: **최신 `origin/master`** (PR #251 머지본). 새 스콥은 이 위에 worktree로 쌓는다. *(원래 `2314ac6` 였으나 #251 머지로 갱신됨.)*
 
 ---
 
@@ -24,7 +30,7 @@ gh auth status && \
 > CLAUDE.md §3-4: 로컬 main 직접수정 금지, `wt/<slug>/` 워크트리 필수. (레포에 워크트리 헬퍼 스크립트가 있으면 그것 우선.)
 ```bash
 git fetch origin
-git worktree add -b feat/practice-drive-shortcut wt/practice-drive-shortcut 2314ac6
+git worktree add -b feat/practice-drive-shortcut wt/practice-drive-shortcut origin/master
 cd wt/practice-drive-shortcut
 ```
 
