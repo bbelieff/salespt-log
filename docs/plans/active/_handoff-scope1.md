@@ -21,9 +21,16 @@ gh auth status && \
 ```
 기대: 최신 커밋에 `2314ac6`가 보이고, gh 로그인(account: bbelieff)·`.env.local OK`. 하나라도 어긋나면 멈추고 사용자에게 보고.
 
+## 0.4) 보조 스킬 (user 레벨 설치됨 — 선택적 활용)
+> belie 가 user 레벨(`~/.claude`)에 설치한 보조 플러그인. **CLAUDE.md 규약이 항상 우선** — 아래 스킬과 충돌 시 CLAUDE.md 따른다.
+> - **④ Understand-Anything** (`/understand*`): 60+ 파일 레포 빠른 파악용. 새 스콥 진입 시 `/understand` 로 코드 그래프·아키텍처 투어, `/understand-diff` 로 변경 영향 분석. 한국어 출력 지원. **읽기 전용 — 코드 변경 안 함.**
+> - **③ superpowers**: TDD·4단계 체계적 디버깅·2단계 코드리뷰·worktree 격리 스킬 모음. **단, worktree/PR 게이트는 이 레포 CLAUDE.md §3-4 + `npm run check` 가 정본** — superpowers 와 겹치면 우리 것 우선. **"체계적 디버깅"·"verification-before-completion" 만 골라 활용** 권장.
+> - 안 써도 무방(스콥 완수에 필수 아님). 막혔을 때 보조 도구로만.
+> - ⚠️ agentmemory(별도 추천받은 ⑤)는 **설치 안 함** — 12 hooks 가 우리 pre-commit/check.sh 와 충돌 위험. 쓰지 말 것.
+
 ## 0.5) 먼저 읽을 것 (정본)
 - `CLAUDE.md` (개발 하네스 규약 — 자동 로드되지만 §3-4 worktree, PR 게이트, SSOT 4문서, 문서요약카드 규칙을 숙지).
-- 기획 정본(아직 레포에 없으면 1단계에서 배치): `practice-and-drive.md`(Plan v6), `adr-001/002/003`, `design-practice-and-drive.md`.
+- 기획 정본(이미 레포에 배치됨, §2 SKIP): `docs/plans/active/practice-and-drive.md`(Plan v6.1), `docs/decisions/0006~0008-*.md`, `docs/plans/active/design-practice-and-drive.md`.
 - 시각 정본(목업): `practice-payment-mockup.html`, `calendar-todo-mockup.html`.
 
 ## 1) 워크트리 + 브랜치
