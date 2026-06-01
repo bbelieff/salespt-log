@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import type { ContractPayment } from "@/types";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
+import { useTodosByContract } from "@/query/todos-hooks";
 
 interface Props {
   cp: ContractPayment;
@@ -73,6 +74,11 @@ export default function ContractRow({
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
   );
+
+  // Scope 2 — 이 계약의 ToDo (계약일|업체명 안정키). 신규 계약(키 미완성)은 비활성.
+  const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
+  const todosQuery = useTodosByContract(contractRef);
+  const allTodos = todosQuery.data?.todos ?? [];
 
   const totalApproved =
     draft.수납1.승인금액 + draft.수납2.승인금액 + draft.수납3.승인금액;
@@ -324,6 +330,9 @@ export default function ContractRow({
               <PaymentSlotForm
                 index={1}
                 slot={draft.수납1}
+                contractRef={contractRef}
+                companyName={cp.업체명}
+                todos={allTodos}
                 onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
               />
               {visiblePayments >= 2 && (
@@ -331,6 +340,9 @@ export default function ContractRow({
                   index={2}
                   slot={draft.수납2}
                   removable={visiblePayments === 2}
+                  contractRef={contractRef}
+                  companyName={cp.업체명}
+                  todos={allTodos}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납2: next }))
                   }
@@ -342,6 +354,9 @@ export default function ContractRow({
                   index={3}
                   slot={draft.수납3}
                   removable
+                  contractRef={contractRef}
+                  companyName={cp.업체명}
+                  todos={allTodos}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납3: next }))
                   }

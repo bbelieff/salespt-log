@@ -1247,7 +1247,8 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 dot). Props: `yyyyMM` / `meetingsByDate` / `selectedDate` / `onSelectDate`. 클릭 시 schedule로 점프 |
+| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2) |
+| **TodoTypeIcon** | 실무투두 type(기타/미팅/전화/메시지) 인라인 SVG. 캘린더 투두 pill·일자상세 "실무" 배지·범례 공용. Props: `type` / `size`. currentColor (진회색 위 흰색). |
 
 ### 10-5. db 탭 (`app/(app)/db/_components/`)
 
@@ -1273,6 +1274,8 @@ components/dashboard/
 | **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
 | **DriveLinkBar** | Drive 바로가기 + 플러그 바로가기 버튼. 미연결 시 재연결 폼. ADR-0007. |
+| **TodoSection** | 진행 슬롯 내 ToDo 목록 + 추가 버튼 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). Props: `contractRef/institutionRef/companyName/todos`. 완료 토글·삭제. |
+| **TodoFormModal** | 실무 ToDo 생성 팝업 (Pluuug 모티브, 담당자 없음). type 4종·제목·예정일자·예정시각(시08~20/분00·30)·상세·캘린더표시 ON. Props: `contractRef/institutionRef/companyName/onClose`. |
 
 > **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):
 > 진행1 = teal / 진행2 = cyan / 진행3 = fuchsia. 카드 좌측 보더로 활성 슬롯 시각 구분.

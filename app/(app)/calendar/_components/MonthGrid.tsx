@@ -7,11 +7,12 @@
  */
 "use client";
 
-import type { Channel, Meeting } from "@/types";
+import type { Channel, Meeting, Todo } from "@/types";
 import {
   buildMonthGrid,
   dayLabelHeader,
 } from "../_lib/month";
+import TodoTypeIcon from "./TodoTypeIcon";
 
 interface Props {
   yyyyMM: string;
@@ -19,6 +20,8 @@ interface Props {
   selectedDate: string;
   /** date(YYYY-MM-DD) → meetings */
   meetingsByDate: Map<string, Meeting[]>;
+  /** date(YYYY-MM-DD) → 실무투두 (Scope 2). */
+  todosByDate: Map<string, Todo[]>;
   onSelectDate: (date: string) => void;
 }
 
@@ -37,6 +40,7 @@ export default function MonthGrid({
   todayISO,
   selectedDate,
   meetingsByDate,
+  todosByDate,
   onSelectDate,
 }: Props) {
   const cells = buildMonthGrid(yyyyMM);
@@ -65,19 +69,27 @@ export default function MonthGrid({
           const dayMeetings = (meetingsByDate.get(c.date) ?? [])
             .filter((m) => m.상태 !== "변경" && m.상태 !== "취소")
             .sort((a, b) => a.미팅시간.localeCompare(b.미팅시간));
+          const dayTodos = (todosByDate.get(c.date) ?? [])
+            .slice()
+            .sort((a, b) => a.예정시각.localeCompare(b.예정시각));
+          // 미팅 우선 3개 + 투두 2개, 나머지 +N
           const visible = dayMeetings.slice(0, VISIBLE_PILL_COUNT);
-          const overflow = dayMeetings.length - visible.length;
+          const visibleTodos = dayTodos.slice(0, 2);
+          const overflow =
+            dayMeetings.length -
+            visible.length +
+            (dayTodos.length - visibleTodos.length);
 
           const isToday = c.date === todayISO;
           const isSelected = c.date === selectedDate;
           const dimmed = !c.inMonth;
-          const hasMeetings = dayMeetings.length > 0;
+          const hasItems = dayMeetings.length + dayTodos.length > 0;
 
           const cellBg = isSelected
             ? "bg-blue-50 ring-2 ring-blue-500"
             : isToday
               ? "bg-blue-50/60 ring-1 ring-blue-300"
-              : hasMeetings
+              : hasItems
                 ? "bg-white"
                 : "bg-gray-50";
 
@@ -101,7 +113,7 @@ export default function MonthGrid({
               >
                 {c.day}
               </span>
-              {c.inMonth && hasMeetings && (
+              {c.inMonth && hasItems && (
                 <div className="flex flex-col gap-0.5">
                   {visible.map((m) => (
                     <div
@@ -113,6 +125,21 @@ export default function MonthGrid({
                     >
                       <span className="font-bold">{m.미팅시간}</span>
                       <span className="truncate">{m.업체명}</span>
+                    </div>
+                  ))}
+                  {/* 실무투두 pill — 진회색 + type 아이콘 (Scope 2) */}
+                  {visibleTodos.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-0.5 truncate rounded-sm px-1 text-[9px] leading-tight text-white"
+                      style={{ background: "#334155" }}
+                      title={`${t.예정시각} ${t.제목}`.trim()}
+                    >
+                      <TodoTypeIcon type={t.type} size={9} />
+                      {t.예정시각 && (
+                        <span className="font-bold">{t.예정시각}</span>
+                      )}
+                      <span className="truncate">{t.제목}</span>
                     </div>
                   ))}
                   {overflow > 0 && (

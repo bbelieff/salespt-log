@@ -12,7 +12,8 @@
  */
 "use client";
 
-import type { PaymentSlot, Progress } from "@/types";
+import type { PaymentSlot, Progress, Todo } from "@/types";
+import TodoSection from "./TodoSection";
 
 const SLOT_STYLES = {
   1: {
@@ -70,6 +71,11 @@ interface Props {
   removable?: boolean; // 슬롯 2/3만 제거 가능
   onChange: (next: PaymentSlot) => void;
   onRemove?: () => void;
+  /** Scope 2 — ToDo 섹션. contractRef 있을 때만 표시 (신규 계약은 미표시). */
+  contractRef?: string;
+  companyName?: string;
+  /** 이 계약 전체 ToDo — 슬롯이 institutionRef(=진행기관)로 필터. */
+  todos?: Todo[];
 }
 
 function fmtComma(n: number): string {
@@ -83,6 +89,9 @@ export default function PaymentSlotForm({
   removable,
   onChange,
   onRemove,
+  contractRef,
+  companyName,
+  todos,
 }: Props) {
   const style = SLOT_STYLES[index];
   const pct = progressToPct(slot.진행률);
@@ -185,6 +194,17 @@ export default function PaymentSlotForm({
           placeholder="이 수납기관 관련 메모"
           onChange={(v) => set("메모", v)}
         />
+        {/* ToDo 섹션 (Scope 2) — 메모와 진행률 사이, 이 기관(슬롯) 단위 */}
+        {contractRef && (
+          <TodoSection
+            contractRef={contractRef}
+            institutionRef={slot.진행기관}
+            companyName={companyName ?? ""}
+            todos={(todos ?? []).filter(
+              (t) => t.institutionRef === slot.진행기관,
+            )}
+          />
+        )}
         <div className="grid grid-cols-2 gap-2">
           <FieldSelect
             label="진행률"
