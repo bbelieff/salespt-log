@@ -1247,7 +1247,8 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 dot). Props: `yyyyMM` / `meetingsByDate` / `selectedDate` / `onSelectDate`. 클릭 시 schedule로 점프 |
+| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2) |
+| **TodoTypeIcon** | 실무투두 type(기타/미팅/전화/메시지) 인라인 SVG. 캘린더 투두 pill·일자상세 "실무" 배지·범례 공용. Props: `type` / `size`. currentColor (진회색 위 흰색). |
 
 ### 10-5. db 탭 (`app/(app)/db/_components/`)
 
