@@ -18,6 +18,7 @@ related: practice-and-drive
 > 위치: `docs/plans/active/design-practice-and-drive.md`
 > 짝 문서: `practice-and-drive.md`(Plan v6), `0006-practice-data-model.md`, `0007-drive-link-permission.md`, `0008-tab-label.md`
 > 범위: **Scope 1(Drive 바로가기)·2(05 실무투두+캘린더) 완전 설계 + 전체 모듈 지도.** Scope 3은 착수 시 상세화.
+> 진행: ✅ Scope 1 머지(PR #255) · ✅ Scope 2 머지(PR #257) · ⬜ Scope 3 (§7, 미착수).
 > 시각 정본: `docs/design/prototypes/practice-payment-mockup.html`(슬롯 ToDo·팝업), `docs/design/prototypes/calendar-todo-mockup.html`(캘린더 04+05).
 
 ---

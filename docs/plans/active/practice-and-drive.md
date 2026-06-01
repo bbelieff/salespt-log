@@ -146,11 +146,13 @@ related: 11-contract-payment-tab, 12-dashboard
 - **DoD**: 등록 수강생 1클릭으로 `01 피드백업체` 이동, 명칭/배너 정리 반영, `npm run check` 통과.
 - **구현 요약 (2026-06-01 머지)**: registry N/O/P(driveParentPath/feedbackFolderId/driveLinkStatus) + `findFolderByNamePrefix`(folder mimeType, parent scope) + `POST /api/drive-link` + `DriveLinkBar` 컴포넌트 + 탭/배너/슬롯 명칭 변경 + 5탭 pageSubtitle 제거. 핸드오프 → `docs/plans/completed/_handoff-scope1.md`.
 
-### Scope 2 — 05 실무투두 + 캘린더
+### ✅ Scope 2 — 05 실무투두 + 캘린더 (**완료 — PR #257, `f1cc204`**)
 - **`05 실무투두` 탭 신설** + ToDo 행(키 자동). 슬롯 내 ToDo 섹션 + Pluuug 팝업 + 신규 `lib/repo/todos.ts`.
 - 저장 → 접힘 누적 + 캘린더 표시(§5 규칙: 04 미팅 + 05 투두 합쳐 그림, 실무 진회색+아이콘).
+- **DoD**: 슬롯 ToDo 추가 → 05 적재 → 접힘 누적, 캘린더 04+05 머지 표시, `npm run check` 통과.
+- **구현 요약 (2026-06-01 머지)**: `Todo`/`TodoType` Zod + `SHEET_RANGES.todos`(13컬럼 A~M) + `lib/repo/todos.ts`(`ensureTodoTab` 자동생성·CRUD·`findTodosByDateRange`) + `lib/service/{todos,calendar}.ts` + `/api/todos`(GET·POST·PATCH·DELETE) + `useTodosByContract` 등 훅 + `TodoSection`·`TodoFormModal`(payment) + `TodoTypeIcon`·MonthGrid 투두 pill·일자상세 통합·범례(calendar). 키: `contractRef`=`계약일|업체명`, `institutionRef`=슬롯 진행기관. 설계 정본 = design §6. (contact.ts 500줄 초과 → calendar.ts 분리.)
 
-### Scope 3 — 기관진행 / 통합 뷰
+### Scope 3 — 기관진행 / 통합 뷰 (남음 — design §7)
 - 02 슬롯 + 05 투두 키 조인 → 업체별·기관별 뷰. 진행기관 → 레지스트리 연결. 대시보드 기관 카운트.
 - **완료 시 요약카드의 [플러그 바로가기] 제거.**
 
