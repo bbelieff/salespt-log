@@ -225,4 +225,14 @@ export const SHEET_RANGES = {
       },
     },
   },
+
+  // ── 실무투두 (1행 = 1투두, 13컬럼 A~M) — Scope 2, ADR-0006 ──
+  // 앱이 자동 생성(ensureTodoTab): 탭 없으면 addSheet + 헤더행.
+  // (계약 × 기관) 단위 ToDo. 04 미팅·02 수납과 격리. 수식 컬럼 없음.
+  // SSOT: docs/domains/sheet-structure.md §5-2
+  todos: {
+    tab: "05 실무투두",
+    headerRow: "A1:M1",
+    range: "A2:M", // append + update 대상
+  },
 } as const;
