@@ -40,8 +40,8 @@ export default async function AppLayout({
         <PendingApprovalScreen
           subtitle={
             u.role === "trainer"
-              ? "관리자 승인 후 담당 수강생을 조회할 수 있습니다."
-              : "관리자 승인 후 경영일지를 작성할 수 있습니다."
+              ? "관리자 승인 후 담당 수강생을 볼 수 있어요. 조금만 기다려 주세요."
+              : "관리자 승인 후 작성할 수 있어요. 조금만 기다려 주세요."
           }
         />
       );

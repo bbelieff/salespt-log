@@ -41,7 +41,7 @@ export default async function AdminLandingPage() {
   return (
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               {isMaster ? "Master" : "관리부서"}
@@ -54,7 +54,7 @@ export default async function AdminLandingPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl px-6 py-10">
         {impersonating && <ImpersonationBanner impersonating={impersonating} />}
 
         <h1 className="text-2xl font-black tracking-tight text-gray-900">
@@ -62,7 +62,7 @@ export default async function AdminLandingPage() {
         </h1>
         <p className="mt-1.5 text-sm text-gray-500">
           {isMaster
-            ? "어떤 작업을 하시겠어요?"
+            ? "어떤 작업을 할까요?"
             : "수강생 관리·트레이너 관리·기수 조회 가능 (변경 권한 X)."}
         </p>
 

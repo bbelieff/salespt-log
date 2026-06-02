@@ -184,6 +184,7 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 - `raw/`, 외부 vault, 사용자 데이터 디렉토리 수정.
 - 테스트를 "통과시키기 위해" 수정·삭제.
 - 구조 테스트·린터·훅 우회 (`--no-verify`, skip, xfail 남용).
+- **Cowork(샌드박스)에서 git 변경 명령 실행·`.git/` 내부 파일 조작** (§6.7 — unlink 차단으로 .git 손상·broken ref). git 은 사용자 PC 의 Claude Code 에서만.
 - 컨텍스트 창에서만 존재하는 규칙 따르기 — 모든 규칙은 이 파일이나 `docs/`에 있어야 한다.
 - 요청되지 않은 리팩터·추상화·"미래 대비" 코드.
 
@@ -247,6 +248,20 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 환경을 고쳐 사용자가 다시 묻지 않게 한다.
 
 ---
+
+## 6.7 Cowork(샌드박스)에서 git 안전 (2026-06-02 인시던트 후)
+
+**무엇이 터졌나**: Cowork 데스크톱(샌드박스)에서 마운트된 레포에 `git add/commit/switch -c/branch -D` 실행.
+이 샌드박스 마운트는 **파일 삭제(unlink)를 막는다** → git 이 만든 `*.lock` 이 안 지워지고 잔류.
+이어 `find .git -name "*.lock"` 식 **광범위 rename 정리**가 `refs/heads/<branch>.lock` 을 ref 디렉토리 안에
+**빈 파일(= null SHA, 깨진 ref)** 로 남겨 `git fetch` 전체를 차단함.
+참고: `docs/incidents/2026-06-02-cowork-git-no-unlink.md`.
+
+**규칙 (샌드박스는 훅으로 못 막으니 반드시 준수)**:
+1. **Cowork 샌드박스에서 git 쓰기 명령 금지** — `add·commit·switch/checkout -b·branch·merge·rebase·stash·reset·gc` 등 `.git` 을 변경하는 명령 일절 금지. 읽기 전용(`status·log·diff·show·cat-file`)만 허용.
+2. **커밋·푸시·PR 은 핸드오프** — Cowork 는 working tree 에 파일 작성까지만. 커밋/푸시/PR 은 **사용자 PC 의 Claude Code**(unlink 정상 + GitHub 인증 보유)에서 수행하도록 사용자에게 넘긴다. 샌드박스엔 GitHub 인증이 없어 push 자체가 불가.
+3. **`.git/` 내부 파일 rename·이동·삭제 절대 금지** — 특히 `refs/` 하위. 잠금 해제가 꼭 필요해도 `.git/index.lock` **정확한 단일 경로**만, `find`·글롭·일괄 rename 금지. ref 디렉토리에 `.lock`·`.bak` 잔재를 남기면 fetch 가 깨진다.
+4. **동시 세션 주의** — 사용자 PC 의 Claude Code 가 같은 레포를 동시에 만질 수 있다. 샌드박스에서 `.git` 을 건드리면 충돌·손상 위험 → `.git` 은 읽기 전용으로만 취급.
 
 ## 7. 이 하네스 자체의 관리
 

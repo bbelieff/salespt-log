@@ -1227,6 +1227,8 @@ components/dashboard/
 | **MeetingSlotItem** | 컨택탭 미팅 슬롯 입력 카드 (신규). Props: `slot: NewSlot` / `onSave` / `onRemove`. [등록] 시 미팅 append |
 | **MeetingSlotCard** | 등록 완료 슬롯 표시 카드 (read-only). Props: `meeting: Meeting`. [삭제]는 미팅 + meetingReservation -1 |
 | **MeetingPickerModal** | 미팅예약 -1 시 삭제할 미팅 선택 모달 (Phase 4). Props: `meetings` / `onPick` / `onClose`. 선택 시 cascade 삭제 |
+| **MeetingSlotList** | 컨택탭 미팅 슬롯 리스트 (page.tsx 분할, 2026-06). 저장 미팅 + 미등록 신규 슬롯을 채널 순서로 렌더. Props: `slots: SlotEntry[]`, `reservationDate`, `onPatchSaved`, `onRemoveSaved`, `onChangeNew`, `onRegisterNew`, `onRemoveNew`. |
+| **ContactResultModals** | 컨택탭 결과 모달 클러스터 (page.tsx 분할, 2026-06): DB불일치 안내(CrossTabHintModal) + DB일치 긍정확인 + 미팅 선택삭제(MeetingPickerModal). Props: `dbMismatch`, `onMismatchNavigate`, `onMismatchClose`, `dbMatchOk`, `onMatchOkClose`, `pickerMeetings`, `onPick`, `onPickerClose`. |
 
 ### 10-3. schedule 탭 (`app/(app)/schedule/_components/`)
 
@@ -1359,3 +1361,29 @@ button:focus, input:focus, select:focus {
 | **2026-04-27 (v3)** | §2 **Time Input**: `<input type="time">` → **시 select + 분 select** 분리 (iOS Safari step 무시 회피, 15분 단위 강제) | 클로드코드 검증 #4 |
 | **2026-04-27 (v3)** | §6 Toast 위치 정정: 상단(top: 20px) → **하단(bottom: 80px)** | 시안과 일치 |
 | **2026-04-27 (v3)** | Number Input(Stepper) 사용 위치 라벨 정정: "신규명함/팔로업" → "유입/컨택진행/컨택성공" | 클로드코드 검증 #1 |
+
+---
+
+## 10. 반응형 레이아웃 (Responsive Layout) — 2026-06-02 데스크탑 개선
+
+### 브레이크포인트 (tailwind.config.ts)
+모바일 우선 스케일(xs360~2xl768)에 **데스크탑 분기 2종** 추가:
+
+| 이름 | px | 용도 |
+|---|---|---|
+| `pc` | 1024 | 데스크탑(노트북) 진입 — 폭 제한·중앙정렬·멀티컬럼 시작 |
+| `wide` | 1280 | 와이드 데스크탑 — 추가 여백·열 확장 |
+
+> 기존 `lg`/`xl`/`2xl` 은 **폰/태블릿**(430/480/768)이라 데스크탑엔 못 쓴다. 데스크탑 규칙은 반드시 `pc:`/`wide:` 프리픽스 사용.
+
+### PageContainer
+모든 페이지 루트를 감싸 데스크탑 폭을 제어하는 공용 컨테이너.
+
+| prop | 값 | 데스크탑(pc+) 폭 | 적용 화면 |
+|---|---|---|---|
+| `width="narrow"` | 기본 | `max-w-2xl` 중앙정렬 | 컨택·일정·DB·로그인·온보딩 (입력 중심) |
+| `width="wide"` | — | `max-w-6xl` 중앙정렬 + 내부 멀티컬럼 | 캘린더·실무수납·대시보드·관리자 (정보 중심) |
+
+- 모바일에선 `w-full`(기존 레이아웃 그대로). 데스크탑에서만 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
+- 정보 중심 화면은 PageContainer(wide) 안에서 카드 리스트를 `pc:grid pc:grid-cols-2 wide:grid-cols-3` 등으로 배치해 가로 공간 활용(세로 스크롤 압박 완화).
+- 파일: `components/PageContainer.tsx`.

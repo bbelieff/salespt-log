@@ -145,7 +145,7 @@ export default function TrainerCohortView({
   return (
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Trainer
@@ -173,7 +173,7 @@ export default function TrainerCohortView({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl space-y-8 px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-8">
         {/* 마스터 시트 — 기수 전체 현황 외부 링크 (URL 미설정 시 숨김). */}
         {masterSheetUrl && (
           <a

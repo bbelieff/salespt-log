@@ -18,6 +18,7 @@
  * me.data 없어도 dash.data 만으로 모든 섹션 렌더 (배너만 fallback 처리).
  */
 "use client";
+import PageContainer from "@/components/PageContainer";
 
 import { useMemo } from "react";
 import TopHeader from "@/components/TopHeader";
@@ -86,6 +87,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
+      <PageContainer width="wide">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle="8주 누적" />
 
       {dash.data && (
@@ -104,15 +106,15 @@ export default function DashboardPage() {
         />
       )}
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 pc:grid pc:grid-cols-2 pc:gap-4 pc:space-y-0">
         {dash.isLoading && (
           <div className="rounded-md bg-white p-4 text-center text-sm text-gray-500 shadow-sm">
-            대시보드 데이터 로딩 중…
+            대시보드를 불러오고 있어요
           </div>
         )}
         {dash.isError && (
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm">
-            대시보드 데이터 로딩 실패: {String(dash.error)}
+            대시보드를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>
         )}
         {dash.data && (
@@ -132,6 +134,7 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+      </PageContainer>
     </main>
   );
 }

@@ -38,19 +38,19 @@ export default function RowList({
   onDeleteRequest,
 }: Props) {
   if (loading) {
-    return <div className="text-sm text-slate-500">불러오는 중…</div>;
+    return <div className="text-sm text-slate-500">불러오고 있어요</div>;
   }
   if (error) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-        ⚠ 불러오기 실패: {(error as Error).message}
+        불러오지 못했어요. 잠시 후 다시 시도해 주세요.
       </div>
     );
   }
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
-        아직 {ch.recordsLabel}이 없습니다
+        아직 {ch.recordsLabel}이 없어요
       </div>
     );
   }

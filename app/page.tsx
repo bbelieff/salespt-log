@@ -52,7 +52,7 @@ export default async function HomePage() {
   // 기존 active trainee 들은 영향 없음 (이미 status=active).
   if (user.status === "pending") {
     return (
-      <PendingApprovalScreen subtitle="관리자 승인 후 경영일지를 작성할 수 있습니다." />
+      <PendingApprovalScreen subtitle="관리자 승인 후 작성할 수 있어요. 조금만 기다려 주세요." />
     );
   }
   redirect("/dashboard");
