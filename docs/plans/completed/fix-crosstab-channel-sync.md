@@ -1,8 +1,9 @@
 ---
 slug: fix-crosstab-channel-sync
-status: active
+status: completed
+completed: 2026-06-03
 created: 2026-06-03
-worktree: ../wt/fix-crosstab-channel-sync
+worktree: ../wt/fix-crosstab-channel-sync (정리됨)
 ---
 
 > **📄 이 문서는 무엇인가요?**
@@ -44,3 +45,5 @@ PostHog 행태분석에서 손기학 수강생 흐름 관찰 중 발견. DB관�
 
 ## Log
 - 2026-06-03 Cowork에서 코드 초안 작성(working tree). 커밋·테스트는 사용자 PC Claude Code로 핸드오프(§6.7).
+
+- 2026-06-03 사용자 PC Claude Code에서 검증·완료: 코드는 #262(`3fec889`)에 함께 머지됨. check.sh(typecheck·lint·structural·test 62) 통과 + 코드-경로 수용기준 전항 충족 확인. completed 이동.
