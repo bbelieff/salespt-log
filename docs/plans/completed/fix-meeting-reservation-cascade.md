@@ -1,8 +1,9 @@
 ---
 slug: fix-meeting-reservation-cascade
-status: active
+status: completed
+completed: 2026-06-03
 created: 2026-06-03
-worktree: ../wt/fix-meeting-reservation-cascade
+worktree: ../wt/fix-meeting-reservation-cascade (정리됨)
 ---
 
 > **📄 이 문서는 무엇인가요?**
@@ -47,3 +48,5 @@ worktree: ../wt/fix-meeting-reservation-cascade
 
 ## Log
 - 2026-06-03 Cowork에서 코드 초안 작성(working tree). 커밋·테스트는 사용자 PC Claude Code로 핸드오프(§6.7).
+
+- 2026-06-03 사용자 PC Claude Code에서 검증·완료: 코드는 #262(`3fec889`)에 함께 머지됨. check.sh 통과 + orphan 가드(step/setVal) 코드-경로 확인. completed 이동.
