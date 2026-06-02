@@ -27,6 +27,7 @@ import type {
   ContactDayView,
   ScheduleWeekView,
 } from "@/service";
+import { track, EVENTS } from "@/analytics";
 
 // ── 키 ────────────────────────────────────────────────────────
 export const dayKey = (date: string) => ["day", date] as const;
@@ -127,8 +128,12 @@ export function useSaveMetrics() {
         method: "POST",
         body: JSON.stringify(channels),
       }),
-    onSuccess: (_, { date }) =>
-      qc.invalidateQueries({ queryKey: dayKey(date) }),
+    onSuccess: (_, { date, channels }) => {
+      track(EVENTS.METRICS_SAVED, {
+        channel_count: Object.keys(channels ?? {}).length,
+      });
+      qc.invalidateQueries({ queryKey: dayKey(date) });
+    },
   });
 }
 
@@ -141,6 +146,9 @@ export function useAppendMeeting() {
         body: JSON.stringify(meeting),
       }),
     onSuccess: (_, { date, meeting }) => {
+      track(EVENTS.MEETING_BOOKED, {
+        cross_day: Boolean(meeting.미팅날짜 && meeting.미팅날짜 !== date),
+      });
       qc.invalidateQueries({ queryKey: dayKey(date) });
       if (meeting.미팅날짜 && meeting.미팅날짜 !== date) {
         qc.invalidateQueries({ queryKey: dayKey(meeting.미팅날짜) });
@@ -161,6 +169,7 @@ export function usePatchMeeting() {
         body: JSON.stringify(partial),
       }),
     onSuccess: (_, { date, weekStart }) => {
+      track(EVENTS.MEETING_UPDATED);
       if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
       if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
       // 2026-05-19 Phase 2: 계약→非계약 transition 시 02 row cascade →
@@ -191,6 +200,7 @@ export function useRevertMeeting() {
         { method: "POST" },
       ),
     onSuccess: (_, { date, weekStart }) => {
+      track(EVENTS.MEETING_REVERTED);
       if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
       if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
     },
@@ -207,6 +217,7 @@ export function useReviveCaseClosure() {
         { method: "POST" },
       ),
     onSuccess: () => {
+      track(EVENTS.CASE_REVIVED);
       qc.invalidateQueries({ queryKey: ["week"] });
       qc.invalidateQueries({ queryKey: ["payments"] });
     },
@@ -219,6 +230,7 @@ export function useRemoveMeeting() {
     mutationFn: ({ id }: RemoveMeetingArgs) =>
       fetchJSON<{ ok: true }>(`/api/meeting/${id}`, { method: "DELETE" }),
     onSuccess: (_, { date }) => {
+      track(EVENTS.MEETING_REMOVED);
       qc.invalidateQueries({ queryKey: dayKey(date) });
       qc.invalidateQueries({ queryKey: ["week"] });
       // 02 계약수납관리 cascade (PR #241) 후 수납탭도 무효화.

@@ -18,10 +18,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
 import DDayBadge from "./DDayBadge";
+import { identifyUser, resetUser } from "@/analytics";
 
 interface Props {
   pageEmoji: string;
@@ -52,6 +53,25 @@ export default function TopHeader({
   pageSubtitle,
 }: Props) {
   const me = useMe();
+
+  // PostHog 식별 — 로그인 사용자를 이메일로 식별 (impersonation 중에는 skip).
+  // 운영 환경 + init 된 경우에만 실제 전송(identifyUser 내부에서 no-op 가드).
+  useEffect(() => {
+    const d = me.data;
+    if (!d || d.impersonating || !d.email) return;
+    identifyUser(d.sessionEmail ?? d.email, {
+      cohort: d.cohort,
+      name: d.name,
+      role: d.sessionRole,
+    });
+  }, [
+    me.data?.email,
+    me.data?.sessionEmail,
+    me.data?.impersonating,
+    me.data?.cohort,
+    me.data?.name,
+    me.data?.sessionRole,
+  ]);
   const display = formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
   const [popupOpen, setPopupOpen] = useState(false);
 
@@ -203,6 +223,7 @@ export default function TopHeader({
               type="button"
               onClick={() => {
                 setPopupOpen(false);
+                resetUser(); // 식별 해제 (다음 로그인과 세션 분리)
                 signOut({ callbackUrl: "/" });
               }}
               className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
