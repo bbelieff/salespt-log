@@ -1,5 +1,6 @@
 /** 컨택관리 탭 — 4채널 4지표 + 미팅 슬롯. SSOT: docs/design/prototypes/contact-daily-input.html v7. */
 "use client";
+import PageContainer from "@/components/PageContainer";
 
 import { useEffect, useMemo, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
@@ -14,7 +15,6 @@ import {
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
 import { useRouter } from "next/navigation";
-import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 import {
   findProductionMismatch,
   type ProductionMismatch,
@@ -23,32 +23,13 @@ import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
-import MeetingSlotItem, { type NewSlot } from "./_components/MeetingSlotItem";
-import MeetingPickerModal from "./_components/MeetingPickerModal";
+import type { NewSlot } from "./_components/MeetingSlotItem";
+import MeetingSlotList from "./_components/MeetingSlotList";
+import ContactResultModals from "./_components/ContactResultModals";
+import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 
 const TODAY_ISO = fmtISO(new Date());
-
-const EMPTY_METRICS: ChannelDailyRowMetrics = {
-  production: 0,
-  inflow: 0,
-  contactProgress: 0,
-  meetingReservation: 0,
-};
-
-const EMPTY_BY_CHANNEL = (): Record<Channel, ChannelDailyRowMetrics> => ({
-  매입DB: { ...EMPTY_METRICS },
-  직접생산: { ...EMPTY_METRICS },
-  현수막: { ...EMPTY_METRICS },
-  "콜·지·기·소": { ...EMPTY_METRICS },
-});
-
-function uuid(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export default function ContactPage() {
   const [date, setDate] = useState<string>(TODAY_ISO);
@@ -67,6 +48,10 @@ export default function ContactPage() {
   const router = useRouter();
   const dbOverview = useDBOverview();
   const [dbMismatch, setDbMismatch] = useState<ProductionMismatch | null>(null);
+  // 2026-06-03 [교차탭1]: DB관리에서 일치 확인 후 긍정 피드백 모달.
+  const [dbMatchOk, setDbMatchOk] = useState<{ channel: Channel; count: number } | null>(null);
+  // 2026-06-03 [교차탭1]: DB관리→컨택 이동 직후 생산 입력 행을 잠깐 강조.
+  const [highlightProduction, setHighlightProduction] = useState(false);
   const appendMeeting = useAppendMeeting();
   const patchMeeting = usePatchMeeting();
   const removeMeeting = useRemoveMeeting();
@@ -104,6 +89,27 @@ export default function ContactPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
 
+  // 2026-06-03 [교차탭1]: DB관리에서 넘어올 때 ?channel=&date=&focus=production 수신.
+  // Next 15 useSearchParams Suspense 경계 요구 회피 → mount 시 window.location 직접 파싱.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const ch = params.get("channel");
+    const d = params.get("date");
+    const focus = params.get("focus");
+    if (ch && (CHANNEL_ORDER as readonly string[]).includes(ch)) {
+      setActiveChannel(ch as Channel);
+    }
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      setDate(d);
+    }
+    if (focus === "production") {
+      setHighlightProduction(true);
+      const t = setTimeout(() => setHighlightProduction(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   const savedByChannel = useMemo(() => {
     const result: Record<Channel, Meeting[]> = {
       매입DB: [],
@@ -120,6 +126,11 @@ export default function ContactPage() {
   const newSlotsForChannel = (ch: Channel) =>
     newSlots.filter((s) => s.channel === ch);
 
+  // 2026-06-03 [2]: 채널의 실제 미팅카드 수 (저장된 미팅 + 미등록 신규 슬롯).
+  // 컨택진행은 이 수보다 작아질 수 없다(작아지면 미팅카드가 orphan 됨).
+  const meetingCardCount = (ch: Channel) =>
+    savedByChannel[ch].length + newSlotsForChannel(ch).length;
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2200);
@@ -133,6 +144,8 @@ export default function ContactPage() {
     setDraft((d) => {
       const cur = d[channel];
       const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
+      // 안전망: 미팅예약 수치(H)가 컨택진행을 넘으면 컨택진행에 맞춰 내림(phantom H 정정).
+      // 컨택진행은 setVal/step 가드로 미팅카드 수 이하로 내려가지 않으므로 카드 손실 없음.
       if (next.meetingReservation > next.contactProgress) {
         next.meetingReservation = next.contactProgress;
       }
@@ -194,8 +207,9 @@ export default function ContactPage() {
           } else if (saved.length === 1) {
             handleRemoveSavedMeeting(saved[0]!);
           } else if (cur2 > 0) {
+            // 미팅카드는 없는데 미팅예약 수치(H)만 남은 desync → 카드 삭제 없이 수치만 정정.
             adjustMetric(ch, "meetingReservation", -1);
-            showToast("미팅예약 -1 · [저장하기]로 시트에 반영하세요");
+            showToast("미팅 카드가 없어 미팅예약 수치만 −1로 정정했어요 · [저장하기]로 반영");
           } else {
             showToast("이 채널의 미팅예약이 이미 0입니다");
           }
@@ -204,11 +218,34 @@ export default function ContactPage() {
       return;
     }
 
+    // 2026-06-03 [2]: 컨택진행을 미팅카드 수보다 작게 만들면 미팅이 orphan 되므로 차단.
+    // 미팅 삭제는 반드시 미팅예약(−)을 통해 명시적으로 하도록 안내.
+    if (key === "contactProgress" && delta < 0) {
+      const cards = meetingCardCount(ch);
+      if (cur2 + delta < cards) {
+        showToast(
+          `⚠ 미팅예약 ${cards}건이 잡혀 있어요. 먼저 미팅예약을 −로 줄여 미팅을 삭제한 뒤 컨택진행을 낮춰주세요`,
+        );
+        return;
+      }
+    }
+
     adjustMetric(ch, key, delta);
   };
 
   const setVal = (key: keyof ChannelDailyRowMetrics, value: number) => {
-    setMetric(activeChannel, key, Math.max(0, value));
+    const v = Math.max(0, value);
+    // 2026-06-03 [2]: 직접 입력으로도 컨택진행이 미팅카드 수보다 작아지지 않도록 가드.
+    if (key === "contactProgress") {
+      const cards = meetingCardCount(activeChannel);
+      if (v < cards) {
+        showToast(
+          `⚠ 미팅예약 ${cards}건이 잡혀 있어요. 먼저 미팅예약을 −로 줄여 미팅을 삭제한 뒤 컨택진행을 낮춰주세요`,
+        );
+        return;
+      }
+    }
+    setMetric(activeChannel, key, v);
   };
 
   const updateNewSlot = (tempId: string, next: NewSlot) =>
@@ -299,9 +336,19 @@ export default function ContactPage() {
     try {
       await saveMetrics.mutateAsync({ date: dateAtClick, channels: draft });
       showToast("✅ 저장 완료");
+      // 2026-06-03 [교차탭1]: DB합 vs 컨택 생산 검증.
+      //  - 불일치 → 구체 숫자와 함께 DB관리로 안내 (기존).
+      //  - 일치 → 긍정 확인 모달로 "이대로 맞다" 안내 (왕복 루프 중단).
       if (dbOverview.data) {
         const m = findProductionMismatch(dbOverview.data, dateAtClick, draft);
-        if (m) setDbMismatch(m);
+        if (m) {
+          setDbMismatch(m);
+        } else {
+          // 검증 대상(현수막 제외) 중 생산을 입력한 채널이 있으면 일치 확인.
+          const verifiable: Channel[] = ["매입DB", "직접생산", "콜·지·기·소"];
+          const okCh = verifiable.find((c) => draft[c].production > 0);
+          if (okCh) setDbMatchOk({ channel: okCh, count: draft[okCh].production });
+        }
       }
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
@@ -327,7 +374,7 @@ export default function ContactPage() {
   if (dayQuery.isLoading) {
     return (
       <section className="px-4 pt-6 text-sm text-slate-500">
-        불러오는 중…
+        불러오고 있어요
       </section>
     );
   }
@@ -335,7 +382,7 @@ export default function ContactPage() {
     return (
       <section className="px-4 pt-6">
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          ⚠ 불러오기 실패: {(dayQuery.error as Error).message}
+          불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </div>
       </section>
     );
@@ -382,61 +429,27 @@ export default function ContactPage() {
         className={`px-4 pt-4 pb-[160px] transition-opacity duration-200 ${
           dayQuery.isFetching ? "opacity-50" : "opacity-100"
         }`}
-      >
+      ><PageContainer width="narrow">
         <ChannelTabsAndPanel
           active={activeChannel}
           draft={draft}
           onSelectChannel={setActiveChannel}
           onStep={step}
           onSetVal={setVal}
+          highlightKey={highlightProduction ? "production" : undefined}
         />
 
         {/* 미팅 슬롯 리스트 */}
-        <div className="mb-3">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-sm font-semibold text-gray-700">
-              미팅예약하기
-              {allSlots.length > 0 ? ` · ${allSlots.length}건` : ""}
-            </span>
-            <span className="text-xs text-gray-400">
-              미팅예약 1건 = 미팅예약 1건
-            </span>
-          </div>
-
-          {allSlots.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-6 text-center">
-              <div className="text-sm text-gray-400">
-                미팅예약을 입력하면
-                <br />
-                미팅예약 카드가 자동 생성됩니다
-              </div>
-            </div>
-          ) : (
-            allSlots.map((entry, i) =>
-              entry.kind === "saved" ? (
-                <MeetingSlotItem
-                  key={entry.meeting.id}
-                  mode="saved"
-                  index={i}
-                  meeting={entry.meeting}
-                  onPatch={(p) => handlePatchSavedMeeting(entry.meeting.id, p)}
-                  onRemove={() => handleRemoveSavedMeeting(entry.meeting)}
-                />
-              ) : (
-                <MeetingSlotItem
-                  key={entry.slot.tempId}
-                  mode="new"
-                  index={i}
-                  slot={entry.slot}
-                  reservationDate={TODAY_ISO}
-                  onChange={(next) => updateNewSlot(entry.slot.tempId, next)}
-                  onRegister={() => registerNewSlot(entry.slot.tempId)}
-                  onRemove={() => removeNewSlot(entry.slot.tempId)}
-                />
-              ),
-            )
-          )}
-        </div>
+        <MeetingSlotList
+          slots={allSlots}
+          reservationDate={TODAY_ISO}
+          onPatchSaved={handlePatchSavedMeeting}
+          onRemoveSaved={handleRemoveSavedMeeting}
+          onChangeNew={updateNewSlot}
+          onRegisterNew={registerNewSlot}
+          onRemoveNew={removeNewSlot}
+        />
+      </PageContainer>
       </main>
 
       {/* 고정 저장 버튼 (탭바 위) */}
@@ -465,34 +478,22 @@ export default function ContactPage() {
         </div>
       )}
 
-      {/* 2026-05-17 [C-2]: DB ↔ 생산 불일치 안내 */}
-      <CrossTabHintModal
-        open={dbMismatch !== null}
-        title="⚠ DB관리 입력 확인 필요"
-        body={
-          dbMismatch && (
-            <>
-              <b>{dbMismatch.channel}</b> 생산 입력값(<b>{dbMismatch.expected}</b>)이{" "}
-              DB관리 시트 합(<b>{dbMismatch.actual}</b>)과 다릅니다.
-              <br />
-              DB관리 탭에서 구매목록을 추가하셨나요?
-            </>
-          )
-        }
-        navLabel="🗂 DB관리로 이동"
-        onNavigate={() => {
+      <ContactResultModals
+        dbMismatch={dbMismatch}
+        onMismatchNavigate={() => {
+          const ch = dbMismatch?.channel;
           setDbMismatch(null);
-          router.push("/db");
+          router.push(
+            ch ? `/db?channel=${encodeURIComponent(ch)}&focus=add` : "/db",
+          );
         }}
-        onClose={() => setDbMismatch(null)}
+        onMismatchClose={() => setDbMismatch(null)}
+        dbMatchOk={dbMatchOk}
+        onMatchOkClose={() => setDbMatchOk(null)}
+        pickerMeetings={pickerMeetings}
+        onPick={(m) => { setPickerMeetings(null); handleRemoveSavedMeeting(m); }}
+        onPickerClose={() => setPickerMeetings(null)}
       />
-      {pickerMeetings && (
-        <MeetingPickerModal
-          meetings={pickerMeetings}
-          onPick={(m) => { setPickerMeetings(null); handleRemoveSavedMeeting(m); }}
-          onClose={() => setPickerMeetings(null)}
-        />
-      )}
     </>
   );
 }

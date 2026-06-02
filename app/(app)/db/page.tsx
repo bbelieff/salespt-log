@@ -9,6 +9,8 @@
  */
 "use client";
 
+import PageContainer from "@/components/PageContainer";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   useAppendDB,
@@ -49,6 +51,14 @@ const CHANNEL_ROWS_KEY: Record<ChannelKey, string> = {
   referral: "leads",
 };
 
+// 2026-06-03 [교차탭1]: 채널별 날짜 입력 필드 키 (컨택탭에 날짜를 들고 넘기기 위함).
+const CHANNEL_DATE_FIELD: Record<ChannelKey, string> = {
+  purchase: "구매일",
+  direct: "날짜",
+  banner: "날짜",
+  referral: "접수일",
+};
+
 interface ConfirmTarget {
   rowNum: number;
   label: string;
@@ -64,8 +74,10 @@ export default function DbPage() {
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   // 2026-05-17 [DB-1/DB-2]: 추가 후 컨택탭 생산 입력 안내 (현수막 제외).
+  // 2026-06-03 [교차탭1]: 추가행 날짜도 담아 컨택탭에 채널+날짜를 들고 넘김.
   const [productionHint, setProductionHint] = useState<{
     channel: ChannelKey;
+    date?: string;
   } | null>(null);
 
   const overview = useDBOverview();
@@ -128,12 +140,17 @@ export default function DbPage() {
         channel: KEY_TO_BACKEND[activeCh],
         data: addDraft as never,
       });
+      // 2026-06-03 [교차탭1]: 입력한 날짜를 캡처 (clear 전).
+      const addedDate = String(addDraft[CHANNEL_DATE_FIELD[activeCh]] ?? "");
       setAddOpen(false);
       showToast(`${ch.recordsLabel}이 추가되었습니다 ✨`);
       // 2026-05-17 [DB-1/DB-2]: 현수막 외 채널은 컨택탭 생산 입력 안내.
       // 현수막은 게시한날=생산이라 별도 입력 불필요.
       if (activeCh !== "banner") {
-        setProductionHint({ channel: activeCh });
+        setProductionHint({
+          channel: activeCh,
+          date: /^\d{4}-\d{2}-\d{2}$/.test(addedDate) ? addedDate : undefined,
+        });
       }
     } catch (e) {
       showToast(`추가 실패: ${(e as Error).message}`);
@@ -210,11 +227,30 @@ export default function DbPage() {
     if (!addOpen) setAddDraft({});
   }, [addOpen]);
 
+  // 2026-06-03 [교차탭1]: 컨택탭 불일치 안내에서 ?channel=&focus=add 로 넘어오면
+  // 해당 채널을 선택하고 추가폼을 자동으로 열어 "여기에 입력" 을 빠르게 인지시킴.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const chName = params.get("channel");
+    const focus = params.get("focus");
+    if (!chName) return;
+    const entry = (CHANNEL_KEYS as readonly ChannelKey[]).find(
+      (k) => KEY_TO_BACKEND[k] === chName,
+    );
+    if (entry) {
+      setActiveCh(entry);
+      setExpandedRow(null);
+      if (focus === "add") setAddOpen(true);
+    }
+  }, []);
+
   return (
     <>
       <TopHeader pageEmoji="📊" pageTitle="DB관리" />
 
       <main className="px-4 pb-[80px] pt-3">
+      <PageContainer width="narrow">
         <OverallCard
           items={overall.items}
           totalCost={overall.totalCost}
@@ -324,6 +360,7 @@ export default function DbPage() {
             </div>
           </div>
         )}
+      </PageContainer>
       </main>
 
       {/* 토스트 */}
@@ -356,8 +393,16 @@ export default function DbPage() {
         }
         navLabel="📞 컨택관리로 이동"
         onNavigate={() => {
+          const hint = productionHint;
           setProductionHint(null);
-          router.push("/contact");
+          if (hint) {
+            const ch = KEY_TO_BACKEND[hint.channel];
+            const qs = new URLSearchParams({ channel: ch, focus: "production" });
+            if (hint.date) qs.set("date", hint.date);
+            router.push(`/contact?${qs.toString()}`);
+          } else {
+            router.push("/contact");
+          }
         }}
         onClose={() => setProductionHint(null)}
       />

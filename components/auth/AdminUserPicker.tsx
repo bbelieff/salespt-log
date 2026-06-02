@@ -132,7 +132,7 @@ export default function AdminUserPicker({
   async function purge(email: string, name: string) {
     if (
       !window.confirm(
-        `정말 "${name || email}" 를 영구 퇴출하시겠어요?\n등록 row 가 삭제됩니다 (시트 자체는 유지).`,
+        `"${name || email}" 님을 정말 내보낼까요?\n등록 정보가 사라져요. (시트 데이터는 그대로예요.)`,
       )
     ) {
       return;
@@ -233,7 +233,7 @@ export default function AdminUserPicker({
   async function reject(email: string, name: string) {
     if (
       !window.confirm(
-        `"${name || email}" 의 가입 요청을 거절하시겠어요?\n등록 row 가 삭제됩니다.`,
+        `"${name || email}" 님의 가입 요청을 거절할까요?\n등록 정보가 사라져요.`,
       )
     ) {
       return;
@@ -342,7 +342,7 @@ export default function AdminUserPicker({
   return (
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 수강생 관리
@@ -360,7 +360,7 @@ export default function AdminUserPicker({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl px-6 py-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-black tracking-tight text-gray-900">

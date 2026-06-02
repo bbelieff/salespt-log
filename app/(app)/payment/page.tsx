@@ -11,6 +11,8 @@
  */
 "use client";
 
+import PageContainer from "@/components/PageContainer";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContractPayment } from "@/types";
@@ -129,6 +131,7 @@ export default function PaymentPage() {
       />
 
       <main className="px-4 pb-[80px] pt-3">
+      <PageContainer width="wide">
         {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}
         <div className="mb-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div
@@ -191,22 +194,22 @@ export default function PaymentPage() {
 
         {/* 안내 */}
         <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-          💡 일정·계약 탭에서 미팅을 <b>💵 계약</b>으로 처리하면 여기 자동 추가됩니다.
+          일정·계약 탭에서 미팅을 <b>계약</b>으로 처리하면 여기에 자동으로 추가돼요.
         </div>
 
         {/* 리스트 */}
         {list.isLoading ? (
-          <div className="text-sm text-slate-500">불러오는 중…</div>
+          <div className="text-sm text-slate-500">불러오고 있어요</div>
         ) : list.isError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            ⚠ 불러오기 실패: {(list.error as Error).message}
+            불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
-            아직 계약이 없습니다 — 일정·계약 탭에서 💵 계약 액션 시 자동 추가
+            아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
         ) : (
-          <div>
+          <div className="pc:grid pc:grid-cols-2 pc:gap-3 pc:items-start">
             {rows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
@@ -226,6 +229,7 @@ export default function PaymentPage() {
             ))}
           </div>
         )}
+      </PageContainer>
       </main>
 
       {/* 토스트 */}
@@ -303,7 +307,7 @@ export default function PaymentPage() {
             <p className="mb-4 text-sm leading-relaxed text-gray-600">
               {`'${postDeleteNav.업체명}' 미팅이 예약 상태로 되돌아갔습니다 (${postDeleteNav.미팅날짜}).`}
               <br />
-              해당 미팅 카드로 이동하시겠어요?
+              그 미팅 카드로 이동할까요?
             </p>
             <div className="flex gap-2">
               <button

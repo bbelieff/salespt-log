@@ -26,6 +26,10 @@ export default {
       lg: "430px", // iPhone Pro Max / Plus
       xl: "480px", // Galaxy S25/S26 Ultra (QHD+)
       "2xl": "768px", // 태블릿 진입
+      // ── 데스크탑 (2026-06-02 반응형 개선) ──
+      // 모바일 우선 스케일(xs~2xl)은 폰/태블릿. pc·wide 로 데스크탑 가독성 제어.
+      pc: "1024px", // 데스크탑 진입 (노트북)
+      wide: "1280px", // 와이드 데스크탑
     },
     extend: {
       fontFamily: {

@@ -10,6 +10,8 @@
  */
 "use client";
 
+import PageContainer from "@/components/PageContainer";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
@@ -408,7 +410,7 @@ export default function SchedulePage() {
   if (weekQuery.isLoading) {
     return (
       <section className="px-4 pt-6 text-sm text-slate-500">
-        불러오는 중…
+        불러오고 있어요
       </section>
     );
   }
@@ -416,7 +418,7 @@ export default function SchedulePage() {
     return (
       <section className="px-4 pt-6">
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          ⚠ 불러오기 실패: {(weekQuery.error as Error).message}
+          불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </div>
       </section>
     );
@@ -454,6 +456,7 @@ export default function SchedulePage() {
       </div>
 
       <main className="px-4 pb-[80px] pt-1">
+      <PageContainer width="narrow">
         {daysByMeetingDate.map((day, i) => (
           <div
             key={day.date}
@@ -476,6 +479,7 @@ export default function SchedulePage() {
             />
           </div>
         ))}
+      </PageContainer>
       </main>
 
       {toast && (

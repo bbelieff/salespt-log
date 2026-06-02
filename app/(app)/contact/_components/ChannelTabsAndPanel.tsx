@@ -131,6 +131,8 @@ interface Props {
   onSelectChannel: (ch: Channel) => void;
   onStep: (key: keyof ChannelDailyRowMetrics, delta: number) => void;
   onSetVal: (key: keyof ChannelDailyRowMetrics, value: number) => void;
+  /** 교차탭 이동 도착 시 잠깐 강조할 지표 행 (예: DB관리→컨택 시 "production"). */
+  highlightKey?: keyof ChannelDailyRowMetrics;
 }
 
 function totalOf(m: ChannelDailyRowMetrics): number {
@@ -143,6 +145,7 @@ export default function ChannelTabsAndPanel({
   onSelectChannel,
   onStep,
   onSetVal,
+  highlightKey,
 }: Props) {
   const ch = CHANNEL_META[active];
   const cls = COLOR_CLASS[ch.color];
@@ -275,10 +278,13 @@ export default function ChannelTabsAndPanel({
           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
           : `${cls.bg500} text-white ${cls.hover}`;
         const help = ch.helps[m.key as keyof typeof ch.helps];
+        const isHighlight = highlightKey === m.key;
         return (
           <div
             key={m.key}
-            className={`flex items-stretch ${mi < METRICS.length - 1 ? "border-b border-gray-50" : ""}`}
+            className={`flex items-stretch ${mi < METRICS.length - 1 ? "border-b border-gray-50" : ""} ${
+              isHighlight ? "animate-pulse rounded-lg ring-2 ring-inset ring-blue-400" : ""
+            }`}
           >
             <div className="flex w-3/5 min-w-0 items-center justify-between px-3 py-3">
               <div className="min-w-0 pr-1">

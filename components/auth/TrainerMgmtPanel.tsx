@@ -87,7 +87,7 @@ export default function TrainerMgmtPanel({
   return (
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 트레이너 관리
@@ -105,7 +105,7 @@ export default function TrainerMgmtPanel({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl space-y-12 px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-12 px-6 py-8">
         {err && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {err}

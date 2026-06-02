@@ -6,6 +6,8 @@
  */
 "use client";
 
+import PageContainer from "@/components/PageContainer";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Channel, Meeting, Todo } from "@/types";
@@ -171,16 +173,17 @@ export default function CalendarPage() {
       </header>
 
       <main className="pb-[80px]">
+      <PageContainer width="wide">
         {monthQuery.isLoading ? (
-          <div className="px-4 pt-6 text-sm text-slate-500">불러오는 중…</div>
+          <div className="px-4 pt-6 text-sm text-slate-500">불러오고 있어요</div>
         ) : monthQuery.isError ? (
           <div className="px-4 pt-6">
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              ⚠ 불러오기 실패: {(monthQuery.error as Error).message}
+              불러오지 못했어요. 잠시 후 다시 시도해 주세요.
             </div>
           </div>
         ) : (
-          <>
+          <div className="pc:grid pc:grid-cols-2 pc:gap-6 pc:items-start">
             <div className="pt-2">
               <MonthGrid
                 yyyyMM={yyyyMM}
@@ -193,7 +196,7 @@ export default function CalendarPage() {
             </div>
 
             {/* 선택일 통합 리스트 (미팅 + 실무투두, 시간순) */}
-            <section className="mt-4 px-4">
+            <section className="mt-4 px-4 pc:mt-0">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold text-gray-900">
                   {selectedDate.replace(/^\d{4}-/, "").replace("-", "/")} (
@@ -213,7 +216,7 @@ export default function CalendarPage() {
 
               {selectedItems.length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
-                  이 날 일정이 없습니다
+                  이 날은 일정이 없어요
                 </div>
               ) : (
                 <ul className="space-y-2">
@@ -374,8 +377,9 @@ export default function CalendarPage() {
                 </div>
               </div>
             </section>
-          </>
+          </div>
         )}
+      </PageContainer>
       </main>
     </>
   );
