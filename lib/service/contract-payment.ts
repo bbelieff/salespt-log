@@ -11,12 +11,11 @@ import {
   appendFromContract,
   clearRow,
   readAll,
+  readContractCascadeKey,
   syncFeeFromContract,
   updateUserFields,
 } from "@/repo/contract-payment";
 import type { ContractPayment } from "@/types";
-import { SHEET_RANGES } from "@/config";
-import { sheetsClient } from "@/repo/sheets-client";
 import { findByDate, updateMeeting } from "@/repo/meetings";
 
 async function resolveSheet(email: string): Promise<string> {
@@ -97,20 +96,9 @@ export async function removeContractPaymentWithCascade(
 }> {
   const spreadsheetId = await resolveSheet(email);
 
-  // 1) 삭제 전 row 의 (계약일, 업체명) 읽기 — cascade key
-  const { tab } = SHEET_RANGES.contractPayment;
-  const tabRef = /[\s()]/.test(tab) ? `'${tab}'` : tab;
-  const linkRes = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tabRef}!C${row}:D${row}`,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const linkRow = linkRes.data.values?.[0] ?? [];
-  const 계약일Raw = linkRow[0];
-  const 업체명 = String(linkRow[1] ?? "").trim();
-  // 계약일 직렬→ISO 변환은 readAll 로직과 동일하지 않으면 매칭 실패 → 직접 변환
-  const 계약일 = serialOrISO(계약일Raw);
+  // 1) 삭제 전 row 의 (계약일, 업체명) 읽기 — cascade key.
+  // resolveLayout 경유로 6기 `02 계약관리` 탭 alias 자동 처리 (bugfix 2026-06).
+  const { 계약일, 업체명 } = await readContractCascadeKey(spreadsheetId, row);
 
   // 2) clearRow
   await clearRow(spreadsheetId, row);

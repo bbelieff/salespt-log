@@ -286,6 +286,31 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
 }
 
 /**
+ * 특정 row 의 (계약일, 업체명) — cascade 삭제 전 key 읽기용 (2026-06 bugfix).
+ *
+ * service 계층이 직접 SHEET_RANGES.contractPayment.tab 을 쓰면
+ * 6기 legacy `02 계약관리` 탭 alias 를 무시해 "Unable to parse range" 사고.
+ * resolveLayout 을 거쳐 올바른 탭명을 쓰도록 repo 에 노출.
+ */
+export async function readContractCascadeKey(
+  spreadsheetId: string,
+  row: number,
+): Promise<{ 계약일: string; 업체명: string }> {
+  const { tab } = await resolveLayout(spreadsheetId);
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tabRef(tab)}!C${row}:D${row}`,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const r = (res.data.values?.[0] ?? []) as unknown[];
+  return {
+    계약일: serialToISODate(r[0]),
+    업체명: toStr(r[1]).trim(),
+  };
+}
+
+/**
  * (계약일, 업체명) 쌍으로 매칭되는 첫 row를 찾음. sync 업데이트용.
  * 같은 (계약일, 업체명)이 여러 row인 경우 가장 빠른(작은 row 번호) 것 반환.
  */
