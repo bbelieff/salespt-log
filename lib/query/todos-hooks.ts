@@ -13,6 +13,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { Todo, TodoType } from "@/types";
+import { track, EVENTS } from "@/analytics";
 
 export const todosKey = (contractRef: string) =>
   ["todos", contractRef] as const;
@@ -71,7 +72,8 @@ export function useCreateTodo() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: (_, { contractRef }) => {
+    onSuccess: (_, { contractRef, type }) => {
+      track(EVENTS.TODO_CREATED, { todo_type: type });
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] }); // 캘린더 갱신
     },
@@ -106,6 +108,9 @@ export function usePatchTodo() {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(todosKey(ctx.contractRef), ctx.prev);
     },
+    onSuccess: () => {
+      track(EVENTS.TODO_UPDATED);
+    },
     onSettled: (_d, _e, { contractRef }) => {
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
@@ -125,6 +130,7 @@ export function useRemoveTodo() {
     mutationFn: ({ id }: RemoveTodoArgs) =>
       fetchJSON<{ ok: true }>(`/api/todos/${id}`, { method: "DELETE" }),
     onSuccess: (_, { contractRef }) => {
+      track(EVENTS.TODO_REMOVED);
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
     },

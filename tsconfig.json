@@ -26,6 +26,7 @@
       "@/config/*": ["./lib/config/*"],
       "@/auth/*": ["./lib/auth/*"],
       "@/query/*": ["./lib/query/*"],
+      "@/analytics": ["./lib/analytics/index.ts"],
       "@/*": ["./*"]
     }
   },

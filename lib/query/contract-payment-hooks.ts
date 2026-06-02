@@ -13,6 +13,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { ContractPayment } from "@/types";
+import { track, EVENTS } from "@/analytics";
 
 export const cpKey = () => ["contract-payment"] as const;
 
@@ -59,7 +60,10 @@ export function useAddContractPayment() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: cpKey() }),
+    onSuccess: () => {
+      track(EVENTS.CONTRACT_PAYMENT_ADDED);
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
   });
 }
 
@@ -75,7 +79,10 @@ export function useSyncContractFee() {
         `/api/contract-payment`,
         { method: "PATCH", body: JSON.stringify(data) },
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: cpKey() }),
+    onSuccess: (res) => {
+      track(EVENTS.CONTRACT_FEE_SYNCED, { synced: Boolean(res.synced) });
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
   });
 }
 
@@ -93,7 +100,10 @@ export function usePatchContractPayment() {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: cpKey() }),
+    onSuccess: () => {
+      track(EVENTS.CONTRACT_PAYMENT_UPDATED);
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
   });
 }
 
@@ -121,6 +131,9 @@ export function useRemoveContractPayment() {
         { method: "DELETE" },
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: cpKey() }),
+    onSuccess: (_res, { cascade }) => {
+      track(EVENTS.CONTRACT_PAYMENT_REMOVED, { cascade: Boolean(cascade) });
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
   });
 }

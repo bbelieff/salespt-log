@@ -18,6 +18,7 @@ import type {
   DBPurchase,
 } from "@/types";
 import type { DBOverview } from "@/service";
+import { track, EVENTS } from "@/analytics";
 
 export const dbKey = () => ["db"] as const;
 
@@ -75,7 +76,10 @@ export function useAppendDB() {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dbKey() }),
+    onSuccess: (_res, { channel }) => {
+      track(EVENTS.DB_ROW_ADDED, { channel });
+      qc.invalidateQueries({ queryKey: dbKey() });
+    },
   });
 }
 
@@ -87,7 +91,10 @@ export function usePatchDB() {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dbKey() }),
+    onSuccess: (_res, { channel }) => {
+      track(EVENTS.DB_ROW_UPDATED, { channel });
+      qc.invalidateQueries({ queryKey: dbKey() });
+    },
   });
 }
 
@@ -98,6 +105,9 @@ export function useRemoveDB() {
       fetchJSON<{ ok: true }>(`/api/db/${enc(channel)}/${row}`, {
         method: "DELETE",
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: dbKey() }),
+    onSuccess: (_res, { channel }) => {
+      track(EVENTS.DB_ROW_REMOVED, { channel });
+      qc.invalidateQueries({ queryKey: dbKey() });
+    },
   });
 }
