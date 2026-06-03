@@ -106,10 +106,10 @@ export default function MonthGrid({
               key={c.date}
               type="button"
               onClick={() => onSelectDate(c.date)}
-              className={`relative flex min-h-[68px] flex-col items-stretch gap-0.5 overflow-hidden rounded-md p-1 text-left transition-all active:scale-[0.98] ${cellBg}`}
+              className={`relative flex min-h-[84px] flex-col items-stretch gap-0.5 overflow-hidden rounded-md p-1 text-left transition-all active:scale-[0.98] pc:min-h-[128px] pc:gap-1 pc:p-1.5 ${cellBg}`}
             >
               <span
-                className={`text-[11px] font-bold leading-none ${dayCls}`}
+                className={`text-xs font-bold leading-none pc:text-sm ${dayCls}`}
               >
                 {c.day}
               </span>
@@ -118,7 +118,7 @@ export default function MonthGrid({
                   {visible.map((m) => (
                     <div
                       key={m.id}
-                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 text-[9px] leading-tight ${
+                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-[10px] leading-tight pc:text-xs ${
                         PILL_CLS[m.channel]
                       } ${m.상태 === "완료" ? "opacity-70" : ""}`}
                       title={`${m.미팅시간} ${m.업체명} · ${m.상태}`}
@@ -131,7 +131,7 @@ export default function MonthGrid({
                   {visibleTodos.map((t) => (
                     <div
                       key={t.id}
-                      className="flex items-center gap-0.5 truncate rounded-sm px-1 text-[9px] leading-tight text-white"
+                      className="flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-[10px] leading-tight text-white pc:text-xs"
                       style={{ background: "#334155" }}
                       title={`${t.예정시각} ${t.제목}`.trim()}
                     >
@@ -143,7 +143,7 @@ export default function MonthGrid({
                     </div>
                   ))}
                   {overflow > 0 && (
-                    <div className="text-center text-[9px] font-semibold leading-tight text-gray-500">
+                    <div className="text-center text-[10px] font-semibold leading-tight text-gray-500">
                       +{overflow}
                     </div>
                   )}

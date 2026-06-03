@@ -123,6 +123,16 @@ export default function PaymentPage() {
   const overallPct =
     totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
 
+  // [3] 진행기관 콤보박스 후보 — 그동안 입력한 모든 슬롯 진행기관 distinct (시트 드롭다운처럼).
+  const institutionOptions = Array.from(
+    new Set(
+      rows
+        .flatMap((cp) => [cp.수납1.진행기관, cp.수납2.진행기관, cp.수납3.진행기관])
+        .map((s) => (s ?? "").trim())
+        .filter(Boolean),
+    ),
+  ).sort();
+
   return (
     <>
       <TopHeader
@@ -216,6 +226,7 @@ export default function PaymentPage() {
                 cp={cp}
                 ordinal={i + 1}
                 pending={pendingRow === cp.row}
+                institutionOptions={institutionOptions}
                 onSave={handleSave}
                 onDeleteRequest={() => {
                   if (cp.row) {

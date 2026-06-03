@@ -183,8 +183,8 @@ export default function CalendarPage() {
             </div>
           </div>
         ) : (
-          <div className="pc:grid pc:grid-cols-2 pc:gap-6 pc:items-start">
-            <div className="pt-2">
+          <div className="pc:grid pc:grid-cols-5 pc:gap-6 pc:items-start">
+            <div className="pt-2 pc:col-span-3">
               <MonthGrid
                 yyyyMM={yyyyMM}
                 todayISO={TODAY_ISO}
@@ -196,7 +196,7 @@ export default function CalendarPage() {
             </div>
 
             {/* 선택일 통합 리스트 (미팅 + 실무투두, 시간순) */}
-            <section className="mt-4 px-4 pc:mt-0">
+            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold text-gray-900">
                   {selectedDate.replace(/^\d{4}-/, "").replace("-", "/")} (

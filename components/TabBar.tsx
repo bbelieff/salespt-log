@@ -56,7 +56,7 @@ export default function TabBar() {
   const pathname = usePathname() ?? "";
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-gray-100 bg-white"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white"
       style={{
         // iOS 라운드 디스플레이 모서리 + 홈 인디케이터 영역 안전 패딩.
         // 노치 기기에서 양끝 탭이 화면 곡면에 잘리던 문제 해결.
@@ -65,6 +65,8 @@ export default function TabBar() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
+      {/* 데스크탑: 전폭 분산 방지 위해 중앙 max-width 로 탭을 모음 (모바일은 전폭). */}
+      <div className="mx-auto flex w-full pc:max-w-2xl">
       {TABS.map(({ href, label, match, Icon }) => {
         const active = match(pathname);
         const colorCls = active
@@ -83,6 +85,7 @@ export default function TabBar() {
           </Link>
         );
       })}
+      </div>
     </nav>
   );
 }

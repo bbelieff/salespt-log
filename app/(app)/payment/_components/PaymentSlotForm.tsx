@@ -12,6 +12,7 @@
  */
 "use client";
 
+import { useId } from "react";
 import type { PaymentSlot, Progress, Todo } from "@/types";
 import TodoSection from "./TodoSection";
 
@@ -79,6 +80,8 @@ interface Props {
   /** 저장본(cp) 진행기관 — ToDo 키. draft(미저장)가 아닌 저장값과만 묶어 정합성 유지
    *  (미저장 진행기관에 투두를 달면 새로고침 후 매칭 실패 → 슬롯에서 사라지던 버그). */
   savedInstitution?: string;
+  /** [3] 진행기관 콤보박스 후보 (자유입력 + 과거값 자동완성). */
+  institutionOptions?: string[];
 }
 
 function fmtComma(n: number): string {
@@ -96,6 +99,7 @@ export default function PaymentSlotForm({
   companyName,
   todos,
   savedInstitution,
+  institutionOptions,
 }: Props) {
   const style = SLOT_STYLES[index];
   const pct = progressToPct(slot.진행률);
@@ -120,17 +124,28 @@ export default function PaymentSlotForm({
           </div>
           <span className="text-sm font-semibold text-gray-800">{style.name}</span>
         </div>
-        {removable && onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-xs text-gray-400 hover:text-red-500"
-            aria-label="수납 제거"
-            title="이 수납 제거"
-          >
-            ✕
-          </button>
-        )}
+        <div className="flex min-w-0 items-center gap-2">
+          {/* [10] 카드 주제 = 진행기관명. 한눈에 무슨 건인지 보이게. */}
+          {slot.진행기관 && (
+            <span
+              className="max-w-[140px] truncate text-xs font-semibold text-gray-600"
+              title={slot.진행기관}
+            >
+              🏛 {slot.진행기관}
+            </span>
+          )}
+          {removable && onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="shrink-0 text-xs text-gray-400 hover:text-red-500"
+              aria-label="수납 제거"
+              title="이 수납 제거"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 진행도 볼륨바 (5등분 클릭) */}
@@ -186,10 +201,11 @@ export default function PaymentSlotForm({
       {/* 입력 필드 — 2026-05-17 재구성:
           진행기관 → 메모 → (진행률 + 진행내용) → (승인금액 + 수납일 + 수납액) */}
       <div className="space-y-1.5">
-        <FieldText
+        <FieldCombo
           label="진행기관"
           value={slot.진행기관}
-          placeholder="예: 미소재단"
+          placeholder="예: 미소재단 (입력하면 다음부터 목록에 떠요)"
+          options={institutionOptions ?? []}
           onChange={(v) => set("진행기관", v)}
         />
         <FieldText
@@ -277,6 +293,41 @@ function FieldText({
         onChange={(e) => onChange(e.target.value)}
         className={FIELD_INPUT_CLASS}
       />
+    </div>
+  );
+}
+
+/** [3] 자유입력 + 과거값 자동완성(구글시트 드롭다운형). native datalist 사용. */
+function FieldCombo({
+  label,
+  value,
+  placeholder,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  const listId = useId();
+  return (
+    <div>
+      <label className={FIELD_LABEL_CLASS}>{label}</label>
+      <input
+        type="text"
+        list={listId}
+        value={value}
+        placeholder={placeholder ?? "-"}
+        onChange={(e) => onChange(e.target.value)}
+        className={FIELD_INPUT_CLASS}
+      />
+      <datalist id={listId}>
+        {options.map((o) => (
+          <option key={o} value={o} />
+        ))}
+      </datalist>
     </div>
   );
 }

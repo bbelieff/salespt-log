@@ -52,6 +52,26 @@ export async function findSheetByExactName(
 }
 
 /**
+ * 파일/폴더의 이름 + 첫 부모 폴더 id 조회 (drive.readonly 로 가능).
+ *
+ * 용도(ADR-0007 연결-only):
+ *   - [자동 찾기] 연동 스프레드시트의 부모 폴더를 구해 그 안에서 01 피드백업체 탐색.
+ *   - [수동] 붙여넣은 폴더가 01 피드백업체 자체인지(이름) 판별해 직접 사용.
+ */
+export async function getDriveFileMeta(
+  fileId: string,
+): Promise<{ name: string; parentId: string | null }> {
+  const drive = driveClient();
+  const res = await drive.files.get({
+    fileId,
+    fields: "name, parents",
+    supportsAllDrives: true,
+  });
+  const parents = res.data.parents ?? [];
+  return { name: res.data.name ?? "", parentId: parents[0] ?? null };
+}
+
+/**
  * 부모 폴더 하위에서 prefix 로 시작하는 **폴더** 찾기 (ADR-0007).
  *
  * findSheetByNamePrefix 와 동일 패턴이지만:
