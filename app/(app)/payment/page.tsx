@@ -67,7 +67,7 @@ export default function PaymentPage() {
       await patch.mutateAsync({ row: next.row, data: next });
       showToast("✓ 저장 완료");
     } catch (e) {
-      showToast(`저장 실패: ${(e as Error).message}`);
+      showToast(`저장하지 못했어요: ${(e as Error).message}`);
     } finally {
       setPendingRow(null);
     }
@@ -96,7 +96,7 @@ export default function PaymentPage() {
         );
       }
     } catch (e) {
-      showToast(`삭제 실패: ${(e as Error).message}`);
+      showToast(`삭제하지 못했어요: ${(e as Error).message}`);
     } finally {
       setPendingRow(null);
     }
@@ -261,10 +261,12 @@ export default function PaymentPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-1 text-base font-semibold text-gray-900">
-              계약수납 삭제
+              이 계약수납을 지울까요?
             </h3>
             <p className="mb-3 text-sm leading-relaxed text-gray-600">
-              {`'${confirmTarget.label}' 계약수납 row를 비울까요? (시트 row ${confirmTarget.row} 전체 clear)`}
+              <b>{confirmTarget.label}</b> 계약수납 기록을 지워요.
+              <br />
+              입력한 내용이 모두 사라져요.
             </p>
             <label className="mb-4 flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-700">
               <input
@@ -274,11 +276,12 @@ export default function PaymentPage() {
                 className="mt-0.5 h-4 w-4 shrink-0"
               />
               <span>
-                <b>매칭 미팅도 계약 → 예약으로 되돌리기</b> (cascade)
+                <b>이 계약의 미팅도 ‘예약’ 상태로 되돌리기</b>
                 <br />
                 <span className="text-gray-500">
-                  04 업체관리에서 (계약일=미팅날짜, 업체명) 매칭되는 계약 row 의
-                  상태/수임비/계약조건 초기화.
+                  일정·계약 탭의 해당 미팅이 계약 전(예약)으로 돌아가고,
+                  <br />
+                  수임비·계약조건이 비워져요.
                 </span>
               </span>
             </label>
@@ -313,10 +316,12 @@ export default function PaymentPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-1 text-base font-semibold text-gray-900">
-              ✓ 삭제 + cascade 완료
+              지웠어요 · 미팅도 되돌렸어요
             </h3>
             <p className="mb-4 text-sm leading-relaxed text-gray-600">
-              {`'${postDeleteNav.업체명}' 미팅이 예약 상태로 되돌아갔습니다 (${postDeleteNav.미팅날짜}).`}
+              <b>{postDeleteNav.업체명}</b> 미팅이
+              <br />
+              예약 상태로 돌아갔어요 ({postDeleteNav.미팅날짜}).
               <br />
               그 미팅 카드로 이동할까요?
             </p>

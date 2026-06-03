@@ -82,6 +82,8 @@ interface Props {
   savedInstitution?: string;
   /** [3] 진행기관 콤보박스 후보 (자유입력 + 과거값 자동완성). */
   institutionOptions?: string[];
+  /** [4] ToDo 추가 시 미저장 진행기관이면 이 콜백으로 슬롯(계약)을 먼저 저장. */
+  onEnsureSaved?: () => void;
 }
 
 function fmtComma(n: number): string {
@@ -100,6 +102,7 @@ export default function PaymentSlotForm({
   todos,
   savedInstitution,
   institutionOptions,
+  onEnsureSaved,
 }: Props) {
   const style = SLOT_STYLES[index];
   const pct = progressToPct(slot.진행률);
@@ -211,7 +214,7 @@ export default function PaymentSlotForm({
         <FieldText
           label="메모"
           value={slot.메모}
-          placeholder="이 수납기관 관련 메모"
+          placeholder="이 기관 진행 메모"
           onChange={(v) => set("메모", v)}
         />
         {/* ToDo 섹션 (Scope 2) — 메모와 진행률 사이, 이 기관(슬롯) 단위.
@@ -222,6 +225,7 @@ export default function PaymentSlotForm({
             institutionRef={savedInstitution ?? ""}
             draftInstitution={slot.진행기관}
             companyName={companyName ?? ""}
+            onEnsureSaved={onEnsureSaved}
             todos={(todos ?? []).filter(
               (t) => t.institutionRef === (savedInstitution ?? ""),
             )}
@@ -241,7 +245,7 @@ export default function PaymentSlotForm({
             onChange={(v) => set("현황", v)}
           />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-2">
           <FieldMoney
             label="승인금액 (원)"
             value={slot.승인금액}

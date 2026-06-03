@@ -352,6 +352,7 @@ export default function ContractRow({
                 savedInstitution={cp.수납1.진행기관}
                 institutionOptions={slotInstitutionOptions}
                 todos={allTodos}
+                onEnsureSaved={() => onSave(draft)}
                 onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
               />
               {visiblePayments >= 2 && (
@@ -364,6 +365,7 @@ export default function ContractRow({
                   savedInstitution={cp.수납2.진행기관}
                   institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
+                  onEnsureSaved={() => onSave(draft)}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납2: next }))
                   }
@@ -380,6 +382,7 @@ export default function ContractRow({
                   savedInstitution={cp.수납3.진행기관}
                   institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
+                  onEnsureSaved={() => onSave(draft)}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납3: next }))
                   }
