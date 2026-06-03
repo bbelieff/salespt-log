@@ -23,7 +23,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          # ssh-keyscan 은 VPS 일시 도달성 문제로 종종 ~5초 후 non-zero exit →
+          # bash -e 가 스텝 전체를 fail 시켜 매번 수동 `gh run rerun --failed` 가 필요했음.
+          # → connect 타임아웃(-T 15) + 최대 5회 재시도로 일시 실패를 흡수한다. (자동 재시도 내장)
+          HOST="${{ secrets.VPS_HOST }}"
+          for i in 1 2 3 4 5; do
+            if ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts; then
+              break
+            fi
+            echo "ssh-keyscan 시도 $i/5 실패 — 5초 후 재시도" >&2
+            sleep 5
+          done
+          # known_hosts 가 비면 이후 ssh 가 StrictHostKeyChecking 으로 실패하니 최소 1회 성공을 보장.
+          test -s ~/.ssh/known_hosts || { echo "ssh-keyscan 5회 모두 실패 — known_hosts 비어있음, abort"; exit 1; }
 
       - name: Deploy on VPS
         run: |
