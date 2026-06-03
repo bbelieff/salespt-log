@@ -57,18 +57,54 @@ export async function findSheetByExactName(
  * 용도(ADR-0007 연결-only):
  *   - [자동 찾기] 연동 스프레드시트의 부모 폴더를 구해 그 안에서 01 피드백업체 탐색.
  *   - [수동] 붙여넣은 폴더가 01 피드백업체 자체인지(이름) 판별해 직접 사용.
+ *
+ * 판별형 결과 + 진단 로그(2026-06): 실패 원인을 운영 로그에서 구분.
+ *   - ok + parentsCount=0  → 파일만 공유되고 **부모 폴더는 미공유** (Drive 가 parents 를 빈 배열로 반환).
+ *   - !ok + code 403       → 파일 접근 권한 자체 없음.
+ *   - !ok + code 404       → 파일 못 찾음(잘못된 id/삭제).
  */
-export async function getDriveFileMeta(
-  fileId: string,
-): Promise<{ name: string; parentId: string | null }> {
+export type DriveFileMeta =
+  | { ok: true; name: string; parentId: string | null; parentsCount: number }
+  | { ok: false; code: number | null; message: string };
+
+export async function getDriveFileMeta(fileId: string): Promise<DriveFileMeta> {
   const drive = driveClient();
-  const res = await drive.files.get({
-    fileId,
-    fields: "name, parents",
-    supportsAllDrives: true,
-  });
-  const parents = res.data.parents ?? [];
-  return { name: res.data.name ?? "", parentId: parents[0] ?? null };
+  try {
+    const res = await drive.files.get({
+      fileId,
+      fields: "name, parents",
+      supportsAllDrives: true,
+    });
+    const parents = res.data.parents ?? [];
+    console.warn(
+      "[drive-link] files.get ok " +
+        JSON.stringify({
+          fileId,
+          name: res.data.name ?? "",
+          parentsCount: parents.length,
+        }),
+    );
+    return {
+      ok: true,
+      name: res.data.name ?? "",
+      parentId: parents[0] ?? null,
+      parentsCount: parents.length,
+    };
+  } catch (e: unknown) {
+    const err = e as {
+      code?: number | string;
+      message?: string;
+      response?: { status?: number };
+    };
+    const rawCode = err.code ?? err.response?.status ?? null;
+    const code =
+      typeof rawCode === "string" ? Number(rawCode) || null : rawCode;
+    const message = err.message ?? "unknown";
+    console.warn(
+      "[drive-link] files.get FAILED " + JSON.stringify({ fileId, code, message }),
+    );
+    return { ok: false, code, message };
+  }
 }
 
 /**

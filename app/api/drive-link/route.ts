@@ -17,6 +17,20 @@ import { getCurrentUserEmail } from "@/auth/stub";
 
 const FEEDBACK_PREFIX = "01";
 
+/** 폴더 미공유/권한없음 공통 안내 — 무엇을(폴더) 누구에게(SA) 어떤 권한(뷰어)으로. */
+function folderNotSharedResponse() {
+  const saEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? "";
+  return NextResponse.json({
+    ok: false,
+    status: "error",
+    errorKind: "folder_not_shared",
+    saEmail,
+    error:
+      `이 시트가 들어있는 '폴더'를 서비스계정(${saEmail})에 '뷰어'로 공유해 주세요. ` +
+      `시트 파일만 공유하면 폴더 구조를 볼 수 없어요.`,
+  });
+}
+
 function extractFolderId(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
@@ -50,13 +64,20 @@ export async function POST(req: Request) {
         );
       }
       const meta = await getDriveFileMeta(ssId);
-      if (!meta.parentId) {
+      if (!meta.ok && meta.code === 404) {
         await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
         return NextResponse.json({
           ok: false,
-          error: "시트의 상위 폴더를 찾을 수 없어요. 폴더 공유 권한을 확인해 주세요.",
           status: "error",
+          errorKind: "sheet_not_found",
+          error: "연동된 시트를 찾을 수 없어요. 시트 연결을 다시 확인해 주세요.",
         });
+      }
+      // files.get 실패(403 등) 또는 성공했지만 parents 가 빈 배열 =
+      // 시트 파일만 공유되고 **부모 폴더는 미공유** → 폴더를 SA 에 공유해야 함.
+      if (!meta.ok || meta.parentId == null) {
+        await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
+        return folderNotSharedResponse();
       }
       parentPathLabel = meta.parentId;
       feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
@@ -71,10 +92,12 @@ export async function POST(req: Request) {
         );
       }
       parentPathLabel = url;
-      const meta = await getDriveFileMeta(folderId).catch(() => null);
-      if (meta && meta.name.startsWith(FEEDBACK_PREFIX)) {
+      const meta = await getDriveFileMeta(folderId);
+      if (meta.ok && meta.name.startsWith(FEEDBACK_PREFIX)) {
+        // 붙여넣은 게 01 피드백업체 폴더 자체.
         feedbackFolderId = folderId;
       } else {
+        // 상위 폴더로 보고 그 안에서 탐색.
         feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, folderId);
       }
     }
@@ -88,9 +111,10 @@ export async function POST(req: Request) {
       });
       return NextResponse.json({
         ok: false,
-        error:
-          "‘01 피드백업체’ 폴더를 찾지 못했어요. 폴더 이름과 공유 권한을 확인해 주세요.",
         status: "error",
+        errorKind: "folder_01_missing",
+        error:
+          "상위 폴더는 찾았지만 ‘01 피드백업체’ 폴더가 없어요. 폴더 이름(‘01’로 시작)과 공유 권한을 확인해 주세요.",
       });
     }
 

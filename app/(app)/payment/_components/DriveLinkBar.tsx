@@ -17,6 +17,10 @@ export default function DriveLinkBar() {
   const [relinkUrl, setRelinkUrl] = useState("");
   const [relinkPending, setRelinkPending] = useState(false);
   const [relinkError, setRelinkError] = useState("");
+  // 폴더 미공유(403/빈 parents) 시 안내용 — 공유 대상 SA 이메일 + 에러 종류.
+  const [errorKind, setErrorKind] = useState("");
+  const [saEmail, setSaEmail] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const driveUrl = feedbackFolderId
     ? `https://drive.google.com/drive/folders/${feedbackFolderId}`
@@ -26,6 +30,8 @@ export default function DriveLinkBar() {
     async (payload: { mode: "auto" } | { parentFolderUrl: string }) => {
       setRelinkPending(true);
       setRelinkError("");
+      setErrorKind("");
+      setSaEmail("");
       try {
         const res = await fetch("/api/drive-link", {
           method: "POST",
@@ -39,6 +45,8 @@ export default function DriveLinkBar() {
           me.refetch();
         } else {
           setRelinkError(data.error ?? "연결 실패");
+          setErrorKind(data.errorKind ?? "");
+          setSaEmail(data.saEmail ?? "");
         }
       } catch {
         setRelinkError("네트워크 오류");
@@ -48,6 +56,19 @@ export default function DriveLinkBar() {
     },
     [me],
   );
+
+  const copySaEmail = useCallback(() => {
+    if (!saEmail) return;
+    navigator.clipboard?.writeText(saEmail).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {
+        /* clipboard 차단 환경 — 무시(이메일은 화면에 보임) */
+      },
+    );
+  }, [saEmail]);
 
   const handleAuto = useCallback(() => runLink({ mode: "auto" }), [runLink]);
   const handleRelink = useCallback(() => {
@@ -139,8 +160,34 @@ export default function DriveLinkBar() {
               </button>
             </div>
           </div>
-          {relinkError && (
-            <p className="text-xs text-red-600">{relinkError}</p>
+          {relinkError && errorKind === "folder_not_shared" ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">
+              <p className="mb-2 font-semibold">폴더 공유가 필요해요</p>
+              <p className="mb-2 leading-relaxed text-red-600">
+                시트가 들어있는 <b>폴더</b>를 아래 계정에 <b>뷰어</b>로 공유해 주세요.
+                시트 파일만 공유하면 폴더를 못 찾아요.
+              </p>
+              {saEmail && (
+                <div className="mb-2 flex items-center gap-1.5">
+                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-[11px] text-gray-800">
+                    {saEmail}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={copySaEmail}
+                    className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100"
+                  >
+                    {copied ? "복사됨 ✓" : "복사"}
+                  </button>
+                </div>
+              )}
+              <p className="text-[11px] leading-relaxed text-red-500">
+                공유 방법: 드라이브에서 폴더 우클릭 → <b>공유</b> → 위 이메일 추가 →
+                권한 <b>뷰어</b> → 완료. 그다음 위 <b>[✨ 자동으로 찾기]</b>를 다시 눌러 주세요.
+              </p>
+            </div>
+          ) : (
+            relinkError && <p className="text-xs text-red-600">{relinkError}</p>
           )}
         </div>
       )}
