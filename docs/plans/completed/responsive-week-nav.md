@@ -1,6 +1,7 @@
 ---
 slug: responsive-week-nav
-status: active
+status: completed
+completed: 2026-06-03
 created: 2026-06-03
 owner: belie
 related: responsive-desktop-toss-copy
