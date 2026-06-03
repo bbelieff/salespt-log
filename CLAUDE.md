@@ -263,6 +263,32 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 3. **`.git/` 내부 파일 rename·이동·삭제 절대 금지** — 특히 `refs/` 하위. 잠금 해제가 꼭 필요해도 `.git/index.lock` **정확한 단일 경로**만, `find`·글롭·일괄 rename 금지. ref 디렉토리에 `.lock`·`.bak` 잔재를 남기면 fetch 가 깨진다.
 4. **동시 세션 주의** — 사용자 PC 의 Claude Code 가 같은 레포를 동시에 만질 수 있다. 샌드박스에서 `.git` 을 건드리면 충돌·손상 위험 → `.git` 은 읽기 전용으로만 취급.
 
+## 6.8 배포 & 롤백 (머지 후 에이전트가 끝까지 책임)
+
+**원칙 (2026-06-03 사용자 지시)**: PR 머지로 끝내지 않는다. **머지 → 배포 관찰 → health 확인까지가 한 작업.** 문제 시 **즉시 롤백**.
+
+**자동 배포**: `master` push 시 `.github/workflows/deploy.yml` 이 자동 트리거(수동 = `gh workflow run "Deploy to VPS"`).
+워크플로우(요약): VPS `/opt/salespt-log` 에서 `git reset --hard origin/master` → `npm ci` → `npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, `.next` 삭제 후 빌드, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → health check(로컬 `:3000` + 공개 `https://salesptlog.online`).
+
+**에이전트 절차**:
+1. **머지 직전 last-good SHA 기록** — `git rev-parse origin/master` (롤백 타겟).
+2. 머지 후 배포 run 을 **끝까지 관찰**: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion`.
+3. 결과 분기:
+   - **success** → 공개 health(`https://salesptlog.online` HTTP 200) 확인 후 완료 보고.
+   - **Setup SSH 단계 실패** → VPS 일시 도달성 문제(코드 무관). `gh run rerun <id> --failed` 로 1~2회 재시도.
+   - **build / health 실패** → 코드 문제 → **즉시 롤백**.
+
+**롤백 (정본 — force-push 금지, 이 레포는 squash merge)**:
+```bash
+# 이 레포 PR 은 --squash → master 에 단일 커밋. 머지 1건 되돌리기:
+git revert <bad-squash-sha>     # (merge 커밋 아님 → -m 불필요)
+git push origin master          # push → 자동 재배포(직전 정상 코드)
+```
+- 여러 커밋이면 범위 revert. 절대 `reset --hard` + force-push 로 master 역사 훼손 금지.
+- 롤백 배포도 동일하게 success + health 확인.
+- 롤백 후: 원인 분석 → fix-forward PR. 실패·롤백 기록은 `docs/incidents/` 에 남긴다(§5.5).
+- 상세 = `docs/playbooks/deploy-vps.md`.
+
 ## 7. 이 하네스 자체의 관리
 
 이 파일과 `docs/`도 **하네스의 일부**다.
