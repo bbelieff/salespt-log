@@ -27,10 +27,12 @@ interface Props {
   contractRef: string;
   /** 저장본 진행기관 — ToDo 키. 비어있으면 추가 비활성. */
   institutionRef: string;
-  /** draft(편집 중) 진행기관 — 입력했지만 미저장인 경우 안내 분기용. */
+  /** draft(편집 중) 진행기관 — 입력했지만 미저장인 경우 자동 저장 트리거용. */
   draftInstitution?: string;
   companyName: string;
   todos: Todo[];
+  /** [4] 미저장 진행기관으로 추가 시 슬롯(계약)을 먼저 저장. */
+  onEnsureSaved?: () => void;
 }
 
 export default function TodoSection({
@@ -39,25 +41,28 @@ export default function TodoSection({
   draftInstitution,
   companyName,
   todos,
+  onEnsureSaved,
 }: Props) {
   const [showModal, setShowModal] = useState(false);
   const patch = usePatchTodo();
   const remove = useRemoveTodo();
-  const canAdd = institutionRef.trim() !== "";
-  // 진행기관을 입력만 하고 [저장] 안 함 → 저장 유도 (미저장 진행기관에 투두를
-  // 달면 새로고침 후 슬롯에서 사라지므로 저장된 진행기관에만 추가 허용).
-  const draftOnly = !canAdd && (draftInstitution ?? "").trim() !== "";
-  const addLabel = canAdd
-    ? "ToDo 추가"
-    : draftOnly
-      ? "진행기관 저장 후 추가"
-      : "진행기관 입력 후 추가";
+  // [4] 4-A: 저장본이 있으면 그 값, 없으면 입력 중(draft) 진행기관으로 추가 허용.
+  // 미저장이면 추가 클릭 시 onEnsureSaved 로 슬롯을 먼저 저장 → 키 일치 유지.
+  const savedReady = institutionRef.trim() !== "";
+  const draftInst = (draftInstitution ?? "").trim();
+  const effectiveInstitution = savedReady ? institutionRef.trim() : draftInst;
+  const canAdd = effectiveInstitution !== "";
+  const needsSave = !savedReady && draftInst !== "";
+  const addLabel = canAdd ? "ToDo 추가" : "진행기관 입력 후 추가";
+
+  const handleAdd = () => {
+    if (!canAdd) return;
+    if (needsSave) onEnsureSaved?.(); // 미저장 진행기관 → 자동 저장 후 모달.
+    setShowModal(true);
+  };
 
   return (
-    <div
-      className="rounded-lg border border-dashed border-amber-300 p-2.5"
-      style={{ background: "rgba(254,243,199,0.35)" }}
-    >
+    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-700">ToDo</span>
         <span className="text-[10px] text-gray-400">이 기관 할 일</span>
@@ -116,8 +121,8 @@ export default function TodoSection({
       <button
         type="button"
         disabled={!canAdd}
-        onClick={() => setShowModal(true)}
-        className="mt-1.5 flex min-h-[36px] w-full items-center justify-center gap-1 rounded-lg border-[1.5px] border-dashed border-amber-300 bg-transparent text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+        onClick={handleAdd}
+        className="mt-1.5 flex min-h-[36px] w-full items-center justify-center gap-1 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
       >
         <span className="text-sm leading-none">+</span>
         <span>{addLabel}</span>
@@ -126,7 +131,7 @@ export default function TodoSection({
       {showModal && (
         <TodoFormModal
           contractRef={contractRef}
-          institutionRef={institutionRef}
+          institutionRef={effectiveInstitution}
           companyName={companyName}
           onClose={() => setShowModal(false)}
         />

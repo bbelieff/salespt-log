@@ -23,6 +23,8 @@ interface Props {
   cp: ContractPayment;
   ordinal: number; // 1-based, 헤더 순번 배지
   pending: boolean;
+  /** [3] 진행기관 콤보박스 후보 (전 계약 distinct). */
+  institutionOptions?: string[];
   onSave: (next: ContractPayment) => void;
   onDeleteRequest: () => void;
 }
@@ -66,6 +68,7 @@ export default function ContractRow({
   cp,
   ordinal,
   pending,
+  institutionOptions,
   onSave,
   onDeleteRequest,
 }: Props) {
@@ -79,6 +82,20 @@ export default function ContractRow({
   const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
   const todosQuery = useTodosByContract(contractRef);
   const allTodos = todosQuery.data?.todos ?? [];
+
+  // [3] 진행기관 후보 = 전 계약 distinct(prop) + 이 계약 투두 institutionRef + 현재 슬롯값.
+  const slotInstitutionOptions = useMemo(() => {
+    const set = new Set<string>(institutionOptions ?? []);
+    for (const t of allTodos) {
+      const v = t.institutionRef?.trim();
+      if (v) set.add(v);
+    }
+    for (const s of [cp.수납1, cp.수납2, cp.수납3]) {
+      const v = s.진행기관?.trim();
+      if (v) set.add(v);
+    }
+    return Array.from(set).sort();
+  }, [institutionOptions, allTodos, cp]);
 
   const totalApproved =
     draft.수납1.승인금액 + draft.수납2.승인금액 + draft.수납3.승인금액;
@@ -293,7 +310,7 @@ export default function ContractRow({
             <label className="mb-1 block text-xs font-semibold text-amber-800">
               📍 로드맵 메모{" "}
               <span className="font-normal text-amber-600/70">
-                · 전체 수납기관 진행 로드맵 (시트 AE)
+                · 전체 수납기관 진행 로드맵
               </span>
             </label>
             <textarea
@@ -302,7 +319,7 @@ export default function ContractRow({
               onChange={(e) =>
                 setDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
               }
-              placeholder="예: 1단계 자금 6월말 → 2단계 8월 신청 → ..."
+              placeholder="예: [1] 미소재단 후 [2] 대환으로 신용점수 올리고 [3] 신용보증재단 진행"
               className="w-full resize-none rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"
             />
           </div>
@@ -333,7 +350,9 @@ export default function ContractRow({
                 contractRef={contractRef}
                 companyName={cp.업체명}
                 savedInstitution={cp.수납1.진행기관}
+                institutionOptions={slotInstitutionOptions}
                 todos={allTodos}
+                onEnsureSaved={() => onSave(draft)}
                 onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
               />
               {visiblePayments >= 2 && (
@@ -344,7 +363,9 @@ export default function ContractRow({
                   contractRef={contractRef}
                   companyName={cp.업체명}
                   savedInstitution={cp.수납2.진행기관}
+                  institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
+                  onEnsureSaved={() => onSave(draft)}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납2: next }))
                   }
@@ -359,7 +380,9 @@ export default function ContractRow({
                   contractRef={contractRef}
                   companyName={cp.업체명}
                   savedInstitution={cp.수납3.진행기관}
+                  institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
+                  onEnsureSaved={() => onSave(draft)}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납3: next }))
                   }

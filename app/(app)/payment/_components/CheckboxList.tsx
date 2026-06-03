@@ -55,7 +55,7 @@ function renderItem(
   return (
     <label
       key={it.key}
-      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 transition-all ${
+      className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-2 transition-all ${
         checked
           ? "border-blue-300 bg-blue-50"
           : "border-gray-200 bg-white hover:border-gray-300"
@@ -86,7 +86,7 @@ export default function CheckboxList({ draft, onChange }: Props) {
         <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
           수집
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {COLLECT.map((it) => renderItem(it, draft, onChange))}
         </div>
       </div>
