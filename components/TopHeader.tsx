@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
 import DDayBadge from "./DDayBadge";
+import PageContainer from "./PageContainer";
 import { identifyUser, resetUser } from "@/analytics";
 
 interface Props {
@@ -81,7 +82,12 @@ export default function TopHeader({
             ① 로고 / ② [사용자 + 경영일지] / ③ D-day / ④ 대시보드 버튼
           justify-between으로 4 그룹이 row를 균등 분할.
           그룹 간 간격은 자동(remaining space), 그룹 내부(②)만 gap-1.5로 타이트 묶음. */}
-      <header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
+      <header className="sticky top-0 z-50 h-12 border-b border-gray-100 bg-white">
+       {/* full-bleed 배경 + 내용만 대시보드와 동일 6xl 중앙정렬 */}
+       <PageContainer
+         width="wide"
+         className="flex h-full items-center justify-between gap-2 px-2 sm:px-3"
+       >
         {/* ① 로고 — 클릭 시 로그아웃 팝업 토글.
               sessionRole 이 admin/trainer 면 로고 옆에 작은 "← 메뉴" 백버튼 추가
               (impersonation 중에도 마스터 메뉴로 빠르게 복귀 가능). */}
@@ -172,6 +178,7 @@ export default function TopHeader({
             />
           </svg>
         </Link>
+       </PageContainer>
       </header>
 
       {/* 로고 클릭 팝업 — 로그아웃 + 내 시트 열기 */}
@@ -243,18 +250,23 @@ export default function TopHeader({
       {/* Admin/Trainer 상태바 제거 — TopHeader 가 이미 impersonation 대상의
             cohort·이름·D-day 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
-      {/* 페이지 배너 */}
-      <div className="sticky top-12 z-40 flex h-12 items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 sm:gap-3 sm:px-4">
-        <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
-        <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
-          <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
-          <span className="truncate">{pageTitle}</span>
-        </h1>
-        {pageSubtitle && (
-          <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
-            {pageSubtitle}
-          </span>
-        )}
+      {/* 페이지 배너 — 배경 full-bleed + 내용 6xl 중앙정렬 */}
+      <div className="sticky top-12 z-40 h-12 border-b border-slate-200 bg-slate-100">
+        <PageContainer
+          width="wide"
+          className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"
+        >
+          <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
+          <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
+            <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
+            <span className="truncate">{pageTitle}</span>
+          </h1>
+          {pageSubtitle && (
+            <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
+              {pageSubtitle}
+            </span>
+          )}
+        </PageContainer>
       </div>
     </>
   );

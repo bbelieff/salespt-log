@@ -130,7 +130,8 @@ export default function CalendarPage() {
     <>
       <TopHeader pageEmoji="📅" pageTitle="캘린더" />
       <header className="sticky top-24 z-30 bg-white shadow-sm">
-        <div className="flex items-center justify-between px-2 py-3">
+        {/* 배경 full-bleed + 월 nav 내용은 본문과 같은 6xl 중앙정렬(헤더 통일 정책) */}
+        <div className="mx-auto flex w-full items-center justify-between px-2 py-3 pc:max-w-6xl pc:px-6 wide:px-8">
           <button
             type="button"
             onClick={() => moveMonth(-1)}
