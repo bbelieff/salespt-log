@@ -45,8 +45,8 @@ export default function WeekHeader({
   return (
     <header className="bg-white">
       {/* 부모(schedule/page.tsx)에서 sticky top-24로 묶음 — 자체 sticky 제거 */}
-      {/* 주차 네비 — 원래 크기 회복 (py-3, h-11), 단 타이틀만 한 줄로 */}
-      <div className="flex items-center justify-between px-2 py-3">
+      {/* 주차 네비 — 원래 크기 회복 (py-3, h-11). 태블릿/데스크탑: 중앙 모아보기 */}
+      <div className="flex items-center justify-between px-2 py-3 2xl:mx-auto 2xl:max-w-xl">
         <button
           type="button"
           onClick={onPrevWeek}
@@ -101,7 +101,7 @@ export default function WeekHeader({
       {/* 7일 그리드 — 주차 변경 시 슬라이드 인 (2026-05-18 [2]). */}
       <div
         key={weekStart}
-        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 ${
+        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 2xl:mx-auto 2xl:max-w-xl ${
           slideDir === "right" ? "week-slide-right" : slideDir === "left" ? "week-slide-left" : ""
         }`}
       >

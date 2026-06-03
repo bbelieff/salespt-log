@@ -71,8 +71,8 @@ export default function WeekHeader({
     // sticky 는 parent(page.tsx) 에서 처리 — WeekFunnelBar 와 한 그룹으로 묶기 위해
     // (일정·계약 탭의 WeekHeader+SummaryBar 패턴과 동일, 2026-05-16).
     <header className="bg-white">
-      {/* 주차 타이틀 + 좌우 화살표 */}
-      <div className="flex items-center justify-between px-2 py-3">
+      {/* 주차 타이틀 + 좌우 화살표 (태블릿/데스크탑: 중앙 모아보기) */}
+      <div className="flex items-center justify-between px-2 py-3 2xl:mx-auto 2xl:max-w-xl">
         <button
           type="button"
           onClick={onPrevWeek}
@@ -107,7 +107,7 @@ export default function WeekHeader({
       {/* 요일 바 */}
       <div
         key={`${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`}
-        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 ${
+        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 2xl:mx-auto 2xl:max-w-xl ${
           slideDir === "right" ? "week-slide-right" : slideDir === "left" ? "week-slide-left" : ""
         }`}
       >
