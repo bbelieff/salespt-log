@@ -40,6 +40,14 @@ body {
 .week-slide-right { animation: slide-in-from-right 220ms ease-out; }
 .week-slide-left  { animation: slide-in-from-left  220ms ease-out; }
 
+/* 계약 카드 펼침 — 위에서 부드럽게 내려오며 페이드(딱딱한 튐 방지).
+ * ContractRow 본문(showBody) 마운트 시 적용. */
+@keyframes card-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card-open-anim { animation: card-open 200ms ease-out; }
+
 /* ── 채널 배지 (docs/design/components.md §4) ─────────────── */
 .badge {
   font-size: 11px;
