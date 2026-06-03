@@ -204,10 +204,12 @@ export default function ContractRow({
 
   return (
     <div
-      className={`mb-3 overflow-hidden rounded-xl border bg-white shadow-sm ${borderClass} ${
+      className={`mb-3 overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-200 ${borderClass} ${
         selected
           ? "border-blue-400 ring-2 ring-blue-400"
-          : "border-gray-200"
+          : showBody
+            ? "border-blue-200 shadow-md ring-2 ring-blue-200"
+            : "border-gray-200"
       }`}
     >
       {/* 헤더 (접힘/선택) */}
@@ -221,8 +223,8 @@ export default function ContractRow({
               : () => setOpen((v) => !v)
         }
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
-          forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"
-        }`}
+          showBody ? "bg-blue-50/40" : ""
+        } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"}`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}
       >
@@ -286,26 +288,10 @@ export default function ContractRow({
         )}
       </button>
 
-      {/* 펼침 */}
+      {/* 펼침 — 헤더와 한 덩어리(틴트·ring 연결), 부드럽게 등장.
+          [1] 업체정보 박스 제거: 접힘 헤더가 이미 업체명·계약일·수임비 표시(중복). */}
       {showBody && (
-        <div className="space-y-3 border-t border-gray-100 p-3">
-          {/* 자동 연동 정보 (read-only) */}
-          <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5">
-            <div className="mb-1 flex items-center gap-1 text-xs text-blue-700">
-              <span className="font-medium">🏢 업체정보 (자동 연동)</span>
-            </div>
-            <div
-              className="text-xs text-gray-700"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              <span className="font-semibold text-gray-900">{cp.업체명}</span>
-              <span className="mx-1.5 text-gray-400">·</span>
-              {cp.계약일 || "—"}
-              <span className="mx-1.5 text-gray-400">·</span>
-              수임비 ₩{fmtMoney(cp.수임비)}
-            </div>
-          </div>
-
+        <div className="card-open-anim space-y-3 p-3">
           {/* 7 체크박스 */}
           <div>
             <div className="mb-2 flex items-center justify-between">
