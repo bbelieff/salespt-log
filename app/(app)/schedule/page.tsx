@@ -12,7 +12,7 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
   useAppendMeeting,
@@ -31,7 +31,8 @@ import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
 import TopHeader from "@/components/TopHeader";
-import { addDays, fmtISO, friOf, parseISO, weekIndexOf } from "./_lib/week";
+import { addDays, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
+import { useWeekStartSync } from "./_lib/useWeekStartSync";
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -43,12 +44,8 @@ function uuid(): string {
 const TODAY_ISO = fmtISO(new Date());
 
 export default function SchedulePage() {
-  // 첫 로딩 시 weekStart는 일단 오늘. 서버 응답에서 courseStart 받아 정렬은 그 후.
-  // (서버는 input weekStart를 그대로 사용. courseStart 첫 조회는 컨택탭 열 때 같이.)
-  // 단순화: 첫 weekStart = 오늘이 속한 주의 토요일(courseStart 모를 때 임시).
-  // → 서버가 weekStart 검증해서 적절한 weekIndex 반환. 그 결과로 화면에 정확한 7일 표시.
-  // 더 단순하게: 처음에 오늘을 weekStart로 보내고, 서버에서 받은 courseStart를 보고
-  // 사용자가 [이전/다음 주] 누를 때만 7일씩 점프. 첫 응답이 weekIndex=0이면 7일 차감.
+  // weekStart 초기값=오늘. 동기화(?date= 우선 / 없으면 today 주차 정렬)는
+  // useWeekStartSync 훅이 담당. 서버는 input weekStart 를 그대로 사용.
   const [weekStart, setWeekStart] = useState<string>(TODAY_ISO);
 
   const weekQuery = useWeekMeetings(weekStart);
@@ -63,18 +60,13 @@ export default function SchedulePage() {
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  // 처음 로드 후 weekStart를 그 주의 금요일(Fri-Thu 주)로 정렬.
-  // 예: 사용자가 4/30(목)에 접속 → weekStart = 4/24(금)
-  const aligned = useRef(false);
-  useEffect(() => {
-    if (!weekQuery.data || aligned.current) return;
-    aligned.current = true;
-    const today = parseISO(TODAY_ISO);
-    const todayFri = friOf(today);
-    const correctIso = fmtISO(todayFri);
-    if (correctIso !== weekStart) setWeekStart(correctIso);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekQuery.data?.courseStart]);
+  // weekStart 동기화: ?date= 우선(그 주차로 잠금), 없으면 today 주차로 정렬.
+  useWeekStartSync(
+    weekStart,
+    setWeekStart,
+    weekQuery.data?.courseStart,
+    TODAY_ISO,
+  );
 
   const showToast = (msg: string) => {
     setToast(msg);
