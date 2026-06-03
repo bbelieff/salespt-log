@@ -23,23 +23,16 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          # ssh-keyscan 은 VPS 일시 도달성 문제로 종종 ~5초 후 non-zero exit →
-          # bash -e 가 스텝 전체를 fail 시켜 매번 수동 `gh run rerun --failed` 가 필요했음.
-          # → connect 타임아웃(-T 15) + 최대 5회 재시도로 일시 실패를 흡수한다. (자동 재시도 내장)
-          HOST="${{ secrets.VPS_HOST }}"
-          for i in 1 2 3 4 5; do
-            if ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts; then
-              break
-            fi
-            echo "ssh-keyscan 시도 $i/5 실패 — 5초 후 재시도" >&2
-            sleep 5
-          done
-          # known_hosts 가 비면 이후 ssh 가 StrictHostKeyChecking 으로 실패하니 최소 1회 성공을 보장.
-          test -s ~/.ssh/known_hosts || { echo "ssh-keyscan 5회 모두 실패 — known_hosts 비어있음, abort"; exit 1; }
+          # 호스트키는 best-effort 로만 수집(실패해도 무방 → '|| true').
+          # 과거: ssh-keyscan 을 하드 게이트로 두니, 러너↔VPS 22번의 *간헐적 연결 타임아웃*에
+          #       keyscan 이 걸리면 배포 전체가 막혔다(실제 sshd 는 정상, 다른 run 은 접속 성공).
+          # 현재: 실제 ssh 가 StrictHostKeyChecking=accept-new(TOFU) 로 known_hosts 없이도 접속하고,
+          #       아래 Deploy 단계가 *연결 실패(rc=255)에 한해* 재시도한다.
+          ssh-keyscan -T 15 -t rsa,ecdsa,ed25519 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Deploy on VPS
         run: |
-          ssh -i ~/.ssh/id_ed25519 root@${{ secrets.VPS_HOST }} '
+          REMOTE='
             set -e
             cd /opt/salespt-log
             echo "::group::Pulling"
@@ -50,20 +43,13 @@ jobs:
             npm ci --silent
             echo "::endgroup::"
             echo "::group::Building"
-            # 빌드 OOM 방지 — VPS RAM 3.8GB.
-            # 이전엔 4096 (4GB) 였으나 RAM 초과 → OOM-killer 가 build node
-            # 프로세스 SIGKILL → set -e 가 잡아서 deploy 스텝 fail 하지만,
-            # PM2 는 옛 빌드로 그대로 돌고 health check 200 통과 → "merge 됐는데
-            # fix 안 들어감" 류 silent-ish failure. (2026-05-13 사고)
-            # 2048MB (2GB) 가 Next.js 15.5 + 이 코드베이스 빌드에 충분 확인됨.
+            # 빌드 OOM 방지 — VPS RAM 3.8GB. 2048MB 가 Next.js 15.5 + 이 코드베이스에 충분.
+            # (4096 시 OOM-killer → BUILD_ID 누락 silent failure, 2026-05-13 사고.)
             export NODE_OPTIONS="--max-old-space-size=2048"
             export SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING=1
-            # 이전 빌드 잔재 제거 (BUILD_ID 누락 방지)
             rm -rf .next
             npm run build
-            # 빌드 결과 검증 — set -e 가 npm exit code 만 잡으니 BUILD_ID 까지
-            # 명시 확인. 빌드 중간에 어떤 이유로든 BUILD_ID 안 만들어졌으면
-            # 명시적으로 fail → pm2 restart 차단.
+            # 빌드 결과 검증 — BUILD_ID 없으면 명시 실패(pm2 restart 차단).
             test -f .next/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패"; exit 1; }
             echo "::endgroup::"
             echo "::group::Restarting"
@@ -75,6 +61,24 @@ jobs:
             curl -sS -o /dev/null -w "Local HTTP %{http_code}\n" http://127.0.0.1:3000
             echo "::endgroup::"
           '
+          # 연결 옵션: accept-new(TOFU) + 넉넉한 ConnectTimeout + keepalive.
+          # 재시도는 *연결 실패(ssh rc=255)* 에만 — 빌드/원격스크립트 실패(다른 rc)는 즉시 fail(롤백 신호).
+          for i in 1 2 3; do
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
+                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" "$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255) — 시도 $i/3, 15초 후 재시도" >&2
+              sleep 15
+            else
+              echo "원격 배포 스크립트 실패(rc=$rc) — 빌드/배포 오류이므로 재시도 안 함" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 연결 3회 모두 실패 — VPS 도달성 지속 장애" >&2
+          exit 1
 
       - name: Public health check
         run: |
