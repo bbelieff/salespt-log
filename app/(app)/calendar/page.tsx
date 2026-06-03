@@ -173,7 +173,7 @@ export default function CalendarPage() {
       </header>
 
       <main className="pb-[80px]">
-      <PageContainer width="wide">
+      <PageContainer width="xwide">
         {monthQuery.isLoading ? (
           <div className="px-4 pt-6 text-sm text-slate-500">불러오고 있어요</div>
         ) : monthQuery.isError ? (
@@ -183,8 +183,8 @@ export default function CalendarPage() {
             </div>
           </div>
         ) : (
-          <div className="pc:grid pc:grid-cols-5 pc:gap-6 pc:items-start">
-            <div className="pt-2 pc:col-span-3">
+          <div className="pc:grid pc:grid-cols-6 pc:gap-6 pc:items-start">
+            <div className="pt-2 pc:col-span-4">
               <MonthGrid
                 yyyyMM={yyyyMM}
                 todayISO={TODAY_ISO}
@@ -306,33 +306,28 @@ export default function CalendarPage() {
                 </ul>
               )}
 
-              {selectedItems.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {selectedMeetings.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={jumpToSchedule}
-                      className="w-full rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                    >
-                      ← 📋 일정·계약 탭으로 이동
-                    </button>
-                  )}
-                  {selectedTodos.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => router.push("/payment")}
-                      className="w-full rounded-xl border py-2.5 text-sm font-medium"
-                      style={{
-                        background: "#f1f5f9",
-                        color: PRACTICE_HEX,
-                        borderColor: "#cbd5e1",
-                      }}
-                    >
-                      💰 실무/수납 탭으로 이동 →
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* B4: 캘린더는 일정·계약 / 실무·수납 두 탭의 허브 → 두 버튼 항상 노출. */}
+              <div className="mt-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={jumpToSchedule}
+                  className="w-full rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  ← 📋 일정·계약 탭으로 이동
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/payment")}
+                  className="w-full rounded-xl border py-2.5 text-sm font-medium"
+                  style={{
+                    background: "#f1f5f9",
+                    color: PRACTICE_HEX,
+                    borderColor: "#cbd5e1",
+                  }}
+                >
+                  💰 실무/수납 탭으로 이동 →
+                </button>
+              </div>
 
               {/* 범례 — 영업 4색 / 실무 4아이콘 */}
               <div className="mt-4">
