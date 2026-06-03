@@ -24,6 +24,7 @@ import {
 import ContractRow from "./_components/ContractRow";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
+import { ACCENT, contractAccentFamily } from "./_lib/contractAccent";
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -160,6 +161,9 @@ export default function PaymentPage() {
 
   // C: 선택 계약 — selectedRow 없거나 목록에 없으면 첫 카드로 폴백(기본 선택=첫 카드).
   const selectedCp = rows.find((r) => r.row === selectedRow) ?? rows[0];
+  // 선택 카드↔패널을 하나의 윤곽선으로 잇는 상태색(진행상태 기반).
+  const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
+  const selAccent = ACCENT[selFamily];
 
   return (
     <>
@@ -247,40 +251,59 @@ export default function PaymentPage() {
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 마스터-디테일 — 좌 컴팩트 목록 / 우 sticky 상세 */
-          <div className="grid grid-cols-3 items-start gap-4">
-            <div className="col-span-1 space-y-2">
-              {rows.map((cp, i) => (
-                <ContractRow
-                  key={cp.row}
-                  cp={cp}
-                  ordinal={i + 1}
-                  pending={pendingRow === cp.row}
-                  institutionOptions={institutionOptions}
-                  selectable
-                  selected={selectedCp?.row === cp.row}
-                  onSelect={() => setSelectedRow(cp.row ?? null)}
-                  onSave={handleSave}
-                  onDeleteRequest={() => makeDeleteRequest(cp)}
-                />
-              ))}
+          /* 데스크탑(pc): 마스터-디테일 — 선택 카드와 우측 패널이 같은 상태색
+             하나의 윤곽선(탭처럼)으로 이어짐. 좌 목록(고정폭) / 우 상세(flex). */
+          <div className="flex items-start">
+            <div className="w-56 shrink-0 space-y-2">
+              {rows.map((cp, i) => {
+                const isSel = selectedCp?.row === cp.row;
+                return (
+                  <div
+                    key={cp.row}
+                    className={
+                      isSel
+                        ? // 선택: 상태색 2px, 우측 테두리 제거 + 좌측만 라운드,
+                          // -mr-0.5 로 패널 왼쪽 테두리에 맞물림, z 위로.
+                          `relative z-10 -mr-0.5 overflow-hidden rounded-l-xl border-2 border-r-0 bg-white shadow-md transition-all duration-200 ${selAccent.border}`
+                        : // 비선택: 회색 + 패널과 간격(mr-1)으로 대비.
+                          "mr-1 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200"
+                    }
+                  >
+                    <ContractRow
+                      cp={cp}
+                      ordinal={i + 1}
+                      pending={pendingRow === cp.row}
+                      institutionOptions={institutionOptions}
+                      bare
+                      selectable
+                      selected={isSel}
+                      accentFamily={isSel ? selFamily : undefined}
+                      onSelect={() => setSelectedRow(cp.row ?? null)}
+                      onSave={handleSave}
+                      onDeleteRequest={() => makeDeleteRequest(cp)}
+                    />
+                  </div>
+                );
+              })}
             </div>
-            <div className="sticky top-24 col-span-2">
-              {selectedCp && (
+            {selectedCp && (
+              <div
+                className={`sticky top-24 min-w-0 flex-1 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
+              >
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}
-                  ordinal={
-                    rows.findIndex((r) => r.row === selectedCp.row) + 1
-                  }
+                  ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row}
                   institutionOptions={institutionOptions}
+                  bare
                   forceOpen
+                  accentFamily={selFamily}
                   onSave={handleSave}
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */

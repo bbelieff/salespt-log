@@ -18,6 +18,11 @@ import type { ContractPayment } from "@/types";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
 import { useTodosByContract } from "@/query/todos-hooks";
+import {
+  ACCENT,
+  contractAccentFamily,
+  type AccentFamily,
+} from "../_lib/contractAccent";
 
 interface Props {
   cp: ContractPayment;
@@ -36,6 +41,10 @@ interface Props {
   selected?: boolean;
   onSelect?: () => void;
   forceOpen?: boolean;
+  /** 강조색 패밀리 override (마스터-디테일에서 선택카드↔패널 색 일치용). 없으면 draft 상태로 자동. */
+  accentFamily?: AccentFamily;
+  /** bare: 자체 테두리/라운드/그림자 없이 내용만 렌더(page 가 윤곽선 소유 — 데스크탑 마스터-디테일). */
+  bare?: boolean;
 }
 
 function fmtMoney(n: number): string {
@@ -84,6 +93,8 @@ export default function ContractRow({
   selected = false,
   onSelect,
   forceOpen = false,
+  accentFamily,
+  bare = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
@@ -147,24 +158,12 @@ export default function ContractRow({
   const isComplete =
     docsDone === TOTAL_CHECKBOXES && visiblePayments >= 1 && avgPct >= 100;
 
-  // 활성 슬롯 인덱스 = 진행률 > 0 인 슬롯 중 가장 큰 인덱스
-  const activeSlotIdx = useMemo(() => {
-    for (let i = visiblePayments - 1; i >= 0; i--) {
-      if (progressPct(visibleSlots[i]?.진행률 ?? "") > 0) return i;
-    }
-    return -1;
-  }, [visibleSlots, visiblePayments]);
-
-  // 좌측 보더 클래스
-  const borderClass = isComplete
-    ? "border-l-4 border-l-green-500"
-    : activeSlotIdx === 0
-      ? "border-l-4 border-l-teal-500"
-      : activeSlotIdx === 1
-        ? "border-l-4 border-l-cyan-500"
-        : activeSlotIdx === 2
-          ? "border-l-4 border-l-fuchsia-500"
-          : "";
+  // 강조색 패밀리 — 진행상태색(완료 green / 활성 teal·cyan·fuchsia / 전 slate).
+  // override(accentFamily) 있으면 그것(마스터-디테일 선택카드↔패널 색 일치).
+  const family = accentFamily ?? contractAccentFamily(draft);
+  const accent = ACCENT[family];
+  // 닫힘 시 좌측 상태바(at-a-glance). bare(데스크탑 패널/목록)에선 page 가 윤곽선 소유 → 생략.
+  const leftBar = bare ? "" : `border-l-4 ${accent.leftBar}`;
 
   const docBadgeClass =
     docsDone === TOTAL_CHECKBOXES
@@ -204,13 +203,17 @@ export default function ContractRow({
 
   return (
     <div
-      className={`mb-3 overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-200 ${borderClass} ${
-        selected
-          ? "border-blue-400 ring-2 ring-blue-400"
-          : showBody
-            ? "border-blue-200 shadow-md ring-2 ring-blue-200"
-            : "border-gray-200"
-      }`}
+      className={
+        bare
+          ? // 데스크탑 마스터-디테일: page 가 윤곽선 소유 → 자체 테두리 없음.
+            "overflow-hidden bg-white transition-all duration-200"
+          : // 모바일/단독: open 시 상태색 2px 한 덩어리, 닫힘은 평평+좌측 상태바.
+            `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
+              showBody
+                ? `border-2 shadow-md ${accent.border}`
+                : `border border-gray-200 shadow-sm ${leftBar}`
+            }`
+      }
     >
       {/* 헤더 (접힘/선택) */}
       <button
@@ -223,10 +226,11 @@ export default function ContractRow({
               : () => setOpen((v) => !v)
         }
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
-          showBody ? "bg-blue-50/40" : ""
+          showBody ? accent.tint : ""
         } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"}`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}
+        aria-current={selected ? "true" : undefined}
       >
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
           {ordinal}
