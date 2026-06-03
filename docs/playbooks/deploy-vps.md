@@ -1,4 +1,41 @@
-# Playbook — 자체 VPS 배포 (Caddy + Docker Compose)
+# Playbook — 자체 VPS 배포 & 롤백
+
+> **📄 이 문서는 무엇인가요?**
+> - **한 줄 요약**: 현행 배포(PM2 + GitHub Actions 자동) 절차와 **롤백** 정본. CLAUDE.md §6.8 의 상세판.
+> - **누가 읽나요**: 개발자, 에이전트
+> - **관련 문서**: `CLAUDE.md §6.8`, `.github/workflows/deploy.yml`
+
+---
+
+## 0. 현행 운영 (정본) — PM2 + GitHub Actions
+
+> ⚠️ 아래 §1~9 의 **Docker Compose/`/srv/salespt`** 설명은 **legacy 참고용**. 실제 운영은
+> **PM2 + `/opt/salespt-log` + GitHub Actions(`deploy.yml`)** 이다. 충돌 시 이 §0 이 정본.
+
+**스택**: VPS `/opt/salespt-log` · Next.js standalone(`npm run build`) · **PM2**(`salespt-log`) · Caddy 리버스프록시(자동 HTTPS) · 공개 `https://salesptlog.online`.
+
+**배포(자동)**: `master` push → `.github/workflows/deploy.yml` 자동 실행. 수동 = `gh workflow run "Deploy to VPS"`.
+워크플로우: `git reset --hard origin/master` → `npm ci` → `rm -rf .next && npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → `pm2 save` → health(`:3000` + `https://salesptlog.online`).
+- RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
+
+**머지 후 에이전트 절차** (CLAUDE.md §6.8):
+1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
+2. 배포 run 관찰: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion,status`.
+3. **success** → `curl -I https://salesptlog.online`(200) → 완료. / **Setup SSH 실패**(VPS 일시 도달성) → `gh run rerun <id> --failed` 1~2회. / **build·health 실패** → 즉시 롤백.
+
+**롤백 (정본 — force-push 금지)**:
+```bash
+# 이 레포 PR = --squash → master 에 단일 커밋. 그 커밋만 되돌림(머지커밋 아님 → -m 불필요).
+git revert <bad-squash-sha>
+git push origin master          # → 자동 재배포(직전 정상 코드)
+# 확인: gh run view <new-id> --json conclusion  + curl -I https://salesptlog.online
+```
+- 절대 `git reset --hard` + `push --force` 로 master 역사 훼손 금지.
+- 롤백 후 원인분석 → fix-forward PR. 실패·롤백은 `docs/incidents/` 기록.
+
+---
+
+## (Legacy 참고) Caddy + Docker Compose 초기 셋업
 
 **목표**: Next.js 앱을 VPS 에 올리고 자체 도메인으로 자동 HTTPS 제공.
 **전제**: Ubuntu/Debian 계열 VPS, 포트 80/443 오픈, 도메인 1개 보유.
