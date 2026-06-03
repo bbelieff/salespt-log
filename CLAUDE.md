@@ -275,7 +275,7 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 2. 머지 후 배포 run 을 **끝까지 관찰**: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion`.
 3. 결과 분기:
    - **success** → 공개 health(`https://salesptlog.online` HTTP 200) 확인 후 완료 보고.
-   - **Setup SSH 단계 실패** → VPS 일시 도달성 문제(코드 무관). `gh run rerun <id> --failed` 로 1~2회 재시도.
+   - **Setup SSH 단계 실패** → 거의 안 남: ssh-keyscan **자동 재시도 내장**(connect 타임아웃 + 최대 5회, `chore/deploy-ssh-retry`). 그래도 실패면 VPS 도달성 지속 장애 → `gh run rerun <id> --failed` + VPS 상태 점검.
    - **build / health 실패** → 코드 문제 → **즉시 롤백**.
 
 **롤백 (정본 — force-push 금지, 이 레포는 squash merge)**:
