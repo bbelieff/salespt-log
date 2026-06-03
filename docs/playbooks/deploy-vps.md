@@ -17,11 +17,12 @@
 **배포(자동)**: `master` push → `.github/workflows/deploy.yml` 자동 실행. 수동 = `gh workflow run "Deploy to VPS"`.
 워크플로우: `git reset --hard origin/master` → `npm ci` → `rm -rf .next && npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → `pm2 save` → health(`:3000` + `https://salesptlog.online`).
 - RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
+- **SSH 접속(2026-06-04 개선)**: `ssh-keyscan` 은 best-effort(`|| true`) — 하드 게이트 아님. 실제 ssh 는 `StrictHostKeyChecking=accept-new`(TOFU) + `ConnectTimeout=30` 으로 known_hosts 없이도 접속. 러너↔VPS 22번의 **간헐적 연결 타임아웃**은 Deploy 단계가 **연결 실패(ssh rc=255)에 한해 최대 3회 재시도**로 흡수(빌드/원격 실패=다른 rc 는 즉시 fail → 롤백 신호). 과거: keyscan 을 하드 게이트로 둬서 간헐 타임아웃에 배포 전체가 막히던 오진 유발(sshd 는 정상이었음).
 
 **머지 후 에이전트 절차** (CLAUDE.md §6.8):
 1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
 2. 배포 run 관찰: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion,status`.
-3. **success** → `curl -I https://salesptlog.online`(200) → 완료. / **Setup SSH 실패** → 거의 안 남(ssh-keyscan **자동 재시도 내장**, connect 타임아웃 + 최대 5회). 그래도 실패면 VPS 도달성 지속 장애 → `gh run rerun <id> --failed` + VPS 점검. / **build·health 실패** → 즉시 롤백.
+3. **success** → `curl -I https://salesptlog.online`(200) → 완료. / **연결 실패(ssh rc=255)** → 3회 자동 재시도 내장. 그래도 실패면 러너↔VPS 22번 지속 장애 → `gh run rerun <id> --failed` + VPS 점검(단 sshd active·다른 run 접속됨이면 네트워크/제공사 edge 의심, OS 손질 불필요). / **build·health 실패(다른 rc)** → 즉시 롤백.
 
 **롤백 (정본 — force-push 금지)**:
 ```bash
