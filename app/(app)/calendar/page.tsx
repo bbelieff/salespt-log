@@ -119,8 +119,9 @@ export default function CalendarPage() {
   };
 
   const jumpToSchedule = () => {
-    // /schedule은 currently weekStart 기반. 단순 이동만 (auto-align).
-    router.push("/schedule");
+    // 선택일을 넘겨 일정·계약 탭이 그 주(금~목)로 열리게 함.
+    // (없으면 도착 탭이 오늘 주차로 auto-align — 선택 맥락 유실)
+    router.push(`/schedule?date=${selectedDate}`);
   };
 
   const [yearStr, monthStr] = yyyyMM.split("-");
