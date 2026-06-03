@@ -1,6 +1,7 @@
 ---
 slug: practice-payment-polish
-status: active
+status: completed
+completed: 2026-06-03
 created: 2026-06-03
 owner: belie
 related: practice-and-drive, 0007-drive-link-permission
@@ -85,3 +86,5 @@ PostHog 행태분석(수강생 흐름 관찰) + 사용성 피드백에서 도출
 
 ## Log
 - 2026-06-03 plan 작성. 바로적용 항목부터 구현 → [4][6][7] 제안.
+
+- 2026-06-03 10건 전부 구현·검증·머지(#264, 36df822). check(test 62)+build 통과. [4]=4-A, [6]=카피+모바일 줄바꿈, [7]=위계(7-1/7-2). completed 이동.
