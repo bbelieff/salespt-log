@@ -27,6 +27,15 @@ interface Props {
   institutionOptions?: string[];
   onSave: (next: ContractPayment) => void;
   onDeleteRequest: () => void;
+  /** C 마스터-디테일(데스크탑):
+   *  - selectable: 컴팩트 목록 아이템 모드 — 바디 숨김, 헤더 클릭=onSelect.
+   *  - selected: 선택 강조(액센트).
+   *  - forceOpen: 상세 패널 모드 — 바디 항상 열림(아코디언 토글 없음).
+   *  (모두 미지정 = 기존 모바일 아코디언, 회귀 0) */
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+  forceOpen?: boolean;
 }
 
 function fmtMoney(n: number): string {
@@ -71,8 +80,14 @@ export default function ContractRow({
   institutionOptions,
   onSave,
   onDeleteRequest,
+  selectable = false,
+  selected = false,
+  onSelect,
+  forceOpen = false,
 }: Props) {
   const [open, setOpen] = useState(false);
+  // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
+  const showBody = forceOpen || (!selectable && open);
   const [draft, setDraft] = useState<ContractPayment>(cp);
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
@@ -189,15 +204,27 @@ export default function ContractRow({
 
   return (
     <div
-      className={`mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ${borderClass}`}
+      className={`mb-3 overflow-hidden rounded-xl border bg-white shadow-sm ${borderClass} ${
+        selected
+          ? "border-blue-400 ring-2 ring-blue-400"
+          : "border-gray-200"
+      }`}
     >
-      {/* 헤더 (접힘) */}
+      {/* 헤더 (접힘/선택) */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-gray-50 active:bg-gray-100"
+        onClick={
+          selectable
+            ? () => onSelect?.()
+            : forceOpen
+              ? undefined
+              : () => setOpen((v) => !v)
+        }
+        className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
+          forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"
+        }`}
         style={{ minHeight: 60 }}
-        aria-expanded={open}
+        aria-expanded={showBody}
       >
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
           {ordinal}
@@ -239,25 +266,28 @@ export default function ContractRow({
             💰 {avgPct === 0 ? "—" : `${avgPct}%`}
           </span>
         </div>
-        <svg
-          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
+        {/* 아코디언: 아래 chevron(open 시 회전) / 컴팩트 목록: 우향(선택 유도) / 상세: 없음 */}
+        {!forceOpen && (
+          <svg
+            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
+              !selectable && open ? "rotate-180" : ""
+            } ${selectable ? "-rotate-90" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        )}
       </button>
 
       {/* 펼침 */}
-      {open && (
+      {showBody && (
         <div className="space-y-3 border-t border-gray-100 p-3">
           {/* 자동 연동 정보 (read-only) */}
           <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5">

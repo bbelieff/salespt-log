@@ -13,7 +13,7 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContractPayment } from "@/types";
 import {
@@ -27,6 +27,19 @@ import DriveLinkBar from "./_components/DriveLinkBar";
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
+}
+
+/** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
+function usePcBreakpoint(): boolean {
+  const [isPc, setIsPc] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setIsPc(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return isPc;
 }
 
 interface ConfirmTarget {
@@ -54,6 +67,9 @@ export default function PaymentPage() {
   const [postDeleteNav, setPostDeleteNav] = useState<PostDeleteNavTarget | null>(
     null,
   );
+  // C 마스터-디테일 (데스크탑만). 선택 row — 기본은 첫 카드(아래 selectedCp fallback).
+  const isPc = usePcBreakpoint();
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -70,6 +86,15 @@ export default function PaymentPage() {
       showToast(`저장하지 못했어요: ${(e as Error).message}`);
     } finally {
       setPendingRow(null);
+    }
+  };
+
+  const makeDeleteRequest = (cp: ContractPayment) => {
+    if (cp.row) {
+      setConfirmTarget({
+        row: cp.row,
+        label: cp.업체명 || `시트 row ${cp.row}`,
+      });
     }
   };
 
@@ -132,6 +157,9 @@ export default function PaymentPage() {
         .filter(Boolean),
     ),
   ).sort();
+
+  // C: 선택 계약 — selectedRow 없거나 목록에 없으면 첫 카드로 폴백(기본 선택=첫 카드).
+  const selectedCp = rows.find((r) => r.row === selectedRow) ?? rows[0];
 
   return (
     <>
@@ -218,8 +246,45 @@ export default function PaymentPage() {
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
+        ) : isPc ? (
+          /* 데스크탑(pc): 마스터-디테일 — 좌 컴팩트 목록 / 우 sticky 상세 */
+          <div className="grid grid-cols-3 items-start gap-4">
+            <div className="col-span-1 space-y-2">
+              {rows.map((cp, i) => (
+                <ContractRow
+                  key={cp.row}
+                  cp={cp}
+                  ordinal={i + 1}
+                  pending={pendingRow === cp.row}
+                  institutionOptions={institutionOptions}
+                  selectable
+                  selected={selectedCp?.row === cp.row}
+                  onSelect={() => setSelectedRow(cp.row ?? null)}
+                  onSave={handleSave}
+                  onDeleteRequest={() => makeDeleteRequest(cp)}
+                />
+              ))}
+            </div>
+            <div className="sticky top-24 col-span-2">
+              {selectedCp && (
+                <ContractRow
+                  key={`detail-${selectedCp.row}`}
+                  cp={selectedCp}
+                  ordinal={
+                    rows.findIndex((r) => r.row === selectedCp.row) + 1
+                  }
+                  pending={pendingRow === selectedCp.row}
+                  institutionOptions={institutionOptions}
+                  forceOpen
+                  onSave={handleSave}
+                  onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                />
+              )}
+            </div>
+          </div>
         ) : (
-          <div className="pc:grid pc:grid-cols-2 pc:gap-3 pc:items-start">
+          /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
+          <div>
             {rows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
@@ -228,14 +293,7 @@ export default function PaymentPage() {
                 pending={pendingRow === cp.row}
                 institutionOptions={institutionOptions}
                 onSave={handleSave}
-                onDeleteRequest={() => {
-                  if (cp.row) {
-                    setConfirmTarget({
-                      row: cp.row,
-                      label: cp.업체명 || `시트 row ${cp.row}`,
-                    });
-                  }
-                }}
+                onDeleteRequest={() => makeDeleteRequest(cp)}
               />
             ))}
           </div>
