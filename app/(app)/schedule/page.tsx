@@ -425,6 +425,32 @@ export default function SchedulePage() {
     parseISO(courseStartISO),
   );
 
+  const renderDay = (
+    day: (typeof daysByMeetingDate)[number],
+    globalIndex: number,
+  ) => (
+    <div
+      key={day.date}
+      ref={(el) => {
+        dayRefs.current[globalIndex] = el;
+      }}
+    >
+      <DaySection
+        date={day.date}
+        meetings={day.meetings}
+        todayISO={TODAY_ISO}
+        pendingId={pendingId}
+        onPatch={handlePatch}
+        onReschedule={handleReschedule}
+        onRevert={handleRevert}
+        onAddMeeting={handleAddMeeting}
+        onDelete={handleDelete}
+        followUpParentIds={followUpParentIds}
+        onReviveCase={handleReviveCase}
+      />
+    </div>
+  );
+
   return (
     <>
       <TopHeader
@@ -452,28 +478,15 @@ export default function SchedulePage() {
 
       <main className="px-4 pb-[80px] pt-1">
       <PageContainer width="wide">
-        {daysByMeetingDate.map((day, i) => (
-          <div
-            key={day.date}
-            ref={(el) => {
-              dayRefs.current[i] = el;
-            }}
-          >
-            <DaySection
-              date={day.date}
-              meetings={day.meetings}
-              todayISO={TODAY_ISO}
-              pendingId={pendingId}
-              onPatch={handlePatch}
-              onReschedule={handleReschedule}
-              onRevert={handleRevert}
-              onAddMeeting={handleAddMeeting}
-              onDelete={handleDelete}
-              followUpParentIds={followUpParentIds}
-              onReviveCase={handleReviveCase}
-            />
+        {/* PC 2열(좌 금토일 0~2 / 우 월화수목 3~6). 모바일은 비-grid라 위→아래 시간순(회귀 0). */}
+        <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-4">
+          <div>
+            {daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
           </div>
-        ))}
+          <div>
+            {daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))}
+          </div>
+        </div>
       </PageContainer>
       </main>
 
