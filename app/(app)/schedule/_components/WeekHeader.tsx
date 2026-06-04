@@ -101,7 +101,7 @@ export default function WeekHeader({
       {/* 7일 그리드 — 주차 변경 시 슬라이드 인 (2026-05-18 [2]). */}
       <div
         key={weekStart}
-        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 2xl:mx-auto 2xl:max-w-xl ${
+        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 ${
           slideDir === "right" ? "week-slide-right" : slideDir === "left" ? "week-slide-left" : ""
         }`}
       >

@@ -250,7 +250,7 @@ export default function DbPage() {
       <TopHeader pageEmoji="📊" pageTitle="DB관리" />
 
       <main className="px-4 pb-[80px] pt-3">
-      <PageContainer width="narrow">
+      <PageContainer width="wide">
         <OverallCard
           items={overall.items}
           totalCost={overall.totalCost}
