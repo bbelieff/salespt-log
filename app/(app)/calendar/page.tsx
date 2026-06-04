@@ -185,8 +185,8 @@ export default function CalendarPage() {
             </div>
           </div>
         ) : (
-          <div className="pc:grid pc:grid-cols-6 pc:gap-6 pc:items-start">
-            <div className="pt-2 pc:col-span-4">
+          <div className="pc:grid pc:grid-cols-7 pc:gap-6 pc:items-start">
+            <div className="pt-2 pc:col-span-5">
               <MonthGrid
                 yyyyMM={yyyyMM}
                 todayISO={TODAY_ISO}
@@ -331,49 +331,43 @@ export default function CalendarPage() {
                 </button>
               </div>
 
-              {/* 범례 — 영업 4색 / 실무 4아이콘 */}
-              <div className="mt-4">
-                <div className="mb-1 text-[11px] text-gray-400">범례</div>
-                <div className="space-y-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-xs text-gray-600">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className="font-medium text-gray-400"
-                      style={{ width: 52 }}
-                    >
-                      영업
-                    </span>
-                    {(Object.keys(CHANNEL_HEX) as Channel[]).map((ch) => (
-                      <span key={ch} className="flex items-center gap-1">
-                        <span
-                          className="h-4 w-4 rounded-full"
-                          style={{ background: CHANNEL_HEX[ch] }}
-                        />
-                        {ch}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className="font-medium text-gray-400"
-                      style={{ width: 52 }}
-                    >
-                      실무
-                    </span>
-                    {TODO_TYPES.map((t) => (
-                      <span key={t} className="flex items-center gap-1">
-                        <span
-                          className="flex h-4 w-4 items-center justify-center rounded-full text-white"
-                          style={{ background: PRACTICE_HEX }}
-                        >
-                          <TodoTypeIcon type={t} size={10} />
-                        </span>
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </section>
+          </div>
+        )}
+        {/* 범례 — 그리드+패널 아래 full-width 스트립. 영업/실무 각각 한 줄(nowrap, break-keep)
+            → 좁은 패널에서 '콜·지·기·소' wrap 되던 문제 해소. 아주 좁으면 가로 스크롤. */}
+        {!monthQuery.isLoading && !monthQuery.isError && (
+          <div className="mt-4">
+            <div className="mb-1 text-[11px] text-gray-400">범례</div>
+            <div className="flex flex-col gap-1.5 overflow-x-auto rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-xs text-gray-600 sm:flex-row sm:flex-wrap sm:gap-x-5">
+              <div className="flex flex-nowrap items-center gap-2 break-keep">
+                <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
+                  영업
+                </span>
+                {(Object.keys(CHANNEL_HEX) as Channel[]).map((ch) => (
+                  <span key={ch} className="flex shrink-0 items-center gap-1 whitespace-nowrap break-keep">
+                    <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: CHANNEL_HEX[ch] }} />
+                    {ch}
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-nowrap items-center gap-2 break-keep">
+                <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
+                  실무
+                </span>
+                {TODO_TYPES.map((t) => (
+                  <span key={t} className="flex shrink-0 items-center gap-1 whitespace-nowrap">
+                    <span
+                      className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-white"
+                      style={{ background: PRACTICE_HEX }}
+                    >
+                      <TodoTypeIcon type={t} size={10} />
+                    </span>
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </PageContainer>
