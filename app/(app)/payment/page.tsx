@@ -252,9 +252,13 @@ export default function PaymentPage() {
           </div>
         ) : isPc ? (
           /* 데스크탑(pc): 마스터-디테일 — 선택 카드와 우측 패널이 같은 상태색
-             하나의 윤곽선(탭처럼)으로 이어짐. 좌 목록(고정폭) / 우 상세(flex). */
-          <div className="flex items-start">
-            <div className="w-56 shrink-0 space-y-2">
+             하나의 윤곽선(탭처럼)으로 이어짐. grid 3.5:6.5 (gap 0 → seam 연결).
+             (요약카드 139줄과 동일한 인라인 gridTemplateColumns 패턴.) */
+          <div
+            className="grid items-start"
+            style={{ gridTemplateColumns: "3.5fr 6.5fr" }}
+          >
+            <div className="min-w-0 space-y-2">
               {rows.map((cp, i) => {
                 const isSel = selectedCp?.row === cp.row;
                 return (
@@ -288,7 +292,7 @@ export default function PaymentPage() {
             </div>
             {selectedCp && (
               <div
-                className={`sticky top-24 min-w-0 flex-1 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
+                className={`sticky top-24 min-w-0 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
               >
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
