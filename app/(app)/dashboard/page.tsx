@@ -106,7 +106,7 @@ export default function DashboardPage() {
         />
       )}
 
-      <div className="space-y-4 p-4 pc:grid pc:grid-cols-2 pc:gap-4 pc:space-y-0">
+      <div className="space-y-4 p-4">
         {dash.isLoading && (
           <div className="rounded-md bg-white p-4 text-center text-sm text-gray-500 shadow-sm">
             대시보드를 불러오고 있어요
@@ -119,18 +119,28 @@ export default function DashboardPage() {
         )}
         {dash.data && (
           <>
-            <OperatingProfitCard
-              revenue={dash.data.kpi.총매출}
-              cost={dash.data.kpi.총비용}
-              contractCount={contractCount}
-            />
-            <FunnelChart matrix={dash.data.channelMatrix} />
-            <ProductivityIndicators matrix={dash.data.channelMatrix} />
-            <WeeklyDualChart points={dash.data.weeklyTrend} />
-            <ChannelPerformance
-              costBreakdown={dash.data.costBreakdown}
-              matrix={dash.data.channelMatrix}
-            />
+            {/* 상단 2+1: 좌[영업이익(컴팩트)+생산성] / 우[퍼널(길게)].
+                items-start 로 영업이익 카드가 퍼널 높이만큼 늘어나 비던 문제 해소. */}
+            <div className="space-y-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-4 pc:space-y-0">
+              <div className="space-y-4 pc:flex pc:flex-col pc:gap-4 pc:space-y-0">
+                <OperatingProfitCard
+                  revenue={dash.data.kpi.총매출}
+                  cost={dash.data.kpi.총비용}
+                  contractCount={contractCount}
+                />
+                <ProductivityIndicators matrix={dash.data.channelMatrix} />
+              </div>
+              <FunnelChart matrix={dash.data.channelMatrix} />
+            </div>
+
+            {/* 하단 2열: 8주차 추이 | 채널별 성과 */}
+            <div className="space-y-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-4 pc:space-y-0">
+              <WeeklyDualChart points={dash.data.weeklyTrend} />
+              <ChannelPerformance
+                costBreakdown={dash.data.costBreakdown}
+                matrix={dash.data.channelMatrix}
+              />
+            </div>
           </>
         )}
       </div>
