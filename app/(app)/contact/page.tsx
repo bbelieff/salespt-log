@@ -15,10 +15,7 @@ import {
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
 import { useRouter } from "next/navigation";
-import {
-  findProductionMismatch,
-  type ProductionMismatch,
-} from "./_lib/dbProductionCheck";
+import { useDbProductionCheck } from "./_lib/useDbProductionCheck";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
@@ -48,9 +45,9 @@ export default function ContactPage() {
   const saveMetrics = useSaveMetrics();
   const router = useRouter();
   const dbOverview = useDBOverview();
-  const [dbMismatch, setDbMismatch] = useState<ProductionMismatch | null>(null);
-  // 2026-06-03 [교차탭1]: DB관리에서 일치 확인 후 긍정 피드백 모달.
-  const [dbMatchOk, setDbMatchOk] = useState<{ channel: Channel; count: number } | null>(null);
+  // DB합 일치 검사 + 결과 모달 상태를 훅으로 중앙화 (모든 저장 경로 공통, 2026-06-04).
+  const { dbMismatch, setDbMismatch, dbMatchOk, setDbMatchOk, checkDbAfterSave } =
+    useDbProductionCheck(dbOverview);
   // 2026-06-03 [교차탭1]: DB관리→컨택 이동 직후 생산 입력 행을 잠깐 강조.
   const [highlightProduction, setHighlightProduction] = useState(false);
   const appendMeeting = useAppendMeeting();
@@ -289,10 +286,8 @@ export default function ContactPage() {
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     try {
       await appendMeeting.mutateAsync({ date: dateAtClick, meeting });
-      await saveMetrics.mutateAsync({
-        date: dateAtClick,
-        channels: draftAtClick,
-      });
+      // 등록도 생산 메트릭 저장 경로 → 동일하게 DB 검사 수행(과거 누락 버그 수정).
+      await saveMetricsAndCheck(dateAtClick, draftAtClick);
       showToast("✓ 등록 완료 (시트 동기화됨)");
     } catch (e) {
       setNewSlots((s) => [...s, slot]);
@@ -328,6 +323,16 @@ export default function ContactPage() {
     }
   };
 
+  // ⚠️ 모든 생산 메트릭 저장은 반드시 이 단일 진입점을 통해야 함
+  //    (saveMetrics.mutateAsync 직접 호출 금지 — DB 검사 누락 방지). checkDbAfterSave 는 훅.
+  const saveMetricsAndCheck = async (
+    dateAtClick: string,
+    channels: Record<Channel, ChannelDailyRowMetrics>,
+  ) => {
+    await saveMetrics.mutateAsync({ date: dateAtClick, channels });
+    await checkDbAfterSave(dateAtClick, channels);
+  };
+
   const handleSave = async () => {
     if (newSlots.length > 0) {
       showToast(`⚠ 미등록 미팅 ${newSlots.length}건 — 먼저 [✓ 등록] 또는 [✕ 삭제]를 진행하세요`);
@@ -335,22 +340,8 @@ export default function ContactPage() {
     }
     const dateAtClick = date;
     try {
-      await saveMetrics.mutateAsync({ date: dateAtClick, channels: draft });
+      await saveMetricsAndCheck(dateAtClick, draft);
       showToast("✅ 저장 완료");
-      // 2026-06-03 [교차탭1]: DB합 vs 컨택 생산 검증.
-      //  - 불일치 → 구체 숫자와 함께 DB관리로 안내 (기존).
-      //  - 일치 → 긍정 확인 모달로 "이대로 맞다" 안내 (왕복 루프 중단).
-      if (dbOverview.data) {
-        const m = findProductionMismatch(dbOverview.data, dateAtClick, draft);
-        if (m) {
-          setDbMismatch(m);
-        } else {
-          // 검증 대상(현수막 제외) 중 생산을 입력한 채널이 있으면 일치 확인.
-          const verifiable: Channel[] = ["매입DB", "직접생산", "콜·지·기·소"];
-          const okCh = verifiable.find((c) => draft[c].production > 0);
-          if (okCh) setDbMatchOk({ channel: okCh, count: draft[okCh].production });
-        }
-      }
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
     }
