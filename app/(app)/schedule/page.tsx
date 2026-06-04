@@ -478,12 +478,12 @@ export default function SchedulePage() {
 
       <main className="px-4 pb-[80px] pt-1">
       <PageContainer width="wide">
-        {/* PC 2열(좌 금토일 0~2 / 우 월화수목 3~6). 모바일은 비-grid라 위→아래 시간순(회귀 0). */}
-        <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-4">
+        {/* PC 2열(좌 금토일/우 월화수목) — gap-8 + 우 세로 구분선으로 좌우 분리 강화. 모바일 회귀 0. */}
+        <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-8">
           <div>
             {daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
           </div>
-          <div>
+          <div className="pc:border-l pc:border-gray-200 pc:pl-8">
             {daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))}
           </div>
         </div>
