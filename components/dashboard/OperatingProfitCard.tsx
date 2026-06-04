@@ -30,8 +30,8 @@ export default function OperatingProfitCard({
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
   return (
-    <section className="rounded-2xl border-l-4 border-blue-500 bg-white p-5 shadow-sm">
-      <div className="mb-2 flex items-center justify-between">
+    <section className="rounded-2xl border-l-4 border-blue-500 bg-white p-4 shadow-sm">
+      <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-xs font-bold leading-none text-blue-600">
             ＝
