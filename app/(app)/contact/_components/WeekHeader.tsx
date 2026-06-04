@@ -107,7 +107,7 @@ export default function WeekHeader({
       {/* 요일 바 */}
       <div
         key={`${weekStart.getFullYear()}-${weekStart.getMonth()}-${weekStart.getDate()}`}
-        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 2xl:mx-auto 2xl:max-w-xl ${
+        className={`grid grid-cols-7 gap-1 px-2 pb-2.5 ${
           slideDir === "right" ? "week-slide-right" : slideDir === "left" ? "week-slide-left" : ""
         }`}
       >

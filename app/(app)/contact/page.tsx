@@ -26,6 +26,7 @@ import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
 import ContactResultModals from "./_components/ContactResultModals";
+import SaveBar from "./_components/SaveBar";
 import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 
@@ -409,19 +410,22 @@ export default function ContactPage() {
         className="sticky top-24 z-30 bg-white shadow-sm"
         {...weekSwipe}
       >
-        <WeekHeader
-          weekIndex={weekIndex}
-          courseStart={courseStart}
-          selectedDate={date}
-          todayISO={TODAY_ISO}
-          cohortName={undefined}
-          countsByDay={countsByDay}
-          weekFunnel={weekFunnel}
-          onPrevWeek={() => moveWeek(-1)}
-          onNextWeek={() => moveWeek(1)}
-          onSelectDay={setDate}
-          slideDir={slideDir}
-        />
+        {/* 배경 full-bleed + 내용은 본문과 동일 6xl 중앙정렬 */}
+        <PageContainer width="wide">
+          <WeekHeader
+            weekIndex={weekIndex}
+            courseStart={courseStart}
+            selectedDate={date}
+            todayISO={TODAY_ISO}
+            cohortName={undefined}
+            countsByDay={countsByDay}
+            weekFunnel={weekFunnel}
+            onPrevWeek={() => moveWeek(-1)}
+            onNextWeek={() => moveWeek(1)}
+            onSelectDay={setDate}
+            slideDir={slideDir}
+          />
+        </PageContainer>
       </div>
 
       {/* 2026-05-18 [1]: 스와이프/주차 이동 시 본문 fade 인터랙션 (헤더는 고정). */}
@@ -429,7 +433,7 @@ export default function ContactPage() {
         className={`px-4 pt-4 pb-[160px] transition-opacity duration-200 ${
           dayQuery.isFetching ? "opacity-50" : "opacity-100"
         }`}
-      ><PageContainer width="narrow">
+      ><PageContainer width="wide">
         <ChannelTabsAndPanel
           active={activeChannel}
           draft={draft}
@@ -452,24 +456,8 @@ export default function ContactPage() {
       </PageContainer>
       </main>
 
-      {/* 고정 저장 버튼 (탭바 위) */}
-      <div className="fixed bottom-[64px] left-0 right-0 z-[49] bg-gradient-to-t from-white via-white to-transparent px-4 pb-3 pt-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saveMetrics.isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 py-3.5 font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-600 active:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
-        >
-          {saveMetrics.isPending ? (
-            <>
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              시트 저장중...
-            </>
-          ) : (
-            <>💾 저장하기</>
-          )}
-        </button>
-      </div>
+      {/* 고정 저장 바 (탭바 위) — 분리된 컴포넌트 */}
+      <SaveBar pending={saveMetrics.isPending} onSave={handleSave} />
 
       {/* Toast */}
       {toast && (

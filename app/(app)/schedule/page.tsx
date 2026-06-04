@@ -433,22 +433,25 @@ export default function SchedulePage() {
       />
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
-      <div className="sticky top-24 z-30" {...weekSwipe}>
-        <WeekHeader
-          weekIndex={weekIndex}
-          weekStart={weekStart}
-          todayISO={TODAY_ISO}
-          countsByDay={countsByDay}
-          onPrevWeek={() => moveWeek(-1)}
-          onNextWeek={() => moveWeek(1)}
-          onClickDay={scrollToDay}
-          slideDir={slideDir}
-        />
-        <SummaryBar meetings={allMeetings} />
+      <div className="sticky top-24 z-30 bg-white shadow-sm" {...weekSwipe}>
+        {/* 배경 full-bleed + 내용은 본문과 동일 6xl 중앙정렬 */}
+        <PageContainer width="wide">
+          <WeekHeader
+            weekIndex={weekIndex}
+            weekStart={weekStart}
+            todayISO={TODAY_ISO}
+            countsByDay={countsByDay}
+            onPrevWeek={() => moveWeek(-1)}
+            onNextWeek={() => moveWeek(1)}
+            onClickDay={scrollToDay}
+            slideDir={slideDir}
+          />
+          <SummaryBar meetings={allMeetings} />
+        </PageContainer>
       </div>
 
       <main className="px-4 pb-[80px] pt-1">
-      <PageContainer width="narrow">
+      <PageContainer width="wide">
         {daysByMeetingDate.map((day, i) => (
           <div
             key={day.date}

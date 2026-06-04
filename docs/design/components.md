@@ -1229,6 +1229,7 @@ components/dashboard/
 | **MeetingPickerModal** | 미팅예약 -1 시 삭제할 미팅 선택 모달 (Phase 4). Props: `meetings` / `onPick` / `onClose`. 선택 시 cascade 삭제 |
 | **MeetingSlotList** | 컨택탭 미팅 슬롯 리스트 (page.tsx 분할, 2026-06). 저장 미팅 + 미등록 신규 슬롯을 채널 순서로 렌더. Props: `slots: SlotEntry[]`, `reservationDate`, `onPatchSaved`, `onRemoveSaved`, `onChangeNew`, `onRegisterNew`, `onRemoveNew`. |
 | **ContactResultModals** | 컨택탭 결과 모달 클러스터 (page.tsx 분할, 2026-06): DB불일치 안내(CrossTabHintModal) + DB일치 긍정확인 + 미팅 선택삭제(MeetingPickerModal). Props: `dbMismatch`, `onMismatchNavigate`, `onMismatchClose`, `dbMatchOk`, `onMatchOkClose`, `pickerMeetings`, `onPick`, `onPickerClose`. |
+| **SaveBar** | 컨택탭 하단 고정 저장 바 (page.tsx 분할, 500줄 캡). 바 full-bleed + 버튼 6xl 정렬(PageContainer wide). Props: `pending`, `onSave`. |
 
 ### 10-3. schedule 탭 (`app/(app)/schedule/_components/`)
 
