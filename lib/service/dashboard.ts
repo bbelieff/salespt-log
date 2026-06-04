@@ -24,6 +24,7 @@ import type {
   DashboardView,
   DashboardChannelMatrix,
   DashboardCostBreakdown,
+  ContractPayment,
 } from "@/types";
 import { findUserByEmail } from "@/repo/users";
 import { readDashboard } from "@/repo/dashboard";
@@ -39,6 +40,26 @@ const CHANNELS: DashboardChannelMatrix["채널"][] = [
 
 const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
+
+/**
+ * 총매출 = 수임비합 + 수수료합(수납1/2/3 수납액). 수납탭(payment/page.tsx)의
+ * totalRevenue = totalContract + totalReceived 와 **동일 정의** → 두 화면 매출 일치.
+ * (과거: 대시보드가 수임비만 합산해 수수료 누락 → 수납탭과 어긋남.)
+ */
+export function computeContractRevenue(payments: ContractPayment[]): {
+  totalFee: number;
+  totalReceived: number;
+  revenue: number;
+} {
+  let totalFee = 0;
+  let totalReceived = 0;
+  for (const p of payments) {
+    totalFee += num(p.수임비);
+    totalReceived +=
+      num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액);
+  }
+  return { totalFee, totalReceived, revenue: totalFee + totalReceived };
+}
 
 export async function loadDashboard(email: string): Promise<DashboardView> {
   const user = await findUserByEmail(email);
@@ -73,7 +94,8 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
   //   - 서버 sum: 수납탭이 표시하는 동일 row 데이터원천 → 절대 어긋날 수 없음
   // 이익은 매출 − 3채널 비용으로 재계산해 정합성 유지.
   const fee = num(data.finance[0]);
-  const revenue = payments.reduce((s, p) => s + num(p.수임비), 0);
+  // 총매출 = 수임비합 + 수수료합 (수납탭 SSOT 동일). 수수료(수납액) 누락 버그 수정.
+  const { totalFee, totalReceived, revenue } = computeContractRevenue(payments);
   const cost = costByChannel.reduce((s, c) => s + c, 0);
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -113,6 +135,8 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
       총매출: revenue,
       총비용: cost,
       누적수임비: fee,
+      수임비합: totalFee,
+      수수료합: totalReceived,
     },
     channelMatrix,
     weeklyTrend,

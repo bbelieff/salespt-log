@@ -294,6 +294,8 @@ export interface DashboardKPI {
   총매출: number; // 대시보드 D21 (= '01 영업관리'!N6)
   총비용: number; // 대시보드 E21 (좌표 디스커버리 필요)
   누적수임비: number; // TODO: 셀 좌표 디스커버리
+  수임비합: number; // 총매출 분해: Σ수임비 (배너 표시)
+  수수료합: number; // 총매출 분해: Σ수납액(수수료). 총매출 = 수임비합 + 수수료합
 }
 
 /** 채널별 6단계 funnel matrix — stacked bar 데이터 */

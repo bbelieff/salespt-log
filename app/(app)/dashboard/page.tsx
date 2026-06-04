@@ -100,9 +100,9 @@ export default function DashboardPage() {
           graduationDate={banner.graduationDate}
           revenue={dash.data.kpi.총매출}
           cost={dash.data.kpi.총비용}
-          // 수임비/수수료는 시트 디스커버리 후 별도 매핑. 임시: 67/33 분할
-          feeIncome={Math.round(dash.data.kpi.총매출 * 0.67)}
-          commissionIncome={Math.round(dash.data.kpi.총매출 * 0.33)}
+          // 실제 분해: 수임비합 + 수수료합 = 총매출 (수납탭과 일치).
+          feeIncome={dash.data.kpi.수임비합}
+          commissionIncome={dash.data.kpi.수수료합}
         />
       )}
 
