@@ -113,9 +113,19 @@ export async function loadDay(
       production: r.production,
       inflow: r.inflow,
       contactProgress: r.contactProgress,
-      meetingReservation: r.meetingReservation,
+      meetingReservation: r.meetingReservation, // 아래에서 카드수로 덮어씀
     };
   }
+  // ⭐ 미팅예약 = 업체관리 카드 수 파생 (SSOT, ADR-0010). 시트 H 독립값에 의존하지
+  //    않아 H↔카드 드리프트(예: 5/18 H=2 vs 카드 7)가 read 시점에 항상 교정됨.
+  const cardCount: Record<Channel, number> = {
+    매입DB: 0,
+    직접생산: 0,
+    현수막: 0,
+    "콜·지·기·소": 0,
+  };
+  for (const mtg of meetings) cardCount[mtg.channel] += 1;
+  for (const ch of CHANNEL_ORDER) channels[ch].meetingReservation = cardCount[ch];
 
   const csISO = `${courseStart.getFullYear()}-${String(
     courseStart.getMonth() + 1,
@@ -223,12 +233,24 @@ export async function saveContactMetrics(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
 
+  // ⭐ 미팅예약(H) = 업체관리 카드 수 파생 (SSOT, ADR-0010). 클라이언트가 보낸
+  //    meetingReservation 을 그대로 쓰지 않고, 그 예약일·채널의 실제 카드 수로 재계산해 기록
+  //    → 시트 H 가 저장 시마다 카드 수와 일치(드리프트 누적 제거). registerNewSlot 은
+  //    appendMeeting 후 이 함수를 호출하므로 새 카드도 카운트에 포함됨.
+  const meetings = await findByDate(spreadsheetId, date, "reservation");
+  const cardCount: Record<Channel, number> = {
+    매입DB: 0,
+    직접생산: 0,
+    현수막: 0,
+    "콜·지·기·소": 0,
+  };
+  for (const mtg of meetings) cardCount[mtg.channel] += 1;
+
   // 4채널 1회 batchUpdate (readCourseStart 1회).
   const rows: ChannelDailyRow[] = [];
   for (const channel of CHANNEL_ORDER) {
     const m = channels[channel];
     if (!m) continue;
-    const success = Math.min(m.meetingReservation, m.contactProgress);
     rows.push(
       ChannelDailyRow.parse({
         date,
@@ -236,7 +258,7 @@ export async function saveContactMetrics(
         production: m.production,
         inflow: m.inflow,
         contactProgress: m.contactProgress,
-        meetingReservation: success,
+        meetingReservation: cardCount[channel], // 카드 수 = 진실
       }),
     );
   }
