@@ -12,7 +12,7 @@
  */
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { PaymentSlot, Progress, Todo } from "@/types";
 import TodoSection from "./TodoSection";
 
@@ -115,21 +115,54 @@ export default function PaymentSlotForm({
   // 5등분 클릭 영역 (각 영역 = 20%, 동일 % 재클릭 시 0%)
   const segments = [20, 40, 60, 80, 100] as const;
 
+  // 완료 슬롯(100% 또는 승인>0 && 수납>=승인) 기본 접힘 / 진행 중 펼침.
+  const isDone =
+    pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
+  const [open, setOpen] = useState(!isDone);
+  const pctColor =
+    pct === 0 ? "text-gray-400" : pct >= 100 ? "text-green-600" : "text-blue-600";
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-3">
-      {/* 슬롯 헤더 */}
-      <div className="mb-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 완료 슬롯은 기본 접힘. */}
+      <div
+        className={`flex cursor-pointer items-center justify-between gap-2 ${
+          open ? "mb-2.5" : ""
+        }`}
+        onClick={() => setOpen((v) => !v)}
+        role="button"
+        aria-expanded={open}
+      >
+        <div className="flex min-w-0 items-center gap-1.5">
           <div
-            className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none ${chipClass}`}
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold leading-none ${chipClass}`}
           >
             {index}
           </div>
-          <span className="text-sm font-semibold text-gray-800">{style.name}</span>
+          <span className="shrink-0 text-sm font-semibold text-gray-800">
+            {style.name}
+          </span>
+          {/* 접힘 요약: 진행기관 · 진행률 · 수납/승인 */}
+          {!open && (
+            <span className="ml-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-gray-500">
+              <span className="truncate font-medium text-gray-600">
+                {slot.진행기관 || "기관 미입력"}
+              </span>
+              <span className={`shrink-0 font-semibold ${pctColor}`}>· {pct}%</span>
+              {(slot.승인금액 > 0 || slot.수납액 > 0) && (
+                <span
+                  className="shrink-0"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  · ₩{fmtComma(slot.수납액) || 0}/{fmtComma(slot.승인금액) || 0}
+                </span>
+              )}
+            </span>
+          )}
         </div>
-        <div className="flex min-w-0 items-center gap-2">
-          {/* [10] 카드 주제 = 진행기관명. 한눈에 무슨 건인지 보이게. */}
-          {slot.진행기관 && (
+        <div className="flex shrink-0 items-center gap-2">
+          {/* [10] 주제 = 진행기관명 (펼침 시만; 접힘 땐 좌측 요약에 표시). */}
+          {open && slot.진행기관 && (
             <span
               className="max-w-[140px] truncate text-xs font-semibold text-gray-600"
               title={slot.진행기관}
@@ -140,7 +173,10 @@ export default function PaymentSlotForm({
           {removable && onRemove && (
             <button
               type="button"
-              onClick={onRemove}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
               className="shrink-0 text-xs text-gray-400 hover:text-red-500"
               aria-label="수납 제거"
               title="이 수납 제거"
@@ -148,8 +184,27 @@ export default function PaymentSlotForm({
               ✕
             </button>
           )}
+          <svg
+            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
         </div>
       </div>
+
+      {open && (
+        <>
+
 
       {/* 진행도 볼륨바 (5등분 클릭) */}
       <div className="mb-3">
@@ -265,6 +320,8 @@ export default function PaymentSlotForm({
           />
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
