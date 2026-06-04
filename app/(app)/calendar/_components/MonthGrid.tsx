@@ -106,7 +106,7 @@ export default function MonthGrid({
               key={c.date}
               type="button"
               onClick={() => onSelectDate(c.date)}
-              className={`relative flex min-h-[84px] flex-col items-stretch gap-0.5 overflow-hidden rounded-md p-1 text-left transition-all active:scale-[0.98] pc:min-h-[150px] pc:gap-1 pc:p-2 ${cellBg}`}
+              className={`relative flex min-h-[84px] flex-col items-stretch gap-0.5 overflow-hidden rounded-md p-1 text-left transition-all active:scale-[0.98] pc:min-h-[104px] pc:gap-1 pc:p-1.5 ${cellBg}`}
             >
               <span
                 className={`text-xs font-bold leading-none pc:text-sm ${dayCls}`}

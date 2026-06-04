@@ -198,7 +198,10 @@ export default function CalendarPage() {
             </div>
 
             {/* 선택일 통합 리스트 (미팅 + 실무투두, 시간순) */}
-            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2">
+            {/* 데스크탑: 스크롤해도 선택일 패널이 따라오게 sticky.
+                top-40 = 상단 고정 바(메뉴 48 + 배너 48 + 월 nav sticky top-24) 합 회피.
+                길면 자체 스크롤(그리드와 독립). 모바일은 일반 흐름. */}
+            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2 pc:sticky pc:top-40 pc:self-start pc:max-h-[calc(100vh-11rem)] pc:overflow-y-auto">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold text-gray-900">
                   {selectedDate.replace(/^\d{4}-/, "").replace("-", "/")} (
