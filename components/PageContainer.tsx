@@ -9,7 +9,7 @@
  * width:
  *  - "narrow" 입력 중심(컨택·일정·DB·로그인/온보딩) → 읽기 좋은 좁은 폭.
  *  - "wide"   정보 많은 화면(실무수납·대시보드·관리자) → 넓은 폭 + 내부 멀티컬럼.
- *  - "xwide"  캘린더처럼 좌우로 더 열어야 하는 화면 → 가장 넓은 폭(pc:max-w-7xl).
+ *  - "xwide"  캘린더처럼 좌우로 더 열어야 하는 화면 → 가장 넓은 폭(pc:max-w-[120rem], 사실상 화면폭-여백).
  *
  * 등재: docs/design/components.md §8.
  */
@@ -24,7 +24,7 @@ export default function PageContainer({
 }) {
   const maxW =
     width === "xwide"
-      ? "pc:max-w-7xl"
+      ? "pc:max-w-[120rem]"
       : width === "wide"
         ? "pc:max-w-6xl"
         : "pc:max-w-2xl";

@@ -1384,7 +1384,7 @@ button:focus, input:focus, select:focus {
 |---|---|---|---|
 | `width="narrow"` | 기본 | `max-w-2xl` 중앙정렬 | 컨택·일정·DB·로그인·온보딩 (입력 중심) |
 | `width="wide"` | — | `max-w-6xl` 중앙정렬 + 내부 멀티컬럼 | 실무수납·대시보드·관리자 (정보 중심) |
-| `width="xwide"` | — | `max-w-7xl` 중앙정렬 (가장 넓음) | 캘린더 (좌우로 더 열어야 하는 화면) |
+| `width="xwide"` | — | `max-w-[120rem]` 중앙정렬 (가장 넓음, 사실상 화면폭-여백) | 캘린더 (월 그리드가 화면 대부분 차지) |
 
 - 모바일에선 `w-full`(기존 레이아웃 그대로). 데스크탑에서만 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
 - 정보 중심 화면은 PageContainer(wide) 안에서 카드 리스트를 `pc:grid pc:grid-cols-2 wide:grid-cols-3` 등으로 배치해 가로 공간 활용(세로 스크롤 압박 완화).
