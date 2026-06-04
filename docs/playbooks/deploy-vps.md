@@ -22,7 +22,7 @@
 **머지 후 에이전트 절차** (CLAUDE.md §6.8):
 1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
 2. 배포 run 관찰: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion,status`.
-3. **success** → `curl -I https://salesptlog.online`(200) → 완료. / **연결 실패(ssh rc=255)** → 3회 자동 재시도 내장. 그래도 실패면 러너↔VPS 22번 지속 장애 → `gh run rerun <id> --failed` + VPS 점검(단 sshd active·다른 run 접속됨이면 네트워크/제공사 edge 의심, OS 손질 불필요). / **build·health 실패(다른 rc)** → 즉시 롤백.
+3. **success** → `curl -I https://salesptlog.online`(200) → 완료. / **연결 실패(ssh rc=255)** → 5회 자동 재시도 내장(⚠️ GH 기본 `bash -e` 때문에 `|| rc=$?` 로 포착해야 재시도가 작동 — 2026-06-04 수정). 그래도 실패면 러너↔VPS 22번 간헐 장애 지속 → `gh run rerun <id> --failed`(다른 러너 IP/시간대로 보통 성공) + 네트워크/제공사 edge 의심(sshd active·다른 run 접속됨이면 OS 손질 불필요). / **build·health 실패(다른 rc)** → 즉시 롤백.
 
 **롤백 (정본 — force-push 금지)**:
 ```bash

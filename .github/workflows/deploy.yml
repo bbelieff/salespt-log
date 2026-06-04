@@ -63,21 +63,23 @@ jobs:
           '
           # 연결 옵션: accept-new(TOFU) + 넉넉한 ConnectTimeout + keepalive.
           # 재시도는 *연결 실패(ssh rc=255)* 에만 — 빌드/원격스크립트 실패(다른 rc)는 즉시 fail(롤백 신호).
-          for i in 1 2 3; do
+          # ⚠️ GitHub Actions 기본 셸은 `bash -e` → 맨 `ssh` 라인이 실패하면 rc=$? 전에 스텝이
+          #    즉시 종료돼 재시도가 무력화됨. `|| rc=$?` 로 -e 를 우회해 종료코드를 반드시 포착.
+          for i in 1 2 3 4 5; do
+            rc=0
             ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
                 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
-                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" "$REMOTE"
-            rc=$?
+                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" "$REMOTE" || rc=$?
             if [ "$rc" = "0" ]; then exit 0; fi
             if [ "$rc" = "255" ]; then
-              echo "ssh 연결 실패(rc=255) — 시도 $i/3, 15초 후 재시도" >&2
+              echo "ssh 연결 실패(rc=255) — 시도 $i/5, 15초 후 재시도" >&2
               sleep 15
             else
               echo "원격 배포 스크립트 실패(rc=$rc) — 빌드/배포 오류이므로 재시도 안 함" >&2
               exit "$rc"
             fi
           done
-          echo "ssh 연결 3회 모두 실패 — VPS 도달성 지속 장애" >&2
+          echo "ssh 연결 5회 모두 실패 — VPS 도달성 지속 장애" >&2
           exit 1
 
       - name: Public health check
