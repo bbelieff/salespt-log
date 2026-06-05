@@ -228,3 +228,24 @@ export async function upsertCohortConfig(
   ]);
   invalidateCohorts();
 }
+
+/**
+ * (아레나) 전체 참가자 명단 시트(rosterSheetId)에 1행 append (ADR-0011).
+ * 시트는 admin 이 사전 생성. 컬럼 규약: A 이름 / B 시트URL / C 폴더URL / D 등록일(ISO).
+ * RAW 로 써서 등록일 문자열이 날짜 시리얼로 변환되는 사고 방지.
+ * 멱등성은 호출 측(registry (label,name) 중복 검사)이 보장 → 중복 append 없음.
+ */
+export async function appendArenaRoster(
+  rosterSheetId: string,
+  row: { name: string; sheetUrl: string; folderUrl: string; regDateISO: string },
+): Promise<void> {
+  if (!rosterSheetId.trim()) {
+    throw new Error("[appendArenaRoster] rosterSheetId 비어있음");
+  }
+  await appendRows(
+    rosterSheetId,
+    "A:D",
+    [[row.name, row.sheetUrl, row.folderUrl, row.regDateISO]],
+    { valueInputOption: "RAW" },
+  );
+}

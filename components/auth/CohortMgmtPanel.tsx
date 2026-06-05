@@ -11,13 +11,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { CohortStatus } from "@/repo/cohorts";
+import type { CohortStatus, CohortType } from "@/repo/cohorts";
+import CohortCreateModal from "./CohortCreateModal";
 
 interface Cohort {
   label: string;
   status: CohortStatus;
   note: string;
   traineeCount: number;
+  type?: CohortType;
+}
+
+/** 표시 라벨: 아레나 "A1회" / 일반 "8기". */
+function displayLabel(c: { label: string; type?: CohortType }): string {
+  return c.type === "arena" ? `${c.label}회` : `${c.label}기`;
 }
 
 export default function CohortMgmtPanel({
@@ -68,12 +75,15 @@ export default function CohortMgmtPanel({
               {sessionEmail}
             </div>
           </div>
-          <Link
-            href="/admin"
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
-          >
-            ← 마스터 메뉴
-          </Link>
+          <div className="flex items-center gap-2">
+            {!viewOnly && <CohortCreateModal />}
+            <Link
+              href="/admin"
+              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            >
+              ← 마스터 메뉴
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -109,7 +119,7 @@ export default function CohortMgmtPanel({
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-gray-900">
-                      {c.label}기 · {c.traineeCount}명
+                      {displayLabel(c)} · {c.traineeCount}명
                     </div>
                     {c.note && (
                       <div className="mt-0.5 text-[11px] text-gray-500">
@@ -124,7 +134,7 @@ export default function CohortMgmtPanel({
                       onClick={() => {
                         if (
                           !confirm(
-                            `${c.label}기 를 보관 처리 하시겠습니까?\n\n` +
+                            `${displayLabel(c)} 를 보관 처리 하시겠습니까?\n\n` +
                               `· 수강생 관리·트레이너 명단의 "활성 기수" 그룹에서 숨김.\n` +
                               `· "보관 기수" 섹션에서 언제든 다시 활성화 가능.`,
                           )
@@ -163,7 +173,7 @@ export default function CohortMgmtPanel({
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-gray-700">
-                      {c.label}기 · {c.traineeCount}명{" "}
+                      {displayLabel(c)} · {c.traineeCount}명{" "}
                       <span className="ml-1 rounded bg-gray-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
                         archived
                       </span>
