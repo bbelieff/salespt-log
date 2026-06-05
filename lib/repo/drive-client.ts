@@ -43,7 +43,8 @@ export async function findSheetByExactName(
       `and trashed = false`,
     fields: "files(id, name)",
     pageSize: 5,
-    corpora: "allDrives", // 내 드라이브 + 공유 드라이브 모두 검색
+    // corpora 미지정: includeItemsFromAllDrives 만으로 내 드라이브+공유 항목 검색.
+    // (allDrives 는 parent 범위 쿼리와 비호환 → 통일성·회귀방지 위해 전부 제거.)
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
@@ -139,15 +140,21 @@ export async function findFolderByNamePrefix(
       `and trashed = false`,
     fields: "files(id, name)",
     pageSize: 20,
-    corpora: "allDrives", // 부모가 공유 드라이브에 있어도 검색
+    // ⚠️ corpora:"allDrives" 금지 — `'X' in parents` 부모범위 쿼리와 비호환이라
+    //    빈 결과 반환(자동찾기 전원 실패 회귀, 2026-06). includeItemsFromAllDrives 로 충분.
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
-  const files = (res.data.files ?? []).filter(
+  const raw = res.data.files ?? [];
+  const files = raw.filter(
     (f): f is { id: string; name: string } =>
       typeof f.name === "string" &&
       typeof f.id === "string" &&
       f.name.startsWith(prefix),
+  );
+  console.warn(
+    "[drive-link] findFolderByNamePrefix " +
+      JSON.stringify({ prefix, parentFolderId, raw: raw.length, matched: files.length }),
   );
   if (files.length === 0) return null;
   const exact = files.find((f) => f.name === prefix);
@@ -218,7 +225,7 @@ export async function findSheetByNamePrefix(
       `and trashed = false`,
     fields: "files(id, name)",
     pageSize: 20,
-    corpora: "allDrives", // 내 드라이브 + 공유 드라이브 모두 검색
+    // corpora 미지정(includeItemsFromAllDrives 로 공유 항목 포함). allDrives 회귀 방지.
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
