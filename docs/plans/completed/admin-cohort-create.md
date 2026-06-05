@@ -1,11 +1,17 @@
 ---
 slug: admin-cohort-create
-status: active
+status: completed
 created: 2026-06-05
+completed: 2026-06-05
 owner: belie
 worktree: ../wt/admin-cohort-create
 related: 0007-drive-link-permission, admin-impersonation, registry-cache-columns
 ---
+
+> ✅ **완료 (2026-06-05)** — P1 #308(기반: ADR-0011, drive-client 쓰기, cohorts D~G, 구조테스트) ·
+> P2 #309(생성 흐름 API + 관리자 모달 + 단위테스트) 모두 머지·배포.
+> ⚠️ 잔여 운영 검증(PC 정본): 실 공유 드라이브에서 SA(`masterbot@…`)가 멤버(콘텐츠 관리자)인 상태로
+> 템플릿 복제·아레나 roster append 동작 확인.
 
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 관리자 기수 관리에 "기준 시트 복제 생성 + 폴더 매칭/생성"을 추가 — 기존 '주소 붙여넣어 연동'에 더해 양방향(생성/연동)으로, 일반 기수와 아레나 두 구조를 다건·멱등으로 처리.
