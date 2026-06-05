@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { findUserByEmail, updateDriveLink } from "@/repo/users";
 import {
+  findFolderByNameInDrive,
   findFolderByNamePrefix,
   getDriveFileMeta,
 } from "@/repo/drive-client";
@@ -26,8 +27,9 @@ function folderNotSharedResponse() {
     errorKind: "folder_not_shared",
     saEmail,
     error:
-      `이 시트가 들어있는 '폴더'를 서비스계정(${saEmail})에 '뷰어'로 공유해 주세요. ` +
-      `시트 파일만 공유하면 폴더 구조를 볼 수 없어요.`,
+      `이 시트가 들어있는 '폴더'를 서비스계정(${saEmail})에 '뷰어 또는 편집자'로 공유해 주세요. ` +
+      `시트 파일만 공유하면 폴더 구조를 볼 수 없어요. ` +
+      `폴더가 공유 드라이브에 있으면 그 드라이브에 위 계정을 멤버로 추가해도 자동으로 찾아요.`,
   });
 }
 
@@ -64,23 +66,36 @@ export async function POST(req: Request) {
         );
       }
       const meta = await getDriveFileMeta(ssId);
-      if (!meta.ok && meta.code === 404) {
+      if (!meta.ok) {
         await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
-        return NextResponse.json({
-          ok: false,
-          status: "error",
-          errorKind: "sheet_not_found",
-          error: "연동된 시트를 찾을 수 없어요. 시트 연결을 다시 확인해 주세요.",
-        });
+        if (meta.code === 404) {
+          return NextResponse.json({
+            ok: false,
+            status: "error",
+            errorKind: "sheet_not_found",
+            error: "연동된 시트를 찾을 수 없어요. 시트 연결을 다시 확인해 주세요.",
+          });
+        }
+        // 403 등 — 파일 접근 자체 불가 → 공유 안내.
+        return folderNotSharedResponse();
       }
-      // files.get 실패(403 등) 또는 성공했지만 parents 가 빈 배열 =
-      // 시트 파일만 공유되고 **부모 폴더는 미공유** → 폴더를 SA 에 공유해야 함.
-      if (!meta.ok || meta.parentId == null) {
+      // (a) 부모 폴더 안에서 01 피드백업체 탐색 (부모가 보이는 경우).
+      if (meta.parentId) {
+        feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
+      }
+      // (b) 폴백: 부모가 안 보이거나(공유 드라이브 등) (a) 실패면, 시트가 든 그
+      //     (공유)드라이브 전체에서 직접 탐색. 정확명 우선 → prefix.
+      if (!feedbackFolderId && meta.driveId) {
+        feedbackFolderId =
+          (await findFolderByNameInDrive("01 피드백업체", meta.driveId)) ??
+          (await findFolderByNameInDrive(FEEDBACK_PREFIX, meta.driveId));
+      }
+      parentPathLabel = meta.parentId ?? meta.driveId ?? "";
+      // (a)·(b) 둘 다 실패 시에만 공유 안내.
+      if (!feedbackFolderId) {
         await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
         return folderNotSharedResponse();
       }
-      parentPathLabel = meta.parentId;
-      feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
     } else {
       // 수동: 붙여넣은 게 01 피드백업체 폴더 자체면 직접 사용, 상위 폴더면 그 안에서 탐색.
       const url = String(body.parentFolderUrl ?? "").trim();

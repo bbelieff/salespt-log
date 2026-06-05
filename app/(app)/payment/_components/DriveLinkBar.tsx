@@ -164,8 +164,10 @@ export default function DriveLinkBar() {
             <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">
               <p className="mb-2 font-semibold">폴더 공유가 필요해요</p>
               <p className="mb-2 leading-relaxed text-red-600">
-                시트가 들어있는 <b>폴더</b>를 아래 계정에 <b>뷰어</b>로 공유해 주세요.
+                시트가 들어있는 <b>폴더</b>를 아래 계정에 <b>뷰어 또는 편집자</b>로 공유해 주세요.
                 시트 파일만 공유하면 폴더를 못 찾아요.
+                <br />
+                폴더가 <b>공유 드라이브</b>에 있으면, 그 드라이브에 위 계정을 <b>멤버</b>로 추가해도 자동으로 찾아요.
               </p>
               {saEmail && (
                 <div className="mb-2 flex items-center gap-1.5">
@@ -183,7 +185,7 @@ export default function DriveLinkBar() {
               )}
               <p className="text-[11px] leading-relaxed text-red-500">
                 공유 방법: 드라이브에서 폴더 우클릭 → <b>공유</b> → 위 이메일 추가 →
-                권한 <b>뷰어</b> → 완료. 그다음 위 <b>[✨ 자동으로 찾기]</b>를 다시 눌러 주세요.
+                권한 <b>뷰어/편집자</b> → 완료. 그다음 위 <b>[✨ 자동으로 찾기]</b>를 다시 눌러 주세요.
               </p>
             </div>
           ) : (
