@@ -21,7 +21,7 @@ import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { parseCohortToken, decideMemberAction } from "@/service/cohort-token";
 import { listCohorts, appendArenaRoster, upsertCohortConfig } from "@/repo/cohorts";
-import { copyTemplateSheet, findFolderByExactName } from "@/repo/drive-client";
+import { copyTemplateSheet, findFolderContainingName } from "@/repo/drive-client";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
 
@@ -163,10 +163,21 @@ export async function POST(req: Request) {
       const existingSheetId = name
         ? await findExistingSheetIdByCohortName(parsed.label, name)
         : null;
-      const folderId =
-        mode === "create" && name && !existingSheetId
-          ? await findFolderByExactName(name, cfg!.rootFolderId)
-          : null;
+
+      // create 모드: 루트 폴더 안에서 이름 포함 폴더 매칭 (0=없음 / 1=사용 / 2+=명확화).
+      let folderId: string | null = null;
+      let folderError: string | undefined;
+      if (mode === "create" && name && !existingSheetId) {
+        const fm = await findFolderContainingName(name, cfg!.rootFolderId);
+        folderId = fm.id;
+        if (!fm.id) {
+          folderError =
+            fm.matchedNames.length > 1
+              ? `이름 폴더 여러 개 — 명확화 필요: ${fm.matchedNames.join(" / ")}`
+              : "이름 폴더 없음 (루트 폴더 내 매칭 실패)";
+        }
+      }
+
       const sheetId =
         mode === "link" ? extractSpreadsheetId(String(m.sheetUrl ?? "")) : undefined;
 
@@ -176,6 +187,7 @@ export async function POST(req: Request) {
         name,
         existingSheetId,
         folderId,
+        folderError,
         sheetId,
       });
 

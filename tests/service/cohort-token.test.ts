@@ -113,6 +113,19 @@ describe("decideMemberAction", () => {
     if (r.action === "fail") expect(r.reason).toContain("폴더");
   });
 
+  it("create: 폴더 모호(2개+) → fail (folderError 주입)", () => {
+    const r = decideMemberAction({
+      mode: "create",
+      parsed,
+      name: "김승",
+      existingSheetId: null,
+      folderId: null,
+      folderError: "이름 폴더 여러 개 — 명확화 필요: [서울 8기] 김승 / [부산 8기] 김승엽",
+    });
+    expect(r).toMatchObject({ action: "fail" });
+    if (r.action === "fail") expect(r.reason).toContain("명확화");
+  });
+
   it("create: 폴더 있음 → create (제목 생성)", () => {
     const r = decideMemberAction({
       mode: "create",

@@ -68,7 +68,8 @@ export type MemberPlan =
 /**
  * 비동기 lookup 결과를 받아 멤버 1명의 처리 방법을 결정 (순수).
  *  - existingSheetId 있으면 무조건 skip (멱등).
- *  - create: folderId 없으면 "이름 폴더 없음" fail.
+ *  - create: folderId 없으면 fail (사유 = folderError ?? 기본 "이름 폴더 없음").
+ *    folderError 로 "여러 개 명확화 필요: …후보" 같은 모호성 사유를 주입할 수 있다.
  *  - link: sheetId 형식 불량이면 "시트 URL 오류" fail.
  */
 export function decideMemberAction(input: {
@@ -76,7 +77,8 @@ export function decideMemberAction(input: {
   parsed: ParsedCohort;
   name: string;
   existingSheetId: string | null;
-  folderId?: string | null; // create 모드: findFolderByExactName 결과
+  folderId?: string | null; // create 모드: findFolderContainingName 결과 id
+  folderError?: string; // create 모드: 폴더 매칭 실패 사유(없음/모호) 주입
   sheetId?: string; // link 모드: 추출된 spreadsheetId
 }): MemberPlan {
   const name = input.name.trim();
@@ -87,7 +89,11 @@ export function decideMemberAction(input: {
 
   if (input.mode === "create") {
     if (!input.folderId) {
-      return { action: "fail", name, reason: "이름 폴더 없음 (루트 폴더 내 매칭 실패)" };
+      return {
+        action: "fail",
+        name,
+        reason: input.folderError ?? "이름 폴더 없음 (루트 폴더 내 매칭 실패)",
+      };
     }
     return {
       action: "create",
