@@ -431,6 +431,7 @@ export default function MeetingResultCard({
                   <AddMeetingForm
                     vendor={meeting.업체명.replace(/^\(변경\)\s*/, "")}
                     defaultDate={new Date().toISOString().slice(0, 10)}
+                    minDate={meeting.미팅날짜}
                     onConfirm={(d2, t2) => {
                       onAddMeeting(d2, t2);
                       setAddOpen(false);
