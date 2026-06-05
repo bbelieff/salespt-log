@@ -63,32 +63,92 @@ export async function copyTemplateSheet(
   return id;
 }
 
+export interface FolderContainsResult {
+  /** 정확히 1개 매칭 시 폴더 id. 0개/2개+ 면 null. */
+  id: string | null;
+  /** 매칭된 폴더명들 (호출측이 0개=없음 vs 2개+=모호 를 구분·안내). */
+  matchedNames: string[];
+}
+
 /**
- * 부모 폴더 안에서 이름 **정확 일치** 폴더 1개 찾기 (멱등 검사·복제 대상 폴더).
- * 부모범위 쿼리이므로 corpora 미지정(allDrives 금지, 회귀방지 — ADR-0011/2026-06).
+ * 부모 폴더 안에서 이름을 **포함(contains)** 하는 폴더 찾기 (복제 대상 폴더).
+ * 실제 이름폴더명이 `[{팀} {기수}기] {이름}` (예: `[서울 8기] 김승엽`) 형태라 정확일치 불가.
+ *
+ *   - 부모 범위 쿼리(corpora 미지정 — allDrives 금지, 회귀방지 ADR-0011/2026-06).
+ *   - 0개면 driveId 범위(corpora:"drive") 폴백 — 공유 드라이브 전체 탐색.
+ *   - `name.includes(이름)` 재필터 + id 중복 제거 후 "정확히 1개" 규칙.
+ *   - 공유 드라이브 대응 supportsAllDrives + includeItemsFromAllDrives.
  */
-export async function findFolderByExactName(
+export async function findFolderContainingName(
   name: string,
   parentFolderId: string,
-): Promise<string | null> {
+): Promise<FolderContainsResult> {
   const drive = driveClient();
-  const safe = name.replace(/'/g, "\\'");
-  const res = await drive.files.list({
+  const needle = name.trim();
+  const safe = needle.replace(/'/g, "\\'");
+
+  const pick = (raw: drive_v3.Schema$File[]): FolderContainsResult => {
+    const files = raw.filter(
+      (f): f is { id: string; name: string } =>
+        typeof f.id === "string" &&
+        typeof f.name === "string" &&
+        f.name.includes(needle),
+    );
+    const uniq = Array.from(new Map(files.map((f) => [f.id, f])).values());
+    if (uniq.length === 1) return { id: uniq[0]!.id, matchedNames: [uniq[0]!.name] };
+    return { id: null, matchedNames: uniq.map((f) => f.name) };
+  };
+
+  // 1) 부모 범위.
+  const inParent = await drive.files.list({
     q:
-      `name = '${safe}' ` +
+      `name contains '${safe}' ` +
       `and mimeType = 'application/vnd.google-apps.folder' ` +
       `and '${parentFolderId}' in parents ` +
       `and trashed = false`,
     fields: "files(id, name)",
-    pageSize: 5,
+    pageSize: 50,
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
-  const files = (res.data.files ?? []).filter(
-    (f): f is { id: string; name: string } =>
-      typeof f.id === "string" && f.name === name,
+  let result = pick(inParent.data.files ?? []);
+  console.warn(
+    "[cohort-create] findFolderContainingName parent " +
+      JSON.stringify({
+        name: needle,
+        parentFolderId,
+        matched: result.matchedNames.length,
+      }),
   );
-  return files[0]?.id ?? null;
+  // 부모 범위에서 뭐라도 잡혔으면(1개=사용 / 2개+=모호) 폴백하지 않음.
+  if (result.id || result.matchedNames.length > 0) return result;
+
+  // 2) driveId 범위 폴백 (부모 범위 0개일 때만).
+  const meta = await getDriveFileMeta(parentFolderId);
+  if (meta.ok && meta.driveId) {
+    const inDrive = await drive.files.list({
+      q:
+        `name contains '${safe}' ` +
+        `and mimeType = 'application/vnd.google-apps.folder' ` +
+        `and trashed = false`,
+      fields: "files(id, name)",
+      pageSize: 100,
+      corpora: "drive",
+      driveId: meta.driveId,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    result = pick(inDrive.data.files ?? []);
+    console.warn(
+      "[cohort-create] findFolderContainingName driveFallback " +
+        JSON.stringify({
+          name: needle,
+          driveId: meta.driveId,
+          matched: result.matchedNames.length,
+        }),
+    );
+  }
+  return result;
 }
 
 /**
