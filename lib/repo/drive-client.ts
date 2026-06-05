@@ -43,6 +43,7 @@ export async function findSheetByExactName(
       `and trashed = false`,
     fields: "files(id, name)",
     pageSize: 5,
+    corpora: "allDrives", // 내 드라이브 + 공유 드라이브 모두 검색
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
@@ -64,7 +65,13 @@ export async function findSheetByExactName(
  *   - !ok + code 404       → 파일 못 찾음(잘못된 id/삭제).
  */
 export type DriveFileMeta =
-  | { ok: true; name: string; parentId: string | null; parentsCount: number }
+  | {
+      ok: true;
+      name: string;
+      parentId: string | null;
+      parentsCount: number;
+      driveId: string | null; // 공유 드라이브 소속이면 그 드라이브 id (폴백 탐색용)
+    }
   | { ok: false; code: number | null; message: string };
 
 export async function getDriveFileMeta(fileId: string): Promise<DriveFileMeta> {
@@ -72,16 +79,18 @@ export async function getDriveFileMeta(fileId: string): Promise<DriveFileMeta> {
   try {
     const res = await drive.files.get({
       fileId,
-      fields: "name, parents",
+      fields: "name, parents, driveId",
       supportsAllDrives: true,
     });
     const parents = res.data.parents ?? [];
+    const driveId = res.data.driveId ?? null;
     console.warn(
       "[drive-link] files.get ok " +
         JSON.stringify({
           fileId,
           name: res.data.name ?? "",
           parentsCount: parents.length,
+          driveId,
         }),
     );
     return {
@@ -89,6 +98,7 @@ export async function getDriveFileMeta(fileId: string): Promise<DriveFileMeta> {
       name: res.data.name ?? "",
       parentId: parents[0] ?? null,
       parentsCount: parents.length,
+      driveId,
     };
   } catch (e: unknown) {
     const err = e as {
@@ -129,6 +139,44 @@ export async function findFolderByNamePrefix(
       `and trashed = false`,
     fields: "files(id, name)",
     pageSize: 20,
+    corpora: "allDrives", // 부모가 공유 드라이브에 있어도 검색
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  const files = (res.data.files ?? []).filter(
+    (f): f is { id: string; name: string } =>
+      typeof f.name === "string" &&
+      typeof f.id === "string" &&
+      f.name.startsWith(prefix),
+  );
+  if (files.length === 0) return null;
+  const exact = files.find((f) => f.name === prefix);
+  if (exact) return exact.id;
+  if (files.length > 5) return null;
+  files.sort((a, b) => a.name.length - b.name.length);
+  return files[0]?.id ?? null;
+}
+
+/**
+ * 특정 **공유 드라이브(driveId)** 안에서 prefix 로 시작하는 폴더 찾기 (폴백, ADR-0007 읽기only).
+ * 부모폴더 한 단계가 안 보여도(공유 방식), 시트가 든 그 드라이브 전체를 범위로 직접 탐색.
+ * 한 드라이브 범위라 동명 폴더 혼선이 적음.
+ */
+export async function findFolderByNameInDrive(
+  prefix: string,
+  driveId: string,
+): Promise<string | null> {
+  const drive = driveClient();
+  const safe = prefix.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q:
+      `name contains '${safe}' ` +
+      `and mimeType = 'application/vnd.google-apps.folder' ` +
+      `and trashed = false`,
+    fields: "files(id, name)",
+    pageSize: 50,
+    corpora: "drive",
+    driveId,
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
@@ -170,6 +218,7 @@ export async function findSheetByNamePrefix(
       `and trashed = false`,
     fields: "files(id, name)",
     pageSize: 20,
+    corpora: "allDrives", // 내 드라이브 + 공유 드라이브 모두 검색
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
   });
