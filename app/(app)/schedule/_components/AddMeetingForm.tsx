@@ -14,7 +14,9 @@ import TimePicker15 from "@/components/ui/TimePicker15";
 
 interface Props {
   vendor: string;
-  defaultDate: string; // YYYY-MM-DD (오늘)
+  defaultDate: string; // YYYY-MM-DD (초기값 = 오늘)
+  /** 선택 가능 하한 = 원래 미팅 날짜. 복기 기록 위해 오늘 이전도 허용(단 원래 날짜 이후). */
+  minDate: string;
   onConfirm: (newDate: string, newTime: string) => void;
   onCancel: () => void;
   pending: boolean;
@@ -23,6 +25,7 @@ interface Props {
 export default function AddMeetingForm({
   vendor,
   defaultDate,
+  minDate,
   onConfirm,
   onCancel,
   pending,
@@ -36,8 +39,8 @@ export default function AddMeetingForm({
       setWarn("새 날짜와 시간을 모두 입력해주세요");
       return;
     }
-    if (newDate < defaultDate) {
-      setWarn("과거 날짜는 선택할 수 없습니다");
+    if (newDate < minDate) {
+      setWarn("원래 미팅 날짜 이후로 선택해 주세요");
       return;
     }
     setWarn("");
@@ -59,7 +62,7 @@ export default function AddMeetingForm({
           <input
             type="date"
             value={newDate}
-            min={defaultDate}
+            min={minDate}
             onChange={(e) => setNewDate(e.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
