@@ -9,6 +9,7 @@ import { google, type drive_v3 } from "googleapis";
 import { serviceAccount } from "@/config";
 
 let cached: drive_v3.Drive | null = null;
+let cachedWrite: drive_v3.Drive | null = null;
 
 export function driveClient(): drive_v3.Drive {
   if (cached) return cached;
@@ -20,6 +21,74 @@ export function driveClient(): drive_v3.Drive {
   });
   cached = google.drive({ version: "v3", auth });
   return cached;
+}
+
+/**
+ * 쓰기 전용 Drive 클라이언트 (ADR-0011) — scope `drive`. 캐시 분리.
+ * 허용 연산은 copyTemplateSheet(files.copy) 뿐. files.update/delete/create(folder) 금지(구조테스트 가드).
+ */
+function driveWriteClient(): drive_v3.Drive {
+  if (cachedWrite) return cachedWrite;
+  const sa = serviceAccount();
+  const auth = new google.auth.JWT({
+    email: sa.client_email,
+    key: sa.private_key,
+    scopes: ["https://www.googleapis.com/auth/drive"],
+  });
+  cachedWrite = google.drive({ version: "v3", auth });
+  return cachedWrite;
+}
+
+/**
+ * 템플릿 시트를 지정 폴더로 복제 (ADR-0011). 원본 불변 + 새 파일 생성 → 데이터 손상 위험 0.
+ * 공유 드라이브 대응 supportsAllDrives. 반환 = 새 spreadsheetId.
+ */
+export async function copyTemplateSheet(
+  templateId: string,
+  newTitle: string,
+  destFolderId: string,
+): Promise<string> {
+  const res = await driveWriteClient().files.copy({
+    fileId: templateId,
+    requestBody: { name: newTitle, parents: [destFolderId] },
+    supportsAllDrives: true,
+    fields: "id",
+  });
+  const id = res.data.id;
+  if (!id) throw new Error("[copyTemplateSheet] 복제 결과 id 없음");
+  console.warn(
+    "[cohort-create] copyTemplateSheet " +
+      JSON.stringify({ templateId, destFolderId, newId: id, newTitle }),
+  );
+  return id;
+}
+
+/**
+ * 부모 폴더 안에서 이름 **정확 일치** 폴더 1개 찾기 (멱등 검사·복제 대상 폴더).
+ * 부모범위 쿼리이므로 corpora 미지정(allDrives 금지, 회귀방지 — ADR-0011/2026-06).
+ */
+export async function findFolderByExactName(
+  name: string,
+  parentFolderId: string,
+): Promise<string | null> {
+  const drive = driveClient();
+  const safe = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q:
+      `name = '${safe}' ` +
+      `and mimeType = 'application/vnd.google-apps.folder' ` +
+      `and '${parentFolderId}' in parents ` +
+      `and trashed = false`,
+    fields: "files(id, name)",
+    pageSize: 5,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  const files = (res.data.files ?? []).filter(
+    (f): f is { id: string; name: string } =>
+      typeof f.id === "string" && f.name === name,
+  );
+  return files[0]?.id ?? null;
 }
 
 /**
