@@ -127,3 +127,39 @@ describe("dashboard is read-only", () => {
     ).toEqual([]);
   });
 });
+
+// ── 테스트 4: Drive 쓰기 화이트리스트 (ADR-0011) ──────────────
+describe("drive write whitelist (ADR-0011)", () => {
+  it("lib/repo 어디에도 Drive files.update / files.delete 없음 (사용자 데이터 훼손 금지)", () => {
+    const dir = join(ROOT, "lib/repo");
+    const bad: string[] = [];
+    for (const file of walk(dir)) {
+      const src = readFileSync(file, "utf8");
+      if (/\.files\.(update|delete)\s*\(/.test(src)) {
+        bad.push(relative(ROOT, file));
+      }
+    }
+    expect(
+      bad,
+      `Drive files.update/delete 금지 (ADR-0011) — 복제(files.copy)만 허용. ` +
+        `기존 파일 내용 수정·삭제는 사용자 데이터 손상 위험.\n` +
+        bad.map((b) => "  • " + b).join("\n"),
+    ).toEqual([]);
+  });
+
+  it("files.copy 는 drive-client.ts(copyTemplateSheet) 에서만", () => {
+    const dir = join(ROOT, "lib/repo");
+    const bad: string[] = [];
+    for (const file of walk(dir)) {
+      const src = readFileSync(file, "utf8");
+      if (/\.files\.copy\s*\(/.test(src) && !file.endsWith("drive-client.ts")) {
+        bad.push(relative(ROOT, file));
+      }
+    }
+    expect(
+      bad,
+      `files.copy 는 lib/repo/drive-client.ts(copyTemplateSheet, driveWriteClient) 전용.\n` +
+        bad.map((b) => "  • " + b).join("\n"),
+    ).toEqual([]);
+  });
+});
