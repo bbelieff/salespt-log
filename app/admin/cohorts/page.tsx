@@ -40,7 +40,12 @@ export default async function AdminCohortsPage() {
   const knownLabels = new Set(cohortRows.map((c) => c.label));
   const extra = usedLabels
     .filter((l) => !knownLabels.has(l))
-    .map((l) => ({ label: l, status: "active" as CohortStatus, note: "" }));
+    .map((l) => ({
+      label: l,
+      status: "active" as CohortStatus,
+      note: "",
+      type: "cohort" as const,
+    }));
   const cohorts = [...cohortRows, ...extra];
 
   // trainee 수 카운트.
