@@ -58,6 +58,46 @@ export function buildCohortSheetTitle(p: ParsedCohort, name: string): string {
   return `세일즈PT_ ${p.num}기 ${clean} 수강생 경영일지`;
 }
 
+// ── 아레나 추가 전용 (시즌+명단, "0기" 고정 명명) ─────────────────
+// registry/cohorts label. 시즌 1 → "A1".
+export function arenaSeasonLabel(season: number): string {
+  return `A${season}`;
+}
+// 경영일지 시트 제목: `세일즈PT_A{시즌}_0기 {이름}_대표님 경영일지`
+export function buildArenaSheetTitle(season: number, name: string): string {
+  return `세일즈PT_A${season}_0기 ${name.trim()}_대표님 경영일지`;
+}
+// 업체관리 폴더 이름: `세일즈PT_A{시즌}_0기 {이름}_대표님 업체관리`
+export function buildArenaCompanyFolderName(season: number, name: string): string {
+  return `세일즈PT_A${season}_0기 ${name.trim()}_대표님 업체관리`;
+}
+
+export type ArenaPlan =
+  | { action: "skip"; name: string }
+  | { action: "fail"; name: string; reason: string }
+  | { action: "create"; name: string; sheetTitle: string; folderName: string };
+
+/**
+ * 아레나 참가자 1명 처리 판정 (순수).
+ *  - existingSheetId 있으면 skip (멱등 — registry (A{시즌}, name) + 유효 시트).
+ *  - 이름 비면 fail. 아니면 create(시트제목·폴더명 생성).
+ */
+export function decideArenaAction(input: {
+  season: number;
+  name: string;
+  existingSheetId: string | null;
+}): ArenaPlan {
+  const name = input.name.trim();
+  if (!name) return { action: "fail", name: input.name, reason: "이름 없음" };
+  if (input.existingSheetId) return { action: "skip", name };
+  return {
+    action: "create",
+    name,
+    sheetTitle: buildArenaSheetTitle(input.season, name),
+    folderName: buildArenaCompanyFolderName(input.season, name),
+  };
+}
+
 // ── 멤버 처리 판정 (멱등/실패/생성/연동 분기) ────────────────────
 export type MemberPlan =
   | { action: "skip"; name: string }

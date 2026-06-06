@@ -90,11 +90,13 @@ export async function addTraineePrepRow(
   name: string,
   spreadsheetId: string,
   assignedTrainer = "",
+  feedbackFolderId = "",
 ): Promise<{ created: boolean }> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const cohortNorm = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
+  const ffid = feedbackFolderId.trim();
   // 시트 메타 1회 fetch (실패해도 빈값으로 진행). update/append 양쪽에서 사용.
   const cached = await readCachedFromSheet(spreadsheetId);
   for (let i = 0; i < rows.length; i++) {
@@ -104,49 +106,56 @@ export async function addTraineePrepRow(
     if (c === cohortNorm && n === cleanName) {
       const sheetRow = i + 2;
       // registry batchUpdate → RAW (PR D). ISO 날짜가 자동 시리얼화되는 사고 방지.
+      const data: { range: string; values: string[][] }[] = [
+        { range: `${reg.tab}!D${sheetRow}`, values: [[spreadsheetId]] },
+        {
+          range: `${reg.tab}!I${sheetRow}:L${sheetRow}`,
+          values: [[
+            cached.cohortLabel,
+            cached.nameLabel,
+            cached.courseStartISO,
+            cached.graduationISO,
+          ]],
+        },
+      ];
+      // 아레나 업체관리 폴더 id → O(feedback_folder_id) stamp (주어진 경우만).
+      if (ffid) data.push({ range: `${reg.tab}!O${sheetRow}`, values: [[ffid]] });
       await sheetsClient().spreadsheets.values.batchUpdate({
         spreadsheetId: reg.spreadsheetId,
-        requestBody: {
-          valueInputOption: "RAW",
-          data: [
-            { range: `${reg.tab}!D${sheetRow}`, values: [[spreadsheetId]] },
-            {
-              range: `${reg.tab}!I${sheetRow}:L${sheetRow}`,
-              values: [[
-                cached.cohortLabel,
-                cached.nameLabel,
-                cached.courseStartISO,
-                cached.graduationISO,
-              ]],
-            },
-          ],
-        },
+        requestBody: { valueInputOption: "RAW", data },
       });
       invalidateRegistry();
       return { created: false };
     }
   }
-  // registry append → RAW (PR D).
-  await appendRows(
-    reg.spreadsheetId,
-    DATA_RANGE(reg.tab),
-    [[
-      "",
-      cohortNorm,
-      cleanName,
-      spreadsheetId,
-      "trainee",
-      "active",
-      assignedTrainer,
-      "",
-      cached.cohortLabel,
-      cached.nameLabel,
-      cached.courseStartISO,
-      cached.graduationISO,
-      "0", // M: sortOrder — admin 드래그로 부여 (PR C-1)
-    ]],
-    { valueInputOption: "RAW" },
-  );
+  // registry append → RAW (PR D). feedbackFolderId 있으면 N(빈값)·O 까지 포함해 A2:O.
+  const base = [
+    "",
+    cohortNorm,
+    cleanName,
+    spreadsheetId,
+    "trainee",
+    "active",
+    assignedTrainer,
+    "",
+    cached.cohortLabel,
+    cached.nameLabel,
+    cached.courseStartISO,
+    cached.graduationISO,
+    "0", // M: sortOrder — admin 드래그로 부여 (PR C-1)
+  ];
+  if (ffid) {
+    await appendRows(
+      reg.spreadsheetId,
+      `${reg.tab}!A2:O`,
+      [[...base, "", ffid]], // N: drive_parent_path 빈값, O: feedback_folder_id
+      { valueInputOption: "RAW" },
+    );
+  } else {
+    await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), [base], {
+      valueInputOption: "RAW",
+    });
+  }
   invalidateRegistry();
   return { created: true };
 }

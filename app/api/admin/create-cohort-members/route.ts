@@ -128,6 +128,8 @@ export async function POST(req: Request) {
         templateSheetId,
         rootFolderId,
         rosterSheetId,
+        sheetsFolderId: cfg?.sheetsFolderId ?? "",
+        companyParentFolderId: cfg?.companyParentFolderId ?? "",
       };
     }
   }

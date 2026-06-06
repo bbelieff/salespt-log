@@ -1310,6 +1310,7 @@ components/dashboard/
 | **WebviewWarning** | 카카오톡·네이버·인스타·페북 등 in-app 웹뷰 감지 시 풀스크린 오버레이 노출. Props 없음. KakaoTalk 안드로이드는 `kakaotalk://web/openExternal?url=` scheme 으로 외부 Chrome 점프, 그 외는 단계 안내 + URL 복사. Google OAuth가 webview UA를 차단(disallowed_useragent)하는 문제 우회. |
 | **CohortMgmtPanel** | Admin 전용 기수 관리 (`/admin/cohorts`). Props: `sessionEmail`, `cohorts: {label, status, note, traineeCount, type?}[]`. 활성/보관 두 섹션 + 토글 버튼. 헤더에 CohortCreateModal(admin only). 표시 라벨: 아레나 "A1회" / 일반 "8기". POST /api/admin/set-cohort-status. |
 | **CohortCreateModal** | Admin 전용 "기수/참가자 추가" 모달 (`/admin/cohorts` 헤더). Props 없음. 기수 토큰(8/a1) + 모드(생성=템플릿복제 / 연동=기존시트) 토글 + (생성) 템플릿/루트폴더/(아레나)명단 시트 ID + 참가자 줄단위 입력 → POST /api/admin/create-cohort-members → 생성/건너뜀/실패 리포트. parseCohortToken 으로 클라이언트 토큰 미리보기. |
+| **ArenaCreateModal** | Admin 전용 "아레나 추가" 모달 (`/admin/cohorts` 헤더, ADR-0012). Props 없음. 시즌 번호 + (최초 1회) 템플릿/시트폴더/업체부모폴더 ID + 명단 줄단위 입력 → POST /api/admin/create-arena-members → 생성/건너뜀/실패 리포트. buildArenaSheetTitle/buildArenaCompanyFolderName 로 제목·폴더명 미리보기. 산출물: `세일즈PT_A{시즌}_0기 {이름}_대표님 경영일지` 시트 + `…_대표님 업체관리` 폴더. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 | **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
 

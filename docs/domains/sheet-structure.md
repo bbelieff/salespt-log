@@ -510,9 +510,11 @@ H / O / W: spacer (비움). A: 비움.
 | D | type | `cohort`(일반) / `arena`(아레나). 빈값=cohort (2026-06, ADR-0011) |
 | E | templateSheetId | 복제 원본(템플릿) 경영일지 시트 ID |
 | F | rootFolderId | 일반=기수 루트 폴더 / 아레나=아레나 N회 폴더 ID |
-| G | rosterSheetId | (아레나) 전체 참가자 시트 ID. 일반 기수는 빈값 |
+| G | rosterSheetId | (구 아레나) 전체 참가자 시트 ID. 일반 기수는 빈값 |
+| H | sheetsFolderId | (아레나) 경영일지 시트 복제 대상 폴더 ID (2026-06, ADR-0012) |
+| I | companyParentFolderId | (아레나) 업체관리 폴더 생성 부모 폴더 ID (2026-06, ADR-0012) |
 
-범위: `A2:G`. D~G 는 관리자 기수 생성(`/api/admin/create-cohort-members`)이 사용.
+범위: `A2:I`. D~G 는 관리자 기수 생성(`/api/admin/create-cohort-members`), E·H·I 는 아레나 추가(`/api/admin/create-arena-members`)가 사용.
 
 ---
 
