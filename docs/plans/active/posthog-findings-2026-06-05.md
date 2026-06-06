@@ -90,10 +90,12 @@ source: Cowork 자동 데일리 리포트 (PostHog #450895, 분석일 2026-06-05
 - 마찰의 7건 중 6건이 **소수(관리자 b1276ebd 3 · 오승진 2 · 관리자 d0cc49ed 1)** 에 집중.
 - 패턴상 **저장/이동 직후 반응이 느려 눌렀는지 모르는 상태** → P0 시트 지연과 직접 연결로 추정.
 
-### 액션 (P1)
-- [ ] 저장·완료토글·내비 탭에 **즉각 로딩 스피너 / 낙관적 UI**(반응 지연 동안 눌림 표시).
-- [ ] 터치 타깃(하단 내비 `h-11`) 크기·히트영역 점검.
-- 코드 포인터: 결제(`app/(app)/payment`), 컨택(`/contact`), 스케줄(`/schedule`) 화면 컴포넌트 + 해당 뮤테이션 hook의 `isPending` 처리.
+### 액션 (P1) — PR3 `fix/input-nav-instant-feedback` (2026-06)
+- [x] **하단 내비 즉시 피드백** — `TabBar` Link 에 `touch-manipulation`(300ms 탭지연 제거) + `active:bg-gray-100`(네비 완료 전 눌림 표시). 내비 분노클릭(컨택2·스케줄1) 직접 대응. 터치타깃은 py-2+아이콘+라벨 ≈54px 로 이미 ≥44px.
+- [x] **완료 토글 낙관적 UI** — `TodoSection` 완료 체크박스가 서버값에 묶여 시트 write 전 무반응이던 lag 제거(id→희망값 override, onSettled 해제). 결제 완료토글 분노클릭 대응.
+- [x] **이미 양호(확인)** — 컨택 저장(`SaveBar`: pending 스피너+disabled+active), 캘린더 날짜셀(`MonthGrid`: `active:scale-[0.98]`), 캘린더 월이동(`active:scale-90`).
+- (참고) "입력창" 분노클릭은 입력 자체가 아니라 저장 후 시트 지연(P0/PR1)과 연동 → PR1 staleTime+dead-read 제거로 완화.
+- 코드: `components/TabBar.tsx`, `app/(app)/payment/_components/TodoSection.tsx`.
 
 ---
 

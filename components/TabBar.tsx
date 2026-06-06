@@ -77,7 +77,9 @@ export default function TabBar() {
           <Link
             key={href}
             href={href}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors ${colorCls}`}
+            // touch-manipulation: 모바일 300ms 탭 지연 제거. active:bg-gray-100: 네비게이션
+            // 완료(시트 read) 전까지 눌림이 즉시 보이게 → 분노클릭 감소 (2026-06 PostHog).
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors touch-manipulation active:bg-gray-100 ${colorCls}`}
             aria-current={active ? "page" : undefined}
           >
             <Icon active={active} />

@@ -46,6 +46,23 @@ export default function TodoSection({
   const [showModal, setShowModal] = useState(false);
   const patch = usePatchTodo();
   const remove = useRemoveTodo();
+  // 완료 토글 낙관적 UI (2026-06 PostHog 분노클릭): checked 가 서버값에 묶여 시트 write
+  // 완료 전까지 반응이 없던 lag 제거. id→희망값 override, onSettled 시 해제.
+  const [optimisticDone, setOptimisticDone] = useState<Record<string, boolean>>({});
+  const toggleDone = (id: string, next: boolean) => {
+    setOptimisticDone((m) => ({ ...m, [id]: next }));
+    patch.mutate(
+      { contractRef, id, partial: { 완료여부: next } },
+      {
+        onSettled: () =>
+          setOptimisticDone((m) => {
+            const c = { ...m };
+            delete c[id];
+            return c;
+          }),
+      },
+    );
+  };
   // [4] 4-A: 저장본이 있으면 그 값, 없으면 입력 중(draft) 진행기관으로 추가 허용.
   // 미저장이면 추가 클릭 시 onEnsureSaved 로 슬롯을 먼저 저장 → 키 일치 유지.
   const savedReady = institutionRef.trim() !== "";
@@ -78,14 +95,8 @@ export default function TodoSection({
               <label className="-m-1 flex shrink-0 cursor-pointer items-center p-1">
                 <input
                   type="checkbox"
-                  checked={t.완료여부}
-                  onChange={(e) =>
-                    patch.mutate({
-                      contractRef,
-                      id: t.id,
-                      partial: { 완료여부: e.target.checked },
-                    })
-                  }
+                  checked={optimisticDone[t.id] ?? t.완료여부}
+                  onChange={(e) => toggleDone(t.id, e.target.checked)}
                   className="h-4 w-4 rounded accent-gray-700"
                   aria-label="완료 토글"
                 />
