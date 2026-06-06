@@ -75,10 +75,28 @@ export function identifyUser(
   });
 }
 
-/** 로그아웃 시 식별 해제 (다음 사용자와 세션 분리). */
+/** 로그아웃 시 식별 해제 (다음 사용자와 세션 분리). super property 도 함께 초기화됨. */
 export function resetUser(): void {
   if (!ready()) return;
   posthog.reset();
+}
+
+/**
+ * 내부(관리자·대리접속) 트래픽 태깅 (ADR-0013).
+ * 모든 이벤트에 `is_internal:true` super property 부착 → PostHog 인사이트에서
+ * `is_internal=false` 필터로 실제 수강생만 집계. 대리접속 중에도 학생 PII 로 identify
+ * 하지 않고 슈퍼프로퍼티로만 태그 (ADR-0009 PII 보호 유지).
+ */
+export function markInternal(viewerRole = "admin"): void {
+  if (!ready()) return;
+  posthog.register({ is_internal: true, viewer_role: viewerRole });
+}
+
+/** 일반 수강생 진입 시 내부 태그 제거 (공용 브라우저에서 이전 관리자 세션 잔재 방지). */
+export function clearInternal(): void {
+  if (!ready()) return;
+  posthog.unregister("is_internal");
+  posthog.unregister("viewer_role");
 }
 
 /** 쿼리/뮤테이션 실패를 api_error 이벤트로 기록 (전역 핸들러에서 호출). */
