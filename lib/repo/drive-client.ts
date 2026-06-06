@@ -7,6 +7,7 @@
  */
 import { google, type drive_v3 } from "googleapis";
 import { serviceAccount } from "@/config";
+import { pickSheetFromCandidates } from "./sheet-title-match";
 
 let cached: drive_v3.Drive | null = null;
 let cachedWrite: drive_v3.Drive | null = null;
@@ -183,6 +184,48 @@ export async function findSheetByExactName(
 }
 
 /**
+ * 모든 토큰을 제목에 포함하는 스프레드시트 1개 찾기 (self-claim 시트 매칭 완화).
+ * 예: `["세일즈PT", "8기", "김승엽", "경영일지"]` → "수강생" 유무 무관 매칭.
+ *
+ * 정확도:
+ *   - Drive `name contains` 는 토큰(prefix) 매칭이라 오탐 가능 → JS 에서 모든 토큰을
+ *     실제 `.includes` 로 재검증.
+ *   - 기수 토큰(`\d+기`)은 숫자 경계 정규식 `(^|[^0-9])N기` 로 검증 → "8기"가 "18기"에
+ *     오매칭되지 않음.
+ *   - 0개 → null. 1개 → id. 2개+ → 모호 → null(추측 금지). 단 "수강생" 포함 형이
+ *     정확히 1개면 그것 우선(약한 tiebreak).
+ * 공유 드라이브 대응 supportsAllDrives + includeItemsFromAllDrives.
+ */
+export async function findSheetByNameContainsAll(
+  tokens: string[],
+): Promise<string | null> {
+  const clean = tokens.map((t) => t.trim()).filter(Boolean);
+  if (clean.length === 0) return null;
+  const drive = driveClient();
+  const q =
+    clean.map((t) => `name contains '${t.replace(/'/g, "\\'")}'`).join(" and ") +
+    ` and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
+  const res = await drive.files.list({
+    q,
+    fields: "files(id, name)",
+    pageSize: 20,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+
+  const candidates = (res.data.files ?? []).filter(
+    (f): f is { id: string; name: string } =>
+      typeof f.id === "string" && typeof f.name === "string",
+  );
+  const picked = pickSheetFromCandidates(candidates, clean);
+  console.warn(
+    "[claim-match] findSheetByNameContainsAll " +
+      JSON.stringify({ tokens: clean, candidates: candidates.length, picked: !!picked }),
+  );
+  return picked;
+}
+
+/**
  * 파일/폴더의 이름 + 첫 부모 폴더 id 조회 (drive.readonly 로 가능).
  *
  * 용도(ADR-0007 연결-only):
@@ -250,7 +293,7 @@ export async function getDriveFileMeta(fileId: string): Promise<DriveFileMeta> {
 /**
  * 부모 폴더 하위에서 prefix 로 시작하는 **폴더** 찾기 (ADR-0007).
  *
- * findSheetByNamePrefix 와 동일 패턴이지만:
+ * prefix 매칭 폴더 검색:
  *   - mimeType = folder (spreadsheet 아님)
  *   - parentFolderId 로 범위 제한
  *   - Scope 1은 Drive 읽기(files.list)만 — 생성/수정/삭제 금지.
@@ -326,50 +369,6 @@ export async function findFolderByNameInDrive(
   const exact = files.find((f) => f.name === prefix);
   if (exact) return exact.id;
   if (files.length > 5) return null;
-  files.sort((a, b) => a.name.length - b.name.length);
-  return files[0]?.id ?? null;
-}
-
-/**
- * prefix 매칭 — 파일명이 `{prefix}` 로 시작하는 시트 찾기.
- * 시트 이름 끝에 `(new)`, `v2`, ` 사본` 같은 suffix 가 붙은 케이스 처리용
- * (사용자가 시트 복제·이름변경 자유롭게 가능).
- *
- * 매칭 정책:
- *   - prefix 와 정확히 같은 이름 있으면 그것 우선 (suffix 없는 원본).
- *   - 그 외엔 이름 가장 짧은 것 우선 (suffix 길이 최소 = 가장 가까운 매칭).
- *   - 5개 초과 매칭이면 ambiguous → null (호출 측이 사용자에게 명확화 요청).
- *
- * Drive q `name contains` 는 토큰 매칭이라 한국어·공백 포함 prefix 도 OK.
- */
-export async function findSheetByNamePrefix(
-  prefix: string,
-): Promise<string | null> {
-  const drive = driveClient();
-  const safe = prefix.replace(/'/g, "\\'");
-  const res = await drive.files.list({
-    q:
-      `name contains '${safe}' ` +
-      `and mimeType = 'application/vnd.google-apps.spreadsheet' ` +
-      `and trashed = false`,
-    fields: "files(id, name)",
-    pageSize: 20,
-    // corpora 미지정(includeItemsFromAllDrives 로 공유 항목 포함). allDrives 회귀 방지.
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
-  });
-  const files = (res.data.files ?? []).filter(
-    (f): f is { id: string; name: string } =>
-      typeof f.name === "string" &&
-      typeof f.id === "string" &&
-      f.name.startsWith(prefix),
-  );
-  if (files.length === 0) return null;
-  // 정확 매칭(suffix 없는 원본) 우선.
-  const exact = files.find((f) => f.name === prefix);
-  if (exact) return exact.id;
-  // 그 외엔 이름 길이 짧은 순(가장 적은 suffix) 우선.
-  if (files.length > 5) return null; // 너무 많으면 ambiguous.
   files.sort((a, b) => a.name.length - b.name.length);
   return files[0]?.id ?? null;
 }

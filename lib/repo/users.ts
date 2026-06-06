@@ -27,7 +27,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
-import { findSheetByExactName, findSheetByNamePrefix } from "./drive-client";
+import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:P1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:P`;
@@ -440,9 +440,10 @@ export async function findExistingSheetIdByCohortName(
  * Drive API 파일명 검색 — 수강생 시트 찾기.
  *
  * 매칭 전략 (순서대로 시도):
- *   1. exact: `세일즈PT_ {N}기 {name} 수강생 경영일지` 정확 일치.
- *   2. prefix: 동일 prefix 로 시작하고 suffix 만 추가된 경우 (예: `(new)`,
- *      ` 사본`, ` v2`). 사용자가 시트 복제·이름 변경 자유롭게 가능.
+ *   1. exact: `세일즈PT_ {N}기 {name} 수강생 경영일지` 정확 일치 (빠른 경로, 7기 호환).
+ *   2. contains-all: `["세일즈PT", "{N}기", {name}, "경영일지"]` 토큰을 모두 포함하는 시트.
+ *      → "수강생" 유무 무관 매칭 (8기 제목엔 "수강생"이 빠짐). `(new)`/` 사본` suffix 도 흡수.
+ *      숫자경계 가드로 "8기"가 "18기"에 오매칭 안 됨. 2개+ 모호면 null(오등록 방지).
  *
  * cohort=T(트레이너) 인 경우 null 반환 (검색 안 함).
  */
@@ -456,8 +457,13 @@ export async function findSheetByCohortName(
   const exactName = `세일즈PT_ ${cohortNum}기 ${cleanName} 수강생 경영일지`;
   const exact = await findSheetByExactName(exactName);
   if (exact) return exact;
-  // exact 매칭 실패 → prefix 매칭 fallback. `(new)`, ` 사본` 등 suffix 흡수.
-  return findSheetByNamePrefix(exactName);
+  // exact 실패 → "수강생" 유무 무관 토큰 포함 매칭.
+  return findSheetByNameContainsAll([
+    "세일즈PT",
+    `${cohortNum}기`,
+    cleanName,
+    "경영일지",
+  ]);
 }
 
 // claimRegistry 는 lib/repo/users-claim.ts 로 분리 (500줄 cap).

@@ -1,10 +1,13 @@
 ---
 slug: cohort-folder-naming-fix
-status: active
+status: completed
 created: 2026-06-05
+completed: 2026-06-06
 owner: belie
 related: admin-cohort-create(completed), 0011-drive-sheets-write-expansion
 ---
+
+> ✅ **완료 (2026-06-06)** — PR #311 머지·배포. contains 매칭 + 공유 드라이브 폴백 반영.
 
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 관리자 기수 생성 흐름의 이름폴더 매칭을 실제 8기 구조(`[{팀} {기수}기] {이름}`)에 맞게 정확일치 → **포함(contains) 매칭**으로 정정하고, 공유 드라이브 탐색을 견고화.
