@@ -149,13 +149,25 @@ export function dayPrimaryRow(r: number): number {
 }
 
 // ── 영업관리 한 행에 들어갈 8개 수식 ─────────────────────────────
-function formulasForRow(r: number): Record<string, string> {
+export function formulasForRow(r: number): Record<string, string> {
   // SORT(FILTER(...)) 패턴 — 같은 셀 내 라인은 시간 빠른 것이 위로
   // (TEXT(D,"M/d")&", "&TEXT(E,"HH:MM")&... 형식이라 lex sort = 시간순 sort)
   //
   // **$C 좌표는 dayPrimaryRow 사용 (2026-05-16 cell-merge fix)** — 자세한 이유는
   // 위 dayPrimaryRow JSDoc 참조. $D{r} 은 r 그대로 (채널 라벨은 row 별 고유).
   const dpr = dayPrimaryRow(r);
+  // 콜·지·기·소(channelIdx 3) 계약 매칭 fix (2026-06, 밤볼 콜지기소 계약 미집계 사고):
+  // N/O/P 는 `04!F:F=$D{r}` 정확매칭인데, 04!F 채널값이 separator 변종("콜-지-기-소" 등)
+  // 이면 매칭 실패 → 계약건수/수임비 0. (완료수 L 은 F 필터가 없어 잡혀 증상이 N/O 만 0.)
+  // D 라벨은 setDChannelLabels 가 정규화하지만 04!F(미팅 데이터)는 raw 보존이라 못 고침.
+  // → 콜지기소 행만 separator-무관 매칭: COUNTIFS/SUMIFS 와일드카드 "콜*소",
+  //   FILTER 는 LEFT(F,1)="콜". 다른 3채널은 separator 없어 정확매칭 유지(오매칭 0).
+  const channelIdx = ((r - SALES_BLOCK_START) % SALES_BLOCK_STRIDE) % 4;
+  const isKjks = channelIdx === 3;
+  const chCrit = isKjks ? `"콜*소"` : `$D${r}`;
+  const chCond = isKjks
+    ? `(LEFT(${M_REF}!F:F,1)="콜")`
+    : `(${M_REF}!F:F=$D${r})`;
   return {
     // I: 미팅예약기록 — 04업체관리!B(예약일)=$C{dpr}, F(채널)=$D{r}, !N(표시상세) TEXTJOIN
     I: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!N:N,(${M_REF}!B:B=$C${dpr})*(${M_REF}!F:F=$D${r})))),"")`,
@@ -171,12 +183,12 @@ function formulasForRow(r: number): Record<string, string> {
     L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"완료")`,
     // M: 미팅사유 자동 집계 — 미팅날짜만 매칭 (J~M 통합).
     M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,${M_REF}!D:D=$C${dpr})),"")`,
-    // N: 계약건수
-    N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
-    // O: 수임비합계
-    O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${dpr},${M_REF}!F:F,$D${r},${M_REF}!J:J,"계약")`,
-    // P: 계약비고 — 04업체관리!Q(계약합성라인) TEXTJOIN
-    P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${dpr})*(${M_REF}!F:F=$D${r})*(${M_REF}!J:J="계약"))),"")`,
+    // N: 계약건수 (채널별 — 콜지기소는 separator-무관 와일드카드)
+    N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약")`,
+    // O: 수임비합계 (채널별 — 콜지기소는 separator-무관 와일드카드)
+    O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약")`,
+    // P: 계약비고 — 04업체관리!Q(계약합성라인) TEXTJOIN (콜지기소는 LEFT(F,1)="콜")
+    P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${dpr})*${chCond}*(${M_REF}!J:J="계약"))),"")`,
   };
 }
 

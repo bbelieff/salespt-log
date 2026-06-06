@@ -28,6 +28,10 @@ created: 2026-05-18
 - N (계약건수), O (수임비합계), P (계약비고) 는 **채널별 유지** (셀병합 X)
 - 4 row 모두 동일 수식 install — 셀병합 마스터에 통합 결과 표시
 
+> **후속 (2026-06)**: N/O/P 의 채널별 정확매칭(`04!F:F=$D{r}`)이 콜·지·기·소 separator
+> 변종(04!F="콜-지-기-소" 등)에서 실패 → 계약 미집계 사고. 채널별은 유지하되 콜지기소
+> 행만 separator-무관 매칭으로 보강. 정본: [contract-formula-channel-agnostic](contract-formula-channel-agnostic.md).
+
 ## Acceptance
 - [ ] check.sh 통과
 - [ ] 머지·배포 후 admin install-formulas-bulk 클릭 → J 수식 재install

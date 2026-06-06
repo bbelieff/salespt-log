@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeDataRows,
   dayPrimaryRow,
+  formulasForRow,
   isSafeToOverwrite,
 } from "../../lib/repo/setup-formulas";
 
@@ -171,5 +172,49 @@ describe("dayPrimaryRow — cell 병합 시트 $C 참조 fix", () => {
   it("8주 7일 콜·지·기·소(275) → primary = 272", () => {
     // 8주 시작 = 10 + 7*34 = 248. 7일 시작 = 248 + 6*4 = 272. 콜지기소 = 275.
     expect(dayPrimaryRow(275)).toBe(272);
+  });
+});
+
+/**
+ * 단위 테스트: formulasForRow 채널 매칭 (2026-06, 콜지기소 계약 미집계 사고).
+ * 콜·지·기·소 행만 separator-무관(와일드카드 "콜*소" / LEFT(F,1)="콜").
+ * 다른 3채널은 정확매칭($D{r}) 유지.
+ */
+describe("formulasForRow — 콜지기소 계약 채널 매칭", () => {
+  it("콜·지·기·소 행(13): N/O 는 와일드카드 \"콜*소\", $D13 정확매칭 아님", () => {
+    const f = formulasForRow(13);
+    expect(f.N).toContain('"콜*소"');
+    expect(f.O).toContain('"콜*소"');
+    expect(f.N).not.toContain("$D13");
+  });
+
+  it("콜·지·기·소 행(13): P 는 LEFT(F,1)=\"콜\"", () => {
+    const f = formulasForRow(13);
+    expect(f.P).toContain('LEFT(');
+    expect(f.P).toContain('="콜"');
+  });
+
+  it("매입DB 행(10): N/O 는 정확매칭 $D10, 와일드카드 아님", () => {
+    const f = formulasForRow(10);
+    expect(f.N).toContain("$D10");
+    expect(f.N).not.toContain('"콜*소"');
+    expect(f.O).toContain("$D10");
+  });
+
+  it("직접생산(11)·현수막(12): 정확매칭 유지", () => {
+    expect(formulasForRow(11).N).toContain("$D11");
+    expect(formulasForRow(12).N).toContain("$D12");
+    expect(formulasForRow(11).N).not.toContain('"콜*소"');
+  });
+
+  it("다른 주차 콜지기소(17=1주2일, 47=2주1일)도 와일드카드", () => {
+    expect(formulasForRow(17).N).toContain('"콜*소"');
+    expect(formulasForRow(47).N).toContain('"콜*소"');
+  });
+
+  it("계약 필터(J=\"계약\")·날짜(dpr) 는 유지", () => {
+    const f = formulasForRow(13);
+    expect(f.N).toContain('"계약"');
+    expect(f.N).toContain("$C10"); // dayPrimaryRow(13)=10
   });
 });
