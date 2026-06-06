@@ -23,7 +23,7 @@ import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
 import DDayBadge from "./DDayBadge";
 import PageContainer from "./PageContainer";
-import { identifyUser, resetUser } from "@/analytics";
+import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 
 interface Props {
   pageEmoji: string;
@@ -55,11 +55,23 @@ export default function TopHeader({
 }: Props) {
   const me = useMe();
 
-  // PostHog 식별 — 로그인 사용자를 이메일로 식별 (impersonation 중에는 skip).
-  // 운영 환경 + init 된 경우에만 실제 전송(identifyUser 내부에서 no-op 가드).
+  // PostHog 식별 + 내부 트래픽 태깅 (ADR-0009/0013).
+  //  - 관리자 본인 또는 대리접속(impersonating) = 내부 → is_internal super property.
+  //  - 대리접속 중에는 대상 학생 PII 로 identify 하지 않음(ADR-0009). 비-대리 관리자는
+  //    기존대로 role=admin 으로 identify 유지(+ 내부 태그).
+  //  - 일반 수강생은 내부 태그 제거 후 identify.
+  // 운영 환경 + init 된 경우에만 실제 전송(각 함수 내부 no-op 가드).
   useEffect(() => {
     const d = me.data;
-    if (!d || d.impersonating || !d.email) return;
+    if (!d) return;
+    const isInternal = d.sessionRole === "admin" || !!d.impersonating;
+    if (isInternal) {
+      markInternal(d.sessionRole ?? "admin");
+    } else {
+      clearInternal();
+    }
+    // 대리접속 중 식별 skip (대상 PII 오염 방지).
+    if (d.impersonating || !d.email) return;
     identifyUser(d.sessionEmail ?? d.email, {
       cohort: d.cohort,
       name: d.name,

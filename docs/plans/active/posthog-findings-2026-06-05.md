@@ -45,12 +45,11 @@ source: Cowork 자동 데일리 리포트 (PostHog #450895, 분석일 2026-06-05
 **수강생만 본 퍼널(정정):** 접속 6 → 지표 2 → 미팅 2 → 계약 3
 (관리자 #d0cc49ed가 기록한 지표 1·미팅 2는 테스트성 → 수강생 퍼널에서 제외)
 
-### 액션 (P1, 분석 정확도)
-- [ ] 관리자/내부 트래픽을 수강생 지표에서 **분리**할 수단 마련. 택1:
-  - (A) 관리자 본인 세션은 `role:"admin"`로 **identify**해서 PostHog에서 필터 가능하게(대리접속은 기존대로 skip 유지).
-  - (B) 내부 사용자에 `is_internal:true` person/super-property를 붙이고 인사이트·대시보드에서 제외.
-- [ ] 코드 위치: `components/TopHeader.tsx`(identify 호출), `lib/analytics/index.ts`(속성 상수), `app/providers.tsx`(init).
-- [ ] ADR-0009에 "내부 트래픽 필터링" 결정 한 줄 추가(또는 후속 ADR).
+### 액션 (P1, 분석 정확도) — PR2 `feat/analytics-internal-flag` (2026-06)
+- [x] (B 채택) 내부 사용자에 `is_internal:true`(+`viewer_role`) **super-property** 부착 → 인사이트 `is_internal=false` 필터로 제외. 대리접속은 식별 skip 유지(PII 보호).
+- [x] 코드: `lib/analytics/index.ts`(markInternal/clearInternal), `components/TopHeader.tsx`(sessionRole admin || impersonating → markInternal, 일반 → clearInternal).
+- [x] **ADR-0013** 신규(ADR-0009 보완) — 내부 트래픽 필터링 결정.
+- [ ] (운영) PostHog 인사이트·대시보드 9타일에 `is_internal != true` 필터 적용 — 사람이 직접.
 
 ---
 
