@@ -1237,6 +1237,7 @@ components/dashboard/
 |---|---|
 | **WeekHeader** | 일정·계약 주차 네비 (컨택과 변형: 일자 클릭 = `scrollIntoView`, 주차 변경 X) |
 | **SummaryBar** | 주간 5칸 카운터 (미팅총건/미팅예정/미팅완료/미팅취소/계약) + 매출 합계 배너. sticky 부모 묶기 |
+| **WeekFallback** | 일정·계약 주간 로딩/에러 상태 (schedule/page.tsx 500줄 분리). Props: `state:"loading"\|"error"`, `onRetry`, `retrying`. 에러 시 "다시 시도"(refetch) 버튼 — 네트워크 단절 새로고침 없이 재요청 (2026-06 PostHog P2). |
 | **DaySection** | 일별 미팅 섹션. 오늘 강조 좌측바 (`border-l-blue-500`). 토요일 좌측바 빨강 |
 | **MeetingResultCard** | Full 미팅 카드 (4종 액션 버튼 — 계약/완료/변경/취소 + 기본편집). Props: `meeting` / 액션 콜백 |
 | **BasicEditDetails** | 기본 정보 편집 폼 (액션 폼 5종 중 하나). 미팅 데이터 patch |
