@@ -442,7 +442,8 @@ export async function readWeek(
   if (weekIndex < 1 || weekIndex > 10) {
     throw new Error(`주차 범위 밖: ${weekIndex} (1~10)`);
   }
-  const courseStart = await readCourseStart(spreadsheetId);
+  // 좌표는 weekIndex(인자)로 계산 — courseStart 불필요. 과거 여기서 readCourseStart
+  // 를 호출하고 쓰지 않던 dead read 제거 (read quota 절약, 2026-06).
 
   const startRow =
     SHEET_RANGES.sales.blockStart +
@@ -480,7 +481,6 @@ export async function readWeek(
     if (parsed.success) rows.push(parsed.data);
   }
 
-  void courseStart;
   return { rows };
 }
 
