@@ -37,8 +37,16 @@ related: j-formula-channel-agnostic, 0010-meeting-reservation-derived
 - 채널무관(날짜 전체 집계) 안 쓴 이유: N 은 8주 28행(7일×4채널) 합산 대상이라 채널무관 시 **4배 중복**.
 - 단위 테스트: `formulasForRow(13/17/47)` 와일드카드, `(10/11/12)` 정확매칭, 계약·날짜 필터 유지.
 
-## 전파 (기존 시트)
-- 관리자 `install-formulas-bulk` / `fix-sheet` 로 7기 전원(+연습기) **재설치**. §2.5 가드(`isSafeToOverwrite`: raw 값 skip, 수식/빈셀만 교체) 그대로 — 사용자 입력값 안 덮음.
+## 전파 (기존 시트 + 템플릿 + 8기)
+모든 경로가 동일 `installFormulas` + §2.5 가드(`isSafeToOverwrite`: raw 값 skip, 수식/빈셀만 교체) → 사용자 입력값 안 덮음. 재설치 후 각 그룹 1명씩 스팟체크.
+
+- **(a) 7기 전원 + 연습기** — 관리자 `install-formulas-bulk`(레지스트리 순회, 기존 [🛠️ 수식 복원] 버튼).
+- **(b) ★ 양식 템플릿** `1nx1EufkFFGaf5dp-8Dp2GvX0jU_P4EUe8QEMKTPM_rY` — **필수**(향후 복사본이 결함 상속 방지).
+- **(c) 8기 기복사 4본** (김승엽·김현민·박상준·이용호) — 레지스트리 미등록.
+  - 김승엽 확인분: `1UvveVcsen0uGE-EdCoLYE5dHCgs_DyIKQtFAgpiEDJs`. 나머지는 "★★★★세일즈PT 8기" 폴더(`1rIxiC3G1ndOVZAz_lk1KOuN5R0jjv5q2`) 하위 이름폴더에서 제목 `세일즈PT_ 8기 * 경영일지` 로 찾아 ID 확보.
+- **(b)+(c) 설치 경로** — 신규 `POST /api/admin/install-formulas-by-id` (시트 ID/URL 배열 직접 지정, 레지스트리 무관). UI: `/admin/users` 헤더 [📋 ID로 수식 설치] → 줄단위 ID/URL 붙여넣기. (Drive 자동 enumerate 는 미구현 — ID 직접 지정이 더 단순·안전. 향후 필요 시 별도.)
+- 전제: **masterbot 이 세일즈PT★ 공유 드라이브 멤버(콘텐츠 관리자)** — 권한 부여 완료 후 실행. 없으면 by-id 결과 failed.
+- **4채널 일반화 점검**: 재설치 후 매입DB/직접생산/현수막/콜·지·기·소 **모두** 계약 집계 정상인지 확인 — 콜지기소만 separator 문제였는지, 다른 채널도 변종이 있는지 확정(다른 채널은 separator 없어 정상일 것으로 예상).
 
 ## 범위 밖 (PC 확인 권장)
 - `01!K3:L6`(채널별 계약총합)·`R1:U6`(채널 매트릭스)는 **시트 템플릿 수식**(우리 코드 미설치, dashboard.ts 는 read만). K 가 per-channel N 의 SUM 이면 본 fix 로 자동 교정. 만약 K/대시보드 IV 가 04 를 독립 COUNTIFS(정확채널)하면 템플릿 수정 필요(코드 범위 밖) — PC에서 확인.
@@ -48,4 +56,5 @@ related: j-formula-channel-agnostic, 0010-meeting-reservation-derived
 - [ ] 오승진: 01 6/5 계약건수=1·수임비 ₩1,100,000 → 대시보드 계약 8건·퍼널 8 = 실무수납 8 일치. 채널별 성과 콜지기소 계약 1.
 - [ ] 매입DB 등 기존 채널 계약 집계 회귀 없음(다른 수강생 수치 불변).
 - [ ] 수식 재설치가 raw 입력값 미손상(§2.5 가드 테스트).
+- [ ] (전파) 템플릿 + 8기 4본에 by-id 설치 성공. 8기 1본 + 템플릿에서 콜·지·기·소 계약 **테스트 입력 → 계약건수 집계 확인 → 테스트값 제거**.
 - [ ] `npm run check` 통과.
