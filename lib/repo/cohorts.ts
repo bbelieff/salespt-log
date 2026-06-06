@@ -23,6 +23,8 @@ export interface Cohort {
   templateSheetId: string; // E — 복제 원본 시트 ID
   rootFolderId: string; // F — 기수 루트(일반) / 아레나 N회(아레나) 폴더 ID
   rosterSheetId: string; // G — (아레나) 전체 참가자 시트 ID. 일반 기수 빈값
+  sheetsFolderId: string; // H — (아레나) 경영일지 시트 복제 대상 폴더 ID
+  companyParentFolderId: string; // I — (아레나) 업체관리 폴더 생성 부모 폴더 ID
 }
 
 const COHORTS_TAG = "cohorts";
@@ -31,7 +33,7 @@ const cachedCohortsRows = unstable_cache(
   async (): Promise<string[][]> => {
     const reg = registry();
     try {
-      return await readRange(reg.spreadsheetId, `${cohortsTab()}!A2:G`);
+      return await readRange(reg.spreadsheetId, `${cohortsTab()}!A2:I`);
     } catch {
       // 탭 없을 수 있음 (ensure 전 첫 호출) — 빈 배열로 fallback.
       return [];
@@ -66,6 +68,8 @@ export async function listCohorts(): Promise<Cohort[]> {
       templateSheetId: String(r[4] ?? "").trim(),
       rootFolderId: String(r[5] ?? "").trim(),
       rosterSheetId: String(r[6] ?? "").trim(),
+      sheetsFolderId: String(r[7] ?? "").trim(),
+      companyParentFolderId: String(r[8] ?? "").trim(),
     }));
 }
 
@@ -107,8 +111,8 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     });
   }
 
-  // 헤더 확인/갱신 (A1:G 멱등). 기존 A~C 헤더만 있으면 D~G 헤더 보강.
-  const header = await readRange(reg.spreadsheetId, `${tab}!A1:G1`);
+  // 헤더 확인/갱신 (A1:I 멱등). 기존 짧은 헤더면 D~I 헤더 보강.
+  const header = await readRange(reg.spreadsheetId, `${tab}!A1:I1`);
   const HEADER = [
     "cohort",
     "status",
@@ -117,11 +121,13 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     "templateSheetId",
     "rootFolderId",
     "rosterSheetId",
+    "sheetsFolderId",
+    "companyParentFolderId",
   ];
   if (!header[0]?.[0] || (header[0]?.length ?? 0) < HEADER.length) {
     await sheetsClient().spreadsheets.values.update({
       spreadsheetId: reg.spreadsheetId,
-      range: `${tab}!A1:G1`,
+      range: `${tab}!A1:I1`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [HEADER] },
     });
@@ -139,8 +145,8 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     const uniq = Array.from(new Set(seedLabels.filter(Boolean)));
     await appendRows(
       reg.spreadsheetId,
-      `${tab}!A2:G`,
-      uniq.map((l) => [l, "active", "", "cohort", "", "", ""]),
+      `${tab}!A2:I`,
+      uniq.map((l) => [l, "active", "", "cohort", "", "", "", "", ""]),
     );
   }
   invalidateCohorts();
@@ -169,15 +175,15 @@ export async function setCohortStatus(
     }
   }
   // 없으면 새 row append.
-  await appendRows(reg.spreadsheetId, `${tab}!A2:G`, [
-    [trimmed, status, "", "cohort", "", "", ""],
+  await appendRows(reg.spreadsheetId, `${tab}!A2:I`, [
+    [trimmed, status, "", "cohort", "", "", "", "", ""],
   ]);
   invalidateCohorts();
 }
 
 /**
- * cohorts row 의 설정(D~G) upsert. 주어진 필드만 갱신(나머지 보존).
- * 없으면 새 row(status=active) append. (ADR-0011 — 기수 생성 설정)
+ * cohorts row 의 설정(D~I) upsert. 주어진 필드만 갱신(나머지 보존).
+ * 없으면 새 row(status=active) append. (ADR-0011/0012 — 기수·아레나 생성 설정)
  */
 export async function upsertCohortConfig(
   label: string,
@@ -186,27 +192,31 @@ export async function upsertCohortConfig(
     templateSheetId?: string;
     rootFolderId?: string;
     rosterSheetId?: string;
+    sheetsFolderId?: string;
+    companyParentFolderId?: string;
   },
 ): Promise<void> {
   const reg = registry();
   const tab = cohortsTab();
   const trimmed = label.trim();
   if (!trimmed) throw new Error("[upsertCohortConfig] label 비어있음");
-  const rows = await readRange(reg.spreadsheetId, `${tab}!A2:G`);
+  const rows = await readRange(reg.spreadsheetId, `${tab}!A2:I`);
 
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i]?.[0] ?? "").trim() === trimmed) {
       const cur = rows[i] ?? [];
       const sheetRow = i + 2;
       const next = [
-        cfg.type ?? (cur[3] === "arena" ? "arena" : cur[3] ? "cohort" : "cohort"),
+        cfg.type ?? (cur[3] === "arena" ? "arena" : "cohort"),
         cfg.templateSheetId ?? String(cur[4] ?? ""),
         cfg.rootFolderId ?? String(cur[5] ?? ""),
         cfg.rosterSheetId ?? String(cur[6] ?? ""),
+        cfg.sheetsFolderId ?? String(cur[7] ?? ""),
+        cfg.companyParentFolderId ?? String(cur[8] ?? ""),
       ];
       await sheetsClient().spreadsheets.values.update({
         spreadsheetId: reg.spreadsheetId,
-        range: `${tab}!D${sheetRow}:G${sheetRow}`,
+        range: `${tab}!D${sheetRow}:I${sheetRow}`,
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [next] },
       });
@@ -215,7 +225,7 @@ export async function upsertCohortConfig(
     }
   }
   // 없으면 새 row.
-  await appendRows(reg.spreadsheetId, `${tab}!A2:G`, [
+  await appendRows(reg.spreadsheetId, `${tab}!A2:I`, [
     [
       trimmed,
       "active",
@@ -224,6 +234,8 @@ export async function upsertCohortConfig(
       cfg.templateSheetId ?? "",
       cfg.rootFolderId ?? "",
       cfg.rosterSheetId ?? "",
+      cfg.sheetsFolderId ?? "",
+      cfg.companyParentFolderId ?? "",
     ],
   ]);
   invalidateCohorts();

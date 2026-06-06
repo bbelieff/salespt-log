@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CohortStatus, CohortType } from "@/repo/cohorts";
 import CohortCreateModal from "./CohortCreateModal";
+import ArenaCreateModal from "./ArenaCreateModal";
 
 interface Cohort {
   label: string;
@@ -77,6 +78,7 @@ export default function CohortMgmtPanel({
           </div>
           <div className="flex items-center gap-2">
             {!viewOnly && <CohortCreateModal />}
+            {!viewOnly && <ArenaCreateModal />}
             <Link
               href="/admin"
               className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"

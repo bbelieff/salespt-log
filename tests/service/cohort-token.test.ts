@@ -3,6 +3,10 @@ import {
   parseCohortToken,
   buildCohortSheetTitle,
   decideMemberAction,
+  arenaSeasonLabel,
+  buildArenaSheetTitle,
+  buildArenaCompanyFolderName,
+  decideArenaAction,
   type ParsedCohort,
 } from "@/service/cohort-token";
 
@@ -178,5 +182,57 @@ describe("decideMemberAction", () => {
       sheetId: "short",
     });
     expect(r).toMatchObject({ action: "fail" });
+  });
+});
+
+describe("arena 빌더 (시즌+0기 고정 명명)", () => {
+  it("arenaSeasonLabel: 시즌→A{n}", () => {
+    expect(arenaSeasonLabel(1)).toBe("A1");
+    expect(arenaSeasonLabel(12)).toBe("A12");
+  });
+
+  it("buildArenaSheetTitle: 세일즈PT_A{시즌}_0기 {이름}_대표님 경영일지", () => {
+    expect(buildArenaSheetTitle(1, "김믿음")).toBe(
+      "세일즈PT_A1_0기 김믿음_대표님 경영일지",
+    );
+    expect(buildArenaSheetTitle(2, "  이영업 ")).toBe(
+      "세일즈PT_A2_0기 이영업_대표님 경영일지",
+    );
+  });
+
+  it("buildArenaCompanyFolderName: …_대표님 업체관리", () => {
+    expect(buildArenaCompanyFolderName(1, "김믿음")).toBe(
+      "세일즈PT_A1_0기 김믿음_대표님 업체관리",
+    );
+  });
+});
+
+describe("decideArenaAction", () => {
+  it("멱등: 이미 등록된 시트 있으면 skip", () => {
+    const r = decideArenaAction({
+      season: 1,
+      name: "김믿음",
+      existingSheetId: "1AbcDEFghiJKLmnoPQRstuVWxyz1234567890",
+    });
+    expect(r).toEqual({ action: "skip", name: "김믿음" });
+  });
+
+  it("이름 비면 fail", () => {
+    const r = decideArenaAction({ season: 1, name: "  ", existingSheetId: null });
+    expect(r.action).toBe("fail");
+  });
+
+  it("신규 → create (시트제목·폴더명 생성)", () => {
+    const r = decideArenaAction({
+      season: 1,
+      name: "김믿음",
+      existingSheetId: null,
+    });
+    expect(r).toEqual({
+      action: "create",
+      name: "김믿음",
+      sheetTitle: "세일즈PT_A1_0기 김믿음_대표님 경영일지",
+      folderName: "세일즈PT_A1_0기 김믿음_대표님 업체관리",
+    });
   });
 });

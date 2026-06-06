@@ -64,6 +64,61 @@ export async function copyTemplateSheet(
   return id;
 }
 
+/**
+ * 지정 부모 폴더 하위에 새 폴더 생성 (ADR-0012). 새 빈 폴더 → 데이터 손상 위험 0.
+ * 공유 드라이브 대응 supportsAllDrives. 반환 = 새 folderId.
+ * ⚠️ 반드시 지정된 부모(아레나 companyParentFolderId) 하위로만 호출.
+ */
+export async function createFolder(
+  name: string,
+  parentId: string,
+): Promise<string> {
+  const res = await driveWriteClient().files.create({
+    requestBody: {
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentId],
+    },
+    supportsAllDrives: true,
+    fields: "id",
+  });
+  const id = res.data.id;
+  if (!id) throw new Error("[createFolder] 생성 결과 id 없음");
+  console.warn(
+    "[arena-create] createFolder " + JSON.stringify({ name, parentId, newId: id }),
+  );
+  return id;
+}
+
+/**
+ * 부모 폴더 안에서 이름 **정확 일치** 폴더 1개 찾기 (아레나 멱등 검사·재사용).
+ * 아레나 폴더명은 결정적(`세일즈PT_A1_0기 이름_대표님 업체관리`)이라 정확일치가 안전.
+ * 부모범위 쿼리 → corpora 미지정(allDrives 비호환 회귀 방지). 공유 드라이브 대응.
+ */
+export async function findFolderByExactName(
+  name: string,
+  parentFolderId: string,
+): Promise<string | null> {
+  const drive = driveClient();
+  const safe = name.replace(/'/g, "\\'");
+  const res = await drive.files.list({
+    q:
+      `name = '${safe}' ` +
+      `and mimeType = 'application/vnd.google-apps.folder' ` +
+      `and '${parentFolderId}' in parents ` +
+      `and trashed = false`,
+    fields: "files(id, name)",
+    pageSize: 5,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  const files = (res.data.files ?? []).filter(
+    (f): f is { id: string; name: string } =>
+      typeof f.id === "string" && f.name === name,
+  );
+  return files[0]?.id ?? null;
+}
+
 export interface FolderContainsResult {
   /** 정확히 1개 매칭 시 폴더 id. 0개/2개+ 면 null. */
   id: string | null;
