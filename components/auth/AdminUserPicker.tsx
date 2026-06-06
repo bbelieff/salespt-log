@@ -1,7 +1,4 @@
-/**
- * AdminUserPicker — 수강생 관리 화면 (Admin 전용).
- * 카드: 이름·email·기수·담당·시작/종강일·[시트] → click → impersonation.
- */
+/** AdminUserPicker — 수강생 관리 화면 (Admin 전용). 카드 click → impersonation. */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -18,6 +15,7 @@ import {
 import { type PrepItem } from "./TraineePrepBulkForm";
 import UnifiedPrepCard from "./UnifiedPrepCard";
 import InstallFormulasButton from "./InstallFormulasButton";
+import InstallFormulasByIdButton from "./InstallFormulasByIdButton";
 import MigrateCacheButton from "./MigrateCacheButton";
 import BulkReserveButton from "./BulkReserveButton";
 
@@ -386,6 +384,7 @@ export default function AdminUserPicker({
               />
               <MigrateCacheButton />
               <InstallFormulasButton />
+              <InstallFormulasByIdButton />
             </div>
           )}
         </div>
