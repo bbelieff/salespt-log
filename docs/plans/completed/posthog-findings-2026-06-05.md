@@ -1,10 +1,14 @@
 ---
 slug: posthog-findings-2026-06-05
-status: active
+status: completed
 created: 2026-06-06
+completed: 2026-06-06
 owner: belie
 source: Cowork 자동 데일리 리포트 (PostHog #450895, 분석일 2026-06-05 KST)
 ---
+
+> ✅ **완료 (2026-06-06)** — 코드 4개 PR 머지·배포: PR1 #314(read 볼륨↓) · PR2 #315(내부 트래픽 is_internal) · PR3 #316(마찰 즉시 피드백) · PR4 #317(schedule 재시도 + $exception 검증).
+> **잔여(운영·사람 몫, 코드 아님)**: ① PostHog 인사이트/대시보드 9타일에 `is_internal != true` 필터 적용 ② $exception 고의 에러 스모크 1회 ③ 다음 데일리로 Quota(429)·분노클릭 재발 추적 ④ 입력 급감·이탈주의 수강생 관찰.
 
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 2026-06-05 PostHog 데일리 리포트에서 나온 버그·인사이트를 개발 세션이 바로 집어갈 수 있게 우선순위·코드포인터·수용기준으로 정리한 핸드오프.
