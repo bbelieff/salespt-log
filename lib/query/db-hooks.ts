@@ -43,6 +43,9 @@ export function useDBOverview(): UseQueryResult<DBOverview> {
   return useQuery({
     queryKey: dbKey(),
     queryFn: () => fetchJSON<DBOverview>(`/api/db`),
+    // 2026-06: 화면 전환 시 60s 내 재요청 억제 → 시트 read 폭주(429) 차단.
+    // 뮤테이션은 invalidateQueries 로 즉시 재요청 → 신선도 보존.
+    staleTime: 60_000,
   });
 }
 

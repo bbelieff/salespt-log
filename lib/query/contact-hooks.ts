@@ -63,6 +63,9 @@ export function useDay(date: string): UseQueryResult<ContactDayView> {
     enabled: !!date,
     // 2026-05-17: 주차 스와이프 시 깜빡임 제거 — 이전 데이터 유지 후 새 데이터로 swap.
     placeholderData: (prev) => prev,
+    // 2026-06: /contact↔/calendar 빠른 전환 시 60s 내 재요청 억제 → 시트 read 폭주(429)
+    // 차단. 저장 등 뮤테이션은 invalidateQueries 로 즉시 재요청되므로 신선도 보존.
+    staleTime: 60_000,
   });
 }
 
@@ -77,6 +80,7 @@ export function useWeekMeetings(
     enabled: !!weekStart,
     // 2026-05-17: 동일 — 주차 이동 시 빈 화면 방지.
     placeholderData: (prev) => prev,
+    staleTime: 60_000, // 2026-06: 화면 전환 read 폭주 억제 (뮤테이션은 invalidate).
   });
 }
 
@@ -89,6 +93,7 @@ export function useMonthMeetings(
     queryFn: () =>
       fetchJSON<CalendarMonthView>(`/api/meetings/month/${yyyyMM}`),
     enabled: !!yyyyMM,
+    staleTime: 60_000, // 2026-06: 캘린더↔컨택 전환 read 폭주 억제 (뮤테이션은 invalidate).
   });
 }
 
