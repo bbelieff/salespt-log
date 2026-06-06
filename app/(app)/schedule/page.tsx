@@ -30,6 +30,7 @@ import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
+import WeekFallback from "./_components/WeekFallback";
 import TopHeader from "@/components/TopHeader";
 import { addDays, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useWeekStartSync } from "./_lib/useWeekStartSync";
@@ -399,20 +400,13 @@ export default function SchedulePage() {
     return weekQuery.data.daysByMeetingDate.map((d) => d.meetings.length);
   }, [weekQuery.data]);
 
-  if (weekQuery.isLoading) {
+  if (weekQuery.isLoading || weekQuery.isError) {
     return (
-      <section className="px-4 pt-6 text-sm text-slate-500">
-        불러오고 있어요
-      </section>
-    );
-  }
-  if (weekQuery.isError) {
-    return (
-      <section className="px-4 pt-6">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-        </div>
-      </section>
+      <WeekFallback
+        state={weekQuery.isError ? "error" : "loading"}
+        onRetry={() => weekQuery.refetch()}
+        retrying={weekQuery.isFetching}
+      />
     );
   }
   if (!weekQuery.data) return null;
