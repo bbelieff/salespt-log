@@ -295,32 +295,47 @@ export async function listSheetsInDriveByTokens(
 ): Promise<{ id: string; name: string }[]> {
   const clean = tokens.map((t) => t.trim()).filter(Boolean);
   if (clean.length === 0) return [];
-  const meta = await getDriveFileMeta(parentFolderId);
-  if (!meta.ok || !meta.driveId) return [];
   const drive = driveClient();
-  const q =
-    clean.map((t) => `name contains '${t.replace(/'/g, "\\'")}'`).join(" and ") +
-    ` and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
-  const res = await drive.files.list({
-    q,
-    fields: "files(id, name)",
-    pageSize: 200,
-    corpora: "drive",
-    driveId: meta.driveId,
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
-  });
-  const candidates = (res.data.files ?? []).filter(
-    (f): f is { id: string; name: string } =>
-      typeof f.id === "string" && typeof f.name === "string",
-  );
+  // 부모범위 BFS 트리워크 (폴더 → 하위 이름폴더 → 시트). My Drive 공유 폴더는
+  // 내부 시트가 corpus/driveId 검색에 안 잡혀(2026-06 진단), 부모범위 `'X' in parents`
+  // 만이 견고. 공유 드라이브에도 동일 동작(supportsAllDrives+includeItemsFromAllDrives).
+  const FOLDER = "application/vnd.google-apps.folder";
+  const SHEET = "application/vnd.google-apps.spreadsheet";
+  const candidates: { id: string; name: string }[] = [];
+  const queue: string[] = [parentFolderId];
+  const seen = new Set<string>();
+  let folderBudget = 300; // runaway 방지 상한.
+  while (queue.length > 0 && folderBudget-- > 0) {
+    const folderId = queue.shift()!;
+    if (seen.has(folderId)) continue;
+    seen.add(folderId);
+    let pageToken: string | undefined;
+    do {
+      const res = await drive.files.list({
+        q: `'${folderId.replace(/'/g, "\\'")}' in parents and trashed = false`,
+        fields: "nextPageToken, files(id, name, mimeType)",
+        pageSize: 200,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        pageToken,
+      });
+      for (const f of res.data.files ?? []) {
+        if (!f.id) continue;
+        if (f.mimeType === FOLDER) queue.push(f.id);
+        else if (f.mimeType === SHEET && typeof f.name === "string")
+          candidates.push({ id: f.id, name: f.name });
+      }
+      pageToken = res.data.nextPageToken ?? undefined;
+    } while (pageToken);
+  }
   const matched = filterSheetsByTokens(candidates, clean);
   console.warn(
     "[install-by-folder] listSheetsInDriveByTokens " +
       JSON.stringify({
         parentFolderId,
-        driveId: meta.driveId,
+        foldersWalked: seen.size,
         tokens: clean,
+        candidates: candidates.length,
         matched: matched.length,
       }),
   );
