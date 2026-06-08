@@ -8,17 +8,25 @@
  * install-formulas-bulk(레지스트리 순회)와 동일한 installFormulas 로직 재사용 →
  * §2.5 bulk-write 보존 가드(isSafeToOverwrite: raw 값 skip, 수식/빈셀만 교체) 동일 적용.
  *
- * body: { sheetIds: string[] }  // 시트 ID 또는 전체 URL 혼용 가능
- * 응답: { processed, success: [{sheetId, installed, preserved, preservedCells}], failed: [{sheetId, error}] }
+ * body: { sheetIds: string[] }  // 시트 ID/URL + **폴더 URL** 혼용 가능
+ *   - `/folders/{id}` 패턴은 폴더로 간주 → 그 폴더(+하위)의 경영일지 시트를 자동 추가.
+ * 응답: { processed, success: [...], failed: [...], expandedFromFolders: [{folderId, found}] }
  *
- * 전제: SA(masterbot) 가 각 시트의 writer 권한 보유(공유 드라이브 멤버 등). 없으면 failed.
+ * 전제: SA(masterbot) 가 각 시트의 writer 권한 보유(폴더 공유 등). 없으면 failed.
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { installFormulas } from "@/repo/setup-formulas";
 import { extractSpreadsheetId } from "@/repo/users-prep";
+import { listSheetsInDriveByTokens } from "@/repo/drive-client";
 
 export const dynamic = "force-dynamic";
+
+/** `/folders/{id}` URL 이면 폴더 ID, 아니면 null (시트로 처리). */
+function folderIdOf(input: string): string | null {
+  const m = input.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+  return m ? m[1]! : null;
+}
 
 export async function POST(req: Request) {
   const sessionEmail = await getSessionEmail();
@@ -35,17 +43,34 @@ export async function POST(req: Request) {
   }
 
   const raw = Array.isArray(body.sheetIds) ? (body.sheetIds as unknown[]) : [];
-  // URL/ID 혼용 허용 → spreadsheetId 추출 + 형식 검증 + 중복 제거.
-  const ids = Array.from(
-    new Set(
-      raw
-        .map((x) => extractSpreadsheetId(String(x ?? "")))
-        .filter((id) => /^[a-zA-Z0-9_-]{20,}$/.test(id)),
-    ),
-  );
+  // 입력 분기: `/folders/{id}` URL = 폴더(안의 경영일지 자동 발견), 그 외 = 시트 ID/URL.
+  const idSet = new Set<string>();
+  const expandedFromFolders: { folderId: string; found: number }[] = [];
+  for (const x of raw) {
+    const s = String(x ?? "").trim();
+    if (!s) continue;
+    const folderId = folderIdOf(s);
+    if (folderId) {
+      // 폴더 → 부모범위 BFS 로 경영일지 시트 enumerate (discover 와 동일 로직).
+      try {
+        const found = await listSheetsInDriveByTokens(folderId, ["경영일지"]);
+        for (const f of found) idSet.add(f.id);
+        expandedFromFolders.push({ folderId, found: found.length });
+      } catch {
+        expandedFromFolders.push({ folderId, found: 0 });
+      }
+      continue;
+    }
+    const id = extractSpreadsheetId(s);
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(id)) idSet.add(id);
+  }
+  const ids = Array.from(idSet);
   if (ids.length === 0) {
     return NextResponse.json(
-      { error: "no_valid_ids", hint: "유효한 시트 ID/URL 을 1개 이상 입력하세요." },
+      {
+        error: "no_valid_ids",
+        hint: "유효한 시트 ID/URL 또는 폴더 URL 을 입력하세요. (폴더면 안에 경영일지 시트가 있어야 함, 폴더가 서비스계정에 공유됐는지 확인)",
+      },
       { status: 400 },
     );
   }
@@ -82,5 +107,10 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ processed: ids.length, success, failed });
+  return NextResponse.json({
+    processed: ids.length,
+    success,
+    failed,
+    expandedFromFolders,
+  });
 }

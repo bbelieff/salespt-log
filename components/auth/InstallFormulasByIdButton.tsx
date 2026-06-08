@@ -56,7 +56,9 @@ export default function InstallFormulasByIdButton() {
       }
       const sheets: { sheetId: string; name: string }[] = d.sheets ?? [];
       if (sheets.length === 0) {
-        window.alert("일치하는 시트가 없습니다. (토큰/폴더/공유드라이브 멤버십 확인)");
+        window.alert(
+          "일치하는 시트가 없습니다. (폴더가 서비스계정에 공유됐는지·토큰 확인)",
+        );
         return;
       }
       setText(sheets.map((s) => s.sheetId).join("\n"));
@@ -82,9 +84,10 @@ export default function InstallFormulasByIdButton() {
     }
     if (
       !window.confirm(
-        `${sheetIds.length}개 시트에 04 업체관리 + 01 영업관리 자동 수식을 설치합니다.\n\n` +
+        `입력 ${sheetIds.length}건(시트/폴더)에 04 업체관리 + 01 영업관리 자동 수식을 설치합니다.\n` +
+          "폴더는 안의 경영일지 시트를 자동으로 찾아 설치합니다.\n\n" +
           "✓ 사용자 raw 입력값은 자동 보존(수식·빈 셀만 덮어씀, §2.5 가드).\n" +
-          "전제: masterbot 이 각 시트 writer(공유 드라이브 멤버) 여야 합니다.\n\n계속할까요?",
+          "전제: masterbot 이 대상 시트/폴더에 공유(편집자)되어 있어야 합니다.\n\n계속할까요?",
       )
     )
       return;
@@ -102,9 +105,14 @@ export default function InstallFormulasByIdButton() {
       }
       const success: SuccessItem[] = data.success ?? [];
       const failed: FailedItem[] = data.failed ?? [];
+      const folders: { folderId: string; found: number }[] =
+        data.expandedFromFolders ?? [];
       const withPreserved = success.filter((s) => s.preserved > 0);
       const summary =
         `처리: ${data.processed ?? 0}개\n✓ 성공: ${success.length}개` +
+        (folders.length > 0
+          ? `\n📁 폴더 확장: ${folders.map((f) => `${f.found}개`).join(", ")}`
+          : "") +
         (withPreserved.length > 0
           ? `\n⚠️ raw 보존 시트 ${withPreserved.length}개 (수식만 교체)`
           : "") +
@@ -182,7 +190,7 @@ export default function InstallFormulasByIdButton() {
         </div>
 
         <p className="mb-2 text-xs text-gray-500">
-          시트 ID 또는 URL — 한 줄에 하나 (템플릿·8기 기복사본 등).
+          시트/폴더 링크 모두 가능 — 한 줄에 하나. 폴더면 안의 경영일지를 자동으로 찾아요.
         </p>
         <textarea
           value={text}

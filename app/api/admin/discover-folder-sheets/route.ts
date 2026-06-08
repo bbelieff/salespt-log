@@ -1,7 +1,8 @@
 /**
  * POST /api/admin/discover-folder-sheets — admin only, **read-only**.
  *
- * 폴더가 속한 공유 드라이브에서 토큰을 모두 포함하는 스프레드시트 ID/이름 enumerate.
+ * 폴더 트리(부모범위 BFS)에서 토큰을 모두 포함하는 스프레드시트 ID/이름 enumerate.
+ * 공유 드라이브 + 소유자 있는 일반 공유폴더(Shared with me) 모두 동작.
  * 용도: 8기 등 레지스트리 미등록 시트의 ID 를 admin 이 직접 안 찾고 자동 발견 →
  * 결과를 검토 후 install-formulas-by-id 로 수식 설치 (읽기/쓰기 분리, #320 후속).
  *
@@ -9,7 +10,7 @@
  *   tokens 기본값 ["세일즈PT","경영일지"]. 8기 한정 시 ["세일즈PT","8기","경영일지"].
  * 응답: { driveScoped: boolean, count, sheets: [{sheetId, name}] }
  *
- * 전제: SA(masterbot) 가 해당 공유 드라이브 멤버. 아니면 빈 결과.
+ * 전제: SA(masterbot) 가 그 폴더에 공유(뷰어+)되어 있어야 함. 아니면 빈 결과.
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
