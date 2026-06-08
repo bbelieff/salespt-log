@@ -281,13 +281,15 @@ export async function findSheetByNameContainsAll(
 }
 
 /**
- * 폴더가 속한 **공유 드라이브 전체**에서 토큰을 모두 포함하는 스프레드시트 enumerate
- * (read-only). 8기 등 레지스트리 미등록 시트의 ID 자동 발견 → by-id 수식 설치에 사용.
+ * **폴더 트리**(parentFolderId 기준 부모범위 BFS)에서 토큰을 모두 포함하는 스프레드시트
+ * enumerate (read-only). 8기 등 레지스트리 미등록 시트 ID 자동 발견 → by-id 수식 설치용.
  *
- *   - parentFolderId 의 driveId 도출(getDriveFileMeta) → corpora:"drive" 범위 검색.
- *   - 서버 q 는 토큰별 `name contains` AND, JS 에서 filterSheetsByTokens 재검증
- *     (기수 숫자 경계 "8기"≠"18기" 가드 포함).
- *   - driveId 없으면(개인 드라이브) [] 반환.
+ *   - `'X' in parents` 부모범위 BFS (기수폴더 > 이름폴더 > 시트), 깊이 MAX_DEPTH(3) 제한.
+ *     **공유 드라이브 + 소유자 있는 일반 공유 폴더(Shared with me, driveId 없음) 모두 동작**
+ *     — corpora/driveId 의존 제거(2026-06: 일반 폴더는 내부 시트가 corpus 검색에 안 잡힘).
+ *   - supportsAllDrives + includeItemsFromAllDrives. corpora 미지정(allDrives 회귀 금지).
+ *   - JS 에서 filterSheetsByTokens 재검증(기수 숫자 경계 "8기"≠"18기" 가드 포함).
+ *   - 폴더가 SA 에 미공유면 빈 결과(접근 불가).
  */
 export async function listSheetsInDriveByTokens(
   parentFolderId: string,
@@ -301,12 +303,13 @@ export async function listSheetsInDriveByTokens(
   // 만이 견고. 공유 드라이브에도 동일 동작(supportsAllDrives+includeItemsFromAllDrives).
   const FOLDER = "application/vnd.google-apps.folder";
   const SHEET = "application/vnd.google-apps.spreadsheet";
+  const MAX_DEPTH = 3; // 기수폴더(0)>이름폴더(1)>시트면 충분 — 안전 여유 3.
   const candidates: { id: string; name: string }[] = [];
-  const queue: string[] = [parentFolderId];
+  const queue: { id: string; depth: number }[] = [{ id: parentFolderId, depth: 0 }];
   const seen = new Set<string>();
   let folderBudget = 300; // runaway 방지 상한.
   while (queue.length > 0 && folderBudget-- > 0) {
-    const folderId = queue.shift()!;
+    const { id: folderId, depth } = queue.shift()!;
     if (seen.has(folderId)) continue;
     seen.add(folderId);
     let pageToken: string | undefined;
@@ -321,8 +324,10 @@ export async function listSheetsInDriveByTokens(
       });
       for (const f of res.data.files ?? []) {
         if (!f.id) continue;
-        if (f.mimeType === FOLDER) queue.push(f.id);
-        else if (f.mimeType === SHEET && typeof f.name === "string")
+        // 하위 폴더는 깊이 한도 내에서만 더 내려감(업체관리 등 깊은 트리 과탐색 방지).
+        if (f.mimeType === FOLDER) {
+          if (depth + 1 < MAX_DEPTH) queue.push({ id: f.id, depth: depth + 1 });
+        } else if (f.mimeType === SHEET && typeof f.name === "string")
           candidates.push({ id: f.id, name: f.name });
       }
       pageToken = res.data.nextPageToken ?? undefined;
