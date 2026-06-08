@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   sheetTitleMatchesTokens,
   pickSheetFromCandidates,
+  filterSheetsByTokens,
 } from "@/repo/sheet-title-match";
 
 const TOKENS = ["세일즈PT", "8기", "김승엽", "경영일지"];
@@ -108,5 +109,49 @@ describe("pickSheetFromCandidates", () => {
         TOKENS,
       ),
     ).toBe("b");
+  });
+});
+
+describe("filterSheetsByTokens — 폴더 enumerate (전체 매칭)", () => {
+  const T8 = ["세일즈PT", "8기", "경영일지"];
+
+  it("8기 시트 여러 본 모두 반환 (id 순서 보존)", () => {
+    const r = filterSheetsByTokens(
+      [
+        { id: "a", name: "세일즈PT_ 8기 김승엽 경영일지" },
+        { id: "b", name: "세일즈PT_ 8기 김현민 경영일지" },
+        { id: "c", name: "세일즈PT_ 8기 박상준 경영일지" },
+      ],
+      T8,
+    );
+    expect(r.map((x) => x.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it('숫자 경계: "8기" 가 "18기" 시트를 제외', () => {
+    const r = filterSheetsByTokens(
+      [
+        { id: "a", name: "세일즈PT_ 8기 김승엽 경영일지" },
+        { id: "x", name: "세일즈PT_ 18기 홍길동 경영일지" },
+      ],
+      T8,
+    );
+    expect(r.map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("토큰 불충족(다른 기수·비경영일지) 제외 + id 중복 제거", () => {
+    const r = filterSheetsByTokens(
+      [
+        { id: "a", name: "세일즈PT_ 8기 김승엽 경영일지" },
+        { id: "a", name: "세일즈PT_ 8기 김승엽 경영일지" }, // 중복 id
+        { id: "y", name: "세일즈PT_ 7기 김영준 경영일지" }, // 7기
+        { id: "z", name: "세일즈PT_ 8기 박상준 업체관리" }, // 경영일지 아님
+      ],
+      T8,
+    );
+    expect(r.map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("매칭 0개 → 빈 배열", () => {
+    expect(filterSheetsByTokens([{ id: "x", name: "무관 시트" }], T8)).toEqual([]);
   });
 });
