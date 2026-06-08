@@ -36,3 +36,15 @@ export function pickSheetFromCandidates(
   if (withSugang.length === 1) return withSugang[0]!.id;
   return null;
 }
+
+/**
+ * 토큰을 모두 포함하는 후보 시트 **전부** 반환 (id 중복 제거). 폴더 enumerate 용.
+ * `sheetTitleMatchesTokens` 재사용 → 기수 숫자 경계 가드("8기"≠"18기") 동일 적용.
+ */
+export function filterSheetsByTokens(
+  candidates: { id: string; name: string }[],
+  tokens: string[],
+): { id: string; name: string }[] {
+  const matched = candidates.filter((c) => sheetTitleMatchesTokens(c.name, tokens));
+  return Array.from(new Map(matched.map((f) => [f.id, f])).values());
+}

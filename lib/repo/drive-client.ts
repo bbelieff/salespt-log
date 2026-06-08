@@ -7,7 +7,7 @@
  */
 import { google, type drive_v3 } from "googleapis";
 import { serviceAccount } from "@/config";
-import { pickSheetFromCandidates } from "./sheet-title-match";
+import { pickSheetFromCandidates, filterSheetsByTokens } from "./sheet-title-match";
 
 let cached: drive_v3.Drive | null = null;
 let cachedWrite: drive_v3.Drive | null = null;
@@ -278,6 +278,53 @@ export async function findSheetByNameContainsAll(
       JSON.stringify({ tokens: clean, candidates: candidates.length, picked: !!picked }),
   );
   return picked;
+}
+
+/**
+ * 폴더가 속한 **공유 드라이브 전체**에서 토큰을 모두 포함하는 스프레드시트 enumerate
+ * (read-only). 8기 등 레지스트리 미등록 시트의 ID 자동 발견 → by-id 수식 설치에 사용.
+ *
+ *   - parentFolderId 의 driveId 도출(getDriveFileMeta) → corpora:"drive" 범위 검색.
+ *   - 서버 q 는 토큰별 `name contains` AND, JS 에서 filterSheetsByTokens 재검증
+ *     (기수 숫자 경계 "8기"≠"18기" 가드 포함).
+ *   - driveId 없으면(개인 드라이브) [] 반환.
+ */
+export async function listSheetsInDriveByTokens(
+  parentFolderId: string,
+  tokens: string[],
+): Promise<{ id: string; name: string }[]> {
+  const clean = tokens.map((t) => t.trim()).filter(Boolean);
+  if (clean.length === 0) return [];
+  const meta = await getDriveFileMeta(parentFolderId);
+  if (!meta.ok || !meta.driveId) return [];
+  const drive = driveClient();
+  const q =
+    clean.map((t) => `name contains '${t.replace(/'/g, "\\'")}'`).join(" and ") +
+    ` and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
+  const res = await drive.files.list({
+    q,
+    fields: "files(id, name)",
+    pageSize: 200,
+    corpora: "drive",
+    driveId: meta.driveId,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  const candidates = (res.data.files ?? []).filter(
+    (f): f is { id: string; name: string } =>
+      typeof f.id === "string" && typeof f.name === "string",
+  );
+  const matched = filterSheetsByTokens(candidates, clean);
+  console.warn(
+    "[install-by-folder] listSheetsInDriveByTokens " +
+      JSON.stringify({
+        parentFolderId,
+        driveId: meta.driveId,
+        tokens: clean,
+        matched: matched.length,
+      }),
+  );
+  return matched;
 }
 
 /**

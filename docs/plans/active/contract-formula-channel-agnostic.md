@@ -44,7 +44,8 @@ related: j-formula-channel-agnostic, 0010-meeting-reservation-derived
 - **(b) ★ 양식 템플릿** `1nx1EufkFFGaf5dp-8Dp2GvX0jU_P4EUe8QEMKTPM_rY` — **필수**(향후 복사본이 결함 상속 방지).
 - **(c) 8기 기복사 4본** (김승엽·김현민·박상준·이용호) — 레지스트리 미등록.
   - 김승엽 확인분: `1UvveVcsen0uGE-EdCoLYE5dHCgs_DyIKQtFAgpiEDJs`. 나머지는 "★★★★세일즈PT 8기" 폴더(`1rIxiC3G1ndOVZAz_lk1KOuN5R0jjv5q2`) 하위 이름폴더에서 제목 `세일즈PT_ 8기 * 경영일지` 로 찾아 ID 확보.
-- **(b)+(c) 설치 경로** — 신규 `POST /api/admin/install-formulas-by-id` (시트 ID/URL 배열 직접 지정, 레지스트리 무관). UI: `/admin/users` 헤더 [📋 ID로 수식 설치] → 줄단위 ID/URL 붙여넣기. (Drive 자동 enumerate 는 미구현 — ID 직접 지정이 더 단순·안전. 향후 필요 시 별도.)
+- **(b)+(c) 설치 경로** — `POST /api/admin/install-formulas-by-id` (시트 ID/URL 배열 직접 지정, 레지스트리 무관). UI: `/admin/users` 헤더 [📋 ID로 수식 설치].
+- **(c) Drive 자동 enumerate (구현됨)** — by-id 패널의 [🔍 폴더에서 찾기]: 8기 폴더 ID(`1rIxiC3…`) + 제목 토큰("세일즈PT 8기 경영일지") → `POST /api/admin/discover-folder-sheets`(read-only, `listSheetsInDriveByTokens` — 폴더 driveId 범위 `corpora:drive` 검색, 숫자경계 "8기"≠"18기" 가드) → 발견 시트 ID 를 textarea 에 채움 + 이름 목록 확인 → [설치]. 읽기(발견)/쓰기(설치) 분리로 admin 검토 후 설치.
 - 전제: **masterbot 이 세일즈PT★ 공유 드라이브 멤버(콘텐츠 관리자)** — 권한 부여 완료 후 실행. 없으면 by-id 결과 failed.
 - **4채널 일반화 점검**: 재설치 후 매입DB/직접생산/현수막/콜·지·기·소 **모두** 계약 집계 정상인지 확인 — 콜지기소만 separator 문제였는지, 다른 채널도 변종이 있는지 확정(다른 채널은 separator 없어 정상일 것으로 예상).
 
