@@ -196,7 +196,7 @@ export default function InstallFormulasByIdButton() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={6}
-          placeholder={"1nx1EufkFFGaf5dp...\nhttps://docs.google.com/spreadsheets/d/.../edit"}
+          placeholder={"1OcZedEkncMDD5mc...\nhttps://docs.google.com/spreadsheets/d/.../edit\nhttps://drive.google.com/drive/folders/...(폴더)"}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs"
         />
         <div className="mt-3 flex gap-2">

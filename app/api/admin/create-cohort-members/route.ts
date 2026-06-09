@@ -21,6 +21,7 @@ import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { parseCohortToken, decideMemberAction } from "@/service/cohort-token";
 import { listCohorts, appendArenaRoster, upsertCohortConfig } from "@/repo/cohorts";
+import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import { copyTemplateSheet, findFolderContainingName } from "@/repo/drive-client";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
@@ -134,12 +135,14 @@ export async function POST(req: Request) {
     }
   }
 
+  // 템플릿은 cohorts E 가 비면 SSOT 마스터(0605) 로 폴백 → 루트 폴더만 필수.
+  const templateId = cfg?.templateSheetId || DEFAULT_COHORT_TEMPLATE_ID;
   if (mode === "create") {
-    if (!cfg?.templateSheetId || !cfg?.rootFolderId) {
+    if (!cfg?.rootFolderId) {
       return NextResponse.json(
         {
           error: "cohort_not_configured",
-          hint: `${parsed.display} 의 템플릿 시트/루트 폴더가 등록되지 않았습니다. 먼저 기수 설정을 저장하세요.`,
+          hint: `${parsed.display} 의 루트 폴더가 등록되지 않았습니다. 먼저 기수 설정을 저장하세요.`,
         },
         { status: 400 },
       );
@@ -206,7 +209,7 @@ export async function POST(req: Request) {
       let folderUrl = "";
       if (plan.action === "create") {
         newSheetId = await copyWithRetry(
-          cfg!.templateSheetId,
+          templateId,
           plan.title,
           plan.folderId,
         );

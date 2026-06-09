@@ -18,6 +18,7 @@ import {
   buildArenaSheetTitle,
   buildArenaCompanyFolderName,
 } from "@/service/cohort-token";
+import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 
 interface ResultReport {
   created: { name: string; sheetId: string }[];
@@ -29,7 +30,7 @@ export default function ArenaCreateModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [season, setSeason] = useState("");
-  const [templateSheetId, setTemplateSheetId] = useState("");
+  const [templateSheetId, setTemplateSheetId] = useState(DEFAULT_COHORT_TEMPLATE_ID);
   const [sheetsFolderId, setSheetsFolderId] = useState("");
   const [companyParentFolderId, setCompanyParentFolderId] = useState("");
   const [namesText, setNamesText] = useState("");
@@ -62,7 +63,7 @@ export default function ArenaCreateModal() {
 
   function reset() {
     setSeason("");
-    setTemplateSheetId("");
+    setTemplateSheetId(DEFAULT_COHORT_TEMPLATE_ID);
     setSheetsFolderId("");
     setCompanyParentFolderId("");
     setNamesText("");
