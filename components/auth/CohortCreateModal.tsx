@@ -15,6 +15,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parseCohortToken } from "@/service/cohort-token";
+import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 
 type Mode = "create" | "link";
 
@@ -29,7 +30,7 @@ export default function CohortCreateModal() {
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState("");
   const [mode, setMode] = useState<Mode>("create");
-  const [templateSheetId, setTemplateSheetId] = useState("");
+  const [templateSheetId, setTemplateSheetId] = useState(DEFAULT_COHORT_TEMPLATE_ID);
   const [rootFolderId, setRootFolderId] = useState("");
   const [rosterSheetId, setRosterSheetId] = useState("");
   const [membersText, setMembersText] = useState("");
@@ -43,7 +44,7 @@ export default function CohortCreateModal() {
   function reset() {
     setToken("");
     setMode("create");
-    setTemplateSheetId("");
+    setTemplateSheetId(DEFAULT_COHORT_TEMPLATE_ID);
     setRootFolderId("");
     setRosterSheetId("");
     setMembersText("");

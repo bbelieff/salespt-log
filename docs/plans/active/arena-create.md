@@ -24,6 +24,7 @@ related: admin-cohort-create(completed), 0011-drive-sheets-write-expansion, 0012
 
 ## 대상 위치 (공유 드라이브, cohorts "A{시즌}" row 에 저장)
 - 템플릿(E) / 시트 생성 폴더(H, sheetsFolderId) / 업체관리 부모(I, companyParentFolderId).
+  - 템플릿 기본값(E 비면) = SSOT `lib/config/cohort-template.ts:DEFAULT_COHORT_TEMPLATE_ID` (0605 마스터 `1OcZed…`). 변경은 그 한 줄만 (cohort-template-master plan).
 
 ## 변경
 1. **ADR-0012**: 쓰기 화이트리스트에 `createFolder(name, parentId)` 추가(지정 companyParent 하위만). update/delete 금지 유지. 구조테스트 갱신(copy·create 는 drive-client 전용).

@@ -23,6 +23,7 @@ import {
   decideArenaAction,
 } from "@/service/cohort-token";
 import { listCohorts, upsertCohortConfig } from "@/repo/cohorts";
+import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import {
   copyTemplateSheet,
   createFolder,
@@ -116,11 +117,13 @@ export async function POST(req: Request) {
     }
   }
 
-  if (!cfg?.templateSheetId || !cfg?.sheetsFolderId || !cfg?.companyParentFolderId) {
+  // 템플릿은 cohorts E 가 비면 SSOT 마스터(0605) 로 폴백 → 폴더 2종만 필수.
+  const templateId = cfg?.templateSheetId || DEFAULT_COHORT_TEMPLATE_ID;
+  if (!cfg?.sheetsFolderId || !cfg?.companyParentFolderId) {
     return NextResponse.json(
       {
         error: "arena_not_configured",
-        hint: `${label} 아레나의 템플릿/시트폴더/업체부모폴더가 등록되지 않았습니다. 먼저 설정을 저장하세요.`,
+        hint: `${label} 아레나의 시트폴더/업체부모폴더가 등록되지 않았습니다. 먼저 설정을 저장하세요.`,
       },
       { status: 400 },
     );
@@ -149,7 +152,7 @@ export async function POST(req: Request) {
       const sheetId =
         reuseSheet ??
         (await driveWriteRetry(() =>
-          copyTemplateSheet(cfg!.templateSheetId, plan.sheetTitle, cfg!.sheetsFolderId),
+          copyTemplateSheet(templateId, plan.sheetTitle, cfg!.sheetsFolderId),
         ));
 
       // 업체관리 폴더: 정확 일치 재사용 → 없으면 생성.
