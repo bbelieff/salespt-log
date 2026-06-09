@@ -1,20 +1,7 @@
 /**
- * 시트 수식 일괄 설치 / 제거 — 사용자가 처음 시트 셋업할 때 한 번만 호출.
- *
- * v2 안전화 원칙:
- *   - ARRAYFORMULA 사용 금지 (사용자의 합계행 수식을 깨뜨림)
- *   - C 컬럼 (날짜) 미리 읽어서 데이터 행만 식별 → 그 행에만 per-row 수식 작성
- *   - 합계행/주차헤더/빈 행에는 절대 쓰지 않음
- *   - SORT 적용으로 같은 셀 내 라인은 시간 빠른 것이 위로 (사용자 요청)
- *
- * 04 업체관리(앱자동작성용):
- *   - N: 표시_상세  ARRAYFORMULA (4 업체관리 N 컬럼은 user content 없음 가정)
- *   - O: 표시_요약  ARRAYFORMULA
- *   - Q: 계약합성라인 ARRAYFORMULA
- *
- * 01 영업관리:
- *   - I/J/K/L/M/N/O/P: 데이터 행에만 per-row 수식
- *
+ * 시트 수식 일괄 설치/제거 (시트 셋업 1회). ARRAYFORMULA 금지(합계행 보호),
+ * 데이터 행에만 per-row 수식, 합계/헤더/빈 행 미작성, raw 값 보존(isSafeToOverwrite).
+ * 대상: 04 업체관리 N/O/Q, 01 영업관리 I~P(데이터행) + 미팅예약/완료 펀넬(R4:U5,F4:F5).
  * SSOT: docs/domains/sheet-structure.md §2~§3
  */
 import { SHEET_RANGES } from "@/config";
@@ -88,25 +75,10 @@ function meetingsRowFormulas(r: number): {
   };
 }
 
-// ── 데이터 행 식별 (deterministic — 2026-05-16) ──────────────────
-//
-// 영업관리 레이아웃은 박힌 공식이다 (PR #192 `salesRowFor`와 동일):
-//   row = blockStart(10) + week * blockStride(34) + dayIdx * 4 + channelIdx
-// 매 주 28 data rows (7일 × 4채널) → 총 224 rows (8주).
-//
-// **2026-05-16 변경 (6기 셀병합 사고)**: 이전 구현은 C 컬럼을 sheets API 로
-// 읽어 number(date serial) 인 row 만 데이터 행으로 인식했다. 그런데 6기 이월
-// 시트 다수가 영업관리 C 컬럼에 **cell 병합** (예: C10:C13 = 매주 1일치 4채널
-// row 가 같은 날짜로 visually 표시) 으로 셋업됨. sheets API 의 values.get 은
-// 병합 non-primary cell 을 empty 로 반환 → 매입DB row (각 day 의 첫 row) 만
-// 데이터 행으로 인식 → installFormulas 가 4채널 중 1채널만 처리.
-// 결과: 김선주/이장현 미팅카드 → 영업관리 I 열 매입DB row 만 동작, 나머지
-// 3채널 row 누락 사고 (2026-05-16 시연 중 발견).
-//
-// → C 컬럼 read 제거. 박힌 공식으로 결정적 row 생성. 시트 cell 병합 여부와
-// 무관하게 224 rows 모두 install 시도. raw 값 cell 은 `isSafeToOverwrite` 가
-// 여전히 skip (사용자 작성값 보존). 합계/헤더 row 는 공식상 범위 밖이라 자연
-// 제외 (week 마다 0..27 offset 만 사용, 28..33 은 합계/헤더).
+// 데이터 행 식별 (deterministic, 2026-05-16 6기 셀병합 사고 후 C-read 제거).
+// row = blockStart(10) + week*blockStride(34) + dayIdx*4 + channelIdx.
+// 매 주 28 data rows(7일×4채널)=224(8주). offset 0..27 만(28..33 합계/헤더 자연 제외).
+// 셀병합 무관하게 224 전부 install 시도, raw 값은 isSafeToOverwrite 가 skip.
 export function computeDataRows(): number[] {
   const rows: number[] = [];
   for (let week = 0; week < 8; week++) {
@@ -122,22 +94,9 @@ export function computeDataRows(): number[] {
 }
 
 /**
- * 4채널 일별 row 블록의 **매입DB row** (primary date cell) 계산.
- * 1일 = 4 row 블록 (매입DB / 직접생산 / 현수막 / 콜·지·기·소).
- *
- * **2026-05-16 버그 fix (이장현 시트)**: 6기 이월 시트 다수가 영업관리 C 컬럼에
- * cell 병합 (1일치 4 row 가 같은 날짜로 visually 표시). sheets 가 non-primary
- * merge cell 참조 시 empty 반환 → 수식의 `$C{r}` (r=직접생산/현수막/콜지기소 row)
- * 가 empty → FILTER/COUNTIFS 매칭 실패 → 결과 항상 빈 cell.
- *
- * **fix**: 4 row 블록의 매입DB row (primary date cell) 을 계산해서 모든 수식이
- * `$C{primaryDayRow}` 참조. cell 병합 여부와 무관하게 항상 정확한 날짜 매칭.
- * unmerged 시트도 동일 동작 (4 row 가 모두 같은 날짜 = 같은 매칭 결과).
- *
- * 공식: dayPrimaryRow = blockStart + blockIdx*blockStride + dayIdx*4
- *   blockIdx = floor((r - blockStart) / blockStride)
- *   posInBlock = (r - blockStart) % blockStride  // 0..27 for data rows
- *   dayIdx = floor(posInBlock / 4)
+ * 4채널 일별 블록의 매입DB row(primary date cell) 계산. 모든 수식이 $C{dpr} 참조 →
+ * 6기 C-컬럼 셀병합(non-primary cell empty) 사고에도 날짜 매칭 정확(2026-05-16 이장현 fix).
+ * dpr = blockStart + floor((r-blockStart)/stride)*stride + floor(((r-blockStart)%stride)/4)*4
  */
 export function dayPrimaryRow(r: number): number {
   const blockIdx = Math.floor(
@@ -193,6 +152,29 @@ export function formulasForRow(r: number): Record<string, string> {
     // P: 계약비고 — 04업체관리!Q(계약합성라인) TEXTJOIN (콜지기소는 LEFT(F,1)="콜")
     P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${dpr})*${chCond}*(${M_REF}!J:J="계약"))),"")`,
   };
+}
+
+// 미팅예약/완료 펀넬·채널 stacking (01 R4:U5+F4:F5) — 04 상태기반 (2026-06-09 A안,
+// 미팅실행률 100% 착시 fix). 미팅예약=상태∈{예약,완료,계약}(변경/취소 제외, 미래 포함),
+// 미팅완료=상태∈{완료,계약} → 예약 ≥ 완료, I5=F5/F4 정상화. 채널=04.F
+// (콜지기소 "콜*소" 와일드카드 #319). stacking 열 R=매입DB S=직접생산 T=현수막 U=콜지기소.
+export function meetingFunnelFormulas(): Record<string, string> {
+  const M = M_REF;
+  const COLS = ["R", "S", "T", "U"] as const;
+  const CH = ['"매입DB"', '"직접생산"', '"현수막"', '"콜*소"']; // R~U 채널 criteria
+  const cif = (c: string, s: string) =>
+    `COUNTIFS(${M}!F:F,${c},${M}!J:J,"${s}")`;
+  const reserved = (c: string) =>
+    `=${cif(c, "예약")}+${cif(c, "완료")}+${cif(c, "계약")}`;
+  const done = (c: string) => `=${cif(c, "완료")}+${cif(c, "계약")}`;
+  const out: Record<string, string> = {};
+  COLS.forEach((col, i) => {
+    out[`${col}4`] = reserved(CH[i]!); // 미팅예약 (채널별)
+    out[`${col}5`] = done(CH[i]!); // 미팅완료 (채널별)
+  });
+  out["F4"] = "=SUM(R4:U4)"; // 펀넬 미팅예약 = 채널 합
+  out["F5"] = "=SUM(R5:U5)"; // 펀넬 미팅완료 = 채널 합
+  return out;
 }
 
 // ── Public API ─────────────────────────────────────────────────
@@ -359,6 +341,38 @@ export async function installFormulas(
       });
     } else {
       preservedCells.push(`영업관리 M${r}`);
+    }
+  }
+
+  // 미팅예약/완료 펀넬·채널 stacking (R4:U5 + F4:F5) — 04 상태기반 (2026-06-09).
+  const funnel = meetingFunnelFormulas();
+  const ST = tabRef(SALES_TAB);
+  const funnelCells = await sheetsClient().spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges: [`${ST}!R4:U5`, `${ST}!F4:F5`],
+    valueRenderOption: "FORMULA",
+  });
+  const stkExisting = funnelCells.data.valueRanges?.[0]?.values ?? []; // [[R4..U4],[R5..U5]]
+  const fExisting = funnelCells.data.valueRanges?.[1]?.values ?? []; // [[F4],[F5]]
+  const COLS = ["R", "S", "T", "U"];
+  for (let rowI = 0; rowI < 2; rowI++) {
+    const r = 4 + rowI;
+    COLS.forEach((col, ci) => {
+      const cur = stkExisting[rowI]?.[ci];
+      if (isSafeToOverwrite(cur)) {
+        data.push({ range: `${ST}!${col}${r}`, values: [[funnel[`${col}${r}`]!]] });
+      } else {
+        preservedCells.push(`영업관리 ${col}${r}`);
+      }
+    });
+  }
+  for (let i = 0; i < 2; i++) {
+    const r = 4 + i;
+    const cur = fExisting[i]?.[0];
+    if (isSafeToOverwrite(cur)) {
+      data.push({ range: `${ST}!F${r}`, values: [[funnel[`F${r}`]!]] });
+    } else {
+      preservedCells.push(`영업관리 F${r}`);
     }
   }
 

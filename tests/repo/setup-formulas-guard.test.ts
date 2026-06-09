@@ -10,6 +10,7 @@ import {
   computeDataRows,
   dayPrimaryRow,
   formulasForRow,
+  meetingFunnelFormulas,
   isSafeToOverwrite,
 } from "../../lib/repo/setup-formulas";
 
@@ -242,5 +243,51 @@ describe("formulasForRow — 미팅완료(L) 상태필터", () => {
   it("L 은 상태 무관 전체 COUNTIF 가 아니다 (예약까지 세는 회귀 차단)", () => {
     // 상태 토큰이 빠진 단순 COUNTIF(D) 면 예약도 세짐 → 금지.
     expect(f.L).toMatch(/"완료"|"계약"/);
+  });
+});
+
+/**
+ * 단위 테스트: 미팅예약/완료 펀넬·채널 stacking (2026-06-09, 미팅실행률 100% 착시 fix, A안).
+ * 미팅예약 = 04 상태 ∈ {예약,완료,계약}, 미팅완료 = {완료,계약}. 채널은 04.F.
+ */
+describe("meetingFunnelFormulas — 미팅예약/완료 04 상태기반", () => {
+  const m = meetingFunnelFormulas();
+
+  it("미팅예약(R4) = 예약+완료+계약 (변경/취소 제외, 매입DB)", () => {
+    expect(m.R4).toContain('"예약"');
+    expect(m.R4).toContain('"완료"');
+    expect(m.R4).toContain('"계약"');
+    expect(m.R4).toContain('"매입DB"');
+  });
+
+  it("미팅완료(R5) = 완료+계약 (예약 제외)", () => {
+    expect(m.R5).toContain('"완료"');
+    expect(m.R5).toContain('"계약"');
+    expect(m.R5).not.toContain('"예약"');
+  });
+
+  it("미팅예약 ⊇ 미팅완료 — 예약 수식이 완료보다 상태 더 셈 (예약 ≥ 완료)", () => {
+    // R4 는 COUNTIFS 3개(예약/완료/계약), R5 는 2개(완료/계약).
+    const cnt = (s: string) => (s.match(/COUNTIFS/g) || []).length;
+    expect(cnt(m.R4 ?? "")).toBe(3);
+    expect(cnt(m.R5 ?? "")).toBe(2);
+  });
+
+  it("콜·지·기·소(U4/U5) 는 separator-무관 와일드카드 \"콜*소\"", () => {
+    expect(m.U4).toContain('"콜*소"');
+    expect(m.U5).toContain('"콜*소"');
+    expect(m.U4).not.toContain("콜·지·기·소");
+  });
+
+  it("펀넬 합 F4=SUM(R4:U4), F5=SUM(R5:U5)", () => {
+    expect(m.F4).toBe("=SUM(R4:U4)");
+    expect(m.F5).toBe("=SUM(R5:U5)");
+  });
+
+  it("4채널 모두 예약/완료 셀 생성", () => {
+    for (const col of ["R", "S", "T", "U"]) {
+      expect(m[`${col}4`]).toBeTruthy();
+      expect(m[`${col}5`]).toBeTruthy();
+    }
   });
 });
