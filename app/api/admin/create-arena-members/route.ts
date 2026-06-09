@@ -2,19 +2,20 @@
  * POST /api/admin/create-arena-members — admin only. (ADR-0011/0012)
  *
  * body: {
- *   season: number,                       // 시즌 번호 (예: 1) → config 키 "A{season}"
- *   members: { name: string, gisu: number }[],  // 참가자 + 자기기수(다건)
+ *   season: number,        // 시즌 번호 (예: 1) → config 키 "A{season}". rawText 의 "A{n}" 가 우선.
+ *   rawText: string,       // 명단 원문. parseArenaRoster 가 기수·이름·회장(*)·입금($)·부부(괄호) 파싱.
  *   config?: { templateSheetId, sheetsFolderId, companyParentFolderId }  // 최초 1회 설정 저장
  * }
  *
  * 참가자별(순차 + 429 retry): registry 라벨 = "A{season}-{gisu}기" (claim 키와 일치).
- *   - 멱등: registry (A{season}-{gisu}기, name) + 유효 spreadsheetId 있으면 SKIP.
- *   - 시트: findSheetByExactName(시트제목) 재사용, 없으면 copyTemplateSheet(template→sheetsFolder).
- *   - 폴더: findFolderByExactName(폴더명, companyParent) 재사용, 없으면 createFolder.
- *   - addTraineePrepRow(label, name, sheetId, "", folderId) — prep(빈 email) + O열 업체폴더 stamp.
- *   - writeProfile(sheetId, label, name) — 복제본 B3/C3 를 아레나 라벨로 기록(템플릿값 잔존 방지).
+ *   - 멱등: registry (A{season}-{gisu}기, 표시이름) + 유효 spreadsheetId 있으면 SKIP.
+ *   - 시트/폴더명 = "세일즈PT_A{n}_{기수}기 {표시이름}_대표님 경영일지/업체관리" (부부=두 이름).
+ *   - 시트: findSheetByExactName 재사용, 없으면 copyTemplateSheet(template→sheetsFolder).
+ *   - 폴더: findFolderByExactName 재사용, 없으면 createFolder.
+ *   - addTraineePrepRow(label, 표시이름, sheetId, "", folderId, memo) — prep + O(업체폴더) + Q(회장/입금) stamp.
+ *   - writeProfile(sheetId, label, 표시이름) — 복제본 B3/C3 를 아레나 라벨로 기록.
  *
- * 응답: { ok, season, created:[{name,sheetId}], skipped:[{name}], failed:[{name,reason}] }. 부분 실패 허용.
+ * 응답: { ok, season, created:[{name,cohort,sheetId}], skipped, failed, errors }. 부분 실패 허용.
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
@@ -24,6 +25,7 @@ import {
   arenaCohortLabel,
   decideArenaAction,
 } from "@/service/cohort-token";
+import { parseArenaRoster, participantMemo } from "@/service/arena-parse";
 import { listCohorts, upsertCohortConfig } from "@/repo/cohorts";
 import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import {
@@ -59,30 +61,34 @@ export async function POST(req: Request) {
   if (!isAdminEmail(sessionEmail))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  let body: { season?: unknown; members?: unknown; config?: unknown } = {};
+  let body: { season?: unknown; rawText?: unknown; config?: unknown } = {};
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
 
-  const season = Number(body.season);
+  const seasonInput = Number(body.season);
+  const seasonFallback =
+    Number.isInteger(seasonInput) && seasonInput > 0 ? seasonInput : 0;
+  const rawText = String(body.rawText ?? "");
+  // 명단 원문 파싱 (회장*·입금$·부부괄호·기수헤더). 시즌은 rawText "A{n}" 우선, 없으면 body.season.
+  const parsed = parseArenaRoster(rawText, seasonFallback);
+  const season = parsed.season;
   if (!Number.isInteger(season) || season <= 0) {
     return NextResponse.json(
-      { error: "invalid_season", hint: "시즌은 양의 정수여야 합니다 (예: 1)." },
+      { error: "invalid_season", hint: "시즌을 알 수 없습니다 (원문 'A1' 또는 시즌 번호 입력)." },
       { status: 400 },
     );
   }
-  // members: [{name, gisu}]. name 필수, gisu 0 이상 정수.
-  const members = (Array.isArray(body.members) ? (body.members as unknown[]) : [])
-    .map((m) => {
-      const o = (m ?? {}) as { name?: unknown; gisu?: unknown };
-      return { name: String(o.name ?? "").trim(), gisu: Number(o.gisu) };
-    })
-    .filter((m) => m.name && Number.isInteger(m.gisu) && m.gisu >= 0);
+  const members = parsed.participants;
   if (members.length === 0) {
     return NextResponse.json(
-      { error: "no_members", hint: "참가자 이름·자기기수를 입력하세요 (예: 김믿음, 1)." },
+      {
+        error: "no_members",
+        hint: "참가자가 없습니다. 'N기' 헤더 + 이름(콤마/줄바꿈) 형식인지 확인하세요.",
+        errors: parsed.errors,
+      },
       { status: 400 },
     );
   }
@@ -143,7 +149,8 @@ export async function POST(req: Request) {
   const skipped: { name: string }[] = [];
   const failed: { name: string; reason: string }[] = [];
 
-  for (const { name, gisu } of members) {
+  for (const { gisu, displayName, isPresident, isDeposit } of members) {
+    const name = displayName; // 부부면 "류서하(심나영)" — 시트제목·레지스트리 이름 모두 표시이름.
     try {
       // 참가자별 registry 라벨 = "A{season}-{gisu}기" (claim 매칭 키).
       const cohortLabel = arenaCohortLabel(season, gisu);
@@ -181,7 +188,8 @@ export async function POST(req: Request) {
           createFolder(plan.folderName, cfg!.companyParentFolderId),
         ));
 
-      await addTraineePrepRow(plan.cohortLabel, name, sheetId, "", folderId);
+      const memo = participantMemo({ isPresident, isDeposit });
+      await addTraineePrepRow(plan.cohortLabel, name, sheetId, "", folderId, memo);
       // 복제본 B3/C3 를 아레나 라벨로 기록 (claim 시 writeProfile skip 되므로 여기서).
       await writeProfile(sheetId, plan.cohortLabel, name);
       created.push({ name, cohort: plan.cohortLabel, sheetId });
@@ -194,5 +202,12 @@ export async function POST(req: Request) {
   }
 
   revalidateAdminPages();
-  return NextResponse.json({ ok: true, season, created, skipped, failed });
+  return NextResponse.json({
+    ok: true,
+    season,
+    created,
+    skipped,
+    failed,
+    errors: parsed.errors,
+  });
 }

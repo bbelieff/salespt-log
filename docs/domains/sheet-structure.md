@@ -493,10 +493,11 @@ H / O / W: spacer (비움). A: 비움.
 | L | graduation_iso | 시트 O2 ISO date |
 | M | sort_order | admin 수동 정렬 (0=미정렬) |
 | N | drive_parent_path | Drive 부모 폴더 경로/URL (온보딩 입력, ADR-0007) |
-| O | feedback_folder_id | 01 피드백업체 폴더 ID (자동 탐색) |
+| O | feedback_folder_id | 01 피드백업체 폴더 ID (자동 탐색) / 아레나 업체관리 폴더 ID |
 | P | drive_link_status | ok / (빈값=미연결) / error |
+| Q | memo | 아레나 회장/입금 메모 (`회장`/`입금`/`회장,입금`/빈). 기록 전용·앱 기능 없음 (ADR-0014) |
 
-`lib/repo/users.ts` 가 이 탭만 read. 범위: `A2:P`.
+`lib/repo/users.ts` 가 이 탭만 read. 범위: `A2:Q`.
 
 ### 6.1 `cohorts` 탭 (레지스트리 내 별도 탭)
 

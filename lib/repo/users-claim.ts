@@ -20,6 +20,7 @@ import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
+import { nameMatches } from "./name-match";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 
@@ -63,8 +64,9 @@ export async function claimRegistry(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i] ?? [];
     const c = String(r[1] ?? "").replace(/기\s*$/, "").trim();
-    const n = String(r[2] ?? "").trim();
-    if (c !== cohortNorm || n !== cleanName) continue;
+    const n = String(r[2] ?? "");
+    // 부부면 저장 "류서하(심나영)" 이 입력 "류서하"/"심나영" 둘 다 매칭 → prep row 채워 active.
+    if (c !== cohortNorm || !nameMatches(n, cleanName)) continue;
     matchedRows.push({
       rowIdx: i,
       emailLc: String(r[0] ?? "").trim().toLowerCase(),
