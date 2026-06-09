@@ -33,13 +33,20 @@ export default function ClaimPage() {
     return Number.isInteger(n) && n > 0 ? n : null;
   }, [season]);
   const gisuNum = useMemo(() => {
-    const n = Number(gisu);
-    return Number.isInteger(n) && n >= 1 ? n : null;
+    // 빈칸은 null (Number("")=0 오인 방지). 0 이상 정수 허용 (A1-0기 가능).
+    const t = gisu.trim();
+    if (t === "") return null;
+    const n = Number(t);
+    return Number.isInteger(n) && n >= 0 ? n : null;
   }, [gisu]);
 
   // 제출 cohort: 일반은 입력값, 아레나는 "A{시즌}-{기수}기" 조합.
+  // gisuNum 0 이 falsy 로 누락되지 않게 !== null 비교.
   const arenaCohort = useMemo(
-    () => (seasonNum && gisuNum ? `A${seasonNum}-${gisuNum}기` : null),
+    () =>
+      seasonNum !== null && gisuNum !== null
+        ? `A${seasonNum}-${gisuNum}기`
+        : null,
     [seasonNum, gisuNum],
   );
   const effectiveCohort = mode === "arena" ? (arenaCohort ?? "") : cohort;
