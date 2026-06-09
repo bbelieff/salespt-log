@@ -19,7 +19,8 @@ related: admin-cohort-create, cohort-create-template-master
 - **템플릿(복제 원본·마스터)**: `1OcZedEkncMDD5mcseQmQkJJMEQQ_zuimyUsIBaNnmIE` (★★★세일즈PT_ 수강생 경영일지 양식 0605ver). ※ 복제 전 #319/미팅집계 수식 fix [ID로 수식 설치] 1회 선행.
 - **시트 생성 폴더**: `1L5LhWe3CBGZLRfx7yNm_xVhIKD_2e0c6` ("참가자 구글시트")
 - **업체관리 폴더 생성 부모**: `1r6W5SPNfgGFP4kNvFP5WEyZy8ICZ1ACh` ("★★★세일즈PT 경영일지 ARENA S01")
-- **공유 드라이브** 소속 → SA(masterbot@…) 멤버(콘텐츠 관리자) 전제.
+- 세 위치 모두 belie **My Drive 공유 폴더**(공유 드라이브 아님)로 확인됨(2026-06-10 진단). SA 는 Drive 용량 0 → 파일 *생성* 불가.
+- **선행 필수 (ADR-0015)**: 시트 복제·폴더 생성은 belie OAuth 로 수행. `ADMIN_DRIVE_REFRESH_TOKEN` 발급(`node scripts/get-admin-drive-token.mjs`) 후 .env.local(로컬 run)·VPS env(관리자 UI) 설정. 미설정 시 "storage quota exceeded".
 
 ## 2. 명명·등록 규칙
 - 시즌 = **A1**. 자기기수 = 입력 그룹의 N기.

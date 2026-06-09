@@ -67,6 +67,16 @@ export const adminEmails = (): string[] => {
 };
 
 /**
+ * 관리자(소유자) Google Drive refresh token (ADR-0015).
+ * SA(masterbot)는 Drive 용량 0 → My-Drive 공유 폴더에 파일을 *소유*하며 만들 수 없음.
+ * 시트 복제/폴더 생성만 이 토큰(belie OAuth)으로 수행해 belie 소유로 생성한다.
+ * 미설정이면 빈 문자열 → drive-client 가 SA 폴백(공유 드라이브가 아니면 실패).
+ * 발급: `node scripts/get-admin-drive-token.mjs` (scope=drive, offline).
+ */
+export const adminDriveRefreshToken = (): string =>
+  (process.env.ADMIN_DRIVE_REFRESH_TOKEN ?? "").trim();
+
+/**
  * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).
  *
  * 포맷: `"email1:name1,email2:name2"` (또는 `email1=name1`).

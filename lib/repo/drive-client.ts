@@ -6,11 +6,12 @@
  *   • read-only scope (drive.readonly) — 파일 검색만, 수정/생성 X.
  */
 import { google, type drive_v3 } from "googleapis";
-import { serviceAccount } from "@/config";
+import { serviceAccount, authConfig, adminDriveRefreshToken } from "@/config";
 import { pickSheetFromCandidates, filterSheetsByTokens } from "./sheet-title-match";
 
 let cached: drive_v3.Drive | null = null;
 let cachedWrite: drive_v3.Drive | null = null;
+let cachedCreator: drive_v3.Drive | null = null;
 
 export function driveClient(): drive_v3.Drive {
   if (cached) return cached;
@@ -24,10 +25,7 @@ export function driveClient(): drive_v3.Drive {
   return cached;
 }
 
-/**
- * 쓰기 전용 Drive 클라이언트 (ADR-0011) — scope `drive`. 캐시 분리.
- * 허용 연산은 copyTemplateSheet(files.copy) 뿐. files.update/delete/create(folder) 금지(구조테스트 가드).
- */
+// SA 쓰기 클라이언트 (ADR-0011, scope `drive`). driveCreatorClient 폴백용.
 function driveWriteClient(): drive_v3.Drive {
   if (cachedWrite) return cachedWrite;
   const sa = serviceAccount();
@@ -40,16 +38,30 @@ function driveWriteClient(): drive_v3.Drive {
   return cachedWrite;
 }
 
-/**
- * 템플릿 시트를 지정 폴더로 복제 (ADR-0011). 원본 불변 + 새 파일 생성 → 데이터 손상 위험 0.
- * 공유 드라이브 대응 supportsAllDrives. 반환 = 새 spreadsheetId.
- */
+// 파일 생성(복제·폴더) 전용 (ADR-0015). SA 는 용량 0 → My-Drive 공유 폴더에 파일을
+// 소유 생성 불가. ADMIN_DRIVE_REFRESH_TOKEN 있으면 belie OAuth(belie 소유), 없으면 SA 폴백.
+function driveCreatorClient(): drive_v3.Drive {
+  if (cachedCreator) return cachedCreator;
+  const refresh = adminDriveRefreshToken();
+  if (refresh) {
+    const { googleId, googleSecret } = authConfig();
+    const oauth = new google.auth.OAuth2(googleId, googleSecret);
+    oauth.setCredentials({ refresh_token: refresh });
+    cachedCreator = google.drive({ version: "v3", auth: oauth });
+  } else {
+    console.warn("[drive] ADMIN_DRIVE_REFRESH_TOKEN 미설정 — SA 폴백(공유폴더면 quota 실패). scripts/get-admin-drive-token.mjs");
+    cachedCreator = driveWriteClient();
+  }
+  return cachedCreator;
+}
+
+// 템플릿 시트 복제 (ADR-0011/0015). 원본 불변·새 파일 생성. 반환=새 spreadsheetId.
 export async function copyTemplateSheet(
   templateId: string,
   newTitle: string,
   destFolderId: string,
 ): Promise<string> {
-  const res = await driveWriteClient().files.copy({
+  const res = await driveCreatorClient().files.copy({
     fileId: templateId,
     requestBody: { name: newTitle, parents: [destFolderId] },
     supportsAllDrives: true,
@@ -57,23 +69,16 @@ export async function copyTemplateSheet(
   });
   const id = res.data.id;
   if (!id) throw new Error("[copyTemplateSheet] 복제 결과 id 없음");
-  console.warn(
-    "[cohort-create] copyTemplateSheet " +
-      JSON.stringify({ templateId, destFolderId, newId: id, newTitle }),
-  );
+  console.warn("[cohort-create] copyTemplateSheet " + JSON.stringify({ templateId, destFolderId, newId: id, newTitle }));
   return id;
 }
 
-/**
- * 지정 부모 폴더 하위에 새 폴더 생성 (ADR-0012). 새 빈 폴더 → 데이터 손상 위험 0.
- * 공유 드라이브 대응 supportsAllDrives. 반환 = 새 folderId.
- * ⚠️ 반드시 지정된 부모(아레나 companyParentFolderId) 하위로만 호출.
- */
+// 지정 부모(아레나 companyParentFolderId) 하위에 새 폴더 생성 (ADR-0012/0015). 반환=folderId.
 export async function createFolder(
   name: string,
   parentId: string,
 ): Promise<string> {
-  const res = await driveWriteClient().files.create({
+  const res = await driveCreatorClient().files.create({
     requestBody: {
       name,
       mimeType: "application/vnd.google-apps.folder",
@@ -84,9 +89,7 @@ export async function createFolder(
   });
   const id = res.data.id;
   if (!id) throw new Error("[createFolder] 생성 결과 id 없음");
-  console.warn(
-    "[arena-create] createFolder " + JSON.stringify({ name, parentId, newId: id }),
-  );
+  console.warn("[arena-create] createFolder " + JSON.stringify({ name, parentId, newId: id }));
   return id;
 }
 
