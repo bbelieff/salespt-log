@@ -2,25 +2,54 @@
  * /claim — Self-claim 화면.
  *
  * 흐름: Google 로그인 후 registry 미등록 사용자가 들어옴.
- * 기수 + 이름 입력 → POST /api/claim → 매칭 시트 자동 연결 → /dashboard.
+ *  - 일반 기수: 기수(숫자) + 이름 → cohort = 숫자.
+ *  - 아레나: 시즌(A{n}) + 자기기수({m}기) + 이름 → cohort = "A{n}-{m}기".
+ *    아레나는 prep 등록(create-arena-members) 전제 — registry (A{n}-{m}기, 이름)
+ *    매칭으로 본인 시트 연결. 라벨 포맷이 prep 과 동일해야 매칭됨.
+ * POST /api/claim → 매칭 시트 자동 연결 → /dashboard.
  */
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
+type Mode = "cohort" | "arena";
+
 export default function ClaimPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>("cohort");
+  // 일반 기수
   const [cohort, setCohort] = useState("");
+  // 아레나
+  const [season, setSeason] = useState("");
+  const [gisu, setGisu] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 수강생: 숫자(기수). 트레이너: "T" 또는 "t" (sheet 검색 건너뜀).
+  const seasonNum = useMemo(() => {
+    const n = Number(season);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  }, [season]);
+  const gisuNum = useMemo(() => {
+    const n = Number(gisu);
+    return Number.isInteger(n) && n >= 1 ? n : null;
+  }, [gisu]);
+
+  // 제출 cohort: 일반은 입력값, 아레나는 "A{시즌}-{기수}기" 조합.
+  const arenaCohort = useMemo(
+    () => (seasonNum && gisuNum ? `A${seasonNum}-${gisuNum}기` : null),
+    [seasonNum, gisuNum],
+  );
+  const effectiveCohort = mode === "arena" ? (arenaCohort ?? "") : cohort;
+
   const valid =
-    /^(\d+|[Tt])$/.test(cohort.replace(/기\s*$/, "").trim()) &&
-    name.trim().length >= 2;
+    name.trim().length >= 2 &&
+    (mode === "arena"
+      ? arenaCohort !== null
+      : // 수강생: 숫자(기수). 트레이너: "T"/"t" (sheet 검색 건너뜀).
+        /^(\d+|[Tt])$/.test(cohort.replace(/기\s*$/, "").trim()));
 
   async function handleSubmit() {
     setLoading(true);
@@ -29,17 +58,24 @@ export default function ClaimPage() {
       const res = await fetch("/api/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cohort, name }),
+        body: JSON.stringify({ cohort: effectiveCohort, name }),
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === "not_found") {
           setError(
-            `매칭되는 시트를 찾지 못했습니다.\n` +
-              `시트 이름이 "세일즈PT_ ${cohort}기 ${name} 수강생 경영일지" 형식인지 트레이너에게 확인해 주세요.`,
+            mode === "arena"
+              ? `매칭되는 아레나 시트를 찾지 못했습니다.\n` +
+                  `시즌·본인 기수·이름이 정확한지, 운영자가 아레나 명단(${effectiveCohort})에 본인을 등록했는지 확인해 주세요.`
+              : `매칭되는 시트를 찾지 못했습니다.\n` +
+                  `시트 이름이 "세일즈PT_ ${cohort}기 ${name} 수강생 경영일지" 형식인지 트레이너에게 확인해 주세요.`,
           );
         } else if (data.error === "invalid_input") {
-          setError("기수와 이름을 정확히 입력해 주세요.");
+          setError(
+            mode === "arena"
+              ? "시즌·본인 기수·이름을 정확히 입력해 주세요."
+              : "기수와 이름을 정확히 입력해 주세요.",
+          );
         } else if (data.error === "unauthenticated") {
           router.push("/");
           return;
@@ -50,18 +86,17 @@ export default function ClaimPage() {
         return;
       }
       // 성공: 루트로 보내 app/page.tsx 의 role 기반 라우팅에 위임.
-      // (수강생 → /dashboard, 트레이너 pending → /trainer 대기 화면)
-      //
-      // **full reload (window.location)** — Next.js client-side router 의
-      // RSC payload 캐시를 완전히 우회. 이전엔 router.push("/") 후 옛 payload 가
-      // findUserByEmail null 결과 그대로 보여서 다시 /claim 으로 튕기는 사고
-      // (2026-05-13). server 측 force-dynamic + revalidatePath 와 함께 3중 보강.
+      // **full reload (window.location)** — RSC payload 캐시를 완전히 우회.
+      // (2026-05-13 사고: router.push 후 옛 payload 로 /claim 재튕김.)
       window.location.href = "/";
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
       setLoading(false);
     }
   }
+
+  const inputCls =
+    "w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100";
 
   return (
     <main className="relative min-h-dvh bg-white">
@@ -90,54 +125,153 @@ export default function ClaimPage() {
             거의 다 왔습니다
           </h1>
           <p className="mt-2 text-sm text-gray-500">
-            기수와 본인 이름을 입력해 주세요.
+            {mode === "arena"
+              ? "시즌·본인 기수·이름을 입력해 주세요."
+              : "기수와 본인 이름을 입력해 주세요."}
           </p>
         </div>
 
-        <div className="mt-10 space-y-5">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
-              기수
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={3}
-              placeholder="기수를 입력하세요"
-              value={cohort}
-              onChange={(e) => setCohort(e.target.value)}
-              pattern="^(\d+|[Tt])$"
-              className="h-13 w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100"
-              style={{ height: 52 }}
-              autoComplete="off"
-            />
-          </div>
+        {/* 모드 토글 */}
+        <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-gray-100 p-1">
+          {(
+            [
+              ["cohort", "일반 기수"],
+              ["arena", "아레나"],
+            ] as [Mode, string][]
+          ).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => {
+                setMode(m);
+                setError(null);
+              }}
+              className={`h-9 rounded-full text-sm font-bold transition-colors ${
+                mode === m
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-7 space-y-5">
+          {mode === "cohort" ? (
+            <div>
+              <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                기수
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={3}
+                placeholder="기수를 입력하세요"
+                value={cohort}
+                onChange={(e) => setCohort(e.target.value)}
+                pattern="^(\d+|[Tt])$"
+                className={inputCls}
+                style={{ height: 52 }}
+                autoComplete="off"
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                  시즌
+                </label>
+                <div
+                  className="flex items-center rounded-xl border-[1.5px] border-gray-200 bg-white pl-4 focus-within:border-brand-red focus-within:ring-4 focus-within:ring-red-100"
+                  style={{ height: 52 }}
+                >
+                  <span className="text-[15px] font-extrabold text-gray-400">
+                    A
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="1"
+                    value={season}
+                    onChange={(e) => setSeason(e.target.value)}
+                    className="h-full w-full appearance-none bg-transparent px-2 text-[15px] font-semibold text-gray-900 outline-none"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                  본인 기수
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={3}
+                  placeholder="1"
+                  value={gisu}
+                  onChange={(e) => setGisu(e.target.value)}
+                  className={inputCls}
+                  style={{ height: 52 }}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
               본인 이름
             </label>
             <input
               type="text"
-              placeholder="수강생 성명을 입력하세요"
+              placeholder={
+                mode === "arena"
+                  ? "본인 성명을 입력하세요"
+                  : "수강생 성명을 입력하세요"
+              }
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100"
+              className={inputCls}
               style={{ height: 52 }}
               autoComplete="off"
             />
           </div>
 
-          <p className="text-[11px] leading-relaxed text-gray-400">
-            본인 수강생 시트와 자동 연결됩니다.
-            <br />
-            <span className="text-gray-600">
-              (시트 이름:{" "}
-              <code className="rounded bg-gray-100 px-1 text-[10px] text-gray-700">
-                세일즈PT_ 기수 이름 수강생 경영일지
-              </code>
-              )
-            </span>
-          </p>
+          {mode === "arena" ? (
+            <div className="space-y-2">
+              {arenaCohort && (
+                <p className="text-sm font-bold text-brand-red">
+                  → {arenaCohort} {name.trim() || "이름"}
+                </p>
+              )}
+              <p className="text-[11px] leading-relaxed text-gray-400">
+                아레나 참가자는 시즌(A1)·본인 기수·이름을 넣어주세요. 본인 아레나
+                시트와 자동 연결됩니다.
+                <br />
+                <span className="text-gray-600">
+                  (시트 이름:{" "}
+                  <code className="rounded bg-gray-100 px-1 text-[10px] text-gray-700">
+                    세일즈PT_A시즌_기수기 이름_대표님 경영일지
+                  </code>
+                  )
+                </span>
+              </p>
+            </div>
+          ) : (
+            <p className="text-[11px] leading-relaxed text-gray-400">
+              본인 수강생 시트와 자동 연결됩니다.
+              <br />
+              <span className="text-gray-600">
+                (시트 이름:{" "}
+                <code className="rounded bg-gray-100 px-1 text-[10px] text-gray-700">
+                  세일즈PT_ 기수 이름 수강생 경영일지
+                </code>
+                )
+              </span>
+            </p>
+          )}
         </div>
 
         {error && (

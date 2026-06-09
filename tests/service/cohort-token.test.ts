@@ -4,6 +4,7 @@ import {
   buildCohortSheetTitle,
   decideMemberAction,
   arenaSeasonLabel,
+  arenaCohortLabel,
   buildArenaSheetTitle,
   buildArenaCompanyFolderName,
   decideArenaAction,
@@ -185,25 +186,55 @@ describe("decideMemberAction", () => {
   });
 });
 
-describe("arena 빌더 (시즌+0기 고정 명명)", () => {
-  it("arenaSeasonLabel: 시즌→A{n}", () => {
+describe("arena 빌더 (시즌 A{n} + 자기기수 {m}기 + 이름)", () => {
+  it("arenaSeasonLabel: 시즌 레벨 config 키 → A{n}", () => {
     expect(arenaSeasonLabel(1)).toBe("A1");
     expect(arenaSeasonLabel(12)).toBe("A12");
   });
 
-  it("buildArenaSheetTitle: 세일즈PT_A{시즌}_0기 {이름}_대표님 경영일지", () => {
-    expect(buildArenaSheetTitle(1, "김믿음")).toBe(
-      "세일즈PT_A1_0기 김믿음_대표님 경영일지",
+  it("arenaCohortLabel: 참가자별 매칭 키 → A{시즌}-{기수}기", () => {
+    expect(arenaCohortLabel(1, 1)).toBe("A1-1기");
+    expect(arenaCohortLabel(2, 8)).toBe("A2-8기");
+  });
+
+  it("buildArenaSheetTitle: 세일즈PT_A{시즌}_{기수}기 {이름}_대표님 경영일지", () => {
+    expect(buildArenaSheetTitle(1, 1, "김믿음")).toBe(
+      "세일즈PT_A1_1기 김믿음_대표님 경영일지",
     );
-    expect(buildArenaSheetTitle(2, "  이영업 ")).toBe(
-      "세일즈PT_A2_0기 이영업_대표님 경영일지",
+    expect(buildArenaSheetTitle(2, 3, "  이영업 ")).toBe(
+      "세일즈PT_A2_3기 이영업_대표님 경영일지",
     );
   });
 
   it("buildArenaCompanyFolderName: …_대표님 업체관리", () => {
-    expect(buildArenaCompanyFolderName(1, "김믿음")).toBe(
-      "세일즈PT_A1_0기 김믿음_대표님 업체관리",
+    expect(buildArenaCompanyFolderName(1, 1, "김믿음")).toBe(
+      "세일즈PT_A1_1기 김믿음_대표님 업체관리",
     );
+  });
+});
+
+// 레지스트리 prep(addTraineePrepRow)·claim(findExistingSheetIdByCohortName) 양측이
+// 공유하는 cohort 정규화. 두 곳 모두 String(c).replace(/기\s*$/,"").trim() 동일.
+// claim 폼이 항상 대문자 "A" 로 조합하므로 case-fold 불필요.
+const normCohort = (c: string) => c.replace(/기\s*$/, "").trim();
+
+describe("arena cohort 라벨 정규화 일치 (prep ↔ claim)", () => {
+  it("create-arena 저장 라벨과 claim 조합 라벨이 동일 정규화", () => {
+    const prepLabel = arenaCohortLabel(1, 1); // create-arena-members 가 저장
+    const claimLabel = "A1-1기"; // claim 폼이 `A${season}-${gisu}기` 로 조합
+    expect(prepLabel).toBe(claimLabel);
+    expect(normCohort(prepLabel)).toBe("A1-1");
+    expect(normCohort(claimLabel)).toBe(normCohort(prepLabel));
+  });
+
+  it('"기" 유무·공백 변형 흡수 ("A1-1기" / "A1-1" / "A1-1기 ")', () => {
+    expect(normCohort("A1-1기")).toBe("A1-1");
+    expect(normCohort("A1-1")).toBe("A1-1");
+    expect(normCohort("A1-1기 ")).toBe("A1-1");
+  });
+
+  it("트레이너 오인 방지: 아레나 라벨은 'T' 가 아님", () => {
+    expect(arenaCohortLabel(1, 1).toUpperCase()).not.toBe("T");
   });
 });
 
@@ -211,6 +242,7 @@ describe("decideArenaAction", () => {
   it("멱등: 이미 등록된 시트 있으면 skip", () => {
     const r = decideArenaAction({
       season: 1,
+      gisu: 1,
       name: "김믿음",
       existingSheetId: "1AbcDEFghiJKLmnoPQRstuVWxyz1234567890",
     });
@@ -218,21 +250,38 @@ describe("decideArenaAction", () => {
   });
 
   it("이름 비면 fail", () => {
-    const r = decideArenaAction({ season: 1, name: "  ", existingSheetId: null });
+    const r = decideArenaAction({
+      season: 1,
+      gisu: 1,
+      name: "  ",
+      existingSheetId: null,
+    });
     expect(r.action).toBe("fail");
   });
 
-  it("신규 → create (시트제목·폴더명 생성)", () => {
+  it("기수 비정상이면 fail", () => {
     const r = decideArenaAction({
       season: 1,
+      gisu: Number.NaN,
+      name: "김믿음",
+      existingSheetId: null,
+    });
+    expect(r.action).toBe("fail");
+  });
+
+  it("신규 → create (라벨·시트제목·폴더명 생성)", () => {
+    const r = decideArenaAction({
+      season: 1,
+      gisu: 1,
       name: "김믿음",
       existingSheetId: null,
     });
     expect(r).toEqual({
       action: "create",
       name: "김믿음",
-      sheetTitle: "세일즈PT_A1_0기 김믿음_대표님 경영일지",
-      folderName: "세일즈PT_A1_0기 김믿음_대표님 업체관리",
+      cohortLabel: "A1-1기",
+      sheetTitle: "세일즈PT_A1_1기 김믿음_대표님 경영일지",
+      folderName: "세일즈PT_A1_1기 김믿음_대표님 업체관리",
     });
   });
 });

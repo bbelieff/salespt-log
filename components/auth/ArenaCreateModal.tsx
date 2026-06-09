@@ -43,23 +43,31 @@ export default function ArenaCreateModal() {
     return Number.isInteger(n) && n > 0 ? n : null;
   }, [season]);
 
-  const names = useMemo(
+  // 명단: 한 줄에 "이름, 기수" (쉼표/탭/공백 구분). 기수 없으면 무효 라인.
+  const members = useMemo(
     () =>
       namesText
         .split(/\r?\n/)
         .map((l) => l.trim())
-        .filter(Boolean),
+        .filter(Boolean)
+        .map((line) => {
+          const parts = line.split(/[,\t]|\s+/).filter(Boolean);
+          const name = parts[0] ?? "";
+          const gisu = Number(parts[1]);
+          return { name, gisu };
+        })
+        .filter((m) => m.name && Number.isInteger(m.gisu) && m.gisu >= 0),
     [namesText],
   );
 
   const preview = useMemo(() => {
-    if (!seasonNum || names.length === 0) return null;
-    const sample = names[0]!;
+    if (!seasonNum || members.length === 0) return null;
+    const s = members[0]!;
     return {
-      sheet: buildArenaSheetTitle(seasonNum, sample),
-      folder: buildArenaCompanyFolderName(seasonNum, sample),
+      sheet: buildArenaSheetTitle(seasonNum, s.gisu, s.name),
+      folder: buildArenaCompanyFolderName(seasonNum, s.gisu, s.name),
     };
-  }, [seasonNum, names]);
+  }, [seasonNum, members]);
 
   function reset() {
     setSeason("");
@@ -78,8 +86,8 @@ export default function ArenaCreateModal() {
       setErr("시즌 번호를 양의 정수로 입력하세요 (예: 1).");
       return;
     }
-    if (names.length === 0) {
-      setErr("참가자를 한 명 이상 입력하세요.");
+    if (members.length === 0) {
+      setErr('참가자를 "이름, 기수" 형식으로 한 명 이상 입력하세요 (예: 김믿음, 1).');
       return;
     }
     setBusy(true);
@@ -91,7 +99,7 @@ export default function ArenaCreateModal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           season: seasonNum,
-          names,
+          members,
           config: hasConfig
             ? { templateSheetId, sheetsFolderId, companyParentFolderId }
             : undefined,
@@ -205,21 +213,27 @@ export default function ArenaCreateModal() {
           {/* 명단 */}
           <div>
             <label className="mb-1 block text-xs font-bold text-gray-700">
-              참가자 (한 줄에 한 명)
+              참가자 (한 줄에 &quot;이름, 자기기수&quot;)
             </label>
             <textarea
               value={namesText}
               onChange={(e) => setNamesText(e.target.value)}
               rows={5}
-              placeholder={"김믿음\n이영업\n박계약"}
+              placeholder={"김믿음, 1\n이영업, 2\n박계약, 1"}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
+            <p className="mt-1 text-[11px] text-gray-400">
+              각 줄에 이름과 본인 기수. 레지스트리 라벨 = A{seasonNum ?? "?"}
+              -기수기 (예: A{seasonNum ?? 1}-1기).
+            </p>
           </div>
 
           {/* 미리보기 */}
           {preview && (
             <div className="space-y-1 rounded-xl border border-purple-100 bg-purple-50 p-3 text-xs text-purple-800">
-              <div className="font-bold">미리보기 ({names[0]})</div>
+              <div className="font-bold">
+                미리보기 ({members[0]!.name} · {members[0]!.gisu}기)
+              </div>
               <div>📄 {preview.sheet}</div>
               <div>📁 {preview.folder}</div>
             </div>
