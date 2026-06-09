@@ -58,43 +58,67 @@ export function buildCohortSheetTitle(p: ParsedCohort, name: string): string {
   return `세일즈PT_ ${p.num}기 ${clean} 수강생 경영일지`;
 }
 
-// ── 아레나 추가 전용 (시즌+명단, "0기" 고정 명명) ─────────────────
-// registry/cohorts label. 시즌 1 → "A1".
+// ── 아레나 전용 (시즌 A{n} + 자기기수 {m}기 + 이름) ─────────────────
+// 시즌 레벨 cohorts 탭 config 키 (템플릿/폴더): 시즌 1 → "A1".
 export function arenaSeasonLabel(season: number): string {
   return `A${season}`;
 }
-// 경영일지 시트 제목: `세일즈PT_A{시즌}_0기 {이름}_대표님 경영일지`
-export function buildArenaSheetTitle(season: number, name: string): string {
-  return `세일즈PT_A${season}_0기 ${name.trim()}_대표님 경영일지`;
+// registry cohort 라벨 (참가자별 매칭 키 = claim 키): 시즌1·기수1 → "A1-1기".
+// 정규화(/기$/ strip)가 claim/prep 양측 동일 → "A1-1기"↔"A1-1" 매칭.
+export function arenaCohortLabel(season: number, gisu: number): string {
+  return `A${season}-${gisu}기`;
 }
-// 업체관리 폴더 이름: `세일즈PT_A{시즌}_0기 {이름}_대표님 업체관리`
-export function buildArenaCompanyFolderName(season: number, name: string): string {
-  return `세일즈PT_A${season}_0기 ${name.trim()}_대표님 업체관리`;
+// 경영일지 시트 제목: `세일즈PT_A{시즌}_{기수}기 {이름}_대표님 경영일지`
+export function buildArenaSheetTitle(
+  season: number,
+  gisu: number,
+  name: string,
+): string {
+  return `세일즈PT_A${season}_${gisu}기 ${name.trim()}_대표님 경영일지`;
+}
+// 업체관리 폴더 이름: `세일즈PT_A{시즌}_{기수}기 {이름}_대표님 업체관리`
+export function buildArenaCompanyFolderName(
+  season: number,
+  gisu: number,
+  name: string,
+): string {
+  return `세일즈PT_A${season}_${gisu}기 ${name.trim()}_대표님 업체관리`;
 }
 
 export type ArenaPlan =
   | { action: "skip"; name: string }
   | { action: "fail"; name: string; reason: string }
-  | { action: "create"; name: string; sheetTitle: string; folderName: string };
+  | {
+      action: "create";
+      name: string;
+      cohortLabel: string;
+      sheetTitle: string;
+      folderName: string;
+    };
 
 /**
  * 아레나 참가자 1명 처리 판정 (순수).
- *  - existingSheetId 있으면 skip (멱등 — registry (A{시즌}, name) + 유효 시트).
- *  - 이름 비면 fail. 아니면 create(시트제목·폴더명 생성).
+ *  - existingSheetId 있으면 skip (멱등 — registry (A{시즌}-{기수}기, name) + 유효 시트).
+ *  - 이름 비면/기수 비정상이면 fail. 아니면 create(라벨·시트제목·폴더명 생성).
  */
 export function decideArenaAction(input: {
   season: number;
+  gisu: number;
   name: string;
   existingSheetId: string | null;
 }): ArenaPlan {
   const name = input.name.trim();
   if (!name) return { action: "fail", name: input.name, reason: "이름 없음" };
+  if (!Number.isInteger(input.gisu) || input.gisu < 0) {
+    return { action: "fail", name, reason: "자기기수 오류" };
+  }
   if (input.existingSheetId) return { action: "skip", name };
   return {
     action: "create",
     name,
-    sheetTitle: buildArenaSheetTitle(input.season, name),
-    folderName: buildArenaCompanyFolderName(input.season, name),
+    cohortLabel: arenaCohortLabel(input.season, input.gisu),
+    sheetTitle: buildArenaSheetTitle(input.season, input.gisu, name),
+    folderName: buildArenaCompanyFolderName(input.season, input.gisu, name),
   };
 }
 
