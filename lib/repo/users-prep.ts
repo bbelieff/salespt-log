@@ -91,12 +91,14 @@ export async function addTraineePrepRow(
   spreadsheetId: string,
   assignedTrainer = "",
   feedbackFolderId = "",
+  memo = "",
 ): Promise<{ created: boolean }> {
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const cohortNorm = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
   const ffid = feedbackFolderId.trim();
+  const memoVal = memo.trim();
   // 시트 메타 1회 fetch (실패해도 빈값으로 진행). update/append 양쪽에서 사용.
   const cached = await readCachedFromSheet(spreadsheetId);
   for (let i = 0; i < rows.length; i++) {
@@ -120,6 +122,8 @@ export async function addTraineePrepRow(
       ];
       // 아레나 업체관리 폴더 id → O(feedback_folder_id) stamp (주어진 경우만).
       if (ffid) data.push({ range: `${reg.tab}!O${sheetRow}`, values: [[ffid]] });
+      // 회장/입금 메모 → Q(memo) stamp (주어진 경우만).
+      if (memoVal) data.push({ range: `${reg.tab}!Q${sheetRow}`, values: [[memoVal]] });
       await sheetsClient().spreadsheets.values.batchUpdate({
         spreadsheetId: reg.spreadsheetId,
         requestBody: { valueInputOption: "RAW", data },
@@ -144,7 +148,15 @@ export async function addTraineePrepRow(
     cached.graduationISO,
     "0", // M: sortOrder — admin 드래그로 부여 (PR C-1)
   ];
-  if (ffid) {
+  if (memoVal) {
+    // N: drive_parent_path 빈값, O: feedback_folder_id, P: drive_link_status 빈값, Q: memo
+    await appendRows(
+      reg.spreadsheetId,
+      `${reg.tab}!A2:Q`,
+      [[...base, "", ffid, "", memoVal]],
+      { valueInputOption: "RAW" },
+    );
+  } else if (ffid) {
     await appendRows(
       reg.spreadsheetId,
       `${reg.tab}!A2:O`,

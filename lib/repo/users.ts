@@ -28,9 +28,10 @@ import { registry, adminEmails, adminNames } from "@/config";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
+import { nameMatches } from "./name-match";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:P1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:P`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:Q1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:Q`;
 
 function parseRow(r: unknown[]): User | null {
   // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
@@ -429,9 +430,10 @@ export async function findExistingSheetIdByCohortName(
   const cleanName = name.trim();
   for (const r of all) {
     const c = String(r[1] ?? "").replace(/기\s*$/, "").trim();
-    const n = String(r[2] ?? "").trim();
+    const n = String(r[2] ?? "");
     const sid = String(r[3] ?? "").trim();
-    if (c === cohortNorm && n === cleanName && sid) return sid;
+    // 부부면 저장 "류서하(심나영)" 이 입력 "류서하"/"심나영" 둘 다 매칭.
+    if (c === cohortNorm && nameMatches(n, cleanName) && sid) return sid;
   }
   return null;
 }
@@ -481,7 +483,7 @@ export async function ensureRegistryHeader(): Promise<void> {
   await appendRows(
     reg.spreadsheetId,
     HEADER_RANGE(reg.tab),
-    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status"]],
+    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo"]],
     { valueInputOption: "RAW" },
   );
 }
