@@ -179,7 +179,10 @@ export function formulasForRow(r: number): Record<string, string> {
     J: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!O:O,${M_REF}!D:D=$C${dpr}))),"")`,
     // K: 오늘미팅수 — 미팅날짜만 매칭 (J~M 4채널 셀병합 통합 표시).
     K: `=COUNTIF(${M_REF}!D:D,$C${dpr})`,
-    // L: 미팅완료수 — 미팅날짜만 매칭, 계약+완료 (J~M 통합).
+    // L: 미팅완료수 — 미팅날짜 매칭 + **상태 필터(완료·계약만)**. 예약/변경/취소 제외.
+    // ⚠️ 상태필터 필수: 제거하면 예약(미래 미팅)까지 완료로 세져 미팅완료=미팅예약·
+    //    미팅실행률 100% 사고 (2026-06-09 진단). K(오늘미팅수)와 같아지면 안 됨.
+    //    가드: tests/repo/setup-formulas-guard.test.ts "미팅완료(L) 상태필터".
     L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"완료")`,
     // M: 미팅사유 자동 집계 — 미팅날짜만 매칭 (J~M 통합).
     M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,${M_REF}!D:D=$C${dpr})),"")`,

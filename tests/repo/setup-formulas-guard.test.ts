@@ -218,3 +218,29 @@ describe("formulasForRow — 콜지기소 계약 채널 매칭", () => {
     expect(f.N).toContain("$C10"); // dayPrimaryRow(13)=10
   });
 });
+
+/**
+ * 단위 테스트: 미팅완료(L) 상태필터 박제 (2026-06-09, 미팅실행률 100% 사고 진단).
+ * L(미팅완료수) 은 04 상태 ∈ {완료,계약} 만 세야 한다 — 예약/변경/취소 제외.
+ * 누군가 L 을 K(오늘미팅수, 상태 무관 전체)처럼 바꾸면 미팅완료=미팅예약 사고 → 가드.
+ */
+describe("formulasForRow — 미팅완료(L) 상태필터", () => {
+  const f = formulasForRow(10);
+
+  it("L 은 상태 완료+계약 COUNTIFS (예약 제외)", () => {
+    expect(f.L).toContain('"완료"');
+    expect(f.L).toContain('"계약"');
+    expect(f.L).toContain("J:J"); // 상태 컬럼(J) 필터
+  });
+
+  it("L(미팅완료) ≠ K(오늘미팅수) — 둘이 같아지면 안 됨", () => {
+    expect(f.L).not.toBe(f.K);
+    // K 는 상태 무관 전체 카운트(COUNTIF D), L 은 상태필터.
+    expect(f.K).not.toContain('"완료"');
+  });
+
+  it("L 은 상태 무관 전체 COUNTIF 가 아니다 (예약까지 세는 회귀 차단)", () => {
+    // 상태 토큰이 빠진 단순 COUNTIF(D) 면 예약도 세짐 → 금지.
+    expect(f.L).toMatch(/"완료"|"계약"/);
+  });
+});
