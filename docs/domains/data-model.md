@@ -509,7 +509,7 @@ interface DashboardView {
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `TodoType` | z.enum | 실무투두 종류 4: `기타` / `미팅` / `전화` / `메시지` (캘린더 type 아이콘) |
-| `Todo` | z.object | (계약×기관) 실무 ToDo 1행 (05 실무투두, A~M 13컬럼). 키: `contractRef`(계약일+업체명) · `institutionRef`(슬롯 진행기관). 캘린더는 04 미팅 + 05 투두 합쳐 표시(읽기전용). 상세 스키마 design §6.3 |
+| `Todo` | z.object | (계약×기관) 실무 ToDo 1행 (05 실무투두, A~N 14컬럼 — N=분류, type 에 `일반` 추가: 캘린더 일반이벤트·비집계). 키: `contractRef`(계약일+업체명) · `institutionRef`(슬롯 진행기관). 캘린더는 04 미팅 + 05 투두 합쳐 표시(읽기전용). 상세 스키마 design §6.3 |
 
 ### DB관리 (03 DB관리)
 | 식별자 | 종류 | 의미 |

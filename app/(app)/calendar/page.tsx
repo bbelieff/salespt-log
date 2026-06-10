@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import type { Channel, Meeting, Todo } from "@/types";
 import { useMonthMeetings } from "@/query/contact-hooks";
 import MonthGrid from "./_components/MonthGrid";
+import GeneralEventModal from "./_components/GeneralEventModal";
 import TodoTypeIcon from "./_components/TodoTypeIcon";
 import TopHeader from "@/components/TopHeader";
 import {
@@ -41,6 +42,7 @@ const CHANNEL_BADGE: Record<Channel, string> = {
   "콜·지·기·소": "bg-purple-100 text-purple-700",
 };
 const PRACTICE_HEX = "#334155";
+const GENERAL_HEX = "#0d9488"; // tokens 일반이벤트 teal (비집계)
 const TODO_TYPES = ["미팅", "전화", "메시지", "기타"] as const;
 
 function fmtMoney(n: number): string {
@@ -52,6 +54,7 @@ export default function CalendarPage() {
   const [yyyyMM, setYyyyMM] = useState<string>(TODAY_YYYYMM);
   const [selectedDate, setSelectedDate] = useState<string>(TODAY_ISO);
   const monthQuery = useMonthMeetings(yyyyMM);
+  const [eventModal, setEventModal] = useState(false); // 일반이벤트 생성 (§4-3)
 
   // map 변환 (그리드용)
   const meetingsByDate = useMemo(() => {
@@ -212,10 +215,19 @@ export default function CalendarPage() {
                     </span>
                   )}
                 </h2>
-                <span className="text-xs text-gray-500">
+                <span className="flex items-center gap-2 text-xs text-gray-500">
                   {selectedItems.length > 0
                     ? `${selectedItems.length}건`
                     : "일정 없음"}
+                  <button
+                    type="button"
+                    onClick={() => setEventModal(true)}
+                    aria-label="일반이벤트 추가"
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold text-white active:scale-95"
+                    style={{ background: GENERAL_HEX }}
+                  >
+                    +
+                  </button>
                 </span>
               </div>
 
@@ -288,7 +300,7 @@ export default function CalendarPage() {
                         tabIndex={0}
                         onClick={() => router.push(`/payment?focus=${t.id}`)}
                         className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
-                        style={{ borderLeft: `3px solid ${PRACTICE_HEX}` }}
+                        style={{ borderLeft: `3px solid ${t.type === "일반" ? GENERAL_HEX : PRACTICE_HEX}` }}
                       >
                         <span
                           className="shrink-0 text-sm font-bold text-gray-700"
@@ -298,9 +310,10 @@ export default function CalendarPage() {
                         </span>
                         <span
                           className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold text-white"
-                          style={{ background: PRACTICE_HEX }}
+                          style={{ background: t.type === "일반" ? GENERAL_HEX : PRACTICE_HEX }}
                         >
-                          <TodoTypeIcon type={t.type} size={12} /> 실무
+                          <TodoTypeIcon type={t.type} size={12} />{" "}
+                          {t.type === "일반" ? "일반" : "실무"}
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-gray-900">
@@ -366,6 +379,17 @@ export default function CalendarPage() {
               </div>
               <div className="flex flex-nowrap items-center gap-2 break-keep">
                 <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
+                  일반
+                </span>
+                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
+                  <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-white" style={{ background: GENERAL_HEX }}>
+                    <TodoTypeIcon type="일반" size={10} />
+                  </span>
+                  일반이벤트 (점수 미포함)
+                </span>
+              </div>
+              <div className="flex flex-nowrap items-center gap-2 break-keep">
+                <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
                   실무
                 </span>
                 {TODO_TYPES.map((t) => (
@@ -385,6 +409,13 @@ export default function CalendarPage() {
         )}
       </PageContainer>
       </main>
+      {eventModal && (
+        <GeneralEventModal
+          defaultDate={selectedDate}
+          onClose={() => setEventModal(false)}
+          onCreated={() => monthQuery.refetch()}
+        />
+      )}
     </>
   );
 }

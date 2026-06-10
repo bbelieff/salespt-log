@@ -132,7 +132,7 @@ export default function MonthGrid({
                     <div
                       key={t.id}
                       className="flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-[10px] leading-tight text-white pc:text-xs"
-                      style={{ background: "#334155" }}
+                      style={{ background: t.type === "일반" ? "#0d9488" : "#334155" }}
                       title={`${t.예정시각} ${t.제목}`.trim()}
                     >
                       <TodoTypeIcon type={t.type} size={9} />

@@ -46,6 +46,15 @@ export default function TodoTypeIcon({
       </svg>
     );
   }
+  if (type === "일반") {
+    // 일반이벤트 — 캘린더 아이콘 (tokens "type 아이콘 5종")
+    return (
+      <svg {...stroke}>
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+      </svg>
+    );
+  }
   // 기타 — 점3
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">

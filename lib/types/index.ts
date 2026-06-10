@@ -314,7 +314,8 @@ export type ContractPayment = z.infer<typeof ContractPayment>;
 //   L=완료여부, M=생성시각
 // (계약 × 기관) 단위. 04 미팅·02 수납과 격리(미팅 집계 수식 영향 0).
 // 수식 컬럼 없음 → split-write 불필요.
-export const TodoType = z.enum(["기타", "미팅", "전화", "메시지"]);
+// "일반" = 캘린더 일반이벤트(기존고객/개인 일정, 통계·아레나 비집계 — consultation-log §1-3).
+export const TodoType = z.enum(["기타", "미팅", "전화", "메시지", "일반"]);
 export type TodoType = z.infer<typeof TodoType>;
 
 export const Todo = z.object({
@@ -335,6 +336,8 @@ export const Todo = z.object({
   showOnCalendar: z.boolean().default(true),
   완료여부: z.boolean().default(false),
   생성시각: z.string().default(""), // ISO
+  /** 일반이벤트(type=일반) 카테고리 — N 컬럼: "기존"(기존 고객) | "기타"(개인 일정). 그 외 type 은 빈값. */
+  분류: z.string().default(""),
 });
 export type Todo = z.infer<typeof Todo>;
 

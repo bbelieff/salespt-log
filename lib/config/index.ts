@@ -255,7 +255,7 @@ export const SHEET_RANGES = {
   // SSOT: docs/domains/sheet-structure.md §5-2
   todos: {
     tab: "05 실무투두",
-    headerRow: "A1:M1",
-    range: "A2:M", // append + update 대상
+    headerRow: "A1:N1",
+    range: "A2:N", // append + update 대상
   },
 } as const;
