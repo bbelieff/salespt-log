@@ -77,8 +77,8 @@ interface Props {
   companyName?: string;
   /** 이 계약 전체 ToDo — 슬롯이 institutionRef(=진행기관)로 필터. */
   todos?: Todo[];
-  /** 저장본(cp) 진행기관 — ToDo 키. draft(미저장)가 아닌 저장값과만 묶어 정합성 유지
-   *  (미저장 진행기관에 투두를 달면 새로고침 후 매칭 실패 → 슬롯에서 사라지던 버그). */
+  focusTodoId?: string | null; // 캘린더 포커스 ToDo → TodoSection 전달.
+  /** 저장본(cp) 진행기관 — ToDo 키(draft 아닌 저장값과만 묶어 새로고침 후 매칭 유지). */
   savedInstitution?: string;
   /** [3] 진행기관 콤보박스 후보 (자유입력 + 과거값 자동완성). */
   institutionOptions?: string[];
@@ -100,6 +100,7 @@ export default function PaymentSlotForm({
   contractRef,
   companyName,
   todos,
+  focusTodoId,
   savedInstitution,
   institutionOptions,
   onEnsureSaved,
@@ -281,6 +282,7 @@ export default function PaymentSlotForm({
             draftInstitution={slot.진행기관}
             companyName={companyName ?? ""}
             onEnsureSaved={onEnsureSaved}
+            focusId={focusTodoId}
             todos={(todos ?? []).filter(
               (t) => t.institutionRef === (savedInstitution ?? ""),
             )}
@@ -402,9 +404,7 @@ function FieldDate({
   value: string;
   onChange: (v: string) => void;
 }) {
-  // iOS Safari 의 <input type="date"> 는 placeholder 폭(yyyy/mm/dd)으로
-  // intrinsic width 를 잡아 grid cell 을 뚫고 나옴. 부모 div 에 min-w-0,
-  // input 에 appearance-none 을 주어 grid 폭에 맞춰 shrink 되도록 강제.
+  // iOS Safari date input intrinsic width(yyyy/mm/dd)가 grid 뚫는 것 → min-w-0 + appearance-none 으로 shrink 강제.
   return (
     <div className="min-w-0">
       <label className={FIELD_LABEL_CLASS}>{label}</label>

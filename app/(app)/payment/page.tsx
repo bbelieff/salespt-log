@@ -72,6 +72,14 @@ export default function PaymentPage() {
   const isPc = usePcBreakpoint();
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
+  // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
+  // Next 15 useSearchParams Suspense 회피 → mount 시 window.location 직접 파싱.
+  const [focusTodoId, setFocusTodoId] = useState<string | null>(null);
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get("focus");
+    if (f) setFocusTodoId(f);
+  }, []);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
@@ -285,6 +293,7 @@ export default function PaymentPage() {
                       onSelect={() => setSelectedRow(cp.row ?? null)}
                       onSave={handleSave}
                       onDeleteRequest={() => makeDeleteRequest(cp)}
+                      focusTodoId={focusTodoId}
                     />
                   </div>
                 );
@@ -305,6 +314,7 @@ export default function PaymentPage() {
                   accentFamily={selFamily}
                   onSave={handleSave}
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                  focusTodoId={focusTodoId}
                 />
               </div>
             )}
@@ -321,6 +331,7 @@ export default function PaymentPage() {
                 institutionOptions={institutionOptions}
                 onSave={handleSave}
                 onDeleteRequest={() => makeDeleteRequest(cp)}
+                focusTodoId={focusTodoId}
               />
             ))}
           </div>

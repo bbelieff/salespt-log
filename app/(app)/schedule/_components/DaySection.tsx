@@ -13,6 +13,8 @@ interface Props {
   meetings: Meeting[];
   todayISO: string;
   pendingId: string | null;
+  /** 캘린더에서 넘어온 포커스 대상 미팅 id — 스크롤+하이라이트. */
+  focusId?: string | null;
   onPatch: (id: string, partial: Partial<Omit<Meeting, "id">>) => void;
   onReschedule: (
     meeting: Meeting,
@@ -37,6 +39,7 @@ export default function DaySection({
   meetings,
   todayISO,
   pendingId,
+  focusId,
   onPatch,
   onReschedule,
   onRevert,
@@ -110,6 +113,7 @@ export default function DaySection({
             key={m.id}
             meeting={m}
             pending={pendingId === m.id}
+            focus={focusId != null && focusId === m.id}
             onPatch={(partial) => onPatch(m.id, partial)}
             onReschedule={(d2, t, r) => onReschedule(m, d2, t, r)}
             onRevert={onRevert ? () => onRevert(m.id) : undefined}
