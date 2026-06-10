@@ -156,8 +156,9 @@ export const SHEET_RANGES = {
   // 표시_요약(수식)/계약조건/계약합성라인(수식)/previousMeetingId/주차(수식)
   meetings: {
     tab: "04 업체관리(앱자동작성용)",
-    headerRow: "A1:S1",
-    range: "A2:S", // append + update 대상
+    headerRow: "A1:AN1",
+    // A~S(미팅) + T~AN(업체정보). 읽기는 전체, 쓰기는 split(A:M/P/R + 업체정보 별도 가드)로 수식·업체정보 보존.
+    range: "A2:AN",
   },
 
   // ── 계약수납관리 v2 (1행 = 1계약, A~AD) ─────────────────────

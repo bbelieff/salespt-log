@@ -40,14 +40,52 @@ export const METRIC_LABEL: Record<MetricKey, string> = {
 export const MeetingState = z.enum(["예약", "계약", "완료", "변경", "취소"]);
 export type MeetingState = z.infer<typeof MeetingState>;
 
+// ── 업체정보 (04 업체관리 T~AN, 미팅 단위 작성 — consultation-log §1-1) ──────
+// [업체] 12(T~AE) + [대표자] 8(AF~AM) + 커스텀 JSON 1(AN). 모두 자유 텍스트, 빈값 허용.
+// 키는 식별자 안전형(업종주생산품목/사대보험직원). UI 라벨은 별도 매핑.
+export const CompanyInfo = z.object({
+  // [업체] T~AE
+  개업일: z.string().default(""),
+  사업자구분: z.string().default(""),
+  사업자등록번호: z.string().default(""),
+  소재지: z.string().default(""),
+  소유여부: z.string().default(""),
+  업종주생산품목: z.string().default(""),
+  과년도매출: z.string().default(""),
+  금년도매출: z.string().default(""),
+  기대출사업자: z.string().default(""),
+  사대보험직원: z.string().default(""),
+  특허및인증: z.string().default(""),
+  업체기타메모: z.string().default(""),
+  // [대표자] AF~AM
+  대표자이름: z.string().default(""),
+  연락처통신사: z.string().default(""),
+  신용점수: z.string().default(""),
+  기대출개인: z.string().default(""),
+  자택주소지: z.string().default(""),
+  대표소유여부: z.string().default(""),
+  동종업계경력: z.string().default(""),
+  대표기타메모: z.string().default(""),
+  // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
+  커스텀: z
+    .object({
+      업체: z.record(z.string(), z.string()).default({}),
+      대표자: z.record(z.string(), z.string()).default({}),
+    })
+    .partial()
+    .optional(),
+});
+export type CompanyInfo = z.infer<typeof CompanyInfo>;
+
 // ── 미팅 (04 업체관리(앱자동작성용) 1행 = 1미팅) ────────────────
-// 시트 매핑 (sheet-structure.md §3, 19컬럼 A~S):
+// 시트 매핑 (sheet-structure.md §3, A~AN):
 //   A=id, B=예약일, C=예약시각, D=미팅날짜, E=미팅시간, F=channel,
 //   G=업체명, H=장소, I=예약비고, J=상태, K=계약여부, L=수임비,
 //   M=미팅사유 (`업체명, 이유` 1줄),
 //   N=표시상세(수식), O=표시요약(수식),
 //   P=계약조건, Q=계약합성라인(수식),
-//   R=previousMeetingId, S=주차(수식)
+//   R=previousMeetingId, S=주차(수식),
+//   T~AN=업체정보(CompanyInfo, [업체]12+[대표자]8+커스텀JSON)
 //
 // ⚠️ N/O/Q/S는 시트 수식 자동 — 웹은 쓰지 않음. 읽기만 (optional).
 export const Meeting = z.object({
@@ -74,6 +112,9 @@ export const Meeting = z.object({
   // 변경 추적 + 주차 (실제 시트의 R·S — v4 SSOT 누락분, repo는 유지)
   previousMeetingId: z.string().optional(), // R
   주차: z.number().int().min(1).max(10).optional(), // S (수식)
+
+  // 업체정보 (T~AN) — 미팅 단위. 빈값이면 undefined (rowToMeeting 이 내용 있을 때만 세팅).
+  업체정보: CompanyInfo.optional(),
 });
 export type Meeting = z.infer<typeof Meeting>;
 
