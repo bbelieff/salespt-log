@@ -34,18 +34,13 @@ const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
 
 function parseRow(r: unknown[]): User | null {
-  // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
-  // 재현 (2026-05-12). nullish coalescing(??) 이 "" 통과시켜 Zod enum fail.
-  // 명시적 normalize 로 빈 값·미지정을 default 로 흡수.
+  // CRITICAL: 빈 status/role 이 drop 되면 전 수강생 차단 사고(2026-05-12) → 명시 normalize.
   const rawStatus = String(r[5] ?? "").trim();
   const status: User["status"] = rawStatus === "pending" ? "pending" : "active";
   const rawRole = String(r[4] ?? "").trim();
   const role: User["role"] =
     rawRole === "trainer" || rawRole === "admin" ? rawRole : "trainee";
-  // 2026-05-13 사고: 시트 cohort 컬럼이 number 로 형변환된 경우 (UNFORMATTED_VALUE
-  // 가 그대로 노출) Zod z.string() 가 거부 → parseRow null → 무한루프.
-  // sheets-client.readRange 가 경계에서 정규화하지만 defense-in-depth 로 여기서도
-  // 강제. String(null) = "null" 회피 위해 ?? "" 먼저.
+  // 모든 셀 String() 강제 — UNFORMATTED_VALUE number 가 Zod z.string() 거부 → null 무한루프 방지(2026-05-13).
   const parsed = User.safeParse({
     email: String(r[0] ?? ""),
     cohort: String(r[1] ?? ""),
@@ -61,9 +56,7 @@ function parseRow(r: unknown[]): User | null {
     nameLabel: String(r[9] ?? "").trim(),
     courseStartISO: String(r[10] ?? "").trim(),
     graduationISO: String(r[11] ?? "").trim(),
-    // PR C-1 sort_order — Sheets UNFORMATTED_VALUE 가 number 또는 "" 반환.
-    // parseInt 가 NaN 이면 0 (Zod default). 음수 입력은 Zod nonnegative 가 reject
-    // → parseRow null → 다른 row 들 영향 받지 않게 catch.
+    // sort_order(M) — number/"" 반환. NaN·음수 → 0 (Zod nonnegative reject 방지, PR C-1).
     sortOrder: (() => {
       const raw = r[12];
       if (typeof raw === "number" && Number.isFinite(raw)) return Math.max(0, Math.floor(raw));
@@ -442,23 +435,35 @@ export async function findExistingSheetIdByCohortName(
 }
 
 /**
- * Drive API 파일명 검색 — 수강생 시트 찾기.
- *
- * 매칭 전략 (순서대로 시도):
- *   1. exact: `세일즈PT_ {N}기 {name} 수강생 경영일지` 정확 일치 (빠른 경로, 7기 호환).
- *   2. contains-all: `["세일즈PT", "{N}기", {name}, "경영일지"]` 토큰을 모두 포함하는 시트.
- *      → "수강생" 유무 무관 매칭 (8기 제목엔 "수강생"이 빠짐). `(new)`/` 사본` suffix 도 흡수.
- *      숫자경계 가드로 "8기"가 "18기"에 오매칭 안 됨. 2개+ 모호면 null(오등록 방지).
- *
- * cohort=T(트레이너) 인 경우 null 반환 (검색 안 함).
+ * Drive 파일명 검색 — 미등록 시트 찾기(미등록 fallback. 등록자는 findExistingSheetIdByCohortName).
+ *  - 아레나(A{n}-{m}기): `세일즈PT_A{n}_{m}기 {name}_대표님 경영일지` exact → 토큰 contains.
+ *  - 일반: `세일즈PT_ {N}기 {name} 수강생 경영일지` exact → "수강생" 무관 토큰 contains.
+ *    숫자경계 가드("8기"≠"18기"), 2개+ 모호면 null. cohort=T → null(검색 안 함).
  */
 export async function findSheetByCohortName(
   cohort: string,
   name: string,
 ): Promise<string | null> {
   if (String(cohort).trim().toUpperCase() === "T") return null;
-  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
   const cleanName = name.trim();
+
+  // 아레나(A{n}-{m}기) → "세일즈PT_A{n}_{m}기 {이름}_대표님 경영일지". 부부는 토큰 contains 로 흡수.
+  const arena = String(cohort).trim().match(/^A(\d+)-(\d+)기?$/);
+  if (arena) {
+    const [, season, gisu] = arena;
+    const exactArena = `세일즈PT_A${season}_${gisu}기 ${cleanName}_대표님 경영일지`;
+    const ex = await findSheetByExactName(exactArena);
+    if (ex) return ex;
+    return findSheetByNameContainsAll([
+      "세일즈PT",
+      `A${season}_${gisu}기`,
+      cleanName,
+      "대표님",
+      "경영일지",
+    ]);
+  }
+
+  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
   const exactName = `세일즈PT_ ${cohortNum}기 ${cleanName} 수강생 경영일지`;
   const exact = await findSheetByExactName(exactName);
   if (exact) return exact;
@@ -471,14 +476,11 @@ export async function findSheetByCohortName(
   ]);
 }
 
-// claimRegistry 는 lib/repo/users-claim.ts 로 분리 (500줄 cap).
-// 외부 호출부 호환성 위해 그대로 re-export.
+// 500줄 cap 분리 — 호환 re-export.
 export { claimRegistry } from "./users-claim";
-
-// Admin prep row 등록은 lib/repo/users-prep.ts 로 분리 (500줄 cap).
 export { addTraineePrepRow } from "./users-prep";
 
-// Header helper — 레지스트리 시트를 처음 만들 때 1회 실행.
+// 레지스트리 시트 헤더 1회 생성.
 export async function ensureRegistryHeader(): Promise<void> {
   const reg = registry();
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));

@@ -5,6 +5,8 @@ import {
   decideMemberAction,
   arenaSeasonLabel,
   arenaCohortLabel,
+  arenaCohortLabelParts,
+  isClaimableCohort,
   buildArenaSheetTitle,
   buildArenaCompanyFolderName,
   decideArenaAction,
@@ -235,6 +237,42 @@ describe("arena cohort 라벨 정규화 일치 (prep ↔ claim)", () => {
 
   it("트레이너 오인 방지: 아레나 라벨은 'T' 가 아님", () => {
     expect(arenaCohortLabel(1, 1).toUpperCase()).not.toBe("T");
+  });
+});
+
+describe("arenaCohortLabelParts", () => {
+  it("아레나 라벨 파싱 (기 유무 무관)", () => {
+    expect(arenaCohortLabelParts("A1-0기")).toEqual({ season: 1, gisu: 0 });
+    expect(arenaCohortLabelParts("A1-9기")).toEqual({ season: 1, gisu: 9 });
+    expect(arenaCohortLabelParts("A12-3")).toEqual({ season: 12, gisu: 3 });
+    expect(arenaCohortLabelParts(" A1-1기 ")).toEqual({ season: 1, gisu: 1 });
+  });
+  it("비아레나 → null", () => {
+    expect(arenaCohortLabelParts("8기")).toBeNull();
+    expect(arenaCohortLabelParts("8")).toBeNull();
+    expect(arenaCohortLabelParts("T")).toBeNull();
+    expect(arenaCohortLabelParts("A1")).toBeNull();
+    expect(arenaCohortLabelParts("")).toBeNull();
+  });
+});
+
+describe("isClaimableCohort (claim 검증 게이트)", () => {
+  it("숫자 수강생·트레이너 허용 (회귀 없음)", () => {
+    expect(isClaimableCohort("8")).toBe(true);
+    expect(isClaimableCohort("8기")).toBe(true);
+    expect(isClaimableCohort("T")).toBe(true);
+    expect(isClaimableCohort("t")).toBe(true);
+  });
+  it("아레나 A{n}-{m}기 허용", () => {
+    expect(isClaimableCohort("A1-0기")).toBe(true);
+    expect(isClaimableCohort("A1-9기")).toBe(true);
+    expect(isClaimableCohort("A2-3기")).toBe(true);
+  });
+  it("형식 오류 거부", () => {
+    expect(isClaimableCohort("")).toBe(false);
+    expect(isClaimableCohort("A1")).toBe(false);
+    expect(isClaimableCohort("abc")).toBe(false);
+    expect(isClaimableCohort("A-1기")).toBe(false);
   });
 });
 

@@ -31,6 +31,7 @@ import {
   findUserByEmail,
 } from "@/repo/users";
 import { writeProfile, readProfileBundle } from "@/repo/sales";
+import { arenaCohortLabelParts } from "@/service/cohort-token";
 import type { CachedLabels } from "@/repo/users-claim";
 
 export type ClaimErrorReason = "not_found" | "ambiguous";
@@ -157,10 +158,14 @@ export async function claimAccount(
   const persisted = await findUserByEmail(email);
   const status: "active" | "pending" = persisted?.status === "active" ? "active" : "pending";
 
-  const cohortNum = cohortTrim.replace(/기\s*$/, "").trim();
+  // 아레나면 "A{시즌}-{기수}기" 라벨 유지, 일반은 숫자(기 strip).
+  const parts = arenaCohortLabelParts(cohortTrim);
+  const cohortLabel = parts
+    ? `A${parts.season}-${parts.gisu}기`
+    : cohortTrim.replace(/기\s*$/, "").trim();
   return {
     email,
-    cohort: cohortNum,
+    cohort: cohortLabel,
     name: name.trim(),
     spreadsheetId,
     role: "trainee",
