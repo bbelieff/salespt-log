@@ -116,6 +116,19 @@ export default async function AdminLandingPage() {
             </div>
           </Link>
 
+          <Link
+            href="/admin/arena"
+            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-purple-300 hover:shadow-lg"
+          >
+            <div className="text-3xl">🏆</div>
+            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-purple-600">
+              아레나 관리
+            </div>
+            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+              회장(기수임원) 지정 + 기수별 전광판(주차 평균).
+            </div>
+          </Link>
+
           {/* 트레이너 페이지 — 마스터만 (관리부서는 본인 트레이너 페이지 따로). */}
           {isMaster && (
             <Link

@@ -38,6 +38,8 @@ export interface MeProfile {
   feedbackFolderId?: string;
   /** Drive 연결 상태: "ok" / "" / "error" (registry P). */
   driveLinkStatus?: string;
+  /** 아레나 회장이 맡은 cohort (registry R, 정규화). 빈값=일반. "기수임원" 진입점 노출용. */
+  captainOf?: string;
 }
 
 function toISO(d: Date): string {
@@ -319,5 +321,6 @@ export async function loadMe(email: string): Promise<MeProfile> {
     spreadsheetId: user.spreadsheetId,
     feedbackFolderId: user.feedbackFolderId,
     driveLinkStatus: user.driveLinkStatus,
+    captainOf: user.captainOf,
   };
 }

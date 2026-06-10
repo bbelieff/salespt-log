@@ -135,6 +135,16 @@ export default function TopHeader({
               ← 메뉴
             </Link>
           )}
+          {/* 아레나 회장 — 플레이어 겸직(role=trainee)이라 sessionRole 무관, captainOf 로 판별. */}
+          {me.data?.captainOf && (
+            <Link
+              href="/captain"
+              aria-label="기수임원 페이지"
+              className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100 sm:text-xs"
+            >
+              ★ 기수임원
+            </Link>
+          )}
         </div>
 
         {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트).
@@ -236,6 +246,18 @@ export default function TopHeader({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
                 <span>트레이너 페이지 →</span>
+              </Link>
+            )}
+            {me.data?.captainOf && (
+              <Link
+                href="/captain"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                </svg>
+                <span>기수임원 페이지 →</span>
               </Link>
             )}
             <button
