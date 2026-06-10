@@ -30,8 +30,8 @@ import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 import { nameMatches } from "./name-match";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:Q1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:Q`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
 
 function parseRow(r: unknown[]): User | null {
   // **CRITICAL** — 빈 문자열 status/role row 가 drop 되면 모든 수강생 차단 사고
@@ -75,6 +75,8 @@ function parseRow(r: unknown[]): User | null {
     driveParentPath: String(r[13] ?? "").trim(),
     feedbackFolderId: String(r[14] ?? "").trim(),
     driveLinkStatus: String(r[15] ?? "").trim(),
+    // r[16]=Q memo (write-only, User 에 미노출). r[17]=R captainOf.
+    captainOf: String(r[17] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -483,7 +485,7 @@ export async function ensureRegistryHeader(): Promise<void> {
   await appendRows(
     reg.spreadsheetId,
     HEADER_RANGE(reg.tab),
-    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo"]],
+    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo", "captain_of"]],
     { valueInputOption: "RAW" },
   );
 }
