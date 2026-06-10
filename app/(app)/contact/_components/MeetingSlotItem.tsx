@@ -212,6 +212,7 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
           />
           <CompanyInfoEditor
             value={meeting.업체정보}
+            txtCompanyName={meeting.업체명}
             onSave={(ci) => onPatch({ 업체정보: ci })}
           />
           <Actions

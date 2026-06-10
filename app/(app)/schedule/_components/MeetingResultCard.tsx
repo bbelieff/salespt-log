@@ -181,7 +181,7 @@ export default function MeetingResultCard({
             </span>
           </div>
 
-          <CompanyInfoEditor value={meeting.업체정보} busy={pending} onSave={(ci) => onPatch({ 업체정보: ci })} />
+          <CompanyInfoEditor value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">

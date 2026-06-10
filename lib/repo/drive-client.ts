@@ -38,9 +38,10 @@ function driveWriteClient(): drive_v3.Drive {
   return cachedWrite;
 }
 
-// 파일 생성(복제·폴더) 전용 (ADR-0015). SA 는 용량 0 → My-Drive 공유 폴더에 파일을
+// 파일 생성(복제·폴더·TXT) 전용 (ADR-0015/0016). SA 는 용량 0 → My-Drive 공유 폴더에 파일을
 // 소유 생성 불가. ADMIN_DRIVE_REFRESH_TOKEN 있으면 belie OAuth(belie 소유), 없으면 SA 폴백.
-function driveCreatorClient(): drive_v3.Drive {
+// export — drive-txt.ts(업체정보 TXT)가 재사용.
+export function driveCreatorClient(): drive_v3.Drive {
   if (cachedCreator) return cachedCreator;
   const refresh = adminDriveRefreshToken();
   if (refresh) {

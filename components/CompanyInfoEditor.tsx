@@ -47,9 +47,16 @@ interface Props {
   value?: CI;
   onSave: (ci: CI) => void;
   busy?: boolean;
+  /** 있으면 "업체정보생성(TXT)" 버튼 노출 — O 폴더에 1본 덮어쓰기 (§3-3). */
+  txtCompanyName?: string;
 }
 
-export default function CompanyInfoEditor({ value, onSave, busy }: Props) {
+export default function CompanyInfoEditor({
+  value,
+  onSave,
+  busy,
+  txtCompanyName,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [draft, setDraft] = useState<CI>(() => ({ ...emptyCi(), ...value }));
@@ -57,6 +64,35 @@ export default function CompanyInfoEditor({ value, onSave, busy }: Props) {
     업체: "",
     대표자: "",
   });
+  const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
+  const [txtBusy, setTxtBusy] = useState(false);
+
+  async function exportTxt() {
+    if (!txtCompanyName || txtBusy) return;
+    setTxtBusy(true);
+    setTxtMsg(null);
+    try {
+      const res = await fetch("/api/company-info/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 업체명: txtCompanyName, 업체정보: draft }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setTxtMsg({
+          ok: true,
+          text: d.updated ? "TXT 갱신 완료(1본 유지)" : "TXT 생성 완료",
+          link: d.webViewLink || undefined,
+        });
+      } else {
+        setTxtMsg({ ok: false, text: d.error ?? `실패 (HTTP ${res.status})` });
+      }
+    } catch (e) {
+      setTxtMsg({ ok: false, text: e instanceof Error ? e.message : "네트워크 오류" });
+    } finally {
+      setTxtBusy(false);
+    }
+  }
 
   const set = (k: keyof CI, v: string) =>
     setDraft((d) => ({ ...d, [k]: v }) as CI);
@@ -183,6 +219,16 @@ export default function CompanyInfoEditor({ value, onSave, busy }: Props) {
             >
               {busy ? "저장 중…" : "저장"}
             </button>
+            {txtCompanyName && (
+              <button
+                type="button"
+                onClick={exportTxt}
+                disabled={txtBusy}
+                className="rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                {txtBusy ? "생성 중…" : "📄 업체정보생성"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setModal(true)}
@@ -191,6 +237,19 @@ export default function CompanyInfoEditor({ value, onSave, busy }: Props) {
               팝업 편집
             </button>
           </div>
+          {txtMsg && (
+            <p className={`text-[11px] ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
+              {txtMsg.ok ? "✓" : "✕"} {txtMsg.text}
+              {txtMsg.link && (
+                <>
+                  {" · "}
+                  <a href={txtMsg.link} target="_blank" rel="noopener noreferrer" className="underline">
+                    파일 열기
+                  </a>
+                </>
+              )}
+            </p>
+          )}
         </div>
       )}
 
