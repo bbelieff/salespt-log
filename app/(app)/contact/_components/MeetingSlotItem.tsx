@@ -12,6 +12,7 @@ import { useState } from "react";
 import type { Channel, Meeting } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 import TimeSelectPair from "@/components/ui/TimeSelectPair";
+import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -128,12 +129,13 @@ function NewItem({
 // ── 등록완료 슬롯 ────────────────────────────────────────────
 function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
   const [open, setOpen] = useState(false);
+  // 예약비고 자리는 업체정보(CompanyInfoEditor)로 교체 (consultation-log §3-1).
+  // 기존 예약비고 값은 partial patch 라 보존됨(일정·계약 탭에서 계속 편집 가능).
   const [draft, setDraft] = useState({
     미팅날짜: meeting.미팅날짜,
     미팅시간: meeting.미팅시간,
     업체명: meeting.업체명,
     장소: meeting.장소,
-    예약비고: meeting.예약비고,
   });
 
   const collapsedTime = meeting.미팅시간 || "—:—";
@@ -208,9 +210,9 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
             value={draft.장소}
             onChange={(v) => setDraft((d) => ({ ...d, 장소: v }))}
           />
-          <FieldNote
-            value={draft.예약비고}
-            onChange={(v) => setDraft((d) => ({ ...d, 예약비고: v }))}
+          <CompanyInfoEditor
+            value={meeting.업체정보}
+            onSave={(ci) => onPatch({ 업체정보: ci })}
           />
           <Actions
             primaryLabel="💾 수정 완료"

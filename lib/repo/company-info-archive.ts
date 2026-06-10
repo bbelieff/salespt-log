@@ -13,7 +13,7 @@
 import { sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 import { COMPANY_FIELDS } from "./meetings";
-import type { CompanyInfo } from "@/types";
+import { CompanyInfo } from "@/types";
 
 const TAB = SHEET_RANGES.companyInfoArchive.tab;
 const HEADER_RANGE = `'${TAB}'!${SHEET_RANGES.companyInfoArchive.headerRow}`;
@@ -167,6 +167,36 @@ export async function upsertCompanyInfoArchive(
     requestBody: { values: [rowValues] },
   });
   return { row, created: existing === null };
+}
+
+/** 06 키 행의 업체정보 읽기 — payment 카드 표시용. 행 없으면 null. */
+export async function readCompanyInfoArchiveRow(
+  spreadsheetId: string,
+  계약일: string,
+  업체명: string,
+): Promise<CompanyInfo | null> {
+  await ensureCompanyInfoTab(spreadsheetId);
+  const row = await findRowByRef(spreadsheetId, companyContractRef(계약일, 업체명));
+  if (row === null) return null;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${TAB}'!E${row}:Y${row}`,
+  });
+  const r = res.data.values?.[0] ?? [];
+  const ci: Record<string, unknown> = {};
+  COMPANY_FIELDS.forEach((f, i) => {
+    ci[f] = String(r[i] ?? "").trim();
+  });
+  const raw = String(r[COMPANY_FIELDS.length] ?? "").trim();
+  if (raw) {
+    try {
+      ci.커스텀 = JSON.parse(raw);
+    } catch {
+      /* 손상 JSON 무시 */
+    }
+  }
+  const parsed = CompanyInfo.safeParse(ci);
+  return parsed.success ? parsed.data : null;
 }
 
 /** 계약ref 행 존재 여부 — patchMeeting 동기화 가드(계약 고객만 06 갱신). */
