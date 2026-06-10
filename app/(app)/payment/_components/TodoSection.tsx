@@ -16,6 +16,7 @@ const TYPE_BADGE: Record<TodoType, string> = {
   전화: "bg-green-100 text-green-700",
   메시지: "bg-violet-100 text-violet-700",
   기타: "bg-gray-100 text-gray-600",
+  일반: "bg-teal-100 text-teal-700", // 일반이벤트 (비집계, tokens 일반이벤트 teal)
 };
 
 function fmtWhen(예정일자: string, 예정시각: string): string {

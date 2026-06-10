@@ -466,8 +466,8 @@ H / O / W: spacer (비움). A: 비움.
 
 **SHEET_RANGES.todos 키 매핑**:
 - `todos` (JS 키) ↔ "05 실무투두" (시트 탭명)
-- 범위: `A2:M` (13컬럼 A~M, 1행=1투두, append/update)
-- `headerRow = A1:M1`
+- 범위: `A2:N` (14컬럼 A~N, 1행=1투두, append/update)
+- `headerRow = A1:N1`
 - **앱 자동 생성** (`ensureTodoTab`): 탭이 없으면 `addSheet` + 헤더행 write. 04처럼 사전 존재 가정 안 함 — 신규 탭이라 전 수강생 시트에 **lazy 생성**(첫 접근 시). in-process 캐시로 중복 호출 회피.
 
 **역할**: (계약 × 기관) 단위 실무 ToDo 누적. `04 업체관리`(미팅)·`02 계약수납관리`(수납)와 **완전 격리** → 미팅 집계 수식 영향 0 (ADR-0006). 캘린더가 04+05 합쳐 표시(읽기 전용).
@@ -478,7 +478,7 @@ H / O / W: spacer (비움). A: 비움.
 | **B** | contractRef | text | 계약 안정키 (계약일+업체명) — 시트 행번호 아님 |
 | **C** | institutionRef | text | 슬롯 진행기관 (Scope 3 조인 키) |
 | **D** | 업체명 | text | 표시·조인 |
-| **E** | type | enum(4) | 기타 / 미팅 / 전화 / 메시지 (캘린더 아이콘) |
+| **E** | type | enum(5) | 기타 / 미팅 / 전화 / 메시지 / **일반**(캘린더 일반이벤트, 비집계 — consultation-log §1-3) |
 | **F** | 제목 | text | 슬롯에 접힘 누적 |
 | **G** | 예정일자 | date | 캘린더 표시일 (YYYY-MM-DD) |
 | **H** | 예정시각 | time | HH:MM — 시 08~20 / 분 00·30, 빈 허용 |
@@ -487,10 +487,11 @@ H / O / W: spacer (비움). A: 비움.
 | **K** | showOnCalendar | bool | 캘린더 표시 ON/OFF (기본 ON) |
 | **L** | 완료여부 | bool | done |
 | **M** | 생성시각 | text | created_at (ISO) |
+| **N** | 분류 | text | 일반이벤트 카테고리 `기존`(기존 고객) \| `기타`(개인 일정). 그 외 type 은 빈값 |
 
 **키 설계** (design §6.1): `contractRef` = `${계약일}|${업체명}` 합성키(행 이동에 강건), `institutionRef` = 슬롯 진행기관 텍스트. 슬롯 ToDo 조회 = (contractRef 일치 && institutionRef 일치).
 
-**수식 컬럼 없음** → 04의 split-write(N/O/Q/S 수식 보존) 불필요. 전체 행 `A:M` 한 번에 write. update는 자기 `id` 행만(findById→merge), append는 A열 기준 빈 행만 → 타 사용자값 침범 0.
+**수식 컬럼 없음** → 04의 split-write(N/O/Q/S 수식 보존) 불필요. 전체 행 `A:N` 한 번에 write. update는 자기 `id` 행만(findById→merge), append는 A열 기준 빈 행만 → 타 사용자값 침범 0.
 
 **자동 연동 없음** — 앱이 직접 append/update/clear (id = UUID).
 

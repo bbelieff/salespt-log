@@ -11,10 +11,12 @@ import { getCurrentUserEmail } from "@/auth/stub";
 import { TodoType } from "@/types";
 
 const CreateBody = z.object({
-  contractRef: z.string().min(1, "contractRef 필수"),
+  // 일반이벤트(type=일반)는 계약 비연동 → contractRef 빈값 허용 (consultation-log §1-3).
+  contractRef: z.string().default(""),
   institutionRef: z.string().default(""),
   업체명: z.string().default(""),
   type: TodoType.default("기타"),
+  분류: z.string().default(""), // 일반이벤트 카테고리 "기존"|"기타"
   제목: z.string().min(1, "제목 필수"),
   예정일자: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
   예정시각: z
@@ -25,6 +27,8 @@ const CreateBody = z.object({
   장소: z.string().default(""),
   상세: z.string().default(""),
   showOnCalendar: z.boolean().default(true),
+}).refine((d) => d.type === "일반" || d.contractRef.trim() !== "", {
+  message: "contractRef 필수 (일반이벤트 제외)",
 });
 
 export async function GET(req: NextRequest) {

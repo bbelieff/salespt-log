@@ -65,7 +65,7 @@ function toISO(d: Date): string {
 }
 
 const TAB = SHEET_RANGES.todos.tab;
-const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.todos.range}`; // A2:M
+const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.todos.range}`; // A2:N
 const HEADER_RANGE = `${tabRef(TAB)}!${SHEET_RANGES.todos.headerRow}`; // A1:M1
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`;
 
@@ -84,6 +84,7 @@ const COL = {
   showOnCalendar: 10,
   완료여부: 11,
   생성시각: 12,
+  분류: 13, // N — 일반이벤트 카테고리(기존/기타), consultation-log §1-3
 } as const;
 
 const HEADER: string[] = [
@@ -100,6 +101,7 @@ const HEADER: string[] = [
   "showOnCalendar",
   "완료여부",
   "생성시각",
+  "분류",
 ];
 
 /** 자유/키 텍스트는 apostrophe prefix 로 plain text 강제 (날짜·`%`·`=` 자동 변환 방지).
@@ -108,9 +110,9 @@ function text(v: string): string {
   return v ? `'${v}` : "";
 }
 
-/** Todo → 시트 1행 배열 (A~M, 13칸). */
+/** Todo → 시트 1행 배열 (A~N, 14칸). */
 function todoToRow(t: Todo): (string | number | boolean)[] {
-  const row: (string | number | boolean)[] = new Array(13).fill("");
+  const row: (string | number | boolean)[] = new Array(14).fill("");
   row[COL.id] = t.id;
   row[COL.contractRef] = text(t.contractRef);
   row[COL.institutionRef] = text(t.institutionRef);
@@ -124,6 +126,7 @@ function todoToRow(t: Todo): (string | number | boolean)[] {
   row[COL.showOnCalendar] = t.showOnCalendar;
   row[COL.완료여부] = t.완료여부;
   row[COL.생성시각] = text(t.생성시각); // ISO 텍스트 (serial 변환 방지)
+  row[COL.분류] = text(t.분류);
   return row;
 }
 
@@ -149,6 +152,7 @@ function rowToTodo(r: unknown[]): Todo | null {
     ),
     완료여부: r[COL.완료여부] === true || r[COL.완료여부] === "TRUE",
     생성시각: String(r[COL.생성시각] ?? ""),
+    분류: String(r[COL.분류] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -250,7 +254,7 @@ async function writeTodoRow(
 ): Promise<void> {
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:M${sheetRow}`,
+    range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -267,7 +271,7 @@ export async function findById(
   if (sheetRow === null) return null;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:M${sheetRow}`,
+    range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
@@ -315,7 +319,7 @@ export async function clearTodo(
   if (sheetRow === null) return;
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:M${sheetRow}`,
+    range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [Array(13).fill("")] },
   });
