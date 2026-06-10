@@ -17,6 +17,7 @@ import {
 } from "@/repo/contract-payment";
 import type { ContractPayment } from "@/types";
 import { findByDate, updateMeeting } from "@/repo/meetings";
+import { upsertCompanyInfoArchive } from "@/repo/company-info-archive";
 
 async function resolveSheet(email: string): Promise<string> {
   const user = await findUserByEmail(email);
@@ -41,7 +42,24 @@ export async function addFromContract(
   data: { 계약일: string; 업체명: string; 수임비: number },
 ): Promise<{ row: number }> {
   const spreadsheetId = await resolveSheet(email);
-  return appendFromContract(spreadsheetId, data);
+  const result = await appendFromContract(spreadsheetId, data);
+  // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2). 그 미팅의 04
+  // 업체정보(T~AN)를 복사해 1행 upsert. 실패해도 계약 액션은 성공(warn only).
+  try {
+    const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
+    const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
+    await upsertCompanyInfoArchive(spreadsheetId, {
+      업체명: data.업체명,
+      계약일: data.계약일,
+      업체정보: m?.업체정보,
+    });
+  } catch (e) {
+    console.warn(
+      "[contract-payment] 06 업체정보 스냅샷 실패 (계약 자체는 성공):",
+      e instanceof Error ? e.message : e,
+    );
+  }
+  return result;
 }
 
 /**
