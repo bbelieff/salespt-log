@@ -161,6 +161,15 @@ export const SHEET_RANGES = {
     range: "A2:AN",
   },
 
+  // ── 06 업체정보 (계약 고객 동기화 표 — consultation-log §1-2) ─────
+  // 신규 탭(ensure 자동 생성). A=업체명 B=계약일 C=계약ref(계약일|업체명) D=갱신시각
+  // + E~X=04 업체정보 20필드 미러 + Y=커스텀 JSON. 키=계약ref. 04 가 SSOT, 06 은 동기화 사본.
+  companyInfoArchive: {
+    tab: "06 업체정보",
+    headerRow: "A1:Y1",
+    range: "A2:Y",
+  },
+
   // ── 계약수납관리 v2 (1행 = 1계약, A~AD) ─────────────────────
   // 일정·계약 탭에서 계약 액션 시 row 자동 생성 (C/D/E 자동 채움).
   // 사용자가 계약수납탭에서 F~L (체크박스 7, "ㅇ" 표기) + M~AD (분할수납 3슬롯×6필드) 입력.

@@ -29,6 +29,10 @@ import {
   updateLinkFields as updateContractLink,
 } from "@/repo/contract-payment";
 import {
+  hasCompanyInfoArchiveRow,
+  upsertCompanyInfoArchive,
+} from "@/repo/company-info-archive";
+import {
   Channel,
   ChannelDailyRow,
   CHANNEL_ORDER,
@@ -75,10 +79,7 @@ const EMPTY_METRICS: ChannelDailyRowMetrics = {
 
 // ── Public API ─────────────────────────────────────────────────
 
-/**
- * 한 날짜의 4채널 4지표 + 그 날 미팅 목록.
- * UI는 이 결과를 받아 컨택탭에 그대로 렌더.
- */
+/** 한 날짜의 4채널 4지표 + 그 날 미팅 목록 (컨택탭 렌더 입력). */
 export async function loadDay(
   email: string,
   date: string,
@@ -94,10 +95,7 @@ export async function loadDay(
   const { rows } = inRange
     ? await readWeek(spreadsheetId, week)
     : { rows: [] };
-  // ⭐ 컨택관리 탭은 "예약일(컨택한 날)" 기준으로 미팅 조회.
-  // 4/28에 컨택해서 4/29에 잡힌 미팅도 4/28 view에 보여야 함.
-  // 미팅날짜 기준 조회는 일정·계약 탭(PR 3) 몫.
-  // SSOT: sheet-structure.md §2 영업관리!I = 예약일 TEXTJOIN
+  // ⭐ 컨택탭은 예약일(컨택한 날) 기준 조회 — 미팅날짜 기준은 일정·계약 탭 몫 (sheet-structure §2).
   const meetings = await findByDate(spreadsheetId, date, "reservation");
 
   // 그 날짜의 4채널만 필터
@@ -299,6 +297,31 @@ export async function patchMeeting(
     }
   }
   await updateMeeting(spreadsheetId, id, partial);
+
+  // 06 업체정보 동기화 (consultation-log §1-2) — 업체정보 저장 시 계약 고객이면
+  // 06 같은 키(계약일|업체명) 행 갱신. 실패해도 04 저장은 성공(warn only).
+  if (partial.업체정보 !== undefined) {
+    try {
+      const m = await findById(spreadsheetId, id); // merge 후 재읽기 — 최신 업체정보
+      if (m?.미팅날짜 && m.업체명) {
+        if (
+          m.상태 === "계약" ||
+          (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명))
+        ) {
+          await upsertCompanyInfoArchive(spreadsheetId, {
+            업체명: m.업체명,
+            계약일: m.미팅날짜,
+            업체정보: m.업체정보,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "[contact] 06 업체정보 동기화 실패 (04 저장은 성공):",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
 }
 
 /** 자손 미팅 transitive cascade (post-order). 자식 계약이면 02 row 도 clear. */
