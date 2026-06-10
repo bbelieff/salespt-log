@@ -1,7 +1,4 @@
-/**
- * MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태).
- * 닫힌 카드 액션: [2a] 되돌리기 + [2b] 추가 미팅.
- */
+// MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 "use client";
 
 import { useState } from "react";
@@ -19,6 +16,7 @@ import CancelForm from "./CancelForm";
 import RescheduleForm from "./RescheduleForm";
 import BasicEditDetails from "./BasicEditDetails";
 import AddMeetingForm from "./AddMeetingForm";
+import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -101,8 +99,7 @@ export default function MeetingResultCard({
     const round = prev.split("\n").length + 1;
     return `${prev}\n${round}회차: ${trimmed}`;
   };
-  // Phase 2: 계약 → 완료/취소 전환 시 계약카드 삭제 경고.
-  const confirmContractDrop = (): boolean =>
+  const confirmContractDrop = (): boolean => // 계약→완료/취소 시 계약카드 삭제 경고.
     state !== "contract" ||
     window.confirm(`상태 변경 시 수납탭 계약카드 1건 삭제 (₩${meeting.수임비.toLocaleString()}). 진행?`);
   const handleDone = (reason: string) => {
@@ -176,15 +173,15 @@ export default function MeetingResultCard({
       {open && (
         <div className="space-y-3 border-t border-gray-200/60 px-3 py-3">
           <div className="flex items-center justify-between text-xs">
-            {/* 2026-05-18 [1]: 예약일 표시 — 언제 잡은 미팅인지 추적 + 컨택관리에서 그날 삭제 가능. */}
             <span className="text-gray-500">
-              📅 예약일{" "}
-              <b className="text-gray-800">{meeting.예약일 || "—"}</b>
+              📅 예약일 <b className="text-gray-800">{meeting.예약일 || "—"}</b>
             </span>
             <span className="text-gray-400">
               현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b>
             </span>
           </div>
+
+          <CompanyInfoEditor value={meeting.업체정보} busy={pending} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">
