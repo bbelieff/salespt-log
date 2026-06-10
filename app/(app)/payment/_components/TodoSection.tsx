@@ -8,6 +8,7 @@
 import { useState } from "react";
 import type { Todo, TodoType } from "@/types";
 import { usePatchTodo, useRemoveTodo } from "@/query/todos-hooks";
+import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import TodoFormModal from "./TodoFormModal";
 
 const TYPE_BADGE: Record<TodoType, string> = {
@@ -31,6 +32,8 @@ interface Props {
   draftInstitution?: string;
   companyName: string;
   todos: Todo[];
+  /** 캘린더 포커스 ToDo id — 해당 카드 스크롤+하이라이트(3s). */
+  focusId?: string | null;
   /** [4] 미저장 진행기관으로 추가 시 슬롯(계약)을 먼저 저장. */
   onEnsureSaved?: () => void;
 }
@@ -41,11 +44,16 @@ export default function TodoSection({
   draftInstitution,
   companyName,
   todos,
+  focusId,
   onEnsureSaved,
 }: Props) {
   const [showModal, setShowModal] = useState(false);
   const patch = usePatchTodo();
   const remove = useRemoveTodo();
+
+  // 캘린더 포커스 — 매칭 ToDo 카드 스크롤 + 3초 하이라이트 링.
+  const focusActive = !!focusId && todos.some((t) => t.id === focusId);
+  const { ref: focusedRef, ring } = useFocusScroll<HTMLDivElement>(focusActive);
   // 완료 토글 낙관적 UI (2026-06 PostHog 분노클릭): checked 가 서버값에 묶여 시트 write
   // 완료 전까지 반응이 없던 lag 제거. id→희망값 override, onSettled 시 해제.
   const [optimisticDone, setOptimisticDone] = useState<Record<string, boolean>>({});
@@ -90,7 +98,12 @@ export default function TodoSection({
           {todos.map((t) => (
             <div
               key={t.id}
-              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5"
+              ref={t.id === focusId ? focusedRef : undefined}
+              className={`flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 scroll-mt-28 ${
+                ring && t.id === focusId
+                  ? "animate-pulse ring-2 ring-inset ring-blue-400"
+                  : ""
+              }`}
             >
               <label className="-m-1 flex shrink-0 cursor-pointer items-center p-1">
                 <input

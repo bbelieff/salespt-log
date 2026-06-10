@@ -232,7 +232,14 @@ export default function CalendarPage() {
                       return (
                         <li
                           key={`m-${m.id}`}
-                          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            router.push(
+                              `/schedule?date=${selectedDate}&focus=${m.id}`,
+                            )
+                          }
+                          className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
                           style={{
                             borderLeft: `3px solid ${CHANNEL_HEX[m.channel]}`,
                           }}
@@ -277,7 +284,10 @@ export default function CalendarPage() {
                     return (
                       <li
                         key={`t-${t.id}`}
-                        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push(`/payment?focus=${t.id}`)}
+                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
                         style={{ borderLeft: `3px solid ${PRACTICE_HEX}` }}
                       >
                         <span

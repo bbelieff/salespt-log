@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ContractPayment } from "@/types";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
@@ -45,6 +45,8 @@ interface Props {
   accentFamily?: AccentFamily;
   /** bare: 자체 테두리/라운드/그림자 없이 내용만 렌더(page 가 윤곽선 소유 — 데스크탑 마스터-디테일). */
   bare?: boolean;
+  /** 캘린더 → /payment?focus=<todoId>. 이 행에 해당 ToDo 있으면 자동 펼침+하이라이트. */
+  focusTodoId?: string | null;
 }
 
 function fmtMoney(n: number): string {
@@ -95,6 +97,7 @@ export default function ContractRow({
   forceOpen = false,
   accentFamily,
   bare = false,
+  focusTodoId,
 }: Props) {
   const [open, setOpen] = useState(false);
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
@@ -108,6 +111,16 @@ export default function ContractRow({
   const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
   const todosQuery = useTodosByContract(contractRef);
   const allTodos = todosQuery.data?.todos ?? [];
+
+  // 캘린더 포커스 ToDo 가 이 행에 있으면 자동 펼침(모바일 아코디언/PC 목록 선택) → 하이라이트 노출.
+  const hasFocusTodo =
+    !!focusTodoId && allTodos.some((t) => t.id === focusTodoId);
+  useEffect(() => {
+    if (!hasFocusTodo) return;
+    if (selectable) onSelect?.();
+    else if (!forceOpen) setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFocusTodo]);
 
   // [3] 진행기관 후보 = 전 계약 distinct(prop) + 이 계약 투두 institutionRef + 현재 슬롯값.
   const slotInstitutionOptions = useMemo(() => {
@@ -372,6 +385,7 @@ export default function ContractRow({
                 savedInstitution={cp.수납1.진행기관}
                 institutionOptions={slotInstitutionOptions}
                 todos={allTodos}
+                focusTodoId={focusTodoId}
                 onEnsureSaved={() => onSave(draft)}
                 onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
               />
@@ -385,6 +399,7 @@ export default function ContractRow({
                   savedInstitution={cp.수납2.진행기관}
                   institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
+                  focusTodoId={focusTodoId}
                   onEnsureSaved={() => onSave(draft)}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납2: next }))
@@ -402,6 +417,7 @@ export default function ContractRow({
                   savedInstitution={cp.수납3.진행기관}
                   institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
+                  focusTodoId={focusTodoId}
                   onEnsureSaved={() => onSave(draft)}
                   onChange={(next) =>
                     setDraft((d) => ({ ...d, 수납3: next }))

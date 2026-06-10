@@ -12,7 +12,7 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
   useAppendMeeting,
@@ -60,6 +60,13 @@ export default function SchedulePage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  // 캘린더 → ?focus=<meetingId> → 그 카드 스크롤+하이라이트. window.location 직접 파싱(Suspense 회피).
+  const [focusId, setFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get("focus");
+    if (f) setFocusId(f);
+  }, []);
 
   // weekStart 동기화: ?date= 우선(그 주차로 잠금), 없으면 today 주차로 정렬.
   useWeekStartSync(
@@ -365,13 +372,7 @@ export default function SchedulePage() {
     onSwipeRight: () => moveWeek(-1),
   });
 
-  /**
-   * 날짜 클릭 시 세로 스크롤 (2026-05-17 [6] 재조정).
-   * 주 시작 = 금요일. 인덱스 매핑 (사용자 명세):
-   *   금/토/일 (idx 0~2) → 상단 (block: "start")
-   *   월/화/수/목 (idx 3~6) → 하단 (block: "end")
-   * 이전 [A4]: 월(idx 3)이 start 였음 → 사용자 정정.
-   */
+  // 날짜 클릭 세로 스크롤 — 금/토/일(idx 0~2)=start, 월~목(idx 3~6)=end (2026-05-17 [6]).
   const scrollToDay = (idx: number) => {
     const el = dayRefs.current[idx];
     if (!el) return;
@@ -434,6 +435,7 @@ export default function SchedulePage() {
         meetings={day.meetings}
         todayISO={TODAY_ISO}
         pendingId={pendingId}
+        focusId={focusId}
         onPatch={handlePatch}
         onReschedule={handleReschedule}
         onRevert={handleRevert}

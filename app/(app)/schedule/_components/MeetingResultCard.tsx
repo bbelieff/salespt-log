@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import type { Channel, Meeting } from "@/types";
+import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import {
   CARD_CLS,
   CARD_ICON,
@@ -31,6 +32,7 @@ type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 interface Props {
   meeting: Meeting;
   pending: boolean;
+  focus?: boolean; // 캘린더 이동 포커스 — 스크롤 + 3초 하이라이트 링.
   onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
   onRevert?: () => void;
@@ -47,6 +49,7 @@ function fmtMoney(n: number): string {
 export default function MeetingResultCard({
   meeting,
   pending,
+  focus,
   onPatch,
   onReschedule,
   onRevert,
@@ -60,6 +63,8 @@ export default function MeetingResultCard({
   const [action, setAction] = useState<Action>(null);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+
+  const { ref: rootRef, ring } = useFocusScroll<HTMLDivElement>(!!focus);
 
   const isCanceled = state === "canceled";
   const titleCls = isCanceled
@@ -120,7 +125,10 @@ export default function MeetingResultCard({
 
   return (
     <div
-      className={`relative ml-4 mb-2 overflow-hidden rounded-xl shadow-sm ${CARD_CLS[state]}`}
+      ref={rootRef}
+      className={`relative ml-4 mb-2 overflow-hidden rounded-xl shadow-sm scroll-mt-[280px] ${CARD_CLS[state]} ${
+        ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""
+      }`}
     >
       <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-gray-200" />
 
