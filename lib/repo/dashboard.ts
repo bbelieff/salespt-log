@@ -55,6 +55,39 @@ const WEEK_ROWS = [38, 72, 106, 140, 174, 208, 242, 276];
 const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
 
+/** 주차별 5지표 (대시보드 C33:H40 의 C~G = 생산/유입/컨택/미팅/계약). 활동량(H) 제외. */
+export interface WeeklyPerf {
+  week: number;
+  생산: number;
+  유입: number;
+  컨택: number;
+  미팅: number;
+  계약: number;
+}
+
+/** 전광판용 — 대시보드 'III. 주차별 성과'(C33:H40) 에서 8주 × 5지표 read (read-only). */
+export async function readWeeklyPerformance(
+  spreadsheetId: string,
+): Promise<WeeklyPerf[]> {
+  const res = await sheetsClient().spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges: [`${tabRef(DASH_TAB)}!C33:H40`],
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const rows = res.data.valueRanges?.[0]?.values ?? [];
+  return Array.from({ length: 8 }, (_, w) => {
+    const row = rows[w] ?? [];
+    return {
+      week: w + 1,
+      생산: num(row[0]),
+      유입: num(row[1]),
+      컨택: num(row[2]),
+      미팅: num(row[3]),
+      계약: num(row[4]),
+    };
+  });
+}
+
 export async function readDashboard(
   spreadsheetId: string,
 ): Promise<DashboardSheetData> {

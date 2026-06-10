@@ -44,12 +44,20 @@ export default async function AdminArenaPage() {
     <main className="mx-auto min-h-dvh max-w-2xl bg-white px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-lg font-black text-gray-900">아레나 관리</h1>
-        <Link
-          href="/admin"
-          className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50"
-        >
-          ← 메뉴
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/arena/scoreboard"
+            className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100"
+          >
+            전광판 →
+          </Link>
+          <Link
+            href="/admin"
+            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50"
+          >
+            ← 메뉴
+          </Link>
+        </div>
       </div>
 
       <p className="mb-4 text-xs text-gray-500">
