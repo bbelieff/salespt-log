@@ -68,6 +68,21 @@ export function arenaSeasonLabel(season: number): string {
 export function arenaCohortLabel(season: number, gisu: number): string {
   return `A${season}-${gisu}기`;
 }
+// 아레나 cohort 라벨 파싱: "A1-0기"/"A1-0" → {season:1, gisu:0}. 아니면 null.
+export function arenaCohortLabelParts(
+  cohort: string,
+): { season: number; gisu: number } | null {
+  const m = String(cohort).trim().match(/^A(\d+)-(\d+)기?$/);
+  return m ? { season: Number(m[1]), gisu: Number(m[2]) } : null;
+}
+// 클레임 가능한 cohort 형식? 숫자(수강생)·T(트레이너)·아레나(A{n}-{m}기).
+// claim 페이지 valid 로직과 일치 — /api/claim 검증 게이트가 이걸 씀.
+export function isClaimableCohort(cohort: string): boolean {
+  const c = String(cohort).trim();
+  if (!c) return false;
+  if (/^(\d+|[Tt])$/.test(c.replace(/기\s*$/, ""))) return true;
+  return arenaCohortLabelParts(c) !== null;
+}
 // 경영일지 시트 제목: `세일즈PT_A{시즌}_{기수}기 {이름}_대표님 경영일지`
 export function buildArenaSheetTitle(
   season: number,

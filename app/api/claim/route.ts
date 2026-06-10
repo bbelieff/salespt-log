@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { claimAccount, ClaimError } from "@/service/auth";
+import { isClaimableCohort } from "@/service/cohort-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 
 export async function POST(req: Request) {
@@ -32,12 +33,8 @@ export async function POST(req: Request) {
   const { cohort, name } = (body ?? {}) as { cohort?: unknown; name?: unknown };
   const cohortStr = String(cohort ?? "").trim();
   const nameStr = String(name ?? "").trim();
-  // 수강생: 숫자. 트레이너: "T"/"t" (claimAccount 가 cohort=T 면 trainer pending 으로 등록).
-  if (
-    !cohortStr ||
-    !nameStr ||
-    !/^(\d+|[Tt])$/.test(cohortStr.replace(/기\s*$/, ""))
-  ) {
+  // 수강생: 숫자. 트레이너: "T"/"t". 아레나: "A{시즌}-{기수}기" (claim 페이지 valid 와 일치).
+  if (!cohortStr || !nameStr || !isClaimableCohort(cohortStr)) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
 
