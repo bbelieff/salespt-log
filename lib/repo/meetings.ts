@@ -16,10 +16,7 @@ function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
 }
 
-// ── 시트 직렬값 ↔ ISO 변환 ─────────────────────────────────────
-// USER_ENTERED로 쓴 "2026-04-28" / "10:00"은 시트가 자동으로 날짜·시간 값으로
-// 변환해 저장. 다시 읽을 때 FORMATTED_VALUE는 로케일 형식 (예: "2026. 4. 28.")
-// 으로 와서 zod regex와 안 맞음 → SERIAL_NUMBER로 받아 ISO로 복원.
+// ── 시트 직렬값 ↔ ISO 변환 — USER_ENTERED 자동 변환분을 SERIAL_NUMBER 로 받아 ISO 복원.
 
 function serialToISODate(v: unknown): string {
   if (typeof v === "string") {
@@ -196,6 +193,9 @@ function rowToMeeting(r: unknown[]): Meeting | null {
       : undefined,
     주차: r[COL.주차] ? Number(r[COL.주차]) : undefined,
     업체정보: buildCompanyInfo(r),
+    // AO~AP 이월 깃발 (arena-carryover §3) — 읽기 전용. 쓰기(split A:M/P/R/T~AN)는 비접촉.
+    구분: String(r[40] ?? "").trim(),
+    이월원본행id: String(r[41] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;
 }

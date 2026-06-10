@@ -1,5 +1,4 @@
-// MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
-"use client";
+"use client"; // MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 
 import { useState } from "react";
 import type { Channel, Meeting } from "@/types";
@@ -17,6 +16,7 @@ import RescheduleForm from "./RescheduleForm";
 import BasicEditDetails from "./BasicEditDetails";
 import AddMeetingForm from "./AddMeetingForm";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
+import CarryoverBadge from "@/components/CarryoverBadge";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -120,12 +120,13 @@ export default function MeetingResultCard({
 
   const showActions = state === "reserved";
 
+  const carried = meeting.구분 === "이월"; // 이월 = 흐림+뱃지+점수 미포함 (§5)
   return (
     <div
       ref={rootRef}
       className={`relative ml-4 mb-2 overflow-hidden rounded-xl shadow-sm scroll-mt-[280px] ${CARD_CLS[state]} ${
         ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""
-      }`}
+      } ${carried ? "opacity-60" : ""}`}
     >
       <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-gray-200" />
 
@@ -135,6 +136,7 @@ export default function MeetingResultCard({
         className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors active:bg-black/5"
         aria-expanded={open}
       >
+        <CarryoverBadge 구분={meeting.구분} />
         <span className="shrink-0 text-base leading-none">
           {CARD_ICON[state]}
         </span>
@@ -181,6 +183,7 @@ export default function MeetingResultCard({
             </span>
           </div>
 
+          <CarryoverBadge 구분={meeting.구분} variant="note" />
           <CompanyInfoEditor value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (

@@ -156,9 +156,10 @@ export const SHEET_RANGES = {
   // 표시_요약(수식)/계약조건/계약합성라인(수식)/previousMeetingId/주차(수식)
   meetings: {
     tab: "04 업체관리(앱자동작성용)",
-    headerRow: "A1:AN1",
-    // A~S(미팅) + T~AN(업체정보). 읽기는 전체, 쓰기는 split(A:M/P/R + 업체정보 별도 가드)로 수식·업체정보 보존.
-    range: "A2:AN",
+    headerRow: "A1:AP1",
+    // A~S(미팅) + T~AN(업체정보) + AO~AP(이월 깃발: 구분/이월원본행id — 마이그레이션만 기록).
+    // 읽기는 전체, 쓰기는 split(A:M/P/R/T~AN)이라 수식·이월깃발 비접촉 보존.
+    range: "A2:AP",
   },
 
   // ── 06 업체정보 (계약 고객 동기화 표 — consultation-log §1-2) ─────
@@ -180,7 +181,9 @@ export const SHEET_RANGES = {
     // 6행~ = 실제 데이터. headerRows·firstDataRow 변경 시 같이 업데이트.
     headerRows: 5,
     firstDataRow: 6,
-    range: "A6:AD", // 데이터 영역 (v2: AA→AD, +3 컬럼 = 슬롯당 진행률 1개 추가)
+    // 실사용 A~AH(v3: AE=로드맵메모, AF~AH=슬롯메모) + AI~AJ(이월 깃발: 구분/이월원본행id —
+    // 출발 미팅 04 AO 상속, arena-carryover §3). 일반 쓰기(F:AH)는 AI~AJ 비접촉.
+    range: "A6:AJ",
     // 자동 연동 컬럼 — 계약 액션 시 04 업체관리에서 채움 (D/G/L → C/D/E)
     autoCols: { 계약일: "C", 업체명: "D", 수임비: "E" },
     // 7 체크박스 ("ㅇ" / "" 표기)

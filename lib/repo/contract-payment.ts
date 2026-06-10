@@ -190,6 +190,8 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
     수납2: slot(18, 32), // S~X + AG
     수납3: slot(24, 33), // Y~AD + AH
     로드맵메모: toStr(r[30]), // AE
+    구분: toStr(r[34]).trim(), // AI — 이월 깃발 (arena-carryover §3)
+    이월원본행id: toStr(r[35]).trim(), // AJ
   });
   return parsed.success ? parsed.data : null;
 }
@@ -246,7 +248,7 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
 /** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!A${firstDataRow}:AH`;
+  const range = `${tabRef(tab)}!A${firstDataRow}:AJ`; // A~AH 실사용 + AI~AJ 이월 깃발
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -370,17 +372,25 @@ export async function syncFeeFromContract(
 export async function appendFromContract(
   spreadsheetId: string,
   data: { 계약일: string; 업체명: string; 수임비: number },
+  carryover?: { 원본행id: string }, // 출발 미팅이 이월(04 AO)이면 깃발 상속 (§3)
 ): Promise<{ row: number }> {
   const row = await findFirstEmptyRow(spreadsheetId);
   const { tab } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!C${row}:E${row}`;
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [[data.계약일, data.업체명, data.수임비]],
+  const writes = [
+    {
+      range: `${tabRef(tab)}!C${row}:E${row}`,
+      values: [[data.계약일, data.업체명, data.수임비] as (string | number)[]],
     },
+  ];
+  if (carryover) {
+    writes.push({
+      range: `${tabRef(tab)}!AI${row}:AJ${row}`,
+      values: [["이월", carryover.원본행id]],
+    });
+  }
+  await sheetsClient().spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: { valueInputOption: "USER_ENTERED", data: writes },
   });
   return { row };
 }
@@ -456,7 +466,7 @@ export async function clearRow(
   if (row < firstDataRow) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(tab)}!C${row}:AH${row}`;
+  const range = `${tabRef(tab)}!C${row}:AJ${row}`; // 이월 깃발(AI~AJ)도 함께 clear
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,

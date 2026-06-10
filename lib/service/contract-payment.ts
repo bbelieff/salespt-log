@@ -45,12 +45,20 @@ export async function addFromContract(
   data: { 계약일: string; 업체명: string; 수임비: number },
 ): Promise<{ row: number }> {
   const spreadsheetId = await resolveSheet(email);
-  const result = await appendFromContract(spreadsheetId, data);
-  // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2). 그 미팅의 04
-  // 업체정보(T~AN)를 복사해 1행 upsert. 실패해도 계약 액션은 성공(warn only).
+  // 출발 미팅 lookup — 이월 깃발 상속(§3) + 06 스냅샷 양쪽에 사용.
+  let m;
   try {
     const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
-    const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
+    m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
+  } catch {
+    m = undefined;
+  }
+  // 이월 미팅에서 생긴 계약 = 02 행도 "이월"(집계 제외, 출발 미팅 깃발 상속).
+  const carryover =
+    m?.구분 === "이월" ? { 원본행id: m.이월원본행id || m.id } : undefined;
+  const result = await appendFromContract(spreadsheetId, data, carryover);
+  // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2). 실패해도 계약 성공(warn).
+  try {
     await upsertCompanyInfoArchive(spreadsheetId, {
       업체명: data.업체명,
       계약일: data.계약일,

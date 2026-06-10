@@ -136,19 +136,19 @@ export function formulasForRow(r: number): Record<string, string> {
     // (2026-05-18 사고: 매입DB row 마스터 → 콜지기소 등 다른 채널 J 결과 누락).
     // 4 row 모두 동일 수식 install — 셀병합 마스터에 통합 결과 표시.
     J: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,SORT(FILTER(${M_REF}!O:O,${M_REF}!D:D=$C${dpr}))),"")`,
-    // K: 오늘미팅수 — 미팅날짜만 매칭 (J~M 4채널 셀병합 통합 표시).
-    K: `=COUNTIF(${M_REF}!D:D,$C${dpr})`,
-    // L: 미팅완료수 — 미팅날짜 매칭 + **상태 필터(완료·계약만)**. 예약/변경/취소 제외.
+    // K: 오늘미팅수 — 미팅날짜 매칭 + 이월(AO) 제외 (arena-carryover §4).
+    K: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!AO:AO,"<>이월")`,
+    // L: 미팅완료수 — 미팅날짜 매칭 + **상태 필터(완료·계약만)** + 이월 제외.
     // ⚠️ 상태필터 필수: 제거하면 예약(미래 미팅)까지 완료로 세져 미팅완료=미팅예약·
     //    미팅실행률 100% 사고 (2026-06-09 진단). K(오늘미팅수)와 같아지면 안 됨.
     //    가드: tests/repo/setup-formulas-guard.test.ts "미팅완료(L) 상태필터".
-    L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"계약")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"완료")`,
+    L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"계약",${M_REF}!AO:AO,"<>이월")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"완료",${M_REF}!AO:AO,"<>이월")`,
     // M: 미팅사유 자동 집계 — 미팅날짜만 매칭 (J~M 통합).
     M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,${M_REF}!D:D=$C${dpr})),"")`,
-    // N: 계약건수 (채널별 — 콜지기소는 separator-무관 와일드카드)
-    N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약")`,
-    // O: 수임비합계 (채널별 — 콜지기소는 separator-무관 와일드카드)
-    O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약")`,
+    // N: 계약건수 (채널별 — 콜지기소 와일드카드) + 이월 제외.
+    N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약",${M_REF}!AO:AO,"<>이월")`,
+    // O: 수임비합계 (채널별 — 콜지기소 와일드카드) + 이월 제외.
+    O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약",${M_REF}!AO:AO,"<>이월")`,
     // P: 계약비고 — 04업체관리!Q(계약합성라인) TEXTJOIN (콜지기소는 LEFT(F,1)="콜")
     P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${dpr})*${chCond}*(${M_REF}!J:J="계약"))),"")`,
   };
@@ -163,7 +163,7 @@ export function meetingFunnelFormulas(): Record<string, string> {
   const COLS = ["R", "S", "T", "U"] as const;
   const CH = ['"매입DB"', '"직접생산"', '"현수막"', '"콜*소"']; // R~U 채널 criteria
   const cif = (c: string, s: string) =>
-    `COUNTIFS(${M}!F:F,${c},${M}!J:J,"${s}")`;
+    `COUNTIFS(${M}!F:F,${c},${M}!J:J,"${s}",${M}!AO:AO,"<>이월")`; // 이월 제외 (carryover §4)
   const reserved = (c: string) =>
     `=${cif(c, "예약")}+${cif(c, "완료")}+${cif(c, "계약")}`;
   const done = (c: string) => `=${cif(c, "완료")}+${cif(c, "계약")}`;

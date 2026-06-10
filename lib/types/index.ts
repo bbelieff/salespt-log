@@ -115,6 +115,11 @@ export const Meeting = z.object({
 
   // 업체정보 (T~AN) — 미팅 단위. 빈값이면 undefined (rowToMeeting 이 내용 있을 때만 세팅).
   업체정보: CompanyInfo.optional(),
+
+  // 이월 깃발 (AO~AP, arena-carryover §3) — "이월"=아레나 집계 제외, 미설정=native.
+  // 마이그레이션만 기록(일반 쓰기 비접촉). 이월원본행id = 멱등 중복 가드.
+  구분: z.string().optional(), // AO
+  이월원본행id: z.string().optional(), // AP
 });
 export type Meeting = z.infer<typeof Meeting>;
 
@@ -295,6 +300,10 @@ export const ContractPayment = z.object({
   /** 로드맵 메모 (카드 차원, 슬롯들 위) — 시트 AE. 2026-05-17 재배치. */
   로드맵메모: z.string().default(""),
   // 2026-05-17: 카드 차원 메모사항 제거 — 슬롯별 PaymentSlot.메모 로 이동 (AF/AG/AH).
+  /** 이월 깃발 (AI, arena-carryover §3) — "이월"=아레나 집계 제외, 미설정=native. 출발 미팅(04 AO) 상속. */
+  구분: z.string().optional(),
+  /** 이월 원본행 식별자 (AJ) — 멱등 중복 가드. */
+  이월원본행id: z.string().optional(),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 

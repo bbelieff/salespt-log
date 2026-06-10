@@ -291,3 +291,38 @@ describe("meetingFunnelFormulas — 미팅예약/완료 04 상태기반", () => 
     }
   });
 });
+
+/**
+ * 이월(AO) 집계 제외 가드 박제 (arena-carryover §4) — 모든 카운트/합산 수식이
+ * `AO≠이월` 조건을 포함해야 함. 누가 조건을 빼면 이월 행이 점수에 재유입.
+ */
+describe("이월(구분=AO) 집계 제외 가드 (arena-carryover §4)", () => {
+  const f = formulasForRow(10);
+  const guards = (s: string | undefined) =>
+    (String(s).match(/AO:AO,"<>이월"/g) ?? []).length;
+
+  it("K(오늘미팅수)·N(계약건수)·O(수임비합계) 에 AO≠이월 1회", () => {
+    expect(guards(f.K)).toBe(1);
+    expect(guards(f.N)).toBe(1);
+    expect(guards(f.O)).toBe(1);
+  });
+
+  it("L(미팅완료수) 은 COUNTIFS 2개 모두 가드 (계약+완료)", () => {
+    expect(guards(f.L)).toBe(2);
+  });
+
+  it("펀넬(R4:U5) 미팅예약 3가드·미팅완료 2가드 (COUNTIFS 당 1)", () => {
+    const m = meetingFunnelFormulas();
+    for (const col of ["R", "S", "T", "U"]) {
+      expect(guards(m[`${col}4`])).toBe(3); // 예약+완료+계약
+      expect(guards(m[`${col}5`])).toBe(2); // 완료+계약
+    }
+  });
+
+  it("표시 수식(I/J/M/P)은 가드 없음 — 이월 미팅도 정보로 표시", () => {
+    expect(guards(f.I)).toBe(0);
+    expect(guards(f.J)).toBe(0);
+    expect(guards(f.M)).toBe(0);
+    expect(guards(f.P)).toBe(0);
+  });
+});
