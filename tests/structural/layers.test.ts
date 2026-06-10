@@ -130,39 +130,43 @@ describe("dashboard is read-only", () => {
 
 // ── 테스트 4: Drive 쓰기 화이트리스트 (ADR-0011/0012) ──────────
 describe("drive write whitelist (ADR-0011/0012)", () => {
-  it("lib/repo 어디에도 Drive files.update / files.delete 없음 (사용자 데이터 훼손 금지)", () => {
+  it("Drive files.delete 전면 금지 + files.update 는 drive-txt.ts(TXT 덮어쓰기, ADR-0016)만", () => {
     const dir = join(ROOT, "lib/repo");
     const bad: string[] = [];
     for (const file of walk(dir)) {
       const src = readFileSync(file, "utf8");
-      if (/\.files\.(update|delete)\s*\(/.test(src)) {
-        bad.push(relative(ROOT, file));
+      if (/\.files\.delete\s*\(/.test(src)) {
+        bad.push(relative(ROOT, file) + " (files.delete)");
+      }
+      if (/\.files\.update\s*\(/.test(src) && !file.endsWith("drive-txt.ts")) {
+        bad.push(relative(ROOT, file) + " (files.update)");
       }
     }
     expect(
       bad,
-      `Drive files.update/delete 금지 (ADR-0011) — 복제(files.copy)·폴더생성(files.create)만 허용. ` +
-        `기존 파일 내용 수정·삭제는 사용자 데이터 손상 위험.\n` +
+      `Drive files.delete 전면 금지 (ADR-0011). files.update 는 drive-txt.ts 의 ` +
+        `업체정보 TXT(자기 생성 text/plain) 1본 덮어쓰기 전용 (ADR-0016) — 시트 파일 수정 금지.\n` +
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);
   });
 
-  it("files.copy / files.create 는 drive-client.ts 에서만 (ADR-0011/0012)", () => {
+  it("files.copy / files.create 는 drive-client.ts·drive-txt.ts 에서만 (ADR-0011/0012/0016)", () => {
     const dir = join(ROOT, "lib/repo");
     const bad: string[] = [];
     for (const file of walk(dir)) {
       const src = readFileSync(file, "utf8");
       if (
         /\.files\.(copy|create)\s*\(/.test(src) &&
-        !file.endsWith("drive-client.ts")
+        !file.endsWith("drive-client.ts") &&
+        !file.endsWith("drive-txt.ts")
       ) {
         bad.push(relative(ROOT, file));
       }
     }
     expect(
       bad,
-      `files.copy(copyTemplateSheet) / files.create(createFolder) 는 ` +
-        `lib/repo/drive-client.ts(driveWriteClient) 전용.\n` +
+      `files.copy(copyTemplateSheet) / files.create(createFolder·TXT) 는 ` +
+        `lib/repo/drive-client.ts·drive-txt.ts 전용 (ADR-0011/0016).\n` +
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);
   });

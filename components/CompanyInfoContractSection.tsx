@@ -64,6 +64,7 @@ export default function CompanyInfoContractSection({ 계약일, 업체명 }: Pro
       key={`${계약일}|${업체명}|${value ? "y" : "n"}`}
       value={value}
       busy={busy}
+      txtCompanyName={업체명}
       onSave={save}
     />
   );
