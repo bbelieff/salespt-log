@@ -15,9 +15,12 @@ import {
   syncFeeFromContract,
   updateUserFields,
 } from "@/repo/contract-payment";
-import type { ContractPayment } from "@/types";
+import type { CompanyInfo, ContractPayment } from "@/types";
 import { findByDate, updateMeeting } from "@/repo/meetings";
-import { upsertCompanyInfoArchive } from "@/repo/company-info-archive";
+import {
+  readCompanyInfoArchiveRow,
+  upsertCompanyInfoArchive,
+} from "@/repo/company-info-archive";
 
 async function resolveSheet(email: string): Promise<string> {
   const user = await findUserByEmail(email);
@@ -60,6 +63,35 @@ export async function addFromContract(
     );
   }
   return result;
+}
+
+/** 계약 키(계약일|업체명)로 업체정보 읽기 — payment 카드용. 06 에서 read. */
+export async function loadCompanyInfoByContract(
+  email: string,
+  data: { 계약일: string; 업체명: string },
+): Promise<CompanyInfo | null> {
+  const spreadsheetId = await resolveSheet(email);
+  return readCompanyInfoArchiveRow(spreadsheetId, data.계약일, data.업체명);
+}
+
+/**
+ * 계약 키로 업체정보 저장 — payment 편집용 (consultation-log §3-1).
+ * 04 원본(매칭 미팅의 T~AN) + 06 둘 다 갱신. 04 매칭 미팅 없으면 06 만.
+ */
+export async function saveCompanyInfoByContract(
+  email: string,
+  data: { 계약일: string; 업체명: string; 업체정보: CompanyInfo },
+): Promise<{ meetingUpdated: boolean }> {
+  const spreadsheetId = await resolveSheet(email);
+  let meetingUpdated = false;
+  const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
+  const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
+  if (m) {
+    await updateMeeting(spreadsheetId, m.id, { 업체정보: data.업체정보 });
+    meetingUpdated = true;
+  }
+  await upsertCompanyInfoArchive(spreadsheetId, data);
+  return { meetingUpdated };
 }
 
 /**
