@@ -100,6 +100,38 @@ const FORMULA_COL_INDICES = new Set([
   COL.주차,
 ]);
 
+// 업체정보 컬럼 순서 (T=19 ~ AM=38, 20필드) + 커스텀 JSON(AN=39). lib/types CompanyInfo 키와 일치.
+export const COMPANY_FIELDS = [
+  "개업일", "사업자구분", "사업자등록번호", "소재지", "소유여부",
+  "업종주생산품목", "과년도매출", "금년도매출", "기대출사업자", "사대보험직원",
+  "특허및인증", "업체기타메모",
+  "대표자이름", "연락처통신사", "신용점수", "기대출개인", "자택주소지",
+  "대표소유여부", "동종업계경력", "대표기타메모",
+] as const;
+export const COMPANY_FIELD_START = 19; // T
+export const COMPANY_CUSTOM_COL = 39; // AN
+
+/** 행 배열 T~AN → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
+function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
+  const ci: Record<string, unknown> = {};
+  let any = false;
+  COMPANY_FIELDS.forEach((f, i) => {
+    const v = String(r[COMPANY_FIELD_START + i] ?? "").trim();
+    ci[f] = v;
+    if (v) any = true;
+  });
+  const rawCustom = String(r[COMPANY_CUSTOM_COL] ?? "").trim();
+  if (rawCustom) {
+    try {
+      ci.커스텀 = JSON.parse(rawCustom);
+      any = true;
+    } catch {
+      /* 손상된 JSON 무시 */
+    }
+  }
+  return any ? ci : undefined;
+}
+
 /** Meeting → 시트 1행 배열 (A~S). 수식 컬럼은 빈 문자열로 둠. */
 function meetingToRow(m: Meeting): (string | number | boolean)[] {
   const row: (string | number | boolean)[] = new Array(19).fill("");
@@ -155,6 +187,7 @@ function rowToMeeting(r: unknown[]): Meeting | null {
       ? String(r[COL.previousMeetingId])
       : undefined,
     주차: r[COL.주차] ? Number(r[COL.주차]) : undefined,
+    업체정보: buildCompanyInfo(r),
   });
   return parsed.success ? parsed.data : null;
 }
