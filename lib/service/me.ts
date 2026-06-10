@@ -14,6 +14,7 @@
  */
 import { unstable_cache } from "next/cache";
 import { findUserByEmail } from "@/repo/users";
+import { findArchivedRowByEmail } from "@/repo/users-arena";
 import { readProfileBundle } from "@/repo/sales";
 
 /**
@@ -40,6 +41,9 @@ export interface MeProfile {
   driveLinkStatus?: string;
   /** 아레나 회장이 맡은 cohort (registry R, 정규화). 빈값=일반. "기수임원" 진입점 노출용. */
   captainOf?: string;
+  /** 이전 기수(archived) 일지 — "이전 N기 일지 보기(읽기전용)" 링크 (carryover §1). */
+  archivedCohort?: string;
+  archivedSpreadsheetId?: string;
 }
 
 function toISO(d: Date): string {
@@ -312,6 +316,13 @@ export async function loadMe(email: string): Promise<MeProfile> {
   }
   // 단일 batchGet (B3:C3 + O1 + O2) + 60s 메모이즈.
   const bundle = await readBundle(user.spreadsheetId);
+  // 이전 기수(archived) 일지 링크 — 같은 레지스트리 캐시 read 라 비용 미미 (carryover §1).
+  let archived: { cohort: string; spreadsheetId: string } | null = null;
+  try {
+    archived = await findArchivedRowByEmail(email);
+  } catch {
+    archived = null;
+  }
   return {
     email: user.email,
     cohort: bundle.cohort || user.cohort,
@@ -322,5 +333,7 @@ export async function loadMe(email: string): Promise<MeProfile> {
     feedbackFolderId: user.feedbackFolderId,
     driveLinkStatus: user.driveLinkStatus,
     captainOf: user.captainOf,
+    archivedCohort: archived?.cohort,
+    archivedSpreadsheetId: archived?.spreadsheetId,
   };
 }

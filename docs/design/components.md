@@ -1318,6 +1318,7 @@ components/dashboard/
 | **CompanyInfoEditor** | 미팅 업체정보(04 T~AN) 드롭다운+팝업 편집. Props: `value?: CompanyInfo`, `onSave(ci)`, `busy?`, `txtCompanyName?`(있으면 [📄 업체정보생성] — POST /api/company-info/export 로 O 폴더 TXT 1본 덮어쓰기 + 성공/실패 메시지·파일 링크, §3-3/ADR-0016). [업체]12+[대표자]8+커스텀(필드추가+). 사용처: schedule MeetingResultCard·contact SavedItem(예약비고 자리 교체)·payment(CompanyInfoContractSection 경유). consultation-log §3. |
 | **CompanyInfoContractSection** | payment 계약 카드 업체정보 섹션. Props: `계약일`, `업체명`. GET /api/company-info(06 read) → CompanyInfoEditor → POST(04 원본+06 동기화 저장, saveCompanyInfoByContract). §3-1. |
 | **CarryoverBadge** | 이월(arena-carryover §5) 표시. Props: `구분?`, `variant?: "badge"\|"note"`. 구분≠"이월"이면 null. badge=회색 "이월" 칩, note="아레나 점수 미포함" 한 줄. 사용처: MeetingResultCard(뱃지+흐림+note)·ContractRow(note). |
+| **ArenaCarryoverButton** | admin 아레나 관리 사용자별 "↩ 이월 실행"(backfill, carryover §2-b). Props: `email`. POST /api/admin/arena-carryover — 멱등, 결과(복사/스킵/실패) inline 표시. 미클레임(email 없음)은 미노출. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 | **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
 

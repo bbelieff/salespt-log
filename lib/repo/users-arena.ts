@@ -53,6 +53,63 @@ export async function listArenaParticipants(): Promise<User[]> {
   return all.filter((u) => u.role === "trainee" && isArenaCohort(u.cohort));
 }
 
+/** 같은 email 의 archived 행 — "이전 N기 일지 보기" 링크용 (carryover §1). */
+export async function findArchivedRowByEmail(
+  email: string,
+): Promise<{ cohort: string; spreadsheetId: string } | null> {
+  const lc = email.trim().toLowerCase();
+  const all = await listAllUsers();
+  for (const u of all) {
+    if (u.email.toLowerCase() === lc && u.status === "archived" && u.spreadsheetId) {
+      return { cohort: u.cohort, spreadsheetId: u.spreadsheetId };
+    }
+  }
+  return null;
+}
+
+/**
+ * 같은 email 의 이전 기수(비아레나) 행 — 이월 소스 (arena-carryover §2).
+ * 아레나 행과 다른 spreadsheetId 를 가진 비아레나 행. 없으면 null.
+ */
+export async function findPriorCohortRow(
+  email: string,
+  arenaSheetId: string,
+): Promise<{ cohort: string; spreadsheetId: string; status: User["status"] } | null> {
+  const lc = email.trim().toLowerCase();
+  const all = await listAllUsers();
+  for (const u of all) {
+    if (u.email.toLowerCase() !== lc) continue;
+    if (isArenaCohort(u.cohort)) continue;
+    if (!u.spreadsheetId || u.spreadsheetId === arenaSheetId) continue;
+    return { cohort: u.cohort, spreadsheetId: u.spreadsheetId, status: u.status };
+  }
+  return null;
+}
+
+/** 이전 기수 행 status=archived 마킹 (이월 완료 후 — 라우팅 active 우선, §1). */
+export async function markPriorRowArchived(
+  email: string,
+  cohort: string,
+): Promise<void> {
+  const reg = registry();
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  const lc = email.trim().toLowerCase();
+  const target = normalizeArenaCohort(cohort);
+  for (let i = 0; i < rows.length; i++) {
+    const e = String(rows[i]?.[0] ?? "").trim().toLowerCase();
+    const c = normalizeArenaCohort(String(rows[i]?.[1] ?? ""));
+    if (e !== lc || c !== target) continue;
+    await sheetsClient().spreadsheets.values.update({
+      spreadsheetId: reg.spreadsheetId,
+      range: `${reg.tab}!F${i + 2}`,
+      valueInputOption: "RAW",
+      requestBody: { values: [["archived"]] },
+    });
+    invalidateRegistry();
+    return;
+  }
+}
+
 /** 특정 아레나 cohort 멤버 (정규화 매칭) — 회장 뷰 범위. */
 export async function listArenaCohortMembers(cohort: string): Promise<User[]> {
   const target = normalizeArenaCohort(cohort);
