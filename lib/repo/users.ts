@@ -75,7 +75,8 @@ function parseRow(r: unknown[]): User | null {
     driveParentPath: String(r[13] ?? "").trim(),
     feedbackFolderId: String(r[14] ?? "").trim(),
     driveLinkStatus: String(r[15] ?? "").trim(),
-    // r[16]=Q memo (write-only, User 에 미노출). r[17]=R captainOf.
+    // r[16]=Q memo (회장/입금), r[17]=R captainOf.
+    memo: String(r[16] ?? "").trim(),
     captainOf: String(r[17] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;

@@ -1314,6 +1314,7 @@ components/dashboard/
 | **CohortCreateModal** | Admin 전용 "기수/참가자 추가" 모달 (`/admin/cohorts` 헤더). Props 없음. 기수 토큰(8/a1) + 모드(생성=템플릿복제 / 연동=기존시트) 토글 + (생성) 템플릿/루트폴더/(아레나)명단 시트 ID + 참가자 줄단위 입력 → POST /api/admin/create-cohort-members → 생성/건너뜀/실패 리포트. parseCohortToken 으로 클라이언트 토큰 미리보기. |
 | **ArenaCreateModal** | Admin 전용 "아레나 추가" 모달 (`/admin/cohorts` 헤더, ADR-0012). Props 없음. 시즌 번호 + (최초 1회) 템플릿/시트폴더/업체부모폴더 ID + 명단 줄단위 입력 → POST /api/admin/create-arena-members → 생성/건너뜀/실패 리포트. buildArenaSheetTitle/buildArenaCompanyFolderName 로 제목·폴더명 미리보기. 산출물: `세일즈PT_A{시즌}_0기 {이름}_대표님 경영일지` 시트 + `…_대표님 업체관리` 폴더. |
 | **ArenaCaptainToggle** | Admin "아레나 관리"(`/admin/arena`)에서 참가자를 기수 회장으로 지정/해제. Props: `email`, `cohort`(정규화 `A1-1`), `initialOn`. POST /api/admin/set-arena-captain { email, cohort, on } → registry R(captain_of) 토글. 미클레임(email 없음)은 "미클레임" 배지로 비활성. role 불변(회장도 플레이어). §6/ADR-0014. |
+| **ScoreboardRefreshButton** | 전광판(`/admin/arena/scoreboard`) 수동 새로고침. Props 없음. GET /api/admin/scoreboard?refresh=1 (revalidateTag 30분 캐시 무효화) → router.refresh(). §6. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 | **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
 

@@ -178,6 +178,8 @@ export const User = z.object({
   feedbackFolderId: z.string().default(""),
   /** Drive 연결 상태: "ok" / "" (미연결) / "error" (registry P). */
   driveLinkStatus: z.string().default(""),
+  /** 아레나 회장/입금 메모 (registry Q, "회장"/"입금"/"회장,입금"/빈). 전광판 입금자 모수 필터용. */
+  memo: z.string().default(""),
   /** 아레나 회장이 맡은 cohort (registry R, 기 제거형 예 "A1-1"). 빈값=일반 참가자.
    *  role 은 trainee 유지(회장도 플레이어). 값 있으면 "기수임원" 조회 권한 (§6). */
   captainOf: z.string().default(""),

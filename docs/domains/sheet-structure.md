@@ -495,7 +495,7 @@ H / O / W: spacer (비움). A: 비움.
 | N | drive_parent_path | Drive 부모 폴더 경로/URL (온보딩 입력, ADR-0007) |
 | O | feedback_folder_id | 01 피드백업체 폴더 ID (자동 탐색) / 아레나 업체관리 폴더 ID |
 | P | drive_link_status | ok / (빈값=미연결) / error |
-| Q | memo | 아레나 회장/입금 메모 (`회장`/`입금`/`회장,입금`/빈). 기록 전용·앱 기능 없음 (ADR-0014) |
+| Q | memo | 아레나 회장/입금 메모 (`회장`/`입금`/`회장,입금`/빈). 회장은 §6 토글이 별도 관리(R), 입금은 전광판 모수 필터 (ADR-0014) |
 | R | captain_of | 아레나 회장이 맡은 cohort(정규화 `A1-1`). 빈값=일반. 있으면 "기수임원" 조회 권한 (§6). role 은 trainee 유지 |
 
 `lib/repo/users.ts` 가 이 탭만 read. 범위: `A2:R`.

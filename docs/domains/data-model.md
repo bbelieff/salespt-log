@@ -495,7 +495,7 @@ interface DashboardView {
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
 | `Meeting` | z.object | 1미팅=1행 (04 업체관리, 19컬럼 A~S) |
 | `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
-| `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금, write-only·User 미노출) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
+| `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금 — 전광판 입금자 모수 필터) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
 
 ### 계약수납 v2 (02 계약수납관리)
 | 식별자 | 종류 | 의미 |
