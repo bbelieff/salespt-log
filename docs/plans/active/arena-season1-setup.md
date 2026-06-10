@@ -109,3 +109,6 @@ related: admin-cohort-create, cohort-create-template-master
 - 2026-06-09 명단·규칙 확정(부부 두 이름 등록·회장/입금 메모). 생성 기능(feat/arena-create) 미배포 — 배포 후 이 명단으로 실행.
 - 2026-06-10 feat/arena-create 빌드: parseArenaRoster(기수헤더·`*`회장·`$`입금·`()`부부), users!Q 메모(ADR-0014), 부부 매칭(name-match.ts), create-arena-members rawText 파싱. 배포 후 라이브 run(폴더ID·`$`마킹 원문) 잔여.
 - 2026-06-10 회장/전광판 결정: 회장=조회만, 전광판 모수=입금자만, 클레임 라벨 "수강생". feat/arena-captain·feat/arena-scoreboard 프롬프트 핸드오프.
+- 2026-06-10 **라이브 run 완료** (ADMIN_DRIVE_REFRESH_TOKEN=belie OAuth, ADR-0015):
+  - 카나리아(김지훈 A1-1): owner=beliefkimkim ✓, SA installFormulas 4802 ✓(편집권), prep행+Q"회장,입금"+업체폴더 ✓, B3:C3=["A1-1","김지훈"] ✓.
+  - 전체 35명: created 34 + skipped 1(멱등) + failed 0. **owner 분포 belie 35 / SA 0**, 레지스트리 35행=35고유시트, 회장 6·입금 15, 부부 4쌍 두 이름, 동명이인 김지훈 A1-1/A1-3, 복제본 수식 상속 확인.
