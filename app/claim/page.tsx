@@ -2,7 +2,7 @@
  * /claim — Self-claim 화면.
  *
  * 흐름: Google 로그인 후 registry 미등록 사용자가 들어옴.
- *  - 일반 기수: 기수(숫자) + 이름 → cohort = 숫자.
+ *  - 수강생(일반 기수): 기수(숫자) + 이름 → cohort = 숫자.
  *  - 아레나: 시즌(A{n}) + 자기기수({m}기) + 이름 → cohort = "A{n}-{m}기".
  *    아레나는 prep 등록(create-arena-members) 전제 — registry (A{n}-{m}기, 이름)
  *    매칭으로 본인 시트 연결. 라벨 포맷이 prep 과 동일해야 매칭됨.
@@ -142,7 +142,7 @@ export default function ClaimPage() {
         <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-gray-100 p-1">
           {(
             [
-              ["cohort", "일반 기수"],
+              ["cohort", "수강생"],
               ["arena", "아레나"],
             ] as [Mode, string][]
           ).map(([m, label]) => (
