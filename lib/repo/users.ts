@@ -1,27 +1,10 @@
 /**
  * Layer: repo — 마스터 레지스트리 (사용자 + 시트 매핑 + 역할 + 상태).
- *
- * 시트 컬럼:
- *   A: email
- *   B: cohort        — **DEPRECATED (2026-05-11)**. 표시 라벨은 개인 시트 B3 SSOT.
- *                       자동 채우기/읽기 X. 역사적 데이터로만 보존.
- *   C: name          — 마찬가지로 deprecated. 개인 시트 C3 가 진실.
- *   D: spreadsheetId (trainee 만 채움)
- *   E: role          ("trainee" / "trainer" / "admin") — **식별·라우팅 SSOT**
- *   F: status        ("active" / "pending")
- *   G: assignedTrainer (trainee row 의 담당 트레이너 email; 옵션)
- *   H: team           (기수 내 팀 — "서울"/"부산" 등 임의. 빈값 = 미배정.
- *                      신규 컬럼 2026-05-13. 기존 row 빈값 → 미배정 default.)
- *   I: cohort_label   (시트 B3 캐시 — "PRM 7기" 등. 빈값이면 enrichUsersWithDates
- *                      가 fallback 으로 시트 fetch. PR B-1 도입.)
- *   J: name_label     (시트 C3 캐시 — "김상목" 등.)
- *   K: course_start_iso (시트 O1 ISO date — YYYY-MM-DD.)
- *   L: graduation_iso   (시트 O2 ISO date — YYYY-MM-DD.)
- *   M: sort_order     (admin 수동 정렬, PR C-1 도입. 0 = 미정렬(이름 알파 fallback),
- *                      >0 = explicit ASC. (cohort, team) 박스 단위 의미.
- *                      dnd-kit 드래그 시 box 내 N 카드에 1..N 일괄 재할당.
- *                      /admin/users + /admin/trainers 공유 — 둘 다 같은 M 컬럼 사용
- *                      하되 각 페이지가 다른 role row 집합을 정렬하므로 충돌 없음.)
+ * 컬럼 SSOT: docs/domains/sheet-structure.md §6 (A~R).
+ *   A email · B cohort(deprecated, 시트 B3 SSOT) · C name(deprecated) · D spreadsheetId ·
+ *   E role(식별·라우팅 SSOT) · F status(active/pending/archived) · G assignedTrainer ·
+ *   H team · I~L 시트 캐시(B3/C3/O1/O2) · M sort_order(박스 단위 드래그 정렬) ·
+ *   N~P drive 연동 · Q memo(아레나) · R captain_of.
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
@@ -36,7 +19,8 @@ const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
 function parseRow(r: unknown[]): User | null {
   // CRITICAL: 빈 status/role 이 drop 되면 전 수강생 차단 사고(2026-05-12) → 명시 normalize.
   const rawStatus = String(r[5] ?? "").trim();
-  const status: User["status"] = rawStatus === "pending" ? "pending" : "active";
+  const status: User["status"] =
+    rawStatus === "pending" ? "pending" : rawStatus === "archived" ? "archived" : "active";
   const rawRole = String(r[4] ?? "").trim();
   const role: User["role"] =
     rawRole === "trainer" || rawRole === "admin" ? rawRole : "trainee";
@@ -99,12 +83,17 @@ export function invalidateRegistry(): void {
 
 export async function findUserByEmail(email: string): Promise<User | null> {
   const rows = await cachedRegistryRows();
+  // 같은 이메일 다중 행(예: 6기 archived + A1-6기 active) → archived 아닌 행 우선 (carryover §1).
+  let archivedFallback: User | null = null;
   for (const r of rows) {
     if (typeof r[0] === "string" && r[0].toLowerCase() === email.toLowerCase()) {
-      return parseRow(r);
+      const u = parseRow(r);
+      if (!u) continue;
+      if (u.status !== "archived") return u;
+      archivedFallback ??= u;
     }
   }
-  return null;
+  return archivedFallback;
 }
 
 /**

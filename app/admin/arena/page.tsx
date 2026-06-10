@@ -14,6 +14,7 @@ import {
   normalizeArenaCohort,
 } from "@/repo/users-arena";
 import ArenaCaptainToggle from "@/components/auth/ArenaCaptainToggle";
+import ArenaCarryoverButton from "@/components/auth/ArenaCarryoverButton";
 
 export const dynamic = "force-dynamic";
 
@@ -100,8 +101,9 @@ export default async function AdminArenaPage() {
                       <div className="truncate text-sm font-semibold text-gray-900">
                         {m.nameLabel || m.name}
                       </div>
-                      <div className="truncate text-[11px] text-gray-400">
-                        {m.email || "(미클레임)"}
+                      <div className="flex items-center gap-2 truncate text-[11px] text-gray-400">
+                        <span className="truncate">{m.email || "(미클레임)"}</span>
+                        <ArenaCarryoverButton email={m.email} />
                       </div>
                     </div>
                     <ArenaCaptainToggle

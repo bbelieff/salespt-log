@@ -68,3 +68,4 @@ related: arena-season1-setup, consultation-log-and-calendar, sheet-structure
 
 ## Log
 - 2026-06-10 결정: 자동 이월(상태=예약 미팅 + 계약업체), 레코드 단위 `이월` 깃발로 집계 제외, 계약은 출발 미팅 깃발 상속, 이월업체의 아레나 신규 미팅은 집계. 구현 핸드오프(feat/arena-carryover) 예정.
+- 2026-06-11 feat/arena-carryover-flags(#346)+migrate 구현: 04 AO/AP·02 AI/AJ 깃발, 01 K/L/N/O·펀넬 수식 AO≠이월 가드(수식 재설치로 전파), 계약 깃발 상속, status=archived 라우팅(active 우선)+이전 일지 링크(me), 클레임 자동 이월+admin 이월 실행(멱등). 재참가자 0명이라 라이브 카나리아는 첫 클레임 시 자동 수행 — admin 버튼으로 재실행 검증 가능.

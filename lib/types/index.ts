@@ -197,8 +197,8 @@ export const User = z.object({
   name: z.string(),
   spreadsheetId: z.string(), // 트레이너·admin 은 빈 문자열 허용
   role: z.enum(["trainee", "trainer", "admin"]).default("trainee"),
-  /** active=정상, pending=트레이너 self-claim 후 관리자 승인 대기 */
-  status: z.enum(["active", "pending"]).default("active"),
+  /** active=정상, pending=승인 대기, archived=종강 보관(아레나 재참가 시 옛 기수 행 — 라우팅 미사용, arena-carryover §1) */
+  status: z.enum(["active", "pending", "archived"]).default("active"),
   /** 수강생 row 의 담당 트레이너 email (관리자가 배정). 빈값 = 미배정. */
   assignedTrainer: z.string().default(""),
   /** 기수 내 팀 (예: "서울", "부산"). 빈값 = 미배정 → 기수 박스 내 개별 카드. */

@@ -32,6 +32,7 @@ import {
 } from "@/repo/users";
 import { writeProfile, readProfileBundle } from "@/repo/sales";
 import { arenaCohortLabelParts } from "@/service/cohort-token";
+import { migrateArenaCarryover } from "@/service/arena-carryover";
 import type { CachedLabels } from "@/repo/users-claim";
 
 export type ClaimErrorReason = "not_found" | "ambiguous";
@@ -49,7 +50,7 @@ export interface ClaimResult {
   name: string;
   spreadsheetId: string;
   role: "trainee" | "trainer";
-  status: "active" | "pending";
+  status: "active" | "pending" | "archived";
 }
 
 const EMPTY_CACHED: CachedLabels = {
@@ -163,6 +164,22 @@ export async function claimAccount(
   const cohortLabel = parts
     ? `A${parts.season}-${parts.gisu}기`
     : cohortTrim.replace(/기\s*$/, "").trim();
+
+  // 아레나 클레임 완료 → 이전 기수 파이프라인 자동 이월 1회 (carryover §2, 멱등).
+  // 실패해도 클레임은 성공(warn) — backfill 은 admin "이월 실행" 버튼.
+  if (parts) {
+    try {
+      const r = await migrateArenaCarryover(email);
+      if (r.prior) {
+        console.warn(
+          `[claim] carryover ${email}: 미팅 ${r.meetings.copied}복사/${r.meetings.skipped}스킵, ` +
+            `계약 ${r.contracts.copied}복사/${r.contracts.skipped}스킵, failed ${r.meetings.failed.length + r.contracts.failed.length}`,
+        );
+      }
+    } catch (e) {
+      console.warn("[claim] carryover 실패 (클레임은 성공):", e instanceof Error ? e.message : e);
+    }
+  }
   return {
     email,
     cohort: cohortLabel,

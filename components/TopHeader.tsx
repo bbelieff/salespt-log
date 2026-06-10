@@ -248,6 +248,23 @@ export default function TopHeader({
                 <span>트레이너 페이지 →</span>
               </Link>
             )}
+            {me.data?.archivedSpreadsheetId && (
+              <a
+                href={`https://docs.google.com/spreadsheets/d/${me.data.archivedSpreadsheetId}/edit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>
+                  이전 {me.data.archivedCohort ? `${me.data.archivedCohort}기` : "기수"} 일지
+                  보기 (읽기전용) →
+                </span>
+              </a>
+            )}
             {me.data?.captainOf && (
               <Link
                 href="/captain"

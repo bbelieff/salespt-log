@@ -71,7 +71,7 @@ export async function canViewAdminPages(
 /** admin env 우선, 그 다음 registry. 미등록 = trainee. */
 export async function getEffectiveRole(
   email: string | null | undefined,
-): Promise<{ role: EffectiveRole; status: "active" | "pending" }> {
+): Promise<{ role: EffectiveRole; status: "active" | "pending" | "archived" }> {
   if (!email) return { role: "trainee", status: "active" };
   if (isAdminEmail(email)) return { role: "admin", status: "active" };
   const u = await findUserByEmail(email);
