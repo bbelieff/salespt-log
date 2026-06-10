@@ -132,9 +132,9 @@ function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   return any ? ci : undefined;
 }
 
-/** Meeting → 시트 1행 배열 (A~S). 수식 컬럼은 빈 문자열로 둠. */
+/** Meeting → 시트 1행 배열 (A~AN). 수식 컬럼·미설정은 빈 문자열. */
 function meetingToRow(m: Meeting): (string | number | boolean)[] {
-  const row: (string | number | boolean)[] = new Array(19).fill("");
+  const row: (string | number | boolean)[] = new Array(40).fill("");
   row[COL.id] = m.id;
   row[COL.예약일] = m.예약일;
   row[COL.예약시각] = m.예약시각;
@@ -150,12 +150,20 @@ function meetingToRow(m: Meeting): (string | number | boolean)[] {
   row[COL.수임비] = m.수임비;
   // 미팅사유도 자유 텍스트 — 동일하게 plain text 강제 (apostrophe prefix).
   row[COL.미팅사유] = m.미팅사유 ? `'${m.미팅사유}` : "";
-  // 계약조건은 자유 텍스트 — "5%" 같은 문자열이 USER_ENTERED 모드에서 0.05(백분율)로
-  // 자동 변환되는 것을 막기 위해 apostrophe(') prefix로 plain text 강제.
-  // Sheets는 ' 시작 문자열을 텍스트로 저장하고, 화면 표시 시 ' 자체는 노출하지 않음.
-  // 빈 문자열은 그대로 둠 (apostrophe만 박혀있으면 안 보이지만 의미상 빈 셀이 자연스러움).
+  // 계약조건 자유 텍스트 — apostrophe prefix 로 plain text 강제("5%"→0.05 오변환 방지).
   row[COL.계약조건] = m.계약조건 ? `'${m.계약조건}` : "";
   row[COL.previousMeetingId] = m.previousMeetingId ?? "";
+  // 업체정보 T~AN — 자유 텍스트는 apostrophe prefix(USER_ENTERED 오변환 방지). 빈값은 빈 셀.
+  const ci = m.업체정보 as Record<string, unknown> | undefined;
+  COMPANY_FIELDS.forEach((f, i) => {
+    const v = ci ? String(ci[f] ?? "").trim() : "";
+    row[COMPANY_FIELD_START + i] = v ? `'${v}` : "";
+  });
+  const customJson = m.업체정보?.커스텀
+    ? JSON.stringify(m.업체정보.커스텀)
+    : "";
+  row[COMPANY_CUSTOM_COL] =
+    customJson && customJson !== "{}" ? `'${customJson}` : "";
   // 표시상세/표시요약/계약합성라인/주차는 시트 수식이 채움 → 빈 문자열 유지
   return row;
 }
@@ -214,15 +222,8 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
 }
 
 /**
- * 미팅 1건 append. id 중복 검증은 호출 측 책임.
- *
- * `values.append`로 INSERT_ROWS 하지 않고, A열(id) 기준 빈 행을 찾아
- * 정확히 그 행에 batch update. K열 phantom FALSE 영향 X.
- *
- * ⚠️ 중요: A:S 전체를 한 번에 update하면 시트의 N/O/Q/S 수식 셀까지 빈 문자열로
- *  덮어써져 표시상세/표시요약/계약합성라인/주차 수식이 사라짐 (user-reported bug).
- *  → 사용자 입력 영역만 split write: A:M (id~미팅사유) / P (계약조건) / R (previousMeetingId).
- *  → 시트 템플릿의 N/O/Q/S 수식 보존됨 → 01 영업관리 I/J도 자동 sync.
+ * 미팅 1건 append (id 중복 검증은 호출 측). A열 기준 빈 행 찾아 split write
+ * (A:M/P/R/T~AN) — N/O/Q/S 수식 보존(A:S 일괄 쓰면 수식 소실 사고, user-reported).
  */
 export async function appendMeeting(
   spreadsheetId: string,
@@ -246,6 +247,8 @@ async function writeMeetingRowSplit(
   const A_to_M = fullRow.slice(0, 13); // A=0 ~ M=12 (사용자 입력)
   const P_only = [fullRow[COL.계약조건]]; // P=15
   const R_only = [fullRow[COL.previousMeetingId]]; // R=17
+  // 업체정보 T~AN (T=19~AN=39). 미팅(A:M/P/R)·수식(N/O/Q/S)과 분리 — 서로 보존.
+  const T_to_AN = fullRow.slice(COMPANY_FIELD_START, COMPANY_CUSTOM_COL + 1);
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -262,6 +265,10 @@ async function writeMeetingRowSplit(
         {
           range: `${tabRef(TAB)}!R${sheetRow}`,
           values: [R_only as (string | number | boolean)[]],
+        },
+        {
+          range: `${tabRef(TAB)}!T${sheetRow}:AN${sheetRow}`,
+          values: [T_to_AN],
         },
       ],
     },
@@ -480,6 +487,10 @@ export async function clearMeeting(
         {
           range: `${tabRef(TAB)}!R${sheetRow}`,
           values: [[""]],
+        },
+        {
+          range: `${tabRef(TAB)}!T${sheetRow}:AN${sheetRow}`,
+          values: [Array(21).fill("")], // 업체정보(T~AN)도 함께 비움
         },
       ],
     },
