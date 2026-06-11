@@ -1275,7 +1275,7 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장 |
+| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동) |
 | **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
 | **DriveLinkBar** | Drive 바로가기 + 플러그 바로가기 버튼. 미연결 시 재연결 폼. ADR-0007. |
@@ -1327,6 +1327,7 @@ components/dashboard/
 | **MarkdownView** | 공지/업데이트 MD 렌더 래퍼. Props: `markdown`. react-markdown — raw HTML 미렌더(rehype-raw 없음 = sanitize by construction) + 기본 urlTransform(javascript: 차단). 이미지 max-w-full rounded. |
 | **NoticeManager** | admin 팝업관리(`/admin/popup`) 상단 — 공지 작성/수정 (announcement-popup §4). Props: `initialNotices`. 목록 선택→폼 로드, MD 에디터(편집/미리보기 토글 — MarkdownView 재사용), [🖼 이미지] → POST /api/admin/notice-image(Drive belie OAuth + anyoneWithLink reader) → MD 이미지 문법 자동 삽입. 노출 옵션(audience/display_mode/start/end/pinned/active) 폼 → POST /api/admin/announcements(upsert). 비활성 = active 토글 저장. |
 | **UpdatesManager** | admin 팝업관리 하단 — 자동 수집 업데이트 현황 테이블 (§4). Props: `initialUpdates`. 행별 title_user 인라인 수정·milestone 입력·visible 토글 → PATCH /api/admin/announcements(pr 키, 전달 필드 셀만). 저장 시 수강생 캐시(tag "announcements") 무효화 → 팝업 목록 즉시 반영. |
+| **CompanySearchBar** | payment 업체 검색 바 (목록 상단 sticky top-24·z-30, feat/payment-company-search). Props: `value`, `onChange`, `matchCount`, `total`. 돋보기 svg + input("업체명 검색") + 입력 시 X 초기화 버튼 + "N개 업체 일치" 카운트. 클라 필터 전용(부분일치 — 대소문자·공백 무시, 서버 호출·데이터 무변경). 0건 빈 상태는 page 가 렌더. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 | **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
 
