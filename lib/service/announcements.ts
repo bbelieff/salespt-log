@@ -10,8 +10,15 @@
  *   updates — visible=TRUE 최신(pr desc) 10개.
  * 빈도 제어(once/daily/always)는 클라 localStorage — 서버는 후보만 내려준다.
  */
-import { unstable_cache } from "next/cache";
-import { readNotices, readUpdates } from "@/repo/announcements";
+import { unstable_cache, revalidateTag } from "next/cache";
+import {
+  patchUpdateRow,
+  readNotices,
+  readUpdates,
+  upsertNotice,
+  type UpdatePatch,
+} from "@/repo/announcements";
+import { uploadNoticeImage } from "@/repo/drive-txt";
 import { findUserByEmail } from "@/repo/users";
 import { Notice, UpdateItem } from "@/types";
 
@@ -80,4 +87,48 @@ export async function getAnnouncementsFor(email: string): Promise<AnnouncementsV
   const notices = filterNoticesFor(tabs.notices, { isArena, today: todayKST() });
   const updates = pickVisibleUpdates(tabs.updates);
   return { notices, updates, latestPr: updates[0]?.pr ?? 0 };
+}
+
+// ── admin 팝업관리 (announcement-popup §4, PR③) ─────────────────
+
+/** admin 화면용 — 필터·캐시 없이 raw 전체 (updates 는 pr desc). */
+export async function listAnnouncementsAdmin(): Promise<{
+  notices: Notice[];
+  updates: UpdateItem[];
+}> {
+  const [updates, notices] = await Promise.all([readUpdates(), readNotices()]);
+  return { notices, updates: updates.sort((a, b) => b.pr - a.pr) };
+}
+
+/** 공지 저장 — id 없으면 신규 생성(타임스탬프 id). 저장 후 수강생 캐시 무효화. */
+export async function saveNoticeAdmin(
+  input: Omit<Notice, "id" | "created" | "updated"> & { id?: string },
+): Promise<Notice> {
+  const now = new Date().toISOString();
+  const existing = input.id?.trim();
+  const notice = Notice.parse({
+    ...input,
+    id: existing || `n-${Date.now()}`,
+    created: existing ? (input as { created?: string }).created || now : now,
+    updated: now,
+  });
+  await upsertNotice(notice);
+  revalidateTag("announcements");
+  return notice;
+}
+
+/** 업데이트 행 보정 (title_user/body_md/milestone/visible) + 캐시 무효화. */
+export async function patchUpdateAdmin(pr: number, patch: UpdatePatch): Promise<boolean> {
+  const ok = await patchUpdateRow(pr, patch);
+  if (ok) revalidateTag("announcements");
+  return ok;
+}
+
+/** 공지 이미지 업로드 — Drive 폴더 + anyoneWithLink reader → MD 삽입용 URL. */
+export async function uploadNoticeImageAdmin(
+  fileName: string,
+  mimeType: string,
+  data: Buffer,
+): Promise<{ fileId: string; url: string }> {
+  return uploadNoticeImage(fileName, mimeType, data);
 }
