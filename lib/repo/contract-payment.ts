@@ -385,7 +385,9 @@ export async function appendFromContract(
   if (carryover) {
     writes.push({
       range: `${tabRef(tab)}!AI${row}:AJ${row}`,
-      values: [["이월", carryover.원본행id]],
+      // 원본키는 plain text 강제 — "02:10" 류가 USER_ENTERED 에서 시간값(2:10)으로
+      // 변환돼 멱등 키가 깨지는 사고(rejoin 카나리아 2026-06-11 실증).
+      values: [["이월", `'${carryover.원본행id}`]],
     });
   }
   await sheetsClient().spreadsheets.values.batchUpdate({

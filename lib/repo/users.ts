@@ -8,6 +8,7 @@
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
+import { getArchivedCohortSet } from "./cohorts";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
@@ -61,12 +62,8 @@ function parseRow(r: unknown[]): User | null {
 
 const REGISTRY_TAG = "registry";
 
-/**
- * 레지스트리 전체 row 캐시 — 60초 stale.
- * 페이지 전환마다 /api/me 가 호출 → findUserByEmail 가 전체 스캔 →
- * Sheets API roundtrip 300~800ms. 레지스트리는 admin 액션 외에는 거의 변하지
- * 않으므로 60초 캐시 적절. 쓰기 시 revalidateTag("registry") 로 즉시 무효화.
- */
+/** 레지스트리 전체 row 60초 캐시 — /api/me 매 호출 스캔 비용 흡수.
+ * 쓰기 시 revalidateTag("registry") 즉시 무효화. */
 const cachedRegistryRows = unstable_cache(
   async (): Promise<string[][]> => {
     const reg = registry();
@@ -81,31 +78,42 @@ export function invalidateRegistry(): void {
   revalidateTag(REGISTRY_TAG);
 }
 
+/** 보관 기수 라우팅 비활성(rejoin §1) — trainee + 숫자형("6"/"6기")만.
+ * 트레이너(T)·연습·아레나 행 절대 비적용(전 트레이너 차단 사고 방지 —
+ * rejoin-routing.test.ts 박제). */
+export function isNumericCohortArchived(
+  role: User["role"],
+  cohort: string,
+  archivedLabels: Set<string>,
+): boolean {
+  if (role !== "trainee") return false;
+  const m = String(cohort).trim().match(/^(\d+)\s*기?$/);
+  if (!m) return false;
+  return archivedLabels.has(m[1]!) || archivedLabels.has(`${m[1]}기`);
+}
+
 export async function findUserByEmail(email: string): Promise<User | null> {
   const rows = await cachedRegistryRows();
-  // 같은 이메일 다중 행(예: 6기 archived + A1-6기 active) → archived 아닌 행 우선 (carryover §1).
+  // cohorts 탭 archived 기수의 trainee 행은 라우팅 비활성(rejoin §1, 60s 캐시).
+  const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
+  // 같은 이메일 다중 행 → archived 아닌 행 우선 (carryover §1).
   let archivedFallback: User | null = null;
   for (const r of rows) {
     if (typeof r[0] === "string" && r[0].toLowerCase() === email.toLowerCase()) {
       const u = parseRow(r);
       if (!u) continue;
-      if (u.status !== "archived") return u;
-      archivedFallback ??= u;
+      const effArchived =
+        u.status === "archived" ||
+        isNumericCohortArchived(u.role, u.cohort, archivedLabels);
+      if (!effArchived) return u;
+      archivedFallback ??= { ...u, status: "archived" }; // 강등 — 호출부 일관 인지
     }
   }
   return archivedFallback;
 }
 
-/**
- * 전체 사용자 정렬:
- *   1. role (admin → trainer → trainee)
- *   2. cohort desc (숫자 추출)
- *   3. **sortOrder (PR C-1)** — explicit > 0 우선 ASC, 0 (미정렬) 은 box 하단
- *   4. 이름 asc (한국어 콜레이션, 동일 sortOrder 내 알파 fallback)
- *
- * sortOrder 의미는 같은 (cohort, team) 박스 안 — 박스 외부와는 비교 안 함. UI 는
- * 박스 단위로 grouping 한 뒤 이 정렬 결과를 그대로 사용 → 박스 내 dnd 결과 반영.
- */
+/** 전체 사용자 정렬 — role(admin→trainer→trainee) → cohort desc →
+ * sortOrder(>0 ASC, 0=박스 하단; 같은 cohort·team 박스 內 의미) → 이름 asc(ko). */
 export async function listAllUsers(): Promise<User[]> {
   const rows = await cachedRegistryRows();
   const users: User[] = [];

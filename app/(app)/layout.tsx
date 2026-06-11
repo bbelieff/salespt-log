@@ -36,6 +36,7 @@ export default async function AppLayout({
     // 활성 대상(impersonation 적용)이 pending 이면 대기 화면.
     const activeEmail = await getActiveUserEmail();
     const u = await findUserByEmail(activeEmail);
+    if (u && u.status === "archived") redirect("/claim"); // rejoin §1 — 직접 URL 도 차단
     if (u && u.status === "pending") {
       return (
         <PendingApprovalScreen
