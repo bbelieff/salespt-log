@@ -3,10 +3,12 @@ import {
   COMPANY_FIELDS,
   COMPANY_FIELD_START,
   COMPANY_CUSTOM_COL,
+  COMPANY_FIELDS_EXT,
+  COMPANY_EXT_START,
 } from "@/repo/meetings";
 import { CompanyInfo, Meeting } from "@/types";
 
-describe("업체정보 컬럼 매핑 (04 T~AN)", () => {
+describe("업체정보 컬럼 매핑 (04 T~AN + AQ~AS)", () => {
   it("20 필드(T~AM) + 커스텀(AN). 시작 T=19, 커스텀 AN=39", () => {
     expect(COMPANY_FIELDS).toHaveLength(20);
     expect(COMPANY_FIELD_START).toBe(19); // T (A=0)
@@ -15,9 +17,15 @@ describe("업체정보 컬럼 매핑 (04 T~AN)", () => {
     expect(COMPANY_FIELD_START + COMPANY_FIELDS.length).toBe(COMPANY_CUSTOM_COL);
   });
 
-  it("COMPANY_FIELDS 키가 CompanyInfo 스키마 키와 일치", () => {
+  it("확장 3필드 = AQ(42)~AS — AO(40)/AP(41) 이월깃발 비침범 (field-grid)", () => {
+    expect(COMPANY_FIELDS_EXT).toHaveLength(3);
+    expect(COMPANY_EXT_START).toBe(42); // AQ — 이월(AO/AP) 바로 뒤
+    expect(COMPANY_EXT_START).toBeGreaterThan(41); // AP(이월원본행id) 침범 금지
+  });
+
+  it("COMPANY_FIELDS(+EXT) 키가 CompanyInfo 스키마 키와 일치", () => {
     const ciKeys = new Set(Object.keys(CompanyInfo.parse({})));
-    for (const f of COMPANY_FIELDS) {
+    for (const f of [...COMPANY_FIELDS, ...COMPANY_FIELDS_EXT]) {
       expect(ciKeys.has(f)).toBe(true);
     }
   });

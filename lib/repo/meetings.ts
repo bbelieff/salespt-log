@@ -10,7 +10,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { Meeting, MeetingState } from "@/types";
-import { sheetsClient } from "./sheets-client";
+import { ensureGridColumns, sheetsClient } from "./sheets-client";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -20,10 +20,8 @@ function tabRef(tab: string): string {
 
 function serialToISODate(v: unknown): string {
   if (typeof v === "string") {
-    // 이미 "YYYY-MM-DD" 텍스트라면 그대로
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-    // "M/D/YYYY" 또는 "YYYY/M/D" 같은 변종 → Date 파싱 시도
-    const d = new Date(v);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; // 이미 ISO
+    const d = new Date(v); // "M/D/YYYY" 등 변종
     if (!Number.isNaN(d.getTime())) return toISO(d);
     return "";
   }
@@ -40,14 +38,12 @@ function serialToISODate(v: unknown): string {
 function serialToHHMM(v: unknown): string {
   if (typeof v === "string") {
     if (/^\d{2}:\d{2}$/.test(v)) return v;
-    // "10:00:00" → "10:00"
-    const m = v.match(/^(\d{2}):(\d{2})/);
+    const m = v.match(/^(\d{2}):(\d{2})/); // "10:00:00" → "10:00"
     if (m) return `${m[1]}:${m[2]}`;
     return "";
   }
   if (typeof v === "number") {
-    // 0~1 사이 분수 = 하루 중 비율. 또는 정수 + 분수 (날짜+시간 합쳐진 경우)
-    const fraction = ((v % 1) + 1) % 1; // 음수 안전
+    const fraction = ((v % 1) + 1) % 1; // 하루 중 비율(음수 안전, 날짜+시간 결합 허용)
     const totalMinutes = Math.round(fraction * 24 * 60);
     const h = Math.floor(totalMinutes / 60) % 24;
     const m = totalMinutes % 60;
@@ -108,12 +104,24 @@ export const COMPANY_FIELDS = [
 export const COMPANY_FIELD_START = 19; // T
 export const COMPANY_CUSTOM_COL = 39; // AN
 
-/** 행 배열 T~AN → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
+// 확장 3필드 (AQ=42~AS=44 — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11).
+// 기존 과년도매출(Z)=표시 "Y-1" 키 유지 — 라이브 데이터 보존(컬럼 이동 금지).
+export const COMPANY_FIELDS_EXT = [
+  "대표자생년월일", "과년도매출Y2", "과년도매출Y3",
+] as const;
+export const COMPANY_EXT_START = 42; // AQ
+
+/** 행 배열 T~AN(+AQ~AS) → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
 function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   const ci: Record<string, unknown> = {};
   let any = false;
   COMPANY_FIELDS.forEach((f, i) => {
     const v = String(r[COMPANY_FIELD_START + i] ?? "").trim();
+    ci[f] = v;
+    if (v) any = true;
+  });
+  COMPANY_FIELDS_EXT.forEach((f, i) => {
+    const v = String(r[COMPANY_EXT_START + i] ?? "").trim();
     ci[f] = v;
     if (v) any = true;
   });
@@ -129,9 +137,9 @@ function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   return any ? ci : undefined;
 }
 
-/** Meeting → 시트 1행 배열 (A~AN). 수식 컬럼·미설정은 빈 문자열. */
+/** Meeting → 시트 1행 배열 (A~AS, 45셀). 수식·이월(AO/AP)·미설정은 빈 문자열. */
 function meetingToRow(m: Meeting): (string | number | boolean)[] {
-  const row: (string | number | boolean)[] = new Array(40).fill("");
+  const row: (string | number | boolean)[] = new Array(45).fill("");
   row[COL.id] = m.id;
   row[COL.예약일] = m.예약일;
   row[COL.예약시각] = m.예약시각;
@@ -161,6 +169,11 @@ function meetingToRow(m: Meeting): (string | number | boolean)[] {
     : "";
   row[COMPANY_CUSTOM_COL] =
     customJson && customJson !== "{}" ? `'${customJson}` : "";
+  // 확장 3필드 AQ~AS (AO/AP 이월깃발은 항상 빈 문자열 — split write 가 비접촉)
+  COMPANY_FIELDS_EXT.forEach((f, i) => {
+    const v = ci ? String(ci[f] ?? "").trim() : "";
+    row[COMPANY_EXT_START + i] = v ? `'${v}` : "";
+  });
   // 표시상세/표시요약/계약합성라인/주차는 시트 수식이 채움 → 빈 문자열 유지
   return row;
 }
@@ -203,11 +216,8 @@ function rowToMeeting(r: unknown[]): Meeting | null {
 // ── Public API ─────────────────────────────────────────────────
 
 /**
- * 헤더 다음 첫 번째 빈 행 번호(1-based) 찾기.
- *
- * `values.append INSERT_ROWS`는 K열(계약여부) 같이 데이터 검증으로
- * FALSE가 채워진 phantom 행들도 "데이터 있는 행"으로 보고 그 너머에
- * append하기 때문에, A열(id) 기준으로 진짜 빈 행을 찾는 패턴 필요.
+ * 헤더 다음 첫 빈 행(1-based) — values.append 는 데이터검증 phantom 행(K열 FALSE)
+ * 너머에 붙기 때문에 A열(id) 기준으로 직접 탐색.
  */
 async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
   const res = await sheetsClient().spreadsheets.values.get({
@@ -221,10 +231,7 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
   return ids.length + 2; // 모두 차있으면 끝에 추가
 }
 
-/**
- * 미팅 1건 append (id 중복 검증은 호출 측). A열 기준 빈 행 찾아 split write
- * (A:M/P/R/T~AN) — N/O/Q/S 수식 보존(A:S 일괄 쓰면 수식 소실 사고, user-reported).
- */
+/** 미팅 1건 append — A열 빈 행에 split write (N/O/Q/S 수식 보존, id 중복 검증은 호출 측). */
 export async function appendMeeting(
   spreadsheetId: string,
   meeting: Meeting,
@@ -235,20 +242,20 @@ export async function appendMeeting(
   await writeMeetingRowSplit(spreadsheetId, targetRow, row);
 }
 
-/**
- * Meeting row 배열을 시트에 split write — 수식 컬럼(N/O/Q/S) 보존.
- * append/update 양쪽에서 동일 패턴 사용.
- */
+/** Meeting row split write — 수식(N/O/Q/S)·이월(AO/AP) 보존. append/update 공용. */
 async function writeMeetingRowSplit(
   spreadsheetId: string,
   sheetRow: number,
   fullRow: (string | number | boolean)[],
 ): Promise<void> {
+  await ensureGridColumns(spreadsheetId, TAB, 45); // AS 까지 — grid limit 가드
   const A_to_M = fullRow.slice(0, 13); // A=0 ~ M=12 (사용자 입력)
   const P_only = [fullRow[COL.계약조건]]; // P=15
   const R_only = [fullRow[COL.previousMeetingId]]; // R=17
-  // 업체정보 T~AN (T=19~AN=39). 미팅(A:M/P/R)·수식(N/O/Q/S)과 분리 — 서로 보존.
+  // 업체정보 T~AN (T=19~AN=39) + 확장 AQ~AS (42~44). 미팅(A:M/P/R)·수식(N/O/Q/S)·
+  // 이월깃발(AO/AP)과 전부 분리 — 서로 보존.
   const T_to_AN = fullRow.slice(COMPANY_FIELD_START, COMPANY_CUSTOM_COL + 1);
+  const AQ_to_AS = fullRow.slice(COMPANY_EXT_START, COMPANY_EXT_START + 3);
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -270,15 +277,16 @@ async function writeMeetingRowSplit(
           range: `${tabRef(TAB)}!T${sheetRow}:AN${sheetRow}`,
           values: [T_to_AN],
         },
+        {
+          range: `${tabRef(TAB)}!AQ${sheetRow}:AS${sheetRow}`,
+          values: [AQ_to_AS],
+        },
       ],
     },
   });
 }
 
-/**
- * id로 행 번호 찾기 (1-based, 없으면 null).
- * 헤더가 1행이므로 데이터는 2행부터 → 검색 결과 인덱스 + 2.
- */
+/** id → 행 번호 (1-based, 없으면 null). 데이터는 2행부터. */
 export async function findRowById(
   spreadsheetId: string,
   id: string,
@@ -300,7 +308,9 @@ export async function findById(
 ): Promise<Meeting | null> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return null;
-  const range = `${tabRef(TAB)}!A${sheetRow}:S${sheetRow}`;
+  // A:AS — 업체정보(T~AN·AQ~AS)·이월(AO/AP) 포함. (구 A:S — 업체정보 누락으로
+  // 계약 06 스냅샷 경로(re-findById)가 빈 업체정보를 받던 잠복 결함, field-grid fix)
+  const range = `${tabRef(TAB)}!A${sheetRow}:AS${sheetRow}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -312,10 +322,7 @@ export async function findById(
   return rowToMeeting(r as unknown[]);
 }
 
-/**
- * 특정 행 부분 update.
- * 수식 컬럼(N/O/Q/S)은 자동 제외.
- */
+/** 특정 행 부분 update — 수식(N/O/Q/S) 자동 제외. */
 export async function updateMeeting(
   spreadsheetId: string,
   id: string,
@@ -348,12 +355,7 @@ export async function findByDate(
   return map.get(date) ?? [];
 }
 
-/**
- * 여러 날짜를 한 번의 시트 read로 조회. 일정·계약 탭의 주간 뷰처럼
- * 7일치를 한꺼번에 가져올 때 quota 절약 (7 read → 1 read).
- *
- * 반환: dates의 각 항목을 key로 하는 Meeting[] map. 빠진 날짜는 빈 배열.
- */
+/** 여러 날짜 1-read 조회 (주간 뷰 quota 절약). 반환: date→Meeting[] map. */
 export async function findByDateRange(
   spreadsheetId: string,
   dates: string[],
@@ -386,13 +388,8 @@ export async function findByDateRange(
 }
 
 /**
- * 한 번의 시트 read 로 **두 기준 (예약일/미팅날짜) 동시 추출** (2026-05-16).
- *
- * 컨택탭 일자 badges 는 `예약일` 필터 (그 날 일자 카드 = 그 날 예약된 미팅).
- * 일정·계약 탭 일자 cards 는 `미팅날짜` 필터 (그 날 실제 미팅 있는 미팅).
- * 두 view 가 같은 데이터에서 다른 기준으로 필터링 → 1 sheet read 로 둘 다 추출.
- *
- * 사용처: `loadWeekMeetings` (컨택탭 badge + 일정·계약 탭 cards 모두 필요).
+ * 1-read 로 두 기준(예약일/미팅날짜) 동시 추출 — 컨택 badge(예약일)·일정 카드
+ * (미팅날짜)가 같은 데이터의 다른 필터. 사용처: loadWeekMeetings.
  */
 export async function findByDateRangeBoth(
   spreadsheetId: string,
@@ -432,12 +429,7 @@ export async function findByDateRangeBoth(
   return { byMeetingDate, byReservationDate };
 }
 
-/**
- * previousMeetingId 가 originalId 인 미팅을 찾는다 (변경 cascade 용).
- * 일정 변경 시 새 미팅이 previousMeetingId=원본 으로 append 됨 →
- * 변경 되돌리기에서 그 새 미팅을 식별·삭제하기 위함.
- * 2026-05-17 ([2a] 미팅결과 되돌리기).
- */
+/** previousMeetingId==originalId 미팅 탐색 — 일정 변경 되돌리기 cascade 용. */
 export async function findByPreviousMeetingId(
   spreadsheetId: string,
   originalId: string,
@@ -470,6 +462,7 @@ export async function clearMeeting(
 ): Promise<void> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return;
+  await ensureGridColumns(spreadsheetId, TAB, 45); // AQ~AS 클리어 — grid limit 가드
   // A~M, P, R 비우기 (수식 컬럼 N/O/Q/S는 건드리지 않음)
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
@@ -491,6 +484,10 @@ export async function clearMeeting(
         {
           range: `${tabRef(TAB)}!T${sheetRow}:AN${sheetRow}`,
           values: [Array(21).fill("")], // 업체정보(T~AN)도 함께 비움
+        },
+        {
+          range: `${tabRef(TAB)}!AQ${sheetRow}:AS${sheetRow}`,
+          values: [Array(3).fill("")], // 확장 3필드 — AO/AP(이월)는 비접촉
         },
       ],
     },

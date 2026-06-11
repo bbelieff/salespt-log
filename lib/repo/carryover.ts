@@ -7,7 +7,7 @@
  * 멱등: 아레나 04 AP / 02 AJ 컬럼의 원본키 집합으로 중복 삽입 방지.
  * 이전 기수 시트는 읽기 전용 — 이 파일은 old 시트에 어떤 쓰기도 하지 않는다.
  */
-import { sheetsClient } from "./sheets-client";
+import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 
 const TAB = SHEET_RANGES.meetings.tab;
@@ -72,6 +72,9 @@ export async function appendCarriedMeeting(
   const a2m = src.raw.slice(0, 13).map((v) => v ?? "");
   a2m[0] = newId; // 새 id (옛/새 시트 id 혼동 방지 — 원본은 AP 에)
   const t2an = Array.from({ length: 21 }, (_, i) => src.raw[19 + i] ?? "");
+  // AO:AP 쓰기 — 04 grid 가 AN(40)까지인 시트에서 grid limit 에러 (field-grid 실측,
+  // 잠복 버그: 라이브 이월 0건이라 미발현이었음) → 45열 보장 후 쓰기.
+  await ensureGridColumns(arenaSheetId, SHEET_RANGES.meetings.tab, 45);
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId: arenaSheetId,
     requestBody: {
