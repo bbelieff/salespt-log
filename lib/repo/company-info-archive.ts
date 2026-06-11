@@ -4,15 +4,15 @@
  * 계약 액션 시 04 업체정보(T~AN) 스냅샷 1행 추가, 이후 04 변경 시 같은 키 행 동기화.
  * 키 = 계약ref(`${계약일}|${업체명}`, 05 contractRef 와 동일 포맷). 04 가 SSOT.
  *
- * 컬럼 (A~Y, sheet-structure §5-3): A=업체명 B=계약일 C=계약ref D=갱신시각
- * E~X=COMPANY_FIELDS 20필드 미러 Y=커스텀 JSON.
+ * 컬럼 (A~AB, sheet-structure §5-3): A=업체명 B=계약일 C=계약ref D=갱신시각
+ * E~X=COMPANY_FIELDS 20필드 미러 Y=커스텀 JSON Z~AB=확장 3필드 미러(04 AQ~AS).
  *
  * §2.5 가드: append 는 A열 빈 행 탐색 + 그 행 FORMULA pre-read 로 raw 값 있으면
  * 다음 빈 행 재탐색(타 데이터 덮어쓰기 방지). update 는 자기 키(계약ref) 행만 타격.
  */
-import { sheetsClient } from "./sheets-client";
+import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
-import { COMPANY_FIELDS } from "./meetings";
+import { COMPANY_FIELDS, COMPANY_FIELDS_EXT } from "./meetings";
 import { CompanyInfo } from "@/types";
 
 const TAB = SHEET_RANGES.companyInfoArchive.tab;
@@ -20,8 +20,12 @@ const HEADER_RANGE = `'${TAB}'!${SHEET_RANGES.companyInfoArchive.headerRow}`;
 const KEY_COL_RANGE = `'${TAB}'!C2:C`; // 계약ref 검색용
 const ID_COL_RANGE = `'${TAB}'!A2:A`; // 빈 행 탐색용
 
+// A~Y(기존 25) + Z~AB(확장 3 미러 — 04 AQ~AS, field-grid). 커스텀(Y) 뒤 append.
 const HEADER = [
-  ["업체명", "계약일", "계약ref", "갱신시각", ...COMPANY_FIELDS, "업체정보_커스텀"],
+  [
+    "업체명", "계약일", "계약ref", "갱신시각",
+    ...COMPANY_FIELDS, "업체정보_커스텀", ...COMPANY_FIELDS_EXT,
+  ],
 ];
 
 /** 계약ref 합성키 — 05 contractRef 와 동일 포맷. */
@@ -29,7 +33,7 @@ export function companyContractRef(계약일: string, 업체명: string): string
   return `${계약일}|${업체명.trim()}`;
 }
 
-/** (업체명·계약일·업체정보) → 06 1행 배열 (A~Y, 25컬럼). 순수 — 테스트 대상. */
+/** (업체명·계약일·업체정보) → 06 1행 배열 (A~AB, 28컬럼). 순수 — 테스트 대상. */
 export function companyInfoToArchiveRow(
   업체명: string,
   계약일: string,
@@ -37,18 +41,19 @@ export function companyInfoToArchiveRow(
   nowISO: string,
 ): string[] {
   const c = (ci ?? {}) as Record<string, unknown>;
-  const fields = COMPANY_FIELDS.map((f) => {
+  const toCell = (f: string) => {
     const v = String(c[f] ?? "").trim();
     return v ? `'${v}` : ""; // plain text 강제 (USER_ENTERED 오변환 방지)
-  });
+  };
   const custom = ci?.커스텀 ? JSON.stringify(ci.커스텀) : "";
   return [
     업체명.trim(),
     계약일,
     companyContractRef(계약일, 업체명),
     nowISO,
-    ...fields,
+    ...COMPANY_FIELDS.map(toCell),
     custom && custom !== "{}" ? `'${custom}` : "",
+    ...COMPANY_FIELDS_EXT.map(toCell), // Z~AB (04 AQ~AS 미러)
   ];
 }
 
@@ -83,16 +88,27 @@ async function doEnsure(spreadsheetId: string): Promise<void> {
       /* 동시 생성 — 이미 존재로 간주 */
     }
   }
+  // addSheet 기본 26열(Z) — AB(28)까지 grid 보장 (field-grid).
+  await ensureGridColumns(spreadsheetId, TAB, 28);
   const header = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range: HEADER_RANGE,
   });
-  if (!header.data.values?.[0]?.[0]) {
+  const cells = header.data.values?.[0] ?? [];
+  if (!cells[0]) {
     await sheetsClient().spreadsheets.values.update({
       spreadsheetId,
       range: HEADER_RANGE,
       valueInputOption: "RAW",
       requestBody: { values: HEADER },
+    });
+  } else if (!String(cells[25] ?? "").trim()) {
+    // 확장 전(25컬럼) 기존 탭 — Z1:AB1 라벨만 보강 (빈 셀에만, §2.5)
+    await sheetsClient().spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${TAB}'!Z1:AB1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [[...COMPANY_FIELDS_EXT]] },
     });
   }
 }
@@ -129,7 +145,7 @@ async function findSafeEmptyRow(spreadsheetId: string): Promise<number> {
     const row = candidate + attempt;
     const pre = await sheetsClient().spreadsheets.values.get({
       spreadsheetId,
-      range: `'${TAB}'!A${row}:Y${row}`,
+      range: `'${TAB}'!A${row}:AB${row}`,
       valueRenderOption: "FORMULA",
     });
     const cells = pre.data.values?.[0] ?? [];
@@ -162,7 +178,7 @@ export async function upsertCompanyInfoArchive(
   const row = existing ?? (await findSafeEmptyRow(spreadsheetId));
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: `'${TAB}'!A${row}:Y${row}`,
+    range: `'${TAB}'!A${row}:AB${row}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [rowValues] },
   });
@@ -180,12 +196,15 @@ export async function readCompanyInfoArchiveRow(
   if (row === null) return null;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
-    range: `'${TAB}'!E${row}:Y${row}`,
+    range: `'${TAB}'!E${row}:AB${row}`,
   });
   const r = res.data.values?.[0] ?? [];
   const ci: Record<string, unknown> = {};
   COMPANY_FIELDS.forEach((f, i) => {
     ci[f] = String(r[i] ?? "").trim();
+  });
+  COMPANY_FIELDS_EXT.forEach((f, i) => {
+    ci[f] = String(r[COMPANY_FIELDS.length + 1 + i] ?? "").trim(); // Z~AB
   });
   const raw = String(r[COMPANY_FIELDS.length] ?? "").trim();
   if (raw) {

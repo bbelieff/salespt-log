@@ -130,3 +130,57 @@ export async function appendRows(
     requestBody: { values: rows },
   });
 }
+
+/**
+ * 탭 grid 컬럼 보장 — columnCount < minCols 면 appendDimension 으로 확장.
+ * Sheets 는 grid 밖 좌표 쓰기를 "exceeds grid limits" 로 거부한다 (04 가 AN=40
+ * 까지만 생성된 시트에 AO~AS 쓰기 시 — field-grid 2026-06-11 실측).
+ * 멱등·promise 캐시(시트·탭당 1회). 행/데이터 비접촉 — 빈 컬럼만 추가.
+ */
+const gridEnsured = new Map<string, Promise<void>>();
+
+export function ensureGridColumns(
+  spreadsheetId: string,
+  tabTitle: string,
+  minCols: number,
+): Promise<void> {
+  const key = `${spreadsheetId}:${tabTitle}:${minCols}`;
+  let p = gridEnsured.get(key);
+  if (!p) {
+    p = doEnsureGrid(spreadsheetId, tabTitle, minCols).catch((e) => {
+      gridEnsured.delete(key);
+      throw e;
+    });
+    gridEnsured.set(key, p);
+  }
+  return p;
+}
+
+async function doEnsureGrid(
+  spreadsheetId: string,
+  tabTitle: string,
+  minCols: number,
+): Promise<void> {
+  const meta = await sheetsClient().spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets(properties(sheetId,title,gridProperties(columnCount)))",
+  });
+  const sheet = meta.data.sheets?.find((s) => s.properties?.title === tabTitle);
+  if (!sheet?.properties) return; // 탭 없음 — 호출측 ensure 가 처리
+  const count = sheet.properties.gridProperties?.columnCount ?? 0;
+  if (count >= minCols) return;
+  await sheetsClient().spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          appendDimension: {
+            sheetId: sheet.properties.sheetId,
+            dimension: "COLUMNS",
+            length: minCols - count,
+          },
+        },
+      ],
+    },
+  });
+}

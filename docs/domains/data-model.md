@@ -493,8 +493,8 @@ interface DashboardView {
 | `Channel` | z.enum | 4채널 enum: `매입DB` / `직접생산` / `현수막` / `콜·지·기·소`. 변경 금지 |
 | `MetricKey` | z.enum | 4지표 enum: `production` / `inflow` / `contactProgress` / `meetingReservation` |
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
-| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) |
-| `CompanyInfo` | z.object | 업체정보(04 T~AN, 미팅 단위): [업체]12 + [대표자]8 + `커스텀`(비정형 JSON). consultation-log §1-1 |
+| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) |
+| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS, 미팅 단위): [업체]14 + [대표자]9 = 23필드 고정 + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. 기대출 2필드는 셀 내 `\n` 허용. consultation-log §1-1 (2026-06-11 확정) |
 | `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
 | `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금 — 전광판 입금자 모수 필터) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
 

@@ -1,9 +1,12 @@
 /**
- * CompanyInfoEditor — 미팅 업체정보(04 T~AN) 드롭다운 + 팝업 편집.
- * 정본: consultation-log-and-calendar.md §3. contact/schedule/payment 공용.
+ * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS) 드롭다운 + 팝업 편집.
+ * 정본: consultation-log-and-calendar.md §3-2 (2026-06-11 혼합 그리드 확정).
+ * contact/schedule/payment 공용 — 탭별 분기 금지.
  *
- * value(현재 업체정보) → draft 편집 → onSave(전체 CompanyInfo) → 호출부가 patch({업체정보}).
- * [업체]12 + [대표자]8 + 커스텀(필드추가+). 빈값 허용.
+ * 반응형 3단계: 기본(<390) 1열 강하 · sm(390+) 혼합 그리드(2열, short=span1,
+ * long=span2) · 2xl(768+) [업체]|[대표자] 그룹 좌우 2단(모달·PC 카드).
+ * placeholder = 필드 안 옅은 안내(별도 설명 줄 없음). 기대출 2필드 = textarea
+ * 자동높이(줄 수 따라) — 시트에 \n 그대로 저장.
  */
 "use client";
 
@@ -13,35 +16,41 @@ import { CompanyInfo } from "@/types";
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
 
-// 키(식별자) → 표시 라벨.
-const 업체_FIELDS: [keyof CI, string][] = [
-  ["개업일", "개업일"],
-  ["사업자구분", "사업자구분"],
-  ["사업자등록번호", "사업자등록번호"],
-  ["소재지", "소재지"],
-  ["소유여부", "소유여부"],
-  ["업종주생산품목", "업종/주생산품목"],
-  ["과년도매출", "과년도 매출"],
-  ["금년도매출", "금년도 매출"],
-  ["기대출사업자", "기대출(사업자)"],
-  ["사대보험직원", "4대보험 직원"],
-  ["특허및인증", "특허/인증"],
-  ["업체기타메모", "기타 메모"],
+// 필드 정의: [키, 라벨, placeholder, span(1|2), multiline?]
+type FieldDef = [keyof CI, string, string, 1 | 2, boolean?];
+
+// §3-2 확정 배치 순서 그대로.
+const 업체_DEFS: FieldDef[] = [
+  ["개업일", "개업일", "25.01.24", 1],
+  ["사업자구분", "사업자구분", "개인/법인", 1],
+  ["사업자등록번호", "사업자등록번호", "000-00-0000", 1],
+  ["사대보험직원", "4대보험 직원", "0명 + 프리0명", 1],
+  ["소재지", "소재지", "주소지", 2],
+  ["소유여부", "소유여부", "자가 / 임차 : 보 00만, 월 00만", 2],
+  ["업종주생산품목", "업종/주생산품목", "제조/필름 등", 2],
+  ["금년도매출", "금년도 매출", "26' 6월 100백만", 1],
+  ["과년도매출", "과년도 매출 Y-1", "25' 250백만", 1],
+  ["과년도매출Y2", "과년도 매출 Y-2", "24' 148백만", 1],
+  ["과년도매출Y3", "과년도 매출 Y-3", "23' 70백만", 1],
+  ["기대출사업자", "기대출 사업자", "신보 100백만\n재단 50백만\n중진공 150백만", 2, true],
+  ["특허및인증", "특허 및 인증", "특허, ISO, 연구소, 벤처, 메인/이노비즈 등", 2],
+  ["업체기타메모", "기타메모", "자유 메모", 2, true],
 ];
-const 대표자_FIELDS: [keyof CI, string][] = [
-  ["대표자이름", "대표자 이름"],
-  ["연락처통신사", "연락처/통신사"],
-  ["신용점수", "신용점수"],
-  ["기대출개인", "기대출(개인)"],
-  ["자택주소지", "자택 주소지"],
-  ["대표소유여부", "소유여부"],
-  ["동종업계경력", "동종업계 경력"],
-  ["대표기타메모", "기타 메모"],
+const 대표자_DEFS: FieldDef[] = [
+  ["대표자이름", "이름", "이름", 1],
+  ["대표자생년월일", "생년월일", "88.01.24", 1],
+  ["신용점수", "신용점수(KCB/NCB)", "919/855", 1],
+  ["연락처통신사", "연락처/통신사", "010-0000-0000(통신사)", 2],
+  ["기대출개인", "기대출 개인", "캐피탈 38백만\n카드론 10백만\n00은행 20백만", 2, true],
+  ["자택주소지", "자택주소지", "주소지", 2],
+  ["대표소유여부", "소유여부", "자가 / 임차 : 보 00만, 월 00만", 2],
+  ["동종업계경력", "동종업계경력", "연차 및 경력기록", 2],
+  ["대표기타메모", "기타메모", "자유 메모", 2, true],
 ];
 
 const emptyCi = (): CI => CompanyInfo.parse({});
 const inputCls =
-  "w-full rounded-md border border-gray-200 px-2 py-1 text-xs focus:border-brand-red focus:outline-none";
+  "w-full rounded-md border border-gray-200 px-2 py-1 text-xs placeholder:text-gray-300 focus:border-brand-red focus:outline-none";
 
 interface Props {
   value?: CI;
@@ -122,7 +131,7 @@ export default function CompanyInfoEditor({
     setNewLabel((n) => ({ ...n, [g]: "" }));
   };
 
-  const filled = [...업체_FIELDS, ...대표자_FIELDS].filter(
+  const filled = [...업체_DEFS, ...대표자_DEFS].filter(
     ([k]) => String(draft[k] ?? "").trim() !== "",
   ).length;
   const summary = draft.대표자이름?.trim()
@@ -133,22 +142,42 @@ export default function CompanyInfoEditor({
 
   const save = () => onSave(draft);
 
-  const group = (g: Grp, fields: [keyof CI, string][]) => (
+  // 한 필드 입력 — multiline=textarea(줄 수 따라 자동높이), 아니면 input.
+  const field = ([k, label, ph, span, multi]: FieldDef) => {
+    const v = String(draft[k] ?? "");
+    return (
+      <label key={String(k)} className={span === 2 ? "block sm:col-span-2" : "block"}>
+        <span className="text-[10px] text-gray-400">{label}</span>
+        {multi ? (
+          <textarea
+            className={`${inputCls} resize-none leading-5`}
+            rows={Math.max(2, v.split("\n").length)}
+            placeholder={ph}
+            value={v}
+            onChange={(e) => set(k, e.target.value)}
+          />
+        ) : (
+          <input
+            className={inputCls}
+            placeholder={ph}
+            value={v}
+            onChange={(e) => set(k, e.target.value)}
+          />
+        )}
+      </label>
+    );
+  };
+
+  // 그룹 = 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
+  const group = (g: Grp, defs: FieldDef[]) => (
     <div className="space-y-1.5">
       <div className="text-[11px] font-bold text-gray-500">[{g}]</div>
-      <div className="grid grid-cols-2 gap-1.5">
-        {fields.map(([k, label]) => (
-          <label key={String(k)} className="block">
-            <span className="text-[10px] text-gray-400">{label}</span>
-            <input
-              className={inputCls}
-              value={String(draft[k] ?? "")}
-              onChange={(e) => set(k, e.target.value)}
-            />
-          </label>
-        ))}
+      {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
+          span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {defs.map(field)}
         {Object.entries(customOf(g)).map(([label, v]) => (
-          <label key={`c-${label}`} className="block">
+          <label key={`c-${label}`} className="block sm:col-span-2">
             <span className="flex items-center justify-between text-[10px] text-purple-500">
               {label}
               <button
@@ -186,10 +215,11 @@ export default function CompanyInfoEditor({
     </div>
   );
 
+  // 2xl(768+)에서 [업체]|[대표자] 좌우 2단 — 그 미만은 세로.
   const body = (
-    <div className="space-y-3">
-      {group("업체", 업체_FIELDS)}
-      {group("대표자", 대표자_FIELDS)}
+    <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4">
+      {group("업체", 업체_DEFS)}
+      {group("대표자", 대표자_DEFS)}
     </div>
   );
 
@@ -255,7 +285,8 @@ export default function CompanyInfoEditor({
 
       {modal && (
         <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-          <div className="mt-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">
+          {/* PC(2xl+) 모달은 좌우 2단이 펼쳐지도록 넓게 */}
+          <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-black text-gray-900">업체정보 편집</h3>
               <button
