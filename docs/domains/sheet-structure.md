@@ -586,8 +586,8 @@ H / O / W: spacer (비움). A: 비움.
 | C | type | feat / fix / perf / chore / docs / refactor (커밋 타입 접두어) |
 | D | title_user | 사용자용 한 줄 (커밋 본문 `Changelog:` 줄, 토스 문체) |
 | E | body_md | 상세 MD (선택, admin 작성) |
-| F | milestone | 큰 묶음 라벨 (admin 수동, 예: "업체정보 기능 출시") |
-| G | visible | TRUE/FALSE — 기본: feat·fix=TRUE, docs·chore·refactor=FALSE |
+| F | milestone | **그룹 키** — `Changelog-Group: <키>` 수집 적재 + admin 수동 보정. 같은 키 행들이 팝업·보관함에서 1항목으로 묶임 (announcement-popup §7-1) |
+| G | visible | TRUE/FALSE — 기본: feat·fix=TRUE, docs·chore·refactor=FALSE. **그룹 PR 은 FALSE 적재** → 그룹 마지막 커밋의 `Changelog-Done` 으로 그룹 일괄 TRUE (반쪽 기능 가드, §7-3) |
 
 범위: `A2:G`.
 

@@ -1,6 +1,6 @@
 ---
 slug: announcement-popup
-status: completed
+status: active
 created: 2026-06-11
 owner: belie
 related: sheet-structure, components, tokens, arena-season1-setup
@@ -80,5 +80,37 @@ SSOT=Sheets 원칙 유지. `SHEETS_REGISTRY_ID` 시트에 추가(ensureTodoTab �
 - 2026-06-11 사용자 지정: 공지 이미지 폴더 = `1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG` (belie My Drive).
 - 2026-06-11: 폴더 ID 는 비밀 아님 → config 기본값 + env override(#324 패턴). VPS env 수작업 제거.
 
-## 7. 완료 기록
+## 7. 운영 지침 (2026-06-11 — grouped-updates)
+
+### 7-1. 묶음(그룹) 기준
+- 한 기능이 여러 PR 로 나뉘면 **수강생에게는 1개 항목**으로 보여야 한다.
+- 그룹 키 = updates 탭 `milestone` 컬럼. squash 커밋의 `Changelog-Group: <키>` 를
+  배포 수집기가 적재. 같은 milestone 행들이 팝업·보관함에서 1항목으로 묶인다.
+- 그룹 대표 = 그룹 내 **최신 pr 행** — title_user(고객용 한 문장)·body_md(전/후)를
+  대표 행에 적는다(팝업관리에서 보정).
+
+### 7-2. 문구 기준 (토스 UX 라이팅)
+- 제목: 기능명·기술용어 금지. 고객이 얻는 것 1문장, "~해요" 능동형.
+- 상세 body_md 포맷(UI 가 [전]/[후] 뱃지로 렌더):
+  `전: <곤란했던 실제 상황 1~2문장>` ⏎ `후: <달라진 경험 + 구체 행동 1~2문장>`
+- 이미지: 공지 이미지 폴더(NOTICE_IMAGE_FOLDER_ID) 재사용, MD 이미지 문법.
+  모바일 기준 전/후 2장 나란히 권장.
+
+### 7-3. 공개 타이밍 가드 (반쪽 기능 노출 방지)
+- `Changelog-Group` 이 있는 PR 은 수집 시 **visible=FALSE** 로 적재.
+- 그룹 마지막 PR 커밋에 `Changelog-Done` 한 줄 → 수집기가 그 그룹(milestone=키)
+  전체 행을 visible=TRUE 로 전환(멱등 — 자기 그룹 행의 G열만 타격).
+- 단건 feat/fix 는 기존대로 즉시 TRUE.
+
+### 7-4. 표시 규칙 (팝업·보관함 공통)
+- 접힘: 제목 + 메타줄 — 그룹 "개발 M/D~M/D · 적용 M/D"(그룹 첫~마지막 머지일,
+  updates date 의 min~max 로 계산 — 신규 컬럼 불필요), 단건 "적용 M/D".
+- 펼침: 첫 줄 "339·340·…번째 업데이트"(그룹 pr 나열, 단건 "345번째 업데이트")
+  → [전]/[후] 뱃지 + 문단(공지와 동일 MD 렌더러 — 이미지·sanitize).
+- 팝업 = 최근 10개 항목(그룹=1항목) + "지난 업데이트 모두 보기" → 보관함(/updates):
+  전체 최신순, 월별 구분선, 더보기 페이징. 헤더 "새소식" 진입점도 보관함으로.
+- 소급 큐레이션은 2026-06-11 등재분까지만 — 과거 PR(#1~#338) backfill 금지.
+
+## 8. 완료 기록
 - 2026-06-11 전체 완료: PR① #350(backend — 탭·API·자동수집·backfill·Changelog 규약) / PR② #351(수강생 팝업 — 자동/once/daily/수동·점뱃지) / PR③ #352(admin 팝업관리 — 공지 에디터·이미지 업로드(lh3)·업데이트 현황). 배포별 자동 수집 라이브 검증(#350~#352 각 1건 append).
+- 2026-06-11 재활성: grouped-updates(묶음·고객 문구·게시판) 작업의 SoR 로 active 복귀 — §7 운영 지침 추가. 완료 시 다시 completed 로.
