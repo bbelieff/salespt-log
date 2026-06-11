@@ -215,6 +215,15 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
   수집 스크립트가 본문 첫 줄 fallback 으로 흡수하지만, 제목 안 깨뜨리는 게 정본.
 - docs/chore/refactor 는 Changelog 불필요 (기본 visible=FALSE — 수강생에게 안 보임).
 
+**문구 기준 (2026-06-11 확정 — 상세는 announcement-popup.md §7)**:
+- 제목: **기능명·기술용어 금지**, 고객이 얻는 것 1문장("~해요" 능동형).
+- 상세(body_md)는 `전: ...` / `후: ...` 두 줄 — [전] 곤란했던 실제 상황 1~2문장,
+  [후] 달라진 경험 + 구체 행동 1~2문장.
+- **여러 PR 짜리 기능**: squash 커밋에 `Changelog-Group: <그룹키>` → 수집 시
+  visible=FALSE 로 적재(반쪽 기능 노출 방지), 그룹 마지막 PR 커밋에 `Changelog-Done`
+  한 줄 → 그룹 전체 visible=TRUE 전환. 그룹키는 milestone 컬럼에 적재돼 팝업에서
+  1개 항목으로 묶인다.
+
 ### 문서 작성
 모든 `.md` 문서는 맨 위에 "문서 요약 카드" 포함 필수. 없으면 PR 반려.
 형식:

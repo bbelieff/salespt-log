@@ -11,6 +11,13 @@
  * title_user = 본문 `Changelog:` 줄 (CLAUDE.md PR Changelog 규약), 없으면
  * 제목에서 type 접두어를 뗀 fallback. visible 기본: feat·fix=TRUE, 그 외 FALSE.
  *
+ * 묶음(announcement-popup §7, grouped-updates):
+ *   `Changelog-Group: <키>` → milestone 컬럼(F)에 그룹 키 적재 + visible=FALSE
+ *     (반쪽 기능 노출 방지 — 그룹이 끝나기 전까지 수강생에게 안 보임).
+ *   `Changelog-Done` 줄이 있는 커밋이 들어오면 그 그룹(milestone=키) 전체
+ *     행의 visible 을 TRUE 로 전환 (멱등 — 이미 TRUE 면 무시. 대상 셀 = 자기
+ *     그룹 행의 G열만, §2.5).
+ *
  * env: process.env 우선, 없으면 .env.local → .env 파싱 (VPS = /opt/salespt-log).
  */
 import { execFileSync } from "node:child_process";
@@ -46,7 +53,7 @@ if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY) {
 }
 
 // ── 커밋 파싱 (순수 — 형태는 파일 헤더 주석 참고) ─────────────────
-function parseCommit(dateISO, subject, body) {
+export function parseCommit(dateISO, subject, body) {
   const prMatch = subject.match(/\(#(\d+)\)\s*$/);
   if (!prMatch) return null;
   const pr = Number(prMatch[1]);
@@ -65,8 +72,13 @@ function parseCommit(dateISO, subject, body) {
     ? clMatch[1].trim()
     : title.replace(/^(feat|fix|perf|chore|docs|refactor)(\([^)]*\))?!?:\s*/i, "").trim();
 
-  const visible = type === "feat" || type === "fix" ? "TRUE" : "FALSE";
-  return { pr, date: dateISO, type, titleUser, visible };
+  const groupMatch = body.match(/^Changelog-Group:\s*(.+)$/im);
+  const group = groupMatch ? groupMatch[1].trim() : "";
+  const done = /^Changelog-Done\s*$/im.test(body);
+
+  // 그룹 PR 은 일단 숨김(반쪽 기능 가드) — Done 커밋이 그룹 전체를 켠다.
+  const visible = group ? "FALSE" : type === "feat" || type === "fix" ? "TRUE" : "FALSE";
+  return { pr, date: dateISO, type, titleUser, visible, group, done };
 }
 
 function recentMergeCommits(limit = 50) {
@@ -132,26 +144,55 @@ async function main() {
     .filter((c) => !seen.has(String(c.pr)))
     .sort((a, b) => a.pr - b.pr); // 오래된 것부터 — 시트 시간순 유지
 
-  if (fresh.length === 0) {
+  if (fresh.length > 0) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: REGISTRY_ID,
+      range: "'updates'!A1:G",
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: {
+        values: fresh.map((c) => [c.pr, c.date, c.type, c.titleUser, "", c.group, c.visible]),
+      },
+    });
+    console.log(
+      `append-updates: ${fresh.length}건 append — ${fresh.map((c) => `#${c.pr}`).join(", ")}`,
+    );
+  } else {
     console.log(`append-updates: 신규 0건 (스캔 ${commits.length}, 기존 ${seen.size})`);
-    return;
   }
 
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: REGISTRY_ID,
-    range: "'updates'!A1:G",
-    valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
-    requestBody: {
-      values: fresh.map((c) => [c.pr, c.date, c.type, c.titleUser, "", "", c.visible]),
-    },
-  });
-  console.log(
-    `append-updates: ${fresh.length}건 append — ${fresh.map((c) => `#${c.pr}`).join(", ")}`,
-  );
+  // Done 그룹 전환 — 스캔 범위 내 Changelog-Done 커밋의 그룹을 전부 TRUE 로 (멱등).
+  const doneGroups = [...new Set(commits.filter((c) => c.done && c.group).map((c) => c.group))];
+  if (doneGroups.length > 0) {
+    const rows = await sheets.spreadsheets.values.get({
+      spreadsheetId: REGISTRY_ID,
+      range: "'updates'!A2:G",
+    });
+    const flips = [];
+    (rows.data.values ?? []).forEach((r, i) => {
+      const milestone = String(r[5] ?? "").trim();
+      const vis = String(r[6] ?? "").trim().toUpperCase();
+      if (doneGroups.includes(milestone) && vis !== "TRUE") {
+        flips.push({ range: `'updates'!G${i + 2}`, values: [["TRUE"]] });
+      }
+    });
+    if (flips.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: REGISTRY_ID,
+        requestBody: { valueInputOption: "RAW", data: flips },
+      });
+      console.log(
+        `append-updates: 그룹 공개 전환 — [${doneGroups.join(", ")}] ${flips.length}행 visible=TRUE`,
+      );
+    }
+  }
 }
 
-main().catch((e) => {
-  console.error("append-updates 실패:", e?.message ?? e);
-  process.exit(1);
-});
+// 직접 실행 시에만 main (vitest 의 parseCommit import 와 분리)
+import { pathToFileURL } from "node:url";
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => {
+    console.error("append-updates 실패:", e?.message ?? e);
+    process.exit(1);
+  });
+}
