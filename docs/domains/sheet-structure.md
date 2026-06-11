@@ -566,6 +566,42 @@ H / O / W: spacer (비움). A: 비움.
 
 범위: `A2:I`. D~G 는 관리자 기수 생성(`/api/admin/create-cohort-members`), E·H·I 는 아레나 추가(`/api/admin/create-arena-members`)가 사용.
 
+### 6.2 `updates` 탭 (레지스트리 내 별도 탭 — 새소식 자동 수집, announcement-popup §1-1)
+
+`SHEET_RANGES.updates`. 배포 시 `scripts/append-updates.mjs` 가 master squash 커밋에서 자동 append(멱등, pr 키 중복 금지). admin 팝업관리가 title_user/visible/milestone 보정. `lib/repo/announcements.ts` 가 read. 탭 없으면 자동 생성(ensureTodoTab 패턴).
+
+| 컬럼 | 필드 | 설명 |
+|---|---|---|
+| A | pr | PR 번호 (키, 중복 금지=멱등 가드) |
+| B | date | 머지(배포) 날짜 YYYY-MM-DD |
+| C | type | feat / fix / perf / chore / docs / refactor (커밋 타입 접두어) |
+| D | title_user | 사용자용 한 줄 (커밋 본문 `Changelog:` 줄, 토스 문체) |
+| E | body_md | 상세 MD (선택, admin 작성) |
+| F | milestone | 큰 묶음 라벨 (admin 수동, 예: "업체정보 기능 출시") |
+| G | visible | TRUE/FALSE — 기본: feat·fix=TRUE, docs·chore·refactor=FALSE |
+
+범위: `A2:G`.
+
+### 6.3 `notices` 탭 (레지스트리 내 별도 탭 — 운영자 공지, announcement-popup §1-2)
+
+`SHEET_RANGES.notices`. admin 팝업관리에서 작성/수정. `lib/repo/announcements.ts` 가 read. 탭 없으면 자동 생성.
+
+| 컬럼 | 필드 | 설명 |
+|---|---|---|
+| A | id | 공지 id (타임스탬프 기반) |
+| B | created | 작성 시각 ISO |
+| C | updated | 수정 시각 ISO |
+| D | title | 제목 |
+| E | body_md | 본문 MD (이미지 = MD 이미지 문법 + Drive URL, sanitize 후 렌더) |
+| F | audience | all / arena / regular — arena 판정 = cohort 라벨 `A` 접두 (예 `A1-6`) |
+| G | display_mode | once(확인 후 안 봄) / daily(하루 1회) / always(매 접속) |
+| H | start | 노출 시작일 YYYY-MM-DD (빈값 = 무제한) |
+| I | end | 노출 종료일 YYYY-MM-DD (빈값 = 무제한) |
+| J | pinned | TRUE/FALSE 상단 고정 |
+| K | active | TRUE/FALSE 활성 토글 |
+
+범위: `A2:K`. 노출 빈도 제어는 클라이언트 localStorage(서버 기록 금지 — 시트 쓰기 과다, announcement-popup §3).
+
 ---
 
 ## ❌ 폐기된 탭들 (2026-04-27)

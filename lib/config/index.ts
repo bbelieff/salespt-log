@@ -258,4 +258,18 @@ export const SHEET_RANGES = {
     headerRow: "A1:N1",
     range: "A2:N", // append + update 대상
   },
+
+  // ── 새소식 (레지스트리 SHEETS_REGISTRY_ID 내 탭 — 개인 시트 아님!) ──
+  // announcement-popup §1. 배포 시 append-updates.mjs 자동 수집(updates) +
+  // admin 팝업관리 작성(notices). lib/repo/announcements.ts 전용.
+  updates: {
+    tab: "updates",
+    headerRow: "A1:G1",
+    range: "A2:G", // pr/date/type/title_user/body_md/milestone/visible
+  },
+  notices: {
+    tab: "notices",
+    headerRow: "A1:K1",
+    range: "A2:K", // id/created/updated/title/body_md/audience/display_mode/start/end/pinned/active
+  },
 } as const;
