@@ -21,6 +21,7 @@ import {
 } from "@/auth/identity";
 import { findUserByEmail } from "@/repo/users";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
+import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
 
 export default async function AppLayout({
   children,
@@ -54,6 +55,8 @@ export default async function AppLayout({
         {children}
       </main>
       <TabBar />
+      {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}
+      <AnnouncementsGate />
     </div>
   );
 }
