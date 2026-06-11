@@ -117,6 +117,18 @@
 font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif;
 ```
 
+### PC 밀도 스케일 (2026-06-11, fix/pc-density-100zoom)
+
+PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — 사용자가 브라우저 줌
+80%로 줄여 보던 정보량을 줌 100%에서 그대로 보이게 하는 전역 밀도 스케일.
+
+- rem 기반 Tailwind 유틸(글자·간격·카드)이 일괄 비례 축소. **모바일(<1024px) 무변경.**
+- 구현 = `app/globals.css` 의 `@media (min-width: 1024px) { html { font-size: 13.5px } }` 한 곳.
+  개별 페이지에서 PC 밀도를 따로 만지지 않는다(전역 스케일이 SSOT).
+- px 고정값(`.badge` 11px, `text-[11px]` arbitrary, 인라인 px)은 축소되지 않음 — 작은 보조
+  텍스트가 상대적으로 약간 커 보이는 정도로 가독에 유리, 의도된 예외.
+- 아래 폰트 크기 표의 px 값은 **루트 16px(모바일) 기준**. PC 에서는 ×0.84.
+
 ### 폰트 크기
 | 이름 | Tailwind Class | Size | Line Height | 사용처 |
 |------|---------------|------|-------------|--------|
