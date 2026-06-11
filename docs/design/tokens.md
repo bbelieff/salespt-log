@@ -108,7 +108,10 @@
 | 배경 기본 | `gray-50` | #f8fafc | body 배경 |
 | 배경 카드 | `white` | #ffffff | 카드, 모달 배경 |
 | 경계선 | `gray-100` | #f3f4f6 | border, divider |
-| 경계선 진함 | `gray-200` | #e5e7eb | input border |
+| 경계선 진함 | `gray-200` | #e5e7eb | (구) input border — 카드 외곽 등 |
+| 텍스트 라벨(필드) | `gray-800` | #1f2937 | 입력 필드 라벨 — 흰 배경 대비 14.7:1 (AA). company-info-contrast 2026-06-11 |
+| 예시(placeholder) | `gray-300` | #d1d5db | 입력 예시 전용 — 의도적 저대비("예시만 옅게" 위계). 입력값(gray-900)과 명도 즉시 구분 |
+| 입력 테두리 | `gray-300` | #d1d5db | input border (gray-200 에서 한 단계 승급 — 흐릿함 해소) |
 
 ## 타이포그래피
 
