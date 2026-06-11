@@ -50,7 +50,8 @@ const 대표자_DEFS: FieldDef[] = [
 
 const emptyCi = (): CI => CompanyInfo.parse({});
 const inputCls =
-  "w-full rounded-md border border-gray-200 px-2 py-1 text-xs placeholder:text-gray-300 focus:border-brand-red focus:outline-none";
+  // 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게.
+  "w-full rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder:text-gray-300 focus:border-brand-red focus:outline-none";
 
 interface Props {
   value?: CI;
@@ -147,7 +148,7 @@ export default function CompanyInfoEditor({
     const v = String(draft[k] ?? "");
     return (
       <label key={String(k)} className={span === 2 ? "block sm:col-span-2" : "block"}>
-        <span className="text-[10px] text-gray-400">{label}</span>
+        <span className="text-[10px] font-medium text-gray-800">{label}</span>
         {multi ? (
           <textarea
             className={`${inputCls} resize-none leading-5`}
@@ -171,7 +172,10 @@ export default function CompanyInfoEditor({
   // 그룹 = 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
   const group = (g: Grp, defs: FieldDef[]) => (
     <div className="space-y-1.5">
-      <div className="text-[11px] font-bold text-gray-500">[{g}]</div>
+      <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-900">
+        <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
+        [{g}]
+      </div>
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
