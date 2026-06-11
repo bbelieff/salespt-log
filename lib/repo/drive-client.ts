@@ -10,7 +10,6 @@ import { serviceAccount, authConfig, adminDriveRefreshToken } from "@/config";
 import { pickSheetFromCandidates, filterSheetsByTokens } from "./sheet-title-match";
 
 let cached: drive_v3.Drive | null = null;
-let cachedWrite: drive_v3.Drive | null = null;
 let cachedCreator: drive_v3.Drive | null = null;
 
 export function driveClient(): drive_v3.Drive {
@@ -25,34 +24,23 @@ export function driveClient(): drive_v3.Drive {
   return cached;
 }
 
-// SA 쓰기 클라이언트 (ADR-0011, scope `drive`). driveCreatorClient 폴백용.
-function driveWriteClient(): drive_v3.Drive {
-  if (cachedWrite) return cachedWrite;
-  const sa = serviceAccount();
-  const auth = new google.auth.JWT({
-    email: sa.client_email,
-    key: sa.private_key,
-    scopes: ["https://www.googleapis.com/auth/drive"],
-  });
-  cachedWrite = google.drive({ version: "v3", auth });
-  return cachedWrite;
-}
-
-// 파일 생성(복제·폴더·TXT) 전용 (ADR-0015/0016). SA 는 용량 0 → My-Drive 공유 폴더에 파일을
-// 소유 생성 불가. ADMIN_DRIVE_REFRESH_TOKEN 있으면 belie OAuth(belie 소유), 없으면 SA 폴백.
-// export — drive-txt.ts(업체정보 TXT)가 재사용.
+// 파일 생성(복제·폴더·TXT·공지이미지) 전용 (ADR-0015/0016) — belie OAuth 필수.
+// SA 는 Drive 용량 0 → 파일 소유 생성 불가("storage quota" — 2026-06-11 라이브 사고).
+// 토큰 미설정 시 SA silent 폴백이 그 사고의 원인 → 폴백 제거, 명시 실패로 즉시 드러낸다.
+// 발급: scripts/get-admin-drive-token.mjs → env ADMIN_DRIVE_REFRESH_TOKEN.
 export function driveCreatorClient(): drive_v3.Drive {
   if (cachedCreator) return cachedCreator;
   const refresh = adminDriveRefreshToken();
-  if (refresh) {
-    const { googleId, googleSecret } = authConfig();
-    const oauth = new google.auth.OAuth2(googleId, googleSecret);
-    oauth.setCredentials({ refresh_token: refresh });
-    cachedCreator = google.drive({ version: "v3", auth: oauth });
-  } else {
-    console.warn("[drive] ADMIN_DRIVE_REFRESH_TOKEN 미설정 — SA 폴백(공유폴더면 quota 실패). scripts/get-admin-drive-token.mjs");
-    cachedCreator = driveWriteClient();
+  if (!refresh) {
+    throw new Error(
+      "ADMIN_DRIVE_REFRESH_TOKEN 미설정 — Drive 파일 생성은 관리자 OAuth 필수(ADR-0015). " +
+        "서버 env 에 토큰을 추가하세요 (발급: scripts/get-admin-drive-token.mjs).",
+    );
   }
+  const { googleId, googleSecret } = authConfig();
+  const oauth = new google.auth.OAuth2(googleId, googleSecret);
+  oauth.setCredentials({ refresh_token: refresh });
+  cachedCreator = google.drive({ version: "v3", auth: oauth });
   return cachedCreator;
 }
 

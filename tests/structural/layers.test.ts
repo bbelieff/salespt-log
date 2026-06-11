@@ -170,4 +170,19 @@ describe("drive write whitelist (ADR-0011/0012)", () => {
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);
   });
+
+  it("driveCreatorClient 는 SA 폴백 금지 — belie OAuth 필수 (ADR-0015, 2026-06-11 quota 사고)", () => {
+    // 파일 생성은 SA 로 불가(용량 0). silent 폴백이 라이브 "storage quota" 사고를
+    // 만들었다 → driveCreatorClient 함수 본문에 SA JWT 사용이 다시 들어오면 실패.
+    const src = readFileSync(join(ROOT, "lib/repo/drive-client.ts"), "utf8");
+    const fnStart = src.indexOf("export function driveCreatorClient");
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnEnd = src.indexOf("\nexport ", fnStart + 1);
+    const body = src.slice(fnStart, fnEnd === -1 ? undefined : fnEnd);
+    expect(
+      /google\.auth\.JWT|serviceAccount\(/.test(body),
+      "driveCreatorClient 본문에 SA(JWT/serviceAccount) 사용 금지 — " +
+        "ADMIN_DRIVE_REFRESH_TOKEN 미설정이면 명시 throw 해야 한다 (ADR-0015).",
+    ).toBe(false);
+  });
 });
