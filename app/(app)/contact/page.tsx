@@ -275,6 +275,7 @@ export default function ContactPage() {
       업체명: slot.업체명.trim(),
       장소: slot.장소.trim(),
       예약비고: slot.예약비고.trim(),
+      업체정보: slot.업체정보, // 신규 슬롯에서 입력한 업체정보 → 04 T~AS (§3-1)
       상태: "예약",
       계약여부: false,
       수임비: 0,

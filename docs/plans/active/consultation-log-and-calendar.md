@@ -60,7 +60,7 @@ related: sheet-structure, components, tokens
 ## 3. [2] 업체정보 (UI · 저장 · 추출 · 연동)
 
 ### 3-1. 진입·표시 (드롭다운 + 팝업)
-- **컨택관리(contact)·일정/계약(schedule)**: 기존 "예약비고" 입력 자리를 **"업체정보"**로 교체.
+- **컨택관리(contact)·일정/계약(schedule)**: 기존 "예약비고" 입력 자리를 **"업체정보"**로 교체 — **[미팅예약+1] 생성(등록 전) 카드 포함**(2026-06-11 정정: #344 는 등록완료 슬롯만 연결, 신규 슬롯은 fix/contact-meeting-card-company-info 에서 연결. 신규 슬롯 입력값은 in-memory, 등록 시 Meeting 에 포함돼 04 T~AS append).
   - 기본은 **드롭다운(collapse)** — 접으면 요약 1줄, 펼치면 [업체]/[대표자] 필드 그룹 inline 편집.
   - **"팝업으로 보기/편집" 버튼** — 전체 화면 모달(필드 많아 집중 편집용). 기존 모달 패턴(`CrossTabHintModal`/`TodoFormModal`, z-[300]) 재사용.
 - **실무/수납(payment)**: 계약 카드에 **업체정보 드롭다운 + 팝업 버튼** 추가. 06에서 읽고 **편집 가능** — 저장 시 **04 원본 + 06 둘 다 갱신(동기화)**. 어느 탭에서 고쳐도 한 업체정보가 일관 유지.
@@ -137,5 +137,6 @@ related: sheet-structure, components, tokens
 - **04 폭 확장(약 40컬럼)** (확정): 컬럼 추가대로 진행. 추후 비좁으면 재검토.
 
 ## Log
+- 2026-06-11 정정 (contact-meeting-card): 사용자 라이브 재확인 — 컨택 [미팅예약+1] 신규 카드에 업체정보 없음. 진단 = #344 가 SavedItem(등록완료)만 교체, NewItem(등록 전) 누락 + registerNewSlot 의 Meeting 변환에 업체정보 미포함. NewItem 에 CompanyInfoEditor(#354 혼합 그리드 그대로) 연결·등록 시 04 포함으로 해소. (MeetingSlotCard.tsx 는 미사용 legacy — 범위 외, 별도 정리 후보.)
 - 2026-06-11 최종 확정 (field-grid): 필드 23고정+JSON(확장 3필드 AQ~AS — 이월 AO~AP 뒤), 혼합 그리드 3단계 반응형 배치표, placeholder 문구, TXT 정렬형 포맷(EAW 공백 패딩·빈 필드 생략·멀티라인 "- " 목록). §1-1·§3-2·§3-3 갱신.
 - 2026-06-10 기획 확정: 업체정보=04 컬럼 작성 + 계약 시 06 스냅샷, 일반이벤트=05 투두(미집계), TXT=업체당 1파일 덮어쓰기. 구현 핸드오프(feat/calendar-click-nav, feat/company-info, feat/general-events) 분리 예정.

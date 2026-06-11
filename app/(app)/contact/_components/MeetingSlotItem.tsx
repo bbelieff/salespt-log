@@ -13,6 +13,7 @@ import type { Channel, Meeting } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 import TimeSelectPair from "@/components/ui/TimeSelectPair";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
+import type { CompanyInfo } from "@/types";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -29,6 +30,8 @@ export interface NewSlot {
   업체명: string;
   장소: string;
   예약비고: string;
+  /** 등록 전 in-memory 업체정보. 등록 시 Meeting 에 포함돼 04 로 append (3-1). */
+  업체정보?: CompanyInfo;
 }
 
 interface NewProps {
@@ -111,9 +114,11 @@ function NewItem({
           value={slot.장소}
           onChange={(v) => onChange({ ...slot, 장소: v })}
         />
-        <FieldNote
-          value={slot.예약비고}
-          onChange={(v) => onChange({ ...slot, 예약비고: v })}
+        {/* 예약비고 자리는 업체정보로 교체 (consultation-log 3-1, 미팅예약+1 생성 카드 포함).
+            저장 = 슬롯 메모리 반영, 등록 시 Meeting 에 포함돼 04 T~AS 로 기록. */}
+        <CompanyInfoEditor
+          value={slot.업체정보}
+          onSave={(ci) => onChange({ ...slot, 업체정보: ci })}
         />
         <Actions
           primaryLabel="✓ 등록"
