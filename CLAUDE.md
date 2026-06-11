@@ -204,6 +204,17 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 - **이슈 번호/타임스탬프 포함 금지** — PR 설명에 `Closes #N` 대신 기재
 - Claude Action은 `.github/workflows/claude.yml`의 `branch_prefix` + `custom_instructions`로 강제
 
+### PR Changelog 규약 (새소식 팝업 자동 수집 — announcement-popup §2)
+- **feat/fix PR 은 squash 커밋 메시지 본문에 `Changelog: <수강생이 읽는 쉬운 한 줄>` 포함 의무.**
+  이 레포는 단일 커밋 PR → squash 시 그 커밋 메시지가 그대로 master 커밋이 된다.
+  배포 시 `scripts/append-updates.mjs` 가 이 줄을 추출해 새소식 팝업 `title_user` 로 쓴다
+  (없으면 커밋 제목에서 type 접두어 제거한 fallback).
+- 문체 = 토스 UX 라이팅: 쉬운 말, 사용자 혜택 중심("~할 수 있어요"), 짧은 능동형 1문장.
+  예: `Changelog: 계약 업체 정보를 한 곳에 적고 TXT로 내려받을 수 있어요.`
+- 커밋 제목은 conventional(`feat(scope): ...`) 유지. 제목이 깨진 과거 커밋(`@ (#N)`)은
+  수집 스크립트가 본문 첫 줄 fallback 으로 흡수하지만, 제목 안 깨뜨리는 게 정본.
+- docs/chore/refactor 는 Changelog 불필요 (기본 visible=FALSE — 수강생에게 안 보임).
+
 ### 문서 작성
 모든 `.md` 문서는 맨 위에 "문서 요약 카드" 포함 필수. 없으면 PR 반려.
 형식:

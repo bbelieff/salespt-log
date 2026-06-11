@@ -511,6 +511,14 @@ interface DashboardView {
 | `TodoType` | z.enum | 실무투두 종류 4: `기타` / `미팅` / `전화` / `메시지` (캘린더 type 아이콘) |
 | `Todo` | z.object | (계약×기관) 실무 ToDo 1행 (05 실무투두, A~N 14컬럼 — N=분류, type 에 `일반` 추가: 캘린더 일반이벤트·비집계). 키: `contractRef`(계약일+업체명) · `institutionRef`(슬롯 진행기관). 캘린더는 04 미팅 + 05 투두 합쳐 표시(읽기전용). 상세 스키마 design §6.3 |
 
+### 새소식 (레지스트리 updates·notices 탭 · announcement-popup §1)
+| 식별자 | 종류 | 의미 |
+|---|---|---|
+| `UpdateItem` | z.object | 배포 시 자동 수집된 업데이트 1행 (updates A~G). 키 `pr`(번호, 멱등 가드). `titleUser`=수강생용 한 줄(커밋 `Changelog:` 줄), `visible` 기본 feat·fix=TRUE |
+| `NoticeAudience` | z.enum | 공지 대상 3: `all` / `arena`(cohort 라벨 `A` 접두) / `regular` |
+| `NoticeDisplayMode` | z.enum | 노출 빈도 3: `once` / `daily` / `always` (제어=클라 localStorage) |
+| `Notice` | z.object | 운영자 공지 1행 (notices A~K). MD 본문(sanitize 후 렌더), 기간 start~end(빈값 무제한), pinned/active |
+
 ### DB관리 (03 DB관리)
 | 식별자 | 종류 | 의미 |
 |---|---|---|

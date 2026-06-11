@@ -60,6 +60,11 @@ jobs:
             sleep 3
             curl -sS -o /dev/null -w "Local HTTP %{http_code}\n" http://127.0.0.1:3000
             echo "::endgroup::"
+            echo "::group::Updates collect"
+            # 새소식 자동 수집 (announcement-popup §2) — 멱등(pr 키), 실패해도
+            # 배포는 성공 처리(non-blocking) → 다음 배포에서 재시도됨.
+            node scripts/append-updates.mjs || echo "append-updates 실패(non-blocking) — 다음 배포에서 재시도"
+            echo "::endgroup::"
           '
           # 연결 옵션: accept-new(TOFU) + 넉넉한 ConnectTimeout + keepalive.
           # 재시도는 *연결 실패(ssh rc=255)* 에만 — 빌드/원격스크립트 실패(다른 rc)는 즉시 fail(롤백 신호).

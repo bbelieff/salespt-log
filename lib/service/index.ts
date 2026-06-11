@@ -100,3 +100,9 @@ export {
   type DiagnosticResult,
   type DiagnosticSeverity,
 } from "./sheet-diagnostics";
+
+// 새소식 (공지 + 업데이트, announcement-popup §3)
+export {
+  getAnnouncementsFor,
+  type AnnouncementsView,
+} from "./announcements";
