@@ -22,6 +22,7 @@ import {
   useContractPayments,
 } from "@/query/contract-payment-hooks";
 import ContractRow from "./_components/ContractRow";
+import CompanySearchBar from "./_components/CompanySearchBar";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { ACCENT, contractAccentFamily } from "./_lib/contractAccent";
@@ -60,6 +61,8 @@ export default function PaymentPage() {
   const remove = useRemoveContractPayment();
 
   const [pendingRow, setPendingRow] = useState<number | null>(null);
+  // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
+  const [companyQuery, setCompanyQuery] = useState("");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   /** 2026-05-17 [3]: 삭제 확인 모달의 cascade 옵션 (계약→예약 revert). */
@@ -167,8 +170,15 @@ export default function PaymentPage() {
     ),
   ).sort();
 
-  // C: 선택 계약 — selectedRow 없거나 목록에 없으면 첫 카드로 폴백(기본 선택=첫 카드).
-  const selectedCp = rows.find((r) => r.row === selectedRow) ?? rows[0];
+  // 업체 검색 필터 — 합계·진행기관 후보는 전체(rows) 기준 유지(표시만 필터).
+  const normq = (x: string) => x.toLowerCase().replace(/\s+/g, "");
+  const visibleRows = companyQuery.trim()
+    ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
+    : rows;
+
+  // C: 선택 계약 — selectedRow 없거나 (검색)목록에 없으면 첫 카드로 폴백.
+  const selectedCp =
+    visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
   // 선택 카드↔패널을 하나의 윤곽선으로 잇는 상태색(진행상태 기반).
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
   const selAccent = ACCENT[selFamily];
@@ -247,6 +257,16 @@ export default function PaymentPage() {
           일정·계약 탭에서 미팅을 <b>계약</b>으로 처리하면 여기에 자동으로 추가돼요.
         </div>
 
+        {/* 업체 검색 — 첫 업체 카드 위 sticky (CompanySearchBar) */}
+        {!list.isLoading && !list.isError && rows.length > 0 && (
+          <CompanySearchBar
+            value={companyQuery}
+            onChange={setCompanyQuery}
+            matchCount={visibleRows.length}
+            total={rows.length}
+          />
+        )}
+
         {/* 리스트 */}
         {list.isLoading ? (
           <div className="text-sm text-slate-500">불러오고 있어요</div>
@@ -258,6 +278,10 @@ export default function PaymentPage() {
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
+        ) : visibleRows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
+            검색 결과가 없어요. <b>✕</b> 를 눌러 전체 목록으로 돌아갈 수 있어요.
+          </div>
         ) : isPc ? (
           /* 데스크탑(pc): 마스터-디테일 — 선택 카드와 우측 패널이 같은 상태색
              하나의 윤곽선(탭처럼)으로 이어짐. grid 3.5:6.5 (gap 0 → seam 연결).
@@ -267,7 +291,7 @@ export default function PaymentPage() {
             style={{ gridTemplateColumns: "3.5fr 6.5fr" }}
           >
             <div className="min-w-0 space-y-2">
-              {rows.map((cp, i) => {
+              {visibleRows.map((cp, i) => {
                 const isSel = selectedCp?.row === cp.row;
                 return (
                   <div
@@ -294,6 +318,7 @@ export default function PaymentPage() {
                       onSave={handleSave}
                       onDeleteRequest={() => makeDeleteRequest(cp)}
                       focusTodoId={focusTodoId}
+                      highlight={companyQuery}
                     />
                   </div>
                 );
@@ -306,7 +331,7 @@ export default function PaymentPage() {
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}
-                  ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
+                  ordinal={visibleRows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row}
                   institutionOptions={institutionOptions}
                   bare
@@ -315,6 +340,7 @@ export default function PaymentPage() {
                   onSave={handleSave}
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   focusTodoId={focusTodoId}
+                  highlight={companyQuery}
                 />
               </div>
             )}
@@ -322,7 +348,7 @@ export default function PaymentPage() {
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
           <div>
-            {rows.map((cp, i) => (
+            {visibleRows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
                 cp={cp}
@@ -332,6 +358,7 @@ export default function PaymentPage() {
                 onSave={handleSave}
                 onDeleteRequest={() => makeDeleteRequest(cp)}
                 focusTodoId={focusTodoId}
+                highlight={companyQuery}
               />
             ))}
           </div>

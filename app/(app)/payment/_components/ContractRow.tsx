@@ -49,6 +49,8 @@ interface Props {
   bare?: boolean;
   /** 캘린더 → /payment?focus=<todoId>. 이 행에 해당 ToDo 있으면 자동 펼침+하이라이트. */
   focusTodoId?: string | null;
+  /** 업체 검색어 — 업체명 일치 부분 <mark> 하이라이트 (CompanySearchBar). */
+  highlight?: string;
 }
 
 function fmtMoney(n: number): string {
@@ -86,6 +88,25 @@ function initialVisiblePayments(cp: ContractPayment): 1 | 2 | 3 {
   return 1;
 }
 
+/** 업체명에서 검색어 일치 부분 <mark> — 대소문자·공백 무시 매칭은 page 필터와 동일 기준이되,
+ * 표시는 원문 그대로(공백 제거 매칭으로 인한 부분 불일치 시 하이라이트 생략). */
+function renderNameWithHighlight(name: string, q?: string) {
+  const display = name || "(업체명 없음)";
+  const query = (q ?? "").trim();
+  if (!query || !name) return display;
+  const i = name.toLowerCase().indexOf(query.toLowerCase());
+  if (i < 0) return display; // 공백-무시 매칭으로만 걸린 경우 — 하이라이트 생략
+  return (
+    <>
+      {name.slice(0, i)}
+      <mark className="rounded-sm bg-yellow-100 text-inherit">
+        {name.slice(i, i + query.length)}
+      </mark>
+      {name.slice(i + query.length)}
+    </>
+  );
+}
+
 export default function ContractRow({
   cp,
   ordinal,
@@ -100,6 +121,7 @@ export default function ContractRow({
   accentFamily,
   bare = false,
   focusTodoId,
+  highlight,
 }: Props) {
   const [open, setOpen] = useState(false);
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
@@ -252,7 +274,7 @@ export default function ContractRow({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-gray-900">
-            {cp.업체명 || "(업체명 없음)"}
+            {renderNameWithHighlight(cp.업체명, highlight)}
             {isComplete && <span className="text-xs text-green-600">✓</span>}
           </div>
           <div
