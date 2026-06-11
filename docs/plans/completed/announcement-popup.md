@@ -1,6 +1,6 @@
 ---
 slug: announcement-popup
-status: active
+status: completed
 created: 2026-06-11
 owner: belie
 related: sheet-structure, components, tokens, arena-season1-setup
@@ -79,3 +79,6 @@ SSOT=Sheets 원칙 유지. `SHEETS_REGISTRY_ID` 시트에 추가(ensureTodoTab �
 - 2026-06-11 확정: 수집=배포 시 자동(폴링·수동 아님), 번호=PR번호+마일스톤 라벨(semver 기각=운영 부담·YAGNI), 이미지=Drive 업로드 포함, HTML 입력 제외(MD+sanitize), 빈도 제어=localStorage.
 - 2026-06-11 사용자 지정: 공지 이미지 폴더 = `1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG` (belie My Drive).
 - 2026-06-11: 폴더 ID 는 비밀 아님 → config 기본값 + env override(#324 패턴). VPS env 수작업 제거.
+
+## 7. 완료 기록
+- 2026-06-11 전체 완료: PR① #350(backend — 탭·API·자동수집·backfill·Changelog 규약) / PR② #351(수강생 팝업 — 자동/once/daily/수동·점뱃지) / PR③ #352(admin 팝업관리 — 공지 에디터·이미지 업로드(lh3)·업데이트 현황). 배포별 자동 수집 라이브 검증(#350~#352 각 1건 append).
