@@ -1320,6 +1320,10 @@ components/dashboard/
 | **CompanyInfoContractSection** | payment 계약 카드 업체정보 섹션. Props: `계약일`, `업체명`. GET /api/company-info(06 read) → CompanyInfoEditor → POST(04 원본+06 동기화 저장, saveCompanyInfoByContract). §3-1. |
 | **CarryoverBadge** | 이월(arena-carryover §5) 표시. Props: `구분?`, `variant?: "badge"\|"note"`. 구분≠"이월"이면 null. badge=회색 "이월" 칩, note="아레나 점수 미포함" 한 줄. 사용처: MeetingResultCard(뱃지+흐림+note)·ContractRow(note). |
 | **ArenaCarryoverButton** | admin 아레나 관리 사용자별 "↩ 이월 실행"(backfill, carryover §2-b). Props: `email`. POST /api/admin/arena-carryover — 멱등, 결과(복사/스킵/실패) inline 표시. 미클레임(email 없음)은 미노출. |
+| **AnnouncementsGate** | `(app)` layout mount 시 새소식 자동 팝업 게이트 (announcement-popup §3). Props 없음. useAnnouncements(GET /api/announcements, 10분 stale) → 자동 조건: ① localStorage `lastSeenPr` < latestPr ② display_mode 충족 활성 공지(once=`noticeSeen:{id}`, daily=`noticeSeen:{id}:{YYYY-MM-DD}`, always=매번). 둘 다 아니면 안 띄움. 수동 재열람 = window `salespt:open-announcements` CustomEvent 수신(TopHeader 발신). [확인] 시 lastSeenPr 갱신 + 표시 공지 seen 마킹. |
+| **NoticePopup** | 새소식 모달 (z-[300], GeneralEventModal 패턴). Props: `notices`, `updates`, `onConfirm`. 상단 공지(pinned 우선 — 서버 정렬, 📌, MD 렌더) → 구분선 → "새로워졌어요 ✨" UpdateAccordion → 하단 [확인]. 내용 없으면 "아직 새소식이 없어요". 모바일 우선(max-w-sm). |
+| **UpdateAccordion** | 업데이트 리스트 아코디언 (§3). Props: `updates`. 닫힘=date+title_user, 펼침=body_md(MD). body_md 빈 항목은 비펼침 정적 행. milestone 라벨 변화 시 그룹 헤더 삽입. |
+| **MarkdownView** | 공지/업데이트 MD 렌더 래퍼. Props: `markdown`. react-markdown — raw HTML 미렌더(rehype-raw 없음 = sanitize by construction) + 기본 urlTransform(javascript: 차단). 이미지 max-w-full rounded. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 | **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
 

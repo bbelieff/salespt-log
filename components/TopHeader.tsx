@@ -21,9 +21,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
+import { useAnnouncements } from "@/query/announcements-hook";
 import DDayBadge from "./DDayBadge";
 import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
+import {
+  ANNOUNCEMENTS_SEEN_EVENT,
+  OPEN_ANNOUNCEMENTS_EVENT,
+  hasUnseenUpdates,
+} from "./announcements/AnnouncementsGate";
 
 interface Props {
   pageEmoji: string;
@@ -88,6 +94,17 @@ export default function TopHeader({
   const display = formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
   const [popupOpen, setPopupOpen] = useState(false);
 
+  // 새소식 점 뱃지 — 안 본 새 업데이트가 있을 때만 (announcement-popup §3).
+  // localStorage 는 클라 전용 → mount/[확인] 이벤트 시점에만 재계산 (SSR 안전).
+  const ann = useAnnouncements();
+  const [hasNews, setHasNews] = useState(false);
+  useEffect(() => {
+    const recompute = () => setHasNews(hasUnseenUpdates(ann.data?.latestPr ?? 0));
+    recompute();
+    window.addEventListener(ANNOUNCEMENTS_SEEN_EVENT, recompute);
+    return () => window.removeEventListener(ANNOUNCEMENTS_SEEN_EVENT, recompute);
+  }, [ann.data?.latestPr]);
+
   return (
     <>
       {/* 슬림 브랜드 바 — 의미상 4개 덩어리:
@@ -107,7 +124,7 @@ export default function TopHeader({
           <button
             type="button"
             onClick={() => setPopupOpen((v) => !v)}
-            className="rounded transition-transform active:scale-95"
+            className="relative rounded transition-transform active:scale-95"
             aria-label="계정 메뉴 열기"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -116,6 +133,13 @@ export default function TopHeader({
               alt="세일즈PT"
               className="h-6 w-auto object-contain sm:h-7"
             />
+            {/* 새소식 점 뱃지 — 안 본 새 업데이트 있을 때 */}
+            {hasNews && (
+              <span
+                className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-brand-red"
+                aria-label="새소식 있음"
+              />
+            )}
           </button>
           {me.data?.sessionRole === "admin" && (
             <Link
@@ -224,6 +248,23 @@ export default function TopHeader({
                 </div>
               </div>
             </div>
+            {/* 새소식 수동 재열람 — AnnouncementsGate 가 이벤트 수신해 팝업 오픈 */}
+            <button
+              type="button"
+              onClick={() => {
+                setPopupOpen(false);
+                window.dispatchEvent(new CustomEvent(OPEN_ANNOUNCEMENTS_EVENT));
+              }}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              <span className="flex items-center gap-1.5">
+                새소식
+                {hasNews && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" />}
+              </span>
+            </button>
             {me.data?.sessionRole === "admin" && (
               <Link
                 href="/admin"
