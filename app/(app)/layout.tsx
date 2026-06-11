@@ -22,6 +22,7 @@ import {
 import { findUserByEmail } from "@/repo/users";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
+import PullToRefresh from "@/components/PullToRefresh";
 
 export default async function AppLayout({
   children,
@@ -58,6 +59,8 @@ export default async function AppLayout({
       <TabBar />
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}
       <AnnouncementsGate />
+      {/* 모바일 당겨서 새로고침 — PC/모달/가로 스와이프 가드 내장. */}
+      <PullToRefresh />
     </div>
   );
 }
