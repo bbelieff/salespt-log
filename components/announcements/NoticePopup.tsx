@@ -67,6 +67,13 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
             <section>
               <h4 className="mb-1 text-sm font-black text-gray-900">새로워졌어요 ✨</h4>
               <UpdateAccordion updates={updates} />
+              <a
+                href="/updates"
+                onClick={onConfirm}
+                className="mt-1 block text-center text-xs font-bold text-gray-400 hover:text-gray-600"
+              >
+                지난 업데이트 모두 보기 →
+              </a>
             </section>
           )}
         </div>

@@ -27,7 +27,6 @@ import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
   ANNOUNCEMENTS_SEEN_EVENT,
-  OPEN_ANNOUNCEMENTS_EVENT,
   hasUnseenUpdates,
 } from "./announcements/AnnouncementsGate";
 
@@ -248,13 +247,10 @@ export default function TopHeader({
                 </div>
               </div>
             </div>
-            {/* 새소식 수동 재열람 — AnnouncementsGate 가 이벤트 수신해 팝업 오픈 */}
-            <button
-              type="button"
-              onClick={() => {
-                setPopupOpen(false);
-                window.dispatchEvent(new CustomEvent(OPEN_ANNOUNCEMENTS_EVENT));
-              }}
+            {/* 새소식 — 보관함(/updates)으로 (announcement-popup §7-4) */}
+            <Link
+              href="/updates"
+              onClick={() => setPopupOpen(false)}
               className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -264,7 +260,7 @@ export default function TopHeader({
                 새소식
                 {hasNews && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" />}
               </span>
-            </button>
+            </Link>
             {me.data?.sessionRole === "admin" && (
               <Link
                 href="/admin"
