@@ -1324,6 +1324,8 @@ components/dashboard/
 | **NoticePopup** | 새소식 모달 (z-[300], GeneralEventModal 패턴). Props: `notices`, `updates`, `onConfirm`. 상단 공지(pinned 우선 — 서버 정렬, 📌, MD 렌더) → 구분선 → "새로워졌어요 ✨" UpdateAccordion → 하단 [확인]. 내용 없으면 "아직 새소식이 없어요". 모바일 우선(max-w-sm). |
 | **UpdateAccordion** | 업데이트 리스트 아코디언 (§3). Props: `updates`. 닫힘=date+title_user, 펼침=body_md(MD). body_md 빈 항목은 비펼침 정적 행. milestone 라벨 변화 시 그룹 헤더 삽입. |
 | **MarkdownView** | 공지/업데이트 MD 렌더 래퍼. Props: `markdown`. react-markdown — raw HTML 미렌더(rehype-raw 없음 = sanitize by construction) + 기본 urlTransform(javascript: 차단). 이미지 max-w-full rounded. |
+| **NoticeManager** | admin 팝업관리(`/admin/popup`) 상단 — 공지 작성/수정 (announcement-popup §4). Props: `initialNotices`. 목록 선택→폼 로드, MD 에디터(편집/미리보기 토글 — MarkdownView 재사용), [🖼 이미지] → POST /api/admin/notice-image(Drive belie OAuth + anyoneWithLink reader) → MD 이미지 문법 자동 삽입. 노출 옵션(audience/display_mode/start/end/pinned/active) 폼 → POST /api/admin/announcements(upsert). 비활성 = active 토글 저장. |
+| **UpdatesManager** | admin 팝업관리 하단 — 자동 수집 업데이트 현황 테이블 (§4). Props: `initialUpdates`. 행별 title_user 인라인 수정·milestone 입력·visible 토글 → PATCH /api/admin/announcements(pr 키, 전달 필드 셀만). 저장 시 수강생 캐시(tag "announcements") 무효화 → 팝업 목록 즉시 반영. |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
 | **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
 

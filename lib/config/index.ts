@@ -77,6 +77,15 @@ export const adminDriveRefreshToken = (): string =>
   (process.env.ADMIN_DRIVE_REFRESH_TOKEN ?? "").trim();
 
 /**
+ * 공지 이미지 업로드 폴더 (announcement-popup §4, 2026-06-11 사용자 지정).
+ * 폴더 ID 는 비밀 아님 → env 오버라이드 + config 기본값 (#324 마스터 템플릿 패턴).
+ * 업로드는 belie OAuth(driveCreatorClient, ADR-0015) — VPS env 추가 불필요.
+ */
+export const noticeImageFolderId = (): string =>
+  (process.env.NOTICE_IMAGE_FOLDER_ID ?? "").trim() ||
+  "1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG";
+
+/**
  * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).
  *
  * 포맷: `"email1:name1,email2:name2"` (또는 `email1=name1`).

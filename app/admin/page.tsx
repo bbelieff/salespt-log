@@ -129,6 +129,22 @@ export default async function AdminLandingPage() {
             </div>
           </Link>
 
+          {/* 팝업관리 — 마스터만 (공지 작성 + 업데이트 문구 보정, announcement-popup §4). */}
+          {isMaster && (
+            <Link
+              href="/admin/popup"
+              className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            >
+              <div className="text-3xl">📢</div>
+              <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+                팝업관리
+              </div>
+              <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+                새소식 팝업 — 공지 작성(MD·이미지·노출 옵션) + 업데이트 문구 보정.
+              </div>
+            </Link>
+          )}
+
           {/* 트레이너 페이지 — 마스터만 (관리부서는 본인 트레이너 페이지 따로). */}
           {isMaster && (
             <Link

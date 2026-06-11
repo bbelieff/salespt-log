@@ -101,8 +101,12 @@ export {
   type DiagnosticSeverity,
 } from "./sheet-diagnostics";
 
-// 새소식 (공지 + 업데이트, announcement-popup §3)
+// 새소식 (공지 + 업데이트, announcement-popup §3·§4)
 export {
   getAnnouncementsFor,
+  listAnnouncementsAdmin,
+  saveNoticeAdmin,
+  patchUpdateAdmin,
+  uploadNoticeImageAdmin,
   type AnnouncementsView,
 } from "./announcements";
