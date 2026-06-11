@@ -21,6 +21,7 @@ import {
 import { uploadNoticeImage } from "@/repo/drive-txt";
 import { findUserByEmail } from "@/repo/users";
 import { Notice, UpdateItem } from "@/types";
+import { groupUpdates } from "./update-groups";
 
 const VISIBLE_LIMIT = 10;
 
@@ -53,10 +54,28 @@ export function filterNoticesFor(
 
 /** 순수 필터 — visible=TRUE 최신(pr desc) 10개. */
 export function pickVisibleUpdates(updates: UpdateItem[]): UpdateItem[] {
-  return updates
-    .filter((u) => u.visible)
-    .sort((a, b) => b.pr - a.pr)
-    .slice(0, VISIBLE_LIMIT);
+  // 묶음(§7-4): limit 은 "항목(그룹=1)" 단위 — 항목 10개에 속한 행 전부 반환,
+  // 그룹핑·표시는 클라(UpdateAccordion)가 같은 groupUpdates 규칙으로 수행.
+  const visible = updates.filter((u) => u.visible);
+  const top = groupUpdates(visible).slice(0, VISIBLE_LIMIT);
+  const keep = new Set(top.flatMap((g) => g.prs));
+  return visible.filter((u) => keep.has(u.pr)).sort((a, b) => b.pr - a.pr);
+}
+
+/** 보관함(/updates) — 항목(그룹) 단위 페이징. offset/limit 은 항목 개수. */
+export async function listUpdatesArchive(
+  offset: number,
+  limit: number,
+): Promise<{ rows: UpdateItem[]; totalItems: number }> {
+  const tabs = await cachedTabs();
+  const visible = tabs.updates.filter((u) => u.visible);
+  const groups = groupUpdates(visible);
+  const page = groups.slice(offset, offset + limit);
+  const keep = new Set(page.flatMap((g) => g.prs));
+  return {
+    rows: visible.filter((u) => keep.has(u.pr)).sort((a, b) => b.pr - a.pr),
+    totalItems: groups.length,
+  };
 }
 
 // 탭 read 10분 캐시 — me-bundle 과 동일 패턴. admin 이 수정하면 다음 갱신에 반영
@@ -86,7 +105,8 @@ export async function getAnnouncementsFor(email: string): Promise<AnnouncementsV
   const isArena = isArenaAudienceCohort(user?.cohort);
   const notices = filterNoticesFor(tabs.notices, { isArena, today: todayKST() });
   const updates = pickVisibleUpdates(tabs.updates);
-  return { notices, updates, latestPr: updates[0]?.pr ?? 0 };
+  const latestPr = tabs.updates.reduce((m, u) => (u.visible && u.pr > m ? u.pr : m), 0);
+  return { notices, updates, latestPr };
 }
 
 // ── admin 팝업관리 (announcement-popup §4, PR③) ─────────────────

@@ -104,9 +104,17 @@ export {
 // 새소식 (공지 + 업데이트, announcement-popup §3·§4)
 export {
   getAnnouncementsFor,
+  listUpdatesArchive,
   listAnnouncementsAdmin,
   saveNoticeAdmin,
   patchUpdateAdmin,
   uploadNoticeImageAdmin,
   type AnnouncementsView,
 } from "./announcements";
+export {
+  groupUpdates,
+  parseBeforeAfter,
+  groupMetaLine,
+  groupOrdinalLine,
+  type UpdateGroup,
+} from "./update-groups";

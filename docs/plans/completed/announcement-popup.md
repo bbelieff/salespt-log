@@ -1,6 +1,6 @@
 ---
 slug: announcement-popup
-status: active
+status: completed
 created: 2026-06-11
 owner: belie
 related: sheet-structure, components, tokens, arena-season1-setup
@@ -114,3 +114,4 @@ SSOT=Sheets 원칙 유지. `SHEETS_REGISTRY_ID` 시트에 추가(ensureTodoTab �
 ## 8. 완료 기록
 - 2026-06-11 전체 완료: PR① #350(backend — 탭·API·자동수집·backfill·Changelog 규약) / PR② #351(수강생 팝업 — 자동/once/daily/수동·점뱃지) / PR③ #352(admin 팝업관리 — 공지 에디터·이미지 업로드(lh3)·업데이트 현황). 배포별 자동 수집 라이브 검증(#350~#352 각 1건 append).
 - 2026-06-11 재활성: grouped-updates(묶음·고객 문구·게시판) 작업의 SoR 로 active 복귀 — §7 운영 지침 추가. 완료 시 다시 completed 로.
+- 2026-06-11 grouped-updates 완료: PR A(#359 — 수집 Group/Done 가드·문구 규약·큐레이션 13행) + PR B(팝업 묶음 렌더·[전]/[후] 뱃지·/updates 보관함·헤더 진입점). 다시 completed 로 이동.
