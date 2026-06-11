@@ -48,6 +48,9 @@ export default async function HomePage() {
   // trainee
   const user = await findUserByEmail(sessionEmail);
   if (!user) redirect("/claim");
+  // 보관(archived) — 행 자체 또는 cohorts 탭 보관 기수(rejoin §1).
+  // 옛 시트로 직행하지 않고 클레임 화면으로 (재참가/아레나 합류 경로).
+  if (user.status === "archived") redirect("/claim");
   // 트레이너처럼 수강생도 admin 승인 필요 (2026-05-12).
   // 기존 active trainee 들은 영향 없음 (이미 status=active).
   if (user.status === "pending") {

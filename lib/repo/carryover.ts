@@ -39,6 +39,9 @@ export async function listCarrySourceMeetings(
 export async function listCarriedMeetingKeys(
   arenaSheetId: string,
 ): Promise<Set<string>> {
+  // AP read 도 grid(37열) 밖이면 'exceeds grid limits' — 읽기 전 45열 보장
+  // (rejoin 카나리아 실증 2026-06-11: 쓰기 ensure 만으론 부족).
+  await ensureGridColumns(arenaSheetId, SHEET_RANGES.meetings.tab, 45);
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId: arenaSheetId,
     range: `${ref}!AP2:AP`,

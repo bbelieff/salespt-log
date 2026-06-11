@@ -69,3 +69,4 @@ related: arena-season1-setup, consultation-log-and-calendar, sheet-structure
 ## Log
 - 2026-06-10 결정: 자동 이월(상태=예약 미팅 + 계약업체), 레코드 단위 `이월` 깃발로 집계 제외, 계약은 출발 미팅 깃발 상속, 이월업체의 아레나 신규 미팅은 집계. 구현 핸드오프(feat/arena-carryover) 예정.
 - 2026-06-11 feat/arena-carryover-flags(#346)+migrate 구현: 04 AO/AP·02 AI/AJ 깃발, 01 K/L/N/O·펀넬 수식 AO≠이월 가드(수식 재설치로 전파), 계약 깃발 상속, status=archived 라우팅(active 우선)+이전 일지 링크(me), 클레임 자동 이월+admin 이월 실행(멱등). 재참가자 0명이라 라이브 카나리아는 첫 클레임 시 자동 수행 — admin 버튼으로 재실행 검증 가능.
+- 2026-06-11 설계 빈틈 메움 (rejoin-routing): **cohorts 탭 archived = 그 기수 trainee(숫자형 cohort) 행 라우팅 비활성** — findUserByEmail 이 archived 로 강등 반환 → 홈/(app) 라우팅이 /claim 으로, claimAccount 는 archived 기존 행을 short-circuit 하지 않고 신규(아레나) 클레임 진행. 가드: role=trainee + /^\d+기?$/ 만 (트레이너 T·연습·아레나 행 비적용 — rejoin-routing.test.ts 박제). 닭-달걀(옛 행 archived 마킹은 이월 후 ↔ 이월 트리거는 클레임) 해소.

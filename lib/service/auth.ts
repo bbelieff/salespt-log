@@ -97,7 +97,9 @@ export async function claimAccount(
   name: string,
 ): Promise<ClaimResult> {
   const existing = await findUserByEmail(email);
-  if (existing) {
+  // archived(행 status 또는 cohorts 탭 보관 기수 강등 — rejoin §2)뿐이면
+  // 신규 클레임 진행(아레나 합류 경로). active/pending 만 short-circuit.
+  if (existing && existing.status !== "archived") {
     return {
       email: existing.email,
       cohort: existing.cohort,
