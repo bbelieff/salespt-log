@@ -22,6 +22,8 @@ export interface UpdateGroup {
   /** 개발 기간 = 그룹 첫~마지막 머지일 (ISO). 단건은 둘이 동일. */
   firstDate: string;
   lastDate: string;
+  /** 그룹 내 개별 변경 한 줄씩 (펼침 보조, pr asc) — 단건은 빈 배열. */
+  lines: { pr: number; title: string }[];
 }
 
 /** visible 행들 → 그룹 항목 (latestPr 내림차순). */
@@ -36,7 +38,11 @@ export function groupUpdates(rows: UpdateItem[]): UpdateGroup[] {
   const groups: UpdateGroup[] = [];
   for (const [key, items] of byKey) {
     const sorted = [...items].sort((a, b) => a.pr - b.pr);
-    const rep = sorted[sorted.length - 1]!; // 대표 = 최신 pr
+    // 대표 = "고객 문구(body_md)가 큐레이션된 행" 중 최신 — 후속 픽스 PR 이 그룹에
+    // 합류해도 큐레이션 제목/전·후가 밀려나지 않게 (group-render 정정 2026-06-11).
+    // 큐레이션 행이 없으면 최신 pr fallback.
+    const curated = [...sorted].reverse().find((i) => i.bodyMd.trim() !== "");
+    const rep = curated ?? sorted[sorted.length - 1]!;
     const dates = sorted.map((i) => i.date).filter(Boolean).sort();
     groups.push({
       key,
@@ -47,9 +53,16 @@ export function groupUpdates(rows: UpdateItem[]): UpdateGroup[] {
       latestPr: rep.pr,
       firstDate: dates[0] ?? rep.date,
       lastDate: dates[dates.length - 1] ?? rep.date,
+      lines:
+        sorted.length > 1
+          ? sorted.map((i) => ({ pr: i.pr, title: i.titleUser }))
+          : [],
     });
   }
-  return groups.sort((a, b) => b.latestPr - a.latestPr);
+  // 정렬 = 그룹 "마지막 머지일" 최신순 (§7-4 정본 — 동률은 latestPr).
+  return groups.sort(
+    (a, b) => b.lastDate.localeCompare(a.lastDate) || b.latestPr - a.latestPr,
+  );
 }
 
 /** body_md 의 `전:`/`후:` 줄 추출 — 없으면 null (일반 MD 렌더로 폴백). */

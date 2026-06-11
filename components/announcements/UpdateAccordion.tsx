@@ -42,6 +42,17 @@ function GroupBody({ g }: { g: UpdateGroup }) {
       ) : g.bodyMd.trim() ? (
         <MarkdownView markdown={g.bodyMd} />
       ) : null}
+      {/* 그룹 내 개별 변경 — 보조(작게). 단건은 표시 안 함 (§7-4). */}
+      {g.lines.length > 0 && (
+        <ul className="space-y-0.5 border-t border-gray-50 pt-2">
+          {g.lines.map((l) => (
+            <li key={l.pr} className="flex items-start gap-1.5 text-xs text-gray-400">
+              <span className="shrink-0">·</span>
+              <span className="min-w-0">{l.title}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -55,11 +66,12 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
   }
 
   return (
-    <ul className="divide-y divide-gray-50">
+    // 모든 항목 동일한 카드 형태로 평면 나열 — 단건이 그룹에 종속돼 보이지 않게 (§7-4).
+    <ul className="space-y-2">
       {groups.map((g) => {
         const expanded = open === g.key;
         return (
-          <li key={g.key}>
+          <li key={g.key} className="rounded-xl border border-gray-100 bg-white px-2">
             <button
               type="button"
               onClick={() => setOpen(expanded ? null : g.key)}

@@ -79,9 +79,7 @@ export default function UpdatesArchivePage() {
                 <span className="text-xs font-black text-gray-400">{m.label}</span>
                 <div className="h-px flex-1 bg-gray-100" />
               </div>
-              <div className="rounded-xl border border-gray-100 bg-white px-2 py-1">
-                <UpdateAccordion updates={m.rows} />
-              </div>
+              <UpdateAccordion updates={m.rows} />
             </section>
           ))}
           {rows.length === 0 && !loading && !error && (
