@@ -117,6 +117,19 @@ export function formatCompanyInfoTxt(
   ].join("\n");
 }
 
+/**
+ * Drive 권한 계열 원인 분류 — 순수(테스트 대상). null = 권한 문제 아님.
+ * (fix/txt-export-admin-oauth: 토큰 미설정 throw·만료·SA quota 를 한글 안내로 치환)
+ */
+export function classifyDriveAuthError(
+  msg: string,
+): "token_missing" | "token_invalid" | "quota" | null {
+  if (msg.includes("ADMIN_DRIVE_REFRESH_TOKEN")) return "token_missing";
+  if (/invalid_grant|invalid_rapt|unauthorized_client/i.test(msg)) return "token_invalid";
+  if (/storage quota|do not have storage/i.test(msg)) return "quota";
+  return null;
+}
+
 /** TXT 파일명 — 업체당 1본 키. */
 export function companyInfoTxtFileName(업체명: string): string {
   return `업체정보_${업체명.trim()}.txt`;

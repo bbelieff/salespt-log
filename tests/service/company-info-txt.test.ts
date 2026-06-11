@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  classifyDriveAuthError,
   displayWidth,
   formatCompanyInfoTxt,
   companyInfoTxtFileName,
@@ -77,5 +78,24 @@ describe("업체정보 TXT 포맷 (정렬형)", () => {
     expect(txt).toContain("비고");
     expect(txt).toContain("VIP");
     expect(txt).toContain("[대표자]"); // 섹션 헤더는 유지
+  });
+});
+
+describe("classifyDriveAuthError (txt-export-admin-oauth)", () => {
+  it("토큰 미설정 throw → token_missing", () => {
+    expect(
+      classifyDriveAuthError("ADMIN_DRIVE_REFRESH_TOKEN 미설정 — Drive 파일 생성은 관리자 OAuth 필수(ADR-0015)."),
+    ).toBe("token_missing");
+  });
+  it("토큰 만료/철회 → token_invalid", () => {
+    expect(classifyDriveAuthError("invalid_grant: Token has been expired or revoked.")).toBe("token_invalid");
+  });
+  it("SA quota(라이브 사고 원문) → quota", () => {
+    expect(
+      classifyDriveAuthError("Service Accounts do not have storage quota. Leverage shared drives..."),
+    ).toBe("quota");
+  });
+  it("일반 에러는 null (기존 메시지 유지)", () => {
+    expect(classifyDriveAuthError("업체관리(피드백업체) 폴더가 연결되어 있지 않습니다")).toBe(null);
   });
 });
