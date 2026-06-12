@@ -31,8 +31,9 @@ export default function SummaryBar({ meetings }: Props) {
   const done = meetings.filter((m) => m.상태 === "완료").length;
   const canceled = meetings.filter((m) => m.상태 === "취소").length;
 
+  // 이월(arena-carryover §4) 계약은 매출 합계에서 제외 — 아레나 점수 비합산.
   const feeSum = meetings
-    .filter((m) => m.계약여부)
+    .filter((m) => m.계약여부 && m.구분 !== "이월")
     .reduce((s, m) => s + (m.수임비 || 0), 0);
 
   const cpQuery = useContractPayments();
@@ -40,7 +41,7 @@ export default function SummaryBar({ meetings }: Props) {
     const rows = cpQuery.data?.rows ?? [];
     const weekContractKeys = new Set(
       meetings
-        .filter((m) => m.계약여부)
+        .filter((m) => m.계약여부 && m.구분 !== "이월")
         .map((m) => `${m.미팅날짜}|${m.업체명.trim()}`),
     );
     return rows

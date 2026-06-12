@@ -264,7 +264,9 @@ export default function ContractRow({
         }
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
           showBody ? accent.tint : ""
-        } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"}`}
+        } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"} ${
+          cp.구분 === "이월" ? "opacity-60" : "" /* 이월 흐림 — §4 */
+        }`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}
         aria-current={selected ? "true" : undefined}
@@ -274,6 +276,7 @@ export default function ContractRow({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-gray-900">
+            {cp.구분 === "이월" && <CarryoverBadge 구분={cp.구분} variant="badge" />}
             {renderNameWithHighlight(cp.업체명, highlight)}
             {isComplete && <span className="text-xs text-green-600">✓</span>}
           </div>
