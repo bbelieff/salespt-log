@@ -22,11 +22,8 @@ const SALES_LAST_ROW = SALES_BLOCK_START + 7 * SALES_BLOCK_STRIDE + 27;
 
 const SALES_FORMULA_COLS = ["I", "J", "K", "L", "M", "N", "O", "P"] as const;
 
-// ── 영업관리 D 컬럼 채널 라벨 정상화 (2026-05-18, 콜·지·기·소 하이픈 사고) ──
-// 6/7기 시트 다수의 영업관리 D 컬럼 콜지기소 라벨이 "콜-지-기-소" (hyphen
-// U+002D) 으로 박혀있음 → 코드 enum "콜·지·기·소" (middle dot U+00B7) 와 매칭
-// 실패 → I/J/K 수식의 `F:F=$D{r}` 비교가 0 결과 → 모든 콜지기소 미팅이 영업관리
-// 표시 영역에서 누락. installFormulas 가 라벨도 함께 정상화.
+// ── 영업관리 D 채널 라벨 정상화 (2026-05-18 하이픈 사고) — "콜-지-기-소"(hyphen)
+// 가 enum "콜·지·기·소"(middle dot) 와 불일치 → I/J/K 매칭 0. install 이 라벨도 정상화.
 const CHANNEL_LABELS = ["매입DB", "직접생산", "현수막", "콜·지·기·소"] as const;
 
 /** 채널 라벨 비교용 — 모든 separator (middle dot 류 + hyphen 류) 제거. */
@@ -54,10 +51,8 @@ export function shouldFixChannelLabel(current: unknown, expected: string): boole
   return normalizeChannelSep(current) === normalizeChannelSep(expected);
 }
 
-// ── 04 업체관리 per-row 수식 ─────────────────────────────────────
-// ARRAYFORMULA를 안 쓰는 이유: 한국 로케일 + 시트 잔재(checkbox/data validation
-// 등) 환경에서 spill이 막혀 #REF! 발생. per-row IF로 가면 spill 자체가
-// 필요 없어 #REF! 원천 차단.
+// ── 04 업체관리 per-row 수식 — ARRAYFORMULA 금지(로케일·잔재로 spill 막혀
+// #REF!). per-row IF 로 원천 차단. ─────────────────────────────
 const MEETINGS_LAST_ROW = 1000; // 최대 미팅 1000건 가정
 
 function meetingsRowFormulas(r: number): {
@@ -75,10 +70,8 @@ function meetingsRowFormulas(r: number): {
   };
 }
 
-// 데이터 행 식별 (deterministic, 2026-05-16 6기 셀병합 사고 후 C-read 제거).
-// row = blockStart(10) + week*blockStride(34) + dayIdx*4 + channelIdx.
-// 매 주 28 data rows(7일×4채널)=224(8주). offset 0..27 만(28..33 합계/헤더 자연 제외).
-// 셀병합 무관하게 224 전부 install 시도, raw 값은 isSafeToOverwrite 가 skip.
+// 데이터 행 식별(deterministic — 2026-05-16 셀병합 사고 후 C-read 제거):
+// row = 10 + week*34 + dayIdx*4 + chIdx, 224행. raw 값은 isSafeToOverwrite 가 skip.
 export function computeDataRows(): number[] {
   const rows: number[] = [];
   for (let week = 0; week < 8; week++) {
@@ -143,16 +136,18 @@ export function formulasForRow(r: number): Record<string, string> {
     //    미팅실행률 100% 사고 (2026-06-09 진단). K(오늘미팅수)와 같아지면 안 됨.
     //    가드: tests/repo/setup-formulas-guard.test.ts "미팅완료(L) 상태필터".
     L: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"계약",${M_REF}!AO:AO,"<>이월")+COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!J:J,"완료",${M_REF}!AO:AO,"<>이월")`,
-    // M: 미팅사유 자동 집계 — 미팅날짜만 매칭 (J~M 통합).
     M: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!M:M,${M_REF}!D:D=$C${dpr})),"")`,
-    // N: 계약건수 (채널별 — 콜지기소 와일드카드) + 이월 제외.
     N: `=COUNTIFS(${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약",${M_REF}!AO:AO,"<>이월")`,
-    // O: 수임비합계 (채널별 — 콜지기소 와일드카드) + 이월 제외.
     O: `=SUMIFS(${M_REF}!L:L,${M_REF}!D:D,$C${dpr},${M_REF}!F:F,${chCrit},${M_REF}!J:J,"계약",${M_REF}!AO:AO,"<>이월")`,
-    // P: 계약비고 — 04업체관리!Q(계약합성라인) TEXTJOIN (콜지기소는 LEFT(F,1)="콜")
     P: `=IFERROR(TEXTJOIN(CHAR(10),TRUE,FILTER(${M_REF}!Q:Q,(${M_REF}!D:D=$C${dpr})*${chCond}*(${M_REF}!J:J="계약"))),"")`,
   };
 }
+
+// 02!D3 수납총액(대시보드 수수료·총매출 원천) 이월 제외 가드 — 원본
+// `=sum(Q6:Q36,W:W,AC:AC)` 가 이월 수납 합산(2026-06-12 leak). Q 36행 한정도 정상화.
+const CONTRACT_TAB = "02 계약수납관리";
+const CP_D3_FORMULA =
+  '=SUMIFS(Q6:Q,$AI$6:$AI,"<>이월")+SUMIFS(W6:W,$AI$6:$AI,"<>이월")+SUMIFS(AC6:AC,$AI$6:$AI,"<>이월")';
 
 // 미팅예약/완료 펀넬·채널 stacking (01 R4:U5+F4:F5) — 04 상태기반 (2026-06-09 A안,
 // 미팅실행률 100% 착시 fix). 미팅예약=상태∈{예약,완료,계약}(변경/취소 제외, 미래 포함),
@@ -376,6 +371,19 @@ export async function installFormulas(
     }
   }
 
+  // 02!D3 수납총액 — 이월 제외 가드 수식 (§2.5 pre-read: raw 값이면 보존).
+  const cpD3 = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tabRef(CONTRACT_TAB)}!D3`,
+    valueRenderOption: "FORMULA",
+  });
+  const curD3 = cpD3.data.values?.[0]?.[0];
+  if (isSafeToOverwrite(curD3)) {
+    data.push({ range: `${tabRef(CONTRACT_TAB)}!D3`, values: [[CP_D3_FORMULA]] });
+  } else {
+    preservedCells.push("02 계약수납 D3");
+  }
+
   if (data.length > 0) {
     await sheetsClient().spreadsheets.values.batchUpdate({
       spreadsheetId,
@@ -393,23 +401,15 @@ export async function installFormulas(
     details: [
       `04 업체관리: N/O/Q 컬럼 ${MEETINGS_LAST_ROW - 1}행 검사`,
       `01 영업관리: 데이터 행 ${dataRows.length}개 × 8 컬럼 (I~P) 검사`,
+      `02 계약수납: D3(수납총액) 이월 제외 가드`,
       `사용자 수동 입력 (raw text/number) ${preservedCells.length}개 셀 보존 — 수식·빈 셀만 덮어씀`,
     ],
   };
 }
 
 /**
- * 모든 설치된 수식을 제거 (안전 모드 v2 — 2026-05-14 사고 후).
- *
- * v1 은 N/O/Q + I~P 전 범위 batchClear 라 사용자 raw 입력값도 같이 날렸음 (install
- * 사고와 동일 패턴). v2 는 install 과 동일하게 셀별 pre-read 후 raw 값 cell 은
- * skip — **수식만 비우고 사용자 작성값은 보존**.
- *
- * 클리어 범위:
- *   - 04 업체관리: N2:N, O2:O, Q2:Q
- *   - 01 영업관리: 데이터행 I~P (합계행은 안 건드림 — computeDataRows 가 박힌 공식으로 식별)
- *
- * **CLAUDE.md §2 규칙 5**: 모든 bulk-write 는 user raw 데이터 보존 의무.
+ * 설치 수식 제거 v2(2026-05-14 사고 후) — install 과 동일하게 셀별 pre-read,
+ * raw 값 skip(수식만 비움). 범위: 04 N/O/Q + 01 데이터행 I~P. CLAUDE.md §2-5.
  */
 export async function uninstallFormulas(
   spreadsheetId: string,
