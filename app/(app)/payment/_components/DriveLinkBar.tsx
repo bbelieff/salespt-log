@@ -11,6 +11,8 @@ import { useMe } from "@/query/me-hook";
 
 export default function DriveLinkBar() {
   const me = useMe();
+  // 아레나(cohort A 접두) — 폴더 구조·문구 분기 (fix/drive-connect-arena).
+  const isArena = /^A/i.test(String(me.data?.cohort ?? "").trim());
   const feedbackFolderId = me.data?.feedbackFolderId ?? "";
   const driveLinkStatus = me.data?.driveLinkStatus ?? "";
   const [showRelink, setShowRelink] = useState(false);
@@ -122,10 +124,14 @@ export default function DriveLinkBar() {
 
       {showRelink && (
         <div className="space-y-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          {/* 개선 A — 자동으로 찾기 (URL 불필요, 우선 권장) */}
+          {/* 개선 A — 자동으로 찾기 (URL 불필요, 우선 권장). 아레나는 폴더 구조가 달라 문구 분기. */}
           <div>
             <p className="mb-2 text-xs text-amber-800">
-              연결된 경영일지 시트가 있는 폴더에서 <b>‘01 피드백업체’</b> 폴더를 자동으로 찾아 연결해요.
+              {isArena ? (
+                <>내 <b>‘업체관리’</b> 폴더를 자동으로 찾아 연결해요.</>
+              ) : (
+                <>연결된 경영일지 시트가 있는 폴더에서 <b>‘01 피드백업체’</b> 폴더를 자동으로 찾아 연결해요.</>
+              )}
             </p>
             <button
               type="button"
@@ -140,7 +146,11 @@ export default function DriveLinkBar() {
           {/* 개선 B — 수동 입력 (폴더 주소 직접 붙여넣기) */}
           <div className="border-t border-amber-200 pt-2.5">
             <p className="mb-2 text-xs text-amber-700">
-              잘 안 되면, <b>‘01 피드백업체’</b> 폴더 주소를 그대로 붙여넣어도 돼요. (상위 폴더 주소도 괜찮아요)
+              {isArena ? (
+                <>잘 안 되면, 운영자에게 받은 <b>‘업체관리’</b> 폴더 주소를 붙여넣어 주세요. (상위 폴더 주소도 괜찮아요)</>
+              ) : (
+                <>잘 안 되면, <b>‘01 피드백업체’</b> 폴더 주소를 그대로 붙여넣어도 돼요. (상위 폴더 주소도 괜찮아요)</>
+              )}
             </p>
             <div className="flex gap-2">
               <input
