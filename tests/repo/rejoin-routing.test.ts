@@ -96,6 +96,17 @@ describe("pickPreferredUser (다중 행 라우팅 우선순위)", () => {
   it("빈 배열 → null", () => {
     expect(pickPreferredUser([])).toBeNull();
   });
+  it("수강생출신 트레이너: trainer 행 + 아레나 trainee 행 → trainer 우선(P14)", () => {
+    const trainer = mkUser({ cohort: "T", role: "trainer", spreadsheetId: "t" });
+    const arena = mkUser({ cohort: "A1-2", role: "trainee", spreadsheetId: "a" });
+    expect(pickPreferredUser([arena, trainer])?.role).toBe("trainer");
+    expect(pickPreferredUser([trainer, arena])?.role).toBe("trainer");
+  });
+  it("일반 아레나 참가자(trainer 행 없음)는 아레나 우선 — 회귀 없음", () => {
+    const arena = mkUser({ cohort: "A1-2", role: "trainee", spreadsheetId: "a" });
+    const old = mkUser({ cohort: "2", role: "trainee", spreadsheetId: "o" });
+    expect(pickPreferredUser([old, arena])?.spreadsheetId).toBe("a");
+  });
 });
 
 describe("cohortGroupKey (아레나 그룹 통일)", () => {

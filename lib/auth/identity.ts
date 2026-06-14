@@ -18,6 +18,30 @@ import { adminEmails } from "@/config";
 import { findUserByEmail, parseAssignedTrainers } from "@/repo/users";
 
 const AS_COOKIE = "salespt_as";
+const ARENA_SELF_COOKIE = "salespt_arena_self";
+
+/** 수강생출신 트레이너 "내 아레나 일지" self-view 모드 여부(P14). flag 쿠키만 —
+ * 실제 sheetId 는 서버가 me.ownArenaSheetId 로 계산(임의 sheetId 주입 차단). */
+export async function isArenaSelfView(): Promise<boolean> {
+  const jar = await cookies();
+  return jar.get(ARENA_SELF_COOKIE)?.value === "1";
+}
+
+/** 아레나 self-view 토글 set/unset. */
+export async function setArenaSelfView(on: boolean): Promise<void> {
+  const jar = await cookies();
+  if (!on) {
+    jar.delete(ARENA_SELF_COOKIE);
+    return;
+  }
+  jar.set(ARENA_SELF_COOKIE, "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
 
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;

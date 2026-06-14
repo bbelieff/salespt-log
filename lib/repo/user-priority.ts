@@ -41,8 +41,11 @@ export function arenaCohortCorrection(
   return /^\d+$/.test(b) && /^A\d+-\d+$/.test(l) ? l : null;
 }
 
-/** 우선순위: 아레나 non-archived > 숫자 non-archived > archived fallback. */
+/** 우선순위: trainer(수강생출신 트레이너 — /trainer 착지, P14) > 아레나 non-archived
+ * > 숫자 non-archived > archived fallback. trainer 행 + 아레나 trainee 행을 둘 다
+ * 가진 사용자는 트레이너로 착지하고, 아레나 일지는 토글(ownArenaSheetId)로 본다. */
 export function pickPreferredUser(users: User[]): User | null {
+  let arena: User | null = null;
   let active: User | null = null;
   let archived: User | null = null;
   for (const u of users) {
@@ -50,8 +53,9 @@ export function pickPreferredUser(users: User[]): User | null {
       archived ??= u;
       continue;
     }
-    if (isArenaCohortLabel(u.cohort)) return u;
-    active ??= u;
+    if (u.role === "trainer") return u; // 최우선
+    if (isArenaCohortLabel(u.cohort)) arena ??= u;
+    else active ??= u;
   }
-  return active ?? archived;
+  return arena ?? active ?? archived;
 }
