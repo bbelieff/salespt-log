@@ -29,3 +29,10 @@ AdminUserPicker 가 activeGroups(기수별 그룹)를 평면 나열 → A1-N기�
 
 ## 상태
 - 2026-06-14 구현 완료(feat/admin-cohort-category-boxes).
+
+## 1단계 추가 (2026-06-14, fix/arena-cohort-display-and-grouping)
+enrich 가 아레나 cohort 를 시트 B3/캐시로 덮어 옛 기수(4/3/1)로 오염 → 보관 박스 오분류.
+me.ts `isArenaReg`(=/^A\d+-/) 가드를 enrichUsersWithSheetCohort·enrichUsersWithDates
+(시트+cachedComplete 경로)·loadMe 4곳에 적용 — 아레나면 레지스트리 A1-N 유지(name·날짜는
+시트값). 고경희 A1-4·박종훈/박진섭 A1-3·김소라/정진웅 A1-1 가 아레나 박스로 정상 복귀.
+me.test +2(시트 B3="4" 여도 A1-4 유지). 2단계 3박스는 #384에서 완료.

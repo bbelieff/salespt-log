@@ -49,6 +49,11 @@ export interface MeProfile {
   ownArenaSheetId?: string;
 }
 
+/** 레지스트리 cohort 가 아레나(A시즌-...)면 표시 cohort 를 시트 B3/캐시로 덮지 않는다
+ * (아레나는 레지스트리 A1-N 이 SSOT — 시트 B3 에 옛 기수 "4"/"3" 잔존 시 오분류 방지,
+ * arena-cohort-display). name·날짜는 시트값 유지, 기수만 보호. */
+const isArenaReg = (c: string) => /^A\d+-/.test(String(c ?? "").trim());
+
 function toISO(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -186,7 +191,7 @@ export async function enrichUsersWithSheetCohort<T extends { cohort: string; nam
       const bundle = await readBundle(u.spreadsheetId);
       return {
         ...u,
-        cohort: bundle.cohort || u.cohort,
+        cohort: isArenaReg(u.cohort) ? u.cohort : bundle.cohort || u.cohort,
         name: bundle.name || u.name,
       };
     } catch (e) {
@@ -243,7 +248,7 @@ export async function enrichUsersWithDates<
     if (cachedComplete) {
       return {
         ...u,
-        cohort: u.cohortLabel ?? u.cohort,
+        cohort: isArenaReg(u.cohort) ? u.cohort : u.cohortLabel ?? u.cohort,
         name: u.nameLabel ?? u.name,
         courseStartISO: u.courseStartISO ?? "",
         graduationISO: u.graduationISO ?? "",
@@ -260,7 +265,7 @@ export async function enrichUsersWithDates<
       const bundle = await readBundle(u.spreadsheetId);
       return {
         ...u,
-        cohort: bundle.cohort || u.cohort,
+        cohort: isArenaReg(u.cohort) ? u.cohort : bundle.cohort || u.cohort,
         name: bundle.name || u.name,
         courseStartISO: toISO(bundle.courseStart),
         graduationISO: toISO(bundle.graduation),
@@ -337,7 +342,7 @@ export async function loadMe(email: string): Promise<MeProfile> {
   }
   return {
     email: user.email,
-    cohort: bundle.cohort || user.cohort,
+    cohort: isArenaReg(user.cohort) ? user.cohort : bundle.cohort || user.cohort,
     name: bundle.name || user.name,
     courseStartISO: toISO(bundle.courseStart),
     graduationISO: toISO(bundle.graduation),
