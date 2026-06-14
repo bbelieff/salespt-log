@@ -7,7 +7,7 @@
  * 노출 규칙 (SoR §1-2·§3):
  *   notices — active=TRUE && 기간(start~end, 빈값 무제한) && audience 매칭
  *             (arena 판정 = cohort 라벨 `A` 접두, 예 "A1-6").
- *   updates — visible=TRUE 최신(pr desc) 10개.
+ *   updates — visible=TRUE 최신(pr desc) 6개.
  * 빈도 제어(once/daily/always)는 클라 localStorage — 서버는 후보만 내려준다.
  */
 import { unstable_cache, revalidateTag } from "next/cache";
@@ -23,7 +23,7 @@ import { findUserByEmail } from "@/repo/users";
 import { Notice, UpdateItem } from "@/types";
 import { groupUpdates } from "./update-groups";
 
-const VISIBLE_LIMIT = 10;
+const VISIBLE_LIMIT = 6;
 
 /** cohort 라벨 `A` 접두 = 아레나 (예 "A1-6", "A1-6기"). 빈값·일반 기수=false. */
 export function isArenaAudienceCohort(cohort: string | null | undefined): boolean {
@@ -52,9 +52,9 @@ export function filterNoticesFor(
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (a.id < b.id ? 1 : -1));
 }
 
-/** 순수 필터 — visible=TRUE 최신(pr desc) 10개. */
+/** 순수 필터 — visible=TRUE 최신(pr desc) 6개. */
 export function pickVisibleUpdates(updates: UpdateItem[]): UpdateItem[] {
-  // 묶음(§7-4): limit 은 "항목(그룹=1)" 단위 — 항목 10개에 속한 행 전부 반환,
+  // 묶음(§7-4): limit 은 "항목(그룹=1)" 단위 — 항목 6개에 속한 행 전부 반환,
   // 그룹핑·표시는 클라(UpdateAccordion)가 같은 groupUpdates 규칙으로 수행.
   const visible = updates.filter((u) => u.visible);
   const top = groupUpdates(visible).slice(0, VISIBLE_LIMIT);
