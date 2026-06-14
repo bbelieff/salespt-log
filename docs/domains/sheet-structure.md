@@ -611,6 +611,20 @@ H / O / W: spacer (비움). A: 비움.
 
 범위: `A2:K`. 노출 빈도 제어는 클라이언트 localStorage(서버 기록 금지 — 시트 쓰기 과다, announcement-popup §3).
 
+### 6.4 `share_scores` 탭 (레지스트리 내 별도 탭 — 전광판 공유왕 수동 점수, arena-scoreboard-v2)
+
+`SHEET_RANGES.share_scores`. 운영자가 수동으로 공유왕 점수 입력(향후 admin UI). `lib/repo/share-scores.ts` 가 read(10분 캐시) / setShareScores(email 키 행만 타격). 탭/빈값이면 read 는 `[]`(공유왕 0).
+
+| 컬럼 | 필드 | 설명 |
+|---|---|---|
+| A | email | 키 (소문자 매칭) |
+| B | name | 이름 (랭킹 표시, 부부는 registry name 그대로) |
+| C | cohort | 정규화 `A1-N` |
+| D | points | 공유왕 점수(정수) — value desc 랭킹 |
+| E | updatedAt | 갱신 ISO |
+
+범위: `A2:E`.
+
 ---
 
 ## ❌ 폐기된 탭들 (2026-04-27)
