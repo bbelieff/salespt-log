@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   GRADUATION_OFFSET_DAYS,
   computeGraduationISO,
+  enrichUsersWithDates,
 } from "@/service/me";
 
 describe("GRADUATION_OFFSET_DAYS", () => {
@@ -35,5 +36,36 @@ describe("computeGraduationISO — 7기 모델 (O1+50)", () => {
 
   it("윤년(2028) 2/29 → 4/19 (3월 31d + 4월 19d = 50)", () => {
     expect(computeGraduationISO("2028-02-29")).toBe("2028-04-19");
+  });
+});
+
+describe("enrichUsersWithDates — 아레나 cohort 보호 (arena-cohort-display)", () => {
+  it("cohort=A1-4, 시트캐시 cohortLabel=4 여도 A1-4 유지(아레나=레지스트리 SSOT)", async () => {
+    const [r] = await enrichUsersWithDates([
+      {
+        cohort: "A1-4",
+        name: "고경희",
+        spreadsheetId: "sheet-x",
+        cohortLabel: "4", // 시트 B3 스테일 옛 기수
+        nameLabel: "고경희",
+        courseStartISO: "2026-06-12",
+        graduationISO: "2026-08-01",
+      },
+    ]);
+    expect(r!.cohort).toBe("A1-4");
+  });
+  it("일반 숫자 cohort 는 기존대로 cohortLabel 표시", async () => {
+    const [r] = await enrichUsersWithDates([
+      {
+        cohort: "8",
+        name: "김현민",
+        spreadsheetId: "sheet-y",
+        cohortLabel: "8기",
+        nameLabel: "김현민",
+        courseStartISO: "2026-06-12",
+        graduationISO: "2026-08-01",
+      },
+    ]);
+    expect(r!.cohort).toBe("8기");
   });
 });
