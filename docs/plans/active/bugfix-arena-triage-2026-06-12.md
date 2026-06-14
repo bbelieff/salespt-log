@@ -112,6 +112,25 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 [수용(실데이터 실측 — 박제 규칙)] 이월 보유 4기·6기 실제 시트에서 영업이익·매출 **전/후 수치 실측**(이월분 빠져 0/정합). 0건 카나리아 불가. 단위테스트(이월 제외 합산). npm run check. PR. Cowork 검증불가, PC 정본.
 ```
 
+### P3 수정 결과 (2026-06-12, fix/carryover-profit-leak)
+- **이월 위치 정정**: 이월 마킹(구분=이월)은 옛 4·6기 시트가 아니라 **새 아레나(A1-N)
+  시트에 복사된 행**에 붙는다(migrateArenaCarryover §2 — 아레나 순수 실적 분리용).
+  옛 기수 행은 status=archived. → P3 대상은 **아레나 시트 대시보드/수납탭**.
+- **서비스 레이어 가드(핵심)**:
+  - `computeContractRevenue`(dashboard.ts): `구분==="이월"` 행 제외 → 대시보드 매출·영업이익.
+  - `payment/page.tsx`: 합계(totalReceived/Approved/Contract)를 `billable`(이월 제외)로.
+    카드 목록(rows)은 회색 표시 그대로.
+  - SummaryBar 는 **이미** 이월 제외(m.구분!=="이월") — 무변경.
+- **실데이터 실측(전/후)**: A1-6 조정욱 — 매출 전 **22,025,000**(이월분=전액) → 후 **0**.
+  6기 옛 계약 22M이 아레나 시트에 이월 복사돼 아레나 실적에 잡히던 것을 정확히 제외.
+  (Sheets read quota 로 나머지 33 아레나 시트는 실측 중단 — 1건 명확 입증 + 단위테스트 2종.)
+- **시트 수식 재전파 불요 판단**: 대시보드 매출·영업이익은 **서버 sum**(computeContractRevenue)
+  이라 시트 02!D3 수식과 무관하게 즉시 정합. 아레나 시트는 신양식(02 계약수납관리)
+  + create-arena-members 가 #365 가드 수식(D3 SUMIFS "<>이월") 설치 → 별도 재전파 불요.
+  옛 4·6기 시트는 archived(본인 미열람) + 6기는 옛 양식("02 계약관리", AI 컬럼 부재)이라
+  재전파 비대상. (quota 회복 후 아레나 시트 D3 가드 1건 스폿체크 권장.)
+- **회귀 테스트**: dashboard.test.ts +2 (이월 제외·전부이월 0). 총 5 pass.
+
 ## P4 — [6] 실무/수납 드라이브 자동연결 무반응
 ```
 세일즈PT — [P4] 실무수납 드라이브 자동연결 무반응 수정. 브랜치 fix/payment-drive-link. SoR: §0. 선행: P1(cohort).
