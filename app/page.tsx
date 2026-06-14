@@ -21,7 +21,7 @@
 import { redirect } from "next/navigation";
 import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
-import { getSessionEmail, getEffectiveRole } from "@/auth/identity";
+import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
@@ -43,6 +43,8 @@ export default async function HomePage() {
   }
 
   if (role === "trainer") {
+    // 수강생출신 트레이너 "내 아레나 일지" self-view 중이면 대시보드로(토글 상태 유지, P14).
+    if (await isArenaSelfView()) redirect("/dashboard");
     redirect("/trainer"); // pending 이면 /trainer 가 대기 화면 렌더
   }
 

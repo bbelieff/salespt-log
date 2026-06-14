@@ -91,7 +91,7 @@ export {
 } from "./me";
 
 // 대시보드 view (PR feat/dashboard-page — read-only, 시트 디스커버리 후 wiring)
-export { loadDashboard } from "./dashboard";
+export { loadDashboard, resolveArenaOverride } from "./dashboard";
 
 // 시트 진단/픽스 카탈로그 (2026-05-16) — 개별 trainee 단위 + Hashimoto 누적 룰.
 export {

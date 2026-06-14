@@ -18,6 +18,7 @@ import {
   getSessionEmail,
   getActiveUserEmail,
   isAdminEmail,
+  isArenaSelfView,
 } from "@/auth/identity";
 import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
@@ -44,6 +45,11 @@ export default async function AppLayout({
     if (u && !isAdminEmail(sessionEmail)) {
       const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
       if (isNumericCohortArchived(u.role, u.cohort, archivedLabels)) redirect("/claim");
+    }
+    // 수강생출신 트레이너(시트 없음)는 "내 아레나 일지" self-view(쿠키)일 때만 (app)
+    // 대시보드 허용 — 아니면 /trainer(빈 대시보드 방지, P14).
+    if (u && u.role === "trainer" && u.status === "active" && !(await isArenaSelfView())) {
+      redirect("/trainer");
     }
     if (u && u.status === "pending") {
       return (

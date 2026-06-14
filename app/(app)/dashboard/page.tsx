@@ -23,6 +23,7 @@ import PageContainer from "@/components/PageContainer";
 import { useMemo } from "react";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
+import TrainerPlayerToggle from "@/components/auth/TrainerPlayerToggle";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 import OperatingProfitCard from "@/components/dashboard/OperatingProfitCard";
@@ -89,6 +90,13 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-50 pb-20">
       <PageContainer width="wide">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle="8주 누적" />
+
+      {/* 수강생출신 트레이너 self-view 중 — 트레이너 관리로 복귀 토글(P14). */}
+      {me.data?.ownArenaSheetId && (
+        <div className="px-4 pt-3">
+          <TrainerPlayerToggle mode="arena" />
+        </div>
+      )}
 
       {dash.data && (
         <DashboardProgressBanner

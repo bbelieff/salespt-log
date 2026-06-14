@@ -27,6 +27,7 @@ import type {
   ContractPayment,
 } from "@/types";
 import { findUserByEmail } from "@/repo/users";
+import { findArenaSheetIdByName } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
@@ -64,9 +65,24 @@ export function computeContractRevenue(payments: ContractPayment[]): {
   return { totalFee, totalReceived, revenue: totalFee + totalReceived };
 }
 
-export async function loadDashboard(email: string): Promise<DashboardView> {
+/** 수강생출신 트레이너의 아레나 self-view override sheetId 결정(P14). trainer 행이고
+ * 이름 매칭 아레나 시트가 유일할 때만 그 sheetId, 아니면 undefined. */
+export async function resolveArenaOverride(
+  email: string,
+): Promise<string | undefined> {
+  const u = await findUserByEmail(email);
+  if (u?.role !== "trainer") return undefined;
+  return (await findArenaSheetIdByName(u.name)) ?? undefined;
+}
+
+export async function loadDashboard(
+  email: string,
+  overrideSheetId?: string,
+): Promise<DashboardView> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[dashboard] 사용자(${email})를 찾을 수 없습니다.`);
+  // 수강생출신 트레이너의 "내 아레나 일지" self-view — 본인 아레나 시트로 override(P14).
+  const sheetId = overrideSheetId || user.spreadsheetId;
 
   // 영업관리/대시보드 + 03 DB관리 raw row 4개 영역 병렬 read.
   // **db.ts 의 readPurchases/readProductions/readBanners 가 비용 단일 진실원천**:
@@ -76,11 +92,11 @@ export async function loadDashboard(email: string): Promise<DashboardView> {
   // 옛 F56/K56/U56 SUM cell 의존 제거 — 시트 템플릿마다 SUM 수식 유무 차이로 비용 0
   // 표시되던 사고 (2026-05-15, 김미란 케이스) 원천 차단.
   const [data, purchases, productions, banners, payments] = await Promise.all([
-    readDashboard(user.spreadsheetId),
-    readPurchases(user.spreadsheetId),
-    readProductions(user.spreadsheetId),
-    readBanners(user.spreadsheetId),
-    readContractPayments(user.spreadsheetId),
+    readDashboard(sheetId),
+    readPurchases(sheetId),
+    readProductions(sheetId),
+    readBanners(sheetId),
+    readContractPayments(sheetId),
   ]);
 
   const purchaseCost = purchases.rows.reduce((s, p) => s + num(p.주문금액), 0);

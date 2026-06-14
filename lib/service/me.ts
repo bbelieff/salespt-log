@@ -14,7 +14,7 @@
  */
 import { unstable_cache } from "next/cache";
 import { findUserByEmail } from "@/repo/users";
-import { findArchivedRowByEmail } from "@/repo/users-arena";
+import { findArchivedRowByEmail, findArenaSheetIdByName } from "@/repo/users-arena";
 import { readProfileBundle } from "@/repo/sales";
 
 /**
@@ -44,6 +44,9 @@ export interface MeProfile {
   /** 이전 기수(archived) 일지 — "이전 N기 일지 보기(읽기전용)" 링크 (carryover §1). */
   archivedCohort?: string;
   archivedSpreadsheetId?: string;
+  /** 수강생출신 트레이너의 본인 아레나 시트 ID — "내 아레나 일지" 토글 노출용(P14).
+   *  trainer 행 + 이름 일치 아레나 trainee 행 있을 때만. 빈값=일반 트레이너. */
+  ownArenaSheetId?: string;
 }
 
 function toISO(d: Date): string {
@@ -323,6 +326,15 @@ export async function loadMe(email: string): Promise<MeProfile> {
   } catch {
     archived = null;
   }
+  // 수강생출신 트레이너 — 본인 아레나 시트(이름 매칭) "내 아레나 일지" 토글용(P14).
+  let ownArenaSheetId: string | undefined;
+  if (user.role === "trainer") {
+    try {
+      ownArenaSheetId = (await findArenaSheetIdByName(user.name)) ?? undefined;
+    } catch {
+      ownArenaSheetId = undefined;
+    }
+  }
   return {
     email: user.email,
     cohort: bundle.cohort || user.cohort,
@@ -335,5 +347,6 @@ export async function loadMe(email: string): Promise<MeProfile> {
     captainOf: user.captainOf,
     archivedCohort: archived?.cohort,
     archivedSpreadsheetId: archived?.spreadsheetId,
+    ownArenaSheetId,
   };
 }
