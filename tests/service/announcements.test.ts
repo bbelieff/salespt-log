@@ -1,6 +1,6 @@
 /**
  * 새소식 노출 필터 (announcement-popup §3) — 순수 함수 단위 테스트.
- * audience(all/arena/regular)·기간(start~end)·active·pinned 정렬 + visible 최신 10.
+ * audience(all/arena/regular)·기간(start~end)·active·pinned 정렬 + visible 최신 6.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -63,14 +63,14 @@ describe("pickVisibleUpdates", () => {
   const upd = (pr: number, visible: boolean): UpdateItem =>
     UpdateItem.parse({ pr, visible });
 
-  it("visible=TRUE 만, pr desc, 최대 10개", () => {
+  it("visible=TRUE 만, pr desc, 최대 6개", () => {
     const list = [
       ...Array.from({ length: 12 }, (_, i) => upd(i + 1, true)),
       upd(99, false),
     ];
     const got = pickVisibleUpdates(list);
-    expect(got).toHaveLength(10);
+    expect(got).toHaveLength(6);
     expect(got[0]!.pr).toBe(12); // 99 는 invisible — 제외
-    expect(got[9]!.pr).toBe(3);
+    expect(got[5]!.pr).toBe(7); // 12,11,10,9,8,7
   });
 });
