@@ -34,11 +34,16 @@ export default function DriveLinkBar() {
       setRelinkError("");
       setErrorKind("");
       setSaEmail("");
+      // 타임아웃 25초 — Drive 자동탐색이 느려도 무한 "찾는 중…" 방지(무반응 차단,
+      // payment-drive-link §1). abort 시 수동 입력 안내.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25_000);
       try {
         const res = await fetch("/api/drive-link", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          signal: ctrl.signal,
         });
         const data = await res.json();
         if (data.ok) {
@@ -50,9 +55,14 @@ export default function DriveLinkBar() {
           setErrorKind(data.errorKind ?? "");
           setSaEmail(data.saEmail ?? "");
         }
-      } catch {
-        setRelinkError("네트워크 오류");
+      } catch (e) {
+        setRelinkError(
+          e instanceof DOMException && e.name === "AbortError"
+            ? "시간이 초과됐어요. 다시 시도하거나 아래에 폴더 주소를 직접 붙여넣어 주세요."
+            : "네트워크 오류",
+        );
       } finally {
+        clearTimeout(timer);
         setRelinkPending(false);
       }
     },

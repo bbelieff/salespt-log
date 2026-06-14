@@ -197,6 +197,15 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 [수용] 아레나·일반 각각 자동연결 성공 또는 명확한 실패+수동 fallback. 무반응 없음. npm run check. PR. Cowork 검증불가.
 ```
 
+### P4 수정 결과 (2026-06-14, fix/payment-drive-link)
+- **무반응 핵심 = 클라이언트 타임아웃 부재**: DriveLinkBar.runLink 의 fetch 에
+  AbortController + 25초 타임아웃 추가. abort 시 "시간이 초과됐어요. 다시 시도하거나
+  아래에 폴더 주소를 직접 붙여넣어 주세요." → 무한 "찾는 중…" 차단 + 수동 fallback 유도.
+- **isArena 판정·서버 분기**: #366(fix/drive-connect-arena)에서 이미 정비됨
+  (registry O 1순위 → 16C 하위 매칭 → 수동 URL). isArena 는 me.data.cohort(P1 일관값)
+  기준이라 추가 수정 불요. 서버는 ARENA_NOT_FOUND·folder_not_shared 에러 응답 구조 보유.
+- 에러 UI(folder_not_shared SA 공유 안내)는 #366 기존 유지.
+
 ## P5 — [5] 실무/수납 계약업체 필터
 ```
 세일즈PT — [P5] 실무수납 계약업체 필터 실동작. 브랜치 feat/payment-contract-filter. SoR: §0.
