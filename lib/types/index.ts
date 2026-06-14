@@ -36,6 +36,19 @@ export const METRIC_LABEL: Record<MetricKey, string> = {
   meetingReservation: "미팅예약",
 };
 
+/** 전광판 개인 랭킹 지표(arena-scoreboard-v2). 미팅·계약=8주 합, 매출=대시보드 총매출,
+ *  앱사용량=5지표(생산+유입+컨택+미팅+계약) 8주 합 활동량 프록시, 공유왕=share_scores points. */
+export const RankingMetric = z.enum(["미팅", "계약", "매출", "앱사용량", "공유왕"]);
+export type RankingMetric = z.infer<typeof RankingMetric>;
+
+/** 개인 랭킹 1행 — 이름 공개(아레나 커뮤니티 경쟁). value desc·동점 동순위·이름 asc. */
+export interface RankingEntry {
+  name: string;
+  cohort: string;
+  value: number;
+  rank: number;
+}
+
 // ── 미팅 상태 (5종) ─────────────────────────────────────────
 export const MeetingState = z.enum(["예약", "계약", "완료", "변경", "취소"]);
 export type MeetingState = z.infer<typeof MeetingState>;

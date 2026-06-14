@@ -492,6 +492,8 @@ interface DashboardView {
 |---|---|---|
 | `Channel` | z.enum | 4채널 enum: `매입DB` / `직접생산` / `현수막` / `콜·지·기·소`. 변경 금지 |
 | `MetricKey` | z.enum | 4지표 enum: `production` / `inflow` / `contactProgress` / `meetingReservation` |
+| `RankingMetric` | z.enum | 전광판 개인 랭킹 지표: `미팅` / `계약` / `매출` / `앱사용량` / `공유왕` (arena-scoreboard-v2). 미팅·계약=8주 합, 매출=총매출, 앱사용량=5지표 8주 합(활동 프록시), 공유왕=share_scores points |
+| `RankingEntry` | interface | 개인 랭킹 1행: `{name, cohort, value, rank}`. value desc·동점 동순위·이름 asc, rank 1부터. 이름 공개(아레나 경쟁) |
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
 | `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) |
 | `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS, 미팅 단위): [업체]14 + [대표자]9 = 23필드 고정 + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. 기대출 2필드는 셀 내 `\n` 허용. consultation-log §1-1 (2026-06-11 확정) |

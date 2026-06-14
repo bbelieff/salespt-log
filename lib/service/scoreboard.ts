@@ -12,7 +12,13 @@ import {
   listArenaParticipants,
   normalizeArenaCohort,
 } from "@/repo/users-arena";
-import { readWeeklyPerformance, type WeeklyPerf } from "@/repo/dashboard";
+import {
+  readWeeklyPerformance,
+  readDashboard,
+  type WeeklyPerf,
+} from "@/repo/dashboard";
+import { readShareScores } from "@/repo/share-scores";
+import type { RankingMetric, RankingEntry } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
 export type ScoreMetric = (typeof METRICS)[number];
@@ -24,6 +30,13 @@ export const SCOREBOARD_TAG = "arena-scoreboard";
 const cachedWeekly = unstable_cache(
   async (sheetId: string) => readWeeklyPerformance(sheetId),
   ["arena-scoreboard-weekly-v1"],
+  { revalidate: 1800, tags: [SCOREBOARD_TAG] },
+);
+
+/** 시트 1개 대시보드 read(총매출용) — 동일 30분 캐시 태그. */
+const cachedDashboard = unstable_cache(
+  async (sheetId: string) => readDashboard(sheetId),
+  ["arena-scoreboard-dashboard-v1"],
   { revalidate: 1800, tags: [SCOREBOARD_TAG] },
 );
 
@@ -136,4 +149,79 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
   }
 
   return { byCohort: byCohortResult };
+}
+
+// ── 개인 랭킹 (arena-scoreboard-v2) — 지표별 이름 공개 순위 ──────────
+/** value desc·동점 동순위·이름 asc, rank 1부터, 상위 10. (테스트 export) */
+export function rankEntries(
+  items: { name: string; cohort: string; value: number }[],
+): RankingEntry[] {
+  const sorted = [...items].sort(
+    (a, b) => b.value - a.value || a.name.localeCompare(b.name, "ko"),
+  );
+  let rank = 0;
+  let prev: number | null = null;
+  return sorted.slice(0, 10).map((it, i) => {
+    if (prev === null || it.value !== prev) rank = i + 1; // 동점 동순위
+    prev = it.value;
+    return { name: it.name, cohort: it.cohort, value: it.value, rank };
+  });
+}
+
+/**
+ * 지표별 개인 랭킹. 입금 참가자 1시트=1엔트리(부부는 registry name 그대로).
+ * 미팅·계약=8주 합, 매출=대시보드 총매출, 앱사용량=5지표 8주 합(활동량 프록시),
+ * 공유왕=share_scores points. read 는 cachedWeekly/cachedDashboard(30분, SCOREBOARD_TAG).
+ */
+export async function loadIndividualRankings(): Promise<
+  Record<RankingMetric, RankingEntry[]>
+> {
+  const participants = await listArenaParticipants();
+  // paid 시트 dedup — 1시트=1엔트리(부부/멀티계정 1개), 입금자만.
+  const bySheet = new Map<string, { name: string; cohort: string; paid: boolean }>();
+  for (const u of participants) {
+    if (!u.spreadsheetId) continue;
+    const cur = bySheet.get(u.spreadsheetId);
+    bySheet.set(u.spreadsheetId, {
+      name: cur?.name ?? u.name,
+      cohort: cur?.cohort ?? normalizeArenaCohort(u.cohort),
+      paid: (cur?.paid ?? false) || u.memo.includes("입금"),
+    });
+  }
+  const paid = [...bySheet.entries()].filter(([, v]) => v.paid);
+
+  const perSheet = await pMap(paid, async ([id, info]) => {
+    const [wp, dash] = await Promise.all([
+      cachedWeekly(id).catch(() => null),
+      cachedDashboard(id).catch(() => null),
+    ]);
+    let 미팅 = 0;
+    let 계약 = 0;
+    let 앱사용량 = 0;
+    if (wp) {
+      for (const row of wp) {
+        미팅 += row.미팅;
+        계약 += row.계약;
+        // 앱사용량 = 기록 활동량 프록시(5지표 합). 향후 PostHog 등으로 교체 지점.
+        앱사용량 += row.생산 + row.유입 + row.컨택 + row.미팅 + row.계약;
+      }
+    }
+    const 매출 = dash ? dash.finance[2] ?? 0 : 0; // finance[2] = 총매출
+    return { name: info.name, cohort: info.cohort, 미팅, 계약, 매출, 앱사용량 };
+  });
+
+  const shares = await readShareScores().catch(() => []);
+  const pick = (key: "미팅" | "계약" | "매출" | "앱사용량") =>
+    rankEntries(
+      perSheet.map((p) => ({ name: p.name, cohort: p.cohort, value: p[key] })),
+    );
+  return {
+    미팅: pick("미팅"),
+    계약: pick("계약"),
+    매출: pick("매출"),
+    앱사용량: pick("앱사용량"),
+    공유왕: rankEntries(
+      shares.map((s) => ({ name: s.name, cohort: s.cohort, value: s.points })),
+    ),
+  };
 }

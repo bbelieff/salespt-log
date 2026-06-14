@@ -283,4 +283,11 @@ export const SHEET_RANGES = {
     headerRow: "A1:K1",
     range: "A2:K", // id/created/updated/title/body_md/audience/display_mode/start/end/pinned/active
   },
+  // 전광판 공유왕 수동 점수 (arena-scoreboard-v2). registry 스프레드시트 내 탭.
+  // 탭 없으면 시트에 수동 생성: 헤더 A1:E1 = email/name/cohort/points/updatedAt.
+  share_scores: {
+    tab: "share_scores",
+    headerRow: "A1:E1",
+    range: "A2:E", // email/name/cohort/points/updatedAt
+  },
 } as const;
