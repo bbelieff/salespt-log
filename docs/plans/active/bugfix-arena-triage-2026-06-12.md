@@ -244,11 +244,15 @@ related: arena-carryover-migration, arena-season1-setup, role-system
   나머지 active plan(60여 개)은 미완/완료 판정 불확실 — 일괄 이동 시 오분류 위험으로
   보류(월 1회 lint 시 개별 검토 점진 이동).
 
-### P6 보류 (저장소 설계 결정 필요)
-- A1 컨테이너 + A1-1~6 DnD 순서변경은 **기수 순서 저장소 신설**이 선행(cohorts 탭
-  A1-N 행+sortOrder 확장 vs 신규 admin 시트 vs user sortOrder 재활용). cohorts 탭은
-  현재 A1(시즌) 행만 있고 A1-N 개별 행 없음. P1b 직후 cohorts 변경 민감 + 긴급도 최하
-  (admin 편의)라 별도 진행. SortableList(dnd-kit)·set-user-sort-orders 패턴 재사용 예정.
+### P6 결과 (2026-06-14, feat/arena-admin-dnd) — DnD 정렬 기능만(저장 X)
+- belie 결정: "드래그앤드롭 정렬 기능만" → **순서 저장 불필요** → cohorts 탭/신규 시트
+  변경 없이 클라이언트 DnD 만 구현(저장소 설계 회피).
+- `components/auth/ArenaCohortBoard.tsx`(신규, client): 시즌(A{n}) 컨테이너 박스 +
+  그 안 기수 박스(A{n}-1~6)를 SortableList(dnd-kit)로 드래그 재정렬. onReorder no-op —
+  SortableList 내부 order state 로 화면 정렬만 유지(새로고침 시 시즌·기수 asc 복귀).
+  멤버 행(이름·이메일·이월·회장토글)은 기존 /admin/arena 패턴 유지.
+- admin/arena/page.tsx: byCohort → 시즌별 그룹(bySeason) → ArenaCohortBoard 렌더.
+  기존 인라인 section 제거. components.md 등재.
 
 ## Log
 - 2026-06-12 트리아지: 공통 뿌리=cohort 저장 불일치+옛행 archived 누락. P0 클레임 무반응→P1 cohort 일관화→P2 그룹핑→P3 이월매출→P4 드라이브→P5 필터→P6 DnD→P7 위생 순.

@@ -13,8 +13,9 @@ import {
   listArenaParticipants,
   normalizeArenaCohort,
 } from "@/repo/users-arena";
-import ArenaCaptainToggle from "@/components/auth/ArenaCaptainToggle";
-import ArenaCarryoverButton from "@/components/auth/ArenaCarryoverButton";
+import ArenaCohortBoard, {
+  type ArenaSeason,
+} from "@/components/auth/ArenaCohortBoard";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,27 @@ export default async function AdminArenaPage() {
   }
   const cohorts = [...byCohort.keys()].sort((a, b) =>
     a.localeCompare(b, "en", { numeric: true }),
+  );
+
+  // 시즌(A{n})별로 묶어 컨테이너 박스 + 기수 박스 DnD (arena-admin-dnd §P6).
+  const bySeason = new Map<string, ArenaSeason["cohorts"]>();
+  for (const c of cohorts) {
+    const season = c.split("-")[0] || c;
+    const arr = bySeason.get(season) ?? [];
+    arr.push({
+      key: c,
+      label: formatArenaLabel(c),
+      members: byCohort.get(c)!.map((u) => ({
+        email: u.email,
+        name: u.name,
+        nameLabel: u.nameLabel,
+        captainOf: u.captainOf,
+      })),
+    });
+    bySeason.set(season, arr);
+  }
+  const seasons: ArenaSeason[] = [...bySeason.entries()].map(
+    ([season, list]) => ({ season, cohorts: list }),
   );
 
   return (
@@ -72,52 +94,7 @@ export default async function AdminArenaPage() {
         </div>
       )}
 
-      <div className="space-y-5">
-        {cohorts.map((c) => {
-          const members = byCohort.get(c)!;
-          const captainCount = members.filter(
-            (m) => m.captainOf.trim() !== "",
-          ).length;
-          return (
-            <section
-              key={c}
-              className="overflow-hidden rounded-xl border border-gray-100"
-            >
-              <div className="flex items-center justify-between bg-gray-50 px-4 py-2">
-                <h2 className="text-sm font-bold text-gray-800">
-                  {formatArenaLabel(c)}
-                </h2>
-                <span className="text-[11px] text-gray-500">
-                  {members.length}명 · 회장 {captainCount}
-                </span>
-              </div>
-              <ul className="divide-y divide-gray-50">
-                {members.map((m, i) => (
-                  <li
-                    key={`${m.email || m.name}-${i}`}
-                    className="flex items-center justify-between gap-2 px-4 py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-900">
-                        {m.nameLabel || m.name}
-                      </div>
-                      <div className="flex items-center gap-2 truncate text-[11px] text-gray-400">
-                        <span className="truncate">{m.email || "(미클레임)"}</span>
-                        <ArenaCarryoverButton email={m.email} />
-                      </div>
-                    </div>
-                    <ArenaCaptainToggle
-                      email={m.email}
-                      cohort={c}
-                      initialOn={m.captainOf.trim() !== ""}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-      </div>
+      <ArenaCohortBoard seasons={seasons} />
     </main>
   );
 }
