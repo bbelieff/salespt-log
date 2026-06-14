@@ -13,11 +13,11 @@
  *   2. registry 에 role=trainer, status=pending 으로 신규 append
  *   3. 관리자가 /admin 에서 승인 → status=active 로 전환
  *
- * 승인 흐름 통일 (2026-05-12):
- *   - 트레이너·수강생 모두 self-claim 신규 row 는 status=pending.
- *   - admin 이 미리 만들어둔 row (cohort/name 입력 + email 비어있는 prep row) 가
- *     있는 경우는 즉시 활성 (claimRegistry 가 email 만 채우고 status 보존).
- *   - 기존 active trainee row 들은 영향 없음 (이미 status=active).
+ * 승인 흐름 (P10 2026-06-14 승인게이트 제거):
+ *   - 수강생(trainee) self-claim 은 Drive 시트가 (cohort,name)으로 매칭된 정상
+ *     참가자이므로 status=active 즉시 입장(아레나·8기·현재기수 대기 없음).
+ *   - 트레이너(T, 시트 없음)만 status=pending → admin 승인 후 active.
+ *   - admin prep row(email 빈) 매칭 시는 status 보존(이미 active).
  *
  * PR B-2 (2026-05-13):
  *   trainee 신규 append 경로 (prep row 없는 케이스) 에서도 시트 B3/C3/O1/O2 를
@@ -150,17 +150,16 @@ export async function claimAccount(
   // claimRegistry 는 prep row(빈 email) 발견 시 그 자리 채움(I~L 보존), 다른
   // 계정으로 점유된 row 있으면 새 row append(같은 spreadsheetId + cached 공유),
   // 신규면 fresh append(cached 포함).
-  // 아레나(A{n}-{m}) 클레임은 명단 확정분(create-arena-members)이라 관리자 승인
-  // 불요 → 즉시 active(P9-A). prep 행이 누락돼 fresh append 되는 경우에도 바로
-  // 로그인 가능. 일반 숫자 기수는 승인 위해 pending 유지.
-  const isArenaClaim = arenaCohortLabelParts(cohortTrim) !== null;
+  // 클레임 성공 = Drive 시트가 (cohort,name)으로 매칭된 정상 참가자 → 즉시 active
+  // (승인 게이트 제거, P10). 아레나·8기·현재기수 모두 명단/시트 매칭이라 대기 불요.
+  // 트레이너(T, 시트 없음)만 위 isTrainer 분기에서 pending 으로 별도 처리.
   await claimRegistry(
     email,
     cohortTrim,
     name,
     spreadsheetId,
     "trainee",
-    isArenaClaim ? "active" : "pending",
+    "active",
     cached,
   );
   // 첫 등록자만 시트 B3/C3 작성 (이미 등록된 사람 있으면 덮어쓰지 않음).
