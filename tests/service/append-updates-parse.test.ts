@@ -36,6 +36,21 @@ describe("parseCommit (grouped-updates)", () => {
     expect(r.visible).toBe("TRUE");
   });
 
+  it("사용자 Changelog 없는 fix(내부전용) → FALSE (P15 기본 노출 규칙)", () => {
+    const r = parseCommit(
+      "2026-06-14",
+      "fix(claim): 레지스트리 append 컬럼 밀림 수정 (#376)",
+      "본문만 있고 사용자용 Changelog 줄 없음(내부 수정)",
+    );
+    expect(r.type).toBe("fix");
+    expect(r.visible).toBe("FALSE");
+  });
+
+  it("Changelog 있는 fix → TRUE (P15)", () => {
+    const r = parseCommit("2026-06-14", "fix(x): y (#1)", "Changelog: 더 좋아졌어요.");
+    expect(r.visible).toBe("TRUE");
+  });
+
   it("docs 는 FALSE + 깨진 제목(@)은 본문 첫 줄 fallback", () => {
     const r = parseCommit("2026-06-10", "@ (#349)", "docs(plan): 새소식 팝업 플랜 등재 (SoR)\n\n내용");
     expect(r.pr).toBe(349);

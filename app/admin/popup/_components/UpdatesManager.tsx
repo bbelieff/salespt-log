@@ -1,9 +1,10 @@
 /**
  * UpdatesManager — 자동 수집 업데이트 현황 (announcement-popup §4 하단).
  *
- * 배포 시 append-updates 가 쌓은 행을 보정: title_user 인라인 수정,
- * milestone 라벨, visible 토글 → PATCH /api/admin/announcements (pr 키,
- * 전달 필드 셀만 타격). 저장 시 수강생 캐시 무효화 → 팝업 즉시 반영.
+ * 배포 시 append-updates 가 쌓은 행을 보정: title_user 인라인 수정, milestone 라벨,
+ * visible 토글 → PATCH /api/admin/announcements (pr 키, 전달 필드 셀만 타격).
+ * P15: 행별 저장 제거 → 로컬 dirty 추적 + 상단 "변경 N건 저장" 일괄(Promise.all).
+ * 노출은 토글 스위치, 변경행은 노란 좌측보더+배경. 저장 시 수강생 캐시 무효화.
  */
 "use client";
 
@@ -12,87 +13,137 @@ import type { UpdateItem } from "@/types";
 
 export default function UpdatesManager({ initialUpdates }: { initialUpdates: UpdateItem[] }) {
   const [rows, setRows] = useState(initialUpdates);
-  const [busyPr, setBusyPr] = useState<number | null>(null);
+  // 저장 기준선(원본) — dirty 판정용. 저장 성공 시 현재값으로 갱신.
+  const [baseline, setBaseline] = useState(
+    () => new Map(initialUpdates.map((u) => [u.pr, u])),
+  );
+  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
   const edit = (pr: number, p: Partial<UpdateItem>) =>
     setRows((rs) => rs.map((r) => (r.pr === pr ? { ...r, ...p } : r)));
 
-  async function save(row: UpdateItem) {
-    setBusyPr(row.pr);
+  const isDirty = (r: UpdateItem): boolean => {
+    const o = baseline.get(r.pr);
+    return (
+      !o ||
+      o.titleUser !== r.titleUser ||
+      o.milestone !== r.milestone ||
+      o.visible !== r.visible
+    );
+  };
+  const dirtyRows = rows.filter(isDirty);
+
+  async function saveAll() {
+    if (!dirtyRows.length || busy) return;
+    setBusy(true);
     setMsg("");
     try {
-      const res = await fetch("/api/admin/announcements", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pr: row.pr,
-          titleUser: row.titleUser,
-          milestone: row.milestone,
-          visible: row.visible,
+      await Promise.all(
+        dirtyRows.map(async (row) => {
+          const res = await fetch("/api/admin/announcements", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pr: row.pr,
+              titleUser: row.titleUser,
+              milestone: row.milestone,
+              visible: row.visible,
+            }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error ?? `#${row.pr} 저장 ${res.status}`);
+          }
         }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `저장 ${res.status}`);
-      setMsg(`#${row.pr} 저장했어요.`);
+      );
+      setBaseline(new Map(rows.map((u) => [u.pr, u]))); // 기준선 갱신 → dirty 0
+      setMsg(`${dirtyRows.length}건 저장했어요.`);
     } catch (e) {
-      setMsg(`#${row.pr} 저장 실패: ${e instanceof Error ? e.message : "unknown"}`);
+      setMsg(`저장 실패: ${e instanceof Error ? e.message : "unknown"}`);
     } finally {
-      setBusyPr(null);
+      setBusy(false);
     }
   }
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-1 text-sm font-black text-gray-900">업데이트 현황</h2>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-black text-gray-900">업데이트 현황</h2>
+        <button
+          type="button"
+          disabled={dirtyRows.length === 0 || busy}
+          onClick={() => void saveAll()}
+          className="shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400"
+        >
+          {busy ? "저장 중…" : `변경 ${dirtyRows.length}건 저장`}
+        </button>
+      </div>
       <p className="mb-3 text-xs text-gray-400">
         배포할 때마다 자동으로 쌓여요. 문구를 수강생이 읽기 쉽게 다듬고, 보여줄지 정하세요.
       </p>
 
-      <ul className="divide-y divide-gray-50">
-        {rows.map((u) => (
-          <li key={u.pr} className="flex flex-wrap items-center gap-2 py-2">
-            <span className="w-12 shrink-0 text-xs font-bold text-gray-400">#{u.pr}</span>
-            <span className="w-20 shrink-0 text-xs text-gray-400">{u.date}</span>
-            <span
-              className={`w-12 shrink-0 rounded-full px-1.5 py-0.5 text-center text-xs font-bold ${
-                u.type === "feat" || u.type === "fix"
-                  ? "bg-red-50 text-brand-red"
-                  : "bg-gray-100 text-gray-500"
+      <ul className="space-y-1">
+        {rows.map((u) => {
+          const dirty = isDirty(u);
+          return (
+            <li
+              key={u.pr}
+              className={`flex flex-wrap items-center gap-2 rounded-lg py-2 pr-2 ${
+                dirty ? "border-l-4 border-yellow-400 bg-yellow-50 pl-2" : "border-l-4 border-transparent pl-2"
               }`}
             >
-              {u.type || "-"}
-            </span>
-            <input
-              className="h-9 min-w-40 flex-1 rounded-lg border border-gray-200 px-2 text-sm text-gray-900 focus:border-red-300 focus:outline-none"
-              value={u.titleUser}
-              onChange={(e) => edit(u.pr, { titleUser: e.target.value })}
-              placeholder="수강생이 읽는 한 줄"
-            />
-            <input
-              className="h-9 w-32 rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none"
-              value={u.milestone}
-              onChange={(e) => edit(u.pr, { milestone: e.target.value })}
-              placeholder="마일스톤 라벨"
-            />
-            <label className="flex shrink-0 items-center gap-1 text-xs font-semibold text-gray-600">
+              <span className="w-12 shrink-0 text-xs font-bold text-gray-400">#{u.pr}</span>
+              <span className="w-20 shrink-0 text-xs text-gray-400">{u.date}</span>
+              <span
+                className={`w-12 shrink-0 rounded-full px-1.5 py-0.5 text-center text-xs font-bold ${
+                  u.type === "feat" || u.type === "fix"
+                    ? "bg-red-50 text-brand-red"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {u.type || "-"}
+              </span>
               <input
-                type="checkbox"
-                checked={u.visible}
-                onChange={(e) => edit(u.pr, { visible: e.target.checked })}
+                className="h-9 min-w-40 flex-1 rounded-lg border border-gray-200 px-2 text-sm text-gray-900 focus:border-red-300 focus:outline-none"
+                value={u.titleUser}
+                onChange={(e) => edit(u.pr, { titleUser: e.target.value })}
+                placeholder="수강생이 읽는 한 줄"
               />
-              노출
-            </label>
-            <button
-              type="button"
-              disabled={busyPr === u.pr}
-              onClick={() => void save(u)}
-              className="shrink-0 rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {busyPr === u.pr ? "저장 중…" : "저장"}
-            </button>
-          </li>
-        ))}
+              <input
+                className="h-9 w-32 rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none"
+                value={u.milestone}
+                onChange={(e) => edit(u.pr, { milestone: e.target.value })}
+                placeholder="마일스톤 라벨"
+              />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={u.visible}
+                  aria-label={u.visible ? "노출" : "숨김"}
+                  onClick={() => edit(u.pr, { visible: !u.visible })}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${
+                    u.visible ? "bg-blue-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      u.visible ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+                <span
+                  className={`w-7 text-xs font-semibold ${
+                    u.visible ? "text-blue-600" : "text-gray-400"
+                  }`}
+                >
+                  {u.visible ? "노출" : "숨김"}
+                </span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
       {rows.length === 0 && (
         <p className="py-4 text-center text-sm text-gray-400">

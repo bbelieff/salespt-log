@@ -9,7 +9,8 @@
  *   정상:   "feat(scope): 제목 (#N)"  — conventional 제목 + PR번호
  *   변형:   "@ (#N)"                  — 제목이 깨진 과거 커밋. 실제 제목은 본문 첫 줄.
  * title_user = 본문 `Changelog:` 줄 (CLAUDE.md PR Changelog 규약), 없으면
- * 제목에서 type 접두어를 뗀 fallback. visible 기본: feat·fix=TRUE, 그 외 FALSE.
+ * 제목에서 type 접두어를 뗀 fallback. visible 기본(P15): 사용자용 `Changelog:` 줄이
+ * 있는 feat·fix 만 TRUE. 내부전용(Changelog 없음)·docs·chore·refactor 는 FALSE.
  *
  * 묶음(announcement-popup §7, grouped-updates):
  *   `Changelog-Group: <키>` → milestone 컬럼(F)에 그룹 키 적재 + visible=FALSE
@@ -76,8 +77,17 @@ export function parseCommit(dateISO, subject, body) {
   const group = groupMatch ? groupMatch[1].trim() : "";
   const done = /^Changelog-Done\s*$/im.test(body);
 
+  // 기본 노출 규칙(P15): **사용자 체감 항목만** 기본 TRUE = 사용자용 `Changelog:` 줄이
+  // 있는 feat/fix. docs·chore·refactor·내부전용 fix(Changelog 없음)는 FALSE 기본.
   // 그룹 PR 은 일단 숨김(반쪽 기능 가드) — Done 커밋이 그룹 전체를 켠다.
-  const visible = group ? "FALSE" : type === "feat" || type === "fix" ? "TRUE" : "FALSE";
+  // 관리자는 UI 토글로 개별 override.
+  const hasUserChangelog = clMatch !== null;
+  const visible =
+    group || !hasUserChangelog
+      ? "FALSE"
+      : type === "feat" || type === "fix"
+        ? "TRUE"
+        : "FALSE";
   return { pr, date: dateISO, type, titleUser, visible, group, done };
 }
 
