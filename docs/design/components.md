@@ -1405,12 +1405,15 @@ button:focus, input:focus, select:focus {
 ### PageContainer
 모든 페이지 루트를 감싸 데스크탑 폭을 제어하는 공용 컨테이너.
 
-| prop | 값 | 데스크탑(pc+) 폭 | 적용 화면 |
-|---|---|---|---|
-| `width="narrow"` | 기본 | `max-w-2xl` 중앙정렬 | 컨택·일정·DB·로그인·온보딩 (입력 중심) |
-| `width="wide"` | — | `max-w-6xl` 중앙정렬 + 내부 멀티컬럼 | 실무수납·대시보드·관리자 (정보 중심) |
-| `width="xwide"` | — | `max-w-[120rem]` 중앙정렬 (가장 넓음, 사실상 화면폭-여백) | 캘린더 (월 그리드가 화면 대부분 차지) |
+| prop | 값 | 중간폭(md↑) 캡 | 데스크탑(pc+) 폭 | 적용 화면 |
+|---|---|---|---|---|
+| `width="narrow"` | 기본 | `md:max-w-md` | `max-w-2xl` 중앙정렬 | 컨택·일정·DB·로그인·온보딩 (입력 중심) |
+| `width="wide"` | — | `md:max-w-2xl` | `max-w-6xl` 중앙정렬 + 내부 멀티컬럼 | 실무수납·대시보드·관리자 (정보 중심) |
+| `width="xwide"` | — | `md:max-w-2xl` | `max-w-[120rem]` 중앙정렬 (가장 넓음) | 캘린더 (월 그리드가 화면 대부분 차지) |
 
-- 모바일에선 `w-full`(기존 레이아웃 그대로). 데스크탑에서만 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
+- 모바일에선 `w-full`(기존 레이아웃 그대로). **중간폭 캡**(dashboard-intermediate-width-cap):
+  `md:max-w-*` 는 화면이 그 max-w 보다 클 때만 적용돼, 약 672~1024 구간에서 1단
+  카드가 화면 전체로 늘어나지 않게 가운데 폭 제한(그 아래 폭은 풀폭 유지). `md:px-4` 여백.
+- 데스크탑(pc+) 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
 - 정보 중심 화면은 PageContainer(wide) 안에서 카드 리스트를 `pc:grid pc:grid-cols-2 wide:grid-cols-3` 등으로 배치해 가로 공간 활용(세로 스크롤 압박 완화).
 - 파일: `components/PageContainer.tsx`.
