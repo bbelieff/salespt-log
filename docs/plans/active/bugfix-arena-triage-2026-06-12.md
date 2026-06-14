@@ -214,6 +214,11 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 [수용] 검색어 입력 시 매칭 업체만 표시, 초기화 정상. npm run check. PR. Cowork 검증불가.
 ```
 
+### P5 결과 (2026-06-14): 이미 구현됨 — 변경 불요
+- payment/page.tsx `visibleRows`(검색어로 비매칭 카드 **실제 숨김**) + CompanySearchBar
+  ✕ 초기화 + 부분일치(includes)·대소문자/공백 무시(normq) + matchCount 표시 모두 동작.
+  #356 이후 이미 필터 구현됨 → 추가 변경 YAGNI 위반으로 미실시.
+
 ## P6 — [3] 아레나 관리: A1 박스 + A1-1~6 드래그앤드롭 순서
 ```
 세일즈PT — [P6] 아레나 관리 A1 묶음 + 기수 박스 DnD 순서. 브랜치 feat/arena-admin-dnd. SoR: §0, arena-season1-setup §6.
@@ -230,6 +235,20 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 - docs/plans/active 의 완료된 플랜(claim-arena-mode·arena-create·role-system 등 머지 완료분) → docs/plans/completed 로 이동(문서 드리프트 해소).
 [수용] git status 깨끗(불필요 untracked 없음), 완료 플랜 이동. npm run check. PR.
 ```
+
+### P7 결과 (2026-06-14, chore/repo-cleanup)
+- 루트 tmp-*.mjs: 이미 정리됨(P0~P1b 작업 중 즉시 삭제). backups/ 는 gitignore.
+- **졸업생총회_발표자료/**(pptx·md 2파일, P1 #368에서 `git add -A` 로 딸려 들어감) →
+  `git rm --cached`(로컬 파일 보존) + `.gitignore` 추가. §6 사용자 자료 금지 준수.
+- **완료 plan 이동**: claim-arena-mode·arena-create·role-system → completed/.
+  나머지 active plan(60여 개)은 미완/완료 판정 불확실 — 일괄 이동 시 오분류 위험으로
+  보류(월 1회 lint 시 개별 검토 점진 이동).
+
+### P6 보류 (저장소 설계 결정 필요)
+- A1 컨테이너 + A1-1~6 DnD 순서변경은 **기수 순서 저장소 신설**이 선행(cohorts 탭
+  A1-N 행+sortOrder 확장 vs 신규 admin 시트 vs user sortOrder 재활용). cohorts 탭은
+  현재 A1(시즌) 행만 있고 A1-N 개별 행 없음. P1b 직후 cohorts 변경 민감 + 긴급도 최하
+  (admin 편의)라 별도 진행. SortableList(dnd-kit)·set-user-sort-orders 패턴 재사용 예정.
 
 ## Log
 - 2026-06-12 트리아지: 공통 뿌리=cohort 저장 불일치+옛행 archived 누락. P0 클레임 무반응→P1 cohort 일관화→P2 그룹핑→P3 이월매출→P4 드라이브→P5 필터→P6 DnD→P7 위생 순.
