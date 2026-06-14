@@ -1,16 +1,17 @@
 /**
  * /admin/arena/scoreboard — Admin 전용 아레나 전광판 (매주 캡쳐 공지용).
  *
- * 기수별(A1-N) 입금자 평균: 생산/유입/컨택/미팅/계약 (주차 1~8 + 총합).
- * 모수 = 입금자만(Q memo "입금"), 부부 1시트=1명. 30분 캐시 + 수동 새로고침.
+ * 기수 평균(주차 1~8) + 개인 지표별 랭킹(미팅·계약·매출·앱사용량·공유왕)을
+ * 한 번에 받아(loadScoreboardBundle) ScoreboardView 에 전달. [관리자 대시보드]/
+ * [캡쳐 모드] 전환. 모수 = 입금자만, 부부 1시트=1명. 30분 캐시 + 수동 새로고침.
  * (수강생·회장 미노출 — admin 가드. §6)
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionEmail, canViewAdminPages } from "@/auth/identity";
-import { loadScoreboard, METRICS } from "@/service/scoreboard";
-import { normalizeArenaCohort } from "@/repo/users-arena";
+import { loadScoreboardBundle } from "@/service/scoreboard";
 import ScoreboardRefreshButton from "@/components/auth/ScoreboardRefreshButton";
+import ScoreboardView from "@/components/scoreboard/ScoreboardView";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function ScoreboardPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) redirect("/");
 
-  const { byCohort } = await loadScoreboard();
+  const bundle = await loadScoreboardBundle();
 
   return (
     <main className="mx-auto min-h-dvh max-w-5xl bg-white px-4 py-6">
@@ -26,7 +27,7 @@ export default async function ScoreboardPage() {
         <div>
           <h1 className="text-lg font-black text-gray-900">아레나 전광판</h1>
           <p className="text-xs text-gray-500">
-            기수별 입금자 평균 (주차 1~8 + 총합) · 부부 1시트=1명
+            기수 종합 + 개인 랭킹 · 부부 1시트=1명 · 매주 캡쳐 공지용
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -40,69 +41,13 @@ export default async function ScoreboardPage() {
         </div>
       </div>
 
-      {byCohort.length === 0 && (
+      {bundle.byCohort.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-400">
           아레나 참가자가 없습니다.
         </div>
+      ) : (
+        <ScoreboardView data={bundle} />
       )}
-
-      <div className="space-y-6">
-        {byCohort.map((c) => (
-          <section key={c.cohort}>
-            <div className="mb-2 flex items-baseline gap-2">
-              <h2 className="text-sm font-black text-gray-800">
-                {normalizeArenaCohort(c.cohort)}기
-              </h2>
-              <span className="text-[11px] text-gray-500">
-                입금자 {c.paidMembers}명
-              </span>
-            </div>
-            {c.paidMembers === 0 ? (
-              <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-400">
-                입금자 없음 (N/A)
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-100">
-                <table className="w-full min-w-[640px] border-collapse text-center text-xs">
-                  <thead>
-                    <tr className="bg-gray-50 text-gray-500">
-                      <th className="px-2 py-1.5 text-left font-bold">지표</th>
-                      {c.weekly.map((w) => (
-                        <th key={w.week} className="px-2 py-1.5 font-bold">
-                          {w.week}주
-                        </th>
-                      ))}
-                      <th className="px-2 py-1.5 font-black text-gray-700">
-                        총합
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {METRICS.map((m) => (
-                      <tr key={m} className="border-t border-gray-50">
-                        <td className="px-2 py-1.5 text-left font-bold text-gray-700">
-                          {m}
-                        </td>
-                        {c.weekly.map((w) => (
-                          <td
-                            key={w.week}
-                            className="px-2 py-1.5 tabular-nums text-gray-800"
-                          >
-                            {w[m].toFixed(1)}
-                          </td>
-                        ))}
-                        <td className="px-2 py-1.5 font-black tabular-nums text-gray-900">
-                          {c.total[m].toFixed(1)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
     </main>
   );
 }

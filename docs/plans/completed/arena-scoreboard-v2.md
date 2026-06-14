@@ -1,6 +1,6 @@
 ---
 slug: arena-scoreboard-v2
-status: active
+status: completed
 created: 2026-06-14
 owner: belie
 related: arena-season1-setup, role-system
