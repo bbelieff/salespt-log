@@ -18,6 +18,7 @@ import {
   type WeeklyPerf,
 } from "@/repo/dashboard";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
+import { readCourseStart, weekIndexOf } from "@/repo/sales";
 import type { RankingMetric, RankingEntry } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
@@ -224,6 +225,34 @@ export async function loadIndividualRankings(): Promise<
       shares.map((s) => ({ name: s.name, cohort: s.cohort, value: s.points })),
     ),
   };
+}
+
+// ── 전광판 묶음 (기수 평균 + 개인 랭킹 + 시즌 주차) ────────────────────
+export interface ScoreboardBundle {
+  byCohort: CohortScore[];
+  rankings: Record<RankingMetric, RankingEntry[]>;
+  seasonWeek: number; // 1~8 (0 = 시작 전/미상)
+}
+
+/** 시즌 현재 주차 — 대표 입금 시트 O1(수강시작일) 기준 weekIndexOf, 1~8 캡. */
+async function currentSeasonWeek(): Promise<number> {
+  const parts = await listArenaParticipants();
+  const rep = parts.find(
+    (u) => u.spreadsheetId && u.memo.includes("입금"),
+  );
+  if (!rep?.spreadsheetId) return 0;
+  const start = await readCourseStart(rep.spreadsheetId);
+  return Math.min(Math.max(weekIndexOf(new Date(), start), 0), 8);
+}
+
+/** 전광판 한 화면용 데이터 — 페이지가 1콜로 받아 props 분배. */
+export async function loadScoreboardBundle(): Promise<ScoreboardBundle> {
+  const [board, rankings] = await Promise.all([
+    loadScoreboard(),
+    loadIndividualRankings(),
+  ]);
+  const seasonWeek = await currentSeasonWeek().catch(() => 0);
+  return { byCohort: board.byCohort, rankings, seasonWeek };
 }
 
 // ── 공유왕 수동 집계 (admin) — share_scores 대상 목록 + 저장 ────────────
