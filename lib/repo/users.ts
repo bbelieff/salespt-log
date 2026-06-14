@@ -12,6 +12,7 @@ import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 import { nameMatches } from "./name-match";
+import { pickPreferredUser } from "./user-priority";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
@@ -103,17 +104,14 @@ export async function findUserByEmail(
   const rows = opts?.fresh
     ? await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab))
     : await cachedRegistryRows();
-  // 같은 이메일 다중 행 → archived 아닌 행 우선 (carryover §1).
-  let archivedFallback: User | null = null;
+  // 다중 행 우선순위: 아레나 > 숫자 active > archived (user-priority.ts, arena-consistency §1).
+  const mine: User[] = [];
   for (const r of rows) {
-    if (typeof r[0] === "string" && r[0].toLowerCase() === email.toLowerCase()) {
-      const u = parseRow(r);
-      if (!u) continue;
-      if (u.status !== "archived") return u;
-      archivedFallback ??= u;
-    }
+    if (typeof r[0] !== "string" || r[0].toLowerCase() !== email.toLowerCase()) continue;
+    const u = parseRow(r);
+    if (u) mine.push(u);
   }
-  return archivedFallback;
+  return pickPreferredUser(mine);
 }
 
 /** 전체 사용자 정렬 — role(admin→trainer→trainee) → cohort desc →

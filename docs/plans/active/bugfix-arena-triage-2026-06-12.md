@@ -56,6 +56,21 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 [수용] 신민경/김태현 로그인→A1-5기/A1-2기 아레나 시트 진입, 재로그인 안정. 수강생관리에 아레나로 분류. 신규 아레나 참가자도 동일 보장(회귀 테스트 rejoin-routing.test.ts 확장). npm run check. PR. Cowork 검증불가.
 ```
 
+### P1 수정 결과 (2026-06-12, fix/arena-cohort-consistency)
+- **택1 — 라우팅 우선(데이터 의존 적음)**: `lib/repo/user-priority.ts` 신규(순수 함수).
+  `pickPreferredUser([...rows])` = 아레나(`A{n}-{m}`) non-archived > 숫자 non-archived
+  > archived fallback. `findUserByEmail`(users.ts)이 이걸 호출(인라인 11줄→6줄, 498줄).
+  → 같은 이메일 옛 6기 active + A1-6 active 공존 시 **A1-6 우선** 반환 →
+  page/layout 의 `isNumericCohortArchived("6")` /claim 강등 회피 → 아레나 대시보드 진입.
+- **②/③ 재평가**: P0(claim-stuck)에서 hot-path 강등 제거 + 라우팅/claimAccount 에
+  cohort-archived 체크 이미 도입. ③ 저장은 `claimRegistry` cohortNorm("A1-N") +
+  `findExistingSheetIdByCohortName` 정규화 매칭 이미 일관(검증 완료). 추가 변경 불필요.
+- **④ backfill**: 실측 결과 신민경·김태현은 registry **미등록**(P0 무반응으로 클레임
+  자체 불가했던 상태) → backfill 대상 없음. P0 배포 후 본인 클레임 시 위 라우팅으로
+  정상 처리. 실존 6/A1-6 다중 행 3명(miran.kim090·whto12360·da1223618)이 실검증 케이스.
+- **회귀 테스트**: rejoin-routing.test.ts +9 (isArenaCohortLabel 6 + pickPreferredUser 5,
+  옛 기수 먼저여도 아레나 우선·순서 무관·archived fallback). 총 12 pass.
+
 ## P2 — [1-3] 트레이너/수강생 관리 그룹핑 (A1-N기 묶기, 회장=이모지)
 ```
 세일즈PT — [P2] 관리 화면 아레나 그룹핑 정정. 브랜치 fix/admin-arena-grouping. SoR: §0. 선행: P1(cohort 일관화).
