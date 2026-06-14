@@ -91,7 +91,7 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
           <span className="w-10 shrink-0">유형</span>
           <span className="min-w-0 flex-1">내용</span>
           <span className="w-28 shrink-0">마일스톤</span>
-          <span className="w-10 shrink-0 text-center">노출</span>
+          <span className="w-24 shrink-0 text-center">노출</span>
         </div>
       )}
 
@@ -130,23 +130,33 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
                 onChange={(e) => edit(u.pr, { milestone: e.target.value })}
                 placeholder="마일스톤"
               />
-              <button
-                type="button"
-                role="switch"
-                aria-checked={u.visible}
-                aria-label="노출 여부"
-                title={u.visible ? "노출 중 (눌러서 숨김)" : "숨김 (눌러서 노출)"}
-                onClick={() => edit(u.pr, { visible: !u.visible })}
-                className={`relative h-5 w-10 shrink-0 rounded-full transition-colors ${
-                  u.visible ? "bg-blue-500" : "bg-gray-300"
-                }`}
-              >
+              {/* 노출 상태 라벨 + 토글 — 고정폭 묶음(헤더 "노출" w-24 와 1:1). */}
+              <div className="flex w-24 shrink-0 items-center justify-end gap-2">
                 <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                    u.visible ? "translate-x-5" : "translate-x-0.5"
+                  className={`w-8 text-right text-[11px] font-bold ${
+                    u.visible ? "text-brand-red" : "text-gray-400"
                   }`}
-                />
-              </button>
+                >
+                  {u.visible ? "노출" : "숨김"}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={u.visible}
+                  aria-label="노출 여부"
+                  title={u.visible ? "노출 중 (눌러서 숨김)" : "숨김 (눌러서 노출)"}
+                  onClick={() => edit(u.pr, { visible: !u.visible })}
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    u.visible ? "bg-brand-red" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      u.visible ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
             </li>
           );
         })}
