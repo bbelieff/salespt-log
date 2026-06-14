@@ -304,6 +304,23 @@ related: arena-carryover-migration, arena-season1-setup, role-system
   김소라(a01056285798)는 이미 A1-1 정상(빈email prep) — 추가 불요. 추가 누락자 없음.
 - **실로그인**: 본인 클레임/로그인 시 P1 라우팅(아레나 우선)으로 A1-N 대시보드 진입(배포 후).
 
+## P10 — [긴급·전역] 자가클레임 레지스트리 컬럼 밀림 → 로그인 무한반송
+### P10 수정 결과 (2026-06-14, fix/claim-append-columns)
+- **확정 근본**(= P0 의 진짜 원인): `claimRegistry` 의 append 가 range `users!A2:M` 로
+  `values.append` → 빈 A열 prep 행이 많아 Google table-detection 이 좌측을 오인,
+  새 self-claim 행을 **I열(8칸)~ 로 밀어 기록** → findUserByEmail(A열 조회) 못 찾음 →
+  /claim 무한반송. dev 미재현(빈 A열 prep 적음) = P0 quota 가설이 아니라 이것.
+- **A. 코드(재발 방지)**: claimRegistry branch3/4(공유·신규) + 트레이너 append 를
+  **결정적 좌표 update**(`appendRegistryRow` → `A{rows.length+2}`)로 교체. appendRows
+  (table-detection) 제거. DATA_RANGE A2:M→A2:R(밀린 행도 카운트). `nextRegistryRowNumber`
+  순수함수 + registry-append.test.ts(+2).
+- **B. 데이터(stuck 복구, belie 승인)**: 백업 후 컬럼 밀림 **garbage 58행** 정리 —
+  prep 채움 6(정진웅·김소라·박종훈·고경희·박진섭 A1-N + 오민석 A1-2, sheetID/명단 매칭
+  active), 중복 garbage 삭제만 3(신민경·김우빈·김태현, 정상행 존재), 신규 6(8기
+  김현민·이용호·박상준 **active**(belie), 김지훈 **A1-5**(시트 B3 확인), 테스터·검증계정),
+  garbage 58행 삭제. **후 검증: garbage 0, A열 정상 52행.**
+- 김지훈(88happytime) 시트 B3=A1-5 로 명단 §4 누락분 확인 — A1-5 active 복구.
+
 ## Log
 - 2026-06-12 트리아지: 공통 뿌리=cohort 저장 불일치+옛행 archived 누락. P0 클레임 무반응→P1 cohort 일관화→P2 그룹핑→P3 이월매출→P4 드라이브→P5 필터→P6 DnD→P7 위생 순.
 - 2026-06-14 P8 추가: 실무수납 계약 카드 정렬(계약등록일 빠른/늦은·진행도 낮은/높은). 필터(P5/#356)는 업체명 검색만 — 정렬 미구현 확인.

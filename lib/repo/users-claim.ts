@@ -18,11 +18,13 @@
  */
 import { registry } from "@/config";
 import { User } from "@/types";
-import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { readRange, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 import { nameMatches } from "./name-match";
 
-const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
+// A2:R — 전체 폭. 결정적 append 행번호(rows.length) 계산이 M 밖으로 밀린 행도
+// 빠짐없이 세도록(claim-append-columns). 매칭은 A~D 만 사용.
+const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
 
 /**
  * PR B-2: registry I~L 캐시 컬럼 값 (호출자가 시트 fetch 후 미리 변환해 넘김).
@@ -42,6 +44,28 @@ const EMPTY_CACHED: CachedLabels = {
   courseStartISO: "",
   graduationISO: "",
 };
+
+/** 데이터 행 수 → 다음 행 번호(1-index, header 1행 가정). */
+export function nextRegistryRowNumber(existingDataRows: number): number {
+  return existingDataRows + 2;
+}
+
+/** registry 행을 **결정적 좌표**(`A{n}`)로 기록 — values.append 의 table-detection
+ * 이 빈 A열 prep 행 때문에 새 행을 H열~로 미는 버그 방지(claim-append-columns 2026-06-14).
+ * 항상 A열부터 정렬해 findUserByEmail(A열 조회)이 찾을 수 있게 한다. */
+async function appendRegistryRow(
+  spreadsheetId: string,
+  tab: string,
+  existingDataRows: number,
+  row: unknown[],
+): Promise<void> {
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range: `${tab}!A${nextRegistryRowNumber(existingDataRows)}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [row] },
+  });
+}
 
 export async function claimRegistry(
   email: string,
@@ -101,50 +125,20 @@ export async function claimRegistry(
   //    sortOrder(M) 은 0 (미정렬) — admin 이 드래그로 직접 부여.
   if (matchedRows.length > 0) {
     const sharedSheetId = matchedRows[0]!.sheetId || spreadsheetId;
-    await appendRows(
-      reg.spreadsheetId,
-      DATA_RANGE(reg.tab),
-      [[
-        email,
-        cohortNorm,
-        cleanName,
-        sharedSheetId,
-        role,
-        status,
-        "",
-        "",
-        cached.cohortLabel,
-        cached.nameLabel,
-        cached.courseStartISO,
-        cached.graduationISO,
-        "0",
-      ]],
-      { valueInputOption: "RAW" },
-    );
+    await appendRegistryRow(reg.spreadsheetId, reg.tab, rows.length, [
+      email, cohortNorm, cleanName, sharedSheetId, role, status,
+      "", "", cached.cohortLabel, cached.nameLabel,
+      cached.courseStartISO, cached.graduationISO, "0",
+    ]);
     invalidateRegistry();
     return;
   }
 
-  // 4) 완전 신규 — cached 포함 13 컬럼 append (M=sortOrder, 0 default).
-  await appendRows(
-    reg.spreadsheetId,
-    DATA_RANGE(reg.tab),
-    [[
-      email,
-      cohortNorm,
-      cleanName,
-      spreadsheetId,
-      role,
-      status,
-      "",
-      "",
-      cached.cohortLabel,
-      cached.nameLabel,
-      cached.courseStartISO,
-      cached.graduationISO,
-      "0",
-    ]],
-    { valueInputOption: "RAW" },
-  );
+  // 4) 완전 신규 — cached 포함 13 컬럼.
+  await appendRegistryRow(reg.spreadsheetId, reg.tab, rows.length, [
+    email, cohortNorm, cleanName, spreadsheetId, role, status,
+    "", "", cached.cohortLabel, cached.nameLabel,
+    cached.courseStartISO, cached.graduationISO, "0",
+  ]);
   invalidateRegistry();
 }
