@@ -254,5 +254,56 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 - admin/arena/page.tsx: byCohort → 시즌별 그룹(bySeason) → ArenaCohortBoard 렌더.
   기존 인라인 section 제거. components.md 등재.
 
+## P8 — [5b] 실무수납 계약 카드 정렬(계약등록일·진행도)
+현황: 필터=`app/(app)/payment/page.tsx` `visibleRows`(업체명 검색만, **정렬 없음**=시트 행순). 진행도=`ContractRow` L169 슬롯 진행률 평균.
+```
+세일즈PT — [P8] 실무수납 계약 카드 정렬(계약등록일·진행도). 브랜치 feat/payment-sort. SoR: bugfix-arena-triage §P5/P8.
+[요구] 검색바(CompanySearchBar) 옆/아래 정렬 컨트롤(세그먼트/드롭다운):
+  - 계약등록일 빠른순(계약일 asc) / 늦은순(desc)
+  - 진행도 낮은순(asc) / 높은순(desc)
+  기본 = 계약등록일 빠른순(또는 현행 시트순 유지).
+[구현]
+1. page.tsx: sortKey state. visibleRows(필터) → sortedRows(정렬) 파생. 렌더·선택 폴백(selectedCp)·findIndex(ordinal) 모두 sortedRows 기준으로 일관.
+2. 정렬값: 계약일=Date 파싱(빈값 끝으로 안정정렬). 진행도=각 cp 슬롯(수납1~3) 진행률(%) 평균 — ContractRow 의 진행도 계산 로직을 **순수 헬퍼로 추출**(app/(app)/payment/_lib 또는 lib)해 page·ContractRow 공유(중복 제거).
+3. 정렬 UI는 tokens 준수, 모바일/PC 공통. 검색·하이라이트·선택 동작 회귀 없음.
+[수용] 4개 정렬 정상 + 필터와 결합 동작 + 선택 유지. 정렬 컨트롤 components.md 등재. npm run check. PR. Cowork 검증불가.
+```
+
+## P9 — [긴급] 아레나 참가자 접속 불가(클레임 pending stuck) 복구
+근본원인(확인): `lib/repo/users-claim.ts:claimRegistry` — 클레임이 (cohort,name) 으로 prep 행을 못 맞추면(①prep 생성 누락=신민경, ②사용자가 '수강생' 모드+옛 숫자로 클레임=김소라) → 새 행을 **status=pending** append. app 라우팅이 pending 차단 → /claim 튕김 → "스피너→시작버튼 회색 stuck". 아레나는 전원 사전승인(prep=active)인데 prep 못 맞춘 사람만 pending.
+```
+세일즈PT — [P9 긴급] 아레나 참가자 접속 불가 복구. 브랜치 fix/arena-claim-active(+1회 registry 복구 스크립트). SoR: bugfix-arena-triage §P9.
+
+[A. 코드 — 재발 방지(deploy 1회)]
+- 아레나 cohort(^A\d+-\d+) 클레임은 **status=active**(사전승인)로 등록. claimAccount/claimRegistry 에서 arena 면 pending 대신 active(일반 숫자 기수는 pending 유지).
+- 효과: prep 누락자도 아레나 모드로 클레임하면 active 로 즉시 입장.
+
+[B. 데이터 — 이미 stuck 된 사람 즉시 복구(1회 스크립트, 백업→드라이런→확인→적용)]
+- 레지스트리 백업 후, 아레나 명단(arena-season1-setup §4) 37명 각자 **A1-N active 행 1개**(본인 email+시트)로 정리:
+  0) **(가장 흔함) 본인 email 달린 A1-N `pending` 행이 있으면 → status=active 로 플립**(신민경 mymk1005/A1-5, 김태현 rlaxogus/A1-2, 김우빈 kwb105702/A1-3 — 이미 시트·email 있고 pending 만이 문제).
+  1) 빈email prep 행 있고 본인이 numeric(수강생모드) 으로만 클레임 → prep 행 A열에 email 채움(active 유지) + numeric 행 삭제(김소라 a01056285798 등).
+  2) A1-N 행 자체가 없으면(테스트계정·일부 누락) → A1-N active 행 신규 추가(email + 본인 시트ID).
+  3) 같은 email 옛 숫자/중복 pending 행 삭제.
+- ※ 테스트계정(A1-0 테스터 1QhTSw…/A1-9·N 등)은 레지스트리 미등록이라 동일 — 테스트하려면 A1-N active 행(빈email 가능) 추가.
+- 참고 매핑(라이브 재덤프로 확정): mymk1005=신민경/A1-5/1zz--RZ…, rlaxogus3454=김태현/A1-2, a01056285798=김소라/A1-1/1wEqUP…, 88happytime=김지훈, kwb105702=김우빈/A1-3, 9jsppe=박진섭/A1-3.
+
+[수용/실측] 적용 후 각 아레나 email=A1-N active 1행(중복0). 신민경·김태현·김소라 실제 로그인→본인 아레나 대시보드 진입. arena→active 단위테스트. npm run check. PR. Cowork 검증불가·백업 보관.
+```
+
+### P9 수정 결과 (2026-06-14, fix/arena-prep-rows)
+- **A. 코드(재발 방지)**: `lib/service/auth.ts:claimAccount` — 아레나
+  cohort(`arenaCohortLabelParts(cohortTrim)!==null`) 클레임은 claimRegistry status
+  를 **active**(사전승인)로, 일반 숫자 기수는 pending 유지. prep 누락자도 아레나
+  모드 클레임 시 즉시 active 입장.
+- **B. 데이터(stuck 복구, 1회 스크립트)**: 백업(`backups/registry-users-<ts>.json`) →
+  **37명 명단 전수 대조** → 누락 정확히 **3명**(김태현 A1-2·김우빈 A1-3·신민경 A1-5,
+  행 자체 부재 = 스펙 B-2). belie 제공 시트ID로 A1-N **active 행 append**
+  (A~R 명시 구성, I~L 캐시=A1-N기·이름·2026-06-12·2026-08-01, O 폴더는 빈→drive-link
+  auto 가 채움, Q=입금). append 전 email 부재 재확인 가드.
+- **후 검증**: 총 누락 **0**, 3명 각 A1-N active 1행(중복 0), 올바른 시트ID 매핑.
+  김소라(a01056285798)는 이미 A1-1 정상(빈email prep) — 추가 불요. 추가 누락자 없음.
+- **실로그인**: 본인 클레임/로그인 시 P1 라우팅(아레나 우선)으로 A1-N 대시보드 진입(배포 후).
+
 ## Log
 - 2026-06-12 트리아지: 공통 뿌리=cohort 저장 불일치+옛행 archived 누락. P0 클레임 무반응→P1 cohort 일관화→P2 그룹핑→P3 이월매출→P4 드라이브→P5 필터→P6 DnD→P7 위생 순.
+- 2026-06-14 P8 추가: 실무수납 계약 카드 정렬(계약등록일 빠른/늦은·진행도 낮은/높은). 필터(P5/#356)는 업체명 검색만 — 정렬 미구현 확인.
