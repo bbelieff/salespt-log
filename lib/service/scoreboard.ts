@@ -7,7 +7,7 @@
  *  - 각 시트 주차별 지표 = 대시보드 C33:H40 (readWeeklyPerformance).
  *  - 35+ 시트 read → unstable_cache(30분) + 동시성 5 + sheets-client 429 retry.
  */
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 import {
   listArenaParticipants,
   normalizeArenaCohort,
@@ -17,7 +17,7 @@ import {
   readDashboard,
   type WeeklyPerf,
 } from "@/repo/dashboard";
-import { readShareScores } from "@/repo/share-scores";
+import { readShareScores, setShareScores } from "@/repo/share-scores";
 import type { RankingMetric, RankingEntry } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
@@ -224,4 +224,76 @@ export async function loadIndividualRankings(): Promise<
       shares.map((s) => ({ name: s.name, cohort: s.cohort, value: s.points })),
     ),
   };
+}
+
+// ── 공유왕 수동 집계 (admin) — share_scores 대상 목록 + 저장 ────────────
+export interface ShareScoreTarget {
+  email: string; // 대표 email(저장 키)
+  name: string;
+  cohort: string;
+  points: number; // 현재 점수(없으면 0)
+}
+
+/** 입금 참가자(1시트=1엔트리) + 현재 공유왕 점수 머지. admin 집계 UI 모수. */
+export async function listShareScoreTargets(): Promise<ShareScoreTarget[]> {
+  const participants = await listArenaParticipants();
+  const bySheet = new Map<
+    string,
+    { email: string; name: string; cohort: string; paid: boolean }
+  >();
+  for (const u of participants) {
+    if (!u.spreadsheetId) continue;
+    const cur = bySheet.get(u.spreadsheetId);
+    bySheet.set(u.spreadsheetId, {
+      email: cur?.email ?? u.email,
+      name: cur?.name ?? u.name,
+      cohort: cur?.cohort ?? normalizeArenaCohort(u.cohort),
+      paid: (cur?.paid ?? false) || u.memo.includes("입금"),
+    });
+  }
+  const shares = await readShareScores().catch(() => []);
+  const pointsByEmail = new Map(
+    shares.map((s) => [s.email.toLowerCase(), s.points]),
+  );
+  return [...bySheet.values()]
+    .filter((v) => v.paid)
+    .map((v) => ({
+      email: v.email,
+      name: v.name,
+      cohort: v.cohort,
+      points: pointsByEmail.get(v.email.toLowerCase()) ?? 0,
+    }))
+    .sort(
+      (a, b) =>
+        a.cohort.localeCompare(b.cohort, "en", { numeric: true }) ||
+        a.name.localeCompare(b.name, "ko"),
+    );
+}
+
+/** 공유왕 점수 저장 — {email,points}[] 만 받아 name/cohort 는 참가자에서 보강.
+ *  비참가자 email 은 제외. 저장 후 전광판 랭킹 캐시 무효화. */
+export async function saveShareScores(
+  rows: { email: string; points: number }[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const targets = await listShareScoreTargets();
+  const byEmail = new Map(targets.map((t) => [t.email.toLowerCase(), t]));
+  const now = new Date().toISOString();
+  const full = rows
+    .map((r) => {
+      const t = byEmail.get(r.email.toLowerCase());
+      return t
+        ? {
+            email: t.email,
+            name: t.name,
+            cohort: t.cohort,
+            points: Math.round(r.points),
+            updatedAt: now,
+          }
+        : null;
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+  if (full.length === 0) return;
+  await setShareScores(full);
+  revalidateTag(SCOREBOARD_TAG); // 랭킹 재계산
 }

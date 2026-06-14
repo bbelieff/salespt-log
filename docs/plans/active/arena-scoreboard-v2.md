@@ -25,5 +25,13 @@ related: arena-season1-setup, role-system
 - rankEntries: value desc·동점 동순위·이름 asc·rank 1·상위 10.
 - types: RankingMetric(z.enum)·RankingEntry. SSOT data-model·sheet-structure 등재.
 
+## 공유왕 수동 집계 (admin)
+- `/admin/arena/share-scores`: 입금 참가자(1시트=1인) [−][점수][+] + 이름·기수 검색,
+  변경 행만 dirty → "변경사항 저장 (N)" 1회 일괄(UpdatesManager 패턴). 안내문 1점=공유글 1건.
+- 서비스 `listShareScoreTargets()`(참가자+현재 점수 머지)·`saveShareScores(rows)`
+  ({email,points}만 받아 name/cohort 보강, 비참가자 제외, 저장 후 revalidateTag(SCOREBOARD_TAG)).
+- `POST /api/admin/share-scores`: admin 가드(getSessionEmail+isAdminEmail, 403). 조회 GET 없음(서버 컴포넌트 직접).
+
 ## 상태
-- 2026-06-14 데이터 레이어 완료(feat/scoreboard-individual-data). UI(전광판 렌더)는 후속.
+- 2026-06-14 데이터 레이어 완료(feat/scoreboard-individual-data).
+- 2026-06-15 공유왕 수동 집계 UI+API 완료(feat/share-king-admin). 전광판 UI 렌더는 후속.
