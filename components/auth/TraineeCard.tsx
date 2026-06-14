@@ -190,6 +190,7 @@ export default function TraineeCard({
             <div className="flex min-w-0 items-baseline gap-x-2">
               <span className="truncate text-sm font-black text-gray-900">
                 {u.name || "(이름 없음)"}
+                {u.captainOf ? <span title="회장"> 👑</span> : null}
               </span>
               <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
             </div>

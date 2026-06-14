@@ -218,7 +218,7 @@ export default function TrainerAssignCard({
                 <div key={cohort}>
                   <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                     <span>
-                      {cohort}기 · {list.length}명
+                      {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
                     </span>
                     <div className="flex gap-1">
                       <button
@@ -258,6 +258,7 @@ export default function TrainerAssignCard({
                           />
                           <span className="min-w-0 flex-1 truncate font-semibold text-gray-800">
                             {s.name || s.email}
+                            {s.captainOf ? <span title="회장"> 👑</span> : null}
                           </span>
                           <span className="shrink-0 text-[10px] text-gray-400">
                             {s.email}

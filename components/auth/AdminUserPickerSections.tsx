@@ -146,7 +146,7 @@ export function CohortSection({
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
         <span className="text-base font-black tracking-tight text-gray-900">
-          {cohort}기
+          {cohort === "—" ? "미분류" : `${cohort}기`}
         </span>
         <span className="text-xs font-bold text-indigo-700">
           · {list.length}명

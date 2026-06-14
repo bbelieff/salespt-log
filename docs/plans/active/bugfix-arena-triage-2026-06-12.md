@@ -83,6 +83,23 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 [수용] A1-1~6기가 각 박스로 묶이고 회장은 그 박스 안에서 이모지로만 구분. 일반 숫자 기수 회귀 없음. npm run check. PR. Cowork 검증불가.
 ```
 
+### P2 수정 결과 (2026-06-12, fix/admin-arena-grouping)
+- **공유 헬퍼(최하위 types 레이어)** `lib/types/index.ts`: `cohortGroupKey(cohort, captainOf)`
+  (captainOf 우선 → 회장이 옛 기수로 저장돼도 아레나 그룹 통일) · `cohortSortTuple`
+  (아레나 A시즌-기수 우선/asc, 일반 숫자 desc, 기타 끝) · `cohortGroupCompare`.
+  repo·component 모두 import 가능(component→repo 금지 회피).
+- **정렬 단일출처**: `listAllUsers`(repo) 정렬을 cohortGroupCompare 로 교체.
+  그룹 컴포넌트는 **재정렬 제거**하고 입력순(=정렬순) 보존 — 중복 정렬 제거.
+- **그룹키 통일**: 4개 그룹 화면(admin 수강생관리 AdminUserPicker, 트레이너
+  TrainerCohortView, 트레이너관리 TrainerMgmtSections.groupByCohort·TrainerAssignCard)
+  모두 captainOf||cohort 그룹키. 실측상 아레나는 이미 cohort="A1-N" 일관 저장(회장
+  김지훈도 A1-1) — UI 그룹키만으로 정상화, 데이터 backfill 불필요.
+- **회장 👑**: TraineeCard·SectionTraineeList·TrainerAssignCard 에서 captainOf 채워진
+  멤버에 👑(같은 박스 내, 별도 그룹 금지). 그룹 헤더 "—" → "미분류".
+- **타입**: Trainee·PanelUser 에 captainOf? 추가. enrich(`...u`)로 자동 보존.
+- **회귀 테스트**: rejoin-routing.test.ts +5 (cohortGroupKey captainOf 우선·cohortSortTuple
+  분류·정렬 결과 [A1-1,A1-6,8,6,관리]). 총 17 pass / check 196 pass.
+
 ## P3 — [4] 이월 매출/영업이익 일관성 (4기·6기 영업이익 0 안 됨)
 ```
 세일즈PT — [P3] 이월 매출/영업이익 누수 완전 차단(서비스 레이어). 브랜치 fix/carryover-profit-leak. SoR: §0, docs/incidents/2026-06-12-carryover-revenue-leak.md.

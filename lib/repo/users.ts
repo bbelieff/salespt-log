@@ -8,7 +8,7 @@
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
-import { User } from "@/types";
+import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 import { nameMatches } from "./name-match";
@@ -129,9 +129,8 @@ export async function listAllUsers(): Promise<User[]> {
     if (rolePriority[a.role] !== rolePriority[b.role]) {
       return rolePriority[a.role] - rolePriority[b.role];
     }
-    const ca = parseInt(String(a.cohort).replace(/기\s*$/, "")) || 0;
-    const cb = parseInt(String(b.cohort).replace(/기\s*$/, "")) || 0;
-    if (ca !== cb) return cb - ca;
+    const c = cohortGroupCompare(cohortGroupKey(a.cohort, a.captainOf), cohortGroupKey(b.cohort, b.captainOf));
+    if (c !== 0) return c;
     // sortOrder: 0 → infinity (bottom), >0 → as-is. Same value → name ASC.
     const sa = a.sortOrder > 0 ? a.sortOrder : Number.MAX_SAFE_INTEGER;
     const sb = b.sortOrder > 0 ? b.sortOrder : Number.MAX_SAFE_INTEGER;
