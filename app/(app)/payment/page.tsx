@@ -146,16 +146,19 @@ export default function PaymentPage() {
   //   승인금액합   = sum(슬롯별 승인금액)        — 진행 중인 수납 약정 총액 (목표)
   //   총매출       = 수임비합 + 수납액합        — v2 SSOT (수수료=수납액합)
   //   수납진척     = 수납액합 / 승인금액합
-  const totalReceived = rows.reduce(
+  // 이월(AI=이월) 계약은 아레나로 넘어간 것 — 합계(매출·수수료·승인)에서 제외.
+  // 카드 목록(rows)은 회색으로 그대로 표시(carryover-profit §1).
+  const billable = rows.filter((cp) => cp.구분 !== "이월");
+  const totalReceived = billable.reduce(
     (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
     0,
   );
-  const totalApproved = rows.reduce(
+  const totalApproved = billable.reduce(
     (s, cp) =>
       s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
     0,
   );
-  const totalContract = rows.reduce((s, cp) => s + (cp.수임비 || 0), 0);
+  const totalContract = billable.reduce((s, cp) => s + (cp.수임비 || 0), 0);
   const totalRevenue = totalContract + totalReceived;
   const overallPct =
     totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;

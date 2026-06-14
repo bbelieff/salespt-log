@@ -54,6 +54,9 @@ export function computeContractRevenue(payments: ContractPayment[]): {
   let totalFee = 0;
   let totalReceived = 0;
   for (const p of payments) {
+    // 이월(AI=이월) 계약은 아레나로 넘어간 것 — 본인(옛 기수) 매출·영업이익에서
+    // 제외(carryover-profit §1). 시트 수식(02!D3)·서비스 레이어 합산 일관.
+    if (p.구분 === "이월") continue;
     totalFee += num(p.수임비);
     totalReceived +=
       num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액);
