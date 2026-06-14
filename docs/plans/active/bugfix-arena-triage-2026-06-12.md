@@ -324,3 +324,5 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 ## Log
 - 2026-06-12 트리아지: 공통 뿌리=cohort 저장 불일치+옛행 archived 누락. P0 클레임 무반응→P1 cohort 일관화→P2 그룹핑→P3 이월매출→P4 드라이브→P5 필터→P6 DnD→P7 위생 순.
 - 2026-06-14 P8 추가: 실무수납 계약 카드 정렬(계약등록일 빠른/늦은·진행도 낮은/높은). 필터(P5/#356)는 업체명 검색만 — 정렬 미구현 확인.
+- 2026-06-14 **P8 완료**(feat/payment-sort): `_lib/payment-progress`(순수 헬퍼 — progressPct·initialVisiblePayments·contractProgress·sortContracts) 추출해 ContractRow(표시)·page(정렬) 공유. PaymentSortControl(검색바 아래 4버튼: 등록 빠른/늦은·진행 낮은/높은, 기본 등록 빠른순). page: sortKey state → visibleRows=sortContracts(filteredRows) → 렌더·selectedCp·ordinal 모두 일관. 빈 계약일 끝·안정정렬. payment-progress.test +9. components.md 등재.
+- 2026-06-14 **P10 완료**(fix/claim-append-columns): self-claim 레지스트리 행 컬럼 밀림(append A2:M table-detection) → 로그인 무한반송(P0 진짜 근본). claimRegistry 결정적 좌표 update + garbage 58행 정리. #376.

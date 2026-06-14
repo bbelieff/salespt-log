@@ -23,6 +23,8 @@ import {
 } from "@/query/contract-payment-hooks";
 import ContractRow from "./_components/ContractRow";
 import CompanySearchBar from "./_components/CompanySearchBar";
+import PaymentSortControl from "./_components/PaymentSortControl";
+import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { ACCENT, contractAccentFamily } from "./_lib/contractAccent";
@@ -63,6 +65,7 @@ export default function PaymentPage() {
   const [pendingRow, setPendingRow] = useState<number | null>(null);
   // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
   const [companyQuery, setCompanyQuery] = useState("");
+  const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   /** 2026-05-17 [3]: 삭제 확인 모달의 cascade 옵션 (계약→예약 revert). */
@@ -175,9 +178,11 @@ export default function PaymentPage() {
 
   // 업체 검색 필터 — 합계·진행기관 후보는 전체(rows) 기준 유지(표시만 필터).
   const normq = (x: string) => x.toLowerCase().replace(/\s+/g, "");
-  const visibleRows = companyQuery.trim()
+  const filteredRows = companyQuery.trim()
     ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
     : rows;
+  // 정렬(필터 결과에 적용) — 렌더·선택폴백·ordinal 모두 sortedRows 기준 일관(§P8).
+  const visibleRows = sortContracts(filteredRows, sortKey);
 
   // C: 선택 계약 — selectedRow 없거나 (검색)목록에 없으면 첫 카드로 폴백.
   const selectedCp =
@@ -260,14 +265,17 @@ export default function PaymentPage() {
           일정·계약 탭에서 미팅을 <b>계약</b>으로 처리하면 여기에 자동으로 추가돼요.
         </div>
 
-        {/* 업체 검색 — 첫 업체 카드 위 sticky (CompanySearchBar) */}
+        {/* 업체 검색 — 첫 업체 카드 위 sticky (CompanySearchBar) + 정렬 컨트롤 */}
         {!list.isLoading && !list.isError && rows.length > 0 && (
-          <CompanySearchBar
-            value={companyQuery}
-            onChange={setCompanyQuery}
-            matchCount={visibleRows.length}
-            total={rows.length}
-          />
+          <div className="mb-3 space-y-2">
+            <CompanySearchBar
+              value={companyQuery}
+              onChange={setCompanyQuery}
+              matchCount={visibleRows.length}
+              total={rows.length}
+            />
+            <PaymentSortControl value={sortKey} onChange={setSortKey} />
+          </div>
         )}
 
         {/* 리스트 */}

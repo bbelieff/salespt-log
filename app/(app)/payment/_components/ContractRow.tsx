@@ -19,6 +19,7 @@ import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
+import { progressPct, initialVisiblePayments } from "../_lib/payment-progress";
 import { useTodosByContract } from "@/query/todos-hooks";
 import {
   ACCENT,
@@ -64,29 +65,7 @@ function fmtDate(s: string): string {
   return `${parseInt(m[2]!, 10)}/${parseInt(m[3]!, 10)}`;
 }
 
-function progressPct(p: string): number {
-  if (!p || p === "0%") return 0;
-  return parseInt(p, 10);
-}
-
-/** 슬롯에 의미있는 데이터가 있는지 (visiblePayments 초기값 계산용). */
-function hasSlotData(slot: ContractPayment["수납1"]): boolean {
-  return Boolean(
-    slot.진행기관 ||
-      slot.현황 ||
-      slot.수납일 ||
-      slot.승인금액 > 0 ||
-      slot.수납액 > 0 ||
-      (slot.진행률 && slot.진행률 !== "0%"),
-  );
-}
-
-/** 데이터 기반 초기 visiblePayments — 슬롯3 데이터 있으면 3, 슬롯2 있으면 2, else 1. */
-function initialVisiblePayments(cp: ContractPayment): 1 | 2 | 3 {
-  if (hasSlotData(cp.수납3)) return 3;
-  if (hasSlotData(cp.수납2)) return 2;
-  return 1;
-}
+// 진행도·슬롯 가시성 헬퍼는 _lib/payment-progress 로 추출(page 정렬과 공유, §P8).
 
 /** 업체명에서 검색어 일치 부분 <mark> — 대소문자·공백 무시 매칭은 page 필터와 동일 기준이되,
  * 표시는 원문 그대로(공백 제거 매칭으로 인한 부분 불일치 시 하이라이트 생략). */
