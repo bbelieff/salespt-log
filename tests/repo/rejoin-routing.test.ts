@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { isNumericCohortArchived } from "@/repo/users";
 import { isArenaCohortLabel, pickPreferredUser } from "@/repo/user-priority";
+import { cohortGroupKey, cohortSortTuple } from "@/types";
 import type { User } from "@/types";
 
 const archived = new Set(["6", "T", "연습", "A1"]); // cohorts 탭에 섞여 있을 수 있는 라벨들
@@ -89,5 +90,37 @@ describe("pickPreferredUser (다중 행 라우팅 우선순위)", () => {
   });
   it("빈 배열 → null", () => {
     expect(pickPreferredUser([])).toBeNull();
+  });
+});
+
+describe("cohortGroupKey (아레나 그룹 통일)", () => {
+  it("아레나/일반 기 제거", () => {
+    expect(cohortGroupKey("A1-1", "")).toBe("A1-1");
+    expect(cohortGroupKey("A1-1기", "")).toBe("A1-1");
+    expect(cohortGroupKey("8기", "")).toBe("8");
+  });
+  it("captainOf 우선 — 회장이 옛 기수로 저장돼도 아레나 그룹으로 통일", () => {
+    expect(cohortGroupKey("3", "A1-3")).toBe("A1-3"); // P2 증상: A1-3 회장 cohort="3"
+    expect(cohortGroupKey("3기", "A1-3기")).toBe("A1-3");
+  });
+  it("빈값 → —", () => {
+    expect(cohortGroupKey("", "")).toBe("—");
+  });
+});
+
+describe("cohortSortTuple (아레나 우선·시즌기수 asc·일반 desc)", () => {
+  it("튜플 분류", () => {
+    expect(cohortSortTuple("A1-1")).toEqual([0, 1, 1]);
+    expect(cohortSortTuple("A1-6")).toEqual([0, 1, 6]);
+    expect(cohortSortTuple("8")).toEqual([1, -8, 0]);
+    expect(cohortSortTuple("관리")).toEqual([2, 0, 0]);
+  });
+  it("정렬 결과: 아레나(시즌·기수 asc) → 일반 숫자 desc → 기타", () => {
+    const keys = ["8", "관리", "A1-6", "6", "A1-1"];
+    const sorted = [...keys].sort((a, b) => {
+      const ka = cohortSortTuple(a), kb = cohortSortTuple(b);
+      return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
+    });
+    expect(sorted).toEqual(["A1-1", "A1-6", "8", "6", "관리"]);
   });
 });

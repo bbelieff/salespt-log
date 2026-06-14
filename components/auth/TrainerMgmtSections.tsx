@@ -19,6 +19,8 @@ export interface PanelUser {
   role: string;
   status?: string;
   assignedTrainer?: string;
+  /** 아레나 회장이 맡은 cohort(예 "A1-1"). 빈값=일반. 그룹키·👑 마커용. */
+  captainOf?: string;
 }
 
 export function parseAssigned(field: string | undefined): string[] {
@@ -33,16 +35,17 @@ export function parseAssigned(field: string | undefined): string[] {
   );
 }
 
+/** 그룹키 = captainOf(아레나 회장, 옛 기수로 저장돼도 통일) || cohort, 기 제거.
+ * 입력(listAllUsers)이 cohortSortTuple 로 이미 정렬 → 여기선 재정렬 금지하고
+ * 삽입순(=정렬순) 보존. 정렬 단일출처 원칙(arena-grouping §1). */
 export function groupByCohort(users: PanelUser[]): Array<[string, PanelUser[]]> {
   const map = new Map<string, PanelUser[]>();
   for (const u of users) {
-    const key = String(u.cohort).replace(/기\s*$/, "").trim() || "—";
+    const key = String(u.captainOf || u.cohort).replace(/기\s*$/, "").trim() || "—";
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(u);
   }
-  return Array.from(map.entries()).sort(
-    (a, b) => (parseInt(b[0]) || 0) - (parseInt(a[0]) || 0),
-  );
+  return Array.from(map.entries());
 }
 
 /* ─────────────────────── Section 1 ─────────────────────── */
@@ -203,7 +206,7 @@ export function SectionTraineeList({
           >
             <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
               <span className="text-sm font-bold text-gray-900">
-                {cohort}기 · {list.length}명
+                {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
               </span>
               <svg
                 className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180"
@@ -223,7 +226,8 @@ export function SectionTraineeList({
                   return (
                     <li key={s.email}>
                       <div className="text-gray-800">
-                        ㄴ <span className="font-semibold">{s.name || s.email}</span>{" "}
+                        ㄴ <span className="font-semibold">{s.name || s.email}</span>
+                        {s.captainOf ? <span title="회장"> 👑</span> : null}{" "}
                         <span className="text-gray-400">({s.email})</span>
                       </div>
                       <div className="ml-4 text-[10px] text-gray-500">

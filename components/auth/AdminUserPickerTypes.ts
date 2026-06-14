@@ -16,6 +16,8 @@ export interface Trainee {
   assignedTrainer?: string;
   /** 기수 내 팀 (예: "서울", "부산"). 빈값 = 미배정. */
   team?: string;
+  /** 아레나 회장이 맡은 cohort(예 "A1-1"). 빈값=일반. 그룹키·👑 마커용. */
+  captainOf?: string;
   courseStartISO?: string;
   graduationISO?: string;
   /** 8주 누적 funnel (시트 01 영업관리!E4/E5/E6). admin/trainer 카드 표시용.

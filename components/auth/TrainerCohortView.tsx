@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { cohortGroupKey, cohortGroupCompare } from "@/types";
 import {
   CohortSection,
   parseAssigned,
@@ -128,14 +129,14 @@ export default function TrainerCohortView({
     const activeMap = new Map<string, Trainee[]>();
     const archivedMap = new Map<string, Trainee[]>();
     for (const u of visibleTrainees) {
-      const k = String(u.cohort).replace(/기\s*$/, "").trim() || "—";
+      const k = cohortGroupKey(u.cohort, u.captainOf);
       const bucket = archivedSet.has(k) ? archivedMap : activeMap;
       const arr = bucket.get(k) ?? [];
       arr.push(u);
       bucket.set(k, arr);
     }
     const sortFn = (a: [string, Trainee[]], b: [string, Trainee[]]) =>
-      (parseInt(b[0]) || 0) - (parseInt(a[0]) || 0);
+      cohortGroupCompare(a[0], b[0]);
     return {
       activeGroups: Array.from(activeMap.entries()).sort(sortFn),
       archivedGroups: Array.from(archivedMap.entries()).sort(sortFn),

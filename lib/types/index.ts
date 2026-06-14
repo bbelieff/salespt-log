@@ -239,6 +239,30 @@ export const User = z.object({
 });
 export type User = z.infer<typeof User>;
 
+/** 그룹/정렬 키: 아레나 회장(captainOf)이 옛 기수로 저장돼도 올바른 아레나 그룹으로
+ * 통일. captainOf 우선, 없으면 cohort. 기 접미사 제거(arena-grouping §1).
+ * repo(listAllUsers 정렬)·component(그룹 박스) 공유 — 최하위 types 레이어 배치. */
+export function cohortGroupKey(cohort: string, captainOf?: string): string {
+  const cap = String(captainOf ?? "").trim();
+  const base = (cap || String(cohort ?? "")).replace(/기\s*$/, "").trim();
+  return base || "—";
+}
+
+/** 정렬 튜플(사전식): 아레나(A시즌-기수) 우선 → 시즌·기수 asc, 일반 숫자 desc, 기타 끝. */
+export function cohortSortTuple(groupKey: string): [number, number, number] {
+  const m = /^A(\d+)-(\d+)/.exec(groupKey);
+  if (m) return [0, parseInt(m[1]!, 10), parseInt(m[2]!, 10)];
+  const n = parseInt(groupKey, 10);
+  if (Number.isFinite(n)) return [1, -n, 0];
+  return [2, 0, 0];
+}
+
+/** 그룹키 정렬 비교자(repo·component 공유). cohortSortTuple 사전식 비교. */
+export function cohortGroupCompare(a: string, b: string): number {
+  const ka = cohortSortTuple(a), kb = cohortSortTuple(b);
+  return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
+}
+
 // ── 계약수납 v2 (PR 11 contract-payment-tab) ───────────────────
 // 시트 매핑: docs/domains/sheet-structure.md §4 v2 — 02 계약수납관리 A~AD
 // 자동 연동: 일정·계약 탭 계약 액션 시 04 업체관리!D/G/L에서 C/D/E
