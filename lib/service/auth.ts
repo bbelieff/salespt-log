@@ -150,13 +150,17 @@ export async function claimAccount(
   // claimRegistry 는 prep row(빈 email) 발견 시 그 자리 채움(I~L 보존), 다른
   // 계정으로 점유된 row 있으면 새 row append(같은 spreadsheetId + cached 공유),
   // 신규면 fresh append(cached 포함).
+  // 아레나(A{n}-{m}) 클레임은 명단 확정분(create-arena-members)이라 관리자 승인
+  // 불요 → 즉시 active(P9-A). prep 행이 누락돼 fresh append 되는 경우에도 바로
+  // 로그인 가능. 일반 숫자 기수는 승인 위해 pending 유지.
+  const isArenaClaim = arenaCohortLabelParts(cohortTrim) !== null;
   await claimRegistry(
     email,
     cohortTrim,
     name,
     spreadsheetId,
     "trainee",
-    "pending",
+    isArenaClaim ? "active" : "pending",
     cached,
   );
   // 첫 등록자만 시트 B3/C3 작성 (이미 등록된 사람 있으면 덮어쓰지 않음).
