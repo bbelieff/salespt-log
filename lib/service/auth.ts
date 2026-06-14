@@ -29,7 +29,9 @@ import {
   findExistingSheetIdByCohortName,
   claimRegistry,
   findUserByEmail,
+  isNumericCohortArchived,
 } from "@/repo/users";
+import { getArchivedCohortSet } from "@/repo/cohorts";
 import { writeProfile, readProfileBundle } from "@/repo/sales";
 import { arenaCohortLabelParts } from "@/service/cohort-token";
 import { migrateArenaCarryover } from "@/service/arena-carryover";
@@ -97,9 +99,15 @@ export async function claimAccount(
   name: string,
 ): Promise<ClaimResult> {
   const existing = await findUserByEmail(email);
-  // archived(행 status 또는 cohorts 탭 보관 기수 강등 — rejoin §2)뿐이면
-  // 신규 클레임 진행(아레나 합류 경로). active/pending 만 short-circuit.
-  if (existing && existing.status !== "archived") {
+  // 보관(행 status=archived 또는 cohorts 탭 보관 기수)뿐이면 short-circuit 하지 않고
+  // 신규 클레임 진행(아레나 재참가 합류 — rejoin §2). cohorts read 는 클레임 1회뿐이라
+  // hot-path 아님(findUserByEmail 에선 분리, claim-stuck 2026-06-12).
+  let existingArchived = existing?.status === "archived";
+  if (existing && !existingArchived) {
+    const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
+    existingArchived = isNumericCohortArchived(existing.role, existing.cohort, archivedLabels);
+  }
+  if (existing && !existingArchived) {
     return {
       email: existing.email,
       cohort: existing.cohort,

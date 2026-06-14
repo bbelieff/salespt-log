@@ -19,7 +19,8 @@ import {
   getActiveUserEmail,
   isAdminEmail,
 } from "@/auth/identity";
-import { findUserByEmail } from "@/repo/users";
+import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
+import { getArchivedCohortSet } from "@/repo/cohorts";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
 import PullToRefresh from "@/components/PullToRefresh";
@@ -37,7 +38,13 @@ export default async function AppLayout({
     // 활성 대상(impersonation 적용)이 pending 이면 대기 화면.
     const activeEmail = await getActiveUserEmail();
     const u = await findUserByEmail(activeEmail);
-    if (u && u.status === "archived") redirect("/claim"); // rejoin §1 — 직접 URL 도 차단
+    // 보관(행 status 또는 cohorts 보관 기수) → 클레임 화면 (rejoin §1, 직접 URL 차단).
+    // cohorts read 는 라우팅 지점인 여기서만(hot-path 분리, claim-stuck 2026-06-12).
+    if (u && u.status === "archived") redirect("/claim");
+    if (u && !isAdminEmail(sessionEmail)) {
+      const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
+      if (isNumericCohortArchived(u.role, u.cohort, archivedLabels)) redirect("/claim");
+    }
     if (u && u.status === "pending") {
       return (
         <PendingApprovalScreen

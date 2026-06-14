@@ -8,7 +8,6 @@
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
-import { getArchivedCohortSet } from "./cohorts";
 import { User } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
@@ -92,21 +91,26 @@ export function isNumericCohortArchived(
   return archivedLabels.has(m[1]!) || archivedLabels.has(`${m[1]}기`);
 }
 
-export async function findUserByEmail(email: string): Promise<User | null> {
-  const rows = await cachedRegistryRows();
-  // cohorts 탭 archived 기수의 trainee 행은 라우팅 비활성(rejoin §1, 60s 캐시).
-  const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
+/** email → User. `fresh:true` = 60s 캐시 우회 직접 read (claim 직후 캐시 전파 지연
+ * /claim 루프 차단). ⚠️ cohorts-archived 강등(rejoin §1)은 hot-path quota 폭발
+ * 방지로 여기서 안 함 — 라우팅 지점(page·layout)·claimAccount 에서만 1회 판정
+ * (claim-stuck 2026-06-12). 여기선 행 status="archived" 만 반영. */
+export async function findUserByEmail(
+  email: string,
+  opts?: { fresh?: boolean },
+): Promise<User | null> {
+  const reg = registry();
+  const rows = opts?.fresh
+    ? await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab))
+    : await cachedRegistryRows();
   // 같은 이메일 다중 행 → archived 아닌 행 우선 (carryover §1).
   let archivedFallback: User | null = null;
   for (const r of rows) {
     if (typeof r[0] === "string" && r[0].toLowerCase() === email.toLowerCase()) {
       const u = parseRow(r);
       if (!u) continue;
-      const effArchived =
-        u.status === "archived" ||
-        isNumericCohortArchived(u.role, u.cohort, archivedLabels);
-      if (!effArchived) return u;
-      archivedFallback ??= { ...u, status: "archived" }; // 강등 — 호출부 일관 인지
+      if (u.status !== "archived") return u;
+      archivedFallback ??= u;
     }
   }
   return archivedFallback;

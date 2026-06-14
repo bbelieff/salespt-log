@@ -19,7 +19,8 @@
  *          (POST /api/admin/switch + 클라이언트 router.push("/dashboard")).
  */
 import { redirect } from "next/navigation";
-import { findUserByEmail } from "@/repo/users";
+import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
+import { getArchivedCohortSet } from "@/repo/cohorts";
 import { getSessionEmail, getEffectiveRole } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
@@ -46,11 +47,18 @@ export default async function HomePage() {
   }
 
   // trainee
-  const user = await findUserByEmail(sessionEmail);
+  // null 이면 fresh(캐시 우회) 1회 재확인 — claim 직후 unstable_cache 전파 지연으로
+  // 방금 등록 행을 못 보고 /claim 으로 튕기던 무반응 루프 차단(claim-stuck 2026-06-12).
+  // 정상 사용자는 첫 read 에서 잡혀 fresh read 안 함(quota 영향 최소).
+  let user = await findUserByEmail(sessionEmail);
+  if (!user) user = await findUserByEmail(sessionEmail, { fresh: true });
   if (!user) redirect("/claim");
-  // 보관(archived) — 행 자체 또는 cohorts 탭 보관 기수(rejoin §1).
-  // 옛 시트로 직행하지 않고 클레임 화면으로 (재참가/아레나 합류 경로).
+  // 보관(archived) — 행 자체 또는 cohorts 탭 보관 기수(rejoin §1) → 클레임 화면으로.
+  // cohorts read 는 라우팅 결정 지점인 여기서만(hot-path findUserByEmail 에서 분리,
+  // claim-stuck quota 경감 2026-06-12).
   if (user.status === "archived") redirect("/claim");
+  const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
+  if (isNumericCohortArchived(user.role, user.cohort, archivedLabels)) redirect("/claim");
   // 트레이너처럼 수강생도 admin 승인 필요 (2026-05-12).
   // 기존 active trainee 들은 영향 없음 (이미 status=active).
   if (user.status === "pending") {
