@@ -11,7 +11,7 @@ import {
   dedupKeepIndex,
   arenaCohortCorrection,
 } from "@/repo/user-priority";
-import { cohortGroupKey, cohortSortTuple } from "@/types";
+import { cohortGroupKey, cohortSortTuple, cohortCategory } from "@/types";
 import type { User } from "@/types";
 
 const archived = new Set(["6", "T", "연습", "A1"]); // cohorts 탭에 섞여 있을 수 있는 라벨들
@@ -178,5 +178,16 @@ describe("arenaCohortCorrection (B 숫자→A1-N 교정)", () => {
     expect(arenaCohortCorrection("A1-3", "A1-3")).toBeNull();
     expect(arenaCohortCorrection("8", "8")).toBeNull();
     expect(arenaCohortCorrection("8", "")).toBeNull();
+  });
+});
+
+describe("cohortCategory (수강생/아레나/테스트 분류)", () => {
+  it("A시즌-0=테스트, A시즌-N=아레나, 숫자=수강생", () => {
+    expect(cohortCategory("A1-0")).toBe("테스트");
+    expect(cohortCategory("A1-3")).toBe("아레나");
+    expect(cohortCategory("A2-0")).toBe("테스트");
+    expect(cohortCategory("8")).toBe("수강생");
+    expect(cohortCategory("7")).toBe("수강생");
+    expect(cohortCategory("—")).toBe("수강생");
   });
 });

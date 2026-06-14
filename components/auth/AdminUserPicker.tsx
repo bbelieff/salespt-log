@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cohortGroupKey, cohortGroupCompare } from "@/types";
+import CohortCategoryBoxes from "./CohortCategoryBoxes";
 import {
   type Trainee,
   type Trainer,
@@ -430,23 +431,20 @@ export default function AdminUserPicker({
             viewOnly={viewOnly}
           />
 
-          {activeGroups.map(([cohort, list]) => (
-            <CohortSection
-              key={cohort}
-              cohort={cohort}
-              list={list}
-              busy={busy}
-              nameByEmail={nameByEmail}
-              onPick={pick}
-              onReserve={reserve}
-              onSetTeam={setTeam}
-              onReorder={viewOnly ? undefined : reorder}
-              onAssignTrainers={assignTrainers}
-              activeTrainers={activeTrainers}
-              linkedBySheet={linkedBySheet}
-              viewOnly={viewOnly}
-            />
-          ))}
+          {/* 상위 카테고리 3박스(수강생/아레나/테스트) — admin-cohort-category-boxes. */}
+          <CohortCategoryBoxes
+            activeGroups={activeGroups}
+            busy={busy}
+            nameByEmail={nameByEmail}
+            onPick={pick}
+            onReserve={reserve}
+            onSetTeam={setTeam}
+            onReorder={viewOnly ? undefined : reorder}
+            onAssignTrainers={assignTrainers}
+            activeTrainers={activeTrainers}
+            linkedBySheet={linkedBySheet}
+            viewOnly={viewOnly}
+          />
 
           {archivedGroups.length > 0 && (
             <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">

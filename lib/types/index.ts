@@ -263,6 +263,15 @@ export function cohortGroupCompare(a: string, b: string): number {
   return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
 }
 
+/** 그룹키 → 상위 카테고리. A시즌-0기=테스트(테스터), A시즌-N기=아레나, 그 외 숫자=수강생.
+ *  날짜 추측 없이 라벨의 'A' 접두만으로 결정(admin-cohort-category-boxes). */
+export function cohortCategory(groupKey: string): "수강생" | "아레나" | "테스트" {
+  if (/^A\d+-0$/.test(groupKey)) return "테스트";
+  if (/^A\d+-/.test(groupKey)) return "아레나";
+  return "수강생";
+}
+export const COHORT_CATEGORY_ORDER = ["수강생", "아레나", "테스트"] as const;
+
 // ── 계약수납 v2 (PR 11 contract-payment-tab) ───────────────────
 // 시트 매핑: docs/domains/sheet-structure.md §4 v2 — 02 계약수납관리 A~AD
 // 자동 연동: 일정·계약 탭 계약 액션 시 04 업체관리!D/G/L에서 C/D/E
