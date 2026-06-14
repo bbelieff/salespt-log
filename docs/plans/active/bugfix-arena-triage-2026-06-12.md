@@ -71,6 +71,63 @@ related: arena-carryover-migration, arena-season1-setup, role-system
 - **회귀 테스트**: rejoin-routing.test.ts +9 (isArenaCohortLabel 6 + pickPreferredUser 5,
   옛 기수 먼저여도 아레나 우선·순서 무관·archived fallback). 총 12 pass.
 
+> ⚠️ **P1 ④ backfill 정정 (2026-06-14, 라이브 레지스트리 실측)**: "미등록 → backfill 불필요"는 틀림. 실제로는 ① 신민경·김태현·김우빈·박종훈·고경희·김소라 등 **pending 중복 행 수십 개**, ② 정유영·이재영·김덕호·박준용 등 **B열 숫자(3·1·4)인데 I열·시트는 A1-N** (아레나인데 숫자 분류), ③ **2·5기 cohorts archived 미처리**, ④ 일부 **A1-N prep 행 누락**(예: 신민경이 A1-5 prep에 없음). → 아래 P1b 로 데이터 정리 필요.
+
+### P1b — 레지스트리 오염 데이터 backfill (실데이터 정리)
+```
+세일즈PT — [P1b] 레지스트리 오염 데이터 backfill(중복 pending·cohort 숫자오저장·archived 누락). 브랜치 fix/registry-backfill. SoR: bugfix-arena-triage §0·P1. 선행: P0·P1 배포 완료(아니면 정리해도 재오염).
+
+⚠️ 레지스트리(users·cohorts 탭) 직접 변경 = 파괴적(행 삭제·셀 수정). 반드시 백업+드라이런+확인 후 적용.
+
+[0] 준비
+- SHEETS_REGISTRY_ID 의 users·cohorts 탭 **백업**(시트 복제 또는 값 스냅샷 파일 저장).
+- 라이브라 계속 변하므로 **최신 데이터 재덤프** 후 분석(아래 예시는 참고용, 하드코딩 금지).
+- 모든 변경은 **드라이런(쓰기 0) 프리뷰 출력 → belie 확인 → 적용** 2단계. 변경 건수·대상 row 명시.
+
+[1] pending 중복 정리 (최신/올바른 1행만)
+- trainee 행을 email(소문자) 로 그룹.
+- email당 **1행만 유지**: 우선순위 ① A1-N cohort > 숫자 cohort, ② active > pending, ③ 같으면 마지막(최신) 1개. 나머지 삭제.
+- 트레이너 행·빈email prep 행은 제외([4]).
+- 참고 예시(재덤프로 확정): mymk1005(신민경 A1-5/5 다수), rlaxogus3454(김태현 A1-2/2), kwb105702(김우빈), a01056285798(김소라 ×8), 8기 gusals208457(김현민)/leeyongho9(이용호)/sangjun0420(박상준) 중복.
+
+[2] cohort B열 숫자→A1-N 교정
+- 조건: I열(cohortLabel)=`A1-N` 인데 B열(cohort)=숫자 이고 spreadsheetId 가 아레나 시트인 행 → **B열을 A1-N으로** 교정(I열·시트와 일치).
+- 참고: zzzddz01(정유영 3→A1-3), onjuncenter(이재영 1→A1-1), goodho0401(김덕호 1→A1-1), wnsdyd395333(박준용 4→A1-4).
+
+[3] cohorts 탭 archived 처리
+- type=cohort 행 **2,5 → archived** (현재 archived=연습·T·6·4). 사용자 요청 명시 항목.
+- 권장(확인 후): 1,3 도 archived — 졸업 기수 전부 일관(1·3기 아레나 참가자는 A1-N 행 보유라 라우팅 영향 적으나 일관성 위해).
+
+[4] 누락 prep/연결 점검 (드라이런 리포트만, 자동수정 X)
+- 아레나 명단(arena-season1-setup §4) 대비 **A1-N prep 행 누락자** 리스트(예: 신민경 A1-5 prep 부재). 누락자는 수동 생성/연결로 별도 안내.
+
+[수용 + 실행 전/후 실측]
+- 전/후 카운트 실측: 총 trainee 행 수, email별 최대 행 수(중복 0 확인), B≠I 불일치 행 0, cohorts archived 집합(2·5 포함).
+- 신민경·김태현 실제 로그인 → 올바른 A1-N 시트 진입(P1 라우팅과 결합 확인).
+- dedup·B교정 순수함수 단위테스트. npm run check. PR.
+- Cowork 검증불가 — PC 정본. 백업본 보관.
+```
+
+### P1b 수정 결과 (2026-06-14, fix/registry-backfill)
+- **백업**: users(A:R)·cohorts 값 스냅샷 → `backups/registry-{users,cohorts}-<ts>.json`
+  (gitignore, 로컬 보관). 드라이런 계획도 `backups/p1b-plan-<ts>.json`.
+- **실데이터가 스펙 예시와 상이**(재덤프 확정): 스펙이 든 신민경·김소라×8 등 대량
+  중복은 **현재 없음**(P0~P3 사이 라이브 변동). 실제 정리 대상은 소수:
+  - **[1] 중복 3행 삭제**(belie 확인): 김미란·조정욱·신다혜 옛 6기 archived
+    (각 A1-6 active 유지). 화이트리스트 3 email + cohort=6 + archived 검증 후만 삭제
+    (라이브 행번호 밀림·재오염 안전, active 아레나 절대 보호).
+  - **[2] B교정 4건**: 정유영(3→A1-3)·이재영(1→A1-1)·김덕호(1→A1-1)·박준용(4→A1-4).
+    I열·시트가 A1-N인데 B만 숫자 오저장 → B를 I와 일치.
+  - **[3] cohorts archived 추가**(belie 확인 1·2·3·5): cohorts 탭에 해당 행이 아예
+    없어 신규 추가. 결과 집합 [연습,T,6,4,1,2,3,5].
+- **후 카운트 검증**: trainee 29→26, email별 최대 1(중복 0), B≠I 0,
+  김미란·조정욱·신다혜 = A1-6/active만. cohorts archived 1·2·3·5 포함.
+- **순수함수 + 테스트**: `dedupKeepIndex`·`arenaCohortCorrection`(user-priority.ts) +
+  rejoin-routing.test.ts +5 (총 22 pass). 데이터 적용은 1회 스크립트(PR 미포함).
+- **[4] prep 누락(후속)**: 신민경 A1-5 등 prep 행 부재 가능 — 자동수정 대상 아님,
+  아레나 명단 대비 수동 점검·생성 별도 진행.
+- 신민경·김태현 실제 로그인 확인은 본인 클레임 발생 시 P1 라우팅으로 검증(현재 미등록).
+
 ## P2 — [1-3] 트레이너/수강생 관리 그룹핑 (A1-N기 묶기, 회장=이모지)
 ```
 세일즈PT — [P2] 관리 화면 아레나 그룹핑 정정. 브랜치 fix/admin-arena-grouping. SoR: §0. 선행: P1(cohort 일관화).

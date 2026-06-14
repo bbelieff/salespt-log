@@ -5,7 +5,12 @@
  */
 import { describe, it, expect } from "vitest";
 import { isNumericCohortArchived } from "@/repo/users";
-import { isArenaCohortLabel, pickPreferredUser } from "@/repo/user-priority";
+import {
+  isArenaCohortLabel,
+  pickPreferredUser,
+  dedupKeepIndex,
+  arenaCohortCorrection,
+} from "@/repo/user-priority";
 import { cohortGroupKey, cohortSortTuple } from "@/types";
 import type { User } from "@/types";
 
@@ -122,5 +127,45 @@ describe("cohortSortTuple (아레나 우선·시즌기수 asc·일반 desc)", ()
       return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
     });
     expect(sorted).toEqual(["A1-1", "A1-6", "8", "6", "관리"]);
+  });
+});
+
+describe("dedupKeepIndex (중복 행 유지 대상)", () => {
+  it("아레나 active > 옛 숫자 archived — 아레나 유지", () => {
+    // 김미란 케이스: row13(6,archived) + row62(A1-6,active) → A1-6 유지
+    const rows = [
+      { cohort: "6", status: "archived" },
+      { cohort: "A1-6", status: "active" },
+    ];
+    expect(dedupKeepIndex(rows)).toBe(1);
+    // 순서 반대여도 아레나 active 유지
+    expect(dedupKeepIndex([rows[1]!, rows[0]!])).toBe(0);
+  });
+  it("동점이면 마지막(최신) 유지", () => {
+    const rows = [
+      { cohort: "8", status: "active" },
+      { cohort: "8", status: "active" },
+    ];
+    expect(dedupKeepIndex(rows)).toBe(1);
+  });
+  it("아레나 없으면 active > pending", () => {
+    const rows = [
+      { cohort: "5", status: "pending" },
+      { cohort: "5", status: "active" },
+    ];
+    expect(dedupKeepIndex(rows)).toBe(1);
+  });
+});
+
+describe("arenaCohortCorrection (B 숫자→A1-N 교정)", () => {
+  it("B 숫자 + I 아레나 → 교정값", () => {
+    expect(arenaCohortCorrection("3", "A1-3")).toBe("A1-3");
+    expect(arenaCohortCorrection("1", "A1-1기")).toBe("A1-1");
+    expect(arenaCohortCorrection("4기", "A1-4")).toBe("A1-4");
+  });
+  it("이미 일관(B 아레나)·I 숫자·둘다 숫자 → null(교정 불필요)", () => {
+    expect(arenaCohortCorrection("A1-3", "A1-3")).toBeNull();
+    expect(arenaCohortCorrection("8", "8")).toBeNull();
+    expect(arenaCohortCorrection("8", "")).toBeNull();
   });
 });

@@ -15,6 +15,32 @@ export function isArenaCohortLabel(cohort: string): boolean {
   return /^A\d+-\d+/.test(String(cohort).trim());
 }
 
+/** dedup: 같은 email 다중 행 중 **유지할** 행 index. 우선순위 ① 아레나 > 숫자,
+ * ② active > 그외, ③ 같으면 마지막(최신). 나머지는 삭제 대상(registry-backfill §1). */
+export function dedupKeepIndex(
+  rows: { cohort: string; status: string }[],
+): number {
+  const score = (x: { cohort: string; status: string }) =>
+    (isArenaCohortLabel(x.cohort) ? 2 : 0) + (x.status === "active" ? 1 : 0);
+  let best = 0;
+  for (let i = 1; i < rows.length; i++) {
+    // 점수 높은 쪽, 같으면 뒤(최신) 우선.
+    if (score(rows[i]!) >= score(rows[best]!)) best = i;
+  }
+  return best;
+}
+
+/** B(cohort) 숫자인데 I(label) 아레나(A{n}-{m}) → 교정값(A{n}-{m}) 반환, 아니면 null.
+ * 시트·I열이 진실, B열만 옛 숫자로 오저장된 경우 정합(registry-backfill §2). */
+export function arenaCohortCorrection(
+  cohort: string,
+  label: string,
+): string | null {
+  const b = String(cohort).replace(/기\s*$/, "").trim();
+  const l = String(label).replace(/기\s*$/, "").trim();
+  return /^\d+$/.test(b) && /^A\d+-\d+$/.test(l) ? l : null;
+}
+
 /** 우선순위: 아레나 non-archived > 숫자 non-archived > archived fallback. */
 export function pickPreferredUser(users: User[]): User | null {
   let active: User | null = null;
