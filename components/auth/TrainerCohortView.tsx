@@ -125,7 +125,7 @@ export default function TrainerCohortView({
   );
 
   /** active vs archived 기수 분리 + 기수번호 desc 정렬 (visibleTrainees 기준). */
-  const { activeGroups, archivedGroups } = useMemo(() => {
+  const { activeGroups, generalActive, arenaSeasons, archivedGroups } = useMemo(() => {
     const activeMap = new Map<string, Trainee[]>();
     const archivedMap = new Map<string, Trainee[]>();
     for (const u of visibleTrainees) {
@@ -137,8 +137,20 @@ export default function TrainerCohortView({
     }
     const sortFn = (a: [string, Trainee[]], b: [string, Trainee[]]) =>
       cohortGroupCompare(a[0], b[0]);
+    const active = Array.from(activeMap.entries()).sort(sortFn);
+    // 아레나(A{n}-{m})는 시즌(A{n}) 컨테이너로 묶고, 일반 숫자기수는 박스 밖(§P11).
+    const isArena = (c: string) => /^A\d+-\d+/.test(c);
+    const seasonMap = new Map<string, [string, Trainee[]][]>();
+    for (const grp of active.filter(([c]) => isArena(c))) {
+      const sn = grp[0].split("-")[0]!;
+      const arr = seasonMap.get(sn) ?? [];
+      arr.push(grp);
+      seasonMap.set(sn, arr);
+    }
     return {
-      activeGroups: Array.from(activeMap.entries()).sort(sortFn),
+      activeGroups: active,
+      generalActive: active.filter(([c]) => !isArena(c)),
+      arenaSeasons: Array.from(seasonMap.entries()),
       archivedGroups: Array.from(archivedMap.entries()).sort(sortFn),
     };
   }, [visibleTrainees, archivedSet]);
@@ -242,8 +254,8 @@ export default function TrainerCohortView({
           <p className="text-sm text-gray-400">등록된 수강생이 없습니다.</p>
         )}
 
-        {/* 활성 기수 */}
-        {activeGroups.map(([cohort, list]) => (
+        {/* 활성 기수 — 일반 숫자기수(박스 밖) + 아레나 시즌 컨테이너 박스 */}
+        {generalActive.map(([cohort, list]) => (
           <CohortSection
             key={cohort}
             cohort={cohort}
@@ -258,6 +270,34 @@ export default function TrainerCohortView({
             viewOnly
             trainerEmailLc={trainerEmailLc}
           />
+        ))}
+        {arenaSeasons.map(([season, groups]) => (
+          <div
+            key={season}
+            className="rounded-2xl border-2 border-purple-200 bg-purple-50 p-3"
+          >
+            <div className="mb-2 px-1 text-sm font-black text-purple-800">
+              아레나 시즌{season.replace(/^A/, "")}
+            </div>
+            <div className="space-y-4">
+              {groups.map(([cohort, list]) => (
+                <CohortSection
+                  key={cohort}
+                  cohort={cohort}
+                  list={list}
+                  busy={busy}
+                  nameByEmail={nameByEmail}
+                  onPick={pick}
+                  onReserve={noop}
+                  onSetTeam={noop}
+                  activeTrainers={activeTrainers}
+                  linkedBySheet={linkedBySheet}
+                  viewOnly
+                  trainerEmailLc={trainerEmailLc}
+                />
+              ))}
+            </div>
+          </div>
         ))}
 
         {/* 보관된 기수 — collapsed (details) */}
