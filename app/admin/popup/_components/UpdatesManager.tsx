@@ -83,12 +83,13 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
         배포할 때마다 자동으로 쌓여요. 문구를 수강생이 읽기 쉽게 다듬고, 보여줄지 정하세요.
       </p>
 
-      {/* 열 헤더 — 본문 컬럼폭과 1:1 정렬(P15-fix). */}
+      {/* 열 헤더 — 데스크탑(pc:)만. 모바일은 카드 자체 라벨이라 헤더 불필요.
+          순서는 본문 데스크탑 컬럼(유형·#·날짜·내용·마일스톤·노출)과 1:1. */}
       {rows.length > 0 && (
-        <div className="flex items-center gap-2 border-b border-gray-100 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+        <div className="hidden items-center gap-2 border-b border-gray-100 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400 pc:flex">
+          <span className="w-10 shrink-0">유형</span>
           <span className="w-10 shrink-0">#</span>
           <span className="w-16 shrink-0">날짜</span>
-          <span className="w-10 shrink-0">유형</span>
           <span className="min-w-0 flex-1">내용</span>
           <span className="w-28 shrink-0">마일스톤</span>
           <span className="w-24 shrink-0 text-center">노출</span>
@@ -101,63 +102,73 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
           return (
             <li
               key={u.pr}
-              className={`flex items-center gap-2 rounded-lg border-l-4 py-2 pl-2 pr-2 ${
+              className={`flex flex-col gap-2 rounded-lg border-l-4 py-2 pl-2 pr-2 pc:flex-row pc:items-center pc:gap-2 ${
                 dirty ? "border-yellow-400 bg-yellow-50" : "border-transparent"
               }`}
             >
-              <span className="w-10 shrink-0 text-xs font-bold text-gray-400">#{u.pr}</span>
-              <span className="w-16 shrink-0 truncate text-xs text-gray-400">{u.date}</span>
-              <span
-                className={`w-10 shrink-0 rounded-full px-1 py-0.5 text-center text-[10px] font-bold ${
-                  u.type === "feat" || u.type === "fix"
-                    ? "bg-red-50 text-brand-red"
-                    : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                {u.type || "-"}
-              </span>
-              {/* 제목 — flex-1 min-w-0 로 긴 제목이 우측을 밀어내지 않음. */}
+              {/* 메타줄 — 모바일: [유형·#·날짜](좌) ↔ [노출](우) 한 줄.
+                  데스크탑: pc:contents 로 펼쳐 각 컬럼이 li 의 직접 flex 자식이 됨. */}
+              <div className="flex items-center justify-between gap-2 pc:contents">
+                <div className="flex items-center gap-2 pc:contents">
+                  <span
+                    className={`shrink-0 rounded-full px-1 py-0.5 text-center text-[10px] font-bold pc:w-10 ${
+                      u.type === "feat" || u.type === "fix"
+                        ? "bg-red-50 text-brand-red"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {u.type || "-"}
+                  </span>
+                  <span className="shrink-0 text-xs font-bold text-gray-400 pc:w-10">
+                    #{u.pr}
+                  </span>
+                  <span className="shrink-0 truncate text-xs text-gray-400 pc:w-16">
+                    {u.date}
+                  </span>
+                </div>
+                {/* 노출 라벨 + 표준 스위치 — 모바일 우측, 데스크탑 끝 컬럼(pc:order-last, w-24). */}
+                <div className="flex shrink-0 items-center justify-end gap-2 pc:order-last pc:w-24">
+                  <span
+                    className={`w-7 text-right text-[11px] font-bold ${
+                      u.visible ? "text-brand-red" : "text-gray-400"
+                    }`}
+                  >
+                    {u.visible ? "노출" : "숨김"}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={u.visible}
+                    aria-label="노출 여부"
+                    title={u.visible ? "노출 중 (눌러서 숨김)" : "숨김 (눌러서 노출)"}
+                    onClick={() => edit(u.pr, { visible: !u.visible })}
+                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
+                      u.visible ? "bg-brand-red" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                        u.visible ? "translate-x-5" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* 제목 — 모바일 w-full, 데스크탑 flex-1(긴 제목이 우측 안 밂). */}
               <input
-                className="h-9 min-w-0 flex-1 rounded-lg border border-gray-200 px-2 text-sm text-gray-900 focus:border-red-300 focus:outline-none"
+                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm text-gray-900 focus:border-red-300 focus:outline-none pc:min-w-0 pc:flex-1"
                 value={u.titleUser}
                 onChange={(e) => edit(u.pr, { titleUser: e.target.value })}
                 placeholder="수강생이 읽는 한 줄"
               />
-              {/* 우측 고정폭 묶음 — 절대 줄어들지 않음(shrink-0). */}
+              {/* 마일스톤 — 모바일 w-full, 데스크탑 w-28 고정. */}
               <input
-                className="h-9 w-28 shrink-0 rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none"
+                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none pc:w-28 pc:shrink-0"
                 value={u.milestone}
                 onChange={(e) => edit(u.pr, { milestone: e.target.value })}
-                placeholder="마일스톤"
+                placeholder="마일스톤 (선택)"
               />
-              {/* 노출 상태 라벨(버튼 바깥) + 표준 스위치 — knob 절대좌표 없이
-                  inline-flex + transform. 헤더 "노출" w-24 와 1:1 정렬. */}
-              <div className="flex w-24 shrink-0 items-center justify-end gap-2">
-                <span
-                  className={`w-7 text-right text-[11px] font-bold ${
-                    u.visible ? "text-brand-red" : "text-gray-400"
-                  }`}
-                >
-                  {u.visible ? "노출" : "숨김"}
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={u.visible}
-                  aria-label="노출 여부"
-                  title={u.visible ? "노출 중 (눌러서 숨김)" : "숨김 (눌러서 노출)"}
-                  onClick={() => edit(u.pr, { visible: !u.visible })}
-                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-                    u.visible ? "bg-brand-red" : "bg-gray-300"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                      u.visible ? "translate-x-5" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-              </div>
             </li>
           );
         })}
