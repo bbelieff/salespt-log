@@ -25,3 +25,6 @@ next-env.d.ts
 .bkit/
 backups/
 졸업생총회_발표자료/
+
+# 1회성 마이그레이션 백업(PII — 커밋 금지)
+scripts/_backup-*.json
