@@ -18,7 +18,9 @@ related: sheet-structure, components, tokens, arena-season1-setup
 ## 0. 개요 (2026-06-11 사용자 확정)
 - 접속 시 팝업 1개: **상단 공지 섹션**(운영자 작성, 이미지 가능) + **"새로워졌어요" 업데이트 목록**(최근 노출 10개, 제목 클릭 → 아코디언 펼침, 스크롤).
 - 수집 = **배포 시 자동 기록**(매일 폴링 아님). 번호 = **PR번호 기본 + 마일스톤 라벨**(시맨틱 버전 안 씀).
-- 공지 이미지 = **Drive 업로드까지 포함**(belie OAuth). HTML 직접 입력은 XSS 위험으로 제외 — **MD + sanitize**.
+- 공지 이미지 = **Drive 업로드까지 포함**(belie OAuth). ~~HTML 직접 입력은 XSS 위험으로 제외 — MD + sanitize.~~
+  → **2026-06-15 격상(ADR-0017)**: 리치 에디터(tiptap) 도입으로 본문 = **HTML + DOMPurify 소독**.
+  렌더는 `NoticeContentView`(HTML→RichContentView 소독 / 레거시 MD→MarkdownView 하위호환). 저장·렌더 양쪽 소독.
 - 문구는 토스 UX 라이팅 원칙: 쉬운 말, 사용자 혜택 중심("~할 수 있어요"), 짧은 능동형 문장.
 
 ## 1. 저장 설계 — 레지스트리 시트에 새 탭 2개

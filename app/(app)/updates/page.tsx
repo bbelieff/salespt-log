@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import TopHeader from "@/components/TopHeader";
 import PageContainer from "@/components/PageContainer";
 import UpdateAccordion from "@/components/announcements/UpdateAccordion";
-import MarkdownView from "@/components/announcements/MarkdownView";
+import NoticeContentView from "@/components/announcements/NoticeContentView";
 import type { Notice, UpdateItem } from "@/types";
 
 const PAGE = 15;
@@ -109,7 +109,7 @@ export default function UpdatesArchivePage() {
                         {noticeDate(n)}
                       </p>
                     )}
-                    <MarkdownView markdown={n.bodyMd} />
+                    <NoticeContentView content={n.bodyMd} />
                   </article>
                 ))}
               </div>

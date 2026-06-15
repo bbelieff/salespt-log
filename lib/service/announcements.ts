@@ -21,6 +21,7 @@ import {
 import { uploadNoticeImage } from "@/repo/drive-txt";
 import { findUserByEmail } from "@/repo/users";
 import { Notice, UpdateItem } from "@/types";
+import { sanitizeNoticeHtml } from "@/lib/notice-html";
 import { groupUpdates } from "./update-groups";
 
 const VISIBLE_LIMIT = 6;
@@ -161,6 +162,8 @@ export async function saveNoticeAdmin(
   const existing = input.id?.trim();
   const notice = Notice.parse({
     ...input,
+    // 본문 HTML 은 저장 직전 서버에서 소독(심층 방어 — 클라만 믿지 않음, ADR-0017).
+    bodyMd: sanitizeNoticeHtml(input.bodyMd ?? ""),
     id: existing || `n-${Date.now()}`,
     created: existing ? (input as { created?: string }).created || now : now,
     updated: now,
