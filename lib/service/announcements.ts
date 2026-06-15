@@ -52,6 +52,29 @@ export function filterNoticesFor(
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (a.id < b.id ? 1 : -1));
 }
 
+/** 보관함(/updates) 공지용 순수 필터 — 팝업과 달리 만료(end<today)도 포함해
+ *  '지난 공지 다시보기'. 미래(start>today) 제외, active·audience 매칭, 날짜 desc. */
+export function filterNoticesArchiveFor(
+  notices: Notice[],
+  opts: { isArena: boolean; today: string },
+): Notice[] {
+  const dateOf = (n: Notice) => n.start || n.created || "";
+  return notices
+    .filter((n) => {
+      if (!n.active) return false;
+      if (n.start && opts.today < n.start) return false; // 미래 공지 제외
+      if (n.audience === "arena" && !opts.isArena) return false;
+      if (n.audience === "regular" && opts.isArena) return false;
+      return true; // 만료(end<today) 포함
+    })
+    .sort((a, b) => {
+      const da = dateOf(a);
+      const db = dateOf(b);
+      if (da !== db) return da < db ? 1 : -1; // 날짜 desc
+      return a.id < b.id ? 1 : -1; // 동일 날짜 tie-break: id desc
+    });
+}
+
 /** 순수 필터 — visible=TRUE 최신(pr desc) 6개. */
 export function pickVisibleUpdates(updates: UpdateItem[]): UpdateItem[] {
   // 묶음(§7-4): limit 은 "항목(그룹=1)" 단위 — 항목 6개에 속한 행 전부 반환,
@@ -76,6 +99,16 @@ export async function listUpdatesArchive(
     rows: visible.filter((u) => keep.has(u.pr)).sort((a, b) => b.pr - a.pr),
     totalItems: groups.length,
   };
+}
+
+/** 보관함 공지 — 사용자 audience 매칭 + 만료 포함(지난 공지 다시보기), 날짜 desc. */
+export async function listNoticesArchiveFor(email: string): Promise<Notice[]> {
+  const [tabs, user] = await Promise.all([
+    cachedTabs(),
+    findUserByEmail(email).catch(() => null),
+  ]);
+  const isArena = isArenaAudienceCohort(user?.cohort);
+  return filterNoticesArchiveFor(tabs.notices, { isArena, today: todayKST() });
 }
 
 // 탭 read 10분 캐시 — me-bundle 과 동일 패턴. admin 이 수정하면 다음 갱신에 반영
