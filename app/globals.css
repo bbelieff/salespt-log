@@ -204,3 +204,62 @@ body {
    PersistentDetails.tsx 가 직접 처리 — 전 브라우저(iOS Safari·삼성인터넷 포함)
    동작. 이전 `::details-content` CSS 방식은 Chrome 131+ 전용이라 모바일에서
    애니메이션 안 되던 사고(2026-05-14) 후 제거. */
+
+/* 공지 리치 본문 (notice-rich-editor / ADR-0017) — 에디터(EditorContent)와
+   렌더(RichContentView) 공용. Tailwind preflight 가 지운 list-style·heading 복원.
+   허용 서식(목록/제목/하이라이트/링크/이미지)만 스타일. */
+.notice-rich {
+  line-height: 1.6;
+  word-break: break-word;
+}
+.notice-rich p {
+  margin: 0 0 0.5rem;
+}
+.notice-rich p:last-child {
+  margin-bottom: 0;
+}
+.notice-rich ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0 0 0.5rem;
+}
+.notice-rich ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0 0 0.5rem;
+}
+.notice-rich li {
+  margin: 0.125rem 0;
+}
+.notice-rich h1 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0.5rem 0;
+}
+.notice-rich h2 {
+  font-size: 1.125rem;
+  font-weight: 800;
+  margin: 0.5rem 0;
+}
+.notice-rich h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+.notice-rich a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.notice-rich mark {
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.notice-rich img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.25rem 0;
+}
+.notice-rich:focus {
+  outline: none;
+}

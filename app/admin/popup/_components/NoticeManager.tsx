@@ -1,17 +1,22 @@
 /**
  * NoticeManager — admin 공지 작성/수정 (announcement-popup §4 상단).
  *
- * 목록에서 선택 → 폼 로드(수정), [새 공지] → 빈 폼. MD 에디터는 편집/미리보기
- * 토글(MarkdownView — 수강생 팝업과 동일 렌더). [🖼 이미지] = 파일 선택 →
- * POST /api/admin/notice-image → 반환 URL 을 MD 이미지 문법으로 커서 위치 삽입.
- * 저장 = POST /api/admin/announcements (upsert + 수강생 캐시 무효화).
+ * 목록에서 선택 → 폼 로드(수정), [새 공지] → 빈 폼. 본문은 리치 에디터
+ * (RichNoticeEditor — tiptap WYSIWYG, 출력 HTML). 이미지는 에디터 툴바에서 삽입.
+ * 저장 = POST /api/admin/announcements (서버에서 HTML 소독 후 upsert + 캐시 무효화).
  */
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { Notice } from "@/types";
-import MarkdownView from "@/components/announcements/MarkdownView";
+
+// tiptap 은 SSR 비호환 → 클라 전용 동적 로드.
+const RichNoticeEditor = dynamic(
+  () => import("@/components/announcements/RichNoticeEditor"),
+  { ssr: false, loading: () => <div className="min-h-32 rounded-lg border border-gray-200 bg-gray-50" /> },
+);
 
 const EMPTY = {
   id: "",
@@ -33,37 +38,13 @@ const inputCls =
 export default function NoticeManager({ initialNotices }: { initialNotices: Notice[] }) {
   const router = useRouter();
   const [form, setForm] = useState<Form>(EMPTY);
-  const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const set = (p: Partial<Form>) => setForm((f) => ({ ...f, ...p }));
 
   function load(n: Notice) {
     setForm({ ...n });
-    setPreview(false);
     setMsg("");
-  }
-
-  async function uploadImage(file: File) {
-    setBusy(true);
-    setMsg("이미지 올리는 중…");
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/admin/notice-image", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `업로드 ${res.status}`);
-      const md = `\n![이미지](${data.url})\n`;
-      const ta = bodyRef.current;
-      const pos = ta?.selectionStart ?? form.bodyMd.length;
-      set({ bodyMd: form.bodyMd.slice(0, pos) + md + form.bodyMd.slice(pos) });
-      setMsg("이미지를 본문에 넣었어요.");
-    } catch (e) {
-      setMsg(`이미지 업로드 실패: ${e instanceof Error ? e.message : "unknown"}`);
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function save(overrides?: Partial<Form>) {
@@ -143,50 +124,8 @@ export default function NoticeManager({ initialNotices }: { initialNotices: Noti
           onChange={(e) => set({ title: e.target.value })}
         />
 
-        <div className="flex items-center gap-2">
-          <div className="grid flex-1 grid-cols-2 gap-1 rounded-full bg-gray-100 p-1">
-            {(["편집", "미리보기"] as const).map((m, i) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setPreview(i === 1)}
-                className={`h-7 rounded-full text-xs font-bold ${
-                  preview === (i === 1) ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-          <label className="cursor-pointer rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50">
-            🖼 이미지
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={busy}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void uploadImage(f);
-                e.target.value = "";
-              }}
-            />
-          </label>
-        </div>
-
-        {preview ? (
-          <div className="min-h-24 rounded-lg border border-gray-100 bg-red-50 p-3">
-            <MarkdownView markdown={form.bodyMd || "(본문이 비어 있어요)"} />
-          </div>
-        ) : (
-          <textarea
-            ref={bodyRef}
-            className="min-h-32 w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-300 focus:border-red-300 focus:outline-none"
-            placeholder={"공지 본문 (마크다운)\n이미지는 [🖼 이미지] 버튼으로 넣을 수 있어요."}
-            value={form.bodyMd}
-            onChange={(e) => set({ bodyMd: e.target.value })}
-          />
-        )}
+        {/* 리치 에디터 (WYSIWYG) — 굵게·밑줄·색·형광펜·목록·링크·이미지. 출력=HTML. */}
+        <RichNoticeEditor value={form.bodyMd} onChange={(html) => set({ bodyMd: html })} />
 
         {/* 노출 옵션 */}
         <div className="grid grid-cols-2 gap-2 2xl:grid-cols-4">

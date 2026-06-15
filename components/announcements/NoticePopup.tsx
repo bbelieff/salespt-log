@@ -9,7 +9,7 @@
 "use client";
 
 import type { Notice, UpdateItem } from "@/types";
-import MarkdownView from "./MarkdownView";
+import NoticeContentView from "./NoticeContentView";
 import UpdateAccordion from "./UpdateAccordion";
 
 interface Props {
@@ -55,7 +55,7 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
                 {n.pinned && <span aria-label="고정 공지">📌</span>}
                 {n.title}
               </h4>
-              <MarkdownView markdown={n.bodyMd} />
+              <NoticeContentView content={n.bodyMd} />
             </section>
           ))}
 
