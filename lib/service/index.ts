@@ -105,6 +105,7 @@ export {
 export {
   getAnnouncementsFor,
   listUpdatesArchive,
+  listNoticesArchiveFor,
   listAnnouncementsAdmin,
   saveNoticeAdmin,
   patchUpdateAdmin,

@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  filterNoticesArchiveFor,
   filterNoticesFor,
   isArenaAudienceCohort,
   pickVisibleUpdates,
@@ -56,6 +57,43 @@ describe("filterNoticesFor", () => {
       notice({ id: "a", pinned: true }),
     ];
     expect(filterNoticesFor(list, { isArena: false, today })[0]!.id).toBe("a");
+  });
+});
+
+describe("filterNoticesArchiveFor", () => {
+  const today = "2026-06-11";
+
+  it("만료(end<today) 공지 포함, 미래(start>today)·active=false 제외", () => {
+    const list = [
+      notice({ id: "off", active: false }),
+      notice({ id: "future", start: "2026-07-01" }),
+      notice({ id: "expired", start: "2026-05-01", end: "2026-05-10" }), // 만료 → 포함
+      notice({ id: "open" }),
+    ];
+    const got = filterNoticesArchiveFor(list, { isArena: false, today }).map((n) => n.id);
+    expect(got.sort()).toEqual(["expired", "open"]);
+  });
+
+  it("audience — arena 사용자: regular 제외 / 일반: arena 제외", () => {
+    const list = [
+      notice({ id: "all", audience: "all" }),
+      notice({ id: "arena", audience: "arena" }),
+      notice({ id: "regular", audience: "regular" }),
+    ];
+    expect(filterNoticesArchiveFor(list, { isArena: true, today }).map((n) => n.id).sort())
+      .toEqual(["all", "arena"]);
+    expect(filterNoticesArchiveFor(list, { isArena: false, today }).map((n) => n.id).sort())
+      .toEqual(["all", "regular"]);
+  });
+
+  it("날짜(start||created) desc 정렬", () => {
+    const list = [
+      notice({ id: "old", start: "2026-05-01" }),
+      notice({ id: "new", start: "2026-06-09" }),
+      notice({ id: "mid", created: "2026-06-01T00:00:00Z" }), // start 빈값 → created 사용
+    ];
+    expect(filterNoticesArchiveFor(list, { isArena: false, today }).map((n) => n.id))
+      .toEqual(["new", "mid", "old"]);
   });
 });
 
