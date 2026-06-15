@@ -51,8 +51,12 @@ export interface MeProfile {
 
 /** 레지스트리 cohort 가 아레나(A시즌-...)면 표시 cohort 를 시트 B3/캐시로 덮지 않는다
  * (아레나는 레지스트리 A1-N 이 SSOT — 시트 B3 에 옛 기수 "4"/"3" 잔존 시 오분류 방지,
- * arena-cohort-display). name·날짜는 시트값 유지, 기수만 보호. */
+ * arena-cohort-display). 날짜는 시트값 유지, 기수·부부명은 보호. */
 const isArenaReg = (c: string) => /^A\d+-/.test(String(c ?? "").trim());
+
+/** 부부 괄호명("정유영(조성도)") — 시트 C3 단일명으로 덮으면 동반자명이 잘리므로 보호.
+ * 아레나 행이거나 괄호 부부명이면 레지스트리 name 유지. */
+const isCoupleName = (n: string) => String(n ?? "").includes("(");
 
 function toISO(d: Date): string {
   const y = d.getFullYear();
@@ -192,7 +196,10 @@ export async function enrichUsersWithSheetCohort<T extends { cohort: string; nam
       return {
         ...u,
         cohort: isArenaReg(u.cohort) ? u.cohort : bundle.cohort || u.cohort,
-        name: bundle.name || u.name,
+        name:
+          isArenaReg(u.cohort) || isCoupleName(u.name)
+            ? u.name
+            : bundle.name || u.name,
       };
     } catch (e) {
       // 시트 접근 실패 — registry 값 그대로 사용.
@@ -249,7 +256,10 @@ export async function enrichUsersWithDates<
       return {
         ...u,
         cohort: isArenaReg(u.cohort) ? u.cohort : u.cohortLabel ?? u.cohort,
-        name: u.nameLabel ?? u.name,
+        name:
+          isArenaReg(u.cohort) || isCoupleName(u.name)
+            ? u.name
+            : u.nameLabel ?? u.name,
         courseStartISO: u.courseStartISO ?? "",
         graduationISO: u.graduationISO ?? "",
       };
@@ -266,7 +276,10 @@ export async function enrichUsersWithDates<
       return {
         ...u,
         cohort: isArenaReg(u.cohort) ? u.cohort : bundle.cohort || u.cohort,
-        name: bundle.name || u.name,
+        name:
+          isArenaReg(u.cohort) || isCoupleName(u.name)
+            ? u.name
+            : bundle.name || u.name,
         courseStartISO: toISO(bundle.courseStart),
         graduationISO: toISO(bundle.graduation),
       };
