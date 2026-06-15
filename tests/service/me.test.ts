@@ -68,4 +68,36 @@ describe("enrichUsersWithDates — 아레나 cohort 보호 (arena-cohort-display
     ]);
     expect(r!.cohort).toBe("8기");
   });
+
+  it("아레나 부부명 보호 — cohort=A1-3·시트 B3=3·C3=정유영 → A1-3·정유영(조성도) 유지", async () => {
+    const [r] = await enrichUsersWithDates([
+      {
+        cohort: "A1-3",
+        name: "정유영(조성도)", // 레지스트리 SSOT (부부 괄호명)
+        spreadsheetId: "sheet-z",
+        cohortLabel: "3", // 시트 B3 옛 기수
+        nameLabel: "정유영", // 시트 C3 단일명 (동반자 잘림)
+        courseStartISO: "2026-06-12",
+        graduationISO: "2026-08-01",
+      },
+    ]);
+    expect(r!.cohort).toBe("A1-3");
+    expect(r!.name).toBe("정유영(조성도)");
+  });
+
+  it("일반 기수 이름은 기존대로 시트값(nameLabel)으로 덮임", async () => {
+    const [r] = await enrichUsersWithDates([
+      {
+        cohort: "7",
+        name: "홍길동", // 레지스트리(괄호 없음·비아레나)
+        spreadsheetId: "sheet-w",
+        cohortLabel: "7기",
+        nameLabel: "홍길동수정", // 시트 C3 = 표시 정본
+        courseStartISO: "2026-06-12",
+        graduationISO: "2026-08-01",
+      },
+    ]);
+    expect(r!.cohort).toBe("7기");
+    expect(r!.name).toBe("홍길동수정");
+  });
 });
