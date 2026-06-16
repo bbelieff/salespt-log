@@ -24,7 +24,7 @@ export default function LoadingOverlay({
       className="fixed inset-0 z-[400] flex items-center justify-center"
     >
       <div className="lo-dim absolute inset-0" />
-      <div className="lo-card relative flex w-56 flex-col items-center gap-4 rounded-2xl px-8 py-7">
+      <div className="lo-card relative flex w-auto min-w-56 max-w-sm flex-col items-center gap-4 rounded-2xl px-8 py-7">
         <div className="lo-ring relative h-20 w-20">
           <span className="lo-ring-spin absolute inset-0 rounded-full" aria-hidden />
           <span className="lo-orbit absolute inset-0" aria-hidden />
@@ -32,7 +32,7 @@ export default function LoadingOverlay({
             S
           </span>
         </div>
-        <p key={message} className="lo-msg text-center text-sm font-bold text-white/90">
+        <p key={message} className="lo-msg whitespace-nowrap text-center text-sm font-bold text-white/90">
           {message}
         </p>
         <span className="lo-progress" aria-hidden />
