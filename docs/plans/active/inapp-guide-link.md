@@ -29,5 +29,7 @@ related: announcement-popup
 ## 검증
 - env 설정 시 버튼 노출+노션 새 탭 / 미설정 시 숨김. 모바일·데스크탑 정렬. typecheck/lint/test green.
 
+- 2026-06-16 운영 URL 설정: .env.production 에 NEXT_PUBLIC_GUIDE_URL(노션 공개 URL) 커밋(공개값만, 시크릿 금지). 빌드 인라인 확인. .env.example 문서화.
+
 ## 상태
 - 2026-06-16 진행(feat/inapp-guide-link). VPS·.env.local NEXT_PUBLIC_GUIDE_URL 은 belie 입력.
