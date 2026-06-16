@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useGlobalLoading } from "@/components/ui/LoadingProvider";
 import { cohortGroupKey, cohortGroupCompare } from "@/types";
 import CohortCategoryBoxes from "./CohortCategoryBoxes";
 import {
@@ -43,6 +44,7 @@ export default function AdminUserPicker({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { show, hide } = useGlobalLoading();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -53,8 +55,8 @@ export default function AdminUserPicker({
     body: Record<string, unknown>,
     targetEmail: string,
   ): Promise<boolean> {
-    setBusy(targetEmail);
-    setError(null);
+    setBusy(targetEmail); setError(null);
+    show("처리하고 있어요"); // raw fetch → 자동집계 밖; busy/hide=finally
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -64,17 +66,17 @@ export default function AdminUserPicker({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? `HTTP ${res.status}`);
-        setBusy(null);
         return false;
       }
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       router.refresh();
-      setBusy(null);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
-      setBusy(null);
       return false;
+    } finally {
+      setBusy(null);
+      hide();
     }
   }
 

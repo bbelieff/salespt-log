@@ -39,5 +39,10 @@ related: design-tokens
 - 플리커 가드: show 150ms 디바운스 + 최소 350ms 유지. 문구는 meta.loadingMessage > 명령형 > 기본(저장/불러오기).
 - 중복 제거: dashboard 수동 LoadingOverlay + calendar/contact/payment/db/schedule 페이지 "불러오고 있어요" 텍스트 제거(전역 위임). claim 은 RQ 밖이라 명령형 show 유지.
 
+## 관리자 구역 통일 (admin-loading-and-ptr, 2026-06-17)
+- app/admin/loading.tsx: animate-spin → <LoadingOverlay>(수강생과 동일 브랜드 로딩).
+- app/admin/layout.tsx 신규: PullToRefresh 추가(관리자 당겨서 새로고침). LoadingProvider 는 root 전역이라 중복 추가 안 함.
+- AdminUserPicker postAction(승인/배정/임퍼소네이트/시트열기 단일 chokepoint): show("처리하고 있어요")/hide(finally) — raw fetch+router.refresh 라 자동집계가 안 잡음.
+
 ## 상태
 - 2026-06-16 진행(feat/global-loading-overlay).
