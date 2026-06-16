@@ -210,6 +210,20 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 - `top-12`는 슬림 바 높이와 1:1 매칭 — 슬림 바 높이를 바꾸면 이 값도 동시에 바꾼다.
 - 모달은 별도 z-stack(`z-50` 이상). 슬림 바를 가려야 정상.
 
+### Overlay 토큰 (전역 로딩 팝업 — loading-overlay) ⭐
+`LoadingOverlay` 의 다크 글래스·글로우·z 는 arbitrary 직박 대신 아래 값으로 고정
+(구현 = `app/globals.css` `.lo-*`). 브랜드색은 `#d71617`(brand-red) 재사용.
+
+| 용도 | 값 | 비고 |
+|---|---|---|
+| z-index | `z-[400]` | 모달(z-50대)보다 위 — 로딩은 최상단 |
+| dim 배경 | `rgba(10,10,14,0.55)` + `blur(2px)` | 전체 덮기(safe-area 무시) |
+| 글래스 카드 | `rgba(22,22,28,0.72)` + `blur(12px)` | 반투명 다크 |
+| 카드 글로우 | `0 8px 40px rgba(215,22,23,0.28)` + `inset 0 0 0 1px rgba(255,255,255,0.06)` | 은은한 빨강 |
+| 링/점/라인 | `#d71617` (conic·점·sweep) | brand-red |
+
+- 모션: `prefers-reduced-motion: reduce` 면 키프레임 비활성 + 정적 링/문구(globals.css 폴백).
+
 ## Breakpoints (반응형)
 
 | 이름 | Min Width | 설명 | 우선순위 |
