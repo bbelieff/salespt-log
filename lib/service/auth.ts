@@ -35,6 +35,7 @@ import { getArchivedCohortSet } from "@/repo/cohorts";
 import { writeProfile, readProfileBundle } from "@/repo/sales";
 import { arenaCohortLabelParts } from "@/service/cohort-token";
 import { migrateArenaCarryover } from "@/service/arena-carryover";
+import { findArenaRowBySheetId } from "@/repo/users-claim";
 import type { CachedLabels } from "@/repo/users-claim";
 
 export type ClaimErrorReason = "not_found" | "ambiguous";
@@ -93,6 +94,27 @@ async function fetchCachedLabels(spreadsheetId: string): Promise<CachedLabels> {
   }
 }
 
+/**
+ * 아레나 시트 가드 (arena-numeric-duplicate-claim-guard) — 순수, 테스트 대상.
+ * 해석된 spreadsheetId 가 이미 아레나(A시즌-기수) 행으로 등록돼 있는데 **숫자 기수**로
+ * 클레임하면, 숫자 기수 행을 만들지 않고 그 아레나 (cohort, name) 으로 흡수한다.
+ * (하나의 시트 = 한 사람당 한 행, 아레나 시트엔 숫자 기수 행 금지.)
+ */
+export function resolveArenaSheetClaim(
+  claim: { cohort: string; name: string },
+  arenaRow: { cohort: string; name: string } | null,
+): { cohort: string; name: string; redirected: boolean } {
+  const claimingArena = /^A\d+-/.test(String(claim.cohort).trim());
+  if (arenaRow && !claimingArena) {
+    return { cohort: arenaRow.cohort, name: arenaRow.name, redirected: true };
+  }
+  return {
+    cohort: String(claim.cohort).trim(),
+    name: claim.name,
+    redirected: false,
+  };
+}
+
 export async function claimAccount(
   email: string,
   cohort: string,
@@ -142,6 +164,11 @@ export async function claimAccount(
     existingSheetId ?? (await findSheetByCohortName(cohortTrim, name));
   if (!spreadsheetId) throw new ClaimError("not_found");
 
+  // 가드: 이 시트가 이미 아레나(A\d+-) 행으로 등록돼 있으면, 숫자 기수로 클레임해도
+  // 숫자 행을 만들지 않고 그 아레나 (cohort,name) 으로 흡수(중복 숫자 행 재발 차단).
+  const arenaRow = await findArenaRowBySheetId(spreadsheetId);
+  const resolved = resolveArenaSheetClaim({ cohort: cohortTrim, name }, arenaRow);
+
   // 시트 메타 1회 fetch — prep row 케이스에선 claimRegistry 가 cached 무시하므로
   // 헛수고지만, 신규 append 가 압도적으로 흔한 경로이고 readProfileBundle 은
   // 단일 batchGet 이라 비용 무시 가능. prep row 면 빠르게 통과.
@@ -155,16 +182,18 @@ export async function claimAccount(
   // 트레이너(T, 시트 없음)만 위 isTrainer 분기에서 pending 으로 별도 처리.
   await claimRegistry(
     email,
-    cohortTrim,
-    name,
+    resolved.cohort,
+    resolved.name,
     spreadsheetId,
     "trainee",
     "active",
     cached,
   );
   // 첫 등록자만 시트 B3/C3 작성 (이미 등록된 사람 있으면 덮어쓰지 않음).
-  if (!existingSheetId) {
-    await writeProfile(spreadsheetId, cohortTrim, name);
+  // 아레나로 흡수(redirected)된 경우엔 시트를 건드리지 않음 — B3 에 숫자 기수
+  // 오염 방지(이미 아레나 시트로 셋업돼 있음).
+  if (!existingSheetId && !resolved.redirected) {
+    await writeProfile(spreadsheetId, resolved.cohort, resolved.name);
   }
 
   // 실제 등록된 status 를 다시 읽어 정확한 결과 반환 (prep row 매칭이면 active,
@@ -173,10 +202,11 @@ export async function claimAccount(
   const status: "active" | "pending" = persisted?.status === "active" ? "active" : "pending";
 
   // 아레나면 "A{시즌}-{기수}기" 라벨 유지, 일반은 숫자(기 strip).
-  const parts = arenaCohortLabelParts(cohortTrim);
+  // (아레나로 흡수됐으면 resolved.cohort 가 A시즌-기수 → 아레나 라벨로 표기.)
+  const parts = arenaCohortLabelParts(resolved.cohort);
   const cohortLabel = parts
     ? `A${parts.season}-${parts.gisu}기`
-    : cohortTrim.replace(/기\s*$/, "").trim();
+    : resolved.cohort.replace(/기\s*$/, "").trim();
 
   // 아레나 클레임 완료 → 이전 기수 파이프라인 자동 이월 1회 (carryover §2, 멱등).
   // 실패해도 클레임은 성공(warn) — backfill 은 admin "이월 실행" 버튼.
@@ -196,7 +226,7 @@ export async function claimAccount(
   return {
     email,
     cohort: cohortLabel,
-    name: name.trim(),
+    name: resolved.name.trim(),
     spreadsheetId,
     role: "trainee",
     status,
