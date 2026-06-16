@@ -8,6 +8,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { guideUrl } from "@/config";
 import TopHeader from "@/components/TopHeader";
 import PageContainer from "@/components/PageContainer";
 import UpdateAccordion from "@/components/announcements/UpdateAccordion";
@@ -77,6 +78,18 @@ export default function UpdatesArchivePage() {
       <TopHeader pageEmoji="✨" pageTitle="새소식 보관함" pageSubtitle="업데이트 모아보기" />
       <main className="px-4 pt-3">
         <PageContainer width="narrow">
+          {/* 사용 가이드(노션) 상시 진입점 — env 설정 시 노출. 팝업과 달리 항상 보임. */}
+          {guideUrl() && (
+            <a
+              href={guideUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-brand-red transition-colors hover:bg-red-100"
+            >
+              <span>📚 처음이신가요? 사용 가이드 보기</span>
+              <span aria-hidden>→</span>
+            </a>
+          )}
           {error && (
             <div className="mb-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}

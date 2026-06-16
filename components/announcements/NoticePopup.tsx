@@ -8,6 +8,7 @@
  */
 "use client";
 
+import { guideUrl } from "@/config";
 import type { Notice, UpdateItem } from "@/types";
 import NoticeContentView from "./NoticeContentView";
 import UpdateAccordion from "./UpdateAccordion";
@@ -78,11 +79,27 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
           )}
         </div>
 
-        <div className="border-t border-gray-100 p-3">
+        <div className="space-y-2 border-t border-gray-100 p-3">
+          {/* 사용 가이드(노션) — env 설정 시 항상 노출(공지·업데이트 없어도). 새 탭. */}
+          {guideUrl() && (
+            <a
+              href={guideUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onConfirm}
+              className="flex h-11 w-full items-center justify-center rounded-xl bg-brand-red text-sm font-bold text-white transition-transform active:scale-95"
+            >
+              📚 사용 가이드 보기
+            </a>
+          )}
           <button
             type="button"
             onClick={onConfirm}
-            className="h-11 w-full rounded-xl bg-brand-red text-sm font-bold text-white transition-transform active:scale-95"
+            className={`h-11 w-full rounded-xl text-sm font-bold transition-transform active:scale-95 ${
+              guideUrl()
+                ? "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                : "bg-brand-red text-white"
+            }`}
           >
             확인
           </button>
