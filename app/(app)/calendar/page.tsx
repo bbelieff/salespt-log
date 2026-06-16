@@ -179,9 +179,7 @@ export default function CalendarPage() {
 
       <main className="pb-[80px]">
       <PageContainer width="xwide">
-        {monthQuery.isLoading ? (
-          <div className="px-4 pt-6 text-sm text-slate-500">불러오고 있어요</div>
-        ) : monthQuery.isError ? (
+        {monthQuery.isLoading ? null : monthQuery.isError ? (
           <div className="px-4 pt-6">
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               불러오지 못했어요. 잠시 후 다시 시도해 주세요.

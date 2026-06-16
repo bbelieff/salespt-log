@@ -279,9 +279,7 @@ export default function PaymentPage() {
         )}
 
         {/* 리스트 */}
-        {list.isLoading ? (
-          <div className="text-sm text-slate-500">불러오고 있어요</div>
-        ) : list.isError ? (
+        {list.isLoading ? null : list.isError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>

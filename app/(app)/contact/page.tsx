@@ -364,13 +364,7 @@ export default function ContactPage() {
     onSwipeRight: () => moveWeek(-1),
   });
 
-  if (dayQuery.isLoading) {
-    return (
-      <section className="px-4 pt-6 text-sm text-slate-500">
-        불러오고 있어요
-      </section>
-    );
-  }
+  if (dayQuery.isLoading) return null; // 전역 오버레이가 처리
   if (dayQuery.isError) {
     return (
       <section className="px-4 pt-6">

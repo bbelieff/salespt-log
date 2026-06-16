@@ -25,7 +25,6 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import TrainerPlayerToggle from "@/components/auth/TrainerPlayerToggle";
 import { useDashboard } from "@/query/dashboard-hooks";
-import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 import OperatingProfitCard from "@/components/dashboard/OperatingProfitCard";
 import FunnelChart from "@/components/dashboard/FunnelChart";
@@ -116,7 +115,7 @@ export default function DashboardPage() {
       )}
 
       <div className="space-y-4 p-4">
-        {dash.isLoading && <LoadingOverlay message="대시보드를 불러오고 있어요" />}
+        {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거. */}
         {dash.isError && (
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm">
             대시보드를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
