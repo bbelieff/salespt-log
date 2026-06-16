@@ -8,6 +8,7 @@
  */
 "use client";
 
+import { useRef } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
@@ -84,6 +85,9 @@ export default function RichNoticeEditor({
   value: string;
   onChange: (html: string) => void;
 }) {
+  // 인스턴스 ref — handlePaste/handleDrop 가 최신 editor 로 삽입하도록.
+  const editorRef = useRef<Editor | null>(null);
+
   const editor = useEditor({
     extensions: EXTENSIONS,
     content: value || "",
@@ -94,18 +98,53 @@ export default function RichNoticeEditor({
         class:
           "notice-rich min-h-32 rounded-b-lg border border-t-0 border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none",
       },
+      // 클립보드 붙여넣기 — 이미지면 우리 API 로 업로드 후 임베드, 아니면 기본(텍스트) 유지.
+      handlePaste(_view, event) {
+        const items = event.clipboardData?.items;
+        const files = items
+          ? Array.from(items)
+              .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
+              .map((i) => i.getAsFile())
+              .filter((f): f is File => !!f)
+          : [];
+        if (files.length === 0) return false; // 이미지 없으면 기본 붙여넣기
+        event.preventDefault();
+        files.forEach((f) => {
+          if (editorRef.current) void uploadImage(f, editorRef.current);
+        });
+        return true;
+      },
+      // 드래그&드롭 이미지도 동일 처리.
+      handleDrop(_view, event) {
+        const files = Array.from(event.dataTransfer?.files ?? []).filter((f) =>
+          f.type.startsWith("image/"),
+        );
+        if (files.length === 0) return false;
+        event.preventDefault();
+        files.forEach((f) => {
+          if (editorRef.current) void uploadImage(f, editorRef.current);
+        });
+        return true;
+      },
     },
   });
+  editorRef.current = editor;
 
   if (!editor) return null;
 
   async function uploadImage(file: File, ed: Editor) {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("/api/admin/notice-image", { method: "POST", body: fd });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.url) {
-      ed.chain().focus().setImage({ src: data.url, alt: "이미지" }).run();
+    try {
+      const res = await fetch("/api/admin/notice-image", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        ed.chain().focus().setImage({ src: data.url, alt: "이미지" }).run();
+      } else {
+        window.alert(`이미지 업로드 실패: ${data.error ?? res.status}`);
+      }
+    } catch {
+      window.alert("이미지 업로드 실패 — 네트워크 오류");
     }
   }
 
