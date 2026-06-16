@@ -86,6 +86,13 @@ export const noticeImageFolderId = (): string =>
   "1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG";
 
 /**
+ * 사용 가이드(노션 '웹에 게시' 공개 URL) — NEXT_PUBLIC 이라 클라 인라인.
+ * 미설정이면 "" → 호출부가 버튼 자체를 렌더하지 않음(안전 가드, 하드코딩 금지).
+ */
+export const guideUrl = (): string =>
+  (process.env.NEXT_PUBLIC_GUIDE_URL ?? "").trim();
+
+/**
  * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).
  *
  * 포맷: `"email1:name1,email2:name2"` (또는 `email1=name1`).
