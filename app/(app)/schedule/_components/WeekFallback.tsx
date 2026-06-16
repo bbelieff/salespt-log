@@ -11,11 +11,8 @@ interface Props {
 }
 
 export default function WeekFallback({ state, onRetry, retrying }: Props) {
-  if (state === "loading") {
-    return (
-      <section className="px-4 pt-6 text-sm text-slate-500">불러오고 있어요</section>
-    );
-  }
+  // 로딩은 전역 오버레이(LoadingProvider)가 일관 표시 → 여기선 빈 화면(깜빡임 방지).
+  if (state === "loading") return null;
   return (
     <section className="px-4 pt-6">
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">

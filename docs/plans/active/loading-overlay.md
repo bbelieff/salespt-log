@@ -34,5 +34,10 @@ related: design-tokens
 ## 검증
 - typecheck/lint/test green. 모바일(375)·PC 중앙 정렬·애니메이션. 문구 전환·종료. reduced-motion 폴백.
 
+## 전역 자동화 (loading-overlay-global-auto, 2026-06-16)
+- LoadingProvider 가 React Query 캐시 구독으로 자동 표시: 뮤테이션 pending + 쿼리 초기로딩(pending&fetching). 백그라운드 refetch 제외.
+- 플리커 가드: show 150ms 디바운스 + 최소 350ms 유지. 문구는 meta.loadingMessage > 명령형 > 기본(저장/불러오기).
+- 중복 제거: dashboard 수동 LoadingOverlay + calendar/contact/payment/db/schedule 페이지 "불러오고 있어요" 텍스트 제거(전역 위임). claim 은 RQ 밖이라 명령형 show 유지.
+
 ## 상태
 - 2026-06-16 진행(feat/global-loading-overlay).

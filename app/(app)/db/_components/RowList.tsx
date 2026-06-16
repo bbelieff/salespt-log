@@ -37,9 +37,7 @@ export default function RowList({
   onSave,
   onDeleteRequest,
 }: Props) {
-  if (loading) {
-    return <div className="text-sm text-slate-500">불러오고 있어요</div>;
-  }
+  if (loading) return null; // 전역 오버레이가 처리
   if (error) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
