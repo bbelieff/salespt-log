@@ -24,6 +24,8 @@ related: announcement-popup
 - **/updates**: TopHeader 아래·목록 위 상시 카드 "📚 처음이신가요? 사용 가이드 보기 →"(새 탭). 팝업이 닫혀도 상시 진입점.
 - 외부 링크 전부 `target=_blank rel="noopener noreferrer"`. URL 은 env 만(사용자/관찰값 X).
 
+- **TopHeader 계정 메뉴**(#5): 새소식 항목 아래 [📚 사용 가이드](새 탭) — guideUrl 있으면 모든 (app) 페이지 상시 진입점. 보관함·팝업 버튼은 보조.
+
 ## 검증
 - env 설정 시 버튼 노출+노션 새 탭 / 미설정 시 숨김. 모바일·데스크탑 정렬. typecheck/lint/test green.
 
