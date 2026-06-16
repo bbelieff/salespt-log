@@ -50,6 +50,25 @@ export function nextRegistryRowNumber(existingDataRows: number): number {
   return existingDataRows + 2;
 }
 
+/** spreadsheetId 가 이미 아레나(A시즌-기수, ^A\d+-) cohort 행으로 등록돼 있으면 그
+ *  {cohort, name} 반환. 숫자 기수 클레임이 아레나 시트에 중복 행 만드는 것 차단용
+ *  (arena-numeric-duplicate-claim-guard). 클레임 직전 정확성 위해 fresh read. */
+export async function findArenaRowBySheetId(
+  spreadsheetId: string,
+): Promise<{ cohort: string; name: string } | null> {
+  if (!spreadsheetId) return null;
+  const reg = registry();
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  for (const r of rows) {
+    const sid = String(r[3] ?? "").trim();
+    const cohort = String(r[1] ?? "").trim();
+    if (sid === spreadsheetId && /^A\d+-/.test(cohort)) {
+      return { cohort, name: String(r[2] ?? "").trim() };
+    }
+  }
+  return null;
+}
+
 /** registry 행을 **결정적 좌표**(`A{n}`)로 기록 — values.append 의 table-detection
  * 이 빈 A열 prep 행 때문에 새 행을 H열~로 미는 버그 방지(claim-append-columns 2026-06-14).
  * 항상 A열부터 정렬해 findUserByEmail(A열 조회)이 찾을 수 있게 한다. */
