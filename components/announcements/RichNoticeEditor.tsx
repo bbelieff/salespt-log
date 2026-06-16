@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
@@ -88,6 +88,41 @@ export default function RichNoticeEditor({
   // 인스턴스 ref — handlePaste/handleDrop 가 최신 editor 로 삽입하도록.
   const editorRef = useRef<Editor | null>(null);
 
+  // 인라인 토스트(업로드 진행/실패 사유) — alert 대신 비차단 안내.
+  const [toast, setToast] = useState("");
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function notify(msg: string) {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (msg) toastTimer.current = setTimeout(() => setToast(""), 3500);
+  }
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  /** clipboard text/html 의 <img src> 삽입 — data:URL 은 업로드, http(s) 는 직삽입. */
+  async function insertFromUrl(src: string, ed: Editor) {
+    if (src.startsWith("data:")) {
+      try {
+        const blob = await (await fetch(src)).blob();
+        await uploadImage(
+          new File([blob], "pasted.png", { type: blob.type || "image/png" }),
+          ed,
+        );
+      } catch {
+        notify("이미지를 가져오지 못했어요");
+      }
+    } else {
+      // 외부 http(s) 이미지 — 일단 삽입(후속: 서버 재업로드 엔드포인트).
+      ed.chain().focus().setImage({ src, alt: "이미지" }).run();
+      console.warn("[notice] 외부 이미지 URL 직삽입(서버 재업로드 미적용):", src);
+      notify("웹 이미지를 넣었어요(외부 링크)");
+    }
+  }
+
   const editor = useEditor({
     extensions: EXTENSIONS,
     content: value || "",
@@ -100,19 +135,34 @@ export default function RichNoticeEditor({
       },
       // 클립보드 붙여넣기 — 이미지면 우리 API 로 업로드 후 임베드, 아니면 기본(텍스트) 유지.
       handlePaste(_view, event) {
-        const items = event.clipboardData?.items;
-        const files = items
-          ? Array.from(items)
-              .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
-              .map((i) => i.getAsFile())
-              .filter((f): f is File => !!f)
-          : [];
-        if (files.length === 0) return false; // 이미지 없으면 기본 붙여넣기
-        event.preventDefault();
-        files.forEach((f) => {
-          if (editorRef.current) void uploadImage(f, editorRef.current);
-        });
-        return true;
+        const cd = event.clipboardData;
+        if (!cd) return false;
+        // 1) 파일 — items + files 둘 다 확인(앱·브라우저별 소스 차이 폴백).
+        const fromItems = Array.from(cd.items ?? [])
+          .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
+          .map((i) => i.getAsFile())
+          .filter((f): f is File => !!f);
+        const fromFiles = Array.from(cd.files ?? []).filter((f) =>
+          f.type.startsWith("image/"),
+        );
+        const files = fromItems.length ? fromItems : fromFiles;
+        if (files.length && editorRef.current) {
+          event.preventDefault();
+          const ed = editorRef.current;
+          files.forEach((f) => void uploadImage(f, ed));
+          return true;
+        }
+        // 2) 웹 이미지(HTML 복사) — text/html 의 <img src> 추출.
+        const html = cd.getData("text/html");
+        const src = html
+          ? /<img[^>]+src=["']([^"']+)["']/i.exec(html)?.[1]
+          : undefined;
+        if (src && editorRef.current) {
+          event.preventDefault();
+          void insertFromUrl(src, editorRef.current);
+          return true;
+        }
+        return false; // 텍스트 등은 기본 붙여넣기
       },
       // 드래그&드롭 이미지도 동일 처리.
       handleDrop(_view, event) {
@@ -133,6 +183,7 @@ export default function RichNoticeEditor({
   if (!editor) return null;
 
   async function uploadImage(file: File, ed: Editor) {
+    notify("이미지 올리는 중…");
     const fd = new FormData();
     fd.append("file", file);
     try {
@@ -140,11 +191,18 @@ export default function RichNoticeEditor({
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
         ed.chain().focus().setImage({ src: data.url, alt: "이미지" }).run();
+        notify("");
       } else {
-        window.alert(`이미지 업로드 실패: ${data.error ?? res.status}`);
+        notify(
+          res.status === 403
+            ? "이미지를 올릴 권한이 없어요(관리자만)"
+            : res.status === 413
+              ? "이미지가 너무 커요(5MB 이하만)"
+              : `이미지 업로드 실패: ${data.error ?? res.status}`,
+        );
       }
     } catch {
-      window.alert("이미지 업로드 실패 — 네트워크 오류");
+      notify("이미지 업로드 실패 — 네트워크를 확인해 주세요");
     }
   }
 
@@ -234,6 +292,15 @@ export default function RichNoticeEditor({
       </div>
 
       <EditorContent editor={editor} />
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-1 inline-block rounded-md bg-gray-900/90 px-3 py-1.5 text-xs font-bold text-white"
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
