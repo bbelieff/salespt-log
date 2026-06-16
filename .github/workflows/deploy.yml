@@ -39,6 +39,19 @@ jobs:
             git fetch --all
             git reset --hard origin/master
             echo "::endgroup::"
+            echo "::group::Auth env guard (로그인 보호 — 2026-06-16 사고 재발 방지)"
+            # 인증 필수 env 가 비거나 유실되면 빌드·재시작 전에 즉시 실패시켜
+            # 깨진 auth 빌드가 배포되는 것을 차단한다.
+            # 배경: env 재구성 중 AUTH_URL 유실 → NextAuth UntrustedHost → /api/auth/* 500
+            #       → 로그인 전면 다운(/ 는 200이라 겉보기 정상). 빌드·배포는 success 였음.
+            #       docs/incidents/2026-06-16-auth-config-down.md
+            # 검사: 키가 라인 시작에 있고 '=' 뒤 값이 최소 1자(빈값도 실패). .env.local|.env.production 둘 중 하나면 통과.
+            for v in AUTH_SECRET AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET AUTH_URL; do
+              grep -hqE "^$v=." .env.local .env.production 2>/dev/null || {
+                echo "FATAL: 필수 auth env [$v] 가 비었거나 없음 — 배포 중단(로그인 보호)"; exit 1; }
+            done
+            echo "auth env OK — AUTH_SECRET / AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / AUTH_URL 모두 존재"
+            echo "::endgroup::"
             echo "::group::Installing"
             npm ci --silent
             echo "::endgroup::"
