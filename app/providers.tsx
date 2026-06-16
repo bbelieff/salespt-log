@@ -24,6 +24,7 @@ import { useState } from "react";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { SESSION_MASK_PII, trackApiError } from "@/analytics";
+import { LoadingProvider } from "@/components/ui/LoadingProvider";
 
 // 모듈 로드 시 1회 — 브라우저 + 운영 + 키 존재일 때만 init.
 if (typeof window !== "undefined") {
@@ -80,7 +81,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <PostHogProvider client={posthog}>
       <SessionProvider>
-        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        <QueryClientProvider client={client}>
+          <LoadingProvider>{children}</LoadingProvider>
+        </QueryClientProvider>
       </SessionProvider>
     </PostHogProvider>
   );

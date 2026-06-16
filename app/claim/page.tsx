@@ -13,6 +13,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useGlobalLoading } from "@/components/ui/LoadingProvider";
 
 type Mode = "cohort" | "arena";
 
@@ -27,6 +28,7 @@ export default function ClaimPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { show, hide } = useGlobalLoading();
 
   const seasonNum = useMemo(() => {
     const n = Number(season);
@@ -60,6 +62,7 @@ export default function ClaimPage() {
 
   async function handleSubmit() {
     setLoading(true);
+    show("연결하고 있어요");
     setError(null);
     try {
       const res = await fetch("/api/claim", {
@@ -90,6 +93,7 @@ export default function ClaimPage() {
           setError(`오류가 발생했습니다: ${data.error ?? "unknown"}`);
         }
         setLoading(false);
+        hide();
         return;
       }
       // 성공: 루트로 보내 app/page.tsx 의 role 기반 라우팅에 위임.
@@ -99,6 +103,7 @@ export default function ClaimPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "네트워크 오류");
       setLoading(false);
+      hide();
     }
   }
 
