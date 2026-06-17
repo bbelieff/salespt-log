@@ -27,6 +27,8 @@ related: arena-season1-setup, consultation-log-and-calendar, sheet-structure
 
 ## 2. 마이그레이션 (자동)
 - **트리거**: 6기 grad 가 아레나 클레임 완료 시, 그 사람의 이전 기수 시트(레지스트리 archived 행에서 spreadsheetId)에서 **자동 1회 실행**. (멱등 — 이미 이월된 행 재삽입 금지: 원본 행 id를 이월 메타에 보관해 중복 방지.)
+- **이월은 항상 '아레나 행' 기준** (carryover-trainer-blocks-arena §B, 2026-06-18): `migrateArenaCarryover` 는 `findUserByEmail`(선호 행)이 아니라 **`findActiveArenaRowByEmail`** 로 아레나 행을 직접 잡는다. 수강생출신 트레이너가 아레나에도 참가하면 [숫자기수·아레나·T] 3행이 되는데, `pickPreferredUser` 가 T(trainer)를 최우선 반환해 이월이 막혔다(최정한 케이스). 회장(captain_of)도 동일 — **아레나 행에 있어야** me/captain 이 읽는다.
+- **수동 아레나 등록 가드(B, 표준 절차)**: admin 이 prep 행에 email 을 직접(스크립트 등) 채워 재참가시키면 claimAccount 를 우회해 자동 이월/이전기수 archived 가 **안 돈다**. 따라서 수동 등록 직후 **admin '이월 실행'(arena-carryover) 을 반드시 1회** 누른다 — 이 한 번이 6기 파이프라인 복사 + 이전 기수 행 archived 까지 멱등 처리한다.
 - **이월 대상 (자동 추출)**:
   - **04 업체관리**: 상태=`예약`(진행예정·미완료) 미팅 → 아레나 04에 복사.
   - **02 계약수납**: 계약 업체(기존 계약 행) → 아레나 02에 복사.
@@ -71,3 +73,4 @@ related: arena-season1-setup, consultation-log-and-calendar, sheet-structure
 - 2026-06-11 feat/arena-carryover-flags(#346)+migrate 구현: 04 AO/AP·02 AI/AJ 깃발, 01 K/L/N/O·펀넬 수식 AO≠이월 가드(수식 재설치로 전파), 계약 깃발 상속, status=archived 라우팅(active 우선)+이전 일지 링크(me), 클레임 자동 이월+admin 이월 실행(멱등). 재참가자 0명이라 라이브 카나리아는 첫 클레임 시 자동 수행 — admin 버튼으로 재실행 검증 가능.
 - 2026-06-11 설계 빈틈 메움 (rejoin-routing): **cohorts 탭 archived = 그 기수 trainee(숫자형 cohort) 행 라우팅 비활성** — findUserByEmail 이 archived 로 강등 반환 → 홈/(app) 라우팅이 /claim 으로, claimAccount 는 archived 기존 행을 short-circuit 하지 않고 신규(아레나) 클레임 진행. 가드: role=trainee + /^\d+기?$/ 만 (트레이너 T·연습·아레나 행 비적용 — rejoin-routing.test.ts 박제). 닭-달걀(옛 행 archived 마킹은 이월 후 ↔ 이월 트리거는 클레임) 해소.
 - 2026-06-12 매출 leak 사고·수정 (carryover-revenue-leak): 깃발은 100% 정상, 누수 = 02!D3(수납총액, 코드 미관리 원본 수식) → 01!O5 → 대시보드 C21/D21. setup-formulas 에 02!D3 SUMIFS(AI<>이월) 편입 + 아레나 37시트 전파(조정욱 C21 6,325,000→0 실측). SummaryBar 매출·ContractRow 헤더 뱃지 가드. 상세: docs/incidents/2026-06-12-carryover-revenue-leak.md
+- 2026-06-18 carryover-trainer-blocks-arena (fix/manual-arena-register-archive-prior): 수강생출신 트레이너+아레나(최정한, 3행: 6기·A1-6·T)에서 `migrateArenaCarryover` 가 `findUserByEmail`→T 행을 잡아 "이월 대상 아님" 으로 막힘. 근본수정 = `pickActiveArenaRow`(순수) + `findActiveArenaRowByEmail` 로 아레나 행 직접 해석(이월·회장 공용). 회장은 captain_of 가 아레나 행에 있어야 me/captain 이 읽음 → loadMe·/captain 에 아레나 행 fallback. 데이터: 6기 status→archived + captain_of R(6기→A1-6 행) 이동(스크립트). 수동 등록은 직후 admin '이월 실행' 표준화(§2).

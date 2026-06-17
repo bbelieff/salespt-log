@@ -8,6 +8,7 @@ import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
 import { listAllUsers, invalidateRegistry } from "./users";
+import { pickActiveArenaRow } from "./user-priority";
 import { nameMatches } from "./name-match";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
@@ -75,6 +76,20 @@ export async function findArchivedRowByEmail(
     }
   }
   return null;
+}
+
+/**
+ * 같은 email 의 **활성 아레나 trainee 행** — 이월·회장 해석 기준 (carryover §2, §B).
+ * findUserByEmail(=pickPreferredUser)은 수강생출신 트레이너의 T 행을 최우선
+ * 반환해 아레나를 못 잡으므로, 이월·회장은 이 함수로 아레나 행을 직접 잡는다.
+ */
+export async function findActiveArenaRowByEmail(
+  email: string,
+): Promise<User | null> {
+  const lc = email.trim().toLowerCase();
+  const all = await listAllUsers();
+  const mine = all.filter((u) => u.email.toLowerCase() === lc);
+  return pickActiveArenaRow(mine);
 }
 
 /**

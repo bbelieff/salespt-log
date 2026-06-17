@@ -8,6 +8,7 @@ import { isNumericCohortArchived } from "@/repo/users";
 import {
   isArenaCohortLabel,
   pickPreferredUser,
+  pickActiveArenaRow,
   dedupKeepIndex,
   arenaCohortCorrection,
 } from "@/repo/user-priority";
@@ -106,6 +107,35 @@ describe("pickPreferredUser (다중 행 라우팅 우선순위)", () => {
     const arena = mkUser({ cohort: "A1-2", role: "trainee", spreadsheetId: "a" });
     const old = mkUser({ cohort: "2", role: "trainee", spreadsheetId: "o" });
     expect(pickPreferredUser([old, arena])?.spreadsheetId).toBe("a");
+  });
+});
+
+describe("pickActiveArenaRow (이월·회장 = 아레나 행 직접 해석, §B)", () => {
+  it("수강생출신 트레이너: 6기 active + A1-6 active + T trainer → A1-6 아레나 행", () => {
+    // 최정한 케이스 — pickPreferredUser 는 trainer 를 잡지만, 이월/회장은 아레나 행.
+    const old6 = mkUser({ cohort: "6", role: "trainee", spreadsheetId: "old" });
+    const arena = mkUser({ cohort: "A1-6", role: "trainee", spreadsheetId: "arena" });
+    const trainer = mkUser({ cohort: "T", role: "trainer", spreadsheetId: "" });
+    expect(pickActiveArenaRow([old6, arena, trainer])?.spreadsheetId).toBe("arena");
+    // 행 순서 무관.
+    expect(pickActiveArenaRow([trainer, old6, arena])?.spreadsheetId).toBe("arena");
+  });
+  it("아레나 행 없음 → null (이월 대상 아님)", () => {
+    const old6 = mkUser({ cohort: "6", spreadsheetId: "old" });
+    const trainer = mkUser({ cohort: "T", role: "trainer", spreadsheetId: "" });
+    expect(pickActiveArenaRow([old6, trainer])).toBeNull();
+  });
+  it("아레나 행이 archived 면 제외 (active 만)", () => {
+    const arena = mkUser({ cohort: "A1-6", status: "archived", spreadsheetId: "arena" });
+    expect(pickActiveArenaRow([arena])).toBeNull();
+  });
+  it("spreadsheetId 빈 아레나 행은 제외", () => {
+    const arena = mkUser({ cohort: "A1-6", spreadsheetId: "" });
+    expect(pickActiveArenaRow([arena])).toBeNull();
+  });
+  it("captain_of 보존 — 회장 해석에 쓰이는 행을 그대로 반환", () => {
+    const arena = mkUser({ cohort: "A1-6", spreadsheetId: "arena", captainOf: "A1-6" });
+    expect(pickActiveArenaRow([arena])?.captainOf).toBe("A1-6");
   });
 });
 

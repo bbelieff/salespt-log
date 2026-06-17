@@ -59,3 +59,25 @@ export function pickPreferredUser(users: User[]): User | null {
   }
   return arena ?? active ?? archived;
 }
+
+/**
+ * 같은 email 행들 중 **활성 아레나 trainee 행** 선택 — carryover/회장 해석 전용.
+ *
+ * 배경(carryover-trainer-blocks-arena §B, 2026-06-18): 수강생출신 트레이너가
+ * 아레나에도 참가하면 행이 [숫자기수 · 아레나 · T(trainer)] 로 셋이 된다.
+ * pickPreferredUser 는 trainer 를 최우선 반환 → 아레나 행을 못 잡아 이월/회장
+ * 판정이 깨졌다. 이월·회장은 항상 **아레나 행** 기준이어야 하므로 별도 선택자.
+ * 조건: status=active + 아레나 라벨(A{n}-{m}) + spreadsheetId 보유.
+ */
+export function pickActiveArenaRow(users: User[]): User | null {
+  for (const u of users) {
+    if (
+      u.status === "active" &&
+      isArenaCohortLabel(u.cohort) &&
+      u.spreadsheetId
+    ) {
+      return u;
+    }
+  }
+  return null;
+}

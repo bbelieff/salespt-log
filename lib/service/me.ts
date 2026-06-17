@@ -14,7 +14,11 @@
  */
 import { unstable_cache } from "next/cache";
 import { findUserByEmail } from "@/repo/users";
-import { findArchivedRowByEmail, findArenaSheetIdByName } from "@/repo/users-arena";
+import {
+  findActiveArenaRowByEmail,
+  findArchivedRowByEmail,
+  findArenaSheetIdByName,
+} from "@/repo/users-arena";
 import { readProfileBundle } from "@/repo/sales";
 
 /**
@@ -353,6 +357,17 @@ export async function loadMe(email: string): Promise<MeProfile> {
       ownArenaSheetId = undefined;
     }
   }
+  // 회장(captain_of)은 아레나 행에 있다. 선호 행(예: 수강생출신 트레이너의 T 행)이
+  // captain_of 가 비면 아레나 행에서 surface — 안 그러면 회장 기능이 안 보임(§B).
+  let captainOf = user.captainOf;
+  if (!captainOf) {
+    try {
+      const arenaRow = await findActiveArenaRowByEmail(email);
+      captainOf = arenaRow?.captainOf ?? "";
+    } catch {
+      /* keep "" */
+    }
+  }
   return {
     email: user.email,
     cohort: isArenaReg(user.cohort) ? user.cohort : bundle.cohort || user.cohort,
@@ -362,7 +377,7 @@ export async function loadMe(email: string): Promise<MeProfile> {
     spreadsheetId: user.spreadsheetId,
     feedbackFolderId: user.feedbackFolderId,
     driveLinkStatus: user.driveLinkStatus,
-    captainOf: user.captainOf,
+    captainOf,
     archivedCohort: archived?.cohort,
     archivedSpreadsheetId: archived?.spreadsheetId,
     ownArenaSheetId,
