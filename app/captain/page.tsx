@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { getSessionEmail } from "@/auth/identity";
 import { findUserByEmail } from "@/repo/users";
 import {
+  findActiveArenaRowByEmail,
   listArenaCohortMembers,
   normalizeArenaCohort,
 } from "@/repo/users-arena";
@@ -28,7 +29,13 @@ export default async function CaptainPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) redirect("/");
   const me = await findUserByEmail(sessionEmail);
-  const captainOf = (me?.captainOf ?? "").trim();
+  // 회장(captain_of)은 아레나 행에 있다. 선호 행(수강생출신 트레이너 T 행)이
+  // 비면 아레나 행에서 해석 — 안 그러면 회장이 /captain 에서 튕긴다(§B).
+  let captainOf = (me?.captainOf ?? "").trim();
+  if (!captainOf) {
+    const arenaRow = await findActiveArenaRowByEmail(sessionEmail);
+    captainOf = (arenaRow?.captainOf ?? "").trim();
+  }
   if (!captainOf) redirect("/"); // 회장 아님 → 차단
 
   const members = await listArenaCohortMembers(captainOf);

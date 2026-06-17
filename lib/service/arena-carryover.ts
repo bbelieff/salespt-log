@@ -6,10 +6,9 @@
  * 멱등: 04 AP / 02 AJ 원본키로 중복 방지. 완료 후 이전 행 status=archived (§1).
  */
 import { randomUUID } from "node:crypto";
-import { findUserByEmail } from "@/repo/users";
 import {
+  findActiveArenaRowByEmail,
   findPriorCohortRow,
-  isArenaCohort,
   markPriorRowArchived,
 } from "@/repo/users-arena";
 import {
@@ -46,12 +45,14 @@ export async function migrateArenaCarryover(
   email: string,
 ): Promise<CarryoverReport> {
   const report = empty();
-  const user = await findUserByEmail(email);
-  if (!user || !user.spreadsheetId || !isArenaCohort(user.cohort)) {
+  // 이월은 항상 '아레나 행' 기준 — 선호 행(trainer)을 잡는 findUserByEmail 금지.
+  // (수강생출신 트레이너+아레나에서 T 행이 잡혀 이월이 막히던 버그, §B 2026-06-18.)
+  const arenaUser = await findActiveArenaRowByEmail(email);
+  if (!arenaUser || !arenaUser.spreadsheetId) {
     report.reason = "아레나 활성 행이 아님 — 이월 대상 아님";
     return report;
   }
-  const arenaSheetId = user.spreadsheetId;
+  const arenaSheetId = arenaUser.spreadsheetId;
   const prior = await findPriorCohortRow(email, arenaSheetId);
   if (!prior) {
     report.reason = "이전 기수 행 없음 — 이월 생략";
