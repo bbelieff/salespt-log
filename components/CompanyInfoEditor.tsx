@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CompanyInfo } from "@/types";
 
 type CI = CompanyInfo;
@@ -59,6 +59,10 @@ interface Props {
   busy?: boolean;
   /** 있으면 "업체정보생성(TXT)" 버튼 노출 — O 폴더에 1본 덮어쓰기 (§3-3). */
   txtCompanyName?: string;
+  /** 사용자 편집마다 호출 — 부모(파란 저장)가 미저장 드래프트를 함께 영속화하도록. */
+  onChange?: (ci: CI) => void;
+  /** true 면 자체 인라인 '저장' 버튼 숨김 — 영속화는 부모(파란 저장)가 담당. */
+  hideSave?: boolean;
 }
 
 export default function CompanyInfoEditor({
@@ -66,6 +70,8 @@ export default function CompanyInfoEditor({
   onSave,
   busy,
   txtCompanyName,
+  onChange,
+  hideSave,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -76,6 +82,18 @@ export default function CompanyInfoEditor({
   });
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
+
+  // 사용자 편집(draft 변경)마다 부모에 통지 — 마운트(초기값)는 건너뛴다(가짜 dirty 방지).
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    onChangeRef.current?.(draft);
+  }, [draft]);
 
   async function exportTxt() {
     if (!txtCompanyName || txtBusy) return;
@@ -245,14 +263,16 @@ export default function CompanyInfoEditor({
         <div className="space-y-3 border-t border-gray-100 px-2.5 py-2">
           {body}
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={save}
-              disabled={busy}
-              className="flex-1 rounded-md bg-gray-900 py-1.5 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-            >
-              {busy ? "저장 중…" : "저장"}
-            </button>
+            {!hideSave && (
+              <button
+                type="button"
+                onClick={save}
+                disabled={busy}
+                className="flex-1 rounded-md bg-gray-900 py-1.5 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+              >
+                {busy ? "저장 중…" : "저장"}
+              </button>
+            )}
             {txtCompanyName && (
               <button
                 type="button"

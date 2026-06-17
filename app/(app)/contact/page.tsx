@@ -22,6 +22,10 @@ import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
+import {
+  useDirtyGuard,
+  DirtyGuardContext,
+} from "./_components/MeetingDirtyGuard";
 import ContactResultModals from "./_components/ContactResultModals";
 import SaveBar from "./_components/SaveBar";
 import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
@@ -359,9 +363,12 @@ export default function ContactPage() {
     setTimeout(() => setSlideDir(null), 260);
   };
 
+  // 미저장 이탈 가드 — 미팅카드가 dirty 면 탭/날짜/주차 이동 전에 한 번 확인.
+  const { register, guardedNav, confirmModal } = useDirtyGuard();
+
   const weekSwipe = useSwipe({
-    onSwipeLeft: () => moveWeek(1),
-    onSwipeRight: () => moveWeek(-1),
+    onSwipeLeft: () => guardedNav(() => moveWeek(1)),
+    onSwipeRight: () => guardedNav(() => moveWeek(-1)),
   });
 
   if (dayQuery.isLoading) return null; // 전역 오버레이가 처리
@@ -406,9 +413,9 @@ export default function ContactPage() {
             cohortName={undefined}
             countsByDay={countsByDay}
             weekFunnel={weekFunnel}
-            onPrevWeek={() => moveWeek(-1)}
-            onNextWeek={() => moveWeek(1)}
-            onSelectDay={setDate}
+            onPrevWeek={() => guardedNav(() => moveWeek(-1))}
+            onNextWeek={() => guardedNav(() => moveWeek(1))}
+            onSelectDay={(d) => guardedNav(() => setDate(d))}
             slideDir={slideDir}
           />
         </PageContainer>
@@ -423,24 +430,29 @@ export default function ContactPage() {
         <ChannelTabsAndPanel
           active={activeChannel}
           draft={draft}
-          onSelectChannel={setActiveChannel}
+          onSelectChannel={(c) => guardedNav(() => setActiveChannel(c))}
           onStep={step}
           onSetVal={setVal}
           highlightKey={highlightProduction ? "production" : undefined}
         />
 
-        {/* 미팅 슬롯 리스트 */}
-        <MeetingSlotList
-          slots={allSlots}
-          reservationDate={TODAY_ISO}
-          onPatchSaved={handlePatchSavedMeeting}
-          onRemoveSaved={handleRemoveSavedMeeting}
-          onChangeNew={updateNewSlot}
-          onRegisterNew={registerNewSlot}
-          onRemoveNew={removeNewSlot}
-        />
+        {/* 미팅 슬롯 리스트 — dirty 카드는 DirtyGuardContext 로 이탈 가드에 등록 */}
+        <DirtyGuardContext.Provider value={register}>
+          <MeetingSlotList
+            slots={allSlots}
+            reservationDate={TODAY_ISO}
+            onPatchSaved={handlePatchSavedMeeting}
+            onRemoveSaved={handleRemoveSavedMeeting}
+            onChangeNew={updateNewSlot}
+            onRegisterNew={registerNewSlot}
+            onRemoveNew={removeNewSlot}
+          />
+        </DirtyGuardContext.Provider>
       </PageContainer>
       </main>
+
+      {/* 미저장 이탈 가드 모달 (dirty 카드 있을 때 탭/날짜/주차 이동 시) */}
+      {confirmModal}
 
       {/* 고정 저장 바 (탭바 위) — 분리된 컴포넌트 */}
       <SaveBar pending={saveMetrics.isPending} onSave={handleSave} />

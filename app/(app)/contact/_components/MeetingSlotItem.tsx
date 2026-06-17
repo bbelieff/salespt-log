@@ -8,12 +8,13 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import type { Channel, Meeting } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 import TimeSelectPair from "@/components/ui/TimeSelectPair";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import type { CompanyInfo } from "@/types";
+import { DirtyGuardContext, ConfirmLeaveModal } from "./MeetingDirtyGuard";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -48,7 +49,7 @@ interface SavedProps {
   mode: "saved";
   index: number;
   meeting: Meeting;
-  onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
+  onPatch: (partial: Partial<Omit<Meeting, "id">>) => void | Promise<void>;
   onRemove: () => void;
 }
 
@@ -142,6 +143,80 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
     업체명: meeting.업체명,
     장소: meeting.장소,
   });
+  // 업체정보 라이브 드래프트 — CompanyInfoEditor onChange 로 동기화, 파란 저장이 함께 영속화.
+  const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(
+    meeting.업체정보,
+  );
+  const [ciTouched, setCiTouched] = useState(false); // 업체정보가 편집됐는가
+  const [confirmCollapse, setConfirmCollapse] = useState(false);
+
+  const meetingDirty =
+    draft.미팅날짜 !== meeting.미팅날짜 ||
+    draft.미팅시간 !== meeting.미팅시간 ||
+    draft.업체명 !== meeting.업체명 ||
+    draft.장소 !== meeting.장소;
+  const dirty = meetingDirty || ciTouched;
+
+  // 파란 '수정 완료' — 미팅 + (편집된) 업체정보를 한 patch 로 원자 저장(04/06 동시).
+  // 부분 실패 시 handlePatchSavedMeeting 가 "수정 실패" 토스트로 표시.
+  const saveAll = async () => {
+    await onPatch({
+      ...draft,
+      ...(ciTouched ? { 업체정보: ciDraft } : {}),
+    });
+    setCiTouched(false);
+  };
+  // 무시(버리기) — 편집을 저장본으로 되돌림. CompanyInfoEditor 는 접힘 시 언마운트돼
+  // 다음 펼침에서 meeting.업체정보 로 재초기화되므로 ciTouched 만 리셋하면 된다.
+  const discardAll = () => {
+    setDraft({
+      미팅날짜: meeting.미팅날짜,
+      미팅시간: meeting.미팅시간,
+      업체명: meeting.업체명,
+      장소: meeting.장소,
+    });
+    setCiDraft(meeting.업체정보);
+    setCiTouched(false);
+  };
+
+  // 페이지 dirty 레지스트리 등록(채널 탭/날짜/주차 이동 가드) — 최신 콜백을 ref 로 노출.
+  const register = useContext(DirtyGuardContext);
+  const saveRef = useRef(saveAll);
+  saveRef.current = saveAll;
+  const discardRef = useRef(discardAll);
+  discardRef.current = discardAll;
+  useEffect(() => {
+    register(
+      meeting.id,
+      dirty
+        ? {
+            save: () => saveRef.current(),
+            discard: () => discardRef.current(),
+          }
+        : null,
+    );
+    return () => register(meeting.id, null);
+  }, [dirty, meeting.id, register]);
+
+  // 브라우저 이탈(닫기·새로고침) 가드.
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [dirty]);
+
+  // 헤더 토글 — 펼침 상태에서 dirty 면 접기 전에 확인.
+  const handleToggle = () => {
+    if (open && dirty) {
+      setConfirmCollapse(true);
+      return;
+    }
+    setOpen((v) => !v);
+  };
 
   const collapsedTime = meeting.미팅시간 || "—:—";
   // 미팅날짜를 "M/d" 형식으로 (예약일이 다를 때 시각 정보 부족 방지)
@@ -156,7 +231,7 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
     <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-blue-400 bg-white shadow-sm">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors active:bg-black/5"
         aria-expanded={open}
       >
@@ -215,21 +290,48 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
             value={draft.장소}
             onChange={(v) => setDraft((d) => ({ ...d, 장소: v }))}
           />
+          {/* 업체정보는 아래 파란 '수정 완료'로 함께 저장됨 → 자체 저장버튼 숨김(hideSave).
+              onChange 로 라이브 드래프트만 부모에 전달. (모달 '저장'은 즉시 저장 보조 경로) */}
           <CompanyInfoEditor
             value={meeting.업체정보}
             txtCompanyName={meeting.업체명}
-            onSave={(ci) => onPatch({ 업체정보: ci })}
+            hideSave
+            onChange={(ci) => {
+              setCiDraft(ci);
+              setCiTouched(true);
+            }}
+            onSave={(ci) => {
+              onPatch({ 업체정보: ci });
+              setCiDraft(ci);
+              setCiTouched(false);
+            }}
           />
           <Actions
             primaryLabel="💾 수정 완료"
             onPrimary={() => {
-              onPatch(draft);
+              void saveAll();
               setOpen(false);
             }}
             onRemove={onRemove}
-            hint="미팅 완료/계약/취소는 일정·계약 탭에서 처리합니다"
+            hint="업체정보까지 이 버튼으로 함께 저장됩니다"
           />
         </div>
+      )}
+
+      {confirmCollapse && (
+        <ConfirmLeaveModal
+          onSave={() => {
+            void saveAll();
+            setConfirmCollapse(false);
+            setOpen(false);
+          }}
+          onDiscard={() => {
+            discardAll();
+            setConfirmCollapse(false);
+            setOpen(false);
+          }}
+          onCancel={() => setConfirmCollapse(false)}
+        />
       )}
     </div>
   );
