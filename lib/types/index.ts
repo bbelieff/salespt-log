@@ -360,6 +360,19 @@ export const ContractPayment = z.object({
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 
+/** 이월(아레나 비집계) 판정 — 단일 결정점, 읽기시점 분류(arena-start-revenue-split).
+ *  깃발(AI=이월) OR 계약일<시작일(courseStart=O1, 동적·하드코딩X). 날짜는 ISO일 때만 비교.
+ *  클라(UI)·서버(대시보드) 공용 → types(googleapis 비의존)에 둠. */
+export function isCarryoverContract(
+  p: { 구분?: string; 계약일?: string },
+  courseStartISO: string,
+): boolean {
+  if ((p.구분 ?? "").trim() === "이월") return true;
+  const d = (p.계약일 ?? "").trim();
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  return iso.test(d) && iso.test(courseStartISO) && d < courseStartISO;
+}
+
 // ── 실무투두 (05 실무투두 1행 = 1투두) — Scope 2, ADR-0006 ──────
 // 시트 매핑: docs/domains/sheet-structure.md §5-2 (A~M 13컬럼)
 //   A=id, B=contractRef, C=institutionRef, D=업체명, E=type, F=제목,

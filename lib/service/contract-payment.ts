@@ -29,22 +29,9 @@ async function resolveSheet(email: string): Promise<string> {
   return user.spreadsheetId;
 }
 
-/**
- * 이월(아레나 비집계) 판정 — **단일 결정점**, 읽기시점 분류(데이터 무변경).
- * arena-start-revenue-split: 경계 = 개인 시트 시작일(courseStart=O1, ADR-0005),
- * "6/12" 류 하드코딩 금지. 깃발(02 AI=이월) 또는 계약일이 시작일 이전이면 이월.
- *
- * 날짜는 ISO("YYYY-MM-DD") 일 때만 비교(직렬/비정형은 깃발만으로 판정 — 오분류 방지).
- */
-export function isCarryoverContract(
-  p: { 구분?: string; 계약일?: string },
-  courseStartISO: string,
-): boolean {
-  if ((p.구분 ?? "").trim() === "이월") return true;
-  const d = (p.계약일 ?? "").trim();
-  const iso = /^\d{4}-\d{2}-\d{2}$/;
-  return iso.test(d) && iso.test(courseStartISO) && d < courseStartISO;
-}
+// isCarryoverContract(이월 판정 단일 결정점)은 클라이언트(실무수납 UI)도 써야 하므로
+// @/types 로 이전(googleapis 비의존). 여기선 @/types 재노출만.
+export { isCarryoverContract } from "@/types";
 
 /** 모든 계약수납 row 조회. */
 export async function loadContractPayments(

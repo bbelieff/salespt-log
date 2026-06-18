@@ -65,6 +65,7 @@ export {
 export {
   loadContractPayments,
   addFromContract,
+  addPriorContract,
   syncContractFee,
   patchContractPayment,
   removeContractPayment,
