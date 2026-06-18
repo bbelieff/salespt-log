@@ -101,14 +101,14 @@ describe("pickVisibleUpdates", () => {
   const upd = (pr: number, visible: boolean): UpdateItem =>
     UpdateItem.parse({ pr, visible });
 
-  it("visible=TRUE 만, pr desc, 최대 6개", () => {
+  it("visible=TRUE 만, pr desc, 최대 3개 (모바일 팝업 정보량 축소)", () => {
     const list = [
       ...Array.from({ length: 12 }, (_, i) => upd(i + 1, true)),
       upd(99, false),
     ];
     const got = pickVisibleUpdates(list);
-    expect(got).toHaveLength(6);
+    expect(got).toHaveLength(3);
     expect(got[0]!.pr).toBe(12); // 99 는 invisible — 제외
-    expect(got[5]!.pr).toBe(7); // 12,11,10,9,8,7
+    expect(got[2]!.pr).toBe(10); // 12,11,10 (나머지는 "모두 보기")
   });
 });
