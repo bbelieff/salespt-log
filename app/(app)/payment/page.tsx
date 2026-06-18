@@ -15,13 +15,15 @@ import PageContainer from "@/components/PageContainer";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ContractPayment } from "@/types";
+import { isCarryoverContract, type ContractPayment } from "@/types";
 import {
   usePatchContractPayment,
   useRemoveContractPayment,
   useContractPayments,
 } from "@/query/contract-payment-hooks";
+import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
+import PriorContractSection from "./_components/PriorContractSection";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
 import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
@@ -61,6 +63,9 @@ export default function PaymentPage() {
   const list = useContractPayments();
   const patch = usePatchContractPayment();
   const remove = useRemoveContractPayment();
+  // 시작일(courseStart=O1 SSOT) — 매출 아레나/이월 분리·이월 뱃지 판정용(동적).
+  const me = useMe();
+  const courseStartISO = me.data?.courseStartISO ?? "";
 
   const [pendingRow, setPendingRow] = useState<number | null>(null);
   // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
@@ -149,9 +154,9 @@ export default function PaymentPage() {
   //   승인금액합   = sum(슬롯별 승인금액)        — 진행 중인 수납 약정 총액 (목표)
   //   총매출       = 수임비합 + 수납액합        — v2 SSOT (수수료=수납액합)
   //   수납진척     = 수납액합 / 승인금액합
-  // 이월(AI=이월) 계약은 아레나로 넘어간 것 — 합계(매출·수수료·승인)에서 제외.
-  // 카드 목록(rows)은 회색으로 그대로 표시(carryover-profit §1).
-  const billable = rows.filter((cp) => cp.구분 !== "이월");
+  // 이월(시작일 이전 또는 깃발) 계약은 아레나 비집계 — 합계(매출·수수료·승인)에서 제외.
+  // 경계는 isCarryoverContract(동적, 하드코딩X). 카드 목록은 회색 표시(carryover-profit §1).
+  const billable = rows.filter((cp) => !isCarryoverContract(cp, courseStartISO));
   const totalReceived = billable.reduce(
     (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
     0,
@@ -260,6 +265,9 @@ export default function PaymentPage() {
         {/* Drive + 플러그 바로가기 */}
         <DriveLinkBar />
 
+        {/* 이전 계약업체 등록 + 아레나/이월 매출 분리 (arena-start-revenue-split) */}
+        <PriorContractSection contracts={rows} courseStartISO={courseStartISO} />
+
         {/* 안내 */}
         <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
           일정·계약 탭에서 미팅을 <b>계약</b>으로 처리하면 여기에 자동으로 추가돼요.
@@ -328,6 +336,7 @@ export default function PaymentPage() {
                       onDeleteRequest={() => makeDeleteRequest(cp)}
                       focusTodoId={focusTodoId}
                       highlight={companyQuery}
+                      courseStartISO={courseStartISO}
                     />
                   </div>
                 );
@@ -350,6 +359,7 @@ export default function PaymentPage() {
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   focusTodoId={focusTodoId}
                   highlight={companyQuery}
+                  courseStartISO={courseStartISO}
                 />
               </div>
             )}
@@ -368,6 +378,7 @@ export default function PaymentPage() {
                 onDeleteRequest={() => makeDeleteRequest(cp)}
                 focusTodoId={focusTodoId}
                 highlight={companyQuery}
+                courseStartISO={courseStartISO}
               />
             ))}
           </div>

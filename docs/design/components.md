@@ -1278,7 +1278,8 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동) |
+| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동). `courseStartISO?` — 이월 판정(isCarryoverContract: 계약일<시작일 OR 깃발)으로 뱃지·흐림 표시(arena-start-revenue-split). |
+| **PriorContractSection** | 이전(아레나 시작 전) 계약업체 등록 버튼 + 알림 모달({시작일} 동적) + ContractForm(수임비·계약조건) 재사용 폼 → POST /api/contract-payment/prior(구분=이월). + 아레나/이월 매출 2카드(isCarryoverContract 로 분리 합산). Props: `contracts`, `courseStartISO`. arena-start-revenue-split §A·B. |
 | **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
 | **DriveLinkBar** | Drive 바로가기 + 플러그 바로가기 버튼. 미연결 시 재연결 폼. ADR-0007. |

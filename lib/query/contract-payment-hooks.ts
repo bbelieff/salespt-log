@@ -67,6 +67,22 @@ export function useAddContractPayment() {
   });
 }
 
+/** 이전(아레나 시작 전) 계약업체 직접 등록 — 02 직접 append + 구분=이월 (§A). */
+export function useAddPriorContract() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cp: ContractPayment) =>
+      fetchJSON<{ ok: true; row: number }>(`/api/contract-payment/prior`, {
+        method: "POST",
+        body: JSON.stringify(cp),
+      }),
+    onSuccess: () => {
+      track(EVENTS.CONTRACT_PAYMENT_ADDED);
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
+  });
+}
+
 /**
  * 이미 계약 상태인 미팅 카드의 수임비를 수정한 경우 호출.
  * (계약일+업체명) 매칭 row의 E열만 sync 업데이트. 매칭 없으면 synced: false.

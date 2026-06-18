@@ -14,7 +14,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ContractPayment } from "@/types";
+import { isCarryoverContract, type ContractPayment } from "@/types";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
@@ -52,6 +52,8 @@ interface Props {
   focusTodoId?: string | null;
   /** 업체 검색어 — 업체명 일치 부분 <mark> 하이라이트 (CompanySearchBar). */
   highlight?: string;
+  /** 시작일(courseStart) — 이월 판정(계약일<시작일 OR 깃발)용. 없으면 깃발만. */
+  courseStartISO?: string;
 }
 
 function fmtMoney(n: number): string {
@@ -101,7 +103,10 @@ export default function ContractRow({
   bare = false,
   focusTodoId,
   highlight,
+  courseStartISO,
 }: Props) {
+  // 이월(아레나 비집계) 판정 — 깃발(AI=이월) 또는 계약일<시작일(동적). 뱃지·흐림에 사용.
+  const isCarryover = isCarryoverContract(cp, courseStartISO ?? "");
   const [open, setOpen] = useState(false);
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
   const showBody = forceOpen || (!selectable && open);
@@ -244,7 +249,7 @@ export default function ContractRow({
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
           showBody ? accent.tint : ""
         } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"} ${
-          cp.구분 === "이월" ? "opacity-60" : "" /* 이월 흐림 — §4 */
+          isCarryover ? "opacity-60" : "" /* 이월 흐림 — §4 */
         }`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}
@@ -255,7 +260,7 @@ export default function ContractRow({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-gray-900">
-            {cp.구분 === "이월" && <CarryoverBadge 구분={cp.구분} variant="badge" />}
+            {isCarryover && <CarryoverBadge 구분="이월" variant="badge" />}
             {renderNameWithHighlight(cp.업체명, highlight)}
             {isComplete && <span className="text-xs text-green-600">✓</span>}
           </div>
@@ -315,7 +320,7 @@ export default function ContractRow({
           [1] 업체정보 박스 제거: 접힘 헤더가 이미 업체명·계약일·수임비 표시(중복). */}
       {showBody && (
         <div className="card-open-anim space-y-3 p-3">
-          <CarryoverBadge 구분={cp.구분} variant="note" />
+          <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           {/* 업체정보 (06 read → 저장 시 04+06 동기화, §3-1) */}
           <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} />
 

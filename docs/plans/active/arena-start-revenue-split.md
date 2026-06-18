@@ -45,3 +45,4 @@ related: arena-carryover-migration, sheet-structure, data-model
 
 ## Log
 - 2026-06-18 PR1(feat/prior-contract-register-carryover-split): isCarryoverContract·splitContractRevenue·addPriorContract·kpi(이월매출/전체매출)·02 D4 SUMIFS + 단위테스트. UI(버튼·모달·대시보드 2줄·수납 카드)는 PR2. 시트 설치·실측은 배포 복구 후.
+- 2026-06-18 PR2(feat/prior-contract-register-ui): isCarryoverContract → @/types 이전(클라 공용, googleapis 비의존, service 재노출). POST /api/contract-payment/prior + useAddPriorContract. PriorContractSection(버튼·알림모달 동적 시작일·ContractForm 재사용·아레나/이월 2카드). payment billable·ContractRow 뱃지/흐림 = isCarryoverContract(동적). 대시보드 OperatingProfitCard 매출 3줄(아레나/이월/전체). 점수·전광판·영업이익은 아레나만(불변).

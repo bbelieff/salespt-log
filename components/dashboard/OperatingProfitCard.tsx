@@ -13,9 +13,13 @@
 "use client";
 
 interface Props {
-  revenue: number; // 총매출
+  revenue: number; // 아레나 집계 매출 (점수·전광판 기준)
   cost: number; // 총비용
   contractCount?: number; // 계약 건수 (없으면 부연 우측 비움)
+  /** 이월(아레나 비집계, 시작일 이전) 매출 — 있으면 매출 3줄 분리 표시. */
+  carryoverRevenue?: number;
+  /** 전체 매출 (= 아레나 + 이월). 없으면 revenue+carryover 로 계산. */
+  totalRevenue?: number;
 }
 
 function fmtMoney(n: number): string {
@@ -26,6 +30,8 @@ export default function OperatingProfitCard({
   revenue,
   cost,
   contractCount,
+  carryoverRevenue,
+  totalRevenue,
 }: Props) {
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -59,6 +65,27 @@ export default function OperatingProfitCard({
           {profitRate.toFixed(1)}%
         </span>
       </div>
+      {typeof carryoverRevenue === "number" && (
+        <div
+          className="mt-2 space-y-0.5 border-t border-gray-100 pt-2 text-xs"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          <div className="flex justify-between text-gray-600">
+            <span>
+              아레나 매출 <span className="text-gray-400">(집계)</span>
+            </span>
+            <span>₩{fmtMoney(revenue)}</span>
+          </div>
+          <div className="flex justify-between text-gray-400">
+            <span>이월 매출 (비집계)</span>
+            <span>₩{fmtMoney(carryoverRevenue)}</span>
+          </div>
+          <div className="flex justify-between font-semibold text-gray-700">
+            <span>전체</span>
+            <span>₩{fmtMoney(totalRevenue ?? revenue + carryoverRevenue)}</span>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
