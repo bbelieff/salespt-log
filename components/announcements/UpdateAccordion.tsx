@@ -30,13 +30,13 @@ function GroupBody({ g }: { g: UpdateGroup }) {
             <span className="mt-0.5 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-500">
               전
             </span>
-            <p className="text-sm leading-relaxed text-gray-600">{ba.before}</p>
+            <p className="text-xs leading-snug text-gray-600">{ba.before}</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="mt-0.5 shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-brand-red">
               후
             </span>
-            <p className="text-sm font-medium leading-relaxed text-gray-800">{ba.after}</p>
+            <p className="text-xs font-medium leading-snug text-gray-800">{ba.after}</p>
           </div>
         </>
       ) : g.bodyMd.trim() ? (

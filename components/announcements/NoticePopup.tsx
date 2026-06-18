@@ -27,10 +27,10 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
       onClick={onConfirm}
     >
       <div
-        className="mt-10 mb-10 w-full max-w-sm rounded-2xl bg-white shadow-xl 2xl:max-w-md"
+        className="mt-8 mb-8 w-full max-w-sm rounded-2xl bg-white shadow-xl 2xl:max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
           <h3 className="text-sm font-black text-gray-900">새소식</h3>
           <button
             type="button"
@@ -42,7 +42,7 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
           </button>
         </div>
 
-        <div className="px-4 py-3">
+        <div className="px-4 py-2.5">
           {empty && (
             <p className="py-6 text-center text-sm text-gray-400">
               아직 새소식이 없어요.
@@ -51,8 +51,8 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
 
           {/* 공지 — pinned 우선(서버 정렬). MD + 이미지. */}
           {notices.map((n) => (
-            <section key={n.id} className="mb-4 rounded-xl bg-red-50 p-3">
-              <h4 className="mb-1.5 flex items-center gap-1 text-sm font-black text-gray-900">
+            <section key={n.id} className="mb-3 rounded-xl bg-red-50 p-2.5">
+              <h4 className="mb-1 flex items-center gap-1 text-xs font-black text-gray-900">
                 {n.pinned && <span aria-label="고정 공지">📌</span>}
                 {n.title}
               </h4>
@@ -66,7 +66,7 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
 
           {updates.length > 0 && (
             <section>
-              <h4 className="mb-1 text-sm font-black text-gray-900">새로워졌어요 ✨</h4>
+              <h4 className="mb-1 text-xs font-black text-gray-900">새로워졌어요 ✨</h4>
               <UpdateAccordion updates={updates} />
               <a
                 href="/updates"
@@ -79,7 +79,7 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
           )}
         </div>
 
-        <div className="space-y-2 border-t border-gray-100 p-3">
+        <div className="space-y-2 border-t border-gray-100 p-2.5">
           {/* 사용 가이드(노션) — env 설정 시 항상 노출(공지·업데이트 없어도). 새 탭. */}
           {guideUrl() && (
             <a

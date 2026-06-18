@@ -24,7 +24,8 @@ import { Notice, UpdateItem } from "@/types";
 import { sanitizeNoticeHtml } from "@/lib/notice-html";
 import { groupUpdates } from "./update-groups";
 
-const VISIBLE_LIMIT = 6;
+// 모바일 팝업 정보량 축소(2026-06-18) — 최근 항목 3개만, 나머지는 "지난 업데이트 모두 보기".
+const VISIBLE_LIMIT = 3;
 
 /** cohort 라벨 `A` 접두 = 아레나 (예 "A1-6", "A1-6기"). 빈값·일반 기수=false. */
 export function isArenaAudienceCohort(cohort: string | null | undefined): boolean {
