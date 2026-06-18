@@ -14,6 +14,7 @@ import {
   Channel,
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
+import { numCell } from "./cell";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
 
@@ -442,9 +443,7 @@ export async function readWeek(
   if (weekIndex < 1 || weekIndex > 10) {
     throw new Error(`주차 범위 밖: ${weekIndex} (1~10)`);
   }
-  // 좌표는 weekIndex(인자)로 계산 — courseStart 불필요. 과거 여기서 readCourseStart
-  // 를 호출하고 쓰지 않던 dead read 제거 (read quota 절약, 2026-06).
-
+  // 좌표는 weekIndex 로 계산 — courseStart 불필요(과거 dead read 제거, 2026-06).
   const startRow =
     SHEET_RANGES.sales.blockStart +
     (weekIndex - 1) * SHEET_RANGES.sales.blockStride;
@@ -470,13 +469,14 @@ export async function readWeek(
 
     const dateStr = serialOrStringToISO(dateRaw);
     if (!dateStr) continue;
+    // 셀별 tolerant(numCell) — 한 셀 #VALUE! 가 행 전체(생산 포함) 드롭시키지 않게 격리.
     const parsed = ChannelDailyRow.safeParse({
       date: dateStr,
       channel: String(channelRaw),
-      production: Number(r[2] ?? 0),
-      inflow: Number(r[3] ?? 0),
-      contactProgress: Number(r[4] ?? 0),
-      meetingReservation: Number(r[5] ?? 0),
+      production: numCell(r[2]),
+      inflow: numCell(r[3]),
+      contactProgress: numCell(r[4]),
+      meetingReservation: numCell(r[5]),
     });
     if (parsed.success) rows.push(parsed.data);
   }
