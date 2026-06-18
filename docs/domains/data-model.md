@@ -444,6 +444,9 @@ interface DashboardKPI {
   총매출: number;         // D21 (←영업관리!N6)
   총비용: number;         // E21
   누적수임비: number;     // TODO: 셀 좌표 디스커버리
+  // arena-start-revenue-split: 시작일(O1) 기준 분리. 총매출=아레나(이월 제외, 점수 동일).
+  이월매출: number;       // 시작일 이전 계약(이월·비집계) 매출 — 표시용
+  전체매출: number;       // 총매출(아레나) + 이월매출
 }
 
 interface DashboardChannelMatrix {

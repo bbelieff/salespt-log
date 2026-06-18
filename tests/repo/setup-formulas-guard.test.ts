@@ -328,11 +328,9 @@ describe("이월(구분=AO) 집계 제외 가드 (arena-carryover §4)", () => {
 });
 
 describe("02 D3 수납총액 — 이월 제외 (carryover-revenue-leak 2026-06-12)", () => {
-  it("CP_D3_FORMULA 가 세 슬롯 모두 AI<>이월 SUMIFS", async () => {
-    const src = (await import("node:fs")).readFileSync("lib/repo/setup-formulas.ts", "utf8");
-    const m = src.match(/CP_D3_FORMULA\s*=\s*'([^']+)'/);
-    expect(m).toBeTruthy();
-    const f = m![1]!;
+  it("아레나(D3) 수식이 세 슬롯 모두 AI<>이월 SUMIFS", async () => {
+    const { CONTRACT_RECEIVED_FORMULAS } = await import("@/repo/contract-formulas");
+    const f = CONTRACT_RECEIVED_FORMULAS.arena;
     expect((f.match(/SUMIFS/g) ?? []).length).toBe(3);
     expect((f.match(/"<>이월"/g) ?? []).length).toBe(3);
     expect(f).toContain("Q6:Q");
