@@ -447,6 +447,8 @@ export interface DashboardKPI {
   누적수임비: number; // TODO: 셀 좌표 디스커버리
   수임비합: number; // 총매출 분해: Σ수임비 (배너 표시)
   수수료합: number; // 총매출 분해: Σ수납액(수수료). 총매출 = 수임비합 + 수수료합
+  이월매출: number; // 아레나 시작일 이전 계약(이월·비집계) 매출 — 표시용 (arena-start-revenue-split)
+  전체매출: number; // 총매출(아레나) + 이월매출 — "전체" 줄
 }
 
 /** 채널별 6단계 funnel matrix — stacked bar 데이터 */

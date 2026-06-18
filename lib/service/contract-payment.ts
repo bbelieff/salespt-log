@@ -6,6 +6,7 @@
  *   - 계약수납탭에서 사용자가 F~AA 입력 → patch (updateUserFields)
  *   - 삭제 → clearRow
  */
+import { randomUUID } from "node:crypto";
 import { findUserByEmail } from "@/repo/users";
 import {
   appendFromContract,
@@ -26,6 +27,23 @@ async function resolveSheet(email: string): Promise<string> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   return user.spreadsheetId;
+}
+
+/**
+ * 이월(아레나 비집계) 판정 — **단일 결정점**, 읽기시점 분류(데이터 무변경).
+ * arena-start-revenue-split: 경계 = 개인 시트 시작일(courseStart=O1, ADR-0005),
+ * "6/12" 류 하드코딩 금지. 깃발(02 AI=이월) 또는 계약일이 시작일 이전이면 이월.
+ *
+ * 날짜는 ISO("YYYY-MM-DD") 일 때만 비교(직렬/비정형은 깃발만으로 판정 — 오분류 방지).
+ */
+export function isCarryoverContract(
+  p: { 구분?: string; 계약일?: string },
+  courseStartISO: string,
+): boolean {
+  if ((p.구분 ?? "").trim() === "이월") return true;
+  const d = (p.계약일 ?? "").trim();
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  return iso.test(d) && iso.test(courseStartISO) && d < courseStartISO;
 }
 
 /** 모든 계약수납 row 조회. */
@@ -71,6 +89,28 @@ export async function addFromContract(
     );
   }
   return result;
+}
+
+/**
+ * 이전(아레나 시작 전) 계약업체 직접 등록 — 실무·수납 관리용 (arena-start-revenue-split §A).
+ * 미팅 출발이 아니므로 02 에 직접 append + **구분=이월 강제**(아레나 비집계).
+ * 멱등키 = `prior:<uuid>`(랜덤 — 매 등록이 새 행). 폼 전체(수임비·슬롯·서류)는
+ * appendFromContract(C/D/E+AI/AJ) 후 updateUserFields(F~AH)로 반영. §2.5 가드는
+ * 두 repo 함수가 각자 보유(append=빈 행, updateUserFields=사용자영역).
+ */
+export async function addPriorContract(
+  email: string,
+  cp: ContractPayment,
+): Promise<{ row: number }> {
+  const spreadsheetId = await resolveSheet(email);
+  const { row } = await appendFromContract(
+    spreadsheetId,
+    { 계약일: cp.계약일, 업체명: cp.업체명, 수임비: cp.수임비 },
+    { 원본행id: `prior:${randomUUID()}` }, // 직접 등록 → 이월 깃발(AI=이월) 강제
+  );
+  // 슬롯·서류·메모(F~AH) 반영 — 폼에서 입력했으면 함께 저장.
+  await updateUserFields(spreadsheetId, { ...cp, row });
+  return { row };
 }
 
 /** 계약 키(계약일|업체명)로 업체정보 읽기 — payment 카드용. 06 에서 read. */

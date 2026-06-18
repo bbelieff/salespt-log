@@ -361,6 +361,7 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 - `contractPayment` (JS 키) ↔ "02 계약수납관리" (시트 탭명)
 - 범위: `A6:AJ` (1~5행 = 헤더+예시/안내, **6행~ = 실제 데이터**. 실사용 A~AH — v3: AE=로드맵메모, AF/AG/AH=슬롯1·2·3 메모 — + **AI=구분(`이월`|빈값)·AJ=이월원본행id** 아레나 이월 깃발, 출발 미팅(04 AO) 상속. arena-carryover §3·§7. 일반 쓰기(updateUserFields F:AH)는 AI~AJ 비접촉)
 - `headerRows = 5`, `firstDataRow = 6` (코드 정합성 확보 — 외부 에이전트 헤더 덮어쓰기 방지)
+- **D3 = 아레나 수납총액**(구분≠이월, carryover-revenue-leak 가드), **D4 = 이월 수납총액**(구분=이월, arena-start-revenue-split). 둘 다 `SUMIFS(Q/W/AC, AI=…)` — setup-formulas `CONTRACT_RECEIVED_FORMULAS`. §2.5 보존가드로 설치. ※ 라이브 셀 위치는 배포 복구 후 검증.
 
 > 이전 명칭: `02 계약관리` (MVP 미사용 → MVP 핵심으로 재정의, 2026-05-02). Plan: [[plans/active/11-contract-payment-tab.md]].
 

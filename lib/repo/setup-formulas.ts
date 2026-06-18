@@ -6,6 +6,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "./sheets-client";
+import { CONTRACT_RECEIVED_FORMULAS } from "./contract-formulas";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -146,8 +147,6 @@ export function formulasForRow(r: number): Record<string, string> {
 // 02!D3 수납총액(대시보드 수수료·총매출 원천) 이월 제외 가드 — 원본
 // `=sum(Q6:Q36,W:W,AC:AC)` 가 이월 수납 합산(2026-06-12 leak). Q 36행 한정도 정상화.
 const CONTRACT_TAB = "02 계약수납관리";
-const CP_D3_FORMULA =
-  '=SUMIFS(Q6:Q,$AI$6:$AI,"<>이월")+SUMIFS(W6:W,$AI$6:$AI,"<>이월")+SUMIFS(AC6:AC,$AI$6:$AI,"<>이월")';
 
 // 미팅예약/완료 펀넬·채널 stacking (01 R4:U5+F4:F5) — 04 상태기반 (2026-06-09 A안,
 // 미팅실행률 100% 착시 fix). 미팅예약=상태∈{예약,완료,계약}(변경/취소 제외, 미래 포함),
@@ -371,17 +370,21 @@ export async function installFormulas(
     }
   }
 
-  // 02!D3 수납총액 — 이월 제외 가드 수식 (§2.5 pre-read: raw 값이면 보존).
-  const cpD3 = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tabRef(CONTRACT_TAB)}!D3`,
-    valueRenderOption: "FORMULA",
-  });
-  const curD3 = cpD3.data.values?.[0]?.[0];
-  if (isSafeToOverwrite(curD3)) {
-    data.push({ range: `${tabRef(CONTRACT_TAB)}!D3`, values: [[CP_D3_FORMULA]] });
-  } else {
-    preservedCells.push("02 계약수납 D3");
+  // 02!D3 아레나·D4 이월 수납총액 — §2.5 pre-read: raw 값이면 보존, 수식·빈셀만 설치.
+  for (const [cell, formula] of [
+    ["D3", CONTRACT_RECEIVED_FORMULAS.arena],
+    ["D4", CONTRACT_RECEIVED_FORMULAS.carryover],
+  ] as const) {
+    const got = await sheetsClient().spreadsheets.values.get({
+      spreadsheetId,
+      range: `${tabRef(CONTRACT_TAB)}!${cell}`,
+      valueRenderOption: "FORMULA",
+    });
+    if (isSafeToOverwrite(got.data.values?.[0]?.[0])) {
+      data.push({ range: `${tabRef(CONTRACT_TAB)}!${cell}`, values: [[formula]] });
+    } else {
+      preservedCells.push(`02 계약수납 ${cell}`);
+    }
   }
 
   if (data.length > 0) {
@@ -401,7 +404,7 @@ export async function installFormulas(
     details: [
       `04 업체관리: N/O/Q 컬럼 ${MEETINGS_LAST_ROW - 1}행 검사`,
       `01 영업관리: 데이터 행 ${dataRows.length}개 × 8 컬럼 (I~P) 검사`,
-      `02 계약수납: D3(수납총액) 이월 제외 가드`,
+      `02 계약수납: D3(아레나 수납총액 — 이월 제외) + D4(이월 수납총액)`,
       `사용자 수동 입력 (raw text/number) ${preservedCells.length}개 셀 보존 — 수식·빈 셀만 덮어씀`,
     ],
   };

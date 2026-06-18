@@ -31,6 +31,8 @@ import { findArenaSheetIdByName } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
+import { readProfileBundle } from "@/repo/sales";
+import { isCarryoverContract } from "./contract-payment";
 
 const CHANNELS: DashboardChannelMatrix["채널"][] = [
   "매입DB",
@@ -65,6 +67,45 @@ export function computeContractRevenue(payments: ContractPayment[]): {
   return { totalFee, totalReceived, revenue: totalFee + totalReceived };
 }
 
+export interface RevenueParts {
+  totalFee: number; // Σ수임비
+  totalReceived: number; // Σ수납액(수수료)
+  revenue: number; // = totalFee + totalReceived
+}
+
+/**
+ * 시작일(courseStart) 기준 매출 2분할 — 아레나 집계 vs 이월(비집계) + 전체
+ * (arena-start-revenue-split §B). 판정은 단일 결정점 isCarryoverContract
+ * (깃발 OR 계약일<시작일). 점수·전광판은 arena 만 쓰고, 대시보드는 3값 모두 표시.
+ */
+export function splitContractRevenue(
+  payments: ContractPayment[],
+  courseStartISO: string,
+): { arena: RevenueParts; carryover: RevenueParts; total: RevenueParts } {
+  const arena: RevenueParts = { totalFee: 0, totalReceived: 0, revenue: 0 };
+  const carryover: RevenueParts = { totalFee: 0, totalReceived: 0, revenue: 0 };
+  for (const p of payments) {
+    const t = isCarryoverContract(p, courseStartISO) ? carryover : arena;
+    t.totalFee += num(p.수임비);
+    t.totalReceived +=
+      num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액);
+  }
+  arena.revenue = arena.totalFee + arena.totalReceived;
+  carryover.revenue = carryover.totalFee + carryover.totalReceived;
+  const total: RevenueParts = {
+    totalFee: arena.totalFee + carryover.totalFee,
+    totalReceived: arena.totalReceived + carryover.totalReceived,
+    revenue: arena.revenue + carryover.revenue,
+  };
+  return { arena, carryover, total };
+}
+
+/** Date → "YYYY-MM-DD" (로컬 기준). courseStart 비교용. */
+function toISODate(d: Date): string {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /** 수강생출신 트레이너의 아레나 self-view override sheetId 결정(P14). trainer 행이고
  * 이름 매칭 아레나 시트가 유일할 때만 그 sheetId, 아니면 undefined. */
 export async function resolveArenaOverride(
@@ -91,13 +132,17 @@ export async function loadDashboard(
   //   - readBanners: 현수막 P:V — 주문금액(U) 합 = 현수막 비용
   // 옛 F56/K56/U56 SUM cell 의존 제거 — 시트 템플릿마다 SUM 수식 유무 차이로 비용 0
   // 표시되던 사고 (2026-05-15, 김미란 케이스) 원천 차단.
-  const [data, purchases, productions, banners, payments] = await Promise.all([
-    readDashboard(sheetId),
-    readPurchases(sheetId),
-    readProductions(sheetId),
-    readBanners(sheetId),
-    readContractPayments(sheetId),
-  ]);
+  const [data, purchases, productions, banners, payments, profile] =
+    await Promise.all([
+      readDashboard(sheetId),
+      readPurchases(sheetId),
+      readProductions(sheetId),
+      readBanners(sheetId),
+      readContractPayments(sheetId),
+      readProfileBundle(sheetId),
+    ]);
+  // 시작일 기준 매출 분리 — 경계는 개인 시트 O1(courseStart), 날짜 하드코딩 X.
+  const courseStartISO = toISODate(profile.courseStart);
 
   const purchaseCost = purchases.rows.reduce((s, p) => s + num(p.주문금액), 0);
   const productionCost = productions.rows.reduce(
@@ -113,8 +158,10 @@ export async function loadDashboard(
   //   - 서버 sum: 수납탭이 표시하는 동일 row 데이터원천 → 절대 어긋날 수 없음
   // 이익은 매출 − 3채널 비용으로 재계산해 정합성 유지.
   const fee = num(data.finance[0]);
-  // 총매출 = 수임비합 + 수수료합 (수납탭 SSOT 동일). 수수료(수납액) 누락 버그 수정.
-  const { totalFee, totalReceived, revenue } = computeContractRevenue(payments);
+  // 총매출 = 수임비합 + 수수료합 (수납탭 SSOT 동일). 시작일 기준 아레나/이월 분리.
+  // 점수·전광판·영업이익은 **아레나 집계**만(이월 제외, 기존 유지). 이월·전체는 표시용.
+  const split = splitContractRevenue(payments, courseStartISO);
+  const { totalFee, totalReceived, revenue } = split.arena;
   const cost = costByChannel.reduce((s, c) => s + c, 0);
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -156,6 +203,8 @@ export async function loadDashboard(
       누적수임비: fee,
       수임비합: totalFee,
       수수료합: totalReceived,
+      이월매출: split.carryover.revenue, // 아레나 비집계(시작일 이전)
+      전체매출: split.total.revenue, // 아레나 + 이월
     },
     channelMatrix,
     weeklyTrend,
