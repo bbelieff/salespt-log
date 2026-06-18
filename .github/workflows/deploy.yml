@@ -57,32 +57,46 @@ jobs:
             echo "::group::Installing"
             npm ci --silent
             echo "::endgroup::"
-            echo "::group::Building"
+            echo "::group::Building (무중단 — .next-build 에 빌드, 옛 .next 보존)"
             # 빌드 OOM 방지 — VPS RAM 3.8GB. 2048MB 가 Next.js 15.5 + 이 코드베이스에 충분.
             # (4096 시 OOM-killer → BUILD_ID 누락 silent failure, 2026-05-13 사고.)
             export NODE_OPTIONS="--max-old-space-size=2048"
             export SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING=1
-            rm -rf .next
-            npm run build
-            # 빌드 결과 검증 — BUILD_ID 없으면 명시 실패(pm2 restart 차단).
-            test -f .next/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패"; exit 1; }
+            # 핵심: 옛 .next 를 지우지 않고 .next-build 에 빌드 → 빌드 4-5분 동안 옛 앱이 계속 서빙(502 0초).
+            # BUILD_DIST_DIR 는 next.config.mjs 의 distDir. 런타임(next start)은 unset → 기본 .next.
+            rm -rf .next-build
+            BUILD_DIST_DIR=.next-build npm run build
+            # 새 빌드 검증 — 실패 시 swap 안 함 → 옛 .next 그대로 서빙(빌드 실패도 무중단).
+            test -f .next-build/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패, swap 안 함(무중단 유지)"; exit 1; }
             echo "::endgroup::"
-            echo "::group::Restarting"
-            pm2 restart salespt-log --update-env
+            echo "::group::Atomic swap + rolling reload"
+            # 원자 swap: 옛 .next → .next-prev (running 프로세스는 inode 유지로 swap 후에도 계속 서빙).
+            rm -rf .next-prev
+            [ -d .next ] && mv .next .next-prev
+            mv .next-build .next
+            # rolling reload(cluster) — 워커 하나씩 교체해 무중단 전환. reload 실패 시 restart 폴백.
+            pm2 reload salespt-log --update-env || pm2 restart salespt-log --update-env
             pm2 save
             echo "::endgroup::"
-            echo "::group::Health"
+            echo "::group::Health gate + 자동 롤백"
             sleep 3
             curl -sS -o /dev/null -w "Local / HTTP %{http_code}\n" http://127.0.0.1:3000
-            # 필수 env 검증 — /api/health 가 AUTH_*·ADMIN_EMAILS 비면 503 → 배포 실패(빨강).
-            # env 손상(줄 붙음/누락)으로 겉보기 200·실제 다운되는 사고 재발 방지.
+            # 필수 env 검증 — /api/health 가 AUTH_*·ADMIN_EMAILS 비면 503. env 손상으로
+            # 겉보기 200·실제 다운되는 사고 재발 방지(2026-06-16). 새 빌드 기동 실패도 여기서 잡힘.
             hc=$(curl -sS -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health)
             echo "Local /api/health HTTP $hc"
             if [ "$hc" != "200" ]; then
-              echo "❌ 필수 env 검증 실패(/api/health=$hc) — AUTH_SECRET/AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET/ADMIN_EMAILS 중 누락. VPS .env 점검 후 pm2 restart." >&2
+              echo "❌ 헬스 실패(/api/health=$hc) — 이전 릴리스로 자동 롤백" >&2
               curl -sS http://127.0.0.1:3000/api/health >&2 || true
+              if [ -d .next-prev ]; then
+                rm -rf .next-broken; mv .next .next-broken; mv .next-prev .next
+                pm2 reload salespt-log --update-env || pm2 restart salespt-log --update-env
+                echo "↩ 이전 릴리스로 롤백 완료 (.next-broken 에 실패 빌드 보존)" >&2
+              fi
               exit 1
             fi
+            rm -rf .next-prev
+            echo "새 빌드 헬스 OK (/api/health=200) — 무중단 컷오버 완료"
             echo "::endgroup::"
             echo "::group::Updates collect"
             # 새소식 자동 수집 (announcement-popup §2) — 멱등(pr 키), 실패해도

@@ -8,6 +8,10 @@ const nextConfig = {
   reactStrictMode: true,
   // Next 15.5+: experimental.typedRoutes 는 typedRoutes 로 이동
   typedRoutes: true,
+  // 무중단 배포(zero-downtime): 배포 시 BUILD_DIST_DIR=.next-build 로 옛 .next 를 보존한 채
+  // 빌드한 뒤 원자 swap 한다. 런타임(next start)은 BUILD_DIST_DIR unset → 기본 ".next".
+  // dev/local/CI 도 unset → ".next" 라 무영향. 참고: docs/plans/active/zero-downtime-deploy.md
+  distDir: process.env.BUILD_DIST_DIR || ".next",
 };
 
 // Sentry wrapper — DSN 미설정 시에도 무해.
