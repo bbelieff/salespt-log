@@ -14,7 +14,7 @@ import {
   Channel,
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
-import { numCell } from "./cell";
+import { parseWeekRows } from "./week-parse";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
 
@@ -458,30 +458,8 @@ export async function readWeek(
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
   const data = (res.data.values ?? []) as (string | number | boolean)[][];
-
-  const rows: ChannelDailyRow[] = [];
-  for (let i = 0; i < 28; i++) {
-    const r = data[i] ?? [];
-    // 컬럼 인덱스 (C 기준 0): C=0날짜, D=1채널, E=2생산, F=3유입, G=4컨택진행, H=5미팅예약
-    const dateRaw = r[0];
-    const channelRaw = r[1];
-    if (dateRaw === undefined || channelRaw === undefined) continue;
-
-    const dateStr = serialOrStringToISO(dateRaw);
-    if (!dateStr) continue;
-    // 셀별 tolerant(numCell) — 한 셀 #VALUE! 가 행 전체(생산 포함) 드롭시키지 않게 격리.
-    const parsed = ChannelDailyRow.safeParse({
-      date: dateStr,
-      channel: String(channelRaw),
-      production: numCell(r[2]),
-      inflow: numCell(r[3]),
-      contactProgress: numCell(r[4]),
-      meetingReservation: numCell(r[5]),
-    });
-    if (parsed.success) rows.push(parsed.data);
-  }
-
-  return { rows };
+  // 날짜 병합 forward-fill + 셀별 tolerant 는 parseWeekRows(순수)에 위임.
+  return { rows: parseWeekRows(data, serialOrStringToISO) };
 }
 
 function serialOrStringToISO(v: string | number | boolean): string | null {
