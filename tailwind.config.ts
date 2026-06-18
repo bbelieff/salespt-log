@@ -32,6 +32,10 @@ export default {
       wide: "1280px", // 와이드 데스크탑
     },
     extend: {
+      // 하단 네비게이션 4+1 최대폭 캡 (bottom-nav-4plus1 / ADR-0019) — arbitrary 대신 토큰.
+      maxWidth: {
+        "bottom-nav": "480px",
+      },
       fontFamily: {
         // 전체 앱 기본 폰트: Noto Sans KR (한국어 가독성 + 전체 일관성)
         // next/font/google이 CSS 변수 --font-noto-sans-kr로 노출.

@@ -247,7 +247,7 @@ export default function DbPage() {
 
   return (
     <>
-      <TopHeader pageEmoji="📊" pageTitle="DB관리" />
+      <TopHeader pageEmoji="📊" pageTitle="DB생산" />
 
       <main className="px-4 pb-[80px] pt-3">
       <PageContainer width="wide">

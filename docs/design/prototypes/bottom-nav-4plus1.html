@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>바텀탭 4+1 — 디자인 정본 (activation redesign)</title>
+<!--
+  정본(Source of Truth) 프로토타입 — components/TabBar.tsx 가 이 파일을 픽셀 매칭으로 포팅한다.
+  스코프: 하단 네비게이션 "바"만. (DB생산 집계쓰기·컨택 경량화 등 기능 변경은 별도 PR)
+  구조: 4+1 (좌 2단계 · 중앙 캘린더 FAB · 우 2단계)
+  순서: DB생산(1) · 컨택관리(2) · [캘린더] · 일정·계약(3) · 실무/수납(4)
+  의미전달: 단계 = 라벨 아래 점 갯수 (1·2·3·4). 현재 탭만 파랑.
+  중앙: 캘린더 = 중립 입체 FAB (대시보드 홈보다 약한 강조).
+  반응형: 모바일 전체폭(flex-1) / 넓은 화면 max-width 480px 중앙정렬, 캡 안 flex-1 균등.
+-->
+<style>
+  :root{
+    --blue:#2563eb;          /* 활성 탭 (blue-600) */
+    --ink:#374151;           /* 기본 아이콘 */
+    --muted:#9ca3af;         /* 비활성 라벨 */
+    --line:#e5e7eb;
+    --dot-off:#cbd5e1;
+    --bg:#f3f4f6;
+    --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;background:var(--bg);color:#111827;padding:32px 16px;}
+  h1{font-size:18px;font-weight:600;margin:0 0 4px;}
+  p.note{font-size:12px;color:#6b7280;margin:0 0 24px;}
+  .label{font-size:12px;color:#6b7280;margin:24px 0 8px;}
+
+  /* ── 데모 프레임 ── */
+  .frame{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:visible;}
+  .frame.mobile{max-width:390px;}
+  .frame.wide{max-width:760px;}
+
+  /* ── 바 본체 ── */
+  .nav{display:flex;justify-content:center;border-top:1px solid var(--line);padding:8px 0 10px;border-radius:0 0 14px 14px;}
+  .nav-inner{display:flex;align-items:flex-end;width:100%;max-width:480px;margin:0 auto;padding:0 4px;}
+  .wide .nav-inner{border-left:1px dashed var(--line);border-right:1px dashed var(--line);}
+
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink);text-decoration:none;}
+  .tab .lbl{font-size:11px;color:var(--muted);}
+  .tab.active{color:var(--blue);}
+  .tab.active .lbl{color:var(--blue);font-weight:600;}
+  .tab svg{width:20px;height:20px;}
+
+  /* ── 단계 점(갯수=단계) ── */
+  .dots{display:flex;gap:3px;height:6px;align-items:center;}
+  .dots i{width:5px;height:5px;border-radius:50%;background:var(--dot-off);display:block;}
+  .tab.active .dots i{background:var(--blue);}
+
+  /* ── 중앙 캘린더 FAB (중립 입체) ── */
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+  .fab{width:52px;height:52px;border-radius:50%;background:#fff;border:0.5px solid #d1d5db;color:#6b7280;
+       display:flex;align-items:center;justify-content:center;margin-top:-26px;
+       box-shadow:0 5px 12px -3px rgba(0,0,0,.16), inset 0 1px 1px rgba(255,255,255,.6);}
+  .fab svg{width:23px;height:23px;}
+  .center .lbl{font-size:11px;color:var(--muted);margin-top:5px;}
+  .center.active .fab{color:var(--blue);border-color:#bfdbfe;}
+  .center.active .lbl{color:var(--blue);font-weight:600;}
+  .spacer{height:6px;}
+
+  /* ── 넓은 화면 여백 표시(데모 전용) ── */
+  .wide .gutter{flex:1;align-self:stretch;background:#f3f4f6;}
+  .wide .gutter.l{border-radius:0 0 0 14px;}
+  .wide .gutter.r{border-radius:0 0 14px 0;}
+  .cap-note{font-size:11px;color:#9ca3af;text-align:center;margin:8px 0 0;}
+</style>
+</head>
+<body>
+  <h1>바텀탭 4+1 — 디자인 정본</h1>
+  <p class="note">DB생산(1) · 컨택관리(2) · [캘린더] · 일정·계약(3) · 실무/수납(4). 단계=점 갯수, 중앙=중립 입체 FAB. 활성 예시=컨택관리.</p>
+
+  <div class="label">모바일 — 전체폭 균등 (flex-1)</div>
+  <div class="frame mobile">
+    <div class="nav">
+      <div class="nav-inner" id="bar-mobile"></div>
+    </div>
+  </div>
+
+  <div class="label">넓은 화면 — max-width 480px 중앙정렬, 캡 안 flex-1 균등</div>
+  <div class="frame wide">
+    <div class="nav">
+      <div class="gutter l"></div>
+      <div class="nav-inner" id="bar-wide"></div>
+      <div class="gutter r"></div>
+    </div>
+  </div>
+  <p class="cap-note">회색 = 여백 · 점선 = 최대폭(480px) 경계</p>
+
+<script>
+  // 아이콘 SVG = components/TabBar.tsx 정본 path 를 그대로 사용 (레거시 유지).
+  const ICONS = {
+    db: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4 L5 4 L7 13 L18 13 L20 6 L7 6"/><rect x="9" y="7.5" width="7" height="4.5" rx="0.5" fill="#fff"/><line x1="9" y1="10" x2="16" y2="10"/><line x1="11" y1="7.5" x2="11" y2="12"/></svg>',
+    contact: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" transform="translate(-1,5.5) scale(0.68)"/><rect x="14.5" y="0.5" width="9" height="9" rx="1.4" fill="#fff"/><line x1="14.5" y1="3.3" x2="23.5" y2="3.3"/><circle cx="17" cy="5.7" r="0.85" fill="currentColor" stroke="none"/><circle cx="19" cy="5.7" r="0.85" fill="currentColor" stroke="none"/><circle cx="21" cy="5.7" r="0.85" fill="currentColor" stroke="none"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>',
+    schedule: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>',
+    payment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+  };
+  const dots = n => '<div class="dots">' + '<i></i>'.repeat(n) + '</div>';
+  // active = 컨택관리(예시)
+  const STEPS_L = [
+    {icon:'db', label:'DB생산', step:1, active:false},
+    {icon:'contact', label:'컨택관리', step:2, active:true},
+  ];
+  const STEPS_R = [
+    {icon:'schedule', label:'일정·계약', step:3, active:false},
+    {icon:'payment', label:'실무/수납', step:4, active:false},
+  ];
+  const tabHTML = t => `<a class="tab${t.active?' active':''}" href="#">${ICONS[t.icon]}<span class="lbl">${t.label}</span>${dots(t.step)}</a>`;
+  const centerHTML = `<div class="center"><div class="fab">${ICONS.calendar}</div><span class="lbl">캘린더</span><div class="spacer"></div></div>`;
+  const barHTML = STEPS_L.map(tabHTML).join('') + centerHTML + STEPS_R.map(tabHTML).join('');
+  document.getElementById('bar-mobile').innerHTML = barHTML;
+  document.getElementById('bar-wide').innerHTML = barHTML;
+</script>
+</body>
+</html>

@@ -430,9 +430,18 @@ function getTimeValue(hourId, minuteId) {
 
 ## 5. Navigation
 
-### Bottom Navigation (모바일) — 5개 탭
+### Bottom Navigation (모바일) — 4+1 (ADR-0019)
 
-**탭 순서 (좌→우)**: 컨택관리 / 일정·계약 / 캘린더 / 수납 / DB관리
+> 정본: `docs/design/prototypes/bottom-nav-4plus1.html`. 결정: [ADR-0019](../decisions/0019-bottom-nav-4plus1.md). 변경 시 새 ADR 필요.
+
+**탭 순서 (좌→우)**: DB생산(1) / 컨택관리(2) / **[캘린더 중앙 FAB]** / 일정·계약(3) / 실무/수납(4)
+- **단계 인디케이터**: 라벨 아래 **점 갯수 = 단계(1·2·3·4)**. 현재 탭만 파랑(blue-600), 나머지 slate-300. 서수/뱃지 아님.
+- **중앙 캘린더 = 중립 입체 FAB**: 흰 원(`h-[52px] w-[52px]`) + `border border-gray-300`(active: border-blue-200) + `shadow-lg` + `-mt-6`(위로 띄움). 아이콘 gray-500(active blue-600, outline 유지). **대시보드(홈)보다 약한 강조**(색 채움 없음).
+- **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px 토큰) 중앙정렬, 캡 안 flex-1 균등. `env(safe-area-inset-*)` 패딩 유지.
+- **라벨**: `DB관리 → DB생산`(사용자 노출만). 라우트 `/db`·코드 키·아이콘 SVG는 불변.
+- 구현: `TabBar.tsx` 설정 기반(LEFT/RIGHT `Tab[]` + CenterFab) + 내부 프리미티브 `TabItem`/`CenterFab`/`Dots`.
+
+#### (legacy 참고) 기존 5탭 평면 구조 — ADR-0019로 supersede됨
 
 **전체 컨테이너:**
 ```html
@@ -520,7 +529,7 @@ function getTimeValue(hourId, minuteId) {
 </svg>
 ```
 
-#### 탭 아이콘 5 — DB관리 (E: 카트 + DB박스)
+#### 탭 아이콘 5 — DB생산 (E: 카트 + DB박스) — 라우트 `/db` 유지(라벨만 변경, ADR-0019)
 "DB를 매입·생산해서 담는다"는 의미.
 
 ```html
@@ -1211,7 +1220,7 @@ components/dashboard/
 
 | 컴포넌트 | 파일 | 역할 / Props |
 |---|---|---|
-| **TabBar** | `components/TabBar.tsx` | 모바일 BottomNav 5탭 (§5). 활성 라우트 강조, SVG `currentColor` 패턴 |
+| **TabBar** | `components/TabBar.tsx` | 모바일 BottomNav **4+1** (§5, ADR-0019). 좌2(DB생산·컨택)·중앙 캘린더 FAB·우2(일정·계약·실무수납). 단계 점(1~4)·중립 입체 FAB·480 캡(`max-w-bottom-nav`). 내부: TabItem/CenterFab/Dots. SVG `currentColor`. |
 | **MetricStepper** | `components/ui/MetricStepper.tsx` | §2 Number Input(Stepper) 의 React 구현. Props: `value` / `onChange` / `min` / `max` / 채널 색 |
 | **ChannelBadge** | `components/ui/ChannelBadge.tsx` | §4 채널 배지 4종 진입점. Props: `channel: Channel` (4종 enum) |
 | **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |

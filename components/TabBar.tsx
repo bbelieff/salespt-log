@@ -15,42 +15,74 @@ import type { Route } from "next";
 type Tab = {
   href: Route;
   label: string;
+  step: number; // 활성화 퍼널 단계 (라벨 아래 점 갯수) — ADR-0019
   match: (pathname: string) => boolean;
   Icon: (props: { active: boolean }) => React.ReactElement;
 };
 
-const TABS: Tab[] = [
-  {
-    href: "/contact" as Route,
-    label: "컨택관리",
-    match: (p) => p.startsWith("/contact"),
-    Icon: ContactIcon,
-  },
-  {
-    href: "/schedule" as Route,
-    label: "일정·계약",
-    match: (p) => p.startsWith("/schedule"),
-    Icon: ScheduleIcon,
-  },
-  {
-    href: "/calendar" as Route,
-    label: "캘린더",
-    match: (p) => p.startsWith("/calendar"),
-    Icon: CalendarIcon,
-  },
-  {
-    href: "/payment" as Route,
-    label: "실무/수납",
-    match: (p) => p.startsWith("/payment"),
-    Icon: PaymentIcon,
-  },
-  {
-    href: "/db" as Route,
-    label: "DB관리",
-    match: (p) => p.startsWith("/db"),
-    Icon: DbIcon,
-  },
+// 좌 2단계 · [중앙 캘린더 FAB] · 우 2단계 (4+1, ADR-0019). 순서가 활성화 퍼널 의미를 전달.
+const LEFT: Tab[] = [
+  { href: "/db" as Route, label: "DB생산", step: 1, match: (p) => p.startsWith("/db"), Icon: DbIcon },
+  { href: "/contact" as Route, label: "컨택관리", step: 2, match: (p) => p.startsWith("/contact"), Icon: ContactIcon },
 ];
+const RIGHT: Tab[] = [
+  { href: "/schedule" as Route, label: "일정·계약", step: 3, match: (p) => p.startsWith("/schedule"), Icon: ScheduleIcon },
+  { href: "/payment" as Route, label: "실무/수납", step: 4, match: (p) => p.startsWith("/payment"), Icon: PaymentIcon },
+];
+
+/** 단계 점(갯수=단계). 현재 탭만 파랑, 나머지 회색. 서수/뱃지 아님. */
+function Dots({ n, active }: { n: number; active: boolean }) {
+  return (
+    <div className="flex h-1.5 items-center gap-0.5">
+      {Array.from({ length: n }, (_, i) => (
+        <span
+          key={i}
+          className={`block h-1 w-1 rounded-full ${active ? "bg-blue-600" : "bg-slate-300"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TabItem({ tab, active }: { tab: Tab; active: boolean }) {
+  const color = active ? "text-blue-600" : "text-gray-400 hover:text-gray-600";
+  return (
+    <Link
+      href={tab.href}
+      // touch-manipulation: 모바일 300ms 탭 지연 제거. active:bg: 네비 완료 전 눌림 즉시 표시.
+      className={`flex flex-1 flex-col items-center gap-1 py-2 transition-colors touch-manipulation active:bg-gray-100 ${color}`}
+      aria-current={active ? "page" : undefined}
+    >
+      <tab.Icon active={active} />
+      <span className={`text-xs ${active ? "font-semibold" : ""}`}>{tab.label}</span>
+      <Dots n={tab.step} active={active} />
+    </Link>
+  );
+}
+
+/** 중앙 캘린더 — 중립 입체 FAB(흰 원+테두리+그림자, 위로 띄움). 대시보드(홈)보다 약한 강조. */
+function CenterFab({ active }: { active: boolean }) {
+  return (
+    <Link
+      href={"/calendar" as Route}
+      aria-label="캘린더"
+      aria-current={active ? "page" : undefined}
+      className="flex flex-1 flex-col items-center justify-end touch-manipulation"
+    >
+      <span
+        className={`-mt-6 flex h-[52px] w-[52px] items-center justify-center rounded-full border bg-white shadow-lg transition-colors ${
+          active ? "border-blue-200 text-blue-600" : "border-gray-300 text-gray-500"
+        }`}
+      >
+        <CalendarIcon active={false} />
+      </span>
+      <span className={`mt-1 text-xs ${active ? "font-semibold text-blue-600" : "text-gray-400"}`}>
+        캘린더
+      </span>
+      <div className="h-1.5" />
+    </Link>
+  );
+}
 
 export default function TabBar() {
   const pathname = usePathname() ?? "";
@@ -59,34 +91,20 @@ export default function TabBar() {
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white"
       style={{
         // iOS 라운드 디스플레이 모서리 + 홈 인디케이터 영역 안전 패딩.
-        // 노치 기기에서 양끝 탭이 화면 곡면에 잘리던 문제 해결.
         paddingLeft: "env(safe-area-inset-left)",
         paddingRight: "env(safe-area-inset-right)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* 데스크탑: 전폭 분산 방지 위해 중앙 max-width 로 탭을 모음 (모바일은 전폭). */}
-      <div className="mx-auto flex w-full pc:max-w-2xl">
-      {TABS.map(({ href, label, match, Icon }) => {
-        const active = match(pathname);
-        const colorCls = active
-          ? "text-blue-600"
-          : "text-gray-400 hover:text-gray-600";
-        const labelCls = active ? "text-xs font-semibold" : "text-xs";
-        return (
-          <Link
-            key={href}
-            href={href}
-            // touch-manipulation: 모바일 300ms 탭 지연 제거. active:bg-gray-100: 네비게이션
-            // 완료(시트 read) 전까지 눌림이 즉시 보이게 → 분노클릭 감소 (2026-06 PostHog).
-            className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors touch-manipulation active:bg-gray-100 ${colorCls}`}
-            aria-current={active ? "page" : undefined}
-          >
-            <Icon active={active} />
-            <span className={labelCls}>{label}</span>
-          </Link>
-        );
-      })}
+      {/* 모바일=전폭, 넓은 화면=480px 캡 중앙정렬. 캡 안 탭은 flex-1 균등. */}
+      <div className="mx-auto flex w-full max-w-bottom-nav items-end px-1">
+        {LEFT.map((t) => (
+          <TabItem key={t.href} tab={t} active={t.match(pathname)} />
+        ))}
+        <CenterFab active={pathname.startsWith("/calendar")} />
+        {RIGHT.map((t) => (
+          <TabItem key={t.href} tab={t} active={t.match(pathname)} />
+        ))}
       </div>
     </nav>
   );
