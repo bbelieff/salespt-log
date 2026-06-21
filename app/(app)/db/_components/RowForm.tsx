@@ -37,10 +37,12 @@ export default function RowForm({ channel, initial = {}, onChange }: Props) {
         b[f.key] = "";
       }
     }
-    // C3(R4): 매입DB 편집 시 총액은 컬럼이 아니라 입력 도우미라 initial 에 없다.
-    //   저장된 개당단가 × 개수 로 총액을 역복원(부가세 토글 off 기준) → 개당단가 그대로 라운드트립.
+    // C3: 매입DB 편집 시 총액은 컬럼이 아니라 입력 도우미라 initial 에 없다.
+    //   저장된 개당단가·부가세여부로 총액 역복원 → 개당단가 그대로 라운드트립, 토글도 복원.
+    //   부가세 포함이면 ×1.1 (calc 가 다시 ÷1.1 하므로 일치).
     if ("총액" in b && !("총액" in initial) && typeof initial["개당단가"] === "number") {
-      b["총액"] = (initial["개당단가"] as number) * Number(initial["주문개수"] ?? 0);
+      const base = (initial["개당단가"] as number) * Number(initial["주문개수"] ?? 0);
+      b["총액"] = b["부가세여부"] ? Math.round(base * 1.1) : base;
     }
     return b;
     // eslint-disable-next-line react-hooks/exhaustive-deps

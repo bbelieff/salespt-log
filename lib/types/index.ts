@@ -159,10 +159,8 @@ export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
 // 일별 실적(DailyRevenue, 영업관리!Q~T)은 PR #38·39·40에서 02 계약수납관리로
 // 모델 재정의되며 폐기됨. ContractPayment 타입 참조.
 
-// ── DB관리 — 4채널 raw log (PR 09 db-management) ────────────────
-// 시트 매핑: docs/domains/sheet-structure.md §5
-// 앱은 raw 입력만 (수식 컬럼은 안 씀).
-// 공통 메타: row(1-based 시트 행 번호) — UI에서 update/clear 식별자
+// ── DB관리 — 4채널 raw log (PR 09). 시트매핑: docs/domains/sheet-structure.md §5
+// 앱은 raw 입력만(수식 컬럼 X). row = 시트 행번호(update/clear 식별자).
 
 export const DBPurchase = z.object({
   row: z.number().int().min(2).optional(),
@@ -170,8 +168,9 @@ export const DBPurchase = z.object({
   업체명: z.string().default(""),
   개당단가: z.number().nonnegative().default(0),
   주문개수: z.number().int().nonnegative().default(0),
-  주문금액: z.number().nonnegative().optional(), // E열 수식 — 읽기만
+  주문금액: z.number().nonnegative().optional(), // F열 수식 — 읽기만
   기타: z.string().default(""),
+  부가세여부: z.boolean().default(false), // H열 — 입력 총액이 부가세 포함이었는지
 });
 export type DBPurchase = z.infer<typeof DBPurchase>;
 
@@ -195,6 +194,7 @@ export const DBBanner = z.object({
   주문개수: z.number().int().nonnegative().default(0),
   주문금액: z.number().nonnegative().optional(),
   기타: z.string().default(""),
+  부가세여부: z.boolean().default(false), // W열 — 입력 총액이 부가세 포함이었는지
 });
 export type DBBanner = z.infer<typeof DBBanner>;
 

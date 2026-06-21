@@ -70,6 +70,13 @@ function toStr(v: unknown): string {
   return String(v);
 }
 
+// 시트 boolean 셀(UNFORMATTED → boolean) 또는 "TRUE" 문자열 → boolean. 빈 셀 = false.
+function toBool(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.trim().toUpperCase() === "TRUE";
+  return Boolean(v);
+}
+
 // 합계 행 식별: 첫 셀이 "합계"로 시작하면 합계
 function isSumRow(firstCellVal: unknown): boolean {
   if (typeof firstCellVal !== "string") return false;
@@ -122,14 +129,14 @@ function isISODate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-// ── 매입DB (B:G) ──────────────────────────────────────────────
-// 사용자 입력: 구매일/업체명/개당단가/주문개수/기타. 수식: 주문금액(E열).
+// ── 매입DB (B:H) ──────────────────────────────────────────────
+// 사용자 입력: 구매일/업체명/개당단가/주문개수/기타/부가세여부(H). 수식: 주문금액(F열).
 // 필터: 구매일이 유효한 ISO 날짜인 row만 — 헤더("구매일")/예시 row 차단.
 export async function readPurchases(spreadsheetId: string) {
   return readSection<DBPurchase>(
     spreadsheetId,
     "B",
-    "G",
+    "H",
     (r) => ({
       구매일: serialToISODate(r[0]),
       업체명: toStr(r[1]),
@@ -137,6 +144,7 @@ export async function readPurchases(spreadsheetId: string) {
       주문개수: toNum(r[3]),
       주문금액: toNum(r[4]),
       기타: toStr(r[5]),
+      부가세여부: toBool(r[6]),
     }),
     (p) => isISODate(p.구매일),
   );
@@ -162,14 +170,14 @@ export async function readProductions(spreadsheetId: string) {
   );
 }
 
-// ── 현수막 (P:V) ──────────────────────────────────────────────
-// 사용자 입력: 날짜/업체명/도착일/개당단가/주문개수/기타. 수식: 주문금액.
+// ── 현수막 (P:W) ──────────────────────────────────────────────
+// 사용자 입력: 날짜/업체명/도착일/개당단가/주문개수/기타/부가세여부(W). 수식: 주문금액(U).
 // 필터: 날짜 ISO 유효성.
 export async function readBanners(spreadsheetId: string) {
   return readSection<DBBanner>(
     spreadsheetId,
     "P",
-    "V",
+    "W",
     (r) => ({
       날짜: serialToISODate(r[0]),
       업체명: toStr(r[1]),
@@ -178,6 +186,7 @@ export async function readBanners(spreadsheetId: string) {
       주문개수: toNum(r[4]),
       주문금액: toNum(r[5]),
       기타: toStr(r[6]),
+      부가세여부: toBool(r[7]),
     }),
     (p) => isISODate(p.날짜),
   );
@@ -266,11 +275,12 @@ interface SectionWriteSpec {
 
 // 매입DB.F=D×E / 직접생산.M=K÷L (IFERROR) / 현수막.U=S×T / 콜·지·기·소: 수식 없음
 const SPEC = {
-  매입DB: { startCol: "B", endCol: "G",
+  // 매입DB H·현수막 W = 부가세여부(섹션 사이 gap 컬럼, additive). 주문금액 수식 F/U 유지.
+  매입DB: { startCol: "B", endCol: "H",
     formulas: { 4: (r: number) => `=D${r}*E${r}` } },
   직접생산: { startCol: "I", endCol: "N",
     formulas: { 4: (r: number) => `=IFERROR(K${r}/L${r},0)` } },
-  현수막: { startCol: "P", endCol: "V",
+  현수막: { startCol: "P", endCol: "W",
     formulas: { 5: (r: number) => `=S${r}*T${r}` } },
   콜지기소: { startCol: "X", endCol: "AD", formulas: {} },
 } as const satisfies Record<string, SectionWriteSpec>;
@@ -279,7 +289,7 @@ async function writeRow(
   spreadsheetId: string,
   spec: SectionWriteSpec,
   row: number,
-  values: (string | number)[],
+  values: (string | number | boolean)[],
 ): Promise<void> {
   // 수식 컬럼은 spec.formulas에 정의된 수식 문자열로 치환 (시트 템플릿 누락 방지).
   const out = values.map((v, i) => {
@@ -329,8 +339,9 @@ export async function appendPurchase(
     p.업체명,
     p.개당단가,
     p.주문개수,
-    "", // 주문금액 = 시트 수식
+    "", // 주문금액(F) = 시트 수식
     p.기타,
+    p.부가세여부, // H
   ]);
   return { row };
 }
@@ -376,8 +387,9 @@ export async function appendBanner(
     b.도착일,
     b.개당단가,
     b.주문개수,
-    "", // 주문금액 = 시트 수식
+    "", // 주문금액(U) = 시트 수식
     b.기타,
+    b.부가세여부, // W
   ]);
   return { row };
 }
@@ -420,6 +432,7 @@ export async function updatePurchase(
     p.주문개수,
     "",
     p.기타,
+    p.부가세여부, // H
   ]);
 }
 
@@ -451,6 +464,7 @@ export async function updateBanner(
     b.주문개수,
     "",
     b.기타,
+    b.부가세여부, // W
   ]);
 }
 
