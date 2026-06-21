@@ -94,11 +94,7 @@ async function readSection<T>(
   startCol: string,
   endCol: string,
   parser: (r: unknown[]) => T,
-  /**
-   * 사용자 입력 필드 기준으로 의미있는 row인지 판단.
-   * 시트의 수식 컬럼(주문금액·개당단가 등)은 row 인정 기준에서 제외 — UI에
-   * "추가" 버튼으로 명시적으로 만든 record만 표시하기 위함.
-   */
+  // 사용자 입력 기준 의미있는 row 판정(수식·기본값만 찬 phantom 제외 — 명시 추가분만 표시).
   isMeaningful: (parsed: T) => boolean,
   firstDataRow: number = FIRST_DATA_ROW,
 ): Promise<RawSectionData<T>> {
@@ -129,23 +125,27 @@ function isISODate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-// ── 매입DB (B:H) ──────────────────────────────────────────────
-// 사용자 입력: 구매일/업체명/개당단가/주문개수/기타/부가세여부(H). 수식: 주문금액(F열).
-// 필터: 구매일이 유효한 ISO 날짜인 row만 — 헤더("구매일")/예시 row 차단.
+// ── 매입DB (B:G, F=부가세여부) ────────────────────────────────
+// 입력: 구매일/업체명/개당단가/주문개수/부가세여부(F)/기타(G). 주문금액=개당단가×개수(미저장).
+// 전환 read: F 가 boolean 이면 신규(부가세여부), number(구 주문금액 수식)이면 H(#425)에서 fallback.
 export async function readPurchases(spreadsheetId: string) {
   return readSection<DBPurchase>(
     spreadsheetId,
     "B",
     "H",
-    (r) => ({
-      구매일: serialToISODate(r[0]),
-      업체명: toStr(r[1]),
-      개당단가: toNum(r[2]),
-      주문개수: toNum(r[3]),
-      주문금액: toNum(r[4]),
-      기타: toStr(r[5]),
-      부가세여부: toBool(r[6]),
-    }),
+    (r) => {
+      const 개당단가 = toNum(r[2]);
+      const 주문개수 = toNum(r[3]);
+      return {
+        구매일: serialToISODate(r[0]),
+        업체명: toStr(r[1]),
+        개당단가,
+        주문개수,
+        주문금액: 개당단가 * 주문개수, // 계산값(미저장)
+        기타: toStr(r[5]),
+        부가세여부: typeof r[4] === "boolean" ? r[4] : toBool(r[6]), // 신규 F or 구 H
+      };
+    },
     (p) => isISODate(p.구매일),
   );
 }
@@ -170,24 +170,28 @@ export async function readProductions(spreadsheetId: string) {
   );
 }
 
-// ── 현수막 (P:W) ──────────────────────────────────────────────
-// 사용자 입력: 날짜/업체명/도착일/개당단가/주문개수/기타/부가세여부(W). 수식: 주문금액(U).
-// 필터: 날짜 ISO 유효성.
+// ── 현수막 (P:V, U=부가세여부) ────────────────────────────────
+// 입력: 날짜/업체명/도착일/개당단가/주문개수/부가세여부(U)/기타(V). 주문금액=개당단가×개수(미저장).
+// 전환 read: U 가 boolean 이면 신규(부가세여부), number(구 주문금액 수식)이면 W(#425)에서 fallback.
 export async function readBanners(spreadsheetId: string) {
   return readSection<DBBanner>(
     spreadsheetId,
     "P",
     "W",
-    (r) => ({
-      날짜: serialToISODate(r[0]),
-      업체명: toStr(r[1]),
-      도착일: serialToISODate(r[2]),
-      개당단가: toNum(r[3]),
-      주문개수: toNum(r[4]),
-      주문금액: toNum(r[5]),
-      기타: toStr(r[6]),
-      부가세여부: toBool(r[7]),
-    }),
+    (r) => {
+      const 개당단가 = toNum(r[3]);
+      const 주문개수 = toNum(r[4]);
+      return {
+        날짜: serialToISODate(r[0]),
+        업체명: toStr(r[1]),
+        도착일: serialToISODate(r[2]),
+        개당단가,
+        주문개수,
+        주문금액: 개당단가 * 주문개수, // 계산값(미저장)
+        기타: toStr(r[6]),
+        부가세여부: typeof r[5] === "boolean" ? r[5] : toBool(r[7]), // 신규 U or 구 W
+      };
+    },
     (p) => isISODate(p.날짜),
   );
 }
@@ -220,18 +224,9 @@ export async function readLeads(spreadsheetId: string) {
 // ── append / update / clear 헬퍼 ──────────────────────────────
 
 /**
- * 섹션의 첫 번째 빈 데이터 행을 찾는다.
- * "합계" 행 위에서만 찾음 (합계 행 만나면 그 위 첫 빈 row 반환).
- * 빈 row 없으면 합계 row 자체를 반환 → 호출 측이 행 insert해야 함.
- */
-/**
- * 첫 빈 데이터 행 찾기.
- *
- * read 측의 isMeaningful 필터와 동일한 기준을 사용해야 함 — 그렇지 않으면
- * 시트의 dropdown 기본값/체크박스 FALSE/수식 결과로 채워진 phantom row를
- * "이미 사용 중"으로 오인하여 영역 가득 에러 발생.
- *
- * isPhantom(r) === true 이면 "사용자 입력 데이터 없음 → 비어있는 row로 간주".
+ * 첫 빈 데이터 행 찾기("합계" 행 위에서, 없으면 합계 row 반환 → 호출측 insert).
+ * isPhantom 은 read 의 isMeaningful 과 같은 기준이어야 함 — 안 그러면 dropdown 기본값/
+ * FALSE/수식만 찬 phantom row 를 "사용 중"으로 오인해 영역 가득 에러.
  */
 async function findFirstEmptyRow(
   spreadsheetId: string,
@@ -273,15 +268,13 @@ interface SectionWriteSpec {
   formulas: Record<number, (row: number) => string>;
 }
 
-// 매입DB.F=D×E / 직접생산.M=K÷L (IFERROR) / 현수막.U=S×T / 콜·지·기·소: 수식 없음
+// C3 개정(§3-A): 매입DB F·현수막 U = 부가세여부(주문금액 미저장=계산값). 직접생산.M=K÷L 수식 유지.
+//   주문금액은 시트에 안 둠 → read 가 개당단가×개수 로 계산. 쓰기 시 H/W(구 #425 부가세여부) 빈칸 정리.
 const SPEC = {
-  // 매입DB H·현수막 W = 부가세여부(섹션 사이 gap 컬럼, additive). 주문금액 수식 F/U 유지.
-  매입DB: { startCol: "B", endCol: "H",
-    formulas: { 4: (r: number) => `=D${r}*E${r}` } },
+  매입DB: { startCol: "B", endCol: "H", formulas: {} },
   직접생산: { startCol: "I", endCol: "N",
     formulas: { 4: (r: number) => `=IFERROR(K${r}/L${r},0)` } },
-  현수막: { startCol: "P", endCol: "W",
-    formulas: { 5: (r: number) => `=S${r}*T${r}` } },
+  현수막: { startCol: "P", endCol: "W", formulas: {} },
   콜지기소: { startCol: "X", endCol: "AD", formulas: {} },
 } as const satisfies Record<string, SectionWriteSpec>;
 
@@ -339,9 +332,9 @@ export async function appendPurchase(
     p.업체명,
     p.개당단가,
     p.주문개수,
-    "", // 주문금액(F) = 시트 수식
-    p.기타,
-    p.부가세여부, // H
+    p.부가세여부, // F (구 주문금액 자리)
+    p.기타, // G
+    "", // H 정리(구 #425 부가세여부 자리)
   ]);
   return { row };
 }
@@ -387,9 +380,9 @@ export async function appendBanner(
     b.도착일,
     b.개당단가,
     b.주문개수,
-    "", // 주문금액(U) = 시트 수식
-    b.기타,
-    b.부가세여부, // W
+    b.부가세여부, // U (구 주문금액 자리)
+    b.기타, // V
+    "", // W 정리(구 #425 부가세여부 자리)
   ]);
   return { row };
 }
@@ -430,9 +423,9 @@ export async function updatePurchase(
     p.업체명,
     p.개당단가,
     p.주문개수,
-    "",
-    p.기타,
-    p.부가세여부, // H
+    p.부가세여부, // F
+    p.기타, // G
+    "", // H 정리
   ]);
 }
 
@@ -462,9 +455,9 @@ export async function updateBanner(
     b.도착일,
     b.개당단가,
     b.주문개수,
-    "",
-    b.기타,
-    b.부가세여부, // W
+    b.부가세여부, // U
+    b.기타, // V
+    "", // W 정리
   ]);
 }
 

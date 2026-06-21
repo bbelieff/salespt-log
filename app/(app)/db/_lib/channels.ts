@@ -128,8 +128,19 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
       { key: "날짜", label: "발주일", type: "date" },
       { key: "업체명", label: "업체명", type: "text", placeholder: "예: (주)코리아광고" },
       { key: "도착일", label: "도착일", type: "date" },
-      { key: "개당단가", label: "부가세 제외 개당단가", type: "number", unit: "원" },
+      // 부가세 역산(매입DB와 동일): 총액+장수+부가세토글 → 장당단가. 총액은 입력 도우미(저장 X).
+      { key: "총액", label: "결제 총액", type: "number", unit: "원", formOnly: true, placeholder: "실제 결제한 금액" },
+      { key: "부가세여부", label: "부가세 포함 금액", type: "toggle" },
       { key: "주문개수", label: "주문개수", type: "number", unit: "장" },
+      {
+        key: "개당단가",
+        label: "부가세 제외 개당단가",
+        type: "number",
+        unit: "원",
+        formula: true,
+        calc: (r) =>
+          unitPriceFromTotal(num(r, "총액"), num(r, "주문개수"), Boolean(r["부가세여부"])),
+      },
       {
         key: "주문금액",
         label: "부가세 제외 주문금액",
