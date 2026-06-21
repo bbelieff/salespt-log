@@ -367,12 +367,8 @@ export async function batchWriteChannelDailyRows(
   const courseStart = await readCourseStart(spreadsheetId); // 1 Read
 
   const cols = SHEET_RANGES.sales.metricCols;
-  for (const col of [
-    cols.production,
-    cols.inflow,
-    cols.contactProgress,
-    cols.meetingReservation,
-  ]) {
+  // 생산(E)은 PR1(ADR-0020)로 DB생산 집계가 소유 → 컨택 저장은 F~H(유입/컨택/미팅)만 쓴다.
+  for (const col of [cols.inflow, cols.contactProgress, cols.meetingReservation]) {
     assertWritableCol(col, "batchWriteChannelDailyRows");
   }
 
@@ -382,9 +378,8 @@ export async function batchWriteChannelDailyRows(
     const targetDate = parseISO(validated.date);
     const sheetRow = salesRowFor(targetDate, validated.channel, courseStart);
     return {
-      range: `${tab}!${cols.production}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
+      range: `${tab}!${cols.inflow}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
       values: [[
-        validated.production,
         validated.inflow,
         validated.contactProgress,
         validated.meetingReservation,
@@ -395,6 +390,31 @@ export async function batchWriteChannelDailyRows(
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: { valueInputOption: "USER_ENTERED", data },
+  });
+}
+
+/** 생산(E) 단일 셀 기입 — DB생산 집계 소유 app-derived 값(PR1/ADR-0020). 항상 overwrite,
+ *  편집기간(1~10주) 밖이면 skip. §2.5 비대상(파생값 — 기존 E:H writer 와 동일 무가드). */
+export async function writeProductionCell(
+  spreadsheetId: string,
+  date: string,
+  channel: Channel,
+  count: number,
+): Promise<void> {
+  const courseStart = await readCourseStart(spreadsheetId);
+  let sheetRow: number;
+  try {
+    sheetRow = salesRowFor(parseISO(date), channel, courseStart);
+  } catch {
+    return; // 편집 가능 기간(1~10주) 밖 — 영업관리 E 대상 아님
+  }
+  const cols = SHEET_RANGES.sales.metricCols;
+  assertWritableCol(cols.production, "writeProductionCell");
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range: `${tabRef(SHEET_RANGES.sales.tab)}!${cols.production}${sheetRow}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[count]] },
   });
 }
 

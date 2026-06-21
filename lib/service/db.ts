@@ -22,7 +22,8 @@ import {
   updateProduction,
   updatePurchase,
 } from "@/repo/db";
-import type { DBBanner, DBLead, DBProduction, DBPurchase } from "@/types";
+import { writeProductionCell } from "@/repo/sales";
+import type { Channel, DBBanner, DBLead, DBProduction, DBPurchase } from "@/types";
 
 async function resolveSheet(email: string): Promise<string> {
   const user = await findUserByEmail(email);
@@ -54,50 +55,146 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
   };
 }
 
+// ── 생산(E) 집계쓰기 (PR1 / ADR-0020) ──────────────────────────
+// DB raw 변경 시 그 (채널, 날짜)의 생산수를 재집계해 01 영업관리 E 에 기입.
+// 매입DB/직접생산/현수막 = Σ개수, 콜·지·기·소 = 행수(개수 필드 없음).
+
+/** (채널 raw rows, 날짜) → 그 날짜 생산수. 순수 — 단위 테스트 대상. */
+export function productionCountFor(
+  channel: Channel,
+  rows: { 구매일?: string; 날짜?: string; 접수일?: string; 주문개수?: number; 생산개수?: number }[],
+  date: string,
+): number {
+  if (!date) return 0;
+  if (channel === "매입DB")
+    return rows.filter((r) => r.구매일 === date).reduce((s, r) => s + (r.주문개수 || 0), 0);
+  if (channel === "직접생산")
+    return rows.filter((r) => r.날짜 === date).reduce((s, r) => s + (r.생산개수 || 0), 0);
+  if (channel === "현수막")
+    return rows.filter((r) => r.날짜 === date).reduce((s, r) => s + (r.주문개수 || 0), 0);
+  return rows.filter((r) => r.접수일 === date).length; // 콜·지·기·소
+}
+
+async function readChannelRows(spreadsheetId: string, channel: Channel) {
+  if (channel === "매입DB") return (await readPurchases(spreadsheetId)).rows;
+  if (channel === "직접생산") return (await readProductions(spreadsheetId)).rows;
+  if (channel === "현수막") return (await readBanners(spreadsheetId)).rows;
+  return (await readLeads(spreadsheetId)).rows;
+}
+
+/** raw 행에서 그 (채널, 날짜)의 날짜 필드 값 (patch/remove 의 옛 날짜 식별용). */
+function dateOfRow(channel: Channel, row: DBPurchase | DBProduction | DBBanner | DBLead): string {
+  if (channel === "매입DB") return (row as DBPurchase).구매일;
+  if (channel === "콜·지·기·소") return (row as DBLead).접수일;
+  return (row as DBProduction | DBBanner).날짜;
+}
+
+/** DB 변경 후 그 (채널, 날짜) 생산(E) 재집계·기입. 실패해도 DB 저장은 성공(warn). */
+async function syncProduction(spreadsheetId: string, channel: Channel, date: string) {
+  if (!date) return;
+  try {
+    const rows = await readChannelRows(spreadsheetId, channel);
+    await writeProductionCell(spreadsheetId, date, channel, productionCountFor(channel, rows, date));
+  } catch (e) {
+    console.warn(`[db] 생산 집계 기입 실패 (${channel} ${date}):`, e instanceof Error ? e.message : e);
+  }
+}
+
+/** patch/remove 전 해당 row 의 옛 날짜 읽기 (날짜 변경·삭제 시 옛 날짜 E 재집계용). */
+async function oldDateOf(spreadsheetId: string, channel: Channel, row: number): Promise<string> {
+  const rows = await readChannelRows(spreadsheetId, channel);
+  const hit = (rows as Array<{ row: number }>).find((r) => r.row === row);
+  return hit ? dateOfRow(channel, hit as never) : "";
+}
+
 // ── 매입DB ────────────────────────────────────────────────────
 export async function addPurchase(email: string, p: DBPurchase) {
-  return appendPurchase(await resolveSheet(email), p);
+  const sid = await resolveSheet(email);
+  const r = await appendPurchase(sid, p);
+  await syncProduction(sid, "매입DB", p.구매일);
+  return r;
 }
 export async function patchPurchase(email: string, row: number, p: DBPurchase) {
-  return updatePurchase(await resolveSheet(email), row, p);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "매입DB", row);
+  const r = await updatePurchase(sid, row, p);
+  await syncProduction(sid, "매입DB", old);
+  if (p.구매일 !== old) await syncProduction(sid, "매입DB", p.구매일);
+  return r;
 }
 export async function removePurchase(email: string, row: number) {
-  return clearPurchase(await resolveSheet(email), row);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "매입DB", row);
+  const r = await clearPurchase(sid, row);
+  await syncProduction(sid, "매입DB", old);
+  return r;
 }
 
 // ── 직접생산 ──────────────────────────────────────────────────
 export async function addProduction(email: string, p: DBProduction) {
-  return appendProduction(await resolveSheet(email), p);
+  const sid = await resolveSheet(email);
+  const r = await appendProduction(sid, p);
+  await syncProduction(sid, "직접생산", p.날짜);
+  return r;
 }
-export async function patchProduction(
-  email: string,
-  row: number,
-  p: DBProduction,
-) {
-  return updateProduction(await resolveSheet(email), row, p);
+export async function patchProduction(email: string, row: number, p: DBProduction) {
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "직접생산", row);
+  const r = await updateProduction(sid, row, p);
+  await syncProduction(sid, "직접생산", old);
+  if (p.날짜 !== old) await syncProduction(sid, "직접생산", p.날짜);
+  return r;
 }
 export async function removeProduction(email: string, row: number) {
-  return clearProduction(await resolveSheet(email), row);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "직접생산", row);
+  const r = await clearProduction(sid, row);
+  await syncProduction(sid, "직접생산", old);
+  return r;
 }
 
 // ── 현수막 ────────────────────────────────────────────────────
 export async function addBanner(email: string, b: DBBanner) {
-  return appendBanner(await resolveSheet(email), b);
+  const sid = await resolveSheet(email);
+  const r = await appendBanner(sid, b);
+  await syncProduction(sid, "현수막", b.날짜);
+  return r;
 }
 export async function patchBanner(email: string, row: number, b: DBBanner) {
-  return updateBanner(await resolveSheet(email), row, b);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "현수막", row);
+  const r = await updateBanner(sid, row, b);
+  await syncProduction(sid, "현수막", old);
+  if (b.날짜 !== old) await syncProduction(sid, "현수막", b.날짜);
+  return r;
 }
 export async function removeBanner(email: string, row: number) {
-  return clearBanner(await resolveSheet(email), row);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "현수막", row);
+  const r = await clearBanner(sid, row);
+  await syncProduction(sid, "현수막", old);
+  return r;
 }
 
 // ── 콜·지·기·소 ────────────────────────────────────────────────
 export async function addLead(email: string, l: DBLead) {
-  return appendLead(await resolveSheet(email), l);
+  const sid = await resolveSheet(email);
+  const r = await appendLead(sid, l);
+  await syncProduction(sid, "콜·지·기·소", l.접수일);
+  return r;
 }
 export async function patchLead(email: string, row: number, l: DBLead) {
-  return updateLead(await resolveSheet(email), row, l);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "콜·지·기·소", row);
+  const r = await updateLead(sid, row, l);
+  await syncProduction(sid, "콜·지·기·소", old);
+  if (l.접수일 !== old) await syncProduction(sid, "콜·지·기·소", l.접수일);
+  return r;
 }
 export async function removeLead(email: string, row: number) {
-  return clearLead(await resolveSheet(email), row);
+  const sid = await resolveSheet(email);
+  const old = await oldDateOf(sid, "콜·지·기·소", row);
+  const r = await clearLead(sid, row);
+  await syncProduction(sid, "콜·지·기·소", old);
+  return r;
 }
