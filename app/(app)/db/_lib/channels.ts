@@ -2,9 +2,11 @@
  * DB관리 4채널 메타데이터.
  * 정본: docs/design/prototypes/db-management.html v11 — `CHANNELS` 객체 1:1 매핑.
  */
+import { unitPriceFromTotal } from "@/lib/pricing";
+
 export type ChannelKey = "purchase" | "direct" | "banner" | "referral";
 
-export type FieldType = "text" | "number" | "date" | "select";
+export type FieldType = "text" | "number" | "date" | "select" | "toggle";
 
 export interface FieldDef {
   key: string;
@@ -13,7 +15,9 @@ export interface FieldDef {
   unit?: string; // "원", "건", "장"
   placeholder?: string;
   options?: readonly string[]; // for select
-  formula?: boolean; // 시트 자동 수식 — 입력 X
+  formula?: boolean; // 자동 계산값 — 입력 X (시트 수식 또는 클라 역산)
+  /** 입력 도우미 전용 — DB 컬럼 아님(저장 시 제외). 예: 부가세 역산용 총액·토글. */
+  formOnly?: boolean;
   /** 폼 grid에서 2칸 차지. */
   span?: 2;
   /** 클라이언트 미리보기 계산식 (formula=true일 때). */
@@ -53,8 +57,19 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
     fields: [
       { key: "구매일", label: "구매일", type: "date" },
       { key: "업체명", label: "업체명", type: "text", placeholder: "예: 디비딩프로" },
-      { key: "개당단가", label: "부가세 제외 개당단가", type: "number", unit: "원" },
+      // 부가세 역산(R4): 총액+개수+부가세토글 → 개당단가. 총액·토글은 입력 도우미(저장 X).
+      { key: "총액", label: "결제 총액", type: "number", unit: "원", formOnly: true, placeholder: "실제 결제한 금액" },
+      { key: "부가세포함", label: "부가세 포함 금액", type: "toggle", formOnly: true },
       { key: "주문개수", label: "주문개수", type: "number", unit: "건" },
+      {
+        key: "개당단가",
+        label: "부가세 제외 개당단가",
+        type: "number",
+        unit: "원",
+        formula: true,
+        calc: (r) =>
+          unitPriceFromTotal(num(r, "총액"), num(r, "주문개수"), Boolean(r["부가세포함"])),
+      },
       {
         key: "주문금액",
         label: "부가세 제외 주문금액",
