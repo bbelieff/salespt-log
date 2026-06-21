@@ -13,9 +13,6 @@ import {
   useWeekMeetings,
 } from "@/query/contact-hooks";
 import type { ChannelDailyRowMetrics } from "@/service";
-import { useDBOverview } from "@/query/db-hooks";
-import { useRouter } from "next/navigation";
-import { useDbProductionCheck } from "./_lib/useDbProductionCheck";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
@@ -47,11 +44,7 @@ export default function ContactPage() {
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
   const saveMetrics = useSaveMetrics();
-  const router = useRouter();
-  const dbOverview = useDBOverview();
-  // DB합 일치 검사 + 결과 모달 상태를 훅으로 중앙화 (모든 저장 경로 공통, 2026-06-04).
-  const { dbMismatch, setDbMismatch, dbMatchOk, setDbMatchOk, checkDbAfterSave } =
-    useDbProductionCheck(dbOverview);
+  // 생산(E)은 PR1/ADR-0020 으로 DB생산 집계가 소유 → 컨택 저장 시 DB합 불일치 검사 제거.
   // 2026-06-03 [교차탭1]: DB관리→컨택 이동 직후 생산 입력 행을 잠깐 강조.
   const [highlightProduction, setHighlightProduction] = useState(false);
   const appendMeeting = useAppendMeeting();
@@ -328,14 +321,12 @@ export default function ContactPage() {
     }
   };
 
-  // ⚠️ 모든 생산 메트릭 저장은 반드시 이 단일 진입점을 통해야 함
-  //    (saveMetrics.mutateAsync 직접 호출 금지 — DB 검사 누락 방지). checkDbAfterSave 는 훅.
+  // 메트릭 저장 단일 진입점. (생산 E 는 PR1/ADR-0020 으로 DB생산 집계 소유 — 저장 후 DB 검사 없음.)
   const saveMetricsAndCheck = async (
     dateAtClick: string,
     channels: Record<Channel, ChannelDailyRowMetrics>,
   ) => {
     await saveMetrics.mutateAsync({ date: dateAtClick, channels });
-    await checkDbAfterSave(dateAtClick, channels);
   };
 
   const handleSave = async () => {
@@ -465,17 +456,6 @@ export default function ContactPage() {
       )}
 
       <ContactResultModals
-        dbMismatch={dbMismatch}
-        onMismatchNavigate={() => {
-          const ch = dbMismatch?.channel;
-          setDbMismatch(null);
-          router.push(
-            ch ? `/db?channel=${encodeURIComponent(ch)}&focus=add` : "/db",
-          );
-        }}
-        onMismatchClose={() => setDbMismatch(null)}
-        dbMatchOk={dbMatchOk}
-        onMatchOkClose={() => setDbMatchOk(null)}
         pickerMeetings={pickerMeetings}
         onPick={(m) => { setPickerMeetings(null); handleRemoveSavedMeeting(m); }}
         onPickerClose={() => setPickerMeetings(null)}
