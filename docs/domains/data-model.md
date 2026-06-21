@@ -527,9 +527,9 @@ interface DashboardView {
 ### DB관리 (03 DB관리)
 | 식별자 | 종류 | 의미 |
 |---|---|---|
-| `DBPurchase` | z.object | 매입DB raw row (B~G) |
+| `DBPurchase` | z.object | 매입DB raw row (B~H, H=부가세여부 boolean) |
 | `DBProduction` | z.object | 직접생산 raw row (I~N) |
-| `DBBanner` | z.object | 현수막 raw row (P~V) |
+| `DBBanner` | z.object | 현수막 raw row (P~W, W=부가세여부 boolean) |
 | `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) |
 
 ### 대시보드 view (코드 식별자 — `lib/types/index.ts` 또는 `lib/service/dashboard.ts` 예정)
