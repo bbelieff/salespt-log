@@ -340,7 +340,16 @@ export async function loadMe(email: string): Promise<MeProfile> {
     throw new Error(`[me] 사용자(${email})를 찾을 수 없습니다.`);
   }
   // 단일 batchGet (B3:C3 + O1 + O2) + 60s 메모이즈.
-  const bundle = await readBundle(user.spreadsheetId);
+  // ⚠️ 트레이너/admin 행은 spreadsheetId 가 빈 값 → readBundle("") 가 404 throw →
+  //    loadMe throw → /api/me 500 → '내 아레나 일지' 토글 미노출. 빈값/실패 시 null 로 강등.
+  let bundle: Awaited<ReturnType<typeof readBundle>> | null = null;
+  if (user.spreadsheetId) {
+    try {
+      bundle = await readBundle(user.spreadsheetId);
+    } catch {
+      bundle = null;
+    }
+  }
   // 이전 기수(archived) 일지 링크 — 같은 레지스트리 캐시 read 라 비용 미미 (carryover §1).
   let archived: { cohort: string; spreadsheetId: string } | null = null;
   try {
@@ -348,11 +357,16 @@ export async function loadMe(email: string): Promise<MeProfile> {
   } catch {
     archived = null;
   }
-  // 수강생출신 트레이너 — 본인 아레나 시트(이름 매칭) "내 아레나 일지" 토글용(P14).
+  // 수강생출신 트레이너 — 본인 아레나 시트 "내 아레나 일지" 토글용(P14).
+  // 본인 이메일의 활성 아레나 행 우선(중복/동명이인 안전), 없으면 이름 매칭 폴백.
   let ownArenaSheetId: string | undefined;
   if (user.role === "trainer") {
     try {
-      ownArenaSheetId = (await findArenaSheetIdByName(user.name)) ?? undefined;
+      const arenaByEmail = await findActiveArenaRowByEmail(email);
+      ownArenaSheetId =
+        arenaByEmail?.spreadsheetId ||
+        (await findArenaSheetIdByName(user.name)) ||
+        undefined;
     } catch {
       ownArenaSheetId = undefined;
     }
@@ -370,10 +384,10 @@ export async function loadMe(email: string): Promise<MeProfile> {
   }
   return {
     email: user.email,
-    cohort: isArenaReg(user.cohort) ? user.cohort : bundle.cohort || user.cohort,
-    name: bundle.name || user.name,
-    courseStartISO: toISO(bundle.courseStart),
-    graduationISO: toISO(bundle.graduation),
+    cohort: isArenaReg(user.cohort) ? user.cohort : bundle?.cohort || user.cohort,
+    name: bundle?.name || user.name,
+    courseStartISO: bundle ? toISO(bundle.courseStart) : "",
+    graduationISO: bundle ? toISO(bundle.graduation) : "",
     spreadsheetId: user.spreadsheetId,
     feedbackFolderId: user.feedbackFolderId,
     driveLinkStatus: user.driveLinkStatus,
