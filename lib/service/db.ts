@@ -52,10 +52,23 @@ export interface DBOverview {
   bannerPosts: Array<DBBannerPost & { row: number }>; // 현수막 게시 로그(AF:AI)
 }
 
-/** 5섹션 한 번에 조회 (각 섹션 read = sheet read). */
+/** 섹션 read 실패 시 빈 배열로 강등(나머지 채널은 정상 표시) + 경고 로그. */
+function rowsOrEmpty<T>(r: PromiseSettledResult<{ rows: T[] }>, label: string): T[] {
+  if (r.status === "fulfilled") return r.value.rows;
+  console.warn(
+    `[db] ${label} read 실패 — 빈 목록으로 강등:`,
+    r.reason instanceof Error ? r.reason.message : r.reason,
+  );
+  return [];
+}
+
+/**
+ * 5섹션 한 번에 조회. allSettled — 한 섹션(예: 신규 AF:AI 게시로그)만 throw 해도
+ * 그 채널만 빈 목록, 나머지는 정상. resolveSheet(사용자 없음)만 throw 유지.
+ */
 export async function loadDBOverview(email: string): Promise<DBOverview> {
   const spreadsheetId = await resolveSheet(email);
-  const [purchases, productions, banners, leads, bannerPosts] = await Promise.all([
+  const [purchases, productions, banners, leads, bannerPosts] = await Promise.allSettled([
     readPurchases(spreadsheetId),
     readProductions(spreadsheetId),
     readBanners(spreadsheetId),
@@ -63,11 +76,11 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
     readBannerPosts(spreadsheetId),
   ]);
   return {
-    purchases: purchases.rows,
-    productions: productions.rows,
-    banners: banners.rows,
-    leads: leads.rows,
-    bannerPosts: bannerPosts.rows,
+    purchases: rowsOrEmpty(purchases, "매입DB"),
+    productions: rowsOrEmpty(productions, "직접생산"),
+    banners: rowsOrEmpty(banners, "현수막"),
+    leads: rowsOrEmpty(leads, "콜·지·기·소"),
+    bannerPosts: rowsOrEmpty(bannerPosts, "현수막게시"),
   };
 }
 
