@@ -88,6 +88,20 @@ export async function readWeeklyPerformance(
   });
 }
 
+/** 01 영업관리!R1:U6 채널별 6단계 stacking 만 단독 read (loadDay 경량 사용). [stage][channel].
+ *  stage 0=생산·1=유입·…, channel 0=매입DB·1=직접생산·2=현수막·3=콜지기소. */
+export async function readChannelStacking(spreadsheetId: string): Promise<number[][]> {
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tabRef(SALES_TAB)}!R1:U6`,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  const raw = res.data.values ?? [];
+  return Array.from({ length: 6 }, (_, r) =>
+    Array.from({ length: 4 }, (_, c) => num(raw[r]?.[c])),
+  );
+}
+
 export async function readDashboard(
   spreadsheetId: string,
 ): Promise<DashboardSheetData> {
