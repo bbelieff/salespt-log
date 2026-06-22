@@ -12,7 +12,7 @@ import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 import { nameMatches } from "./name-match";
-import { pickPreferredUser } from "./user-priority";
+import { pickPreferredUser, pickPreferredRow } from "./user-priority";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
@@ -196,21 +196,31 @@ async function updateCell(
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const lc = email.toLowerCase();
+  // email 매칭 행 수집: parse 성공 행은 우선순위 선택용, 원시 행번호는 fallback.
+  const rawRows: number[] = [];
+  const matches: { user: User; sheetRow: number }[] = [];
   for (let i = 0; i < rows.length; i++) {
     if (typeof rows[i]?.[0] === "string" && (rows[i]![0] as string).toLowerCase() === lc) {
       const sheetRow = i + 2;
-      // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
-      await sheetsClient().spreadsheets.values.update({
-        spreadsheetId: reg.spreadsheetId,
-        range: `${reg.tab}!${colLetter}${sheetRow}`,
-        valueInputOption: "RAW",
-        requestBody: { values: [[value]] },
-      });
-      invalidateRegistry();
-      return;
+      rawRows.push(sheetRow);
+      const u = parseRow(rows[i]!);
+      if (u) matches.push({ user: u, sheetRow });
     }
   }
-  throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+  if (rawRows.length === 0) {
+    throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+  }
+  // 읽기(findUserByEmail=pickPreferredUser)와 동일 우선순위 행에 write — 다행 계정
+  // write≠read 불일치 방지(Drive 연결 무한루프 fix). parse 전부 실패 시 첫 행(옛 동작).
+  const targetRow = pickPreferredRow(matches)?.sheetRow ?? rawRows[0]!;
+  // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${reg.tab}!${colLetter}${targetRow}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[value]] },
+  });
+  invalidateRegistry();
 }
 
 /** Admin 전용: 트레이너 승인 (status pending → active) */
@@ -404,17 +414,9 @@ export async function registerUser(u: User): Promise<void> {
 // PR C-1: sortOrder(M) 일괄 update 는 lib/repo/users-sort.ts 로 분리 (500줄 cap).
 export { setUserSortOrders } from "./users-sort";
 
-/**
- * registry 에서 (cohort, name) 으로 이미 등록된 spreadsheetId 조회.
- *
- * 멀티 계정 per 시트 — 첫 사용자가 등록한 후 직원/파트너가 같은 (cohort, name)
- * 으로 self-claim 할 때, Drive 매칭(시트 이름 정확 일치)을 거치지 않고 기존
- * row 의 spreadsheetId 를 그대로 재사용. 시트 이름이 prep 패턴과 달라도
- * (`세일즈PT_ 4기 손기학 수강생 경영일지(new)` 같이) 추가 계정 등록 가능.
- *
- * 동일 (cohort, name) 의 여러 row 들이 모두 같은 spreadsheetId 여야 정상.
- * 첫 비어있지 않은 spreadsheetId 반환.
- */
+/** registry 에서 (cohort, name) 으로 등록된 spreadsheetId 조회(멀티계정 per 시트 —
+ *  직원/파트너 self-claim 시 Drive 매칭 없이 기존 row 재사용, prep 패턴과 달라도 가능).
+ *  동일 (cohort,name) row 는 같은 sid 여야 정상. 첫 비어있지 않은 값 반환. */
 export async function findExistingSheetIdByCohortName(
   cohort: string,
   name: string,
