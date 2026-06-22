@@ -1,14 +1,6 @@
 /**
- * Layer: repo — 03 DB관리 탭 I/O.
- * 4섹션(매입DB/직접생산/현수막/콜·지·기·소) raw log read/append/update/clear.
- *
- * SSOT: docs/domains/sheet-structure.md §5
- *
- * 가드레일:
- *   • 합계 행 보존: 첫 번째 컬럼이 "합계"인 행은 건너뜀 (data 식별 X, 쓰기 X)
- *   • 수식 컬럼 보호: 매입DB.주문금액(E), 직접생산.개당단가(N), 현수막.주문금액(U)는 쓰기 금지.
- *     append/update 시 그 셀 위치를 빈 문자열로 보내 시트 수식이 자동 계산되도록 함.
- *   • 행 단위 update/clear: row 번호로 식별 (값.append 안 씀)
+ * Layer: repo — 03 DB관리 탭 I/O. 4섹션 raw log read/append/update/clear. SSOT: sheet-structure.md §5
+ * 가드: "합계" 시작 행 보존(쓰기 X) · 계산 컬럼은 빈문자열로 보내 시트 수식 자동 · 행 식별은 row 번호.
  */
 import { SHEET_RANGES } from "@/config";
 import type {
@@ -125,8 +117,7 @@ function isISODate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-// ── 매입DB (B:G) — 구매일/업체명/개당단가/주문개수/부가세여부(F)/기타. 주문금액=개당단가×개수 계산.
-// 전환 read: F 가 boolean 이면 신규(부가세여부), number(구 주문금액 수식)이면 H(#425)에서 fallback.
+// 매입DB (B:H) — 구매일/업체명/개당단가/주문개수/부가세여부(F)/기타. F=boolean 신규, number=구 H fallback.
 export async function readPurchases(spreadsheetId: string) {
   return readSection<DBPurchase>(
     spreadsheetId,
@@ -149,8 +140,7 @@ export async function readPurchases(spreadsheetId: string) {
   );
 }
 
-// ── 직접생산 (I:O) — 시작/종료/소재/예산/생산개수/부가세여부(N)/기타. 개당단가=예산÷개수 계산.
-// 전환: J(종료일)=날짜면 신규, 아니면 구 I:N(날짜/소재/예산/개수/개당단가/기타) → 시작=종료=날짜.
+// 직접생산 (I:O) — 시작/종료/소재/예산/생산개수(M=유입 동기화,ADR-0024)/부가세여부(N)/기타. J=날짜면 신규.
 export async function readProductions(spreadsheetId: string) {
   return readSection<DBProduction>(
     spreadsheetId,
@@ -176,9 +166,7 @@ export async function readProductions(spreadsheetId: string) {
   );
 }
 
-// ── 현수막 (P:V, U=부가세여부) ────────────────────────────────
-// 입력: 날짜/업체명/도착일/개당단가/주문개수/부가세여부(U)/기타(V). 주문금액=개당단가×개수(미저장).
-// 전환 read: U 가 boolean 이면 신규(부가세여부), number(구 주문금액 수식)이면 W(#425)에서 fallback.
+// 현수막 (P:W) — 날짜/업체명/도착일/개당단가/주문개수/부가세여부(U)/기타. U=boolean 신규, number=구 W fallback.
 export async function readBanners(spreadsheetId: string) {
   return readSection<DBBanner>(
     spreadsheetId,
@@ -202,12 +190,8 @@ export async function readBanners(spreadsheetId: string) {
   );
 }
 
-// ── 콜·지·기·소 (X:AD) ─────────────────────────────────────────
-// 모든 컬럼이 사용자 입력 (수식 없음).
-// ⚠️ "구분" 컬럼은 dropdown(콜드콜/지인/기고객/소개) data validation으로 인해
-//    빈 row에도 기본값이 미리 박혀있을 수 있음 → 인정 기준에서 제외.
-// 필터: 대표자명 OR 업체명 OR 연락처 중 하나는 반드시 사용자가 입력해야 인정.
-// 데이터 시작 row = 4 (1~3행은 섹션 안내/헤더).
+// 콜·지·기·소 (X:AD) — 전부 사용자 입력(수식 없음). "구분"은 dropdown 기본값이라 인정 기준 제외.
+// 필터: 대표자명 OR 업체명 OR 연락처 하나는 입력해야 인정.
 export async function readLeads(spreadsheetId: string) {
   return readSection<DBLead>(
     spreadsheetId,
@@ -229,11 +213,7 @@ export async function readLeads(spreadsheetId: string) {
 
 // ── append / update / clear 헬퍼 ──────────────────────────────
 
-/**
- * 첫 빈 데이터 행 찾기("합계" 행 위에서, 없으면 합계 row 반환 → 호출측 insert).
- * isPhantom 은 read 의 isMeaningful 과 같은 기준이어야 함 — 안 그러면 dropdown 기본값/
- * FALSE/수식만 찬 phantom row 를 "사용 중"으로 오인해 영역 가득 에러.
- */
+/** 첫 빈 데이터 행 찾기("합계" 위, 없으면 합계 row→insert). isPhantom 은 read isMeaningful 과 동일 기준. */
 async function findFirstEmptyRow(
   spreadsheetId: string,
   startCol: string,
@@ -274,8 +254,7 @@ interface SectionWriteSpec {
   formulas: Record<number, (row: number) => string>;
 }
 
-// §3-A: 부가세여부=매입DB F·현수막 U·직접생산 N. 주문금액·개당단가 미저장=계산값(수식 없음).
-//   직접생산 I:O 재배치(시작/종료 분리·개당단가 드롭·스페이서 O 흡수). 전환 read 흡수·신규 write.
+// §3-A: 부가세여부=매입DB F·현수막 U·직접생산 N. 주문금액·개당단가 미저장(계산값). 직접생산 I:O 재배치.
 const SPEC = {
   매입DB: { startCol: "B", endCol: "H", formulas: {} },
   직접생산: { startCol: "I", endCol: "O", formulas: {} },
@@ -497,4 +476,23 @@ export async function clearBanner(spreadsheetId: string, row: number) {
 }
 export async function clearLead(spreadsheetId: string, row: number) {
   await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
+}
+
+/** 직접생산 생산개수(M) 단일 셀 동기화 — app-owned 유입 기간합(ADR-0024). 항상 overwrite, §2.5 비대상. */
+export async function writeProductionCountCell(
+  spreadsheetId: string,
+  row: number,
+  count: number,
+): Promise<void> {
+  const sec = SHEET_RANGES.dbManagement.sections.직접생산;
+  // 직접생산 I:O 는 단일문자 컬럼 — startCol(I) + cols offset → 생산개수 컬럼(M).
+  const col = String.fromCharCode(
+    sec.startCol.charCodeAt(0) + sec.cols.indexOf("생산개수"),
+  );
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range: `${T}!${col}${row}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[count]] },
+  });
 }

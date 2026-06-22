@@ -129,7 +129,7 @@ export function useSaveMetrics() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ date, channels }: SaveMetricsArgs) =>
-      fetchJSON<{ ok: true }>(`/api/daily/${date}`, {
+      fetchJSON<{ ok: true; directProductionHold?: boolean }>(`/api/daily/${date}`, {
         method: "POST",
         body: JSON.stringify(channels),
       }),

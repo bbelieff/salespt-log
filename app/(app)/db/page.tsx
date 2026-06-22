@@ -81,6 +81,9 @@ export default function DbPage() {
     date?: string;
   } | null>(null);
 
+  // DB생산 [1]: 채널당 최신 행 자동 펼침 추적(채널당 1회).
+  const [autoExpandedCh, setAutoExpandedCh] = useState<ChannelKey | null>(null);
+
   const overview = useDBOverview();
   const append = useAppendDB();
   const patch = usePatchDB();
@@ -93,8 +96,8 @@ export default function DbPage() {
 
   const switchChannel = (k: ChannelKey) => {
     setActiveCh(k);
-    setExpandedRow(null);
     setAddOpen(false);
+    // expandedRow 는 아래 effect 가 채널별 최신 행으로 자동 펼침(요청 DB생산 [1]).
   };
 
   const rowsByChannel = useMemo(() => {
@@ -116,6 +119,15 @@ export default function DbPage() {
 
   const ch = CHANNELS[activeCh];
   const rows = rowsByChannel[activeCh];
+
+  // DB생산 [1]: 채널 진입 시 최신 행을 기본 펼침(접어두지 않음). 채널당 1회 —
+  // 이후 사용자가 접/펼 자유롭게(데이터 refetch 로 되돌리지 않음).
+  useEffect(() => {
+    if (!overview.data || autoExpandedCh === activeCh) return;
+    setExpandedRow(rows.length > 0 ? Number(rows[rows.length - 1]!.row) : null);
+    setAutoExpandedCh(activeCh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview.data, activeCh, autoExpandedCh, rows]);
 
   const handleSave = async (rowNum: number, data: Record<string, unknown>) => {
     setPendingRow(rowNum);
@@ -383,16 +395,27 @@ export default function DbPage() {
         />
       )}
 
-      {/* 2026-05-17 [DB-1]: 추가 후 컨택탭 생산 입력 안내 */}
+      {/* 2026-05-17 [DB-1]: 추가 후 컨택탭 안내. 직접생산은 유입→생산개수 자동(ADR-0024). */}
       <CrossTabHintModal
         open={productionHint !== null}
-        title="✏️ 컨택관리에 생산 입력하셨나요?"
+        title={
+          productionHint?.channel === "direct"
+            ? "📞 컨택관리에서 유입을 입력하세요"
+            : "✏️ 컨택관리에 생산 입력하셨나요?"
+        }
         body={
-          <>
-            <b>{productionHint ? KEY_TO_BACKEND[productionHint.channel] : ""}</b>{" "}
-            구매목록 추가됐어요. 컨택관리 탭의 해당 일자/채널에{" "}
-            <b>생산</b>도 기록해야 합니다.
-          </>
+          productionHint?.channel === "direct" ? (
+            <>
+              생산목록(기간)이 추가됐어요. 이제 <b>컨택관리</b>에서 <b>유입</b>을
+              +입력·저장하면 이 기간의 <b>생산개수</b>가 자동으로 집계돼요.
+            </>
+          ) : (
+            <>
+              <b>{productionHint ? KEY_TO_BACKEND[productionHint.channel] : ""}</b>{" "}
+              구매목록 추가됐어요. 컨택관리 탭의 해당 일자/채널에{" "}
+              <b>생산</b>도 기록해야 합니다.
+            </>
+          )
         }
         navLabel="📞 컨택관리로 이동"
         onNavigate={() => {

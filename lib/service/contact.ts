@@ -1,7 +1,4 @@
-/**
- * Layer: service — 컨택탭 유스케이스. "하루 단위" 화면이지만 시트는 "주차 단위" 블록 →
- * 한 주를 읽고 그 날의 4채널 행 추출. 시안: docs/design/prototypes/contact-daily-input.html (v7).
- */
+/** Layer: service — 컨택탭 유스케이스. 화면은 하루 단위지만 시트는 주차 블록 → 한 주 read 후 그 날 4채널 추출. */
 import { findUserByEmail } from "@/repo/users";
 import { readChannelStacking } from "@/repo/dashboard";
 import {
@@ -29,6 +26,7 @@ import {
   hasCompanyInfoArchiveRow,
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
+import { syncDirectProductionForDate } from "./db";
 import {
   Channel,
   ChannelDailyRow,
@@ -147,12 +145,9 @@ export interface ScheduleWeekView {
   courseStart: string;
   /** 7개 슬롯, **미팅날짜** 기준 — 일정·계약 탭 cards (그 날 실제 미팅 있는 카드). */
   daysByMeetingDate: Array<{ date: string; meetings: Meeting[] }>;
-  /** 7개 슬롯, **예약일** 기준 — 컨택탭 badge + 일자 cards (2026-05-16 추가).
-   *  컨택탭 day view 가 `예약일=date` 필터인데 badge 가 미팅날짜 기준이라
-   *  불일치 사고 (사용자 보고 5/14 badge 1 인데 카드 없음) → 두 기준 분리. */
+  /** 7개 슬롯, **예약일** 기준 — 컨택탭 badge + 일자 cards. 미팅날짜/예약일 기준 분리(2026-05-16). */
   daysByReservationDate: Array<{ date: string; meetings: Meeting[] }>;
-  /** 영업관리 E~H 의 그 주 합계 — 생산/유입/컨택진행/미팅예약.
-   *  컨택탭 헤더 funnel 표시용 (2026-05-16). 일정·계약 탭은 안 씀. */
+  /** 영업관리 E~H 그 주 합계 — 컨택탭 헤더 funnel 표시용(2026-05-16). */
   weekFunnel: {
     생산: number;
     유입: number;
@@ -161,13 +156,7 @@ export interface ScheduleWeekView {
   };
 }
 
-/**
- * 한 주의 모든 미팅을 미팅날짜(D열) 기준으로 조회.
- * weekStart는 수강시작일과 같은 요일이어야 함 (검증).
- *
- * 컨택관리 탭은 예약일 기준이지만, 일정·계약 탭은 **미팅날짜 기준** —
- * 그 날 실제로 미팅이 잡혀있는 카드를 보여주기 위함.
- */
+/** 한 주의 미팅을 미팅날짜(D열) 기준으로 조회 (일정·계약 탭 — 그 날 실제 잡힌 카드). */
 export async function loadWeekMeetings(
   email: string,
   weekStart: string,
@@ -222,20 +211,19 @@ export async function loadWeekMeetings(
 }
 
 /**
- * 4지표 4채널을 그 날짜에 update.
- * 검증: 미팅예약 ≤ 컨택진행 (위반 시 자동 보정).
+ * 4지표 4채널을 그 날짜에 update. 미팅예약(H)=카드수 재계산.
+ * 직접생산: 생산(E)=유입 미러 + 활성 생산 레코드 M 동기화 (ADR-0024).
+ * @returns directProductionHold — 직접생산 유입>0 인데 활성 생산 기간 없음(보류 모달).
  */
 export async function saveContactMetrics(
   email: string,
   date: string,
   channels: Partial<Record<Channel, ChannelDailyRowMetrics>>,
-): Promise<void> {
+): Promise<{ directProductionHold: boolean }> {
   const spreadsheetId = await resolveSheet(email);
 
-  // ⭐ 미팅예약(H) = 업체관리 카드 수 파생 (SSOT, ADR-0010). 클라이언트가 보낸
-  //    meetingReservation 을 그대로 쓰지 않고, 그 예약일·채널의 실제 카드 수로 재계산해 기록
-  //    → 시트 H 가 저장 시마다 카드 수와 일치(드리프트 누적 제거). registerNewSlot 은
-  //    appendMeeting 후 이 함수를 호출하므로 새 카드도 카운트에 포함됨.
+  // ⭐ 미팅예약(H) = 업체관리 카드 수 파생 (SSOT, ADR-0010). 클라가 보낸 값 무시, 예약일·채널
+  //    실제 카드 수로 재계산해 기록 → 저장마다 H=카드수 일치(드리프트 제거).
   const meetings = await findByDate(spreadsheetId, date, "reservation");
   const cardCount: Record<Channel, number> = {
     매입DB: 0,
@@ -262,6 +250,16 @@ export async function saveContactMetrics(
     );
   }
   await batchWriteChannelDailyRows(spreadsheetId, rows);
+
+  // 직접생산: 유입 저장(E=F 미러 완료) 후 그 날짜 활성 생산 레코드 M 동기화 (ADR-0024).
+  // 활성 레코드 없고 유입>0 → 보류(UI 모달). 기록은 이미 됐으니 throw 안 함.
+  let directProductionHold = false;
+  const direct = channels["직접생산"];
+  if (direct) {
+    const { recordFound } = await syncDirectProductionForDate(spreadsheetId, date);
+    directProductionHold = !recordFound && direct.inflow > 0;
+  }
+  return { directProductionHold };
 }
 
 /** 새 미팅 1건 등록. 미팅예약 +1은 별도 호출 (saveContactMetrics)에서 처리. */
