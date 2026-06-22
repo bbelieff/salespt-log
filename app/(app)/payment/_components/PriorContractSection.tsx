@@ -106,13 +106,14 @@ export default function PriorContractSection({
         </div>
       </div>
 
-      {/* 이전 계약업체 등록 버튼 */}
+      {/* 이전 계약업체 등록 버튼 — secondary-strong(블루 톤, +아이콘). 솔리드 블루 주행동보다는 약하게. */}
       <button
         type="button"
         onClick={() => setStep("alert")}
-        className="mb-3 w-full rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50"
+        className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100"
       >
-        + 이전 계약업체 등록
+        <span className="text-base leading-none">＋</span>
+        이전 계약업체 등록
       </button>
 
       {step && (
