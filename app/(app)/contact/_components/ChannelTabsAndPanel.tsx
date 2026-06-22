@@ -11,6 +11,7 @@
 import { useEffect, useState } from "react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
+import { useDBOverview } from "@/query/db-hooks";
 import {
   loadChannelOrder,
   moveChannel,
@@ -128,6 +129,8 @@ const METRICS: Array<{
 interface Props {
   active: Channel;
   draft: Record<Channel, ChannelDailyRowMetrics>;
+  /** 선택 날짜 (YYYY-MM-DD) — 생산 첫 행 읽기전용 파생값 계산용. */
+  date: string;
   onSelectChannel: (ch: Channel) => void;
   onStep: (key: keyof ChannelDailyRowMetrics, delta: number) => void;
   onSetVal: (key: keyof ChannelDailyRowMetrics, value: number) => void;
@@ -135,13 +138,52 @@ interface Props {
   highlightKey?: keyof ChannelDailyRowMetrics;
 }
 
+// 합계·탭 배지는 유입~미팅예약만 (생산 첫 행은 DB집계 소유라 제외 — ADR-0020/0023).
 function totalOf(m: ChannelDailyRowMetrics): number {
-  return m.production + m.inflow + m.contactProgress + m.meetingReservation;
+  return m.inflow + m.contactProgress + m.meetingReservation;
+}
+
+const numF = (r: Record<string, unknown>, k: string) => Number(r[k] ?? 0) || 0;
+const strF = (r: Record<string, unknown>, k: string) => String(r[k] ?? "");
+
+/** 생산 첫 행(읽기전용) 채널별 파생 표시. DB집계가 생산 E 소유 → 여기선 표시만. */
+function firstRowText(
+  ch: Channel,
+  date: string,
+  ov: import("@/service").DBOverview | undefined,
+): string {
+  if (!ov) return "—";
+  if (ch === "매입DB") {
+    const acc = ov.purchases
+      .filter((p) => strF(p as never, "구매일") <= date)
+      .reduce((s, p) => s + numF(p as never, "주문개수"), 0);
+    return acc > 0 ? `구매 누적 ${acc}건` : "구매 기록 없음";
+  }
+  if (ch === "직접생산") {
+    const live = ov.productions.filter(
+      (p) => strF(p as never, "시작일") <= date && date <= strF(p as never, "종료일"),
+    );
+    return live.length > 0
+      ? `생산기간 진행중 ${live.length}건`
+      : "진행 중 기간 없음";
+  }
+  if (ch === "현수막") {
+    const todayPosts = ov.bannerPosts
+      .filter((p) => p.게시일 === date)
+      .reduce((s, p) => s + (p.게시수 || 0), 0);
+    const 주문 = ov.banners.reduce((s, b) => s + numF(b as never, "주문개수"), 0);
+    const 게시누적 = ov.bannerPosts.reduce((s, p) => s + (p.게시수 || 0), 0);
+    return `오늘 게시 ${todayPosts}장 · 남은 ${Math.max(0, 주문 - 게시누적)}장`;
+  }
+  // 콜·지·기·소: 오늘 발굴(접수) 수
+  const n = ov.leads.filter((l) => strF(l as never, "접수일") === date).length;
+  return `발굴 ${n}건`;
 }
 
 export default function ChannelTabsAndPanel({
   active,
   draft,
+  date,
   onSelectChannel,
   onStep,
   onSetVal,
@@ -150,6 +192,8 @@ export default function ChannelTabsAndPanel({
   const ch = CHANNEL_META[active];
   const cls = COLOR_CLASS[ch.color];
   const cell = draft[active];
+  const overview = useDBOverview();
+  const firstRow = firstRowText(active, date, overview.data); // 생산 첫 행 읽기전용 파생
 
   // 사용자별 채널 순서 (localStorage 저장). 초기는 default CHANNEL_ORDER로
   // SSR/CSR hydration mismatch 방지, mount 후 localStorage 값으로 업데이트.
@@ -271,6 +315,30 @@ export default function ChannelTabsAndPanel({
 
       {/* 4지표 행 */}
       {METRICS.map((m, mi) => {
+        // 생산(첫 행): 읽기전용 — DB집계가 E 소유(ADR-0020). 스테퍼 없이 채널별 파생 표시,
+        //   합계 칸은 헤더와 세로 병합(합산 제외).
+        if (m.key === "production") {
+          return (
+            <div key={m.key} className="flex items-stretch border-b border-gray-50">
+              <div className="flex w-3/5 min-w-0 items-center justify-between px-3 py-3">
+                <div className="min-w-0 pr-1">
+                  <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
+                    {m.label}
+                    <span className="rounded bg-gray-100 px-1 py-px text-[9px] font-bold text-gray-500">
+                      🔒 DB자동
+                    </span>
+                  </div>
+                  <div className="truncate text-xs text-gray-400">DB생산 탭에서 기록 · 자동 반영</div>
+                </div>
+                <div className="shrink-0 num-mono text-sm font-semibold text-gray-700">
+                  {firstRow}
+                </div>
+              </div>
+              {/* 합계 헤더와 병합되는 빈 칸 (생산은 합산 제외) */}
+              <div className="w-2/5 border-l-2 bg-indigo-50" aria-hidden />
+            </div>
+          );
+        }
         const total = channelSum(m.key);
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
         const atLimit = m.upstream && cell[m.key] >= upstreamVal;
@@ -323,30 +391,6 @@ export default function ChannelTabsAndPanel({
                     ＋
                   </button>
                 </div>
-                {/* 2026-05-18: 생산 ±10 — 각각 − / + 버튼 바로 아래 정렬 (간격 = stepper-val 만큼 가운데 spacer). */}
-                {m.key === "production" && (
-                  <div className="flex w-full items-center justify-between">
-                    <button
-                      type="button"
-                      className="rounded-full bg-gray-200 px-2.5 py-0.5 text-[11px] font-bold text-gray-800 hover:bg-gray-300 disabled:opacity-40"
-                      onClick={() => onStep(m.key, -10)}
-                      disabled={cell[m.key] <= 0}
-                      aria-label="생산 10 감소"
-                      title="10개 한꺼번에 감소"
-                    >
-                      −10
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 hover:bg-blue-200"
-                      onClick={() => onStep(m.key, 10)}
-                      aria-label="생산 10 증가"
-                      title="10개 한꺼번에 증가"
-                    >
-                      +10
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
             <div className="flex w-2/5 flex-col items-center justify-center border-l-2 bg-indigo-50 py-3 text-center">

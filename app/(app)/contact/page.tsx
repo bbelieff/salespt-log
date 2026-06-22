@@ -421,6 +421,7 @@ export default function ContactPage() {
         <ChannelTabsAndPanel
           active={activeChannel}
           draft={draft}
+          date={date}
           onSelectChannel={(c) => guardedNav(() => setActiveChannel(c))}
           onStep={step}
           onSetVal={setVal}
