@@ -284,8 +284,9 @@ export async function listShareScoreTargets(): Promise<ShareScoreTarget[]> {
   const pointsByEmail = new Map(
     shares.map((s) => [s.email.toLowerCase(), s.points]),
   );
+  // 공유왕은 운영자 수동 점수라 입금 모수 제한 없이 전체 아레나 참가자(1시트=1명) 노출.
+  // (전광판 자동지표 모수=입금자 규칙과 무관 — 운영자가 누구에게나 점수 부여 가능.)
   return [...bySheet.values()]
-    .filter((v) => v.paid)
     .map((v) => ({
       email: v.email,
       name: v.name,
