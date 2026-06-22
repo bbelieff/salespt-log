@@ -35,8 +35,7 @@ const TODAY_ISO = fmtISO(new Date());
 export default function ContactPage() {
   const router = useRouter();
   const [date, setDate] = useState<string>(TODAY_ISO);
-  // 직접생산 유입 저장했으나 활성 생산 기간 없음 → DB생산 안내(ADR-0024).
-  const [showProductionHold, setShowProductionHold] = useState(false);
+  const [showProductionHold, setShowProductionHold] = useState(false); // ADR-0024 보류 모달
   const [activeChannel, setActiveChannel] = useState<Channel>("매입DB");
   const [toast, setToast] = useState<string>("");
   const [draft, setDraft] = useState<Record<Channel, ChannelDailyRowMetrics>>(
@@ -49,7 +48,6 @@ export default function ContactPage() {
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
   const saveMetrics = useSaveMetrics();
-  // 2026-06-03 [교차탭1]: DB관리→컨택 이동 직후 생산 입력 행을 잠깐 강조.
   const [highlightProduction, setHighlightProduction] = useState(false);
   const appendMeeting = useAppendMeeting();
   const patchMeeting = usePatchMeeting();
@@ -82,7 +80,7 @@ export default function ContactPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
 
-  // 2026-06-03 [교차탭1]: DB관리→컨택 ?channel=&date=&focus= 수신(mount 시 window.location 직접 파싱).
+  // 2026-06-03 [교차탭1]: DB관리→컨택 ?channel=&date=&focus= 수신(window.location 파싱).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -118,7 +116,6 @@ export default function ContactPage() {
   const newSlotsForChannel = (ch: Channel) =>
     newSlots.filter((s) => s.channel === ch);
 
-  // 2026-06-03 [2]: 채널 미팅카드 수(저장+신규). 컨택진행은 이 수 미만 불가(orphan 방지).
   const meetingCardCount = (ch: Channel) =>
     savedByChannel[ch].length + newSlotsForChannel(ch).length;
 
@@ -135,7 +132,6 @@ export default function ContactPage() {
     setDraft((d) => {
       const cur = d[channel];
       const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
-      // 안전망: 미팅예약(H) > 컨택진행이면 컨택진행에 맞춰 내림(phantom H 정정, 카드 손실 없음).
       if (next.meetingReservation > next.contactProgress) {
         next.meetingReservation = next.contactProgress;
       }
@@ -191,14 +187,12 @@ export default function ContactPage() {
           adjustMetric(ch, "meetingReservation", -1);
         } else {
           const saved = savedByChannel[ch];
-          // Phase 4: 2건 이상이면 선택 팝업, 1건이면 바로 삭제.
           if (saved.length > 1) {
             setPickerMeetings(saved);
           } else if (saved.length === 1) {
             handleRemoveSavedMeeting(saved[0]!);
           } else if (cur2 > 0) {
-            // 미팅카드는 없는데 미팅예약 수치(H)만 남은 desync → 카드 삭제 없이 수치만 정정.
-            adjustMetric(ch, "meetingReservation", -1);
+            adjustMetric(ch, "meetingReservation", -1); // 카드 없는 phantom H 정정
             showToast("미팅 카드가 없어 미팅예약 수치만 −1로 정정했어요 · [저장하기]로 반영");
           } else {
             showToast("이 채널의 미팅예약이 이미 0입니다");
@@ -208,7 +202,6 @@ export default function ContactPage() {
       return;
     }
 
-    // 2026-06-03 [2]: 컨택진행 < 미팅카드 수면 미팅 orphan → 차단(삭제는 미팅예약(−)로만).
     if (key === "contactProgress" && delta < 0) {
       const cards = meetingCardCount(ch);
       if (cur2 + delta < cards) {
@@ -219,12 +212,19 @@ export default function ContactPage() {
       }
     }
 
+    // 현수막 게시(production): 재고 0 이면 + 불가(ADR-0025).
+    if (ch === "현수막" && key === "production" && delta > 0) {
+      if ((dayQuery.data?.bannerStockBase ?? 0) - cur2 <= 0) {
+        showToast("⚠ 현수막 재고가 없어요. 먼저 DB생산에서 주문을 추가하세요");
+        return;
+      }
+    }
+
     adjustMetric(ch, key, delta);
   };
 
   const setVal = (key: keyof ChannelDailyRowMetrics, value: number) => {
     const v = Math.max(0, value);
-    // 2026-06-03 [2]: 직접 입력으로도 컨택진행이 미팅카드 수보다 작아지지 않도록 가드.
     if (key === "contactProgress") {
       const cards = meetingCardCount(activeChannel);
       if (v < cards) {
@@ -233,6 +233,13 @@ export default function ContactPage() {
         );
         return;
       }
+    }
+    // 현수막 게시는 재고 초과 불가 (ADR-0025).
+    const bStock = dayQuery.data?.bannerStockBase ?? 0;
+    if (activeChannel === "현수막" && key === "production" && v > bStock) {
+      showToast("⚠ 현수막 재고를 초과할 수 없어요");
+      setMetric(activeChannel, key, Math.max(0, bStock));
+      return;
     }
     setMetric(activeChannel, key, v);
   };
@@ -248,7 +255,6 @@ export default function ContactPage() {
     showToast("✕ 삭제 · 미팅예약 -1");
   };
 
-  // 신규 슬롯 필수(미팅날짜·시간·업체·장소) 완료 여부 — 미완은 통합 저장에서 append 제외.
   const slotComplete = (s: NewSlot) =>
     !!s.미팅날짜 && !!s.미팅시간 && !!s.업체명.trim() && !!s.장소.trim();
 
@@ -302,8 +308,7 @@ export default function ContactPage() {
     channels: Record<Channel, ChannelDailyRowMetrics>,
   ) => saveMetrics.mutateAsync({ date: dateAtClick, channels });
 
-  // 통합 저장 — 최하단 [저장하기] 하나로: ① 신규슬롯 append → ② dirty 미팅 patch →
-  // ③ 지표(H=카드수, 직접생산 M 동기화). 항목별 실패 격리(유실 0), 필수누락 슬롯만 남김.
+  // 통합 저장: ① 신규슬롯 append → ② dirty 미팅 patch → ③ 지표(H=카드수, 직접생산 M). 실패 격리.
   const savingRef = useRef(false);
   const handleSave = async () => {
     if (savingRef.current) return; // 더블클릭/중복저장 방지 (재진입 가드)
@@ -319,8 +324,7 @@ export default function ContactPage() {
     const draftAtClick = draft;
     let failed = 0;
     let lacking = 0;
-    // ① 신규 슬롯: 완료분만 append, 미완/실패분은 유지.
-    const keep: NewSlot[] = [];
+    const keep: NewSlot[] = []; // ① 신규 슬롯: 완료분만 append, 미완/실패분은 유지
     for (const slot of newSlots) {
       if (!slotComplete(slot)) {
         keep.push(slot);
@@ -338,9 +342,8 @@ export default function ContactPage() {
       }
     }
     if (keep.length !== newSlots.length) setNewSlots(keep);
-    // ② dirty 저장미팅 patch (업체정보 포함) — 항목별 실패 격리.
-    failed += await saveAllDirty();
-    // ③ 지표 저장 (saveContactMetrics 가 H 를 카드수로 재계산 + 직접생산 M 동기화).
+    failed += await saveAllDirty(); // ② dirty 미팅 patch (실패 격리)
+    // ③ 지표 저장 (H=카드수 재계산 + 직접생산 M 동기화).
     try {
       const res = await saveMetricsAndCheck(dateAtClick, draftAtClick);
       if (res?.directProductionHold) setShowProductionHold(true);
@@ -365,7 +368,6 @@ export default function ContactPage() {
     setTimeout(() => setSlideDir(null), 260);
   };
 
-  // 미저장 이탈 가드 — 미팅카드가 dirty 면 탭/날짜/주차 이동 전에 한 번 확인.
   const { register, guardedNav, confirmModal, saveAllDirty } = useDirtyGuard();
 
   const weekSwipe = useSwipe({
@@ -387,7 +389,6 @@ export default function ContactPage() {
 
   const { courseStart } = dayQuery.data;
   const weekIndex = weekIndexOf(parseISO(date), parseISO(courseStart));
-  // 모든 채널 슬롯을 채널 순서대로 합쳐서 렌더 (시안과 동일)
   const allSlots: Array<
     | { kind: "saved"; meeting: Meeting }
     | { kind: "new"; slot: NewSlot }
@@ -434,6 +435,7 @@ export default function ContactPage() {
           date={date}
           inflowWaitBase={dayQuery.data?.inflowWaitBase ?? 0}
           savedInflow={dayQuery.data?.channels[activeChannel]?.inflow ?? 0}
+          bannerStockBase={dayQuery.data?.bannerStockBase ?? 0}
           onSelectChannel={(c) => guardedNav(() => setActiveChannel(c))}
           onStep={step}
           onSetVal={setVal}

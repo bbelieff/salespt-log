@@ -189,15 +189,7 @@ export const DBBanner = z.object({
   부가세여부: z.boolean().default(false), // U열
 });
 export type DBBanner = z.infer<typeof DBBanner>;
-// 현수막 게시 로그 1:N (AF:AI, ADR-0023) — 주문(P:V) 1건에 게시 N건.
-export const DBBannerPost = z.object({
-  row: z.number().int().min(2).optional(),
-  게시id: z.string().default(""), // AF (UUID 키)
-  주문ref: z.string().default(""), // AG = "주문일|업체명"
-  게시일: z.string().default(""), // AH (현수막 생산 집계 기준일)
-  게시수: z.number().int().nonnegative().default(0), // AI
-});
-export type DBBannerPost = z.infer<typeof DBBannerPost>;
+// (현수막 게시로그 1:N AF:AI — ADR-0023 폐기, ADR-0025: 게시=생산은 컨택 E 소유.)
 
 export const DBLead = z.object({
   row: z.number().int().min(2).optional(),

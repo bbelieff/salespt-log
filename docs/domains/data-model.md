@@ -531,7 +531,7 @@ interface DashboardView {
 | `DBProduction` | z.object | 직접생산 raw row (I~O, 시작일·종료일 분리, N=부가세여부. 개당단가=예산÷개수 계산값, 생산개수 빈=생산중) |
 | `DBBanner` | z.object | 현수막 raw row (P~V, U=부가세여부 boolean. 주문금액=개당단가×개수 계산값) |
 | `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) |
-| `DBBannerPost` | z.object | 현수막 게시 로그 raw row (AF~AI, 1:N. 게시id·주문ref·게시일·게시수. 생산 E=게시일 Σ게시수, ADR-0023) |
+<!-- DBBannerPost(AF:AI 게시로그) 폐기 — ADR-0025: 현수막 게시=생산은 컨택 영업관리 E 소유. -->
 
 ### 대시보드 view (코드 식별자 — `lib/types/index.ts` 또는 `lib/service/dashboard.ts` 예정)
 | 식별자 | 종류 | 의미 |

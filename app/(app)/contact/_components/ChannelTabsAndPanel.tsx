@@ -1,11 +1,4 @@
-/**
- * 채널 탭 (4개) + 채널별 4지표 입력 패널 (6:4 그리드).
- * 정본: docs/design/prototypes/contact-daily-input.html (v7) §2-2, §2-3
- *
- * - 탭에 합계 배지 (그 채널의 4지표 합)
- * - 활성 탭 밑줄 (채널 색)
- * - 6:4 좌우 그리드: 입력 | "오늘 채널 합계" 강조
- */
+/** 채널 탭(4) + 채널별 4지표 입력 패널(6:4 그리드). 정본: prototypes/contact-daily-input.html v7 §2-2·§2-3. */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,11 +6,7 @@ import Link from "next/link";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
-import {
-  loadChannelOrder,
-  moveChannel,
-  saveChannelOrder,
-} from "../_lib/channel-order";
+import { loadChannelOrder, moveChannel, saveChannelOrder } from "../_lib/channel-order";
 
 const CHANNEL_META: Record<
   Channel,
@@ -136,6 +125,8 @@ interface Props {
   inflowWaitBase: number;
   /** 선택 날짜·활성 채널의 저장된 유입(F) — 직접생산 생산수 라이브 계산용(ADR-0024). */
   savedInflow: number;
+  /** 현수막 재고 base = Σ주문장수 − Σ게시누적 + 오늘 저장 게시. UI: max(0, base − draft.게시)(ADR-0025). */
+  bannerStockBase: number;
   onSelectChannel: (ch: Channel) => void;
   onStep: (key: keyof ChannelDailyRowMetrics, delta: number) => void;
   onSetVal: (key: keyof ChannelDailyRowMetrics, value: number) => void;
@@ -143,7 +134,7 @@ interface Props {
   highlightKey?: keyof ChannelDailyRowMetrics;
 }
 
-// 합계·탭 배지는 유입~미팅예약만 (생산 첫 행은 DB집계 소유라 제외 — ADR-0020/0023).
+// 합계·탭 배지는 유입~미팅예약만 (생산 첫 행은 합산 제외).
 function totalOf(m: ChannelDailyRowMetrics): number {
   return m.inflow + m.contactProgress + m.meetingReservation;
 }
@@ -151,7 +142,7 @@ function totalOf(m: ChannelDailyRowMetrics): number {
 const numF = (r: Record<string, unknown>, k: string) => Number(r[k] ?? 0) || 0;
 const strF = (r: Record<string, unknown>, k: string) => String(r[k] ?? "");
 
-/** 생산 첫 행(읽기전용) 채널별 파생 표시. DB집계가 생산 E 소유 → 여기선 표시만. */
+/** 생산 첫 행 채널별 파생 표시(매입DB·콜). 직접생산·현수막은 별도 렌더. */
 function firstRowText(
   ch: Channel,
   date: string,
@@ -172,15 +163,7 @@ function firstRowText(
       ? `생산기간 진행중 ${live.length}건`
       : "진행 중 기간 없음";
   }
-  if (ch === "현수막") {
-    const todayPosts = ov.bannerPosts
-      .filter((p) => p.게시일 === date)
-      .reduce((s, p) => s + (p.게시수 || 0), 0);
-    const 주문 = ov.banners.reduce((s, b) => s + numF(b as never, "주문개수"), 0);
-    const 게시누적 = ov.bannerPosts.reduce((s, p) => s + (p.게시수 || 0), 0);
-    return `오늘 게시 ${todayPosts}장 · 남은 ${Math.max(0, 주문 - 게시누적)}장`;
-  }
-  // 콜·지·기·소: 오늘 발굴(접수) 수
+  // 콜·지·기·소: 오늘 발굴(접수) 수 (현수막은 게시 스테퍼라 firstRowText 미사용).
   const n = ov.leads.filter((l) => strF(l as never, "접수일") === date).length;
   return `발굴 ${n}건`;
 }
@@ -191,6 +174,7 @@ export default function ChannelTabsAndPanel({
   date,
   inflowWaitBase,
   savedInflow,
+  bannerStockBase,
   onSelectChannel,
   onStep,
   onSetVal,
@@ -200,13 +184,14 @@ export default function ChannelTabsAndPanel({
   const cls = COLOR_CLASS[ch.color];
   const cell = draft[active];
   const overview = useDBOverview();
-  // 매입DB 첫 행 = 유입대기(생산누적−유입누적, 오늘 유입은 draft 로 실시간 차감). 현수막·콜은 DB 파생 문자열.
+  // 현수막 재고(라이브) = max(0, base − 오늘 게시 draft). 0 이면 게시 + 클램프(ADR-0025).
+  const bannerStock = Math.max(0, bannerStockBase - (cell?.production ?? 0));
   const firstRow =
     active === "매입DB"
       ? `유입대기 ${Math.max(0, inflowWaitBase - (cell?.inflow ?? 0))}건`
       : firstRowText(active, date, overview.data);
 
-  // 직접생산: 선택 날짜를 포함하는 활성 생산 레코드(겹침금지로 유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
+  // 직접생산: 선택 날짜 포함 활성 레코드(유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
   const directProductions = overview.data?.productions ?? [];
   const directIdx = directProductions.findIndex(
     (p) => strF(p as never, "시작일") <= date && date <= strF(p as never, "종료일"),
@@ -216,8 +201,7 @@ export default function ChannelTabsAndPanel({
     ? Math.max(0, numF(directActive as never, "생산개수") - savedInflow + (cell?.inflow ?? 0))
     : 0;
 
-  // 사용자별 채널 순서 (localStorage 저장). 초기는 default CHANNEL_ORDER로
-  // SSR/CSR hydration mismatch 방지, mount 후 localStorage 값으로 업데이트.
+  // 사용자별 채널 순서 (localStorage) — hydration mismatch 방지 위해 mount 후 적용.
   const [order, setOrder] = useState<Channel[]>(() => [...CHANNEL_ORDER]);
   const [dragFrom, setDragFrom] = useState<Channel | null>(null);
   const [dragOver, setDragOver] = useState<Channel | null>(null);
@@ -367,6 +351,48 @@ export default function ChannelTabsAndPanel({
                   </Link>
                 </div>
               )
+            ) : active === "현수막" ? (
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 pr-1">
+                  <div className="text-sm font-medium text-gray-800">게시</div>
+                  <div className="truncate text-xs text-gray-400">현수막재고 {bannerStock}개</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    onClick={() => onStep("production", -1)}
+                    aria-label="게시 감소"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className="stepper-val"
+                    value={cell.production}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isNaN(n)) onSetVal("production", Math.max(0, n));
+                    }}
+                    aria-label="게시 수치"
+                  />
+                  <button
+                    type="button"
+                    className={`stepper-btn ${
+                      bannerStock <= 0
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : `${cls.bg500} text-white ${cls.hover}`
+                    }`}
+                    onClick={() => onStep("production", 1)}
+                    aria-disabled={bannerStock <= 0 ? true : undefined}
+                    aria-label="게시 증가"
+                  >
+                    ＋
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
