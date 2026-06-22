@@ -11,6 +11,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CompanyInfo } from "@/types";
 
 type CI = CompanyInfo;
@@ -313,8 +314,12 @@ export default function CompanyInfoEditor({
         </div>
       )}
 
-      {modal && (
-        <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+      {/* overflow-hidden·sticky 부모(실무수납 상세패널)에 fixed 모달이 클리핑되는 문제 →
+          document.body 로 portal 해 화면 전체를 덮는다. (컨택탭엔 해당 부모 없어 무관) */}
+      {modal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4">
           {/* PC(2xl+) 모달은 좌우 2단이 펼쳐지도록 넓게 */}
           <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
             <div className="mb-3 flex items-center justify-between">
@@ -349,8 +354,9 @@ export default function CompanyInfoEditor({
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
