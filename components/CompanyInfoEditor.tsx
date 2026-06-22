@@ -105,16 +105,22 @@ export default function CompanyInfoEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 업체명: txtCompanyName, 업체정보: draft }),
       });
-      const d = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setTxtMsg({
-          ok: true,
-          text: d.updated ? "TXT 갱신 완료(1본 유지)" : "TXT 생성 완료",
-          link: d.webViewLink || undefined,
-        });
-      } else {
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
         setTxtMsg({ ok: false, text: d.error ?? `실패 (HTTP ${res.status})` });
+        return;
       }
+      // 드라이브 미사용 — 응답(TXT)을 브라우저로 바로 다운로드.
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `업체정보_${txtCompanyName.trim()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setTxtMsg({ ok: true, text: "TXT 다운로드 완료" });
     } catch (e) {
       setTxtMsg({ ok: false, text: e instanceof Error ? e.message : "네트워크 오류" });
     } finally {
