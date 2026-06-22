@@ -64,7 +64,10 @@ jobs:
             export SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING=1
             # 핵심: 옛 .next 를 지우지 않고 .next-build 에 빌드 → 빌드 4-5분 동안 옛 앱이 계속 서빙(502 0초).
             # BUILD_DIST_DIR 는 next.config.mjs 의 distDir. 런타임(next start)은 unset → 기본 .next.
-            rm -rf .next-build
+            # ⚠️ 라우트 삭제 시 보존된 옛 .next/types 의 orphan route 타입 stub(삭제된 source.js import)을
+            #    next build 타입체크가 include 해 "Cannot find module …route.js" 로 깨짐(2026-06-23 #448).
+            #    .next/types 는 빌드타임 전용(런타임 next start 미사용) → 옛 것 제거해도 무중단 안전.
+            rm -rf .next-build .next/types
             BUILD_DIST_DIR=.next-build npm run build
             # 새 빌드 검증 — 실패 시 swap 안 함 → 옛 .next 그대로 서빙(빌드 실패도 무중단).
             test -f .next-build/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패, swap 안 함(무중단 유지)"; exit 1; }
