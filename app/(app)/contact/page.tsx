@@ -2,7 +2,7 @@
 "use client";
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
 import {
   useAppendMeeting,
@@ -315,7 +315,17 @@ export default function ContactPage() {
   // 통합 저장 — 최하단 [저장하기] 하나로: ① 완료 신규슬롯 append(업체정보 포함) →
   // ② dirty 저장미팅 patch(업체정보 포함) → ③ 지표(H는 카드수로 자동 재계산).
   // 항목별 실패는 그 항목만 드래프트 유지 + 토스트(유실 0). 필수누락 슬롯은 남기고 나머지 저장.
+  const savingRef = useRef(false);
   const handleSave = async () => {
+    if (savingRef.current) return; // 더블클릭/중복저장 방지 (재진입 가드)
+    savingRef.current = true;
+    try {
+      await runSave();
+    } finally {
+      savingRef.current = false;
+    }
+  };
+  const runSave = async () => {
     const dateAtClick = date;
     const draftAtClick = draft;
     let failed = 0;
@@ -458,7 +468,12 @@ export default function ContactPage() {
       {confirmModal}
 
       {/* 고정 저장 바 (탭바 위) — 분리된 컴포넌트 */}
-      <SaveBar pending={saveMetrics.isPending} onSave={handleSave} />
+      <SaveBar
+        pending={
+          saveMetrics.isPending || appendMeeting.isPending || patchMeeting.isPending
+        }
+        onSave={handleSave}
+      />
 
       {/* Toast */}
       {toast && (

@@ -30,7 +30,7 @@ export default function MeetingSlotList({
           미팅예약하기
           {slots.length > 0 ? ` · ${slots.length}건` : ""}
         </span>
-        <span className="text-xs text-gray-400">미팅예약 1건 = 미팅예약 1건</span>
+        <span className="text-xs text-gray-400">컨택성공 1건 = 미팅예약 1건</span>
       </div>
 
       {slots.length === 0 ? (
