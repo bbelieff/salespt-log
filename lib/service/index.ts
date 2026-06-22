@@ -58,6 +58,9 @@ export {
   addLead,
   patchLead,
   removeLead,
+  addBannerPost,
+  patchBannerPost,
+  removeBannerPost,
   type DBOverview,
 } from "./db";
 

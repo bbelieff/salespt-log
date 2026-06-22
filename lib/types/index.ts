@@ -1,14 +1,6 @@
 /**
- * Layer: types — 도메인 모델 (Zod).
- * 이 레이어는 다른 레이어를 import 하지 않는다. (구조 테스트가 강제)
- *
- * SSOT (권위):
- *   - docs/domains/data-model.md (v4)
- *   - docs/domains/sheet-structure.md (v4)
- *
- * 필드명 컨벤션 (data-model.md v4):
- *   - 시스템 필드(id, channel) → 영어
- *   - 시트 도메인 필드(예약일, 미팅날짜, 상태 등) → 한국어 (시트 컬럼명과 1:1)
+ * Layer: types — 도메인 모델(Zod). 다른 레이어 import 안 함(구조 테스트 강제).
+ * SSOT: data-model.md · sheet-structure.md. 필드명: 시스템(id·channel)=영어, 시트 도메인=한국어(컬럼 1:1).
  */
 import { z } from "zod";
 
@@ -159,8 +151,7 @@ export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
 // 일별 실적(DailyRevenue, 영업관리!Q~T)은 PR #38·39·40에서 02 계약수납관리로
 // 모델 재정의되며 폐기됨. ContractPayment 타입 참조.
 
-// ── DB관리 — 4채널 raw log. 시트매핑: sheet-structure.md §5. 앱=raw 입력만, row=시트행번호.
-// 부가세여부=입력이 부가세 포함이었는지(저장값은 항상 부가세 제외, ADR-0021). 주문금액·개당단가=계산값(미저장).
+// DB관리 raw log(시트매핑 sheet-structure.md §5). 부가세여부=입력 부가세 포함 플래그(저장은 항상 ex-VAT, ADR-0021). 주문금액·개당단가=계산값(미저장).
 export const DBPurchase = z.object({
   row: z.number().int().min(2).optional(),
   구매일: z.string().default(""),
@@ -198,6 +189,15 @@ export const DBBanner = z.object({
   부가세여부: z.boolean().default(false), // U열
 });
 export type DBBanner = z.infer<typeof DBBanner>;
+// 현수막 게시 로그 1:N (AF:AI, ADR-0023) — 주문(P:V) 1건에 게시 N건.
+export const DBBannerPost = z.object({
+  row: z.number().int().min(2).optional(),
+  게시id: z.string().default(""), // AF (UUID 키)
+  주문ref: z.string().default(""), // AG = "주문일|업체명"
+  게시일: z.string().default(""), // AH (현수막 생산 집계 기준일)
+  게시수: z.number().int().nonnegative().default(0), // AI
+});
+export type DBBannerPost = z.infer<typeof DBBannerPost>;
 
 export const DBLead = z.object({
   row: z.number().int().min(2).optional(),

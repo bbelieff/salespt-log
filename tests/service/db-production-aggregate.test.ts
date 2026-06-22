@@ -24,9 +24,14 @@ describe("productionCountFor (채널×날짜 생산수)", () => {
     ];
     expect(productionCountFor("직접생산", rows, "2026-06-12")).toBe(5);
   });
-  it("현수막 = Σ주문개수 by 날짜", () => {
-    const rows = [{ 날짜: "2026-06-12", 주문개수: 7 }];
-    expect(productionCountFor("현수막", rows, "2026-06-12")).toBe(7);
+  it("현수막 = Σ게시수 by 게시일 (게시 로그 1:N, ADR-0023)", () => {
+    const rows = [
+      { 게시일: "2026-06-12", 게시수: 5 },
+      { 게시일: "2026-06-12", 게시수: 3 },
+      { 게시일: "2026-06-13", 게시수: 2 },
+    ];
+    expect(productionCountFor("현수막", rows, "2026-06-12")).toBe(8);
+    expect(productionCountFor("현수막", rows, "2026-06-13")).toBe(2);
   });
   it("콜·지·기·소 = 행수 by 접수일 (개수 필드 없음)", () => {
     const rows = [

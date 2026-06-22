@@ -1280,6 +1280,7 @@ components/dashboard/
 | **RowList** | DB row 목록 컨테이너 |
 | **RowCard** | DB raw row 표시 카드 (read-only). 클릭 시 RowForm으로 편집 |
 | **RowForm** | DB raw row 입력/편집 폼 (4채널 각각 다른 필드 — DBPurchase/DBProduction/DBBanner/DBLead) |
+| **BannerPostingLog** | 현수막 주문 1건의 게시 로그(1:N, AF:AI) — 게시일·게시수 추가/삭제, 남은 표시 (ADR-0023) |
 
 ### 10-6. payment 탭 (`app/(app)/payment/_components/`)
 

@@ -13,6 +13,7 @@ import {
 } from "@tanstack/react-query";
 import type {
   DBBanner,
+  DBBannerPost,
   DBLead,
   DBProduction,
   DBPurchase,
@@ -110,6 +111,34 @@ export function useRemoveDB() {
       }),
     onSuccess: (_res, { channel }) => {
       track(EVENTS.DB_ROW_REMOVED, { channel });
+      qc.invalidateQueries({ queryKey: dbKey() });
+    },
+  });
+}
+
+// ── 현수막 게시 로그(1:N) append/remove (ADR-0023) ────────────
+export function useAppendBannerPost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DBBannerPost) =>
+      fetchJSON<{ ok: true; row: number }>(`/api/db/banner-post`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      track(EVENTS.DB_ROW_ADDED, { channel: "현수막게시" });
+      qc.invalidateQueries({ queryKey: dbKey() });
+    },
+  });
+}
+
+export function useRemoveBannerPost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (row: number) =>
+      fetchJSON<{ ok: true }>(`/api/db/banner-post/${row}`, { method: "DELETE" }),
+    onSuccess: () => {
+      track(EVENTS.DB_ROW_REMOVED, { channel: "현수막게시" });
       qc.invalidateQueries({ queryKey: dbKey() });
     },
   });

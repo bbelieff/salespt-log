@@ -11,6 +11,7 @@ import { useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
 import { fmtWon } from "../_lib/channels";
 import RowForm from "./RowForm";
+import BannerPostingLog from "./BannerPostingLog";
 
 interface Props {
   channelKey: ChannelKey;
@@ -143,6 +144,9 @@ export default function RowCard({
       </div>
 
       <RowForm channel={channel} initial={row} onChange={setDraft} />
+
+      {/* 현수막: 주문 1건의 게시 로그(1:N) — 게시일·게시수 추가/삭제 (ADR-0023) */}
+      {channelKey === "banner" && <BannerPostingLog order={row} />}
 
       <div className="mt-3 flex gap-2">
         <button

@@ -237,32 +237,38 @@ export const SHEET_RANGES = {
     // 데이터 영역 상한 (사용자가 합계 행을 row 100 이후에 두면 모두 데이터로 인식).
     // 너무 크게 잡으면 read 비용↑, 너무 작게 잡으면 합계 행 만남.
     maxRow: 100,
+    // 컬럼맵 SSOT = pr-db-channels-full §3-A. 주문금액·개당단가는 미저장(계산값) — 수식 없음.
+    // 부가세여부: 매입DB F·직접생산 N·현수막 U. (ADR-0021/0022/0023)
     sections: {
       매입DB: {
         startCol: "B",
         endCol: "G",
-        cols: ["구매일", "업체명", "개당단가", "주문개수", "주문금액", "기타"] as const,
-        // E열(주문금액)은 시트 수식 — 앱이 직접 쓰지 않음
-        formulaCols: ["주문금액"] as const,
+        cols: ["구매일", "업체명", "개당단가", "주문개수", "부가세여부", "기타"] as const,
+        formulaCols: [] as const,
       },
       직접생산: {
         startCol: "I",
-        endCol: "N",
-        cols: ["날짜", "소재", "기간예산", "생산개수", "개당단가", "기타"] as const,
-        // M열(개당단가) = 기간예산 ÷ 생산개수 시트 수식
-        formulaCols: ["개당단가"] as const,
+        endCol: "O",
+        cols: ["시작일", "종료일", "소재", "기간예산", "생산개수", "부가세여부", "기타"] as const,
+        formulaCols: [] as const,
       },
       현수막: {
         startCol: "P",
         endCol: "V",
-        cols: ["날짜", "업체명", "도착일", "개당단가", "주문개수", "주문금액", "기타"] as const,
-        formulaCols: ["주문금액"] as const,
+        cols: ["날짜", "업체명", "도착일", "개당단가", "주문개수", "부가세여부", "기타"] as const,
+        formulaCols: [] as const,
       },
       "콜·지·기·소": {
         startCol: "X",
         endCol: "AD",
         cols: ["구분", "접수일", "대표자명", "업체명", "소개처", "연락처", "조건"] as const,
         formulaCols: [] as const, // 비용 X, 정보만 — 수식 없음
+      },
+      현수막게시: {
+        startCol: "AF",
+        endCol: "AI",
+        cols: ["게시id", "주문ref", "게시일", "게시수"] as const,
+        formulaCols: [] as const, // 1:N 게시 로그(ADR-0023). 생산 E = 게시일 Σ게시수
       },
     },
   },
