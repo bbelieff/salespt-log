@@ -19,6 +19,8 @@ interface Props {
 
 export default function RowForm({ channel, initial = {}, onChange }: Props) {
   const today = new Date().toISOString().slice(0, 10);
+  // 추가(생산 시작) 모드 = initial 없음. 2단계 필드(hideInAdd) 숨김 판단용.
+  const isAdd = Object.keys(initial).length === 0;
   const blank = useMemo(() => {
     const b: Record<string, unknown> = {};
     for (const f of channel.fields) {
@@ -43,6 +45,11 @@ export default function RowForm({ channel, initial = {}, onChange }: Props) {
     if ("총액" in b && !("총액" in initial) && typeof initial["개당단가"] === "number") {
       const base = (initial["개당단가"] as number) * Number(initial["주문개수"] ?? 0);
       b["총액"] = b["부가세여부"] ? Math.round(base * 1.1) : base;
+    }
+    // C1: 직접생산 편집 시 예산입력(도우미) 역복원 — 저장 기간예산(부가세 제외)×(포함?1.1).
+    if ("예산입력" in b && typeof initial["기간예산"] === "number") {
+      const ex = initial["기간예산"] as number;
+      b["예산입력"] = b["부가세여부"] ? Math.round(ex * 1.1) : ex;
     }
     return b;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,15 +90,17 @@ export default function RowForm({ channel, initial = {}, onChange }: Props) {
 
   return (
     <div className="grid grid-cols-2 gap-2.5">
-      {channel.fields.map((f) => (
-        <FieldCell
-          key={f.key}
-          field={f}
-          value={draft[f.key]}
-          allValues={computed}
-          onChange={(v) => setField(f.key, v)}
-        />
-      ))}
+      {channel.fields
+        .filter((f) => !(isAdd && f.hideInAdd))
+        .map((f) => (
+          <FieldCell
+            key={f.key}
+            field={f}
+            value={draft[f.key]}
+            allValues={computed}
+            onChange={(v) => setField(f.key, v)}
+          />
+        ))}
     </div>
   );
 }

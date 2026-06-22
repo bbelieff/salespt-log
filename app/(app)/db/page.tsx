@@ -54,7 +54,7 @@ const CHANNEL_ROWS_KEY: Record<ChannelKey, string> = {
 // 2026-06-03 [교차탭1]: 채널별 날짜 입력 필드 키 (컨택탭에 날짜를 들고 넘기기 위함).
 const CHANNEL_DATE_FIELD: Record<ChannelKey, string> = {
   purchase: "구매일",
-  direct: "날짜",
+  direct: "종료일",
   banner: "날짜",
   referral: "접수일",
 };
