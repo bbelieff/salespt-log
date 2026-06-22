@@ -22,8 +22,21 @@ import {
   updateProduction,
   updatePurchase,
 } from "@/repo/db";
+import {
+  appendBannerPost,
+  clearBannerPost,
+  readBannerPosts,
+  updateBannerPost,
+} from "@/repo/banner-post";
 import { writeProductionCell } from "@/repo/sales";
-import type { Channel, DBBanner, DBLead, DBProduction, DBPurchase } from "@/types";
+import type {
+  Channel,
+  DBBanner,
+  DBBannerPost,
+  DBLead,
+  DBProduction,
+  DBPurchase,
+} from "@/types";
 
 async function resolveSheet(email: string): Promise<string> {
   const user = await findUserByEmail(email);
@@ -36,22 +49,25 @@ export interface DBOverview {
   productions: Array<DBProduction & { row: number }>;
   banners: Array<DBBanner & { row: number }>;
   leads: Array<DBLead & { row: number }>;
+  bannerPosts: Array<DBBannerPost & { row: number }>; // 현수막 게시 로그(AF:AI)
 }
 
-/** 4섹션 모두 한 번에 조회 (각 섹션 별 read = 4 sheet reads). */
+/** 5섹션 한 번에 조회 (각 섹션 read = sheet read). */
 export async function loadDBOverview(email: string): Promise<DBOverview> {
   const spreadsheetId = await resolveSheet(email);
-  const [purchases, productions, banners, leads] = await Promise.all([
+  const [purchases, productions, banners, leads, bannerPosts] = await Promise.all([
     readPurchases(spreadsheetId),
     readProductions(spreadsheetId),
     readBanners(spreadsheetId),
     readLeads(spreadsheetId),
+    readBannerPosts(spreadsheetId),
   ]);
   return {
     purchases: purchases.rows,
     productions: productions.rows,
     banners: banners.rows,
     leads: leads.rows,
+    bannerPosts: bannerPosts.rows,
   };
 }
 
@@ -65,10 +81,11 @@ export function productionCountFor(
   rows: {
     구매일?: string;
     종료일?: string;
-    날짜?: string;
+    게시일?: string;
     접수일?: string;
     주문개수?: number;
     생산개수?: number;
+    게시수?: number;
   }[],
   date: string,
 ): number {
@@ -81,14 +98,15 @@ export function productionCountFor(
       .filter((r) => r.종료일 === date && (r.생산개수 || 0) > 0)
       .reduce((s, r) => s + (r.생산개수 || 0), 0);
   if (channel === "현수막")
-    return rows.filter((r) => r.날짜 === date).reduce((s, r) => s + (r.주문개수 || 0), 0);
+    // 게시 로그 기준: 게시일 == date 의 Σ게시수 (주문/발주일 아님 — ADR-0023).
+    return rows.filter((r) => r.게시일 === date).reduce((s, r) => s + (r.게시수 || 0), 0);
   return rows.filter((r) => r.접수일 === date).length; // 콜·지·기·소
 }
 
 async function readChannelRows(spreadsheetId: string, channel: Channel) {
   if (channel === "매입DB") return (await readPurchases(spreadsheetId)).rows;
   if (channel === "직접생산") return (await readProductions(spreadsheetId)).rows;
-  if (channel === "현수막") return (await readBanners(spreadsheetId)).rows;
+  if (channel === "현수막") return (await readBannerPosts(spreadsheetId)).rows; // 생산 E = 게시 로그
   return (await readLeads(spreadsheetId)).rows;
 }
 
@@ -164,25 +182,51 @@ export async function removeProduction(email: string, row: number) {
   return r;
 }
 
-// ── 현수막 ────────────────────────────────────────────────────
+// ── 현수막 주문 (P:V) ─────────────────────────────────────────
+// 주문은 생산 E 를 만들지 않는다(생산=게시 로그). 비용(주문금액)만 대시보드에 반영.
 export async function addBanner(email: string, b: DBBanner) {
   const sid = await resolveSheet(email);
-  const r = await appendBanner(sid, b);
-  await syncProduction(sid, "현수막", b.날짜);
-  return r;
+  return appendBanner(sid, b);
 }
 export async function patchBanner(email: string, row: number, b: DBBanner) {
   const sid = await resolveSheet(email);
-  const old = await oldDateOf(sid, "현수막", row);
-  const r = await updateBanner(sid, row, b);
-  await syncProduction(sid, "현수막", old);
-  if (b.날짜 !== old) await syncProduction(sid, "현수막", b.날짜);
-  return r;
+  return updateBanner(sid, row, b);
 }
 export async function removeBanner(email: string, row: number) {
   const sid = await resolveSheet(email);
-  const old = await oldDateOf(sid, "현수막", row);
-  const r = await clearBanner(sid, row);
+  return clearBanner(sid, row);
+}
+
+// ── 현수막 게시 로그 (AF:AI, 1:N) — 생산 E = 게시일 Σ게시수 ──────
+function genPostId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `p${Date.now()}`;
+  }
+}
+async function oldPostDate(sid: string, row: number): Promise<string> {
+  const rows = (await readBannerPosts(sid)).rows;
+  return rows.find((r) => r.row === row)?.게시일 ?? "";
+}
+export async function addBannerPost(email: string, p: DBBannerPost) {
+  const sid = await resolveSheet(email);
+  const r = await appendBannerPost(sid, { ...p, 게시id: p.게시id || genPostId() });
+  await syncProduction(sid, "현수막", p.게시일);
+  return r;
+}
+export async function patchBannerPost(email: string, row: number, p: DBBannerPost) {
+  const sid = await resolveSheet(email);
+  const old = await oldPostDate(sid, row);
+  const r = await updateBannerPost(sid, row, p);
+  await syncProduction(sid, "현수막", old);
+  if (p.게시일 !== old) await syncProduction(sid, "현수막", p.게시일);
+  return r;
+}
+export async function removeBannerPost(email: string, row: number) {
+  const sid = await resolveSheet(email);
+  const old = await oldPostDate(sid, row);
+  const r = await clearBannerPost(sid, row);
   await syncProduction(sid, "현수막", old);
   return r;
 }
