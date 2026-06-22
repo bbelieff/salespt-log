@@ -30,6 +30,7 @@ import ChannelTabs from "./_components/ChannelTabs";
 import { CostSummary, LeadSummary } from "./_components/SummaryCard";
 import RowList from "./_components/RowList";
 import RowForm from "./_components/RowForm";
+import DbNudgeBanner from "./_components/DbNudgeBanner";
 import TopHeader from "@/components/TopHeader";
 import ConfirmModal from "./_components/ConfirmModal";
 import { useRouter } from "next/navigation";
@@ -257,6 +258,8 @@ export default function DbPage() {
           totalCount={overall.totalCount}
           activeCh={activeCh}
         />
+
+        <DbNudgeBanner onGoDirect={() => switchChannel("direct")} />
 
         <ChannelTabs activeCh={activeCh} onSwitch={switchChannel} />
 
