@@ -414,17 +414,9 @@ export async function registerUser(u: User): Promise<void> {
 // PR C-1: sortOrder(M) 일괄 update 는 lib/repo/users-sort.ts 로 분리 (500줄 cap).
 export { setUserSortOrders } from "./users-sort";
 
-/**
- * registry 에서 (cohort, name) 으로 이미 등록된 spreadsheetId 조회.
- *
- * 멀티 계정 per 시트 — 첫 사용자가 등록한 후 직원/파트너가 같은 (cohort, name)
- * 으로 self-claim 할 때, Drive 매칭(시트 이름 정확 일치)을 거치지 않고 기존
- * row 의 spreadsheetId 를 그대로 재사용. 시트 이름이 prep 패턴과 달라도
- * (`세일즈PT_ 4기 손기학 수강생 경영일지(new)` 같이) 추가 계정 등록 가능.
- *
- * 동일 (cohort, name) 의 여러 row 들이 모두 같은 spreadsheetId 여야 정상.
- * 첫 비어있지 않은 spreadsheetId 반환.
- */
+/** registry 에서 (cohort, name) 으로 등록된 spreadsheetId 조회(멀티계정 per 시트 —
+ *  직원/파트너 self-claim 시 Drive 매칭 없이 기존 row 재사용, prep 패턴과 달라도 가능).
+ *  동일 (cohort,name) row 는 같은 sid 여야 정상. 첫 비어있지 않은 값 반환. */
 export async function findExistingSheetIdByCohortName(
   cohort: string,
   name: string,
