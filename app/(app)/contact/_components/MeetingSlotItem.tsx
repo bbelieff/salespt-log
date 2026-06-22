@@ -41,7 +41,6 @@ interface NewProps {
   slot: NewSlot;
   reservationDate: string;
   onChange: (next: NewSlot) => void;
-  onRegister: () => void;
   onRemove: () => void;
 }
 
@@ -66,7 +65,6 @@ function NewItem({
   slot,
   reservationDate,
   onChange,
-  onRegister,
   onRemove,
 }: NewProps) {
   const channel = slot.channel;
@@ -115,17 +113,16 @@ function NewItem({
           value={slot.장소}
           onChange={(v) => onChange({ ...slot, 장소: v })}
         />
-        {/* 예약비고 자리는 업체정보로 교체 (consultation-log 3-1, 미팅예약+1 생성 카드 포함).
-            저장 = 슬롯 메모리 반영, 등록 시 Meeting 에 포함돼 04 T~AS 로 기록. */}
+        {/* 업체정보 — 슬롯 메모리(onChange)에만 반영, 맨 아래 [저장하기]가 등록 시 함께 기록(04 T~AS). */}
         <CompanyInfoEditor
           value={slot.업체정보}
+          hideSave
+          onChange={(ci) => onChange({ ...slot, 업체정보: ci })}
           onSave={(ci) => onChange({ ...slot, 업체정보: ci })}
         />
         <Actions
-          primaryLabel="✓ 등록"
-          onPrimary={onRegister}
           onRemove={onRemove}
-          hint="삭제 시 채널의 미팅예약 수치도 함께 1 감소합니다"
+          hint="입력 후 맨 아래 [저장하기]로 등록돼요 · 삭제 시 미팅예약 -1"
         />
       </div>
     </div>
@@ -307,13 +304,8 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
             }}
           />
           <Actions
-            primaryLabel="💾 수정 완료"
-            onPrimary={() => {
-              void saveAll();
-              setOpen(false);
-            }}
             onRemove={onRemove}
-            hint="업체정보까지 이 버튼으로 함께 저장됩니다"
+            hint="수정·업체정보는 맨 아래 [저장하기]로 함께 저장됩니다"
           />
         </div>
       )}
@@ -445,21 +437,23 @@ function Actions({
   onRemove,
   hint,
 }: {
-  primaryLabel: string;
-  onPrimary: () => void;
+  primaryLabel?: string;
+  onPrimary?: () => void;
   onRemove: () => void;
   hint: string;
 }) {
   return (
     <>
       <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          onClick={onPrimary}
-          className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600"
-        >
-          {primaryLabel}
-        </button>
+        {primaryLabel && onPrimary && (
+          <button
+            type="button"
+            onClick={onPrimary}
+            className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600"
+          >
+            {primaryLabel}
+          </button>
+        )}
         <button
           type="button"
           onClick={onRemove}

@@ -89,6 +89,19 @@ export function useDirtyGuard() {
     else ref.current.delete(id);
   }, []);
 
+  // 등록된 dirty 카드 전부 저장 — 통합 [저장하기]용. 항목별 실패 격리(실패 수 반환).
+  const saveAllDirty = useCallback(async (): Promise<number> => {
+    let fail = 0;
+    for (const e of [...ref.current.values()]) {
+      try {
+        await e.save();
+      } catch {
+        fail++;
+      }
+    }
+    return fail;
+  }, []);
+
   // dirty 카드 없으면 즉시 진행, 있으면 확인 모달.
   const guardedNav = useCallback((action: () => void) => {
     if (ref.current.size === 0) {
@@ -122,5 +135,5 @@ export function useDirtyGuard() {
     />
   ) : null;
 
-  return { register, guardedNav, confirmModal };
+  return { register, guardedNav, confirmModal, saveAllDirty };
 }
