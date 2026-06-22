@@ -1,11 +1,6 @@
 /**
- * Layer: repo — 01 영업관리 탭 I/O.
- *
- * 가드레일:
- *   • 4지표(E~H)와 실적(Q~T)만 쓰기 허용. I~P는 시트 수식 — 쓰기 시도 시 throw.
- *   • 좌표는 O1(수강시작일) + (주차, 요일, 채널) 공식으로 계산. 날짜 하드코딩 X.
- *
- * SSOT: docs/domains/sheet-structure.md §2
+ * Layer: repo — 01 영업관리 탭 I/O. 가드: E~H·Q~T 만 쓰기, I~P 수식(쓰기 throw).
+ * 좌표 = O1(수강시작일) + (주차,요일,채널) 공식. SSOT: docs/domains/sheet-structure.md §2
  */
 import { SHEET_RANGES } from "@/config";
 import {
@@ -75,14 +70,8 @@ export function salesRowFor(
 }
 
 /**
- * 한 주의 영업관리 E~H (생산/유입/컨택진행/미팅예약) 합계 — 컨택탭 헤더의
- * 금주 채널 funnel 표시용 (2026-05-16).
- *
- * 시트의 weekly sum cell 에 의존하지 않고, 그 주차의 28 데이터 row (7일 × 4채널)
- * 를 직접 합산. 셀병합 또는 옛 template 의 sum 셀 누락에도 robust.
- *
- * 1주차 row range: rows 10..37 (blockStart=10, 28 data rows).
- * 1 batchGet 1 range — quota 1 read.
+ * 한 주의 영업관리 E~H 합계 — 컨택탭 헤더 funnel 표시용(2026-05-16).
+ * weekly sum cell 미의존: 그 주차 28 데이터 row(7일×4채널) 직접 합산(셀병합·sum 누락에 robust). 1 read.
  */
 export async function readWeekFunnel(
   spreadsheetId: string,
@@ -148,11 +137,7 @@ function tabRef(tab: string): string {
 
 // ── 시트 I/O ──────────────────────────────────────────────────
 
-/**
- * 수강시작일을 O1에서 읽음 (N1은 "시작일" 라벨, 값은 O1).
- * 시트는 보통 날짜 셀로 저장되며 "M/d" 또는 "yyyy-mm-dd" 등 다양한 표기 가능 →
- * UNFORMATTED_VALUE를 받아 직렬값(epoch days since 1899-12-30)으로 파싱.
- */
+/** 수강시작일 O1 read. UNFORMATTED_VALUE 로 직렬값(epoch days since 1899-12-30) 파싱. */
 export async function readCourseStart(
   spreadsheetId: string,
 ): Promise<Date> {
@@ -185,12 +170,8 @@ export async function readCourseStart(
   throw new Error(`[sales.ts] O1 형식 미지원: ${typeof raw}`);
 }
 
-/**
- * 영업관리 O2에서 종강총회일(=수료일) 직접 읽기 (N2는 "종강총회" 라벨).
- * ADR-0005: O2 는 7기+ `=O1+50`, 6기 legacy `=O1+57` 또는 직접 입력.
- * 코드는 O2 직접값만 신뢰 — offset 강제 안 함.
- * 헤더 D-day 와 메인 배너 종강총회일 표시에 사용.
- */
+/** 영업관리 O2 종강총회일(=수료일) 직접 읽기. ADR-0005: O2 직접값만 신뢰(offset 강제 X).
+ *  헤더 D-day·메인 배너 표시용. */
 export async function readGraduation(
   spreadsheetId: string,
 ): Promise<Date> {
@@ -260,8 +241,7 @@ export async function readProfileBundle(spreadsheetId: string): Promise<{
     `${tab}!B3:C3`,
     `${tab}!${SHEET_RANGES.sales.startDateCell}`,
     `${tab}!${SHEET_RANGES.sales.graduationDateCell}`,
-    // 2026-05-19: E4:E6 (header 합산 셀) 은 시트마다 비어 전원 0 사고 → 데이터
-    // 컬럼 직접 합산으로 전환. E~N 224 데이터 row 만 합산 (trailer row 제외).
+    // 2026-05-19: E4:E6 header 합산 셀 비어 0 사고 → E~N 224 데이터 row 직접 합산(trailer 제외).
     `${tab}!E${blockStart}:N${lastRow}`,
   ];
   const res = await sheetsClient().spreadsheets.values.batchGet({
@@ -367,23 +347,25 @@ export async function batchWriteChannelDailyRows(
   const courseStart = await readCourseStart(spreadsheetId); // 1 Read
 
   const cols = SHEET_RANGES.sales.metricCols;
-  // 생산(E)은 PR1(ADR-0020)로 DB생산 집계가 소유 → 컨택 저장은 F~H(유입/컨택/미팅)만 쓴다.
-  for (const col of [cols.inflow, cols.contactProgress, cols.meetingReservation]) {
+  // F~H 는 항상 쓰기. 직접생산만 E(생산)=유입 미러 추가(ADR-0024) — 그 외 채널 E 는 ADR-0020 DB집계 소유.
+  for (const col of [cols.production, cols.inflow, cols.contactProgress, cols.meetingReservation]) {
     assertWritableCol(col, "batchWriteChannelDailyRows");
   }
 
   const tab = tabRef(SHEET_RANGES.sales.tab);
   const data = rows.map((row) => {
     const validated = ChannelDailyRow.parse(row);
-    const targetDate = parseISO(validated.date);
-    const sheetRow = salesRowFor(targetDate, validated.channel, courseStart);
+    const sheetRow = salesRowFor(parseISO(validated.date), validated.channel, courseStart);
+    // 직접생산: E=유입 미러 + F~H (직접생산 생산 = 유입, ADR-0024).
+    if (validated.channel === "직접생산") {
+      return {
+        range: `${tab}!${cols.production}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
+        values: [[validated.inflow, validated.inflow, validated.contactProgress, validated.meetingReservation]],
+      };
+    }
     return {
       range: `${tab}!${cols.inflow}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
-      values: [[
-        validated.inflow,
-        validated.contactProgress,
-        validated.meetingReservation,
-      ]],
+      values: [[validated.inflow, validated.contactProgress, validated.meetingReservation]],
     };
   });
 
@@ -391,6 +373,29 @@ export async function batchWriteChannelDailyRows(
     spreadsheetId,
     requestBody: { valueInputOption: "USER_ENTERED", data },
   });
+}
+
+/** 한 채널의 영업관리 F(유입) 을 [startISO, endISO] 기간 합산 — 직접생산 M 동기화용(ADR-0024).
+ *  편집 가능 기간(1~10주) 안 날짜만, readWeek(주차 블록) 재사용. */
+export async function sumChannelInflowOverPeriod(
+  spreadsheetId: string,
+  channel: Channel,
+  startISO: string,
+  endISO: string,
+): Promise<number> {
+  const courseStart = await readCourseStart(spreadsheetId);
+  const w1 = weekIndexOf(parseISO(startISO), courseStart);
+  const w2 = weekIndexOf(parseISO(endISO), courseStart);
+  const from = Math.max(1, Math.min(w1, w2));
+  const to = Math.min(10, Math.max(w1, w2));
+  let sum = 0;
+  for (let w = from; w <= to; w++) {
+    const { rows } = await readWeek(spreadsheetId, w);
+    for (const r of rows) {
+      if (r.channel === channel && r.date >= startISO && r.date <= endISO) sum += r.inflow;
+    }
+  }
+  return sum;
 }
 
 /** 생산(E) 단일 셀 기입 — DB생산 집계 소유 app-derived 값(PR1/ADR-0020). 항상 overwrite,
@@ -418,10 +423,7 @@ export async function writeProductionCell(
   });
 }
 
-/**
- * 영업관리 H (미팅예약) 을 채널×날짜 -1 (일정탭 삭제 cascade, 2026-05-19).
- * 0 미만 no-op.
- */
+/** 영업관리 H(미팅예약) 채널×날짜 -1 (일정탭 삭제 cascade, 2026-05-19). 0 미만 no-op. */
 export async function decrementMeetingReservation(
   spreadsheetId: string,
   date: string,
@@ -451,11 +453,7 @@ export async function decrementMeetingReservation(
   return { before, after };
 }
 
-/**
- * 한 주차 분량의 4지표 4채널 (28개 행)을 읽음.
- * Q~T(deprecated 일별 실적)는 더 이상 read하지 않음 — PR #38·39+에서
- * 02 계약수납관리로 모델 이전됨.
- */
+/** 한 주차 4지표 4채널(28행) read. Q~T(deprecated 실적)는 안 읽음 — 02 계약수납관리로 이전. */
 export async function readWeek(
   spreadsheetId: string,
   weekIndex: number,

@@ -21,6 +21,7 @@ import {
   updateLead,
   updateProduction,
   updatePurchase,
+  writeProductionCountCell,
 } from "@/repo/db";
 import {
   appendBannerPost,
@@ -28,7 +29,7 @@ import {
   readBannerPosts,
   updateBannerPost,
 } from "@/repo/banner-post";
-import { writeProductionCell } from "@/repo/sales";
+import { writeProductionCell, sumChannelInflowOverPeriod } from "@/repo/sales";
 import type {
   Channel,
   DBBanner,
@@ -172,27 +173,77 @@ export async function removePurchase(email: string, row: number) {
   return r;
 }
 
-// ── 직접생산 ──────────────────────────────────────────────────
+// ── 직접생산 (생산 = 유입, ADR-0024) ──────────────────────────
+// 생산개수(M)는 유입 기간합 자동 동기화 — DB집계 syncProduction 미사용. 기간 겹침 금지(활성 레코드 유일).
+
+/** 두 기간 [aS,aE]·[bS,bE] 겹침 (ISO 비교, 빈값은 비겹침). 단위 테스트 대상(ADR-0024). */
+export function periodsOverlap(aS: string, aE: string, bS: string, bE: string): boolean {
+  if (!aS || !aE || !bS || !bE) return false;
+  return aS <= bE && bS <= aE;
+}
+
+/** 직접생산 추가/수정 시 기존 레코드와 기간 겹치면 throw (활성 레코드 유일성, ADR-0024). */
+async function assertNoOverlapDirect(
+  sid: string,
+  start: string,
+  end: string,
+  excludeRow?: number,
+): Promise<void> {
+  if (!start || !end) throw new Error("직접생산: 시작일·종료일을 모두 입력해주세요.");
+  if (start > end) throw new Error("직접생산: 시작일이 종료일보다 늦습니다.");
+  const { rows } = await readProductions(sid);
+  for (const r of rows) {
+    if (r.row === excludeRow) continue;
+    if (periodsOverlap(start, end, r.시작일, r.종료일))
+      throw new Error(
+        `직접생산 기간이 겹쳐요: 기존 ${r.시작일}~${r.종료일}(${r.소재 || "소재없음"})와 겹치지 않게 입력해주세요.`,
+      );
+  }
+}
+
+/** 직접생산 레코드 R 의 M = Σ(영업관리 F 직접생산, R 기간) 동기화 (M 셀만 update). */
+async function syncDirectCount(
+  sid: string,
+  record: { row: number; 시작일: string; 종료일: string },
+): Promise<number> {
+  const count = await sumChannelInflowOverPeriod(sid, "직접생산", record.시작일, record.종료일);
+  await writeProductionCountCell(sid, record.row, count);
+  return count;
+}
+
+/** 컨택 유입 저장 후 그 날짜를 포함하는 활성 직접생산 레코드 M 동기화 (ADR-0024).
+ *  활성 레코드 없으면 recordFound=false → 호출측(컨택)이 보류 모달. */
+export async function syncDirectProductionForDate(
+  sid: string,
+  date: string,
+): Promise<{ recordFound: boolean; count: number }> {
+  const { rows } = await readProductions(sid);
+  const active = rows.find(
+    (r) => r.시작일 && r.종료일 && r.시작일 <= date && date <= r.종료일,
+  );
+  if (!active) return { recordFound: false, count: 0 };
+  const count = await syncDirectCount(sid, active);
+  return { recordFound: true, count };
+}
+
 export async function addProduction(email: string, p: DBProduction) {
   const sid = await resolveSheet(email);
+  await assertNoOverlapDirect(sid, p.시작일, p.종료일);
   const r = await appendProduction(sid, p);
-  await syncProduction(sid, "직접생산", p.종료일); // 종료일 기준
+  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 });
   return r;
 }
 export async function patchProduction(email: string, row: number, p: DBProduction) {
   const sid = await resolveSheet(email);
-  const old = await oldDateOf(sid, "직접생산", row); // 옛 종료일
+  await assertNoOverlapDirect(sid, p.시작일, p.종료일, row);
   const r = await updateProduction(sid, row, p);
-  await syncProduction(sid, "직접생산", old);
-  if (p.종료일 !== old) await syncProduction(sid, "직접생산", p.종료일);
+  await syncDirectCount(sid, { row, 시작일: p.시작일, 종료일: p.종료일 });
   return r;
 }
 export async function removeProduction(email: string, row: number) {
   const sid = await resolveSheet(email);
-  const old = await oldDateOf(sid, "직접생산", row);
-  const r = await clearProduction(sid, row);
-  await syncProduction(sid, "직접생산", old);
-  return r;
+  // 생산(E)은 유입(컨택)이 소유 — 레코드 삭제해도 E 불변. M 은 행과 함께 사라짐.
+  return clearProduction(sid, row);
 }
 
 // ── 현수막 주문 (P:V) ─────────────────────────────────────────

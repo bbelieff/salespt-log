@@ -96,7 +96,7 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
     hint: "광고비·메타 등 직접 집행 비용",
     isCost: true,
     fields: [
-      // 2단계: ① 생산 시작(기간·소재·예산) → ② 완료 시 생산개수 입력.
+      // 생산개수(M)는 입력칸 없음 — 컨택 유입 저장 시 그 기간 유입합으로 자동 동기화(ADR-0024).
       { key: "시작일", label: "생산 시작일", type: "date" },
       { key: "종료일", label: "생산 종료일", type: "date" },
       { key: "소재", label: "소재", type: "text", placeholder: "예: 메타, 구글" },
@@ -111,8 +111,6 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
         formula: true,
         calc: (r) => unitPriceFromTotal(num(r, "예산입력"), 1, Boolean(r["부가세여부"])),
       },
-      // 생산개수: 추가(시작) 폼엔 숨김 — 기간 끝나고 완료 시 입력(빈=생산중).
-      { key: "생산개수", label: "생산개수(완료 시 입력)", type: "number", unit: "건", hideInAdd: true },
       {
         key: "개당단가",
         label: "부가세 제외 개당단가",

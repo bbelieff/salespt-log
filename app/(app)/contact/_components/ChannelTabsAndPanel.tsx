@@ -9,6 +9,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
@@ -133,6 +134,8 @@ interface Props {
   date: string;
   /** 매입DB 유입대기 base = 생산누적 − 유입누적 + 오늘 저장 유입. UI: max(0, base − draft.유입). */
   inflowWaitBase: number;
+  /** 선택 날짜·활성 채널의 저장된 유입(F) — 직접생산 생산수 라이브 계산용(ADR-0024). */
+  savedInflow: number;
   onSelectChannel: (ch: Channel) => void;
   onStep: (key: keyof ChannelDailyRowMetrics, delta: number) => void;
   onSetVal: (key: keyof ChannelDailyRowMetrics, value: number) => void;
@@ -187,6 +190,7 @@ export default function ChannelTabsAndPanel({
   draft,
   date,
   inflowWaitBase,
+  savedInflow,
   onSelectChannel,
   onStep,
   onSetVal,
@@ -196,11 +200,21 @@ export default function ChannelTabsAndPanel({
   const cls = COLOR_CLASS[ch.color];
   const cell = draft[active];
   const overview = useDBOverview();
-  // 매입DB 첫 행 = 유입대기(생산누적−유입누적, 오늘 유입은 draft 로 실시간 차감). 그 외는 DB 파생.
+  // 매입DB 첫 행 = 유입대기(생산누적−유입누적, 오늘 유입은 draft 로 실시간 차감). 현수막·콜은 DB 파생 문자열.
   const firstRow =
     active === "매입DB"
       ? `유입대기 ${Math.max(0, inflowWaitBase - (cell?.inflow ?? 0))}건`
       : firstRowText(active, date, overview.data);
+
+  // 직접생산: 선택 날짜를 포함하는 활성 생산 레코드(겹침금지로 유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
+  const directProductions = overview.data?.productions ?? [];
+  const directIdx = directProductions.findIndex(
+    (p) => strF(p as never, "시작일") <= date && date <= strF(p as never, "종료일"),
+  );
+  const directActive = directIdx >= 0 ? directProductions[directIdx] : undefined;
+  const directLiveCount = directActive
+    ? Math.max(0, numF(directActive as never, "생산개수") - savedInflow + (cell?.inflow ?? 0))
+    : 0;
 
   // 사용자별 채널 순서 (localStorage 저장). 초기는 default CHANNEL_ORDER로
   // SSR/CSR hydration mismatch 방지, mount 후 localStorage 값으로 업데이트.
@@ -312,25 +326,52 @@ export default function ChannelTabsAndPanel({
         <span className="truncate text-xs text-gray-500">{ch.desc}</span>
       </div>
 
-      {/* 입력/합계 헤더 */}
-      <div className="flex items-stretch border-b border-gray-100 bg-gray-50">
-        <div className="w-3/5 px-3 py-1.5 text-xs font-semibold text-gray-500">채널 입력</div>
-        <div className="w-2/5 border-l-2 bg-indigo-100 px-2 py-1.5 text-center text-xs font-bold text-indigo-700">
-          ⭐ 오늘 채널 합계
-        </div>
-      </div>
-
-      {/* 4지표 행 */}
-      {METRICS.map((m, mi) => {
-        // 생산(첫 행): 읽기전용 — DB집계가 E 소유(ADR-0020). 스테퍼 없이 채널별 파생 표시,
-        //   합계 칸은 헤더와 세로 병합(합산 제외).
-        if (m.key === "production") {
-          return (
-            <div key={m.key} className="flex items-stretch border-b border-gray-50">
-              <div className="flex w-3/5 min-w-0 items-center justify-between px-3 py-3">
+      {/* 입력 헤더 + 생산(첫 행, 읽기전용) — 오늘합계 칸을 헤더+첫행에 걸쳐 세로 병합(ADR-0024) */}
+      <div className="flex items-stretch border-b border-gray-100">
+        <div className="w-3/5 min-w-0">
+          <div className="bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">채널 입력</div>
+          <div className="border-t border-gray-100 px-3 py-3">
+            {active === "직접생산" ? (
+              directActive ? (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 pr-1">
+                    <div className="truncate text-sm font-medium text-gray-800">
+                      진행중 · 생산 #{directIdx + 1}
+                      <span className="ml-1 text-gray-500">
+                        ({strF(directActive as never, "소재") || "소재없음"})
+                      </span>
+                    </div>
+                    <div className="truncate text-xs text-gray-400">
+                      {strF(directActive as never, "시작일")}~
+                      {strF(directActive as never, "종료일")} ·{" "}
+                      <Link href="/db?channel=직접생산" className="text-green-600 underline">
+                        DB생산에서 보기
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="num-mono text-sm font-bold text-green-700">
+                      생산 {directLiveCount}건
+                    </div>
+                    <div className="text-[10px] text-gray-400">유입 집계</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-gray-500">진행 중 생산 없음</span>
+                  <Link
+                    href="/db?channel=직접생산"
+                    className="shrink-0 text-xs text-green-600 underline"
+                  >
+                    생산목록 추가
+                  </Link>
+                </div>
+              )
+            ) : (
+              <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
                   <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
-                    {active === "매입DB" ? "유입대기" : m.label}
+                    {active === "매입DB" ? "유입대기" : "생산"}
                     <span className="rounded bg-gray-100 px-1 py-px text-[9px] font-bold text-gray-500">
                       🔒 DB자동
                     </span>
@@ -345,11 +386,16 @@ export default function ChannelTabsAndPanel({
                   {firstRow}
                 </div>
               </div>
-              {/* 합계 헤더와 병합되는 빈 칸 (생산은 합산 제외) */}
-              <div className="w-2/5 border-l-2 bg-indigo-50" aria-hidden />
-            </div>
-          );
-        }
+            )}
+          </div>
+        </div>
+        <div className="flex w-2/5 flex-col items-center justify-center border-l-2 bg-indigo-100 px-2 py-2 text-center">
+          <span className="text-xs font-bold text-indigo-700">⭐ 오늘 채널 합계</span>
+        </div>
+      </div>
+
+      {/* 유입·컨택진행·미팅예약 (스테퍼) — 생산은 위 병합 블록에서 처리 */}
+      {METRICS.filter((m) => m.key !== "production").map((m, mi, arr) => {
         const total = channelSum(m.key);
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
         const atLimit = m.upstream && cell[m.key] >= upstreamVal;
@@ -361,7 +407,7 @@ export default function ChannelTabsAndPanel({
         return (
           <div
             key={m.key}
-            className={`flex items-stretch ${mi < METRICS.length - 1 ? "border-b border-gray-50" : ""} ${
+            className={`flex items-stretch ${mi < arr.length - 1 ? "border-b border-gray-50" : ""} ${
               isHighlight ? "animate-pulse rounded-lg ring-2 ring-inset ring-blue-400" : ""
             }`}
           >

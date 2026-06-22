@@ -51,6 +51,9 @@ export default function RowForm({ channel, initial = {}, onChange }: Props) {
       const ex = initial["기간예산"] as number;
       b["예산입력"] = b["부가세여부"] ? Math.round(ex * 1.1) : ex;
     }
+    // 직접생산 생산개수(M)는 입력칸 없는 자동 동기화값(ADR-0024) — 개당단가(예산÷생산개수)
+    // 계산용으로만 draft 에 보존(저장 시 service 가 유입합으로 재동기화).
+    if (typeof initial["생산개수"] === "number") b["생산개수"] = initial["생산개수"];
     return b;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.cls]);

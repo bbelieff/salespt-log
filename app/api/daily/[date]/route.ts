@@ -61,8 +61,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       );
     }
     const email = await getCurrentUserEmail();
-    await saveContactMetrics(email, dateParsed.data, bodyParsed.data);
-    return NextResponse.json({ ok: true });
+    const result = await saveContactMetrics(email, dateParsed.data, bodyParsed.data);
+    return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });

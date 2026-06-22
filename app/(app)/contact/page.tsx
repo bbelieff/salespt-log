@@ -24,6 +24,8 @@ import {
   DirtyGuardContext,
 } from "./_components/MeetingDirtyGuard";
 import ContactResultModals from "./_components/ContactResultModals";
+import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
+import { useRouter } from "next/navigation";
 import SaveBar from "./_components/SaveBar";
 import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
@@ -31,7 +33,10 @@ import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 const TODAY_ISO = fmtISO(new Date());
 
 export default function ContactPage() {
+  const router = useRouter();
   const [date, setDate] = useState<string>(TODAY_ISO);
+  // 직접생산 유입 저장했으나 활성 생산 기간 없음 → DB생산 안내(ADR-0024).
+  const [showProductionHold, setShowProductionHold] = useState(false);
   const [activeChannel, setActiveChannel] = useState<Channel>("매입DB");
   const [toast, setToast] = useState<string>("");
   const [draft, setDraft] = useState<Record<Channel, ChannelDailyRowMetrics>>(
@@ -44,7 +49,6 @@ export default function ContactPage() {
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
   const saveMetrics = useSaveMetrics();
-  // 생산(E)은 PR1/ADR-0020 으로 DB생산 집계가 소유 → 컨택 저장 시 DB합 불일치 검사 제거.
   // 2026-06-03 [교차탭1]: DB관리→컨택 이동 직후 생산 입력 행을 잠깐 강조.
   const [highlightProduction, setHighlightProduction] = useState(false);
   const appendMeeting = useAppendMeeting();
@@ -54,9 +58,7 @@ export default function ContactPage() {
   const countsByDay =
     weekQuery.data?.daysByReservationDate.map((d) => d.meetings.length) ??
     (Array(7).fill(0) as number[]);
-  const weekFunnel = weekQuery.data?.weekFunnel ?? {
-    생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0,
-  };
+  const weekFunnel = weekQuery.data?.weekFunnel ?? { 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0 };
 
   useEffect(() => {
     if (!dayQuery.data) return;
@@ -74,18 +76,13 @@ export default function ContactPage() {
       }
     }
     if (inconsistencies.length > 0) {
-      const msg =
-        "⚠ 시트 일관성 경고: " +
-        inconsistencies.join(", ") +
-        ". '−' 버튼으로 정정 가능";
-      setToast(msg);
+      setToast("⚠ 시트 일관성 경고: " + inconsistencies.join(", ") + ". '−' 버튼으로 정정 가능");
       setTimeout(() => setToast(""), 5000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
 
-  // 2026-06-03 [교차탭1]: DB관리에서 넘어올 때 ?channel=&date=&focus=production 수신.
-  // Next 15 useSearchParams Suspense 경계 요구 회피 → mount 시 window.location 직접 파싱.
+  // 2026-06-03 [교차탭1]: DB관리→컨택 ?channel=&date=&focus= 수신(mount 시 window.location 직접 파싱).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -121,8 +118,7 @@ export default function ContactPage() {
   const newSlotsForChannel = (ch: Channel) =>
     newSlots.filter((s) => s.channel === ch);
 
-  // 2026-06-03 [2]: 채널의 실제 미팅카드 수 (저장된 미팅 + 미등록 신규 슬롯).
-  // 컨택진행은 이 수보다 작아질 수 없다(작아지면 미팅카드가 orphan 됨).
+  // 2026-06-03 [2]: 채널 미팅카드 수(저장+신규). 컨택진행은 이 수 미만 불가(orphan 방지).
   const meetingCardCount = (ch: Channel) =>
     savedByChannel[ch].length + newSlotsForChannel(ch).length;
 
@@ -139,8 +135,7 @@ export default function ContactPage() {
     setDraft((d) => {
       const cur = d[channel];
       const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
-      // 안전망: 미팅예약 수치(H)가 컨택진행을 넘으면 컨택진행에 맞춰 내림(phantom H 정정).
-      // 컨택진행은 setVal/step 가드로 미팅카드 수 이하로 내려가지 않으므로 카드 손실 없음.
+      // 안전망: 미팅예약(H) > 컨택진행이면 컨택진행에 맞춰 내림(phantom H 정정, 카드 손실 없음).
       if (next.meetingReservation > next.contactProgress) {
         next.meetingReservation = next.contactProgress;
       }
@@ -213,8 +208,7 @@ export default function ContactPage() {
       return;
     }
 
-    // 2026-06-03 [2]: 컨택진행을 미팅카드 수보다 작게 만들면 미팅이 orphan 되므로 차단.
-    // 미팅 삭제는 반드시 미팅예약(−)을 통해 명시적으로 하도록 안내.
+    // 2026-06-03 [2]: 컨택진행 < 미팅카드 수면 미팅 orphan → 차단(삭제는 미팅예약(−)로만).
     if (key === "contactProgress" && delta < 0) {
       const cards = meetingCardCount(ch);
       if (cur2 + delta < cards) {
@@ -282,7 +276,6 @@ export default function ContactPage() {
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`)) return;
     const dateAtClick = date;
     try {
-      // server-side cascade (H -1 포함). draft 도 -1 즉시 반영.
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
       adjustMetric(meeting.channel, "meetingReservation", -1);
       showToast(hasContract ? "✕ 미팅 + 계약카드 삭제 (미팅예약 -1)" : "✕ 삭제 · 미팅예약 -1");
@@ -304,17 +297,13 @@ export default function ContactPage() {
     }
   };
 
-  // 메트릭 저장 단일 진입점. (생산 E 는 PR1/ADR-0020 으로 DB생산 집계 소유 — 저장 후 DB 검사 없음.)
-  const saveMetricsAndCheck = async (
+  const saveMetricsAndCheck = (
     dateAtClick: string,
     channels: Record<Channel, ChannelDailyRowMetrics>,
-  ) => {
-    await saveMetrics.mutateAsync({ date: dateAtClick, channels });
-  };
+  ) => saveMetrics.mutateAsync({ date: dateAtClick, channels });
 
-  // 통합 저장 — 최하단 [저장하기] 하나로: ① 완료 신규슬롯 append(업체정보 포함) →
-  // ② dirty 저장미팅 patch(업체정보 포함) → ③ 지표(H는 카드수로 자동 재계산).
-  // 항목별 실패는 그 항목만 드래프트 유지 + 토스트(유실 0). 필수누락 슬롯은 남기고 나머지 저장.
+  // 통합 저장 — 최하단 [저장하기] 하나로: ① 신규슬롯 append → ② dirty 미팅 patch →
+  // ③ 지표(H=카드수, 직접생산 M 동기화). 항목별 실패 격리(유실 0), 필수누락 슬롯만 남김.
   const savingRef = useRef(false);
   const handleSave = async () => {
     if (savingRef.current) return; // 더블클릭/중복저장 방지 (재진입 가드)
@@ -351,9 +340,10 @@ export default function ContactPage() {
     if (keep.length !== newSlots.length) setNewSlots(keep);
     // ② dirty 저장미팅 patch (업체정보 포함) — 항목별 실패 격리.
     failed += await saveAllDirty();
-    // ③ 지표 저장 (saveContactMetrics 가 H 를 카드수로 재계산).
+    // ③ 지표 저장 (saveContactMetrics 가 H 를 카드수로 재계산 + 직접생산 M 동기화).
     try {
-      await saveMetricsAndCheck(dateAtClick, draftAtClick);
+      const res = await saveMetricsAndCheck(dateAtClick, draftAtClick);
+      if (res?.directProductionHold) setShowProductionHold(true);
     } catch {
       failed++;
     }
@@ -415,7 +405,6 @@ export default function ContactPage() {
         className="sticky top-24 z-30 bg-white shadow-sm"
         {...weekSwipe}
       >
-        {/* 배경 full-bleed + 내용은 본문과 동일 6xl 중앙정렬 */}
         <PageContainer width="wide">
           <WeekHeader
             weekIndex={weekIndex}
@@ -433,7 +422,7 @@ export default function ContactPage() {
         </PageContainer>
       </div>
 
-      {/* 2026-05-18 [1]: 스와이프/주차 이동 시 본문 fade 인터랙션 (헤더는 고정). */}
+      {/* 2026-05-18 [1]: 본문 fade 인터랙션(헤더 고정) */}
       <main
         className={`px-4 pt-4 pb-[160px] transition-opacity duration-200 ${
           dayQuery.isFetching ? "opacity-50" : "opacity-100"
@@ -444,13 +433,13 @@ export default function ContactPage() {
           draft={draft}
           date={date}
           inflowWaitBase={dayQuery.data?.inflowWaitBase ?? 0}
+          savedInflow={dayQuery.data?.channels[activeChannel]?.inflow ?? 0}
           onSelectChannel={(c) => guardedNav(() => setActiveChannel(c))}
           onStep={step}
           onSetVal={setVal}
           highlightKey={highlightProduction ? "production" : undefined}
         />
 
-        {/* 미팅 슬롯 리스트 — dirty 카드는 DirtyGuardContext 로 이탈 가드에 등록 */}
         <DirtyGuardContext.Provider value={register}>
           <MeetingSlotList
             slots={allSlots}
@@ -464,10 +453,9 @@ export default function ContactPage() {
       </PageContainer>
       </main>
 
-      {/* 미저장 이탈 가드 모달 (dirty 카드 있을 때 탭/날짜/주차 이동 시) */}
+      {/* 미저장 이탈 가드 모달 */}
       {confirmModal}
 
-      {/* 고정 저장 바 (탭바 위) — 분리된 컴포넌트 */}
       <SaveBar
         pending={
           saveMetrics.isPending || appendMeeting.isPending || patchMeeting.isPending
@@ -475,7 +463,6 @@ export default function ContactPage() {
         onSave={handleSave}
       />
 
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-[152px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
@@ -486,6 +473,25 @@ export default function ContactPage() {
         pickerMeetings={pickerMeetings}
         onPick={(m) => { setPickerMeetings(null); handleRemoveSavedMeeting(m); }}
         onPickerClose={() => setPickerMeetings(null)}
+      />
+
+      {/* 직접생산 유입 저장했으나 활성 생산 기간 없음 — DB생산 기간 먼저 추가 안내 (ADR-0024) */}
+      <CrossTabHintModal
+        open={showProductionHold}
+        title="📊 진행 중인 생산이 없어요"
+        body={
+          <>
+            유입은 저장됐어요. 그런데 <b>진행 중인 생산 기간</b>이 없어 생산개수에 자동
+            집계되지 않았어요. DB생산에서 <b>생산목록(기간)</b>을 먼저 추가하면 이 기간의
+            유입이 생산개수로 자동 카운트돼요.
+          </>
+        }
+        navLabel="📊 DB생산으로 가기"
+        onNavigate={() => {
+          setShowProductionHold(false);
+          router.push("/db?channel=직접생산");
+        }}
+        onClose={() => setShowProductionHold(false)}
       />
     </>
   );
