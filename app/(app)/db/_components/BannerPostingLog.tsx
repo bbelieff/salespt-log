@@ -23,6 +23,7 @@ export default function BannerPostingLog({ order }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
   const [count, setCount] = useState(0);
+  const [err, setErr] = useState("");
 
   const 주문ref = `${str(order, "날짜")}|${str(order, "업체명")}`;
   const 주문장수 = n(order, "주문개수");
@@ -34,11 +35,15 @@ export default function BannerPostingLog({ order }: Props) {
   const canAdd = count > 0 && !!date && !pending;
   const over = count > 남은;
 
+  const fail = (e: unknown) =>
+    setErr(e instanceof Error ? e.message : "저장에 실패했어요. 다시 시도해주세요.");
+
   const onAdd = () => {
     if (!canAdd) return;
+    setErr("");
     append.mutate(
       { 게시id: "", 주문ref, 게시일: date, 게시수: count },
-      { onSuccess: () => setCount(0) },
+      { onSuccess: () => setCount(0), onError: fail },
     );
   };
 
@@ -63,7 +68,10 @@ export default function BannerPostingLog({ order }: Props) {
               </span>
               <button
                 type="button"
-                onClick={() => remove.mutate(p.row)}
+                onClick={() => {
+                  setErr("");
+                  remove.mutate(p.row, { onError: fail });
+                }}
                 disabled={pending}
                 aria-label="게시 삭제"
                 className="text-gray-300 hover:text-red-500 disabled:opacity-40"
@@ -77,35 +85,40 @@ export default function BannerPostingLog({ order }: Props) {
         <p className="mb-2 text-xs text-amber-600">아직 게시 기록이 없어요. 게시한 날·수량을 추가하세요.</p>
       )}
 
-      <div className="flex items-center gap-2">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="min-w-0 flex-1 appearance-none rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm focus:border-amber-500 focus:outline-none"
-        />
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          value={count === 0 ? "" : String(count)}
-          placeholder="게시수"
-          onChange={(e) => setCount(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
-          className="w-20 rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm focus:border-amber-500 focus:outline-none num-mono"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        />
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={!canAdd}
-          className="shrink-0 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:bg-gray-300"
-        >
-          게시
-        </button>
-      </div>
+      {남은 > 0 ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="min-w-0 flex-1 appearance-none rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm focus:border-amber-500 focus:outline-none"
+          />
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={count === 0 ? "" : String(count)}
+            placeholder="게시수"
+            onChange={(e) => setCount(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
+            className="w-20 rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm focus:border-amber-500 focus:outline-none num-mono"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          />
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={!canAdd}
+            className="shrink-0 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:bg-gray-300"
+          >
+            게시
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs font-medium text-amber-700">주문 수량을 모두 게시했어요 ✓</p>
+      )}
       {over && (
         <p className="mt-1 text-xs text-red-500">남은 수량({남은}장)보다 많아요 — 확인 후 추가됩니다.</p>
       )}
+      {err && <p className="mt-1 text-xs text-red-500">⚠ {err}</p>}
     </div>
   );
 }
