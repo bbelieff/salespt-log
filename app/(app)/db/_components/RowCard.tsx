@@ -42,13 +42,18 @@ function makeSummary(channelKey: ChannelKey, row: Record<string, unknown>) {
         rightBadge: null as string | null,
       };
     }
-    case "direct":
+    case "direct": {
+      const done = num(row, "생산개수") > 0;
+      const start = ch(row, "시작일");
+      const end = ch(row, "종료일");
+      const period = start && end && start !== end ? `${start}~${end}` : start || "-";
       return {
         title: ch(row, "소재") || "(소재 없음)",
-        sub: `${ch(row, "날짜") || "-"} · ${num(row, "생산개수")}건`,
+        sub: `${period} · ${done ? `${num(row, "생산개수")}건 완료` : "생산중"}`,
         right: `₩${fmtWon(num(row, "기간예산"))}`,
-        rightBadge: null,
+        rightBadge: done ? null : "생산중",
       };
+    }
     case "banner": {
       const cost = num(row, "개당단가") * num(row, "주문개수");
       return {

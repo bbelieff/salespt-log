@@ -159,29 +159,30 @@ export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
 // 일별 실적(DailyRevenue, 영업관리!Q~T)은 PR #38·39·40에서 02 계약수납관리로
 // 모델 재정의되며 폐기됨. ContractPayment 타입 참조.
 
-// ── DB관리 — 4채널 raw log (PR 09). 시트매핑: docs/domains/sheet-structure.md §5
-// 앱은 raw 입력만(수식 컬럼 X). row = 시트 행번호(update/clear 식별자).
-
+// ── DB관리 — 4채널 raw log. 시트매핑: sheet-structure.md §5. 앱=raw 입력만, row=시트행번호.
+// 부가세여부=입력이 부가세 포함이었는지(저장값은 항상 부가세 제외, ADR-0021). 주문금액·개당단가=계산값(미저장).
 export const DBPurchase = z.object({
   row: z.number().int().min(2).optional(),
   구매일: z.string().default(""),
   업체명: z.string().default(""),
   개당단가: z.number().nonnegative().default(0),
   주문개수: z.number().int().nonnegative().default(0),
-  주문금액: z.number().nonnegative().optional(), // F열 수식 — 읽기만
+  주문금액: z.number().nonnegative().optional(), // 계산값(개당단가×개수)
   기타: z.string().default(""),
-  부가세여부: z.boolean().default(false), // H열 — 입력 총액이 부가세 포함이었는지
+  부가세여부: z.boolean().default(false), // F열
 });
 export type DBPurchase = z.infer<typeof DBPurchase>;
 
 export const DBProduction = z.object({
   row: z.number().int().min(2).optional(),
-  날짜: z.string().default(""),
+  시작일: z.string().default(""), // I열 (생산 시작)
+  종료일: z.string().default(""), // J열 (생산 종료 = 집계 기준일)
   소재: z.string().default(""),
-  기간예산: z.number().nonnegative().default(0),
-  생산개수: z.number().int().nonnegative().default(0),
-  개당단가: z.number().nonnegative().optional(), // N열 수식 (예산÷개수)
+  기간예산: z.number().nonnegative().default(0), // L열 (부가세 제외 저장)
+  생산개수: z.number().int().nonnegative().default(0), // M열 (빈/0=생산중)
+  개당단가: z.number().nonnegative().optional(), // 계산값(예산÷개수, 미저장)
   기타: z.string().default(""),
+  부가세여부: z.boolean().default(false), // N열
 });
 export type DBProduction = z.infer<typeof DBProduction>;
 
@@ -192,9 +193,9 @@ export const DBBanner = z.object({
   도착일: z.string().default(""),
   개당단가: z.number().nonnegative().default(0),
   주문개수: z.number().int().nonnegative().default(0),
-  주문금액: z.number().nonnegative().optional(),
+  주문금액: z.number().nonnegative().optional(), // 계산값(개당단가×개수)
   기타: z.string().default(""),
-  부가세여부: z.boolean().default(false), // W열 — 입력 총액이 부가세 포함이었는지
+  부가세여부: z.boolean().default(false), // U열
 });
 export type DBBanner = z.infer<typeof DBBanner>;
 

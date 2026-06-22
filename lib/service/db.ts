@@ -62,14 +62,24 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
 /** (채널 raw rows, 날짜) → 그 날짜 생산수. 순수 — 단위 테스트 대상. */
 export function productionCountFor(
   channel: Channel,
-  rows: { 구매일?: string; 날짜?: string; 접수일?: string; 주문개수?: number; 생산개수?: number }[],
+  rows: {
+    구매일?: string;
+    종료일?: string;
+    날짜?: string;
+    접수일?: string;
+    주문개수?: number;
+    생산개수?: number;
+  }[],
   date: string,
 ): number {
   if (!date) return 0;
   if (channel === "매입DB")
     return rows.filter((r) => r.구매일 === date).reduce((s, r) => s + (r.주문개수 || 0), 0);
   if (channel === "직접생산")
-    return rows.filter((r) => r.날짜 === date).reduce((s, r) => s + (r.생산개수 || 0), 0);
+    // 종료일 == date 이고 생산개수 채워진(완료) 행만 — 생산중(빈)은 미반영.
+    return rows
+      .filter((r) => r.종료일 === date && (r.생산개수 || 0) > 0)
+      .reduce((s, r) => s + (r.생산개수 || 0), 0);
   if (channel === "현수막")
     return rows.filter((r) => r.날짜 === date).reduce((s, r) => s + (r.주문개수 || 0), 0);
   return rows.filter((r) => r.접수일 === date).length; // 콜·지·기·소
@@ -86,7 +96,8 @@ async function readChannelRows(spreadsheetId: string, channel: Channel) {
 function dateOfRow(channel: Channel, row: DBPurchase | DBProduction | DBBanner | DBLead): string {
   if (channel === "매입DB") return (row as DBPurchase).구매일;
   if (channel === "콜·지·기·소") return (row as DBLead).접수일;
-  return (row as DBProduction | DBBanner).날짜;
+  if (channel === "직접생산") return (row as DBProduction).종료일; // 집계 기준 = 종료일
+  return (row as DBBanner).날짜; // 현수막
 }
 
 /** DB 변경 후 그 (채널, 날짜) 생산(E) 재집계·기입. 실패해도 DB 저장은 성공(warn). */
@@ -134,15 +145,15 @@ export async function removePurchase(email: string, row: number) {
 export async function addProduction(email: string, p: DBProduction) {
   const sid = await resolveSheet(email);
   const r = await appendProduction(sid, p);
-  await syncProduction(sid, "직접생산", p.날짜);
+  await syncProduction(sid, "직접생산", p.종료일); // 종료일 기준
   return r;
 }
 export async function patchProduction(email: string, row: number, p: DBProduction) {
   const sid = await resolveSheet(email);
-  const old = await oldDateOf(sid, "직접생산", row);
+  const old = await oldDateOf(sid, "직접생산", row); // 옛 종료일
   const r = await updateProduction(sid, row, p);
   await syncProduction(sid, "직접생산", old);
-  if (p.날짜 !== old) await syncProduction(sid, "직접생산", p.날짜);
+  if (p.종료일 !== old) await syncProduction(sid, "직접생산", p.종료일);
   return r;
 }
 export async function removeProduction(email: string, row: number) {

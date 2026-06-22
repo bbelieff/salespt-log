@@ -125,8 +125,7 @@ function isISODate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-// ── 매입DB (B:G, F=부가세여부) ────────────────────────────────
-// 입력: 구매일/업체명/개당단가/주문개수/부가세여부(F)/기타(G). 주문금액=개당단가×개수(미저장).
+// ── 매입DB (B:G) — 구매일/업체명/개당단가/주문개수/부가세여부(F)/기타. 주문금액=개당단가×개수 계산.
 // 전환 read: F 가 boolean 이면 신규(부가세여부), number(구 주문금액 수식)이면 H(#425)에서 fallback.
 export async function readPurchases(spreadsheetId: string) {
   return readSection<DBPurchase>(
@@ -150,23 +149,30 @@ export async function readPurchases(spreadsheetId: string) {
   );
 }
 
-// ── 직접생산 (I:N) ────────────────────────────────────────────
-// 사용자 입력: 날짜/소재/기간예산/생산개수/기타. 수식: 개당단가(M열=예산÷개수).
-// 필터: 날짜 ISO 유효성 + 헤더 차단.
+// ── 직접생산 (I:O) — 시작/종료/소재/예산/생산개수/부가세여부(N)/기타. 개당단가=예산÷개수 계산.
+// 전환: J(종료일)=날짜면 신규, 아니면 구 I:N(날짜/소재/예산/개수/개당단가/기타) → 시작=종료=날짜.
 export async function readProductions(spreadsheetId: string) {
   return readSection<DBProduction>(
     spreadsheetId,
     "I",
-    "N",
-    (r) => ({
-      날짜: serialToISODate(r[0]),
-      소재: toStr(r[1]),
-      기간예산: toNum(r[2]),
-      생산개수: toNum(r[3]),
-      개당단가: toNum(r[4]),
-      기타: toStr(r[5]),
-    }),
-    (p) => isISODate(p.날짜),
+    "O",
+    (r) => {
+      const 시작일 = serialToISODate(r[0]);
+      const neo = isISODate(serialToISODate(r[1])); // J=날짜 → 신규 레이아웃
+      const 기간예산 = toNum(r[neo ? 3 : 2]);
+      const 생산개수 = toNum(r[neo ? 4 : 3]);
+      return {
+        시작일,
+        종료일: neo ? serialToISODate(r[1]) : 시작일,
+        소재: toStr(r[neo ? 2 : 1]),
+        기간예산,
+        생산개수,
+        부가세여부: neo ? toBool(r[5]) : false,
+        기타: toStr(r[neo ? 6 : 5]),
+        개당단가: 생산개수 > 0 ? Math.round(기간예산 / 생산개수) : 0,
+      };
+    },
+    (p) => isISODate(p.시작일),
   );
 }
 
@@ -268,12 +274,11 @@ interface SectionWriteSpec {
   formulas: Record<number, (row: number) => string>;
 }
 
-// C3 개정(§3-A): 매입DB F·현수막 U = 부가세여부(주문금액 미저장=계산값). 직접생산.M=K÷L 수식 유지.
-//   주문금액은 시트에 안 둠 → read 가 개당단가×개수 로 계산. 쓰기 시 H/W(구 #425 부가세여부) 빈칸 정리.
+// §3-A: 부가세여부=매입DB F·현수막 U·직접생산 N. 주문금액·개당단가 미저장=계산값(수식 없음).
+//   직접생산 I:O 재배치(시작/종료 분리·개당단가 드롭·스페이서 O 흡수). 전환 read 흡수·신규 write.
 const SPEC = {
   매입DB: { startCol: "B", endCol: "H", formulas: {} },
-  직접생산: { startCol: "I", endCol: "N",
-    formulas: { 4: (r: number) => `=IFERROR(K${r}/L${r},0)` } },
+  직접생산: { startCol: "I", endCol: "O", formulas: {} },
   현수막: { startCol: "P", endCol: "W", formulas: {} },
   콜지기소: { startCol: "X", endCol: "AD", formulas: {} },
 } as const satisfies Record<string, SectionWriteSpec>;
@@ -352,12 +357,13 @@ export async function appendProduction(
   if (needInsert)
     throw new Error(`[db.ts] 직접생산 영역 가득 — 합계 행을 옮겨주세요.`);
   await writeRow(spreadsheetId, SPEC.직접생산, row, [
-    p.날짜,
-    p.소재,
-    p.기간예산,
-    p.생산개수,
-    "", // 개당단가 = 시트 수식
-    p.기타,
+    p.시작일, // I
+    p.종료일, // J
+    p.소재, // K
+    p.기간예산, // L (부가세 제외)
+    p.생산개수, // M (빈/0=생산중)
+    p.부가세여부, // N
+    p.기타, // O (구 스페이서 자리)
   ]);
   return { row };
 }
@@ -435,12 +441,13 @@ export async function updateProduction(
   p: DBProduction,
 ): Promise<void> {
   await writeRow(spreadsheetId, SPEC.직접생산, row, [
-    p.날짜,
-    p.소재,
-    p.기간예산,
-    p.생산개수,
-    "",
-    p.기타,
+    p.시작일, // I
+    p.종료일, // J
+    p.소재, // K
+    p.기간예산, // L
+    p.생산개수, // M
+    p.부가세여부, // N
+    p.기타, // O
   ]);
 }
 

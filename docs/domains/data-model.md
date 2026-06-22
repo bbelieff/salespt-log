@@ -528,7 +528,7 @@ interface DashboardView {
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `DBPurchase` | z.object | 매입DB raw row (B~G, F=부가세여부 boolean. 주문금액=개당단가×개수 계산값) |
-| `DBProduction` | z.object | 직접생산 raw row (I~N) |
+| `DBProduction` | z.object | 직접생산 raw row (I~O, 시작일·종료일 분리, N=부가세여부. 개당단가=예산÷개수 계산값, 생산개수 빈=생산중) |
 | `DBBanner` | z.object | 현수막 raw row (P~V, U=부가세여부 boolean. 주문금액=개당단가×개수 계산값) |
 | `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) |
 

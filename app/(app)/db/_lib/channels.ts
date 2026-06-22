@@ -18,6 +18,8 @@ export interface FieldDef {
   formula?: boolean; // 자동 계산값 — 입력 X (시트 수식 또는 클라 역산)
   /** 입력 도우미 전용 — DB 컬럼 아님(저장 시 제외). 예: 부가세 역산용 총액·토글. */
   formOnly?: boolean;
+  /** 추가(생산 시작) 폼에선 숨김 — 2단계용(직접생산 생산개수는 완료 시 입력). */
+  hideInAdd?: boolean;
   /** 폼 grid에서 2칸 차지. */
   span?: 2;
   /** 클라이언트 미리보기 계산식 (formula=true일 때). */
@@ -94,10 +96,23 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
     hint: "광고비·메타 등 직접 집행 비용",
     isCost: true,
     fields: [
-      { key: "날짜", label: "날짜", type: "date" },
+      // 2단계: ① 생산 시작(기간·소재·예산) → ② 완료 시 생산개수 입력.
+      { key: "시작일", label: "생산 시작일", type: "date" },
+      { key: "종료일", label: "생산 종료일", type: "date" },
       { key: "소재", label: "소재", type: "text", placeholder: "예: 메타, 구글" },
-      { key: "기간예산", label: "기간예산", type: "number", unit: "원" },
-      { key: "생산개수", label: "생산개수", type: "number", unit: "건" },
+      // 부가세 역산: 예산입력+부가세토글 → 부가세 제외 기간예산(저장). 예산입력은 도우미(저장 X).
+      { key: "예산입력", label: "기간예산", type: "number", unit: "원", formOnly: true, placeholder: "집행 예산" },
+      { key: "부가세여부", label: "부가세 포함 금액", type: "toggle" },
+      {
+        key: "기간예산",
+        label: "부가세 제외 기간예산",
+        type: "number",
+        unit: "원",
+        formula: true,
+        calc: (r) => unitPriceFromTotal(num(r, "예산입력"), 1, Boolean(r["부가세여부"])),
+      },
+      // 생산개수: 추가(시작) 폼엔 숨김 — 기간 끝나고 완료 시 입력(빈=생산중).
+      { key: "생산개수", label: "생산개수(완료 시 입력)", type: "number", unit: "건", hideInAdd: true },
       {
         key: "개당단가",
         label: "부가세 제외 개당단가",
