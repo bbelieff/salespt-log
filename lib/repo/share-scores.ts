@@ -50,12 +50,44 @@ export function invalidateShareScores(): void {
   revalidateTag(SHARE_SCORES_TAG);
 }
 
+/** share_scores 탭 자동 생성(ensure) — 없으면 addSheet + 헤더행. 05/06 탭 패턴.
+ *  write(setShareScores) 전 1회. read 는 탭 없으면 [] 라 ensure 불필요. */
+let shareTabEnsured = false;
+async function ensureShareScoresTab(): Promise<void> {
+  if (shareTabEnsured) return;
+  const spreadsheetId = registry().spreadsheetId;
+  const client = sheetsClient();
+  const meta = await client.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets.properties.title",
+  });
+  const exists = (meta.data.sheets ?? []).some(
+    (s) => s.properties?.title === S.tab,
+  );
+  if (!exists) {
+    await client.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: S.tab } } }] },
+    });
+    await client.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${S.tab}!A1:E1`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [["email", "name", "cohort", "points", "updatedAt"]],
+      },
+    });
+  }
+  shareTabEnsured = true;
+}
+
 /** 공유왕 점수 set — email 키 행의 A:E 만 update(기존 행) / 빈 행 append(신규).
  *  자기 키 행만 타격해 다른 참가자 점수·다른 탭은 보존(§2.5 안전 쓰기). */
 export async function setShareScores(
   rows: { email: string; name: string; cohort: string; points: number; updatedAt: string }[],
 ): Promise<void> {
   if (rows.length === 0) return;
+  await ensureShareScoresTab();
   const spreadsheetId = registry().spreadsheetId;
   const existing =
     (
