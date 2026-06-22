@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
-import { fmtWon } from "../_lib/channels";
+import { fmtWon, mdShort } from "../_lib/channels";
 import RowForm from "./RowForm";
 
 interface Props {
@@ -37,15 +37,15 @@ function makeSummary(channelKey: ChannelKey, row: Record<string, unknown>) {
       const cost = num(row, "개당단가") * num(row, "주문개수");
       return {
         title: ch(row, "업체명") || "(이름 없음)",
-        sub: `${ch(row, "구매일") || "-"} · ${fmtWon(num(row, "개당단가"))}원 × ${num(row, "주문개수")}건`,
+        sub: `${mdShort(ch(row, "구매일")) || "-"} · ${fmtWon(num(row, "개당단가"))}원 × ${num(row, "주문개수")}건`,
         right: `₩${fmtWon(cost)}`,
         rightBadge: null as string | null,
       };
     }
     case "direct": {
       const done = num(row, "생산개수") > 0;
-      const start = ch(row, "시작일");
-      const end = ch(row, "종료일");
+      const start = mdShort(ch(row, "시작일"));
+      const end = mdShort(ch(row, "종료일"));
       const period = start && end && start !== end ? `${start}~${end}` : start || "-";
       return {
         title: ch(row, "소재") || "(소재 없음)",
@@ -58,7 +58,7 @@ function makeSummary(channelKey: ChannelKey, row: Record<string, unknown>) {
       const cost = num(row, "개당단가") * num(row, "주문개수");
       return {
         title: ch(row, "업체명") || "(이름 없음)",
-        sub: `${ch(row, "날짜") || "-"} 발주 · ${ch(row, "도착일") || "-"} 도착 · ${num(row, "주문개수")}장`,
+        sub: `${mdShort(ch(row, "날짜")) || "-"} 발주 · ${mdShort(ch(row, "도착일")) || "-"} 도착 · ${num(row, "주문개수")}장`,
         right: `₩${fmtWon(cost)}`,
         rightBadge: null,
       };
@@ -66,7 +66,7 @@ function makeSummary(channelKey: ChannelKey, row: Record<string, unknown>) {
     case "referral":
       return {
         title: `${ch(row, "대표자명") || "-"} · ${ch(row, "업체명") || "-"}`,
-        sub: `${ch(row, "접수일") || "-"} · ${ch(row, "소개처")}${ch(row, "조건") ? " · " + ch(row, "조건") : ""}`,
+        sub: `${mdShort(ch(row, "접수일")) || "-"} · ${ch(row, "소개처")}${ch(row, "조건") ? " · " + ch(row, "조건") : ""}`,
         right: null as string | null,
         rightBadge: ch(row, "구분") || null,
       };
@@ -97,14 +97,14 @@ export default function RowCard({
         className="row-card flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white p-3 transition-all hover:border-slate-300"
         onClick={onExpand}
       >
-        <span className="row-num shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-slate-600 num-mono">
+        <span className="row-num shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold tracking-wider text-slate-600 num-mono">
           {displayNum}
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-gray-900">
             {s.title}
           </div>
-          <div className="mt-0.5 truncate text-xs text-gray-500">{s.sub}</div>
+          <div className="mt-0.5 line-clamp-2 break-keep text-xs text-gray-500">{s.sub}</div>
         </div>
         {s.right && (
           <div
@@ -127,7 +127,7 @@ export default function RowCard({
     <div className="row-card expanded rounded-xl border border-blue-300 bg-white p-3 shadow-md">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-slate-600 num-mono">
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold tracking-wider text-slate-600 num-mono">
             {displayNum}
           </span>
           <span className={`badge ${badgeCls}`}>{channel.name}</span>

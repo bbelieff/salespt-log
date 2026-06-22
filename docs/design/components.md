@@ -66,10 +66,11 @@
 
 **CSS 정의:**
 ```css
+/* 2026-06-23 모바일 360px 축소: 36/20 → 34/17 (탭타깃은 row py-3 로 확보). */
 .stepper-btn {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; font-weight: 700; cursor: pointer;
+  font-size: 17px; font-weight: 700; cursor: pointer;
   user-select: none; transition: all 0.15s;
 }
 .stepper-btn:active { transform: scale(0.9); }
@@ -108,7 +109,7 @@
 **CSS 정의 (네이티브 스피너 제거 필수):**
 ```css
 .stepper-val {
-  width: 48px; text-align: center; font-size: 20px; font-weight: 700;
+  width: 34px; text-align: center; font-size: 16px; font-weight: 700; /* 2026-06-23 모바일 축소 48/20→34/16 */
   border: none; background: transparent; cursor: pointer;
   -moz-appearance: textfield;
 }

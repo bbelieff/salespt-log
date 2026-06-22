@@ -246,3 +246,10 @@ export function fmtWon(n: number | null | undefined): string {
   if (n === null || n === undefined) return "0";
   return Math.round(Number(n) || 0).toLocaleString("ko-KR");
 }
+
+/** 풀 ISO(YYYY-MM-DD) → 짧은 M/D 표기 (모바일 카드 sub줄 절약). 비ISO는 원문 유지. */
+export function mdShort(iso: string | null | undefined): string {
+  const s = String(iso ?? "");
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(s);
+  return m ? `${Number(m[1])}/${Number(m[2])}` : s;
+}

@@ -74,22 +74,20 @@ function NewItem({
 
   return (
     <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-gray-300 bg-white shadow-sm">
-      {/* 한 줄 헤더 (신규는 클릭 무반응 — 항상 펼침) */}
-      <div className="flex items-center gap-2 px-3 py-3">
-        <span className="shrink-0 text-xs font-bold text-gray-400">
-          #{index + 1}
-        </span>
-        <span className={`shrink-0 ${CHANNEL_BADGE[channel]}`}>{channel}</span>
-        <span className="shrink-0 text-base leading-none">⚪</span>
-        <span className="shrink-0 text-sm font-bold text-gray-700">
-          {collapsedTime}
-        </span>
-        <span className="flex-1 truncate text-sm font-semibold text-gray-900">
-          {collapsedCompany}
-        </span>
-        <span className="max-w-20 shrink-0 truncate text-xs text-gray-500">
-          {collapsedPlace}
-        </span>
+      {/* 2단 헤더 (신규는 항상 펼침) — 1행 메타, 2행 업체명 풀폭·장소 */}
+      <div className="px-3 py-3">
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-xs font-bold text-gray-400">#{index + 1}</span>
+          <span className={`shrink-0 ${CHANNEL_BADGE[channel]}`}>{channel}</span>
+          <span className="shrink-0 text-base leading-none">⚪</span>
+          <span className="shrink-0 text-sm font-bold text-gray-700">{collapsedTime}</span>
+        </div>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+            {collapsedCompany}
+          </span>
+          <span className="shrink-0 truncate text-xs text-gray-500">{collapsedPlace}</span>
+        </div>
       </div>
 
       {/* 펼침 본문 */}
@@ -232,25 +230,24 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
         className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors active:bg-black/5"
         aria-expanded={open}
       >
-        <span className="shrink-0 text-xs font-bold text-gray-400">
-          #{index + 1}
-        </span>
-        <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
-          {meeting.channel}
-        </span>
-        <span className="shrink-0 text-base leading-none">🔵</span>
-        <span className="shrink-0 text-xs font-semibold text-gray-500">
-          {collapsedDate}
-        </span>
-        <span className="shrink-0 text-sm font-bold text-gray-700">
-          {collapsedTime}
-        </span>
-        <span className="flex-1 truncate text-sm font-semibold text-gray-900">
-          {meeting.업체명 || "(업체 미입력)"}
-        </span>
-        <span className="max-w-16 shrink-0 truncate text-xs text-gray-500">
-          {meeting.장소}
-        </span>
+        {/* 2단: 1행 메타(#·채널·날짜·시간), 2행 업체명 풀폭·장소 */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-xs font-bold text-gray-400">#{index + 1}</span>
+            <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
+              {meeting.channel}
+            </span>
+            <span className="shrink-0 text-base leading-none">🔵</span>
+            <span className="shrink-0 text-xs font-semibold text-gray-500">{collapsedDate}</span>
+            <span className="shrink-0 text-sm font-bold text-gray-700">{collapsedTime}</span>
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+              {meeting.업체명 || "(업체 미입력)"}
+            </span>
+            <span className="shrink-0 truncate text-xs text-gray-500">{meeting.장소}</span>
+          </div>
+        </div>
         <svg
           className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
             open ? "rotate-180" : ""

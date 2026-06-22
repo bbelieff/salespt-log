@@ -27,8 +27,8 @@ export default function ChannelTabs({ activeCh, onSwitch }: Props) {
       {CHANNEL_KEYS.map((k) => {
         const meta = CHANNELS[k];
         const active = k === activeCh;
-        const fontCls =
-          k === "referral" ? "text-[11px] tracking-tight" : "text-[13px]";
+        // 4탭 글자 크기 통일(점프 제거) — 콜·지·기·소만 자간 좁혀 동일 크기 유지.
+        const fontCls = k === "referral" ? "text-xs tracking-tight" : "text-xs";
         const cls = active ? "text-white shadow-lg" : INACTIVE_CLS[k];
         return (
           <button
