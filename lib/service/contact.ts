@@ -1,5 +1,6 @@
 /** Layer: service — 컨택탭 유스케이스. 화면은 하루 단위지만 시트는 주차 블록 → 한 주 read 후 그 날 4채널 추출. */
 import { findUserByEmail } from "@/repo/users";
+import { readBanners } from "@/repo/db";
 import { readChannelStacking } from "@/repo/dashboard";
 import {
   batchWriteChannelDailyRows,
@@ -58,6 +59,8 @@ export interface ContactDayView {
   meetings: Meeting[];
   /** 매입DB 유입대기 base = 생산누적 − 유입누적 + 오늘 저장 유입(R1:U6). UI: max(0, base − draft.유입). */
   inflowWaitBase: number;
+  /** 현수막 재고 base = Σ주문장수 − Σ게시누적 + 오늘 저장 게시. UI: max(0, base − draft.게시)(ADR-0025). */
+  bannerStockBase: number;
 }
 
 export interface ChannelDailyRowMetrics {
@@ -89,10 +92,8 @@ export async function loadDay(
   const inRange = week >= 1 && week <= 10;
 
   const { rows } = inRange ? await readWeek(spreadsheetId, week) : { rows: [] };
-  // ⭐ 컨택탭은 예약일(컨택한 날) 기준 조회 — 미팅날짜 기준은 일정·계약 탭 몫 (sheet-structure §2).
-  const meetings = await findByDate(spreadsheetId, date, "reservation");
+  const meetings = await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
 
-  // 그 날짜의 4채널만 필터
   const dayRows = rows.filter((r) => r.date === date);
   const channels: Record<Channel, ChannelDailyRowMetrics> = {
     매입DB: { ...EMPTY_METRICS },
@@ -108,7 +109,7 @@ export async function loadDay(
       meetingReservation: r.meetingReservation, // 아래에서 카드수로 덮어씀
     };
   }
-  // ⭐ 미팅예약 = 업체관리 카드 수 파생(SSOT, ADR-0010). H↔카드 드리프트를 read 시점에 교정.
+  // ⭐ 미팅예약 = 업체관리 카드 수 파생(SSOT, ADR-0010).
   const cardCount: Record<Channel, number> = {
     매입DB: 0,
     직접생산: 0,
@@ -118,14 +119,16 @@ export async function loadDay(
   for (const mtg of meetings) cardCount[mtg.channel] += 1;
   for (const ch of CHANNEL_ORDER) channels[ch].meetingReservation = cardCount[ch];
 
-  const csISO = `${courseStart.getFullYear()}-${String(
-    courseStart.getMonth() + 1,
-  ).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
+  const csISO = `${courseStart.getFullYear()}-${String(courseStart.getMonth() + 1).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
 
-  // 매입DB 유입대기 base = 생산누적(R1) − 유입누적(R2) + 오늘 저장 유입 — UI 가 draft.유입 으로 실시간 차감.
+  // 매입DB 유입대기 base = 생산누적(R1) − 유입누적(R2) + 오늘 저장 유입 — UI 가 draft.유입 실시간 차감.
   const stacking = await readChannelStacking(spreadsheetId);
   const inflowWaitBase =
     (stacking[0]?.[0] ?? 0) - (stacking[1]?.[0] ?? 0) + channels.매입DB.inflow;
+
+  // 현수막 재고 base = Σ주문장수(DB) − Σ게시누적(E 현수막=stacking 생산[2]) + 오늘 저장 게시(ADR-0025).
+  const orderQty = (await readBanners(spreadsheetId)).rows.reduce((s, b) => s + b.주문개수, 0);
+  const bannerStockBase = orderQty - (stacking[0]?.[2] ?? 0) + channels.현수막.production;
 
   return {
     date,
@@ -134,6 +137,7 @@ export async function loadDay(
     channels,
     meetings,
     inflowWaitBase,
+    bannerStockBase,
   };
 }
 
@@ -196,9 +200,7 @@ export async function loadWeekMeetings(
     meetings: (byReservationDate.get(d) ?? []).sort(sortByTime),
   }));
 
-  const csISO = `${courseStart.getFullYear()}-${String(
-    courseStart.getMonth() + 1,
-  ).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
+  const csISO = `${courseStart.getFullYear()}-${String(courseStart.getMonth() + 1).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
 
   return {
     weekStart,

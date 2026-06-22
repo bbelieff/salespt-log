@@ -23,17 +23,10 @@ import {
   updatePurchase,
   writeProductionCountCell,
 } from "@/repo/db";
-import {
-  appendBannerPost,
-  clearBannerPost,
-  readBannerPosts,
-  updateBannerPost,
-} from "@/repo/banner-post";
 import { writeProductionCell, sumChannelInflowOverPeriod } from "@/repo/sales";
 import type {
   Channel,
   DBBanner,
-  DBBannerPost,
   DBLead,
   DBProduction,
   DBPurchase,
@@ -50,7 +43,6 @@ export interface DBOverview {
   productions: Array<DBProduction & { row: number }>;
   banners: Array<DBBanner & { row: number }>;
   leads: Array<DBLead & { row: number }>;
-  bannerPosts: Array<DBBannerPost & { row: number }>; // 현수막 게시 로그(AF:AI)
 }
 
 /** 섹션 read 실패 시 빈 배열로 강등(나머지 채널은 정상 표시) + 경고 로그. */
@@ -69,25 +61,23 @@ function rowsOrEmpty<T>(r: PromiseSettledResult<{ rows: T[] }>, label: string): 
  */
 export async function loadDBOverview(email: string): Promise<DBOverview> {
   const spreadsheetId = await resolveSheet(email);
-  const [purchases, productions, banners, leads, bannerPosts] = await Promise.allSettled([
+  const [purchases, productions, banners, leads] = await Promise.allSettled([
     readPurchases(spreadsheetId),
     readProductions(spreadsheetId),
     readBanners(spreadsheetId),
     readLeads(spreadsheetId),
-    readBannerPosts(spreadsheetId),
   ]);
   return {
     purchases: rowsOrEmpty(purchases, "매입DB"),
     productions: rowsOrEmpty(productions, "직접생산"),
     banners: rowsOrEmpty(banners, "현수막"),
     leads: rowsOrEmpty(leads, "콜·지·기·소"),
-    bannerPosts: rowsOrEmpty(bannerPosts, "현수막게시"),
   };
 }
 
-// ── 생산(E) 집계쓰기 (PR1 / ADR-0020) ──────────────────────────
+// ── 생산(E) 집계쓰기 (ADR-0020) — 매입DB·콜·지·기·소 한정 ────────
 // DB raw 변경 시 그 (채널, 날짜)의 생산수를 재집계해 01 영업관리 E 에 기입.
-// 매입DB/직접생산/현수막 = Σ개수, 콜·지·기·소 = 행수(개수 필드 없음).
+// 직접생산(ADR-0024)·현수막(ADR-0025)은 컨택이 E 소유 → 여기서 집계 안 함.
 
 /** (채널 raw rows, 날짜) → 그 날짜 생산수. 순수 — 단위 테스트 대상. */
 export function productionCountFor(
@@ -95,11 +85,9 @@ export function productionCountFor(
   rows: {
     구매일?: string;
     종료일?: string;
-    게시일?: string;
     접수일?: string;
     주문개수?: number;
     생산개수?: number;
-    게시수?: number;
   }[],
   date: string,
 ): number {
@@ -111,16 +99,12 @@ export function productionCountFor(
     return rows
       .filter((r) => r.종료일 === date && (r.생산개수 || 0) > 0)
       .reduce((s, r) => s + (r.생산개수 || 0), 0);
-  if (channel === "현수막")
-    // 게시 로그 기준: 게시일 == date 의 Σ게시수 (주문/발주일 아님 — ADR-0023).
-    return rows.filter((r) => r.게시일 === date).reduce((s, r) => s + (r.게시수 || 0), 0);
   return rows.filter((r) => r.접수일 === date).length; // 콜·지·기·소
 }
 
 async function readChannelRows(spreadsheetId: string, channel: Channel) {
   if (channel === "매입DB") return (await readPurchases(spreadsheetId)).rows;
   if (channel === "직접생산") return (await readProductions(spreadsheetId)).rows;
-  if (channel === "현수막") return (await readBannerPosts(spreadsheetId)).rows; // 생산 E = 게시 로그
   return (await readLeads(spreadsheetId)).rows;
 }
 
@@ -260,40 +244,7 @@ export async function removeBanner(email: string, row: number) {
   const sid = await resolveSheet(email);
   return clearBanner(sid, row);
 }
-
-// ── 현수막 게시 로그 (AF:AI, 1:N) — 생산 E = 게시일 Σ게시수 ──────
-function genPostId(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `p${Date.now()}`;
-  }
-}
-async function oldPostDate(sid: string, row: number): Promise<string> {
-  const rows = (await readBannerPosts(sid)).rows;
-  return rows.find((r) => r.row === row)?.게시일 ?? "";
-}
-export async function addBannerPost(email: string, p: DBBannerPost) {
-  const sid = await resolveSheet(email);
-  const r = await appendBannerPost(sid, { ...p, 게시id: p.게시id || genPostId() });
-  await syncProduction(sid, "현수막", p.게시일);
-  return r;
-}
-export async function patchBannerPost(email: string, row: number, p: DBBannerPost) {
-  const sid = await resolveSheet(email);
-  const old = await oldPostDate(sid, row);
-  const r = await updateBannerPost(sid, row, p);
-  await syncProduction(sid, "현수막", old);
-  if (p.게시일 !== old) await syncProduction(sid, "현수막", p.게시일);
-  return r;
-}
-export async function removeBannerPost(email: string, row: number) {
-  const sid = await resolveSheet(email);
-  const old = await oldPostDate(sid, row);
-  const r = await clearBannerPost(sid, row);
-  await syncProduction(sid, "현수막", old);
-  return r;
-}
+// (현수막 게시 = 생산 → 컨택 영업관리 E 소유. 게시로그 AF:AI 폐기, ADR-0025.)
 
 // ── 콜·지·기·소 ────────────────────────────────────────────────
 export async function addLead(email: string, l: DBLead) {

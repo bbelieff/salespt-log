@@ -356,11 +356,17 @@ export async function batchWriteChannelDailyRows(
   const data = rows.map((row) => {
     const validated = ChannelDailyRow.parse(row);
     const sheetRow = salesRowFor(parseISO(validated.date), validated.channel, courseStart);
-    // 직접생산: E=유입 미러 + F~H (직접생산 생산 = 유입, ADR-0024).
+    // 직접생산: E=유입 미러(ADR-0024). 현수막: E=게시=production(ADR-0025). 둘 다 E:H 기록.
     if (validated.channel === "직접생산") {
       return {
         range: `${tab}!${cols.production}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
         values: [[validated.inflow, validated.inflow, validated.contactProgress, validated.meetingReservation]],
+      };
+    }
+    if (validated.channel === "현수막") {
+      return {
+        range: `${tab}!${cols.production}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
+        values: [[validated.production, validated.inflow, validated.contactProgress, validated.meetingReservation]],
       };
     }
     return {
@@ -375,8 +381,7 @@ export async function batchWriteChannelDailyRows(
   });
 }
 
-/** 한 채널의 영업관리 F(유입) 을 [startISO, endISO] 기간 합산 — 직접생산 M 동기화용(ADR-0024).
- *  편집 가능 기간(1~10주) 안 날짜만, readWeek(주차 블록) 재사용. */
+/** 한 채널 영업관리 F(유입) [startISO,endISO] 기간 합산 — 직접생산 M 동기화용(ADR-0024). 1~10주 내. */
 export async function sumChannelInflowOverPeriod(
   spreadsheetId: string,
   channel: Channel,
@@ -398,8 +403,7 @@ export async function sumChannelInflowOverPeriod(
   return sum;
 }
 
-/** 생산(E) 단일 셀 기입 — DB생산 집계 소유 app-derived 값(PR1/ADR-0020). 항상 overwrite,
- *  편집기간(1~10주) 밖이면 skip. §2.5 비대상(파생값 — 기존 E:H writer 와 동일 무가드). */
+/** 생산(E) 단일 셀 기입 — 매입DB·콜 DB집계 소유(ADR-0020). 항상 overwrite, 편집기간 밖 skip. */
 export async function writeProductionCell(
   spreadsheetId: string,
   date: string,

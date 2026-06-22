@@ -264,12 +264,7 @@ export const SHEET_RANGES = {
         cols: ["구분", "접수일", "대표자명", "업체명", "소개처", "연락처", "조건"] as const,
         formulaCols: [] as const, // 비용 X, 정보만 — 수식 없음
       },
-      현수막게시: {
-        startCol: "AF",
-        endCol: "AI",
-        cols: ["게시id", "주문ref", "게시일", "게시수"] as const,
-        formulaCols: [] as const, // 1:N 게시 로그(ADR-0023). 생산 E = 게시일 Σ게시수
-      },
+      // (현수막게시 AF:AI 섹션 — ADR-0023 폐기, ADR-0025: 게시=생산은 컨택 영업관리 E 소유.)
     },
   },
 
