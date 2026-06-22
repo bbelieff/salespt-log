@@ -100,13 +100,44 @@ export async function addPriorContract(
   return { row };
 }
 
-/** 계약 키(계약일|업체명)로 업체정보 읽기 — payment 카드용. 06 에서 read. */
+/** CompanyInfo 에 채워진 값이 하나라도 있는지(전부 빈 문자열·빈 커스텀이면 false). */
+function hasCompanyInfo(ci: CompanyInfo | null | undefined): boolean {
+  if (!ci) return false;
+  for (const [k, v] of Object.entries(ci)) {
+    if (k === "커스텀") {
+      const c = v as CompanyInfo["커스텀"];
+      if (c && (Object.keys(c.업체 ?? {}).length || Object.keys(c.대표자 ?? {}).length))
+        return true;
+      continue;
+    }
+    if (typeof v === "string" && v.trim() !== "") return true;
+  }
+  return false;
+}
+
+/**
+ * 계약 키(계약일|업체명)로 업체정보 읽기 — payment 카드용.
+ * 06 우선, 06 이 없거나 비면 **04 미팅 fallback**(권위 소스): 계약일(=미팅날짜) 매칭 미팅의
+ * 업체정보. 계약 후 미팅에서 업체정보를 채워도 06 스냅샷이 비어 빈 값 나오던 문제 해결.
+ */
 export async function loadCompanyInfoByContract(
   email: string,
   data: { 계약일: string; 업체명: string },
 ): Promise<CompanyInfo | null> {
   const spreadsheetId = await resolveSheet(email);
-  return readCompanyInfoArchiveRow(spreadsheetId, data.계약일, data.업체명);
+  const archived = await readCompanyInfoArchiveRow(spreadsheetId, data.계약일, data.업체명);
+  if (hasCompanyInfo(archived)) return archived;
+  try {
+    const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
+    const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
+    if (m?.업체정보 && hasCompanyInfo(m.업체정보)) return m.업체정보;
+  } catch (e) {
+    console.warn(
+      "[contract-payment] 04 업체정보 fallback 실패:",
+      e instanceof Error ? e.message : e,
+    );
+  }
+  return archived; // 06·04 둘 다 없으면 06값(null 가능)
 }
 
 /**
