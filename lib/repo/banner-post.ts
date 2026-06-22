@@ -5,7 +5,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import type { DBBannerPost } from "@/types";
-import { sheetsClient } from "./sheets-client";
+import { sheetsClient, ensureGridColumns } from "./sheets-client";
 
 const TAB = SHEET_RANGES.dbManagement.tab;
 const FIRST = SHEET_RANGES.dbManagement.headerRow + 1;
@@ -13,6 +13,29 @@ const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
 const T = /[\s()]/.test(TAB) ? `'${TAB}'` : TAB;
 const RANGE = `${T}!AF${FIRST}:AI${MAX_ROW}`;
 const rowRef = (row: number) => `${T}!AF${row}:AI${row}`;
+const AI_COL = 35; // AF=32·AG=33·AH=34·AI=35 — 게시 로그 마지막 컬럼
+
+// 라이브/템플릿 시트는 4섹션(~AD)까지만 열이 있어 AF:AI 쓰기가 grid 초과로 실패한다.
+// 첫 게시 시 컬럼 자동 확장(자가치유) + AF3:AI3 헤더(빈 셀에만, §2.5). 멱등.
+const headerEnsured = new Set<string>();
+async function ensureBannerCols(spreadsheetId: string): Promise<void> {
+  await ensureGridColumns(spreadsheetId, TAB, AI_COL);
+  if (headerEnsured.has(spreadsheetId)) return;
+  const hdr = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: `${T}!AF3:AI3`,
+  });
+  const cur = (hdr.data.values?.[0] ?? []) as unknown[];
+  if (!cur.some((c) => String(c ?? "").trim())) {
+    await sheetsClient().spreadsheets.values.update({
+      spreadsheetId,
+      range: `${T}!AF3:AI3`,
+      valueInputOption: "RAW",
+      requestBody: { values: [["게시id", "주문ref", "게시일", "게시수"]] },
+    });
+  }
+  headerEnsured.add(spreadsheetId);
+}
 
 const isISO = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 function iso(v: unknown): string {
@@ -76,6 +99,7 @@ export async function appendBannerPost(
   spreadsheetId: string,
   p: DBBannerPost,
 ): Promise<{ row: number }> {
+  await ensureBannerCols(spreadsheetId); // 첫 게시 시 AF:AI 컬럼 자가치유
   const row = await firstEmptyRow(spreadsheetId);
   if (row > MAX_ROW) throw new Error("[banner-post] 게시 로그 영역이 가득 찼습니다.");
   await writePost(spreadsheetId, row, p);
@@ -83,6 +107,7 @@ export async function appendBannerPost(
 }
 
 export async function updateBannerPost(spreadsheetId: string, row: number, p: DBBannerPost) {
+  await ensureBannerCols(spreadsheetId);
   await writePost(spreadsheetId, row, p);
 }
 
