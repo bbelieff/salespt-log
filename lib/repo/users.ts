@@ -12,7 +12,7 @@ import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 import { nameMatches } from "./name-match";
-import { pickPreferredUser } from "./user-priority";
+import { pickPreferredUser, pickPreferredRow } from "./user-priority";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
@@ -196,21 +196,31 @@ async function updateCell(
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const lc = email.toLowerCase();
+  // email 매칭 행 수집: parse 성공 행은 우선순위 선택용, 원시 행번호는 fallback.
+  const rawRows: number[] = [];
+  const matches: { user: User; sheetRow: number }[] = [];
   for (let i = 0; i < rows.length; i++) {
     if (typeof rows[i]?.[0] === "string" && (rows[i]![0] as string).toLowerCase() === lc) {
       const sheetRow = i + 2;
-      // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
-      await sheetsClient().spreadsheets.values.update({
-        spreadsheetId: reg.spreadsheetId,
-        range: `${reg.tab}!${colLetter}${sheetRow}`,
-        valueInputOption: "RAW",
-        requestBody: { values: [[value]] },
-      });
-      invalidateRegistry();
-      return;
+      rawRows.push(sheetRow);
+      const u = parseRow(rows[i]!);
+      if (u) matches.push({ user: u, sheetRow });
     }
   }
-  throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+  if (rawRows.length === 0) {
+    throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+  }
+  // 읽기(findUserByEmail=pickPreferredUser)와 동일 우선순위 행에 write — 다행 계정
+  // write≠read 불일치 방지(Drive 연결 무한루프 fix). parse 전부 실패 시 첫 행(옛 동작).
+  const targetRow = pickPreferredRow(matches)?.sheetRow ?? rawRows[0]!;
+  // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${reg.tab}!${colLetter}${targetRow}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [[value]] },
+  });
+  invalidateRegistry();
 }
 
 /** Admin 전용: 트레이너 승인 (status pending → active) */

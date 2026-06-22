@@ -61,6 +61,16 @@ export function pickPreferredUser(users: User[]): User | null {
 }
 
 /**
+ * {user, sheetRow} 들 중 pickPreferredUser 와 **동일 우선순위**로 선택된 항목 반환.
+ * 레지스트리 write(updateCell)가 read(findUserByEmail)와 같은 행을 고르게 해
+ * 다행 계정에서 write≠read 불일치(예: Drive 연결 무한루프)를 막는다.
+ */
+export function pickPreferredRow<T extends { user: User }>(items: T[]): T | null {
+  const preferred = pickPreferredUser(items.map((i) => i.user));
+  return preferred ? (items.find((i) => i.user === preferred) ?? null) : null;
+}
+
+/**
  * 같은 email 행들 중 **활성 아레나 trainee 행** 선택 — carryover/회장 해석 전용.
  *
  * 배경(carryover-trainer-blocks-arena §B, 2026-06-18): 수강생출신 트레이너가
