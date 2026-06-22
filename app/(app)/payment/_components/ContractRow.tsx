@@ -14,7 +14,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { isCarryoverContract, type ContractPayment } from "@/types";
+import { isCarryoverContract, type ContractPayment, type CompanyInfo } from "@/types";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
@@ -111,6 +111,20 @@ export default function ContractRow({
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
   const showBody = forceOpen || (!selectable && open);
   const [draft, setDraft] = useState<ContractPayment>(cp);
+  // 업체정보 라이브 드래프트(#411) — 파란 저장이 04+06 까지 함께 영속화.
+  const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(undefined);
+  const [ciTouched, setCiTouched] = useState(false);
+  const saveAll = async () => {
+    if (ciTouched && ciDraft) {
+      await fetch("/api/company-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 계약일: cp.계약일, 업체명: cp.업체명, 업체정보: ciDraft }),
+      }).catch(() => {});
+      setCiTouched(false);
+    }
+    onSave(draft);
+  };
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
   );
@@ -322,7 +336,7 @@ export default function ContractRow({
         <div className="card-open-anim space-y-3 p-3">
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           {/* 업체정보 (06 read → 저장 시 04+06 동기화, §3-1) */}
-          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} />
+          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} />
 
           {/* 7 체크박스 */}
           <div>
@@ -457,7 +471,7 @@ export default function ContractRow({
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              onClick={() => onSave(draft)}
+              onClick={saveAll}
               disabled={pending}
               className="h-11 flex-1 rounded-lg bg-blue-500 text-sm font-semibold text-white transition-colors hover:bg-blue-600 active:bg-blue-700 active:scale-95 disabled:bg-gray-300"
             >

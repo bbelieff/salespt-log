@@ -1,7 +1,7 @@
 "use client"; // MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 
 import { useState } from "react";
-import type { Channel, Meeting } from "@/types";
+import type { Channel, Meeting, CompanyInfo } from "@/types";
 import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import {
   CARD_CLS,
@@ -61,17 +61,17 @@ export default function MeetingResultCard({
   const [action, setAction] = useState<Action>(null);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  // 업체정보 라이브 드래프트(#411) — 파란 저장(계약/완료/취소/기본수정)이 함께 영속화.
+  const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(meeting.업체정보);
+  const [ciTouched, setCiTouched] = useState(false);
+  const withCi = (p: Partial<Omit<Meeting, "id">>) => (ciTouched ? { ...p, 업체정보: ciDraft } : p);
 
   const { ref: rootRef, ring } = useFocusScroll<HTMLDivElement>(!!focus);
 
   const isCanceled = state === "canceled";
-  const titleCls = isCanceled
-    ? "line-through text-gray-400"
-    : "text-gray-900";
+  const titleCls = isCanceled ? "line-through text-gray-400" : "text-gray-900";
   const timeCls = isCanceled ? "line-through text-gray-400" : "text-gray-700";
-  const placeCls = isCanceled
-    ? "line-through text-gray-400"
-    : "text-gray-500";
+  const placeCls = isCanceled ? "line-through text-gray-400" : "text-gray-500";
 
   const feeSummary =
     state === "contract" && meeting.수임비 > 0 ? (
@@ -85,9 +85,10 @@ export default function MeetingResultCard({
     setAction(null);
     setEditMode(false);
     setOpen(false);
+    setCiTouched(false);
   };
   const handleContract = (fee: number, terms: string) => {
-    onPatch({ 상태: "계약", 계약여부: true, 수임비: fee, 계약조건: terms });
+    onPatch(withCi({ 상태: "계약", 계약여부: true, 수임비: fee, 계약조건: terms }));
     closeAfter();
   };
   // 미팅사유 회차 누적 (빈 reason 은 그대로).
@@ -104,12 +105,12 @@ export default function MeetingResultCard({
     window.confirm(`상태 변경 시 수납탭 계약카드 1건 삭제 (₩${meeting.수임비.toLocaleString()}). 진행?`);
   const handleDone = (reason: string) => {
     if (!confirmContractDrop()) return;
-    onPatch({ 상태: "완료", 계약여부: false, 미팅사유: accumulateReason(reason) });
+    onPatch(withCi({ 상태: "완료", 계약여부: false, 미팅사유: accumulateReason(reason) }));
     closeAfter();
   };
   const handleCancel = (reason: string) => {
     if (!confirmContractDrop()) return;
-    onPatch({ 상태: "취소", 계약여부: false, 미팅사유: accumulateReason(reason) });
+    onPatch(withCi({ 상태: "취소", 계약여부: false, 미팅사유: accumulateReason(reason) }));
     closeAfter();
   };
   const handleReschedule = (d: string, t: string, r: string) => {
@@ -149,9 +150,7 @@ export default function MeetingResultCard({
         <span className={`flex-1 truncate text-sm font-semibold ${titleCls}`}>
           {meeting.업체명}
         </span>
-        <span
-          className={`max-w-20 shrink-0 truncate text-xs ${placeCls}`}
-        >
+        <span className={`max-w-20 shrink-0 truncate text-xs ${placeCls}`}>
           {meeting.장소}
         </span>
         {feeSummary}
@@ -184,7 +183,7 @@ export default function MeetingResultCard({
           </div>
 
           <CarryoverBadge 구분={meeting.구분} variant="note" />
-          <CompanyInfoEditor value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} onSave={(ci) => onPatch({ 업체정보: ci })} />
+          <CompanyInfoEditor value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">
@@ -297,7 +296,8 @@ export default function MeetingResultCard({
                 예약비고: meeting.예약비고,
               }}
               onSave={(partial) => {
-                onPatch(partial);
+                onPatch(withCi(partial));
+                setCiTouched(false);
               }}
               onDelete={onDelete}
               pending={pending}
