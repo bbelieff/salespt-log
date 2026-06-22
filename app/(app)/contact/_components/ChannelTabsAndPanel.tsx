@@ -284,14 +284,14 @@ export default function ChannelTabsAndPanel({
                 </span>
                 {total > 0 ? (
                   <span
-                    className={`rounded-full px-1.5 py-px text-[10px] font-semibold leading-none ${
+                    className={`rounded-full px-1.5 py-px text-[11px] font-semibold leading-none ${
                       isActive ? `${colorCls.bg100} ${colorCls.text700}` : "bg-gray-100 text-gray-500"
                     }`}
                   >
                     {total}
                   </span>
                 ) : (
-                  <span className="text-[10px] leading-none text-gray-300">·</span>
+                  <span className="text-[11px] leading-none text-gray-300">·</span>
                 )}
               </div>
               {isActive && (
@@ -307,14 +307,18 @@ export default function ChannelTabsAndPanel({
       {/* 채널 헤더 (배지 + 설명) */}
       <div className={`flex items-center gap-2 border-b ${cls.border} ${cls.bg50} px-3 py-2`}>
         <span className={ch.badgeClass}>{active}</span>
-        <span className="truncate text-xs text-gray-500">{ch.desc}</span>
+        <span className="break-keep text-xs text-gray-500">{ch.desc}</span>
       </div>
 
-      {/* 입력 헤더 + 생산(첫 행, 읽기전용) — 오늘합계 칸을 헤더+첫행에 걸쳐 세로 병합(ADR-0024) */}
-      <div className="flex items-stretch border-b border-gray-100">
-        <div className="w-3/5 min-w-0">
-          <div className="bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">채널 입력</div>
-          <div className="border-t border-gray-100 px-3 py-3">
+      {/* 입력 헤더 (좌 라벨 + 우 합계 힌트) */}
+      <div className="flex items-center justify-between bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">
+        <span>채널 입력</span>
+        <span className="text-gray-400">오늘 합계</span>
+      </div>
+
+      {/* 생산(첫 행) — 채널별 읽기전용 / 현수막 게시 스테퍼. 풀폭(60/40 폐기, 2026-06-23) */}
+      <div className="border-b border-gray-100 px-3 py-3">
+        <div className="min-w-0">
             {active === "직접생산" ? (
               directActive ? (
                 <div className="flex items-center justify-between gap-2">
@@ -325,7 +329,7 @@ export default function ChannelTabsAndPanel({
                         ({strF(directActive as never, "소재") || "소재없음"})
                       </span>
                     </div>
-                    <div className="truncate text-xs text-gray-400">
+                    <div className="break-keep text-xs text-gray-400">
                       {strF(directActive as never, "시작일")}~
                       {strF(directActive as never, "종료일")} ·{" "}
                       <Link href="/db?channel=직접생산" className="text-green-600 underline">
@@ -337,7 +341,7 @@ export default function ChannelTabsAndPanel({
                     <div className="num-mono text-sm font-bold text-green-700">
                       생산 {directLiveCount}건
                     </div>
-                    <div className="text-[10px] text-gray-400">유입 집계</div>
+                    <div className="text-[11px] text-gray-400">유입 집계</div>
                   </div>
                 </div>
               ) : (
@@ -355,7 +359,7 @@ export default function ChannelTabsAndPanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
                   <div className="text-sm font-medium text-gray-800">게시</div>
-                  <div className="truncate text-xs text-gray-400">현수막재고 {bannerStock}개</div>
+                  <div className="break-keep text-xs text-gray-400">현수막재고 {bannerStock}개</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
@@ -398,11 +402,11 @@ export default function ChannelTabsAndPanel({
                 <div className="min-w-0 pr-1">
                   <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
                     {active === "매입DB" ? "유입대기" : "생산"}
-                    <span className="rounded bg-gray-100 px-1 py-px text-[9px] font-bold text-gray-500">
+                    <span className="rounded bg-gray-100 px-1 py-px text-[11px] font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   </div>
-                  <div className="truncate text-xs text-gray-400">
+                  <div className="line-clamp-2 break-keep text-xs text-gray-400">
                     {active === "매입DB"
                       ? "구매 누적 − 유입 누적 (유입할수록 감소)"
                       : "DB생산 탭에서 기록 · 자동 반영"}
@@ -413,14 +417,10 @@ export default function ChannelTabsAndPanel({
                 </div>
               </div>
             )}
-          </div>
-        </div>
-        <div className="flex w-2/5 flex-col items-center justify-center border-l-2 bg-indigo-100 px-2 py-2 text-center">
-          <span className="text-xs font-bold text-indigo-700">⭐ 오늘 채널 합계</span>
         </div>
       </div>
 
-      {/* 유입·컨택진행·미팅예약 (스테퍼) — 생산은 위 병합 블록에서 처리 */}
+      {/* 유입·컨택진행·미팅예약 (스테퍼) — 풀폭 + 슬림 합계칩 */}
       {METRICS.filter((m) => m.key !== "production").map((m, mi, arr) => {
         const total = channelSum(m.key);
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
@@ -433,64 +433,54 @@ export default function ChannelTabsAndPanel({
         return (
           <div
             key={m.key}
-            className={`flex items-stretch ${mi < arr.length - 1 ? "border-b border-gray-50" : ""} ${
+            className={`flex items-center gap-2 px-3 py-3 ${mi < arr.length - 1 ? "border-b border-gray-50" : ""} ${
               isHighlight ? "animate-pulse rounded-lg ring-2 ring-inset ring-blue-400" : ""
             }`}
           >
-            <div className="flex w-3/5 min-w-0 items-center justify-between px-3 py-3">
-              <div className="min-w-0 pr-1">
-                <div className="text-sm font-medium text-gray-800">{m.label}</div>
-                <div className="truncate text-xs text-gray-400">{help}</div>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    onClick={() => onStep(m.key, -1)}
-                    aria-label={`${m.label} 감소`}
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    className="stepper-val"
-                    value={cell[m.key]}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
-                    }}
-                    aria-label={`${m.label} 수치`}
-                  />
-                  <button
-                    type="button"
-                    className={`stepper-btn ${plusClass}`}
-                    onClick={() => onStep(m.key, 1)}
-                    aria-disabled={atLimit ? true : undefined}
-                    aria-label={`${m.label} 증가`}
-                  >
-                    ＋
-                  </button>
-                </div>
-              </div>
+            {/* 라벨+도움말 (flex-1, 한글 2줄 허용) */}
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-gray-800">{m.label}</div>
+              <div className="line-clamp-2 break-keep text-xs text-gray-400">{help}</div>
             </div>
-            <div className="flex w-2/5 flex-col items-center justify-center border-l-2 bg-indigo-50 py-3 text-center">
-              <div
-                className={`text-3xl font-extrabold leading-none ${
-                  total > 0 ? "text-indigo-700" : "text-gray-300"
-                }`}
+            {/* 스테퍼 */}
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                onClick={() => onStep(m.key, -1)}
+                aria-label={`${m.label} 감소`}
               >
-                {total}
-              </div>
-              <div
-                className={`mt-1 text-xs font-semibold ${
-                  total > 0 ? "text-indigo-600" : "text-gray-400"
-                }`}
+                −
+              </button>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                className="stepper-val"
+                value={cell[m.key]}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
+                }}
+                aria-label={`${m.label} 수치`}
+              />
+              <button
+                type="button"
+                className={`stepper-btn ${plusClass}`}
+                onClick={() => onStep(m.key, 1)}
+                aria-disabled={atLimit ? true : undefined}
+                aria-label={`${m.label} 증가`}
               >
-                {m.label}
-              </div>
+                ＋
+              </button>
+            </div>
+            {/* 슬림 오늘 합계칩 (채널색) — 지표명 중복 표기 제거 */}
+            <div
+              className={`w-8 shrink-0 text-right num-mono text-sm font-bold ${
+                total > 0 ? cls.text700 : "text-gray-300"
+              }`}
+            >
+              {total}
             </div>
           </div>
         );

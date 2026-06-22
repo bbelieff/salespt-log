@@ -129,9 +129,9 @@ function FieldCell({
       : "-";
     return (
       <div className={colSpan}>
-        <label className="mb-1 flex items-center gap-1 text-[11px] font-medium leading-tight text-gray-600">
-          <span>{field.label}</span>
-          <span className="rounded bg-amber-100 px-1 py-px text-[9px] font-bold text-amber-800">
+        <label className="mb-1 flex items-center gap-1 text-xs font-medium leading-tight text-gray-600">
+          <span className="break-keep">{field.label}</span>
+          <span className="rounded bg-amber-100 px-1 py-px text-[11px] font-bold text-amber-800">
             🔒 자동
           </span>
         </label>
@@ -151,7 +151,7 @@ function FieldCell({
     const on = Boolean(value);
     return (
       <div className={colSpan}>
-        <label className="mb-1 block text-[11px] font-medium leading-tight text-gray-600">
+        <label className="mb-1 block text-xs font-medium leading-tight text-gray-600">
           {field.label}
         </label>
         <button
@@ -180,7 +180,7 @@ function FieldCell({
   if (field.type === "select" && field.options) {
     return (
       <div className={colSpan}>
-        <label className="mb-1 block text-[11px] font-medium leading-tight text-gray-600">
+        <label className="mb-1 block text-xs font-medium leading-tight text-gray-600">
           {field.label}
         </label>
         <select
@@ -237,7 +237,7 @@ function FieldCell({
   };
   return (
     <div className={`min-w-0 ${colSpan}`}>
-      <label className="mb-1 flex items-center gap-1 text-[11px] font-medium leading-tight text-gray-600">
+      <label className="mb-1 flex items-center gap-1 text-xs font-medium leading-tight text-gray-600">
         <span>
           {field.label}
           {field.unit && (
@@ -245,12 +245,17 @@ function FieldCell({
           )}
         </span>
       </label>
+      {field.placeholder && (
+        <span className="mt-0.5 block break-keep text-[11px] leading-tight text-gray-400">
+          {field.placeholder}
+        </span>
+      )}
       <input
         type={inputType}
         inputMode={field.type === "number" ? "numeric" : undefined}
         min={field.type === "number" && !isMoney ? 0 : undefined}
         value={inputValue}
-        placeholder={field.placeholder}
+        placeholder={undefined}
         onChange={(e) => handleChange(e.target.value)}
         className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`}
         style={

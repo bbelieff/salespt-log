@@ -173,19 +173,24 @@ export default function CompanyInfoEditor({
     const v = String(draft[k] ?? "");
     return (
       <label key={String(k)} className={span === 2 ? "block sm:col-span-2" : "block"}>
-        <span className="text-[10px] font-medium text-gray-800">{label}</span>
+        <span className="text-xs font-medium text-gray-800">{label}</span>
+        {ph && (
+          <span className="mt-0.5 block break-keep text-[11px] leading-tight text-gray-400">
+            {ph}
+          </span>
+        )}
         {multi ? (
           <textarea
             className={`${inputCls} resize-none leading-5`}
             rows={Math.max(2, v.split("\n").length)}
-            placeholder={ph}
+            placeholder={undefined}
             value={v}
             onChange={(e) => set(k, e.target.value)}
           />
         ) : (
           <input
             className={inputCls}
-            placeholder={ph}
+            placeholder={undefined}
             value={v}
             onChange={(e) => set(k, e.target.value)}
           />
@@ -197,7 +202,7 @@ export default function CompanyInfoEditor({
   // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
   const group = (g: Grp, defs: FieldDef[]) => (
     <div className="space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
-      <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-[11px] font-bold text-gray-900">
+      <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-xs font-bold text-gray-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
         [{g}]
       </div>
@@ -207,7 +212,7 @@ export default function CompanyInfoEditor({
         {defs.map(field)}
         {Object.entries(customOf(g)).map(([label, v]) => (
           <label key={`c-${label}`} className="block sm:col-span-2">
-            <span className="flex items-center justify-between text-[10px] text-purple-500">
+            <span className="flex items-center justify-between text-xs text-purple-500">
               {label}
               <button
                 type="button"
