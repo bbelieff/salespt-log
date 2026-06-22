@@ -12,9 +12,18 @@ import CompanyInfoEditor from "./CompanyInfoEditor";
 interface Props {
   계약일: string;
   업체명: string;
+  /** true 면 자체 저장 버튼 숨김 — 영속화는 부모(계약 카드 파란 저장)가 담당(#411 통합저장). */
+  hideSave?: boolean;
+  /** 편집 시 부모에 라이브 드래프트 전달. */
+  onChange?: (ci: CompanyInfo) => void;
 }
 
-export default function CompanyInfoContractSection({ 계약일, 업체명 }: Props) {
+export default function CompanyInfoContractSection({
+  계약일,
+  업체명,
+  hideSave,
+  onChange,
+}: Props) {
   const [value, setValue] = useState<CompanyInfo | undefined>(undefined);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,6 +74,8 @@ export default function CompanyInfoContractSection({ 계약일, 업체명 }: Pro
       value={value}
       busy={busy}
       txtCompanyName={업체명}
+      hideSave={hideSave}
+      onChange={onChange}
       onSave={save}
     />
   );
