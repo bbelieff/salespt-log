@@ -422,6 +422,7 @@ export default function ContactPage() {
           active={activeChannel}
           draft={draft}
           date={date}
+          inflowWaitBase={dayQuery.data?.inflowWaitBase ?? 0}
           onSelectChannel={(c) => guardedNav(() => setActiveChannel(c))}
           onStep={step}
           onSetVal={setVal}

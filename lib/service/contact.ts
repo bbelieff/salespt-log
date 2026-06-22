@@ -1,12 +1,9 @@
 /**
- * Layer: service — 컨택탭 유스케이스.
- *
- * 컨택탭은 "하루 단위" 화면이지만 실제 시트는 "주차 단위" 블록 → 한 번에 한 주를 읽고
- * 그 안에서 그 날의 4채널 행을 추출하는 패턴.
- *
- * 시안: docs/design/prototypes/contact-daily-input.html (v7)
+ * Layer: service — 컨택탭 유스케이스. "하루 단위" 화면이지만 시트는 "주차 단위" 블록 →
+ * 한 주를 읽고 그 날의 4채널 행 추출. 시안: docs/design/prototypes/contact-daily-input.html (v7).
  */
 import { findUserByEmail } from "@/repo/users";
+import { readChannelStacking } from "@/repo/dashboard";
 import {
   batchWriteChannelDailyRows,
   decrementMeetingReservation,
@@ -61,6 +58,8 @@ export interface ContactDayView {
   courseStart: string;
   channels: Record<Channel, ChannelDailyRowMetrics>;
   meetings: Meeting[];
+  /** 매입DB 유입대기 base = 생산누적 − 유입누적 + 오늘 저장 유입(R1:U6). UI: max(0, base − draft.유입). */
+  inflowWaitBase: number;
 }
 
 export interface ChannelDailyRowMetrics {
@@ -88,13 +87,10 @@ export async function loadDay(
   const courseStart = await readCourseStart(spreadsheetId);
   const targetDate = parseISO(date);
   const week = weekIndexOf(targetDate, courseStart);
-  // 편집 가능 기간(1~10주) 밖이면 4지표는 빈 값으로, 미팅만 read.
-  // 조회는 항상 가능, 쓰기는 saveContactMetrics 단계에서 가드.
+  // 편집 가능 기간(1~10주) 밖이면 4지표 빈 값·미팅만 read. 쓰기는 saveContactMetrics 에서 가드.
   const inRange = week >= 1 && week <= 10;
 
-  const { rows } = inRange
-    ? await readWeek(spreadsheetId, week)
-    : { rows: [] };
+  const { rows } = inRange ? await readWeek(spreadsheetId, week) : { rows: [] };
   // ⭐ 컨택탭은 예약일(컨택한 날) 기준 조회 — 미팅날짜 기준은 일정·계약 탭 몫 (sheet-structure §2).
   const meetings = await findByDate(spreadsheetId, date, "reservation");
 
@@ -114,8 +110,7 @@ export async function loadDay(
       meetingReservation: r.meetingReservation, // 아래에서 카드수로 덮어씀
     };
   }
-  // ⭐ 미팅예약 = 업체관리 카드 수 파생 (SSOT, ADR-0010). 시트 H 독립값에 의존하지
-  //    않아 H↔카드 드리프트(예: 5/18 H=2 vs 카드 7)가 read 시점에 항상 교정됨.
+  // ⭐ 미팅예약 = 업체관리 카드 수 파생(SSOT, ADR-0010). H↔카드 드리프트를 read 시점에 교정.
   const cardCount: Record<Channel, number> = {
     매입DB: 0,
     직접생산: 0,
@@ -129,12 +124,18 @@ export async function loadDay(
     courseStart.getMonth() + 1,
   ).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
 
+  // 매입DB 유입대기 base = 생산누적(R1) − 유입누적(R2) + 오늘 저장 유입 — UI 가 draft.유입 으로 실시간 차감.
+  const stacking = await readChannelStacking(spreadsheetId);
+  const inflowWaitBase =
+    (stacking[0]?.[0] ?? 0) - (stacking[1]?.[0] ?? 0) + channels.매입DB.inflow;
+
   return {
     date,
     weekIndex: week,
     courseStart: csISO,
     channels,
     meetings,
+    inflowWaitBase,
   };
 }
 
@@ -298,8 +299,7 @@ export async function patchMeeting(
   }
   await updateMeeting(spreadsheetId, id, partial);
 
-  // 06 업체정보 동기화 (consultation-log §1-2) — 업체정보 저장 시 계약 고객이면
-  // 06 같은 키(계약일|업체명) 행 갱신. 실패해도 04 저장은 성공(warn only).
+  // 06 업체정보 동기화(§1-2) — 계약 고객이면 06 같은 키 행 갱신. 실패해도 04 저장은 성공(warn).
   if (partial.업체정보 !== undefined) {
     try {
       const m = await findById(spreadsheetId, id); // merge 후 재읽기 — 최신 업체정보

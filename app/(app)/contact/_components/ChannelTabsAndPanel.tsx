@@ -131,6 +131,8 @@ interface Props {
   draft: Record<Channel, ChannelDailyRowMetrics>;
   /** 선택 날짜 (YYYY-MM-DD) — 생산 첫 행 읽기전용 파생값 계산용. */
   date: string;
+  /** 매입DB 유입대기 base = 생산누적 − 유입누적 + 오늘 저장 유입. UI: max(0, base − draft.유입). */
+  inflowWaitBase: number;
   onSelectChannel: (ch: Channel) => void;
   onStep: (key: keyof ChannelDailyRowMetrics, delta: number) => void;
   onSetVal: (key: keyof ChannelDailyRowMetrics, value: number) => void;
@@ -184,6 +186,7 @@ export default function ChannelTabsAndPanel({
   active,
   draft,
   date,
+  inflowWaitBase,
   onSelectChannel,
   onStep,
   onSetVal,
@@ -193,7 +196,11 @@ export default function ChannelTabsAndPanel({
   const cls = COLOR_CLASS[ch.color];
   const cell = draft[active];
   const overview = useDBOverview();
-  const firstRow = firstRowText(active, date, overview.data); // 생산 첫 행 읽기전용 파생
+  // 매입DB 첫 행 = 유입대기(생산누적−유입누적, 오늘 유입은 draft 로 실시간 차감). 그 외는 DB 파생.
+  const firstRow =
+    active === "매입DB"
+      ? `유입대기 ${Math.max(0, inflowWaitBase - (cell?.inflow ?? 0))}건`
+      : firstRowText(active, date, overview.data);
 
   // 사용자별 채널 순서 (localStorage 저장). 초기는 default CHANNEL_ORDER로
   // SSR/CSR hydration mismatch 방지, mount 후 localStorage 값으로 업데이트.
@@ -323,12 +330,16 @@ export default function ChannelTabsAndPanel({
               <div className="flex w-3/5 min-w-0 items-center justify-between px-3 py-3">
                 <div className="min-w-0 pr-1">
                   <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
-                    {m.label}
+                    {active === "매입DB" ? "유입대기" : m.label}
                     <span className="rounded bg-gray-100 px-1 py-px text-[9px] font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   </div>
-                  <div className="truncate text-xs text-gray-400">DB생산 탭에서 기록 · 자동 반영</div>
+                  <div className="truncate text-xs text-gray-400">
+                    {active === "매입DB"
+                      ? "구매 누적 − 유입 누적 (유입할수록 감소)"
+                      : "DB생산 탭에서 기록 · 자동 반영"}
+                  </div>
                 </div>
                 <div className="shrink-0 num-mono text-sm font-semibold text-gray-700">
                   {firstRow}
