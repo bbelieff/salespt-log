@@ -254,44 +254,27 @@ export default function ContactPage() {
     showToast("✕ 삭제 · 미팅예약 -1");
   };
 
-  const registerNewSlot = async (tempId: string) => {
-    const slot = newSlots.find((s) => s.tempId === tempId);
-    if (!slot) return; // 이미 등록 진행중이거나 사라진 슬롯 → 무시 (이중 클릭 방지)
-    if (!slot.미팅날짜 || !slot.미팅시간 || !slot.업체명.trim() || !slot.장소.trim()) {
-      showToast("⚠ 미팅 일정·시간·업체명·장소는 필수입니다");
-      return;
-    }
-    const now = new Date();
-    const meeting: Meeting = {
-      id: slot.tempId,
-      예약일: date,
-      예약시각: now.toTimeString().slice(0, 5),
-      미팅날짜: slot.미팅날짜,
-      미팅시간: slot.미팅시간,
-      channel: slot.channel,
-      업체명: slot.업체명.trim(),
-      장소: slot.장소.trim(),
-      예약비고: slot.예약비고.trim(),
-      업체정보: slot.업체정보, // 신규 슬롯에서 입력한 업체정보 → 04 T~AS (§3-1)
-      상태: "예약",
-      계약여부: false,
-      수임비: 0,
-      미팅사유: "",
-      계약조건: "",
-    };
-    const dateAtClick = date;
-    const draftAtClick = draft;
-    setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
-    try {
-      await appendMeeting.mutateAsync({ date: dateAtClick, meeting });
-      // 등록도 생산 메트릭 저장 경로 → 동일하게 DB 검사 수행(과거 누락 버그 수정).
-      await saveMetricsAndCheck(dateAtClick, draftAtClick);
-      showToast("✓ 등록 완료 (시트 동기화됨)");
-    } catch (e) {
-      setNewSlots((s) => [...s, slot]);
-      showToast(`등록 실패: ${(e as Error).message}`);
-    }
-  };
+  // 신규 슬롯 필수(미팅날짜·시간·업체·장소) 완료 여부 — 미완은 통합 저장에서 append 제외.
+  const slotComplete = (s: NewSlot) =>
+    !!s.미팅날짜 && !!s.미팅시간 && !!s.업체명.trim() && !!s.장소.trim();
+
+  const buildMeetingFromSlot = (slot: NewSlot, reservationDate: string): Meeting => ({
+    id: slot.tempId,
+    예약일: reservationDate,
+    예약시각: new Date().toTimeString().slice(0, 5),
+    미팅날짜: slot.미팅날짜,
+    미팅시간: slot.미팅시간,
+    channel: slot.channel,
+    업체명: slot.업체명.trim(),
+    장소: slot.장소.trim(),
+    예약비고: slot.예약비고.trim(),
+    업체정보: slot.업체정보, // 신규 슬롯에서 입력한 업체정보 → 04 T~AS (§3-1)
+    상태: "예약",
+    계약여부: false,
+    수임비: 0,
+    미팅사유: "",
+    계약조건: "",
+  });
 
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     const hasContract = meeting.상태 === "계약";
@@ -329,18 +312,46 @@ export default function ContactPage() {
     await saveMetrics.mutateAsync({ date: dateAtClick, channels });
   };
 
+  // 통합 저장 — 최하단 [저장하기] 하나로: ① 완료 신규슬롯 append(업체정보 포함) →
+  // ② dirty 저장미팅 patch(업체정보 포함) → ③ 지표(H는 카드수로 자동 재계산).
+  // 항목별 실패는 그 항목만 드래프트 유지 + 토스트(유실 0). 필수누락 슬롯은 남기고 나머지 저장.
   const handleSave = async () => {
-    if (newSlots.length > 0) {
-      showToast(`⚠ 미등록 미팅 ${newSlots.length}건 — 먼저 [✓ 등록] 또는 [✕ 삭제]를 진행하세요`);
-      return;
-    }
     const dateAtClick = date;
-    try {
-      await saveMetricsAndCheck(dateAtClick, draft);
-      showToast("✅ 저장 완료");
-    } catch (e) {
-      showToast(`저장 실패: ${(e as Error).message}`);
+    const draftAtClick = draft;
+    let failed = 0;
+    let lacking = 0;
+    // ① 신규 슬롯: 완료분만 append, 미완/실패분은 유지.
+    const keep: NewSlot[] = [];
+    for (const slot of newSlots) {
+      if (!slotComplete(slot)) {
+        keep.push(slot);
+        lacking++;
+        continue;
+      }
+      try {
+        await appendMeeting.mutateAsync({
+          date: dateAtClick,
+          meeting: buildMeetingFromSlot(slot, dateAtClick),
+        });
+      } catch {
+        keep.push(slot);
+        failed++;
+      }
     }
+    if (keep.length !== newSlots.length) setNewSlots(keep);
+    // ② dirty 저장미팅 patch (업체정보 포함) — 항목별 실패 격리.
+    failed += await saveAllDirty();
+    // ③ 지표 저장 (saveContactMetrics 가 H 를 카드수로 재계산).
+    try {
+      await saveMetricsAndCheck(dateAtClick, draftAtClick);
+    } catch {
+      failed++;
+    }
+    if (lacking > 0)
+      showToast(`⚠ 필수누락 ${lacking}건은 남겨뒀어요 · 나머지는 저장됨`);
+    else if (failed > 0)
+      showToast(`일부 저장 실패 ${failed}건 — 다시 시도해주세요`);
+    else showToast("✅ 저장 완료");
   };
 
   /** 2026-05-18 [2]: 슬라이드 방향 state. */
@@ -355,7 +366,7 @@ export default function ContactPage() {
   };
 
   // 미저장 이탈 가드 — 미팅카드가 dirty 면 탭/날짜/주차 이동 전에 한 번 확인.
-  const { register, guardedNav, confirmModal } = useDirtyGuard();
+  const { register, guardedNav, confirmModal, saveAllDirty } = useDirtyGuard();
 
   const weekSwipe = useSwipe({
     onSwipeLeft: () => guardedNav(() => moveWeek(1)),
@@ -437,7 +448,6 @@ export default function ContactPage() {
             onPatchSaved={handlePatchSavedMeeting}
             onRemoveSaved={handleRemoveSavedMeeting}
             onChangeNew={updateNewSlot}
-            onRegisterNew={registerNewSlot}
             onRemoveNew={removeNewSlot}
           />
         </DirtyGuardContext.Provider>

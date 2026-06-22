@@ -12,7 +12,6 @@ interface Props {
   onPatchSaved: (id: string, partial: Partial<Omit<Meeting, "id">>) => void;
   onRemoveSaved: (meeting: Meeting) => void;
   onChangeNew: (tempId: string, next: NewSlot) => void;
-  onRegisterNew: (tempId: string) => void;
   onRemoveNew: (tempId: string) => void;
 }
 
@@ -22,7 +21,6 @@ export default function MeetingSlotList({
   onPatchSaved,
   onRemoveSaved,
   onChangeNew,
-  onRegisterNew,
   onRemoveNew,
 }: Props) {
   return (
@@ -62,7 +60,6 @@ export default function MeetingSlotList({
               slot={entry.slot}
               reservationDate={reservationDate}
               onChange={(next) => onChangeNew(entry.slot.tempId, next)}
-              onRegister={() => onRegisterNew(entry.slot.tempId)}
               onRemove={() => onRemoveNew(entry.slot.tempId)}
             />
           ),
