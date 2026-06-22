@@ -194,10 +194,10 @@ export default function CompanyInfoEditor({
     );
   };
 
-  // 그룹 = 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
+  // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
   const group = (g: Grp, defs: FieldDef[]) => (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-900">
+    <div className="space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
+      <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-[11px] font-bold text-gray-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
         [{g}]
       </div>
@@ -254,50 +254,57 @@ export default function CompanyInfoEditor({
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-2.5 py-1.5 text-xs"
-      >
-        <span className="font-semibold text-gray-700">
-          🏢 업체정보{" "}
-          <span className="font-normal text-gray-400">{summary}</span>
-        </span>
-        <span className="text-gray-400">{open ? "▴" : "▾"}</span>
-      </button>
-
-      {open && (
-        <div className="space-y-3 border-t border-gray-100 px-2.5 py-2">
-          {body}
-          <div className="flex gap-2">
+      {/* 헤더: 제목+요약(클릭=접기/펴기) 좌, 액션버튼(편집·저장) 우 — '따로 저장' 인지 강화. */}
+      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-xs"
+        >
+          <span className="truncate font-semibold text-gray-700">
+            🏢 업체정보{" "}
+            <span className="font-normal text-gray-400">{summary}</span>
+          </span>
+          <span className="shrink-0 text-gray-400">{open ? "▴" : "▾"}</span>
+        </button>
+        {open && (
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setModal(true)}
+              className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              편집
+            </button>
             {!hideSave && (
               <button
                 type="button"
                 onClick={save}
                 disabled={busy}
-                className="flex-1 rounded-md bg-gray-900 py-1.5 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                className="rounded-md bg-brand-red px-3 py-1 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
               >
                 {busy ? "저장 중…" : "저장"}
               </button>
             )}
-            {txtCompanyName && (
+          </div>
+        )}
+      </div>
+
+      {open && (
+        <div className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2">
+          {body}
+          {txtCompanyName && (
+            <div className="flex">
               <button
                 type="button"
                 onClick={exportTxt}
                 disabled={txtBusy}
-                className="rounded-md border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
               >
-                {txtBusy ? "생성 중…" : "📄 업체정보생성"}
+                {txtBusy ? "생성 중…" : "📄 업체정보생성(TXT)"}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setModal(true)}
-              className="rounded-md border border-gray-200 px-3 text-xs font-medium text-gray-600 hover:bg-gray-50"
-            >
-              팝업 편집
-            </button>
-          </div>
+            </div>
+          )}
           {txtMsg && (
             <p className={`text-[11px] ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
               {txtMsg.ok ? "✓" : "✕"} {txtMsg.text}
