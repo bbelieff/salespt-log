@@ -415,9 +415,9 @@ export default function ChannelTabsAndPanel({
             )}
           </div>
         </div>
-        {/* ⭐ 오늘 합계 제목 셀 — 헤더+생산행에 걸쳐 세로 병합(슬림 64px) */}
-        <div className="flex w-16 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-100 px-1 text-center">
-          <span className="break-keep text-xs font-bold leading-tight text-indigo-700">⭐ 오늘 합계</span>
+        {/* ⭐ 오늘합계 제목 셀 — 헤더+생산행에 걸쳐 세로 병합(슬림 80px). 한 줄·상단 정렬(헤더처럼). */}
+        <div className="flex w-20 shrink-0 flex-col items-center border-l-2 bg-indigo-100 px-1 pt-1.5 text-center">
+          <span className="whitespace-nowrap text-xs font-bold text-indigo-700">⭐ 오늘합계</span>
         </div>
       </div>
 
@@ -477,8 +477,8 @@ export default function ChannelTabsAndPanel({
                 </button>
               </div>
             </div>
-            {/* 오늘 합계 (슬림 64px, 채널색, 지표명 중복 제거) — 본질 정보라 항상 노출 */}
-            <div className="flex w-16 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-50 py-2 text-center">
+            {/* 오늘 합계 (슬림 80px, 채널색, 지표명 중복 제거) — 본질 정보라 항상 노출 */}
+            <div className="flex w-20 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-50 py-2 text-center">
               <div
                 className={`num-mono text-2xl font-extrabold leading-none ${
                   total > 0 ? cls.text700 : "text-gray-300"
