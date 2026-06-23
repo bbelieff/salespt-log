@@ -48,4 +48,7 @@ related: db-contact-link-v2, 0024-direct-production-inflow-sync
   DB sub 날짜 짧고 꼬리 보임 / 12px 미만 없음(배지 11px 예외) / typecheck·lint·test·doc-drift 그린 + 스크린샷.
 
 ## Log
-- 2026-06-23 구현(fix/mobile-ux-db-contact).
+- 2026-06-23 구현(fix/mobile-ux-db-contact). #450 배포.
+- 2026-06-23 리비전(fix/contact-today-total-restore): belie 검수 후 '오늘 합계'는 본질 정보라 **칼럼 복원**.
+  슬림 64px·숫자 text-2xl(24px≈22 목표, arbitrary 회피)·채널색·지표명 중복 제거, ⭐오늘합계 제목 셀 헤더+생산행 세로 병합 유지.
+  스테퍼 30/32/16. 스테퍼행 도움말 1줄 truncate(합계 우선). [B][C][D][E]는 #450 그대로.
