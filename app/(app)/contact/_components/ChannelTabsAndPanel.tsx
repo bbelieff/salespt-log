@@ -415,8 +415,8 @@ export default function ChannelTabsAndPanel({
             )}
           </div>
         </div>
-        {/* ⭐ 오늘합계 제목 셀 — 헤더+생산행에 걸쳐 세로 병합(슬림 80px). 한 줄·상단 정렬(헤더처럼). */}
-        <div className="flex w-20 shrink-0 flex-col items-center border-l-2 bg-indigo-100 px-1 pt-1.5 text-center">
+        {/* ⭐ 오늘합계 제목 셀 — 헤더+생산행에 걸쳐 세로 병합(슬림 80px). 한 줄·세로 가운데(상하 균등). */}
+        <div className="flex w-20 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-100 px-1 text-center">
           <span className="whitespace-nowrap text-xs font-bold text-indigo-700">⭐ 오늘합계</span>
         </div>
       </div>
