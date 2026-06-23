@@ -34,3 +34,6 @@ related: 0026-revenue-fee-plus-received, arena-start-revenue-split
 
 ## Log
 - 2026-06-23 구현(fix/revenue-exclude-approved): scoreboard server-sum + O5 수식 + ADR-0026.
+- 2026-06-23 [B] 후속: 감사 결과 02 탭 세대 불일치 발견 — 단일수식 가정 오류(인시던트 2026-06-23-contract-tab-generation-o5-leak).
+  `scripts/fix-sales-o5-formula.mjs`(탭 인식형, §2.5, dry-run 우선)로 구형 5시트 O5 D1(승인)→D2(수납) 교정 완료(59 무변경).
+  setup-formulas O5 install 은 신형 온보딩용으로 안전(구형엔 미실행). 구형 D2 이월제외·대시보드 raw 셀은 별개 후속.
