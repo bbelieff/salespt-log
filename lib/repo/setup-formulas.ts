@@ -6,7 +6,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "./sheets-client";
-import { CONTRACT_RECEIVED_FORMULAS } from "./contract-formulas";
+import { CONTRACT_RECEIVED_FORMULAS, SALES_FEE_TOTAL_FORMULA } from "./contract-formulas";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -144,14 +144,11 @@ export function formulasForRow(r: number): Record<string, string> {
   };
 }
 
-// 02!D3 수납총액(대시보드 수수료·총매출 원천) 이월 제외 가드 — 원본
-// `=sum(Q6:Q36,W:W,AC:AC)` 가 이월 수납 합산(2026-06-12 leak). Q 36행 한정도 정상화.
+// 02!D3 수납총액(수수료·총매출 원천) 이월 제외 가드 — 원본이 이월 수납 합산(2026-06-12 leak).
 const CONTRACT_TAB = "02 계약수납관리";
 
-// 미팅예약/완료 펀넬·채널 stacking (01 R4:U5+F4:F5) — 04 상태기반 (2026-06-09 A안,
-// 미팅실행률 100% 착시 fix). 미팅예약=상태∈{예약,완료,계약}(변경/취소 제외, 미래 포함),
-// 미팅완료=상태∈{완료,계약} → 예약 ≥ 완료, I5=F5/F4 정상화. 채널=04.F
-// (콜지기소 "콜*소" 와일드카드 #319). stacking 열 R=매입DB S=직접생산 T=현수막 U=콜지기소.
+// 미팅예약/완료 펀넬·채널 stacking (01 R4:U5+F4:F5) — 04 상태기반(2026-06-09). 예약=∈{예약,완료,계약},
+// 완료=∈{완료,계약}, 이월 제외. 채널=04.F("콜*소" 와일드카드 #319). R=매입DB·S=직접생산·T=현수막·U=콜지기소.
 export function meetingFunnelFormulas(): Record<string, string> {
   const M = M_REF;
   const COLS = ["R", "S", "T", "U"] as const;
@@ -180,15 +177,8 @@ export interface InstallReport {
   details: string[];
 }
 
-/**
- * 셀 값이 덮어쓰기 안전한지 검사. 단위 테스트용으로 export.
- *   - empty/null/"" → 안전 (쓸 곳 없음)
- *   - "=..." formula → 안전 (옛 수식 → 새 수식 교체)
- *   - 그 외 (raw text, number) → **위험** (사용자 수동 입력 보존 필요)
- *
- * Sheets API `valueRenderOption: "FORMULA"` 로 read 한 결과 기준.
- *   - FORMULA mode 는 수식은 그대로 "=..." 문자열 반환, 일반 값은 raw.
- */
+/** 셀 덮어쓰기 안전 검사(단위테스트 export). empty·"=수식"=안전, raw text/number=위험(보존).
+ *  기준: FORMULA mode read(수식은 "=..." 문자열, 일반값은 raw). */
 export function isSafeToOverwrite(current: unknown): boolean {
   if (current === undefined || current === null || current === "") return true;
   if (typeof current === "string" && current.startsWith("=")) return true;
@@ -196,13 +186,8 @@ export function isSafeToOverwrite(current: unknown): boolean {
 }
 
 /**
- * 시트에 모든 자동 집계 수식을 일괄 설치 (안전 모드 v2 — 2026-05-14 사고 후).
- * 멱등(idempotent) — 다시 호출해도 같은 수식으로 덮어씀.
- *
- * **사용자 데이터 보호 (2026-05-14)**: 옛 기수의 admin 수동 백필 데이터가
- * 영업관리 I/J/K/L/N/O 에 raw text 로 들어가 있던 케이스를 v1 이 덮어써 사고
- * 발생. v2 는 각 타겟 셀을 **FORMULA mode 로 pre-read** 해 raw 값이 있으면
- * skip + report `preservedCells` 에 누적. 수식·빈 셀만 덮어씀.
+ * 모든 자동 집계 수식 일괄 설치 (안전 모드 v2, 2026-05-14 사고 후). 멱등.
+ * 각 타겟 셀 FORMULA mode pre-read → raw 값이면 skip+preservedCells 누적, 수식·빈셀만 덮어씀.
  */
 export async function installFormulas(
   spreadsheetId: string,
@@ -387,6 +372,20 @@ export async function installFormulas(
     }
   }
 
+  // 01 영업관리 O5 = 수수료총합 = 02!D3(이월제외 수납총액)만 — 승인총액 D2 제외(ADR-0026). §2.5 가드.
+  {
+    const got = await sheetsClient().spreadsheets.values.get({
+      spreadsheetId,
+      range: `${ST}!O5`,
+      valueRenderOption: "FORMULA",
+    });
+    if (isSafeToOverwrite(got.data.values?.[0]?.[0])) {
+      data.push({ range: `${ST}!O5`, values: [[SALES_FEE_TOTAL_FORMULA]] });
+    } else {
+      preservedCells.push(`영업관리 O5`);
+    }
+  }
+
   if (data.length > 0) {
     await sheetsClient().spreadsheets.values.batchUpdate({
       spreadsheetId,
@@ -405,6 +404,7 @@ export async function installFormulas(
       `04 업체관리: N/O/Q 컬럼 ${MEETINGS_LAST_ROW - 1}행 검사`,
       `01 영업관리: 데이터 행 ${dataRows.length}개 × 8 컬럼 (I~P) 검사`,
       `02 계약수납: D3(아레나 수납총액 — 이월 제외) + D4(이월 수납총액)`,
+      `01 영업관리 O5(수수료총합) = 02!D3 만 — 승인총액(D2) 제외(ADR-0026)`,
       `사용자 수동 입력 (raw text/number) ${preservedCells.length}개 셀 보존 — 수식·빈 셀만 덮어씀`,
     ],
   };

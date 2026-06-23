@@ -439,6 +439,8 @@ type Slot = {
 ```typescript
 // lib/types/index.ts
 interface DashboardKPI {
+  // 매출 = Σ수임료 + Σ수납액(이월 제외). **승인총액은 기록용 — 매출에 미포함**(ADR-0026).
+  // SSOT = service/dashboard splitContractRevenue.arena. 전광판 매출도 동일 정의.
   영업이익: number;       // D21 − E21
   영업이익률: number;     // (D21−E21) / D21 × 100
   총매출: number;         // D21 (←영업관리!N6)
