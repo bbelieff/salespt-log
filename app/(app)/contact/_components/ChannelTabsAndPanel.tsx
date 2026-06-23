@@ -310,15 +310,11 @@ export default function ChannelTabsAndPanel({
         <span className="break-keep text-xs text-gray-500">{ch.desc}</span>
       </div>
 
-      {/* 입력 헤더 (좌 라벨 + 우 합계 힌트) */}
-      <div className="flex items-center justify-between bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">
-        <span>채널 입력</span>
-        <span className="text-gray-400">오늘 합계</span>
-      </div>
-
-      {/* 생산(첫 행) — 채널별 읽기전용 / 현수막 게시 스테퍼. 풀폭(60/40 폐기, 2026-06-23) */}
-      <div className="border-b border-gray-100 px-3 py-3">
-        <div className="min-w-0">
+      {/* 입력 헤더 + 생산 첫 행 — 우측 '⭐ 오늘 합계' 제목 셀이 헤더+생산행 높이를 세로 병합 */}
+      <div className="flex items-stretch border-b border-gray-100">
+        <div className="min-w-0 flex-1">
+          <div className="bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">채널 입력</div>
+          <div className="border-t border-gray-100 px-3 py-3">
             {active === "직접생산" ? (
               directActive ? (
                 <div className="flex items-center justify-between gap-2">
@@ -417,10 +413,15 @@ export default function ChannelTabsAndPanel({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+        {/* ⭐ 오늘 합계 제목 셀 — 헤더+생산행에 걸쳐 세로 병합(슬림 64px) */}
+        <div className="flex w-16 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-100 px-1 text-center">
+          <span className="break-keep text-xs font-bold leading-tight text-indigo-700">⭐ 오늘 합계</span>
         </div>
       </div>
 
-      {/* 유입·컨택진행·미팅예약 (스테퍼) — 풀폭 + 슬림 합계칩 */}
+      {/* 유입·컨택진행·미팅예약 (스테퍼) — 좌 라벨+도움말·스테퍼, 우 오늘 합계(슬림 64px) */}
       {METRICS.filter((m) => m.key !== "production").map((m, mi, arr) => {
         const total = channelSum(m.key);
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
@@ -433,54 +434,58 @@ export default function ChannelTabsAndPanel({
         return (
           <div
             key={m.key}
-            className={`flex items-center gap-2 px-3 py-3 ${mi < arr.length - 1 ? "border-b border-gray-50" : ""} ${
+            className={`flex items-stretch ${mi < arr.length - 1 ? "border-b border-gray-50" : ""} ${
               isHighlight ? "animate-pulse rounded-lg ring-2 ring-inset ring-blue-400" : ""
             }`}
           >
-            {/* 라벨+도움말 (flex-1, 한글 2줄 허용) */}
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-gray-800">{m.label}</div>
-              <div className="line-clamp-2 break-keep text-xs text-gray-400">{help}</div>
+            <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3">
+              {/* 라벨 + 보조 도움말(1줄 truncate — 공간은 합계·스테퍼 우선) */}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-gray-800">{m.label}</div>
+                <div className="truncate text-xs text-gray-400">{help}</div>
+              </div>
+              {/* 스테퍼 */}
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  onClick={() => onStep(m.key, -1)}
+                  aria-label={`${m.label} 감소`}
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  className="stepper-val"
+                  value={cell[m.key]}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
+                  }}
+                  aria-label={`${m.label} 수치`}
+                />
+                <button
+                  type="button"
+                  className={`stepper-btn ${plusClass}`}
+                  onClick={() => onStep(m.key, 1)}
+                  aria-disabled={atLimit ? true : undefined}
+                  aria-label={`${m.label} 증가`}
+                >
+                  ＋
+                </button>
+              </div>
             </div>
-            {/* 스테퍼 */}
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
-                onClick={() => onStep(m.key, -1)}
-                aria-label={`${m.label} 감소`}
+            {/* 오늘 합계 (슬림 64px, 채널색, 지표명 중복 제거) — 본질 정보라 항상 노출 */}
+            <div className="flex w-16 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-50 py-2 text-center">
+              <div
+                className={`num-mono text-2xl font-extrabold leading-none ${
+                  total > 0 ? cls.text700 : "text-gray-300"
+                }`}
               >
-                −
-              </button>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                className="stepper-val"
-                value={cell[m.key]}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
-                }}
-                aria-label={`${m.label} 수치`}
-              />
-              <button
-                type="button"
-                className={`stepper-btn ${plusClass}`}
-                onClick={() => onStep(m.key, 1)}
-                aria-disabled={atLimit ? true : undefined}
-                aria-label={`${m.label} 증가`}
-              >
-                ＋
-              </button>
-            </div>
-            {/* 슬림 오늘 합계칩 (채널색) — 지표명 중복 표기 제거 */}
-            <div
-              className={`w-8 shrink-0 text-right num-mono text-sm font-bold ${
-                total > 0 ? cls.text700 : "text-gray-300"
-              }`}
-            >
-              {total}
+                {total}
+              </div>
             </div>
           </div>
         );
