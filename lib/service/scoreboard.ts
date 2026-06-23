@@ -14,11 +14,12 @@ import {
 } from "@/repo/users-arena";
 import {
   readWeeklyPerformance,
-  readDashboard,
   type WeeklyPerf,
 } from "@/repo/dashboard";
+import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
 import { readCourseStart, weekIndexOf } from "@/repo/sales";
+import { splitContractRevenue } from "./dashboard";
 import type { RankingMetric, RankingEntry } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
@@ -34,12 +35,26 @@ const cachedWeekly = unstable_cache(
   { revalidate: 1800, tags: [SCOREBOARD_TAG] },
 );
 
-/** 시트 1개 대시보드 read(총매출용) — 동일 30분 캐시 태그. */
-const cachedDashboard = unstable_cache(
-  async (sheetId: string) => readDashboard(sheetId),
-  ["arena-scoreboard-dashboard-v1"],
+/** 시트 1개 02 계약수납 read(매출용) — 동일 30분 캐시 태그. 매출은 대시보드 셀(승인 포함
+ *  가능)이 아니라 splitContractRevenue(수임비+수납액, 이월 제외)로 계산 → KPI 와 동일 정의. */
+const cachedContractPayments = unstable_cache(
+  async (sheetId: string) => readContractPayments(sheetId),
+  ["arena-scoreboard-payments-v1"],
   { revalidate: 1800, tags: [SCOREBOARD_TAG] },
 );
+
+/** 시트 1개 O1(수강시작일) read — 이월 경계(매출 분리) 판정용. 동일 30분 캐시 태그. */
+const cachedCourseStart = unstable_cache(
+  async (sheetId: string) => readCourseStart(sheetId),
+  ["arena-scoreboard-coursestart-v1"],
+  { revalidate: 1800, tags: [SCOREBOARD_TAG] },
+);
+
+/** Date → "YYYY-MM-DD" (로컬). 이월 경계 비교용 — service/dashboard.toISODate 와 동일 규칙. */
+function toISODate(d: Date): string {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /** 동시성 제한 map (Sheets quota 보호, me.ts pMapBundle 동일 패턴). */
 async function pMap<T, R>(
@@ -171,8 +186,8 @@ export function rankEntries(
 
 /**
  * 지표별 개인 랭킹. 입금 참가자 1시트=1엔트리(부부는 registry name 그대로).
- * 미팅·계약=8주 합, 매출=대시보드 총매출, 앱사용량=5지표 8주 합(활동량 프록시),
- * 공유왕=share_scores points. read 는 cachedWeekly/cachedDashboard(30분, SCOREBOARD_TAG).
+ * 미팅·계약=8주 합, 매출=수임비+수납액(이월 제외, splitContractRevenue.arena — 승인 제외),
+ * 앱사용량=5지표 8주 합(활동량 프록시), 공유왕=share_scores points. read 캐시(30분, SCOREBOARD_TAG).
  */
 export async function loadIndividualRankings(): Promise<
   Record<RankingMetric, RankingEntry[]>
@@ -192,9 +207,10 @@ export async function loadIndividualRankings(): Promise<
   const paid = [...bySheet.entries()].filter(([, v]) => v.paid);
 
   const perSheet = await pMap(paid, async ([id, info]) => {
-    const [wp, dash] = await Promise.all([
+    const [wp, payments, courseStart] = await Promise.all([
       cachedWeekly(id).catch(() => null),
-      cachedDashboard(id).catch(() => null),
+      cachedContractPayments(id).catch(() => []),
+      cachedCourseStart(id).catch(() => null),
     ]);
     let 미팅 = 0;
     let 계약 = 0;
@@ -207,7 +223,11 @@ export async function loadIndividualRankings(): Promise<
         앱사용량 += row.생산 + row.유입 + row.컨택 + row.미팅 + row.계약;
       }
     }
-    const 매출 = dash ? dash.finance[2] ?? 0 : 0; // finance[2] = 총매출
+    // 매출 = 수임비 + 수납액(이월 제외) — 대시보드 KPI 와 동일 정의(splitContractRevenue.arena).
+    // 시트 총매출 셀(승인 포함 가능) 의존 제거 → 전광판·KPI 매출 절대 안 어긋남.
+    const 매출 = courseStart
+      ? splitContractRevenue(payments, toISODate(courseStart)).arena.revenue
+      : 0;
     return { name: info.name, cohort: info.cohort, 미팅, 계약, 매출, 앱사용량 };
   });
 

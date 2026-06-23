@@ -6,7 +6,10 @@ import { describe, it, expect } from "vitest";
 import { ContractPayment } from "@/types";
 import { isCarryoverContract } from "@/service/contract-payment";
 import { splitContractRevenue } from "@/service/dashboard";
-import { CONTRACT_RECEIVED_FORMULAS } from "@/repo/contract-formulas";
+import {
+  CONTRACT_RECEIVED_FORMULAS,
+  SALES_FEE_TOTAL_FORMULA,
+} from "@/repo/contract-formulas";
 
 const START = "2026-06-12"; // 가정 아레나 시작일 (시즌마다 다름 — 인자로 주입)
 
@@ -76,6 +79,42 @@ describe("splitContractRevenue (아레나/이월/전체 분리)", () => {
       START,
     );
     expect(arena.totalReceived).toBe(60);
+  });
+  it("승인금액은 매출에 미반영 — 승인>0·수납액=0 이면 매출=수임비만 (ADR-0026)", () => {
+    const p = ContractPayment.parse({
+      계약일: "2026-06-20",
+      수임비: 100,
+      수납1: { 승인금액: 5000, 수납액: 0 }, // 승인만, 미수령
+      수납2: { 승인금액: 3000, 수납액: 0 },
+    });
+    const { arena } = splitContractRevenue([p], START);
+    expect(arena.totalReceived).toBe(0); // 승인 8000 은 매출 아님
+    expect(arena.revenue).toBe(100); // = 수임비, 승인 제외
+  });
+  it("수납액이 들어오면 그만큼만 매출 증가 (승인과 무관)", () => {
+    const p = ContractPayment.parse({
+      계약일: "2026-06-20",
+      수임비: 100,
+      수납1: { 승인금액: 5000, 수납액: 2000 }, // 승인 5000 중 2000 수령
+    });
+    const { arena } = splitContractRevenue([p], START);
+    expect(arena.revenue).toBe(2100); // 수임비 100 + 수납 2000 (승인 5000 무시)
+  });
+});
+
+describe("SALES_FEE_TOTAL_FORMULA (영업관리 O5 = 수수료총합)", () => {
+  it("02!D3(수납총액)만 참조 — 승인총액 D2 절대 미포함 (ADR-0026)", () => {
+    expect(SALES_FEE_TOTAL_FORMULA).toContain("'02 계약수납관리'!D3");
+    expect(SALES_FEE_TOTAL_FORMULA).not.toContain("D2");
+  });
+  it("매출 합산식(O5·D3·D4) 어디에도 D2(승인총액) 가 없다", () => {
+    for (const f of [
+      SALES_FEE_TOTAL_FORMULA,
+      CONTRACT_RECEIVED_FORMULAS.arena,
+      CONTRACT_RECEIVED_FORMULAS.carryover,
+    ]) {
+      expect(f).not.toContain("D2");
+    }
   });
 });
 
