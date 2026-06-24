@@ -13,8 +13,9 @@
  */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { isCarryoverContract, type ContractPayment, type CompanyInfo } from "@/types";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
@@ -125,6 +126,16 @@ export default function ContractRow({
     }
     onSave(draft);
   };
+  // 미저장 이탈 가드. dirty=업체정보 만짐 ∥ draft≠저장본(cp). cp 는 raw 필드만→저장후 거짓양성 0.
+  // id=useId: 마스터-디테일 동일 행 2인스턴스 키 충돌 방지.
+  const dirtyEntryId = useId();
+  useDirtyEntry(
+    dirtyEntryId,
+    ciTouched || JSON.stringify(draft) !== JSON.stringify(cp),
+    saveAll,
+    () => { setDraft(cp); setCiDraft(undefined); setCiTouched(false); },
+    cp.업체명 || "계약 수납",
+  );
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
   );
@@ -178,8 +189,7 @@ export default function ContractRow({
     return Math.round(sum / visibleSlots.length);
   }, [visibleSlots]);
 
-  // 접힘 헤더 sub: 진행 중 기관 (진행률 100% 미만 + 진행기관명 있음).
-  // 예: "미소재단(60%)·신용보증재단(40%)" — 카드 한 줄에 truncate.
+  // 접힘 헤더 sub: 진행 중 기관(진행률<100% + 진행기관명). 예 "미소재단(60%)·…" 한 줄 truncate.
   const ongoingAgencies = useMemo(() => {
     return visibleSlots
       .filter((slot) => {
@@ -193,8 +203,7 @@ export default function ContractRow({
   const isComplete =
     docsDone === TOTAL_CHECKBOXES && visiblePayments >= 1 && avgPct >= 100;
 
-  // 강조색 패밀리 — 진행상태색(완료 green / 활성 teal·cyan·fuchsia / 전 slate).
-  // override(accentFamily) 있으면 그것(마스터-디테일 선택카드↔패널 색 일치).
+  // 강조색 패밀리 — 진행상태색(완료 green/활성 teal·cyan·fuchsia/전 slate). override 우선(카드↔패널 일치).
   const family = accentFamily ?? contractAccentFamily(draft);
   const accent = ACCENT[family];
   // 닫힘 시 좌측 상태바(at-a-glance). bare(데스크탑 패널/목록)에선 page 가 윤곽선 소유 → 생략.
@@ -231,19 +240,17 @@ export default function ContractRow({
       메모: "",
     };
     setDraft((d) => ({ ...d, [`수납${slotIdx}`]: emptySlot }));
-    if (slotIdx === visiblePayments) {
+    if (slotIdx === visiblePayments)
       setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
-    }
   };
 
   return (
     <div
       className={
         bare
-          ? // 데스크탑 마스터-디테일: page 가 윤곽선 소유 → 자체 테두리 없음.
+          ? // 데스크탑 마스터-디테일: page 가 윤곽선 소유 → 자체 테두리 없음. 모바일/단독: 상태색 2px.
             "overflow-hidden bg-white transition-all duration-200"
-          : // 모바일/단독: open 시 상태색 2px 한 덩어리, 닫힘은 평평+좌측 상태바.
-            `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
+          : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
                 : `border border-gray-200 shadow-sm ${leftBar}`
