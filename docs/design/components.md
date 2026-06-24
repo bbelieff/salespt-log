@@ -433,14 +433,19 @@ function getTimeValue(hourId, minuteId) {
 
 ### Bottom Navigation (모바일) — 4+1 (ADR-0019)
 
-> 정본: `docs/design/prototypes/bottom-nav-4plus1.html`. 결정: [ADR-0019](../decisions/0019-bottom-nav-4plus1.md). 변경 시 새 ADR 필요.
+> 정본: `docs/design/prototypes/bottom-nav-4plus1.html`. 결정: [ADR-0019](../decisions/0019-bottom-nav-4plus1.md)(4+1 구조) + [ADR-0027](../decisions/0027-bottom-nav-step-indicator.md)(STEP 배지·탭별 컬러). 변경 시 새 ADR 필요.
 
-**탭 순서 (좌→우)**: DB생산(1) / 컨택관리(2) / **[캘린더 중앙 FAB]** / 일정·계약(3) / 실무/수납(4)
-- **단계 인디케이터**: 라벨 아래 **점 갯수 = 단계(1·2·3·4)**. 현재 탭만 파랑(blue-600), 나머지 slate-300. 서수/뱃지 아님.
-- **중앙 캘린더 = 중립 입체 FAB**: 흰 원(`h-[52px] w-[52px]`) + `border border-gray-300`(active: border-blue-200) + `shadow-lg` + `-mt-6`(위로 띄움). 아이콘 gray-500(active blue-600, outline 유지). **대시보드(홈)보다 약한 강조**(색 채움 없음).
-- **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px 토큰) 중앙정렬, 캡 안 flex-1 균등. `env(safe-area-inset-*)` 패딩 유지.
+**탭 순서 (좌→우)**: DB생산(STEP1) `›` 컨택관리(STEP2) / **[캘린더 중앙 FAB]** / 일정·계약(STEP3) `›` 실무/수납(STEP4) — 순서·라벨·아이콘 불변(ADR-0019).
+- **단계 인디케이터(ADR-0027)**: 아이콘 칩 **위 STEP 배지**("STEP 1~4", `text-[9px]`). 점(dots) 폐기. 캘린더는 단계 없음(도구).
+- **흐름 화살표**: STEP1·2 사이, STEP3·4 사이에만 `›`(chevron, `text-slate-300`, 좁은 고정폭, 행 높이 중앙). **캘린더 양옆엔 없음**.
+- **아이콘 칩**: `h-8 w-9 rounded-lg`. 비활성=`bg-slate-200`+`text-slate-600`, 활성=탭색 채움(`bg-{tab}`)+흰 글리프+`shadow`. STEP 배지·라벨도 같은 탭색(라벨 `font-bold`). **탭색 5종 = tokens.md "탭 단계 색상"**(blue-700/emerald-600/amber-500/violet-600/rose-600).
+- **중앙 캘린더 = 입체 FAB**: 흰 원(`h-[52px] w-[52px]`) + `border` + `shadow-lg` + `-mt-6`. 비활성=흰 원+`text-slate-500`, **활성=`bg-amber-500` 채움+흰 글리프**(border-amber-500).
+- **양끝 여백**: 바 내부 `px-5`(20px) + `env(safe-area-inset-*)` 유지 → 아이폰 라운드 모서리 잘림 방지.
+- **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px) 중앙정렬. **탭타깃 ≥44px**(`minHeight:44`+py).
+- **미저장 가드 유지**: 모든 탭/FAB 라우팅은 `useGuardedRouter().push` 경유(절대 제거 금지).
+- **a11y**: 활성 탭 `aria-current="page"`, 아이콘 칩·화살표 `aria-hidden`, FAB `aria-label="캘린더"`.
 - **라벨**: `DB관리 → DB생산`(사용자 노출만). 라우트 `/db`·코드 키·아이콘 SVG는 불변.
-- 구현: `TabBar.tsx` 설정 기반(LEFT/RIGHT `Tab[]` + CenterFab) + 내부 프리미티브 `TabItem`/`CenterFab`/`Dots`.
+- 구현: `TabBar.tsx` 설정 기반(LEFT/RIGHT `Tab[]`{step,color} + CenterFab) + 프리미티브 `TabItem`/`CenterFab`/`FlowArrow`.
 
 #### (legacy 참고) 기존 5탭 평면 구조 — ADR-0019로 supersede됨
 

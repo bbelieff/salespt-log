@@ -69,6 +69,20 @@
 | 현수막 | #b45309 |
 | 콜·지·기·소 | #7c3aed |
 
+### 탭 단계 색상 (Bottom Nav STEP — ADR-0027)
+**중요**: 하단 탭 선택 시 탭별 고유색. 모두 표준 Tailwind 팔레트(arbitrary 아님). 비활성=slate.
+
+| 탭 | STEP | Tailwind fill | 라벨 text | Hex |
+|----|------|---------------|-----------|-----|
+| DB생산 | 1 | `bg-blue-700` | `text-blue-700` | #1d4ed8 |
+| 컨택관리 | 2 | `bg-emerald-600` | `text-emerald-600` | #059669 |
+| 캘린더(FAB) | — | `bg-amber-500` | `text-amber-500` | #f59e0b |
+| 일정·계약 | 3 | `bg-violet-600` | `text-violet-600` | #7c3aed |
+| 실무/수납 | 4 | `bg-rose-600` | `text-rose-600` | #e11d48 |
+
+- 비활성: 아이콘 칩 `bg-slate-200`(글리프 `text-slate-600`), STEP 배지 `bg-slate-100 text-slate-500`, 라벨 `text-slate-600`.
+- 활성: 칩·STEP 배지 = 탭 fill 채움(흰 글자)+`shadow`, 라벨 = 탭 text + `font-bold`.
+
 ### 재무 시각화 색상 규칙
 
 #### 수익/손실 시각화
@@ -135,6 +149,7 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
 ### 폰트 크기
 | 이름 | Tailwind Class | Size | Line Height | 사용처 |
 |------|---------------|------|-------------|--------|
+| step | `text-[9px]` | 9px | tight | **하단 탭 STEP 배지 전용**(ADR-0027). 일반 12px·배지 11px 하한의 의도적 예외 — 보조 단계 표식이라 칩 위 좁은 공간에만. 다른 곳 사용 금지. |
 | xs | `text-xs` | 12px | 16px | 배지, 캡션 |
 | sm | `text-sm` | 14px | 20px | 라벨, 보조 텍스트 |
 | base | `text-base` | 16px | 24px | 기본 본문 |
