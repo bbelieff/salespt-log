@@ -1,8 +1,9 @@
 "use client"; // MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { Channel, Meeting, CompanyInfo } from "@/types";
 import { useDirtyEntry } from "@/components/DirtyGuard";
+import { CHANNEL_BADGE } from "../_lib/badges";
 import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import {
   CARD_CLS,
@@ -18,13 +19,6 @@ import BasicEditDetails from "./BasicEditDetails";
 import AddMeetingForm from "./AddMeetingForm";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
-
-const CHANNEL_BADGE: Record<Channel, string> = {
-  매입DB: "badge badge-purchase",
-  직접생산: "badge badge-direct",
-  현수막: "badge badge-banner",
-  "콜·지·기·소": "badge badge-referral",
-};
 
 type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 
@@ -81,21 +75,20 @@ export default function MeetingResultCard({
   const pickAction = (a: Exclude<Action, null>) =>
     setAction((cur) => (cur === a ? null : a));
 
-  const closeAfter = () => {
-    setAction(null);
-    setEditMode(false);
-    setOpen(false);
-    setCiTouched(false);
-  };
-  // 미저장 이탈 가드. ci(업체정보)는 카드 차원 저장 가능 → 저장. 계약/완료/취소·수정 폼은
-  // 값이 하위폼 내부라 자동제출 불가 → save throw 로 "폼에서 직접 확정" 유도(은밀한 유실 차단).
+  const closeAfter = () => { setAction(null); setEditMode(false); setOpen(false); setCiTouched(false); };
+  // 미저장 가드. 액션폼은 bindSubmit 으로 현재 submit 등록 → 저장하고 이동 시 자동 확정
+  // (검증 실패면 throw 로 차단). 업체정보(ci)는 카드 차원 저장.
   const dirtyEntryId = useId();
+  const submitRef = useRef<(() => boolean) | null>(null);
+  const bindSubmit = (fn: (() => boolean) | null) => { submitRef.current = fn; };
   useDirtyEntry(
     dirtyEntryId,
     action !== null || editMode || ciTouched,
     async () => {
-      if (action !== null || editMode)
-        throw new Error("계약/완료/취소·수정 폼은 폼 안의 확정 버튼으로 제출해주세요");
+      if (submitRef.current) {
+        if (!submitRef.current()) throw new Error("입력을 확인해주세요 — 폼을 완성하면 저장돼요");
+        return;
+      }
       onPatch({ 업체정보: ciDraft });
       setCiTouched(false);
     },
@@ -232,6 +225,7 @@ export default function MeetingResultCard({
                 initialTerms={meeting.계약조건}
                 onConfirm={handleContract}
                 pending={pending}
+                bindSubmit={bindSubmit}
               />
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <div className="mb-2 text-xs font-medium text-gray-600">
@@ -262,6 +256,7 @@ export default function MeetingResultCard({
                       vendor={meeting.업체명}
                       onConfirm={handleDone}
                       pending={pending}
+                      bindSubmit={bindSubmit}
                     />
                   </div>
                 )}
@@ -272,6 +267,7 @@ export default function MeetingResultCard({
                       vendor={meeting.업체명}
                       onConfirm={handleCancel}
                       pending={pending}
+                      bindSubmit={bindSubmit}
                     />
                   </div>
                 )}
@@ -344,6 +340,7 @@ export default function MeetingResultCard({
               initialTerms={meeting.계약조건}
               onConfirm={handleContract}
               pending={pending}
+              bindSubmit={bindSubmit}
             />
           )}
           {showActions && action === "done" && (
@@ -352,6 +349,7 @@ export default function MeetingResultCard({
               vendor={meeting.업체명}
               onConfirm={handleDone}
               pending={pending}
+              bindSubmit={bindSubmit}
             />
           )}
           {showActions && action === "reschedule" && (
@@ -361,6 +359,7 @@ export default function MeetingResultCard({
               vendor={meeting.업체명}
               onConfirm={handleReschedule}
               pending={pending}
+              bindSubmit={bindSubmit}
             />
           )}
           {showActions && action === "cancel" && (
@@ -369,6 +368,7 @@ export default function MeetingResultCard({
               vendor={meeting.업체명}
               onConfirm={handleCancel}
               pending={pending}
+              bindSubmit={bindSubmit}
             />
           )}
 

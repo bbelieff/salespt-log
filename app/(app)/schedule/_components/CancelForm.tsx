@@ -7,13 +7,14 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   initialReason: string;
   vendor: string;
   onConfirm: (reason: string) => void;
   pending: boolean;
+  bindSubmit?: (fn: (() => boolean) | null) => void; // 미저장 가드 자동확정
 }
 
 const PRESETS = ["노쇼", "사장님 사유", "내 사유", "일정 충돌", "기타"];
@@ -23,10 +24,18 @@ export default function CancelForm({
   vendor,
   onConfirm,
   pending,
+  bindSubmit,
 }: Props) {
   const [reason, setReason] = useState(initialReason);
 
-  const submit = () => onConfirm(reason.trim());
+  const submit = (): boolean => {
+    onConfirm(reason.trim());
+    return true;
+  };
+  useEffect(() => {
+    bindSubmit?.(submit);
+    return () => bindSubmit?.(null);
+  });
 
   return (
     <div className="space-y-2.5 rounded-lg border-2 border-red-300 bg-red-50 p-3">
