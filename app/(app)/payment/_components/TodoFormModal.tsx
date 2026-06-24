@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useCreateTodo } from "@/query/todos-hooks";
-import { useDirtyEntry } from "@/components/DirtyGuard";
+import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import type { TodoType } from "@/types";
 
 const TYPES: TodoType[] = ["기타", "미팅", "전화", "메시지"];
@@ -79,10 +79,12 @@ export default function TodoFormModal({
   const SELECT_CLASS =
     "h-9 w-full rounded-md border border-gray-300 px-1 text-sm focus:border-blue-500 focus:outline-none";
 
+  const guardedNav = useGuardedNav();
+  const guardedClose = () => guardedNav(onClose); // 닫기(배경·×)도 미저장 가드
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
+      onClick={guardedClose}
     >
       <div
         className="max-h-[88vh] w-full max-w-sm overflow-auto rounded-2xl bg-white"
@@ -94,7 +96,7 @@ export default function TodoFormModal({
           </span>
           <button
             type="button"
-            onClick={onClose}
+            onClick={guardedClose}
             className="text-xl leading-none text-gray-400"
             aria-label="닫기"
           >

@@ -8,7 +8,7 @@
 "use client";
 
 import { useState } from "react";
-import { useDirtyEntry } from "@/components/DirtyGuard";
+import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 
 const HINT_KEY = "hideGeneralEventHint";
 const inputCls =
@@ -98,12 +98,14 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
     void submit();
   }
 
+  const guardedNav = useGuardedNav();
+  const guardedClose = () => guardedNav(onClose); // 닫기도 미저장 가드
   return (
     <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="mt-10 w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-black text-gray-900">일반이벤트 추가</h3>
-          <button type="button" onClick={onClose} className="rounded-full px-2 text-gray-400 hover:bg-gray-100">
+          <button type="button" onClick={guardedClose} className="rounded-full px-2 text-gray-400 hover:bg-gray-100">
             ✕
           </button>
         </div>
