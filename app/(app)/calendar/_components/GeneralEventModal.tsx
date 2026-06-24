@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 
 const HINT_KEY = "hideGeneralEventHint";
 const inputCls =
@@ -34,39 +35,51 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
 
   const valid = 제목.trim().length >= 1 && /^\d{4}-\d{2}-\d{2}$/.test(날짜);
 
+  // 검증·API 실패 시 throw 하는 코어 — 가드 save 가 호출해 실패 시 이동을 막는다.
+  async function doSubmit() {
+    if (!valid) throw new Error("제목과 날짜를 입력해주세요.");
+    const res = await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contractRef: "",
+        institutionRef: "",
+        업체명: 업체명.trim(),
+        type: "일반",
+        분류,
+        제목: 제목.trim(),
+        예정일자: 날짜,
+        예정시각: 시각,
+        상세: 상세.trim(),
+        showOnCalendar: true,
+      }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+    onCreated();
+    onClose();
+  }
   async function submit() {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch("/api/todos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contractRef: "",
-          institutionRef: "",
-          업체명: 업체명.trim(),
-          type: "일반",
-          분류,
-          제목: 제목.trim(),
-          예정일자: 날짜,
-          예정시각: 시각,
-          상세: 상세.trim(),
-          showOnCalendar: true,
-        }),
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setErr(d.error ?? `HTTP ${res.status}`);
-        return;
-      }
-      onCreated();
-      onClose();
+      await doSubmit();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "네트워크 오류");
     } finally {
       setBusy(false);
     }
   }
+
+  // 미저장 이탈 가드 — 입력이 있으면 dirty. 저장하고 이동=doSubmit(검증 throw 시 차단), 무시=onClose(언마운트 폐기).
+  useDirtyEntry(
+    "calendar-general-event",
+    제목.trim() !== "" || 업체명.trim() !== "" || 상세.trim() !== "" ||
+      시각 !== "" || 날짜 !== defaultDate || 분류 !== "기존",
+    doSubmit,
+    onClose,
+    `일반이벤트${제목.trim() ? ` · ${제목.trim()}` : ""}`,
+  );
 
   function handleSave() {
     if (!valid || busy) return;
