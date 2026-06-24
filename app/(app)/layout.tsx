@@ -14,6 +14,7 @@
  */
 import { redirect } from "next/navigation";
 import TabBar from "@/components/TabBar";
+import DirtyProvider from "@/components/DirtyGuard";
 import {
   getSessionEmail,
   getActiveUserEmail,
@@ -66,10 +67,13 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-dvh bg-slate-100">
-      <main style={{ paddingBottom: "calc(76px + env(safe-area-inset-bottom))" }}>
-        {children}
-      </main>
-      <TabBar />
+      {/* 미저장 이탈 가드(전역) — children(페이지가 register) + TabBar(가드 라우팅)가 한 컨텍스트 공유. */}
+      <DirtyProvider>
+        <main style={{ paddingBottom: "calc(76px + env(safe-area-inset-bottom))" }}>
+          {children}
+        </main>
+        <TabBar />
+      </DirtyProvider>
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}
       <AnnouncementsGate />
       {/* 모바일 당겨서 새로고침 — PC/모달/가로 스와이프 가드 내장. */}

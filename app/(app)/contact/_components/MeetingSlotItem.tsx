@@ -8,13 +8,14 @@
  */
 "use client";
 
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Channel, Meeting } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 import TimeSelectPair from "@/components/ui/TimeSelectPair";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import type { CompanyInfo } from "@/types";
-import { DirtyGuardContext, ConfirmLeaveModal } from "./MeetingDirtyGuard";
+import { ConfirmLeaveModal } from "./MeetingDirtyGuard";
+import { useDirtyRegister } from "@/components/DirtyGuard";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -174,8 +175,8 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
     setCiTouched(false);
   };
 
-  // 페이지 dirty 레지스트리 등록(채널 탭/날짜/주차 이동 가드) — 최신 콜백을 ref 로 노출.
-  const register = useContext(DirtyGuardContext);
+  // 전역 dirty 레지스트리 등록(탭/날짜/주차·카드접기 이탈 가드 + 브라우저 닫기) — 최신 콜백 ref.
+  const register = useDirtyRegister();
   const saveRef = useRef(saveAll);
   saveRef.current = saveAll;
   const discardRef = useRef(discardAll);
@@ -187,22 +188,12 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
         ? {
             save: () => saveRef.current(),
             discard: () => discardRef.current(),
+            label: `미팅 ${meeting.업체명 || "(미입력)"}`,
           }
         : null,
     );
     return () => register(meeting.id, null);
-  }, [dirty, meeting.id, register]);
-
-  // 브라우저 이탈(닫기·새로고침) 가드.
-  useEffect(() => {
-    if (!dirty) return;
-    const h = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", h);
-    return () => window.removeEventListener("beforeunload", h);
-  }, [dirty]);
+  }, [dirty, meeting.id, meeting.업체명, register]);
 
   // 헤더 토글 — 펼침 상태에서 dirty 면 접기 전에 확인.
   const handleToggle = () => {

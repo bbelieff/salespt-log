@@ -11,6 +11,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
+import { useGuardedRouter } from "@/components/DirtyGuard";
 
 type Tab = {
   href: Route;
@@ -46,9 +47,15 @@ function Dots({ n, active }: { n: number; active: boolean }) {
 
 function TabItem({ tab, active }: { tab: Tab; active: boolean }) {
   const color = active ? "text-blue-600" : "text-gray-400 hover:text-gray-600";
+  const { push } = useGuardedRouter();
   return (
     <Link
       href={tab.href}
+      // 미저장 가드: 직접 라우팅 막고 가드 라우터로(dirty 면 모달). Link 는 hover prefetch 유지용.
+      onClick={(e) => {
+        e.preventDefault();
+        push(tab.href);
+      }}
       // touch-manipulation: 모바일 300ms 탭 지연 제거. active:bg: 네비 완료 전 눌림 즉시 표시.
       className={`flex flex-1 flex-col items-center gap-1 py-2 transition-colors touch-manipulation active:bg-gray-100 ${color}`}
       aria-current={active ? "page" : undefined}
@@ -62,9 +69,14 @@ function TabItem({ tab, active }: { tab: Tab; active: boolean }) {
 
 /** 중앙 캘린더 — 중립 입체 FAB(흰 원+테두리+그림자, 위로 띄움). 대시보드(홈)보다 약한 강조. */
 function CenterFab({ active }: { active: boolean }) {
+  const { push } = useGuardedRouter();
   return (
     <Link
       href={"/calendar" as Route}
+      onClick={(e) => {
+        e.preventDefault();
+        push("/calendar");
+      }}
       aria-label="캘린더"
       aria-current={active ? "page" : undefined}
       className="flex flex-1 flex-col items-center justify-end touch-manipulation"
