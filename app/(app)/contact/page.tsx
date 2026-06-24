@@ -19,13 +19,14 @@ import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
-import { useGuardedNav, useSaveAllDirty } from "@/components/DirtyGuard";
+import { useGuardedNav, useSaveAllDirty, useDirtyEntry } from "@/components/DirtyGuard";
 import ContactResultModals from "./_components/ContactResultModals";
 import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 import { useRouter } from "next/navigation";
 import SaveBar from "./_components/SaveBar";
 import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
+import { useCrossTabParams } from "./_lib/useCrossTabParams";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -40,6 +41,8 @@ export default function ContactPage() {
   );
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
   const [pickerMeetings, setPickerMeetings] = useState<Meeting[] | null>(null);
+  // 지표 스테퍼를 사용자가 만졌는지(미저장 가드 신호). 로드·저장 시 리셋.
+  const [metricsTouched, setMetricsTouched] = useState(false);
 
   const dayQuery = useDay(date);
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
@@ -59,43 +62,22 @@ export default function ContactPage() {
     if (!dayQuery.data) return;
     setDraft(dayQuery.data.channels);
     setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
+    setMetricsTouched(false); // 새 날짜 로드 = 깨끗한 상태
 
-    const inconsistencies: string[] = [];
+    const bad: string[] = [];
     for (const ch of CHANNEL_ORDER) {
-      const sheetSuccess = dayQuery.data.channels[ch].meetingReservation;
-      const meetingCount = dayQuery.data.meetings.filter(
-        (m) => m.channel === ch,
-      ).length;
-      if (sheetSuccess > meetingCount) {
-        inconsistencies.push(`${ch}: 미팅예약 ${sheetSuccess} vs 미팅 ${meetingCount}건`);
-      }
+      const h = dayQuery.data.channels[ch].meetingReservation;
+      const cnt = dayQuery.data.meetings.filter((m) => m.channel === ch).length;
+      if (h > cnt) bad.push(`${ch}: 미팅예약 ${h} vs 미팅 ${cnt}건`);
     }
-    if (inconsistencies.length > 0) {
-      setToast("⚠ 시트 일관성 경고: " + inconsistencies.join(", ") + ". '−' 버튼으로 정정 가능");
+    if (bad.length > 0) {
+      setToast("⚠ 시트 일관성 경고: " + bad.join(", ") + ". '−' 버튼으로 정정 가능");
       setTimeout(() => setToast(""), 5000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
 
-  // 2026-06-03 [교차탭1]: DB관리→컨택 ?channel=&date=&focus= 수신(window.location 파싱).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const ch = params.get("channel");
-    const d = params.get("date");
-    const focus = params.get("focus");
-    if (ch && (CHANNEL_ORDER as readonly string[]).includes(ch)) {
-      setActiveChannel(ch as Channel);
-    }
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      setDate(d);
-    }
-    if (focus === "production") {
-      setHighlightProduction(true);
-      const t = setTimeout(() => setHighlightProduction(false), 4000);
-      return () => clearTimeout(t);
-    }
-  }, []);
+  useCrossTabParams({ setActiveChannel, setDate, setHighlightProduction });
 
   const savedByChannel = useMemo(() => {
     const result: Record<Channel, Meeting[]> = {
@@ -126,6 +108,7 @@ export default function ContactPage() {
     key: keyof ChannelDailyRowMetrics,
     nextValue: number,
   ) => {
+    if (key !== "meetingReservation") setMetricsTouched(true); // 미팅예약은 슬롯/미팅 lifecycle 별도
     setDraft((d) => {
       const cur = d[channel];
       const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
@@ -142,6 +125,7 @@ export default function ContactPage() {
     key: keyof ChannelDailyRowMetrics,
     delta: number,
   ) => {
+    if (key !== "meetingReservation") setMetricsTouched(true); // 미팅예약은 슬롯/미팅 lifecycle 별도
     setDraft((d) => {
       const cur = d[channel];
       const newValue = Math.max(0, cur[key] + delta);
@@ -344,6 +328,7 @@ export default function ContactPage() {
     try {
       const res = await saveMetricsAndCheck(dateAtClick, draftAtClick);
       if (res?.directProductionHold) setShowProductionHold(true);
+      setMetricsTouched(false); // 지표 저장 성공 → 미저장 표식 해제
     } catch {
       failed++;
     }
@@ -372,6 +357,27 @@ export default function ContactPage() {
     onSwipeLeft: () => guardedNav(() => moveWeek(1)),
     onSwipeRight: () => guardedNav(() => moveWeek(-1)),
   });
+
+  // 스테퍼 지표 미저장 가드(unsaved-leave-guard). 숫자만 바꿔도 탭/날짜/주차/닫기 시 모달.
+  // dirty = 만졌고 AND 값이 실제로 서버와 다름 → 저장후 파생필드 드리프트·무변화 클릭 거짓양성 0.
+  // save 는 지표만(leaf) — runSave/saveAllDirty 호출 금지(전역 saveAll 재귀·중복 append 방지).
+  const serverChannels = dayQuery.data?.channels;
+  const metricsDirty =
+    metricsTouched &&
+    !!serverChannels &&
+    JSON.stringify(draft) !== JSON.stringify(serverChannels);
+  useDirtyEntry(
+    "contact-metrics",
+    metricsDirty,
+    async () => {
+      await saveMetrics.mutateAsync({ date, channels: draft });
+    },
+    () => {
+      if (dayQuery.data) setDraft(dayQuery.data.channels);
+      setMetricsTouched(false);
+    },
+    "컨택관리 입력 (저장 안 됨)",
+  );
 
   if (dayQuery.isLoading) return null; // 전역 오버레이가 처리
   if (dayQuery.isError) {
