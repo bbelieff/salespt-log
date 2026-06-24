@@ -1,7 +1,8 @@
 "use client"; // MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Channel, Meeting, CompanyInfo } from "@/types";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import {
   CARD_CLS,
@@ -73,10 +74,9 @@ export default function MeetingResultCard({
   const timeCls = isCanceled ? "line-through text-gray-400" : "text-gray-700";
   const placeCls = isCanceled ? "line-through text-gray-400" : "text-gray-500";
 
-  const feeSummary =
-    state === "contract" && meeting.수임비 > 0 ? (
-      <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>₩{fmtMoney(meeting.수임비)}</span>
-    ) : null;
+  const feeSummary = state === "contract" && meeting.수임비 > 0
+    ? <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>₩{fmtMoney(meeting.수임비)}</span>
+    : null;
 
   const pickAction = (a: Exclude<Action, null>) =>
     setAction((cur) => (cur === a ? null : a));
@@ -87,6 +87,21 @@ export default function MeetingResultCard({
     setOpen(false);
     setCiTouched(false);
   };
+  // 미저장 이탈 가드. ci(업체정보)는 카드 차원 저장 가능 → 저장. 계약/완료/취소·수정 폼은
+  // 값이 하위폼 내부라 자동제출 불가 → save throw 로 "폼에서 직접 확정" 유도(은밀한 유실 차단).
+  const dirtyEntryId = useId();
+  useDirtyEntry(
+    dirtyEntryId,
+    action !== null || editMode || ciTouched,
+    async () => {
+      if (action !== null || editMode)
+        throw new Error("계약/완료/취소·수정 폼은 폼 안의 확정 버튼으로 제출해주세요");
+      onPatch({ 업체정보: ciDraft });
+      setCiTouched(false);
+    },
+    closeAfter,
+    `${meeting.업체명} · ${CARD_LABEL[state]}`,
+  );
   const handleContract = (fee: number, terms: string) => {
     onPatch(withCi({ 상태: "계약", 계약여부: true, 수임비: fee, 계약조건: terms }));
     closeAfter();
@@ -154,20 +169,8 @@ export default function MeetingResultCard({
           {meeting.장소}
         </span>
         {feeSummary}
-        <svg
-          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+        <svg className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
@@ -275,10 +278,7 @@ export default function MeetingResultCard({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setEditMode(false);
-                  setAction(null);
-                }}
+                onClick={() => { setEditMode(false); setAction(null); }}
                 className="w-full rounded-md border border-gray-300 bg-white py-1.5 text-xs text-gray-600 hover:bg-gray-50"
               >
                 ↩ 수정 취소
