@@ -160,7 +160,8 @@ export default function RowCard({
       </div>
 
       {/* 현수막 게시로그(AF:AI) 폐기 — 게시=생산은 컨택 게시 스테퍼가 소유(ADR-0025). */}
-      <RowForm channel={channel} initial={row} onChange={onDraftChange} />
+      {/* initial=draft(=row 사본+편집): 접었다 다시 펼쳐도 RowForm 이 편집값으로 재마운트(되돌림 방지). */}
+      <RowForm channel={channel} initial={draft} onChange={onDraftChange} />
 
       <div className="mt-3 flex gap-2">
         <button
