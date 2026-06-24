@@ -55,6 +55,33 @@ export function useGuardedNav() {
 export function useSaveAllDirty() {
   return useContext(Ctx).saveAll;
 }
+/**
+ * dirty 일 때 {save,discard,label} 등록, 아니면 해제 — 화면별 등록 보일러플레이트(ref+effect) 제거.
+ * save/discard 는 최신 클로저를 ref 로 잡아 stale 없이 호출(레지스트리에 박제돼도 안전).
+ */
+export function useDirtyEntry(
+  id: string,
+  dirty: boolean,
+  save: () => Promise<void> | void,
+  discard: () => void,
+  label: string,
+) {
+  const register = useContext(Ctx).register;
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const discardRef = useRef(discard);
+  discardRef.current = discard;
+  useEffect(() => {
+    register(
+      id,
+      dirty
+        ? { save: () => saveRef.current(), discard: () => discardRef.current(), label }
+        : null,
+    );
+    return () => register(id, null);
+  }, [id, dirty, label, register]);
+}
+
 /** 라우팅을 가드로 감싼 router. TabBar·페이지 이동에 사용. */
 export function useGuardedRouter() {
   const { guardedNav } = useContext(Ctx);
