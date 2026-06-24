@@ -14,7 +14,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TimePicker15 from "@/components/ui/TimePicker15";
 
 interface Props {
@@ -23,6 +23,7 @@ interface Props {
   vendor: string;
   onConfirm: (newDate: string, newTime: string, reason: string) => void;
   pending: boolean;
+  bindSubmit?: (fn: (() => boolean) | null) => void; // 미저장 가드 자동확정
 }
 
 const PRESETS = [
@@ -38,6 +39,7 @@ export default function RescheduleForm({
   vendor,
   onConfirm,
   pending,
+  bindSubmit,
 }: Props) {
   const todayISO = new Date().toISOString().slice(0, 10);
   const [newDate, setNewDate] = useState(initialDate);
@@ -45,22 +47,27 @@ export default function RescheduleForm({
   const [reason, setReason] = useState("");
   const [warn, setWarn] = useState("");
 
-  const submit = () => {
+  const submit = (): boolean => {
     if (!newDate || !newTime) {
       setWarn("새 날짜와 시간을 모두 입력해주세요");
-      return;
+      return false;
     }
     if (newDate < todayISO) {
       setWarn("과거 날짜는 선택할 수 없습니다");
-      return;
+      return false;
     }
     if (newDate === initialDate && newTime === initialTime) {
       setWarn("기존과 같은 일정입니다");
-      return;
+      return false;
     }
     setWarn("");
     onConfirm(newDate, newTime, reason.trim());
+    return true;
   };
+  useEffect(() => {
+    bindSubmit?.(submit);
+    return () => bindSubmit?.(null);
+  });
 
   return (
     <div className="space-y-2.5 rounded-lg border-2 border-purple-300 bg-purple-50 p-3">

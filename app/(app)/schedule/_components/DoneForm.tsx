@@ -7,13 +7,14 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   initialReason: string;
   vendor: string; // 미팅사유 prefix용 ("업체명, 사유" 형식)
   onConfirm: (reason: string) => void;
   pending: boolean;
+  bindSubmit?: (fn: (() => boolean) | null) => void; // 미저장 가드 자동확정
 }
 
 const PRESETS = [
@@ -29,10 +30,18 @@ export default function DoneForm({
   vendor,
   onConfirm,
   pending,
+  bindSubmit,
 }: Props) {
   const [reason, setReason] = useState(initialReason);
 
-  const submit = () => onConfirm(reason.trim());
+  const submit = (): boolean => {
+    onConfirm(reason.trim());
+    return true;
+  };
+  useEffect(() => {
+    bindSubmit?.(submit);
+    return () => bindSubmit?.(null);
+  });
 
   return (
     <div className="space-y-2.5 rounded-lg border-2 border-orange-300 bg-orange-50 p-3">

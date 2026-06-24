@@ -10,13 +10,15 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   initialFee: number;
   initialTerms: string;
   onConfirm: (fee: number, terms: string) => void;
   pending: boolean;
+  /** 미저장 가드 — 현재 submit 클로저를 부모에 등록(저장하고 이동 시 자동 확정). */
+  bindSubmit?: (fn: (() => boolean) | null) => void;
 }
 
 function fmtComma(n: number): string {
@@ -29,19 +31,26 @@ export default function ContractForm({
   initialTerms,
   onConfirm,
   pending,
+  bindSubmit,
 }: Props) {
   const [feeNum, setFeeNum] = useState<number>(initialFee > 0 ? initialFee : 0);
   const [terms, setTerms] = useState(initialTerms);
   const [warn, setWarn] = useState("");
 
-  const submit = () => {
+  const submit = (): boolean => {
     if (!Number.isFinite(feeNum) || feeNum <= 0) {
       setWarn("수임비를 원 단위로 입력해주세요 (0보다 큰 숫자)");
-      return;
+      return false;
     }
     setWarn("");
     onConfirm(feeNum, terms.trim());
+    return true;
   };
+  // 매 렌더 최신 submit 클로저를 부모에 바인드(저장하고 이동 시 호출). 언마운트 시 해제.
+  useEffect(() => {
+    bindSubmit?.(submit);
+    return () => bindSubmit?.(null);
+  });
 
   return (
     <div className="space-y-2.5 rounded-lg border-2 border-green-300 bg-green-50 p-3">
