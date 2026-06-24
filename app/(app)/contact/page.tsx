@@ -19,10 +19,7 @@ import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
-import {
-  useDirtyGuard,
-  DirtyGuardContext,
-} from "./_components/MeetingDirtyGuard";
+import { useGuardedNav, useSaveAllDirty } from "@/components/DirtyGuard";
 import ContactResultModals from "./_components/ContactResultModals";
 import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 import { useRouter } from "next/navigation";
@@ -368,7 +365,8 @@ export default function ContactPage() {
     setTimeout(() => setSlideDir(null), 260);
   };
 
-  const { register, guardedNav, confirmModal, saveAllDirty } = useDirtyGuard();
+  const guardedNav = useGuardedNav();
+  const saveAllDirty = useSaveAllDirty(); // dirty 미팅카드 전부 저장(전역 레지스트리)
 
   const weekSwipe = useSwipe({
     onSwipeLeft: () => guardedNav(() => moveWeek(1)),
@@ -442,21 +440,16 @@ export default function ContactPage() {
           highlightKey={highlightProduction ? "production" : undefined}
         />
 
-        <DirtyGuardContext.Provider value={register}>
-          <MeetingSlotList
-            slots={allSlots}
-            reservationDate={TODAY_ISO}
-            onPatchSaved={handlePatchSavedMeeting}
-            onRemoveSaved={handleRemoveSavedMeeting}
-            onChangeNew={updateNewSlot}
-            onRemoveNew={removeNewSlot}
-          />
-        </DirtyGuardContext.Provider>
+        <MeetingSlotList
+          slots={allSlots}
+          reservationDate={TODAY_ISO}
+          onPatchSaved={handlePatchSavedMeeting}
+          onRemoveSaved={handleRemoveSavedMeeting}
+          onChangeNew={updateNewSlot}
+          onRemoveNew={removeNewSlot}
+        />
       </PageContainer>
       </main>
-
-      {/* 미저장 이탈 가드 모달 */}
-      {confirmModal}
 
       <SaveBar
         pending={

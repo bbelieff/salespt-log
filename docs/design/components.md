@@ -1240,7 +1240,8 @@ components/dashboard/
 | **MeetingSlotCard** | 등록 완료 슬롯 표시 카드 (read-only). Props: `meeting: Meeting`. [삭제]는 미팅 + meetingReservation -1 |
 | **MeetingPickerModal** | 미팅예약 -1 시 삭제할 미팅 선택 모달 (Phase 4). Props: `meetings` / `onPick` / `onClose`. 선택 시 cascade 삭제 |
 | **MeetingSlotList** | 컨택탭 미팅 슬롯 리스트 (page.tsx 분할, 2026-06). 저장 미팅 + 미등록 신규 슬롯을 채널 순서로 렌더. Props: `slots: SlotEntry[]`, `reservationDate`, `onPatchSaved`, `onRemoveSaved`, `onChangeNew`, `onRegisterNew`, `onRemoveNew`. |
-| **MeetingDirtyGuard** | 미저장 이탈 가드 (company-info-unified-save-guard, 2026-06). 미팅카드가 dirty(편집·미저장)인 채 채널탭/날짜/주차 이동·카드 접기·브라우저 이탈 시 한 번 확인. Exports: `DirtyGuardContext`(자식→페이지 dirty 등록), `ConfirmLeaveModal`([저장하기][무시하기]), `useDirtyGuard()`(페이지용 register+guardedNav+confirmModal). |
+| **DirtyGuard** | **미저장 이탈 가드(전역, 2026-06-23)**. `components/DirtyGuard.tsx` — `DirtyProvider`(app/(app)/layout 에서 children+TabBar 감쌈) + 훅 `useDirtyRegister`(입력이 dirty 시 {save,discard,label} 등록)·`useGuardedNav`(인앱 이탈 래핑)·`useGuardedRouter`(TabBar 라우팅 가드)·`useSaveAllDirty`(통합 저장). dirty 면 [저장하고 이동]/[무시하고 이동]/취소 모달 + 브라우저 닫기 beforeunload. MeetingDirtyGuard 패턴의 전역 승격. |
+| **MeetingDirtyGuard** | 미저장 이탈 가드 (company-info-unified-save-guard, 2026-06) — `ConfirmLeaveModal`([저장하기][무시하기]) 은 카드 접기 확인에 계속 사용. 전역 가드는 `DirtyGuard` 로 승격(미팅카드는 useDirtyRegister 등록). |
 | **ContactResultModals** | 컨택탭 결과 모달 클러스터 (page.tsx 분할, 2026-06): DB불일치 안내(CrossTabHintModal) + DB일치 긍정확인 + 미팅 선택삭제(MeetingPickerModal). Props: `dbMismatch`, `onMismatchNavigate`, `onMismatchClose`, `dbMatchOk`, `onMatchOkClose`, `pickerMeetings`, `onPick`, `onPickerClose`. |
 | **SaveBar** | 컨택탭 하단 고정 저장 바 (page.tsx 분할, 500줄 캡). 바 full-bleed + 버튼 6xl 정렬(PageContainer wide). Props: `pending`, `onSave`. |
 
