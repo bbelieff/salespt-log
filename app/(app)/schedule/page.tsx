@@ -27,6 +27,7 @@ import {
   useSyncContractFee,
 } from "@/query/contract-payment-hooks";
 import { useSwipe } from "@/lib/hooks/useSwipe";
+import { useGuardedNav } from "@/components/DirtyGuard";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -359,12 +360,15 @@ export default function SchedulePage() {
     }
   };
 
-  const moveWeek = (delta: number) => {
-    setSlideDir(delta > 0 ? "right" : "left");
-    const cur = parseISO(weekStart);
-    setWeekStart(fmtISO(addDays(cur, delta * 7)));
-    setTimeout(() => setSlideDir(null), 260);
-  };
+  // 주차 이동도 미저장 가드(결과 폼 dirty 면 모달). 버튼·스와이프 모두 이 함수 경유.
+  const guardedNav = useGuardedNav();
+  const moveWeek = (delta: number) =>
+    guardedNav(() => {
+      setSlideDir(delta > 0 ? "right" : "left");
+      const cur = parseISO(weekStart);
+      setWeekStart(fmtISO(addDays(cur, delta * 7)));
+      setTimeout(() => setSlideDir(null), 260);
+    });
 
   // 2026-05-17 [A3]: 좌우 스와이프로 주 이동.
   const weekSwipe = useSwipe({

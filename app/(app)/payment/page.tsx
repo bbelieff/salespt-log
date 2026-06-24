@@ -14,6 +14,7 @@
 import PageContainer from "@/components/PageContainer";
 
 import { useEffect, useState } from "react";
+import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import { isCarryoverContract, type ContractPayment } from "@/types";
 import {
@@ -82,6 +83,8 @@ export default function PaymentPage() {
   // C 마스터-디테일 (데스크탑만). 선택 row — 기본은 첫 카드(아래 selectedCp fallback).
   const isPc = usePcBreakpoint();
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  // 마스터-디테일 선택 행 전환도 미저장 가드 — 펼친 카드 dirty 면 모달.
+  const guardedNav = useGuardedNav();
 
   // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
   // Next 15 useSearchParams Suspense 회피 → mount 시 window.location 직접 파싱.
@@ -331,7 +334,7 @@ export default function PaymentPage() {
                       selectable
                       selected={isSel}
                       accentFamily={isSel ? selFamily : undefined}
-                      onSelect={() => setSelectedRow(cp.row ?? null)}
+                      onSelect={() => guardedNav(() => setSelectedRow(cp.row ?? null))}
                       onSave={handleSave}
                       onDeleteRequest={() => makeDeleteRequest(cp)}
                       focusTodoId={focusTodoId}

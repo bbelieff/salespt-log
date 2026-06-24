@@ -9,6 +9,7 @@
 import PageContainer from "@/components/PageContainer";
 
 import { useMemo, useState } from "react";
+import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import type { Channel, Meeting, Todo } from "@/types";
 import { useMonthMeetings } from "@/query/contact-hooks";
@@ -117,9 +118,10 @@ export default function CalendarPage() {
     };
   }, [monthQuery.data]);
 
-  const moveMonth = (delta: number) => {
-    setYyyyMM((cur) => shiftMonth(cur, delta));
-  };
+  // 월 이동도 미저장 가드(열린 입력 모달 dirty 면 모달).
+  const guardedNav = useGuardedNav();
+  const moveMonth = (delta: number) =>
+    guardedNav(() => setYyyyMM((cur) => shiftMonth(cur, delta)));
 
   const jumpToSchedule = () => {
     // 선택일을 넘겨 일정·계약 탭이 그 주(금~목)로 열리게 함.

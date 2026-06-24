@@ -12,7 +12,7 @@
 import PageContainer from "@/components/PageContainer";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDirtyEntry } from "@/components/DirtyGuard";
+import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import {
   useAppendDB,
   useDBOverview,
@@ -95,11 +95,14 @@ export default function DbPage() {
     setTimeout(() => setToast(""), 2400);
   };
 
-  const switchChannel = (k: ChannelKey) => {
-    setActiveCh(k);
-    setAddOpen(false);
-    // expandedRow 는 아래 effect 가 채널별 최신 행으로 자동 펼침(요청 DB생산 [1]).
-  };
+  // 화면 안 이동도 미저장 가드 — 채널 전환·행 접기 시 dirty 면 모달.
+  const guardedNav = useGuardedNav();
+  const switchChannel = (k: ChannelKey) =>
+    guardedNav(() => {
+      setActiveCh(k);
+      setAddOpen(false);
+      // expandedRow 는 아래 effect 가 채널별 최신 행으로 자동 펼침(요청 DB생산 [1]).
+    });
 
   const rowsByChannel = useMemo(() => {
     const empty: Record<ChannelKey, BackendRow[]> = {
@@ -349,7 +352,7 @@ export default function DbPage() {
             setExpandedRow(rowNum);
             setAddOpen(false);
           }}
-          onCollapse={() => setExpandedRow(null)}
+          onCollapse={() => guardedNav(() => setExpandedRow(null))}
           onSave={handleSave}
           onDeleteRequest={requestDelete}
         />
