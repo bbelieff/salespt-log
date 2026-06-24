@@ -180,6 +180,17 @@ export default function RichNoticeEditor({
   });
   editorRef.current = editor;
 
+  // 외부 value 동기화 — 부모가 다른 공지를 선택하거나 저장 후 폼을 교체하면 value 가 바뀐다.
+  // tiptap useEditor 는 content 를 최초 1회만 읽으므로, value 변경 시 setContent 로 반영.
+  // 입력 중에는 onUpdate 가 value=현재HTML 로 맞춰두어 value===getHTML() → no-op(커서 보존).
+  useEffect(() => {
+    if (!editor) return;
+    const next = value || "";
+    if (next !== editor.getHTML()) {
+      editor.commands.setContent(next, { emitUpdate: false });
+    }
+  }, [value, editor]);
+
   if (!editor) return null;
 
   async function uploadImage(file: File, ed: Editor) {
