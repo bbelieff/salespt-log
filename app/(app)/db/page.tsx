@@ -11,7 +11,8 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 import {
   useAppendDB,
   useDBOverview,
@@ -236,9 +237,30 @@ export default function DbPage() {
     return null;
   }, [activeCh, rows, ch.isCost]);
 
+  // 신규행 추가 폼 미저장 가드 — RowCard 와 동일한 baseline-ref 패턴(수식 mount onChange 거짓 dirty 차단).
+  const addBaselineRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!addOpen) setAddDraft({});
+    if (!addOpen) {
+      setAddDraft({});
+      addBaselineRef.current = null;
+    }
   }, [addOpen]);
+
+  const onAddDraftChange = (next: Record<string, unknown>) => {
+    setAddDraft(next);
+    if (addBaselineRef.current === null) addBaselineRef.current = JSON.stringify(next);
+  };
+  useDirtyEntry(
+    "db-add-row",
+    addOpen && addBaselineRef.current !== null &&
+      JSON.stringify(addDraft) !== addBaselineRef.current,
+    async () => {
+      await append.mutateAsync({ channel: KEY_TO_BACKEND[activeCh], data: addDraft as never });
+      setAddOpen(false);
+    },
+    () => setAddOpen(false),
+    `${ch.recordsLabel} 추가`,
+  );
 
   // 2026-06-03 [교차탭1]: 컨택탭 불일치 안내에서 ?channel=&focus=add 로 넘어오면
   // 해당 채널을 선택하고 추가폼을 자동으로 열어 "여기에 입력" 을 빠르게 인지시킴.
@@ -355,7 +377,7 @@ export default function DbPage() {
                 {ch.recordsLabel} 추가
               </span>
             </div>
-            <RowForm channel={ch} onChange={setAddDraft} />
+            <RowForm channel={ch} onChange={onAddDraftChange} />
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

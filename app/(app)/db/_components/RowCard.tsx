@@ -7,10 +7,11 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
 import { fmtWon, mdShort } from "../_lib/channels";
 import RowForm from "./RowForm";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 
 interface Props {
   channelKey: ChannelKey;
@@ -87,6 +88,22 @@ export default function RowCard({
   onDeleteRequest,
 }: Props) {
   const [draft, setDraft] = useState<Record<string, unknown>>(row);
+  // 미저장 이탈 가드. RowForm 은 mount 시 수식필드(개당단가 등) onChange 를 1회 발화하므로
+  // row 와의 단순 비교는 거짓 dirty. 그 첫 onChange 값을 "깨끗한 기준선"으로 박아두고
+  // 이후 사용자 입력으로 기준선과 달라질 때만 dirty (→ 거짓양성 0). 접어도 draft·ref 보존돼 가드 유지.
+  const baselineRef = useRef<string | null>(null);
+  const onDraftChange = (next: Record<string, unknown>) => {
+    setDraft(next);
+    if (baselineRef.current === null) baselineRef.current = JSON.stringify(next);
+  };
+  const entryId = useId();
+  useDirtyEntry(
+    entryId,
+    baselineRef.current !== null && JSON.stringify(draft) !== baselineRef.current,
+    () => onSave(draft),
+    () => { if (baselineRef.current) setDraft(JSON.parse(baselineRef.current)); },
+    `${channel.name} ${index + 1}행`,
+  );
   const displayNum = String(index + 1).padStart(2, "0");
 
   if (!expanded) {
@@ -143,7 +160,7 @@ export default function RowCard({
       </div>
 
       {/* 현수막 게시로그(AF:AI) 폐기 — 게시=생산은 컨택 게시 스테퍼가 소유(ADR-0025). */}
-      <RowForm channel={channel} initial={row} onChange={setDraft} />
+      <RowForm channel={channel} initial={row} onChange={onDraftChange} />
 
       <div className="mt-3 flex gap-2">
         <button
