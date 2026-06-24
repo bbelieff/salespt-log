@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useCreateTodo } from "@/query/todos-hooks";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 import type { TodoType } from "@/types";
 
 const TYPES: TodoType[] = ["기타", "미팅", "전화", "메시지"];
@@ -39,33 +40,41 @@ export default function TodoFormModal({
   const [showOnCalendar, setShowOnCalendar] = useState(true);
   const [error, setError] = useState("");
 
+  // 검증 실패·API 실패 시 throw 하는 코어 — 가드 save 가 이걸 호출해 실패 시 이동을 막는다.
+  const doCreate = async () => {
+    if (!title.trim()) throw new Error("제목을 입력해주세요.");
+    if (!date) throw new Error("예정 일자를 선택해주세요.");
+    await create.mutateAsync({
+      contractRef,
+      institutionRef,
+      업체명: companyName,
+      type,
+      제목: title.trim(),
+      예정일자: date,
+      예정시각: `${hour}:${minute}`,
+      장소: "",
+      상세: detail.trim(),
+      showOnCalendar,
+    });
+    onClose();
+  };
   const submit = async () => {
-    if (!title.trim()) {
-      setError("제목을 입력해주세요.");
-      return;
-    }
-    if (!date) {
-      setError("예정 일자를 선택해주세요.");
-      return;
-    }
     try {
-      await create.mutateAsync({
-        contractRef,
-        institutionRef,
-        업체명: companyName,
-        type,
-        제목: title.trim(),
-        예정일자: date,
-        예정시각: `${hour}:${minute}`,
-        장소: "",
-        상세: detail.trim(),
-        showOnCalendar,
-      });
-      onClose();
+      await doCreate();
     } catch (e) {
       setError(e instanceof Error ? e.message : "생성 실패");
     }
   };
+
+  // 미저장 이탈 가드 — 의미있는 입력이 있으면 dirty. 저장하고 이동=doCreate(검증 throw 시 이동 차단).
+  // 무시하고 이동=onClose(모달 언마운트로 입력 폐기). id 는 (계약×기관) 안정키.
+  useDirtyEntry(
+    `todo-${contractRef}-${institutionRef}`,
+    title.trim() !== "" || date !== "" || detail.trim() !== "",
+    doCreate,
+    onClose,
+    `투두 · ${companyName || institutionRef || "신규"}`,
+  );
 
   const SELECT_CLASS =
     "h-9 w-full rounded-md border border-gray-300 px-1 text-sm focus:border-blue-500 focus:outline-none";
