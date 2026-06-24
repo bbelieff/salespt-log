@@ -376,12 +376,11 @@ export default function SchedulePage() {
     onSwipeRight: () => moveWeek(-1),
   });
 
-  // 날짜 클릭 세로 스크롤 — 금/토/일(idx 0~2)=start, 월~목(idx 3~6)=end (2026-05-17 [6]).
+  // 날짜 클릭 스크롤 — 전 요일 sticky 헤더 아래(block:start) 정렬. scroll-mt-[280px]는 ref wrapper(아래)에 둬야 헤더 안 가림(이전 idx 분기+scroll-margin 누락 버그).
   const scrollToDay = (idx: number) => {
     const el = dayRefs.current[idx];
     if (!el) return;
-    const block: ScrollLogicalPosition = idx >= 3 ? "end" : "start";
-    el.scrollIntoView({ behavior: "smooth", block });
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   // 메모: 모든 미팅 평탄화 (요약 바 입력)
@@ -430,6 +429,7 @@ export default function SchedulePage() {
   ) => (
     <div
       key={day.date}
+      className="scroll-mt-[280px]"
       ref={(el) => {
         dayRefs.current[globalIndex] = el;
       }}
