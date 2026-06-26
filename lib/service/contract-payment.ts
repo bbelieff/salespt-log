@@ -61,7 +61,12 @@ export async function addFromContract(
   // 이월 미팅에서 생긴 계약 = 02 행도 "이월"(집계 제외, 출발 미팅 깃발 상속).
   const carryover =
     m?.구분 === "이월" ? { 원본행id: m.이월원본행id || m.id } : undefined;
-  const result = await appendFromContract(spreadsheetId, data, carryover);
+  // 연결 미팅 id 기록 — 02↔04 매칭을 개명/계약일변경에도 안전한 id 키로(AK).
+  const result = await appendFromContract(
+    spreadsheetId,
+    { ...data, meetingId: m?.id },
+    carryover,
+  );
   // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2). 실패해도 계약 성공(warn).
   try {
     await upsertCompanyInfoArchive(spreadsheetId, {
