@@ -76,8 +76,10 @@ export default function TopHeader({
     } else {
       clearInternal();
     }
-    // 대리접속 중 식별 skip (대상 PII 오염 방지).
-    if (d.impersonating || !d.email) return;
+    // 내부(관리자·대리접속) 세션은 PostHog person 으로 identify 하지 않는다 — is_internal
+    // 태그만으로 필터(ADR-0009/0013). 관리자 본인 브라우징이 이름 가진 '사람'(예: "이승익")으로
+    // 잡혀 person 목록·DAU 를 오염시키던 문제 해결. 실제 수강생만 identify.
+    if (isInternal || !d.email) return;
     identifyUser(d.sessionEmail ?? d.email, {
       cohort: d.cohort,
       name: d.name,
