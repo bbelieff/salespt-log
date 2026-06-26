@@ -200,10 +200,13 @@ export const SHEET_RANGES = {
     headerRows: 5,
     firstDataRow: 6,
     // 실사용 A~AH(v3: AE=로드맵메모, AF~AH=슬롯메모) + AI~AJ(이월 깃발: 구분/이월원본행id —
-    // 출발 미팅 04 AO 상속, arena-carryover §3). 일반 쓰기(F:AH)는 AI~AJ 비접촉.
-    range: "A6:AJ",
+    // 출발 미팅 04 AO 상속, arena-carryover §3) + AK(연결 미팅 id — 개명·계약일변경 안전 키).
+    // 일반 쓰기(F:AH)는 AI~AK 비접촉.
+    range: "A6:AK",
     // 자동 연동 컬럼 — 계약 액션 시 04 업체관리에서 채움 (D/G/L → C/D/E)
     autoCols: { 계약일: "C", 업체명: "D", 수임비: "E" },
+    // 연결 미팅 id (04 업체관리 A) — 02↔04 매칭을 (계약일+업체명) 대신 id 로(rename/계약일변경 안전).
+    linkMeetingIdCol: "AK",
     // 7 체크박스 ("ㅇ" / "" 표기)
     checkboxCols: ["F", "G", "H", "I", "J", "K", "L"] as const,
     checkboxLabels: [

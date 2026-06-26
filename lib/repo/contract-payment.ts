@@ -5,12 +5,8 @@
  * 컬럼 매핑 (SSOT: docs/domains/sheet-structure.md §4 v2):
  *   A: 공란
  *   B: 순번 (자동 — read만, append 시 Sheet rows 인덱스 그대로)
- *   C: 계약일       D: 업체명       E: 수임비          (자동 연동, 04 업체관리 D/G/L에서)
- *   F~L: 체크박스 7개 ("ㅇ"/"" 표기, true→"ㅇ" / false→"")
- *        공동인증서/임대차계약서/신분증/드라이브업로드/사업계획서초안발송/컨설팅5종서류발송/플러그이관
- *   M~R: 수납1 (진행기관/진행률/현황/승인금액/수납액/수납일)
- *   S~X: 수납2
- *   Y~AD: 수납3
+ *   C 계약일 · D 업체명 · E 수임비 (자동 연동, 04 D/G/L) · AK 연결 미팅 id(개명 안전 키)
+ *   F~L 체크박스 7개("ㅇ"/"") · M~R 수납1 · S~X 수납2 · Y~AD 수납3(각 진행기관/진행률/현황/승인금액/수납액/수납일)
  *   진행률 컬럼(N/T/Z): 시트 data validation = "0%/20%/40%/60%/80%/100%" 텍스트 dropdown
  *
  * 가드레일:
@@ -312,17 +308,19 @@ export async function readContractCascadeKey(
   };
 }
 
+/** AK(연결 미팅 id) 의 C 기준 offset — C=col2, AK=col36 → 34. */
+const LINK_ID_OFFSET = 34;
+
 /**
- * (계약일, 업체명) 쌍으로 매칭되는 첫 row를 찾음. sync 업데이트용.
- * 같은 (계약일, 업체명)이 여러 row인 경우 가장 빠른(작은 row 번호) 것 반환.
+ * 02 row 매칭. **meetingId 우선**(개명·계약일변경에도 안전), 없으면 (계약일+업체명) 폴백(레거시).
+ * 같은 키가 여러 row면 가장 빠른(작은 row 번호) 것 반환.
  */
 async function findRowByLink(
   spreadsheetId: string,
-  계약일: string,
-  업체명: string,
+  key: { meetingId?: string; 계약일?: string; 업체명?: string },
 ): Promise<number | null> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!C${firstDataRow}:D`;
+  const range = `${tabRef(tab)}!C${firstDataRow}:AK`; // C..AK (AK = 연결 미팅 id)
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -330,12 +328,21 @@ async function findRowByLink(
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
   const values = (res.data.values ?? []) as unknown[][];
-  for (let i = 0; i < values.length; i++) {
-    const r = values[i] ?? [];
-    const cellDate = serialToISODate(r[0]);
-    const cellName = toStr(r[1]).trim();
-    if (cellDate === 계약일 && cellName === 업체명.trim()) {
-      return firstDataRow + i;
+  // 1) id 우선
+  if (key.meetingId) {
+    for (let i = 0; i < values.length; i++) {
+      if (toStr((values[i] ?? [])[LINK_ID_OFFSET]).trim() === key.meetingId) {
+        return firstDataRow + i;
+      }
+    }
+  }
+  // 2) 레거시 폴백 (계약일+업체명)
+  if (key.계약일 && key.업체명) {
+    for (let i = 0; i < values.length; i++) {
+      const r = values[i] ?? [];
+      if (serialToISODate(r[0]) === key.계약일 && toStr(r[1]).trim() === key.업체명.trim()) {
+        return firstDataRow + i;
+      }
     }
   }
   return null;
@@ -350,9 +357,13 @@ async function findRowByLink(
  */
 export async function syncFeeFromContract(
   spreadsheetId: string,
-  data: { 계약일: string; 업체명: string; 수임비: number },
+  data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
 ): Promise<{ row: number } | null> {
-  const row = await findRowByLink(spreadsheetId, data.계약일, data.업체명);
+  const row = await findRowByLink(spreadsheetId, {
+    meetingId: data.meetingId,
+    계약일: data.계약일,
+    업체명: data.업체명,
+  });
   if (!row) return null;
   const { tab } = await resolveLayout(spreadsheetId);
   const range = `${tabRef(tab)}!E${row}`;
@@ -371,7 +382,7 @@ export async function syncFeeFromContract(
  */
 export async function appendFromContract(
   spreadsheetId: string,
-  data: { 계약일: string; 업체명: string; 수임비: number },
+  data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
   carryover?: { 원본행id: string }, // 출발 미팅이 이월(04 AO)이면 깃발 상속 (§3)
 ): Promise<{ row: number }> {
   const row = await findFirstEmptyRow(spreadsheetId);
@@ -382,6 +393,13 @@ export async function appendFromContract(
       values: [[data.계약일, data.업체명, data.수임비] as (string | number)[]],
     },
   ];
+  if (data.meetingId) {
+    // AK = 연결 미팅 id. ' 접두어로 text 강제(숫자/날짜 coercion 방지, carryover 키와 동일 패턴).
+    writes.push({
+      range: `${tabRef(tab)}!AK${row}`,
+      values: [[`'${data.meetingId}`]],
+    });
+  }
   if (carryover) {
     writes.push({
       range: `${tabRef(tab)}!AI${row}:AJ${row}`,
@@ -428,7 +446,7 @@ export async function clearRowByLink(
   계약일: string,
   업체명: string,
 ): Promise<number | null> {
-  const row = await findRowByLink(spreadsheetId, 계약일, 업체명);
+  const row = await findRowByLink(spreadsheetId, { 계약일, 업체명 });
   if (row === null) return null;
   await clearRow(spreadsheetId, row);
   return row;
@@ -440,10 +458,14 @@ export async function clearRowByLink(
  */
 export async function updateLinkFields(
   spreadsheetId: string,
-  old: { 계약일: string; 업체명: string },
+  old: { 계약일: string; 업체명: string; meetingId?: string },
   next: { 계약일: string; 업체명: string },
 ): Promise<number | null> {
-  const row = await findRowByLink(spreadsheetId, old.계약일, old.업체명);
+  const row = await findRowByLink(spreadsheetId, {
+    meetingId: old.meetingId,
+    계약일: old.계약일,
+    업체명: old.업체명,
+  });
   if (row === null) return null;
   const { tab } = await resolveLayout(spreadsheetId);
   await sheetsClient().spreadsheets.values.update({
@@ -468,7 +490,7 @@ export async function clearRow(
   if (row < firstDataRow) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(tab)}!C${row}:AJ${row}`; // 이월 깃발(AI~AJ)도 함께 clear
+  const range = `${tabRef(tab)}!C${row}:AK${row}`; // 이월 깃발(AI~AJ) + 연결 미팅 id(AK)도 함께 clear
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,
