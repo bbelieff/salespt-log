@@ -54,6 +54,16 @@ function toISODate(v) {
   return "";
 }
 
+/** AK(col 37) 쓰기 전 그리드 컬럼 보장 — 기존 02 시트는 A:AJ(36열)뿐. */
+async function ensureCols(sid, tabTitle, minCols) {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: sid, fields: "sheets(properties(sheetId,title,gridProperties(columnCount)))" });
+  const sheet = (meta.data.sheets ?? []).find((s) => s.properties.title === tabTitle);
+  if (!sheet) return;
+  const cur = sheet.properties.gridProperties?.columnCount ?? 0;
+  if (cur >= minCols) return;
+  await sheets.spreadsheets.batchUpdate({ spreadsheetId: sid, requestBody: { requests: [{ appendDimension: { sheetId: sheet.properties.sheetId, dimension: "COLUMNS", length: minCols - cur } }] } });
+}
+
 /** 02 탭 구조 판정 → {tab, firstDataRow}. 없으면 null. */
 async function detect02(sid) {
   const meta = await sheets.spreadsheets.get({ spreadsheetId: sid, fields: "sheets.properties.title" });
@@ -111,6 +121,7 @@ async function backfillOne(name, sid) {
     }
   }
   if (APPLY && writes.length) {
+    await ensureCols(sid, d.tab, 37); // AK 그리드 보장
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: sid, requestBody: { valueInputOption: "USER_ENTERED", data: writes },
     });
