@@ -16,7 +16,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
-import { sheetsClient } from "./sheets-client";
+import { ensureGridColumns, sheetsClient } from "./sheets-client";
 
 const CFG = SHEET_RANGES.contractPayment;
 
@@ -387,6 +387,8 @@ export async function appendFromContract(
 ): Promise<{ row: number }> {
   const row = await findFirstEmptyRow(spreadsheetId);
   const { tab } = await resolveLayout(spreadsheetId);
+  // AK(col 37) 쓰기 전 그리드 보장 — 기존 02 는 A:AJ(36열)뿐, AK 쓰면 batchUpdate 전체 거부(계약 깨짐).
+  if (data.meetingId) await ensureGridColumns(spreadsheetId, tab, 37);
   const writes = [
     {
       range: `${tabRef(tab)}!C${row}:E${row}`,
