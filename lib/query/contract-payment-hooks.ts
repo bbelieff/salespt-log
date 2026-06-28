@@ -102,6 +102,27 @@ export function useSyncContractFee() {
   });
 }
 
+export interface EditLinkedArgs {
+  meetingId?: string;
+  old: { 계약일: string; 업체명: string };
+  next: { 계약일?: string; 업체명?: string; 수임비?: number };
+}
+/** 계약 핵심필드(업체명·계약일·수임료) 편집 — id 기반 02↔04↔06 양방향. failures=실패 시트명. */
+export function useEditContractLinkedFields() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: EditLinkedArgs) =>
+      fetchJSON<{ ok: boolean; failures: string[] }>(
+        `/api/contract-payment/edit-linked`,
+        { method: "POST", body: JSON.stringify(args) },
+      ),
+    onSuccess: () => {
+      track(EVENTS.CONTRACT_PAYMENT_UPDATED);
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
+  });
+}
+
 export interface PatchArgs {
   row: number;
   data: ContractPayment;

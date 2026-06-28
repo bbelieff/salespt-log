@@ -68,6 +68,7 @@ export {
   addPriorContract,
   syncContractFee,
   patchContractPayment,
+  editContractLinkedFields,
   removeContractPayment,
   removeContractPaymentWithCascade,
 } from "./contract-payment";
