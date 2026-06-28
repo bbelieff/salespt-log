@@ -350,6 +350,8 @@ export const ContractPayment = z.object({
   구분: z.string().optional(),
   /** 이월 원본행 식별자 (AJ) — 멱등 중복 가드. */
   이월원본행id: z.string().optional(),
+  /** 연결 미팅 id (AK, 04 업체관리 A) — 02↔04 매칭 키. 개명·계약일변경에도 링크 유지. */
+  linkedMeetingId: z.string().optional(),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 

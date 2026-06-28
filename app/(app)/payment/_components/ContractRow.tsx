@@ -18,6 +18,7 @@ import { isCarryoverContract, type ContractPayment, type CompanyInfo } from "@/t
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
+import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { progressPct, initialVisiblePayments } from "../_lib/payment-progress";
@@ -337,12 +338,11 @@ export default function ContractRow({
         )}
       </button>
 
-      {/* 펼침 — 헤더와 한 덩어리(틴트·ring 연결), 부드럽게 등장.
-          [1] 업체정보 박스 제거: 접힘 헤더가 이미 업체명·계약일·수임비 표시(중복). */}
+      {/* 펼침 — 헤더와 한 덩어리(틴트·ring 연결). 업체정보 박스 제거(헤더가 이미 표시). */}
       {showBody && (
         <div className="card-open-anim space-y-3 p-3">
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
-          {/* 업체정보 (06 read → 저장 시 04+06 동기화, §3-1) */}
+          <LinkedFieldsEditor cp={cp} />
           <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} />
 
           {/* 7 체크박스 */}

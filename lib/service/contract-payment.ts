@@ -14,12 +14,14 @@ import {
   readAll,
   readContractCascadeKey,
   syncFeeFromContract,
+  updateLinkFields,
   updateUserFields,
 } from "@/repo/contract-payment";
 import type { CompanyInfo, ContractPayment } from "@/types";
 import { findByDate, updateMeeting } from "@/repo/meetings";
 import {
   readCompanyInfoArchiveRow,
+  renameCompanyInfoKey,
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
 
@@ -39,6 +41,74 @@ export async function loadContractPayments(
 ): Promise<ContractPayment[]> {
   const spreadsheetId = await resolveSheet(email);
   return readAll(spreadsheetId);
+}
+
+/**
+ * 계약 핵심필드(업체명·계약일·수임료) 편집 — 실무/수납에서. 연결 미팅 id 로 대상 특정(개명 안전).
+ * 멀티시트 건별 try/catch 격리 → 실패한 시트명 배열 반환(반쪽 동기화 침묵 금지).
+ *   · 업체명 → 02 D + 04 G + 06 스냅샷   · 계약일 → 02 C + 06 (04 미팅날짜 비접촉)   · 수임료 → 02 E + 04 L
+ */
+export async function editContractLinkedFields(
+  email: string,
+  input: {
+    meetingId?: string;
+    old: { 계약일: string; 업체명: string };
+    next: { 계약일?: string; 업체명?: string; 수임비?: number };
+  },
+): Promise<{ failures: string[] }> {
+  const spreadsheetId = await resolveSheet(email);
+  const failures: string[] = [];
+  const new계약일 = input.next.계약일 ?? input.old.계약일;
+  const new업체명 = input.next.업체명 ?? input.old.업체명;
+  const 업체명Changed = input.next.업체명 !== undefined && new업체명 !== input.old.업체명;
+  const 계약일Changed = input.next.계약일 !== undefined && new계약일 !== input.old.계약일;
+  const 수임료Changed = input.next.수임비 !== undefined;
+
+  if (업체명Changed || 계약일Changed) {
+    try {
+      await updateLinkFields(
+        spreadsheetId,
+        { ...input.old, meetingId: input.meetingId },
+        { 계약일: new계약일, 업체명: new업체명 },
+      );
+    } catch {
+      failures.push("02 계약수납(업체명·계약일)");
+    }
+  }
+  if (수임료Changed) {
+    try {
+      await syncFeeFromContract(spreadsheetId, {
+        meetingId: input.meetingId,
+        계약일: new계약일,
+        업체명: new업체명,
+        수임비: input.next.수임비!,
+      });
+    } catch {
+      failures.push("02 계약수납(수임료)");
+    }
+  }
+  // 04 미팅: 업체명 G·수임비 L 만. 미팅날짜 D 비접촉(계약일은 04 미반영 — 통계 안전).
+  if ((업체명Changed || 수임료Changed) && input.meetingId) {
+    try {
+      const partial: { 업체명?: string; 수임비?: number } = {};
+      if (업체명Changed) partial.업체명 = new업체명;
+      if (수임료Changed) partial.수임비 = input.next.수임비;
+      await updateMeeting(spreadsheetId, input.meetingId, partial);
+    } catch {
+      failures.push("04 업체관리(미팅)");
+    }
+  }
+  if (업체명Changed || 계약일Changed) {
+    try {
+      await renameCompanyInfoKey(spreadsheetId, input.old, {
+        계약일: new계약일,
+        업체명: new업체명,
+      });
+    } catch {
+      failures.push("06 업체정보");
+    }
+  }
+  return { failures };
 }
 
 /**

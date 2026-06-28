@@ -25,6 +25,7 @@ import {
 } from "@/repo/contract-payment";
 import {
   hasCompanyInfoArchiveRow,
+  renameCompanyInfoKey,
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
 import { syncDirectProductionForDate } from "./db";
@@ -289,11 +290,14 @@ export async function patchMeeting(
       if (droppingContract) {
         await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명);
       } else {
-        await updateContractLink(
-          spreadsheetId,
-          { 계약일: cur.미팅날짜, 업체명: cur.업체명 },
-          { 계약일: partial.미팅날짜 ?? cur.미팅날짜, 업체명: partial.업체명 ?? cur.업체명 },
-        );
+        const oldKey = { 계약일: cur.미팅날짜, 업체명: cur.업체명 };
+        const next = { 계약일: partial.미팅날짜 ?? cur.미팅날짜, 업체명: partial.업체명 ?? cur.업체명 };
+        // id 키로 02 행 특정(개명 안전) + 업체명 개명 시 06 키 이동(실패해도 04 저장은 성공).
+        await updateContractLink(spreadsheetId, { ...oldKey, meetingId: id }, next);
+        if (partial.업체명 !== undefined && partial.업체명 !== cur.업체명) {
+          try { await renameCompanyInfoKey(spreadsheetId, oldKey, next); }
+          catch (e) { console.warn("[contact] 06 키 이동 실패:", e instanceof Error ? e.message : e); }
+        }
       }
     }
   }
@@ -303,23 +307,14 @@ export async function patchMeeting(
   if (partial.업체정보 !== undefined) {
     try {
       const m = await findById(spreadsheetId, id); // merge 후 재읽기 — 최신 업체정보
-      if (m?.미팅날짜 && m.업체명) {
-        if (
-          m.상태 === "계약" ||
-          (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명))
-        ) {
-          await upsertCompanyInfoArchive(spreadsheetId, {
-            업체명: m.업체명,
-            계약일: m.미팅날짜,
-            업체정보: m.업체정보,
-          });
-        }
+      if (m?.미팅날짜 && m.업체명 &&
+        (m.상태 === "계약" || (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명)))) {
+        await upsertCompanyInfoArchive(spreadsheetId, {
+          업체명: m.업체명, 계약일: m.미팅날짜, 업체정보: m.업체정보,
+        });
       }
     } catch (e) {
-      console.warn(
-        "[contact] 06 업체정보 동기화 실패 (04 저장은 성공):",
-        e instanceof Error ? e.message : e,
-      );
+      console.warn("[contact] 06 업체정보 동기화 실패:", e instanceof Error ? e.message : e);
     }
   }
 }

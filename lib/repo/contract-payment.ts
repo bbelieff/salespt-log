@@ -12,7 +12,6 @@
  * 가드레일:
  *   • 1행·2행(헤더)은 절대 쓰지 않음 — append/update는 row≥3.
  *   • B(순번)는 시트 수식 또는 사용자가 직접 — 앱은 빈 문자열 send.
- *   • 수수료는 별도 컬럼이 아니라 Q+W+AC(슬롯별 승인금액 합)의 클라이언트 파생값.
  */
 import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
@@ -188,6 +187,7 @@ function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
     로드맵메모: toStr(r[30]), // AE
     구분: toStr(r[34]).trim(), // AI — 이월 깃발 (arena-carryover §3)
     이월원본행id: toStr(r[35]).trim(), // AJ
+    linkedMeetingId: toStr(r[36]).trim(), // AK — 연결 미팅 id
   });
   return parsed.success ? parsed.data : null;
 }
@@ -244,7 +244,7 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
 /** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!A${firstDataRow}:AJ`; // A~AH 실사용 + AI~AJ 이월 깃발
+  const range = `${tabRef(tab)}!A${firstDataRow}:AK`; // A~AH 실사용 + AI~AJ 이월 깃발 + AK 연결 미팅 id
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,

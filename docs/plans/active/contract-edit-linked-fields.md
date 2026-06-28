@@ -47,3 +47,5 @@ related: 11-contract-payment-tab
 
 ## Log
 - 2026-06-26 PR1 [A]: AK 컬럼 + id우선 매칭 + append id + clearRow AK + backfill 스크립트(dry-run) + SSOT.
+- 2026-06-27 hotfix: appendFromContract/backfill 에 ensureGridColumns(37) — AK 쓰기 전 그리드 보장(계약 생성 회귀 수정). 마이그레이션 --apply ~83건 id 기록(고아 ~100 폴백).
+- 2026-06-27 PR2 [B][C][D]: linkedMeetingId 노출 + editContractLinkedFields(멀티시트 try/catch) + edit-linked API/훅 + LinkedFieldsEditor(DirtyGuard) + patchMeeting 역방향(id키 02 + 06 rename) + renameCompanyInfoKey. SSOT(components·data-model). → 완료.

@@ -234,3 +234,36 @@ export async function hasCompanyInfoArchiveRow(
     return false;
   }
 }
+
+/**
+ * 06 키 행 재키 — 계약 업체명·계약일 변경 시 A(업체명)/B(계약일)/C(계약ref)/D(갱신시각)만 갱신.
+ * E~AB 업체정보 스냅샷은 보존(중복 행 생성·고아 방지). old 키 행 없으면 no-op.
+ */
+export async function renameCompanyInfoKey(
+  spreadsheetId: string,
+  oldKey: { 계약일: string; 업체명: string },
+  next: { 계약일: string; 업체명: string },
+): Promise<{ moved: boolean }> {
+  await ensureCompanyInfoTab(spreadsheetId);
+  const row = await findRowByRef(
+    spreadsheetId,
+    companyContractRef(oldKey.계약일, oldKey.업체명),
+  );
+  if (row === null) return { moved: false };
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${TAB}'!A${row}:D${row}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [
+        [
+          next.업체명.trim(),
+          next.계약일,
+          companyContractRef(next.계약일, next.업체명),
+          new Date().toISOString(),
+        ],
+      ],
+    },
+  });
+  return { moved: true };
+}

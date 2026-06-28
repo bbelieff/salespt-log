@@ -510,7 +510,7 @@ interface DashboardView {
 |---|---|---|
 | `Progress` | z.enum | 진행률 6단계: `""` / `0%` / `20%` / `40%` / `60%` / `80%` / `100%` |
 | `PaymentSlot` | z.object | 분할 수납 1슬롯 (7필드: 진행기관/진행률/현황/승인금액/수납액/수납일 + **메모** 2026-05-17). UI 라벨: 현황 → "진행내용" |
-| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 + 로드맵메모 = A~AH + AI~AJ 이월깃발(`구분`·`이월원본행id`, arena-carryover §3). 2026-05-17 재구성: AE 로드맵, AF/AG/AH 슬롯메모) |
+| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 + 로드맵메모 = A~AH + AI~AJ 이월깃발(`구분`·`이월원본행id`, arena-carryover §3) + **AK `linkedMeetingId`**(연결 미팅 id, 02↔04 매칭 키 — 개명 안전, contract-edit-linked-fields). 2026-05-17 재구성: AE 로드맵, AF/AG/AH 슬롯메모) |
 
 ### 실무투두 (05 실무투두 · Scope 2 신설 · ADR-0006)
 | 식별자 | 종류 | 의미 |
