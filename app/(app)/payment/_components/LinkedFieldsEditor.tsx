@@ -1,8 +1,9 @@
 /**
- * LinkedFieldsEditor — 계약 핵심필드(업체명·계약일·수임료) 편집 (payment_edit_linked_fields).
+ * LinkedFieldsEditor — 계약 핵심필드(업체명·계약일·수임료) 표시 + 수정(payment_contract_edit_toggle).
  *
+ * 평소: 읽기 전용 + [✎ 수정]. 클릭 → 이 카드만 편집 모드(input + [저장]/[취소] + 연동 배지).
  * 저장 시 연결 미팅 id 로 대상 특정(개명 안전): 업체명→02 D+04 G+06 / 계약일→02 C만 / 수임료→02 E+04 L.
- * 자체 DirtyGuard 등록(미저장 이탈 가드). 일부 시트 실패 시 어느 시트인지 안내 + save throw(반쪽 침묵 금지).
+ * 편집 중 변경 있으면 DirtyGuard 등록. 변경 없으면 시트 쓰기 0. 일부 시트 실패 시 안내+save throw.
  */
 "use client";
 
@@ -11,19 +12,36 @@ import type { ContractPayment } from "@/types";
 import { useEditContractLinkedFields } from "@/query/contract-payment-hooks";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 
-const fmtComma = (n: number) => (n ? n.toLocaleString("en-US") : "");
+const fmtComma = (n: number) => (n ? n.toLocaleString("en-US") : "0");
 
 export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
+  const [editing, setEditing] = useState(false);
   const [업체명, set업체명] = useState(cp.업체명);
   const [계약일, set계약일] = useState(cp.계약일);
   const [수임료, set수임료] = useState(cp.수임비);
   const [msg, setMsg] = useState("");
   const edit = useEditContractLinkedFields();
 
-  const dirty = 업체명 !== cp.업체명 || 계약일 !== cp.계약일 || 수임료 !== cp.수임비;
+  const dirty =
+    editing &&
+    (업체명 !== cp.업체명 || 계약일 !== cp.계약일 || 수임료 !== cp.수임비);
 
+  const enterEdit = () => {
+    set업체명(cp.업체명);
+    set계약일(cp.계약일);
+    set수임료(cp.수임비);
+    setMsg("");
+    setEditing(true);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setMsg("");
+  };
   const save = async () => {
-    if (!dirty) return;
+    if (!dirty) {
+      setEditing(false); // 변경 없음 → 시트 쓰기 0, 읽기 모드 복귀
+      return;
+    }
     if (!업체명.trim()) {
       setMsg("업체명을 입력해주세요");
       throw new Error("업체명 비어있음");
@@ -41,17 +59,37 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
       setMsg(`일부 시트 반영 실패: ${res.failures.join(", ")} — 다시 시도해주세요`);
       throw new Error("partial-sync-failure");
     }
-    setMsg("✅ 일정·계약·시트에 함께 반영했어요");
-  };
-  const discard = () => {
-    set업체명(cp.업체명);
-    set계약일(cp.계약일);
-    set수임료(cp.수임비);
-    setMsg("");
+    setEditing(false); // 저장 성공 → 읽기 모드 복귀
   };
 
-  useDirtyEntry(`cp-linked-${cp.row}`, dirty, save, discard, `${cp.업체명 || "계약"} 계약정보`);
+  useDirtyEntry(`cp-linked-${cp.row}`, dirty, save, cancel, `${cp.업체명 || "계약"} 계약정보`);
 
+  // ── 읽기 모드 ──
+  if (!editing) {
+    return (
+      <div className="flex items-start justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+        <div className="space-y-0.5 text-sm">
+          <div>
+            <span className="text-gray-400">고객사</span>{" "}
+            <b className="text-gray-900">{cp.업체명 || "—"}</b>
+          </div>
+          <div className="text-gray-600" style={{ fontVariantNumeric: "tabular-nums" }}>
+            <span className="text-gray-400">계약일</span> {cp.계약일 || "—"}{" "}
+            <span className="ml-1 text-gray-400">수임료</span> ₩{fmtComma(cp.수임비)}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={enterEdit}
+          className="shrink-0 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+        >
+          ✎ 수정
+        </button>
+      </div>
+    );
+  }
+
+  // ── 편집 모드 ──
   const label = "mb-1 block text-xs font-medium text-gray-600";
   const input =
     "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
@@ -64,13 +102,8 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="col-span-2">
-          <label className={label}>업체명</label>
-          <input
-            type="text"
-            value={업체명}
-            onChange={(e) => set업체명(e.target.value)}
-            className={input}
-          />
+          <label className={label}>고객사(업체명)</label>
+          <input type="text" value={업체명} onChange={(e) => set업체명(e.target.value)} className={input} />
         </div>
         <div>
           <label className={label}>계약일</label>
@@ -97,23 +130,25 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
         업체명·수임료는 일정·계약 미팅과 시트에 함께 반영돼요. 계약일은 이 계약카드에만 적용돼요
         (미팅 날짜·달력·주차 통계는 그대로).
       </p>
-      {msg && (
-        <p
-          className={`mt-1.5 text-xs font-medium ${
-            msg.startsWith("✅") ? "text-green-600" : "text-red-600"
-          }`}
+      {msg && <p className="mt-1.5 text-xs font-medium text-red-600">{msg}</p>}
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={cancel}
+          disabled={edit.isPending}
+          className="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
         >
-          {msg}
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={() => void save().catch(() => {})}
-        disabled={!dirty || edit.isPending}
-        className="mt-2 w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
-      >
-        {edit.isPending ? "저장 중…" : "계약정보 저장 (연동)"}
-      </button>
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => void save().catch(() => {})}
+          disabled={edit.isPending}
+          className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300"
+        >
+          {edit.isPending ? "저장 중…" : "저장 (연동 반영)"}
+        </button>
+      </div>
     </div>
   );
 }
