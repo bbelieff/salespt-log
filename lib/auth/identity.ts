@@ -14,6 +14,7 @@
  */
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
+import { isDevStubAuthed } from "@/auth/dev-stub";
 import { adminEmails } from "@/config";
 import { findUserByEmail, parseAssignedTrainers } from "@/repo/users";
 
@@ -58,9 +59,8 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 export async function getSessionEmail(): Promise<string | null> {
   const session = await auth();
   if (session?.user?.email) return session.user.email;
-  if (process.env.NODE_ENV !== "production" && process.env.STUB_USER_EMAIL) {
-    return process.env.STUB_USER_EMAIL;
-  }
+  // 미들웨어와 동일 가드(@/auth/dev-stub) — dev stub fallback. 프로덕션 무영향.
+  if (isDevStubAuthed()) return process.env.STUB_USER_EMAIL!;
   return null;
 }
 
