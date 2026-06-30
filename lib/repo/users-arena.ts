@@ -64,6 +64,21 @@ export async function findArenaSheetIdByName(name: string): Promise<string | nul
   return hit.length === 1 ? hit[0]!.spreadsheetId : null;
 }
 
+/**
+ * 수강생출신 트레이너의 본인 아레나 시트 — **단일 resolver**(me.ts 토글·dashboard override 공용).
+ * 1) 본인 이메일의 활성 아레나 행(findActiveArenaRowByEmail) — 중복/동명이인/다중행 안전(우선).
+ * 2) 폴백: 이름 추정매칭(findArenaSheetIdByName). 둘 다 없으면 null.
+ * (두 호출처가 따로 구현하면 divergence — 실제 그래서 dashboard 만 null 나던 버그.)
+ */
+export async function resolveOwnArenaSheetId(
+  email: string,
+  name: string,
+): Promise<string | null> {
+  const byEmail = await findActiveArenaRowByEmail(email);
+  if (byEmail?.spreadsheetId) return byEmail.spreadsheetId;
+  return (await findArenaSheetIdByName(name)) ?? null;
+}
+
 /** 같은 email 의 archived 행 — "이전 N기 일지 보기" 링크용 (carryover §1). */
 export async function findArchivedRowByEmail(
   email: string,

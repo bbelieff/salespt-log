@@ -17,7 +17,7 @@ import { findUserByEmail } from "@/repo/users";
 import {
   findActiveArenaRowByEmail,
   findArchivedRowByEmail,
-  findArenaSheetIdByName,
+  resolveOwnArenaSheetId,
 } from "@/repo/users-arena";
 import { readProfileBundle } from "@/repo/sales";
 
@@ -362,11 +362,9 @@ export async function loadMe(email: string): Promise<MeProfile> {
   let ownArenaSheetId: string | undefined;
   if (user.role === "trainer") {
     try {
-      const arenaByEmail = await findActiveArenaRowByEmail(email);
+      // dashboard resolveArenaOverride 와 동일 resolver(divergence 방지).
       ownArenaSheetId =
-        arenaByEmail?.spreadsheetId ||
-        (await findArenaSheetIdByName(user.name)) ||
-        undefined;
+        (await resolveOwnArenaSheetId(email, user.name)) ?? undefined;
     } catch {
       ownArenaSheetId = undefined;
     }
