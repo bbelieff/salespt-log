@@ -27,7 +27,7 @@ import type {
   ContractPayment,
 } from "@/types";
 import { findUserByEmail } from "@/repo/users";
-import { findArenaSheetIdByName } from "@/repo/users-arena";
+import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
@@ -106,14 +106,14 @@ function toISODate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** 수강생출신 트레이너의 아레나 self-view override sheetId 결정(P14). trainer 행이고
- * 이름 매칭 아레나 시트가 유일할 때만 그 sheetId, 아니면 undefined. */
+/** 수강생출신 트레이너의 아레나 self-view override sheetId 결정(P14). trainer 행일 때
+ * 본인 이메일의 활성 아레나 행 우선, 이름 매칭 폴백(me.ts 토글과 동일 resolver). */
 export async function resolveArenaOverride(
   email: string,
 ): Promise<string | undefined> {
   const u = await findUserByEmail(email);
   if (u?.role !== "trainer") return undefined;
-  return (await findArenaSheetIdByName(u.name)) ?? undefined;
+  return (await resolveOwnArenaSheetId(email, u.name)) ?? undefined;
 }
 
 export async function loadDashboard(
