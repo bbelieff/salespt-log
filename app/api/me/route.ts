@@ -18,6 +18,7 @@ import {
   getActiveUserEmail,
   getSessionEmail,
   isAdminEmail,
+  isArenaSelfView,
 } from "@/auth/identity";
 
 export async function GET() {
@@ -52,7 +53,7 @@ export async function GET() {
 
   // 정상 프로필 로드
   try {
-    const me = await loadMe(activeEmail);
+    const me = await loadMe(activeEmail, await isArenaSelfView());
     const res = NextResponse.json({
       ...me,
       isAdmin: admin,

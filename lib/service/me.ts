@@ -334,7 +334,14 @@ export async function enrichUsersWithStats<T extends { spreadsheetId: string }>(
   });
 }
 
-export async function loadMe(email: string): Promise<MeProfile> {
+/**
+ * @param arenaSelf "내 아레나 일지" 보기 여부 — 라우트가 쿠키(isArenaSelfView)를 읽어
+ *   주입(service 는 next/headers·next-auth 의존 X, dashboard override 패턴과 동일).
+ */
+export async function loadMe(
+  email: string,
+  arenaSelf = false,
+): Promise<MeProfile> {
   const user = await findUserByEmail(email);
   if (!user) {
     throw new Error(`[me] 사용자(${email})를 찾을 수 없습니다.`);
@@ -378,6 +385,16 @@ export async function loadMe(email: string): Promise<MeProfile> {
       captainOf = arenaRow?.captainOf ?? "";
     } catch {
       /* keep "" */
+    }
+  }
+  // 수강생출신 트레이너가 "내 아레나 일지" 보기일 때는 프로필(시작일·종강·주차·기수·이름)을
+  // 본인 아레나 시트 기준으로 — trainer 행은 시트가 빈값(bundle=null)이라 헤더가
+  // undefined/undefined 시작·NaN주차·₩0 으로 뜨던 버그. dashboard override(P14)와 짝.
+  if (arenaSelf && ownArenaSheetId) {
+    try {
+      bundle = await readBundle(ownArenaSheetId);
+    } catch {
+      /* 실패 시 기존 bundle 유지 */
     }
   }
   return {
