@@ -11,6 +11,7 @@
  * 빈도 제어(once/daily/always)는 클라 localStorage — 서버는 후보만 내려준다.
  */
 import { unstable_cache, revalidateTag } from "next/cache";
+import { ANCHORS, type AnchorDef } from "@/config/anchors";
 import {
   patchUpdateRow,
   readNotices,
@@ -87,6 +88,55 @@ export function pickVisibleUpdates(updates: UpdateItem[]): UpdateItem[] {
   return visible.filter((u) => keep.has(u.pr)).sort((a, b) => b.pr - a.pr);
 }
 
+// ── 앱 내 NEW 앵커 (new-feature-highlight §1·§2) ──────────────────
+
+/** 활성 앵커 — NewBadge·탭 점이 참조. pr 은 개인 해제(localStorage) 키 구분용. */
+export interface ActiveAnchor {
+  key: string;
+  /** 하단 탭 라우트 접두 (ANCHORS 정의) — 탭 점 위치·방문 해제 판정. */
+  tab: string;
+  pr: number;
+}
+
+/** date(YYYY-MM-DD)가 today 로부터 maxDays 이내인가 (빈 날짜 = false). */
+function withinDays(date: string, today: string, maxDays: number): boolean {
+  const d = Date.parse(date);
+  const t = Date.parse(today);
+  if (!Number.isFinite(d) || !Number.isFinite(t)) return false;
+  const diff = (t - d) / 86_400_000;
+  return diff >= 0 && diff <= maxDays;
+}
+
+/**
+ * 순수 판정 — visible=TRUE && anchor 있는 feat(그룹에 feat 포함) 중 **최신 1건만** 활성.
+ * 새 feat 적재 시 자동 교체(최신 pr 우선), 상한 14일(date 기준), 미등록 키는
+ * 무시+경고 로그(화면 깨짐 없음 — SoR §1·§2, QA 3·4·5).
+ */
+export function pickActiveAnchor(
+  updates: UpdateItem[],
+  opts: { today: string; anchors: Record<string, AnchorDef> },
+): ActiveAnchor | null {
+  const groupHasFeat = (milestone: string): boolean =>
+    updates.some((o) => o.milestone.trim() === milestone && o.type === "feat");
+  let best: ActiveAnchor | null = null;
+  for (const u of updates) {
+    if (!u.visible) continue;
+    const key = u.anchor.trim();
+    if (!key) continue;
+    const isFeat =
+      u.type === "feat" || (u.milestone.trim() !== "" && groupHasFeat(u.milestone.trim()));
+    if (!isFeat) continue;
+    if (!withinDays(u.date, opts.today, 14)) continue; // 상한 14일 (SoR §1)
+    const def = opts.anchors[key];
+    if (!def) {
+      console.warn(`[announcements] 미등록 앵커 키 무시: "${key}" (pr #${u.pr})`);
+      continue;
+    }
+    if (!best || u.pr > best.pr) best = { key, tab: def.tab, pr: u.pr };
+  }
+  return best;
+}
+
 /** 보관함(/updates) — 항목(그룹) 단위 페이징. offset/limit 은 항목 개수. */
 export async function listUpdatesArchive(
   offset: number,
@@ -129,6 +179,8 @@ export interface AnnouncementsView {
   updates: UpdateItem[];
   /** 클라 lastSeenPr 비교용 — visible 업데이트 최신 pr (없으면 0). */
   latestPr: number;
+  /** 앱 내 NEW 표시 활성 앵커 (없으면 null) — new-feature-highlight §2. */
+  activeAnchor: ActiveAnchor | null;
 }
 
 /** 사용자 이메일 기준 새소식 조회 — 미등록(prep/admin 미배정)은 regular 취급. */
@@ -138,10 +190,12 @@ export async function getAnnouncementsFor(email: string): Promise<AnnouncementsV
     findUserByEmail(email).catch(() => null),
   ]);
   const isArena = isArenaAudienceCohort(user?.cohort);
-  const notices = filterNoticesFor(tabs.notices, { isArena, today: todayKST() });
+  const today = todayKST();
+  const notices = filterNoticesFor(tabs.notices, { isArena, today });
   const updates = pickVisibleUpdates(tabs.updates);
   const latestPr = tabs.updates.reduce((m, u) => (u.visible && u.pr > m ? u.pr : m), 0);
-  return { notices, updates, latestPr };
+  const activeAnchor = pickActiveAnchor(tabs.updates, { today, anchors: ANCHORS });
+  return { notices, updates, latestPr, activeAnchor };
 }
 
 // ── admin 팝업관리 (announcement-popup §4, PR③) ─────────────────

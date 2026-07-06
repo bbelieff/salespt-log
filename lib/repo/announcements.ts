@@ -20,7 +20,7 @@ const U = SHEET_RANGES.updates;
 const N = SHEET_RANGES.notices;
 
 const HEADERS: Record<string, string[]> = {
-  [U.tab]: ["pr", "date", "type", "title_user", "body_md", "milestone", "visible"],
+  [U.tab]: ["pr", "date", "type", "title_user", "body_md", "milestone", "visible", "anchor"],
   [N.tab]: [
     "id", "created", "updated", "title", "body_md",
     "audience", "display_mode", "start", "end", "pinned", "active",
@@ -99,6 +99,7 @@ export async function readUpdates(): Promise<UpdateItem[]> {
         bodyMd: String(r[4] ?? ""),
         milestone: toStr(r[5]),
         visible: toBool(r[6]),
+        anchor: toStr(r[7]),
       }),
     );
   }
@@ -198,9 +199,10 @@ export interface UpdatePatch {
   bodyMd?: string;
   milestone?: string;
   visible?: boolean;
+  anchor?: string;
 }
 
-/** 업데이트 행 보정 — pr 키 행의 전달된 필드 셀(D/E/F/G)만 개별 update. */
+/** 업데이트 행 보정 — pr 키 행의 전달된 필드 셀(D/E/F/G/H)만 개별 update. */
 export async function patchUpdateRow(pr: number, patch: UpdatePatch): Promise<boolean> {
   await ensureAnnouncementTabs();
   const row = await findKeyRow(U.tab, String(pr));
@@ -211,6 +213,7 @@ export async function patchUpdateRow(pr: number, patch: UpdatePatch): Promise<bo
   if (patch.milestone !== undefined) cells.push({ col: "F", value: patch.milestone });
   if (patch.visible !== undefined)
     cells.push({ col: "G", value: patch.visible ? "TRUE" : "FALSE" });
+  if (patch.anchor !== undefined) cells.push({ col: "H", value: patch.anchor });
   if (cells.length === 0) return true;
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId: registry().spreadsheetId,

@@ -71,7 +71,13 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
       {groups.map((g) => {
         const expanded = open === g.key;
         return (
-          <li key={g.key} className="rounded-xl border border-gray-100 bg-white px-2">
+          <li
+            key={g.key}
+            // feat 포함 항목은 "새 기능" 강조 테두리 (new-feature-highlight §0). fix/perf 는 기본.
+            className={`rounded-xl border bg-white px-2 ${
+              g.hasFeat ? "border-red-200" : "border-gray-100"
+            }`}
+          >
             <button
               type="button"
               onClick={() => setOpen(expanded ? null : g.key)}
@@ -79,7 +85,14 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
               aria-expanded={expanded}
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-gray-800">{g.title}</span>
+                <span className="block text-sm font-semibold text-gray-800">
+                  {g.hasFeat && (
+                    <span className="mr-1 inline-block shrink-0 rounded-full bg-red-50 px-1.5 py-0.5 align-middle text-xs font-bold text-brand-red">
+                      새 기능
+                    </span>
+                  )}
+                  {g.title}
+                </span>
                 <span className="mt-0.5 block text-xs text-gray-400">{groupMetaLine(g)}</span>
               </span>
               <svg

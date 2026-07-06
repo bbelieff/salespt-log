@@ -214,6 +214,9 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 - 커밋 제목은 conventional(`feat(scope): ...`) 유지. 제목이 깨진 과거 커밋(`@ (#N)`)은
   수집 스크립트가 본문 첫 줄 fallback 으로 흡수하지만, 제목 안 깨뜨리는 게 정본.
 - docs/chore/refactor 는 Changelog 불필요 (기본 visible=FALSE — 수강생에게 안 보임).
+- **feat PR 는 가능하면 `Changelog-Anchor: <앵커키>` 포함**(선택) — 앱 내 NEW 표시 위치
+  (new-feature-highlight §3). 앵커 키는 `lib/config/anchors.ts` ANCHORS 에 **먼저 등록**
+  (코드 상수가 정본, 미등록 키는 무시+경고 로그). 앵커 없는 feat 는 팝업 뱃지만.
 
 **문구 기준 (2026-06-11 확정 — 상세는 announcement-popup.md §7)**:
 - 제목: **기능명·기술용어 금지**, 고객이 얻는 것 1문장("~해요" 능동형).

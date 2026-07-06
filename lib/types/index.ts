@@ -406,7 +406,7 @@ export type Todo = z.infer<typeof Todo>;
 // 시트 매핑: docs/domains/sheet-structure.md §6.2~6.3. 개인 시트가 아니라
 // SHEETS_REGISTRY_ID 의 탭 2개. updates=배포 시 자동 수집, notices=운영자 공지.
 
-/** 배포 시 자동 수집된 업데이트 1행 (updates A~G). 키=pr (멱등 가드). */
+/** 배포 시 자동 수집된 업데이트 1행 (updates A~H). 키=pr (멱등 가드). */
 export const UpdateItem = z.object({
   pr: z.number(), // PR 번호 (A)
   date: z.string().default(""), // 머지 날짜 YYYY-MM-DD (B)
@@ -415,6 +415,7 @@ export const UpdateItem = z.object({
   bodyMd: z.string().default(""), // 상세 MD, admin 작성 (E)
   milestone: z.string().default(""), // 큰 묶음 라벨, admin 수동 (F)
   visible: z.boolean().default(false), // 기본 feat·fix=TRUE (G)
+  anchor: z.string().default(""), // 앱 내 NEW 앵커 키 — Changelog-Anchor 수집 (H)
 });
 export type UpdateItem = z.infer<typeof UpdateItem>;
 

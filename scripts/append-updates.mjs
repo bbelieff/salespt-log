@@ -77,6 +77,10 @@ export function parseCommit(dateISO, subject, body) {
   const group = groupMatch ? groupMatch[1].trim() : "";
   const done = /^Changelog-Done\s*$/im.test(body);
 
+  // 앱 내 NEW 앵커 키 (new-feature-highlight §1) — H(anchor) 적재용. 선택.
+  const anchorMatch = body.match(/^Changelog-Anchor:\s*(.+)$/im);
+  const anchor = anchorMatch ? anchorMatch[1].trim() : "";
+
   // 기본 노출 규칙(P15): **사용자 체감 항목만** 기본 TRUE = 사용자용 `Changelog:` 줄이
   // 있는 feat/fix. docs·chore·refactor·내부전용 fix(Changelog 없음)는 FALSE 기본.
   // 그룹 PR 은 일단 숨김(반쪽 기능 가드) — Done 커밋이 그룹 전체를 켠다.
@@ -88,7 +92,7 @@ export function parseCommit(dateISO, subject, body) {
       : type === "feat" || type === "fix"
         ? "TRUE"
         : "FALSE";
-  return { pr, date: dateISO, type, titleUser, visible, group, done };
+  return { pr, date: dateISO, type, titleUser, visible, group, done, anchor };
 }
 
 function recentMergeCommits(limit = 50) {
@@ -135,8 +139,25 @@ async function main() {
       range: "'updates'!A1",
       valueInputOption: "RAW",
       requestBody: {
-        values: [["pr", "date", "type", "title_user", "body_md", "milestone", "visible"]],
+        values: [
+          ["pr", "date", "type", "title_user", "body_md", "milestone", "visible", "anchor"],
+        ],
       },
+    });
+  }
+
+  // H1 헤더 보장 (멱등) — 기존 탭은 A~G 시절 생성이라 anchor 헤더가 없을 수 있음.
+  // §2.5 관점 안전: H1 이 "비어있을 때만" 쓴다(기존 값 비접촉).
+  const h1 = await sheets.spreadsheets.values.get({
+    spreadsheetId: REGISTRY_ID,
+    range: "'updates'!H1",
+  });
+  if (!String(h1.data.values?.[0]?.[0] ?? "").trim()) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: REGISTRY_ID,
+      range: "'updates'!H1",
+      valueInputOption: "RAW",
+      requestBody: { values: [["anchor"]] },
     });
   }
 
@@ -157,11 +178,13 @@ async function main() {
   if (fresh.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: REGISTRY_ID,
-      range: "'updates'!A1:G",
+      range: "'updates'!A1:H",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: {
-        values: fresh.map((c) => [c.pr, c.date, c.type, c.titleUser, "", c.group, c.visible]),
+        values: fresh.map((c) => [
+          c.pr, c.date, c.type, c.titleUser, "", c.group, c.visible, c.anchor,
+        ]),
       },
     });
     console.log(

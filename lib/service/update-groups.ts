@@ -24,6 +24,8 @@ export interface UpdateGroup {
   lastDate: string;
   /** 그룹 내 개별 변경 한 줄씩 (펼침 보조, pr asc) — 단건은 빈 배열. */
   lines: { pr: number; title: string }[];
+  /** feat 포함 여부 — "새 기능" 뱃지+테두리 강조 대상 (new-feature-highlight §0). */
+  hasFeat: boolean;
 }
 
 /** visible 행들 → 그룹 항목 (latestPr 내림차순). */
@@ -57,6 +59,7 @@ export function groupUpdates(rows: UpdateItem[]): UpdateGroup[] {
         sorted.length > 1
           ? sorted.map((i) => ({ pr: i.pr, title: i.titleUser }))
           : [],
+      hasFeat: sorted.some((i) => i.type === "feat"),
     });
   }
   // 정렬 = 그룹 "마지막 머지일" 최신순 (§7-4 정본 — 동률은 latestPr).

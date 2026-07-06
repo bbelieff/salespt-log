@@ -12,7 +12,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
+import { useEffect, useState } from "react";
 import { useGuardedRouter } from "@/components/DirtyGuard";
+import { useAnnouncements } from "@/query/announcements-hook";
 
 /** 탭별 고유색(ADR-0027) — 표준 Tailwind 팔레트. fill=칩/배지 채움, text=라벨. */
 type TabColor = "blue" | "emerald" | "violet" | "rose";
@@ -54,7 +56,42 @@ function FlowArrow() {
   );
 }
 
-function TabItem({ tab, active }: { tab: Tab; active: boolean }) {
+/**
+ * 새 기능 점(dot) — 활성 앵커(new-feature-highlight §2)가 속한 탭에 표시.
+ * 해당 화면 방문 시 localStorage(`anchorSeen:{key}:{pr}`)로 점만 개인 해제
+ * (위치 NEW 뱃지는 활성 기간 동안 유지). SSR 안전: effect 안에서만 localStorage.
+ */
+function useAnchorDotTab(pathname: string): string | null {
+  const q = useAnnouncements();
+  const anchor = q.data?.activeAnchor ?? null;
+  const [dotTab, setDotTab] = useState<string | null>(null);
+  useEffect(() => {
+    if (!anchor) {
+      setDotTab(null);
+      return;
+    }
+    const seenKey = `anchorSeen:${anchor.key}:${anchor.pr}`;
+    if (pathname.startsWith(anchor.tab)) {
+      localStorage.setItem(seenKey, "1"); // 방문 = 점 개인 해제
+      setDotTab(null);
+      return;
+    }
+    setDotTab(localStorage.getItem(seenKey) === null ? anchor.tab : null);
+  }, [anchor, pathname]);
+  return dotTab;
+}
+
+/** 아이콘 칩 우상단 빨간 점 (장식 — 신규 여부는 팝업이 전달하므로 aria-hidden). */
+function NewDot() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-brand-red"
+    />
+  );
+}
+
+function TabItem({ tab, active, dot }: { tab: Tab; active: boolean; dot: boolean }) {
   const { push } = useGuardedRouter();
   const c = COLOR[tab.color];
   return (
@@ -81,11 +118,12 @@ function TabItem({ tab, active }: { tab: Tab; active: boolean }) {
       {/* 아이콘 칩 — 선택 시 탭색 채움+흰 글리프+그림자, 비활성은 slate-200 칩. */}
       <span
         aria-hidden="true"
-        className={`flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
+        className={`relative flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
           active ? `${c.fill} text-white shadow` : "bg-slate-200 text-slate-600"
         }`}
       >
         <tab.Icon active={active} />
+        {dot && <NewDot />}
       </span>
       <span className={`text-xs ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
         {tab.label}
@@ -95,7 +133,7 @@ function TabItem({ tab, active }: { tab: Tab; active: boolean }) {
 }
 
 /** 중앙 캘린더 — 입체 FAB. 비활성=흰 원+slate 글리프, 활성=amber 채움+흰 글리프. 단계 없음(도구). */
-function CenterFab({ active }: { active: boolean }) {
+function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
   const { push } = useGuardedRouter();
   return (
     <Link
@@ -110,11 +148,12 @@ function CenterFab({ active }: { active: boolean }) {
     >
       <span
         aria-hidden="true"
-        className={`-mt-6 flex h-[52px] w-[52px] items-center justify-center rounded-full border shadow-lg transition-colors ${
+        className={`relative -mt-6 flex h-[52px] w-[52px] items-center justify-center rounded-full border shadow-lg transition-colors ${
           active ? "border-amber-500 bg-amber-500 text-white" : "border-gray-300 bg-white text-slate-500"
         }`}
       >
         <CalendarIcon active={active} />
+        {dot && <NewDot />}
       </span>
       <span className={`mt-1 text-xs ${active ? "font-bold text-amber-500" : "text-slate-600"}`}>
         캘린더
@@ -125,6 +164,7 @@ function CenterFab({ active }: { active: boolean }) {
 
 export default function TabBar() {
   const pathname = usePathname() ?? "";
+  const dotTab = useAnchorDotTab(pathname);
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white"
@@ -137,13 +177,13 @@ export default function TabBar() {
     >
       {/* px-5(20px): 아이폰 라운드 모서리에서 양끝 칩이 안쪽에 오도록. 넓은 화면=480px 캡 중앙정렬. */}
       <div className="mx-auto flex w-full max-w-bottom-nav items-end px-5">
-        <TabItem tab={LEFT[0]!} active={LEFT[0]!.match(pathname)} />
+        <TabItem tab={LEFT[0]!} active={LEFT[0]!.match(pathname)} dot={dotTab === LEFT[0]!.href} />
         <FlowArrow />
-        <TabItem tab={LEFT[1]!} active={LEFT[1]!.match(pathname)} />
-        <CenterFab active={pathname.startsWith("/calendar")} />
-        <TabItem tab={RIGHT[0]!} active={RIGHT[0]!.match(pathname)} />
+        <TabItem tab={LEFT[1]!} active={LEFT[1]!.match(pathname)} dot={dotTab === LEFT[1]!.href} />
+        <CenterFab active={pathname.startsWith("/calendar")} dot={dotTab === "/calendar"} />
+        <TabItem tab={RIGHT[0]!} active={RIGHT[0]!.match(pathname)} dot={dotTab === RIGHT[0]!.href} />
         <FlowArrow />
-        <TabItem tab={RIGHT[1]!} active={RIGHT[1]!.match(pathname)} />
+        <TabItem tab={RIGHT[1]!} active={RIGHT[1]!.match(pathname)} dot={dotTab === RIGHT[1]!.href} />
       </div>
     </nav>
   );
