@@ -16,7 +16,7 @@ import {
   addProduction,
   addPurchase,
 } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 interface RouteContext {
   params: Promise<{ channel: string }>;
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const { channel } = await ctx.params;
     const decoded = decodeURIComponent(channel);
     const body = await req.json();
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
 
     let result: { row: number };
     switch (decoded) {

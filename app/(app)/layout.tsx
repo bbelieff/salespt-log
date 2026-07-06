@@ -22,6 +22,7 @@ import {
   isArenaSelfView,
 } from "@/auth/identity";
 import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
+import { hasOwnSheet } from "@/repo/user-priority";
 import { getArchivedCohortSet } from "@/repo/cohorts";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
@@ -41,9 +42,11 @@ export default async function AppLayout({
     const activeEmail = await getActiveUserEmail();
     const u = await findUserByEmail(activeEmail);
     // 보관(행 status 또는 cohorts 보관 기수) → 클레임 화면 (rejoin §1, 직접 URL 차단).
+    // 단, **본인 시트가 있는 등록 수강생은 보관이어도 통과**(읽기 전용 입장,
+    // archived-login-access 2026-07-07). 쓰기는 getWritableUserEmail 가드가 차단.
     // cohorts read 는 라우팅 지점인 여기서만(hot-path 분리, claim-stuck 2026-06-12).
-    if (u && u.status === "archived") redirect("/claim");
-    if (u && !isAdminEmail(sessionEmail)) {
+    if (u && !hasOwnSheet(u)) {
+      if (u.status === "archived") redirect("/claim");
       const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
       if (isNumericCohortArchived(u.role, u.cohort, archivedLabels)) redirect("/claim");
     }

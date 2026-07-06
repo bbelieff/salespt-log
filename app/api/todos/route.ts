@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createTodo, listTodos } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 import { TodoType } from "@/types";
 
 const CreateBody = z.object({
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail(); // archived 읽기전용 가드
     const todo = await createTodo(email, parsed.data);
     return NextResponse.json({ ok: true, todo });
   } catch (e) {

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { Channel } from "@/types";
 import { loadDay, saveContactMetrics } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 const DateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail(); // archived 읽기전용 가드
     const result = await saveContactMetrics(email, dateParsed.data, bodyParsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {

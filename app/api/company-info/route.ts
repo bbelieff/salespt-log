@@ -10,6 +10,7 @@ import {
   saveCompanyInfoByContract,
 } from "@/service/contract-payment";
 import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail(); // archived 읽기전용 가드
     const body = await req.json();
     const 계약일 = String(body?.계약일 ?? "").trim();
     const 업체명 = String(body?.업체명 ?? "").trim();

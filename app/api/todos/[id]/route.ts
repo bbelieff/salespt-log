@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { patchTodo, removeTodo } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 import { TodoType } from "@/types";
 
 interface RouteContext {
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     await patchTodo(email, id, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -51,7 +51,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     await removeTodo(email, id);
     return NextResponse.json({ ok: true });
   } catch (e) {

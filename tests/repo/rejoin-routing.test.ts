@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import { isNumericCohortArchived } from "@/repo/users";
 import {
   isArenaCohortLabel,
+  hasOwnSheet,
   pickPreferredUser,
   pickActiveArenaRow,
   dedupKeepIndex,
@@ -219,5 +220,26 @@ describe("cohortCategory (수강생/아레나/테스트 분류)", () => {
     expect(cohortCategory("8")).toBe("수강생");
     expect(cohortCategory("7")).toBe("수강생");
     expect(cohortCategory("—")).toBe("수강생");
+  });
+});
+
+describe("hasOwnSheet (archived-login-access 2026-07-07 — 보관 등록자 라우팅 통과)", () => {
+  it("시트 있는 archived trainee → true (/claim 강등 안 됨, 함진숙 케이스)", () => {
+    expect(hasOwnSheet(mkUser({ cohort: "7", status: "archived" }))).toBe(true);
+  });
+  it("시트 없는 archived trainee → false (여전히 /claim)", () => {
+    expect(hasOwnSheet(mkUser({ status: "archived", spreadsheetId: "" }))).toBe(false);
+    expect(hasOwnSheet(mkUser({ status: "archived", spreadsheetId: "  " }))).toBe(false);
+  });
+  it("미등록(null)·트레이너는 false — 기존 라우팅 유지", () => {
+    expect(hasOwnSheet(null)).toBe(false);
+    expect(hasOwnSheet(undefined)).toBe(false);
+    expect(hasOwnSheet(mkUser({ role: "trainer", status: "archived" }))).toBe(false);
+  });
+  it("cohorts 보관 기수(숫자 archived)여도 시트 있으면 통과 대상", () => {
+    // page/layout 은 hasOwnSheet=true 면 isNumericCohortArchived 검사 자체를 건너뜀.
+    const u = mkUser({ cohort: "6", status: "active" }); // 6 은 archived Set 에 있음
+    expect(isNumericCohortArchived(u.role, u.cohort, archived)).toBe(true); // 분류는 불변
+    expect(hasOwnSheet(u)).toBe(true); // 그래도 라우팅은 통과
   });
 });

@@ -20,7 +20,7 @@ import {
   removeProduction,
   removePurchase,
 } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 const RowParam = z.coerce.number().int().min(2);
 
@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       );
     }
     const body = await req.json();
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
 
     switch (decoded) {
       case "매입DB": {
@@ -107,7 +107,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
 
     switch (decoded) {
       case "매입DB":
