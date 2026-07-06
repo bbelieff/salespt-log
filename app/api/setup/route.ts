@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { findUserByEmail } from "@/repo/users";
 import { installFormulas, uninstallFormulas } from "@/repo/setup-formulas";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function resolveSpreadsheetId(): Promise<string> {
   const email = await getWritableUserEmail();
@@ -20,7 +21,7 @@ async function resolveSpreadsheetId(): Promise<string> {
   return user.spreadsheetId;
 }
 
-export async function POST() {
+async function POST_handler() {
   try {
     const spreadsheetId = await resolveSpreadsheetId();
     const report = await installFormulas(spreadsheetId);
@@ -31,7 +32,7 @@ export async function POST() {
   }
 }
 
-export async function DELETE() {
+async function DELETE_handler() {
   try {
     const spreadsheetId = await resolveSpreadsheetId();
     const report = await uninstallFormulas(spreadsheetId);
@@ -45,3 +46,7 @@ export async function DELETE() {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/setup:POST", POST_handler);
+export const DELETE = withApiTiming("api/setup:DELETE", DELETE_handler);

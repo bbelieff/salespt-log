@@ -5,8 +5,9 @@
  */
 import { NextResponse } from "next/server";
 import { setArenaSelfView } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     await setArenaSelfView(Boolean(body.on));
@@ -16,3 +17,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/arena-self:POST", POST_handler);

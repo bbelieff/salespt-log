@@ -9,12 +9,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revertMeeting } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(_req: NextRequest, ctx: RouteContext) {
+async function POST_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) {
@@ -28,3 +29,6 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/meeting/[id]/revert:POST", POST_handler);

@@ -20,8 +20,9 @@ import {
   isAdminEmail,
   isArenaSelfView,
 } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function GET() {
+async function GET_handler() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -76,3 +77,6 @@ export async function GET() {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/me:GET", GET_handler);

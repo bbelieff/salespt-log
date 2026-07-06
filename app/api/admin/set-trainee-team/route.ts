@@ -10,8 +10,9 @@ import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { findUserByEmail, setTraineeTeam } from "@/repo/users";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -40,3 +41,6 @@ export async function POST(req: Request) {
   revalidateAdminPages();
   return NextResponse.json({ updated: { email: target, team } });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/set-trainee-team:POST", POST_handler);

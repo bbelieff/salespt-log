@@ -7,6 +7,7 @@ import { z } from "zod";
 import { patchTodo, removeTodo } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
 import { TodoType } from "@/types";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -29,7 +30,7 @@ const PatchBody = z.object({
   완료여부: z.boolean().optional(),
 });
 
-export async function PATCH(req: NextRequest, ctx: RouteContext) {
+async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
@@ -47,7 +48,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   }
 }
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
@@ -59,3 +60,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const PATCH = withApiTiming("api/todos/[id]:PATCH", PATCH_handler);
+export const DELETE = withApiTiming("api/todos/[id]:DELETE", DELETE_handler);

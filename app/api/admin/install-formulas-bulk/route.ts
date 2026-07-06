@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { listAllUsers } from "@/repo/users";
 import { installFormulas } from "@/repo/setup-formulas";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ interface FailedItem {
   error: string;
 }
 
-export async function POST() {
+async function POST_handler() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -90,3 +91,6 @@ export async function POST() {
     failed,
   });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/install-formulas-bulk:POST", POST_handler);

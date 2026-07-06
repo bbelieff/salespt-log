@@ -6,8 +6,9 @@
 import { NextResponse } from "next/server";
 import { loadDBOverview } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function GET() {
+async function GET_handler() {
   try {
     const email = await getCurrentUserEmail();
     const view = await loadDBOverview(email);
@@ -17,3 +18,6 @@ export async function GET() {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/db:GET", GET_handler);

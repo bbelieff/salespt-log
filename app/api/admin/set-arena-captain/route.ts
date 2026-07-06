@@ -9,8 +9,9 @@ import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { setArenaCaptain, isArenaCohort } from "@/repo/users-arena";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -43,3 +44,6 @@ export async function POST(req: Request) {
   revalidateAdminPages();
   return NextResponse.json({ updated: { email, captainOf: on ? cohort : "" } });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/set-arena-captain:POST", POST_handler);

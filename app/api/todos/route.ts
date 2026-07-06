@@ -10,6 +10,7 @@ import { createTodo, listTodos } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { getWritableUserEmail } from "@/auth/identity";
 import { TodoType } from "@/types";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const CreateBody = z.object({
   // 일반이벤트(type=일반)는 계약 비연동 → contractRef 빈값 허용 (consultation-log §1-3).
@@ -32,7 +33,7 @@ const CreateBody = z.object({
   message: "contractRef 필수 (일반이벤트 제외)",
 });
 
-export async function GET(req: NextRequest) {
+async function GET_handler(req: NextRequest) {
   try {
     const contractRef = req.nextUrl.searchParams.get("contractRef");
     if (!contractRef) {
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   try {
     const body = await req.json();
     const parsed = CreateBody.safeParse(body);
@@ -62,3 +63,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/todos:GET", GET_handler);
+export const POST = withApiTiming("api/todos:POST", POST_handler);

@@ -16,8 +16,9 @@ import {
   removeTraineeCompletely,
   isReservedTrainee,
 } from "@/repo/users";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -51,3 +52,6 @@ export async function POST(req: Request) {
   revalidateAdminPages();
   return NextResponse.json({ removed: target });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/remove-trainee:POST", POST_handler);

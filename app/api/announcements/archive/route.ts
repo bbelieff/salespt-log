@@ -6,8 +6,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { listUpdatesArchive, listNoticesArchiveFor } from "@/service";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function GET(req: NextRequest) {
+async function GET_handler(req: NextRequest) {
   const email = await getCurrentUserEmail();
   if (!email) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const sp = req.nextUrl.searchParams;
@@ -22,3 +23,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/announcements/archive:GET", GET_handler);

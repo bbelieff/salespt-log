@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { listSheetsInDriveByTokens } from "@/repo/drive-client";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ function extractFolderId(input: string): string {
   return t;
 }
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -67,3 +68,6 @@ export async function POST(req: Request) {
     );
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/discover-folder-sheets:POST", POST_handler);

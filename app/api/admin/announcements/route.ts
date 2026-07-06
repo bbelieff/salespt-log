@@ -14,6 +14,7 @@ import {
   saveNoticeAdmin,
 } from "@/service";
 import { NoticeAudience, NoticeDisplayMode } from "@/types";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function guard(): Promise<NextResponse | null> {
   const email = await getSessionEmail();
@@ -22,7 +23,7 @@ async function guard(): Promise<NextResponse | null> {
   return null;
 }
 
-export async function GET() {
+async function GET_handler() {
   const denied = await guard();
   if (denied) return denied;
   try {
@@ -46,7 +47,7 @@ const SaveBody = z.object({
   active: z.boolean().default(true),
 });
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const denied = await guard();
   if (denied) return denied;
   try {
@@ -68,7 +69,7 @@ const PatchBody = z.object({
   anchor: z.string().optional(),
 });
 
-export async function PATCH(req: Request) {
+async function PATCH_handler(req: Request) {
   const denied = await guard();
   if (denied) return denied;
   try {
@@ -81,3 +82,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/admin/announcements:GET", GET_handler);
+export const POST = withApiTiming("api/admin/announcements:POST", POST_handler);
+export const PATCH = withApiTiming("api/admin/announcements:PATCH", PATCH_handler);

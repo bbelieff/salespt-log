@@ -12,8 +12,9 @@ import {
   formatCompanyInfoTxt,
   companyInfoTxtFileName,
 } from "@/service/company-info-txt";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   try {
     const body = await req.json();
     const 업체명 = String(body?.업체명 ?? "").trim();
@@ -44,3 +45,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/company-info/export:POST", POST_handler);

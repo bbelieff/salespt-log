@@ -8,8 +8,9 @@ import { NextResponse } from "next/server";
 import { isAdminEmail, getSessionEmail } from "@/auth/identity";
 import { findUserByEmail } from "@/repo/users";
 import { fixSheet } from "@/service/sheet-diagnostics";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !isAdminEmail(sessionEmail)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -44,3 +45,6 @@ export async function POST(req: Request) {
     );
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/fix-sheet:POST", POST_handler);

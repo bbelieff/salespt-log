@@ -14,6 +14,7 @@
  */
 import { google, type sheets_v4 } from "googleapis";
 import { serviceAccount } from "@/config";
+import { recordSheetsCall } from "@/lib/analytics/api-timing";
 
 let cached: sheets_v4.Sheets | null = null;
 
@@ -38,14 +39,22 @@ async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
   }
 }
 
-/** 객체의 지정 메서드를 instance 속성으로 shadow 하여 retry wrapper 적용. */
+/** 객체의 지정 메서드를 instance 속성으로 shadow 하여 retry wrapper 적용.
+ * + API 타이밍 계측(api_timing P0): 호출 소요를 요청 컨텍스트에 누적 —
+ *   재시도 대기 포함 전체 체감 시간(호출자가 기다린 시간)이 기준. */
 function patchMethods<T extends object>(obj: T, names: readonly string[]): void {
   for (const name of names) {
     const orig = (obj as unknown as Record<string, unknown>)[name];
     if (typeof orig !== "function") continue;
     const bound = (orig as (...a: unknown[]) => Promise<unknown>).bind(obj);
-    (obj as unknown as Record<string, unknown>)[name] = (...args: unknown[]) =>
-      withRetry(() => bound(...args));
+    (obj as unknown as Record<string, unknown>)[name] = async (...args: unknown[]) => {
+      const t0 = Date.now();
+      try {
+        return await withRetry(() => bound(...args));
+      } finally {
+        recordSheetsCall(Date.now() - t0);
+      }
+    };
   }
 }
 

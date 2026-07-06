@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Meeting } from "@/types";
 import { patchMeeting, removeMeetingWithCascade } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -13,7 +14,7 @@ interface RouteContext {
 
 const PatchBody = Meeting.omit({ id: true }).partial();
 
-export async function PATCH(req: NextRequest, ctx: RouteContext) {
+async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) {
@@ -33,7 +34,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   }
 }
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) {
@@ -48,3 +49,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const PATCH = withApiTiming("api/meeting/[id]:PATCH", PATCH_handler);
+export const DELETE = withApiTiming("api/meeting/[id]:DELETE", DELETE_handler);

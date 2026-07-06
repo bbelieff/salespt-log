@@ -19,6 +19,7 @@ import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { installFormulas } from "@/repo/setup-formulas";
 import { extractSpreadsheetId } from "@/repo/users-prep";
 import { listSheetsInDriveByTokens } from "@/repo/drive-client";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ function folderIdOf(input: string): string | null {
   return m ? m[1]! : null;
 }
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -114,3 +115,6 @@ export async function POST(req: Request) {
     expandedFromFolders,
   });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/install-formulas-by-id:POST", POST_handler);

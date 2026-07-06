@@ -15,8 +15,9 @@ import { getCurrentUserEmail } from "@/auth/stub";
 import { claimAccount, ClaimError } from "@/service/auth";
 import { isClaimableCohort } from "@/service/cohort-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   let email: string;
   try {
     email = await getCurrentUserEmail();
@@ -58,3 +59,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/claim:POST", POST_handler);

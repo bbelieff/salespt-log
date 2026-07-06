@@ -17,12 +17,13 @@ import {
   addPurchase,
 } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 interface RouteContext {
   params: Promise<{ channel: string }>;
 }
 
-export async function POST(req: NextRequest, ctx: RouteContext) {
+async function POST_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { channel } = await ctx.params;
     const decoded = decodeURIComponent(channel);
@@ -87,3 +88,6 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/db/[channel]:POST", POST_handler);
