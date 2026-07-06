@@ -47,6 +47,7 @@
     "lucide-react": "^0.460.0",
     "next": "^15.0.3",
     "next-auth": "5.0.0-beta.25",
+    "pg": "^8.22.0",
     "posthog-js": "^1.378.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -59,6 +60,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@types/node": "^22.9.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitest/ui": "^2.1.5",

@@ -18,6 +18,7 @@ import {
   isAdminEmail,
 } from "@/auth/identity";
 import { listPendingTrainees, listPendingTrainers } from "@/repo/users";
+import { getDbPilotStatus } from "@/service";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
 
@@ -33,9 +34,11 @@ export default async function AdminLandingPage() {
   const impersonating =
     activeEmail !== sessionEmail ? activeEmail : null;
   // 카드 우측 상단 알림 배지 — 진입 전에도 한눈에 보이게.
-  const [pendingTrainees, pendingTrainers] = await Promise.all([
+  // + DB 파일럿 상태(마스터 확인용, db-migration-pilot §3) — 실패해도 랜딩은 뜬다.
+  const [pendingTrainees, pendingTrainers, dbStatus] = await Promise.all([
     listPendingTrainees(),
     listPendingTrainers(),
+    getDbPilotStatus().catch(() => null),
   ]);
 
   return (
@@ -161,6 +164,32 @@ export default async function AdminLandingPage() {
             </Link>
           )}
         </div>
+
+        {/* DB 파일럿 연결 상태 — 마스터 전용 진단 스트립 (db-migration-pilot §3).
+            운영자가 "DB 연결 OK" 를 화면에서 확인하는 용도. 미설정 시 회색 안내만. */}
+        {isMaster && dbStatus && (
+          <div
+            className={`mt-6 flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold ${
+              !dbStatus.enabled
+                ? "border-gray-200 bg-gray-50 text-gray-500"
+                : dbStatus.ok
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            <span className="text-base">🗄️</span>
+            <span className="font-black">DB 파일럿</span>
+            {!dbStatus.enabled && <span>미설정 (DATABASE_URL 없음 — 파일럿 전 정상)</span>}
+            {dbStatus.enabled && dbStatus.ok && (
+              <span>
+                연결 OK · 응답 {dbStatus.latencyMs}ms · 기록 {dbStatus.rows ?? 0}행
+              </span>
+            )}
+            {dbStatus.enabled && !dbStatus.ok && (
+              <span>연결 실패 — {dbStatus.error ?? "unknown"}</span>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

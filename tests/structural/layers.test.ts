@@ -72,6 +72,49 @@ describe("layer direction", () => {
   }
 });
 
+// ── 테스트 2.5: pg(Postgres) 는 오직 lib/repo/db/ 에서만 ──────────
+// db-migration-pilot §2 — googleapis 격리와 동일 패턴. dual-write 파일럿의
+// DB 접근이 repo/db 밖으로 새면 P2(읽기 전환) 때 교체 범위가 앱 전체로 번진다.
+const PG_PACKAGES = ["pg", "pg-pool", "pg-native", "postgres"];
+describe("postgres isolation", () => {
+  it("pg 는 lib/repo/db/ 전용", () => {
+    const bad: string[] = [];
+    for (const dir of [
+      "lib/types",
+      "lib/config",
+      "lib/service",
+      "lib/analytics",
+      "app",
+      "components",
+      "lib/repo", // repo 안에서도 db/ 하위만 허용
+    ]) {
+      const abs = join(ROOT, dir);
+      let files: string[] = [];
+      try {
+        files = walk(abs);
+      } catch {
+        continue;
+      }
+      for (const file of files) {
+        const rel = relative(ROOT, file).replace(/\\/g, "/");
+        if (rel.startsWith("lib/repo/db/")) continue; // 허용 구역
+        for (const imp of importsOf(file)) {
+          if (PG_PACKAGES.some((p) => imp === p || imp.startsWith(p + "/"))) {
+            bad.push(`${rel} imports ${imp}`);
+          }
+        }
+      }
+    }
+    expect(
+      bad,
+      `Postgres 격리 위반 — pg 는 lib/repo/db/ 전용.\n` +
+        `→ 고치는 법: lib/repo/db/client.ts 에 함수를 추가해 위임하세요. ` +
+        `참고: docs/plans/active/db-migration-pilot.md §2\n` +
+        bad.map((b) => "  • " + b).join("\n"),
+    ).toEqual([]);
+  });
+});
+
 // ── 테스트 2: googleapis 는 오직 lib/repo/ 에서만 ──────────
 describe("sheets isolation", () => {
   it("googleapis / google-auth 는 lib/repo/ 전용", () => {

@@ -1,0 +1,18 @@
+# 옵션 B (셀프호스트) — 참고용, 기본 아님 (db-migration-pilot §0: 기본 = Supabase 관리형).
+# Supabase 가 막히거나 자체 VPS 로 옮길 때: VPS 에서 `docker compose -f
+# scripts/ops/docker-compose.selfhost.yml up -d` → DATABASE_URL 을
+# postgres://salespt:<비밀번호>@127.0.0.1:5432/salespt 로 교체(GitHub Secrets).
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: salespt
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?비밀번호는 .env 로만 주입}
+      POSTGRES_DB: salespt
+    ports:
+      - "127.0.0.1:5432:5432" # 로컬 바인드만 — 외부 노출 금지
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
