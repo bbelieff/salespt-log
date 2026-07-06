@@ -121,3 +121,4 @@ export {
   groupOrdinalLine,
   type UpdateGroup,
 } from "./update-groups";
+export { getDbPilotStatus, type DbPilotStatus } from "./db-pilot";

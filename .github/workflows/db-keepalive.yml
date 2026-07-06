@@ -1,0 +1,26 @@
+name: DB Keep-alive
+
+# Supabase 무료 티어 7일 무요청 일시정지 방지 (db-migration-pilot §0 대응①).
+# 주 1회 SELECT 1. 수동 실행(workflow_dispatch) = DATABASE_URL 유효성 실증 수단
+# (성공 로그에 SELECT 1 OK — 값은 절대 미출력).
+on:
+  schedule:
+    - cron: "0 3 * * 1" # 매주 월 03:00 UTC = 12:00 KST
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # pg 만 필요 — 전체 npm ci(2~3분) 대신 단일 패키지 설치(수 초).
+      - run: npm install --no-save pg
+      - name: SELECT 1 (값 미출력)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/ops/db-keepalive.mjs

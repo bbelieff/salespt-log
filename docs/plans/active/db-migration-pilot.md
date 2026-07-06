@@ -88,6 +88,9 @@ create index sheet_rows_payload on sheet_rows using gin (payload);
 
 ## Log
 - 2026-07-06 파일럿 확정: 대상 8기+9기, VPS Docker Postgres, jsonb 미러 dual-write, 읽기 무변경.
+- 2026-07-07 P1a 인프라 구현: lib/repo/db/(pg Pool·스키마 자동생성·upsert/count) +
+  pg 격리 구조테스트 + keep-alive 크론(.github/workflows/db-keepalive.yml, 주1회) +
+  scripts/ops/(백업·옵션B) + admin 랜딩 DB 상태 스트립. P0 계측은 #484 로 가동 중.
 - 2026-07-06 호스팅 정정: **VPS Docker → Supabase 관리형**(Seoul, PG17, Session Pooler).
   대응 병기: 주1회 keep-alive 크론 + scripts/ops/ pg_dump 백업. VPS compose 는 옵션 B 강등.
   DATABASE_URL Secrets 등록 + 배포 주입(#481)까지 완료 — belie 인프라 단계 종료.
