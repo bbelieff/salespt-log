@@ -7,8 +7,9 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getSessionEmail, canViewAdminPages } from "@/auth/identity";
 import { loadScoreboard, SCOREBOARD_TAG } from "@/service/scoreboard";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function GET(req: Request) {
+async function GET_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !(await canViewAdminPages(sessionEmail)))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -19,3 +20,6 @@ export async function GET(req: Request) {
   const data = await loadScoreboard();
   return NextResponse.json(data);
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/admin/scoreboard:GET", GET_handler);

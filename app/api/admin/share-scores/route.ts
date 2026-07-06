@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { saveShareScores } from "@/service/scoreboard";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const Body = z.object({
   rows: z
@@ -21,7 +22,7 @@ const Body = z.object({
     .max(500),
 });
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const email = await getSessionEmail();
   if (!email)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -36,3 +37,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/share-scores:POST", POST_handler);

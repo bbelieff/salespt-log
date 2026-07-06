@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { editContractLinkedFields } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const Body = z.object({
   meetingId: z.string().optional(),
@@ -18,7 +19,7 @@ const Body = z.object({
   }),
 });
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   try {
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
@@ -32,3 +33,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/contract-payment/edit-linked:POST", POST_handler);

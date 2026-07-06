@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { loadWeekMeetings } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const DateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
 
@@ -16,7 +17,7 @@ interface RouteContext {
   params: Promise<{ weekStart: string }>;
 }
 
-export async function GET(_req: NextRequest, ctx: RouteContext) {
+async function GET_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { weekStart } = await ctx.params;
     const parsed = DateParam.safeParse(weekStart);
@@ -34,3 +35,6 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/meetings/week/[weekStart]:GET", GET_handler);

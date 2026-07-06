@@ -17,10 +17,11 @@
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { migrateRegistryCache } from "@/repo/users-cache-migrate";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+async function POST_handler() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -30,3 +31,6 @@ export async function POST() {
   const result = await migrateRegistryCache();
   return NextResponse.json(result);
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/migrate-registry-cache:POST", POST_handler);

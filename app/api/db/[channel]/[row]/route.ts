@@ -21,6 +21,7 @@ import {
   removePurchase,
 } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const RowParam = z.coerce.number().int().min(2);
 
@@ -28,7 +29,7 @@ interface RouteContext {
   params: Promise<{ channel: string; row: string }>;
 }
 
-export async function PATCH(req: NextRequest, ctx: RouteContext) {
+async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { channel, row } = await ctx.params;
     const decoded = decodeURIComponent(channel);
@@ -96,7 +97,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   }
 }
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { channel, row } = await ctx.params;
     const decoded = decodeURIComponent(channel);
@@ -134,3 +135,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const PATCH = withApiTiming("api/db/[channel]/[row]:PATCH", PATCH_handler);
+export const DELETE = withApiTiming("api/db/[channel]/[row]:DELETE", DELETE_handler);

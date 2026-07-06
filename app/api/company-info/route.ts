@@ -11,8 +11,9 @@ import {
 } from "@/service/contract-payment";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function GET(req: NextRequest) {
+async function GET_handler(req: NextRequest) {
   try {
     const email = await getCurrentUserEmail();
     const sp = req.nextUrl.searchParams;
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   try {
     const email = await getWritableUserEmail(); // archived 읽기전용 가드
     const body = await req.json();
@@ -50,3 +51,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/company-info:GET", GET_handler);
+export const POST = withApiTiming("api/company-info:POST", POST_handler);

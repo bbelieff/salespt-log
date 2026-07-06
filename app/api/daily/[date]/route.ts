@@ -10,6 +10,7 @@ import { Channel } from "@/types";
 import { loadDay, saveContactMetrics } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const DateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
 
@@ -27,7 +28,7 @@ interface RouteContext {
   params: Promise<{ date: string }>;
 }
 
-export async function GET(_req: NextRequest, ctx: RouteContext) {
+async function GET_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { date } = await ctx.params;
     const parsed = DateParam.safeParse(date);
@@ -43,7 +44,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
   }
 }
 
-export async function POST(req: NextRequest, ctx: RouteContext) {
+async function POST_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { date } = await ctx.params;
     const dateParsed = DateParam.safeParse(date);
@@ -69,3 +70,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/daily/[date]:GET", GET_handler);
+export const POST = withApiTiming("api/daily/[date]:POST", POST_handler);

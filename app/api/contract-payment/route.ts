@@ -16,6 +16,7 @@ import {
   syncContractFee,
 } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const ContractFeeBody = z.object({
   계약일: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
@@ -23,7 +24,7 @@ const ContractFeeBody = z.object({
   수임비: z.number().nonnegative(),
 });
 
-export async function GET() {
+async function GET_handler() {
   try {
     const email = await getWritableUserEmail();
     const rows = await loadContractPayments(email);
@@ -34,7 +35,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   try {
     const body = await req.json();
     const parsed = ContractFeeBody.safeParse(body);
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
+async function PATCH_handler(req: NextRequest) {
   try {
     const body = await req.json();
     const parsed = ContractFeeBody.safeParse(body);
@@ -74,3 +75,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/contract-payment:GET", GET_handler);
+export const POST = withApiTiming("api/contract-payment:POST", POST_handler);
+export const PATCH = withApiTiming("api/contract-payment:PATCH", PATCH_handler);

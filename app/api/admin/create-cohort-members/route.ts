@@ -25,6 +25,7 @@ import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import { copyTemplateSheet, findFolderContainingName } from "@/repo/drive-client";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 interface MemberInput {
   name?: unknown;
@@ -64,7 +65,7 @@ async function copyWithRetry(
   }
 }
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -249,3 +250,6 @@ export async function POST(req: Request) {
     failed,
   });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/create-cohort-members:POST", POST_handler);

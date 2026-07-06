@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { loadMonthMeetings } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const Param = z.string().regex(/^\d{4}-\d{2}$/, "YYYY-MM");
 
@@ -15,7 +16,7 @@ interface RouteContext {
   params: Promise<{ yyyymm: string }>;
 }
 
-export async function GET(_req: NextRequest, ctx: RouteContext) {
+async function GET_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { yyyymm } = await ctx.params;
     const parsed = Param.safeParse(yyyymm);
@@ -33,3 +34,6 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/meetings/month/[yyyymm]:GET", GET_handler);

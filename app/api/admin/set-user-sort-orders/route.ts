@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { setUserSortOrders } from "@/repo/users";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ const Body = z.object({
     .max(500),
 });
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -50,3 +51,6 @@ export async function POST(req: Request) {
   const result = await setUserSortOrders(parsed.data.orders);
   return NextResponse.json(result);
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/set-user-sort-orders:POST", POST_handler);

@@ -37,6 +37,7 @@ import {
 import { addTraineePrepRow } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
 import { writeProfile } from "@/repo/sales";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 /** Drive 쓰기(copy/create)는 sheets-client 자동 retry 밖 → 여기서 429 재시도. */
 async function driveWriteRetry<T>(fn: () => Promise<T>): Promise<T> {
@@ -54,7 +55,7 @@ async function driveWriteRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
@@ -211,3 +212,6 @@ export async function POST(req: Request) {
     errors: parsed.errors,
   });
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/admin/create-arena-members:POST", POST_handler);

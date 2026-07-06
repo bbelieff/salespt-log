@@ -18,10 +18,11 @@ import { registry } from "@/config";
 import { readRange } from "@/repo/sheets-client";
 import { User } from "@/types";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+async function GET_handler(req: Request) {
   const session = await getSessionEmail();
   if (!session) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   if (!isAdminEmail(session)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -89,3 +90,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const GET = withApiTiming("api/_debug/registry:GET", GET_handler);

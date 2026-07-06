@@ -24,6 +24,7 @@ import { nameMatchCandidates } from "@/repo/name-match";
 import { buildArenaCompanyFolderName } from "@/service/cohort-token";
 import { getWritableUserEmail } from "@/auth/identity";
 import type { User } from "@/types";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const FEEDBACK_PREFIX = "01";
 
@@ -98,7 +99,7 @@ const ARENA_NOT_FOUND = {
     "'업체관리' 폴더를 찾지 못했어요. 운영자에게 받은 업체관리 폴더 주소를 붙여넣거나, 운영자에게 알려주세요.",
 };
 
-export async function POST(req: Request) {
+async function POST_handler(req: Request) {
   try {
     const email = await getWritableUserEmail();
     const user = await findUserByEmail(email);
@@ -249,3 +250,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// API 타이밍 계측 (db-migration-pilot §1 P0)
+export const POST = withApiTiming("api/drive-link:POST", POST_handler);
