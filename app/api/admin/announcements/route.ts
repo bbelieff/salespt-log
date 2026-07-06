@@ -65,6 +65,7 @@ const PatchBody = z.object({
   bodyMd: z.string().optional(),
   milestone: z.string().optional(),
   visible: z.boolean().optional(),
+  anchor: z.string().optional(),
 });
 
 export async function PATCH(req: Request) {

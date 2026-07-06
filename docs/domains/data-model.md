@@ -521,7 +521,7 @@ interface DashboardView {
 ### 새소식 (레지스트리 updates·notices 탭 · announcement-popup §1)
 | 식별자 | 종류 | 의미 |
 |---|---|---|
-| `UpdateItem` | z.object | 배포 시 자동 수집된 업데이트 1행 (updates A~G). 키 `pr`(번호, 멱등 가드). `titleUser`=수강생용 한 줄(커밋 `Changelog:` 줄), `visible` 기본 feat·fix=TRUE |
+| `UpdateItem` | z.object | 배포 시 자동 수집된 업데이트 1행 (updates A~H). 키 `pr`(번호, 멱등 가드). `titleUser`=수강생용 한 줄(커밋 `Changelog:` 줄), `visible` 기본 feat·fix=TRUE, `anchor`=앱 내 NEW 앵커 키(H, new-feature-highlight §1) |
 | `NoticeAudience` | z.enum | 공지 대상 3: `all` / `arena`(cohort 라벨 `A` 접두) / `regular` |
 | `NoticeDisplayMode` | z.enum | 노출 빈도 3: `once` / `daily` / `always` (제어=클라 localStorage) |
 | `Notice` | z.object | 운영자 공지 1행 (notices A~K). MD 본문(sanitize 후 렌더), 기간 start~end(빈값 무제한), pinned/active |

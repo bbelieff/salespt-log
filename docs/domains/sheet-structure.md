@@ -595,8 +595,9 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | E | body_md | 상세 MD (선택, admin 작성) |
 | F | milestone | **그룹 키** — `Changelog-Group: <키>` 수집 적재 + admin 수동 보정. 같은 키 행들이 팝업·보관함에서 1항목으로 묶임 (announcement-popup §7-1) |
 | G | visible | TRUE/FALSE — 기본: feat·fix=TRUE, docs·chore·refactor=FALSE. **그룹 PR 은 FALSE 적재** → 그룹 마지막 커밋의 `Changelog-Done` 으로 그룹 일괄 TRUE (반쪽 기능 가드, §7-3) |
+| H | anchor | **앱 내 NEW 표시 앵커 키** (new-feature-highlight §1) — 커밋 본문 `Changelog-Anchor: <키>` 수집 + admin 수동 보정. 유효 키 = `lib/config/anchors.ts` ANCHORS 등록분만(미등록 키는 무시+경고 로그). visible=TRUE 인 feat(그룹) 중 anchor 있는 최신 1건만 활성, 상한 14일 |
 
-범위: `A2:G`.
+범위: `A2:H`.
 
 ### 6.3 `notices` 탭 (레지스트리 내 별도 탭 — 운영자 공지, announcement-popup §1-2)
 

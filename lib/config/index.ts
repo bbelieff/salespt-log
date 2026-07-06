@@ -286,8 +286,8 @@ export const SHEET_RANGES = {
   // admin 팝업관리 작성(notices). lib/repo/announcements.ts 전용.
   updates: {
     tab: "updates",
-    headerRow: "A1:G1",
-    range: "A2:G", // pr/date/type/title_user/body_md/milestone/visible
+    headerRow: "A1:H1",
+    range: "A2:H", // pr/date/type/title_user/body_md/milestone/visible/anchor
   },
   notices: {
     tab: "notices",

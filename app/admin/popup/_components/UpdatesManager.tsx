@@ -29,7 +29,8 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
       !o ||
       o.titleUser !== r.titleUser ||
       o.milestone !== r.milestone ||
-      o.visible !== r.visible
+      o.visible !== r.visible ||
+      o.anchor !== r.anchor
     );
   };
   const dirtyRows = rows.filter(isDirty);
@@ -49,6 +50,7 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
               titleUser: row.titleUser,
               milestone: row.milestone,
               visible: row.visible,
+              anchor: row.anchor,
             }),
           });
           if (!res.ok) {
@@ -92,6 +94,7 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
           <span className="w-16 shrink-0">날짜</span>
           <span className="min-w-0 flex-1">내용</span>
           <span className="w-28 shrink-0">마일스톤</span>
+          <span className="w-28 shrink-0">앵커</span>
           <span className="w-24 shrink-0 text-center">노출</span>
         </div>
       )}
@@ -168,6 +171,13 @@ export default function UpdatesManager({ initialUpdates }: { initialUpdates: Upd
                 value={u.milestone}
                 onChange={(e) => edit(u.pr, { milestone: e.target.value })}
                 placeholder="마일스톤 (선택)"
+              />
+              {/* 앵커 키 — 앱 내 NEW 위치 (lib/config/anchors.ts 등록 키만 유효). */}
+              <input
+                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none pc:w-28 pc:shrink-0"
+                value={u.anchor}
+                onChange={(e) => edit(u.pr, { anchor: e.target.value })}
+                placeholder="앵커 키 (선택)"
               />
             </li>
           );

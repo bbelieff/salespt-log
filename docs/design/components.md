@@ -429,6 +429,21 @@ function getTimeValue(hourId, minuteId) {
 
 **현재 사용 위치:** 일정·계약 탭 상태 필터 (제한적 사용. 카드 본체에는 §7 Meeting Card의 좌측바 패턴 사용)
 
+### NEW 뱃지 (NewBadge) — 새 기능 하이라이트 ⭐
+
+> SoR: `docs/plans/*/new-feature-highlight.md`. 활성 앵커(visible feat 중 anchor 있는 최신 1건, 상한 14일)와 `anchorKey` 가 일치할 때만 "NEW" 필 렌더. 앵커 키 SSOT = `lib/config/anchors.ts` ANCHORS(코드 상수가 정본, 미등록 키는 서버가 무시+경고 로그).
+
+```html
+<span class="ml-1 inline-flex shrink-0 items-center rounded-full bg-brand-red px-1.5 text-xs font-bold leading-tight text-white">NEW</span>
+```
+
+- **문구 "NEW" 고정** (2~3자, 모바일 잘림 없음). 색 = 기존 `bg-brand-red` 토큰.
+- 래퍼 사용: `<NewBadge anchorKey="calendar.gcalCard">{children}</NewBadge>` — children 뒤 인라인 append(레이아웃 밀림 최소).
+- 위치 뱃지는 활성 기간 동안 유지(개인 해제 없음). 개인 해제는 **하단 탭 점만**(localStorage `anchorSeen:{key}:{pr}`, 해당 화면 방문 시).
+- **팝업/보관함 "새 기능" 뱃지**: UpdateAccordion 이 feat 포함 항목(그룹)에 `bg-red-50 text-brand-red` "새 기능" 필 + `border-red-200` 테두리 강조. fix/perf/chore 는 없음.
+
+**현재 사용 위치:** (배치 예정) 캘린더 탭 구글 캘린더 연동 카드 — feat/gcal-connect. 팝업·보관함 뱃지는 UpdateAccordion 내장.
+
 ## 5. Navigation
 
 ### Bottom Navigation (모바일) — 4+1 (ADR-0019)
@@ -444,6 +459,7 @@ function getTimeValue(hourId, minuteId) {
 - **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px) 중앙정렬. **탭타깃 ≥44px**(`minHeight:44`+py).
 - **미저장 가드 유지**: 모든 탭/FAB 라우팅은 `useGuardedRouter().push` 경유(절대 제거 금지).
 - **a11y**: 활성 탭 `aria-current="page"`, 아이콘 칩·화살표 `aria-hidden`, FAB `aria-label="캘린더"`.
+- **새 기능 점(dot)**: 활성 앵커(§4 NewBadge)가 속한 탭의 아이콘 칩 우상단에 `h-2 w-2 rounded-full bg-brand-red` 점. 해당 화면 방문 시 localStorage(`anchorSeen:{key}:{pr}`)로 개인 해제 — 위치 NEW 뱃지는 유지.
 - **라벨**: `DB관리 → DB생산`(사용자 노출만). 라우트 `/db`·코드 키·아이콘 SVG는 불변.
 - 구현: `TabBar.tsx` 설정 기반(LEFT/RIGHT `Tab[]`{step,color} + CenterFab) + 프리미티브 `TabItem`/`CenterFab`/`FlowArrow`.
 

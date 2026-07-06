@@ -57,4 +57,19 @@ describe("parseCommit (grouped-updates)", () => {
     expect(r.type).toBe("docs");
     expect(r.visible).toBe("FALSE");
   });
+
+  it("Changelog-Anchor → anchor 적재 (new-feature-highlight §1)", () => {
+    const r = parseCommit(
+      "2026-07-06",
+      "feat(calendar): 구글 캘린더 연결 (#480)",
+      "Changelog: 내 구글 캘린더를 연결할 수 있어요\nChangelog-Group: 구글캘린더\nChangelog-Anchor: calendar.gcalCard\n",
+    );
+    expect(r.anchor).toBe("calendar.gcalCard");
+    expect(r.group).toBe("구글캘린더");
+  });
+
+  it("Anchor 줄 없으면 anchor 빈 문자열", () => {
+    const r = parseCommit("2026-07-06", "feat(x): y (#481)", "Changelog: 좋아졌어요.");
+    expect(r.anchor).toBe("");
+  });
 });
