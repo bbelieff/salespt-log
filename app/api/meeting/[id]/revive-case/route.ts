@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { reviveCaseClosure } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -19,7 +19,7 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
     if (!id) {
       return NextResponse.json({ error: "id 필수" }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const result = await reviveCaseClosure(email, id);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {

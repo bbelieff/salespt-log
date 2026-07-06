@@ -20,6 +20,7 @@
  */
 import { redirect } from "next/navigation";
 import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
+import { hasOwnSheet } from "@/repo/user-priority";
 import { getArchivedCohortSet } from "@/repo/cohorts";
 import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
@@ -56,11 +57,16 @@ export default async function HomePage() {
   if (!user) user = await findUserByEmail(sessionEmail, { fresh: true });
   if (!user) redirect("/claim");
   // 보관(archived) — 행 자체 또는 cohorts 탭 보관 기수(rejoin §1) → 클레임 화면으로.
+  // 단, **본인 시트가 있는 등록 수강생은 보관이어도 통과**(읽기 전용 입장,
+  // archived-login-access 2026-07-07 — 함진숙 무한 클레임 루프 수정). 재참가가 필요한
+  // 사람은 /claim 을 직접 열어 이용(강제 리다이렉트만 제거, 클레임 자체는 유지).
   // cohorts read 는 라우팅 결정 지점인 여기서만(hot-path findUserByEmail 에서 분리,
   // claim-stuck quota 경감 2026-06-12).
-  if (user.status === "archived") redirect("/claim");
-  const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
-  if (isNumericCohortArchived(user.role, user.cohort, archivedLabels)) redirect("/claim");
+  if (!hasOwnSheet(user)) {
+    if (user.status === "archived") redirect("/claim");
+    const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
+    if (isNumericCohortArchived(user.role, user.cohort, archivedLabels)) redirect("/claim");
+  }
   // 트레이너처럼 수강생도 admin 승인 필요 (2026-05-12).
   // 기존 active trainee 들은 영향 없음 (이미 status=active).
   if (user.status === "pending") {

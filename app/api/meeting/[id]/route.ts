@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Meeting } from "@/types";
 import { patchMeeting, removeMeetingWithCascade } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     await patchMeeting(email, id, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -39,7 +39,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
     if (!id) {
       return NextResponse.json({ error: "id 필수" }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     // 2026-05-18 Phase 1: cascade — 미팅 삭제 시 매칭 계약카드 자동 clear.
     const result = await removeMeetingWithCascade(email, id);
     return NextResponse.json({ ok: true, ...result });

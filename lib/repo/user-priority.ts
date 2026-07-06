@@ -15,6 +15,14 @@ export function isArenaCohortLabel(cohort: string): boolean {
   return /^A\d+-\d+/.test(String(cohort).trim());
 }
 
+/** 본인 시트를 가진 등록 수강생인가 — archived 라우팅 통과 판정
+ * (archived-login-access, 2026-07-07). 보관(행 status=archived 또는 cohorts 보관
+ * 기수)이어도 이 함수가 true 면 /claim 강제 이동 없이 대시보드 입장(읽기 전용).
+ * 트레이너/미등록(시트 없음)은 false — 기존 라우팅 유지. */
+export function hasOwnSheet(u: Pick<User, "role" | "spreadsheetId"> | null | undefined): boolean {
+  return !!u && u.role === "trainee" && u.spreadsheetId.trim() !== "";
+}
+
 /** dedup: 같은 email 다중 행 중 **유지할** 행 index. 우선순위 ① 아레나 > 숫자,
  * ② active > 그외, ③ 같으면 마지막(최신). 나머지는 삭제 대상(registry-backfill §1). */
 export function dedupKeepIndex(

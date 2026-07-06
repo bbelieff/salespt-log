@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ContractPayment } from "@/types";
 import { addPriorContract } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const result = await addPriorContract(email, parsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {

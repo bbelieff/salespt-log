@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { editContractLinkedFields } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 const Body = z.object({
   meetingId: z.string().optional(),
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const { failures } = await editContractLinkedFields(email, parsed.data);
     return NextResponse.json({ ok: failures.length === 0, failures });
   } catch (e) {

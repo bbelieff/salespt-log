@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Meeting } from "@/types";
 import { appendNewMeeting } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     await appendNewMeeting(email, parsed.data);
     return NextResponse.json({ ok: true, id: parsed.data.id });
   } catch (e) {

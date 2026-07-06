@@ -11,10 +11,10 @@
 import { NextResponse } from "next/server";
 import { findUserByEmail } from "@/repo/users";
 import { installFormulas, uninstallFormulas } from "@/repo/setup-formulas";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 async function resolveSpreadsheetId(): Promise<string> {
-  const email = await getCurrentUserEmail();
+  const email = await getWritableUserEmail();
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`등록되지 않은 사용자: ${email}`);
   return user.spreadsheetId;

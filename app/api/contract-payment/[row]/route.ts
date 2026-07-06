@@ -10,7 +10,7 @@ import {
   removeContractPayment,
   removeContractPaymentWithCascade,
 } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 const RowParam = z.coerce.number().int().min(3);
 
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     await patchContractPayment(email, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -57,7 +57,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     // 2026-05-17 [3]: ?cascade=meeting 이면 매칭 미팅 계약→예약 revert
     const cascade = req.nextUrl.searchParams.get("cascade") === "meeting";
     if (cascade) {

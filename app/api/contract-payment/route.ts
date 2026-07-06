@@ -15,7 +15,7 @@ import {
   loadContractPayments,
   syncContractFee,
 } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 
 const ContractFeeBody = z.object({
   계약일: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
@@ -25,7 +25,7 @@ const ContractFeeBody = z.object({
 
 export async function GET() {
   try {
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const rows = await loadContractPayments(email);
     return NextResponse.json({ rows });
   } catch (e) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const result = await addFromContract(email, parsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const result = await syncContractFee(email, parsed.data);
     if (!result) {
       return NextResponse.json({ ok: true, synced: false });

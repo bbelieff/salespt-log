@@ -22,7 +22,7 @@ import { listCohorts } from "@/repo/cohorts";
 import { isArenaCohort, normalizeArenaCohort } from "@/repo/users-arena";
 import { nameMatchCandidates } from "@/repo/name-match";
 import { buildArenaCompanyFolderName } from "@/service/cohort-token";
-import { getCurrentUserEmail } from "@/auth/stub";
+import { getWritableUserEmail } from "@/auth/identity";
 import type { User } from "@/types";
 
 const FEEDBACK_PREFIX = "01";
@@ -100,7 +100,7 @@ const ARENA_NOT_FOUND = {
 
 export async function POST(req: Request) {
   try {
-    const email = await getCurrentUserEmail();
+    const email = await getWritableUserEmail();
     const user = await findUserByEmail(email);
     if (!user) {
       return NextResponse.json({ error: "등록되지 않은 사용자" }, { status: 401 });

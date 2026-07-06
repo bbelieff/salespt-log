@@ -140,6 +140,24 @@ export async function getActiveUserEmail(): Promise<string> {
   return as.toLowerCase();
 }
 
+/** 보관 사용자 읽기 전용 위반 식별용 — 라우트 catch 가 403 으로 매핑. */
+export const READ_ONLY_ARCHIVED_MSG =
+  "수료(보관)된 기수는 읽기 전용이에요. 저장할 수 없어요.";
+
+/** 쓰기 경로 전용 대상 이메일 — archived(보관) 사용자는 차단(읽기 전용 보장,
+ * archived-login-access 2026-07-07). 보관 라우팅 통과와 세트: 입장은 허용하되
+ * 저장 계열 API 는 이 함수로 교체해 과거 데이터 오염을 막는다.
+ * **admin 세션(impersonation 포함)은 예외** — 관리자 보정 작업 기존 동작 유지.
+ * GET(읽기) 라우트는 getActiveUserEmail/getCurrentUserEmail 그대로 사용할 것. */
+export async function getWritableUserEmail(): Promise<string> {
+  const sessionEmail = await getSessionEmail();
+  const email = await getActiveUserEmail(); // 미인증 throw 동일
+  if (sessionEmail && isAdminEmail(sessionEmail)) return email;
+  const u = await findUserByEmail(email);
+  if (u?.status === "archived") throw new Error(READ_ONLY_ARCHIVED_MSG);
+  return email;
+}
+
 /** admin/trainer 만 impersonation 설정 가능. 권한 위반 시 throw. */
 export async function setImpersonation(target: string | null): Promise<void> {
   const sessionEmail = await getSessionEmail();
