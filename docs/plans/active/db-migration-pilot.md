@@ -9,7 +9,7 @@ related: architecture, sheet-structure, handoff-2026-07-06-cowork
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 느림의 구조적 원인(Sheets=DB)을 제거하기 위한 Postgres 파일럿 — 8기(진행 중)·9기(7/10 시작)에 이중 기록(P1)을 가동하고, 검증 후 10기부터 정본 전환(P3)을 노린다.
 > - **누가 읽나요**: 개발자, 에이전트(Opus 세션 포함), 운영자(belie)
-> - **어떤 기능·작업과 연결?**: lib/repo 전체(쓰기 경로), VPS(docker Postgres), 배포 파이프라인, 이후 P2(읽기 전환)·P3(정본 전환)
+> - **어떤 기능·작업과 연결?**: lib/repo 전체(쓰기 경로), Supabase Postgres(관리형), 배포 파이프라인, 이후 P2(읽기 전환)·P3(정본 전환)
 > - **읽고 나면 알 수 있는 것**: 왜 DB인가, 파일럿 범위/일정, 스키마 초안, 무엇이 위험하고 무엇이 무위험인가
 > - **관련 문서**: docs/architecture.md, docs/handoffs/2026-07-06-cowork-session-to-opus.md
 
@@ -21,8 +21,16 @@ related: architecture, sheet-structure, handoff-2026-07-06-cowork
 - 기각: ① 시트 구조만 DB화(왕복·쿼터 그대로, 효과 미미) ② 기수 통합 시트(동시 쓰기 충돌·
   수식 범위 확대·장애 반경 — 속도에 악수).
 - 채택: **Postgres 를 SSOT 로 단계 전환. 시트는 폐기가 아니라 "운영자용 미러/export"로 강등.**
-- 호스팅: **기존 VPS 에 Docker Postgres = 0원**(일시정지 없음, pg_dump cron 백업).
-  Supabase 무료(500MB)도 용량은 충분하나 7일 무활동 일시정지·무백업 함정 → 차선.
+- 호스팅: **Supabase(관리형) 채택** ← ~~VPS Docker Postgres~~ (2026-07-06 사용자 정정).
+  확정값(비밀 아님): 프로젝트 `aoevgfroxdvgbmgvzlfb` · 리전 ap-northeast-2(Seoul) ·
+  Postgres 17 · 접속 = **Session Pooler URI**(`sslmode=require`). 접속 경로는
+  `DATABASE_URL` 하나(GitHub Secrets 등록 완료, 배포가 VPS .env 주입 — #481 적용됨).
+  무료 티어 함정 2건은 **대응 병기**:
+  ① 7일 무요청 일시정지 → **주 1회 keep-alive 쿼리**(서버 크론) 추가.
+  ② 자동 백업 없음 → `scripts/ops/` 에 pg_dump 백업 스크립트 주기 실행 준비.
+  VPS Docker compose·pg_dump cron 산출물은 `scripts/ops/` 에 **"옵션 B(셀프호스트)"**
+  로 보존하되 기본 아님. 스키마 마이그레이션 스크립트는 `DATABASE_URL` 대상 실행형으로
+  작성(URL·비밀번호 코드/로그 노출 금지).
 - 근거 인프라: googleapis 가 lib/repo/ 에 격리(구조 테스트 강제) → 교체 = repo 재구현이지
   앱 재작성 아님.
 
@@ -53,8 +61,9 @@ create index sheet_rows_payload on sheet_rows using gin (payload);
 ```
 - 파일럿 목적 = 파이프라인 검증 + 데이터 축적. 이 단계에서 정규화 테이블 설계에 시간 쓰지 않음
   (YAGNI — P2 에서 실사용 쿼리 기준으로 정규화).
-- 연결: `DATABASE_URL` env (config 등재). pg 클라이언트는 **lib/repo/db/ 전용**(googleapis
-  격리와 동일한 구조 테스트 가드 신설).
+- 연결: `DATABASE_URL` env (config 등재) — Supabase Session Pooler URI(`sslmode=require`),
+  **pg Pool** 사용. pg 클라이언트는 **lib/repo/db/ 전용**(googleapis 격리와 동일한
+  구조 테스트 가드 신설).
 
 ## 3. 안전 원칙
 - dual-write 는 **비차단·후행**: 시트 쓰기 성공 후 시도, 실패는 경고 로그+PostHog 카운트만.
@@ -67,7 +76,7 @@ create index sheet_rows_payload on sheet_rows using gin (payload);
 |---|---|---|
 | 7/6(월) | 본 기획서+프롬프트 3종 | Cowork ✅ |
 | 7/7(화) | P0 계측 PR + P1a 인프라 PR(스키마·클라이언트·compose) 구현 | Claude Code |
-| 7/7~8 | VPS Postgres 기동 + DATABASE_URL 등록(가이드 따라) | **belie** |
+| 7/7~8 | ~~VPS Postgres 기동~~ → ✅ Supabase 생성 + Secrets 등록 + 배포 주입(#481) 완료 | **belie** ✅ |
 | 7/8(수) | P1b 이중기록 PR + 8기 backfill 실행, Opus 세션 인수 | Claude Code |
 | 7/9(목) | 라이브 정합 확인(8기 실사용 하루) + 9기 시트 생성(기존 배치) | 공동 |
 | 7/10(금) | 9기 시작 — 첫날부터 dual-write 축적 | — |
@@ -79,3 +88,6 @@ create index sheet_rows_payload on sheet_rows using gin (payload);
 
 ## Log
 - 2026-07-06 파일럿 확정: 대상 8기+9기, VPS Docker Postgres, jsonb 미러 dual-write, 읽기 무변경.
+- 2026-07-06 호스팅 정정: **VPS Docker → Supabase 관리형**(Seoul, PG17, Session Pooler).
+  대응 병기: 주1회 keep-alive 크론 + scripts/ops/ pg_dump 백업. VPS compose 는 옵션 B 강등.
+  DATABASE_URL Secrets 등록 + 배포 주입(#481)까지 완료 — belie 인프라 단계 종료.
