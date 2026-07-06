@@ -30,6 +30,49 @@ jobs:
           #       아래 Deploy 단계가 *연결 실패(rc=255)에 한해* 재시도한다.
           ssh-keyscan -T 15 -t rsa,ecdsa,ed25519 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Inject DATABASE_URL into VPS .env (idempotent, 값 미출력)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # DB 파일럿(db-migration-pilot §3 secret 원칙): 운영자가 SSH 작업 없이
+          # GitHub Secrets(DATABASE_URL) 등록만으로 VPS .env 에 반영되게 한다.
+          # ★값 노출 금지: echo/set -x/커맨드라인 인자 경로 일절 없음 —
+          #   값은 stdin→원격 임시파일(600)로만 이동. (GH 가 secret 을 *** 마스킹하지만
+          #   그것에 기대지 않고 출력 경로 자체를 만들지 않는다.)
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret 미설정 — 주입 스킵"
+            exit 0
+          fi
+          SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -i $HOME/.ssh/id_ed25519"
+          set +e
+          # 1) 값 전송: stdin → 원격 임시파일 (umask 077 → 600)
+          printf '%s' "$DATABASE_URL" | ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" \
+            "umask 077 && cat > /opt/salespt-log/.env.dburl.tmp"
+          rc1=$?
+          # 2) 원격 편집: .env 의 DATABASE_URL= 줄만 제자리 교체(없으면 맨 아래 추가).
+          #    다른 줄 비파괴. 값은 awk ENVIRON 경유(이스케이프 불필요·비출력).
+          ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" "bash -s" <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          touch .env
+          DATABASE_URL_VALUE="$(cat .env.dburl.tmp)" awk '
+            BEGIN { u = ENVIRON["DATABASE_URL_VALUE"]; done = 0 }
+            /^DATABASE_URL=/ { if (!done) { print "DATABASE_URL=" u; done = 1 }; next }
+            { print }
+            END { if (!done) print "DATABASE_URL=" u }
+          ' .env > .env.dburl.new
+          chmod 600 .env.dburl.new
+          mv .env.dburl.new .env
+          rm -f .env.dburl.tmp
+          echo "DATABASE_URL 주입 OK (값 미출력) — .env 총 $(grep -c "" .env)줄"
+          REMOTE_EOF
+          rc2=$?
+          set -e
+          if [ "$rc1" != "0" ] || [ "$rc2" != "0" ]; then
+            # 주입 실패는 경고만 — 배포 자체는 계속(파일럿 dual-write 는 비차단 설계).
+            echo "::warning::DATABASE_URL 주입 실패(rc=$rc1/$rc2) — 배포는 계속 진행"
+          fi
+
       - name: Deploy on VPS
         run: |
           REMOTE='

@@ -19,6 +19,14 @@
 - RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
 - **SSH 접속(2026-06-04 개선)**: `ssh-keyscan` 은 best-effort(`|| true`) — 하드 게이트 아님. 실제 ssh 는 `StrictHostKeyChecking=accept-new`(TOFU) + `ConnectTimeout=30` 으로 known_hosts 없이도 접속. 러너↔VPS 22번의 **간헐적 연결 타임아웃**은 Deploy 단계가 **연결 실패(ssh rc=255)에 한해 최대 3회 재시도**로 흡수(빌드/원격 실패=다른 rc 는 즉시 fail → 롤백 신호). 과거: keyscan 을 하드 게이트로 둬서 간헐 타임아웃에 배포 전체가 막히던 오진 유발(sshd 는 정상이었음).
 
+**Secret 추가 절차 (운영자용 — SSH 불필요, 2026-07-06 도입)**: 배포 파이프라인이
+GitHub Secrets 의 `DATABASE_URL` 을 VPS `/opt/salespt-log/.env` 에 자동 주입한다
+(deploy.yml "Inject DATABASE_URL" 스텝 — 멱등: 해당 키 한 줄만 교체/추가, 다른 줄 비파괴,
+값은 stdin→원격 600 파일로만 이동해 **로그에 절대 안 찍힘**). 등록 방법: GitHub 레포 →
+**Settings → Secrets and variables → Actions → New repository secret** → Name `DATABASE_URL`,
+Value 에 접속 문자열 입력 → 다음 배포부터 자동 반영. secret 미설정이면 스텝은 조용히 스킵,
+주입 실패는 경고만 남기고 배포는 계속(파일럿 dual-write 비차단 원칙, db-migration-pilot §3).
+
 **머지 후 에이전트 절차** (CLAUDE.md §6.8):
 1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
 2. 배포 run 관찰: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion,status`.
