@@ -44,14 +44,10 @@ jobs:
             exit 0
           fi
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -i $HOME/.ssh/id_ed25519"
-          set +e
-          # 1) 값 전송: stdin → 원격 임시파일 (umask 077 → 600)
-          printf '%s' "$DATABASE_URL" | ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" \
-            "umask 077 && cat > /opt/salespt-log/.env.dburl.tmp"
-          rc1=$?
-          # 2) 원격 편집: .env 의 DATABASE_URL= 줄만 제자리 교체(없으면 맨 아래 추가).
-          #    다른 줄 비파괴. 값은 awk ENVIRON 경유(이스케이프 불필요·비출력).
-          ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" "bash -s" <<'REMOTE_EOF'
+          # 원격 편집 스크립트 — .env 의 DATABASE_URL= 줄만 제자리 교체(없으면 맨 아래 추가).
+          # 다른 줄 비파괴. 값은 awk ENVIRON 경유(이스케이프 불필요·비출력). 멱등:
+          # 이미 같은 값이 있어도 같은 값으로 교체될 뿐 — 재실행 안전.
+          REMOTE_EDIT=$(cat <<'REMOTE_EOF'
           set -e
           cd /opt/salespt-log
           touch .env
@@ -66,10 +62,31 @@ jobs:
           rm -f .env.dburl.tmp
           echo "DATABASE_URL 주입 OK (값 미출력) — .env 총 $(grep -c "" .env)줄"
           REMOTE_EOF
-          rc2=$?
+          )
+          set +e
+          # 연결 실패(rc=255) 재시도 2회 — 2026-07-07 run#426: VPS 22번 간헐 도달성
+          # 장애가 단발 시도를 그대로 삼킴. Deploy 단계와 동일한 완화(짧은 버전).
+          rc1=1; rc2=1
+          for t in 1 2; do
+            # 1) 값 전송: stdin → 원격 임시파일 (umask 077 → 600)
+            printf '%s' "$DATABASE_URL" | ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" \
+              "umask 077 && cat > /opt/salespt-log/.env.dburl.tmp"
+            rc1=$?
+            if [ "$rc1" = "0" ]; then
+              # 2) 원격 편집 실행
+              ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" "bash -s" <<<"$REMOTE_EDIT"
+              rc2=$?
+            fi
+            if [ "$rc1" = "0" ] && [ "$rc2" = "0" ]; then break; fi
+            if [ "$t" = "1" ]; then
+              echo "주입 ssh 실패(rc=$rc1/$rc2) — 30초 후 1회 재시도" >&2
+              sleep 30
+            fi
+          done
           set -e
           if [ "$rc1" != "0" ] || [ "$rc2" != "0" ]; then
             # 주입 실패는 경고만 — 배포 자체는 계속(파일럿 dual-write 는 비차단 설계).
+            # 멱등이라 다음 배포에서 자동 재주입된다.
             echo "::warning::DATABASE_URL 주입 실패(rc=$rc1/$rc2) — 배포는 계속 진행"
           fi
 
@@ -154,21 +171,25 @@ jobs:
           # 재시도는 *연결 실패(ssh rc=255)* 에만 — 빌드/원격스크립트 실패(다른 rc)는 즉시 fail(롤백 신호).
           # ⚠️ GitHub Actions 기본 셸은 `bash -e` → 맨 `ssh` 라인이 실패하면 rc=$? 전에 스텝이
           #    즉시 종료돼 재시도가 무력화됨. `|| rc=$?` 로 -e 를 우회해 종료코드를 반드시 포착.
-          for i in 1 2 3 4 5; do
+          # 재시도 창 확대(2026-07-07 run#426): 기존 5회×15s(총 ~3.5분)로는 실측 4~5분대
+          # 도달성 장애 창을 못 넘겼다(attempt 1·2 모두 타임아웃 전멸 → 빨강, 사이트는
+          # 무중단이라 정상 — docs/incidents/2026-07-07-deploy-426-vps-unreachable.md).
+          # 7회×30s(+ConnectTimeout 30s) = 총 ~7분 창으로 확대.
+          for i in 1 2 3 4 5 6 7; do
             rc=0
             ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
                 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
                 -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" "$REMOTE" || rc=$?
             if [ "$rc" = "0" ]; then exit 0; fi
             if [ "$rc" = "255" ]; then
-              echo "ssh 연결 실패(rc=255) — 시도 $i/5, 15초 후 재시도" >&2
-              sleep 15
+              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 30초 후 재시도" >&2
+              sleep 30
             else
               echo "원격 배포 스크립트 실패(rc=$rc) — 빌드/배포 오류이므로 재시도 안 함" >&2
               exit "$rc"
             fi
           done
-          echo "ssh 연결 5회 모두 실패 — VPS 도달성 지속 장애" >&2
+          echo "ssh 연결 7회 모두 실패 — VPS 도달성 지속 장애 (gh run rerun 권장)" >&2
           exit 1
 
       - name: Public health check
