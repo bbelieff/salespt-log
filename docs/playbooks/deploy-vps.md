@@ -17,7 +17,7 @@
 **배포(자동)**: `master` push → `.github/workflows/deploy.yml` 자동 실행. 수동 = `gh workflow run "Deploy to VPS"`.
 워크플로우: `git reset --hard origin/master` → `npm ci` → `rm -rf .next && npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → `pm2 save` → health(`:3000` + `https://salesptlog.online`).
 - RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
-- **SSH 접속(2026-06-04 개선)**: `ssh-keyscan` 은 best-effort(`|| true`) — 하드 게이트 아님. 실제 ssh 는 `StrictHostKeyChecking=accept-new`(TOFU) + `ConnectTimeout=30` 으로 known_hosts 없이도 접속. 러너↔VPS 22번의 **간헐적 연결 타임아웃**은 Deploy 단계가 **연결 실패(ssh rc=255)에 한해 최대 3회 재시도**로 흡수(빌드/원격 실패=다른 rc 는 즉시 fail → 롤백 신호). 과거: keyscan 을 하드 게이트로 둬서 간헐 타임아웃에 배포 전체가 막히던 오진 유발(sshd 는 정상이었음).
+- **SSH 접속(2026-06-04 개선)**: `ssh-keyscan` 은 best-effort(`|| true`) — 하드 게이트 아님. 실제 ssh 는 `StrictHostKeyChecking=accept-new`(TOFU) + `ConnectTimeout=30` 으로 known_hosts 없이도 접속. 러너↔VPS 22번의 **간헐적 연결 타임아웃**은 Deploy 단계가 **연결 실패(ssh rc=255)에 한해 최대 7회×30s(~7분 창) 재시도**로 흡수(2026-07-07 run#426: 5회×15s 창을 넘는 4~5분대 장애 실측 → 확대. 빌드/원격 실패=다른 rc 는 즉시 fail → 롤백 신호). 주입 스텝도 rc=255 시 1회 재시도. 과거: keyscan 을 하드 게이트로 둬서 간헐 타임아웃에 배포 전체가 막히던 오진 유발(sshd 는 정상이었음).
 
 **Secret 추가 절차 (운영자용 — SSH 불필요, 2026-07-06 도입)**: 배포 파이프라인이
 GitHub Secrets 의 `DATABASE_URL` 을 VPS `/opt/salespt-log/.env` 에 자동 주입한다
@@ -30,7 +30,7 @@ Value 에 접속 문자열 입력 → 다음 배포부터 자동 반영. secret 
 **머지 후 에이전트 절차** (CLAUDE.md §6.8):
 1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
 2. 배포 run 관찰: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion,status`.
-3. **success** → `curl -I https://salesptlog.online`(200) → 완료. / **연결 실패(ssh rc=255)** → 5회 자동 재시도 내장(⚠️ GH 기본 `bash -e` 때문에 `|| rc=$?` 로 포착해야 재시도가 작동 — 2026-06-04 수정). 그래도 실패면 러너↔VPS 22번 간헐 장애 지속 → `gh run rerun <id> --failed`(다른 러너 IP/시간대로 보통 성공) + 네트워크/제공사 edge 의심(sshd active·다른 run 접속됨이면 OS 손질 불필요). / **build·health 실패(다른 rc)** → 즉시 롤백.
+3. **success 판정은 반드시 `--json conclusion` 의 "success" 문자열로** — 무중단 설계상 **사이트 200 은 성공 증거가 아니다**(빨간 run 이어도 옛/이전 attempt 릴리스가 200 으로 서빙됨 — 2026-07-07 오보고 사고, incidents/2026-07-07-deploy-426-vps-unreachable.md). success 확인 후 `curl -I`(200)는 "다운 아님" 보조 확인. / **연결 실패(ssh rc=255)** → 7회×30s 자동 재시도 내장(⚠️ GH 기본 `bash -e` 때문에 `|| rc=$?` 로 포착해야 재시도가 작동 — 2026-06-04 수정). 그래도 실패면 러너↔VPS 22번 간헐 장애 지속 → `gh run rerun <id> --failed`(다른 러너 IP/시간대로 보통 성공) + 네트워크/제공사 edge 의심(sshd active·다른 run 접속됨이면 OS 손질 불필요). / **build·health 실패(다른 rc)** → 즉시 롤백.
 
 **롤백 (정본 — force-push 금지)**:
 ```bash
