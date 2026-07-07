@@ -14,6 +14,7 @@ import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 import { COMPANY_FIELDS, COMPANY_FIELDS_EXT } from "./meetings";
 import { CompanyInfo } from "@/types";
+import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 
 const TAB = SHEET_RANGES.companyInfoArchive.tab;
 const HEADER_RANGE = `'${TAB}'!${SHEET_RANGES.companyInfoArchive.headerRow}`;
@@ -182,6 +183,13 @@ export async function upsertCompanyInfoArchive(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [rowValues] },
   });
+  // P1 미러 — 키 = 계약ref(C열 값).
+  mirrorSheetRow({
+    spreadsheetId,
+    tab: "company_archive",
+    rowKey: ref,
+    payload: { 업체명: data.업체명, 계약일: data.계약일, ...(data.업체정보 ?? {}) },
+  });
   return { row, created: existing === null };
 }
 
@@ -264,6 +272,18 @@ export async function renameCompanyInfoKey(
         ],
       ],
     },
+  });
+  // P1 미러 — 키 이동: old ref 는 _cleared, new ref 로 키 필드 병합(스냅샷은 시트 보존).
+  mirrorClearRow({
+    spreadsheetId,
+    tab: "company_archive",
+    rowKey: companyContractRef(oldKey.계약일, oldKey.업체명),
+  });
+  mirrorSheetRow({
+    spreadsheetId,
+    tab: "company_archive",
+    rowKey: companyContractRef(next.계약일, next.업체명),
+    payload: { _cleared: false, 업체명: next.업체명.trim(), 계약일: next.계약일 },
   });
   return { moved: true };
 }

@@ -16,6 +16,7 @@
 import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 
 const CFG = SHEET_RANGES.contractPayment;
 
@@ -36,7 +37,7 @@ const layoutCache = new Map<string, { tab: string; firstDataRow: number }>();
  * spreadsheetId 의 02 탭 layout 동적 결정.
  * 시트 메타 1회 조회 후 in-process Map 캐시 (프로세스 lifetime).
  */
-async function resolveLayout(
+export async function resolveLayout(
   spreadsheetId: string,
 ): Promise<{ tab: string; firstDataRow: number }> {
   const cached = layoutCache.get(spreadsheetId);
@@ -60,7 +61,7 @@ async function resolveLayout(
   return fallback;
 }
 
-function tabRef(tab: string): string {
+export function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
 }
 
@@ -315,7 +316,7 @@ const LINK_ID_OFFSET = 34;
  * 02 row 매칭. **meetingId 우선**(개명·계약일변경에도 안전), 없으면 (계약일+업체명) 폴백(레거시).
  * 같은 키가 여러 row면 가장 빠른(작은 row 번호) 것 반환.
  */
-async function findRowByLink(
+export async function findRowByLink(
   spreadsheetId: string,
   key: { meetingId?: string; 계약일?: string; 업체명?: string },
 ): Promise<number | null> {
@@ -346,34 +347,6 @@ async function findRowByLink(
     }
   }
   return null;
-}
-
-/**
- * 04 업체관리에서 수임비가 수정됐을 때, 매칭되는 02 계약수납관리 row의
- * E열(수임비)을 sync 업데이트. (계약일+업체명)으로 매칭.
- *
- * 매칭 row 없으면 null 반환 — 호출 측에서 fan-out으로 새 row 생성하거나
- * 사용자에게 안내 가능.
- */
-export async function syncFeeFromContract(
-  spreadsheetId: string,
-  data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
-): Promise<{ row: number } | null> {
-  const row = await findRowByLink(spreadsheetId, {
-    meetingId: data.meetingId,
-    계약일: data.계약일,
-    업체명: data.업체명,
-  });
-  if (!row) return null;
-  const { tab } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!E${row}`;
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[data.수임비]] },
-  });
-  return { row };
 }
 
 /**
@@ -414,6 +387,11 @@ export async function appendFromContract(
     spreadsheetId,
     requestBody: { valueInputOption: "USER_ENTERED", data: writes },
   });
+  // P1 미러 — 02 는 행 고정 키. _cleared 재사용 행은 병합으로 되살림.
+  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}`, payload: {
+    _cleared: false, 계약일: data.계약일, 업체명: data.업체명, 수임비: data.수임비,
+    ...(data.meetingId ? { meetingId: data.meetingId } : {}),
+    ...(carryover ? { 구분: "이월", 원본행id: carryover.원본행id } : {}) } });
   return { row };
 }
 
@@ -437,6 +415,7 @@ export async function updateUserFields(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [userArea] },
   });
+  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${validated.row}`, payload: validated }); // P1
 }
 
 /**
@@ -476,6 +455,7 @@ export async function updateLinkFields(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[next.계약일, next.업체명]] },
   });
+  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}`, payload: { 계약일: next.계약일, 업체명: next.업체명 } }); // P1
   return row;
 }
 
@@ -497,4 +477,6 @@ export async function clearRow(
     spreadsheetId,
     range,
   });
+  mirrorClearRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}` }); // P1 — _cleared 마킹
 }
+export { syncFeeFromContract } from "./contract-payment-sync";

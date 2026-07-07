@@ -10,6 +10,7 @@ import {
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
 import { parseWeekRows } from "./week-parse";
+import { mirrorSheetRow } from "./db/mirror";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
 
@@ -307,25 +308,6 @@ function parseSerialOrString(raw: unknown, label: string): Date {
   throw new Error(`[sales.ts] ${label} 형식 미지원: ${typeof raw}`);
 }
 
-/**
- * 영업관리 B3/C3에 기수/이름 쓰기.
- * Self-claim 흐름에서 사용 — 시트 템플릿이 빈 상태로 만들어진 경우 web 이 직접 작성.
- */
-export async function writeProfile(
-  spreadsheetId: string,
-  cohort: string,
-  name: string,
-): Promise<void> {
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!B3:C3`;
-  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[cohortNum, name.trim()]] },
-  });
-}
-
 /** 한 행의 4지표(E~H) update. */
 export async function writeChannelDailyRow(
   spreadsheetId: string,
@@ -379,6 +361,9 @@ export async function batchWriteChannelDailyRows(
     spreadsheetId,
     requestBody: { valueInputOption: "USER_ENTERED", data },
   });
+  // P1 미러 — 자연키 {date}:{channel} (backfill 동일 규칙).
+  for (const row of rows) { const v = ChannelDailyRow.parse(row);
+    mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload: v }); }
 }
 
 /** 한 채널 영업관리 F(유입) [startISO,endISO] 기간 합산 — 직접생산 M 동기화용(ADR-0024). 1~10주 내. */
@@ -425,6 +410,7 @@ export async function writeProductionCell(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[count]] },
   });
+  mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${date}:${channel}`, payload: { date, channel, production: count } }); // P1 병합
 }
 
 /** 영업관리 H(미팅예약) 채널×날짜 -1 (일정탭 삭제 cascade, 2026-05-19). 0 미만 no-op. */
@@ -454,6 +440,7 @@ export async function decrementMeetingReservation(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[after]] },
   });
+  mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${date}:${channel}`, payload: { date, channel, meetingReservation: after } }); // P1 병합
   return { before, after };
 }
 
@@ -498,3 +485,4 @@ function serialOrStringToISO(v: string | number | boolean): string | null {
   }
   return null;
 }
+export { writeProfile } from "./sales-profile";

@@ -78,7 +78,9 @@ export interface SheetRowUpsert {
   payload: Record<string, unknown>;
 }
 
-/** dual-write upsert — row_key 기준 멱등. DATABASE_URL 미설정이면 skip(no-op). */
+/** dual-write upsert — row_key 기준 멱등. DATABASE_URL 미설정이면 skip(no-op).
+ * payload 는 **jsonb 병합**(기존 || 신규) — 단일 셀 갱신(부분 payload)이 기존 키를
+ * 지우지 않는다. clear 계열은 {_cleared:true} 병합(행 삭제 대신 마킹 — 대조 시 제외). */
 export async function upsertSheetRow(
   row: SheetRowUpsert,
 ): Promise<{ skipped: boolean }> {
@@ -86,12 +88,30 @@ export async function upsertSheetRow(
   await ensureSchema();
   await getPool().query(
     `insert into sheet_rows (cohort, email, spreadsheet_id, tab, row_key, payload, updated_at)
-     values ($1, $2, $3, $4, $5, $6, now())
+     values ($1, $2, $3, $4, $5, $6::jsonb, now())
      on conflict (spreadsheet_id, tab, row_key)
-     do update set cohort = $1, email = $2, payload = $6, updated_at = now()`,
+     do update set cohort = $1, email = $2,
+       payload = sheet_rows.payload || excluded.payload, updated_at = now()`,
     [row.cohort, row.email, row.spreadsheetId, row.tab, row.rowKey, JSON.stringify(row.payload)],
   );
   return { skipped: false };
+}
+
+/** 기수별·탭별 유효 행수 — 대조표용. _cleared 마킹 행 제외. 미설정이면 null. */
+export async function countRowsByTab(
+  cohort: string,
+): Promise<Record<string, number> | null> {
+  if (!dbEnabled()) return null;
+  await ensureSchema();
+  const res = await getPool().query(
+    `select tab, count(*)::int as n from sheet_rows
+     where cohort = $1 and coalesce((payload->>'_cleared')::boolean, false) = false
+     group by tab`,
+    [cohort],
+  );
+  const out: Record<string, number> = {};
+  for (const r of res.rows as { tab: string; n: number }[]) out[r.tab] = r.n;
+  return out;
 }
 
 /** sheet_rows 총 행수 — admin 진단·정합 대조용. 미설정이면 null. */

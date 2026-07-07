@@ -11,6 +11,7 @@
 import { SHEET_RANGES } from "@/config";
 import { Meeting, MeetingState } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -240,6 +241,7 @@ export async function appendMeeting(
   const row = meetingToRow(validated);
   const targetRow = await findFirstEmptyRow(spreadsheetId);
   await writeMeetingRowSplit(spreadsheetId, targetRow, row);
+  mirrorSheetRow({ spreadsheetId, tab: "meetings", rowKey: validated.id, payload: validated }); // P1
 }
 
 /** Meeting row split write — 수식(N/O/Q/S)·이월(AO/AP) 보존. append/update 공용. */
@@ -341,6 +343,7 @@ export async function updateMeeting(
 
   // 수식 컬럼(N/O/Q/S) 보존을 위해 split write — appendMeeting과 동일 헬퍼 재사용.
   await writeMeetingRowSplit(spreadsheetId, sheetRow, fullRow);
+  mirrorSheetRow({ spreadsheetId, tab: "meetings", rowKey: id, payload: merged }); // P1
 
   void FORMULA_COL_INDICES; // 인덱스 정의 보존 (다른 호출자가 참조 가능)
 }
@@ -492,4 +495,5 @@ export async function clearMeeting(
       ],
     },
   });
+  mirrorClearRow({ spreadsheetId, tab: "meetings", rowKey: id }); // P1 — _cleared 마킹
 }

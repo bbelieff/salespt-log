@@ -30,8 +30,12 @@ export function recordSheetsCall(ms: number): void {
   s.sheetsCalls += 1;
 }
 
-/** PostHog HTTP capture — 서버에서 의존성 없이 전송. 실패는 조용히 무시(계측이 앱을 방해 금지). */
-function captureApiTiming(props: Record<string, string | number>): void {
+/** PostHog HTTP capture — 서버에서 의존성 없이 전송. 실패는 조용히 무시(계측이 앱을 방해 금지).
+ * api_timing 외 서버 이벤트(db_mirror_error 등)도 공용 — 비-PII 속성만 넣을 것. */
+export function captureServerEvent(
+  event: string,
+  props: Record<string, string | number>,
+): void {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key || process.env.NODE_ENV !== "production") return; // 로컬은 콘솔 로그만
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
@@ -40,11 +44,15 @@ function captureApiTiming(props: Record<string, string | number>): void {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       api_key: key,
-      event: "api_timing",
+      event,
       distinct_id: "server", // 사용자 식별 불필요(비-PII 원칙) — 서버 단일 id
       properties: props,
     }),
   }).catch(() => {});
+}
+
+function captureApiTiming(props: Record<string, string | number>): void {
+  captureServerEvent("api_timing", props);
 }
 
 type Handler<A extends unknown[]> = (...args: A) => Promise<Response>;

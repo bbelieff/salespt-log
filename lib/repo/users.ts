@@ -17,7 +17,7 @@ import { pickPreferredUser, pickPreferredRow } from "./user-priority";
 const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
 
-function parseRow(r: unknown[]): User | null {
+export function parseRow(r: unknown[]): User | null {
   // CRITICAL: 빈 status/role 이 drop 되면 전 수강생 차단 사고(2026-05-12) → 명시 normalize.
   const rawStatus = String(r[5] ?? "").trim();
   const status: User["status"] =
@@ -64,7 +64,7 @@ const REGISTRY_TAG = "registry";
 
 /** 레지스트리 전체 row 60초 캐시 — /api/me 매 호출 스캔 비용 흡수.
  * 쓰기 시 revalidateTag("registry") 즉시 무효화. */
-const cachedRegistryRows = unstable_cache(
+export const cachedRegistryRows = unstable_cache(
   async (): Promise<string[][]> => {
     const reg = registry();
     return readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
@@ -497,3 +497,4 @@ export async function listCohortMembers(cohort: string): Promise<User[]> {
   const all = await listAllUsers();
   return all.filter((u) => String(u.cohort) === String(cohort) && u.role === "trainee");
 }
+export { findOwnerBySpreadsheetId } from "./users-owner";

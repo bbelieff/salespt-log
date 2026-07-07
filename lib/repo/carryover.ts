@@ -9,6 +9,7 @@
  */
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
+import { mirrorSheetRow } from "./db/mirror";
 
 const TAB = SHEET_RANGES.meetings.tab;
 const ref = `'${TAB}'`;
@@ -89,5 +90,12 @@ export async function appendCarriedMeeting(
         { range: `${ref}!AO${row}:AP${row}`, values: [["이월", src.원본id]] },
       ],
     },
+  });
+  // P1 미러 — raw 스냅샷(이월 플래그 포함). 키 = 새 id.
+  mirrorSheetRow({
+    spreadsheetId: arenaSheetId,
+    tab: "meetings",
+    rowKey: newId,
+    payload: { id: newId, _carryRaw: src.raw, 구분: "이월", 원본행id: src.원본id },
   });
 }

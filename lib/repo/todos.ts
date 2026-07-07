@@ -15,6 +15,7 @@
 import { SHEET_RANGES } from "@/config";
 import { Todo, type TodoType } from "@/types";
 import { sheetsClient } from "./sheets-client";
+import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -288,6 +289,8 @@ export async function appendTodo(
   const validated = Todo.parse(todo);
   const targetRow = await findFirstEmptyRow(spreadsheetId);
   await writeTodoRow(spreadsheetId, targetRow, todoToRow(validated));
+  // dual-write 미러 (P1) — fire-and-forget, 비차단.
+  mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: validated.id, payload: validated });
   return validated;
 }
 
@@ -308,6 +311,7 @@ export async function updateTodo(
   }
   const merged: Todo = Todo.parse({ ...current, ...partial });
   await writeTodoRow(spreadsheetId, sheetRow, todoToRow(merged));
+  mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: id, payload: merged }); // P1 미러
 }
 
 /** id로 행 클리어 (빈 값으로 update). */
@@ -323,6 +327,7 @@ export async function clearTodo(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [Array(13).fill("")] },
   });
+  mirrorClearRow({ spreadsheetId, tab: "todos", rowKey: id }); // P1 — _cleared 마킹
 }
 
 /** 한 계약(contractRef)에 속한 ToDo 전부 (슬롯 ToDo 섹션용). */
