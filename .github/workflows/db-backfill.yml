@@ -1,0 +1,39 @@
+name: DB Backfill
+
+# 지정 기수 시트 → Supabase sheet_rows 1회 적재 (db-migration-pilot §1 P1).
+# VPS 에서 실행(SA·DATABASE_URL 이 VPS .env 에 있음). 기본 dry-run — execute 체크 시에만 기록.
+# 실행 로그의 "결과 표/대조 표" 가 backfill 증빙.
+on:
+  workflow_dispatch:
+    inputs:
+      cohort:
+        description: "기수 라벨 (예: 8)"
+        required: true
+      execute:
+        description: "실제 기록 (미체크 = dry-run)"
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Run backfill on VPS
+        env:
+          COHORT: ${{ inputs.cohort }}
+          EXECUTE: ${{ inputs.execute }}
+        run: |
+          # 인자는 원격에 env 로 전달(따옴표 안전). 코드/URL 값 미출력.
+          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+              -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" \
+              "cd /opt/salespt-log && COHORT_ARG=\"$COHORT\" EXEC_ARG=\"$EXECUTE\" bash -s" <<'REMOTE_EOF'
+          set -e
+          FLAGS="--cohort $COHORT_ARG"
+          if [ "$EXEC_ARG" = "true" ]; then FLAGS="$FLAGS --execute"; fi
+          node scripts/ops/backfill-sheet-rows.mjs $FLAGS
+          REMOTE_EOF

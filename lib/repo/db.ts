@@ -10,6 +10,7 @@ import type {
   DBPurchase,
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
+import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 
 const TAB = SHEET_RANGES.dbManagement.tab;
 const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
@@ -320,6 +321,7 @@ export async function appendPurchase(
     p.기타, // G
     "", // H 정리(구 #425 부가세여부 자리)
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}`, payload: { ...p } }); // P1
   return { row };
 }
 
@@ -344,6 +346,7 @@ export async function appendProduction(
     p.부가세여부, // N
     p.기타, // O (구 스페이서 자리)
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { ...p } }); // P1
   return { row };
 }
 
@@ -369,6 +372,7 @@ export async function appendBanner(
     b.기타, // V
     "", // W 정리(구 #425 부가세여부 자리)
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}`, payload: { ...b } }); // P1
   return { row };
 }
 
@@ -393,6 +397,7 @@ export async function appendLead(
     l.연락처,
     l.조건,
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}`, payload: { ...l } }); // P1
   return { row };
 }
 
@@ -412,6 +417,7 @@ export async function updatePurchase(
     p.기타, // G
     "", // H 정리
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}`, payload: { ...p } }); // P1
 }
 
 export async function updateProduction(
@@ -428,6 +434,7 @@ export async function updateProduction(
     p.부가세여부, // N
     p.기타, // O
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { ...p } }); // P1
 }
 
 export async function updateBanner(
@@ -445,6 +452,7 @@ export async function updateBanner(
     b.기타, // V
     "", // W 정리
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}`, payload: { ...b } }); // P1
 }
 
 export async function updateLead(
@@ -461,38 +469,26 @@ export async function updateLead(
     l.연락처,
     l.조건,
   ]);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}`, payload: { ...l } }); // P1
 }
 
 // ── clear (특정 row) ──────────────────────────────────────────
 
 export async function clearPurchase(spreadsheetId: string, row: number) {
   await clearRowRange(spreadsheetId, SPEC.매입DB, row);
+  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}` }); // P1
 }
 export async function clearProduction(spreadsheetId: string, row: number) {
   await clearRowRange(spreadsheetId, SPEC.직접생산, row);
+  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}` }); // P1
 }
 export async function clearBanner(spreadsheetId: string, row: number) {
   await clearRowRange(spreadsheetId, SPEC.현수막, row);
+  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}` }); // P1
 }
 export async function clearLead(spreadsheetId: string, row: number) {
   await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
+  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}` }); // P1
 }
 
-/** 직접생산 생산개수(M) 단일 셀 동기화 — app-owned 유입 기간합(ADR-0024). 항상 overwrite, §2.5 비대상. */
-export async function writeProductionCountCell(
-  spreadsheetId: string,
-  row: number,
-  count: number,
-): Promise<void> {
-  const sec = SHEET_RANGES.dbManagement.sections.직접생산;
-  // 직접생산 I:O 는 단일문자 컬럼 — startCol(I) + cols offset → 생산개수 컬럼(M).
-  const col = String.fromCharCode(
-    sec.startCol.charCodeAt(0) + sec.cols.indexOf("생산개수"),
-  );
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range: `${T}!${col}${row}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[count]] },
-  });
-}
+export { writeProductionCountCell } from "./db-production-cell";

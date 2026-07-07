@@ -64,6 +64,11 @@ create index sheet_rows_payload on sheet_rows using gin (payload);
 - 연결: `DATABASE_URL` env (config 등재) — Supabase Session Pooler URI(`sslmode=require`),
   **pg Pool** 사용. pg 클라이언트는 **lib/repo/db/ 전용**(googleapis 격리와 동일한
   구조 테스트 가드 신설).
+- **row_key 규칙 (2026-07-07 확정 — dual-write 훅과 backfill 이 반드시 동일)**:
+  meetings(04)·todos(05)=A열 앱 id · contracts(02)=`r{행번호}` · db(03)=`{섹션}:r{행번호}` ·
+  sales(01 E~H)=`{ISO날짜}:{채널}`(좌표 수식 역산) · company_archive(06)=C열 계약ref.
+  clear 계열은 행 삭제 대신 `{_cleared:true}` 병합(대조 시 제외). upsert 는 jsonb
+  병합(`payload || EXCLUDED.payload`) — 단일 셀 갱신이 기존 키를 지우지 않음.
 
 ## 3. 안전 원칙
 - dual-write 는 **비차단·후행**: 시트 쓰기 성공 후 시도, 실패는 경고 로그+PostHog 카운트만.
@@ -88,6 +93,9 @@ create index sheet_rows_payload on sheet_rows using gin (payload);
 
 ## Log
 - 2026-07-06 파일럿 확정: 대상 8기+9기, VPS Docker Postgres, jsonb 미러 dual-write, 읽기 무변경.
+- 2026-07-07 P1b 이중기록 구현: lib/repo/db/mirror.ts(fire-and-forget) 훅 24개
+  (04·05·02·03·01·06 + 이월) + backfill-sheet-rows.mjs(VPS 실행, DB Backfill 워크플로,
+  dry-run 기본) + /admin/db-parity 대조 표. row_key 규칙 §2 확정.
 - 2026-07-07 P1a 인프라 구현: lib/repo/db/(pg Pool·스키마 자동생성·upsert/count) +
   pg 격리 구조테스트 + keep-alive 크론(.github/workflows/db-keepalive.yml, 주1회) +
   scripts/ops/(백업·옵션B) + admin 랜딩 DB 상태 스트립. P0 계측은 #484 로 가동 중.
