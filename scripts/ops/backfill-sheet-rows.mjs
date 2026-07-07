@@ -69,9 +69,12 @@ const rowObj = (r, startColIdx = 0) => {
   return o;
 };
 async function grid(sid, range) {
+  // SERIAL_NUMBER — repo(readCourseStart)와 동일. FORMATTED_STRING 이면 O1 이
+  // 로케일 서식("2026. 5. 30.")으로 와서 ISO 파싱 실패 → sales 전체 조용히 스킵
+  // (dry-run #1 실측 버그, 2026-07-07).
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "FORMATTED_STRING",
+    dateTimeRenderOption: "SERIAL_NUMBER",
   }).catch(() => null);
   return res?.data.values ?? [];
 }
@@ -126,6 +129,7 @@ async function extractUserRows(sid) {
   const CH = ["매입DB", "직접생산", "현수막", "콜·지·기·소"];
   const o1 = (await grid(sid, "'01 영업관리'!O1"))[0]?.[0];
   const startISO = serialToISO(o1);
+  if (!startISO) console.warn(`    ⚠ O1(수강시작일) 파싱 실패 — sales 스킵 (raw=${typeof o1})`);
   if (startISO) {
     const start = new Date(startISO + "T00:00:00Z");
     const block = await grid(sid, "'01 영업관리'!E10:H349"); // 10주 × 34 stride
