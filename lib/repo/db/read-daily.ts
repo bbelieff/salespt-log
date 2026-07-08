@@ -12,9 +12,14 @@
  *
  * R2-3(일정·계약 탭 loadWeekMeetings·캘린더)은 readMeetingsFromDb 를 재사용만 하면 됨.
  */
-import { ContractPayment, Meeting } from "@/types";
-import { rowToMeeting } from "../meetings";
+import { CompanyInfo, ContractPayment, Meeting } from "@/types";
+import {
+  COMPANY_FIELDS,
+  COMPANY_FIELDS_EXT,
+  rowToMeeting,
+} from "../meetings";
 import { rowToCP } from "../contract-payment";
+import { companyContractRef } from "../company-info-archive";
 import { dbEnabled, ensureSchema, getDbPool } from "./client";
 
 /** 열 인덱스 → 시트 열문자 (backfill rowObj 의 colName 과 동일 규칙, AP=41 까지 충분). */
@@ -179,4 +184,58 @@ export async function readBannerOrderQtyFromDb(
     sum += bannerOrderQtyFromDbPayload(payload);
   }
   return sum;
+}
+
+// ── R2-4b: company_archive(06 업체정보) read (db-read-company-archive) ────────
+// payload 형태: ① upsert 미러 = {업체명, 계약일, ...CompanyInfo 평탄화(커스텀 포함)}
+// ② backfill = 열문자 A..AB(E..X=COMPANY_FIELDS, Y=커스텀 JSON 문자열, Z..AB=EXT)
+// ③ rename 미러 = 키 필드만(스냅샷 없음) — 실질 빈 결과는 호출부가 시트 fallback
+//   (renameCompanyInfoKey 는 시트 E~AB 를 보존하지만 DB 새 키엔 스냅샷이 없다).
+
+const COMPANY_LETTER_START = 4; // E — 06 탭 A~AB 중 업체정보 시작 열
+
+/** payload(3형태 겸용) → CompanyInfo. 파싱 불가 시 null. */
+export function companyInfoFromDbPayload(
+  p: Record<string, unknown>,
+): CompanyInfo | null {
+  const ci: Record<string, unknown> = {};
+  COMPANY_FIELDS.forEach((f, i) => {
+    const v = p[f] ?? p[colName(COMPANY_LETTER_START + i)];
+    ci[f] = String(v ?? "").trim();
+  });
+  COMPANY_FIELDS_EXT.forEach((f, i) => {
+    // Z..AB = 커스텀(Y) 다음 3열
+    const v = p[f] ?? p[colName(COMPANY_LETTER_START + COMPANY_FIELDS.length + 1 + i)];
+    ci[f] = String(v ?? "").trim();
+  });
+  const custom = p["커스텀"];
+  if (custom && typeof custom === "object") {
+    ci.커스텀 = custom; // upsert 미러 — 객체 그대로
+  } else {
+    const raw = String(p[colName(COMPANY_LETTER_START + COMPANY_FIELDS.length)] ?? "").trim();
+    if (raw) {
+      try { ci.커스텀 = JSON.parse(raw); } catch { /* 손상 JSON 무시 — 시트 read 와 동일 */ }
+    }
+  }
+  const parsed = CompanyInfo.safeParse(ci);
+  return parsed.success ? parsed.data : null;
+}
+
+/** 06 키(계약ref) 행의 업체정보 — readCompanyInfoArchiveRow 동치. 행 없으면 null. */
+export async function readCompanyInfoFromDb(
+  spreadsheetId: string,
+  계약일: string,
+  업체명: string,
+): Promise<CompanyInfo | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'company_archive' and row_key = $2
+       and coalesce((payload->>'_cleared')::boolean, false) = false`,
+    [spreadsheetId, companyContractRef(계약일, 업체명)],
+  );
+  const payload = (res.rows[0] as { payload: Record<string, unknown> } | undefined)?.payload;
+  if (!payload) return null;
+  return companyInfoFromDbPayload(payload);
 }
