@@ -5,6 +5,10 @@ import { readBanners } from "@/repo/db";
 import { readChannelStacking } from "@/repo/dashboard";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
 import {
+  readBannerOrderQtyFromDb,
+  readMeetingsFromDb,
+} from "@/repo/db/read-daily";
+import {
   chooseDailySource,
   dayChannelsFromRows,
   stackingSumsFromRows,
@@ -90,9 +94,10 @@ const EMPTY_METRICS: ChannelDailyRowMetrics = {
 
 /** 한 날짜의 4채널 4지표 + 그 날 미팅 목록 (컨택탭 렌더 입력).
  *
- * R2-1(db-read-contact): 파일럿 기수(8·9·연습)는 readWeek+readChannelStacking 을
- * **DB 단일 쿼리**로 대체. 그 외 기수·DB 실패 시엔 기존 시트 경로 그대로
- * (silent fallback + Sentry — 사용자 화면 에러 금지). meetings/banners 는 시트 유지(다음 PR). */
+ * R2-1(db-read-contact): 파일럿 기수는 readWeek+readChannelStacking 을 DB 단일 쿼리로.
+ * R2-2(db-read-meetings-banners): meetings(04)·현수막 주문합(03)도 DB — 파일럿+캐시 히트 시
+ * **시트 read 0회**. 그 외 기수·DB 실패 시엔 기존 시트 경로 그대로
+ * (silent fallback + Sentry — 사용자 화면 에러 금지). */
 export async function loadDay(
   email: string,
   date: string,
@@ -104,10 +109,12 @@ export async function loadDay(
   const spreadsheetId = user.spreadsheetId;
   const targetDate = parseISO(date);
 
-  // ── 지표 행 + 누적 3값 로드 (게이트: chooseDailySource — 단일 판정 지점) ──
+  // ── 로드 (게이트: chooseDailySource — 단일 판정 지점) ──
   let courseStart: Date | null = null;
   let metricRows: DailyMetricRow[] | null = null;
   let sums: ReturnType<typeof stackingSumsFromRows> | null = null;
+  let meetings: Meeting[] | null = null;
+  let bannerOrderQty: number | null = null;
 
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
@@ -115,16 +122,25 @@ export async function loadDay(
       courseStart = user.courseStartISO
         ? parseISO(user.courseStartISO)
         : await readCourseStart(spreadsheetId);
-      const all = await readSalesRowsFromDb(spreadsheetId);
+      const [all, allMeetings, orderQty] = await Promise.all([
+        readSalesRowsFromDb(spreadsheetId),
+        readMeetingsFromDb(spreadsheetId),
+        readBannerOrderQtyFromDb(spreadsheetId),
+      ]);
       const valid = all.filter((r): r is DailyMetricRow =>
         (CHANNEL_ORDER as readonly string[]).includes(r.channel),
       );
       metricRows = valid;
       sums = stackingSumsFromRows(valid);
+      meetings = allMeetings.filter((m) => m.예약일 === date); // findByDate(reservation) 동치
+      bannerOrderQty = orderQty;
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDay-db-read" } });
       courseStart = null;
-      metricRows = null; // ↓ 시트 경로로 silent fallback
+      metricRows = null; // ↓ 아래에서 전부 시트 경로로 silent fallback
+      sums = null;
+      meetings = null;
+      bannerOrderQty = null;
     }
   }
 
@@ -147,7 +163,7 @@ export async function loadDay(
   // 편집 가능 기간(1~10주) 밖이면 4지표 빈 값·미팅만 read. 쓰기는 saveContactMetrics 에서 가드.
   const inRange = week >= 1 && week <= 10;
 
-  const meetings = await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
+  meetings ??= await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
 
   // 4채널 4지표 — 시트/DB 공통 순수 집계(daily-source, 정합 테스트 대상).
   const channels = dayChannelsFromRows(
@@ -172,8 +188,9 @@ export async function loadDay(
   const inflowWaitBase = sums.매입DB생산합 - sums.매입DB유입합 + channels.매입DB.inflow;
 
   // 현수막 재고 base = Σ주문장수(DB탭) − Σ게시누적 + 오늘 저장 게시(ADR-0025).
-  const orderQty = (await readBanners(spreadsheetId)).rows.reduce((s, b) => s + b.주문개수, 0);
-  const bannerStockBase = orderQty - sums.현수막생산합 + channels.현수막.production;
+  bannerOrderQty ??=
+    (await readBanners(spreadsheetId)).rows.reduce((s, b) => s + b.주문개수, 0);
+  const bannerStockBase = bannerOrderQty - sums.현수막생산합 + channels.현수막.production;
 
   return {
     date,
