@@ -1,6 +1,6 @@
 ---
 slug: db-read-contact
-status: active
+status: completed
 created: 2026-07-08
 owner: belie
 related: db-first-unlimited-roadmap, db-migration-pilot, api-timing-baseline
