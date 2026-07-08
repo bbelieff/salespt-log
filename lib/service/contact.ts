@@ -1,7 +1,15 @@
 /** Layer: service — 컨택탭 유스케이스. 화면은 하루 단위지만 시트는 주차 블록 → 한 주 read 후 그 날 4채널 추출. */
+import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
 import { readBanners } from "@/repo/db";
 import { readChannelStacking } from "@/repo/dashboard";
+import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
+import {
+  chooseDailySource,
+  dayChannelsFromRows,
+  stackingSumsFromRows,
+  type DailyMetricRow,
+} from "./daily-source";
 import {
   batchWriteChannelDailyRows,
   decrementMeetingReservation,
@@ -80,37 +88,74 @@ const EMPTY_METRICS: ChannelDailyRowMetrics = {
 
 // ── Public API ─────────────────────────────────────────────────
 
-/** 한 날짜의 4채널 4지표 + 그 날 미팅 목록 (컨택탭 렌더 입력). */
+/** 한 날짜의 4채널 4지표 + 그 날 미팅 목록 (컨택탭 렌더 입력).
+ *
+ * R2-1(db-read-contact): 파일럿 기수(8·9·연습)는 readWeek+readChannelStacking 을
+ * **DB 단일 쿼리**로 대체. 그 외 기수·DB 실패 시엔 기존 시트 경로 그대로
+ * (silent fallback + Sentry — 사용자 화면 에러 금지). meetings/banners 는 시트 유지(다음 PR). */
 export async function loadDay(
   email: string,
   date: string,
 ): Promise<ContactDayView> {
-  const spreadsheetId = await resolveSheet(email);
-  const courseStart = await readCourseStart(spreadsheetId);
+  const user = await findUserByEmail(email);
+  if (!user) {
+    throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
+  }
+  const spreadsheetId = user.spreadsheetId;
   const targetDate = parseISO(date);
-  const week = weekIndexOf(targetDate, courseStart);
+
+  // ── 지표 행 + 누적 3값 로드 (게이트: chooseDailySource — 단일 판정 지점) ──
+  let courseStart: Date | null = null;
+  let metricRows: DailyMetricRow[] | null = null;
+  let sums: ReturnType<typeof stackingSumsFromRows> | null = null;
+
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      // courseStart: 레지스트리 K 캐시 우선(시트 read 0회 목표), 빈값이면 시트 1회.
+      courseStart = user.courseStartISO
+        ? parseISO(user.courseStartISO)
+        : await readCourseStart(spreadsheetId);
+      const all = await readSalesRowsFromDb(spreadsheetId);
+      const valid = all.filter((r): r is DailyMetricRow =>
+        (CHANNEL_ORDER as readonly string[]).includes(r.channel),
+      );
+      metricRows = valid;
+      sums = stackingSumsFromRows(valid);
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadDay-db-read" } });
+      courseStart = null;
+      metricRows = null; // ↓ 시트 경로로 silent fallback
+    }
+  }
+
+  if (metricRows === null || sums === null) {
+    // 기존 시트 경로 (비파일럿 기수 + DB 실패 fallback) — 동작 무변경.
+    courseStart = await readCourseStart(spreadsheetId);
+    const week0 = weekIndexOf(targetDate, courseStart);
+    const inRange0 = week0 >= 1 && week0 <= 10;
+    const { rows } = inRange0 ? await readWeek(spreadsheetId, week0) : { rows: [] };
+    metricRows = rows;
+    const stacking = await readChannelStacking(spreadsheetId);
+    sums = {
+      매입DB생산합: stacking[0]?.[0] ?? 0,
+      매입DB유입합: stacking[1]?.[0] ?? 0,
+      현수막생산합: stacking[0]?.[2] ?? 0,
+    };
+  }
+
+  const week = weekIndexOf(targetDate, courseStart!);
   // 편집 가능 기간(1~10주) 밖이면 4지표 빈 값·미팅만 read. 쓰기는 saveContactMetrics 에서 가드.
   const inRange = week >= 1 && week <= 10;
 
-  const { rows } = inRange ? await readWeek(spreadsheetId, week) : { rows: [] };
   const meetings = await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
 
-  const dayRows = rows.filter((r) => r.date === date);
-  const channels: Record<Channel, ChannelDailyRowMetrics> = {
-    매입DB: { ...EMPTY_METRICS },
-    직접생산: { ...EMPTY_METRICS },
-    현수막: { ...EMPTY_METRICS },
-    "콜·지·기·소": { ...EMPTY_METRICS },
-  };
-  for (const r of dayRows) {
-    channels[r.channel] = {
-      production: r.production,
-      inflow: r.inflow,
-      contactProgress: r.contactProgress,
-      meetingReservation: r.meetingReservation, // 아래에서 카드수로 덮어씀
-    };
-  }
-  // ⭐ 미팅예약 = 업체관리 카드 수 파생(SSOT, ADR-0010).
+  // 4채널 4지표 — 시트/DB 공통 순수 집계(daily-source, 정합 테스트 대상).
+  const channels = dayChannelsFromRows(
+    inRange ? metricRows : [],
+    date,
+  ) as Record<Channel, ChannelDailyRowMetrics>;
+
+  // ⭐ 미팅예약 = 업체관리 카드 수 파생(SSOT, ADR-0010) — 경로 무관 보존.
   const cardCount: Record<Channel, number> = {
     매입DB: 0,
     직접생산: 0,
@@ -120,16 +165,15 @@ export async function loadDay(
   for (const mtg of meetings) cardCount[mtg.channel] += 1;
   for (const ch of CHANNEL_ORDER) channels[ch].meetingReservation = cardCount[ch];
 
-  const csISO = `${courseStart.getFullYear()}-${String(courseStart.getMonth() + 1).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
+  const cs = courseStart!;
+  const csISO = `${cs.getFullYear()}-${String(cs.getMonth() + 1).padStart(2, "0")}-${String(cs.getDate()).padStart(2, "0")}`;
 
-  // 매입DB 유입대기 base = 생산누적(R1) − 유입누적(R2) + 오늘 저장 유입 — UI 가 draft.유입 실시간 차감.
-  const stacking = await readChannelStacking(spreadsheetId);
-  const inflowWaitBase =
-    (stacking[0]?.[0] ?? 0) - (stacking[1]?.[0] ?? 0) + channels.매입DB.inflow;
+  // 매입DB 유입대기 base = 생산누적 − 유입누적 + 오늘 저장 유입 — UI 가 draft.유입 실시간 차감.
+  const inflowWaitBase = sums.매입DB생산합 - sums.매입DB유입합 + channels.매입DB.inflow;
 
-  // 현수막 재고 base = Σ주문장수(DB) − Σ게시누적(E 현수막=stacking 생산[2]) + 오늘 저장 게시(ADR-0025).
+  // 현수막 재고 base = Σ주문장수(DB탭) − Σ게시누적 + 오늘 저장 게시(ADR-0025).
   const orderQty = (await readBanners(spreadsheetId)).rows.reduce((s, b) => s + b.주문개수, 0);
-  const bannerStockBase = orderQty - (stacking[0]?.[2] ?? 0) + channels.현수막.production;
+  const bannerStockBase = orderQty - sums.현수막생산합 + channels.현수막.production;
 
   return {
     date,
@@ -142,76 +186,8 @@ export async function loadDay(
   };
 }
 
-// ── 일정·계약 탭 (PR 03) ────────────────────────────────────────
-
-export interface ScheduleWeekView {
-  weekStart: string; // YYYY-MM-DD (수강시작일과 같은 요일)
-  weekIndex: number;
-  courseStart: string;
-  /** 7개 슬롯, **미팅날짜** 기준 — 일정·계약 탭 cards (그 날 실제 미팅 있는 카드). */
-  daysByMeetingDate: Array<{ date: string; meetings: Meeting[] }>;
-  /** 7개 슬롯, **예약일** 기준 — 컨택탭 badge + 일자 cards. 미팅날짜/예약일 기준 분리(2026-05-16). */
-  daysByReservationDate: Array<{ date: string; meetings: Meeting[] }>;
-  /** 영업관리 E~H 그 주 합계 — 컨택탭 헤더 funnel 표시용(2026-05-16). */
-  weekFunnel: {
-    생산: number;
-    유입: number;
-    컨택진행: number;
-    미팅예약: number;
-  };
-}
-
-/** 한 주의 미팅을 미팅날짜(D열) 기준으로 조회 (일정·계약 탭 — 그 날 실제 잡힌 카드). */
-export async function loadWeekMeetings(
-  email: string,
-  weekStart: string,
-): Promise<ScheduleWeekView> {
-  const spreadsheetId = await resolveSheet(email);
-  const courseStart = await readCourseStart(spreadsheetId);
-  const wsDate = parseISO(weekStart);
-  // 편집 가능 기간 가드는 쓰기 시점(saveContactMetrics/appendNewMeeting)에만 적용.
-  // 조회는 항상 가능 — findByDateRange는 week 인덱스에 의존하지 않아 안전.
-  // weekIndex는 표시용이므로 음수/10 초과도 그대로 노출.
-  const week = weekIndexOf(wsDate, courseStart);
-
-  // 7일 ISO 날짜 생성
-  const dates: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(wsDate);
-    d.setDate(wsDate.getDate() + i);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    dates.push(`${y}-${m}-${dd}`);
-  }
-
-  // 1 read 로 예약일/미팅날짜 두 view 동시 추출 (2026-05-16 view 불일치 fix).
-  const [{ byMeetingDate, byReservationDate }, weekFunnel] = await Promise.all([
-    findByDateRangeBoth(spreadsheetId, dates),
-    readWeekFunnel(spreadsheetId, week),
-  ]);
-  const sortByTime = (a: Meeting, b: Meeting) =>
-    a.미팅시간.localeCompare(b.미팅시간);
-  const daysByMeetingDate = dates.map((d) => ({
-    date: d,
-    meetings: (byMeetingDate.get(d) ?? []).sort(sortByTime),
-  }));
-  const daysByReservationDate = dates.map((d) => ({
-    date: d,
-    meetings: (byReservationDate.get(d) ?? []).sort(sortByTime),
-  }));
-
-  const csISO = `${courseStart.getFullYear()}-${String(courseStart.getMonth() + 1).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
-
-  return {
-    weekStart,
-    weekIndex: week,
-    courseStart: csISO,
-    daysByMeetingDate,
-    daysByReservationDate,
-    weekFunnel,
-  };
-}
+// 일정·계약 탭 주간 뷰 — contact-week.ts 로 분리(500줄 캡, R2-1).
+export { loadWeekMeetings, type ScheduleWeekView } from "./contact-week";
 
 /**
  * 4지표 4채널을 그 날짜에 update. 미팅예약(H)=카드수 재계산.
