@@ -50,6 +50,11 @@ curl http://localhost:3000/api/debug/sheets  # (나중에 추가할 디버그 �
 - `PermissionDenied` → 3-3 또는 4-2 공유 누락.
 - `Requested entity was not found` → spreadsheetId 오타.
 - `429 Quota exceeded` → 캐시/배치화 필요. ADR 을 열고 캐시 레이어 도입.
+- **대시보드 전면 `#VALUE!` (신규 기수 시트)** → ① 04 탭 grid < 45열(수식의 AO/이월
+  가드가 grid 밖 참조 — "Array arguments to COUNTIFS…") ② 템플릿에 구세대 결함 수식
+  (AW 참조, 2026-06-18 사고 세대) 잔존. 수리 = **04 grid 45열 확장 후 [ID로 수식 설치]
+  재실행** (9기 2026-07-07 실측). 쓰기 규칙: 레지스트리=RAW, 개인 시트 날짜 셀
+  (O1/O2)=USER_ENTERED.
 
 ## 6. 가드레일 (자동 강제)
 `tests/structural/layers.test.ts` 가 다음을 막는다:

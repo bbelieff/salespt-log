@@ -143,7 +143,32 @@ async function ensureCohortRow() {
   console.log("→ 9 행 append 완료 (active)");
 }
 
+/** --fix-grid: 04 탭 45열 보장 (2026-07-07 #VALUE! 사고 — 진짜 원인).
+ * 9기 템플릿의 04 grid 가 37열(AK)인데 최신 수식(N/O열 COUNTIFS)이 AO:AO(이월 가드)
+ * 참조 → grid 밖 → "Array arguments different size" #VALUE! 연쇄(→대시보드 전파).
+ * 해법 = 기존 ensureGridColumns 패턴(appendDimension, 데이터 비접촉). 멱등. */
+async function fixGrid() {
+  for (const m of MEMBERS) {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: m.sid,
+      fields: "sheets(properties(sheetId,title,gridProperties(columnCount)))",
+    });
+    const s = (meta.data.sheets ?? []).find((x) => x.properties?.title?.startsWith("04"));
+    const count = s?.properties?.gridProperties?.columnCount ?? 0;
+    if (!s?.properties) { console.log(`${m.name}: 04 탭 없음?!`); continue; }
+    if (count >= 45) { console.log(`${m.name}: 04 grid ${count}열 — OK`); continue; }
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: m.sid,
+      requestBody: {
+        requests: [{ appendDimension: { sheetId: s.properties.sheetId, dimension: "COLUMNS", length: 45 - count } }],
+      },
+    });
+    console.log(`${m.name}: 04 grid ${count} → 45열 확장 완료`);
+  }
+}
+
 async function main() {
+  if (process.argv.includes("--fix-grid")) return fixGrid();
   if (process.argv.includes("--cohort-row")) return ensureCohortRow();
   if (process.argv.includes("--repair")) return repair();
   if (VERIFY_ONLY) return verify();
