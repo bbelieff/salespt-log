@@ -97,6 +97,7 @@ async function dbAggregates(sid, courseStart, courseStartISO) {
     channel: String(fieldOrCol(p, "channel", 5) ?? ""),
     미팅날짜: (() => { const v = fieldOrCol(p, "미팅날짜", 3); return typeof v === "number" ? serialToISO(v) : String(v ?? "").slice(0, 10); })(),
     계약여부: fieldOrCol(p, "계약여부", 10) === true || fieldOrCol(p, "계약여부", 10) === "TRUE",
+    구분: String(fieldOrCol(p, "구분", 40) ?? "").trim(), // AO 이월 깃발
   }));
   // contracts: 수임비(E4)/구분(AI34)/계약일(C2)
   const cres = await pool.query(
@@ -107,17 +108,20 @@ async function dbAggregates(sid, courseStart, courseStartISO) {
     계약일: (() => { const v = fieldOrCol(p, "계약일", 2); return typeof v === "number" ? serialToISO(v) : String(v ?? "").slice(0, 10); })(),
   }));
 
-  // channelMatrix
+  const alive = (s) => s === "예약" || s === "완료" || s === "계약";
+  const done = (s) => s === "완료" || s === "계약";
+  // channelMatrix — 생산/유입/컨택진행=sales, 미팅예약/완료/계약=미팅 카드 상태별(누적 퍼널)
   const cm = CHANNEL_ORDER.map((ch) => ({ 채널: ch, 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0, 미팅완료: 0, 계약: 0 }));
   const byCh = Object.fromEntries(cm.map((m) => [m.채널, m]));
-  for (const r of sales) { const m = byCh[r.channel]; if (!m) continue; m.생산 += r.production; m.유입 += r.inflow; m.컨택진행 += r.contactProgress; m.미팅예약 += r.meetingReservation; }
-  for (const mt of meetings) { const m = byCh[mt.channel]; if (!m) continue; if (mt.상태 === "계약" || mt.상태 === "완료") m.미팅완료 += 1; if (mt.계약여부) m.계약 += 1; }
-  // weeklyContracts
+  for (const r of sales) { const m = byCh[r.channel]; if (!m) continue; m.생산 += r.production; m.유입 += r.inflow; m.컨택진행 += r.contactProgress; }
+  for (const mt of meetings) { const m = byCh[mt.channel]; if (!m || mt.구분 === "이월") continue; if (alive(mt.상태)) m.미팅예약 += 1; if (done(mt.상태)) m.미팅완료 += 1; if (mt.계약여부) m.계약 += 1; }
+  // weeklyContracts = 상태=계약 by 미팅날짜 주차
   const wc = new Array(8).fill(0);
   for (const mt of meetings) { if (mt.상태 !== "계약" || !/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜 || "")) continue; const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart); if (w >= 1 && w <= 8) wc[w - 1] += 1; }
-  // weeklyActivity
+  // weeklyActivity = 생산×1 + 컨택×1.5 + 미팅완료(by 미팅날짜)×2
   const wa = new Array(8).fill(0);
-  for (const r of sales) { if (!CHANNEL_ORDER.includes(r.channel) || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue; const w = weekIndexOf(parseISO(r.date), courseStart); if (w < 1 || w > 8) continue; wa[w - 1] += r.production * 1 + r.contactProgress * 1.5 + r.meetingReservation * 2; }
+  for (const r of sales) { if (!CHANNEL_ORDER.includes(r.channel) || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue; const w = weekIndexOf(parseISO(r.date), courseStart); if (w < 1 || w > 8) continue; wa[w - 1] += r.production * 1 + r.contactProgress * 1.5; }
+  for (const mt of meetings) { if (mt.구분 === "이월" || !done(mt.상태) || !/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜 || "")) continue; const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart); if (w >= 1 && w <= 8) wa[w - 1] += 2; }
   // 누적수임비 = 이월 제외 Σ수임비 (isCarryoverContract: 구분='이월' or 계약일<courseStart)
   let fee = 0;
   for (const c of contracts) { const carry = c.구분 === "이월" || (c.계약일 && c.계약일 < courseStartISO); if (!carry) fee += c.수임비; }

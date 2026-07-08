@@ -35,7 +35,7 @@ function contract(수임비: number, 구분 = "", 계약일 = "2026-06-10"): Con
 }
 
 describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
-  it("생산/유입/컨택진행/미팅예약 = salesRows 채널별 합", () => {
+  it("생산/유입/컨택진행 = salesRows 채널별 합 (미팅예약은 미팅 카드 기반, sales 아님)", () => {
     const rows = [
       sales("2026-06-02", "매입DB", 10, 5, 4, 2),
       sales("2026-06-03", "매입DB", 3, 1, 1, 1),
@@ -43,20 +43,22 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
     ];
     const m = channelStackingFromDb(rows, []);
     const 매입 = m.find((x) => x.채널 === "매입DB")!;
-    expect(매입).toMatchObject({ 생산: 13, 유입: 6, 컨택진행: 5, 미팅예약: 3 });
+    expect(매입).toMatchObject({ 생산: 13, 유입: 6, 컨택진행: 5, 미팅예약: 0 }); // 미팅 카드 없음 → 0
     expect(m.find((x) => x.채널 === "현수막")!.생산).toBe(7);
   });
 
-  it("미팅완료 = 상태∈{계약,완료} 채널별 수, 계약 = 계약여부 true 수", () => {
+  it("누적 퍼널: 미팅예약=상태∈{예약,완료,계약}, 미팅완료=상태∈{완료,계약}, 계약=계약여부", () => {
     const meetings = [
+      mtg({ channel: "매입DB", 상태: "예약" }),
       mtg({ channel: "매입DB", 상태: "완료" }),
       mtg({ channel: "매입DB", 상태: "계약", 계약여부: true }),
-      mtg({ channel: "매입DB", 상태: "예약" }), // 미완료
-      mtg({ channel: "매입DB", 상태: "취소" }), // 제외
+      mtg({ channel: "매입DB", 상태: "변경" }), // 퍼널 제외
+      mtg({ channel: "매입DB", 상태: "취소" }), // 퍼널 제외
     ];
     const 매입 = channelStackingFromDb([], meetings).find((x) => x.채널 === "매입DB")!;
+    expect(매입.미팅예약).toBe(3); // 예약+완료+계약 (변경·취소 제외)
     expect(매입.미팅완료).toBe(2); // 완료+계약
-    expect(매입.계약).toBe(1); // 계약여부 true 1건
+    expect(매입.계약).toBe(1); // 계약여부 true
   });
 
   it("오염 채널(CHANNEL_ORDER 밖) 무시, 4채널 항상 반환", () => {
@@ -89,18 +91,24 @@ describe("R2-7a weeklyContractsFromDb (01!N{38..276})", () => {
 });
 
 describe("R2-7a weeklyActivityFromDb (대시보드 H33:H40, 불변식①)", () => {
-  it("생산×1 + 컨택×1.5 + 미팅×2, 주차별", () => {
+  it("생산×1 + 컨택×1.5 + 미팅완료×2(by 미팅날짜, 상태∈{완료,계약})", () => {
     const rows = [
-      sales("2026-06-02", "매입DB", 10, 3, 4, 2), // 주1: 10 + 6 + 4 = 20
-      sales("2026-06-08", "현수막", 0, 0, 2, 1), // 주2: 0 + 3 + 2 = 5
+      sales("2026-06-02", "매입DB", 10, 4, 4, 9), // 주1: 생산10 + 컨택4×1.5=6 = 16 (sales.미팅예약 9는 미사용)
+      sales("2026-06-08", "현수막", 0, 2, 2, 5), // 주2: 컨택2×1.5=3
     ];
-    const w = weeklyActivityFromDb(rows, CS);
-    expect(w[0]).toBe(20);
-    expect(w[1]).toBe(5);
+    const meetings = [
+      mtg({ 상태: "완료", 미팅날짜: "2026-06-03" }), // 주1: +2
+      mtg({ 상태: "계약", 미팅날짜: "2026-06-04" }), // 주1: +2
+      mtg({ 상태: "예약", 미팅날짜: "2026-06-05" }), // 미완료 — 미포함
+      mtg({ 상태: "완료", 미팅날짜: "2026-06-09" }), // 주2: +2
+    ];
+    const w = weeklyActivityFromDb(rows, meetings, CS);
+    expect(w[0]).toBe(10 + 6 + 4); // 20 (미팅완료 2건×2)
+    expect(w[1]).toBe(3 + 2); // 5 (미팅완료 1건×2)
   });
 
-  it("컨택 홀수 → ×1.5 소수 유지(반올림 안 함 — diff 로 시트 규약 확정)", () => {
-    const w = weeklyActivityFromDb([sales("2026-06-02", "매입DB", 0, 0, 1, 0)], CS);
+  it("컨택 홀수 → ×1.5 소수 유지(반올림 안 함 — 시트 H 도 소수)", () => {
+    const w = weeklyActivityFromDb([sales("2026-06-02", "매입DB", 0, 1, 1, 0)], [], CS);
     expect(w[0]).toBe(1.5);
   });
 });
