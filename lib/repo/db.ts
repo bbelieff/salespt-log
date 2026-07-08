@@ -71,10 +71,81 @@ function toBool(v: unknown): boolean {
 }
 
 // 합계 행 식별: 첫 셀이 "합계"로 시작하면 합계
-function isSumRow(firstCellVal: unknown): boolean {
+export function isSumRow(firstCellVal: unknown): boolean {
   if (typeof firstCellVal !== "string") return false;
   return firstCellVal.trim().startsWith("합계");
 }
+
+// ── 섹션 파서·인정필터·좌표 (R2-5 DB read 재사용을 위해 named export) ─────────
+// 각 parseXRow(상대배열 r[0..]) 는 readSection 콜백과 backfill 열문자 복원 양쪽에서 공용.
+// backfill 절대 열문자 시작 인덱스(A=0): 매입DB=B(1)·직접생산=I(8)·현수막=P(15)·콜지기소=X(23).
+export const DB_SECTIONS = {
+  매입DB: { keyPrefix: "매입DB", absStart: 1 },
+  직접생산: { keyPrefix: "직접생산", absStart: 8 },
+  현수막: { keyPrefix: "현수막", absStart: 15 },
+  콜지기소: { keyPrefix: "콜지기소", absStart: 23 },
+} as const;
+
+export const parsePurchaseRow = (r: unknown[]): DBPurchase => {
+  const 개당단가 = toNum(r[2]);
+  const 주문개수 = toNum(r[3]);
+  return {
+    구매일: serialToISODate(r[0]),
+    업체명: toStr(r[1]),
+    개당단가,
+    주문개수,
+    주문금액: 개당단가 * 주문개수, // 계산값(미저장)
+    기타: toStr(r[5]),
+    부가세여부: typeof r[4] === "boolean" ? r[4] : toBool(r[6]), // 신규 F or 구 H
+  };
+};
+export const isPurchaseMeaningful = (p: DBPurchase): boolean => isISODate(p.구매일);
+
+export const parseProductionRow = (r: unknown[]): DBProduction => {
+  const 시작일 = serialToISODate(r[0]);
+  const neo = isISODate(serialToISODate(r[1])); // J=날짜 → 신규 레이아웃
+  const 기간예산 = toNum(r[neo ? 3 : 2]);
+  const 생산개수 = toNum(r[neo ? 4 : 3]);
+  return {
+    시작일,
+    종료일: neo ? serialToISODate(r[1]) : 시작일,
+    소재: toStr(r[neo ? 2 : 1]),
+    기간예산,
+    생산개수,
+    부가세여부: neo ? toBool(r[5]) : false,
+    기타: toStr(r[neo ? 6 : 5]),
+    개당단가: 생산개수 > 0 ? Math.round(기간예산 / 생산개수) : 0,
+  };
+};
+export const isProductionMeaningful = (p: DBProduction): boolean => isISODate(p.시작일);
+
+export const parseBannerRow = (r: unknown[]): DBBanner => {
+  const 개당단가 = toNum(r[3]);
+  const 주문개수 = toNum(r[4]);
+  return {
+    날짜: serialToISODate(r[0]),
+    업체명: toStr(r[1]),
+    도착일: serialToISODate(r[2]),
+    개당단가,
+    주문개수,
+    주문금액: 개당단가 * 주문개수, // 계산값(미저장)
+    기타: toStr(r[6]),
+    부가세여부: typeof r[5] === "boolean" ? r[5] : toBool(r[7]), // 신규 U or 구 W
+  };
+};
+export const isBannerMeaningful = (b: DBBanner): boolean => isISODate(b.날짜);
+
+export const parseLeadRow = (r: unknown[]): DBLead => ({
+  구분: toStr(r[0]),
+  접수일: serialToISODate(r[1]),
+  대표자명: toStr(r[2]),
+  업체명: toStr(r[3]),
+  소개처: toStr(r[4]),
+  연락처: toStr(r[5]),
+  조건: toStr(r[6]),
+});
+export const isLeadMeaningful = (l: DBLead): boolean =>
+  Boolean(l.대표자명) || Boolean(l.업체명) || Boolean(l.연락처);
 
 // ── 4섹션 read ────────────────────────────────────────────────
 
@@ -118,98 +189,24 @@ function isISODate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-// 매입DB (B:H) — 구매일/업체명/개당단가/주문개수/부가세여부(F)/기타. F=boolean 신규, number=구 H fallback.
+// 매입DB (B:H). 파서·필터는 parsePurchaseRow/isPurchaseMeaningful (R2-5 공용).
 export async function readPurchases(spreadsheetId: string) {
-  return readSection<DBPurchase>(
-    spreadsheetId,
-    "B",
-    "H",
-    (r) => {
-      const 개당단가 = toNum(r[2]);
-      const 주문개수 = toNum(r[3]);
-      return {
-        구매일: serialToISODate(r[0]),
-        업체명: toStr(r[1]),
-        개당단가,
-        주문개수,
-        주문금액: 개당단가 * 주문개수, // 계산값(미저장)
-        기타: toStr(r[5]),
-        부가세여부: typeof r[4] === "boolean" ? r[4] : toBool(r[6]), // 신규 F or 구 H
-      };
-    },
-    (p) => isISODate(p.구매일),
-  );
+  return readSection<DBPurchase>(spreadsheetId, "B", "H", parsePurchaseRow, isPurchaseMeaningful);
 }
 
-// 직접생산 (I:O) — 시작/종료/소재/예산/생산개수(M=유입 동기화,ADR-0024)/부가세여부(N)/기타. J=날짜면 신규.
+// 직접생산 (I:O). J=날짜면 신규 레이아웃(parseProductionRow 내부 분기).
 export async function readProductions(spreadsheetId: string) {
-  return readSection<DBProduction>(
-    spreadsheetId,
-    "I",
-    "O",
-    (r) => {
-      const 시작일 = serialToISODate(r[0]);
-      const neo = isISODate(serialToISODate(r[1])); // J=날짜 → 신규 레이아웃
-      const 기간예산 = toNum(r[neo ? 3 : 2]);
-      const 생산개수 = toNum(r[neo ? 4 : 3]);
-      return {
-        시작일,
-        종료일: neo ? serialToISODate(r[1]) : 시작일,
-        소재: toStr(r[neo ? 2 : 1]),
-        기간예산,
-        생산개수,
-        부가세여부: neo ? toBool(r[5]) : false,
-        기타: toStr(r[neo ? 6 : 5]),
-        개당단가: 생산개수 > 0 ? Math.round(기간예산 / 생산개수) : 0,
-      };
-    },
-    (p) => isISODate(p.시작일),
-  );
+  return readSection<DBProduction>(spreadsheetId, "I", "O", parseProductionRow, isProductionMeaningful);
 }
 
-// 현수막 (P:W) — 날짜/업체명/도착일/개당단가/주문개수/부가세여부(U)/기타. U=boolean 신규, number=구 W fallback.
+// 현수막 (P:W). U=boolean 신규 / 구 W fallback (parseBannerRow).
 export async function readBanners(spreadsheetId: string) {
-  return readSection<DBBanner>(
-    spreadsheetId,
-    "P",
-    "W",
-    (r) => {
-      const 개당단가 = toNum(r[3]);
-      const 주문개수 = toNum(r[4]);
-      return {
-        날짜: serialToISODate(r[0]),
-        업체명: toStr(r[1]),
-        도착일: serialToISODate(r[2]),
-        개당단가,
-        주문개수,
-        주문금액: 개당단가 * 주문개수, // 계산값(미저장)
-        기타: toStr(r[6]),
-        부가세여부: typeof r[5] === "boolean" ? r[5] : toBool(r[7]), // 신규 U or 구 W
-      };
-    },
-    (p) => isISODate(p.날짜),
-  );
+  return readSection<DBBanner>(spreadsheetId, "P", "W", parseBannerRow, isBannerMeaningful);
 }
 
-// 콜·지·기·소 (X:AD) — 전부 사용자 입력(수식 없음). "구분"은 dropdown 기본값이라 인정 기준 제외.
-// 필터: 대표자명 OR 업체명 OR 연락처 하나는 입력해야 인정.
+// 콜·지·기·소 (X:AD). 대표자명 OR 업체명 OR 연락처 하나는 있어야 인정.
 export async function readLeads(spreadsheetId: string) {
-  return readSection<DBLead>(
-    spreadsheetId,
-    "X",
-    "AD",
-    (r) => ({
-      구분: toStr(r[0]),
-      접수일: serialToISODate(r[1]),
-      대표자명: toStr(r[2]),
-      업체명: toStr(r[3]),
-      소개처: toStr(r[4]),
-      연락처: toStr(r[5]),
-      조건: toStr(r[6]),
-    }),
-    (p) =>
-      Boolean(p.대표자명) || Boolean(p.업체명) || Boolean(p.연락처),
-  );
+  return readSection<DBLead>(spreadsheetId, "X", "AD", parseLeadRow, isLeadMeaningful);
 }
 
 // ── append / update / clear 헬퍼 ──────────────────────────────
