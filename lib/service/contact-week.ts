@@ -1,18 +1,62 @@
-/** Layer: service — 일정·계약 탭 주간 뷰 (contact.ts 에서 분리 — 500줄 캡, R2-1). */
+/** Layer: service — 일정·계약 탭 주간 뷰 (contact.ts 에서 분리 — 500줄 캡, R2-1).
+ *
+ * R2-3(db-read-schedule): 파일럿 기수는 미팅(04 미러)+주간 funnel(sales 미러)을 DB 로 —
+ * 캐시 히트 시 시트 read 0회. 실패 시 전체 시트 silent fallback + Sentry(화면 에러 금지).
+ * 계약(02) 읽기는 이 파일 범위 밖(R2-4). 표시문자열 2종(N·O)은 Meeting payload 에 실려
+ * 오는 값 그대로(dual-write=옵셔널 필드, backfill=열문자) — 별도 파생 없음(기존과 동일). */
+import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
 import { readCourseStart, readWeekFunnel, weekIndexOf } from "@/repo/sales";
 import { findByDateRangeBoth } from "@/repo/meetings";
-import { Meeting } from "@/types";
+import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
+import { readMeetingsFromDb } from "@/repo/db/read-daily";
+import {
+  chooseDailySource,
+  weekFunnelFromRows,
+  type DailyMetricRow,
+} from "./daily-source";
+import { CHANNEL_ORDER, Meeting } from "@/types";
 
 function parseISO(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y!, m! - 1, d!);
 }
 
-async function resolveSheet(email: string): Promise<string> {
-  const user = await findUserByEmail(email);
-  if (!user) throw new Error(`[contact-week] 등록되지 않은 사용자: ${email}`);
-  return user.spreadsheetId;
+function toISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 기준일부터 7일 ISO 배열. */
+function sevenDays(from: Date): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(from);
+    d.setDate(from.getDate() + i);
+    out.push(toISO(d));
+  }
+  return out;
+}
+
+/** findByDateRangeBoth 의 DB 동치 — 전체 미팅을 두 날짜 기준으로 dates 슬롯에 배분. (R2-3)
+ * 시트 경로와 같은 의미: 예약일/미팅날짜가 dates 에 있는 카드만, id 중복 없음(row_key 유일). */
+export function groupMeetingsBoth(
+  all: Meeting[],
+  dates: readonly string[],
+): {
+  byMeetingDate: Map<string, Meeting[]>;
+  byReservationDate: Map<string, Meeting[]>;
+} {
+  const byMeetingDate = new Map<string, Meeting[]>();
+  const byReservationDate = new Map<string, Meeting[]>();
+  for (const d of dates) {
+    byMeetingDate.set(d, []);
+    byReservationDate.set(d, []);
+  }
+  for (const m of all) {
+    byMeetingDate.get(m.미팅날짜)?.push(m);
+    byReservationDate.get(m.예약일)?.push(m);
+  }
+  return { byMeetingDate, byReservationDate };
 }
 
 export interface ScheduleWeekView {
@@ -37,47 +81,81 @@ export async function loadWeekMeetings(
   email: string,
   weekStart: string,
 ): Promise<ScheduleWeekView> {
-  const spreadsheetId = await resolveSheet(email);
-  const courseStart = await readCourseStart(spreadsheetId);
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[contact-week] 등록되지 않은 사용자: ${email}`);
+  const spreadsheetId = user.spreadsheetId;
   const wsDate = parseISO(weekStart);
-  // 편집 가능 기간 가드는 쓰기 시점(saveContactMetrics/appendNewMeeting)에만 적용.
-  // 조회는 항상 가능 — findByDateRange는 week 인덱스에 의존하지 않아 안전.
-  // weekIndex는 표시용이므로 음수/10 초과도 그대로 노출.
-  const week = weekIndexOf(wsDate, courseStart);
 
-  // 7일 ISO 날짜 생성
-  const dates: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(wsDate);
-    d.setDate(wsDate.getDate() + i);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    dates.push(`${y}-${m}-${dd}`);
+  // 편집 가능 기간 가드는 쓰기 시점(saveContactMetrics/appendNewMeeting)에만 적용.
+  // 조회는 항상 가능 — weekIndex 는 표시용이므로 음수/10 초과도 그대로 노출.
+  let courseStart: Date | null = null;
+  let both: ReturnType<typeof groupMeetingsBoth> | null = null;
+  let weekFunnel: ScheduleWeekView["weekFunnel"] | null = null;
+
+  // 7일 ISO 날짜 생성 (양 경로 공용 — 카드 슬롯 기준)
+  const dates = sevenDays(wsDate);
+
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      courseStart = user.courseStartISO
+        ? parseISO(user.courseStartISO)
+        : await readCourseStart(spreadsheetId);
+      const week = weekIndexOf(wsDate, courseStart);
+      const [allMeetings, salesRows] = await Promise.all([
+        readMeetingsFromDb(spreadsheetId),
+        readSalesRowsFromDb(spreadsheetId),
+      ]);
+      both = groupMeetingsBoth(allMeetings, dates);
+      // funnel — 시트 readWeekFunnel 과 동일 의미: 주 블록(수강시작 기준 7일) 합,
+      // 1~10주 밖은 0 (같은 가드).
+      if (week >= 1 && week <= 10) {
+        const blockDates = sevenDays(
+          (() => { const d = new Date(courseStart); d.setDate(d.getDate() + (week - 1) * 7); return d; })(),
+        );
+        const valid = salesRows.filter((r): r is DailyMetricRow =>
+          (CHANNEL_ORDER as readonly string[]).includes(r.channel),
+        );
+        weekFunnel = weekFunnelFromRows(valid, blockDates);
+      } else {
+        weekFunnel = { 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0 };
+      }
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadWeekMeetings-db-read" } });
+      courseStart = null;
+      both = null; // ↓ 전부 시트 경로로 silent fallback
+      weekFunnel = null;
+    }
   }
 
-  // 1 read 로 예약일/미팅날짜 두 view 동시 추출 (2026-05-16 view 불일치 fix).
-  const [{ byMeetingDate, byReservationDate }, weekFunnel] = await Promise.all([
-    findByDateRangeBoth(spreadsheetId, dates),
-    readWeekFunnel(spreadsheetId, week),
-  ]);
+  if (both === null || weekFunnel === null) {
+    // 기존 시트 경로 (비파일럿 기수 + DB 실패 fallback) — 동작 무변경.
+    courseStart = await readCourseStart(spreadsheetId);
+    const week = weekIndexOf(wsDate, courseStart);
+    // 1 read 로 예약일/미팅날짜 두 view 동시 추출 (2026-05-16 view 불일치 fix).
+    const [sheetBoth, sheetFunnel] = await Promise.all([
+      findByDateRangeBoth(spreadsheetId, dates),
+      readWeekFunnel(spreadsheetId, week),
+    ]);
+    both = sheetBoth;
+    weekFunnel = sheetFunnel;
+  }
+
+  const week = weekIndexOf(wsDate, courseStart!);
   const sortByTime = (a: Meeting, b: Meeting) =>
     a.미팅시간.localeCompare(b.미팅시간);
   const daysByMeetingDate = dates.map((d) => ({
     date: d,
-    meetings: (byMeetingDate.get(d) ?? []).sort(sortByTime),
+    meetings: (both!.byMeetingDate.get(d) ?? []).sort(sortByTime),
   }));
   const daysByReservationDate = dates.map((d) => ({
     date: d,
-    meetings: (byReservationDate.get(d) ?? []).sort(sortByTime),
+    meetings: (both!.byReservationDate.get(d) ?? []).sort(sortByTime),
   }));
-
-  const csISO = `${courseStart.getFullYear()}-${String(courseStart.getMonth() + 1).padStart(2, "0")}-${String(courseStart.getDate()).padStart(2, "0")}`;
 
   return {
     weekStart,
     weekIndex: week,
-    courseStart: csISO,
+    courseStart: toISO(courseStart!),
     daysByMeetingDate,
     daysByReservationDate,
     weekFunnel,

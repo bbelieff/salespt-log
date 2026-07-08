@@ -67,6 +67,24 @@ export function dayChannelsFromRows(
   return out;
 }
 
+/** loadWeekMeetings 의 주간 funnel — 시트 readWeekFunnel(주 블록 28행 E~H 합) 의 DB 재현.
+ * dates = 그 주 블록의 7일(ISO). 시트와 동일하게 4지표를 전 채널·전 일자 합산. (R2-3) */
+export function weekFunnelFromRows(
+  rows: DailyMetricRow[],
+  dates: readonly string[],
+): { 생산: number; 유입: number; 컨택진행: number; 미팅예약: number } {
+  const wanted = new Set(dates);
+  let 생산 = 0, 유입 = 0, 컨택진행 = 0, 미팅예약 = 0;
+  for (const r of rows) {
+    if (!wanted.has(r.date)) continue;
+    생산 += r.production;
+    유입 += r.inflow;
+    컨택진행 += r.contactProgress;
+    미팅예약 += r.meetingReservation;
+  }
+  return { 생산, 유입, 컨택진행, 미팅예약 };
+}
+
 /** loadDay 가 쓰는 누적 3값 — 시트 R1:U6 수식(생산·유입 누적) 의 DB 재현.
  * R열 수식 정의와 동일: 채널별 전체 기간 합. */
 export function stackingSumsFromRows(rows: DailyMetricRow[]): {
