@@ -145,7 +145,7 @@ function toProgress(v: unknown): Progress {
 }
 
 // ── A~AD 한 행을 ContractPayment 객체로 ───────────────────────
-function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
+export function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
   // C/D/E (계약일/업체명/수임비) 중 하나라도 의미있게 채워진 row만 인정.
   // 시트에 미리 박혀있는 F~L 체크박스 data validation의 기본값(FALSE)이나
   // M~AD 슬롯의 default 0 으로는 row 인정 X — "(업체명 없음)" phantom row 방지.

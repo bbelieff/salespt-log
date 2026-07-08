@@ -7,7 +7,11 @@
  *   - 삭제 → clearRow
  */
 import { randomUUID } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
+import { dbEnabled } from "@/repo/db/client";
+import { readContractsFromDb } from "@/repo/db/read-daily";
+import { chooseDailySource } from "./daily-source";
 import {
   appendFromContract,
   clearRow,
@@ -35,12 +39,25 @@ async function resolveSheet(email: string): Promise<string> {
 // @/types 로 이전(googleapis 비의존). 여기선 @/types 재노출만.
 export { isCarryoverContract } from "@/types";
 
-/** 모든 계약수납 row 조회. */
+/** 모든 계약수납 row 조회.
+ *
+ * R2-4(db-read-payments): 파일럿 기수는 02 탭 전체 스캔(이 앱에서 가장 무거운 read 중
+ * 하나) → DB 단일 쿼리. DB 경로는 resolveLayout 등 시트 부속 read 도 0회. 실패 시
+ * 기존 시트 경로 silent fallback + Sentry(화면 에러 금지). 비파일럿 불변. */
 export async function loadContractPayments(
   email: string,
 ): Promise<ContractPayment[]> {
-  const spreadsheetId = await resolveSheet(email);
-  return readAll(spreadsheetId);
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      return await readContractsFromDb(user.spreadsheetId);
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadContractPayments-db-read" } });
+      // ↓ 시트 경로로 silent fallback
+    }
+  }
+  return readAll(user.spreadsheetId);
 }
 
 /**
