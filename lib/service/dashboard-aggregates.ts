@@ -1,0 +1,227 @@
+/**
+ * Layer: service — R2-7a 대시보드 시트수식 재계산 (db-dashboard-aggregates).
+ *
+ * 대시보드가 읽던 **시트 수식 결과 셀**을 raw 행(DB 미러)에서 재계산한다. 이 PR(R2-7a)은
+ * **그림자 대조 전용** — loadDashboard 응답은 계속 시트값, 여기 계산값은 diff 로깅만.
+ * 정확도가 검증(diff 0)되면 R2-7b 가 서빙 전환.
+ *
+ * 재계산 대상 4종(시트 의미는 lib/types DashboardChannelMatrix/DashboardWeeklyPoint 주석 근거):
+ *   • channelMatrix (01!R1:U6): 생산/유입/컨택진행/미팅예약 = salesRows 채널별 합,
+ *       미팅완료 = 미팅 상태∈{계약,완료} 채널별 수(=영업관리 L), 계약 = 계약여부(K)=TRUE 채널별 수.
+ *   • weeklyContracts (01!N{38..276}): 미팅 상태="계약"(J) 을 미팅날짜 weekIndexOf 1~8 버킷.
+ *   • weeklyActivity (대시보드 H33:H40): Σ(생산×1 + 컨택×1.5 + 미팅×2), 주차별(불변식①).
+ *   • 누적수임비 (대시보드 B21): 이월 제외 Σ수임비(arena). B21 정의 미확정 — diff 로 확정.
+ *
+ * ⚠️ 시트 수식 의미가 미검증인 항(활동량의 미팅/생산 정의·B21)은 적대적 검증에서 지목됨 —
+ * 그림자 대조가 경험적으로 확정할 대상(R2-7b 게이트).
+ *
+ * courseStart 는 **readProfileBundle.courseStart**(시트 직렬 파생) 를 쓸 것 — user.courseStartISO
+ * →parseISO(로컬자정) 와 섞으면 비-UTC 서버에서 경계일 off-by-one(적대검증 risk).
+ */
+import {
+  CHANNEL_ORDER,
+  type Channel,
+  type ContractPayment,
+  type DashboardChannelMatrix,
+  type Meeting,
+  isCarryoverContract,
+} from "@/types";
+import { weekIndexOf } from "@/repo/sales";
+import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
+import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
+import { captureServerEvent } from "@/lib/analytics/api-timing";
+
+/** "YYYY-MM-DD" → 로컬 자정 Date (write-path parseISO 와 동일 규칙 — 배치-집계 패리티). */
+function parseISO(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y!, m! - 1, d!);
+}
+const num = (v: unknown): number =>
+  typeof v === "number" && Number.isFinite(v) ? v : 0;
+
+const EMPTY_STAGE = (ch: Channel): DashboardChannelMatrix => ({
+  채널: ch,
+  생산: 0,
+  유입: 0,
+  컨택진행: 0,
+  미팅예약: 0,
+  미팅완료: 0,
+  계약: 0,
+});
+
+/** 채널별 6단계 stacking (01!R1:U6 재현). salesRows=생산/유입/컨택진행/미팅예약, meetings=미팅완료/계약. */
+export function channelStackingFromDb(
+  salesRows: DbSalesRow[],
+  meetings: Meeting[],
+): DashboardChannelMatrix[] {
+  const byCh = new Map<Channel, DashboardChannelMatrix>();
+  for (const ch of CHANNEL_ORDER) byCh.set(ch, EMPTY_STAGE(ch));
+
+  for (const r of salesRows) {
+    const m = byCh.get(r.channel as Channel);
+    if (!m) continue; // 오염 채널 무시(CHANNEL_ORDER 만)
+    m.생산 += num(r.production);
+    m.유입 += num(r.inflow);
+    m.컨택진행 += num(r.contactProgress);
+    m.미팅예약 += num(r.meetingReservation); // 영업관리 H 채널별 합
+  }
+  for (const mt of meetings) {
+    const m = byCh.get(mt.channel);
+    if (!m) continue;
+    // 미팅완료(영업관리 L) = 상태 IN {계약, 완료} — 취소·변경·예약 제외.
+    if (mt.상태 === "계약" || mt.상태 === "완료") m.미팅완료 += 1;
+    // 계약(04 K=TRUE COUNTIFS) = 계약여부 true. J=상태="계약" 과 동기화된 값.
+    if (mt.계약여부) m.계약 += 1;
+  }
+  return CHANNEL_ORDER.map((ch) => byCh.get(ch)!);
+}
+
+/** 주차별 계약수 (01!N{38..276} 재현) — 미팅 상태="계약"(J) 을 미팅날짜 weekIndexOf 1~8 버킷. */
+export function weeklyContractsFromDb(
+  meetings: Meeting[],
+  courseStart: Date,
+): number[] {
+  const weeks = new Array(8).fill(0);
+  for (const m of meetings) {
+    if (m.상태 !== "계약") continue; // N 은 J="계약" COUNTIFS (완료·변경·취소 제외)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(m.미팅날짜)) continue;
+    const w = weekIndexOf(parseISO(m.미팅날짜), courseStart);
+    if (w >= 1 && w <= 8) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
+  }
+  return weeks;
+}
+
+/** 주차별 활동량 (대시보드 H33:H40 재현) — 불변식① Σ(생산×1 + 컨택×1.5 + 미팅×2). */
+export function weeklyActivityFromDb(
+  salesRows: DbSalesRow[],
+  courseStart: Date,
+): number[] {
+  const weeks = new Array(8).fill(0);
+  for (const r of salesRows) {
+    if (!(CHANNEL_ORDER as readonly string[]).includes(r.channel)) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
+    const w = weekIndexOf(parseISO(r.date), courseStart);
+    if (w < 1 || w > 8) continue; // 8주 통계만(유예 9~10·시작 전 제외)
+    weeks[w - 1] +=
+      num(r.production) * 1 +
+      num(r.contactProgress) * 1.5 +
+      num(r.meetingReservation) * 2;
+  }
+  return weeks;
+}
+
+/** 누적수임비(B21) 후보 = 이월 제외 Σ수임비(arena). B21 실의미 미확정 — 그림자 diff 로 확정. */
+export function arenaFeeFromDb(
+  contracts: ContractPayment[],
+  courseStartISO: string,
+): number {
+  let fee = 0;
+  for (const c of contracts) {
+    if (isCarryoverContract(c, courseStartISO)) continue;
+    fee += num(c.수임비);
+  }
+  return fee;
+}
+
+// ── 그림자 대조 diff ────────────────────────────────────────────
+export interface ParityDiff {
+  field: string; // "channelMatrix.매입DB.생산" | "weeklyContracts[3]" | "누적수임비" 등
+  sheet: number;
+  db: number;
+}
+
+/** 시트 DashboardView 값들과 DB 재계산값을 per-field 대조. 같은 값은 제외, 불일치만 반환. */
+export function diffDashboardAggregates(
+  sheet: {
+    channelMatrix: DashboardChannelMatrix[];
+    weeklyContracts: number[];
+    weeklyActivity: number[];
+    누적수임비: number;
+  },
+  db: {
+    channelMatrix: DashboardChannelMatrix[];
+    weeklyContracts: number[];
+    weeklyActivity: number[];
+    누적수임비: number;
+  },
+): ParityDiff[] {
+  const out: ParityDiff[] = [];
+  const push = (field: string, s: number, d: number) => {
+    // 소수 오차 흡수(활동량 ×1.5) — 0.5 미만 차이는 반올림 규약 차이로 간주하지 않고 그대로 노출.
+    if (num(s) !== num(d)) out.push({ field, sheet: num(s), db: num(d) });
+  };
+  const STAGES = ["생산", "유입", "컨택진행", "미팅예약", "미팅완료", "계약"] as const;
+  for (const ch of CHANNEL_ORDER) {
+    const s = sheet.channelMatrix.find((m) => m.채널 === ch);
+    const d = db.channelMatrix.find((m) => m.채널 === ch);
+    for (const st of STAGES) push(`channelMatrix.${ch}.${st}`, s?.[st] ?? 0, d?.[st] ?? 0);
+  }
+  for (let i = 0; i < 8; i++) push(`weeklyContracts[${i + 1}]`, sheet.weeklyContracts[i] ?? 0, db.weeklyContracts[i] ?? 0);
+  for (let i = 0; i < 8; i++) push(`weeklyActivity[${i + 1}]`, sheet.weeklyActivity[i] ?? 0, db.weeklyActivity[i] ?? 0);
+  push("누적수임비", sheet.누적수임비, db.누적수임비);
+  return out;
+}
+
+/** DB 4종 재계산 묶음 — 시트측 값과 대조 가능한 형태. 순수 입력(테스트·parity 스크립트 공용). */
+export function computeDbAggregates(
+  salesRows: DbSalesRow[],
+  meetings: Meeting[],
+  contracts: ContractPayment[],
+  courseStart: Date,
+  courseStartISO: string,
+): {
+  channelMatrix: DashboardChannelMatrix[];
+  weeklyContracts: number[];
+  weeklyActivity: number[];
+  누적수임비: number;
+} {
+  return {
+    channelMatrix: channelStackingFromDb(salesRows, meetings),
+    weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
+    weeklyActivity: weeklyActivityFromDb(salesRows, courseStart),
+    누적수임비: arenaFeeFromDb(contracts, courseStartISO),
+  };
+}
+
+/** 그림자 대조 — DB 재계산 후 시트값과 per-field diff 를 PostHog(dashboard_parity)+콘솔 로깅.
+ * **fire-and-forget 전용**: loadDashboard 응답을 절대 지연/차단하지 않는다(비파일럿·실패 무해).
+ * R2-7a 는 이 로깅만 — 응답은 시트값 그대로. diff 0 확인 후 R2-7b 서빙 전환. */
+export function shadowCompareDashboard(
+  spreadsheetId: string,
+  courseStart: Date,
+  courseStartISO: string,
+  sheetSide: {
+    channelMatrix: DashboardChannelMatrix[];
+    weeklyContracts: number[];
+    weeklyActivity: number[];
+    누적수임비: number;
+  },
+): void {
+  if (!dbEnabled()) return;
+  void (async () => {
+    const [salesRows, meetings, contracts] = await Promise.all([
+      readSalesRowsFromDb(spreadsheetId),
+      readMeetingsFromDb(spreadsheetId),
+      readContractsFromDb(spreadsheetId),
+    ]);
+    const db = computeDbAggregates(salesRows, meetings, contracts, courseStart, courseStartISO);
+    const diffs = diffDashboardAggregates(sheetSide, db);
+    captureServerEvent("dashboard_parity", { diffCount: diffs.length });
+    if (diffs.length === 0) {
+      console.log("[dashboard-parity] diff 0 ✅");
+    } else {
+      console.warn(`[dashboard-parity] diff ${diffs.length}건:`);
+      for (const d of diffs) {
+        console.warn(`  ${d.field}: sheet=${d.sheet} db=${d.db}`);
+        // 필드명은 비-PII(좌표·채널·단계명) — PostHog 개별 이벤트로 추적 가능.
+        captureServerEvent("dashboard_parity_diff", { field: d.field, sheet: d.sheet, db: d.db });
+      }
+    }
+  })().catch((e) => {
+    const msg = (e instanceof Error ? e.message : "unknown").replace(
+      /postgres(ql)?:\/\/\S+/gi,
+      "[DATABASE_URL]",
+    );
+    console.warn(`[dashboard-parity] 대조 실패(무해): ${msg}`);
+  });
+}
