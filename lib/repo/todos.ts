@@ -131,8 +131,8 @@ function todoToRow(t: Todo): (string | number | boolean)[] {
   return row;
 }
 
-/** 시트 1행 배열 → Todo (parse 실패 시 null). */
-function rowToTodo(r: unknown[]): Todo | null {
+/** 시트 1행 배열 → Todo (parse 실패 시 null). R2-6 DB read 가 열문자 복원 후 재사용. */
+export function rowToTodo(r: unknown[]): Todo | null {
   const idStr = String(r[COL.id] ?? "");
   if (!idStr) return null;
 
