@@ -1,6 +1,6 @@
 ---
 slug: db-read-payments
-status: active
+status: completed
 created: 2026-07-08
 owner: belie
 related: db-migration-pilot, db-read-contact, db-read-meetings-banners, db-read-schedule
