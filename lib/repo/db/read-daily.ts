@@ -12,8 +12,9 @@
  *
  * R2-3(일정·계약 탭 loadWeekMeetings·캘린더)은 readMeetingsFromDb 를 재사용만 하면 됨.
  */
-import { Meeting } from "@/types";
+import { ContractPayment, Meeting } from "@/types";
 import { rowToMeeting } from "../meetings";
+import { rowToCP } from "../contract-payment";
 import { dbEnabled, ensureSchema, getDbPool } from "./client";
 
 /** 열 인덱스 → 시트 열문자 (backfill rowObj 의 colName 과 동일 규칙, AP=41 까지 충분). */
@@ -79,6 +80,85 @@ export async function readMeetingsFromDb(
     : a.예약시각 !== b.예약시각 ? a.예약시각.localeCompare(b.예약시각)
     : a.id.localeCompare(b.id),
   );
+  return out;
+}
+
+// ── R2-4: contracts(02 계약수납) read (db-read-payments) ─────────────────────
+// payload 3형태 공존: ① backfill = 열문자 C..AK(문자열화) ② updateUserFields 미러 =
+// ContractPayment 전체(필드명) ③ append 미러 = 부분 필드명 {계약일,업체명,수임비,
+// meetingId→AK, 구분, 원본행id→AJ}. 전략: 열문자로 A기준 행 배열 복원 → 필드명 키를
+// 좌표에 overlay → 시트 파서 rowToCP 그대로 재사용(이월 깃발 AI/AJ·수납 1~3 포함 —
+// 2026-07-07 이월 매출 누수 사고 계열의 재발을 파서 단일화로 차단).
+
+/** ContractPayment 필드명 → A기준 열 인덱스 (cpToRow 좌표 + 이월/연결 확장 + 미러 이명). */
+const CP_FIELD_IDX: Record<string, number> = {
+  계약일: 2, 업체명: 3, 수임비: 4,
+  공동인증서: 5, 임대차계약서: 6, 신분증: 7, 드라이브업로드: 8,
+  사업계획서초안발송: 9, 컨설팅5종서류발송: 10, 플러그이관: 11,
+  로드맵메모: 30,
+  구분: 34, 이월원본행id: 35, 원본행id: 35, // append 미러는 "원본행id" 이명 사용
+  linkedMeetingId: 36, meetingId: 36,       // append 미러는 "meetingId" 이명 사용
+};
+const CP_SLOT_START: Record<string, { start: number; memo: number }> = {
+  수납1: { start: 12, memo: 31 },
+  수납2: { start: 18, memo: 32 },
+  수납3: { start: 24, memo: 33 },
+};
+
+/** payload(3형태 겸용) → ContractPayment. rowNumber = row_key r{N} 의 N. */
+export function contractFromDbPayload(
+  p: Record<string, unknown>,
+  rowNumber: number,
+): ContractPayment | null {
+  // 1) backfill 열문자(C 기준 저장 — 절대 열문자라 A기준 인덱스로 그대로 복원)
+  const r: unknown[] = new Array(37).fill("");
+  for (let i = 2; i <= 36; i++) {
+    const v = p[colName(i)];
+    if (v !== undefined) r[i] = coerce(v);
+  }
+  // 2) 필드명 overlay (미러가 최신 — jsonb 병합상 나중 쓰기)
+  for (const [k, idx] of Object.entries(CP_FIELD_IDX)) {
+    if (p[k] !== undefined && p[k] !== null) r[idx] = p[k];
+  }
+  for (const [k, pos] of Object.entries(CP_SLOT_START)) {
+    const s = p[k];
+    if (s && typeof s === "object") {
+      const o = s as Record<string, unknown>;
+      if (o.진행기관 !== undefined) r[pos.start] = o.진행기관;
+      if (o.진행률 !== undefined) r[pos.start + 1] = o.진행률;
+      if (o.현황 !== undefined) r[pos.start + 2] = o.현황;
+      if (o.승인금액 !== undefined) r[pos.start + 3] = o.승인금액;
+      if (o.수납액 !== undefined) r[pos.start + 4] = o.수납액;
+      if (o.수납일 !== undefined) r[pos.start + 5] = o.수납일;
+      if (o.메모 !== undefined) r[pos.memo] = o.메모;
+    }
+  }
+  return rowToCP(r, rowNumber);
+}
+
+/** 한 시트의 02 계약수납 전체 (_cleared 제외) — readAll 동치. 행번호 오름차순(시트 순서). */
+export async function readContractsFromDb(
+  spreadsheetId: string,
+): Promise<ContractPayment[]> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select row_key, payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'contracts'
+       and coalesce((payload->>'_cleared')::boolean, false) = false`,
+    [spreadsheetId],
+  );
+  const out: ContractPayment[] = [];
+  for (const { row_key, payload } of res.rows as {
+    row_key: string;
+    payload: Record<string, unknown>;
+  }[]) {
+    const n = Number(row_key.replace(/^r/, ""));
+    if (!Number.isFinite(n)) continue;
+    const cp = contractFromDbPayload(payload, n);
+    if (cp) out.push(cp);
+  }
+  out.sort((a, b) => (a.row ?? 0) - (b.row ?? 0));
   return out;
 }
 
