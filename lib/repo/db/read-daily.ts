@@ -12,13 +12,14 @@
  *
  * R2-3(일정·계약 탭 loadWeekMeetings·캘린더)은 readMeetingsFromDb 를 재사용만 하면 됨.
  */
-import { CompanyInfo, ContractPayment, Meeting } from "@/types";
+import { CompanyInfo, ContractPayment, Meeting, Todo } from "@/types";
 import {
   COMPANY_FIELDS,
   COMPANY_FIELDS_EXT,
   rowToMeeting,
 } from "../meetings";
 import { rowToCP } from "../contract-payment";
+import { rowToTodo } from "../todos";
 import { companyContractRef } from "../company-info-archive";
 import { dbEnabled, ensureSchema, getDbPool } from "./client";
 
@@ -164,6 +165,39 @@ export async function readContractsFromDb(
     if (cp) out.push(cp);
   }
   out.sort((a, b) => (a.row ?? 0) - (b.row ?? 0));
+  return out;
+}
+
+// ── R2-6: todos(05 실무투두) read (db-read-calendar) — meetings 와 동일 구조(A열 id) ──
+// payload 2형태: dual-write=Todo 필드명 / backfill=열문자 A..N(rowObj 기본 start 0).
+// 열문자는 A..N → 행배열 복원 후 시트 파서 rowToTodo 재사용(showOnCalendar 기본 ON 규칙 포함).
+
+/** payload(필드명/열문자 겸용) → Todo. 실패 null. */
+export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
+  if (typeof p.id === "string" && p.id) {
+    const direct = Todo.safeParse(p);
+    if (direct.success) return direct.data;
+  }
+  const r: unknown[] = [];
+  for (let i = 0; i <= 13; i++) r.push(coerce(p[colName(i)])); // A..N
+  return rowToTodo(r);
+}
+
+/** 한 시트의 05 실무투두 전체(_cleared 제외). 캘린더가 showOnCalendar·예정일자로 필터. */
+export async function readTodosFromDb(spreadsheetId: string): Promise<Todo[]> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'todos'
+       and coalesce((payload->>'_cleared')::boolean, false) = false`,
+    [spreadsheetId],
+  );
+  const out: Todo[] = [];
+  for (const { payload } of res.rows as { payload: Record<string, unknown> }[]) {
+    const t = todoFromDbPayload(payload);
+    if (t) out.push(t);
+  }
   return out;
 }
 
