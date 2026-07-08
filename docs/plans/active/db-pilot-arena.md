@@ -34,3 +34,7 @@ related: db-read-contact, db-migration-pilot, rejoin-routing
 
 ## Log
 - 2026-07-08 구현 착수.
+- 2026-07-08 #492 머지·배포 success. backfill: dry-run(1,083행)→execute#1 부분(1,035행,
+  sales 스킵 5=429) → GH 재시도 rc=255 연속 차단(PC에선 22 열림 — GH IP 대역 차단 추정).
+  대응: 워크플로에 rc=255 재시도 7×30s 내장(fix/arena-backfill-converge) + 수렴 실행은
+  PC 직행 SSH 경로로(belie 승인 게이트). 수렴 판정 = admin 배너 ≥1,370행 + 대조표 일치.

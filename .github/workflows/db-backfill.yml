@@ -29,11 +29,33 @@ jobs:
           EXECUTE: ${{ inputs.execute }}
         run: |
           # 인자는 원격에 env 로 전달(따옴표 안전). 코드/URL 값 미출력.
-          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
-              -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" \
-              "cd /opt/salespt-log && COHORT_ARG=\"$COHORT\" EXEC_ARG=\"$EXECUTE\" bash -s" <<'REMOTE_EOF'
+          REMOTE=$(cat <<'REMOTE_EOF'
           set -e
+          cd /opt/salespt-log
           FLAGS="--cohort $COHORT_ARG"
           if [ "$EXEC_ARG" = "true" ]; then FLAGS="$FLAGS --execute"; fi
           node scripts/ops/backfill-sheet-rows.mjs $FLAGS
           REMOTE_EOF
+          )
+          # rc=255(도달성) 한정 재시도 7×30s — deploy 단계와 동일 완화.
+          # 배경(2026-07-08): 아레나 backfill 이 GH러너→VPS22 간헐 차단에 3연속 단발 실패
+          # (PC에선 22 열림 — GH IP 대역만 차단되는 창). 스크립트 실패(다른 rc)는 즉시
+          # fail — 멱등 설계라 재실행으로 수렴.
+          set +e
+          for i in 1 2 3 4 5 6 7; do
+            rc=0
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" \
+                "COHORT_ARG=\"$COHORT\" EXEC_ARG=\"$EXECUTE\" bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 30초 후 재시도" >&2
+              sleep 30
+            else
+              echo "backfill 스크립트 실패(rc=$rc) — 재시도 안 함(멱등 재실행으로 수렴)" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 7회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
+          exit 1
