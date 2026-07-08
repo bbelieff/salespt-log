@@ -49,7 +49,20 @@ const EMPTY_STAGE = (ch: Channel): DashboardChannelMatrix => ({
   계약: 0,
 });
 
-/** 채널별 6단계 stacking (01!R1:U6 재현). salesRows=생산/유입/컨택진행/미팅예약, meetings=미팅완료/계약. */
+// 시트 R1:U6 R4/R5·대시보드 L 수식 실측(2026-07-09): 미팅 퍼널 카운트는 **AO<>"이월" 제외**.
+// 이월 미팅(아레나로 넘어간 것)은 본인 기수 퍼널·활동량에서 빠진다(carryover 분리).
+/** 미팅이 "살아있는"(변경·취소 아님) 상태 — 누적 퍼널 미팅예약 스테이지. 이월 제외는 호출부에서. */
+const ALIVE = (상태: Meeting["상태"]): boolean =>
+  상태 === "예약" || 상태 === "완료" || 상태 === "계약";
+/** 미팅이 성사(미팅완료) — 상태∈{완료,계약}. 활동량·R5 공용. 이월 제외는 호출부에서. */
+const DONE = (상태: Meeting["상태"]): boolean => 상태 === "완료" || 상태 === "계약";
+/** 이월 미팅(구분="이월", 시트 AO열) — 퍼널·활동량 카운트에서 제외. */
+const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
+
+/** 채널별 6단계 stacking (01!R1:U6 재현). 생산/유입/컨택진행=salesRows 합,
+ * 미팅예약/미팅완료/계약=미팅 카드 상태별 카운트(누적 퍼널 — 실측 규명 2026-07-09).
+ *   미팅예약 = 상태∈{예약,완료,계약}(변경·취소 제외)  ← Σsales.meetingReservation 아님(stale).
+ *   미팅완료 = 상태∈{완료,계약}(영업관리 L) · 계약 = 계약여부 TRUE. */
 export function channelStackingFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
@@ -63,14 +76,13 @@ export function channelStackingFromDb(
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
     m.컨택진행 += num(r.contactProgress);
-    m.미팅예약 += num(r.meetingReservation); // 영업관리 H 채널별 합
   }
   for (const mt of meetings) {
     const m = byCh.get(mt.channel);
     if (!m) continue;
-    // 미팅완료(영업관리 L) = 상태 IN {계약, 완료} — 취소·변경·예약 제외.
-    if (mt.상태 === "계약" || mt.상태 === "완료") m.미팅완료 += 1;
-    // 계약(04 K=TRUE COUNTIFS) = 계약여부 true. J=상태="계약" 과 동기화된 값.
+    if (CARRYOVER(mt)) continue; // R4/R5 수식 AO<>"이월" — 이월 미팅 제외
+    if (ALIVE(mt.상태)) m.미팅예약 += 1; // 누적 퍼널: 살아있는 미팅 전부
+    if (DONE(mt.상태)) m.미팅완료 += 1;
     if (mt.계약여부) m.계약 += 1;
   }
   return CHANNEL_ORDER.map((ch) => byCh.get(ch)!);
@@ -91,9 +103,12 @@ export function weeklyContractsFromDb(
   return weeks;
 }
 
-/** 주차별 활동량 (대시보드 H33:H40 재현) — 불변식① Σ(생산×1 + 컨택×1.5 + 미팅×2). */
+/** 주차별 활동량 (대시보드 H33:H40 재현) — 불변식① 생산×1 + 컨택×1.5 + 미팅×2.
+ *  생산=Σproduction·컨택=ΣcontactProgress(salesRows 주차합), **미팅=미팅완료(상태∈{완료,계약})
+ *  by 미팅날짜 주차 카운트**(sales.meetingReservation 아님 — stale, 실측 규명 2026-07-09). */
 export function weeklyActivityFromDb(
   salesRows: DbSalesRow[],
+  meetings: Meeting[],
   courseStart: Date,
 ): number[] {
   const weeks = new Array(8).fill(0);
@@ -102,10 +117,13 @@ export function weeklyActivityFromDb(
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
     const w = weekIndexOf(parseISO(r.date), courseStart);
     if (w < 1 || w > 8) continue; // 8주 통계만(유예 9~10·시작 전 제외)
-    weeks[w - 1] +=
-      num(r.production) * 1 +
-      num(r.contactProgress) * 1.5 +
-      num(r.meetingReservation) * 2;
+    weeks[w - 1] += num(r.production) * 1 + num(r.contactProgress) * 1.5;
+  }
+  for (const mt of meetings) {
+    if (CARRYOVER(mt) || !DONE(mt.상태)) continue; // 미팅완료(성사)·이월제외 (대시보드 L 수식)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜)) continue;
+    const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
+    if (w >= 1 && w <= 8) weeks[w - 1] += 2; // 미팅 가중치 2
   }
   return weeks;
 }
@@ -178,7 +196,7 @@ export function computeDbAggregates(
   return {
     channelMatrix: channelStackingFromDb(salesRows, meetings),
     weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
-    weeklyActivity: weeklyActivityFromDb(salesRows, courseStart),
+    weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
     누적수임비: arenaFeeFromDb(contracts, courseStartISO),
   };
 }
