@@ -23,6 +23,10 @@ import {
   updatePurchase,
   writeProductionCountCell,
 } from "@/repo/db";
+import * as Sentry from "@sentry/nextjs";
+import { dbEnabled } from "@/repo/db/client";
+import { readDbTabFromDb } from "@/repo/db/read-db-tab";
+import { chooseDailySource } from "./daily-source";
 import { writeProductionCell, sumChannelInflowOverPeriod } from "@/repo/sales";
 import type {
   Channel,
@@ -58,9 +62,24 @@ function rowsOrEmpty<T>(r: PromiseSettledResult<{ rows: T[] }>, label: string): 
 /**
  * 5섹션 한 번에 조회. allSettled — 한 섹션(예: 신규 AF:AI 게시로그)만 throw 해도
  * 그 채널만 빈 목록, 나머지는 정상. resolveSheet(사용자 없음)만 throw 유지.
+ *
+ * R2-5(db-read-production): 파일럿 기수는 4섹션 시트 read(4회) → DB 단일 쿼리.
+ * 실패 시 기존 시트 경로 silent fallback + Sentry(화면 에러 금지). 비파일럿 불변.
  */
 export async function loadDBOverview(email: string): Promise<DBOverview> {
-  const spreadsheetId = await resolveSheet(email);
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
+  const spreadsheetId = user.spreadsheetId;
+
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      return await readDbTabFromDb(spreadsheetId);
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadDBOverview-db-read" } });
+      // ↓ 시트 경로로 silent fallback
+    }
+  }
+
   const [purchases, productions, banners, leads] = await Promise.allSettled([
     readPurchases(spreadsheetId),
     readProductions(spreadsheetId),
