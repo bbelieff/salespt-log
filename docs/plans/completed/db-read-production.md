@@ -1,6 +1,6 @@
 ---
 slug: db-read-production
-status: active
+status: completed
 created: 2026-07-09
 owner: belie
 related: db-read-payments, db-read-meetings-banners, db-migration-pilot, db-first-unlimited-roadmap
