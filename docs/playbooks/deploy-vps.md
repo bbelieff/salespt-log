@@ -17,6 +17,12 @@
 **배포(자동)**: `master` push → `.github/workflows/deploy.yml` 자동 실행. 수동 = `gh workflow run "Deploy to VPS"`.
 워크플로우: `git reset --hard origin/master` → `npm ci` → `rm -rf .next && npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → `pm2 save` → health(`:3000` + `https://salesptlog.online`).
 - RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
+- **빌드 캐시(2026-07-08 chore/deploy-build-cache)**: `npm ci` 는 package-lock.json
+  sha256 이 마커(`.npm-ci.hash`, VPS untracked)와 같으면 **스킵**, 직전 릴리스의
+  `.next/cache` 는 `.next-build/cache` 로 복사(cp -al 하드링크 우선)해 재활용.
+  **빌드가 이상하면(캐시 오염 의심) `gh workflow run "Deploy to VPS" -f clean=true` 1회**
+  — 마커 무시+캐시 미복사로 완전 클린 빌드. 무중단·롤백 경로 영향 없음(런타임은
+  cache 디렉토리 미사용).
 - **SSH 접속(2026-06-04 개선)**: `ssh-keyscan` 은 best-effort(`|| true`) — 하드 게이트 아님. 실제 ssh 는 `StrictHostKeyChecking=accept-new`(TOFU) + `ConnectTimeout=30` 으로 known_hosts 없이도 접속. 러너↔VPS 22번의 **간헐적 연결 타임아웃**은 Deploy 단계가 **연결 실패(ssh rc=255)에 한해 최대 7회×30s(~7분 창) 재시도**로 흡수(2026-07-07 run#426: 5회×15s 창을 넘는 4~5분대 장애 실측 → 확대. 빌드/원격 실패=다른 rc 는 즉시 fail → 롤백 신호). 주입 스텝도 rc=255 시 1회 재시도. 과거: keyscan 을 하드 게이트로 둬서 간헐 타임아웃에 배포 전체가 막히던 오진 유발(sshd 는 정상이었음).
 
 **Secret 추가 절차 (운영자용 — SSH 불필요, 2026-07-06 도입)**: 배포 파이프라인이

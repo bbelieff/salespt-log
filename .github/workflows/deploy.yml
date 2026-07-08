@@ -4,6 +4,11 @@ on:
   push:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      clean:
+        description: "완전 클린 빌드 — npm ci 강제 + Next 빌드 캐시 미복사 (캐시 오염 탈출구)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-vps
@@ -115,7 +120,23 @@ jobs:
             echo "auth env OK — AUTH_SECRET / AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / AUTH_URL 모두 존재"
             echo "::endgroup::"
             echo "::group::Installing"
-            npm ci --silent
+            # 배포 시간 단축(2026-07-08 chore/deploy-build-cache): lock 파일이 안 바뀌면
+            # npm ci 스킵. 마커(.npm-ci.hash)는 untracked — git reset --hard 에 안 지워짐.
+            # 탈출구: workflow_dispatch clean=true → 마커 무시하고 무조건 재설치.
+            # inputs.clean 은 push 이벤트에선 빈 문자열 → "true" 아님 → 정상 캐시 경로.
+            CLEAN_BUILD="${{ inputs.clean }}"
+            LOCK_HASH=$(sha256sum package-lock.json | cut -d" " -f1)
+            if [ "$CLEAN_BUILD" = "true" ]; then
+              echo "clean=true — npm ci 강제 실행(마커 무시)"
+              rm -f .npm-ci.hash
+            fi
+            if [ -d node_modules ] && [ -f .npm-ci.hash ] && [ "$LOCK_HASH" = "$(cat .npm-ci.hash)" ]; then
+              echo "npm ci 스킵 ✅ — package-lock.json 해시 동일 ($LOCK_HASH)"
+            else
+              npm ci --silent
+              printf "%s" "$LOCK_HASH" > .npm-ci.hash
+              echo "npm ci 실행 + 해시 마커 갱신 ($LOCK_HASH)"
+            fi
             echo "::endgroup::"
             echo "::group::Building (무중단 — .next-build 에 빌드, 옛 .next 보존)"
             # 빌드 OOM 방지 — VPS RAM 3.8GB. 2048MB 가 Next.js 15.5 + 이 코드베이스에 충분.
@@ -128,6 +149,17 @@ jobs:
             #    next build 타입체크가 include 해 "Cannot find module …route.js" 로 깨짐(2026-06-23 #448).
             #    .next/types 는 빌드타임 전용(런타임 next start 미사용) → 옛 것 제거해도 무중단 안전.
             rm -rf .next-build .next/types
+            # 빌드 캐시 보존(2026-07-08): 직전 릴리스 .next/cache 를 .next-build/cache 로
+            # 복사해 재활용. 같은 디스크 → cp -al(하드링크, 즉시) 우선, 실패 시 cp -a 폴백.
+            # 런타임(next start)은 cache 디렉토리를 안 읽으므로 무중단·롤백(.next-prev 복원)
+            # 경로에 영향 없음. clean=true 면 미복사(완전 맨땅 빌드).
+            if [ "$CLEAN_BUILD" != "true" ] && [ -d .next/cache ]; then
+              mkdir -p .next-build
+              cp -al .next/cache .next-build/cache 2>/dev/null || cp -a .next/cache .next-build/cache
+              echo "빌드 캐시 적중 ✅ — .next/cache 재활용 ($(du -sh .next-build/cache | cut -f1))"
+            else
+              echo "빌드 캐시 미복사 (clean=${CLEAN_BUILD:-false} 또는 직전 캐시 없음) — 맨땅 빌드"
+            fi
             BUILD_DIST_DIR=.next-build npm run build
             # 새 빌드 검증 — 실패 시 swap 안 함 → 옛 .next 그대로 서빙(빌드 실패도 무중단).
             test -f .next-build/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패, swap 안 함(무중단 유지)"; exit 1; }
