@@ -33,6 +33,9 @@ import { readBanners, readProductions, readPurchases } from "@/repo/db";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readProfileBundle } from "@/repo/sales";
 import { isCarryoverContract } from "./contract-payment";
+import { chooseDailySource } from "./daily-source";
+import { dbEnabled } from "@/repo/db/client";
+import { shadowCompareDashboard } from "./dashboard-aggregates";
 
 const CHANNELS: DashboardChannelMatrix["채널"][] = [
   "매입DB",
@@ -193,6 +196,17 @@ export async function loadDashboard(
     { 채널: "직접생산", 비용: productionCost },
     { 채널: "현수막", 비용: bannerCost },
   ];
+
+  // R2-7a 그림자 대조 — 파일럿 기수만, fire-and-forget(응답 무변경·비차단). DB 재계산값을
+  // 시트값과 per-field diff 로깅해 정확도 관찰. diff 0 확인 후 R2-7b 서빙 전환.
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    shadowCompareDashboard(sheetId, profile.courseStart, courseStartISO, {
+      channelMatrix,
+      weeklyContracts: data.weeklyContracts,
+      weeklyActivity: data.weeklyActivity,
+      누적수임비: fee,
+    });
+  }
 
   return {
     kpi: {

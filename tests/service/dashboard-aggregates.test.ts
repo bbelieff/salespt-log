@@ -1,0 +1,127 @@
+/**
+ * R2-7a 대시보드 재계산 순수 함수 단위 대조. 그림자 대조는 실데이터 diff 가 최종 검증(R2-7b 게이트)이지만,
+ * 여기서 각 재계산의 도메인 규칙(불변식①·주차·미팅상태·이월)을 고정한다.
+ * ⚠️ 적대적 검증 지목(활동량 미팅/생산 정의·B21)은 시트 의미가 미확정 — 여기 테스트는 "설계대로
+ *    구현됐는지"를 고정할 뿐, 시트 일치는 배포 후 그림자 diff 로 확정.
+ */
+import { describe, expect, it } from "vitest";
+import type { ContractPayment, Meeting } from "@/types";
+import type { DbSalesRow } from "@/repo/db/client";
+import {
+  arenaFeeFromDb,
+  channelStackingFromDb,
+  diffDashboardAggregates,
+  weeklyActivityFromDb,
+  weeklyContractsFromDb,
+} from "@/service/dashboard-aggregates";
+
+const CS = new Date(2026, 5, 1); // courseStart 2026-06-01 (로컬 자정)
+const CS_ISO = "2026-06-01";
+
+function sales(date: string, channel: string, p: number, i: number, c: number, mr: number): DbSalesRow {
+  return { date, channel, production: p, inflow: i, contactProgress: c, meetingReservation: mr } as DbSalesRow;
+}
+function mtg(partial: Partial<Meeting>): Meeting {
+  return {
+    id: partial.id ?? "m", 예약일: "", 예약시각: "", 미팅날짜: partial.미팅날짜 ?? "",
+    미팅시간: "", channel: partial.channel ?? "매입DB", 업체명: "업체", 장소: "서울",
+    예약비고: "", 상태: partial.상태 ?? "예약", 계약여부: partial.계약여부 ?? false,
+    수임비: 0, 미팅사유: "", 계약조건: "",
+  } as Meeting;
+}
+function contract(수임비: number, 구분 = "", 계약일 = "2026-06-10"): ContractPayment {
+  return { row: 3, 계약일, 업체명: "x", 수임비, 구분,
+    수납1: {}, 수납2: {}, 수납3: {} } as unknown as ContractPayment;
+}
+
+describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
+  it("생산/유입/컨택진행/미팅예약 = salesRows 채널별 합", () => {
+    const rows = [
+      sales("2026-06-02", "매입DB", 10, 5, 4, 2),
+      sales("2026-06-03", "매입DB", 3, 1, 1, 1),
+      sales("2026-06-02", "현수막", 7, 0, 2, 0),
+    ];
+    const m = channelStackingFromDb(rows, []);
+    const 매입 = m.find((x) => x.채널 === "매입DB")!;
+    expect(매입).toMatchObject({ 생산: 13, 유입: 6, 컨택진행: 5, 미팅예약: 3 });
+    expect(m.find((x) => x.채널 === "현수막")!.생산).toBe(7);
+  });
+
+  it("미팅완료 = 상태∈{계약,완료} 채널별 수, 계약 = 계약여부 true 수", () => {
+    const meetings = [
+      mtg({ channel: "매입DB", 상태: "완료" }),
+      mtg({ channel: "매입DB", 상태: "계약", 계약여부: true }),
+      mtg({ channel: "매입DB", 상태: "예약" }), // 미완료
+      mtg({ channel: "매입DB", 상태: "취소" }), // 제외
+    ];
+    const 매입 = channelStackingFromDb([], meetings).find((x) => x.채널 === "매입DB")!;
+    expect(매입.미팅완료).toBe(2); // 완료+계약
+    expect(매입.계약).toBe(1); // 계약여부 true 1건
+  });
+
+  it("오염 채널(CHANNEL_ORDER 밖) 무시, 4채널 항상 반환", () => {
+    const m = channelStackingFromDb([sales("2026-06-02", "coljigiso", 9, 9, 9, 9)], []);
+    expect(m).toHaveLength(4);
+    expect(m.every((x) => x.생산 === 0)).toBe(true);
+  });
+});
+
+describe("R2-7a weeklyContractsFromDb (01!N{38..276})", () => {
+  it("상태=계약 미팅을 미팅날짜 weekIndexOf 1~8 버킷", () => {
+    const meetings = [
+      mtg({ 상태: "계약", 미팅날짜: "2026-06-01" }), // 주1
+      mtg({ 상태: "계약", 미팅날짜: "2026-06-08" }), // 주2
+      mtg({ 상태: "계약", 미팅날짜: "2026-06-09" }), // 주2
+      mtg({ 상태: "완료", 미팅날짜: "2026-06-08" }), // 계약 아님 — 제외
+      mtg({ 상태: "계약", 미팅날짜: "2026-05-30" }), // 수강전(주0) — 제외
+    ];
+    const w = weeklyContractsFromDb(meetings, CS);
+    expect(w[0]).toBe(1); // 주1
+    expect(w[1]).toBe(2); // 주2
+    expect(w.slice(2).every((x) => x === 0)).toBe(true);
+  });
+
+  it("9~10주(유예) 계약은 8슬롯 밖 제외", () => {
+    // 2026-06-01 + 8주*7=56일 = 2026-07-27 이 9주 시작
+    const w = weeklyContractsFromDb([mtg({ 상태: "계약", 미팅날짜: "2026-07-27" })], CS);
+    expect(w.reduce((a, b) => a + b, 0)).toBe(0);
+  });
+});
+
+describe("R2-7a weeklyActivityFromDb (대시보드 H33:H40, 불변식①)", () => {
+  it("생산×1 + 컨택×1.5 + 미팅×2, 주차별", () => {
+    const rows = [
+      sales("2026-06-02", "매입DB", 10, 3, 4, 2), // 주1: 10 + 6 + 4 = 20
+      sales("2026-06-08", "현수막", 0, 0, 2, 1), // 주2: 0 + 3 + 2 = 5
+    ];
+    const w = weeklyActivityFromDb(rows, CS);
+    expect(w[0]).toBe(20);
+    expect(w[1]).toBe(5);
+  });
+
+  it("컨택 홀수 → ×1.5 소수 유지(반올림 안 함 — diff 로 시트 규약 확정)", () => {
+    const w = weeklyActivityFromDb([sales("2026-06-02", "매입DB", 0, 0, 1, 0)], CS);
+    expect(w[0]).toBe(1.5);
+  });
+});
+
+describe("R2-7a arenaFeeFromDb + diff", () => {
+  it("이월 제외 Σ수임비", () => {
+    const cs = [contract(100), contract(50, "이월"), contract(30)];
+    expect(arenaFeeFromDb(cs, CS_ISO)).toBe(130); // 이월 50 제외
+  });
+
+  it("diffDashboardAggregates: 불일치 필드만 반환", () => {
+    const base = {
+      channelMatrix: channelStackingFromDb([sales("2026-06-02", "매입DB", 10, 0, 0, 0)], []),
+      weeklyContracts: [1, 0, 0, 0, 0, 0, 0, 0],
+      weeklyActivity: [20, 0, 0, 0, 0, 0, 0, 0],
+      누적수임비: 100,
+    };
+    const same = diffDashboardAggregates(base, base);
+    expect(same).toHaveLength(0);
+    const changed = { ...base, 누적수임비: 200 };
+    const d = diffDashboardAggregates(base, changed);
+    expect(d).toEqual([{ field: "누적수임비", sheet: 100, db: 200 }]);
+  });
+});

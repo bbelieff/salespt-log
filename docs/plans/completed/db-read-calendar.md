@@ -1,6 +1,6 @@
 ---
 slug: db-read-calendar
-status: active
+status: completed
 created: 2026-07-09
 owner: belie
 related: db-read-meetings-banners, db-read-schedule, db-migration-pilot, db-first-unlimited-roadmap
