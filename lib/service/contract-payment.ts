@@ -10,7 +10,10 @@ import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
 import { dbEnabled } from "@/repo/db/client";
-import { readContractsFromDb } from "@/repo/db/read-daily";
+import {
+  readCompanyInfoFromDb,
+  readContractsFromDb,
+} from "@/repo/db/read-daily";
 import { chooseDailySource } from "./daily-source";
 import {
   appendFromContract,
@@ -216,7 +219,19 @@ export async function loadCompanyInfoByContract(
   email: string,
   data: { 계약일: string; 업체명: string },
 ): Promise<CompanyInfo | null> {
-  const spreadsheetId = await resolveSheet(email);
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
+  const spreadsheetId = user.spreadsheetId;
+  // R2-4b: 파일럿은 06 미러 DB 조회 먼저. 실질 값이 있으면 그대로(시트 read 0회),
+  // 빈 결과(rename 새 키 = 스냅샷 미보유 부류)·실패는 기존 시트 경로로 자연 fallback.
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      const fromDb = await readCompanyInfoFromDb(spreadsheetId, data.계약일, data.업체명);
+      if (hasCompanyInfo(fromDb)) return fromDb;
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadCompanyInfo-db-read" } });
+    }
+  }
   const archived = await readCompanyInfoArchiveRow(spreadsheetId, data.계약일, data.업체명);
   if (hasCompanyInfo(archived)) return archived;
   try {
