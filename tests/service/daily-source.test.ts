@@ -14,14 +14,20 @@ import {
 import { CHANNEL_ORDER } from "@/types";
 
 describe("isDbReadPilot / chooseDailySource (파일럿 게이트)", () => {
-  it("8·9·연습(기 접미 허용)만 파일럿", () => {
+  it("8·9·연습(기 접미 허용) + 아레나(A시즌-기수, R2-1.5) 파일럿", () => {
     for (const c of ["8", "9", "연습", "8기", "9기"]) expect(isDbReadPilot(c)).toBe(true);
-    for (const c of ["7", "7기", "A1-6", "T", "관리", "", null, undefined])
+    // R2-1.5(db-pilot-arena): 아레나 라벨 편입 — 현재 라벨(A1-N) 그대로 판정.
+    for (const c of ["A1-0", "A1-3", "A1-6", "A1-6기", "A2-1"]) expect(isDbReadPilot(c)).toBe(true);
+    for (const c of ["7", "7기", "T", "관리", "A기", "", null, undefined])
       expect(isDbReadPilot(c as string | null | undefined)).toBe(false);
   });
-  it("비파일럿 기수는 DB 켜져 있어도 시트 경로 고정 (수용 기준)", () => {
+  it("비대상 기수(7기 등)는 DB 켜져 있어도 시트 경로 고정 (수용 기준 — 불변)", () => {
     expect(chooseDailySource("7", true)).toBe("sheet");
-    expect(chooseDailySource("A1-6", true)).toBe("sheet");
+    expect(chooseDailySource("6", true)).toBe("sheet");
+  });
+  it("아레나는 DB 켜져 있으면 db, 꺼져 있으면 시트 (R2-1.5)", () => {
+    expect(chooseDailySource("A1-6", true)).toBe("db");
+    expect(chooseDailySource("A1-6", false)).toBe("sheet");
   });
   it("파일럿 기수라도 DATABASE_URL 없으면 시트", () => {
     expect(chooseDailySource("9", false)).toBe("sheet");
