@@ -1,6 +1,6 @@
 ---
 slug: db-read-meetings-banners
-status: active
+status: completed
 created: 2026-07-08
 owner: belie
 related: db-migration-pilot, db-read-contact, db-pilot-arena, db-first-unlimited-roadmap
