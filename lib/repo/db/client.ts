@@ -97,6 +97,45 @@ export async function upsertSheetRow(
   return { skipped: false };
 }
 
+/** R2-1 읽기 전환 — 한 시트의 sales 미러 전체(≤10주×28행, 단일 쿼리).
+ * payload 키는 dual-write(mirror.ts sales 훅)·backfill 과 동일:
+ * {date, channel, production, inflow, contactProgress, meetingReservation}.
+ * 값은 number 또는 문자열(backfill) 혼재 → 여기서 number 로 정규화. _cleared 제외. */
+export interface DbSalesRow {
+  date: string;
+  channel: string;
+  production: number;
+  inflow: number;
+  contactProgress: number;
+  meetingReservation: number;
+}
+
+function toNum(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function readSalesRowsFromDb(spreadsheetId: string): Promise<DbSalesRow[]> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'sales'
+       and coalesce((payload->>'_cleared')::boolean, false) = false`,
+    [spreadsheetId],
+  );
+  return (res.rows as { payload: Record<string, unknown> }[])
+    .map(({ payload: p }) => ({
+      date: String(p.date ?? "").slice(0, 10),
+      channel: String(p.channel ?? ""),
+      production: toNum(p.production),
+      inflow: toNum(p.inflow),
+      contactProgress: toNum(p.contactProgress),
+      meetingReservation: toNum(p.meetingReservation),
+    }))
+    .filter((r) => r.date !== "" && r.channel !== "");
+}
+
 /** 기수별·탭별 유효 행수 — 대조표용. _cleared 마킹 행 제외. 미설정이면 null. */
 export async function countRowsByTab(
   cohort: string,
