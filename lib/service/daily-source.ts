@@ -7,13 +7,17 @@
  * 지나게 해 정합을 구조적으로 보장 — tests/service/daily-source.test.ts 가 대조 고정.
  */
 import { CHANNEL_ORDER, type Channel } from "@/types";
+import { isArenaCohortLabel } from "@/repo/user-priority";
 
 /** R2 파일럿 기수 — backfill(#487·#488) 완료 + 9기(첫날부터 dual-write). */
 const DB_READ_COHORTS = new Set(["8", "9", "연습"]);
 
-/** 단일 게이트 — cohort 정규화("8기"→"8") 후 판정. null/빈값 = false. */
+/** 단일 게이트 — cohort 정규화("8기"→"8") 후 판정. null/빈값 = false.
+ * 아레나(A{시즌}-{기수}) 포함 — R2-1.5(db-pilot-arena): 최대 활성 집단 편입.
+ * 라벨은 현재 그대로(A1-N) 판정·적재 — 라벨 통합(A1-N→N)은 R5 범위, 여기서 불변. */
 export function isDbReadPilot(cohort: string | null | undefined): boolean {
-  return DB_READ_COHORTS.has(String(cohort ?? "").replace(/기\s*$/, "").trim());
+  const norm = String(cohort ?? "").replace(/기\s*$/, "").trim();
+  return DB_READ_COHORTS.has(norm) || isArenaCohortLabel(norm);
 }
 
 /** 읽기 소스 결정 — DB 활성(env) && 파일럿 기수일 때만 "db". */

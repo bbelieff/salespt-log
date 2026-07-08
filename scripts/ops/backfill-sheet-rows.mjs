@@ -38,6 +38,8 @@ const COHORT = (() => {
   return i >= 0 ? String(process.argv[i + 1] ?? "").trim() : "";
 })();
 const EXECUTE = process.argv.includes("--execute");
+// R2-1.5(아레나): 콤마 목록 허용 — 예: --cohort "A1-0,A1-1,A1-2" (단일 라벨 동작 불변).
+const COHORTS = COHORT.split(",").map((s) => s.trim().replace(/기\s*$/, "")).filter(Boolean);
 if (!COHORT) {
   console.error("사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--execute]");
   process.exit(1);
@@ -175,7 +177,7 @@ async function main() {
       sid: String(r[3] ?? "").trim(),
       role: String(r[4] ?? "").trim() || "trainee",
     }))
-    .filter((u) => u.sid && u.cohort.replace(/기\s*$/, "") === COHORT && u.role !== "trainer" && u.role !== "admin");
+    .filter((u) => u.sid && COHORTS.includes(u.cohort.replace(/기\s*$/, "")) && u.role !== "trainer" && u.role !== "admin");
   // 같은 시트 중복 행 제거(부부 멀티계정 — 시트 1개당 1회)
   const seen = new Set();
   const targets = users.filter((u) => !seen.has(u.sid) && seen.add(u.sid));
@@ -215,15 +217,17 @@ async function main() {
 
   if (EXECUTE && pool) {
     console.log(`\nDB upsert 완료: ${upserted}건`);
+    // 대조는 대상 사용자들의 실제 cohort 라벨 전체 기준(콤마 목록·기 접미 변형 포괄).
+    const cohortLabels = [...new Set(targets.map((u) => u.cohort))];
     const res = await pool.query(
-      `select tab, count(*)::int n from sheet_rows
-       where cohort = $1 and coalesce((payload->>'_cleared')::boolean,false)=false
-       group by tab order by tab`,
-      [targets[0]?.cohort ?? COHORT],
+      `select cohort, tab, count(*)::int n from sheet_rows
+       where cohort = any($1) and coalesce((payload->>'_cleared')::boolean,false)=false
+       group by cohort, tab order by cohort, tab`,
+      [cohortLabels.length ? cohortLabels : COHORTS],
     );
     console.log("── 대조 표 (DB 기준) ──");
-    console.log("tab | db행수");
-    for (const r of res.rows) console.log(`${r.tab} | ${r.n}`);
+    console.log("cohort | tab | db행수");
+    for (const r of res.rows) console.log(`${r.cohort} | ${r.tab} | ${r.n}`);
     await pool.end();
   } else {
     console.log("\nDRY-RUN — DB 미기록. 실행하려면 --execute.");
