@@ -1,6 +1,6 @@
 ---
 slug: db-read-company-archive
-status: active
+status: completed
 created: 2026-07-09
 owner: belie
 related: db-read-payments, db-migration-pilot, db-first-unlimited-roadmap
