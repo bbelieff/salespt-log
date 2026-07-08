@@ -180,7 +180,7 @@ function meetingToRow(m: Meeting): (string | number | boolean)[] {
 }
 
 /** 시트 1행 배열 → Meeting (parse 실패 시 null). */
-function rowToMeeting(r: unknown[]): Meeting | null {
+export function rowToMeeting(r: unknown[]): Meeting | null {
   const idStr = String(r[COL.id] ?? "");
   if (!idStr) return null;
 

@@ -20,6 +20,11 @@ export function dbEnabled(): boolean {
   return !!process.env.DATABASE_URL?.trim();
 }
 
+/** db/ 내부 전용 pool 접근자 — read-daily.ts 등 형제 모듈이 공유(R2-2). */
+export function getDbPool(): Pool {
+  return getPool();
+}
+
 function getPool(): Pool {
   if (!pool) {
     pool = new Pool({
