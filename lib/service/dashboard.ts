@@ -20,6 +20,7 @@
  *     서버에서 02 계약수납관리 row 직접 합산이 단일 진실원천.
  *   - 콜·지·기·소 수임비 박스: 제거 (사용자 결정)
  */
+import * as Sentry from "@sentry/nextjs";
 import type {
   DashboardView,
   DashboardChannelMatrix,
@@ -32,10 +33,13 @@ import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readProfileBundle } from "@/repo/sales";
+import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
+import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
+import { readDbTabFromDb } from "@/repo/db/read-db-tab";
+import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { isCarryoverContract } from "./contract-payment";
 import { chooseDailySource } from "./daily-source";
-import { dbEnabled } from "@/repo/db/client";
-import { shadowCompareDashboard } from "./dashboard-aggregates";
+import { computeDbAggregates, diffDashboardAggregates } from "./dashboard-aggregates";
 
 const CHANNELS: DashboardChannelMatrix["채널"][] = [
   "매입DB",
@@ -119,6 +123,50 @@ export async function resolveArenaOverride(
   return (await resolveOwnArenaSheetId(email, u.name)) ?? undefined;
 }
 
+/** 해석된 입력(시트/DB 공용) → DashboardView 조립. 매출 split·이익·주차·비용 분해는 동일. */
+function assembleView(input: {
+  courseStartISO: string;
+  fee: number; // 누적수임비 (시트 B21 or DB 재계산)
+  channelMatrix: DashboardChannelMatrix[]; // 4채널 6단계
+  weeklyContracts: number[]; // 8주
+  weeklyActivity: number[]; // 8주
+  costByChannel: number[]; // [매입DB, 직접생산, 현수막]
+  payments: ContractPayment[];
+}): DashboardView {
+  const split = splitContractRevenue(input.payments, input.courseStartISO);
+  const { totalFee, totalReceived, revenue } = split.arena;
+  const cost = input.costByChannel.reduce((s, c) => s + c, 0);
+  const profit = revenue - cost;
+  const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
+  const weeklyTrend = Array.from({ length: 8 }, (_, i) => ({
+    주차: i + 1,
+    계약수: num(input.weeklyContracts[i]),
+    활동량: num(input.weeklyActivity[i]),
+  }));
+  const [pc, prc, bc] = input.costByChannel;
+  return {
+    kpi: {
+      영업이익: profit,
+      영업이익률: profitRate,
+      총매출: revenue,
+      총비용: cost,
+      누적수임비: input.fee,
+      수임비합: totalFee,
+      수수료합: totalReceived,
+      이월매출: split.carryover.revenue,
+      전체매출: split.total.revenue,
+    },
+    channelMatrix: input.channelMatrix,
+    weeklyTrend,
+    costBreakdown: [
+      { 채널: "매입DB", 비용: num(pc) },
+      { 채널: "직접생산", 비용: num(prc) },
+      { 채널: "현수막", 비용: num(bc) },
+    ],
+    콜지기소수임비: 0,
+  };
+}
+
 export async function loadDashboard(
   email: string,
   overrideSheetId?: string,
@@ -128,13 +176,78 @@ export async function loadDashboard(
   // 수강생출신 트레이너의 "내 아레나 일지" self-view — 본인 아레나 시트로 override(P14).
   const sheetId = overrideSheetId || user.spreadsheetId;
 
-  // 영업관리/대시보드 + 03 DB관리 raw row 4개 영역 병렬 read.
-  // **db.ts 의 readPurchases/readProductions/readBanners 가 비용 단일 진실원천**:
-  //   - readPurchases: 매입DB B:G — 주문금액(F) 합 = 매입DB 비용
-  //   - readProductions: 직접생산 I:N — 기간예산(K) 합 = 직접생산 비용
-  //   - readBanners: 현수막 P:V — 주문금액(U) 합 = 현수막 비용
-  // 옛 F56/K56/U56 SUM cell 의존 제거 — 시트 템플릿마다 SUM 수식 유무 차이로 비용 0
-  // 표시되던 사고 (2026-05-15, 김미란 케이스) 원천 차단.
+  // R2-7b: 파일럿 기수는 DB 집계 서빙(대시보드 시트 왕복 0). 실패 시 시트 경로로 강등
+  // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      const view = await loadDashboardFromDb(sheetId, user.courseStartISO);
+      reverseShadowCompare(sheetId, view); // 서빙=DB, 시트 대조는 async 감시
+      return view;
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadDashboard-db-serve" } });
+      // ↓ 시트 경로로 강등
+    }
+  }
+
+  return loadDashboardFromSheet(sheetId);
+}
+
+/** DB 서빙 경로 (R2-7b) — 대시보드 시트 read 0. 집계·비용·매출 전부 DB 미러에서. */
+async function loadDashboardFromDb(
+  sheetId: string,
+  courseStartISOCache?: string,
+): Promise<DashboardView> {
+  const courseStart = courseStartISOCache
+    ? new Date(`${courseStartISOCache}T00:00:00`)
+    : (await readProfileBundle(sheetId)).courseStart;
+  const courseStartISO = toISODate(courseStart);
+  const [salesRows, meetings, contracts, dbTab] = await Promise.all([
+    readSalesRowsFromDb(sheetId),
+    readMeetingsFromDb(sheetId),
+    readContractsFromDb(sheetId),
+    readDbTabFromDb(sheetId),
+  ]);
+  const agg = computeDbAggregates(salesRows, meetings, contracts, courseStart, courseStartISO);
+  const purchaseCost = dbTab.purchases.reduce((s, p) => s + num(p.주문금액), 0);
+  const productionCost = dbTab.productions.reduce((s, p) => s + num(p.기간예산), 0);
+  const bannerCost = dbTab.banners.reduce((s, b) => s + num(b.주문금액), 0);
+  return assembleView({
+    courseStartISO,
+    fee: agg.누적수임비,
+    channelMatrix: agg.channelMatrix,
+    weeklyContracts: agg.weeklyContracts,
+    weeklyActivity: agg.weeklyActivity,
+    costByChannel: [purchaseCost, productionCost, bannerCost],
+    payments: contracts,
+  });
+}
+
+/** 역방향 그림자 감시 (R2-7b) — 서빙=DB 후 시트 대시보드 값을 async 대조. diff 시 Sentry 경보
+ * (안전밸브: 사후 알림 — R3 전까지 감시 지속). fire-and-forget, 응답 무영향. */
+function reverseShadowCompare(sheetId: string, served: DashboardView): void {
+  if (!dbEnabled()) return;
+  void (async () => {
+    const data = await readDashboard(sheetId);
+    const stk = data.channelStacking;
+    const sheetMatrix: DashboardChannelMatrix[] = CHANNELS.map((cName, ci) => ({
+      채널: cName,
+      생산: num(stk[0]?.[ci]), 유입: num(stk[1]?.[ci]), 컨택진행: num(stk[2]?.[ci]),
+      미팅예약: num(stk[3]?.[ci]), 미팅완료: num(stk[4]?.[ci]), 계약: num(stk[5]?.[ci]),
+    }));
+    const diffs = diffDashboardAggregates(
+      { channelMatrix: sheetMatrix, weeklyContracts: data.weeklyContracts, weeklyActivity: data.weeklyActivity, 누적수임비: num(data.finance[0]) },
+      { channelMatrix: served.channelMatrix, weeklyContracts: served.weeklyTrend.map((w) => w.계약수), weeklyActivity: served.weeklyTrend.map((w) => w.활동량), 누적수임비: served.kpi.누적수임비 },
+    );
+    captureServerEvent("dashboard_parity_rev", { diffCount: diffs.length });
+    if (diffs.length > 0) {
+      // 서빙=DB 가 시트와 어긋남 — 규명 필요(사후 경보). 사용자별 강등 판단 입력.
+      Sentry.captureMessage(`[dashboard-parity-rev] diff ${diffs.length}: ${diffs.slice(0, 5).map((d) => d.field).join(",")}`, "warning");
+    }
+  })().catch(() => { /* 감시 실패 무해 */ });
+}
+
+/** 시트 서빙 경로 (비파일럿 + DB 강등 fallback) — 기존 동작 무변경. */
+async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
   const [data, purchases, productions, banners, payments, profile] =
     await Promise.all([
       readDashboard(sheetId),
@@ -144,34 +257,10 @@ export async function loadDashboard(
       readContractPayments(sheetId),
       readProfileBundle(sheetId),
     ]);
-  // 시작일 기준 매출 분리 — 경계는 개인 시트 O1(courseStart), 날짜 하드코딩 X.
   const courseStartISO = toISODate(profile.courseStart);
-
   const purchaseCost = purchases.rows.reduce((s, p) => s + num(p.주문금액), 0);
-  const productionCost = productions.rows.reduce(
-    (s, p) => s + num(p.기간예산),
-    0,
-  );
+  const productionCost = productions.rows.reduce((s, p) => s + num(p.기간예산), 0);
   const bannerCost = banners.rows.reduce((s, b) => s + num(b.주문금액), 0);
-  const costByChannel = [purchaseCost, productionCost, bannerCost];
-
-  // === KPI: 누적수임비 (시트 B21) + 매출 (서버 sum) + 비용 (서버 sum) ===
-  // 매출은 02 계약수납관리 row 수임비 합 (단일 진실원천, 2026-05-16):
-  //   - 옛 D21 시트 수식: 일부 양식에서 row 누락 / 범위 불일치 (수납탭과 어긋남)
-  //   - 서버 sum: 수납탭이 표시하는 동일 row 데이터원천 → 절대 어긋날 수 없음
-  // 이익은 매출 − 3채널 비용으로 재계산해 정합성 유지.
-  const fee = num(data.finance[0]);
-  // 총매출 = 수임비합 + 수수료합 (수납탭 SSOT 동일). 시작일 기준 아레나/이월 분리.
-  // 점수·전광판·영업이익은 **아레나 집계**만(이월 제외, 기존 유지). 이월·전체는 표시용.
-  const split = splitContractRevenue(payments, courseStartISO);
-  const { totalFee, totalReceived, revenue } = split.arena;
-  const cost = costByChannel.reduce((s, c) => s + c, 0);
-  const profit = revenue - cost;
-  const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
-
-  // === 채널별 6단계 stacking: 01 영업관리!R1:U6 (사용자 박은 24셀) ===
-  // R1:U6 layout — 6행(단계) × 4열(채널: R=매입DB, S=직접생산, T=현수막, U=콜지기소)
-  //   row 1=생산, 2=유입, 3=컨택진행, 4=미팅예약, 5=미팅완료, 6=계약
   const stk = data.channelStacking; // [stage 0~5][channel 0~3]
   const channelMatrix: DashboardChannelMatrix[] = CHANNELS.map((cName, ci) => ({
     채널: cName,
@@ -182,47 +271,13 @@ export async function loadDashboard(
     미팅완료: num(stk[4]?.[ci]),
     계약: num(stk[5]?.[ci]),
   }));
-
-  // === Weekly: 01 영업관리 주차별 계약수 + 대시보드 활동량 ===
-  const weeklyTrend = Array.from({ length: 8 }, (_, i) => ({
-    주차: i + 1,
-    계약수: num(data.weeklyContracts[i]),
-    활동량: num(data.weeklyActivity[i]),
-  }));
-
-  // === 비용 분해: 03 DB관리 raw row sum ===
-  const costBreakdown: DashboardCostBreakdown[] = [
-    { 채널: "매입DB", 비용: purchaseCost },
-    { 채널: "직접생산", 비용: productionCost },
-    { 채널: "현수막", 비용: bannerCost },
-  ];
-
-  // R2-7a 그림자 대조 — 파일럿 기수만, fire-and-forget(응답 무변경·비차단). DB 재계산값을
-  // 시트값과 per-field diff 로깅해 정확도 관찰. diff 0 확인 후 R2-7b 서빙 전환.
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    shadowCompareDashboard(sheetId, profile.courseStart, courseStartISO, {
-      channelMatrix,
-      weeklyContracts: data.weeklyContracts,
-      weeklyActivity: data.weeklyActivity,
-      누적수임비: fee,
-    });
-  }
-
-  return {
-    kpi: {
-      영업이익: profit,
-      영업이익률: profitRate,
-      총매출: revenue,
-      총비용: cost,
-      누적수임비: fee,
-      수임비합: totalFee,
-      수수료합: totalReceived,
-      이월매출: split.carryover.revenue, // 아레나 비집계(시작일 이전)
-      전체매출: split.total.revenue, // 아레나 + 이월
-    },
+  return assembleView({
+    courseStartISO,
+    fee: num(data.finance[0]),
     channelMatrix,
-    weeklyTrend,
-    costBreakdown,
-    콜지기소수임비: 0, // 사용자 결정 2026-05-08: 박스 제거 (UI 무시)
-  };
+    weeklyContracts: data.weeklyContracts,
+    weeklyActivity: data.weeklyActivity,
+    costByChannel: [purchaseCost, productionCost, bannerCost],
+    payments,
+  });
 }
