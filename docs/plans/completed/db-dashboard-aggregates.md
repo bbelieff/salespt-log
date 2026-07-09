@@ -1,6 +1,6 @@
 ---
 slug: db-dashboard-aggregates
-status: active
+status: completed
 created: 2026-07-09
 owner: belie
 related: db-read-payments, db-read-production, db-migration-pilot, db-first-unlimited-roadmap
