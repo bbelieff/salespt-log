@@ -1289,6 +1289,7 @@ components/dashboard/
 | **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2) |
 | **TodoTypeIcon** | 실무투두 type(기타/미팅/전화/메시지) 인라인 SVG. 캘린더 투두 pill·일자상세 "실무" 배지·범례 공용. Props: `type` / `size`. currentColor (진회색 위 흰색). |
 | **GeneralEventModal** | 캘린더 일반이벤트 생성 모달 (consultation-log §4-3·4-4). Props: `defaultDate`, `onClose`, `onCreated`. 카테고리(기존/기타)·이벤트명·업체명·상세·날짜·시간 → POST /api/todos(type=일반, contractRef 빈값). 첫 추가 시 경고 모달 + "다시 보지 않기"(localStorage hideGeneralEventHint). teal(#0d9488, tokens). |
+| **GcalConnectCard** | 구글 캘린더 연동 카드 (gcal-1, google-calendar-sync §4-1 문구 정본). Props 없음 — /api/gcal(GET 상태·POST 설정·DELETE 해제) fetch. 미연결/연결됨/실패("연결이 풀렸어요") 3상태. 연결됨: 캘린더 드롭다운 + 토글 3종(미팅/실무/일반). [연결하기]→/api/gcal/auth. 금지 용어(동기화·토큰·OAuth) 화면 미노출(ADR-0028). |
 
 ### 10-5. db 탭 (`app/(app)/db/_components/`)
 

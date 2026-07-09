@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import type { Channel, Meeting, Todo } from "@/types";
 import { useMonthMeetings } from "@/query/contact-hooks";
 import MonthGrid from "./_components/MonthGrid";
+import GcalConnectCard from "./_components/GcalConnectCard";
 import GeneralEventModal from "./_components/GeneralEventModal";
 import TodoTypeIcon from "./_components/TodoTypeIcon";
 import TopHeader from "@/components/TopHeader";
@@ -181,6 +182,9 @@ export default function CalendarPage() {
 
       <main className="pb-[80px]">
       <PageContainer width="xwide">
+        <div className="px-4 pt-3">
+          <GcalConnectCard />
+        </div>
         {monthQuery.isLoading ? null : monthQuery.isError ? (
           <div className="px-4 pt-6">
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
