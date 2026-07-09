@@ -242,6 +242,10 @@ export const User = z.object({
   /** 아레나 회장이 맡은 cohort (registry R, 기 제거형 예 "A1-1"). 빈값=일반 참가자.
    *  role 은 trainee 유지(회장도 플레이어). 값 있으면 "기수임원" 조회 권한 (§6). */
   captainOf: z.string().default(""),
+  /** 구글 캘린더 refresh token (registry S) — AES-256-GCM 암호화(ADR-0028). 빈값=미연결. */
+  gcalToken: z.string().default(""),
+  /** 구글 캘린더 설정 JSON (registry T) — {calendarId, meeting, todo, general}. 빈값=기본. */
+  gcalSettings: z.string().default(""),
 });
 export type User = z.infer<typeof User>;
 

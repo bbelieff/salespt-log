@@ -14,8 +14,8 @@ import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client
 import { nameMatches } from "./name-match";
 import { pickPreferredUser, pickPreferredRow } from "./user-priority";
 
-const HEADER_RANGE = (tab: string) => `${tab}!A1:R1`;
-const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
+const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
+const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
 
 export function parseRow(r: unknown[]): User | null {
   // CRITICAL: 빈 status/role 이 drop 되면 전 수강생 차단 사고(2026-05-12) → 명시 normalize.
@@ -56,6 +56,8 @@ export function parseRow(r: unknown[]): User | null {
     // r[16]=Q memo (회장/입금), r[17]=R captainOf.
     memo: String(r[16] ?? "").trim(),
     captainOf: String(r[17] ?? "").trim(),
+    gcalToken: String(r[18] ?? "").trim(), // S 암호화(ADR-0028)
+    gcalSettings: String(r[19] ?? "").trim(), // T JSON
   });
   return parsed.success ? parsed.data : null;
 }
@@ -181,16 +183,10 @@ export async function listPendingTrainees(): Promise<User[]> {
   return all.filter((u) => u.role === "trainee" && u.status === "pending");
 }
 
-/**
- * sheetRow (1-based) 의 한 컬럼만 update.
- * 다른 컬럼은 그대로 유지 — 부분 update 안전.
- *
- * 쓰기 직전에는 최신값이 필요해 캐시를 우회 (직접 readRange).
- * 쓰기 직후 revalidateTag("registry") 로 캐시 무효화.
- */
-async function updateCell(
+/** 한 컬럼만 부분 update(다른 컬럼 유지). 쓰기 직전 캐시 우회(readRange), 직후 revalidateTag. */
+export async function updateUserCell(
   email: string,
-  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "N" | "O" | "P",
+  colLetter: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "N" | "O" | "P" | "S" | "T",
   value: string,
 ): Promise<void> {
   const reg = registry();
@@ -225,12 +221,12 @@ async function updateCell(
 
 /** Admin 전용: 트레이너 승인 (status pending → active) */
 export async function approveTrainer(email: string): Promise<void> {
-  await updateCell(email, "F", "active");
+  await updateUserCell(email, "F", "active");
 }
 
 /** Admin 전용: 수강생 승인 (status pending → active). 트레이너 승인과 동일 로직. */
 export async function approveTrainee(email: string): Promise<void> {
-  await updateCell(email, "F", "active");
+  await updateUserCell(email, "F", "active");
 }
 
 /**
@@ -244,7 +240,7 @@ export async function setTraineeAssignments(
   const normalized = Array.from(
     new Set(trainerEmails.map((e) => e.trim().toLowerCase()).filter(Boolean)),
   );
-  await updateCell(traineeEmail, "G", normalized.join(","));
+  await updateUserCell(traineeEmail, "G", normalized.join(","));
 }
 
 /** @deprecated 단일 배정용. setTraineeAssignments 권장. */
@@ -252,7 +248,7 @@ export async function assignTrainerToTrainee(
   traineeEmail: string,
   trainerEmail: string,
 ): Promise<void> {
-  await updateCell(traineeEmail, "G", trainerEmail.toLowerCase());
+  await updateUserCell(traineeEmail, "G", trainerEmail.toLowerCase());
 }
 
 /**
@@ -263,12 +259,12 @@ export async function setTraineeTeam(
   traineeEmail: string,
   team: string,
 ): Promise<void> {
-  await updateCell(traineeEmail, "H", team.trim());
+  await updateUserCell(traineeEmail, "H", team.trim());
 }
 
 /** Admin 전용: 역할 변경 (trainee ↔ trainer ↔ admin) */
 export async function setUserRole(email: string, role: User["role"]): Promise<void> {
-  await updateCell(email, "E", role);
+  await updateUserCell(email, "E", role);
 }
 
 /**
@@ -309,7 +305,7 @@ export async function setTrainerDepartment(
     (r) => typeof r[0] === "string" && (r[0] as string).toLowerCase() === lc,
   );
   if (exists) {
-    await updateCell(email, "B", cohortValue);
+    await updateUserCell(email, "B", cohortValue);
     return;
   }
 
@@ -357,7 +353,7 @@ export async function setTraineeReservation(
   email: string,
   reserved: boolean,
 ): Promise<void> {
-  await updateCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
+  await updateUserCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
 }
 
 /**
@@ -368,9 +364,9 @@ export async function updateDriveLink(
   email: string,
   data: { driveParentPath?: string; feedbackFolderId?: string; driveLinkStatus?: string },
 ): Promise<void> {
-  if (data.driveParentPath !== undefined) await updateCell(email, "N", data.driveParentPath);
-  if (data.feedbackFolderId !== undefined) await updateCell(email, "O", data.feedbackFolderId);
-  if (data.driveLinkStatus !== undefined) await updateCell(email, "P", data.driveLinkStatus);
+  if (data.driveParentPath !== undefined) await updateUserCell(email, "N", data.driveParentPath);
+  if (data.feedbackFolderId !== undefined) await updateUserCell(email, "O", data.feedbackFolderId);
+  if (data.driveLinkStatus !== undefined) await updateUserCell(email, "P", data.driveLinkStatus);
 }
 
 // 물리 삭제 + 매핑 cleanup 은 lib/repo/users-delete.ts 로 분리 (500줄 cap).
