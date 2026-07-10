@@ -244,7 +244,7 @@ export const User = z.object({
   captainOf: z.string().default(""),
   /** 구글 캘린더 refresh token (registry S) — AES-256-GCM 암호화(ADR-0028). 빈값=미연결. */
   gcalToken: z.string().default(""),
-  /** 구글 캘린더 설정 JSON (registry T) — {calendarId, meeting, todo, general}. 빈값=기본. */
+  /** 구글 캘린더 설정 JSON (registry T) — {calendarId}. 빈값=기본(primary). */
   gcalSettings: z.string().default(""),
 });
 export type User = z.infer<typeof User>;

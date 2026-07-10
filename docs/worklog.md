@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-09 · Claude Code · gcal-1 구글 캘린더 연결 완주(#511) + VPS 배포·health 200
+- 의도: gcal-1(OAuth 연결/해제 + refresh token AES-256-GCM 암호화 + 연동 카드) PR 완주 → 배포까지(§6.8)
+- 한 것: #511 머지(레지스트리 S/T 컬럼 append, gcal-crypto 7테스트, 3라우트, 카드 3상태). 배포는 **GH러너→VPS:22 도달성 장애(#495 계열) 연속 실패(#510 2회·#511 초기)** → `gh run rerun --failed` **새 러너에서 성공**. VPS=origin/master=`d644567`, 공개 health 200. (PC-SSH 수동배포는 오토모드 가드가 차단 → 파이프라인 재시도로 정상 완주, 수동 불필요)
+- 결정: 도달성 장애는 provider-edge — rerun 우회 가능하나 재발성이라 belie 가 provider 방화벽 점검 필요. GCP 사전작업은 이미 belie 완료(7/6~7, #477/#479) — 직전 보고에서 잘못 미완으로 표기했던 것 정정
+- 다음: gcal-1 설계 개정(유형 토글 폐기, 아래 항목), 이후 라이브 카나리아(belie), DATABASE_URL 비번 로테이션(보류)
+- SoR: docs/plans/active/gcal-connect.md, docs/plans/active/google-calendar-sync.md §6
+
 ### 2026-07-08 · Cowork · chore/api-timing-baseline = 이미 #484로 완료·배포 확인(중복 회피)
 - 의도: DB 이전 효과 증명용 P0 기준선(api_timing 계측) PR 완주 지시 받음
 - 한 것: 착수 전 상태 확인 → api_timing 계측이 **이미 master 반영**(PR #484 `11f2da1`, withApiTiming 58라우트 래핑 + AsyncLocalStorage sheets_ms/sheets_calls + PostHog api_timing). #487/R2가 이 계측 위에서 동작 중. 사이트 health 200(prod release 확인). **재구현·머지 안 함**

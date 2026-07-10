@@ -1,7 +1,7 @@
 /**
  * /api/gcal — 연동 카드 상태·설정·해제 (ADR-0028, gcal-1).
  *   GET    → 연결 여부·설정·쓰기가능 캘린더 목록 (평문 토큰 미포함)
- *   POST   → 설정 저장(토글·캘린더 변경) {calendarId?, meeting?, todo?, general?}
+ *   POST   → 설정 저장(대상 캘린더 변경) {calendarId?}
  *   DELETE → 연결 해제(구글 revoke + 토큰 비움)
  * 모두 세션 사용자 본인 대상(impersonation 무시).
  */
@@ -23,9 +23,6 @@ export async function GET() {
 
 const SettingsPatch = z.object({
   calendarId: z.string().optional(),
-  meeting: z.boolean().optional(),
-  todo: z.boolean().optional(),
-  general: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {

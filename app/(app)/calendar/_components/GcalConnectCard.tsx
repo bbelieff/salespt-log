@@ -8,14 +8,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 interface Cal { id: string; summary: string; primary: boolean }
-interface Settings { calendarId: string; meeting: boolean; todo: boolean; general: boolean }
+interface Settings { calendarId: string }
 interface CardState { connected: boolean; settings: Settings; calendars: Cal[]; error: boolean }
-
-const TOGGLES: { key: keyof Omit<Settings, "calendarId">; label: string }[] = [
-  { key: "meeting", label: "미팅" },
-  { key: "todo", label: "실무" },
-  { key: "general", label: "일반" },
-];
 
 export default function GcalConnectCard() {
   const [state, setState] = useState<CardState | null>(null);
@@ -111,21 +105,6 @@ export default function GcalConnectCard() {
           ))}
         </select>
       </label>
-      <div className="mb-3 flex gap-2">
-        {TOGGLES.map((t) => {
-          const on = state.settings[t.key];
-          return (
-            <button
-              key={t.key}
-              disabled={busy}
-              onClick={() => patch({ [t.key]: !on })}
-              className={`flex-1 rounded-lg border px-2 py-1.5 ${on ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 text-neutral-500"}`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
       <button disabled={busy} onClick={disconnect} className="text-xs text-neutral-400 underline">연결 해제</button>
       {toast && <p className="mt-2 text-xs text-neutral-500">{toast}</p>}
     </div>

@@ -562,7 +562,7 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | Q | memo | 아레나 회장/입금 메모 (`회장`/`입금`/`회장,입금`/빈). 회장은 §6 토글이 별도 관리(R), 입금은 전광판 모수 필터 (ADR-0014) |
 | R | captain_of | 아레나 회장이 맡은 cohort(정규화 `A1-1`). 빈값=일반. 있으면 "기수임원" 조회 권한 (§6). role 은 trainee 유지 |
 | S | gcal_token | 구글 캘린더 refresh token — **AES-256-GCM 암호화**(ADR-0028, `lib/repo/gcal-crypto`). 빈값=미연결. 평문 저장 절대 금지 |
-| T | gcal_settings | 구글 캘린더 설정 JSON `{calendarId, meeting, todo, general}`. 빈값=기본(primary·전부 on) |
+| T | gcal_settings | 구글 캘린더 설정 JSON `{calendarId}`. 빈값=기본(primary). 유형 토글 3종(meeting/todo/general)은 폐기(2026-07-09) — 일정별 on/off 는 gcal_event_ids 마커(gcal-2) |
 
 `lib/repo/users.ts` 가 이 탭만 read. 범위: `A2:T` (gcal 컬럼 S·T append, ADR-0028).
 

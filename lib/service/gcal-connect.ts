@@ -61,7 +61,7 @@ export async function loadGcalCard(email: string): Promise<GcalCardState> {
   }
 }
 
-/** 설정 저장(토글·캘린더 변경). */
+/** 설정 저장(대상 캘린더 변경). */
 export async function updateGcalSettings(
   email: string,
   patch: Partial<GcalSettings>,
