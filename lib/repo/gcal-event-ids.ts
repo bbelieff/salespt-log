@@ -88,9 +88,13 @@ function withCellLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const prev = cellLocks.get(key) ?? Promise.resolve();
   const next = prev.catch(() => {}).then(fn);
   cellLocks.set(key, next);
-  void next.finally(() => {
-    if (cellLocks.get(key) === next) cellLocks.delete(key);
-  });
+  // 정리 브랜치는 자체 catch 필수 — 없으면 fn 거부(Sheets 429 등) 시 unhandledRejection 누출
+  // (실제 에러는 반환된 next 로 호출부 guard 가 처리·재시도).
+  void next
+    .finally(() => {
+      if (cellLocks.get(key) === next) cellLocks.delete(key);
+    })
+    .catch(() => {});
   return next;
 }
 
