@@ -40,10 +40,10 @@ describe("meetingToInput", () => {
     expect(e.salesptId).toBe("m1");
   });
 
-  it("자정 인접 — 끝시각이 다음시로 롤오버(23:30→00:30)", () => {
+  it("자정 넘김 — end 날짜가 다음날로 롤오버(23:30→익일 00:30, end>start)", () => {
     const e = meetingToInput(mkMeeting({ 미팅시간: "23:30" }))!;
     expect(e.start).toBe("2026-07-15T23:30:00");
-    expect(e.end).toBe("2026-07-15T00:30:00"); // 시각만 +1h(날짜 롤오버는 구글이 처리)
+    expect(e.end).toBe("2026-07-16T00:30:00"); // 자정 넘으면 end.date=다음날(구글은 end<start 를 400 거부)
   });
 
   it("미팅시간 없으면 종일 이벤트(end=다음날 exclusive)", () => {

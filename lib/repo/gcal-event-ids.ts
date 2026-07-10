@@ -80,9 +80,39 @@ export async function readGcalMap(
   return parseMap(await readCell(spreadsheetId, tab, col, row));
 }
 
+// 같은 셀(한 일정 행의 gcal_event_ids)에 대한 read-merge-write 를 프로세스 내 직렬화 —
+// 멀티계정 훅이 근접 동시 실행돼도 lost update(상대 키 유실) 방지. 단일 VPS/pm2 단일
+// 인스턴스 기준 유효(락 안에서 매번 최신 셀 재조회 후 merge).
+const cellLocks = new Map<string, Promise<unknown>>();
+function withCellLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = cellLocks.get(key) ?? Promise.resolve();
+  const next = prev.catch(() => {}).then(fn);
+  cellLocks.set(key, next);
+  void next.finally(() => {
+    if (cellLocks.get(key) === next) cellLocks.delete(key);
+  });
+  return next;
+}
+
+async function writeCell(
+  spreadsheetId: string,
+  tab: string,
+  col: string,
+  row: number,
+  value: string,
+): Promise<void> {
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId,
+    range: `${tabRef(tab)}!${col}${row}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[value]] },
+  });
+}
+
 /**
- * 사용자 키의 eventId 설정(eventId=null → 키 제거). read-merge-write 로 타 사용자 키 보존.
- * 행이 없으면(삭제됨) no-op. 맵이 비면 셀을 빈 문자열로.
+ * 사용자 키의 eventId 설정(eventId=null → 키 제거). 락 안에서 read-merge-write —
+ * 타 사용자 키 보존 + 동시성 lost update 방지. 행 없으면(삭제됨) no-op. 빈 맵=빈 셀.
+ * apostrophe prefix 로 plain text 강제(읽을 때 `'` 없이 복원).
  */
 export async function setGcalEventId(
   spreadsheetId: string,
@@ -92,18 +122,31 @@ export async function setGcalEventId(
   eventId: string | null,
 ): Promise<void> {
   const { tab, col, gridCols } = SPEC[kind];
-  const row = await findRow(spreadsheetId, tab, id);
-  if (row === null) return;
-  await ensureGridColumns(spreadsheetId, tab, gridCols);
-  const map = parseMap(await readCell(spreadsheetId, tab, col, row));
-  if (eventId === null) delete map[email];
-  else map[email] = eventId;
-  // apostrophe prefix 로 plain text 강제(읽을 때 `'` 없이 복원). 빈 맵=빈 셀.
-  const json = Object.keys(map).length ? `'${JSON.stringify(map)}` : "";
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range: `${tabRef(tab)}!${col}${row}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[json]] },
+  await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
+    const row = await findRow(spreadsheetId, tab, id);
+    if (row === null) return;
+    await ensureGridColumns(spreadsheetId, tab, gridCols);
+    const map = parseMap(await readCell(spreadsheetId, tab, col, row));
+    if (eventId === null) delete map[email];
+    else map[email] = eventId;
+    const json = Object.keys(map).length ? `'${JSON.stringify(map)}` : "";
+    await writeCell(spreadsheetId, tab, col, row, json);
+  });
+}
+
+/**
+ * 셀 전체 비움(맵 폐기) — 일정 행 삭제 시 호출. 행 재사용이 stale 맵을 상속해
+ * 타 사용자 살아있는 이벤트를 덮어쓰는 사고 + 고아 맵 방지. 행 없으면 no-op.
+ */
+export async function clearGcalCell(
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  id: string,
+): Promise<void> {
+  const { tab, col } = SPEC[kind];
+  await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
+    const row = await findRow(spreadsheetId, tab, id);
+    if (row === null) return;
+    await writeCell(spreadsheetId, tab, col, row, "");
   });
 }

@@ -12,11 +12,13 @@ import type { Meeting, Todo } from "@/types";
 import { getGcalConnection } from "@/repo/gcal-token";
 import {
   deleteEvent,
+  findEventBySalesptId,
   insertEvent,
   patchEvent,
   type GcalEventInput,
 } from "@/repo/gcal-client";
 import {
+  clearGcalCell,
   readGcalMap,
   setGcalEventId,
   type GcalEventKind,
@@ -26,13 +28,14 @@ import { findById as findTodoById } from "@/repo/todos";
 
 // ── 도메인 → 이벤트 매핑 ─────────────────────────────────────────
 
-/** 시각 이벤트 시작·끝(기본 1시간). */
+/** 시각 이벤트 시작·끝(기본 1시간). 자정 넘으면 end 날짜를 다음날로(end<start = 구글 400 방지). */
 function timedRange(dateISO: string, hhmm: string): { start: string; end: string } {
   const [h = 0, m = 0] = hhmm.split(":").map(Number);
   const endTotal = h * 60 + m + 60;
   const eh = String(Math.floor(endTotal / 60) % 24).padStart(2, "0");
   const em = String(endTotal % 60).padStart(2, "0");
-  return { start: `${dateISO}T${hhmm}:00`, end: `${dateISO}T${eh}:${em}:00` };
+  const endDate = endTotal >= 1440 ? nextDay(dateISO) : dateISO;
+  return { start: `${dateISO}T${hhmm}:00`, end: `${endDate}T${eh}:${em}:00` };
 }
 
 /** 종일 이벤트 end.date 는 exclusive → 다음날. */
@@ -90,32 +93,41 @@ async function upsert(
   if (!conn.connected || !conn.refreshToken) return; // 미연결 skip
   const calendarId = conn.settings.calendarId || "primary";
   const map = await readGcalMap(spreadsheetId, kind, id);
-  const existing = map[email];
-  if (existing) {
-    const ok = await patchEvent(conn.refreshToken, calendarId, existing, input);
-    if (ok) return;
-    // 구글에서 이미 삭제됨 → 아래로 떨어져 재삽입.
+  // 맵에 내 키가 있으면 그 이벤트, 없으면 salesptId 로 구글 조회(저장 실패로 유실됐어도
+  // 재삽입 전 기존 이벤트를 찾아 **중복 생성 방지** — insert-then-save 비원자성 보완).
+  let eventId: string | null = map[email] ?? null;
+  if (!eventId) eventId = await findEventBySalesptId(conn.refreshToken, calendarId, id);
+  if (eventId) {
+    const ok = await patchEvent(conn.refreshToken, calendarId, eventId, input);
+    if (ok) {
+      if (map[email] !== eventId) await setGcalEventId(spreadsheetId, kind, id, email, eventId);
+      return;
+    }
+    // patch 404(구글에서 삭제됨) → 아래로 떨어져 재삽입.
   }
-  const eventId = await insertEvent(conn.refreshToken, calendarId, input);
-  await setGcalEventId(spreadsheetId, kind, id, email, eventId);
+  const newId = await insertEvent(conn.refreshToken, calendarId, input);
+  await setGcalEventId(spreadsheetId, kind, id, email, newId);
 }
 
-async function remove(
-  email: string,
+/**
+ * 이 일정에 매핑된 **모든 연결 사용자**의 구글 이벤트 삭제 + 맵 셀 전체 폐기.
+ * 멀티계정(부부·직원) 시트에서 타 사용자 이벤트가 고아로 남거나, 행 재사용이 stale 맵을
+ * 상속해 타 사용자 이벤트를 덮어쓰는 사고를 방지. 각 사용자는 자기 토큰으로 삭제.
+ */
+async function removeAll(
   spreadsheetId: string,
   kind: GcalEventKind,
   id: string,
-  preMap?: Record<string, string>,
 ): Promise<void> {
-  const conn = await getGcalConnection(email);
-  if (!conn.connected || !conn.refreshToken) return;
-  const calendarId = conn.settings.calendarId || "primary";
-  const map = preMap ?? (await readGcalMap(spreadsheetId, kind, id));
-  const eventId = map[email];
-  if (!eventId) return;
-  await deleteEvent(conn.refreshToken, calendarId, eventId);
-  // 행이 아직 있으면 키 제거(취소 등), 클리어됐으면 no-op(맵은 행과 함께 폐기).
-  await setGcalEventId(spreadsheetId, kind, id, email, null);
+  const map = await readGcalMap(spreadsheetId, kind, id);
+  const entries = Object.entries(map).filter(([, ev]) => ev && ev !== "-"); // "-"=제외 마커(gcal-2b)
+  for (const [userEmail, eventId] of entries) {
+    const conn = await getGcalConnection(userEmail);
+    if (conn.connected && conn.refreshToken) {
+      await deleteEvent(conn.refreshToken, conn.settings.calendarId || "primary", eventId);
+    }
+  }
+  if (entries.length) await clearGcalCell(spreadsheetId, kind, id);
 }
 
 /** 실패해도 앱 흐름 비차단 — 재시도 1회 후 warn(throw 안 함). */
@@ -144,7 +156,7 @@ export function onMeetingCreated(
   m: Meeting,
 ): void {
   void guard(async () => {
-    if (m.상태 === "취소") await remove(email, spreadsheetId, "meeting", m.id);
+    if (m.상태 === "취소") await removeAll(spreadsheetId, "meeting", m.id);
     else {
       const input = meetingToInput(m);
       if (input) await upsert(email, spreadsheetId, "meeting", m.id, input);
@@ -161,7 +173,7 @@ export function onMeetingChanged(
   void guard(async () => {
     const m = await findMeetingById(spreadsheetId, id);
     if (!m || m.상태 === "취소") {
-      await remove(email, spreadsheetId, "meeting", id);
+      await removeAll(spreadsheetId, "meeting", id); // 취소=전 사용자 이벤트 삭제
       return;
     }
     const input = meetingToInput(m);
@@ -169,16 +181,12 @@ export function onMeetingChanged(
   }, `meeting-change ${id}`);
 }
 
-/** 미팅 삭제 — 행 클리어 **전** await(맵 read 후 이벤트 삭제). non-throwing. */
+/** 미팅 삭제 — 행 클리어 **전** await(맵 read 후 전 사용자 이벤트 삭제). non-throwing. */
 export async function syncMeetingRemoved(
-  email: string,
   spreadsheetId: string,
   id: string,
 ): Promise<void> {
-  await guard(
-    () => remove(email, spreadsheetId, "meeting", id),
-    `meeting-remove ${id}`,
-  );
+  await guard(() => removeAll(spreadsheetId, "meeting", id), `meeting-remove ${id}`);
 }
 
 /** 투두/일반이벤트 생성 직후(객체 보유) — fire-and-forget. */
@@ -202,23 +210,19 @@ export function onTodoChanged(
   void guard(async () => {
     const t = await findTodoById(spreadsheetId, id);
     if (!t) {
-      await remove(email, spreadsheetId, "todo", id);
+      await removeAll(spreadsheetId, "todo", id);
       return;
     }
     const input = todoToInput(t);
     if (input) await upsert(email, spreadsheetId, "todo", id, input);
-    else await remove(email, spreadsheetId, "todo", id); // 예정일 제거/숨김 → 있으면 삭제
+    else await removeAll(spreadsheetId, "todo", id); // 예정일 제거/숨김 → 있으면 삭제
   }, `todo-change ${id}`);
 }
 
-/** 투두/일반이벤트 삭제 — 행 클리어 **전** await. non-throwing. */
+/** 투두/일반이벤트 삭제 — 행 클리어 **전** await(전 사용자 이벤트 삭제). non-throwing. */
 export async function syncTodoRemoved(
-  email: string,
   spreadsheetId: string,
   id: string,
 ): Promise<void> {
-  await guard(
-    () => remove(email, spreadsheetId, "todo", id),
-    `todo-remove ${id}`,
-  );
+  await guard(() => removeAll(spreadsheetId, "todo", id), `todo-remove ${id}`);
 }

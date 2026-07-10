@@ -55,6 +55,25 @@ function isGone(e: unknown): boolean {
   return code === 404 || code === 410;
 }
 
+/**
+ * salesptId(extendedProperties.private) 로 기존 이벤트 조회 → eventId(없으면 null).
+ * 멱등 가드: 시트 맵 저장이 실패해 맵엔 없지만 구글엔 이미 만들어진 이벤트를 재삽입 전 찾아
+ * 중복 생성을 막는다(insert-then-save 비원자성 보완).
+ */
+export async function findEventBySalesptId(
+  refreshToken: string,
+  calendarId: string,
+  salesptId: string,
+): Promise<string | null> {
+  const res = await calendarClient(refreshToken).events.list({
+    calendarId,
+    privateExtendedProperty: [`salesptId=${salesptId}`],
+    showDeleted: false,
+    maxResults: 1,
+  });
+  return res.data.items?.[0]?.id ?? null;
+}
+
 /** 이벤트 생성 → eventId. */
 export async function insertEvent(
   refreshToken: string,

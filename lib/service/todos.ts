@@ -64,6 +64,6 @@ export async function patchTodo(
 /** ToDo 삭제 (행 clear). */
 export async function removeTodo(email: string, id: string): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
-  await syncTodoRemoved(email, spreadsheetId, id); // 행 클리어 전 구글 이벤트 삭제
+  await syncTodoRemoved(spreadsheetId, id); // 행 클리어 전 구글 이벤트 삭제
   await clearTodo(spreadsheetId, id);
 }
