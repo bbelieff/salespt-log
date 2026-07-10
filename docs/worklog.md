@@ -38,6 +38,17 @@
 
 ## 로그
 
+### 2026-07-09 · Claude Code · R3-1 컨택 4지표 쓰기 정본 전환 (feat/db-write-daily) — 첫 R3 코드 PR
+- 의도: belie "1,2,3 순차/논스톱"의 ②. R3-1=sales 컨택 4지표 저장을 시트→DB 정본으로 뒤집기(파일럿만)
+- 한 것: `chooseWriteSource`(daily-source.ts, 읽기 게이트 대칭·isDbReadPilot 재사용) + `writeSalesRowsToDb`
+  (client.ts **트랜잭션 원자 upsert**, 실패=throw 저장실패·시트폴백 금지) + `sales-write.ts`(persistSalesRows
+  게이트 + fireSheetMirror 시트 비동기 미러 3회 백오프) + sales.ts `{mirror:false}` 옵션(DB 재미러 차단).
+  contact.ts saveContactMetrics 를 persistSalesRows 로 위임(추출로 502→500줄). check.sh 초록(유닛 384)
+- 결정: **스코프 = 4채널 배치 저장만**. 단일셀 writer(writeProductionCell E집계·decrement H)는 R2 유지
+  (이미 R2 async DB미러 신뢰 중 → 비회귀). DB payload=R2 미러와 동일 → DB 읽기 동일값. 적대적 리뷰 진행
+- 다음: **⚠️ 라이브 학생 저장경로** — ①(detached 배포)이 health 200 확인된 뒤 머지·배포 관찰. 롤백=chooseWriteSource 게이트 뒤집기 즉시 R2. 후속 R3-2(미팅)
+- SoR: docs/plans/active/db-write-flip.md §6 R3-1, lib/service/sales-write.ts
+
 ### 2026-07-09 · Claude Code · R3-0 쓰기 정본 전환 설계 등재 (docs) — R3 착수
 - 의도: gcal 트랙 종료 후 belie "R3 착수". R3 프롬프트는 세션 압축돼 있어 세션 기록에서 원문 복원(못받은 것 아님). R3-0=쓰기 정본 전환 설계 문서(docs PR)
 - 한 것: docs/plans/active/db-write-flip.md 신규 — 쓰기경로 인벤토리(7탭: sales·meetings·todos·contracts·company_archive·db·carryover, dual-write 미러 훅=R3 정본 대상)·전환 패턴(DB 동기 정본+시트 비동기 미러, 실패=사용자에러·폴백금지)·드리프트 감시·**탭별 롤백 스위치**·가드 유지(§2.5·편집기간, 은퇴는 R4)·PR 분할(R3-1~5). db-migration-pilot §0 에 D3(미러 유지) 답변 확정

@@ -11,6 +11,7 @@ import {
 import { sheetsClient } from "./sheets-client";
 import { parseWeekRows } from "./week-parse";
 import { mirrorSheetRow } from "./db/mirror";
+import { readSalesRowsFromDb } from "./db/client";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
 
@@ -324,6 +325,7 @@ export async function writeChannelDailyRow(
 export async function batchWriteChannelDailyRows(
   spreadsheetId: string,
   rows: ChannelDailyRow[],
+  opts: { mirror?: boolean } = {},
 ): Promise<void> {
   if (rows.length === 0) return;
   const courseStart = await readCourseStart(spreadsheetId); // 1 Read
@@ -362,17 +364,26 @@ export async function batchWriteChannelDailyRows(
     requestBody: { valueInputOption: "USER_ENTERED", data },
   });
   // P1 미러 — 자연키 {date}:{channel} (backfill 동일 규칙).
-  for (const row of rows) { const v = ChannelDailyRow.parse(row);
-    mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload: v }); }
+  // R3-1: DB 정본 경로에선 이 함수를 "시트 비동기 미러"로만 쓰므로 mirror:false → DB 재미러 안 함
+  //       (DB 는 이미 writeSalesRowsToDb 로 동기 저장됨 = 정본).
+  if (opts.mirror !== false) {
+    for (const row of rows) { const v = ChannelDailyRow.parse(row);
+      mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload: v }); }
+  }
 }
 
-/** 한 채널 영업관리 F(유입) [startISO,endISO] 기간 합산 — 직접생산 M 동기화용(ADR-0024). 1~10주 내. */
+/** 한 채널 F(유입) [start,end] 합산 — 직접생산 M 동기화(ADR-0024, 1~10주). fromDb(R3-1)=DB정본 파일럿은 DB합산(시트 F 비동기미러 오늘치 누락→과소집계 방지). */
 export async function sumChannelInflowOverPeriod(
   spreadsheetId: string,
   channel: Channel,
   startISO: string,
   endISO: string,
+  opts: { fromDb?: boolean } = {},
 ): Promise<number> {
+  if (opts.fromDb) {
+    const inDb = (await readSalesRowsFromDb(spreadsheetId)).filter((r) => r.channel === channel && r.date >= startISO && r.date <= endISO);
+    return inDb.reduce((s, r) => s + r.inflow, 0);
+  }
   const courseStart = await readCourseStart(spreadsheetId);
   const w1 = weekIndexOf(parseISO(startISO), courseStart);
   const w2 = weekIndexOf(parseISO(endISO), courseStart);

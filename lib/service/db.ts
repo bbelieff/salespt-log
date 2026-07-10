@@ -42,6 +42,13 @@ async function resolveSheet(email: string): Promise<string> {
   return user.spreadsheetId;
 }
 
+/** sid + 쓰기 정본 여부(파일럿+DB) — 직접생산 M 의 유입 합산을 DB/시트 중 어디서 할지 판정(R3-1). */
+async function resolveWriteCtx(email: string): Promise<{ sid: string; fromDb: boolean }> {
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
+  return { sid: user.spreadsheetId, fromDb: chooseDailySource(user.cohort, dbEnabled()) === "db" };
+}
+
 export interface DBOverview {
   purchases: Array<DBPurchase & { row: number }>;
   productions: Array<DBProduction & { row: number }>;
@@ -204,43 +211,47 @@ async function assertNoOverlapDirect(
   }
 }
 
-/** 직접생산 레코드 R 의 M = Σ(영업관리 F 직접생산, R 기간) 동기화 (M 셀만 update). */
+/** 직접생산 레코드 R 의 M = Σ(영업관리 F 직접생산, R 기간) 동기화 (M 셀만 update).
+ *  fromDb(R3-1): 쓰기 정본이 DB 인 파일럿이면 유입 합산을 DB 에서(시트 미러 지연/실패 무관·정확). */
 async function syncDirectCount(
   sid: string,
   record: { row: number; 시작일: string; 종료일: string },
+  fromDb: boolean,
 ): Promise<number> {
-  const count = await sumChannelInflowOverPeriod(sid, "직접생산", record.시작일, record.종료일);
+  const count = await sumChannelInflowOverPeriod(sid, "직접생산", record.시작일, record.종료일, { fromDb });
   await writeProductionCountCell(sid, record.row, count);
   return count;
 }
 
 /** 컨택 유입 저장 후 그 날짜를 포함하는 활성 직접생산 레코드 M 동기화 (ADR-0024).
- *  활성 레코드 없으면 recordFound=false → 호출측(컨택)이 보류 모달. */
+ *  활성 레코드 없으면 recordFound=false → 호출측(컨택)이 보류 모달.
+ *  cohort: 쓰기 정본 판정용(파일럿+DB → 유입 합산 DB 정본, R3-1). */
 export async function syncDirectProductionForDate(
   sid: string,
   date: string,
+  cohort: string | null | undefined,
 ): Promise<{ recordFound: boolean; count: number }> {
   const { rows } = await readProductions(sid);
   const active = rows.find(
     (r) => r.시작일 && r.종료일 && r.시작일 <= date && date <= r.종료일,
   );
   if (!active) return { recordFound: false, count: 0 };
-  const count = await syncDirectCount(sid, active);
+  const count = await syncDirectCount(sid, active, chooseDailySource(cohort, dbEnabled()) === "db");
   return { recordFound: true, count };
 }
 
 export async function addProduction(email: string, p: DBProduction) {
-  const sid = await resolveSheet(email);
+  const { sid, fromDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일);
   const r = await appendProduction(sid, p);
-  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 });
+  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb);
   return r;
 }
 export async function patchProduction(email: string, row: number, p: DBProduction) {
-  const sid = await resolveSheet(email);
+  const { sid, fromDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일, row);
   const r = await updateProduction(sid, row, p);
-  await syncDirectCount(sid, { row, 시작일: p.시작일, 종료일: p.종료일 });
+  await syncDirectCount(sid, { row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb);
   return r;
 }
 export async function removeProduction(email: string, row: number) {
