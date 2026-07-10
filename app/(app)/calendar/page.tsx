@@ -8,13 +8,14 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import type { Channel, Meeting, Todo } from "@/types";
 import { useMonthMeetings } from "@/query/contact-hooks";
 import MonthGrid from "./_components/MonthGrid";
 import GcalConnectCard from "./_components/GcalConnectCard";
+import GcalItemToggle from "./_components/GcalItemToggle";
 import GeneralEventModal from "./_components/GeneralEventModal";
 import TodoTypeIcon from "./_components/TodoTypeIcon";
 import TopHeader from "@/components/TopHeader";
@@ -47,6 +48,11 @@ const PRACTICE_HEX = "#334155";
 const GENERAL_HEX = "#0d9488"; // tokens 일반이벤트 teal (비집계)
 const TODO_TYPES = ["미팅", "전화", "메시지", "기타"] as const;
 
+// 안정 참조 — map.get(date) ?? [] 의 새 배열이 매 렌더 selectedItems/effect 를 무효화하는
+// 무한 리페치 루프 방지(gcal-2b states 조회). 빈 날은 항상 같은 배열을 반환.
+const NO_MEETINGS: Meeting[] = [];
+const NO_TODOS: Todo[] = [];
+
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
 }
@@ -57,6 +63,18 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string>(TODAY_ISO);
   const monthQuery = useMonthMeetings(yyyyMM);
   const [eventModal, setEventModal] = useState(false); // 일반이벤트 생성 (§4-3)
+  // gcal-2b: 일정별 담기/빼기 토글 — 연결 사용자만. 선택일 항목 상태 배치 조회.
+  const [gcalConnected, setGcalConnected] = useState(false);
+  const [gcalStates, setGcalStates] = useState<Record<string, boolean>>({});
+  const [gcalToast, setGcalToast] = useState<string | null>(null);
+  const onGcalChange = useCallback(
+    (id: string, on: boolean) => setGcalStates((s) => ({ ...s, [id]: on })),
+    [],
+  );
+  const onGcalToast = useCallback((msg: string) => {
+    setGcalToast(msg);
+    window.setTimeout(() => setGcalToast(null), 2500);
+  }, []);
 
   // map 변환 (그리드용)
   const meetingsByDate = useMemo(() => {
@@ -77,8 +95,8 @@ export default function CalendarPage() {
     return m;
   }, [monthQuery.data]);
 
-  const selectedMeetings = meetingsByDate.get(selectedDate) ?? [];
-  const selectedTodos = todosByDate.get(selectedDate) ?? [];
+  const selectedMeetings = meetingsByDate.get(selectedDate) ?? NO_MEETINGS;
+  const selectedTodos = todosByDate.get(selectedDate) ?? NO_TODOS;
   const selectedDow =
     selectedDate.length >= 10 ? KO_DAY[parseISO(selectedDate).getDay()] : "";
 
@@ -102,6 +120,30 @@ export default function CalendarPage() {
     arr.sort((a, b) => a.time.localeCompare(b.time));
     return arr;
   }, [selectedMeetings, selectedTodos]);
+
+  // gcal 항목 토글 초기 상태 배치 조회 (연결 사용자만 토글 노출). 선택일 항목 바뀔 때.
+  useEffect(() => {
+    const meetingIds = selectedItems.flatMap((i) => (i.kind === "meeting" ? [i.m.id] : []));
+    const todoIds = selectedItems.flatMap((i) => (i.kind === "todo" ? [i.t.id] : []));
+    if (!meetingIds.length && !todoIds.length) return;
+    let cancelled = false;
+    void fetch("/api/gcal/states", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ meetingIds, todoIds }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { connected: boolean; states: Record<string, boolean> } | null) => {
+        if (cancelled || !data) return;
+        setGcalConnected(!!data.connected);
+        // 로컬 우선 병합 — 진행 중이던 조회가 늦게 도착해도 방금 토글한 낙관값을 덮지 않음.
+        setGcalStates((s) => ({ ...data.states, ...s }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItems]);
 
   // 월 요약
   const monthSummary = useMemo(() => {
@@ -293,6 +335,15 @@ export default function CalendarPage() {
                               </span>
                             )
                           )}
+                          {gcalConnected && (
+                            <GcalItemToggle
+                              kind="meeting"
+                              id={m.id}
+                              on={gcalStates[m.id] ?? true}
+                              onChange={onGcalChange}
+                              onToast={onGcalToast}
+                            />
+                          )}
                         </li>
                       );
                     }
@@ -331,6 +382,15 @@ export default function CalendarPage() {
                           <span className="max-w-20 shrink-0 truncate text-xs text-gray-400">
                             {t.장소}
                           </span>
+                        )}
+                        {gcalConnected && (
+                          <GcalItemToggle
+                            kind="todo"
+                            id={t.id}
+                            on={gcalStates[t.id] ?? true}
+                            onChange={onGcalChange}
+                            onToast={onGcalToast}
+                          />
                         )}
                       </li>
                     );
@@ -419,6 +479,17 @@ export default function CalendarPage() {
           onClose={() => setEventModal(false)}
           onCreated={() => monthQuery.refetch()}
         />
+      )}
+      {gcalToast && (
+        <div
+          className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="rounded-full bg-gray-900/90 px-4 py-2 text-sm font-medium text-white shadow-lg">
+            {gcalToast}
+          </div>
+        </div>
       )}
     </>
   );

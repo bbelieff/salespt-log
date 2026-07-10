@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 
 interface Cal { id: string; summary: string; primary: boolean }
 interface Settings { calendarId: string }
-interface CardState { connected: boolean; settings: Settings; calendars: Cal[]; error: boolean }
+interface CardState { connected: boolean; settings: Settings; calendars: Cal[]; account: string; error: boolean }
 
 export default function GcalConnectCard() {
   const [state, setState] = useState<CardState | null>(null);
@@ -52,6 +52,19 @@ export default function GcalConnectCard() {
     setTimeout(() => setToast(null), 3500);
   };
 
+  const resync = async () => {
+    setBusy(true);
+    const res = await fetch("/api/gcal/resync", { method: "POST" });
+    setBusy(false);
+    if (res.ok) {
+      const d = (await res.json().catch(() => ({}))) as { pushed?: number };
+      setToast(`일정 ${d.pushed ?? 0}개를 다시 올렸어요`);
+    } else {
+      setToast(res.status === 409 ? "먼저 구글 캘린더를 연결해 주세요" : "잠시 후 다시 시도해 주세요");
+    }
+    setTimeout(() => setToast(null), 3500);
+  };
+
   const card = "rounded-2xl border border-neutral-200 bg-white p-4 text-sm";
 
   if (state === null) {
@@ -88,10 +101,13 @@ export default function GcalConnectCard() {
   // 연결됨
   return (
     <div className={card}>
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-1 flex items-center justify-between gap-2">
         <span className="font-semibold">구글 캘린더 연동</span>
         <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">연결됨</span>
       </div>
+      {state.account && (
+        <p className="mb-3 truncate text-xs text-neutral-400">{state.account}</p>
+      )}
       <label className="mb-3 flex items-center gap-2">
         <span className="shrink-0 text-neutral-500">캘린더</span>
         <select
@@ -105,7 +121,16 @@ export default function GcalConnectCard() {
           ))}
         </select>
       </label>
-      <button disabled={busy} onClick={disconnect} className="text-xs text-neutral-400 underline">연결 해제</button>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          disabled={busy}
+          onClick={resync}
+          className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 disabled:opacity-50"
+        >
+          다시 올리기
+        </button>
+        <button disabled={busy} onClick={disconnect} className="text-xs text-neutral-400 underline">연결 해제</button>
+      </div>
       {toast && <p className="mt-2 text-xs text-neutral-500">{toast}</p>}
     </div>
   );

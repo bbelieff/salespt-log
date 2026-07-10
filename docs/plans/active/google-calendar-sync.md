@@ -85,8 +85,8 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
 - 금지 용어(사용자 화면): 동기화, 토큰, 만료, OAuth, 캘린더 ID. 개발 문서·로그에서만 사용.
 - 미연결: [연결하기] 버튼 + 설명 1개. **연결됨(gcal-1 현행)**: 캘린더 드롭다운(즉시 저장) · [연결 해제].
   실패 상태: "연결이 풀렸어요 — 다시 연결" 배너. 토스 문체, 기존 컴포넌트 재사용, components.md 등재.
-- **gcal-2 에서 추가**: 계정 표시 · [다시 올리기](전파할 이벤트 생긴 뒤) · 일정별 개별 토글(캘린더 탭
-  각 일정 항목에, 카드가 아님). 유형 토글 3종은 폐기(2026-07-09).
+- **gcal-2b 구현됨**: 계정 표시(카드) · [다시 올리기](카드, 전체 재푸시) · **일정별 개별 토글**
+  (GcalItemToggle — 캘린더 탭 각 일정 항목 우측, 카드 아님). 유형 토글 3종은 폐기(2026-07-09).
 
 ## 5. 사전 GCP 작업 (운영자 belie — 코드 밖)
 1. GCP 프로젝트(saleslog-494703)에서 **Google Calendar API 사용 설정**.
@@ -102,7 +102,9 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
    컬럼(meetings AT·todos O) + 생성/수정/삭제 전파 훅. 연결 시 모든 새 일정 **기본 ON 자동 등록**.
    (2 머지 후. 위험구간=미팅 시트 스키마 확장 → 여기서 격리·검증)
 4. **feat/gcal-toggle-resync (gcal-2b)** — **일정별 개별 토글(기본 ON, 제외 마커 `"-"`)** + [다시 올리기]
-   + 계정 표시. (3a 머지 후. Changelog-Done 으로 gcal 그룹 공개)
+   + 계정 표시. 구현: gcal-sync(toggleSchedule/resyncAll) · gcal-event-ids(readGcalStates 배치) ·
+   gcal-schedule-read(전체 열거) · /api/gcal/{toggle,resync,states} · GcalItemToggle · 카드 개정.
+   (3a 머지 후. Changelog-Done 으로 gcal 그룹 공개)
 - 테스트: 단위(암복호화·매핑·멱등 판정) + 구조(googleapis 격리에 gcal-client 포함) +
   라이브 카나리아(연결→미팅 생성→구글 확인→시간 수정→삭제, live-canary 플레이북).
 
