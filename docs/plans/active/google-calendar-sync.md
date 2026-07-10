@@ -98,8 +98,11 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
 1. **docs/gcal-sync-plan** — 본 문서 + ADR-0028(사용자별 캘린더 토큰·시트 암호화 저장) 등재.
 2. **feat/gcal-connect** — OAuth 연결/해제 flow + 토큰 암호화 저장 + 연동 카드(캘린더 드롭다운·해제).
    (유형 토글 3종 폐기 2026-07-09 → 일정별 개별 토글은 3번으로. #511 후 feat/gcal-drop-type-toggles 로 개정.)
-3. **feat/gcal-sync-engine** — gcal-client/gcal-sync + gcal_event_ids 컬럼 + 생성/수정/삭제 훅 +
-   **일정별 개별 토글(기본 ON, 제외 마커)** + [다시 올리기] + 계정 표시. (2 머지 후)
+3. **feat/gcal-sync-engine (gcal-2a)** — gcal-client(calendar v3)/gcal-sync(멱등) + gcal_event_ids
+   컬럼(meetings AT·todos O) + 생성/수정/삭제 전파 훅. 연결 시 모든 새 일정 **기본 ON 자동 등록**.
+   (2 머지 후. 위험구간=미팅 시트 스키마 확장 → 여기서 격리·검증)
+4. **feat/gcal-toggle-resync (gcal-2b)** — **일정별 개별 토글(기본 ON, 제외 마커 `"-"`)** + [다시 올리기]
+   + 계정 표시. (3a 머지 후. Changelog-Done 으로 gcal 그룹 공개)
 - 테스트: 단위(암복호화·매핑·멱등 판정) + 구조(googleapis 격리에 gcal-client 포함) +
   라이브 카나리아(연결→미팅 생성→구글 확인→시간 수정→삭제, live-canary 플레이북).
 

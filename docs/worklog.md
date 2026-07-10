@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-09 · Claude Code · gcal-1 개정 완주(#512) — 유형 토글 폐기, 배포·health 200
+- 의도: 사용자 2026-07-09 설계 변경 — 대상 유형 토글 3종(미팅/실무/일반) 폐기 → 일정별 개별 토글(기본 ON). 이미 머지된 gcal-1(#511)의 개정 PR
+- 한 것: #512 머지·배포 success(첫 시도, 도달성 장애 없음)·공개 health 200, VPS=master=`00bce6f`. GcalSettings/SettingsPatch/카드/타입주석에서 토글 3종 제거→calendarId 만, 하위호환(옛 토글키 Zod strip)+parseGcalSettings 5테스트, SoR §0·§2·§4·§8+문서 6종 동기화. 적대적 리뷰 워크플로 3축→확인 결함 3건(스테일 주석·요약카드) 수정 후 머지
+- 결정: [다시 올리기]·계정 표시·일정별 개별 토글은 **gcal-2(엔진 필요)로 확정 미룸**. gcal-connect plan 은 라이브 카나리아(belie)까지 active 유지. GCP 사전작업은 belie 이미 완료(7/6~7, #477/#479)
+- 다음: belie 라이브 카나리아(연결→"연결됨"→캘린더 선택→해제). 이후 gcal-2(feat/gcal-sync-engine) 착수. DATABASE_URL 비번 로테이션(보류)
+- SoR: docs/plans/active/gcal-connect.md, google-calendar-sync.md §6 PR-2
+
 ### 2026-07-09 · Claude Code · gcal-1 구글 캘린더 연결 완주(#511) + VPS 배포·health 200
 - 의도: gcal-1(OAuth 연결/해제 + refresh token AES-256-GCM 암호화 + 연동 카드) PR 완주 → 배포까지(§6.8)
 - 한 것: #511 머지(레지스트리 S/T 컬럼 append, gcal-crypto 7테스트, 3라우트, 카드 3상태). 배포는 **GH러너→VPS:22 도달성 장애(#495 계열) 연속 실패(#510 2회·#511 초기)** → `gh run rerun --failed` **새 러너에서 성공**. VPS=origin/master=`d644567`, 공개 health 200. (PC-SSH 수동배포는 오토모드 가드가 차단 → 파이프라인 재시도로 정상 완주, 수동 불필요)

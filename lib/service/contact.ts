@@ -31,6 +31,7 @@ import {
   findByPreviousMeetingId,
   updateMeeting,
 } from "@/repo/meetings";
+import { onMeetingChanged, onMeetingCreated, syncMeetingRemoved } from "@/service/gcal-sync";
 import {
   clearRowByLink as clearContractPaymentByLink,
   updateLinkFields as updateContractLink,
@@ -266,6 +267,7 @@ export async function appendNewMeeting(
   const spreadsheetId = await resolveSheet(email);
   const validated = Meeting.parse(meeting);
   await appendMeeting(spreadsheetId, validated);
+  onMeetingCreated(email, spreadsheetId, validated); // gcal 자동 등록(fire-and-forget)
 }
 
 /** 미팅 부분 업데이트. Phase2: 계약→非계약 시 02 clear. Phase3: 계약 유지+link 변경 시 02 sync. */
@@ -295,6 +297,7 @@ export async function patchMeeting(
     }
   }
   await updateMeeting(spreadsheetId, id, partial);
+  onMeetingChanged(email, spreadsheetId, id); // gcal 갱신/취소 reconcile(fire-and-forget)
 
   // 06 업체정보 동기화(§1-2) — 계약 고객이면 06 같은 키 행 갱신. 실패해도 04 저장은 성공(warn).
   if (partial.업체정보 !== undefined) {
@@ -340,6 +343,7 @@ export async function removeMeeting(
   id: string,
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
+  await syncMeetingRemoved(spreadsheetId, id); // 행 클리어 전 구글 이벤트 삭제
   await clearMeeting(spreadsheetId, id);
 }
 
@@ -368,6 +372,7 @@ export async function removeMeetingWithCascade(
     removedPaymentRow = await clearContractPaymentByLink(spreadsheetId, m.미팅날짜, m.업체명);
   }
   // 3) 본인 clear + 4) 영업관리 H -1 (좌표 실패 시 skip).
+  await syncMeetingRemoved(spreadsheetId, id); // 클리어 전 구글 이벤트 삭제(자손 cascade 는 gcal-2b)
   await clearMeeting(spreadsheetId, id);
   if (m.예약일 && m.channel) {
     try { await decrementMeetingReservation(spreadsheetId, m.예약일, m.channel); } catch { /* skip */ }
@@ -407,6 +412,7 @@ export async function revertMeeting(
       수임비: 0,
       계약조건: "",
     });
+    onMeetingChanged(email, spreadsheetId, id); // 예약 복귀 → gcal 갱신
     const clearedRow = await clearContractPaymentByLink(
       spreadsheetId,
       m.미팅날짜,
@@ -427,6 +433,7 @@ export async function revertMeeting(
       계약여부: false,
       미팅사유: "",
     });
+    onMeetingChanged(email, spreadsheetId, id); // 취소/완료→예약 → gcal 재등록/갱신
     return { status: "예약", cascade: "사유 초기화" };
   }
 
@@ -434,6 +441,7 @@ export async function revertMeeting(
     // 2026-05-19: 손자까지 transitive cascade (1→2→3 체인 전부 삭제).
     const { count } = await cascadeDescendantMeetings(spreadsheetId, id);
     await updateMeeting(spreadsheetId, id, { 상태: "예약", 미팅사유: "" });
+    onMeetingChanged(email, spreadsheetId, id); // 변경→예약 → gcal 갱신(자손 이벤트 정리는 gcal-2b)
     return {
       status: "예약",
       cascade: count > 0 ? `변경 자손 미팅 ${count}건 cascade 삭제` : "변경 자식 미팅 없음",
@@ -470,6 +478,7 @@ export async function reviveCaseClosure(
     const row = await clearContractPaymentByLink(spreadsheetId, child.미팅날짜, child.업체명);
     if (row !== null) cascade02 = ` + 02 row ${row}`;
   }
+  await syncMeetingRemoved(spreadsheetId, child.id); // 자식 미팅 구글 이벤트 삭제(클리어 전, 자손 cascade 는 gcal-2b)
   await clearMeeting(spreadsheetId, child.id);
   const descMsg = descCount > 0 ? ` (자손 ${descCount}건 포함)` : "";
   return {

@@ -295,6 +295,12 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 | **AO** | 구분 | `이월` \| 빈값(native). **`이월` = 아레나 집계 전부 제외**(01 K/L/N/O·펀넬 수식의 `AO≠이월` 가드). 마이그레이션만 기록 — 일반 쓰기(append/patch)는 이 컬럼을 건드리지 않음(native=빈값 유지) |
 | **AP** | 이월원본행id | 이월 시 원본(이전 기수 시트) 행 식별자 — 멱등 중복 가드 |
 
+#### gcal_event_ids (AT) — 구글 캘린더 동기화 (gcal-2, google-calendar-sync §2)
+
+| 컬럼 | 필드 | 설명 |
+|---|---|---|
+| **AT** | gcal_event_ids | 사용자별 JSON 맵 `{"salesptEmail":"eventId"}` — 이 미팅이 각 연결 사용자 구글 캘린더에서 갖는 eventId. **`lib/repo/gcal-event-ids.ts` 만 read-merge-write**(meetings.ts 의 split write A:M/P/R/T:AN/AQ:AS 범위 밖 → 미팅 행 쓰기와 독립 보존). 그리드 46열로 lazy 확장. 미연결 사용자는 빈값 |
+
 ### J열: 미팅 상태 5가지 ⭐
 
 | 상태 | 의미 | 진입 액션 | 추가 입력 | 영업관리 영향 |
@@ -503,6 +509,7 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | **L** | 완료여부 | bool | done |
 | **M** | 생성시각 | text | created_at (ISO) |
 | **N** | 분류 | text | 일반이벤트 카테고리 `기존`(기존 고객) \| `기타`(개인 일정). 그 외 type 은 빈값 |
+| **O** | gcal_event_ids | text | 사용자별 JSON 맵 `{"salesptEmail":"eventId"}` (gcal-2, google-calendar-sync §2). **`lib/repo/gcal-event-ids.ts` 만 read-merge-write** — writeTodoRow(A:N) 범위 밖이라 투두 행 쓰기와 독립 보존. 미연결 사용자 빈값 |
 
 **키 설계** (design §6.1): `contractRef` = `${계약일}|${업체명}` 합성키(행 이동에 강건), `institutionRef` = 슬롯 진행기관 텍스트. 슬롯 ToDo 조회 = (contractRef 일치 && institutionRef 일치).
 
