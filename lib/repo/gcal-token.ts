@@ -13,16 +13,18 @@ import { decryptToken, encryptToken } from "./gcal-crypto";
 const writeGcalTokenCell = (email: string, enc: string) => updateUserCell(email, "S", enc);
 const writeGcalSettingsCell = (email: string, json: string) => updateUserCell(email, "T", json);
 
-/** 대상 3종 토글 + 대상 캘린더. 빈 설정 = 기본(primary·전부 on). */
+/**
+ * 연동 설정 — 대상 캘린더 하나만. 빈 설정 = 기본(primary).
+ * 유형 토글 3종(미팅/실무/일반)은 폐기(2026-07-09) → 일정별 개별 on/off 는
+ * gcal-2 가 gcal_event_ids 마커("-")로 관리. 옛 저장본의 meeting/todo/general 키는
+ * 파싱 시 조용히 제거됨(z.object 비-strict → unknown 키 strip).
+ */
 export const GcalSettings = z.object({
   calendarId: z.string().default("primary"),
-  meeting: z.boolean().default(true), // 미팅 예약(04)
-  todo: z.boolean().default(true), // 실무투두(05)
-  general: z.boolean().default(true), // 일반이벤트(05)
 });
 export type GcalSettings = z.infer<typeof GcalSettings>;
 
-const DEFAULT_SETTINGS: GcalSettings = { calendarId: "primary", meeting: true, todo: true, general: true };
+const DEFAULT_SETTINGS: GcalSettings = { calendarId: "primary" };
 
 /** 설정 JSON 문자열 → GcalSettings (손상/빈값 → 기본). */
 export function parseGcalSettings(json: string): GcalSettings {
@@ -66,7 +68,7 @@ export async function saveGcalToken(email: string, refreshToken: string): Promis
   }
 }
 
-/** 설정 저장(토글·캘린더 변경). 부분 갱신 — 기존과 병합. */
+/** 설정 저장(대상 캘린더 변경). 부분 갱신 — 기존과 병합. */
 export async function saveGcalSettings(email: string, patch: Partial<GcalSettings>): Promise<GcalSettings> {
   const user = await findUserByEmail(email);
   const next = GcalSettings.parse({ ...parseGcalSettings(user?.gcalSettings ?? ""), ...patch });
