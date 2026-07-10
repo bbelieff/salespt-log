@@ -136,7 +136,8 @@ export default function CalendarPage() {
       .then((data: { connected: boolean; states: Record<string, boolean> } | null) => {
         if (cancelled || !data) return;
         setGcalConnected(!!data.connected);
-        setGcalStates((s) => ({ ...s, ...data.states }));
+        // 로컬 우선 병합 — 진행 중이던 조회가 늦게 도착해도 방금 토글한 낙관값을 덮지 않음.
+        setGcalStates((s) => ({ ...data.states, ...s }));
       })
       .catch(() => {});
     return () => {

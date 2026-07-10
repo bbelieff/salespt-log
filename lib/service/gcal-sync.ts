@@ -137,10 +137,13 @@ async function removeAll(
       await deleteEvent(conn.refreshToken, conn.settings.calendarId || "primary", eventId);
     }
   }
-  if (!entries.length) return;
-  // 되돌릴 수 있는 전이(취소·숨김)=마커 보존 / 행 삭제(비가역)=전체 비움.
-  if (preserveMarkers) await keepOnlyMarkers(spreadsheetId, kind, id);
-  else await clearGcalCell(spreadsheetId, kind, id);
+  // 셀 정리 — 되돌릴 수 있는 전이(취소·숨김)=마커 보존(실제 이벤트 지웠을 때만 재기록) /
+  // 행 삭제(비가역)=마커 포함 전체 비움(빈 셀은 skip). 행 삭제 시 "-" 잔존→행 재사용 오염 방지.
+  if (preserveMarkers) {
+    if (entries.length) await keepOnlyMarkers(spreadsheetId, kind, id);
+  } else if (Object.keys(map).length) {
+    await clearGcalCell(spreadsheetId, kind, id);
+  }
 }
 
 /** 실패해도 앱 흐름 비차단 — 재시도 1회 후 warn(throw 안 함). */
