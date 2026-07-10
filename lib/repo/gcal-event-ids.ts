@@ -183,3 +183,24 @@ export async function clearGcalCell(
     await writeCell(spreadsheetId, tab, col, row, "");
   });
 }
+
+/**
+ * 실제 이벤트 키만 제거하고 제외 마커("-")는 보존 — 되돌릴 수 있는 전이(미팅 취소·투두 숨김)에서
+ * 타 사용자의 개별 토글 제외를 지키기 위함. 행 삭제(비가역)는 clearGcalCell(전체 비움) 사용.
+ */
+export async function keepOnlyMarkers(
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  id: string,
+): Promise<void> {
+  const { tab, col } = SPEC[kind];
+  await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
+    const row = await findRow(spreadsheetId, tab, id);
+    if (row === null) return;
+    const map = parseMap(await readCell(spreadsheetId, tab, col, row));
+    const kept: Record<string, string> = {};
+    for (const [k, v] of Object.entries(map)) if (v === "-") kept[k] = v;
+    const json = Object.keys(kept).length ? `'${JSON.stringify(kept)}` : "";
+    await writeCell(spreadsheetId, tab, col, row, json);
+  });
+}

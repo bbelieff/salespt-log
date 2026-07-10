@@ -19,7 +19,9 @@ import {
 } from "@/repo/gcal-client";
 import {
   clearGcalCell,
+  keepOnlyMarkers,
   readGcalMap,
+  readGcalStates,
   setGcalEventId,
   type GcalEventKind,
 } from "@/repo/gcal-event-ids";
@@ -86,18 +88,19 @@ export function todoToInput(t: Todo): GcalEventInput | null {
 
 // ── 멱등 upsert / remove ─────────────────────────────────────────
 
+/** 반환: true=실제 등록/갱신됨, false=skip(미연결·제외 마커). resyncAll 카운트 정확도용. */
 async function upsert(
   email: string,
   spreadsheetId: string,
   kind: GcalEventKind,
   id: string,
   input: GcalEventInput,
-): Promise<void> {
+): Promise<boolean> {
   const conn = await getGcalConnection(email);
-  if (!conn.connected || !conn.refreshToken) return; // 미연결 skip
+  if (!conn.connected || !conn.refreshToken) return false; // 미연결 skip
   const calendarId = conn.settings.calendarId || "primary";
   const map = await readGcalMap(spreadsheetId, kind, id);
-  if (map[email] === EXCLUDE_MARKER) return; // 사용자가 일정별 토글로 뺌 → 자동 등록 안 함(gcal-2b)
+  if (map[email] === EXCLUDE_MARKER) return false; // 일정별 토글로 뺌 → 자동 등록 안 함(gcal-2b)
   // 맵에 내 키가 있으면 그 이벤트, 없으면 salesptId 로 구글 조회(저장 실패로 유실됐어도
   // 재삽입 전 기존 이벤트를 찾아 **중복 생성 방지** — insert-then-save 비원자성 보완).
   let eventId: string | null = map[email] ?? null;
@@ -106,12 +109,13 @@ async function upsert(
     const ok = await patchEvent(conn.refreshToken, calendarId, eventId, input);
     if (ok) {
       if (map[email] !== eventId) await setGcalEventId(spreadsheetId, kind, id, email, eventId);
-      return;
+      return true;
     }
     // patch 404(구글에서 삭제됨) → 아래로 떨어져 재삽입.
   }
   const newId = await insertEvent(conn.refreshToken, calendarId, input);
   await setGcalEventId(spreadsheetId, kind, id, email, newId);
+  return true;
 }
 
 /**
@@ -123,6 +127,7 @@ async function removeAll(
   spreadsheetId: string,
   kind: GcalEventKind,
   id: string,
+  preserveMarkers = false,
 ): Promise<void> {
   const map = await readGcalMap(spreadsheetId, kind, id);
   const entries = Object.entries(map).filter(([, ev]) => ev && ev !== EXCLUDE_MARKER);
@@ -132,7 +137,10 @@ async function removeAll(
       await deleteEvent(conn.refreshToken, conn.settings.calendarId || "primary", eventId);
     }
   }
-  if (entries.length) await clearGcalCell(spreadsheetId, kind, id);
+  if (!entries.length) return;
+  // 되돌릴 수 있는 전이(취소·숨김)=마커 보존 / 행 삭제(비가역)=전체 비움.
+  if (preserveMarkers) await keepOnlyMarkers(spreadsheetId, kind, id);
+  else await clearGcalCell(spreadsheetId, kind, id);
 }
 
 /** 실패해도 앱 흐름 비차단 — 재시도 1회 후 warn(throw 안 함). */
@@ -161,7 +169,7 @@ export function onMeetingCreated(
   m: Meeting,
 ): void {
   void guard(async () => {
-    if (m.상태 === "취소") await removeAll(spreadsheetId, "meeting", m.id);
+    if (m.상태 === "취소") await removeAll(spreadsheetId, "meeting", m.id, true);
     else {
       const input = meetingToInput(m);
       if (input) await upsert(email, spreadsheetId, "meeting", m.id, input);
@@ -178,7 +186,7 @@ export function onMeetingChanged(
   void guard(async () => {
     const m = await findMeetingById(spreadsheetId, id);
     if (!m || m.상태 === "취소") {
-      await removeAll(spreadsheetId, "meeting", id); // 취소=전 사용자 이벤트 삭제
+      await removeAll(spreadsheetId, "meeting", id, true); // 취소=이벤트 삭제, 제외 마커는 보존
       return;
     }
     const input = meetingToInput(m);
@@ -215,12 +223,12 @@ export function onTodoChanged(
   void guard(async () => {
     const t = await findTodoById(spreadsheetId, id);
     if (!t) {
-      await removeAll(spreadsheetId, "todo", id);
+      await removeAll(spreadsheetId, "todo", id, true);
       return;
     }
     const input = todoToInput(t);
     if (input) await upsert(email, spreadsheetId, "todo", id, input);
-    else await removeAll(spreadsheetId, "todo", id); // 예정일 제거/숨김 → 있으면 삭제
+    else await removeAll(spreadsheetId, "todo", id, true); // 예정일 제거/숨김 → 삭제(마커 보존)
   }, `todo-change ${id}`);
 }
 
@@ -281,7 +289,11 @@ export async function toggleSchedule(
   return { connected: true };
 }
 
-/** [다시 올리기] — 제외 마커 없는 전체 일정을 멱등 재푸시(upsert 가 "-" 자동 skip). */
+/**
+ * [다시 올리기] — 제외(토글 OFF) 안 한 전체 일정을 멱등 재푸시. 제외 항목은 배치 상태조회로
+ * 미리 걸러 불필요한 per-item 조회를 줄이고, 실제 등록/갱신된 건수만 센다.
+ * (ON 항목은 upsert 가 per-item 시트조회 — 수동 저빈도 버튼이라 Sheets 클라이언트 backoff 로 흡수.)
+ */
 export async function resyncAll(
   email: string,
   spreadsheetId: string,
@@ -289,18 +301,31 @@ export async function resyncAll(
   const conn = await getGcalConnection(email);
   if (!conn.connected || !conn.refreshToken) return { connected: false, pushed: 0 };
   let pushed = 0;
-  for (const m of await listAllMeetings(spreadsheetId)) {
-    if (m.상태 === "취소") continue;
+
+  const meetings = (await listAllMeetings(spreadsheetId)).filter((m) => m.상태 !== "취소");
+  const mOn = await readGcalStates(spreadsheetId, "meeting", meetings.map((m) => m.id), email);
+  for (const m of meetings) {
+    if (!mOn[m.id]) continue; // 제외(토글 OFF) skip
     const input = meetingToInput(m);
     if (!input) continue;
-    await guard(() => upsert(email, spreadsheetId, "meeting", m.id, input), `resync-meeting ${m.id}`);
-    pushed++;
+    try {
+      if (await upsert(email, spreadsheetId, "meeting", m.id, input)) pushed++;
+    } catch (e) {
+      console.warn(`[gcal-sync] resync-meeting ${m.id} 실패:`, e instanceof Error ? e.message : e);
+    }
   }
-  for (const t of await listAllTodos(spreadsheetId)) {
+
+  const todos = await listAllTodos(spreadsheetId);
+  const tOn = await readGcalStates(spreadsheetId, "todo", todos.map((t) => t.id), email);
+  for (const t of todos) {
+    if (!tOn[t.id]) continue;
     const input = todoToInput(t);
     if (!input) continue;
-    await guard(() => upsert(email, spreadsheetId, "todo", t.id, input), `resync-todo ${t.id}`);
-    pushed++;
+    try {
+      if (await upsert(email, spreadsheetId, "todo", t.id, input)) pushed++;
+    } catch (e) {
+      console.warn(`[gcal-sync] resync-todo ${t.id} 실패:`, e instanceof Error ? e.message : e);
+    }
   }
   return { connected: true, pushed };
 }

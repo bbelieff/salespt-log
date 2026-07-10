@@ -48,6 +48,11 @@ const PRACTICE_HEX = "#334155";
 const GENERAL_HEX = "#0d9488"; // tokens 일반이벤트 teal (비집계)
 const TODO_TYPES = ["미팅", "전화", "메시지", "기타"] as const;
 
+// 안정 참조 — map.get(date) ?? [] 의 새 배열이 매 렌더 selectedItems/effect 를 무효화하는
+// 무한 리페치 루프 방지(gcal-2b states 조회). 빈 날은 항상 같은 배열을 반환.
+const NO_MEETINGS: Meeting[] = [];
+const NO_TODOS: Todo[] = [];
+
 function fmtMoney(n: number): string {
   return n.toLocaleString("ko-KR");
 }
@@ -90,8 +95,8 @@ export default function CalendarPage() {
     return m;
   }, [monthQuery.data]);
 
-  const selectedMeetings = meetingsByDate.get(selectedDate) ?? [];
-  const selectedTodos = todosByDate.get(selectedDate) ?? [];
+  const selectedMeetings = meetingsByDate.get(selectedDate) ?? NO_MEETINGS;
+  const selectedTodos = todosByDate.get(selectedDate) ?? NO_TODOS;
   const selectedDow =
     selectedDate.length >= 10 ? KO_DAY[parseISO(selectedDate).getDay()] : "";
 
