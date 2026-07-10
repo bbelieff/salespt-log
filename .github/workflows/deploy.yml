@@ -95,7 +95,7 @@ jobs:
             echo "::warning::DATABASE_URL 주입 실패(rc=$rc1/$rc2) — 배포는 계속 진행"
           fi
 
-      - name: Deploy on VPS
+      - name: Deploy on VPS (detached — 연결 끊겨도 원격은 끝까지 완주)
         run: |
           REMOTE='
             # 주의: 이 블록 전체가 작은따옴표로 감싸임 → 내부에 작은따옴표 절대 금지(문자열 조기 종료).
@@ -199,30 +199,129 @@ jobs:
             node scripts/append-updates.mjs || echo "append-updates 실패(non-blocking) — 다음 배포에서 재시도"
             echo "::endgroup::"
           '
-          # 연결 옵션: accept-new(TOFU) + 넉넉한 ConnectTimeout + keepalive.
-          # 재시도는 *연결 실패(ssh rc=255)* 에만 — 빌드/원격스크립트 실패(다른 rc)는 즉시 fail(롤백 신호).
-          # ⚠️ GitHub Actions 기본 셸은 `bash -e` → 맨 `ssh` 라인이 실패하면 rc=$? 전에 스텝이
-          #    즉시 종료돼 재시도가 무력화됨. `|| rc=$?` 로 -e 를 우회해 종료코드를 반드시 포착.
-          # 재시도 창 확대(2026-07-07 run#426): 기존 5회×15s(총 ~3.5분)로는 실측 4~5분대
-          # 도달성 장애 창을 못 넘겼다(attempt 1·2 모두 타임아웃 전멸 → 빨강, 사이트는
-          # 무중단이라 정상 — docs/incidents/2026-07-07-deploy-426-vps-unreachable.md).
-          # 7회×30s(+ConnectTimeout 30s) = 총 ~7분 창으로 확대.
-          for i in 1 2 3 4 5 6 7; do
-            rc=0
-            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
-                -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
-                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" "$REMOTE" || rc=$?
-            if [ "$rc" = "0" ]; then exit 0; fi
-            if [ "$rc" = "255" ]; then
-              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 30초 후 재시도" >&2
-              sleep 30
+          # ── 실행 방식: detached(setsid) + 상태 폴링 (2026-07-09 인시던트 재발방지) ──
+          # 왜: 위 $REMOTE 를 ssh 로 *동기* 실행하면, 러너↔VPS 연결이 원자 swap/health 도중
+          #     끊길 때(rc=255) 원격 셸이 SIGHUP 으로 죽어 .next 가 반쯤 스왑된 손상 상태로
+          #     남는다(→ 크래시 루프 → 502 사이트다운, incidents/2026-07-09-deploy-connection-
+          #     drop-site-down.md). rc=255 재시도는 스크립트를 처음부터 다시 돌리지만, 도달성
+          #     장애 창이 길면 재접속 자체가 다 실패해 손상 상태로 종료된다.
+          # 해결: 원격 스크립트를 setsid 로 세션 분리해 띄우면 연결이 끊겨도 배포(특히 swap·
+          #     health·자동롤백)가 *끝까지 완주*한다. 러너는 재접속하며 상태파일만 폴링해 진짜
+          #     종료코드를 보고. flock 으로 VPS 상에서도 배포를 직렬화(GH concurrency 와 이중 안전).
+          HOST="${{ secrets.VPS_HOST }}"
+          RUNID="${{ github.run_id }}-${{ github.run_attempt }}"
+          DIR="/opt/salespt-log/.deploy"
+          SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i $HOME/.ssh/id_ed25519"
+
+          # rc=255(연결 실패)만 최대 7회×20s 재시도하는 ssh 실행기. 그 외 rc 는 그대로 반환.
+          # ⚠️ GH 기본 셸 bash -e 우회: 반드시 `|| rc=$?` 로 종료코드 포착(2026-06-04 교훈).
+          # $2(옵션)=원격 stdin 파일 — 루프마다 재오픈되므로 재시도해도 파이프 소진 문제 없음.
+          ssh_do() {
+            local rc i
+            for i in 1 2 3 4 5 6 7; do
+              rc=0
+              ssh $SSH_OPTS "root@$HOST" "$1" < "${2:-/dev/null}" || rc=$?
+              [ "$rc" != "255" ] && return "$rc"
+              echo "  ↻ ssh 연결 실패(rc=255) — 재시도 $i/7, 20초 후 재접속" >&2
+              sleep 20
+            done
+            return 255
+          }
+
+          # 배포 본문($REMOTE)과 "완료 래퍼"를 러너 로컬 파일로 생성(heredoc 없이 — YAML 안전).
+          # 래퍼는 setsid 로 분리 실행되어 배포 종료코드를 status 파일에 원자적으로 기록한다.
+          LOCAL_SCRIPT="$RUNNER_TEMP/deploy-remote.sh"
+          printf '%s' "$REMOTE" > "$LOCAL_SCRIPT"
+          LOCAL_WRAP="$RUNNER_TEMP/deploy-wrap.sh"
+          {
+            echo 'exec >"'"$DIR/$RUNID.log"'" 2>&1'
+            echo 'flock "'"$DIR"'/deploy.lock" bash "'"$DIR/$RUNID.sh"'"'
+            echo 'ec=$?'
+            echo 'echo "$ec" > "'"$DIR/$RUNID.status.tmp"'"'
+            echo 'mv "'"$DIR/$RUNID.status.tmp"'" "'"$DIR/$RUNID.status"'"'
+            echo 'rm -f "'"$DIR/$RUNID.running"'"'
+          } > "$LOCAL_WRAP"
+
+          # 1) 준비 + 배포 스크립트 업로드 (멱등). 산출(stdout): NEW | ALREADY
+          echo "::group::Launch detached deploy ($RUNID)"
+          GUARD=""; grc=0
+          GUARD=$(ssh_do "
+            mkdir -p $DIR
+            find $DIR -type f -mtime +2 -delete 2>/dev/null || true
+            cat > $DIR/$RUNID.sh.tmp
+            if [ -f $DIR/$RUNID.status ] || [ -f $DIR/$RUNID.running ]; then
+              rm -f $DIR/$RUNID.sh.tmp; echo ALREADY
             else
-              echo "원격 배포 스크립트 실패(rc=$rc) — 빌드/배포 오류이므로 재시도 안 함" >&2
-              exit "$rc"
+              mv $DIR/$RUNID.sh.tmp $DIR/$RUNID.sh; echo NEW
             fi
+          " "$LOCAL_SCRIPT") || grc=$?
+          if [ "$grc" != "0" ]; then
+            echo "::endgroup::"
+            echo "배포 준비 ssh 실패(rc=$grc) — VPS 도달성 지속 장애. gh run rerun 권장." >&2
+            exit "$grc"
+          fi
+          # 2) 래퍼 업로드 + detached 실행 (NEW 일 때만). .running 을 setsid 前에 기록해
+          #    ssh 재시도로 인한 중복 실행을 막는다(flock 도 이중 안전망).
+          if printf '%s\n' "$GUARD" | grep -q '^NEW$'; then
+            lrc=0
+            ssh_do "
+              cat > $DIR/$RUNID.wrap.sh
+              if [ -f $DIR/$RUNID.running ] || [ -f $DIR/$RUNID.status ]; then
+                echo 'already launched (skip)'
+              else
+                : > $DIR/$RUNID.running
+                touch $DIR/deploy.lock
+                setsid bash $DIR/$RUNID.wrap.sh </dev/null >/dev/null 2>&1 &
+                echo launched
+              fi
+            " "$LOCAL_WRAP" || lrc=$?
+            if [ "$lrc" != "0" ]; then
+              echo "::endgroup::"
+              echo "detached 실행 시작 실패(rc=$lrc) — gh run rerun 권장." >&2
+              exit "$lrc"
+            fi
+          else
+            echo "이미 실행 중인 배포에 재부착 — 폴링으로 이동"
+          fi
+          echo "::endgroup::"
+
+          # 3) 상태 폴링 (재접속 안전, 최대 25분). status 파일이 나타나면 종료코드 확정.
+          echo "::group::Deploy 진행 (10초 폴링 — 마지막 로그줄만 표시)"
+          DEADLINE=$(( $(date +%s) + 1500 ))
+          LAST=""; STATUS="RUNNING"
+          while : ; do
+            # ⚠️ 데드라인은 루프 *최상단*에서 검사. rc=255(지속 도달성 장애)로 continue 하는
+            #    경로에서도 반드시 25분 안에 빠져나오게 — 아니면 배포 큐(concurrency)를 최대
+            #    6시간(GH job timeout)까지 점유(리뷰 CONFIRMED).
+            if [ "$(date +%s)" -ge "$DEADLINE" ]; then echo "  ❌ 배포 25분 초과 — 타임아웃(원격은 계속 진행 중일 수 있음)" >&2; STATUS="TIMEOUT"; break; fi
+            OUT=""; prc=0
+            # STATUS 마커를 *첫 줄*에 emit(echo 라 항상 개행으로 끝남) → 로그 tail 이 개행으로
+            #    안 끝나도(빌드 중 부분 줄) 첫 줄 파싱이 STATUS 를 정확히 분리(오파싱→오판 방지).
+            OUT=$(ssh_do "
+              if [ -f $DIR/$RUNID.status ]; then echo \"__STATUS__ \$(cat $DIR/$RUNID.status)\"; else echo __STATUS__ RUNNING; fi
+              tail -n 1 $DIR/$RUNID.log 2>/dev/null || true
+            ") || prc=$?
+            if [ "$prc" = "255" ]; then echo "  ↻ 폴링 재접속 지속 실패 — 20초 후 재시도" >&2; sleep 20; continue; fi
+            if [ "$prc" != "0" ]; then echo "::endgroup::"; echo "폴링 ssh 실패(rc=$prc)" >&2; exit "$prc"; fi
+            STATUS="${OUT%%$'\n'*}"; STATUS="${STATUS#__STATUS__ }"
+            HB="${OUT#*$'\n'}"
+            if [ "$HB" != "$OUT" ] && [ -n "$HB" ] && [ "$HB" != "$LAST" ]; then echo "  · $HB"; LAST="$HB"; fi
+            [ "$STATUS" != "RUNNING" ] && break
+            sleep 10
           done
-          echo "ssh 연결 7회 모두 실패 — VPS 도달성 지속 장애 (gh run rerun 권장)" >&2
-          exit 1
+          echo "::endgroup::"
+
+          # 4) 전체 로그 덤프(관측) + 정리 + 종료코드 판정
+          echo "::group::원격 배포 로그(전체)"
+          ssh_do "cat $DIR/$RUNID.log 2>/dev/null || echo '(로그 없음)'" || echo "(로그 회수 실패 — 원격 배포 자체는 완료됐을 수 있음)"
+          echo "::endgroup::"
+          ssh_do "rm -f $DIR/$RUNID.sh $DIR/$RUNID.wrap.sh $DIR/$RUNID.running" || true
+
+          case "$STATUS" in
+            0) echo "✅ 원격 배포 성공(exit 0) — 무중단 컷오버 완료"; exit 0 ;;
+            TIMEOUT) echo "❌ 배포 타임아웃 — 원격 상태 미확정. VPS/사이트 점검 필요." >&2; exit 1 ;;
+            *) echo "❌ 원격 배포 실패(exit $STATUS) — health 게이트에서 자동 롤백했을 수 있음(위 로그 확인)." >&2; exit 1 ;;
+          esac
 
       - name: Public health check
         run: |
