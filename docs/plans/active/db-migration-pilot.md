@@ -40,8 +40,10 @@ related: architecture, sheet-structure, handoff-2026-07-06-cowork
 - **P1 이중 기록**: 앱의 모든 시트 쓰기 경로가 성공 시 DB 에도 upsert(fire-and-forget —
   DB 실패가 앱 동작에 영향 0). 읽기는 100% 시트 유지. 8기 기존 데이터는 backfill 스크립트로
   1회 적재. 9기는 7/10 첫날부터 자연 축적.
-- P2(읽기 전환: 탭별, 대시보드=SQL 집계+수식 대조 테스트)·P3(정본 전환, 기수 생성=insert)는
-  파일럿 정합 검증 후 별도 계획 — 본 문서 범위 밖(10기 목표).
+- P2(읽기 전환: 탭별, 대시보드=SQL 집계+수식 대조)=**R2 완료**(docs/plans/completed/db-read-*.md).
+  P3(정본 전환, 기수 생성=insert)=**R3 착수 — 설계 `docs/plans/active/db-write-flip.md`**.
+- **D3 결정(2026-07-08 belie, R3-0 에서 답변 확정)**: DB 정본 후에도 **시트 자동 미러 유지**
+  (운영자 export·안전망·롤백 근거). 시트 은퇴는 R4. 정본 이원화 금지(DB 실패 시 시트 폴백 안 함).
 
 ## 2. 스키마 초안 (파일럿 = jsonb 미러, 정규화는 P2 에서)
 ```sql

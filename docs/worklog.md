@@ -38,6 +38,20 @@
 
 ## 로그
 
+### 2026-07-09 · Claude Code · R3-0 쓰기 정본 전환 설계 등재 (docs) — R3 착수
+- 의도: gcal 트랙 종료 후 belie "R3 착수". R3 프롬프트는 세션 압축돼 있어 세션 기록에서 원문 복원(못받은 것 아님). R3-0=쓰기 정본 전환 설계 문서(docs PR)
+- 한 것: docs/plans/active/db-write-flip.md 신규 — 쓰기경로 인벤토리(7탭: sales·meetings·todos·contracts·company_archive·db·carryover, dual-write 미러 훅=R3 정본 대상)·전환 패턴(DB 동기 정본+시트 비동기 미러, 실패=사용자에러·폴백금지)·드리프트 감시·**탭별 롤백 스위치**·가드 유지(§2.5·편집기간, 은퇴는 R4)·PR 분할(R3-1~5). db-migration-pilot §0 에 D3(미러 유지) 답변 확정
+- 결정: **⚠️ 불일치 발견** — R2 완료 플랜들이 `db-first-unlimited-roadmap.md` 를 관련문서로 참조하나 **그 파일은 부재(죽은 링크)**. R3 SoR 는 db-write-flip.md + db-migration-pilot.md 로 확정. 로드맵 파일 생성은 스코프 밖(belie 판단 대기)
+- 다음: R3-1(feat/db-write-daily — sales 컨택 4지표 쓰기 뒤집기, 첫 코드 PR). R3-1 프롬프트는 세션 기록에 있음(복원 가능)
+- SoR: docs/plans/active/db-write-flip.md, db-migration-pilot.md §0
+
+### 2026-07-09 · Claude Code · gcal-2b 일정별 토글+다시올리기+계정표시 완주(#514) — gcal 트랙 종료
+- 의도: gcal-2a 라이브검증 후 gcal 그룹 마지막 PR. 자동 담기 위에 "원하는 일정만 빼는" 개별 토글 + [다시 올리기] + 계정 표시. Changelog-Done 으로 gcal 새소식 공개
+- 한 것: #514 머지·배포 success·health 200, VPS=master=`c1cba7e`. GcalItemToggle(제어형·낙관적·stopPropagation) + 카드 개정 + gcal-sync(toggleSchedule/removeOne/resyncAll) + gcal-event-ids(readGcalStates 배치·keepOnlyMarkers) + gcal-schedule-read + /api/gcal/{toggle,resync,states}. 제외 마커 "-"(upsert 존중). check.sh 380 초록
+- 결정: **적대적 리뷰 2R로 결함 6종 수정** — CRITICAL 무한 리페치 루프(`?? []` 새배열→매렌더 재발화, 모듈상수로 안정화) / MAJOR 멀티계정 제외마커 유실(removeAll preserveMarkers+keepOnlyMarkers) / MAJOR 행삭제 마커잔존→행재사용 오염(2R 회귀, 전체비움) / resync O(N)·pushed 과다·states 낙관값 덮음
+- 다음: **belie 브라우저 카나리아**(토글 OFF→구글에서 사라짐/ON→재등록, [다시 올리기], 계정 표시, 미팅만/투두만 있는 날 렌더 정상=루프 없음). belie 잔여: 레지스트리 66~70행 삭제(시트 UI), DATABASE_URL 비번 로테이션
+- SoR: docs/plans/active/google-calendar-sync.md §2·§4·§6 PR-3b
+
 ### 2026-07-09 · Claude Code · gcal-2a 일정 자동 담기 엔진 완주(#513) — 배포·health 200
 - 의도: gcal-1 카나리아 통과(belie vigilantback@gmail.com "연결됨") 후 gcal-2 착수. belie 결정으로 **2a(엔진)/2b(토글) 분할**. 2a = 연결 시 미팅·투두·일반이벤트를 구글에 단방향 자동 등록
 - 한 것: #513 머지·배포 success(첫 시도)·health 200, VPS=master=`722e0ce`. 신규 gcal-client(v3 insert/patch/delete+salesptId dedup)·gcal-event-ids(meetings AT·todos O 사용자별 맵, 셀 뮤텍스)·gcal-sync(멱등 reconcile, fire-and-forget). 훅=contact.ts(미팅 CRUD·revert)+todos.ts. **미팅/투두 시트 쓰기 무접촉 설계**(AT/O 가 split-write 범위 밖 → meetings.ts/todos.ts/config 무변경, 사고 반경 0). 매핑 10테스트+380 초록
