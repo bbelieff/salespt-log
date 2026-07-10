@@ -25,6 +25,10 @@ import {
 } from "@/repo/gcal-event-ids";
 import { findById as findMeetingById } from "@/repo/meetings";
 import { findById as findTodoById } from "@/repo/todos";
+import { listAllMeetings, listAllTodos } from "@/repo/gcal-schedule-read";
+
+/** gcal_event_ids 맵 값 = eventId(등록됨) | "-"(일정별 토글로 제외, gcal-2b) | 키없음(기본 ON). */
+const EXCLUDE_MARKER = "-";
 
 // ── 도메인 → 이벤트 매핑 ─────────────────────────────────────────
 
@@ -93,6 +97,7 @@ async function upsert(
   if (!conn.connected || !conn.refreshToken) return; // 미연결 skip
   const calendarId = conn.settings.calendarId || "primary";
   const map = await readGcalMap(spreadsheetId, kind, id);
+  if (map[email] === EXCLUDE_MARKER) return; // 사용자가 일정별 토글로 뺌 → 자동 등록 안 함(gcal-2b)
   // 맵에 내 키가 있으면 그 이벤트, 없으면 salesptId 로 구글 조회(저장 실패로 유실됐어도
   // 재삽입 전 기존 이벤트를 찾아 **중복 생성 방지** — insert-then-save 비원자성 보완).
   let eventId: string | null = map[email] ?? null;
@@ -120,7 +125,7 @@ async function removeAll(
   id: string,
 ): Promise<void> {
   const map = await readGcalMap(spreadsheetId, kind, id);
-  const entries = Object.entries(map).filter(([, ev]) => ev && ev !== "-"); // "-"=제외 마커(gcal-2b)
+  const entries = Object.entries(map).filter(([, ev]) => ev && ev !== EXCLUDE_MARKER);
   for (const [userEmail, eventId] of entries) {
     const conn = await getGcalConnection(userEmail);
     if (conn.connected && conn.refreshToken) {
@@ -225,4 +230,77 @@ export async function syncTodoRemoved(
   id: string,
 ): Promise<void> {
   await guard(() => removeAll(spreadsheetId, "todo", id), `todo-remove ${id}`);
+}
+
+// ── gcal-2b: 일정별 개별 토글 / [다시 올리기] ──────────────────────
+
+/** 이 사용자 이벤트만 삭제(토글 OFF 용) — 타 사용자·마커 무접촉. */
+async function removeOne(
+  email: string,
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  id: string,
+): Promise<void> {
+  const conn = await getGcalConnection(email);
+  if (!conn.connected || !conn.refreshToken) return;
+  const map = await readGcalMap(spreadsheetId, kind, id);
+  const eventId = map[email];
+  if (eventId && eventId !== EXCLUDE_MARKER) {
+    await deleteEvent(conn.refreshToken, conn.settings.calendarId || "primary", eventId);
+  }
+}
+
+/**
+ * 일정별 개별 토글. on=true → 제외 마커 해제 + 재등록 / on=false → 이벤트 삭제 + 제외 마커.
+ * 미연결이면 {connected:false}(라우트가 "먼저 연결" 안내). 결과 반영까지 await(토스트 정확).
+ */
+export async function toggleSchedule(
+  email: string,
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  id: string,
+  on: boolean,
+): Promise<{ connected: boolean }> {
+  const conn = await getGcalConnection(email);
+  if (!conn.connected || !conn.refreshToken) return { connected: false };
+  if (on) {
+    await setGcalEventId(spreadsheetId, kind, id, email, null); // 제외 마커 해제(기본 ON)
+    let input: GcalEventInput | null = null;
+    if (kind === "meeting") {
+      const m = await findMeetingById(spreadsheetId, id);
+      if (m && m.상태 !== "취소") input = meetingToInput(m);
+    } else {
+      const t = await findTodoById(spreadsheetId, id);
+      if (t) input = todoToInput(t);
+    }
+    if (input) await upsert(email, spreadsheetId, kind, id, input);
+  } else {
+    await removeOne(email, spreadsheetId, kind, id);
+    await setGcalEventId(spreadsheetId, kind, id, email, EXCLUDE_MARKER); // 제외 마커
+  }
+  return { connected: true };
+}
+
+/** [다시 올리기] — 제외 마커 없는 전체 일정을 멱등 재푸시(upsert 가 "-" 자동 skip). */
+export async function resyncAll(
+  email: string,
+  spreadsheetId: string,
+): Promise<{ connected: boolean; pushed: number }> {
+  const conn = await getGcalConnection(email);
+  if (!conn.connected || !conn.refreshToken) return { connected: false, pushed: 0 };
+  let pushed = 0;
+  for (const m of await listAllMeetings(spreadsheetId)) {
+    if (m.상태 === "취소") continue;
+    const input = meetingToInput(m);
+    if (!input) continue;
+    await guard(() => upsert(email, spreadsheetId, "meeting", m.id, input), `resync-meeting ${m.id}`);
+    pushed++;
+  }
+  for (const t of await listAllTodos(spreadsheetId)) {
+    const input = todoToInput(t);
+    if (!input) continue;
+    await guard(() => upsert(email, spreadsheetId, "todo", t.id, input), `resync-todo ${t.id}`);
+    pushed++;
+  }
+  return { connected: true, pushed };
 }

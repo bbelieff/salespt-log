@@ -38,6 +38,14 @@
 
 ## 로그
 
+### 2026-07-09 · Claude Code · gcal-2a 일정 자동 담기 엔진 완주(#513) — 배포·health 200
+- 의도: gcal-1 카나리아 통과(belie vigilantback@gmail.com "연결됨") 후 gcal-2 착수. belie 결정으로 **2a(엔진)/2b(토글) 분할**. 2a = 연결 시 미팅·투두·일반이벤트를 구글에 단방향 자동 등록
+- 한 것: #513 머지·배포 success(첫 시도)·health 200, VPS=master=`722e0ce`. 신규 gcal-client(v3 insert/patch/delete+salesptId dedup)·gcal-event-ids(meetings AT·todos O 사용자별 맵, 셀 뮤텍스)·gcal-sync(멱등 reconcile, fire-and-forget). 훅=contact.ts(미팅 CRUD·revert)+todos.ts. **미팅/투두 시트 쓰기 무접촉 설계**(AT/O 가 split-write 범위 밖 → meetings.ts/todos.ts/config 무변경, 사고 반경 0). 매핑 10테스트+380 초록
+- 결정: 적대적 리뷰 2라운드로 **결함 7종** 잡아 수정(자정 end<start 무성손실→다음날 롤오버 / 재시도 중복삽입→salesptId 멱등 / 멀티계정 삭제 고아·행재사용→전사용자삭제+셀폐기 / revive 자식 누락 / lost-update→뮤텍스 / 뮤텍스 unhandledRejection). 자손 cascade·개별토글·다시올리기·계정표시는 gcal-2b
+- 검증(라이브, VPS 1회성 스크립트): 연결된 토큰으로 구글 캘린더 왕복 확인 — 삽입✅·salesptId 멱등조회✅·patch(16:30KST=07:30UTC, 정상)✅·삭제·정리✅. 토큰 복호화·유효 확인. **실사용 발견: 강구수(gusutaepyeong)도 실제 연결**(설정 kgusu891024 커스텀 캘린더). belie(beliefkimkim)=vigilantback 캘린더
+- 다음: gcal-2b(feat/gcal-toggle-resync). **belie 확인 필요: 레지스트리 유령행 5개**(이메일 없이 S=평문/T=`2026-08-01` — gcal 컬럼에 엉뚱한 값, gcal 처리엔 무해=이메일없어 앱이 안 건드림, 레지스트리 위생만). DATABASE_URL 비번 로테이션(보류)
+- SoR: docs/plans/active/google-calendar-sync.md §3·§6 PR-3a, gcal_event_ids=sheet-structure §3(AT)/§5-2(O)
+
 ### 2026-07-09 · Claude Code · gcal-1 개정 완주(#512) — 유형 토글 폐기, 배포·health 200
 - 의도: 사용자 2026-07-09 설계 변경 — 대상 유형 토글 3종(미팅/실무/일반) 폐기 → 일정별 개별 토글(기본 ON). 이미 머지된 gcal-1(#511)의 개정 PR
 - 한 것: #512 머지·배포 success(첫 시도, 도달성 장애 없음)·공개 health 200, VPS=master=`00bce6f`. GcalSettings/SettingsPatch/카드/타입주석에서 토글 3종 제거→calendarId 만, 하위호환(옛 토글키 Zod strip)+parseGcalSettings 5테스트, SoR §0·§2·§4·§8+문서 6종 동기화. 적대적 리뷰 워크플로 3축→확인 결함 3건(스테일 주석·요약카드) 수정 후 머지

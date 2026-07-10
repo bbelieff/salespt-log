@@ -114,6 +114,35 @@ async function writeCell(
 }
 
 /**
+ * 여러 id 의 토글 상태(담김=true, 제외 마커 "-"면 false) 배치 조회 — A열+맵열 1회 batchGet.
+ * 행 못 찾은 id 는 기본 ON(true). gcal-2b 캘린더 토글 초기 상태용.
+ */
+export async function readGcalStates(
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  ids: string[],
+  email: string,
+): Promise<Record<string, boolean>> {
+  const out: Record<string, boolean> = {};
+  if (!ids.length) return out;
+  const { tab, col } = SPEC[kind];
+  const res = await sheetsClient().spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges: [`${tabRef(tab)}!A2:A`, `${tabRef(tab)}!${col}2:${col}`],
+  });
+  const idCol = res.data.valueRanges?.[0]?.values ?? [];
+  const mapCol = res.data.valueRanges?.[1]?.values ?? [];
+  const wanted = new Set(ids);
+  for (let i = 0; i < idCol.length; i++) {
+    const rid = String(idCol[i]?.[0] ?? "").trim();
+    if (!rid || !wanted.has(rid) || rid in out) continue;
+    out[rid] = parseMap(String(mapCol[i]?.[0] ?? "").trim())[email] !== "-";
+  }
+  for (const id of ids) if (!(id in out)) out[id] = true; // 미발견=기본 ON
+  return out;
+}
+
+/**
  * 사용자 키의 eventId 설정(eventId=null → 키 제거). 락 안에서 read-merge-write —
  * 타 사용자 키 보존 + 동시성 lost update 방지. 행 없으면(삭제됨) no-op. 빈 맵=빈 셀.
  * apostrophe prefix 로 plain text 강제(읽을 때 `'` 없이 복원).
