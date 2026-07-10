@@ -12,6 +12,7 @@ import {
   listTodosByContract,
   updateTodo as updateTodoRow,
 } from "@/repo/todos";
+import { onTodoChanged, onTodoCreated, syncTodoRemoved } from "@/service/gcal-sync";
 import { Todo } from "@/types";
 
 async function resolveSheet(email: string): Promise<string> {
@@ -44,7 +45,9 @@ export async function createTodo(
     완료여부: false,
     생성시각: new Date().toISOString(),
   });
-  return appendTodo(spreadsheetId, todo);
+  const saved = await appendTodo(spreadsheetId, todo);
+  onTodoCreated(email, spreadsheetId, saved); // gcal 자동 등록(fire-and-forget)
+  return saved;
 }
 
 /** ToDo 부분 수정 (완료 토글·내용 변경 등). */
@@ -55,10 +58,12 @@ export async function patchTodo(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
   await updateTodoRow(spreadsheetId, id, partial);
+  onTodoChanged(email, spreadsheetId, id); // gcal 갱신/삭제 reconcile(fire-and-forget)
 }
 
 /** ToDo 삭제 (행 clear). */
 export async function removeTodo(email: string, id: string): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
+  await syncTodoRemoved(email, spreadsheetId, id); // 행 클리어 전 구글 이벤트 삭제
   await clearTodo(spreadsheetId, id);
 }
