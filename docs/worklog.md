@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · [병렬트랙 A] 작업1 보완 — 삭제 시트+DB 동시 반영 + 전 파일럿 대조 0
+- 의도: 오케스트레이터 스펙 전문 수령 — 기완주분과 대조해 갭 3개(삭제 동기화·해지 보관함·6케이스 테스트) 보완 착수. 본 항목 = 갭 1
+- 한 것: clearRow {syncDb} — 파일럿 삭제는 DB _cleared 를 await+1회 재시도, 최종 실패 = 사용자 에러(조용한 반쪽 삭제 금지). 비파일럿은 기존 fire-and-forget(DB 장애가 시트 화면 사용자를 안 막게). 게이트 = chooseDailySource 대칭. 회귀 5테스트. **전 파일럿 시트↔DB 계약 대조 1회: 파일럿 불일치 0**(비파일럿 3건 = dual-write 이전 계약 미러 부재, 화면 무영향 — R4 백필 대상)
+- 결정(발견 2): ① practice 계정 cohort="" → 비파일럿(시트 read) — R3 의 "연습 DB=0 읽기이상"은 손상 아닌 미백필로 설명(R3 트랙 참고) ② 일회성 VPS 스크립트는 heredoc 생성 시 SA 키 파싱이 깨질 수 있음 — Write 도구 파일로 생성할 것(이번 오진 원인, #524 무혐의 확인)
+- 다음: 갭 2·3(해지 보관함 + 6케이스 테스트) — feat/termination-archive
+- SoR: docs/plans/active/contract-delete-ghost.md §4.5, PR(fix/contract-delete-sync)
+
 ### 2026-07-12 · Claude Code · [병렬트랙 A] feat/contract-termination 구현 — 계약해지 (Dev3-A 완주)
 - 의도: 7/10 belie 스펙 — 실무/수납 [계약해지](사유 필수·반환 없음/일부/전액·보존/숨김), 매출=수임비+수납−반환액
 - 한 것: 모델 #529(types AL~AO+SSOT 선등재) 후 본 PR — writeTermination(신규 repo, 그리드 41열+미러)·rowToCP/DB payload 파서 확장·terminateContract(검증 KST 해지일)·terminate 라우트·TerminationModal+ContractRow 뱃지/버튼·건수 "해지 N건"(상수 1개)·computeContractRevenue/split 에 totalRefunded 차감. 500줄 캡 3파일 분리(contract-status·nameHighlight·DeleteConfirmModal — 동작 무변경). 테스트 29 초록(해지 정합 9 신규)
@@ -353,11 +360,4 @@
 - 결정: (사고·교훈) 기수+row_key는 유일키 아님 — DB 행 지정은 반드시 spreadsheet_id 포함. 1차 마킹이 정상 행 14건까지 건드려 3단계 복구(해제→재실행→타임스탬프 기준 정밀 재마킹)로 손실 0 회복. "유령 추정" 중 3건은 429 읽기 누락 착시 — 멱등 재실행 먼저, 마킹은 그 다음
 - 다음: 제공사 방화벽 콘솔 확인(belie, 재발 시). R2-2(meetings·banners 읽기 전환). #491 후 속도 수치 코멘트(파일럿 api_timing 대기)
 - SoR: docs/incidents/2026-07-08-gh-runner-ssh-ban.md, docs/plans/active/db-pilot-arena.md
-
-### 2026-07-08 · Claude Code · 워크로그 프로토콜 레포 박제 (#494)
-- 의도: Cowork가 워킹트리에 설계해둔 세션 공유 워크로그(이 파일)+CLAUDE.md §3 0단계를 내용 무수정으로 커밋 — 프로토콜을 정본화
-- 한 것: #494 머지(8e089b8)·배포 conclusion=success. 커밋 직전 Cowork 신규 항목 2건 추가 감지 → 브랜치 최신본 재동기화(amend) 후 진행. 이 파일은 이제 git 추적 대상 — 이후 항목은 워킹트리에 쌓고 주기적으로 docs 커밋으로 반영
-- 결정: 워크로그 커밋 주기는 별도 규칙 없음 — 당분간 다른 docs PR에 편승 또는 쌓이면 단독 docs PR
-- 다음: 모든 세션이 §3 0단계 준수(시작 시 읽기·종료 시 쓰기)
-- SoR: CLAUDE.md §3, docs/worklog.md 상단 프로토콜
 

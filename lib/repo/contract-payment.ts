@@ -17,6 +17,7 @@ import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
+import { clearContractRowInDbSync } from "./db/contracts-clear";
 
 const CFG = SHEET_RANGES.contractPayment;
 
@@ -472,6 +473,7 @@ export async function updateLinkFields(
 export async function clearRow(
   spreadsheetId: string,
   row: number,
+  opts?: { syncDb?: boolean },
 ): Promise<void> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
   if (row < firstDataRow) {
@@ -482,6 +484,11 @@ export async function clearRow(
     spreadsheetId,
     range,
   });
-  mirrorClearRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}` }); // P1 — _cleared 마킹
+  if (opts?.syncDb) {
+    // 파일럿(DB read 화면): 삭제 = 시트+DB 동시 — 실패 시 throw(조용한 반쪽 삭제 금지, Dev3-A 작업1).
+    await clearContractRowInDbSync(spreadsheetId, row);
+  } else {
+    mirrorClearRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}` }); // P1 — 비파일럿 fire-and-forget
+  }
 }
 export { syncFeeFromContract } from "./contract-payment-sync";
