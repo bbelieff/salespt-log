@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · gcal 읽기 경로 45열 시트 grid limits 내성 (fix/gcal-event-ids-grid-limits)
+- 의도: #521 카나리아 실측 버그 — 04 가 45열(AT 미생성)인 시트에서 gcal 읽기 400 → upsert 무음실패·[다시 올리기] 500·토글 초기상태 실패
+- 한 것: readCell·readGcalStates 에 "exceeds grid limits" 400 → 빈 맵/기본 ON 처리(400+메시지 보수 가드, 그 외 에러는 전파) + 단위테스트 6종(tests/repo/gcal-event-ids-grid.test.ts) + 플랜 §2 등재
+- 결정: 읽기 경로에 그리드 확장(쓰기) 안 붙임 — 확장은 setGcalEventId 만. 컬럼 없음=매핑·마커 없음(의미 동치)
+- 다음: 배포 후 연습 시트(45열 상태) 회귀 확인 — 레지스트리 수정은 belie 승인 필요, 코드 리뷰·테스트 수준 검증으로 갈음
+- SoR: docs/plans/active/google-calendar-sync.md §2
+
 ### 2026-07-12 · Claude Code · 🐛 gcal 미팅 동기화 카나리아 — 성공경로 확인 + 45열 시트 버그 발견
 - 의도: belie "미팅이 구글캘린더에 보이는지 직접 실험" — 동기화 엔진 첫 라이브 E2E 검증
 - 한 것: belie 승인 하에 김믿음 행에 연습 시트 임시 연결 → 실계정으로 미팅 작성·삭제 E2E.

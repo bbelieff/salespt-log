@@ -38,6 +38,18 @@ async function findRow(
   return idx < 0 ? null : idx + 2;
 }
 
+/**
+ * "Range exceeds grid limits" 400 — gcal 컬럼(04 AT / 05 O)이 아직 생성 안 된 시트.
+ * 컬럼 없음 = 매핑·마커 없음이므로 읽기 경로는 빈 값과 동치. 그리드 확장(ensureGridColumns)은
+ * 쓰기 경로(setGcalEventId)만 수행 — 읽기에 쓰기 작업을 붙이지 않는다 (2026-07-12 카나리아 실측).
+ */
+function isGridLimitsError(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const err = e as { code?: number; status?: number; message?: string };
+  const is400 = err.code === 400 || err.status === 400;
+  return is400 && /exceeds grid limits/i.test(String(err.message ?? ""));
+}
+
 function parseMap(raw: string): Record<string, string> {
   if (!raw.trim()) return {};
   try {
@@ -61,11 +73,16 @@ async function readCell(
   col: string,
   row: number,
 ): Promise<string> {
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tabRef(tab)}!${col}${row}`,
-  });
-  return String(res.data.values?.[0]?.[0] ?? "").trim();
+  try {
+    const res = await sheetsClient().spreadsheets.values.get({
+      spreadsheetId,
+      range: `${tabRef(tab)}!${col}${row}`,
+    });
+    return String(res.data.values?.[0]?.[0] ?? "").trim();
+  } catch (e) {
+    if (isGridLimitsError(e)) return ""; // 컬럼 미생성 시트 → 빈 셀과 동치
+    throw e;
+  }
 }
 
 /** 한 일정 행의 사용자별 eventId 맵 조회(행 없으면 빈 맵). */
@@ -126,10 +143,20 @@ export async function readGcalStates(
   const out: Record<string, boolean> = {};
   if (!ids.length) return out;
   const { tab, col } = SPEC[kind];
-  const res = await sheetsClient().spreadsheets.values.batchGet({
-    spreadsheetId,
-    ranges: [`${tabRef(tab)}!A2:A`, `${tabRef(tab)}!${col}2:${col}`],
-  });
+  let res;
+  try {
+    res = await sheetsClient().spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: [`${tabRef(tab)}!A2:A`, `${tabRef(tab)}!${col}2:${col}`],
+    });
+  } catch (e) {
+    if (isGridLimitsError(e)) {
+      // 컬럼 미생성 시트 → 제외 마커도 존재 불가 → 전원 기본 ON
+      for (const id of ids) out[id] = true;
+      return out;
+    }
+    throw e;
+  }
   const idCol = res.data.valueRanges?.[0]?.values ?? [];
   const mapCol = res.data.valueRanges?.[1]?.values ?? [];
   const wanted = new Set(ids);
