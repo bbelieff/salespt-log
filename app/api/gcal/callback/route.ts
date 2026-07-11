@@ -3,16 +3,19 @@
  * 캘린더 탭으로 복귀(?gcal=connected|denied|error). CSRF: state 쿠키 대조(ADR-0028).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { appBaseUrl } from "@/config";
 import { getSessionEmail } from "@/auth/identity";
 import { completeGcalConnect } from "@/service/gcal-connect";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const back = new URL("/calendar", req.url);
+  // 복귀는 반드시 공개 origin(appBaseUrl) 기준 — req.url 은 프록시 뒤에서
+  // localhost:3000 이라 수강생이 localhost 로 튕김(2026-07-10 실사용 사고).
+  const back = new URL("/calendar", appBaseUrl());
   const email = await getSessionEmail();
   if (!email) {
     // 세션 만료 — 로그인으로. (연결 미완료)
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL("/login", appBaseUrl()));
   }
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");

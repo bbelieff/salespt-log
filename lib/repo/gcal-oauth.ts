@@ -6,7 +6,7 @@
  * 사용자판 — 같은 google.auth.OAuth2 패턴.
  */
 import { google } from "googleapis";
-import { authConfig } from "@/config";
+import { appBaseUrl, authConfig } from "@/config";
 
 /** opt-in 동의 스코프 — 전체 calendar 금지, 최소 2개(ADR-0028 §2). */
 const SCOPES = [
@@ -14,10 +14,9 @@ const SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ];
 
-/** 콜백 리디렉션 URI — AUTH_URL 기준(GCP 등록: https://salesptlog.online/api/gcal/callback). */
+/** 콜백 리디렉션 URI — appBaseUrl(AUTH_URL) 기준(GCP 등록: …/api/gcal/callback). */
 function redirectUri(): string {
-  const base = (process.env.AUTH_URL || "http://localhost:3000").replace(/\/$/, "");
-  return `${base}/api/gcal/callback`;
+  return `${appBaseUrl()}/api/gcal/callback`;
 }
 
 function oauthClient() {
