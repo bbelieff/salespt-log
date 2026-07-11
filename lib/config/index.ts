@@ -26,6 +26,12 @@ export const authConfig = () => ({
   googleSecret: required("AUTH_GOOGLE_SECRET"),
 });
 
+/** 앱 공개 origin — 사용자에게 보내는 리디렉션의 유일 기준 (AUTH_URL, 배포 가드가 존재 보장).
+ * 프록시 뒤에서 req.url 호스트가 localhost:3000 이라 절대 req.url 로 복귀 URL 을 만들지
+ * 말 것 — 2026-07-10 gcal 콜백이 수강생을 localhost 로 돌려보낸 실사용 사고. */
+export const appBaseUrl = (): string =>
+  (process.env.AUTH_URL || "http://localhost:3000").replace(/\/$/, "");
+
 export const serviceAccount = () => ({
   client_email: required("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
   // Vercel/VPS 환경변수에서 \n 이스케이프 복원
