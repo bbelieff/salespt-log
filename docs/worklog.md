@@ -38,6 +38,26 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · [병렬트랙 A] fix/contract-delete-ghost 완주 — 02 헤더존 유령 계약 94행 수리
+- 의도: 이용호(8기) 신고 ①휴힐링 삭제 불능 ②0원 계약 잔존 — Dev3-A fix 트랙 실행
+- 한 것: **근인 확정(DB 실측)** = backfill 이 02 헤더·예시 구간을 row≥3 으로 적재 → 전 기수 94행 유령 카드(r3 "수납총액" 안내행 = 업체명 "0"·0원·건수 포함 / r5 "00유통" 110만 예시행 = 이월 카드), clearRow 헤더보호(row<6 거부)로 **삭제 구조적 불가** = 신고 재현. 휴힐링 r8 은 7/9 에 이미 _cleared — 초기 가설(미러 미반영)은 기각. 수리: #527(backfill 시작행 신형6/구형5 + repair 스크립트, 머지·배포 success) → VPS repair dry-run 94행 검증 → execute → **잔여 0 · 이용호 live=실계약 5건(시트 실측 ₩750,002 와 일치)**. 본 PR = isContractHeaderZoneJunk 읽기 가드 + 정합 테스트 4(총 10)
+- 결정: mirror 무재시도(유령 일반형)는 R3-3(contracts 쓰기 정본 전환)이 구조 해소 — 이 fix 비접촉(§0.5). 03 DB관리 backfill 시작행(row4)은 유사 사고 여부 미검증 — db 트랙(R3-4) 확인 권장
+- 다음: feat/contract-termination(계약해지 — 사유·반환·soft delete). 이용호 안내는 belie/Cowork(휴힐링 정리 확인 + 유령 카드 소멸)
+- SoR: docs/plans/active/contract-delete-ghost.md, PR #527 코멘트(증빙)
+
+### 2026-07-12 · Claude Code · [병렬트랙 C] 완주 — 관리자 Drive 토큰 서버 주입 (#524, 배포 success·200)
+- 의도: 9기 생성 때 admin "기수 생성" 버튼 전원 실패(VPS .env 에 ADMIN_DRIVE_REFRESH_TOKEN
+  미설정, ADR-0015) → 10기부터 버튼으로 되게 (Dev3-C: deploy.yml + docs/playbooks)
+- 한 것: #524 머지·배포 success·health 200. deploy.yml 주입 스텝 **다중 키 일반화**(INJECT_KEYS,
+  #481 패턴 불변 — stdin→원격 600 임시파일·awk 제자리 교체·값 미출력·rc=255 재시도) +
+  ADMIN_DRIVE_REFRESH_TOKEN 추가 + 플레이북 "Secret 추가 절차" 일반화. **배포 실로그 실증**:
+  DATABASE_URL "주입 OK — 키 존재 확인(값 미출력)" / ADMIN 토큰 "::warning:: 미설정 — 스킵".
+  §3.5 준수: #523(계약 PR) 머지·배포 종료 대기 → 리베이스 + check.sh 재통과 → 직렬 머지
+- 다음: **belie — GitHub Settings→Secrets→Actions 에 ADMIN_DRIVE_REFRESH_TOKEN 등록**
+  (발급: `node scripts/get-admin-drive-token.mjs`) → 다음 배포에서 자동 주입("키 존재 확인" 로그)
+  → admin 기수 생성 테스트 기수 1개 생성→삭제 왕복 확인 (남은 수용 항목 2개)
+- SoR: .github/workflows/deploy.yml, docs/playbooks/deploy-vps.md "Secret 추가 절차", PR #524
+
 ### 2026-07-12 · Claude Code · [병렬트랙 A 보충] plan 문서 소유 명시 + gcal plan §5 완료 기록 회수
 - 의도: ①B트랙 docs/** 선언과의 경계 명시 ②로컬 메인 pull 차단 마지막 원인 해소(gcal plan 로컬 수정)
 - 구역 보충: `docs/plans/active/{contract-delete-ghost,contract-termination}.md` = A트랙 소유 — 트랙별 plan 문서(생성·completed 이동)는 그 코드 트랙 몫. B 의 docs/** 선언과 상충 시 이 두 파일만 예외
@@ -348,18 +368,4 @@
 - 다음: 재시도 성공 시 대조표→PR #492 코멘트. 반복 실패 시 belie가 VPS fail2ban/방화벽 확인
   필요(제공사 콘솔). 하네스 개선 후보: backfill 워크플로에도 deploy 식 rc=255 재시도 루프
 - SoR: docs/plans/active/db-pilot-arena.md
-
-### 2026-07-08 · Cowork · chore/api-timing-baseline = 이미 #484로 완료·배포 확인(중복 회피)
-- 의도: DB 이전 효과 증명용 P0 기준선(api_timing 계측) PR 완주 지시 받음
-- 한 것: 착수 전 상태 확인 → api_timing 계측이 **이미 master 반영**(PR #484 `11f2da1`, withApiTiming 58라우트 래핑 + AsyncLocalStorage sheets_ms/sheets_calls + PostHog api_timing). #487/R2가 이 계측 위에서 동작 중. 사이트 health 200(prod release 확인). **재구현·머지 안 함**
-- 결정: 잔존 브랜치 `chore/api-timing-baseline`(376f6da)는 #484 머지 前 옛 master에서 뜬 **낡은 중복본**(api-timing.ts 내용도 master보다 구버전) → 머지 시 후퇴. **삭제 대상**(로컬+원격, git 정리는 PC에서). p50/p95 추출법: PostHog Insights→Trends→api_timing 이벤트 ms median/p95 + route breakdown (또는 HogQL quantile(0.5|0.95)(ms))
-- 다음: PC에서 stale 브랜치 삭제(`git push origin --delete chore/api-timing-baseline` + 로컬 `git branch -D`). db-migration-pilot §1은 P0 완료 상태로 간주
-- SoR: docs/plans/active/db-migration-pilot.md §1 P0, lib/analytics/api-timing.ts(master)
-
-### 2026-07-08 · Cowork(Fable) · 9기 재등록 요청 = 이미 완료 확인(중복 회피) + 아레나 중간점검 발표자료 완성
-- 의도: 사용자 (1) "9기 5명 등록" 요청 (2) 아레나 A1 중간점검 발표 PPT 제작·최신화
-- 한 것: ① 레지스트리 교차확인 — 9기 5행(구상희·유민영·전수민·박진우(조다영)·오이슬, 개강 7/10·종강 8/29, 시트 배정 완료) 이미 존재 → 재등록 안 함. admin 사전등록 폼은 시트 URL 필수라 그대로 진행했으면 중복 시트 생성 위험(워크로그가 막음). ② 아레나 중간점검 발표 PPT 18장 완성(전광판 라이브 기준) — outputs 폴더
-- 결정: 부부=박진우(조다영) 한 시트로 이미 처리(name-match resolver가 두 이름 클레임 흡수). 발표 누적 수치는 PostHog 이벤트(528) 대신 전광판 실데이터로 재베이스(6/12~현재 4대지표 1,327·부문 시상 5종: 미팅/계약/매출/앱사용/공유왕)
-- 다음: 9기 7/10 클레임 안내(부부는 한 명만·아무 이름으로나). 발표 노션 대본은 아직 17장(18장 재싱크 미완)
-- SoR: docs/plans/active/db-migration-pilot.md(9기 파일럿), 발표물=outputs(비레포)
 
