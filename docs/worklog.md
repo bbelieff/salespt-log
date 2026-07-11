@@ -38,6 +38,20 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · [병렬트랙 C] 관리자 Drive 토큰 서버 주입 (chore/deploy-env-admin-token)
+- 의도: 9기 생성 때 admin "기수 생성" 버튼 전원 실패(VPS .env 에 ADMIN_DRIVE_REFRESH_TOKEN
+  미설정, ADR-0015) → 10기부터 버튼으로 되게. Dev3-C 트랙(구역: deploy.yml + docs/playbooks —
+  .github 은 공용부지만 이 트랙 전용 대상이라 예외 선언)
+- 한 것: deploy.yml 주입 스텝을 #481 패턴 그대로 **다중 키 일반화**(INJECT_KEYS 루프 —
+  stdin→원격 600 임시파일, awk ENVIRON 제자리 교체, 값 미출력, rc=255 재시도, 미설정=경고+스킵,
+  주입 후 키 존재 검증 로그) + ADMIN_DRIVE_REFRESH_TOKEN 추가. 플레이북 "Secret 추가 절차" 일반화.
+  검증: YAML 파싱 + bash -n 4스텝 + ssh 스텁 전체 시뮬레이션 7케이스(교체/추가/멱등/접두유사키/
+  스킵경고/특수문자) 초록
+- 다음: **belie — GitHub Settings→Secrets→Actions 에 ADMIN_DRIVE_REFRESH_TOKEN 등록**(값은
+  `node scripts/get-admin-drive-token.mjs` 재발급 또는 기존 보관분). 등록 후 배포 1회 → 주입 확인
+  → admin 기수 생성 테스트 기수 1개 생성→삭제 왕복 검증
+- SoR: .github/workflows/deploy.yml, docs/playbooks/deploy-vps.md "Secret 추가 절차", ADR-0015
+
 ### 2026-07-12 · Claude Code · gcal 읽기 경로 45열 시트 grid limits 내성 (fix/gcal-event-ids-grid-limits)
 - 의도: #521 카나리아 실측 버그 — 04 가 45열(AT 미생성)인 시트에서 gcal 읽기 400 → upsert 무음실패·[다시 올리기] 500·토글 초기상태 실패
 - 한 것: readCell·readGcalStates 에 "exceeds grid limits" 400 → 빈 맵/기본 ON 처리(400+메시지 보수 가드, 그 외 에러는 전파) + 단위테스트 6종(tests/repo/gcal-event-ids-grid.test.ts) + 플랜 §2 등재
