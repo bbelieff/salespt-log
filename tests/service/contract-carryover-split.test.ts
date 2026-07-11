@@ -61,9 +61,9 @@ describe("splitContractRevenue (아레나/이월/전체 분리)", () => {
       cp({ 계약일: "2026-07-01", 구분: "이월", 수임비: 10, 수납액: [5] }), // 이월 (깃발)
     ];
     const { arena, carryover, total } = splitContractRevenue(payments, START);
-    expect(arena).toEqual({ totalFee: 100, totalReceived: 50, revenue: 150 });
-    expect(carryover).toEqual({ totalFee: 210, totalReceived: 35, revenue: 245 });
-    expect(total).toEqual({ totalFee: 310, totalReceived: 85, revenue: 395 });
+    expect(arena).toEqual({ totalFee: 100, totalReceived: 50, totalRefunded: 0, revenue: 150 });
+    expect(carryover).toEqual({ totalFee: 210, totalReceived: 35, totalRefunded: 0, revenue: 245 });
+    expect(total).toEqual({ totalFee: 310, totalReceived: 85, totalRefunded: 0, revenue: 395 });
   });
   it("전부 아레나면 carryover=0", () => {
     const { arena, carryover } = splitContractRevenue(

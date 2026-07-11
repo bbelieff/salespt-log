@@ -52,17 +52,20 @@ const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
 
 /**
- * 총매출 = 수임비합 + 수수료합(수납1/2/3 수납액). 수납탭(payment/page.tsx)의
- * totalRevenue = totalContract + totalReceived 와 **동일 정의** → 두 화면 매출 일치.
+ * 총매출 = 수임비합 + 수수료합(수납1/2/3 수납액) − 반환액합(계약해지, contract-termination).
+ * 수납탭(payment/page.tsx)의 totalRevenue 와 **동일 정의** → 두 화면 매출 일치.
+ * 해지 계약도 수임비·수납은 그대로 합산하고 **반환액만 차감**(soft delete 여도 유지 — 스펙).
  * (과거: 대시보드가 수임비만 합산해 수수료 누락 → 수납탭과 어긋남.)
  */
 export function computeContractRevenue(payments: ContractPayment[]): {
   totalFee: number;
   totalReceived: number;
+  totalRefunded: number;
   revenue: number;
 } {
   let totalFee = 0;
   let totalReceived = 0;
+  let totalRefunded = 0;
   for (const p of payments) {
     // 이월(AI=이월) 계약은 아레나로 넘어간 것 — 본인(옛 기수) 매출·영업이익에서
     // 제외(carryover-profit §1). 시트 수식(02!D3)·서비스 레이어 합산 일관.
@@ -70,14 +73,21 @@ export function computeContractRevenue(payments: ContractPayment[]): {
     totalFee += num(p.수임비);
     totalReceived +=
       num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액);
+    totalRefunded += num(p.반환액);
   }
-  return { totalFee, totalReceived, revenue: totalFee + totalReceived };
+  return {
+    totalFee,
+    totalReceived,
+    totalRefunded,
+    revenue: totalFee + totalReceived - totalRefunded,
+  };
 }
 
 export interface RevenueParts {
   totalFee: number; // Σ수임비
   totalReceived: number; // Σ수납액(수수료)
-  revenue: number; // = totalFee + totalReceived
+  totalRefunded: number; // Σ반환액(계약해지)
+  revenue: number; // = totalFee + totalReceived − totalRefunded
 }
 
 /**
@@ -89,19 +99,21 @@ export function splitContractRevenue(
   payments: ContractPayment[],
   courseStartISO: string,
 ): { arena: RevenueParts; carryover: RevenueParts; total: RevenueParts } {
-  const arena: RevenueParts = { totalFee: 0, totalReceived: 0, revenue: 0 };
-  const carryover: RevenueParts = { totalFee: 0, totalReceived: 0, revenue: 0 };
+  const arena: RevenueParts = { totalFee: 0, totalReceived: 0, totalRefunded: 0, revenue: 0 };
+  const carryover: RevenueParts = { totalFee: 0, totalReceived: 0, totalRefunded: 0, revenue: 0 };
   for (const p of payments) {
     const t = isCarryoverContract(p, courseStartISO) ? carryover : arena;
     t.totalFee += num(p.수임비);
     t.totalReceived +=
       num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액);
+    t.totalRefunded += num(p.반환액); // 계약해지 반환 — 매출 차감(contract-termination)
   }
-  arena.revenue = arena.totalFee + arena.totalReceived;
-  carryover.revenue = carryover.totalFee + carryover.totalReceived;
+  arena.revenue = arena.totalFee + arena.totalReceived - arena.totalRefunded;
+  carryover.revenue = carryover.totalFee + carryover.totalReceived - carryover.totalRefunded;
   const total: RevenueParts = {
     totalFee: arena.totalFee + carryover.totalFee,
     totalReceived: arena.totalReceived + carryover.totalReceived,
+    totalRefunded: arena.totalRefunded + carryover.totalRefunded,
     revenue: arena.revenue + carryover.revenue,
   };
   return { arena, carryover, total };

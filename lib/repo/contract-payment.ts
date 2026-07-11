@@ -189,6 +189,11 @@ export function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null
     구분: toStr(r[34]).trim(), // AI — 이월 깃발 (arena-carryover §3)
     이월원본행id: toStr(r[35]).trim(), // AJ
     linkedMeetingId: toStr(r[36]).trim(), // AK — 연결 미팅 id
+    // AL~AO 계약해지 (contract-termination) — 쓰기는 contract-payment-termination.ts
+    해지일: serialToISODate(r[37]), // AL
+    해지사유: toStr(r[38]), // AM
+    반환액: toNum(r[39]), // AN
+    해지숨김: toBool(r[40]), // AO ("Y"|빈값)
   });
   return parsed.success ? parsed.data : null;
 }
@@ -245,7 +250,7 @@ function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
 /** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  const range = `${tabRef(tab)}!A${firstDataRow}:AK`; // A~AH 실사용 + AI~AJ 이월 깃발 + AK 연결 미팅 id
+  const range = `${tabRef(tab)}!A${firstDataRow}:AO`; // A~AH 실사용 + AI~AJ 이월 + AK 연결 미팅 id + AL~AO 해지
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range,
@@ -472,7 +477,7 @@ export async function clearRow(
   if (row < firstDataRow) {
     throw new Error(`[contract-payment] 헤더 행 보호: row ${row} clear 거부`);
   }
-  const range = `${tabRef(tab)}!C${row}:AK${row}`; // 이월 깃발(AI~AJ) + 연결 미팅 id(AK)도 함께 clear
+  const range = `${tabRef(tab)}!C${row}:AO${row}`; // 이월(AI~AJ)·연결 id(AK)·해지(AL~AO)도 함께 clear
   await sheetsClient().spreadsheets.values.clear({
     spreadsheetId,
     range,

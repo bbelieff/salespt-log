@@ -16,14 +16,17 @@ import PageContainer from "@/components/PageContainer";
 import { useEffect, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
-import { isCarryoverContract, type ContractPayment } from "@/types";
+import { isCarryoverContract, isTerminatedContract, TERMINATED_IN_CONTRACT_COUNT, type ContractPayment } from "@/types";
 import {
   usePatchContractPayment,
   useRemoveContractPayment,
+  useTerminateContract,
   useContractPayments,
 } from "@/query/contract-payment-hooks";
 import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
+import TerminationModal from "./_components/TerminationModal";
+import DeleteConfirmModal from "./_components/DeleteConfirmModal";
 import PriorContractSection from "./_components/PriorContractSection";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
@@ -64,6 +67,7 @@ export default function PaymentPage() {
   const list = useContractPayments();
   const patch = usePatchContractPayment();
   const remove = useRemoveContractPayment();
+  const terminate = useTerminateContract();
   // 시작일(courseStart=O1 SSOT) — 매출 아레나/이월 분리·이월 뱃지 판정용(동적).
   const me = useMe();
   const courseStartISO = me.data?.courseStartISO ?? "";
@@ -74,6 +78,8 @@ export default function PaymentPage() {
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  /** 계약해지 모달 대상 (contract-termination). */
+  const [terminateTarget, setTerminateTarget] = useState<ContractPayment | null>(null);
   /** 2026-05-17 [3]: 삭제 확인 모달의 cascade 옵션 (계약→예약 revert). */
   const [cascadeOpt, setCascadeOpt] = useState(true);
   /** 2026-05-17 [3]: 삭제 후 바로가기 팝업 (cascade 발생 시). */
@@ -150,7 +156,24 @@ export default function PaymentPage() {
     }
   };
 
-  const rows = list.data?.rows ?? [];
+  const handleTerminate = async (input: { 사유: string; 반환액: number; 숨김: boolean }) => {
+    if (!terminateTarget?.row) return;
+    const row = terminateTarget.row;
+    setPendingRow(row);
+    try {
+      await terminate.mutateAsync({ row, ...input });
+      setTerminateTarget(null);
+      showToast(input.숨김 ? "계약을 해지하고 목록에서 숨겼어요" : "계약을 해지 처리했어요");
+    } catch (e) {
+      showToast(`해지하지 못했어요: ${(e as Error).message}`);
+    } finally {
+      setPendingRow(null);
+    }
+  };
+
+  const allRows = list.data?.rows ?? [];
+  // 해지+숨김(soft delete) 카드는 목록·합계 표시에서 제외하되, 반환액 차감은 유지(스펙).
+  const rows = allRows.filter((cp) => !cp.해지숨김);
   // 단위는 모두 원. 단어 약속:
   //   수임비합     = sum(cp.수임비)            — 04 업체관리!L에서 동기화된 계약 금액
   //   수납액합     = sum(슬롯별 수납액 = Q+W+AC) — "수수료" (= 실제 입금된 부가 수수료) 합
@@ -170,7 +193,11 @@ export default function PaymentPage() {
     0,
   );
   const totalContract = billable.reduce((s, cp) => s + (cp.수임비 || 0), 0);
-  const totalRevenue = totalContract + totalReceived;
+  // 반환액(계약해지)은 숨김(soft delete) 계약 포함 전체에서 차감 — 대시보드 computeContractRevenue 와 동일 정의.
+  const totalRefunded = allRows
+    .filter((cp) => !isCarryoverContract(cp, courseStartISO))
+    .reduce((s, cp) => s + (cp.반환액 || 0), 0);
+  const totalRevenue = totalContract + totalReceived - totalRefunded;
   const overallPct =
     totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
 
@@ -220,9 +247,16 @@ export default function PaymentPage() {
                 className="text-xl font-bold text-gray-900"
                 style={{ fontVariantNumeric: "tabular-nums" }}
               >
-                {rows.length}
+                {TERMINATED_IN_CONTRACT_COUNT
+                  ? rows.length
+                  : rows.filter((cp) => !isTerminatedContract(cp)).length}
                 <span className="text-sm font-medium text-gray-500">건</span>
               </div>
+              {allRows.filter(isTerminatedContract).length > 0 && (
+                <div className="mt-0.5 text-[11px] text-red-500">
+                  해지 {allRows.filter(isTerminatedContract).length}건
+                </div>
+              )}
             </div>
             <div className="border-x border-gray-100">
               <div className="mb-1 text-xs text-gray-500">총매출</div>
@@ -233,7 +267,7 @@ export default function PaymentPage() {
                 ₩{fmtMoney(totalRevenue)}
               </div>
               <div className="mt-0.5 text-xs text-gray-400">
-                수임비 + 수수료
+                {totalRefunded > 0 ? "수임비 + 수수료 − 반환" : "수임비 + 수수료"}
               </div>
             </div>
             <div>
@@ -337,6 +371,7 @@ export default function PaymentPage() {
                       onSelect={() => guardedNav(() => setSelectedRow(cp.row ?? null))}
                       onSave={handleSave}
                       onDeleteRequest={() => makeDeleteRequest(cp)}
+                      onTerminateRequest={() => setTerminateTarget(cp)}
                       focusTodoId={focusTodoId}
                       highlight={companyQuery}
                       courseStartISO={courseStartISO}
@@ -360,6 +395,7 @@ export default function PaymentPage() {
                   accentFamily={selFamily}
                   onSave={handleSave}
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                  onTerminateRequest={() => setTerminateTarget(selectedCp)}
                   focusTodoId={focusTodoId}
                   highlight={companyQuery}
                   courseStartISO={courseStartISO}
@@ -379,6 +415,7 @@ export default function PaymentPage() {
                 institutionOptions={institutionOptions}
                 onSave={handleSave}
                 onDeleteRequest={() => makeDeleteRequest(cp)}
+                onTerminateRequest={() => setTerminateTarget(cp)}
                 focusTodoId={focusTodoId}
                 highlight={companyQuery}
                 courseStartISO={courseStartISO}
@@ -396,59 +433,24 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {/* 삭제 확인 모달 — 2026-05-17 [3]: cascade 옵션 추가 */}
+      {terminateTarget && (  /* 계약해지 모달 (contract-termination) */
+        <TerminationModal
+          cp={terminateTarget}
+          pending={pendingRow === terminateTarget.row}
+          onClose={() => setTerminateTarget(null)}
+          onConfirm={handleTerminate}
+        />
+      )}
+
+      {/* 삭제 확인 모달 — DeleteConfirmModal 로 분리(500줄 캡). 동작 무변경 */}
       {confirmTarget && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setConfirmTarget(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-1 text-base font-semibold text-gray-900">
-              이 계약수납을 지울까요?
-            </h3>
-            <p className="mb-3 text-sm leading-relaxed text-gray-600">
-              <b>{confirmTarget.label}</b> 계약수납 기록을 지워요.
-              <br />
-              입력한 내용이 모두 사라져요.
-            </p>
-            <label className="mb-4 flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-700">
-              <input
-                type="checkbox"
-                checked={cascadeOpt}
-                onChange={(e) => setCascadeOpt(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0"
-              />
-              <span>
-                <b>이 계약의 미팅도 ‘예약’ 상태로 되돌리기</b>
-                <br />
-                <span className="text-gray-500">
-                  일정·계약 탭의 해당 미팅이 계약 전(예약)으로 돌아가고,
-                  <br />
-                  수임비·계약조건이 비워져요.
-                </span>
-              </span>
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmTarget(null)}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteConfirmModal
+          label={confirmTarget.label}
+          cascadeOpt={cascadeOpt}
+          onCascadeChange={setCascadeOpt}
+          onCancel={() => setConfirmTarget(null)}
+          onConfirm={handleConfirmDelete}
+        />
       )}
 
       {/* 삭제 후 바로가기 팝업 — 2026-05-17 [3] */}

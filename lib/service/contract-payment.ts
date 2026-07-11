@@ -31,6 +31,7 @@ import {
   renameCompanyInfoKey,
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
+import { writeTermination } from "@/repo/contract-payment-termination";
 
 async function resolveSheet(email: string): Promise<string> {
   const user = await findUserByEmail(email);
@@ -286,6 +287,30 @@ export async function patchContractPayment(
 ): Promise<void> {
   const spreadsheetId = await resolveSheet(email);
   await updateUserFields(spreadsheetId, cp);
+}
+
+/**
+ * 계약해지 (contract-termination) — 사유 필수·반환액 ≥0, 보존/숨김(soft delete) 선택.
+ * 해지일 = 오늘(KST). 매출 반영(수임비+수납−반환액)은 읽기 시점 계산(dashboard·payment 화면).
+ */
+export async function terminateContract(
+  email: string,
+  input: { row: number; 사유: string; 반환액: number; 숨김: boolean },
+): Promise<void> {
+  if (!input.사유.trim()) {
+    throw new Error("해지 사유를 입력해 주세요");
+  }
+  if (!Number.isFinite(input.반환액) || input.반환액 < 0) {
+    throw new Error("반환액은 0 이상의 숫자여야 해요");
+  }
+  const spreadsheetId = await resolveSheet(email);
+  const 해지일 = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10); // KST
+  await writeTermination(spreadsheetId, input.row, {
+    해지일,
+    해지사유: input.사유.trim(),
+    반환액: input.반환액,
+    해지숨김: input.숨김,
+  });
 }
 
 /** row 통째로 clear. */

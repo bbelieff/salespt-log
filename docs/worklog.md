@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · [병렬트랙 A] feat/contract-termination 구현 — 계약해지 (Dev3-A 완주)
+- 의도: 7/10 belie 스펙 — 실무/수납 [계약해지](사유 필수·반환 없음/일부/전액·보존/숨김), 매출=수임비+수납−반환액
+- 한 것: 모델 #529(types AL~AO+SSOT 선등재) 후 본 PR — writeTermination(신규 repo, 그리드 41열+미러)·rowToCP/DB payload 파서 확장·terminateContract(검증 KST 해지일)·terminate 라우트·TerminationModal+ContractRow 뱃지/버튼·건수 "해지 N건"(상수 1개)·computeContractRevenue/split 에 totalRefunded 차감. 500줄 캡 3파일 분리(contract-status·nameHighlight·DeleteConfirmModal — 동작 무변경). 테스트 29 초록(해지 정합 9 신규)
+- 결정: 이월 계약의 반환액은 이월 버킷 차감(기존 이월 규칙 일관). 해지 취소 UI 는 미구현(시트 AL~AO 비우면 복구 — 운영 절차). reverseShadowCompare 는 revenue 비대조라 경보 영향 0
+- 다음: belie 카나리아(연습 계정 해지 왕복) 후 그룹 공개는 이 PR 의 Changelog-Done. 이용호 안내(휴힐링 정리+해지 사용법) = belie/Cowork
+- SoR: docs/plans/active/contract-termination.md, PR #529·본 PR
+
 ### 2026-07-12 · Claude Code · [병렬트랙 A 보충2] feat/contract-termination 구역 확장 + 모델 계약 PR
 - 의도: 계약해지 기능(7/10 스펙)이 선언 구역 밖 파일을 요구 — §3.5 규칙 1 보충 선언
 - 구역 추가: `lib/service/dashboard.ts`(computeContractRevenue·매출 분할 — 반환액 차감 반영) · `app/api/contract-payment/**`(terminate 라우트) · `lib/repo/contract-payment-termination.ts`(신규, 500줄 캡 분리) · `app/(app)/payment/_components/TerminationModal.tsx`(신규). 기존 선언 트랙(B=docs·C=deploy)과 겹침 없음
@@ -353,14 +360,4 @@
 - 결정: 워크로그 커밋 주기는 별도 규칙 없음 — 당분간 다른 docs PR에 편승 또는 쌓이면 단독 docs PR
 - 다음: 모든 세션이 §3 0단계 준수(시작 시 읽기·종료 시 쓰기)
 - SoR: CLAUDE.md §3, docs/worklog.md 상단 프로토콜
-
-### 2026-07-08 · Cowork(Fable) · 아레나 backfill 미수렴 확정 → PC 직행 경로로 전환
-- 의도: "다음 할 일" = R2-1.5 잔여 리스크 점검 — 예약된 backfill 재시도가 성공했는지 판정
-- 한 것: admin 배너 실측 **1,322행** = execute#1(1,035행) 이후 증가 없음 → GH 재시도 여전히 차단.
-  스킵 5시트의 아레나 사용자는 DB 읽기 ON 상태에서 과거 daily 누락 = 화면 숫자 틀릴 리스크 지속
-- 결정: GH 러너 경유 포기, **belie PC→VPS 직접 SSH로 backfill 수렴**(포트22 PC에선 열림 활용).
-  fail2ban/방화벽 원인 규명 + backfill 워크플로 rc=255 재시도 내장을 같은 PR로
-- 다음: fix/arena-backfill-converge 프롬프트 전달됨(Claude Code, PC에서 실행). 수렴 기준=
-  배너 ≥1,370행 + 대조표 일치 + 이후 deploy 1회 success로 GH 경로 복구 판정
-- SoR: docs/plans/active/db-pilot-arena.md
 
