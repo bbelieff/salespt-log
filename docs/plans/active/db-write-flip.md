@@ -88,6 +88,9 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-12 R3-0 재검증(Dev3-B): 오케스트레이터 재지시분(인벤토리·전환패턴·드리프트·롤백·가드 ①~⑤)과
+  본 문서 대조 — 전 항목 기충족 확인, 재등재 안 함(중복 회피, CLAUDE.md §3 0.5).
+  후속 처리: db-first-unlimited-roadmap.md 레포 등재(죽은 링크 해소) + D3 답변됨 반영.
 - 2026-07-09 R3-1 구현: sales 4채널 배치 저장 DB 정본 전환(파일럿만). chooseWriteSource(읽기 대칭)
   + writeSalesRowsToDb(트랜잭션·실패 throw) + sales-write.ts(persistSalesRows/시트 비동기 미러 3회 백오프)
   + sales.ts `{mirror:false}` 옵션. contact.ts 502→500(추출로 슬림). 게이트 테스트(읽기 대칭·롤백 불변)
