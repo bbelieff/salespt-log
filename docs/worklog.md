@@ -38,6 +38,19 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · 🐛 gcal 미팅 동기화 카나리아 — 성공경로 확인 + 45열 시트 버그 발견
+- 의도: belie "미팅이 구글캘린더에 보이는지 직접 실험" — 동기화 엔진 첫 라이브 E2E 검증
+- 한 것: belie 승인 하에 김믿음 행에 연습 시트 임시 연결 → 실계정으로 미팅 작성·삭제 E2E.
+  **성공경로 확인**: 토글 ON 경유 시 이벤트 생성(제목·시각·장소·메모 정확, eventId 맵 기록)
+  + 앱에서 미팅 삭제 → 구글 이벤트도 삭제. 실험 후 레지스트리·미팅·연결 전부 원상복구
+- 사고(버그): **04 탭이 45열(A~AS)인 시트는 미팅 동기화 전멸** — gcal-event-ids 읽기
+  (readCell/readGcalStates)가 AT(46열)를 ensureGridColumns 없이 읽어 "exceeds grid limits"
+  400 → 생성/수정 훅 무음 실패 + [다시 올리기] 500(빈 응답). 실측 재현 완료(연습 시트).
+  쓰기(setGcalEventId)만 그리드 확장 → 토글 ON 1회가 우회책(그리드 46열로 확장됨)
+- 다음: **fix 필요** — 읽기 경로에서 grid 초과=빈 맵 처리(또는 ensureGridColumns).
+  다른 실사용 시트 04 탭 열수 전수조사 권장(45열 시트 = 전부 동일 증상)
+- SoR: lib/repo/gcal-event-ids.ts(readCell·readGcalStates), docs/plans/completed/gcal-per-user-identity.md
+
 ### 2026-07-11 · Claude Code · gcal 귀속 수정 라이브 카나리아 통과 → plan completed (#519 마감)
 - 의도: belie "카나리아를 자체적으로 돌려봐" — #519(gcal 귀속·localhost 복귀 수정) 수용기준 마지막 항목을 에이전트가 직접 검증
 - 한 것: 운영자 Chrome 실세션으로 2케이스 실측. ①임퍼스네이션: 표시=화면의 수강생 상태(connected:false·impersonated:true), 카드 "본인 로그인에서만" + POST/DELETE/resync 전부 403 ②본인 실연결: OAuth 동의 완주 → **salesptlog.online/calendar 복귀(localhost 0회)**, connected:true·본인 계정 귀속·캘린더 목록 실로드. 레지스트리 마스터 행 S(토큰)·T(settings) 저장 실측 후 연결해제+스크립트로 원상복구(재실측 둘 다 빈 값)
