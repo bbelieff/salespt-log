@@ -55,6 +55,10 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
   gcal_settings 에 calendarId 저장. 캘린더 변경 시 신규 이벤트는 새 캘린더로, 기존 이벤트는
   [전체 다시 동기화] 실행 시 events.move 로 이동(안내 문구 표시).
 - 이월 미팅도 예약 상태면 동기화 대상(수강생 실제 일정이므로). 아레나 집계와 무관.
+- **컬럼 미생성 시트 내성 (2026-07-12, 카나리아 실측)**: 04 가 45열(A~AS)이면 `gcal_event_ids`(AT=46열)
+  읽기가 400 "exceeds grid limits" — 읽기 경로(readGcalMap·readGcalStates)는 이를 **빈 맵/기본 ON** 으로
+  처리한다(컬럼 없음=매핑·마커 없음과 동치). 그리드 확장(ensureGridColumns)은 쓰기(setGcalEventId)만 수행 —
+  읽기에 쓰기 작업을 붙이지 않는다. 테스트: `tests/repo/gcal-event-ids-grid.test.ts`.
 
 ## 3. 동기화 엔진
 - `lib/repo/gcal-client.ts` — googleapis calendar v3 (googleapis 는 lib/repo/ 전용 규칙 그대로).
