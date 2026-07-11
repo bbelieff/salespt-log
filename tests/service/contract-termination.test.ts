@@ -116,3 +116,55 @@ describe("계약해지 — 서비스 검증 (repo 도달 전 차단)", () => {
     expect(TERMINATED_IN_CONTRACT_COUNT).toBe(false);
   });
 });
+
+// ── 스펙 6케이스: (반환 없음/일부/전액) × (보존/숨김) — 매출·건수 (Dev3-A 작업2 보완) ──
+describe("계약해지 — 6케이스 매출·건수 매트릭스", () => {
+  // 대상 계약: 수임비 1,000 + 수납 300 = 전액 반환 시 1,300.
+  const SLOT = { 진행기관: "A", 진행률: "" as const, 현황: "", 승인금액: 0, 수납액: 300, 수납일: "", 메모: "" };
+  const base = { 수임비: 1000, 수납1: SLOT };
+  const other = cpWith({ 업체명: "정상", 수임비: 2000 }); // 대조군
+
+  const CASES: [string, number, boolean][] = [
+    ["없음×보존", 0, false],
+    ["없음×숨김", 0, true],
+    ["일부×보존", 500, false],
+    ["일부×숨김", 500, true],
+    ["전액×보존", 1300, false],
+    ["전액×숨김", 1300, true],
+  ];
+
+  for (const [label, 반환액, 숨김] of CASES) {
+    it(`${label}: 매출 = 3,300 − ${반환액} · 건수 제외 · 숨김=${숨김}`, () => {
+      const t = cpWith({ ...base, 업체명: label, 해지일: "2026-07-12", 해지사유: "테스트", 반환액, 해지숨김: 숨김 });
+      const all = [other, t];
+      // 매출: 숨김 여부와 무관하게 수임비·수납 유지, 반환액만 차감(전체 rows 기준).
+      expect(computeContractRevenue(all).revenue).toBe(2000 + 1000 + 300 - 반환액);
+      // 건수(기본 제외 상수): 해지 계약은 카운트 제외 → 대조군 1건만.
+      const visible = all.filter((cp) => !cp.해지숨김);
+      const count = TERMINATED_IN_CONTRACT_COUNT
+        ? visible.length
+        : visible.filter((cp) => !isTerminatedContract(cp)).length;
+      expect(count).toBe(1);
+      // 숨김이면 목록에서 빠지고 보관함 목록에 들어감.
+      expect(visible.includes(t)).toBe(!숨김);
+      expect(all.filter((cp) => cp.해지숨김).includes(t)).toBe(숨김);
+    });
+  }
+
+  it("휴힐링 시나리오 재현: 수임비 0 처리 + 전액(수납분) 반환 + 숨김 → 매출 기여 0·건수 제외·보관함 열람", () => {
+    // 이용호 케이스: 환불 처리(수임비 0) 후 해지 — 수납 550,000 전액 반환.
+    const 휴힐링 = cpWith({
+      업체명: "휴힐링", 수임비: 0,
+      수납1: { ...SLOT, 수납액: 550_000 },
+      해지일: "2026-07-12", 해지사유: "고객 환불 요청", 반환액: 550_000, 해지숨김: true,
+    });
+    const { revenue, totalRefunded } = computeContractRevenue([other, 휴힐링]);
+    expect(totalRefunded).toBe(550_000);
+    expect(revenue).toBe(2000); // 휴힐링 순기여 0 — 잔여분 없음
+    const visible = [other, 휴힐링].filter((cp) => !cp.해지숨김);
+    expect(visible).toEqual([other]); // 목록·건수에서 소멸
+    const archive = [other, 휴힐링].filter((cp) => cp.해지숨김);
+    expect(archive).toEqual([휴힐링]); // 보관함에서 사유·반환액 열람 가능
+    expect(휴힐링.해지사유).toBe("고객 환불 요청");
+  });
+});

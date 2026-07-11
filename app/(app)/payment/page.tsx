@@ -27,6 +27,7 @@ import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
+import TerminationArchive from "./_components/TerminationArchive";
 import PriorContractSection from "./_components/PriorContractSection";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
@@ -172,8 +173,11 @@ export default function PaymentPage() {
   };
 
   const allRows = list.data?.rows ?? [];
-  // 해지+숨김(soft delete) 카드는 목록·합계 표시에서 제외하되, 반환액 차감은 유지(스펙).
+  // 해지+숨김(soft delete)은 목록·합계에서 제외(반환액 차감은 유지) — 열람은 해지 보관함.
   const rows = allRows.filter((cp) => !cp.해지숨김);
+  const archivedRows = allRows.filter((cp) => cp.해지숨김);
+  const terminatedCount = allRows.filter(isTerminatedContract).length;
+  const contractCount = TERMINATED_IN_CONTRACT_COUNT ? rows.length : rows.filter((cp) => !isTerminatedContract(cp)).length;
   // 단위는 모두 원. 단어 약속:
   //   수임비합     = sum(cp.수임비)            — 04 업체관리!L에서 동기화된 계약 금액
   //   수납액합     = sum(슬롯별 수납액 = Q+W+AC) — "수수료" (= 실제 입금된 부가 수수료) 합
@@ -194,9 +198,7 @@ export default function PaymentPage() {
   );
   const totalContract = billable.reduce((s, cp) => s + (cp.수임비 || 0), 0);
   // 반환액(계약해지)은 숨김(soft delete) 계약 포함 전체에서 차감 — 대시보드 computeContractRevenue 와 동일 정의.
-  const totalRefunded = allRows
-    .filter((cp) => !isCarryoverContract(cp, courseStartISO))
-    .reduce((s, cp) => s + (cp.반환액 || 0), 0);
+  const totalRefunded = allRows.filter((cp) => !isCarryoverContract(cp, courseStartISO)).reduce((s, cp) => s + (cp.반환액 || 0), 0);
   const totalRevenue = totalContract + totalReceived - totalRefunded;
   const overallPct =
     totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
@@ -247,15 +249,11 @@ export default function PaymentPage() {
                 className="text-xl font-bold text-gray-900"
                 style={{ fontVariantNumeric: "tabular-nums" }}
               >
-                {TERMINATED_IN_CONTRACT_COUNT
-                  ? rows.length
-                  : rows.filter((cp) => !isTerminatedContract(cp)).length}
+                {contractCount}
                 <span className="text-sm font-medium text-gray-500">건</span>
               </div>
-              {allRows.filter(isTerminatedContract).length > 0 && (
-                <div className="mt-0.5 text-[11px] text-red-500">
-                  해지 {allRows.filter(isTerminatedContract).length}건
-                </div>
+              {terminatedCount > 0 && (
+                <div className="mt-0.5 text-[11px] text-red-500">해지 {terminatedCount}건</div>
               )}
             </div>
             <div className="border-x border-gray-100">
@@ -423,6 +421,8 @@ export default function PaymentPage() {
             ))}
           </div>
         )}
+        {/* 해지 보관함 — 숨김 해지 계약 열람(읽기전용) */}
+        <TerminationArchive contracts={archivedRows} />
       </PageContainer>
       </main>
 
