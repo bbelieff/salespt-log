@@ -14,7 +14,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import { isCarryoverContract, type ContractPayment, type CompanyInfo } from "@/types";
+import { isCarryoverContract, isTerminatedContract, type ContractPayment, type CompanyInfo } from "@/types";
+import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import PaymentSlotForm from "./PaymentSlotForm";
@@ -37,6 +38,8 @@ interface Props {
   institutionOptions?: string[];
   onSave: (next: ContractPayment) => void;
   onDeleteRequest: () => void;
+  /** [계약해지] — TerminationModal 오픈 (contract-termination). */
+  onTerminateRequest: () => void;
   /** C 마스터-디테일(데스크탑):
    *  - selectable: 컴팩트 목록 아이템 모드 — 바디 숨김, 헤더 클릭=onSelect.
    *  - selected: 선택 강조(액센트).
@@ -58,37 +61,10 @@ interface Props {
   courseStartISO?: string;
 }
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
-
-function fmtDate(s: string): string {
-  if (!s) return "—";
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return s;
-  return `${parseInt(m[2]!, 10)}/${parseInt(m[3]!, 10)}`;
-}
 
 // 진행도·슬롯 가시성 헬퍼는 _lib/payment-progress 로 추출(page 정렬과 공유, §P8).
 
-/** 업체명에서 검색어 일치 부분 <mark> — 대소문자·공백 무시 매칭은 page 필터와 동일 기준이되,
- * 표시는 원문 그대로(공백 제거 매칭으로 인한 부분 불일치 시 하이라이트 생략). */
-function renderNameWithHighlight(name: string, q?: string) {
-  const display = name || "(업체명 없음)";
-  const query = (q ?? "").trim();
-  if (!query || !name) return display;
-  const i = name.toLowerCase().indexOf(query.toLowerCase());
-  if (i < 0) return display; // 공백-무시 매칭으로만 걸린 경우 — 하이라이트 생략
-  return (
-    <>
-      {name.slice(0, i)}
-      <mark className="rounded-sm bg-yellow-100 text-inherit">
-        {name.slice(i, i + query.length)}
-      </mark>
-      {name.slice(i + query.length)}
-    </>
-  );
-}
+// renderNameWithHighlight 는 ./nameHighlight 로 분리(500줄 캡, contract-termination PR).
 
 export default function ContractRow({
   cp,
@@ -97,6 +73,7 @@ export default function ContractRow({
   institutionOptions,
   onSave,
   onDeleteRequest,
+  onTerminateRequest,
   selectable = false,
   selected = false,
   onSelect,
@@ -109,6 +86,7 @@ export default function ContractRow({
 }: Props) {
   // 이월(아레나 비집계) 판정 — 깃발(AI=이월) 또는 계약일<시작일(동적). 뱃지·흐림에 사용.
   const isCarryover = isCarryoverContract(cp, courseStartISO ?? "");
+  const isTerminated = isTerminatedContract(cp); // 해지 — 뱃지·흐림·버튼 숨김
   const [open, setOpen] = useState(false);
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
   const showBody = forceOpen || (!selectable && open);
@@ -271,7 +249,7 @@ export default function ContractRow({
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
           showBody ? accent.tint : ""
         } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"} ${
-          isCarryover ? "opacity-60" : "" /* 이월 흐림 — §4 */
+          isCarryover || isTerminated ? "opacity-60" : "" /* 이월·해지 흐림 — §4 */
         }`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}
@@ -283,6 +261,9 @@ export default function ContractRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-gray-900">
             {isCarryover && <CarryoverBadge 구분="이월" variant="badge" />}
+            {isTerminated && (
+              <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">해지</span>
+            )}
             {renderNameWithHighlight(cp.업체명, highlight)}
             {isComplete && <span className="text-xs text-green-600">✓</span>}
           </div>
@@ -303,6 +284,13 @@ export default function ContractRow({
           {ongoingAgencies && (
             <div className="mt-0.5 truncate text-[11px] text-blue-600">
               🔄 {ongoingAgencies}
+            </div>
+          )}
+          {isTerminated && (
+            <div className="mt-0.5 truncate text-[11px] text-red-500">
+              해지 {fmtDate(cp.해지일)}
+              {cp.반환액 > 0 && <> · 반환 ₩{fmtMoney(cp.반환액)}</>}
+              {cp.해지사유 && <> · {cp.해지사유}</>}
             </div>
           )}
         </div>
@@ -484,6 +472,16 @@ export default function ContractRow({
             >
               {pending ? "저장중..." : "💾 저장"}
             </button>
+            {!isTerminated && (
+              <button
+                type="button"
+                onClick={onTerminateRequest}
+                disabled={pending}
+                className="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-50"
+              >
+                계약해지
+              </button>
+            )}
             <button
               type="button"
               onClick={onDeleteRequest}

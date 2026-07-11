@@ -158,6 +158,28 @@ export interface RemoveResponse {
   meetingId?: string | null;
   미팅날짜?: string | null;
 }
+/** 계약해지 (contract-termination) — 사유·반환액·숨김. 성공 시 목록 무효화. */
+export interface TerminateArgs {
+  row: number;
+  사유: string;
+  반환액: number;
+  숨김: boolean;
+}
+export function useTerminateContract() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ row, ...body }: TerminateArgs) =>
+      fetchJSON<{ ok: true }>(`/api/contract-payment/${row}/terminate`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (_res, { 숨김 }) => {
+      track(EVENTS.CONTRACT_TERMINATED, { hidden: 숨김 });
+      qc.invalidateQueries({ queryKey: cpKey() });
+    },
+  });
+}
+
 export function useRemoveContractPayment() {
   const qc = useQueryClient();
   return useMutation({

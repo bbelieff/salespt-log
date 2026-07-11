@@ -104,6 +104,7 @@ const CP_FIELD_IDX: Record<string, number> = {
   로드맵메모: 30,
   구분: 34, 이월원본행id: 35, 원본행id: 35, // append 미러는 "원본행id" 이명 사용
   linkedMeetingId: 36, meetingId: 36,       // append 미러는 "meetingId" 이명 사용
+  해지일: 37, 해지사유: 38, 반환액: 39, 해지숨김: 40, // AL~AO 계약해지 (contract-termination)
 };
 const CP_SLOT_START: Record<string, { start: number; memo: number }> = {
   수납1: { start: 12, memo: 31 },
@@ -117,8 +118,8 @@ export function contractFromDbPayload(
   rowNumber: number,
 ): ContractPayment | null {
   // 1) backfill 열문자(C 기준 저장 — 절대 열문자라 A기준 인덱스로 그대로 복원)
-  const r: unknown[] = new Array(37).fill("");
-  for (let i = 2; i <= 36; i++) {
+  const r: unknown[] = new Array(41).fill(""); // A~AO (해지 AL~AO 포함)
+  for (let i = 2; i <= 40; i++) {
     const v = p[colName(i)];
     if (v !== undefined) r[i] = coerce(v);
   }

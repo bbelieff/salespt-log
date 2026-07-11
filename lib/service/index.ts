@@ -71,6 +71,7 @@ export {
   editContractLinkedFields,
   removeContractPayment,
   removeContractPaymentWithCascade,
+  terminateContract,
 } from "./contract-payment";
 
 // 실무투두 유스케이스 (Scope 2 — 05 실무투두)

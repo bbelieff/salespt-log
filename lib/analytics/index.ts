@@ -31,6 +31,7 @@ export const EVENTS = {
   CONTRACT_FEE_SYNCED: "contract_fee_synced",
   CONTRACT_PAYMENT_UPDATED: "contract_payment_updated",
   CONTRACT_PAYMENT_REMOVED: "contract_payment_removed",
+  CONTRACT_TERMINATED: "contract_terminated", // 계약해지 (contract-termination)
   // DB관리
   DB_ROW_ADDED: "db_row_added",
   DB_ROW_UPDATED: "db_row_updated",
