@@ -62,7 +62,21 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 
 ## 6. PR 분할
 - **R3-0(본 문서)** — 설계 등재. docs 만.
-- **R3-1** feat/db-write-daily — sales(컨택 4지표). 첫 코드 PR. p50/p95 전후·미러 정합·롤백 스위치 테스트.
+- **R3-1** feat/db-write-daily — sales(컨택 4지표). 첫 코드 PR. **✅ 구현 완료**.
+  - 범위: **saveContactMetrics 의 4채널 배치 저장**(batchWriteChannelDailyRows 경로)만 DB 정본 전환.
+    `chooseWriteSource`(daily-source.ts — 읽기 게이트 대칭·isDbReadPilot 재사용) + `writeSalesRowsToDb`
+    (client.ts — **트랜잭션 원자 upsert**, 실패 throw·시트폴백 금지) + 시트 비동기 미러(sales-write.ts
+    persistSalesRows/fireSheetMirror, batchWriteChannelDailyRows `{mirror:false}` 로 DB 재미러 차단).
+    DB payload = R2 미러가 쓰던 동일 full 행 → DB 읽기(R2부터 라이브) 동일값.
+  - **스코프 밖(이 PR 아님)**: 단일셀 writer `writeProductionCell`(E 집계, ADR-0020)·
+    `decrementMeetingReservation`(H) 는 R2 유지(시트 정본+비동기 DB 미러). DB 읽기는 R2부터 그 미러를
+    이미 신뢰 → **비회귀**. 후속(R3-1b 또는 R3-4 편입)에서 전환.
+  - ⚠️ 인벤토리 정정: §1 표가 `syncDirectProductionForDate` 를 sales 로 귀속했으나 실제는
+    `lib/service/db.ts` 에 있고 03 DB탭(writeProductionCountCell)을 씀 — R3-4 소관.
+  - 🐛 리뷰 CONFIRMED 수정: 유입(F) 시트쓰기를 async 로 강등하니 직접생산 M(=Σ유입) 재집계가
+    시트 F 재읽기라 오늘치 누락→과소집계. → `sumChannelInflowOverPeriod(opts.fromDb)` 로 파일럿은
+    유입을 **DB 에서 합산**(동기 저장됨). fromDb 를 syncDirectProductionForDate(cohort)·addProduction·
+    patchProduction 에 관통(게이트=서비스 chooseDailySource, repo 는 boolean 만 — 레이어 유지).
 - **R3-2** feat/db-write-meetings — meetings(+todos·carryover). 카드수·N/O 미러 무변경.
 - **R3-3** feat/db-write-payments — contracts + company_archive. 이월깃발·수납 1~3단계, TXT 내보내기 DB 기준.
 - **R3-4** feat/db-write-production — db 4섹션. 합계행=시트 수식 몫(미러 raw 만).
@@ -74,5 +88,9 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-09 R3-1 구현: sales 4채널 배치 저장 DB 정본 전환(파일럿만). chooseWriteSource(읽기 대칭)
+  + writeSalesRowsToDb(트랜잭션·실패 throw) + sales-write.ts(persistSalesRows/시트 비동기 미러 3회 백오프)
+  + sales.ts `{mirror:false}` 옵션. contact.ts 502→500(추출로 슬림). 게이트 테스트(읽기 대칭·롤백 불변)
+  추가. check.sh 초록(384 유닛). 적대적 리뷰(실패정책·트랜잭션·게이트·payload 정합 4차원). 단일셀 writer는 스코프 밖.
 - 2026-07-09 R3-0 등재: 인벤토리(7탭)·전환 패턴·드리프트·롤백 스위치·가드 정책·PR 분할. D3(미러 유지) 답변 확정.
   ⚠️ 발견: R2 플랜들이 `db-first-unlimited-roadmap.md` 를 참조하나 그 파일은 부재(죽은 링크) — R3 SoR 는 본 문서 + db-migration-pilot.md 로 확정. 로드맵 파일 생성은 스코프 밖(belie 판단).

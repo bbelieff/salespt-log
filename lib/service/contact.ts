@@ -14,8 +14,8 @@ import {
   stackingSumsFromRows,
   type DailyMetricRow,
 } from "./daily-source";
+import { persistSalesRows } from "./sales-write";
 import {
-  batchWriteChannelDailyRows,
   decrementMeetingReservation,
   readCourseStart,
   readWeek,
@@ -217,7 +217,9 @@ export async function saveContactMetrics(
   date: string,
   channels: Partial<Record<Channel, ChannelDailyRowMetrics>>,
 ): Promise<{ directProductionHold: boolean }> {
-  const spreadsheetId = await resolveSheet(email);
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
+  const spreadsheetId = user.spreadsheetId;
 
   // ⭐ 미팅예약(H) = 업체관리 카드 수 파생 (SSOT, ADR-0010). 클라가 보낸 값 무시, 예약일·채널
   //    실제 카드 수로 재계산해 기록 → 저장마다 H=카드수 일치(드리프트 제거).
@@ -246,14 +248,15 @@ export async function saveContactMetrics(
       }),
     );
   }
-  await batchWriteChannelDailyRows(spreadsheetId, rows);
+  // 쓰기 정본 저장(R3-1) — 게이트→DB 정본/시트 미러(상세 sales-write.ts). 단일셀 writer는 스코프 밖(R2 유지, 회귀 아님).
+  await persistSalesRows(user.cohort, email, spreadsheetId, rows);
 
   // 직접생산: 유입 저장(E=F 미러 완료) 후 그 날짜 활성 생산 레코드 M 동기화 (ADR-0024).
   // 활성 레코드 없고 유입>0 → 보류(UI 모달). 기록은 이미 됐으니 throw 안 함.
   let directProductionHold = false;
   const direct = channels["직접생산"];
   if (direct) {
-    const { recordFound } = await syncDirectProductionForDate(spreadsheetId, date);
+    const { recordFound } = await syncDirectProductionForDate(spreadsheetId, date, user.cohort);
     directProductionHold = !recordFound && direct.inflow > 0;
   }
   return { directProductionHold };

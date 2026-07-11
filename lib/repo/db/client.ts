@@ -83,6 +83,14 @@ export interface SheetRowUpsert {
   payload: Record<string, unknown>;
 }
 
+/** sheet_rows upsert SQL($1~$6) — 미러(단건)·정본 트랜잭션(다건)이 공유해 드리프트 방지.
+ * jsonb 병합(기존 || 신규): 부분 payload 갱신이 기존 키를 지우지 않음. 자연키 = (spreadsheet_id,tab,row_key). */
+const UPSERT_SHEET_ROW_SQL = `insert into sheet_rows (cohort, email, spreadsheet_id, tab, row_key, payload, updated_at)
+     values ($1, $2, $3, $4, $5, $6::jsonb, now())
+     on conflict (spreadsheet_id, tab, row_key)
+     do update set cohort = $1, email = $2,
+       payload = sheet_rows.payload || excluded.payload, updated_at = now()`;
+
 /** dual-write upsert — row_key 기준 멱등. DATABASE_URL 미설정이면 skip(no-op).
  * payload 는 **jsonb 병합**(기존 || 신규) — 단일 셀 갱신(부분 payload)이 기존 키를
  * 지우지 않는다. clear 계열은 {_cleared:true} 병합(행 삭제 대신 마킹 — 대조 시 제외). */
@@ -91,15 +99,48 @@ export async function upsertSheetRow(
 ): Promise<{ skipped: boolean }> {
   if (!dbEnabled()) return { skipped: true };
   await ensureSchema();
-  await getPool().query(
-    `insert into sheet_rows (cohort, email, spreadsheet_id, tab, row_key, payload, updated_at)
-     values ($1, $2, $3, $4, $5, $6::jsonb, now())
-     on conflict (spreadsheet_id, tab, row_key)
-     do update set cohort = $1, email = $2,
-       payload = sheet_rows.payload || excluded.payload, updated_at = now()`,
-    [row.cohort, row.email, row.spreadsheetId, row.tab, row.rowKey, JSON.stringify(row.payload)],
-  );
+  await getPool().query(UPSERT_SHEET_ROW_SQL, [
+    row.cohort, row.email, row.spreadsheetId, row.tab, row.rowKey, JSON.stringify(row.payload),
+  ]);
   return { skipped: false };
+}
+
+/** R3-1 쓰기 정본 — sales 다채널 4지표를 **한 트랜잭션**으로 원자 upsert(정본, db-write-flip §2).
+ * upsertSheetRow 와 같은 SQL·병합·자연키({date}:{channel}). 실패 시 ROLLBACK 후 **throw**
+ * — 시트 폴백 금지(§0 정본 이원화 금지, 저장 실패로 응답). DATABASE_URL 미설정 호출은 게이트 오류
+ * (호출부가 chooseWriteSource 로 선판정). 시트 미러는 호출부가 비동기(fire-and-forget)로 별도 수행. */
+export interface SalesRowForDb {
+  date: string;
+  channel: string;
+  production: number;
+  inflow: number;
+  contactProgress: number;
+  meetingReservation: number;
+}
+export async function writeSalesRowsToDb(p: {
+  spreadsheetId: string;
+  cohort: string;
+  email: string;
+  rows: SalesRowForDb[];
+}): Promise<void> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  if (p.rows.length === 0) return;
+  await ensureSchema();
+  const client = await getPool().connect();
+  try {
+    await client.query("begin");
+    for (const r of p.rows) {
+      await client.query(UPSERT_SHEET_ROW_SQL, [
+        p.cohort, p.email, p.spreadsheetId, "sales", `${r.date}:${r.channel}`, JSON.stringify(r),
+      ]);
+    }
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /** R2-1 읽기 전환 — 한 시트의 sales 미러 전체(≤10주×28행, 단일 쿼리).

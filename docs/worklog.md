@@ -38,6 +38,17 @@
 
 ## 로그
 
+### 2026-07-09 · Claude Code · R3-1 컨택 4지표 쓰기 정본 전환 (feat/db-write-daily) — 첫 R3 코드 PR
+- 의도: belie "1,2,3 순차/논스톱"의 ②. R3-1=sales 컨택 4지표 저장을 시트→DB 정본으로 뒤집기(파일럿만)
+- 한 것: `chooseWriteSource`(daily-source.ts, 읽기 게이트 대칭·isDbReadPilot 재사용) + `writeSalesRowsToDb`
+  (client.ts **트랜잭션 원자 upsert**, 실패=throw 저장실패·시트폴백 금지) + `sales-write.ts`(persistSalesRows
+  게이트 + fireSheetMirror 시트 비동기 미러 3회 백오프) + sales.ts `{mirror:false}` 옵션(DB 재미러 차단).
+  contact.ts saveContactMetrics 를 persistSalesRows 로 위임(추출로 502→500줄). check.sh 초록(유닛 384)
+- 결정: **스코프 = 4채널 배치 저장만**. 단일셀 writer(writeProductionCell E집계·decrement H)는 R2 유지
+  (이미 R2 async DB미러 신뢰 중 → 비회귀). DB payload=R2 미러와 동일 → DB 읽기 동일값. 적대적 리뷰 진행
+- 다음: **⚠️ 라이브 학생 저장경로** — ①(detached 배포)이 health 200 확인된 뒤 머지·배포 관찰. 롤백=chooseWriteSource 게이트 뒤집기 즉시 R2. 후속 R3-2(미팅)
+- SoR: docs/plans/active/db-write-flip.md §6 R3-1, lib/service/sales-write.ts
+
 ### 2026-07-09 · Claude Code · 🛡️ 배포 원격 스크립트 detached 실행 (chore/deploy-detached-remote)
 - 의도: belie "1,2,3 순차 진행"의 ①. 2026-07-09 사이트다운 인시던트(연결끊김→`.next` 손상→502) 하네스 재발방지
 - 한 것: deploy.yml "Deploy on VPS" 스텝의 **실행 래퍼만** 교체($REMOTE 본문 불변). 동기 `ssh "$REMOTE"` → 원격 `.deploy/` 에 스크립트 업로드 후 `setsid ... </dev/null >/dev/null 2>&1 &` **detached 실행** + 상태파일(`<run>.status`) **재접속 폴링**(최대 25분) + 전체로그 덤프. `flock` 로 VPS 상 배포 직렬화. ssh_do(rc=255만 7×20s 재시도, stdin 파일 재오픈). YAML 파싱·`bash -n` 4스텝 초록 + 적대적 리뷰(따옴표/errexit/detach/race 4차원)

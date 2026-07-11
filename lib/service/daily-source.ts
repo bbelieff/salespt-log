@@ -28,6 +28,16 @@ export function chooseDailySource(
   return dbOn && isDbReadPilot(cohort) ? "db" : "sheet";
 }
 
+/** 쓰기 정본 결정 — 읽기 게이트(chooseDailySource)와 **대칭**. R3-1(db-write-flip §2·§4).
+ * DB 활성 && 파일럿 기수 → "db"(동기 정본, 시트는 비동기 미러). 그 외 → "sheet"(R2: 시트 정본).
+ * 롤백 = 이 게이트 한 곳만 뒤집으면 즉시 R2 복귀. 파일럿 집합은 isDbReadPilot 단일 원천 공유. */
+export function chooseWriteSource(
+  cohort: string | null | undefined,
+  dbOn: boolean,
+): "db" | "sheet" {
+  return dbOn && isDbReadPilot(cohort) ? "db" : "sheet";
+}
+
 /** 두 경로 공통 행 형태 — 시트 ChannelDailyRow 와 DB payload 매핑 결과의 교집합. */
 export interface DailyMetricRow {
   date: string;
