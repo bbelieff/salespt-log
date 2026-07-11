@@ -35,64 +35,86 @@ jobs:
           #       아래 Deploy 단계가 *연결 실패(rc=255)에 한해* 재시도한다.
           ssh-keyscan -T 15 -t rsa,ecdsa,ed25519 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Inject DATABASE_URL into VPS .env (idempotent, 값 미출력)
+      - name: Inject secrets into VPS .env (idempotent, 값 미출력)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_DRIVE_REFRESH_TOKEN: ${{ secrets.ADMIN_DRIVE_REFRESH_TOKEN }}
         run: |
-          # DB 파일럿(db-migration-pilot §3 secret 원칙): 운영자가 SSH 작업 없이
-          # GitHub Secrets(DATABASE_URL) 등록만으로 VPS .env 에 반영되게 한다.
+          # secret → VPS .env 자동 주입 (db-migration-pilot §3 원칙): 운영자가 SSH 작업 없이
+          # GitHub Secrets 등록만으로 VPS .env 에 반영되게 한다.
+          #   - DATABASE_URL: DB 파일럿 (2026-07-06 도입, #481)
+          #   - ADMIN_DRIVE_REFRESH_TOKEN: admin 기수 생성 시트 복제 belie OAuth (ADR-0015).
+          #     9기 생성 때 VPS 미설정으로 버튼 전원 실패 → 수동 복제 우회. 10기부터 버튼 복구.
+          # 새 secret 추가 = 아래 INJECT_KEYS 에 키 이름 + 위 env: 에 매핑 1줄
+          # (운영자 절차: docs/playbooks/deploy-vps.md "Secret 추가 절차").
           # ★값 노출 금지: echo/set -x/커맨드라인 인자 경로 일절 없음 —
           #   값은 stdin→원격 임시파일(600)로만 이동. (GH 가 secret 을 *** 마스킹하지만
           #   그것에 기대지 않고 출력 경로 자체를 만들지 않는다.)
-          if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL secret 미설정 — 주입 스킵"
-            exit 0
-          fi
+          INJECT_KEYS="DATABASE_URL ADMIN_DRIVE_REFRESH_TOKEN"
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -i $HOME/.ssh/id_ed25519"
-          # 원격 편집 스크립트 — .env 의 DATABASE_URL= 줄만 제자리 교체(없으면 맨 아래 추가).
-          # 다른 줄 비파괴. 값은 awk ENVIRON 경유(이스케이프 불필요·비출력). 멱등:
+          # 원격 편집 스크립트($1=키 이름) — .env 의 해당 키 줄만 제자리 교체(없으면 맨 아래 추가).
+          # 다른 줄 비파괴. 값은 awk ENVIRON 경유(이스케이프 불필요·비출력). 키 매칭은 index()
+          # 접두 비교(정규식 아님 — 키에 regex 메타문자가 있어도 안전). 멱등:
           # 이미 같은 값이 있어도 같은 값으로 교체될 뿐 — 재실행 안전.
           REMOTE_EDIT=$(cat <<'REMOTE_EOF'
           set -e
+          KEY="$1"
           cd /opt/salespt-log
           touch .env
-          DATABASE_URL_VALUE="$(cat .env.dburl.tmp)" awk '
-            BEGIN { u = ENVIRON["DATABASE_URL_VALUE"]; done = 0 }
-            /^DATABASE_URL=/ { if (!done) { print "DATABASE_URL=" u; done = 1 }; next }
+          KEY="$KEY" VALUE="$(cat .env.inject.tmp)" awk '
+            BEGIN { k = ENVIRON["KEY"]; v = ENVIRON["VALUE"]; done = 0 }
+            index($0, k "=") == 1 { if (!done) { print k "=" v; done = 1 }; next }
             { print }
-            END { if (!done) print "DATABASE_URL=" u }
-          ' .env > .env.dburl.new
-          chmod 600 .env.dburl.new
-          mv .env.dburl.new .env
-          rm -f .env.dburl.tmp
-          echo "DATABASE_URL 주입 OK (값 미출력) — .env 총 $(grep -c "" .env)줄"
+            END { if (!done) print k "=" v }
+          ' .env > .env.inject.new
+          chmod 600 .env.inject.new
+          mv .env.inject.new .env
+          rm -f .env.inject.tmp .env.dburl.tmp  # 후자 = 구명(DATABASE_URL 전용 시절) 잔재 정리
+          # 존재 검증(값 미출력) — 키가 비값으로 남으면 주입 실패로 처리
+          if grep -qE "^${KEY}=." .env; then
+            echo "$KEY 주입 OK — 키 존재 확인(값 미출력), .env 총 $(grep -c "" .env)줄"
+          else
+            echo "$KEY 주입 후 키 미발견 — 실패" >&2
+            exit 1
+          fi
           REMOTE_EOF
           )
-          set +e
-          # 연결 실패(rc=255) 재시도 2회 — 2026-07-07 run#426: VPS 22번 간헐 도달성
-          # 장애가 단발 시도를 그대로 삼킴. Deploy 단계와 동일한 완화(짧은 버전).
-          rc1=1; rc2=1
-          for t in 1 2; do
-            # 1) 값 전송: stdin → 원격 임시파일 (umask 077 → 600)
-            printf '%s' "$DATABASE_URL" | ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" \
-              "umask 077 && cat > /opt/salespt-log/.env.dburl.tmp"
-            rc1=$?
-            if [ "$rc1" = "0" ]; then
-              # 2) 원격 편집 실행
-              ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" "bash -s" <<<"$REMOTE_EDIT"
-              rc2=$?
+          FAILED=""
+          for KEY in $INJECT_KEYS; do
+            VALUE="${!KEY}"
+            if [ -z "$VALUE" ]; then
+              echo "::warning::$KEY secret 미설정 — 주입 스킵 (GitHub Settings→Secrets→Actions 등록 시 다음 배포에서 자동 주입)"
+              continue
             fi
-            if [ "$rc1" = "0" ] && [ "$rc2" = "0" ]; then break; fi
-            if [ "$t" = "1" ]; then
-              echo "주입 ssh 실패(rc=$rc1/$rc2) — 30초 후 1회 재시도" >&2
-              sleep 30
+            set +e
+            # 연결 실패(rc=255) 재시도 2회 — 2026-07-07 run#426: VPS 22번 간헐 도달성
+            # 장애가 단발 시도를 그대로 삼킴. Deploy 단계와 동일한 완화(짧은 버전).
+            rc1=1; rc2=1
+            for t in 1 2; do
+              # 1) 값 전송: stdin → 원격 임시파일 (umask 077 → 600)
+              printf '%s' "$VALUE" | ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" \
+                "umask 077 && cat > /opt/salespt-log/.env.inject.tmp"
+              rc1=$?
+              if [ "$rc1" = "0" ]; then
+                # 2) 원격 편집 실행 (키 이름은 비밀 아님 — 인자로 전달)
+                ssh $SSH_OPTS "root@${{ secrets.VPS_HOST }}" "bash -s -- $KEY" <<<"$REMOTE_EDIT"
+                rc2=$?
+              fi
+              if [ "$rc1" = "0" ] && [ "$rc2" = "0" ]; then break; fi
+              if [ "$t" = "1" ]; then
+                echo "$KEY 주입 ssh 실패(rc=$rc1/$rc2) — 30초 후 1회 재시도" >&2
+                sleep 30
+              fi
+            done
+            set -e
+            if [ "$rc1" != "0" ] || [ "$rc2" != "0" ]; then
+              FAILED="$FAILED $KEY(rc=$rc1/$rc2)"
             fi
           done
-          set -e
-          if [ "$rc1" != "0" ] || [ "$rc2" != "0" ]; then
+          if [ -n "$FAILED" ]; then
             # 주입 실패는 경고만 — 배포 자체는 계속(파일럿 dual-write 는 비차단 설계).
             # 멱등이라 다음 배포에서 자동 재주입된다.
-            echo "::warning::DATABASE_URL 주입 실패(rc=$rc1/$rc2) — 배포는 계속 진행"
+            echo "::warning::secret 주입 실패:$FAILED — 배포는 계속 진행"
           fi
 
       - name: Deploy on VPS (detached — 연결 끊겨도 원격은 끝까지 완주)

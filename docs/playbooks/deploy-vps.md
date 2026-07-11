@@ -36,13 +36,18 @@
   최대 25분(초과 시 타임아웃 fail — 원격은 계속 진행 중일 수 있음). 즉 **배포 성공/실패 판정은
   원격이 남긴 `.status` 코드가 정본**, 러너 연결 상태가 아니다.
 
-**Secret 추가 절차 (운영자용 — SSH 불필요, 2026-07-06 도입)**: 배포 파이프라인이
-GitHub Secrets 의 `DATABASE_URL` 을 VPS `/opt/salespt-log/.env` 에 자동 주입한다
-(deploy.yml "Inject DATABASE_URL" 스텝 — 멱등: 해당 키 한 줄만 교체/추가, 다른 줄 비파괴,
-값은 stdin→원격 600 파일로만 이동해 **로그에 절대 안 찍힘**). 등록 방법: GitHub 레포 →
-**Settings → Secrets and variables → Actions → New repository secret** → Name `DATABASE_URL`,
-Value 에 접속 문자열 입력 → 다음 배포부터 자동 반영. secret 미설정이면 스텝은 조용히 스킵,
-주입 실패는 경고만 남기고 배포는 계속(파일럿 dual-write 비차단 원칙, db-migration-pilot §3).
+**Secret 추가 절차 (운영자용 — SSH 불필요, 2026-07-06 도입 · 2026-07-12 다중 키 일반화)**:
+배포 파이프라인이 GitHub Secrets 를 VPS `/opt/salespt-log/.env` 에 자동 주입한다
+(deploy.yml "Inject secrets" 스텝 — 멱등: 해당 키 한 줄만 교체/추가, 다른 줄 비파괴,
+값은 stdin→원격 600 파일로만 이동해 **로그에 절대 안 찍힘**, 성공 시 "키 존재 확인(값 미출력)" 로그).
+현재 주입 키: `DATABASE_URL`(DB 파일럿) · `ADMIN_DRIVE_REFRESH_TOKEN`(admin 기수 생성
+시트 복제용 belie OAuth, ADR-0015 — 9기 때 VPS 미설정으로 기수 생성 버튼이 전원 실패했던 키).
+- **운영자(belie)**: GitHub 레포 → **Settings → Secrets and variables → Actions →
+  New repository secret** → Name 에 키 이름, Value 에 값 입력 → 다음 배포부터 자동 반영.
+- **새 키를 파이프라인에 추가(에이전트)**: deploy.yml "Inject secrets" 스텝의
+  `INJECT_KEYS` 목록 + 스텝 `env:` 매핑에 각 1줄 추가 — 그게 전부.
+- secret 미설정이면 해당 키만 **경고+스킵**, 주입 실패도 경고만 남기고 배포는 계속
+  (파일럿 dual-write 비차단 원칙, db-migration-pilot §3).
 
 **머지 후 에이전트 절차** (CLAUDE.md §6.8):
 1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
