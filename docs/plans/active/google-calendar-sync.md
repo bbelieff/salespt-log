@@ -92,11 +92,15 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
 - **gcal-2b 구현됨**: 계정 표시(카드) · [다시 올리기](카드, 전체 재푸시) · **일정별 개별 토글**
   (GcalItemToggle — 캘린더 탭 각 일정 항목 우측, 카드 아님). 유형 토글 3종은 폐기(2026-07-09).
 
-## 5. 사전 GCP 작업 (운영자 belie — 코드 밖)
-1. GCP 프로젝트(saleslog-494703)에서 **Google Calendar API 사용 설정**.
-2. OAuth 동의화면에 scope `calendar.events` 추가, (테스트 모드면) 수강생 이메일 테스트 사용자 등록.
-3. 기존 OAuth 클라이언트(salesptlog-prod)에 리디렉션 URI 추가:
-   `https://salesptlog.online/api/gcal/callback`, `http://localhost:3000/api/gcal/callback`.
+## 5. 사전 GCP 작업 — ✅ 완료 (2026-07-06, Cowork 이 GCP 콘솔에서 직접 수행·검증)
+1. ✅ Google Calendar API 사용 설정됨 (saleslog-494703).
+2. ✅ 데이터 액세스에 `calendar.events`+`calendar.readonly` 민감 범위 등록.
+   실측: 동의화면은 **프로덕션 단계**(테스트 모드 아님 — 테스트 사용자 등록 불필요/불가).
+   미검증 앱 조건: 민감 스코프 사용자 한도 100명(현재 18명 사용) + 연결 동의 시
+   "확인되지 않은 앱" 경고(고급→이동으로 진행 가능). → 연동 카드/안내에 "경고가 떠도 안전해요.
+   [고급]→[이동]을 눌러 주세요" 도움 문구 필요(§4-1 에 추가). 장기: 브랜드 검증 신청.
+3. ✅ salesptlog-prod 리디렉션 URI 추가 저장: `https://salesptlog.online/api/gcal/callback`,
+   `http://localhost:3000/api/gcal/callback` (적용 전파 5분~수 시간).
 
 ## 6. 구현 분할 (PR)
 1. **docs/gcal-sync-plan** — 본 문서 + ADR-0028(사용자별 캘린더 토큰·시트 암호화 저장) 등재.
