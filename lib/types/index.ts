@@ -356,21 +356,20 @@ export const ContractPayment = z.object({
   이월원본행id: z.string().optional(),
   /** 연결 미팅 id (AK, 04 업체관리 A) — 02↔04 매칭 키. 개명·계약일변경에도 링크 유지. */
   linkedMeetingId: z.string().optional(),
+  // ── 계약해지 AL~AO (contract-termination 2026-07-12): 해지일 존재=해지, 매출=수임비+수납−반환액 ──
+  해지일: z.string().default(""), // AL (ISO)
+  해지사유: z.string().default(""), // AM — 해지 시 필수(서비스 검증)
+  반환액: z.number().nonnegative().default(0), // AN (원) — 매출 차감, soft delete 여도 유지
+  해지숨김: z.boolean().default(false), // AO — soft delete 카드 숨김(데이터 보존)
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 
-/** 이월(아레나 비집계) 판정 — 단일 결정점, 읽기시점 분류(arena-start-revenue-split).
- *  깃발(AI=이월) OR 계약일<시작일(courseStart=O1, 동적·하드코딩X). 날짜는 ISO일 때만 비교.
- *  클라(UI)·서버(대시보드) 공용 → types(googleapis 비의존)에 둠. */
-export function isCarryoverContract(
-  p: { 구분?: string; 계약일?: string },
-  courseStartISO: string,
-): boolean {
-  if ((p.구분 ?? "").trim() === "이월") return true;
-  const d = (p.계약일 ?? "").trim();
-  const iso = /^\d{4}-\d{2}-\d{2}$/;
-  return iso.test(d) && iso.test(courseStartISO) && d < courseStartISO;
-}
+// 계약 분류 판정(이월·해지)·건수 정책 상수 — contract-status.ts 로 분리(500줄 캡). 배럴 재수출.
+export {
+  isCarryoverContract,
+  isTerminatedContract,
+  TERMINATED_IN_CONTRACT_COUNT,
+} from "./contract-status";
 
 // ── 실무투두 (05 실무투두 1행 = 1투두) — Scope 2, ADR-0006 ──────
 // 시트 매핑: docs/domains/sheet-structure.md §5-2 (A~M 13컬럼)

@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · [병렬트랙 A 보충2] feat/contract-termination 구역 확장 + 모델 계약 PR
+- 의도: 계약해지 기능(7/10 스펙)이 선언 구역 밖 파일을 요구 — §3.5 규칙 1 보충 선언
+- 구역 추가: `lib/service/dashboard.ts`(computeContractRevenue·매출 분할 — 반환액 차감 반영) · `app/api/contract-payment/**`(terminate 라우트) · `lib/repo/contract-payment-termination.ts`(신규, 500줄 캡 분리) · `app/(app)/payment/_components/TerminationModal.tsx`(신규). 기존 선언 트랙(B=docs·C=deploy)과 겹침 없음
+- 한 것(공용부 계약 PR): ContractPayment 에 해지 4필드(AL~AO: 해지일·해지사유·반환액·해지숨김) + isTerminatedContract + TERMINATED_IN_CONTRACT_COUNT 상수(기본 제외 — belie 미확정, 상수 하나로 뒤집기) + SSOT 3문서 선등재(data-model·sheet-structure·components)
+- 다음: feat 코드 PR(repo 파서·writeTermination·service·모달·매출 차감·테스트)
+- SoR: docs/plans/active/contract-termination.md(코드 PR 이 생성), 7/10 이용호 스펙(워크로그)
+
 ### 2026-07-12 · Claude Code · [병렬트랙 A] fix/contract-delete-ghost 완주 — 02 헤더존 유령 계약 94행 수리
 - 의도: 이용호(8기) 신고 ①휴힐링 삭제 불능 ②0원 계약 잔존 — Dev3-A fix 트랙 실행
 - 한 것: **근인 확정(DB 실측)** = backfill 이 02 헤더·예시 구간을 row≥3 으로 적재 → 전 기수 94행 유령 카드(r3 "수납총액" 안내행 = 업체명 "0"·0원·건수 포함 / r5 "00유통" 110만 예시행 = 이월 카드), clearRow 헤더보호(row<6 거부)로 **삭제 구조적 불가** = 신고 재현. 휴힐링 r8 은 7/9 에 이미 _cleared — 초기 가설(미러 미반영)은 기각. 수리: #527(backfill 시작행 신형6/구형5 + repair 스크립트, 머지·배포 success) → VPS repair dry-run 94행 검증 → execute → **잔여 0 · 이용호 live=실계약 5건(시트 실측 ₩750,002 와 일치)**. 본 PR = isContractHeaderZoneJunk 읽기 가드 + 정합 테스트 4(총 10)
@@ -355,17 +362,5 @@
   fail2ban/방화벽 원인 규명 + backfill 워크플로 rc=255 재시도 내장을 같은 PR로
 - 다음: fix/arena-backfill-converge 프롬프트 전달됨(Claude Code, PC에서 실행). 수렴 기준=
   배너 ≥1,370행 + 대조표 일치 + 이후 deploy 1회 success로 GH 경로 복구 판정
-- SoR: docs/plans/active/db-pilot-arena.md
-
-### 2026-07-08 · Claude Code · R2-1.5 아레나 편입 코드 완주(#492) + backfill 은 SSH 차단으로 대기
-- 의도: R2 트랙 1.5호 — 아레나(최대 활성 집단)를 DB 읽기 파일럿에 편입
-- 한 것: #492 머지·배포 conclusion=success·200. 게이트=isArenaCohortLabel 재사용(라벨 그대로,
-  R5 불변), 이중기록은 이미 전 기수 확인(변경 0), backfill --cohort 콤마 목록. 테스트 42/42.
-  backfill: dry-run 성공(39시트·1,083행) → execute#1 부분성공(1,035행, sales 스킵 5=429계열)
-  → 재실행 2회 연속 **rc=255**. 진단: 포트22가 **belie PC에선 열림·GH 러너에서만 차단** —
-  오늘 SSH 폭주로 fail2ban/제공사 방화벽의 GH IP 대역 차단 추정. 20분 이격 재시도 예약됨.
-- 결정: backfill 수렴 판정 = 파싱실패 경고 0 + 시트/DB 대조표 일치(멱등 재실행으로 수렴)
-- 다음: 재시도 성공 시 대조표→PR #492 코멘트. 반복 실패 시 belie가 VPS fail2ban/방화벽 확인
-  필요(제공사 콘솔). 하네스 개선 후보: backfill 워크플로에도 deploy 식 rc=255 재시도 루프
 - SoR: docs/plans/active/db-pilot-arena.md
 
