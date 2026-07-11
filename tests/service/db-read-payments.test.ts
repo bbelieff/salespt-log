@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { rowToCP } from "@/repo/contract-payment";
-import { contractFromDbPayload } from "@/repo/db/read-daily";
+import { contractFromDbPayload, isContractHeaderZoneJunk } from "@/repo/db/read-daily";
 
 function toSerial(iso: string): number {
   const [y, m, d] = iso.split("-").map(Number);
@@ -92,5 +92,42 @@ describe("R2-4 contracts: DB payload ↔ 시트 파서(rowToCP) 정합", () => {
 
   it("⑤ 빈/무의미 payload 는 null (phantom row 방지 — 시트와 동일 기준)", () => {
     expect(contractFromDbPayload({ _backfill: true }, 3)).toBeNull();
+  });
+});
+
+describe("헤더존 정크 가드 (contract-delete-ghost — backfill r3 안내행 사고)", () => {
+  // 운영 DB 실측 payload 그대로 (2026-07-12, 전 기수 94행 사고): 02 탭 r3 안내행.
+  const r3Junk = {
+    C: "수납총액", D: "0", E: "계약당일 받아올 것",
+    I: "계약 직후 프로세스", L: "실무진행", M: "수납1", S: "수납2", Y: "수납3",
+    _backfill: true,
+  };
+
+  it("r3 안내행은 Zod 를 통과하지만(계약일=자유 문자열) 정크로 판정된다", () => {
+    const cp = contractFromDbPayload(r3Junk, 3);
+    expect(cp).not.toBeNull(); // 가드 없으면 '업체명 0·0원' 카드로 렌더되던 근거
+    expect(isContractHeaderZoneJunk(r3Junk, cp!)).toBe(true);
+  });
+
+  it("backfill 출신이라도 계약일이 날짜면 정크 아님 (r5 예시행류 — repair 몫)", () => {
+    const p = { C: "46162", D: "00유통", E: "1100000", _backfill: true };
+    const cp = contractFromDbPayload(p, 5)!;
+    expect(cp.계약일).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(isContractHeaderZoneJunk(p, cp)).toBe(false);
+  });
+
+  it("앱 dual-write 행(_backfill 없음)은 계약일 형태와 무관하게 비접촉", () => {
+    const p = { 계약일: "2026-06-20", 업체명: "정상업체", 수임비: 300 };
+    const cp = contractFromDbPayload(p, 7)!;
+    expect(isContractHeaderZoneJunk(p, cp)).toBe(false);
+    const odd = { 계약일: "미정", 업체명: "직접입력", 수임비: 100 };
+    const cpOdd = contractFromDbPayload(odd, 8)!;
+    expect(isContractHeaderZoneJunk(odd, cpOdd)).toBe(false); // 시트 정합 우선
+  });
+
+  it("계약일 빈 값(부분 입력 행)은 정크 아님", () => {
+    const p = { D: "업체만입력", E: "500", _backfill: true };
+    const cp = contractFromDbPayload(p, 10)!;
+    expect(isContractHeaderZoneJunk(p, cp)).toBe(false);
   });
 });

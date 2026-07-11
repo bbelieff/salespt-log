@@ -142,6 +142,23 @@ export function contractFromDbPayload(
   return rowToCP(r, rowNumber);
 }
 
+/** 02 헤더존 정크 판정 (contract-delete-ghost, 2026-07-12).
+ *
+ * backfill 이 헤더·예시 구간(신형 r3~r5)을 적재한 사고의 방어선 — 시트 경로는
+ * firstDataRow(신형 6/구형 5) 아래를 아예 읽지 않으므로, backfill 출신 행 중
+ * 계약일이 날짜가 아닌 것(예: r3 "수납총액" 안내행)은 데이터 행일 수 없다.
+ * 앱 dual-write 행(_backfill 없음)은 계약일이 항상 ISO/빈 값이라 비접촉 —
+ * 시트 정합 유지. r5 "00유통" 예시행(날짜형)은 여기로 못 거르므로
+ * repair-contracts-header-zone.mjs 가 _cleared 마킹으로 정리(재발은 backfill 수정이 차단). */
+export function isContractHeaderZoneJunk(
+  payload: Record<string, unknown>,
+  cp: ContractPayment,
+): boolean {
+  if (payload._backfill !== true) return false;
+  const d = cp.계약일.trim();
+  return d !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(d);
+}
+
 /** 한 시트의 02 계약수납 전체 (_cleared 제외) — readAll 동치. 행번호 오름차순(시트 순서). */
 export async function readContractsFromDb(
   spreadsheetId: string,
@@ -162,7 +179,7 @@ export async function readContractsFromDb(
     const n = Number(row_key.replace(/^r/, ""));
     if (!Number.isFinite(n)) continue;
     const cp = contractFromDbPayload(payload, n);
-    if (cp) out.push(cp);
+    if (cp && !isContractHeaderZoneJunk(payload, cp)) out.push(cp);
   }
   out.sort((a, b) => (a.row ?? 0) - (b.row ?? 0));
   return out;
