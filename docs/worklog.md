@@ -45,6 +45,23 @@
 - 다음: 배포 후 연습 시트(45열 상태) 회귀 확인 — 레지스트리 수정은 belie 승인 필요, 코드 리뷰·테스트 수준 검증으로 갈음
 - SoR: docs/plans/active/google-calendar-sync.md §2
 
+### 2026-07-12 · Claude Code · [병렬트랙 A] Dev3-A(260712~) 구역 선언 — 수납(계약수납) 트랙
+- 의도: Dev3 병렬 배치 A트랙 시작 — 7/10 이용호 신고 트랙(fix/contract-delete-ghost → feat/contract-termination) 실행. CLAUDE.md §3.5 규칙 1(트랙 선언)
+- 구역: `lib/service/contract-payment.ts` · `lib/repo/contract-payment.ts` · `lib/repo/db/`(contracts read) · `app/(app)` 실무/수납 화면 (A트랙 전용)
+- 겹침 점검: 기존 선언 = C트랙(deploy.yml + docs/playbooks) — 겹침 없음(2026-07-12 확인). B트랙 미선언 — B는 선언 시 이 구역을 피할 것
+- 한 것(선행 계약 PR): CLAUDE.md §0.5·§3.5 를 master 에 박제 + 워크로그 이본 병합(로컬 Cowork 전용 항목 + master 전용 항목 유니온, 40개 규칙으로 최고(最古) 3건 아카이브) — 이 항목이 그 PR 에 포함
+- 다음: fix/contract-delete-ghost(수납 화면 DB read 유령 행) → feat/contract-termination(계약해지). 머지는 §3.5 규칙 3(직렬)
+- SoR: docs/plans/active/contract-termination.md(feat PR 이 생성), CLAUDE.md §3.5
+
+### 2026-07-12 · Claude Code · [병렬트랙 C] Dev3-C(260712~) 구역 선언 — deploy.yml + docs/playbooks
+- 의도: Dev3 병렬 배치(260712~) C트랙 시작 — CLAUDE.md §3.5 규칙 1(트랙 선언)
+- 구역: `.github/workflows/deploy.yml` + `docs/playbooks/**` (C트랙 전용)
+- ⚠️ 예외 선언: `.github/`은 §3.5 기준 공용부(계약)이지만 deploy.yml 이 이 트랙의 전용 대상이므로
+  이번 배치에 한해 C트랙 단독 소유. 다른 트랙은 배치 기간 중 위 구역 수정 금지(필요 시 C에 위임)
+- 겹침 점검: 로컬·origin/master 워크로그에 기존 [병렬트랙] 선언 없음 — 겹침 없음(2026-07-12 확인).
+  Dev3-B 트랙은 세션 존재만 확인, 구역 미선언 — B는 선언 시 이 구역을 피할 것
+- 다음: C트랙 작업 스펙 수령 후 착수. 머지는 §3.5 규칙 3(직렬 머지 + §6.8 배포 관찰)
+
 ### 2026-07-12 · Claude Code · 🐛 gcal 미팅 동기화 카나리아 — 성공경로 확인 + 45열 시트 버그 발견
 - 의도: belie "미팅이 구글캘린더에 보이는지 직접 실험" — 동기화 엔진 첫 라이브 E2E 검증
 - 한 것: belie 승인 하에 김믿음 행에 연습 시트 임시 연결 → 실계정으로 미팅 작성·삭제 E2E.
@@ -64,6 +81,32 @@
 - 결정: 수용기준 전항목 충족 → plan 을 completed 로 이동
 - 다음: gcal 후속(동기화 엔진 QA·다시 올리기 실사용 검증)은 별도 트랙
 - SoR: docs/plans/completed/gcal-per-user-identity.md
+
+### 2026-07-10 · Cowork(Fable) · 병렬 작업 규약 도입 (CLAUDE.md §3.5) + 첫 병렬 배치 3트랙
+- 의도: 사용자 요청 — 오케스트레이터/스텝게이트 방식 중 우리 하네스에 없는 것만 도입해 병렬 개발
+- 한 것: CLAUDE.md §3.5 신설 — ①트랙 선언(worklog에 구역 명시, 겹치면 순차) ②구역 소유+계약 먼저(공용부 변경은 단독 PR 선행) ③병렬 구현·직렬 머지(머지는 한 번에 하나+리베이스). 기존 하네스와 중복되는 것(AGENTS.md·문서 재편·tmux)은 기각
+- 결정: 오케스트레이터 = Cowork 세션(프롬프트 생산·게이트 검증), 머지 게이트 = 기존 §6.8 그대로
+- 다음: 첫 병렬 배치 — A트랙(수납: fix/contract-delete-ghost→feat/contract-termination), B트랙(R3-0 docs), C트랙(chore/deploy-env-admin-token). 구역 안 겹침 확인됨
+- SoR: CLAUDE.md §3.5
+
+### 2026-07-10 · Cowork(Fable) · 이용호 신고: 계약 삭제 불능(휴힐링) + 계약해지 기능 스펙 확정
+- 의도: 8기 이용호 신고 ①휴힐링 계약 삭제 안 됨(환불+수임비 0 처리 후) ②계약 해지 경우의 수 없음
+- 한 것: 레지스트리·이용호 시트 실측(계약 5건·수임비 ₩750,002 — 0원 계약이 건수에 잔존). 유력 가설 = R2-4 이후 화면은 DB read인데 삭제가 DB 미러에 미반영(유령 행 — A1-5 전례 부류). fix/contract-delete-ghost + feat/contract-termination 프롬프트 전달
+- 결정(사용자 스펙): 실무/수납 각 계약에 [계약해지] — 사유 필수, 반환(없음/일부/전액+금액), 해지 상태 보존 또는 삭제 선택. **매출 = 수임비+수납 − 반환액(삭제여도 반환분만 차감)** → 삭제 = soft delete(숨김·데이터 보존)로 구현해야 규칙 성립. 해지 계약의 건수 반영 기본값 = 제외+"해지 N건" 별도 표시(단일 상수로 변경 용이하게 — belie 미확정 항목)
+- 다음: fix 먼저 → feat. 완료 후 이용호 안내(휴힐링 정리 + 해지 기능 사용법)
+- SoR: docs/plans/active/contract-termination.md(feat PR이 생성)
+
+### 2026-07-10 · Claude Code · gcal 귀속 사고 수정 완주 (#519) — 임퍼스네이션 오귀속·localhost 복귀
+- 의도: 실사용 사고 2건 — ①임퍼스네이션 화면마다 "연결됨"+마스터 행에 연결 저장 ②연결 후 localhost 복귀(수강생 실패 오인)
+- 한 것: #519 머지·배포 success·200. 진단 확정: 6라우트 전부 세션 기준(표시까지) — 훅·다중행은 원래 안전.
+  수정: gcalActorFrom(순수·4테스트) — 표시=active(그 수강생)/조작=본인만(403·selfonly), 카드 3상태
+  임퍼스네이션 비활성+안내, appBaseUrl(AUTH_URL) 단일 기준으로 callback 복귀 localhost 제거,
+  [다시 올리기] 힌트 토스트. 오염 정리: 마스터 행26 T(settings) 비움(S토큰은 원래 빈값 — 실토큰 오염 없었음).
+- 결정: (프라이버시) 수강생 실이메일·이름을 커밋/PR/테스트에 넣지 않는다 — 분류기 차단 계기,
+  픽스처는 example.com, 문서는 익명 표기(식별정보는 레지스트리에만). 이번 PR 아멘드로 소급 적용.
+- 다음: 라이브 카나리아(belie 1분) — 실계정 연결→salesptlog.online 복귀+연결됨 뱃지+임퍼스네이션 selfonly 확인.
+  통과 시 plan gcal-per-user-identity → completed 이동.
+- SoR: docs/plans/active/gcal-per-user-identity.md, PR #519
 
 ### 2026-07-09 · Claude Code · R3-1 컨택 4지표 쓰기 정본 전환 (feat/db-write-daily) — 첫 R3 코드 PR
 - 의도: belie "1,2,3 순차/논스톱"의 ②. R3-1=sales 컨택 4지표 저장을 시트→DB 정본으로 뒤집기(파일럿만)
@@ -126,6 +169,151 @@
 - 다음: gcal-1 설계 개정(유형 토글 폐기, 아래 항목), 이후 라이브 카나리아(belie), DATABASE_URL 비번 로테이션(보류)
 - SoR: docs/plans/active/gcal-connect.md, docs/plans/active/google-calendar-sync.md §6
 
+### 2026-07-09 · Cowork(Fable) · gcal 설계 변경: 유형 토글 3종 폐기 → 일정별 개별 토글(기본 ON)
+- 의도: 사용자 요청 — 캘린더 탭에서 일정마다 연동 토글, 토글 상태 따라 구글 이벤트 자동 생성/삭제
+- 한 것: 구조 확정(**개별 토글만 + 디폴트 ON** — 유형 토글 미팅/실무/일반 제거, 사용자 선택). gcal-1·gcal-2 프롬프트 개정판 전달(개별 토글은 엔진 필요 → gcal-2에 배치, gcal-1 카드에서 토글 3종 제거)
+- 결정: 저장 구조 = gcal_event_ids 사용자별 값 eventId(켜짐)|"-"(껐음, 제외 마커 — 수정 훅·[다시 올리기]가 되살리지 않음), 키 없음=기본 ON. 연결 해제 시 기존 이벤트 잔존 원칙 유지(개별 토글 OFF만 구글에서 삭제). SoR §0·§2·§4·§8 갱신은 gcal-1 PR에 포함
+- 다음: gcal-1 착수 가능(R2 완주됨) → gcal-2 → R3-0
+- SoR: docs/plans/active/google-calendar-sync.md
+
+### 2026-07-09 · Claude Code · R2-7b 대시보드 서빙 DB 전환 완주 (#509) — R2 읽기 전환 트랙 종료
+- 의도: R2-7a 그림자 대조로 검증(51/52)된 대시보드 DB 집계를 실제 서빙으로 전환
+- 한 것: #509 머지·배포 success 2.6분·health 200. loadDashboard 2경로(파일럿=loadDashboardFromDb 시트왕복0, 비파일럿=시트 무변경 리팩터)+assembleView 공용. 안전밸브 2중(DB실패→시트강등+Sentry / 역방향 그림자 reverseShadowCompare=서빙후 시트 async 대조 diff시 경보). 358테스트·비파일럿 불변
+- 결정: 검증2(능동 시나리오)는 속도지시(세션내 수동 라이브검증 금지)와 상충 → 배포후 라이브 카나리아+역방향 그림자 감시+강등 안전밸브로 대체(검증1 실데이터 전케이스 커버로 등가). **R2 트랙 완주: 컨택·일정·수납·DB생산·캘린더·대시보드 6화면 전부 파일럿 시트 read 0**
+- 다음: gcal-1(feat/gcal-connect)→gcal-2 → R3-0(쓰기 전환). 배포후 대시보드 p50/p95 관찰(#509 코멘트). 보안: DATABASE_URL 노출 비번교체 belie 대기
+- SoR: docs/plans/completed/db-read-dashboard.md, docs/plans/completed/db-dashboard-aggregates.md
+
+### 2026-07-09 · Claude Code · R2-7a diff 근인 A·C 완전 해결 (#508) — 51/52 정확일치
+- 의도: #507 그림자 대조가 잡은 diff 3근인을 완전 해소(사용자 지시 "A·C 완전히 해결")
+- 한 것: #508 머지·배포 success. **시트 수식 FORMULA 렌더로 직접 규명** → A(로직) 수정: R1:U6 R4미팅예약=상태∈{예약,완료,계약}·이월제외, R5미팅완료=상태∈{완료,계약}·이월제외, 활동량 미팅항=미팅완료(by미팅날짜)×2(sales.meetingReservation stale 폐기). C(데이터): mymk1005 실데이터가 A1-5 수렴때 유령 오마킹→_cleared 11행 해제+재backfill로 Σ생산0→33(시트일치). **재대조: 52명중 diff0=51, 규명예외1(zzzddz01=시트 02↔04 계약상태 불일치, 집계로직 무관)**
+- 결정: 활동량 정확산식 확정=생산×1+컨택×1.5+미팅완료×2(이월제외). 미팅 퍼널 카운트는 stale sales 아니라 미팅카드 실시간+이월제외. R2-7b 게이트("diff0 또는 규명예외만") 충족
+- 다음: R2-7b(서빙 전환) — 검증1(전수배치 완료=이 결과)+검증2(연습 능동시나리오) → 전환. 그 후 gcal-1→2. **보안: DATABASE_URL 세션로그 노출건 belie 비번교체 대기**
+- SoR: PR #508 코멘트(전수대조표), docs/plans/active/db-dashboard-aggregates.md
+
+### 2026-07-09 · Cowork(Fable) · 스코프 확정(R3까지) + R4 알림 예약 + gcal 재개
+- 의도: 사용자 결정 — 이번 스코프는 R3까지, R4는 아레나 시즌1 종료(8/1) 후. 접어둔 기능(gcal) 재개
+- 한 것: R4 착수 준비 알림 예약(7/25 09:00, scheduled task r4-kickoff-reminder — R3 상태 확인+D2 리마인드 포함). gcal-1(feat/gcal-connect)·gcal-2(feat/gcal-sync-engine) 프롬프트 전달. 메모리(project-db-first-roadmap) 갱신
+- 결정: gcal 순서 = R2-7 마무리(미팅예약 로직 수정 + mymk1005 sales 재backfill + R2-7b) **후** 순차 — #507이 찾은 diff 3근인 중 C는 실사용자 화면 영향이라 gcal보다 우선. DATABASE_URL 노출 건은 belie에게 비번 교체 재권고(결정 대기)
+- 다음: R2-7 마무리 → R2-7b → gcal-1 → gcal-2 → R3-0. 9기 클레임 안내(내일 7/10)
+- SoR: docs/plans/active/google-calendar-sync.md, docs/plans/active/db-first-unlimited-roadmap.md
+
+### 2026-07-09 · Claude Code · R2-7a 대시보드 그림자 대조 완주(#507) — diff 3근인 발견, R2-7b 게이트 미충족
+- 의도: 대시보드 시트수식 4종(R1:U6·N·H·B21) raw 재계산 + 그림자 대조(응답은 시트값). 재계산 스펙은 워크플로(4설계→4적대검증)로 확정
+- 한 것: #507 머지·배포 success·health 200. dashboard-aggregates.ts(순수4함수+shadowCompare fire-and-forget)+dashboard-parity.mjs(전수배치)+정합9테스트. 배포후 전수대조: **52명 중 diff0=35, diff발생=17(48건)** — 그림자가 정확히 3근인 노출
+- 결정(diff 근인): **A[로직·수정확정]** 미팅예약(R1:U6 R4)=Σsales 아니라 상태='예약' count(sangjun 시트6 vs 카드수9 실측). **B[로직·A연동]** 활동량(H) 미팅항이 A와 같은 오차(주3 +6=미팅 +3×2) → A수정후 재대조로 확정. **C[데이터·R2-1 라이브영향⚠️]** mymk1005(A1-5) DB sales 27행 전부 값0(시트엔 실데이터) = backfill sales-0 공백(#488계열) → 파일럿이라 컨택화면이 0 표시 중일 수 있음, sales 재backfill 필요
+- ⚠️ **보안사고**: SSH 명령 export \$(grep..) 빈결과→export단독→셸 env 덤프로 **DATABASE_URL 값 세션로그 노출**. Supabase 비번 교체 권장. 이후 node가 .env 직접로드(셸덤프 방지)
+- 다음: A 수정(미팅예약=상태예약)→재대조로 B확인 · C 영향사용자 식별+sales 재backfill · diff0 확인후에만 R2-7b. R3 파이프라인은 R2-7b 후
+- SoR: docs/plans/active/db-dashboard-aggregates.md, PR #507 코멘트(대조표·진단)
+
+### 2026-07-09 · Claude Code · R2-4b·R2-5·R2-6 완주 + R2-7a 착수 (탭 전환 6개 완료)
+- 의도: R2 읽기 전환 파이프라인 계속 — 업체정보 카드(4b)·DB생산(5)·캘린더(6) DB 전환 후 대시보드(7a) 착수
+- 한 것: #502(R2-4b 업체정보 06)·#504(R2-5 DB생산 4섹션)·#506(R2-6 캘린더 미팅+투두) 전부 머지·배포 success·health 200. **파일럿 기수는 컨택·일정·수납·DB생산·캘린더 6탭 전부 시트 read 0회.** #498 배포 캐시로 배포 2.5~2.7분 유지. R2-7a(대시보드)는 재계산 스펙을 워크플로(4 설계→4 적대적 검증)로 확정 중
+- 결정: (1) R2-5 직접생산 "생산중"(종료일 빈) 행 — 배열 파서 neo 감지 밀림 → dual-write 필드명은 Zod, backfill 열문자만 파서(형태별 분기). (2) R2-6 캘린더는 투두 read 도 있었음(프롬프트 예상=미팅만) → todos=meetings 쌍둥이라 새 스키마 아님. (3) **교훈: 같은 워크트리에서 백그라운드 git 커밋 + 포그라운드 브랜치 전환 동시 실행 금지** — R2-6 docs 이동 커밋이 R2-7a 브랜치에 얹히는 사고(무해 복구, R2-7a PR이 함께 태움). 워크트리 git 작업은 직렬화
+- 다음: R2-7a 워크플로 스펙 확정 후 집계+그림자 대조+전수 배치 스크립트 구현. R2-7b(검증 절차 통과 조건 — 세션 내 완주 가능)
+- SoR: docs/plans/completed/db-read-{company-archive,production,calendar}.md, docs/plans/active/db-dashboard-aggregates.md
+
+### 2026-07-09 · Claude Code · 대시보드 캡처 6장 (기능설명 '대시보드 깊게 읽기' 편) [콘텐츠]
+- 의도: 카페 연재 2단계(기능설명) 대시보드 편 이미지 — 연습 계정·실렌더·스크롤 전 구간
+- 한 것: dev(stub=practice@salespt.local)+Playwright(412px·DPR2), tall-viewport 전체 1샷 +
+  섹션 5샷(제목 기준 카드 bbox±12px) → screens/에 대시보드_{전체,A_상단,B_생산성지표,
+  C_퍼널차트,D_주차추이,E_채널성과}.png. Next dev 도구 버튼(N) 제거 후 재촬영, 육안 검증 2장.
+- 결정: 전체샷은 fullPage 대신 **뷰포트=콘텐츠 높이** 방식(고정 하단 STEP 탭이 자연 위치).
+  캡처 스크립트 = scratchpad(shot/capture-dashboard.js) — 재사용 시 복사.
+- 다음: 마커·프레임은 belie(Cowork 콘텐츠 세션)가 씌움. 사고 부기: 메인 체크아웃 npm ci 가
+  좀비 dev 서버(내 3986)에 잠겨 실패→프로세스 종료 후 복구(node_modules 최신화 부수효과).
+- SoR: 경영일지 앱관련 카페글쓰기/screens/, _기능설명_보류(2단계)/
+
+### 2026-07-08 · Cowork(Fable) · 비판적 사고 프로토콜 박제 (CLAUDE.md §3 0.5단계) — ※헤더 복원
+- 의도: 지시-목적 불일치·중복 요청·안전장치 과부족을 실행 전에 걸러내고, 상호 납득으로 완급 조절되는 개발(사용자 지시)
+- 한 것: CLAUDE.md §3에 0.5단계 추가 + Cowork 메모리(feedback-critical-thinking) 박제. 내용 = 실행 전 ①목적 정합 ②더 나은 방법·중복·악수 ③안전장치 과부족 점검 → 납득 안 되면 질문, 반박은 쉬운 말+대안, 재확인 시 수용
+- 결정: R2-7b "3일 그림자 관찰" → 전수 배치 대조+능동 시나리오 배터리로 개정(이 프로토콜의 선례 — 사용자 비판이 설계를 개선)
+- 다음: CLAUDE.md·worklog 변경분은 다음 docs PR에 편승 커밋. 떠 있는 세션엔 지침 추가 한 줄 프롬프트(워크로그 도입 때와 동일 방식)
+- SoR: CLAUDE.md §3 0.5, 메모리 feedback-critical-thinking
+
+### 2026-07-08 · Cowork(Fable) · D3 결정 확정(시트 자동 미러 유지) + R3 프롬프트 시리즈 전달
+- 의도: R2 후속 R3(쓰기 정본 전환) 착수 준비 — 로드맵 D3 결정을 사용자에게 받음
+- 한 것: **D3 = 자동 미러 유지** (DB 정본 전환 후에도 시트에 사본 자동 기록 — 트레이너/운영 열람·롤백 안전망).
+  R3-0(플랜 docs)~R3-5(기수 생성 DB화) 프롬프트 시리즈 전달. R2-2~R2-7b 프롬프트는 이미 전달됨(순차 실행 중)
+- 결정: D3 확정 → R3-0 docs PR 이 로드맵 D3 항목을 답변됨으로 갱신할 것. R3 전 기간 §2.5 보존 가드·편집기간
+  가드 유지(가드 은퇴는 R4 재정의와 함께). R3-5(기수 생성)는 chore/deploy-env-admin-token 선행 필요
+- 다음: R2 시리즈 완주 관찰 → R3-0 착수. 9기 7/10 클레임 안내는 여전히 대기
+- SoR: docs/plans/active/db-first-unlimited-roadmap.md(R3·D3)
+
+### 2026-07-08 · Claude Code · R2-4 실무/수납 DB 전환 완주 (#500) — R2 파일럿 읽기 4탭 완료
+- 의도: R2 트랙 4호 — 02 계약수납 전체 스캔(최중량 read) 제거, 이월 필드 정합 사수
+- 한 것: #500 머지·배포 success 2.6분·health 200. contracts payload 3형태 흡수(rowToCP 재사용), 이월 픽스처 정합 5테스트, sheets_calls 2→0(resolveLayout 포함). plan 2건(R2-3·R2-4) completed 이동 docs PR 진행
+- 결정: company_archive(06)=R2-4b 분리(작음 — read-daily 함수 1개). R2-5(DB생산) 사전조사 완료: loadDBOverview 4 read → db 탭 미러 1쿼리+섹션 파서 재사용이면 됨(패턴 동일)
+- 다음: R2-4b, R2-5 [작업] 대기. 속도 후 수치(#491·#496·#499·#500 코멘트, api_timing 쌓이면). 컨택·일정·수납 3탭 = 파일럿 시트 read 0회 상태
+- SoR: docs/plans/completed/db-read-payments.md, lib/repo/db/read-daily.ts
+
+### 2026-07-08 · Claude Code · R2-3 일정탭 DB 전환(#499) + 배포 캐시(#498) 완주, R2-4 PR 오픈(#500)
+- 의도: R2 트랙 3호(일정·계약 탭) + 배포 시간 단축 chore 를 한 파이프라인으로(캐시 실측에 배포 재활용)
+- 한 것: **#498** npm ci 스킵 게이트+빌드 캐시 보존 — 실측 기준선 4.86분 → 1회차 3.4분(-30%) → 2회차 **2.5분(-49%)**, clean=true 탈출구 검증(4.9분 회귀+강제 로그), playbook 절차 추가. **#499** loadWeekMeetings DB 전환(readMeetingsFromDb 재사용, 새 repo 함수 0 = R2-2 설계 검증, funnel=weekFunnelFromRows 동치) — 시트 3→0회, 배포 success·health 200. **#500**(R2-4 실무/수납) PR 오픈 — contracts payload 3형태(backfill 열문자 C..AK/전체 객체/append 부분+이명 meetingId·원본행id) 흡수, 이월 필드 정합 5테스트, company_archive 는 R2-4b 분리(사유=plan)
+- 결정: 배포는 이제 캐시 경로가 기본(2.5분대), 빌드 이상하면 clean=true 1회(playbook). contracts 는 미러 사이트 2곳이라 payload 형태가 3개 — 이후 탭 전환 시 미러 사이트별 payload 형태 수부터 셀 것
+- 다음: #500 머지·배포 관찰(진행 중), R2-4b(06 company_archive), R2-5(DB생산 탭) 사전조사, 속도 후 수치(#491·#496·#499·#500 코멘트)
+- SoR: docs/plans/active/db-read-payments.md, docs/plans/active/db-read-schedule.md(완료 이동 예정), PR #498 코멘트(실측표)
+
+### 2026-07-08 · Claude Code · R2-2 컨택 미팅·현수막 읽기 DB 전환 완주 (#496)
+- 의도: R2 읽기 전환 2호 — loadDay 잔여 시트 왕복(findByDate 미팅카드·readBanners 주문합) 제거 → 파일럿 컨택 탭 **시트 read 0회**
+- 한 것: #496 머지(36c6dc7)·배포 conclusion=success·health 200. lib/repo/db/read-daily.ts 신설(readMeetingsFromDb·readBannerOrderQtyFromDb), loadDay DB 3쿼리 병렬+전체 시트 fallback, 정합 8테스트, plan completed 이동 후속 docs PR 진행. sheets_calls 5→2(R2-1)→0(본 PR, 캐시 히트 시)
+- 결정: **payload 두 형태 공존 발견** — dual-write=필드명 키, backfill=열문자 키·문자열화(직렬날짜 "46042"·"true"). 변환기(meetingFromDbPayload)가 필드명 우선→열문자를 행 배열 복원해 rowToMeeting 재사용으로 흡수. **R2-3 등 이후 모든 DB read 는 이 이중 형태를 반드시 고려**(read-daily.ts 참조). 미팅 카드 순서는 예약시각 정렬(결정적, 시트 행순과 다름 — 중립)
+- 다음: R2-3(일정·계약 loadWeekMeetings·캘린더 — readMeetingsFromDb 재사용만 하면 됨), #491·#496 속도 후 수치(파일럿 api_timing 쌓이면 PostHog HogQL→PR 코멘트), 대기열 gcal-connect→sync-engine
+- SoR: docs/plans/completed/db-read-meetings-banners.md, lib/repo/db/read-daily.ts
+
+### 2026-07-08 · Claude Code · R2-1.5 아레나 backfill 수렴 완료 — PC 직행 SSH(승인) 경로
+- 의도: "끝까지 완료" — GH 차단으로 대기 중이던 아레나 backfill 을 수렴시켜 R2-1.5 종결
+- 한 것: belie 승인 후 PC→VPS 직접 SSH 로 backfill execute 2회 → DB 대조: **전 탭 기준값
+  (dry-run 1,083행) 이상, 미달 0** (m162/c229/t27=일치/s437/db247/ca78, 전체 1,467행 ≥
+  목표 1,370). 증빙 = PR #492 코멘트. 반복 run 의 스킵 경고는 읽기측 429 노이즈로 판명.
+- 결정: **진단 정정 — fail2ban 아님**(VPS 실측: fail2ban 미설치·ufw inactive·거부 로그 0)
+  → GH러너 차단은 **호스팅 제공사 네트워크 엣지**. 서버측 조치 불필요, #495 재시도가 정답.
+- 다음: p50/p95 후 수치(아레나 유입 후 PostHog → PR #492 코멘트). GH 경로 복구는 다음
+  deploy success 로 자동 판정. R2-2(meetings·banners 읽기 전환) 착수 가능.
+- SoR: docs/plans/active/db-pilot-arena.md
+
+### 2026-07-08 · Cowork · 사용법 시리즈 재기획 실행 (워크플로우 순서로 재배치) [콘텐츠]
+- 의도: (belie) 탭별 how-to 전에 영업 워크플로우를 먼저 가르치고 탭 개념 매핑 + 앱 STEP 순서대로(DB생산 먼저) 재정렬
+- 한 것: 기획 v2 확정(`_사용법시리즈_기획_상세.md`). 12편 폴더/파일/제목/다음편링크 일괄 재번호: **02=워크플로우·탭지도(신설), 03=DB생산(STEP1), 04=컨택관리(구02)**, 05 미팅잡기·06 미팅결과(4케이스 상세)·07 실무수납·08 캘린더·09~12 유지. 구08 대시보드는 `_기능설명_보류(2단계)/`로 이관. 표지 6장(02·04·05·06·07·08) 재렌더, EP2 이미지 신규 2종(탭지도 개념도·대시보드 목표판) 제작·검증. 인벤토리 정합 확인(프리픽스=폴더번호, 마커수=본문)
+- 결정: EP6 미팅결과는 완료·계약·변경·취소 4케이스 각각 상세(+되돌리기·추가미팅). 대시보드 '심화 읽는 법'은 **2단계 기능설명 시리즈**로 분리(사용법 12편 유지). 연재 순서 = 사용법→기능설명
+- 다음: 재배치된 04~08 화면 마커/legend가 새 번호와 맞는지 최종 확인(마커 이미지 자체는 화면 동일이라 유효), 기능설명 시리즈 목차, 게시는 운영세션
+- SoR: `경영일지 앱관련 카페글쓰기/사용법/_사용법시리즈_기획_상세.md`, 메모리 feedback-usage-series-writing
+
+### 2026-07-08 · Claude Code · 아레나 backfill 수렴 완료 + GH 차단 판정 (#495)
+- 의도: #492가 남긴 backfill 미수렴(1,322행) 해소 — GH 러너 차단 우회(PC→VPS 직접 SSH)
+- 한 것: A1-0~A1-6 전체 재실행(경고 0) → 총 유효 1,467행(기준 1,370 ✅). VPS 실측으로 fail2ban 미설치·ufw inactive·iptables ACCEPT 확인 → 제공사 edge 간헐 차단 판정(incident 문서). #495 머지·배포 success(=GH 경로 복구 실증). 유령 행 11건(A1-5 sales) belie 승인 하 _cleared. 증빙 = PR #492 코멘트 2건
+- 결정: (사고·교훈) 기수+row_key는 유일키 아님 — DB 행 지정은 반드시 spreadsheet_id 포함. 1차 마킹이 정상 행 14건까지 건드려 3단계 복구(해제→재실행→타임스탬프 기준 정밀 재마킹)로 손실 0 회복. "유령 추정" 중 3건은 429 읽기 누락 착시 — 멱등 재실행 먼저, 마킹은 그 다음
+- 다음: 제공사 방화벽 콘솔 확인(belie, 재발 시). R2-2(meetings·banners 읽기 전환). #491 후 속도 수치 코멘트(파일럿 api_timing 대기)
+- SoR: docs/incidents/2026-07-08-gh-runner-ssh-ban.md, docs/plans/active/db-pilot-arena.md
+
+### 2026-07-08 · Claude Code · 워크로그 프로토콜 레포 박제 (#494)
+- 의도: Cowork가 워킹트리에 설계해둔 세션 공유 워크로그(이 파일)+CLAUDE.md §3 0단계를 내용 무수정으로 커밋 — 프로토콜을 정본화
+- 한 것: #494 머지(8e089b8)·배포 conclusion=success. 커밋 직전 Cowork 신규 항목 2건 추가 감지 → 브랜치 최신본 재동기화(amend) 후 진행. 이 파일은 이제 git 추적 대상 — 이후 항목은 워킹트리에 쌓고 주기적으로 docs 커밋으로 반영
+- 결정: 워크로그 커밋 주기는 별도 규칙 없음 — 당분간 다른 docs PR에 편승 또는 쌓이면 단독 docs PR
+- 다음: 모든 세션이 §3 0단계 준수(시작 시 읽기·종료 시 쓰기)
+- SoR: CLAUDE.md §3, docs/worklog.md 상단 프로토콜
+
+### 2026-07-08 · Cowork(Fable) · 아레나 backfill 미수렴 확정 → PC 직행 경로로 전환
+- 의도: "다음 할 일" = R2-1.5 잔여 리스크 점검 — 예약된 backfill 재시도가 성공했는지 판정
+- 한 것: admin 배너 실측 **1,322행** = execute#1(1,035행) 이후 증가 없음 → GH 재시도 여전히 차단.
+  스킵 5시트의 아레나 사용자는 DB 읽기 ON 상태에서 과거 daily 누락 = 화면 숫자 틀릴 리스크 지속
+- 결정: GH 러너 경유 포기, **belie PC→VPS 직접 SSH로 backfill 수렴**(포트22 PC에선 열림 활용).
+  fail2ban/방화벽 원인 규명 + backfill 워크플로 rc=255 재시도 내장을 같은 PR로
+- 다음: fix/arena-backfill-converge 프롬프트 전달됨(Claude Code, PC에서 실행). 수렴 기준=
+  배너 ≥1,370행 + 대조표 일치 + 이후 deploy 1회 success로 GH 경로 복구 판정
+- SoR: docs/plans/active/db-pilot-arena.md
+
+### 2026-07-08 · Claude Code · R2-1.5 아레나 편입 코드 완주(#492) + backfill 은 SSH 차단으로 대기
+- 의도: R2 트랙 1.5호 — 아레나(최대 활성 집단)를 DB 읽기 파일럿에 편입
+- 한 것: #492 머지·배포 conclusion=success·200. 게이트=isArenaCohortLabel 재사용(라벨 그대로,
+  R5 불변), 이중기록은 이미 전 기수 확인(변경 0), backfill --cohort 콤마 목록. 테스트 42/42.
+  backfill: dry-run 성공(39시트·1,083행) → execute#1 부분성공(1,035행, sales 스킵 5=429계열)
+  → 재실행 2회 연속 **rc=255**. 진단: 포트22가 **belie PC에선 열림·GH 러너에서만 차단** —
+  오늘 SSH 폭주로 fail2ban/제공사 방화벽의 GH IP 대역 차단 추정. 20분 이격 재시도 예약됨.
+- 결정: backfill 수렴 판정 = 파싱실패 경고 0 + 시트/DB 대조표 일치(멱등 재실행으로 수렴)
+- 다음: 재시도 성공 시 대조표→PR #492 코멘트. 반복 실패 시 belie가 VPS fail2ban/방화벽 확인
+  필요(제공사 콘솔). 하네스 개선 후보: backfill 워크플로에도 deploy 식 rc=255 재시도 루프
+- SoR: docs/plans/active/db-pilot-arena.md
+
 ### 2026-07-08 · Cowork · chore/api-timing-baseline = 이미 #484로 완료·배포 확인(중복 회피)
 - 의도: DB 이전 효과 증명용 P0 기준선(api_timing 계측) PR 완주 지시 받음
 - 한 것: 착수 전 상태 확인 → api_timing 계측이 **이미 master 반영**(PR #484 `11f2da1`, withApiTiming 58라우트 래핑 + AsyncLocalStorage sheets_ms/sheets_calls + PostHog api_timing). #487/R2가 이 계측 위에서 동작 중. 사이트 health 200(prod release 확인). **재구현·머지 안 함**
@@ -167,23 +355,3 @@
 - 결정: R2(읽기 전환)를 9기 자연 관찰 없이 조기 착수(시트=정본 유지라 fallback 가능). 아레나 속도 개선을 R5(체계 통합)에서 분리 — R2-1 검증 후 R2-1.5로 편입. admin의 DB 진단 UI는 /admin 하단 배너뿐(/admin/db-parity 라우트 없음 — 무한로딩 함정 주의)
 - 다음: R2-1 실행(Claude Code) → 머지·배포 확인 후 R2-1.5. 9기 7/10 클레임 안내(부부=박진우(조다영) 한 명만). 9기 첫 기록 dual-write 관찰(블로커 아님)
 - SoR: docs/plans/active/db-first-unlimited-roadmap.md(R2·§B), docs/plans/active/db-migration-pilot.md
-
-### 2026-07-07~08 · Cowork · 9기 생성 (admin 우회, Drive 직접)
-- 의도: 9기 5명(구상희·유민영·박진우(조다영)·오이슬·전수민, 개강 7/10) 시트·레지스트리 준비
-- 한 것: admin 기수 생성 실패(VPS에 ADMIN_DRIVE_REFRESH_TOKEN 미설정) → Drive copy_file로 5시트 직접 복제(9기 루트 폴더). O1/O2를 RAW로 써서 전면 #VALUE! 사고 → USER_ENTERED 재기록으로 해결(Claude Code fix/cohort9-finalize). 시작 7/10·종강 8/29(+50일)
-- 결정: 개별 시트 날짜 셀은 반드시 USER_ENTERED (RAW면 날짜가 텍스트가 되어 수식 전멸). 레지스트리는 RAW 유지
-- 다음: chore/deploy-env-admin-token(다음 기수부터 admin 버튼으로) — 프롬프트 전달됨, 미실행
-- SoR: docs/decisions/0005(날짜 규칙), docs/decisions/0015(시트 복제=belie OAuth)
-
-### 2026-07-06~07 · Cowork+Claude Code · DB 파일럿 인프라~백필 (PR #480~#488)
-- 의도: 앱 느림의 구조적 해결 — Sheets→Supabase(관리형 Postgres) 전환 1단계(이중기록)
-- 한 것: 기획 등재(#480), Supabase 확정(Seoul, PG17, 프로젝트 aoevgfroxdvgbmgvzlfb)(#482), GitHub Secrets→VPS .env 주입(#481), api_timing 계측 기준선(#484), 인프라(#485), 배포 SSH 재시도(#486), dual-write 24훅(#487), 8기 backfill 273건(#488). DATABASE_URL 호스트 오입력 사고 → keep-alive로 발견·교체
-- 결정: DB 비밀번호 등 자격증명은 에이전트가 평문 조합·기입 금지(고정 원칙). 시트가 정본인 동안 DB 장애=무영향(fire-and-forget)
-- 다음: (7/8에 이어짐 — 위 항목)
-- SoR: docs/plans/active/db-migration-pilot.md, docs/handoffs/2026-07-06-owner-return-checklist.md
-
-### 2026-07-06~07 · Cowork · 구글 캘린더 연동 준비 100% (구현 대기)
-- 의도: 미팅 예약을 수강생 구글 캘린더에 자동 반영 ("항상 기억" 지시)
-- 한 것: 기획+ADR-0028 등재(#477), GCP 콘솔 사전작업 3종 직접 완료(Calendar API 활성·scope 등록·리디렉션 URI, 계정 beliefkimkim), NEW 뱃지 앵커 calendar.gcalCard 예약(#479)
-- 다음: feat/gcal-connect → feat/gcal-sync-engine (DB 트랙과 레포 구역 겹침 → R2-1 이후 순차 실행 권장). SoR의 §4-1 문구표·§8 QA 30케이스 최신본은 워킹트리 기준
-- SoR: docs/plans/active/google-calendar-sync.md
