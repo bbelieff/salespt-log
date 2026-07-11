@@ -313,13 +313,25 @@ export async function terminateContract(
   });
 }
 
-/** row 통째로 clear. */
+/** 이 사용자의 삭제가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1). */
+async function resolveSheetWithSyncDb(
+  email: string,
+): Promise<{ spreadsheetId: string; syncDb: boolean }> {
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
+  return {
+    spreadsheetId: user.spreadsheetId,
+    syncDb: chooseDailySource(user.cohort, dbEnabled()) === "db",
+  };
+}
+
+/** row 통째로 clear. 파일럿은 시트+DB 동시(실패 시 에러 — 조용한 반쪽 삭제 금지). */
 export async function removeContractPayment(
   email: string,
   row: number,
 ): Promise<void> {
-  const spreadsheetId = await resolveSheet(email);
-  await clearRow(spreadsheetId, row);
+  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
+  await clearRow(spreadsheetId, row, { syncDb });
 }
 
 /**
@@ -342,14 +354,14 @@ export async function removeContractPaymentWithCascade(
   meetingId: string | null;
   미팅날짜: string | null;
 }> {
-  const spreadsheetId = await resolveSheet(email);
+  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
 
   // 1) 삭제 전 row 의 (계약일, 업체명) 읽기 — cascade key.
   // resolveLayout 경유로 6기 `02 계약관리` 탭 alias 자동 처리 (bugfix 2026-06).
   const { 계약일, 업체명 } = await readContractCascadeKey(spreadsheetId, row);
 
-  // 2) clearRow
-  await clearRow(spreadsheetId, row);
+  // 2) clearRow — 파일럿은 시트+DB 동시(조용한 반쪽 삭제 금지)
+  await clearRow(spreadsheetId, row, { syncDb });
 
   // 3) 매칭 미팅 찾기
   if (!계약일 || !업체명) {

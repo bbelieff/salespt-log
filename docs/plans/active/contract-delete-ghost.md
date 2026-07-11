@@ -56,6 +56,18 @@ Cowork 초기 가설 = "삭제가 DB 미러에 미반영(유령 행)".
 - [ ] 정합 테스트 초록(기존 5 + 신규 4) + check.sh + 배포 success + health 200.
 - [ ] 유령이 이월/건수에 남지 않음: r3 가드로 즉시, r5 는 repair 마킹으로.
 
+## 4.5 작업1 보완 (2026-07-12, 오케스트레이터 스펙 전문 수령 후)
+
+- **삭제 = 시트+DB 동시(조용한 반쪽 삭제 금지)**: `clearRow(..., {syncDb})` — 파일럿
+  (chooseDailySource="db")은 `clearContractRowInDbSync`(await + 1회 재시도, 최종 실패 =
+  사용자 에러 — 시트는 이미 clear 라 재삭제 멱등)로 승격. 비파일럿(시트 read 화면)은
+  기존 fire-and-forget 유지 — DB 장애가 비파일럿 삭제를 막지 않게. 회귀 테스트 5.
+- **전 파일럿 시트↔DB 계약 행 대조 1회**(2026-07-12 VPS, 읽기 전용): 50시트 중
+  **파일럿(8·9·아레나) 불일치 0**. 불일치 3건은 전부 비파일럿(연습 계정 cohort=""·7기 2명
+  — 화면이 시트 read 라 무영향, dual-write 이전 계약의 미러 부재 = R4 전환 시 백필 대상).
+  ※ 발견: practice 계정 레지스트리 cohort 가 빈 값 → isDbReadPilot=false. R3 트랙의
+  "연습 유예주차 DB=0 이상"은 손상이 아니라 **비파일럿 미백필**로 설명됨.
+
 ## 5. 남긴 것 / 후속
 
 - **mirror fire-and-forget 무재시도**(유령 행 리스크 일반형)는 R3-3(contracts 쓰기
