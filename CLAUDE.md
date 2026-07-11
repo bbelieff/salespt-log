@@ -295,7 +295,8 @@ master 푸시 시 GitHub Actions 가 `scripts/check.sh` 를 그대로 실행. �
 **원칙 (2026-06-03 사용자 지시)**: PR 머지로 끝내지 않는다. **머지 → 배포 관찰 → health 확인까지가 한 작업.** 문제 시 **즉시 롤백**.
 
 **자동 배포**: `master` push 시 `.github/workflows/deploy.yml` 이 자동 트리거(수동 = `gh workflow run "Deploy to VPS"`).
-워크플로우(요약): VPS `/opt/salespt-log` 에서 `git reset --hard origin/master` → `npm ci` → `npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, `.next` 삭제 후 빌드, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → health check(로컬 `:3000` + 공개 `https://salesptlog.online`).
+워크플로우(요약): VPS `/opt/salespt-log` 에서 `git reset --hard origin/master` → `npm ci` → `npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, `.next-build` 에 빌드→원자 swap, **BUILD_ID 검증**) → `pm2 reload salespt-log` → health 게이트(실패 시 자동 롤백).
+원격 스크립트는 **detached(`setsid`)로 실행**되어 러너↔VPS 연결이 끊겨도 끝까지 완주한다(연결끊김→`.next` 손상→502 사이트다운 재발방지, 2026-07-09). 배포 성공/실패의 정본 = 원격이 남긴 `.deploy/<run>.status`. 상세 = `docs/playbooks/deploy-vps.md §0`.
 
 **에이전트 절차**:
 1. **머지 직전 last-good SHA 기록** — `git rev-parse origin/master` (롤백 타겟).

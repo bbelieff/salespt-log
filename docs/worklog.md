@@ -49,6 +49,20 @@
 - 다음: **⚠️ 라이브 학생 저장경로** — ①(detached 배포)이 health 200 확인된 뒤 머지·배포 관찰. 롤백=chooseWriteSource 게이트 뒤집기 즉시 R2. 후속 R3-2(미팅)
 - SoR: docs/plans/active/db-write-flip.md §6 R3-1, lib/service/sales-write.ts
 
+### 2026-07-09 · Claude Code · 🛡️ 배포 원격 스크립트 detached 실행 (chore/deploy-detached-remote)
+- 의도: belie "1,2,3 순차 진행"의 ①. 2026-07-09 사이트다운 인시던트(연결끊김→`.next` 손상→502) 하네스 재발방지
+- 한 것: deploy.yml "Deploy on VPS" 스텝의 **실행 래퍼만** 교체($REMOTE 본문 불변). 동기 `ssh "$REMOTE"` → 원격 `.deploy/` 에 스크립트 업로드 후 `setsid ... </dev/null >/dev/null 2>&1 &` **detached 실행** + 상태파일(`<run>.status`) **재접속 폴링**(최대 25분) + 전체로그 덤프. `flock` 로 VPS 상 배포 직렬화. ssh_do(rc=255만 7×20s 재시도, stdin 파일 재오픈). YAML 파싱·`bash -n` 4스텝 초록 + 적대적 리뷰(따옴표/errexit/detach/race 4차원)
+- 결정: **배포 성공/실패 정본 = 원격 `.status` 코드**(러너 연결상태 아님). 연결이 swap 도중 끊겨도 배포는 완주 → 사이트다운 원천 차단. 문서 반영: deploy-vps.md §0, CLAUDE.md §6.8
+- 다음: ②R3-1(컨택 쓰기 뒤집기). ⚠️ **첫 배포가 이 래퍼의 실전 첫 테스트** — 머지 후 run 관찰 필수(래퍼 버그 시에도 $REMOTE 원자 swap 이 사이트 보호). belie 최우선=provider 도달성 장애 해소(③)
+- SoR: .github/workflows/deploy.yml, docs/playbooks/deploy-vps.md §0, docs/incidents/2026-07-09-deploy-connection-drop-site-down.md
+
+### 2026-07-09 · Claude Code · 🚨 배포 연결끊김으로 사이트 다운→복구 + #490 닫기·#516 살림
+- 의도: R3-0 후 belie "겸사겸사 #490 처리". #490 판정·정리 + 그 과정의 인시던트
+- 한 것: **#490 닫기**(finalize-cohort9.mjs 이미 #11로 master·수리 실행완료·CONFLICTING). 유일 고유콘텐츠(setup-sheets #VALUE! 재발방지)는 **#516 으로 살림**(머지·배포). 그런데 **#516 배포가 도달성장애로 실행중간 끊겨 `.next` 손상→크래시루프→502 사이트다운**. `gh run rerun --failed` 재빌드로 **복구(health 200·pm2 uptime 안정)**
+- 결정: **인시던트 박제** docs/incidents/2026-07-09-deploy-connection-drop-site-down.md. 근본원인=rc=255 도달성장애가 원격 스크립트를 swap 부근에서 끊음(deploy.yml 은 원자스왑 설계인데도 연결 끊기면 깨짐). **도달성장애가 이제 사이트다운 리스크로 격상** → 위 detached chore 로 재발방지
+- 다음: **belie 최우선 — provider 도달성장애 해소**(배포마다 재확인 성가심 지속). 위 detached 로 사이트다운은 차단됨
+- SoR: docs/incidents/2026-07-09-deploy-connection-drop-site-down.md, .github/workflows/deploy.yml
+
 ### 2026-07-09 · Claude Code · R3-0 쓰기 정본 전환 설계 등재 (docs) — R3 착수
 - 의도: gcal 트랙 종료 후 belie "R3 착수". R3 프롬프트는 세션 압축돼 있어 세션 기록에서 원문 복원(못받은 것 아님). R3-0=쓰기 정본 전환 설계 문서(docs PR)
 - 한 것: docs/plans/active/db-write-flip.md 신규 — 쓰기경로 인벤토리(7탭: sales·meetings·todos·contracts·company_archive·db·carryover, dual-write 미러 훅=R3 정본 대상)·전환 패턴(DB 동기 정본+시트 비동기 미러, 실패=사용자에러·폴백금지)·드리프트 감시·**탭별 롤백 스위치**·가드 유지(§2.5·편집기간, 은퇴는 R4)·PR 분할(R3-1~5). db-migration-pilot §0 에 D3(미러 유지) 답변 확정
