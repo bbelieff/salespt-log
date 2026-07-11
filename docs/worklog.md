@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-11 · Claude Code · gcal 귀속 수정 라이브 카나리아 통과 → plan completed (#519 마감)
+- 의도: belie "카나리아를 자체적으로 돌려봐" — #519(gcal 귀속·localhost 복귀 수정) 수용기준 마지막 항목을 에이전트가 직접 검증
+- 한 것: 운영자 Chrome 실세션으로 2케이스 실측. ①임퍼스네이션: 표시=화면의 수강생 상태(connected:false·impersonated:true), 카드 "본인 로그인에서만" + POST/DELETE/resync 전부 403 ②본인 실연결: OAuth 동의 완주 → **salesptlog.online/calendar 복귀(localhost 0회)**, connected:true·본인 계정 귀속·캘린더 목록 실로드. 레지스트리 마스터 행 S(토큰)·T(settings) 저장 실측 후 연결해제+스크립트로 원상복구(재실측 둘 다 빈 값)
+- 결정: 수용기준 전항목 충족 → plan 을 completed 로 이동
+- 다음: gcal 후속(동기화 엔진 QA·다시 올리기 실사용 검증)은 별도 트랙
+- SoR: docs/plans/completed/gcal-per-user-identity.md
+
 ### 2026-07-09 · Claude Code · R3-1 컨택 4지표 쓰기 정본 전환 (feat/db-write-daily) — 첫 R3 코드 PR
 - 의도: belie "1,2,3 순차/논스톱"의 ②. R3-1=sales 컨택 4지표 저장을 시트→DB 정본으로 뒤집기(파일럿만)
 - 한 것: `chooseWriteSource`(daily-source.ts, 읽기 게이트 대칭·isDbReadPilot 재사용) + `writeSalesRowsToDb`

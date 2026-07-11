@@ -1,6 +1,6 @@
 ---
 slug: gcal-per-user-identity
-status: active
+status: completed
 created: 2026-07-10
 owner: belie
 related: google-calendar-sync, ADR-0028
@@ -36,3 +36,10 @@ related: google-calendar-sync, ADR-0028
 
 ## Log
 - 2026-07-10 구현.
+- 2026-07-11 라이브 카나리아 통과 (PR #519 배포 후, 운영자 실계정):
+  - 임퍼스네이션 화면: 표시=화면의 수강생 상태(connected:false·impersonated:true),
+    카드 "본인 로그인에서만" 문구, 조작(POST/DELETE/resync) 전부 403.
+  - 본인 실연결: OAuth 동의 → salesptlog.online/calendar 복귀 (**localhost 0회**),
+    카드 연결됨 + 캘린더 목록 실로드, GET /api/gcal connected:true·본인 계정 귀속.
+  - 레지스트리 실측: 마스터 행 S=암호화 토큰 저장·T=settings 생성 확인 후
+    연결 해제(DELETE 200 → S 비움)·T 스크립트 비움으로 원상복구, 재실측 둘 다 빈 값.
