@@ -1316,6 +1316,8 @@ components/dashboard/
 |---|---|
 | **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동). `courseStartISO?` — 이월 판정(isCarryoverContract: 계약일<시작일 OR 깃발)으로 뱃지·흐림 표시(arena-start-revenue-split). |
 | **TerminationModal** | 계약해지 입력 모달 (contract-termination). 사유(필수 textarea) + 반환 라디오(없음/일부/전액 — 일부=금액 input) + 처리 라디오(해지 상태 보존/카드 숨김 soft delete). 확인 시 POST /api/contract-payment/[row]/terminate. Props: `cp: ContractPayment`, `onClose`, `onDone`. 해지 카드엔 ContractRow 가 "해지" 뱃지+사유·반환액 노출. |
+| **DeleteConfirmModal** | 계약수납 삭제 확인 모달(cascade 옵션) — page.tsx 500줄 캡으로 분리(contract-termination PR), 마크업·동작 무변경. Props: `label`, `cascadeOpt`, `onCascadeChange`, `onCancel`, `onConfirm`. |
+| **nameHighlight** | (컴포넌트 아님·헬퍼 모듈) `renderNameWithHighlight`(업체명 검색어 `<mark>`)·`fmtMoney`·`fmtDate` — ContractRow 500줄 캡으로 분리. |
 | **PriorContractSection** | 이전(아레나 시작 전) 계약업체 등록 버튼 + 알림 모달({시작일} 동적) + ContractForm(수임비·계약조건) 재사용 폼 → POST /api/contract-payment/prior(구분=이월). + 아레나/이월 매출 2카드(isCarryoverContract 로 분리 합산). Props: `contracts`, `courseStartISO`. arena-start-revenue-split §A·B. |
 | **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
