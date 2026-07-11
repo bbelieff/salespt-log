@@ -102,13 +102,16 @@ async function extractUserRows(sid) {
     if (id) out.todos.push({ rowKey: id, payload: rowObj(r), row: i + 2 });
   }
   // 02 계약수납 — 행 고정 키 r{행}. 신형(계약수납관리) 우선, 구형(계약관리) 폴백.
-  for (const tabName of ["02 계약수납관리", "02 계약관리"]) {
+  // 시작행 = 앱 레이아웃(lib/repo/contract-payment.ts TAB_ALIASES)과 동일: 신형 6 / 구형 5.
+  // 과거 `>= 3` 이 헤더·예시 구간(r3 "수납총액" 안내행, r5 "00유통" 템플릿 예시행)을
+  // 유령 계약으로 적재한 사고 수정(2026-07-12, 전 기수 94행 — repair 스크립트로 정리).
+  for (const [tabName, firstDataRow] of [["02 계약수납관리", 6], ["02 계약관리", 5]]) {
     const rows = await grid(sid, `'${tabName}'!C1:AK`);
     if (rows.length === 0) continue;
     rows.forEach((r, i) => {
       const 계약일 = String(r[0] ?? "").trim(); // C
       const sheetRow = i + 1;
-      if (계약일 && sheetRow >= 3 && !/계약일/.test(계약일)) {
+      if (계약일 && sheetRow >= firstDataRow && !/계약일/.test(계약일)) {
         out.contracts.push({ rowKey: `r${sheetRow}`, payload: rowObj(r, 2), row: sheetRow });
       }
     });
