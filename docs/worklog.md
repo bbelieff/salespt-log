@@ -52,12 +52,26 @@
   → admin 기수 생성 테스트 기수 1개 생성→삭제 왕복 검증
 - SoR: .github/workflows/deploy.yml, docs/playbooks/deploy-vps.md "Secret 추가 절차", ADR-0015
 
+### 2026-07-12 · Claude Code · [병렬트랙 B] R3-0 재지시 = 중복 판정 → 로드맵 등재·D3 답변됨 (#525)
+- 의도: Dev3-B 지시 "R3-0 쓰기 정본 전환 플랜 등재(docs/db-write-flip-plan)" — 착수 전 §3 0.5 대조
+- 한 것: db-write-flip.md = #515 기등재 + R3-1 로그 반영 확인, 지시 ①인벤토리~⑤가드 전 항목 기충족 → **재등재 안 함**(검증 로그만 추가). 실변경 = db-first-unlimited-roadmap.md 레포 등재(R2 플랜 죽은 링크 해소) + D3 답변됨(시트 미러 유지). 겸사겸사(CLAUDE.md §3.5 박제·워크로그 유니온)는 #523(A트랙 계약 PR)이 선행 이행 — 리베이스 no-op 확인
+- 결정: 로드맵 파일 등재 = R3-0 이 "belie 판단 대기"로 남긴 건을 이번 오케스트레이터 지시로 확정 처리
+- 다음: R3-2~5 는 오케스트레이터 지시 대기. 메인 체크아웃 #491 고착(pull 차단) 정리 필요
+- SoR: docs/plans/active/db-write-flip.md(Log), PR #525
+
 ### 2026-07-12 · Claude Code · gcal 읽기 경로 45열 시트 grid limits 내성 (fix/gcal-event-ids-grid-limits)
 - 의도: #521 카나리아 실측 버그 — 04 가 45열(AT 미생성)인 시트에서 gcal 읽기 400 → upsert 무음실패·[다시 올리기] 500·토글 초기상태 실패
 - 한 것: readCell·readGcalStates 에 "exceeds grid limits" 400 → 빈 맵/기본 ON 처리(400+메시지 보수 가드, 그 외 에러는 전파) + 단위테스트 6종(tests/repo/gcal-event-ids-grid.test.ts) + 플랜 §2 등재
 - 결정: 읽기 경로에 그리드 확장(쓰기) 안 붙임 — 확장은 setGcalEventId 만. 컬럼 없음=매핑·마커 없음(의미 동치)
 - 다음: 배포 후 연습 시트(45열 상태) 회귀 확인 — 레지스트리 수정은 belie 승인 필요, 코드 리뷰·테스트 수준 검증으로 갈음
 - SoR: docs/plans/active/google-calendar-sync.md §2
+
+### 2026-07-12 · Claude Code · [병렬트랙 B] Dev3-B(260712~) 구역 선언 — docs/ 전용 (playbooks 제외)
+- 의도: Dev3 병렬 배치 B트랙 시작 — CLAUDE.md §3.5 규칙 1(트랙 선언). 코드 파일 수정 금지 트랙
+- 구역: `docs/**` 단 ①`docs/playbooks/**` 제외(C트랙 소유 — C 선언 준수) ②SSOT 4문서(design/components·design/tokens·domains/data-model·domains/sheet-structure)는 §3.5 공용부(계약) — 수정 필요 시 단독 PR 선행 ③`docs/worklog.md`는 전 트랙 공유 append(§3.5 예외)
+- 겹침 점검: A트랙(수납 lib·app)·C트랙(deploy.yml+playbooks)과 겹침 없음(2026-07-12 확인). 워크로그 이본 유니온 병합·아카이브·헤더 복원은 A트랙 선행 계약 PR이 이미 수행 — 중복 착수 회피(§3 0.5)
+- 다음: B트랙 작업 스펙 수령 후 착수. 머지는 §3.5 규칙 3(직렬 머지 + §6.8 배포 관찰)
+- SoR: CLAUDE.md §3.5
 
 ### 2026-07-12 · Claude Code · [병렬트랙 A] Dev3-A(260712~) 구역 선언 — 수납(계약수납) 트랙
 - 의도: Dev3 병렬 배치 A트랙 시작 — 7/10 이용호 신고 트랙(fix/contract-delete-ghost → feat/contract-termination) 실행. CLAUDE.md §3.5 규칙 1(트랙 선언)
