@@ -25,7 +25,11 @@ import {
   updateUserFields,
 } from "@/repo/contract-payment";
 import type { CompanyInfo, ContractPayment } from "@/types";
-import { findByDate, updateMeeting } from "@/repo/meetings";
+import {
+  findMeetingsByDateRecord,
+  patchMeetingRecord,
+  type MeetingCtx,
+} from "./meetings-write";
 import {
   readCompanyInfoArchiveRow,
   renameCompanyInfoKey,
@@ -33,10 +37,12 @@ import {
 } from "@/repo/company-info-archive";
 import { writeTermination } from "@/repo/contract-payment-termination";
 
-async function resolveSheet(email: string): Promise<string> {
+/** R3-2: 04 미팅 프리미티브(meetings-write)에 게이트 판정 재료(cohort·email)를 넘기기 위해
+ * spreadsheetId 단독 대신 ctx 반환 — 02 시트 경로 자체는 R3-3 소관으로 불변. */
+async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
-  return user.spreadsheetId;
+  return { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email };
 }
 
 // isCarryoverContract(이월 판정 단일 결정점)은 클라이언트(실무수납 UI)도 써야 하므로
@@ -77,7 +83,8 @@ export async function editContractLinkedFields(
     next: { 계약일?: string; 업체명?: string; 수임비?: number };
   },
 ): Promise<{ failures: string[] }> {
-  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
+  // R3-2+R3-3 병합: syncDb(02 편집 dual-sync)·ctx(04 미팅 프리미티브) 둘 다 필요.
+  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
   const failures: string[] = [];
   const new계약일 = input.next.계약일 ?? input.old.계약일;
   const new업체명 = input.next.업체명 ?? input.old.업체명;
@@ -119,7 +126,7 @@ export async function editContractLinkedFields(
       const partial: { 업체명?: string; 수임비?: number } = {};
       if (업체명Changed) partial.업체명 = new업체명;
       if (수임료Changed) partial.수임비 = input.next.수임비;
-      await updateMeeting(spreadsheetId, input.meetingId, partial);
+      await patchMeetingRecord(ctx, input.meetingId, partial);
     } catch {
       failures.push("04 업체관리(미팅)");
     }
@@ -145,11 +152,14 @@ export async function addFromContract(
   email: string,
   data: { 계약일: string; 업체명: string; 수임비: number },
 ): Promise<{ row: number }> {
-  const spreadsheetId = await resolveSheet(email);
+  const ctx = await resolveCtx(email);
+  const spreadsheetId = ctx.spreadsheetId;
   // 출발 미팅 lookup — 이월 깃발 상속(§3) + 06 스냅샷 양쪽에 사용.
+  // R3-2: 파일럿은 DB — 시트 미러 lag 로 방금 계약된 미팅을 못 찾아 AK 링크·이월 깃발이
+  // 빠지는 split-brain 방지(읽기 동반 전환 원칙).
   let m;
   try {
-    const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
+    const meetings = await findMeetingsByDateRecord(ctx, data.계약일, "meeting");
     m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
   } catch {
     m = undefined;
@@ -190,7 +200,7 @@ export async function addPriorContract(
   email: string,
   cp: ContractPayment,
 ): Promise<{ row: number }> {
-  const spreadsheetId = await resolveSheet(email);
+  const { spreadsheetId } = await resolveCtx(email);
   // append 계열 = R2 미러 유지(dual-sync 제외). 근거(db-write-flip §6 R3-3): append 는 행번호를
   // 시트가 할당(findFirstEmptyRow)하고 매 호출 새 prior:uuid 를 부여해 멱등키가 없다. 직후 dual-sync
   // updateUserFields(실패 throw)를 걸면 사용자 재시도가 append 를 재실행 → 중복 계약행 = 매출 이중계상.
@@ -245,7 +255,11 @@ export async function loadCompanyInfoByContract(
   const archived = await readCompanyInfoArchiveRow(spreadsheetId, data.계약일, data.업체명);
   if (hasCompanyInfo(archived)) return archived;
   try {
-    const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
+    const meetings = await findMeetingsByDateRecord(
+      { spreadsheetId, cohort: user.cohort, email },
+      data.계약일,
+      "meeting",
+    );
     const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
     if (m?.업체정보 && hasCompanyInfo(m.업체정보)) return m.업체정보;
   } catch (e) {
@@ -265,12 +279,13 @@ export async function saveCompanyInfoByContract(
   email: string,
   data: { 계약일: string; 업체명: string; 업체정보: CompanyInfo },
 ): Promise<{ meetingUpdated: boolean }> {
-  const spreadsheetId = await resolveSheet(email);
+  const ctx = await resolveCtx(email);
+  const spreadsheetId = ctx.spreadsheetId;
   let meetingUpdated = false;
-  const meetings = await findByDate(spreadsheetId, data.계약일, "meeting");
+  const meetings = await findMeetingsByDateRecord(ctx, data.계약일, "meeting");
   const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
   if (m) {
-    await updateMeeting(spreadsheetId, m.id, { 업체정보: data.업체정보 });
+    await patchMeetingRecord(ctx, m.id, { 업체정보: data.업체정보 });
     meetingUpdated = true;
   }
   await upsertCompanyInfoArchive(spreadsheetId, data);
@@ -330,12 +345,13 @@ export async function terminateContract(
 /** 이 사용자의 삭제가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1). */
 async function resolveSheetWithSyncDb(
   email: string,
-): Promise<{ spreadsheetId: string; syncDb: boolean }> {
+): Promise<{ spreadsheetId: string; syncDb: boolean; ctx: MeetingCtx }> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   return {
     spreadsheetId: user.spreadsheetId,
     syncDb: chooseDailySource(user.cohort, dbEnabled()) === "db",
+    ctx: { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email },
   };
 }
 
@@ -368,7 +384,7 @@ export async function removeContractPaymentWithCascade(
   meetingId: string | null;
   미팅날짜: string | null;
 }> {
-  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
+  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
 
   // 1) 삭제 전 row 의 (계약일, 업체명) 읽기 — cascade key.
   // resolveLayout 경유로 6기 `02 계약관리` 탭 alias 자동 처리 (bugfix 2026-06).
@@ -377,7 +393,7 @@ export async function removeContractPaymentWithCascade(
   // 2) clearRow — 파일럿은 시트+DB 동시(조용한 반쪽 삭제 금지)
   await clearRow(spreadsheetId, row, { syncDb });
 
-  // 3) 매칭 미팅 찾기
+  // 3) 매칭 미팅 찾기 (R3-2: 파일럿=DB — 읽기 동반 전환)
   if (!계약일 || !업체명) {
     return {
       cascade: "row 의 계약일/업체명 비어있어 cascade 생략",
@@ -385,7 +401,7 @@ export async function removeContractPaymentWithCascade(
       미팅날짜: null,
     };
   }
-  const meetings = await findByDate(spreadsheetId, 계약일, "meeting");
+  const meetings = await findMeetingsByDateRecord(ctx, 계약일, "meeting");
   const target = meetings.find(
     (m) => m.업체명.trim() === 업체명 && m.상태 === "계약",
   );
@@ -397,8 +413,8 @@ export async function removeContractPaymentWithCascade(
     };
   }
 
-  // 4) 미팅 revert
-  await updateMeeting(spreadsheetId, target.id, {
+  // 4) 미팅 revert (gcal reconcile 포함 — 경로별 내부 처리)
+  await patchMeetingRecord(ctx, target.id, {
     상태: "예약",
     계약여부: false,
     수임비: 0,

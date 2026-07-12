@@ -13,9 +13,14 @@ import {
 } from "@/repo/users-arena";
 import {
   appendCarriedMeeting,
+  carriedMeetingPayload,
   listCarriedMeetingKeys,
   listCarrySourceMeetings,
 } from "@/repo/carryover";
+import { chooseWriteSource } from "./daily-source";
+import { dbEnabled, writeRowToDb } from "@/repo/db/client";
+import { listCarriedMeetingKeysFromDb } from "@/repo/db/read-daily";
+import { queueMeetingSheetSync } from "./meetings-write";
 import {
   appendFromContract,
   readAll as readAllContracts,
@@ -61,18 +66,40 @@ export async function migrateArenaCarryover(
   }
   report.prior = { cohort: prior.cohort, spreadsheetId: prior.spreadsheetId };
 
-  // ── 04 예약 미팅 이월 (멱등: AP 원본키) ──
+  // ── 04 예약 미팅 이월 (멱등: AP 원본키 — 파일럿은 시트∪DB 양 키 합집합) ──
+  // R3-2: 아레나(항상 파일럿)는 DB 동기 정본 + 시트 수렴 잡. 전환기 재실행 중복 방지를 위해
+  // 멱등키를 시트 AP 와 DB(신형 AP·구형 원본행id) 합집합으로 판정.
+  const dbPrimary = chooseWriteSource(arenaUser.cohort, dbEnabled()) === "db";
   const [sources, carried] = await Promise.all([
     listCarrySourceMeetings(prior.spreadsheetId),
     listCarriedMeetingKeys(arenaSheetId),
   ]);
+  if (dbPrimary) {
+    for (const k of await listCarriedMeetingKeysFromDb(arenaSheetId)) carried.add(k);
+  }
+  const arenaCtx = {
+    spreadsheetId: arenaSheetId,
+    cohort: arenaUser.cohort,
+    email,
+  };
   for (const src of sources) {
     if (carried.has(src.원본id)) {
       report.meetings.skipped++;
       continue;
     }
     try {
-      await appendCarriedMeeting(arenaSheetId, src, randomUUID());
+      const newId = randomUUID();
+      if (dbPrimary) {
+        await writeRowToDb({
+          ...arenaCtx,
+          tab: "meetings",
+          rowKey: newId,
+          payload: carriedMeetingPayload(src, newId),
+        });
+        queueMeetingSheetSync(arenaCtx, newId); // 시트는 수렴 잡이 반영(재실행 드리프트 자기수정)
+      } else {
+        await appendCarriedMeeting(arenaSheetId, src, newId);
+      }
       report.meetings.copied++;
     } catch (e) {
       report.meetings.failed.push(

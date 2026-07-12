@@ -92,6 +92,14 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     (c) patch 병합기반: DB(정본) 우선 — **_cleared(삭제됨)와 DB 공백을 구분**(삭제면 에러, 공백만
     시트 self-heal). (d) gcal 이벤트ID 맵=시트 행(O열) → gcal reconcile 은 동기화 잡 안 **행 보장 후**
     최신 상태(known)로만 실행(행 없이 실행 시 이벤트ID 유실→지울 수 없는 고아 이벤트).
+  - **PR-2 구현(2026-07-12)**: 게이트 내장 프리미티브 `lib/service/meetings-write.ts`
+    (create/patch/clear + 소스드 read 3종 + queueMeetingSheetSync 수렴 잡) — contact.ts(캡 압박)와
+    contract-payment.ts 는 repo 직접 호출을 프리미티브로 1:1 치환만. meetings.ts 코덱을
+    meetings-rows.ts 로 무동작 추출(façade 재수출). gcal 은 reconcileMeetingEvent(awaitable)를 잡 안
+    행 보장 후 await. **이월 payload 열문자 평탄화**(carriedMeetingPayload) — 구 {_carryRaw} 형태가
+    이월 미팅을 DB read 에서 소실시키던 결함 수정(E1), 멱등키 = 시트 AP ∪ DB(AP·원본행id) 합집합.
+    읽기 동반 전환: saveContactMetrics 카드수·patch/cascade/계약처리 lookup 전부 DB 소스드로.
+    R2 유지: 02 contracts 쓰기(R3-3 소관)·decrementMeetingReservation(01 H 단일셀).
 - **R3-3** feat/db-write-payments — contracts + company_archive. 이월깃발·수납 1~3단계, TXT 내보내기 DB 기준.
   - **키 제약 발견(2026-07-13)**: contracts row_key=`r{행번호}` 는 **시트가 append 시 할당**(todos=UUID·
     sales=자연키와 근본 다름). 읽기(readContractsFromDb)도 이 키에서 row 를 역산 → UI 가 그 번호로
