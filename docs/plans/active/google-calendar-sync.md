@@ -189,3 +189,9 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
 - 2026-07-09 설계 변경(사용자): **유형 토글 3종(미팅/실무/일반) 폐기 → 일정별 개별 토글(기본 ON)**.
   gcal_settings=calendarId 만, 일정별 on/off=gcal_event_ids 마커(`"-"`=제외). §0·§1·§2·§3·§4·§6·§8 반영.
   gcal-1(#511, 토글 포함본)은 feat/gcal-drop-type-toggles 로 카드·스키마 개정. 개별 토글 UI·엔진은 gcal-2.
+- 2026-07-12 관찰성(chore/gcal-route-telemetry, DevB): gcal 라우트 6개 전부 `withApiTiming` 미적용이라
+  다른 60개 라우트와 달리 durable 관찰 채널(PostHog `api_timing`)에 안 잡혔음(=resync 500 등 gcal 무음실패
+  근인). 6개 전부 래핑 → 500이 `api_timing status=500` 이벤트로 PostHog에 남음(pm2 로그 침묵과 무관).
+  추가로 callback의 삼킨 OAuth 실패(`?gcal=error`, 307로 성공처럼 보임)에 `captureServerEvent("gcal_connect_error")`
+  1줄(비-PII: 에러 클래스명만). 무동작변화(withApiTiming은 catch→re-throw). 잔여=pm2 out 로그가 배포 몇 분 후
+  침묵하는 인프라 미스터리(VPS 필요) → docs/incidents/2026-07-12-gcal-observability-gap.md.
