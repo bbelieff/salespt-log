@@ -1,7 +1,8 @@
 ---
 slug: contract-delete-ghost
-status: active
+status: completed
 created: 2026-07-12
+completed: 2026-07-12
 owner: belie
 related: db-read-payments, db-migration-pilot, contract-termination
 ---

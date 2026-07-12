@@ -20,7 +20,7 @@
 - 형식 (한 항목 3~8줄, 초과 금지 — 길어지면 SoR 문서에 쓰고 링크만):
 
 ```
-### YYYY-MM-DD · 세션종류(Cowork/Claude Code) · 한줄 제목
+### YYYY-MM-DD · 트랙(버전) · 한줄 제목    ← 예: A(260712), M(260703), Cowork
 - 의도: 사용자가 왜 시켰나
 - 한 것: 결과 중심 (PR#, 검증 결과, 생성물)
 - 결정: 새로 확정되거나 뒤집힌 것 (없으면 생략)
@@ -28,15 +28,68 @@
 - SoR: 상세 문서 경로
 ```
 
+**트랙·세션 규칙 (2026-07-12)**
+- **트랙 = 불변의 역할 문자**(아래 활성 트랙 보드). **세션 = 50MB마다 교체되는 소모품(몸)** —
+  로그의 주어는 세션이 아니라 트랙. 버전 = 그 몸의 시작일 YYMMDD(같은 날 2개면 -2).
+- 세션 교체(승계): 새 몸은 worklog 최근 항목 + 자기 트랙의 선언·plan 을 읽고
+  첫 응답에 "트랙 X 승계(구버전→신버전)" 선언. **구역 소유권은 트랙에 귀속** — 재선언 불필요.
+
 **유지 규칙**
 - 새 항목은 항상 맨 위 (최신순).
 - 항목 40개 초과 시 오래된 것을 `docs/worklog-archive/YYYY-MM.md` 로 이동.
 - 비밀값(비밀번호·토큰·URI) 절대 기록 금지.
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
+- 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
 ---
 
+## 활성 트랙 보드 (자기 줄만 갱신 — 라이브 현황판)
+
+**보드 갱신 규칙 (2026-07-12)**: 프롬프트(디스패치) 수령 즉시 자기 줄 상태를 "착수: <작업명>"으로
+갱신하고, 이후 **단계 통과마다** 갱신한다. 단계 어휘(정본, %는 선택 병기):
+`착수 → 진단/설계 → 구현 → 테스트 초록 → PR 오픈 → 머지 → 배포 확인(완료)` + `⛔블로킹: <사유>`.
+로그 항목은 착수 선언·완료·사고·중요 결정에만 추가(진행률로 로그 도배 금지) —
+**보드 = 지금 뭐 하는지(덮어쓰기), 로그 = 무슨 일이 있었는지(추가만).**
+
+| 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
+|---|---|---|---|
+| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260712) | 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
+| B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | PR 오픈(#538, chore/gcal-route-telemetry) — gcal 라우트 6개 withApiTiming 계측(무음실패 durable 관찰). check.sh 초록. **머지=프로덕션 배포는 belie 승인 대기**(belie 복귀·"제안" 프레이밍, DevD 외부발행 대기와 동일선). 잔여=pm2 침묵 인프라(VPS 필요) |
+| C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
+| D | 속도 전/후 리포트 — 레포 구역 없음(PostHog+PR 코멘트) | DevD(260712) | **완료(게시)**: belie 승인 후 PR #491·496·499·500·509 5건에 전/후 성적표 요약 코멘트 게시 완료. 결과=5 route ✅목표달성(p50 22~36ms·sheets0, daily −99%), dashboard 🟡부분(p95 51k→3.2k), todos ❌(#535 배포 이전=측정창 밖). 리포트=`scratchpad/db-speed-report-FINAL.md`. 후속(대기): #535 전면배포·파일럿확대 후 todos·dashboard 재측정. 신규 작업 대기 |
+| E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
+| F | gcal 45열 시트 동기화 버그 수리 — gcal-event-ids 계열 | DevF(260712) | 배포 확인(완료) — #536 머지·배포 success·health 200. 임무 3기준 전부 충족(가드=#522·전수조사=#536·배포관찰). 신규 작업 대기 |
+| Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
+
+> 2026-07-12 표기 개편: 트랙 문자 = 세션 문자(DevA~F)로 통일. 구 표기 매핑 —
+> M→A(구 Dev2), 수납A→C(구 Dev3-A), 리포트B→D(구 Dev3-B), 배포C→E(구 Dev3-C), G→F(구 45열).
+> 이전 로그 항목의 [병렬트랙 A/B/C]는 구 표기다 — 혼동 시 이 매핑을 참조.
+
+## 📮 오케스트레이터 디스패치 (각 트랙: 보드 갱신하러 올 때마다 자기 줄 확인 — Cowork만 수정)
+
+- **공통(260712 fable 갱신, 05:00 UTC)**: belie 복귀. Open PR 0·최신 배포 #477 success·health 200
+  (Cowork 재실측). 직렬 머지 + §6.8 엄수.
+- **DevA**: **R3-3(contracts+company_archive 쓰기 전환) 착수** — 상세 프롬프트는 belie가 전달.
+  C 트랙 종료 결정(read-only close)으로 02 구역 소유권 해제 — 단 DevC 마감 커밋(plan 이동)과의
+  worklog 충돌만 주의. R3-2 테스트갭(write-path 단위테스트 0건) 보강을 R3-3에 포함.
+- **DevB**: gcal pm2 로그 무기록 조사 진행 중(보드 자체 착수 확인) — 계속. 중복 지시 없음.
+- **DevC**: **belie 결정 = ①read-only close 확정(2026-07-12)**. 쓰기 카나리아 없이 트랙 종료 —
+  마감 절차(plan completed 이동 + worklog 마감 항목 + 보드 갱신) 실행. 유보 1건(퍼널 계약수
+  해지 반영)은 belie 별도 결정 항목으로 이관.
+- **DevD**: **언블록** — Cowork가 PostHog raw 추출 완료 → `scratchpad/db-speed-raw-2026-07-12.md`
+  (표1 route별 전/후 + 표2 todos·dashboard 일자별 + 재현 HogQL). 비교표+미달원인 작성 →
+  PR #491·496·499·500·509 코멘트 + worklog 완료 요약.
+- **DevE**: belie 복귀 — 대기 3건(Secret 등록·기수왕복·DB비번)은 belie 직접 작업. 완료 신호 후 재개.
+- **DevF**: 신규 작업 배정 대기.
+
 ## 로그
+
+### 2026-07-12 · DevC(260712-2) · 트랙 C 마감 — read-only close 확정, plan 2건 completed 이동
+- 의도: belie ①read-only close 결정(카나리아 없이 종료) → 트랙 C 종료 절차 실행.
+- 한 것: ①`contract-termination.md`·`contract-delete-ghost.md` → completed 이동(status: completed·completed:2026-07-12) ②worklog 마감 항목 추가 ③보드 C행=완료(종료). docs 전용 PR(코드 무변경)로 커밋·머지·배포 관찰.
+- 결정: 트랙 C 스펙 종결 확정 — #527~534 머지·배포 success·health 200·코드층 독립감사(단위테스트 매트릭스+repo write 가드-clean+delete cascade) 통과. 라이브 쓰기 왕복 카나리아는 belie 판단으로 생략(로직층 이미 검증). 02 구역 소유권 A(R3-3)로 이관.
+- 다음: 유보 1건(퍼널 계약수·전환율 해지 제외=04 미팅 상태 기반 전 시트 수식 전파)은 belie 별도 결정 항목. 결정 시 구현은 §2.5 가드+전파 dry-run 필수.
+- SoR: docs/plans/completed/{contract-termination,contract-delete-ghost}.md, PR #527~534
 
 ### 2026-07-12 · Claude Code · R3-2 PR-1: 실무투두(05) 쓰기·읽기 DB 정본 전환 (feat/db-write-todos-carry)
 - 의도: belie "r3-2~5 시작"(무감독 완주 루프). R3-2 를 PR-1(todos 단독)/PR-2(meetings+carryover) 분할 — 이월은 tab="meetings" 라 PR-2 로.
@@ -44,6 +97,141 @@
 - 결정: ①쓰기 flip 은 같은 표면 **읽기 동반 flip 필수** ②미러는 연산 재생이 아닌 **상태 수렴**이어야 레이스 자기수정 ③patch 는 _cleared(삭제)와 DB 공백을 구분(공백만 시트 self-heal) — 셋 다 db-write-flip.md §6 에 R3-2 PR-2·R3-3~5 의무로 등재.
 - 다음: 머지→배포 관찰→파일럿 실사(생성/완료토글/삭제 + 시트 미러 Drive 대조 — ⚠️ 병렬트랙 A 발견 "practice cohort=''=비파일럿" 반영해 계정 게이트 선확인) → PR-2(meetings).
 - SoR: docs/plans/active/db-write-flip.md §6
+
+### 2026-07-12 · DevA(260712) · R3-2 write-path 테스트갭 해소 (#537 머지·배포)
+- 의도: #535(R3-2 PR-1 todos)가 게이트/롤백(daily-source.test)만 커버하고 05 실무투두 서비스 CRUD 쓰기경로 단위테스트 0건인 갭(선세션 플래그) 해소. 승계 시점 디스패치는 belie 부재+"테스트 보강=안전작업 대기지침" → 원자 PR로 선처리(이후 갱신된 디스패치의 "R3-3에 포함" 의도를 결과적으로 선충족·재포함 불필요).
+- 한 것: tests/service/todos.test.ts 15케이스 — create/patch/remove/list DB경로 인자정합 + 비파일럿 R2 완전불변 + 미러 수렴(append mirror:false·reconcile await)·미러 실패격리(caller 성공+Sentry). check.sh 초록(유닛 435). #537 squash 머지(469a61b). 배포 1차 실패=VPS SSH connect timeout(인프라·빌드 전 단계·코드무관, §6.8 "Setup SSH 실패" 케이스) → `gh run rerun --failed` success → 공개 health 200.
+- 결정: R3-2 §7 테스트갭 종결. 롤백 불필요(테스트 전용·프로덕션 코드 무변경).
+- 다음: R3-3(contracts+company_archive 쓰기 전환) belie 상세 프롬프트 대기. C 종료로 02 구역 소유권 확보(DevC 마감 커밋 worklog 충돌만 주의).
+- SoR: tests/service/todos.test.ts, docs/plans/active/db-write-flip.md §6·§7, PR #537
+
+### 2026-07-12 · DevD(260712) · 속도 성적표 완성·게시 — DB 읽기전환 5 route 목표달성 확인
+- 의도: Cowork가 언블록(raw 추출)해준 데이터로 DB전환 전/후 속도 리포트 완성 → PR 코멘트.
+- 한 것: `scratchpad/db-speed-raw-2026-07-12.md`(레포 scratchpad, 세션격리 아님) 가공 → 전/후 비교표+
+  판정+미달원인 작성(`scratchpad/db-speed-report-FINAL.md`). belie 승인 후 **PR #491·496·499·500·509
+  5건에 요약 코멘트 게시 완료**(issuecomment 4950078488·078728·078977·079256·079514).
+- 결과: ✅5 route 목표(≤300ms) 대폭달성 — p50 22~36ms(전 396~1,845), 후 sheets_ms p50=0 수렴
+  (daily −99%). 🟡dashboard 부분(p50 −66%, p95 51,165→3,217=−94%). ❌todos 미반영=측정창이
+  todos DB전환 #535(7/12) **이전**(표2가 sheets_ms 424~597 확증) → 전환실패 아님.
+- 결정/판단(§0.5): 이 창에 온 **"[병렬트랙 B 인계]" 프롬프트는 낡음/오배송** — 실측상 B는 별도 몸
+  DevB(260703)가 gcal로 소유(방금 #538 오픈) → 이중점유 회피 위해 무시, belie 재확인받고 DevD 유지.
+- 다음: #535 전면배포·파일럿 확대 후 todos·dashboard 재측정(그때 5 route처럼 수렴 예상). 신규 작업 대기.
+- SoR: scratchpad/db-speed-report-FINAL.md, db-speed-raw-2026-07-12.md, PR #491·496·499·500·509
+
+### 2026-07-12 · DevB(260703) · gcal 트랙 승계 + 관찰성 구멍 수리 PR(#538) — 머지는 belie 승인 대기
+- 승계: 트랙 B가 gcal 트랙(카나리아·버그수정·QA) 이어받음(원본 카나리아 세션 인수인계). 남은 일 4건 중 belie 부재 무관하게 자율 실행 가능한 유일 항목 = pm2 로그 무음실패 조사(§0.5②, Observability/Hashimoto).
+- 진단: gcal 라우트 6개 전부 `withApiTiming` 미적용 → 다른 ~60개 라우트와 달리 durable 관찰 채널(PostHog `api_timing`)에 안 잡힘 = "resync 500인데 로그 0줄"의 근인. callback은 OAuth 실패를 `?gcal=error`(307)로 삼켜 성공처럼 보임(무음).
+- 한 것: PR **#538**(chore/gcal-route-telemetry) — 핸들러 8개 withApiTiming 래핑(500→PostHog `api_timing status=500`, pm2 로그와 무관 채널) + callback catch에 `captureServerEvent("gcal_connect_error")` 1줄(비-PII). withApiTiming=catch→re-throw라 **무동작변화**. check.sh 초록(구조10·단위420). 인시던트 노트 작성.
+- 결정: **머지=프로덕션 배포는 보류 → belie 승인 대기.** belie 복귀 + 인수인계가 "제안" 프레이밍 + outward-facing 액션(DevD PR코멘트 대기와 동일선). 잔여=pm2 out 로그가 배포 몇 분 후 침묵하는 인프라 원인(VPS 필요, DevE 구역 근접).
+- 다음: belie 머지 승인 시 §6.8(리베이스→머지→배포 conclusion=success→health 200) 완주. 그 후 resync 회귀 카나리아(belie 승인)·워크트리 정리(belie 승인)는 belie 결정 대기.
+- SoR: PR #538, docs/incidents/2026-07-12-gcal-observability-gap.md, docs/plans/active/google-calendar-sync.md Log(2026-07-12), lib/analytics/api-timing.ts
+
+### 2026-07-12 · Cowork(오케스트레이터) · 승계(fable) — DevD 언블록(PostHog raw 직접 추출) + C 종료 결정 + R3-3 발행
+- 승계: opus → fable(260712). GitHub 재실측 — Open PR 0·Deploy #477 success·health 200(변화 없음). belie 복귀.
+- 한 것: ①belie 결정 수령 — DevC 카나리아 = **①read-only close 확정** ②PostHog 쿼리를 Cowork가 직접 실행(belie 크롬 로그인 세션 경유, HogQL query API — MCP의 exec 도구는 이 세션에 미노출이라 크롬 경로 사용) → route 7종 전/후 14행 + todos·dashboard 일자별 12행 추출, `scratchpad/db-speed-raw-2026-07-12.md` 저장 = **DevD 언블록** ③디스패치 전면 갱신(A=R3-3 착수·B=gcal 조사 계속·C=close 절차·D=raw 전달·E=belie 직접 3건) + A·C·D 프롬프트 발행(belie 붙여넣기).
+- 소견(가공은 DevD): 5개 route 후창 p50 22~36ms·sheets_ms p50=0 수렴. todos만 미수렴(p50 672·sheets 556 — R3-2 #535가 7/12 배포라 후창 대부분이 이전 + 파일럿 한정 혼합 추정), dashboard 부분 수렴.
+- 다음: belie가 A·C·D 창에 프롬프트 붙여넣기 → A는 R3-3, C는 마감, D는 리포트 완성. belie 직접 3건(Secret·DB비번·퍼널 계약수 결정)은 별도 안내.
+- SoR: scratchpad/db-speed-raw-2026-07-12.md, 디스패치 섹션(본 파일 상단)
+
+### 2026-07-12 · DevC(260712-2) · 승계 — 코드층 독립 재검증(스펙 완료 확인), 카나리아만 미검
+- 승계: 트랙 C(260712→260712-2). 디스패치 "수납·계약해지 스펙 완주"는 이미 완료(Cowork PR레벨 실측과 일치): #529~534 MERGED·배포 success·health 200·Open PR0·feat/c-payment-cancel 브랜치 부재.
+- 한 것: PR레벨 위에 **코드층 적대적 감사** 추가 — ①단위테스트 매트릭스 충분(파서 AL~AO 왕복·DB payload 필드명+열문자 동치·매출규칙 정상/이월/split·서비스검증·6케이스·휴힐링 실시나리오) ②repo writeTermination 안전(AL~AO 전용 신규컬럼 단일행 update=§2-5 bulk-guard 비대상·헤더행 보호·그리드41 선보장·dual-write 미러) ③delete cascade=contracts-clear-sync.test 보유.
+- 결정: 미검 항목=**순수 라이브 통합(실시트 쓰기왕복)뿐** — 로직층은 belie 없이 이미 검증됨(옵션① read-only close 근거 보강). 신규 Sheets-mock 테스트는 한계효용<공수(YAGNI) 미작성. 카나리아 재실행 안 함(§0.5③), belie 3택·plan completed 이동은 결정 후 불변.
+- 다음: belie 결정 대기. belie 대기건(퍼널 계약수 해지반영)·타 트랙 구역 무접촉.
+- SoR: tests/service/contract-termination.test.ts, lib/repo/contract-payment-termination.ts, docs/plans/active/contract-termination.md §3
+
+### 2026-07-12 · Cowork(오케스트레이터) · 승계 + 6트랙 실측 재검증 — C→A→F 전부 완주 확인
+- 승계: fable 세션에서 opus 세션으로 오케스트레이터 승계(260712).
+- 한 것: GitHub PR·Actions·라이브 사이트 실측으로 6트랙 재검증. 핵심 발견 — 머지 우선순위
+  C→A→F **전부 이행 완료**(보드는 stale이었으나 실측으로 확인):
+  ①C: #529~534 전부 MERGED, Deploy #470~475 전부 success
+  ②A: #535 MERGED, Deploy #476 success (3m 29s)
+  ③F: #536 MERGED, Deploy #477 success (3m 0s)
+  라이브 health 200, DB 파일럿 OK (110ms, 1643행). Open PR 0건.
+- 결정: 디스패치를 현재 상태로 갱신(구 "C→A→F" 완주 반영). A트랙 보드 stale 지적.
+  DevA 다음 임무 = R3-3(contracts 쓰기 전환). DevD PostHog raw 추출은 Cowork 시도 예정.
+- 다음: ①DevA에 R3-3 디스패치 준비 ②DevD용 PostHog 데이터 추출 시도 ③belie 복귀 대기건 정리
+- SoR: docs/worklog.md 디스패치 섹션, GitHub Actions Deploy #470~477
+
+### 2026-07-12 · DevD(260712) · 속도 리포트 승계 — 블로킹 재확인 + 스캐폴드/HogQL 선제작
+- 승계: 트랙 D(260712 신 몸). 미션=DB전환 속도 전/후 리포트, 레포 무접촉(읽기+PostHog만).
+- 재확인: 전 세션 블로킹 조건 그대로 — PostHog 쿼리 접근 없음(MCP 미연결, 실 env `.env.local`/
+  `.env.production`에 phx_/phc_ 없음=`.env.example`만, VPS pm2 로그 접근 없음), Cowork raw 미전달
+  (docs/handoff/inbox·scratchpad·HANDOFF.md 모두 신규 데이터 0).
+- 한 것(대기 중 안전 전진, §0.5②): ①route 상수 정확값 코드에서 추출(`api-timing.ts` withApiTiming
+  인자 — 선행슬래시 없음·`:GET` 접미사·status 숫자) ②붙여넣기용 HogQL 2본(전/후 창) + 비교표
+  스캐폴드 + 미달원인 프레임워크를 scratchpad `db-speed-report-scaffold.md`에 준비. raw만 오면 즉시 채워
+  PR #491·496·499·500·509 코멘트 게시 가능.
+- 다음(언블록 조건): Cowork/belie가 scaffold의 HogQL 실행→raw 표 전달, **또는** PostHog MCP 연결.
+  그때 DevD가 표 완성→PR 5건 코멘트+worklog 완료 요약. 그 전까지 belie 대기건·타 트랙 구역 무접촉.
+- SoR: docs/plans/active/api-timing-baseline.md, scratchpad/db-speed-report-scaffold.md, PR #491·496·499·500·509
+
+### 2026-07-12 · DevF(260712) · gcal 45열 트랙 완주 — 04 열수 전수조사(#536) 머지·배포
+- 의도: 45열 시트 gcal 버그 수리 트랙 마무리 — 완료기준 3(읽기 가드/전수조사 표/배포 관찰) 충족.
+- 한 것: 읽기 가드는 이미 #522 머지·배포됨을 확인(criteria 1). READ-ONLY 전수조사 스크립트
+  (`scripts/census-04-grid-2026-07-12.mjs`)로 trainee 68시트 04/05 열수 실측 → #536 머지·배포
+  success·health 200(criteria 2·3). plan §2 census 표 등재.
+- 결정: **67/68 시트가 04=45열(AT 미생성) → #522 읽기 가드가 프로덕션 전체 안전망으로 작동 중**.
+  04 일괄 45→46 확장은 YAGNI(읽기 가드 + 첫 토글 자동확장, 대량쓰기=belie 승인)로 기각 —
+  45열은 버그 아닌 가드 처리 정상 상태로 확정. 05 O(15) 취약 0건.
+- 다음: DevF 트랙 완주. 신규 작업 대기(belie/디스패치). 45열 관련 회귀 재점검 불필요.
+- SoR: docs/plans/active/google-calendar-sync.md §2, PR #522·#536
+
+### 2026-07-12 · DevD(260712) · 속도 전/후 리포트 — PostHog 접근 부재로 ⛔블로킹, Cowork에 데이터 추출 핸드오프
+- 의도: DB 전환(R2 읽기) "공식 성적표" — route별 p50/p95 전/후 비교표 작성 → PR #491·496·499·500·509 코멘트 + worklog 기록.
+- 블로킹: 이 Claude Code 세션엔 **PostHog 쿼리 접근 없음** — 개인 API키(phx_)·PostHog MCP·VPS pm2 로그 모두 부재(로컬 .env엔 PostHog 키 자체가 0). #484는 계측 코드만 머지, 기준선 "숫자"는 미기록(PostHog에만 존재). belie 결정=**Cowork가 추출**(접근권 있는 쪽이 raw, DevD가 가공).
+- 데이터 요청 스펙(Cowork 실행): event=`api_timing`, 속성 `ms`(전체)·`sheets_ms`·`status`. 지표=route별 `quantile(0.5)(ms)`·`quantile(0.95)(ms)`+count, `status=200`만, tz=UTC. 대상 route(모두 :GET)= `api/daily/[date]` · `api/meetings/week/[weekStart]` · `api/meetings/month/[yyyymm]` · `api/contract-payment` · `api/todos` · `api/db` · `api/dashboard`. 창: **전** `2026-07-06 16:40 ~ 07-08 04:00`(계측 라이브~첫 R2머지 전, Sheets 서빙) / **후** `2026-07-09 01:00 ~ now`(전 R2 머지 후, 07-08 전환일 제외해 mid-flip 노이즈 차단). 보조로 `sheets_ms` p50도(후엔 0 수렴이 전환 성공 방증).
+- 주의: api_timing은 서버 이벤트(distinct_id="server")라 is_internal(ADR-0013) 필터 불가·불필요. 전 창 표본 짧음(~1.5일)—p50 신뢰 우선, p95는 방향참고. 미개선 route는 원인후보 기록 예정(캐시적중 비중·병렬콜·DB콜드스타트 등).
+- 다음: Cowork/belie가 위 스펙으로 raw 표 전달 → DevD가 전/후 비교표+미달원인 작성→PR 5건 코멘트+worklog 요약표 기록. 그때까지 belie 대기 3건·타 트랙 구역 무접촉.
+- SoR: docs/plans/active/api-timing-baseline.md, db-migration-pilot §1·§5, lib/analytics/api-timing.ts, PR #484(계측)·#491·496·499·500·509(R2 전환)
+
+### 2026-07-12 · DevC(260712) · 계약해지 카나리아 — 배포·라이브 read-only 검증 OK, 쓰기 왕복은 보류(belie 승인 필요)
+- 승계/맥락: C 트랙 승계. 미션="belie 대신 해지 왕복 카나리아→통과시 최우선 머지". **정찰 결과 머지는 이미 완료**(#529·531·532·533·534 전부 MERGED 7/11, 보드의 "머지 대기"는 stale). 실제 남은 건 라이브 카나리아뿐.
+- 한 것: ①배포 검증 — Deploy run 29167294141(#534) success·공개 health 200 확인(§6.8 충족). ②라이브 read-only — belie 실세션(salesptlog.online, 김믿음 7기)에서 새소식 팝업이 해지보관함 "새 기능"(개봉 7/12) 노출 = 이미 공개, 실무/수납 화면이 해지 매출정의(총매출=수임비+수수료, 아레나/이월 분리) 정상 렌더. ③쓰기 가드 검증(코드) — `getWritableUserEmail`(identity.ts:155)은 admin 세션 impersonation 쓰기 허용(#519의 gcal 403 과 대조, terminate 라우트는 쓰기 가능).
+- 결정/블로킹: **쓰기 왕복 카나리아 자율 실행 보류**. 근거 — (a) 미션 선호 "연습 시트 임시 연결"=마스터 레지스트리 쓰기 → 표준 가드(worklog 182·211) belie 승인 필수·부재 (b) 대안=belie 본인 실시트(현재 계약 0건 클린)에 테스트계약 주입/해지/복구/삭제 무감시 → 실패 시 실매출 오염 (c) 카나리아는 머지 게이트 아님(코드 기배포·#534 자동 6케이스 검증 포함) → 부재 중 강행 한계효용<하방(§0.5③). "통과시" 하우스키핑(Changelog-Done 그룹공개·plan completed 이동)은 게이트 미충족으로 미실행(단 팝업상 그룹공개는 선세션이 이미 적용한 정황).
+- 다음: belie 결정 대기 3택 — ①read-only+자동검증으로 close(권고, plan completed 이동) ②연습시트 연결 승인 or admin+연습 trainee 지정 → 임퍼스네이션 쓰기 왕복 ③본인 실시트 왕복(주입→전량 원복) 명시 승인. 결정 전까지 belie 대기건·타 트랙 구역 무접촉.
+- SoR: docs/plans/active/contract-termination.md §3(수용기준), lib/auth/identity.ts:152, PR #529·531·532·533·534
+
+### 2026-07-12 · DevA(260712) · R3-2 PR-1(todos DB 정본) 독립 검수 — 초록 재확인 + 테스트갭 1건
+- 승계: 트랙 A(260703→260712). 디스패치는 "git복구 후 R3-2 검수" 였으나 **git 정상**(.git/config 797줄 무손상, status/config-list 정상) → 복구 불필요. R3-2 PR-1 은 Fable 5 body 가 커밋 완료(ea83429, 미머지).
+- 한 것: ea83429 정적 검수(적대적). 설계 견고 확인 — ①읽기/쓰기 게이트 대칭(chooseDailySource=chooseWriteSource, read-your-writes) ②list 는 _cleared SQL 제외 ③writer/reader 동일 풀(getDbPool→getPool) ④repo mirror:false 로 DB 재미러 차단 ⑤gcal 고아이벤트 방지(reconcile 를 직렬큐 내 행보장 후 await) ⑥수렴 미러(잡마다 최신 DB 상태). 독립 재검증: typecheck 초록·구조 10/10·게이트테스트(롤백·비파일럿불변·대칭) 통과.
+- 결정/발견: **테스트갭** — 신규 R3-2 write-path(queueSheetSync 수렴·patchTodo _cleared throw·removeTodo 순서·listTodos DB 필터/정렬)에 단위테스트 0건. 게이트/롤백은 daily-source.test 로 커버되나 plan §7 "미러 정합·미러 실패 시나리오"는 todos 신규 로직 미충족. 머지 전(=C 후) 보강 권고.
+- 다음: 머지는 DevC 후(§6.8). 테스트 보강은 worktree 동시세션(Fable body) 충돌 회피 위해 소유권 정리 후. belie 대기 3건 무접촉.
+- SoR: docs/plans/active/db-write-flip.md §6·§7, 커밋 ea83429
+
+### 2026-07-12 · DevE(260712) · 03 DB관리 헤더존 유령 진단 — 구조분석 무혐의 (#527 대체 임무)
+- 의도: belie 대기 3건 동안 대체 임무 — 02 94행 사고(#527)와 같은 부류가 03 DB관리
+  (backfill 시작행 row4)에도 있는지 dry-run 진단만(수리 금지). #524 MERGED 재확인 완료.
+- 한 것: 코드 정독 진단 — **02 사고의 두 조건이 03 에는 구조적으로 부재**.
+  ① backfill 시작행 4 == 앱 FIRST_DATA_ROW 4(`lib/repo/db.ts`, headerRow=3·헤더 1~3행)
+  → 헤더행 과대적재 없음(02 는 row≥3 적재 vs 실데이터행 6/5 불일치가 근인).
+  ② DB-read(`read-db-tab.ts`)가 섹션별 isMeaningful+isSumRow+_cleared 로 **재필터**
+  → 헤더존 잡음이 화면에 못 뜸(02 는 read 가 헤더행 raw 노출 → #527 이 isContractHeaderZoneJunk
+  가드를 뒤늦게 신설한 것과 대조). cohort-template.ts 는 03 예시행 미시드.
+- 결정: 03 DB관리 = **02類 헤더존 유령 무혐의**(수리 불필요). 실측 dry-run 스크립트 작성
+  (read-only SELECT, #527 패턴 재사용) — VPS 실행용 scratchpad 보관, PR 미주입(직렬 머지
+  C→A→F 방해 안 함). belie 대기 3건(Secret·기수왕복·DB비번 교체) 불변.
+- 다음: (선택) VPS 에서 diagnose 스크립트 1회 → ②헤더존 rowNum<4·④진성유령=0 실측 확인.
+- SoR: lib/repo/db.ts(FIRST_DATA_ROW=4), lib/repo/db/read-db-tab.ts(isMeaningful 재필터),
+  scripts/ops/backfill-sheet-rows.mjs:120, scratchpad/diagnose-db-header-zone.mjs
+
+### 2026-07-12 · Cowork(오케스트레이터) · 야간 디스패치 발행 — 5트랙 지시 + belie 부재 모드
+- 의도: belie 외출 — 트랙별 다음 지시를 디스패치로 발행, 중복·충돌 없이 자율 진행
+- 한 것: 보드·로그·GitHub 재검증 후 디스패치 5건 발행 — M(R3-2 완주, R3-3은 A 머지 확인 후),
+  A(자체 카나리아→직렬 머지→§6.8 완주), B(속도 전/후 리포트), C(잔여=belie Secret 대기 →
+  대체 임무: 03 DB관리 backfill 헤더존 유령 진단 dry-run), G(계속+완료 시 보드 갱신)
+- 결정: 머지 우선순위 A → M(R3-2) → G → C진단(머지 없음) — A가 R3-3의 선행이므로 최우선.
+  belie 복귀 대기 3건: ①퍼널 계약수 해지 반영(유보 승인 여부) ②ADMIN_DRIVE_REFRESH_TOKEN
+  Secret 등록 ③DATABASE_URL 비번 교체(보안 권고)
+- 다음: 각 트랙 완료 보고는 워크로그로. Cowork 은 다음 접속 시 보드 기준 재검증
+- SoR: 활성 트랙 보드(상단), CLAUDE.md §3.5
+
+### 2026-07-12 · Cowork(오케스트레이터) · 세션 배치도 정정 + 귀속 착오 교정 + B트랙 재배정
+- 의도: belie 지시 — 세션 6개(Dev2·Dev2-fork·Dev3-A/B/C·45열fix) 배치 확인, 진행 중인 일 중복 지시 금지
+- 한 것: 귀속 착오 자백·교정 — R3-0(#515)·R3-1(#518)은 **Dev2**의 성과(7/10 이전 머지), Dev3-B 아님(B가 "감 못 잡던" 원인 = 이미 완료된 임무를 배정받아서). R3-2 검수(21에이전트)도 Dev2 계열. 45열 gcal 버그는 전담 세션이 수리 중 — "A·B·C에 붙여라" 제안 철회. 워크로그 형식에 세션명 표기 의무화
+- 결정: **R3 트랙 소유 = Dev2.** R3-3(수납 쓰기)은 Dev3-A 구역과 겹침 → Dev2는 A트랙 머지 후 착수. Dev3-B 재배정 = 속도 전/후 리포트(PostHog — 레포 구역 0, 충돌 불가능)
+- 다음: 각 세션은 자기 이름으로 기록. 오케스트레이터는 지시 전 워크로그+GitHub 최신 PR로 귀속 확인
+- SoR: CLAUDE.md §3.5, docs/worklog.md 형식
 
 ### 2026-07-12 · Claude Code · [병렬트랙 A] 작업2 보완 — 해지 보관함 + 6케이스 테스트 (Dev3-A 스펙 완주)
 - 의도: 오케스트레이터 스펙 갭 2·3 — 숨김 해지 계약의 접힌 보관함 열람 + (없음/일부/전액)×(보존/숨김) 6케이스 매출·건수 검증
