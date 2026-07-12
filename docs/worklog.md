@@ -38,6 +38,13 @@
 
 ## 로그
 
+### 2026-07-12 · Claude Code · R3-2 PR-1: 실무투두(05) 쓰기·읽기 DB 정본 전환 (feat/db-write-todos-carry)
+- 의도: belie "r3-2~5 시작"(무감독 완주 루프). R3-2 를 PR-1(todos 단독)/PR-2(meetings+carryover) 분할 — 이월은 tab="meetings" 라 PR-2 로.
+- 한 것: chooseWriteSource 게이트(create/patch/remove) + writeRowToDb/clearRowInDb(client.ts) + **listTodos 읽기 동반 전환** + 시트 미러를 **수렴 동기화**(queueSheetSync 시트별 직렬 큐, 최신 DB 상태로 update-or-append/clear, gcal reconcile 은 행 보장 후 await)로 설계. 적대 리뷰 4라운드(6→12→2→0건 수렴), check.sh 초록(388+10).
+- 결정: ①쓰기 flip 은 같은 표면 **읽기 동반 flip 필수** ②미러는 연산 재생이 아닌 **상태 수렴**이어야 레이스 자기수정 ③patch 는 _cleared(삭제)와 DB 공백을 구분(공백만 시트 self-heal) — 셋 다 db-write-flip.md §6 에 R3-2 PR-2·R3-3~5 의무로 등재.
+- 다음: 머지→배포 관찰→파일럿 실사(생성/완료토글/삭제 + 시트 미러 Drive 대조 — ⚠️ 병렬트랙 A 발견 "practice cohort=''=비파일럿" 반영해 계정 게이트 선확인) → PR-2(meetings).
+- SoR: docs/plans/active/db-write-flip.md §6
+
 ### 2026-07-12 · Claude Code · [병렬트랙 A] 작업2 보완 — 해지 보관함 + 6케이스 테스트 (Dev3-A 스펙 완주)
 - 의도: 오케스트레이터 스펙 갭 2·3 — 숨김 해지 계약의 접힌 보관함 열람 + (없음/일부/전액)×(보존/숨김) 6케이스 매출·건수 검증
 - 한 것: TerminationArchive(접힌 아코디언, 업체명·해지일·사유·반환액 읽기전용, 0건이면 미표시 — SSOT #533 선등재) + payment 페이지 배선(숨김=목록·건수 제외, 보관함 열람 — 500줄 캡 내 압축). 6케이스 매트릭스 + 휴힐링 시나리오(수임비0+전액반환+숨김 → 매출 기여 0·건수 제외·보관함 열람) 테스트 — 총 17 초록
@@ -157,7 +164,6 @@
 - 다음: **fix 필요** — 읽기 경로에서 grid 초과=빈 맵 처리(또는 ensureGridColumns).
   다른 실사용 시트 04 탭 열수 전수조사 권장(45열 시트 = 전부 동일 증상)
 - SoR: lib/repo/gcal-event-ids.ts(readCell·readGcalStates), docs/plans/completed/gcal-per-user-identity.md
-
 ### 2026-07-11 · Claude Code · gcal 귀속 수정 라이브 카나리아 통과 → plan completed (#519 마감)
 - 의도: belie "카나리아를 자체적으로 돌려봐" — #519(gcal 귀속·localhost 복귀 수정) 수용기준 마지막 항목을 에이전트가 직접 검증
 - 한 것: 운영자 Chrome 실세션으로 2케이스 실측. ①임퍼스네이션: 표시=화면의 수강생 상태(connected:false·impersonated:true), 카드 "본인 로그인에서만" + POST/DELETE/resync 전부 403 ②본인 실연결: OAuth 동의 완주 → **salesptlog.online/calendar 복귀(localhost 0회)**, connected:true·본인 계정 귀속·캘린더 목록 실로드. 레지스트리 마스터 행 S(토큰)·T(settings) 저장 실측 후 연결해제+스크립트로 원상복구(재실측 둘 다 빈 값)
