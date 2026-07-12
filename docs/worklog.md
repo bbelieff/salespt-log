@@ -53,12 +53,12 @@
 
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
-| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260712) | 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
+| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260712) | **착수: R3-3 진단/설계** — contracts+company_archive 쓰기 DB 정본 전환(belie 승인·C 종료로 02 구역 확보). 현행 쓰기경로 인벤토리 + R3-2(todos) 수렴미러 패턴 이식 설계 중. (직전: #537 R3-2 테스트갭 해소·배포 success) |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | PR 오픈(#538, chore/gcal-route-telemetry) — gcal 라우트 6개 withApiTiming 계측(무음실패 durable 관찰). check.sh 초록. **머지=프로덕션 배포는 belie 승인 대기**(belie 복귀·"제안" 프레이밍, DevD 외부발행 대기와 동일선). 잔여=pm2 침묵 인프라(VPS 필요) |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 속도 전/후 리포트 — 레포 구역 없음(PostHog+PR 코멘트) | DevD(260712) | **완료(게시)**: belie 승인 후 PR #491·496·499·500·509 5건에 전/후 성적표 요약 코멘트 게시 완료. 결과=5 route ✅목표달성(p50 22~36ms·sheets0, daily −99%), dashboard 🟡부분(p95 51k→3.2k), todos ❌(#535 배포 이전=측정창 밖). 리포트=`scratchpad/db-speed-report-FINAL.md`. 후속(대기): #535 전면배포·파일럿확대 후 todos·dashboard 재측정. 신규 작업 대기 |
-| E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
-| F | gcal 45열 시트 동기화 버그 수리 — gcal-event-ids 계열 | DevF(260712) | 배포 확인(완료) — #536 머지·배포 success·health 200. 임무 3기준 전부 충족(가드=#522·전수조사=#536·배포관찰). 신규 작업 대기 |
+| E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | 배포 확인(완료) — minus10 대비강화 #540 머지·배포 success·health 200(배포로그가 토큰 미설정 경고 재노출=E 블로커 여전). ⛔belie 대기 유지: ADMIN_DRIVE_REFRESH_TOKEN 미등록(수용항목2 착수 불가)·DB비번. 03 유령진단=무혐의. 신규 작업 대기 |
+| F | plan 위생 대청소(docs) — active/ 기완료 분류·이동 | DevF(260712) | PR 오픈(#542) 준비완료 — 기완료 94건 completed/ 이동+프론트매터, **check.sh 로컬+CI 그린**. 유지=IN_PROGRESS 2·활성SoR가드 9(Cowork 가드 준수)·보류 1(arena 명단). 머지=큐(#538→A→F)+belie 승인 대기(무단 머지 안 함) |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
 
 > 2026-07-12 표기 개편: 트랙 문자 = 세션 문자(DevA~F)로 통일. 구 표기 매핑 —
@@ -67,22 +67,58 @@
 
 ## 📮 오케스트레이터 디스패치 (각 트랙: 보드 갱신하러 올 때마다 자기 줄 확인 — Cowork만 수정)
 
-- **공통(260712 fable 갱신, 05:00 UTC)**: belie 복귀. Open PR 0·최신 배포 #477 success·health 200
-  (Cowork 재실측). 직렬 머지 + §6.8 엄수.
-- **DevA**: **R3-3(contracts+company_archive 쓰기 전환) 착수** — 상세 프롬프트는 belie가 전달.
-  C 트랙 종료 결정(read-only close)으로 02 구역 소유권 해제 — 단 DevC 마감 커밋(plan 이동)과의
-  worklog 충돌만 주의. R3-2 테스트갭(write-path 단위테스트 0건) 보강을 R3-3에 포함.
-- **DevB**: gcal pm2 로그 무기록 조사 진행 중(보드 자체 착수 확인) — 계속. 중복 지시 없음.
-- **DevC**: **belie 결정 = ①read-only close 확정(2026-07-12)**. 쓰기 카나리아 없이 트랙 종료 —
-  마감 절차(plan completed 이동 + worklog 마감 항목 + 보드 갱신) 실행. 유보 1건(퍼널 계약수
-  해지 반영)은 belie 별도 결정 항목으로 이관.
-- **DevD**: **언블록** — Cowork가 PostHog raw 추출 완료 → `scratchpad/db-speed-raw-2026-07-12.md`
-  (표1 route별 전/후 + 표2 todos·dashboard 일자별 + 재현 HogQL). 비교표+미달원인 작성 →
-  PR #491·496·499·500·509 코멘트 + worklog 완료 요약.
-- **DevE**: belie 복귀 — 대기 3건(Secret 등록·기수왕복·DB비번)은 belie 직접 작업. 완료 신호 후 재개.
-- **DevF**: 신규 작업 배정 대기.
+- **공통(260712 fable 2차 갱신)**: 머지 큐(직렬) = ①#538(belie 승인 대기) ②A R3-3 ③(승인 시)
+  E minus10·F plan대청소. §6.8 엄수. 전령 B·E·F 배분안은 **6PR 중 5 기완료로 반려·조정**(아래·로그).
+- **DevA**: R3-3(contracts+company_archive) 진행 중 — 계속. 테스트갭은 #537로 선해소 확인(재포함 불필요).
+- **DevB**: 신규 배정 없음 — **PR #538(gcal 관찰성) belie 머지 승인 대기** + gcal 잔여(카나리아·정리)
+  보유. 전령 배분안의 B 항목(cascade·C-1 스테퍼)은 기완료로 반려(completed/db-contact-cascade.md,
+  MetricStepper.tsx bigStep [C-1] 주석).
+- **DevC**: 트랙 종료 확인(마감 docs PR 완료). 유보 1건(퍼널 계약수 해지 반영)=belie 결정 항목.
+- **DevD**: 속도 성적표 게시 완료 확인(PR 5건 코멘트). 유휴 — 재측정은 #535 전면배포·파일럿 확대 후.
+- **DevE**: (belie/전령 승인 시) **minus10-darker-font 초소형 fix** — components/ui/MetricStepper.tsx:57
+  bigStep 감소 버튼 3클래스(bg-gray-200·text-gray-800·hover:bg-gray-300), plan 문서 completed 이동 동반.
+  A4 스크롤·TabBar safe-area는 기완료(completed/schedule-day-scroll.md, TabBar.tsx:173-175)로 반려.
+- **DevF**: (belie/전령 승인 시) **plan 위생 대청소** — docs/plans/active/ 전수(현재 **109건**)를 git log·코드
+  대조로 실측 분류 → 기완료분 completed/ 이동 + wishlist 완료 표기. docs 전용, 오배분 재발 방지.
+  B1 진단모달은 기완료(completed/diag-modal-ux.md)로 반려.
+  ⚠️ **충돌 가드(Cowork 순찰 260712-23:30 추가)**: 진행 중 트랙이 SoR 로 쓰는 active plan 은 **이동·수정 금지** —
+  최소 `db-write-flip.md`(A/R3-3), `google-calendar-sync.md`(B), `api-timing-baseline.md`(D).
+  판단 애매하면 이동하지 말고 목록만 제출(보수적 분류). 착수 전 보드에서 각 트랙의 SoR 줄을 재확인할 것.
 
 ## 로그
+
+### 2026-07-13 · DevF(260712) · plan 위생 대청소 — 기완료 94건 completed/ 아카이브 (PR #542)
+- 의도: Cowork 디스패치 — active/ 에 머지완료 plan 잔존 → 배분안이 기완료 항목으로 작성되던 오분류(오늘 B·E·F 전령 배분안 6PR 중 5 기완료 사고) 재발 방지(Hashimoto, docs 전용).
+- 한 것: active 107건을 git 머지이력·코드 실측으로 분류(general-purpose 서브에이전트 5배치 병렬) → **COMPLETED 94 → completed/ 이동**(프론트매터 status:completed + completed[git 실측일] + archived:2026-07-12), git mv. _wishlist-2026-05-17 전항목 완료표기(Cowork 실측 근거), README plans 인덱스 stale 하드코딩표(01/02/03=active·완료=없음) → 디렉토리 포인터. check.sh 로컬 그린(435 테스트·doc-drift·active비어있지않음). PR #542(chore/archive-completed-plans), CI 대기.
+- 결정: **유지(비이동)** = IN_PROGRESS 2(consultation-log-and-calendar·design-practice-and-drive) + 활성트랙 SoR 가드 9(db-write-flip·google-calendar-sync·api-timing-baseline 등 — Cowork 충돌가드 준수) + **보류 1 = arena-season1-setup**(라이브 명단 SoR 겸용 → 아카이브 시 '동결' 오해, belie 판단). minus10 은 DevE #540 이 선이동(무접촉). stale 링크(코드주석 4·cross-ref 다수)는 '코드 무접촉·프론트매터 한정' 준수 위해 후속 pass 분리.
+- 다음: CI 그린 확인 → 머지 큐(#538→A R3-3→F)+belie 승인 대기. 머지 시 §6.8 배포 관찰. arena-season1-setup 보류건 belie 결정.
+- SoR: PR #542, docs/plans/completed/(94건), docs/README.md, docs/plans/active/_wishlist-2026-05-17.md
+
+### 2026-07-12 · DevE(260712) · minus10 버튼 대비 강화 #540 완주 (위시리스트 잔여)
+- 의도: Cowork 디스패치 — 생산 −10(bigStep 감소) 버튼이 옅게 보인다는 보고(2026-05-18). belie 대기 중 안전 전진.
+- 한 것: `components/ui/MetricStepper.tsx:57` 클래스 3개만 진하게(bg-gray-100→200·text-gray-600→800·hover:bg-gray-200→300, 로직 무변경, arbitrary 무추가). 새 워크트리 `fix/minus10-stepper-contrast`(옛 `fix/minus10-darker-font` 브랜치 obsolete—미접촉). check.sh 초록·CI success → #540 squash 머지(Changelog "−10 버튼이 또렷하게 보여요") → Deploy #29197121555 success·health 200. plan → completed 이동.
+- 결정: 옛 브랜치가 고친 `ChannelTabsAndPanel` 인라인 −10 은 MetricStepper 로 리팩터되며 옅은 스타일 재유입 → 신위치에 재적용한 것이 이번 fix. 옛 브랜치/워크트리 정리는 belie 관례라 미접촉.
+- 다음: E 트랙 belie 대기 유지(ADMIN_DRIVE_REFRESH_TOKEN 미등록·DB비번). 신규 작업 대기.
+- SoR: components/ui/MetricStepper.tsx, docs/plans/completed/minus10-darker-font.md
+
+### 2026-07-12 · Cowork(순찰) · 6트랙 정기 점검 — 이상 없음, F 대청소에 SoR 충돌 가드 1건 추가
+- 의도: belie 외출 중 자동 순찰(보드 갱신·블로킹·머지순서·구역충돌 4점 점검). 관찰 전용(git 쓰기·코드 수정 없음).
+- 실측(로컬 read-only): master=573f42f(#539) — C→A→F 머지 큐 전부 소진(#534·#535·#536·#537·#539 반영).
+  보드 6줄 모두 최신(A=R3-3 진단/설계, B=#538 오픈, C=종료, D=게시완료, E=⛔belie 대기, F=완주·대기).
+  머지 대기 중 코드 PR = #538 하나뿐 → 직렬 머지 위반 없음. 구역 겹침 없음(A=db 쓰기·B=gcal 라우트·E=deploy/컴포넌트·F=docs).
+- 조치: 📮 DevF 줄에 **충돌 가드** 추가 — plan 대청소 시 진행 중 트랙의 SoR(db-write-flip·google-calendar-sync·
+  api-timing-baseline)은 이동·수정 금지, 애매하면 목록만 제출. (A의 R3-3 SoR 가 청소로 사라지는 사고 예방)
+- 관찰(무조치): 워크트리 `wt/db-write-meetings`(feat/db-write-meetings)가 열려 있으나 master 대비 커밋 0 =
+  R3-2 PR-2 잔여 흔적. A 구역 내부라 충돌 아님 — A가 R3-3 후 정리 예정으로 간주.
+- 다음: belie 복귀 시 결정 3건 — ①#538 머지 승인 ②E/F 프롬프트 투입 승인 ③ADMIN_DRIVE_REFRESH_TOKEN 등록(E 언블록).
+- SoR: 디스패치 섹션(상단), 활성 트랙 보드
+
+### 2026-07-12 · Cowork(오케스트레이터) · 전령 B·E·F 배분안 검증 — 6PR 중 5 기완료로 반려, 조정안 발행
+- 의도: 전령의 wishlist(5/17) 기반 B·E·F 배분안(6PR) 승인 요청 → 철칙 "지시 전 귀속 확인" 실측.
+- 한 것(전수 대조): ①cascade 3건 묶음(DB-1·DB-2·C-2)=completed/db-contact-cascade.md(제목에 항목 명시·CrossTabHintModal 존재) ②C-1 ±10=MetricStepper.tsx bigStep([C-1] 주석 박제) ③A4=completed/schedule-day-scroll.md ④TabBar safe-area=TabBar.tsx:173-175 env() 실재 ⑤B1=completed/diag-modal-ux.md → **5건 기완료**. 유일 잔여=**minus10-darker-font**(MetricStepper.tsx:57 아직 bg-gray-100/text-gray-600 실측). A1·A2·A3·A5도 completed 확인 — 위시리스트 사실상 소진(9항목 중 minus10 반쪽만 잔존).
+- 결정: 반려·조정 — E=minus10 1PR(초소형), F=plan 위생 대청소(active/ 기완료 다수 잔존이 이번 오배분의 근본 원인 — Hashimoto 하네스 수리), B=배정 금지(**#538 오픈·belie 승인 대기 실측** — "B 유휴" 정보는 stale). 신규 기능 후보(활성화 리디자인·gcal 구현 2PR·R4 백필)는 belie 우선순위 결정 대기로 분리.
+- 다음: 전령/belie 승인 시 E·F 프롬프트 투입(본문은 Cowork 채팅에 발행). belie 직접: #538 머지 승인 여부.
+- SoR: 디스패치 섹션(상단), docs/plans/completed/{db-contact-cascade,diag-modal-ux,schedule-day-scroll}.md, components/ui/MetricStepper.tsx:23·57, components/TabBar.tsx:173
 
 ### 2026-07-12 · DevC(260712-2) · 트랙 C 마감 — read-only close 확정, plan 2건 completed 이동
 - 의도: belie ①read-only close 결정(카나리아 없이 종료) → 트랙 C 종료 절차 실행.
