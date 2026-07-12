@@ -217,14 +217,28 @@ export function onTodoCreated(
   }, `todo-create ${t.id}`);
 }
 
-/** 투두/일반이벤트 수정 직후(id로 재조회 reconcile) — fire-and-forget. */
+/** 투두/일반이벤트 수정 직후(reconcile) — fire-and-forget(시트 정본 경로용). */
 export function onTodoChanged(
   email: string,
   spreadsheetId: string,
   id: string,
+  known?: Todo,
 ): void {
-  void guard(async () => {
-    const t = await findTodoById(spreadsheetId, id);
+  void reconcileTodoEvent(email, spreadsheetId, id, known);
+}
+
+/** R3-2: **awaitable** reconcile — 수렴 동기화 잡이 await 해서 gcal 작업을 미러 큐 직렬화 안에
+ * 가둔다(fire-and-forget 으로 큐를 탈출하면 삭제 잡의 맵 읽기와 경합 → 이벤트ID 미기록 고아 이벤트).
+ * `known` 전달 시 그 값으로 reconcile(재조회 생략 — DB 정본 경로는 시트 재조회가 stale 레이스).
+ * guard 내장 = non-throwing. */
+export async function reconcileTodoEvent(
+  email: string,
+  spreadsheetId: string,
+  id: string,
+  known?: Todo,
+): Promise<void> {
+  await guard(async () => {
+    const t = known ?? (await findTodoById(spreadsheetId, id));
     if (!t) {
       await removeAll(spreadsheetId, "todo", id, true);
       return;

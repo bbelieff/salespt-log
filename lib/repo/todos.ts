@@ -284,13 +284,14 @@ export async function findById(
 export async function appendTodo(
   spreadsheetId: string,
   todo: Todo,
+  opts: { mirror?: boolean } = {},
 ): Promise<Todo> {
   await ensureTodoTab(spreadsheetId);
   const validated = Todo.parse(todo);
   const targetRow = await findFirstEmptyRow(spreadsheetId);
   await writeTodoRow(spreadsheetId, targetRow, todoToRow(validated));
-  // dual-write 미러 (P1) — fire-and-forget, 비차단.
-  mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: validated.id, payload: validated });
+  // dual-write 미러 (P1) — fire-and-forget. R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기).
+  if (opts.mirror !== false) mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: validated.id, payload: validated });
   return validated;
 }
 
@@ -299,6 +300,7 @@ export async function updateTodo(
   spreadsheetId: string,
   id: string,
   partial: Partial<Omit<Todo, "id">>,
+  opts: { mirror?: boolean } = {},
 ): Promise<void> {
   await ensureTodoTab(spreadsheetId);
   const sheetRow = await findRowById(spreadsheetId, id);
@@ -311,13 +313,15 @@ export async function updateTodo(
   }
   const merged: Todo = Todo.parse({ ...current, ...partial });
   await writeTodoRow(spreadsheetId, sheetRow, todoToRow(merged));
-  mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: id, payload: merged }); // P1 미러
+  // R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기 저장).
+  if (opts.mirror !== false) mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: id, payload: merged }); // P1
 }
 
 /** id로 행 클리어 (빈 값으로 update). */
 export async function clearTodo(
   spreadsheetId: string,
   id: string,
+  opts: { mirror?: boolean } = {},
 ): Promise<void> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return;
@@ -327,7 +331,8 @@ export async function clearTodo(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [Array(13).fill("")] },
   });
-  mirrorClearRow({ spreadsheetId, tab: "todos", rowKey: id }); // P1 — _cleared 마킹
+  // R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기 clear).
+  if (opts.mirror !== false) mirrorClearRow({ spreadsheetId, tab: "todos", rowKey: id }); // P1
 }
 
 /** 한 계약(contractRef)에 속한 ToDo 전부 (슬롯 ToDo 섹션용). */

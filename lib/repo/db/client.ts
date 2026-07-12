@@ -143,6 +143,35 @@ export async function writeSalesRowsToDb(p: {
   }
 }
 
+/** R3-2 단일행 쓰기 정본 — meetings/todos/carryover 1행 upsert(정본, db-write-flip §2). tab 은 호출자
+ * 지정("meetings"|"todos"). 실패=throw(시트폴백 금지 §0). DATABASE_URL 미설정 호출=게이트 오류(호출부가
+ * chooseWriteSource 선판정). 시트 미러는 호출부가 비동기 수행. R3-1 다채널과 달리 단일행이라 트랜잭션 불필요. */
+export async function writeRowToDb(p: {
+  spreadsheetId: string;
+  cohort: string;
+  email: string;
+  tab: string;
+  rowKey: string;
+  payload: Record<string, unknown>;
+}): Promise<void> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  await getPool().query(UPSERT_SHEET_ROW_SQL, [
+    p.cohort, p.email, p.spreadsheetId, p.tab, p.rowKey, JSON.stringify(p.payload),
+  ]);
+}
+
+/** R3-2 clear 정본 — {_cleared:true} 병합(행 삭제 대신 마킹, 대조 시 제외). 실패=throw. */
+export async function clearRowInDb(p: {
+  spreadsheetId: string;
+  cohort: string;
+  email: string;
+  tab: string;
+  rowKey: string;
+}): Promise<void> {
+  await writeRowToDb({ ...p, payload: { _cleared: true } });
+}
+
 /** R2-1 읽기 전환 — 한 시트의 sales 미러 전체(≤10주×28행, 단일 쿼리).
  * payload 키는 dual-write(mirror.ts sales 훅)·backfill 과 동일:
  * {date, channel, production, inflow, contactProgress, meetingReservation}.

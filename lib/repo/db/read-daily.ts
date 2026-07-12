@@ -219,6 +219,29 @@ export async function readTodosFromDb(spreadsheetId: string): Promise<Todo[]> {
   return out;
 }
 
+/** R3-2: ToDo 1건의 DB 상태 — **_cleared 포함** 단건 조회. 없으면 null.
+ * 쓰기 경로 전용: patch 의 "삭제됨 vs DB 공백" 구분(삭제면 self-heal 금지) +
+ * 시트 수렴 동기화(최신 DB 상태 → 시트) 판단 기준. */
+export async function readTodoRowStateFromDb(
+  spreadsheetId: string,
+  id: string,
+): Promise<{ cleared: boolean; todo: Todo | null } | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'todos' and row_key = $2`,
+    [spreadsheetId, id],
+  );
+  const payload = (res.rows[0] as { payload: Record<string, unknown> } | undefined)
+    ?.payload;
+  if (!payload) return null;
+  return {
+    cleared: payload._cleared === true,
+    todo: todoFromDbPayload(payload),
+  };
+}
+
 /** 현수막 Σ주문개수 (03 DB관리 현수막 섹션 미러, _cleared 제외) — ADR-0025 재고 base 입력. */
 export async function readBannerOrderQtyFromDb(
   spreadsheetId: string,

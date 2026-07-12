@@ -78,6 +78,20 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     유입을 **DB 에서 합산**(동기 저장됨). fromDb 를 syncDirectProductionForDate(cohort)·addProduction·
     patchProduction 에 관통(게이트=서비스 chooseDailySource, repo 는 boolean 만 — 레이어 유지).
 - **R3-2** feat/db-write-meetings — meetings(+todos·carryover). 카드수·N/O 미러 무변경.
+  - **2 PR 분할(2026-07-12)**: PR-1 `feat/db-write-todos-carry`=todos 단독(단순·독립), PR-2=meetings+carryover
+    (이월은 tab="meetings" 에 쓰므로 meetings 와 동반 — §1 표의 "R3-2 편입" 확정) + cascade 처리.
+  - **PR-1 설계 확정(적대 리뷰 3라운드 반영)**:
+    (a) **읽기 동반 전환** — listTodos(슬롯 ToDo 목록)가 시트를 읽는 채 쓰기만 뒤집으면 read-your-writes
+    위반(방금 만든 ToDo 목록 실종 · DB 에 없는 legacy ToDo 수정 영구 500). 쓰기 flip 은 **같은 표면의
+    읽기 경로 동반 flip 이 전제** — R3-2 PR-2·R3-3~5 에서도 각 표면 읽기 게이트 여부 선확인 의무.
+    (b) **시트 미러 = 연산 재생이 아니라 수렴 동기화**(r2 리뷰 12건의 공통 근원) — 쓰기별 스냅샷을
+    fire-and-forget 재생하면 생성↔삭제 역전(좀비 행+고아 gcal 이벤트)·append 재시도 중복·미러 순서
+    역전이 남는다. queueSheetSync(시트별 직렬 큐)가 실행 시점 **최신 DB 상태**를 읽어 시트를
+    update-or-append/clear 로 수렴시킴 — 어떤 인터리빙도 마지막 잡이 자기수정. **R3-2 PR-2·R3-3~4 의
+    미러도 이 패턴 의무**(meetings 는 cascade 다행이라 특히).
+    (c) patch 병합기반: DB(정본) 우선 — **_cleared(삭제됨)와 DB 공백을 구분**(삭제면 에러, 공백만
+    시트 self-heal). (d) gcal 이벤트ID 맵=시트 행(O열) → gcal reconcile 은 동기화 잡 안 **행 보장 후**
+    최신 상태(known)로만 실행(행 없이 실행 시 이벤트ID 유실→지울 수 없는 고아 이벤트).
 - **R3-3** feat/db-write-payments — contracts + company_archive. 이월깃발·수납 1~3단계, TXT 내보내기 DB 기준.
 - **R3-4** feat/db-write-production — db 4섹션. 합계행=시트 수식 몫(미러 raw 만).
 - **R3-5** feat/db-cohort-create — admin 기수 생성 DB 정본(선행: chore/deploy-env-admin-token). 시트 복제 실패가 생성을 막지 않게 pending 재시도. O1/O2=USER_ENTERED.
