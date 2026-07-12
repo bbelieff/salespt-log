@@ -59,6 +59,21 @@ related: sheet-structure, components, 0015-admin-oauth-drive-create, consultatio
   읽기가 400 "exceeds grid limits" — 읽기 경로(readGcalMap·readGcalStates)는 이를 **빈 맵/기본 ON** 으로
   처리한다(컬럼 없음=매핑·마커 없음과 동치). 그리드 확장(ensureGridColumns)은 쓰기(setGcalEventId)만 수행 —
   읽기에 쓰기 작업을 붙이지 않는다. 테스트: `tests/repo/gcal-event-ids-grid.test.ts`.
+- **실사용 시트 04/05 열수 전수조사 (2026-07-12, READ-ONLY 진단 — `scripts/census-04-grid-2026-07-12.mjs`)**:
+  레지스트리 trainee·유니크 spreadsheetId 68개의 04 미팅·05 투두 탭 그리드 열수 실측. 결론 =
+  **거의 전 시트가 AT(46) 미생성 → 위 읽기 가드가 실제로 프로덕션 전체의 안전망으로 작동 중**.
+
+  | 04 열수 | 시트 수 | gcal AT(46) | 해당 |
+  |---|---|---|---|
+  | 45 (A~AS) | 67 | 취약 → 읽기 가드가 흡수(빈 맵/기본 ON) | 전 실사용 시트 (4·6·7·8·9기 + A1 전 기수) |
+  | 46 (A~AT) | 1 | OK | 연습용(2026-07-12 카나리아 토글 ON 시 ensureGridColumns 로 확장된 흔적) |
+
+  - **05 투두 O(15)**: 취약 0건 — 05 탭 있는 시트는 전부 26열(O 초과). 05 탭 자체가 없는 시트는
+    findRow 단계에서 처리(대상 아님). → 05 는 grid-limits 관점 무위험.
+  - **판단(§0.5 비판적 사고)**: 04 를 일괄 45→46 확장(대량 쓰기)은 **하지 않는다** — ① 읽기 가드가 이미
+    안전망 ② 첫 토글 ON 1회가 setGcalEventId→ensureGridColumns 로 46 자동 확장(필요 시점에 스스로 치유)
+    ③ 대량 쓰기는 belie 승인·Bulk-write 보존 가드 대상(§2.5)이라 공수·위험 대비 이득 없음(YAGNI).
+    즉 45열 상태는 **버그가 아니라 가드가 처리하는 정상 상태**로 확정.
 
 ## 3. 동기화 엔진
 - `lib/repo/gcal-client.ts` — googleapis calendar v3 (googleapis 는 lib/repo/ 전용 규칙 그대로).
