@@ -1,7 +1,7 @@
 /** Layer: repo — 04→02 수임비 동기화 (contract-payment.ts 에서 분리 — 500줄 캡). */
 import { sheetsClient } from "./sheets-client";
 import { findRowByLink, resolveLayout, tabRef } from "./contract-payment";
-import { mirrorSheetRow } from "./db/mirror";
+import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
 
 /**
  * 04 업체관리에서 수임비가 수정됐을 때, 매칭되는 02 계약수납관리 row의
@@ -13,6 +13,7 @@ import { mirrorSheetRow } from "./db/mirror";
 export async function syncFeeFromContract(
   spreadsheetId: string,
   data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
+  opts?: ContractWriteOpts,
 ): Promise<{ row: number } | null> {
   const row = await findRowByLink(spreadsheetId, {
     meetingId: data.meetingId,
@@ -28,6 +29,7 @@ export async function syncFeeFromContract(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[data.수임비]] },
   });
-  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}`, payload: { 수임비: data.수임비 } }); // P1 병합
+  // R3-3: 파일럿 = DB 동기 병합(실패=throw), 비파일럿 = R2 미러(async).
+  await persistContractRow(spreadsheetId, row, { 수임비: data.수임비 }, opts);
   return { row };
 }

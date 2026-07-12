@@ -93,6 +93,19 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     시트 self-heal). (d) gcal 이벤트ID 맵=시트 행(O열) → gcal reconcile 은 동기화 잡 안 **행 보장 후**
     최신 상태(known)로만 실행(행 없이 실행 시 이벤트ID 유실→지울 수 없는 고아 이벤트).
 - **R3-3** feat/db-write-payments — contracts + company_archive. 이월깃발·수납 1~3단계, TXT 내보내기 DB 기준.
+  - **키 제약 발견(2026-07-13)**: contracts row_key=`r{행번호}` 는 **시트가 append 시 할당**(todos=UUID·
+    sales=자연키와 근본 다름). 읽기(readContractsFromDb)도 이 키에서 row 를 역산 → UI 가 그 번호로
+    patch/delete. 따라서 §2 "DB-first·시트 async" **진짜 flip 은 append 에서 불가**(행번호 원천이 시트).
+  - **belie 결정(2026-07-13) = A안(dual-sync)**: 삭제(#532 clearContractRowInDbSync) 선례를 편집에 확장 —
+    파일럿은 시트 쓰기(행번호 할당 유지)+**DB 동기 정본**(실패=throw·시트폴백 금지, 1회 재시도),
+    비파일럿은 R2 미러(async) 완전 불변. 헬퍼=`upsertContractRowToDbSync`(contracts-clear.ts, clear 와 코어 공유).
+    §2 지연감소(시트 왕복 제거)는 미달성(시트가 여전히 동기)—진짜 flip(B안 재키잉)은 belie 후속 결정.
+  - **PR-1 `feat/db-write-payments`(2026-07-13) = contracts 편집만**: updateUserFields(수납 슬롯)·
+    updateLinkFields(계약일·업체명)·syncFeeFromContract(수임비)·writeTermination(해지·반환액) 를 syncDb 게이트로
+    dual-sync. **append 는 제외**(dual-sync throw→재시도 시 findFirstEmptyRow 가 중복 계약행 생성=매출 이중계상;
+    삭제·편집은 기존 행 멱등이라 안전). append 직후 사용자 편집(updateUserFields dual-sync)이 全행 정본 write 로
+    정합 회복. company_archive(자연키)=**PR-2** 로 분리(todos식 flip 가능).
+  - 게이트: 서비스 resolveSheetWithSyncDb(=chooseDailySource 파일럿) → repo opts.syncDb. 읽기 경로 무변경(R2-4 라이브).
 - **R3-4** feat/db-write-production — db 4섹션. 합계행=시트 수식 몫(미러 raw 만).
 - **R3-5** feat/db-cohort-create — admin 기수 생성 DB 정본(선행: chore/deploy-env-admin-token). 시트 복제 실패가 생성을 막지 않게 pending 재시도. O1/O2=USER_ENTERED.
 
@@ -102,6 +115,22 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-13 R3-3 PR-1 구현(DevA): contracts 편집 4종(updateUserFields·updateLinkFields·syncFeeFromContract·
+  writeTermination) dual-sync(A안, belie 승인). 라우터 persistContractRow + 동기 헬퍼 upsertContractRowToDbSync
+  (contracts-clear.ts — clear 와 재시도/owner역조회 코어 공유). patch·terminate·syncFee·editLinked 는 dual-sync,
+  **addPrior·append 은 제외**(행번호=시트할당, throw 재시도 시 중복행=매출 이중계상; #532 delete 는 멱등이라 안전).
+  company_archive=PR-2.
+  §2 지연감소는 미달성(dual-sync, 시트 동기 유지) — §7 "저장 p50/p95 표"는 이 PR 스코프 아님(진짜 flip=B안 후행).
+- 2026-07-13 R3-3 PR-1 적대적 다중에이전트 리뷰(5관점×검증, 확정10/반증4): **회귀 1건 발견·수정** —
+  addPriorContract 가 비멱등 append 직후 dual-sync updateUserFields(throw)를 엮어, DB장애 throw→사용자 재시도 시
+  중복 계약행(이월 매출 이중계상). 3관점 독립 확인. → addPrior 를 append 계열로 재분류해 dual-sync 제외(R2 미러).
+  회귀 방지 테스트 추가(gate 테스트 addPrior + persistContractRow 라우터 비파일럿 no-throw + 비파일럿 비대칭).
+  **후속(선재·이 PR 무관, 별도 처리)**: ①updateUserFields 全행 payload 가 해지필드 default 로 DB 해지 clobber 가능
+  (R2 미러도 동일·round-trip 시 안전, low) ②clearRowByLink(미팅화면 계약삭제 cascade 5경로)는 #532 dual-sync 미적용
+  (delete 커버리지 확장 소관) ③arena-carryover.ts 마이그레이션 updateUserFields 미게이트(1회성·append계열) ④owner
+  역조회 실패 시 cohort/email 메타데이터 일시 강등(자가치유·대조표 한정) ⑤patchMeeting(contact.ts) 의 updateLinkFields
+  링크편집은 dual-sync 미배선(회귀 아님·async 미러 유지) — contact.ts 가 이미 500줄 캡이라 배선하려면 파일 분리 선행
+  필요 → 후속 PR(contact.ts split + 미팅화면 계약편집 dual-sync). 다섯 다 회귀 아님·불변식 무저촉.
 - 2026-07-12 R3-0 재검증(Dev3-B): 오케스트레이터 재지시분(인벤토리·전환패턴·드리프트·롤백·가드 ①~⑤)과
   본 문서 대조 — 전 항목 기충족 확인, 재등재 안 함(중복 회피, CLAUDE.md §3 0.5).
   후속 처리: db-first-unlimited-roadmap.md 레포 등재(죽은 링크 해소) + D3 답변됨 반영.

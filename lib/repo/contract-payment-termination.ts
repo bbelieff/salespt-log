@@ -2,7 +2,7 @@
  *  contract-payment.ts 500줄 캡으로 분리. 읽기(rowToCP)·clear 는 본체가 담당. */
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { resolveLayout, tabRef } from "./contract-payment";
-import { mirrorSheetRow } from "./db/mirror";
+import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
 
 export interface TerminationWrite {
   해지일: string; // ISO — 존재 = 해지
@@ -17,6 +17,7 @@ export async function writeTermination(
   spreadsheetId: string,
   row: number,
   t: TerminationWrite,
+  opts?: ContractWriteOpts,
 ): Promise<void> {
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
   if (row < firstDataRow) {
@@ -31,16 +32,12 @@ export async function writeTermination(
       values: [[t.해지일, t.해지사유, t.반환액, t.해지숨김 ? "Y" : ""]],
     },
   });
-  // P1 미러 — 필드명 payload(dual-write 규칙). 시트 "Y" 표기와 무관하게 boolean 저장.
-  mirrorSheetRow({
+  // 필드명 payload(dual-write 규칙). 시트 "Y" 표기와 무관하게 boolean 저장.
+  // R3-3: 파일럿 = DB 동기 병합(실패=throw), 비파일럿 = R2 미러(async).
+  await persistContractRow(
     spreadsheetId,
-    tab: "contracts",
-    rowKey: `r${row}`,
-    payload: {
-      해지일: t.해지일,
-      해지사유: t.해지사유,
-      반환액: t.반환액,
-      해지숨김: t.해지숨김,
-    },
-  });
+    row,
+    { 해지일: t.해지일, 해지사유: t.해지사유, 반환액: t.반환액, 해지숨김: t.해지숨김 },
+    opts,
+  );
 }

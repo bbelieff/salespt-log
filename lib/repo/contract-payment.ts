@@ -17,7 +17,7 @@ import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
-import { clearContractRowInDbSync } from "./db/contracts-clear";
+import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
 
 const CFG = SHEET_RANGES.contractPayment;
 
@@ -405,6 +405,7 @@ export async function appendFromContract(
 export async function updateUserFields(
   spreadsheetId: string,
   cp: ContractPayment,
+  opts?: ContractWriteOpts,
 ): Promise<void> {
   const validated = ContractPayment.parse(cp);
   if (!validated.row) {
@@ -421,7 +422,7 @@ export async function updateUserFields(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [userArea] },
   });
-  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${validated.row}`, payload: validated }); // P1
+  await persistContractRow(spreadsheetId, validated.row, validated, opts); // R3-3 dual-sync(payload=全행)
 }
 
 /**
@@ -447,6 +448,7 @@ export async function updateLinkFields(
   spreadsheetId: string,
   old: { 계약일: string; 업체명: string; meetingId?: string },
   next: { 계약일: string; 업체명: string },
+  opts?: ContractWriteOpts,
 ): Promise<number | null> {
   const row = await findRowByLink(spreadsheetId, {
     meetingId: old.meetingId,
@@ -461,7 +463,7 @@ export async function updateLinkFields(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[next.계약일, next.업체명]] },
   });
-  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}`, payload: { 계약일: next.계약일, 업체명: next.업체명 } }); // P1
+  await persistContractRow(spreadsheetId, row, { 계약일: next.계약일, 업체명: next.업체명 }, opts); // R3-3 dual-sync
   return row;
 }
 
