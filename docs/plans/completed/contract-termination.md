@@ -1,7 +1,8 @@
 ---
 slug: contract-termination
-status: active
+status: completed
 created: 2026-07-12
+completed: 2026-07-12
 owner: belie
 related: contract-delete-ghost, 11-contract-payment-tab, arena-start-revenue-split
 ---
