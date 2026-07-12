@@ -54,7 +54,7 @@ export default function MetricStepper({
           type="button"
           onClick={() => handle(-bigStep)}
           disabled={!canBigDec}
-          className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full bg-gray-200 px-2 py-1 text-[11px] font-bold text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={ariaLabel ? `${ariaLabel} ${bigStep} 감소` : `${bigStep} 감소`}
           title={`${bigStep}개 한꺼번에 감소`}
         >
