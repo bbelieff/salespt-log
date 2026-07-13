@@ -89,6 +89,75 @@ export async function readMeetingsFromDb(
   return out;
 }
 
+/** R3-2: 미팅 1건의 DB 상태 — **_cleared 포함** 단건 조회. 없으면 null.
+ * 쓰기 경로 전용: patch 의 "삭제됨 vs DB 공백" 구분(삭제면 self-heal 금지) +
+ * 시트 수렴 동기화(최신 DB 상태 → 시트) 판단 기준.
+ * carryRaw = 구형 이월 payload({_carryRaw})의 raw 행 — meeting 복원 불가 시 시트 수렴용. */
+export async function readMeetingRowStateFromDb(
+  spreadsheetId: string,
+  id: string,
+): Promise<{
+  cleared: boolean;
+  meeting: Meeting | null;
+  carryRaw?: { raw: unknown[]; 원본id: string };
+} | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'meetings' and row_key = $2`,
+    [spreadsheetId, id],
+  );
+  const payload = (res.rows[0] as { payload: Record<string, unknown> } | undefined)
+    ?.payload;
+  if (!payload) return null;
+  const meeting = meetingFromDbPayload(payload);
+  let carryRaw: { raw: unknown[]; 원본id: string } | undefined;
+  if (meeting === null) {
+    if (Array.isArray(payload._carryRaw)) {
+      // 구형 이월 payload — raw 배열 그대로.
+      carryRaw = {
+        raw: payload._carryRaw as unknown[],
+        원본id: String(payload.원본행id ?? ""),
+      };
+    } else if (typeof payload.A === "string" && payload.A) {
+      // 열문자 형태인데 Meeting 복원 실패(불완전 legacy 행) — raw 재구성으로 시트 수렴은 가능하게.
+      const raw: unknown[] = [];
+      for (let i = 0; i <= 39; i++) raw.push(payload[colName(i)] ?? "");
+      carryRaw = {
+        raw,
+        원본id: String(payload.AP ?? payload.원본행id ?? ""),
+      };
+    }
+  }
+  return {
+    cleared: payload._cleared === true,
+    meeting,
+    ...(carryRaw ? { carryRaw } : {}),
+  };
+}
+
+/** R3-2: DB 에 기록된 이월 원본키 집합 — 신형(AP 열문자) ∪ 구형(원본행id) 양 키.
+ * _cleared 포함(삭제된 이월도 재이월 금지 — 시트 멱등 의미론과 동일). */
+export async function listCarriedMeetingKeysFromDb(
+  spreadsheetId: string,
+): Promise<Set<string>> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload->>'AP' as ap, payload->>'원본행id' as legacy from sheet_rows
+     where spreadsheet_id = $1 and tab = 'meetings'
+       and (payload->>'AP' is not null or payload->>'원본행id' is not null)`,
+    [spreadsheetId],
+  );
+  const out = new Set<string>();
+  for (const r of res.rows as { ap: string | null; legacy: string | null }[]) {
+    if (r.ap?.trim()) out.add(r.ap.trim());
+    if (r.legacy?.trim()) out.add(r.legacy.trim());
+  }
+  return out;
+}
+
 // ── R2-4: contracts(02 계약수납) read (db-read-payments) ─────────────────────
 // payload 3형태 공존: ① backfill = 열문자 C..AK(문자열화) ② updateUserFields 미러 =
 // ContractPayment 전체(필드명) ③ append 미러 = 부분 필드명 {계약일,업체명,수임비,

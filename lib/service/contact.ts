@@ -22,16 +22,16 @@ import {
   readWeekFunnel,
   weekIndexOf,
 } from "@/repo/sales";
+import { findByDate } from "@/repo/meetings";
 import {
-  appendMeeting,
-  clearMeeting,
-  findByDate,
-  findByDateRangeBoth,
-  findById,
-  findByPreviousMeetingId,
-  updateMeeting,
-} from "@/repo/meetings";
-import { onMeetingChanged, onMeetingCreated, syncMeetingRemoved } from "@/service/gcal-sync";
+  clearMeetingRecord,
+  createMeetingRecord,
+  findChildMeetingRecord,
+  findMeetingsByDateRecord,
+  getMeetingRecord,
+  patchMeetingRecord,
+  type MeetingCtx,
+} from "./meetings-write";
 import {
   clearRowByLink as clearContractPaymentByLink,
   updateLinkFields as updateContractLink,
@@ -54,12 +54,12 @@ function parseISO(s: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
-async function resolveSheet(email: string): Promise<string> {
+async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
   if (!user) {
     throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
   }
-  return user.spreadsheetId;
+  return { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email };
 }
 
 // ── DTO ───────────────────────────────────────────────────────
@@ -223,7 +223,12 @@ export async function saveContactMetrics(
 
   // ⭐ 미팅예약(H) = 업체관리 카드 수 파생 (SSOT, ADR-0010). 클라가 보낸 값 무시, 예약일·채널
   //    실제 카드 수로 재계산해 기록 → 저장마다 H=카드수 일치(드리프트 제거).
-  const meetings = await findByDate(spreadsheetId, date, "reservation");
+  //    R3-2: 파일럿은 DB 에서 — 시트 미러 lag 로 방금 등록 카드가 빠지는 과소집계 방지.
+  const meetings = await findMeetingsByDateRecord(
+    { spreadsheetId, cohort: user.cohort, email },
+    date,
+    "reservation",
+  );
   const cardCount: Record<Channel, number> = {
     매입DB: 0,
     직접생산: 0,
@@ -267,10 +272,8 @@ export async function appendNewMeeting(
   email: string,
   meeting: Meeting,
 ): Promise<void> {
-  const spreadsheetId = await resolveSheet(email);
-  const validated = Meeting.parse(meeting);
-  await appendMeeting(spreadsheetId, validated);
-  onMeetingCreated(email, spreadsheetId, validated); // gcal 자동 등록(fire-and-forget)
+  const ctx = await resolveCtx(email);
+  await createMeetingRecord(ctx, Meeting.parse(meeting)); // gcal 등록 포함(경로별 내부 처리)
 }
 
 /** 미팅 부분 업데이트. Phase2: 계약→非계약 시 02 clear. Phase3: 계약 유지+link 변경 시 02 sync. */
@@ -279,11 +282,12 @@ export async function patchMeeting(
   id: string,
   partial: Partial<Omit<Meeting, "id">>,
 ): Promise<void> {
-  const spreadsheetId = await resolveSheet(email);
+  const ctx = await resolveCtx(email);
+  const spreadsheetId = ctx.spreadsheetId;
   const droppingContract = partial.상태 !== undefined && partial.상태 !== "계약";
   const linkChange = partial.미팅날짜 !== undefined || partial.업체명 !== undefined;
   if (droppingContract || linkChange) {
-    const cur = await findById(spreadsheetId, id);
+    const cur = await getMeetingRecord(ctx, id);
     if (cur?.상태 === "계약" && cur.미팅날짜 && cur.업체명) {
       if (droppingContract) {
         await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명);
@@ -299,13 +303,12 @@ export async function patchMeeting(
       }
     }
   }
-  await updateMeeting(spreadsheetId, id, partial);
-  onMeetingChanged(email, spreadsheetId, id); // gcal 갱신/취소 reconcile(fire-and-forget)
+  const merged = await patchMeetingRecord(ctx, id, partial); // gcal reconcile 포함(경로별 내부)
 
   // 06 업체정보 동기화(§1-2) — 계약 고객이면 06 같은 키 행 갱신. 실패해도 04 저장은 성공(warn).
   if (partial.업체정보 !== undefined) {
     try {
-      const m = await findById(spreadsheetId, id); // merge 후 재읽기 — 최신 업체정보
+      const m = merged ?? (await getMeetingRecord(ctx, id)); // 시트 경로만 merge 후 재읽기
       if (m?.미팅날짜 && m.업체명 &&
         (m.상태 === "계약" || (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명)))) {
         await upsertCompanyInfoArchive(spreadsheetId, {
@@ -320,20 +323,21 @@ export async function patchMeeting(
 
 /** 자손 미팅 transitive cascade (post-order). 자식 계약이면 02 row 도 clear. */
 async function cascadeDescendantMeetings(
-  spreadsheetId: string,
+  ctx: MeetingCtx,
   parentId: string,
 ): Promise<{ count: number; paymentRows: number }> {
   let count = 0;
   let paymentRows = 0;
   async function walk(pid: string): Promise<void> {
-    const c = await findByPreviousMeetingId(spreadsheetId, pid);
+    const c = await findChildMeetingRecord(ctx, pid);
     if (!c) return;
     await walk(c.id);
     if (c.상태 === "계약" && c.미팅날짜 && c.업체명) {
-      const row = await clearContractPaymentByLink(spreadsheetId, c.미팅날짜, c.업체명);
+      const row = await clearContractPaymentByLink(ctx.spreadsheetId, c.미팅날짜, c.업체명);
       if (row !== null) paymentRows++;
     }
-    await clearMeeting(spreadsheetId, c.id);
+    // 자손 gcal 은 R2 무호출(gcal-2b) 보존 — 파일럿은 수렴 잡 cleared 브랜치가 멱등 제거.
+    await clearMeetingRecord(ctx, c.id, { gcalRemove: false });
     count++;
   }
   await walk(parentId);
@@ -345,9 +349,8 @@ export async function removeMeeting(
   email: string,
   id: string,
 ): Promise<void> {
-  const spreadsheetId = await resolveSheet(email);
-  await syncMeetingRemoved(spreadsheetId, id); // 행 클리어 전 구글 이벤트 삭제
-  await clearMeeting(spreadsheetId, id);
+  const ctx = await resolveCtx(email);
+  await clearMeetingRecord(ctx, id, { gcalRemove: true }); // 클리어 전 구글 이벤트 삭제 포함
 }
 
 /** 미팅 + 자손 transitive cascade + 본인 계약 02 row cascade. L1 -1은 호출 측. */
@@ -362,21 +365,21 @@ export async function removeMeetingWithCascade(
   미팅날짜: string;
   상태: string;
 }> {
-  const spreadsheetId = await resolveSheet(email);
-  const m = await findById(spreadsheetId, id);
+  const ctx = await resolveCtx(email);
+  const spreadsheetId = ctx.spreadsheetId;
+  const m = await getMeetingRecord(ctx, id);
   if (!m) throw new Error(`[removeMeetingWithCascade] 미팅 못 찾음: ${id}`);
 
   // 1) Descendants 재귀 삭제.
   const { count: descCount, paymentRows: descPaymentRows } =
-    await cascadeDescendantMeetings(spreadsheetId, id);
+    await cascadeDescendantMeetings(ctx, id);
   // 2) 본인이 계약이면 02 row cascade.
   let removedPaymentRow: number | null = null;
   if (m.상태 === "계약" && m.미팅날짜 && m.업체명) {
     removedPaymentRow = await clearContractPaymentByLink(spreadsheetId, m.미팅날짜, m.업체명);
   }
-  // 3) 본인 clear + 4) 영업관리 H -1 (좌표 실패 시 skip).
-  await syncMeetingRemoved(spreadsheetId, id); // 클리어 전 구글 이벤트 삭제(자손 cascade 는 gcal-2b)
-  await clearMeeting(spreadsheetId, id);
+  // 3) 본인 clear(클리어 전 구글 이벤트 삭제 포함) + 4) 영업관리 H -1 (좌표 실패 시 skip).
+  await clearMeetingRecord(ctx, id, { gcalRemove: true });
   if (m.예약일 && m.channel) {
     try { await decrementMeetingReservation(spreadsheetId, m.예약일, m.channel); } catch { /* skip */ }
   }
@@ -403,19 +406,19 @@ export async function revertMeeting(
   email: string,
   id: string,
 ): Promise<{ status: string; cascade: string }> {
-  const spreadsheetId = await resolveSheet(email);
-  const m = await findById(spreadsheetId, id);
+  const ctx = await resolveCtx(email);
+  const spreadsheetId = ctx.spreadsheetId;
+  const m = await getMeetingRecord(ctx, id);
   if (!m) throw new Error(`[revert] 미팅 못 찾음: ${id}`);
   const prevState = m.상태;
 
   if (prevState === "계약") {
-    await updateMeeting(spreadsheetId, id, {
+    await patchMeetingRecord(ctx, id, {
       상태: "예약",
       계약여부: false,
       수임비: 0,
       계약조건: "",
-    });
-    onMeetingChanged(email, spreadsheetId, id); // 예약 복귀 → gcal 갱신
+    }); // gcal 갱신 포함
     const clearedRow = await clearContractPaymentByLink(
       spreadsheetId,
       m.미팅날짜,
@@ -431,20 +434,18 @@ export async function revertMeeting(
   }
 
   if (prevState === "완료" || prevState === "취소") {
-    await updateMeeting(spreadsheetId, id, {
+    await patchMeetingRecord(ctx, id, {
       상태: "예약",
       계약여부: false,
       미팅사유: "",
-    });
-    onMeetingChanged(email, spreadsheetId, id); // 취소/완료→예약 → gcal 재등록/갱신
+    }); // 취소/완료→예약 → gcal 재등록/갱신 포함
     return { status: "예약", cascade: "사유 초기화" };
   }
 
   if (prevState === "변경") {
     // 2026-05-19: 손자까지 transitive cascade (1→2→3 체인 전부 삭제).
-    const { count } = await cascadeDescendantMeetings(spreadsheetId, id);
-    await updateMeeting(spreadsheetId, id, { 상태: "예약", 미팅사유: "" });
-    onMeetingChanged(email, spreadsheetId, id); // 변경→예약 → gcal 갱신(자손 이벤트 정리는 gcal-2b)
+    const { count } = await cascadeDescendantMeetings(ctx, id);
+    await patchMeetingRecord(ctx, id, { 상태: "예약", 미팅사유: "" }); // gcal 갱신 포함
     return {
       status: "예약",
       cascade: count > 0 ? `변경 자손 미팅 ${count}건 cascade 삭제` : "변경 자식 미팅 없음",
@@ -466,23 +467,19 @@ export async function reviveCaseClosure(
   email: string,
   parentId: string,
 ): Promise<{ cascade: string; childId: string | null }> {
-  const spreadsheetId = await resolveSheet(email);
-  const child = await findByPreviousMeetingId(spreadsheetId, parentId);
+  const ctx = await resolveCtx(email);
+  const child = await findChildMeetingRecord(ctx, parentId);
   if (!child) {
     return { cascade: "자식 미팅 없음 — 되살릴 항목 없음", childId: null };
   }
   // 2026-05-19: 자식의 자손까지 transitive cascade.
-  const { count: descCount } = await cascadeDescendantMeetings(
-    spreadsheetId,
-    child.id,
-  );
+  const { count: descCount } = await cascadeDescendantMeetings(ctx, child.id);
   let cascade02 = "";
   if (child.상태 === "계약" && child.미팅날짜 && child.업체명) {
-    const row = await clearContractPaymentByLink(spreadsheetId, child.미팅날짜, child.업체명);
+    const row = await clearContractPaymentByLink(ctx.spreadsheetId, child.미팅날짜, child.업체명);
     if (row !== null) cascade02 = ` + 02 row ${row}`;
   }
-  await syncMeetingRemoved(spreadsheetId, child.id); // 자식 미팅 구글 이벤트 삭제(클리어 전, 자손 cascade 는 gcal-2b)
-  await clearMeeting(spreadsheetId, child.id);
+  await clearMeetingRecord(ctx, child.id, { gcalRemove: true }); // 이벤트 삭제(클리어 전) 포함
   const descMsg = descCount > 0 ? ` (자손 ${descCount}건 포함)` : "";
   return {
     cascade: `자식 미팅(${child.업체명}) 삭제${descMsg}${cascade02}`,
@@ -495,6 +492,6 @@ export async function getMeetingById(
   email: string,
   id: string,
 ): Promise<Meeting | null> {
-  const spreadsheetId = await resolveSheet(email);
-  return findById(spreadsheetId, id);
+  const ctx = await resolveCtx(email);
+  return getMeetingRecord(ctx, id);
 }

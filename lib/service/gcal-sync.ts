@@ -180,14 +180,27 @@ export function onMeetingCreated(
   }, `meeting-create ${m.id}`);
 }
 
-/** 미팅 수정/상태전이 직후(id로 재조회 reconcile) — fire-and-forget. */
+/** 미팅 수정/상태전이 직후(reconcile) — fire-and-forget(시트 정본 경로용). */
 export function onMeetingChanged(
   email: string,
   spreadsheetId: string,
   id: string,
 ): void {
-  void guard(async () => {
-    const m = await findMeetingById(spreadsheetId, id);
+  void reconcileMeetingEvent(email, spreadsheetId, id);
+}
+
+/** R3-2: **awaitable** 미팅 reconcile — 수렴 동기화 잡이 행 보장 후 await 해서 gcal 작업을
+ * 미러 큐 직렬화 안에 가둔다(탈출 시 삭제 잡과 경합 → 이벤트ID 미기록 고아 이벤트).
+ * `known` 전달 시 재조회 생략(DB 정본 경로 — 시트 재조회는 stale 레이스).
+ * 의미론: 없음/취소 = 이벤트 삭제(제외 마커 보존) · 미팅날짜 없음 = no-op. guard 내장 = non-throwing. */
+export async function reconcileMeetingEvent(
+  email: string,
+  spreadsheetId: string,
+  id: string,
+  known?: Meeting,
+): Promise<void> {
+  await guard(async () => {
+    const m = known ?? (await findMeetingById(spreadsheetId, id));
     if (!m || m.상태 === "취소") {
       await removeAll(spreadsheetId, "meeting", id, true); // 취소=이벤트 삭제, 제외 마커는 보존
       return;

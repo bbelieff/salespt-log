@@ -92,6 +92,14 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     (c) patch 병합기반: DB(정본) 우선 — **_cleared(삭제됨)와 DB 공백을 구분**(삭제면 에러, 공백만
     시트 self-heal). (d) gcal 이벤트ID 맵=시트 행(O열) → gcal reconcile 은 동기화 잡 안 **행 보장 후**
     최신 상태(known)로만 실행(행 없이 실행 시 이벤트ID 유실→지울 수 없는 고아 이벤트).
+  - **PR-2 구현(2026-07-12)**: 게이트 내장 프리미티브 `lib/service/meetings-write.ts`
+    (create/patch/clear + 소스드 read 3종 + queueMeetingSheetSync 수렴 잡) — contact.ts(캡 압박)와
+    contract-payment.ts 는 repo 직접 호출을 프리미티브로 1:1 치환만. meetings.ts 코덱을
+    meetings-rows.ts 로 무동작 추출(façade 재수출). gcal 은 reconcileMeetingEvent(awaitable)를 잡 안
+    행 보장 후 await. **이월 payload 열문자 평탄화**(carriedMeetingPayload) — 구 {_carryRaw} 형태가
+    이월 미팅을 DB read 에서 소실시키던 결함 수정(E1), 멱등키 = 시트 AP ∪ DB(AP·원본행id) 합집합.
+    읽기 동반 전환: saveContactMetrics 카드수·patch/cascade/계약처리 lookup 전부 DB 소스드로.
+    R2 유지: 02 contracts 쓰기(R3-3 소관)·decrementMeetingReservation(01 H 단일셀).
 - **R3-3** feat/db-write-payments — contracts + company_archive. 이월깃발·수납 1~3단계, TXT 내보내기 DB 기준.
   - **키 제약 발견(2026-07-13)**: contracts row_key=`r{행번호}` 는 **시트가 append 시 할당**(todos=UUID·
     sales=자연키와 근본 다름). 읽기(readContractsFromDb)도 이 키에서 row 를 역산 → UI 가 그 번호로
@@ -115,6 +123,7 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-13 R3-2 PR-2 채택·리베이스·리뷰수정(DevA): 타세션 #541(meetings+carryover DB정본, meetings-write.ts·meetings-rows.ts 신설, todos PR-1 수렴미러 패턴)을 master(#544 포함)로 리베이스. contract-payment.ts 충돌=resolveSheetWithSyncDb에 ctx 통합(syncDb[#544 dual-sync]+ctx[meetings-write] 겸용). 적대적 리뷰(5관점, merge-correctness 무결) 확정 결함 **A/B/C 수정**: ①A(HIGH) listCarrySourceMeetings FORMATTED_VALUE→UNFORMATTED+SERIAL(ko_KR "오전10:00" 파싱실패로 이월 예약 DB read 소실) ②B(MED) runSheetSync meeting분기 이월 gcal guard(구분=이월 skip — 아레나 재참가 중복 캘린더) ③C(MED, 디스패치 cascade 게이트) findMeetingsByDateRecord·findChildMeetingRecord DB공백 시 시트 self-heal 폴백(미러갭 고아 계약 방지). **D 후속(문서화)**: 비파일럿 contract-payment 3경로가 patchMeetingRecord 경유 gcal reconcile 유발(R2엔 없음) — 개명은 캘린더 동기라 개선, saveCompanyInfo insert-if-missing만 엣지. gcal=B구역이라 정밀수정은 후속(patchMeetingRecord gcal-skip 옵션). check.sh 초록(유닛466). **되돌리기**: 이 PR revert 1건(squash). 근거=적대리뷰 output w93pd4tn8.
 - 2026-07-13 R3-3 PR-1 구현(DevA): contracts 편집 4종(updateUserFields·updateLinkFields·syncFeeFromContract·
   writeTermination) dual-sync(A안, belie 승인). 라우터 persistContractRow + 동기 헬퍼 upsertContractRowToDbSync
   (contracts-clear.ts — clear 와 재시도/owner역조회 코어 공유). patch·terminate·syncFee·editLinked 는 dual-sync,
