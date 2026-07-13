@@ -1,0 +1,91 @@
+/**
+ * Layer: repo — 06 업체정보(company_archive) 행의 DB **동기** 반영 (R3-3 PR-2, db-write-flip §6).
+ *
+ * #544(contracts, db/contracts-clear.ts)의 dual-sync 골격을 company_archive 로 이식.
+ * 차이 = row_key 가 시트 행번호(r{row})가 아니라 **자연키(계약ref, C열)**. 자연키라 upsert 가
+ * 시트에서 append 를 유발해도 DB 는 `on conflict (spreadsheet_id, tab, row_key)` 병합 →
+ * 재시도가 중복행을 만들지 않는다(contracts append 가 dual-sync 제외였던 이유가 여기선 무효 —
+ * #544 가 "company_archive(자연키)는 PR-2로 분리"한 근거).
+ *
+ * 파일럿(화면=DB read, R2-4b loadCompanyInfoByContract)에서 쓰기 미러가 한 번 실패하면 DB 엔
+ * 옛 값이 잔존(시트 fallback 은 느린 안전망)·드리프트 누적. 편집·개명을 시트+DB 한 동작으로:
+ * DB 반영 실패 시 사용자 에러(재시도 유도, 시트폴백 금지 §0). 비파일럿은 R2 미러(async) 유지.
+ */
+import { findOwnerBySpreadsheetId } from "../users";
+import { dbEnabled, upsertSheetRow } from "./client";
+import { mirrorClearRow, mirrorSheetRow } from "./mirror";
+
+const TAB = "company_archive" as const;
+
+/** R3-3 PR-2 dual-write 옵션 — 파일럿이면 DB 동기 정본(실패=throw), 아니면 R2 미러(async). */
+export type CompanyArchiveWriteOpts = { syncDb?: boolean };
+
+const SYNC_FAIL =
+  "저장이 화면 데이터에 아직 반영되지 않았어요. 잠시 후 다시 시도해 주세요.";
+
+/** 계약ref 병합 upsert 를 await + 1회 재시도. 최종 실패 = throw. owner 역조회 실패는 "?"/"". */
+async function upsertArchiveRowWithRetry(
+  spreadsheetId: string,
+  rowKey: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  if (!dbEnabled()) return; // DB 미설정 환경(로컬 등) — no-op
+  const owner = await findOwnerBySpreadsheetId(spreadsheetId).catch(() => null);
+  const doUpsert = () =>
+    upsertSheetRow({
+      cohort: owner?.cohort ?? "?",
+      email: owner?.email ?? "",
+      spreadsheetId,
+      tab: TAB,
+      rowKey,
+      payload,
+    });
+  try {
+    await doUpsert();
+  } catch {
+    try {
+      await doUpsert(); // 병합이라 멱등 — 1회 재시도
+    } catch {
+      throw new Error(SYNC_FAIL);
+    }
+  }
+}
+
+/**
+ * 06 upsert 정본 라우팅 — 파일럿=계약ref 병합 upsert 동기(실패=throw), 비파일럿=R2 미러(async).
+ * payload 키는 dual-write 미러와 동일(= DB read 재구성 규칙과 정합).
+ */
+export async function persistCompanyArchiveRow(
+  spreadsheetId: string,
+  rowKey: string,
+  payload: Record<string, unknown>,
+  opts?: CompanyArchiveWriteOpts,
+): Promise<void> {
+  if (opts?.syncDb) {
+    await upsertArchiveRowWithRetry(spreadsheetId, rowKey, payload);
+  } else {
+    mirrorSheetRow({ spreadsheetId, tab: TAB, rowKey, payload });
+  }
+}
+
+/**
+ * 06 개명(키 이동) 정본 라우팅 — old 키 _cleared 후 new 키 키필드 병합.
+ * 파일럿=둘 다 동기(실패=throw), 비파일럿=R2 미러(async). E~AB 스냅샷은 시트가 보존(양 경로 공통).
+ *
+ * 순서 = clear old → set new (역순 금지): set-new 성공 후 clear-old 실패 시 old/new 중복행이
+ * 남아 stale 읽기 위험. clear-old 우선이면 최악이 "new 키 DB 부재"뿐이고 시트 fallback 이 흡수.
+ */
+export async function persistCompanyArchiveRename(
+  spreadsheetId: string,
+  oldKey: string,
+  next: { rowKey: string; payload: Record<string, unknown> },
+  opts?: CompanyArchiveWriteOpts,
+): Promise<void> {
+  if (opts?.syncDb) {
+    await upsertArchiveRowWithRetry(spreadsheetId, oldKey, { _cleared: true });
+    await upsertArchiveRowWithRetry(spreadsheetId, next.rowKey, next.payload);
+  } else {
+    mirrorClearRow({ spreadsheetId, tab: TAB, rowKey: oldKey });
+    mirrorSheetRow({ spreadsheetId, tab: TAB, rowKey: next.rowKey, payload: next.payload });
+  }
+}

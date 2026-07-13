@@ -124,6 +124,17 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 
 ## Log
 - 2026-07-13 R3-2 PR-2 채택·리베이스·리뷰수정(DevA): 타세션 #541(meetings+carryover DB정본, meetings-write.ts·meetings-rows.ts 신설, todos PR-1 수렴미러 패턴)을 master(#544 포함)로 리베이스. contract-payment.ts 충돌=resolveSheetWithSyncDb에 ctx 통합(syncDb[#544 dual-sync]+ctx[meetings-write] 겸용). 적대적 리뷰(5관점, merge-correctness 무결) 확정 결함 **A/B/C 수정**: ①A(HIGH) listCarrySourceMeetings FORMATTED_VALUE→UNFORMATTED+SERIAL(ko_KR "오전10:00" 파싱실패로 이월 예약 DB read 소실) ②B(MED) runSheetSync meeting분기 이월 gcal guard(구분=이월 skip — 아레나 재참가 중복 캘린더) ③C(MED, 디스패치 cascade 게이트) findMeetingsByDateRecord·findChildMeetingRecord DB공백 시 시트 self-heal 폴백(미러갭 고아 계약 방지). **D 후속(문서화)**: 비파일럿 contract-payment 3경로가 patchMeetingRecord 경유 gcal reconcile 유발(R2엔 없음) — 개명은 캘린더 동기라 개선, saveCompanyInfo insert-if-missing만 엣지. gcal=B구역이라 정밀수정은 후속(patchMeetingRecord gcal-skip 옵션). check.sh 초록(유닛466). **되돌리기**: 이 PR revert 1건(squash). 근거=적대리뷰 output w93pd4tn8.
+- 2026-07-13 R3-3 PR-2 구현(DevB): company_archive(06 업체정보) `upsertCompanyInfoArchive`·`renameCompanyInfoKey`
+  쓰기 dual-sync(파일럿만). 신규 `lib/repo/db/company-archive-sync.ts` = #544 contracts-clear 골격 이식,
+  **차이=row_key 가 자연키(계약ref, C열)** 라 upsert 가 시트 append 를 유발해도 DB `on conflict(row_key)` 병합 →
+  재시도가 중복행 無(contracts append 를 dual-sync 제외한 이유가 여기선 무효 = #544 "자연키는 PR-2" 근거).
+  라우터 persistCompanyArchiveRow/Rename(파일럿=동기 정본 실패=throw·1회재시도, 비파일럿=R2 미러 async).
+  게이트 배선: saveCompanyInfoByContract(직접 저장)·editContractLinkedFields(개명 rename) 에 syncDb 관통.
+  **2차효과 3경로 제외**(addFromContract 스냅샷·patchMeeting cascade 2)=warn-wrapped + read fallback(DB→시트06→04)
+  커버라 R2 async 미러 유지(강제 sync=조용한 반쪽쓰기·R3 §0 금지). rename DB payload 는 키필드만이라
+  업체정보 read 는 시트 fallback 이 정본(무변경). 비파일럿·DATABASE_URL 미설정=R2 완전 불변(롤백 스위치).
+  테스트: company-archive-write-sync(10: 성공·재시도·2회실패throw·no-op·owner폴백·미러경로·rename순서) +
+  company-archive-write-gate(5: save·rename 파일럿/비파일럿/DB-off). check.sh 초록. §2 지연감소는 PR-1 과 동일 미달(dual-sync).
 - 2026-07-13 R3-3 PR-1 구현(DevA): contracts 편집 4종(updateUserFields·updateLinkFields·syncFeeFromContract·
   writeTermination) dual-sync(A안, belie 승인). 라우터 persistContractRow + 동기 헬퍼 upsertContractRowToDbSync
   (contracts-clear.ts — clear 와 재시도/owner역조회 코어 공유). patch·terminate·syncFee·editLinked 는 dual-sync,

@@ -14,7 +14,11 @@ import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 import { COMPANY_FIELDS, COMPANY_FIELDS_EXT } from "./meetings";
 import { CompanyInfo } from "@/types";
-import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
+import {
+  persistCompanyArchiveRow,
+  persistCompanyArchiveRename,
+  type CompanyArchiveWriteOpts,
+} from "./db/company-archive-sync";
 
 const TAB = SHEET_RANGES.companyInfoArchive.tab;
 const HEADER_RANGE = `'${TAB}'!${SHEET_RANGES.companyInfoArchive.headerRow}`;
@@ -166,6 +170,7 @@ async function findSafeEmptyRow(spreadsheetId: string): Promise<number> {
 export async function upsertCompanyInfoArchive(
   spreadsheetId: string,
   data: { 업체명: string; 계약일: string; 업체정보?: CompanyInfo },
+  opts?: CompanyArchiveWriteOpts,
 ): Promise<{ row: number; created: boolean }> {
   await ensureCompanyInfoTab(spreadsheetId);
   const ref = companyContractRef(data.계약일, data.업체명);
@@ -183,13 +188,13 @@ export async function upsertCompanyInfoArchive(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [rowValues] },
   });
-  // P1 미러 — 키 = 계약ref(C열 값).
-  mirrorSheetRow({
+  // 키 = 계약ref(C열 값). 파일럿=DB 동기 정본(실패=throw), 비파일럿=R2 미러(async).
+  await persistCompanyArchiveRow(
     spreadsheetId,
-    tab: "company_archive",
-    rowKey: ref,
-    payload: { 업체명: data.업체명, 계약일: data.계약일, ...(data.업체정보 ?? {}) },
-  });
+    ref,
+    { 업체명: data.업체명, 계약일: data.계약일, ...(data.업체정보 ?? {}) },
+    opts,
+  );
   return { row, created: existing === null };
 }
 
@@ -251,6 +256,7 @@ export async function renameCompanyInfoKey(
   spreadsheetId: string,
   oldKey: { 계약일: string; 업체명: string },
   next: { 계약일: string; 업체명: string },
+  opts?: CompanyArchiveWriteOpts,
 ): Promise<{ moved: boolean }> {
   await ensureCompanyInfoTab(spreadsheetId);
   const row = await findRowByRef(
@@ -273,17 +279,16 @@ export async function renameCompanyInfoKey(
       ],
     },
   });
-  // P1 미러 — 키 이동: old ref 는 _cleared, new ref 로 키 필드 병합(스냅샷은 시트 보존).
-  mirrorClearRow({
+  // 키 이동: old ref 는 _cleared, new ref 로 키 필드 병합(스냅샷은 시트 보존).
+  // 파일럿=둘 다 DB 동기(실패=throw), 비파일럿=R2 미러(async).
+  await persistCompanyArchiveRename(
     spreadsheetId,
-    tab: "company_archive",
-    rowKey: companyContractRef(oldKey.계약일, oldKey.업체명),
-  });
-  mirrorSheetRow({
-    spreadsheetId,
-    tab: "company_archive",
-    rowKey: companyContractRef(next.계약일, next.업체명),
-    payload: { _cleared: false, 업체명: next.업체명.trim(), 계약일: next.계약일 },
-  });
+    companyContractRef(oldKey.계약일, oldKey.업체명),
+    {
+      rowKey: companyContractRef(next.계약일, next.업체명),
+      payload: { _cleared: false, 업체명: next.업체명.trim(), 계약일: next.계약일 },
+    },
+    opts,
+  );
   return { moved: true };
 }
