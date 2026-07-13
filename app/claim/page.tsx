@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useGlobalLoading } from "@/components/ui/LoadingProvider";
+import { isClaimableCohort } from "@/service/cohort-token";
 
 type Mode = "cohort" | "arena";
 
@@ -57,8 +58,8 @@ export default function ClaimPage() {
     name.trim().length >= 2 &&
     (mode === "arena"
       ? arenaCohort !== null
-      : // 수강생: 숫자(기수). 트레이너: "T"/"t" (sheet 검색 건너뜀).
-        /^(\d+|[Tt])$/.test(cohort.replace(/기\s*$/, "").trim()));
+      : // 수강생(숫자)·트레이너("T")·연습(온보딩) — /api/claim 게이트와 동일 함수 공유.
+        isClaimableCohort(cohort));
 
   async function handleSubmit() {
     setLoading(true);
@@ -175,14 +176,15 @@ export default function ClaimPage() {
               <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
                 기수
               </label>
+              {/* inputMode=text: 숫자 기수 외에 "T"(트레이너)·"연습"(온보딩)도
+                  모바일에서 입력 가능해야 함. numeric 키패드는 문자를 막았음. */}
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="text"
                 maxLength={3}
                 placeholder="기수를 입력하세요"
                 value={cohort}
                 onChange={(e) => setCohort(e.target.value)}
-                pattern="^(\d+|[Tt])$"
                 className={inputCls}
                 style={{ height: 52 }}
                 autoComplete="off"

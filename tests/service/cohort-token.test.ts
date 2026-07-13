@@ -268,11 +268,18 @@ describe("isClaimableCohort (claim 검증 게이트)", () => {
     expect(isClaimableCohort("A1-9기")).toBe(true);
     expect(isClaimableCohort("A2-3기")).toBe(true);
   });
-  it("형식 오류 거부", () => {
+  it("연습(온보딩) 기수 허용 — '연습'·'연습기' 정규화", () => {
+    expect(isClaimableCohort("연습")).toBe(true);
+    expect(isClaimableCohort("연습기")).toBe(true);
+    expect(isClaimableCohort(" 연습 ")).toBe(true); // 공백 흡수
+  });
+  it("형식 오류 거부 (연습 유사 오타 포함)", () => {
     expect(isClaimableCohort("")).toBe(false);
     expect(isClaimableCohort("A1")).toBe(false);
     expect(isClaimableCohort("abc")).toBe(false);
     expect(isClaimableCohort("A-1기")).toBe(false);
+    expect(isClaimableCohort("연습용2")).toBe(false); // 이름이지 기수 아님
+    expect(isClaimableCohort("연")).toBe(false);
   });
 });
 
