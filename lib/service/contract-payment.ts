@@ -77,7 +77,7 @@ export async function editContractLinkedFields(
     next: { 계약일?: string; 업체명?: string; 수임비?: number };
   },
 ): Promise<{ failures: string[] }> {
-  const spreadsheetId = await resolveSheet(email);
+  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
   const failures: string[] = [];
   const new계약일 = input.next.계약일 ?? input.old.계약일;
   const new업체명 = input.next.업체명 ?? input.old.업체명;
@@ -91,6 +91,7 @@ export async function editContractLinkedFields(
         spreadsheetId,
         { ...input.old, meetingId: input.meetingId },
         { 계약일: new계약일, 업체명: new업체명 },
+        { syncDb },
       );
     } catch {
       failures.push("02 계약수납(업체명·계약일)");
@@ -98,12 +99,16 @@ export async function editContractLinkedFields(
   }
   if (수임료Changed) {
     try {
-      await syncFeeFromContract(spreadsheetId, {
-        meetingId: input.meetingId,
-        계약일: new계약일,
-        업체명: new업체명,
-        수임비: input.next.수임비!,
-      });
+      await syncFeeFromContract(
+        spreadsheetId,
+        {
+          meetingId: input.meetingId,
+          계약일: new계약일,
+          업체명: new업체명,
+          수임비: input.next.수임비!,
+        },
+        { syncDb },
+      );
     } catch {
       failures.push("02 계약수납(수임료)");
     }
@@ -186,6 +191,10 @@ export async function addPriorContract(
   cp: ContractPayment,
 ): Promise<{ row: number }> {
   const spreadsheetId = await resolveSheet(email);
+  // append 계열 = R2 미러 유지(dual-sync 제외). 근거(db-write-flip §6 R3-3): append 는 행번호를
+  // 시트가 할당(findFirstEmptyRow)하고 매 호출 새 prior:uuid 를 부여해 멱등키가 없다. 직후 dual-sync
+  // updateUserFields(실패 throw)를 걸면 사용자 재시도가 append 를 재실행 → 중복 계약행 = 매출 이중계상.
+  // 기존 행 편집(patch/terminate/…)만 dual-sync — 생성 액션은 R2(async 미러, no-throw)로 안전 유지.
   const { row } = await appendFromContract(
     spreadsheetId,
     { 계약일: cp.계약일, 업체명: cp.업체명, 수임비: cp.수임비 },
@@ -276,8 +285,8 @@ export async function syncContractFee(
   email: string,
   data: { 계약일: string; 업체명: string; 수임비: number },
 ): Promise<{ row: number } | null> {
-  const spreadsheetId = await resolveSheet(email);
-  return syncFeeFromContract(spreadsheetId, data);
+  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
+  return syncFeeFromContract(spreadsheetId, data, { syncDb });
 }
 
 /** 사용자 입력 영역(F~AA) patch. */
@@ -285,8 +294,8 @@ export async function patchContractPayment(
   email: string,
   cp: ContractPayment,
 ): Promise<void> {
-  const spreadsheetId = await resolveSheet(email);
-  await updateUserFields(spreadsheetId, cp);
+  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
+  await updateUserFields(spreadsheetId, cp, { syncDb });
 }
 
 /**
@@ -303,14 +312,19 @@ export async function terminateContract(
   if (!Number.isFinite(input.반환액) || input.반환액 < 0) {
     throw new Error("반환액은 0 이상의 숫자여야 해요");
   }
-  const spreadsheetId = await resolveSheet(email);
+  const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
   const 해지일 = new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10); // KST
-  await writeTermination(spreadsheetId, input.row, {
-    해지일,
-    해지사유: input.사유.trim(),
-    반환액: input.반환액,
-    해지숨김: input.숨김,
-  });
+  await writeTermination(
+    spreadsheetId,
+    input.row,
+    {
+      해지일,
+      해지사유: input.사유.trim(),
+      반환액: input.반환액,
+      해지숨김: input.숨김,
+    },
+    { syncDb },
+  );
 }
 
 /** 이 사용자의 삭제가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1). */
