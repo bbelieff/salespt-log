@@ -1,0 +1,86 @@
+/**
+ * Layer: repo — 03 DB관리 행의 DB **동기** 반영 (R3-4 dual-sync). contracts-clear.ts 의 db-tab 판.
+ *
+ * 배경: 03 화면이 DB read(R2-5)인 파일럿에서, 편집/삭제의 DB 미러(fire-and-forget·무재시도)가
+ * 한 번이라도 실패하면 시트만 바뀌고 화면(DB)엔 옛 값이 영구 잔존한다. update/clear(기존 행
+ * {섹션}:r{row} 멱등)를 시트+DB 한 동작으로: DB 반영 실패 시 사용자 에러(재시도 유도).
+ *
+ * 제외(설계): ①append — 행번호=시트 할당이라 재시도 시 중복행(이중계상), R2 async 유지
+ * (db-write-flip §6 R3-4). ②파생셀 writer(생산개수 M·생산 E) — 컨택 저장 경유 호출이 있어
+ * dual-sync throw 시 이미 저장된 컨택이 사용자 에러가 됨 + 백필 컬럼폼 shadowing → R3-4b 후속.
+ * 비파일럿(시트 read)은 기존 async 미러 유지(호출부 게이트).
+ */
+import { findOwnerBySpreadsheetId } from "../users";
+import { dbEnabled, upsertSheetRow } from "./client";
+import { mirrorSheetRow, mirrorClearRow } from "./mirror";
+
+/** R3-4 dual-write 옵션 — 파일럿(화면=DB read)이면 DB 동기 정본(실패=throw), 아니면 R2 미러(async). */
+export type DbTabWriteOpts = { syncDb?: boolean };
+
+/** {섹션}:r{row} 병합 upsert 를 await + 1회 재시도. 최종 실패 = throw(failMsg). owner 역조회 실패는 "?"/"". */
+async function upsertDbRowWithRetry(
+  spreadsheetId: string,
+  rowKey: string,
+  payload: Record<string, unknown>,
+  failMsg: string,
+): Promise<void> {
+  if (!dbEnabled()) return; // DB 미설정 환경(로컬 등) — no-op
+  const owner = await findOwnerBySpreadsheetId(spreadsheetId).catch(() => null);
+  const doUpsert = () =>
+    upsertSheetRow({
+      cohort: owner?.cohort ?? "?",
+      email: owner?.email ?? "",
+      spreadsheetId,
+      tab: "db",
+      rowKey,
+      payload,
+    });
+  try {
+    await doUpsert();
+  } catch {
+    try {
+      await doUpsert(); // 병합이라 멱등 — 1회 재시도
+    } catch {
+      throw new Error(failMsg);
+    }
+  }
+}
+
+/** 03 행 편집 DB-side 반영 라우팅 — 파일럿=동기 정본(실패=throw·시트폴백 금지), 비파일럿=R2 미러(async).
+ * payload 키는 async 미러와 동일(= DB read 재구성 규칙 정합). 호출부가 _cleared:false 를 포함해
+ * 삭제 후 같은 행 재추가 시 부활시킨다(read-db-tab 의 _cleared 필터 대응). */
+export async function persistDbRow(
+  spreadsheetId: string,
+  rowKey: string,
+  payload: Record<string, unknown>,
+  opts?: DbTabWriteOpts,
+): Promise<void> {
+  if (opts?.syncDb) {
+    await upsertDbRowWithRetry(
+      spreadsheetId,
+      rowKey,
+      payload,
+      "저장이 화면 데이터에 아직 반영되지 않았어요. 잠시 후 다시 시도해 주세요.",
+    );
+  } else {
+    mirrorSheetRow({ spreadsheetId, tab: "db", rowKey, payload });
+  }
+}
+
+/** 03 행 삭제 DB-side 반영 — 파일럿=동기 _cleared 정본(실패=throw), 비파일럿=R2 미러(async). */
+export async function clearDbRow(
+  spreadsheetId: string,
+  rowKey: string,
+  opts?: DbTabWriteOpts,
+): Promise<void> {
+  if (opts?.syncDb) {
+    await upsertDbRowWithRetry(
+      spreadsheetId,
+      rowKey,
+      { _cleared: true },
+      "삭제가 화면 데이터에 아직 반영되지 않았어요. 잠시 후 한 번 더 삭제해 주세요.",
+    );
+  } else {
+    mirrorClearRow({ spreadsheetId, tab: "db", rowKey });
+  }
+}

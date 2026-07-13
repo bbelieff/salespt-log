@@ -26,7 +26,7 @@ import {
 import * as Sentry from "@sentry/nextjs";
 import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
-import { chooseDailySource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { writeProductionCell, sumChannelInflowOverPeriod } from "@/repo/sales";
 import type {
   Channel,
@@ -42,11 +42,19 @@ async function resolveSheet(email: string): Promise<string> {
   return user.spreadsheetId;
 }
 
-/** sid + 쓰기 정본 여부(파일럿+DB) — 직접생산 M 의 유입 합산을 DB/시트 중 어디서 할지 판정(R3-1). */
-async function resolveWriteCtx(email: string): Promise<{ sid: string; fromDb: boolean }> {
+/** sid + 쓰기 정본 여부. fromDb = 유입 합산 소스(R3-1, 읽기 게이트). syncDb = 03 편집 DB 동기 정본
+ *  여부(R3-4, 쓰기 게이트). 현재 두 게이트 동일 판정이나 의미가 달라 각 함수로 산출(향후 분기 대비). */
+async function resolveWriteCtx(
+  email: string,
+): Promise<{ sid: string; fromDb: boolean; syncDb: boolean }> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
-  return { sid: user.spreadsheetId, fromDb: chooseDailySource(user.cohort, dbEnabled()) === "db" };
+  const on = dbEnabled();
+  return {
+    sid: user.spreadsheetId,
+    fromDb: chooseDailySource(user.cohort, on) === "db",
+    syncDb: chooseWriteSource(user.cohort, on) === "db",
+  };
 }
 
 export interface DBOverview {
@@ -168,19 +176,25 @@ export async function addPurchase(email: string, p: DBPurchase) {
   return r;
 }
 export async function patchPurchase(email: string, row: number, p: DBPurchase) {
-  const sid = await resolveSheet(email);
+  const { sid, syncDb } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "매입DB", row);
-  const r = await updatePurchase(sid, row, p);
-  await syncProduction(sid, "매입DB", old);
-  if (p.구매일 !== old) await syncProduction(sid, "매입DB", p.구매일);
-  return r;
+  // finally: 시트 쓰기 후 DB dual-sync 가 throw 해도 생산(E) 재집계는 실행. E 는 시트 상태만
+  // 의존하고 시트는 이미 확정(writeRow 완료) → skip 시 재시도가 옛 날짜를 잃어 E 영구 오집계(리뷰 CONFIRMED).
+  try {
+    return await updatePurchase(sid, row, p, { syncDb });
+  } finally {
+    await syncProduction(sid, "매입DB", old);
+    if (p.구매일 !== old) await syncProduction(sid, "매입DB", p.구매일);
+  }
 }
 export async function removePurchase(email: string, row: number) {
-  const sid = await resolveSheet(email);
+  const { sid, syncDb } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "매입DB", row);
-  const r = await clearPurchase(sid, row);
-  await syncProduction(sid, "매입DB", old);
-  return r;
+  try {
+    return await clearPurchase(sid, row, { syncDb });
+  } finally {
+    await syncProduction(sid, "매입DB", old); // DB throw 여도 E 재집계(위 patchPurchase 주석)
+  }
 }
 
 // ── 직접생산 (생산 = 유입, ADR-0024) ──────────────────────────
@@ -248,16 +262,17 @@ export async function addProduction(email: string, p: DBProduction) {
   return r;
 }
 export async function patchProduction(email: string, row: number, p: DBProduction) {
-  const { sid, fromDb } = await resolveWriteCtx(email);
+  const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일, row);
-  const r = await updateProduction(sid, row, p);
+  const r = await updateProduction(sid, row, p, { syncDb });
+  // syncDirectCount → writeProductionCountCell(M) 은 R2 async 유지(컨택 저장 경유 호출 회귀 회피, R3-4b).
   await syncDirectCount(sid, { row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb);
   return r;
 }
 export async function removeProduction(email: string, row: number) {
-  const sid = await resolveSheet(email);
+  const { sid, syncDb } = await resolveWriteCtx(email);
   // 생산(E)은 유입(컨택)이 소유 — 레코드 삭제해도 E 불변. M 은 행과 함께 사라짐.
-  return clearProduction(sid, row);
+  return clearProduction(sid, row, { syncDb });
 }
 
 // ── 현수막 주문 (P:V) ─────────────────────────────────────────
@@ -267,12 +282,12 @@ export async function addBanner(email: string, b: DBBanner) {
   return appendBanner(sid, b);
 }
 export async function patchBanner(email: string, row: number, b: DBBanner) {
-  const sid = await resolveSheet(email);
-  return updateBanner(sid, row, b);
+  const { sid, syncDb } = await resolveWriteCtx(email);
+  return updateBanner(sid, row, b, { syncDb });
 }
 export async function removeBanner(email: string, row: number) {
-  const sid = await resolveSheet(email);
-  return clearBanner(sid, row);
+  const { sid, syncDb } = await resolveWriteCtx(email);
+  return clearBanner(sid, row, { syncDb });
 }
 // (현수막 게시 = 생산 → 컨택 영업관리 E 소유. 게시로그 AF:AI 폐기, ADR-0025.)
 
@@ -284,17 +299,21 @@ export async function addLead(email: string, l: DBLead) {
   return r;
 }
 export async function patchLead(email: string, row: number, l: DBLead) {
-  const sid = await resolveSheet(email);
+  const { sid, syncDb } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "콜·지·기·소", row);
-  const r = await updateLead(sid, row, l);
-  await syncProduction(sid, "콜·지·기·소", old);
-  if (l.접수일 !== old) await syncProduction(sid, "콜·지·기·소", l.접수일);
-  return r;
+  try {
+    return await updateLead(sid, row, l, { syncDb });
+  } finally {
+    await syncProduction(sid, "콜·지·기·소", old); // DB throw 여도 E 재집계(patchPurchase 주석)
+    if (l.접수일 !== old) await syncProduction(sid, "콜·지·기·소", l.접수일);
+  }
 }
 export async function removeLead(email: string, row: number) {
-  const sid = await resolveSheet(email);
+  const { sid, syncDb } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "콜·지·기·소", row);
-  const r = await clearLead(sid, row);
-  await syncProduction(sid, "콜·지·기·소", old);
-  return r;
+  try {
+    return await clearLead(sid, row, { syncDb });
+  } finally {
+    await syncProduction(sid, "콜·지·기·소", old); // DB throw 여도 E 재집계(patchPurchase 주석)
+  }
 }

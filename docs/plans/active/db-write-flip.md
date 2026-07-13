@@ -114,7 +114,19 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     삭제·편집은 기존 행 멱등이라 안전). append 직후 사용자 편집(updateUserFields dual-sync)이 全행 정본 write 로
     정합 회복. company_archive(자연키)=**PR-2** 로 분리(todos식 flip 가능).
   - 게이트: 서비스 resolveSheetWithSyncDb(=chooseDailySource 파일럿) → repo opts.syncDb. 읽기 경로 무변경(R2-4 라이브).
-- **R3-4** feat/db-write-production — db 4섹션. 합계행=시트 수식 몫(미러 raw 만).
+- **R3-4** feat/db-03-write-flip — db 4섹션. 합계행=시트 수식 몫(미러 raw 만).
+  - **PR-1(2026-07-13) = raw 4섹션 편집(update/clear)만 dual-sync**(contracts A안 패턴, 신규 `db/db-tab-sync.ts`
+    persistDbRow/clearDbRow — {섹션}:r{row} 멱등 upsert, 실패=throw·시트폴백 금지). 게이트=서비스
+    resolveWriteCtx.syncDb(chooseWriteSource) → repo opts. **append 제외**(행번호=시트 할당, throw 재시도
+    중복행, C2 확정) — R2 async 유지. 읽기 게이트(loadDBOverview=DB) 이미 라이브 → read-your-writes 충족.
+  - **critic-2 수정(HIGH)**: append+update DB payload 에 `_cleared:false` 포함 — 삭제 후 같은 행 재추가 시
+    _cleared:true 잔존으로 재추가 행이 파일럿 화면에서 사라지던 사고(jsonb 병합) 방지.
+  - **파생셀 writer 제외 → R3-4b 후속**: writeProductionCountCell(생산개수 M)·writeProductionCell(생산 E)는
+    R2 async 유지. 근거: (a) M 은 컨택 저장(contact.ts, 저장 완료 후 try/catch 없이 호출) 경유라 dual-sync
+    throw 시 이미 저장된 컨택이 에러(critic-1) (b) 백필 컬럼폼 행에 필드명 부분쓰기 shadowing(C5-A) (c) E 는
+    본 §6 71-73 에서 R2 유지 명시. R3-4b = 컨택경로 non-throw 분리 + shadowing 처리 후 M/E 편입.
+  - **알려진 한계(수용)**: 편집 DB throw 시 syncProduction(E) skip → E 일시 stale(화면 DB 도 옛 값이라 정합,
+    재시도 회복). 합계행 방어(isSumRow pre-read)는 드리프트 전제라 미추가(후속).
 - **R3-5** feat/db-cohort-create — admin 기수 생성 DB 정본(선행: chore/deploy-env-admin-token). 시트 복제 실패가 생성을 막지 않게 pending 재시도. O1/O2=USER_ENTERED.
 
 ## 7. 수용 기준 공통(R3-1~5)
@@ -135,6 +147,17 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
   업체정보 read 는 시트 fallback 이 정본(무변경). 비파일럿·DATABASE_URL 미설정=R2 완전 불변(롤백 스위치).
   테스트: company-archive-write-sync(10: 성공·재시도·2회실패throw·no-op·owner폴백·미러경로·rename순서) +
   company-archive-write-gate(5: save·rename 파일럿/비파일럿/DB-off). check.sh 초록. §2 지연감소는 PR-1 과 동일 미달(dual-sync).
+- 2026-07-13 R3-4 PR-1 구현(DevF): 03 DB관리 raw 4섹션 편집(update/clear ×4) dual-sync(파일럿). 신규
+  `lib/repo/db/db-tab-sync.ts`(persistDbRow/clearDbRow) + db.ts 8함수 opts 관통 + service resolveWriteCtx.syncDb.
+  **적대적 검증 워크플로 7에이전트**(6주장 + 완전성 비평가)로 블루프린트 검증 → **중대 발견 2건 수정**:
+  ①critic-2 _cleared:false(재추가 행 부활, append+update) ②파생셀 M/E dual-sync 제외(컨택 저장 회귀 critic-1
+  +shadowing C5-A → R3-4b). append 제외(C2). 신규 테스트 23(repo dual-sync 9·게이트/롤백/append제외/E-cascade/
+  throw회귀 12·_cleared 부활 2). check.sh 초록. §2 지연감소는 미달성(dual-sync·시트 동기 유지=cascade 무회귀 전제).
+- 2026-07-13 R3-4 PR-1 적대적 diff 리뷰(4차원×검증) → **회귀 1건 CONFIRMED·수정**: patch/remove(매입DB·
+  콜지기소)에서 DB dual-sync throw 시 시트는 이미 변경됐는데 syncProduction(E 재집계) skip → 재시도 시
+  oldDateOf 가 변경된 시트를 재읽어 옛 날짜 유실 → 생산(E) 영구 오집계(master 는 미러 fire-forget라 무해).
+  수정=4함수 try/finally(시트 확정 후 E 재집계는 DB throw 무관 실행, DB 에러는 전파). throw 회귀 2테스트.
+  비파일럿 불변=리뷰 clean(0), _cleared 부활 오더링 우려=REFUTED.
 - 2026-07-13 R3-3 PR-1 구현(DevA): contracts 편집 4종(updateUserFields·updateLinkFields·syncFeeFromContract·
   writeTermination) dual-sync(A안, belie 승인). 라우터 persistContractRow + 동기 헬퍼 upsertContractRowToDbSync
   (contracts-clear.ts — clear 와 재시도/owner역조회 코어 공유). patch·terminate·syncFee·editLinked 는 dual-sync,

@@ -10,7 +10,8 @@ import type {
   DBPurchase,
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
-import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
+import { mirrorSheetRow } from "./db/mirror";
+import { persistDbRow, clearDbRow, type DbTabWriteOpts } from "./db/db-tab-sync";
 
 const TAB = SHEET_RANGES.dbManagement.tab;
 const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
@@ -318,7 +319,7 @@ export async function appendPurchase(
     p.기타, // G
     "", // H 정리(구 #425 부가세여부 자리)
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}`, payload: { ...p } }); // P1
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}`, payload: { ...p, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
   return { row };
 }
 
@@ -343,7 +344,7 @@ export async function appendProduction(
     p.부가세여부, // N
     p.기타, // O (구 스페이서 자리)
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { ...p } }); // P1
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { ...p, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
   return { row };
 }
 
@@ -369,7 +370,7 @@ export async function appendBanner(
     b.기타, // V
     "", // W 정리(구 #425 부가세여부 자리)
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}`, payload: { ...b } }); // P1
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}`, payload: { ...b, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
   return { row };
 }
 
@@ -394,7 +395,7 @@ export async function appendLead(
     l.연락처,
     l.조건,
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}`, payload: { ...l } }); // P1
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}`, payload: { ...l, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
   return { row };
 }
 
@@ -404,6 +405,7 @@ export async function updatePurchase(
   spreadsheetId: string,
   row: number,
   p: DBPurchase,
+  opts?: DbTabWriteOpts,
 ): Promise<void> {
   await writeRow(spreadsheetId, SPEC.매입DB, row, [
     p.구매일,
@@ -414,13 +416,14 @@ export async function updatePurchase(
     p.기타, // G
     "", // H 정리
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}`, payload: { ...p } }); // P1
+  await persistDbRow(spreadsheetId, `매입DB:r${row}`, { ...p, _cleared: false }, opts); // R3-4 dual-sync
 }
 
 export async function updateProduction(
   spreadsheetId: string,
   row: number,
   p: DBProduction,
+  opts?: DbTabWriteOpts,
 ): Promise<void> {
   await writeRow(spreadsheetId, SPEC.직접생산, row, [
     p.시작일, // I
@@ -431,13 +434,14 @@ export async function updateProduction(
     p.부가세여부, // N
     p.기타, // O
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { ...p } }); // P1
+  await persistDbRow(spreadsheetId, `직접생산:r${row}`, { ...p, _cleared: false }, opts); // R3-4 dual-sync
 }
 
 export async function updateBanner(
   spreadsheetId: string,
   row: number,
   b: DBBanner,
+  opts?: DbTabWriteOpts,
 ): Promise<void> {
   await writeRow(spreadsheetId, SPEC.현수막, row, [
     b.날짜,
@@ -449,13 +453,14 @@ export async function updateBanner(
     b.기타, // V
     "", // W 정리
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}`, payload: { ...b } }); // P1
+  await persistDbRow(spreadsheetId, `현수막:r${row}`, { ...b, _cleared: false }, opts); // R3-4 dual-sync
 }
 
 export async function updateLead(
   spreadsheetId: string,
   row: number,
   l: DBLead,
+  opts?: DbTabWriteOpts,
 ): Promise<void> {
   await writeRow(spreadsheetId, SPEC.콜지기소, row, [
     l.구분,
@@ -466,26 +471,26 @@ export async function updateLead(
     l.연락처,
     l.조건,
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}`, payload: { ...l } }); // P1
+  await persistDbRow(spreadsheetId, `콜지기소:r${row}`, { ...l, _cleared: false }, opts); // R3-4 dual-sync
 }
 
 // ── clear (특정 row) ──────────────────────────────────────────
 
-export async function clearPurchase(spreadsheetId: string, row: number) {
+export async function clearPurchase(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
   await clearRowRange(spreadsheetId, SPEC.매입DB, row);
-  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}` }); // P1
+  await clearDbRow(spreadsheetId, `매입DB:r${row}`, opts); // R3-4 dual-sync
 }
-export async function clearProduction(spreadsheetId: string, row: number) {
+export async function clearProduction(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
   await clearRowRange(spreadsheetId, SPEC.직접생산, row);
-  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}` }); // P1
+  await clearDbRow(spreadsheetId, `직접생산:r${row}`, opts); // R3-4 dual-sync
 }
-export async function clearBanner(spreadsheetId: string, row: number) {
+export async function clearBanner(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
   await clearRowRange(spreadsheetId, SPEC.현수막, row);
-  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}` }); // P1
+  await clearDbRow(spreadsheetId, `현수막:r${row}`, opts); // R3-4 dual-sync
 }
-export async function clearLead(spreadsheetId: string, row: number) {
+export async function clearLead(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
   await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
-  mirrorClearRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}` }); // P1
+  await clearDbRow(spreadsheetId, `콜지기소:r${row}`, opts); // R3-4 dual-sync
 }
 
 export { writeProductionCountCell } from "./db-production-cell";
