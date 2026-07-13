@@ -97,14 +97,12 @@
 
 ### 📋 plans/ (작업 계획)
 #### active/ (진행 중)
-| 계획 | 우선순위 | 담당자 | 마감일 |
-|------|----------|--------|--------|
-| [01-auth-onboarding.md](./plans/active/01-auth-onboarding.md) | P0 | belie | 2026-04-25 |
-| [02-meeting-booking.md](./plans/active/02-meeting-booking.md) | P1 | belie | 2026-04-30 |
-| [03-meeting-results.md](./plans/active/03-meeting-results.md) | P1 | belie | 2026-05-05 |
+> 라이브 목록은 [`plans/active/`](./plans/active/) 디렉토리 참조 — 진행 중 트랙의 SoR(설계문서)·로드맵·미착수 항목만 남긴다.
+> (하드코딩 표는 드리프트가 심해 폐기 — 2026-07-13 정리. 각 트랙 현황은 `docs/worklog.md` 활성 트랙 보드가 정본.)
 
 #### completed/ (완료)
-_현재 완료된 계획 없음_
+> 완료된 계획은 [`plans/completed/`](./plans/completed/)에 보관 (프론트매터 `status: completed`).
+> 2026-07-13 기완료 94건 일괄 아카이브 — "active/ 에 완료 플랜 잔존" 오분류 재발 방지.
 
 ### 🛠️ playbooks/ (운영 매뉴얼)
 | 매뉴얼 | 용도 | 실행 시점 |
