@@ -1,13 +1,12 @@
 /**
  * 해지 계약 '계약 수' 제외 (contract-count-exclude-terminated) PR-A:
- *  ① isExcludedTermination (해지 & !이월) ② terminatedByChannel (linkedMeetingId 조인·폴백·unknown·이월 이중차감 방지)
+ *  ① terminatedByChannel (linkedMeetingId 조인·폴백·unknown·미팅 raw 포함조건과 대칭=과다계상 방지)
  *  ③ applyTerminationExclusion 오버레이 (channelMatrix.계약 차감·음수 클램프·원본 무변=그림자 diff 0)
  */
 import { describe, expect, it } from "vitest";
 import { Channel, ContractPayment, Meeting } from "@/types";
 import {
   countTerminatedInWeeks,
-  isExcludedTermination,
   terminatedByChannel,
   terminatedByWeek,
 } from "@/service/termination-count";
@@ -34,26 +33,11 @@ function chan(p: Partial<Record<Channel, number>>): Record<Channel, number> {
   return base;
 }
 
-describe("isExcludedTermination — 해지 & 이월 아님", () => {
-  it("해지(해지일)이고 이월 아니면 true", () => {
-    expect(isExcludedTermination(cp({ 해지일: "2026-07-15" }), COURSE)).toBe(true);
-  });
-  it("이월(구분=이월) 해지는 제외 대상 아님 — 이중차감 방지", () => {
-    expect(isExcludedTermination(cp({ 해지일: "2026-07-15", 구분: "이월" }), COURSE)).toBe(false);
-  });
-  it("이월(계약일<시작일) 해지도 제외 대상 아님", () => {
-    expect(isExcludedTermination(cp({ 계약일: "2026-07-01", 해지일: "2026-07-15" }), COURSE)).toBe(false);
-  });
-  it("미해지 계약은 대상 아님", () => {
-    expect(isExcludedTermination(cp({}), COURSE)).toBe(false);
-  });
-});
-
-describe("terminatedByChannel — 해지→미팅 채널 귀속", () => {
+describe("terminatedByChannel — 해지→미팅 채널 귀속 (raw 미팅 포함조건과 대칭)", () => {
   it("linkedMeetingId(AK) 로 미팅 채널 조인", () => {
     const payments = [cp({ 업체명: "A", 해지일: "2026-07-15", linkedMeetingId: "m1" })];
     const meetings = [mt({ id: "m1", channel: "현수막", 업체명: "A" })];
-    const { byChannel, unknown } = terminatedByChannel(payments, meetings, COURSE);
+    const { byChannel, unknown } = terminatedByChannel(payments, meetings);
     expect(byChannel["현수막"]).toBe(1);
     expect(unknown).toBe(0);
   });
@@ -61,7 +45,7 @@ describe("terminatedByChannel — 해지→미팅 채널 귀속", () => {
   it("linkedMeetingId 결측 → 업체명+계약일 폴백 매칭", () => {
     const payments = [cp({ 업체명: "B", 계약일: "2026-07-12", 해지일: "2026-07-15" })];
     const meetings = [mt({ id: "m9", channel: "매입DB", 업체명: "B", 미팅날짜: "2026-07-12" })];
-    const { byChannel, unknown } = terminatedByChannel(payments, meetings, COURSE);
+    const { byChannel, unknown } = terminatedByChannel(payments, meetings);
     expect(byChannel["매입DB"]).toBe(1);
     expect(unknown).toBe(0);
   });
@@ -69,17 +53,33 @@ describe("terminatedByChannel — 해지→미팅 채널 귀속", () => {
   it("귀속 실패(링크·폴백 모두 미스) → unknown, 채널별 0", () => {
     const payments = [cp({ 업체명: "없는곳", 해지일: "2026-07-15", linkedMeetingId: "zzz" })];
     const meetings = [mt({ id: "m1", channel: "직접생산", 업체명: "다른곳" })];
-    const { byChannel, unknown } = terminatedByChannel(payments, meetings, COURSE);
+    const { byChannel, unknown } = terminatedByChannel(payments, meetings);
     expect(unknown).toBe(1);
     expect(Object.values(byChannel).reduce((a, b) => a + b, 0)).toBe(0);
   });
 
-  it("이월 해지는 차감 대상에서 제외(이중차감 방지)", () => {
-    const payments = [cp({ 업체명: "C", 해지일: "2026-07-15", 구분: "이월", linkedMeetingId: "m1" })];
-    const meetings = [mt({ id: "m1", channel: "직접생산", 업체명: "C" })];
-    const { byChannel, unknown } = terminatedByChannel(payments, meetings, COURSE);
+  it("미팅 flag='이월' → 차감 안 함 (raw 가 이월 미팅 제외 → 이중차감 방지)", () => {
+    const payments = [cp({ 업체명: "C", 해지일: "2026-07-15", linkedMeetingId: "m1" })];
+    const meetings = [mt({ id: "m1", channel: "직접생산", 업체명: "C", 구분: "이월" })];
+    const { byChannel, unknown } = terminatedByChannel(payments, meetings);
     expect(Object.values(byChannel).reduce((a, b) => a + b, 0)).toBe(0);
     expect(unknown).toBe(0);
+  });
+
+  it("미팅 계약여부=false → 차감 안 함 (raw 가 안 셈)", () => {
+    const payments = [cp({ 업체명: "D", 해지일: "2026-07-15", linkedMeetingId: "m1" })];
+    const meetings = [mt({ id: "m1", channel: "직접생산", 업체명: "D", 계약여부: false })];
+    const { byChannel } = terminatedByChannel(payments, meetings);
+    expect(Object.values(byChannel).reduce((a, b) => a + b, 0)).toBe(0);
+  });
+
+  it("🐛회귀(#549): 날짜-캐리오버(계약일<시작)여도 미팅 native면 차감 — raw 가 계상했으므로", () => {
+    // payment 계약일<시작(=payment 이월)이나 미팅 flag native·계약여부=true → raw channelStacking 계상.
+    // 과거 isExcludedTermination(payment 이월제외)은 차감 스킵=과다계상. 미팅 게이트는 정확히 차감.
+    const payments = [cp({ 업체명: "E", 계약일: "2026-07-01", 해지일: "2026-07-15", linkedMeetingId: "m1" })];
+    const meetings = [mt({ id: "m1", channel: "매입DB", 업체명: "E", 미팅날짜: "2026-07-11" })];
+    const { byChannel } = terminatedByChannel(payments, meetings);
+    expect(byChannel["매입DB"]).toBe(1);
   });
 
   it("미해지 계약은 무시, 여러 채널 합산", () => {
@@ -93,7 +93,7 @@ describe("terminatedByChannel — 해지→미팅 채널 귀속", () => {
       mt({ id: "m2", channel: "직접생산", 업체명: "B" }),
       mt({ id: "m3", channel: "매입DB", 업체명: "C" }),
     ];
-    const { byChannel } = terminatedByChannel(payments, meetings, COURSE);
+    const { byChannel } = terminatedByChannel(payments, meetings);
     expect(byChannel["직접생산"]).toBe(2);
     expect(byChannel["매입DB"]).toBe(0);
   });

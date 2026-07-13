@@ -42,9 +42,9 @@ related: contract-termination(completed), db-write-flip, dashboard
 ## 3. 공용 헬퍼 (신규 `lib/service/termination-count.ts`, 순수함수)
 기존 판정 **재사용**(재구현 금지): `isTerminatedContract`·`isCarryoverContract`(`lib/types/contract-status.ts`).
 
-**축마다 판정 규칙이 다르다** (raw 정의에 정합) — 구현 확정(2026-07-13):
-- **채널축(PR-A)** — `isExcludedTermination(p, courseStartISO) = isTerminatedContract(p) && !isCarryoverContract(...)`. raw(channelStacking)가 CARRYOVER 제외 → 이월 해지 이중차감 방지.
-  - `terminatedByChannel(payments, meetings, courseStartISO): {byChannel, unknown}` — linkedMeetingId(AK)→미팅 channel 조인, 폴백 업체명+계약일. 귀속 실패=unknown(호출부 로깅).
+**축마다 판정 규칙이 다르다** (raw 정의에 정합) — 구현 확정(2026-07-13, DevD parity 수정 반영):
+- **채널축(PR-A)** — 차감은 **매칭 미팅의 raw 포함조건**(`계약여부 && 구분!=="이월"`)으로 게이트. raw(`channelStackingFromDb`)가 **미팅 flag 로만** 이월 제외(날짜필터 無)하므로, payment 기준 이월판정(`isCarryoverContract`=flag OR 계약일<시작)으로 게이트하면 날짜-캐리오버 계약이 과다계상됨(#549 DevD 발견). → 미팅 게이트로 대칭화.
+  - `terminatedByChannel(payments, meetings): {byChannel, unknown}` — `isTerminatedContract` 필터 후 linkedMeetingId(AK)→미팅 channel 조인(폴백 업체명+계약일), 미팅이 `계약여부 && 구분≠이월` 일 때만 차감. 귀속 실패=unknown(호출부 로깅). (courseStartISO 불요 — 미팅 flag 기준.)
 - **주차축(PR-B 아레나·PR-C 8주)** — **plain `isTerminatedContract`**(이월 미필터). raw(weeklyContracts / 시트 N·C33:H40)는 CARRYOVER 필터 없이 미팅날짜 주차만 세므로 이월 해지도 빼야 정합. 날짜기반 이월(계약일<시작=week0)은 **주차 가드(1~8)** 로 raw 와 동일하게 자연 제외.
   - `terminatedByWeek(payments, courseStart): number[8]` — **미팅 불요**(계약일=미팅날짜로 버킷, weekIndexOf·parseISO 는 weeklyContractsFromDb 와 동일 규칙). 추가 read 0.
   - `countTerminatedInWeeks(payments, courseStart): number` — 8주 내 총수(terminatedByWeek 합). 아레나 계약왕·기수평균 총합용.
@@ -77,3 +77,4 @@ related: contract-termination(completed), db-write-flip, dashboard
 - 2026-07-13 계획 등재(DevA): 워크플로우 4표면 매핑(dashboard-funnel·arena-scoreboard·payment-ui·twin-mechanism) + 합성 설계. 아레나 feasibility=가능(계약왕 무료, 기수평균만 비용). belie 스코프 결정 4건 대기(§6).
 - 2026-07-13 PR-A 구현(DevC): A 설계 인계. `termination-count.ts`(isExcludedTermination·terminatedByChannel) + `loadDashboard` 오버레이(그림자 dispatch 이후, 새 view 반환·raw 무변) 양경로(DB=meetings 손안·시트=findByDateRange 재사용 read). channelMatrix.계약만 차감(퍼널·전환율·채널성과 일괄), weeklyTrend 는 PR-C. 단위테스트(귀속·이월이중차감·음수클램프·view==raw). meetings.ts 미수정(findByDateRange 호출만 — A의 04 쓰기 구역 무접촉). #549 머지·배포·health 200.
 - 2026-07-13 PR-B 구현(DevC): 아레나 `scoreboard.ts`. 주차축 헬퍼 신규(`terminatedByWeek`·`countTerminatedInWeeks` — 계약일 주차버킷, plain isTerminated). ①계약왕 loadIndividualRankings: `계약 -= countTerminatedInWeeks`(payments·courseStart 이미 손안, 추가 read 0). ②기수평균 loadScoreboard: 참가자별 payments+courseStart read 추가(30분 캐시 공유)→주차별 `acc.계약 -= termWeeks[w]`·총합 차감, 음수 클램프. **자율결정(reversible)**: 주차축=plain isTerminated(이월 미필터)+주차가드 — raw(C33:H40)가 이월필터 없다는 정합 판단(시트수식 미실측 불확실성은 max(0) 클램프+rare edge 로 흡수). revert=차감줄 제거 or isExcludedTermination 로 교체. 매출·앱사용량 무변.
+- 2026-07-13 채널축 parity 수정(DevC, fix-forward · DevD 발견): PR-A 의 `terminatedByChannel` 이 `isExcludedTermination`(payment 이월=flag OR 계약일<시작)로 게이트 → raw `channelStackingFromDb`(미팅 flag 로만 이월제외)와 비대칭 → 날짜-캐리오버 해지계약 **과다계상**. 수정 = 차감을 **매칭 미팅의 raw 포함조건(`계약여부 && 구분!=="이월"`)** 으로 게이트해 대칭화(courseStartISO 인자 제거). `isExcludedTermination` 제거(orphan). 회귀테스트 추가(미팅 이월/계약여부false/날짜캐리오버-native). revert=`git revert`. (weekly 축은 이미 대칭이라 무영향.)
