@@ -41,7 +41,7 @@ import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { isCarryoverContract } from "./contract-payment";
 import { findByDateRange } from "@/repo/meetings";
-import { terminatedByChannel } from "./termination-count";
+import { terminatedByChannel, terminatedByWeek } from "./termination-count";
 import { chooseDailySource } from "./daily-source";
 import { computeDbAggregates, diffDashboardAggregates } from "./dashboard-aggregates";
 
@@ -196,10 +196,10 @@ export async function loadDashboard(
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
-      const { view, termByChannel } = await loadDashboardFromDb(sheetId, user.courseStartISO);
+      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO);
       reverseShadowCompare(sheetId, view); // 서빙=DB raw 로 시트 대조(async 감시) — 오버레이 前
       // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
-      return applyTerminationExclusion(view, termByChannel);
+      return applyTerminationExclusion(view, termByChannel, termByWeek);
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDashboard-db-serve" } });
       // ↓ 시트 경로로 강등
@@ -213,7 +213,11 @@ export async function loadDashboard(
 async function loadDashboardFromDb(
   sheetId: string,
   courseStartISOCache?: string,
-): Promise<{ view: DashboardView; termByChannel: Record<Channel, number> }> {
+): Promise<{
+  view: DashboardView;
+  termByChannel: Record<Channel, number>;
+  termByWeek: number[];
+}> {
   const courseStart = courseStartISOCache
     ? new Date(`${courseStartISOCache}T00:00:00`)
     : (await readProfileBundle(sheetId)).courseStart;
@@ -237,12 +241,16 @@ async function loadDashboardFromDb(
     costByChannel: [purchaseCost, productionCost, bannerCost],
     payments: contracts,
   });
-  // 해지 계약수 오버레이 입력(채널별 차감) — 미팅은 이미 손안(추가 read 0).
+  // 해지 계약수 오버레이 입력(채널별·주차별 차감) — 미팅·계약 이미 손안(추가 read 0).
   const term = terminatedByChannel(contracts, meetings);
   if (term.unknown > 0) {
     captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "db" });
   }
-  return { view, termByChannel: term.byChannel };
+  return {
+    view,
+    termByChannel: term.byChannel,
+    termByWeek: terminatedByWeek(contracts, courseStart),
+  };
 }
 
 /** 역방향 그림자 감시 (R2-7b) — 서빙=DB 후 시트 대시보드 값을 async 대조. diff 시 Sentry 경보
@@ -310,7 +318,8 @@ async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
   if (term.unknown > 0) {
     captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "sheet" });
   }
-  return applyTerminationExclusion(view, term.byChannel);
+  const termByWeek = terminatedByWeek(payments, profile.courseStart);
+  return applyTerminationExclusion(view, term.byChannel, termByWeek);
 }
 
 /** 채널귀속용 04 미팅 전량 read (시트경로 전용) — 수강기간(넉넉히 84일) 날짜 리스트로
@@ -329,11 +338,13 @@ async function readCourseMeetings(
   return Array.from(map.values()).flat();
 }
 
-/** 렌더 직전 오버레이 — 해지 계약수를 channelMatrix.계약 에서 차감(음수 클램프).
- *  원본 view 를 mutate 하지 않고 새 DashboardView 반환(그림자 diff 0 사수 — 필수). */
+/** 렌더 직전 오버레이 — 해지 계약수를 channelMatrix.계약(채널축)·weeklyTrend.계약수(주차축)에서
+ *  차감(음수 클램프). 원본 view 를 mutate 하지 않고 새 DashboardView 반환(그림자 diff 0 사수 — 필수:
+ *  reverseShadowCompare 가 async 로 raw view.channelMatrix·weeklyTrend 를 나중에 읽는다). */
 export function applyTerminationExclusion(
   view: DashboardView,
   byChannel: Record<Channel, number>,
+  byWeek: number[] = [],
 ): DashboardView {
   let changed = false;
   const channelMatrix = view.channelMatrix.map((m) => {
@@ -342,5 +353,11 @@ export function applyTerminationExclusion(
     changed = true;
     return { ...m, 계약: Math.max(0, m.계약 - sub) };
   });
-  return changed ? { ...view, channelMatrix } : view;
+  const weeklyTrend = view.weeklyTrend.map((w, i) => {
+    const sub = byWeek[i] ?? 0;
+    if (sub <= 0) return w;
+    changed = true;
+    return { ...w, 계약수: Math.max(0, w.계약수 - sub) };
+  });
+  return changed ? { ...view, channelMatrix, weeklyTrend } : view;
 }

@@ -100,13 +100,13 @@ describe("terminatedByChannel — 해지→미팅 채널 귀속 (raw 미팅 포�
 });
 
 describe("applyTerminationExclusion — 오버레이(차감·클램프·원본 무변)", () => {
-  function view(matrix: { 채널: Channel; 계약: number }[]) {
+  function view(matrix: { 채널: Channel; 계약: number }[], weekly: number[] = []) {
     return {
       kpi: {},
       channelMatrix: matrix.map((m) => ({
         채널: m.채널, 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0, 미팅완료: 0, 계약: m.계약,
       })),
-      weeklyTrend: [],
+      weeklyTrend: weekly.map((c, i) => ({ 주차: i + 1, 계약수: c, 활동량: 0 })),
       costBreakdown: [],
       콜지기소수임비: 0,
     } as unknown as import("@/types").DashboardView;
@@ -134,6 +134,33 @@ describe("applyTerminationExclusion — 오버레이(차감·클램프·원본 �
   it("차감 0 이면 동일 참조 반환(불필요 복사 없음)", () => {
     const raw = view([{ 채널: "직접생산", 계약: 5 }]);
     expect(applyTerminationExclusion(raw, chan({}))).toBe(raw);
+  });
+
+  it("weeklyTrend.계약수 주차별 차감 + 음수 클램프", () => {
+    const out = applyTerminationExclusion(
+      view([], [3, 1, 0]),
+      chan({}),
+      [1, 2, 0], // 1주차 −1, 2주차 −2(클램프 0), 3주차 −0
+    );
+    expect(out.weeklyTrend[0]!.계약수).toBe(2);
+    expect(out.weeklyTrend[1]!.계약수).toBe(0); // max(0, 1-2)
+    expect(out.weeklyTrend[2]!.계약수).toBe(0);
+  });
+
+  it("weeklyTrend 원본 무변(그림자 diff 0) — 새 배열·entry, 입력 불변", () => {
+    const raw = view([], [5]);
+    const out = applyTerminationExclusion(raw, chan({}), [2]);
+    expect(out).not.toBe(raw);
+    expect(out.weeklyTrend[0]).not.toBe(raw.weeklyTrend[0]);
+    expect(raw.weeklyTrend[0]!.계약수).toBe(5); // 그림자가 이걸 봄
+    expect(out.weeklyTrend[0]!.계약수).toBe(3);
+  });
+
+  it("byWeek 생략(기본 [])이면 weeklyTrend 무변 — 채널축만", () => {
+    const raw = view([{ 채널: "직접생산", 계약: 5 }], [4]);
+    const out = applyTerminationExclusion(raw, chan({ 직접생산: 1 }));
+    expect(out.channelMatrix[0]!.계약).toBe(4);
+    expect(out.weeklyTrend[0]!.계약수).toBe(4); // 무변
   });
 });
 

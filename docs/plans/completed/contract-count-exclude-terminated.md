@@ -1,7 +1,8 @@
 ---
 slug: contract-count-exclude-terminated
-status: active
+status: completed
 created: 2026-07-13
+completed: 2026-07-13
 owner: belie
 related: contract-termination(completed), db-write-flip, dashboard
 ---
@@ -78,3 +79,4 @@ related: contract-termination(completed), db-write-flip, dashboard
 - 2026-07-13 PR-A 구현(DevC): A 설계 인계. `termination-count.ts`(isExcludedTermination·terminatedByChannel) + `loadDashboard` 오버레이(그림자 dispatch 이후, 새 view 반환·raw 무변) 양경로(DB=meetings 손안·시트=findByDateRange 재사용 read). channelMatrix.계약만 차감(퍼널·전환율·채널성과 일괄), weeklyTrend 는 PR-C. 단위테스트(귀속·이월이중차감·음수클램프·view==raw). meetings.ts 미수정(findByDateRange 호출만 — A의 04 쓰기 구역 무접촉). #549 머지·배포·health 200.
 - 2026-07-13 PR-B 구현(DevC): 아레나 `scoreboard.ts`. 주차축 헬퍼 신규(`terminatedByWeek`·`countTerminatedInWeeks` — 계약일 주차버킷, plain isTerminated). ①계약왕 loadIndividualRankings: `계약 -= countTerminatedInWeeks`(payments·courseStart 이미 손안, 추가 read 0). ②기수평균 loadScoreboard: 참가자별 payments+courseStart read 추가(30분 캐시 공유)→주차별 `acc.계약 -= termWeeks[w]`·총합 차감, 음수 클램프. **자율결정(reversible)**: 주차축=plain isTerminated(이월 미필터)+주차가드 — raw(C33:H40)가 이월필터 없다는 정합 판단(시트수식 미실측 불확실성은 max(0) 클램프+rare edge 로 흡수). revert=차감줄 제거 or isExcludedTermination 로 교체. 매출·앱사용량 무변.
 - 2026-07-13 채널축 parity 수정(DevC, fix-forward · DevD 발견): PR-A 의 `terminatedByChannel` 이 `isExcludedTermination`(payment 이월=flag OR 계약일<시작)로 게이트 → raw `channelStackingFromDb`(미팅 flag 로만 이월제외)와 비대칭 → 날짜-캐리오버 해지계약 **과다계상**. 수정 = 차감을 **매칭 미팅의 raw 포함조건(`계약여부 && 구분!=="이월"`)** 으로 게이트해 대칭화(courseStartISO 인자 제거). `isExcludedTermination` 제거(orphan). 회귀테스트 추가(미팅 이월/계약여부false/날짜캐리오버-native). revert=`git revert`. (weekly 축은 이미 대칭이라 무영향.)
+- 2026-07-13 PR-C 구현(DevC, 최종 조각): ①**대시보드 8주 추이** — `applyTerminationExclusion` 에 `byWeek` 인자 추가, `weeklyTrend.계약수` 도 차감(양경로 `terminatedByWeek(payments, courseStart)` 계산, 그림자 dispatch 이후 새 배열·raw 무변 → diff 0). DB경로 추가read0, 시트경로는 PR-A readCourseMeetings 재사용(순증분0). ②**스케줄 SummaryBar** — `계약` 카운터에서 해지 제외(로컬, useContractPayments 이미 마운트 → 추가read0, commissionSum 동일 키 `미팅날짜=계약일|업체명` 조인). 단위테스트+4(weeklyTrend 차감·클램프·불변·byWeek생략). **전 지점 완료** → `Changelog-Done` 로 '해지계약수제외' 그룹 수강생 공개. **스펙 완주** → completed 이동.
