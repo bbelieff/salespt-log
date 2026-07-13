@@ -25,6 +25,11 @@ import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import { copyTemplateSheet, findFolderContainingName } from "@/repo/drive-client";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
+import { dbEnabled } from "@/repo/db/client";
+import {
+  enqueueCohortCreate,
+  buildPendingCohortJob,
+} from "@/repo/db/cohort-pending";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 interface MemberInput {
@@ -162,6 +167,8 @@ async function POST_handler(req: Request) {
   const created: { name: string; sheetId: string }[] = [];
   const skipped: { name: string }[] = [];
   const failed: { name: string; reason: string }[] = [];
+  // R3-5: Drive 복제 실패로 큐에 적재된(생성 비차단) 멤버 — 재시도 대기.
+  const pending: { name: string; reason: string }[] = [];
 
   for (const m of members) {
     const name = String(m.name ?? "").trim();
@@ -209,11 +216,32 @@ async function POST_handler(req: Request) {
       let newSheetId: string;
       let folderUrl = "";
       if (plan.action === "create") {
-        newSheetId = await copyWithRetry(
-          templateId,
-          plan.title,
-          plan.folderId,
-        );
+        try {
+          newSheetId = await copyWithRetry(templateId, plan.title, plan.folderId);
+        } catch (copyErr) {
+          // Drive 복제 실패 → 생성을 막지 않고 DB pending 큐에 정본 적재(R3-5). 재시도가 완주.
+          const reason =
+            copyErr instanceof Error ? copyErr.message : "시트 복제 실패";
+          if (dbEnabled()) {
+            await enqueueCohortCreate(
+              buildPendingCohortJob({
+                cohortLabel: parsed.label,
+                cohortType: parsed.type,
+                name,
+                mode: "create",
+                folderId: plan.folderId,
+                templateId,
+                sheetTitle: plan.title,
+                rosterSheetId: cfg?.rosterSheetId ?? "",
+              }),
+            );
+            pending.push({ name, reason });
+          } else {
+            // DB 미설정이면 큐 불가 → 기존 동작(실패 목록)로 폴백.
+            failed.push({ name, reason: `${reason} (DB 미설정 — 큐 불가)` });
+          }
+          continue;
+        }
         folderUrl = folderUrlOf(plan.folderId);
       } else {
         newSheetId = plan.sheetId;
@@ -248,6 +276,7 @@ async function POST_handler(req: Request) {
     created,
     skipped,
     failed,
+    pending,
   });
 }
 
