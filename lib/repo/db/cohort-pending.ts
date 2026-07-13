@@ -29,6 +29,8 @@ export interface PendingCohortJob {
   sheetTitle: string;
   /** 아레나: roster 시트 id(있으면 재시도 성공 후 1행 append). */
   rosterSheetId: string;
+  /** 수강시작일 ISO(YYYY-MM-DD). 있으면 재시도가 새 시트 O1/O2 를 세팅(R3-5). 빈값=무기록. */
+  courseStartISO: string;
 }
 
 export interface PendingCohortRow extends PendingCohortJob {
@@ -52,6 +54,7 @@ export function buildPendingCohortJob(input: {
   templateId?: string;
   sheetTitle?: string;
   rosterSheetId?: string;
+  courseStartISO?: string;
 }): PendingCohortJob {
   return {
     cohortLabel: String(input.cohortLabel).replace(/기\s*$/, "").trim(),
@@ -63,6 +66,7 @@ export function buildPendingCohortJob(input: {
     templateId: String(input.templateId ?? "").trim(),
     sheetTitle: String(input.sheetTitle ?? "").trim(),
     rosterSheetId: String(input.rosterSheetId ?? "").trim(),
+    courseStartISO: String(input.courseStartISO ?? "").trim(),
   };
 }
 
@@ -92,6 +96,7 @@ async function doEnsure(): Promise<void> {
       template_id text not null default '',
       sheet_title text not null default '',
       roster_sheet_id text not null default '',
+      course_start_iso text not null default '',
       status text not null default 'pending',
       attempts int not null default 0,
       last_error text not null default '',
@@ -99,6 +104,10 @@ async function doEnsure(): Promise<void> {
       updated_at timestamptz not null default now(),
       unique (cohort_label, name)
     )`);
+  // 기존 테이블(#547)에 컬럼 추가 — 멱등(R3-5 course_start_iso).
+  await getDbPool().query(
+    `alter table cohort_pending_creates add column if not exists course_start_iso text not null default ''`,
+  );
   await getDbPool().query(
     `create index if not exists cohort_pending_status on cohort_pending_creates (status)`,
   );
@@ -113,18 +122,21 @@ export async function enqueueCohortCreate(job: PendingCohortJob): Promise<void> 
   await ensureCohortPendingSchema();
   await getDbPool().query(
     `insert into cohort_pending_creates
-       (cohort_label, name, cohort_type, mode, sheet_id, folder_id, template_id, sheet_title, roster_sheet_id, status, updated_at)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending', now())
+       (cohort_label, name, cohort_type, mode, sheet_id, folder_id, template_id, sheet_title, roster_sheet_id, course_start_iso, status, updated_at)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending', now())
      on conflict (cohort_label, name) do update set
        cohort_type = excluded.cohort_type, mode = excluded.mode,
        sheet_id = excluded.sheet_id, folder_id = excluded.folder_id,
        template_id = excluded.template_id, sheet_title = excluded.sheet_title,
        roster_sheet_id = excluded.roster_sheet_id,
+       -- 빈 값 재제출은 기존 저장 날짜를 지우지 않는다(무입력이 유입력을 덮지 않게).
+       course_start_iso = case when excluded.course_start_iso = '' then cohort_pending_creates.course_start_iso else excluded.course_start_iso end,
        status = case when cohort_pending_creates.status = 'done' then 'done' else 'pending' end,
        updated_at = now()`,
     [
       job.cohortLabel, job.name, job.cohortType, job.mode,
       job.sheetId, job.folderId, job.templateId, job.sheetTitle, job.rosterSheetId,
+      job.courseStartISO,
     ],
   );
 }
@@ -141,6 +153,7 @@ function toRow(r: Record<string, unknown>): PendingCohortRow {
     templateId: String(r.template_id ?? ""),
     sheetTitle: String(r.sheet_title ?? ""),
     rosterSheetId: String(r.roster_sheet_id ?? ""),
+    courseStartISO: String(r.course_start_iso ?? ""),
     status: (r.status as PendingCohortRow["status"]) ?? "pending",
     attempts: Number(r.attempts ?? 0),
     lastError: String(r.last_error ?? ""),

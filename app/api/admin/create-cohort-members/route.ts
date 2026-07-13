@@ -25,6 +25,8 @@ import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import { copyTemplateSheet, findFolderContainingName } from "@/repo/drive-client";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
+import { writeCourseDates } from "@/repo/course-dates";
+import { computeGraduationISO, isValidISODate } from "@/service/cohort-dates";
 import { dbEnabled } from "@/repo/db/client";
 import {
   enqueueCohortCreate,
@@ -82,12 +84,25 @@ async function POST_handler(req: Request) {
     mode?: unknown;
     members?: unknown;
     config?: unknown;
+    courseStartISO?: unknown;
   } = {};
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
+
+  // 수강시작일(선택) — 있으면 **생성(create) 시** 새 시트 O1/O2 를 세팅(R3-5). 형식 오류만 거부.
+  // link 모드(기존 시트 연동)는 무시 — 남의 시트 날짜를 덮어쓰지 않는다.
+  const courseStartISO = String(body.courseStartISO ?? "").trim();
+  if (courseStartISO && !isValidISODate(courseStartISO)) {
+    return NextResponse.json(
+      { error: "invalid_input", hint: "수강시작일은 YYYY-MM-DD 형식이어야 합니다." },
+      { status: 400 },
+    );
+  }
+  // 종강일 = 수강시작 + 50(ADR-0005 7기+). 요청당 상수 → 루프 밖 1회 계산.
+  const graduationISO = courseStartISO ? computeGraduationISO(courseStartISO) : "";
 
   const parsed = parseCohortToken(String(body.token ?? ""));
   if (!parsed) {
@@ -233,6 +248,7 @@ async function POST_handler(req: Request) {
                 templateId,
                 sheetTitle: plan.title,
                 rosterSheetId: cfg?.rosterSheetId ?? "",
+                courseStartISO, // 재시도가 O1/O2 세팅에 사용
               }),
             );
             pending.push({ name, reason });
@@ -248,6 +264,24 @@ async function POST_handler(req: Request) {
       }
 
       await addTraineePrepRow(parsed.label, name, newSheetId);
+
+      // 새 시트 O1/O2 날짜 세팅(R3-5) — **create 모드만**(복제된 새 시트). link 은 제외(남의 시트 비접촉).
+      // §2.5 가드로 사용자 수기 날짜는 보존. 실패해도 생성은 성공이므로 흡수(warn).
+      if (courseStartISO && plan.action === "create") {
+        try {
+          const r = await writeCourseDates(newSheetId, courseStartISO, graduationISO);
+          if (r.written.length === 0 && r.preserved.length > 0) {
+            console.warn(
+              `[create-cohort] O1/O2 기존값 보존 — 입력 날짜 미반영: ${name} (${r.preserved.join(",")})`,
+            );
+          }
+        } catch (dateErr) {
+          console.warn(
+            `[create-cohort] O1/O2 세팅 실패(생성은 성공): ${name}`,
+            dateErr instanceof Error ? dateErr.message : dateErr,
+          );
+        }
+      }
 
       if (parsed.type === "arena" && cfg?.rosterSheetId) {
         await appendArenaRoster(cfg.rosterSheetId, {

@@ -17,6 +17,8 @@ import { copyTemplateSheet } from "@/repo/drive-client";
 import { appendArenaRoster } from "@/repo/cohorts";
 import { addTraineePrepRow } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
+import { writeCourseDates } from "@/repo/course-dates";
+import { computeGraduationISO, isValidISODate } from "@/service/cohort-dates";
 
 const sheetUrlOf = (id: string) => `https://docs.google.com/spreadsheets/d/${id}/edit`;
 const folderUrlOf = (id: string) => `https://drive.google.com/drive/folders/${id}`;
@@ -58,7 +60,30 @@ export async function completeOnePending(job: PendingCohortRow): Promise<string>
   // 3) 레지스트리 prep row(멱등 upsert — #546 결정좌표).
   await addTraineePrepRow(job.cohortLabel, job.name, sheetId);
 
-  // 4) 아레나 roster 1행(있으면).
+  // 4) 새 시트 O1/O2 날짜 세팅(R3-5). O2=O1+50(ADR-0005). §2.5 가드로 사용자 수기값 보존.
+  //    DB 값 방어: 외부 경로(백필·수동편집)로 course_start_iso 가 오염될 수 있어 재검증.
+  //    실패해도 prep 은 이미 성공이므로 흡수(warn).
+  if (job.courseStartISO && isValidISODate(job.courseStartISO)) {
+    try {
+      const r = await writeCourseDates(
+        sheetId,
+        job.courseStartISO,
+        computeGraduationISO(job.courseStartISO),
+      );
+      if (r.written.length === 0 && r.preserved.length > 0) {
+        console.warn(
+          `[cohort-create] O1/O2 기존값 보존 — 입력 날짜 미반영: ${job.name} (${r.preserved.join(",")})`,
+        );
+      }
+    } catch (e) {
+      console.warn(
+        `[cohort-create] O1/O2 세팅 실패(재시도는 성공): ${job.name}`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
+  // 5) 아레나 roster 1행(있으면).
   if (job.cohortType === "arena" && job.rosterSheetId) {
     await appendArenaRoster(job.rosterSheetId, {
       name: job.name,
