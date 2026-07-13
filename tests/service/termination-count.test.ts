@@ -5,7 +5,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { Channel, ContractPayment, Meeting } from "@/types";
-import { isExcludedTermination, terminatedByChannel } from "@/service/termination-count";
+import {
+  countTerminatedInWeeks,
+  isExcludedTermination,
+  terminatedByChannel,
+  terminatedByWeek,
+} from "@/service/termination-count";
 import { applyTerminationExclusion } from "@/service/dashboard";
 
 const COURSE = "2026-07-10"; // 수강시작 — 이후 계약일 = 이월 아님
@@ -129,5 +134,40 @@ describe("applyTerminationExclusion — 오버레이(차감·클램프·원본 �
   it("차감 0 이면 동일 참조 반환(불필요 복사 없음)", () => {
     const raw = view([{ 채널: "직접생산", 계약: 5 }]);
     expect(applyTerminationExclusion(raw, chan({}))).toBe(raw);
+  });
+});
+
+describe("terminatedByWeek / countTerminatedInWeeks — 주차축(아레나·8주)", () => {
+  const CS = new Date(2026, 6, 10); // 2026-07-10 로컬 자정 = 1주차 시작
+
+  it("계약일 주차(1~8)로 버킷 — plain isTerminated(이월도 포함)", () => {
+    const payments = [
+      cp({ 계약일: "2026-07-10", 해지일: "2026-07-20" }), // 1주차
+      cp({ 계약일: "2026-07-17", 해지일: "2026-07-25" }), // 2주차
+      cp({ 계약일: "2026-08-28", 해지일: "2026-08-30" }), // 8주차(+49일)
+      cp({ 계약일: "2026-07-11", 구분: "이월", 해지일: "2026-07-20" }), // 이월 해지도 차감(채널축과 다름)
+    ];
+    const w = terminatedByWeek(payments, CS);
+    expect(w[0]).toBe(2); // 1주차: 정상 1 + 이월 1
+    expect(w[1]).toBe(1); // 2주차
+    expect(w[7]).toBe(1); // 8주차
+    expect(countTerminatedInWeeks(payments, CS)).toBe(4);
+  });
+
+  it("주차 가드 — 시작 전(week0)·8주 밖(week9+) 해지는 차감 안 함", () => {
+    const payments = [
+      cp({ 계약일: "2026-07-09", 해지일: "2026-07-20" }), // 시작 하루 전 = week0
+      cp({ 계약일: "2026-09-04", 해지일: "2026-09-10" }), // +56일 = week9
+    ];
+    expect(countTerminatedInWeeks(payments, CS)).toBe(0);
+    expect(terminatedByWeek(payments, CS).every((x) => x === 0)).toBe(true);
+  });
+
+  it("미해지·빈 계약일은 무시", () => {
+    const payments = [
+      cp({ 계약일: "2026-07-10" }), // 미해지
+      cp({ 계약일: "", 해지일: "2026-07-20" }), // 계약일 없음
+    ];
+    expect(countTerminatedInWeeks(payments, CS)).toBe(0);
   });
 });

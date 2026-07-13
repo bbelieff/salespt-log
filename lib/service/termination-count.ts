@@ -9,6 +9,13 @@
  */
 import { Channel, isCarryoverContract, isTerminatedContract } from "@/types";
 import type { ContractPayment, Meeting } from "@/types";
+import { weekIndexOf } from "@/repo/sales";
+
+/** "YYYY-MM-DD" → 로컬 자정 Date (dashboard-aggregates.parseISO 와 동일 규칙 — 주차 버킷 패리티). */
+function parseISO(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y!, m! - 1, d!);
+}
 
 /**
  * 계약수에서 차감할 해지 계약 판정 = 해지됨(해지일 존재) **그리고** 이월 아님.
@@ -68,4 +75,40 @@ export function terminatedByChannel(
     }
   }
   return { byChannel, unknown };
+}
+
+/**
+ * 주차축(1~8) 해지 계약 차감 수 — 대시보드 8주 추이·아레나(주차 파생 계약수)용.
+ *
+ * ⚠️ 채널축(terminatedByChannel)과 **판정 규칙이 다르다**: 여기선 이월을 필터하지 않고
+ * **plain `isTerminatedContract`** 를 쓴다. 근거 — raw(weeklyContractsFromDb / 시트 N·C33:H40)는
+ * CARRYOVER 플래그 필터 없이 `상태=계약` 을 미팅날짜 주차로만 세므로, 정합하려면 차감도
+ * 이월 해지를 빼야 under-subtract 가 안 난다. 날짜기반 이월(계약일<시작=week0)은 아래
+ * **주차 가드(1~8)** 가 raw 와 동일하게 자연 제외 → 이중차감 불가.
+ *
+ * 미팅 불요: 계약의 `계약일`(=연결 미팅의 미팅날짜)로 버킷팅. weekIndexOf·parseISO 는
+ * weeklyContractsFromDb 와 동일 규칙(주차 경계 패리티).
+ */
+export function terminatedByWeek(
+  payments: ContractPayment[],
+  courseStart: Date,
+): number[] {
+  const weeks = new Array<number>(8).fill(0);
+  for (const p of payments) {
+    if (!isTerminatedContract(p)) continue;
+    const d = (p.계약일 ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    const w = weekIndexOf(parseISO(d), courseStart);
+    // 8주 밖(0·9·10)은 raw 도 미포함 → 차감 안 함. (noUncheckedIndexedAccess 대응)
+    if (w >= 1 && w <= 8) weeks[w - 1] = (weeks[w - 1] ?? 0) + 1;
+  }
+  return weeks;
+}
+
+/** 8주 내 해지 계약 총수 — 아레나 계약왕·기수평균 총합용(주차별 합, terminatedByWeek 와 동일 정의). */
+export function countTerminatedInWeeks(
+  payments: ContractPayment[],
+  courseStart: Date,
+): number {
+  return terminatedByWeek(payments, courseStart).reduce((a, b) => a + b, 0);
 }

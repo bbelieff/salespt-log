@@ -20,6 +20,7 @@ import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
 import { readCourseStart, weekIndexOf } from "@/repo/sales";
 import { splitContractRevenue } from "./dashboard";
+import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
 import type { RankingMetric, RankingEntry } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
@@ -124,19 +125,34 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
       .filter(([, paid]) => paid)
       .map(([id]) => id);
 
-    const reads = await pMap(paidIds, (id) =>
-      cachedWeekly(id).catch(() => null),
+    // 해지 계약수 제외: 주차별 계약(C33:H40)에서 해지 계약(계약일 주차)만큼 차감.
+    // payments·courseStart 추가 read(계약왕과 동일 캐시 키 → 번들 경로는 캐시 히트, 추가 왕복 ≈0).
+    const reads = await pMap(paidIds, async (id) => {
+      const [wp, payments, courseStart] = await Promise.all([
+        cachedWeekly(id).catch(() => null),
+        cachedContractPayments(id).catch(() => []),
+        cachedCourseStart(id).catch(() => null),
+      ]);
+      if (!wp) return null;
+      const termWeeks = courseStart
+        ? terminatedByWeek(payments, courseStart)
+        : new Array<number>(8).fill(0);
+      return { wp, termWeeks };
+    });
+    const valid = reads.filter(
+      (r): r is { wp: WeeklyPerf[]; termWeeks: number[] } => r !== null,
     );
-    const valid = reads.filter((r): r is WeeklyPerf[] => r !== null);
     const n = valid.length;
 
     const weekly = Array.from({ length: 8 }, (_, w) => {
       const acc = emptyMetrics();
-      for (const wp of valid) {
+      for (const { wp, termWeeks } of valid) {
         const row = wp[w];
         if (!row) continue;
         for (const m of METRICS) acc[m] += row[m];
+        acc.계약 -= termWeeks[w] ?? 0; // 해지 제외(raw 와 동일 주차 버킷)
       }
+      acc.계약 = Math.max(0, acc.계약); // 음수 클램프(합계 단위)
       return {
         week: w + 1,
         생산: avg(acc.생산, n),
@@ -148,11 +164,13 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
     });
 
     const totalSum = emptyMetrics();
-    for (const wp of valid) {
+    for (const { wp, termWeeks } of valid) {
       for (const row of wp) {
         for (const m of METRICS) totalSum[m] += row[m];
       }
+      totalSum.계약 -= termWeeks.reduce((a, b) => a + b, 0); // 해지 제외(총합)
     }
+    totalSum.계약 = Math.max(0, totalSum.계약);
     const total: MetricRow = {
       생산: avg(totalSum.생산, n),
       유입: avg(totalSum.유입, n),
@@ -223,6 +241,9 @@ export async function loadIndividualRankings(): Promise<
         앱사용량 += row.생산 + row.유입 + row.컨택 + row.미팅 + row.계약;
       }
     }
+    // 해지 계약은 계약 "수"에서 제외(계약일 주차 1~8, plain isTerminated — raw 주차정의와 정합).
+    // 매출·앱사용량은 무변(매출은 splitContractRevenue.arena 가 이미 반환액 차감).
+    if (courseStart) 계약 = Math.max(0, 계약 - countTerminatedInWeeks(payments, courseStart));
     // 매출 = 수임비 + 수납액(이월 제외) — 대시보드 KPI 와 동일 정의(splitContractRevenue.arena).
     // 시트 총매출 셀(승인 포함 가능) 의존 제거 → 전광판·KPI 매출 절대 안 어긋남.
     const 매출 = courseStart
