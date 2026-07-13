@@ -133,10 +133,12 @@ export async function editContractLinkedFields(
   }
   if (업체명Changed || 계약일Changed) {
     try {
-      await renameCompanyInfoKey(spreadsheetId, input.old, {
-        계약일: new계약일,
-        업체명: new업체명,
-      });
+      await renameCompanyInfoKey(
+        spreadsheetId,
+        input.old,
+        { 계약일: new계약일, 업체명: new업체명 },
+        { syncDb }, // R3-3 PR-2: 파일럿=06 DB 동기 정본
+      );
     } catch {
       failures.push("06 업체정보");
     }
@@ -279,8 +281,8 @@ export async function saveCompanyInfoByContract(
   email: string,
   data: { 계약일: string; 업체명: string; 업체정보: CompanyInfo },
 ): Promise<{ meetingUpdated: boolean }> {
-  const ctx = await resolveCtx(email);
-  const spreadsheetId = ctx.spreadsheetId;
+  // R3-2+R3-3 병합: ctx(04 미팅 프리미티브) + syncDb(06 dual-sync) 둘 다 필요.
+  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
   let meetingUpdated = false;
   const meetings = await findMeetingsByDateRecord(ctx, data.계약일, "meeting");
   const m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
@@ -288,7 +290,8 @@ export async function saveCompanyInfoByContract(
     await patchMeetingRecord(ctx, m.id, { 업체정보: data.업체정보 });
     meetingUpdated = true;
   }
-  await upsertCompanyInfoArchive(spreadsheetId, data);
+  // R3-3 PR-2: 사용자 직접 저장 → 파일럿은 06 DB 동기 정본(실패=throw, read-your-writes).
+  await upsertCompanyInfoArchive(spreadsheetId, data, { syncDb });
   return { meetingUpdated };
 }
 
