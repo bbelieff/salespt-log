@@ -23,6 +23,7 @@ interface ResultReport {
   created: { name: string; sheetId: string }[];
   skipped: { name: string }[];
   failed: { name: string; reason: string }[];
+  pending: { name: string; reason: string }[];
 }
 
 export default function CohortCreateModal() {
@@ -33,6 +34,7 @@ export default function CohortCreateModal() {
   const [templateSheetId, setTemplateSheetId] = useState(DEFAULT_COHORT_TEMPLATE_ID);
   const [rootFolderId, setRootFolderId] = useState("");
   const [rosterSheetId, setRosterSheetId] = useState("");
+  const [courseStartISO, setCourseStartISO] = useState("");
   const [membersText, setMembersText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function CohortCreateModal() {
     setTemplateSheetId(DEFAULT_COHORT_TEMPLATE_ID);
     setRootFolderId("");
     setRosterSheetId("");
+    setCourseStartISO("");
     setMembersText("");
     setErr(null);
     setReport(null);
@@ -87,6 +90,9 @@ export default function CohortCreateModal() {
           token,
           mode,
           members,
+          // 수강시작일은 생성(create) 모드에서만 — link(기존 시트 연동)엔 날짜 미전송.
+          courseStartISO:
+            mode === "create" && courseStartISO ? courseStartISO : undefined,
           config:
             mode === "create"
               ? { templateSheetId, rootFolderId, rosterSheetId }
@@ -102,6 +108,7 @@ export default function CohortCreateModal() {
         created: d.created ?? [],
         skipped: d.skipped ?? [],
         failed: d.failed ?? [],
+        pending: d.pending ?? [],
       });
       router.refresh();
     } catch (e) {
@@ -216,6 +223,20 @@ export default function CohortCreateModal() {
                   />
                 </div>
               )}
+              <div>
+                <label className="mb-1 block text-xs font-bold text-gray-700">
+                  수강시작일 <span className="font-normal text-gray-400">(선택)</span>
+                </label>
+                <input
+                  type="date"
+                  value={courseStartISO}
+                  onChange={(e) => setCourseStartISO(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 시트 값 유지.
+                </p>
+              </div>
             </div>
           )}
 
@@ -252,7 +273,8 @@ export default function CohortCreateModal() {
             <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-3 text-xs">
               <div className="font-bold text-gray-900">
                 결과 — 생성 {report.created.length} · 건너뜀{" "}
-                {report.skipped.length} · 실패 {report.failed.length}
+                {report.skipped.length} · 대기 {report.pending.length} · 실패{" "}
+                {report.failed.length}
               </div>
               {report.created.length > 0 && (
                 <div className="text-green-700">
@@ -263,6 +285,15 @@ export default function CohortCreateModal() {
                 <div className="text-gray-500">
                   ⏭ 건너뜀(이미 등록): {report.skipped.map((s) => s.name).join(", ")}
                 </div>
+              )}
+              {report.pending.length > 0 && (
+                <ul className="space-y-0.5 text-amber-700">
+                  {report.pending.map((p, i) => (
+                    <li key={i}>
+                      ⏳ {p.name}: 복제 실패 — 대기열 등록됨(재시도로 완주). {p.reason}
+                    </li>
+                  ))}
+                </ul>
               )}
               {report.failed.length > 0 && (
                 <ul className="space-y-0.5 text-red-700">

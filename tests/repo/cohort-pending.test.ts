@@ -16,6 +16,7 @@ describe("buildPendingCohortJob (pending 잡 정규화)", () => {
       folderId: "FOLDER",
       templateId: "TMPL",
       sheetTitle: "세일즈PT_ 8기 김현민 수강생 경영일지",
+      courseStartISO: "2026-07-10",
     });
     expect(j.cohortLabel).toBe("8"); // 기 정규화
     expect(j.name).toBe("김현민"); // trim
@@ -26,6 +27,17 @@ describe("buildPendingCohortJob (pending 잡 정규화)", () => {
     expect(j.sheetTitle).toBe("세일즈PT_ 8기 김현민 수강생 경영일지");
     expect(j.sheetId).toBe(""); // 복제 전이라 빈값
     expect(j.rosterSheetId).toBe("");
+    expect(j.courseStartISO).toBe("2026-07-10");
+  });
+
+  it("courseStartISO 미제공 → 빈 문자열(역호환)", () => {
+    const j = buildPendingCohortJob({
+      cohortLabel: "8",
+      cohortType: "cohort",
+      name: "무날짜",
+      mode: "create",
+    });
+    expect(j.courseStartISO).toBe("");
   });
 
   it("아레나 — type=arena 보존 + roster", () => {

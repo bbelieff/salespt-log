@@ -26,9 +26,22 @@ related: db-write-flip (§6 R3-5), deploy-env-admin-token (#524)
 4. **순수 헬퍼 테스트**: `buildPendingCohortJob`(정규화 4케이스). SQL 은 라이브+정합으로.
 5. **관찰성**: `countPendingCohortCreates` (admin 배너용 잔량).
 
-## phase-2 (belie Secret 등록 후)
-- `ADMIN_DRIVE_REFRESH_TOKEN` 등록 → 재시도 라우트 1회 → 실제 시트 복제 완주 실검증(연습/연습용2 등).
-- **O1/O2=USER_ENTERED 는 이 단계로 이월** — 근거: 현재 CohortConfig 에 날짜 필드가 없고(출처 미정) O1/O2 값 쓰기 지점도 없음. 복제된 시트에 수강시작(O1)/종강(O2)을 USER_ENTERED 로 쓰려면 **날짜 출처 결정(config 날짜 필드 vs admin 입력)** 이 선행. 대상 시트가 Drive 복제(Secret) 산물이라 phase-2 귀속이 자연스러움. belie 날짜 출처 확정 후 착수.
+## phase-2a — O1/O2 날짜 세팅 코드 (Secret 불요분, 오케스트레이터 승인 후 구현)
+belie 자율 결정 = 날짜 출처 **생성 요청의 courseStartISO(cohort 단위)**. 구현:
+- `lib/service/cohort-dates.ts`: `computeGraduationISO(start, 50)`(ADR-0005 7기+)·`isValidISODate`.
+- `lib/repo/sales.ts writeCourseDates(sid, startISO, gradISO)`: O1=start·O2=start+50 **둘 다 리터럴
+  USER_ENTERED**(ADR-0005 "O2 직접값이 진실", 레거시 =O1+57 drift 방지, finalize-cohort9 일반화).
+  **§2.5 bulk 가드**: O1/O2 FORMULA pre-read → raw(사용자 수기) 보존, 빈/수식만 덮어씀.
+- create-cohort-members 라우트: `courseStartISO`(선택, ISO 검증) 접수 → 생성 성공 시 writeCourseDates,
+  복제 실패 enqueue 시 pending 잡에 courseStartISO 저장(재시도가 세팅).
+- 재시도(cohort-create.ts): completeOnePending 이 courseStartISO 로 O1/O2 세팅.
+- UI CohortCreateModal: 수강시작일(date, 선택) 입력 + pending[] 리포트 노출(#547 완성).
+- pending 스키마: `course_start_iso` 컬럼(ALTER ADD IF NOT EXISTS, 멱등).
+- 미제공 시 무기록(역호환). 단위테스트: computeGraduationISO·isValidISODate·buildPendingCohortJob.
+
+## phase-2b (belie Secret 등록 후 — 라이브 검증)
+- `ADMIN_DRIVE_REFRESH_TOKEN` 등록 → create/재시도로 **실제 시트 복제 + O1/O2 세팅 실검증**(연습/연습용2).
+  코드는 phase-2a 로 이미 완성 — Secret 만 있으면 end-to-end 동작.
 
 ## Acceptance
 - [ ] Drive 복제 실패 → 멤버 pending 적재(생성 비차단), 응답 pending[] 노출
