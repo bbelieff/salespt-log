@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getActiveUserEmail, getSessionEmail } from "@/auth/identity";
 import { gcalActorFrom } from "@/service/gcal-guard";
 import { toggleGcalSchedule } from "@/service/gcal-connect";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const Body = z.object({
   kind: z.enum(["meeting", "todo"]),
@@ -15,7 +16,7 @@ const Body = z.object({
   on: z.boolean(),
 });
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   const session = await getSessionEmail();
   if (!session) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const actor = gcalActorFrom(session, await getActiveUserEmail());
@@ -29,3 +30,4 @@ export async function POST(req: NextRequest) {
   r.headers.set("Cache-Control", "private, no-store");
   return r;
 }
+export const POST = withApiTiming("api/gcal/toggle:POST", POST_handler);

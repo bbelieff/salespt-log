@@ -6,8 +6,9 @@ import { NextResponse } from "next/server";
 import { getActiveUserEmail, getSessionEmail } from "@/auth/identity";
 import { gcalActorFrom } from "@/service/gcal-guard";
 import { resyncGcal } from "@/service/gcal-connect";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function POST() {
+async function POST_handler() {
   const session = await getSessionEmail();
   if (!session) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const actor = gcalActorFrom(session, await getActiveUserEmail());
@@ -18,3 +19,5 @@ export async function POST() {
   r.headers.set("Cache-Control", "private, no-store");
   return r;
 }
+
+export const POST = withApiTiming("api/gcal/resync:POST", POST_handler);

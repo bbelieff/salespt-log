@@ -10,8 +10,9 @@ import { appBaseUrl } from "@/config";
 import { getActiveUserEmail, getSessionEmail } from "@/auth/identity";
 import { gcalActorFrom } from "@/service/gcal-guard";
 import { gcalConsentUrl } from "@/service/gcal-connect";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
-export async function GET() {
+async function GET_handler() {
   const email = await getSessionEmail();
   if (!email) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const actor = gcalActorFrom(email, await getActiveUserEmail());
@@ -32,3 +33,5 @@ export async function GET() {
   });
   return res;
 }
+
+export const GET = withApiTiming("api/gcal/auth:GET", GET_handler);

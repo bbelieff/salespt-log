@@ -11,6 +11,7 @@ import { z } from "zod";
 import { getActiveUserEmail, getSessionEmail } from "@/auth/identity";
 import { gcalActorFrom } from "@/service/gcal-guard";
 import { disconnectGcal, loadGcalCard, updateGcalSettings } from "@/service/gcal-connect";
+import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const noStore = (res: NextResponse) => {
   res.headers.set("Cache-Control", "private, no-store");
@@ -26,18 +27,19 @@ async function actorOr401(): Promise<ReturnType<typeof gcalActorFrom> | NextResp
 const SELF_ONLY = () =>
   NextResponse.json({ error: "self_only" }, { status: 403 }); // 본인 로그인에서만
 
-export async function GET() {
+async function GET_handler() {
   const actor = await actorOr401();
   if (actor instanceof NextResponse) return actor;
   const card = await loadGcalCard(actor.email);
   return noStore(NextResponse.json({ ...card, impersonated: actor.impersonated }));
 }
+export const GET = withApiTiming("api/gcal:GET", GET_handler);
 
 const SettingsPatch = z.object({
   calendarId: z.string().optional(),
 });
 
-export async function POST(req: NextRequest) {
+async function POST_handler(req: NextRequest) {
   const actor = await actorOr401();
   if (actor instanceof NextResponse) return actor;
   if (actor.impersonated) return SELF_ONLY();
@@ -46,11 +48,13 @@ export async function POST(req: NextRequest) {
   const settings = await updateGcalSettings(actor.email, parsed.data);
   return noStore(NextResponse.json({ settings }));
 }
+export const POST = withApiTiming("api/gcal:POST", POST_handler);
 
-export async function DELETE() {
+async function DELETE_handler() {
   const actor = await actorOr401();
   if (actor instanceof NextResponse) return actor;
   if (actor.impersonated) return SELF_ONLY();
   await disconnectGcal(actor.email);
   return noStore(NextResponse.json({ ok: true }));
 }
+export const DELETE = withApiTiming("api/gcal:DELETE", DELETE_handler);
