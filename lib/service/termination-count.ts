@@ -7,7 +7,7 @@
  *
  * SoR: docs/plans/active/contract-count-exclude-terminated.md §2·§3
  */
-import { Channel, isCarryoverContract, isTerminatedContract } from "@/types";
+import { Channel, isTerminatedContract } from "@/types";
 import type { ContractPayment, Meeting } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
 
@@ -15,17 +15,6 @@ import { weekIndexOf } from "@/repo/sales";
 function parseISO(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y!, m! - 1, d!);
-}
-
-/**
- * 계약수에서 차감할 해지 계약 판정 = 해지됨(해지일 존재) **그리고** 이월 아님.
- * 이월 계약은 퍼널 raw(channelStacking / weeklyContracts)가 이미 제외 → 이중차감 방지.
- */
-export function isExcludedTermination(
-  p: { 해지일?: string; 구분?: string; 계약일?: string },
-  courseStartISO: string,
-): boolean {
-  return isTerminatedContract(p) && !isCarryoverContract(p, courseStartISO);
 }
 
 /** 빈 채널×0 레코드 (Channel enum 정본). */
@@ -44,15 +33,17 @@ export interface TerminatedByChannel {
 
 /**
  * 해지 계약 → 연결 미팅(04)의 channel 로 귀속해 채널별 차감 수를 만든다.
- *  - 1차: `linkedMeetingId`(02 AK) → `meeting.id`
- *  - 2차 폴백(레거시 링크 결측): `계약일`(=미팅날짜) + `업체명`
- *  - 둘 다 실패: `unknown` 누적(채널합에서 누락, 총합은 countTerminatedTotal 이 담당).
- * 순수함수 — 로깅·부수효과 없음. 음수 클램프는 오버레이(applyTerminationExclusion) 몫.
+ *  - 1차: `linkedMeetingId`(02 AK) → `meeting.id`, 2차 폴백: `계약일`(=미팅날짜) + `업체명`.
+ *  - **차감은 raw(channelStackingFromDb)가 실제로 센 미팅에만** = `계약여부 && 구분!=="이월"`.
+ *    payment 기준 이월판정(isCarryoverContract = flag OR 계약일<시작)으로 게이트하면, 미팅 flag
+ *    는 native 인데 계약일<시작인 **날짜-캐리오버** 계약이 raw(미팅 flag 로만 이월 제외)엔 계상되나
+ *    차감은 스킵돼 **과다계상**된다(#549 후 DevD parity 발견). → 미팅 flag 기준으로 raw 와 대칭화.
+ *  - 귀속 실패(링크·폴백 모두 미스): `unknown` 누적(채널합 누락, 호출부 로깅).
+ * 순수함수. 음수 클램프는 오버레이(applyTerminationExclusion) 몫.
  */
 export function terminatedByChannel(
   payments: ContractPayment[],
   meetings: Meeting[],
-  courseStartISO: string,
 ): TerminatedByChannel {
   const byId = new Map<string, Meeting>();
   const byKey = new Map<string, Meeting>(); // `${미팅날짜}|${업체명}` — 첫 매칭 우선
@@ -65,14 +56,16 @@ export function terminatedByChannel(
   const byChannel = emptyChannelCount();
   let unknown = 0;
   for (const p of payments) {
-    if (!isExcludedTermination(p, courseStartISO)) continue;
+    if (!isTerminatedContract(p)) continue;
     const linked = p.linkedMeetingId ? byId.get(p.linkedMeetingId) : undefined;
     const m = linked ?? byKey.get(`${p.계약일}|${p.업체명}`);
-    if (m) {
-      byChannel[m.channel] += 1;
-    } else {
-      unknown += 1;
+    if (!m) {
+      unknown += 1; // 귀속 실패 — 채널별 미반영
+      continue;
     }
+    // raw(channelStacking) 포함조건과 대칭: 그 미팅이 실제 계상된 것만 차감.
+    if (!m.계약여부 || m.구분 === "이월") continue;
+    byChannel[m.channel] += 1;
   }
   return { byChannel, unknown };
 }

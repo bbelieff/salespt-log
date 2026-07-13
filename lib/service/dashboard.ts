@@ -238,7 +238,7 @@ async function loadDashboardFromDb(
     payments: contracts,
   });
   // 해지 계약수 오버레이 입력(채널별 차감) — 미팅은 이미 손안(추가 read 0).
-  const term = terminatedByChannel(contracts, meetings, courseStartISO);
+  const term = terminatedByChannel(contracts, meetings);
   if (term.unknown > 0) {
     captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "db" });
   }
@@ -306,7 +306,7 @@ async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
   // 해지 계약수 오버레이 — 시트경로는 채널귀속용 04 미팅이 없어 1회 read(읽기전용).
   // 그림자 없음(비파일럿 raw 서빙 무변) → 바로 오버레이. raw 파이프라인 무변.
   const meetings = await readCourseMeetings(sheetId, profile.courseStart);
-  const term = terminatedByChannel(payments, meetings, courseStartISO);
+  const term = terminatedByChannel(payments, meetings);
   if (term.unknown > 0) {
     captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "sheet" });
   }
