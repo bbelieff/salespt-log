@@ -82,8 +82,12 @@ async function runSheetSync(ctx: MeetingCtx, id: string): Promise<void> {
       }
       if (state.meeting) {
         await upsertMeetingRowSnapshot(ctx.spreadsheetId, state.meeting);
-        // 행 보장 후 gcal reconcile — await 로 큐 직렬화 안에 가둠. non-throwing(guard 내장).
-        await reconcileMeetingEvent(ctx.email, ctx.spreadsheetId, id, state.meeting);
+        // 이월(구분=이월) 행은 gcal 비대상(carryRaw 분기와 동일 의미론) — 옛 기수 이벤트가
+        // 읽기전용 시트에 잔존하는데 새 아레나 id 로 insert 하면 같은 미팅이 캘린더에 중복 생성됨
+        // (적대리뷰). 이월이 아닐 때만 reconcile. 행 보장 후 await 로 큐 직렬화 안에 가둠(non-throwing).
+        if (state.meeting.구분 !== "이월") {
+          await reconcileMeetingEvent(ctx.email, ctx.spreadsheetId, id, state.meeting);
+        }
         return;
       }
       if (state.carryRaw) {
@@ -187,9 +191,13 @@ export async function findMeetingsByDateRecord(
 ): Promise<Meeting[]> {
   if (isDb(ctx)) {
     const all = await readMeetingsFromDb(ctx.spreadsheetId);
-    return all.filter((m) =>
+    const hits = all.filter((m) =>
       type === "reservation" ? m.예약일 === date : m.미팅날짜 === date,
     );
+    if (hits.length > 0) return hits;
+    // DB 미러 공백(R2 fire-and-forget 누락분) self-heal — 단건 리더(getMeetingRecord)와 동일 원칙.
+    // 그 날짜 행이 DB 에 전무하면 시트 보충(cascade·계약연결 탐색 누락 방지, 적대리뷰).
+    return findByDate(ctx.spreadsheetId, date, type);
   }
   return findByDate(ctx.spreadsheetId, date, type);
 }
@@ -201,7 +209,11 @@ export async function findChildMeetingRecord(
 ): Promise<Meeting | null> {
   if (isDb(ctx)) {
     const all = await readMeetingsFromDb(ctx.spreadsheetId);
-    return all.find((m) => m.previousMeetingId === parentId) ?? null;
+    const hit = all.find((m) => m.previousMeetingId === parentId);
+    if (hit) return hit;
+    // DB 미러 공백(R2 누락분) self-heal — cascade walk 이 시트-only 자식을 놓쳐 자손·고아 계약카드가
+    // 정리 안 되는 회귀 방지(적대리뷰 cascade-regression). 자식 없음(정상 종료)도 시트로 최종 확인.
+    return findByPreviousMeetingId(ctx.spreadsheetId, parentId);
   }
   return findByPreviousMeetingId(ctx.spreadsheetId, parentId);
 }

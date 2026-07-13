@@ -123,6 +123,7 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-13 R3-2 PR-2 채택·리베이스·리뷰수정(DevA): 타세션 #541(meetings+carryover DB정본, meetings-write.ts·meetings-rows.ts 신설, todos PR-1 수렴미러 패턴)을 master(#544 포함)로 리베이스. contract-payment.ts 충돌=resolveSheetWithSyncDb에 ctx 통합(syncDb[#544 dual-sync]+ctx[meetings-write] 겸용). 적대적 리뷰(5관점, merge-correctness 무결) 확정 결함 **A/B/C 수정**: ①A(HIGH) listCarrySourceMeetings FORMATTED_VALUE→UNFORMATTED+SERIAL(ko_KR "오전10:00" 파싱실패로 이월 예약 DB read 소실) ②B(MED) runSheetSync meeting분기 이월 gcal guard(구분=이월 skip — 아레나 재참가 중복 캘린더) ③C(MED, 디스패치 cascade 게이트) findMeetingsByDateRecord·findChildMeetingRecord DB공백 시 시트 self-heal 폴백(미러갭 고아 계약 방지). **D 후속(문서화)**: 비파일럿 contract-payment 3경로가 patchMeetingRecord 경유 gcal reconcile 유발(R2엔 없음) — 개명은 캘린더 동기라 개선, saveCompanyInfo insert-if-missing만 엣지. gcal=B구역이라 정밀수정은 후속(patchMeetingRecord gcal-skip 옵션). check.sh 초록(유닛466). **되돌리기**: 이 PR revert 1건(squash). 근거=적대리뷰 output w93pd4tn8.
 - 2026-07-13 R3-3 PR-1 구현(DevA): contracts 편집 4종(updateUserFields·updateLinkFields·syncFeeFromContract·
   writeTermination) dual-sync(A안, belie 승인). 라우터 persistContractRow + 동기 헬퍼 upsertContractRowToDbSync
   (contracts-clear.ts — clear 와 재시도/owner역조회 코어 공유). patch·terminate·syncFee·editLinked 는 dual-sync,

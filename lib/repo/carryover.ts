@@ -31,6 +31,12 @@ export async function listCarrySourceMeetings(
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId: oldSheetId,
     range: `${ref}!A2:AN`,
+    // 형제 04 리더(findById·findByDateRange·findByPreviousMeetingId)와 통일 — 날짜·시각 셀을
+    // 시리얼로 읽는다. 기본 FORMATTED_VALUE 면 ko_KR 로케일에서 시각이 "오전 10:00" 표시문자열로
+    // 나와 DB 정본(R3-2) 읽기의 serialToHHMM 파싱 실패→이월 행 소실(적대리뷰 HIGH). raw payload 로
+    // DB 에 적재되므로 여기서 시리얼 정규화가 필수.
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
   });
   const out: CarrySourceMeeting[] = [];
   for (const r of res.data.values ?? []) {
