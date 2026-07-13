@@ -26,6 +26,8 @@ import type {
   DashboardChannelMatrix,
   DashboardCostBreakdown,
   ContractPayment,
+  Meeting,
+  Channel,
 } from "@/types";
 import { findUserByEmail } from "@/repo/users";
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
@@ -38,6 +40,8 @@ import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { isCarryoverContract } from "./contract-payment";
+import { findByDateRange } from "@/repo/meetings";
+import { terminatedByChannel } from "./termination-count";
 import { chooseDailySource } from "./daily-source";
 import { computeDbAggregates, diffDashboardAggregates } from "./dashboard-aggregates";
 
@@ -192,9 +196,10 @@ export async function loadDashboard(
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
-      const view = await loadDashboardFromDb(sheetId, user.courseStartISO);
-      reverseShadowCompare(sheetId, view); // 서빙=DB, 시트 대조는 async 감시
-      return view;
+      const { view, termByChannel } = await loadDashboardFromDb(sheetId, user.courseStartISO);
+      reverseShadowCompare(sheetId, view); // 서빙=DB raw 로 시트 대조(async 감시) — 오버레이 前
+      // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
+      return applyTerminationExclusion(view, termByChannel);
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDashboard-db-serve" } });
       // ↓ 시트 경로로 강등
@@ -208,7 +213,7 @@ export async function loadDashboard(
 async function loadDashboardFromDb(
   sheetId: string,
   courseStartISOCache?: string,
-): Promise<DashboardView> {
+): Promise<{ view: DashboardView; termByChannel: Record<Channel, number> }> {
   const courseStart = courseStartISOCache
     ? new Date(`${courseStartISOCache}T00:00:00`)
     : (await readProfileBundle(sheetId)).courseStart;
@@ -223,7 +228,7 @@ async function loadDashboardFromDb(
   const purchaseCost = dbTab.purchases.reduce((s, p) => s + num(p.주문금액), 0);
   const productionCost = dbTab.productions.reduce((s, p) => s + num(p.기간예산), 0);
   const bannerCost = dbTab.banners.reduce((s, b) => s + num(b.주문금액), 0);
-  return assembleView({
+  const view = assembleView({
     courseStartISO,
     fee: agg.누적수임비,
     channelMatrix: agg.channelMatrix,
@@ -232,6 +237,12 @@ async function loadDashboardFromDb(
     costByChannel: [purchaseCost, productionCost, bannerCost],
     payments: contracts,
   });
+  // 해지 계약수 오버레이 입력(채널별 차감) — 미팅은 이미 손안(추가 read 0).
+  const term = terminatedByChannel(contracts, meetings, courseStartISO);
+  if (term.unknown > 0) {
+    captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "db" });
+  }
+  return { view, termByChannel: term.byChannel };
 }
 
 /** 역방향 그림자 감시 (R2-7b) — 서빙=DB 후 시트 대시보드 값을 async 대조. diff 시 Sentry 경보
@@ -283,7 +294,7 @@ async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
     미팅완료: num(stk[4]?.[ci]),
     계약: num(stk[5]?.[ci]),
   }));
-  return assembleView({
+  const view = assembleView({
     courseStartISO,
     fee: num(data.finance[0]),
     channelMatrix,
@@ -292,4 +303,44 @@ async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
     costByChannel: [purchaseCost, productionCost, bannerCost],
     payments,
   });
+  // 해지 계약수 오버레이 — 시트경로는 채널귀속용 04 미팅이 없어 1회 read(읽기전용).
+  // 그림자 없음(비파일럿 raw 서빙 무변) → 바로 오버레이. raw 파이프라인 무변.
+  const meetings = await readCourseMeetings(sheetId, profile.courseStart);
+  const term = terminatedByChannel(payments, meetings, courseStartISO);
+  if (term.unknown > 0) {
+    captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "sheet" });
+  }
+  return applyTerminationExclusion(view, term.byChannel);
+}
+
+/** 채널귀속용 04 미팅 전량 read (시트경로 전용) — 수강기간(넉넉히 84일) 날짜 리스트로
+ *  findByDateRange 재사용(1-read, meetings.ts 무수정). 범위 밖 미팅은 unknown 폴백. */
+async function readCourseMeetings(
+  sheetId: string,
+  courseStart: Date,
+): Promise<Meeting[]> {
+  const dates: string[] = [];
+  for (let i = 0; i < 84; i++) {
+    const d = new Date(courseStart.getTime());
+    d.setDate(d.getDate() + i);
+    dates.push(toISODate(d));
+  }
+  const map = await findByDateRange(sheetId, dates, "meeting");
+  return Array.from(map.values()).flat();
+}
+
+/** 렌더 직전 오버레이 — 해지 계약수를 channelMatrix.계약 에서 차감(음수 클램프).
+ *  원본 view 를 mutate 하지 않고 새 DashboardView 반환(그림자 diff 0 사수 — 필수). */
+export function applyTerminationExclusion(
+  view: DashboardView,
+  byChannel: Record<Channel, number>,
+): DashboardView {
+  let changed = false;
+  const channelMatrix = view.channelMatrix.map((m) => {
+    const sub = byChannel[m.채널] ?? 0;
+    if (sub <= 0) return m;
+    changed = true;
+    return { ...m, 계약: Math.max(0, m.계약 - sub) };
+  });
+  return changed ? { ...view, channelMatrix } : view;
 }
