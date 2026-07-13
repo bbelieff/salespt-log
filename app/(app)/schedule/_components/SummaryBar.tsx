@@ -11,6 +11,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
 
@@ -27,7 +28,6 @@ export default function SummaryBar({ meetings }: Props) {
   const reserved = meetings.filter(
     (m) => m.상태 === "예약" || m.상태 === "변경",
   ).length;
-  const contract = meetings.filter((m) => m.상태 === "계약").length;
   const done = meetings.filter((m) => m.상태 === "완료").length;
   const canceled = meetings.filter((m) => m.상태 === "취소").length;
 
@@ -37,6 +37,21 @@ export default function SummaryBar({ meetings }: Props) {
     .reduce((s, m) => s + (m.수임비 || 0), 0);
 
   const cpQuery = useContractPayments();
+  // 해지 계약(02 AL 해지일)은 '계약' 카운터에서 제외 — 대시보드·아레나와 통일.
+  // 조인 = commissionSum 과 동일 키(미팅날짜=계약일 | 업체명).
+  const contract = useMemo(() => {
+    const rows = cpQuery.data?.rows ?? [];
+    const terminatedKeys = new Set(
+      rows
+        .filter(isTerminatedContract)
+        .map((cp) => `${cp.계약일}|${cp.업체명.trim()}`),
+    );
+    return meetings.filter(
+      (m) =>
+        m.상태 === "계약" &&
+        !terminatedKeys.has(`${m.미팅날짜}|${m.업체명.trim()}`),
+    ).length;
+  }, [cpQuery.data, meetings]);
   const commissionSum = useMemo(() => {
     const rows = cpQuery.data?.rows ?? [];
     const weekContractKeys = new Set(
