@@ -2,7 +2,8 @@
  * 캘린더 탭 (PR 03 / Phase 4) — 월간뷰 + 선택일 미팅 리스트.
  * 정본: docs/design/prototypes/calendar-monthly.html
  *
- * 읽기 전용. 카드 클릭 시 /schedule 로 점프(편집은 거기서).
+ * 카드 클릭 시 /schedule · /payment 로 점프(편집은 거기서).
+ * 예외: 일반이벤트(type=일반)는 다른 탭에 안 보이므로 이 화면에서 직접 삭제 (TodoDayCard).
  */
 "use client";
 
@@ -17,6 +18,7 @@ import MonthGrid from "./_components/MonthGrid";
 import GcalConnectCard from "./_components/GcalConnectCard";
 import GcalItemToggle from "./_components/GcalItemToggle";
 import GeneralEventModal from "./_components/GeneralEventModal";
+import TodoDayCard from "./_components/TodoDayCard";
 import TodoTypeIcon from "./_components/TodoTypeIcon";
 import TopHeader from "@/components/TopHeader";
 import {
@@ -349,50 +351,14 @@ export default function CalendarPage() {
                     }
                     const t = item.t;
                     return (
-                      <li
+                      <TodoDayCard
                         key={`t-${t.id}`}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => router.push(`/payment?focus=${t.id}`)}
-                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
-                        style={{ borderLeft: `3px solid ${t.type === "일반" ? GENERAL_HEX : PRACTICE_HEX}` }}
-                      >
-                        <span
-                          className="shrink-0 text-sm font-bold text-gray-700"
-                          style={{ width: 44 }}
-                        >
-                          {t.예정시각 || "—"}
-                        </span>
-                        <span
-                          className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold text-white"
-                          style={{ background: t.type === "일반" ? GENERAL_HEX : PRACTICE_HEX }}
-                        >
-                          <TodoTypeIcon type={t.type} size={12} />{" "}
-                          {t.type === "일반" ? "일반" : "실무"}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-gray-900">
-                            {t.업체명 || t.제목}
-                          </div>
-                          <div className="truncate text-[11px] text-gray-400">
-                            {t.제목}
-                          </div>
-                        </div>
-                        {t.장소 && (
-                          <span className="max-w-20 shrink-0 truncate text-xs text-gray-400">
-                            {t.장소}
-                          </span>
-                        )}
-                        {gcalConnected && (
-                          <GcalItemToggle
-                            kind="todo"
-                            id={t.id}
-                            on={gcalStates[t.id] ?? true}
-                            onChange={onGcalChange}
-                            onToast={onGcalToast}
-                          />
-                        )}
-                      </li>
+                        t={t}
+                        gcalConnected={gcalConnected}
+                        gcalOn={gcalStates[t.id] ?? true}
+                        onGcalChange={onGcalChange}
+                        onGcalToast={onGcalToast}
+                      />
                     );
                   })}
                 </ul>
