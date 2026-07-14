@@ -123,13 +123,19 @@ export async function migrateArenaCarryover(
       continue;
     }
     try {
+      // 파일럿(dbPrimary)은 DB 반영을 **동기 정본**으로 — append 미러(fire-and-forget)가 1회 실패하면
+      // DB 에 구분='이월' 이 안 남아 시트(AI='이월')와 갈린다(#558 PARTIAL ②, DevD). 여기선 시트 AJ
+      // 원본키가 멱등키라 실패 후 재실행이 skip 되므로 throw 해도 중복 계약행이 안 생긴다
+      // (addPriorContract/addFromContract 는 멱등키가 없어 기존대로 no-throw 미러 유지 — §6 R3-3).
+      const writeOpts = { syncDb: dbPrimary };
       const { row } = await appendFromContract(
         arenaSheetId,
         { 계약일: cp.계약일, 업체명: cp.업체명, 수임비: cp.수임비 },
         { 원본행id: key },
+        writeOpts,
       );
-      // 체크박스·슬롯·메모(F:AH)까지 통째 복사 — updateUserFields 재사용.
-      await updateUserFields(arenaSheetId, { ...cp, row });
+      // 체크박스·슬롯·메모(F:AH)까지 통째 복사 — updateUserFields 재사용(미러는 F:AH 화이트리스트).
+      await updateUserFields(arenaSheetId, { ...cp, row }, writeOpts);
       report.contracts.copied++;
     } catch (e) {
       report.contracts.failed.push(

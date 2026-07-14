@@ -33,7 +33,8 @@ related: contract-count-exclude-terminated, db-write-flip, arena-carryover-migra
 - 단위테스트: `userFieldsMirrorPayload` 가 구분·이월원본행id 제거(빈 '' 포함)·나머지 보존·원본 무변. check.sh 초록. §6.8 배포·health 200.
 
 ## 4. 남은 것 (후속 — 이 PR 스코프 밖)
-- **기존 클로버된 DB 행 리페어**: 이 수정은 **향후 클로버 차단**만. 과거 arena-carryover 로 이미 `구분=''` 된 파일럿 DB 이월행은 자가치유 안 됨(carryover 멱등 skip). 필요 시 backfill(시트 AI='이월' → DB 구분 재기록) 별도 ops. belie/파일럿 영향 범위 확인 후 결정. (belie=7기=비파일럿=시트경로라 무영향; 8·9·연습·아레나 DB경로만.)
+- **기존 클로버된 DB 행 리페어**: 이 수정은 **향후 클로버 차단**만. 과거 arena-carryover 로 이미 `구분=''` 된 파일럿 DB 이월행은 자가치유 안 됨(carryover 멱등 skip). belie/파일럿 영향 범위 확인 후 결정. (belie=7기=비파일럿=시트경로라 무영향; 8·9·연습·아레나 DB경로만.)
+  - 🛑 **[2026-07-15 정정 — 아래 backfill 방안은 무효. 실행 금지]** ~~backfill(시트 AI='이월' → DB 구분 재기록)~~ 은 **실행해도 안 고쳐진다**: `contractFromDbPayload` 가 ①열문자(AI) 복원 → ②**필드명 키 overlay** 순이라, jsonb 에 잔류한 `구분: ''` 가 backfill 의 `AI:'이월'` 을 **항상 이긴다**(DevD ① 판정). **유효한 리페어 = 필드명 키 `구분:'이월'` upsert** → `scripts/ops/repair-carryover-flag.mjs`(dry-run 기본). 상세 = `docs/plans/active/carryover-mirror-partial-4.md` §3.
 - D 권고 (b) `channelStackingFromDb`·`computeContractRevenue` date 폴백 통일: channelStacking 은 미팅 flag 기반이라 무관, computeContractRevenue 는 이미 isCarryoverContract(date 폴백 내장) → flag 신뢰 회복 후 추가 불요(YAGNI).
 
 ## Log
