@@ -1,8 +1,9 @@
 /**
- * LinkedFieldsEditor — 계약 핵심필드(업체명·계약일·수임료) 표시 + 수정(payment_contract_edit_toggle).
+ * LinkedFieldsEditor — 계약 핵심필드(업체명·계약일·수임비) 수정(payment_contract_edit_toggle).
  *
- * 평소: 읽기 전용 + [✎ 수정]. 클릭 → 이 카드만 편집 모드(input + [저장]/[취소] + 연동 배지).
- * 저장 시 연결 미팅 id 로 대상 특정(개명 안전): 업체명→02 D+04 G+06 / 계약일→02 C만 / 수임료→02 E+04 L.
+ * 평소: **수정 진입 버튼만** (값 표시 X — 업체명·계약일·수임비는 카드 헤더가 이미 보여줌.
+ * 중복 박스 제거 2026-07-14). 클릭 → 이 카드만 편집 모드(input + [저장]/[취소] + 연동 배지).
+ * 저장 시 연결 미팅 id 로 대상 특정(개명 안전): 업체명→02 D+04 G+06 / 계약일→02 C만 / 수임비→02 E+04 L.
  * 편집 중 변경 있으면 DirtyGuard 등록. 변경 없으면 시트 쓰기 0. 일부 시트 실패 시 안내+save throw.
  */
 "use client";
@@ -18,18 +19,18 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
   const [editing, setEditing] = useState(false);
   const [업체명, set업체명] = useState(cp.업체명);
   const [계약일, set계약일] = useState(cp.계약일);
-  const [수임료, set수임료] = useState(cp.수임비);
+  const [수임비, set수임비] = useState(cp.수임비);
   const [msg, setMsg] = useState("");
   const edit = useEditContractLinkedFields();
 
   const dirty =
     editing &&
-    (업체명 !== cp.업체명 || 계약일 !== cp.계약일 || 수임료 !== cp.수임비);
+    (업체명 !== cp.업체명 || 계약일 !== cp.계약일 || 수임비 !== cp.수임비);
 
   const enterEdit = () => {
     set업체명(cp.업체명);
     set계약일(cp.계약일);
-    set수임료(cp.수임비);
+    set수임비(cp.수임비);
     setMsg("");
     setEditing(true);
   };
@@ -49,7 +50,7 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
     const next: { 계약일?: string; 업체명?: string; 수임비?: number } = {};
     if (업체명 !== cp.업체명) next.업체명 = 업체명.trim();
     if (계약일 !== cp.계약일) next.계약일 = 계약일;
-    if (수임료 !== cp.수임비) next.수임비 = 수임료;
+    if (수임비 !== cp.수임비) next.수임비 = 수임비;
     const res = await edit.mutateAsync({
       meetingId: cp.linkedMeetingId || undefined,
       old: { 계약일: cp.계약일, 업체명: cp.업체명 },
@@ -64,26 +65,17 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
 
   useDirtyEntry(`cp-linked-${cp.row}`, dirty, save, cancel, `${cp.업체명 || "계약"} 계약정보`);
 
-  // ── 읽기 모드 ──
+  // ── 읽기 모드 — 값은 카드 헤더(업체명·계약일·수임비)가 이미 표시. 중복 박스 제거하고
+  //    수정 진입만 노출(카드 펼침 시). 헤더는 <button> 이라 그 안에 버튼 중첩 불가 → 본문 최상단.
   if (!editing) {
     return (
-      <div className="flex items-start justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-        <div className="space-y-0.5 text-sm">
-          <div>
-            <span className="text-gray-400">고객사</span>{" "}
-            <b className="text-gray-900">{cp.업체명 || "—"}</b>
-          </div>
-          <div className="text-gray-600" style={{ fontVariantNumeric: "tabular-nums" }}>
-            <span className="text-gray-400">계약일</span> {cp.계약일 || "—"}{" "}
-            <span className="ml-1 text-gray-400">수임료</span> ₩{fmtComma(cp.수임비)}
-          </div>
-        </div>
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={enterEdit}
-          className="shrink-0 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
         >
-          ✎ 수정
+          ✎ 계약정보 수정
         </button>
       </div>
     );
@@ -115,19 +107,19 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
           />
         </div>
         <div>
-          <label className={label}>수임료 (원)</label>
+          <label className={label}>수임비 (원)</label>
           <input
             type="text"
             inputMode="numeric"
-            value={fmtComma(수임료)}
-            onChange={(e) => set수임료(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
+            value={fmtComma(수임비)}
+            onChange={(e) => set수임비(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
             className={`${input} num-mono`}
             style={{ fontVariantNumeric: "tabular-nums" }}
           />
         </div>
       </div>
       <p className="mt-2 text-[11px] leading-tight text-gray-500">
-        업체명·수임료는 일정·계약 미팅과 시트에 함께 반영돼요. 계약일은 이 계약카드에만 적용돼요
+        업체명·수임비는 일정·계약 미팅과 시트에 함께 반영돼요. 계약일은 이 계약카드에만 적용돼요
         (미팅 날짜·달력·주차 통계는 그대로).
       </p>
       {msg && <p className="mt-1.5 text-xs font-medium text-red-600">{msg}</p>}
