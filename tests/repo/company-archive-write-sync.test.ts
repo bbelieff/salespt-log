@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 
 describe("persistCompanyArchiveRow — upsert 정본 라우터", () => {
-  it("① syncDb:true 성공 — 계약ref(자연키) 로 병합 upsert 1회 (payload 그대로)", async () => {
+  it("① syncDb:true 성공 — 계약ref(자연키) 로 병합 upsert 1회 (_cleared:false 부활 병합)", async () => {
     await persistCompanyArchiveRow(
       "sheet-1",
       REF,
@@ -57,9 +57,40 @@ describe("persistCompanyArchiveRow — upsert 정본 라우터", () => {
       spreadsheetId: "sheet-1",
       tab: "company_archive",
       rowKey: REF,
-      payload: { 업체명: "A업체", 계약일: "2026-06-10", 개업일: "2020-01-01" },
+      // 시트는 A:AB 전체행 replace → DB 도 두 기본값 명시(_cleared 부활 + 커스텀 초기화).
+      payload: {
+        _cleared: false,
+        커스텀: {},
+        업체명: "A업체",
+        계약일: "2026-06-10",
+        개업일: "2020-01-01",
+      },
     });
     expect(mirrorSheetRow).not.toHaveBeenCalled();
+  });
+
+  it("①-b 부활 — rename 으로 _cleared:true 된 자연키에 재 upsert 시 _cleared:false 병합(고착 방지)", async () => {
+    await persistCompanyArchiveRow("sheet-1", REF, { 업체명: "재사용업체" }, { syncDb: true });
+    // jsonb 병합(payload || excluded)에서 excluded 에 _cleared:false 가 있어야 좌변 _cleared:true 를 덮음.
+    expect(upsertSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ _cleared: false }) }),
+    );
+  });
+
+  it("①-c 🐛회귀 — 부활 시 이전 생(生)의 stale 커스텀이 딸려오지 않게 커스텀:{} 기본값 병합", async () => {
+    // 커스텀은 optional(키 부재 가능) → 얕은 병합상 좌변(옛 계약의 커스텀)이 생존해 결제카드에 노출될 수 있었음.
+    await persistCompanyArchiveRow("sheet-1", REF, { 업체명: "재사용업체" }, { syncDb: true });
+    expect(upsertSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ 커스텀: {} }) }),
+    );
+  });
+
+  it("①-d 사용자 커스텀은 기본값을 이긴다(스프레드가 뒤 — 덮어쓰기 아님)", async () => {
+    const 커스텀 = { 업체: { 별칭: "본사" }, 대표자: {} };
+    await persistCompanyArchiveRow("sheet-1", REF, { 업체명: "A업체", 커스텀 }, { syncDb: true });
+    expect(upsertSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ 커스텀 }) }),
+    );
   });
 
   it("② 1회 실패 후 재시도 성공 — throw 없음(병합 멱등)", async () => {
