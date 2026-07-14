@@ -1250,7 +1250,7 @@ components/dashboard/
 | **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |
 | **TimeSelectPair** | `components/ui/TimeSelectPair.tsx` | §2 Time Input — 시·분 분리 select (15분 단위 강제) |
 | **CrossTabHintModal** | `components/ui/CrossTabHintModal.tsx` | 탭 간 cascade 안내 모달 (2026-05-17 [DB-1/C-2]). Props: `open`, `title`, `body: ReactNode`, `navLabel`, `onNavigate`, `onClose`. [화면 유지 / 바로가기] 통일 패턴. |
-| **LoadingOverlay** | `components/ui/LoadingOverlay.tsx` | 전역 로딩 팝업(loading-overlay/v3 글로우 링). Props: `message?`(기본 "불러오고 있어요"). 다크 글래스 카드+회전 conic 링+궤도 점+S 호흡+문구 페이드+하단 sweep. fixed z-[400] 중앙·dim, role=status, prefers-reduced-motion 정적 폴백. 스타일=globals.css `.lo-*`(tokens.md overlay 토큰). |
+| **LoadingOverlay** | `components/ui/LoadingOverlay.tsx` | 전역 로딩 팝업(loading-overlay/v3 글로우 링). Props: `message?`(기본 "불러오고 있어요"). **라이트 프로스트 글래스 카드**+회전 conic 링(96px)+궤도 점+**세일즈PT 로고 원본 호흡**(`/salespt-logo.png`, 무가공·`alt=""` 장식)+문구 페이드(다크 잉크)+하단 sweep. fixed z-[400] 중앙·dim(어둡게 유지), role=status, prefers-reduced-motion 정적 폴백. 스타일=globals.css `.lo-*`(tokens.md overlay 토큰). ※2026-07-15 이전: 다크 카드 + 가운데 'S' 글자. |
 | **LoadingProvider** | `components/ui/LoadingProvider.tsx` | 전역 로딩 상태 + `useGlobalLoading()` 훅. providers.tsx(QueryClientProvider 안)에서 1회 마운트, 내부 `<LoadingOverlay>` 렌더. 명령형 show(문구)/hide(카운터) + `useIsMutating()>0` 자동("저장하고 있어요"). useIsFetching 은 안 검(과노출 방지). |
 
 ### 10-2. contact 탭 (`app/(app)/contact/_components/`)
