@@ -11,6 +11,7 @@
  * 옛 값이 잔존(시트 fallback 은 느린 안전망)·드리프트 누적. 편집·개명을 시트+DB 한 동작으로:
  * DB 반영 실패 시 사용자 에러(재시도 유도, 시트폴백 금지 §0). 비파일럿은 R2 미러(async) 유지.
  */
+import { CompanyInfo } from "@/types";
 import { findOwnerBySpreadsheetId } from "../users";
 import { dbEnabled, upsertSheetRow } from "./client";
 import { mirrorClearRow, mirrorSheetRow } from "./mirror";
@@ -79,7 +80,25 @@ export async function persistCompanyArchiveRow(
 }
 
 /**
- * 06 개명(키 이동) 정본 라우팅 — old 키 _cleared 후 new 키 키필드 병합.
+ * rename 새 키 payload 정규화 — **content 를 명시적으로 비운다.**
+ *
+ * 설계 불변식: rename 은 06 의 키(A~D)만 옮기고 **E~AB 스냅샷은 시트가 보존**한다 → DB 의 새 키 행은
+ * "키필드만" 이어야 하고, 업체정보 read 는 `hasCompanyInfo(fromDb)=false` 로 **시트 fallback** 을 타야 한다.
+ *
+ * 그런데 jsonb 는 **얕은 병합**(payload || excluded)이라 키필드만 보내면 **그 자연키에 남아 있던 옛 행의
+ * content 가 그대로 살아 돌아온다**(A→B 개명 → B 에서 정보수정 → B→A 되돌림 ⇒ A 가 **옛 v1** 스칼라·커스텀째 부활).
+ * 그러면 `hasCompanyInfo` 가 true 라 시트 fallback 이 **영영 발동하지 않고** 결제카드가 옛 값을 보여준다
+ * (무에러·200 = 조용한 반쪽쓰기). #559 가 upsert 경로만 정규화하고 이 경로를 우회한 것이 근인(DevD 재플래그).
+ *
+ * → `CompanyInfo.parse({})`(모든 스칼라 default "") + `커스텀:{}` 을 실어 **옛 content 를 확실히 덮는다.**
+ * 그래야 "키필드만" 이라는 불변식이 DB 에서도 실제로 참이 되고, 시트 fallback 이 정본으로 동작한다.
+ */
+function renameKeyOnlyPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  return { ...CompanyInfo.parse({}), 커스텀: {}, ...payload };
+}
+
+/**
+ * 06 개명(키 이동) 정본 라우팅 — old 키 _cleared 후 new 키 **키필드만**(content 비움) 병합.
  * 파일럿=둘 다 동기(실패=throw), 비파일럿=R2 미러(async). E~AB 스냅샷은 시트가 보존(양 경로 공통).
  *
  * 순서 = clear old → set new (역순 금지): set-new 성공 후 clear-old 실패 시 old/new 중복행이
@@ -91,11 +110,14 @@ export async function persistCompanyArchiveRename(
   next: { rowKey: string; payload: Record<string, unknown> },
   opts?: CompanyArchiveWriteOpts,
 ): Promise<void> {
+  // 양 경로 공통 정규화 — 비파일럿 DB 는 정본으로 안 읽히지만, 드리프트를 남기지 않아야
+  // R3 로 그 기수가 파일럿이 되는 순간 stale 부활이 되살아나지 않는다.
+  const payload = renameKeyOnlyPayload(next.payload);
   if (opts?.syncDb) {
     await upsertArchiveRowWithRetry(spreadsheetId, oldKey, { _cleared: true });
-    await upsertArchiveRowWithRetry(spreadsheetId, next.rowKey, next.payload);
+    await upsertArchiveRowWithRetry(spreadsheetId, next.rowKey, payload);
   } else {
     mirrorClearRow({ spreadsheetId, tab: TAB, rowKey: oldKey });
-    mirrorSheetRow({ spreadsheetId, tab: TAB, rowKey: next.rowKey, payload: next.payload });
+    mirrorSheetRow({ spreadsheetId, tab: TAB, rowKey: next.rowKey, payload });
   }
 }

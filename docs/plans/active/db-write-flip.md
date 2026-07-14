@@ -135,6 +135,17 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-15 R3-3 PR-2 fix-forward#2(DevB): **#559 = PARTIAL(DevD 재플래그) 종결** — rename 경로의 stale 부활.
+  근인: `persistCompanyArchiveRename` 이 새 키 payload 를 `upsertArchiveRowWithRetry` 에 **직접** 넘겨
+  #559 가 upsert 에만 넣은 정규화(`_cleared:false`+`커스텀:{}`)를 **우회**. rename 의 새 키 payload 는
+  설계상 "키필드만"인데 jsonb 얕은 병합이라 **그 자연키에 남아 있던 옛 행의 content 가 부활**한다.
+  재현: A→B 개명 → B 에서 정보수정(v2) → **B→A 되돌림** ⇒ A 가 **옛 v1 스칼라·커스텀째** 되살아나고,
+  `hasCompanyInfo(fromDb)=true` 라 **시트 fallback 이 영영 미발동** → 결제카드 옛 값·무에러·200.
+  = #559 가 "rename 은 키만이라 masked" 라고 둔 **가정 자체가 이 경로로 깨졌다**(같은 지적 2회 → 환경 수리).
+  수리: `renameKeyOnlyPayload` — 새 키 payload 에 `CompanyInfo.parse({})`(스칼라 전량 default "") + `커스텀:{}`
+  을 실어 **옛 content 를 확실히 덮는다** → "키필드만" 불변식이 DB 에서도 참이 되고 시트 fallback 이 정본으로 동작.
+  파일럿·비파일럿 **양 경로 공통 적용**(비파일럿 DB 는 정본으로 안 읽히지만, 드리프트를 남기면 R3 로 그 기수가
+  파일럿이 되는 순간 부활이 되살아난다). 회귀 테스트 2건 + **취약 payload 를 pin 하던 기존 ⑦·⑧ 교정**.
 - 2026-07-14 R3-3 PR-2 fix-forward(DevB): patchMeeting(04 화면 06 편집) 파일럿 silent 반쪽쓰기 수리(DevD #548 검증 플래그).
   근인: patchMeeting 이 06 upsert·rename 을 `syncDb` 없이 호출 → 파일럿도 async 미러(warn-only) → 미러 드롭 시 DB 에
   stale **non-empty** 06 잔존, `loadCompanyInfoByContract` 가 그 stale 반환(시트폴백=빈 DB에서만) → 결제카드 옛 값·무에러·200.
