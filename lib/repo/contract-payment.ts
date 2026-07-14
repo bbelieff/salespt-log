@@ -17,7 +17,7 @@ import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
-import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
+import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow, userFieldsMirrorPayload } from "./db/contracts-clear";
 
 const CFG = SHEET_RANGES.contractPayment;
 
@@ -422,7 +422,8 @@ export async function updateUserFields(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [userArea] },
   });
-  await persistContractRow(spreadsheetId, validated.row, validated, opts); // R3-3 dual-sync(payload=全행)
+  // R3-3 dual-sync — F:AH 편집만 미러(이월 flag 구분·이월원본행id 제외 = arena-carryover 클로버 방지, #541).
+  await persistContractRow(spreadsheetId, validated.row, userFieldsMirrorPayload(validated), opts);
 }
 
 /**
