@@ -167,11 +167,18 @@ describe("persistCompanyArchiveRename — 키 이동 라우터", () => {
       1,
       expect.objectContaining({ rowKey: REF, payload: { _cleared: true } }),
     );
+    // 새 키 payload = 키필드 + **content 전량 비움**(옛 행 부활 차단 — 아래 회귀 테스트 참조).
     expect(upsertSheetRow).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
         rowKey: NEXT_REF,
-        payload: { _cleared: false, 업체명: "B업체", 계약일: "2026-06-10" },
+        payload: expect.objectContaining({
+          _cleared: false,
+          업체명: "B업체",
+          계약일: "2026-06-10",
+          커스텀: {},
+          대표자이름: "",
+        }),
       }),
     );
     expect(mirrorSheetRow).not.toHaveBeenCalled();
@@ -190,6 +197,51 @@ describe("persistCompanyArchiveRename — 키 이동 라우터", () => {
     ).rejects.toThrow("반영되지 않았어요");
   });
 
+  it("🐛회귀(DevD 재플래그) — rename 새 키 payload 가 content 를 명시적으로 비운다(옛 행 부활 차단)", async () => {
+    // 재현: A→B 개명 → B 에서 정보수정 → B→A 되돌림. 얕은 병합이라 A 에 남아 있던 옛 content 가
+    // 되살아나 hasCompanyInfo(fromDb)=true → 시트 fallback 미발동 → 결제카드가 옛 값 표시(무에러·200).
+    // 수리: 새 키 payload 에 CompanyInfo 스칼라 전량(default "")과 커스텀:{} 을 실어 옛 content 를 덮는다.
+    await persistCompanyArchiveRename(
+      "sheet-1",
+      NEXT_REF,
+      { rowKey: REF, payload: { _cleared: false, 업체명: "A업체", 계약일: "2026-06-10" } },
+      { syncDb: true },
+    );
+    // 새 키(REF) 쓰기 = 2번째 호출(clear old → set new 순서).
+    expect(upsertSheetRow).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        rowKey: REF,
+        payload: expect.objectContaining({
+          // 키필드는 살아있고
+          _cleared: false,
+          업체명: "A업체",
+          계약일: "2026-06-10",
+          // content 는 전부 비워져 있어야 한다 — 안 그러면 옛 스칼라·커스텀이 부활한다.
+          커스텀: {},
+          대표자이름: "",
+          개업일: "",
+        }),
+      }),
+    );
+    // hasCompanyInfo 관점: 스칼라가 전부 "" + 커스텀 {} → 시트 fallback 이 정본으로 동작한다.
+  });
+
+  it("🐛회귀 — 비파일럿(async 미러) rename 도 동일 정규화(드리프트 무적재)", async () => {
+    await persistCompanyArchiveRename(
+      "sheet-1",
+      NEXT_REF,
+      { rowKey: REF, payload: { _cleared: false, 업체명: "A업체", 계약일: "2026-06-10" } },
+      { syncDb: false },
+    );
+    expect(mirrorSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rowKey: REF,
+        payload: expect.objectContaining({ 커스텀: {}, 대표자이름: "" }),
+      }),
+    );
+  });
+
   it("⑧ syncDb:false(비파일럿) → mirrorClearRow(old) + mirrorSheetRow(new), 동기 upsert 미사용", async () => {
     await persistCompanyArchiveRename(
       "sheet-1",
@@ -202,12 +254,19 @@ describe("persistCompanyArchiveRename — 키 이동 라우터", () => {
       tab: "company_archive",
       rowKey: REF,
     });
-    expect(mirrorSheetRow).toHaveBeenCalledWith({
-      spreadsheetId: "sheet-1",
-      tab: "company_archive",
-      rowKey: NEXT_REF,
-      payload: { _cleared: false, 업체명: "B업체", 계약일: "2026-06-10" },
-    });
+    expect(mirrorSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spreadsheetId: "sheet-1",
+        tab: "company_archive",
+        rowKey: NEXT_REF,
+        payload: expect.objectContaining({
+          _cleared: false,
+          업체명: "B업체",
+          계약일: "2026-06-10",
+          커스텀: {}, // 비파일럿도 동일 정규화 — 드리프트 무적재
+        }),
+      }),
+    );
     expect(upsertSheetRow).not.toHaveBeenCalled();
   });
 });
