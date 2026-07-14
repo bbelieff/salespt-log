@@ -16,7 +16,7 @@
 import { SHEET_RANGES } from "@/config";
 import { ContractPayment, type PaymentSlot, Progress } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
-import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
+import { mirrorClearRow } from "./db/mirror";
 import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow, userFieldsMirrorPayload } from "./db/contracts-clear";
 
 const CFG = SHEET_RANGES.contractPayment;
@@ -363,6 +363,7 @@ export async function appendFromContract(
   spreadsheetId: string,
   data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
   carryover?: { 원본행id: string }, // 출발 미팅이 이월(04 AO)이면 깃발 상속 (§3)
+  opts?: ContractWriteOpts, // 생략=R2 미러(no-throw). append 는 멱등키가 없어 기본 throw 금지(§6 R3-3)
 ): Promise<{ row: number }> {
   const row = await findFirstEmptyRow(spreadsheetId);
   const { tab } = await resolveLayout(spreadsheetId);
@@ -393,11 +394,13 @@ export async function appendFromContract(
     spreadsheetId,
     requestBody: { valueInputOption: "USER_ENTERED", data: writes },
   });
-  // P1 미러 — 02 는 행 고정 키. _cleared 재사용 행은 병합으로 되살림.
-  mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}`, payload: {
+  // DB 반영(_cleared 병합 되살림). 기본=R2 미러, opts.syncDb=동기 upsert(실패 throw). 구분='이월' 의 유일
+  // DB writer 라 미러 1회 실패=시트와 갈림(#558 ② DevD) → AJ 멱등키 보유한 arena-carryover 만 승격.
+  await persistContractRow(spreadsheetId, row, {
     _cleared: false, 계약일: data.계약일, 업체명: data.업체명, 수임비: data.수임비,
     ...(data.meetingId ? { meetingId: data.meetingId } : {}),
-    ...(carryover ? { 구분: "이월", 원본행id: carryover.원본행id } : {}) } });
+    ...(carryover ? { 구분: "이월", 원본행id: carryover.원본행id } : {}),
+  }, opts);
   return { row };
 }
 

@@ -89,17 +89,43 @@ export async function persistContractRow(
 }
 
 /**
- * updateUserFields 미러 payload — **이월 마이그레이션 flag(구분=AI·이월원본행id=AJ) 제외**.
- * updateUserFields 는 시트 F:AH(사용자 편집영역)만 쓰고 AI/AJ 는 안 건드리므로 DB 미러에도
- * 넣으면 안 된다. 넣으면 arena-carryover 가 갓 이월(구분='이월')로 마킹한 행에 원본 계약(구분='')을
- * F:AH 재복사할 때 DB 의 구분='이월' 을 jsonb 병합으로 ''로 클로버 → DB=아레나계상/시트=제외
- * 갈림·아레나 팽창(#541 DevD parity). 이월 마킹은 appendFromContract 전담.
+ * `updateUserFields` 가 **실제로 시트에 쓰는 범위(F:AH = 사용자 편집영역)** 의 필드만.
+ *
+ * 화이트리스트인 이유(denylist 아님 — #558 PARTIAL ③, DevD): updateUserFields 는 F:AH 만 쓰므로
+ * 그 밖의 필드를 DB 미러에 실으면 **시트엔 없는 값이 DB 에만 생긴다**. arena-carryover 는 **이전
+ * 기수의 옛 계약(외래 소스)** 을 그대로 넘기므로 특히 위험:
+ *   · `구분`/`이월원본행id`(AI·AJ) → 갓 찍은 이월 flag 를 ''로 **클로버**(#558 1차 수리)
+ *   · `해지일·해지사유·반환액·해지숨김`(AL~AO) → **해지된 옛 계약을 이월하면 DB 만 해지**(반환액 차감·
+ *     해지 뱃지) / 시트는 미해지 → DB↔시트 갈림
+ *   · `linkedMeetingId`(AK) → 옛 기수 미팅 id 가 새 행에 누출
+ * 화이트리스트라 **앞으로 AP 이후에 필드가 늘어도 자동으로 누출되지 않는다**(denylist 였다면 누출).
+ * C/D/E(계약일·업체명·수임비)도 F:AH 밖 — `appendFromContract`·`updateLinkFields`·`syncFeeFromContract`
+ * 가 정본이다. 이월 마킹은 `appendFromContract` + arena-carryover 의 durable 재확정이 담당.
  */
+const USER_AREA_KEYS = [
+  // F~L 체크박스 7
+  "공동인증서",
+  "임대차계약서",
+  "신분증",
+  "드라이브업로드",
+  "사업계획서초안발송",
+  "컨설팅5종서류발송",
+  "플러그이관",
+  // M~AD 슬롯 3 (+ AF/AG/AH 슬롯메모는 각 슬롯 객체의 .메모)
+  "수납1",
+  "수납2",
+  "수납3",
+  // AE 로드맵메모
+  "로드맵메모",
+] as const;
+
 export function userFieldsMirrorPayload(
   cp: ContractPayment,
 ): Record<string, unknown> {
-  const payload: Record<string, unknown> = { ...cp };
-  delete payload.구분;
-  delete payload.이월원본행id;
+  const src = cp as unknown as Record<string, unknown>;
+  const payload: Record<string, unknown> = {};
+  for (const k of USER_AREA_KEYS) {
+    if (src[k] !== undefined) payload[k] = src[k];
+  }
   return payload;
 }

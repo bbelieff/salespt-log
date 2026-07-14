@@ -37,6 +37,13 @@ describe("isCarryoverContract (단일 판정점 — 깃발 OR 계약일<시작�
   it("계약일 < 시작일 → true (깃발 없어도)", () => {
     expect(isCarryoverContract({ 구분: "", 계약일: "2026-06-11" }, START)).toBe(true);
   });
+  // 🔒 가드(#558 PARTIAL ④, DevD): **날짜 폴백 제거 금지.**
+  // flag 신뢰는 463d0a5(#558) 이후 기록된 행에만 성립한다. 그 이전 파일럿 DB 행은 이월인데도
+  // 구분='' 로 클로버돼 있어(리페어 전) 날짜 폴백만이 유일한 구제책이다. 폴백을 지우거나
+  // flag-only 판정(computeContractRevenue 계열)을 DB-read 경로에 배선하면 아레나 수치가 즉시 팽창한다.
+  it("🔒 클로버된 옛 행(구분='') 도 날짜로 구제 — 날짜 폴백은 load-bearing", () => {
+    expect(isCarryoverContract({ 구분: "", 계약일: "2026-06-01" }, START)).toBe(true);
+  });
   it("계약일 = 시작일 → false (이상은 아레나 집계)", () => {
     expect(isCarryoverContract({ 계약일: "2026-06-12" }, START)).toBe(false);
   });
