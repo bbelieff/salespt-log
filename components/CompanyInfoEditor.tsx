@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CompanyInfo } from "@/types";
+import { formatPhone } from "@/lib/format/phone";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
@@ -171,6 +172,16 @@ export default function CompanyInfoEditor({
   // 한 필드 입력 — multiline=textarea(줄 수 따라 자동높이), 아니면 input.
   const field = ([k, label, ph, span, multi]: FieldDef) => {
     const v = String(draft[k] ?? "");
+    // 연락처통신사 = "010-1234-5678(SKT)" **합본 자유문자열**. 매 키 입력 마스킹은 괄호부를
+    // 깨뜨리므로, blur 시에만 formatPhone 으로 정규화한다(선행 숫자 런만 포맷·접미 보존).
+    // 기존 저장분(하이픈 없음·시트가 숫자로 먹어 선행 0 소실)도 이때 흡수된다.
+    const isPhone = String(k) === "연락처통신사";
+    const onBlurNormalize = isPhone
+      ? () => {
+          const next = formatPhone(v);
+          if (next !== v) set(k, next);
+        }
+      : undefined;
     return (
       <label key={String(k)} className={span === 2 ? "block sm:col-span-2" : "block"}>
         <span className="text-xs font-medium text-gray-800">{label}</span>
@@ -191,8 +202,10 @@ export default function CompanyInfoEditor({
           <input
             className={inputCls}
             placeholder={undefined}
+            inputMode={isPhone ? "tel" : undefined}
             value={v}
             onChange={(e) => set(k, e.target.value)}
+            onBlur={onBlurNormalize}
           />
         )}
       </label>

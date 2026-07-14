@@ -35,10 +35,10 @@ import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { ACCENT, contractAccentFamily } from "./_lib/contractAccent";
+import { formatMoney } from "@/lib/format/money";
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmtMoney = formatMoney;
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
 function usePcBreakpoint(): boolean {

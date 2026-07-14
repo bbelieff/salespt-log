@@ -26,6 +26,7 @@ import {
   meetingStateToCardState,
 } from "./_lib/state-map";
 import { fmtYM, fmtYMD, parseISO, shiftMonth } from "./_lib/month";
+import { formatMoney } from "@/lib/format/money";
 
 const TODAY = new Date();
 const TODAY_ISO = fmtYMD(TODAY);
@@ -55,9 +56,8 @@ const TODO_TYPES = ["미팅", "전화", "메시지", "기타"] as const;
 const NO_MEETINGS: Meeting[] = [];
 const NO_TODOS: Todo[] = [];
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmtMoney = formatMoney;
 
 export default function CalendarPage() {
   const router = useRouter();

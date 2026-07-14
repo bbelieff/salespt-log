@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/format/money";
 /**
  * FinanceSummaryBoxes — 매출/비용 1:1 grid.
  *
@@ -15,9 +16,8 @@ interface Props {
   commissionIncome: number;
 }
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmtMoney = formatMoney;
 
 /** 독립 사용 가능한 매출/비용 박스 (DashboardProgressBanner와 별도로 쓸 때). */
 export default function FinanceSummaryBoxes({

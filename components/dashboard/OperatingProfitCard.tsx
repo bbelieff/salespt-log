@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/format/money";
 /**
  * OperatingProfitCard — 영업이익 큰 카드 (대시보드 메인 KPI).
  *
@@ -22,9 +23,8 @@ interface Props {
   totalRevenue?: number;
 }
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmtMoney = formatMoney;
 
 export default function OperatingProfitCard({
   revenue,

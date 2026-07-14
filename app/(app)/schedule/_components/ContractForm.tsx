@@ -11,6 +11,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import MoneyInput from "@/components/ui/MoneyInput";
 
 interface Props {
   initialFee: number;
@@ -21,10 +22,6 @@ interface Props {
   bindSubmit?: (fn: (() => boolean) | null) => void;
 }
 
-function fmtComma(n: number): string {
-  if (!n) return "";
-  return n.toLocaleString("en-US");
-}
 
 export default function ContractForm({
   initialFee,
@@ -63,39 +60,12 @@ export default function ContractForm({
           수임비 (원) <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center gap-2">
-          <input
-            type="text"
-            inputMode="numeric"
-            value={fmtComma(feeNum)}
-            onChange={(e) => {
-              const input = e.currentTarget;
-              const oldVal = input.value;
-              const cursorPos = input.selectionStart ?? 0;
-              const digits = oldVal.replace(/[^\d]/g, "");
-              const num = digits ? parseInt(digits, 10) : 0;
-              const newVal = num ? num.toLocaleString("en-US") : "";
-              // 커서 보정: 콤마 개수 차이만큼 이동
-              requestAnimationFrame(() => {
-                const oldCommas = (oldVal.slice(0, cursorPos).match(/,/g) ?? [])
-                  .length;
-                const newCommas = (newVal.slice(0, cursorPos).match(/,/g) ?? [])
-                  .length;
-                const newPos = Math.max(
-                  0,
-                  Math.min(newVal.length, cursorPos + (newCommas - oldCommas)),
-                );
-                try {
-                  input.setSelectionRange(newPos, newPos);
-                } catch {
-                  /* no-op */
-                }
-              });
-              setFeeNum(num);
-            }}
+          <MoneyInput
+            value={feeNum}
+            onChange={setFeeNum}
             placeholder="5,000,000"
             aria-label="수임비"
             className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-base font-semibold focus:border-green-500 focus:outline-none"
-            style={{ fontVariantNumeric: "tabular-nums" }}
           />
           <span className="shrink-0 text-sm font-semibold text-gray-600">
             원

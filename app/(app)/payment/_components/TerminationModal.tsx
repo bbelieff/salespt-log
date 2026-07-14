@@ -7,6 +7,8 @@
 
 import { useState } from "react";
 import type { ContractPayment } from "@/types";
+import MoneyInput from "@/components/ui/MoneyInput";
+import { formatMoney } from "@/lib/format/money";
 
 type RefundMode = "none" | "partial" | "full";
 
@@ -17,12 +19,14 @@ interface Props {
   onConfirm: (input: { 사유: string; 반환액: number; 숨김: boolean }) => void;
 }
 
-const fmtMoney = (n: number) => n.toLocaleString("ko-KR");
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 단일 원천). */
+const fmtMoney = formatMoney;
 
 export default function TerminationModal({ cp, pending, onClose, onConfirm }: Props) {
   const [사유, set사유] = useState("");
   const [mode, setMode] = useState<RefundMode>("none");
-  const [partial, setPartial] = useState("");
+  // 반환액(일부) — 공용 MoneyInput 이 number 를 방출하므로 state 도 number(기존 raw string → 정리).
+  const [partial, setPartial] = useState(0);
   const [숨김, set숨김] = useState(false);
   const [err, setErr] = useState("");
 
@@ -30,8 +34,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
   const receivedSum =
     cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액;
   const fullAmount = (cp.수임비 || 0) + receivedSum;
-  const 반환액 =
-    mode === "none" ? 0 : mode === "full" ? fullAmount : Number(partial.replace(/[₩,\s]/g, "")) || 0;
+  const 반환액 = mode === "none" ? 0 : mode === "full" ? fullAmount : partial;
 
   const submit = () => {
     if (!사유.trim()) {
@@ -96,11 +99,11 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
             </label>
           ))}
           {mode === "partial" && (
-            <input
-              inputMode="numeric"
+            <MoneyInput
               value={partial}
-              onChange={(e) => setPartial(e.target.value)}
+              onChange={setPartial}
               placeholder="반환 금액 (원)"
+              aria-label="반환 금액"
               className="ml-6 w-40 rounded-lg border border-gray-300 p-2 text-sm focus:border-gray-500 focus:outline-none"
             />
           )}
