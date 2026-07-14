@@ -4,6 +4,9 @@
  * 실행 위치: **VPS** (.env/.env.local 에 SA·SHEETS_REGISTRY_ID·DATABASE_URL 보유)
  *   — GitHub Actions "DB Backfill" 워크플로가 SSH 로 실행. 기본 dry-run.
  *   node scripts/ops/backfill-sheet-rows.mjs --cohort 8 [--execute]
+ *   node scripts/ops/backfill-sheet-rows.mjs --cohort 연습 --sheet <시트ID> [--execute]
+ *     ↑ **파일럿 편입 전 선백필** — registry B(cohort)가 빈 계정은 --cohort 로 못 찾으므로
+ *       시트를 명시해 먼저 DB 를 채우고, 그 다음 B 를 쓴다(순서 반대면 게이트가 DB 로 붙어 빈 화면).
  *
  * row_key 규칙 — lib/repo/db/mirror.ts 의 dual-write 와 **반드시 동일**:
  *   meetings=A열 id · todos=A열 id · contracts=r{행} · db={섹션}:r{행} ·
@@ -37,11 +40,25 @@ const COHORT = (() => {
   const i = process.argv.indexOf("--cohort");
   return i >= 0 ? String(process.argv[i + 1] ?? "").trim() : "";
 })();
+/**
+ * --sheet <spreadsheetId> (선택) — **명시 타겟**. 레지스트리 cohort 와 무관하게 그 시트만 백필.
+ * 왜: 기본 선택은 registry B(cohort) 매칭인데, **아직 파일럿에 편입되지 않은 계정은 B 가 비어**
+ * 있어 --cohort 로는 찾을 수 없다(연습용/테스터). 그런 계정을 파일럿에 넣으려면 **B 를 쓰기 전에**
+ * DB 를 먼저 채워야 하는데(먼저 넣으면 게이트가 DB 로 붙어 빈 화면), 그 선백필을 가능케 한다.
+ * email 은 그 시트의 registry 행에서 가져오고, cohort 스탬프는 --cohort 인자 값을 쓴다.
+ */
+const SHEET = (() => {
+  const i = process.argv.indexOf("--sheet");
+  return i >= 0 ? String(process.argv[i + 1] ?? "").trim() : "";
+})();
 const EXECUTE = process.argv.includes("--execute");
 // R2-1.5(아레나): 콤마 목록 허용 — 예: --cohort "A1-0,A1-1,A1-2" (단일 라벨 동작 불변).
 const COHORTS = COHORT.split(",").map((s) => s.trim().replace(/기\s*$/, "")).filter(Boolean);
 if (!COHORT) {
-  console.error("사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--execute]");
+  console.error(
+    "사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--sheet <시트ID>] [--execute]\n" +
+      "  --sheet 지정 시: 그 시트만 백필(레지스트리 cohort 무관). --cohort 는 DB 에 스탬프할 라벨.",
+  );
   process.exit(1);
 }
 
@@ -171,20 +188,33 @@ async function extractUserRows(sid) {
 }
 
 async function main() {
-  // 레지스트리에서 대상 기수 사용자(시트 보유) 목록
+  // 레지스트리에서 대상 사용자(시트 보유) 목록
   const reg = await grid(REGISTRY_ID, "'users'!A2:R");
-  const users = reg
-    .map((r) => ({
-      email: String(r[0] ?? "").trim().toLowerCase(),
-      cohort: String(r[1] ?? "").trim(),
-      sid: String(r[3] ?? "").trim(),
-      role: String(r[4] ?? "").trim() || "trainee",
-    }))
-    .filter((u) => u.sid && COHORTS.includes(u.cohort.replace(/기\s*$/, "")) && u.role !== "trainer" && u.role !== "admin");
+  const all = reg.map((r) => ({
+    email: String(r[0] ?? "").trim().toLowerCase(),
+    cohort: String(r[1] ?? "").trim(),
+    sid: String(r[3] ?? "").trim(),
+    role: String(r[4] ?? "").trim() || "trainee",
+  }));
+  const notStaff = (u) => u.role !== "trainer" && u.role !== "admin";
+  const users = SHEET
+    ? // 명시 타겟: 그 시트 행만(레지스트리 cohort 무관 — 아직 빈 B 라도 선백필 가능).
+      //   DB 에 스탬프할 cohort 는 --cohort 인자(파일럿 라벨)로 강제.
+      all
+        .filter((u) => u.sid === SHEET && notStaff(u))
+        .map((u) => ({ ...u, cohort: COHORTS[0] ?? u.cohort }))
+    : all.filter(
+        (u) => u.sid && COHORTS.includes(u.cohort.replace(/기\s*$/, "")) && notStaff(u),
+      );
+  if (SHEET && users.length === 0) {
+    console.error(`backfill: --sheet ${SHEET} 에 해당하는 registry trainee 행이 없습니다.`);
+    process.exit(1);
+  }
   // 같은 시트 중복 행 제거(부부 멀티계정 — 시트 1개당 1회)
   const seen = new Set();
   const targets = users.filter((u) => !seen.has(u.sid) && seen.add(u.sid));
-  console.log(`backfill: 기수 ${COHORT} — 대상 시트 ${targets.length}개 (mode=${EXECUTE ? "EXECUTE" : "DRY-RUN"})`);
+  const scope = SHEET ? `시트 ${SHEET} (라벨 ${COHORT} 로 스탬프)` : `기수 ${COHORT}`;
+  console.log(`backfill: ${scope} — 대상 시트 ${targets.length}개 (mode=${EXECUTE ? "EXECUTE" : "DRY-RUN"})`);
 
   const pool = EXECUTE
     ? new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false }, max: 3 })

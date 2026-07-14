@@ -7,8 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       cohort:
-        description: "기수 라벨 (예: 8)"
+        description: "기수 라벨 (예: 8) — DB 에 스탬프할 값"
         required: true
+      sheet:
+        description: "시트 ID (선택) — 지정 시 그 시트만 백필(레지스트리 cohort 무관). 파일럿 편입 전 선백필용"
+        required: false
+        default: ""
       execute:
         description: "실제 기록 (미체크 = dry-run)"
         type: boolean
@@ -26,6 +30,7 @@ jobs:
       - name: Run backfill on VPS
         env:
           COHORT: ${{ inputs.cohort }}
+          SHEET: ${{ inputs.sheet }}
           EXECUTE: ${{ inputs.execute }}
         run: |
           # 인자는 원격에 env 로 전달(따옴표 안전). 코드/URL 값 미출력.
@@ -33,6 +38,7 @@ jobs:
           set -e
           cd /opt/salespt-log
           FLAGS="--cohort $COHORT_ARG"
+          if [ -n "$SHEET_ARG" ]; then FLAGS="$FLAGS --sheet $SHEET_ARG"; fi
           if [ "$EXEC_ARG" = "true" ]; then FLAGS="$FLAGS --execute"; fi
           node scripts/ops/backfill-sheet-rows.mjs $FLAGS
           REMOTE_EOF
@@ -46,7 +52,7 @@ jobs:
             rc=0
             ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
                 -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" \
-                "COHORT_ARG=\"$COHORT\" EXEC_ARG=\"$EXECUTE\" bash -s" <<<"$REMOTE"
+                "COHORT_ARG=\"$COHORT\" SHEET_ARG=\"$SHEET\" EXEC_ARG=\"$EXECUTE\" bash -s" <<<"$REMOTE"
             rc=$?
             if [ "$rc" = "0" ]; then exit 0; fi
             if [ "$rc" = "255" ]; then
