@@ -41,8 +41,11 @@ vi.mock("@/repo/db/client", () => ({
 }));
 vi.mock("@/repo/db/read-db-tab", () => ({ readDbTabFromDb: vi.fn() }));
 vi.mock("@/repo/sales", () => ({
-  writeProductionCell: (...a: unknown[]) => writeProductionCell(...(a as [])),
   sumChannelInflowOverPeriod: (...a: unknown[]) => sumChannelInflowOverPeriod(...(a as [])),
+}));
+// writeProductionCell 은 500줄 캡 분리로 sales-production-cell 로 이동(ADR-0029 E:F 동시기입).
+vi.mock("@/repo/sales-production-cell", () => ({
+  writeProductionCell: (...a: unknown[]) => writeProductionCell(...(a as [])),
 }));
 vi.mock("@/repo/db", () => ({
   updatePurchase: (...a: unknown[]) => updatePurchase(...(a as [])),

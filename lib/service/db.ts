@@ -27,7 +27,8 @@ import * as Sentry from "@sentry/nextjs";
 import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
-import { writeProductionCell, sumChannelInflowOverPeriod } from "@/repo/sales";
+import { sumChannelInflowOverPeriod } from "@/repo/sales";
+import { writeProductionCell } from "@/repo/sales-production-cell"; // 500줄 캡 분리(ADR-0020·0029)
 import type {
   Channel,
   DBBanner,

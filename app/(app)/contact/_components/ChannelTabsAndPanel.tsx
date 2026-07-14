@@ -7,61 +7,8 @@ import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
 import { loadChannelOrder, moveChannel, saveChannelOrder } from "../_lib/channel-order";
+import { CHANNEL_META } from "../_lib/channel-meta";
 
-const CHANNEL_META: Record<
-  Channel,
-  {
-    desc: string;
-    helps: { production: string; inflow: string; contactProgress: string; meetingReservation: string };
-    color: "blue" | "green" | "amber" | "purple";
-    badgeClass: string;
-  }
-> = {
-  매입DB: {
-    desc: "DB생산업체로부터 구매",
-    helps: {
-      production: "구매한 DB 수",
-      inflow: "오늘 전달받은 DB 수",
-      contactProgress: "부재 제외, 실제 통화 수",
-      meetingReservation: "미팅 예약 확정된 수",
-    },
-    color: "blue",
-    badgeClass: "badge badge-purchase",
-  },
-  직접생산: {
-    desc: "메타·구글·당근 등",
-    helps: {
-      production: "오늘 생산된 DB 수",
-      inflow: "오늘 유입된 DB 수 (보통=생산)",
-      contactProgress: "부재 제외, 실제 통화 수",
-      meetingReservation: "미팅 예약 확정된 수",
-    },
-    color: "green",
-    badgeClass: "badge badge-direct",
-  },
-  현수막: {
-    desc: "오프라인 현수막 광고",
-    helps: {
-      production: "오늘 부착·노출된 현수막 수",
-      inflow: "오늘 유입된 문의 수",
-      contactProgress: "부재 제외, 실제 통화 수",
-      meetingReservation: "미팅 예약 확정된 수",
-    },
-    color: "amber",
-    badgeClass: "badge badge-banner",
-  },
-  "콜·지·기·소": {
-    desc: "콜드콜·지인·기존고객·소개",
-    helps: {
-      production: "발굴한 컨택대상 수 (=유입)",
-      inflow: "컨택대상 수 (생산과 동일)",
-      contactProgress: "부재 제외, 실제 통화 수",
-      meetingReservation: "미팅 예약 확정된 수",
-    },
-    color: "purple",
-    badgeClass: "badge badge-referral",
-  },
-};
 
 const COLOR_CLASS: Record<
   "blue" | "green" | "amber" | "purple",
@@ -191,6 +138,13 @@ export default function ChannelTabsAndPanel({
       ? `유입대기 ${Math.max(0, inflowWaitBase - (cell?.inflow ?? 0))}건`
       : firstRowText(active, date, overview.data);
 
+  // 콜·지·기·소 유입 표시값 = 오늘 발굴(접수) 수 = 생산(ADR-0029 파생). 생산 행 "발굴 N건"과 **동일 소스**.
+  // 잠긴 행·오늘합계·탭 배지가 **모두 이 값**을 써야 화면이 "생산과 동일"을 실제로 지킨다(draft 는 저장 안 됨).
+  // DBOverview 로딩 전엔 저장된 값(draft)으로 폴백 — 0 으로 단정 표시하면 생산 행("—")과 어긋난다.
+  const leadInflow = overview.data
+    ? overview.data.leads.filter((l) => strF(l as never, "접수일") === date).length
+    : draft["콜·지·기·소"].inflow;
+
   // 직접생산: 선택 날짜 포함 활성 레코드(유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
   const directProductions = overview.data?.productions ?? [];
   const directIdx = directProductions.findIndex(
@@ -235,7 +189,11 @@ export default function ChannelTabsAndPanel({
           const meta = CHANNEL_META[c];
           const colorCls = COLOR_CLASS[meta.color];
           const isActive = c === active;
-          const total = totalOf(draft[c]);
+          // 배지도 유입 행·합계와 같은 값을 써야 한다(콜지기소 유입 = 라이브 파생, ADR-0029).
+          const total =
+            c === "콜·지·기·소"
+              ? leadInflow + draft[c].contactProgress + draft[c].meetingReservation
+              : totalOf(draft[c]);
           const isDragOver = dragOver === c && dragFrom !== c;
           const isDragging = dragFrom === c;
           return (
@@ -423,7 +381,14 @@ export default function ChannelTabsAndPanel({
 
       {/* 유입·컨택진행·미팅예약 (스테퍼) — 좌 라벨+도움말·스테퍼, 우 오늘 합계(슬림 64px) */}
       {METRICS.filter((m) => m.key !== "production").map((m, mi, arr) => {
-        const total = channelSum(m.key);
+        // 유입 합계: 콜지기소 몫은 draft(저장 안 되는 값) 대신 라이브 파생값 leadInflow 로 대체(ADR-0029).
+        const total =
+          m.key === "inflow"
+            ? CHANNEL_ORDER.reduce(
+                (acc, c) => acc + (c === "콜·지·기·소" ? leadInflow : draft[c].inflow),
+                0,
+              )
+            : channelSum(m.key);
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
         const atLimit = m.upstream && cell[m.key] >= upstreamVal;
         const plusClass = atLimit
@@ -431,6 +396,8 @@ export default function ChannelTabsAndPanel({
           : `${cls.bg500} text-white ${cls.hover}`;
         const help = ch.helps[m.key as keyof typeof ch.helps];
         const isHighlight = highlightKey === m.key;
+        // 콜·지·기·소 유입 = 생산(03 접수 건수) 파생 — 스테퍼 없이 🔒DB자동 (ADR-0029).
+        const isLeadInflow = active === "콜·지·기·소" && m.key === "inflow";
         return (
           <div
             key={m.key}
@@ -441,41 +408,57 @@ export default function ChannelTabsAndPanel({
             <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3">
               {/* 라벨 + 보조 도움말(1줄 truncate — 공간은 합계·스테퍼 우선) */}
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-gray-800">{m.label}</div>
-                <div className="truncate text-xs text-gray-400">{help}</div>
+                <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
+                  {m.label}
+                  {isLeadInflow && (
+                    <span className="rounded bg-gray-100 px-1 py-px text-[11px] font-bold text-gray-500">
+                      🔒 DB자동
+                    </span>
+                  )}
+                </div>
+                <div className="truncate text-xs text-gray-400">
+                  {isLeadInflow ? "생산과 동일 · 자동" : help}
+                </div>
               </div>
-              {/* 스테퍼 */}
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  onClick={() => onStep(m.key, -1)}
-                  aria-label={`${m.label} 감소`}
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  className="stepper-val"
-                  value={cell[m.key]}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
-                  }}
-                  aria-label={`${m.label} 수치`}
-                />
-                <button
-                  type="button"
-                  className={`stepper-btn ${plusClass}`}
-                  onClick={() => onStep(m.key, 1)}
-                  aria-disabled={atLimit ? true : undefined}
-                  aria-label={`${m.label} 증가`}
-                >
-                  ＋
-                </button>
-              </div>
+              {isLeadInflow ? (
+                /* 파생값 — 입력 불가. 생산 행("발굴 N건")과 같은 라이브 소스라 항상 생산과 일치. */
+                <div className="shrink-0 num-mono text-sm font-semibold text-gray-700">
+                  {leadInflow}
+                </div>
+              ) : (
+                /* 스테퍼 */
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    onClick={() => onStep(m.key, -1)}
+                    aria-label={`${m.label} 감소`}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    className="stepper-val"
+                    value={cell[m.key]}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
+                    }}
+                    aria-label={`${m.label} 수치`}
+                  />
+                  <button
+                    type="button"
+                    className={`stepper-btn ${plusClass}`}
+                    onClick={() => onStep(m.key, 1)}
+                    aria-disabled={atLimit ? true : undefined}
+                    aria-label={`${m.label} 증가`}
+                  >
+                    ＋
+                  </button>
+                </div>
+              )}
             </div>
             {/* 오늘 합계 (슬림 80px, 채널색, 지표명 중복 제거) — 본질 정보라 항상 노출 */}
             <div className="flex w-20 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-50 py-2 text-center">
