@@ -10,10 +10,10 @@
 
 import { useState } from "react";
 import type { ContractPayment } from "@/types";
+import MoneyInput from "@/components/ui/MoneyInput";
 import { useEditContractLinkedFields } from "@/query/contract-payment-hooks";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 
-const fmtComma = (n: number) => (n ? n.toLocaleString("en-US") : "0");
 
 export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
   const [editing, setEditing] = useState(false);
@@ -108,13 +108,12 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
         </div>
         <div>
           <label className={label}>수임비 (원)</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={fmtComma(수임비)}
-            onChange={(e) => set수임비(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
+          <MoneyInput
+            value={수임비}
+            onChange={set수임비}
+            placeholder="5,000,000" /* 0 이면 빈칸이라 힌트 필수(기존 "0" 표시 대체) */
             className={`${input} num-mono`}
-            style={{ fontVariantNumeric: "tabular-nums" }}
+            aria-label="수임비"
           />
         </div>
       </div>

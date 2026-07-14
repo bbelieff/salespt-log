@@ -59,8 +59,9 @@ export function formatPhone(raw: string | number | null | undefined): string {
  * **입력 마스크** — 타이핑 중 진행형 하이픈. 숫자만 취해 최대 11자리(02 는 10자리).
  * 순수 전화 필드용(합본 필드는 formatPhone 표시 정규화로 처리).
  */
-export function maskPhoneInput(raw: string | null | undefined): string {
-  let d = String(raw ?? "").replace(/[^\d]/g, "");
+/** 숫자열 → 진행형 하이픈. 선행 0 복원은 호출부(maskPhoneInput)가 이미 수행. */
+function maskDigits(d: string): string {
+  if (!d) return "";
 
   // 02 (서울) — 2-3-4(9자리) / 2-4-4(10자리)
   if (d.startsWith("02")) {
@@ -81,9 +82,34 @@ export function maskPhoneInput(raw: string | null | undefined): string {
   }
 
   // 그 외 지역번호(031·051…) — 3-3-4(10자리)
-  d = d.slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
-  if (d.length <= 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  if (d.startsWith("0")) {
+    d = d.slice(0, 11);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    if (d.length <= 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  }
+
+  // 0 으로 시작 안 함 = 15xx/16xx/18xx 대표번호 등. 8자리 4-4(hyphenate 와 동일),
+  // 그 외는 **원본 숫자 유지**(임의 분절로 번호를 바꾸지 않는다).
+  if (d.length === 8) return `${d.slice(0, 4)}-${d.slice(4)}`;
+  return d.slice(0, 11);
+}
+
+/**
+ * **입력 마스크 — 비파괴**. 타이핑 중 진행형 하이픈을 붙이되:
+ *  - **선행 전화 런만** 마스킹하고 **뒤 텍스트는 그대로 보존** — 연락처 칸에는 메모·2번째 번호·
+ *    통신사가 함께 적혀 있을 수 있다("010-1234-5678 (김대표)", "010-1111-2222 / 010-3333-4444").
+ *    숫자만 남기고 잘라내면 **시트의 원문이 영구 삭제**된다.
+ *  - **선행 0 복원**(normalizePhoneDigits) — 시트가 숫자로 먹어 0 이 날아간 레거시("1012345678")를
+ *    "101-234-5678"(전혀 다른 번호)로 굳히지 않는다.
+ */
+export function maskPhoneInput(raw: string | null | undefined): string {
+  const s = String(raw ?? "");
+  const m = s.match(/^([\d\-.\s]*)([\s\S]*)$/);
+  const lead = m?.[1] ?? "";
+  const rest = m?.[2] ?? "";
+  const gap = lead.match(/\s+$/)?.[0] ?? ""; // 접미 앞 공백 보존
+  const masked = maskDigits(normalizePhoneDigits(lead));
+  return rest ? `${masked}${gap}${rest}` : masked;
 }

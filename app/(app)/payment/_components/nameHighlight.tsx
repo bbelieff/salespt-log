@@ -1,10 +1,10 @@
+import { formatMoney } from "@/lib/format/money";
 /** 업체명 검색어 <mark> 하이라이트 — ContractRow 500줄 캡으로 분리(contract-termination PR).
  * 대소문자·공백 무시 매칭은 page 필터와 동일 기준이되, 표시는 원문 그대로
  * (공백 제거 매칭으로 인한 부분 불일치 시 하이라이트 생략). */
 
-export function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+export const fmtMoney = formatMoney;
 
 export function fmtDate(s: string): string {
   if (!s) return "—";

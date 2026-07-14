@@ -5,6 +5,7 @@
  * 색만 지표별로 바꿔 재사용. 표준 Tailwind 스케일만 사용(arbitrary value 없음).
  */
 import type { RankingEntry } from "@/types";
+import { formatMoney } from "@/lib/format/money";
 
 export type PodiumColor = "blue" | "purple" | "teal" | "amber" | "rose";
 
@@ -51,9 +52,8 @@ const C: Record<
 
 const MEDAL = ["🥇", "🥈", "🥉"];
 
-function fmt(v: number): string {
-  return Math.round(v).toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmt = formatMoney;
 
 function PodiumCard({
   entry,

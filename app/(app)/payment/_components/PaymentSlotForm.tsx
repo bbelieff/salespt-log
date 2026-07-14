@@ -14,6 +14,8 @@
 
 import { useId, useState } from "react";
 import type { PaymentSlot, Progress, Todo } from "@/types";
+import MoneyInput from "@/components/ui/MoneyInput";
+import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
 
 const SLOT_STYLES = {
@@ -86,10 +88,8 @@ interface Props {
   onEnsureSaved?: () => void;
 }
 
-function fmtComma(n: number): string {
-  if (!n) return "";
-  return n.toLocaleString("en-US");
-}
+/** 공용 부품 별칭 — 0/빈값은 빈칸(기존 fmtComma 시맨틱 승계). 중복 구현 제거. */
+const fmtComma = formatMoneyInput;
 
 export default function PaymentSlotForm({
   index,
@@ -447,7 +447,7 @@ function FieldSelect({
   );
 }
 
-/** 천 단위 콤마 + 커서 위치 보정 입력 (prototype v9 §[1] 패턴). */
+/** 천 단위 콤마 + 커서 보정 — 공용 MoneyInput 위임(중복 구현 제거). 라벨 래퍼만 유지. */
 function FieldMoney({
   label,
   value,
@@ -462,38 +462,12 @@ function FieldMoney({
   return (
     <div>
       <label className={FIELD_LABEL_CLASS}>{label}</label>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={fmtComma(value)}
+      <MoneyInput
+        value={value}
+        onChange={onChange}
         placeholder={placeholder}
-        onChange={(e) => {
-          const input = e.currentTarget;
-          const oldVal = input.value;
-          const cursorPos = input.selectionStart ?? 0;
-          const digits = oldVal.replace(/[^\d]/g, "");
-          const num = digits ? parseInt(digits, 10) : 0;
-          const newVal = num ? num.toLocaleString("en-US") : "";
-          // 커서 보정: 콤마 개수 차이만큼 이동
-          requestAnimationFrame(() => {
-            const oldCommas = (oldVal.slice(0, cursorPos).match(/,/g) ?? [])
-              .length;
-            const newCommas = (newVal.slice(0, cursorPos).match(/,/g) ?? [])
-              .length;
-            const newPos = Math.max(
-              0,
-              Math.min(newVal.length, cursorPos + (newCommas - oldCommas)),
-            );
-            try {
-              input.setSelectionRange(newPos, newPos);
-            } catch {
-              /* no-op */
-            }
-          });
-          onChange(num);
-        }}
         className={FIELD_INPUT_CLASS}
-        style={{ fontVariantNumeric: "tabular-nums" }}
+        aria-label={label}
       />
     </div>
   );

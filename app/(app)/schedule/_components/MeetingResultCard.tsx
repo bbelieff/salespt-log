@@ -19,6 +19,7 @@ import BasicEditDetails from "./BasicEditDetails";
 import AddMeetingForm from "./AddMeetingForm";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
+import { formatMoney } from "@/lib/format/money";
 
 type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 
@@ -35,9 +36,8 @@ interface Props {
   onReviveCase?: () => void;
 }
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmtMoney = formatMoney;
 
 export default function MeetingResultCard({
   meeting,
@@ -110,7 +110,7 @@ export default function MeetingResultCard({
   };
   const confirmContractDrop = (): boolean => // 계약→완료/취소 시 계약카드 삭제 경고.
     state !== "contract" ||
-    window.confirm(`상태 변경 시 수납탭 계약카드 1건 삭제 (₩${meeting.수임비.toLocaleString()}). 진행?`);
+    window.confirm(`상태 변경 시 수납탭 계약카드 1건 삭제 (₩${fmtMoney(meeting.수임비)}). 진행?`);
   const handleDone = (reason: string) => {
     if (!confirmContractDrop()) return;
     onPatch(withCi({ 상태: "완료", 계약여부: false, 미팅사유: accumulateReason(reason) }));

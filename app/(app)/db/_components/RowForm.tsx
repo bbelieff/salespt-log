@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChannelMeta, FieldDef } from "../_lib/channels";
 import { fmtWon } from "../_lib/channels";
+import MoneyInput from "@/components/ui/MoneyInput";
+import PhoneInput from "@/components/ui/PhoneInput";
 
 interface Props {
   channel: ChannelMeta;
@@ -200,41 +202,21 @@ function FieldCell({
 
   // 일반 input
   const numCls = field.type === "number" ? "num-mono" : "";
-  // 금액 필드(unit="원"): 천 단위 콤마 표시 + numeric keyboard.
-  // 입력은 text로 받되 onChange 시 콤마 strip 후 숫자만 부모로 전달.
+  // 금액 필드(unit="원") → 공용 MoneyInput(콤마 + 커서 보정). 부모 setField 가 Number() 캐스트하므로
+  // number 방출을 String 으로 넘긴다(계약 유지: 시트에는 숫자만 나간다).
   const isMoney = field.type === "number" && field.unit === "원";
-  // number 필드: value가 0(default)이면 input은 빈 문자열로 표시 — UX 개선
+  const isPhone = field.type === "phone"; // → 공용 PhoneInput(자동 하이픈)
   const numericValue = field.type === "number" ? Number(value ?? 0) : 0;
+  // number 필드: value가 0(default)이면 input은 빈 문자열로 표시 — UX 개선
   const isEmpty =
     value === 0 || value === undefined || value === null || value === "";
-  const inputValue = isMoney
-    ? isEmpty
-      ? ""
-      : numericValue.toLocaleString("ko-KR")
-    : field.type === "number"
-      ? isEmpty
-        ? ""
-        : String(value)
-      : String(value ?? "");
+  const inputValue =
+    field.type === "number" ? (isEmpty ? "" : String(value)) : String(value ?? "");
   // iOS Safari date input intrinsic-width 오버플로 방지: 부모 min-w-0 + appearance-none.
   const dateOverflowFix = field.type === "date" ? "appearance-none" : "";
-  // 금액은 type="text" 로 — type="number"는 콤마 표시 시 invalid 처리됨.
-  const inputType =
-    field.type === "date"
-      ? "date"
-      : isMoney
-        ? "text"
-        : field.type === "number"
-          ? "number"
-          : "text";
-  const handleChange = (raw: string) => {
-    if (isMoney) {
-      // 비숫자(콤마·공백·문자) 모두 strip → 부모 setField 가 Number() 캐스트.
-      onChange(raw.replace(/[^\d]/g, ""));
-    } else {
-      onChange(raw);
-    }
-  };
+  const inputType = field.type === "date" ? "date" : field.type === "number" ? "number" : "text";
+  const inputCls = `w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`;
+
   return (
     <div className={`min-w-0 ${colSpan}`}>
       <label className="mb-1 flex items-center gap-1 text-xs font-medium leading-tight text-gray-600">
@@ -250,20 +232,36 @@ function FieldCell({
           {field.placeholder}
         </span>
       )}
-      <input
-        type={inputType}
-        inputMode={field.type === "number" ? "numeric" : undefined}
-        min={field.type === "number" && !isMoney ? 0 : undefined}
-        value={inputValue}
-        placeholder={undefined}
-        onChange={(e) => handleChange(e.target.value)}
-        className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`}
-        style={
-          field.type === "number"
-            ? { fontVariantNumeric: "tabular-nums" }
-            : undefined
-        }
-      />
+      {isMoney ? (
+        <MoneyInput
+          value={numericValue}
+          onChange={(n) => onChange(String(n))}
+          className={inputCls}
+          aria-label={field.label}
+        />
+      ) : isPhone ? (
+        <PhoneInput
+          value={String(value ?? "")}
+          onChange={onChange}
+          placeholder="" /* 힌트는 위 span 이 이미 노출(중복 방지) */
+          className={inputCls}
+          aria-label={field.label}
+        />
+      ) : (
+        <input
+          type={inputType}
+          inputMode={field.type === "number" ? "numeric" : undefined}
+          min={field.type === "number" ? 0 : undefined}
+          value={inputValue}
+          onChange={(e) => onChange(e.target.value)}
+          className={inputCls}
+          style={
+            field.type === "number"
+              ? { fontVariantNumeric: "tabular-nums" }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

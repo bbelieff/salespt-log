@@ -3,10 +3,18 @@
  * 정본: docs/design/prototypes/db-management.html v11 — `CHANNELS` 객체 1:1 매핑.
  */
 import { unitPriceFromTotal } from "@/lib/pricing";
+import { formatMoney } from "@/lib/format/money";
 
 export type ChannelKey = "purchase" | "direct" | "banner" | "referral";
 
-export type FieldType = "text" | "number" | "date" | "select" | "toggle";
+/** phone = 연락처 — 자동 하이픈 입력(PhoneInput). setField 는 number 만 캐스트하므로 문자열 유지. */
+export type FieldType =
+  | "text"
+  | "number"
+  | "date"
+  | "select"
+  | "toggle"
+  | "phone";
 
 export interface FieldDef {
   key: string;
@@ -187,7 +195,7 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
       { key: "대표자명", label: "대표자명", type: "text", placeholder: "예: 김믿음" },
       { key: "업체명", label: "업체명", type: "text", placeholder: "예: ㈜에이스" },
       { key: "소개처", label: "소개처", type: "text", placeholder: "예: 잠실" },
-      { key: "연락처", label: "연락처", type: "text", placeholder: "010-0000-0000" },
+      { key: "연락처", label: "연락처", type: "phone", placeholder: "010-0000-0000" },
       { key: "조건", label: "조건", type: "text", placeholder: "메모", span: 2 },
     ],
   },
@@ -242,10 +250,11 @@ export function summarizeCost(
   };
 }
 
-export function fmtWon(n: number | null | undefined): string {
-  if (n === null || n === undefined) return "0";
-  return Math.round(Number(n) || 0).toLocaleString("ko-KR");
-}
+/**
+ * 금액 표시 — 공용 `formatMoney` 별칭(중복 구현 제거, PR-1 부품이 단일 원천).
+ * 기존 호출부(OverallCard·RowCard·RowForm·SummaryCard) 호환 위해 이름 유지.
+ */
+export const fmtWon = formatMoney;
 
 /** 풀 ISO(YYYY-MM-DD) → 짧은 M/D 표기 (모바일 카드 sub줄 절약). 비ISO는 원문 유지. */
 export function mdShort(iso: string | null | undefined): string {

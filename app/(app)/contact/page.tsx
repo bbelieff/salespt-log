@@ -27,6 +27,7 @@ import SaveBar from "./_components/SaveBar";
 import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
+import { formatMoney } from "@/lib/format/money";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -259,7 +260,7 @@ export default function ContactPage() {
 
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     const hasContract = meeting.상태 === "계약";
-    const extra = hasContract ? `\n· 수납탭 계약카드 1건 (₩${(meeting.수임비 ?? 0).toLocaleString()})` : "";
+    const extra = hasContract ? `\n· 수납탭 계약카드 1건 (₩${formatMoney(meeting.수임비)})` : "";
     if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`)) return;
     const dateAtClick = date;
     try {

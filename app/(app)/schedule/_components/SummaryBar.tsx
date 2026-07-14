@@ -14,14 +14,14 @@ import { useMemo } from "react";
 import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
+import { formatMoney } from "@/lib/format/money";
 
 interface Props {
   meetings: Meeting[];
 }
 
-function fmtMoney(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
+const fmtMoney = formatMoney;
 
 export default function SummaryBar({ meetings }: Props) {
   const total = meetings.length;

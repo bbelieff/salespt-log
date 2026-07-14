@@ -11,7 +11,6 @@
 "use client";
 
 import PageContainer from "@/components/PageContainer";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
@@ -35,6 +34,7 @@ import WeekFallback from "./_components/WeekFallback";
 import TopHeader from "@/components/TopHeader";
 import { addDays, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useWeekStartSync } from "./_lib/useWeekStartSync";
+import { formatMoney } from "@/lib/format/money";
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -311,7 +311,7 @@ export default function SchedulePage() {
   const handleDelete = async (meeting: Meeting) => {
     const hasContract = meeting.상태 === "계약";
     const extra = hasContract
-      ? `\n· 수납탭 계약카드 1건 (₩${(meeting.수임비 ?? 0).toLocaleString()})`
+      ? `\n· 수납탭 계약카드 1건 (₩${formatMoney(meeting.수임비)})`
       : "";
     if (
       !confirm(
