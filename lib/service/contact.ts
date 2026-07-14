@@ -284,6 +284,8 @@ export async function patchMeeting(
 ): Promise<void> {
   const ctx = await resolveCtx(email);
   const spreadsheetId = ctx.spreadsheetId;
+  // 파일럿(결제카드=06 DB read)은 06 쓰기도 DB 동기 정본 — async 미러 실패 시 stale 반쪽쓰기 방지(DevD).
+  const syncDb = chooseDailySource(ctx.cohort, dbEnabled()) === "db";
   const droppingContract = partial.상태 !== undefined && partial.상태 !== "계약";
   const linkChange = partial.미팅날짜 !== undefined || partial.업체명 !== undefined;
   if (droppingContract || linkChange) {
@@ -297,7 +299,7 @@ export async function patchMeeting(
         // id 키로 02 행 특정(개명 안전) + 업체명 개명 시 06 키 이동(실패해도 04 저장은 성공).
         await updateContractLink(spreadsheetId, { ...oldKey, meetingId: id }, next);
         if (partial.업체명 !== undefined && partial.업체명 !== cur.업체명) {
-          try { await renameCompanyInfoKey(spreadsheetId, oldKey, next); }
+          try { await renameCompanyInfoKey(spreadsheetId, oldKey, next, { syncDb }); }
           catch (e) { console.warn("[contact] 06 키 이동 실패:", e instanceof Error ? e.message : e); }
         }
       }
@@ -311,11 +313,11 @@ export async function patchMeeting(
       const m = merged ?? (await getMeetingRecord(ctx, id)); // 시트 경로만 merge 후 재읽기
       if (m?.미팅날짜 && m.업체명 &&
         (m.상태 === "계약" || (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명)))) {
-        await upsertCompanyInfoArchive(spreadsheetId, {
-          업체명: m.업체명, 계약일: m.미팅날짜, 업체정보: m.업체정보,
-        });
+        const ci = { 업체명: m.업체명, 계약일: m.미팅날짜, 업체정보: m.업체정보 };
+        await upsertCompanyInfoArchive(spreadsheetId, ci, { syncDb });
       }
     } catch (e) {
+      if (syncDb) throw e; // 파일럿: 06 DB 동기 실패는 삼키지 않음(조용한 반쪽쓰기 금지, R3 §0)
       console.warn("[contact] 06 업체정보 동기화 실패:", e instanceof Error ? e.message : e);
     }
   }

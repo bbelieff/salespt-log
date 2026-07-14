@@ -62,7 +62,17 @@ export async function persistCompanyArchiveRow(
   opts?: CompanyArchiveWriteOpts,
 ): Promise<void> {
   if (opts?.syncDb) {
-    await upsertArchiveRowWithRetry(spreadsheetId, rowKey, payload);
+    // upsert = 행 활성화(시트는 A:AB 전체행 replace). jsonb 병합(payload || excluded)상 payload 에
+    // 없는 키는 생존하므로 두 기본값을 명시해 시트 전체행 쓰기와 의미를 맞춘다:
+    //  · _cleared:false — rename 이 남긴 _cleared:true 를 부활(없으면 재사용 자연키가 DB 에서 영구 숨김).
+    //  · 커스텀:{} — CompanyInfo 스칼라는 default("") 라 항상 덮이지만 커스텀만 optional(키 부재) →
+    //    부활 시 이전 생(生)의 stale 커스텀이 딸려 올라옴(결제카드에 남의 커스텀 노출). 빈 기본값으로 차단.
+    // payload 가 해당 키를 가지면 스프레드가 뒤에 오므로 사용자 값이 이긴다.
+    await upsertArchiveRowWithRetry(spreadsheetId, rowKey, {
+      _cleared: false,
+      커스텀: {},
+      ...payload,
+    });
   } else {
     mirrorSheetRow({ spreadsheetId, tab: TAB, rowKey, payload });
   }

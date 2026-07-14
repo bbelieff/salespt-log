@@ -135,6 +135,18 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-07-14 R3-3 PR-2 fix-forward(DevB): patchMeeting(04 화면 06 편집) 파일럿 silent 반쪽쓰기 수리(DevD #548 검증 플래그).
+  근인: patchMeeting 이 06 upsert·rename 을 `syncDb` 없이 호출 → 파일럿도 async 미러(warn-only) → 미러 드롭 시 DB 에
+  stale **non-empty** 06 잔존, `loadCompanyInfoByContract` 가 그 stale 반환(시트폴백=빈 DB에서만) → 결제카드 옛 값·무에러·200.
+  수리: ①patchMeeting 06 upsert 에 `{syncDb}` 관통 + 파일럿 실패는 **삼키지 않고 throw**(loud, 재시도 자연키 멱등 수렴),
+  비파일럿 warn 삼킴 불변 ②rename 도 `{syncDb}` 관통(키만이라 warn 유지·masked, 동기+재시도로 신뢰↑)
+  ③`persistCompanyArchiveRow` sync payload 에 **두 기본값** 병합(시트 A:AB 전체행 replace 와 의미 일치):
+  `_cleared:false`(rename-이탈 자연키 재사용 시 부활 — DevD C-caveat·기존 P2 흡수) + `커스텀:{}`.
+  ⚠️ 커스텀 기본값은 **적대 리뷰가 잡은 자체 회귀 수정** — `_cleared:false` 만 넣으면 부활한 행에 이전 생(生)의
+  stale 커스텀이 얕은병합(payload||excluded)으로 딸려 올라와 결제카드에 **남의 커스텀**이 노출됨(커스텀만 optional=키 부재).
+  회귀 테스트: contact-company-archive-sync(5, 반쪽쓰기 재현=파일럿 06 실패→throw 고정) +
+  company-archive-write-sync ①-b(부활)·①-c(stale 커스텀 차단)·①-d(사용자 커스텀 우선). check.sh 초록.
+  **되돌리기**: 이 PR revert 1건(squash). 스코프 밖(후속): staleness 판정 기반 DB-only read 탭 근본 종결(#544·#541·#551·#548 공통)=DevA/DevB 후속.
 - 2026-07-13 R3-2 PR-2 채택·리베이스·리뷰수정(DevA): 타세션 #541(meetings+carryover DB정본, meetings-write.ts·meetings-rows.ts 신설, todos PR-1 수렴미러 패턴)을 master(#544 포함)로 리베이스. contract-payment.ts 충돌=resolveSheetWithSyncDb에 ctx 통합(syncDb[#544 dual-sync]+ctx[meetings-write] 겸용). 적대적 리뷰(5관점, merge-correctness 무결) 확정 결함 **A/B/C 수정**: ①A(HIGH) listCarrySourceMeetings FORMATTED_VALUE→UNFORMATTED+SERIAL(ko_KR "오전10:00" 파싱실패로 이월 예약 DB read 소실) ②B(MED) runSheetSync meeting분기 이월 gcal guard(구분=이월 skip — 아레나 재참가 중복 캘린더) ③C(MED, 디스패치 cascade 게이트) findMeetingsByDateRecord·findChildMeetingRecord DB공백 시 시트 self-heal 폴백(미러갭 고아 계약 방지). **D 후속(문서화)**: 비파일럿 contract-payment 3경로가 patchMeetingRecord 경유 gcal reconcile 유발(R2엔 없음) — 개명은 캘린더 동기라 개선, saveCompanyInfo insert-if-missing만 엣지. gcal=B구역이라 정밀수정은 후속(patchMeetingRecord gcal-skip 옵션). check.sh 초록(유닛466). **되돌리기**: 이 PR revert 1건(squash). 근거=적대리뷰 output w93pd4tn8.
 - 2026-07-13 R3-3 PR-2 구현(DevB): company_archive(06 업체정보) `upsertCompanyInfoArchive`·`renameCompanyInfoKey`
   쓰기 dual-sync(파일럿만). 신규 `lib/repo/db/company-archive-sync.ts` = #544 contracts-clear 골격 이식,
