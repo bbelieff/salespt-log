@@ -242,6 +242,7 @@ export async function saveContactMetrics(
   for (const channel of CHANNEL_ORDER) {
     const m = channels[channel];
     if (!m) continue;
+    // 콜지기소 생산·유입은 파생(ADR-0029) — 이 값은 저장 안 됨(시트 G:H·DB toDbRows 가 제외).
     rows.push(
       ChannelDailyRow.parse({
         date,

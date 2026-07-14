@@ -112,8 +112,10 @@ export async function upsertSheetRow(
 export interface SalesRowForDb {
   date: string;
   channel: string;
-  production: number;
-  inflow: number;
+  /** 파생 소유 채널(콜·지·기·소: ADR-0029)은 **미기입** — 생략 시 jsonb 병합이 기존 파생값을 보존한다.
+   *  (writeProductionCell 이 유일 writer. 컨택 저장의 스테일 draft 가 정본을 덮는 것을 구조적으로 차단.) */
+  production?: number;
+  inflow?: number;
   contactProgress: number;
   meetingReservation: number;
 }

@@ -108,7 +108,7 @@ export async function readWeekFunnel(
 }
 
 // ── 가드: 시트 수식 컬럼 쓰기 차단 ────────────────────────────
-function assertWritableCol(col: string, context: string): void {
+export function assertWritableCol(col: string, context: string): void {
   if (
     (SHEET_RANGES.sales.formulaCols as readonly string[]).includes(col)
   ) {
@@ -127,7 +127,7 @@ function fmtISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function parseISO(s: string): Date {
+export function parseISO(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y!, m! - 1, d!);
 }
@@ -353,6 +353,14 @@ export async function batchWriteChannelDailyRows(
         values: [[validated.production, validated.inflow, validated.contactProgress, validated.meetingReservation]],
       };
     }
+    // 콜·지·기·소: 유입(F)=생산(E)=03 접수 건수 파생(ADR-0029) → 컨택탭은 F 미기록(G:H 만).
+    // F 의 유일한 writer = writeProductionCell(E:F 동시). 스테일 draft 가 파생값을 덮지 않게.
+    if (validated.channel === "콜·지·기·소") {
+      return {
+        range: `${tab}!${cols.contactProgress}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
+        values: [[validated.contactProgress, validated.meetingReservation]],
+      };
+    }
     return {
       range: `${tab}!${cols.inflow}${sheetRow}:${cols.meetingReservation}${sheetRow}`,
       values: [[validated.inflow, validated.contactProgress, validated.meetingReservation]],
@@ -367,8 +375,16 @@ export async function batchWriteChannelDailyRows(
   // R3-1: DB 정본 경로에선 이 함수를 "시트 비동기 미러"로만 쓰므로 mirror:false → DB 재미러 안 함
   //       (DB 는 이미 writeSalesRowsToDb 로 동기 저장됨 = 정본).
   if (opts.mirror !== false) {
-    for (const row of rows) { const v = ChannelDailyRow.parse(row);
-      mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload: v }); }
+    for (const row of rows) {
+      const v = ChannelDailyRow.parse(row);
+      // 콜·지·기·소: 생산·유입은 파생(ADR-0029) — 미러에서도 제외해 writeProductionCell 이 넣은
+      // DB 파생값을 스테일 draft 로 덮지 않게(jsonb 병합이 기존 키 보존). 시트도 G:H 만 씀.
+      const payload =
+        v.channel === "콜·지·기·소"
+          ? { date: v.date, channel: v.channel, contactProgress: v.contactProgress, meetingReservation: v.meetingReservation }
+          : v;
+      mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload });
+    }
   }
 }
 
@@ -399,30 +415,7 @@ export async function sumChannelInflowOverPeriod(
   return sum;
 }
 
-/** 생산(E) 단일 셀 기입 — 매입DB·콜 DB집계 소유(ADR-0020). 항상 overwrite, 편집기간 밖 skip. */
-export async function writeProductionCell(
-  spreadsheetId: string,
-  date: string,
-  channel: Channel,
-  count: number,
-): Promise<void> {
-  const courseStart = await readCourseStart(spreadsheetId);
-  let sheetRow: number;
-  try {
-    sheetRow = salesRowFor(parseISO(date), channel, courseStart);
-  } catch {
-    return; // 편집 가능 기간(1~10주) 밖 — 영업관리 E 대상 아님
-  }
-  const cols = SHEET_RANGES.sales.metricCols;
-  assertWritableCol(cols.production, "writeProductionCell");
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range: `${tabRef(SHEET_RANGES.sales.tab)}!${cols.production}${sheetRow}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[count]] },
-  });
-  mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${date}:${channel}`, payload: { date, channel, production: count } }); // P1 병합
-}
+// 생산(E)[·콜지기소 유입(F)] 단일셀 기입 = sales-production-cell.ts (500줄 캡 분리, ADR-0020·0029).
 
 /** 영업관리 H(미팅예약) 채널×날짜 -1 (일정탭 삭제 cascade, 2026-05-19). 0 미만 no-op. */
 export async function decrementMeetingReservation(
