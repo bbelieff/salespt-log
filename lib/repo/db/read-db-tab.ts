@@ -94,22 +94,22 @@ export async function readDbTabFromDb(spreadsheetId: string): Promise<DbTabSecti
     if (row_key.startsWith(DB_SECTIONS.매입DB.keyPrefix + ":")) {
       const rel = relRowIfColumnForm(payload, "매입DB");
       if (rel && isSumRow(rel[0])) continue;
-      const p = rel ? parsePurchaseRow(rel) : safe(DBPurchase, payload, withPurchaseDerived);
+      const p = merged(DBPurchase, rel && parsePurchaseRow(rel), payload, withPurchaseDerived, row_key);
       if (p && isPurchaseMeaningful(p)) purchases.push({ ...withPurchaseDerived(p), row: rowNum });
     } else if (row_key.startsWith(DB_SECTIONS.직접생산.keyPrefix + ":")) {
       const rel = relRowIfColumnForm(payload, "직접생산");
       if (rel && isSumRow(rel[0])) continue;
-      const p = rel ? parseProductionRow(rel) : safe(DBProduction, payload, withProductionDerived);
+      const p = merged(DBProduction, rel && parseProductionRow(rel), payload, withProductionDerived, row_key);
       if (p && isProductionMeaningful(p)) productions.push({ ...withProductionDerived(p), row: rowNum });
     } else if (row_key.startsWith(DB_SECTIONS.현수막.keyPrefix + ":")) {
       const rel = relRowIfColumnForm(payload, "현수막");
       if (rel && isSumRow(rel[0])) continue;
-      const b = rel ? parseBannerRow(rel) : safe(DBBanner, payload, withBannerDerived);
+      const b = merged(DBBanner, rel && parseBannerRow(rel), payload, withBannerDerived, row_key);
       if (b && isBannerMeaningful(b)) banners.push({ ...withBannerDerived(b), row: rowNum });
     } else if (row_key.startsWith(DB_SECTIONS.콜지기소.keyPrefix + ":")) {
       const rel = relRowIfColumnForm(payload, "콜지기소");
       if (rel && isSumRow(rel[0])) continue;
-      const l = rel ? parseLeadRow(rel) : safe(DBLead, payload, (x) => x);
+      const l = merged(DBLead, rel && parseLeadRow(rel), payload, (x) => x, row_key);
       if (l && isLeadMeaningful(l)) leads.push({ ...l, row: rowNum });
     }
   }
@@ -118,12 +118,46 @@ export async function readDbTabFromDb(spreadsheetId: string): Promise<DbTabSecti
   return { purchases, productions, banners, leads };
 }
 
-/** dual-write 필드명 payload → 타입(Zod). 파생 보강. 실패 null. (파서 재실행 안 함 — neo 안전) */
-function safe<T>(
+/** payload 에서 **앱이 쓴 필드명 키**만 추출 — 백필 열문자(A~AZ)·내부키(_cleared 등) 제외. */
+function fieldNameKeys(payload: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (/^[A-Z]{1,2}$/.test(k)) continue; // 백필 열문자 폼
+    if (k.startsWith("_")) continue; // _cleared·_backfill 등 내부 마킹
+    out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * 열문자 base + **필드명 overlay** → 타입(Zod). 파생 보강. 실패 null.
+ *
+ * 왜 overlay 인가: DB upsert 는 **jsonb 얕은 병합**이라 백필된 행(열문자 키)을 앱이 수정해도
+ * 옛 `X..AD` 가 그대로 남는다. 예전 구현은 열문자 폼을 **무조건 우선**했으므로 **앱이 쓴 필드명 값이
+ * 영영 안 보였다** — 파일럿에서 03 을 고쳐도 화면은 옛 값을 표시(라이브 stale 버그).
+ * 이제 열문자를 base 로 깔고 **필드명이 항상 이긴다**(= `contractFromDbPayload` 와 같은 규칙).
+ *
+ * 배열 파서(`parseXRow`)는 **열문자에만** 재실행한다 — 필드명 payload 에 배열 파서를 다시 돌리면
+ * 직접생산 neo 레이아웃에서 열이 밀린다(기존 규칙 유지).
+ */
+function merged<T>(
   schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } },
+  base: object | null,
   payload: Record<string, unknown>,
   derive: (v: T) => T,
+  rowKey: string,
 ): T | null {
-  const r = schema.safeParse(payload);
-  return r.success ? derive(r.data) : null;
+  const overlay = fieldNameKeys(payload);
+  const candidate = { ...(base ?? {}), ...overlay };
+  const r = schema.safeParse(candidate);
+  if (r.success) return derive(r.data);
+  // ⚠️ **렌더 보증 보존** — 열문자 base 는 예전에 Zod 를 거치지 않고 그대로 렌더됐다
+  // (`rel ? parseXRow(rel) : safe(...)`). 백필 raw 값은 Zod refinement 를 자주 깬다:
+  // 기간예산은 부가세 제외(=금액/1.1)라 거의 모든 금액이 소수(2999999.9999999995)이고,
+  // 종료일이 빈 "생산중" 행은 legacy 분기가 생산개수←기간예산으로 매핑해 int 위반 → safeParse 실패.
+  // 여기서 null 을 돌려주면 그 행이 03 화면·대시보드 집계에서 **조용히 사라진다**(시트 모드에선 보임 = 분기).
+  // → Zod 는 **overlay 검증용**으로만 쓰고, 실패해도 base+overlay 를 그대로 렌더한다(예전과 동일 보증).
+  if (!base) return null; // 순수 필드명 폼: 예전 safe() 도 null 이었다(동일)
+  console.warn(`[read-db-tab] zod 실패 — 백필 base 로 렌더 유지: ${rowKey}`);
+  return derive(candidate as T);
 }
