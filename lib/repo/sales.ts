@@ -11,6 +11,7 @@ import {
 import { sheetsClient } from "./sheets-client";
 import { parseWeekRows } from "./week-parse";
 import { mirrorSheetRow } from "./db/mirror";
+import { salesDbPayload } from "./db/sales-payload";
 import { readSalesRowsFromDb } from "./db/client";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
@@ -377,13 +378,9 @@ export async function batchWriteChannelDailyRows(
   if (opts.mirror !== false) {
     for (const row of rows) {
       const v = ChannelDailyRow.parse(row);
-      // 콜·지·기·소: 생산·유입은 파생(ADR-0029) — 미러에서도 제외해 writeProductionCell 이 넣은
-      // DB 파생값을 스테일 draft 로 덮지 않게(jsonb 병합이 기존 키 보존). 시트도 G:H 만 씀.
-      const payload =
-        v.channel === "콜·지·기·소"
-          ? { date: v.date, channel: v.channel, contactProgress: v.contactProgress, meetingReservation: v.meetingReservation }
-          : v;
-      mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload });
+      // DB 미러도 **시트에 쓴 것과 정확히 같은 값**만 실어야 한다 — 채널별 규칙은 salesDbPayload 단일 원천
+      // (매입DB·콜지기소 = 파생 키 미기입 / 직접생산 = production := inflow / 현수막 = 그대로).
+      mirrorSheetRow({ spreadsheetId, tab: "sales", rowKey: `${v.date}:${v.channel}`, payload: salesDbPayload(v) });
     }
   }
 }

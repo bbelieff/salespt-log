@@ -109,11 +109,13 @@ export async function upsertSheetRow(
  * upsertSheetRow 와 같은 SQL·병합·자연키({date}:{channel}). 실패 시 ROLLBACK 후 **throw**
  * — 시트 폴백 금지(§0 정본 이원화 금지, 저장 실패로 응답). DATABASE_URL 미설정 호출은 게이트 오류
  * (호출부가 chooseWriteSource 로 선판정). 시트 미러는 호출부가 비동기(fire-and-forget)로 별도 수행. */
-export interface SalesRowForDb {
+/** type(별칭) 유지 — 미러 payload(`Record<string, unknown>`) 로 그대로 전달하려면 암묵적 인덱스 시그니처가 필요. */
+export type SalesRowForDb = {
   date: string;
   channel: string;
-  /** 파생 소유 채널(콜·지·기·소: ADR-0029)은 **미기입** — 생략 시 jsonb 병합이 기존 파생값을 보존한다.
-   *  (writeProductionCell 이 유일 writer. 컨택 저장의 스테일 draft 가 정본을 덮는 것을 구조적으로 차단.) */
+  /** 파생 소유 채널은 **미기입**(생략) — jsonb 병합이 기존 파생값을 보존한다.
+   *  채널별 규칙의 단일 원천 = `lib/repo/db/sales-payload.ts` `salesDbPayload`
+   *  (매입DB=production 미기입 · 콜지기소=production·inflow 미기입 · 직접생산=production:=inflow · 현수막=그대로). */
   production?: number;
   inflow?: number;
   contactProgress: number;

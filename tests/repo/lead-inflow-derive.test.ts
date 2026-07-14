@@ -143,11 +143,21 @@ describe("컨택 저장이 콜지기소 생산·유입을 DB 에 쓰지 않음(c
     expect("inflow" in lead!).toBe(false);
   });
 
-  it("⑤ toDbRows — 다른 채널은 4지표 그대로(무변경)", () => {
+  // R3⑤ PR-1 정정: 매입DB 의 production 도 03 집계 파생(ADR-0020)이라 컨택 저장은 DB 에 안 쓴다.
+  // (이전 기대치 "4지표 그대로"는 선재 버그를 고정하고 있었음 — 클라 에코가 파생값을 덮음.)
+  it("⑤ toDbRows — 매입DB 는 production 미기입·inflow 유지 / 현수막은 그대로", () => {
     const [pur] = toDbRows([
       mkRow({ channel: "매입DB", production: 3, inflow: 7, contactProgress: 1, meetingReservation: 0 }),
     ]);
-    expect(pur).toMatchObject({ channel: "매입DB", production: 3, inflow: 7 });
+    expect("production" in pur!).toBe(false);
+    expect(pur).toMatchObject({ channel: "매입DB", inflow: 7 });
+    const [ban] = toDbRows([mkRow({ channel: "현수막", production: 6, inflow: 5 })]);
+    expect(ban).toMatchObject({ channel: "현수막", production: 6, inflow: 5 });
+  });
+
+  it("⑤ toDbRows — 직접생산은 production := inflow 매핑(시트 E=유입과 일치)", () => {
+    const [dir] = toDbRows([mkRow({ channel: "직접생산", production: 0, inflow: 8 })]);
+    expect(dir).toMatchObject({ channel: "직접생산", production: 8, inflow: 8 });
   });
 
   it("⑥ 시트정본 경로의 DB 미러도 콜지기소 생산·유입 제외", async () => {
@@ -161,12 +171,22 @@ describe("컨택 저장이 콜지기소 생산·유입을 DB 에 쓰지 않음(c
     expect(m.payload.contactProgress).toBe(5);
   });
 
-  it("⑥ 시트정본 경로 미러 — 다른 채널은 전체 payload 유지", async () => {
+  // R3⑤ PR-1: 시트정본 경로의 DB 미러도 salesDbPayload 단일 규칙 — 시트에 쓴 것과 같은 값만.
+  it("⑥ 시트정본 미러 — 매입DB 는 production 미기입(시트도 F:H 만 씀)", async () => {
     await batchWriteChannelDailyRows("s1", [
       mkRow({ channel: "매입DB", production: 3, inflow: 7, contactProgress: 1, meetingReservation: 0 }),
     ]);
     const m = firstArg<MirrorArg>(mirrorSheetRow);
-    expect(m.payload.production).toBe(3);
+    expect(m.payload.production).toBeUndefined();
     expect(m.payload.inflow).toBe(7);
+  });
+
+  it("⑥ 시트정본 미러 — 직접생산은 production := inflow(시트 E=유입과 일치)", async () => {
+    await batchWriteChannelDailyRows("s1", [
+      mkRow({ channel: "직접생산", production: 0, inflow: 8, contactProgress: 2, meetingReservation: 0 }),
+    ]);
+    const m = firstArg<MirrorArg>(mirrorSheetRow);
+    expect(m.payload.production).toBe(8);
+    expect(m.payload.inflow).toBe(8);
   });
 });
