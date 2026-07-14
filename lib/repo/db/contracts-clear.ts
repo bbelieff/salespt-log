@@ -8,6 +8,7 @@
  * upsert 라 재시도가 중복행을 만들지 않는다(append 는 행번호 할당이 시트-first 라 제외 —
  * db-write-flip §6 R3-3). 비파일럿(시트 read)은 기존 fire-and-forget 미러 유지(호출부 게이트).
  */
+import type { ContractPayment } from "@/types";
 import { findOwnerBySpreadsheetId } from "../users";
 import { dbEnabled, upsertSheetRow } from "./client";
 import { mirrorSheetRow } from "./mirror";
@@ -85,4 +86,20 @@ export async function persistContractRow(
   } else {
     mirrorSheetRow({ spreadsheetId, tab: "contracts", rowKey: `r${row}`, payload });
   }
+}
+
+/**
+ * updateUserFields 미러 payload — **이월 마이그레이션 flag(구분=AI·이월원본행id=AJ) 제외**.
+ * updateUserFields 는 시트 F:AH(사용자 편집영역)만 쓰고 AI/AJ 는 안 건드리므로 DB 미러에도
+ * 넣으면 안 된다. 넣으면 arena-carryover 가 갓 이월(구분='이월')로 마킹한 행에 원본 계약(구분='')을
+ * F:AH 재복사할 때 DB 의 구분='이월' 을 jsonb 병합으로 ''로 클로버 → DB=아레나계상/시트=제외
+ * 갈림·아레나 팽창(#541 DevD parity). 이월 마킹은 appendFromContract 전담.
+ */
+export function userFieldsMirrorPayload(
+  cp: ContractPayment,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = { ...cp };
+  delete payload.구분;
+  delete payload.이월원본행id;
+  return payload;
 }
