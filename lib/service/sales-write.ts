@@ -10,25 +10,15 @@
  */
 import * as Sentry from "@sentry/nextjs";
 import { dbEnabled, writeSalesRowsToDb, type SalesRowForDb } from "@/repo/db/client";
+import { salesDbPayload } from "@/repo/db/sales-payload";
 import { batchWriteChannelDailyRows } from "@/repo/sales";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import type { ChannelDailyRow } from "@/types";
 import { chooseWriteSource } from "./daily-source";
 
-/** 콜·지·기·소는 생산·유입이 03 접수 건수 파생(ADR-0029) — 컨택 저장은 그 두 키를 **DB 에 안 쓴다**.
- *  생략 → jsonb 병합이 writeProductionCell 이 넣은 파생값을 보존(스테일 draft 의 clobber 차단).
- *  시트도 동일(batchWriteChannelDailyRows 가 콜지기소는 G:H 만) → 시트·DB 정합. */
+/** 컨택 저장 → DB payload. 채널별 규칙은 `salesDbPayload`(시트 쓰기와 1:1) 단일 원천. */
 export function toDbRows(rows: ChannelDailyRow[]): SalesRowForDb[] {
-  return rows.map((r) =>
-    r.channel === "콜·지·기·소"
-      ? {
-          date: r.date,
-          channel: r.channel,
-          contactProgress: r.contactProgress,
-          meetingReservation: r.meetingReservation,
-        }
-      : r,
-  );
+  return rows.map(salesDbPayload);
 }
 
 /** rows 를 정본에 저장. DB 정본 경로 실패는 throw(저장 실패 응답). 시트 미러는 비차단. */
