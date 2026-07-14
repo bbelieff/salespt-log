@@ -1244,6 +1244,8 @@ components/dashboard/
 |---|---|---|
 | **TabBar** | `components/TabBar.tsx` | 모바일 BottomNav **4+1** (§5, ADR-0019). 좌2(DB생산·컨택)·중앙 캘린더 FAB·우2(일정·계약·실무수납). 단계 점(1~4)·중립 입체 FAB·480 캡(`max-w-bottom-nav`). 내부: TabItem/CenterFab/Dots. SVG `currentColor`. |
 | **MetricStepper** | `components/ui/MetricStepper.tsx` | §2 Number Input(Stepper) 의 React 구현. Props: `value` / `onChange` / `min` / `max` / 채널 색 |
+| **MoneyInput** | `components/ui/MoneyInput.tsx` | 금액 입력 — 타이핑 중 자동 천단위 콤마 + 커서 보정. Props: `value: number` / `onChange: (n: number) => void` / `placeholder` / `className` / `disabled`. **표시=콤마 문자열, 방출=number** 를 타입으로 강제(콤마 문자열이 시트로 새면 수식 파괴 — 쓰기는 USER_ENTERED). `type="text"+inputMode="numeric"`(type=number 는 콤마를 invalid 로 보고 0 저장). 유틸: `@/lib/format/money`(formatMoney·formatMoneyInput·parseMoney). 🚫 카운트 스테퍼·만원축약·서술형 매출엔 쓰지 않음 |
+| **PhoneInput** | `components/ui/PhoneInput.tsx` | 연락처 입력 — 타이핑 중 자동 하이픈(010-0000-0000 · 02 지역번호 변형). Props: `value: string` / `onChange: (s: string) => void` / `placeholder` / `className` / `disabled`. 하이픈 포함 문자열 저장(시트 USER_ENTERED 가 숫자만 문자열의 선행 0 을 날리므로 하이픈 저장이 안전). 유틸: `@/lib/format/phone`(formatPhone·maskPhoneInput·normalizePhoneDigits). 🚫 `연락처통신사`("010-…(SKT)") 같은 **합본 필드엔 쓰지 않음** — 표시 정규화는 `formatPhone`(선행 숫자만 포맷·접미 보존) |
 | **ChannelBadge** | `components/ui/ChannelBadge.tsx` | §4 채널 배지 4종 진입점. Props: `channel: Channel` (4종 enum) |
 | **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |
 | **TimeSelectPair** | `components/ui/TimeSelectPair.tsx` | §2 Time Input — 시·분 분리 select (15분 단위 강제) |
