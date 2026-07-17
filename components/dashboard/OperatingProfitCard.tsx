@@ -1,3 +1,5 @@
+"use client";
+
 import { formatMoney } from "@/lib/format/money";
 /**
  * OperatingProfitCard — 영업이익 큰 카드 (대시보드 메인 KPI).
@@ -11,8 +13,6 @@ import { formatMoney } from "@/lib/format/money";
  *   - 가운데: ₩금액 (text-4xl font-extrabold blue-700)
  *   - 하단: "영업이익률 N%"
  */
-"use client";
-
 interface Props {
   revenue: number; // 아레나 집계 매출 (점수·전광판 기준)
   cost: number; // 총비용
