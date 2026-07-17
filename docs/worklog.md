@@ -84,6 +84,14 @@
 
 ## 로그
 
+### 2026-07-17 · Codex(260717) · 대시보드 client directive 오류 복구·배포 완료 (#576)
+- 의도: `salesptlog.online` 서버 오류 신고를 진단하고, #575 이후 실패한 운영 배포를 정상화한다.
+- 한 것: `DashboardProgressBanner.tsx`·`OperatingProfitCard.tsx`의 `"use client"`를 최상단으로 이동. `scripts/check.sh`·구조검사 10/10·테스트 630개 통과 후 PR #576 squash merge(`c1dd7de`).
+- 결과: Deploy run #29549181566 success(4분 21초), VPS HEAD 일치·BUILD_ID 존재·PM2 online·로컬 `/` 및 `/api/health` 200·공개 루트 5회 연속 200 확인.
+- 결정: 원인은 머징 충돌이나 런타임 데이터가 아니라 #575의 두 파일에 생긴 Next.js client directive 순서 오류. 기존 프로세스가 살아 있어 일시적으로 루트 200이었지만 소스와 실행 빌드가 불일치했다.
+- 다음: 없음. Node.js 20 기반 action deprecation 경고는 이번 장애와 무관한 별도 유지보수 항목이다.
+- SoR: docs/plans/completed/client-directive-order.md, PR #576, Actions #29549181566
+
 ### 2026-07-12 · DevC(260712-2) · 트랙 C 마감 — read-only close 확정, plan 2건 completed 이동
 - 의도: belie ①read-only close 결정(카나리아 없이 종료) → 트랙 C 종료 절차 실행.
 - 한 것: ①`contract-termination.md`·`contract-delete-ghost.md` → completed 이동(status: completed·completed:2026-07-12) ②worklog 마감 항목 추가 ③보드 C행=완료(종료). docs 전용 PR(코드 무변경)로 커밋·머지·배포 관찰.
