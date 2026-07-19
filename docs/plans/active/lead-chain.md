@@ -285,6 +285,11 @@ export function listLeadCandidates(email: string): Promise<LeadCandidate[]>;
 ---
 
 ## Log
+- 2026-07-15 **PR-4 구현(DevB)** — 공용 계약. `DBLead.발굴id`·`Meeting.발굴id` = `z.string().optional()`
+  추가(**default 금지 R11** — 주석에 근거 못박음: default("") 면 update payload 에 빈 문자열이 실려 링크 소멸).
+  DB payload 전용(시트 컬럼 0). SSOT data-model.md 두 항목 갱신. 계약 테스트 5건: optional·no-default,
+  DB 왕복 시 발굴id 생존(meetingFromDbPayload 가 strip 안 함), meetingToRow 시트 미기록(04 range 무변경).
+  PR-5(id 부여·R13/R14 수리)·PR-6(링크·matched) + C/F 피커가 이 계약 위에 빌드.
 - 2026-07-15 **PR-0 구현(DevB)** — R12(백필 열문자 폼 shadowing) 해소. `read-db-tab` 의 파싱을
   "열문자 폼 무조건 우선" → **열문자 base + 필드명 overlay**(= `contractFromDbPayload` 와 같은 규칙)로 교체.
   배열 파서(`parseXRow`)는 **열문자에만** 재실행해 직접생산 neo 밀림 회피 규칙을 유지.

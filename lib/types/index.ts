@@ -132,6 +132,7 @@ export const Meeting = z.object({
   // 마이그레이션만 기록(일반 쓰기 비접촉). 이월원본행id = 멱등 중복 가드.
   구분: z.string().optional(), // AO
   이월원본행id: z.string().optional(), // AP
+  발굴id: z.string().optional(), // 어느 03 발굴에서 왔나(DB payload 전용·시트 컬럼 0). optional 고정=R11. lead-chain §4-5
 });
 export type Meeting = z.infer<typeof Meeting>;
 
@@ -200,6 +201,7 @@ export const DBLead = z.object({
   소개처: z.string().default(""),
   연락처: z.string().default(""),
   조건: z.string().default(""),
+  발굴id: z.string().optional(), // 발굴 링크(DB payload 전용·시트 컬럼 0). optional 고정=R11(default 금지). lead-chain §4-3
 });
 export type DBLead = z.infer<typeof DBLead>;
 

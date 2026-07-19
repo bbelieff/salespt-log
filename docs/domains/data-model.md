@@ -500,7 +500,7 @@ interface DashboardView {
 | `RankingMetric` | z.enum | 전광판 개인 랭킹 지표: `미팅` / `계약` / `매출` / `앱사용량` / `공유왕` (arena-scoreboard-v2). 미팅·계약=8주 합, 매출=총매출, 앱사용량=5지표 8주 합(활동 프록시), 공유왕=share_scores points |
 | `RankingEntry` | interface | 개인 랭킹 1행: `{name, cohort, value, rank}`. value desc·동점 동순위·이름 asc, rank 1부터. 이름 공개(아레나 경쟁) |
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
-| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) |
+| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-5 v2 — 어느 03 발굴에서 왔나. optional 고정=R11) |
 | `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS, 미팅 단위): [업체]14 + [대표자]9 = 23필드 고정 + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. 기대출 2필드는 셀 내 `\n` 허용. consultation-log §1-1 (2026-06-11 확정) |
 | `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
 | `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금 — 전광판 입금자 모수 필터) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
@@ -534,7 +534,7 @@ interface DashboardView {
 | `DBPurchase` | z.object | 매입DB raw row (B~G, F=부가세여부 boolean. 주문금액=개당단가×개수 계산값) |
 | `DBProduction` | z.object | 직접생산 raw row (I~O, 시작일·종료일 분리, N=부가세여부. 개당단가=예산÷개수 계산값, 생산개수 빈=생산중) |
 | `DBBanner` | z.object | 현수막 raw row (P~V, U=부가세여부 boolean. 주문금액=개당단가×개수 계산값) |
-| `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) |
+| `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-3 v2 — 발굴↔미팅 링크 키. optional 고정, default 금지=R11) |
 <!-- DBBannerPost(AF:AI 게시로그) 폐기 — ADR-0025: 현수막 게시=생산은 컨택 영업관리 E 소유. -->
 
 ### 대시보드 view (코드 식별자 — `lib/types/index.ts` 또는 `lib/service/dashboard.ts` 예정)
