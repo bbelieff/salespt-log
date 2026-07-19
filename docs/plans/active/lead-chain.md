@@ -285,6 +285,26 @@ export function listLeadCandidates(email: string): Promise<LeadCandidate[]>;
 ---
 
 ## Log
+- 2026-07-15 **PR-5 구현(DevB)** — 발굴 안정 id 부여·보존·무효화(R10/R13/R14 실 수리).
+  ① addLead: `randomUUID()` 부여 → appendLead payload 에 항상 명시(R10 — 재사용 행 옛 id 를 덮음).
+  ② patchLead: 기존 발굴id 를 읽어 보존, 없으면 지연 부여(mint). "생략=보존" 의존 안 함.
+  🔴 **적대 검증이 blocker 확증(자체 수리)**: 첫 구현은 `oldLeadOf→readLeads`(시트 리더)로 발굴id 를 읽으려 했으나,
+  **발굴id 는 DB payload 전용·시트 컬럼 0** 이라 시트 파서(X:AD 7필드)는 절대 발굴id 를 못 만든다 →
+  `prev.발굴id` 가 프로덕션에서 항상 undefined → **매 편집마다 remint = 첫 편집이 안정 id 파괴**(R13 정면 위반).
+  게다가 **회귀 테스트가 readLeads mock 에 발굴id 를 억지 주입해 false-green**(가드레일 무력화 = §6 위반). 이것이
+  read-db-tab.ts 헤더가 경고한 "시트 db.ts vs Postgres db/" 혼동이다. → `oldLeadIdOf(sid,row,syncDb)`: **파일럿만
+  `readDbTabFromDb`(DB overlay = 발굴id 를 실어오는 유일한 read)** 를 타고, 비파일럿/DB꺼짐은 undefined→mint.
+  테스트는 실제 read 경로(발굴id=DB payload)로 교정 + "시트가 발굴id 못 실어와도 remint 안 함" 회귀 고정.
+  🔴 **재검증이 잔여 major 확증(자체 수리)**: 첫 수리의 `catch → return undefined` 가 "DB에 id 없음"과
+  "DB 순단"을 구분 못 해, 순단 시 remint 로 안정 id 파괴(read 무재시도·write 재시도 비대칭이라 "읽기 실패·
+  쓰기 성공"이 흔함). → `oldLeadIdOf` 를 **3-state**(string/"mint"/"keep")로: read 실패="keep" → patchLead 가
+  발굴id 를 **payload 에서 omit** → jsonb 얕은 병합이 기존 값 보존(R11 "키 부재=보존" 원리). 순단 remint 회귀 고정.
+  ⚠️ 설계 §4-3(B2)의 "단건 read 신설"은 결국 필요 없었다(readDbTabFromDb 재사용) — 문서 주장 정정.
+  ③ clearLead: `발굴id:""` 명시 무효화(R14) — clearDbRow 에 extra payload 추가(async 경로는 mirrorClearRow 가
+  extra 를 못 실어 mirrorSheetRow 병합으로 대체). append 미러 유실 시 죽은 신원 상속 차단(최악=dangling).
+  ④ 라우트: 콜지기소 POST/PATCH 가 `DBLead.omit({발굴id:true})` 로 클라이언트발 id **스키마 차단**(탈취 방지).
+  회귀 테스트 8건(부여·클라이언트 무시·보존·지연부여·탈취방지·R14 무효화 sync/async). check.sh 초록.
+  **PR-6(링크·matched)** 이 미팅 쪽 발굴id 기록 + listLeadCandidates 로 이어받는다.
 - 2026-07-15 **PR-4 구현(DevB)** — 공용 계약. `DBLead.발굴id`·`Meeting.발굴id` = `z.string().optional()`
   추가(**default 금지 R11** — 주석에 근거 못박음: default("") 면 update payload 에 빈 문자열이 실려 링크 소멸).
   DB payload 전용(시트 컬럼 0). SSOT data-model.md 두 항목 갱신. 계약 테스트 5건: optional·no-default,

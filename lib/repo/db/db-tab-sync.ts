@@ -67,19 +67,26 @@ export async function persistDbRow(
   }
 }
 
-/** 03 행 삭제 DB-side 반영 — 파일럿=동기 _cleared 정본(실패=throw), 비파일럿=R2 미러(async). */
+/** 03 행 삭제 DB-side 반영 — 파일럿=동기 _cleared 정본(실패=throw), 비파일럿=R2 미러(async).
+ * extra: clear 시 함께 무효화할 필드(콜지기소 발굴id — lead-chain §4-3 B3). append 의 DB 쓰기만
+ * fire-and-forget 이라 미러 유실 시 죽은 발굴id 가 잔존하고, 다음 append(재사용 행)가 _cleared:false 로
+ * 되살리면 **새 lead 가 죽은 신원을 상속**한다. clear 가 발굴id:"" 를 명시 무효화하면 최악이 dangling(안전 실패). */
 export async function clearDbRow(
   spreadsheetId: string,
   rowKey: string,
   opts?: DbTabWriteOpts,
+  extra?: Record<string, unknown>,
 ): Promise<void> {
   if (opts?.syncDb) {
     await upsertDbRowWithRetry(
       spreadsheetId,
       rowKey,
-      { _cleared: true },
+      { _cleared: true, ...extra },
       "삭제가 화면 데이터에 아직 반영되지 않았어요. 잠시 후 한 번 더 삭제해 주세요.",
     );
+  } else if (extra && Object.keys(extra).length) {
+    // mirrorClearRow 는 {_cleared:true} 고정이라 extra 를 못 싣는다 → 병합 미러로 함께 무효화.
+    mirrorSheetRow({ spreadsheetId, tab: "db", rowKey, payload: { _cleared: true, ...extra } });
   } else {
     mirrorClearRow({ spreadsheetId, tab: "db", rowKey });
   }

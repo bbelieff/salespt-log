@@ -75,7 +75,8 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
         break;
       }
       case "콜·지·기·소": {
-        const parsed = DBLead.safeParse(body);
+        // 발굴id 는 서버가 기존값 보존/지연부여 — 클라이언트발 id 차단(lead-chain §4-3 R13).
+        const parsed = DBLead.omit({ 발굴id: true }).safeParse(body);
         if (!parsed.success)
           return NextResponse.json(
             { error: parsed.error.message },

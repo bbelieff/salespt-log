@@ -128,4 +128,19 @@ describe("clearDbRow (삭제 DB-side 반영)", () => {
     });
     expect(upsertSheetRow).not.toHaveBeenCalled();
   });
+
+  it("R14: extra(발굴id:'') → syncDb:true 는 _cleared 와 함께 무효화 병합", async () => {
+    await clearDbRow("sheet-1", "콜지기소:r7", { syncDb: true }, { 발굴id: "" });
+    expect(upsertSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: { _cleared: true, 발굴id: "" } }),
+    );
+  });
+
+  it("R14: extra 가 있으면 async 경로도 mirrorSheetRow 병합(mirrorClearRow 는 extra 못 실음)", async () => {
+    await clearDbRow("sheet-1", "콜지기소:r7", { syncDb: false }, { 발굴id: "" });
+    expect(mirrorSheetRow).toHaveBeenCalledWith(
+      expect.objectContaining({ tab: "db", rowKey: "콜지기소:r7", payload: { _cleared: true, 발굴id: "" } }),
+    );
+    expect(mirrorClearRow).not.toHaveBeenCalled();
+  });
 });
