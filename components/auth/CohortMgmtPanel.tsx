@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import type { CohortStatus, CohortType } from "@/repo/cohorts";
 import CohortCreateModal from "./CohortCreateModal";
 import ArenaCreateModal from "./ArenaCreateModal";
+import CohortPendingRetryButton from "./CohortPendingRetryButton";
 
 interface Cohort {
   label: string;
@@ -32,10 +33,13 @@ export default function CohortMgmtPanel({
   sessionEmail,
   cohorts,
   viewOnly = false,
+  pendingCreateCount = 0,
 }: {
   sessionEmail: string;
   cohorts: Cohort[];
   viewOnly?: boolean;
+  /** Drive 복제 실패로 pending 큐에 쌓인 기수-생성 건수(R3-5). admin 재시도 버튼용. */
+  pendingCreateCount?: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -77,6 +81,9 @@ export default function CohortMgmtPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!viewOnly && (
+              <CohortPendingRetryButton pendingCount={pendingCreateCount} />
+            )}
             {!viewOnly && <CohortCreateModal />}
             {!viewOnly && <ArenaCreateModal />}
             <Link

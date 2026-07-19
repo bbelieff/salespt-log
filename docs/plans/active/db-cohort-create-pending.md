@@ -39,13 +39,23 @@ belie 자율 결정 = 날짜 출처 **생성 요청의 courseStartISO(cohort 단
 - pending 스키마: `course_start_iso` 컬럼(ALTER ADD IF NOT EXISTS, 멱등).
 - 미제공 시 무기록(역호환). 단위테스트: computeGraduationISO·isValidISODate·buildPendingCohortJob.
 
-## phase-2b (belie Secret 등록 후 — 라이브 검증)
-- `ADMIN_DRIVE_REFRESH_TOKEN` 등록 → create/재시도로 **실제 시트 복제 + O1/O2 세팅 실검증**(연습/연습용2).
-  코드는 phase-2a 로 이미 완성 — Secret 만 있으면 end-to-end 동작.
+## phase-2b — 재시도 UI 배선 (Secret 주입 완료, R3 마감 스프린트)
+Secret 주입은 확인됨(배포로그 "주입 OK"). 코드 gap = **재시도 라우트를 부르는 admin UI 부재**
+(라우트·countPendingCohortCreates 는 있으나 호출부 0). 그 배선을 완성:
+- `components/auth/CohortPendingRetryButton.tsx`(신규): pendingCount>0 일 때만 노출, `POST
+  /api/admin/retry-cohort-creates` → 완료/대기/남음 표시. router.refresh 로 잔량 갱신.
+- `CohortMgmtPanel`: `pendingCreateCount` prop + 헤더에 버튼(admin only).
+- `app/admin/cohorts/page.tsx`: `countPendingCohortCreates` 서버 조회 → prop 전달(DB 미설정=0).
+- SSOT 등재. `next build` 스모크 통과(use-client 사고 재발 방지).
+
+## phase-2b 라이브 (belie 몫 — 앱 인증벽)
+- admin "기수 생성" 버튼으로 연습 기수 실왕복 → 시트 복제 + O1/O2 세팅 확인.
+- 복제 실패분이 있으면 "복제 대기 N건 재시도" 버튼으로 완주 확인.
 
 ## Acceptance
-- [ ] Drive 복제 실패 → 멤버 pending 적재(생성 비차단), 응답 pending[] 노출
-- [ ] 재시도 라우트 → 성공 시 done, 실패 시 pending 유지(멱등: 중복 시트·행 없음)
-- [ ] buildPendingCohortJob 정규화 단위테스트
-- [ ] check.sh 초록
-- [ ] (phase-2) Secret 등록 후 라이브 복제 왕복 + O1/O2 USER_ENTERED
+- [x] Drive 복제 실패 → 멤버 pending 적재(생성 비차단), 응답 pending[] 노출 (#547)
+- [x] 재시도 라우트 + **UI 배선**(재시도 버튼·pending 잔량) (#547 라우트 + 본 PR UI)
+- [x] buildPendingCohortJob·computeGraduationISO·planCourseDateWrite 단위테스트 (#547·#555)
+- [x] O1/O2 USER_ENTERED 쓰기(§2.5 가드·원자적 쌍) (#555)
+- [x] check.sh 초록 + next build 스모크
+- [ ] (belie 라이브) Secret 후 실제 복제 왕복 + O1/O2 실검증

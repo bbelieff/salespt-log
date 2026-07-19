@@ -12,6 +12,7 @@ import {
 } from "@/auth/identity";
 import { listAllUsers } from "@/repo/users";
 import { listCohorts, ensureCohortsTab, type CohortStatus } from "@/repo/cohorts";
+import { countPendingCohortCreates } from "@/repo/db/cohort-pending";
 import CohortMgmtPanel from "@/components/auth/CohortMgmtPanel";
 
 export const revalidate = 30;
@@ -62,6 +63,9 @@ export default async function AdminCohortsPage() {
     return (parseInt(b.label) || 0) - (parseInt(a.label) || 0);
   });
 
+  // R3-5: Drive 복제 실패로 pending 큐에 쌓인 기수-생성 잔량(admin 재시도 버튼용). DB 미설정이면 0.
+  const pendingCreateCount = (await countPendingCohortCreates().catch(() => 0)) ?? 0;
+
   return (
     <CohortMgmtPanel
       sessionEmail={sessionEmail}
@@ -70,6 +74,7 @@ export default async function AdminCohortsPage() {
         traineeCount: traineeCountByLabel.get(c.label) ?? 0,
       }))}
       viewOnly={viewOnly}
+      pendingCreateCount={pendingCreateCount}
     />
   );
 }
