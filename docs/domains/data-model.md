@@ -489,8 +489,9 @@ interface DashboardView {
 
 ## TypeScript 식별자 인덱스 ⭐
 
-> `lib/types/index.ts` Zod 스키마 1:1 매핑. doc-drift.sh가 이 식별자명을 grep함.
-> 새 타입 추가 시 이 표에 등재 후 코드 수정.
+> `lib/types/*.ts` Zod 스키마 1:1 매핑 (index.ts 는 배럴 재수출 — 정의는 도메인별 파일:
+> channel·meeting·db·user·contract·todo·announcement·dashboard). doc-drift.sh가 `lib/types/*.ts`
+> 전체에서 이 식별자명을 grep함. 새 타입 추가 시 이 표에 등재 후 코드 수정.
 
 ### 코어
 | 식별자 | 종류 | 정의 위치 / 의미 |
@@ -537,7 +538,7 @@ interface DashboardView {
 | `DBLead` | z.object | 콜·지·기·소 raw row (X~AD, 비용 X — 정보만) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-3 v2 — 발굴↔미팅 링크 키. optional 고정, default 금지=R11) |
 <!-- DBBannerPost(AF:AI 게시로그) 폐기 — ADR-0025: 현수막 게시=생산은 컨택 영업관리 E 소유. -->
 
-### 대시보드 view (코드 식별자 — `lib/types/index.ts` 또는 `lib/service/dashboard.ts` 예정)
+### 대시보드 view (코드 식별자 — `lib/types/dashboard.ts`)
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `DashboardKPI` | interface | 4 KPI (영업이익/이익률/총매출/총비용/누적수임비) |

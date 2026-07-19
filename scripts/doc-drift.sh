@@ -73,11 +73,13 @@ while IFS= read -r f; do
   fi
 done < <(find "app/(app)" -type f -path "*/_components/*.tsx" 2>/dev/null | sort)
 
-# ── 3. lib/types/index.ts exports → data-model.md ──────────
+# ── 3. lib/types/*.ts exports → data-model.md ──────────────
 echo ""
 echo "▶ C. lib/types exports → data-model.md"
 # `export const X = z.` 또는 `export interface X` 매칭 (type alias는 Zod와 짝이라 제외)
-exports=$(grep -E "^export (const [A-Z][A-Za-z0-9_]* = z\.|interface [A-Z][A-Za-z0-9_]*)" lib/types/index.ts \
+# index.ts 는 배럴(export * 재수출) — 실제 정의는 도메인별 파일(channel.ts·meeting.ts·db.ts…).
+# 재수출은 이 패턴에 안 걸리므로 lib/types/*.ts 전체를 grep (-h: 파일명 프리픽스 제거).
+exports=$(grep -hE "^export (const [A-Z][A-Za-z0-9_]* = z\.|interface [A-Z][A-Za-z0-9_]*)" lib/types/*.ts \
   | sed -E 's/^export (const|interface) ([A-Z][A-Za-z0-9_]*).*$/\2/' \
   | sort -u)
 for sym in $exports; do
