@@ -154,8 +154,7 @@ export async function addFromContract(
   email: string,
   data: { 계약일: string; 업체명: string; 수임비: number },
 ): Promise<{ row: number }> {
-  const ctx = await resolveCtx(email);
-  const spreadsheetId = ctx.spreadsheetId;
+  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
   // 출발 미팅 lookup — 이월 깃발 상속(§3) + 06 스냅샷 양쪽에 사용.
   // R3-2: 파일럿은 DB — 시트 미러 lag 로 방금 계약된 미팅을 못 찾아 AK 링크·이월 깃발이
   // 빠지는 split-brain 방지(읽기 동반 전환 원칙).
@@ -175,13 +174,18 @@ export async function addFromContract(
     { ...data, meetingId: m?.id },
     carryover,
   );
-  // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2). 실패해도 계약 성공(warn).
+  // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2).
+  // R3-3 PR-2: 파일럿=06 DB 동기 정본({syncDb} 관통) → 자연키(계약ref) 멱등 upsert 라 안전 payload
+  // (_cleared:false·커스텀:{} 기본 병합)로 재사용 자연키의 stale content 부활 차단. **단 warn 유지**:
+  // 부모(appendFromContract)는 findFirstEmptyRow 로 새 행을 잡는 **비멱등 append** 라, 여기서 throw 하면
+  // 사용자 재시도가 append 재실행 → 중복 계약행=매출 이중계상(#558 교훈). 06 스냅샷 실패는 계약을
+  // 깨지 않고, 미러 미반영 시 read 가 시트 fallback(빈 DB 행) 으로 수렴하므로 loud 불요.
   try {
-    await upsertCompanyInfoArchive(spreadsheetId, {
-      업체명: data.업체명,
-      계약일: data.계약일,
-      업체정보: m?.업체정보,
-    });
+    await upsertCompanyInfoArchive(
+      spreadsheetId,
+      { 업체명: data.업체명, 계약일: data.계약일, 업체정보: m?.업체정보 },
+      { syncDb },
+    );
   } catch (e) {
     console.warn(
       "[contract-payment] 06 업체정보 스냅샷 실패 (계약 자체는 성공):",
