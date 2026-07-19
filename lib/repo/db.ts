@@ -490,7 +490,8 @@ export async function clearBanner(spreadsheetId: string, row: number, opts?: DbT
 }
 export async function clearLead(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
   await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
-  await clearDbRow(spreadsheetId, `콜지기소:r${row}`, opts); // R3-4 dual-sync
+  // 발굴id:"" 함께 무효화(R14) — 행 재사용 시 죽은 발굴id 가 새 lead 로 상속되는 것 차단(lead-chain §4-3 B3).
+  await clearDbRow(spreadsheetId, `콜지기소:r${row}`, opts, { 발굴id: "" });
 }
 
 export { writeProductionCountCell } from "./db-production-cell";

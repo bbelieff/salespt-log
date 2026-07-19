@@ -66,7 +66,8 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
         break;
       }
       case "콜·지·기·소": {
-        const parsed = DBLead.safeParse(body);
+        // 발굴id 는 서버가 생성·보존 — 클라이언트발 id 를 스키마에서 차단(링크 탈취 방지, lead-chain §4-3).
+        const parsed = DBLead.omit({ 발굴id: true }).safeParse(body);
         if (!parsed.success) {
           return NextResponse.json(
             { error: parsed.error.message },
