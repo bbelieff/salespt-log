@@ -28,7 +28,7 @@ import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
-import { writeProductionCell } from "@/repo/sales-production-cell"; // 500줄 캡 분리(ADR-0020·0029)
+import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
 import type {
   Channel,
   DBBanner,
@@ -47,7 +47,7 @@ async function resolveSheet(email: string): Promise<string> {
  *  여부(R3-4, 쓰기 게이트). 현재 두 게이트 동일 판정이나 의미가 달라 각 함수로 산출(향후 분기 대비). */
 async function resolveWriteCtx(
   email: string,
-): Promise<{ sid: string; fromDb: boolean; syncDb: boolean }> {
+): Promise<{ sid: string; fromDb: boolean; syncDb: boolean; salesCtx: SalesCtx }> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const on = dbEnabled();
@@ -55,6 +55,7 @@ async function resolveWriteCtx(
     sid: user.spreadsheetId,
     fromDb: chooseDailySource(user.cohort, on) === "db",
     syncDb: chooseWriteSource(user.cohort, on) === "db",
+    salesCtx: { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email },
   };
 }
 
@@ -152,11 +153,11 @@ function dateOfRow(channel: Channel, row: DBPurchase | DBProduction | DBBanner |
 }
 
 /** DB 변경 후 그 (채널, 날짜) 생산(E) 재집계·기입. 실패해도 DB 저장은 성공(warn). */
-async function syncProduction(spreadsheetId: string, channel: Channel, date: string) {
+async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
   if (!date) return;
   try {
-    const rows = await readChannelRows(spreadsheetId, channel);
-    await writeProductionCell(spreadsheetId, date, channel, productionCountFor(channel, rows, date));
+    const rows = await readChannelRows(ctx.spreadsheetId, channel);
+    await persistProductionCell(ctx, date, channel, productionCountFor(channel, rows, date));
   } catch (e) {
     console.warn(`[db] 생산 집계 기입 실패 (${channel} ${date}):`, e instanceof Error ? e.message : e);
   }
@@ -171,30 +172,30 @@ async function oldDateOf(spreadsheetId: string, channel: Channel, row: number): 
 
 // ── 매입DB ────────────────────────────────────────────────────
 export async function addPurchase(email: string, p: DBPurchase) {
-  const sid = await resolveSheet(email);
+  const { sid, salesCtx } = await resolveWriteCtx(email);
   const r = await appendPurchase(sid, p);
-  await syncProduction(sid, "매입DB", p.구매일);
+  await syncProduction(salesCtx, "매입DB", p.구매일);
   return r;
 }
 export async function patchPurchase(email: string, row: number, p: DBPurchase) {
-  const { sid, syncDb } = await resolveWriteCtx(email);
+  const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "매입DB", row);
   // finally: 시트 쓰기 후 DB dual-sync 가 throw 해도 생산(E) 재집계는 실행. E 는 시트 상태만
   // 의존하고 시트는 이미 확정(writeRow 완료) → skip 시 재시도가 옛 날짜를 잃어 E 영구 오집계(리뷰 CONFIRMED).
   try {
     return await updatePurchase(sid, row, p, { syncDb });
   } finally {
-    await syncProduction(sid, "매입DB", old);
-    if (p.구매일 !== old) await syncProduction(sid, "매입DB", p.구매일);
+    await syncProduction(salesCtx, "매입DB", old);
+    if (p.구매일 !== old) await syncProduction(salesCtx, "매입DB", p.구매일);
   }
 }
 export async function removePurchase(email: string, row: number) {
-  const { sid, syncDb } = await resolveWriteCtx(email);
+  const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "매입DB", row);
   try {
     return await clearPurchase(sid, row, { syncDb });
   } finally {
-    await syncProduction(sid, "매입DB", old); // DB throw 여도 E 재집계(위 patchPurchase 주석)
+    await syncProduction(salesCtx, "매입DB", old); // DB throw 여도 E 재집계(위 patchPurchase 주석)
   }
 }
 
@@ -294,27 +295,27 @@ export async function removeBanner(email: string, row: number) {
 
 // ── 콜·지·기·소 ────────────────────────────────────────────────
 export async function addLead(email: string, l: DBLead) {
-  const sid = await resolveSheet(email);
+  const { sid, salesCtx } = await resolveWriteCtx(email);
   const r = await appendLead(sid, l);
-  await syncProduction(sid, "콜·지·기·소", l.접수일);
+  await syncProduction(salesCtx, "콜·지·기·소", l.접수일);
   return r;
 }
 export async function patchLead(email: string, row: number, l: DBLead) {
-  const { sid, syncDb } = await resolveWriteCtx(email);
+  const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "콜·지·기·소", row);
   try {
     return await updateLead(sid, row, l, { syncDb });
   } finally {
-    await syncProduction(sid, "콜·지·기·소", old); // DB throw 여도 E 재집계(patchPurchase 주석)
-    if (l.접수일 !== old) await syncProduction(sid, "콜·지·기·소", l.접수일);
+    await syncProduction(salesCtx, "콜·지·기·소", old); // DB throw 여도 E 재집계(patchPurchase 주석)
+    if (l.접수일 !== old) await syncProduction(salesCtx, "콜·지·기·소", l.접수일);
   }
 }
 export async function removeLead(email: string, row: number) {
-  const { sid, syncDb } = await resolveWriteCtx(email);
+  const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "콜·지·기·소", row);
   try {
     return await clearLead(sid, row, { syncDb });
   } finally {
-    await syncProduction(sid, "콜·지·기·소", old); // DB throw 여도 E 재집계(patchPurchase 주석)
+    await syncProduction(salesCtx, "콜·지·기·소", old); // DB throw 여도 E 재집계(patchPurchase 주석)
   }
 }

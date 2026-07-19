@@ -215,6 +215,34 @@ export async function readSalesRowsFromDb(spreadsheetId: string): Promise<DbSale
     .filter((r) => r.date !== "" && r.channel !== "");
 }
 
+/** sales 단일 행(자연키 {date}:{channel}) — R3⑤ 수렴 미러가 "실행 시점 최신 DB" 를 읽을 때 쓴다.
+ *  없으면 null(= 시트에 반영할 정본 없음 → 미러 skip). */
+export async function readSalesRowFromDb(
+  spreadsheetId: string,
+  date: string,
+  channel: string,
+): Promise<DbSalesRow | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'sales' and row_key = $2
+       and coalesce((payload->>'_cleared')::boolean, false) = false
+     limit 1`,
+    [spreadsheetId, `${date}:${channel}`],
+  );
+  const p = (res.rows as { payload: Record<string, unknown> }[])[0]?.payload;
+  if (!p) return null;
+  return {
+    date: String(p.date ?? "").slice(0, 10),
+    channel: String(p.channel ?? ""),
+    production: toNum(p.production),
+    inflow: toNum(p.inflow),
+    contactProgress: toNum(p.contactProgress),
+    meetingReservation: toNum(p.meetingReservation),
+  };
+}
+
 /** 기수별·탭별 유효 행수 — 대조표용. _cleared 마킹 행 제외. 미설정이면 null. */
 export async function countRowsByTab(
   cohort: string,
