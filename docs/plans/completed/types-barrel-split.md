@@ -1,7 +1,8 @@
 ---
 slug: types-barrel-split
-status: active
+status: completed
 created: 2026-07-19
+completed: 2026-07-19
 worktree: .claude/worktrees/dazzling-banach-5bff73
 ---
 
@@ -14,12 +15,12 @@ pre-commit·CI 에서 즉시 막힌다. §3.5 상 `lib/types` 는 **공용부(�
 떼어 **단독 PR** 로 선처리해 다른 트랙을 언블록한다. 소비자 import 경로(`@/types`)는 무변경.
 
 ## Acceptance Criteria (수용 기준)
-- [ ] `lib/types/index.ts` = 배럴(재수출)만 — 실제 정의는 도메인별 파일로 이동
-- [ ] 각 분리 파일 ≤ 500줄, `index.ts` 도 대폭 축소
-- [ ] 전 소비자 무변경: `@/types` 배럴로 동일 심볼 27개 export 유지 (deep import 없음 — 사전 확인 완료)
-- [ ] `doc-drift.sh` C 항목이 `lib/types/*.ts` 전체를 grep 하도록 조정 → 동일 심볼 27개 검사 유지
-- [ ] `npm run check` 통과 (typecheck · lint · structural · tests · 파일크기 · doc-drift)
-- [ ] 구조 테스트(layers·sheets 격리) 유지 — 분리 파일 간 import 는 상대경로(동일 레이어)
+- [x] `lib/types/index.ts` = 배럴(재수출)만 — 실제 정의는 도메인별 파일로 이동 (index.ts 14줄)
+- [x] 각 분리 파일 ≤ 500줄 (최대 meeting.ts 118줄), `index.ts` 대폭 축소
+- [x] 전 소비자 무변경: `@/types` 배럴로 동일 심볼 27개 export 유지 (deep import 0건 — 사전 확인)
+- [x] `doc-drift.sh` C 항목이 `lib/types/*.ts` 전체를 grep 하도록 조정 → 동일 심볼 27개 검사 통과
+- [x] `bash scripts/check.sh` 통과 (typecheck · lint · structural · tests · 파일크기 · doc-drift)
+- [x] 구조 테스트(layers·sheets 격리) 유지 — 분리 파일 간 import 는 상대경로(동일 레이어)
 
 ## Context (참고)
 - 선례: `lib/repo/meetings-rows.ts` (meetings.ts 무동작 추출, #537 계열) · `lib/types/contract-status.ts`
@@ -36,3 +37,4 @@ pre-commit·CI 에서 즉시 막힌다. §3.5 상 `lib/types` 는 **공용부(�
 
 ## Log
 - 2026-07-19 착수. 사전조사: 소비자 전원 `@/types` 배럴 사용(deep import 0건), 심볼 27개 baseline 확보.
+- 2026-07-19 완료. PR #589(`ca4efb5`) squash 머지 · CI 초록 · 배포 success(run 29670671592) · health 200(root·/api/health). 8개 도메인 파일 분리 + doc-drift §C 대상경로 확장. 직후 발굴 체인 PR-2(#590)가 master 리베이스 없이 그 위에 클린 머지 — 언블록 확인.
