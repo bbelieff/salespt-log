@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-07-19 · Claude Code · 공용부 선행: lib/types/index.ts 도메인 분리(배럴) — 500줄 캡 해소 (#589)
+- 의도: index.ts 가 정확히 500줄(check.sh 캡 경계) → 발굴 체인 PR-5·6 및 타 트랙이 타입 추가 시 즉시 막힘. §3.5 공용부(lib/types) 단독 PR 로 선제 분리해 언블록.
+- 한 것: index.ts → 8개 도메인 파일(channel·meeting·db·user·contract·todo·announcement·dashboard, 각 ≤118줄) 분리 + `export *` 배럴(14줄). contract-status 재수출은 contract.ts 흡수. doc-drift.sh §C grep 대상 `index.ts`→`lib/types/*.ts`(-h) 확장(심볼 27개 검사 유지). data-model.md 경로 프로즈 갱신. check.sh 초록·CI 초록·#589(ca4efb5) squash 머지·배포 success(29670671592)·health 200.
+- 결정: 소비자는 `@/types` 배럴만 사용(deep import `@/types/*` 0건 사전확인) → 전 소비자 무변경. 배럴 재수출은 doc-drift `^export const X = z.` 패턴에 안 걸리므로 대상 경로 확장이 가드 유효성의 필수조건.
+- 다음: 발굴 체인 트랙은 이제 db.ts·meeting.ts 등 도메인 파일에 타입 추가 가능(각 파일 500줄 캡 개별 유지). #589 직후 발굴 PR-2(#590)가 리베이스 없이 클린 머지 확인.
+- SoR: docs/plans/completed/types-barrel-split.md, PR #589
+
 ### 2026-07-17 · Codex(260717) · 대시보드 client directive 오류 복구·배포 완료 (#576)
 - 의도: `salesptlog.online` 서버 오류 신고를 진단하고, #575 이후 실패한 운영 배포를 정상화한다.
 - 한 것: `DashboardProgressBanner.tsx`·`OperatingProfitCard.tsx`의 `"use client"`를 최상단으로 이동. `scripts/check.sh`·구조검사 10/10·테스트 630개 통과 후 PR #576 squash merge(`c1dd7de`).
