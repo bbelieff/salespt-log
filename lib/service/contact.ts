@@ -14,9 +14,8 @@ import {
   stackingSumsFromRows,
   type DailyMetricRow,
 } from "./daily-source";
-import { persistSalesRows } from "./sales-write";
+import { persistMeetingReservationCount, persistSalesRows } from "./sales-write";
 import {
-  decrementMeetingReservation,
   readCourseStart,
   readWeek,
   readWeekFunnel,
@@ -384,7 +383,8 @@ export async function removeMeetingWithCascade(
   // 3) 본인 clear(클리어 전 구글 이벤트 삭제 포함) + 4) 영업관리 H -1 (좌표 실패 시 skip).
   await clearMeetingRecord(ctx, id, { gcalRemove: true });
   if (m.예약일 && m.channel) {
-    try { await decrementMeetingReservation(spreadsheetId, m.예약일, m.channel); } catch { /* skip */ }
+    // R3⑤: 파일럿은 DB 정본에 **카드수 절대 재계산**(±1 RMW 폐기, ADR-0010) + 시트 수렴 미러.
+    try { await persistMeetingReservationCount(ctx, m.예약일, m.channel); } catch { /* skip */ }
   }
   const parts: string[] = ["영업관리 H -1"];
   if (descCount > 0) parts.push(`자손 미팅 ${descCount}건 cascade`);

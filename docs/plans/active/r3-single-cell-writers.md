@@ -55,7 +55,32 @@ R3-1 이 "스코프 밖·후속" 으로 유예한 두 writer:
 - **비파일럿 불변**: 비파일럿은 시트를 읽는다. DB 는 그림자 사본이라 payload 교정이 화면에 영향 없음.
 - **자가치유**: 직접생산은 그 날짜를 다시 저장하면 `production := inflow` 로 교정됨.
 
-## 3. PR-2 (다음) — 실제 flip. **반드시 지킬 5가지**
+## 3. PR-2 (구현 완료) — 실제 flip
+
+**PR-1 덕분에 설계가 단순해졌다**: DB 행이 이제 "시트가 가져야 할 값" 과 1:1 이므로, 수렴 미러가
+**E:H 를 통째로** 내려찍으면 된다 — **채널 분기 소멸**(E=production · F=inflow · G=contactProgress ·
+H=meetingReservation, 4채널 공통). 초기 검증의 "소유 셀만" 권고는 **PR-1 이전** 전제였다.
+
+| 구성 | 내용 |
+|---|---|
+| `sales-write.ts` (재작성) | 게이트 내장 `persistProductionCell` · `persistMeetingReservationCount` + **시트별 직렬 수렴 큐**(`queueSalesRowSync`/`runSalesRowSync`). **`fireSheetMirror`(스냅샷 재생) 폐기·흡수** — DB 정본 경로의 **유일한 시트 writer** |
+| `sales-row-write.ts` (신규) | `writeSalesRowCells`(E:H 통째) · `isWithinSalesWindow`(편집기간 가드) |
+| `db/client.ts` | `readSalesRowFromDb`(단일행) — 수렴 잡이 **실행 시점 최신 DB** 를 읽는다 |
+| `service/db.ts` | `syncProduction(ctx, …)` → `persistProductionCell` (SalesCtx 관통) |
+| `service/contact.ts` | 미팅 삭제 cascade → `persistMeetingReservationCount` |
+
+**의무 5건 이행**
+1. ✅ **편집기간 가드** — `isWithinSalesWindow` 가 false 면 **DB 에도 안 쓴다**(무필터 집계 부풀림 차단).
+2. ✅ **단일 직렬 + 수렴형** — 스냅샷 재생 폐기. 잡은 최신 DB 행을 읽어 시트를 수렴.
+3. ✅ **통째 E:H** — PR-1 로 DB 가 진실해져 오히려 이게 정답(위 설명).
+4. ✅ **H = 카드수 절대 재계산**(±1 RMW 폐기, ADR-0010 자체 후속). 재집계는 `readMeetingsFromDb` —
+   `findMeetingsByDateRecord` 는 DB 0건 시 **시트 폴백**이라 지운 카드가 부활한다(함수 안에 가둠).
+5. ✅ **호출자 삼킴 유지**(파생 부수효과) + 실패는 throw(시트 폴백 금지). 시트 미러 실패는 Sentry 계수만.
+
+**비파일럿 완전 불변**: 게이트 밖이면 `writeProductionCell` / `decrementMeetingReservation` /
+`batchWriteChannelDailyRows` 를 그대로 탄다.
+
+## 3-old. 초기 검증이 요구한 5가지 (이행 근거 보존)
 1. **편집기간 가드**를 DB 쓰기 **앞**에 둔다(`salesRowFor` 실패 = 시트도 DB 도 안 씀). 미러 잡 안에서도.
 2. **시트 미러 = 단일 직렬 큐 + 수렴형**. `fireSheetMirror`(스냅샷 재생)를 같은 큐로 흡수하고
    **실행 시점 최신 DB 를 읽어** 시트를 수렴시킨다(todos `runSheetSync` 패턴). 직렬화만으로는 부족 —
@@ -75,6 +100,17 @@ R3-1 이 "스코프 밖·후속" 으로 유예한 두 writer:
   **파일럿 수강생의 표시 숫자를 바꾸므로**(정확한 값으로) 📥 결정함 등재. 로컬엔 DATABASE_URL 이 없어
   dry-run 도 VPS/belie 필요.
 
+## 5. 후속 티켓 (D 적대 리뷰 CONCERN — 비차단, master 이월 클래스)
+- **#1 관찰성**: 정본 쓰기 실패(`syncProduction` `persistProductionCell` throw·`removeMeetingWithCascade` catch)가
+  console.warn/무음 — 삼킴 자체는 옳으나(파생 부수효과) flip 후엔 *정본* 실패라 무게↑ → **Sentry 계수 격상** 권고.
+- **#2 정합**: 편집기간 가드가 `persistProductionCell`/`persistMeetingReservationCount` 엔 있으나 형제 경로
+  `persistSalesRows`(R3-1 컨택 저장)엔 없음 → 편집기간 밖 DB 행이 무필터 집계 부풀림 가능. 도달구간 매우 좁음
+  (UI 읽기전용 + 편집유예 70일≈10주창). 형제도 같은 가드로 맞추길 권고.
+- (참고·무액션) cascade 자손이 타 (예약일,channel)이면 그 H 미재집계 — master `decrementMeetingReservation`
+  동일 선재 갭, 이 PR 신규 회귀 아님(동일행 자손은 절대재계산으로 개선).
+
 ## Log
+- 2026-07-15 D 적대 리뷰(F 대행, 5렌즈) = **LAND(무-BLOCKER)**. 최고위험 2렌즈(비파일럿 불변·읽기 동반 flip)
+  clean PASS. CONCERN 3(트리비얼 미사용 salesCtx)만 접어넣고 land, #1·#2 후속 티켓(§5).
 - 2026-07-15 착수(DevF): 구현 전 적대 검증 → 설계 결함 5건 → **2 PR 분할**. PR-1(payload 진실성 +
   직접생산 라이브 버그 수리) 구현·테스트 19·check.sh 초록(620).

@@ -3,7 +3,8 @@
  *  · 파일럿(8·9·연습·아레나)+DB켜짐 → update·clear({syncDb:true}) = DB 동기 정본
  *  · 비파일럿(7 등) 또는 DATABASE_URL 미설정 → {syncDb:false} = R2 미러(완전 불변·롤백 스위치)
  *  · append(add*) 는 syncDb 미전달 = 항상 R2 async(행번호=시트 할당, 중복행 회피, C2)
- *  · 편집 후 생산(E) cascade(syncProduction→writeProductionCell)는 계속 발화(finding-3 회귀)
+ *  · 편집 후 생산(E) cascade(syncProduction→persistProductionCell)는 계속 발화(finding-3 회귀)
+ *    R3⑤: seam 이 writeProductionCell → persistProductionCell(게이트 내장, DB 정본) 로 이동
  * daily-source 게이트는 실제 사용(dbEnabled·cohort 만 제어). repo 경계는 스텁.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +31,7 @@ const readProductions = vi.fn(async () => ({ rows: [] as Array<DBProduction & { 
 const readBanners = vi.fn(async () => ({ rows: [] as Array<DBBanner & { row: number }> }));
 const readLeads = vi.fn(async () => ({ rows: [] as Array<DBLead & { row: number }> }));
 const writeProductionCountCell = vi.fn();
-const writeProductionCell = vi.fn();
+const persistProductionCell = vi.fn();
 const sumChannelInflowOverPeriod = vi.fn(async () => 0);
 
 vi.mock("@/repo/users", () => ({
@@ -43,9 +44,9 @@ vi.mock("@/repo/db/read-db-tab", () => ({ readDbTabFromDb: vi.fn() }));
 vi.mock("@/repo/sales", () => ({
   sumChannelInflowOverPeriod: (...a: unknown[]) => sumChannelInflowOverPeriod(...(a as [])),
 }));
-// writeProductionCell 은 500줄 캡 분리로 sales-production-cell 로 이동(ADR-0029 E:F 동시기입).
-vi.mock("@/repo/sales-production-cell", () => ({
-  writeProductionCell: (...a: unknown[]) => writeProductionCell(...(a as [])),
+// R3⑤: 생산(E) 기입 seam = service/sales-write persistProductionCell(게이트 내장 — 파일럿=DB 정본).
+vi.mock("@/service/sales-write", () => ({
+  persistProductionCell: (...a: unknown[]) => persistProductionCell(...(a as [])),
 }));
 vi.mock("@/repo/db", () => ({
   updatePurchase: (...a: unknown[]) => updatePurchase(...(a as [])),
@@ -91,7 +92,7 @@ beforeEach(() => {
     findUserByEmail, dbEnabled, updatePurchase, clearPurchase, updateProduction, clearProduction,
     updateBanner, clearBanner, updateLead, clearLead, appendPurchase, appendProduction, appendBanner,
     appendLead, readPurchases, readProductions, readBanners, readLeads, writeProductionCountCell,
-    writeProductionCell, sumChannelInflowOverPeriod,
+    persistProductionCell, sumChannelInflowOverPeriod,
   ]) m.mockReset();
   dbEnabled.mockReturnValue(true);
   setCohort("8"); // 파일럿 기본
@@ -155,13 +156,15 @@ describe("append 제외 — add* 는 syncDb 미전달(항상 R2 async, 중복행
 });
 
 describe("생산(E) cascade 회귀(finding-3) — 편집 후 syncProduction 계속 발화", () => {
-  it("patchPurchase(파일럿) 후에도 writeProductionCell(E) 이 호출된다(시트 동기 유지 전제)", async () => {
+  it("patchPurchase(파일럿) 후에도 생산(E) 재집계가 호출된다", async () => {
     readPurchases.mockResolvedValue({
       rows: [{ 구매일: "2026-07-10", 업체명: "가나", 개당단가: 1000, 주문개수: 3, 부가세여부: false, 기타: "", 주문금액: 3000, row: 9 }],
     });
     await patchPurchase(EMAIL, 9, mkPur({ 구매일: "2026-07-10" }));
     // dual-sync update 는 시트 동기 유지 → readPurchases(시트) 가 최신 → E 재집계 발화
-    expect(writeProductionCell).toHaveBeenCalledWith(SHEET, "2026-07-10", "매입DB", 3);
+    expect(persistProductionCell).toHaveBeenCalledWith(
+      expect.objectContaining({ spreadsheetId: SHEET }), "2026-07-10", "매입DB", 3,
+    );
   });
 
   it("DB dual-sync throw 여도 옛 날짜 E 재집계 실행 — cascade 유실 회귀(리뷰 CONFIRMED)", async () => {
@@ -172,7 +175,9 @@ describe("생산(E) cascade 회귀(finding-3) — 편집 후 syncProduction 계�
     updatePurchase.mockRejectedValue(new Error("DB down (dual-sync)")); // 시트는 변경됐다고 가정, DB throw
     await expect(patchPurchase(EMAIL, 9, mkPur({ 구매일: "2026-07-10" }))).rejects.toThrow();
     // finally 가 옛 날짜 E 를 재집계 — skip 되면(원버그) 재시도가 옛 날짜를 잃어 영구 오집계.
-    expect(writeProductionCell).toHaveBeenCalledWith(SHEET, "2026-07-01", "매입DB", expect.any(Number));
+    expect(persistProductionCell).toHaveBeenCalledWith(
+      expect.objectContaining({ spreadsheetId: SHEET }), "2026-07-01", "매입DB", expect.any(Number),
+    );
   });
 
   it("removeLead DB throw 여도 옛 날짜 E 재집계 실행(finally 보장)", async () => {
@@ -181,6 +186,8 @@ describe("생산(E) cascade 회귀(finding-3) — 편집 후 syncProduction 계�
     });
     clearLead.mockRejectedValue(new Error("DB down"));
     await expect(removeLead(EMAIL, 9)).rejects.toThrow();
-    expect(writeProductionCell).toHaveBeenCalledWith(SHEET, "2026-07-02", "콜·지·기·소", expect.any(Number));
+    expect(persistProductionCell).toHaveBeenCalledWith(
+      expect.objectContaining({ spreadsheetId: SHEET }), "2026-07-02", "콜·지·기·소", expect.any(Number),
+    );
   });
 });
