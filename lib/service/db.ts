@@ -27,6 +27,8 @@ import {
 import * as Sentry from "@sentry/nextjs";
 import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
+import { readMeetingsFromDb } from "@/repo/db/read-daily";
+import { readAllMeetings } from "@/repo/meetings";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
@@ -146,6 +148,73 @@ export async function loadLeadsForPicker(
     Sentry.captureException(e, { tags: { where: "loadLeadsForPicker-sheet-read" } });
     return []; // 둘 다 실패 = 빈 목록(화면 에러 금지)
   }
+}
+
+/** 발굴 후보 = 발굴 목록 + `matched`(전환 여부) 파생 (lead-chain PR-6 · §7-1 계약). */
+export interface LeadCandidate extends LeadForPicker {
+  /** true = 이미 미팅으로 전환됨 → 피커는 `!matched` 만 노출. 저장 안 하고 파생(§4-1). */
+  matched: boolean;
+}
+
+/** 콜·지·기·소 업체명 정규화 — 리스케줄 "(변경) " 접두·공백·대소문자 무시(업체명 폴백 매칭 키). */
+function normVendor(name: string): string {
+  return (name || "").replace(/^\(변경\)\s*/, "").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+/** 미팅에서 뽑은 매칭 근거 — 발굴id(정확)·콜·지·기·소 업체명(폴백). */
+interface MeetingLinkSets {
+  ids: Set<string>;
+  names: Set<string>;
+}
+
+/** lead 가 미팅으로 전환됐나 — 발굴id 있으면 링크 정확 매칭, 없으면 업체명 폴백(근사).
+ * 발굴id·업체명 둘 다 없으면(대표자명만) 폴백 불가 → 영구 후보(false). lead-chain §4-1. */
+function isLeadMatched(l: LeadForPicker, { ids, names }: MeetingLinkSets): boolean {
+  if (l.발굴id) return ids.has(l.발굴id);
+  const name = (l.업체명 || "").trim();
+  if (!name) return false;
+  return names.has(normVendor(name));
+}
+
+/** 미팅 집합 조회(게이트 재사용) — 파일럿=readMeetingsFromDb(발굴id 보유), 비파일럿=readAllMeetings(시트).
+ * 업체명 폴백은 **콜·지·기·소 채널 미팅만** 집계(타 채널 동명 오탐 차단). read 실패 → 빈 집합
+ * (안전 방향: 매칭 못 함 → 전 lead 후보로 남김, 목록은 정상 노출). */
+async function readMeetingLinkSets(email: string): Promise<MeetingLinkSets> {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  const user = await findUserByEmail(email);
+  if (!user) return { ids, names };
+  try {
+    const meetings =
+      chooseDailySource(user.cohort, dbEnabled()) === "db"
+        ? await readMeetingsFromDb(user.spreadsheetId)
+        : await readAllMeetings(user.spreadsheetId);
+    for (const m of meetings) {
+      if (m.발굴id) ids.add(m.발굴id);
+      if (m.channel === "콜·지·기·소" && m.업체명) names.add(normVendor(m.업체명));
+    }
+  } catch (e) {
+    Sentry.captureException(e, { tags: { where: "listLeadCandidates-meetings-read" } });
+  }
+  return { ids, names };
+}
+
+/**
+ * 발굴 후보 + `matched` 파생 — 컨택탭 발굴 피커(PR-3)가 소비할 §7-1 결선 계약 (lead-chain PR-6).
+ *
+ * **만료 없음**(belie 2026-07-15) — 미매칭이면 접수일이 지나도 계속 후보(이월). 피커가 `!matched` 필터.
+ *  · matched = 발굴id 있으면 미팅 발굴id 집합 정확 매칭, 없으면 콜·지·기·소 미팅 업체명 폴백(근사).
+ *  · 목록·게이트·검색은 loadLeadsForPicker 재사용, 미팅 집합은 readMeetingLinkSets(각자 시트폴백/빈집합).
+ */
+export async function listLeadCandidates(
+  email: string,
+  query = "",
+): Promise<LeadCandidate[]> {
+  const [leads, links] = await Promise.all([
+    loadLeadsForPicker(email, query),
+    readMeetingLinkSets(email),
+  ]);
+  return leads.map((l) => ({ ...l, matched: isLeadMatched(l, links) }));
 }
 
 // ── 생산(E) 집계쓰기 (ADR-0020) — 매입DB·콜·지·기·소 한정 ────────

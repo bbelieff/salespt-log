@@ -47,6 +47,8 @@ export {
 export {
   loadDBOverview,
   loadLeadsForPicker,
+  listLeadCandidates,
+  type LeadCandidate,
   addPurchase,
   patchPurchase,
   removePurchase,

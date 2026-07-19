@@ -143,7 +143,7 @@ export async function createMeetingRecord(
   ctx: MeetingCtx,
   meeting: Meeting,
 ): Promise<void> {
-  const m = Meeting.parse(meeting);
+  const m = await withInheritedLeadLink(ctx, Meeting.parse(meeting));
   if (isDb(ctx)) {
     await writeRowToDb({ ...ctx, tab: "meetings", rowKey: m.id, payload: m });
     queueMeetingSheetSync(ctx, m.id); // 시트 반영 + (행 보장 후) gcal 등록
@@ -151,6 +151,16 @@ export async function createMeetingRecord(
   }
   await appendMeeting(ctx.spreadsheetId, m);
   onMeetingCreated(ctx.email, ctx.spreadsheetId, m); // gcal 자동 등록(fire-and-forget)
+}
+
+/** 발굴 링크 승계 — 리스케줄·추가미팅은 **새 행(새 id)** 이라 계보(previousMeetingId)로 원본의
+ * `발굴id` 를 이어받지 않으면, 매칭됐던 발굴이 일정 변경 한 번에 피커로 **부활**한다(이월 스펙 위반,
+ * lead-chain §4-5). 클라이언트가 이미 실어보냈으면(폼 spread) 그대로 두고, **부재 시에만** 1회 조회.
+ * 원본 read 실패는 무시(승계 없이 진행) — 최악은 dangling(안전 실패), 저장을 막지 않는다. */
+async function withInheritedLeadLink(ctx: MeetingCtx, m: Meeting): Promise<Meeting> {
+  if (!m.previousMeetingId || m.발굴id) return m;
+  const prev = await getMeetingRecord(ctx, m.previousMeetingId).catch(() => null);
+  return prev?.발굴id ? { ...m, 발굴id: prev.발굴id } : m;
 }
 
 /** 미팅 부분 수정 — 파일럿은 병합 결과 Meeting 반환, 비파일럿(시트 병합)은 null.
