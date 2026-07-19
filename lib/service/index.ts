@@ -46,6 +46,7 @@ export {
 // DB관리 탭 유스케이스 (PR 09 db-management — 4채널 raw log)
 export {
   loadDBOverview,
+  loadLeadsForPicker,
   addPurchase,
   patchPurchase,
   removePurchase,

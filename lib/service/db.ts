@@ -30,6 +30,7 @@ import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
+import { selectLeadsForPicker, type LeadForPicker } from "./lead-list"; // 발굴 조회 PR-2
 import type {
   Channel,
   DBBanner,
@@ -110,6 +111,41 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
     banners: rowsOrEmpty(banners, "현수막"),
     leads: rowsOrEmpty(leads, "콜·지·기·소"),
   };
+}
+
+/**
+ * 발굴(콜·지·기·소 영업기회) 목록 조회 — 컨택탭 발굴 피커(PR-3)용 (lead-chain PR-2).
+ *
+ * 접수일 내림차순 + 선택 검색. **시트 I/O 신규 0** — loadDBOverview 와 동일 게이트 재사용.
+ *  · 파일럿(DB): readDbTabFromDb 의 leads(발굴id 포함) — 실패 시 시트 fallback + Sentry.
+ *  · 비파일럿/DB실패: readLeads(시트 X:AD, 발굴id 미보유=legacy).
+ * ⚠️ 발굴id 는 **DB payload 전용**(시트 컬럼 0)이라 파일럿만 실려 온다(§4-3).
+ * `matched`(전환 여부) 파생은 **PR-6** 몫 — 여기선 순수 목록만(PR-3 는 PR-6 착지 후 !matched 필터).
+ */
+export async function loadLeadsForPicker(
+  email: string,
+  query = "",
+): Promise<LeadForPicker[]> {
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
+  const spreadsheetId = user.spreadsheetId;
+
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    try {
+      const { leads } = await readDbTabFromDb(spreadsheetId);
+      return selectLeadsForPicker(leads, query); // DB 정본 — 빈 목록도 정답(시트 fallback 안 함)
+    } catch (e) {
+      Sentry.captureException(e, { tags: { where: "loadLeadsForPicker-db-read" } });
+      // ↓ DB 실패만 시트 경로로 silent fallback
+    }
+  }
+  try {
+    const { rows } = await readLeads(spreadsheetId);
+    return selectLeadsForPicker(rows, query);
+  } catch (e) {
+    Sentry.captureException(e, { tags: { where: "loadLeadsForPicker-sheet-read" } });
+    return []; // 둘 다 실패 = 빈 목록(화면 에러 금지)
+  }
 }
 
 // ── 생산(E) 집계쓰기 (ADR-0020) — 매입DB·콜·지·기·소 한정 ────────
