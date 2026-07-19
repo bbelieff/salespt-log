@@ -1262,6 +1262,7 @@ components/dashboard/
 | **MeetingSlotItem** | 컨택탭 미팅 슬롯 입력 카드 (신규). Props: `slot: NewSlot` / `onSave` / `onRemove`. [등록] 시 미팅 append |
 | **MeetingSlotCard** | 등록 완료 슬롯 표시 카드 (read-only). Props: `meeting: Meeting`. [삭제]는 미팅 + meetingReservation -1 |
 | **MeetingPickerModal** | 미팅예약 -1 시 삭제할 미팅 선택 모달 (Phase 4). Props: `meetings` / `onPick` / `onClose`. 선택 시 cascade 삭제 |
+| **LeadPickerModal** | 컨택탭 콜·지·기·소 미팅 슬롯 [발굴에서 가져오기] 피커 (lead-chain PR-3). `useDBOverview().leads`(접수일 desc·검색) 선택 시 부모가 mergeLeadDraft 프리필. Props: `onPick(lead: DBLead)` / `onClose`. matched 필터는 PR-6 |
 | **MeetingSlotList** | 컨택탭 미팅 슬롯 리스트 (page.tsx 분할, 2026-06). 저장 미팅 + 미등록 신규 슬롯을 채널 순서로 렌더. Props: `slots: SlotEntry[]`, `reservationDate`, `onPatchSaved`, `onRemoveSaved`, `onChangeNew`, `onRegisterNew`, `onRemoveNew`. |
 | **DirtyGuard** | **미저장 이탈 가드(전역, 2026-06-23)**. `components/DirtyGuard.tsx` — `DirtyProvider`(app/(app)/layout 에서 children+TabBar 감쌈) + 훅 `useDirtyRegister`(입력이 dirty 시 {save,discard,label} 등록)·`useGuardedNav`(인앱 이탈 래핑)·`useGuardedRouter`(TabBar 라우팅 가드)·`useSaveAllDirty`(통합 저장). dirty 면 [저장하고 이동]/[무시하고 이동]/취소 모달 + 브라우저 닫기 beforeunload. MeetingDirtyGuard 패턴의 전역 승격. |
 | **MeetingDirtyGuard** | 미저장 이탈 가드 (company-info-unified-save-guard, 2026-06) — `ConfirmLeaveModal`([저장하기][무시하기]) 은 카드 접기 확인에 계속 사용. 전역 가드는 `DirtyGuard` 로 승격(미팅카드는 useDirtyRegister 등록). |
