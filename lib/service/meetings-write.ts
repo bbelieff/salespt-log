@@ -28,6 +28,11 @@ import { upsertCarriedRawSnapshot } from "@/repo/carryover";
 import { chooseWriteSource } from "./daily-source";
 import { clearRowInDb, dbEnabled, writeRowToDb } from "@/repo/db/client";
 import {
+  clearMirrorPending,
+  listMirrorPending,
+  markMirrorPending,
+} from "@/repo/db/mirror-pending";
+import {
   readMeetingRowStateFromDb,
   readMeetingsFromDb,
 } from "@/repo/db/read-daily";
@@ -55,11 +60,13 @@ function isDb(ctx: MeetingCtx): boolean {
 /** 시트별 미러 잡 직렬화 — append 슬롯 경합·행별 순서 역전 방지 (프로세스 내). */
 const sheetSyncTails = new Map<string, Promise<void>>();
 
-/** DB 쓰기 성공 후 호출 — 해당 미팅 행을 최신 DB 상태로 시트에 수렴시키는 잡을 적재. */
+/** DB 쓰기 성공 후 호출 — 해당 미팅 행을 최신 DB 상태로 시트에 수렴시키는 잡을 적재.
+ * 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(§7-3 self-heal). */
 export function queueMeetingSheetSync(ctx: MeetingCtx, id: string): void {
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runSheetSync(ctx, id))
+    .then(() => drainPendingMeetingSheet(ctx, id))
     .catch(() => {}); // runSheetSync 가 Sentry 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {
@@ -67,46 +74,66 @@ export function queueMeetingSheetSync(ctx: MeetingCtx, id: string): void {
   });
 }
 
-/** 1행 수렴 동기화 — 최신 DB 상태 기준. 선형 백오프 3회, 최종 실패는 Sentry 계수만. */
+/** 1행 수렴 동기화 — 최신 DB 상태 기준. 선형 백오프 3회.
+ * 성공(무예외 완료) → mirror_pending 해제. 최종 실패 → mirror_pending 마킹 + Sentry 계수(§2.2·§7-3). */
 async function runSheetSync(ctx: MeetingCtx, id: string): Promise<void> {
+  const ref = { spreadsheetId: ctx.spreadsheetId, tab: "meetings" as const, rowKey: id };
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const state = await readMeetingRowStateFromDb(ctx.spreadsheetId, id);
-      if (!state) return; // DB 에 행 자체가 없음 — 동기화할 정본 없음
-      if (state.cleared) {
-        // 이벤트 삭제(맵은 행 AT 에 있으므로 클리어 전) → 행 클리어(없으면 no-op). 멱등.
-        await syncMeetingRemoved(ctx.spreadsheetId, id);
-        await clearMeeting(ctx.spreadsheetId, id, { mirror: false });
-        return;
-      }
-      if (state.meeting) {
-        await upsertMeetingRowSnapshot(ctx.spreadsheetId, state.meeting);
-        // 이월(구분=이월) 행은 gcal 비대상(carryRaw 분기와 동일 의미론) — 옛 기수 이벤트가
-        // 읽기전용 시트에 잔존하는데 새 아레나 id 로 insert 하면 같은 미팅이 캘린더에 중복 생성됨
-        // (적대리뷰). 이월이 아닐 때만 reconcile. 행 보장 후 await 로 큐 직렬화 안에 가둠(non-throwing).
-        if (state.meeting.구분 !== "이월") {
-          await reconcileMeetingEvent(ctx.email, ctx.spreadsheetId, id, state.meeting);
-        }
-        return;
-      }
-      if (state.carryRaw) {
-        // 구형 이월 payload — Meeting 복원 불가, raw split write 로 수렴(gcal 비대상: 이월 행 동일 의미론).
-        await upsertCarriedRawSnapshot(
-          ctx.spreadsheetId,
-          { 원본id: state.carryRaw.원본id, raw: state.carryRaw.raw },
-          id,
-        );
-        return;
-      }
-      return; // 파싱 불가 payload — 시트 반영 불가(정본 DB 는 그대로, 읽기도 DB)
+      await syncMeetingRowToSheet(ctx, id);
+      await clearMirrorPending(ref).catch(() => {});
+      return;
     } catch (e) {
       lastErr = e;
       await new Promise((r) => setTimeout(r, 300 * attempt));
     }
   }
+  await markMirrorPending(ref).catch(() => {});
   Sentry.captureException(lastErr, { tags: { where: "meeting-sheet-sync" } });
   captureServerEvent("sheet_mirror_error", { tab: "meetings" });
+}
+
+/** 1회 시트 반영(최신 DB 상태) — 실패 시 throw(runSheetSync 가 재시도·표식 관리). */
+async function syncMeetingRowToSheet(ctx: MeetingCtx, id: string): Promise<void> {
+  const state = await readMeetingRowStateFromDb(ctx.spreadsheetId, id);
+  if (!state) return; // DB 에 행 자체가 없음 — 동기화할 정본 없음
+  if (state.cleared) {
+    // 이벤트 삭제(맵은 행 AT 에 있으므로 클리어 전) → 행 클리어(없으면 no-op). 멱등.
+    await syncMeetingRemoved(ctx.spreadsheetId, id);
+    await clearMeeting(ctx.spreadsheetId, id, { mirror: false });
+    return;
+  }
+  if (state.meeting) {
+    await upsertMeetingRowSnapshot(ctx.spreadsheetId, state.meeting);
+    // 이월(구분=이월) 행은 gcal 비대상(carryRaw 분기와 동일 의미론) — 옛 기수 이벤트가
+    // 읽기전용 시트에 잔존하는데 새 아레나 id 로 insert 하면 같은 미팅이 캘린더에 중복 생성됨
+    // (적대리뷰). 이월이 아닐 때만 reconcile. 행 보장 후 await 로 큐 직렬화 안에 가둠(non-throwing).
+    if (state.meeting.구분 !== "이월") {
+      await reconcileMeetingEvent(ctx.email, ctx.spreadsheetId, id, state.meeting);
+    }
+    return;
+  }
+  if (state.carryRaw) {
+    // 구형 이월 payload — Meeting 복원 불가, raw split write 로 수렴(gcal 비대상: 이월 행 동일 의미론).
+    await upsertCarriedRawSnapshot(
+      ctx.spreadsheetId,
+      { 원본id: state.carryRaw.원본id, raw: state.carryRaw.raw },
+      id,
+    );
+    return;
+  }
+  // 파싱 불가 payload — 시트 반영 불가(정본 DB 는 그대로, 읽기도 DB)
+}
+
+/** self-heal: 같은 시트의 밀린(mirror_pending) 미팅 행을 재드라이브. 1회 최대 25행. 큐 직렬화 안 순차. */
+async function drainPendingMeetingSheet(ctx: MeetingCtx, justSyncedId: string): Promise<void> {
+  if (!dbEnabled()) return;
+  const keys = await listMirrorPending(ctx.spreadsheetId, "meetings", 25).catch(() => []);
+  for (const key of keys) {
+    if (key === justSyncedId) continue;
+    await runSheetSync(ctx, key);
+  }
 }
 
 // ── 쓰기 프리미티브 ────────────────────────────────────────────

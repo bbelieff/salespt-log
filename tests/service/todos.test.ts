@@ -31,6 +31,9 @@ const reconcileTodoEvent = vi.fn();
 const syncTodoRemoved = vi.fn();
 const captureServerEvent = vi.fn();
 const captureException = vi.fn();
+const markMirrorPending = vi.fn();
+const clearMirrorPending = vi.fn();
+const listMirrorPending = vi.fn();
 
 vi.mock("@/repo/users", () => ({
   findUserByEmail: (...a: unknown[]) => findUserByEmail(...(a as [])),
@@ -43,6 +46,11 @@ vi.mock("@/repo/db/client", () => ({
 vi.mock("@/repo/db/read-daily", () => ({
   readTodoRowStateFromDb: (...a: unknown[]) => readTodoRowStateFromDb(...(a as [])),
   readTodosFromDb: (...a: unknown[]) => readTodosFromDb(...(a as [])),
+}));
+vi.mock("@/repo/db/mirror-pending", () => ({
+  markMirrorPending: (...a: unknown[]) => markMirrorPending(...(a as [])),
+  clearMirrorPending: (...a: unknown[]) => clearMirrorPending(...(a as [])),
+  listMirrorPending: (...a: unknown[]) => listMirrorPending(...(a as [])),
 }));
 vi.mock("@/repo/todos", () => ({
   appendTodo: (...a: unknown[]) => appendTodo(...(a as [])),
@@ -105,9 +113,13 @@ beforeEach(() => {
     readTodosFromDb, appendTodo, updateTodo, clearTodo, ensureTodoTab, findById,
     findRowById, listTodosByContract, onTodoCreated, onTodoChanged,
     reconcileTodoEvent, syncTodoRemoved, captureServerEvent, captureException,
+    markMirrorPending, clearMirrorPending, listMirrorPending,
   ]) m.mockReset();
 
   dbEnabled.mockReturnValue(true);
+  markMirrorPending.mockResolvedValue(undefined);
+  clearMirrorPending.mockResolvedValue(undefined);
+  listMirrorPending.mockResolvedValue([]);
   findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "8", email: EMAIL });
   // 시트 미러/보장 훅 기본 = 성공(no-op). 개별 테스트가 override.
   ensureTodoTab.mockResolvedValue(undefined);
@@ -291,5 +303,52 @@ describe("시트 미러 = 수렴 동기화(fire-and-forget) + 실패 격리", ()
       { timeout: 3000 },
     );
     expect(captureException).toHaveBeenCalled();
+  });
+});
+
+// ── §7-3 mirror_pending 안전망 (수용 기준: DB성공·시트실패 → 응답 성공 + mirror_pending) ──
+describe("mirror_pending 안전망 (§7-3)", () => {
+  const input = { contractRef: "c1", 제목: "x", 예정일자: "2026-07-15" } as never;
+
+  it("시트 미러 최종 실패 → 응답 성공 + markMirrorPending(tab=todos) (해제는 호출 안 함)", async () => {
+    readTodoRowStateFromDb.mockResolvedValue({ cleared: false, todo: mkTodo({ id: "t1" }) });
+    findRowById.mockResolvedValue(1); // 시트 행 있음 → update 경로
+    updateTodo.mockRejectedValue(new Error("sheet 500"));
+    const todo = await createTodo(EMAIL, input); // 응답은 즉시 성공(미러는 fire-and-forget)
+    await vi.waitFor(() => expect(markMirrorPending).toHaveBeenCalled(), { timeout: 3000 });
+    expect(markMirrorPending).toHaveBeenCalledWith({
+      spreadsheetId: SHEET,
+      tab: "todos",
+      rowKey: todo.id,
+    });
+    expect(clearMirrorPending).not.toHaveBeenCalled();
+    expect(captureServerEvent).toHaveBeenCalledWith("sheet_mirror_error", { tab: "todos" });
+  });
+
+  it("시트 미러 성공 → clearMirrorPending(tab=todos) (마킹은 호출 안 함)", async () => {
+    readTodoRowStateFromDb.mockResolvedValue({ cleared: false, todo: mkTodo({ id: "t1" }) });
+    findRowById.mockResolvedValue(1); // update 성공(기본 mock)
+    const todo = await createTodo(EMAIL, input);
+    await vi.waitFor(() => expect(clearMirrorPending).toHaveBeenCalled());
+    expect(clearMirrorPending).toHaveBeenCalledWith({
+      spreadsheetId: SHEET,
+      tab: "todos",
+      rowKey: todo.id,
+    });
+    expect(markMirrorPending).not.toHaveBeenCalled();
+  });
+
+  it("다음 쓰기의 queueSheetSync 가 밀린 pending 행을 재드라이브(self-heal) → 성공 시 해제", async () => {
+    listMirrorPending.mockResolvedValueOnce(["t-old"]);
+    readTodoRowStateFromDb.mockResolvedValue({ cleared: false, todo: mkTodo({ id: "t-old" }) });
+    findRowById.mockResolvedValue(1);
+    await createTodo(EMAIL, input);
+    await vi.waitFor(() =>
+      expect(clearMirrorPending).toHaveBeenCalledWith({
+        spreadsheetId: SHEET,
+        tab: "todos",
+        rowKey: "t-old",
+      }),
+    );
   });
 });

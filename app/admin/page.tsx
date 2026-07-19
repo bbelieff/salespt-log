@@ -183,6 +183,8 @@ export default async function AdminLandingPage() {
             {dbStatus.enabled && dbStatus.ok && (
               <span>
                 연결 OK · 응답 {dbStatus.latencyMs}ms · 기록 {dbStatus.rows ?? 0}행
+                {(dbStatus.mirrorPending ?? 0) > 0 &&
+                  ` · 시트 반영 대기 ${dbStatus.mirrorPending}행`}
               </span>
             )}
             {dbStatus.enabled && !dbStatus.ok && (

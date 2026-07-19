@@ -71,6 +71,16 @@ async function doEnsureSchema(): Promise<void> {
   await getPool().query(
     `create index if not exists sheet_rows_payload on sheet_rows using gin (payload)`,
   );
+  // mirror_pending (db-write-flip §2.2·§7-3): DB 정본 쓰기는 성공했는데 시트 수렴 미러가
+  // 재시도 끝에 실패한 행 표식. 다음 수렴 동기화가 재드라이브(self-heal). ADD COLUMN IF NOT EXISTS
+  // = 멱등·가산(기존 행 default false, 롤백 시 코드만 되돌리면 무해). 정본 payload 는 무오염.
+  await getPool().query(
+    `alter table sheet_rows add column if not exists mirror_pending boolean not null default false`,
+  );
+  // pending 행만 담는 부분 인덱스 — drain 조회(where mirror_pending) 가 전체 스캔 없이.
+  await getPool().query(
+    `create index if not exists sheet_rows_pending on sheet_rows (spreadsheet_id, tab) where mirror_pending`,
+  );
 }
 
 export interface SheetRowUpsert {
