@@ -25,7 +25,11 @@ export type MirrorTab =
   | "db"
   | "company_archive";
 
-/** fire-and-forget — await 하지 말 것(비차단 원칙). 시트 쓰기 성공 직후 호출. */
+/** fire-and-forget — await 하지 말 것(비차단 원칙). 시트 쓰기 성공 직후 호출.
+ * R2 방향(시트 정본 → DB 미러): 일시 DB blip 이 반쪽쓰기로 굳지 않게 **선형 백오프 3회** 재시도
+ * (2026-07-19, mirror_pending 안전망 동반 — 계획서 §486 silent 반쪽쓰기 완화). 최종 실패는
+ * warn + PostHog(db_mirror_error) 만 — 이 방향은 DB 행이 아예 없어 pending 표식이 불가하므로
+ * durable 정합은 backfill/parity 스크립트가 담당(R2 는 시트가 정본이라 손실 아님). */
 export function mirrorSheetRow(p: {
   spreadsheetId: string;
   tab: MirrorTab;
@@ -35,14 +39,24 @@ export function mirrorSheetRow(p: {
   if (!dbEnabled()) return; // 파일럿 밖 환경 — 완전 no-op
   void (async () => {
     const owner = await findOwnerBySpreadsheetId(p.spreadsheetId).catch(() => null);
-    await upsertSheetRow({
-      cohort: owner?.cohort ?? "?",
-      email: owner?.email ?? "",
-      spreadsheetId: p.spreadsheetId,
-      tab: p.tab,
-      rowKey: p.rowKey,
-      payload: p.payload,
-    });
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await upsertSheetRow({
+          cohort: owner?.cohort ?? "?",
+          email: owner?.email ?? "",
+          spreadsheetId: p.spreadsheetId,
+          tab: p.tab,
+          rowKey: p.rowKey,
+          payload: p.payload,
+        });
+        return;
+      } catch (e) {
+        lastErr = e;
+        await new Promise((r) => setTimeout(r, 300 * attempt));
+      }
+    }
+    throw lastErr;
   })().catch((e) => {
     const msg = (e instanceof Error ? e.message : "unknown").replace(
       /postgres(ql)?:\/\/\S+/gi,

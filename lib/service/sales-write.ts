@@ -21,6 +21,11 @@ import {
   type SalesRowForDb,
 } from "@/repo/db/client";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
+import {
+  clearMirrorPending,
+  listMirrorPending,
+  markMirrorPending,
+} from "@/repo/db/mirror-pending";
 import { salesDbPayload } from "@/repo/db/sales-payload";
 import { batchWriteChannelDailyRows, decrementMeetingReservation } from "@/repo/sales";
 import { writeProductionCell } from "@/repo/sales-production-cell";
@@ -43,11 +48,13 @@ function isDbCanonical(cohort: string): boolean {
 // ── 시트 수렴 미러 (시트별 직렬 큐) ───────────────────────────────
 const sheetSyncTails = new Map<string, Promise<void>>();
 
-/** 한 행 수렴 미러를 큐에 태운다(비차단). 같은 시트 잡은 **직렬** — 인터리빙으로 옛 값이 이기지 않게. */
+/** 한 행 수렴 미러를 큐에 태운다(비차단). 같은 시트 잡은 **직렬** — 인터리빙으로 옛 값이 이기지 않게.
+ * 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(§7-3 self-heal). */
 export function queueSalesRowSync(ctx: SalesCtx, date: string, channel: Channel): void {
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runSalesRowSync(ctx, date, channel))
+    .then(() => drainPendingSalesSheet(ctx, `${date}:${channel}`))
     .catch(() => {}); // runSalesRowSync 가 Sentry 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {
@@ -56,22 +63,44 @@ export function queueSalesRowSync(ctx: SalesCtx, date: string, channel: Channel)
 }
 
 /** 수렴 동기화 — **실행 시점 최신 DB 행** → 시트 E:H. 선형 백오프 3회.
- *  최종 실패는 Sentry 계수만(정본은 DB, 저장은 이미 성공). 편집기간 밖은 조용히 종료. */
+ *  성공(무예외 완료, 편집기간 밖 no-op 포함) → mirror_pending 해제. 최종 실패 → 마킹 + Sentry(§2.2·§7-3).
+ *  정본은 DB, 저장은 이미 성공. */
 async function runSalesRowSync(ctx: SalesCtx, date: string, channel: Channel): Promise<void> {
+  const ref = { spreadsheetId: ctx.spreadsheetId, tab: "sales" as const, rowKey: `${date}:${channel}` };
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const row = await readSalesRowFromDb(ctx.spreadsheetId, date, channel);
-      if (!row) return; // DB 에 정본 행 없음 — 시트에 반영할 것 없음
+      if (!row) {
+        await clearMirrorPending(ref).catch(() => {});
+        return; // DB 에 정본 행 없음 — 시트에 반영할 것 없음
+      }
       await writeSalesRowCells(ctx.spreadsheetId, date, channel, row); // false = 편집기간 밖(정상)
+      await clearMirrorPending(ref).catch(() => {});
       return;
     } catch (e) {
       lastErr = e;
       await new Promise((r) => setTimeout(r, 300 * attempt));
     }
   }
+  await markMirrorPending(ref).catch(() => {});
   Sentry.captureException(lastErr, { tags: { where: "sales-sheet-sync" } });
   captureServerEvent("sheet_mirror_error", { tab: "sales" });
+}
+
+/** self-heal: 같은 시트의 밀린(mirror_pending) sales 행을 재드라이브. 1회 최대 25행. 큐 직렬화 안 순차.
+ * row_key={date}:{channel} 를 분해해 runSalesRowSync 에 넘긴다(runSalesRowSync 가 최신 DB 를 다시 읽어 수렴). */
+async function drainPendingSalesSheet(ctx: SalesCtx, justSyncedKey: string): Promise<void> {
+  if (!dbEnabled()) return;
+  const keys = await listMirrorPending(ctx.spreadsheetId, "sales", 25).catch(() => []);
+  for (const key of keys) {
+    if (key === justSyncedKey) continue; // 이번 패스에서 이미 동기화함
+    const idx = key.indexOf(":");
+    if (idx < 0) continue;
+    const date = key.slice(0, idx);
+    const channel = key.slice(idx + 1) as Channel;
+    await runSalesRowSync(ctx, date, channel);
+  }
 }
 
 /** DB 정본 부분 upsert(jsonb 병합) — 1회 재시도, 최종 실패는 throw(시트 폴백 금지). */

@@ -32,6 +32,11 @@ import {
 } from "@/repo/todos";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { clearRowInDb, dbEnabled, writeRowToDb } from "@/repo/db/client";
+import {
+  clearMirrorPending,
+  listMirrorPending,
+  markMirrorPending,
+} from "@/repo/db/mirror-pending";
 import { readTodoRowStateFromDb, readTodosFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import {
@@ -59,11 +64,13 @@ async function resolveSheet(email: string): Promise<SheetCtx> {
 /** 시트별 미러 잡 직렬화 — append 슬롯 경합·행별 순서 역전 방지 (프로세스 내). */
 const sheetSyncTails = new Map<string, Promise<void>>();
 
-/** DB 쓰기 성공 후 호출 — 해당 ToDo 행을 최신 DB 상태로 시트에 수렴시키는 잡을 적재. */
+/** DB 쓰기 성공 후 호출 — 해당 ToDo 행을 최신 DB 상태로 시트에 수렴시키는 잡을 적재.
+ * 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(§7-3 self-heal) — "다음 어떤 쓰기든"이 트리거. */
 function queueSheetSync(ctx: SheetCtx, id: string): void {
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runSheetSync(ctx, id))
+    .then(() => drainPendingTodoSheet(ctx, id))
     .catch(() => {}); // runSheetSync 가 Sentry 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {
@@ -71,42 +78,64 @@ function queueSheetSync(ctx: SheetCtx, id: string): void {
   });
 }
 
-/** 1행 수렴 동기화 — 최신 DB 상태 기준. 선형 백오프 3회, 최종 실패는 Sentry 계수만. */
+/** 1행 수렴 동기화 — 최신 DB 상태 기준. 선형 백오프 3회.
+ * 성공(무예외 완료) → mirror_pending 해제. 최종 실패 → mirror_pending 마킹 + Sentry 계수(§2.2·§7-3). */
 async function runSheetSync(ctx: SheetCtx, id: string): Promise<void> {
+  const ref = { spreadsheetId: ctx.spreadsheetId, tab: "todos" as const, rowKey: id };
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      // 05 탭 없는 시트(신규 수강생 첫 ToDo)에서 아래 range 읽기가 400 으로 죽지 않게 선보장(멱등).
-      await ensureTodoTab(ctx.spreadsheetId);
-      const state = await readTodoRowStateFromDb(ctx.spreadsheetId, id);
-      if (!state) return; // DB 에 행 자체가 없음 — 동기화할 정본 없음
-      if (state.cleared) {
-        // 이벤트 삭제(맵은 행에 있으므로 클리어 전) → 행 클리어(없으면 no-op). 멱등.
-        await syncTodoRemoved(ctx.spreadsheetId, id);
-        await clearTodo(ctx.spreadsheetId, id, { mirror: false });
-        return;
-      }
-      const todo = state.todo;
-      if (!todo) return; // 파싱 불가 payload — 시트 반영 불가(정본 DB 는 그대로, 읽기도 DB)
-      const { id: _drop, ...fields } = todo;
-      void _drop;
-      // 재시도 포함 update-or-append: 이전 시도의 append 가 커밋됐으면 다음 시도는 update 로 수렴(중복 방지).
-      if ((await findRowById(ctx.spreadsheetId, id)) === null) {
-        await appendTodo(ctx.spreadsheetId, todo, { mirror: false });
-      } else {
-        await updateTodoRow(ctx.spreadsheetId, id, fields, { mirror: false });
-      }
-      // 행 보장 후 gcal reconcile — **await 로 큐 직렬화 안에 가둠**(fire-and-forget 으로 탈출하면
-      // 삭제 잡의 맵 읽기와 경합 → 이벤트ID 미기록 고아 이벤트). non-throwing(guard 내장).
-      await reconcileTodoEvent(ctx.email, ctx.spreadsheetId, id, todo);
+      await syncTodoRowToSheet(ctx, id);
+      // 시트가 최신 DB 상태로 수렴됨 — 밀린 표식 해제(없으면 저렴한 no-op).
+      await clearMirrorPending(ref).catch(() => {});
       return;
     } catch (e) {
       lastErr = e;
       await new Promise((r) => setTimeout(r, 300 * attempt));
     }
   }
+  // 정본은 이미 DB — 저장은 성공. 시트만 밀림 → durable 표식 남기고 다음 동기화가 흡수(§4).
+  await markMirrorPending(ref).catch(() => {});
   Sentry.captureException(lastErr, { tags: { where: "todo-sheet-sync" } });
   captureServerEvent("sheet_mirror_error", { tab: "todos" });
+}
+
+/** 1회 시트 반영(최신 DB 상태) — 실패 시 throw(runSheetSync 가 재시도·표식 관리). */
+async function syncTodoRowToSheet(ctx: SheetCtx, id: string): Promise<void> {
+  // 05 탭 없는 시트(신규 수강생 첫 ToDo)에서 아래 range 읽기가 400 으로 죽지 않게 선보장(멱등).
+  await ensureTodoTab(ctx.spreadsheetId);
+  const state = await readTodoRowStateFromDb(ctx.spreadsheetId, id);
+  if (!state) return; // DB 에 행 자체가 없음 — 동기화할 정본 없음
+  if (state.cleared) {
+    // 이벤트 삭제(맵은 행에 있으므로 클리어 전) → 행 클리어(없으면 no-op). 멱등.
+    await syncTodoRemoved(ctx.spreadsheetId, id);
+    await clearTodo(ctx.spreadsheetId, id, { mirror: false });
+    return;
+  }
+  const todo = state.todo;
+  if (!todo) return; // 파싱 불가 payload — 시트 반영 불가(정본 DB 는 그대로, 읽기도 DB)
+  const { id: _drop, ...fields } = todo;
+  void _drop;
+  // 재시도 포함 update-or-append: 이전 시도의 append 가 커밋됐으면 다음 시도는 update 로 수렴(중복 방지).
+  if ((await findRowById(ctx.spreadsheetId, id)) === null) {
+    await appendTodo(ctx.spreadsheetId, todo, { mirror: false });
+  } else {
+    await updateTodoRow(ctx.spreadsheetId, id, fields, { mirror: false });
+  }
+  // 행 보장 후 gcal reconcile — **await 로 큐 직렬화 안에 가둠**(fire-and-forget 으로 탈출하면
+  // 삭제 잡의 맵 읽기와 경합 → 이벤트ID 미기록 고아 이벤트). non-throwing(guard 내장).
+  await reconcileTodoEvent(ctx.email, ctx.spreadsheetId, id, todo);
+}
+
+/** self-heal: 같은 시트의 밀린(mirror_pending) ToDo 행을 재드라이브. 1회 최대 25행(나머지는 다음 트리거).
+ * 큐 직렬화 안에서 순차 실행 → 경합 없음. 각 runSheetSync 가 성공 시 해제·실패 시 재마킹(수렴). */
+async function drainPendingTodoSheet(ctx: SheetCtx, justSyncedId: string): Promise<void> {
+  if (!dbEnabled()) return;
+  const keys = await listMirrorPending(ctx.spreadsheetId, "todos", 25).catch(() => []);
+  for (const key of keys) {
+    if (key === justSyncedId) continue; // 이번 패스에서 이미 동기화함
+    await runSheetSync(ctx, key);
+  }
 }
 
 // ── Public API ─────────────────────────────────────────────────
