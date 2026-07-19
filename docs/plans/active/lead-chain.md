@@ -285,6 +285,12 @@ export function listLeadCandidates(email: string): Promise<LeadCandidate[]>;
 ---
 
 ## Log
+- 2026-07-19 PR-3 구현(DevF): 컨택탭 콜·지·기·소 슬롯 [발굴에서 가져오기] 피커. 신규 LeadPickerModal
+  (useDBOverview().leads·접수일 desc·검색, C PR-2 무결합). NewItem 배선 — mergeLeadDraft(baseline 재병합)
+  로 R7(교체 혼합 방지) + CompanyInfoEditor key 리마운트로 R8. 직접입력 폴백 유지. **범위 결정(§0.5)**:
+  ①예약비고 필드 콜지기소에 재노출(프리필 조건/구분 확인·수정) ②발굴id 스레딩·matched 필터=PR-6 이월
+  (그사이 갭은 matched 업체명 fallback 커버). 머지=C PR-2 뒤(같은 01 구역 직렬). 신규 테스트(R7 baseline).
+
 - 2026-07-15 **PR-5 구현(DevB)** — 발굴 안정 id 부여·보존·무효화(R10/R13/R14 실 수리).
   ① addLead: `randomUUID()` 부여 → appendLead payload 에 항상 명시(R10 — 재사용 행 옛 id 를 덮음).
   ② patchLead: 기존 발굴id 를 읽어 보존, 없으면 지연 부여(mint). "생략=보존" 의존 안 함.

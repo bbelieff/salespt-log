@@ -9,13 +9,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Channel, Meeting } from "@/types";
+import type { Channel, DBLead, Meeting } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 import TimeSelectPair from "@/components/ui/TimeSelectPair";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import type { CompanyInfo } from "@/types";
 import { ConfirmLeaveModal } from "./MeetingDirtyGuard";
 import { useDirtyRegister } from "@/components/DirtyGuard";
+import { mergePick, type PickMerged } from "../_lib/lead-pick";
+import LeadPickerModal from "./LeadPickerModal";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -72,6 +74,25 @@ function NewItem({
   const collapsedTime = slot.미팅시간 || "—:—";
   const collapsedCompany = slot.업체명 || "(업체 미입력)";
   const collapsedPlace = slot.장소 || "";
+  const isLead = channel === "콜·지·기·소";
+
+  // 발굴 피커 상태. baseline = 프리필 직전 원본 스냅샷(R7: 발굴 교체 시 A+B 혼합 방지 —
+  // 매 선택을 baseline 에 재병합해 A 값이 아닌 사용자 원본에서만 채운다). ciKey = R8 리마운트.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [baseline, setBaseline] = useState<NewSlot | null>(null);
+  const [lastMerge, setLastMerge] = useState<PickMerged | null>(null);
+  const [ciKey, setCiKey] = useState(0);
+
+  const onPickLead = (lead: DBLead) => {
+    const origin = baseline ?? slot;
+    if (!baseline) setBaseline(origin);
+    // mergePick: R7(혼합 금지) + §2.5(pick 후 손입력 보존) 동시 충족. 상세 = _lib/lead-pick.ts.
+    const m = mergePick(origin, slot, lastMerge, lead);
+    onChange({ ...slot, 업체명: m.업체명, 예약비고: m.예약비고, 업체정보: m.업체정보 });
+    setLastMerge(m);
+    setCiKey((k) => k + 1); // CompanyInfoEditor 리마운트(mount 시 1회 초기화 — 주입값 반영)
+    setPickerOpen(false);
+  };
 
   return (
     <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-gray-300 bg-white shadow-sm">
@@ -94,6 +115,16 @@ function NewItem({
       {/* 펼침 본문 */}
       <div className="space-y-3 border-t border-gray-200 px-3 py-3">
         <ExpandHeader saved={false} reservationDate={reservationDate} />
+        {/* 콜·지·기·소: 03 발굴에서 프리필(선택 사항 — 안 쓰면 기존과 100% 동일). lead-chain §2-1. */}
+        {isLead && (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-100"
+          >
+            📥 발굴에서 가져오기
+          </button>
+        )}
         <DateTimeRow
           미팅날짜={slot.미팅날짜}
           미팅시간={slot.미팅시간}
@@ -112,8 +143,17 @@ function NewItem({
           value={slot.장소}
           onChange={(v) => onChange({ ...slot, 장소: v })}
         />
-        {/* 업체정보 — 슬롯 메모리(onChange)에만 반영, 맨 아래 [저장하기]가 등록 시 함께 기록(04 T~AS). */}
+        {/* 콜·지·기·소: 발굴 프리필의 조건/구분이 예약비고로 오므로 확인·수정할 수 있게 노출. */}
+        {isLead && (
+          <FieldNote
+            value={slot.예약비고}
+            onChange={(v) => onChange({ ...slot, 예약비고: v })}
+          />
+        )}
+        {/* 업체정보 — 슬롯 메모리(onChange)에만 반영, 맨 아래 [저장하기]가 등록 시 함께 기록(04 T~AS).
+            key={ciKey}: 발굴 프리필로 업체정보 주입 시 리마운트(에디터는 mount 1회 초기화, R8). */}
         <CompanyInfoEditor
+          key={ciKey}
           value={slot.업체정보}
           hideSave
           onChange={(ci) => onChange({ ...slot, 업체정보: ci })}
@@ -124,6 +164,9 @@ function NewItem({
           hint="입력 후 맨 아래 [저장하기]로 등록돼요 · 삭제 시 미팅예약 -1"
         />
       </div>
+      {pickerOpen && (
+        <LeadPickerModal onPick={onPickLead} onClose={() => setPickerOpen(false)} />
+      )}
     </div>
   );
 }
