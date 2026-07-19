@@ -204,4 +204,15 @@ describe("createMeetingRecord — previousMeetingId 발굴id 승계", () => {
     const payload = writeRowToDb.mock.calls[0]![0].payload as { 발굴id?: string };
     expect(payload.발굴id).toBeUndefined();
   });
+
+  it("비파일럿 리스케줄 = 원본 조회 스킵(발굴id 시트 부재 → 구조적 no-op, R2 read 불변)", async () => {
+    // 시트는 발굴id 컬럼이 없어 승계 불가 → getMeetingRecord(findById) 를 아예 부르지 않는다.
+    await createMeetingRecord(
+      { ...CTX, cohort: "7" },
+      mkMeeting({ id: "m-new", previousMeetingId: "orig" }),
+    );
+    expect(findById).not.toHaveBeenCalled();
+    expect(readMeetingRowStateFromDb).not.toHaveBeenCalled();
+    expect(appendMeeting).toHaveBeenCalled();
+  });
 });

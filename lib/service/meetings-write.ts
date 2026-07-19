@@ -156,9 +156,11 @@ export async function createMeetingRecord(
 /** 발굴 링크 승계 — 리스케줄·추가미팅은 **새 행(새 id)** 이라 계보(previousMeetingId)로 원본의
  * `발굴id` 를 이어받지 않으면, 매칭됐던 발굴이 일정 변경 한 번에 피커로 **부활**한다(이월 스펙 위반,
  * lead-chain §4-5). 클라이언트가 이미 실어보냈으면(폼 spread) 그대로 두고, **부재 시에만** 1회 조회.
- * 원본 read 실패는 무시(승계 없이 진행) — 최악은 dangling(안전 실패), 저장을 막지 않는다. */
+ * 원본 read 실패는 무시(승계 없이 진행) — 최악은 dangling(안전 실패), 저장을 막지 않는다.
+ * **비파일럿은 스킵** — 발굴id 는 DB payload 전용(시트 컬럼 0)이라 시트 원본은 발굴id 를 실을 수 없어
+ * 승계가 구조적 no-op. 비파일럿 생성 경로에 무의미한 시트 read 를 더하지 않는다(R2 불변 보존, PR-6 리뷰). */
 async function withInheritedLeadLink(ctx: MeetingCtx, m: Meeting): Promise<Meeting> {
-  if (!m.previousMeetingId || m.발굴id) return m;
+  if (!isDb(ctx) || !m.previousMeetingId || m.발굴id) return m;
   const prev = await getMeetingRecord(ctx, m.previousMeetingId).catch(() => null);
   return prev?.발굴id ? { ...m, 발굴id: prev.발굴id } : m;
 }

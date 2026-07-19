@@ -309,6 +309,9 @@ export function listLeadCandidates(email: string): Promise<LeadCandidate[]>;
   생존 → 그 스펙+설계로 재구현. 교훈: 파괴적 git 은 확인과 **분리된 단계**로. (인시던트 노트 별도)
   ⚠️ **디스패치 스테일 대조(§0.5)**: 2026-07-19 디스패치 "임무=PR-4"는 이미 머지분(#581, #589 분리 후에도
   db.ts/meeting.ts 에 생존·배럴 재수출·SSOT 등재 확인). 재작업=중복 → 진짜 잔여 = 이 PR-6 으로 판단·진행.
+  🔬 **적대 리뷰 4렌즈×반증검증(17에이전트)**: 12발견 → **확증 1건(중복 2건 병합)·블로커 0**. #559·PR-5·게이트
+  대칭·안전 실패방향 전부 clean. 유일 확증 = withInheritedLeadLink 가 **비파일럿에서 무의미한 시트 read**
+  (minor·정확성 무해) → `if (!isDb(ctx)) return m;` 게이트로 수리(R2 read 불변 회복) + 회귀 1건(findById 미호출).
 - 2026-07-15 **PR-5 구현(DevB)** — 발굴 안정 id 부여·보존·무효화(R10/R13/R14 실 수리).
   ① addLead: `randomUUID()` 부여 → appendLead payload 에 항상 명시(R10 — 재사용 행 옛 id 를 덮음).
   ② patchLead: 기존 발굴id 를 읽어 보존, 없으면 지연 부여(mint). "생략=보존" 의존 안 함.
