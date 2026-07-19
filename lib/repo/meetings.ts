@@ -241,6 +241,27 @@ export async function findByDateRange(
   return result;
 }
 
+/** 전체 미팅 1-read — 발굴 후보 matched 파생용(콜·지·기·소 미팅의 발굴id·업체명 집합, lead-chain §7-1).
+ * id 중복은 첫 행만. 시트는 발굴id 컬럼이 없으므로 비파일럿 미팅은 발굴id 미보유(업체명 폴백으로 매칭). */
+export async function readAllMeetings(spreadsheetId: string): Promise<Meeting[]> {
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: RANGE_ALL,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const all = (res.data.values ?? []) as unknown[][];
+  const out: Meeting[] = [];
+  const seen = new Set<string>();
+  for (const r of all) {
+    const m = rowToMeeting(r);
+    if (!m || seen.has(m.id)) continue;
+    seen.add(m.id);
+    out.push(m);
+  }
+  return out;
+}
+
 /**
  * 1-read 로 두 기준(예약일/미팅날짜) 동시 추출 — 컨택 badge(예약일)·일정 카드
  * (미팅날짜)가 같은 데이터의 다른 필터. 사용처: loadWeekMeetings.

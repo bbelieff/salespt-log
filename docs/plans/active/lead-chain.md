@@ -250,7 +250,7 @@ R10 의 "최악은 dangling" 증명은 **append 의 id 쓰기가 도달함**을 
 | **PR-0** 🔴 | **선행 필수** — `read-db-tab` 백필 열문자 폼 shadowing 교정(필드명 우선/overlay) + 혼합 payload 회귀 테스트. **03 편집 stale 라이브 버그 동시 해소**(§4-2) | `lib/repo/db/read-db-tab.ts` | **DevB** — 이게 없으면 발굴id 가 **읽히지 않아** PR-5·6 이 무의미 |
 | **PR-4** | 공용 계약 — `DBLead.발굴id`·`Meeting.발굴id` **optional 추가**(default 금지, R11) + SSOT(`data-model.md`) 등재 | `lib/types` (**공용부**) | **DevB** — §3.5 상 **단독 선행 PR** |
 | **PR-5** | 발굴 id 부여·보존 — `addLead` uuid 생성 · `appendLead` **항상 명시**(R10) · **`clearLead` 가 `발굴id:""` 무효화**(B3) · **03 단건 payload read 신설 → `patchLead` 가 기존 id 를 읽어 명시**(B2) · 라우트 id strip · **회귀 테스트(행 재사용 신원 상속 재현)** | `lib/repo/db.ts` · `lib/repo/db/*` · `lib/service/db.ts` · `app/api/db` | **DevB** (03 소유 트랙과 조율) |
-| **PR-6** | 링크 배선 + **matched 파생** — 미팅 생성 시 `발굴id` 기록 · **`previousMeetingId` 상속**(리스케줄) · `listLeadCandidates` (matched 계산·미매칭 이월) | `lib/service/contact.ts` · `meetings-write.ts` · `lib/service/db.ts` | **DevB** |
+| **PR-6** ✅ | 링크 배선 + **matched 파생** — 미팅 생성 시 `발굴id` 기록 · **`previousMeetingId` 상속**(리스케줄) · `listLeadCandidates` (matched 계산·미매칭 이월) | `lib/service/meetings-write.ts` · `lib/service/db.ts` · `lib/repo/meetings.ts` · `app/api/leads` | **DevB** — 완료(아래 Log) |
 
 - **의존**: **PR-0 → PR-4 → PR-5 → PR-6**(읽기 교정 → 공용 계약 → id → 링크). PR-1(완료) → PR-3.
   **PR-2·PR-3 는 PR-6 의 계약(아래)에 의존** — PR-6 머지 후 착수하거나, 계약만 먼저 합의하고 병렬.
@@ -290,7 +290,28 @@ export function listLeadCandidates(email: string): Promise<LeadCandidate[]>;
   로 R7(교체 혼합 방지) + CompanyInfoEditor key 리마운트로 R8. 직접입력 폴백 유지. **범위 결정(§0.5)**:
   ①예약비고 필드 콜지기소에 재노출(프리필 조건/구분 확인·수정) ②발굴id 스레딩·matched 필터=PR-6 이월
   (그사이 갭은 matched 업체명 fallback 커버). 머지=C PR-2 뒤(같은 01 구역 직렬). 신규 테스트(R7 baseline).
-
+- 2026-07-19 **PR-6 구현(DevB)** — 링크 결선(matched 파생·이월). 발굴 체인 최종 PR.
+  ① **미팅 생성 시 발굴id 기록** — 별도 코드 불요: `createMeetingRecord` 가 `Meeting.parse(m)` 를 payload 로
+  저장하고 PR-4 가 `Meeting.발굴id` 를 스키마에 넣어, 피커가 폼에 실은 발굴id 가 자연히 DB 에 실린다.
+  ② **`previousMeetingId` 발굴id 승계** — 리스케줄·추가미팅은 새 행(새 id)이라 계보가 끊긴다. 클라 spread
+  의존은 취약(미래 리팩터·시트 read 무발굴id) → **서버 안전망**을 `createMeetingRecord` 에 박음
+  (`withInheritedLeadLink`): previousMeetingId 있고 발굴id 부재 시에만 원본 1회 조회해 상속. 이 보편 지점이
+  `appendNewMeeting`(=/api/meeting=리스케줄·추가미팅 진입)을 전부 커버 → **contact.ts 무변경**. 원본 조회
+  실패는 무시(승계 없이 저장 진행=안전 실패, 저장 안 막음). 회귀 4건.
+  ③ **`listLeadCandidates(email, query)`** — C #590 `loadLeadsForPicker`(목록·게이트·검색·시트폴백) 재사용 +
+  `readMeetingLinkSets`(미팅 발굴id·콜지기소 업체명 집합, 파일럿=readMeetingsFromDb·비파일럿=신규
+  `readAllMeetings`) → `matched` 파생. **만료 없음**(미매칭=이월, 피커가 `!matched`). 폴백은 발굴id 없는
+  lead 만·**콜지기소 채널 미팅 업체명만**(타 채널 동명 오탐 차단, "(변경)" 접두 정규화). 미팅 read 실패
+  →빈 집합(전 lead 후보=안전 방향). `/api/leads` 를 listLeadCandidates 로 전환(응답에 matched 포함) → F PR-3
+  피커가 필터만. 회귀 9건(생존 test-first 스펙).
+  ⚠️ **세션 사고(정직 기록)**: 워크트리 리셋 시 `git status` 를 `reset --hard` 와 같은 명령에 체이닝해
+  PR-6 WIP(수정 5파일)를 눈으로 보고도 날림. 복구 불가(커밋·stage 이력 없음). untracked 테스트 스펙만
+  생존 → 그 스펙+설계로 재구현. 교훈: 파괴적 git 은 확인과 **분리된 단계**로. (인시던트 노트 별도)
+  ⚠️ **디스패치 스테일 대조(§0.5)**: 2026-07-19 디스패치 "임무=PR-4"는 이미 머지분(#581, #589 분리 후에도
+  db.ts/meeting.ts 에 생존·배럴 재수출·SSOT 등재 확인). 재작업=중복 → 진짜 잔여 = 이 PR-6 으로 판단·진행.
+  🔬 **적대 리뷰 4렌즈×반증검증(17에이전트)**: 12발견 → **확증 1건(중복 2건 병합)·블로커 0**. #559·PR-5·게이트
+  대칭·안전 실패방향 전부 clean. 유일 확증 = withInheritedLeadLink 가 **비파일럿에서 무의미한 시트 read**
+  (minor·정확성 무해) → `if (!isDb(ctx)) return m;` 게이트로 수리(R2 read 불변 회복) + 회귀 1건(findById 미호출).
 - 2026-07-15 **PR-5 구현(DevB)** — 발굴 안정 id 부여·보존·무효화(R10/R13/R14 실 수리).
   ① addLead: `randomUUID()` 부여 → appendLead payload 에 항상 명시(R10 — 재사용 행 옛 id 를 덮음).
   ② patchLead: 기존 발굴id 를 읽어 보존, 없으면 지연 부여(mint). "생략=보존" 의존 안 함.

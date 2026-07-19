@@ -156,3 +156,63 @@ describe("mirror_pending 안전망 (§7-3) — meetings", () => {
     expect(clearMirrorPending).not.toHaveBeenCalled();
   });
 });
+
+/** 발굴 링크 승계 (lead-chain §4-5 · PR-6) — 리스케줄·추가미팅(새 행)이 원본 발굴id 를 이어받아
+ * 매칭된 발굴이 피커로 부활하지 않게. getMeetingRecord(파일럿)=readMeetingRowStateFromDb 경유. */
+describe("createMeetingRecord — previousMeetingId 발굴id 승계", () => {
+  it("previousMeetingId 있고 발굴id 없으면 → 원본 발굴id 상속(payload 에 실림)", async () => {
+    readMeetingRowStateFromDb.mockResolvedValue({
+      cleared: false,
+      meeting: mkMeeting({ id: "orig", 발굴id: "lead-9" }),
+    });
+    await createMeetingRecord(
+      CTX,
+      mkMeeting({ id: "m-new", channel: "콜·지·기·소", previousMeetingId: "orig" }),
+    );
+    expect(writeRowToDb).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ id: "m-new", 발굴id: "lead-9" }) }),
+    );
+  });
+
+  it("발굴id 를 이미 실어보내면(폼 spread) 원본 조회 없이 그대로 보존", async () => {
+    // 원본이 다른 발굴을 가리켜도 클라 발굴id 우선 — 상속이 덮지 않는다.
+    readMeetingRowStateFromDb.mockResolvedValue({
+      cleared: false,
+      meeting: mkMeeting({ id: "orig", 발굴id: "other" }),
+    });
+    await createMeetingRecord(
+      CTX,
+      mkMeeting({ id: "m-new", previousMeetingId: "orig", 발굴id: "own" }),
+    );
+    expect(writeRowToDb).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ 발굴id: "own" }) }),
+    );
+  });
+
+  it("previousMeetingId 없으면 상속 안 함(신규 미팅 = 발굴id 부재 유지)", async () => {
+    await createMeetingRecord(CTX, mkMeeting({ id: "m-new" }));
+    const payload = writeRowToDb.mock.calls[0]![0].payload as { 발굴id?: string };
+    expect(payload.발굴id).toBeUndefined();
+  });
+
+  it("원본 조회 실패해도 저장은 진행(승계 없이·저장 안 막음 = 안전 실패)", async () => {
+    readMeetingRowStateFromDb.mockRejectedValue(new Error("orig read down"));
+    await expect(
+      createMeetingRecord(CTX, mkMeeting({ id: "m-new", previousMeetingId: "orig" })),
+    ).resolves.toBeUndefined();
+    expect(writeRowToDb).toHaveBeenCalled();
+    const payload = writeRowToDb.mock.calls[0]![0].payload as { 발굴id?: string };
+    expect(payload.발굴id).toBeUndefined();
+  });
+
+  it("비파일럿 리스케줄 = 원본 조회 스킵(발굴id 시트 부재 → 구조적 no-op, R2 read 불변)", async () => {
+    // 시트는 발굴id 컬럼이 없어 승계 불가 → getMeetingRecord(findById) 를 아예 부르지 않는다.
+    await createMeetingRecord(
+      { ...CTX, cohort: "7" },
+      mkMeeting({ id: "m-new", previousMeetingId: "orig" }),
+    );
+    expect(findById).not.toHaveBeenCalled();
+    expect(readMeetingRowStateFromDb).not.toHaveBeenCalled();
+    expect(appendMeeting).toHaveBeenCalled();
+  });
+});
