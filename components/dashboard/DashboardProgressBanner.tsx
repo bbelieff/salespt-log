@@ -1,4 +1,3 @@
-import { formatMoney } from "@/lib/format/money";
 /**
  * DashboardProgressBanner — 대시보드 메인 배너 (sticky top-24 z-30).
  *
@@ -18,6 +17,8 @@ import { formatMoney } from "@/lib/format/money";
  * ⚠ 영업이익은 이 배너 외부 별도 카드 (OperatingProfitCard) — page.tsx에서 호출.
  */
 "use client";
+
+import { formatMoney } from "@/lib/format/money";
 
 interface Props {
   today: string; // "5/4"

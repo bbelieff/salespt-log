@@ -1,4 +1,3 @@
-import { formatMoney } from "@/lib/format/money";
 /**
  * FinanceSummaryBoxes — 매출/비용 1:1 grid.
  *
@@ -8,6 +7,8 @@ import { formatMoney } from "@/lib/format/money";
  * 추후 분리 리팩터링 시 이 파일에서 export. 지금은 placeholder.
  */
 "use client";
+
+import { formatMoney } from "@/lib/format/money";
 
 interface Props {
   revenue: number;

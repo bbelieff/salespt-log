@@ -1,4 +1,3 @@
-import { formatMoney } from "@/lib/format/money";
 /**
  * OperatingProfitCard — 영업이익 큰 카드 (대시보드 메인 KPI).
  *
@@ -12,6 +11,8 @@ import { formatMoney } from "@/lib/format/money";
  *   - 하단: "영업이익률 N%"
  */
 "use client";
+
+import { formatMoney } from "@/lib/format/money";
 
 interface Props {
   revenue: number; // 아레나 집계 매출 (점수·전광판 기준)
