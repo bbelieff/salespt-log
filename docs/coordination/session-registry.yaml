@@ -25,10 +25,18 @@ controllers:
     status: STANDBY
   CODEX-DRYRUN:
     role: "KPI-③ 실전 드라이런 — codex-bootstrap.md 로 소형 안전 태스크 1건 수행(규약 실증)"
-    status: awaiting_session   # belie 가 Codex 세션 열면 착수. task=codex-dryrun-track-coord-docs
-    supervisor: "TRACK-C(DevC — Claude측 채점·checkpoint 기입·복귀 프로토콜 실연)"
+    status: complete_via_relay   # Codex 규약 준수 PASS, 환경 블로커로 검증·머지만 Claude(TRACK-C) 이어받아 완주
+    supervisor: "TRACK-C(DevC — 채점·relay 완주·runbook 반영)"
     task_id: codex-dryrun-track-coord-docs
-    note: "AGENTS.md 추적(#602) 완료 → Codex 부트스트랩 2단계 통과 가능. belie 신호 대기."
+    scoring_result:   # TRACK-C 감독관 채점 (코드 실측)
+      worktree_isolation: PASS      # wt/codex-track-coord-docs 전용·메인/타 lease 무접촉
+      public_contract_untouched: PASS  # .github·lib·scripts·SSOT 무접촉(docs만)
+      content_unchanged: PASS       # 2문서 SHA-256 원본과 바이트 동일
+      secrets: PASS                 # staged 문서 비밀값 0
+      checkpoint_fields: PASS       # registry 자기 슬롯에 base/head_sha·changed_files·blocker·다음행동·시각 기입
+      gates_and_merge: BLOCKED_BY_ENV  # check.sh(vitest 상위경로 거부)·next build(폰트 HTTPS)·GitHub fetch 차단 — Codex 샌드박스(오프라인·別 OS 사용자 CodexSandboxOffline) 한정. Claude 정상환경 동일파일 재검증 = check.sh 초록·next build 성공(환경 한정 실증)
+    verdict: "규약 위반 0. 실패 원인=Codex 실행환경(오프라인 샌드박스)의 파일·네트워크 제한. 런북 B '거의 완료분은 마무리'에 따라 Claude relay 완주."
+    relay_pr: "chore/track-coord-docs-relay (Codex Co-authored)"
 
 tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
   TRACK-A:
