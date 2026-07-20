@@ -176,7 +176,9 @@ export default function RowCard({
         </button>
         <button
           type="button"
-          onClick={() => onSave(draft)}
+          // onSave(=handleSave)는 실패 시 rethrow(가드 saveAll 관측용) → 직접 버튼 경로에선
+          // 삼켜 unhandled rejection 방지(토스트는 handleSave 가 이미 노출).
+          onClick={() => void Promise.resolve(onSave(draft)).catch(() => {})}
           disabled={pending}
           className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300"
         >

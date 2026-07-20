@@ -145,6 +145,9 @@ export default function DbPage() {
       showToast("저장되었습니다 📌");
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
+      // 가드(saveAll)가 실패를 관측하도록 rethrow → fail>0 → 모달 유지·이동 취소·행 유지
+      // (안 그러면 '저장하고 이동' 시 저장 실패해도 접혀서 편집이 무음 유실 — §2.5).
+      throw e;
     } finally {
       setPendingRow(null);
     }
