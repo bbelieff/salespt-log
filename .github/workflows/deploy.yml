@@ -39,6 +39,8 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ADMIN_DRIVE_REFRESH_TOKEN: ${{ secrets.ADMIN_DRIVE_REFRESH_TOKEN }}
+          # 비밀값 아님(공개 URL) → GitHub Variables 소스. 값 미출력 경로는 동일하게 재사용(무해).
+          NEXT_PUBLIC_GUIDE_URL: ${{ vars.NEXT_PUBLIC_GUIDE_URL }}
         run: |
           # secret → VPS .env 자동 주입 (db-migration-pilot §3 원칙): 운영자가 SSH 작업 없이
           # GitHub Secrets 등록만으로 VPS .env 에 반영되게 한다.
@@ -50,7 +52,9 @@ jobs:
           # ★값 노출 금지: echo/set -x/커맨드라인 인자 경로 일절 없음 —
           #   값은 stdin→원격 임시파일(600)로만 이동. (GH 가 secret 을 *** 마스킹하지만
           #   그것에 기대지 않고 출력 경로 자체를 만들지 않는다.)
-          INJECT_KEYS="DATABASE_URL ADMIN_DRIVE_REFRESH_TOKEN"
+          #   - NEXT_PUBLIC_GUIDE_URL: 사용 가이드/새소식 링크(공개 URL, Variables 소스). 미설정이면
+          #     스킵 → VPS 기존 값 유지. 값 변경 = GitHub Variables 갱신 + 재배포 1회(NEXT_PUBLIC=빌드 인라인).
+          INJECT_KEYS="DATABASE_URL ADMIN_DRIVE_REFRESH_TOKEN NEXT_PUBLIC_GUIDE_URL"
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -i $HOME/.ssh/id_ed25519"
           # 원격 편집 스크립트($1=키 이름) — .env 의 해당 키 줄만 제자리 교체(없으면 맨 아래 추가).
           # 다른 줄 비파괴. 값은 awk ENVIRON 경유(이스케이프 불필요·비출력). 키 매칭은 index()
