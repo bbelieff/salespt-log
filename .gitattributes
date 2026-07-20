@@ -1,0 +1,29 @@
+# EOL 정규화 — 저장소·작업트리 모두 LF 고정 (KPI-④, 2026-07-20).
+#
+# 배경: 이 레포엔 EOL 정책이 없었고 core.autocrlf=true 라, Windows 체크아웃이 LF→CRLF 로
+#   변환해 작업트리가 CRLF(829파일)가 됐다. 그래서 커밋마다 "LF will be replaced by CRLF"
+#   경고가 뜨고 diff 착시가 났다. **저장소(index)는 이미 100% LF** — 커밋 내용엔 EOL 노이즈가
+#   없었다(진단: i/crlf·i/mixed 0건). 즉 노이즈는 작업트리 한정 착시였다.
+# 목적: LF 정책을 기계로 못박아 autocrlf 설정과 무관하게 CRLF 재유입을 차단하고 경고를 근절한다.
+#   배포 대상이 Linux(VPS)이고 JS/TS/JSON/MD/YAML 은 LF 관습이라 LF 단일화가 정답.
+
+# 기본: 텍스트 자동 감지 → 저장소·작업트리 모두 LF. 바이너리는 git 이 자동 감지해 제외한다.
+* text=auto eol=lf
+
+# 바이너리 명시(자동 감지 보강 — 정규화 절대 금지)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.otf   binary
+*.pdf   binary
+
+# Windows 배치 스크립트는 CRLF 유지(현재 레포에 없지만 향후 추가 대비 안전판)
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
