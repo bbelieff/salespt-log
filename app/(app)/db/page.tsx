@@ -339,10 +339,13 @@ export default function DbPage() {
           expandedRow={expandedRow}
           pendingRow={pendingRow}
           badgeCls={BADGE_CLS[activeCh]}
-          onExpand={(rowNum) => {
-            setExpandedRow(rowNum);
-            setAddOpen(false);
-          }}
+          onExpand={(rowNum) =>
+            // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
+            guardedNav(() => {
+              setExpandedRow(rowNum);
+              setAddOpen(false);
+            })
+          }
           onCollapse={() => guardedNav(() => setExpandedRow(null))}
           onSave={handleSave}
           onDeleteRequest={requestDelete}
@@ -352,10 +355,13 @@ export default function DbPage() {
         {!addOpen && !overview.isLoading && (
           <button
             type="button"
-            onClick={() => {
-              setAddOpen(true);
-              setExpandedRow(null);
-            }}
+            onClick={() =>
+              // 추가폼 열기도 펼친 행을 접으므로 미저장 가드로 감싼다(dirty 면 선확인).
+              guardedNav(() => {
+                setAddOpen(true);
+                setExpandedRow(null);
+              })
+            }
             className="mt-3 w-full rounded-xl border-2 border-dashed border-gray-300 bg-white py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600"
           >
             + {ch.recordsLabel} 추가

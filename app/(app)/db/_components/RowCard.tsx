@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
 import { fmtWon, mdShort } from "../_lib/channels";
 import RowForm from "./RowForm";
@@ -98,6 +98,13 @@ export default function RowCard({
     () => setDraft(row), // 되돌리기: 서버값. 폼은 접힘/이동으로 언마운트 → 재펼침 시 서버 row 기준 재초기화.
     `${channel.name} ${index + 1}행`,
   );
+  // 접힘 시 dirty 해제 — RowForm 은 펼침에서만 렌더돼 언마운트로는 onDirtyChange(false) 를
+  // 못 낸다. 이걸 안 하면 저장·무시·× 후에도 dirty 가 true 로 얼어붙어 다음 이동마다 유령
+  // 이탈 가드가 재발한다(2026-07-20 유실 사고의 증상 ②). 접힘 유발 경로(다른 행 클릭·+추가)는
+  // page.tsx 가 guardedNav 로 감싸 편집 유실 없이 선(先)확인하므로 여기서 해제해도 안전.
+  useEffect(() => {
+    if (!expanded) setDirty(false);
+  }, [expanded]);
   const displayNum = String(index + 1).padStart(2, "0");
 
   if (!expanded) {
