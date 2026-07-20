@@ -1,0 +1,109 @@
+# 디스패치 큐 — 작업의 정본 목록 (worklog 디스패치 섹션의 기계 판독판)
+# 갱신: 디스패치/오케스트레이터. 실사 기준일 2026-07-20.
+# 규칙: 큰 기능은 레이어별(UI/Service/Repo)로 쪼개지 않는다 — PR-0 계약 → PR-1 핵심 → PR-2 화면 → PR-3 마감 순.
+#       feature_owner 1명이 수용기준·PR 경계·인터페이스·병합순서·통합검증을 책임진다.
+
+tasks:
+  - task_id: r3-lockdown-close
+    project: dev-harness
+    priority: P0
+    business_goal: "R3(쓰기 DB 정본 전환) 완료 판정 통과 — 저장 속도 개선을 공식 마감"
+    feature_owner: TRACK-A     # mirror_pending 이 마지막 §7-3 관문
+    assigned_tracks: [TRACK-A, TRACK-F, TRACK-D(판정)]
+    assigned_provider: claude
+    dependencies: ["F sales-cells flip(#579 완료)", "A mirror_pending(#587 완료·배포)", "플래그 3건 재검증(D)"]
+    file_leases: ["lib/repo/db/mirror*(A 완료)", "sales-cells 계열(F 완료)"]
+    blocked_by: []   # belie mirror_pending 5선택은 안전 기본값으로 배포됨(📥결정함) — 미결이어도 비블로킹
+    approval_required: false
+    acceptance_criteria: ["§7 전 항목 충족", "D 재검증 PASS", "Cowork 최종판정"]
+    merge_order: "F flip(#579) → A mirror_pending(#587) → D 재검증(진행 대기)"
+    status: awaiting_gatekeeper   # 구현·배포 완료, 남은 것 = D 재검증 + Cowork 최종판정
+    created_at: "2026-07-13"
+    updated_at: "2026-07-20"
+
+  - task_id: fmt-unify
+    project: dev-harness
+    priority: P1
+    business_goal: "전 앱 금액 콤마·연락처 하이픈 통일 (belie 확정)"
+    feature_owner: TRACK-E
+    assigned_tracks: [TRACK-E]
+    assigned_provider: claude
+    dependencies: ["#565 공용부품(완료)"]
+    file_leases: ["표시·입력 치환 대상 14+4곳"]
+    blocked_by: []
+    approval_required: false
+    acceptance_criteria: ["파서 왕복 테스트", "시트 저장값 불변(금액=숫자)", "§6.8"]
+    merge_order: "완료 (#565 부품 + #575 전화면 sweep)"
+    status: done   # 2026-07-20 — PR-1(#565) + sweep(#575) 배포 완료
+    created_at: "2026-07-14"
+    updated_at: "2026-07-20"
+
+  - task_id: lead-chain-v1
+    project: dev-harness
+    priority: P1
+    business_goal: "발굴→미팅 프리필로 중복 기입 제거 (v1)"
+    feature_owner: TRACK-B
+    assigned_tracks: [TRACK-B(매퍼·id·링크), TRACK-C(PR-2 목록조회), TRACK-F(PR-3 피커 UI)]
+    assigned_provider: claude
+    dependencies: ["#567 매퍼 계약(완료)"]
+    file_leases: ["완료 — 소유 구역 반납"]
+    blocked_by: []
+    approval_required: false
+    acceptance_criteria: ["프리필 왕복", "직접입력 폴백", "시트 컬럼 신설 0"]
+    merge_order: "완료 (매퍼#567 → id/링크 #581·#583·#593 → 목록조회#590 → 피커UI#591)"
+    status: done   # 2026-07-20 — 발굴 체인 v1(id·링크·목록·피커) 전부 배포 완료
+    created_at: "2026-07-14"
+    updated_at: "2026-07-20"
+
+  - task_id: lead-chain-v2
+    project: dev-harness
+    priority: P2
+    business_goal: "발굴↔미팅 전환추적 링크 (belie 착수 승인, 소개처 컬럼 승격은 기각)"
+    feature_owner: TRACK-B
+    assigned_tracks: [TRACK-B]
+    assigned_provider: claude
+    dependencies: [lead-chain-v1]
+    file_leases: ["미착수 — 설계 예정(lead-chain.md §4 재작성)"]
+    blocked_by: []   # v1 완료 → 착수 가능. B 유휴(신규 대기) — 아직 미착수
+    approval_required: false
+    acceptance_criteria: ["시트 컬럼 0 유지", "DB 관계 저장", "v1 무회귀"]
+    merge_order: "v1 완료 후 (착수 시점 미정)"
+    status: design_not_started   # 2026-07-20 — v1 완료됐으나 R3 스프린트 우선순위로 B 미착수
+    created_at: "2026-07-15"
+    updated_at: "2026-07-20"
+
+  - task_id: eol-renormalize
+    project: dev-harness
+    priority: P3-last
+    business_goal: "메인 체크아웃 줄바꿈 노이즈(~720파일) 근절 + .gitattributes"
+    feature_owner: TRACK-F
+    assigned_tracks: [TRACK-F]
+    assigned_provider: claude
+    dependencies: ["열린 PR 전부 소진 (현재 #543 worklog sync 만 상시 오픈)"]
+    file_leases: ["전 파일 (내용 무변경·줄바꿈만)"]
+    blocked_by: ["Cowork 막차 신호"]
+    approval_required: false
+    acceptance_criteria: ["PR 본문에 내용 무변경 명시", "check.sh"]
+    merge_order: "큐 막차 고정"
+    status: queued   # R3 락다운 해소 임박 → 막차 근접
+    created_at: "2026-07-13"
+    updated_at: "2026-07-20"
+
+  - task_id: cafe-cron-usage-ep
+    project: salespt-cafe-bot
+    priority: P1
+    business_goal: "사용법 09~12 + 제작기 ep22~24 예약 게시"
+    feature_owner: OPS-CAFE-BOT
+    assigned_tracks: [OPS-CAFE-BOT]
+    assigned_provider: claude
+    dependencies: []
+    file_leases: ["salespt-cafe-bot 전체 (dev-harness 무접촉)"]
+    blocked_by: []
+    approval_required: false   # 예약 게시는 belie 기승인 (외부 발행 화이트리스트 — 신규 채널·신규 유형만 재승인)
+    acceptance_criteria: ["07-15~18 09:00 KST 게시 확인"]
+    merge_order: n/a
+    status: unknown   # 2026-07-20 — dev-harness 밖 별도 프로젝트, 게시 결과 여기서 실측 불가(OPS 자체 확인)
+    created_at: "2026-07-15"
+    updated_at: "2026-07-20"
+
+# 보류(참고): DB 비번 교체(belie 보류 확정), 아레나 명단 plan(belie 미결), 과거 이월 DB 표시(신고 시 재개)
