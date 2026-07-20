@@ -134,4 +134,33 @@ tasks:
     created_at: "2026-07-15"
     updated_at: "2026-07-20"
 
+  - task_id: codex-dryrun-track-coord-docs
+    project: dev-harness
+    priority: P2
+    business_goal: "Codex 실전 드라이런 — 페일오버 규약(worktree·직렬머지·§6.8·checkpoint)을 소형 안전 태스크로 실증(KPI-③)"
+    feature_owner: CODEX-DRYRUN     # 수행=Codex 세션, 감독·채점=TRACK-C(Claude)
+    assigned_tracks: [CODEX-DRYRUN]
+    assigned_provider: openai       # 드라이런 대상 = Codex (belie 가 세션 열면 codex-bootstrap.md 로 착수)
+    dependencies: ["AGENTS.md git 추적(#602 완료 — Codex 부트스트랩 2단계 선결조건)"]
+    file_leases:
+      - "docs/handoff/CODEX-COLLABORATION.md (git 추적 승격)"
+      - "docs/coordination/session-extraction-prompts.md (git 추적 승격)"
+    blocked_by: []
+    approval_required: false        # docs 격리 chore·실데이터 무접촉·비밀값 0(확인됨)·revert 1건
+    acceptance_criteria:
+      - "두 문서 git 추적(내용 변경 0, 로컬본 그대로 승격) — README/AGENTS 죽은 링크 해소"
+      - "codex-<slug> 전용 worktree·메인 무접촉 (규약 실증 채점 항목)"
+      - "bash scripts/check.sh 초록 → squash PR → 직렬 머지 → 배포 success·health 200"
+      - "session-registry·worklog checkpoint 갱신"
+    dryrun_scoring:   # TRACK-C(감독관) 채점 기준 — 규약 준수 여부
+      - "worktree 격리(wt/codex-*·메인·타 lease 무접촉)"
+      - "공용 계약(.github/lib/types/SSOT) 무접촉 or 단독 선행"
+      - "check.sh 우회 없음·직렬 머지·§6.8 배포관찰·health 200"
+      - "checkpoint 필수 필드 기입(착수·검사·PR·머지·배포)"
+      - "복귀 프로토콜(runbook B) 왕복 실연"
+    merge_order: "Codex 큐 별도(활성 Claude 큐와 분리) — 드라이런이라 병렬 무해"
+    status: ready_for_codex   # 2026-07-20 — belie 가 Codex 세션 열면 이 task_id 지정해 착수
+    created_at: "2026-07-20"
+    updated_at: "2026-07-20"
+
 # 보류(참고): DB 비번 교체(belie 보류 확정), 아레나 명단 plan(belie 미결), 과거 이월 DB 표시(신고 시 재개)
