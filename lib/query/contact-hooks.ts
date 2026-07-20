@@ -28,6 +28,7 @@ import type {
   ScheduleWeekView,
 } from "@/service";
 import { track, EVENTS } from "@/analytics";
+import { leadsPickerKey } from "./db-hooks";
 
 // ── 키 ────────────────────────────────────────────────────────
 export const dayKey = (date: string) => ["day", date] as const;
@@ -161,6 +162,8 @@ export function useAppendMeeting() {
       // 2026-05-19 fix: 일정탭 week view 도 invalidate — 추가미팅이 일정탭에
       // 안 보이던 버그. weekStart 계산 없이 전체 week 무효화.
       qc.invalidateQueries({ queryKey: ["week"] });
+      // 발굴 피커: 이 미팅이 발굴을 소비했을 수 있음 → matched 재계산(전환된 발굴 숨김, KPI-④).
+      qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
 }

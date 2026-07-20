@@ -1,15 +1,15 @@
 /**
  * LeadPickerModal — 컨택탭 콜·지·기·소 미팅 슬롯 [발굴에서 가져오기] 피커 (lead-chain §2-1, PR-3).
  *
- * 목록 소스 = 기존 `useDBOverview().leads`(03 콜·지·기·소, 파일럿=DB·비파일럿=시트 기존 게이트).
- * 신규 시트 I/O 0 · C PR-2 서비스 무결합. 접수일 내림차순, 검색. 선택 시 부모가 mergeLeadDraft 프리필.
- * matched(전환됨) 필터는 B PR-6 착지 시 — v1 은 전 발굴 노출(무해: 손친 미팅은 lead 미소비).
+ * 목록 소스 = `useLeadCandidates()`(`/api/leads` = listLeadCandidates, 파일럿=DB·비파일럿=시트 게이트).
+ * 각 후보에 `matched`(전환 여부) 파생 포함 → **이미 미팅으로 전환된 발굴은 숨긴다**(`!matched`, KPI-④).
+ * 미매칭은 접수일이 지나도 계속 후보(이월, lead-chain §4-1). 접수일 내림차순, 검색. 선택 시 부모가 mergeLeadDraft 프리필.
  */
 "use client";
 
 import { useMemo, useState } from "react";
 import type { DBLead } from "@/types";
-import { useDBOverview } from "@/query/db-hooks";
+import { useLeadCandidates } from "@/query/db-hooks";
 
 interface Props {
   onPick: (lead: DBLead) => void;
@@ -22,13 +22,14 @@ function leadTitle(l: DBLead): string {
 }
 
 export default function LeadPickerModal({ onPick, onClose }: Props) {
-  const overview = useDBOverview();
+  const candidates = useLeadCandidates();
   const [q, setQ] = useState("");
 
   const leads = useMemo(() => {
-    const all = [...(overview.data?.leads ?? [])].sort((a, b) =>
-      (b.접수일 || "").localeCompare(a.접수일 || ""),
-    ); // 접수일 내림차순
+    // 전환된 발굴(matched) 숨김 → 미매칭만 후보(이월). 접수일 내림차순.
+    const all = (candidates.data ?? [])
+      .filter((l) => !l.matched)
+      .sort((a, b) => (b.접수일 || "").localeCompare(a.접수일 || ""));
     const kw = q.trim().toLowerCase();
     const filtered = kw
       ? all.filter((l) =>
@@ -37,7 +38,7 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
         )
       : all.slice(0, 20); // 검색 없으면 최근 20건
     return filtered;
-  }, [overview.data?.leads, q]);
+  }, [candidates.data, q]);
 
   return (
     <div
@@ -74,11 +75,11 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
           />
         </div>
         <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-4 pb-4">
-          {overview.isLoading ? (
+          {candidates.isLoading ? (
             <p className="py-6 text-center text-sm text-gray-400">발굴 목록 불러오는 중…</p>
           ) : leads.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400">
-              {q.trim() ? "검색 결과가 없어요" : "등록된 발굴이 없어요"}
+              {q.trim() ? "검색 결과가 없어요" : "아직 가져올 발굴이 없어요"}
             </p>
           ) : (
             leads.map((l, i) => (
