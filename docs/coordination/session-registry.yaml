@@ -8,7 +8,7 @@
 
 meta:
   repo: bbelieff/salespt-log
-  master_last_known: "356cee2 (#593 발굴 체인 PR-6)"   # confirmed 2026-07-20
+  master_last_known: "3e74cbf (#600 TRACK-F checkpoint)"   # confirmed 2026-07-20 — R3 §7-3 L4 #598(fd1e8fd) 배포 success·health 200 반영
   open_prs: ["#543 (docs worklog sync — 라이브 보드 코디네이션용 장기 오픈, 닫지 말 것)"]
   org_model: "6 범용 코드 트랙(A~F) + OPS-CAFE-BOT + 관제(디스패치·Cowork). 활성 동시 코드 작업은 머지 큐 부하 기준 4~5 권장(강제 아님)."
 
@@ -59,13 +59,12 @@ tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
   TRACK-D:
     provider: claude
     writer_session: "DevD(260713)"
-    status: gatekeeping                # confirmed — 레포 구역 0(검증·판정·측정) + 공용 chore
-    current: "R3 완료 게이트 재판정 — §7-3 mirror_pending 충족(#587 배포), 남은 것=플래그 재검증 + Cowork 최종판정"
-    artifacts: ["scratchpad/s7.patch — §7 완료 대조표(소유트랙 이관/랜딩 대기)"]
-    last_done: "#584 tsconfig wt/ 제외(메인 커밋 차단 해소)·#579 F대행 리뷰 LAND 신호"
-    next_atomic_action: "R3 PR 순차 재검증(#569·#587 등) → R3 최종 완료 판정"
-    handoff_state: active_checkpoint_in_worklog
-    checkpointed_at: "2026-07-20"
+    status: idle                       # confirmed 2026-07-20 — R3 최종 완료 판정 종결(코드 레벨 PASS)
+    current: "R3 완료 — §7 6수용기준 + correctness 플래그 3건(L2 #559→#568·L3 #558→#569·L4) 전부 닫힘. L4(append CREATE silent 반쪽쓰기)는 #598 union 시트 fallback 으로 종결"
+    last_done: "#598 append 미러실패 시트 fallback(R3 §7-3 L4 종결, fd1e8fd 배포 success·health 200)·#584 tsconfig wt/ 제외·#579 F대행 LAND"
+    next_atomic_action: "R3 완료 — 큐 신규 배정 대기. 라이브 소진 검증(롤백 실플립·파일럿 확대 후 todos/dashboard 재측정)은 belie 판단"
+    handoff_state: ready
+    checkpointed_at: "2026-07-20 (R3 최종 완료 판정 + L4 #598 종결)"
   TRACK-E:
     provider: claude
     writer_session: "DevE(260712)"
