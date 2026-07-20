@@ -141,6 +141,8 @@ export async function listAllUsers(): Promise<User[]> {
   });
   return users;
 }
+// 표시(로스터) 전용 dedup 은 users-roster.ts (listDistinctUsers) — 500줄 cap 분리.
+export { listDistinctUsers } from "./users-roster";
 
 /**
  * registry G 컬럼(assignedTrainer)의 콤마 구분 트레이너 email 리스트 파싱.
