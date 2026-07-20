@@ -79,13 +79,13 @@ tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
   TRACK-F:
     provider: claude
     writer_session: "DevF(260712)"
-    status: idle                       # confirmed 2026-07-20 — 발굴 PR-3 착지, EOL 막차 임무 보유
-    lineage: "03 DB관리(R3-4)·파생셀(sales-cells #579)·발굴 피커 UI·docs self-merge·EOL 막차"
-    last_done: "#591 발굴 피커 UI PR-3(f033a57, 배포 완료)·앞서 R3⑤ #574·#579"
+    status: idle                       # confirmed 2026-07-20 — DB생산 유실 급행 fix 배포 완료, D 재검증 대기
+    lineage: "03 DB관리(R3-4)·파생셀(sales-cells #579)·발굴 피커 UI·DB dirty-guard 유실수리·docs self-merge·EOL 막차"
+    last_done: "#596 DB생산 카드 거짓dirty·유실 급행 fix(squash 5220242, 배포 완료 4870810·health 200; 근인3겹·적대리뷰2R)·앞서 #591 발굴 피커 PR-3"
     open_pr: null
-    next_atomic_action: "eol-renormalize 막차(Cowork 신호 대기) 또는 큐 신규 배정"
+    next_atomic_action: "D의 #596 라이브 재검증 대기(연습용 3증상 해소) / eol-renormalize 막차(Cowork 신호) 또는 큐 신규 배정"
     handoff_state: ready
-    checkpointed_at: "2026-07-20"
+    checkpointed_at: "2026-07-20 (worklog 보드+로그 + registry)"
   OPS-CAFE-BOT:
     provider: claude
     writer_session: "카페텔레봇 세션"
