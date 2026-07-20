@@ -27,7 +27,8 @@
 - Claude worktree(wt/의 비-codex 폴더)·다른 writer의 lease 파일 수정 금지.
 - 공용 계약(lib/types·lib/config·scripts·.github·SSOT 4문서) 변경은 그 변경만 단독 선행 PR.
 - HANDOFF.md·scratchpad/·.env*·logs/는 읽기만. 비밀값은 어떤 문서에도 기록 금지.
-- 완료 기준: bash scripts/check.sh 초록 → npx next build → squash PR(Changelog: 포함) → 직렬 머지(한 번에 하나, 선행 머지 시 rebase+check.sh 재통과) → 배포 run conclusion=success + https://salesptlog.online HTTP 200 → plan을 completed/로 이동 → worklog·handoff·session-registry(checkpoint) 갱신.
+- 완료 기준(정상환경): bash scripts/check.sh 초록 → npx next build → squash PR(Changelog: 포함) → 직렬 머지(한 번에 하나, 선행 머지 시 rebase+check.sh 재통과) → 배포 run conclusion=success + https://salesptlog.online HTTP 200 → plan을 completed/로 이동 → worklog·handoff·session-registry(checkpoint) 갱신.
+- **환경 블로커 → relay(강제 우회·실패 선언 금지)**: check.sh 또는 git fetch/push 가 **환경 사유**(파일 접근 거부·네트워크/HTTPS 차단 = 오프라인 샌드박스 징후)로 막히면 코드/규약 문제가 아니다. 그때는 **worktree 작성 + checkpoint 까지만 완주**하고, 게이트·PR·머지·배포는 Claude 정상환경에 relay 위임한다(takeover-runbook §C). 자기 슬롯에 실패 명령과 원인(환경)·`base_sha`·staged 목록·다음 원자 행동을 기입하면 Claude 가 이어받아 §6.8 까지 완주한다.
 
 [checkpoint — 다음 시점마다 session-registry와 handoff 파일 갱신]
 착수/중요 결정/원자 구현 완료/검사 성패/PR 오픈/리뷰 반영/머지 직전·직후/배포/블로커/사용자 결정 대기/세션 종료 전.
