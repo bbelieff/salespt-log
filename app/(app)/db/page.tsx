@@ -11,7 +11,7 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import {
   useAppendDB,
@@ -145,6 +145,9 @@ export default function DbPage() {
       showToast("저장되었습니다 📌");
     } catch (e) {
       showToast(`저장 실패: ${(e as Error).message}`);
+      // 가드(saveAll)가 실패를 관측하도록 rethrow → fail>0 → 모달 유지·이동 취소·행 유지
+      // (안 그러면 '저장하고 이동' 시 저장 실패해도 접혀서 편집이 무음 유실 — §2.5).
+      throw e;
     } finally {
       setPendingRow(null);
     }
@@ -240,23 +243,14 @@ export default function DbPage() {
     return null;
   }, [activeCh, rows, ch.isCost]);
 
-  // 신규행 추가 폼 미저장 가드 — RowCard 와 동일한 baseline-ref 패턴(수식 mount onChange 거짓 dirty 차단).
-  const addBaselineRef = useRef<string | null>(null);
+  // 신규행 추가 폼 미저장 가드 — 판정은 RowForm(rowFormDirty, 자동 필드 제외 → 거짓 dirty 0).
+  const [addDirty, setAddDirty] = useState(false);
   useEffect(() => {
-    if (!addOpen) {
-      setAddDraft({});
-      addBaselineRef.current = null;
-    }
+    if (!addOpen) { setAddDraft({}); setAddDirty(false); }
   }, [addOpen]);
-
-  const onAddDraftChange = (next: Record<string, unknown>) => {
-    setAddDraft(next);
-    if (addBaselineRef.current === null) addBaselineRef.current = JSON.stringify(next);
-  };
   useDirtyEntry(
     "db-add-row",
-    addOpen && addBaselineRef.current !== null &&
-      JSON.stringify(addDraft) !== addBaselineRef.current,
+    addOpen && addDirty,
     async () => {
       await append.mutateAsync({ channel: KEY_TO_BACKEND[activeCh], data: addDraft as never });
       setAddOpen(false);
@@ -348,10 +342,13 @@ export default function DbPage() {
           expandedRow={expandedRow}
           pendingRow={pendingRow}
           badgeCls={BADGE_CLS[activeCh]}
-          onExpand={(rowNum) => {
-            setExpandedRow(rowNum);
-            setAddOpen(false);
-          }}
+          onExpand={(rowNum) =>
+            // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
+            guardedNav(() => {
+              setExpandedRow(rowNum);
+              setAddOpen(false);
+            })
+          }
           onCollapse={() => guardedNav(() => setExpandedRow(null))}
           onSave={handleSave}
           onDeleteRequest={requestDelete}
@@ -361,10 +358,13 @@ export default function DbPage() {
         {!addOpen && !overview.isLoading && (
           <button
             type="button"
-            onClick={() => {
-              setAddOpen(true);
-              setExpandedRow(null);
-            }}
+            onClick={() =>
+              // 추가폼 열기도 펼친 행을 접으므로 미저장 가드로 감싼다(dirty 면 선확인).
+              guardedNav(() => {
+                setAddOpen(true);
+                setExpandedRow(null);
+              })
+            }
             className="mt-3 w-full rounded-xl border-2 border-dashed border-gray-300 bg-white py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600"
           >
             + {ch.recordsLabel} 추가
@@ -380,7 +380,7 @@ export default function DbPage() {
                 {ch.recordsLabel} 추가
               </span>
             </div>
-            <RowForm channel={ch} onChange={onAddDraftChange} />
+            <RowForm channel={ch} onChange={setAddDraft} onDirtyChange={setAddDirty} />
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

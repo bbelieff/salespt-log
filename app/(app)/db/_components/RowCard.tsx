@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
 import { fmtWon, mdShort } from "../_lib/channels";
 import RowForm from "./RowForm";
@@ -87,23 +87,24 @@ export default function RowCard({
   onSave,
   onDeleteRequest,
 }: Props) {
-  const [draft, setDraft] = useState<Record<string, unknown>>(row);
-  // 미저장 이탈 가드. RowForm 은 mount 시 수식필드(개당단가 등) onChange 를 1회 발화하므로
-  // row 와의 단순 비교는 거짓 dirty. 그 첫 onChange 값을 "깨끗한 기준선"으로 박아두고
-  // 이후 사용자 입력으로 기준선과 달라질 때만 dirty (→ 거짓양성 0). 접어도 draft·ref 보존돼 가드 유지.
-  const baselineRef = useRef<string | null>(null);
-  const onDraftChange = (next: Record<string, unknown>) => {
-    setDraft(next);
-    if (baselineRef.current === null) baselineRef.current = JSON.stringify(next);
-  };
+  const [draft, setDraft] = useState<Record<string, unknown>>(row); // 저장 payload(자동값 포함)
+  // 미저장 판정은 RowForm 이 담당(rowFormDirty: 자동 필드 제외 → 거짓 dirty 0). 여기선 그 신호만 받는다.
+  const [dirty, setDirty] = useState(false);
   const entryId = useId();
   useDirtyEntry(
     entryId,
-    baselineRef.current !== null && JSON.stringify(draft) !== baselineRef.current,
+    dirty,
     () => onSave(draft),
-    () => { if (baselineRef.current) setDraft(JSON.parse(baselineRef.current)); },
+    () => setDraft(row), // 되돌리기: 서버값. 폼은 접힘/이동으로 언마운트 → 재펼침 시 서버 row 기준 재초기화.
     `${channel.name} ${index + 1}행`,
   );
+  // 접힘 시 dirty 해제 — RowForm 은 펼침에서만 렌더돼 언마운트로는 onDirtyChange(false) 를
+  // 못 낸다. 이걸 안 하면 저장·무시·× 후에도 dirty 가 true 로 얼어붙어 다음 이동마다 유령
+  // 이탈 가드가 재발한다(2026-07-20 유실 사고의 증상 ②). 접힘 유발 경로(다른 행 클릭·+추가)는
+  // page.tsx 가 guardedNav 로 감싸 편집 유실 없이 선(先)확인하므로 여기서 해제해도 안전.
+  useEffect(() => {
+    if (!expanded) setDirty(false);
+  }, [expanded]);
   const displayNum = String(index + 1).padStart(2, "0");
 
   if (!expanded) {
@@ -160,8 +161,9 @@ export default function RowCard({
       </div>
 
       {/* 현수막 게시로그(AF:AI) 폐기 — 게시=생산은 컨택 게시 스테퍼가 소유(ADR-0025). */}
-      {/* initial=draft(=row 사본+편집): 접었다 다시 펼쳐도 RowForm 이 편집값으로 재마운트(되돌림 방지). */}
-      <RowForm channel={channel} initial={draft} onChange={onDraftChange} />
+      {/* initial=row(서버 정본): blank 은 [channel.cls] 메모라 refetch 로 row 가 바뀌어도 편집 중 draft
+          안 덮임. 미저장 판정(onDirtyChange)도 서버 기준이라 정확. */}
+      <RowForm channel={channel} initial={row} onChange={setDraft} onDirtyChange={setDirty} />
 
       <div className="mt-3 flex gap-2">
         <button
@@ -174,7 +176,9 @@ export default function RowCard({
         </button>
         <button
           type="button"
-          onClick={() => onSave(draft)}
+          // onSave(=handleSave)는 실패 시 rethrow(가드 saveAll 관측용) → 직접 버튼 경로에선
+          // 삼켜 unhandled rejection 방지(토스트는 handleSave 가 이미 노출).
+          onClick={() => void Promise.resolve(onSave(draft)).catch(() => {})}
           disabled={pending}
           className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300"
         >
