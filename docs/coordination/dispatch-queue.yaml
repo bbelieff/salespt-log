@@ -32,22 +32,23 @@ tasks:
     file_leases: ["docs/coordination/*", "AGENTS.md(미추적→커밋 필요)"]
     blocked_by: []
     approval_required: false
-    gate_verdict: "NOT_STABLE (2026-07-20 D 최초 게이트) → 2 blocker 모두 해소, D 재판정 대기 — L1 registry PASS · L2 링크 = ①AGENTS.md 추적(#602)로 해소 · L3 드라이런 = ②채점표 제출+복귀 왕복+relay 완주(#610)로 해소. 재판정 시 안정화 선언 가능 여부 = D 판단."
+    gate_verdict: "STABLE (2026-07-21 D 재판정) — 원래 NOT_STABLE 의 2 blocker 실측 해소 확인: ①AGENTS.md 추적+실질 규약(#602)·②드라이런 채점표 registry 정본 5 PASS + relay 완주(#610) + 환경블로커 §C 박제(#611). 재판정 3렌즈: L1 registry CONCERN(비차단)·L2 링크 PASS·L3 relay논리 CONCERN. L3 급소(전면소진 relay 주체)는 §C.5 명문화로 해소, #605 회귀위험·registry stale 은 이 PR 로 위생조치. → 체계 골격 안정화 달성(안정화 = 절차·주체·경계 확립, 완벽 자동화 아님)."
     acceptance_criteria:
-      - "① registry↔실측 일치 — ✅ L1 PASS: 6트랙 last_done 17건 MERGED·SHA일치·open_pr 100%정확·writer 트랙당1명"
-      - "② 문서 링크 무결 — ❌ L2 FAIL (blocker①)"
-      - "③ 드라이런 채점표 제출 — ⛔ L3 BLOCKED (blocker②)"
+      - "① registry↔실측 일치 — ✅ PASS: 6트랙 last_done MERGED·채점표(CODEX-DRYRUN.scoring_result) registry 정본 실재"
+      - "② 문서 링크 무결 — ✅ PASS: AGENTS.md 추적+실질(52줄 규약)·죽은링크 0(L2 PASS)"
+      - "③ 드라이런 채점표 제출 — ✅ PASS: 5 PASS + gates_and_merge BLOCKED_BY_ENV(환경한정), relay #610·runbook §C/B-1"
     blockers:
-      - "①[blocker] AGENTS.md origin/master 미추적 — 문서우선순위#2·codex-bootstrap step2 정본이 배포 트리에 없음(README·bootstrap·runbook·registry 4문서 8회 참조 죽은링크). 워킹트리에 완성본 4832B 존재 → A/belie 단독 PR 커밋하면 즉시 해소. 부수 minor: docs/coordination/session-extraction-prompts.md 도 미추적."
-      - "②[해소 2026-07-20] C 드라이런 채점표 제출 + 복귀(B) 왕복 실연 완료 — codex-dryrun-track-coord-docs 를 Codex 가 실수행, C 가 규약 채점(5 PASS·게이트머지=BLOCKED_BY_ENV)하고 relay 완주(#610). 복귀 왕복 = Codex worktree/checkpoint → Claude 독립검증 → relay 머지·§6.8, takeover-runbook B-1 에 기록. 부수 산출: 환경블로커 대응(§C relay) 박제로 완료기준 현실화. (registry CODEX-DRYRUN 슬롯 scoring_result 가 채점표 정본.)"
-    minor_drift:
-      - "master_last_known 1커밋 self-lag — checkpoint 커밋이 자기 결과 SHA 를 못 담는 구조적 지연(안정성 무관)"
-      - "TRACK-A status=active 가 stale — coordination docs(#594·#601) 이미 MERGED·open_pr null 이면 idle 이 맞음(#604 시점 미갱신)"
-      - "#595(admin dedup) 미귀속 → ✅ 해소: #604(TRACK-E checkpoint)가 last_done·lineage 에 귀속 완료"
-    merge_order: "blocker① AGENTS.md 커밋 → blocker② C 드라이런 채점표 → D 재판정 → 안정화 선언"
-    status: gate_failed   # 2026-07-20 — 2 blocker 미해소로 안정화 선언 보류. 현황판 유지(다음 배정까지).
+      - "①[해소 #602] AGENTS.md git 추적 + 실질 규약(worktree·공용계약·직렬머지·완료기준) — 죽은링크 해소"
+      - "②[해소 #610·#611] 드라이런 채점표 registry 정본 + 복귀 왕복 실연 + 환경블로커 §C relay 박제"
+    residual_notes:   # blocker 아님 — 안정화 후 hardening (D 재판정 2026-07-21)
+      - "relay 주체 전면소진 대비 → ✅ §C.5 명문화(belie 확정: Claude 전면소진 시 belie 수동머지 or 한도리셋까지 머지동결). 완전 무인 자동완주는 범위 밖."
+      - "⚠️ #605(OPEN·CONFLICTING) 머지 시 CODEX-DRYRUN 채점표 회귀 → registry uncommitted_known 경고 등재, close 권장(belie 판단)"
+      - "registry 트랙 줄 stale(TRACK-A active·TRACK-C open_pr=머지된 #606) — 소유 트랙 갱신 minor(안정화 무관, L1 비차단)"
+      - "A(인수) full 왕복 end-to-end 는 B 축소판만 실연 — 실 한도종료 트리거 시 1회 확인 권장(B-1 자인)"
+    merge_order: "✅ 완료 — ①#602 ②#610/#611 → D 재판정(2026-07-21) STABLE"
+    status: stable   # 2026-07-21 — D 재판정 STABLE 선언. 2 blocker 실측 해소·급소 §C.5 명문화. residual 은 hardening.
     created_at: "2026-07-20"
-    updated_at: "2026-07-20"
+    updated_at: "2026-07-21"
 
   - task_id: fmt-unify
     project: dev-harness
