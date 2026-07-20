@@ -52,6 +52,7 @@
 2. **게이트·PR·머지·배포 관찰은 Claude(정상환경)가 이어받는다** — B의 복귀 원칙과 대칭. Claude 디스패치가 독립 실측으로 Codex 산출물을 검증한 뒤(worktree diff·파일 내용·비밀값), **동일 파일을 정상환경에서 재검증**(check.sh 초록·next build 성공)하고 §6.8까지 완주한다.
 3. relay 커밋은 **Codex 를 `Co-authored-by`** 로 명시(작업 주체 보존). registry 자기 슬롯에 채점표(규약 준수 항목별 PASS/BLOCKED)와 relay PR 을 기록한다.
 4. **판정**: 규약(worktree 격리·공용부 무접촉·내용 불변·비밀값0·checkpoint 필드) 준수 = PASS 면 relay 는 **정상 경로**다(실패 아님). 게이트·머지 항목만 `BLOCKED_BY_ENV` 로 표기.
+5. **relay 주체 — 전면 소진 대비 (belie 확정 2026-07-21)**: §C.2 의 "Claude 정상환경"은 **부분 소진**(일부 Claude 세션 생존) 기준이다. Claude 가 **전면** 한도 종료면 relay 할 Claude 세션도 없다 — 이때는 (a) **belie 수동 머지**(GitHub UI 로 Codex worktree diff·비밀값 검토 후 직접 squash 머지 → 배포 run success·health 200 확인), 또는 (b) **한도 리셋까지 머지 동결**(Codex 는 worktree+checkpoint 로 대기, 리셋 후 Claude 가 relay 완주)로 처리한다. 즉 페일오버 = "Codex 조사·작성 + relay(정상 Claude **또는** belie 수동)"이며, **완전 무인 자동 완주는 범위 밖**이다 — 안정화는 *절차·주체·경계의 확립*이지 완벽 자동화가 아니다.
 
 > **∴ 완료기준 읽는 법**: A.10 과 bootstrap [작업 규칙]의 "check.sh→머지→배포"는 **정상환경 기준**이다. Codex 샌드박스가 오프라인이면 그 단계는 relay 로 위임하는 것이 규약이며, Codex 단독 완주를 강요하지 않는다.
 
