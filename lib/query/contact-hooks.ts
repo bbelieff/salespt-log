@@ -183,6 +183,8 @@ export function usePatchMeeting() {
       // 2026-05-19 Phase 2: 계약→非계약 transition 시 02 row cascade →
       // 수납탭 캐시도 무효화.
       qc.invalidateQueries({ queryKey: ["payments"] });
+      // 콜지기소 미팅 업체명 변경 시 vendor-name 폴백 matched 재계산(KPI-④ 대칭).
+      qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
 }
@@ -211,6 +213,8 @@ export function useRevertMeeting() {
       track(EVENTS.MEETING_REVERTED);
       if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
       if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
+      // 되돌리기=미팅 소비 취소 → 발굴 matched 재계산(재선택 가능하게, KPI-④ 대칭).
+      qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
 }
@@ -228,6 +232,8 @@ export function useReviveCaseClosure() {
       track(EVENTS.CASE_REVIVED);
       qc.invalidateQueries({ queryKey: ["week"] });
       qc.invalidateQueries({ queryKey: ["payments"] });
+      // 자식 미팅 삭제=소비 취소 가능 → 발굴 matched 재계산(KPI-④ 대칭).
+      qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
 }
@@ -243,6 +249,8 @@ export function useRemoveMeeting() {
       qc.invalidateQueries({ queryKey: ["week"] });
       // 02 계약수납관리 cascade (PR #241) 후 수납탭도 무효화.
       qc.invalidateQueries({ queryKey: ["payments"] });
+      // 미팅 삭제=발굴 소비 취소 → matched 재계산(전환됐던 발굴 재선택 가능, KPI-④ 대칭).
+      qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
 }

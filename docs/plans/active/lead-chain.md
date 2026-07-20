@@ -285,6 +285,17 @@ export function listLeadCandidates(email: string): Promise<LeadCandidate[]>;
 ---
 
 ## Log
+- 2026-07-20 **KPI-④ matched 필터 배선(DevB)** — 피커에 `!matched` 실배선(발굴 체인 UI 마감).
+  ① `useLeadCandidates` 훅(/api/leads=listLeadCandidates·matched 포함) 신설, LeadPickerModal 이
+  `useDBOverview`→`useLeadCandidates` + `!matched` 필터(전환된 발굴 숨김, 미매칭=이월).
+  ② 신선도 무효화 대칭: 미팅 생성·삭제·되돌리기·케이스되살리기·patch + 03 콜지기소 발굴 add/patch/remove
+  → `leadsPickerKey` invalidate(소비/소비취소 양방향).
+  🔬 적대 리뷰 3렌즈×반증(13에이전트): 8확증→3실질이슈·**블로커0**(전부 over-hide=안전방향·60s 자가치유).
+  머지 전 2건 흡수: **#1 소비취소 무효화 누락**(삭제/revert/patch/revive=matched 재계산 안 함 → 60s stale)
+  = 5뮤테이션 대칭 무효화로 수리. **#2 /api/leads 에러가 '발굴 없음'으로 위장** = `isError` 분기+재시도
+  버튼(빈 문구는 성공 시만). ⚠️ **#3 vendor-name 폴백 오탐**(동명 손입력 미팅이 미변환 발굴 숨김) =
+  §4-1 belie 승인 근사(over-hide=안전방향, lead 는 03 잔존·수동입력 가능). v2(발굴id 커버리지 확대) 보류라
+  **미변경·문서화만** — v2 재개 시 정밀 매칭 후보.
 - 2026-07-19 PR-3 구현(DevF): 컨택탭 콜·지·기·소 슬롯 [발굴에서 가져오기] 피커. 신규 LeadPickerModal
   (useDBOverview().leads·접수일 desc·검색, C PR-2 무결합). NewItem 배선 — mergeLeadDraft(baseline 재병합)
   로 R7(교체 혼합 방지) + CompanyInfoEditor key 리마운트로 R8. 직접입력 폴백 유지. **범위 결정(§0.5)**:

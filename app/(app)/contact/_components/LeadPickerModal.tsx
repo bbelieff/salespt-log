@@ -77,6 +77,18 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
         <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-4 pb-4">
           {candidates.isLoading ? (
             <p className="py-6 text-center text-sm text-gray-400">발굴 목록 불러오는 중…</p>
+          ) : candidates.isError ? (
+            // fetch 실패를 "발굴 없음"으로 오인시키지 않는다(빈 문구는 성공 시에만).
+            <div className="py-6 text-center">
+              <p className="text-sm text-gray-500">발굴 목록을 불러오지 못했어요.</p>
+              <button
+                type="button"
+                onClick={() => candidates.refetch()}
+                className="mt-2 rounded-md border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                다시 시도
+              </button>
+            </div>
           ) : leads.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400">
               {q.trim() ? "검색 결과가 없어요" : "아직 가져올 발굴이 없어요"}
