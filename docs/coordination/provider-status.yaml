@@ -1,0 +1,19 @@
+# 제공자 전역 상태 — 트랙별 토큰 상태를 만들지 않는다 (사용 한도는 제공자 단위로 소진됨)
+# 갱신: 지휘자 교대(인수/복귀) 시에만. 두 컨트롤러가 동시에 active_controller가 될 수 없다.
+# 상태 어휘: active | exhausted | recovering | unknown
+
+providers:
+  claude:
+    status: active
+    active_controller: CLAUDE-DISPATCH   # Claude 정상 시 항상 이 값
+    last_changed_at: "2026-07-15"
+    evidence: "Cowork 오케스트레이터 세션 활동 중 (worklog 260715 갱신), 전 트랙 가동"
+  openai:
+    status: unknown                      # Codex 사용 가능 여부 미실측 (wt/codex-client-directive-order 흔적만 존재)
+    active_controller: null              # 평상시 CODEX-FAILOVER-CONTROL 은 STANDBY
+    last_changed_at: null
+    evidence: "미가동 — takeover-runbook 트리거 문구로만 활성화"
+
+# 인수/복귀 절차: docs/coordination/takeover-runbook.md
+# claude.status=exhausted 로 바꾸는 사람: 사용자(belie) 또는 Codex-Failover-Control (근거 필수)
+# 복귀: claude.status=active + openai.active_controller=null 을 같은 커밋으로 기록
