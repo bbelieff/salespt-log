@@ -8,7 +8,7 @@
 
 meta:
   repo: bbelieff/salespt-log
-  master_last_known: "3e74cbf (#600 TRACK-F checkpoint)"   # confirmed 2026-07-20 — R3 §7-3 L4 #598(fd1e8fd) 배포 success·health 200 반영
+  master_last_known: "2cb9da0 (#601 TRACK-D R3 완료 판정 checkpoint)"   # confirmed 2026-07-20 — 이후 #595 어드민 로스터 dedup(9ec3b33f) 배포 success·health 200 (이 checkpoint PR 로 E줄 반영)
   open_prs: ["#543 (docs worklog sync — 라이브 보드 코디네이션용 장기 오픈, 닫지 말 것)"]
   org_model: "6 범용 코드 트랙(A~F) + OPS-CAFE-BOT + 관제(디스패치·Cowork). 활성 동시 코드 작업은 머지 큐 부하 기준 4~5 권장(강제 아님)."
 
@@ -68,13 +68,13 @@ tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
   TRACK-E:
     provider: claude
     writer_session: "DevE(260712)"
-    status: idle                       # confirmed 2026-07-20 — R3-5 코드 완결, 잔여는 belie 앱인증뿐
-    lineage: "fmt 공용부품(#565)·전화면 sweep(#575)·기수생성(R3-5)·Secret 주입"
-    last_done: "#586 R3-5 phase-2b 재시도 UI(배포 완료, 토큰 주입 OK)·#575 fmt sweep·#565 fmt PR-1"
+    status: idle                       # confirmed 2026-07-20 — #595 어드민 로스터 dedup 머지·배포 완료, 신규 배정 대기
+    lineage: "fmt 공용부품(#565)·전화면 sweep(#575)·기수생성(R3-5)·Secret 주입·어드민 로스터 dedup(#595)"
+    last_done: "#595 어드민 동일인 2계정 중복 표시 dedup(9ec3b33f, 배포 success·health 200)·#586 R3-5 phase-2b 재시도 UI·#575 fmt sweep·#565 fmt PR-1"
     open_pr: null
-    next_atomic_action: "belie 앱인증 확인(기수생성 버튼 실왕복·임퍼스네이션 체감) 대기 또는 큐 신규"
+    next_atomic_action: "큐 신규 배정 대기 (fmt-unify·R3-5·roster-dedup 전부 완료). belie 대기항목: #595 Fix②(중복 여분행 삭제, 권장=그대로 두기·📥등재)·기수생성 실왕복·임퍼스네이션 체감"
     handoff_state: ready
-    checkpointed_at: "2026-07-20"
+    checkpointed_at: "2026-07-20 (#595 머지·배포 반영 + registry checkpoint)"
   TRACK-F:
     provider: claude
     writer_session: "DevF(260712)"
