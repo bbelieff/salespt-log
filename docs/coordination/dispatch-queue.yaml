@@ -17,8 +17,36 @@ tasks:
     approval_required: false
     acceptance_criteria: ["§7 전 항목 충족", "D 재검증 PASS", "Cowork 최종판정"]
     merge_order: "F flip(#579) → A mirror_pending(#587) → D 재검증(진행 대기)"
-    status: awaiting_gatekeeper   # 구현·배포 완료, 남은 것 = D 재검증 + Cowork 최종판정
+    status: done   # 2026-07-20 — D 게이트 재검증 PASS(§7 6기준 + correctness 플래그 3건 전부 닫힘, L4=#598 종결·배포·health 200)
     created_at: "2026-07-13"
+    updated_at: "2026-07-20"
+
+  - task_id: codex-stability-gate
+    project: dev-harness
+    priority: P1
+    business_goal: "Codex failover 협업 체계 '안정화 판정' 통과 — 한도 종료 시 무결한 인수·복귀 보장"
+    feature_owner: TRACK-A     # 관제 docs 소유(AGENTS.md 커밋 주체)
+    assigned_tracks: [TRACK-A(문서·AGENTS.md), TRACK-C(드라이런 채점), TRACK-D(게이트 판정)]
+    assigned_provider: claude
+    dependencies: []
+    file_leases: ["docs/coordination/*", "AGENTS.md(미추적→커밋 필요)"]
+    blocked_by: []
+    approval_required: false
+    gate_verdict: "NOT_STABLE (2026-07-20 D 게이트) — L1 registry PASS · L2 링크 FAIL · L3 드라이런 BLOCKED"
+    acceptance_criteria:
+      - "① registry↔실측 일치 — ✅ L1 PASS: 6트랙 last_done 17건 MERGED·SHA일치·open_pr 100%정확·writer 트랙당1명"
+      - "② 문서 링크 무결 — ❌ L2 FAIL (blocker①)"
+      - "③ 드라이런 채점표 제출 — ⛔ L3 BLOCKED (blocker②)"
+    blockers:
+      - "①[blocker] AGENTS.md origin/master 미추적 — 문서우선순위#2·codex-bootstrap step2 정본이 배포 트리에 없음(README·bootstrap·runbook·registry 4문서 8회 참조 죽은링크). 워킹트리에 완성본 4832B 존재 → A/belie 단독 PR 커밋하면 즉시 해소. 부수 minor: docs/coordination/session-extraction-prompts.md 도 미추적."
+      - "②[blocker] C(TRACK-C) failover 인수·복귀 드라이런 채점표 미제출 — takeover-runbook '분기별 모의훈련'이 한 번도 실행·채점 안 됨. D 대행 7체크는 전부 PASS(오늘 원장 구조적 안전: 두컨트롤러/writer1명/lease무겹침/OpenPR정합/worktree오인없음/비밀값0/VPS분리) 이나 정식 리허설 증빙 아님. → C 가 takeover A/B 드라이런 후 7체크 채점표를 coordination 에 산출물로 커밋."
+    minor_drift:
+      - "master_last_known 1커밋 self-lag — checkpoint 커밋이 자기 결과 SHA 를 못 담는 구조적 지연(안정성 무관)"
+      - "TRACK-A status=active 가 stale — coordination docs(#594·#601) 이미 MERGED·open_pr null 이면 idle 이 맞음(#604 시점 미갱신)"
+      - "#595(admin dedup) 미귀속 → ✅ 해소: #604(TRACK-E checkpoint)가 last_done·lineage 에 귀속 완료"
+    merge_order: "blocker① AGENTS.md 커밋 → blocker② C 드라이런 채점표 → D 재판정 → 안정화 선언"
+    status: gate_failed   # 2026-07-20 — 2 blocker 미해소로 안정화 선언 보류. 현황판 유지(다음 배정까지).
+    created_at: "2026-07-20"
     updated_at: "2026-07-20"
 
   - task_id: fmt-unify
