@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-07-20 · Claude Code · R3 최종 판정 + §7-3 L4 종결: append 미러 실패 시트 보충 (fix/db-read-append-fallback)
+- 의도: R3 전체를 코드 레벨로 완료 판정. 적대 4렌즈 검증 결과 §7-3 안전망(mirror_pending #587)·#559(→#568)·#558 잔여4(→#569)는 전부 RESOLVED, 유일 잔여 L4(append CREATE 의 silent 반쪽쓰기)만 blocks. belie 결정=옵션1(누락행 시트 fallback).
+- 한 것: read 진입점 3곳(loadContractPayments·loadDBOverview·loadLeadsForPicker)을 union 으로 — DB 정본 + 시트 read **병렬** → 시트 누락행(=append 미러 실패로 DB 부재)만 row 조인 보충. 신규 lib/service/sheet-backfill.ts(순수 헬퍼, 계약은 linkedMeetingId 2차 dedupe) + 테스트 10케이스. check.sh 초록.
+- 결정(자율, §0.7): 미러 실패 원인=DB blip 이라 옵션2(append durable redrive)는 무력(찍을 DB 행이 없음) → 시트 보충만 견고(belie 옵션1과 일치). R2-4/R2-5 "파일럿 시트 0회" 속도이득 반납(병렬이라 지연=시트 수준). 정합·정직성>속도(§0). 비파일럿 완전 불변.
+- 다음: PR 오픈→머지→배포 success·health 200 확인 후 R3 완료 선언. 복구=revert 1커밋(정본 DB, 손실 없음).
+- SoR: docs/plans/active/append-mirror-sheet-fallback.md
+
 ### 2026-07-20 · F(260712) · 급행: DB생산 카드 거짓 dirty·데이터 유실 수리
 - 의도: belie 리포트(연습용) — DB생산 최신카드에서 ①이전 저장 내용 날아감 ②"저장 후 이동" 이탈 가드 반복. 유실급.
 - 한 것: 근인 3겹 순차 수리(3커밋). ① dirty 판정을 첫 computed 스냅샷 → 순수함수 `rowFormDirty`(자동필드 제외+타입정규화)로 이관, RowForm `onDirtyChange` 보고, blank `[channel.cls]` 메모로 refetch 유실 차단. ② RowCard 접힘 시 dirty 해제(useState 얼음 회귀) + onExpand·+추가 guardedNav 로 선확인. ③ handleSave 저장 실패 rethrow(saveAll 실패 관측 → 이동 취소·편집 보존). 회귀테스트 9(거짓 dirty 0). check.sh 초록(725).

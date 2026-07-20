@@ -30,6 +30,7 @@ import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readAllMeetings } from "@/repo/meetings";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
+import { backfillMissingRows } from "./sheet-backfill";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
 import { selectLeadsForPicker, type LeadForPicker } from "./lead-list"; // 발굴 조회 PR-2
@@ -80,27 +81,9 @@ function rowsOrEmpty<T>(r: PromiseSettledResult<{ rows: T[] }>, label: string): 
   return [];
 }
 
-/**
- * 5섹션 한 번에 조회. allSettled — 한 섹션(예: 신규 AF:AI 게시로그)만 throw 해도
- * 그 채널만 빈 목록, 나머지는 정상. resolveSheet(사용자 없음)만 throw 유지.
- *
- * R2-5(db-read-production): 파일럿 기수는 4섹션 시트 read(4회) → DB 단일 쿼리.
- * 실패 시 기존 시트 경로 silent fallback + Sentry(화면 에러 금지). 비파일럿 불변.
- */
-export async function loadDBOverview(email: string): Promise<DBOverview> {
-  const user = await findUserByEmail(email);
-  if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
-  const spreadsheetId = user.spreadsheetId;
-
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    try {
-      return await readDbTabFromDb(spreadsheetId);
-    } catch (e) {
-      Sentry.captureException(e, { tags: { where: "loadDBOverview-db-read" } });
-      // ↓ 시트 경로로 silent fallback
-    }
-  }
-
+/** 4섹션 시트 read 묶음 — 절대 throw 안 함(내부 allSettled + 섹션별 rowsOrEmpty 강등).
+ *  비파일럿 경로이자, 파일럿 union 의 시트 보충 소스로 재사용. */
+async function readAllSheetSections(spreadsheetId: string): Promise<DBOverview> {
   const [purchases, productions, banners, leads] = await Promise.allSettled([
     readPurchases(spreadsheetId),
     readProductions(spreadsheetId),
@@ -113,6 +96,44 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
     banners: rowsOrEmpty(banners, "현수막"),
     leads: rowsOrEmpty(leads, "콜·지·기·소"),
   };
+}
+
+/**
+ * 4섹션 한 번에 조회. allSettled — 한 섹션만 throw 해도 그 채널만 빈 목록, 나머지는 정상.
+ * resolveSheet(사용자 없음)만 throw 유지.
+ *
+ * 파일럿: DB 단일 쿼리(정본) + 4섹션 시트 read 를 **병렬** 발사해, DB 에 없는(= append
+ * 미러 실패로 누락된) 신규행만 섹션별 row 로 보충한다(union, R3 §7-3 L4). R2-5 의 "시트
+ * 0회" 속도이득은 반납하나 지연은 max(DB,시트)=시트 수준. DB read 실패 시 이미 읽어둔
+ * 시트 결과로 fallback(화면 에러 금지). 비파일럿 불변.
+ */
+export async function loadDBOverview(email: string): Promise<DBOverview> {
+  const user = await findUserByEmail(email);
+  if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
+  const spreadsheetId = user.spreadsheetId;
+
+  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+    const [dbSettled, sheet] = await Promise.all([
+      readDbTabFromDb(spreadsheetId).then(
+        (value) => ({ ok: true, value }) as const,
+        (error) => ({ ok: false, error }) as const,
+      ),
+      readAllSheetSections(spreadsheetId),
+    ]);
+    if (dbSettled.ok) {
+      const db = dbSettled.value;
+      return {
+        purchases: backfillMissingRows(db.purchases, sheet.purchases, (r) => r.row),
+        productions: backfillMissingRows(db.productions, sheet.productions, (r) => r.row),
+        banners: backfillMissingRows(db.banners, sheet.banners, (r) => r.row),
+        leads: backfillMissingRows(db.leads, sheet.leads, (r) => r.row),
+      };
+    }
+    Sentry.captureException(dbSettled.error, { tags: { where: "loadDBOverview-db-read" } });
+    return sheet; // DB 실패 → 이미 읽어둔 시트 결과(추가 read 0)
+  }
+
+  return readAllSheetSections(spreadsheetId);
 }
 
 /**
@@ -133,13 +154,26 @@ export async function loadLeadsForPicker(
   const spreadsheetId = user.spreadsheetId;
 
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    try {
-      const { leads } = await readDbTabFromDb(spreadsheetId);
-      return selectLeadsForPicker(leads, query); // DB 정본 — 빈 목록도 정답(시트 fallback 안 함)
-    } catch (e) {
-      Sentry.captureException(e, { tags: { where: "loadLeadsForPicker-db-read" } });
-      // ↓ DB 실패만 시트 경로로 silent fallback
+    const [dbSettled, sheetLeads] = await Promise.all([
+      readDbTabFromDb(spreadsheetId).then(
+        (value) => ({ ok: true, value }) as const,
+        (error) => ({ ok: false, error }) as const,
+      ),
+      readLeads(spreadsheetId).then(
+        (r) => r.rows,
+        () => null, // 시트 실패 → 보충 없음(DB 정본만)
+      ),
+    ]);
+    if (dbSettled.ok) {
+      // DB 정본 + 시트 누락행(append 미러 실패) 보충. 보충 lead 는 발굴id 없음(시트 컬럼 0)
+      // → isLeadMatched 가 업체명 폴백으로 흡수. row 조인(R3 §7-3 L4).
+      const merged = sheetLeads
+        ? backfillMissingRows(dbSettled.value.leads, sheetLeads, (l) => l.row)
+        : dbSettled.value.leads;
+      return selectLeadsForPicker(merged, query);
     }
+    Sentry.captureException(dbSettled.error, { tags: { where: "loadLeadsForPicker-db-read" } });
+    // ↓ DB 실패만 시트 경로로 silent fallback
   }
   try {
     const { rows } = await readLeads(spreadsheetId);

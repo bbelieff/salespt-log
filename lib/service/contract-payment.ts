@@ -15,6 +15,7 @@ import {
   readContractsFromDb,
 } from "@/repo/db/read-daily";
 import { chooseDailySource } from "./daily-source";
+import { backfillMissingRows } from "./sheet-backfill";
 import {
   appendFromContract,
   clearRow,
@@ -51,21 +52,37 @@ export { isCarryoverContract } from "@/types";
 
 /** 모든 계약수납 row 조회.
  *
- * R2-4(db-read-payments): 파일럿 기수는 02 탭 전체 스캔(이 앱에서 가장 무거운 read 중
- * 하나) → DB 단일 쿼리. DB 경로는 resolveLayout 등 시트 부속 read 도 0회. 실패 시
- * 기존 시트 경로 silent fallback + Sentry(화면 에러 금지). 비파일럿 불변. */
+ * 파일럿: DB 단일 쿼리(정본) + 시트 전체 read 를 **병렬** 발사해, DB 에 없는(= append
+ * 미러 실패로 누락된) 신규 계약행만 시트에서 보충한다(union, R3 §7-3 L4). row(시트 행번호)
+ * 조인 + linkedMeetingId 2차 dedupe(수동 행이동 drift 중복 방지). R2-4 의 "시트 0회"
+ * 속도이득은 반납하나 지연은 max(DB,시트)=시트 수준. DB read 실패 시 시트 전체 fallback
+ * (화면 에러 금지). 비파일럿 불변. */
 export async function loadContractPayments(
   email: string,
 ): Promise<ContractPayment[]> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    try {
-      return await readContractsFromDb(user.spreadsheetId);
-    } catch (e) {
-      Sentry.captureException(e, { tags: { where: "loadContractPayments-db-read" } });
-      // ↓ 시트 경로로 silent fallback
+    const [dbRes, sheetRes] = await Promise.allSettled([
+      readContractsFromDb(user.spreadsheetId),
+      readAll(user.spreadsheetId),
+    ]);
+    if (dbRes.status === "fulfilled") {
+      return sheetRes.status === "fulfilled"
+        ? backfillMissingRows(
+            dbRes.value,
+            sheetRes.value,
+            (c) => c.row,
+            (c) => c.linkedMeetingId || undefined,
+          )
+        : dbRes.value; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
     }
+    // DB read 실패 → 기존처럼 시트 전체 silent fallback
+    Sentry.captureException(dbRes.reason, {
+      tags: { where: "loadContractPayments-db-read" },
+    });
+    if (sheetRes.status === "fulfilled") return sheetRes.value;
+    throw sheetRes.reason; // 둘 다 실패 → 시트 에러 전파(기존 readAll throw 와 동등)
   }
   return readAll(user.spreadsheetId);
 }
