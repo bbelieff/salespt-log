@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChannelMeta, FieldDef } from "../_lib/channels";
 import { fmtWon } from "../_lib/channels";
+import { rowFormDirty } from "../_lib/dirty";
 import MoneyInput from "@/components/ui/MoneyInput";
 import PhoneInput from "@/components/ui/PhoneInput";
 
@@ -17,9 +18,11 @@ interface Props {
   channel: ChannelMeta;
   initial?: Record<string, unknown>;
   onChange: (row: Record<string, unknown>) => void;
+  /** 미저장 여부 — **자동 필드 제외** draft vs blank. RowCard/추가폼 이탈 가드용(거짓 dirty 0). */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export default function RowForm({ channel, initial = {}, onChange }: Props) {
+export default function RowForm({ channel, initial = {}, onChange, onDirtyChange }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   // 추가(생산 시작) 모드 = initial 없음. 2단계 필드(hideInAdd) 숨김 판단용.
   const isAdd = Object.keys(initial).length === 0;
@@ -79,6 +82,14 @@ export default function RowForm({ channel, initial = {}, onChange }: Props) {
     onChange(computed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [computed]);
+
+  // 미저장 판정 = 서버 기준값(blank) vs 현재 입력(draft), **자동(formula) 필드 제외**.
+  // 수식/자동값 mount 정착이 거짓 dirty 를 못 내게 함(유실 사고 수리). blank 은 [channel.cls] 메모라
+  // initial(=서버 row) 이 refetch 로 바뀌어도 재계산 안 됨 → 편집 중 draft 안 덮임.
+  useEffect(() => {
+    onDirtyChange?.(rowFormDirty(channel.fields, blank, draft));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, blank]);
 
   // 타입별 변환: number 필드는 숫자로 캐스트해야 Zod 검증 통과 (Expected number).
   const setField = (key: string, raw: string) => {

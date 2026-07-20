@@ -11,7 +11,7 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import {
   useAppendDB,
@@ -240,23 +240,14 @@ export default function DbPage() {
     return null;
   }, [activeCh, rows, ch.isCost]);
 
-  // 신규행 추가 폼 미저장 가드 — RowCard 와 동일한 baseline-ref 패턴(수식 mount onChange 거짓 dirty 차단).
-  const addBaselineRef = useRef<string | null>(null);
+  // 신규행 추가 폼 미저장 가드 — 판정은 RowForm(rowFormDirty, 자동 필드 제외 → 거짓 dirty 0).
+  const [addDirty, setAddDirty] = useState(false);
   useEffect(() => {
-    if (!addOpen) {
-      setAddDraft({});
-      addBaselineRef.current = null;
-    }
+    if (!addOpen) { setAddDraft({}); setAddDirty(false); }
   }, [addOpen]);
-
-  const onAddDraftChange = (next: Record<string, unknown>) => {
-    setAddDraft(next);
-    if (addBaselineRef.current === null) addBaselineRef.current = JSON.stringify(next);
-  };
   useDirtyEntry(
     "db-add-row",
-    addOpen && addBaselineRef.current !== null &&
-      JSON.stringify(addDraft) !== addBaselineRef.current,
+    addOpen && addDirty,
     async () => {
       await append.mutateAsync({ channel: KEY_TO_BACKEND[activeCh], data: addDraft as never });
       setAddOpen(false);
@@ -380,7 +371,7 @@ export default function DbPage() {
                 {ch.recordsLabel} 추가
               </span>
             </div>
-            <RowForm channel={ch} onChange={onAddDraftChange} />
+            <RowForm channel={ch} onChange={setAddDraft} onDirtyChange={setAddDirty} />
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
 import { fmtWon, mdShort } from "../_lib/channels";
 import RowForm from "./RowForm";
@@ -87,21 +87,15 @@ export default function RowCard({
   onSave,
   onDeleteRequest,
 }: Props) {
-  const [draft, setDraft] = useState<Record<string, unknown>>(row);
-  // 미저장 이탈 가드. RowForm 은 mount 시 수식필드(개당단가 등) onChange 를 1회 발화하므로
-  // row 와의 단순 비교는 거짓 dirty. 그 첫 onChange 값을 "깨끗한 기준선"으로 박아두고
-  // 이후 사용자 입력으로 기준선과 달라질 때만 dirty (→ 거짓양성 0). 접어도 draft·ref 보존돼 가드 유지.
-  const baselineRef = useRef<string | null>(null);
-  const onDraftChange = (next: Record<string, unknown>) => {
-    setDraft(next);
-    if (baselineRef.current === null) baselineRef.current = JSON.stringify(next);
-  };
+  const [draft, setDraft] = useState<Record<string, unknown>>(row); // 저장 payload(자동값 포함)
+  // 미저장 판정은 RowForm 이 담당(rowFormDirty: 자동 필드 제외 → 거짓 dirty 0). 여기선 그 신호만 받는다.
+  const [dirty, setDirty] = useState(false);
   const entryId = useId();
   useDirtyEntry(
     entryId,
-    baselineRef.current !== null && JSON.stringify(draft) !== baselineRef.current,
+    dirty,
     () => onSave(draft),
-    () => { if (baselineRef.current) setDraft(JSON.parse(baselineRef.current)); },
+    () => setDraft(row), // 되돌리기: 서버값. 폼은 접힘/이동으로 언마운트 → 재펼침 시 서버 row 기준 재초기화.
     `${channel.name} ${index + 1}행`,
   );
   const displayNum = String(index + 1).padStart(2, "0");
@@ -160,8 +154,9 @@ export default function RowCard({
       </div>
 
       {/* 현수막 게시로그(AF:AI) 폐기 — 게시=생산은 컨택 게시 스테퍼가 소유(ADR-0025). */}
-      {/* initial=draft(=row 사본+편집): 접었다 다시 펼쳐도 RowForm 이 편집값으로 재마운트(되돌림 방지). */}
-      <RowForm channel={channel} initial={draft} onChange={onDraftChange} />
+      {/* initial=row(서버 정본): blank 은 [channel.cls] 메모라 refetch 로 row 가 바뀌어도 편집 중 draft
+          안 덮임. 미저장 판정(onDirtyChange)도 서버 기준이라 정확. */}
+      <RowForm channel={channel} initial={row} onChange={setDraft} onDirtyChange={setDirty} />
 
       <div className="mt-3 flex gap-2">
         <button
