@@ -5,7 +5,7 @@
 > - **누가 읽나요**: Codex와 이 레포에서 작업하는 모든 자동화 에이전트.
 > - **어떤 기능·작업과 연결?**: 모든 코드·문서·운영 작업.
 > - **읽고 나면 알 수 있는 것**: 어디서 시작할지, 어디에 작업할지, 무엇을 절대 건드리지 말아야 하는지.
-> - **관련 문서**: [CLAUDE.md](./CLAUDE.md), [HANDOFF.md](./HANDOFF.md), [공용 협업 규약](./docs/handoff/CODEX-COLLABORATION.md), [작업 로그](./docs/worklog.md).
+> - **관련 문서**: [CLAUDE.md](./CLAUDE.md), `HANDOFF.md`(로컬 전용·미추적 — 레포에 없음), [공용 협업 규약](./docs/handoff/CODEX-COLLABORATION.md), [작업 로그](./docs/worklog.md).
 
 ## 정본과 우선순위
 

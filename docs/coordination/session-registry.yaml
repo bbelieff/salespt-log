@@ -8,7 +8,7 @@
 
 meta:
   repo: bbelieff/salespt-log
-  master_last_known: "2cb9da0 (#601 TRACK-D R3 완료 판정 checkpoint)"   # confirmed 2026-07-20 — 이후 #595 어드민 로스터 dedup(9ec3b33f) 배포 success·health 200 (이 checkpoint PR 로 E줄 반영)
+  master_last_known: "5aa2c24 (#604 TRACK-E checkpoint)"   # confirmed 2026-07-20 — R3 완료(#601)·AGENTS.md 승격(#602)·.gitattributes(#603)·#595 dedup 반영. 이 PR이 CODEX-COLLABORATION 추적화+링크수리 후 advance
   open_prs: ["#543 (docs worklog sync — 라이브 보드 코디네이션용 장기 오픈, 닫지 말 것)"]
   org_model: "6 범용 코드 트랙(A~F) + OPS-CAFE-BOT + 관제(디스패치·Cowork). 활성 동시 코드 작업은 머지 큐 부하 기준 4~5 권장(강제 아님)."
 
@@ -24,18 +24,22 @@ controllers:
     role: "비상관제 (Claude 전체 한도 종료 시에만 활성 — takeover-runbook)"
     status: STANDBY
 
+# checkpoint 기입 안내 (전 트랙 의무 — 페일오버는 예고 없이 온다):
+#   자기 트랙 블록만 갱신한다(1트랙 1writer — 남의 블록 금지). 갱신 시점 = 착수·결정·구현완료·
+#   검사·PR 오픈·머지·배포·블로커·세션 종료 전. 필수 필드: status·current(활성 시)·last_done·
+#   open_pr·next_atomic_action·checkpointed_at(YYYY-MM-DD). 상세 서사는 worklog, 여기엔 요약만.
 tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
   TRACK-A:
     provider: claude
     writer_session: "DevA(260712)"
-    status: active                     # confirmed 2026-07-20 — coordination 체계 docs 커밋 진행 중
-    current: "coordination 체계 docs 커밋 (이 PR — registry/queue 7/20 실측 갱신 포함)"
-    lineage: "R3 쓰기 설계(수렴 미러·todos·meetings·sales)·mirror_pending·캘린더·로딩 오버레이"
-    last_done: "#587 mirror_pending §7-3(573bd01, 배포 완료)·#571 로딩 오버레이·#564 일반이벤트 삭제 UI"
+    status: active                     # confirmed 2026-07-20 — KPI-① 관제 장부 정본화 진행 중
+    current: "KPI-① 관제 장부 정본화 (이 PR — CODEX-COLLABORATION.md 추적화 + AGENTS.md 죽은 링크 수리 + registry 최종 갱신). AGENTS.md 파일 추적화는 #602 선행"
+    lineage: "R3 쓰기 설계(수렴 미러·todos·meetings·sales)·mirror_pending·캘린더·로딩 오버레이·coordination 장부"
+    last_done: "#594 coordination 체계 docs 커밋(38212eb, 배포 완료)·#587 mirror_pending §7-3·#571 로딩 오버레이"
     open_pr: null
-    next_atomic_action: "belie mirror_pending 설계 5선택 반영(안전 기본값 이미 배포) 또는 큐 신규 배정"
+    next_atomic_action: "큐 신규 배정 대기 (R3 완료)"
     handoff_state: active_checkpoint_in_worklog
-    checkpointed_at: "2026-07-20 (worklog 보드 + 로그)"
+    checkpointed_at: "2026-07-20 (worklog 보드 + 로그 + registry)"
   TRACK-B:
     provider: claude
     writer_session: "DevB(260703)"
@@ -101,6 +105,9 @@ tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
 uncommitted_known:
   - "docs/worklog.md 라이브 편집분 (#543 이 주기 sync)"
   - "scratchpad/* (커밋 대상 아님) · scratchpad/s7.patch(D §7 대조표 → 소유트랙 이관/랜딩 대기)"
-  - "docs/coordination/session-extraction-prompts.md (이번 docs PR 6종 밖 — 별도 커밋 판단 대기)"
-  - "AGENTS.md·HANDOFF.md·docs/handoff/*(단수) (Codex 실행계약 계열 — AGENTS.md 미추적이라 README/codex-bootstrap 링크가 아직 죽음, 별도 커밋 필요)"
-  - "메인 EOL 노이즈 ~720파일 (F eol-renormalize 막차)"
+  - "docs/coordination/session-extraction-prompts.md (docs PR 6종 밖 — 무참조라 죽은 링크 아님, 별도 커밋 판단 대기)"
+  - "HANDOFF.md (Claude 로컬 세션 기억 — 자기명시 '커밋 안 함', 의도적 미추적. AGENTS.md 에서 de-link 처리 완료)"
+  - "docs/handoff/*(단수) 중 STATE.md·pr-*.md·user-guide-usage-10ep.md (옛 per-PR 핸드오프 노트 — coordination 계열 아님, 방치)"
+  - "메인 EOL 노이즈 (F eol-renormalize 막차 — #603 .gitattributes 로 정책은 박힘)"
+# 2026-07-20 추적화 완료(더 이상 미커밋 아님): AGENTS.md(#602), docs/handoff/CODEX-COLLABORATION.md(이 KPI-① PR)
+#   → README(우선순위#2)·codex-bootstrap→AGENTS.md, AGENTS.md→CODEX-COLLABORATION 링크 전부 해소. HANDOFF.md 만 로컬전용(de-link).
