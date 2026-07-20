@@ -78,13 +78,13 @@ tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
   TRACK-F:
     provider: claude
     writer_session: "DevF(260712)"
-    status: idle                       # confirmed 2026-07-20 — DB생산 유실 급행 fix 배포 완료, D 재검증 대기
-    lineage: "03 DB관리(R3-4)·파생셀(sales-cells #579)·발굴 피커 UI·DB dirty-guard 유실수리·docs self-merge·EOL 막차"
-    last_done: "#596 DB생산 카드 거짓dirty·유실 급행 fix(squash 5220242, 배포 완료 4870810·health 200; 근인3겹·적대리뷰2R)·앞서 #591 발굴 피커 PR-3"
+    status: idle                       # confirmed 2026-07-20 — EOL 막차(#603) 완주, #596 D 재검증 대기
+    lineage: "03 DB관리(R3-4)·파생셀(sales-cells #579)·발굴 피커 UI·DB dirty-guard 유실수리·.gitattributes EOL·docs self-merge"
+    last_done: "#603 .gitattributes LF 정책 기계강제(KPI-④, 1aa3b9a 배포 success·health 200; §0.5 진단: 저장소 이미 LF·720파일=autocrlf 착시·내용무변경 실측)·앞서 #596 DB 유실 급행"
     open_pr: null
-    next_atomic_action: "D의 #596 라이브 재검증 대기(연습용 3증상 해소) / eol-renormalize 막차(Cowork 신호) 또는 큐 신규 배정"
+    next_atomic_action: "#596 D 라이브 재검증 대응 대기(연습용 3증상 해소) / 큐 신규 배정"
     handoff_state: ready
-    checkpointed_at: "2026-07-20 (worklog 보드+로그 + registry)"
+    checkpointed_at: "2026-07-20 (worklog 보드+로그 + registry; #603 EOL 완주)"
   OPS-CAFE-BOT:
     provider: claude
     writer_session: "카페텔레봇 세션"
