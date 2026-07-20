@@ -108,6 +108,6 @@ tracks:   # 전 트랙 범용 — lineage 는 참고 지식일 뿐
 uncommitted_known:
   - "docs/worklog.md 라이브 편집분 (#543 이 주기 sync)"
   - "scratchpad/* (커밋 대상 아님) · scratchpad/s7.patch(D §7 대조표 → 소유트랙 이관/랜딩 대기)"
-  - "docs/coordination/session-extraction-prompts.md (이번 docs PR 6종 밖 — 별도 커밋 판단 대기)"
-  - "AGENTS.md·HANDOFF.md·docs/handoff/*(단수) (Codex 실행계약 계열 — AGENTS.md 미추적이라 README/codex-bootstrap 링크가 아직 죽음, 별도 커밋 필요)"
+  - "docs/coordination/session-extraction-prompts.md + docs/handoff/CODEX-COLLABORATION.md (미추적 — KPI-③ 드라이런 타겟 codex-dryrun-track-coord-docs 로 Codex 가 추적 승격 예정)"
+  - "✅정정(#602): AGENTS.md 는 이제 git 추적됨 → README/codex-bootstrap 의 ../../AGENTS.md 링크 해소. HANDOFF.md 는 로컬 전용 유지(설계상)."
   - "메인 EOL 노이즈 ~720파일 (F eol-renormalize 막차)"
