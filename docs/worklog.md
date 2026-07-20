@@ -58,7 +58,7 @@
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 속도 전/후 리포트 — 레포 구역 없음(PostHog+PR 코멘트) | DevD(260712) | **완료(게시)**: belie 승인 후 PR #491·496·499·500·509 5건에 전/후 성적표 요약 코멘트 게시 완료. 결과=5 route ✅목표달성(p50 22~36ms·sheets0, daily −99%), dashboard 🟡부분(p95 51k→3.2k), todos ❌(#535 배포 이전=측정창 밖). 리포트=`scratchpad/db-speed-report-FINAL.md`. 후속(대기): #535 전면배포·파일럿확대 후 todos·dashboard 재측정. 신규 작업 대기 |
 | E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
-| F | 급행: DB생산 카드 거짓 dirty·유실 수리 — app/(app)/db | DevF(260712) | PR 오픈 대기 — dirty 판정 순수함수 이관+접힘리셋+가드+저장실패 rethrow(3커밋). check.sh 초록(725)·적대 리뷰 2R(②③ 연쇄 발굴·마감). 머지 후 §6.8 + D 재검증 요청 예정 |
+| F | 급행: DB생산 카드 거짓 dirty·유실 수리 — app/(app)/db | DevF(260712) | **배포 확인(완료)** — #596(squash 5220242) 머지·배포 success(38212eb, 내 커밋 포함)·health 200. 🔔**D 재검증 요청**: 연습용에서 3증상(①거짓dirty ②유령이탈가드 ③저장실패유실) 라이브 해소 확인 바람(로컬은 auth/데이터 없어 E2E 불가). 사고기록=incidents/2026-07-20-db-card-dirty-guard-dataloss.md |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
 
 > 2026-07-12 표기 개편: 트랙 문자 = 세션 문자(DevA~F)로 통일. 구 표기 매핑 —
