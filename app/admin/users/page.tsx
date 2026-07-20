@@ -21,7 +21,7 @@ import {
 } from "@/auth/identity";
 import { adminEmails, adminNames } from "@/config";
 import {
-  listAllUsers,
+  listDistinctUsers,
   listPendingTrainees,
   isReservedTrainee,
 } from "@/repo/users";
@@ -44,7 +44,7 @@ export default async function AdminUsersPage() {
   // 관리부서 멤버는 read-only.
   const viewOnly = !isAdminEmail(sessionEmail);
   const [all, archivedSet, pendingTrainees] = await Promise.all([
-    listAllUsers(),
+    listDistinctUsers(),
     getArchivedCohortSet(),
     listPendingTrainees(),
   ]);

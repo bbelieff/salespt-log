@@ -16,7 +16,7 @@ import {
 import { adminEmails, adminNames } from "@/config";
 import {
   listPendingTrainers,
-  listAllUsers,
+  listDistinctUsers,
   isReservedTrainee,
 } from "@/repo/users";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
@@ -32,7 +32,7 @@ export default async function AdminTrainersPage() {
 
   const [pending, all] = await Promise.all([
     listPendingTrainers(),
-    listAllUsers(),
+    listDistinctUsers(),
   ]);
 
   // ADMIN_EMAILS 중 registry row 가 없는 경우는 가짜 row 합성 — 사용자가 명단

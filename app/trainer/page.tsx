@@ -18,7 +18,7 @@ import {
 import { adminEmails, adminNames, cohortMasterSheetId } from "@/config";
 import {
   findUserByEmail,
-  listAllUsers,
+  listDistinctUsers,
   isReservedTrainee,
 } from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
@@ -48,7 +48,7 @@ export default async function TrainerPage() {
   // 전체 수강생 명단 — admin/users 와 동일한 활성/보관 분리.
   // 유보(reserved) 와 pending 은 트레이너에게 안 보임 (admin 영역).
   const [all, archivedSet] = await Promise.all([
-    listAllUsers(),
+    listDistinctUsers(),
     getArchivedCohortSet(),
   ]);
   const activeApprovedTrainees = all.filter(

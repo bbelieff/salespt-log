@@ -6,7 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
-import { listAllUsers } from "@/repo/users";
+import { listDistinctUsers } from "@/repo/users";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function GET_handler() {
@@ -17,7 +17,7 @@ async function GET_handler() {
   if (!isAdminEmail(sessionEmail)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  const users = await listAllUsers();
+  const users = await listDistinctUsers();
   return NextResponse.json({ users });
 }
 

@@ -99,3 +99,33 @@ export function pickActiveArenaRow(users: User[]): User | null {
   }
   return null;
 }
+
+/**
+ * 표시(로스터) 전용 dedup — 같은 사람의 여러 registry 행을 대표 1행으로 접는다.
+ *
+ * 근인(admin-roster-dup): listAllUsers 는 registry 행을 dedup 없이 방출해, 아레나 재참가
+ * (옛 숫자기수행 + A{n}-{m}행)·이메일 2개 같은 시트(별칭·직원공유) 인 **1인이 2행**으로 보였다.
+ *
+ * 그룹 키 = **spreadsheetId 우선**(같은 시트 = 같은 사람), 없으면(트레이너 등 시트無) email(소문자).
+ * 각 그룹 대표 = pickPreferredUser(아레나>숫자·active>그외). 입력 정렬을 보존(대표 위치 그대로).
+ *
+ * ⚠️ **표시 경로 전용**. 행 단위 뮤테이션(approve/assign/install-formulas)은 raw listAllUsers 유지 —
+ * dedup 하면 타겟 행이 사라진다.
+ */
+export function distinctByPreferred(users: User[]): User[] {
+  const groupKey = (u: User): string => {
+    const sid = String(u.spreadsheetId ?? "").trim();
+    return sid !== "" ? `sheet:${sid}` : `email:${String(u.email ?? "").trim().toLowerCase()}`;
+  };
+  const groups = new Map<string, User[]>();
+  for (const u of users) {
+    const k = groupKey(u);
+    const g = groups.get(k);
+    if (g) g.push(u);
+    else groups.set(k, [u]);
+  }
+  const rep = new Map<string, User>();
+  for (const [k, us] of groups) rep.set(k, pickPreferredUser(us) ?? us[0]!);
+  // 입력(정렬된) 순서 보존 — 그룹당 대표 행만 남긴다.
+  return users.filter((u) => rep.get(groupKey(u)) === u);
+}

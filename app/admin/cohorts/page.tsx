@@ -10,7 +10,7 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
-import { listAllUsers } from "@/repo/users";
+import { listDistinctUsers } from "@/repo/users";
 import { listCohorts, ensureCohortsTab, type CohortStatus } from "@/repo/cohorts";
 import { countPendingCohortCreates } from "@/repo/db/cohort-pending";
 import CohortMgmtPanel from "@/components/auth/CohortMgmtPanel";
@@ -22,7 +22,7 @@ export default async function AdminCohortsPage() {
   if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) redirect("/");
   const viewOnly = !isAdminEmail(sessionEmail);
 
-  const all = await listAllUsers();
+  const all = await listDistinctUsers();
   // trainee 들이 사용 중인 cohort label 집합.
   const usedLabels = Array.from(
     new Set(
