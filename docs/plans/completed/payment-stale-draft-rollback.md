@@ -7,7 +7,7 @@
 
 # 🚑 hotfix — 실무/수납 저장 유실 + 이탈 팝업 루프
 
-**상태**: 진행 중 (DevC, 2026-07-21)
+**상태**: ✅ 완료 (DevC, 2026-07-21) — #613 master e68b1d4 · 배포 success · health 200
 **브랜치**: `fix/payment-stale-draft-rollback`
 **신고**: belie · **원인 확정**: Cowork 라이브 재현(김지훈 A1-1, network 로그)
 
