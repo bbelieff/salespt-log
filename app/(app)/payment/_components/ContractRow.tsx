@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { isCarryoverContract, isTerminatedContract, type ContractPayment, type CompanyInfo } from "@/types";
 import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
 import { useDirtyEntry } from "@/components/DirtyGuard";
@@ -22,13 +22,16 @@ import PaymentSlotForm from "./PaymentSlotForm";
 import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
-import { progressPct, initialVisiblePayments } from "../_lib/payment-progress";
+import { progressPct, initialVisiblePayments, EMPTY_SLOT } from "../_lib/payment-progress";
 import { useTodosByContract } from "@/query/todos-hooks";
 import {
   ACCENT,
   contractAccentFamily,
+  docBadgeClass,
+  payBadgeClass,
   type AccentFamily,
 } from "../_lib/contractAccent";
+import { shouldRebaseDraft, shouldRegisterDirty } from "../_lib/draft-sync";
 
 interface Props {
   cp: ContractPayment;
@@ -36,7 +39,8 @@ interface Props {
   pending: boolean;
   /** [3] 진행기관 콤보박스 후보 (전 계약 distinct). */
   institutionOptions?: string[];
-  onSave: (next: ContractPayment) => void;
+  /** 저장. Promise 를 반환하면 saveAll 이 await 한다 — 미저장 가드가 저장 완료 전에 이동하지 않도록. */
+  onSave: (next: ContractPayment) => Promise<void> | void;
   onDeleteRequest: () => void;
   /** [계약해지] — TerminationModal 오픈 (contract-termination). */
   onTerminateRequest: () => void;
@@ -61,10 +65,8 @@ interface Props {
   courseStartISO?: string;
 }
 
-
-// 진행도·슬롯 가시성 헬퍼는 _lib/payment-progress 로 추출(page 정렬과 공유, §P8).
-
-// renderNameWithHighlight 는 ./nameHighlight 로 분리(500줄 캡, contract-termination PR).
+// 진행도·슬롯 가시성 헬퍼는 _lib/payment-progress, draft 동기화 판정은 _lib/draft-sync 로 추출(500줄 캡).
+// renderNameWithHighlight 는 ./nameHighlight 로 분리(contract-termination PR).
 
 export default function ContractRow({
   cp,
@@ -91,28 +93,51 @@ export default function ContractRow({
   // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
   const showBody = forceOpen || (!selectable && open);
   const [draft, setDraft] = useState<ContractPayment>(cp);
+  // 편집 의도 — dirty 의 정본(값 비교 아님). 편집 UI 를 안 띄운 인스턴스는 영원히 false. draft-sync 참조.
+  const [touched, setTouched] = useState(false);
+  const editSeq = useRef(0); // 저장 in-flight 중 새 편집이 들어왔는지 감지
+  /** draft 편집 단일 진입점 — 모든 onChange 가 여기를 거친다(의도 기록). */
+  const editDraft = (fn: (d: ContractPayment) => ContractPayment) => {
+    editSeq.current++;
+    setTouched(true);
+    setDraft(fn);
+  };
   // 업체정보 라이브 드래프트(#411) — 파란 저장이 04+06 까지 함께 영속화.
   const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(undefined);
   const [ciTouched, setCiTouched] = useState(false);
+  // cp(서버 정본) 변경 시 미편집이면 draft 재기준 — 저장 후 refetch·계약정보 수정·해지 전부 커버.
+  // 이게 없으면 옛 draft 가 남아 이탈 팝업 저장 시 방금 저장을 롤백한다(hotfix 2026-07-21).
+  const rebaseOk = useRef(true);
+  rebaseOk.current = shouldRebaseDraft({ touched, ciTouched });
+  const cpKey = JSON.stringify(cp);
+  useEffect(() => {
+    if (rebaseOk.current) setDraft(cp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cpKey]);
+  // 저장은 **성공했을 때만** 편집 의도를 해제한다 — 실패인데 해제하면 가드가 풀려 무경고 유실(적대리뷰 BLOCKER).
   const saveAll = async () => {
+    const seq = editSeq.current;
+    let ciOk = true;
     if (ciTouched && ciDraft) {
-      await fetch("/api/company-info", {
+      const res = await fetch("/api/company-info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 계약일: cp.계약일, 업체명: cp.업체명, 업체정보: ciDraft }),
-      }).catch(() => {});
-      setCiTouched(false);
+      }).catch(() => null);
+      ciOk = Boolean(res?.ok);
+      if (ciOk && editSeq.current === seq) setCiTouched(false); // POST 중 새 입력이면 의도 유지
     }
-    onSave(draft);
+    await onSave(draft); // 실패 시 throw(page 가 재전파) → 아래 미도달 → touched 유지 → 가드가 붙잡는다
+    if (!ciOk) throw new Error("업체정보를 저장하지 못했어요");
+    if (editSeq.current === seq) setTouched(false); // 저장 중 새 편집이 없었을 때만 해제
   };
-  // 미저장 이탈 가드. dirty=업체정보 만짐 ∥ draft≠저장본(cp). cp 는 raw 필드만→저장후 거짓양성 0.
-  // id=useId: 마스터-디테일 동일 행 2인스턴스 키 충돌 방지.
+  // 미저장 이탈 가드 — id=useId: 마스터-디테일 동일 행 2인스턴스 키 충돌 방지.
   const dirtyEntryId = useId();
   useDirtyEntry(
     dirtyEntryId,
-    ciTouched || JSON.stringify(draft) !== JSON.stringify(cp),
+    shouldRegisterDirty({ selectable, touched, ciTouched, draft, cp }),
     saveAll,
-    () => { setDraft(cp); setCiDraft(undefined); setCiTouched(false); },
+    () => { setDraft(cp); setTouched(false); setCiDraft(undefined); setCiTouched(false); },
     cp.업체명 || "계약 수납",
   );
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
@@ -188,20 +213,6 @@ export default function ContractRow({
   // 닫힘 시 좌측 상태바(at-a-glance). bare(데스크탑 패널/목록)에선 page 가 윤곽선 소유 → 생략.
   const leftBar = bare ? "" : `border-l-4 ${accent.leftBar}`;
 
-  const docBadgeClass =
-    docsDone === TOTAL_CHECKBOXES
-      ? "text-green-600 bg-green-50"
-      : docsDone === 0
-        ? "text-gray-400 bg-gray-50"
-        : "text-blue-600 bg-blue-50";
-
-  const payBadgeClass =
-    avgPct === 0
-      ? "text-gray-400 bg-gray-50"
-      : avgPct >= 100
-        ? "text-green-600 bg-green-50"
-        : "text-blue-600 bg-blue-50";
-
   const handleAddSlot = () => {
     if (visiblePayments < 3) {
       setVisiblePayments((v) => (v + 1) as 1 | 2 | 3);
@@ -209,16 +220,7 @@ export default function ContractRow({
   };
   const handleRemoveSlot = (slotIdx: 1 | 2 | 3) => {
     if (slotIdx === 1) return; // 슬롯1은 제거 불가
-    const emptySlot: ContractPayment["수납1"] = {
-      진행기관: "",
-      진행률: "",
-      현황: "",
-      승인금액: 0,
-      수납액: 0,
-      수납일: "",
-      메모: "",
-    };
-    setDraft((d) => ({ ...d, [`수납${slotIdx}`]: emptySlot }));
+    editDraft((d) => ({ ...d, [`수납${slotIdx}`]: EMPTY_SLOT }));
     if (slotIdx === visiblePayments)
       setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
   };
@@ -296,12 +298,12 @@ export default function ContractRow({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span
-            className={`rounded px-1.5 py-0.5 text-xs font-medium ${docBadgeClass}`}
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${docBadgeClass(docsDone)}`}
           >
             📋 {docsDone}/{TOTAL_CHECKBOXES}
           </span>
           <span
-            className={`rounded px-1.5 py-0.5 text-xs font-medium ${payBadgeClass}`}
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${payBadgeClass(avgPct)}`}
           >
             💰 {avgPct === 0 ? "—" : `${avgPct}%`}
           </span>
@@ -331,7 +333,7 @@ export default function ContractRow({
         <div className="card-open-anim space-y-3 p-3">
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           <LinkedFieldsEditor cp={cp} />
-          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} />
+          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={(ci) => { editSeq.current++; setCiDraft(ci); setCiTouched(true); }} />
 
           {/* 7 체크박스 */}
           <div>
@@ -357,7 +359,7 @@ export default function ContractRow({
             <CheckboxList
               draft={draft}
               onChange={(key, next) =>
-                setDraft((d) => ({ ...d, [key]: next }))
+                editDraft((d) => ({ ...d, [key]: next }))
               }
             />
           </div>
@@ -374,7 +376,7 @@ export default function ContractRow({
               rows={2}
               value={draft.로드맵메모}
               onChange={(e) =>
-                setDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
+                editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
               }
               placeholder="예: [1] 미소재단 후 [2] 대환으로 신용점수 올리고 [3] 신용보증재단 진행"
               className="w-full resize-none rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"
@@ -410,8 +412,8 @@ export default function ContractRow({
                 institutionOptions={slotInstitutionOptions}
                 todos={allTodos}
                 focusTodoId={focusTodoId}
-                onEnsureSaved={() => onSave(draft)}
-                onChange={(next) => setDraft((d) => ({ ...d, 수납1: next }))}
+                onEnsureSaved={() => void Promise.resolve(onSave(draft)).catch(() => {})}
+                onChange={(next) => editDraft((d) => ({ ...d, 수납1: next }))}
               />
               {visiblePayments >= 2 && (
                 <PaymentSlotForm
@@ -424,9 +426,9 @@ export default function ContractRow({
                   institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
                   focusTodoId={focusTodoId}
-                  onEnsureSaved={() => onSave(draft)}
+                  onEnsureSaved={() => void Promise.resolve(onSave(draft)).catch(() => {})}
                   onChange={(next) =>
-                    setDraft((d) => ({ ...d, 수납2: next }))
+                    editDraft((d) => ({ ...d, 수납2: next }))
                   }
                   onRemove={() => handleRemoveSlot(2)}
                 />
@@ -442,9 +444,9 @@ export default function ContractRow({
                   institutionOptions={slotInstitutionOptions}
                   todos={allTodos}
                   focusTodoId={focusTodoId}
-                  onEnsureSaved={() => onSave(draft)}
+                  onEnsureSaved={() => void Promise.resolve(onSave(draft)).catch(() => {})}
                   onChange={(next) =>
-                    setDraft((d) => ({ ...d, 수납3: next }))
+                    editDraft((d) => ({ ...d, 수납3: next }))
                   }
                   onRemove={() => handleRemoveSlot(3)}
                 />
@@ -466,7 +468,7 @@ export default function ContractRow({
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              onClick={saveAll}
+              onClick={() => void saveAll().catch(() => {})}
               disabled={pending}
               className="h-11 flex-1 rounded-lg bg-blue-500 text-sm font-semibold text-white transition-colors hover:bg-blue-600 active:bg-blue-700 active:scale-95 disabled:bg-gray-300"
             >

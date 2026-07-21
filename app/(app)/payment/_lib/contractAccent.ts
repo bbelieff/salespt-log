@@ -52,6 +52,18 @@ export function contractAccentFamily(cp: ContractPayment): AccentFamily {
   return "slate";
 }
 
+/** 📋 서류 진행 뱃지 색 — 전부 완료 green / 0건 회색 / 진행 중 blue. */
+export function docBadgeClass(done: number): string {
+  if (done === TOTAL_CHECKBOXES) return "text-green-600 bg-green-50";
+  return done === 0 ? "text-gray-400 bg-gray-50" : "text-blue-600 bg-blue-50";
+}
+
+/** 💰 수납 진행 뱃지 색 — 미착수 회색 / 완료 green / 진행 중 blue. */
+export function payBadgeClass(avgPct: number): string {
+  if (avgPct === 0) return "text-gray-400 bg-gray-50";
+  return avgPct >= 100 ? "text-green-600 bg-green-50" : "text-blue-600 bg-blue-50";
+}
+
 /** 패밀리별 Tailwind 클래스 (전부 표준 토큰 — arbitrary value 없음). */
 export const ACCENT: Record<
   AccentFamily,

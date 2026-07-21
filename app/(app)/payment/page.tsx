@@ -113,7 +113,7 @@ export default function PaymentPage() {
       await patch.mutateAsync({ row: next.row, data: next });
       showToast("✓ 저장 완료");
     } catch (e) {
-      showToast(`저장하지 못했어요: ${(e as Error).message}`);
+      showToast(`저장하지 못했어요: ${(e as Error).message}`); throw e; // 재전파: 미저장 가드가 붙잡도록
     } finally {
       setPendingRow(null);
     }
