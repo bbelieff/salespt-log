@@ -6,6 +6,17 @@ import type { ContractPayment } from "@/types";
 
 type Slot = ContractPayment["수납1"];
 
+/** 빈 슬롯 — 수납 회차 제거 시 덮어쓸 값(시트 M~AD 대응 6필드 + 메모). */
+export const EMPTY_SLOT: Slot = {
+  진행기관: "",
+  진행률: "",
+  현황: "",
+  승인금액: 0,
+  수납액: 0,
+  수납일: "",
+  메모: "",
+};
+
 /** 진행률 문자열("80%"/"0%"/"") → 숫자(%). */
 export function progressPct(p: string): number {
   if (!p || p === "0%") return 0;
