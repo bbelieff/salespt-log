@@ -101,19 +101,134 @@ export async function listExpenseEntries(spreadsheetId: string): Promise<Expense
 
 export async function createRecurringRule(spreadsheetId: string, actorEmail: string, input: CreateRecurringRuleBody): Promise<RecurringRule> { requiredDb(); await ensureExpenseLedgerSchema(); return tx(async (c) => { const cat = await activeCategory(c, spreadsheetId, input.categoryId); const r = await c.query("insert into expense_recurring_rules (id,spreadsheet_id,category_id,category_name_at_rule,item_name,amount_won,anchor_day,starts_on,ends_on,created_by_email,updated_by_email) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10) returning *, $4 as category_name", [randomUUID(), spreadsheetId, input.categoryId, String(cat.name), input.itemName.trim(), input.amountWon, input.anchorDay, input.startsOn, input.endsOn ?? null, actorEmail]); return rule(r.rows[0] as Row); }); }
 export async function listRecurringRules(spreadsheetId: string): Promise<RecurringRule[]> { requiredDb(); await ensureExpenseLedgerSchema(); const r = await getDbPool().query("select r.*,c.name as category_name from expense_recurring_rules r join expense_categories c on c.id=r.category_id where r.spreadsheet_id=$1 order by r.starts_on", [spreadsheetId]); return r.rows.map((x) => rule(x as Row)); }
-export async function pauseRecurringRule(spreadsheetId: string, actorEmail: string, id: string, pausedOn: string): Promise<RecurringRule> { requiredDb(); await ensureExpenseLedgerSchema(); return tx(async (c) => { const r = await c.query("update expense_recurring_rules r set status='paused',updated_at=now(),updated_by_email=$4 from expense_categories c where r.id=$1 and r.spreadsheet_id=$2 and c.id=r.category_id returning r.*,c.name as category_name", [id, spreadsheetId, "paused", actorEmail]); if (!r.rows[0]) throw new Error("expense_rule_not_found"); await c.query("insert into expense_recurring_pauses (id,rule_id,spreadsheet_id,paused_on,created_by_email) values ($1,$2,$3,$4,$5)", [randomUUID(), id, spreadsheetId, pausedOn, actorEmail]); return rule(r.rows[0] as Row); }); }
-export async function resumeRecurringRule(spreadsheetId: string, actorEmail: string, id: string, resumedOn: string): Promise<RecurringRule> { requiredDb(); await ensureExpenseLedgerSchema(); return tx(async (c) => { const pause = await c.query("select id from expense_recurring_pauses where rule_id=$1 and spreadsheet_id=$2 and resumed_on is null order by paused_on desc limit 1 for update", [id, spreadsheetId]); if (!pause.rows[0]) throw new Error("expense_pause_not_found"); const closed = await c.query("update expense_recurring_pauses set resumed_on=$3,resumed_by_email=$4,resumed_at=now() where id=$1 and spreadsheet_id=$2 and paused_on <= $3::date", [String((pause.rows[0] as Row).id), spreadsheetId, resumedOn, actorEmail]); if (closed.rowCount !== 1) throw new Error("expense_invalid_resume_date"); const r = await c.query("update expense_recurring_rules r set status='active',updated_at=now(),updated_by_email=$4 from expense_categories c where r.id=$1 and r.spreadsheet_id=$2 and c.id=r.category_id returning r.*,c.name as category_name", [id, spreadsheetId, "active", actorEmail]); if (!r.rows[0]) throw new Error("expense_rule_not_found"); return rule(r.rows[0] as Row); }); }
+
+type RecurringRuleAction = "archive" | "pause" | "resume" | "split";
+
+/** archived is terminal. All callers invoke this only after locking the rule row. */
+export function recurringRuleStatusAfterAction(
+  status: RecurringRule["status"],
+  action: RecurringRuleAction,
+): RecurringRule["status"] {
+  if (status === "archived" && action !== "archive") throw new Error("expense_rule_not_found");
+  if (action === "archive") return "archived";
+  if (action === "split") return status;
+  if (action === "pause") {
+    if (status !== "active") throw new Error("expense_rule_not_found");
+    return "paused";
+  }
+  if (status !== "paused") throw new Error("expense_pause_not_found");
+  return "active";
+}
+
+export function isRecurringRuleMaterializable(status: RecurringRule["status"]): boolean {
+  return status === "active";
+}
+
+export async function pauseRecurringRule(spreadsheetId: string, actorEmail: string, id: string, pausedOn: string): Promise<RecurringRule> {
+  requiredDb();
+  await ensureExpenseLedgerSchema();
+  return tx(async (c) => {
+    const locked = await c.query(
+      "select r.*,c.name as category_name from expense_recurring_rules r join expense_categories c on c.id=r.category_id where r.id=$1 and r.spreadsheet_id=$2 for update of r",
+      [id, spreadsheetId],
+    );
+    if (!locked.rows[0]) throw new Error("expense_rule_not_found");
+    const current = rule(locked.rows[0] as Row);
+    const nextStatus = recurringRuleStatusAfterAction(current.status, "pause");
+    const updated = await c.query(
+      "update expense_recurring_rules set status=$3,updated_at=now(),updated_by_email=$4 where id=$1 and spreadsheet_id=$2 and status='active' returning *",
+      [id, spreadsheetId, nextStatus, actorEmail],
+    );
+    if (!updated.rows[0]) throw new Error("expense_rule_not_found");
+    await c.query(
+      "insert into expense_recurring_pauses (id,rule_id,spreadsheet_id,paused_on,created_by_email) values ($1,$2,$3,$4,$5)",
+      [randomUUID(), id, spreadsheetId, pausedOn, actorEmail],
+    );
+    return rule({ ...(updated.rows[0] as Row), category_name: current.categoryName });
+  });
+}
+
+export async function resumeRecurringRule(spreadsheetId: string, actorEmail: string, id: string, resumedOn: string): Promise<RecurringRule> {
+  requiredDb();
+  await ensureExpenseLedgerSchema();
+  return tx(async (c) => {
+    const locked = await c.query(
+      "select r.*,c.name as category_name from expense_recurring_rules r join expense_categories c on c.id=r.category_id where r.id=$1 and r.spreadsheet_id=$2 for update of r",
+      [id, spreadsheetId],
+    );
+    if (!locked.rows[0]) throw new Error("expense_rule_not_found");
+    const current = rule(locked.rows[0] as Row);
+    const nextStatus = recurringRuleStatusAfterAction(current.status, "resume");
+    const pause = await c.query(
+      "select id from expense_recurring_pauses where rule_id=$1 and spreadsheet_id=$2 and resumed_on is null order by paused_on desc limit 1 for update",
+      [id, spreadsheetId],
+    );
+    if (!pause.rows[0]) throw new Error("expense_pause_not_found");
+    const closed = await c.query(
+      "update expense_recurring_pauses set resumed_on=$3,resumed_by_email=$4,resumed_at=now() where id=$1 and spreadsheet_id=$2 and paused_on <= $3::date",
+      [String((pause.rows[0] as Row).id), spreadsheetId, resumedOn, actorEmail],
+    );
+    if (closed.rowCount !== 1) throw new Error("expense_invalid_resume_date");
+    const updated = await c.query(
+      "update expense_recurring_rules set status=$3,updated_at=now(),updated_by_email=$4 where id=$1 and spreadsheet_id=$2 and status='paused' returning *",
+      [id, spreadsheetId, nextStatus, actorEmail],
+    );
+    if (!updated.rows[0]) throw new Error("expense_rule_not_found");
+    return rule({ ...(updated.rows[0] as Row), category_name: current.categoryName });
+  });
+}
+
+/** 반복 삭제는 과거·중지 당일 발생을 보존하고, 이후 발생만 무효화하는 soft stop이다. */
+export async function archiveRecurringRule(spreadsheetId: string, actorEmail: string, id: string, stoppedOn: string): Promise<void> {
+  requiredDb();
+  await ensureExpenseLedgerSchema();
+  await tx(async (c) => {
+    const locked = await c.query(
+      "select id,status from expense_recurring_rules where id=$1 and spreadsheet_id=$2 for update",
+      [id, spreadsheetId],
+    );
+    if (!locked.rows[0]) throw new Error("expense_rule_not_found");
+    recurringRuleStatusAfterAction(String((locked.rows[0] as Row).status) as RecurringRule["status"], "archive");
+    await c.query(
+      `update expense_recurring_rules
+       set status='archived',
+           ends_on=case
+             when starts_on <= $3::date and (ends_on is null or ends_on > $3::date) then $3::date
+             else ends_on
+           end,
+           updated_at=now(),updated_by_email=$4
+      where id=$1 and spreadsheet_id=$2`,
+      [id, spreadsheetId, stoppedOn, actorEmail],
+    );
+    await c.query(
+      `update expense_recurring_pauses
+       set resumed_on=greatest(paused_on,$3::date),resumed_by_email=$4,resumed_at=now()
+       where rule_id=$1 and spreadsheet_id=$2 and resumed_on is null`,
+      [id, spreadsheetId, stoppedOn, actorEmail],
+    );
+    await c.query(
+      `update expense_recurring_occurrences
+       set status='voided',updated_at=now(),updated_by_email=$4
+       where rule_id=$1 and spreadsheet_id=$2 and occurrence_date > $3::date and status <> 'voided'`,
+      [id, spreadsheetId, stoppedOn, actorEmail],
+    );
+  });
+}
 
 function lastDay(year: number, month: number): number { return new Date(Date.UTC(year, month, 0)).getUTCDate(); }
 export function occurrenceDateForMonth(month: string, anchorDay: number): string { const [y, m] = month.split("-").map(Number); const day = Math.min(anchorDay, lastDay(y!, m!)); return `${month}-${String(day).padStart(2, "0")}`; }
 /** materializer SQL의 pause 구간 판정과 동일한 순수 규칙(테스트/감사용). resumedOn 당일부터 재개한다. */
 export function isOccurrencePaused(date: string, intervals: Array<{ pausedOn: string; resumedOn: string | null }>): boolean { return intervals.some((p) => p.pausedOn <= date && (p.resumedOn === null || date < p.resumedOn)); }
+/** startsOn/endsOn은 모두 포함 경계다. */
+export function isOccurrenceWithinRuleWindow(date: string, startsOn: string, endsOn: string | null): boolean { return date >= startsOn && (!endsOn || date <= endsOn); }
+/** stop 당일은 이미 인식된 비용으로 보존하고 다음 날부터 무효화한다. */
+export function shouldVoidRecurringOccurrenceOnStop(occurrenceDate: string, stoppedOn: string): boolean { return occurrenceDate > stoppedOn; }
 function monthsBetween(startMonth: string, endMonth: string): string[] { const [sy, sm] = startMonth.split("-").map(Number); const [ey, em] = endMonth.split("-").map(Number); const out: string[] = []; for (let y = sy!, m = sm!; y < ey! || (y === ey! && m <= em!); ) { out.push(`${y}-${String(m).padStart(2, "0")}`); m += 1; if (m === 13) { y += 1; m = 1; } } return out; }
-export async function materializeOccurrences(spreadsheetId: string, actorEmail: string, throughMonth: string): Promise<void> { requiredDb(); await ensureExpenseLedgerSchema(); await tx(async (c) => { const rules = await c.query("select r.*,c.name as category_name from expense_recurring_rules r join expense_categories c on c.id=r.category_id where r.spreadsheet_id=$1 and r.status='active' and r.starts_on <= ($2 || '-31')::date", [spreadsheetId, throughMonth]); for (const raw of rules.rows as Row[]) { const r = rule(raw); const startMonth = r.startsOn.slice(0, 7); for (const month of monthsBetween(startMonth, throughMonth)) { const date = occurrenceDateForMonth(month, r.anchorDay); if (date < r.startsOn || (r.endsOn && date > r.endsOn)) continue; const paused = await c.query("select 1 from expense_recurring_pauses where rule_id=$1 and spreadsheet_id=$2 and paused_on <= $3::date and (resumed_on is null or $3::date < resumed_on) limit 1", [r.id, spreadsheetId, date]); if (paused.rows[0]) continue; const skipped = await c.query("select 1 from expense_recurring_skips where rule_id=$1 and occurrence_month=($2 || '-01')::date", [r.id, month]); if (skipped.rows[0]) continue; await c.query("insert into expense_recurring_occurrences (id,rule_id,spreadsheet_id,occurrence_date,occurrence_month,category_id,category_name_at_occurrence,item_name,amount_won,created_by_email,updated_by_email) values ($1,$2,$3,$4,($5 || '-01')::date,$6,$7,$8,$9,$10,$10) on conflict (rule_id,occurrence_month) do nothing", [randomUUID(), r.id, spreadsheetId, date, month, r.categoryId, r.categoryName, r.itemName, r.amountWon, actorEmail]); } } }); }
-export async function skipRecurringOccurrence(spreadsheetId: string, actorEmail: string, ruleId: string, occurrenceMonth: string): Promise<void> { requiredDb(); await ensureExpenseLedgerSchema(); await tx(async (c) => { const own = await c.query("select 1 from expense_recurring_rules where id=$1 and spreadsheet_id=$2", [ruleId, spreadsheetId]); if (!own.rows[0]) throw new Error("expense_rule_not_found"); await c.query("insert into expense_recurring_skips (id,rule_id,spreadsheet_id,occurrence_month,created_by_email) values ($1,$2,$3,($4 || '-01')::date,$5) on conflict (rule_id,occurrence_month) do nothing", [randomUUID(), ruleId, spreadsheetId, occurrenceMonth, actorEmail]); await c.query("update expense_recurring_occurrences set status='skipped',updated_at=now(),updated_by_email=$4 where rule_id=$1 and spreadsheet_id=$2 and occurrence_month=($3 || '-01')::date", [ruleId, spreadsheetId, occurrenceMonth, actorEmail]); }); }
+export async function materializeOccurrences(spreadsheetId: string, actorEmail: string, throughMonth: string): Promise<void> { requiredDb(); await ensureExpenseLedgerSchema(); await tx(async (c) => { const rules = await c.query("select r.*,c.name as category_name from expense_recurring_rules r join expense_categories c on c.id=r.category_id where r.spreadsheet_id=$1 and r.status='active' and r.starts_on < (($2 || '-01')::date + interval '1 month') for update of r", [spreadsheetId, throughMonth]); for (const raw of rules.rows as Row[]) { const r = rule(raw); if (!isRecurringRuleMaterializable(r.status)) continue; const startMonth = r.startsOn.slice(0, 7); for (const month of monthsBetween(startMonth, throughMonth)) { const date = occurrenceDateForMonth(month, r.anchorDay); if (!isOccurrenceWithinRuleWindow(date, r.startsOn, r.endsOn)) continue; const paused = await c.query("select 1 from expense_recurring_pauses where rule_id=$1 and spreadsheet_id=$2 and paused_on <= $3::date and (resumed_on is null or $3::date < resumed_on) limit 1", [r.id, spreadsheetId, date]); if (paused.rows[0]) continue; const skipped = await c.query("select 1 from expense_recurring_skips where rule_id=$1 and spreadsheet_id=$2 and occurrence_month=($3 || '-01')::date", [r.id, spreadsheetId, month]); if (skipped.rows[0]) continue; await c.query("insert into expense_recurring_occurrences (id,rule_id,spreadsheet_id,occurrence_date,occurrence_month,category_id,category_name_at_occurrence,item_name,amount_won,created_by_email,updated_by_email) values ($1,$2,$3,$4,($5 || '-01')::date,$6,$7,$8,$9,$10,$10) on conflict (rule_id,occurrence_month) do nothing", [randomUUID(), r.id, spreadsheetId, date, month, r.categoryId, r.categoryName, r.itemName, r.amountWon, actorEmail]); } } }); }
+export async function skipRecurringOccurrence(spreadsheetId: string, actorEmail: string, ruleId: string, occurrenceMonth: string): Promise<void> { requiredDb(); await ensureExpenseLedgerSchema(); await tx(async (c) => { const own = await c.query("select anchor_day,starts_on,ends_on,status from expense_recurring_rules where id=$1 and spreadsheet_id=$2 for update", [ruleId, spreadsheetId]); if (!own.rows[0]) throw new Error("expense_rule_not_found"); const row = own.rows[0] as Row; const occurrenceDate = occurrenceDateForMonth(occurrenceMonth, Number(row.anchor_day)); if (String(row.status) === "archived" || !isOccurrenceWithinRuleWindow(occurrenceDate, iso(row.starts_on), row.ends_on ? iso(row.ends_on) : null)) throw new Error("expense_occurrence_not_found"); await c.query("insert into expense_recurring_skips (id,rule_id,spreadsheet_id,occurrence_month,created_by_email) values ($1,$2,$3,($4 || '-01')::date,$5) on conflict (rule_id,occurrence_month) do nothing", [randomUUID(), ruleId, spreadsheetId, occurrenceMonth, actorEmail]); await c.query("update expense_recurring_occurrences set status='skipped',updated_at=now(),updated_by_email=$4 where rule_id=$1 and spreadsheet_id=$2 and occurrence_month=($3 || '-01')::date", [ruleId, spreadsheetId, occurrenceMonth, actorEmail]); }); }
 
 export async function listRecurringOccurrences(spreadsheetId: string): Promise<Array<{ id: string; ruleId: string; categoryId: string; categoryName: string; itemName: string; amountWon: number; occurrenceDate: string; occurrenceMonth: string; status: "active" | "skipped" | "voided" }>> { requiredDb(); await ensureExpenseLedgerSchema(); const r = await getDbPool().query("select o.*,c.name as category_name from expense_recurring_occurrences o join expense_categories c on c.id=o.category_id where o.spreadsheet_id=$1 order by o.occurrence_date", [spreadsheetId]); return (r.rows as Row[]).map((x) => ({ id: String(x.id), ruleId: String(x.rule_id), categoryId: String(x.category_id), categoryName: String(x.category_name), itemName: String(x.item_name), amountWon: Number(x.amount_won), occurrenceDate: iso(x.occurrence_date), occurrenceMonth: iso(x.occurrence_month).slice(0, 7), status: String(x.status) as "active" | "skipped" | "voided" })); }
 
 export async function patchRecurringOccurrence(spreadsheetId: string, actorEmail: string, ruleId: string, occurrenceMonth: string, patch: { categoryId?: string; itemName?: string; amountWon?: number }): Promise<void> { requiredDb(); await ensureExpenseLedgerSchema(); await tx(async (c) => { const old = await c.query("select * from expense_recurring_occurrences where rule_id=$1 and spreadsheet_id=$2 and occurrence_month=($3 || '-01')::date for update", [ruleId, spreadsheetId, occurrenceMonth]); if (!old.rows[0]) throw new Error("expense_occurrence_not_found"); const before = old.rows[0] as Row; const categoryId = patch.categoryId ?? String(before.category_id); const cat = await activeCategory(c, spreadsheetId, categoryId); await c.query("update expense_recurring_occurrences set category_id=$4,category_name_at_occurrence=$5,item_name=$6,amount_won=$7,is_override=true,updated_at=now(),updated_by_email=$8 where rule_id=$1 and spreadsheet_id=$2 and occurrence_month=($3 || '-01')::date", [ruleId, spreadsheetId, occurrenceMonth, categoryId, String(cat.name), patch.itemName?.trim() ?? String(before.item_name), patch.amountWon ?? Number(before.amount_won), actorEmail]); }); }
 
-export async function splitRecurringRuleFromMonth(spreadsheetId: string, actorEmail: string, ruleId: string, effectiveMonth: string, patch: Partial<CreateRecurringRuleBody>): Promise<RecurringRule> { requiredDb(); await ensureExpenseLedgerSchema(); return tx(async (c) => { const oldR = await c.query("select * from expense_recurring_rules where id=$1 and spreadsheet_id=$2 for update", [ruleId, spreadsheetId]); if (!oldR.rows[0]) throw new Error("expense_rule_not_found"); const old = rule({ ...(oldR.rows[0] as Row), category_name: (oldR.rows[0] as Row).category_name_at_rule }); const effectiveDate = occurrenceDateForMonth(effectiveMonth, patch.anchorDay ?? old.anchorDay); if (effectiveDate < old.startsOn || (old.endsOn && effectiveDate > old.endsOn)) throw new Error("expense_invalid_effective_month"); const categoryId = patch.categoryId ?? old.categoryId; const cat = await activeCategory(c, spreadsheetId, categoryId); const dayBefore = new Date(`${effectiveDate}T00:00:00Z`); dayBefore.setUTCDate(dayBefore.getUTCDate() - 1); const close = dayBefore.toISOString().slice(0, 10); await c.query("update expense_recurring_rules set ends_on=$3,updated_at=now(),updated_by_email=$4 where id=$1 and spreadsheet_id=$2", [ruleId, spreadsheetId, close, actorEmail]); const id = randomUUID(); const r = await c.query("insert into expense_recurring_rules (id,spreadsheet_id,category_id,category_name_at_rule,item_name,amount_won,anchor_day,starts_on,ends_on,status,supersedes_rule_id,created_by_email,updated_by_email) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,$11,$11) returning *, $4 as category_name", [id, spreadsheetId, categoryId, String(cat.name), patch.itemName?.trim() ?? old.itemName, patch.amountWon ?? old.amountWon, patch.anchorDay ?? old.anchorDay, effectiveDate, patch.endsOn ?? old.endsOn, ruleId, actorEmail]); return rule(r.rows[0] as Row); }); }
+export async function splitRecurringRuleFromMonth(spreadsheetId: string, actorEmail: string, ruleId: string, effectiveMonth: string, patch: Partial<CreateRecurringRuleBody>): Promise<RecurringRule> { requiredDb(); await ensureExpenseLedgerSchema(); return tx(async (c) => { const oldR = await c.query("select * from expense_recurring_rules where id=$1 and spreadsheet_id=$2 for update", [ruleId, spreadsheetId]); if (!oldR.rows[0]) throw new Error("expense_rule_not_found"); const old = rule({ ...(oldR.rows[0] as Row), category_name: (oldR.rows[0] as Row).category_name_at_rule }); recurringRuleStatusAfterAction(old.status, "split"); const effectiveDate = occurrenceDateForMonth(effectiveMonth, patch.anchorDay ?? old.anchorDay); if (effectiveDate < old.startsOn || (old.endsOn && effectiveDate > old.endsOn)) throw new Error("expense_invalid_effective_month"); const categoryId = patch.categoryId ?? old.categoryId; const cat = await activeCategory(c, spreadsheetId, categoryId); const dayBefore = new Date(`${effectiveDate}T00:00:00Z`); dayBefore.setUTCDate(dayBefore.getUTCDate() - 1); const close = dayBefore.toISOString().slice(0, 10); await c.query("update expense_recurring_rules set ends_on=$3,updated_at=now(),updated_by_email=$4 where id=$1 and spreadsheet_id=$2", [ruleId, spreadsheetId, close, actorEmail]); const id = randomUUID(); const r = await c.query("insert into expense_recurring_rules (id,spreadsheet_id,category_id,category_name_at_rule,item_name,amount_won,anchor_day,starts_on,ends_on,status,supersedes_rule_id,created_by_email,updated_by_email) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,$11,$11) returning *, $4 as category_name", [id, spreadsheetId, categoryId, String(cat.name), patch.itemName?.trim() ?? old.itemName, patch.amountWon ?? old.amountWon, patch.anchorDay ?? old.anchorDay, effectiveDate, patch.endsOn ?? old.endsOn, ruleId, actorEmail]); return rule(r.rows[0] as Row); }); }

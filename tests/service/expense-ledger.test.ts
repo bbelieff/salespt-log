@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { allocateExpenseByDay, manageRecurringRules, recognizedAmountForRange } from "@/service/expense-ledger";
-import { isOccurrencePaused, occurrenceDateForMonth } from "@/repo/db/expense-ledger";
+import { allocateExpenseByDay, manageRecurringRules, recognizedAmountForRange, recognizeRecurringOccurrencesForRange } from "@/service/expense-ledger";
+import {
+  isOccurrencePaused,
+  isOccurrenceWithinRuleWindow,
+  isRecurringRuleMaterializable,
+  occurrenceDateForMonth,
+  recurringRuleStatusAfterAction,
+  shouldVoidRecurringOccurrenceOnStop,
+} from "@/repo/db/expense-ledger";
 import { CreateExpenseBody, CreateRecurringRuleBody } from "@/types";
 
 describe("expense ledger allocation", () => {
@@ -20,6 +27,47 @@ describe("expense ledger allocation", () => {
     expect(isOccurrencePaused("2026-08-25", closed)).toBe(true);
     expect(isOccurrencePaused("2026-09-10", closed)).toBe(false);
     expect(isOccurrencePaused("2026-10-25", [{ pausedOn: "2026-10-01", resumedOn: null }])).toBe(true);
+  });
+  it("keeps start/end inclusive and voids only occurrences after the stop date", () => {
+    expect(isOccurrenceWithinRuleWindow("2026-07-01", "2026-07-01", "2026-09-30")).toBe(true);
+    expect(isOccurrenceWithinRuleWindow("2026-09-30", "2026-07-01", "2026-09-30")).toBe(true);
+    expect(isOccurrenceWithinRuleWindow("2026-06-30", "2026-07-01", "2026-09-30")).toBe(false);
+    expect(isOccurrenceWithinRuleWindow("2026-10-01", "2026-07-01", "2026-09-30")).toBe(false);
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-07-24", "2026-07-24")).toBe(false);
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-07-25", "2026-07-24")).toBe(true);
+  });
+  it("keeps DELETE archived state terminal against pause and resume", () => {
+    const archived = recurringRuleStatusAfterAction("active", "archive");
+    expect(archived).toBe("archived");
+    expect(() => recurringRuleStatusAfterAction(archived, "pause")).toThrow("expense_rule_not_found");
+    expect(() => recurringRuleStatusAfterAction(archived, "resume")).toThrow("expense_rule_not_found");
+    expect(isRecurringRuleMaterializable(archived)).toBe(false);
+  });
+  it("does not revive or materialize a future-start rule after DELETE", () => {
+    const futureRule = { startsOn: "2026-12-01", status: "active" as const };
+    const deletedStatus = recurringRuleStatusAfterAction(futureRule.status, "archive");
+    expect(futureRule.startsOn).toBe("2026-12-01");
+    expect(() => recurringRuleStatusAfterAction(deletedStatus, "pause")).toThrow("expense_rule_not_found");
+    expect(() => recurringRuleStatusAfterAction(deletedStatus, "resume")).toThrow("expense_rule_not_found");
+    expect(isRecurringRuleMaterializable(deletedStatus)).toBe(false);
+  });
+  it("denies an active successor split from an archived rule", () => {
+    expect(() => recurringRuleStatusAfterAction("archived", "split")).toThrow("expense_rule_not_found");
+  });
+  it("includes only active recurring occurrences in range and category", () => {
+    const base = {
+      ruleId: "rule-1", categoryId: "category-1", categoryName: "급여", itemName: "직원 급여", amountWon: 1_000,
+    };
+    const recognized = recognizeRecurringOccurrencesForRange([
+      { ...base, id: "start", occurrenceDate: "2026-07-01", occurrenceMonth: "2026-07", status: "active" },
+      { ...base, id: "end", occurrenceDate: "2026-07-31", occurrenceMonth: "2026-07", status: "active" },
+      { ...base, id: "skipped", occurrenceDate: "2026-07-15", occurrenceMonth: "2026-07", status: "skipped" },
+      { ...base, id: "voided", occurrenceDate: "2026-07-20", occurrenceMonth: "2026-07", status: "voided" },
+      { ...base, id: "other", categoryId: "category-2", occurrenceDate: "2026-07-10", occurrenceMonth: "2026-07", status: "active" },
+      { ...base, id: "outside", occurrenceDate: "2026-08-01", occurrenceMonth: "2026-08", status: "active" },
+    ], "2026-07-01", "2026-07-31", "category-1");
+    expect(recognized.map((item) => item.id)).toEqual(["start", "end"]);
+    expect(recognized.reduce((sum, item) => sum + item.amountWon, 0)).toBe(2_000);
   });
   it("keeps recurring-rule management state scoped to each rule and exposes the next occurrence", () => {
     const rule = {

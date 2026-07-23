@@ -2,7 +2,7 @@
 import type { CreateExpenseBody, CreateRecurringRuleBody, ExpenseLedgerView, PatchRecurringRuleBody, RecognizedExpense, RecurringRule } from "@/types/expense-ledger";
 import { findUserByEmail } from "@/repo/users";
 import {
-  createExpenseCategory, createExpenseEntry, createRecurringRule, deleteExpenseEntry,
+  archiveRecurringRule, createExpenseCategory, createExpenseEntry, createRecurringRule, deleteExpenseEntry,
   listExpenseCategories, listExpenseEntries, listRecurringOccurrences, listRecurringRules, materializeOccurrences, occurrenceDateForMonth,
   patchExpenseCategory, patchExpenseEntry, patchRecurringOccurrence, pauseRecurringRule, resumeRecurringRule,
   skipRecurringOccurrence, splitRecurringRuleFromMonth,
@@ -81,6 +81,31 @@ export function allocateExpenseByDay(amountWon: number, periodStart: string, per
 export function recognizedAmountForRange(amountWon: number, start: string, end: string, from: string, through: string): number {
   return allocateExpenseByDay(amountWon, start, end).reduce((sum, d) => sum + (d.date >= from && d.date <= through ? d.amountWon : 0), 0);
 }
+
+/** 원장·카테고리·대시보드가 동일한 active occurrence 인식 규칙을 사용한다. */
+export function recognizeRecurringOccurrencesForRange(
+  occurrences: RecurringOccurrence[],
+  from: string,
+  through: string,
+  categoryId?: string,
+): RecognizedExpense[] {
+  return occurrences.flatMap((occurrence) => {
+    if (occurrence.status !== "active"
+      || occurrence.occurrenceDate < from
+      || occurrence.occurrenceDate > through
+      || (categoryId && occurrence.categoryId !== categoryId)) return [];
+    return [{
+      source: "recurring" as const,
+      id: occurrence.id,
+      categoryId: occurrence.categoryId,
+      categoryName: occurrence.categoryName,
+      itemName: occurrence.itemName,
+      amountWon: occurrence.amountWon,
+      periodStart: occurrence.occurrenceDate,
+      periodEnd: occurrence.occurrenceDate,
+    }];
+  });
+}
 function viewRange(view: "month" | "all" | "category", month: string | undefined): { from: string; through: string; month: string | null } {
   const today = todaySeoul();
   if (view !== "month") return { from: "0001-01-01", through: today, month: null };
@@ -98,11 +123,12 @@ export async function getExpenseLedger(email: string, query: { view: "month" | "
     const amount = recognizedAmountForRange(e.amountWon, e.periodStart, e.periodEnd, range.from, range.through);
     if (amount > 0) recognized.push({ source: "one_time", id: e.id, categoryId: e.categoryId, categoryName: e.categoryName, itemName: e.itemName, amountWon: amount, periodStart: e.periodStart, periodEnd: e.periodEnd });
   }
-  for (const o of occurrences) {
-    if (o.status !== "active" || o.occurrenceDate > range.through || o.occurrenceDate < range.from) continue;
-    if (query.view === "category" && o.categoryId !== query.categoryId) continue;
-    recognized.push({ source: "recurring", id: o.id, categoryId: o.categoryId, categoryName: o.categoryName, itemName: o.itemName, amountWon: o.amountWon, periodStart: o.occurrenceDate, periodEnd: o.occurrenceDate });
-  }
+  recognized.push(...recognizeRecurringOccurrencesForRange(
+    occurrences,
+    range.from,
+    range.through,
+    query.view === "category" ? query.categoryId : undefined,
+  ));
   const totals = new Map<string, { categoryId: string; categoryName: string; amountWon: number }>();
   for (const r of recognized) { const old = totals.get(r.categoryId) ?? { categoryId: r.categoryId, categoryName: r.categoryName, amountWon: 0 }; old.amountWon += r.amountWon; totals.set(r.categoryId, old); }
   return { view: query.view, month: range.month, categories, entries: recognized, categoryTotals: [...totals.values()].sort((a, b) => a.categoryName.localeCompare(b.categoryName, "ko")), additionalCostTotal: recognized.reduce((s, r) => s + r.amountWon, 0) };
@@ -129,3 +155,4 @@ export async function pauseRecurringExpense(email: string, id: string, pausedOn:
 export async function resumeRecurringExpense(email: string, id: string, resumedOn: string) { const s = await resolveExpenseScope(email); return resumeRecurringRule(s.spreadsheetId, s.actorEmail, id, resumedOn); }
 export async function skipRecurringExpense(email: string, id: string, occurrenceMonth: string) { const s = await resolveExpenseScope(email); return skipRecurringOccurrence(s.spreadsheetId, s.actorEmail, id, occurrenceMonth); }
 export async function editRecurringExpense(email: string, id: string, input: PatchRecurringRuleBody) { const s = await resolveExpenseScope(email); if (input.scope === "occurrence") return patchRecurringOccurrence(s.spreadsheetId, s.actorEmail, id, input.occurrenceMonth, input.patch); return splitRecurringRuleFromMonth(s.spreadsheetId, s.actorEmail, id, input.effectiveMonth, input.patch); }
+export async function removeRecurringExpense(email: string, id: string, stoppedOn = todaySeoul()) { const s = await resolveExpenseScope(email); return archiveRecurringRule(s.spreadsheetId, s.actorEmail, id, stoppedOn); }

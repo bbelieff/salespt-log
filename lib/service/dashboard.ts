@@ -45,7 +45,7 @@ import { findByDateRange } from "@/repo/meetings";
 import { terminatedByChannel, terminatedByWeek } from "./termination-count";
 import { chooseDailySource } from "./daily-source";
 import { computeDbAggregates, diffDashboardAggregates } from "./dashboard-aggregates";
-import { recognizedAmountForRange } from "./expense-ledger";
+import { recognizedAmountForRange, recognizeRecurringOccurrencesForRange } from "./expense-ledger";
 import {
   listExpenseEntries,
   listRecurringOccurrences,
@@ -93,15 +93,11 @@ export function calculateAdditionalCostForDashboard(
     ),
     0,
   );
-  const recurring = occurrences.reduce(
-    (sum, occurrence) => sum + (
-      occurrence.status === "active"
-      && occurrence.occurrenceDate >= courseStartISO
-      && occurrence.occurrenceDate <= through
-        ? occurrence.amountWon : 0
-    ),
-    0,
-  );
+  const recurring = recognizeRecurringOccurrencesForRange(
+    occurrences,
+    courseStartISO,
+    through,
+  ).reduce((sum, occurrence) => sum + occurrence.amountWon, 0);
   return oneTime + recurring;
 }
 
