@@ -12,3 +12,4 @@ export * from "./contract"; // Progress · PaymentSlot · ContractPayment · (co
 export * from "./todo"; // TodoType · Todo
 export * from "./announcement"; // UpdateItem · Notice*
 export * from "./dashboard"; // Dashboard* view 인터페이스
+export * from "./expense-ledger"; // 비용 원장: 카테고리·일회성·반복 비용

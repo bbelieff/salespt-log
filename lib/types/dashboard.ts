@@ -48,9 +48,27 @@ export interface DashboardCostBreakdown {
 /** 대시보드 1회 read 응답 — Recharts/카드에 그대로 매핑 가능. */
 export interface DashboardView {
   kpi: DashboardKPI;
+  /** Manual/recurring ledger contribution, separate from acquisition channels. */
+  additionalCost: DashboardAdditionalCost;
   channelMatrix: DashboardChannelMatrix[]; // 길이 4
   weeklyTrend: DashboardWeeklyPoint[]; // 길이 8
   costBreakdown: DashboardCostBreakdown[]; // 길이 3
   /** 콜·지·기·소 수임비 별도 (도넛 외부 표시) */
   콜지기소수임비: number;
 }
+
+/** Explicit state prevents a failed ledger read from being represented as zero. */
+export type DashboardAdditionalCost =
+  | {
+    status: "available";
+    dbCostTotal: number;
+    additionalCost: number;
+    recognizedThrough: string;
+  }
+  | {
+    status: "unavailable";
+    dbCostTotal: number;
+    additionalCost: null;
+    recognizedThrough: string;
+    errorCode: "expense_ledger_unavailable" | "expense_ledger_read_failed" | "expense_ledger_course_start_invalid";
+  };

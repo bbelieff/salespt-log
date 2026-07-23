@@ -25,6 +25,7 @@ import type {
   DashboardView,
   DashboardChannelMatrix,
   DashboardCostBreakdown,
+  DashboardAdditionalCost,
   ContractPayment,
   Meeting,
   Channel,
@@ -44,6 +45,13 @@ import { findByDateRange } from "@/repo/meetings";
 import { terminatedByChannel, terminatedByWeek } from "./termination-count";
 import { chooseDailySource } from "./daily-source";
 import { computeDbAggregates, diffDashboardAggregates } from "./dashboard-aggregates";
+import { recognizedAmountForRange } from "./expense-ledger";
+import {
+  listExpenseEntries,
+  listRecurringOccurrences,
+  materializeOccurrences,
+} from "@/repo/db/expense-ledger";
+import type { ExpenseEntry } from "@/types/expense-ledger";
 
 const CHANNELS: DashboardChannelMatrix["채널"][] = [
   "매입DB",
@@ -54,6 +62,102 @@ const CHANNELS: DashboardChannelMatrix["채널"][] = [
 
 const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
+
+type RecurringOccurrence = Awaited<ReturnType<typeof listRecurringOccurrences>>[number];
+
+function seoulTodayISO(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function isISODate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+/** Reuses expense-ledger's day allocation; this only selects the dashboard range. */
+export function calculateAdditionalCostForDashboard(
+  entries: ExpenseEntry[],
+  occurrences: RecurringOccurrence[],
+  courseStartISO: string,
+  through: string,
+): number {
+  if (!isISODate(courseStartISO) || !isISODate(through)) {
+    throw new Error("expense_ledger_course_start_invalid");
+  }
+  const oneTime = entries.reduce(
+    (sum, entry) => sum + recognizedAmountForRange(
+      entry.amountWon, entry.periodStart, entry.periodEnd, courseStartISO, through,
+    ),
+    0,
+  );
+  const recurring = occurrences.reduce(
+    (sum, occurrence) => sum + (
+      occurrence.status === "active"
+      && occurrence.occurrenceDate >= courseStartISO
+      && occurrence.occurrenceDate <= through
+        ? occurrence.amountWon : 0
+    ),
+    0,
+  );
+  return oneTime + recurring;
+}
+
+function expenseLedgerErrorCode(error: unknown): "expense_ledger_unavailable" | "expense_ledger_read_failed" | "expense_ledger_course_start_invalid" {
+  if (error instanceof Error && error.message === "expense_ledger_course_start_invalid") return "expense_ledger_course_start_invalid";
+  if (error instanceof Error && error.message === "expense_ledger_unavailable") return "expense_ledger_unavailable";
+  return "expense_ledger_read_failed";
+}
+
+async function loadDashboardAdditionalCost(
+  spreadsheetId: string,
+  actorEmail: string,
+  courseStartISO: string,
+): Promise<DashboardAdditionalCost> {
+  const recognizedThrough = seoulTodayISO();
+  try {
+    if (!isISODate(courseStartISO)) throw new Error("expense_ledger_course_start_invalid");
+    await materializeOccurrences(spreadsheetId, actorEmail, recognizedThrough.slice(0, 7));
+    const [entries, occurrences] = await Promise.all([
+      listExpenseEntries(spreadsheetId),
+      listRecurringOccurrences(spreadsheetId),
+    ]);
+    return {
+      status: "available",
+      dbCostTotal: 0,
+      additionalCost: calculateAdditionalCostForDashboard(entries, occurrences, courseStartISO, recognizedThrough),
+      recognizedThrough,
+    };
+  } catch (error) {
+    Sentry.captureException(error, { tags: { where: "loadDashboard-expense-ledger" } });
+    return {
+      status: "unavailable",
+      dbCostTotal: 0,
+      additionalCost: null,
+      recognizedThrough,
+      errorCode: expenseLedgerErrorCode(error),
+    };
+  }
+}
+
+/** Applies finance without allocating ledger costs to a funnel channel. */
+export function applyAdditionalCostToDashboard(
+  dbCostTotal: number,
+  totalRevenue: number,
+  additionalCost: DashboardAdditionalCost,
+): { totalCost: number; operatingProfit: number; operatingProfitRate: number; additionalCost: DashboardAdditionalCost } {
+  const costState = { ...additionalCost, dbCostTotal } as DashboardAdditionalCost;
+  const totalCost = dbCostTotal + (costState.status === "available" ? costState.additionalCost : 0);
+  const operatingProfit = totalRevenue - totalCost;
+  return {
+    totalCost,
+    operatingProfit,
+    operatingProfitRate: totalRevenue > 0 ? (operatingProfit / totalRevenue) * 100 : 0,
+    additionalCost: costState,
+  };
+}
 
 /**
  * 총매출 = 수임비합 + 수수료합(수납1/2/3 수납액) − 반환액합(계약해지, contract-termination).
@@ -148,12 +252,15 @@ function assembleView(input: {
   weeklyActivity: number[]; // 8주
   costByChannel: number[]; // [매입DB, 직접생산, 현수막]
   payments: ContractPayment[];
+  additionalCost: DashboardAdditionalCost;
 }): DashboardView {
   const split = splitContractRevenue(input.payments, input.courseStartISO);
   const { totalFee, totalReceived, revenue } = split.arena;
-  const cost = input.costByChannel.reduce((s, c) => s + c, 0);
-  const profit = revenue - cost;
-  const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
+  const dbCostTotal = input.costByChannel.reduce((s, c) => s + c, 0);
+  const finance = applyAdditionalCostToDashboard(dbCostTotal, revenue, input.additionalCost);
+  const cost = finance.totalCost;
+  const profit = finance.operatingProfit;
+  const profitRate = finance.operatingProfitRate;
   const weeklyTrend = Array.from({ length: 8 }, (_, i) => ({
     주차: i + 1,
     계약수: num(input.weeklyContracts[i]),
@@ -173,6 +280,7 @@ function assembleView(input: {
       전체매출: split.total.revenue,
     },
     channelMatrix: input.channelMatrix,
+    additionalCost: finance.additionalCost,
     weeklyTrend,
     costBreakdown: [
       { 채널: "매입DB", 비용: num(pc) },
@@ -196,7 +304,7 @@ export async function loadDashboard(
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
-      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO);
+      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email);
       reverseShadowCompare(sheetId, view); // 서빙=DB raw 로 시트 대조(async 감시) — 오버레이 前
       // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
       return applyTerminationExclusion(view, termByChannel, termByWeek);
@@ -206,13 +314,14 @@ export async function loadDashboard(
     }
   }
 
-  return loadDashboardFromSheet(sheetId);
+  return loadDashboardFromSheet(sheetId, email);
 }
 
 /** DB 서빙 경로 (R2-7b) — 대시보드 시트 read 0. 집계·비용·매출 전부 DB 미러에서. */
 async function loadDashboardFromDb(
   sheetId: string,
   courseStartISOCache?: string,
+  actorEmail = "",
 ): Promise<{
   view: DashboardView;
   termByChannel: Record<Channel, number>;
@@ -232,6 +341,7 @@ async function loadDashboardFromDb(
   const purchaseCost = dbTab.purchases.reduce((s, p) => s + num(p.주문금액), 0);
   const productionCost = dbTab.productions.reduce((s, p) => s + num(p.기간예산), 0);
   const bannerCost = dbTab.banners.reduce((s, b) => s + num(b.주문금액), 0);
+  const additionalCost = await loadDashboardAdditionalCost(sheetId, actorEmail, courseStartISO);
   const view = assembleView({
     courseStartISO,
     fee: agg.누적수임비,
@@ -240,6 +350,7 @@ async function loadDashboardFromDb(
     weeklyActivity: agg.weeklyActivity,
     costByChannel: [purchaseCost, productionCost, bannerCost],
     payments: contracts,
+    additionalCost,
   });
   // 해지 계약수 오버레이 입력(채널별·주차별 차감) — 미팅·계약 이미 손안(추가 read 0).
   const term = terminatedByChannel(contracts, meetings);
@@ -278,7 +389,7 @@ function reverseShadowCompare(sheetId: string, served: DashboardView): void {
 }
 
 /** 시트 서빙 경로 (비파일럿 + DB 강등 fallback) — 기존 동작 무변경. */
-async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
+async function loadDashboardFromSheet(sheetId: string, actorEmail: string): Promise<DashboardView> {
   const [data, purchases, productions, banners, payments, profile] =
     await Promise.all([
       readDashboard(sheetId),
@@ -302,6 +413,7 @@ async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
     미팅완료: num(stk[4]?.[ci]),
     계약: num(stk[5]?.[ci]),
   }));
+  const additionalCost = await loadDashboardAdditionalCost(sheetId, actorEmail, courseStartISO);
   const view = assembleView({
     courseStartISO,
     fee: num(data.finance[0]),
@@ -310,6 +422,7 @@ async function loadDashboardFromSheet(sheetId: string): Promise<DashboardView> {
     weeklyActivity: data.weeklyActivity,
     costByChannel: [purchaseCost, productionCost, bannerCost],
     payments,
+    additionalCost,
   });
   // 해지 계약수 오버레이 — 시트경로는 채널귀속용 04 미팅이 없어 1회 read(읽기전용).
   // 그림자 없음(비파일럿 raw 서빙 무변) → 바로 오버레이. raw 파이프라인 무변.
