@@ -21,6 +21,9 @@ async function GET_handler() {
     return NextResponse.json(view);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[auth]")) {
+      return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
