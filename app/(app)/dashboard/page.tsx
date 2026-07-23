@@ -20,7 +20,7 @@
 "use client";
 import PageContainer from "@/components/PageContainer";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import TrainerPlayerToggle from "@/components/auth/TrainerPlayerToggle";
@@ -31,6 +31,7 @@ import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
+import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 
 function todayISO(): string {
   const d = new Date();
@@ -56,6 +57,7 @@ function daysBetween(fromISO: string, toISO: string): number {
 }
 
 export default function DashboardPage() {
+  const [expenseLedgerOpen, setExpenseLedgerOpen] = useState(false);
   const me = useMe();
   const dash = useDashboard();
 
@@ -111,6 +113,9 @@ export default function DashboardPage() {
           // 실제 분해: 수임비합 + 수수료합 = 총매출 (수납탭과 일치).
           feeIncome={dash.data.kpi.수임비합}
           commissionIncome={dash.data.kpi.수수료합}
+          dbCostTotal={dash.data.additionalCost.dbCostTotal}
+          additionalCost={dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
+          onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
         />
       )}
 
@@ -150,6 +155,14 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+      {dash.data && (
+        <ExpenseLedgerDialog
+          open={expenseLedgerOpen}
+          onClose={() => setExpenseLedgerOpen(false)}
+          dbCostTotal={dash.data.additionalCost.dbCostTotal}
+          additionalCost={dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
+        />
+      )}
       </PageContainer>
     </main>
   );

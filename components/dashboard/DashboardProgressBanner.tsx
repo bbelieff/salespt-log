@@ -20,6 +20,9 @@ import { formatMoney } from "@/lib/format/money";
  * ⚠ 영업이익은 이 배너 외부 별도 카드 (OperatingProfitCard) — page.tsx에서 호출.
  */
 interface Props {
+  dbCostTotal: number;
+  additionalCost: number | null;
+  onOpenExpenseLedger: () => void;
   today: string; // "5/4"
   weekday: string; // "월"
   currentWeek: number; // 1~8
@@ -36,6 +39,9 @@ interface Props {
 const fmtMoney = formatMoney;
 
 export default function DashboardProgressBanner({
+  dbCostTotal,
+  additionalCost,
+  onOpenExpenseLedger,
   today,
   weekday,
   currentWeek,
@@ -136,7 +142,12 @@ export default function DashboardProgressBanner({
           </div>
 
           {/* 비용 박스 */}
-          <div className="rounded-lg border border-red-200/70 bg-red-50/30 px-2.5 py-2">
+          <button
+            type="button"
+            onClick={onOpenExpenseLedger}
+            aria-label="비용 추가하기: 비용 원장 열기"
+            className="group rounded-lg border border-red-200/70 bg-red-50/30 px-2.5 py-2 text-left transition hover:border-red-300 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
             <div className="mb-1 flex items-center gap-1.5">
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-xs font-bold leading-none text-red-600">
                 －
@@ -150,9 +161,15 @@ export default function DashboardProgressBanner({
               </span>
             </div>
             <div className="pl-5 text-xs leading-snug text-gray-400">
-              DB 비용 합계
+              <div>DB 비용 합계 ₩{fmtMoney(dbCostTotal)}</div>
+              {additionalCost === null ? (
+                <div className="mt-0.5 text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</div>
+              ) : (
+                <div>추가 비용 ₩{fmtMoney(additionalCost)}</div>
+              )}
+              <div className="mt-1 font-bold text-red-600 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">비용 추가하기</div>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </div>

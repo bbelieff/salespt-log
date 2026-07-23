@@ -17,6 +17,35 @@ last_review: 2026-04-27
 
 # 백엔드 데이터 모델 — 경영일지 시트 1:1 매핑
 
+## 비용 원장 (2026-07-23, DB 전용)
+
+### Expense ledger exports
+
+| 타입 | 종류 | 계약 |
+|---|---|---|
+| `ExpenseId` | z.string().uuid / alias | 비용 원장 엔터티의 UUID 식별자. |
+| `ExpenseName` | z.string().trim().min(1).max(100) / alias | 비용 품목명. |
+| `CategoryName` | z.string().trim().min(1).max(40) / alias | 사용자 정의 카테고리명. |
+| `AmountWon` | z.number().int().min(1) / alias | 부가세 제외 양의 원화 정수 금액. |
+| `IsoDate` | YYYY-MM-DD string / alias | 비용 발생 시작일·종료일의 ISO 날짜. |
+| `IsoMonth` | YYYY-MM string / alias | 월별 조회와 반복 비용 발생월의 ISO 월. |
+| `ExpenseQuery` | z.object / alias | `view: month|all|category`와 월 또는 카테고리 ID를 검증하는 조회 요청 계약. |
+| `ExpenseCategory` | z.object / alias | 사용자별 `id`, `name`, `archivedAt`, 생성·수정 시각. 카테고리명은 수정 가능하며 보관된 항목은 새 입력 선택지에서 제외한다. |
+| `ExpenseEntry` | z.object / alias | 일회성 비용: `categoryId`, `categoryName`, `itemName`, 양의 정수 `amountWon`, 포함 기간 `periodStart`~`periodEnd`. |
+| `RecurringRule` | z.object / alias | 매월 반복 비용: 카테고리·품목·금액·`anchorDay`·시작/종료일·상태·대체 규칙 ID. 29~31일은 해당 월 마지막 날로 처리한다. |
+| `RecognizedExpense` | interface | 조회 기간에 인식된 일회성 또는 반복 비용. 원본 항목은 유지하고 일할 인식 금액만 `amountWon`으로 전달한다. |
+| `ExpenseLedgerView` | interface | `month` / `all` / `category` 조회 응답: 카테고리, 인식 항목, 카테고리 합계, `additionalCostTotal`. |
+| `PatchRecurringRuleBody` | discriminated union / alias | `scope: occurrence`은 한 발생월만, `scope: future`는 유효 월 이후의 새 규칙에 수정값을 적용한다. |
+
+금액은 모두 부가세 제외 원화 정수이며, 기간 비용은 시작일과 종료일을 포함해 일할 인식한다. 비용 원장은 기존 03 DB관리의 매입DB·직접생산·현수막 채널 비용과 별도이며, 대시보드는 `DB 비용 합계 + 추가 비용`만 합산한다.
+
+`expense_categories`, `expense_entries`, `expense_recurring_rules`, `expense_recurring_occurrences`, `expense_recurring_skips`, `expense_recurring_pauses`는 기존 시트 탭과 별개의 Postgres 관계형 원장이다. 모든 행은 서버가 인증 대상에서 해석한 `spreadsheet_id`로 소유 범위를 제한한다. 자동 DB관리 비용·기존 시트 수식·채널별 퍼널 비용은 이 원장에서 수정하지 않는다.
+
+- 일회성 비용은 `period_start`~`period_end` 양끝 포함 일할 인식한다. 정수 나머지는 앞선 날짜부터 배정한다.
+- 반복비용은 월 단위이며 `anchor_day=29..31`은 해당 월 마지막 날에 발생한다. `(rule_id, occurrence_month)` 고유 제약이 재조회·동시 요청의 중복 발생을 막는다.
+- pause 구간은 별도 행으로 남는다. 중지일부터 재개일 전의 발생은 materializer가 생성하지 않으며, 기존 발생 행은 소급 변경하지 않는다.
+- 카테고리 이름 변경은 같은 ID를 유지해 과거 표시·집계를 통일하고, 보관은 새 입력만 막는다. 감사 이력은 `expense_category_audits`에 남는다.
+
 > **이 문서가 권위 SSOT**: 영업관리 컬럼 매핑(B=요일, C=날짜, D=채널, E~H=4지표)에서 다른 문서와 충돌 시 **이 문서가 정답**. sheet-structure.md는 이 문서에 맞춰 작성된다.
 
 ## 실제 Google Sheets 탭 구조
