@@ -21,7 +21,7 @@ import {
 } from "@/query/expense-ledger-hooks";
 import type { ExpenseCategory } from "@/types";
 import ExpenseCategoryPicker from "./ExpenseCategoryPicker";
-import ExpenseLedgerTable from "./ExpenseLedgerTable";
+import ExpenseLedgerTable, { type ExpenseLedgerR5View } from "./ExpenseLedgerTable";
 
 interface Props {
   open: boolean;
@@ -80,7 +80,7 @@ function safeRecurringDeleteMessage(error: unknown) {
   return "반복 비용을 종료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
 
-export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additionalCost }: Props) {
+export default function ExpenseLedgerDialog({ open, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [workspace, setWorkspace] = useState<Workspace>("record");
   const [view, setView] = useState<ExpenseViewMode>("month");
@@ -99,6 +99,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 
   const categories = useExpenseCategories();
   const ledger = useExpenseLedger(view === "category" ? "all" : view, month);
+  const ledgerData = ledger.data as ExpenseLedgerR5View | undefined;
   const recurringRules = useRecurringRules();
   const createCategory = useCreateCategory();
   const deleteRecurring = useDeleteRecurringRule();
@@ -220,7 +221,8 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
   }
 
   if (!open || typeof document === "undefined") return null;
-  const totalCost = additionalCost === null ? null : dbCostTotal + additionalCost;
+  const scopeLabel = view === "category" ? `${ledgerData?.selectedScope.label ?? "전체 범위"} · 카테고리` : ledgerData?.selectedScope.label ?? (ledger.error ? "선택 범위 확인 필요" : "선택 범위 불러오는 중");
+  const pendingSummary = ledger.error ? "확인 필요" : "불러오는 중";
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 pc:items-start pc:overflow-y-auto pc:p-6" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
@@ -231,10 +233,11 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
         </header>
 
         <div className="shrink-0 bg-white px-3 pb-3 pc:px-6">
-          <div className="grid grid-cols-3 gap-1.5" aria-label="비용 요약">
-            <SummaryCard label="DB 비용" value={`₩${formatMoney(dbCostTotal)}`} tone="red" />
-            <SummaryCard label="추가 비용" value={additionalCost === null ? "확인 필요" : `₩${formatMoney(additionalCost)}`} />
-            <SummaryCard label="총비용" value={totalCost === null ? "확인 필요" : `₩${formatMoney(totalCost)}`} tone="dark" />
+          <p className="mb-1.5 truncate text-xs font-bold text-gray-600" aria-label="선택 비용 범위">{scopeLabel}</p>
+          <div className="grid grid-cols-3 gap-1.5" aria-label="비용 요약" data-scope-label={scopeLabel}>
+            <SummaryCard label="DB 비용" value={ledgerData ? `₩${formatMoney(ledgerData.dbCostTotal)}` : pendingSummary} tone="red" />
+            <SummaryCard label="추가 비용" value={ledgerData ? `₩${formatMoney(ledgerData.additionalCostTotal)}` : pendingSummary} />
+            <SummaryCard label="총비용" value={ledgerData ? `₩${formatMoney(ledgerData.totalCost)}` : pendingSummary} tone="dark" />
           </div>
           <nav role="tablist" aria-label="비용 원장 작업" className="mt-3 grid grid-cols-3 rounded-xl bg-slate-100 p-1">
             {(["record", "view", "manage"] as const).map((value) => (
@@ -311,7 +314,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
               </div>
               {view === "month" && <div className="flex items-center justify-center gap-2 rounded-xl bg-white p-2"><button type="button" aria-label="이전 달" onClick={() => setMonth((value) => shiftMonth(value, -1))} className="min-h-11 min-w-11 rounded-lg border border-gray-200">‹</button><strong className="min-w-24 text-center text-sm">{month.replace("-", ".")}</strong><button type="button" aria-label="다음 달" onClick={() => setMonth((value) => shiftMonth(value, 1))} className="min-h-11 min-w-11 rounded-lg border border-gray-200">›</button></div>}
               {view === "category" && <p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">현재 조회 범위의 모든 카테고리를 비용 내림차순으로 비교합니다. 미분류와 보관 카테고리도 빠지지 않습니다.</p>}
-              <ExpenseLedgerTable data={ledger.data} loading={ledger.isLoading} error={ledger.error} mode={view} onOpenManage={() => setWorkspace("manage")} />
+              <ExpenseLedgerTable data={ledgerData} loading={ledger.isLoading} error={ledger.error} retrying={ledger.isFetching} onRetry={() => { void ledger.refetch(); }} mode={view} onOpenManage={() => setWorkspace("manage")} />
             </section>
           )}
 

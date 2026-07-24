@@ -104,12 +104,13 @@ export const isPurchaseMeaningful = (p: DBPurchase): boolean => isISODate(p.구�
 
 export const parseProductionRow = (r: unknown[]): DBProduction => {
   const 시작일 = serialToISODate(r[0]);
-  const neo = isISODate(serialToISODate(r[1])); // J=날짜 → 신규 레이아웃
+  const parsedEnd = serialToISODate(r[1]);
+  const neo = isISODate(parsedEnd) || typeof r[5] === "boolean" || toStr(r[6]).trim().length > 0; // 신규 N/O면 빈·비정상 J도 I:O
   const 기간예산 = toNum(r[neo ? 3 : 2]);
   const 생산개수 = toNum(r[neo ? 4 : 3]);
   return {
     시작일,
-    종료일: neo ? serialToISODate(r[1]) : 시작일,
+    종료일: neo ? parsedEnd : 시작일,
     소재: toStr(r[neo ? 2 : 1]),
     기간예산,
     생산개수,
@@ -118,7 +119,7 @@ export const parseProductionRow = (r: unknown[]): DBProduction => {
     개당단가: 생산개수 > 0 ? Math.round(기간예산 / 생산개수) : 0,
   };
 };
-export const isProductionMeaningful = (p: DBProduction): boolean => isISODate(p.시작일);
+export const isProductionMeaningful = (p: DBProduction): boolean => isISODate(p.시작일) || p.기간예산 > 0; // 비용 행은 미배분 보존
 
 export const parseBannerRow = (r: unknown[]): DBBanner => {
   const 개당단가 = toNum(r[3]);
