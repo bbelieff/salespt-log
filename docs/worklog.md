@@ -605,3 +605,19 @@
 - 결정: EP6 미팅결과는 완료·계약·변경·취소 4케이스 각각 상세(+되돌리기·추가미팅). 대시보드 '심화 읽는 법'은 **2단계 기능설명 시리즈**로 분리(사용법 12편 유지). 연재 순서 = 사용법→기능설명
 - 다음: 재배치된 04~08 화면 마커/legend가 새 번호와 맞는지 최종 확인(마커 이미지 자체는 화면 동일이라 유효), 기능설명 시리즈 목차, 게시는 운영세션
 - SoR: `경영일지 앱관련 카페글쓰기/사용법/_사용법시리즈_기획_상세.md`, 메모리 feedback-usage-series-writing
+
+### 2026-07-24 · Codex DevC · DB 자동 비용 원장 정합 R5 구현
+- 의도: `03 DB관리` 자동 비용을 월별·전체·카테고리 비용 원장에 읽기 전용 시스템 행으로 노출하고, DB-primary + sheet fallback에서 같은 금액·인식 규칙을 사용
+- 한 것: 직접생산 신규 I:O 생산중/비정상 날짜 parser 보존, `loadDBOverview` 기반 매입·직접생산·현수막 원장 투영, system/readOnly·인식 상태/메모·선택 범위·DB/추가/합계·카테고리 금액/건수/비중 계약 추가, 108만원·월 경계·ongoing·unallocated·수동/반복 합산 회귀 추가
+- 결정: 유효 기간은 양끝 포함 일할, 종료일 누락/비정상은 시작일 전액 1회, 시작일 누락/비정상 양수 예산은 전체·카테고리에 미배분 1회(월 제외). 시스템 카테고리는 편집 목록과 분리해 쓰기 표면을 만들지 않음
+- 검증: targeted 3 files/26 tests PASS, typecheck PASS(전체 check/build 및 독립 VERIFY 전 checkpoint)
+- SoR: `docs/plans/active/expense-db-cost-ledger-parity-r5.md`
+- 확정: 승인된 11파일만 변경, DevD 두 테스트 SHA-256 불변, `git diff --check` PASS
+
+### 2026-07-25 · Codex DevC · DB 자동 비용 원장 R5 통합 검증 checkpoint
+- 한 것: DevD 독립 계약 테스트 2파일을 SHA-256 일치 상태로 인수하고, 0원 사용자 카테고리도 `categoryTotals`에 identity/0원/0건/0%로 남기는 P1 계약 누락을 구현에서 보완
+- 검증: DevD 14/14, 전체 targeted 5파일 40/40, `scripts/check.sh` 전체 824/824·structural 10/10·lint/typecheck·500줄·doc-drift PASS, Next production build 69/69, `git diff --check` PASS 예정
+- 안전: 시스템 카테고리는 편집 가능한 `categories`에 넣지 않고 모든 DB 행은 system/readOnly로 유지. 대시보드 산술 파일과 운영 데이터·시트 쓰기는 변경 없음
+- 다음: normal hook 통합 커밋 후 DevD exact-SHA 독립 VERIFY
+- SoR: `docs/plans/active/expense-db-cost-ledger-parity-r5.md`
+- 최종 diff: 승인된 11파일만 변경, DevD 두 테스트 SHA-256 불변, `git diff --check` PASS
