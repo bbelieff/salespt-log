@@ -66,12 +66,12 @@ export function useRecurringRules() {
 
 function useInvalidateLedger() {
   const client = useQueryClient();
-  return () => {
-    client.invalidateQueries({ queryKey: ["expense-ledger"] });
-    client.invalidateQueries({ queryKey: expenseCategoriesKey() });
-    client.invalidateQueries({ queryKey: recurringRulesKey() });
-    client.invalidateQueries({ queryKey: ["dashboard"] });
-  };
+  return () => Promise.all([
+    client.invalidateQueries({ queryKey: ["expense-ledger"] }),
+    client.invalidateQueries({ queryKey: expenseCategoriesKey() }),
+    client.invalidateQueries({ queryKey: recurringRulesKey() }),
+    client.invalidateQueries({ queryKey: ["dashboard"] }),
+  ]);
 }
 
 export function useCreateExpense() {
@@ -112,6 +112,14 @@ export function usePatchRecurringRule() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: PatchRecurringRuleBody }) =>
       request(`/api/expense-recurring-rules/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteRecurringRule() {
+  const invalidate = useInvalidateLedger();
+  return useMutation({
+    mutationFn: (id: string) => request<{ ok: true }>(`/api/expense-recurring-rules/${id}`, { method: "DELETE" }),
     onSuccess: invalidate,
   });
 }

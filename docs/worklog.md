@@ -84,6 +84,21 @@
 
 ## 로그
 
+### 2026-07-24 · Codex DevB · 반복 비용 삭제/종료 soft archive P1 보완 (독립 재검증 대기)
+- 의도: 이미 배포된 반복 규칙 DELETE terminal soft archive 계약을 Option A 관리 행에서 안전하게 사용할 수 있게 하고, 여섯 항목 수용 감사의 마지막 P1 공백을 닫는다.
+- 한 것: DELETE hook을 기존 원장·카테고리·반복 규칙·대시보드 cache invalidation에 연결하고 invalidation 완료까지 mutation을 기다리게 했다. active·paused 행에 과거 비용 보존을 설명하는 인라인 `삭제/종료` 확인, 취소, safe `401/403/503` 오류와 재시도를 추가했다. archived 행은 앞으로 재발생하지 않는 terminal 안내만 보이고 모든 mutation action을 숨긴다.
+- 결정: 이 작업은 물리 삭제가 아니라 서버 soft archive만 호출한다. 성공 뒤 관련 네 query를 갱신하며, 실패 시 행과 확인 상태를 유지한다. backend route/repo/service와 운영 데이터는 변경하지 않는다.
+- 증거: focused DOM 14/14, `scripts/check.sh` 86 files·801 tests, production build, `git diff --check`를 통과했다. 로컬 mock의 1280 확인, 390 오류·재시도, 360 성공·archived terminal, 390 스크롤·sticky CTA 캡처는 모두 기대 문구와 가로 overflow 없음·console error 0을 확인했다.
+- 다음: DevE 독립 재검증으로 넘긴다. PASS 전에는 Git publication·merge·deploy를 시작하지 않는다.
+- SoR: `docs/plans/active/expense-mobile-ui-a-r4.md`, `lib/query/expense-ledger-hooks.ts`, `components/dashboard/expense-ledger/ExpenseLedgerDialog.tsx`
+
+### 2026-07-24 · Codex DevB · 비용 원장 모바일 Option A 구현 (VERIFY 대기)
+- 의도: 승인된 Quick Action Dock을 360/390 모바일 제품 UI에 적용하면서 기존 비용·반복 API 계약과 PC 동작을 보존한다.
+- 한 것: 압축 비용 요약과 기록/조회/관리 작업 탭, 카테고리 combobox 관리, 일회성 포함 일할과 분리된 반복 일정, 전체 카테고리 비용/비중/항목 수 표, 목록 행 상세, 하단 고정 저장 CTA를 구현했다. focused DOM 7건, check.sh 794건, production build, PC/360/390 브라우저 검증(error 0)을 통과했다. 디자인 artifact와 core/API는 변경하지 않았다.
+- 결정: 카테고리 삭제 API는 추가하지 않고 사용 이력 보존을 위해 차단+보관 안내로 처리한다. 제품 구현은 신규 독립 VERIFY PASS 전까지 commit/push/PR로 진행하지 않는다.
+- 다음: DevA가 DevD가 아닌 신규 독립 검증자를 지정해 구현 VERIFY를 수행한다. PASS 뒤에만 commit/push/PR·merge·deploy·health/live 체인으로 이동한다.
+- SoR: `docs/plans/active/expense-mobile-ui-a-r4.md`, `components/dashboard/expense-ledger/ExpenseLedgerDialog.tsx`
+
 ### 2026-07-20 · F(260712) · KPI-④ EOL renormalize (막차) — .gitattributes LF 정책 기계강제 (#603)
 - 의도: 레포 전반 EOL 노이즈 근절(막차, 머지 최우선). .gitattributes + renormalize 단독 PR.
 - 한 것: **§0.5 진단으로 오진 정정** — `git ls-files --eol` 실측 결과 저장소(index)는 **이미 100% LF**(i/crlf·i/mixed 0건). 디스패치의 "~720파일"은 `core.autocrlf=true`가 Windows 체크아웃 시 작업트리를 CRLF(w/crlf 829)로 바꾼 **착시**(커밋 diff 아님). 진짜 가치=정책 부재 → `.gitattributes`(`* text=auto eol=lf` + 바이너리/배치 규칙)로 LF 기계강제(autocrlf 무관 CRLF 재유입 차단·경고 근절). `git add --renormalize .` → .gitattributes 1파일만 스테이징(내용 무변경 실측 증명). #603(1aa3b9a) 머지·배포 success·health 200.
@@ -590,4 +605,3 @@
 - 결정: EP6 미팅결과는 완료·계약·변경·취소 4케이스 각각 상세(+되돌리기·추가미팅). 대시보드 '심화 읽는 법'은 **2단계 기능설명 시리즈**로 분리(사용법 12편 유지). 연재 순서 = 사용법→기능설명
 - 다음: 재배치된 04~08 화면 마커/legend가 새 번호와 맞는지 최종 확인(마커 이미지 자체는 화면 동일이라 유효), 기능설명 시리즈 목차, 게시는 운영세션
 - SoR: `경영일지 앱관련 카페글쓰기/사용법/_사용법시리즈_기획_상세.md`, 메모리 feedback-usage-series-writing
-
