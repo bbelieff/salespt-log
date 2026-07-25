@@ -472,7 +472,7 @@ describe("expense category combobox", () => {
     expect(props.onCreate).toHaveBeenCalledWith("소모품");
     expect(document.querySelector('[aria-label="미분류 카테고리 삭제"]')).toBeNull();
     const visualDelete = document.querySelector<HTMLButtonElement>('[aria-label="마케팅 카테고리 삭제"]')!;
-    expect(visualDelete.className).toContain("min-h-11"); expect(visualDelete.textContent).toBe("×"); act(() => visualDelete.click());
+    expect(visualDelete.className).toContain("min-h-[44px]"); expect(visualDelete.className).toContain("min-w-[44px]"); expect(visualDelete.className).not.toMatch(/min-[hw]-11/); expect(visualDelete.textContent).toBe("×"); act(() => visualDelete.click());
     expect(document.body.textContent).toContain("항목 1건, 반복 2건, 발생 3건이 미분류로 이동합니다.");
     await act(async () => { clickButton("카테고리 삭제 확인"); });
     expect(onDelete).toHaveBeenCalledWith("category-marketing"); expect(onChange).toHaveBeenCalledWith("");
