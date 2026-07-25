@@ -1,10 +1,12 @@
 /** Layer: service — 비용 원장 규칙(일할 인식·소유 범위·월 반복 materialization). */
-import type { CreateExpenseBody, CreateRecurringRuleBody, ExpenseLedgerView, PatchRecurringRuleBody, RecognizedExpense, RecurringRule } from "@/types/expense-ledger";
+import { createHash } from "node:crypto";
+import type { CreateExpenseBody, CreateRecurringRuleBody, ExpenseLedgerView, ExpenseReclassificationRef, PatchRecurringRuleBody, RecognizedExpense, ReclassifyUnclassifiedBody, RecurringRule } from "@/types/expense-ledger";
 import { findUserByEmail } from "@/repo/users";
 import { loadDBOverview } from "@/service/db";
 import { allocateAmountByDay, recognizeDbCostEntries, SYSTEM_EXPENSE_CATEGORIES } from "./db-cost-ledger";
 import {
-  archiveRecurringRule, createExpenseCategory, createExpenseEntry, createRecurringRule, deleteExpenseEntry,
+  archiveRecurringRule, createExpenseCategory, createExpenseEntry, createRecurringRule, deleteExpenseCategory, deleteExpenseEntry,
+  getExpenseCategoryUsage, reclassifyUnclassified,
   listExpenseCategories, listExpenseEntries, listRecurringOccurrences, listRecurringRules, materializeOccurrences, occurrenceDateForMonth,
   patchExpenseCategory, patchExpenseEntry, patchRecurringOccurrence, pauseRecurringRule, resumeRecurringRule,
   skipRecurringOccurrence, splitRecurringRuleFromMonth,
@@ -208,8 +210,40 @@ export async function getRecurringExpenseRules(email: string): Promise<{ asOfDat
   return { asOfDate, rules: manageRecurringRules(rules, occurrences, asOfDate) };
 }
 
+const SYSTEM_CATEGORY_IDS = new Set(Object.keys(SYSTEM_EXPENSE_CATEGORIES));
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const REF_RANK: Record<ExpenseReclassificationRef["kind"], number> = { entry: 0, recurringRule: 1, recurringOccurrence: 2 };
+export function canonicalizeExpenseReclassification(input: ReclassifyUnclassifiedBody): { operationId: string; targetCategoryId: string; refs: ExpenseReclassificationRef[]; json: string; hash: string } {
+  const operationId = input.operationId.toLowerCase();
+  const targetCategoryId = input.targetCategoryId.toLowerCase();
+  const refs = input.refs.map((ref) => ({ kind: ref.kind, id: ref.id.toLowerCase() }))
+    .sort((a, b) => REF_RANK[a.kind] - REF_RANK[b.kind] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const seen = new Set<string>();
+  for (const ref of refs) { const key = `${ref.kind}:${ref.id}`; if (seen.has(key)) throw new Error("invalid_request"); seen.add(key); }
+  const json = JSON.stringify({ v: 1, targetCategoryId, refs });
+  return { operationId, targetCategoryId, refs, json, hash: createHash("sha256").update(json, "utf8").digest("hex") };
+}
+
+export async function getExpenseCategoryUsageForUser(email: string, id: string) {
+  if (SYSTEM_CATEGORY_IDS.has(id)) throw new Error("expense_category_system_immutable");
+  if (!UUID.test(id)) throw new Error("expense_category_not_found");
+  const scope = await resolveExpenseScope(email);
+  return getExpenseCategoryUsage(scope.spreadsheetId, id);
+}
+export async function deleteExpenseCategoryForUser(email: string, id: string) {
+  if (SYSTEM_CATEGORY_IDS.has(id)) throw new Error("expense_category_system_immutable");
+  if (!UUID.test(id)) throw new Error("expense_category_not_found");
+  const scope = await resolveExpenseScope(email);
+  return deleteExpenseCategory(scope.spreadsheetId, scope.actorEmail, id);
+}
+export async function reclassifyUnclassifiedForUser(email: string, input: ReclassifyUnclassifiedBody) {
+  const normalized = canonicalizeExpenseReclassification(input);
+  const scope = await resolveExpenseScope(email);
+  return reclassifyUnclassified(scope.spreadsheetId, scope.actorEmail, normalized.operationId, normalized.hash, normalized.targetCategoryId, normalized.refs);
+}
+
 export async function addExpenseCategory(email: string, name: string) { const s = await resolveExpenseScope(email); return createExpenseCategory(s.spreadsheetId, s.actorEmail, name); }
-export async function editExpenseCategory(email: string, id: string, patch: { name?: string; archived?: boolean }) { const s = await resolveExpenseScope(email); return patchExpenseCategory(s.spreadsheetId, s.actorEmail, id, patch); }
+export async function editExpenseCategory(email: string, id: string, patch: { name: string }) { const s = await resolveExpenseScope(email); return patchExpenseCategory(s.spreadsheetId, s.actorEmail, id, patch); }
 export async function addExpense(email: string, input: CreateExpenseBody) { if (dayCount(input.periodStart, input.periodEnd ?? input.periodStart) > 3660) throw new Error("expense_invalid_period"); const s = await resolveExpenseScope(email); return createExpenseEntry(s.spreadsheetId, s.actorEmail, input); }
 export async function editExpense(email: string, id: string, patch: Partial<CreateExpenseBody>) { if (patch.periodStart && patch.periodEnd && dayCount(patch.periodStart, patch.periodEnd) > 3660) throw new Error("expense_invalid_period"); const s = await resolveExpenseScope(email); return patchExpenseEntry(s.spreadsheetId, s.actorEmail, id, patch); }
 export async function removeExpense(email: string, id: string) { const s = await resolveExpenseScope(email); return deleteExpenseEntry(s.spreadsheetId, s.actorEmail, id); }
