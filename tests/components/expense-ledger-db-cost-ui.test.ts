@@ -4,6 +4,7 @@ import * as React from "react";
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import ExpenseCategoryPicker from "@/components/dashboard/expense-ledger/ExpenseCategoryPicker";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -88,6 +89,43 @@ const systemEntry = (
   recognitionNote,
 });
 
+describe("R6 category lifecycle recovery states", () => {
+  const r6Categories = [
+    { id: "category-active", name: "운영비", isSystem: false, deletedAt: null, archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+    { id: "category-unclassified", name: "미분류", isSystem: true, deletedAt: null, archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+  ];
+  const picker = (onDelete = vi.fn().mockResolvedValue({ ok: true, deletedCategoryId: "category-active", unclassifiedCategoryId: "category-unclassified", movedEntryCount: 2, movedRuleCount: 1, movedOccurrenceCount: 3 })) => createElement(ExpenseCategoryPicker, {
+    categories: r6Categories, value: "category-active", busy: false, loading: false, loaded: true, errorMessage: null, retrying: false, unclassifiedRefs: [],
+    onRetry: vi.fn(), onChange: vi.fn(), onCreate: vi.fn(async (name: string) => ({ ...r6Categories[0]!, name })), onRename: vi.fn(async () => undefined), onDelete,
+    onReclassify: vi.fn(async () => ({ ok: true as const, operationId: "operation", unclassifiedCategoryId: "category-unclassified", targetCategoryId: "category-active", movedEntryCount: 0, movedRuleCount: 0, movedOccurrenceCount: 0 })), onMessage: vi.fn(),
+  });
+
+  it("distinguishes usage loading and safe 401/403/404/409/5xx retry states", () => {
+    usageQueryState = { data: undefined, isLoading: true, isFetching: true, isSuccess: false, error: null, refetch: vi.fn() };
+    render(picker()); act(() => document.querySelector<HTMLButtonElement>('[role="combobox"]')?.click()); act(() => document.querySelector<HTMLButtonElement>('[aria-label="운영비 카테고리 삭제"]')?.click());
+    expect(document.body.textContent).toContain("사용량을 확인하고 있습니다.");
+    const cases = [
+      ["HTTP 401 secret", "로그인이 만료되어"], ["HTTP 403 secret", "권한이 없습니다"],
+      ["expense_category_not_found raw", "카테고리를 찾을 수 없습니다"], ["expense_category_deleted raw", "이미 삭제된 카테고리"], ["HTTP 503 database-secret", "잠시 후 다시 시도해 주세요"],
+    ];
+    const retry = vi.fn();
+    for (const [code, message] of cases) {
+      usageQueryState = { data: undefined, isLoading: false, isFetching: false, isSuccess: false, error: new Error(code), refetch: retry };
+      rerender(picker()); expect(document.body.textContent).toContain(message); expect(document.body.textContent).not.toContain("database-secret");
+    }
+    clickButton("사용량 다시 확인"); expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps delete confirmation on safe 404/409/5xx failures for retry", async () => {
+    const onDelete = vi.fn().mockRejectedValueOnce(new Error("expense_category_not_found raw")).mockRejectedValueOnce(new Error("expense_category_deleted raw")).mockRejectedValueOnce(new Error("HTTP 503 database-secret"));
+    render(picker(onDelete)); act(() => document.querySelector<HTMLButtonElement>('[role="combobox"]')?.click()); act(() => document.querySelector<HTMLButtonElement>('[aria-label="운영비 카테고리 삭제"]')?.click());
+    await act(async () => { clickButton("카테고리 삭제 확인"); }); expect(document.body.textContent).toContain("카테고리를 찾을 수 없습니다");
+    await act(async () => { clickButton("삭제 다시 시도"); }); expect(document.body.textContent).toContain("이미 삭제된 카테고리");
+    await act(async () => { clickButton("삭제 다시 시도"); }); expect(document.body.textContent).toContain("잠시 후 다시 시도해 주세요");
+    expect(onDelete).toHaveBeenCalledTimes(3); expect(document.body.textContent).not.toContain("database-secret");
+  });
+});
+
 const dbOnlyEntries: FrozenEntry[] = [
   systemEntry("db_purchase", "purchase-1", "매입DB", "원부자재 매입", 600_000, "recognized_on_date", null, "2026-07-03"),
   systemEntry("db_production", "production-1", "직접생산", "진행 중 생산", 400_000, "recognized_on_start", "종료일이 없어 시작일에 전액 인식했습니다.", "2026-07-05"),
@@ -169,6 +207,7 @@ const emptyAllView: FrozenLedgerView = {
 
 let ledgerQueryState: LedgerQueryState;
 let viewFixture: (view: string) => FrozenLedgerView;
+let usageQueryState: { data: { category: { id: string; name: string; isSystem: false; deletedAt: null }; usage: { entryCount: number; ruleCount: number; occurrenceCount: number; overrideOccurrenceCount: number; totalCount: number } } | undefined; isLoading: boolean; isFetching: boolean; isSuccess: boolean; error: Error | null; refetch: ReturnType<typeof vi.fn> };
 const categoryQueryState = {
   data: editableCategories,
   isLoading: false,
@@ -185,6 +224,7 @@ function loaded(data: FrozenLedgerView): LedgerQueryState {
 function resetFixtures() {
   viewFixture = (view) => view === "month" ? combinedMonthView : combinedAllView;
   ledgerQueryState = loaded(combinedMonthView);
+  usageQueryState = { data: { category: { id: "category-active", name: "운영비", isSystem: false, deletedAt: null }, usage: { entryCount: 2, ruleCount: 1, occurrenceCount: 3, overrideOccurrenceCount: 1, totalCount: 6 } }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
 }
 
 resetFixtures();
@@ -193,15 +233,18 @@ vi.mock("@/query/expense-ledger-hooks", () => {
   const idleMutation = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false });
   return {
     useExpenseCategories: () => categoryQueryState,
+    useExpenseCategoryUsage: () => usageQueryState,
     useExpenseLedger: (view: string) => ledgerQueryState.data && !ledgerQueryState.error && !ledgerQueryState.isLoading
       ? { ...ledgerQueryState, data: viewFixture(view) }
       : ledgerQueryState,
     useCreateCategory: idleMutation,
+    useDeleteCategory: idleMutation,
     useDeleteRecurringRule: idleMutation,
     useCreateExpense: idleMutation,
     useCreateRecurringRule: idleMutation,
     usePatchCategory: idleMutation,
     usePatchRecurringRule: idleMutation,
+    useReclassifyUnclassified: idleMutation,
     useRecurringRules: () => ({ data: { rules: [] }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() }),
     useRecurringRuleAction: idleMutation,
   };
@@ -336,14 +379,15 @@ describe("R5 DB cost ledger frozen UI contract", () => {
 
   it("never exposes system categories through category mutation controls", () => {
     render(dialog());
-    clickButton("관리");
+    act(() => document.querySelector<HTMLButtonElement>('[role="combobox"]')?.click());
 
-    expect(document.body.textContent).toContain("마케팅");
+    expect(document.body.textContent).not.toContain("마케팅");
     expect(document.body.textContent).toContain("미분류");
     for (const systemName of ["매입DB", "직접생산", "현수막"]) {
       expect(document.body.textContent).not.toContain(systemName);
     }
-    expect(document.querySelectorAll('input[aria-label*="카테고리 이름"]')).toHaveLength(2);
+    expect(document.querySelector('[aria-label="미분류 카테고리 삭제"]')).toBeNull();
+    expect(document.querySelectorAll('button[aria-label$="카테고리 삭제"]')).toHaveLength(0);
   });
 
   it("separates loading, safe failure with retry, and recovered zero totals", () => {

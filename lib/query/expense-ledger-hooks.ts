@@ -14,10 +14,58 @@ export type ExpenseViewMode = "month" | "all" | "category";
 export const expenseLedgerKey = (view: ExpenseViewMode, month?: string, categoryId?: string) =>
   ["expense-ledger", view, month ?? null, categoryId ?? null] as const;
 export const expenseCategoriesKey = () => ["expense-categories"] as const;
+export const expenseCategoryUsageKey = (categoryId?: string) => ["expense-category-usage", ...(categoryId ? [categoryId] : [])] as const;
 export const recurringRulesKey = () => ["expense-recurring-rules"] as const;
+
+export type ExpenseCategoryR6 = ExpenseCategory & {
+  isSystem: boolean;
+  deletedAt: string | null;
+};
+
+export interface ExpenseCategoryUsage {
+  category: Pick<ExpenseCategoryR6, "id" | "name" | "isSystem" | "deletedAt">;
+  usage: {
+    entryCount: number;
+    ruleCount: number;
+    occurrenceCount: number;
+    overrideOccurrenceCount: number;
+    totalCount: number;
+  };
+}
+
+export interface DeleteExpenseCategoryResult {
+  ok: true;
+  deletedCategoryId: string;
+  unclassifiedCategoryId: string;
+  movedEntryCount: number;
+  movedRuleCount: number;
+  movedOccurrenceCount: number;
+}
+
+export type ExpenseReclassificationRef = {
+  kind: "entry" | "recurringRule" | "recurringOccurrence";
+  id: string;
+};
+
+export interface ReclassifyExpenseCategoryBody {
+  operationId: string;
+  targetCategoryId: string;
+  refs: ExpenseReclassificationRef[];
+}
+
+export interface ReclassifyExpenseCategoryResult {
+  ok: true;
+  operationId: string;
+  unclassifiedCategoryId: string;
+  targetCategoryId: string;
+  movedEntryCount: number;
+  movedRuleCount: number;
+  movedOccurrenceCount: number;
+}
 
 export interface ManagedRecurringRule {
   id: string;
+  categoryId: string;
   categoryName: string;
   itemName: string;
   amountWon: number;
@@ -51,7 +99,16 @@ export function useExpenseLedger(view: ExpenseViewMode, month: string, categoryI
 export function useExpenseCategories() {
   return useQuery({
     queryKey: expenseCategoriesKey(),
-    queryFn: async () => (await request<{ categories: ExpenseCategory[] }>("/api/expense-categories")).categories,
+    queryFn: async () => (await request<{ categories: ExpenseCategoryR6[] }>("/api/expense-categories")).categories,
+    staleTime: 30_000,
+  });
+}
+
+export function useExpenseCategoryUsage(categoryId: string) {
+  return useQuery({
+    queryKey: expenseCategoryUsageKey(categoryId),
+    queryFn: () => request<ExpenseCategoryUsage>(`/api/expense-categories/${categoryId}/usage`),
+    enabled: Boolean(categoryId),
     staleTime: 30_000,
   });
 }
@@ -69,6 +126,7 @@ function useInvalidateLedger() {
   return () => Promise.all([
     client.invalidateQueries({ queryKey: ["expense-ledger"] }),
     client.invalidateQueries({ queryKey: expenseCategoriesKey() }),
+    client.invalidateQueries({ queryKey: expenseCategoryUsageKey() }),
     client.invalidateQueries({ queryKey: recurringRulesKey() }),
     client.invalidateQueries({ queryKey: ["dashboard"] }),
   ]);
@@ -85,7 +143,7 @@ export function useCreateExpense() {
 export function useCreateCategory() {
   const invalidate = useInvalidateLedger();
   return useMutation({
-    mutationFn: (name: string) => request<{ category: ExpenseCategory }>("/api/expense-categories", { method: "POST", body: JSON.stringify({ name }) }),
+    mutationFn: (name: string) => request<{ category: ExpenseCategoryR6 }>("/api/expense-categories", { method: "POST", body: JSON.stringify({ name }) }),
     onSuccess: invalidate,
   });
 }
@@ -93,8 +151,24 @@ export function useCreateCategory() {
 export function usePatchCategory() {
   const invalidate = useInvalidateLedger();
   return useMutation({
-    mutationFn: ({ id, name, archived }: { id: string; name?: string; archived?: boolean }) =>
-      request<{ category: ExpenseCategory }>(`/api/expense-categories/${id}`, { method: "PATCH", body: JSON.stringify({ name, archived }) }),
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      request<{ category: ExpenseCategoryR6 }>(`/api/expense-categories/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteCategory() {
+  const invalidate = useInvalidateLedger();
+  return useMutation({
+    mutationFn: (id: string) => request<DeleteExpenseCategoryResult>(`/api/expense-categories/${id}`, { method: "DELETE" }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReclassifyUnclassified() {
+  const invalidate = useInvalidateLedger();
+  return useMutation({
+    mutationFn: (body: ReclassifyExpenseCategoryBody) => request<ReclassifyExpenseCategoryResult>("/api/expense-categories/unclassified/reclassify", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: invalidate,
   });
 }

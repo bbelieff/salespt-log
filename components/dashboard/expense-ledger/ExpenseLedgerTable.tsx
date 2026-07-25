@@ -17,7 +17,7 @@ interface Props {
   retrying?: boolean;
   mode: ExpenseViewMode;
   onRetry?: () => void;
-  onOpenManage: () => void;
+  onOpenRecord: () => void;
 }
 
 const sourceLabels: Record<R5Source, string> = {
@@ -59,7 +59,7 @@ function RetryPanel({ message, retrying, onRetry }: { message: string; retrying?
   return <div role="alert" className="rounded-xl bg-red-50 p-3 text-xs text-red-700"><p>{message}</p>{onRetry && <button type="button" disabled={retrying} onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-red-200 bg-white px-4 font-bold disabled:opacity-50">{retrying ? "다시 불러오는 중…" : "다시 시도"}</button>}</div>;
 }
 
-export default function ExpenseLedgerTable({ data, loading, error, retrying, mode, onRetry, onOpenManage }: Props) {
+export default function ExpenseLedgerTable({ data, loading, error, retrying, mode, onRetry, onOpenRecord }: Props) {
   if (loading || (!data && !error)) return <p role="status" className="py-8 text-center text-xs text-gray-400">비용 내역을 불러오는 중입니다.</p>;
   if (error) return <RetryPanel message={safeLedgerError(error)} retrying={retrying} onRetry={onRetry} />;
   if (!data) return null;
@@ -72,14 +72,14 @@ export default function ExpenseLedgerTable({ data, loading, error, retrying, mod
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         {empty ? <p className="px-3 py-8 text-center text-xs text-gray-400">해당 조건의 비용이 없습니다.</p> : data.entries.length === 0 ? (
           <div className="p-4"><RetryPanel message="합계가 있지만 표시할 비용 항목을 불러오지 못했습니다. 다시 시도해 주세요." retrying={retrying} onRetry={onRetry} /></div>
-        ) : data.entries.map((entry) => <ExpenseRow key={entry.id} entry={entry} onOpenManage={onOpenManage} />)}
+        ) : data.entries.map((entry) => <ExpenseRow key={entry.id} entry={entry} onOpenRecord={onOpenRecord} />)}
       </div>
       <ScopeFooter data={data} />
     </div>
   );
 }
 
-function ExpenseRow({ entry, onOpenManage }: { entry: ExpenseLedgerR5Entry; onOpenManage: () => void }) {
+function ExpenseRow({ entry, onOpenRecord }: { entry: ExpenseLedgerR5Entry; onOpenRecord: () => void }) {
   const systemReadOnly = entry.system || entry.readOnly;
   const period = entry.periodStart ? entry.periodStart === entry.periodEnd || !entry.periodEnd ? entry.periodStart : `${entry.periodStart} ~ ${entry.periodEnd}` : "인식일 미지정";
   return (
@@ -96,7 +96,7 @@ function ExpenseRow({ entry, onOpenManage }: { entry: ExpenseLedgerR5Entry; onOp
         <div className="mt-1 flex justify-between gap-3"><span>인식 방식</span><strong className="text-gray-800">{recognitionLabels[entry.recognitionStatus]}</strong></div>
         {entry.recognitionNote && <p className="mt-2 rounded-lg bg-white p-2 text-gray-500">{entry.recognitionNote}</p>}
         {systemReadOnly ? <p className="mt-2 rounded-lg bg-white p-2 font-semibold text-gray-500">{sourceLabels[entry.source]} 원본 자동 집계 행이며 읽기 전용입니다.</p> : entry.source === "recurring" ? (
-          <button type="button" onClick={onOpenManage} className="mt-3 min-h-11 w-full rounded-lg border border-gray-200 bg-white font-bold text-gray-700">반복 규칙 관리로 이동</button>
+          <button type="button" onClick={onOpenRecord} className="mt-3 min-h-11 w-full rounded-lg border border-gray-200 bg-white font-bold text-gray-700">기록 화면의 반복 규칙으로 이동</button>
         ) : <p className="mt-2 text-gray-400">이 비용은 추가 비용 기록으로 관리합니다.</p>}
       </div>
     </details>
