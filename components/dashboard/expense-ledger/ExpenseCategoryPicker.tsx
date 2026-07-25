@@ -148,7 +148,7 @@ export default function ExpenseCategoryPicker(props: Props) {
             const system = isSystemCategory(category);
             return <div key={category.id} className="flex items-center gap-1 rounded-lg border border-transparent hover:border-gray-100">
               <button type="button" role="option" aria-selected={category.id === value} onClick={() => onChange(category.id)} className={`min-h-11 min-w-0 flex-1 rounded-lg px-3 text-left text-sm ${category.id === value ? "bg-blue-50 font-bold text-blue-700" : "hover:bg-slate-50"}`}>{category.name}{system && <span className="ml-2 text-xs font-normal text-gray-400">고정</span>}</button>
-              {!system && <button type="button" aria-label={`${category.name} 카테고리 삭제`} onClick={() => { setDeleteId(category.id); setActionError(null); }} className="min-h-11 min-w-11 rounded-lg text-xl font-bold text-red-600 hover:bg-red-50">×</button>}
+              {!system && <button type="button" aria-label={`${category.name} 카테고리 삭제`} onClick={() => { setDeleteId(category.id); setActionError(null); }} className="min-h-[44px] min-w-[44px] rounded-lg text-xl font-bold text-red-600 hover:bg-red-50">×</button>}
             </div>;
           })}
         </div>
