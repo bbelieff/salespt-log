@@ -7,8 +7,11 @@ import { formatMoney } from "@/lib/format/money";
 import { isValidISODate } from "@/lib/service/cohort-dates";
 import {
   type ExpenseViewMode,
+  type ExpenseCategoryR6,
   type ManagedRecurringRule,
+  type ReclassifyExpenseCategoryBody,
   useCreateCategory,
+  useDeleteCategory,
   useDeleteRecurringRule,
   useCreateExpense,
   useCreateRecurringRule,
@@ -16,11 +19,11 @@ import {
   useExpenseLedger,
   usePatchCategory,
   usePatchRecurringRule,
+  useReclassifyUnclassified,
   useRecurringRules,
   useRecurringRuleAction,
 } from "@/query/expense-ledger-hooks";
-import type { ExpenseCategory } from "@/types";
-import ExpenseCategoryPicker from "./ExpenseCategoryPicker";
+import ExpenseCategoryPicker, { type ReclassifiableExpenseItem } from "./ExpenseCategoryPicker";
 import ExpenseLedgerTable from "./ExpenseLedgerTable";
 
 interface Props {
@@ -30,7 +33,7 @@ interface Props {
   additionalCost: number | null;
 }
 
-type Workspace = "record" | "view" | "manage";
+type Workspace = "record" | "view";
 type CostKind = "one_time" | "recurring";
 
 const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none";
@@ -99,13 +102,16 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 
   const categories = useExpenseCategories();
   const ledger = useExpenseLedger(view === "category" ? "all" : view, month);
+  const unclassifiedLedger = useExpenseLedger("all", month);
   const recurringRules = useRecurringRules();
   const createCategory = useCreateCategory();
+  const deleteCategoryMutation = useDeleteCategory();
   const deleteRecurring = useDeleteRecurringRule();
   const createExpense = useCreateExpense();
   const createRecurring = useCreateRecurringRule();
   const patchCategory = usePatchCategory();
   const patchRule = usePatchRecurringRule();
+  const reclassifyMutation = useReclassifyUnclassified();
   const pauseRule = useRecurringRuleAction("pause");
   const resumeRule = useRecurringRuleAction("resume");
   const skipRule = useRecurringRuleAction("skip");
@@ -127,20 +133,41 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
     return { days, daily: Math.floor(amountWon / days), remainder: amountWon % days };
   }, [amountWon, oneTimeDateError, oneTimeEnd, oneTimeRange, oneTimeStart]);
   const firstOccurrence = useMemo(() => recurringDateError ? null : firstRecurringOccurrence(recurringStart, Number(anchorDay)), [anchorDay, recurringDateError, recurringStart]);
-  const categoryList = categories.data ?? [];
+  const categoryList = useMemo(() => (categories.data ?? []).map((category) => ({
+    ...category,
+    isSystem: category.isSystem === true || category.name === "미분류",
+    deletedAt: category.deletedAt ?? category.archivedAt ?? null,
+  })), [categories.data]);
+  const unclassifiedRefs = useMemo<ReclassifiableExpenseItem[]>(() => {
+    const unclassifiedId = categoryList.find((category) => category.isSystem && category.name === "미분류")?.id;
+    if (!unclassifiedId) return [];
+    const refs = new Map<string, ReclassifiableExpenseItem>();
+    for (const entry of unclassifiedLedger.data?.entries ?? []) {
+      if (entry.categoryId !== unclassifiedId) continue;
+      const kind = entry.source === "one_time" ? "entry" : entry.source === "recurring" ? "recurringOccurrence" : null;
+      if (!kind) continue;
+      const ref = { kind, id: entry.id, label: entry.itemName, detail: `${kind === "entry" ? "일회성" : "반복 발생"} · ₩${formatMoney(entry.amountWon)}` } as const;
+      refs.set(`${ref.kind}:${ref.id}`, ref);
+    }
+    for (const rule of recurringRules.data?.rules ?? []) {
+      if (rule.categoryId !== unclassifiedId || rule.status === "archived") continue;
+      const ref = { kind: "recurringRule", id: rule.id, label: rule.itemName, detail: `반복 규칙 · ₩${formatMoney(rule.amountWon)}` } as const;
+      refs.set(`${ref.kind}:${ref.id}`, ref);
+    }
+    return [...refs.values()];
+  }, [categoryList, recurringRules.data?.rules, unclassifiedLedger.data?.entries]);
   const categoryErrorMessage = categories.error ? safeQueryMessage("카테고리", categories.error) : null;
   const recurringErrorMessage = recurringRules.error ? safeQueryMessage("반복 비용", recurringRules.error) : null;
-  const busy = createExpense.isPending || createRecurring.isPending || createCategory.isPending || patchCategory.isPending;
+  const busy = createExpense.isPending || createRecurring.isPending || createCategory.isPending || patchCategory.isPending || deleteCategoryMutation.isPending || reclassifyMutation.isPending;
 
-  async function addCategory(name: string): Promise<ExpenseCategory> {
+  async function addCategory(name: string): Promise<ExpenseCategoryR6> {
     setMessage(null);
     try {
       const result = await createCategory.mutateAsync(name);
       setMessage(`카테고리 '${result.category.name}'을 추가했습니다.`);
       return result.category;
     } catch (error) {
-      const text = error instanceof Error ? error.message : "카테고리를 추가하지 못했습니다.";
-      setMessage(text);
+      setMessage("카테고리를 추가하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       throw error;
     }
   }
@@ -151,30 +178,8 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
       await patchCategory.mutateAsync({ id, name });
       setMessage(`카테고리 이름을 '${name}'으로 바꿨습니다.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "카테고리 이름을 바꾸지 못했습니다.");
+      setMessage("카테고리 이름을 바꾸지 못했습니다. 목록을 다시 확인해 주세요.");
       throw error;
-    }
-  }
-
-  async function archiveCategory(id: string) {
-    setMessage(null);
-    try {
-      await patchCategory.mutateAsync({ id, archived: true });
-      if (categoryId === id) setCategoryId("");
-      setMessage("사용 중인 기록을 보존하기 위해 카테고리를 보관했습니다.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "카테고리를 보관하지 못했습니다.");
-      throw error;
-    }
-  }
-
-  async function toggleCategoryArchive(id: string, archived: boolean) {
-    setMessage(null);
-    try {
-      await patchCategory.mutateAsync({ id, archived });
-      setMessage(archived ? "카테고리를 보관했습니다." : "카테고리를 복원했습니다.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : archived ? "카테고리를 보관하지 못했습니다." : "카테고리를 복원하지 못했습니다.");
     }
   }
 
@@ -200,8 +205,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
           startsOn: recurringStart,
           ...(recurringEnd ? { endsOn: recurringEnd } : {}),
         });
-        setMessage("반복 비용을 저장했습니다. 관리 화면의 목록 행에서 상세와 작업을 확인할 수 있습니다.");
-        setWorkspace("manage");
+        setMessage("반복 비용을 저장했습니다. 기록 화면의 반복 비용 행에서 상세와 작업을 확인할 수 있습니다.");
       } else {
         await createExpense.mutateAsync({
           categoryId,
@@ -236,10 +240,10 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
             <SummaryCard label="추가 비용" value={additionalCost === null ? "확인 필요" : `₩${formatMoney(additionalCost)}`} />
             <SummaryCard label="총비용" value={totalCost === null ? "확인 필요" : `₩${formatMoney(totalCost)}`} tone="dark" />
           </div>
-          <nav role="tablist" aria-label="비용 원장 작업" className="mt-3 grid grid-cols-3 rounded-xl bg-slate-100 p-1">
-            {(["record", "view", "manage"] as const).map((value) => (
-              <button key={value} type="button" role="tab" aria-selected={workspace === value} aria-controls={value === "record" ? "expense-record-form" : `expense-${value}-panel`} onClick={() => setWorkspace(value)} className={`min-h-11 rounded-lg text-sm font-bold ${workspace === value ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>
-                {value === "record" ? "기록" : value === "view" ? "조회" : "관리"}
+          <nav role="tablist" aria-label="비용 원장 작업" className="mt-3 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+            {(["record", "view"] as const).map((value) => (
+              <button key={value} type="button" role="tab" aria-selected={workspace === value} aria-controls={value === "record" ? "expense-record-panel" : "expense-view-panel"} onClick={() => setWorkspace(value)} className={`min-h-11 rounded-lg text-sm font-bold ${workspace === value ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>
+                {value === "record" ? "기록" : "조회"}
               </button>
             ))}
           </nav>
@@ -247,7 +251,8 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pc:px-6">
           {workspace === "record" && (
-            <form id="expense-record-form" onSubmit={submit} role="tabpanel" aria-labelledby="expense-ledger-title" className="space-y-4">
+            <section id="expense-record-panel" role="tabpanel" aria-labelledby="expense-ledger-title" className="space-y-5">
+            <form id="expense-record-form" onSubmit={submit} className="space-y-4">
               <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-white p-1" aria-label="비용 발생 방식">
                 {(["one_time", "recurring"] as const).map((value) => <button key={value} type="button" aria-pressed={kind === value} onClick={() => setKind(value)} className={`min-h-11 rounded-lg text-sm font-bold ${kind === value ? "bg-slate-900 text-white" : "text-gray-500"}`}>{value === "one_time" ? "일회성" : "매월 반복"}</button>)}
               </div>
@@ -263,11 +268,13 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                     loaded={categories.isSuccess}
                     errorMessage={categoryErrorMessage}
                     retrying={categories.isFetching}
+                    unclassifiedRefs={unclassifiedRefs}
                     onRetry={() => { void categories.refetch(); }}
                     onChange={setCategoryId}
                     onCreate={addCategory}
                     onRename={renameCategory}
-                    onArchive={archiveCategory}
+                    onDelete={async (id) => deleteCategoryMutation.mutateAsync(id)}
+                    onReclassify={async (body: ReclassifyExpenseCategoryBody) => reclassifyMutation.mutateAsync(body)}
                     onMessage={setMessage}
                   />
                 </div>
@@ -302,6 +309,26 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                 </section>
               )}
             </form>
+            <RecurringRuleManager
+              rules={recurringRules.data?.rules ?? []}
+              loading={recurringRules.isLoading}
+              loaded={recurringRules.isSuccess}
+              errorMessage={recurringErrorMessage}
+              retrying={recurringRules.isFetching}
+              onRetry={() => { void recurringRules.refetch(); }}
+              month={month}
+              amountWon={amountWon}
+              onPause={(id) => pauseRule.mutate({ id, value: today() })}
+              onResume={(id) => resumeRule.mutate({ id, value: today() })}
+              onSkip={(id) => skipRule.mutate({ id, value: month })}
+              onFutureAmount={(id) => patchRule.mutate({ id, body: { scope: "future", effectiveMonth: shiftMonth(month, 1), patch: { amountWon } } })}
+              onDelete={async (id) => {
+                setMessage(null);
+                await deleteRecurring.mutateAsync(id);
+                setMessage("반복 비용을 종료했습니다. 앞으로 다시 발생하지 않으며 과거 비용 기록은 그대로 유지됩니다.");
+              }}
+            />
+            </section>
           )}
 
           {workspace === "view" && (
@@ -311,43 +338,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
               </div>
               {view === "month" && <div className="flex items-center justify-center gap-2 rounded-xl bg-white p-2"><button type="button" aria-label="이전 달" onClick={() => setMonth((value) => shiftMonth(value, -1))} className="min-h-11 min-w-11 rounded-lg border border-gray-200">‹</button><strong className="min-w-24 text-center text-sm">{month.replace("-", ".")}</strong><button type="button" aria-label="다음 달" onClick={() => setMonth((value) => shiftMonth(value, 1))} className="min-h-11 min-w-11 rounded-lg border border-gray-200">›</button></div>}
               {view === "category" && <p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">현재 조회 범위의 모든 카테고리를 비용 내림차순으로 비교합니다. 미분류와 보관 카테고리도 빠지지 않습니다.</p>}
-              <ExpenseLedgerTable data={ledger.data} loading={ledger.isLoading} error={ledger.error} mode={view} onOpenManage={() => setWorkspace("manage")} />
-            </section>
-          )}
-
-          {workspace === "manage" && (
-            <section id="expense-manage-panel" role="tabpanel" className="space-y-4">
-              <RecurringRuleManager
-                rules={recurringRules.data?.rules ?? []}
-                loading={recurringRules.isLoading}
-                loaded={recurringRules.isSuccess}
-                errorMessage={recurringErrorMessage}
-                retrying={recurringRules.isFetching}
-                onRetry={() => { void recurringRules.refetch(); }}
-                month={month}
-                amountWon={amountWon}
-                onPause={(id) => pauseRule.mutate({ id, value: today() })}
-                onResume={(id) => resumeRule.mutate({ id, value: today() })}
-                onSkip={(id) => skipRule.mutate({ id, value: month })}
-                onFutureAmount={(id) => patchRule.mutate({ id, body: { scope: "future", /* 라벨이 "다음 달부터" → 조회 중인 달 +1. 이전엔 month 라 확정된 그 달까지 바뀜 */ effectiveMonth: shiftMonth(month, 1), patch: { amountWon } } })}
-                onDelete={async (id) => {
-                  setMessage(null);
-                  await deleteRecurring.mutateAsync(id);
-                  setMessage("반복 비용을 종료했습니다. 앞으로 다시 발생하지 않으며 과거 비용 기록은 그대로 유지됩니다.");
-                }}
-              />
-              <CategoryManager
-                categories={categoryList}
-                busy={patchCategory.isPending}
-                loading={categories.isLoading}
-                loaded={categories.isSuccess}
-                errorMessage={categoryErrorMessage}
-                retrying={categories.isFetching}
-                onRetry={() => { void categories.refetch(); }}
-                onRename={renameCategory}
-                onArchive={toggleCategoryArchive}
-                onDeleteBlocked={() => setMessage("사용 이력을 보존해야 하므로 직접 삭제는 지원하지 않습니다. 보관을 사용해 주세요.")}
-              />
+              <ExpenseLedgerTable data={ledger.data} loading={ledger.isLoading} error={ledger.error} mode={view} onOpenRecord={() => setWorkspace("record")} />
             </section>
           )}
 
@@ -470,24 +461,4 @@ function RecurringRuleRow({ rule, month, amountWon, onPause, onResume, onSkip, o
       </div>
     </details>
   );
-}
-
-function CategoryManager({ categories, busy, loading, loaded, errorMessage, retrying, onRetry, onRename, onArchive, onDeleteBlocked }: QueryStateProps & { categories: ExpenseCategory[]; busy: boolean; onRename: (id: string, name: string) => Promise<void>; onArchive: (id: string, archived: boolean) => Promise<void>; onDeleteBlocked: () => void }) {
-  let content;
-  if (loading || (!loaded && !errorMessage)) {
-    content = <QueryStatePanel message="카테고리를 불러오고 있습니다." />;
-  } else if (errorMessage) {
-    content = <QueryStatePanel message={errorMessage} error retrying={retrying} onRetry={onRetry} />;
-  } else if (categories.length === 0) {
-    content = <p className="rounded-xl border border-gray-200 bg-white p-6 text-center text-xs text-gray-400">등록된 카테고리가 없습니다. 기록 화면에서 새 카테고리를 추가해 주세요.</p>;
-  } else {
-    content = <div className="space-y-2">{categories.map((category) => <CategoryRow key={category.id} category={category} busy={busy} onRename={onRename} onArchive={onArchive} onDeleteBlocked={onDeleteBlocked} />)}</div>;
-  }
-  return <div><div className="mb-2"><h3 className="text-sm font-black text-gray-900">카테고리</h3><p className="text-xs text-gray-500">이름 변경, 보관, 복원을 기록과 함께 안전하게 처리합니다.</p></div>{content}</div>;
-}
-
-function CategoryRow({ category, busy, onRename, onArchive, onDeleteBlocked }: { category: ExpenseCategory; busy: boolean; onRename: (id: string, name: string) => Promise<void>; onArchive: (id: string, archived: boolean) => Promise<void>; onDeleteBlocked: () => void }) {
-  const [draft, setDraft] = useState(category.name);
-  useEffect(() => setDraft(category.name), [category.name]);
-  return <details className="rounded-xl border border-gray-200 bg-white"><summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 marker:hidden"><span className="min-w-0 truncate text-sm font-bold text-gray-900">{category.name}</span><span className="text-xs text-gray-500">{category.archivedAt ? "보관됨" : "상세·관리"}</span></summary><div className="border-t border-gray-100 bg-slate-50 p-3"><label className="text-xs font-bold text-gray-700">카테고리 이름<input aria-label={`${category.name} 카테고리 이름`} value={draft} onChange={(event) => setDraft(event.target.value)} className={fieldClass} maxLength={40} /></label><div className="mt-3 grid grid-cols-3 gap-2"><button type="button" disabled={busy || !draft.trim() || draft.trim() === category.name} onClick={() => onRename(category.id, draft.trim())} className="min-h-11 rounded-lg border border-gray-200 bg-white text-xs font-bold disabled:opacity-40">이름 변경</button><button type="button" disabled={busy} onClick={() => onArchive(category.id, !category.archivedAt)} className="min-h-11 rounded-lg border border-gray-200 bg-white text-xs font-bold">{category.archivedAt ? "복원" : "보관"}</button><button type="button" onClick={onDeleteBlocked} className="min-h-11 rounded-lg border border-red-100 bg-white text-xs font-bold text-red-600">삭제</button></div></div></details>;
 }
