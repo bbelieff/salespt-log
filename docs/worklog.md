@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-07-26 · DevD(VERIFY) · R4 wave-1 판정 = **NO-GO** — 비대상 기수 회귀·데이터 손실·이중계상 3 blocker
+- 의도: R4 wave-1(비용원장 #615~#621) VERIFY 트랙 — 적대리뷰·구조가드·비대상 기수 불변 검증 후 GO/NO-GO.
+- 한 것: 기계게이트 실측(**check.sh PASSED** on e4b0d1e — 신규 타입 SSOT 등재 포함) + 4렌즈 적대검증. L1 비대상기수불변 **FAIL**·L4 도메인정확성 **FAIL**·L2/L3 CONCERN. 에이전트 주장을 **D 가 코드 직접 읽어 3건 CONFIRMED**: ①#620 이 전 기수 공용 파서(lib/repo/db.ts:108 neo 판정) 변경 → 비파일럿 직접생산 비용·영업이익이 입력 변경 없이 바뀜(legacy O열 잔여문자 1자에 금액 전도) ②read/write 필터 비대칭(:122 완화 vs :245 그대로) → 보이는 행을 다음 추가가 덮어쓰는 **조용한 데이터 손실**(:241 주석의 대칭 불변식 위배) ③split 이 occurrence void SQL 없음(archive 경로엔 있음) → 같은 달 **이중 계상**, UI '다음 달부터'가 실제로는 조회 중인 달.
+- 결정: **NO-GO**(라이브 배포 상태라 이미 영향 중). 조치안 A=#620(fed3307) revert / B=fix-forward 4건. 소유=Codex DEV-*, 최종 GO 는 belie 라이브 확인과 함께.
+- 다음: 소유 트랙 조치 → D 재판정. 비차단 major 5건(비파일럿 대시보드의 Postgres 동기의존·query timeout 부재, archived GET→INSERT, 아레나 scope 갈라짐, cohort 게이트 미명시, db.ts 498/500)은 현황판 유지.
+- SoR: dispatch-queue `r4-wave1-verify`
+
 ### 2026-07-24 · DevD(W0-C) · R4 wave-0 선행: R3 공식 재판정 + codex-stability STABLE 장부 + F 실측
 - 의도: R4 wave-1 착수 선행조건(W0-C) — R3/codex 판정 공식 장부화 + F 트랙 실측 확정.
 - 한 것: ①R3 공식 재판정 = **코드레벨 PASS** 재확인(§7 6수용기준 + correctness 3플래그 닫힘; L4=append 미러실패 silent 를 #598 union 시트 fallback 으로 종결·배포·health 200) → dispatch `r3-lockdown-close=done`. ②codex-stability = **STABLE**(#612): 2 blocker 실측 해소(AGENTS.md 추적+실질규약 #602 / 드라이런 채점표 registry 정본 5 PASS + relay #610 + 환경블로커 §C 박제 #611), L3 급소(전면소진 relay 주체)=takeover-runbook §C.5 명문화(belie 확정: 수동머지 or 한도리셋까지 머지동결), #605 회귀위험 경고 등재 → dispatch `codex-stability-gate=stable`. ③F 실측: EOL #603(.gitattributes LF 기계강제, autocrlf 착시 규명·내용무변경, 배포 health 200)·발굴피커 #591 MERGED·TRACK-F idle/ready.

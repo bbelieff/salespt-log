@@ -50,6 +50,42 @@ tasks:
     created_at: "2026-07-20"
     updated_at: "2026-07-21"
 
+  - task_id: r4-wave1-verify
+    project: dev-harness
+    priority: P0
+    business_goal: "R4 wave-1(비용원장 #615~#621) VERIFY — 적대리뷰·구조가드·비대상 기수 불변 후 GO/NO-GO"
+    feature_owner: TRACK-D     # 검증·판정(레포 구역 0)
+    assigned_tracks: [TRACK-D(VERIFY), CODEX-DEV-*(구현 소유)]
+    assigned_provider: claude
+    dependencies: ["W0-C(#624 완료)"]
+    file_leases: ["없음 — 읽기 전용 검증(장부 기입만)"]
+    blocked_by: []
+    approval_required: false
+    gate_verdict: "NO-GO (2026-07-26 D VERIFY) — 4렌즈 중 2렌즈 FAIL. 기계게이트(check.sh)는 초록이나 **런타임 정합에서 CONFIRMED blocker 3건**. ⚠️ 이미 배포된 상태(라이브 영향)."
+    acceptance_criteria:
+      - "기계 게이트 — ✅ check.sh PASSED on e4b0d1e(typecheck·lint·structural·test·파일크기·doc-drift, 신규 타입 SSOT 등재 확인)"
+      - "비대상 기수 불변 — ❌ L1 FAIL(blocker 2)"
+      - "구조가드 — 🟡 L2 CONCERN(major 3, 비차단)"
+      - "소유범위·보안 — 🟡 L3 CONCERN(major 3, 비차단)"
+      - "도메인 정확성(돈 계산) — ❌ L4 FAIL(blocker 1)"
+    blockers:   # D 가 코드 직접 읽어 CONFIRMED (에이전트 주장 재검증 완료)
+      - "①[blocker·CONFIRMED] #620 이 **전 기수 공용** 시트 파서 변경 — lib/repo/db.ts:108 neo 판정에 `typeof r[5]==='boolean' || toStr(r[6]).trim().length>0` 추가. readProductions 는 비파일럿 유일 경로이고 dashboard.ts:400 productionCost 로 직행 → 비파일럿 수강생의 직접생산 비용·영업이익이 **입력 변경 없이** 바뀜. legacy 시트 O열에 잔여 텍스트 1자만 있어도 신규 레이아웃 오판→기간예산을 다른 열에서 읽어 금액 전도. plan(expense-db-cost-ledger-parity-r5.md:13)은 '대시보드 비용·매출·영업이익 계산 변경 없음' 선언 — 파급 미산정."
+      - "②[blocker·CONFIRMED] read/write 필터 비대칭 — lib/repo/db.ts:122 isProductionMeaningful 은 `|| 기간예산>0` 로 완화했는데 :245 phantomProduction 은 시작일 기준 그대로. 같은 파일 :241 주석이 'isPhantom = read isMeaningful 의 negation' 불변식을 명시. → 화면·비용에 잡히는 행을 다음 '추가' 가 findFirstEmptyRow 로 **덮어써 조용한 데이터 손실**(§2.5 사용자 작성값 보존 정신 위배). 파일럿은 잘못된 값이 DB 정본에도 전파."
+      - "③[blocker·CONFIRMED] 반복비용 split 이 기존 occurrence 를 무효화하지 않음 — lib/repo/db/expense-ledger.ts splitRecurringRuleFromMonth 는 rules 만 update/insert 하고 expense_recurring_occurrences 를 건드리는 SQL 이 **없음**(대조: archive 경로는 `set status='voided' where occurrence_date > $3` 보유). materialize 는 on conflict(rule_id,occurrence_month) 라 새 규칙이 같은 달 occurrence 를 별도 insert → 두 행 모두 active → 합산 시 **해당 월 이중 계상**(총비용 과대·영업이익 과소). UI 라벨 '다음 달부터 적용' 이 실제로는 **조회 중인 달**(기본=이번 달)로 split 되어 이번 달 확정분까지 오염(major)."
+    major_findings:   # 비차단이나 후속 필요
+      - "비파일럿 대시보드가 처음으로 Postgres 에 **동기 의존** — cohort 게이트 없이 매 로드마다 materialize 트랜잭션 await. client.ts 에 statement/query timeout 없음(connectionTimeout 8s·max 5) → 느려지는 장애에서 시트-only 사용자까지 대기."
+      - "보관(archived) 사용자의 GET 이 occurrence INSERT 유발 — getActiveUserEmail 경로라 getWritableUserEmail 읽기전용 게이트를 지나지 않음(archived-login-access 규칙 우회). 수료 후에도 총비용 증가 가능."
+      - "아레나 self-view 에서 대시보드 scope(override) ↔ 비용원장 scope(findUserByEmail) 갈라짐 → 수강생출신 트레이너는 비용원장 API 404."
+      - "expense-ledger 전 경로가 cohort 게이트 미적용(전 기수 대상) — 그 결정이 plan·ADR 어디에도 명시 안 됨(롤백 계획 부재)."
+      - "lib/repo/db.ts 498/500 줄 — 다음 PR 즉시 캡 차단 위험."
+    remediation_options:
+      - "A) #620(fed3307) revert → 비파일럿 파서 원복 후 파급 산정하여 재설계(가장 안전, §6.8 정본 절차)"
+      - "B) fix-forward: 파서 변경 원복 + phantomProduction 대칭 복원 + split 에 occurrence void SQL 추가 + '다음 달부터' effectiveMonth 를 nextMonth 로 고정"
+    merge_order: "blocker 3건 해소 → D 재판정 → belie 라이브 확인 → GO"
+    status: no_go   # 2026-07-26 — 라이브 배포 상태에서 발견. 소유 트랙(Codex DEV-*) 조치 + belie 판단 대기.
+    created_at: "2026-07-26"
+    updated_at: "2026-07-26"
+
   - task_id: fmt-unify
     project: dev-harness
     priority: P1
