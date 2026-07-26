@@ -17,10 +17,44 @@ export function isArenaCohortLabel(cohort: string): boolean {
 
 /** 본인 시트를 가진 등록 수강생인가 — archived 라우팅 통과 판정
  * (archived-login-access, 2026-07-07). 보관(행 status=archived 또는 cohorts 보관
- * 기수)이어도 이 함수가 true 면 /claim 강제 이동 없이 대시보드 입장(읽기 전용).
- * 트레이너/미등록(시트 없음)은 false — 기존 라우팅 유지. */
+ * 기수)이어도 이 함수가 true 면 /claim 강제 이동 없이 대시보드 입장.
+ * 트레이너/미등록(시트 없음)은 false — 기존 라우팅 유지.
+ *
+ * R4(G2, 2026-07-26): 이 예외가 **기본값으로 승격**됐다 — shouldRedirectToClaim 참조. */
 export function hasOwnSheet(u: Pick<User, "role" | "spreadsheetId"> | null | undefined): boolean {
   return !!u && u.role === "trainee" && u.spreadsheetId.trim() !== "";
+}
+
+/**
+ * **클레임 화면으로 보내야 하는가 — 라우팅 강등 판정 SSOT** (R4 G2, belie 결정 2026-07-26).
+ *
+ * R4 무제한 CRM 이전: 보관(행 status=archived 또는 cohorts 탭 보관 기수)이면 /claim 으로
+ * 강등하고, 2026-07-07 hasOwnSheet 예외만 그걸 면제했다(함진숙 무한 클레임 루프 수정).
+ * R4 이후(**G2=A**): "수료 후에도 쓰는 CRM" 이므로 그 예외가 **기본**이다 —
+ * **본인 시트를 가진 등록 수강생은 보관이어도 그대로 입장**하고,
+ * **미등록(시트 없음)만 /claim** 으로 보낸다.
+ *
+ * 보관 기수 판정(isNumericCohortArchived)·보관 마킹(users-arena)은 **분류·집계용으로 유지**
+ * 되며 더 이상 라우팅 강등을 유발하지 않는다(인벤토리 §2.4 — 마킹과 강등의 결합 해소).
+ *
+ * ⚠️ **trainee 경로 전용 판정이다.** 트레이너·admin 은 이 함수에 오기 전에 각자 라우팅으로
+ * 갈린다(page.tsx 는 role 분기가 앞, layout.tsx 는 trainer/pending 분기가 **앞**).
+ * `hasOwnSheet` 는 `role==="trainee"` 를 요구하므로 트레이너를 그대로 넣으면 항상 true
+ * (=/claim 무한루프)가 된다 — 그래서 **role 이 trainee 가 아니면 false(비강등)** 로
+ * 명시 처리한다. 적대리뷰(2026-07-26)가 이 순서 결함을 잡았고, 같은 사고
+ * (archived-login-access 2026-07-07 트레이너 차단)의 재발 방지로 함수 자체에 박제한다.
+ *
+ * ⚠️ 쓰기 권한은 이 함수의 소관이 아니다 — `getWritableUserEmail`(lib/auth/identity)이
+ * 별도로 가른다. 입장(read)과 저장(write)은 R4 에서 분리된 축이다.
+ *
+ * @param u findUserByEmail(pickPreferredUser 적용) 결과. null=미등록 → true.
+ */
+export function shouldRedirectToClaim(
+  u: Pick<User, "role" | "spreadsheetId"> | null | undefined,
+): boolean {
+  if (!u) return true; // 레지스트리에 행 자체가 없음 = 미등록 → 클레임
+  if (u.role !== "trainee") return false; // 트레이너·admin 은 각자 라우팅(여기서 강등 금지)
+  return !hasOwnSheet(u);
 }
 
 /** dedup: 같은 email 다중 행 중 **유지할** 행 index. 우선순위 ① 아레나 > 숫자,

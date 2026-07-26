@@ -9,7 +9,8 @@
  *                       /dashboard 진입 시에만 효과 — 트레이너 랜딩 우선.
  *   - trainee active   → /dashboard
  *   - trainee pending  → PendingApprovalScreen (관리자 승인 대기)
- *   - trainee 미등록   → /claim
+ *   - trainee 미등록   → /claim  (**R4 G2 이후 /claim 강등의 유일한 사유**)
+ *   - trainee 보관(수료)→ /dashboard — 무제한 CRM(R4 G2, 2026-07-26). 본인 시트 보유 시 계속 이용.
  *
  * 변경 (fix/admin-always-land):
  *  - 이전: admin 이 impersonation 쿠키 있으면 즉시 /dashboard 진입.
@@ -19,9 +20,8 @@
  *          (POST /api/admin/switch + 클라이언트 router.push("/dashboard")).
  */
 import { redirect } from "next/navigation";
-import { findUserByEmail, isNumericCohortArchived } from "@/repo/users";
-import { hasOwnSheet } from "@/repo/user-priority";
-import { getArchivedCohortSet } from "@/repo/cohorts";
+import { findUserByEmail } from "@/repo/users";
+import { shouldRedirectToClaim } from "@/repo/user-priority";
 import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
@@ -56,17 +56,15 @@ export default async function HomePage() {
   let user = await findUserByEmail(sessionEmail);
   if (!user) user = await findUserByEmail(sessionEmail, { fresh: true });
   if (!user) redirect("/claim");
-  // 보관(archived) — 행 자체 또는 cohorts 탭 보관 기수(rejoin §1) → 클레임 화면으로.
-  // 단, **본인 시트가 있는 등록 수강생은 보관이어도 통과**(읽기 전용 입장,
-  // archived-login-access 2026-07-07 — 함진숙 무한 클레임 루프 수정). 재참가가 필요한
-  // 사람은 /claim 을 직접 열어 이용(강제 리다이렉트만 제거, 클레임 자체는 유지).
-  // cohorts read 는 라우팅 결정 지점인 여기서만(hot-path findUserByEmail 에서 분리,
-  // claim-stuck quota 경감 2026-06-12).
-  if (!hasOwnSheet(user)) {
-    if (user.status === "archived") redirect("/claim");
-    const archivedLabels = await getArchivedCohortSet().catch(() => new Set<string>());
-    if (isNumericCohortArchived(user.role, user.cohort, archivedLabels)) redirect("/claim");
-  }
+  // **R4 G2(2026-07-26)**: 수료 후에도 쓰는 무제한 CRM → 보관(archived·보관 기수)이어도
+  // 본인 시트가 있으면 그대로 입장한다. **미등록(시트 없음)만 /claim**.
+  // 이전에는 여기서 status==="archived" / isNumericCohortArchived 로 강등했고
+  // hasOwnSheet 예외가 그걸 면제했다(archived-login-access 2026-07-07) — 그 예외가 기본이 됐다.
+  // 재참가가 필요한 사람은 /claim 을 직접 열어 이용(강제 리다이렉트만 없음, 클레임 자체는 유지).
+  // 부수효과: cohorts 탭 read 가 라우팅에서 빠져 홈 hot-path quota 도 줄어든다.
+  // pending 은 아래 대기화면이 담당 — 승인 전 시트 미배정 상태를 /claim 으로 되돌리면
+  // 이미 클레임을 마친 사람이 다시 클레임 폼을 보는 루프가 된다(layout 과 동일 규칙).
+  if (user.status !== "pending" && shouldRedirectToClaim(user)) redirect("/claim");
   // 트레이너처럼 수강생도 admin 승인 필요 (2026-05-12).
   // 기존 active trainee 들은 영향 없음 (이미 status=active).
   if (user.status === "pending") {

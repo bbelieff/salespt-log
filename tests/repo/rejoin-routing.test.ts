@@ -1,13 +1,19 @@
 /**
  * rejoin-routing 가드 (arena-carryover §1·§2, 2026-06-11) — cohorts 탭 archived
- * 기수의 trainee 행만 라우팅 비활성. 트레이너(T)·연습·아레나 행 절대 비적용
+ * 기수의 trainee 행 분류. 트레이너(T)·연습·아레나 행 절대 비적용
  * (적용 시 전 트레이너 차단 사고 — 박제 테스트).
+ *
+ * **R4 G2 (2026-07-26)**: isNumericCohortArchived 는 이제 **분류·집계 전용**이며
+ * 더 이상 /claim 강등을 유발하지 않는다. 강등 판정은 shouldRedirectToClaim 단일
+ * 함수(미등록만 true) — 아래 전용 describe 참조. 분류 자체의 규칙은 불변이라
+ * 기존 테스트를 그대로 보존한다(트레이너 차단 사고 박제 유지).
  */
 import { describe, it, expect } from "vitest";
 import { isNumericCohortArchived } from "@/repo/users";
 import {
   isArenaCohortLabel,
   hasOwnSheet,
+  shouldRedirectToClaim,
   pickPreferredUser,
   pickActiveArenaRow,
   dedupKeepIndex,
@@ -241,5 +247,82 @@ describe("hasOwnSheet (archived-login-access 2026-07-07 — 보관 등록자 라
     const u = mkUser({ cohort: "6", status: "active" }); // 6 은 archived Set 에 있음
     expect(isNumericCohortArchived(u.role, u.cohort, archived)).toBe(true); // 분류는 불변
     expect(hasOwnSheet(u)).toBe(true); // 그래도 라우팅은 통과
+  });
+});
+
+/**
+ * R4 G2 (belie 결정 2026-07-26) — archived 라우팅 개정.
+ * 이전: 보관이면 /claim 강등 + hasOwnSheet 예외가 면제.
+ * 이후: **미등록(시트 없음)만 /claim**, 보관(수료)은 그대로 입장(무제한 CRM).
+ * page.tsx·(app)/layout.tsx 두 곳이 이 한 함수만 호출한다(중복 분기 제거).
+ */
+describe("shouldRedirectToClaim (R4 G2 — /claim 강등 판정 SSOT)", () => {
+  it("미등록(null/undefined) → true — /claim 강등의 유일한 사유", () => {
+    expect(shouldRedirectToClaim(null)).toBe(true);
+    expect(shouldRedirectToClaim(undefined)).toBe(true);
+  });
+
+  it("시트 없는 trainee(행만 있고 미배정) → true", () => {
+    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "" }))).toBe(true);
+    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "   " }))).toBe(true);
+  });
+
+  it("수료(행 status=archived)+시트 보유 → false — 계속 입장(G2 목표 상태)", () => {
+    // 주: master 도 hasOwnSheet 예외로 이미 통과시켰다(archived-login-access).
+    // 이 테스트는 "전환"이 아니라 **G2 목표 상태의 박제** — 이후 리팩터가 되돌리면 실패한다.
+    expect(shouldRedirectToClaim(mkUser({ cohort: "7", status: "archived" }))).toBe(false);
+  });
+
+  it("보관 기수(cohorts archived '6')+시트 보유 → false, 단 분류는 true 유지", () => {
+    const u = mkUser({ cohort: "6", status: "active" }); // "6" 은 archived Set 에 있음
+    // 분류(집계·표시용)는 그대로 true 지만, 라우팅은 더 이상 강등하지 않는다.
+    expect(isNumericCohortArchived(u.role, u.cohort, archived)).toBe(true);
+    expect(shouldRedirectToClaim(u)).toBe(false);
+  });
+
+  it("현행 수강생(active+시트) → false — 회귀 없음", () => {
+    expect(shouldRedirectToClaim(mkUser({ cohort: "9" }))).toBe(false);
+    expect(shouldRedirectToClaim(mkUser({ cohort: "A1-6" }))).toBe(false);
+    expect(shouldRedirectToClaim(mkUser({ cohort: "연습" }))).toBe(false);
+  });
+
+  /**
+   * 🚨 회귀 박제 (적대리뷰 2026-07-26 이 잡은 결함).
+   * 초안은 `!hasOwnSheet(u)` 를 그대로 반환했다 → hasOwnSheet 가 role==="trainee" 를
+   * 요구하므로 **모든 트레이너가 항상 true(=/claim)** 가 됐고, layout 에서 트레이너
+   * 분기보다 먼저 호출돼 /claim ↔ / 무한루프(2026-07-07 트레이너 차단 사고 재발).
+   * 그래서 이 함수는 trainee 가 아니면 강등하지 않는다.
+   */
+  it("🚨 트레이너(시트 없음)는 false — 강등 금지(무한루프 재발 방지)", () => {
+    expect(shouldRedirectToClaim(mkUser({ role: "trainer", spreadsheetId: "" }))).toBe(false);
+    expect(shouldRedirectToClaim(mkUser({ role: "trainer", spreadsheetId: "", status: "pending" }))).toBe(false);
+    // 수강생출신 트레이너(T 행 + 아레나 행) — pickPreferredUser 가 trainer 행을 먼저 준다.
+    expect(shouldRedirectToClaim(mkUser({ role: "trainer", cohort: "T", spreadsheetId: "" }))).toBe(false);
+  });
+
+  it("🚨 admin 행(시트 없음)도 false — 강등 금지", () => {
+    // ADMIN_EMAILS env 에 없는 admin 행이 layout 가드 안쪽으로 들어오는 경우.
+    expect(shouldRedirectToClaim(mkUser({ role: "admin", spreadsheetId: "" }))).toBe(false);
+  });
+
+  it("trainee 에 한해서만 hasOwnSheet 의 부정과 일치(트레이너·admin 은 의도적으로 다름)", () => {
+    const trainees = [
+      mkUser({ status: "archived" }),
+      mkUser({ spreadsheetId: "" }),
+      mkUser({ cohort: "6", status: "active" }),
+    ];
+    for (const c of trainees) expect(shouldRedirectToClaim(c)).toBe(!hasOwnSheet(c));
+    // 비-trainee 는 hasOwnSheet=false 이지만 강등하지 않는다 — 갈리는 게 정상.
+    const trainer = mkUser({ role: "trainer", spreadsheetId: "" });
+    expect(hasOwnSheet(trainer)).toBe(false);
+    expect(shouldRedirectToClaim(trainer)).toBe(false);
+  });
+
+  it("보관+시트 보유자는 재참가를 원하면 /claim 을 직접 열 수 있다(강제 이동만 제거)", () => {
+    // 라우팅은 통과시키되 클레임 기능 자체는 유지(claimAccount 는 archived 를
+    // short-circuit 하지 않고 신규 기수 합류 진행 — lib/service/auth.ts rejoin §2).
+    const graduate = mkUser({ cohort: "7", status: "archived" });
+    expect(shouldRedirectToClaim(graduate)).toBe(false); // 강제 이동 없음
+    expect(hasOwnSheet(graduate)).toBe(true); // 본인 시트로 계속 이용
   });
 });
