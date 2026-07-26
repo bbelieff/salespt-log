@@ -56,7 +56,7 @@
 | A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260712) | 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | PR 오픈(#538, chore/gcal-route-telemetry) — gcal 라우트 6개 withApiTiming 계측(무음실패 durable 관찰). check.sh 초록. **머지=프로덕션 배포는 belie 승인 대기**(belie 복귀·"제안" 프레이밍, DevD 외부발행 대기와 동일선). 잔여=pm2 침묵 인프라(VPS 필요) |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
-| D | 속도 전/후 리포트 — 레포 구역 없음(PostHog+PR 코멘트) | DevD(260712) | **완료(게시)**: belie 승인 후 PR #491·496·499·500·509 5건에 전/후 성적표 요약 코멘트 게시 완료. 결과=5 route ✅목표달성(p50 22~36ms·sheets0, daily −99%), dashboard 🟡부분(p95 51k→3.2k), todos ❌(#535 배포 이전=측정창 밖). 리포트=`scratchpad/db-speed-report-FINAL.md`. 후속(대기): #535 전면배포·파일럿확대 후 todos·dashboard 재측정. 신규 작업 대기 |
+| D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
 | E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
 | F | KPI-④ EOL renormalize (막차) — .gitattributes | DevF(260712) | **배포 확인(완료)** — #603(1aa3b9a) 머지·배포 success·health 200. §0.5 진단: 저장소 이미 LF(index i/crlf 0건), 720파일=autocrlf 작업트리 착시 → `.gitattributes`로 LF 정책 기계강제(내용 무변경 실측). 다음=#596 D 재검증 대응 대기 / 큐 신규. 🔔#596 D 재검증 요청 유효(연습용 3증상 라이브 해소 확인) |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
@@ -83,6 +83,13 @@
 - **DevF**: 신규 작업 배정 대기.
 
 ## 로그
+
+### 2026-07-24 · DevD(W0-C) · R4 wave-0 선행: R3 공식 재판정 + codex-stability STABLE 장부 + F 실측
+- 의도: R4 wave-1 착수 선행조건(W0-C) — R3/codex 판정 공식 장부화 + F 트랙 실측 확정.
+- 한 것: ①R3 공식 재판정 = **코드레벨 PASS** 재확인(§7 6수용기준 + correctness 3플래그 닫힘; L4=append 미러실패 silent 를 #598 union 시트 fallback 으로 종결·배포·health 200) → dispatch `r3-lockdown-close=done`. ②codex-stability = **STABLE**(#612): 2 blocker 실측 해소(AGENTS.md 추적+실질규약 #602 / 드라이런 채점표 registry 정본 5 PASS + relay #610 + 환경블로커 §C 박제 #611), L3 급소(전면소진 relay 주체)=takeover-runbook §C.5 명문화(belie 확정: 수동머지 or 한도리셋까지 머지동결), #605 회귀위험 경고 등재 → dispatch `codex-stability-gate=stable`. ③F 실측: EOL #603(.gitattributes LF 기계강제, autocrlf 착시 규명·내용무변경, 배포 health 200)·발굴피커 #591 MERGED·TRACK-F idle/ready.
+- 결정: R3·codex 판정 모두 확정 + F ready → **R4 wave-1 선행조건 3건 전부 초록**. residual(hardening, blocker 아님): #605 close(belie 판단)·registry 트랙줄 stale(소유 트랙)·A(인수) full 왕복 1회 실연(B-1 축소판 자인).
+- 다음: R4 wave-1 착수 가능. W0-C 완료 — belie 경유 Cowork 회신.
+- SoR: dispatch-queue `codex-stability-gate`·`r3-lockdown-close`, takeover-runbook §C.5, registry `CODEX-DRYRUN.scoring_result`
 
 ### 2026-07-24 · Codex DevB · 반복 비용 삭제/종료 soft archive P1 보완 (독립 재검증 대기)
 - 의도: 이미 배포된 반복 규칙 DELETE terminal soft archive 계약을 Option A 관리 행에서 안전하게 사용할 수 있게 하고, 여섯 항목 수용 감사의 마지막 P1 공백을 닫는다.
