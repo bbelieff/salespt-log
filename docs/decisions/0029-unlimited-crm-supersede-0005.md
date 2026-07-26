@@ -7,8 +7,8 @@
 > - **읽고 나면 알 수 있는 것**: 8주가 무엇으로 남나 / 편집가드는 어떻게 바뀌나 / 무엇은 절대 안 바뀌나(O1+50)
 > - **관련 문서**: `docs/decisions/0005-week-counting-convention.md`(supersede 대상), `docs/plans/active/r4-unlimited-crm.md`(설계 정본), `db-first-unlimited-roadmap.md §R4`
 
-- **Status**: **proposed (초안 — belie 게이트 2건 미결)** ⚠️ accepted 아님. wave-1 착수 전 G1·G2 답변으로 확정.
-- **Date**: 2026-07-26 (초안)
+- **Status**: **accepted** (belie 확정 2026-07-26 — G1=완전 해제 · G2=정상 진입)
+- **Date**: 2026-07-26
 - **Supersedes**: **ADR-0005** — 단, **부분 supersede**. 0005 의 §1·§2·§3(주차 카운팅 O1 기준·종강 O1+50·6기 legacy)은 **그대로 유지**. 본 ADR 이 뒤집는 것은 0005 §Out of scope 로 남았던 **편집유예(+69일)** 와, "통계는 8주 기준"이라는 암묵 제약이다.
 
 ## Context
@@ -28,12 +28,14 @@ R4(무제한 CRM, 정본 `db-first-unlimited-roadmap.md §R4`): 수강생이 **�
 ### 3. 주차 무제한화 — 상한 제거
 - `weekIndexOf` 는 이미 O1 기준 연속(상한 없음). R4 는 8주 **캡/클램프 지점**을 제거해 9주차+ 데이터가 정상 적재·조회되게 한다. 지표 집계만 코스 창(1~8주)으로 필터.
 
-### 4. 편집유예(+69일 읽기전용) 재정의 — 🔴 **belie G1 미결**
-- 0005 out-of-scope 였던 편집유예를 R4 가 재정의한다. **판정을 entitlement 단일 함수(§B2)로 통일** — "이 사용자·이 기록·지금 편집 가능?"을 한 곳에서.
-- **확정값은 belie G1 답변**(r4-unlimited-crm.md §4 G1: A 완전해제 / B 코스기록만 잠금 / C 현행유지). 권장=A. **본 ADR 은 그 답을 담는 자리를 비워둔다.**
+### 4. 편집유예(+69일 읽기전용) — ✅ **완전 해제**(belie G1=A 확정)
+- 0005 out-of-scope 였던 편집유예를 R4 가 재정의한다: **수강시작+69일 읽기전용 잠금 폐지 · archived(수료) 쓰기 차단 폐지.** 수료 후에도 **자기 기록을 계속 입력·수정**한다.
+- 구현 지점(W1-1): `getWritableUserEmail` 의 archived-throw 제거 · `inEditPeriod`(+69일) 제거 · `Meeting.주차` Zod 상한(max 10) 재정의.
+- ⚠️ **11주+ 는 DB-only** — 시트 01 영업관리는 주차 블록이 1~10주뿐(`salesRowFor` throw). 11주+ 저장은 DB 정본에만 기록하고 **시트 write·미러를 skip**(mirror_pending 오염 금지). 비대상(비파일럿) 기수는 **완전 불변**.
+- ⚠️ **집계 클램프 동반 필수** — 무필터 집계(`channelStackingFromDb`)가 11주+ 행까지 합산하면 대시보드가 영구 부풀린다. 지표는 **시트 표현 가능 창(1~10주)으로 클램프**(오늘 수치·시트↔DB parity 불변, §2 원칙①·plan §4-1).
 
-### 5. 수료생 라우팅 — 🔴 **belie G2 미결**
-- archived 를 **(가) 수료생**(정상 앱 진입) vs **(나) 실제 미등록/이탈**(클레임 유지)로 분리. 확정값 = belie G2(권장=A). 배포 전 파일럿 실왕복.
+### 5. 수료생 라우팅 — ✅ **정상 진입**(belie G2=A 확정)
+- archived 를 **(가) 수료생**(= 정상 앱 진입·자기 기록 사용) vs **(나) 실제 미등록/이탈**(클레임 유도 유지)로 분리. 배포 전 파일럿 실왕복 확인.
 
 ### 6. 8주 하드코딩 제거 + 구조테스트 가드
 - 8주·offset·+69일·archived magic 지점 전수 제거(전수 목록 = W0-B `scratchpad/r4-hardcode-inventory.md`) → 상수/설정/판정함수로 승격 후, **재유입을 구조테스트로 물리 차단**.
@@ -47,5 +49,5 @@ R4(무제한 CRM, 정본 `db-first-unlimited-roadmap.md §R4`): 수강생이 **�
 ## Out of scope (R4 밖 — 정본 §R5/§R6/§B4)
 - 아레나 라벨 통합·동일인 병합(R5·D2) · 결제(B4) · 시트 은퇴(R6) · 지표 창 변경.
 
-## 미결(belie 게이트 — 확정 시 status→accepted)
-- **G1** 편집가드 재정의(A/B/C) · **G2** 수료생 라우팅·권한(A/B/C). 상세·권장 = `r4-unlimited-crm.md §4`.
+## 결정 이력
+- 2026-07-26 **belie 확정**: G1=(A) 완전 해제 · G2=(A) 정상 진입 → status proposed→**accepted**. 선택지 원문·근거 = `r4-unlimited-crm.md §4`. 구현 = wave-1 W1-1(쓰기 무제한) 이후 순차.
