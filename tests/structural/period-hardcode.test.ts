@@ -233,9 +233,8 @@ describe("G4: 통계 주차수(8) 상수화", () => {
 // G5 — 날짜 리터럴 금지 (앱 코드)
 // ═════════════════════════════════════════════════════════════
 describe("G5: YYYY-MM-DD 리터럴 금지 (앱 코드)", () => {
-  // baseline: 프로토타입 fallback 더미 (inventory 2.7) — R4 라우팅 재정의에서 소거 예정.
+  // baseline: 잔여 허용분만 — dashboard 더미 fallback 은 W1-3 에서 소거 완료(재유입 즉시 차단).
   const BASELINE = new Set([
-    "app/(app)/dashboard/page.tsx",
     // "0001-01-01" = 전체기간 뷰 min-date sentinel (달력 날짜 하드코딩 아님)
     "lib/service/expense-ledger.ts",
     // PostHog defaults: "YYYY-MM-DD" 는 SDK 동작 버전 키 (날짜가 아니라 설정 스위치)

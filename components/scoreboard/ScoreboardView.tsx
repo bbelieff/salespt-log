@@ -10,6 +10,7 @@
 "use client";
 
 import { useState } from "react";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import AwardPodium, { type PodiumColor } from "./AwardPodium";
 import CohortSummaryBoard from "./CohortSummaryBoard";
 
@@ -52,10 +53,10 @@ const RANK_TABS: { key: string; color: PodiumColor; unit: string }[] = [
 
 const CAPTION: Record<string, string> = {
   메인: "입금자 평균 · 부부 1시트=1명 · 계약 평균 순",
-  미팅: "8주 누적 미팅 수 · 입금자 1시트=1명",
-  계약: "8주 누적 계약 수 · 입금자 1시트=1명",
+  미팅: `${STATS_WEEKS}주 누적 미팅 수 · 입금자 1시트=1명`,
+  계약: `${STATS_WEEKS}주 누적 계약 수 · 입금자 1시트=1명`,
   매출: "대시보드 총매출 · 입금자 1시트=1명",
-  앱사용량: "8주 기록 활동량(생산+유입+컨택+미팅+계약) · 입금자 1시트=1명",
+  앱사용량: `${STATS_WEEKS}주 기록 활동량(생산+유입+컨택+미팅+계약) · 입금자 1시트=1명`,
   공유왕: "게시판 공유글 점수(수동 집계) · 입금자 1시트=1명",
 };
 

@@ -18,6 +18,7 @@
 "use client";
 
 import type { DashboardChannelMatrix } from "@/types";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 
 interface Props {
   matrix: DashboardChannelMatrix[];
@@ -51,7 +52,7 @@ export default function ProductivityIndicators({ matrix }: Props) {
       <div className="mb-3 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-indigo-500" />
         <h2 className="text-base font-extrabold text-gray-900">생산성 지표</h2>
-        <span className="ml-auto text-xs text-gray-400">8주 누적</span>
+        <span className="ml-auto text-xs text-gray-400">{STATS_WEEKS}주 누적</span>
       </div>
 
       <div className="space-y-3">

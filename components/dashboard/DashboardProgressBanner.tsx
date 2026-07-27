@@ -25,7 +25,9 @@ interface Props {
   onOpenExpenseLedger: () => void;
   today: string; // "5/4"
   weekday: string; // "월"
-  currentWeek: number; // 1~8
+  currentWeek: number; // 코스주차 1~STATS_WEEKS (clamp 는 page 가 수행)
+  /** 종강일(O2) 경과 — true 면 "N주차 진행중" 대신 수료 표시 (R4 W1-3, 📥기본안). */
+  graduated?: boolean;
   startDate: string; // "4/10" (N1)
   progressPercent: number; // 0~100
   graduationDate: string; // "6/6"
@@ -45,6 +47,7 @@ export default function DashboardProgressBanner({
   today,
   weekday,
   currentWeek,
+  graduated = false,
   startDate,
   progressPercent,
   graduationDate,
@@ -68,9 +71,13 @@ export default function DashboardProgressBanner({
             현재 {today} ({weekday})
           </span>
           <span className="text-base text-gray-300">·</span>
-          <span className="text-base font-extrabold text-blue-600">
-            {currentWeek}주차 진행중
-          </span>
+          {graduated ? (
+            <span className="text-base font-extrabold text-emerald-600">🎓 수료</span>
+          ) : (
+            <span className="text-base font-extrabold text-blue-600">
+              {currentWeek}주차 진행중
+            </span>
+          )}
         </div>
 
         {/* 진행바 + amber 5겹 끝점 */}

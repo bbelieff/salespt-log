@@ -1,6 +1,7 @@
 "use client";
 
 import { formatMoney } from "@/lib/format/money";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 /**
  * OperatingProfitCard — 영업이익 큰 카드 (대시보드 메인 KPI).
  *
@@ -9,7 +10,7 @@ import { formatMoney } from "@/lib/format/money";
  *
  * 구조:
  *   - 좌측 border-l-4 border-blue-500 + rounded-2xl shadow-sm
- *   - 상단: ＝ 배지 + "영업이익" 라벨 + (우측) "8주 누적 · 계약 N건"
+ *   - 상단: ＝ 배지 + "영업이익" 라벨 + (우측) "N주 누적 · 계약 N건" (N=STATS_WEEKS)
  *   - 가운데: ₩금액 (text-4xl font-extrabold blue-700)
  *   - 하단: "영업이익률 N%"
  */
@@ -46,7 +47,7 @@ export default function OperatingProfitCard({
         </div>
         {typeof contractCount === "number" && (
           <span className="text-xs text-gray-400">
-            8주 누적 · 계약 {contractCount}건
+            {STATS_WEEKS}주 누적 · 계약 {contractCount}건
           </span>
         )}
       </div>
