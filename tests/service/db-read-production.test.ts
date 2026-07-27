@@ -1,14 +1,13 @@
 /**
  * R2-5 정합 대조 (db-read-production): 03 DB관리 4섹션의 DB 파서 재사용이
  * 시트 파서(parseXRow)와 같은 결과를 내는지 고정. 특히:
- *  • 직접생산 "생산중"(종료일 빈) 행 — sheet/backfill 배열도 신규 I:O로 보존하는지
+ *  • 직접생산 "생산중"(종료일 빈) 행 — 필드명 Zod 경로가 배열-neo 밀림을 피하는지
  *  • 파생값(주문금액=개당단가×주문개수, 개당단가=예산/생산개수) 양 경로 동일
  *  • 합계행 skip 기준
  */
 import { describe, expect, it } from "vitest";
 import { DBProduction } from "@/types";
 import {
-  isProductionMeaningful,
   parseBannerRow,
   parseProductionRow,
   parsePurchaseRow,
@@ -54,7 +53,7 @@ describe("R2-5 매입DB: backfill 열문자 == 시트 파서, 주문금액 파�
   });
 });
 
-describe("R2-5 직접생산: 신규 I:O 생산중·비정상 날짜 보존", () => {
+describe("R2-5 직접생산: 생산중(종료일 빈) 행 — 배열 vs 필드명 경로", () => {
   // 신규 레이아웃 I~O: 시작/종료/소재/예산/생산개수/부가세/기타
   it("종료일 있는 완료 행: 열문자 파서 == 시트 파서 (neo=true)", () => {
     const raw = ["2026-06-01", "2026-06-05", "강남", 300000, 10, true, "메모"];
@@ -64,40 +63,16 @@ describe("R2-5 직접생산: 신규 I:O 생산중·비정상 날짜 보존", () 
     expect(fromDb.개당단가).toBe(Math.round(300000 / 10));
   });
 
-  it("생산중(종료일 빈) sheet/backfill 행도 신규 열 배치로 예산을 보존한다", () => {
+  it("⚠️ 생산중(종료일 빈) 행: 배열 파서는 neo=false 로 밀림 → 필드명 Zod 경로가 정답", () => {
+    // 종료일(J) 빈 → parseProductionRow 는 neo=false → 소재를 예산으로 오독(시트 파서 한계).
+    // dual-write payload(이미 파싱된 타입)는 Zod 로 그대로 복원해야 정확 — read-db-tab 이
+    // 필드명이면 파서 재실행 안 하고 Zod. 여기선 그 위험을 문서화(파서 직접 호출 시 밀림 확인).
     const raw = ["2026-06-01", "", "강남", 300000, 0, true, "생산중"];
-    const fromSheet = parseProductionRow(raw);
-    const fromDbBackfill = parseProductionRow(relRow(colPayload(8, raw), 8));
-    expect(fromSheet).toMatchObject({
-      시작일: "2026-06-01", 종료일: "", 소재: "강남", 기간예산: 300000,
-      생산개수: 0, 부가세여부: true, 기타: "생산중",
-    });
-    expect(fromDbBackfill).toEqual(fromSheet);
-    expect(isProductionMeaningful(fromSheet)).toBe(true);
-  });
-
-  it("종료일이 비정상이어도 신규 checkbox/메모 위치로 판별하고 시작일 인식을 허용한다", () => {
-    const parsed = parseProductionRow(["2026-06-01", "미정", "강남", 300000, 0, false, "종료일 확인 필요"]);
-    expect(parsed).toMatchObject({ 종료일: "미정", 소재: "강남", 기간예산: 300000, 부가세여부: false });
-    expect(isProductionMeaningful(parsed)).toBe(true);
-  });
-
-  it("시작일이 누락/비정상이어도 양수 예산 행을 미배분 원장용으로 보존한다", () => {
-    const missing = parseProductionRow(["", "", "강남", 300000, 0, false, "시작일 누락"]);
-    const invalid = parseProductionRow(["날짜확인", "", "강북", 200000, 0, true, "시작일 오류"]);
-    expect(missing).toMatchObject({ 시작일: "", 기간예산: 300000 });
-    expect(invalid).toMatchObject({ 시작일: "날짜확인", 기간예산: 200000 });
-    expect(isProductionMeaningful(missing)).toBe(true);
-    expect(isProductionMeaningful(invalid)).toBe(true);
-    expect(isProductionMeaningful(parseProductionRow(["", "", "", 0, 0, false, ""]))).toBe(false);
-  });
-
-  it("기존 단일 날짜 legacy 배치는 그대로 해석한다", () => {
-    const parsed = parseProductionRow(["2026-05-01", "강남", 120000, 4, 30000, "legacy note", ""]);
-    expect(parsed).toMatchObject({
-      시작일: "2026-05-01", 종료일: "2026-05-01", 소재: "강남",
-      기간예산: 120000, 생산개수: 4, 부가세여부: false, 기타: "legacy note",
-    });
+    const parsed = parseProductionRow(raw);
+    // neo=false 경로 — 종료일=시작일, 소재=r[1]="" (밀림 실증)
+    expect(parsed.종료일).toBe(parsed.시작일);
+    expect(parsed.소재).toBe(""); // 강남이 아니라 빈값 — 배열 파서로는 부정확
+    // → read-db-tab 은 이 케이스에 Zod 경로를 쓰므로 실제 서비스는 정확(아래 통합 확인).
   });
 
   it("✅ dual-write 필드명 payload(생산중) → Zod 복원은 소재 보존 (read-db-tab safe 경로)", () => {

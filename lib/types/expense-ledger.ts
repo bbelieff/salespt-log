@@ -8,12 +8,6 @@ export const ExpenseName = z.string().trim().min(1).max(100);
 export const CategoryName = z.string().trim().min(1).max(40);
 export const AmountWon = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 
-const SystemExpenseCategoryId = z.enum([
-  "system:db_purchase",
-  "system:db_production",
-  "system:db_banner",
-]);
-
 export const ExpenseCategory = z.object({
   id: ExpenseId,
   name: CategoryName,
@@ -100,14 +94,14 @@ export type PatchRecurringRuleBody = z.infer<typeof PatchRecurringRuleBody>;
 export const ExpenseQuery = z.object({
   view: z.enum(["month", "all", "category"]).default("month"),
   month: IsoMonth.optional(),
-  categoryId: z.union([ExpenseId, SystemExpenseCategoryId]).optional(),
+  categoryId: ExpenseId.optional(),
 }).superRefine((v, ctx) => {
   if (v.view === "month" && !v.month) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "month가 필요해요.", path: ["month"] });
   if (v.view === "category" && !v.categoryId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "categoryId가 필요해요.", path: ["categoryId"] });
 });
 
 export interface RecognizedExpense {
-  source: "one_time" | "recurring" | "db_purchase" | "db_production" | "db_banner";
+  source: "one_time" | "recurring";
   id: string;
   categoryId: string;
   categoryName: string;
@@ -115,27 +109,6 @@ export interface RecognizedExpense {
   amountWon: number;
   periodStart: string;
   periodEnd: string;
-  system: boolean;
-  readOnly: boolean;
-  recognitionStatus: "allocated" | "recognized_on_date" | "recognized_on_start" | "unallocated";
-  recognitionNote: string | null;
-}
-
-interface ExpenseCategoryTotal {
-  categoryId: string;
-  categoryName: string;
-  amountWon: number;
-  itemCount: number;
-  sharePercent: number;
-  system: boolean;
-  archived: boolean;
-}
-
-interface ExpenseSelectedScope {
-  view: "month" | "all" | "category";
-  month: string | null;
-  categoryId: string | null;
-  label: string;
 }
 
 export interface ExpenseLedgerView {
@@ -143,9 +116,6 @@ export interface ExpenseLedgerView {
   month: string | null;
   categories: ExpenseCategory[];
   entries: RecognizedExpense[];
-  categoryTotals: ExpenseCategoryTotal[];
-  dbCostTotal: number;
+  categoryTotals: Array<{ categoryId: string; categoryName: string; amountWon: number }>;
   additionalCostTotal: number;
-  totalCost: number;
-  selectedScope: ExpenseSelectedScope;
 }
