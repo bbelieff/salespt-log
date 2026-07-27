@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-07-26 · DevD(VERIFY) · blocker 원인커밋 매핑·최소 revert 셋 확정 (READ_ONLY)
+- 의도: FOREMAN 판정 수용 후 즉시 — ①②③ 원인 커밋 매핑 + 최소 revert 셋 확정. 실행은 DevA(#620 revert), D 는 매핑·검증만.
+- 한 것: **①② = fed3307(#620)** lib/repo/db.ts:108·:122 → #620 revert 로 닫힘. **③ = 92a0a65(#615 본체)** splitRecurringRuleFromMonth → **#620 revert 로 안 닫힘**(#617 은 archive 경로에만 void SQL 추가, split 누락). revert 적용성 dry-run **CLEAN**(`git apply --reverse --check` 통과, 이후 동일파일 접촉 커밋 0, db-cost-ledger.ts·import·테스트 전부 #620 소산이라 자기완결). ③ 라이브 도달성 CONFIRMED(expense-ledger.ts:203 이 nextMonth 까지 선 materialize).
+- 결정: **⚠️ #620 revert 는 순수 복구가 아님** — 그 파서 변경은 기존 결함(생산중 행 밀림) 수정 시도였고 삭제된 테스트가 옛 동작을 명시 인정. revert 시 옛 결함 복귀하나, 새 위험(레거시 O열 오판 금액전도 + 조용한 덮어쓰기)보다 노출이 작아 **지혈로 타당**. ②원복은 순수 이득(phantom 대칭 회복).
+- 다음: **📥 belie 게이트 적재(실행 안 함)** — ③ 을 #615 본체 revert 로 갈지 타겟 fix-forward 로 갈지. **D 권고=fix-forward**(#617 패턴 void SQL 1개 + UI effectiveMonth→nextMonth 고정, #615 revert 는 기능 전면 제거라 과대). DevA revert 착지 시 D 검증 → 이후 W1-1 PR 부터 VERIFY 계속.
+- SoR: dispatch-queue `r4-wave1-verify` (blocker_commit_map·minimal_revert_set·blocker3_gate)
+
 ### 2026-07-26 · DevD(VERIFY) · R4 wave-1 판정 = **NO-GO** — 비대상 기수 회귀·데이터 손실·이중계상 3 blocker
 - 의도: R4 wave-1(비용원장 #615~#621) VERIFY 트랙 — 적대리뷰·구조가드·비대상 기수 불변 검증 후 GO/NO-GO.
 - 한 것: 기계게이트 실측(**check.sh PASSED** on e4b0d1e — 신규 타입 SSOT 등재 포함) + 4렌즈 적대검증. L1 비대상기수불변 **FAIL**·L4 도메인정확성 **FAIL**·L2/L3 CONCERN. 에이전트 주장을 **D 가 코드 직접 읽어 3건 CONFIRMED**: ①#620 이 전 기수 공용 파서(lib/repo/db.ts:108 neo 판정) 변경 → 비파일럿 직접생산 비용·영업이익이 입력 변경 없이 바뀜(legacy O열 잔여문자 1자에 금액 전도) ②read/write 필터 비대칭(:122 완화 vs :245 그대로) → 보이는 행을 다음 추가가 덮어쓰는 **조용한 데이터 손실**(:241 주석의 대칭 불변식 위배) ③split 이 occurrence void SQL 없음(archive 경로엔 있음) → 같은 달 **이중 계상**, UI '다음 달부터'가 실제로는 조회 중인 달.
