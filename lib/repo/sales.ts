@@ -3,11 +3,13 @@
  * 좌표 = O1(수강시작일) + (주차,요일,채널) 공식. SSOT: docs/domains/sheet-structure.md §2
  */
 import { SHEET_RANGES } from "@/config";
+import { MAX_SHEET_WEEK, STATS_WEEKS } from "@/config/cohort-dates";
 import {
   ChannelDailyRow,
   CHANNEL_ORDER,
   Channel,
 } from "@/types";
+import { diffDays, weekIndexOf, weekStartOf } from "@/util/week";
 import { sheetsClient } from "./sheets-client";
 import { parseWeekRows } from "./week-parse";
 import { mirrorSheetRow } from "./db/mirror";
@@ -15,33 +17,9 @@ import { salesDbPayload } from "./db/sales-payload";
 import { readSalesRowsFromDb } from "./db/client";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
-
-/** 두 날짜의 일수 차이 (양수 또는 음수). */
-export function diffDays(later: Date, earlier: Date): number {
-  return Math.round(
-    (later.getTime() - earlier.getTime()) / 86_400_000,
-  );
-}
-
-/**
- * 수강시작일 기준 주차 (1~10).
- * 시작일 당일 = 1주차. 시작일 + 7일 = 2주차. ...
- */
-export function weekIndexOf(date: Date, courseStart: Date): number {
-  const diff = diffDays(date, courseStart);
-  if (diff < 0) return 0; // 수강 시작 전
-  return Math.floor(diff / 7) + 1;
-}
-
-/** 그 주차의 시작일(시작일과 같은 요일). */
-export function weekStartOf(date: Date, courseStart: Date): Date {
-  const week = weekIndexOf(date, courseStart);
-  if (week === 0) return courseStart;
-  const offset = (week - 1) * 7;
-  const d = new Date(courseStart);
-  d.setDate(d.getDate() + offset);
-  return d;
-}
+// 주차 계산 정본은 lib/util/week.ts (R4 W1-0 단일화, G8). 기존 소비처
+// (contact·dashboard-aggregates·scoreboard·termination-count)의 import 경로 보존용 재수출.
+export { diffDays, weekIndexOf, weekStartOf };
 
 /**
  * 영업관리 한 행의 행 번호 (1-based).
@@ -53,9 +31,9 @@ export function salesRowFor(
   courseStart: Date,
 ): number {
   const week = weekIndexOf(date, courseStart);
-  if (week < 1 || week > 10) {
+  if (week < 1 || week > MAX_SHEET_WEEK) {
     throw new Error(
-      `영업관리 좌표 계산 실패: 날짜 ${fmtISO(date)}는 편집 가능 기간(1~10주) 밖입니다.`,
+      `영업관리 좌표 계산 실패: 날짜 ${fmtISO(date)}는 편집 가능 기간(1~${MAX_SHEET_WEEK}주) 밖입니다.`,
     );
   }
   const weekStart = weekStartOf(date, courseStart);
@@ -80,8 +58,8 @@ export async function readWeekFunnel(
   spreadsheetId: string,
   week: number,
 ): Promise<{ 생산: number; 유입: number; 컨택진행: number; 미팅예약: number }> {
-  // 편집 가능 기간 (1~10주) 밖이면 0 반환 — 안전 fallback.
-  if (week < 1 || week > 10) {
+  // 시트 물리 블록(1~MAX_SHEET_WEEK주) 밖이면 0 반환 — 안전 fallback.
+  if (week < 1 || week > MAX_SHEET_WEEK) {
     return { 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0 };
   }
   const startRow =
@@ -239,7 +217,7 @@ export async function readProfileBundle(spreadsheetId: string): Promise<{
   const tab = tabRef(SHEET_RANGES.sales.tab);
   const blockStart = SHEET_RANGES.sales.blockStart;
   const blockStride = SHEET_RANGES.sales.blockStride;
-  const lastRow = blockStart + 7 * blockStride + 27; // 8주차 마지막 데이터 행
+  const lastRow = blockStart + (STATS_WEEKS - 1) * blockStride + 27; // 8주차 마지막 데이터 행
   const ranges = [
     `${tab}!B3:C3`,
     `${tab}!${SHEET_RANGES.sales.startDateCell}`,
@@ -281,7 +259,7 @@ function sumFunnelDataRows(
   let 미팅예정 = 0;
   let 미팅완료 = 0;
   let 계약 = 0;
-  for (let week = 0; week < 8; week++) {
+  for (let week = 0; week < STATS_WEEKS; week++) {
     for (let offset = 0; offset < 28; offset++) {
       const r = rows[week * blockStride + offset] ?? [];
       미팅예정 += num(r[3]); // H
@@ -401,7 +379,7 @@ export async function sumChannelInflowOverPeriod(
   const w1 = weekIndexOf(parseISO(startISO), courseStart);
   const w2 = weekIndexOf(parseISO(endISO), courseStart);
   const from = Math.max(1, Math.min(w1, w2));
-  const to = Math.min(10, Math.max(w1, w2));
+  const to = Math.min(MAX_SHEET_WEEK, Math.max(w1, w2));
   let sum = 0;
   for (let w = from; w <= to; w++) {
     const { rows } = await readWeek(spreadsheetId, w);
@@ -450,8 +428,8 @@ export async function readWeek(
   spreadsheetId: string,
   weekIndex: number,
 ): Promise<{ rows: ChannelDailyRow[] }> {
-  if (weekIndex < 1 || weekIndex > 10) {
-    throw new Error(`주차 범위 밖: ${weekIndex} (1~10)`);
+  if (weekIndex < 1 || weekIndex > MAX_SHEET_WEEK) {
+    throw new Error(`주차 범위 밖: ${weekIndex} (1~${MAX_SHEET_WEEK})`);
   }
   // 좌표는 weekIndex 로 계산 — courseStart 불필요(과거 dead read 제거, 2026-06).
   const startRow =

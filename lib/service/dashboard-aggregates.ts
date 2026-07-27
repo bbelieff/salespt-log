@@ -27,6 +27,7 @@ import {
   isCarryoverContract,
 } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -93,12 +94,12 @@ export function weeklyContractsFromDb(
   meetings: Meeting[],
   courseStart: Date,
 ): number[] {
-  const weeks = new Array(8).fill(0);
+  const weeks = new Array(STATS_WEEKS).fill(0);
   for (const m of meetings) {
     if (m.상태 !== "계약") continue; // N 은 J="계약" COUNTIFS (완료·변경·취소 제외)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(m.미팅날짜)) continue;
     const w = weekIndexOf(parseISO(m.미팅날짜), courseStart);
-    if (w >= 1 && w <= 8) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
+    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
   }
   return weeks;
 }
@@ -111,19 +112,19 @@ export function weeklyActivityFromDb(
   meetings: Meeting[],
   courseStart: Date,
 ): number[] {
-  const weeks = new Array(8).fill(0);
+  const weeks = new Array(STATS_WEEKS).fill(0);
   for (const r of salesRows) {
     if (!(CHANNEL_ORDER as readonly string[]).includes(r.channel)) continue;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
     const w = weekIndexOf(parseISO(r.date), courseStart);
-    if (w < 1 || w > 8) continue; // 8주 통계만(유예 9~10·시작 전 제외)
+    if (w < 1 || w > STATS_WEEKS) continue; // 8주 통계만(유예 9~10·시작 전 제외)
     weeks[w - 1] += num(r.production) * 1 + num(r.contactProgress) * 1.5;
   }
   for (const mt of meetings) {
     if (CARRYOVER(mt) || !DONE(mt.상태)) continue; // 미팅완료(성사)·이월제외 (대시보드 L 수식)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜)) continue;
     const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
-    if (w >= 1 && w <= 8) weeks[w - 1] += 2; // 미팅 가중치 2
+    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] += 2; // 미팅 가중치 2
   }
   return weeks;
 }
@@ -174,8 +175,8 @@ export function diffDashboardAggregates(
     const d = db.channelMatrix.find((m) => m.채널 === ch);
     for (const st of STAGES) push(`channelMatrix.${ch}.${st}`, s?.[st] ?? 0, d?.[st] ?? 0);
   }
-  for (let i = 0; i < 8; i++) push(`weeklyContracts[${i + 1}]`, sheet.weeklyContracts[i] ?? 0, db.weeklyContracts[i] ?? 0);
-  for (let i = 0; i < 8; i++) push(`weeklyActivity[${i + 1}]`, sheet.weeklyActivity[i] ?? 0, db.weeklyActivity[i] ?? 0);
+  for (let i = 0; i < STATS_WEEKS; i++) push(`weeklyContracts[${i + 1}]`, sheet.weeklyContracts[i] ?? 0, db.weeklyContracts[i] ?? 0);
+  for (let i = 0; i < STATS_WEEKS; i++) push(`weeklyActivity[${i + 1}]`, sheet.weeklyActivity[i] ?? 0, db.weeklyActivity[i] ?? 0);
   push("누적수임비", sheet.누적수임비, db.누적수임비);
   return out;
 }

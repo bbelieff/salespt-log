@@ -25,6 +25,7 @@
  */
 import { sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 
 export interface DashboardSheetData {
   /** 대시보드 B21:G21 재무: 수임비, 수수료, 총매출, 총비용, 영업이익, 영업이익률 */
@@ -50,7 +51,8 @@ function tabRef(t: string) {
   return /[ ()]/.test(t) ? `'${t}'` : t;
 }
 
-const WEEK_ROWS = [38, 72, 106, 140, 174, 208, 242, 276];
+// 주차별 계약수(N) 행: blockStart(10)+28=38 부터 stride 34 — [38,72,…,276] (STATS_WEEKS 파생)
+const WEEK_ROWS = Array.from({ length: STATS_WEEKS }, (_, i) => 38 + i * 34);
 
 const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
@@ -75,7 +77,7 @@ export async function readWeeklyPerformance(
     valueRenderOption: "UNFORMATTED_VALUE",
   });
   const rows = res.data.valueRanges?.[0]?.values ?? [];
-  return Array.from({ length: 8 }, (_, w) => {
+  return Array.from({ length: STATS_WEEKS }, (_, w) => {
     const row = rows[w] ?? [];
     return {
       week: w + 1,

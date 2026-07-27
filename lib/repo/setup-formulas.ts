@@ -5,6 +5,7 @@
  * SSOT: docs/domains/sheet-structure.md §2~§3
  */
 import { SHEET_RANGES } from "@/config";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import { sheetsClient } from "./sheets-client";
 import { CONTRACT_RECEIVED_FORMULAS, SALES_FEE_TOTAL_FORMULA } from "./contract-formulas";
 
@@ -18,8 +19,7 @@ const M_REF = tabRef(MEETINGS_TAB);
 
 const SALES_BLOCK_START = SHEET_RANGES.sales.blockStart; // 10
 const SALES_BLOCK_STRIDE = SHEET_RANGES.sales.blockStride; // 34
-// 8주차 마지막 데이터 행 = 10 + 7×34 + 27 = 275 (보수적 상한)
-const SALES_LAST_ROW = SALES_BLOCK_START + 7 * SALES_BLOCK_STRIDE + 27;
+const SALES_LAST_ROW = SALES_BLOCK_START + (STATS_WEEKS - 1) * SALES_BLOCK_STRIDE + 27; // 8주 마지막 행 = 10+7×34+27 = 275
 
 const SALES_FORMULA_COLS = ["I", "J", "K", "L", "M", "N", "O", "P"] as const;
 
@@ -75,7 +75,7 @@ function meetingsRowFormulas(r: number): {
 // row = 10 + week*34 + dayIdx*4 + chIdx, 224행. raw 값은 isSafeToOverwrite 가 skip.
 export function computeDataRows(): number[] {
   const rows: number[] = [];
-  for (let week = 0; week < 8; week++) {
+  for (let week = 0; week < STATS_WEEKS; week++) {
     for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
       for (let channelIdx = 0; channelIdx < 4; channelIdx++) {
         rows.push(

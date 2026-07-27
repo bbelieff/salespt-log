@@ -63,6 +63,7 @@ function salesRowForBanner(dateISO, courseStart) {
   const date = parseISO(dateISO);
   const diff = diffDays(date, courseStart);
   if (diff < 0) return null;
+  // WEEK-INDEX-SSOT-COPY: lib/util/week.ts weekIndexOf(시작일 앵커) 사본 — .mjs 는 TS import 불가. 수정 시 정본과 동기 (G8)
   const week = Math.floor(diff / 7) + 1;
   if (week < 1 || week > 10) return null;
   const weekStart = new Date(courseStart); weekStart.setDate(weekStart.getDate() + (week - 1) * 7);

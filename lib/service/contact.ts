@@ -1,13 +1,11 @@
 /** Layer: service — 컨택탭 유스케이스. 화면은 하루 단위지만 시트는 주차 블록 → 한 주 read 후 그 날 4채널 추출. */
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
+import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
 import { readBanners } from "@/repo/db";
 import { readChannelStacking } from "@/repo/dashboard";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
-import {
-  readBannerOrderQtyFromDb,
-  readMeetingsFromDb,
-} from "@/repo/db/read-daily";
+import { readBannerOrderQtyFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import {
   chooseDailySource,
   dayChannelsFromRows,
@@ -148,7 +146,7 @@ export async function loadDay(
     // 기존 시트 경로 (비파일럿 기수 + DB 실패 fallback) — 동작 무변경.
     courseStart = await readCourseStart(spreadsheetId);
     const week0 = weekIndexOf(targetDate, courseStart);
-    const inRange0 = week0 >= 1 && week0 <= 10;
+    const inRange0 = week0 >= 1 && week0 <= MAX_SHEET_WEEK;
     const { rows } = inRange0 ? await readWeek(spreadsheetId, week0) : { rows: [] };
     metricRows = rows;
     const stacking = await readChannelStacking(spreadsheetId);
@@ -161,7 +159,7 @@ export async function loadDay(
 
   const week = weekIndexOf(targetDate, courseStart!);
   // 편집 가능 기간(1~10주) 밖이면 4지표 빈 값·미팅만 read. 쓰기는 saveContactMetrics 에서 가드.
-  const inRange = week >= 1 && week <= 10;
+  const inRange = week >= 1 && week <= MAX_SHEET_WEEK;
 
   meetings ??= await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
 
