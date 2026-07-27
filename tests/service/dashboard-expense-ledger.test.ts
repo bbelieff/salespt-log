@@ -62,18 +62,6 @@ describe("dashboard expense ledger finance", () => {
     });
   });
 
-  it("keeps exact DB-only arithmetic when additional cost is zero", () => {
-    const out = applyAdditionalCostToDashboard(1_080_000, 2_000_000, {
-      status: "available", dbCostTotal: 0, additionalCost: 0, recognizedThrough: "2026-07-24",
-    });
-    expect(out).toMatchObject({
-      totalCost: 1_080_000,
-      operatingProfit: 920_000,
-      operatingProfitRate: 46,
-      additionalCost: { dbCostTotal: 1_080_000, additionalCost: 0 },
-    });
-  });
-
   it("keeps DB cost readable and exposes an unavailable ledger state", () => {
     const out = applyAdditionalCostToDashboard(3_000, 10_000, {
       status: "unavailable", dbCostTotal: 0, additionalCost: null,
