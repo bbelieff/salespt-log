@@ -21,6 +21,8 @@
 import PageContainer from "@/components/PageContainer";
 
 import { useMemo, useState } from "react";
+import { STATS_WEEKS } from "@/config/cohort-dates";
+import { parseISO, weekIndexOf } from "@/util/week";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import TrainerPlayerToggle from "@/components/auth/TrainerPlayerToggle";
@@ -68,8 +70,12 @@ export default function DashboardPage() {
     const courseStart = me.data?.courseStartISO ?? "2026-04-10";
     const graduation = me.data?.graduationISO ?? "2026-06-06";
     const elapsed = daysBetween(courseStart, today);
-    const total = daysBetween(courseStart, graduation); // 57 기대
-    const currentWeek = Math.max(1, Math.min(8, Math.floor(elapsed / 7) + 1));
+    const total = daysBetween(courseStart, graduation); // O2−O1 (7기+ 50일)
+    // 주차 = weekIndexOf 정본(시작일 앵커, lib/util/week.ts) — 통계 창 1~STATS_WEEKS 로 clamp.
+    const currentWeek = Math.max(
+      1,
+      Math.min(STATS_WEEKS, weekIndexOf(parseISO(today), parseISO(courseStart))),
+    );
     const progressPercent = Math.max(0, Math.min(100, (elapsed / total) * 100));
     const weekday = KO_DAY[new Date(today + "T00:00").getDay()] ?? "";
     return {

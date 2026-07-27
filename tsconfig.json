@@ -25,6 +25,7 @@
       "@/types/*": ["./lib/types/*"],
       "@/config/*": ["./lib/config/*"],
       "@/auth/*": ["./lib/auth/*"],
+      "@/util/*": ["./lib/util/*"],
       "@/query/*": ["./lib/query/*"],
       "@/analytics": ["./lib/analytics/index.ts"],
       "@/*": ["./*"]

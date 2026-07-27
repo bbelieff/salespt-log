@@ -31,6 +31,7 @@ import type {
   Channel,
 } from "@/types";
 import { findUserByEmail } from "@/repo/users";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
@@ -257,7 +258,7 @@ function assembleView(input: {
   const cost = finance.totalCost;
   const profit = finance.operatingProfit;
   const profitRate = finance.operatingProfitRate;
-  const weeklyTrend = Array.from({ length: 8 }, (_, i) => ({
+  const weeklyTrend = Array.from({ length: STATS_WEEKS }, (_, i) => ({
     주차: i + 1,
     계약수: num(input.weeklyContracts[i]),
     활동량: num(input.weeklyActivity[i]),

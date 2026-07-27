@@ -25,9 +25,10 @@ import { readProfileBundle } from "@/repo/sales";
  * 종강총회 offset (7기+ 현행 모델): O2 = O1 + 50. ADR-0005 참조.
  * production loadMe() 는 시트 O2 를 직접 읽으므로 이 상수를 쓰지 않음 —
  * fixture 테스트(computeGraduationISO) 검증용으로만 유지.
- * 6기 이하 legacy 는 O1+57 이지만 그 시트들은 O2 직접값이 진실이라 상수화 안 함.
+ * 정본은 @/config/cohort-dates (R4 W1-0) — 기존 소비처 위해 재수출.
  */
-export const GRADUATION_OFFSET_DAYS = 50;
+export { GRADUATION_OFFSET_DAYS } from "@/config/cohort-dates";
+import { GRADUATION_OFFSET_DAYS } from "@/config/cohort-dates";
 
 export interface MeProfile {
   email: string;

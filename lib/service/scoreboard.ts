@@ -19,6 +19,7 @@ import {
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
 import { readCourseStart, weekIndexOf } from "@/repo/sales";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
 import type { RankingMetric, RankingEntry } from "@/types";
@@ -144,7 +145,7 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
     );
     const n = valid.length;
 
-    const weekly = Array.from({ length: 8 }, (_, w) => {
+    const weekly = Array.from({ length: STATS_WEEKS }, (_, w) => {
       const acc = emptyMetrics();
       for (const { wp, termWeeks } of valid) {
         const row = wp[w];
@@ -283,7 +284,7 @@ async function currentSeasonWeek(): Promise<number> {
   );
   if (!rep?.spreadsheetId) return 0;
   const start = await readCourseStart(rep.spreadsheetId);
-  return Math.min(Math.max(weekIndexOf(new Date(), start), 0), 8);
+  return Math.min(Math.max(weekIndexOf(new Date(), start), 0), STATS_WEEKS);
 }
 
 /** 전광판 한 화면용 데이터 — 페이지가 1콜로 받아 props 분배. */

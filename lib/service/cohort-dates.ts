@@ -6,8 +6,9 @@
  *   진실은 시트 O2 **직접값** — 그래서 코드는 O2 를 수식에 의존하지 않고 리터럴로 확정한다.
  */
 
-/** ADR-0005: 7기+ 종강총회 offset (수강시작 + 50일). */
-export const GRADUATION_OFFSET_DAYS = 50;
+/** ADR-0005: 7기+ 종강총회 offset. 정본 = @/config/cohort-dates (R4 W1-0) — 소비처 위해 재수출. */
+export { GRADUATION_OFFSET_DAYS } from "@/config/cohort-dates";
+import { GRADUATION_OFFSET_DAYS } from "@/config/cohort-dates";
 
 /** "YYYY-MM-DD" 형식 + 실재 날짜인지. */
 export function isValidISODate(s: string): boolean {

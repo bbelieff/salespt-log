@@ -17,6 +17,7 @@
 "use client";
 
 import type { DashboardWeeklyPoint } from "@/types";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 
 interface Props {
   points: DashboardWeeklyPoint[]; // 길이 8
@@ -33,8 +34,9 @@ const xAt = (i: number) => X0 + STEP * (i + 0.5);
 
 export default function WeeklyDualChart({ points }: Props) {
   // 8주 padding (부족하면 0으로 채움)
-  const data: DashboardWeeklyPoint[] = Array.from({ length: 8 }, (_, i) =>
-    points[i] ?? { 주차: i + 1, 계약수: 0, 활동량: 0 },
+  const data: DashboardWeeklyPoint[] = Array.from(
+    { length: STATS_WEEKS },
+    (_, i) => points[i] ?? { 주차: i + 1, 계약수: 0, 활동량: 0 },
   );
 
   // 자동 스케일 (max 기준, 데이터 0이면 1로 fallback)

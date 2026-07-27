@@ -76,7 +76,7 @@ types → config → repo → service → app(api·ui) → components
 1. **상위 레이어 import 금지** — 하위는 상위를 참조할 수 없음.
 2. **Sheets 격리** — `googleapis` / `google-auth-library` 는 **오직 `lib/repo/` 에서만** import.
 3. **대시보드 탭 쓰기 금지** — `SHEET_RANGES.dashboard` 를 `appendRows` / `batchUpdate` 근처에서 쓰면 실패. 대시보드는 수식이 계산한다. 쓰기는 `daily` / `contracts` / `db` 섹션으로만.
-4. **경로별칭 고정**: `@/types` · `@/config` · `@/repo/*` · `@/service`. 상대경로 import 는 피한다.
+4. **경로별칭 고정**: `@/types` · `@/config` · `@/repo/*` · `@/service` · `@/util/*`(순수 유틸 — import 0). 상대경로 import 는 피한다.
 5. **사용자 작성값 절대 보존 (Bulk-write 안전 가드, 2026-05-14 사고 후)** — 시트 셀에 일괄 쓰기 (`spreadsheets.values.batchUpdate`, `batchClear` 등) 하는 모든 함수는 타겟 셀을 `valueRenderOption: "FORMULA"` 로 **pre-read** 한 뒤, raw 값 (텍스트·숫자·boolean) 이 있으면 그 셀은 **skip** 해야 한다. 빈 셀과 수식(`=...`)만 덮어쓰기 허용. 참고: `lib/repo/setup-formulas.ts:isSafeToOverwrite` + `tests/repo/setup-formulas-guard.test.ts`. 새 bulk-write 함수 추가 시 같은 가드 의무 — 안 그러면 사용자 데이터 손실 사고 재발.
 
 예: `❌ components/Chart.tsx 가 googleapis 를 import. → lib/repo/ 에 메서드를 추가해 Service 경유로 호출하세요. 참고: docs/architecture.md#퍼시스턴스-google-sheets`
@@ -92,6 +92,9 @@ types → config → repo → service → app(api·ui) → components
   - 편집 기간 이후는 모두 읽기 전용.
   - 모든 통계(퍼널/스킬 점수)는 8주 기준 계산. 유예 기간은 별도 집계.
   - 문서·코드에 특정 날짜 하드코딩 금지.
+  - **기간 상수 SSOT = `lib/config/cohort-dates.ts`** (50/57·69·10·8) · **주차 계산 SSOT =
+    `lib/util/week.ts`** (시작일 앵커 vs 금~목 앵커 분리). 재하드코딩은
+    `tests/structural/period-hardcode.test.ts`(G1~G8)가 차단 (R4 W1-0).
 - **사용자 한정**: 현재 수강 중인 수강생 1인칭. 운영자·수료생·일반인 대상 기능 금지.
 - **확장 분리**: 확장 가능성 있는 기능은 `docs/future/extensions.md`로 분리. 코드에 미리 넣지 않는다.
 - **YAGNI**: "언젠가 쓸 수도 있어서" = 금지. 지금 필요한 것만.

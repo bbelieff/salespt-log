@@ -1,6 +1,8 @@
 /** Layer: service — 개별 trainee 시트 진단/픽스 카탈로그 (Hashimoto 누적 룰).
  *  RULES 배열에 push → admin TraineeCard [🔍 진단] / [🔧 fix] 자동 노출. */
 import { SHEET_RANGES } from "@/config";
+// prettier-ignore
+import { ALLOWED_GRAD_OFFSETS, GRADUATION_OFFSET_DAYS, GRADUATION_OFFSET_DAYS_LEGACY, STATS_WEEKS } from "@/config/cohort-dates";
 import { sheetsClient } from "@/repo/sheets-client";
 import {
   installFormulas,
@@ -57,7 +59,7 @@ const ruleFormulaRestore: DiagnosticRule = {
     let missing = 0;
     let outdated = 0;
     // I 컬럼 224 data row 검사 (block 내 offset 0~27 만).
-    for (let week = 0; week < 8; week++) {
+    for (let week = 0; week < STATS_WEEKS; week++) {
       for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
         for (let channelIdx = 0; channelIdx < 4; channelIdx++) {
           const r =
@@ -173,8 +175,8 @@ const ruleO1O2Validity: DiagnosticRule = {
     if (o2 === undefined || o2 === null || o2 === "") issues.push("O2 비어있음");
     if (typeof o1 === "number" && typeof o2 === "number") {
       const diff = o2 - o1;
-      if (diff !== 50 && diff !== 57) {
-        issues.push(`O2-O1=${diff}일 (예상: 50일 7기+ / 57일 6기)`);
+      if (!ALLOWED_GRAD_OFFSETS.includes(diff)) {
+        issues.push(`O2-O1=${diff}일 (예상: ${GRADUATION_OFFSET_DAYS}일 7기+ / ${GRADUATION_OFFSET_DAYS_LEGACY}일 6기)`);
       }
     }
     if (issues.length === 0) return null;

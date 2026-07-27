@@ -73,6 +73,7 @@ const serialToISO = (v) => {
 };
 const parseISO = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 const diffDays = (a, b) => Math.round((a.getTime() - b.getTime()) / 86400000);
+// WEEK-INDEX-SSOT-COPY: lib/util/week.ts weekIndexOf(시작일 앵커) 사본 — .mjs 는 TS import 불가. 수정 시 정본과 동기 (G8)
 const weekIndexOf = (date, cs) => { const d = diffDays(date, cs); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
 
 // ── DB payload → 값 (필드명 우선, 열문자 fallback) ─────────────────

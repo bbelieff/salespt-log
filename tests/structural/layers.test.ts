@@ -84,6 +84,7 @@ describe("postgres isolation", () => {
       "lib/config",
       "lib/service",
       "lib/analytics",
+      "lib/util",
       "app",
       "components",
       "lib/repo", // repo 안에서도 db/ 하위만 허용
@@ -119,7 +120,7 @@ describe("postgres isolation", () => {
 describe("sheets isolation", () => {
   it("googleapis / google-auth 는 lib/repo/ 전용", () => {
     const bad: string[] = [];
-    for (const dir of ["lib/types", "lib/config", "lib/service", "app", "components"]) {
+    for (const dir of ["lib/types", "lib/config", "lib/service", "lib/util", "app", "components"]) {
       const abs = join(ROOT, dir);
       let files: string[] = [];
       try {

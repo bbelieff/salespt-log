@@ -7,6 +7,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
 import { readCourseStart, readWeekFunnel, weekIndexOf } from "@/repo/sales";
+import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
 import { findByDateRangeBoth } from "@/repo/meetings";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
@@ -108,7 +109,7 @@ export async function loadWeekMeetings(
       both = groupMeetingsBoth(allMeetings, dates);
       // funnel — 시트 readWeekFunnel 과 동일 의미: 주 블록(수강시작 기준 7일) 합,
       // 1~10주 밖은 0 (같은 가드).
-      if (week >= 1 && week <= 10) {
+      if (week >= 1 && week <= MAX_SHEET_WEEK) {
         const blockDates = sevenDays(
           (() => { const d = new Date(courseStart); d.setDate(d.getDate() + (week - 1) * 7); return d; })(),
         );
