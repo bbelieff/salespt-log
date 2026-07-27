@@ -81,8 +81,21 @@ tasks:
     remediation_options:
       - "A) #620(fed3307) revert → 비파일럿 파서 원복 후 파급 산정하여 재설계(가장 안전, §6.8 정본 절차)"
       - "B) fix-forward: 파서 변경 원복 + phantomProduction 대칭 복원 + split 에 occurrence void SQL 추가 + '다음 달부터' effectiveMonth 를 nextMonth 로 고정"
-    merge_order: "blocker 3건 해소 → D 재판정 → belie 라이브 확인 → GO"
-    status: no_go   # 2026-07-26 — 라이브 배포 상태에서 발견. 소유 트랙(Codex DEV-*) 조치 + belie 판단 대기.
+    blocker_commit_map:   # FOREMAN 지시(READ_ONLY 매핑) — D 실측 2026-07-26
+      - "①전 기수 파서 변경 → **fed3307(#620)** lib/repo/db.ts:108 — #620 revert 로 닫힘 ✅"
+      - "②read/write 필터 비대칭 → **fed3307(#620)** lib/repo/db.ts:122(vs :245 phantom) — #620 revert 로 닫힘 ✅"
+      - "③split occurrence 미void → **92a0a65(#615 본체)** lib/repo/db/expense-ledger.ts splitRecurringRuleFromMonth — **#620 revert 로 안 닫힘** ❌ (#617 d596aaa 는 archive 경로에만 void SQL 추가, split 경로 누락)"
+    minimal_revert_set:
+      decided: "git revert fed3307 (#620) — DevA 실행 확정(FOREMAN 자율 지혈), D 검증"
+      applicability: "✅ dry-run CLEAN — `git show fed3307 | git apply --reverse --check` 통과. fed3307 이후 동일 파일 접촉 커밋 0건(충돌 없음). 의존 자기완결: db-cost-ledger.ts(신규)와 그 import(expense-ledger.ts:5)·테스트가 전부 #620 소산이라 함께 제거됨."
+      tradeoff: "⚠️ 순수 복구 아님 — #620 파서 변경은 **기존 결함 수정** 시도였다(삭제된 테스트가 옛 동작을 '⚠️ 생산중(종료일 빈) 행: 배열 파서는 neo=false 로 밀림 / expect(parsed.소재).toBe(\"\")' 로 명시 인정). revert 시 생산중 행의 소재·기간예산이 다시 밀리는 **옛 결함이 복귀**한다. 단 그 동작은 사용자가 이미 살아온 상태이고 새 위험(레거시 O열 오판 금액 전도 + 조용한 덮어쓰기)보다 노출이 작아 **지혈로는 타당**. ②(isProductionMeaningful 원복)는 순수 이득(phantom 대칭 회복)."
+      post_revert_required: "check.sh 재통과(=#620 이 추가한 parity 테스트도 함께 사라져야 정상) + 배포 success + health 200 + D 재검증"
+    blocker3_gate:   # 📥 belie 게이트 (FOREMAN 지시대로 실행 안 함 — 적재만)
+      question: "③ 해소 방식 — #615 본체 revert(비용원장 기능 전면 제거) vs 타겟 fix-forward"
+      d_recommendation: "**fix-forward 권고 — #615 revert 불요.** ③ 은 SQL 1개 누락이라 #617 이 archive 경로에 넣은 것과 **동일 패턴**을 split 트랜잭션에 추가하면 닫힌다(update expense_recurring_occurrences set status='voided' where rule_id=old and occurrence_date >= effectiveDate). + UI effectiveMonth 를 nextMonth 로 고정(조회 중인 달로 split 되는 major 동반 해소). #615 revert 는 기능 전체 제거라 비용 대비 과대."
+      reachability: "CONFIRMED 라이브 — expense-ledger.ts:203 이 nextMonth 까지 미리 materialize → split 시점에 이번달·다음달 occurrence 가 이미 존재해 이중계상 실발생."
+    merge_order: "①② #620 revert(DevA·확정) → D 검증 → ③ 게이트 결정(belie) → D 재판정 → belie 라이브 확인 → GO"
+    status: remediation_in_progress   # 2026-07-26 — ①② DevA revert 배정·③ belie 게이트 적재. D 는 revert 검증 + W1-1 부터 VERIFY 계속.
     created_at: "2026-07-26"
     updated_at: "2026-07-26"
 
