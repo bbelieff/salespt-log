@@ -261,7 +261,13 @@ describe("G5: YYYY-MM-DD 리터럴 금지 (앱 코드)", () => {
 });
 
 // ═════════════════════════════════════════════════════════════
-// G6 — archived 쓰기 게이트 강제 (getWritableUserEmail)
+// G6 — 쓰기 진입점 단일화 강제 (getWritableUserEmail)
+//
+// ⚠️ R4 W1-1 / ADR-0029(G1 편집 완전해제) 이후 이 게이트의 **의미가 바뀌었다**:
+//   구: "archived(수료) 쓰기 차단" — 폐지됨(수료 후에도 저장 가능해야 무제한 CRM).
+//   현: "수강생 데이터 쓰기는 반드시 한 진입점을 지난다" — 정책을 한 곳에서 갈아끼우기 위한
+//       단일 지점 보장(향후 entitlement §B2 결합 지점). 그래서 함수는 유지·강제한다.
+//   → getWritableUserEmail 에 archived throw 를 **되살리지 말 것**(ADR-0029 supersede 필요).
 // ═════════════════════════════════════════════════════════════
 describe("G6: 수강생 데이터 쓰기 route 는 getWritableUserEmail 경유", () => {
   // 수강생 데이터(시트/DB) 쓰기 prefix — admin(관리자 인증)·gcal(토큰)·claim(온보딩)은 별도 체계.
@@ -292,8 +298,8 @@ describe("G6: 수강생 데이터 쓰기 route 는 getWritableUserEmail 경유",
     }
     expect(
       bad,
-      `archived 쓰기 차단 게이트 누락 — 수강생 데이터 write route 는 반드시 ` +
-        `getWritableUserEmail(@/auth/identity) 를 경유해야 한다 (보관 읽기전용 SSOT).\n` +
+      `쓰기 진입점 누락 — 수강생 데이터 write route 는 반드시 ` +
+        `getWritableUserEmail(@/auth/identity) 를 경유해야 한다 (쓰기 정책 단일 지점, ADR-0029).\n` +
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);
   });

@@ -15,10 +15,6 @@ export {
   fmtMD,
 } from "@/util/week";
 
-import { diffDays as diffDaysUtil } from "@/util/week";
-import { EDIT_WINDOW_DAYS } from "@/config/cohort-dates";
-
-export function inEditPeriod(date: Date, courseStart: Date): boolean {
-  const diff = diffDaysUtil(date, courseStart);
-  return diff >= 0 && diff <= EDIT_WINDOW_DAYS; // 8주 + 2주 마감유예
-}
+// R4 W1-1(ADR-0029 G1 = 편집 완전 해제): `inEditPeriod`(수강시작+EDIT_WINDOW_DAYS 읽기전용
+// 판정) 제거. 수료 후에도 편집이 가능해져 이 게이트 자체가 성립하지 않는다.
+// (호출처는 이미 0 이었다 — 정책 잔재였고, 되살리려면 ADR-0029 를 supersede 할 것.)

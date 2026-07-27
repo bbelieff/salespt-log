@@ -27,7 +27,7 @@ import {
   isCarryoverContract,
 } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { MAX_SHEET_WEEK, STATS_WEEKS } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -67,6 +67,7 @@ const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
 export function channelStackingFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
+  courseStart: Date,
 ): DashboardChannelMatrix[] {
   const byCh = new Map<Channel, DashboardChannelMatrix>();
   for (const ch of CHANNEL_ORDER) byCh.set(ch, EMPTY_STAGE(ch));
@@ -74,6 +75,12 @@ export function channelStackingFromDb(
   for (const r of salesRows) {
     const m = byCh.get(r.channel as Channel);
     if (!m) continue; // 오염 채널 무시(CHANNEL_ORDER 만)
+    // R4 W1-1: **시트 표현 가능 창 상한(MAX_SHEET_WEEK) 클램프**. 무제한 쓰기(11주+ DB-only)를
+    // 열면서 이 클램프가 없으면 시트가 담지 못하는 행까지 합산돼 **대시보드가 영구히 부푼다**
+    // (기존 "편집기간 밖 DB 쓰기 금지" 가드가 막고 있던 사고). 지표 창은 코스 기간 유지 —
+    // r4-unlimited-crm.md §2 원칙①·§4-1. **상한만** 건다: 하한(주차 0 = 수강 시작 전)은
+    // 기존 동작 그대로 두어 오늘 수치가 1도 안 바뀌게(시트↔DB parity 보존).
+    if (weekIndexOf(parseISO(r.date), courseStart) > MAX_SHEET_WEEK) continue;
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
     m.컨택진행 += num(r.contactProgress);
@@ -195,7 +202,7 @@ export function computeDbAggregates(
   누적수임비: number;
 } {
   return {
-    channelMatrix: channelStackingFromDb(salesRows, meetings),
+    channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart),
     weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
     weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
     누적수임비: arenaFeeFromDb(contracts, courseStartISO),

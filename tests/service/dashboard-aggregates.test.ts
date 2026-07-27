@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContractPayment, Meeting } from "@/types";
 import type { DbSalesRow } from "@/repo/db/client";
+import { MAX_SHEET_WEEK } from "@/config/cohort-dates"; // 리터럴 금지(period-hardcode G3)
 import {
   arenaFeeFromDb,
   channelStackingFromDb,
@@ -41,7 +42,7 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
       sales("2026-06-03", "매입DB", 3, 1, 1, 1),
       sales("2026-06-02", "현수막", 7, 0, 2, 0),
     ];
-    const m = channelStackingFromDb(rows, []);
+    const m = channelStackingFromDb(rows, [], CS);
     const 매입 = m.find((x) => x.채널 === "매입DB")!;
     expect(매입).toMatchObject({ 생산: 13, 유입: 6, 컨택진행: 5, 미팅예약: 0 }); // 미팅 카드 없음 → 0
     expect(m.find((x) => x.채널 === "현수막")!.생산).toBe(7);
@@ -55,16 +56,61 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
       mtg({ channel: "매입DB", 상태: "변경" }), // 퍼널 제외
       mtg({ channel: "매입DB", 상태: "취소" }), // 퍼널 제외
     ];
-    const 매입 = channelStackingFromDb([], meetings).find((x) => x.채널 === "매입DB")!;
+    const 매입 = channelStackingFromDb([], meetings, CS).find((x) => x.채널 === "매입DB")!;
     expect(매입.미팅예약).toBe(3); // 예약+완료+계약 (변경·취소 제외)
     expect(매입.미팅완료).toBe(2); // 완료+계약
     expect(매입.계약).toBe(1); // 계약여부 true
   });
 
   it("오염 채널(CHANNEL_ORDER 밖) 무시, 4채널 항상 반환", () => {
-    const m = channelStackingFromDb([sales("2026-06-02", "coljigiso", 9, 9, 9, 9)], []);
+    const m = channelStackingFromDb([sales("2026-06-02", "coljigiso", 9, 9, 9, 9)], [], CS);
     expect(m).toHaveLength(4);
     expect(m.every((x) => x.생산 === 0)).toBe(true);
+  });
+
+  // R4 W1-1: 무제한 쓰기(11주+ DB-only)가 코스 지표를 오염시키지 않는다는 계약.
+  // 상한 = MAX_SHEET_WEEK(시트 물리 창) — 리터럴 금지(period-hardcode G3).
+  describe("R4 클램프 — 시트 표현 가능 창 밖(11주+) 은 집계 제외", () => {
+    /** courseStart(CS) 로부터 week 번째 주의 임의 날짜(주 시작일). */
+    const dateOfWeek = (week: number): string => {
+      const d = new Date(CS);
+      d.setDate(d.getDate() + (week - 1) * 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    it(`${"MAX_SHEET_WEEK"} 이내 행은 그대로 합산(오늘 수치 불변 보증)`, () => {
+      const rows = [
+        sales(dateOfWeek(1), "매입DB", 1, 0, 0, 0),
+        sales(dateOfWeek(MAX_SHEET_WEEK), "매입DB", 2, 0, 0, 0), // 경계 = 포함
+      ];
+      const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
+      expect(매입.생산).toBe(3);
+    });
+
+    it("상한 밖(MAX_SHEET_WEEK+1 주차) 행은 생산/유입/컨택진행에 합산되지 않는다", () => {
+      const rows = [
+        sales(dateOfWeek(1), "매입DB", 5, 5, 5, 0),
+        sales(dateOfWeek(MAX_SHEET_WEEK + 1), "매입DB", 100, 100, 100, 0), // 11주+ = DB-only 저장분
+      ];
+      const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
+      expect(매입).toMatchObject({ 생산: 5, 유입: 5, 컨택진행: 5 }); // 부풀림 0
+    });
+
+    it("먼 미래(수료 한참 뒤) 기록이 쌓여도 코스 지표는 고정", () => {
+      const far = [40, 80, 200].map((w) => sales(dateOfWeek(w), "현수막", 7, 7, 7, 0));
+      const 현수막 = channelStackingFromDb(far, [], CS).find((x) => x.채널 === "현수막")!;
+      expect(현수막).toMatchObject({ 생산: 0, 유입: 0, 컨택진행: 0 });
+    });
+
+    it("하한(수강 시작 전)은 클램프하지 않는다 — 기존 동작 보존(parity)", () => {
+      const before = new Date(CS);
+      before.setDate(before.getDate() - 3); // 수강 시작 3일 전 = weekIndexOf 0
+      const iso = `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, "0")}-${String(before.getDate()).padStart(2, "0")}`;
+      const 매입 = channelStackingFromDb([sales(iso, "매입DB", 4, 0, 0, 0)], [], CS).find(
+        (x) => x.채널 === "매입DB",
+      )!;
+      expect(매입.생산).toBe(4); // 상한만 건다 — 오늘 수치가 바뀌지 않아야 함
+    });
   });
 });
 
@@ -121,7 +167,7 @@ describe("R2-7a arenaFeeFromDb + diff", () => {
 
   it("diffDashboardAggregates: 불일치 필드만 반환", () => {
     const base = {
-      channelMatrix: channelStackingFromDb([sales("2026-06-02", "매입DB", 10, 0, 0, 0)], []),
+      channelMatrix: channelStackingFromDb([sales("2026-06-02", "매입DB", 10, 0, 0, 0)], [], CS),
       weeklyContracts: [1, 0, 0, 0, 0, 0, 0, 0],
       weeklyActivity: [20, 0, 0, 0, 0, 0, 0, 0],
       누적수임비: 100,
