@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allocateExpenseByDay, manageRecurringRules, recognizedAmountForRange, recognizeRecurringOccurrencesForRange } from "@/service/expense-ledger";
 import {
+  closeDateBeforeSplit,
   isOccurrencePaused,
   isOccurrenceWithinRuleWindow,
   isRecurringRuleMaterializable,
@@ -35,6 +36,38 @@ describe("expense ledger allocation", () => {
     expect(isOccurrenceWithinRuleWindow("2026-10-01", "2026-07-01", "2026-09-30")).toBe(false);
     expect(shouldVoidRecurringOccurrenceOnStop("2026-07-24", "2026-07-24")).toBe(false);
     expect(shouldVoidRecurringOccurrenceOnStop("2026-07-25", "2026-07-24")).toBe(true);
+  });
+
+  /**
+   * #625 blocker ③ — split 이 옛 규칙의 occurrence 를 무효화하지 않아 같은 달 이중 계상되던 회귀.
+   * split 은 옛 규칙을 "발효일 하루 전"에 닫고, 그 날 **이후** occurrence 를 voided 로 만든다
+   * (archive 경로와 동일 경계 = shouldVoidRecurringOccurrenceOnStop).
+   */
+  it("splits close the old rule the day before the effective date", () => {
+    expect(closeDateBeforeSplit("2026-08-01")).toBe("2026-07-31"); // 월 경계
+    expect(closeDateBeforeSplit("2026-03-01")).toBe("2026-02-28"); // 평년 2월
+    expect(closeDateBeforeSplit("2024-03-01")).toBe("2024-02-29"); // 윤년 2월
+    expect(closeDateBeforeSplit("2026-01-01")).toBe("2025-12-31"); // 연 경계
+    expect(closeDateBeforeSplit("2026-08-15")).toBe("2026-08-14"); // 월 중간(anchorDay)
+  });
+
+  it("voids the old rule's occurrence in the effective month (no double count)", () => {
+    // 8월부터 새 금액 적용 → 옛 규칙은 7/31 에 닫히고, 옛 규칙의 8월 occurrence 는 무효화돼야 한다.
+    const close = closeDateBeforeSplit("2026-08-01");
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-08-01", close)).toBe(true); // 발효월 → void
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-09-01", close)).toBe(true); // 이후 달 → void
+    // 이미 확정된 과거는 건드리지 않는다.
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-07-01", close)).toBe(false);
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-07-31", close)).toBe(false);
+  });
+
+  it("keeps the split boundary aligned with anchor day (25일 규칙)", () => {
+    // anchorDay=25 규칙을 9월부터 바꾸면 발효일 9/25, 옛 규칙은 9/24 까지 유효 →
+    // 9월 옛 occurrence(9/25)는 void, 8월(8/25)은 유지.
+    const close = closeDateBeforeSplit("2026-09-25");
+    expect(close).toBe("2026-09-24");
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-09-25", close)).toBe(true);
+    expect(shouldVoidRecurringOccurrenceOnStop("2026-08-25", close)).toBe(false);
   });
   it("keeps DELETE archived state terminal against pause and resume", () => {
     const archived = recurringRuleStatusAfterAction("active", "archive");
