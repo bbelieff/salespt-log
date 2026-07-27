@@ -102,14 +102,36 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
       expect(현수막).toMatchObject({ 생산: 0, 유입: 0, 컨택진행: 0 });
     });
 
-    it("하한(수강 시작 전)은 클램프하지 않는다 — 기존 동작 보존(parity)", () => {
+    // 적대리뷰 M2 반영 — 초판은 "하한은 클램프하지 않는다(parity 보존)"로 **구멍을 계약으로 잠갔다**.
+    // 실제로는 삭제된 쓰기 가드가 주차 0 기입도 막고 있었고, 시트엔 주차 0 좌표가 없으므로
+    // 하한을 열어두는 것이 곧 parity 위반이다. 계약을 뒤집는다.
+    it("하한(수강 시작 전 = 주차 0) 행도 집계에서 제외 — 시트에 좌표가 없다", () => {
       const before = new Date(CS);
       before.setDate(before.getDate() - 3); // 수강 시작 3일 전 = weekIndexOf 0
       const iso = `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, "0")}-${String(before.getDate()).padStart(2, "0")}`;
       const 매입 = channelStackingFromDb([sales(iso, "매입DB", 4, 0, 0, 0)], [], CS).find(
         (x) => x.채널 === "매입DB",
       )!;
-      expect(매입.생산).toBe(4); // 상한만 건다 — 오늘 수치가 바뀌지 않아야 함
+      expect(매입.생산).toBe(0);
+    });
+
+    // 적대리뷰 M3 — 미팅 3단계(미팅예약·미팅완료·계약)는 **의도적으로 클램프하지 않는다**:
+    // 시트 퍼널 R4:U5 는 04 탭 전체 COUNTIFS(날짜 무필터)라, 미팅을 클램프하면 시트↔DB parity 가
+    // 영구 diff 를 낸다(reverseShadowCompare Sentry 상시 오경보). 이 비대칭을 계약으로 고정한다.
+    // ⚠️ 시트 수식이 주차블록 합으로 바뀌면 이 테스트가 먼저 깨져야 한다(= 그때 함께 클램프).
+    it("미팅 퍼널은 클램프 대상이 아니다 — 시트 COUNTIFS(무필터) 와 대칭", () => {
+      const far = new Date(CS);
+      far.setDate(far.getDate() + (MAX_SHEET_WEEK + 5) * 7); // 15주차쯤
+      const iso = `${far.getFullYear()}-${String(far.getMonth() + 1).padStart(2, "0")}-${String(far.getDate()).padStart(2, "0")}`;
+      const 매입 = channelStackingFromDb(
+        [],
+        [
+          mtg({ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: iso, 예약일: iso }),
+          mtg({ channel: "매입DB", 상태: "완료", 미팅날짜: iso, 예약일: iso }),
+        ],
+        CS,
+      ).find((x) => x.채널 === "매입DB")!;
+      expect(매입).toMatchObject({ 미팅예약: 2, 미팅완료: 2, 계약: 1 });
     });
   });
 });

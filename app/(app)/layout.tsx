@@ -43,7 +43,7 @@ export default async function AppLayout({
     const u = await findUserByEmail(activeEmail);
     // 보관(행 status 또는 cohorts 보관 기수) → 클레임 화면 (rejoin §1, 직접 URL 차단).
     // 단, **본인 시트가 있는 등록 수강생은 보관이어도 통과**(읽기 전용 입장,
-    // archived-login-access 2026-07-07). 쓰기는 getWritableUserEmail 가드가 차단.
+    // archived-login-access 2026-07-07). R4 W1-1/ADR-0029: 쓰기 차단은 **폐지**됐다(수료 후 편집 허용).
     // cohorts read 는 라우팅 지점인 여기서만(hot-path 분리, claim-stuck 2026-06-12).
     if (u && !hasOwnSheet(u)) {
       if (u.status === "archived") redirect("/claim");

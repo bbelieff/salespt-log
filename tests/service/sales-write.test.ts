@@ -225,4 +225,21 @@ describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
     expect(isWithinSalesWindow).not.toHaveBeenCalled();
     expect(writeSalesRowsToDb).not.toHaveBeenCalled();
   });
+
+  // 적대리뷰 M4/M6 — 창 판정은 **시트 read** 다. 정본(DB)은 그 앞에서 이미 커밋됐으므로
+  // 시트 장애가 저장 응답을 실패로 만들면 안 된다("저장은 됐는데 사용자에겐 실패" + 나머지 행이
+  // 큐·mirror_pending 어디에도 없어 self-heal 영구 누락).
+  it("창 판정이 throw 해도 저장은 성공 — 시트 장애가 정본 저장의 인질이 되지 않는다", async () => {
+    isWithinSalesWindow.mockRejectedValue(new Error("sheets 429"));
+    await expect(
+      persistSalesRows("8", EMAIL, SHEET, [mkRow(), mkRow({ channel: "매입DB" })]),
+    ).resolves.toBeUndefined();
+    expect(writeSalesRowsToDb).toHaveBeenCalledTimes(1); // 정본 저장 성사
+  });
+
+  it("판정 throw 시 미러는 큐에 맡긴다(재시도·pending 경로 보유) — 행 유실 없음", async () => {
+    isWithinSalesWindow.mockRejectedValue(new Error("sheets 500"));
+    await persistSalesRows("8", EMAIL, SHEET, [mkRow()]);
+    await vi.waitFor(() => expect(writeSalesRowCells).toHaveBeenCalled());
+  });
 });

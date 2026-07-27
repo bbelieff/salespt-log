@@ -147,6 +147,10 @@ export async function getActiveUserEmail(): Promise<string> {
  * 수료 후에도 자기 기록을 계속 입력·수정하는 무제한 CRM 이 목적이므로, 종강이 저장을 막지 않는다.
  * (구 동작 = archived 읽기전용, archived-login-access 2026-07-07 — ADR-0029 §4 가 supersede.)
  *
+ * ⚠️ **적용 범위 = 전 기수 전역**(cohort 인자·조회 없음). 파일럿 게이트(chooseWriteSource)는
+ * sales-write 등 **쓰기 경로**에만 있고 권한 계층엔 없다 — 즉 비파일럿 수료생도 이 시점부터
+ * 1~MAX_SHEET_WEEK 날짜에 자기 시트를 쓸 수 있다(belie G1 '편집 완전 해제'의 귀결).
+ * 11주+ 는 비파일럿에서 시트 좌표가 없어 salesRowFor 가 throw 한다(후속 wave 대상).
  * 함수는 **유지**한다(≈30개 쓰기 라우트 호출부 무변경 + "여기가 쓰기 진입점" 표식).
  * 되돌리려면 이 함수 하나만 옛 구현으로 복원하면 된다(롤백 지점 단일화).
  * 미인증 throw 는 동일 — 인증 자체는 그대로 요구한다.

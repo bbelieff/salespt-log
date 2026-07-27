@@ -75,12 +75,15 @@ export function channelStackingFromDb(
   for (const r of salesRows) {
     const m = byCh.get(r.channel as Channel);
     if (!m) continue; // 오염 채널 무시(CHANNEL_ORDER 만)
-    // R4 W1-1: **시트 표현 가능 창 상한(MAX_SHEET_WEEK) 클램프**. 무제한 쓰기(11주+ DB-only)를
+    // R4 W1-1: **시트 표현 가능 창(1~MAX_SHEET_WEEK) 클램프**. 무제한 쓰기(11주+ DB-only)를
     // 열면서 이 클램프가 없으면 시트가 담지 못하는 행까지 합산돼 **대시보드가 영구히 부푼다**
-    // (기존 "편집기간 밖 DB 쓰기 금지" 가드가 막고 있던 사고). 지표 창은 코스 기간 유지 —
-    // r4-unlimited-crm.md §2 원칙①·§4-1. **상한만** 건다: 하한(주차 0 = 수강 시작 전)은
-    // 기존 동작 그대로 두어 오늘 수치가 1도 안 바뀌게(시트↔DB parity 보존).
-    if (weekIndexOf(parseISO(r.date), courseStart) > MAX_SHEET_WEEK) continue;
+    // (기존 "편집기간 밖 DB 쓰기 금지" 가드가 막던 사고). 지표 창 = 코스 기간(§2 원칙①·§4-1).
+    // **양방향**으로 건다: 삭제된 쓰기 가드(isWithinSalesWindow)는 salesRowFor 의 `week < 1 ||
+    // week > MAX` 를 감싼 것이라 **주차 0(수강 시작 전)** 기입도 함께 막고 있었다. 상한만 걸면
+    // 그 구멍이 열린 채 남는다(적대리뷰 M2). weeklyActivity/weeklyContracts 도 이미 w>=1 배제 —
+    // 같은 매트릭스 안에서 비대칭이면 안 된다. 시트는 주차 0 좌표가 없으므로 이게 parity 정합.
+    const w = weekIndexOf(parseISO(r.date), courseStart);
+    if (w < 1 || w > MAX_SHEET_WEEK) continue;
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
     m.컨택진행 += num(r.contactProgress);
