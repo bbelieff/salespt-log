@@ -144,12 +144,8 @@ export default function DashboardPage() {
       )}
 
       <div className="space-y-4 p-4">
-        {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거. */}
-        {dash.isError && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm">
-            대시보드를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-          </div>
-        )}
+        {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
+            에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {dash.data && (
           <>
             {/* 상단 2+1: 좌[영업이익(컴팩트)+생산성] / 우[퍼널(길게)].

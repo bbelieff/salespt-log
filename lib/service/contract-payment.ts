@@ -43,6 +43,7 @@ import { writeTermination } from "@/repo/contract-payment-termination";
 async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
+  if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
   return { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email };
 }
 

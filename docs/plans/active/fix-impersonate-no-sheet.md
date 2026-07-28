@@ -33,6 +33,17 @@
 | ③ route 매핑 | dashboard·daily(GET/PATCH)·meetings-week route | `[no-sheet]` → **404 {error:"no_sheet"}** (500 아님) |
 | ④ 에러 안내(부수결함) | `app/(app)/dashboard/page.tsx` | isError 시 안내 카드 — no_sheet 전용 문구 / 일반 오류 문구. (전 탭 에러 UI 통일은 별도 트랙 제안) |
 
+## 2.5 적대 리뷰(3렌즈×반박, 13에이전트) 확정 4건 — 전부 반영
+
+1. **오차단 회귀(내 초안의 결함)**: `pickPreferredUser`는 **trainer 행 최우선**(P14 — 내 주석
+   "아레나 우선"은 반대) → [T행(빈 시트)+아레나행] 수강생출신 트레이너(류서하·최정한 실계정)의
+   합법 self-view 경로를 409가 차단할 뻔 → **`resolveOwnArenaSheetId` 보유 시 허용** 예외 추가.
+2. **스테일 쿠키(HIGH)**: 이미 걸린 임퍼 쿠키(30일)는 ①을 우회 — 409 시 **같은 대상 쿠키면 함께
+   해제**(재시도 = 자가 해제). 완전 자가치유(매 요청 검사)는 비용 대비 과해 후속 제안.
+3. **이중 에러 카드**: 기존 isError 블록(p-4 안)과 신규 카드 동시 렌더·문구 상충 → 기존 블록 제거, 카드 1곳 통합.
+4. **커버리지**: calendar 월뷰·todos·contract-payment resolve 3지점 가드 + route 5파일(10 catch) 404 매핑 추가.
+   db/leads 읽기는 기존에 빈 데이터 강등(500 아님)이라 제외, gcal-connect(토큰 흐름)는 시트 무관이라 제외.
+
 ## 3. 되돌리기
 
 단일 PR revert. 데이터 무접촉. ①을 되돌리면 예전처럼 임퍼스네이션은 되지만 빈 화면.

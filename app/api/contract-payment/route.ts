@@ -31,6 +31,9 @@ async function GET_handler() {
     return NextResponse.json({ rows });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[no-sheet]")) {
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -50,6 +53,9 @@ async function POST_handler(req: NextRequest) {
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[no-sheet]")) {
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -72,6 +78,9 @@ async function PATCH_handler(req: NextRequest) {
     return NextResponse.json({ ok: true, synced: true, row: result.row });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[no-sheet]")) {
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -44,6 +44,9 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[no-sheet]")) {
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -57,6 +60,9 @@ async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[no-sheet]")) {
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

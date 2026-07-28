@@ -31,6 +31,9 @@ async function GET_handler(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json(view);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (msg.startsWith("[no-sheet]")) {
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
