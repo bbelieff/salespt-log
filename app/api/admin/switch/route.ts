@@ -18,7 +18,9 @@ import {
   getSessionEmail,
   canImpersonate,
   setImpersonation,
+  getActiveUserEmail,
 } from "@/auth/identity";
+import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { findUserByEmail } from "@/repo/users";
 import { withApiTiming } from "@/lib/analytics/api-timing";
@@ -53,6 +55,32 @@ async function POST_handler(req: Request) {
   const allowed = await canImpersonate(sessionEmail, user.email);
   if (!allowed) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  // 개인 시트 없는 행(트레이너·미등록) 임퍼스네이션 차단 (P1, 2026-07-28) —
+  // 빈 spreadsheetId 로 읽기 라우트 전면 500(구글 HTML 에러)·빈 화면. 볼 수 있는 화면이 없다.
+  // ※ pickPreferredUser 는 trainer 행 **최우선**(P14) — 수강생출신 트레이너는 T행(빈 시트)이
+  //   선택되지만 본인 아레나 시트가 있으면 self-view 경로(resolveArenaOverride)가 합법이므로 허용.
+  if (!user.spreadsheetId) {
+    const arenaSheet = await resolveOwnArenaSheetId(user.email, user.name);
+    if (!arenaSheet) {
+      // 같은 대상에 이미 걸린 쿠키가 있으면 함께 해제 — 스테일 쿠키(30일)로 500 잔존 방지.
+      const active = await getActiveUserEmail();
+      if (
+        active.toLowerCase() === user.email.toLowerCase() &&
+        active.toLowerCase() !== sessionEmail.toLowerCase()
+      ) {
+        await setImpersonation(null);
+        revalidateAdminPages();
+      }
+      return NextResponse.json(
+        {
+          error: `${user.name}(${user.cohort}) 계정은 볼 수 있는 일지 시트가 없어요 — 웹앱 화면 대신 관리 메뉴에서 확인해 주세요.`,
+          code: "no_sheet",
+        },
+        { status: 409 },
+      );
+    }
   }
 
   await setImpersonation(user.email);

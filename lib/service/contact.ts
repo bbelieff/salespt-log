@@ -53,9 +53,9 @@ function parseISO(s: string): Date {
 
 async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
-  if (!user) {
-    throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
-  }
+  if (!user) throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
+  // [no-sheet]: 빈 sheetId 시트 read → 구글 HTML 500 (P1 2026-07-28) — route 가 404 매핑
+  if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
   return { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email };
 }
 
@@ -104,6 +104,7 @@ export async function loadDay(
   if (!user) {
     throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
   }
+  if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
   const spreadsheetId = user.spreadsheetId;
   const targetDate = parseISO(date);
 

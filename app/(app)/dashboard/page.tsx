@@ -106,6 +106,24 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* 에러 안내 — 500/404 에 무안내 빈 화면이던 부수결함 수리 (P1, 2026-07-28) */}
+      {dash.isError && (
+        <div className="px-4 pt-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-5 text-center">
+            <p className="text-sm font-bold text-red-700">
+              {dash.error instanceof Error && dash.error.message === "no_sheet"
+                ? "이 계정은 개인 일지 시트가 없어요"
+                : "데이터를 불러오지 못했어요"}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-red-600">
+              {dash.error instanceof Error && dash.error.message === "no_sheet"
+                ? "트레이너·미등록 계정은 대시보드를 볼 수 없어요. 관리 메뉴를 이용해 주세요."
+                : "잠시 후 새로고침해 주세요. 계속되면 운영자에게 알려 주세요."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {dash.data && (
         <DashboardProgressBanner
           today={banner.today}
@@ -126,12 +144,8 @@ export default function DashboardPage() {
       )}
 
       <div className="space-y-4 p-4">
-        {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거. */}
-        {dash.isError && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 shadow-sm">
-            대시보드를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-          </div>
-        )}
+        {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
+            에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {dash.data && (
           <>
             {/* 상단 2+1: 좌[영업이익(컴팩트)+생산성] / 우[퍼널(길게)].

@@ -84,6 +84,10 @@ export async function loadWeekMeetings(
 ): Promise<ScheduleWeekView> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contact-week] 등록되지 않은 사용자: ${email}`);
+  if (!user.spreadsheetId) {
+    // 빈 spreadsheetId 로 시트 read → 구글 HTML 에러 500 (P1, 2026-07-28). route 가 404 매핑.
+    throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
+  }
   const spreadsheetId = user.spreadsheetId;
   const wsDate = parseISO(weekStart);
 

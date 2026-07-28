@@ -63,6 +63,7 @@ export async function loadMonthMeetings(
   const month = Number(m[2]); // 1~12
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[calendar] 등록되지 않은 사용자: ${email}`);
+  if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
   const spreadsheetId = user.spreadsheetId;
 
   // 그 달의 모든 날짜 생성 (1일 ~ 마지막날)
