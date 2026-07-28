@@ -16,6 +16,28 @@ vi.mock("@/repo/users", () => ({
   })),
 }));
 
+// dashboard 모듈 그래프만 pg Pool(@/repo/db/client)·analytics 를 끌어와 **핸들이 열린 채** teardown
+// 이 15s 까지 늘어졌다(전체 스위트 부하에서 타임아웃 → 전 트랙 pre-commit 차단). 가드는 사용자
+// 해석 직후 최전방이라 이 둘에 **도달하지 못하고** throw 하므로, 목킹해도 검증 대상은 그대로다.
+vi.mock("@/repo/db/client", () => ({
+  dbEnabled: () => false,
+  readSalesRowsFromDb: vi.fn(async () => []),
+  getDbPool: vi.fn(() => { throw new Error("no-sheet 가드 전에 DB 를 열면 안 된다"); }),
+  ensureSchema: vi.fn(async () => {}),
+}));
+vi.mock("@/lib/analytics/api-timing", () => ({
+  captureServerEvent: vi.fn(async () => {}),
+  withApiTiming: (_n: string, h: unknown) => h,
+}));
+// googleapis 는 모듈 로딩만으로 수 초를 먹는다(repo 레이어가 끌어옴). 가드는 시트 호출 전에
+// throw 하므로 스텁으로 충분 — 호출되면 그 자체가 회귀 신호라 throw 로 잡는다.
+vi.mock("googleapis", () => ({
+  google: {
+    sheets: () => { throw new Error("no-sheet 가드 전에 시트를 부르면 안 된다"); },
+    auth: { GoogleAuth: class {} },
+  },
+}));
+
 /** rejects.toThrow 가 이 모듈 그래프에서 hang(원인 미상·실측) → try/catch 소비 형태로 검증. */
 async function rejectionOf(p: Promise<unknown>): Promise<string> {
   try {
@@ -27,7 +49,9 @@ async function rejectionOf(p: Promise<unknown>): Promise<string> {
 }
 
 describe("[no-sheet] 읽기 서비스 가드", () => {
-  // dashboard 모듈 그래프(Sentry·analytics)가 여는 핸들 때문에 정리까지 5s 초과 — 여유 타임아웃(실측).
+  // dashboard 모듈 그래프가 googleapis·pg Pool·analytics 를 끌어와 느렸다(14.8s → 15s 제한에
+  // 붙어 전체 스위트에서 타임아웃 = 전 트랙 pre-commit 차단). 위 목킹으로 5.4s(실측). 타임아웃은
+  // 여유분으로 유지 — 다시 10s 를 넘기면 그건 모듈 그래프가 또 무거워졌다는 신호다.
   it("loadDashboard: 빈 spreadsheetId → [no-sheet] throw", async () => {
     const { loadDashboard } = await import("@/service/dashboard");
     expect(await rejectionOf(loadDashboard("trainer@x.com"))).toMatch(/^\[no-sheet\]/);
