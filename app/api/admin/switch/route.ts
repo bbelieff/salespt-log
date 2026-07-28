@@ -55,6 +55,19 @@ async function POST_handler(req: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
+  // 개인 시트 없는 행(트레이너·미등록) 임퍼스네이션 차단 (P1, 2026-07-28) —
+  // 빈 spreadsheetId 로 읽기 라우트 전면 500(구글 HTML 에러)·빈 화면. 볼 수 있는 화면이 없다.
+  // ※ 수강생출신 트레이너는 아레나 행 우선(pickPreferredUser)이라 시트 보유 → 차단 안 걸림.
+  if (!user.spreadsheetId) {
+    return NextResponse.json(
+      {
+        error: `${user.name}(${user.cohort}) 계정은 개인 일지 시트가 없어요 — 웹앱 화면 대신 관리 메뉴에서 확인해 주세요.`,
+        code: "no_sheet",
+      },
+      { status: 409 },
+    );
+  }
+
   await setImpersonation(user.email);
   revalidateAdminPages();
   return NextResponse.json({

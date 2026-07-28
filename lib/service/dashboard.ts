@@ -296,6 +296,10 @@ export async function loadDashboard(
   if (!user) throw new Error(`[dashboard] 사용자(${email})를 찾을 수 없습니다.`);
   // 수강생출신 트레이너의 "내 아레나 일지" self-view — 본인 아레나 시트로 override(P14).
   const sheetId = overrideSheetId || user.spreadsheetId;
+  if (!sheetId) {
+    // 빈 spreadsheetId 로 시트 read → 구글 HTML 에러 500 (P1, 2026-07-28). route 가 404 매핑.
+    throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
+  }
 
   // R2-7b: 파일럿 기수는 DB 집계 서빙(대시보드 시트 왕복 0). 실패 시 시트 경로로 강등
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).

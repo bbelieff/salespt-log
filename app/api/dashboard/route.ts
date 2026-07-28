@@ -24,6 +24,10 @@ async function GET_handler() {
     if (msg.startsWith("[auth]")) {
       return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
     }
+    if (msg.startsWith("[no-sheet]")) {
+      // 시트 없는 계정(트레이너 임퍼스네이션 등) — 500 아닌 명시 404 (P1 2026-07-28)
+      return NextResponse.json({ error: "no_sheet" }, { status: 404 });
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

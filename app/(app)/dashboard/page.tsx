@@ -106,6 +106,24 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* 에러 안내 — 500/404 에 무안내 빈 화면이던 부수결함 수리 (P1, 2026-07-28) */}
+      {dash.isError && (
+        <div className="px-4 pt-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-5 text-center">
+            <p className="text-sm font-bold text-red-700">
+              {dash.error instanceof Error && dash.error.message === "no_sheet"
+                ? "이 계정은 개인 일지 시트가 없어요"
+                : "데이터를 불러오지 못했어요"}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-red-600">
+              {dash.error instanceof Error && dash.error.message === "no_sheet"
+                ? "트레이너·미등록 계정은 대시보드를 볼 수 없어요. 관리 메뉴를 이용해 주세요."
+                : "잠시 후 새로고침해 주세요. 계속되면 운영자에게 알려 주세요."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {dash.data && (
         <DashboardProgressBanner
           today={banner.today}
