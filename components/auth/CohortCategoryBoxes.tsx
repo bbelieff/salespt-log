@@ -8,6 +8,7 @@
 
 import { cohortCategory, COHORT_CATEGORY_ORDER } from "@/types";
 import { CohortSection, type Trainee, type Trainer } from "./AdminUserPickerSections";
+import ArenaSeasonGroups from "./ArenaSeasonGroups";
 
 const STYLE: Record<string, [string, string]> = {
   수강생: ["border-blue-200", "text-blue-800"],
@@ -52,25 +53,42 @@ export default function CohortCategoryBoxes({
             <div className={`mb-3 px-1 text-sm font-black ${head}`}>
               {cat} · {cnt}명
             </div>
-            <div className="space-y-8">
-              {groups.map(([cohort, list]) => (
-                <CohortSection
-                  key={cohort}
-                  cohort={cohort}
-                  list={list}
-                  busy={busy}
-                  nameByEmail={nameByEmail}
-                  onPick={onPick}
-                  onReserve={onReserve}
-                  onSetTeam={onSetTeam}
-                  onReorder={onReorder}
-                  onAssignTrainers={onAssignTrainers}
-                  activeTrainers={activeTrainers}
-                  linkedBySheet={linkedBySheet}
-                  viewOnly={viewOnly}
-                />
-              ))}
-            </div>
+            {/* 아레나만 시즌 우산으로 한 겹 더 묶는다(AR-1). 나머지는 기존 그대로. */}
+            {cat === "아레나" ? (
+              <ArenaSeasonGroups
+                groups={groups}
+                busy={busy}
+                nameByEmail={nameByEmail}
+                onPick={onPick}
+                onReserve={onReserve}
+                onSetTeam={onSetTeam}
+                onReorder={onReorder}
+                onAssignTrainers={onAssignTrainers}
+                activeTrainers={activeTrainers}
+                linkedBySheet={linkedBySheet}
+                viewOnly={viewOnly}
+              />
+            ) : (
+              <div className="space-y-8">
+                {groups.map(([cohort, list]) => (
+                  <CohortSection
+                    key={cohort}
+                    cohort={cohort}
+                    list={list}
+                    busy={busy}
+                    nameByEmail={nameByEmail}
+                    onPick={onPick}
+                    onReserve={onReserve}
+                    onSetTeam={onSetTeam}
+                    onReorder={onReorder}
+                    onAssignTrainers={onAssignTrainers}
+                    activeTrainers={activeTrainers}
+                    linkedBySheet={linkedBySheet}
+                    viewOnly={viewOnly}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
