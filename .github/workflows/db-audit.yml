@@ -1,0 +1,42 @@
+name: DB Audit (read-only)
+
+# R4 실측용 **읽기 전용** 감사 — VPS 에서 지정 감사 스크립트 1개를 실행하고 로그로 결과를 남긴다.
+# DB 쓰기 없음(스크립트가 SELECT 만 수행). 임의 SQL 입력 없음 — 화이트리스트된 스크립트만 선택 가능.
+# VPS 에서 실행하는 이유: DATABASE_URL(시크릿)과 Google SA(시트 O1 읽기) 가 **둘 다** 있는 유일한 곳.
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "실행할 감사 스크립트"
+        type: choice
+        required: true
+        options:
+          - r4-week11-audit
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          for i in 1 2 3 4 5; do
+            ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts && break || sleep 20
+          done
+      - name: Run audit on VPS (read-only)
+        env:
+          SCRIPT: ${{ inputs.script }}
+        run: |
+          # 값 미출력. 스크립트명은 choice 로 제한돼 임의 실행 불가.
+          set +e
+          for i in 1 2 3 4 5 6 7; do
+            ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+              root@"${{ secrets.VPS_HOST }}" \
+              "cd /opt/salespt-log && node scripts/ops/${SCRIPT}.mjs"
+            rc=$?
+            [ $rc -ne 255 ] && break
+            echo "ssh 도달 실패(rc=255) — 재시도 $i/7"; sleep 30
+          done
+          exit $rc

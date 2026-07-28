@@ -49,17 +49,30 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
   });
 
   it("누적 퍼널: 미팅예약=상태∈{예약,완료,계약}, 미팅완료=상태∈{완료,계약}, 계약=계약여부", () => {
+    // ※ 계약 카운트는 R6(=N 주차블록 합) 대칭이라 **미팅날짜가 창 안**이어야 계상된다(아래 R4 클램프
+    //   describe 참조). 픽스처에 코스 기간 내 날짜를 준다 — 실제 계약 미팅은 미팅날짜를 갖는다.
+    const IN = "2026-06-10"; // 2주차
     const meetings = [
-      mtg({ channel: "매입DB", 상태: "예약" }),
-      mtg({ channel: "매입DB", 상태: "완료" }),
-      mtg({ channel: "매입DB", 상태: "계약", 계약여부: true }),
-      mtg({ channel: "매입DB", 상태: "변경" }), // 퍼널 제외
-      mtg({ channel: "매입DB", 상태: "취소" }), // 퍼널 제외
+      mtg({ channel: "매입DB", 상태: "예약", 미팅날짜: IN }),
+      mtg({ channel: "매입DB", 상태: "완료", 미팅날짜: IN }),
+      mtg({ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: IN }),
+      mtg({ channel: "매입DB", 상태: "변경", 미팅날짜: IN }), // 퍼널 제외
+      mtg({ channel: "매입DB", 상태: "취소", 미팅날짜: IN }), // 퍼널 제외
     ];
     const 매입 = channelStackingFromDb([], meetings, CS).find((x) => x.채널 === "매입DB")!;
     expect(매입.미팅예약).toBe(3); // 예약+완료+계약 (변경·취소 제외)
     expect(매입.미팅완료).toBe(2); // 완료+계약
     expect(매입.계약).toBe(1); // 계약여부 true
+  });
+
+  it("미팅날짜 없는 계약은 계상 안 함 — 시트 N 주차행에도 안 걸린다(fail-closed)", () => {
+    const 매입 = channelStackingFromDb(
+      [],
+      [mtg({ channel: "매입DB", 상태: "계약", 계약여부: true })], // 미팅날짜 ""
+      CS,
+    ).find((x) => x.채널 === "매입DB")!;
+    expect(매입.계약).toBe(0);
+    expect(매입.미팅예약).toBe(1); // 예약·완료는 COUNTIFS(무필터) 대칭 — 날짜와 무관
   });
 
   it("오염 채널(CHANNEL_ORDER 밖) 무시, 4채널 항상 반환", () => {
@@ -115,11 +128,12 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
       expect(매입.생산).toBe(0);
     });
 
-    // 적대리뷰 M3 — 미팅 3단계(미팅예약·미팅완료·계약)는 **의도적으로 클램프하지 않는다**:
-    // 시트 퍼널 R4:U5 는 04 탭 전체 COUNTIFS(날짜 무필터)라, 미팅을 클램프하면 시트↔DB parity 가
-    // 영구 diff 를 낸다(reverseShadowCompare Sentry 상시 오경보). 이 비대칭을 계약으로 고정한다.
-    // ⚠️ 시트 수식이 주차블록 합으로 바뀌면 이 테스트가 먼저 깨져야 한다(= 그때 함께 클램프).
-    it("미팅 퍼널은 클램프 대상이 아니다 — 시트 COUNTIFS(무필터) 와 대칭", () => {
+    // M3 — **시트 실수식 실측(2026-07-28, 연습 시트 01!R1:U6)** 이 확정한 단계별 비대칭:
+    //   R4 미팅예약 · R5 미팅완료 = COUNTIFS(04!F:F, J:J) → **날짜 무필터** → 클램프 금지
+    //   R6 계약        = `=N10+N14+…+N272`            → **주차블록 합**   → 클램프 필요
+    // 셋을 같은 규칙으로 묶으면 어느 쪽이든 시트↔DB parity 가 영구 diff 를 낸다.
+    // ⚠️ 시트 수식이 바뀌면 이 테스트가 먼저 깨져야 한다(= 그때 코드도 함께 바꾼다).
+    it("11주+ 미팅: 예약·완료는 세고(COUNTIFS 대칭), 계약만 제외(N 주차블록 합 대칭)", () => {
       const far = new Date(CS);
       far.setDate(far.getDate() + (MAX_SHEET_WEEK + 5) * 7); // 15주차쯤
       const iso = `${far.getFullYear()}-${String(far.getMonth() + 1).padStart(2, "0")}-${String(far.getDate()).padStart(2, "0")}`;
@@ -131,7 +145,19 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
         ],
         CS,
       ).find((x) => x.채널 === "매입DB")!;
-      expect(매입).toMatchObject({ 미팅예약: 2, 미팅완료: 2, 계약: 1 });
+      expect(매입).toMatchObject({ 미팅예약: 2, 미팅완료: 2, 계약: 0 });
+    });
+
+    it("코스 기간 안 계약은 그대로 계상(클램프가 정상 데이터를 깎지 않는다)", () => {
+      const d = new Date(CS);
+      d.setDate(d.getDate() + 7); // 2주차
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const 매입 = channelStackingFromDb(
+        [],
+        [mtg({ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: iso, 예약일: iso })],
+        CS,
+      ).find((x) => x.채널 === "매입DB")!;
+      expect(매입).toMatchObject({ 미팅예약: 1, 미팅완료: 1, 계약: 1 });
     });
   });
 });
