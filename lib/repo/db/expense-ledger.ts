@@ -98,7 +98,21 @@ export function ensureExpenseLedgerSchema(): Promise<void> {
 export function normalizeCategoryName(name: string): string {
   return name.trim().normalize("NFKC").toLocaleLowerCase("en-US");
 }
-function iso(v: unknown): string { return String(v).slice(0, 10); }
+/** pg `date` 컬럼 → "YYYY-MM-DD".
+ *
+ * ⚠️ pg-types 는 date(OID 1082)를 **로컬 자정 Date 객체**로 파싱한다. 옛 구현
+ * `String(v).slice(0,10)` 은 그 Date 를 "Wed Jul 01" 로 만들어 일할 인식·materialize 를
+ * 조용히 0 건으로 만들었다(2026-07-28 P1: 저장은 되는데 조회·계산에 안 잡힘).
+ * Date 는 **로컬 게터**로 포맷한다 — toISOString 은 KST(+9)에서 하루 앞당겨진다.
+ * 형식이 어긋나면 throw: 조용한 0 보다 시끄러운 실패가 낫다(§0). */
+export function isoDateFromDb(v: unknown): string {
+  const s = v instanceof Date
+    ? `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`
+    : String(v).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw new Error("expense_invalid_stored_date");
+  return s;
+}
+const iso = isoDateFromDb;
 function timestamp(v: unknown): string { return new Date(String(v)).toISOString(); }
 function category(row: Row): ExpenseCategory { return { id: String(row.id), name: String(row.name), archivedAt: row.archived_at ? timestamp(row.archived_at) : null, createdAt: timestamp(row.created_at), updatedAt: timestamp(row.updated_at) }; }
 function entry(row: Row): ExpenseEntry { return { id: String(row.id), categoryId: String(row.category_id), categoryName: String(row.category_name), itemName: String(row.item_name), amountWon: Number(row.amount_won), periodStart: iso(row.period_start), periodEnd: iso(row.period_end), createdAt: timestamp(row.created_at), updatedAt: timestamp(row.updated_at) }; }

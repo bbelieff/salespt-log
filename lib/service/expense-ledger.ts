@@ -70,7 +70,9 @@ export function manageRecurringRules(rules: RecurringRule[], occurrences: Recurr
 /** 양끝 포함, 나머지 원은 앞선 달력일에 배정한다. 순수 함수라 조회 순서에 흔들리지 않는다. */
 export function allocateExpenseByDay(amountWon: number, periodStart: string, periodEnd: string): Array<{ date: string; amountWon: number }> {
   const days = dayCount(periodStart, periodEnd);
-  if (days < 1 || days > 3660) throw new Error("expense_invalid_period");
+  // NaN 가드 필수 — 날짜 문자열이 깨지면 days=NaN 이고 NaN 은 두 부등호를 모두 통과해
+  // 빈 배열 → 인식금액 0 → 화면에서 조용히 사라진다(2026-07-28 P1 의 전파 경로).
+  if (!Number.isFinite(days) || days < 1 || days > 3660) throw new Error("expense_invalid_period");
   const quotient = Math.floor(amountWon / days); const remainder = amountWon % days;
   const out: Array<{ date: string; amountWon: number }> = [];
   const d = parseUtc(periodStart);
