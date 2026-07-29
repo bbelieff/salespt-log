@@ -22,6 +22,7 @@ import { readCourseStart, weekIndexOf } from "@/repo/sales";
 import { parseISO } from "@/util/week";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
+import { resolveCurrentSeason } from "./arena-season-config";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
 import type { RankingMetric, RankingEntry } from "@/types";
 
@@ -279,6 +280,7 @@ export interface ScoreboardBundle {
   byCohort: CohortScore[];
   rankings: Record<RankingMetric, RankingEntry[]>;
   seasonWeek: number; // 1~8 (0 = 시작 전/미상)
+  season: number; // 현재 시즌 번호 (0 = 미상). SSOT=resolveCurrentSeason (AR-2b)
 }
 
 /** 시즌 현재 주차 — 대표 입금 시트 O1(수강시작일) 기준 weekIndexOf, 1~8 캡. */
@@ -292,14 +294,23 @@ async function currentSeasonWeek(): Promise<number> {
   return Math.min(Math.max(weekIndexOf(new Date(), start), 0), STATS_WEEKS);
 }
 
+/** 현재 시즌 번호 — 활성 아레나 참가자 cohort 의 최대 시즌(SSOT). A2 등록 즉시 시즌2 전환. */
+async function currentSeason(): Promise<number> {
+  const parts = await listArenaParticipants();
+  return resolveCurrentSeason(parts.map((u) => u.cohort));
+}
+
 /** 전광판 한 화면용 데이터 — 페이지가 1콜로 받아 props 분배. */
 export async function loadScoreboardBundle(): Promise<ScoreboardBundle> {
   const [board, rankings] = await Promise.all([
     loadScoreboard(),
     loadIndividualRankings(),
   ]);
-  const seasonWeek = await currentSeasonWeek().catch(() => 0);
-  return { byCohort: board.byCohort, rankings, seasonWeek };
+  const [seasonWeek, season] = await Promise.all([
+    currentSeasonWeek().catch(() => 0),
+    currentSeason().catch(() => 0), // 미상이면 헤더가 "아레나"로 degrade
+  ]);
+  return { byCohort: board.byCohort, rankings, seasonWeek, season };
 }
 
 // ── 공유왕 수동 집계 (admin) — share_scores 대상 목록 + 저장 ────────────

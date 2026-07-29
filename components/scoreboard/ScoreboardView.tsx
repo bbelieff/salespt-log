@@ -4,13 +4,15 @@
  * 상단 [관리자 대시보드]/[캡쳐 모드] 토글.
  *  - 대시보드: 기수 평균 표(주차 상세) + 5지표 개인 랭킹 표, 밀도 높게.
  *  - 캡쳐: 탭(메인 종합/미팅/계약/매출/앱사용량/공유왕). 메인=CohortSummaryBoard,
- *    지표탭=AwardPodium(색만 변경 재사용). 공통 헤더 "아레나 시즌1 · N주차 · {지표}왕".
+ *    지표탭=AwardPodium(색만 변경 재사용). 공통 헤더 "아레나 시즌N · M주차 · {지표}왕"
+ *    — 시즌 번호는 **SSOT(resolveCurrentSeason)** 가 준 data.season 만 쓴다(AR-2b, 하드코딩 금지).
  * 탭 전환은 hydration 후 useState — 스트리밍 중 display:none 아님.
  */
 "use client";
 
 import { useState } from "react";
 import { STATS_WEEKS } from "@/config/cohort-dates";
+import { seasonDisplayLabel } from "@/service/arena-season-config";
 import AwardPodium, { type PodiumColor } from "./AwardPodium";
 import CohortSummaryBoard from "./CohortSummaryBoard";
 
@@ -40,6 +42,8 @@ export interface ScoreboardViewData {
   byCohort: ViewCohort[];
   rankings: Record<string, ViewEntry[]>;
   seasonWeek: number;
+  /** 현재 시즌 번호(0=미상). 서버가 resolveCurrentSeason 으로 채움 — 표기 하드코딩 금지. */
+  season: number;
 }
 
 // 지표 탭 정의 — 색만 바꿔 AwardPodium 재사용.
@@ -64,7 +68,9 @@ export default function ScoreboardView({ data }: { data: ScoreboardViewData }) {
   const [mode, setMode] = useState<"dashboard" | "capture">("dashboard");
   const [tab, setTab] = useState<string>("메인");
 
-  const weekLabel = data.seasonWeek > 0 ? `${data.seasonWeek}주차` : "시즌1";
+  // 주차 미상(0)이면 주차 칸을 비운다 — 옛 코드는 여기에 "시즌1" 을 넣어 개막 전 헤더가
+  // "아레나 시즌1 · 시즌1" 로 찍혔다(표기 결함). 시즌 라벨은 CaptureMode 가 SSOT 로 만든다.
+  const weekLabel = data.seasonWeek > 0 ? `${data.seasonWeek}주차` : "";
 
   return (
     <div>
@@ -245,6 +251,9 @@ function CaptureMode({
 }) {
   const active = RANK_TABS.find((t) => t.key === tab);
   const headTitle = tab === "메인" ? "종합" : `${tab}왕`;
+  // 시즌 표기 = SSOT(data.season, resolveCurrentSeason 산출). 하드코딩 금지 — A2 등록 시
+  // 자동으로 "아레나 시즌2" 가 된다. 미상(0)이면 번호 없이 "아레나".
+  const seasonLabel = seasonDisplayLabel(data.season);
 
   return (
     <div>
@@ -270,7 +279,8 @@ function CaptureMode({
       <div className="mx-auto max-w-md rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 text-center">
           <p className="text-xs font-bold text-gray-400">
-            아레나 시즌1 · {weekLabel}
+            {seasonLabel}
+            {weekLabel && ` · ${weekLabel}`}
           </p>
           <h2 className="text-xl font-black text-gray-900">{headTitle}</h2>
         </div>
