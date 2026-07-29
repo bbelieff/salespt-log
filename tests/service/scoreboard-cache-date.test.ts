@@ -94,5 +94,6 @@ describe("scoreboard 캐시 직렬화 회귀 (P0 2026-07-29)", () => {
     expect(b.rankings.매출[0]!.value).toBe(100); // splitContractRevenue — ISO 문자열 경계
     expect(b.seasonWeek).toBeGreaterThanOrEqual(0);
     expect(b.seasonWeek).toBeLessThanOrEqual(8);
-  }, 20000);
+    // 단독 ~8s / 전체 스위트 병렬 부하에서 ~33s 실측(dashboard 모듈 그래프 로딩) — 여유 60s.
+  }, 60000);
 });
