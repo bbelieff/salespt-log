@@ -22,9 +22,9 @@ import { readCourseStart, weekIndexOf } from "@/repo/sales";
 import { parseISO } from "@/util/week";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
-import { resolveCurrentSeason } from "./arena-season-config";
+import { isInSeason, resolveCurrentSeason } from "./arena-season-config";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
-import type { RankingMetric, RankingEntry } from "@/types";
+import type { RankingMetric, RankingEntry, User } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
 export type ScoreMetric = (typeof METRICS)[number];
@@ -103,8 +103,20 @@ const emptyMetrics = (): MetricRow => ({
 const round1 = (x: number) => Math.round(x * 10) / 10;
 const avg = (sum: number, n: number) => (n > 0 ? round1(sum / n) : 0);
 
+/**
+ * 전광판 모수 = **현재 시즌 참가자만** + 그 시즌 번호 (AR-2b SSOT).
+ * 옛 시즌(A1) 행은 registry 에 그대로 남는다(아레나→아레나 이월 경로가 archived 마킹을
+ * 안 함) → 스코프를 안 걸면 시즌2 헤더 아래 A1 기수·멤버가 그대로 나열된다(적대리뷰 HIGH).
+ * registry read 는 캐시되므로 호출이 늘어도 추가 왕복 없음.
+ */
+async function currentSeasonScope(): Promise<{ parts: User[]; season: number }> {
+  const all = await listArenaParticipants();
+  const season = resolveCurrentSeason(all, toISODate(new Date()));
+  return { parts: all.filter((u) => isInSeason(u.cohort, season)), season };
+}
+
 export async function loadScoreboard(): Promise<ScoreboardData> {
-  const participants = await listArenaParticipants();
+  const { parts: participants } = await currentSeasonScope();
 
   // cohort → (spreadsheetId → 입금여부). 부부/멀티계정은 같은 sheetId 로 1개.
   const byCohort = new Map<string, Map<string, boolean>>();
@@ -216,7 +228,7 @@ export function rankEntries(
 export async function loadIndividualRankings(): Promise<
   Record<RankingMetric, RankingEntry[]>
 > {
-  const participants = await listArenaParticipants();
+  const { parts: participants, season } = await currentSeasonScope();
   // paid 시트 dedup — 1시트=1엔트리(부부/멀티계정 1개), 입금자만.
   const bySheet = new Map<string, { name: string; cohort: string; paid: boolean }>();
   for (const u of participants) {
@@ -259,7 +271,12 @@ export async function loadIndividualRankings(): Promise<
     return { name: info.name, cohort: info.cohort, 미팅, 계약, 매출, 앱사용량 };
   });
 
-  const shares = await readShareScores().catch(() => []);
+  // 공유왕 포디움도 같은 시즌 스코프 — 옛 시즌 멤버가 공개 화면에 남지 않게.
+  // (saveShareScores 가 normalizeArenaCohort 로 저장 → '기' 유무 무관 매칭.)
+  // admin 집계 로스터(listShareScoreTargets)는 과거 시즌도 보이는 게 유용하므로 그대로 둔다.
+  const shares = (await readShareScores().catch(() => [])).filter((s) =>
+    isInSeason(s.cohort, season),
+  );
   const pick = (key: "미팅" | "계약" | "매출" | "앱사용량") =>
     rankEntries(
       perSheet.map((p) => ({ name: p.name, cohort: p.cohort, value: p[key] })),
@@ -283,34 +300,39 @@ export interface ScoreboardBundle {
   season: number; // 현재 시즌 번호 (0 = 미상). SSOT=resolveCurrentSeason (AR-2b)
 }
 
-/** 시즌 현재 주차 — 대표 입금 시트 O1(수강시작일) 기준 weekIndexOf, 1~8 캡. */
-async function currentSeasonWeek(): Promise<number> {
-  const parts = await listArenaParticipants();
-  const rep = parts.find(
-    (u) => u.spreadsheetId && u.memo.includes("입금"),
-  );
+/**
+ * 시즌 현재 주차 — **현재 시즌** 대표 입금 시트 O1(수강시작일) 기준 weekIndexOf, 1~8 캡.
+ * ⚠️ 시즌 스코프 필수: listAllUsers 정렬(cohortSortTuple=[0,시즌,기수])상 A1 이 항상 앞이라
+ * 스코프 없이 고르면 옛 시즌 대표(O1=이전 개막일)가 잡혀, 시즌2 개막일에도 STATS_WEEKS 로
+ * 클램프된 "8주차"가 시즌 내내 고정된다(헤더가 "시즌2 · 8주차"로 자기모순 — 적대리뷰 HIGH).
+ */
+async function currentSeasonWeek(parts: readonly User[]): Promise<number> {
+  // 개막 직후엔 입금 메모가 아직 없을 수 있어 같은 시즌 시트 보유자로 폴백.
+  const rep =
+    parts.find((u) => u.spreadsheetId && u.memo.includes("입금")) ??
+    parts.find((u) => u.spreadsheetId);
   if (!rep?.spreadsheetId) return 0;
   const start = await readCourseStart(rep.spreadsheetId);
   return Math.min(Math.max(weekIndexOf(new Date(), start), 0), STATS_WEEKS);
 }
 
-/** 현재 시즌 번호 — 활성 아레나 참가자 cohort 의 최대 시즌(SSOT). A2 등록 즉시 시즌2 전환. */
-async function currentSeason(): Promise<number> {
-  const parts = await listArenaParticipants();
-  return resolveCurrentSeason(parts.map((u) => u.cohort));
-}
-
-/** 전광판 한 화면용 데이터 — 페이지가 1콜로 받아 props 분배. */
+/** 전광판 한 화면용 데이터 — 페이지가 1콜로 받아 props 분배.
+ *  라벨(season)·주차·표·랭킹이 **같은 스코프**에서 나오도록 시즌을 먼저 정한다. */
 export async function loadScoreboardBundle(): Promise<ScoreboardBundle> {
+  const scope = await currentSeasonScope().catch(() => null);
   const [board, rankings] = await Promise.all([
     loadScoreboard(),
     loadIndividualRankings(),
   ]);
-  const [seasonWeek, season] = await Promise.all([
-    currentSeasonWeek().catch(() => 0),
-    currentSeason().catch(() => 0), // 미상이면 헤더가 "아레나"로 degrade
-  ]);
-  return { byCohort: board.byCohort, rankings, seasonWeek, season };
+  const seasonWeek = scope
+    ? await currentSeasonWeek(scope.parts).catch(() => 0)
+    : 0;
+  return {
+    byCohort: board.byCohort,
+    rankings,
+    seasonWeek,
+    season: scope?.season ?? 0, // 미상이면 헤더가 "아레나"로 degrade
+  };
 }
 
 // ── 공유왕 수동 집계 (admin) — share_scores 대상 목록 + 저장 ────────────
