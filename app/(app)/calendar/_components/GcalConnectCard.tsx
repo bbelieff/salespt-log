@@ -14,6 +14,25 @@ interface CardState { connected: boolean; settings: Settings; calendars: Cal[]; 
 /** 임퍼스네이션 안내(§4-1 톤) — 연결·해제·변경 버튼 대신 표시. */
 const SELF_ONLY_MSG = "본인 로그인에서만 연결할 수 있어요";
 
+/**
+ * 복귀 사유(`?gcal=`) → 안내 문구. 콜백 라우트의 GcalFailKind 와 짝.
+ * 원칙(§4-1 톤): 금지 용어(동기화·토큰·만료·OAuth) 노출 금지 + **다음에 뭘 하면 되는지**를 준다.
+ * 이전엔 모든 실패가 "연결에 실패했어요. 다시 시도해 주세요" 하나로 뭉쳐, 다시 눌러도
+ * 같은 이유로 실패하는 사용자가 원인을 알 수 없었다(2026-07-28 진단).
+ */
+const GCAL_TOAST: Record<string, string> = {
+  connected: "구글 캘린더에 연결됐어요. 기존 일정은 [다시 올리기]를 누르면 올라가요",
+  denied: "연결을 취소했어요",
+  selfonly: SELF_ONLY_MSG,
+  // state 쿠키 없음/불일치 — 창을 오래 열어뒀거나 다른 브라우저·시크릿창에서 돌아온 경우.
+  expired: "시간이 지나 연결이 끊겼어요. [연결하기]를 다시 눌러 주세요",
+  // registry 행이 없어 저장할 곳이 없음 — 승인 전 계정.
+  unregistered: "아직 등록이 끝나지 않은 계정이에요. 관리자 승인 후 연결할 수 있어요",
+  // refresh_token 미수신 — 구글 화면에서 권한을 끝까지 허용하지 않음.
+  noconsent: "구글 화면에서 [허용]까지 눌러야 연결돼요. 다시 시도해 주세요",
+};
+const GCAL_TOAST_FALLBACK = "연결에 실패했어요. 다시 시도해도 안 되면 관리자에게 알려 주세요";
+
 export default function GcalConnectCard() {
   const [state, setState] = useState<CardState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -26,18 +45,15 @@ export default function GcalConnectCard() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // OAuth 콜백 복귀 처리 (?gcal=connected|denied|error) — 토스트 후 쿼리 정리.
+  // OAuth 콜백 복귀 처리 (?gcal=connected|denied|selfonly|expired|unregistered|noconsent|error)
+  // — 사유별 안내 토스트 후 쿼리 정리.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("gcal");
     if (!p) return;
-    setToast(
-      p === "connected" ? "구글 캘린더에 연결됐어요. 기존 일정은 [다시 올리기]를 누르면 올라가요"
-      : p === "denied" ? "연결을 취소했어요"
-      : p === "selfonly" ? SELF_ONLY_MSG
-      : "연결에 실패했어요. 다시 시도해 주세요",
-    );
+    setToast(GCAL_TOAST[p] ?? GCAL_TOAST_FALLBACK);
     window.history.replaceState(null, "", window.location.pathname);
-    const t = setTimeout(() => setToast(null), 3500);
+    // 실패 안내는 읽는 데 시간이 더 걸린다(무엇을 해야 하는지 담고 있음).
+    const t = setTimeout(() => setToast(null), p === "connected" || p === "denied" ? 3500 : 6000);
     return () => clearTimeout(t);
   }, []);
 
