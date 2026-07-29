@@ -114,7 +114,7 @@ export async function loadDay(
   let sums: ReturnType<typeof stackingSumsFromRows> | null = null;
   let meetings: Meeting[] | null = null;
   let bannerOrderQty: number | null = null;
-  let dbCanonicalRead = false; // DB 정본 read 성공(시트 폴백과 구분) — R4 W1-1 상한 지우기 해제 조건
+  let dbCanonicalRead = false; // R4 W1-1: DB 정본 read 성공 → 주차상한 지우기 해제(안 그러면 11주+ 화면 0 → draft 0 시드 → 다음 저장이 정본을 덮음)
 
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
@@ -137,7 +137,7 @@ export async function loadDay(
       dbCanonicalRead = true;
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDay-db-read" } });
-      courseStart = null; // dbCanonicalRead 는 try 마지막 문장이라 여기선 여전히 false
+      courseStart = null; // dbCanonicalRead 는 try 마지막 문장 — 여기선 false 유지
       metricRows = null; // ↓ 아래에서 전부 시트 경로로 silent fallback
       sums = null;
       meetings = null;
@@ -161,7 +161,6 @@ export async function loadDay(
   }
 
   const week = weekIndexOf(targetDate, courseStart!);
-  // R4 W1-1: DB 정본은 상한으로 안 지운다(지우면 화면 0 → draft 0 시드 → 다음 저장이 정본을 덮음).
   const inRange = dbCanonicalRead || (week >= 1 && week <= MAX_SHEET_WEEK);
 
   meetings ??= await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
