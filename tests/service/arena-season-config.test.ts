@@ -47,10 +47,17 @@ describe("resolveCurrentSeason — 개막 기준 시즌 판정", () => {
     expect(resolveCurrentSeason(parts, S2_START)).toBe(1);
   });
 
-  it("날짜 미상(빈값·비ISO)은 개막한 것으로 취급 — 옛 동작 degrade", () => {
-    expect(resolveCurrentSeason([p("A2-1기")], S2_START)).toBe(2);
-    expect(resolveCurrentSeason([p("A2-1기", "")], S2_START)).toBe(2);
-    expect(resolveCurrentSeason([p("A2-1기", "8/7")], S2_START)).toBe(2);
+  it("**날짜 미상은 시즌을 올리지 못한다**(fail-closed) — 개강일 미기록 아레나 행 대비", () => {
+    // create-arena-members 가 개강일을 안 써서 registry K 가 "" 인 행이 실재한다.
+    // 이때 A2 를 '개막'으로 인정하면 첫 클레임만으로 시즌2가 되어 시즌1 보드가 사라진다.
+    expect(resolveCurrentSeason([p("A1-1기", S1_START), p("A2-1기")], S2_START)).toBe(1);
+    expect(resolveCurrentSeason([p("A1-1기", S1_START), p("A2-1기", "")], S2_START)).toBe(1);
+    expect(resolveCurrentSeason([p("A1-1기", S1_START), p("A2-1기", "8/7")], S2_START)).toBe(1);
+  });
+
+  it("전부 날짜 미상 → 0(미상) — 라벨은 '아레나', 스코프는 전체 통과(데이터 안 자름)", () => {
+    expect(resolveCurrentSeason([p("A1-1기"), p("A2-1기")], S2_START)).toBe(0);
+    expect(isInSeason("A1-1기", 0)).toBe(true); // 스코프 미적용 확인
   });
 
   it("'기' 접미사 유무 무관 (파서 재사용 계약)", () => {

@@ -19,9 +19,10 @@ import {
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
 import { readCourseStart, weekIndexOf } from "@/repo/sales";
-import { parseISO } from "@/util/week";
+import { parseISO, todayKST } from "@/util/week";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
+import { arenaCohortLabelParts } from "./cohort-token";
 import { isInSeason, resolveCurrentSeason } from "./arena-season-config";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
 import type { RankingMetric, RankingEntry, User } from "@/types";
@@ -111,7 +112,9 @@ const avg = (sum: number, n: number) => (n > 0 ? round1(sum / n) : 0);
  */
 async function currentSeasonScope(): Promise<{ parts: User[]; season: number }> {
   const all = await listArenaParticipants();
-  const season = resolveCurrentSeason(all, toISODate(new Date()));
+  // 개막 경계는 **KST 기준 오늘** — 서버 로컬(UTC)로 재면 개막일 09:00 KST 까지 전날로 읽혀
+  // 개막 당일 아침에 시즌이 안 넘어간다. todayKST 재사용(신규 헬퍼 금지).
+  const season = resolveCurrentSeason(all, todayKST());
   return { parts: all.filter((u) => isInSeason(u.cohort, season)), season };
 }
 
@@ -307,10 +310,13 @@ export interface ScoreboardBundle {
  * 클램프된 "8주차"가 시즌 내내 고정된다(헤더가 "시즌2 · 8주차"로 자기모순 — 적대리뷰 HIGH).
  */
 async function currentSeasonWeek(parts: readonly User[]): Promise<number> {
+  // 테스터(A{n}-0)는 대표에서 제외 — 정렬상 A{n}-0 이 맨 앞이라 폴백이 테스터 시트를
+  // 먼저 집어 엉뚱한 O1 로 주차를 계산한다(적대리뷰). resolveCurrentSeason 과 같은 규칙.
+  const real = parts.filter((u) => (arenaCohortLabelParts(u.cohort)?.gisu ?? 0) > 0);
   // 개막 직후엔 입금 메모가 아직 없을 수 있어 같은 시즌 시트 보유자로 폴백.
   const rep =
-    parts.find((u) => u.spreadsheetId && u.memo.includes("입금")) ??
-    parts.find((u) => u.spreadsheetId);
+    real.find((u) => u.spreadsheetId && u.memo.includes("입금")) ??
+    real.find((u) => u.spreadsheetId);
   if (!rep?.spreadsheetId) return 0;
   const start = await readCourseStart(rep.spreadsheetId);
   return Math.min(Math.max(weekIndexOf(new Date(), start), 0), STATS_WEEKS);

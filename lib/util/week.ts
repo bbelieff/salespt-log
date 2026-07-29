@@ -15,6 +15,15 @@
 
 const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
+/**
+ * KST 기준 오늘 "YYYY-MM-DD" — 날짜 경계 판정 SSOT.
+ * 서버 로컬(UTC) 로 재면 KST 09:00 까지 전날로 읽혀 개막일·기간 경계가 하루 어긋난다.
+ * (service/announcements 가 여기서 재수출 — 정의는 이 파일 하나.)
+ */
+export function todayKST(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
 export function fmtISO(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
