@@ -99,6 +99,44 @@ tasks:
     created_at: "2026-07-26"
     updated_at: "2026-07-26"
 
+  - task_id: r4-w11-verify
+    project: dev-harness
+    priority: P0
+    business_goal: "R4 W1-1(#631 쓰기 무제한) VERIFY — 머지 가부 판정"
+    feature_owner: TRACK-D
+    assigned_tracks: [TRACK-D(VERIFY), W1-1 작성자(수정 소유)]
+    assigned_provider: claude
+    dependencies: []
+    file_leases: ["없음 — 읽기 전용 검증(장부 기입만)"]
+    blocked_by: []
+    approval_required: false
+    gate_verdict: "**PASS (2026-07-28 D 재VERIFY, head f3fcb11)** — 초판 NO-GO 의 blocker 3건 전부 코드로 해소 확인. 초판 판정: NO-GO(4렌즈 전부 blocks_merge, blocker 7·2건 D 직접확인)."
+    reverify_2026_07_28:   # B 수리 후 D 재검증 — 근거는 전부 D 가 PR 브랜치 코드 직접 확인
+      - "①[해소] '비파일럿 완전 불변' 주장↔코드 불일치 → **거짓 주장 철회 + CLAUDE.md §2.5 폐지 표기**(`~~편집 기간 이후는 모두 읽기 전용.~~ → ADR-0029(R4) 로 폐지`). getWritableUserEmail 은 여전히 cohort 무관이나, blocker 의 본질이 '주장↔코드 모순' 이었고 ADR-0029 의도가 전 기수 쓰기 허용이므로 **SSOT 를 코드에 맞춘 해소가 정당**(더 정직한 방향)."
+      - "②[해소·D 지적 부분오류 정정] 집계 클램프 — D 는 '미팅 루프 **전체** 무필터' 를 blocker 로 봤으나 **부분적으로 틀렸다**. B 가 연습 시트 R1:U6 을 FORMULA 실측: R4·R5(미팅예약·미팅완료)=COUNTIFS **날짜 무필터**(클램프하면 오히려 parity 파손), R6(계약)=주차블록 합(클램프 필요). → **계약만** inSheetWindow 클램프가 정답. 추측 대신 시트 실측으로 교정한 B 판단이 옳다."
+      - "③[해소] 읽기/쓰기 비대칭 데이터 손실 → contact.ts:117 `dbCanonicalRead` 로 **DB 정본 경로 읽기 상한 해제**(시트 폴백은 좌표 없어 유지) + loadDay 왕복 회귀 신설. 주석이 손실 루프(11주+ 화면 0 → draft 0 시드 → 다음 저장이 정본 덮음)를 정확히 명시."
+      - "[부수] #638 목킹 4종 **생존 확인** + 어설션 불변 — B 의 정적 import 는 대체 아닌 보완(리베이스 사고 복구분 검증 완료)."
+    reverify_residual:   # 비차단 — 머지 후 관찰
+      - "M7 감사 미실행 — 창 밖 행 실제 규모 미측정. B 가 도구(scripts/ops/r4-week11-audit.mjs + .github/workflows/db-audit.yml) 준비, **머지 직후 1회 실행 + 결과 공시까지가 완료**. 영향 크면 revert 1건."
+      - "비파일럿 수료생 쓰기의 운영 파급(마감 기수 시트 수정 → 아레나 확정 순위 등)은 이제 문서화된 의도 — 코드 결함 아닌 **belie 정책 판단** 영역."
+    blockers:
+      - "①[blocker·CONFIRMED] **'비파일럿 완전 불변' 주장이 코드와 불일치** — PR 의 getWritableUserEmail 본문이 `return getActiveUserEmail();` 뿐(identity.ts:154-156). cohort 인자·파일럿 판정 없음 → 파일럿 게이트(isDbReadPilot/chooseWriteSource)와 **연결 안 됨**. 비파일럿(예: 7기) 수료생이 마감된 시트에 신규 기입 → 시트 수식 대시보드 즉시 재계산 → 마감 기수 확정 지표 사후 변동, 아레나면 공개 랭킹까지. ADR-0029 롤아웃 조건 '파일럿 우선' 미구현."
+      - "②[blocker·CONFIRMED] **집계 클램프가 같은 함수 안에서 반쪽** — dashboard-aggregates.ts 의 클램프(`weekIndexOf(...) > MAX_SHEET_WEEK` continue)는 **salesRows 루프에만** 걸려 있고 바로 아래 미팅 루프(미팅예약·미팅완료·계약)에는 주차 필터 **없음**. ③ Zod 주차 상한 폐지가 그 유입로를 새로 연다 → 수료 후 미팅·계약이 코스 퍼널 영구 부풀림. 금액 지표(누적수임비·비용·매출)에는 상한 클램프 전무."
+      - "③[blocker·렌즈보고] **읽기/쓰기 비대칭 데이터 손실** — 쓰기만 열고 읽기 클램프는 유지 → 11주+ 저장분이 화면에 0 으로 보이고, 그 0 을 재저장하면 **DB 정본이 0 으로 덮여 손실**. §0 '조용한 반쪽쓰기 금지' 정면 위배."
+    major_findings:
+      - "active 트레이너가 archived 담당 수강생 데이터에 쓰기 가능해지는 권한 확장(canImpersonate 가 target.status 미검사) — PR·테스트 미언급"
+      - "CLAUDE.md §2.5 미갱신 — '편집 기간 이후 읽기 전용'이 절대 원칙으로 남아 SSOT↔코드 모순 상태로 머지됨"
+      - "신규 테스트가 임퍼스네이션·비파일럿·시트 실쓰기 분기 미커버(항진 테스트 성격)"
+    remediation_required:
+      - "파일럿 스코프 복원 — getWritableUserEmail 에 cohort 판정 결합 또는 플래그로 파일럿 한정(주장↔코드 일치가 최소 조건)"
+      - "클램프를 경계에서 — 미팅 루프·금액 지표 포함(지역적으로 걸면 신규 소비자마다 재발)"
+      - "읽기 클램프를 쓰기와 **동시** 해제, 아니면 해제 전까지 11주+ 쓰기 차단(현 상태는 데이터 손실 경로)"
+      - "CLAUDE.md §2.5 동시 갱신"
+    merge_order: "✅ blocker 3건 해소(B) → ✅ D 재VERIFY PASS(f3fcb11) → 머지 → §6.8 + **M7 감사 1회 실행·결과 공시**까지 완주"
+    status: verify_pass   # 2026-07-28 — D 재VERIFY PASS. 머지 가능(머지 주체는 FOREMAN 배정). 완료 조건 = §6.8 + M7 감사 공시.
+    created_at: "2026-07-28"
+    updated_at: "2026-07-28"
+
   - task_id: fmt-unify
     project: dev-harness
     priority: P1

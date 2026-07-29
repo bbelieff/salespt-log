@@ -84,6 +84,14 @@
 
 ## 로그
 
+### 2026-07-28 · DevD(VERIFY) · W1-1(#631) 판정 = **NO-GO** + P1 비용원장 근인(제4결함) 규명·수정 PR
+- 의도: R4 wave-1 VERIFY 트랙 + 라이브 P1(비용원장 저장·조회 비대칭) 근인 규명·fix-forward.
+- 한 것: **①W1-1 #631 = NO-GO** — 4렌즈 전부 blocks_merge, blocker 7 중 2건 D 직접 확인: (a) `getWritableUserEmail` 본문이 `return getActiveUserEmail();` 뿐이라 **cohort 판정이 없어** "비파일럿 완전 불변" 주장이 코드와 불일치(비파일럿 수료생이 마감 시트에 기입 가능) (b) 집계 클램프가 같은 함수 안에서 **반쪽** — salesRows 루프에만 걸리고 미팅 루프(예약·완료·계약)는 무필터. **②P1 근인 확정(제4결함)**: pg-types 가 `date`(OID 1082)를 **로컬 자정 Date** 로 주는데 매퍼가 `String(v).slice(0,10)` → `"Wed Jul 01"` → `days=NaN` 이 가드 두 조건을 **모두 통과** → 빈 배열 → 인식금액 0 → 조용히 증발. 증상 4개(일회성 미노출·요약 ₩0·영업이익 미반영·반복 '이번 발생 없음')가 전부 이 하나로 설명됨. **PR #633**(매퍼 로컬게터 포맷+형식위반 throw, NaN 봉인, 회귀 8건, 18/18 통과).
+- 결정: ①②③(#620/#615 계열)과 **별개 결함**이므로 D 의 기존 NO-GO 목록이 불완전했음을 인정. E fix 범위는 read 경로로 **확장 불필요**(#633 이 덮음) — E 는 ③ split void + effectiveMonth 유지. 반복 '이번 발생 없음'은 `firstRecurringOccurrence` 설계상 정상 → **표시 문구** 사안으로 분리.
+- 추가(2026-07-28 재판정): **#633 완주** — A 독립 VERIFY PASS(3렌즈·타임존 실물 검산) → 리베이스+check.sh 재통과 → 머지·배포 success(1차 SSH 인프라 장애 rerun)·health 200. **W1-1 #631 = 재VERIFY PASS**(head f3fcb11) — blocker 3건 전부 코드 확인 해소(①주장철회+CLAUDE.md §2.5 폐지표기 ②시트 실수식 실측으로 계약만 클램프 ③contact.ts:117 읽기상한 해제+왕복회귀). **D 지적 ② 부분오류 정정** — 미팅 3단계 일괄 클램프는 오히려 parity 파손, B 실측이 정확. 부수: 전 트랙 pre-commit 차단(no-sheet-guard 14.8s/15s) **#638 로 해소**(5.4s, 831/831).
+- 다음: W1-1 머지는 FOREMAN 배정 대기(완료 조건 = §6.8 + **M7 감사 1회 실행·창밖 행 규모 공시**). 비차단 잔여=비파일럿 수료생 쓰기의 운영 파급(belie 정책 판단).
+- SoR: dispatch-queue `r4-w11-verify`, PR #633, scratchpad/expense-ledger-live-repro-2026-07-28.md
+
 ### 2026-07-26 · DevD(VERIFY) · blocker 원인커밋 매핑·최소 revert 셋 확정 (READ_ONLY)
 - 의도: FOREMAN 판정 수용 후 즉시 — ①②③ 원인 커밋 매핑 + 최소 revert 셋 확정. 실행은 DevA(#620 revert), D 는 매핑·검증만.
 - 한 것: **①② = fed3307(#620)** lib/repo/db.ts:108·:122 → #620 revert 로 닫힘. **③ = 92a0a65(#615 본체)** splitRecurringRuleFromMonth → **#620 revert 로 안 닫힘**(#617 은 archive 경로에만 void SQL 추가, split 누락). revert 적용성 dry-run **CLEAN**(`git apply --reverse --check` 통과, 이후 동일파일 접촉 커밋 0, db-cost-ledger.ts·import·테스트 전부 #620 소산이라 자기완결). ③ 라이브 도달성 CONFIRMED(expense-ledger.ts:203 이 nextMonth 까지 선 materialize).
