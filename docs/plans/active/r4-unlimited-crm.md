@@ -157,6 +157,23 @@ G1 완전 해제 = **11주+ 저장 허용**인데, 시트 01 영업관리는 **�
   계약만 클램프하도록 교정(예약·완료는 무필터 유지). 날짜 없는 계약은 fail-closed(시트 N 주차행에도
   안 걸림 — 동일 의미). 회귀 4건으로 이 **단계별 비대칭**을 계약으로 고정.
 
+### 4-4. ✅ 캐시 Date 강등(P0 클래스) 비해당 검증 — W1-1 클램프 (2026-07-29)
+
+#639(전광판 500)가 드러낸 **재발 클래스**: `unstable_cache` 는 JSON 직렬화라 **Date 를 캐시하면 히트 시
+string 으로 강등**되는데 타입은 Date 라고 거짓말한다 → 소비처의 `.getTime()` 이 500(me.ts 2026-05-13,
+scoreboard 2026-07-29 — 2회 재발). W1-1 의 집계 클램프(`inSheetWindow` → `weekIndexOf` → `getTime`)는
+**courseStart: Date 를 새로 소비**하므로 3번째 재발 후보였다. 실측 결과 **비해당**:
+
+1. `dashboard.ts:333` 의 `readProfileBundle` 은 `@/repo/sales` **원본 함수**(캐시 래퍼가 아니다).
+   me.ts 의 캐시 래퍼(`cachedReadBundle`)는 애초에 **primitive(courseStartMs)만 저장**하고 호출부가
+   Date 로 복원한다(2026-05-13 수리). 다른 분기(`courseStartISOCache`)는 ISO 문자열에서 **로컬 생성**.
+2. 같은 `courseStart` 변수가 이미 `terminatedByWeek(contracts, courseStart)`(dashboard.ts:364)로
+   `weekIndexOf → getTime` 을 타고 있다 — 강등 값이 흐를 수 있었다면 **대시보드가 이미 500** 이었다.
+
+→ 클램프는 새 캐시 경계를 만들지 않는다. 다만 `inSheetWindow` 는 파싱 실패 시 **fail-closed**(그 행을
+집계 제외)라 강등이 생겨도 500 대신 수치 누락으로 degrade 한다. 향후 이 경로에 캐시를 끼우려면
+#639 규칙(**경계는 ISO 문자열, 소비처가 parseISO 복원**)을 따를 것.
+
 ## 5. non-goal (R4 에서 하지 않는 것 — 정본 §R4/§R5/§R6)
 - **아레나 라벨 통합(A1-N기→N기)·동일인 병합(D2)** = R5(별도 plan). R4 는 아레나 집계 기준(8주 창)만 유지.
 - **결제/PG(B4)** = 결제 착수 시점 별도 plan. R4 는 §B3 계기판까지만.
