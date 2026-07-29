@@ -329,7 +329,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                 onPause={(id) => pauseRule.mutate({ id, value: today() })}
                 onResume={(id) => resumeRule.mutate({ id, value: today() })}
                 onSkip={(id) => skipRule.mutate({ id, value: month })}
-                onFutureAmount={(id) => patchRule.mutate({ id, body: { scope: "future", effectiveMonth: month, patch: { amountWon } } })}
+                onFutureAmount={(id) => patchRule.mutate({ id, body: { scope: "future", /* 라벨이 "다음 달부터" → 조회 중인 달 +1. 이전엔 month 라 확정된 그 달까지 바뀜 */ effectiveMonth: shiftMonth(month, 1), patch: { amountWon } } })}
                 onDelete={async (id) => {
                   setMessage(null);
                   await deleteRecurring.mutateAsync(id);
