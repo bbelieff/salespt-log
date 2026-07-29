@@ -19,6 +19,7 @@ import {
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
 import { readCourseStart, weekIndexOf } from "@/repo/sales";
+import { parseISO } from "@/util/week";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
@@ -45,10 +46,13 @@ const cachedContractPayments = unstable_cache(
   { revalidate: 1800, tags: [SCOREBOARD_TAG] },
 );
 
-/** 시트 1개 O1(수강시작일) read — 이월 경계(매출 분리) 판정용. 동일 30분 캐시 태그. */
+/** 시트 1개 O1(수강시작일) read — 이월 경계(매출 분리) 판정용. 동일 30분 캐시 태그.
+ *  ⚠️ unstable_cache 는 JSON 직렬화 — Date 를 그대로 캐시하면 히트 시 string 으로 강등돼
+ *  weekIndexOf `.getTime()` 이 500 을 던진다(2026-07-29 P0, me.ts 2026-05-13 동일 사고).
+ *  경계는 "YYYY-MM-DD" 문자열로만 통과시키고 소비처가 parseISO 로 복원한다. */
 const cachedCourseStart = unstable_cache(
-  async (sheetId: string) => readCourseStart(sheetId),
-  ["arena-scoreboard-coursestart-v1"],
+  async (sheetId: string) => toISODate(await readCourseStart(sheetId)) || null,
+  ["arena-scoreboard-coursestart-v2"], // v2: Date → ISO 문자열 (구 캐시 오염 회피)
   { revalidate: 1800, tags: [SCOREBOARD_TAG] },
 );
 
@@ -136,8 +140,8 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
       ]);
       if (!wp) return null;
       const termWeeks = courseStart
-        ? terminatedByWeek(payments, courseStart)
-        : new Array<number>(8).fill(0);
+        ? terminatedByWeek(payments, parseISO(courseStart))
+        : new Array<number>(STATS_WEEKS).fill(0);
       return { wp, termWeeks };
     });
     const valid = reads.filter(
@@ -244,11 +248,12 @@ export async function loadIndividualRankings(): Promise<
     }
     // 해지 계약은 계약 "수"에서 제외(계약일 주차 1~8, plain isTerminated — raw 주차정의와 정합).
     // 매출·앱사용량은 무변(매출은 splitContractRevenue.arena 가 이미 반환액 차감).
-    if (courseStart) 계약 = Math.max(0, 계약 - countTerminatedInWeeks(payments, courseStart));
+    if (courseStart)
+      계약 = Math.max(0, 계약 - countTerminatedInWeeks(payments, parseISO(courseStart)));
     // 매출 = 수임비 + 수납액(이월 제외) — 대시보드 KPI 와 동일 정의(splitContractRevenue.arena).
     // 시트 총매출 셀(승인 포함 가능) 의존 제거 → 전광판·KPI 매출 절대 안 어긋남.
     const 매출 = courseStart
-      ? splitContractRevenue(payments, toISODate(courseStart)).arena.revenue
+      ? splitContractRevenue(payments, courseStart).arena.revenue
       : 0;
     return { name: info.name, cohort: info.cohort, 미팅, 계약, 매출, 앱사용량 };
   });
