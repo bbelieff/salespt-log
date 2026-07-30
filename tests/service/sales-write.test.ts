@@ -103,6 +103,9 @@ beforeEach(() => {
   writeSalesRowsToDb.mockResolvedValue(undefined);
   readSalesRowFromDb.mockResolvedValue(mkDbRow());
   writeSalesRowCells.mockResolvedValue(true);
+  // 기본 = 시트 좌표 있는 주차(1~MAX_SHEET_WEEK). R4 W1-1 부터 persistSalesRows 도 이 게이트를
+  // 타며, 11주+(false)만 미러를 건너뛴다 — 아래 "R4 무제한" describe 가 그 분기를 고정.
+  isWithinSalesWindow.mockResolvedValue(true);
   batchWriteChannelDailyRows.mockResolvedValue(undefined);
   markMirrorPending.mockResolvedValue(undefined);
   clearMirrorPending.mockResolvedValue(undefined);
@@ -181,5 +184,62 @@ describe("비파일럿/미설정 = 시트 정본, 표식 미개입", () => {
     await persistSalesRows("8", EMAIL, SHEET, [mkRow()]);
     expect(batchWriteChannelDailyRows).toHaveBeenCalledWith(SHEET, [mkRow()]);
     expect(writeSalesRowsToDb).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * R4 W1-1 — 쓰기 무제한(ADR-0029 G1). 시트 주차블록은 MAX_SHEET_WEEK 까지만 존재하므로
+ * 그 밖(11주+)은 **DB-only**: 정본은 기록하되 시트 write·미러를 건너뛰고, 영원히 수렴 못 할 행을
+ * mirror_pending 에 쌓지 않는다(self-heal 큐 오염 금지).
+ */
+describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
+  it("창 밖: DB 정본은 기록 · 시트 미러/표식은 없음", async () => {
+    isWithinSalesWindow.mockResolvedValue(false); // 11주+ = 시트 좌표 없음
+    await persistSalesRows("8", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]);
+    expect(writeSalesRowsToDb).toHaveBeenCalledTimes(1); // 저장은 정상(무제한 쓰기)
+    await new Promise((r) => setTimeout(r, 20)); // 미러 큐가 돌 틈을 준다
+    expect(writeSalesRowCells).not.toHaveBeenCalled(); // 시트 write 없음
+    expect(markMirrorPending).not.toHaveBeenCalled(); // pending 오염 없음
+    expect(clearMirrorPending).not.toHaveBeenCalled();
+  });
+
+  it("창 안/밖 혼재 저장: 창 안 행만 미러 큐에 오른다", async () => {
+    isWithinSalesWindow.mockImplementation(async (_sid: unknown, date: unknown) =>
+      date === "2026-07-15",
+    );
+    await persistSalesRows("8", EMAIL, SHEET, [
+      mkRow({ date: "2026-07-15" }), // 창 안
+      mkRow({ date: "2026-09-30" }), // 창 밖(11주+)
+    ]);
+    expect(writeSalesRowsToDb).toHaveBeenCalledTimes(1); // 두 행 모두 DB 정본
+    await vi.waitFor(() => expect(writeSalesRowCells).toHaveBeenCalledTimes(1));
+    expect(writeSalesRowCells).toHaveBeenCalledWith(
+      SHEET, "2026-07-15", "현수막", expect.anything(),
+    );
+  });
+
+  it("비파일럿은 완전 불변 — 창 판정 자체를 하지 않고 기존 시트 경로", async () => {
+    isWithinSalesWindow.mockResolvedValue(false);
+    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]);
+    expect(batchWriteChannelDailyRows).toHaveBeenCalledTimes(1); // R2 그대로
+    expect(isWithinSalesWindow).not.toHaveBeenCalled();
+    expect(writeSalesRowsToDb).not.toHaveBeenCalled();
+  });
+
+  // 적대리뷰 M4/M6 — 창 판정은 **시트 read** 다. 정본(DB)은 그 앞에서 이미 커밋됐으므로
+  // 시트 장애가 저장 응답을 실패로 만들면 안 된다("저장은 됐는데 사용자에겐 실패" + 나머지 행이
+  // 큐·mirror_pending 어디에도 없어 self-heal 영구 누락).
+  it("창 판정이 throw 해도 저장은 성공 — 시트 장애가 정본 저장의 인질이 되지 않는다", async () => {
+    isWithinSalesWindow.mockRejectedValue(new Error("sheets 429"));
+    await expect(
+      persistSalesRows("8", EMAIL, SHEET, [mkRow(), mkRow({ channel: "매입DB" })]),
+    ).resolves.toBeUndefined();
+    expect(writeSalesRowsToDb).toHaveBeenCalledTimes(1); // 정본 저장 성사
+  });
+
+  it("판정 throw 시 미러는 큐에 맡긴다(재시도·pending 경로 보유) — 행 유실 없음", async () => {
+    isWithinSalesWindow.mockRejectedValue(new Error("sheets 500"));
+    await persistSalesRows("8", EMAIL, SHEET, [mkRow()]);
+    await vi.waitFor(() => expect(writeSalesRowCells).toHaveBeenCalled());
   });
 });

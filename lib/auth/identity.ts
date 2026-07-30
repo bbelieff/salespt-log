@@ -140,22 +140,23 @@ export async function getActiveUserEmail(): Promise<string> {
   return as.toLowerCase();
 }
 
-/** 보관 사용자 읽기 전용 위반 식별용 — 라우트 catch 가 403 으로 매핑. */
-export const READ_ONLY_ARCHIVED_MSG =
-  "수료(보관)된 기수는 읽기 전용이에요. 저장할 수 없어요.";
-
-/** 쓰기 경로 전용 대상 이메일 — archived(보관) 사용자는 차단(읽기 전용 보장,
- * archived-login-access 2026-07-07). 보관 라우팅 통과와 세트: 입장은 허용하되
- * 저장 계열 API 는 이 함수로 교체해 과거 데이터 오염을 막는다.
- * **admin 세션(impersonation 포함)은 예외** — 관리자 보정 작업 기존 동작 유지.
- * GET(읽기) 라우트는 getActiveUserEmail/getCurrentUserEmail 그대로 사용할 것. */
+/**
+ * 쓰기 경로 전용 대상 이메일.
+ *
+ * **R4 W1-1 / ADR-0029(G1 = 편집 완전 해제)**: archived(수료·보관) 쓰기 차단을 **폐지**한다.
+ * 수료 후에도 자기 기록을 계속 입력·수정하는 무제한 CRM 이 목적이므로, 종강이 저장을 막지 않는다.
+ * (구 동작 = archived 읽기전용, archived-login-access 2026-07-07 — ADR-0029 §4 가 supersede.)
+ *
+ * ⚠️ **적용 범위 = 전 기수 전역**(cohort 인자·조회 없음). 파일럿 게이트(chooseWriteSource)는
+ * sales-write 등 **쓰기 경로**에만 있고 권한 계층엔 없다 — 즉 비파일럿 수료생도 이 시점부터
+ * 1~MAX_SHEET_WEEK 날짜에 자기 시트를 쓸 수 있다(belie G1 '편집 완전 해제'의 귀결).
+ * 11주+ 는 비파일럿에서 시트 좌표가 없어 salesRowFor 가 throw 한다(후속 wave 대상).
+ * 함수는 **유지**한다(≈30개 쓰기 라우트 호출부 무변경 + "여기가 쓰기 진입점" 표식).
+ * 되돌리려면 이 함수 하나만 옛 구현으로 복원하면 된다(롤백 지점 단일화).
+ * 미인증 throw 는 동일 — 인증 자체는 그대로 요구한다.
+ */
 export async function getWritableUserEmail(): Promise<string> {
-  const sessionEmail = await getSessionEmail();
-  const email = await getActiveUserEmail(); // 미인증 throw 동일
-  if (sessionEmail && isAdminEmail(sessionEmail)) return email;
-  const u = await findUserByEmail(email);
-  if (u?.status === "archived") throw new Error(READ_ONLY_ARCHIVED_MSG);
-  return email;
+  return getActiveUserEmail();
 }
 
 /** admin/trainer 만 impersonation 설정 가능. 권한 위반 시 throw. */

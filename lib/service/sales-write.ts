@@ -143,7 +143,17 @@ export async function persistSalesRows(
   if (isDbCanonical(cohort)) {
     await writeSalesRowsToDb({ spreadsheetId, cohort, email, rows: toDbRows(rows) });
     const ctx: SalesCtx = { spreadsheetId, cohort, email };
-    for (const r of rows) queueSalesRowSync(ctx, r.date, r.channel); // 수렴 미러(스냅샷 재생 아님)
+    for (const r of rows) {
+      // R4 W1-1: 11주+(시트 좌표 없음)는 **미러 큐에 넣지 않는다** — 넣어도 수렴 잡이 no-op 이지만
+      // 매 저장마다 무의미한 시트 read 를 지불하고, 실패 시 mirror_pending 에 **영원히 수렴 못 할
+      // 행**이 쌓여 self-heal 큐가 오염된다(§7-3). 정본(DB)은 이미 위에서 기록 완료.
+      // 판정 실패(시트 429/5xx/O1 공백)는 **true 로 흡수** — 정본(DB)은 이미 커밋됐고, 미러 큐는
+      // 자체 재시도·mirror_pending·Sentry 를 갖는다. 여기서 throw 하면 "저장은 됐는데 사용자에겐
+      // 실패" + 나머지 행이 큐에도 pending 에도 없어 self-heal 대상에서 영구 누락된다(적대리뷰 M4).
+      if (await isWithinSalesWindow(spreadsheetId, r.date, r.channel).catch(() => true)) {
+        queueSalesRowSync(ctx, r.date, r.channel); // 수렴 미러(스냅샷 재생 아님)
+      }
+    }
   } else {
     await batchWriteChannelDailyRows(spreadsheetId, rows);
   }
@@ -165,12 +175,12 @@ export async function persistProductionCell(
     await writeProductionCell(ctx.spreadsheetId, date, channel, count);
     return;
   }
-  if (!(await isWithinSalesWindow(ctx.spreadsheetId, date, channel))) return;
-  // 콜·지·기·소는 유입 = 생산(ADR-0029) — 두 키 동시.
+  const onSheet = await isWithinSalesWindow(ctx.spreadsheetId, date, channel).catch(() => true);
+  // 콜·지·기·소는 유입 = 생산(ADR-0020/0029) — 두 키 동시.
   const cells: Record<string, number> =
     channel === "콜·지·기·소" ? { production: count, inflow: count } : { production: count };
-  await upsertSalesCells(ctx, date, channel, cells);
-  queueSalesRowSync(ctx, date, channel);
+  await upsertSalesCells(ctx, date, channel, cells); // 11주+ 도 DB 정본에는 기록(R4 무제한)
+  if (onSheet) queueSalesRowSync(ctx, date, channel); // 시트 좌표 있는 행만 미러
 }
 
 /** 미팅예약(H) 재동기화 — ADR-0010 대로 **카드 수 절대 재계산**(±1 누적 RMW 폐기).
@@ -188,9 +198,9 @@ export async function persistMeetingReservationCount(
     await decrementMeetingReservation(ctx.spreadsheetId, date, channel);
     return;
   }
-  if (!(await isWithinSalesWindow(ctx.spreadsheetId, date, channel))) return;
+  const onSheet = await isWithinSalesWindow(ctx.spreadsheetId, date, channel).catch(() => true);
   const meetings = await readMeetingsFromDb(ctx.spreadsheetId);
   const cardCount = meetings.filter((m) => m.예약일 === date && m.channel === channel).length;
-  await upsertSalesCells(ctx, date, channel, { meetingReservation: cardCount });
-  queueSalesRowSync(ctx, date, channel);
+  await upsertSalesCells(ctx, date, channel, { meetingReservation: cardCount }); // 11주+ 도 DB 기록
+  if (onSheet) queueSalesRowSync(ctx, date, channel); // 시트 좌표 있는 행만 미러
 }

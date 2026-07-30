@@ -38,6 +38,13 @@ vi.mock("googleapis", () => ({
   },
 }));
 
+// R4 W1-1 추가(#638 목킹 위에): 대상 모듈을 **정적 import** 로 올린다. 동적 `await import()` 를 테스트
+// 본문에서 하면 남은 transform 비용이 **per-test 타임아웃 안**에 들어와, 느린 머신에서 목킹 후에도
+// 15s 를 넘겼다(실측). 정적 import 는 그 비용을 collect 단계(무제한)로 옮긴다 — 검증 대상 불변.
+import { loadDashboard } from "@/service/dashboard";
+import { loadDay } from "@/service/contact";
+import { loadWeekMeetings } from "@/service/contact-week";
+
 /** rejects.toThrow 가 이 모듈 그래프에서 hang(원인 미상·실측) → try/catch 소비 형태로 검증. */
 async function rejectionOf(p: Promise<unknown>): Promise<string> {
   try {
@@ -49,23 +56,19 @@ async function rejectionOf(p: Promise<unknown>): Promise<string> {
 }
 
 describe("[no-sheet] 읽기 서비스 가드", () => {
-  // dashboard 모듈 그래프가 googleapis·pg Pool·analytics 를 끌어와 느렸다(14.8s → 15s 제한에
-  // 붙어 전체 스위트에서 타임아웃 = 전 트랙 pre-commit 차단). 위 목킹으로 5.4s(실측). 타임아웃은
-  // 여유분으로 유지 — 다시 10s 를 넘기면 그건 모듈 그래프가 또 무거워졌다는 신호다.
+  // #638 목킹(googleapis·pg Pool·analytics) + 정적 import 로 잔여 transform 을 collect 로 이관 →
+  // 테스트 본문은 ms 단위. per-test 타임아웃 오버라이드는 불필요해져 제거(전역 기본값 사용).
   it("loadDashboard: 빈 spreadsheetId → [no-sheet] throw", async () => {
-    const { loadDashboard } = await import("@/service/dashboard");
     expect(await rejectionOf(loadDashboard("trainer@x.com"))).toMatch(/^\[no-sheet\]/);
-  }, 15000);
+  });
 
   it("loadDay(contact): 빈 spreadsheetId → [no-sheet] throw", async () => {
-    const { loadDay } = await import("@/service/contact");
     expect(await rejectionOf(loadDay("trainer@x.com", "2026-07-28"))).toMatch(
       /^\[no-sheet\]/,
     );
   });
 
   it("loadWeekMeetings: 빈 spreadsheetId → [no-sheet] throw", async () => {
-    const { loadWeekMeetings } = await import("@/service/contact-week");
     expect(await rejectionOf(loadWeekMeetings("trainer@x.com", "2026-07-24"))).toMatch(
       /^\[no-sheet\]/,
     );

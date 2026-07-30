@@ -66,7 +66,7 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail(); // archived 읽기전용 가드
+    const email = await getWritableUserEmail(); // 쓰기 진입점(ADR-0029: archived 차단 폐지)
     const result = await saveContactMetrics(email, dateParsed.data, bodyParsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {

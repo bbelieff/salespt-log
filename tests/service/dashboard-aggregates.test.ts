@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContractPayment, Meeting } from "@/types";
 import type { DbSalesRow } from "@/repo/db/client";
+import { MAX_SHEET_WEEK } from "@/config/cohort-dates"; // 리터럴 금지(period-hardcode G3)
 import {
   arenaFeeFromDb,
   channelStackingFromDb,
@@ -41,30 +42,123 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
       sales("2026-06-03", "매입DB", 3, 1, 1, 1),
       sales("2026-06-02", "현수막", 7, 0, 2, 0),
     ];
-    const m = channelStackingFromDb(rows, []);
+    const m = channelStackingFromDb(rows, [], CS);
     const 매입 = m.find((x) => x.채널 === "매입DB")!;
     expect(매입).toMatchObject({ 생산: 13, 유입: 6, 컨택진행: 5, 미팅예약: 0 }); // 미팅 카드 없음 → 0
     expect(m.find((x) => x.채널 === "현수막")!.생산).toBe(7);
   });
 
   it("누적 퍼널: 미팅예약=상태∈{예약,완료,계약}, 미팅완료=상태∈{완료,계약}, 계약=계약여부", () => {
+    // ※ 계약 카운트는 R6(=N 주차블록 합) 대칭이라 **미팅날짜가 창 안**이어야 계상된다(아래 R4 클램프
+    //   describe 참조). 픽스처에 코스 기간 내 날짜를 준다 — 실제 계약 미팅은 미팅날짜를 갖는다.
+    const IN = "2026-06-10"; // 2주차
     const meetings = [
-      mtg({ channel: "매입DB", 상태: "예약" }),
-      mtg({ channel: "매입DB", 상태: "완료" }),
-      mtg({ channel: "매입DB", 상태: "계약", 계약여부: true }),
-      mtg({ channel: "매입DB", 상태: "변경" }), // 퍼널 제외
-      mtg({ channel: "매입DB", 상태: "취소" }), // 퍼널 제외
+      mtg({ channel: "매입DB", 상태: "예약", 미팅날짜: IN }),
+      mtg({ channel: "매입DB", 상태: "완료", 미팅날짜: IN }),
+      mtg({ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: IN }),
+      mtg({ channel: "매입DB", 상태: "변경", 미팅날짜: IN }), // 퍼널 제외
+      mtg({ channel: "매입DB", 상태: "취소", 미팅날짜: IN }), // 퍼널 제외
     ];
-    const 매입 = channelStackingFromDb([], meetings).find((x) => x.채널 === "매입DB")!;
+    const 매입 = channelStackingFromDb([], meetings, CS).find((x) => x.채널 === "매입DB")!;
     expect(매입.미팅예약).toBe(3); // 예약+완료+계약 (변경·취소 제외)
     expect(매입.미팅완료).toBe(2); // 완료+계약
     expect(매입.계약).toBe(1); // 계약여부 true
   });
 
+  it("미팅날짜 없는 계약은 계상 안 함 — 시트 N 주차행에도 안 걸린다(fail-closed)", () => {
+    const 매입 = channelStackingFromDb(
+      [],
+      [mtg({ channel: "매입DB", 상태: "계약", 계약여부: true })], // 미팅날짜 ""
+      CS,
+    ).find((x) => x.채널 === "매입DB")!;
+    expect(매입.계약).toBe(0);
+    expect(매입.미팅예약).toBe(1); // 예약·완료는 COUNTIFS(무필터) 대칭 — 날짜와 무관
+  });
+
   it("오염 채널(CHANNEL_ORDER 밖) 무시, 4채널 항상 반환", () => {
-    const m = channelStackingFromDb([sales("2026-06-02", "coljigiso", 9, 9, 9, 9)], []);
+    const m = channelStackingFromDb([sales("2026-06-02", "coljigiso", 9, 9, 9, 9)], [], CS);
     expect(m).toHaveLength(4);
     expect(m.every((x) => x.생산 === 0)).toBe(true);
+  });
+
+  // R4 W1-1: 무제한 쓰기(11주+ DB-only)가 코스 지표를 오염시키지 않는다는 계약.
+  // 상한 = MAX_SHEET_WEEK(시트 물리 창) — 리터럴 금지(period-hardcode G3).
+  describe("R4 클램프 — 시트 표현 가능 창 밖(11주+) 은 집계 제외", () => {
+    /** courseStart(CS) 로부터 week 번째 주의 임의 날짜(주 시작일). */
+    const dateOfWeek = (week: number): string => {
+      const d = new Date(CS);
+      d.setDate(d.getDate() + (week - 1) * 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    it(`${"MAX_SHEET_WEEK"} 이내 행은 그대로 합산(오늘 수치 불변 보증)`, () => {
+      const rows = [
+        sales(dateOfWeek(1), "매입DB", 1, 0, 0, 0),
+        sales(dateOfWeek(MAX_SHEET_WEEK), "매입DB", 2, 0, 0, 0), // 경계 = 포함
+      ];
+      const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
+      expect(매입.생산).toBe(3);
+    });
+
+    it("상한 밖(MAX_SHEET_WEEK+1 주차) 행은 생산/유입/컨택진행에 합산되지 않는다", () => {
+      const rows = [
+        sales(dateOfWeek(1), "매입DB", 5, 5, 5, 0),
+        sales(dateOfWeek(MAX_SHEET_WEEK + 1), "매입DB", 100, 100, 100, 0), // 11주+ = DB-only 저장분
+      ];
+      const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
+      expect(매입).toMatchObject({ 생산: 5, 유입: 5, 컨택진행: 5 }); // 부풀림 0
+    });
+
+    it("먼 미래(수료 한참 뒤) 기록이 쌓여도 코스 지표는 고정", () => {
+      const far = [40, 80, 200].map((w) => sales(dateOfWeek(w), "현수막", 7, 7, 7, 0));
+      const 현수막 = channelStackingFromDb(far, [], CS).find((x) => x.채널 === "현수막")!;
+      expect(현수막).toMatchObject({ 생산: 0, 유입: 0, 컨택진행: 0 });
+    });
+
+    // 적대리뷰 M2 반영 — 초판은 "하한은 클램프하지 않는다(parity 보존)"로 **구멍을 계약으로 잠갔다**.
+    // 실제로는 삭제된 쓰기 가드가 주차 0 기입도 막고 있었고, 시트엔 주차 0 좌표가 없으므로
+    // 하한을 열어두는 것이 곧 parity 위반이다. 계약을 뒤집는다.
+    it("하한(수강 시작 전 = 주차 0) 행도 집계에서 제외 — 시트에 좌표가 없다", () => {
+      const before = new Date(CS);
+      before.setDate(before.getDate() - 3); // 수강 시작 3일 전 = weekIndexOf 0
+      const iso = `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, "0")}-${String(before.getDate()).padStart(2, "0")}`;
+      const 매입 = channelStackingFromDb([sales(iso, "매입DB", 4, 0, 0, 0)], [], CS).find(
+        (x) => x.채널 === "매입DB",
+      )!;
+      expect(매입.생산).toBe(0);
+    });
+
+    // M3 — **시트 실수식 실측(2026-07-28, 연습 시트 01!R1:U6)** 이 확정한 단계별 비대칭:
+    //   R4 미팅예약 · R5 미팅완료 = COUNTIFS(04!F:F, J:J) → **날짜 무필터** → 클램프 금지
+    //   R6 계약        = `=N10+N14+…+N272`            → **주차블록 합**   → 클램프 필요
+    // 셋을 같은 규칙으로 묶으면 어느 쪽이든 시트↔DB parity 가 영구 diff 를 낸다.
+    // ⚠️ 시트 수식이 바뀌면 이 테스트가 먼저 깨져야 한다(= 그때 코드도 함께 바꾼다).
+    it("11주+ 미팅: 예약·완료는 세고(COUNTIFS 대칭), 계약만 제외(N 주차블록 합 대칭)", () => {
+      const far = new Date(CS);
+      far.setDate(far.getDate() + (MAX_SHEET_WEEK + 5) * 7); // 15주차쯤
+      const iso = `${far.getFullYear()}-${String(far.getMonth() + 1).padStart(2, "0")}-${String(far.getDate()).padStart(2, "0")}`;
+      const 매입 = channelStackingFromDb(
+        [],
+        [
+          mtg({ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: iso, 예약일: iso }),
+          mtg({ channel: "매입DB", 상태: "완료", 미팅날짜: iso, 예약일: iso }),
+        ],
+        CS,
+      ).find((x) => x.채널 === "매입DB")!;
+      expect(매입).toMatchObject({ 미팅예약: 2, 미팅완료: 2, 계약: 0 });
+    });
+
+    it("코스 기간 안 계약은 그대로 계상(클램프가 정상 데이터를 깎지 않는다)", () => {
+      const d = new Date(CS);
+      d.setDate(d.getDate() + 7); // 2주차
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const 매입 = channelStackingFromDb(
+        [],
+        [mtg({ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: iso, 예약일: iso })],
+        CS,
+      ).find((x) => x.채널 === "매입DB")!;
+      expect(매입).toMatchObject({ 미팅예약: 1, 미팅완료: 1, 계약: 1 });
+    });
   });
 });
 
@@ -121,7 +215,7 @@ describe("R2-7a arenaFeeFromDb + diff", () => {
 
   it("diffDashboardAggregates: 불일치 필드만 반환", () => {
     const base = {
-      channelMatrix: channelStackingFromDb([sales("2026-06-02", "매입DB", 10, 0, 0, 0)], []),
+      channelMatrix: channelStackingFromDb([sales("2026-06-02", "매입DB", 10, 0, 0, 0)], [], CS),
       weeklyContracts: [1, 0, 0, 0, 0, 0, 0, 0],
       weeklyActivity: [20, 0, 0, 0, 0, 0, 0, 0],
       누적수임비: 100,

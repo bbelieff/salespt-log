@@ -27,7 +27,7 @@ import {
   isCarryoverContract,
 } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { MAX_SHEET_WEEK, STATS_WEEKS } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -60,6 +60,14 @@ const DONE = (상태: Meeting["상태"]): boolean => 상태 === "완료" || 상�
 /** 이월 미팅(구분="이월", 시트 AO열) — 퍼널·활동량 카운트에서 제외. */
 const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
 
+/** 시트가 물리적으로 담을 수 있는 주차 창(1~MAX_SHEET_WEEK) 안인가 — R4 무제한 쓰기의 집계 클램프.
+ * 날짜가 없거나 파싱 불가면 **제외**(fail-closed) — 창 판정을 못 하는 행이 지표를 부풀리지 않게. */
+function inSheetWindow(dateISO: string | undefined, courseStart: Date): boolean {
+  if (!dateISO) return false;
+  const w = weekIndexOf(parseISO(dateISO), courseStart);
+  return Number.isFinite(w) && w >= 1 && w <= MAX_SHEET_WEEK;
+}
+
 /** 채널별 6단계 stacking (01!R1:U6 재현). 생산/유입/컨택진행=salesRows 합,
  * 미팅예약/미팅완료/계약=미팅 카드 상태별 카운트(누적 퍼널 — 실측 규명 2026-07-09).
  *   미팅예약 = 상태∈{예약,완료,계약}(변경·취소 제외)  ← Σsales.meetingReservation 아님(stale).
@@ -67,6 +75,7 @@ const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
 export function channelStackingFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
+  courseStart: Date,
 ): DashboardChannelMatrix[] {
   const byCh = new Map<Channel, DashboardChannelMatrix>();
   for (const ch of CHANNEL_ORDER) byCh.set(ch, EMPTY_STAGE(ch));
@@ -74,6 +83,11 @@ export function channelStackingFromDb(
   for (const r of salesRows) {
     const m = byCh.get(r.channel as Channel);
     if (!m) continue; // 오염 채널 무시(CHANNEL_ORDER 만)
+    // R4 W1-1: **시트 표현 가능 창(1~MAX_SHEET_WEEK) 클램프**(양방향). 무제한 쓰기(11주+ DB-only)를
+    // 열면서 이게 없으면 시트가 담지 못하는 행까지 합산돼 대시보드가 영구히 부푼다. 하한도 건다 —
+    // 삭제된 쓰기 가드(isWithinSalesWindow=salesRowFor)는 주차 0(수강 시작 전) 기입도 막고 있었다.
+    // 실측 근거: 시트 R1~R3 = `=E10+E14+…+E272`(주차블록 1~10 행 열거) → 창 밖은 시트도 안 센다.
+    if (!inSheetWindow(r.date, courseStart)) continue;
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
     m.컨택진행 += num(r.contactProgress);
@@ -82,9 +96,13 @@ export function channelStackingFromDb(
     const m = byCh.get(mt.channel);
     if (!m) continue;
     if (CARRYOVER(mt)) continue; // R4/R5 수식 AO<>"이월" — 이월 미팅 제외
-    if (ALIVE(mt.상태)) m.미팅예약 += 1; // 누적 퍼널: 살아있는 미팅 전부
+    // ⚠️ 시트 수식 실측(2026-07-28, 연습 시트 R1:U6)이 **단계별로 다른 창**을 쓴다:
+    //   R4 미팅예약 · R5 미팅완료 = COUNTIFS(04!F:F,J:J) — **날짜 무필터** → 클램프 금지.
+    //   R6 계약        = N10+N14+…+N272 — **주차블록 합(1~MAX_SHEET_WEEK)** → 클램프 필요.
+    // 셋을 같은 규칙으로 묶으면 어느 쪽이든 parity 가 깨진다(reverseShadowCompare 영구 diff).
+    if (ALIVE(mt.상태)) m.미팅예약 += 1; // 누적 퍼널: 살아있는 미팅 전부(무필터 = 시트 대칭)
     if (DONE(mt.상태)) m.미팅완료 += 1;
-    if (mt.계약여부) m.계약 += 1;
+    if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart)) m.계약 += 1; // N 주차블록 합 대칭
   }
   return CHANNEL_ORDER.map((ch) => byCh.get(ch)!);
 }
@@ -195,7 +213,7 @@ export function computeDbAggregates(
   누적수임비: number;
 } {
   return {
-    channelMatrix: channelStackingFromDb(salesRows, meetings),
+    channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart),
     weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
     weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
     누적수임비: arenaFeeFromDb(contracts, courseStartISO),

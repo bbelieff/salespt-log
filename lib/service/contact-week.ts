@@ -111,9 +111,11 @@ export async function loadWeekMeetings(
         readSalesRowsFromDb(spreadsheetId),
       ]);
       both = groupMeetingsBoth(allMeetings, dates);
-      // funnel — 시트 readWeekFunnel 과 동일 의미: 주 블록(수강시작 기준 7일) 합,
-      // 1~10주 밖은 0 (같은 가드).
-      if (week >= 1 && week <= MAX_SHEET_WEEK) {
+      // funnel — 주 블록(수강시작 기준 7일) 합.
+      // R4 W1-1: DB 정본은 **상한을 걸지 않는다**(11주+ 도 정본 보유 — 화면이 0 이면 저장분이
+      // 사라진 것처럼 보이고 재저장이 정본을 덮는다). 하한(주차 0=수강 시작 전)만 0 처리 —
+      // 그 주 블록은 애초에 존재하지 않는다. 시트 폴백 경로(아래)는 기존 1~MAX_SHEET_WEEK 유지.
+      if (week >= 1) {
         const blockDates = sevenDays(
           (() => { const d = new Date(courseStart); d.setDate(d.getDate() + (week - 1) * 7); return d; })(),
         );

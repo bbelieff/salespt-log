@@ -114,6 +114,7 @@ export async function loadDay(
   let sums: ReturnType<typeof stackingSumsFromRows> | null = null;
   let meetings: Meeting[] | null = null;
   let bannerOrderQty: number | null = null;
+  let dbCanonicalRead = false; // R4 W1-1: DB 정본 read 성공 → 주차상한 지우기 해제(안 그러면 11주+ 화면 0 → draft 0 시드 → 다음 저장이 정본을 덮음)
 
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
@@ -133,9 +134,10 @@ export async function loadDay(
       sums = stackingSumsFromRows(valid);
       meetings = allMeetings.filter((m) => m.예약일 === date); // findByDate(reservation) 동치
       bannerOrderQty = orderQty;
+      dbCanonicalRead = true;
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDay-db-read" } });
-      courseStart = null;
+      courseStart = null; // dbCanonicalRead 는 try 마지막 문장 — 여기선 false 유지
       metricRows = null; // ↓ 아래에서 전부 시트 경로로 silent fallback
       sums = null;
       meetings = null;
@@ -159,8 +161,7 @@ export async function loadDay(
   }
 
   const week = weekIndexOf(targetDate, courseStart!);
-  // 편집 가능 기간(1~10주) 밖이면 4지표 빈 값·미팅만 read. 쓰기는 saveContactMetrics 에서 가드.
-  const inRange = week >= 1 && week <= MAX_SHEET_WEEK;
+  const inRange = dbCanonicalRead || (week >= 1 && week <= MAX_SHEET_WEEK);
 
   meetings ??= await findByDate(spreadsheetId, date, "reservation"); // 예약일 기준(일정탭=미팅날짜)
 

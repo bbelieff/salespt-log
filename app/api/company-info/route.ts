@@ -32,7 +32,7 @@ async function GET_handler(req: NextRequest) {
 
 async function POST_handler(req: NextRequest) {
   try {
-    const email = await getWritableUserEmail(); // archived 읽기전용 가드
+    const email = await getWritableUserEmail(); // 쓰기 진입점(ADR-0029: archived 차단 폐지)
     const body = await req.json();
     const 계약일 = String(body?.계약일 ?? "").trim();
     const 업체명 = String(body?.업체명 ?? "").trim();

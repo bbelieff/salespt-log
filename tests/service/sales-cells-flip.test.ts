@@ -101,11 +101,16 @@ describe("persistProductionCell — 생산(E) DB 정본 전환", () => {
     expect(upsertSheetRow).not.toHaveBeenCalled();
   });
 
-  it("③ 편집기간 밖 → DB 에도 쓰지 않는다(시트가 담을 수 없는 행 금지)", async () => {
+  // ⚠️ 계약 전환 (R4 W1-1 / ADR-0029 G1): 옛 규칙 "창 밖 → DB 에도 안 씀" 은 **폐지**됐다.
+  // 옛 규칙의 목적(시트가 못 담는 행이 무필터 집계를 부풀림)은 이제 **집계 클램프**가 담당한다
+  // (channelStackingFromDb ≤ MAX_SHEET_WEEK — dashboard-aggregates.test.ts 가 고정).
+  // 여기서는 "저장은 되되 시트 미러는 안 탄다"= DB-only 를 고정한다.
+  it("③ 창 밖(11주+) → DB 정본은 기록, 시트 미러는 skip (DB-only)", async () => {
     isWithinSalesWindow.mockResolvedValue(false);
     await persistProductionCell(pilot, DATE, "매입DB", 5);
-    expect(upsertSheetRow).not.toHaveBeenCalled();
-    expect(writeSalesRowCells).not.toHaveBeenCalled();
+    expect(upsertSheetRow).toHaveBeenCalledTimes(1); // 무제한 쓰기 — 정본은 남는다
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writeSalesRowCells).not.toHaveBeenCalled(); // 시트 좌표 없음 → 미러 없음
   });
 
   it("DB 2회 연속 실패 → throw(시트 폴백 금지)", async () => {
@@ -148,10 +153,13 @@ describe("persistMeetingReservationCount — H 는 카드수 절대 재계산(AD
     expect(readMeetingsFromDb).not.toHaveBeenCalled();
   });
 
-  it("③ 편집기간 밖 → DB 미기입", async () => {
+  // 계약 전환 (R4 W1-1 / ADR-0029 G1) — 위 persistProductionCell ③ 과 동일 원리.
+  it("③ 창 밖(11주+) → DB 정본 기입, 시트 미러 skip (DB-only)", async () => {
     isWithinSalesWindow.mockResolvedValue(false);
     await persistMeetingReservationCount(pilot, DATE, "매입DB");
-    expect(upsertSheetRow).not.toHaveBeenCalled();
+    expect(upsertSheetRow).toHaveBeenCalledTimes(1);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writeSalesRowCells).not.toHaveBeenCalled();
   });
 });
 
