@@ -26,6 +26,9 @@ interface Props {
   today: string; // "5/4"
   weekday: string; // "월"
   currentWeek: number; // 코스주차 1~STATS_WEEKS (clamp 는 page 가 수행)
+  /** 날짜(O1/O2)를 확보했는가. false 면 진행도 줄을 숨기고 매출/비용만 렌더 —
+   *  me 시트 read 실패로 배너가 통째로 사라져 **경비장부 진입점까지 소실**되던 회귀 차단(적대리뷰 MAJOR). */
+  hasDates?: boolean;
   /** 종강일(O2) 경과 — true 면 "N주차 진행중" 대신 수료 표시 (R4 W1-3, 📥기본안). */
   graduated?: boolean;
   startDate: string; // "4/10" (N1)
@@ -47,6 +50,7 @@ export default function DashboardProgressBanner({
   today,
   weekday,
   currentWeek,
+  hasDates = true,
   graduated = false,
   startDate,
   progressPercent,
@@ -60,7 +64,8 @@ export default function DashboardProgressBanner({
 
   return (
     <div className="sticky top-24 z-30 border-b border-gray-100 bg-white">
-      {/* === 위: 진행도 === */}
+      {/* === 위: 진행도 === (날짜 미확보 시 생략 — 매출/비용·경비장부는 계속 렌더) */}
+      {hasDates && (
       <div className="px-4 pb-2.5 pt-3">
         {/* 상단 라벨 — "현재 5/4 (월) · 4주차 진행중" */}
         <div className="mb-3 flex items-baseline gap-2.5">
@@ -118,9 +123,10 @@ export default function DashboardProgressBanner({
           <span className="text-gray-500">🎓 {graduationDate} 종강총회</span>
         </div>
       </div>
+      )}
 
-      {/* 구분선 */}
-      <div className="border-t border-gray-100" />
+      {/* 구분선 — 진행도 줄이 있을 때만(없으면 상단 이중선 방지) */}
+      {hasDates && <div className="border-t border-gray-100" />}
 
       {/* === 아래: 매출 / 비용 1:1 grid === */}
       <div className="px-3 py-2.5">
