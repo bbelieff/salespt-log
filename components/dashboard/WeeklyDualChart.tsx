@@ -1,5 +1,9 @@
 /**
- * WeeklyDualChart — 8주차 추이 (활동량 bar + 계약수 line, 2축).
+ * WeeklyDualChart — 코스 주차 추이 (활동량 bar + 계약수 line, 2축).
+ *
+ * R4 W1-3: 코스 통계 창(STATS_WEEKS=8) **한정** — 9주+(마감유예·수료 후) 기록은 집계 자체가
+ * 코스 통계 밖(dashboard-aggregates 가 w>8 제외)이라 이 차트에 나타나지 않는다.
+ * 실렌더 확장은 wave-2(집계+시트 물리 8행 제약 동반) — 여기선 경계만 명시한다.
  *
  * SSOT: docs/design/components.md §9-6
  *
@@ -20,20 +24,20 @@ import type { DashboardWeeklyPoint } from "@/types";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 
 interface Props {
-  points: DashboardWeeklyPoint[]; // 길이 8
+  points: DashboardWeeklyPoint[]; // 길이 STATS_WEEKS
 }
 
 const X0 = 30;
 const X1 = 328;
 const Y_TOP = 16;
 const Y_BOT = 160;
-const STEP = (X1 - X0) / 8; // 37.25
+const STEP = (X1 - X0) / STATS_WEEKS; // 37.25 (8주 기준)
 const BAR_W = 24;
 
 const xAt = (i: number) => X0 + STEP * (i + 0.5);
 
 export default function WeeklyDualChart({ points }: Props) {
-  // 8주 padding (부족하면 0으로 채움)
+  // 코스 주차 padding (부족하면 0으로 채움)
   const data: DashboardWeeklyPoint[] = Array.from(
     { length: STATS_WEEKS },
     (_, i) => points[i] ?? { 주차: i + 1, 계약수: 0, 활동량: 0 },
@@ -59,7 +63,8 @@ export default function WeeklyDualChart({ points }: Props) {
       {/* 섹션 제목 + 범례 */}
       <div className="mb-3 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-slate-500" />
-        <h2 className="text-base font-extrabold text-gray-900">8주차 추이</h2>
+        <h2 className="text-base font-extrabold text-gray-900">주차 추이</h2>
+        <span className="text-xs text-gray-400">코스 {STATS_WEEKS}주 기준</span>
         <div className="ml-auto flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-300" />
@@ -72,7 +77,7 @@ export default function WeeklyDualChart({ points }: Props) {
         </div>
       </div>
 
-      <svg viewBox="0 0 358 200" className="w-full" aria-label="8주차 추이">
+      <svg viewBox="0 0 358 200" className="w-full" aria-label={`코스 ${STATS_WEEKS}주 주차 추이`}>
         {/* 가로 그리드 (활동량 50%, 100%) */}
         <line
           x1={X0}

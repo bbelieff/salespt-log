@@ -1,17 +1,19 @@
 /**
  * DDayBadge — 슬림 브랜드 바 중앙에 표시되는 D-day 카운터 위젯.
  *
- * 데이터: useMe()의 graduationISO (= 수강시작일 + 57일, 종강총회일 = 수료일).
+ * 데이터: useMe()의 graduationISO — 시트 **O2 직접값**이 진실(종강총회일 = 수료일).
+ *   offset(7기+ 50일 / 6기 legacy 57일)은 ADR-0005·@/config/cohort-dates 참조 — 여기서 가정하지 않는다.
  * 계산: graduationISO − today (브라우저 로컬 자정 기준).
  *
  * 표시 규칙:
  *  - 양수 N: D-N (남은 일수, 검정 박스 흰 글자)
  *  - 0: D-DAY (빨강 강조)
- *  - 음수 N: D+|N| (지난 일수, 회색조)
+ *  - 음수(종강 경과): **🎓 수료** (R4 W1-3 기본안·📥 — 무제한 CRM에선 D+N 이 3자리를
+ *    넘을 수 있어 지난 일수 카운트 자체를 중단)
  *  - 데이터 없음: "D-—"
  *
  * 디자인 참조: 철제 카운트다운 달력 — 두 자리 숫자 박스 분할 (10의 자리 / 1의 자리).
- *   2자리 한도(99일) 가정. 종강총회 57일 기준이라 충분.
+ *   2자리(99일) 가정은 **남은 일수에만** 적용 — 코스 50일이라 충분. 지난 일수는 수료 표시로 대체.
  */
 "use client";
 
@@ -62,8 +64,7 @@ export default function DDayBadge({ graduationISO }: Props) {
   const tens = Math.floor(abs / 10);
   const ones = abs % 10;
 
-  // 색 분기
-  let prefix = "D-";
+  // 색 분기 (수료·D-DAY 는 아래서 조기 return — 숫자 박스는 남은 일수 전용)
   let cls = "bg-gray-900 text-white";
   if (remain === 0) {
     return (
@@ -73,17 +74,22 @@ export default function DDayBadge({ graduationISO }: Props) {
     );
   }
   if (remain < 0) {
-    prefix = "D+";
-    cls = "bg-gray-400 text-white";
-  } else if (remain <= 7) {
+    // 종강 경과 = 수료 — D+N 카운트 대신 상태 뱃지 (R4 W1-3).
+    return (
+      <div className="flex items-center rounded-md bg-emerald-600 px-2 py-0.5 text-[11px] font-extrabold tracking-wider text-white">
+        🎓 수료
+      </div>
+    );
+  }
+  if (remain <= 7) {
     cls = "bg-red-600 text-white"; // 임박 강조
   }
 
   return (
     <div className="flex items-center gap-0.5">
-      {/* "D" 박스 + 부호("-" 또는 "+") 박스 — 숫자와 동일한 철제달력 스타일 */}
+      {/* "D" 박스 + "−" 박스 — 숫자와 동일한 철제달력 스타일 (남은 일수 전용) */}
       <CharBox char="D" cls={cls} />
-      <CharBox char={prefix === "D-" ? "−" : "+"} cls={cls} />
+      <CharBox char="−" cls={cls} />
       <DigitBox digit={tens} cls={cls} />
       <DigitBox digit={ones} cls={cls} />
     </div>

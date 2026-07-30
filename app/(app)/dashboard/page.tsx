@@ -6,16 +6,16 @@
  * 구조:
  *   TopHeader (5탭 동일)
  *     ├─ 슬림 바 (top-0 z-50)
- *     └─ PageBanner (top-12 z-40, 📊 대시보드 / 8주 누적)
+ *     └─ PageBanner (top-12 z-40, 📊 대시보드 / 코스 누적 부제)
  *   DashboardProgressBanner (top-24 z-30 sticky) — 진행도 + 매출/비용
  *   본문 (`<main>` p-4 space-y-4):
  *     - OperatingProfitCard (별도 큰 카드, KPI 강조)
  *     - FunnelChart (6단계 stacked + 사다리꼴 connector)
  *     - ProductivityIndicators (4지표, indigo gradient)
- *     - WeeklyDualChart (8주차)
+ *     - WeeklyDualChart (코스 주차 추이 — STATS_WEEKS)
  *     - ChannelCostDonut (3채널 + 콜·지·기·소 별도)
  *
- * me.data 없어도 dash.data 만으로 모든 섹션 렌더 (배너만 fallback 처리).
+ * me.data 없어도 dash.data 만으로 본문 섹션은 렌더 — 배너만 me 필요(더미 fallback 제거, R4 W1-3).
  */
 "use client";
 import PageContainer from "@/components/PageContainer";
@@ -65,23 +65,28 @@ export default function DashboardPage() {
 
   const today = todayISO();
 
-  // 진행도 라벨 — me 없으면 prototype 더미(6기 5/4) fallback
+  // 진행도 라벨 — 더미 날짜 fallback 은 G5 가드 위반이라 제거(R4 W1-3).
+  // ⚠️ 날짜가 없어도 **배너 자체는 렌더**한다(hasDates=false 로 진행도 줄만 숨김) — me 시트 read 가
+  // 실패해도(200+빈문자열 강등, me.ts) 매출/비용과 **경비장부 유일 진입점**은 살아있어야 한다(적대리뷰 MAJOR).
   const banner = useMemo(() => {
-    const courseStart = me.data?.courseStartISO ?? "2026-04-10";
-    const graduation = me.data?.graduationISO ?? "2026-06-06";
+    const courseStart = me.data?.courseStartISO;
+    const graduation = me.data?.graduationISO;
+    if (!courseStart || !graduation) return { hasDates: false as const };
     const elapsed = daysBetween(courseStart, today);
     const total = daysBetween(courseStart, graduation); // O2−O1 (7기+ 50일)
-    // 주차 = weekIndexOf 정본(시작일 앵커, lib/util/week.ts) — 통계 창 1~STATS_WEEKS 로 clamp.
-    const currentWeek = Math.max(
-      1,
-      Math.min(STATS_WEEKS, weekIndexOf(parseISO(today), parseISO(courseStart))),
-    );
+    // 주차 앵커 = weekIndexOf 정본(시작일, lib/util/week.ts).
+    // 코스주차 = 통계 창 1~STATS_WEEKS clamp / 수료 = 종강일(O2) 경과 — 주차 산술 아님(8주차 도중 종강 가능).
+    const actualWeek = weekIndexOf(parseISO(today), parseISO(courseStart));
+    const courseWeek = Math.max(1, Math.min(STATS_WEEKS, actualWeek));
+    const graduated = daysBetween(graduation, today) > 0;
     const progressPercent = Math.max(0, Math.min(100, (elapsed / total) * 100));
     const weekday = KO_DAY[new Date(today + "T00:00").getDay()] ?? "";
     return {
+      hasDates: true as const,
       today: fmtMD(today),
       weekday,
-      currentWeek,
+      currentWeek: courseWeek,
+      graduated,
       startDate: fmtMD(courseStart),
       progressPercent,
       graduationDate: fmtMD(graduation),
@@ -97,7 +102,7 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
       <PageContainer width="wide">
-      <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle="8주 누적" />
+      <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
 
       {/* 수강생출신 트레이너 self-view 중 — 트레이너 관리로 복귀 토글(P14). */}
       {me.data?.ownArenaSheetId && (
@@ -136,12 +141,14 @@ export default function DashboardPage() {
 
       {dash.data && (
         <DashboardProgressBanner
-          today={banner.today}
-          weekday={banner.weekday}
-          currentWeek={banner.currentWeek}
-          startDate={banner.startDate}
-          progressPercent={banner.progressPercent}
-          graduationDate={banner.graduationDate}
+          hasDates={banner.hasDates}
+          today={banner.hasDates ? banner.today : ""}
+          weekday={banner.hasDates ? banner.weekday : ""}
+          currentWeek={banner.hasDates ? banner.currentWeek : 0}
+          graduated={banner.hasDates ? banner.graduated : false}
+          startDate={banner.hasDates ? banner.startDate : ""}
+          progressPercent={banner.hasDates ? banner.progressPercent : 0}
+          graduationDate={banner.hasDates ? banner.graduationDate : ""}
           revenue={dash.data.kpi.총매출}
           cost={dash.data.kpi.총비용}
           // 실제 분해: 수임비합 + 수수료합 = 총매출 (수납탭과 일치).
