@@ -257,7 +257,11 @@ export async function upsertCohortConfig(
  * (아레나) 시즌 개강일(J) 설정 — 전광판 시즌 판정 정본(AR-2b).
  * admin 이 `/admin/cohorts` 에서 시즌 행(label "A{n}")에 직접 입력한다.
  * 빈 문자열 = 미정으로 되돌림(전광판은 시즌 번호를 표시하지 않고 데이터도 자르지 않는다).
- * type 은 건드리지 않는다 — 기존 행이 arena 면 arena 로 보존(upsertCohortConfig 규칙).
+ *
+ * ⚠️ `type: "arena"` 를 함께 보장한다 — 시즌 행이 아직 없을 때 upsert 가 append 하면
+ * 기본값이 `"cohort"` 로 들어가고, `resolveCurrentSeason` 의 type 게이트가 그 행을 건너뛰어
+ * **개강일을 입력해도 시즌이 전환되지 않는다**(개막 차단 결함). 호출부(API)가 라벨이
+ * 시즌 레벨("A{n}")임을 이미 검증하므로 arena 로 못박아도 안전하다.
  */
 export async function setSeasonStart(
   label: string,
@@ -267,7 +271,7 @@ export async function setSeasonStart(
   if (iso !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
     throw new Error("[setSeasonStart] YYYY-MM-DD 형식이 아님");
   }
-  await upsertCohortConfig(label, { seasonStartISO: iso });
+  await upsertCohortConfig(label, { type: "arena", seasonStartISO: iso });
 }
 
 /**
