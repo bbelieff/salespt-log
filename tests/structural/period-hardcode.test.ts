@@ -169,10 +169,10 @@ describe("G2: 편집 유예(69일) 상수화", () => {
 // G3 — 시트 주차 상한 10 상수화 (물리 상한)
 // ═════════════════════════════════════════════════════════════
 describe("G3: 시트 주차상한(10) 상수화", () => {
-  // 오탐 제외 + baseline (inventory §4 오탐 주의):
-  //  - lib/types/meeting.ts Zod max(10): types 레이어는 config import 금지(layers.test) —
-  //    R4 W2 에서 상한 자체가 제거될 예정이라 상수화 대신 박제.
-  const BASELINE = new Set(["lib/types/meeting.ts"]);
+  // 오탐 제외 + baseline (inventory §4 오탐 주의).
+  // **R4 W1-2 에서 lib/types/meeting.ts 를 면제에서 뺐다** — 그 파일의 Zod `max(10)` 이 이미
+  // 제거돼(grep 0건) 면제가 유령이 됐고, 남겨두면 상한이 다시 들어와도 가드가 못 잡는다.
+  const BASELINE = new Set<string>();
 
   it("week 문맥의 10 비교/클램프는 MAX_SHEET_WEEK 로", () => {
     const bad: string[] = [];
@@ -309,11 +309,13 @@ describe("G6: 수강생 데이터 쓰기 route 는 getWritableUserEmail 경유",
 // G7 — archived 라우팅 판정 단일화 (app 레이어)
 // ═════════════════════════════════════════════════════════════
 describe('G7: app 레이어 "archived" 리터럴 분기 금지', () => {
-  // baseline: 기존 중복 판정 (inventory 2.4 — R4 archived-routing 재정의 1순위 소거 대상).
+  // baseline: 상태값 자체를 다루는 곳만 면제.
   // ※ payment/page.tsx 의 archivedRows(계약 해지숨김)는 식별자라 문자열 스캔에 안 걸림(오탐 제외목록).
+  //
+  // **R4 W1-2 에서 `app/page.tsx`·`app/(app)/layout.tsx` 를 면제에서 뺐다** — 두 파일의
+  // archived 분기를 실제로 제거(shouldRedirectToClaim 로 통합)했으므로, 면제로 남겨두면
+  // 같은 하드코딩이 다시 들어와도 가드가 잡지 못한다(적대리뷰 지적: 유령 baseline).
   const BASELINE = new Set([
-    "app/page.tsx",
-    "app/(app)/layout.tsx",
     "app/api/admin/set-cohort-status/route.ts", // admin 토글 — 상태값 자체를 다루는 곳
   ]);
 

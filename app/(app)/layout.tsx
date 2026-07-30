@@ -9,8 +9,9 @@
  *   - pending trainee → 대기 화면 (직접 URL 입력으로 /dashboard 진입 차단).
  *   - admin 은 impersonation 으로 진입할 수 있어 통과.
  *   - active trainee/trainer 통과.
- *   - **미등록(시트 없음) → /claim** — R4 G2(2026-07-26) 이후 강등의 유일한 사유.
- *     보관(수료) 수강생은 시트가 있으면 통과(무제한 CRM) — W1-1/ADR-0029 로 저장도 함께 열렸다.
+ *   - **레지스트리 행 없음 → /claim** — R4 G2 이후 강등의 **유일한** 사유.
+ *     보관(수료)·시트 미배정 등 등록된 행은 모두 통과(무제한 CRM) — 시트 없는 행을 강등하면
+ *     claimAccount short-circuit 으로 홈↔클레임 루프가 된다(적대리뷰 BLOCKER). 저장도 W1-1 로 열렸다.
  *
  * 페이지 배경: bg-slate-100 (#f1f5f9)
  */
@@ -56,7 +57,9 @@ export default async function AppLayout({
     // pending 은 아래 대기화면이 담당하므로 여기서 강등하지 않는다.
     // 쓰기 권한은 별도 축(getWritableUserEmail) — W1-1/ADR-0029 가 archived 차단을 **폐지**했으므로
     // 수료자는 입장(이 가드)과 저장(쓰기 진입점)이 둘 다 열린다. 미등록만 클레임으로.
-    if (u && u.status !== "pending" && shouldRedirectToClaim(u)) redirect("/claim");
+    // 행 자체가 없는 사용자(직접 URL 진입)도 여기서 클레임으로 — master 는 `u &&` 가드 때문에
+    // 앱 셸을 그대로 렌더했다(적대리뷰 지적 갭).
+    if (shouldRedirectToClaim(u)) redirect("/claim");
     if (u && u.status === "pending") {
       return (
         <PendingApprovalScreen

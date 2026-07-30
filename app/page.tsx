@@ -21,7 +21,6 @@
  */
 import { redirect } from "next/navigation";
 import { findUserByEmail } from "@/repo/users";
-import { shouldRedirectToClaim } from "@/repo/user-priority";
 import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
@@ -62,9 +61,8 @@ export default async function HomePage() {
   // hasOwnSheet 예외가 그걸 면제했다(archived-login-access 2026-07-07) — 그 예외가 기본이 됐다.
   // 재참가가 필요한 사람은 /claim 을 직접 열어 이용(강제 리다이렉트만 없음, 클레임 자체는 유지).
   // 부수효과: cohorts 탭 read 가 라우팅에서 빠져 홈 hot-path quota 도 줄어든다.
-  // pending 은 아래 대기화면이 담당 — 승인 전 시트 미배정 상태를 /claim 으로 되돌리면
-  // 이미 클레임을 마친 사람이 다시 클레임 폼을 보는 루프가 된다(layout 과 동일 규칙).
-  if (user.status !== "pending" && shouldRedirectToClaim(user)) redirect("/claim");
+  // 행 없음은 위 `if (!user) redirect("/claim")` 가 이미 처리했다. 등록된 행은 보관·시트유무
+  // 무관하게 통과 — 시트 없는 행을 강등하면 claimAccount short-circuit 으로 무한루프(적대리뷰).
   // 트레이너처럼 수강생도 admin 승인 필요 (2026-05-12).
   // 기존 active trainee 들은 영향 없음 (이미 status=active).
   if (user.status === "pending") {

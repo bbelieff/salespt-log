@@ -262,9 +262,18 @@ describe("shouldRedirectToClaim (R4 G2 — /claim 강등 판정 SSOT)", () => {
     expect(shouldRedirectToClaim(undefined)).toBe(true);
   });
 
-  it("시트 없는 trainee(행만 있고 미배정) → true", () => {
-    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "" }))).toBe(true);
-    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "   " }))).toBe(true);
+  /**
+   * 🚨 회귀 박제 2 (적대리뷰 BLOCKER, 2026-07-28).
+   * 초안은 "시트 없는 등록 trainee" 도 /claim 으로 보냈다. 그러나 claimAccount 는 그 행이
+   * 보관이 아니면 레지스트리를 건드리지 않고 200 을 반환하고(short-circuit), 클레임 화면은
+   * 200 을 받으면 "/" 로 되돌린다 → 홈과 클레임 화면 사이 **영구 루프**(앱 진입 불가).
+   * 그래서 **행이 있으면 시트 유무·보관 여부와 무관하게 통과**시킨다.
+   */
+  it("🚨 시트 없는 등록 trainee → false — 강등하면 claim short-circuit 무한루프", () => {
+    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "" }))).toBe(false);
+    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "   " }))).toBe(false);
+    // 보관 + 시트 없음도 통과 — 재참가는 /claim 을 직접 열어 이용(강제 이동만 없음).
+    expect(shouldRedirectToClaim(mkUser({ spreadsheetId: "", status: "archived" }))).toBe(false);
   });
 
   it("수료(행 status=archived)+시트 보유 → false — 계속 입장(G2 목표 상태)", () => {
@@ -305,17 +314,20 @@ describe("shouldRedirectToClaim (R4 G2 — /claim 강등 판정 SSOT)", () => {
     expect(shouldRedirectToClaim(mkUser({ role: "admin", spreadsheetId: "" }))).toBe(false);
   });
 
-  it("trainee 에 한해서만 hasOwnSheet 의 부정과 일치(트레이너·admin 은 의도적으로 다름)", () => {
-    const trainees = [
-      mkUser({ status: "archived" }),
+  it("강등은 hasOwnSheet 와 무관 — 시트가 없어도 등록 행이면 통과(루프 방지 계약)", () => {
+    // BLOCKER 수정 후: 판정 기준은 "행 존재" 하나뿐. hasOwnSheet 는 라우팅 계약에서 빠졌다
+    // (여전히 아레나·표시 로직에서 쓰이므로 함수 자체는 유지).
+    const sheetless = [
       mkUser({ spreadsheetId: "" }),
-      mkUser({ cohort: "6", status: "active" }),
+      mkUser({ spreadsheetId: "", status: "archived" }),
+      mkUser({ role: "trainer", spreadsheetId: "" }),
     ];
-    for (const c of trainees) expect(shouldRedirectToClaim(c)).toBe(!hasOwnSheet(c));
-    // 비-trainee 는 hasOwnSheet=false 이지만 강등하지 않는다 — 갈리는 게 정상.
-    const trainer = mkUser({ role: "trainer", spreadsheetId: "" });
-    expect(hasOwnSheet(trainer)).toBe(false);
-    expect(shouldRedirectToClaim(trainer)).toBe(false);
+    for (const c of sheetless) {
+      expect(hasOwnSheet(c)).toBe(false); // 시트는 없다
+      expect(shouldRedirectToClaim(c)).toBe(false); // 그래도 강등하지 않는다
+    }
+    // 강등되는 유일한 경우 = 행 자체가 없음.
+    expect(shouldRedirectToClaim(null)).toBe(true);
   });
 
   it("보관+시트 보유자는 재참가를 원하면 /claim 을 직접 열 수 있다(강제 이동만 제거)", () => {
