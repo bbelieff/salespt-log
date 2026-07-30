@@ -14,9 +14,11 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  currentSeasonStartISO,
   isInSeason,
   resolveCurrentSeason,
   seasonDisplayLabel,
+  seasonWeekOf,
   type ArenaSeasonRow,
 } from "../../lib/service/arena-season-config";
 
@@ -116,6 +118,40 @@ describe("isInSeason — 집계 스코프(라벨과 같은 SSOT)", () => {
     const parts = ["A1-1기", "A2-1기", "A2-2기"];
     expect(season).toBe(2);
     expect(parts.filter((c) => isInSeason(c, season))).toEqual(["A2-1기", "A2-2기"]);
+  });
+});
+
+describe("주차 = 시즌 개강일 앵커 (참가자 시트 O1 배제)", () => {
+  it("**개막일 주차는 1** — 옛 코드는 O1(이전 시즌 개강일)로 재 '8주차'로 찍혔다(4R HIGH)", () => {
+    const rows = [row("A1", S1), row("A2", S2)];
+    const start = currentSeasonStartISO(rows, S2);
+    expect(start).toBe(S2); // 시즌2 개강일이 앵커
+    expect(seasonWeekOf(start, S2)).toBe(1); // O1(6/12) 기준이면 9→캡8 이 됐다
+  });
+
+  it("개막 후 주차가 정상 증가 (개강일 +7일 = 2주차)", () => {
+    expect(seasonWeekOf(S2, "2026-08-14")).toBe(2);
+    expect(seasonWeekOf(S2, "2026-08-13")).toBe(1);
+  });
+
+  it("STATS_WEEKS 상한으로 캡 (시즌 후반)", () => {
+    expect(seasonWeekOf(S2, "2026-12-31")).toBe(8);
+  });
+
+  it("개강일·오늘 미상이면 0 → 헤더가 주차 칸을 생략", () => {
+    expect(seasonWeekOf("", S2)).toBe(0);
+    expect(seasonWeekOf(S2, "")).toBe(0);
+    expect(seasonWeekOf("8/7", S2)).toBe(0);
+  });
+
+  it("currentSeasonStartISO: 시즌 미상이면 '' (주차도 숨김)", () => {
+    expect(currentSeasonStartISO([row("A1", S1), row("A2", "")], S2)).toBe("");
+    expect(currentSeasonStartISO([], S2)).toBe("");
+  });
+
+  it("currentSeasonStartISO: 개막 전이면 **이전 시즌** 개강일을 준다(주차 연속)", () => {
+    const rows = [row("A1", S1), row("A2", S2)];
+    expect(currentSeasonStartISO(rows, "2026-08-06")).toBe(S1);
   });
 });
 

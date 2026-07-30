@@ -24,7 +24,12 @@ import { parseISO, todayKST } from "@/util/week";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
 import { arenaCohortLabelParts } from "./cohort-token";
-import { isInSeason, resolveCurrentSeason } from "./arena-season-config";
+import {
+  currentSeasonStartISO,
+  isInSeason,
+  resolveCurrentSeason,
+  seasonWeekOf,
+} from "./arena-season-config";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
 import type { RankingMetric, RankingEntry, User } from "@/types";
 
@@ -111,15 +116,25 @@ const avg = (sum: number, n: number) => (n > 0 ? round1(sum / n) : 0);
  * 안 함) → 스코프를 안 걸면 시즌2 헤더 아래 A1 기수·멤버가 그대로 나열된다(적대리뷰 HIGH).
  * registry read 는 캐시되므로 호출이 늘어도 추가 왕복 없음.
  */
-async function currentSeasonScope(): Promise<{ parts: User[]; season: number }> {
+async function currentSeasonScope(): Promise<{
+  parts: User[];
+  season: number;
+  /** 현재 시즌 개강일(cohorts J). 주차 앵커 — 참가자 시트 O1 은 쓰지 않는다. */
+  startISO: string;
+}> {
   const [all, cohorts] = await Promise.all([
     listArenaParticipants(),
     listCohorts().catch(() => []), // 시즌 config 읽기 실패 → 0(미상) → 스코프 미적용
   ]);
-  // 시즌 정본 = cohorts 탭 J열(admin 입력). 참가자별 registry K 는 템플릿 O1 오염 때문에 안 쓴다.
+  // 시즌 정본 = cohorts 탭 J열(admin 입력). 참가자별 registry K/시트 O1 은 템플릿 오염 때문에 안 쓴다.
   // 개막 경계는 **KST 기준 오늘** — 서버 로컬(UTC)로 재면 개막일 09:00 KST 까지 전날로 읽힌다.
-  const season = resolveCurrentSeason(cohorts, todayKST());
-  return { parts: all.filter((u) => isInSeason(u.cohort, season)), season };
+  const today = todayKST();
+  const season = resolveCurrentSeason(cohorts, today);
+  return {
+    parts: all.filter((u) => isInSeason(u.cohort, season)),
+    season,
+    startISO: currentSeasonStartISO(cohorts, today),
+  };
 }
 
 export async function loadScoreboard(): Promise<ScoreboardData> {
@@ -307,25 +322,6 @@ export interface ScoreboardBundle {
   season: number; // 현재 시즌 번호 (0 = 미상). SSOT=resolveCurrentSeason (AR-2b)
 }
 
-/**
- * 시즌 현재 주차 — **현재 시즌** 대표 입금 시트 O1(수강시작일) 기준 weekIndexOf, 1~8 캡.
- * ⚠️ 시즌 스코프 필수: listAllUsers 정렬(cohortSortTuple=[0,시즌,기수])상 A1 이 항상 앞이라
- * 스코프 없이 고르면 옛 시즌 대표(O1=이전 개막일)가 잡혀, 시즌2 개막일에도 STATS_WEEKS 로
- * 클램프된 "8주차"가 시즌 내내 고정된다(헤더가 "시즌2 · 8주차"로 자기모순 — 적대리뷰 HIGH).
- */
-async function currentSeasonWeek(parts: readonly User[]): Promise<number> {
-  // 테스터(A{n}-0)는 대표에서 제외 — 정렬상 A{n}-0 이 맨 앞이라 폴백이 테스터 시트를
-  // 먼저 집어 엉뚱한 O1 로 주차를 계산한다(적대리뷰). resolveCurrentSeason 과 같은 규칙.
-  const real = parts.filter((u) => (arenaCohortLabelParts(u.cohort)?.gisu ?? 0) > 0);
-  // 개막 직후엔 입금 메모가 아직 없을 수 있어 같은 시즌 시트 보유자로 폴백.
-  const rep =
-    real.find((u) => u.spreadsheetId && u.memo.includes("입금")) ??
-    real.find((u) => u.spreadsheetId);
-  if (!rep?.spreadsheetId) return 0;
-  const start = await readCourseStart(rep.spreadsheetId);
-  return Math.min(Math.max(weekIndexOf(new Date(), start), 0), STATS_WEEKS);
-}
-
 /** 전광판 한 화면용 데이터 — 페이지가 1콜로 받아 props 분배.
  *  라벨(season)·주차·표·랭킹이 **같은 스코프**에서 나오도록 시즌을 먼저 정한다. */
 export async function loadScoreboardBundle(): Promise<ScoreboardBundle> {
@@ -334,9 +330,8 @@ export async function loadScoreboardBundle(): Promise<ScoreboardBundle> {
     loadScoreboard(),
     loadIndividualRankings(),
   ]);
-  const seasonWeek = scope
-    ? await currentSeasonWeek(scope.parts).catch(() => 0)
-    : 0;
+  // 주차 = **시즌 개강일**(cohorts J) 앵커. 개강일 미상이면 0 → 헤더가 주차 칸을 생략한다.
+  const seasonWeek = scope ? seasonWeekOf(scope.startISO, todayKST()) : 0;
   return {
     byCohort: board.byCohort,
     rankings,

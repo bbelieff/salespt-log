@@ -34,6 +34,17 @@ export default function SeasonStartInput({
   const dirty = value !== initialISO;
 
   async function save() {
+    // 오타 1번이 전광판을 바꾼다(과거 날짜=즉시 전환, 미래=전환 보류) — 효과를 먼저 보여준다.
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    const effect =
+      value === ""
+        ? "시즌 번호를 표시하지 않습니다(집계 대상은 그대로 유지)."
+        : value <= today
+          ? `지금부터 이 시즌이 현재 시즌이 됩니다 — 전광판이 이 시즌만 집계합니다.`
+          : `${value} 부터 이 시즌으로 전환됩니다(그 전까지는 이전 시즌 유지).`;
+    if (!confirm(`${label} 시즌 개강일 = ${value || "(미정)"}\n\n${effect}\n\n적용할까요?`)) {
+      return;
+    }
     setBusy(true);
     setErr(null);
     setSaved(false);

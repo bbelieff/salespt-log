@@ -24,6 +24,8 @@
  *    **데이터를 자르지 않는다**. 틀린 번호로 실데이터를 감추는 것보다 안전하다.
  *  - 오늘 날짜는 호출부가 주입(순수함수 유지 → 테스트 가능, 앱 코드 날짜 하드코딩 0).
  */
+import { STATS_WEEKS } from "@/config/cohort-dates";
+import { parseISO, weekIndexOf } from "@/util/week";
 import { arenaCohortLabelParts, arenaSeasonLabelParts } from "./cohort-token";
 
 /** 시즌 판정 입력 — cohorts 탭 시즌 행에서 필요한 최소 필드(Cohort 를 그대로 넘길 수 있다). */
@@ -83,4 +85,40 @@ export function isInSeason(cohort: string, season: number): boolean {
 /** 시즌 표시 라벨 — 미상(0)이면 시즌 번호를 숨긴 "아레나". 표기 규칙 단일화. */
 export function seasonDisplayLabel(season: number): string {
   return season > 0 ? `아레나 시즌${season}` : "아레나";
+}
+
+/**
+ * 현재 시즌의 **개강일**(cohorts J) — 미상이면 "". `resolveCurrentSeason` 과 같은 행·같은 규칙.
+ * 주차 계산 앵커로 쓴다(참가자 시트 O1 대신 — 아래 seasonWeekOf 참고).
+ */
+export function currentSeasonStartISO(
+  rows: readonly ArenaSeasonRow[],
+  todayISO: string,
+): string {
+  const season = resolveCurrentSeason(rows, todayISO);
+  if (season <= 0) return "";
+  for (const r of rows) {
+    if (r.status === "archived") continue;
+    if (r.type !== undefined && r.type !== "arena") continue;
+    if (arenaSeasonLabelParts(r.label) !== season) continue;
+    const s = (r.seasonStartISO ?? "").trim();
+    if (ISO.test(s)) return s;
+  }
+  return "";
+}
+
+/**
+ * 시즌 주차 — **시즌 개강일** 앵커 `weekIndexOf`, 1~STATS_WEEKS 캡. 미상이면 0(주차 숨김).
+ *
+ * ⚠️ 참가자 시트 O1 을 쓰지 않는다. O1 은 복제 템플릿 값이라 **이전 시즌 개강일**이 남아 있고
+ * (create-arena-members 가 개강일을 쓰지 않으며, course-dates 가드가 기존 raw 값을 보존한다),
+ * 그걸로 재면 시즌2 개막일에 `weekIndexOf(8/7, 6/12)=9 → 캡 8` 이 되어 헤더가
+ * **"아레나 시즌2 · 8주차"** 로 자기모순한다(4R HIGH). 시즌 번호와 주차는 **같은 정본**에서 나온다.
+ */
+export function seasonWeekOf(startISO: string, todayISO: string): number {
+  if (!ISO.test(startISO) || !ISO.test(todayISO)) return 0;
+  return Math.min(
+    Math.max(weekIndexOf(parseISO(todayISO), parseISO(startISO)), 0),
+    STATS_WEEKS,
+  );
 }
