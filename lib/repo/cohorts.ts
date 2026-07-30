@@ -5,6 +5,10 @@
  *   A: cohort (예: "7" / "8" / "6") — trainee row 의 cohort 와 동일 의미.
  *   B: status ("active" | "archived")
  *   C: note (자유 메모, optional)
+ *   D~I: type / 템플릿·폴더 ID (ADR-0011/0012 생성 설정)
+ *   J: seasonStartISO — (아레나) **시즌 개강일 정본**. admin 이 직접 입력하는 값.
+ *      전광판 시즌 판정 SSOT (AR-2b). registry K(참가자별 courseStartISO)는 시트 템플릿
+ *      O1 이 스탬프돼 출처를 신뢰할 수 없어 시즌 판정에 쓰지 않는다.
  *
  * 탭이 없으면 첫 호출 시 ensureCohortsTab() 으로 자동 생성 + 시드.
  */
@@ -25,6 +29,8 @@ export interface Cohort {
   rosterSheetId: string; // G — (아레나) 전체 참가자 시트 ID. 일반 기수 빈값
   sheetsFolderId: string; // H — (아레나) 경영일지 시트 복제 대상 폴더 ID
   companyParentFolderId: string; // I — (아레나) 업체관리 폴더 생성 부모 폴더 ID
+  /** J — (아레나) 시즌 개강일 "YYYY-MM-DD". admin 입력. 빈값=미정(전광판 시즌 미판정). */
+  seasonStartISO: string;
 }
 
 const COHORTS_TAG = "cohorts";
@@ -33,7 +39,7 @@ const cachedCohortsRows = unstable_cache(
   async (): Promise<string[][]> => {
     const reg = registry();
     try {
-      return await readRange(reg.spreadsheetId, `${cohortsTab()}!A2:I`);
+      return await readRange(reg.spreadsheetId, `${cohortsTab()}!A2:J`);
     } catch {
       // 탭 없을 수 있음 (ensure 전 첫 호출) — 빈 배열로 fallback.
       return [];
@@ -70,6 +76,7 @@ export async function listCohorts(): Promise<Cohort[]> {
       rosterSheetId: String(r[6] ?? "").trim(),
       sheetsFolderId: String(r[7] ?? "").trim(),
       companyParentFolderId: String(r[8] ?? "").trim(),
+      seasonStartISO: String(r[9] ?? "").trim(),
     }));
 }
 
@@ -112,7 +119,7 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
   }
 
   // 헤더 확인/갱신 (A1:I 멱등). 기존 짧은 헤더면 D~I 헤더 보강.
-  const header = await readRange(reg.spreadsheetId, `${tab}!A1:I1`);
+  const header = await readRange(reg.spreadsheetId, `${tab}!A1:J1`);
   const HEADER = [
     "cohort",
     "status",
@@ -123,11 +130,12 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     "rosterSheetId",
     "sheetsFolderId",
     "companyParentFolderId",
+    "seasonStartISO",
   ];
   if (!header[0]?.[0] || (header[0]?.length ?? 0) < HEADER.length) {
     await sheetsClient().spreadsheets.values.update({
       spreadsheetId: reg.spreadsheetId,
-      range: `${tab}!A1:I1`,
+      range: `${tab}!A1:J1`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [HEADER] },
     });
@@ -145,8 +153,8 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     const uniq = Array.from(new Set(seedLabels.filter(Boolean)));
     await appendRows(
       reg.spreadsheetId,
-      `${tab}!A2:I`,
-      uniq.map((l) => [l, "active", "", "cohort", "", "", "", "", ""]),
+      `${tab}!A2:J`,
+      uniq.map((l) => [l, "active", "", "cohort", "", "", "", "", "", ""]),
     );
   }
   invalidateCohorts();
@@ -175,14 +183,14 @@ export async function setCohortStatus(
     }
   }
   // 없으면 새 row append.
-  await appendRows(reg.spreadsheetId, `${tab}!A2:I`, [
-    [trimmed, status, "", "cohort", "", "", "", "", ""],
+  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [
+    [trimmed, status, "", "cohort", "", "", "", "", "", ""],
   ]);
   invalidateCohorts();
 }
 
 /**
- * cohorts row 의 설정(D~I) upsert. 주어진 필드만 갱신(나머지 보존).
+ * cohorts row 의 설정(D~J) upsert. 주어진 필드만 갱신(나머지 보존).
  * 없으면 새 row(status=active) append. (ADR-0011/0012 — 기수·아레나 생성 설정)
  */
 export async function upsertCohortConfig(
@@ -194,13 +202,15 @@ export async function upsertCohortConfig(
     rosterSheetId?: string;
     sheetsFolderId?: string;
     companyParentFolderId?: string;
+    /** (아레나) 시즌 개강일 "YYYY-MM-DD" — 전광판 시즌 판정 정본(AR-2b). */
+    seasonStartISO?: string;
   },
 ): Promise<void> {
   const reg = registry();
   const tab = cohortsTab();
   const trimmed = label.trim();
   if (!trimmed) throw new Error("[upsertCohortConfig] label 비어있음");
-  const rows = await readRange(reg.spreadsheetId, `${tab}!A2:I`);
+  const rows = await readRange(reg.spreadsheetId, `${tab}!A2:J`);
 
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i]?.[0] ?? "").trim() === trimmed) {
@@ -213,10 +223,11 @@ export async function upsertCohortConfig(
         cfg.rosterSheetId ?? String(cur[6] ?? ""),
         cfg.sheetsFolderId ?? String(cur[7] ?? ""),
         cfg.companyParentFolderId ?? String(cur[8] ?? ""),
+        cfg.seasonStartISO ?? String(cur[9] ?? ""),
       ];
       await sheetsClient().spreadsheets.values.update({
         spreadsheetId: reg.spreadsheetId,
-        range: `${tab}!D${sheetRow}:I${sheetRow}`,
+        range: `${tab}!D${sheetRow}:J${sheetRow}`,
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [next] },
       });
@@ -225,7 +236,7 @@ export async function upsertCohortConfig(
     }
   }
   // 없으면 새 row.
-  await appendRows(reg.spreadsheetId, `${tab}!A2:I`, [
+  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [
     [
       trimmed,
       "active",
@@ -236,9 +247,27 @@ export async function upsertCohortConfig(
       cfg.rosterSheetId ?? "",
       cfg.sheetsFolderId ?? "",
       cfg.companyParentFolderId ?? "",
+      cfg.seasonStartISO ?? "",
     ],
   ]);
   invalidateCohorts();
+}
+
+/**
+ * (아레나) 시즌 개강일(J) 설정 — 전광판 시즌 판정 정본(AR-2b).
+ * admin 이 `/admin/cohorts` 에서 시즌 행(label "A{n}")에 직접 입력한다.
+ * 빈 문자열 = 미정으로 되돌림(전광판은 시즌 번호를 표시하지 않고 데이터도 자르지 않는다).
+ * type 은 건드리지 않는다 — 기존 행이 arena 면 arena 로 보존(upsertCohortConfig 규칙).
+ */
+export async function setSeasonStart(
+  label: string,
+  seasonStartISO: string,
+): Promise<void> {
+  const iso = seasonStartISO.trim();
+  if (iso !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    throw new Error("[setSeasonStart] YYYY-MM-DD 형식이 아님");
+  }
+  await upsertCohortConfig(label, { seasonStartISO: iso });
 }
 
 /**

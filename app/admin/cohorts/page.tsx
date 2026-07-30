@@ -46,6 +46,7 @@ export default async function AdminCohortsPage() {
       status: "active" as CohortStatus,
       note: "",
       type: "cohort" as const,
+      seasonStartISO: "", // 시트에 없는 label — 아레나 시즌 행이 아니라 입력 UI 미노출
     }));
   const cohorts = [...cohortRows, ...extra];
 

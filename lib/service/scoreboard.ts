@@ -16,6 +16,7 @@ import {
   readWeeklyPerformance,
   type WeeklyPerf,
 } from "@/repo/dashboard";
+import { listCohorts } from "@/repo/cohorts";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
 import { readCourseStart, weekIndexOf } from "@/repo/sales";
@@ -111,10 +112,13 @@ const avg = (sum: number, n: number) => (n > 0 ? round1(sum / n) : 0);
  * registry read 는 캐시되므로 호출이 늘어도 추가 왕복 없음.
  */
 async function currentSeasonScope(): Promise<{ parts: User[]; season: number }> {
-  const all = await listArenaParticipants();
-  // 개막 경계는 **KST 기준 오늘** — 서버 로컬(UTC)로 재면 개막일 09:00 KST 까지 전날로 읽혀
-  // 개막 당일 아침에 시즌이 안 넘어간다. todayKST 재사용(신규 헬퍼 금지).
-  const season = resolveCurrentSeason(all, todayKST());
+  const [all, cohorts] = await Promise.all([
+    listArenaParticipants(),
+    listCohorts().catch(() => []), // 시즌 config 읽기 실패 → 0(미상) → 스코프 미적용
+  ]);
+  // 시즌 정본 = cohorts 탭 J열(admin 입력). 참가자별 registry K 는 템플릿 O1 오염 때문에 안 쓴다.
+  // 개막 경계는 **KST 기준 오늘** — 서버 로컬(UTC)로 재면 개막일 09:00 KST 까지 전날로 읽힌다.
+  const season = resolveCurrentSeason(cohorts, todayKST());
   return { parts: all.filter((u) => isInSeason(u.cohort, season)), season };
 }
 

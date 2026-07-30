@@ -15,6 +15,7 @@ import type { CohortStatus, CohortType } from "@/repo/cohorts";
 import CohortCreateModal from "./CohortCreateModal";
 import ArenaCreateModal from "./ArenaCreateModal";
 import CohortPendingRetryButton from "./CohortPendingRetryButton";
+import SeasonStartInput from "./SeasonStartInput";
 
 interface Cohort {
   label: string;
@@ -22,6 +23,8 @@ interface Cohort {
   note: string;
   traineeCount: number;
   type?: CohortType;
+  /** (아레나) 시즌 개강일 — 전광판 시즌 판정 정본(AR-2b, cohorts J열). */
+  seasonStartISO?: string;
 }
 
 /** 표시 라벨: 아레나 "A1회" / 일반 "8기". */
@@ -134,6 +137,14 @@ export default function CohortMgmtPanel({
                       <div className="mt-0.5 text-[11px] text-gray-500">
                         {c.note}
                       </div>
+                    )}
+                    {/* 아레나 시즌 행만 — 전광판 시즌 판정 정본 입력(AR-2b). */}
+                    {c.type === "arena" && (
+                      <SeasonStartInput
+                        label={c.label}
+                        initialISO={c.seasonStartISO ?? ""}
+                        disabled={viewOnly}
+                      />
                     )}
                   </div>
                   {!viewOnly && (

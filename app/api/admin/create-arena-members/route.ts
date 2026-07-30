@@ -130,6 +130,9 @@ async function POST_handler(req: Request) {
         rosterSheetId: cfg?.rosterSheetId ?? "",
         sheetsFolderId,
         companyParentFolderId,
+        // 시즌 개강일(J)은 로스터 생성이 정하지 않는다 — admin 이 /admin/cohorts 에서 입력하는
+        // **전광판 시즌 판정 정본**(AR-2b). 기존 값 보존(생성이 덮어쓰면 시즌이 흔들린다).
+        seasonStartISO: cfg?.seasonStartISO ?? "",
       };
     }
   }

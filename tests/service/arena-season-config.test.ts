@@ -1,88 +1,103 @@
 /**
- * 아레나 시즌 SSOT 회귀 (AR-2b, 8/7 시즌2 개막 경로).
+ * 아레나 시즌 SSOT 회귀 (AR-2b, belie A안 = cohorts 탭 config 정본).
  *
  * 고정하는 계약:
- *  ① 현재 시즌 = **개막한**(courseStart<=오늘) 아레나 기수 중 최대 시즌 — A2 개막일에 자동 전환.
- *  ② **등록 ≠ 개막**: 사전등록(prep)·미개막 기수는 시즌을 넘기지 못한다(개막 전 조기 전환 차단).
- *  ③ 테스터(A{n}-0)는 시즌을 넘기지 못한다(스모크테스트 1행이 전광판을 뒤집는 사고 차단).
- *  ④ 집계 스코프(isInSeason)는 라벨과 **같은 SSOT** — 헤더는 시즌2인데 표는 시즌1인 자기모순 금지.
- *  ⑤ 시즌 미상(0)이면 스코프는 전부 통과 = 보드를 비우지 않는다(안전 degrade).
- *  ⑥ 이월 판정(isCarryoverContract)은 시즌 경계가 바뀌어도 같은 규칙(집계 경로 자체는
- *     contract-carryover-split.test.ts 가 덮는다 — 여기선 경계 규칙만 고정).
+ *  ① 시즌 정본 = cohorts 탭 시즌 행(label "A{n}", type=arena)의 **J열 seasonStartISO**(admin 입력).
+ *     참가자별 registry K 는 **쓰지 않는다** — 템플릿 O1 스탬프라 출처 불신(3R 결론).
+ *  ② **개막일 기준**: 개강일이 오늘 이하인 시즌만 채택 → 개막 전엔 이전 시즌 유지(등록≠개막).
+ *  ③ 미입력·비ISO·archived 는 판정 제외.
+ *  ④ 아무 시즌도 확정 안 되면 0 → 라벨 "아레나" + 스코프 전부 통과(**데이터 안 자름**).
+ *  ⑤ 혼합 상태 안전: 새 시즌 개강일 미입력이면 옛 시즌으로 **고정되지 않는다**
+ *     (3R HIGH — 옛 시즌 스코프가 새 시즌 참가자를 통째로 숨기던 결함).
  *
- * 날짜는 **테스트 픽스처**로만 등장한다(앱 코드 하드코딩 금지 — 구조테스트 G5 가 강제).
+ * 날짜는 테스트 픽스처로만 등장한다(앱 코드 하드코딩 금지 — 구조테스트 G5 가 강제).
  */
 import { describe, expect, it } from "vitest";
 import {
   isInSeason,
   resolveCurrentSeason,
   seasonDisplayLabel,
+  type ArenaSeasonRow,
 } from "../../lib/service/arena-season-config";
-import { isCarryoverContract } from "../../lib/types/contract-status";
 
-const S1_START = "2026-06-12"; // 시즌1 개막(픽스처)
-const S2_START = "2026-08-07"; // 시즌2 개막(픽스처)
+const S1 = "2026-06-12"; // 시즌1 개막(픽스처)
+const S2 = "2026-08-07"; // 시즌2 개막(픽스처)
 
-const p = (cohort: string, courseStartISO?: string) => ({ cohort, courseStartISO });
+/** cohorts 탭 시즌 행 픽스처. */
+const row = (
+  label: string,
+  seasonStartISO = "",
+  status = "active",
+  type = "arena",
+): ArenaSeasonRow => ({ label, seasonStartISO, status, type });
 
-describe("resolveCurrentSeason — 개막 기준 시즌 판정", () => {
+describe("resolveCurrentSeason — cohorts config 정본", () => {
   it("A1 만 개막 → 시즌1", () => {
-    const parts = [p("A1-1기", S1_START), p("A1-6기", S1_START)];
-    expect(resolveCurrentSeason(parts, "2026-07-20")).toBe(1);
+    expect(resolveCurrentSeason([row("A1", S1)], "2026-07-20")).toBe(1);
   });
 
-  it("**개막일에 시즌2 자동 전환** (A2 courseStart <= 오늘)", () => {
-    const parts = [p("A1-1기", S1_START), p("A2-1기", S2_START)];
-    expect(resolveCurrentSeason(parts, S2_START)).toBe(2);
+  it("**개막일에 시즌2 전환** (A2 개강일 <= 오늘)", () => {
+    expect(resolveCurrentSeason([row("A1", S1), row("A2", S2)], S2)).toBe(2);
   });
 
-  it("**등록 ≠ 개막**: A2 사전등록돼 있어도 개막 전이면 여전히 시즌1", () => {
-    const parts = [p("A1-1기", S1_START), p("A2-1기", S2_START)];
-    expect(resolveCurrentSeason(parts, "2026-08-06")).toBe(1);
-    expect(resolveCurrentSeason(parts, "2026-07-01")).toBe(1);
+  it("**등록 ≠ 개막**: A2 행이 있고 개강일이 미래면 여전히 시즌1", () => {
+    const rows = [row("A1", S1), row("A2", S2)];
+    expect(resolveCurrentSeason(rows, "2026-08-06")).toBe(1);
+    expect(resolveCurrentSeason(rows, "2026-07-01")).toBe(1);
   });
 
-  it("**테스터(A{n}-0)는 시즌을 넘기지 못한다** — 스모크테스트 행 1개로 전광판 뒤집힘 차단", () => {
-    const parts = [p("A1-1기", S1_START), p("A2-0기", S1_START)];
-    expect(resolveCurrentSeason(parts, S2_START)).toBe(1);
+  it("**혼합 상태 안전(3R HIGH)**: A2 개강일 미입력이면 옛 시즌으로 고정하지 않고 0", () => {
+    // 0 → isInSeason 전부 통과 → 새 시즌 참가자가 보드에서 사라지지 않는다.
+    expect(resolveCurrentSeason([row("A1", S1), row("A2", "")], S2)).toBe(0);
+    expect(isInSeason("A2-1기", 0)).toBe(true);
+    expect(isInSeason("A1-1기", 0)).toBe(true);
   });
 
-  it("**날짜 미상은 시즌을 올리지 못한다**(fail-closed) — 개강일 미기록 아레나 행 대비", () => {
-    // create-arena-members 가 개강일을 안 써서 registry K 가 "" 인 행이 실재한다.
-    // 이때 A2 를 '개막'으로 인정하면 첫 클레임만으로 시즌2가 되어 시즌1 보드가 사라진다.
-    expect(resolveCurrentSeason([p("A1-1기", S1_START), p("A2-1기")], S2_START)).toBe(1);
-    expect(resolveCurrentSeason([p("A1-1기", S1_START), p("A2-1기", "")], S2_START)).toBe(1);
-    expect(resolveCurrentSeason([p("A1-1기", S1_START), p("A2-1기", "8/7")], S2_START)).toBe(1);
+  it("비ISO 개강일도 판정 제외 → 0", () => {
+    expect(resolveCurrentSeason([row("A1", S1), row("A2", "8/7")], S2)).toBe(0);
   });
 
-  it("전부 날짜 미상 → 0(미상) — 라벨은 '아레나', 스코프는 전체 통과(데이터 안 자름)", () => {
-    expect(resolveCurrentSeason([p("A1-1기"), p("A2-1기")], S2_START)).toBe(0);
-    expect(isInSeason("A1-1기", 0)).toBe(true); // 스코프 미적용 확인
+  it("archived 시즌은 제외 — admin 이 닫은 시즌은 후보 아님", () => {
+    const rows = [row("A1", S1), row("A2", S2, "archived")];
+    expect(resolveCurrentSeason(rows, S2)).toBe(1);
   });
 
-  it("'기' 접미사 유무 무관 (파서 재사용 계약)", () => {
-    expect(resolveCurrentSeason([p("A2-1", S2_START)], S2_START)).toBe(2);
-    expect(resolveCurrentSeason([p("A2-1기", S2_START)], S2_START)).toBe(2);
+  it("일반 기수 행·참가자 라벨은 무시 (시즌 레벨 라벨만)", () => {
+    const rows: ArenaSeasonRow[] = [
+      { label: "8", seasonStartISO: S2, status: "active", type: "cohort" },
+      { label: "A2-1기", seasonStartISO: S2, status: "active", type: "arena" },
+      row("A1", S1),
+    ];
+    expect(resolveCurrentSeason(rows, S2)).toBe(1);
   });
 
-  it("비아레나·빈 라벨은 무시 — 섞여 있어도 시즌 오염 없음", () => {
-    const parts = [p("8기"), p(""), p("T"), p("연습"), p("A1-3기", S1_START)];
-    expect(resolveCurrentSeason(parts, S2_START)).toBe(1);
+  it("type 이 arena 가 아니면 제외 (일반 기수에 개강일이 들어가도 시즌 오염 없음)", () => {
+    expect(
+      resolveCurrentSeason([{ label: "A2", seasonStartISO: S2, type: "cohort" }], S2),
+    ).toBe(0);
   });
 
-  it("참가자 없음/전부 비아레나 → 0(미상)", () => {
-    expect(resolveCurrentSeason([], S2_START)).toBe(0);
-    expect(resolveCurrentSeason([p("8기"), p("9기")], S2_START)).toBe(0);
+  it("행 없음/전부 미입력 → 0(미상)", () => {
+    expect(resolveCurrentSeason([], S2)).toBe(0);
+    expect(resolveCurrentSeason([row("A1", ""), row("A2", "")], S2)).toBe(0);
   });
 
-  it("시즌 두 자리도 정상 (A10 > A9 — 문자열 비교 아님)", () => {
-    const parts = [p("A9-1기", S1_START), p("A10-1기", S1_START)];
-    expect(resolveCurrentSeason(parts, S2_START)).toBe(10);
+  it("오늘 날짜가 비ISO 면 판정 불가 → 0", () => {
+    expect(resolveCurrentSeason([row("A1", S1)], "")).toBe(0);
+  });
+
+  it("시즌 두 자리 (A10 > A9 — 문자열 비교 아님)", () => {
+    const rows = [row("A9", S1), row("A10", S1)];
+    expect(resolveCurrentSeason(rows, S2)).toBe(10);
+  });
+
+  it("개막 당일 경계 포함 (개강일 == 오늘 → 개막)", () => {
+    expect(resolveCurrentSeason([row("A2", S2)], S2)).toBe(2);
   });
 });
 
 describe("isInSeason — 집계 스코프(라벨과 같은 SSOT)", () => {
-  it("해당 시즌 기수만 통과 — 옛 시즌 행은 보드에서 제외", () => {
+  it("해당 시즌 참가자만 통과", () => {
     expect(isInSeason("A2-1기", 2)).toBe(true);
     expect(isInSeason("A1-6기", 2)).toBe(false);
   });
@@ -96,17 +111,11 @@ describe("isInSeason — 집계 스코프(라벨과 같은 SSOT)", () => {
     expect(isInSeason("", 2)).toBe(false);
   });
 
-  it("**시즌 미상(0)이면 전부 통과** — 보드를 비우지 않는다(degrade)", () => {
-    expect(isInSeason("A1-1기", 0)).toBe(true);
-    expect(isInSeason("8기", 0)).toBe(true);
-  });
-
-  it("헤더-표 정합: resolveCurrentSeason 이 준 시즌으로 거른 결과만 남는다", () => {
-    const parts = [p("A1-1기", S1_START), p("A2-1기", S2_START), p("A2-2기", S2_START)];
-    const season = resolveCurrentSeason(parts, S2_START);
-    const scoped = parts.filter((u) => isInSeason(u.cohort, season));
+  it("헤더-표 정합: config 가 준 시즌으로 거른 결과만 남는다", () => {
+    const season = resolveCurrentSeason([row("A1", S1), row("A2", S2)], S2);
+    const parts = ["A1-1기", "A2-1기", "A2-2기"];
     expect(season).toBe(2);
-    expect(scoped.map((u) => u.cohort)).toEqual(["A2-1기", "A2-2기"]);
+    expect(parts.filter((c) => isInSeason(c, season))).toEqual(["A2-1기", "A2-2기"]);
   });
 });
 
@@ -118,33 +127,5 @@ describe("seasonDisplayLabel — 표기 단일 규칙", () => {
 
   it("미상(0)이면 번호 없이 '아레나' — 옛 '시즌1' 하드코딩 fallback 금지", () => {
     expect(seasonDisplayLabel(0)).toBe("아레나");
-  });
-});
-
-describe("이월 판정 — 시즌 경계 규칙", () => {
-  it("깃발(구분='이월') 행은 이월로 분류", () => {
-    expect(
-      isCarryoverContract({ 구분: "이월", 계약일: "2026-08-20" }, S2_START),
-    ).toBe(true);
-  });
-
-  it("시즌2 시작 **이전** 계약은 깃발이 없어도 이월로 분류", () => {
-    expect(isCarryoverContract({ 계약일: "2026-07-30" }, S2_START)).toBe(true);
-  });
-
-  it("개막 당일·이후 계약은 신규(집계 대상)", () => {
-    expect(isCarryoverContract({ 계약일: S2_START }, S2_START)).toBe(false);
-    expect(isCarryoverContract({ 계약일: "2026-08-08" }, S2_START)).toBe(false);
-  });
-
-  it("같은 계약이 시즌1 기준 신규 / 시즌2 기준 이월 — 경계 전환 규칙", () => {
-    const c = { 계약일: "2026-07-01" };
-    expect(isCarryoverContract(c, S1_START)).toBe(false);
-    expect(isCarryoverContract(c, S2_START)).toBe(true);
-  });
-
-  it("날짜가 ISO 가 아니면 날짜 비교를 하지 않는다(깃발만 판정)", () => {
-    expect(isCarryoverContract({ 계약일: "8/1" }, S2_START)).toBe(false);
-    expect(isCarryoverContract({ 구분: "이월", 계약일: "8/1" }, S2_START)).toBe(true);
   });
 });
