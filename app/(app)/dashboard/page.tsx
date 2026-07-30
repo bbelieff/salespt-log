@@ -120,6 +120,16 @@ export default function DashboardPage() {
                 ? "트레이너·미등록 계정은 대시보드를 볼 수 없어요. 관리 메뉴를 이용해 주세요."
                 : "잠시 후 새로고침해 주세요. 계속되면 운영자에게 알려 주세요."}
             </p>
+            {/* 탈출구 — R4 W1-2 로 시트 없는 등록 계정도 강등 없이 들어오게 됐다(루프 방지).
+                그래서 이 카드가 종착지가 되면 안 된다: 기수 연결 화면으로 갈 길을 남긴다(적대리뷰 지적). */}
+            {dash.error instanceof Error && dash.error.message === "no_sheet" && (
+              <a
+                href="/claim"
+                className="mt-3 inline-block rounded-lg bg-neutral-900 px-3 py-2 text-xs font-bold text-white"
+              >
+                내 기수에 계정 연결하기
+              </a>
+            )}
           </div>
         </div>
       )}

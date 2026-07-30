@@ -17,10 +17,49 @@ export function isArenaCohortLabel(cohort: string): boolean {
 
 /** 본인 시트를 가진 등록 수강생인가 — archived 라우팅 통과 판정
  * (archived-login-access, 2026-07-07). 보관(행 status=archived 또는 cohorts 보관
- * 기수)이어도 이 함수가 true 면 /claim 강제 이동 없이 대시보드 입장(읽기 전용).
- * 트레이너/미등록(시트 없음)은 false — 기존 라우팅 유지. */
+ * 기수)이어도 이 함수가 true 면 /claim 강제 이동 없이 대시보드 입장.
+ * 트레이너/미등록(시트 없음)은 false — 기존 라우팅 유지.
+ *
+ * R4(G2, 2026-07-26): 이 예외가 **기본값으로 승격**됐다 — shouldRedirectToClaim 참조. */
 export function hasOwnSheet(u: Pick<User, "role" | "spreadsheetId"> | null | undefined): boolean {
   return !!u && u.role === "trainee" && u.spreadsheetId.trim() !== "";
+}
+
+/**
+ * **클레임 화면으로 보내야 하는가 — 라우팅 강등 판정 SSOT** (R4 G2, belie 결정 2026-07-26).
+ *
+ * R4 무제한 CRM 이전: 보관(행 status=archived 또는 cohorts 탭 보관 기수)이면 /claim 으로
+ * 강등하고, 2026-07-07 hasOwnSheet 예외만 그걸 면제했다(함진숙 무한 클레임 루프 수정).
+ * R4 이후(**G2=A**): "수료 후에도 쓰는 CRM" 이므로 **등록된 사람은 강등하지 않는다** —
+ * 판정 기준은 **레지스트리 행 존재 여부 하나**로 축소됐다.
+ *
+ * 보관 기수 판정(isNumericCohortArchived)·보관 마킹(users-arena)은 **분류·집계용으로 유지**
+ * 되며 더 이상 라우팅 강등을 유발하지 않는다(인벤토리 §2.4 — 마킹과 강등의 결합 해소).
+ *
+ * ⚠️ **role 로 갈라지지 않는다.** 초안은 `!hasOwnSheet(u)` 를 썼고, 그 함수가
+ * `role==="trainee"` 를 요구하는 탓에 **모든 트레이너가 강등 대상**이 돼 layout 에서
+ * /claim 무한루프를 만들었다(적대리뷰 1). 이어 "시트 없는 등록 trainee" 강등도
+ * claimAccount short-circuit 때문에 같은 루프를 만드는 것이 확인됐다(적대리뷰 2, BLOCKER).
+ * → 두 사고를 한 번에 막는 유일한 안전 계약이 **"행 있으면 통과"** 다. role·시트·보관을
+ * 조건에 넣지 말 것. (`hasOwnSheet` 는 아레나·표시 로직에서 계속 쓰이지만 **라우팅 계약에서는 빠졌다**.)
+ *
+ * ⚠️ 쓰기 권한은 이 함수의 소관이 아니다 — `getWritableUserEmail`(lib/auth/identity)이
+ * 별도로 가른다. W1-1/ADR-0029 가 archived 차단을 폐지해 입장·저장이 함께 열렸다.
+ *
+ * @param u findUserByEmail(pickPreferredUser 적용) 결과. null=미등록 → true(유일한 강등 사유).
+ */
+export function shouldRedirectToClaim(
+  u: Pick<User, "role" | "spreadsheetId"> | null | undefined,
+): boolean {
+  // **레지스트리 행이 없을 때만** 클레임으로 보낸다.
+  //
+  // ⚠️ 시트만 없는 **등록된** 행은 절대 강등하지 않는다(적대리뷰 BLOCKER, 2026-07-28):
+  // claimAccount 는 "행이 있고 보관도 아님" 이면 레지스트리를 건드리지 않고 200 을 반환하고
+  // (lib/service/auth.ts short-circuit), 클레임 화면은 200 을 받으면 "/" 로 되돌린다
+  // → / ↔ /claim **영구 루프**. 그 사용자는 앱에 아예 들어올 수 없다.
+  // 시트 없는 행은 열밀림 복구 잔재·수기 편집(#546 전례)으로 생길 수 있어 실재 가능하다.
+  // 그런 행은 master 처럼 통과시키고, 재참가가 필요하면 /claim 을 직접 열어 이용한다.
+  return !u;
 }
 
 /** dedup: 같은 email 다중 행 중 **유지할** 행 index. 우선순위 ① 아레나 > 숫자,
