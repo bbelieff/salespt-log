@@ -84,6 +84,20 @@
 
 ## 로그
 
+### 2026-07-31 · SALES-PT LATENCY-R1 · 대시보드 시트 fallback CODE_READY
+- 한 것: 프로필 의존 미팅 read를 초기 read와 겹쳤고, held-promise overlap·프로필 reject 회귀를 고정했다.
+- 검증: 관련 27/27, `check.sh` 구조 23/23·전체 877/877·doc-drift PASS, production build 69/69 PASS.
+- 결정: 반환값·해지 오버레이·정확히 7회 Sheets 호출·DB/admin/background 경로는 불변이다.
+- 다음: 독립 VERIFY PASS 뒤 동일 writer가 commit→PR→serialized deploy→health→인증 read-only timing을 수행한다.
+- SoR: `docs/plans/active/dashboard-sheet-latency-r1.md`
+
+### 2026-07-31 · SALES-PT LATENCY-R1 · 대시보드 시트 fallback 병렬화 착수
+- 의도: 프로필 의존 미팅 read를 다른 초기 Sheets read와 겹쳐 대시보드 응답 임계경로를 줄인다.
+- 범위: `dashboard.ts`·신규 집중 테스트·단일 plan, worklog checkpoint만; DB/admin/reverse shadow/운영 데이터는 불변.
+- 결정: wall-clock 임계값 대신 held promise로 시작 순서를 검증하고 정확히 7회 호출·반환값·오류 전파를 고정한다.
+- 다음: RED 테스트 → 최소 구현 → full check/build → 독립 VERIFY용 candidate 동결.
+- SoR: `docs/plans/active/dashboard-sheet-latency-r1.md`
+
 ### 2026-07-28 · DevD(VERIFY) · W1-1(#631) 판정 = **NO-GO** + P1 비용원장 근인(제4결함) 규명·수정 PR
 - 의도: R4 wave-1 VERIFY 트랙 + 라이브 P1(비용원장 저장·조회 비대칭) 근인 규명·fix-forward.
 - 한 것: **①W1-1 #631 = NO-GO** — 4렌즈 전부 blocks_merge, blocker 7 중 2건 D 직접 확인: (a) `getWritableUserEmail` 본문이 `return getActiveUserEmail();` 뿐이라 **cohort 판정이 없어** "비파일럿 완전 불변" 주장이 코드와 불일치(비파일럿 수료생이 마감 시트에 기입 가능) (b) 집계 클램프가 같은 함수 안에서 **반쪽** — salesRows 루프에만 걸리고 미팅 루프(예약·완료·계약)는 무필터. **②P1 근인 확정(제4결함)**: pg-types 가 `date`(OID 1082)를 **로컬 자정 Date** 로 주는데 매퍼가 `String(v).slice(0,10)` → `"Wed Jul 01"` → `days=NaN` 이 가드 두 조건을 **모두 통과** → 빈 배열 → 인식금액 0 → 조용히 증발. 증상 4개(일회성 미노출·요약 ₩0·영업이익 미반영·반복 '이번 발생 없음')가 전부 이 하나로 설명됨. **PR #633**(매퍼 로컬게터 포맷+형식위반 throw, NaN 봉인, 회귀 8건, 18/18 통과).

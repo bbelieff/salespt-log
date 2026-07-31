@@ -391,14 +391,19 @@ function reverseShadowCompare(sheetId: string, served: DashboardView): void {
 
 /** 시트 서빙 경로 (비파일럿 + DB 강등 fallback) — 기존 동작 무변경. */
 async function loadDashboardFromSheet(sheetId: string, actorEmail: string): Promise<DashboardView> {
-  const [data, purchases, productions, banners, payments, profile] =
+  const profilePromise = readProfileBundle(sheetId);
+  const meetingsPromise = profilePromise.then((profile) =>
+    readCourseMeetings(sheetId, profile.courseStart),
+  );
+  const [data, purchases, productions, banners, payments, profile, meetings] =
     await Promise.all([
       readDashboard(sheetId),
       readPurchases(sheetId),
       readProductions(sheetId),
       readBanners(sheetId),
       readContractPayments(sheetId),
-      readProfileBundle(sheetId),
+      profilePromise,
+      meetingsPromise,
     ]);
   const courseStartISO = toISODate(profile.courseStart);
   const purchaseCost = purchases.rows.reduce((s, p) => s + num(p.주문금액), 0);
@@ -427,7 +432,6 @@ async function loadDashboardFromSheet(sheetId: string, actorEmail: string): Prom
   });
   // 해지 계약수 오버레이 — 시트경로는 채널귀속용 04 미팅이 없어 1회 read(읽기전용).
   // 그림자 없음(비파일럿 raw 서빙 무변) → 바로 오버레이. raw 파이프라인 무변.
-  const meetings = await readCourseMeetings(sheetId, profile.courseStart);
   const term = terminatedByChannel(payments, meetings);
   if (term.unknown > 0) {
     captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "sheet" });
