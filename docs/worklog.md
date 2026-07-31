@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-08-01 · SALES-PT LATENCY-R1 · 시트 fallback 병렬화 release 완료
+- 한 것: PR #645를 squash merge(`ccedd64c`)하고 master QA·단일 VPS deploy(`30647563313`)·public `/api/health` 200을 확인했다.
+- 검증: focused 2/2·관련 27/27·독립 `PASS_TO_RELEASE`·canonical CI SUCCESS; 기존 인증 대시보드 렌더·console 0, 운영 write 0.
+- 제약: API cold/warm 실측은 브라우저 도구 제약으로 `AUTH_TIMING_BLOCKED`; public redirect를 인증 timing 증거로 대체하지 않았다.
+- 결정: 기능·배포는 완료됐고, 이 항목과 completed plan이 최종 문서 영수증이다.
+- SoR: `docs/plans/completed/dashboard-sheet-latency-r1.md`
+
 ### 2026-07-31 · SALES-PT LATENCY-R1 · 대시보드 시트 fallback CODE_READY
 - 한 것: 프로필 의존 미팅 read를 초기 read와 겹쳤고, held-promise overlap·프로필 reject 회귀를 고정했다.
 - 검증: 관련 27/27, `check.sh` 구조 23/23·전체 877/877·doc-drift PASS, production build 69/69 PASS.
