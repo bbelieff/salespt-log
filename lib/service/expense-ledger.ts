@@ -107,6 +107,8 @@ export function recognizeRecurringOccurrencesForRange(
       amountWon: occurrence.amountWon,
       periodStart: occurrence.occurrenceDate,
       periodEnd: occurrence.occurrenceDate,
+      recurringRuleId: occurrence.ruleId,
+      isOverride: occurrence.isOverride,
     }];
   });
 }

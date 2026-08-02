@@ -28,7 +28,7 @@ describe("dashboard expense ledger finance", () => {
       [entry()],
       [{
         id: "rec-1", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여",
-        amountWon: 1_000, occurrenceDate: "2026-07-20", occurrenceMonth: "2026-07", status: "active",
+        amountWon: 1_000, occurrenceDate: "2026-07-20", occurrenceMonth: "2026-07", status: "active", isOverride: false,
       }],
       "2026-07-16",
       "2026-07-20",
@@ -38,11 +38,11 @@ describe("dashboard expense ledger finance", () => {
 
   it("excludes skipped, voided, and out-of-range recurring costs", () => {
     const recurring = [
-      { id: "start", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 1_000, occurrenceDate: "2026-07-01", occurrenceMonth: "2026-07", status: "active" as const },
-      { id: "end", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 2_000, occurrenceDate: "2026-07-31", occurrenceMonth: "2026-07", status: "active" as const },
-      { id: "skip", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 9_000, occurrenceDate: "2026-07-15", occurrenceMonth: "2026-07", status: "skipped" as const },
-      { id: "void", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 9_000, occurrenceDate: "2026-07-20", occurrenceMonth: "2026-07", status: "voided" as const },
-      { id: "late", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 9_000, occurrenceDate: "2026-08-01", occurrenceMonth: "2026-08", status: "active" as const },
+      { id: "start", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 1_000, occurrenceDate: "2026-07-01", occurrenceMonth: "2026-07", status: "active" as const, isOverride: false },
+      { id: "end", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 2_000, occurrenceDate: "2026-07-31", occurrenceMonth: "2026-07", status: "active" as const, isOverride: false },
+      { id: "skip", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 9_000, occurrenceDate: "2026-07-15", occurrenceMonth: "2026-07", status: "skipped" as const, isOverride: false },
+      { id: "void", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 9_000, occurrenceDate: "2026-07-20", occurrenceMonth: "2026-07", status: "voided" as const, isOverride: false },
+      { id: "late", ruleId: "rule-1", categoryId, categoryName: "급여", itemName: "직원 급여", amountWon: 9_000, occurrenceDate: "2026-08-01", occurrenceMonth: "2026-08", status: "active" as const, isOverride: false },
     ];
     expect(calculateAdditionalCostForDashboard([], recurring, "2026-07-01", "2026-07-31")).toBe(3_000);
     const finance = applyAdditionalCostToDashboard(4_000, 20_000, {

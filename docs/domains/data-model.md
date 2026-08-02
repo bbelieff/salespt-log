@@ -39,7 +39,7 @@ last_review: 2026-04-27
 | `ReclassifyUnclassifiedResult` | interface | 작업·원본·대상 ID와 이동 건수를 포함하는 멱등 재분류 결과. |
 | `ExpenseEntry` | z.object / alias | 일회성 비용: `categoryId`, `categoryName`, `itemName`, 양의 정수 `amountWon`, 포함 기간 `periodStart`~`periodEnd`. |
 | `RecurringRule` | z.object / alias | 매월 반복 비용: 카테고리·품목·금액·`anchorDay`·시작/종료일·상태·대체 규칙 ID. 29~31일은 해당 월 마지막 날로 처리한다. |
-| `RecognizedExpense` | interface | 조회 기간에 인식된 일회성 또는 반복 비용. 원본 항목은 유지하고 일할 인식 금액만 `amountWon`으로 전달한다. |
+| `RecognizedExpense` | interface | 조회 기간에 인식된 일회성 또는 반복 비용. 원본 항목은 유지하고 일할 인식 금액만 `amountWon`으로 전달하며, 반복 발생은 부모 규칙 ID와 명시적 덮어쓰기 여부를 함께 제공한다. |
 | `ExpenseLedgerView` | interface | `month` / `all` / `category` 조회 응답: 카테고리, 인식 항목, 카테고리 합계, `additionalCostTotal`. |
 | `PatchRecurringRuleBody` | discriminated union / alias | `scope: occurrence`은 한 발생월만, `scope: future`는 유효 월 이후의 새 규칙에 수정값을 적용한다. |
 

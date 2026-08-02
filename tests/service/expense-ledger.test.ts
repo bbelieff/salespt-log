@@ -89,7 +89,7 @@ describe("expense ledger allocation", () => {
   });
   it("includes only active recurring occurrences in range and category", () => {
     const base = {
-      ruleId: "rule-1", categoryId: "category-1", categoryName: "급여", itemName: "직원 급여", amountWon: 1_000,
+      ruleId: "rule-1", categoryId: "category-1", categoryName: "급여", itemName: "직원 급여", amountWon: 1_000, isOverride: false,
     };
     const recognized = recognizeRecurringOccurrencesForRange([
       { ...base, id: "start", occurrenceDate: "2026-07-01", occurrenceMonth: "2026-07", status: "active" },
@@ -100,6 +100,10 @@ describe("expense ledger allocation", () => {
       { ...base, id: "outside", occurrenceDate: "2026-08-01", occurrenceMonth: "2026-08", status: "active" },
     ], "2026-07-01", "2026-07-31", "category-1");
     expect(recognized.map((item) => item.id)).toEqual(["start", "end"]);
+    expect(recognized.map(({ recurringRuleId, isOverride }) => ({ recurringRuleId, isOverride }))).toEqual([
+      { recurringRuleId: "rule-1", isOverride: false },
+      { recurringRuleId: "rule-1", isOverride: false },
+    ]);
     expect(recognized.reduce((sum, item) => sum + item.amountWon, 0)).toBe(2_000);
   });
   it("keeps recurring-rule management state scoped to each rule and exposes the next occurrence", () => {
@@ -109,9 +113,9 @@ describe("expense ledger allocation", () => {
       status: "active" as const, supersedesRuleId: null, createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
     };
     const [managed] = manageRecurringRules([rule], [
-      { id: "current", ruleId: rule.id, categoryId: rule.categoryId, categoryName: rule.categoryName, itemName: rule.itemName, amountWon: rule.amountWon, occurrenceDate: "2026-07-15", occurrenceMonth: "2026-07", status: "active" },
-      { id: "next", ruleId: rule.id, categoryId: rule.categoryId, categoryName: rule.categoryName, itemName: rule.itemName, amountWon: rule.amountWon, occurrenceDate: "2026-08-15", occurrenceMonth: "2026-08", status: "active" },
-      { id: "other", ruleId: "00000000-0000-4000-8000-000000000003", categoryId: rule.categoryId, categoryName: rule.categoryName, itemName: rule.itemName, amountWon: rule.amountWon, occurrenceDate: "2026-07-12", occurrenceMonth: "2026-07", status: "active" },
+      { id: "current", ruleId: rule.id, categoryId: rule.categoryId, categoryName: rule.categoryName, itemName: rule.itemName, amountWon: rule.amountWon, occurrenceDate: "2026-07-15", occurrenceMonth: "2026-07", status: "active", isOverride: false },
+      { id: "next", ruleId: rule.id, categoryId: rule.categoryId, categoryName: rule.categoryName, itemName: rule.itemName, amountWon: rule.amountWon, occurrenceDate: "2026-08-15", occurrenceMonth: "2026-08", status: "active", isOverride: false },
+      { id: "other", ruleId: "00000000-0000-4000-8000-000000000003", categoryId: rule.categoryId, categoryName: rule.categoryName, itemName: rule.itemName, amountWon: rule.amountWon, occurrenceDate: "2026-07-12", occurrenceMonth: "2026-07", status: "active", isOverride: false },
     ], "2026-07-20");
     expect(managed?.currentOccurrence).toEqual({ occurrenceDate: "2026-07-15", occurrenceMonth: "2026-07", status: "active" });
     expect(managed?.nextOccurrence).toEqual({ occurrenceDate: "2026-08-15", occurrenceMonth: "2026-08", status: "active" });

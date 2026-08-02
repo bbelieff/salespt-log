@@ -146,8 +146,7 @@ export const ExpenseQuery = z.object({
   if (v.view === "category" && !v.categoryId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "categoryId가 필요해요.", path: ["categoryId"] });
 });
 
-export interface RecognizedExpense {
-  source: "one_time" | "recurring";
+interface RecognizedExpenseBase {
   id: string;
   categoryId: string;
   categoryName: string;
@@ -156,6 +155,11 @@ export interface RecognizedExpense {
   periodStart: string;
   periodEnd: string;
 }
+
+export type RecognizedExpense = RecognizedExpenseBase & (
+  | { source: "one_time"; recurringRuleId?: never; isOverride?: never }
+  | { source: "recurring"; recurringRuleId: string; isOverride: boolean }
+);
 
 export interface ExpenseLedgerView {
   view: "month" | "all" | "category";

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 import ExpenseCategoryPicker from "@/components/dashboard/expense-ledger/ExpenseCategoryPicker";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
+import type { RecognizedExpense } from "@/types/expense-ledger";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const categories = [
@@ -18,6 +19,11 @@ const categories = [
 const recurringRuleFixtures = [
   { id: "rule-active", categoryId: "category-labor", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, status: "active", currentOccurrence: null, nextOccurrence: { occurrenceDate: "2026-08-23", occurrenceMonth: "2026-08", status: "scheduled" } },
   { id: "rule-archived", categoryId: "category-rent", categoryName: "임차료", itemName: "보관된 임대료", amountWon: 72, status: "archived", currentOccurrence: null, nextOccurrence: null },
+];
+const defaultLedgerEntries: RecognizedExpense[] = [
+  { id: "entry-1", source: "one_time", categoryId: "category-marketing", categoryName: "마케팅", itemName: "광고비", amountWon: 120, periodStart: "2026-07-31", periodEnd: "2026-08-02" },
+  { id: "entry-2", source: "recurring", recurringRuleId: "rule-active", isOverride: false, categoryId: "category-labor", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
+  { id: "entry-3", source: "one_time", categoryId: "category-rent", categoryName: "임차료", itemName: "사무실 임대료", amountWon: 72, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
 ];
 interface QueryMock<T> {
   data: T | undefined;
@@ -35,6 +41,7 @@ let createRecurringRuleMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPend
 let deleteCategoryMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
 let reclassifyMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
 let usageQueryState: QueryMock<{ category: { id: string; name: string; isSystem: false; deletedAt: null }; usage: { entryCount: number; ruleCount: number; occurrenceCount: number; overrideOccurrenceCount: number; totalCount: number } }>;
+let ledgerEntries: RecognizedExpense[];
 function resetQueryStates() {
   categoryQueryState = { data: categories, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
   recurringQueryState = { data: { rules: recurringRuleFixtures }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
@@ -44,6 +51,7 @@ function resetQueryStates() {
   usageQueryState = { data: { category: { id: "category-marketing", name: "마케팅", isSystem: false, deletedAt: null }, usage: { entryCount: 1, ruleCount: 2, occurrenceCount: 3, overrideOccurrenceCount: 1, totalCount: 6 } }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
   createExpenseMutation = { mutateAsync: vi.fn().mockResolvedValue({ expense: {} }), isPending: false };
   createRecurringRuleMutation = { mutateAsync: vi.fn().mockResolvedValue({ rule: { id: "new-rule" } }), isPending: false };
+  ledgerEntries = defaultLedgerEntries;
 }
 resetQueryStates();
 vi.mock("@/query/expense-ledger-hooks", () => {
@@ -56,11 +64,7 @@ vi.mock("@/query/expense-ledger-hooks", () => {
         view,
         month: view === "month" ? "2026-07" : null,
         categories,
-        entries: [
-          { id: "entry-1", source: "one_time", categoryId: "category-marketing", categoryName: "마케팅", itemName: "광고비", amountWon: 120, periodStart: "2026-07-31", periodEnd: "2026-08-02" },
-          { id: "entry-2", source: "recurring", categoryId: "category-labor", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
-          { id: "entry-3", source: "one_time", categoryId: "category-rent", categoryName: "임차료", itemName: "사무실 임대료", amountWon: 72, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
-        ],
+        entries: ledgerEntries,
         categoryTotals: [
           { categoryId: "category-marketing", categoryName: "마케팅", amountWon: 120 },
           { categoryId: "category-labor", categoryName: "인건비", amountWon: 108 },
@@ -435,6 +439,33 @@ describe("expense ledger dashboard UI", () => {
     const combobox = document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="비용 카테고리"]');
     act(() => combobox?.click());
     expect(document.body.textContent).toContain("마케팅");
+  });
+
+  it("collapses a derived occurrence under its unclassified rule while keeping override and standalone occurrence refs", async () => {
+    recurringQueryState = { data: { rules: [{ ...recurringRuleFixtures[0]!, id: "rule-unclassified", categoryId: "category-unclassified", categoryName: "미분류", itemName: "미분류 규칙" }] }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
+    ledgerEntries = [
+      { id: "occ-derived", source: "recurring", recurringRuleId: "rule-unclassified", isOverride: false, categoryId: "category-unclassified", categoryName: "미분류", itemName: "자동 발생", amountWon: 100, periodStart: "2026-07-01", periodEnd: "2026-07-01" },
+      { id: "occ-override", source: "recurring", recurringRuleId: "rule-unclassified", isOverride: true, categoryId: "category-unclassified", categoryName: "미분류", itemName: "직접 수정 발생", amountWon: 200, periodStart: "2026-07-01", periodEnd: "2026-07-01" },
+      { id: "occ-standalone", source: "recurring", recurringRuleId: "rule-other", isOverride: false, categoryId: "category-unclassified", categoryName: "미분류", itemName: "독립 발생", amountWon: 300, periodStart: "2026-07-01", periodEnd: "2026-07-01" },
+    ];
+    render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
+    act(() => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="비용 카테고리"]')?.click());
+    expect(document.body.textContent).not.toContain("자동 발생");
+    expect(document.body.textContent).toContain("미분류 규칙");
+    expect(document.body.textContent).toContain("직접 수정 발생");
+    expect(document.body.textContent).toContain("독립 발생");
+    const target = document.querySelector<HTMLSelectElement>('[aria-label="미분류 이동 대상"]')!;
+    act(() => { target.value = "category-marketing"; target.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => { clickButton("3건 분류하기"); });
+    expect(reclassifyMutation.mutateAsync).toHaveBeenCalledWith({
+      operationId: expect.any(String),
+      targetCategoryId: "category-marketing",
+      refs: [
+        { kind: "recurringOccurrence", id: "occ-override" },
+        { kind: "recurringOccurrence", id: "occ-standalone" },
+        { kind: "recurringRule", id: "rule-unclassified" },
+      ],
+    });
   });
 });
 

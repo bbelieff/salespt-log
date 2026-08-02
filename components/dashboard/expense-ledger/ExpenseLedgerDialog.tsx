@@ -142,8 +142,12 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
     const unclassifiedId = categoryList.find((category) => category.isSystem && category.name === "미분류")?.id;
     if (!unclassifiedId) return [];
     const refs = new Map<string, ReclassifiableExpenseItem>();
+    const unclassifiedRuleIds = new Set((recurringRules.data?.rules ?? [])
+      .filter((rule) => rule.categoryId === unclassifiedId && rule.status !== "archived")
+      .map((rule) => rule.id));
     for (const entry of unclassifiedLedger.data?.entries ?? []) {
       if (entry.categoryId !== unclassifiedId) continue;
+      if (entry.source === "recurring" && !entry.isOverride && unclassifiedRuleIds.has(entry.recurringRuleId)) continue;
       const kind = entry.source === "one_time" ? "entry" : entry.source === "recurring" ? "recurringOccurrence" : null;
       if (!kind) continue;
       const ref = { kind, id: entry.id, label: entry.itemName, detail: `${kind === "entry" ? "일회성" : "반복 발생"} · ₩${formatMoney(entry.amountWon)}` } as const;
