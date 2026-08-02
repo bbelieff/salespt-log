@@ -115,9 +115,11 @@ describe("setSeasonStart", () => {
     });
   });
 
-  it("YYYY-MM-DD 아니면 throw — 시트에 쓰지 않는다", async () => {
+  it("형식 또는 달력상 유효하지 않으면 throw — 시트에 쓰지 않는다", async () => {
     await expect(setSeasonStart("A2", "8/7")).rejects.toThrow();
     await expect(setSeasonStart("A2", "2026-8-7")).rejects.toThrow();
+    await expect(setSeasonStart("A2", "2026-02-31")).rejects.toThrow();
+    await expect(setSeasonStart("A2", "2026-13-01")).rejects.toThrow();
     expect(appended).toHaveLength(0);
     expect(updated).toHaveLength(0);
   });
@@ -131,10 +133,14 @@ describe("normalizeSeasonStart", () => {
   it("Sheets 로케일 날짜 표기를 ISO로 정규화한다", () => {
     expect(normalizeSeasonStart("2026. 8. 7.")).toBe("2026-08-07");
     expect(normalizeSeasonStart("2026/8/7")).toBe("2026-08-07");
+    expect(normalizeSeasonStart("2028/2/29")).toBe("2028-02-29");
   });
 
-  it("알 수 없는 표기는 미정으로 fail closed 한다", () => {
+  it("알 수 없거나 달력상 존재하지 않는 표기는 미정으로 fail closed 한다", () => {
     expect(normalizeSeasonStart("8월 7일")).toBe("");
+    expect(normalizeSeasonStart("2026-02-31")).toBe("");
+    expect(normalizeSeasonStart("2026-13-01")).toBe("");
+    expect(normalizeSeasonStart("2026/2/29")).toBe("");
     expect(normalizeSeasonStart(null)).toBe("");
   });
 });

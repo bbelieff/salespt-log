@@ -59,6 +59,11 @@ describe("resolveCurrentSeason — cohorts config 정본", () => {
     expect(resolveCurrentSeason([row("A1", S1), row("A2", "8/7")], S2)).toBe(0);
   });
 
+  it("달력상 존재하지 않는 개강일은 미래/개막이 아니라 미상 → 0", () => {
+    expect(resolveCurrentSeason([row("A1", S1), row("A2", "2026-02-31")], S2)).toBe(0);
+    expect(resolveCurrentSeason([row("A1", S1), row("A2", "2026-13-01")], S2)).toBe(0);
+  });
+
   it("archived 시즌은 제외 — admin 이 닫은 시즌은 후보 아님", () => {
     const rows = [row("A1", S1), row("A2", S2, "archived")];
     expect(resolveCurrentSeason(rows, S2)).toBe(1);
@@ -86,6 +91,10 @@ describe("resolveCurrentSeason — cohorts config 정본", () => {
 
   it("오늘 날짜가 비ISO 면 판정 불가 → 0", () => {
     expect(resolveCurrentSeason([row("A1", S1)], "")).toBe(0);
+  });
+
+  it("오늘 날짜가 달력상 존재하지 않으면 판정 불가 → 0", () => {
+    expect(resolveCurrentSeason([row("A1", S1)], "2026-02-31")).toBe(0);
   });
 
   it("시즌 두 자리 (A10 > A9 — 문자열 비교 아님)", () => {
@@ -142,6 +151,8 @@ describe("주차 = 시즌 개강일 앵커 (참가자 시트 O1 배제)", () => 
     expect(seasonWeekOf("", S2)).toBe(0);
     expect(seasonWeekOf(S2, "")).toBe(0);
     expect(seasonWeekOf("8/7", S2)).toBe(0);
+    expect(seasonWeekOf("2026-02-31", S2)).toBe(0);
+    expect(seasonWeekOf(S2, "2026-13-01")).toBe(0);
   });
 
   it("currentSeasonStartISO: 시즌 미상이면 '' (주차도 숨김)", () => {

@@ -14,6 +14,7 @@
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, cohortsTab } from "@/config";
+import { isValidISODate } from "@/util/week";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 
 export type CohortStatus = "active" | "archived";
@@ -71,12 +72,13 @@ function invalidateCohorts(): void {
 export function normalizeSeasonStart(raw: unknown): string {
   const s = String(raw ?? "").trim();
   if (!s) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (isValidISODate(s)) return s;
   // "2026. 8. 7." / "2026.8.7" / "2026/8/7" → 2026-08-07
   const m = s.match(/^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\.?$/);
   if (!m) return "";
   const [, y, mo, d] = m;
-  return `${y}-${mo!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  const normalized = `${y}-${mo!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  return isValidISODate(normalized) ? normalized : "";
 }
 
 export async function listCohorts(): Promise<Cohort[]> {
@@ -285,7 +287,7 @@ export async function setSeasonStart(
   seasonStartISO: string,
 ): Promise<void> {
   const iso = seasonStartISO.trim();
-  if (iso !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+  if (iso !== "" && !isValidISODate(iso)) {
     throw new Error("[setSeasonStart] YYYY-MM-DD 형식이 아님");
   }
   // 행 생성/type 보장은 upsert 로(D~J, USER_ENTERED — ID·라벨은 텍스트라 무해).

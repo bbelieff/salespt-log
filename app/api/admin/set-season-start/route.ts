@@ -13,6 +13,7 @@ import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { setSeasonStart, ensureCohortsTab } from "@/repo/cohorts";
 import { arenaSeasonLabelParts } from "@/service/cohort-token";
+import { isValidISODate } from "@/util/week";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function POST_handler(req: Request) {
@@ -37,7 +38,7 @@ async function POST_handler(req: Request) {
       { status: 400 },
     );
   }
-  if (iso !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+  if (iso !== "" && !isValidISODate(iso)) {
     return NextResponse.json(
       { error: "invalid_date", hint: "YYYY-MM-DD 형식으로 입력해 주세요." },
       { status: 400 },

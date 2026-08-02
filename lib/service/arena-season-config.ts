@@ -25,7 +25,7 @@
  *  - 오늘 날짜는 호출부가 주입(순수함수 유지 → 테스트 가능, 앱 코드 날짜 하드코딩 0).
  */
 import { STATS_WEEKS } from "@/config/cohort-dates";
-import { parseISO, weekIndexOf } from "@/util/week";
+import { isValidISODate, parseISO, weekIndexOf } from "@/util/week";
 import { arenaCohortLabelParts, arenaSeasonLabelParts } from "./cohort-token";
 
 /** 시즌 판정 입력 — cohorts 탭 시즌 행에서 필요한 최소 필드(Cohort 를 그대로 넘길 수 있다). */
@@ -40,8 +40,6 @@ export interface ArenaSeasonRow {
   type?: string;
 }
 
-const ISO = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
  * 현재 시즌 번호 — 개막일이 지난 활성 아레나 시즌 중 최대. 확정 불가면 0(미상).
  * @param rows cohorts 탭 행들(일반 기수 섞여 있어도 됨 — type/label 로 걸러낸다)
@@ -51,7 +49,7 @@ export function resolveCurrentSeason(
   rows: readonly ArenaSeasonRow[],
   todayISO: string,
 ): number {
-  if (!ISO.test(todayISO)) return 0; // 오늘을 모르면 판정 불가 — 미상으로 degrade
+  if (!isValidISODate(todayISO)) return 0; // 오늘을 모르면 판정 불가 — 미상으로 degrade
   let opened = 0; // 개막이 확정된 최대 시즌
   let unknown = 0; // 개강일 **미입력·비ISO**(= 개막 여부를 모름)인 최대 시즌
   for (const r of rows) {
@@ -60,7 +58,7 @@ export function resolveCurrentSeason(
     if (season === null) continue; // 일반 기수("8")·참가자 라벨("A2-1기") 무시
     if (r.type !== undefined && r.type !== "arena") continue;
     const start = (r.seasonStartISO ?? "").trim();
-    if (!ISO.test(start)) {
+    if (!isValidISODate(start)) {
       // "모름" — "아직 개막 안 함"(미래 날짜)과 반드시 구분한다.
       if (season > unknown) unknown = season;
       continue;
@@ -102,7 +100,7 @@ export function currentSeasonStartISO(
     if (r.type !== undefined && r.type !== "arena") continue;
     if (arenaSeasonLabelParts(r.label) !== season) continue;
     const s = (r.seasonStartISO ?? "").trim();
-    if (ISO.test(s)) return s;
+    if (isValidISODate(s)) return s;
   }
   return "";
 }
@@ -116,7 +114,7 @@ export function currentSeasonStartISO(
  * **"아레나 시즌2 · 8주차"** 로 자기모순한다(4R HIGH). 시즌 번호와 주차는 **같은 정본**에서 나온다.
  */
 export function seasonWeekOf(startISO: string, todayISO: string): number {
-  if (!ISO.test(startISO) || !ISO.test(todayISO)) return 0;
+  if (!isValidISODate(startISO) || !isValidISODate(todayISO)) return 0;
   return Math.min(
     Math.max(weekIndexOf(parseISO(todayISO), parseISO(startISO)), 0),
     STATS_WEEKS,

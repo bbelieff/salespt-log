@@ -84,6 +84,14 @@
 
 ## 로그
 
+### 2026-08-02 · PR643 ARENA SEASON RELEASE R2 · 비실재 날짜 fail-closed 보강
+- 의도: 독립 검증에서 재현된 달력 비실재 날짜의 잘못된 시즌 전환·주차 rollover를 차단한다.
+- 한 것: 공용 ISO 의미 검증을 API·repo·시즌 판정·주차 앵커에 연결하고 locale 정규화도 같은 검증을 거치게 했다.
+- 검증: API auth/권한/invalid 무쓰기, repo zero-write, service unknown/week0를 포함한 집중 41/41 PASS.
+- 결정: 반복 scope 재계산은 비차단 설계 잔여로 유지하고 이번 release 범위에는 포함하지 않는다.
+- 다음: full check·build·정상 hook 뒤 새 SHA를 DevD에 독립 재검증한다.
+- SoR: `docs/plans/active/arena-season1-setup.md`
+
 ### 2026-08-02 · PR643 ARENA SEASON RELEASE R1 · 최신 master 통합 후보 준비
 - 의도: 오래 열린 시즌 SSOT 기능을 최신 master에 최소 통합하고 운영값 쓰기 없이 release chain을 완주한다.
 - 한 것: PR643의 고유 6커밋을 `3fe78acc`에 이식하고 Scoreboard import 충돌을 양쪽 보존으로 해소했다.
