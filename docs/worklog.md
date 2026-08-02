@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-08-02 · C3-R2 · Windows Node 22 dev watcher EINVAL 수정 착수
+- 의도: `npm run dev`가 `npx.cmd + shell:false`에서 EINVAL로 종료되는 Windows 개발 경로를 복구
+- 한 것: 최신 master 전용 worktree에서 Windows 전용 shell 사용과 실제 `npx.cmd` 회귀 테스트를 최소 범위로 구현
+- 결정: POSIX `shell:false`와 `windowsHide:true`는 유지하고 운영 앱·DB·Sheets·배포면은 변경하지 않음
+- 다음: focused/typecheck/check/build 및 독립 검수 후 draft PR로 게시
+- SoR: `docs/plans/active/windows-dev-watch-einval-c3-r2.md`
+
 ### 2026-08-02 · ADMIN-FORMULA-RESTORE-C2-R2 · current-master release candidate 준비
 - 한 것: `origin/master=3b500960`을 merge하고 worklog append만 양쪽 보존했다. 제품 충돌은 없고 후보 delta는 route·setup-formulas·테스트 2개·plan·worklog 여섯 파일이다.
 - 검증: focused 55/55, typecheck, lint, 구조 23/23, 전체 943/943, doc-drift, 정상 hook, production build 71/71 PASS.
