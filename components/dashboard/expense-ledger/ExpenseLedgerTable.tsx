@@ -9,7 +9,7 @@ interface Props {
   loading: boolean;
   error?: Error | null;
   mode: ExpenseViewMode;
-  onOpenManage: () => void;
+  onOpenRecord: () => void;
 }
 
 interface CategorySummaryRow {
@@ -45,7 +45,7 @@ function share(amountWon: number, total: number): string {
   return `${(amountWon / total * 100).toFixed(1).replace(".0", "")}%`;
 }
 
-export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenManage }: Props) {
+export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenRecord }: Props) {
   if (loading) return <p className="py-8 text-center text-xs text-gray-400">비용 내역을 불러오는 중입니다.</p>;
   if (error) return <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">비용 내역을 불러오지 못했습니다: {error.message}</p>;
   if (!data) return null;
@@ -71,7 +71,7 @@ export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenM
               <div className="flex justify-between gap-3"><span>인식 기간</span><strong className="text-gray-800">{entry.periodStart}{entry.periodStart === entry.periodEnd ? "" : ` ~ ${entry.periodEnd}`}</strong></div>
               <div className="mt-1 flex justify-between gap-3"><span>발생 방식</span><strong className="text-gray-800">{entry.source === "recurring" ? "매월 반복 발생" : "일회성 비용"}</strong></div>
               {entry.source === "recurring" ? (
-                <button type="button" onClick={onOpenManage} className="mt-3 min-h-11 w-full rounded-lg border border-gray-200 bg-white font-bold text-gray-700">반복 규칙 관리로 이동</button>
+                <button type="button" onClick={onOpenRecord} className="mt-3 min-h-11 w-full rounded-lg border border-gray-200 bg-white font-bold text-gray-700">기록 화면의 반복 규칙으로 이동</button>
               ) : <p className="mt-2 text-xs text-gray-400">수정 범위를 확인한 뒤 안전하게 관리할 수 있도록 행 안에서 상세를 유지합니다.</p>}
             </div>
           </details>

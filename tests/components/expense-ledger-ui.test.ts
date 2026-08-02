@@ -7,20 +7,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 import ExpenseCategoryPicker from "@/components/dashboard/expense-ledger/ExpenseCategoryPicker";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
+import type { RecognizedExpense } from "@/types/expense-ledger";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
-
 const categories = [
-  { id: "category-marketing", name: "마케팅", archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
-  { id: "category-labor", name: "인건비", archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
-  { id: "category-rent", name: "임차료", archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+  { id: "category-marketing", name: "마케팅", isSystem: false, deletedAt: null, archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+  { id: "category-labor", name: "인건비", isSystem: false, deletedAt: null, archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+  { id: "category-rent", name: "임차료", isSystem: false, deletedAt: null, archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
+  { id: "category-unclassified", name: "미분류", isSystem: true, deletedAt: null, archivedAt: null, createdAt: "2026-07-01", updatedAt: "2026-07-01" },
 ];
-
 const recurringRuleFixtures = [
-  { id: "rule-active", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, status: "active", currentOccurrence: null, nextOccurrence: { occurrenceDate: "2026-08-24", occurrenceMonth: "2026-08", status: "scheduled" } },
-  { id: "rule-archived", categoryName: "임차료", itemName: "보관된 임대료", amountWon: 72, status: "archived", currentOccurrence: null, nextOccurrence: null },
+  { id: "rule-active", categoryId: "category-labor", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, status: "active", currentOccurrence: null, nextOccurrence: { occurrenceDate: "2026-08-23", occurrenceMonth: "2026-08", status: "scheduled" } },
+  { id: "rule-archived", categoryId: "category-rent", categoryName: "임차료", itemName: "보관된 임대료", amountWon: 72, status: "archived", currentOccurrence: null, nextOccurrence: null },
 ];
-
+const defaultLedgerEntries: RecognizedExpense[] = [
+  { id: "entry-1", source: "one_time", categoryId: "category-marketing", categoryName: "마케팅", itemName: "광고비", amountWon: 120, periodStart: "2026-07-31", periodEnd: "2026-08-02" },
+  { id: "entry-2", source: "recurring", recurringRuleId: "rule-active", isOverride: false, categoryId: "category-labor", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
+  { id: "entry-3", source: "one_time", categoryId: "category-rent", categoryName: "임차료", itemName: "사무실 임대료", amountWon: 72, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
+];
 interface QueryMock<T> {
   data: T | undefined;
   isLoading: boolean;
@@ -29,37 +33,38 @@ interface QueryMock<T> {
   error: Error | null;
   refetch: ReturnType<typeof vi.fn>;
 }
-
 let categoryQueryState: QueryMock<typeof categories>;
 let recurringQueryState: QueryMock<{ rules: typeof recurringRuleFixtures }>;
 let deleteRecurringRuleMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
 let createExpenseMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
 let createRecurringRuleMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
-
+let deleteCategoryMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
+let reclassifyMutation: { mutateAsync: ReturnType<typeof vi.fn>; isPending: boolean };
+let usageQueryState: QueryMock<{ category: { id: string; name: string; isSystem: false; deletedAt: null }; usage: { entryCount: number; ruleCount: number; occurrenceCount: number; overrideOccurrenceCount: number; totalCount: number } }>;
+let ledgerEntries: RecognizedExpense[];
 function resetQueryStates() {
   categoryQueryState = { data: categories, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
   recurringQueryState = { data: { rules: recurringRuleFixtures }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
   deleteRecurringRuleMutation = { mutateAsync: vi.fn().mockResolvedValue({ ok: true }), isPending: false };
+  deleteCategoryMutation = { mutateAsync: vi.fn().mockResolvedValue({ ok: true, deletedCategoryId: "category-marketing", unclassifiedCategoryId: "category-unclassified", movedEntryCount: 1, movedRuleCount: 2, movedOccurrenceCount: 3 }), isPending: false };
+  reclassifyMutation = { mutateAsync: vi.fn().mockResolvedValue({ ok: true, operationId: "operation", unclassifiedCategoryId: "category-unclassified", targetCategoryId: "category-marketing", movedEntryCount: 1, movedRuleCount: 0, movedOccurrenceCount: 0 }), isPending: false };
+  usageQueryState = { data: { category: { id: "category-marketing", name: "마케팅", isSystem: false, deletedAt: null }, usage: { entryCount: 1, ruleCount: 2, occurrenceCount: 3, overrideOccurrenceCount: 1, totalCount: 6 } }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
   createExpenseMutation = { mutateAsync: vi.fn().mockResolvedValue({ expense: {} }), isPending: false };
   createRecurringRuleMutation = { mutateAsync: vi.fn().mockResolvedValue({ rule: { id: "new-rule" } }), isPending: false };
+  ledgerEntries = defaultLedgerEntries;
 }
-
 resetQueryStates();
-
 vi.mock("@/query/expense-ledger-hooks", () => {
   const idleMutation = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false });
   return {
     useExpenseCategories: () => categoryQueryState,
+    useExpenseCategoryUsage: () => usageQueryState,
     useExpenseLedger: (view: string) => ({
       data: {
         view,
         month: view === "month" ? "2026-07" : null,
         categories,
-        entries: [
-          { id: "entry-1", source: "one_time", categoryId: "category-marketing", categoryName: "마케팅", itemName: "광고비", amountWon: 120, periodStart: "2026-07-31", periodEnd: "2026-08-02" },
-          { id: "entry-2", source: "recurring", categoryId: "category-labor", categoryName: "인건비", itemName: "운영 인력", amountWon: 108, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
-          { id: "entry-3", source: "one_time", categoryId: "category-rent", categoryName: "임차료", itemName: "사무실 임대료", amountWon: 72, periodStart: "2026-07-31", periodEnd: "2026-07-31" },
-        ],
+        entries: ledgerEntries,
         categoryTotals: [
           { categoryId: "category-marketing", categoryName: "마케팅", amountWon: 120 },
           { categoryId: "category-labor", categoryName: "인건비", amountWon: 108 },
@@ -71,16 +76,17 @@ vi.mock("@/query/expense-ledger-hooks", () => {
       error: null,
     }),
     useCreateCategory: idleMutation,
+    useDeleteCategory: () => deleteCategoryMutation,
     useDeleteRecurringRule: () => deleteRecurringRuleMutation,
     useCreateExpense: () => createExpenseMutation,
     useCreateRecurringRule: () => createRecurringRuleMutation,
     usePatchCategory: idleMutation,
     usePatchRecurringRule: idleMutation,
+    useReclassifyUnclassified: () => reclassifyMutation,
     useRecurringRules: () => recurringQueryState,
     useRecurringRuleAction: idleMutation,
   };
 });
-
 const bannerProps = {
   dbCostTotal: 3_000,
   additionalCost: 500 as number | null,
@@ -111,7 +117,6 @@ function render(element: ReactNode) {
 function rerender(element: ReactNode) {
   act(() => root?.render(element));
 }
-
 function changeInput(input: HTMLInputElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   if (!setter) throw new Error("HTML input value setter is unavailable");
@@ -120,14 +125,12 @@ function changeInput(input: HTMLInputElement, value: string) {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
-
 function clickButton(name: string) {
   const button = [...document.querySelectorAll<HTMLButtonElement>("button")].find((candidate) => candidate.textContent?.trim() === name);
   if (!button) throw new Error(`button '${name}' is missing`);
   act(() => button.click());
   return button;
 }
-
 function prepareRequiredExpenseFields() {
   const combobox = document.querySelector<HTMLButtonElement>('[role="combobox"]');
   act(() => combobox?.click());
@@ -136,7 +139,6 @@ function prepareRequiredExpenseFields() {
   changeInput(document.querySelector<HTMLInputElement>('input[placeholder="예: 사무실 임차료"]')!, "검증 비용");
   changeInput(document.querySelector<HTMLInputElement>('[aria-label="부가세 제외 비용 금액"]')!, "100");
 }
-
 function clearDateWithKeyboard(input: HTMLInputElement) { act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }))); changeInput(input, ""); }
 async function submitRecordForm() { await act(async () => { document.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); }); }
 
@@ -145,7 +147,6 @@ function ruleDetails(itemName: string) {
   if (!details) throw new Error(`recurring rule '${itemName}' is missing`);
   return details;
 }
-
 function clickRuleButton(itemName: string, name: string) {
   const button = [...ruleDetails(itemName).querySelectorAll<HTMLButtonElement>("button")].find((candidate) => candidate.textContent?.trim() === name);
   if (!button) throw new Error(`button '${name}' for recurring rule '${itemName}' is missing`);
@@ -180,12 +181,13 @@ describe("expense ledger dashboard UI", () => {
     expect(view.textContent).toContain("DB 비용 합계 ₩3,000");
   });
 
-  it("renders the compact Option A shell with record, view, manage and a sticky form CTA", () => {
+  it("renders the compact record hub and view shell with a sticky form CTA", () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
     expect(document.body.textContent).toContain("DB 비용₩3,000");
     expect(document.body.textContent).toContain("추가 비용₩300");
     expect(document.body.textContent).toContain("총비용₩3,300");
-    expect(document.querySelectorAll('[role="tab"][aria-controls]').length).toBe(3);
+    expect(document.querySelectorAll('[role="tab"][aria-controls]').length).toBe(2);
+    expect([...document.querySelectorAll('[role="tab"]')].some((tab) => tab.textContent === "관리")).toBe(false);
     expect(document.querySelector('button[form="expense-record-form"]')?.textContent).toBe("비용 저장");
     expect(document.body.textContent).not.toContain("방금 만든 반복 비용 관리");
   });
@@ -260,7 +262,7 @@ describe("expense ledger dashboard UI", () => {
     clickButton("조회");
     expect(document.querySelectorAll("details summary").length).toBe(3);
     expect(document.body.textContent).toContain("상세·관리");
-    clickButton("반복 규칙 관리로 이동");
+    clickButton("기록 화면의 반복 규칙으로 이동");
     expect(document.body.textContent).toContain("반복 비용");
     expect(document.body.textContent).toContain("카테고리");
     const archivedRule = [...document.querySelectorAll("details")].find((details) => details.textContent?.includes("보관된 임대료"));
@@ -271,7 +273,6 @@ describe("expense ledger dashboard UI", () => {
   it("active rule delete confirms, calls DELETE, and refreshes to terminal archived state", async () => {
     const dialog = () => createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 });
     render(dialog());
-    clickButton("관리");
     clickRuleButton("운영 인력", "삭제/종료");
     expect(ruleDetails("운영 인력").querySelector('[role="alertdialog"]')?.textContent).toContain("앞으로의 비용 발생은 중단되지만 과거 비용 기록은 그대로 유지됩니다.");
 
@@ -302,7 +303,6 @@ describe("expense ledger dashboard UI", () => {
       refetch: vi.fn(),
     };
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
-    clickButton("관리");
     expect(ruleDetails("중지된 구독").textContent).toContain("재개");
     clickRuleButton("중지된 구독", "삭제/종료");
     await act(async () => { clickRuleButton("중지된 구독", "삭제/종료 확인"); });
@@ -311,7 +311,6 @@ describe("expense ledger dashboard UI", () => {
 
   it("delete cancel preserves the recurring rule and all existing actions", () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
-    clickButton("관리");
     clickRuleButton("운영 인력", "삭제/종료");
     clickRuleButton("운영 인력", "취소");
     expect(deleteRecurringRuleMutation.mutateAsync).not.toHaveBeenCalled();
@@ -329,7 +328,6 @@ describe("expense ledger dashboard UI", () => {
       .mockRejectedValueOnce(new Error("HTTP 503 database-secret"))
       .mockResolvedValueOnce({ ok: true });
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
-    clickButton("관리");
     clickRuleButton("운영 인력", "삭제/종료");
 
     await act(async () => { clickRuleButton("운영 인력", "삭제/종료 확인"); });
@@ -359,7 +357,6 @@ describe("expense ledger dashboard UI", () => {
       refetch: vi.fn(),
     };
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
-    clickButton("관리");
     const archived = ruleDetails("보관된 임대료");
     expect(archived.textContent).toContain("과거 비용 기록은 그대로 유지됩니다.");
     expect(archived.querySelectorAll("button").length).toBe(0);
@@ -372,7 +369,6 @@ describe("expense ledger dashboard UI", () => {
     const dialog = () => createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 });
     recurringQueryState = { data: undefined, isLoading: true, isFetching: true, isSuccess: false, error: null, refetch: vi.fn() };
     render(dialog());
-    clickButton("관리");
     expect(document.body.textContent).toContain("반복 비용을 불러오고 있습니다.");
     expect(document.body.textContent).not.toContain("등록된 반복 비용이 없습니다.");
     expect(document.body.textContent).not.toContain("0건");
@@ -407,7 +403,7 @@ describe("expense ledger dashboard UI", () => {
     expect(document.body.textContent).toContain("운영 인력");
   });
 
-  it("separates category loading, empty, safe 401/403/503 errors, retry, and recovery in record and manage", () => {
+  it("separates category loading, empty, safe 401/403/503 errors, retry, and recovery in the record hub", () => {
     const dialog = () => createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 });
     categoryQueryState = { data: undefined, isLoading: true, isFetching: true, isSuccess: false, error: null, refetch: vi.fn() };
     render(dialog());
@@ -427,8 +423,6 @@ describe("expense ledger dashboard UI", () => {
     rerender(dialog());
     expect(document.body.textContent).toContain("카테고리를 볼 권한이 없습니다.");
     expect(document.body.textContent).not.toContain("HTTP 403");
-    clickButton("관리");
-    expect(document.body.textContent).toContain("카테고리를 볼 권한이 없습니다.");
 
     categoryQueryState = { ...categoryQueryState, error: new Error("HTTP 503 unavailable") };
     rerender(dialog());
@@ -437,8 +431,6 @@ describe("expense ledger dashboard UI", () => {
 
     categoryQueryState = { data: [], isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
     rerender(dialog());
-    expect(document.body.textContent).toContain("등록된 카테고리가 없습니다. 기록 화면에서 새 카테고리를 추가해 주세요.");
-    clickButton("기록");
     expect(document.body.textContent).toContain("등록된 카테고리가 없습니다. 목록을 열어 새 카테고리를 추가해 주세요.");
     expect(document.querySelector('[role="combobox"][aria-label="비용 카테고리"]')).not.toBeNull();
 
@@ -448,30 +440,51 @@ describe("expense ledger dashboard UI", () => {
     act(() => combobox?.click());
     expect(document.body.textContent).toContain("마케팅");
   });
+
+  it("collapses a derived occurrence under its unclassified rule while keeping override and standalone occurrence refs", async () => {
+    recurringQueryState = { data: { rules: [{ ...recurringRuleFixtures[0]!, id: "rule-unclassified", categoryId: "category-unclassified", categoryName: "미분류", itemName: "미분류 규칙" }] }, isLoading: false, isFetching: false, isSuccess: true, error: null, refetch: vi.fn() };
+    ledgerEntries = [
+      { id: "occ-derived", source: "recurring", recurringRuleId: "rule-unclassified", isOverride: false, categoryId: "category-unclassified", categoryName: "미분류", itemName: "자동 발생", amountWon: 100, periodStart: "2026-07-01", periodEnd: "2026-07-01" },
+      { id: "occ-override", source: "recurring", recurringRuleId: "rule-unclassified", isOverride: true, categoryId: "category-unclassified", categoryName: "미분류", itemName: "직접 수정 발생", amountWon: 200, periodStart: "2026-07-01", periodEnd: "2026-07-01" },
+      { id: "occ-standalone", source: "recurring", recurringRuleId: "rule-other", isOverride: false, categoryId: "category-unclassified", categoryName: "미분류", itemName: "독립 발생", amountWon: 300, periodStart: "2026-07-01", periodEnd: "2026-07-01" },
+    ];
+    render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
+    act(() => document.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="비용 카테고리"]')?.click());
+    expect(document.body.textContent).not.toContain("자동 발생");
+    expect(document.body.textContent).toContain("미분류 규칙");
+    expect(document.body.textContent).toContain("직접 수정 발생");
+    expect(document.body.textContent).toContain("독립 발생");
+    const target = document.querySelector<HTMLSelectElement>('[aria-label="미분류 이동 대상"]')!;
+    act(() => { target.value = "category-marketing"; target.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => { clickButton("3건 분류하기"); });
+    expect(reclassifyMutation.mutateAsync).toHaveBeenCalledWith({
+      operationId: expect.any(String),
+      targetCategoryId: "category-marketing",
+      refs: [
+        { kind: "recurringOccurrence", id: "occ-override" },
+        { kind: "recurringOccurrence", id: "occ-standalone" },
+        { kind: "recurringRule", id: "rule-unclassified" },
+      ],
+    });
+  });
 });
 
 describe("expense category combobox", () => {
-  it("supports selection, add, rename, archive, and blocks delete with archive guidance", async () => {
+  const pickerProps = (overrides = {}) => ({
+    categories, value: "category-marketing", busy: false, loading: false, loaded: true, errorMessage: null, retrying: false,
+    unclassifiedRefs: [], onRetry: vi.fn(), onChange: vi.fn(),
+    onCreate: vi.fn(async (name: string) => ({ ...categories[0]!, id: "new-category", name })),
+    onRename: vi.fn(async () => undefined), onDelete: vi.fn(async () => deleteCategoryMutation.mutateAsync("category-marketing")),
+    onReclassify: vi.fn(async () => reclassifyMutation.mutateAsync({})), onMessage: vi.fn(), ...overrides,
+  });
+
+  it("keeps compact selection/add/rename and performs usage-confirmed real delete while system stays immutable", async () => {
     const onChange = vi.fn();
-    const onCreate = vi.fn(async (name: string) => ({ ...categories[0]!, id: "new-category", name }));
     const onRename = vi.fn(async () => undefined);
-    const onArchive = vi.fn(async () => undefined);
+    const onDelete = vi.fn(async () => deleteCategoryMutation.mutateAsync("category-marketing"));
     const onMessage = vi.fn();
-    render(createElement(ExpenseCategoryPicker, {
-      categories,
-      value: "category-marketing",
-      busy: false,
-      loading: false,
-      loaded: true,
-      errorMessage: null,
-      retrying: false,
-      onRetry: vi.fn(),
-      onChange,
-      onCreate,
-      onRename,
-      onArchive,
-      onMessage,
-    }));
+    const props = pickerProps({ onChange, onRename, onDelete, onMessage });
+    render(createElement(ExpenseCategoryPicker, props));
 
     const combobox = document.querySelector<HTMLButtonElement>('[role="combobox"]');
     expect(combobox?.getAttribute("aria-expanded")).toBe("false");
@@ -479,22 +492,38 @@ describe("expense category combobox", () => {
     expect(combobox?.getAttribute("aria-expanded")).toBe("true");
     expect(document.querySelector('[role="listbox"]')).not.toBeNull();
 
-    const createInput = document.querySelector<HTMLInputElement>('[aria-label="새 카테고리 이름"]');
-    if (!createInput) throw new Error("create-category input is missing");
-    changeInput(createInput, "소모품");
-    await act(async () => { clickButton("추가"); });
-    expect(onCreate).toHaveBeenCalledWith("소모품");
-    expect(onChange).toHaveBeenCalledWith("new-category");
-
-    act(() => combobox?.click());
     const renameInput = document.querySelector<HTMLInputElement>('[aria-label="선택 카테고리 이름 수정"]');
     if (!renameInput) throw new Error("rename-category input is missing");
     changeInput(renameInput, "퍼포먼스 마케팅");
-    await act(async () => { clickButton("이름 수정"); });
+    await act(async () => { clickButton("이름 변경"); });
     expect(onRename).toHaveBeenCalledWith("category-marketing", "퍼포먼스 마케팅");
-    await act(async () => { clickButton("보관"); });
-    expect(onArchive).toHaveBeenCalledWith("category-marketing");
-    clickButton("삭제");
-    expect(onMessage).toHaveBeenCalledWith(expect.stringContaining("대신 보관"));
+
+    const createInput = document.querySelector<HTMLInputElement>('[aria-label="새 카테고리 이름"]')!;
+    changeInput(createInput, "소모품"); await act(async () => { clickButton("추가"); });
+    expect(props.onCreate).toHaveBeenCalledWith("소모품");
+    expect(document.querySelector('[aria-label="미분류 카테고리 삭제"]')).toBeNull();
+    const visualDelete = document.querySelector<HTMLButtonElement>('[aria-label="마케팅 카테고리 삭제"]')!;
+    expect(visualDelete.className).toContain("min-h-[44px]"); expect(visualDelete.className).toContain("min-w-[44px]"); expect(visualDelete.className).not.toMatch(/min-[hw]-11/); expect(visualDelete.textContent).toBe("×"); act(() => visualDelete.click());
+    expect(document.body.textContent).toContain("항목 1건, 반복 2건, 발생 3건이 미분류로 이동합니다.");
+    await act(async () => { clickButton("카테고리 삭제 확인"); });
+    expect(onDelete).toHaveBeenCalledWith("category-marketing"); expect(onChange).toHaveBeenCalledWith("");
+    expect(onMessage).toHaveBeenCalledWith(expect.stringContaining("과거 기록은 유지됩니다"));
+  });
+
+  it("reclassifies persisted unclassified items with one or many typed refs and an explicit target", async () => {
+    const onReclassify = vi.fn(async (body) => ({ ok: true, operationId: body.operationId, unclassifiedCategoryId: "category-unclassified", targetCategoryId: body.targetCategoryId, movedEntryCount: 0, movedRuleCount: 1, movedOccurrenceCount: 0 }));
+    const refs = [
+      { kind: "entry" as const, id: "entry-a", label: "영수증", detail: "일회성 · ₩10,000" },
+      { kind: "recurringRule" as const, id: "rule-a", label: "구독", detail: "반복 규칙 · ₩20,000" },
+    ];
+    render(createElement(ExpenseCategoryPicker, pickerProps({ value: "category-unclassified", unclassifiedRefs: refs, onReclassify })));
+    act(() => document.querySelector<HTMLButtonElement>('[role="combobox"]')?.click());
+    expect(document.body.textContent).toContain("고정 카테고리이며 이름 변경·삭제할 수 없습니다.");
+    expect(clickButton("2건 분류하기").disabled).toBe(true);
+    act(() => [...document.querySelectorAll<HTMLButtonElement>('button[aria-pressed="true"]')].find((button) => button.textContent?.includes("영수증"))?.click());
+    const target = document.querySelector<HTMLSelectElement>('[aria-label="미분류 이동 대상"]')!;
+    act(() => { target.value = "category-marketing"; target.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => { clickButton("1건 분류하기"); });
+    expect(onReclassify).toHaveBeenCalledWith(expect.objectContaining({ targetCategoryId: "category-marketing", refs: [{ kind: "recurringRule", id: "rule-a" }], operationId: expect.any(String) }));
   });
 });

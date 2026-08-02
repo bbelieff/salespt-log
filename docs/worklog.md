@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-08-02 · R6 current-master integration · PR #622 successor 착수
+- 의도: DIRTY 상태인 PR #622의 verified R6 exact20을 최신 master 위에 재통합해 migration 전 clean deploy candidate를 만든다.
+- 한 것: current master에 verified 3-commit lineage를 순차 통합했고 focused 13 files/95 tests, `check.sh` 구조 23/23·전체 901/901, production build 70/70이 PASS했다.
+- 결정: #629 rollback·#633 날짜 매핑·#640 split 무효화를 보존했고, removed DB-cost UI test는 복원하지 않았다. 최신 production-data tuple은 plan에 evidence-only로 결합했다.
+- 다음: 최종 docs receipt 정상 hook commit → DRAFT/HOLD successor PR → 독립 검증·DevG handoff. 운영 DB·env·PM2·live·Sheets는 계속 불변이다.
+- SoR: `docs/plans/active/r6-current-master-integration-r1.md`
+
 ### 2026-08-02 · PR643 P0 RECOVERY · read-only GET 후보 검증 완료
 - 한 것: `/admin/cohorts` render의 `ensureCohortsTab` import/call 제거, 정상·429 경로 cohort mutation 0회 회귀 2건 추가.
 - 검증: focused 2/2, typecheck, check.sh 101 files/916 tests, production build(`/admin/cohorts`) PASS.
