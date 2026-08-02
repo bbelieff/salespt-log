@@ -63,6 +63,12 @@ export function buildCohortSheetTitle(p: ParsedCohort, name: string): string {
 export function arenaSeasonLabel(season: number): string {
   return `A${season}`;
 }
+// arenaSeasonLabel 의 역함수 — cohorts 탭 시즌 행 라벨 "A2" → 2. 아니면 null.
+// (참가자 라벨 "A2-1기" 는 arenaCohortLabelParts 담당 — 여기선 **시즌 레벨** 라벨만.)
+export function arenaSeasonLabelParts(label: string): number | null {
+  const m = String(label).trim().match(/^A(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
 // registry cohort 라벨 (참가자별 매칭 키 = claim 키): 시즌1·기수1 → "A1-1기".
 // 정규화(/기$/ strip)가 claim/prep 양측 동일 → "A1-1기"↔"A1-1" 매칭.
 export function arenaCohortLabel(season: number, gisu: number): string {

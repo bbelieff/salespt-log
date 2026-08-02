@@ -112,6 +112,8 @@ related: admin-cohort-create, cohort-create-template-master
 - 클레임 모드 토글: **[수강생] / [아레나]** (기존 "일반 기수" → "수강생"). 내부 로직·라우팅 불변, 표시 라벨만.
 
 ## Log
+- 2026-08-02 PR643 release R2: 독립 검증 REWORK에 따라 `YYYY-MM-DD` 형식뿐 아니라 실제 달력 날짜를 UTC 왕복으로 검증한다. API·repo·locale 정규화·시즌 판정·주차 앵커가 동일 검증을 사용하며, 비실재 날짜는 400/throw/미상·week0로 fail closed 한다. 반복 scope 재계산은 비차단 잔여로 유지한다.
+- 2026-08-02 PR643 release R1: 최신 master `3fe78acc`에 시즌 SSOT 6커밋을 이식하고, `ScoreboardView`의 현행 `STATS_WEEKS`와 시즌 라벨 import를 모두 보존했다. 기존 미커밋 RAW 날짜 정규화 수정은 별도 회귀(로케일 날짜→ISO, J열 RAW 재기록)와 함께 통합했다. 운영 A2 시작일 입력은 명시적으로 제외하며 full check/build·독립 VERIFY·release chain은 진행 중.
 - 2026-06-09 명단·규칙 확정(부부 두 이름 등록·회장/입금 메모). 생성 기능(feat/arena-create) 미배포 — 배포 후 이 명단으로 실행.
 - 2026-06-10 feat/arena-create 빌드: parseArenaRoster(기수헤더·`*`회장·`$`입금·`()`부부), users!Q 메모(ADR-0014), 부부 매칭(name-match.ts), create-arena-members rawText 파싱. 배포 후 라이브 run(폴더ID·`$`마킹 원문) 잔여.
 - 2026-06-10 회장/전광판 결정: 회장=조회만, 전광판 모수=입금자만, 클레임 라벨 "수강생". feat/arena-captain·feat/arena-scoreboard 프롬프트 핸드오프.
