@@ -9,7 +9,7 @@
 
 ## 배경과 진단 경계
 
-- source `fix/m345-batchget-merge`는 `3dff145`에서 미커밋 상태이며 최신 `origin/master=3fe78acc`보다 403 commit 뒤다. source checkout은 읽기 전용으로 보존한다.
+- source `fix/m345-batchget-merge`는 `3dff145`에서 미커밋 상태였고 최초 진단 base `3fe78acc`보다 403 commit 뒤였다. source checkout은 읽기 전용으로 보존했다.
 - 사용자 보고는 관리자 수식 복원 POST의 HTTP 500이다. 현재 인증된 운영 로그와 live Sheets 재현은 이 lease에 없으므로 정확한 예외 클래스는 미확정이다.
 - 현재 master의 bulk route는 모든 대상 시트를 순차 처리한다. `installFormulas`는 시트마다 read 7회와 write 1회를 호출한다. 60개 시트면 최대 read 420회·write 60회다.
 - Google Sheets 공식 기본 quota는 service account를 단일 사용자로 보고 read/write 각각 60회/분이다. 기존 429 retry는 최대 약 15초라 quota refill을 보장하지 못한다.
@@ -35,13 +35,20 @@
 ## 수용 조건
 
 - [ ] base에서 focused tests가 순차 처리·다중 pre-read 때문에 RED이고 후보에서 GREEN이다.
-- [ ] 한 `installFormulas`가 정확히 pre-read 1회와 batch write 최대 1회만 사용한다.
-- [ ] M3:M5·D3:D4·O5와 기존 전 범위의 raw 값 보존·수식 교체 계약이 유지된다.
-- [ ] bulk route가 한 번에 최대 5개만 실행하고 wave 시작 간 최소 7.5초를 둔다.
-- [ ] 일부 시트 실패는 기존처럼 `failed`에 격리하며 나머지 시트를 계속 처리한다.
-- [ ] focused tests, typecheck, `scripts/check.sh`, production build, 정상 hook, 독립 review가 PASS한다.
+- [x] 한 `installFormulas`가 정확히 pre-read 1회와 batch write 최대 1회만 사용한다.
+- [x] M3:M5·D3:D4·O5와 기존 전 범위의 raw 값 보존·수식 교체 계약이 유지된다.
+- [x] bulk route가 한 번에 최대 5개만 실행하고 wave 시작 간 최소 7.5초를 둔다.
+- [x] 일부 시트 실패는 기존처럼 `failed`에 격리하며 나머지 시트를 계속 처리한다.
+- [x] focused tests, typecheck, `scripts/check.sh`, production build, 정상 hook가 PASS한다.
+- [ ] 독립 review가 PASS한다.
 - [ ] PR/CI/squash merge/직렬 자동 배포/public health가 PASS한다.
-- [ ] 운영 Sheets·DB·R6 migration write는 0이다.
+- [x] 운영 Sheets·DB·R6 migration write는 0이다.
+
+## R2 current-master checkpoint (2026-08-02)
+
+- `origin/master=3b500960d1931d136f94638ca136b6ae316abeab`를 merge했고 제품 파일 충돌은 없었다. `docs/worklog.md` 충돌은 양쪽 append를 모두 보존했다.
+- 집중 검증 3 files/55 tests, typecheck, lint, 구조 23/23, 전체 107 files/943 tests, doc-drift, 정상 hook, production build 71/71이 PASS했다.
+- 운영 Sheets·DB·환경·PM2·deploy·merge는 실행하지 않았다. 독립 review와 원격 CI 이후에만 release 단계로 진행한다.
 
 ## Rollback
 
