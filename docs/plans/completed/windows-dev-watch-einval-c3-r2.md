@@ -30,3 +30,10 @@ Next.js 개발 서버를 시작하지 못합니다.
 ## 롤백
 
 단일 squash commit을 revert하면 기존 런처 설정으로 돌아갑니다. 운영 데이터·환경변수·Sheets에는 영향이 없습니다.
+
+## 종료 기록 (2026-08-03 · A(260803))
+
+- 머지 실측: `6380916 chore(dev): support Windows Node 22 watcher (#650)` — `origin/master` 반영 확인.
+- 데스크탑 실측 재확인: `tests/structural/dev-with-watch-windows.test.ts` 2/2 PASS (Node v24.18.1 / Windows 11).
+- 미확인 잔여: 배포 run conclusion (`gh` 미설치로 조회 불가). 공개 health 200 으로만 대체 확인.
+- 판정: 코드 변경분이 master 에 있고 회귀 테스트가 초록이므로 **완료**로 이관.

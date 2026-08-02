@@ -53,3 +53,10 @@
 ## Rollback
 
 - squash merge SHA를 정상 revert PR로 되돌린다. force-push·운영 데이터 역변경은 하지 않는다.
+
+## 종료 기록 (2026-08-03 · A(260803))
+
+- 머지 실측: `78b5ddc fix(admin): bound formula restore Sheets requests (#651)` — `origin/master` 반영 확인.
+- 미확인 잔여: 배포 run conclusion (`gh` 미설치), 인증 필요한 실제 수식 복원 라이브 왕복. 공개 health 200 만 확인.
+- 판정: 후보 코드가 master 에 있고 관련 테스트가 전체 검사(check.sh PASSED)에 포함되므로 **완료**로 이관.
+  운영 Sheets 실제 복원 실행은 이 계획 범위 밖(belie 운영 판단).

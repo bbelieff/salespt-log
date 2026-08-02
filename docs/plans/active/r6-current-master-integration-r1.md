@@ -55,6 +55,14 @@ PR #622의 검증된 R6 lifecycle·UI·cache 계약을 현재 `origin/master` �
 
 DB migration A-D, env/PM2, live·Sheets·운영 데이터 write, PR ready·merge·deploy는 이 작업 범위가 아니다. 독립 integrated PASS와 별도 migration GO 전까지 DRAFT/HOLD를 유지한다.
 
+## 진행 실측 (2026-08-03 · A(260803))
+
+- successor PR 은 **머지됨**: `3b50096 feat(expenses): R6 lifecycle current-master integration [HOLD] (#647)`.
+  즉 위 검증 목록의 "commit/push 후 DRAFT/HOLD successor PR" 은 충족됐다.
+- 다만 **HOLD 는 해제되지 않았다** — DB migration A-D·독립 integrated PASS·migration GO 가 남아 있다.
+  따라서 이 계획서는 `completed/` 로 옮기지 않고 **active 유지**한다.
+- 미확인: 배포 run conclusion (`gh` 미설치). 공개 health 200 만 확인. 운영 DB write 는 계속 0.
+
 ## Rollback
 
 successor PR은 current master 기반 단일 통합 commit으로 유지한다. 검증 실패 시 PR을 머지하지 않고 candidate branch만 폐기 가능하며, production·DB 상태는 변하지 않는다.
