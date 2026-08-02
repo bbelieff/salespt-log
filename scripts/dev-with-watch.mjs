@@ -23,8 +23,9 @@ const isWindows = process.platform === "win32";
 const next = spawn(
   isWindows ? "npx.cmd" : "npx",
   ["--no", "--", "next", "dev"],
-  // windowsHide: stdio:inherit 라 새 콘솔이 안 생기지만, 일관성·방어적 차원에서 명시.
-  { stdio: "inherit", shell: false, windowsHide: true },
+  // Windows Node 22는 .cmd를 shell:false로 직접 spawn하면 EINVAL을 반환한다.
+  // POSIX는 기존 직접 실행을 유지하고, Windows 콘솔 숨김도 계속 보장한다.
+  { stdio: "inherit", shell: isWindows, windowsHide: true },
 );
 
 next.on("exit", (code) => {

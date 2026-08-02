@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-08-02 · C3-R2 · Windows Node 22 dev watcher EINVAL 수정 착수
+- 의도: `npm run dev`가 `npx.cmd + shell:false`에서 EINVAL로 종료되는 Windows 개발 경로를 복구
+- 한 것: 최신 master 전용 worktree에서 Windows 전용 shell 사용과 실제 `npx.cmd` 회귀 테스트를 최소 범위로 구현
+- 결정: POSIX `shell:false`와 `windowsHide:true`는 유지하고 운영 앱·DB·Sheets·배포면은 변경하지 않음
+- 다음: focused/typecheck/check/build 및 독립 검수 후 draft PR로 게시
+- SoR: `docs/plans/active/windows-dev-watch-einval-c3-r2.md`
+
 ### 2026-08-02 · R6 current-master integration · PR #622 successor 착수
 - 의도: DIRTY 상태인 PR #622의 verified R6 exact20을 최신 master 위에 재통합해 migration 전 clean deploy candidate를 만든다.
 - 한 것: current master에 verified 3-commit lineage를 순차 통합했고 focused 13 files/95 tests, `check.sh` 구조 23/23·전체 901/901, production build 70/70이 PASS했다.
