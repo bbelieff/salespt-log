@@ -152,6 +152,7 @@ async function POST_handler(req: Request) {
         rosterSheetId,
         sheetsFolderId: cfg?.sheetsFolderId ?? "",
         companyParentFolderId: cfg?.companyParentFolderId ?? "",
+        seasonStartISO: "",
       };
     }
   }

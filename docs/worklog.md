@@ -91,6 +91,43 @@
 - 범위: 관리자 bulk route·setup-formulas·focused API/repo tests·단일 plan/worklog만. 운영 Sheets·DB·R6 write는 금지한다.
 - SoR: `docs/plans/active/admin-formula-restore-c2-r1.md`
 
+### 2026-08-02 · R6 current-master integration · PR #622 successor 착수
+- 의도: DIRTY 상태인 PR #622의 verified R6 exact20을 최신 master 위에 재통합해 migration 전 clean deploy candidate를 만든다.
+- 한 것: current master에 verified 3-commit lineage를 순차 통합했고 focused 13 files/95 tests, `check.sh` 구조 23/23·전체 901/901, production build 70/70이 PASS했다.
+- 결정: #629 rollback·#633 날짜 매핑·#640 split 무효화를 보존했고, removed DB-cost UI test는 복원하지 않았다. 최신 production-data tuple은 plan에 evidence-only로 결합했다.
+- 다음: 최종 docs receipt 정상 hook commit → DRAFT/HOLD successor PR → 독립 검증·DevG handoff. 운영 DB·env·PM2·live·Sheets는 계속 불변이다.
+- SoR: `docs/plans/active/r6-current-master-integration-r1.md`
+
+### 2026-08-02 · PR643 P0 RECOVERY · read-only GET 후보 검증 완료
+- 한 것: `/admin/cohorts` render의 `ensureCohortsTab` import/call 제거, 정상·429 경로 cohort mutation 0회 회귀 2건 추가.
+- 검증: focused 2/2, typecheck, check.sh 101 files/916 tests, production build(`/admin/cohorts`) PASS.
+- 상태: 최신 `844ce045` 기반 격리 후보이며 운영 Sheets·DB·환경·live endpoint는 변경/재시도하지 않았다.
+- 다음: 독립 review 후 PR→checks→merge→deploy→health→인증 read-only live 검증.
+- SoR: `docs/plans/active/pr643-admin-cohorts-p0.md`
+
+### 2026-08-02 · PR643 P0 RECOVERY · admin cohorts GET 읽기 전용 경계 착수
+- 의도: PR #643 배포 뒤 `/admin/cohorts` digest `767408371` 500을 운영 데이터 추가 변경 없이 복구한다.
+- 진단: remote/deploy/VPS SHA=`844ce045`; grid 26열·A1:J1 read 성공·헤더 9칸으로 J write 미착지, PM2 예외 본문은 미수집.
+- 결정: Server Component GET의 `ensureCohortsTab` 자동 쓰기만 제거하고 명시적 admin mutation API ensure는 보존한다.
+- 다음: 정상 render·read 429 무쓰기 회귀, focused/typecheck/check/build, 독립 review 뒤 release chain.
+- SoR: `docs/plans/active/pr643-admin-cohorts-p0.md`
+
+### 2026-08-02 · PR643 ARENA SEASON RELEASE R2 · 비실재 날짜 fail-closed 보강
+- 의도: 독립 검증에서 재현된 달력 비실재 날짜의 잘못된 시즌 전환·주차 rollover를 차단한다.
+- 한 것: 공용 ISO 의미 검증을 API·repo·시즌 판정·주차 앵커에 연결하고 locale 정규화도 같은 검증을 거치게 했다.
+- 검증: API auth/권한/invalid 무쓰기, repo zero-write, service unknown/week0를 포함한 집중 41/41 PASS.
+- 결정: 반복 scope 재계산은 비차단 설계 잔여로 유지하고 이번 release 범위에는 포함하지 않는다.
+- 다음: full check·build·정상 hook 뒤 새 SHA를 DevD에 독립 재검증한다.
+- SoR: `docs/plans/active/arena-season1-setup.md`
+
+### 2026-08-02 · PR643 ARENA SEASON RELEASE R1 · 최신 master 통합 후보 준비
+- 의도: 오래 열린 시즌 SSOT 기능을 최신 master에 최소 통합하고 운영값 쓰기 없이 release chain을 완주한다.
+- 한 것: PR643의 고유 6커밋을 `3fe78acc`에 이식하고 Scoreboard import 충돌을 양쪽 보존으로 해소했다.
+- 보강: 기존 미커밋 RAW 날짜 정규화 수정을 별도 검토·이식하고 Sheets 로케일/RAW 회귀를 7케이스로 고정했다.
+- 검증: 시즌·scoreboard 집중 35/35 PASS; full check/build·독립 VERIFY·PR checks·merge/deploy/live는 후속 게이트다.
+- 제약: A2 시즌 시작일과 Sheets/admin 운영 데이터는 이 release에서 쓰지 않는다.
+- SoR: `docs/plans/active/arena-season1-setup.md`
+
 ### 2026-08-01 · SALES-PT LATENCY-R1 · 시트 fallback 병렬화 release 완료
 - 한 것: PR #645를 squash merge(`ccedd64c`)하고 master QA·단일 VPS deploy(`30647563313`)·public `/api/health` 200을 확인했다.
 - 검증: focused 2/2·관련 27/27·독립 `PASS_TO_RELEASE`·canonical CI SUCCESS; 기존 인증 대시보드 렌더·console 0, 운영 write 0.

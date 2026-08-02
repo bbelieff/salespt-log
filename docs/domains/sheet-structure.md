@@ -589,8 +589,13 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | G | rosterSheetId | (구 아레나) 전체 참가자 시트 ID. 일반 기수는 빈값 |
 | H | sheetsFolderId | (아레나) 경영일지 시트 복제 대상 폴더 ID (2026-06, ADR-0012) |
 | I | companyParentFolderId | (아레나) 업체관리 폴더 생성 부모 폴더 ID (2026-06, ADR-0012) |
+| J | seasonStartISO | **(아레나) 시즌 개강일 `YYYY-MM-DD` — 전광판 시즌 판정 정본** (2026-07, AR-2b). admin 이 `/admin/cohorts` 시즌 행에서 직접 입력(`SeasonStartInput` → `POST /api/admin/set-season-start` → `setSeasonStart`). 빈값=미정 |
 
-범위: `A2:I`. D~G 는 관리자 기수 생성(`/api/admin/create-cohort-members`), E·H·I 는 아레나 추가(`/api/admin/create-arena-members`)가 사용.
+범위: `A2:J`. D~G 는 관리자 기수 생성(`/api/admin/create-cohort-members`), E·H·I 는 아레나 추가(`/api/admin/create-arena-members`)가 사용. **J 는 오직 admin 입력** — 로스터 생성은 기존 값을 보존한다(생성이 시즌을 흔들지 못하게).
+
+**J 를 왜 별도로 두는가 (AR-2b, 적대검증 3R 결론)**: 참가자별 개강일(registry K / 개인시트 `영업관리!O1`)은 **복제 템플릿의 O1** 이 그대로 스탬프돼 새 시즌 참가자가 *이전 시즌* 개강일을 들고 있다(`create-arena-members` 는 개강일을 쓰지 않고, `course-dates` 가드는 기존 raw 값을 보존). 그 값으로 시즌을 판정하면 로스터 생성만으로 옛 시즌 보드가 사라지고, 주차를 재면 개막일에 `weekIndexOf(개막일, 옛개강일)` 이 상한(8)으로 클램프돼 "시즌2 · 8주차" 가 된다. 그래서 **시즌 번호와 주차 모두 J 를 앵커**로 쓴다(`lib/service/arena-season-config.ts` — `resolveCurrentSeason` / `currentSeasonStartISO` / `seasonWeekOf`).
+- 판정 규칙: J 가 **오늘(KST) 이하**인 활성(`status≠archived`) arena 시즌 중 **최대**. J 가 **미입력/비ISO** 인 더 높은 시즌이 있으면 옛 시즌으로 고정하지 않고 **0(미상)** — 라벨은 번호 없는 "아레나", 집계 스코프 미적용(데이터를 감추지 않음). J 가 **미래**면 "아직 개막 전"이라 이전 시즌을 유지.
+- ⚠️ **운영**: 새 시즌 개막 전 해당 시즌 행 J 에 개강일을 넣어야 시즌 번호·주차가 표시된다. 기존 시즌(A1) 행 J 도 비어 있으면 번호가 표시되지 않으므로 함께 채운다.
 
 ### 6.2 `updates` 탭 (레지스트리 내 별도 탭 — 새소식 자동 수집, announcement-popup §1-1)
 

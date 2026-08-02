@@ -31,9 +31,15 @@ last_review: 2026-04-27
 | `IsoMonth` | YYYY-MM string / alias | 월별 조회와 반복 비용 발생월의 ISO 월. |
 | `ExpenseQuery` | z.object / alias | `view: month|all|category`와 월 또는 카테고리 ID를 검증하는 조회 요청 계약. |
 | `ExpenseCategory` | z.object / alias | 사용자별 `id`, `name`, `archivedAt`, 생성·수정 시각. 카테고리명은 수정 가능하며 보관된 항목은 새 입력 선택지에서 제외한다. |
+| `SystemExpenseCategoryId` | z.enum / alias | DB 매입·생산·현수막 가상 카테고리 ID. 불변이며 영속 카테고리 수명주기 변경 대상이 아니다. |
+| `ExpenseReclassificationRef` | strict z.object / alias | 미분류 재분류에 쓰는 `entry`·`recurringRule`·`recurringOccurrence` 타입별 UUID 참조. |
+| `ReclassifyUnclassifiedBody` | strict z.object / alias | UUID 작업 ID, 활성 대상 카테고리, 중복 없는 타입별 참조 1~500개의 요청 계약. |
+| `ExpenseCategoryUsage` | interface | 활성 일반 카테고리 하나의 실제 항목·반복 규칙·발생분·명시적 덮어쓰기·전체 사용 건수. |
+| `DeleteExpenseCategoryResult` | interface | 고정 미분류 대상과 이동된 항목·규칙·발생분 건수를 포함하는 최종 삭제 결과. |
+| `ReclassifyUnclassifiedResult` | interface | 작업·원본·대상 ID와 이동 건수를 포함하는 멱등 재분류 결과. |
 | `ExpenseEntry` | z.object / alias | 일회성 비용: `categoryId`, `categoryName`, `itemName`, 양의 정수 `amountWon`, 포함 기간 `periodStart`~`periodEnd`. |
 | `RecurringRule` | z.object / alias | 매월 반복 비용: 카테고리·품목·금액·`anchorDay`·시작/종료일·상태·대체 규칙 ID. 29~31일은 해당 월 마지막 날로 처리한다. |
-| `RecognizedExpense` | interface | 조회 기간에 인식된 일회성 또는 반복 비용. 원본 항목은 유지하고 일할 인식 금액만 `amountWon`으로 전달한다. |
+| `RecognizedExpense` | interface | 조회 기간에 인식된 일회성 또는 반복 비용. 원본 항목은 유지하고 일할 인식 금액만 `amountWon`으로 전달하며, 반복 발생은 부모 규칙 ID와 명시적 덮어쓰기 여부를 함께 제공한다. |
 | `ExpenseLedgerView` | interface | `month` / `all` / `category` 조회 응답: 카테고리, 인식 항목, 카테고리 합계, `additionalCostTotal`. |
 | `PatchRecurringRuleBody` | discriminated union / alias | `scope: occurrence`은 한 발생월만, `scope: future`는 유효 월 이후의 새 규칙에 수정값을 적용한다. |
 

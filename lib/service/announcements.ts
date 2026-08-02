@@ -23,6 +23,7 @@ import { uploadNoticeImage } from "@/repo/drive-txt";
 import { findUserByEmail } from "@/repo/users";
 import { Notice, UpdateItem } from "@/types";
 import { sanitizeNoticeHtml } from "@/lib/notice-html";
+import { todayKST } from "@/util/week";
 import { groupUpdates } from "./update-groups";
 
 // 모바일 팝업 정보량 축소(2026-06-18) — 최근 항목 3개만, 나머지는 "지난 업데이트 모두 보기".
@@ -33,10 +34,10 @@ export function isArenaAudienceCohort(cohort: string | null | undefined): boolea
   return /^A/i.test(String(cohort ?? "").trim());
 }
 
-/** KST 기준 오늘 YYYY-MM-DD (기간 비교용 — 시트 start/end 와 동일 포맷). */
-export function todayKST(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-}
+/** KST 기준 오늘 YYYY-MM-DD (기간 비교용 — 시트 start/end 와 동일 포맷).
+ *  정의는 `@/util/week`(import 0 순수 유틸) — 무거운 모듈을 끌지 않게 거기 두고 재수출.
+ *  (이 파일 안에서도 쓰므로 import 후 re-export — `export ... from` 만 쓰면 로컬 미바인딩.) */
+export { todayKST };
 
 /** 순수 필터 — 테스트 대상. active·기간·audience 매칭 + pinned 우선 정렬. */
 export function filterNoticesFor(

@@ -2,7 +2,7 @@
  * /admin/cohorts — Admin 전용 기수 관리 (active / archived 토글).
  *
  * registry trainee 들이 사용하는 cohort label 들을 수집 + cohorts 탭 상태와 병합.
- * 시트 탭이 없으면 ensure 로 자동 생성.
+ * GET render 는 읽기 전용이다. 탭/헤더 생성은 명시적 admin mutation route 에서만 수행한다.
  */
 import { redirect } from "next/navigation";
 import {
@@ -11,7 +11,7 @@ import {
   isAdminEmail,
 } from "@/auth/identity";
 import { listDistinctUsers } from "@/repo/users";
-import { listCohorts, ensureCohortsTab, type CohortStatus } from "@/repo/cohorts";
+import { listCohorts, type CohortStatus } from "@/repo/cohorts";
 import { countPendingCohortCreates } from "@/repo/db/cohort-pending";
 import CohortMgmtPanel from "@/components/auth/CohortMgmtPanel";
 
@@ -33,8 +33,8 @@ export default async function AdminCohortsPage() {
     ),
   );
 
-  // cohorts 탭 자동 생성 + 시드 (없을 때만).
-  await ensureCohortsTab(usedLabels);
+  // 읽기 실패(예: Sheets 429)는 여기서 합성/재시도하지 않는다. GET 이 실패해도
+  // 탭·헤더·데이터를 쓰지 않는 것이 admin 운영 데이터에 대한 안전한 경계다.
   const cohortRows = await listCohorts();
 
   // 표시: 시트에 있는 row + 시트엔 없지만 trainee 가 쓰는 label (default active) 도 노출.
@@ -46,6 +46,7 @@ export default async function AdminCohortsPage() {
       status: "active" as CohortStatus,
       note: "",
       type: "cohort" as const,
+      seasonStartISO: "", // 시트에 없는 label — 아레나 시즌 행이 아니라 입력 UI 미노출
     }));
   const cohorts = [...cohortRows, ...extra];
 

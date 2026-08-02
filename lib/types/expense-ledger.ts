@@ -11,11 +11,13 @@ export const AmountWon = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 export const ExpenseCategory = z.object({
   id: ExpenseId,
   name: CategoryName,
+  isSystem: z.boolean().default(false),
+  deletedAt: z.string().nullable().default(null),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
-export type ExpenseCategory = z.infer<typeof ExpenseCategory>;
+export type ExpenseCategory = z.input<typeof ExpenseCategory>;
 
 export const ExpenseEntry = z.object({
   id: ExpenseId,
@@ -91,6 +93,50 @@ export const PatchRecurringRuleBody = z.discriminatedUnion("scope", [
 ]);
 export type PatchRecurringRuleBody = z.infer<typeof PatchRecurringRuleBody>;
 
+export const ExpenseReclassificationRef = z.object({
+  kind: z.enum(["entry", "recurringRule", "recurringOccurrence"]),
+  id: ExpenseId,
+}).strict();
+export type ExpenseReclassificationRef = z.infer<typeof ExpenseReclassificationRef>;
+
+export const ReclassifyUnclassifiedBody = z.object({
+  operationId: ExpenseId,
+  targetCategoryId: ExpenseId,
+  refs: z.array(ExpenseReclassificationRef).min(1).max(500),
+}).strict().superRefine((value, ctx) => {
+  const seen = new Set<string>();
+  value.refs.forEach((ref, index) => {
+    const key = `${ref.kind}:${ref.id.toLowerCase()}`;
+    if (seen.has(key)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["refs", index], message: "duplicate typed ref" });
+    seen.add(key);
+  });
+});
+export type ReclassifyUnclassifiedBody = z.infer<typeof ReclassifyUnclassifiedBody>;
+
+export interface ExpenseCategoryUsage {
+  category: { id: string; name: string; isSystem: false; deletedAt: null };
+  usage: { entryCount: number; ruleCount: number; occurrenceCount: number; overrideOccurrenceCount: number; totalCount: number };
+}
+
+export interface DeleteExpenseCategoryResult {
+  ok: true;
+  deletedCategoryId: string;
+  unclassifiedCategoryId: string;
+  movedEntryCount: number;
+  movedRuleCount: number;
+  movedOccurrenceCount: number;
+}
+
+export interface ReclassifyUnclassifiedResult {
+  ok: true;
+  operationId: string;
+  unclassifiedCategoryId: string;
+  targetCategoryId: string;
+  movedEntryCount: number;
+  movedRuleCount: number;
+  movedOccurrenceCount: number;
+}
+
 export const ExpenseQuery = z.object({
   view: z.enum(["month", "all", "category"]).default("month"),
   month: IsoMonth.optional(),
@@ -100,8 +146,7 @@ export const ExpenseQuery = z.object({
   if (v.view === "category" && !v.categoryId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "categoryId가 필요해요.", path: ["categoryId"] });
 });
 
-export interface RecognizedExpense {
-  source: "one_time" | "recurring";
+interface RecognizedExpenseBase {
   id: string;
   categoryId: string;
   categoryName: string;
@@ -110,6 +155,11 @@ export interface RecognizedExpense {
   periodStart: string;
   periodEnd: string;
 }
+
+export type RecognizedExpense = RecognizedExpenseBase & (
+  | { source: "one_time"; recurringRuleId?: never; isOverride?: never }
+  | { source: "recurring"; recurringRuleId: string; isOverride: boolean }
+);
 
 export interface ExpenseLedgerView {
   view: "month" | "all" | "category";
