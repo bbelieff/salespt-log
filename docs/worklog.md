@@ -84,6 +84,14 @@
 
 ## 로그
 
+### 2026-08-02 · PR643 ARENA SEASON RELEASE R1 · 최신 master 통합 후보 준비
+- 의도: 오래 열린 시즌 SSOT 기능을 최신 master에 최소 통합하고 운영값 쓰기 없이 release chain을 완주한다.
+- 한 것: PR643의 고유 6커밋을 `3fe78acc`에 이식하고 Scoreboard import 충돌을 양쪽 보존으로 해소했다.
+- 보강: 기존 미커밋 RAW 날짜 정규화 수정을 별도 검토·이식하고 Sheets 로케일/RAW 회귀를 7케이스로 고정했다.
+- 검증: 시즌·scoreboard 집중 35/35 PASS; full check/build·독립 VERIFY·PR checks·merge/deploy/live는 후속 게이트다.
+- 제약: A2 시즌 시작일과 Sheets/admin 운영 데이터는 이 release에서 쓰지 않는다.
+- SoR: `docs/plans/active/arena-season1-setup.md`
+
 ### 2026-08-01 · SALES-PT LATENCY-R1 · 시트 fallback 병렬화 release 완료
 - 한 것: PR #645를 squash merge(`ccedd64c`)하고 master QA·단일 VPS deploy(`30647563313`)·public `/api/health` 200을 확인했다.
 - 검증: focused 2/2·관련 27/27·독립 `PASS_TO_RELEASE`·canonical CI SUCCESS; 기존 인증 대시보드 렌더·console 0, 운영 write 0.

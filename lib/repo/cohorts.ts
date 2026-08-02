@@ -62,6 +62,23 @@ function invalidateCohorts(): void {
   }
 }
 
+/**
+ * cohorts J(시즌 개강일) 읽기 정규화 → "YYYY-MM-DD" 또는 "".
+ * 앱은 RAW 로 쓰지만(날짜 셀 변환 차단), **admin 이 시트에서 직접 입력**하면 날짜 셀이 되어
+ * 로케일 문자열("2026. 8. 7.")로 읽힌다. 그 값을 그대로 두면 ISO 검사가 실패해 시즌이 영구
+ * 미판정(0)이 되므로, 흔한 표기를 여기서 흡수한다. 알 수 없는 형태는 ""(미정) 로 degrade.
+ */
+export function normalizeSeasonStart(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // "2026. 8. 7." / "2026.8.7" / "2026/8/7" → 2026-08-07
+  const m = s.match(/^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\.?$/);
+  if (!m) return "";
+  const [, y, mo, d] = m;
+  return `${y}-${mo!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+}
+
 export async function listCohorts(): Promise<Cohort[]> {
   const rows = await cachedCohortsRows();
   return rows
@@ -76,7 +93,7 @@ export async function listCohorts(): Promise<Cohort[]> {
       rosterSheetId: String(r[6] ?? "").trim(),
       sheetsFolderId: String(r[7] ?? "").trim(),
       companyParentFolderId: String(r[8] ?? "").trim(),
-      seasonStartISO: String(r[9] ?? "").trim(),
+      seasonStartISO: normalizeSeasonStart(r[9]),
     }));
 }
 
@@ -271,7 +288,31 @@ export async function setSeasonStart(
   if (iso !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
     throw new Error("[setSeasonStart] YYYY-MM-DD 형식이 아님");
   }
+  // 행 생성/type 보장은 upsert 로(D~J, USER_ENTERED — ID·라벨은 텍스트라 무해).
   await upsertCohortConfig(label, { type: "arena", seasonStartISO: iso });
+  // ⚠️ J 는 **RAW 로 덮어쓴다** — USER_ENTERED 면 Sheets 가 "2026-08-07" 을 **날짜 시리얼**로
+  // 강제 변환하고, 다시 읽을 때 로케일 문자열("2026. 8. 7.")로 나와 ISO 검사가 실패한다
+  // → 시즌이 영구 미판정(0). appendArenaRoster 의 등록일과 동일한 사고 패턴이라 같은 처방.
+  await writeSeasonStartRaw(label, iso);
+}
+
+/** cohorts J 셀만 RAW 로 기록 — 날짜 시리얼 변환 차단. 행이 없으면 조용히 무시(upsert 선행). */
+async function writeSeasonStartRaw(label: string, iso: string): Promise<void> {
+  const reg = registry();
+  const tab = cohortsTab();
+  const trimmed = label.trim();
+  const rows = await readRange(reg.spreadsheetId, `${tab}!A2:A`);
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i]?.[0] ?? "").trim() !== trimmed) continue;
+    await sheetsClient().spreadsheets.values.update({
+      spreadsheetId: reg.spreadsheetId,
+      range: `${tab}!J${i + 2}`,
+      valueInputOption: "RAW",
+      requestBody: { values: [[iso]] },
+    });
+    invalidateCohorts();
+    return;
+  }
 }
 
 /**
