@@ -193,37 +193,37 @@ export async function installFormulas(
   spreadsheetId: string,
 ): Promise<InstallReport> {
   const dataRows = computeDataRows();
+  const ST = tabRef(SALES_TAB);
 
-  // Pre-read: FORMULA mode 로 타겟 범위 현재 내용 가져옴.
-  //   - 04 업체관리 N/O/Q 컬럼 (1~1000행).
-  //   - 01 영업관리 I~P 컬럼 (데이터 행만) + D 컬럼 채널 라벨.
-  const [meetingsExisting, salesExisting] = await Promise.all([
-    sheetsClient().spreadsheets.values.batchGet({
-      spreadsheetId,
-      ranges: [
-        `${M_REF}!N2:N${MEETINGS_LAST_ROW}`,
-        `${M_REF}!O2:O${MEETINGS_LAST_ROW}`,
-        `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`,
-      ],
-      valueRenderOption: "FORMULA",
-    }),
-    dataRows.length > 0
-      ? sheetsClient().spreadsheets.values.batchGet({
-          spreadsheetId,
-          ranges: [
-            `${tabRef(SALES_TAB)}!I${SALES_BLOCK_START}:P${SALES_LAST_ROW}`,
-            `${tabRef(SALES_TAB)}!D${SALES_BLOCK_START}:D${SALES_LAST_ROW}`,
-          ],
-          valueRenderOption: "FORMULA",
-        })
-      : Promise.resolve(null),
-  ]);
-
-  const nExisting = meetingsExisting.data.valueRanges?.[0]?.values ?? [];
-  const oExisting = meetingsExisting.data.valueRanges?.[1]?.values ?? [];
-  const qExisting = meetingsExisting.data.valueRanges?.[2]?.values ?? [];
-  const salesExistingRows = salesExisting?.data.valueRanges?.[0]?.values ?? [];
-  const salesDLabels = salesExisting?.data.valueRanges?.[1]?.values ?? [];
+  // 모든 보존 가드 pre-read 를 한 요청으로 묶는다. batchGet 의 각 range 는 quota상
+  // 한 read 로 계산되며, 이후 write 전까지 사용자 셀을 건드리지 않는다.
+  const existing = await sheetsClient().spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges: [
+      `${M_REF}!N2:N${MEETINGS_LAST_ROW}`,
+      `${M_REF}!O2:O${MEETINGS_LAST_ROW}`,
+      `${M_REF}!Q2:Q${MEETINGS_LAST_ROW}`,
+      `${ST}!I${SALES_BLOCK_START}:P${SALES_LAST_ROW}`,
+      `${ST}!D${SALES_BLOCK_START}:D${SALES_LAST_ROW}`,
+      `${ST}!M3:M5`,
+      `${ST}!R4:U5`,
+      `${ST}!F4:F5`,
+      `${tabRef(CONTRACT_TAB)}!D3:D4`,
+      `${ST}!O5`,
+    ],
+    valueRenderOption: "FORMULA",
+  });
+  const valueRanges = existing.data.valueRanges ?? [];
+  const nExisting = valueRanges[0]?.values ?? [];
+  const oExisting = valueRanges[1]?.values ?? [];
+  const qExisting = valueRanges[2]?.values ?? [];
+  const salesExistingRows = valueRanges[3]?.values ?? [];
+  const salesDLabels = valueRanges[4]?.values ?? [];
+  const m345Existing = valueRanges[5]?.values ?? [];
+  const stkExisting = valueRanges[6]?.values ?? [];
+  const fExisting = valueRanges[7]?.values ?? [];
+  const contractExisting = valueRanges[8]?.values ?? [];
+  const salesFeeExisting = valueRanges[9]?.values ?? [];
 
   const data: Array<{ range: string; values: string[][] }> = [];
   const preservedCells: string[] = [];
@@ -304,12 +304,6 @@ export async function installFormulas(
     4: "='03 DB관리'!K56/L4",
     5: "='03 DB관리'!U56/L5",
   };
-  const m345Res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tabRef(SALES_TAB)}!M3:M5`,
-    valueRenderOption: "FORMULA",
-  });
-  const m345Existing = m345Res.data.values ?? [];
   for (let i = 0; i < 3; i++) {
     const r = 3 + i;
     const cur = m345Existing[i]?.[0];
@@ -325,14 +319,6 @@ export async function installFormulas(
 
   // 미팅예약/완료 펀넬·채널 stacking (R4:U5 + F4:F5) — 04 상태기반 (2026-06-09).
   const funnel = meetingFunnelFormulas();
-  const ST = tabRef(SALES_TAB);
-  const funnelCells = await sheetsClient().spreadsheets.values.batchGet({
-    spreadsheetId,
-    ranges: [`${ST}!R4:U5`, `${ST}!F4:F5`],
-    valueRenderOption: "FORMULA",
-  });
-  const stkExisting = funnelCells.data.valueRanges?.[0]?.values ?? []; // [[R4..U4],[R5..U5]]
-  const fExisting = funnelCells.data.valueRanges?.[1]?.values ?? []; // [[F4],[F5]]
   const COLS = ["R", "S", "T", "U"];
   for (let rowI = 0; rowI < 2; rowI++) {
     const r = 4 + rowI;
@@ -356,16 +342,11 @@ export async function installFormulas(
   }
 
   // 02!D3 아레나·D4 이월 수납총액 — §2.5 pre-read: raw 값이면 보존, 수식·빈셀만 설치.
-  for (const [cell, formula] of [
-    ["D3", CONTRACT_RECEIVED_FORMULAS.arena],
-    ["D4", CONTRACT_RECEIVED_FORMULAS.carryover],
+  for (const [index, cell, formula] of [
+    [0, "D3", CONTRACT_RECEIVED_FORMULAS.arena],
+    [1, "D4", CONTRACT_RECEIVED_FORMULAS.carryover],
   ] as const) {
-    const got = await sheetsClient().spreadsheets.values.get({
-      spreadsheetId,
-      range: `${tabRef(CONTRACT_TAB)}!${cell}`,
-      valueRenderOption: "FORMULA",
-    });
-    if (isSafeToOverwrite(got.data.values?.[0]?.[0])) {
+    if (isSafeToOverwrite(contractExisting[index]?.[0])) {
       data.push({ range: `${tabRef(CONTRACT_TAB)}!${cell}`, values: [[formula]] });
     } else {
       preservedCells.push(`02 계약수납 ${cell}`);
@@ -374,12 +355,7 @@ export async function installFormulas(
 
   // 01 영업관리 O5 = 수수료총합 = 02!D3(이월제외 수납총액)만 — 승인총액 D2 제외(ADR-0026). §2.5 가드.
   {
-    const got = await sheetsClient().spreadsheets.values.get({
-      spreadsheetId,
-      range: `${ST}!O5`,
-      valueRenderOption: "FORMULA",
-    });
-    if (isSafeToOverwrite(got.data.values?.[0]?.[0])) {
+    if (isSafeToOverwrite(salesFeeExisting[0]?.[0])) {
       data.push({ range: `${ST}!O5`, values: [[SALES_FEE_TOTAL_FORMULA]] });
     } else {
       preservedCells.push(`영업관리 O5`);

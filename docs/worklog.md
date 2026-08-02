@@ -91,6 +91,19 @@
 - 다음: focused/typecheck/check/build 및 독립 검수 후 draft PR로 게시
 - SoR: `docs/plans/active/windows-dev-watch-einval-c3-r2.md`
 
+### 2026-08-02 · ADMIN-FORMULA-RESTORE-C2-R2 · current-master release candidate 준비
+- 한 것: `origin/master=3b500960`을 merge하고 worklog append만 양쪽 보존했다. 제품 충돌은 없고 후보 delta는 route·setup-formulas·테스트 2개·plan·worklog 여섯 파일이다.
+- 검증: focused 55/55, typecheck, lint, 구조 23/23, 전체 943/943, doc-drift, 정상 hook, production build 71/71 PASS.
+- 경계: 운영 Sheets·DB·환경·PM2·deploy·merge는 0건이다. draft PR 뒤 독립 review 전에는 release하지 않는다.
+- SoR: `docs/plans/active/admin-formula-restore-c2-r1.md`
+
+### 2026-08-02 · ADMIN-FORMULA-RESTORE-C2-R1 · 오래된 HTTP500 후보 최신 master 재진단 착수
+- 의도: 관리자 수식 복원 HTTP500을 live Sheets write 없이 재현·축소하고, idempotency·사용자 값 보존·quota를 지키는 최소 fix를 출시한다.
+- 진단: source `fix/m345-batchget-merge@3dff145`는 최신 master보다 403 commit 뒤이며, 현재 `installFormulas`는 시트당 read 7회+write 1회라 source의 “3회×concurrency5” 계산은 폐기했다.
+- 결정: 모든 pre-read를 단일 batchGet으로 합친 뒤 concurrency5 wave를 7.5초 간격으로 제한한다. self-hosted Next에서 효력이 없는 `maxDuration`에는 의존하지 않는다.
+- 범위: 관리자 bulk route·setup-formulas·focused API/repo tests·단일 plan/worklog만. 운영 Sheets·DB·R6 write는 금지한다.
+- SoR: `docs/plans/active/admin-formula-restore-c2-r1.md`
+
 ### 2026-08-02 · R6 current-master integration · PR #622 successor 착수
 - 의도: DIRTY 상태인 PR #622의 verified R6 exact20을 최신 master 위에 재통합해 migration 전 clean deploy candidate를 만든다.
 - 한 것: current master에 verified 3-commit lineage를 순차 통합했고 focused 13 files/95 tests, `check.sh` 구조 23/23·전체 901/901, production build 70/70이 PASS했다.
