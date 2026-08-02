@@ -91,6 +91,20 @@
 - 다음: 최종 docs receipt 정상 hook commit → DRAFT/HOLD successor PR → 독립 검증·DevG handoff. 운영 DB·env·PM2·live·Sheets는 계속 불변이다.
 - SoR: `docs/plans/active/r6-current-master-integration-r1.md`
 
+### 2026-08-02 · PR643 P0 RECOVERY · read-only GET 후보 검증 완료
+- 한 것: `/admin/cohorts` render의 `ensureCohortsTab` import/call 제거, 정상·429 경로 cohort mutation 0회 회귀 2건 추가.
+- 검증: focused 2/2, typecheck, check.sh 101 files/916 tests, production build(`/admin/cohorts`) PASS.
+- 상태: 최신 `844ce045` 기반 격리 후보이며 운영 Sheets·DB·환경·live endpoint는 변경/재시도하지 않았다.
+- 다음: 독립 review 후 PR→checks→merge→deploy→health→인증 read-only live 검증.
+- SoR: `docs/plans/active/pr643-admin-cohorts-p0.md`
+
+### 2026-08-02 · PR643 P0 RECOVERY · admin cohorts GET 읽기 전용 경계 착수
+- 의도: PR #643 배포 뒤 `/admin/cohorts` digest `767408371` 500을 운영 데이터 추가 변경 없이 복구한다.
+- 진단: remote/deploy/VPS SHA=`844ce045`; grid 26열·A1:J1 read 성공·헤더 9칸으로 J write 미착지, PM2 예외 본문은 미수집.
+- 결정: Server Component GET의 `ensureCohortsTab` 자동 쓰기만 제거하고 명시적 admin mutation API ensure는 보존한다.
+- 다음: 정상 render·read 429 무쓰기 회귀, focused/typecheck/check/build, 독립 review 뒤 release chain.
+- SoR: `docs/plans/active/pr643-admin-cohorts-p0.md`
+
 ### 2026-08-02 · PR643 ARENA SEASON RELEASE R2 · 비실재 날짜 fail-closed 보강
 - 의도: 독립 검증에서 재현된 달력 비실재 날짜의 잘못된 시즌 전환·주차 rollover를 차단한다.
 - 한 것: 공용 ISO 의미 검증을 API·repo·시즌 판정·주차 앵커에 연결하고 locale 정규화도 같은 검증을 거치게 했다.

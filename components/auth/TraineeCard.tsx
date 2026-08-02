@@ -16,6 +16,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
 import TraineeDiagnoseButton from "./TraineeDiagnoseButton";
 
@@ -232,6 +233,9 @@ export default function TraineeCard({
               SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
           {u.stats && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+              <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500">
+                {STATS_WEEKS}주 누적
+              </span>
               <span>
                 📅 예정{" "}
                 <span className="font-bold text-amber-700">{u.stats.미팅예정}</span>
