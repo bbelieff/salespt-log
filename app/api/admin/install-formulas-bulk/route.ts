@@ -38,6 +38,12 @@ interface FailedItem {
   error: string;
 }
 
+const INSTALL_CONCURRENCY = 5;
+// installFormulas 는 시트당 read 1회 + write 1회. 5개 wave 사이 7.5초를 두면
+// bulk 자체 상한이 종류별 약 40 req/min 이라 SA quota 60/min 에 headroom 이 남는다.
+const INSTALL_WAVE_DELAY_MS = 7_500;
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 async function POST_handler() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail)
@@ -62,26 +68,34 @@ async function POST_handler() {
   const success: SuccessItem[] = [];
   const failed: FailedItem[] = [];
 
-  // 순차 처리 — Sheets API rate limit (100 req/100s/user) 안전.
-  // 각 시트당 1회 batchUpdate (모든 수식 한 번에).
-  for (const u of targets) {
-    try {
-      const report = await installFormulas(u.spreadsheetId);
-      success.push({
-        email: u.email,
-        name: u.name,
-        cohort: u.cohort,
-        installed: report.installed,
-        preserved: report.preserved,
-        preservedCells: report.preservedCells.slice(0, 50),
-      });
-    } catch (e) {
-      failed.push({
-        email: u.email,
-        name: u.name,
-        cohort: u.cohort,
-        error: e instanceof Error ? e.message : "unknown",
-      });
+  for (let i = 0; i < targets.length; i += INSTALL_CONCURRENCY) {
+    const batch = targets.slice(i, i + INSTALL_CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((u) => installFormulas(u.spreadsheetId)),
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const u = batch[j]!;
+      const result = results[j]!;
+      if (result.status === "fulfilled") {
+        success.push({
+          email: u.email,
+          name: u.name,
+          cohort: u.cohort,
+          installed: result.value.installed,
+          preserved: result.value.preserved,
+          preservedCells: result.value.preservedCells.slice(0, 50),
+        });
+      } else {
+        failed.push({
+          email: u.email,
+          name: u.name,
+          cohort: u.cohort,
+          error: result.reason instanceof Error ? result.reason.message : "unknown",
+        });
+      }
+    }
+    if (i + INSTALL_CONCURRENCY < targets.length) {
+      await wait(INSTALL_WAVE_DELAY_MS);
     }
   }
 

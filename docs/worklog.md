@@ -84,6 +84,13 @@
 
 ## 로그
 
+### 2026-08-02 · ADMIN-FORMULA-RESTORE-C2-R1 · 오래된 HTTP500 후보 최신 master 재진단 착수
+- 의도: 관리자 수식 복원 HTTP500을 live Sheets write 없이 재현·축소하고, idempotency·사용자 값 보존·quota를 지키는 최소 fix를 출시한다.
+- 진단: source `fix/m345-batchget-merge@3dff145`는 최신 master보다 403 commit 뒤이며, 현재 `installFormulas`는 시트당 read 7회+write 1회라 source의 “3회×concurrency5” 계산은 폐기했다.
+- 결정: 모든 pre-read를 단일 batchGet으로 합친 뒤 concurrency5 wave를 7.5초 간격으로 제한한다. self-hosted Next에서 효력이 없는 `maxDuration`에는 의존하지 않는다.
+- 범위: 관리자 bulk route·setup-formulas·focused API/repo tests·단일 plan/worklog만. 운영 Sheets·DB·R6 write는 금지한다.
+- SoR: `docs/plans/active/admin-formula-restore-c2-r1.md`
+
 ### 2026-08-01 · SALES-PT LATENCY-R1 · 시트 fallback 병렬화 release 완료
 - 한 것: PR #645를 squash merge(`ccedd64c`)하고 master QA·단일 VPS deploy(`30647563313`)·public `/api/health` 200을 확인했다.
 - 검증: focused 2/2·관련 27/27·독립 `PASS_TO_RELEASE`·canonical CI SUCCESS; 기존 인증 대시보드 렌더·console 0, 운영 write 0.
