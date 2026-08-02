@@ -15,6 +15,7 @@ import type { CohortStatus, CohortType } from "@/repo/cohorts";
 import CohortCreateModal from "./CohortCreateModal";
 import ArenaCreateModal from "./ArenaCreateModal";
 import CohortPendingRetryButton from "./CohortPendingRetryButton";
+import SeasonStartInput from "./SeasonStartInput";
 
 interface Cohort {
   label: string;
@@ -22,6 +23,8 @@ interface Cohort {
   note: string;
   traineeCount: number;
   type?: CohortType;
+  /** (아레나) 시즌 개강일 — 전광판 시즌 판정 정본(AR-2b, cohorts J열). */
+  seasonStartISO?: string;
 }
 
 /** 표시 라벨: 아레나 "A1회" / 일반 "8기". */
@@ -135,6 +138,14 @@ export default function CohortMgmtPanel({
                         {c.note}
                       </div>
                     )}
+                    {/* 아레나 시즌 행만 — 전광판 시즌 판정 정본 입력(AR-2b). */}
+                    {c.type === "arena" && (
+                      <SeasonStartInput
+                        label={c.label}
+                        initialISO={c.seasonStartISO ?? ""}
+                        disabled={viewOnly}
+                      />
+                    )}
                   </div>
                   {!viewOnly && (
                     <button
@@ -145,7 +156,13 @@ export default function CohortMgmtPanel({
                           !confirm(
                             `${displayLabel(c)} 를 보관 처리 하시겠습니까?\n\n` +
                               `· 수강생 관리·트레이너 명단의 "활성 기수" 그룹에서 숨김.\n` +
-                              `· "보관 기수" 섹션에서 언제든 다시 활성화 가능.`,
+                              `· "보관 기수" 섹션에서 언제든 다시 활성화 가능.` +
+                              // 아레나 시즌 행은 전광판 시즌 판정에도 쓰인다(AR-2b) — 보관하면
+                              // 그 시즌이 후보에서 빠져 전광판 표시가 바뀐다는 걸 미리 알린다.
+                              (c.type === "arena"
+                                ? `\n\n⚠️ 아레나 시즌 행입니다. 보관하면 전광판 시즌 판정에서 제외되어,\n` +
+                                  `   이 시즌이 현재 시즌이었다면 전광판 표시(시즌 번호·집계 대상)가 바뀝니다.`
+                                : ""),
                           )
                         )
                           return;
