@@ -1,7 +1,8 @@
 ---
 slug: stats-period-label
-status: active
+status: completed
 created: 2026-08-02
+closed: 2026-08-03
 owner: STATS-PERIOD-LABEL-C1-R1
 ---
 
@@ -42,3 +43,9 @@ owner: STATS-PERIOD-LABEL-C1-R1
 - 기준: `origin/master@3fe78acc233deaeccf65b2dd181bd420395b7877`
 - 소스 후보: `fix/stats-period-label@2314ac693dc2d451e40df0236bfec944c460449b`의 3줄 표시 변경만 대조·이식한다.
 - 릴리스: PR #643 이후의 직렬 릴리스 슬롯을 기다린다. 이 작업은 Sheets·DB·환경변수·운영 데이터에 쓰지 않는다.
+
+## 종료 기록 (2026-08-03 · A(260803))
+
+- 머지 실측: `f682a74 fix(admin): label trainee stats as 8-week cumulative (#648)` — `origin/master` 반영 확인.
+- 미확인 잔여: 배포 run conclusion (`gh` 미설치), 인증 화면에서의 chip 육안 확인. 공개 health 200 만 확인.
+- 판정: 표시 전용 변경이 master 에 있고 전체 검사(check.sh PASSED)를 통과하므로 **완료**로 이관.

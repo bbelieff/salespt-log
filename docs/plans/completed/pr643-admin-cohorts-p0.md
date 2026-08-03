@@ -1,7 +1,8 @@
 ---
 slug: pr643-admin-cohorts-p0
-status: active
+status: completed
 created: 2026-08-02
+closed: 2026-08-03
 owner: Codex P0 recovery worker
 related: arena-season1-setup
 ---
@@ -38,3 +39,10 @@ related: arena-season1-setup
 - [ ] PR/check/squash merge
 - [ ] 자동 deploy success + 공개 health 200
 - [ ] 인증된 `/admin/cohorts` read-only live PASS (별도 승인된 안전 probe)
+
+## 종료 기록 (2026-08-03 · A(260803))
+
+- 머지 실측: `f87b28f fix(admin): keep cohorts page render read-only (#649)` — `origin/master` 반영 확인.
+- 미확인 잔여: 배포 run conclusion (`gh` 미설치), 인증된 `/admin/cohorts` 라이브 probe(belie 승인 필요).
+  위 체크박스는 실측하지 못한 항목이므로 **비운 채로 보존**한다.
+- 판정: 수정 코드가 master 에 있고 공개 health 200 이므로 **완료**로 이관. 라이브 확인은 belie 잔여 항목.

@@ -53,13 +53,20 @@
 
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
-| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260712) | 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
-| B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | PR 오픈(#538, chore/gcal-route-telemetry) — gcal 라우트 6개 withApiTiming 계측(무음실패 durable 관찰). check.sh 초록. **머지=프로덕션 배포는 belie 승인 대기**(belie 복귀·"제안" 프레이밍, DevD 외부발행 대기와 동일선). 잔여=pm2 침묵 인프라(VPS 필요) |
+| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **승계(260712→260803, 데스크탑 신규 몸)** · 환경검증 초록(typecheck·구조 25/25·check.sh PASSED) · 현재=보드·계획서 정합 문서 PR · ⛔`gh` 미설치 → PR 오픈·배포 run 관찰 불가(belie 설치 대기). R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
+| B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | **머지 완료(#538, `274042a`)** — gcal 라우트 6개 withApiTiming 계측. ※ 구 상태 "PR 오픈·belie 승인 대기"는 stale 이었음(2026-08-03 A(260803) 실측 정정 — master 로그에 존재). 잔여=pm2 침묵 인프라(VPS 필요). 신규 작업 대기 |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
 | E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
 | F | KPI-④ EOL renormalize (막차) — .gitattributes | DevF(260712) | **배포 확인(완료)** — #603(1aa3b9a) 머지·배포 success·health 200. §0.5 진단: 저장소 이미 LF(index i/crlf 0건), 720파일=autocrlf 작업트리 착시 → `.gitattributes`로 LF 정책 기계강제(내용 무변경 실측). 다음=#596 D 재검증 대응 대기 / 큐 신규. 🔔#596 D 재검증 요청 유효(연습용 3증상 라이브 해소 확인) |
+| R | 릴리스 계열(C1~C3·PR643 복구 등, 노트북 Codex 세션 work-id) — 단발 릴리스 후보 | 세션 불명(노트북) | **머지 실측(2026-08-03 A 확인)**: #648 통계 라벨 · #649 cohorts read-only · #650 Windows watcher · #651 수식복원 요청 제한 → 계획서 4건 `completed/` 이관 완료. #647 R6 통합은 **[HOLD] 머지** → migration GO 전까지 plan active 유지. #643 arena 시즌 SSOT 는 AR-2b 진행 중 |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
+
+> **보드 정합 실측 (2026-08-03 · A(260803))** — 이 보드는 260712 이후 갱신이 멈춰 있었고,
+> 그 사이 노트북 세션들이 #643·#645~#651 을 머지했다. 위 A·B 줄과 신설 R 줄이 실측 반영분이다.
+> 실측 근거: `origin/master=6380916`(2026-08-02 17:32 KST), 공개 health 200.
+> ⚠️ 아래 디스패치 블록은 **260712 판**이라 여전히 stale — Cowork 만 수정 가능하므로 갱신 요청 상태.
+> ⚠️ 배포 run 성공 여부는 이 세션에서 미확인(`gh` 미설치) — health 200 으로만 대체 확인했다.
 
 > 2026-07-12 표기 개편: 트랙 문자 = 세션 문자(DevA~F)로 통일. 구 표기 매핑 —
 > M→A(구 Dev2), 수납A→C(구 Dev3-A), 리포트B→D(구 Dev3-B), 배포C→E(구 Dev3-C), G→F(구 45열).
@@ -83,6 +90,15 @@
 - **DevF**: 신규 작업 배정 대기.
 
 ## 로그
+
+### 2026-08-03 · A(260803) · 데스크탑 승계 + 보드·계획서 정합
+- 의도: belie 결정(1A). 데스크탑 신규 몸 승계 직후, 260712 에서 멈춘 활성 트랙 보드와 8/2 머지 실적의 괴리를 먼저 해소한다.
+- 실측: `origin/master=6380916`(동기 0/0, worktree 0), 공개 health 200. 로컬 typecheck·구조 25/25·**check.sh PASSED**. Node v24.18.1 / npm 11.16 / git 2.55, node_modules 745(Windows 바이너리, 리눅스 잔재 0).
+- 한 것: 보드 A 승계 갱신 · B stale 정정(#538 은 이미 머지 `274042a`) · 릴리스 계열 R 줄 신설. 완료 계획서 4건(#648·#649·#650·#651) → `docs/plans/completed/` 이관 + 각 문서에 종료 기록 추가.
+- 판단: `r6-current-master-integration-r1`(#647)은 **[HOLD] 머지**라 migration GO 전까지 active 유지. `arena-season1-setup` 은 명단·규칙 상시 SoR + AR-2b 진행 중이라 유지.
+- 제약: `gh` 미설치 → PR 오픈·배포 run 관찰(§6.8) 불가. 브랜치 `docs/board-plan-reconcile` + 커밋 + check.sh 초록까지만 완주하고 정지. 과거 머지분의 deploy run 성공 여부도 같은 이유로 미확인(health 200 대체).
+- 다음: belie 가 `gh` 설치 → PR → §6.8 완주. **R3-3 은 착수 금지 유지(belie 상세 프롬프트 대기).** 디스패치 블록 갱신은 Cowork 몫.
+- SoR: 이 항목 + `docs/plans/completed/{windows-dev-watch-einval-c3-r2, admin-formula-restore-c2-r1, pr643-admin-cohorts-p0, stats-period-label}.md`
 
 ### 2026-08-02 · C3-R2 · Windows Node 22 dev watcher EINVAL 수정 착수
 - 의도: `npm run dev`가 `npx.cmd + shell:false`에서 EINVAL로 종료되는 Windows 개발 경로를 복구
