@@ -107,7 +107,12 @@ function NewCard(
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-xs">
+        {/* ⚠️ <label> 로 감싸지 말 것 — label 이 내부 native date input 과 자동 연결되어
+            클릭을 재전달하고, 그 합성 클릭이 wrapper 로 되버블링되어 showPicker() 가
+            2차 호출된다. 2차는 user gesture 가 아니라 NotAllowedError 로 죽고 picker 가
+            열렸다 닫힌다 = "날짜 선택 불가"(P0-2, 수강생 신고). 라벨은 형제로 둔다
+            (MeetingSlotItem 과 동일 패턴). 접근성은 DateInputCustom 의 ariaLabel 이 담당. */}
+        <div className="flex flex-col gap-1 text-xs">
           <span className="text-gray-500">날짜</span>
           <DateInputCustom
             value={slot.미팅날짜}
@@ -115,7 +120,7 @@ function NewCard(
             min={minDate}
             ariaLabel="미팅 날짜"
           />
-        </label>
+        </div>
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-gray-500">시간</span>
           <TimeSelectPair
