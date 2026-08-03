@@ -37,6 +37,8 @@ import {
 import { addTraineePrepRow } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
 import { writeProfile } from "@/repo/sales";
+import { writeCourseDates } from "@/repo/course-dates";
+import { computeGraduationISO } from "@/service/cohort-dates";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 /** Drive 쓰기(copy/create)는 sheets-client 자동 retry 밖 → 여기서 429 재시도. */
@@ -139,6 +141,9 @@ async function POST_handler(req: Request) {
 
   // 템플릿은 cohorts E 가 비면 SSOT 마스터(0605) 로 폴백 → 폴더 2종만 필수.
   const templateId = cfg?.templateSheetId || DEFAULT_COHORT_TEMPLATE_ID;
+  // 시즌 개강일 정본(cohorts J) — 새로 복제하는 시트의 O1/O2 앵커로 쓴다(AR-2b).
+  // 비어 있으면 기록하지 않는다(운영자가 /admin/cohorts 에서 입력 후 재실행하면 반영).
+  const seasonStartISO = String(cfg?.seasonStartISO ?? "").trim();
   if (!cfg?.sheetsFolderId || !cfg?.companyParentFolderId) {
     return NextResponse.json(
       {
@@ -191,6 +196,28 @@ async function POST_handler(req: Request) {
         (await driveWriteRetry(() =>
           createFolder(plan.folderName, cfg!.companyParentFolderId),
         ));
+
+      // 시즌 개강일(cohorts J) → **갓 복제한 시트**의 O1/O2 기록. (AR-2b 개막 안전)
+      // 안 쓰면 복제본에 템플릿의 **이전 시즌 개강일**이 남아, 개막일 기록이 9주차 이상으로
+      // 계산돼 대시보드 1~8주 표에서 빠진다 → 전광판에 새 시즌 참가자가 전원 0.0.
+      // 재사용 시트(reuseSheet)는 사용자 데이터가 있을 수 있어 **건드리지 않는다**(§2.5).
+      if (!reuseSheet && seasonStartISO) {
+        try {
+          await writeCourseDates(
+            sheetId,
+            seasonStartISO,
+            computeGraduationISO(seasonStartISO),
+            { allowTemplateOverwrite: true }, // 방금 만든 빈 복제본 — 템플릿 잔재만 덮는다
+          );
+        } catch (e) {
+          // 개강일 기록 실패가 참가자 생성 자체를 막지는 않는다(멱등 재실행·수동 교정 가능).
+          // 대신 진단 스크립트(scripts/ops/arena-season-readiness.mjs)가 잡아낸다.
+          console.warn(
+            `[create-arena-members] O1 기록 실패(${plan.cohortLabel} ${name}):`,
+            e instanceof Error ? e.message : e,
+          );
+        }
+      }
 
       const memo = participantMemo({ isPresident, isDeposit });
       await addTraineePrepRow(plan.cohortLabel, name, sheetId, "", folderId, memo);
