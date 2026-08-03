@@ -50,4 +50,39 @@ describe("planCourseDateWrite (§2.5 가드 + 원자적 쌍)", () => {
     expect(p.writes).toEqual([{ cell: "O1", value: "2026-07-10" }]);
     expect(p.preserved).toEqual([]);
   });
+
+  // ── allowTemplateOverwrite (AR-2b 개막 안전) ────────────────────────────
+  // 갓 복제한 시트에는 **템플릿에서 딸려온 이전 기수 날짜**가 들어있다. 그걸 보존하면 새 기수의
+  // 주차 앵커가 어긋나 대시보드 1~8주 표에서 통째로 빠진다(전광판 전원 0.0). 호출부가 "방금
+  // copyTemplateSheet 로 만든 빈 시트"임을 보증할 때만 켠다 — 재사용 시트에는 절대 쓰지 않는다.
+  it("★allowTemplateOverwrite: 템플릿 잔재 날짜(raw)를 덮어쓴다", () => {
+    const p = planCourseDateWrite({
+      ...CELLS,
+      o1Cur: "2026-06-12", // 이전 시즌 개강일이 복제본에 남아있는 상태
+      o2Cur: "2026-08-01",
+      allowTemplateOverwrite: true,
+    });
+    expect(p.writes).toEqual([
+      { cell: "O1", value: "2026-07-10" },
+      { cell: "O2", value: "2026-08-29" },
+    ]);
+    expect(p.preserved).toEqual([]);
+  });
+
+  it("allowTemplateOverwrite 없으면 기존대로 보존 — 기본 동작 불변(§2.5)", () => {
+    const p = planCourseDateWrite({ ...CELLS, o1Cur: "2026-06-12", o2Cur: "2026-08-01" });
+    expect(p.writes).toEqual([]);
+    expect(p.preserved).toEqual(["O1", "O2"]);
+  });
+
+  it("allowTemplateOverwrite 여도 start 빈값이면 무기록", () => {
+    const p = planCourseDateWrite({
+      ...CELLS,
+      startISO: "",
+      o1Cur: "2026-06-12",
+      o2Cur: "2026-08-01",
+      allowTemplateOverwrite: true,
+    });
+    expect(p.writes).toEqual([]);
+  });
 });

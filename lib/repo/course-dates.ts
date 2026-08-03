@@ -22,12 +22,20 @@ export function planCourseDateWrite(input: {
   o2Cell: string;
   startISO: string;
   gradISO: string;
+  /**
+   * **갓 복제한 빈 시트 전용** — §2.5 보존 가드를 건너뛰고 덮어쓴다.
+   * 복제본의 O1/O2 는 사용자가 쓴 값이 아니라 **템플릿에서 딸려온 이전 기수 날짜**라,
+   * 보존하면 새 기수의 주차 앵커가 통째로 어긋난다(전광판·대시보드가 1~8주 밖으로 이탈).
+   * 호출부가 "방금 copyTemplateSheet 로 만든 시트"임을 보증할 때만 true.
+   */
+  allowTemplateOverwrite?: boolean;
 }): { writes: { cell: string; value: string }[]; preserved: string[] } {
   const start = String(input.startISO).trim();
   const grad = String(input.gradISO).trim();
   if (!start) return { writes: [], preserved: [] };
   const bothSafe =
-    isSafeToOverwrite(input.o1Cur) && (!grad || isSafeToOverwrite(input.o2Cur));
+    input.allowTemplateOverwrite === true ||
+    (isSafeToOverwrite(input.o1Cur) && (!grad || isSafeToOverwrite(input.o2Cur)));
   if (!bothSafe) {
     return { writes: [], preserved: grad ? [input.o1Cell, input.o2Cell] : [input.o1Cell] };
   }
@@ -52,6 +60,10 @@ export async function writeCourseDates(
   spreadsheetId: string,
   startISO: string,
   gradISO: string,
+  opts?: {
+    /** 갓 복제한 빈 시트에만 true — 템플릿에서 딸려온 옛 날짜를 덮어쓴다(planCourseDateWrite 참고). */
+    allowTemplateOverwrite?: boolean;
+  },
 ): Promise<{ written: string[]; preserved: string[] }> {
   const sid = String(spreadsheetId).trim();
   const start = String(startISO).trim();
@@ -73,6 +85,7 @@ export async function writeCourseDates(
     o2Cell: o2,
     startISO: start,
     gradISO,
+    allowTemplateOverwrite: opts?.allowTemplateOverwrite,
   });
   if (plan.writes.length > 0) {
     await sheetsClient().spreadsheets.values.batchUpdate({
