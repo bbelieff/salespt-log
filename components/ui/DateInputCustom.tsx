@@ -64,20 +64,12 @@ export default function DateInputCustom({
     <div
       className="custom-date-wrapper"
       onClick={(e) => {
-        // 조상 <label> 이 native input 으로 재전달한 클릭이 되버블링된 경우(=target 이 그 input)
-        // 무시한다. 안 그러면 이미 열린 picker 위에서 showPicker() 가 2차 호출돼 닫힌다(P0-2).
+        // native input 이 박스 전체를 투명하게 덮고 있다 — 그 위를 탭하면 **브라우저 기본
+        // 동작**으로 picker 가 열린다(iOS/인앱 포함). 그 클릭까지 showPicker() 로 다시 열면
+        // 이미 열린 picker 가 닫히므로 여기서 끝낸다. 조상 <label> 이 재전달한 클릭도 동일.
         if (e.target === nativeRef.current) return;
-        open();
+        open(); // 표시 영역(span) 클릭 — 데스크톱 보조 경로
       }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          open();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label={ariaLabel}
     >
       <span className="custom-date-display">
         {value ? formatDisplay(value) : (
@@ -94,8 +86,7 @@ export default function DateInputCustom({
         min={min}
         max={max}
         onChange={(e) => onChange(e.target.value)}
-        tabIndex={-1}
-        aria-hidden
+        aria-label={ariaLabel}
       />
     </div>
   );
