@@ -306,7 +306,7 @@ export async function loadDashboard(
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
       const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email);
-      reverseShadowCompare(sheetId, view); // 서빙=DB raw 로 시트 대조(async 감시) — 오버레이 前
+      reverseShadowCompare(sheetId, view); // 기본 off — 아래 함수 주석(R3 종료) 참고
       // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
       return applyTerminationExclusion(view, termByChannel, termByWeek);
     } catch (e) {
@@ -365,9 +365,20 @@ async function loadDashboardFromDb(
   };
 }
 
-/** 역방향 그림자 감시 (R2-7b) — 서빙=DB 후 시트 대시보드 값을 async 대조. diff 시 Sentry 경보
- * (안전밸브: 사후 알림 — R3 전까지 감시 지속). fire-and-forget, 응답 무영향. */
+/**
+ * 역방향 그림자 감시 (R2-7b) — 서빙=DB 후 시트 대시보드 값을 async 대조, diff 시 Sentry 경보.
+ *
+ * ⚠️ **기본 off (2026-08, 성능)**. 원 주석대로 "R3 전까지" 한시 안전밸브였고 R3 는 완료
+ * 판정됐다. 그런데 이 잡은 **대시보드 GET 마다 시트 대시보드 탭을 통째로 다시 읽어**,
+ * 응답을 DB 로 빠르게 준 뒤에도 Sheets 쿼터·커넥션을 계속 소모한다. 게다가 응답 이후
+ * 실행이라 api_timing(sheets_ms)에도 안 잡혀 "원인 모를 느림"으로 나타난다.
+ *
+ * 전수 대조가 필요하면 **배치**로 한다(실시간일 이유가 없다):
+ *   node scripts/ops/dashboard-parity.mjs --cohort "8,9,연습,A1-0,…"   (읽기 전용)
+ * 다시 켜려면 VPS 환경변수 `DASHBOARD_SHADOW_COMPARE=1` — 코드 수정 없이 복구된다.
+ */
 function reverseShadowCompare(sheetId: string, served: DashboardView): void {
+  if (process.env.DASHBOARD_SHADOW_COMPARE !== "1") return;
   if (!dbEnabled()) return;
   void (async () => {
     const data = await readDashboard(sheetId);
