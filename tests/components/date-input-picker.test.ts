@@ -79,6 +79,25 @@ describe("DateInputCustom — picker 재호출 가드", () => {
     expect(focusSpy).toHaveBeenCalled();
   });
 
+  it("**모바일 경로**: native input 이 상호작용 가능해야 한다 — 숨김/비활성 금지", () => {
+    // P0-2 진짜 원인: 인풋이 0×0 + opacity:0 + pointer-events:none 이라 iOS Safari·인앱
+    // WKWebView 에서 showPicker 도 안 먹고 사용자가 직접 탭할 수도 없었다(달력 여는 경로 0).
+    // 이제 인풋이 박스를 덮어 **브라우저 기본 동작**으로 열린다 — 그 계약을 여기서 고정한다.
+    const { native } = mount({
+      value: "2026-08-03",
+      onChange: () => {},
+      ariaLabel: "미팅 날짜",
+    });
+
+    // 스크린리더/키보드에서 접근 가능해야 한다(예전엔 aria-hidden + tabIndex=-1 이었다).
+    expect(native.getAttribute("aria-hidden")).toBeNull();
+    expect(native.getAttribute("tabindex")).toBeNull();
+    expect(native.getAttribute("aria-label")).toBeTruthy();
+    // 클래스 계약 — CSS 가 inset:0/100%/pointer-events 기본으로 덮는다(globals.css).
+    expect(native.className).toContain("hidden-native-date");
+    expect(native.disabled).toBe(false);
+  });
+
   it("showPicker 미지원 브라우저 → focus 폴백", () => {
     const { wrapper, native } = mount({ value: "", onChange: () => {} });
     delete (native as unknown as { showPicker?: () => void }).showPicker;

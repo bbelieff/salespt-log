@@ -152,12 +152,23 @@ body {
   color: #111827;
   flex: 1;
 }
+/* 날짜 입력 — native date input 을 **박스 전체에 투명하게 깔아** 사용자가 직접 탭하게 한다.
+   ⚠️ 예전엔 0×0 + pointer-events:none 으로 숨기고 JS `showPicker()` 로만 열었는데,
+   iOS Safari(그리고 카카오/인스타 인앱 WKWebView)는 **크기 0·opacity 0 요소에 picker 를
+   띄우지 않는다**. pointer-events 까지 꺼져 있어 사용자가 직접 탭할 수도 없어서, 모바일에선
+   달력을 여는 경로가 아예 없었다(P0-2, 수강생·운영자 실신고). 이제 브라우저 **기본 동작**으로
+   열리므로 iOS·Android·PWA·인앱·데스크톱 어디서나 작동한다. 표시(요일 포함)는 뒤의 span 이 담당. */
 .hidden-native-date {
   position: absolute;
-  width: 0;
-  height: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
-  pointer-events: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* ── Time Select Pair (시·분 분리) ──────────────────────── */
