@@ -61,7 +61,8 @@ DB migration A-D, env/PM2, live·Sheets·운영 데이터 write, PR ready·merge
   즉 위 검증 목록의 "commit/push 후 DRAFT/HOLD successor PR" 은 충족됐다.
 - 다만 **HOLD 는 해제되지 않았다** — DB migration A-D·독립 integrated PASS·migration GO 가 남아 있다.
   따라서 이 계획서는 `completed/` 로 옮기지 않고 **active 유지**한다.
-- 미확인: 배포 run conclusion (`gh` 미설치). 공개 health 200 만 확인. 운영 DB write 는 계속 0.
+- 배포 실측 (2026-08-03 A(260803) 보강): "Deploy to VPS" run `30737985008` (headSha `3b50096`) = **success**.
+  공개 health 200 확인. 운영 DB write 는 계속 0 — HOLD 상태는 그대로다.
 
 ## Rollback
 

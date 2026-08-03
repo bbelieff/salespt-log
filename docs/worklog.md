@@ -53,20 +53,22 @@
 
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
-| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **승계(260712→260803, 데스크탑 신규 몸)** · 환경검증 초록(typecheck·구조 25/25·check.sh PASSED) · 현재=보드·계획서 정합 문서 PR · ⛔`gh` 미설치 → PR 오픈·배포 run 관찰 불가(belie 설치 대기). R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
+| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **배포 확인(완료)** — 보드·계획서 정합 문서 PR **#652 머지**(`80c94bb`)·배포 run `30797733939` success·health 200. `gh` 설치 확인되어 §6.8 완주. 레포 경로 이동: `Desktop\개발프로젝트\경영일지`. 후속 = 8/2 머지분 배포 실측 반영 PR. R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | **머지 완료(#538, `274042a`)** — gcal 라우트 6개 withApiTiming 계측. ※ 구 상태 "PR 오픈·belie 승인 대기"는 stale 이었음(2026-08-03 A(260803) 실측 정정 — master 로그에 존재). 잔여=pm2 침묵 인프라(VPS 필요). 신규 작업 대기 |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
 | E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
 | F | KPI-④ EOL renormalize (막차) — .gitattributes | DevF(260712) | **배포 확인(완료)** — #603(1aa3b9a) 머지·배포 success·health 200. §0.5 진단: 저장소 이미 LF(index i/crlf 0건), 720파일=autocrlf 작업트리 착시 → `.gitattributes`로 LF 정책 기계강제(내용 무변경 실측). 다음=#596 D 재검증 대응 대기 / 큐 신규. 🔔#596 D 재검증 요청 유효(연습용 3증상 라이브 해소 확인) |
-| R | 릴리스 계열(C1~C3·PR643 복구 등, 노트북 Codex 세션 work-id) — 단발 릴리스 후보 | 세션 불명(노트북) | **머지 실측(2026-08-03 A 확인)**: #648 통계 라벨 · #649 cohorts read-only · #650 Windows watcher · #651 수식복원 요청 제한 → 계획서 4건 `completed/` 이관 완료. #647 R6 통합은 **[HOLD] 머지** → migration GO 전까지 plan active 유지. #643 arena 시즌 SSOT 는 AR-2b 진행 중 |
+| R | 릴리스 계열(C1~C3·PR643 복구 등, 노트북 Codex 세션 work-id) — 단발 릴리스 후보 | 세션 불명(노트북) | **배포 확인(완료)** — #647~#651 다섯 건 모두 "Deploy to VPS" **success** 실측(2026-08-03 A `gh` 조회): #647 `30737985008` · #648 `30734464895` · #649 `30734149383` · #650 `30739988555` · #651 `30739460991`. 계획서 4건 `completed/` 이관 완료. #647 R6 통합은 **[HOLD] 머지** → migration GO 전까지 plan active 유지. #643 arena 시즌 SSOT 는 AR-2b 진행 중 |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
 
 > **보드 정합 실측 (2026-08-03 · A(260803))** — 이 보드는 260712 이후 갱신이 멈춰 있었고,
 > 그 사이 노트북 세션들이 #643·#645~#651 을 머지했다. 위 A·B 줄과 신설 R 줄이 실측 반영분이다.
 > 실측 근거: `origin/master=6380916`(2026-08-02 17:32 KST), 공개 health 200.
 > ⚠️ 아래 디스패치 블록은 **260712 판**이라 여전히 stale — Cowork 만 수정 가능하므로 갱신 요청 상태.
-> ⚠️ 배포 run 성공 여부는 이 세션에서 미확인(`gh` 미설치) — health 200 으로만 대체 확인했다.
+> ✅ **배포 run 실측 완료 (2026-08-03 · A(260803))** — `gh` 설치 확인 후 조회.
+> #647~#651 다섯 건 전부 "Deploy to VPS" success, 보드 정합 PR #652(`80c94bb`)도 success + health 200.
+> 이전 줄의 "배포 run 미확인" 경고는 해소됐다.
 
 > 2026-07-12 표기 개편: 트랙 문자 = 세션 문자(DevA~F)로 통일. 구 표기 매핑 —
 > M→A(구 Dev2), 수납A→C(구 Dev3-A), 리포트B→D(구 Dev3-B), 배포C→E(구 Dev3-C), G→F(구 45열).
@@ -90,6 +92,14 @@
 - **DevF**: 신규 작업 배정 대기.
 
 ## 로그
+
+### 2026-08-03 · A(260803) · 레포 이동 승계 + §6.8 완주(#652) + 8/2 배포 실측
+- 의도: 폴더 이동으로 끊긴 직전 세션을 이어받아, 미완이던 §6.8(PR→머지→배포 관찰→health)을 끝내고 8/2 머지분의 "배포 미확인" 잔여를 없앤다.
+- 실측(GitHub 정본 우선): 새 레포 경로 `C:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지`. 브랜치 `docs/board-plan-reconcile`(`03998ef`)은 origin 에 **푸시만 되어 있고 PR 은 없었다** → 중복 작업 없이 PR 부터 생성.
+- 한 것: **PR #652 생성 → 체크 2/2 초록 → squash 머지 `80c94bb` → 배포 run `30797733939` success → health 200**(§6.8 완주). 8/2 머지분 #647~#651 다섯 건의 "Deploy to VPS" run 을 `gh` 로 조회해 **전부 success** 확인, 계획서 5건의 "미확인 잔여: 배포 run conclusion" 주석을 run ID 실측으로 교체.
+- 결정: `gh` 는 설치되어 있었다 — 직전 세션의 "`gh` 미설치" 제약은 **해소**. 이동으로 깨진 워크트리 등록은 `git worktree repair` 로 새 경로에 재연결(`wt/docs-board-reconcile`, 삭제하지 않고 보존).
+- 다음: **R3-3(contracts+company_archive) 착수 금지 유지 — belie 상세 프롬프트 대기.** 남은 잔여는 인증 화면 육안 확인 2건(#648 chip · #649 `/admin/cohorts` probe)뿐 — belie 몫.
+- SoR: 이 항목 + `docs/plans/completed/{pr643-admin-cohorts-p0, stats-period-label, admin-formula-restore-c2-r1, windows-dev-watch-einval-c3-r2}.md` + `docs/plans/active/r6-current-master-integration-r1.md`
 
 ### 2026-08-03 · A(260803) · 데스크탑 승계 + 보드·계획서 정합
 - 의도: belie 결정(1A). 데스크탑 신규 몸 승계 직후, 260712 에서 멈춘 활성 트랙 보드와 8/2 머지 실적의 괴리를 먼저 해소한다.

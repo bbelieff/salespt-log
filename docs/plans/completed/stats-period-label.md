@@ -47,5 +47,6 @@ owner: STATS-PERIOD-LABEL-C1-R1
 ## 종료 기록 (2026-08-03 · A(260803))
 
 - 머지 실측: `f682a74 fix(admin): label trainee stats as 8-week cumulative (#648)` — `origin/master` 반영 확인.
-- 미확인 잔여: 배포 run conclusion (`gh` 미설치), 인증 화면에서의 chip 육안 확인. 공개 health 200 만 확인.
+- 배포 실측 (2026-08-03 A(260803) 보강): "Deploy to VPS" run `30734464895` (headSha `f682a74`) = **success**.
+- 미확인 잔여: 인증 화면에서의 chip 육안 확인 한 건만 남는다. 공개 health 200 확인.
 - 판정: 표시 전용 변경이 master 에 있고 전체 검사(check.sh PASSED)를 통과하므로 **완료**로 이관.
