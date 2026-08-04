@@ -53,6 +53,7 @@
 
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
+| FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 | FM(260804) | **PR 오픈** — 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
 | A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **배포 확인(완료)** — 2건 모두 §6.8 완주: **#652**(`80c94bb`·run `30797733939` success) 보드·계획서 정합, **#653**(`d9ce8eb`·run `30799167984` success) 8/2 배포 실측 반영. 둘 다 health 200. `gh` 설치 확인됨(직전 "미설치" 제약 해소). 레포 경로 이동: `Desktop\개발프로젝트\경영일지`. **문서 정합 트랙 종료 — 신규 작업 대기.** R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | **머지 완료(#538, `274042a`)** — gcal 라우트 6개 withApiTiming 계측. ※ 구 상태 "PR 오픈·belie 승인 대기"는 stale 이었음(2026-08-03 A(260803) 실측 정정 — master 로그에 존재). 잔여=pm2 침묵 인프라(VPS 필요). 신규 작업 대기 |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
@@ -66,6 +67,7 @@
 > 그 사이 노트북 세션들이 #643·#645~#651 을 머지했다. 위 A·B 줄과 신설 R 줄이 실측 반영분이다.
 > 실측 근거: `origin/master=6380916`(2026-08-02 17:32 KST), 공개 health 200.
 > ⚠️ 아래 디스패치 블록은 **260712 판**이라 여전히 stale — Cowork 만 수정 가능하므로 갱신 요청 상태.
+> → ✅ **해소 (2026-08-05 · FM(260804))**: Cowork 의 260803 판 원고(로컬 미커밋)를 전사 + v3(반장 체제) 추가.
 > ✅ **배포 run 실측 완료 (2026-08-03 · A(260803))** — `gh` 설치 확인 후 조회.
 > #647~#651 다섯 건 전부 "Deploy to VPS" success, 보드 정합 PR #652(`80c94bb`)도 success + health 200.
 > 이전 줄의 "배포 run 미확인" 경고는 해소됐다.
@@ -76,22 +78,71 @@
 
 ## 📮 오케스트레이터 디스패치 (각 트랙: 보드 갱신하러 올 때마다 자기 줄 확인 — Cowork만 수정)
 
-- **공통(260712 fable 갱신, 05:00 UTC)**: belie 복귀. Open PR 0·최신 배포 #477 success·health 200
-  (Cowork 재실측). 직렬 머지 + §6.8 엄수.
-- **DevA**: **R3-3(contracts+company_archive 쓰기 전환) 착수** — 상세 프롬프트는 belie가 전달.
-  C 트랙 종료 결정(read-only close)으로 02 구역 소유권 해제 — 단 DevC 마감 커밋(plan 이동)과의
-  worklog 충돌만 주의. R3-2 테스트갭(write-path 단위테스트 0건) 보강을 R3-3에 포함.
-- **DevB**: gcal pm2 로그 무기록 조사 진행 중(보드 자체 착수 확인) — 계속. 중복 지시 없음.
-- **DevC**: **belie 결정 = ①read-only close 확정(2026-07-12)**. 쓰기 카나리아 없이 트랙 종료 —
-  마감 절차(plan completed 이동 + worklog 마감 항목 + 보드 갱신) 실행. 유보 1건(퍼널 계약수
-  해지 반영)은 belie 별도 결정 항목으로 이관.
-- **DevD**: **언블록** — Cowork가 PostHog raw 추출 완료 → `scratchpad/db-speed-raw-2026-07-12.md`
-  (표1 route별 전/후 + 표2 todos·dashboard 일자별 + 재현 HogQL). 비교표+미달원인 작성 →
-  PR #491·496·499·500·509 코멘트 + worklog 완료 요약.
-- **DevE**: belie 복귀 — 대기 3건(Secret 등록·기수왕복·DB비번)은 belie 직접 작업. 완료 신호 후 재개.
-- **DevF**: 신규 작업 배정 대기.
+- **공통(260803 Cowork 갱신)**: 260712판 stale 해소 — A(260803) 실측(#647~#652 전부 배포
+  success·health 200, master `80c94bb`)을 정본으로 승인. 직렬 머지 + §6.8 엄수 유지.
+- **공통·운영체계 v2 (2026-08-03 belie 확정)**:
+  ① **설계도 모드** — 대형 건(PR 2개↑ 또는 병렬 2트랙↑)은 PM 이 `docs/plans/active/` 에
+  설계도 1장 작성(꼬리표: 담당 반장·편성·병렬/직렬 매트릭스·머지 순서 명시). belie 의 킥오프
+  복붙 = 승인 + 디스패치. 소형 건(PR 1·구역 1·belie 결정 0건) = **fast lane**, 킥오프 한 줄 직행.
+  ② **반장 편성 기본값** = 반장 CC 1창 + 서브에이전트 작업자(병렬은 워크트리 격리). 다중 창은
+  구역이 확실히 갈리는 대형 건만, 설계도 꼬리표에 명시된 경우에 한함.
+  ③ **Linear = 관제탑(위성)** — 배차 현황·외부 사무소(노트북 코덱스 등) 일정 정렬 전용.
+  **정본은 레포**(plans=설계도 · worklog=현장일지+디스패치). Linear 미연동 세션도 종전대로
+  worklog 만으로 작동. ※ 2026-08-04 가동 개시: 팀 BBE · 프로젝트 「경영일지 · 세일즈PT 영업일지」 —
+  활성 트랙 6건 등재(BBE-35 결정함 · 36 AR-2b · 37 R6 HOLD · 38 DevF · 39 R3-3 · 40 DevE).
+  동기화 = 레포→Linear 단방향. 같은 팀에 MoaWork 프로젝트 공존(별개 사업장).
+- **공통·운영체계 v3 (2026-08-05 belie 지시 — 반장 체제)**: 경영일지에 **작업반장(FM) 창**을 세운다.
+  반장이 계약(task_id·base SHA·브랜치·file lease·수용기준·NOT_RUN)을 생산하고, 디스패치가 워커
+  창에 전달·회수한다. 병렬 구현·**직렬 머지**(§3.5)·§6.8 게이트는 그대로. 설계도 = `docs/plans/active/foreman-linear-ops-r1.md`
+  (**belie 승인 대기** — Linear 구조 A안·신규 카드 11장·라운드1 배차 3건).
+- **실행 큐 (2026-08-05 FM 정렬)**: ① L1 반장 취임·장부 정합(진행 중) ② L2 BBE-38 DevF #596 대응
+  ③ L3 날짜달력 라이브 확인 ④ 시크릿 등록 → BBE-40 DevE 재개 ⑤ R3-3 설계도 1호 → BBE-39 착수.
+  코덱스 2건(BBE-36 관찰 · 37 HOLD)은 큐 외. 머지는 §3.5 직렬 유지.
+- **DevA**: R3-3 착수 금지 유지 — belie 킥오프 대기(설계도 1호 선행).
+- **DevB**: #538 머지 실측 정정 완료. 잔여=gcal pm2 침묵 인프라(VPS 접근 필요) — 신규 작업 대기.
+- **DevC**: 종료 상태 유지.
+- **DevD**: W0-C 완료 확인. residual 2건(#605 close·A full 인수왕복 실연). 신규 작업 대기.
+- **DevE**: ⛔유지 — ADMIN_DRIVE_REFRESH_TOKEN 등록(belie 직접) 전 재개 불가.
+- **DevF**: **착수 대기 — #596 D 재검증 대응(BBE-38 · fast lane)**. 계약 초안 `F-596-REVERIFY-01`
+  = 설계도 §5-1. belie 승인 후 디스패치가 워커 창 발급.
+- **R(노트북)**: #647 R6 통합 plan 은 migration GO 전까지 active 유지. AR-2b 진행 중 —
+  `lane:arena`(course-dates·scripts/ops·create-arena-members) 점유로 간주, 타 레인 접근 금지.
+
+### 📥 belie 결정함 (사장님 액션 대기 목록 — 처리 순서 2026-08-05)
+1. [ ] **반장 설계도 승인** — `docs/plans/active/foreman-linear-ops-r1.md` §6 (Linear A안 · 카드 11장 · 라운드1 배차 2창)
+2. [ ] ADMIN_DRIVE_REFRESH_TOKEN 시크릿 등록 (GitHub→Settings→Secrets, ~5분) → DevE(BBE-40) 즉시 재개
+3. [ ] R3-3 킥오프 승인 — 설계도 1호(FM 작성 예정) 검토. 퍼널 계약수 해지 반영 여부는 그 설계도의 결정 포인트
+4. [ ] #605 close (D 트랙 residual, GitHub 클릭 1회)
+5. [ ] 육안 확인 2건 — #648 chip · #649 `/admin/cohorts` probe (인증 화면)
+6. [x] Linear 커넥터 인증 — 2026-08-04 완료, 관제탑 가동 (팀 BBE · BBE-35~40)
 
 ## 로그
+
+### 2026-08-05 · FM(260804) · 작업반장 취임 + Linear 체제 설계도 R1 (START)
+- 의도: belie 지시 — 경영일지 개발세션을 **작업반장**으로 승격, MoaWork 준용 Linear 체제로 A~F 를 직렬/병렬 조율.
+- 실측: `origin/master=e09ee33`(배포 run `30830372094` success·health 200) · **Open PR 0** · 머지 큐 비어 있음 · Linear MCP 이 반장 세션에 연결됨(팀 1개 BBE · 프로젝트 2개 · 카드 BBE-35~40 조회 성공).
+- 한 것: 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성(Linear 구조 A/B 비교·**A안 권장**, 신규 카드 11장, 트랙=라벨·카드=계약·세션=몸 매핑, `lane:*` 구역 라벨과 "같은 lane 동시 In Progress 금지" 철칙, 라운드1 3레인 배분 + 계약 초안 3건). 보드에 **FM 줄 신설**. 로컬에만 있던 Cowork 디스패치 v2 를 그대로 전사(전달 유실 방지).
+- 결정(자율): Linear 는 **미러**, 정본 순서 = GitHub(코드) > 레포 문서(현장·설계) > Linear(점유·상태). 근거: 세션마다 Linear 접근이 보장되지 않음. 복구법: 설계도 revert 1회.
+- 다음: **belie 승인 대기** — 설계도 §6 4항(구조 A안·카드 11장·라운드1 배차·기존 결정 3건). 승인 시 반장이 Linear 카드 생성 + 계약 배차.
+- SoR: `docs/plans/active/foreman-linear-ops-r1.md`
+
+### 2026-08-05 · FM(260804) · 장부 정합 — 머지 5건 로그 미기재 확인
+- 한 것: #654·#656(모바일 날짜달력 P0-2)·#657·#658(arena 시즌)·#659(대시보드 그림자 대조 off) 5건이 머지·배포 success 인데 **로그 항목이 없음**을 실측 기록. 보드 R 줄/코덱스 소유분이라 내용 판정은 소유 트랙 몫.
+- 잔여(비차단): 위 5건의 사후 요약은 각 소유 트랙(R/코덱스)이 채운다. 라이브 확인이 필요한 것은 날짜달력 1건 → 라운드1 L3 카드로 등재.
+- SoR: 이 항목 + `docs/plans/active/foreman-linear-ops-r1.md` §4-2 N1·N3
+
+### 2026-08-04 · Cowork · Linear 관제탑 가동 (BBE 「경영일지 · 세일즈PT 영업일지」)
+- 의도: belie Linear 인증 완료 → v2 합의(관제탑=위성) 즉시 실행.
+- 한 것: 팀 BBE에 프로젝트 신설 + 사무소 라벨 4종(클로드코드·코덱스·Cowork·belie결정) + 활성 트랙 이슈 6건 등재(BBE-35 📥결정함/High·36 AR-2b 진행중·37 R6 HOLD·38 DevF·39 R3-3 대기·40 DevE 대기). 차단 관계 2건(39·40 ← 35) 연결.
+- 결정(자율): 동기화 = 레포→Linear 단방향, MoaWork 프로젝트와 같은 팀 공유·프로젝트로 격리. 근거: 한 화면 겹침 정렬 + 정본 이원화 방지. 복구법: Linear 프로젝트 아카이브만 하면 원상.
+- ※ 전사 주석(2026-08-05 FM): 이 항목과 아래 v2 항목은 Cowork 가 로컬 작업트리에만 남겨둔 미커밋 원고였다. 내용 변경 없이 그대로 옮겼다.
+- SoR: docs/worklog.md 보드·📥 섹션 (Linear는 미러)
+
+### 2026-08-03 · Cowork · 운영체계 v2 확정(설계도 모드·반장 편성·Linear 관제탑) + 디스패치 260803 갱신
+- 의도: belie 가 총괄 PM 체계 증축을 지시 — 설계도(병렬·직렬 매트릭스)·반장 층·Linear 정렬 도입 검토.
+- 한 것: 260712판 stale 디스패치 블록을 260803 실측으로 갱신, 운영체계 v2 를 디스패치 공통 항목으로 명문화, 📥 belie 결정함 섹션 신설.
+- 결정(belie): ①Linear=관제탑(위성, 정본은 레포) ②반장 편성=건별 지정 ③fast lane 기준(PR1·구역1·결정0). 복구법: 디스패치 공통 v2 항목 제거로 원복.
+- SoR: CLAUDE.md §3·§3.5·§6.7, docs/plans/active/_TEMPLATE.md
 
 ### 2026-08-03 · A(260803) · 레포 이동 승계 + §6.8 완주(#652) + 8/2 배포 실측
 - 의도: 폴더 이동으로 끊긴 직전 세션을 이어받아, 미완이던 §6.8(PR→머지→배포 관찰→health)을 끝내고 8/2 머지분의 "배포 미확인" 잔여를 없앤다.
