@@ -118,6 +118,13 @@
 
 ## 로그
 
+### 2026-08-05 · 기수생성 날짜 트랙 · 수강시작일 유실 2회 재발 차단 (전달 보장 + 결과 가시화)
+- 의도: admin 기수 생성 시 수강시작일이 조용히 유실돼 템플릿(0605=8기 사본) 날짜가 새 시트에 남던 사고(연습용2·10기 6명)를 코드로 막는다. 실데이터는 `scripts/ops/finalize-cohort10.mjs` 로 이미 수리 완료.
+- 진단(§0.5): 원인이 **둘**이었다. ⓐ 자동화가 date input 의 DOM `.value` 만 세팅해 React onChange 미발화 → state 빈 채 제출. ⓑ **새로 발견** — 날짜가 제대로 와도 `create-cohort-members` 가 `writeCourseDates` 를 `allowTemplateOverwrite` 없이 불러 템플릿 raw O1 이 §2.5 가드에 걸려 **입력 날짜가 버려졌다**(warn 한 줄만). ⓑ는 아레나 경로에서 #658 로 이미 고쳐진 것과 동일 급소인데 일반 기수 경로만 누락돼 있었다. 모달 폼 자체는 정상 controlled input — "폼 버그" 오진 아님.
+- 한 것: ① 제출 시 `resolveCourseStartInput` ref 폴백(+ state 동기화) ② 갓 복제한 시트에만 `allowTemplateOverwrite: true` ③ 응답 `dates[]` + 미기록 시 시트 실측 readback(O1/O2/B3) → 모달 초록/앰버 블록 ④ 날짜 미입력 시 확인 1회. check.sh 초록(구조 25 · 단위 977). 신규 테스트 17개, 그중 모달 회귀 3개는 **옛 코드로 되돌리면 실제로 빨개지는 것까지 실측 확인**.
+- 결정: B3/C3 **쓰기는 추가하지 않는다** — claim 시점(`lib/service/auth.ts:196`)이 정본이라 두 갈래가 되면 더 위험. 이번엔 읽어서 보여주기만.
+- 다음: PR → §6.8(배포 success + health 200). 잔여 별건 = 개막 전 저장 500→400 매핑(`finalize-cohort10-dates.md` §6-1).
+- SoR: `docs/plans/active/cohort-create-date-visibility.md`
 ### 2026-08-05 · FM(260804) · 작업반장 취임 + Linear 체제 설계도 R1 (START)
 - 의도: belie 지시 — 경영일지 개발세션을 **작업반장**으로 승격, MoaWork 준용 Linear 체제로 A~F 를 직렬/병렬 조율.
 - 실측: `origin/master=e09ee33`(배포 run `30830372094` success·health 200) · **Open PR 0** · 머지 큐 비어 있음 · Linear MCP 이 반장 세션에 연결됨(팀 1개 BBE · 프로젝트 2개 · 카드 BBE-35~40 조회 성공).

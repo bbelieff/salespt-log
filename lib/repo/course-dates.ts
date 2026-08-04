@@ -1,5 +1,5 @@
 /**
- * Layer: repo — 개인 시트 O1(수강시작)·O2(종강총회) 날짜 쓰기 (R3-5, 기수 생성/재시도용).
+ * Layer: repo — 개인 시트 O1(수강시작)·O2(종강총회) 날짜 쓰기 + 생성 리포트용 실측 읽기 (R3-5).
  * sales.ts 에서 분리(500줄 cap). 좌표 SSOT: docs/domains/sheet-structure.md §2, config startDateCell/graduationDateCell.
  */
 import { SHEET_RANGES } from "@/config";
@@ -97,4 +97,58 @@ export async function writeCourseDates(
     });
   }
   return { written: plan.writes.map((w) => w.cell), preserved: plan.preserved };
+}
+
+/** 생성 리포트용 실측 셀값 — 시트에 **실제로 남아있는** 날짜·기수·이름. */
+export interface CourseDateCells {
+  /** O1 수강시작일 */
+  o1: string;
+  /** O2 종강총회 (템플릿 잔재면 `=O1+50` 같은 수식 문자열로 보인다) */
+  o2: string;
+  /** B3 기수 — 앱 표시 기수의 정본(me.ts 가 레지스트리보다 우선) */
+  b3: string;
+  /** C3 이름 */
+  c3: string;
+}
+
+/**
+ * 순수 — batchGet valueRanges(O1, O2, B3:C3) → 셀 문자열 4개. 테스트 대상.
+ * 값이 없으면 "" (호출부가 "빈 셀"로 표시). 숫자·불리언도 문자열로 정규화.
+ */
+export function parseCourseDateCells(
+  valueRanges: { values?: unknown[][] | null }[] | undefined,
+): CourseDateCells {
+  const cell = (i: number, j = 0): string => {
+    const v = valueRanges?.[i]?.values?.[0]?.[j];
+    return v === undefined || v === null ? "" : String(v).trim();
+  };
+  return { o1: cell(0), o2: cell(1), b3: cell(2, 0), c3: cell(2, 1) };
+}
+
+/**
+ * O1·O2·B3·C3 를 **읽기 전용**으로 실측 (기수 생성 리포트 전용, R3-5 후속).
+ *
+ * 왜 필요한가: 날짜가 기록되지 않은 채 생성이 "성공"으로 끝나면(미입력·보존·예외) 시트에는
+ * 템플릿(이전 기수) 값이 그대로 남는데, 지금까지 그 사실이 서버 로그에만 있었다. 실제로 남은
+ * 값을 읽어 생성 결과 화면에 그대로 보여주기 위한 함수 — 쓰기는 하지 않는다.
+ *
+ * FORMULA 렌더인 이유: 템플릿 잔재 O2 는 `=O1+50` 수식이라, 계산값(날짜)이 아니라 수식 자체가
+ * 보여야 운영자가 "이건 내가 넣은 날짜가 아니라 템플릿에서 딸려온 것"을 즉시 안다.
+ */
+export async function readCourseDateCells(
+  spreadsheetId: string,
+): Promise<CourseDateCells> {
+  const sid = String(spreadsheetId).trim();
+  if (!sid) return { o1: "", o2: "", b3: "", c3: "" };
+  const tab = tabRef(SHEET_RANGES.sales.tab);
+  const res = await sheetsClient().spreadsheets.values.batchGet({
+    spreadsheetId: sid,
+    ranges: [
+      `${tab}!${SHEET_RANGES.sales.startDateCell}`,
+      `${tab}!${SHEET_RANGES.sales.graduationDateCell}`,
+      `${tab}!B3:C3`,
+    ],
+    valueRenderOption: "FORMULA",
+  });
+  return parseCourseDateCells(res.data.valueRanges);
 }

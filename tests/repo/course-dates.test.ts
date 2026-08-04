@@ -3,7 +3,7 @@
  * 리뷰 CONFIRMED 회귀: O1 보존 + O2 덮어쓰기로 O1↔O2 가 어긋나면 안 됨.
  */
 import { describe, it, expect } from "vitest";
-import { planCourseDateWrite } from "@/repo/course-dates";
+import { planCourseDateWrite, parseCourseDateCells } from "@/repo/course-dates";
 
 const CELLS = { o1Cell: "O1", o2Cell: "O2", startISO: "2026-07-10", gradISO: "2026-08-29" };
 
@@ -84,5 +84,38 @@ describe("planCourseDateWrite (§2.5 가드 + 원자적 쌍)", () => {
       allowTemplateOverwrite: true,
     });
     expect(p.writes).toEqual([]);
+  });
+});
+
+// 생성 리포트용 실측 readback — "날짜가 안 들어갔다"를 화면에서 즉시 보이게 하는 입력.
+describe("parseCourseDateCells (O1·O2·B3:C3 batchGet → 셀 문자열)", () => {
+  it("★템플릿 잔재 그대로 노출 — O2 는 계산값이 아니라 수식으로 보여야 한다", () => {
+    expect(
+      parseCourseDateCells([
+        { values: [["2026-06-12"]] },
+        { values: [["=O1+50"]] },
+        { values: [["8", "김믿음"]] },
+      ]),
+    ).toEqual({ o1: "2026-06-12", o2: "=O1+50", b3: "8", c3: "김믿음" });
+  });
+
+  it("빈 셀·없는 range 는 빈 문자열", () => {
+    expect(parseCourseDateCells([{ values: [[""]] }, {}, { values: [["10"]] }])).toEqual({
+      o1: "",
+      o2: "",
+      b3: "10",
+      c3: "",
+    });
+    expect(parseCourseDateCells(undefined)).toEqual({ o1: "", o2: "", b3: "", c3: "" });
+  });
+
+  it("숫자·null 도 문자열로 정규화하고 공백은 자른다", () => {
+    expect(
+      parseCourseDateCells([
+        { values: [[45815]] },
+        { values: null },
+        { values: [[10, "  김도연  "]] },
+      ]),
+    ).toEqual({ o1: "45815", o2: "", b3: "10", c3: "김도연" });
   });
 });

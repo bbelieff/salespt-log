@@ -14,7 +14,10 @@
  * 멱등: (label, name) 이 이미 시트와 함께 registry 에 있으면 skip (복제 안 함).
  * 부분 실패 허용 — 한 명 실패해도 나머지 진행. 순차 처리(rate limit 안전) + 429 retry.
  *
- * 응답: { ok, label, display, type, created:[{name,sheetId}], skipped:[{name}], failed:[{name,reason}] }
+ * 응답: { ok, label, display, type, created:[{name,sheetId}], skipped:[{name}], failed:[{name,reason}],
+ *         pending:[{name,reason}], dates:[DateOutcome] }
+ *   dates — create 로 복제한 시트별 O1/O2 기록 결과. 기록 안 됐으면 시트 실측값(O1/O2/B3/C3)을
+ *           함께 담아 모달이 "템플릿 날짜가 그대로 남았다"를 즉시 보여준다.
  */
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
@@ -25,8 +28,18 @@ import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 import { copyTemplateSheet, findFolderContainingName } from "@/repo/drive-client";
 import { addTraineePrepRow, extractSpreadsheetId } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
-import { writeCourseDates } from "@/repo/course-dates";
-import { computeGraduationISO, isValidISODate } from "@/service/cohort-dates";
+import {
+  writeCourseDates,
+  readCourseDateCells,
+  type CourseDateCells,
+} from "@/repo/course-dates";
+import {
+  computeGraduationISO,
+  isValidISODate,
+  classifyCourseDateOutcome,
+  needsSheetReadback,
+  type CourseDateStatus,
+} from "@/service/cohort-dates";
 import { dbEnabled } from "@/repo/db/client";
 import {
   enqueueCohortCreate,
@@ -37,6 +50,24 @@ import { withApiTiming } from "@/lib/analytics/api-timing";
 interface MemberInput {
   name?: unknown;
   sheetUrl?: unknown;
+}
+
+/**
+ * 새 시트 날짜 기록 결과 1건 — 응답 `dates[]` 로 모달에 그대로 표시된다.
+ * status !== "written" 이면 `sheet` 에 **시트에 실제로 남은 값**을 실측해 담는다.
+ */
+interface DateOutcome {
+  name: string;
+  sheetId: string;
+  status: CourseDateStatus;
+  /** 실제로 기록한 셀 (["O1","O2"]) */
+  written: string[];
+  /** 기록을 시도한 입력값 (미입력이면 "") */
+  courseStartISO: string;
+  graduationISO: string;
+  /** 미기록 시 실측 readback — 화면에 "시트에 남아있는 값"으로 표시 */
+  sheet?: CourseDateCells;
+  reason?: string;
 }
 
 const sheetUrlOf = (id: string) =>
@@ -185,6 +216,8 @@ async function POST_handler(req: Request) {
   const failed: { name: string; reason: string }[] = [];
   // R3-5: Drive 복제 실패로 큐에 적재된(생성 비차단) 멤버 — 재시도 대기.
   const pending: { name: string; reason: string }[] = [];
+  // 새 시트 날짜 기록 결과 — "조용히 템플릿 날짜가 남는" 사고를 화면에서 보이게 하는 리포트.
+  const dates: DateOutcome[] = [];
 
   for (const m of members) {
     const name = String(m.name ?? "").trim();
@@ -267,21 +300,53 @@ async function POST_handler(req: Request) {
       await addTraineePrepRow(parsed.label, name, newSheetId);
 
       // 새 시트 O1/O2 날짜 세팅(R3-5) — **create 모드만**(복제된 새 시트). link 은 제외(남의 시트 비접촉).
-      // §2.5 가드로 사용자 수기 날짜는 보존. 실패해도 생성은 성공이므로 흡수(warn).
-      if (courseStartISO && plan.action === "create") {
-        try {
-          const r = await writeCourseDates(newSheetId, courseStartISO, graduationISO);
-          if (r.written.length === 0 && r.preserved.length > 0) {
-            console.warn(
-              `[create-cohort] O1/O2 기존값 보존 — 입력 날짜 미반영: ${name} (${r.preserved.join(",")})`,
-            );
+      // 실패해도 생성은 성공이므로 흡수하되, 결과는 응답 dates[] 로 **화면에 올린다**(로그만 남기고
+      // 조용히 넘어가다 개막 후에야 발견된 사고 2회 — 연습용2·10기 6명).
+      if (plan.action === "create") {
+        let written: string[] = [];
+        let reason = "";
+        if (courseStartISO) {
+          try {
+            // 방금 copyTemplateSheet 로 만든 **빈 복제본** — 여기 있는 O1/O2 는 사용자가 쓴 값이
+            // 아니라 템플릿(0605=8기 사본)에서 딸려온 이전 기수 날짜다. §2.5 보존 가드를 그대로
+            // 두면 입력 날짜가 버려지고 잔재가 남아 주차 앵커가 통째로 어긋난다(전 지표 0).
+            // 아레나 경로(#658)와 동일 처방 — 재사용 시트·link 모드에는 절대 켜지 않는다.
+            const r = await writeCourseDates(newSheetId, courseStartISO, graduationISO, {
+              allowTemplateOverwrite: true,
+            });
+            written = r.written;
+          } catch (dateErr) {
+            reason =
+              dateErr instanceof Error ? dateErr.message : "O1/O2 기록 실패";
           }
-        } catch (dateErr) {
-          console.warn(
-            `[create-cohort] O1/O2 세팅 실패(생성은 성공): ${name}`,
-            dateErr instanceof Error ? dateErr.message : dateErr,
-          );
         }
+        const status = classifyCourseDateOutcome({
+          courseStartISO,
+          written,
+          error: reason || undefined,
+        });
+        // 미기록이면 시트에 **실제로 남은 값**을 읽어 리포트에 담는다(정상 경로는 추가 read 0회).
+        let sheet: CourseDateCells | undefined;
+        if (needsSheetReadback(status)) {
+          console.warn(
+            `[create-cohort] 수강시작일 미기록(${status}): ${name}${reason ? ` — ${reason}` : ""}`,
+          );
+          try {
+            sheet = await readCourseDateCells(newSheetId);
+          } catch {
+            /* 리포트를 못 읽는 것이 생성 실패는 아니다 — status 만으로도 경고는 뜬다 */
+          }
+        }
+        dates.push({
+          name,
+          sheetId: newSheetId,
+          status,
+          written,
+          courseStartISO,
+          graduationISO,
+          sheet,
+          reason: reason || undefined,
+        });
       }
 
       if (parsed.type === "arena" && cfg?.rosterSheetId) {
@@ -312,6 +377,7 @@ async function POST_handler(req: Request) {
     skipped,
     failed,
     pending,
+    dates,
   });
 }
 
