@@ -53,7 +53,7 @@
 
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
-| FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 | FM(260804) | **PR 오픈 — R3-3 잔여(BBE-39)**: 미팅 화면발 02 계약 쓰기 6경로 dual-sync + 500줄 캡 split 2건. check.sh 초록·전체 1019테스트 green. A 구역 한시 점유(완료 시 반환). 이하 이전: **배포 확인(완료)** — #660(`a253ba8`) 머지. 자기 배포 run `30934412080` 은 **VPS ssh 타임아웃**으로 실패(코드 무관·라이브 무변경) → 후속 #662 run `30935808481` success 로 동일 트리 배포·health 200 확인. 2호 = 디스패치 260805 전사 PR. **belie 승인 대기**(설계도 §6). 이하 취임 기록: 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
+| FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 | FM(260804) | **배포 확인(완료) — R3-3 잔여(BBE-39)**: PR **#666**(`9551c8b`) 머지 · 배포 run `30939294995` **success(1차 ssh 타임아웃 → rerun)** · health 200. 미팅 화면발 02 쓰기 6경로 dual-sync + 500줄 캡 split 2건, 전체 1019테스트 green. **02 구역 A 로 반환.** ⚠️ VPS ssh 22 타임아웃이 오늘만 3회(#660·#661 1차·#666 1차) — 인프라 점검 후보. 이하 이전: **배포 확인(완료)** — #660(`a253ba8`) 머지. 자기 배포 run `30934412080` 은 **VPS ssh 타임아웃**으로 실패(코드 무관·라이브 무변경) → 후속 #662 run `30935808481` success 로 동일 트리 배포·health 200 확인. 2호 = 디스패치 260805 전사 PR. **belie 승인 대기**(설계도 §6). 이하 취임 기록: 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
 | A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **배포 확인(완료)** — 2건 모두 §6.8 완주: **#652**(`80c94bb`·run `30797733939` success) 보드·계획서 정합, **#653**(`d9ce8eb`·run `30799167984` success) 8/2 배포 실측 반영. 둘 다 health 200. `gh` 설치 확인됨(직전 "미설치" 제약 해소). 레포 경로 이동: `Desktop\개발프로젝트\경영일지`. **문서 정합 트랙 종료 — 신규 작업 대기.** R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | **머지 완료(#538, `274042a`)** — gcal 라우트 6개 withApiTiming 계측. ※ 구 상태 "PR 오픈·belie 승인 대기"는 stale 이었음(2026-08-03 A(260803) 실측 정정 — master 로그에 존재). 잔여=pm2 침묵 인프라(VPS 필요). 신규 작업 대기 |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
@@ -139,8 +139,11 @@
 - 한 것: `clearRowByLink` 에 opts 추가 + **파일럿 한정 DB-first 순서**(시트를 먼저 지우면 키가 (계약일,업체명)뿐이라 재시도가 행을 못 찾아 **치유 불가** → DB 먼저 확정, 실패 시 시트 무변경). contact.ts 6경로 게이트 배선. 신규 테스트 17(순서·throw·비파일럿 불변·DB-off 롤백·6경로 게이트).
 - 결정(자율): 두 파일이 **master 기준 정확히 500줄**(캡 경계)이라 배선 자체가 불가 → PR-1 리뷰 후속⑤가 예고한 **split 선행**을 이 PR 에서 수행. `lib/repo/contract-payment-link.ts` · `lib/service/contact-cascade.ts` 로 이동 + 원 모듈에서 **재수출**(공개 API·기존 테스트 모킹 경로 무변경, 레포의 contract-payment-sync 선례와 동일 형태). 복구법: 이 PR revert 1건.
 - 검증: check.sh 초록(구조 25 · 500줄 캡 통과 · doc-drift) + 전체 **115파일 1019테스트 green**.
-- 다음: 남은 R3-3 계열은 belie 결정 대기분(append flip=B안 재키잉 · 오염행 리페어)뿐. 02 구역 A 반환.
-- SoR: `docs/plans/active/r3-3-meeting-contract-dual-sync.md` · `docs/plans/active/db-write-flip.md` §6 R3-3
+- 완주(§6.8): PR **#666 → `9551c8b`** 머지 · 배포 run `30939294995` 1차 **VPS ssh 22 타임아웃**(코드 무관) → `rerun --failed` → **success** · health **200**. 계획서 `completed/` 이관.
+- 다음: 남은 R3-3 계열은 belie 결정 대기분(append flip=B안 재키잉 · 오염행 리페어)뿐. **02 구역 A 반환 완료.**
+- ⚠️ 인프라: VPS ssh 22 타임아웃이 오늘만 3회(#660 · #661 1차 · #666 1차). 매번 rerun 으로 회복되나
+  반복 중 — 원인 점검(방화벽·fail2ban·러너 IP 대역) 후보. §6.8 분기표에 "Deploy on VPS 단계 ssh 타임아웃 = 롤백 아님, rerun" 명시 후속.
+- SoR: `docs/plans/completed/r3-3-meeting-contract-dual-sync.md` · `docs/plans/active/db-write-flip.md` §6 R3-3
 
 ### 2026-08-05 · FM(260804) · 디스패치 260805판 전사 + #660 배포 실패(VPS ssh) 사후기록
 - 의도: Cowork 가 워킹트리에만 남긴 260805 디스패치(🔺10기 최우선·DevE 언블록)를 정본으로 올리고, 반장 PR 의 §6.8 결과를 확정한다.
