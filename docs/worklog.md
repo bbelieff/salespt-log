@@ -123,8 +123,9 @@
 - 진단(§0.5): 원인이 **둘**이었다. ⓐ 자동화가 date input 의 DOM `.value` 만 세팅해 React onChange 미발화 → state 빈 채 제출. ⓑ **새로 발견** — 날짜가 제대로 와도 `create-cohort-members` 가 `writeCourseDates` 를 `allowTemplateOverwrite` 없이 불러 템플릿 raw O1 이 §2.5 가드에 걸려 **입력 날짜가 버려졌다**(warn 한 줄만). ⓑ는 아레나 경로에서 #658 로 이미 고쳐진 것과 동일 급소인데 일반 기수 경로만 누락돼 있었다. 모달 폼 자체는 정상 controlled input — "폼 버그" 오진 아님.
 - 한 것: ① 제출 시 `resolveCourseStartInput` ref 폴백(+ state 동기화) ② 갓 복제한 시트에만 `allowTemplateOverwrite: true` ③ 응답 `dates[]` + 미기록 시 시트 실측 readback(O1/O2/B3) → 모달 초록/앰버 블록 ④ 날짜 미입력 시 확인 1회. check.sh 초록(구조 25 · 단위 977). 신규 테스트 17개, 그중 모달 회귀 3개는 **옛 코드로 되돌리면 실제로 빨개지는 것까지 실측 확인**.
 - 결정: B3/C3 **쓰기는 추가하지 않는다** — claim 시점(`lib/service/auth.ts:196`)이 정본이라 두 갈래가 되면 더 위험. 이번엔 읽어서 보여주기만.
-- 다음: PR → §6.8(배포 success + health 200). 잔여 별건 = 개막 전 저장 500→400 매핑(`finalize-cohort10-dates.md` §6-1).
-- SoR: `docs/plans/active/cohort-create-date-visibility.md`
+- 완주(§6.8): **PR #662 → squash `d831da0` → 배포 run `30935808481` success → health 200.** last-good(롤백 타겟)=`a253ba8`. 머지 전 master 가 `e09ee33→a253ba8`(#660·#661) 로 이동해 리베이스 후 재검증, worklog 충돌은 §3.5-2 대로 양쪽 항목 모두 보존.
+- 다음: 잔여 별건 = 개막 전(8/5~8/6) 저장 500→400 매핑(`finalize-cohort10-dates.md` §6-1). 11기에 또 날짜 마감이 필요하면 스크립트 복사 말고 `--cohort/--start` 일반화(3회째 = harness issue).
+- SoR: `docs/plans/completed/cohort-create-date-visibility.md`
 ### 2026-08-05 · FM(260804) · 작업반장 취임 + Linear 체제 설계도 R1 (START)
 - 의도: belie 지시 — 경영일지 개발세션을 **작업반장**으로 승격, MoaWork 준용 Linear 체제로 A~F 를 직렬/병렬 조율.
 - 실측: `origin/master=e09ee33`(배포 run `30830372094` success·health 200) · **Open PR 0** · 머지 큐 비어 있음 · Linear MCP 이 반장 세션에 연결됨(팀 1개 BBE · 프로젝트 2개 · 카드 BBE-35~40 조회 성공).

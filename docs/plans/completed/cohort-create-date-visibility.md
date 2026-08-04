@@ -59,12 +59,22 @@ readback 은 **비정상 경로에서만** 호출한다(정상 생성 시 시트
 - **개막 전 저장 500 → 400 매핑**(finalize-cohort10 §6-1): 별건.
 - **10기/연습용2 실데이터**: 이미 ops 스크립트로 수리 완료. 이 PR 은 코드만.
 
-## 4. 게이트
+## 4. 게이트 (전부 완료)
 
-- [x] `npm run typecheck` · `lint` · `test:structural` · `test` (= `scripts/check.sh` 초록)
-- [x] 회귀 테스트: 순수 함수(resolve/classify/parse) + 라우트 레벨(allowTemplateOverwrite 전달·
-      no_input readback·link 모드 미접촉)
-- [ ] PR 머지 + §6.8(배포 run success + health 200)
+- [x] `npm run typecheck` · `lint` · `test:structural` · `test` (= `scripts/check.sh` 초록 —
+      구조 25 · 단위/통합 977). master 리베이스 후 재통과.
+- [x] 회귀 테스트 17개: 순수 함수(resolve/classify/parse) + 라우트 레벨(allowTemplateOverwrite
+      전달·no_input readback·link 모드 미접촉) + 모달 jsdom(자동화 DOM value 재현·확인 게이트·리포트).
+      **모달 회귀 3개는 옛 코드로 되돌리면 실제로 실패하는 것까지 실측 확인**(가짜 초록 방지).
+- [x] **PR #662 머지 + §6.8 완주** — squash `d831da0` · 배포 run `30935808481` **success** ·
+      `https://salesptlog.online` **HTTP 200**. last-good(롤백 타겟) = `a253ba8`.
+
+## 4-1. 종료 기록
+
+- 머지 전 `origin/master` 가 `e09ee33 → a253ba8`(#660·#661) 로 이동해 **리베이스 후 재검증**(§3.5
+  직렬 머지 규칙). `docs/worklog.md` 충돌은 §3.5-2 대로 **양쪽 항목 모두 보존**.
+- #661 로 `scripts/ops/finalize-cohort10.mjs` + 이 문서가 참조하는 사고 SoR 이 master 에 올라와
+  링크가 실측 유효해졌다.
 
 ## 5. 되돌리기
 
