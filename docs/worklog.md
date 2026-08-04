@@ -53,7 +53,7 @@
 
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
-| FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 | FM(260804) | **PR 오픈** — 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
+| FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 | FM(260804) | **배포 확인(완료)** — #660(`a253ba8`) 머지. 자기 배포 run `30934412080` 은 **VPS ssh 타임아웃**으로 실패(코드 무관·라이브 무변경) → 후속 #662 run `30935808481` success 로 동일 트리 배포·health 200 확인. 2호 = 디스패치 260805 전사 PR. **belie 승인 대기**(설계도 §6). 이하 취임 기록: 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
 | A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **배포 확인(완료)** — 2건 모두 §6.8 완주: **#652**(`80c94bb`·run `30797733939` success) 보드·계획서 정합, **#653**(`d9ce8eb`·run `30799167984` success) 8/2 배포 실측 반영. 둘 다 health 200. `gh` 설치 확인됨(직전 "미설치" 제약 해소). 레포 경로 이동: `Desktop\개발프로젝트\경영일지`. **문서 정합 트랙 종료 — 신규 작업 대기.** R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | **머지 완료(#538, `274042a`)** — gcal 라우트 6개 withApiTiming 계측. ※ 구 상태 "PR 오픈·belie 승인 대기"는 stale 이었음(2026-08-03 A(260803) 실측 정정 — master 로그에 존재). 잔여=pm2 침묵 인프라(VPS 필요). 신규 작업 대기 |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
@@ -78,8 +78,9 @@
 
 ## 📮 오케스트레이터 디스패치 (각 트랙: 보드 갱신하러 올 때마다 자기 줄 확인 — Cowork만 수정)
 
-- **공통(260803 Cowork 갱신)**: 260712판 stale 해소 — A(260803) 실측(#647~#652 전부 배포
-  success·health 200, master `80c94bb`)을 정본으로 승인. 직렬 머지 + §6.8 엄수 유지.
+- **공통(260805 Cowork 갱신 — 이 판이 정본)**: 260712판 stale 해소 — A(260803) 실측(#647~#652 배포
+  success·health 200, master `80c94bb`) 정본 승인. 직렬 머지 + §6.8 엄수 유지. ⚠️ Cowork 워킹트리
+  편집분이 리셋으로 유실됐던 것 재적재 — **각 트랙: 다음 PR 커밋에 worklog 현재본 포함 의무**.
 - **공통·운영체계 v2 (2026-08-03 belie 확정)**:
   ① **설계도 모드** — 대형 건(PR 2개↑ 또는 병렬 2트랙↑)은 PM 이 `docs/plans/active/` 에
   설계도 1장 작성(꼬리표: 담당 반장·편성·병렬/직렬 매트릭스·머지 순서 명시). belie 의 킥오프
@@ -95,28 +96,63 @@
   반장이 계약(task_id·base SHA·브랜치·file lease·수용기준·NOT_RUN)을 생산하고, 디스패치가 워커
   창에 전달·회수한다. 병렬 구현·**직렬 머지**(§3.5)·§6.8 게이트는 그대로. 설계도 = `docs/plans/active/foreman-linear-ops-r1.md`
   (**belie 승인 대기** — Linear 구조 A안·신규 카드 11장·라운드1 배차 3건).
-- **실행 큐 (2026-08-05 FM 정렬)**: ① L1 반장 취임·장부 정합(진행 중) ② L2 BBE-38 DevF #596 대응
-  ③ L3 날짜달력 라이브 확인 ④ 시크릿 등록 → BBE-40 DevE 재개 ⑤ R3-3 설계도 1호 → BBE-39 착수.
-  코덱스 2건(BBE-36 관찰 · 37 HOLD)은 큐 외. 머지는 §3.5 직렬 유지.
-- **DevA**: R3-3 착수 금지 유지 — belie 킥오프 대기(설계도 1호 선행).
+- **실행 큐 (2026-08-05 Cowork 갱신2 — 🔺10기 최우선)**: 체인 ①시크릿✅ → ④생성✅ → ⑤검증 부분✅
+  (Cowork Drive 실측: 시트 6개·레지스트리 prep 6행·시트ID 일치·날짜 8/7→9/26 기록). **잔여 = belie 육안 2분**
+  (대시보드 #VALUE!·영업관리 O1/O2 — 걸리면 [ID로 수식 설치] 재실행 #490) → ⑥8/7 클레임 안내(기수 "10"+이름).
+  ②BBE-40 주입로그 실측 미확인 — DevE 완주 여부 확인 중. **신규 발견** = 10기 시트 6개에 SA(masterbot)
+  명시 공유 누락(9기엔 있음) — 현재 anyone-writer 링크공유로 앱 작동하나 취약, SA 공유 추가 fast lane 후보 +
+  cohort-create 코드 갭 점검. anyone-writer 관행 자체는 보안 정책 개선 후보(후속).
+  ‖ 병렬 = BBE-38 DevF #596. 후순위 = 설계도 1호(R3-3+퍼널) → BBE-39. 코덱스 2건(36·37) 큐 외.
+- **DevA**: R3-3 착수 금지 유지 — **Cowork 설계도 1호 대기**(v2 전환: 구 지시 "belie 상세 프롬프트"를
+  설계도+킥오프 승인으로 대체). 10기 이후 착수.
 - **DevB**: #538 머지 실측 정정 완료. 잔여=gcal pm2 침묵 인프라(VPS 접근 필요) — 신규 작업 대기.
 - **DevC**: 종료 상태 유지.
 - **DevD**: W0-C 완료 확인. residual 2건(#605 close·A full 인수왕복 실연). 신규 작업 대기.
-- **DevE**: ⛔유지 — ADMIN_DRIVE_REFRESH_TOKEN 등록(belie 직접) 전 재개 불가.
-- **DevF**: **착수 대기 — #596 D 재검증 대응(BBE-38 · fast lane)**. 계약 초안 `F-596-REVERIFY-01`
-  = 설계도 §5-1. belie 승인 후 디스패치가 워커 창 발급.
+- **DevE**: **⛔해제 — 착수 지시(2026-08-05)**: 시크릿 등록 완료(belie 실측 — .env.local 노트북 회수
+  후 신규 발급). **🔺10기 크리티컬 패스(BBE-40·due 8/6)** — fast lane: 배포 재실행 → 주입로그 OK →
+  health 200 → admin 기수생성 경로 확인. 커밋에 worklog 현재본 포함.
+- **DevF**: **착수 지시 — #596 D 재검증 대응(BBE-38 · fast lane · 병렬 슬롯)**. 계약 초안
+  `F-596-REVERIFY-01` = `docs/plans/active/foreman-linear-ops-r1.md` §5-1. 수용 기준 = 연습용 3증상
+  라이브 해소 확인 + #596 코멘트·worklog 기록.
+- **FM(반장)**: 장부(worklog·plans) 구역 소유 + 계약 생산·레인 충돌 판정·직렬 머지 통제.
+  Cowork 워킹트리 편집분 전사도 FM 레인이 회수한다(휘발 방지 §3.5 예외 운용).
 - **R(노트북)**: #647 R6 통합 plan 은 migration GO 전까지 active 유지. AR-2b 진행 중 —
   `lane:arena`(course-dates·scripts/ops·create-arena-members) 점유로 간주, 타 레인 접근 금지.
 
-### 📥 belie 결정함 (사장님 액션 대기 목록 — 처리 순서 2026-08-05)
-1. [ ] **반장 설계도 승인** — `docs/plans/active/foreman-linear-ops-r1.md` §6 (Linear A안 · 카드 11장 · 라운드1 배차 2창)
-2. [ ] ADMIN_DRIVE_REFRESH_TOKEN 시크릿 등록 (GitHub→Settings→Secrets, ~5분) → DevE(BBE-40) 즉시 재개
-3. [ ] R3-3 킥오프 승인 — 설계도 1호(FM 작성 예정) 검토. 퍼널 계약수 해지 반영 여부는 그 설계도의 결정 포인트
-4. [ ] #605 close (D 트랙 residual, GitHub 클릭 1회)
-5. [ ] 육안 확인 2건 — #648 chip · #649 `/admin/cohorts` probe (인증 화면)
-6. [x] Linear 커넥터 인증 — 2026-08-04 완료, 관제탑 가동 (팀 BBE · BBE-35~40)
+### 📥 belie 결정함 (사장님 액션 대기 — 2026-08-05 순서)
+1. [x] 🔺 ADMIN_DRIVE_REFRESH_TOKEN 시크릿 등록 — ✅ 2026-08-05 완료. 경위: 레포 이사로 .env.local
+   유실 → 노트북 구 레포에서 회수·재설치 → 신규 토큰 발급·GitHub Secret 등록 → BBE-40 착수 가능
+2. [ ] **반장 설계도 승인** — `docs/plans/active/foreman-linear-ops-r1.md` §6
+   (Linear 구조 A안 · 신규 카드 11장 · 라운드1 배차) ※10기 급한 건과 병행 가능
+3. [ ] 10기 육안 2건 — 대시보드 `#VALUE!` · 영업관리 O1/O2 (걸리면 [ID로 수식 설치] 재실행 #490)
+4. [ ] R3-3 — 설계도 1호 검토+킥오프 승인(퍼널 계약수 해지 결정 포함) → BBE-39 ※10기 이후
+5. [ ] #605 close (D 트랙 residual, GitHub 클릭 1회)
+6. [ ] 육안 확인 2건 — #648 chip · #649 `/admin/cohorts` probe (인증 화면)
+7. [x] Linear 커넥터 인증(08-04, 관제탑 가동) · 10기 시작일 2026-08-07(금) 확정+명단 6명 접수(08-05)
 
 ## 로그
+
+### 2026-08-05 · FM(260804) · 디스패치 260805판 전사 + #660 배포 실패(VPS ssh) 사후기록
+- 의도: Cowork 가 워킹트리에만 남긴 260805 디스패치(🔺10기 최우선·DevE 언블록)를 정본으로 올리고, 반장 PR 의 §6.8 결과를 확정한다.
+- 실측(§6.8): **#660 = `a253ba8` 머지 → 배포 run `30934412080` 실패**. 원인 = 코드 아님, **VPS ssh 22 연결 타임아웃 7회 재시도 전멸**(같은 시간대 #661 1차 run 도 동일 실패). 이후 ssh 회복 → #661 재실행 success, **#662(`d831da0`) run `30935808481` success** 로 `a253ba8` 포함 트리가 배포됨 → **health 200**. 별도 롤백 불요(배포가 시작조차 안 됨 = 라이브 무변경).
+- 교훈(하네스): 배포 실패는 두 부류다 — ⓐ 코드(→즉시 롤백) ⓑ **VPS 도달성**(→롤백 금지·rerun). §6.8 분기표에 "Deploy on VPS 단계의 ssh 타임아웃도 Setup SSH 실패와 같은 부류"를 명시할 것(후속 문서 PR).
+- 한 것: 디스패치·📥결정함 260805판 전사(Cowork 원문 유지 + FM 줄 추가), Cowork 08-05 로그 2건 전사, 보드 FM 줄 갱신.
+- 다음: belie 승인 대기(설계도 §6). 10기 크리티컬 패스는 DevE·Cowork 소관 — FM 은 레인 충돌만 감시.
+- SoR: `docs/plans/active/foreman-linear-ops-r1.md`
+
+### 2026-08-05 · Cowork · 10기 생성 실측 확인(Drive·레지스트리) — 체인 ④까지 완료
+- 의도: belie 요청 "드라이브에서 10기 만들어졌는지 확인".
+- 실측: 시트 6개 전원 존재(8/4 새벽 생성·8/5 02:16 KST 일괄 갱신 — 레지스트리와 동시), registry prep 6행(기수 10·이름·시트ID 정확 일치·email 빈칸=클레임 대기), 시작 2026-08-07·종강 2026-09-26 기록 확인. 취합 시트(주차별 과제)도 별도 존재.
+- 발견: ①10기 시트에 SA(masterbot) 명시 공유 없음 — 9기엔 있음. 현재 anyone-writer 링크공유 덕에 앱 작동 중이나, 링크공유 잠그면 앱 접근 끊김 → SA 공유 6건 추가 fast lane 후보 + cohort-create 코드의 SA 공유 단계 유무 점검 필요. ②anyone-writer는 전 기수 관행(템플릿 승계 추정) — 보안 정책 개선 후보로 후속 제안.
+- 다음: belie 육안 2건(대시보드 #VALUE!·O1/O2) → 8/7 클레임 안내. BBE-40(주입로그 실측)은 DevE 완주 여부 확인 중.
+- SoR: Linear BBE-41
+
+### 2026-08-05 · Cowork · 🔺10기 준비 착수(BBE-41) + 08-03/04 편집분 유실 재적재
+- 의도: belie 지시 "10기 준비"(6명). + Cowork 의 08-03/04 worklog 편집분이 워킹트리 리셋으로 유실된 것을 발견 → 재적재.
+- 한 것: 절차 실측(admin 기수생성 버튼 + /claim = 이메일 사전수집 불요) → 10기 체인 설계 → Linear BBE-41 등재(Urgent·due 8/7·BBE-40 에 차단)·실행 큐 최우선 승격·BBE-40 Urgent(due 8/6) 격상. 디스패치·📥결정함 260805판 재구성(이 판이 정본).
+- 결정(belie): 10기 시작일 = 2026-08-07(금) → O2 자동 +50 = 2026-09-26. 명단 6명 접수. 리스크 대응 = 연습 왕복 리허설 권장 + #VALUE! 검증(#490) 포함.
+- 교훈(하네스): Cowork 편집은 커밋 전까지 휘발(§6.7 커밋 불가) — 각 트랙 다음 PR 에 worklog 현재본 포함 의무화. 근본 대책(자동 커밋 경로)은 후속 검토.
+- SoR: Linear BBE-41 · `docs/plans/active/db-cohort-create-pending.md` · `docs/playbooks/setup-sheets.md` §5
 
 ### 2026-08-05 · 기수생성 날짜 트랙 · 수강시작일 유실 2회 재발 차단 (전달 보장 + 결과 가시화)
 - 의도: admin 기수 생성 시 수강시작일이 조용히 유실돼 템플릿(0605=8기 사본) 날짜가 새 시트에 남던 사고(연습용2·10기 6명)를 코드로 막는다. 실데이터는 `scripts/ops/finalize-cohort10.mjs` 로 이미 수리 완료.
