@@ -12,18 +12,32 @@
  */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parseCohortToken } from "@/service/cohort-token";
+import {
+  resolveCourseStartInput,
+  type CourseDateStatus,
+} from "@/service/cohort-dates";
 import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
 
 type Mode = "create" | "link";
+
+interface DateOutcome {
+  name: string;
+  status: CourseDateStatus;
+  courseStartISO: string;
+  graduationISO: string;
+  sheet?: { o1: string; o2: string; b3: string; c3: string };
+  reason?: string;
+}
 
 interface ResultReport {
   created: { name: string; sheetId: string }[];
   skipped: { name: string }[];
   failed: { name: string; reason: string }[];
   pending: { name: string; reason: string }[];
+  dates: DateOutcome[];
 }
 
 export default function CohortCreateModal() {
@@ -39,9 +53,22 @@ export default function CohortCreateModal() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [report, setReport] = useState<ResultReport | null>(null);
+  // 날짜 없이 생성하려 할 때 1회 확인 — 첫 [실행]은 경고만 띄우고 멈춘다.
+  const [noDateAck, setNoDateAck] = useState(false);
+  // 자동화·자동완성이 DOM value 를 직접 세팅해 onChange 가 안 뜬 경우의 폴백 소스.
+  const startInputRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => parseCohortToken(token), [token]);
   const isArena = parsed?.type === "arena";
+  // 날짜가 기록된 시트 / 템플릿 잔재가 남은 시트로 갈라 각각 초록·앰버 블록으로 보여준다.
+  const dateWritten = useMemo(
+    () => (report?.dates ?? []).filter((d) => d.status === "written"),
+    [report],
+  );
+  const dateMissing = useMemo(
+    () => (report?.dates ?? []).filter((d) => d.status !== "written"),
+    [report],
+  );
 
   function reset() {
     setToken("");
@@ -53,6 +80,7 @@ export default function CohortCreateModal() {
     setMembersText("");
     setErr(null);
     setReport(null);
+    setNoDateAck(false);
   }
 
   function parseMembers(): { name: string; sheetUrl?: string }[] {
@@ -81,6 +109,19 @@ export default function CohortCreateModal() {
       setErr("참가자를 한 명 이상 입력하세요.");
       return;
     }
+    // state 가 비어도 input 의 DOM value 로 폴백 — 자동화가 값을 직접 넣어 React onChange 가
+    // 발화하지 않은 경우에도 서버에 날짜가 전달된다(사고 2회의 원인).
+    const resolvedStart =
+      mode === "create"
+        ? resolveCourseStartInput(courseStartISO, startInputRef.current?.value ?? "")
+        : "";
+    // 보이는 값 = 보낸 값. 폴백으로 찾은 날짜는 화면에도 반영한다.
+    if (resolvedStart !== courseStartISO) setCourseStartISO(resolvedStart);
+    // 날짜 없이 생성 = 새 시트에 템플릿(이전 기수) 날짜가 그대로 남는 경로 → 1회 확인.
+    if (mode === "create" && !resolvedStart && !noDateAck) {
+      setNoDateAck(true);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/admin/create-cohort-members", {
@@ -91,8 +132,7 @@ export default function CohortCreateModal() {
           mode,
           members,
           // 수강시작일은 생성(create) 모드에서만 — link(기존 시트 연동)엔 날짜 미전송.
-          courseStartISO:
-            mode === "create" && courseStartISO ? courseStartISO : undefined,
+          courseStartISO: resolvedStart || undefined,
           config:
             mode === "create"
               ? { templateSheetId, rootFolderId, rosterSheetId }
@@ -109,6 +149,7 @@ export default function CohortCreateModal() {
         skipped: d.skipped ?? [],
         failed: d.failed ?? [],
         pending: d.pending ?? [],
+        dates: d.dates ?? [],
       });
       router.refresh();
     } catch (e) {
@@ -228,13 +269,17 @@ export default function CohortCreateModal() {
                   수강시작일 <span className="font-normal text-gray-400">(선택)</span>
                 </label>
                 <input
+                  ref={startInputRef}
                   type="date"
                   value={courseStartISO}
-                  onChange={(e) => setCourseStartISO(e.target.value)}
+                  onChange={(e) => {
+                    setCourseStartISO(e.target.value);
+                    setNoDateAck(false);
+                  }}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 시트 값 유지.
+                  넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 템플릿(이전 기수) 날짜가 그대로 남아요.
                 </p>
               </div>
             </div>
@@ -266,6 +311,20 @@ export default function CohortCreateModal() {
           {err && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
               {err}
+            </div>
+          )}
+
+          {/* 날짜 미입력 확인 — 실행을 한 번 멈추고 무슨 일이 벌어지는지 먼저 알린다. */}
+          {noDateAck && mode === "create" && !courseStartISO && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="font-bold">수강시작일이 비어 있어요.</p>
+              <p className="mt-1">
+                이대로 만들면 새 시트에 <b>템플릿(이전 기수)의 날짜</b>가 그대로 남습니다. 개막
+                후 기록이 다른 주차로 계산돼 대시보드가 전부 0으로 보일 수 있어요.
+              </p>
+              <p className="mt-1">
+                그래도 진행하려면 <b>[실행]</b>을 한 번 더 누르세요.
+              </p>
             </div>
           )}
 
@@ -303,6 +362,35 @@ export default function CohortCreateModal() {
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {/* 수강시작일 결과 — 기록됐는지, 안 됐으면 시트에 실제로 뭐가 남았는지. */}
+              {dateWritten.length > 0 && (
+                <div className="text-green-700">
+                  📅 수강시작일 기록: {dateWritten[0]!.courseStartISO} → 종강{" "}
+                  {dateWritten[0]!.graduationISO} ({dateWritten.length}명)
+                </div>
+              )}
+              {dateMissing.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-2 text-amber-800">
+                  <p className="font-bold">
+                    ⚠️ 수강시작일이 기록되지 않았어요 ({dateMissing.length}명) — 새 시트에
+                    템플릿 날짜가 그대로 있습니다.
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {dateMissing.map((d, i) => (
+                      <li key={i}>
+                        {d.name} — 시트값 수강시작(O1) <b>{d.sheet?.o1 || "빈칸"}</b> · 종강(O2){" "}
+                        <b>{d.sheet?.o2 || "빈칸"}</b> · 기수(B3) <b>{d.sheet?.b3 || "빈칸"}</b>
+                        {d.reason ? ` · ${d.reason}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1">
+                    수강시작일을 넣고 다시 실행해도 이미 만들어진 시트는 바뀌지 않아요 — 시트에서
+                    직접 고치거나 운영 스크립트로 마감하세요.
+                  </p>
+                </div>
               )}
             </div>
           )}
