@@ -51,7 +51,7 @@ function parseISO(s: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
-async function resolveCtx(email: string): Promise<MeetingCtx> {
+export async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contact] 등록되지 않은 사용자: ${email}`);
   // [no-sheet]: 빈 sheetId 시트 read → 구글 HTML 500 (P1 2026-07-28) — route 가 404 매핑
@@ -285,19 +285,20 @@ export async function patchMeeting(
   const ctx = await resolveCtx(email);
   const spreadsheetId = ctx.spreadsheetId;
   // 파일럿(결제카드=06 DB read)은 06 쓰기도 DB 동기 정본 — async 미러 실패 시 stale 반쪽쓰기 방지(DevD).
-  const syncDb = chooseDailySource(ctx.cohort, dbEnabled()) === "db";
+  const syncDb = syncDbOf(ctx);
   const droppingContract = partial.상태 !== undefined && partial.상태 !== "계약";
   const linkChange = partial.미팅날짜 !== undefined || partial.업체명 !== undefined;
   if (droppingContract || linkChange) {
     const cur = await getMeetingRecord(ctx, id);
     if (cur?.상태 === "계약" && cur.미팅날짜 && cur.업체명) {
       if (droppingContract) {
-        await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명);
+        await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명, { syncDb });
       } else {
         const oldKey = { 계약일: cur.미팅날짜, 업체명: cur.업체명 };
         const next = { 계약일: partial.미팅날짜 ?? cur.미팅날짜, 업체명: partial.업체명 ?? cur.업체명 };
         // id 키로 02 행 특정(개명 안전) + 업체명 개명 시 06 키 이동(실패해도 04 저장은 성공).
-        await updateContractLink(spreadsheetId, { ...oldKey, meetingId: id }, next);
+        // meetingId 를 키로 넘기므로 시트가 새 값으로 바뀐 뒤 재시도해도 같은 행을 찾는다 → 순서 유지.
+        await updateContractLink(spreadsheetId, { ...oldKey, meetingId: id }, next, { syncDb });
         if (partial.업체명 !== undefined && partial.업체명 !== cur.업체명) {
           try { await renameCompanyInfoKey(spreadsheetId, oldKey, next, { syncDb }); }
           catch (e) { console.warn("[contact] 06 키 이동 실패:", e instanceof Error ? e.message : e); }
@@ -323,172 +324,19 @@ export async function patchMeeting(
   }
 }
 
-/** 자손 미팅 transitive cascade (post-order). 자식 계약이면 02 row 도 clear. */
-async function cascadeDescendantMeetings(
-  ctx: MeetingCtx,
-  parentId: string,
-): Promise<{ count: number; paymentRows: number }> {
-  let count = 0;
-  let paymentRows = 0;
-  async function walk(pid: string): Promise<void> {
-    const c = await findChildMeetingRecord(ctx, pid);
-    if (!c) return;
-    await walk(c.id);
-    if (c.상태 === "계약" && c.미팅날짜 && c.업체명) {
-      const row = await clearContractPaymentByLink(ctx.spreadsheetId, c.미팅날짜, c.업체명);
-      if (row !== null) paymentRows++;
-    }
-    // 자손 gcal 은 R2 무호출(gcal-2b) 보존 — 파일럿은 수렴 잡 cleared 브랜치가 멱등 제거.
-    await clearMeetingRecord(ctx, c.id, { gcalRemove: false });
-    count++;
-  }
-  await walk(parentId);
-  return { count, paymentRows };
+/** 파일럿(02·06 화면이 DB read) 여부 — 미팅 화면발 계약 쓰기의 dual-sync 게이트(R3-3 잔여). */
+export function syncDbOf(ctx: MeetingCtx): boolean {
+  return chooseDailySource(ctx.cohort, dbEnabled()) === "db";
 }
 
-/** 미팅 삭제 (행 클리어). 미팅예약 -1은 호출 측 책임. cascade 없음. */
-export async function removeMeeting(
-  email: string,
-  id: string,
-): Promise<void> {
-  const ctx = await resolveCtx(email);
-  await clearMeetingRecord(ctx, id, { gcalRemove: true }); // 클리어 전 구글 이벤트 삭제 포함
-}
-
-/** 미팅 + 자손 transitive cascade + 본인 계약 02 row cascade. L1 -1은 호출 측. */
-export async function removeMeetingWithCascade(
-  email: string,
-  id: string,
-): Promise<{
-  cascade: string;
-  removedPaymentRow: number | null;
-  removedDescendantCount: number;
-  업체명: string;
-  미팅날짜: string;
-  상태: string;
-}> {
-  const ctx = await resolveCtx(email);
-  const spreadsheetId = ctx.spreadsheetId;
-  const m = await getMeetingRecord(ctx, id);
-  if (!m) throw new Error(`[removeMeetingWithCascade] 미팅 못 찾음: ${id}`);
-
-  // 1) Descendants 재귀 삭제.
-  const { count: descCount, paymentRows: descPaymentRows } =
-    await cascadeDescendantMeetings(ctx, id);
-  // 2) 본인이 계약이면 02 row cascade.
-  let removedPaymentRow: number | null = null;
-  if (m.상태 === "계약" && m.미팅날짜 && m.업체명) {
-    removedPaymentRow = await clearContractPaymentByLink(spreadsheetId, m.미팅날짜, m.업체명);
-  }
-  // 3) 본인 clear(클리어 전 구글 이벤트 삭제 포함) + 4) 영업관리 H -1 (좌표 실패 시 skip).
-  await clearMeetingRecord(ctx, id, { gcalRemove: true });
-  if (m.예약일 && m.channel) {
-    // R3⑤: 파일럿은 DB 정본에 **카드수 절대 재계산**(±1 RMW 폐기, ADR-0010) + 시트 수렴 미러.
-    try { await persistMeetingReservationCount(ctx, m.예약일, m.channel); } catch { /* skip */ }
-  }
-  const parts: string[] = ["영업관리 H -1"];
-  if (descCount > 0) parts.push(`자손 미팅 ${descCount}건 cascade`);
-  if (descPaymentRows > 0) parts.push(`자손 계약 ${descPaymentRows}건`);
-  if (removedPaymentRow !== null) parts.push(`본인 계약카드 삭제`);
-
-  return {
-    cascade: parts.join(", "),
-    removedPaymentRow,
-    removedDescendantCount: descCount,
-    업체명: m.업체명,
-    미팅날짜: m.미팅날짜,
-    상태: m.상태,
-  };
-}
-
-/**
- * 미팅 결과 되돌리기 (2026-05-17 [2a]). 계약→예약: 02 row clear.
- * 완료/취소→예약: 사유 초기화. 변경→예약: 자손 미팅 cascade 삭제.
- */
-export async function revertMeeting(
-  email: string,
-  id: string,
-): Promise<{ status: string; cascade: string }> {
-  const ctx = await resolveCtx(email);
-  const spreadsheetId = ctx.spreadsheetId;
-  const m = await getMeetingRecord(ctx, id);
-  if (!m) throw new Error(`[revert] 미팅 못 찾음: ${id}`);
-  const prevState = m.상태;
-
-  if (prevState === "계약") {
-    await patchMeetingRecord(ctx, id, {
-      상태: "예약",
-      계약여부: false,
-      수임비: 0,
-      계약조건: "",
-    }); // gcal 갱신 포함
-    const clearedRow = await clearContractPaymentByLink(
-      spreadsheetId,
-      m.미팅날짜,
-      m.업체명,
-    );
-    return {
-      status: "예약",
-      cascade:
-        clearedRow !== null
-          ? `02 계약수납관리 row ${clearedRow} clear`
-          : "02 계약수납관리 매칭 row 없음 (이미 정리됨)",
-    };
-  }
-
-  if (prevState === "완료" || prevState === "취소") {
-    await patchMeetingRecord(ctx, id, {
-      상태: "예약",
-      계약여부: false,
-      미팅사유: "",
-    }); // 취소/완료→예약 → gcal 재등록/갱신 포함
-    return { status: "예약", cascade: "사유 초기화" };
-  }
-
-  if (prevState === "변경") {
-    // 2026-05-19: 손자까지 transitive cascade (1→2→3 체인 전부 삭제).
-    const { count } = await cascadeDescendantMeetings(ctx, id);
-    await patchMeetingRecord(ctx, id, { 상태: "예약", 미팅사유: "" }); // gcal 갱신 포함
-    return {
-      status: "예약",
-      cascade: count > 0 ? `변경 자손 미팅 ${count}건 cascade 삭제` : "변경 자식 미팅 없음",
-    };
-  }
-
-  // 이미 예약이거나 알 수 없는 상태 → 노옵
-  return { status: prevState, cascade: "되돌릴 항목 없음" };
-}
-
-/**
- * 케이스 종료 되살리기 (2026-05-19).
- *
- * 완료/취소/계약 카드의 자식 추가미팅(previousMeetingId 매칭) 을 삭제하여
- * 케이스를 다시 진행 가능 상태로 복원. 부모 상태는 유지.
- * 자식이 계약 상태면 02 계약수납관리 row 도 cascade clear.
- */
-export async function reviveCaseClosure(
-  email: string,
-  parentId: string,
-): Promise<{ cascade: string; childId: string | null }> {
-  const ctx = await resolveCtx(email);
-  const child = await findChildMeetingRecord(ctx, parentId);
-  if (!child) {
-    return { cascade: "자식 미팅 없음 — 되살릴 항목 없음", childId: null };
-  }
-  // 2026-05-19: 자식의 자손까지 transitive cascade.
-  const { count: descCount } = await cascadeDescendantMeetings(ctx, child.id);
-  let cascade02 = "";
-  if (child.상태 === "계약" && child.미팅날짜 && child.업체명) {
-    const row = await clearContractPaymentByLink(ctx.spreadsheetId, child.미팅날짜, child.업체명);
-    if (row !== null) cascade02 = ` + 02 row ${row}`;
-  }
-  await clearMeetingRecord(ctx, child.id, { gcalRemove: true }); // 이벤트 삭제(클리어 전) 포함
-  const descMsg = descCount > 0 ? ` (자손 ${descCount}건 포함)` : "";
-  return {
-    cascade: `자식 미팅(${child.업체명}) 삭제${descMsg}${cascade02}`,
-    childId: child.id,
-  };
-}
+// 미팅 삭제·되돌리기 cascade — 500줄 캡으로 분리(R3-3 잔여). 공개 API 경로는 유지.
+export {
+  cascadeDescendantMeetings,
+  removeMeeting,
+  removeMeetingWithCascade,
+  reviveCaseClosure,
+  revertMeeting,
+} from "./contact-cascade";
 
 /** id로 미팅 조회. */
 export async function getMeetingById(
