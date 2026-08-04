@@ -1,6 +1,6 @@
 ---
 slug: r3-3-meeting-contract-dual-sync
-status: active
+status: completed
 created: 2026-08-05
 owner: FM(260804)
 related: db-write-flip, r3-single-cell-writers, 0010-meeting-reservation-card-count
@@ -121,3 +121,9 @@ lease 밖(건드리지 않음): lib/repo/db/*(기존 헬퍼 재사용만) · mee
 ## Log
 - 2026-08-05 FM(260804) 착수. 실측으로 R3-3 잔여 = "미팅 화면발 02 쓰기 6경로 미배선" 확정
   (PR-1·PR-2 는 이미 머지·라이브). 설계 = 파일럿 한정 DB-first 순서 + 게이트 배선.
+- 2026-08-05 **완료(§6.8 완주)** — PR **#666 → `9551c8b`** squash 머지. 배포 run `30939294995` 는
+  1차 **VPS ssh 22 타임아웃(7회 재시도 전멸)** 로 실패 → **코드 무관**이라 롤백 대신 `gh run rerun --failed`
+  → **success**, 공개 health **200**. 검증 = check.sh 초록 + 전체 115파일 **1019 테스트** green(신규 17).
+- 2026-08-05 부수: 500줄 캡 split 2건(`contract-payment-link.ts`·`contact-cascade.ts`, 재수출 유지).
+  02 구역 소유권은 A 트랙으로 반환.
+- 남은 R3-3 계열(이 문서 밖): contracts append 진짜 flip(B안 재키잉) · 오염 행 리페어 = 📥 belie 결정 대기.
