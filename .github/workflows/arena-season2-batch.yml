@@ -11,7 +11,7 @@ on:
       mode:
         description: "실행 모드"
         type: choice
-        options: [plan, season-row, canary, all, flip-emails, rollback-emails]
+        options: [plan, whoami, season-row, canary, all, flip-emails, rollback-emails]
         default: plan
       canary_name:
         description: "mode=canary 일 때만 — 대상 이름"
@@ -38,6 +38,7 @@ jobs:
           cd /opt/salespt-log
           case "$MODE_ARG" in
             plan) FLAGS="--plan" ;;
+            whoami) FLAGS="--whoami" ;;
             season-row) FLAGS="--season-row" ;;
             canary) FLAGS="--canary $CANARY_ARG" ;;
             all) FLAGS="--all" ;;
