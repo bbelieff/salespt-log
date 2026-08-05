@@ -1,0 +1,69 @@
+name: Arena Season2 Batch
+
+# 시즌2(A2) 셋업 배치를 VPS 에서 원격 실행(BBE-42). arena-season2-batch.mjs 는
+# admin OAuth(ADMIN_DRIVE_REFRESH_TOKEN)로 Drive 시트를 복사하는데, 이 시크릿은
+# deploy.yml 이 매 배포마다 VPS .env 에 주입한다(로컬 개발 PC 의 .env.local 은 갱신 안 됨) —
+# 그래서 로컬에서는 invalid_grant, VPS 에서는 최신 값으로 동작한다. db-backfill.yml 과
+# 동일한 SSH·재시도 패턴을 그대로 재사용(값 미출력 원칙 동일).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "실행 모드"
+        type: choice
+        options: [plan, season-row, canary, all, flip-emails, rollback-emails]
+        default: plan
+      canary_name:
+        description: "mode=canary 일 때만 — 대상 이름"
+        required: false
+        default: ""
+
+jobs:
+  batch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Run arena season2 batch on VPS
+        env:
+          MODE: ${{ inputs.mode }}
+          CANARY_NAME: ${{ inputs.canary_name }}
+        run: |
+          # 인자는 원격에 env 로 전달(따옴표 안전). 값 미출력.
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          case "$MODE_ARG" in
+            plan) FLAGS="--plan" ;;
+            season-row) FLAGS="--season-row" ;;
+            canary) FLAGS="--canary $CANARY_ARG" ;;
+            all) FLAGS="--all" ;;
+            flip-emails) FLAGS="--flip-emails" ;;
+            rollback-emails) FLAGS="--rollback-emails" ;;
+            *) echo "알 수 없는 mode: $MODE_ARG" >&2; exit 2 ;;
+          esac
+          node scripts/ops/arena-season2-batch.mjs $FLAGS
+          REMOTE_EOF
+          )
+          # rc=255(도달성) 한정 재시도 7×30s — deploy·backfill 워크플로와 동일 완화.
+          set +e
+          for i in 1 2 3 4 5 6 7; do
+            rc=0
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" \
+                "MODE_ARG=\"$MODE\" CANARY_ARG=\"$CANARY_NAME\" bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 30초 후 재시도" >&2
+              sleep 30
+            else
+              echo "배치 스크립트 실패(rc=$rc) — 재시도 안 함(멱등 재실행으로 수렴)" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 7회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
+          exit 1
