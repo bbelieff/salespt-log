@@ -11,7 +11,7 @@ on:
       mode:
         description: "실행 모드"
         type: choice
-        options: [plan, whoami, season-row, canary, all, flip-emails, rollback-emails, dump-tail, diag-append]
+        options: [plan, whoami, season-row, canary, all, flip-emails, rollback-emails, dump-tail, diag-append, repair-shifted-dryrun, repair-shifted-execute]
         default: plan
       canary_name:
         description: "mode=canary 일 때만 — 대상 이름"
@@ -46,6 +46,8 @@ jobs:
             rollback-emails) FLAGS="--rollback-emails" ;;
             dump-tail) FLAGS="--dump-tail" ;;
             diag-append) FLAGS="--diag-append" ;;
+            repair-shifted-dryrun) FLAGS="--repair-shifted" ;;
+            repair-shifted-execute) FLAGS="--repair-shifted --execute" ;;
             *) echo "알 수 없는 mode: $MODE_ARG" >&2; exit 2 ;;
           esac
           node scripts/ops/arena-season2-batch.mjs $FLAGS
