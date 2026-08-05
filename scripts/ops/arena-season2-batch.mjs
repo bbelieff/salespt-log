@@ -270,8 +270,17 @@ async function provision(t, existingA2) {
  * --canary <이름> 을 함께 주면 **그 사람 원본**을 검사(기본은 대상 목록의 첫 사람). */
 async function whoami() {
   try {
-    const me = await drive.about.get({ fields: "user(emailAddress)" });
+    const me = await drive.about.get({ fields: "user(emailAddress),storageQuota(limit,usage,usageInDrive)" });
     console.log(`admin OAuth 계정: ${mask(me.data.user?.emailAddress ?? "")}`);
+    // ②belie 지시 — admin Drive 저장용량. copy 는 새 파일을 만들어 용량을 소비하므로,
+    // limit(총량) 초과·근접이면 canCopy 메타데이터가 true 여도 실제 copy 가 거부될 수 있다.
+    const q = me.data.storageQuota;
+    if (q) {
+      const pct = q.limit ? ((Number(q.usage) / Number(q.limit)) * 100).toFixed(1) : "무제한";
+      console.log(`admin Drive 저장용량: usage=${q.usage ?? "?"} / limit=${q.limit ?? "무제한"} (${pct}${q.limit ? "%" : ""})`);
+    } else {
+      console.log("admin Drive 저장용량: 응답에 storageQuota 없음");
+    }
   } catch (e) {
     console.log(`admin OAuth 인증 실패: ${String(e?.message ?? e).slice(0, 100)}`);
     return;
@@ -297,10 +306,13 @@ async function whoami() {
   try {
     const f = await drive.files.get({
       fileId: sample.sheetId, supportsAllDrives: true,
-      fields: "id,name,owners(emailAddress),shared,capabilities(canCopy)",
+      fields: "id,name,owners(emailAddress),shared,copyRequiresWriterPermission,quotaBytesUsed,capabilities(canCopy,canDownload)",
     });
     console.log(`원본 샘플(${sample.name}, ${sample.cohort}) 소유자: ${(f.data.owners ?? []).map((o) => mask(o.emailAddress ?? "")).join(", ")}`);
-    console.log(`shared 플래그: ${f.data.shared} · 이 admin 계정의 복사 가능 여부: ${f.data.capabilities?.canCopy}`);
+    console.log(`shared 플래그: ${f.data.shared} · 이 admin 계정의 복사 가능 여부: ${f.data.capabilities?.canCopy} · 다운로드 가능: ${f.data.capabilities?.canDownload}`);
+    // ③belie 지시 — 파일 개별 복사정책. admin 은 owner 라 이 플래그의 영향을 안 받는 게 정상이지만,
+    // 값 자체는 실측으로 남긴다(참고용 — true 여도 owner 는 무관해야 함).
+    console.log(`copyRequiresWriterPermission: ${f.data.copyRequiresWriterPermission ?? "(없음=false 취급)"} · 파일 용량: ${f.data.quotaBytesUsed ?? "?"} bytes`);
   } catch (e) {
     console.log(`원본 시트 접근 실패(=권한 없음 가능성): ${String(e?.message ?? e).slice(0, 100)}`);
   }
