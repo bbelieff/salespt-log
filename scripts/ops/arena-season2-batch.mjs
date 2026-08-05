@@ -56,6 +56,15 @@ const REG = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
 
 const mask = (e) => (e ? e.replace(/^(.{2}).*(@.*)$/, "$1***$2") : "");
+/** googleapis 에러의 정확한 reason 코드(예: insufficientFilePermissions·insufficientPermissions
+ * =스코프 문제 vs cannotCopyFile=파일 자체 정책)를 뽑는다. 사람 메시지보다 근인을 정확히 가른다.
+ * reason 코드는 enum 문자열이라 PII 없음 — 그대로 출력 안전. */
+const reasonOf = (e) => {
+  const errs = e?.errors ?? e?.response?.data?.error?.errors ?? [];
+  const reasons = errs.map((x) => x.reason).filter(Boolean);
+  const status = e?.response?.data?.error?.status ?? e?.code ?? "";
+  return reasons.length ? `${reasons.join(",")}${status ? ` (${status})` : ""}` : String(status || "");
+};
 const isoPlus = (iso, days) => {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -328,8 +337,9 @@ async function main() {
         : ` ✅ ${r.name} (${r.cohort}) sheet=${r.newId} ${r.share} email=${r.email || "없음"}`);
       existingA2.add(`${a2Cohort(t)}|${t.name}`);
     } catch (e) {
-      failed.push({ name: t.name, why: String(e?.message ?? e).slice(0, 120) });
-      console.log(` ❌ ${t.name} — ${String(e?.message ?? e).slice(0, 120)}`);
+      const why = `${String(e?.message ?? e).slice(0, 120)} [reason=${reasonOf(e) || "미상"}]`;
+      failed.push({ name: t.name, why });
+      console.log(` ❌ ${t.name} — ${why}`);
     }
   }
   const created = done.filter((d) => !d.skipped).length;
