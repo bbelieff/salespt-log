@@ -1,0 +1,41 @@
+name: A2 DB Parity Check
+
+# A2 백필 완주 검증(BBE-50) — 시트 유효 행수 vs sheet_rows DB 행수 대조.
+# 읽기 전용(SELECT/values.get 만). VPS 에서 실행(SA·DATABASE_URL 이 VPS .env 에 있음).
+on:
+  workflow_dispatch:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Run A2 db-parity check on VPS
+        run: |
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          node scripts/ops/a2-db-parity.mjs
+          REMOTE_EOF
+          )
+          set +e
+          for i in 1 2 3 4 5 6 7; do
+            rc=0
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" "bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 30초 후 재시도" >&2
+              sleep 30
+            else
+              echo "검증 스크립트 실패(rc=$rc) — 재시도 안 함" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 7회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
+          exit 1
