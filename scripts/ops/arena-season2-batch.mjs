@@ -361,6 +361,23 @@ async function main() {
       const done = existingA2.has(`${a2Cohort(t)}|${t.name}`) ? "  [완료]" : "";
       console.log(` ${t.srcKind.padEnd(3)} ${t.cohort.padEnd(6)} → ${a2Cohort(t).padEnd(8)} ${t.name.padEnd(7)} email=${t.email ? "이관" : "없음(복사만)"}${done}`);
     }
+    // 중복 행 점검 — registry 에 같은 (A2 cohort, 이름) 행이 2개 이상이면 실행 타이밍 겹침 등으로
+    // idempotent 체크가 뚫린 것. 읽기 전용, 원인 무관하게 항상 확인해 조기 발견한다.
+    const byKey = new Map();
+    for (const u of all) {
+      if (!/^A2-/.test(u.cohort)) continue;
+      const key = `${u.cohort}|${u.name}`;
+      (byKey.get(key) ?? byKey.set(key, []).get(key)).push(u);
+    }
+    const dups = [...byKey.entries()].filter(([, rows]) => rows.length > 1);
+    if (dups.length) {
+      console.log(`\n⚠️ registry 중복 행 ${dups.length}건 — 같은 (기수,이름)이 2개 이상:`);
+      for (const [key, rows] of dups) {
+        console.log(`  ${key}: ${rows.map((r) => `row${r.row}(sheet=${r.sheetId})`).join(", ")}`);
+      }
+    } else {
+      console.log(`\n중복 행 0건`);
+    }
     console.log(`\n(쓰기 0건 — 계획만 출력)\n`);
     return;
   }
