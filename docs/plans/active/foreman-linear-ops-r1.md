@@ -133,6 +133,21 @@ related: worklog, db-write-flip, r3-single-cell-writers
 | L3 | N3 날짜달력 라이브 확인 | DevF 또는 신규 QA 몸 | **읽기 전용**(코드 0) | ✅ |
 | — | N8 R3-3 설계도 1호 | FM(L1 다음) | `docs/plans/` | 직렬(L1 뒤) |
 
+### 5-2. 라운드1 실행 상태 (2026-08-05 belie R1 승인 후 · FM 갱신)
+
+| 레인 | 카드/계약 | 상태 |
+|---|---|---|
+| L1 | FM-LEDGER-RECONCILE-01 | ✅ **완료** — 머지·배포 success·health 200 |
+| L2 | F-596-REVERIFY-01 (BBE-38) | 🟡 **배차 발급** — 워커 창 대기(디스패치 전달) |
+| L3 | QA-DATEPICKER-LIVE-01 (N3) | 🟡 **배차 발급** — 읽기 전용, 워커 창 대기 |
+| L4 | **DB-DRIFT-AUDIT-01** (결정함 9번 1단계) | 🟡 **신규 발급**(belie 08-05 승인) — 데이터 변경 0건 |
+| — | N8·N9 (R3-3 설계도 1호 + 잔여 구현) | ⛔ **폐기** — R3-3 잔여는 #666·#667 로 **완주**(FM 260804). 후속은 결정함 8(보류 확정)·9(이 L4) 로 대체 |
+| — | BBE-42 아레나 시즌2 | 🔴 **FM 점유 중** — W0·W1 도구 완료, **운영 시트 쓰기 권한 대기**(belie) |
+
+**레인 충돌 재판정**: L2(문서·재현) · L3(읽기 전용) · L4(읽기 전용 스캔) · BBE-42(FM, `lane:arena` 운영
+데이터만) — 코드 파일 교집합 **0**. `docs/worklog.md` 만 공통이나 append 예외(§3.5-2). **4레인 병렬 가능**,
+머지는 직렬(L1 완료 → L4 → L2 → L3 순, 먼저 초록 되는 순서로 조정).
+
 **직렬 머지 순서**: ① L1(이 PR) → ② L2(#596 결과 문서/코멘트) → ③ L3(확인 기록). 각 머지 후 §6.8(배포 success + health 200) 완주 확인 뒤 다음.
 **블로킹 유지**: BBE-40(시크릿) · BBE-39/N9(belie 킥오프) · N7(VPS) · BBE-37(migration GO).
 
@@ -156,6 +171,24 @@ blocked_by: none
 file lease: docs/worklog.md(append) · (코드 수정 필요 판명 시 반장에게 lease 재요청)
 수용 기준: 연습용 3증상이 라이브에서 해소됐는지 재현 절차대로 확인 → #596 코멘트 + worklog 기록
 NOT_RUN: 수강생 실데이터 수정 · 시트 쓰기 · VPS 접속 · 다른 lane 파일 수정
+```
+
+```
+task_id: DB-DRIFT-AUDIT-01          (레인 L4 — 결정함 9번 1단계, belie 승인 2026-08-05)
+base: origin/master@82824b7 · branch: chore/db-drift-audit
+worktree: wt/db-drift-audit · owner: DevA 새 몸(또는 FM 다음 슬롯) · reviewer: FM
+blocked_by: none  ※2단계(실수정)는 이 점검 결과 보고 후 belie 재승인 전까지 금지
+목적: R3-3 수리(#666) **이전에** 미러 실패로 어긋난 과거 계약 행이 몇 건인지 센다.
+      02 화면이 DB 정본인 파일럿 기수만 대상 — 시트(정답 후보) vs DB(화면 표시) 대조.
+산출: scripts/ops/db-contract-drift-audit.mjs (**읽기 전용**) + 결과 표
+      ① 시트에 없는데 DB 에 살아있는 행(= 유령 계약) ② 계약일·업체명 불일치 행
+      ③ _cleared 플래그 불일치 ④ 사람별 합계 금액 차이(있으면 금액만, 개인정보 마스킹)
+수용 기준: 파일럿 전 기수 스캔 완료 · 건수 표 + 사람 단위 요약을 worklog `📥 9번`에 보고 ·
+      **데이터 변경 0건 증명**(스크립트에 write API 호출 부재 — 리뷰로 확인) · check.sh 초록
+NOT_RUN(엄수): 어떤 write API 도 호출 금지(values.update/append/batchUpdate·Drive·DB INSERT/UPDATE)
+      · 수강생 email 원문 출력 금지(마스킹) · 시트 수기값 수정 금지 · 2단계 리페어 착수 금지
+환경: 파일럿 DB 접근 필요(`DATABASE_URL`) — 로컬 미보유 시 **VPS 실행**(읽기 전용이라 안전).
+      DB 접근이 아예 불가하면 시트측 스캔만 수행하고 "DB 대조 미실시"를 명시 보고.
 ```
 
 ```
