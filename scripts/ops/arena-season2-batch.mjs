@@ -209,8 +209,14 @@ async function shareToSA(sheetId) {
  * 왜 지금 이관하지 않나: registry email 을 옮기는 순간 그 사람은 **즉시** A2 시트로 연결된다.
  * 배치는 8/5~8/6 에 도는데 개막·공지는 8/7 이라, 지금 옮기면 공지 전에 화면이 바뀐다.
  * → 복사·행 생성만 미리 해두고, 개막일 아침에 `--flip-emails` 로 한 번에 전환한다(멱등·롤백 쉬움).
+ *
+ * ★2026-08-05 사고 수정: `values.append(range:"users!A:T")` 는 Sheets 가 "테이블"을 자체
+ * 탐지해 붙이는데, 이 시트에 열 38개(AL)짜리 구 테이블 흔적이 있어 **매번 S~AL 열로 밀려
+ * 붙었다**(A~T 가 아니라). 그 결과 54명분 A2 행이 전부 잘못된 열에 들어가 `loadRegistry()`
+ * (A~T만 읽음)에서 안 보이는 사고가 났다(--repair-shifted 로 복구). 재발 방지로 **행 번호를
+ * 직접 계산해 `values.update` 로 명시적 A~T 범위에 쓴다** — append 의 테이블 자동탐지에 의존하지 않는다.
  */
-async function appendA2Row(t, newSheetId) {
+async function appendA2Row(t, newSheetId, targetRow) {
   const row = new Array(20).fill("");
   row[0] = "";                 // A email — 개막일에 --flip-emails 로 채운다
   row[1] = a2Cohort(t);        // B cohort
@@ -222,8 +228,8 @@ async function appendA2Row(t, newSheetId) {
   row[7] = t.raw[7] ?? "";     // H team
   row[10] = SEASON_START;      // K courseStartISO
   row[11] = SEASON_END;        // L graduationISO
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: REG, range: "users!A:T", valueInputOption: "USER_ENTERED",
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: REG, range: `users!A${targetRow}:T${targetRow}`, valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
 }
@@ -255,13 +261,13 @@ async function flipEmails(all, rollback = false) {
   return { moved, skipped };
 }
 
-async function provision(t, existingA2) {
+async function provision(t, existingA2, targetRow) {
   const key = `${a2Cohort(t)}|${t.name}`;
   if (existingA2.has(key)) return { name: t.name, skipped: true, why: "이미 A2 행 있음" };
   const newId = await copySheet(t);
   await setCourseDates(newId);
   const share = await shareToSA(newId);
-  await appendA2Row(t, newId);
+  await appendA2Row(t, newId, targetRow);
   return { name: t.name, cohort: a2Cohort(t), newId, share, email: mask(t.email) };
 }
 
@@ -377,6 +383,39 @@ async function main() {
     return;
   }
 
+  // 2026-08-05 사고 복구 — S~AL 열에 밀려 들어간 A2 행(총 54건 추정)을 A~T 로 되돌린다.
+  // 밀림은 정확히 18열(A→S)이라 S~AL 20열 슬라이스가 곧 원래 A~T 값이다(1:1 대응, 재해석 불요).
+  // 기본 dry-run — 무엇을 옮길지만 출력. --execute 로만 실제 쓰기(A~T 복원 + S~AL 클리어).
+  if (has("--repair-shifted")) {
+    const wide = await readRange(REG, "users!S2:AL");
+    const restore = [], junkOnly = [];
+    wide.forEach((r, i) => {
+      const row = i + 2;
+      const cohort = String(r?.[1] ?? "").trim(); // S~AL 슬라이스의 index1 = 원래 B(cohort)
+      if (/^A2-/.test(cohort)) restore.push({ row, values: (r ?? []).slice(0, 20) });
+      else if ((r ?? []).some((c) => String(c ?? "").trim() !== "")) junkOnly.push(row); // 예: --diag-append ZZTEST 마커
+    });
+    console.log(`복구 대상(A2 행) ${restore.length}건, 정리만 할 잔재(테스트 마커 등) ${junkOnly.length}건`);
+    restore.forEach((x) => console.log(`  row${x.row}: cohort="${x.values[1]}" name="${x.values[2]}"`));
+    junkOnly.forEach((row) => console.log(`  row${row}: A2 아님 — S~AL 클리어만`));
+    if (!has("--execute")) { console.log("\n(dry-run — 실제 쓰기 0건. --execute 로 실행)\n"); return; }
+    for (const x of restore) {
+      const padded = [...x.values, ...new Array(20 - x.values.length).fill("")];
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: REG, range: `users!A${x.row}:T${x.row}`, valueInputOption: "USER_ENTERED",
+        requestBody: { values: [padded] },
+      });
+      await sheets.spreadsheets.values.clear({ spreadsheetId: REG, range: `users!S${x.row}:AL${x.row}` });
+      console.log(` ✅ row${x.row} 복구(A~T 기록 + S~AL 클리어)`);
+    }
+    for (const row of junkOnly) {
+      await sheets.spreadsheets.values.clear({ spreadsheetId: REG, range: `users!S${row}:AL${row}` });
+      console.log(` 🧹 row${row} 잔재 클리어`);
+    }
+    console.log(`\n복구 완료 ${restore.length}건 · 잔재 정리 ${junkOnly.length}건\n`);
+    return;
+  }
+
   if (has("--dump-tail")) {
     const raw = await readRange(REG, "users!A2:T");
     console.log(`registry 총 데이터행: ${raw.length}(마지막 값있는 행 기준 — 뒤에 빈 행이 있으면 이 수보다 sheet 실제 행수가 더 큼)`);
@@ -447,15 +486,18 @@ async function main() {
     return;
   }
 
+  // registry 다음 빈 행 번호 — values.append 의 테이블 자동탐지 대신 직접 계산해 넘긴다(위 사고 참고).
+  let nextRow = all.length + 2;
   const done = [], failed = [];
   for (const t of queue) {
     try {
-      const r = await provision(t, existingA2);
+      const r = await provision(t, existingA2, nextRow);
       done.push(r);
       console.log(r.skipped
         ? ` ⏭  ${t.name} — ${r.why}`
-        : ` ✅ ${r.name} (${r.cohort}) sheet=${r.newId} ${r.share} email=${r.email || "없음"}`);
+        : ` ✅ ${r.name} (${r.cohort}) sheet=${r.newId} ${r.share} email=${r.email || "없음"} row=${nextRow}`);
       existingA2.add(`${a2Cohort(t)}|${t.name}`);
+      if (!r.skipped) nextRow++;
     } catch (e) {
       const why = `${String(e?.message ?? e).slice(0, 120)} [reason=${reasonOf(e) || "미상"}]`;
       failed.push({ name: t.name, why });
