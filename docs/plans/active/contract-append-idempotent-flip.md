@@ -57,7 +57,7 @@ task_id: CONTRACT-APPEND-IDEMPOTENT-01
 base: origin/master@3aaca3d
 branch: feat/contract-append-idempotent    worktree: wt/contract-append-idempotent
 owner: DevA 새 몸(레인 repo-db)            reviewer: FM · 게이트키퍼 D(선택)
-blocked_by: none   ※단 §3 머지 타이밍 주의(10기 개강 8/7)
+blocked_by: none (구현 착수 가능) · **머지 blocked_by = 8/7 개막 완료**(§3 창구 조건 3개)
 file lease:
   · lib/repo/contract-payment.ts (append 경로) · lib/repo/contract-payment-link.ts(재사용)
   · lib/service/contract-payment.ts (addFromContract·addPriorContract)
@@ -81,10 +81,22 @@ lease 밖: lib/service/contact.ts · 06/03/01 구역 · gcal · app/** · compon
 
 **롤백**: 이 PR revert 1건(squash). 되돌리면 append 는 다시 시트-first + async 미러(현행)로 복귀.
 
-## 3. 머지 타이밍 (FM 판단)
-매출 집계에 닿는 변경이라 **10기 개강(8/7)·아레나 개막(8/7) 당일 머지는 피한다.** 구현·PR·리뷰는 지금
-진행하고, 머지는 ①8/6 안에 초록 완료되면 8/6 머지 ②아니면 **8/8 이후**. belie 가 즉시 머지를 원하면
-그 지시를 따른다(이 문단만 무효).
+## 3. 머지 창구 (총괄 권고 접수 2026-08-05 — 계약 조건으로 승격)
+
+**구현·PR·리뷰는 지금 진행. 단 머지·배포는 8/7 아레나 개막 이후 창구로 한다.**
+(앞선 FM 판단 "8/6 초록이면 8/6 머지"는 **폐기** — 총괄 권고가 더 보수적이고, 8/6 은 A2 배치 55시트
+검증일이라 매출 코드 배포를 겹치면 사고 원인 분리가 어려워진다.)
+
+머지 전 **선행 조건 3개를 모두** 만족해야 한다:
+1. **중복 방지 장치 선행 완료** — §1 자연키 upsert 가 테스트로 고정(연속 3회 저장 = 1행, 동시 2요청 수렴).
+2. **레인 충돌 검사 통과** — 머지 직전에 다음 둘과 파일 교집합 0 확인:
+   · 아레나 **W2**(`scripts/ops/arena-season2-batch.mjs` · 운영 데이터 · registry)
+   · **카페 hw_config**(BBE-43, 8/7 개강 동시 반영분)
+   겹치면 §3.5 대로 **순차** — 아레나·카페가 먼저다(개강·개막 크리티컬 패스).
+3. **개막 안정 확인** — 8/7 A2 전환(`--flip-emails`) 후 전광판·health 정상 확인된 뒤.
+
+→ 실무 순서: **8/5~8/6 구현 + PR 오픈(초록 유지) → 8/7 개막 완료 → 8/8 이후 머지 → §6.8 완주.**
+belie 가 조기 머지를 명시 지시하면 그 지시가 우선한다(이 절만 무효).
 
 ## Log
 - 2026-08-05 FM 발급. belie 승인(앞선 보류 뒤집음) + "중복행 위험 해소 설계 명시" 요구 반영 —
