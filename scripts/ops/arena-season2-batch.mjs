@@ -301,11 +301,21 @@ async function main() {
       console.log(` ❌ ${t.name} — ${String(e?.message ?? e).slice(0, 120)}`);
     }
   }
-  console.log(`\n완료 ${done.filter((d) => !d.skipped).length} · 건너뜀 ${done.filter((d) => d.skipped).length} · 실패 ${failed.length}`);
+  const created = done.filter((d) => !d.skipped).length;
+  console.log(`\n완료 ${created} · 건너뜀 ${done.filter((d) => d.skipped).length} · 실패 ${failed.length}`);
   if (failed.length) {
     console.log("실패 목록(재실행하면 성공분은 건너뜁니다):");
     failed.forEach((f) => console.log(`  · ${f.name} — ${f.why}`));
     process.exit(1);
+  }
+  if (created > 0) {
+    // BBE-50 항구 규칙: 시트 복사 = 복사 + DB 백필 한 세트. 복사본은 새 spreadsheet_id 라
+    // sheet_rows 0건 → 파일럿 게이트(A2 자동 편입)에서 개막일 화면 공백. 반드시 이어서 실행.
+    console.log(
+      "\n★ 다음 단계 필수 — DB 백필(BBE-50 · 안 하면 개막일 화면 공백):\n" +
+        '  node scripts/ops/backfill-sheet-rows.mjs --cohort "A2-1,A2-2,A2-3,A2-4,A2-5,A2-6,A2-7,A2-8"\n' +
+        "  (dry-run 확인 후 --execute · VPS 에서 실행 — DATABASE_URL 필요)",
+    );
   }
 }
 
