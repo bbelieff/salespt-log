@@ -306,13 +306,37 @@ async function whoami() {
   try {
     const f = await drive.files.get({
       fileId: sample.sheetId, supportsAllDrives: true,
-      fields: "id,name,owners(emailAddress),shared,copyRequiresWriterPermission,quotaBytesUsed,capabilities(canCopy,canDownload)",
+      fields: "id,name,owners(emailAddress),shared,copyRequiresWriterPermission,quotaBytesUsed,capabilities(canCopy,canDownload),parents",
     });
     console.log(`원본 샘플(${sample.name}, ${sample.cohort}) 소유자: ${(f.data.owners ?? []).map((o) => mask(o.emailAddress ?? "")).join(", ")}`);
     console.log(`shared 플래그: ${f.data.shared} · 이 admin 계정의 복사 가능 여부: ${f.data.capabilities?.canCopy} · 다운로드 가능: ${f.data.capabilities?.canDownload}`);
     // ③belie 지시 — 파일 개별 복사정책. admin 은 owner 라 이 플래그의 영향을 안 받는 게 정상이지만,
     // 값 자체는 실측으로 남긴다(참고용 — true 여도 owner 는 무관해야 함).
     console.log(`copyRequiresWriterPermission: ${f.data.copyRequiresWriterPermission ?? "(없음=false 취급)"} · 파일 용량: ${f.data.quotaBytesUsed ?? "?"} bytes`);
+
+    // 하네스 후속(2026-08-05 belie 지시) — 원본 "파일" 권한만 보고 원본이 든 "폴더" 권한을
+    // 안 봐서 A2 근인(목적지 폴더 소유자 불일치·link-only 공유)을 반나절 놓쳤다. copySheet() 는
+    // requestBody.parents 를 안 줘 files.copy 가 **원본과 같은 폴더**에 사본을 만든다 — 즉
+    // "그 폴더에 새 파일을 추가할 권리"가 실제 병목일 수 있다. 폴더도 같은 실측 반복.
+    const folderId = f.data.parents?.[0];
+    if (folderId) {
+      try {
+        const folder = await drive.files.get({
+          fileId: folderId, supportsAllDrives: true,
+          fields: "id,name,owners(emailAddress),permissions(type,role,emailAddress)",
+        });
+        const owners = (folder.data.owners ?? []).map((o) => mask(o.emailAddress ?? "")).join(", ");
+        const perms = (folder.data.permissions ?? [])
+          .map((p) => `${p.type}:${p.role}${p.emailAddress ? `(${mask(p.emailAddress)})` : ""}`)
+          .join(", ") || "(응답에 permissions 없음 — list 권한 부족 가능성 자체가 신호)";
+        console.log(`목적지 폴더(원본 부모, id=${folderId}) 소유자: ${owners || "(owners 없음 — 공유드라이브?)"}`);
+        console.log(`목적지 폴더 권한 목록: ${perms}`);
+      } catch (e) {
+        console.log(`목적지 폴더 접근 실패(=이 폴더에 새 파일을 못 만들 수 있음, 파일 자체는 정상이어도 copy 는 막힘): ${String(e?.message ?? e).slice(0, 120)}`);
+      }
+    } else {
+      console.log("목적지 폴더: 원본 파일의 parents 정보 없음(공유 드라이브 루트이거나 조회 불가)");
+    }
   } catch (e) {
     console.log(`원본 시트 접근 실패(=권한 없음 가능성): ${String(e?.message ?? e).slice(0, 100)}`);
   }
