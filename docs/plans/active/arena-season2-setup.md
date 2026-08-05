@@ -136,6 +136,9 @@ node scripts/ops/arena-season2-batch.mjs --plan            # 쓰기 0 — 대상
 node scripts/ops/arena-season2-batch.mjs --season-row      # cohorts A1 J + A2 행(J=8/7)
 node scripts/ops/arena-season2-batch.mjs --canary 손기학    # 1명만 생성 → W3 검증
 node scripts/ops/arena-season2-batch.mjs --all             # 나머지 전체(멱등·재실행 안전)
+# ★ 시트 복사 직후 반드시 — DB 백필(§7-8, BBE-50): 없으면 개막일 화면 공백
+node scripts/ops/backfill-sheet-rows.mjs \
+  --cohort "A2-1,A2-2,A2-3,A2-4,A2-5,A2-6,A2-7,A2-8"        # dry-run(기본) → 확인 후 --execute
 node scripts/ops/arena-season-readiness.mjs --season 2     # 개막 진단(읽기 전용)
 # ── 8/7 개막일 아침 ──
 node scripts/ops/arena-season2-batch.mjs --flip-emails     # 전원 A2 연결(롤백=--rollback-emails)
@@ -143,6 +146,27 @@ node scripts/ops/arena-season2-batch.mjs --flip-emails     # 전원 A2 연결(�
 사람 1명당: Drive 복사 → 제목 `세일즈PT_A2_{기수}기 {이름}_대표님 경영일지` → `01 영업관리` O1=8/7·
 O2=9/26(**날짜값**, 텍스트 금지 — 9기 `#VALUE!` 사고) → SA 편집자 공유 → registry A2 행(email 빈칸).
 **이월매출 셀은 쓰지 않는다**(§7-5).
+
+### 7-8. DB 백필 — **시트 복사 배치의 필수 후속 단계** (BBE-50, 2026-08-05 belie 지시 · 항구 편입)
+**왜 필수인가**: `daily-source.ts` 의 파일럿 게이트(`isDbReadPilot` → `isArenaCohortLabel`)가 **A2-N 을
+자동 편입**한다(실측 `lib/service/daily-source.ts:20`). 즉 A2 참가자는 화면을 **DB(sheet_rows)에서 읽는다**.
+그런데 복사본은 **새 spreadsheet_id** 라 DB `sheet_rows` 가 **0건** → 백필을 안 하면 **개막일에 화면 공백**
+(대시보드·계약·DB탭 전부 빈값). 시트에는 데이터가 있는데 앱이 DB 만 보는 read-your-writes 갱신 함정.
+
+**절차** (VPS 실행 — `DATABASE_URL` 필요. GitHub Actions "DB Backfill" 워크플로가 SSH 로 대행):
+1. `--all` 로 55시트 생성·registry A2 행 적재가 **끝난 뒤** 실행(순서 중요 — registry B 에 A2-N 이
+   찍혀 있어야 `--cohort` 로 대상을 찾는다).
+2. **dry-run 먼저**: `--cohort "A2-1,…,A2-8"`(--execute 없이) → 대상 시트 수·행 수 로그 확인.
+3. 이상 없으면 **`--execute`** 추가해 실적재. 멱등(같은 row_key upsert)이라 재실행 안전.
+4. `arena-season-readiness --season 2` 초록 + 카나리아 앱 로그인으로 화면에 값이 뜨는지 확인(W3).
+
+**차선책(백필이 개막 전에 못 끝날 때)**: `daily-source.ts` 의 게이트에서 **A2 를 일시 제외** → 개막은
+**시트 읽기**로 굴리고, 백필 완료 후 게이트를 원복해 DB 읽기로 승격. 이건 코드 변경(=`lane:` 게이트,
+단독 PR)이라 belie 확인 후 진행.
+
+**항구 규칙(다음 시즌 재발 방지)**: **"아레나 시트 복사 배치 = 복사 + DB 백필"** 한 세트다. 시트만 만들고
+백필을 빠뜨리면 개막 공백이 재발한다. 다음 시즌 런북도 이 두 단계를 반드시 붙여서 실행한다.
+(배치 스크립트도 `--all`/`--canary` 성공 후 이 백필 명령을 stdout 으로 상기시킨다.)
 
 ## Log
 - 2026-08-05 설계도 작성(Cowork) — belie 발주 3건 확정 반영. 반장 킥오프 대기.

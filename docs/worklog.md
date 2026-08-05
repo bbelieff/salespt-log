@@ -191,6 +191,13 @@
 
 ## 로그
 
+### 2026-08-05 · FM(260804) · W2 재시도 실패(토큰 미반영) + DB 백필 단계 W2 런북 항구 편입 (BBE-50)
+- belie "토큰 갱신 완료" → 카나리아 재시도. **결과: 여전히 `invalid_grant`**. 실측: `.env.local` **수정시각이 08-04 16:47 UTC(=08-05 01:47 KST) 그대로** — 갱신본이 이 파일에 반영되지 않았다(GitHub Secret 등 다른 경로에 들어간 것으로 보임). 토큰 접미 4자도 이전과 동일. **시트 복사 0건 유지**, 수강생 데이터 변경 0건.
+- **백필 전제 2건 코드 실측(지시 검증)**: ①`lib/service/daily-source.ts:20` — `isDbReadPilot` 이 `isArenaCohortLabel` 로 **A2-N 을 자동 편입**(= A2 는 화면을 DB 에서 읽는다) ✅ 지시 근거 정확. ②`scripts/ops/backfill-sheet-rows.mjs` — `--cohort` 콤마목록 지원·기본 dry-run·`--execute` 실적재 ✅. 단 **`DATABASE_URL` 은 로컬에 없어** VPS 실행(또는 GitHub Actions "DB Backfill" 워크플로 `workflow_dispatch`)이 정본 경로.
+- **항구 편입 완료**: 설계도 §7-8 신설 — "아레나 시트 복사 배치 = **복사 + DB 백필** 한 세트". 실행 순서(복사 → registry A2 적재 → dry-run → execute), 차선책(게이트에서 A2 일시 제외 후 시트 읽기로 개막), 다음 시즌 재발 방지 규칙 명문화. 배치 스크립트도 생성 성공 시 **백필 명령을 stdout 으로 상기**시키도록 수정(잊힘 방지).
+- 다음(belie 액션 1개): `.env.local` 의 `ADMIN_DRIVE_REFRESH_TOKEN=` **값 자체를 교체**(파일 수정시각이 바뀌어야 반영된 것) 또는 VPS 실행 승인. 토큰만 들어오면 카나리아→55건→백필까지 30~40분.
+- SoR: `docs/plans/active/arena-season2-setup.md` §7-8 · Linear BBE-50
+
 ### 2026-08-05 · DevA(260712) · ✅BBE-49(P0) 배포·라이브 확인 — 비파일럿 수료자 11주+ 저장/조회 (#676·363ba94)
 - 의도: Cowork 가 클린 클론에서 만든 패치를 적용·검증·배포(라이브 김현지/7기 확인까지).
 - 한 것: 패치 적용 후 **적대리뷰 4렌즈에서 BLOCKER 2·HIGH 4·MED 3 발견 → 수정 후 머지**.
