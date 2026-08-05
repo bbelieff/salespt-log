@@ -6,6 +6,9 @@
  *   ② 응답은 미러와 무관하게 즉시 성공(정본=DB).
  *   ③ 밀린 다른 pending 행을 drain 으로 재드라이브(이번 저장분 제외), 성공 시 해제.
  *   ④ 비파일럿/미설정 = 시트 정본(batchWrite) — mark/clear/drain 미개입.
+ *      🔧 BBE-49(2026-08-05) 예외: 물리 상한(MAX_SHEET_WEEK) 밖 날짜는 비파일럿이라도 DB 로 우회
+ *      (시트에 좌표가 없어 batchWrite 가 항상 throw했음 — 수료 후 계속 쓰게 한다는 R4 G1 결정과
+ *      모순이라 좁게 수리). 물리한계 "안"에서는 기존 ④ 그대로 완전 불변.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChannelDailyRow } from "@/types";
@@ -27,6 +30,7 @@ const upsertSheetRow = vi.fn();
 const readMeetingsFromDb = vi.fn();
 const batchWriteChannelDailyRows = vi.fn();
 const decrementMeetingReservation = vi.fn();
+const readCourseStart = vi.fn(); // BBE-49: 비파일럿 물리한계 판정용
 const writeProductionCell = vi.fn();
 const writeSalesRowCells = vi.fn();
 const isWithinSalesWindow = vi.fn();
@@ -48,6 +52,7 @@ vi.mock("@/repo/db/read-daily", () => ({
 vi.mock("@/repo/sales", () => ({
   batchWriteChannelDailyRows: (...a: unknown[]) => batchWriteChannelDailyRows(...(a as [])),
   decrementMeetingReservation: (...a: unknown[]) => decrementMeetingReservation(...(a as [])),
+  readCourseStart: (...a: unknown[]) => readCourseStart(...(a as [])), // BBE-49
 }));
 vi.mock("@/repo/sales-production-cell", () => ({
   writeProductionCell: (...a: unknown[]) => writeProductionCell(...(a as [])),
@@ -97,9 +102,11 @@ beforeEach(() => {
     dbEnabled, writeSalesRowsToDb, readSalesRowFromDb, upsertSheetRow, readMeetingsFromDb,
     batchWriteChannelDailyRows, decrementMeetingReservation, writeProductionCell,
     writeSalesRowCells, isWithinSalesWindow, markMirrorPending, clearMirrorPending,
-    listMirrorPending, captureServerEvent, captureException,
+    listMirrorPending, captureServerEvent, captureException, readCourseStart,
   ]) m.mockReset();
   dbEnabled.mockReturnValue(true);
+  // BBE-49: mkRow() 기본 날짜(2026-07-15)가 이 courseStart 기준 ~7주차(물리한계 1~10주 안)가 되도록.
+  readCourseStart.mockResolvedValue(new Date(2026, 5, 1));
   writeSalesRowsToDb.mockResolvedValue(undefined);
   readSalesRowFromDb.mockResolvedValue(mkDbRow());
   writeSalesRowCells.mockResolvedValue(true);
@@ -218,12 +225,45 @@ describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
     );
   });
 
-  it("비파일럿은 완전 불변 — 창 판정 자체를 하지 않고 기존 시트 경로", async () => {
-    isWithinSalesWindow.mockResolvedValue(false);
-    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]);
+  it("비파일럿이라도 물리한계 안(1~10주)이면 완전 불변 — 창 판정 자체를 하지 않고 기존 시트 경로", async () => {
+    isWithinSalesWindow.mockResolvedValue(false); // 호출 자체가 안 되는지가 핵심이라 값은 무관
+    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-07-15" })]); // courseStart 2026-06-01 기준 ~7주차
     expect(batchWriteChannelDailyRows).toHaveBeenCalledTimes(1); // R2 그대로
     expect(isWithinSalesWindow).not.toHaveBeenCalled();
     expect(writeSalesRowsToDb).not.toHaveBeenCalled();
+  });
+
+  // 🔧 BBE-49(2026-08-05, 김현지/7기 라이브 P0): 위 테스트와 대칭 짝 — 물리한계 "밖"은 예외적으로 DB.
+  // 시트에 애초에 좌표가 없어 batchWriteChannelDailyRows→salesRowFor 가 항상 throw했다(저장 영구실패).
+  it("비파일럿이라도 물리한계(11주+) 밖이면 DB 로 우회 — 시트엔 애초에 좌표가 없어 판정도 불필요", async () => {
+    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]); // courseStart 기준 ~18주차
+    expect(readCourseStart).toHaveBeenCalledWith(SHEET);
+    expect(writeSalesRowsToDb).toHaveBeenCalledTimes(1); // 저장 성공(정본=DB)
+    expect(batchWriteChannelDailyRows).not.toHaveBeenCalled(); // 시트엔 안 씀(좌표 없음)
+    expect(isWithinSalesWindow).not.toHaveBeenCalled(); // 파일럿 11주+ 와 동일하게 미러 자체를 시도 안 함
+    expect(markMirrorPending).not.toHaveBeenCalled();
+    expect(clearMirrorPending).not.toHaveBeenCalled();
+  });
+
+  // 🔧 BBE-49 적대리뷰: DB 킬스위치(DATABASE_URL 미설정)를 이 우회가 새면 client.ts 가
+  // "호출부 게이트 오류" 로 500 → 롤백 레버가 무력해진다. 읽기측 loadDay 와 동일 가드.
+  it("DB 가 꺼져 있으면 물리한계 밖이라도 DB 로 새지 않는다 — 롤백 레버 보존", async () => {
+    dbEnabled.mockReturnValue(false);
+    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]);
+    expect(writeSalesRowsToDb).not.toHaveBeenCalled();
+    expect(readCourseStart).not.toHaveBeenCalled(); // 판정 read 조차 하지 않는다
+    expect(batchWriteChannelDailyRows).toHaveBeenCalledTimes(1); // 기존 시트 경로(= 기존 좌표 에러)
+  });
+
+  it("비파일럿 배치에 날짜가 섞이면 즉시 실패 — 일부 행만 틀린 정본으로 가는 것 차단", async () => {
+    await expect(
+      persistSalesRows("7", EMAIL, SHEET, [
+        mkRow({ date: "2026-07-15" }),
+        mkRow({ date: "2026-09-30" }),
+      ]),
+    ).rejects.toThrow(/한 날짜의 행만/);
+    expect(writeSalesRowsToDb).not.toHaveBeenCalled();
+    expect(batchWriteChannelDailyRows).not.toHaveBeenCalled();
   });
 
   // 적대리뷰 M4/M6 — 창 판정은 **시트 read** 다. 정본(DB)은 그 앞에서 이미 커밋됐으므로

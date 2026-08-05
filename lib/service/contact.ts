@@ -116,24 +116,47 @@ export async function loadDay(
   let bannerOrderQty: number | null = null;
   let dbCanonicalRead = false; // R4 W1-1: DB 정본 read 성공 → 주차상한 지우기 해제(안 그러면 11주+ 화면 0 → draft 0 시드 → 다음 저장이 정본을 덮음)
 
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+  const pilotDb = chooseDailySource(user.cohort, dbEnabled()) === "db";
+
+  // 🔧 P0(BBE-49): 비파일럿(예: 7기)이라도 이 날짜가 시트 물리 상한(MAX_SHEET_WEEK)을 넘으면
+  // 그 날 4지표만 DB 에서 읽는다 — persistSalesRows 의 쓰기측 우회(같은 BBE-49)와 대칭.
+  // 안 맞추면 "저장은 DB에 됐는데 조회 화면은 계속 0" 이라는 read/write 비대칭이 재발한다
+  // (비용원장 사고와 동일 클래스, §0 정본 이원화 금지 위반).
+  // ⚠️ 판정 원천은 **시트 O1**이다 — 쓰기측(sales-write.isBeyondSheetPhysicalLimit)이 O1 을 쓰므로
+  // 여기서 레지스트리 K 캐시를 쓰면 두 게이트가 10/11주 경계에서 갈려 비대칭이 되살아난다.
+  // (K 는 캐시일 뿐이고 비ISO 시리얼 문자열이 들어온 전례도 있다 — me.ts ISO_DATE 가드 참조.)
+  let sheetCourseStart: Date | null = null;
+  let beyondSheetPhysicalLimit = false;
+  if (!pilotDb && dbEnabled()) {
+    sheetCourseStart = await readCourseStart(spreadsheetId); // 아래 시트 폴백이 재사용(추가 read 0)
+    beyondSheetPhysicalLimit =
+      weekIndexOf(targetDate, sheetCourseStart) > MAX_SHEET_WEEK;
+  }
+
+  if (dbEnabled() && (pilotDb || beyondSheetPhysicalLimit)) {
     try {
-      // courseStart: 레지스트리 K 캐시 우선(시트 read 0회 목표), 빈값이면 시트 1회.
-      courseStart = user.courseStartISO
-        ? parseISO(user.courseStartISO)
-        : await readCourseStart(spreadsheetId);
+      // 파일럿은 기존대로 레지스트리 K 캐시 우선(시트 read 0회 목표) — 동작 무변경.
+      courseStart = pilotDb
+        ? user.courseStartISO
+          ? parseISO(user.courseStartISO)
+          : await readCourseStart(spreadsheetId)
+        : sheetCourseStart!;
+      // 비파일럿은 **DB 백필 이력이 없다**(미러는 2026-07-07~, 대상도 파일럿뿐) → 누적합·미팅·
+      // 현수막 주문합을 DB 에서 재계산하면 0 으로 보인다. 그 셋은 시트 정본을 그대로 쓴다.
       const [all, allMeetings, orderQty] = await Promise.all([
         readSalesRowsFromDb(spreadsheetId),
-        readMeetingsFromDb(spreadsheetId),
-        readBannerOrderQtyFromDb(spreadsheetId),
+        pilotDb ? readMeetingsFromDb(spreadsheetId) : Promise.resolve(null),
+        pilotDb ? readBannerOrderQtyFromDb(spreadsheetId) : Promise.resolve(null),
       ]);
       const valid = all.filter((r): r is DailyMetricRow =>
         (CHANNEL_ORDER as readonly string[]).includes(r.channel),
       );
       metricRows = valid;
-      sums = stackingSumsFromRows(valid);
-      meetings = allMeetings.filter((m) => m.예약일 === date); // findByDate(reservation) 동치
-      bannerOrderQty = orderQty;
+      if (pilotDb) {
+        sums = stackingSumsFromRows(valid);
+        meetings = (allMeetings ?? []).filter((m) => m.예약일 === date); // findByDate(reservation) 동치
+        bannerOrderQty = orderQty;
+      }
       dbCanonicalRead = true;
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDay-db-read" } });
@@ -145,13 +168,18 @@ export async function loadDay(
     }
   }
 
-  if (metricRows === null || sums === null) {
+  if (metricRows === null) {
     // 기존 시트 경로 (비파일럿 기수 + DB 실패 fallback) — 동작 무변경.
-    courseStart = await readCourseStart(spreadsheetId);
+    courseStart = sheetCourseStart ?? (await readCourseStart(spreadsheetId));
     const week0 = weekIndexOf(targetDate, courseStart);
     const inRange0 = week0 >= 1 && week0 <= MAX_SHEET_WEEK;
     const { rows } = inRange0 ? await readWeek(spreadsheetId, week0) : { rows: [] };
     metricRows = rows;
+  }
+
+  if (sums === null) {
+    // 누적합(생산합·유입합)은 시트 수식이 정본 — 비파일럿 11주+ 도 1~10주 누적은 여기서 정확하다.
+    courseStart ??= sheetCourseStart ?? (await readCourseStart(spreadsheetId));
     const stacking = await readChannelStacking(spreadsheetId);
     sums = {
       매입DB생산합: stacking[0]?.[0] ?? 0,

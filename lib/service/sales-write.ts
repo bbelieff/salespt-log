@@ -27,11 +27,13 @@ import {
   markMirrorPending,
 } from "@/repo/db/mirror-pending";
 import { salesDbPayload } from "@/repo/db/sales-payload";
-import { batchWriteChannelDailyRows, decrementMeetingReservation } from "@/repo/sales";
+import { batchWriteChannelDailyRows, decrementMeetingReservation, readCourseStart } from "@/repo/sales";
 import { writeProductionCell } from "@/repo/sales-production-cell";
 import { isWithinSalesWindow, writeSalesRowCells } from "@/repo/sales-row-write";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import type { Channel, ChannelDailyRow } from "@/types";
+import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
+import { parseISO, weekIndexOf } from "@/util/week";
 import { chooseWriteSource } from "./daily-source";
 
 export interface SalesCtx {
@@ -133,15 +135,55 @@ export function toDbRows(rows: ChannelDailyRow[]): SalesRowForDb[] {
   return rows.map(salesDbPayload);
 }
 
-/** rows 를 정본에 저장. DB 정본 경로 실패는 throw(저장 실패 응답). 시트 미러는 비차단·수렴형. */
+/** 이 날짜가 시트 영업관리 블록의 물리 상한(MAX_SHEET_WEEK)을 넘는지 — 비파일럿 기수의 DB 폴백 판정.
+ *  🔧 P0(2026-08-05, BBE-49): 비파일럿(예: 7기)이 수료 후에도 계속 쓰게 한다는 R4 G1 결정에도,
+ *  `batchWriteChannelDailyRows`→`salesRowFor` 가 물리 상한(week>MAX_SHEET_WEEK)에서 무조건 throw해
+ *  저장이 영구 실패했다(김현지/7기 라이브 재현). isDbCanonical(파일럿 여부)과 무관하게, "이 날짜가
+ *  시트에 물리적으로 안 들어간다"는 사실만으로 DB 저장 경로로 우회한다.
+ *  ⚠️ 판정 원천은 **시트 O1**(읽기측 loadDay 도 같은 원천 — 레지스트리 K 캐시를 쓰면 두 게이트가
+ *  10/11주 경계에서 갈려 read/write 비대칭이 되살아난다).
+ *  비용: 비파일럿 저장 1건당 시트 read 1회가 는다(판정하려면 읽어야 하므로 11주+ 뿐 아니라
+ *  1~10주 저장도 지불). 비파일럿 활성 인원이 소수라 감수하되, 늘어나면 courseStart 를
+ *  호출부에서 주입하도록 시그니처를 넓히는 게 정답(그때 batchWriteChannelDailyRows 의 중복
+ *  read 도 같이 없앤다). */
+async function isBeyondSheetPhysicalLimit(spreadsheetId: string, dateISO: string): Promise<boolean> {
+  const courseStart = await readCourseStart(spreadsheetId);
+  return weekIndexOf(parseISO(dateISO), courseStart) > MAX_SHEET_WEEK;
+}
+
+/** rows 를 정본에 저장. DB 정본 경로 실패는 throw(저장 실패 응답). 시트 미러는 비차단·수렴형.
+ *  🔧 BBE-49: pilotDb 가 아니어도 물리 상한 밖 날짜는 DB 로 우회(위 isBeyondSheetPhysicalLimit).
+ *  persistProductionCell/persistMeetingReservationCount 는 건드리지 않는다 — 그쪽은 무필터 집계
+ *  오염 방지를 위해 11주+ 를 의도적으로 제외하는 별개 설계라 이 우회를 공유하면 안 된다. */
 export async function persistSalesRows(
   cohort: string,
   email: string,
   spreadsheetId: string,
   rows: ChannelDailyRow[],
 ): Promise<void> {
-  if (isDbCanonical(cohort)) {
+  const pilotDb = isDbCanonical(cohort);
+  // 계약 고정(비파일럿 한정): 아래 물리한계 판정이 rows[0].date 하나로 **배치 전체**를 가른다.
+  // 파일럿 경로는 행별로 창을 판정하므로 날짜 혼재가 정상이지만(R4 W1-1), 비파일럿에서 섞여
+  // 들어오면 일부 행이 틀린 정본으로 조용히 간다 — 그럴 바엔 즉시 실패시킨다.
+  // 현 호출부(saveContactMetrics)는 한 날짜의 4채널만 넘긴다.
+  if (!pilotDb && rows.length > 1 && rows.some((r) => r.date !== rows[0]!.date)) {
+    throw new Error("[sales-write] 비파일럿 저장은 한 날짜의 행만 받는다(배치에 여러 날짜 혼재)");
+  }
+  // dbEnabled() 가드 — DATABASE_URL 을 내리는 롤백 레버가 이 우회로 새면 client.ts 가
+  // "호출부 게이트 오류" 로 500 을 던진다(읽기측 loadDay 와 동일 가드).
+  const beyondSheetPhysicalLimit =
+    !pilotDb &&
+    dbEnabled() &&
+    rows.length > 0 &&
+    (await isBeyondSheetPhysicalLimit(spreadsheetId, rows[0]!.date));
+
+  if (pilotDb || beyondSheetPhysicalLimit) {
     await writeSalesRowsToDb({ spreadsheetId, cohort, email, rows: toDbRows(rows) });
+    if (beyondSheetPhysicalLimit) {
+      // 시트에 좌표 자체가 없다 — 미러 큐에 넣지 않는다(위 pilotDb 분기의 R4 W1-1 사유와 동일:
+      // no-op 미러를 매번 시도하면 무의미한 시트 read + 실패 시 mirror_pending 영구잔존).
+      return;
+    }
     const ctx: SalesCtx = { spreadsheetId, cohort, email };
     for (const r of rows) {
       // R4 W1-1: 11주+(시트 좌표 없음)는 **미러 큐에 넣지 않는다** — 넣어도 수렴 잡이 no-op 이지만
