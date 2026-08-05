@@ -38,7 +38,7 @@ jobs:
           cd /opt/salespt-log
           case "$MODE_ARG" in
             plan) FLAGS="--plan" ;;
-            whoami) FLAGS="--whoami" ;;
+            whoami) FLAGS="--whoami"; if [ -n "$CANARY_ARG" ]; then FLAGS="$FLAGS --canary $CANARY_ARG"; fi ;;
             season-row) FLAGS="--season-row" ;;
             canary) FLAGS="--canary $CANARY_ARG" ;;
             all) FLAGS="--all" ;;

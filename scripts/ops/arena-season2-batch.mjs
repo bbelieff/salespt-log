@@ -247,7 +247,8 @@ async function provision(t, existingA2) {
 }
 
 /** 진단 전용 — admin OAuth 토큰이 어느 계정인지(마스킹) + 원본 시트 접근권 실측. 쓰기 0건.
- * "The caller does not have permission" 류 실패의 근인(계정 불일치 vs 공유 누락) 을 가른다. */
+ * "The caller does not have permission" 류 실패의 근인(계정 불일치 vs 공유 누락) 을 가른다.
+ * --canary <이름> 을 함께 주면 **그 사람 원본**을 검사(기본은 대상 목록의 첫 사람). */
 async function whoami() {
   try {
     const me = await drive.about.get({ fields: "user(emailAddress)" });
@@ -257,15 +258,18 @@ async function whoami() {
     return;
   }
   const all = await loadRegistry();
-  const sample = targets(all).find((t) => t.sheetId);
-  if (!sample) { console.log("샘플 원본 시트 없음"); return; }
+  const target = arg("--canary");
+  const sample = target
+    ? targets(all).find((t) => t.name === target && t.sheetId)
+    : targets(all).find((t) => t.sheetId);
+  if (!sample) { console.log(`샘플 원본 시트 없음${target ? `(이름 "${target}" 대상 목록에 없음)` : ""}`); return; }
   try {
     const f = await drive.files.get({
       fileId: sample.sheetId, supportsAllDrives: true,
-      fields: "id,name,owners(emailAddress),capabilities(canCopy)",
+      fields: "id,name,owners(emailAddress),shared,capabilities(canCopy)",
     });
-    console.log(`원본 샘플(${sample.name}) 소유자: ${(f.data.owners ?? []).map((o) => mask(o.emailAddress ?? "")).join(", ")}`);
-    console.log(`이 admin 계정의 복사 가능 여부: ${f.data.capabilities?.canCopy}`);
+    console.log(`원본 샘플(${sample.name}, ${sample.cohort}) 소유자: ${(f.data.owners ?? []).map((o) => mask(o.emailAddress ?? "")).join(", ")}`);
+    console.log(`shared 플래그: ${f.data.shared} · 이 admin 계정의 복사 가능 여부: ${f.data.capabilities?.canCopy}`);
   } catch (e) {
     console.log(`원본 시트 접근 실패(=권한 없음 가능성): ${String(e?.message ?? e).slice(0, 100)}`);
   }
