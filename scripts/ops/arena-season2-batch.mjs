@@ -351,6 +351,32 @@ async function main() {
 
   // 임시 진단(2026-08-05) — --plan 이 "이미 생성 0"으로 나와 registry 원본을 직접 눈으로 봐야 한다.
   // 읽기 전용. 마지막 15행 + A2 매칭 여부를 그대로 찍는다.
+  // 임시 진단(2026-08-05) — canary·all 배치는 "✅ 성공" 을 54건 찍었는데 registry 재조회 시
+  // A2 행이 0건이다. append 가 실제로 안 먹는지, 아니면 읽기 쪽이 문제인지를 같은 append→즉시
+  // read 경로로 직접 확인한다. 마커 행(cohort=ZZTEST)은 무해 — 원인 확인 후 수동/후속 삭제.
+  if (has("--diag-append")) {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: REG, fields: "sheets.properties(title,sheetId,gridProperties(rowCount,columnCount))",
+    });
+    console.log(`탭 목록: ${JSON.stringify(meta.data.sheets?.map((s) => s.properties))}`);
+    const before = await readRange(REG, "users!A2:T");
+    console.log(`append 전 read 행수: ${before.length}`);
+    const marker = `ZZTEST-${Date.now() % 100000}`;
+    const appendRes = await sheets.spreadsheets.values.append({
+      spreadsheetId: REG, range: "users!A:T", valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values: [["", "ZZTEST", marker, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]] },
+    });
+    console.log(`append 응답 updatedRange: ${appendRes.data.updates?.updatedRange} · updatedRows: ${appendRes.data.updates?.updatedRows}`);
+    const after = await readRange(REG, "users!A2:T");
+    console.log(`append 후 read 행수: ${after.length}`);
+    const idx = after.findIndex((r) => String(r?.[2] ?? "") === marker);
+    console.log(idx >= 0
+      ? `✅ 마커 발견: row${idx + 2} (append→read 경로 정상 — A2 행 소실은 다른 원인)`
+      : `❌ 마커를 못 찾음 — append 응답은 성공인데 후속 read 로 안 보임(경로 자체 문제)`);
+    return;
+  }
+
   if (has("--dump-tail")) {
     const raw = await readRange(REG, "users!A2:T");
     console.log(`registry 총 데이터행: ${raw.length}(마지막 값있는 행 기준 — 뒤에 빈 행이 있으면 이 수보다 sheet 실제 행수가 더 큼)`);
