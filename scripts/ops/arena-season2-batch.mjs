@@ -56,14 +56,24 @@ const REG = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
 
 const mask = (e) => (e ? e.replace(/^(.{2}).*(@.*)$/, "$1***$2") : "");
-/** googleapis 에러의 정확한 reason 코드(예: insufficientFilePermissions·insufficientPermissions
- * =스코프 문제 vs cannotCopyFile=파일 자체 정책)를 뽑는다. 사람 메시지보다 근인을 정확히 가른다.
- * reason 코드는 enum 문자열이라 PII 없음 — 그대로 출력 안전. */
+/** googleapis 에러의 정확한 reason 코드를 뽑는다. **v1 legacy**(`errors[].reason` —
+ * insufficientFilePermissions 류 스코프/권한) 와 **v2 details**(`error.details[]` —
+ * `@type=…ErrorInfo` 의 `reason`/`domain`/`metadata`, 조직정책·앱미승인·공유정책 등 더 구체적)
+ * 를 **둘 다** 합쳐 보여준다. 전부 enum 문자열·구조화 필드라 PII 없음 — 그대로 출력 안전. */
 const reasonOf = (e) => {
   const errs = e?.errors ?? e?.response?.data?.error?.errors ?? [];
   const reasons = errs.map((x) => x.reason).filter(Boolean);
   const status = e?.response?.data?.error?.status ?? e?.code ?? "";
-  return reasons.length ? `${reasons.join(",")}${status ? ` (${status})` : ""}` : String(status || "");
+  const details = e?.response?.data?.error?.details ?? [];
+  const detailInfo = details
+    .map((d) => `${d.reason ?? d["@type"] ?? "?"}${d.domain ? `@${d.domain}` : ""}${d.metadata ? ` ${JSON.stringify(d.metadata)}` : ""}`)
+    .filter(Boolean);
+  const parts = [
+    reasons.length ? reasons.join(",") : "",
+    status ? `(${status})` : "",
+    detailInfo.length ? `details=[${detailInfo.join(" | ")}]` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : "(사유 코드 없음 — raw 메시지만)";
 };
 const isoPlus = (iso, days) => {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -352,6 +362,12 @@ async function main() {
       const why = `${String(e?.message ?? e).slice(0, 120)} [reason=${reasonOf(e) || "미상"}]`;
       failed.push({ name: t.name, why });
       console.log(` ❌ ${t.name} — ${why}`);
+      // 근인 미확정 시 안전망 — googleapis 에러 원본 구조 전체. email 패턴만 방어적으로 마스킹.
+      const rawErr = e?.response?.data?.error;
+      if (rawErr) {
+        const masked = JSON.stringify(rawErr).replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, (m) => mask(m));
+        console.log(`    raw error: ${masked.slice(0, 500)}`);
+      }
     }
   }
   const created = done.filter((d) => !d.skipped).length;
