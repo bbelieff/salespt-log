@@ -191,6 +191,25 @@
 
 ## 로그
 
+### 2026-08-05 · FM(260804) · A2 W1 실행 완료 · W2 는 admin 토큰 invalid_grant 로 정지 (BBE-42)
+- belie "모두 승인"(결정함 3-b 해소) → 즉시 착수. **운영 데이터 쓰기 실행분**:
+  · `cohorts A1` J = **2026-06-12** 기입(비어 있던 칸 — 개막 전 A2 노출 차단용, §7-6②)
+  · `cohorts A2` 행 **생성**(status=active · type=arena · J=**2026-08-07**)
+  · 진단 재실행 결과 **"시즌2 개막 준비 완료 — 전광판이 개막일부터 자동 전환"** 초록.
+- **⛔ W2 카나리아 실패 — 시트 복사 0건.** `손기학` 시도 → Drive `files.copy` 가 **invalid_grant**.
+  진단(읽기 전용, 값 미출력): `ADMIN_DRIVE_REFRESH_TOKEN` 은 .env.local 에 **존재**(103자, `1//0…`)하나
+  access token 발급 자체가 거부 = **폐기됐거나 다른 OAuth 클라이언트로 발급된 토큰**. 08-05 새벽 회수한
+  .env.local 의 값이 그 뒤 GitHub Secret 에 등록된 **신규 토큰과 다른 것**으로 보인다.
+- 대안 경로 실측: **SA(서비스계정)로는 복사 부적합** — SA Drive 접근은 되지만 `storageQuota.limit=0`,
+  원본 시트는 **belie 개인 My Drive**(공유 드라이브 아님, SA 멤버 공유 드라이브 0개)라 SA 가 만든 사본은
+  **소유자가 SA** 가 된다(수강생 시트 55개의 소유권 모델이 바뀜 → belie 결정 사항이라 임의 진행 금지).
+- **수강생 데이터 영향 0** — 시트 생성·registry 변경 **0건**. cohorts 2칸만 바뀌었고 이는 전광판 시즌 판정용
+  운영 설정이다(복구 = 그 2칸 원복).
+- 다음(belie 액션 1개): 유효한 admin 토큰 확보 → ①로컬 `.env.local` 의 `ADMIN_DRIVE_REFRESH_TOKEN` 을
+  현재 유효 값으로 교체(권장·2분) 또는 ②VPS 에서 배치 실행(배포가 Secret 주입) 또는 ③SA 소유 사본 허용(비권장).
+  토큰만 들어오면 카나리아→전체 55건은 20~30분.
+- SoR: `docs/plans/active/arena-season2-setup.md` §7-7
+
 ### 2026-08-05 · FM(260804) · "PLAN-001" 조회 결과 없음 + append flip 머지 창구를 개막 이후로 고정
 - belie "PLAN-001 진행시켜" → **레포 전수 검색 0건**. 발급된 계약 id 는 6개뿐: FM-LEDGER-RECONCILE-01 · F-596-REVERIFY-01 · QA-DATEPICKER-LIVE-01 · DB-DRIFT-AUDIT-01 · CONTRACT-APPEND-IDEMPOTENT-01 · (완료)R3-3-MEETING-CONTRACT-DUAL-SYNC-01. → 어느 것을 뜻하는지 belie 에게 되묻는 중(디스패치 경유).
 - **총괄 권고 접수 → 계약 조건으로 승격**: 신규추가 DB화는 **구현·PR 은 진행, 머지·배포는 8/7 개막 이후 창구**. 앞선 FM 판단("8/6 초록이면 8/6 머지")은 폐기 — 8/6 은 A2 55시트 검증일이라 매출 코드 배포를 겹치면 사고 원인 분리가 어렵다.
