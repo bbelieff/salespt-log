@@ -175,20 +175,28 @@ NOT_RUN: 수강생 실데이터 수정 · 시트 쓰기 · VPS 접속 · 다른 
 
 ```
 task_id: DB-DRIFT-AUDIT-01          (레인 L4 — 결정함 9번 1단계, belie 승인 2026-08-05)
-base: origin/master@82824b7 · branch: chore/db-drift-audit
-worktree: wt/db-drift-audit · owner: DevA 새 몸(또는 FM 다음 슬롯) · reviewer: FM
+base: origin/master@0b39b91 · branch: chore/db-contract-drift-audit
+worktree: wt/arena-season2(FM 겸용) · owner: **FM 직접 구현**(§0.7 자율 — 단발·읽기전용·저위험,
+  워커 분리 오버헤드가 더 큼. VPS 원격 실행 인프라(#679~682)를 이미 보유해 즉시 실행 가능) · reviewer: belie
 blocked_by: none  ※2단계(실수정)는 이 점검 결과 보고 후 belie 재승인 전까지 금지
 목적: R3-3 수리(#666) **이전에** 미러 실패로 어긋난 과거 계약 행이 몇 건인지 센다.
       02 화면이 DB 정본인 파일럿 기수만 대상 — 시트(정답 후보) vs DB(화면 표시) 대조.
-산출: scripts/ops/db-contract-drift-audit.mjs (**읽기 전용**) + 결과 표
+산출: `scripts/ops/db-contract-drift-audit.mjs`(**읽기 전용**) + `.github/workflows/
+      db-contract-drift-audit.yml`(VPS 원격 실행, db-backfill.yml 패턴 재사용) + 결과 표
       ① 시트에 없는데 DB 에 살아있는 행(= 유령 계약) ② 계약일·업체명 불일치 행
-      ③ _cleared 플래그 불일치 ④ 사람별 합계 금액 차이(있으면 금액만, 개인정보 마스킹)
-수용 기준: 파일럿 전 기수 스캔 완료 · 건수 표 + 사람 단위 요약을 worklog `📥 9번`에 보고 ·
-      **데이터 변경 0건 증명**(스크립트에 write API 호출 부재 — 리뷰로 확인) · check.sh 초록
+      ③ _cleared 플래그 불일치(역방향) **④ belie 지시로 범위 확정 — "퍼널 계약수 해지 반영"을
+      금액이 아니라 해지일 유무 불일치로 잡는다**: `dashboard.ts terminatedByChannel/
+      terminatedByWeek` 는 DB 값으로 계산되므로, 시트엔 해지일이 있는데 DB 엔 없으면(또는
+      반대) 파일럿 화면의 **퍼널 계약수가 실제와 달라진다** — 이게 그 건이 세는 대상.
+      파싱은 `read-daily.ts contractFromDbPayload` 와 동일 규칙(열문자→필드명 오버레이)을
+      재현해 실제 앱이 읽는 값과 일치시켰다.
+수용 기준: 파일럿 전 기수(8·9·연습·아레나) 스캔 완료 · 건수 표 + 사람 단위 요약(email 마스킹)을
+      worklog `📥 9번`에 보고 · **데이터 변경 0건 증명**(스크립트에 write API 문자열 부재 — grep 확인됨)
+      · check.sh 초록
 NOT_RUN(엄수): 어떤 write API 도 호출 금지(values.update/append/batchUpdate·Drive·DB INSERT/UPDATE)
       · 수강생 email 원문 출력 금지(마스킹) · 시트 수기값 수정 금지 · 2단계 리페어 착수 금지
-환경: 파일럿 DB 접근 필요(`DATABASE_URL`) — 로컬 미보유 시 **VPS 실행**(읽기 전용이라 안전).
-      DB 접근이 아예 불가하면 시트측 스캔만 수행하고 "DB 대조 미실시"를 명시 보고.
+환경: 파일럿 DB 접근 필요(`DATABASE_URL`) — 로컬 미보유라 **VPS 실행**(아레나 배치와 동일
+      SSH 패턴, 읽기 전용이라 안전).
 ```
 
 ```
