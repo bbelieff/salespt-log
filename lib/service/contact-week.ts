@@ -100,7 +100,9 @@ export async function loadWeekMeetings(
   // 7일 ISO 날짜 생성 (양 경로 공용 — 카드 슬롯 기준)
   const dates = sevenDays(wsDate);
 
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+  const pilotDb = chooseDailySource(user.cohort, dbEnabled()) === "db";
+
+  if (pilotDb) {
     try {
       courseStart = user.courseStartISO
         ? parseISO(user.courseStartISO)
@@ -145,6 +147,25 @@ export async function loadWeekMeetings(
     ]);
     both = sheetBoth;
     weekFunnel = sheetFunnel;
+
+    // 🔧 P0(BBE-49): 비파일럿 11주+ 는 시트에 그 주 블록이 없어 readWeekFunnel 이 **항상 0** 이다
+    // (lib/repo/sales.ts 의 week 범위 가드). loadDay·persistSalesRows 는 그 구간을 DB 로 우회하므로,
+    // 여기만 0 이면 "날짜칸엔 보이는데 바로 위 주간 퍼널은 0" 이라는 같은 화면 안 불일치가 남는다.
+    // 미팅 카드(both)는 비파일럿이면 시트가 정본이라 그대로 두고, 퍼널만 DB 로 재계산한다.
+    if (!pilotDb && dbEnabled() && week > MAX_SHEET_WEEK) {
+      try {
+        const salesRows = await readSalesRowsFromDb(spreadsheetId);
+        const valid = salesRows.filter((r): r is DailyMetricRow =>
+          (CHANNEL_ORDER as readonly string[]).includes(r.channel),
+        );
+        const blockStart = new Date(courseStart);
+        blockStart.setDate(blockStart.getDate() + (week - 1) * 7);
+        weekFunnel = weekFunnelFromRows(valid, sevenDays(blockStart));
+      } catch (e) {
+        // 실패해도 시트 퍼널(0)로 남는다 — 화면 에러 금지(기존 silent fallback 정책).
+        Sentry.captureException(e, { tags: { where: "loadWeekMeetings-nonpilot-week11-funnel" } });
+      }
+    }
   }
 
   const week = weekIndexOf(wsDate, courseStart!);

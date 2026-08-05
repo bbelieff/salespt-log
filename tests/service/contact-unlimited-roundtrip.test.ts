@@ -101,3 +101,73 @@ describe("R4 무제한 왕복 — 11주+ 저장분이 화면에서 사라지지 
     expect(readWeek).not.toHaveBeenCalled(); // 창 밖이라 주차 read 자체를 안 함
   });
 });
+
+/**
+ * 🔧 P0(BBE-49, 2026-08-05) — 읽기측 대칭. 쓰기(persistSalesRows)만 열면 "저장은 DB, 조회는 0" 이
+ * 되어 draft 0 시드 → 정본 덮어쓰기 루프가 비파일럿에도 열린다. 위 파일럿 케이스의 비파일럿 짝.
+ */
+describe("BBE-49 — 비파일럿(7기) 수료자의 11주+ 읽기 대칭", () => {
+  beforeEach(() => {
+    findUserByEmail.mockResolvedValue({
+      email: EMAIL, spreadsheetId: SHEET, cohort: "7", // 비파일럿
+      status: "archived", courseStartISO: COURSE_START, role: "trainee",
+    });
+  });
+
+  it("12주차: DB 정본 행이 화면에 실린다 — 시트 주차 read 는 하지 않는다", async () => {
+    readSalesRowsFromDb.mockResolvedValue([
+      { date: WEEK12, channel: "매입DB", production: 4, inflow: 3, contactProgress: 2, meetingReservation: 0 },
+    ]);
+    const view = await loadDay(EMAIL, WEEK12);
+    expect(view.channels["매입DB"]).toMatchObject({ production: 4, inflow: 3, contactProgress: 2 });
+    expect(readWeek).not.toHaveBeenCalled();
+  });
+
+  it("판정 원천은 시트 O1 — 레지스트리 K 캐시가 어긋나도 O1 기준으로 DB 경로를 탄다", async () => {
+    // K 캐시가 6주 늦게 박혀 있으면(캐시 오염 전례 있음) K 기준 주차는 상한 안 → 시트 경로로 샌다.
+    findUserByEmail.mockResolvedValue({
+      email: EMAIL, spreadsheetId: SHEET, cohort: "7",
+      status: "archived", courseStartISO: "2026-07-13", role: "trainee",
+    });
+    readSalesRowsFromDb.mockResolvedValue([
+      { date: WEEK12, channel: "매입DB", production: 9, inflow: 0, contactProgress: 0, meetingReservation: 0 },
+    ]);
+    const view = await loadDay(EMAIL, WEEK12);
+    expect(readCourseStart).toHaveBeenCalledWith(SHEET); // O1 을 실제로 읽었다
+    expect(view.channels["매입DB"].production).toBe(9); // K(오염) 아닌 O1 기준으로 DB 경로
+  });
+
+  it("누적합·미팅·현수막 주문합은 시트 정본 유지 — 비파일럿은 DB 백필 이력이 없다", async () => {
+    readSalesRowsFromDb.mockResolvedValue([]);
+    readChannelStacking.mockResolvedValue([[12, 0, 5, 0], [4, 0, 0, 0]]);
+    // 상단 공용 mock 이 빈 배열로 선언돼 요소 타입이 never — 픽스처 주입 시 캐스트 필요.
+    readBanners.mockResolvedValue({ rows: [{ 주문개수: 30 }] as unknown as never[] });
+    const view = await loadDay(EMAIL, WEEK12);
+    expect(readChannelStacking).toHaveBeenCalledWith(SHEET);
+    expect(readBanners).toHaveBeenCalledWith(SHEET);
+    expect(readMeetingsFromDb).not.toHaveBeenCalled(); // 미팅은 시트(04)가 정본
+    expect(findByDate).toHaveBeenCalledWith(SHEET, WEEK12, "reservation");
+    expect(view.inflowWaitBase).toBe(12 - 4 + 0); // 시트 누적합 그대로
+    expect(view.bannerStockBase).toBe(30 - 5 + 0);
+  });
+
+  it("1~10주(물리한계 안)는 기존 시트 경로 그대로 — DB 를 보지 않는다", async () => {
+    const inWindow = "2026-06-03"; // 1주차
+    readWeek.mockResolvedValue({
+      rows: [
+        { date: inWindow, channel: "매입DB", production: 1, inflow: 1, contactProgress: 1, meetingReservation: 0 },
+      ] as unknown as never[],
+    });
+    const view = await loadDay(EMAIL, inWindow);
+    expect(readWeek).toHaveBeenCalled();
+    expect(readSalesRowsFromDb).not.toHaveBeenCalled();
+    expect(view.channels["매입DB"]).toMatchObject({ production: 1, inflow: 1, contactProgress: 1 });
+  });
+
+  it("DB 가 꺼져 있으면(DATABASE_URL 미설정) 우회 없이 기존 시트 경로 — 롤백 레버 보존", async () => {
+    dbEnabled.mockReturnValue(false);
+    const view = await loadDay(EMAIL, WEEK12);
+    expect(readSalesRowsFromDb).not.toHaveBeenCalled();
+    expect(view.channels["매입DB"]).toMatchObject({ production: 0, inflow: 0, contactProgress: 0 });
+  });
+});
