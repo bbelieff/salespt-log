@@ -57,24 +57,52 @@ if (!REGISTRY_ID) {
   process.exit(2);
 }
 
+/**
+ * SA 인증 — **앱과 같은 env 계약**(`lib/config/index.ts`: GOOGLE_SERVICE_ACCOUNT_EMAIL +
+ * GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY)이 정본. JSON 통짜 키(GOOGLE_SERVICE_ACCOUNT_KEY)는
+ * 레거시 호환으로만 받는다.
+ * (2026-08-05 수리: 통짜 키만 보던 초판은 실 배포 env 와 어긋나 **항상 exit 2** 였다.)
+ */
 function sheetsClient() {
-  const raw = env("GOOGLE_SERVICE_ACCOUNT_KEY") || env("GOOGLE_SA_KEY");
+  const scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
+  const email = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
+  const key = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY");
+  if (email && key) {
+    const auth = new google.auth.JWT({ email, key: key.replace(/\\n/g, "\n"), scopes });
+    return google.sheets({ version: "v4", auth });
+  }
+  const raw = env("GOOGLE_SERVICE_ACCOUNT_KEY") || env("GOOGLE_SA_KEY"); // 레거시 JSON 통짜
   if (!raw) {
-    console.error("❌ 서비스 계정 키 없음 — VPS 에서 실행하세요.");
+    console.error(
+      "❌ 서비스 계정 키 없음 — .env/.env.local 에 GOOGLE_SERVICE_ACCOUNT_EMAIL +" +
+        " GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY 가 있는 환경(VPS·개발 PC)에서 실행하세요.",
+    );
     process.exit(2);
   }
   const creds = JSON.parse(raw);
   const auth = new google.auth.JWT({
     email: creds.client_email,
     key: (creds.private_key || "").replace(/\\n/g, "\n"),
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    scopes,
   });
   return google.sheets({ version: "v4", auth });
 }
 
+/** 영업관리 탭 실제 이름 — `SHEET_RANGES.sales.tab`(lib/config/index.ts) 과 반드시 일치.
+ * (2026-08-05 수리: 초판의 `영업관리!O1` 은 존재하지 않는 탭이라 참가자 시트 전수
+ * "Unable to parse range" 로 실패했다. 공백 포함이므로 작은따옴표 인용 필수.) */
+const SALES_TAB = "01 영업관리";
+
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-/** 날짜 셀이 시리얼/로케일로 와도 흡수 (lib/repo/cohorts.normalizeSeasonStart 와 동일 규칙). */
+/** 날짜 셀이 시리얼/로케일로 와도 흡수 (lib/repo/cohorts.normalizeSeasonStart 와 동일 규칙).
+ * 2026-08-05 보강: **시트 날짜 셀은 숫자(serial)로 온다** — O1 은 서식이 "6/12" 라 문자열로 읽으면
+ * 연도가 없어 판정 불가였다. `lib/repo/meetings-rows.serialToISODate` 와 같은 규칙으로 변환한다. */
 function normDate(raw) {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    const d = new Date((raw - 25569) * 86_400_000); // Sheets serial = 1899-12-30 기준
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().slice(0, 10);
+  }
   const s = String(raw ?? "").trim();
   if (!s) return "";
   if (ISO.test(s)) return s;
@@ -83,12 +111,12 @@ function normDate(raw) {
   return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
 }
 
-async function readRange(api, spreadsheetId, range) {
+async function readRange(api, spreadsheetId, range, dateTimeRenderOption = "FORMATTED_STRING") {
   const res = await api.spreadsheets.values.get({
     spreadsheetId,
     range,
     valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "FORMATTED_STRING",
+    dateTimeRenderOption,
   });
   return res.data.values ?? [];
 }
@@ -156,7 +184,8 @@ async function main() {
   for (const m of members) {
     let o1 = "";
     try {
-      const v = await readRange(api, m.sheetId, "영업관리!O1");
+      // O1 은 날짜 셀 — 서식("6/12")에 연도가 없어 SERIAL_NUMBER 로 읽어야 판정이 가능하다.
+      const v = await readRange(api, m.sheetId, `'${SALES_TAB}'!O1`, "SERIAL_NUMBER");
       o1 = normDate(v?.[0]?.[0]);
     } catch (e) {
       bad.push({ ...m, o1: "(읽기 실패)", why: e?.message?.slice(0, 60) ?? "unknown" });
@@ -176,8 +205,11 @@ async function main() {
         sample +
         (bad.length > 8 ? `\n      … 외 ${bad.length - 8}개` : ""),
     );
-  } else if (members.length > 0) {
+  } else if (members.length > 0 && expected) {
     notes.push(`참가자 시트 O1 전부 일치 (${expected})`);
+  } else if (members.length > 0) {
+    // 기대값(cohorts J)이 없으면 대조 자체가 성립하지 않는다 — "전부 일치"로 오해될 초록 금지.
+    notes.push(`참가자 시트 ${members.length}개 — 개강일 미입력이라 O1 대조는 건너뜀`);
   }
 
   // ── 결과 ──
