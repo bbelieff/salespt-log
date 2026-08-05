@@ -353,13 +353,18 @@ async function main() {
   // 읽기 전용. 마지막 15행 + A2 매칭 여부를 그대로 찍는다.
   if (has("--dump-tail")) {
     const raw = await readRange(REG, "users!A2:T");
-    console.log(`registry 총 데이터행: ${raw.length}`);
-    const tail = raw.slice(-15);
-    tail.forEach((r, i) => {
-      const rowNum = raw.length - tail.length + i + 2;
-      const cohort = String(r?.[1] ?? "");
-      console.log(`row${rowNum}: cohort="${cohort}"(len=${cohort.length}) name="${String(r?.[2] ?? "")}" A2매치=${/^A2-/.test(cohort)}`);
+    console.log(`registry 총 데이터행: ${raw.length}(마지막 값있는 행 기준 — 뒤에 빈 행이 있으면 이 수보다 sheet 실제 행수가 더 큼)`);
+    let lastNonEmpty = -1;
+    raw.forEach((r, i) => { if ((r ?? []).some((c) => String(c ?? "").trim() !== "")) lastNonEmpty = i; });
+    console.log(`마지막 값있는 행: row${lastNonEmpty + 2} (그 뒤 ${raw.length - 1 - lastNonEmpty}행은 완전 공백)`);
+    let a2Count = 0;
+    raw.forEach((r, i) => {
+      const cohort = String(r?.[1] ?? "").trim();
+      if (!/^A2-/.test(cohort)) return;
+      a2Count++;
+      console.log(`row${i + 2}: cohort="${cohort}" name="${String(r?.[2] ?? "").trim()}" sheetId=${String(r?.[3] ?? "").trim().slice(0, 12)}…`);
     });
+    console.log(`A2 매치 총 ${a2Count}건 (전체 스캔, 위치 무관)`);
     return;
   }
 
