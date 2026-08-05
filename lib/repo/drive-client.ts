@@ -8,6 +8,7 @@
 import { google, type drive_v3 } from "googleapis";
 import { serviceAccount, authConfig, adminDriveRefreshToken } from "@/config";
 import { pickSheetFromCandidates, filterSheetsByTokens } from "./sheet-title-match";
+import { shareWithServiceAccount } from "./drive-sa-share";
 
 let cached: drive_v3.Drive | null = null;
 let cachedCreator: drive_v3.Drive | null = null;
@@ -45,6 +46,8 @@ export function driveCreatorClient(): drive_v3.Drive {
 }
 
 // 템플릿 시트 복제 (ADR-0011/0015). 원본 불변·새 파일 생성. 반환=새 spreadsheetId.
+// 복제 직후 SA 공유를 붙인다 — 호출부 3곳(일반 기수 라우트·아레나 라우트·pending 재시도)이
+// 모두 이 함수를 지나므로, 여기 한 곳에 두면 어느 경로로 만들어도 갭이 생기지 않는다.
 export async function copyTemplateSheet(
   templateId: string,
   newTitle: string,
@@ -59,6 +62,7 @@ export async function copyTemplateSheet(
   const id = res.data.id;
   if (!id) throw new Error("[copyTemplateSheet] 복제 결과 id 없음");
   console.warn("[cohort-create] copyTemplateSheet " + JSON.stringify({ templateId, destFolderId, newId: id, newTitle }));
+  await shareWithServiceAccount(driveCreatorClient(), id); // 상세 근거: ./drive-sa-share.ts (BBE-45)
   return id;
 }
 
