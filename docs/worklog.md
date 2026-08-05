@@ -636,6 +636,51 @@
   belie 지시대로 "아직 안 해본 조치가 남은 상태에서 차선책으로 못 넘어간다"에 따라 차선책(개강일만
   공지) 전환 없이 정상 경로 복구를 계속한다. VPS SSH 인프라 상태는 FM 권한 밖 — belie 직접 확인 요청.
 - SoR: `scripts/ops/arena-season2-batch.mjs`(#712), Linear BBE-42·BBE-75, 이 항목 자체가 재개 가이드
+### 2026-08-06 · 작업원B(260806) · BBE-64 readProfileBundle.stats DB 대체 — 구현 완료(R7 Phase 3 #15)
+- 의도: belie 지시("BBE-45 끝나면 R7 착수, 다음 카드 = BBE-64"). admin/트레이너/회장 3화면이
+  공유하는 `enrichUsersWithStats` 를 파일럿 기수에 한해 DB 배치 조회로 대체 — BBE-48(수강생관리
+  진입 지연) 근본 원인 제거.
+- 부수 발견(첫 조치): `docs/plans/active/sheet-retirement-r7.md`(설계도 3호, Cowork 작성)가
+  origin/master 에 미커밋 상태 → 별도 PR(#703 예정)로 먼저 보존.
+- **Workflow 병렬 리서치**(6 에이전트: 호출체인·3화면·DB스키마·게이팅패턴·테스트컨벤션 + 설계
+  합성) → 결과를 코드로 직접 재검증(ultracode 지침 — 리서치 결과를 그대로 믿지 않음):
+  · **정정 1**: "계약" 통계는 `계약여부`(K, boolean) 가 아니라 **상태(J)="계약"** 이 정본 —
+    `lib/repo/setup-formulas.ts` 실제 수식 설치 코드로 확정(N 열 COUNTIFS 가 J 를 직접 봄).
+    meeting.ts:79 주석이 계약여부를 "동기화용 호환 필드"라 명시.
+  · **정정 2**: `TERMINATED_IN_CONTRACT_COUNT` 정책은 이 통계와 무관(다른 코드 경로 전용) —
+    N 열 수식에 해지 필터가 없음을 직접 확인, 잘못 적용할 뻔한 걸 리서치 단계에서 배제.
+  · **독립 발견(기존 코드 갭)**: `lib/service/dashboard-aggregates.ts:weeklyContractsFromDb`
+    가 이월(구분="이월") 제외 필터가 빠져 있음 — 실제 N 열 수식엔 `AO<>이월` 이 있는데 이 함수엔
+    없다. 그림자 대조 전용(R2-7a, 아직 미서빙)이라 지금 당장 사용자 영향은 없지만, **회장 화면
+    대상이 전원 아레나(이월이 실제 발생하는 파일럿 집단)** 라 그대로 재사용했으면 이 기능이 가장
+    많이 쓰이는 화면에서 계약 수가 부풀 뻔했다. 재사용 대신 `DONE`/`CARRYOVER` 술어만 export 해
+    새로 올바르게 구현 — `weeklyContractsFromDb` 자체는 이 PR 범위 밖(다른 트랙 소유, R2-7a)이라
+    안 고쳤음. **별도 후속 필요 — FM/belie 인지 요청.**
+- 구현: `lib/repo/db/profile-stats.ts`(신규, 배치 SQL `spreadsheet_id = ANY($1)`) +
+  `lib/service/profile-stats-db.ts`(신규, 순수 집계+오케스트레이션) + `lib/service/me.ts`
+  (`enrichUsersWithStats` 재작성 — 파일럿/비파일럿 분리→배치 DB 1회+기존 시트 경로 병행→
+  객체 identity 기반 순서보존 병합, 문자열 키 Map 은 트레이너/admin 행 spreadsheetId="" 충돌
+  위험 있어 회피) + `dashboard-aggregates.ts`(export 2개 추가만, 로직 무변경).
+  **비파일럿 완전 불변** — `readBundle`/`readProfileBundle`/`pMapBundle` 코드 자체 무접촉.
+- 검증: 3계층 테스트 24건(순수 집계 10·배치 SQL 7·게이팅/병합 7) + 회귀 확인(게이트 로직 제거
+  시 실제로 테스트 실패 확인 후 원복). unstable_cache 가 Vitest 환경에서 결정적으로 동작 안 해
+  scoreboard-cache-date.test.ts 전례대로 next/cache 목킹 추가(기존 me.test.ts 는 이 경로를
+  한 번도 exercise 안 했었음 — 이번에 처음 커버). check.sh 초록(1033 테스트, 파일 전부 500줄 캡 내).
+  적대적 리뷰 워크플로(3렌즈: 정합성·비파일럿 회귀·동시성/타입 + 스켑틱 검증) 실행 — **13건 제기 →
+  11건 확인**. **HIGH 1건(두 렌즈 독립 확인) 즉시 수정**: `profileStatsFromDb` 가 `spreadsheetId`
+  로 키 잡은 Map 을 반환했는데, 부부/멀티계정은 시트를 공유해 같은 `spreadsheetId` 를 쓰고
+  (`lib/repo/users-claim.ts`) `/captain` 화면(`listArenaCohortMembers`)은 이런 중복 행을 거르지
+  않아 실제 도달 가능 — 한쪽이 다른 쪽 통계로 조용히 덮어써지는 실제 버그였다(missing 아닌
+  wrong). **입력 순서 배열 반환 + index 병합**으로 수정, 회귀 테스트 2건 추가(제거 시 실제 실패
+  확인 후 원복). LOW 2건도 반영(`salesRowFromPayload` 에 형제 함수와 동일한 date 정규화·빈값
+  필터·`Number.isFinite` 가드 추가). 나머지 LOW(DB/시트 순차실행으로 지연시간 이득 미달성 등)는
+  범위 밖으로 판단·plan 문서에 사유 기록만. check.sh 재검증 초록(1038 테스트).
+- 남은 위험(belie/FM 인지 필요): ①A2 백필 미완료(BBE-50 Todo 원복 상태) — 배포 시 A2 학생이
+  DB 경로를 타는데 데이터가 없어 통계 0으로 조용히 틀릴 수 있음, 백필 완료 확인 후 머지 권장.
+  ②위 `weeklyContractsFromDb` 이월 갭 후속 처리.
+- 다음: PR 오픈 → §6.8 은 **머지 없이 PR 까지만**(belie 지시 — 관리자 화면 전체 영향이라 개막
+  전후 안정화 창구 존중, `sheet-retirement-r7.md` §5 "개막 충돌" 원칙과 동일 결). 머지는 8/7 이후.
+- SoR: `docs/plans/active/profile-stats-db.md`
 
 ### 2026-08-05 · 경영일지 작업원D(260805) · BBE-76 A2 병목 후보②③ 배제 + 차선책 안전성 + Plan B
 - 의도: belie "작업원D 추가, 토큰 권한 해결에 기여했으면"(Cowork 발급) — A2 시트복사 0/55 병목
