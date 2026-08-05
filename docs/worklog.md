@@ -191,6 +191,12 @@
 
 ## 로그
 
+### 2026-08-05 · FM(260804) · "PLAN-001" 조회 결과 없음 + append flip 머지 창구를 개막 이후로 고정
+- belie "PLAN-001 진행시켜" → **레포 전수 검색 0건**. 발급된 계약 id 는 6개뿐: FM-LEDGER-RECONCILE-01 · F-596-REVERIFY-01 · QA-DATEPICKER-LIVE-01 · DB-DRIFT-AUDIT-01 · CONTRACT-APPEND-IDEMPOTENT-01 · (완료)R3-3-MEETING-CONTRACT-DUAL-SYNC-01. → 어느 것을 뜻하는지 belie 에게 되묻는 중(디스패치 경유).
+- **총괄 권고 접수 → 계약 조건으로 승격**: 신규추가 DB화는 **구현·PR 은 진행, 머지·배포는 8/7 개막 이후 창구**. 앞선 FM 판단("8/6 초록이면 8/6 머지")은 폐기 — 8/6 은 A2 55시트 검증일이라 매출 코드 배포를 겹치면 사고 원인 분리가 어렵다.
+- 머지 선행 조건 3개 명문화: ①중복 방지 장치(자연키 upsert) 테스트 고정 ②머지 직전 레인 충돌 검사(아레나 W2 · 카페 hw_config — 겹치면 아레나·카페 우선) ③8/7 전환 후 전광판·health 정상 확인.
+- SoR: `docs/plans/active/contract-append-idempotent-flip.md` §3
+
 ### 2026-08-05 · FM(260804) · env 실측(곁다리) — 로컬 실사용 검증 NOT_RUN 해제
 - belie "env 옮겼어" 확인: **`.env` 는 이 레포 루트에 없다**(다른 경로에 떨어진 듯). `.env.local` 은 08-05 01:47 회수본 그대로 — 2,803B · 키 11개 · **LF** · BOM 없음 · 깨진 글자 0. 값·비밀은 열지 않음.
 - 기능 실증: 이 세션의 A2 W0 정찰에서 **레지스트리·참가자 시트 55개 읽기 성공** → 자격증명 유효. 앱은 `.env` → `.env.local` 순으로 병합 읽기라 파일 합치기 불요.
