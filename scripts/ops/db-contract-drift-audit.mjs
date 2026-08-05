@@ -112,13 +112,23 @@ async function readSheetContracts(sid) {
   return new Map();
 }
 
+/** backfill 문자열 값 → 시트 UNFORMATTED 원형 복원 — read-daily.ts coerce() 와 동일. */
+function coerce(v) {
+  if (typeof v !== "string") return v;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  return v;
+}
 /** DB payload → {계약일,업체명,해지일,_cleared} — contractFromDbPayload 와 동일 우선순위
- * (열문자 backfill 값 → 필드명 dual-write 값이 오버라이드). */
+ * (열문자 backfill 값 → 필드명 dual-write 값이 오버라이드). 열문자 값은 coerce 로 원복한
+ * 뒤 dateish 로 serial→ISO 변환한다 — 실제 rowToCP(serialToISODate) 와 동일 규칙이어야
+ * "158건 불일치"류 오탐(날짜 표현형 차이일 뿐인데 값이 다르다고 잘못 세는 것)을 안 만든다. */
 function fromDbPayload(p) {
-  let 계약일 = str(p.C), 업체명 = str(p.D), 해지일 = str(p.AL);
-  if (p.계약일 !== undefined && p.계약일 !== null) 계약일 = str(p.계약일);
+  let 계약일 = dateish(coerce(p.C)), 업체명 = str(coerce(p.D)), 해지일 = dateish(coerce(p.AL));
+  if (p.계약일 !== undefined && p.계약일 !== null) 계약일 = dateish(p.계약일);
   if (p.업체명 !== undefined && p.업체명 !== null) 업체명 = str(p.업체명);
-  if (p.해지일 !== undefined && p.해지일 !== null) 해지일 = str(p.해지일);
+  if (p.해지일 !== undefined && p.해지일 !== null) 해지일 = dateish(p.해지일);
   const _cleared = p._cleared === true || p._cleared === "true";
   return { 계약일, 업체명, 해지일, _cleared };
 }
