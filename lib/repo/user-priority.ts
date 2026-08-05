@@ -44,7 +44,7 @@ export function hasOwnSheet(u: Pick<User, "role" | "spreadsheetId"> | null | und
  * 조건에 넣지 말 것. (`hasOwnSheet` 는 아레나·표시 로직에서 계속 쓰이지만 **라우팅 계약에서는 빠졌다**.)
  *
  * ⚠️ 쓰기 권한은 이 함수의 소관이 아니다 — `getWritableUserEmail`(lib/auth/identity)이
- * 별도로 가른다. W1-1/ADR-0029 가 archived 차단을 폐지해 입장·저장이 함께 열렸다.
+ * 별도로 가른다. W1-1/ADR-0030 가 archived 차단을 폐지해 입장·저장이 함께 열렸다.
  *
  * @param u findUserByEmail(pickPreferredUser 적용) 결과. null=미등록 → true(유일한 강등 사유).
  */

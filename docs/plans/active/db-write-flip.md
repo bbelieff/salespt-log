@@ -90,7 +90,8 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     update-or-append/clear 로 수렴시킴 — 어떤 인터리빙도 마지막 잡이 자기수정. **R3-2 PR-2·R3-3~4 의
     미러도 이 패턴 의무**(meetings 는 cascade 다행이라 특히).
     (c) patch 병합기반: DB(정본) 우선 — **_cleared(삭제됨)와 DB 공백을 구분**(삭제면 에러, 공백만
-    시트 self-heal). (d) gcal 이벤트ID 맵=시트 행(O열) → gcal reconcile 은 동기화 잡 안 **행 보장 후**
+    시트 self-heal). (d) gcal 이벤트ID 맵=시트 행(04 미팅은 **AT열** — 2026-08-05 BBE-52 정정,
+    구 "O열" 표기는 05 투두 탭과 섞여 있었다) → gcal reconcile 은 동기화 잡 안 **행 보장 후**
     최신 상태(known)로만 실행(행 없이 실행 시 이벤트ID 유실→지울 수 없는 고아 이벤트).
   - **PR-2 구현(2026-07-12)**: 게이트 내장 프리미티브 `lib/service/meetings-write.ts`
     (create/patch/clear + 소스드 read 3종 + queueMeetingSheetSync 수렴 잡) — contact.ts(캡 압박)와

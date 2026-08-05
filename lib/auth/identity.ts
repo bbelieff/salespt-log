@@ -143,9 +143,9 @@ export async function getActiveUserEmail(): Promise<string> {
 /**
  * 쓰기 경로 전용 대상 이메일.
  *
- * **R4 W1-1 / ADR-0029(G1 = 편집 완전 해제)**: archived(수료·보관) 쓰기 차단을 **폐지**한다.
+ * **R4 W1-1 / ADR-0030(G1 = 편집 완전 해제)**: archived(수료·보관) 쓰기 차단을 **폐지**한다.
  * 수료 후에도 자기 기록을 계속 입력·수정하는 무제한 CRM 이 목적이므로, 종강이 저장을 막지 않는다.
- * (구 동작 = archived 읽기전용, archived-login-access 2026-07-07 — ADR-0029 §4 가 supersede.)
+ * (구 동작 = archived 읽기전용, archived-login-access 2026-07-07 — ADR-0030 §4 가 supersede.)
  *
  * ⚠️ **적용 범위 = 전 기수 전역**(cohort 인자·조회 없음). 파일럿 게이트(chooseWriteSource)는
  * sales-write 등 **쓰기 경로**에만 있고 권한 계층엔 없다 — 즉 비파일럿 수료생도 이 시점부터

@@ -88,7 +88,7 @@ export const Meeting = z.object({
 
   // 변경 추적 + 주차 (실제 시트의 R·S — v4 SSOT 누락분, repo는 유지)
   previousMeetingId: z.string().optional(), // R
-  // S (수식). R4 W1-1(ADR-0029): 상한 제거 — 무제한 주차. 상한이 남아 있으면 11주+ 미팅이
+  // S (수식). R4 W1-1(ADR-0030): 상한 제거 — 무제한 주차. 상한이 남아 있으면 11주+ 미팅이
   // safeParse 에 걸려 **행이 화면에서 통째로 사라진다**(PR-0 blocker 와 동형). types 레이어는
   // config import 금지(layers.test)라 MAX_SHEET_WEEK 를 못 쓰므로 상한 자체를 없앤다.
   주차: z.number().int().min(1).optional(),

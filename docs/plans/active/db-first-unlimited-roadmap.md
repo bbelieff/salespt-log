@@ -58,7 +58,9 @@ related: db-migration-pilot, google-calendar-sync, arena-season1-setup, 0005-wee
   이월 깃발은 DB 플래그로 계승). 전광판 "아레나" 개념은 기간 이벤트로 재정의.
 - R4·R5 는 상호 의존(수료생 지속 사용 ↔ 아레나 상시화) — 상세 설계는 R2 완료 후 별도 plan.
 
-## R6. 시트 은퇴(선택) — 신규 기수 시트 미생성, export 버튼만. D3 결정 후.
+## R7. 시트 은퇴(선택) — 신규 기수 시트 미생성, export 버튼만. D3 결정 후.
+<!-- 2026-08-05 BBE-52: 구 표기 "R6"는 레포의 r6-current-master-integration-r1.md(비용원장 R6)와
+     충돌해 "R7 / sheet-retirement"로 개칭(설계도 3호 확정, docs/plans/active/sheet-retirement-r7.md). -->
 
 ## B. 유료 전환 준비 (Billing-ready — 2026-07-07 사용자 확정)
 > 방침: 당분간 무료로 락인 확대 → **충성유저 50~100명 + 앱 고도화·안정화 시점에 결제 부착.**
@@ -78,7 +80,7 @@ related: db-migration-pilot, google-calendar-sync, arena-season1-setup, 0005-wee
 - **D2** 아레나 라벨 통합 시 동일인 병합 규칙: 6기(수료)+A1-6기(아레나) 이력을 한 계정으로
   합치나, 별도 보관하나? (R5 전까지)
 - **D3** ✅ 답변됨(2026-07-08): **시트 자동 미러 유지** — DB 정본 전환 후에도 시트 사본을 자동 기록
-  (트레이너/운영 열람·롤백 안전망). 시트 은퇴는 R4 이후 별도 결정(§R6). 상세 = db-write-flip.md §0.
+  (트레이너/운영 열람·롤백 안전망). 시트 은퇴는 R4 이후 별도 결정(§R7). 상세 = db-write-flip.md §0.
 
 ## Log
 - 2026-07-07 로드맵 확정(사용자): 8주 해제·DB 정본·아레나 통합. R0 진행 중, R2 는 8·9기
