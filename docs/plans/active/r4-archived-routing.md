@@ -11,7 +11,7 @@ track: DevE (R4 wave-1 W1-2)
 > - **누가 읽나요**: 개발자(DevE 구현·DevD VERIFY·DevB 설계 정합 확인)
 > - **어떤 기능·작업과 연결?**: `lib/repo/user-priority.ts`(shouldRedirectToClaim), `app/page.tsx`, `app/(app)/layout.tsx`, `tests/repo/rejoin-routing.test.ts`
 > - **읽고 나면 알 수 있는 것**: 왜 archived 강등을 없애나 / 입장(read)과 저장(write)이 왜 분리되나 / 재참가(rejoin)는 어떻게 유지되나
-> - **관련 문서**: `scratchpad/r4-hardcode-inventory.md` §2.4(지도), R4 plan `r4-unlimited-crm.md`(DevB #623), ADR-0029
+> - **관련 문서**: `scratchpad/r4-hardcode-inventory.md` §2.4(지도), R4 plan `r4-unlimited-crm.md`(DevB #623), ADR-0031
 
 # R4 W1-2 — archived 라우팅 개정 (G2)
 
