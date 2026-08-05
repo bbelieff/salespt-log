@@ -246,10 +246,37 @@ async function provision(t, existingA2) {
   return { name: t.name, cohort: a2Cohort(t), newId, share, email: mask(t.email) };
 }
 
+/** 진단 전용 — admin OAuth 토큰이 어느 계정인지(마스킹) + 원본 시트 접근권 실측. 쓰기 0건.
+ * "The caller does not have permission" 류 실패의 근인(계정 불일치 vs 공유 누락) 을 가른다. */
+async function whoami() {
+  try {
+    const me = await drive.about.get({ fields: "user(emailAddress)" });
+    console.log(`admin OAuth 계정: ${mask(me.data.user?.emailAddress ?? "")}`);
+  } catch (e) {
+    console.log(`admin OAuth 인증 실패: ${String(e?.message ?? e).slice(0, 100)}`);
+    return;
+  }
+  const all = await loadRegistry();
+  const sample = targets(all).find((t) => t.sheetId);
+  if (!sample) { console.log("샘플 원본 시트 없음"); return; }
+  try {
+    const f = await drive.files.get({
+      fileId: sample.sheetId, supportsAllDrives: true,
+      fields: "id,name,owners(emailAddress),capabilities(canCopy)",
+    });
+    console.log(`원본 샘플(${sample.name}) 소유자: ${(f.data.owners ?? []).map((o) => mask(o.emailAddress ?? "")).join(", ")}`);
+    console.log(`이 admin 계정의 복사 가능 여부: ${f.data.capabilities?.canCopy}`);
+  } catch (e) {
+    console.log(`원본 시트 접근 실패(=권한 없음 가능성): ${String(e?.message ?? e).slice(0, 100)}`);
+  }
+}
+
 // ── main ──────────────────────────────────────────────────────────
 async function main() {
   if (!REG || !SA_EMAIL) { console.error("❌ env 없음(SHEETS_REGISTRY_ID·SA)"); process.exit(2); }
   console.log(`\n🏟  아레나 시즌2 배치 — 개막 ${SEASON_START} · 종강 ${SEASON_END}\n`);
+
+  if (has("--whoami")) { await whoami(); return; }
 
   const all = await loadRegistry();
   const list = targets(all);

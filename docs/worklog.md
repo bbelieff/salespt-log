@@ -191,6 +191,17 @@
 
 ## 로그
 
+### 2026-08-05 · FM(260804) · VPS 경로 확인·카나리아 진전 — 권한 오류 진단 도구 추가
+- VPS 원격 워크플로(#679) 배포 후 **`--plan` 성공**(대상 55명 재확인, VPS 경로 정상 동작).
+- **카나리아 진전**: `손기학` 시도 → 인증은 **통과**(이전 `invalid_grant` 와 다름 — 토큰 자체는 VPS 에서 유효)했으나
+  실제 복사에서 **`The caller does not have permission`**. 즉 admin OAuth 계정은 살아있지만 원본 시트에
+  대한 **접근 권한이 없다**(계정 불일치 또는 공유 누락 가능성 — 미확정).
+- 근인을 가르기 위해 `--whoami` 진단 모드 추가(쓰기 0건): admin OAuth 토큰 소유 계정(마스킹) + 샘플 원본
+  시트 소유자·복사 가능 여부(`capabilities.canCopy`)를 실측 출력. 다음 실행에서 이 결과로 원인 확정.
+- 다음: `whoami` 실행 → 계정 불일치면 belie 께 정확한 계정으로 재발급 요청, 공유 누락이면 원본 시트
+  공유 설정 확인.
+- SoR: `.github/workflows/arena-season2-batch.yml` · `scripts/ops/arena-season2-batch.mjs`
+
 ### 2026-08-05 · FM(260804) · admin 토큰 위치 확인(GitHub Secrets 전용) → VPS 원격 실행 워크플로 신설
 - belie 재확인: **토큰은 GitHub Secrets 에만 등록**, 로컬 `.env.local` 은 미갱신 대상이었다(정상 — 노트북/로컬 PC 는 원래 갱신 경로가 아님). 로컬 재시도 2회 모두 `invalid_grant` 실측 재확인.
 - **원인 정정**: 문제는 "토큰이 갱신 안 됨"이 아니라 **"로컬 PC 에서 W2 를 돌리는 경로 자체가 틀렸다"** —
