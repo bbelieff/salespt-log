@@ -228,6 +228,28 @@
 
 ## 로그
 
+### 2026-08-06 · 경영일지 작업원A(260805) · BBE-72 scope 판정 회수·보고(중복 실행 회피) + BBE-40 재개 + VPS ssh 완전장애 1건 실측
+- 의도: belie 가 BBE-72(admin OAuth scope 진단)를 "임시 이양" — `--scopes` 진단 모드를 새로 만들라는
+  지시였으나, 착수 전 확인해보니 FM 이 같은 결론으로 **이미 구현(#689)·배포·실행(Arena Season2 Batch
+  `31021695449`, 15:43 success)까지 완료**한 상태였다. 중복 코드·중복 실행 대신 그 결과를 회수해 보고.
+- 한 것: ①FM 실행 로그에서 scope 결과 추출 — `토큰 scope: https://www.googleapis.com/auth/drive`(전체,
+  축소 아님)·`canCopy: true`·소유자=admin 본인. BBE-72 판정기준대로 **"scope 문제 아님 → 재발급 요청
+  금지"** 확정, Linear BBE-72 코멘트+Done 처리(FM 실행분임을 명기, 제 실행 아님).
+  ②새로 드러난 모순 — scope·ACL·canCopy 전부 정상인데 `files.copy` 만 거부됨. 다음 근인 후보 3가지
+  (OAuth 동의화면 "테스트" 게시상태 제한·Drive 저장용량·파일별 copyRequiresWriterPermission 류 정책)를
+  BBE-72 코멘트에 남기고, 추가 조사는 **FM 소관(`lane:arena`)으로 넘김** — 임의로 더 진행하지 않음.
+  ③**VPS ssh 완전장애 1건 실측**(D-1 인프라 리스크로 기록): 15:47~15:57 10분간 7/7 재시도 전멸(기존
+  최악 기록 "3회 필요"보다 악화). 단 **공개 사이트(salesptlog.online)는 그동안 200 정상**(배포
+  파이프라인만 막힘, 라이브 무영향) — 동시간대 다른 세션 배포(#690)도 11분 걸려 겨우 success, 이후
+  내 재배포(rerun)도 재시도 중. §6.8 "인프라 점검 후보"가 이제 "완전 전멸 1회" 실측치를 확보.
+- 결정(자율·§0.7): BBE-40 4항목(admin 기수생성 경로 확인)은 **라이브 왕복 시도 보류** — BBE-72 로
+  확인된 files.copy 거부가 cohort-create 의 동일 `copyTemplateSheet`/토큰에도 그대로 적용될 근거가
+  강해, 지금 시도하면 예정된 실패 재현일 뿐. 근인 해소(FM lane) 전까지 대기.
+- 다음: 내 재배포(rerun `31022040075`) 완주 확인 → BBE-40 1~3항목(주입로그·health) 결과 별도 기록.
+  BBE-72 후속 근인 조사는 FM 픽업 대기.
+- SoR: Linear BBE-72 코멘트 · Arena Season2 Batch run `31021695449`(FM 실행) · Deploy to VPS run
+  `31022040075`(내 재배포)
+
 ### 2026-08-06 · FM(260804) · tokeninfo 실측 도구 추가 — scope 문제 확정 전 실증 절차로 교정 (belie 정정 수령)
 - belie 지적: FM 이 "실제 부여 scope 를 조회할 API 가 없다"고 단정한 게 틀렸다. 구글 `tokeninfo`
   엔드포인트로 확인 가능 — 재발급 요청 전에 **실측으로 근인을 먼저 확정**하라는 지시.
