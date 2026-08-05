@@ -191,6 +191,20 @@
 
 ## 로그
 
+### 2026-08-05 · FM(260804) · admin 토큰 위치 확인(GitHub Secrets 전용) → VPS 원격 실행 워크플로 신설
+- belie 재확인: **토큰은 GitHub Secrets 에만 등록**, 로컬 `.env.local` 은 미갱신 대상이었다(정상 — 노트북/로컬 PC 는 원래 갱신 경로가 아님). 로컬 재시도 2회 모두 `invalid_grant` 실측 재확인.
+- **원인 정정**: 문제는 "토큰이 갱신 안 됨"이 아니라 **"로컬 PC 에서 W2 를 돌리는 경로 자체가 틀렸다"** —
+  `deploy.yml` 이 이미 **매 배포마다 ADMIN_DRIVE_REFRESH_TOKEN 을 VPS `.env` 에 자동 주입**한다
+  (`.github/workflows/deploy.yml:38-57`, 값 미출력). 즉 **VPS 는 이미 최신 토큰을 갖고 있다** — #678
+  배포(13b9d8f)가 그 최신 secret 을 주입했다. 로컬 개발 PC 는 애초에 그 경로 밖이다.
+- **해결(코드 변경 0 · 배선만)**: `db-backfill.yml`(기존 VPS 원격 실행 선례)과 동일한 SSH·재시도(rc=255
+  7×30s) 패턴으로 `.github/workflows/arena-season2-batch.yml` 신설. `workflow_dispatch` 입력
+  mode(plan/season-row/canary/all/flip-emails/rollback-emails) + canary_name. **제 세션은 토큰 값을
+  한 번도 보지 않는다** — GitHub Secrets → VPS 주입 → 원격 스크립트 실행, 전 구간 비출력.
+- 다음: 이 PR 머지·배포 후 `gh workflow run "Arena Season2 Batch" -f mode=canary -f canary_name=손기학`
+  로 카나리아 재시도 → 성공 시 `mode=all` → DB 백필(§7-8, 기존 db-backfill.yml 재사용).
+- SoR: `.github/workflows/arena-season2-batch.yml` · `docs/plans/active/arena-season2-setup.md` §7-7
+
 ### 2026-08-05 · FM(260804) · W2 재시도 실패(토큰 미반영) + DB 백필 단계 W2 런북 항구 편입 (BBE-50)
 - belie "토큰 갱신 완료" → 카나리아 재시도. **결과: 여전히 `invalid_grant`**. 실측: `.env.local` **수정시각이 08-04 16:47 UTC(=08-05 01:47 KST) 그대로** — 갱신본이 이 파일에 반영되지 않았다(GitHub Secret 등 다른 경로에 들어간 것으로 보임). 토큰 접미 4자도 이전과 동일. **시트 복사 0건 유지**, 수강생 데이터 변경 0건.
 - **백필 전제 2건 코드 실측(지시 검증)**: ①`lib/service/daily-source.ts:20` — `isDbReadPilot` 이 `isArenaCohortLabel` 로 **A2-N 을 자동 편입**(= A2 는 화면을 DB 에서 읽는다) ✅ 지시 근거 정확. ②`scripts/ops/backfill-sheet-rows.mjs` — `--cohort` 콤마목록 지원·기본 dry-run·`--execute` 실적재 ✅. 단 **`DATABASE_URL` 은 로컬에 없어** VPS 실행(또는 GitHub Actions "DB Backfill" 워크플로 `workflow_dispatch`)이 정본 경로.
