@@ -349,6 +349,20 @@ async function main() {
 
   if (has("--whoami")) { await whoami(); return; }
 
+  // 임시 진단(2026-08-05) — --plan 이 "이미 생성 0"으로 나와 registry 원본을 직접 눈으로 봐야 한다.
+  // 읽기 전용. 마지막 15행 + A2 매칭 여부를 그대로 찍는다.
+  if (has("--dump-tail")) {
+    const raw = await readRange(REG, "users!A2:T");
+    console.log(`registry 총 데이터행: ${raw.length}`);
+    const tail = raw.slice(-15);
+    tail.forEach((r, i) => {
+      const rowNum = raw.length - tail.length + i + 2;
+      const cohort = String(r?.[1] ?? "");
+      console.log(`row${rowNum}: cohort="${cohort}"(len=${cohort.length}) name="${String(r?.[2] ?? "")}" A2매치=${/^A2-/.test(cohort)}`);
+    });
+    return;
+  }
+
   const all = await loadRegistry();
   const list = targets(all);
   const existingA2 = new Set(
