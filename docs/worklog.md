@@ -285,6 +285,22 @@
 
 ## 로그
 
+### 2026-08-05 · 경영일지 작업원D(260805) · BBE-76 A2 병목 후보②③ 배제 + 차선책 안전성 + Plan B
+- 의도: belie "작업원D 추가, 토큰 권한 해결에 기여했으면"(Cowork 발급) — A2 시트복사 0/55 병목
+  근인 후보 3개 중 FM이 ①(OAuth 게시상태)을 파는 동안 D가 ②③을 병렬 배제 + belie 안내서 작성.
+- 한 것: `docs/playbooks/oauth-console-check.md`(belie용 GCP 콘솔 확인 안내서, 쉬운말) +
+  `docs/incidents/2026-08-05-a2-copy-permission-bottleneck.md`(② Drive저장용량 1.2%사용·③
+  copyRequiresWriterPermission=false — FM whoami run `31026502670` 실측으로 둘 다 배제 확정,
+  ④ daily-source.ts 게이트 차선책 코드추적 안전성 판정, ⑤ Plan B 3안 표). PR #702 → `6acdd56`
+  머지, 배포 run `31028220066` success, health 200(curl 직접 확인).
+- 결정: 남은 후보 = **①뿐**(②③ 실측 배제로 확정) — belie 콘솔 확인이 유일한 다음 액션.
+  ④ 차선책은 "안전하나 `isArenaCohortLabel` 자체가 아니라 `isDbReadPilot` 내부만 고쳐야 한다"는
+  구현 방향 경고를 함께 남김(공용 함수를 직접 고치면 로그인·dedup 로직까지 오염됨).
+- 다음: belie가 `oauth-console-check.md` 보고 콘솔 확인 → 결과(게시상태)에 따라 FM이 ①확정 또는
+  belie가 3단계(테스트 사용자 추가)/4단계(정식 게시) 실행. 그래도 D-2 안에 안 풀리면 Plan B(belie
+  Drive UI 수동복사)가 권장안.
+- SoR: `docs/incidents/2026-08-05-a2-copy-permission-bottleneck.md`, Linear BBE-76(완주 도장)
+
 ### 2026-08-06 · 경영일지 작업원A(260805) · BBE-38(#596 재검증) — ③수리 유효 확인, ①②는 신규 경로로 재현(🚨발굴) + belie 라이브 재현 스크립트
 - 의도: belie "바로 착수해" → 계약 F-596-REVERIFY-01. Ultracode 워크플로 6에이전트(증상별 스터디+적대검증)
   로 코드레벨 재검증, 이후 핵심 주장(채널간 행번호 충돌)을 제가 직접 코드로 재확인.
