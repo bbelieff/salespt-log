@@ -266,6 +266,18 @@ async function whoami() {
     console.log(`admin OAuth 인증 실패: ${String(e?.message ?? e).slice(0, 100)}`);
     return;
   }
+  // 실제 부여 scope 확정 — access_token 자체는 절대 로그에 안 남긴다(fetch 후 즉시 지역변수만 사용).
+  try {
+    const admin = adminAuth();
+    const { token } = await admin.getAccessToken();
+    if (!token) throw new Error("access_token 발급 실패(빈 값)");
+    const info = await (await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${token}`)).json();
+    console.log(`토큰 scope: ${info.scope ?? "(응답에 scope 없음)"}`);
+    console.log(`토큰 email: ${mask(info.email ?? "")} · expires_in=${info.expires_in ?? "?"}s`);
+    if (info.error) console.log(`tokeninfo 오류: ${info.error} ${info.error_description ?? ""}`);
+  } catch (e) {
+    console.log(`tokeninfo 조회 실패: ${String(e?.message ?? e).slice(0, 120)}`);
+  }
   const all = await loadRegistry();
   const target = arg("--canary");
   const sample = target
