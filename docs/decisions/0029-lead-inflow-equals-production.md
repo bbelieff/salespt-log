@@ -9,7 +9,7 @@
 
 > ⚠️ **번호 참고 (2026-08-05, BBE-52)**: 한때 `0029-unlimited-crm-supersede-0005.md`와 번호가
 > 겹쳐 있었다. 이 문서(2026-07-14, 먼저 등재)가 정본 0029를 유지하고, 후발 문서는
-> [`0030-unlimited-crm-supersede-0005.md`](0030-unlimited-crm-supersede-0005.md)로 재발행했다.
+> [`0031-unlimited-crm-supersede-0005.md`](0031-unlimited-crm-supersede-0005.md)로 재발행했다.
 
 - 상태: accepted
 - 날짜: 2026-07-14
