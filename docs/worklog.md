@@ -296,10 +296,18 @@
 - 결정: 남은 후보 = **①뿐**(②③ 실측 배제로 확정) — belie 콘솔 확인이 유일한 다음 액션.
   ④ 차선책은 "안전하나 `isArenaCohortLabel` 자체가 아니라 `isDbReadPilot` 내부만 고쳐야 한다"는
   구현 방향 경고를 함께 남김(공용 함수를 직접 고치면 로그인·dedup 로직까지 오염됨).
-- 다음: belie가 `oauth-console-check.md` 보고 콘솔 확인 → 결과(게시상태)에 따라 FM이 ①확정 또는
-  belie가 3단계(테스트 사용자 추가)/4단계(정식 게시) 실행. 그래도 D-2 안에 안 풀리면 Plan B(belie
-  Drive UI 수동복사)가 권장안.
-- SoR: `docs/incidents/2026-08-05-a2-copy-permission-bottleneck.md`, Linear BBE-76(완주 도장)
+- **후속(같은 날 17:15 UTC) — belie 콘솔 확인 완료, 근인 확정**: ①OAuth 게시상태=**프로덕션**(원인
+  아님) ②Drive 저장용량=5TB 여유(원인 아님, 위 실측과 일치) ③**진짜 근인 발견** — `copySheet()`가
+  `parents` 미지정이라 원본과 같은 폴더에 사본 생성을 시도하는데, 그 **목적지 폴더**(`참가자 구글시트`
+  `1L5LhWe…`·`참가자 업체관리` `16C_WfkE…`)의 소유자가 admin OAuth 계정과 다른 표기
+  (`leadbzcenter@gmail.com`, belie 본인 계정 확인됨)이고 `anyone:writer` **링크공유뿐**이라 API
+  쓰기가 거부됨. 기존 진단은 원본 파일 권한만 봐서 이 근인을 반나절 놓쳤다. belie가 목적지 폴더에
+  `beliefkimkim` 접근권한을 직접 부여 → FM 재시도 중. 원인이 ①이 아니었으므로 belie 3/4단계
+  실행은 불필요해짐(문서는 향후 유사 문제 대비 참고자료로 유지).
+- 다음: FM 재시도 성공 여부 관찰. BBE-76 잔여(④⑤는 재시도 실패 대비 대비책으로 계속 유효 —
+  이미 완료) + `oauth-console-check.md`에 이번 결과표·목적지 폴더 확인법 추가(후속 PR). 이어서
+  BBE-52(R7 착수 · 문서 정합 수리) 착수.
+- SoR: `docs/incidents/2026-08-05-a2-copy-permission-bottleneck.md`, Linear BBE-76(완주 도장 + belie 확인 코멘트)
 
 ### 2026-08-06 · 경영일지 작업원A(260805) · BBE-38(#596 재검증) — ③수리 유효 확인, ①②는 신규 경로로 재현(🚨발굴) + belie 라이브 재현 스크립트
 - 의도: belie "바로 착수해" → 계약 F-596-REVERIFY-01. Ultracode 워크플로 6에이전트(증상별 스터디+적대검증)
