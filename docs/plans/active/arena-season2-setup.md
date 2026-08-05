@@ -117,10 +117,32 @@ worktree: ../wt/arena-season2
 사용자 값 오염 + 이중계상 위험만 생긴다. → **W2 단계에서 이 항목 삭제**(수용기준은 계산 결과로 검증).
 
 ### 7-6. 자율결정 (§0.7 — 되돌리기 = 한 줄 원복)
-- **A1 행 J(개강일)는 건드리지 않는다.** 지금 비어 있어 전광판은 "미상(0) = 전 데이터 통과" 상태다.
-  A2 J 만 2026-08-07 로 넣으면 8/6 까지는 현행 유지, **8/7 부터 자동으로 시즌2**로 전환된다
-  (`resolveCurrentSeason`: unknown(1) > opened(2) 가 거짓이라 A1 공백은 전환을 막지 않는다).
-  A1 J 를 지금 채우면 오늘부터 스코프가 A1-* 로 좁혀져 개막 전 표시가 바뀐다 — 불필요한 변경이라 보류.
+
+**① 배치는 2단계로 나눈다 — 시트·행 먼저(8/5~6), email 전환은 개막일 아침(8/7).**
+registry 의 email 을 옮기는 순간 그 사람은 **즉시** A2 시트로 연결된다. 배치를 8/5~6 에 돌리면서
+email 까지 옮기면 **공지(8/7·belie)보다 이틀 먼저 화면이 바뀐다**. → 복사·A2 행 생성까지만 미리 하고
+(`--all`), 개막일에 `--flip-emails` 한 번으로 전원 전환한다. 멱등이며 롤백은 `--rollback-emails`.
+
+**② A1 행 J(개강일)를 2026-06-12 로 채운다** (초안의 "건드리지 않는다"를 실측으로 뒤집음).
+A1 J 가 비면 `resolveCurrentSeason` 이 "개막 여부 미상"으로 **0** 을 반환하고, 0 은 `isInSeason` 이
+**전부 통과**시킨다. 그 상태에서 A2 행을 미리 만들면 **8/6 까지 전광판에 A2 참가자 55명이 0.0 으로
+같이 뜬다**(`listArenaParticipants` 는 status 를 거르지 않는다). A1 J 를 채우면 8/6 까지 스코프가
+A1-* 로 고정되고 8/7 부터 A2 로 자동 전환된다. 값 2026-06-12 는 참가자 O1·registry K 실측치.
+복구 = 그 셀 비우기.
+
+### 7-7. W2 실행 절차 (스크립트 = `scripts/ops/arena-season2-batch.mjs`)
+```
+node scripts/ops/arena-season2-batch.mjs --plan            # 쓰기 0 — 대상 55명 확인
+node scripts/ops/arena-season2-batch.mjs --season-row      # cohorts A1 J + A2 행(J=8/7)
+node scripts/ops/arena-season2-batch.mjs --canary 손기학    # 1명만 생성 → W3 검증
+node scripts/ops/arena-season2-batch.mjs --all             # 나머지 전체(멱등·재실행 안전)
+node scripts/ops/arena-season-readiness.mjs --season 2     # 개막 진단(읽기 전용)
+# ── 8/7 개막일 아침 ──
+node scripts/ops/arena-season2-batch.mjs --flip-emails     # 전원 A2 연결(롤백=--rollback-emails)
+```
+사람 1명당: Drive 복사 → 제목 `세일즈PT_A2_{기수}기 {이름}_대표님 경영일지` → `01 영업관리` O1=8/7·
+O2=9/26(**날짜값**, 텍스트 금지 — 9기 `#VALUE!` 사고) → SA 편집자 공유 → registry A2 행(email 빈칸).
+**이월매출 셀은 쓰지 않는다**(§7-5).
 
 ## Log
 - 2026-08-05 설계도 작성(Cowork) — belie 발주 3건 확정 반영. 반장 킥오프 대기.
