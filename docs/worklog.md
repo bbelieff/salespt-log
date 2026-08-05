@@ -54,7 +54,7 @@
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
 | FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 | FM(260804) | **라운드1 배차 실행(2026-08-05 · R1 belie 승인)** — 계약 3건 발급(L2 #596 · L3 날짜달력 · **L4 DB-DRIFT-AUDIT-01**=결정함 9번 1단계), N8·N9 폐기(R3-3 완주로 무효). 병렬 4레인 충돌 0 확인. **BBE-42 아레나 시즌2 = W0·W1 도구 완료(#669·#670 배포 success·health 200), ⛔운영 시트 쓰기 권한 대기(결정함 3-b·due 8/6)**. Cowork 워킹트리 전사 회수 완료(미커밋 델타 0). 이하 이전: **배포 확인(완료) — R3-3 잔여(BBE-39)**: PR **#666**(`9551c8b`) 머지 · 배포 run `30939294995` **success(1차 ssh 타임아웃 → rerun)** · health 200. 미팅 화면발 02 쓰기 6경로 dual-sync + 500줄 캡 split 2건, 전체 1019테스트 green. **02 구역 A 로 반환.** ⚠️ VPS ssh 22 타임아웃이 오늘만 3회(#660·#661 1차·#666 1차) — 인프라 점검 후보. 이하 이전: **배포 확인(완료)** — #660(`a253ba8`) 머지. 자기 배포 run `30934412080` 은 **VPS ssh 타임아웃**으로 실패(코드 무관·라이브 무변경) → 후속 #662 run `30935808481` success 로 동일 트리 배포·health 200 확인. 2호 = 디스패치 260805 전사 PR. **belie 승인 대기**(설계도 §6). 이하 취임 기록: 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
-| A | 메인 로드맵(R3 쓰기 전환) — lib/repo/db·service 쓰기 경로 | DevA(260803) | **배포 확인(완료)** — 2건 모두 §6.8 완주: **#652**(`80c94bb`·run `30797733939` success) 보드·계획서 정합, **#653**(`d9ce8eb`·run `30799167984` success) 8/2 배포 실측 반영. 둘 다 health 200. `gh` 설치 확인됨(직전 "미설치" 제약 해소). 레포 경로 이동: `Desktop\개발프로젝트\경영일지`. **문서 정합 트랙 종료 — 신규 작업 대기.** R3-3(contracts+company_archive) **착수 금지 유지 — belie 상세 프롬프트 대기**. 이하 이전 상태: 배포 확인(완료) — #537 R3-2 write-path 테스트갭 해소(todos 15케이스·머지 469a61b·배포 success[rerun]·health 200). 디스패치 "테스트갭 R3-3 포함"은 #537로 **선완료**(재포함 불필요). R3-3(contracts+company_archive) 착수 대기 — belie 상세 프롬프트 대기 |
+| A | P0 대응 + 기수 개막 준비 | DevA(260712) | **배포 확인(완료)** — ①**BBE-49(P0) #676(363ba94)**: 비파일럿(7기) 수료자 11주+ 컨택 저장 500 수리. Cowork 패치 적용 후 **적대리뷰 4렌즈 BLOCKER 2·HIGH 4·MED 3 반영해 수정 머지** (읽기 K캐시 vs 쓰기 O1 게이트 불일치·시트폴백 courseStart 교체로 인한 전지표 0→정본 덮어쓰기·비파일럿 백필부재 누적합 0·주간퍼널 0·dbEnabled 가드 누락·읽기측 테스트 0건). 판정 원천 = 시트 O1 단일. check.sh 초록(1002)·배포 success·health 200·**라이브 실측: POST /api/daily 200 + 새로고침 후 값·주차합계 유지**. 잔여=생산(E)·직접생산 M 동기화(별도 티켓), DB_READ_COHORTS 확대는 belie 결정. ②**10기 날짜 마감 #661(95bba0e)**: 시트 O1=2026-08-07·O2=2026-09-26·B3=10·C3=이름 + 레지스트리 I~L, 실측 6/6·6/6·6/6(cohorts 10=active). 동반 오염(B3=8 → 앱에서 '8기' 표시) 자율 확대 수리, 사전 기록 0건 확인 후 flip. ③앞서 **P0 전광판 500 #639(b981c5c)**: unstable_cache 에 Date 캐싱 → 히트 시 string 강등 → weekIndexOf TypeError. 캐시 경계 ISO 통일. 인시던트 2건 기록(scoreboard-cache-date, bbe49). ⚠️gh-runner-ssh-ban 누적 5회+ (rerun 으로 매번 회복, 제공사 확인 권고). **AR-2a 실행 준비 유지**(belie 명단 승인 대기). 다음: 신규 배정 대기 |
 | B | gcal 트랙 승계(카나리아·버그수정·QA) — gcal-event-ids/identity 계열 | DevB(260703) | **머지 완료(#538, `274042a`)** — gcal 라우트 6개 withApiTiming 계측. ※ 구 상태 "PR 오픈·belie 승인 대기"는 stale 이었음(2026-08-03 A(260803) 실측 정정 — master 로그에 존재). 잔여=pm2 침묵 인프라(VPS 필요). 신규 작업 대기 |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
@@ -190,6 +190,46 @@
     log·show·rev-parse·cat-file 만**(status·diff 는 index 를 건드려 lock 생성 위험 — §6.7 패치 후보).
 
 ## 로그
+
+### 2026-08-05 · DevA(260712) · ✅BBE-49(P0) 배포·라이브 확인 — 비파일럿 수료자 11주+ 저장/조회 (#676·363ba94)
+- 의도: Cowork 가 클린 클론에서 만든 패치를 적용·검증·배포(라이브 김현지/7기 확인까지).
+- 한 것: 패치 적용 후 **적대리뷰 4렌즈에서 BLOCKER 2·HIGH 4·MED 3 발견 → 수정 후 머지**.
+  가장 큰 둘: ①읽기(K 캐시)·쓰기(시트 O1)가 **서로 다른 courseStart 로 물리한계를 판정** → 막겠다던
+  read/write 비대칭 재생산 ②시트 폴백의 courseStart 원천 교체가 비파일럿 **전원·전 주차**에 영향
+  (K 가 비ISO 면 NaN → 전 지표 0 → draft 0 시드 → **다음 저장이 정본을 0 으로 덮음**).
+  추가로 비파일럿 백필 부재(누적합·현수막 재고 0)·주간 퍼널 0(contact-week 미수정)·dbEnabled 가드
+  누락(롤백 레버 무력)·읽기측 테스트 0건을 닫음. 판정 원천을 **시트 O1 단일**로 통일.
+- 검증: check.sh 초록(구조 25·단위 1002)·CI 초록·배포 success·health 200.
+  **라이브 실측(김현지 임퍼스네이션, 12주차)**: `POST /api/daily/2026-08-05` **200**(수리 전 500),
+  새로고침 후 오늘합계 유지 + **주차합계도 반영**(수리 전이면 0) + 유입대기 10건(시트 누적합 정상).
+- 결정: DB_READ_COHORTS 확대(wave-2)는 선점하지 않는다 — "시트에 좌표가 없는 날짜"만 DB 로.
+- 잔여: ①비파일럿 11주+ 의 생산(E) 기입·직접생산 M 동기화는 여전히 시트 1~10주 한정(별도 티켓)
+  ②라이브 검증으로 김현지 8/5 에 컨택진행 1·미팅예약 1 이 남음(미팅 카드 1건이 실제 존재 →
+  앱 규칙상 정합, 유입은 0 으로 원복). ③Linear BBE-49 = Done.
+- SoR: docs/incidents/2026-08-05-bbe49-nonpilot-week11-save.md(리뷰 반영표·잔여 한계),
+  docs/plans/active/bbe49-nonpilot-week11-save.md, Linear BBE-49
+
+### 2026-08-05 · Cowork · BBE-49 진단+패치 (git write 금지 → 패치 핸드오프)
+- 의도: belie 신고(김현지/7기) 진단 후 "실제로 고쳐줘" 지시 — origin/master 클린 클론에서 코드 수정.
+- 한 것: 근본원인 확정(daily-source 파일럿목록에 7기 없음 → 물리한계 week>10 에서 throw).
+  persistSalesRows(쓰기)·loadDay(읽기)에 "물리한계 밖이면 파일럿 무관 DB 우회" 추가.
+  tsc 0에러·eslint 0경고·vitest 1019 passed 확인 후 `.patch` 로 핸드오프(§6.7 git write 금지).
+- 다음: DevA 가 적용·재검증·배포(위 항목에서 완주 — 리뷰 지적 반영 후 머지).
+- SoR: docs/incidents/2026-08-05-bbe49-nonpilot-week11-save.md(+동명 .patch), Linear BBE-49
+
+### 2026-08-05 · DevA(260712) · ✅10기 날짜 마감 — 시트 O1/O2·B3/C3 + 레지스트리 I~L (#661·95bba0e)
+- 의도: FOREMAN 배정 — 8/7 개막 전 필수. worklog ⑪(admin 폼 date 미반영 → 템플릿 잔존값 복제) 후속.
+- 한 것: `scripts/ops/finalize-cohort10.mjs` 신설(dry-run 기본)·실행. **실측 6/6·6/6·6/6**
+  (O1=2026-08-07·O2=2026-09-26 리터럴 · B3=10 · C3=이름 · 레지스트리 I~L, cohorts 10=active/cohort).
+  **범위 확대(자율결정)**: 지시는 O1/O2+K/L 이었으나 동반 오염 2건 실측 발견 — 시트 **B3=8**
+  (0605 8기 템플릿 잔재; me.ts:403 이 시트 기수를 레지스트리보다 우선 → 6명이 앱에서 "8기"로 표시)와
+  **C3 빈값**, 레지스트리 **I=8·J 빈값**. 사전 안전 실측: 6시트 사용자 기록 **0건**(영업관리 37행·02
+  31행은 전부 sum()·ROW()-5·라벨 골격) → O1 이동 무해 확정.
+- 결정: 적대리뷰 4렌즈 HIGH 3·MED 4 전부 반영 후 실행(read 실패의 빈셀 오인·사후검증 옛 스냅샷·
+  기존기록 미확인 flip·B3 무조건 덮기·hold 전파 누락·부분 실패 시 캐시 불일치).
+- 사고/관찰: 배포 1차 rc=255 ssh timeout ×7(gh-runner-ssh-ban 재발, 타 트랙 동반 실패·PC SSH 정상)
+  → `gh run rerun --failed` 로 success+200. 이 계열 **누적 5회+** — belie 제공사 콘솔 확인 권고.
+- SoR: docs/plans/completed/finalize-cohort10-dates.md, scripts/ops/finalize-cohort10.mjs
 
 ### 2026-08-05 · FM(260804) · A2 W1 실행 완료 · W2 는 admin 토큰 invalid_grant 로 정지 (BBE-42)
 - belie "모두 승인"(결정함 3-b 해소) → 즉시 착수. **운영 데이터 쓰기 실행분**:
