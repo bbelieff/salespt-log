@@ -285,6 +285,25 @@
 
 ## 로그
 
+### 2026-08-06 · 작업원A(260805) · BBE-54 users·cohorts Postgres 스키마 + 마이그레이션 러너 PR 오픈, 머지는 반장 판정 대기
+- 의도: R7 Phase 1 임계경로 병목 카드. "쓰기·읽기 전환은 이 카드가 아니다, 동작 변화 0" 제약 하에
+  버전드 마이그레이션 러너 + `users`/`cohorts` 스키마 도입.
+- 한 것: ①`lib/repo/db/migrations/0001_users_cohorts.sql` — `users`(현 레지스트리 A~T 전량 매핑,
+  gcal S/T는 BBE-58 분리 예정이라 자리만)·`cohorts` DDL ②`scripts/db-migrate.mjs`(+`.d.mts`) —
+  advisory lock 직렬화·체크섬 드리프트 감지 마이그레이션 러너, `expense_schema_migrations` 기존
+  패턴을 일반화(새 의존성 0, YAGNI) ③`tests/repo/db-migrate.test.ts` 6건 ④`package.json`에
+  `db:migrate` 스크립트 1줄 추가(그 외 무변경, 적대검증으로 diff 확인).
+- 결정(자율·§0.7): D2(아레나 라벨 통합) 미결이 스키마를 막지 않는다고 판단 — `users`를 "사람"이
+  아니라 "등록(email×cohort)" 단위 행으로 설계(현재 시트가 실제로 아레나 재참가자에게 최대 3행을
+  동시에 허용 중, `lib/repo/user-priority.ts:pickPreferredUser` 실측). 자연키 = `(email, cohort)`
+  UNIQUE, email 단독 UNIQUE 안 걺. canonical-person 병합은 추후 서비스 레이어로 이연 — 스키마
+  재변경 불필요. PK = uuid(앱 생성) — `expense-ledger.ts` 최신 관례 따름.
+- 검증: ultracode 4-agent 리서치 + 3-agent 적대검증(차단급 결함 0) · check.sh 전체 그린
+  (typecheck/lint/structural/unit 1018/doc-drift) · CI 그린.
+- 다음: BBE-55/56(읽기·쓰기 배선)이 이 위에 얹힌다. ⚠️ PR **의도적으로 머지 보류** — belie 지시:
+  아레나2 복구 완료 후 반장 판정(§3.5 직렬 머지).
+- SoR: PR #722 · `docs/plans/active/sheet-retirement-r7.md` §2-E·§3 · Linear BBE-54.
+
 ### 2026-08-06 · 작업원A(260805) · BBE-79 신규 발행+수리 — DB생산 채널간 행번호 충돌(BBE-38 발굴) PR 오픈, 머지는 반장 판정 대기
 - 의도: belie "발굴로 끝내지 말고 수리까지 가져가라" — BBE-38에서 찾은 채널 탭 전환 시 데이터
   오손 위험 버그를 실제로 수리. §0.8 5단계 그대로 적용.
