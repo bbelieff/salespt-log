@@ -60,7 +60,12 @@ async function countUserSheet(sid) {
 }
 
 async function main() {
-  const pool = new Pool({ connectionString: env("DATABASE_URL"), ssl: { rejectUnauthorized: false }, max: 3 });
+  // 2026-08-06 사고 수정: 커넥션/쿼리 타임아웃이 없어 DB 가 응답 없을 때 무한정 멈춰
+  // 있었다(5시간+ 관측, 진행 로그도 없어 진단 불가). 둘 다 짧게 캡 + 진행 로그 추가.
+  const pool = new Pool({
+    connectionString: env("DATABASE_URL"), ssl: { rejectUnauthorized: false }, max: 3,
+    connectionTimeoutMillis: 15000, statement_timeout: 30000, query_timeout: 30000,
+  });
   const reg = await safeRows(REG, "'users'!A2:R");
   const targets = reg
     .map((r) => ({ email: String(r[0] ?? "").trim(), cohort: String(r[1] ?? "").trim(), name: String(r[2] ?? "").trim(), sid: String(r[3] ?? "").trim(), role: String(r[4] ?? "").trim() }))
@@ -69,11 +74,15 @@ async function main() {
 
   const sheetTotals = {};
   const perPerson = [];
+  let i = 0;
   for (const u of targets) {
     const c = await countUserSheet(u.sid);
     for (const t of TABS) sheetTotals[t] = (sheetTotals[t] ?? 0) + c[t];
     perPerson.push({ email: mask(u.email), cohort: u.cohort, name: u.name, ...c });
+    i++;
+    if (i % 10 === 0 || i === targets.length) console.log(`  ...시트 스캔 ${i}/${targets.length}`);
   }
+  console.log("DB 조회 시작...");
 
   const dbRes = await pool.query(
     `select cohort, tab, count(*)::int as n from sheet_rows
