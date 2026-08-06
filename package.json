@@ -13,7 +13,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:structural": "vitest run tests/structural",
-    "check": "bash scripts/check.sh"
+    "check": "bash scripts/check.sh",
+    "db:migrate": "node scripts/db-migrate.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
