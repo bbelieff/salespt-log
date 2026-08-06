@@ -285,6 +285,33 @@
 
 ## 로그
 
+### 2026-08-06 · Claude Code(직접 디스패치) · db-parity.ts countUserSheet 판정 기준 backfill 과 일치 — PR #728 머지, 배포는 VPS SSH 장애로 대기
+- 의도: belie 가 A2 db-parity 대조 중 `lib/service/db-parity.ts`(`/admin/db-parity` 서비스)의
+  contracts·sales 유효 행 판정이 `scripts/ops/backfill-sheet-rows.mjs` 와 다르다고 직접 발견·요청.
+  PR #724 커밋 메시지에도 "db-parity.ts 자체의 이 오차는 별건 — 이 PR 범위 밖"이라 명시된 잔여.
+- 한 것: `wt/fix-db-parity-backfill-criteria`(워크트리 격리) 에서 contracts(`firstDataRow` 신형6/
+  구형5 — `SHEET_RANGES.contractPayment` SSOT 재사용)·sales(O1 `readCourseStart` 파싱 게이트 +
+  10주×7일×4채널 stride) 를 backfill 과 동일 판정으로 교체. check.sh green(1012 unit+25 structural).
+  검증은 VPS SSH 장애로 admin 페이지 라이브 접근 불가 → 로컬 SA 크리덴셜로 cohort=8(7개 시트) 대상
+  OLD/NEW 대조 CLI(레포 밖 스크래치)로 대체: contracts OLD=45→**NEW=44**(backfill dry-run 44 와
+  재현 2회 일치), sales OLD=562→**NEW=409**. 부수 발견 — backfill dry-run 자체가 읽기 재시도가
+  없어 실행마다 결과가 들쭉날쭉함을 확인(1회차 253·2회차 399, 두 실행의 성공분 합=정확히 409) →
+  후속 카드 발급했으나 **착수 전에 이미 PR #727(fix(ops): backfill-sheet-rows grid() 읽기 실패 시
+  재시도+가시화)로 다른 세션이 해소** — 발급 직후 확인해 중복 철회.
+  **PR #728**(`37bb537`) CI green 후 머지(`gh pr merge --squash`). 배포 run `31071933896` 관찰 —
+  Setup SSH·시크릿 주입 성공했으나 "Deploy on VPS" 단계에서 `ssh: connect to host *** port 22:
+  Connection timed out` 7/7 rc=255 재시도 전부 실패 → §6.8 "Setup SSH 단계 실패(VPS 도달성 지속
+  장애)" 분기(코드 문제 아님, build/health 단계 진입 전이라 롤백 대상 아님). 공개 health
+  `https://salesptlog.online` 는 200 유지(무변경 확인, 이번 배포가 프로덕션에 닿지 않았으므로 당연).
+  FM 보드의 기존 "VPS SSH 완전장애(19:10, BBE-75 에스컬레이션)" 와 **동일 장애**로 판단(재시도 무의미
+  수준이라는 FM 판단과 일치) — 신규 인시던트로 별도 기록하지 않음.
+- 결정: 롤백하지 않음(코드 문제 없음, health 미도달). VPS 복구 후 `gh run rerun 31071933896
+  --failed` 또는 다음 master push 로 자동 재배포되면 그때 health 200 확인 필요(belie 또는 후속
+  세션이 이어받을 것).
+- 다음: ① VPS SSH 복구 확인되면 배포 재시도 + health 200 확인 ② `/admin/db-parity?cohort=8`
+  라이브 페이지에서 dbCount 까지 포함한 전체 대조(로컬은 DATABASE_URL 없어 sheetCount 만 검증됨).
+- SoR: `docs/plans/completed/fix-db-parity-backfill-criteria.md`, PR #728, 배포 run `31071933896`.
+
 ### 2026-08-06 · 작업원A(260805) · BBE-54 users·cohorts Postgres 스키마 + 마이그레이션 러너 PR 오픈, 머지는 반장 판정 대기
 - 의도: R7 Phase 1 임계경로 병목 카드. "쓰기·읽기 전환은 이 카드가 아니다, 동작 변화 0" 제약 하에
   버전드 마이그레이션 러너 + `users`/`cohorts` 스키마 도입.

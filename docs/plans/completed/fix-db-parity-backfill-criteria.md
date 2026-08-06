@@ -62,5 +62,12 @@ PR #724가 `scripts/ops/a2-db-parity.mjs`는 이미 고쳤지만 그 커밋 메�
   backfill dry-run 자체가 재시도 없는 읽기라 실행마다 결과가 달라짐(1회차 253 · 2회차 399, 매번
   다른 사용자의 O1/탭 읽기가 무작위 실패) — 두 실행의 성공한 사용자별 값을 합치면 정확히 409로
   NEW 로직과 일치함을 확인. **결론: NEW 로직이 정답, backfill 쪽 재시도 부재가 별건 버그.**
-  후속 카드 발급(backfill-sheet-rows.mjs grid() 재시도 이식, a2-db-parity.mjs #725 와 동일 패턴).
+  후속 카드 발급했으나 착수 전에 이미 PR #727 로 다른 세션이 해소 확인 → 중복 철회.
   DB 카운트(dbCount) 대조는 로컬에 DATABASE_URL 이 없어 보류 — VPS 복구 후 재검증 권장.
+- 2026-08-06 머지·배포 — CI green 확인 후 PR #728 squash 머지(`37bb537`). 배포 run `31071933896`
+  관찰: Setup SSH·시크릿 주입 성공, "Deploy on VPS" 단계에서 `ssh: connect to host *** port 22:
+  Connection timed out` 7/7 rc=255 재시도 모두 실패 → §6.8 "VPS 도달성 지속 장애" 분기(build/health
+  진입 전이라 코드 문제 아님, 롤백 불필요). 공개 health(`https://salesptlog.online`) 는 200 유지
+  (이번 배포가 프로덕션에 닿지 않아 무변경). FM 보드의 기존 VPS SSH 완전장애(BBE-75)와 동일 장애로
+  판단, 별도 인시던트 미기록. **잔여**: VPS 복구 후 `gh run rerun 31071933896 --failed` 로 재배포 +
+  health 200 확인, `/admin/db-parity?cohort=8` 라이브 dbCount 대조.
