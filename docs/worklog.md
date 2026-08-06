@@ -285,6 +285,22 @@
 
 ## 로그
 
+### 2026-08-06 · 작업원A(260805) · BBE-79 신규 발행+수리 — DB생산 채널간 행번호 충돌(BBE-38 발굴) PR 오픈, 머지는 반장 판정 대기
+- 의도: belie "발굴로 끝내지 말고 수리까지 가져가라" — BBE-38에서 찾은 채널 탭 전환 시 데이터
+  오손 위험 버그를 실제로 수리. §0.8 5단계 그대로 적용.
+- 한 것: ①PATCH 경로 재확인 — `page.tsx:handleSave`가 항상 현재 `activeCh`를 싣고(클로저 최신
+  state), 서버(`app/api/db/[channel]/[row]/route.ts`)도 URL channel 로 올바르게 스코프 — 미스코프
+  아님을 실측 확인, "반쪽 수리" 우려 해소 ②`_lib/channels.ts`에 `dbRowKey(chKey, row)` 추가 +
+  `RowList.tsx` key를 채널 포함 유일값으로(React key 변경=전체 리마운트=draft 신선 초기화로
+  근본 해소) ③회귀 테스트 3건(`tests/service/db-row-key.test.ts`) ④서브에이전트 적대검증 —
+  `expandedRow`/`pendingRow`(채널 미스코프 잔존)는 UI 표시 전용이라 데이터 오손 아님 확인,
+  부수 발견 2건(`autoExpandedCh` 재방문 UX·`confirmTarget` 채널 미저장)은 범위 밖으로 판단.
+- 결정(자율·§0.7): `lib/repo/db.ts` append/row_key 구조 미접촉(R7-#10/BBE-59 예정 구역, 미착수) —
+  이 PR은 읽기 경로(React key)만.
+- 다음: PR #718 오픈·check.sh 초록·CI 초록 — **머지는 보류**(belie 지시: 아레나2 복구 완료 후,
+  직렬 머지 §3.5). 반장 판정 대기.
+- SoR: Linear BBE-79 · PR #718
+
 ### 2026-08-06 · FM(260804) · A2 근인 해소·55/55 복사 성공 → registry 열밀림 2차 사고 발견·수정 → VPS SSH 완전장애로 복구 중단
 - 의도: belie 콘솔 확인으로 A2 병목 근인(목적지 폴더 소유권=leadbzcenter, link-only 공유) 확정 +
   belie 본인 접근권한 부여 완료 → "카나리아 즉시 재실행 → all → 백필" 지시 수령, 즉시 실행.
