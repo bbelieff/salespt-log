@@ -34,10 +34,16 @@ const auth = new google.auth.JWT(
 const sheets = google.sheets({ version: "v4", auth });
 
 let gridFailures = 0;
+let gridMissingTab = 0;
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 /** backfill-sheet-rows.mjs grid() 와 동일 — UNFORMATTED_VALUE+SERIAL_NUMBER 필수(O1 파싱 규칙 일치).
- * 2026-08-06 사고 수정: 원래 `.catch(() => null)` 로 API 일시 오류를 조용히 삼켜 "0행"과
- * "읽기 실패"를 구분 못 했다 — 두 번 실행한 대조 결과가 매번 달라진(meetings 418→470 등)
- * 원인으로 추정. 최대 2회 재시도 + 최종 실패는 카운트해 결과에 함께 보고한다. */
+ * 2026-08-06 사고 수정 ①: 원래 `.catch(() => null)` 로 API 일시 오류를 조용히 삼켜 "0행"과
+ * "읽기 실패"를 구분 못 했다 — 두 번 실행한 대조 결과가 매번 달라진(meetings 418→470 등) 원인.
+ * 2026-08-06 사고 수정 ②(1차 재시도 후 재실측): 실패 50건 중 대부분이 "Unable to parse range"
+ * (그 시트에 해당 탭 자체가 없음 — 옛 템플릿 복사본, 영구적·재시도 무의미. backfill 도 같은
+ * grid() 라 동일하게 못 읽었을 것이므로 사람쪽·DB쪽 둘 다 0으로 수렴해 실제로는 무해)이고,
+ * 나머지는 "Quota exceeded"(진짜 일시 장애인데 1~2초 백오프로는 분당 quota 리셋을 못 기다림).
+ * 탭 없음은 즉시 포기(재시도 낭비 안 함), quota 는 15~30초로 늘려 재시도한다. */
 async function grid(sid, range, attempt = 1) {
   try {
     const r = await sheets.spreadsheets.values.get({
@@ -46,8 +52,10 @@ async function grid(sid, range, attempt = 1) {
     });
     return r?.data.values ?? [];
   } catch (e) {
+    const msg = String(e?.message ?? e);
+    if (/Unable to parse range/.test(msg)) { gridMissingTab++; return []; } // 탭 없음 — 영구적, 재시도 안 함
     if (attempt < 3) {
-      await new Promise((res) => setTimeout(res, 1000 * attempt));
+      await sleep(/Quota exceeded/.test(msg) ? 15000 * attempt : 1000 * attempt);
       return grid(sid, range, attempt + 1);
     }
     gridFailures++;
@@ -151,9 +159,8 @@ async function main() {
     console.log(`${t.padEnd(16)} | ${String(s).padStart(5)} | ${String(d).padStart(5)} | ${diff === 0 ? "일치" : diff > 0 ? `+${diff}` : diff}`);
   }
   console.log(`\n${allMatch ? "✅ 전 탭 일치 — 백필 완주 확인" : "⚠️ 불일치 있음 — 아래 사람별 내역에서 원인 확인 필요"}`);
-  console.log(gridFailures > 0
-    ? `⚠️ grid 읽기 3회 재시도 후에도 실패 ${gridFailures}건 — 위 시트 유효행수는 그만큼 과소집계됐을 수 있음(재실행 권장)`
-    : `grid 읽기 실패 0건 — 시트 유효행수는 신뢰 가능`);
+  console.log(`탭 없음(영구·재시도 안 함, 무해 추정) ${gridMissingTab}건 · 진짜 읽기실패(quota 등, 재시도 후에도 실패) ${gridFailures}건`);
+  if (gridFailures > 0) console.log(`⚠️ 진짜 읽기실패가 남아 있음 — 위 시트 유효행수가 그만큼 과소집계됐을 수 있음(재실행 권장)`);
 
   const noSales = perPerson.filter((p) => p.sales === 0);
   if (noSales.length) {
