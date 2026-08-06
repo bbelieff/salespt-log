@@ -3,7 +3,7 @@
  */
 "use client";
 
-import type { ChannelKey, ChannelMeta } from "../_lib/channels";
+import { dbRowKey, type ChannelKey, type ChannelMeta } from "../_lib/channels";
 import RowCard from "./RowCard";
 
 type BackendRow = { row: number } & Record<string, unknown>;
@@ -56,7 +56,7 @@ export default function RowList({
     <div className="space-y-2">
       {rows.map((r, i) => (
         <RowCard
-          key={r.row}
+          key={dbRowKey(chKey, r.row)}
           channelKey={chKey}
           channel={ch}
           index={i}
