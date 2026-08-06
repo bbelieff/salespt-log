@@ -33,13 +33,27 @@ const auth = new google.auth.JWT(
 );
 const sheets = google.sheets({ version: "v4", auth });
 
-/** backfill-sheet-rows.mjs grid() 와 동일 — UNFORMATTED_VALUE+SERIAL_NUMBER 필수(O1 파싱 규칙 일치). */
-async function grid(sid, range) {
-  const r = await sheets.spreadsheets.values.get({
-    spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  }).catch(() => null);
-  return r?.data.values ?? [];
+let gridFailures = 0;
+/** backfill-sheet-rows.mjs grid() 와 동일 — UNFORMATTED_VALUE+SERIAL_NUMBER 필수(O1 파싱 규칙 일치).
+ * 2026-08-06 사고 수정: 원래 `.catch(() => null)` 로 API 일시 오류를 조용히 삼켜 "0행"과
+ * "읽기 실패"를 구분 못 했다 — 두 번 실행한 대조 결과가 매번 달라진(meetings 418→470 등)
+ * 원인으로 추정. 최대 2회 재시도 + 최종 실패는 카운트해 결과에 함께 보고한다. */
+async function grid(sid, range, attempt = 1) {
+  try {
+    const r = await sheets.spreadsheets.values.get({
+      spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return r?.data.values ?? [];
+  } catch (e) {
+    if (attempt < 3) {
+      await new Promise((res) => setTimeout(res, 1000 * attempt));
+      return grid(sid, range, attempt + 1);
+    }
+    gridFailures++;
+    console.warn(`  ⚠ grid 읽기 3회 실패(sid=${sid.slice(0, 8)}…, range=${range}): ${String(e?.message ?? e).slice(0, 100)}`);
+    return [];
+  }
 }
 const serialToISO = (v) => {
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
@@ -137,6 +151,9 @@ async function main() {
     console.log(`${t.padEnd(16)} | ${String(s).padStart(5)} | ${String(d).padStart(5)} | ${diff === 0 ? "일치" : diff > 0 ? `+${diff}` : diff}`);
   }
   console.log(`\n${allMatch ? "✅ 전 탭 일치 — 백필 완주 확인" : "⚠️ 불일치 있음 — 아래 사람별 내역에서 원인 확인 필요"}`);
+  console.log(gridFailures > 0
+    ? `⚠️ grid 읽기 3회 재시도 후에도 실패 ${gridFailures}건 — 위 시트 유효행수는 그만큼 과소집계됐을 수 있음(재실행 권장)`
+    : `grid 읽기 실패 0건 — 시트 유효행수는 신뢰 가능`);
 
   const noSales = perPerson.filter((p) => p.sales === 0);
   if (noSales.length) {
