@@ -33,29 +33,65 @@ const auth = new google.auth.JWT(
 );
 const sheets = google.sheets({ version: "v4", auth });
 
-async function safeRows(sid, range) {
-  const r = await sheets.spreadsheets.values.get({ spreadsheetId: sid, range }).catch(() => null);
+/** backfill-sheet-rows.mjs grid() 와 동일 — UNFORMATTED_VALUE+SERIAL_NUMBER 필수(O1 파싱 규칙 일치). */
+async function grid(sid, range) {
+  const r = await sheets.spreadsheets.values.get({
+    spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  }).catch(() => null);
   return r?.data.values ?? [];
 }
+const serialToISO = (v) => {
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 20000) return null;
+  return new Date((n - 25569) * 86400000).toISOString().slice(0, 10);
+};
 
 const TABS = ["meetings", "contracts", "todos", "sales", "db", "company_archive"];
 
-/** db-parity.ts countUserSheet 와 동일 판정 — 배포된 앱과 같은 기준이어야 "완주 검증"이 의미 있다. */
+/** 2026-08-06 수정 — db-parity.ts(간이 판정)가 아니라 backfill-sheet-rows.mjs 의 실제
+ * 행 유효성 판정을 그대로 재현한다. db-parity.ts 는 계약 헤더/예시행(첫 데이터행 이전) 구분이
+ * 없고, sales 는 O1 의존·주차 stride 구조를 무시한 채 범위 전체를 세어 실측해 보니 실제
+ * "백필이 놓친 것"이 아니라 "판정 기준이 백필과 달라서" 생기는 오탐이 컸다(대조 결과로 확인).
+ * "백필이 스스로 정의한 대로 다 했는가"를 묻는 게 이 검증의 목적이므로 백필 기준을 따른다. */
 async function countUserSheet(sid) {
   const c = { meetings: 0, contracts: 0, todos: 0, sales: 0, db: 0, company_archive: 0 };
-  for (const r of await safeRows(sid, "'04 업체관리(앱자동작성용)'!A2:A")) if (r[0]?.trim()) c.meetings++;
-  for (const r of await safeRows(sid, "'05 실무투두'!A2:A")) if (r[0]?.trim()) c.todos++;
-  for (const tab of ["02 계약수납관리", "02 계약관리"]) {
-    const rows = await safeRows(sid, `'${tab}'!C3:C`);
+  for (const r of await grid(sid, "'04 업체관리(앱자동작성용)'!A2:AP"))
+    if (String(r[0] ?? "").trim()) c.meetings++;
+  for (const r of await grid(sid, "'05 실무투두'!A2:N"))
+    if (String(r[0] ?? "").trim()) c.todos++;
+  for (const [tabName, firstDataRow] of [["02 계약수납관리", 6], ["02 계약관리", 5]]) {
+    const rows = await grid(sid, `'${tabName}'!C1:AK`);
     if (rows.length === 0) continue;
-    for (const r of rows) { const v = r[0]?.trim() ?? ""; if (v && !/계약일/.test(v)) c.contracts++; }
+    rows.forEach((r, i) => {
+      const 계약일 = String(r[0] ?? "").trim();
+      const sheetRow = i + 1;
+      if (계약일 && sheetRow >= firstDataRow && !/계약일/.test(계약일)) c.contracts++;
+    });
     break;
   }
-  for (const col of ["B", "I", "P", "X"])
-    for (const r of await safeRows(sid, `'03 DB관리'!${col}4:${col}100`)) if (r[0]?.trim()) c.db++;
-  for (const r of await safeRows(sid, "'01 영업관리'!E10:H349"))
-    if ((r[0] ?? r[1] ?? r[2] ?? r[3] ?? "").toString().trim()) c.sales++;
-  for (const r of await safeRows(sid, "'06 업체정보'!C2:C")) if (r[0]?.trim()) c.company_archive++;
+  for (const [c1, c2] of [["B", "H"], ["I", "O"], ["P", "V"], ["X", "AD"]])
+    for (const r of await grid(sid, `'03 DB관리'!${c1}4:${c2}100`))
+      if (String(r[0] ?? "").trim()) c.db++;
+  const o1 = (await grid(sid, "'01 영업관리'!O1"))[0]?.[0];
+  const startISO = serialToISO(o1);
+  if (startISO) {
+    const block = await grid(sid, "'01 영업관리'!E10:H349");
+    for (let w = 1; w <= 10; w++) {
+      for (let d = 0; d < 7; d++) {
+        for (let ch = 0; ch < 4; ch++) {
+          const sheetRow = 10 + (w - 1) * 34 + d * 4 + ch;
+          const r = block[sheetRow - 10] ?? [];
+          const [E, F, G, H] = [r[0], r[1], r[2], r[3]].map((v) => String(v ?? "").trim());
+          if (E === "" && F === "" && G === "" && H === "") continue;
+          c.sales++;
+        }
+      }
+    }
+  }
+  for (const r of await grid(sid, "'06 업체정보'!A2:AB"))
+    if (String(r[2] ?? "").trim()) c.company_archive++;
   return c;
 }
 
@@ -66,7 +102,7 @@ async function main() {
     connectionString: env("DATABASE_URL"), ssl: { rejectUnauthorized: false }, max: 3,
     connectionTimeoutMillis: 15000, statement_timeout: 30000, query_timeout: 30000,
   });
-  const reg = await safeRows(REG, "'users'!A2:R");
+  const reg = await grid(REG, "'users'!A2:R");
   const targets = reg
     .map((r) => ({ email: String(r[0] ?? "").trim(), cohort: String(r[1] ?? "").trim(), name: String(r[2] ?? "").trim(), sid: String(r[3] ?? "").trim(), role: String(r[4] ?? "").trim() }))
     .filter((u) => u.sid && u.role === "trainee" && /^A2-/.test(u.cohort));
