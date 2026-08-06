@@ -53,22 +53,31 @@ jobs:
           node scripts/ops/arena-season2-batch.mjs $FLAGS
           REMOTE_EOF
           )
-          # rc=255(도달성) 한정 재시도 7×30s — deploy·backfill 워크플로와 동일 완화.
+          # rc=255(도달성) 한정 재시도 15×25s(최대 ~13분) — deploy·backfill 워크플로와 동일
+          # 완화, 확대판. 2026-08-06: 관측된 GH IP대역 한정 차단 창이 최대 8~10분 지속 확인 →
+          # 기존 7×30s(~6분) 예산 부족, 15×25s 로 확대. IPv4 실패 시 VPS_HOST_V6(설정된 경우)
+          # 교대 시도 — 프로토콜 계열 전환으로 IP대역 차단 우회 시도(SSH 장애 조사 2026-08-06).
+          # 미설정이면 기존과 동일 IPv4만.
           set +e
-          for i in 1 2 3 4 5 6 7; do
+          HOSTS=("${{ secrets.VPS_HOST }}")
+          if [ -n "${{ secrets.VPS_HOST_V6 }}" ]; then HOSTS+=("${{ secrets.VPS_HOST_V6 }}"); fi
+          NHOSTS=${#HOSTS[@]}
+          for i in $(seq 1 15); do
             rc=0
-            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
-                -i ~/.ssh/id_ed25519 "root@${{ secrets.VPS_HOST }}" \
+            HOST="${HOSTS[$(( (i - 1) % NHOSTS ))]}"
+            if [[ "$HOST" == *:* ]]; then FAM=-6; TARGET="root@[$HOST]"; else FAM=-4; TARGET="root@$HOST"; fi
+            ssh $FAM -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "$TARGET" \
                 "MODE_ARG=\"$MODE\" CANARY_ARG=\"$CANARY_NAME\" bash -s" <<<"$REMOTE"
             rc=$?
             if [ "$rc" = "0" ]; then exit 0; fi
             if [ "$rc" = "255" ]; then
-              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 30초 후 재시도" >&2
-              sleep 30
+              echo "ssh 연결 실패(rc=255, host=$HOST) — 시도 $i/15, 25초 후 재시도" >&2
+              sleep 25
             else
               echo "배치 스크립트 실패(rc=$rc) — 재시도 안 함(멱등 재실행으로 수렴)" >&2
               exit "$rc"
             fi
           done
-          echo "ssh 7회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
+          echo "ssh 15회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
           exit 1
