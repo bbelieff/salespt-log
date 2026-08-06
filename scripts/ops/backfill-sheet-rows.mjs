@@ -87,15 +87,33 @@ const rowObj = (r, startColIdx = 0) => {
   });
   return o;
 };
-async function grid(sid, range) {
+let gridMissingTab = 0, gridReadFailures = 0;
+async function grid(sid, range, attempt = 1) {
   // SERIAL_NUMBER — repo(readCourseStart)와 동일. FORMATTED_STRING 이면 O1 이
   // 로케일 서식("2026. 5. 30.")으로 와서 ISO 파싱 실패 → sales 전체 조용히 스킵
   // (dry-run #1 실측 버그, 2026-07-07).
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  }).catch(() => null);
-  return res?.data.values ?? [];
+  // ★2026-08-06 사고 수정: 원래 `.catch(() => null)` 로 API 오류를 전부 조용히 삼켰다 —
+  // A2 db-parity 대조에서 시트가 DB보다 일관되게 많은(meetings -89·sales -236 등) 게 이
+  // 함수의 무재시도 탓으로 드러났다(a2-db-parity.mjs 에서 같은 버그 재현·확인). "탭 없음"
+  // (Unable to parse range — 그 시트에 그 탭이 아예 없음, 영구적)은 재시도 없이 즉시 빈 배열,
+  // 그 외(quota 등 일시 오류)는 15~30초 백오프로 재시도한다.
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return res?.data.values ?? [];
+  } catch (e) {
+    const msg = String(e?.message ?? e);
+    if (/Unable to parse range/.test(msg)) { gridMissingTab++; return []; }
+    if (attempt < 3) {
+      await new Promise((r) => setTimeout(r, /Quota exceeded/.test(msg) ? 15000 * attempt : 1000 * attempt));
+      return grid(sid, range, attempt + 1);
+    }
+    gridReadFailures++;
+    console.warn(`    ⚠ grid 읽기 3회 실패(sid=${sid.slice(0, 8)}…, range=${range}): ${msg.slice(0, 100)}`);
+    return [];
+  }
 }
 const serialToISO = (v) => {
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
@@ -247,6 +265,8 @@ async function main() {
   console.log("\n── 결과 표 (기수·탭별 시트 유효 행수) ──");
   console.log("tab | sheet_rows(시트 추출)");
   for (const t of TABS) console.log(`${t} | ${totals[t]}`);
+  console.log(`탭 없음(영구·무해 추정) ${gridMissingTab}건 · 진짜 읽기실패(재시도 후에도) ${gridReadFailures}건`);
+  if (gridReadFailures > 0) console.log("⚠️ 읽기실패가 남아있음 — 위 시트 유효행수가 과소집계됐을 수 있음(재실행 권장)");
 
   if (EXECUTE && pool) {
     console.log(`\nDB upsert 완료: ${upserted}건`);
