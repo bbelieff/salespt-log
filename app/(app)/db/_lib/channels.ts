@@ -262,3 +262,18 @@ export function mdShort(iso: string | null | undefined): string {
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(s);
   return m ? `${Number(m[1])}/${Number(m[2])}` : s;
 }
+
+/**
+ * RowCard 의 React key — 채널까지 포함해 유일하게 만든다.
+ *
+ * 배경(BBE-79, 2026-08-06): 4채널(매입DB/직접생산/현수막/콜·지·기·소)이 `lib/repo/db.ts`
+ * 의 같은 기본 `firstDataRow` 를 공유해 row 번호가 채널 간에 우연히 겹친다(각 채널 1건씩만
+ * 입력해도 발생). `row` 숫자만 key 로 쓰면 채널 전환 시 React 가 이전 채널의 RowCard/RowForm
+ * 인스턴스를 재사용(리마운트 안 함) → 마운트 1회만 초기화되는 draft state 가 이전 채널 필드값을
+ * 그대로 들고 있어 거짓 dirty·얼어붙은 이탈가드가 재현되고, 저장 시 이전 채널 값이 새 채널
+ * row 에 PATCH 될 위험까지 있었다(#596 재검증에서 발굴). 채널을 key 에 포함시키면 채널이
+ * 바뀔 때마다 React 가 전체 리마운트해 draft 가 항상 신선하게 초기화된다.
+ */
+export function dbRowKey(chKey: ChannelKey, row: number): string {
+  return `${chKey}-${row}`;
+}
