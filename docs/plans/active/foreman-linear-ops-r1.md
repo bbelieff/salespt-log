@@ -41,6 +41,12 @@ related: worklog, db-write-flip, r3-single-cell-writers
 **계약(contract) 필수 8항목** — MoaWork(BBE-34) 양식 준용:
 `task_id` · `base`(정확한 SHA) · `branch` · `worktree` · `owner`(트랙+몸) · `reviewer` · `blocked_by` · `file lease`(수정 허용 파일 목록) + **수용 기준** + **NOT_RUN 경계**(이 세션이 절대 안 하는 것: 실데이터 쓰기·VPS 접속·모바일 실기기 등).
 
+**사고 절차(2026-08-05 신설)** — 반장·워커 모두 사소하지 않은 작업엔 `CLAUDE.md §0.8`의
+Scope→Gather→Solve→Verify→Report 5단계를 순서대로 밟는다. 특히 **완료의 정의**(문서 작업 ≠
+실행 작업 — 한 카드에 섞으면 문서만 하고 닫히는 사고가 난다, BBE-50 이 실제 사례)와 **증거 없는
+문장 금지**(숫자·로그·경로:줄번호·SHA·run id 없는 주장은 추측으로 취급)를 계약 승인·완료 도장
+양쪽에서 확인한다.
+
 ---
 
 ## 2. Linear 구조 — 새 팀(SPT) vs 기존 팀(BBE) 아래 프로젝트
