@@ -285,6 +285,13 @@
 
 ## 로그
 
+### 2026-08-07 · 경영일지 노트북 C작업원A(260807) · 🚨 BBE-81 P0 완주 — 미팅예약 날짜 달력 클릭 무반응 수리
+- 의도: belie(Cowork 경유) 지시 — 컨택관리 미팅예약 날짜박스 클릭 시 전 수강생 무반응(개강일 핵심 기능). 카드가 1줄 diff(onClick 가드 제거)를 지정.
+- 진단 정정: 착수 전 실측 중 로컬 메인 체크아웃이 origin/master보다 수십 커밋 뒤처짐을 발견(HEAD `2f94120` vs 실제 `1c58676`) — `git show origin/master:`로 재확인해 카드 진단이 정확함을 확인. 지정된 1줄 diff는 `#654`(label 재전달 이중호출 방지)가 막은 버그를 재발시킬 위험이 있어 채택 대신 `pointer-events:none`으로 클릭 경로를 JS 하나로 구조적으로 단일화(`#654`/`#656` 가드·크기 계약은 보존).
+- 한 것: PR [#730](https://github.com/bbelieff/salespt-log/pull/730) 머지(`6fd6e89`) · 배포 run [31164512502](https://github.com/bbelieff/salespt-log/actions/runs/31164512502) success · health 200 · 배포 SHA=머지 SHA 일치 확인. 회귀테스트 2건 추가, 기존 5건 무수정 통과. `docs/design/components.md` §2 SSOT 갱신(0×0 stale 표기 정정).
+- 한계: 실제 컨택관리 화면 클릭 라이브 검증은 로그인 권한 없어 미실행 — belie/라이브 세션에 이관(BBE-81 완주 코멘트에 명시).
+- SoR: Linear BBE-81, PR #730
+
 ### 2026-08-06 · Claude Code(직접 디스패치) · db-parity.ts countUserSheet 판정 기준 backfill 과 일치 — PR #728 머지, 배포는 VPS SSH 장애로 대기
 - 의도: belie 가 A2 db-parity 대조 중 `lib/service/db-parity.ts`(`/admin/db-parity` 서비스)의
   contracts·sales 유효 행 판정이 `scripts/ops/backfill-sheet-rows.mjs` 와 다르다고 직접 발견·요청.
