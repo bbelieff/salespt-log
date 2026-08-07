@@ -82,7 +82,8 @@ describe("DateInputCustom — picker 재호출 가드", () => {
   it("**모바일 경로**: native input 이 상호작용 가능해야 한다 — 숨김/비활성 금지", () => {
     // P0-2 진짜 원인: 인풋이 0×0 + opacity:0 + pointer-events:none 이라 iOS Safari·인앱
     // WKWebView 에서 showPicker 도 안 먹고 사용자가 직접 탭할 수도 없었다(달력 여는 경로 0).
-    // 이제 인풋이 박스를 덮어 **브라우저 기본 동작**으로 열린다 — 그 계약을 여기서 고정한다.
+    // #656 이 크기를 박스 전체로 키웠고(이 계약은 유지), BBE-81 이 pointer-events 는
+    // 다시 꺼서 클릭을 JS 로만 보낸다(globals.css) — 크기·접근성 속성은 계속 이 값이어야 한다.
     const { native } = mount({
       value: "2026-08-03",
       onChange: () => {},
@@ -93,8 +94,10 @@ describe("DateInputCustom — picker 재호출 가드", () => {
     expect(native.getAttribute("aria-hidden")).toBeNull();
     expect(native.getAttribute("tabindex")).toBeNull();
     expect(native.getAttribute("aria-label")).toBeTruthy();
-    // 클래스 계약 — CSS 가 inset:0/100%/pointer-events 기본으로 덮는다(globals.css).
+    // 클래스 계약 — 크기는 globals.css 가 inset:0/100%로 덮고, pointer-events:none 은
+    // `--fallback` 이 없는 기본 상태에서만 적용된다.
     expect(native.className).toContain("hidden-native-date");
+    expect(native.className).not.toContain("hidden-native-date--fallback");
     expect(native.disabled).toBe(false);
   });
 
@@ -108,5 +111,48 @@ describe("DateInputCustom — picker 재호출 가드", () => {
       display.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(focusSpy).toHaveBeenCalled();
+  });
+
+  describe("BBE-81 (2026-08-07) — 브라우저 기본 클릭-오픈에 조용히 의존하지 않는다", () => {
+    // 신고: 컨택관리 미팅예약 날짜박스 클릭 시 전 수강생 무반응, 콘솔 에러 0건.
+    // 실측: #656 이 native input 을 박스 전체에 깔아 "브라우저 기본 클릭-오픈"에 맡긴
+    // 뒤로 그 기본 동작 자체가 조용히 안 먹는 사례가 나왔다 — 열기 경로가 그거 하나뿐이라
+    // 100% 무반응이 됐다(에러가 없는 이유 = 애초에 아무 JS 도 실행 안 됨).
+    // 수리: pointer-events:none 으로 클릭을 항상 JS(showPicker) 로만 보내 "브라우저가
+    // 열어줄 것"이라는 가정 자체를 없앤다. showPicker 가 실패할 때만 `--fallback` 로
+    // pointer-events 를 되살려 예전 경로를 최후 수단으로 남긴다 — 그때는 조용히 아무 일도
+    // 안 일어나지 않고 사용자에게 "다시 눌러주세요" 가 보인다.
+
+    it("showPicker 예외 시 fallback 클래스 부여 + 사용자에게 보이는 안내가 뜬다", () => {
+      const { wrapper, native } = mount({ value: "", onChange: () => {} });
+      (native as unknown as { showPicker: () => void }).showPicker = () => {
+        throw new DOMException("blocked", "NotAllowedError");
+      };
+
+      const display = wrapper.querySelector(".custom-date-display")!;
+      act(() => {
+        display.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(native.className).toContain("hidden-native-date--fallback");
+      expect(wrapper.querySelector('[role="status"]')?.textContent).toContain(
+        "다시 눌러주세요",
+      );
+    });
+
+    it("showPicker 성공 시에는 fallback 클래스가 절대 붙지 않는다(정상 경로 회귀 방지)", () => {
+      const { wrapper, native } = mount({ value: "", onChange: () => {} });
+      const spy = vi.fn();
+      (native as unknown as { showPicker: () => void }).showPicker = spy;
+
+      const display = wrapper.querySelector(".custom-date-display")!;
+      act(() => {
+        display.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(native.className).not.toContain("hidden-native-date--fallback");
+      expect(wrapper.querySelector('[role="status"]')).toBeNull();
+    });
   });
 });

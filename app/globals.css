@@ -152,12 +152,16 @@ body {
   color: #111827;
   flex: 1;
 }
-/* 날짜 입력 — native date input 을 **박스 전체에 투명하게 깔아** 사용자가 직접 탭하게 한다.
-   ⚠️ 예전엔 0×0 + pointer-events:none 으로 숨기고 JS `showPicker()` 로만 열었는데,
-   iOS Safari(그리고 카카오/인스타 인앱 WKWebView)는 **크기 0·opacity 0 요소에 picker 를
-   띄우지 않는다**. pointer-events 까지 꺼져 있어 사용자가 직접 탭할 수도 없어서, 모바일에선
-   달력을 여는 경로가 아예 없었다(P0-2, 수강생·운영자 실신고). 이제 브라우저 **기본 동작**으로
-   열리므로 iOS·Android·PWA·인앱·데스크톱 어디서나 작동한다. 표시(요일 포함)는 뒤의 span 이 담당. */
+/* 날짜 입력 — 크기는 박스 전체(inset:0/100%) 유지, 클릭은 JS(showPicker)만 받는다.
+   ⚠️ 최초엔 0×0 + pointer-events:none 로 숨기고 showPicker() 로만 열었는데, iOS Safari·
+   카카오/인스타 인앱 WKWebView 는 **크기 0 요소에 picker 를 안 띄운다** — 그래서 #656 이
+   크기를 박스 전체로 키우고 pointer-events 를 켜서 "브라우저 기본 클릭-오픈"에 맡겼다.
+   이후(BBE-81, 2026-08-07) 그 브라우저 기본 동작 자체가 조용히 안 먹는 사례가 나와
+   **전 수강생 클릭 무반응**으로 재발 — "누가 여나"를 브라우저에 맡기는 구조 자체가 문제였다.
+   그래서 크기는 그대로 두되(#656 교훈 유지, 0×0 로 절대 되돌리지 말 것) pointer-events 는
+   다시 꺼서 클릭을 **항상 wrapper(JS)** 로만 보낸다 — 열기 경로가 단 하나뿐이라 경합이 없다.
+   showPicker() 실패(구형 브라우저 등)시에만 `--fallback` 로 pointer-events 를 되살려
+   "브라우저 기본 클릭-오픈"을 최후 수단으로 되찾는다. */
 .hidden-native-date {
   position: absolute;
   inset: 0;
@@ -166,9 +170,13 @@ body {
   opacity: 0;
   border: 0;
   background: transparent;
-  cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
+  pointer-events: none;
+}
+.hidden-native-date--fallback {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 /* ── Time Select Pair (시·분 분리) ──────────────────────── */

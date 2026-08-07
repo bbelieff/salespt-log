@@ -135,7 +135,9 @@
 **왜 커스텀이 필요한가**:
 - 한국어 UX는 `2026-04-25 (목)` 처럼 **요일 표시**가 필수
 - 그러나 native `<input type="date">`는 표시 형식을 바꿀 수 없음 (YYYY-MM-DD 고정, 요일 없음)
-- 해결: 보이는 박스는 커스텀, 진짜 input은 0×0으로 숨겨두고 `showPicker()`로 picker만 호출
+- 해결: 보이는 박스는 커스텀, 진짜 input은 박스 전체 크기로 깔되 투명·`pointer-events:none`
+  으로 숨겨 클릭은 JS `showPicker()`만 받게 한다(⚠️ **0×0으로 줄이지 말 것** — iOS Safari·
+  카카오/인스타 인앱 WKWebView는 크기 0 요소에 picker를 안 띄운다, #656/P0-2).
 
 **구현 예시:**
 ```html
@@ -172,12 +174,22 @@
   flex: 1;
 }
 
-/* native input은 0×0으로 숨김 (showPicker 호출 가능 상태 유지) */
+/* native input은 박스 전체 크기(showPicker가 iOS 등에서 먹으려면 0×0 금지) +
+   pointer-events:none — 클릭이 항상 wrapper(JS showPicker)로만 가게 해서
+   "브라우저 기본 클릭-오픈에 의존" 자체를 없앤다(BBE-81, 2026-08-07 — 그 기본
+   동작이 조용히 안 먹는 사례가 나와 전 수강생 클릭 무반응이 재발했었다). */
 .hidden-native-date {
   position: absolute;
-  width: 0; height: 0;
+  inset: 0;
+  width: 100%; height: 100%;
   opacity: 0;
   pointer-events: none;
+}
+/* showPicker() 가 실패(미지원/예외)할 때만 부여 — 최후 수단으로 브라우저 기본
+   클릭-오픈을 되살린다. 이때 화면에는 "다시 눌러주세요" 안내가 함께 뜬다. */
+.hidden-native-date--fallback {
+  pointer-events: auto;
+  cursor: pointer;
 }
 ```
 
@@ -204,7 +216,8 @@ function updateDateDisplay(native, displayId) {
 
 **브라우저 호환성**:
 - `showPicker()` 지원: Chrome 99+, Edge 99+, Safari 16+, Firefox 101+
-- 미지원 브라우저: `focus()` 폴백 (picker 자동 안 뜨고 키보드 입력만 가능)
+- 미지원/예외 시: `focus()` 폴백 + native input을 `--fallback`으로 pointer-events 복구해
+  브라우저 기본 클릭-오픈에 기대는 최후 경로 + "다시 눌러주세요" 안내 노출(BBE-81)
 
 **현재 사용 위치:** 컨택관리 미팅예약 폼(미팅날짜), 일정·계약 변경 폼
 
@@ -1442,6 +1455,8 @@ button:focus, input:focus, select:focus {
 | 2026-04-27 (v2) | §7 Calendar Cell: 점 표시 → **시간+업체명 박스**, 1:1 → 1:1.7 | calendar-monthly_3.html |
 | 2026-04-27 (v2) | §7 Meeting Card: 단순 카드 → **5상태 좌측바 + 이모지** 패턴 | calendar-monthly_3.html, schedule-weekly_5.html |
 | **2026-04-27 (v3)** | §2 **Date Input**: native input → **커스텀 박스 + 0×0 hidden native + showPicker()** 패턴 (한국어 요일 표시 위해) | 클로드코드 검증 #3 |
+| **2026-08-04** | §2 **Date Input**: 0×0 hidden native → **박스 전체 크기 + 브라우저 기본 클릭-오픈** (iOS Safari/인앱 WKWebView가 크기 0 요소에 picker 미표시, P0-2 #656) | #654·#656 |
+| **2026-08-07** | §2 **Date Input**: pointer-events **auto → none**(기본) — 클릭을 항상 JS showPicker로만 보냄. showPicker 실패 시만 `--fallback`로 되살림 + 보이는 안내(브라우저 기본 클릭-오픈 자체가 조용히 안 먹는 사례 재발, 전 수강생 무반응) | BBE-81 |
 | **2026-04-27 (v3)** | §2 **Time Input**: `<input type="time">` → **시 select + 분 select** 분리 (iOS Safari step 무시 회피, 15분 단위 강제) | 클로드코드 검증 #4 |
 | **2026-04-27 (v3)** | §6 Toast 위치 정정: 상단(top: 20px) → **하단(bottom: 80px)** | 시안과 일치 |
 | **2026-04-27 (v3)** | Number Input(Stepper) 사용 위치 라벨 정정: "신규명함/팔로업" → "유입/컨택진행/컨택성공" | 클로드코드 검증 #1 |
