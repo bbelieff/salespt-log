@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useId, useRef } from "react";
+import { useId, useRef, useState } from "react";
 
 const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -38,6 +38,10 @@ export default function DateInputCustom({
 }: Props) {
   const id = useId();
   const nativeRef = useRef<HTMLInputElement>(null);
+  // showPicker() 가 (미지원/예외로) 실패했을 때만 native input 을 pointer-events:auto 로
+  // 되살려 브라우저 기본 클릭-오픈에 기대는 최후 폴백(BBE-81, 2026-08-07). 평소엔
+  // globals.css 의 pointer-events:none 이 클릭을 전부 wrapper(JS)로만 보낸다.
+  const [fallback, setFallback] = useState(false);
 
   const open = () => {
     const native = nativeRef.current;
@@ -45,6 +49,7 @@ export default function DateInputCustom({
     type WithShowPicker = HTMLInputElement & { showPicker?: () => void };
     const withPicker = native as WithShowPicker;
     if (typeof withPicker.showPicker !== "function") {
+      setFallback(true);
       native.focus();
       return;
     }
@@ -52,10 +57,13 @@ export default function DateInputCustom({
     // 합성 클릭(예: 조상 <label> 이 native input 으로 재전달한 클릭)이 되버블링되면
     // 2차 호출이 발생해 예외로 죽고, 이미 열린 picker 가 닫혀 "날짜 선택 불가" 가 된다
     // (P0-2 실측: label 로 감싼 신규 미팅 슬롯에서만 재현). 호출부 구조와 무관하게
-    // 안전하도록 여기서 삼킨다 — 실패해도 focus 로 degrade.
+    // 안전하도록 여기서 삼킨다 — 실패해도 focus 로 degrade하고, 눈에 보이는 폴백으로
+    // 전환한다(BBE-81 — 예전엔 여기서 조용히 아무 일도 안 일어나 "무반응"으로 보였다).
     try {
       withPicker.showPicker();
-    } catch {
+    } catch (err) {
+      console.warn("DateInputCustom: showPicker() 실패 — 직접 클릭 폴백으로 전환", err);
+      setFallback(true);
       native.focus();
     }
   };
@@ -64,11 +72,12 @@ export default function DateInputCustom({
     <div
       className="custom-date-wrapper"
       onClick={(e) => {
-        // native input 이 박스 전체를 투명하게 덮고 있다 — 그 위를 탭하면 **브라우저 기본
-        // 동작**으로 picker 가 열린다(iOS/인앱 포함). 그 클릭까지 showPicker() 로 다시 열면
-        // 이미 열린 picker 가 닫히므로 여기서 끝낸다. 조상 <label> 이 재전달한 클릭도 동일.
+        // native input 이 박스 전체를 투명하게 덮고 있다 — 평소엔 pointer-events:none 이라
+        // 이 분기가 사실상 안 탄다(클릭이 항상 span/wrapper 로 옴). fallback 모드에서만
+        // native 가 직접 클릭을 받아 브라우저 기본 동작으로 열리므로, 그 클릭까지
+        // showPicker() 로 다시 열면 이미 열린 picker 가 닫힌다 — 방어로 남겨둔다.
         if (e.target === nativeRef.current) return;
-        open(); // 표시 영역(span) 클릭 — 데스크톱 보조 경로
+        open();
       }}
     >
       <span className="custom-date-display">
@@ -77,11 +86,18 @@ export default function DateInputCustom({
         )}
       </span>
       <span className="text-gray-400">📅</span>
+      {fallback && (
+        <span className="shrink-0 text-xs text-amber-600" role="status">
+          다시 눌러주세요
+        </span>
+      )}
       <input
         ref={nativeRef}
         id={id}
         type="date"
-        className="hidden-native-date"
+        className={
+          fallback ? "hidden-native-date hidden-native-date--fallback" : "hidden-native-date"
+        }
         value={value}
         min={min}
         max={max}
