@@ -10,6 +10,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { listAllUsers, invalidateRegistry } from "./users";
 import { pickActiveArenaRow } from "./user-priority";
 import { nameMatches } from "./name-match";
+import { mirrorUserCells } from "./db/registry-mirror";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:R`;
 
@@ -44,6 +45,14 @@ export async function setArenaCaptain(
       requestBody: { values: [[value]] },
     });
     invalidateRegistry();
+    mirrorUserCells(
+      {
+        email: String(rows[i]?.[0] ?? "").trim(),
+        cohort: String(rows[i]?.[1] ?? "").trim(),
+        name: String(rows[i]?.[2] ?? "").trim(),
+      },
+      { R: value },
+    );
     return;
   }
   throw new Error(`[arena] 회장 대상 email(${email}) 을 registry 에서 찾을 수 없습니다.`);
@@ -146,6 +155,14 @@ export async function markPriorRowArchived(
       requestBody: { values: [["archived"]] },
     });
     invalidateRegistry();
+    mirrorUserCells(
+      {
+        email: String(rows[i]?.[0] ?? "").trim(),
+        cohort: String(rows[i]?.[1] ?? "").trim(),
+        name: String(rows[i]?.[2] ?? "").trim(),
+      },
+      { F: "archived" },
+    );
     return;
   }
 }

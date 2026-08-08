@@ -18,6 +18,11 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 import { nextRegistryRowNumber } from "./users-claim";
 import { readProfileBundle } from "./sales";
+import {
+  mirrorUserCells,
+  mirrorUserRow,
+  registryRowFromSheetRow,
+} from "./db/registry-mirror";
 
 // 밀린(빈 A열) 행도 행수에 포함되도록 R열까지 읽는다 — 결정적 append 좌표
 // 계산이 M 밖으로 밀린 옛 행을 빠짐없이 세야 덮어쓰기 사고가 없다(claim-append-columns 파리티).
@@ -191,6 +196,25 @@ export async function addTraineePrepRow(
       requestBody: { valueInputOption: "RAW", data },
     });
     invalidateRegistry();
+    // DB 미러(BBE-55) — 이번에 타격한 셀만. 자연키는 이 행의 A·B·C 그대로(변경 없음).
+    const cur = rows[idx] ?? [];
+    const cells: Record<string, string> = {
+      D: spreadsheetId,
+      I: cached.cohortLabel,
+      J: cached.nameLabel,
+      K: cached.courseStartISO,
+      L: cached.graduationISO,
+    };
+    if (ffid) cells.O = ffid;
+    if (memoVal) cells.Q = memoVal;
+    mirrorUserCells(
+      {
+        email: String(cur[0] ?? "").trim(),
+        cohort: String(cur[1] ?? "").trim(),
+        name: String(cur[2] ?? "").trim(),
+      },
+      cells,
+    );
     return { created: false };
   }
 
@@ -211,5 +235,6 @@ export async function addTraineePrepRow(
     requestBody: { values: [values] },
   });
   invalidateRegistry();
+  mirrorUserRow(registryRowFromSheetRow(values));
   return { created: true };
 }
