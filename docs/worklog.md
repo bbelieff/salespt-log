@@ -285,6 +285,32 @@
 
 ## 로그
 
+### 2026-08-08 · 작업원A(260805) · BBE-55 레지스트리 이중기록 + backfill PR 오픈 — BBE-54 자연키 실측 반증·교정 동반
+- 의도: R7 임계경로(ADR→스키마→**이중기록**→읽기전환). 시트 정본 유지, DB 는 fire-and-forget
+  미러(R2 패턴). 읽기 전환은 이 카드 아님 → 동작 변화 0.
+- 한 것: PR [#738](https://github.com/bbelieff/salespt-log/pull/738)(CI green) — 쓰기 경로 전수 배선
+  (`updateUserCell` 단일 초크포인트가 ~10곳 커버 + claim 3분기·prep 2분기(Q메모)·sort(M+append)·
+  arena(R 회장·F archived)·cache-migrate(I~L)·delete(행삭제)·cohorts 4곳). `appendArenaRoster` 는
+  레지스트리 아닌 별도 명단 시트라 제외. `scripts/ops/backfill-registry.mjs`(dry-run 기본) 신규.
+- 🔎 **BBE-54 자연키가 실측에서 반증됨**: `(email,cohort)` 로는 **145행 중 54행 유실**. 근인 ①prep 행
+  (admin 사전등록)은 email 이 빈 문자열(실측 67행) — 같은 기수 prep 이 한 키로 뭉개짐 ②멀티계정 per
+  시트라 `(cohort,name)` 단독도 불가. → `(email,cohort,name)` 교정(0002 forward 마이그레이션, 적용된
+  0001 무수정). 145행→143키, 차이 2건은 6컬럼 완전동일한 **실제 중복 행**(dedupKeepIndex 정리 대상).
+- 적대검증 반영(BLOCKER 1·HIGH 1·MED 3): **email 대소문자 split-brain**(호출부마다 소문자화/원본이
+  섞여 같은 행이 두 키로 갈라지고, backfill 이 upsert 전용이라 유령을 영원히 못 지움) → 정규화를
+  **SQL 경계 단일 지점**에 배치해 구조적 차단. 그 외 trim 비대칭·role/status 발산·동기 throw 누출
+  (성공한 시트 쓰기가 500 으로 되돌아감)·rekey 반쪽 적용을 각각 수정 + 회귀테스트.
+- 결정(자율·§0.7): 스키마 제약 교정을 이 카드에서 동반 처리 — 안 고치면 backfill 자체가 성립 불가
+  (수용 기준 "행수 일치"가 원천 불가능). 되돌리기 = 역방향 마이그레이션 신규 추가.
+- 검증: check.sh 초록(typecheck·lint·structural 25·unit **1053**·doc-drift) + CI success. 신규 테스트 25건.
+  라이브 dry-run 실측(users 145·cohorts 13). `users.ts` 500줄 캡 초과 → `users-sheet-lookup.ts` 무변경 분리.
+- 한계(검증 안 함): **실제 Postgres 미실행**(이 PC 에 DATABASE_URL 없음) — 0002 마이그레이션과
+  `--execute` 는 VPS 에서 `npm run db:migrate` → `backfill-registry.mjs --execute` 순 검증 필요.
+  라이브 클레임 1건 왕복 재현도 미실행.
+- 다음: BBE-56(읽기 전환)이 이 위에 얹힌다. ⚠️ **머지 보류** — belie 지시: 아레나2 복구 + 개막 이후
+  반장 판정(§3.5 직렬 머지).
+- SoR: PR #738 · Linear BBE-55 · `docs/plans/active/sheet-retirement-r7.md`.
+
 ### 2026-08-08 · 경영일지 노트북 C작업반장(260806) · BBE-83 완주 — 03 DB관리 비용도 개강일 기준 이월 분할
 - 의도: belie 직접 지적(BBE-42 카나리아 실측 중) — "매출은 이월매출로 뺐는데, 왜 비용은 이월이 안돼?
   이건 잘못된거같은데" → 조사 후 belie 지시 "8/7이전 비용 이월시켜줘".
