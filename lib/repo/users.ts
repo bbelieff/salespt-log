@@ -10,9 +10,14 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
 import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
-import { findSheetByExactName, findSheetByNameContainsAll } from "./drive-client";
 import { nameMatches } from "./name-match";
 import { pickPreferredUser, pickPreferredRow } from "./user-priority";
+import {
+  mirrorUserCells,
+  mirrorUserRekey,
+  mirrorUserRow,
+  registryRowFromUser,
+} from "./db/registry-mirror";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
@@ -210,7 +215,8 @@ export async function updateUserCell(
   }
   // 읽기(findUserByEmail=pickPreferredUser)와 동일 우선순위 행에 write — 다행 계정
   // write≠read 불일치 방지(Drive 연결 무한루프 fix). parse 전부 실패 시 첫 행(옛 동작).
-  const targetRow = pickPreferredRow(matches)?.sheetRow ?? rawRows[0]!;
+  const picked = pickPreferredRow(matches);
+  const targetRow = picked?.sheetRow ?? rawRows[0]!;
   // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId: reg.spreadsheetId,
@@ -219,6 +225,22 @@ export async function updateUserCell(
     requestBody: { values: [[value]] },
   });
   invalidateRegistry();
+  // DB 미러(BBE-55) — 시트 쓰기 성공 후 fire-and-forget. parse 실패로 picked 가 없으면
+  // 자연키(email,cohort)를 알 수 없어 미러를 건너뛴다(정합은 backfill 재실행이 복구).
+  if (picked) {
+    const prevKey = {
+      email: picked.user.email,
+      cohort: picked.user.cohort,
+      name: picked.user.name,
+    };
+    if (colLetter === "A" || colLetter === "B" || colLetter === "C") {
+      // 자연키(email·cohort·name) 자체가 바뀜 → 옛 키 삭제 + 새 키로 행 재삽입.
+      const field = colLetter === "A" ? "email" : colLetter === "B" ? "cohort" : "name";
+      mirrorUserRekey(prevKey, registryRowFromUser({ ...picked.user, [field]: value }));
+    } else {
+      mirrorUserCells(prevKey, { [colLetter]: value });
+    }
+  }
 }
 
 /** Admin 전용: 트레이너 승인 (status pending → active) */
@@ -324,6 +346,13 @@ export async function setTrainerDepartment(
     { valueInputOption: "RAW" },
   );
   invalidateRegistry();
+  mirrorUserRow(registryRowFromUser({
+    email: lc, cohort: cohortValue, name: fallbackName, spreadsheetId: "",
+    role: "trainer", status: "active", assignedTrainer: "", team: "",
+    cohortLabel: "", nameLabel: "", courseStartISO: "", graduationISO: "", sortOrder: 0,
+    driveParentPath: "", feedbackFolderId: "", driveLinkStatus: "",
+    memo: "", captainOf: "", gcalToken: "", gcalSettings: "",
+  }));
 }
 
 /** 어떤 email 이 setTrainerDepartment 의 합법 대상인지 (registry trainer OR admin synth). */
@@ -407,6 +436,12 @@ export async function registerUser(u: User): Promise<void> {
     { valueInputOption: "RAW" },
   );
   invalidateRegistry();
+  // 시트에는 A~P 만 append 한다 — Q~T(memo·captainOf·gcal)는 쓰지 않으므로 미러도 비운다
+  // (시트에 없는 값을 DB 에만 남기면 정합 대조가 영구히 어긋난다).
+  mirrorUserRow(registryRowFromUser({
+    ...validated,
+    memo: "", captainOf: "", gcalToken: "", gcalSettings: "",
+  }));
 }
 
 // PR C-1: sortOrder(M) 일괄 update 는 lib/repo/users-sort.ts 로 분리 (500줄 cap).
@@ -432,47 +467,8 @@ export async function findExistingSheetIdByCohortName(
   return null;
 }
 
-/**
- * Drive 파일명 검색 — 미등록 시트 찾기(미등록 fallback. 등록자는 findExistingSheetIdByCohortName).
- *  - 아레나(A{n}-{m}기): `세일즈PT_A{n}_{m}기 {name}_대표님 경영일지` exact → 토큰 contains.
- *  - 일반: `세일즈PT_ {N}기 {name} 수강생 경영일지` exact → "수강생" 무관 토큰 contains.
- *    숫자경계 가드("8기"≠"18기"), 2개+ 모호면 null. cohort=T → null(검색 안 함).
- */
-export async function findSheetByCohortName(
-  cohort: string,
-  name: string,
-): Promise<string | null> {
-  if (String(cohort).trim().toUpperCase() === "T") return null;
-  const cleanName = name.trim();
-
-  // 아레나(A{n}-{m}기) → "세일즈PT_A{n}_{m}기 {이름}_대표님 경영일지". 부부는 토큰 contains 로 흡수.
-  const arena = String(cohort).trim().match(/^A(\d+)-(\d+)기?$/);
-  if (arena) {
-    const [, season, gisu] = arena;
-    const exactArena = `세일즈PT_A${season}_${gisu}기 ${cleanName}_대표님 경영일지`;
-    const ex = await findSheetByExactName(exactArena);
-    if (ex) return ex;
-    return findSheetByNameContainsAll([
-      "세일즈PT",
-      `A${season}_${gisu}기`,
-      cleanName,
-      "대표님",
-      "경영일지",
-    ]);
-  }
-
-  const cohortNum = String(cohort).replace(/기\s*$/, "").trim();
-  const exactName = `세일즈PT_ ${cohortNum}기 ${cleanName} 수강생 경영일지`;
-  const exact = await findSheetByExactName(exactName);
-  if (exact) return exact;
-  // exact 실패 → "수강생" 유무 무관 토큰 포함 매칭.
-  return findSheetByNameContainsAll([
-    "세일즈PT",
-    `${cohortNum}기`,
-    cleanName,
-    "경영일지",
-  ]);
-}
+// 500줄 cap 분리 — 호환 re-export.
+export { findSheetByCohortName } from "./users-sheet-lookup";
 
 // 500줄 cap 분리 — 호환 re-export.
 export { claimRegistry } from "./users-claim";

@@ -16,6 +16,11 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, cohortsTab } from "@/config";
 import { isValidISODate } from "@/util/week";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import {
+  cohortRowFromSheetRow,
+  mirrorCohortCells,
+  mirrorCohortRow,
+} from "./db/registry-mirror";
 
 export type CohortStatus = "active" | "archived";
 export type CohortType = "cohort" | "arena";
@@ -175,6 +180,9 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
       `${tab}!A2:J`,
       uniq.map((l) => [l, "active", "", "cohort", "", "", "", "", "", ""]),
     );
+    for (const l of uniq) {
+      mirrorCohortRow(cohortRowFromSheetRow([l, "active", "", "cohort", "", "", "", "", "", ""]));
+    }
   }
   invalidateCohorts();
 }
@@ -198,14 +206,15 @@ export async function setCohortStatus(
         requestBody: { values: [[status]] },
       });
       invalidateCohorts();
+      mirrorCohortCells(trimmed, { B: status });
       return;
     }
   }
   // 없으면 새 row append.
-  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [
-    [trimmed, status, "", "cohort", "", "", "", "", "", ""],
-  ]);
+  const newRow = [trimmed, status, "", "cohort", "", "", "", "", "", ""];
+  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [newRow]);
   invalidateCohorts();
+  mirrorCohortRow(cohortRowFromSheetRow(newRow));
 }
 
 /**
@@ -251,25 +260,29 @@ export async function upsertCohortConfig(
         requestBody: { values: [next] },
       });
       invalidateCohorts();
+      mirrorCohortCells(trimmed, {
+        D: String(next[0]), E: String(next[1]), F: String(next[2]), G: String(next[3]),
+        H: String(next[4]), I: String(next[5]), J: String(next[6]),
+      });
       return;
     }
   }
   // 없으면 새 row.
-  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [
-    [
-      trimmed,
-      "active",
-      "",
-      cfg.type ?? "cohort",
-      cfg.templateSheetId ?? "",
-      cfg.rootFolderId ?? "",
-      cfg.rosterSheetId ?? "",
-      cfg.sheetsFolderId ?? "",
-      cfg.companyParentFolderId ?? "",
-      cfg.seasonStartISO ?? "",
-    ],
-  ]);
+  const newRow = [
+    trimmed,
+    "active",
+    "",
+    cfg.type ?? "cohort",
+    cfg.templateSheetId ?? "",
+    cfg.rootFolderId ?? "",
+    cfg.rosterSheetId ?? "",
+    cfg.sheetsFolderId ?? "",
+    cfg.companyParentFolderId ?? "",
+    cfg.seasonStartISO ?? "",
+  ];
+  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [newRow]);
   invalidateCohorts();
+  mirrorCohortRow(cohortRowFromSheetRow(newRow));
 }
 
 /**
@@ -313,6 +326,8 @@ async function writeSeasonStartRaw(label: string, iso: string): Promise<void> {
       requestBody: { values: [[iso]] },
     });
     invalidateCohorts();
+    // 앞선 upsertCohortConfig 미러가 USER_ENTERED 값을 실었을 수 있으니 RAW 정본으로 덮는다.
+    mirrorCohortCells(trimmed, { J: iso });
     return;
   }
 }

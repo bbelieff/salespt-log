@@ -18,6 +18,7 @@
 import { registry, adminNames } from "@/config";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { invalidateRegistry, isAdminSynthCandidate } from "./users";
+import { mirrorUserCells, mirrorUserRow, registryRowFromUser } from "./db/registry-mirror";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 const CHUNK_SIZE = 100;
@@ -29,9 +30,17 @@ export async function setUserSortOrders(
   const reg = registry();
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
   const emailToRow = new Map<string, number>();
+  // 자연키(email,cohort,name) DB 미러용 — 같은 스캔에서 B·C 도 같이 기억한다.
+  const emailToKey = new Map<string, { cohort: string; name: string }>();
   for (let i = 0; i < rows.length; i++) {
     const e = String(rows[i]?.[0] ?? "").trim().toLowerCase();
-    if (e) emailToRow.set(e, i + 2); // header offset
+    if (e) {
+      emailToRow.set(e, i + 2); // header offset
+      emailToKey.set(e, {
+        cohort: String(rows[i]?.[1] ?? "").trim(),
+        name: String(rows[i]?.[2] ?? "").trim(),
+      });
+    }
   }
 
   const nameMap = adminNames();
@@ -39,6 +48,9 @@ export async function setUserSortOrders(
   // synth admin (registry row 없는 ADMIN_EMAILS 멤버) → 새 trainer row append.
   // 드래그 정렬이 row 기반이라 row 없으면 정렬이 저장 안 되던 사고 (2026-05-14).
   const appendData: (string | number | boolean)[][] = [];
+  const mirrorCellTargets: {
+    email: string; cohort: string; name: string; sortOrder: number;
+  }[] = [];
   let skipped = 0;
 
   for (const o of orders) {
@@ -53,6 +65,13 @@ export async function setUserSortOrders(
       updates.push({
         range: `${reg.tab}!M${sheetRow}`,
         values: [[String(Math.floor(o.sortOrder))]],
+      });
+      const k = emailToKey.get(lc);
+      mirrorCellTargets.push({
+        email: lc,
+        cohort: k?.cohort ?? "",
+        name: k?.name ?? "",
+        sortOrder: Math.floor(o.sortOrder),
       });
     } else if (isAdminSynthCandidate(lc)) {
       // synth admin → 새 trainer row append. M 에 sortOrder 포함 (별도 update 불필요).
@@ -100,6 +119,20 @@ export async function setUserSortOrders(
   }
   if (updates.length > 0 || appendData.length > 0) {
     invalidateRegistry();
+  }
+  // DB 미러(BBE-55) — 시트 쓰기 성공 후 fire-and-forget.
+  for (const m of mirrorCellTargets) {
+    mirrorUserCells({ email: m.email, cohort: m.cohort, name: m.name }, { M: m.sortOrder });
+  }
+  for (const r of appendData) {
+    mirrorUserRow(registryRowFromUser({
+      email: String(r[0]), cohort: String(r[1]), name: String(r[2]), spreadsheetId: "",
+      role: "trainer", status: "active", assignedTrainer: "", team: "",
+      cohortLabel: "", nameLabel: "", courseStartISO: "", graduationISO: "",
+      sortOrder: Number(r[12]) || 0,
+      driveParentPath: "", feedbackFolderId: "", driveLinkStatus: "",
+      memo: "", captainOf: "", gcalToken: "", gcalSettings: "",
+    }));
   }
   return {
     updated: updates.length,

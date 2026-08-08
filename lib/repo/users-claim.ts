@@ -21,6 +21,11 @@ import { User } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 import { nameMatches } from "./name-match";
+import {
+  mirrorUserRekey,
+  mirrorUserRow,
+  registryRowFromSheetRow,
+} from "./db/registry-mirror";
 
 // A2:R — 전체 폭. 결정적 append 행번호(rows.length) 계산이 M 밖으로 밀린 행도
 // 빠짐없이 세도록(claim-append-columns). 매칭은 A~D 만 사용.
@@ -137,6 +142,12 @@ export async function claimRegistry(
       requestBody: { values: [[email]] },
     });
     invalidateRegistry();
+    // DB 미러(BBE-55) — prep 행은 email="" 로 적재돼 있어 자연키가 바뀐다(rekey).
+    const prepRow = rows[prep.rowIdx] ?? [];
+    mirrorUserRekey(
+      { email: "", cohort: String(prepRow[1] ?? "").trim(), name: String(prepRow[2] ?? "").trim() },
+      registryRowFromSheetRow(prepRow, { email }),
+    );
     return;
   }
 
@@ -144,20 +155,24 @@ export async function claimRegistry(
   //    sortOrder(M) 은 0 (미정렬) — admin 이 드래그로 직접 부여.
   if (matchedRows.length > 0) {
     const sharedSheetId = matchedRows[0]!.sheetId || spreadsheetId;
-    await appendRegistryRow(reg.spreadsheetId, reg.tab, rows.length, [
+    const row = [
       email, cohortNorm, cleanName, sharedSheetId, role, status,
       "", "", cached.cohortLabel, cached.nameLabel,
       cached.courseStartISO, cached.graduationISO, "0",
-    ]);
+    ];
+    await appendRegistryRow(reg.spreadsheetId, reg.tab, rows.length, row);
     invalidateRegistry();
+    mirrorUserRow(registryRowFromSheetRow(row));
     return;
   }
 
   // 4) 완전 신규 — cached 포함 13 컬럼.
-  await appendRegistryRow(reg.spreadsheetId, reg.tab, rows.length, [
+  const row = [
     email, cohortNorm, cleanName, spreadsheetId, role, status,
     "", "", cached.cohortLabel, cached.nameLabel,
     cached.courseStartISO, cached.graduationISO, "0",
-  ]);
+  ];
+  await appendRegistryRow(reg.spreadsheetId, reg.tab, rows.length, row);
   invalidateRegistry();
+  mirrorUserRow(registryRowFromSheetRow(row));
 }

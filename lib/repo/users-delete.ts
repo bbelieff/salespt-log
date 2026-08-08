@@ -11,6 +11,7 @@
  */
 import { registry } from "@/config";
 import { readRange, sheetsClient } from "./sheets-client";
+import { mirrorUserDelete } from "./db/registry-mirror";
 import {
   invalidateRegistry,
   listAllUsers,
@@ -67,6 +68,12 @@ export async function deleteUserByEmail(email: string): Promise<void> {
     },
   });
   invalidateRegistry();
+  // DB 미러(BBE-55) — 삭제한 그 행의 자연키(email,cohort,name)로 DB 행도 제거.
+  mirrorUserDelete({
+    email: String(rows[matchIdx]?.[0] ?? "").trim(),
+    cohort: String(rows[matchIdx]?.[1] ?? "").trim(),
+    name: String(rows[matchIdx]?.[2] ?? "").trim(),
+  });
 }
 
 /**

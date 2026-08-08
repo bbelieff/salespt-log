@@ -22,6 +22,7 @@ import { registry } from "@/config";
 import { readRange, sheetsClient } from "./sheets-client";
 import { readProfileBundle } from "./sales";
 import { invalidateRegistry } from "./users";
+import { mirrorUserCells } from "./db/registry-mirror";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 const CHUNK_SIZE = 100; // Sheets API batchUpdate 안전 청크 크기.
@@ -85,6 +86,10 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
   }
 
   const updates: { range: string; values: unknown[][] }[] = [];
+  const mirrorTargets: {
+    key: { email: string; cohort: string; name: string };
+    cells: Record<string, string>;
+  }[] = [];
   const failed: MigrateFailed[] = [];
   let updated = 0;
   let skipped = 0;
@@ -131,6 +136,15 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
         bundle.graduationISO,
       ]],
     });
+    mirrorTargets.push({
+      key: { email, cohort, name },
+      cells: {
+        I: bundle.cohort,
+        J: bundle.name,
+        K: bundle.courseStartISO,
+        L: bundle.graduationISO,
+      },
+    });
     updated++;
   }
 
@@ -146,6 +160,8 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
       },
     });
   }
+  // DB 미러(BBE-55) — 시트 쓰기 성공 후 fire-and-forget.
+  for (const t of mirrorTargets) mirrorUserCells(t.key, t.cells);
 
   if (updates.length > 0) {
     invalidateRegistry();
