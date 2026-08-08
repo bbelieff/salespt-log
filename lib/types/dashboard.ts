@@ -19,6 +19,8 @@ export interface DashboardKPI {
   수수료합: number; // 총매출 분해: Σ수납액(수수료). 총매출 = 수임비합 + 수수료합
   이월매출: number; // 아레나 시작일 이전 계약(이월·비집계) 매출 — 표시용 (arena-start-revenue-split)
   전체매출: number; // 총매출(아레나) + 이월매출 — "전체" 줄
+  이월비용: number; // 시작일 이전 발생 비용(이월·비집계) — 표시용, 영업이익 제외 (belie 결정 2026-08-07, BBE-83)
+  전체비용: number; // 총비용(시즌) + 이월비용 — "전체" 줄
 }
 
 /** 채널별 6단계 funnel matrix — stacked bar 데이터 */
@@ -57,7 +59,10 @@ export interface DashboardView {
   콜지기소수임비: number;
 }
 
-/** Explicit state prevents a failed ledger read from being represented as zero. */
+/**
+ * Explicit state prevents a failed ledger read from being represented as zero.
+ * dbCostTotal = 03 DB관리 시즌분 비용만(BBE-83 이후, courseStart 이전 이월 제외) — "전체" 아님.
+ */
 export type DashboardAdditionalCost =
   | {
     status: "available";

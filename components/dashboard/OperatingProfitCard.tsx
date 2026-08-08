@@ -22,6 +22,10 @@ interface Props {
   carryoverRevenue?: number;
   /** 전체 매출 (= 아레나 + 이월). 없으면 revenue+carryover 로 계산. */
   totalRevenue?: number;
+  /** 이월(시작일 이전 발생) 비용 — 있으면 비용도 3줄 분리 표시 (belie 결정 2026-08-07, BBE-83). */
+  carryoverCost?: number;
+  /** 전체 비용 (= 시즌 + 이월). 없으면 cost+carryoverCost 로 계산. */
+  totalCost?: number;
 }
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
@@ -33,6 +37,8 @@ export default function OperatingProfitCard({
   contractCount,
   carryoverRevenue,
   totalRevenue,
+  carryoverCost,
+  totalCost,
 }: Props) {
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
@@ -84,6 +90,27 @@ export default function OperatingProfitCard({
           <div className="flex justify-between font-semibold text-gray-700">
             <span>전체</span>
             <span>₩{fmtMoney(totalRevenue ?? revenue + carryoverRevenue)}</span>
+          </div>
+        </div>
+      )}
+      {typeof carryoverCost === "number" && (
+        <div
+          className="mt-2 space-y-0.5 border-t border-gray-100 pt-2 text-xs"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          <div className="flex justify-between text-gray-600">
+            <span>
+              시즌 비용 <span className="text-gray-400">(집계)</span>
+            </span>
+            <span>₩{fmtMoney(cost)}</span>
+          </div>
+          <div className="flex justify-between text-gray-400">
+            <span>이월 비용 (비집계)</span>
+            <span>₩{fmtMoney(carryoverCost)}</span>
+          </div>
+          <div className="flex justify-between font-semibold text-gray-700">
+            <span>전체</span>
+            <span>₩{fmtMoney(totalCost ?? cost + carryoverCost)}</span>
           </div>
         </div>
       )}

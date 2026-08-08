@@ -175,6 +175,8 @@ export default function DashboardPage() {
                   contractCount={contractCount}
                   carryoverRevenue={dash.data.kpi.이월매출}
                   totalRevenue={dash.data.kpi.전체매출}
+                  carryoverCost={dash.data.kpi.이월비용}
+                  totalCost={dash.data.kpi.전체비용}
                 />
                 <ProductivityIndicators matrix={dash.data.channelMatrix} />
               </div>
