@@ -15,6 +15,7 @@ import { parseWeekRows } from "./week-parse";
 import { mirrorSheetRow } from "./db/mirror";
 import { salesDbPayload } from "./db/sales-payload";
 import { readSalesRowsFromDb } from "./db/client";
+import { readCourseDatesFromDb, courseDateDbReadEnabled } from "./db/course-dates";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
 // 주차 계산 정본은 lib/util/week.ts (R4 W1-0 단일화, G8). 기존 소비처
@@ -118,10 +119,8 @@ function tabRef(tab: string): string {
 
 // ── 시트 I/O ──────────────────────────────────────────────────
 
-/** 수강시작일 O1 read. UNFORMATTED_VALUE 로 직렬값(epoch days since 1899-12-30) 파싱. */
-export async function readCourseStart(
-  spreadsheetId: string,
-): Promise<Date> {
+/** 수강시작일 O1 read(시트 경로). UNFORMATTED_VALUE 로 직렬값(epoch days since 1899-12-30) 파싱. */
+async function readCourseStartFromSheet(spreadsheetId: string): Promise<Date> {
   const range = `${tabRef(SHEET_RANGES.sales.tab)}!${SHEET_RANGES.sales.startDateCell}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -151,11 +150,8 @@ export async function readCourseStart(
   throw new Error(`[sales.ts] O1 형식 미지원: ${typeof raw}`);
 }
 
-/** 영업관리 O2 종강총회일(=수료일) 직접 읽기. ADR-0005: O2 직접값만 신뢰(offset 강제 X).
- *  헤더 D-day·메인 배너 표시용. */
-export async function readGraduation(
-  spreadsheetId: string,
-): Promise<Date> {
+/** 영업관리 O2 종강총회일(=수료일) 직접 읽기(시트 경로). ADR-0005: O2 직접값만 신뢰(offset 강제 X). */
+async function readGraduationFromSheet(spreadsheetId: string): Promise<Date> {
   const range = `${tabRef(SHEET_RANGES.sales.tab)}!${SHEET_RANGES.sales.graduationDateCell}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -181,6 +177,28 @@ export async function readGraduation(
     return parsed;
   }
   throw new Error(`[sales.ts] O2 형식 미지원: ${typeof raw}`);
+}
+
+/**
+ * 수강시작일 — DB 우선(BBE-57, R7 Phase 1), 없으면 시트(O1) 폴백.
+ * 게이트 = courseDateDbReadEnabled()(전역 env, 기본 OFF — 카나리아 필수).
+ * DB 에 값 없음(backfill 전·2/53 파싱실패 시트 등) → 시트 폴백 그대로 — 동작·에러 메시지 불변.
+ */
+export async function readCourseStart(spreadsheetId: string): Promise<Date> {
+  if (courseDateDbReadEnabled()) {
+    const dbRow = await readCourseDatesFromDb(spreadsheetId);
+    if (dbRow?.courseStartISO) return parseISO(dbRow.courseStartISO);
+  }
+  return readCourseStartFromSheet(spreadsheetId);
+}
+
+/** 종강총회일 — DB 우선, 없으면 시트(O2) 폴백. 게이트·폴백 사유는 readCourseStart 와 동일. */
+export async function readGraduation(spreadsheetId: string): Promise<Date> {
+  if (courseDateDbReadEnabled()) {
+    const dbRow = await readCourseDatesFromDb(spreadsheetId);
+    if (dbRow?.graduationISO) return parseISO(dbRow.graduationISO);
+  }
+  return readGraduationFromSheet(spreadsheetId);
 }
 
 /**
