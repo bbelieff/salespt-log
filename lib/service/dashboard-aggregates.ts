@@ -10,10 +10,15 @@
  *       미팅완료 = 미팅 상태∈{계약,완료} 채널별 수(=영업관리 L), 계약 = 계약여부(K)=TRUE 채널별 수.
  *   • weeklyContracts (01!N{38..276}): 미팅 상태="계약"(J) 을 미팅날짜 weekIndexOf 1~8 버킷.
  *   • weeklyActivity (대시보드 H33:H40): Σ(생산×1 + 컨택×1.5 + 미팅×2), 주차별(불변식①).
- *   • 누적수임비 (대시보드 B21): 이월 제외 Σ수임비(arena). B21 정의 미확정 — diff 로 확정.
+ *   • 누적수임비 (대시보드 B21): 이월 제외 Σ수임비(arena). 정의는 belie 확정(2026-08-05, BBE-66,
+ *       "이월 제외 + 전체 계약 수임비 합산") — 이 구현과 일치. ⚠️ 단, 파일럿 전원 diff 0 실증은
+ *       미완(shadowCompareDashboard 미호출·reverseShadowCompare 는 2026-08부터 기본 OFF — 성능).
+ *       재검증하려면 VPS 에서 `node scripts/ops/dashboard-parity.mjs --cohort "8,9,연습,A1-0,..."`
+ *       또는 VPS 환경변수 DASHBOARD_SHADOW_COMPARE=1 로 재점화 후 Sentry `[dashboard-parity-rev]`
+ *       경보의 필드명 확인.
  *
- * ⚠️ 시트 수식 의미가 미검증인 항(활동량의 미팅/생산 정의·B21)은 적대적 검증에서 지목됨 —
- * 그림자 대조가 경험적으로 확정할 대상(R2-7b 게이트).
+ * ⚠️ 활동량의 미팅/생산 정의는 적대적 검증에서 지목돼 실측 규명 완료(2026-07-09).
+ * B21 은 정의만 확정 — 실측 diff 0 은 미완(위 참고).
  *
  * courseStart 는 **readProfileBundle.courseStart**(시트 직렬 파생) 를 쓸 것 — user.courseStartISO
  * →parseISO(로컬자정) 와 섞으면 비-UTC 서버에서 경계일 off-by-one(적대검증 risk).
@@ -147,7 +152,8 @@ export function weeklyActivityFromDb(
   return weeks;
 }
 
-/** 누적수임비(B21) 후보 = 이월 제외 Σ수임비(arena). B21 실의미 미확정 — 그림자 diff 로 확정. */
+/** 누적수임비(B21) = 이월 제외 Σ수임비(arena). 정의 belie 확정(2026-08-05, BBE-66).
+ * 파일럿 전원 diff 0 실증은 미완 — 파일 상단 주석 참고. */
 export function arenaFeeFromDb(
   contracts: ContractPayment[],
   courseStartISO: string,
