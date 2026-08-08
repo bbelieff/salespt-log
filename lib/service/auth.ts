@@ -37,6 +37,7 @@ import { arenaCohortLabelParts } from "@/service/cohort-token";
 import { migrateArenaCarryover } from "@/service/arena-carryover";
 import { findArenaRowBySheetId } from "@/repo/users-claim";
 import type { CachedLabels } from "@/repo/users-claim";
+import { writeCourseDatesToDb } from "@/repo/db/course-dates";
 
 export type ClaimErrorReason = "not_found" | "ambiguous";
 
@@ -173,6 +174,20 @@ export async function claimAccount(
   // 헛수고지만, 신규 append 가 압도적으로 흔한 경로이고 readProfileBundle 은
   // 단일 batchGet 이라 비용 무시 가능. prep row 면 빠르게 통과.
   const cached = await fetchCachedLabels(spreadsheetId);
+
+  // DB 배선(BBE-57) — best-effort, claimAccount 성공을 막지 않는다. users 행이 아직
+  // 없으면(BBE-55 dual-write 머지 전) 0 rows affected 로 조용히 no-op — 정상 동작.
+  // Sheets(registry I~L)가 여전히 정본 폴백이라 실패해도 클레임 자체는 안전.
+  // ⚠️ BBE-55 통합 시 순서 주의(적대적 리뷰 지적, 2026-08-08): 이 호출은 UPDATE-only —
+  // users 행이 이 시점까지 생성돼 있어야 값이 실제로 박힌다. BBE-55 가 claimAccount 안에
+  // row 생성 로직을 넣는다면 **이 줄보다 먼저** 와야 한다. 나중에 오면 최초 로그인 시
+  // 즉시 backfill 되는 효과가 영구히 무산되고(admin 🔄 동기화 버튼에만 의존), 조용히
+  // 실패하는 형태라 못 알아챌 수 있다.
+  try {
+    await writeCourseDatesToDb(email, resolved.cohort, cached.courseStartISO, cached.graduationISO);
+  } catch (e) {
+    console.warn(`[auth] course dates DB 동기화 실패(무시, Sheets 폴백 유지) — email=${email}`, e);
+  }
 
   // claimRegistry 는 prep row(빈 email) 발견 시 그 자리 채움(I~L 보존), 다른
   // 계정으로 점유된 row 있으면 새 row append(같은 spreadsheetId + cached 공유),

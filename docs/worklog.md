@@ -55,7 +55,7 @@
 |---|---|---|---|
 | FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 + **거짓 완료 적발**(신규) | 경영일지 노트북 C작업반장(260806) | **BBE-83 완주(2026-08-08)** — 03 DB관리 비용 개강일 기준 이월 분할, PR #733 머지·배포 success·health 200·라이브 데이터 재확인 완료(상세는 위 로그 항목). 다음 배차 대기. 이하 이전(FM(260804)): **⛔A2 등록 사고 복구 중 — VPS SSH 완전장애로 정지(2026-08-06 19:10)**. 근인(belie 콘솔 확인, 목적지 폴더 소유권) 해소 후 55/55 시트 복사 성공했으나, `appendA2Row` 의 registry 기록이 열 밀림 사고로 A~T 대신 S~AL 에 들어가는 2차 버그 발견·수정·배포 완료(원인·수정·복구도구 = `scripts/ops/arena-season2-batch.mjs` PR #712). 복구 53건 중 **33건 완료**(row99~131), **잔여 20건**(row132~151 + junk 5건)은 `gh workflow run "Arena Season2 Batch" -f mode=repair-shifted-execute` 재실행만 하면 됨(멱등 — 이미 복구된 행은 자동 스킵). **VPS SSH 가 19:10 기준 연속 4회 7/7(rc=255) 완전실패** — 재시도 무의미한 수준, belie 인프라 확인 필요(BBE-75 에스컬레이션 완료). 이하 이전: **거짓완료 2건 조치 완료(2026-08-06)** — BBE-50 Done→Todo 원복(백필 미실행 확인), BBE-74 는 산출물 실재 확인 + 완주도장 재요구(작업원C 응답 대기). 이하 이전: **⛔A2 D-1 — 진단 종료, belie 콘솔 확인 대기(2026-08-06)**. scope 반증(전체 확인) → 근인 = GCP OAuth 게시상태 후보로 확정. 코드 쪽 자동진단 한계 도달, 5분 무응답 시 차선책(개강일만 공지) 권고. 신규 배차 대기: 결정함 12번(퍼널 해지 제외) 실행계약 발급 예정. 이하 이전: **L4 완료(2026-08-05)** — 오염행 감사 실행·수정·재실행 완주(#683·#684, 배포 success). 파일럿 55시트 스캔 결과 **2건**(테스트계정 1 + 실수강생 해지반영 1). belie 2단계 재승인 대기(결정함 9번). 이하 이전: **라운드1 배차 실행(2026-08-05 · R1 belie 승인)** — 계약 3건 발급(L2 #596 · L3 날짜달력 · **L4 DB-DRIFT-AUDIT-01**=결정함 9번 1단계), N8·N9 폐기(R3-3 완주로 무효). 병렬 4레인 충돌 0 확인. **BBE-42 아레나 시즌2 = W0·W1 도구 완료(#669·#670 배포 success·health 200), ⛔운영 시트 쓰기 권한 대기(결정함 3-b·due 8/6)**. Cowork 워킹트리 전사 회수 완료(미커밋 델타 0). 이하 이전: **배포 확인(완료) — R3-3 잔여(BBE-39)**: PR **#666**(`9551c8b`) 머지 · 배포 run `30939294995` **success(1차 ssh 타임아웃 → rerun)** · health 200. 미팅 화면발 02 쓰기 6경로 dual-sync + 500줄 캡 split 2건, 전체 1019테스트 green. **02 구역 A 로 반환.** ⚠️ VPS ssh 22 타임아웃이 오늘만 3회(#660·#661 1차·#666 1차) — 인프라 점검 후보. 이하 이전: **배포 확인(완료)** — #660(`a253ba8`) 머지. 자기 배포 run `30934412080` 은 **VPS ssh 타임아웃**으로 실패(코드 무관·라이브 무변경) → 후속 #662 run `30935808481` success 로 동일 트리 배포·health 200 확인. 2호 = 디스패치 260805 전사 PR. **belie 승인 대기**(설계도 §6). 이하 취임 기록: 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
 | A | P0 대응 + 기수 개막 준비 | DevA(260712) | **배포 확인(완료)** — ①**BBE-49(P0) #676(363ba94)**: 비파일럿(7기) 수료자 11주+ 컨택 저장 500 수리. Cowork 패치 적용 후 **적대리뷰 4렌즈 BLOCKER 2·HIGH 4·MED 3 반영해 수정 머지** (읽기 K캐시 vs 쓰기 O1 게이트 불일치·시트폴백 courseStart 교체로 인한 전지표 0→정본 덮어쓰기·비파일럿 백필부재 누적합 0·주간퍼널 0·dbEnabled 가드 누락·읽기측 테스트 0건). 판정 원천 = 시트 O1 단일. check.sh 초록(1002)·배포 success·health 200·**라이브 실측: POST /api/daily 200 + 새로고침 후 값·주차합계 유지**. 잔여=생산(E)·직접생산 M 동기화(별도 티켓), DB_READ_COHORTS 확대는 belie 결정. ②**10기 날짜 마감 #661(95bba0e)**: 시트 O1=2026-08-07·O2=2026-09-26·B3=10·C3=이름 + 레지스트리 I~L, 실측 6/6·6/6·6/6(cohorts 10=active). 동반 오염(B3=8 → 앱에서 '8기' 표시) 자율 확대 수리, 사전 기록 0건 확인 후 flip. ③앞서 **P0 전광판 500 #639(b981c5c)**: unstable_cache 에 Date 캐싱 → 히트 시 string 강등 → weekIndexOf TypeError. 캐시 경계 ISO 통일. 인시던트 2건 기록(scoreboard-cache-date, bbe49). ⚠️gh-runner-ssh-ban 누적 5회+ (rerun 으로 매번 회복, 제공사 확인 권고). **AR-2a 실행 준비 유지**(belie 명단 승인 대기). 다음: 신규 배정 대기 |
-| B | **작업원 B** — 반장 배차 수행. 구 gcal 계열 잔여 승계 | DevB(260806) | **BBE-64 PR #713 오픈(draft) · 머지는 8/7 이후 대기** — R7 Phase 3 #15(`readProfileBundle.stats` DB 대체). 적대적 리뷰 완주(HIGH 1건 수정: 부부/멀티계정 spreadsheetId 공유 시 통계 덮어써지던 실제 버그, index 병합으로 교정 + 회귀테스트). check.sh 초록(1038). **draft 로 연 이유 = 실수 조기머지 방지**(belie 지시). 부수 발견: 기존 `weeklyContractsFromDb` 이월 제외 필터 누락(별도 트랙 소유, R2-7a) · A2 백필 미완료 시 배포하면 통계 조용히 0(백필 확인 후 머지 권장). 상세 = `docs/plans/active/profile-stats-db.md`. 레인 `lane:profile-stats` 유지(머지 전까지). 이하 이전: BBE-45 배포 확인(완료) — #695→`0102a89`·success·health 200. |
+| B | **작업원 B** — 반장 배차 수행. 구 gcal 계열 잔여 승계 | DevB(260806) | **BBE-57 PR #740 오픈(draft) · 머지는 반장 판정 대기(2026-08-08)** — 수강기간(O1/O2) DB 배선, R7 Phase 1. 티켓 전제 2건 실측 반증(마이그레이션 불필요·UPDATE-only 로 BBE-55 자연키변경과 독립) 후 구현+적대적 리뷰(Agent 2렌즈, HIGH 1건=DB읽기실패시 시트폴백 소실 포함 5건 수정 — 읽기·쓰기 독립 카나리아 게이트 추가)+유닛테스트 4파일 39건, check.sh 초록. 상세=`docs/plans/active/course-dates-db.md`. 이하 이전: **BBE-64 PR #713 오픈(draft) · 머지는 8/7 이후 대기** — R7 Phase 3 #15(`readProfileBundle.stats` DB 대체). 적대적 리뷰 완주(HIGH 1건 수정: 부부/멀티계정 spreadsheetId 공유 시 통계 덮어써지던 실제 버그, index 병합으로 교정 + 회귀테스트). check.sh 초록(1038). **draft 로 연 이유 = 실수 조기머지 방지**(belie 지시). 부수 발견: 기존 `weeklyContractsFromDb` 이월 제외 필터 누락(별도 트랙 소유, R2-7a) · A2 백필 미완료 시 배포하면 통계 조용히 0(백필 확인 후 머지 권장). 상세 = `docs/plans/active/profile-stats-db.md`. 레인 `lane:profile-stats` 유지(머지 전까지). 이하 이전: BBE-45 배포 확인(완료) — #695→`0102a89`·success·health 200. |
 | C | 수납: 계약해지 — contract-payment 계열 + 실무/수납 화면 | DevC(260712-2) | **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
 | E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
@@ -310,6 +310,27 @@
 - 다음: BBE-56(읽기 전환)이 이 위에 얹힌다. ⚠️ **머지 보류** — belie 지시: 아레나2 복구 + 개막 이후
   반장 판정(§3.5 직렬 머지).
 - SoR: PR #738 · Linear BBE-55 · `docs/plans/active/sheet-retirement-r7.md`.
+
+### 2026-08-08 · 작업원B(260806) · BBE-57 구현 완료, PR 오픈 준비 — 수강기간(O1/O2) DB 배선, R7 Phase 1
+- 의도: BBE-64 로 이미 파악한 `lib/service/me.ts`·`lib/repo/sales.ts` 표면의 연속 작업. 수강시작일·
+  종강총회일(시트 O1/O2)의 정본을 Postgres `users`로 이전 — D-day·주차·퍼널 통계 전부가 이 값에 의존.
+- §0.8 Gather 로 티켓 전제 2건을 실측 반증: ①`course_start_iso`/`graduation_iso` 컬럼은 BBE-54
+  (PR #722, 0001_users_cohorts.sql)에 **이미 존재**하나 100% 미배선(grep 재확인) → **새 마이그레이션
+  파일 불필요**, BBE-55 WIP(`0002_users_natural_key.sql`)와 번호 충돌 자체가 안 생김. ②`users` 테이블은
+  현재 0행(`lib/repo/db/registry.ts`= BBE-55 WIP 전용, master 엔 없음) → 쓰기 배선은 UPDATE-only
+  설계(INSERT 없음, `WHERE email=$1 AND cohort=$2`)로 BBE-55 의 자연키 변경(email,cohort)→(email,cohort,name)
+  과 완전 독립 — 머지 순서 무관하게 안전.
+- 한 것: `lib/repo/db/course-dates.ts`(신규, read/write/전역게이트) · `lib/repo/sales.ts`(DB우선→시트폴백,
+  기존 파싱로직 `*FromSheet` 로 이름만 이동) · `lib/service/auth.ts`(claimAccount 에 best-effort 쓰기) ·
+  `lib/repo/users-cache-migrate.ts`(🔄동기화 백필 루프 재사용). 신규 유닛테스트 4파일 32건(no-op 불변
+  회귀·UPDATE-only 회귀·2/53 파싱실패 마스킹안됨 회귀 포함). check.sh 초록(1060 단위+25).
+- 결정(자율, §0.7): 읽기 게이트 = 전역 env `COURSE_DATE_DB_READ=1`(기본 OFF) — sheet_rows 레벨(기수
+  allowlist)과 다른 모델, "카나리아 필수" 지시를 문자 그대로 반영. "2/53 파싱실패" 수치는 이 PR 에서
+  재검증 안 함 — 기존 `migrateRegistryCache()`(🔄동기화)의 `failed[]` 가 이미 그 정보를 수집하므로
+  버튼 1회 실행으로 최신 수치 확인 가능(별도 스크립트 불필요, YAGNI).
+- 다음: 적대적 리뷰(Agent 2렌즈 병렬, ultracode OFF 라 Workflow 대신 직접 Agent 호출) 진행 중 →
+  결과 반영 → draft PR 오픈. 머지는 반장 판정 대기.
+- SoR: `docs/plans/active/course-dates-db.md`
 
 ### 2026-08-08 · 경영일지 노트북 C작업반장(260806) · BBE-83 완주 — 03 DB관리 비용도 개강일 기준 이월 분할
 - 의도: belie 직접 지적(BBE-42 카나리아 실측 중) — "매출은 이월매출로 뺐는데, 왜 비용은 이월이 안돼?

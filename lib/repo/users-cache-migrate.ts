@@ -23,6 +23,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { readProfileBundle } from "./sales";
 import { invalidateRegistry } from "./users";
 import { mirrorUserCells } from "./db/registry-mirror";
+import { writeCourseDatesToDb } from "./db/course-dates";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 const CHUNK_SIZE = 100; // Sheets API batchUpdate 안전 청크 크기.
@@ -146,6 +147,17 @@ export async function migrateRegistryCache(): Promise<MigrateResult> {
       },
     });
     updated++;
+
+    // DB 배선(BBE-57) — 이 buttons 이미 email/cohort/기간이 한 loop 안에 모여 있어
+    // 기존 145행 backfill 지점으로 재사용. best-effort, 실패해도 Sheets 캐시 갱신(위)은
+    // 그대로 진행 — 이 함수의 실패 계약(failed[])을 DB 실패로 오염시키지 않는다.
+    if (email) {
+      try {
+        await writeCourseDatesToDb(email, cohort, bundle.courseStartISO, bundle.graduationISO);
+      } catch (e) {
+        void e; // Sheets 캐시는 이미 갱신됨 — DB 동기화 실패는 무시(다음 🔄 동기화가 재시도).
+      }
+    }
   }
 
   // 청크 단위로 batchUpdate (100 row/call). RAW — registry 는 자동 type inference 금지
