@@ -188,6 +188,8 @@ describe("dashboard sheet fallback latency", () => {
         수수료합: 0,
         이월매출: 0,
         전체매출: 0,
+        이월비용: 0,
+        전체비용: 6_000,
       },
       channelMatrix: [
         { 채널: "매입DB", 생산: 10, 유입: 9, 컨택진행: 8, 미팅예약: 7, 미팅완료: 6, 계약: 1 },

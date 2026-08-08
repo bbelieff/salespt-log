@@ -1167,6 +1167,10 @@ components/dashboard/
 - 부연: "영업이익률 N%" (소수 1자리)
 - 매출/비용/영업이익 세 박스의 **+/−/= 배지 산술 흐름** 시각 통일
 
+**이월 분리 표시(선택)**: `carryoverRevenue`/`totalRevenue` 주면 매출 3줄(아레나·이월·전체) 표시.
+`carryoverCost`/`totalCost` 주면 비용도 동일하게 3줄 표시(belie 결정 2026-08-07, BBE-83) — 매출과
+같은 시작일(courseStart) 경계로 03 DB관리 비용을 시즌/이월 분할한 값.
+
 ### 9-4. FunnelChart (6단계 영업퍼널)
 
 **용도**: 6단계 stacked funnel SVG (4채널 × 6단계 = 24 cells stacked bar).

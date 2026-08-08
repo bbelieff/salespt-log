@@ -484,6 +484,12 @@ interface DashboardKPI {
   // arena-start-revenue-split: 시작일(O1) 기준 분리. 총매출=아레나(이월 제외, 점수 동일).
   이월매출: number;       // 시작일 이전 계약(이월·비집계) 매출 — 표시용
   전체매출: number;       // 총매출(아레나) + 이월매출
+  // BBE-83(belie 결정 2026-08-07): 비용도 매출과 동일 경계로 분리 — 03 DB관리 3섹션만
+  // (매입DB 구매일/직접생산 시작일 — ADR-0022 §3, 완료집계=종료일과 별개/현수막 날짜).
+  // expense-ledger(추가비용)는 이미 recognizedAmountForRange 로 courseStart 이후만
+  // 인식해 무변경. SSOT = lib/service/dashboard-cost-carryover.ts (splitDbCost).
+  이월비용: number;       // 시작일 이전 발생 03 DB관리 비용 — 표시용, 영업이익 제외
+  전체비용: number;       // 총비용(시즌) + 이월비용
 }
 
 interface DashboardChannelMatrix {
