@@ -17,9 +17,13 @@ import {
   listCarriedMeetingKeys,
   listCarrySourceMeetings,
 } from "@/repo/carryover";
-import { chooseWriteSource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { dbEnabled, writeRowToDb } from "@/repo/db/client";
-import { listCarriedMeetingKeysFromDb } from "@/repo/db/read-daily";
+import {
+  listCarriedMeetingKeysFromDb,
+  readMeetingsFromDb,
+} from "@/repo/db/read-daily";
+import { meetingToRow } from "@/repo/meetings-rows";
 import { queueMeetingSheetSync } from "./meetings-write";
 import {
   appendFromContract,
@@ -70,12 +74,27 @@ export async function migrateArenaCarryover(
   // R3-2: 아레나(항상 파일럿)는 DB 동기 정본 + 시트 수렴 잡. 전환기 재실행 중복 방지를 위해
   // 멱등키를 시트 AP 와 DB(신형 AP·구형 원본행id) 합집합으로 판정.
   const dbPrimary = chooseWriteSource(arenaUser.cohort, dbEnabled()) === "db";
-  const [sources, carried] = await Promise.all([
+  const [sheetSources, carried] = await Promise.all([
     listCarrySourceMeetings(prior.spreadsheetId),
     listCarriedMeetingKeys(arenaSheetId),
   ]);
   if (dbPrimary) {
     for (const k of await listCarriedMeetingKeysFromDb(arenaSheetId)) carried.add(k);
+  }
+  // BBE-65: listCarrySourceMeetings 는 이전 기수 시트 전용 읽기라, 방금 DB 정본으로 저장된
+  // 예약 미팅이 비동기 시트 미러(queueMeetingSheetSync)를 아직 못 따라잡았으면 여기서
+  // 통째로 누락된다(read-your-writes 위반 — 재실행 없이는 영구 소실). 이전 기수가 DB 읽기
+  // 파일럿이면 DB 를 직접 union — meetingToRow 는 appendMeeting 과 동일한 코덱이라
+  // Meeting 필드(A~AN 전체, 수식열 제외)를 손실 없이 raw 행으로 되돌린다.
+  // (계약 readAllContracts 는 여기 포함 안 함 — 02 append/update 는 시트에 동기 즉시 쓰기라
+  //  같은 비동기 지연 창이 없음, 실측: appendFromContract/updateUserFields 모두 await 직접 update.)
+  const sources = [...sheetSources];
+  if (chooseDailySource(prior.cohort, dbEnabled()) === "db") {
+    const seen = new Set(sheetSources.map((s) => s.원본id));
+    for (const m of await readMeetingsFromDb(prior.spreadsheetId)) {
+      if (m.상태 !== "예약" || seen.has(m.id)) continue;
+      sources.push({ 원본id: m.id, raw: meetingToRow(m) });
+    }
   }
   const arenaCtx = {
     spreadsheetId: arenaSheetId,
