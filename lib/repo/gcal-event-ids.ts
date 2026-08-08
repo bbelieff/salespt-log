@@ -1,21 +1,54 @@
 /**
- * Layer: repo — 앱 일정 행 ↔ 구글 eventId 매핑 저장 (gcal-2, google-calendar-sync §2).
+ * Layer: repo — 앱 일정 행 ↔ 구글 eventId 매핑 저장 (gcal-2 · BBE-62 로 DB 정본 전환).
  *
- * 저장 위치: 04 미팅 탭 **AT열** · 05 실무투두 탭 **O열**. 값 = 사용자별 JSON 맵
- * `{"salesptEmail": "eventId"}` — 한 시트 멀티계정(부부·직원)이 각자 연결해도 충돌 0.
+ * **정본 = Postgres `gcal_event_ids`**(BBE-62, R7 Phase 2 #13). 시트 셀(04 미팅 **AT열** ·
+ * 05 실무투두 **O열**, 값 = 사용자별 JSON 맵)은 **읽기 폴백 + 미러**로만 남는다 — 실제 열
+ * 제거는 시트 은퇴(R7 Phase 4 #20).
  *
- * ★설계(위험 최소화): meetings.ts/todos.ts 의 행 쓰기(writeMeetingRowSplit 은 A:M/P/R/T:AN/
- * AQ:AS, writeTodoRow 는 A:N)는 이 컬럼을 **범위 밖**으로 두어 안 건드린다 → 미팅/투두 행
- * 저장·클리어와 **독립 보존**. 이 모듈만 해당 셀을 read-merge-write(타 사용자 키 보존).
+ * ## 전환 규칙 (BBE-58 과 같은 뼈대, 맵이라 병합 규칙이 하나 더)
+ *  ① **키 단위 DB 우선 병합** — 읽기는 `시트맵 ∪ DB맵`이되 **같은 email 키는 DB 가 이긴다**.
+ *     DB 의 `""`(tombstone)은 "지워짐"이라 결과에서 제외된다. 이 규칙이 있어야 미러가 실패해
+ *     시트에 옛 값이 남아도 **지운 이벤트가 되살아나지 않는다**.
+ *     (union 병합 자체는 lib/service/db.ts loadDBOverview 의 backfillMissingRows 선례와 동형.)
+ *  ② **lazy backfill** — 시트에서 주운 키를 DB 에 1회 심는다(`do nothing`).
+ *  ③ **DB 정본 + 시트 미러** — DB 실패=throw, 시트 미러 실패=warn. revert 안전(§6.8).
+ *
+ * ## 왜 삭제가 DELETE 가 아니라 tombstone 인가
+ * `removeAll`(gcal-sync)이 **맵이 비면 아무 이벤트도 지우지 못한다** → 구글에 **영구 고아**가
+ * 남는다(BBE-62 카드가 지목한 최대 위험). DB 행을 지우면 다음 읽기가 시트 폴백으로 옛 값을
+ * 주워 되살리므로, 삭제는 `event_id=''` tombstone 으로 표현한다.
+ *
+ * ## 사라진 것
+ * `withCellLock`(프로세스 내 셀 락) — 사용자별 행이 분리돼 lost update 가 **구조적으로 불가능**
+ * 해졌다. 단일 pm2 인스턴스 전제도 함께 사라진다(카드의 "부수 효과"). 시트 미러 경로에는 남는다.
+ *
+ * ★설계(위험 최소화, 유지): meetings.ts/todos.ts 의 행 쓰기(writeMeetingRowSplit 은 A:M/P/R/
+ * T:AN/AQ:AS, writeTodoRow 는 A:N)는 이 컬럼을 **범위 밖**으로 두어 안 건드린다.
  */
 import { SHEET_RANGES } from "@/config";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { dbEnabled } from "./db/client";
+import {
+  backfillGcalMapIfAbsent,
+  keepOnlyMarkersInDb,
+  readGcalMapFromDb,
+  readGcalMapsFromDbBatch,
+  tombstoneAllInDb,
+  upsertGcalEventId,
+} from "./db/gcal-event-ids-db";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
 }
 
 export type GcalEventKind = "meeting" | "todo";
+
+/**
+ * 일정별 "캘린더에서 뺌" 표식. 저장 계층(시트 셀 값·DB event_id)의 규약이라 repo 가 정의하고
+ * service(gcal-sync)가 가져다 쓴다 — BBE-62 전까지 양쪽에 각자 리터럴로 있던 것을 단일화
+ * (레이어 규칙상 repo→service import 가 불가하므로 방향은 이쪽이 유일).
+ */
+export const EXCLUDE_MARKER = "-";
 
 // meetings: AT = 46번째 컬럼(index 45, 기존 마지막 AS 뒤). todos: O = 15번째(index 14, N 뒤).
 const SPEC: Record<GcalEventKind, { tab: string; col: string; gridCols: number }> = {
@@ -85,8 +118,30 @@ async function readCell(
   }
 }
 
-/** 한 일정 행의 사용자별 eventId 맵 조회(행 없으면 빈 맵). */
-export async function readGcalMap(
+/** 비치명 실패 경고 — DB 순단·미러 실패는 캘린더 동작을 멈추지 않는다. */
+function warnNonFatal(what: string, e: unknown): void {
+  const msg = e instanceof Error ? e.message : "unknown";
+  console.warn(`[gcal-event-ids] ${what} (동작은 계속): ${msg}`);
+}
+
+/**
+ * 시트맵 ∪ DB맵 병합 — **같은 email 키는 DB 가 이기고**, DB 의 `""`(tombstone)은 결과에서 뺀다.
+ * 불변식① 의 구현부. 순수 함수(테스트 대상).
+ */
+export function mergeGcalMaps(
+  sheetMap: Record<string, string>,
+  dbMap: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = { ...sheetMap };
+  for (const [email, eventId] of Object.entries(dbMap)) {
+    if (eventId === "") delete out[email]; // tombstone = 지워짐(시트 잔재보다 우선)
+    else out[email] = eventId;
+  }
+  return out;
+}
+
+/** 시트 셀에서 맵 읽기(행 없으면 빈 맵) — 폴백·미러 경로 공용. */
+async function readSheetMap(
   spreadsheetId: string,
   kind: GcalEventKind,
   id: string,
@@ -95,6 +150,37 @@ export async function readGcalMap(
   const row = await findRow(spreadsheetId, tab, id);
   if (row === null) return {};
   return parseMap(await readCell(spreadsheetId, tab, col, row));
+}
+
+/**
+ * 한 일정 행의 사용자별 eventId 맵 조회(없으면 빈 맵).
+ * DB 정본 + 시트 폴백을 키 단위로 병합(불변식①) + 시트에만 있던 키는 DB 로 1회 이전(②).
+ */
+export async function readGcalMap(
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  id: string,
+): Promise<Record<string, string>> {
+  const sheetMap = await readSheetMap(spreadsheetId, kind, id);
+  if (!dbEnabled()) return sheetMap;
+
+  let dbMap: Record<string, string> = {};
+  try {
+    dbMap = await readGcalMapFromDb(spreadsheetId, kind, id);
+  } catch (e) {
+    warnNonFatal("DB 조회 실패 → 시트 단독", e);
+    return sheetMap;
+  }
+  // ② 시트에만 있는 키를 DB 로 이전(fire-and-forget). 이미 DB 에 있는 키는 do-nothing 이라 무해.
+  const missing = Object.fromEntries(
+    Object.entries(sheetMap).filter(([email]) => !(email in dbMap)),
+  );
+  if (Object.keys(missing).length) {
+    void backfillGcalMapIfAbsent(spreadsheetId, kind, id, missing).catch((e) =>
+      warnNonFatal("DB lazy backfill 실패", e),
+    );
+  }
+  return mergeGcalMaps(sheetMap, dbMap);
 }
 
 // 같은 셀(한 일정 행의 gcal_event_ids)에 대한 read-merge-write 를 프로세스 내 직렬화 —
@@ -159,13 +245,30 @@ export async function readGcalStates(
   }
   const idCol = res.data.valueRanges?.[0]?.values ?? [];
   const mapCol = res.data.valueRanges?.[1]?.values ?? [];
+
+  // DB 정본을 배치로 한 번에(불변식①) — 실패해도 시트 단독으로 계속.
+  let dbMaps = new Map<string, Record<string, string>>();
+  if (dbEnabled()) {
+    dbMaps = await readGcalMapsFromDbBatch(spreadsheetId, kind, ids).catch((e) => {
+      warnNonFatal("DB 배치 조회 실패 → 시트 단독", e);
+      return new Map<string, Record<string, string>>();
+    });
+  }
+
   const wanted = new Set(ids);
   for (let i = 0; i < idCol.length; i++) {
     const rid = String(idCol[i]?.[0] ?? "").trim();
     if (!rid || !wanted.has(rid) || rid in out) continue;
-    out[rid] = parseMap(String(mapCol[i]?.[0] ?? "").trim())[email] !== "-";
+    const sheetMap = parseMap(String(mapCol[i]?.[0] ?? "").trim());
+    const merged = mergeGcalMaps(sheetMap, dbMaps.get(rid) ?? {});
+    out[rid] = merged[email] !== EXCLUDE_MARKER;
   }
-  for (const id of ids) if (!(id in out)) out[id] = true; // 미발견=기본 ON
+  // 시트 행을 못 찾은 id 도 DB 에는 마커가 있을 수 있다(행 조회 실패·컬럼 미생성 시트).
+  for (const id of ids) {
+    if (id in out) continue;
+    const dbMap = dbMaps.get(id);
+    out[id] = dbMap ? dbMap[email] !== EXCLUDE_MARKER : true; // 미발견=기본 ON
+  }
   return out;
 }
 
@@ -175,6 +278,27 @@ export async function readGcalStates(
  * apostrophe prefix 로 plain text 강제(읽을 때 `'` 없이 복원).
  */
 export async function setGcalEventId(
+  spreadsheetId: string,
+  kind: GcalEventKind,
+  id: string,
+  email: string,
+  eventId: string | null,
+): Promise<void> {
+  // 정본(DB) 먼저 — 실패는 throw(호출부 gcal-sync 의 guard 가 재시도·warn 처리).
+  // eventId=null(키 제거) 은 tombstone("")으로 표현한다(행 삭제 금지 — 헤더 참조).
+  if (dbEnabled()) {
+    await upsertGcalEventId(spreadsheetId, kind, id, email, eventId ?? "");
+  }
+  try {
+    await mirrorSetToSheet(spreadsheetId, kind, id, email, eventId);
+  } catch (e) {
+    if (!dbEnabled()) throw e; // DB 없는 환경 = 시트가 정본
+    warnNonFatal("시트 미러 실패 — setGcalEventId(DB 정본은 저장됨)", e);
+  }
+}
+
+/** 시트 미러 — 기존 read-merge-write 그대로(타 사용자 키 보존). 셀 락도 시트 경로에만 유지. */
+async function mirrorSetToSheet(
   spreadsheetId: string,
   kind: GcalEventKind,
   id: string,
@@ -203,12 +327,18 @@ export async function clearGcalCell(
   kind: GcalEventKind,
   id: string,
 ): Promise<void> {
-  const { tab, col } = SPEC[kind];
-  await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
-    const row = await findRow(spreadsheetId, tab, id);
-    if (row === null) return;
-    await writeCell(spreadsheetId, tab, col, row, "");
-  });
+  if (dbEnabled()) await tombstoneAllInDb(spreadsheetId, kind, id); // 정본 — DELETE 아님(헤더)
+  try {
+    const { tab, col } = SPEC[kind];
+    await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
+      const row = await findRow(spreadsheetId, tab, id);
+      if (row === null) return;
+      await writeCell(spreadsheetId, tab, col, row, "");
+    });
+  } catch (e) {
+    if (!dbEnabled()) throw e;
+    warnNonFatal("시트 미러 실패 — clearGcalCell(DB 정본은 저장됨)", e);
+  }
 }
 
 /**
@@ -220,14 +350,20 @@ export async function keepOnlyMarkers(
   kind: GcalEventKind,
   id: string,
 ): Promise<void> {
-  const { tab, col } = SPEC[kind];
-  await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
-    const row = await findRow(spreadsheetId, tab, id);
-    if (row === null) return;
-    const map = parseMap(await readCell(spreadsheetId, tab, col, row));
-    const kept: Record<string, string> = {};
-    for (const [k, v] of Object.entries(map)) if (v === "-") kept[k] = v;
-    const json = Object.keys(kept).length ? `'${JSON.stringify(kept)}` : "";
-    await writeCell(spreadsheetId, tab, col, row, json);
-  });
+  if (dbEnabled()) await keepOnlyMarkersInDb(spreadsheetId, kind, id, EXCLUDE_MARKER); // 정본
+  try {
+    const { tab, col } = SPEC[kind];
+    await withCellLock(`${spreadsheetId}:${kind}:${id}`, async () => {
+      const row = await findRow(spreadsheetId, tab, id);
+      if (row === null) return;
+      const map = parseMap(await readCell(spreadsheetId, tab, col, row));
+      const kept: Record<string, string> = {};
+      for (const [k, v] of Object.entries(map)) if (v === EXCLUDE_MARKER) kept[k] = v;
+      const json = Object.keys(kept).length ? `'${JSON.stringify(kept)}` : "";
+      await writeCell(spreadsheetId, tab, col, row, json);
+    });
+  } catch (e) {
+    if (!dbEnabled()) throw e;
+    warnNonFatal("시트 미러 실패 — keepOnlyMarkers(DB 정본은 저장됨)", e);
+  }
 }
