@@ -12,6 +12,12 @@ on:
         required: true
         options:
           - r4-week11-audit
+          - dashboard-parity
+      cohort:
+        description: "dashboard-parity 전용 — 대조할 기수 목록(쉼표 구분). 비우면 파일럿 전체 기본값."
+        type: string
+        required: false
+        default: "8,9,연습,A1-0,A1-1,A1-2,A1-3,A1-4,A1-5,A1-6,A2-1,A2-2,A2-3,A2-4,A2-5,A2-6,A2-7,A2-8"
 
 jobs:
   audit:
@@ -28,13 +34,31 @@ jobs:
       - name: Run audit on VPS (read-only)
         env:
           SCRIPT: ${{ inputs.script }}
+          COHORT: ${{ inputs.cohort }}
         run: |
           # 값 미출력. 스크립트명은 choice 로 제한돼 임의 실행 불가.
+          # cohort 는 자유 문자열 입력이고 원격에서 **root 로 실행**되므로, ssh 로 넘기기 전에
+          # 셸 메타문자를 검사해 차단한다. 원격 명령에서 작은따옴표로 감싸므로 작은따옴표만
+          # 막아도 탈출은 불가능하지만, 방어적으로 치환·명령·리다이렉션 문자를 모두 막는다.
+          #
+          # ⚠️ 화이트리스트 정규식(`[가-힣]` 등 한글 범위)을 쓰지 않는다 — 러너의 C 로케일에서
+          #    `grep: Invalid collation character` 로 죽는다(2026-08-08 run 31267555191 실측).
+          #    범위 표현은 로케일 의존이라, 로케일 무관한 셸 `case` 패턴 매칭으로 대체했다.
+          ARGS=""
+          if [ "$SCRIPT" = "dashboard-parity" ]; then
+            case "$COHORT" in
+              "")
+                echo "❌ cohort 가 비어 있습니다." >&2; exit 1 ;;
+              *[\`\$\;\&\|\<\>\(\)\{\}\[\]\!\\\"\']*)
+                echo "❌ cohort 에 셸 메타문자가 포함돼 있습니다 — 중단합니다." >&2; exit 1 ;;
+            esac
+            ARGS="--cohort '$COHORT'"
+          fi
           set +e
           for i in 1 2 3 4 5 6 7; do
             ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
               root@"${{ secrets.VPS_HOST }}" \
-              "cd /opt/salespt-log && node scripts/ops/${SCRIPT}.mjs"
+              "cd /opt/salespt-log && node scripts/ops/${SCRIPT}.mjs ${ARGS}"
             rc=$?
             [ $rc -ne 255 ] && break
             echo "ssh 도달 실패(rc=255) — 재시도 $i/7"; sleep 30
