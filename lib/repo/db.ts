@@ -1,6 +1,12 @@
 /**
  * Layer: repo — 03 DB관리 탭 I/O. 4섹션 raw log read/append/update/clear. SSOT: sheet-structure.md §5
  * 가드: "합계" 시작 행 보존(쓰기 X) · 계산 컬럼은 빈문자열로 보내 시트 수식 자동 · 행 식별은 row 번호.
+ *
+ * row_key (BBE-59, R7-#10 Phase 1): append 는 `mintRowKey`(UUID, 행번호 무관)로 새 키를 발급하고
+ * payload 에 `_row` 를 명시 저장한다(과거 `{섹션}:r{row}` 는 행번호=시트 findFirstEmptyRow 할당이라
+ * 재시도 시 중복행이 생기고, clear 후 재사용 시 옛 필드가 jsonb 병합으로 잔존했다 — db/row-key.ts
+ * 헤더 참고). update/clear 는 `resolveWriteKey` 로 그 물리 행에 **현재 매핑된** 키(레거시 또는
+ * 신규)를 조회해서 쓴다 — 마이그레이션(Phase 2, 미실행) 전까지 두 형식이 공존한다.
  */
 import { SHEET_RANGES } from "@/config";
 import type {
@@ -11,19 +17,13 @@ import type {
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
 import { mirrorSheetRow } from "./db/mirror";
-import { persistDbRow, clearDbRow, type DbTabWriteOpts } from "./db/db-tab-sync";
+import { mintRowKey } from "./db/row-key";
+import { SPEC, T, writeRow } from "./db-tab-writers";
 
-const TAB = SHEET_RANGES.dbManagement.tab;
 const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
 const HEADER_ROW = SHEET_RANGES.dbManagement.headerRow;
 // 실제 시트 검증(★★★세일즈PT 양식, 2026-05-06): 4채널 모두 1~3행 헤더, 4행~ 데이터.
 const FIRST_DATA_ROW = HEADER_ROW + 1;
-
-function tabRef(tab: string): string {
-  return /[\s()]/.test(tab) ? `'${tab}'` : tab;
-}
-
-const T = tabRef(TAB);
 
 // ── 시트 직렬값 → 표시용 변환 (날짜 등) ─────────────────────────
 function serialToISODate(v: unknown): string {
@@ -246,53 +246,6 @@ const phantomBanner = (r: unknown[]) => !isISODateStr(serialToISODate(r[0]));
 const phantomLead = (r: unknown[]) =>
   !toStr(r[2]) && !toStr(r[3]) && !toStr(r[5]); // 대표자명·업체명·연락처 모두 빈값
 
-interface SectionWriteSpec {
-  startCol: string;
-  endCol: string;
-  /** idx → (row) → "=D4*E4" 수식 문자열. web이 직접 박아넣어 시트 템플릿 의존 제거. */
-  formulas: Record<number, (row: number) => string>;
-}
-
-// §3-A: 부가세여부=매입DB F·현수막 U·직접생산 N. 주문금액·개당단가 미저장(계산값). 직접생산 I:O 재배치.
-const SPEC = {
-  매입DB: { startCol: "B", endCol: "H", formulas: {} },
-  직접생산: { startCol: "I", endCol: "O", formulas: {} },
-  현수막: { startCol: "P", endCol: "W", formulas: {} },
-  콜지기소: { startCol: "X", endCol: "AD", formulas: {} },
-} as const satisfies Record<string, SectionWriteSpec>;
-
-async function writeRow(
-  spreadsheetId: string,
-  spec: SectionWriteSpec,
-  row: number,
-  values: (string | number | boolean)[],
-): Promise<void> {
-  // 수식 컬럼은 spec.formulas에 정의된 수식 문자열로 치환 (시트 템플릿 누락 방지).
-  const out = values.map((v, i) => {
-    const formulaFor = spec.formulas[i];
-    return formulaFor ? formulaFor(row) : v;
-  });
-  const range = `${T}!${spec.startCol}${row}:${spec.endCol}${row}`;
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [out] },
-  });
-}
-
-async function clearRowRange(
-  spreadsheetId: string,
-  spec: SectionWriteSpec,
-  row: number,
-): Promise<void> {
-  const range = `${T}!${spec.startCol}${row}:${spec.endCol}${row}`;
-  await sheetsClient().spreadsheets.values.clear({
-    spreadsheetId,
-    range,
-  });
-}
-
 // ── append (4섹션 각각) ───────────────────────────────────────
 
 export async function appendPurchase(
@@ -319,7 +272,13 @@ export async function appendPurchase(
     p.기타, // G
     "", // H 정리(구 #425 부가세여부 자리)
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `매입DB:r${row}`, payload: { ...p, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
+  mirrorSheetRow({
+    spreadsheetId,
+    tab: "db",
+    rowKey: mintRowKey("매입DB"),
+    payload: { ...p, _row: row, _cleared: false },
+  });
   return { row };
 }
 
@@ -344,7 +303,13 @@ export async function appendProduction(
     p.부가세여부, // N
     p.기타, // O (구 스페이서 자리)
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { ...p, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
+  mirrorSheetRow({
+    spreadsheetId,
+    tab: "db",
+    rowKey: mintRowKey("직접생산"),
+    payload: { ...p, _row: row, _cleared: false },
+  });
   return { row };
 }
 
@@ -370,7 +335,13 @@ export async function appendBanner(
     b.기타, // V
     "", // W 정리(구 #425 부가세여부 자리)
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `현수막:r${row}`, payload: { ...b, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
+  mirrorSheetRow({
+    spreadsheetId,
+    tab: "db",
+    rowKey: mintRowKey("현수막"),
+    payload: { ...b, _row: row, _cleared: false },
+  });
   return { row };
 }
 
@@ -395,103 +366,28 @@ export async function appendLead(
     l.연락처,
     l.조건,
   ]);
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `콜지기소:r${row}`, payload: { ...l, _cleared: false } }); // P1 (_cleared:false = 재추가 부활)
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
+  mirrorSheetRow({
+    spreadsheetId,
+    tab: "db",
+    rowKey: mintRowKey("콜지기소"),
+    payload: { ...l, _row: row, _cleared: false },
+  });
   return { row };
 }
 
-// ── update (특정 row) ─────────────────────────────────────────
-
-export async function updatePurchase(
-  spreadsheetId: string,
-  row: number,
-  p: DBPurchase,
-  opts?: DbTabWriteOpts,
-): Promise<void> {
-  await writeRow(spreadsheetId, SPEC.매입DB, row, [
-    p.구매일,
-    p.업체명,
-    p.개당단가,
-    p.주문개수,
-    p.부가세여부, // F
-    p.기타, // G
-    "", // H 정리
-  ]);
-  await persistDbRow(spreadsheetId, `매입DB:r${row}`, { ...p, _cleared: false }, opts); // R3-4 dual-sync
-}
-
-export async function updateProduction(
-  spreadsheetId: string,
-  row: number,
-  p: DBProduction,
-  opts?: DbTabWriteOpts,
-): Promise<void> {
-  await writeRow(spreadsheetId, SPEC.직접생산, row, [
-    p.시작일, // I
-    p.종료일, // J
-    p.소재, // K
-    p.기간예산, // L
-    p.생산개수, // M
-    p.부가세여부, // N
-    p.기타, // O
-  ]);
-  await persistDbRow(spreadsheetId, `직접생산:r${row}`, { ...p, _cleared: false }, opts); // R3-4 dual-sync
-}
-
-export async function updateBanner(
-  spreadsheetId: string,
-  row: number,
-  b: DBBanner,
-  opts?: DbTabWriteOpts,
-): Promise<void> {
-  await writeRow(spreadsheetId, SPEC.현수막, row, [
-    b.날짜,
-    b.업체명,
-    b.도착일,
-    b.개당단가,
-    b.주문개수,
-    b.부가세여부, // U
-    b.기타, // V
-    "", // W 정리
-  ]);
-  await persistDbRow(spreadsheetId, `현수막:r${row}`, { ...b, _cleared: false }, opts); // R3-4 dual-sync
-}
-
-export async function updateLead(
-  spreadsheetId: string,
-  row: number,
-  l: DBLead,
-  opts?: DbTabWriteOpts,
-): Promise<void> {
-  await writeRow(spreadsheetId, SPEC.콜지기소, row, [
-    l.구분,
-    l.접수일,
-    l.대표자명,
-    l.업체명,
-    l.소개처,
-    l.연락처,
-    l.조건,
-  ]);
-  await persistDbRow(spreadsheetId, `콜지기소:r${row}`, { ...l, _cleared: false }, opts); // R3-4 dual-sync
-}
-
-// ── clear (특정 row) ──────────────────────────────────────────
-
-export async function clearPurchase(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.매입DB, row);
-  await clearDbRow(spreadsheetId, `매입DB:r${row}`, opts); // R3-4 dual-sync
-}
-export async function clearProduction(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.직접생산, row);
-  await clearDbRow(spreadsheetId, `직접생산:r${row}`, opts); // R3-4 dual-sync
-}
-export async function clearBanner(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.현수막, row);
-  await clearDbRow(spreadsheetId, `현수막:r${row}`, opts); // R3-4 dual-sync
-}
-export async function clearLead(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
-  // 발굴id:"" 함께 무효화(R14) — 행 재사용 시 죽은 발굴id 가 새 lead 로 상속되는 것 차단(lead-chain §4-3 B3).
-  await clearDbRow(spreadsheetId, `콜지기소:r${row}`, opts, { 발굴id: "" });
-}
+// ── update/clear (특정 row) ───────────────────────────────────
+// db-write.ts 로 분리(500줄 캡 — BBE-59 UUID 키 발급 추가로 이 파일이 캡 초과, db-production-cell.ts
+// 와 같은 이유). append 는 findFirstEmptyRow(행번호 발급)와 묶여 있어 이 파일에 남는다.
+export {
+  updatePurchase,
+  updateProduction,
+  updateBanner,
+  updateLead,
+  clearPurchase,
+  clearProduction,
+  clearBanner,
+  clearLead,
+} from "./db-write";
 
 export { writeProductionCountCell } from "./db-production-cell";
