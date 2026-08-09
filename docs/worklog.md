@@ -668,6 +668,28 @@
   부분(BBE-67) — sheet_rows execute run 31315377078 success, cohort 4·6·7·10 만(1·2·3·5 registry
   매칭 0건, 원인 미상 — 완료 도장 보류)`
 
+### 2026-08-09 · 경영일지 데탑 C작업원D(260809-2) · BBE-63 인수 — 미확정 해소 + PR #720 ready + 실행수단 #753
+- 의도: 반장 대행 디스패치 취소(신 반장 부팅 확인) 후 BBE-63(전광판 DB 전환) 복귀 지시.
+  Linear 접수 도장 확인(작업원D 260805, 다른 세션 도장 0건) 후 인수 — 재작업 아님, 잔여 완주.
+- 한 것: 구 세션이 draft 로 남긴 PR [#720](https://github.com/bbelieff/salespt-log/pull/720) 의
+  "미확정 1건"(대시보드 미팅 컬럼 = 완료 L 인지 예약 H 인지) 을 VPS 접속 없이 3개 독립 근거로
+  확정 — ①`setup-formulas.ts:139` 01!L 수식 실측(상태∈{완료,계약}·이월제외·미팅날짜 키)
+  ②01!R4:U5 미팅예약 펀넬은 `COUNTIFS(04!F,04!J)` 날짜 무필터 누적이라 주차값 후보에서 구조적
+  배제 ③`dashboard-parity` run `31267667665`(BBE-66, 2026-08-08) 8·9기 diff-0 재사용 — 같은
+  블록 H(활동량)이 이 정의로 이미 검증됨. 가드테스트 3건 추가(수식 문자열 변경 시 즉시 파손).
+  draft→ready 전환, PR 설명 갱신.
+- 결정(자율·§0.7): parity 실행 수단(`scripts/ops/scoreboard-parity.mjs` 를 GHA 로 실행할 방법
+  부재, BBE-85·91 과 동형 갭) 은 `.github/` 공용부라 §3.5 에 따라 **단독 PR [#753](https://github.com/bbelieff/salespt-log/pull/753)** 로 분리
+  (`db-audit.yml` 에 `scoreboard-parity` choice 추가, dashboard-parity 와 동일 패턴). 스크립트가
+  아직 master 에 없어 #720 이전에 머지돼도 안전(다른 옵션 무영향, read-only).
+- master 가 반장 드레인 중 빠르게 이동(#736·#734·#747·#749·#751)해 리베이스 3회 재수행.
+  `lib/service/dashboard-aggregates.ts`(BBE-66)·`scripts/ops/arena-*`+시즌 SSOT(BBE-36 코덱스
+  구역) 무접촉 확인 — 디스패치 레인 경고 준수.
+- 검증: check.sh 전체 초록(1132 tests, 신규 14건). 전 기수 라이브 parity 는 #753 머지 후
+  belie/FM 권장(머지 전제조건 아님 — 핵심 불확실성은 이미 확정).
+- 다음: 반장 판정(#720·#753 머지 순서 무관). Linear BBE-63 코멘트 게시 완료.
+- SoR: `docs/plans/active/scoreboard-db-conversion.md` · PR #720·#753 · Linear BBE-63
+
 ### 2026-08-09 · 데탑 C작업원A(260809) · BBE-77 완주 — Tailscale 접속 경로 머지·라이브 확정, SSH 간헐 차단 종결
 - 의도: belie 직접 지시 — "Tailscale Secrets 3개 + `tag:ci` ACL 등록 완료. PR #747 머지하고
   워크플로 1회 실행해서 확정해라." (트랙 A 카드는 아니나 belie 직접 배차 → §0.7 자율 완주)
