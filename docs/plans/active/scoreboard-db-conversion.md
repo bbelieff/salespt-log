@@ -1,6 +1,7 @@
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 전광판(아레나 스코어보드) 주차별 5지표를 시트 3회 read에서 DB 배치 read로
->   전환(BBE-63, R7 Phase 3 #14) — 구현·단위테스트는 완료, **라이브 시트 대조는 미완료**.
+>   전환(BBE-63, R7 Phase 3 #14) — 구현·단위테스트 완료, **미팅 컬럼 정의 확정(2026-08-09)**,
+>   전 기수 라이브 대조는 실행 수단(PR #753) 머지 후 belie/FM 몫.
 > - **누가 읽나요**: 반장(FM), belie, 이 카드를 이어받는 세션
 > - **어떤 기능·작업과 연결?**: `lib/service/scoreboard.ts`·`scoreboard-db.ts`·`lib/repo/db/scoreboard-stats.ts`·`scripts/ops/scoreboard-parity.mjs`
 > - **읽고 나면 알 수 있는 것**: 무엇을 바꿨나 / 무엇이 확실하고 무엇이 아직 가정인가 / 머지 전에 누가 무엇을 해야 하나
@@ -31,16 +32,41 @@
 |---|---|---|
 | 생산/유입/컨택 | salesRows 주차 블록 합(01!E~G 직접입력) — channelStackingFromDb 와 동일 소스 | **높음** |
 | 계약 | 상태="계약"(계약여부 아님)·이월제외, `setup-formulas.ts` 01!N 열 install 수식 실측 확인 | **높음** |
-| **미팅** | 상태∈{완료,계약}(01!L 열 수식 실측) + `weeklyActivityFromDb` 기존 관례 — **단, 대시보드 D열이 실제로 L(완료)을 보여주는지, 아니면 H(예약, sales.meetingReservation)를 보여주는지는 라이브 시트 셀 수식을 코드로 확인 못 했다**(템플릿 시트 전용) | **중간 — 검증 필요** |
+| **미팅** | ✅ **확정(2026-08-09)** — 상태∈{완료,계약}(01!L). 아래 "확정 경위" 참고 | **높음** |
 
-## 남은 일 (belie/FM — 이 카드는 "구현 완료"이지 "검증 완료"가 아니다)
+### 미팅 컬럼 확정 경위 (2026-08-09 — 구 세션이 남긴 미확정 1건 해소)
 
-1. VPS 에서 `node scripts/ops/scoreboard-parity.mjs --cohort "A1-1,...,A2-8"` 실행(GitHub Actions
-   workflow_dispatch 또는 SSH). 로컬엔 `DATABASE_URL`·SA 키가 없어 이 세션은 실행 불가.
-2. diff 0 확인되면 그대로 머지. diff 가 "미팅" 필드에만 집중되면 → `weeklyPerfFromDb` 의
-   미팅 판정을 `isDone` 대신 `salesRows.meetingReservation` 합산으로 교체(스크립트가 이
-   가능성을 콘솔에 이미 안내).
-3. 머지 창구는 belie 지시대로 **아레나2 복구(FM, BBE-42) 완료 후**.
+구 세션(작업원D 260805)이 "대시보드 D열이 미팅완료(L)인지 미팅예약(H)인지 라이브 셀 수식을
+코드로 확인 못 했다"고 남긴 것을 아래 3개 독립 근거로 확정했다(VPS 접속 없이 코드·로그만):
+
+1. **수식 실측** — `setup-formulas.ts:139` 가 설치하는 01!L 은
+   `COUNTIFS(04!D,<날짜>,04!J,"계약",04!AO,"<>이월") + COUNTIFS(...,"완료",...)`.
+   상태∈{완료,계약}·이월제외·**미팅날짜(D) 키** — weeklyPerfFromDb 의 미팅 정의와 정확히 대칭.
+2. **구조 반증** — "미팅예약" 후보는 시트에서 01!R4:U5·F4 펀넬로만 존재하고, 그 수식은
+   `COUNTIFS(04!F,04!J)`(setup-formulas.ts:151·157)로 **날짜 무필터 누적**이다. 날짜가 안 걸린
+   셀에서 주차별 값이 나올 수 없으므로, 주차 블록의 미팅 컬럼이 예약일 가능성은 구조적으로
+   배제된다.
+3. **라이브 대조 재사용** — 같은 대시보드 블록(C33:H40)의 H(활동량) = 생산×1+컨택×1.5+미팅×2
+   를 이 정의 그대로 재현한 `weeklyActivityFromDb` 가 `dashboard-parity` run `31267667665`
+   에서 **8·9기 12명 전원 diff 0**(BBE-66 반장 보고, 2026-08-08). 생산·컨택이 같은 소스이므로
+   미팅 항도 함께 검증된 것과 같다.
+
+코드 반영: `lib/service/scoreboard-db.ts` 헤더 주석 + `tests/service/scoreboard-db.test.ts`
+"01!L·N 수식 결속" 그룹(수식 문자열이 바뀌면 여기서 먼저 깨짐).
+
+⚠️ 위 근거는 **8·9기 2개 기수**에 한정된 diff-0 재사용이다. 시즌2 90여 명 전 기수의 라이브
+확인은 여전히 권장 — 아래 실행 수단 참고.
+
+## 남은 일
+
+1. ~~미팅 컬럼 판정~~ — ✅ 위에서 확정(추가 조치 불요).
+2. **실행 수단** — `scripts/ops/scoreboard-parity.mjs` 를 `db-audit.yml` workflow_dispatch 로
+   돌릴 수 있게 별도 PR **#753**(`chore/scoreboard-parity-audit`) 오픈(§3.5 공용부 계약 —
+   `.github/` 는 단독 PR). 이 PR(#720) 머지 후 `gh workflow run "DB Audit (read-only)"
+   -f script=scoreboard-parity -f cohort=<전 기수>` 로 전수 확인 가능. diff 가 "미팅" 필드에만
+   집중되면 → `weeklyPerfFromDb` 의 미팅 판정을 `isDone` 대신
+   `salesRows.meetingReservation` 합산으로 교체(스크립트가 이 가능성을 콘솔에 이미 안내).
+3. 머지 창구·순서는 반장 판정(§3.5 직렬 머지) — 아레나2(BBE-42)·시즌2 개막(8/7) 모두 경과.
 
 ## 롤백
 이 PR 은 `loadWeeklyBundles` 가 DB 배치 실패 시 자동으로 시트 경로 폴백(코드 내장, 별도
@@ -49,3 +75,6 @@
 ## Log
 - 2026-08-05 구현 완료(작업원D) — 코드·단위테스트·check.sh 초록. 라이브 parity 미실행(로컬
   credential 없음, §0.8 명시). PR 오픈, 머지는 belie 지시로 보류.
+- 2026-08-09 인수(데탑 C작업원D 260809-2) — 접수 도장 확인(다른 세션 도장 0건) 후 인수.
+  master 리베이스(3회, 반장이 큐를 빠르게 드레인 중) · 미팅 컬럼 미확정 해소(위 경위) ·
+  가드테스트 3건 추가 · parity 실행 수단 PR #753 분리 오픈. check.sh 전체 초록(1132 tests).
