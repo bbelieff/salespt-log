@@ -4,17 +4,22 @@
  * 기수별(A1-N) 평균: 생산/유입/컨택/미팅/계약 (주차 1~8 + 총합).
  *  - 모수 = 입금자(registry Q memo "입금" 포함)만. 미입금 제외.
  *  - 부부 = 1시트 = 1명 (spreadsheetId 로 dedup).
- *  - 각 시트 주차별 지표(원래 대시보드 C33:H40 시트 read) + 02 계약수납·O1 은
- *    `scoreboard-db.ts::loadWeeklyBundles` 가 묶어서 공급 — DB 파일럿(아레나 전원)은 배치 DB
- *    read, 그 외는 기존 시트 경로(BBE-63, R7 Phase 3 #14 · 500줄 캡 분리).
+ *  - 각 시트 주차별 지표 = 대시보드 C33:H40 (readWeeklyPerformance).
+ *  - 35+ 시트 read → unstable_cache(30분) + 동시성 5 + sheets-client 429 retry.
  */
-import { revalidateTag } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 import {
   listArenaParticipants,
   normalizeArenaCohort,
 } from "@/repo/users-arena";
+import {
+  readWeeklyPerformance,
+  type WeeklyPerf,
+} from "@/repo/dashboard";
 import { listCohorts } from "@/repo/cohorts";
+import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readShareScores, setShareScores } from "@/repo/share-scores";
+import { readCourseStart, weekIndexOf } from "@/repo/sales";
 import { parseISO, todayKST } from "@/util/week";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { splitContractRevenue } from "./dashboard";
@@ -26,14 +31,64 @@ import {
   seasonWeekOf,
 } from "./arena-season-config";
 import { countTerminatedInWeeks, terminatedByWeek } from "./termination-count";
-import { SCOREBOARD_TAG, loadWeeklyBundles } from "./scoreboard-db";
 import type { RankingMetric, RankingEntry, User } from "@/types";
 
 export const METRICS = ["생산", "유입", "컨택", "미팅", "계약"] as const;
 export type ScoreMetric = (typeof METRICS)[number];
 export type MetricRow = Record<ScoreMetric, number>;
 
-export { SCOREBOARD_TAG };
+export const SCOREBOARD_TAG = "arena-scoreboard";
+
+/** 시트 1개 주차별 read — 30분 캐시. 수동 새로고침 = revalidateTag(SCOREBOARD_TAG). */
+const cachedWeekly = unstable_cache(
+  async (sheetId: string) => readWeeklyPerformance(sheetId),
+  ["arena-scoreboard-weekly-v1"],
+  { revalidate: 1800, tags: [SCOREBOARD_TAG] },
+);
+
+/** 시트 1개 02 계약수납 read(매출용) — 동일 30분 캐시 태그. 매출은 대시보드 셀(승인 포함
+ *  가능)이 아니라 splitContractRevenue(수임비+수납액, 이월 제외)로 계산 → KPI 와 동일 정의. */
+const cachedContractPayments = unstable_cache(
+  async (sheetId: string) => readContractPayments(sheetId),
+  ["arena-scoreboard-payments-v1"],
+  { revalidate: 1800, tags: [SCOREBOARD_TAG] },
+);
+
+/** 시트 1개 O1(수강시작일) read — 이월 경계(매출 분리) 판정용. 동일 30분 캐시 태그.
+ *  ⚠️ unstable_cache 는 JSON 직렬화 — Date 를 그대로 캐시하면 히트 시 string 으로 강등돼
+ *  weekIndexOf `.getTime()` 이 500 을 던진다(2026-07-29 P0, me.ts 2026-05-13 동일 사고).
+ *  경계는 "YYYY-MM-DD" 문자열로만 통과시키고 소비처가 parseISO 로 복원한다. */
+const cachedCourseStart = unstable_cache(
+  async (sheetId: string) => toISODate(await readCourseStart(sheetId)) || null,
+  ["arena-scoreboard-coursestart-v2"], // v2: Date → ISO 문자열 (구 캐시 오염 회피)
+  { revalidate: 1800, tags: [SCOREBOARD_TAG] },
+);
+
+/** Date → "YYYY-MM-DD" (로컬). 이월 경계 비교용 — service/dashboard.toISODate 와 동일 규칙. */
+function toISODate(d: Date): string {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 동시성 제한 map (Sheets quota 보호, me.ts pMapBundle 동일 패턴). */
+async function pMap<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency = 5,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i]!);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return results;
+}
 
 export interface CohortScore {
   cohort: string; // 정규화 "A1-1"
@@ -87,12 +142,9 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
 
   // cohort → (spreadsheetId → 입금여부). 부부/멀티계정은 같은 sheetId 로 1개.
   const byCohort = new Map<string, Map<string, boolean>>();
-  // sheetId → cohort — loadWeeklyBundles 의 DB 파일럿 판정용(1시트=1cohort 전제, 부부도 동일 기수).
-  const cohortOfSheet = new Map<string, string>();
   for (const u of participants) {
     if (!u.spreadsheetId) continue;
     const c = normalizeArenaCohort(u.cohort);
-    cohortOfSheet.set(u.spreadsheetId, u.cohort);
     let sheets = byCohort.get(c);
     if (!sheets) {
       sheets = new Map();
@@ -101,20 +153,9 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
     const paid = (sheets.get(u.spreadsheetId) ?? false) || u.memo.includes("입금");
     sheets.set(u.spreadsheetId, paid);
   }
-  // 입금 확정 후(OR 누적 완료) 전체 입금자 시트 집합을 한 번에 뽑는다 — 기수별 반복 대신
-  // 배치 1회로 로드(BBE-63 목적).
-  const paidIdSet = new Set<string>();
-  for (const sheets of byCohort.values()) {
-    for (const [id, paid] of sheets) if (paid) paidIdSet.add(id);
-  }
 
   const cohorts = [...byCohort.keys()].sort((a, b) =>
     a.localeCompare(b, "en", { numeric: true }),
-  );
-
-  // 전체 입금자 시트를 한 번에 배치 로드(BBE-63) — 기수별로 쪼개 반복하면 DB 배치 이점이 준다.
-  const bundles = await loadWeeklyBundles(
-    [...paidIdSet].map((id) => ({ id, cohort: cohortOfSheet.get(id) ?? "" })),
   );
 
   const byCohortResult: CohortScore[] = [];
@@ -125,14 +166,22 @@ export async function loadScoreboard(): Promise<ScoreboardData> {
       .map(([id]) => id);
 
     // 해지 계약수 제외: 주차별 계약(C33:H40)에서 해지 계약(계약일 주차)만큼 차감.
-    const valid = paidIds.flatMap((id) => {
-      const b = bundles.get(id);
-      if (!b) return [];
-      const termWeeks = b.courseStartISO
-        ? terminatedByWeek(b.payments, parseISO(b.courseStartISO))
+    // payments·courseStart 추가 read(계약왕과 동일 캐시 키 → 번들 경로는 캐시 히트, 추가 왕복 ≈0).
+    const reads = await pMap(paidIds, async (id) => {
+      const [wp, payments, courseStart] = await Promise.all([
+        cachedWeekly(id).catch(() => null),
+        cachedContractPayments(id).catch(() => []),
+        cachedCourseStart(id).catch(() => null),
+      ]);
+      if (!wp) return null;
+      const termWeeks = courseStart
+        ? terminatedByWeek(payments, parseISO(courseStart))
         : new Array<number>(STATS_WEEKS).fill(0);
-      return [{ wp: b.wp, termWeeks }];
+      return { wp, termWeeks };
     });
+    const valid = reads.filter(
+      (r): r is { wp: WeeklyPerf[]; termWeeks: number[] } => r !== null,
+    );
     const n = valid.length;
 
     const weekly = Array.from({ length: STATS_WEEKS }, (_, w) => {
@@ -215,14 +264,12 @@ export async function loadIndividualRankings(): Promise<
   }
   const paid = [...bySheet.entries()].filter(([, v]) => v.paid);
 
-  const bundles = await loadWeeklyBundles(
-    paid.map(([id, info]) => ({ id, cohort: info.cohort })),
-  );
-  const perSheet = paid.map(([id, info]) => {
-    const b = bundles.get(id);
-    const wp = b?.wp ?? null;
-    const payments = b?.payments ?? [];
-    const courseStart = b?.courseStartISO ?? null;
+  const perSheet = await pMap(paid, async ([id, info]) => {
+    const [wp, payments, courseStart] = await Promise.all([
+      cachedWeekly(id).catch(() => null),
+      cachedContractPayments(id).catch(() => []),
+      cachedCourseStart(id).catch(() => null),
+    ]);
     let 미팅 = 0;
     let 계약 = 0;
     let 앱사용량 = 0;
