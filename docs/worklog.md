@@ -54,7 +54,7 @@
 | 트랙 | 역할·구역 | 현재 몸(버전) | 상태 |
 |---|---|---|---|
 | FM | **작업반장** — 계약 생산·레인 충돌 판정·직렬 머지 통제·장부(worklog/plans) 관리 + **거짓 완료 적발**(신규) | 경영일지 노트북 C작업반장(260806) | **BBE-83 완주(2026-08-08)** — 03 DB관리 비용 개강일 기준 이월 분할, PR #733 머지·배포 success·health 200·라이브 데이터 재확인 완료(상세는 위 로그 항목). 다음 배차 대기. 이하 이전(FM(260804)): **⛔A2 등록 사고 복구 중 — VPS SSH 완전장애로 정지(2026-08-06 19:10)**. 근인(belie 콘솔 확인, 목적지 폴더 소유권) 해소 후 55/55 시트 복사 성공했으나, `appendA2Row` 의 registry 기록이 열 밀림 사고로 A~T 대신 S~AL 에 들어가는 2차 버그 발견·수정·배포 완료(원인·수정·복구도구 = `scripts/ops/arena-season2-batch.mjs` PR #712). 복구 53건 중 **33건 완료**(row99~131), **잔여 20건**(row132~151 + junk 5건)은 `gh workflow run "Arena Season2 Batch" -f mode=repair-shifted-execute` 재실행만 하면 됨(멱등 — 이미 복구된 행은 자동 스킵). **VPS SSH 가 19:10 기준 연속 4회 7/7(rc=255) 완전실패** — 재시도 무의미한 수준, belie 인프라 확인 필요(BBE-75 에스컬레이션 완료). 이하 이전: **거짓완료 2건 조치 완료(2026-08-06)** — BBE-50 Done→Todo 원복(백필 미실행 확인), BBE-74 는 산출물 실재 확인 + 완주도장 재요구(작업원C 응답 대기). 이하 이전: **⛔A2 D-1 — 진단 종료, belie 콘솔 확인 대기(2026-08-06)**. scope 반증(전체 확인) → 근인 = GCP OAuth 게시상태 후보로 확정. 코드 쪽 자동진단 한계 도달, 5분 무응답 시 차선책(개강일만 공지) 권고. 신규 배차 대기: 결정함 12번(퍼널 해지 제외) 실행계약 발급 예정. 이하 이전: **L4 완료(2026-08-05)** — 오염행 감사 실행·수정·재실행 완주(#683·#684, 배포 success). 파일럿 55시트 스캔 결과 **2건**(테스트계정 1 + 실수강생 해지반영 1). belie 2단계 재승인 대기(결정함 9번). 이하 이전: **라운드1 배차 실행(2026-08-05 · R1 belie 승인)** — 계약 3건 발급(L2 #596 · L3 날짜달력 · **L4 DB-DRIFT-AUDIT-01**=결정함 9번 1단계), N8·N9 폐기(R3-3 완주로 무효). 병렬 4레인 충돌 0 확인. **BBE-42 아레나 시즌2 = W0·W1 도구 완료(#669·#670 배포 success·health 200), ⛔운영 시트 쓰기 권한 대기(결정함 3-b·due 8/6)**. Cowork 워킹트리 전사 회수 완료(미커밋 델타 0). 이하 이전: **배포 확인(완료) — R3-3 잔여(BBE-39)**: PR **#666**(`9551c8b`) 머지 · 배포 run `30939294995` **success(1차 ssh 타임아웃 → rerun)** · health 200. 미팅 화면발 02 쓰기 6경로 dual-sync + 500줄 캡 split 2건, 전체 1019테스트 green. **02 구역 A 로 반환.** ⚠️ VPS ssh 22 타임아웃이 오늘만 3회(#660·#661 1차·#666 1차) — 인프라 점검 후보. 이하 이전: **배포 확인(완료)** — #660(`a253ba8`) 머지. 자기 배포 run `30934412080` 은 **VPS ssh 타임아웃**으로 실패(코드 무관·라이브 무변경) → 후속 #662 run `30935808481` success 로 동일 트리 배포·health 200 확인. 2호 = 디스패치 260805 전사 PR. **belie 승인 대기**(설계도 §6). 이하 취임 기록: 반장 취임(2026-08-05 belie 지시). 설계도 `docs/plans/active/foreman-linear-ops-r1.md` 작성 = Linear 구조(A안 권장)·신규 카드 11장·A~F 매핑·라운드1 배분안. **Linear 쓰기 0건(승인 대기)**. 실측 base `origin/master=e09ee33`·Open PR 0·health 200. 라운드1 레인: L1 장부/설계(FM·진행) · L2 #596(DevF) · L3 날짜달력 라이브 확인 |
-| A | P0 대응 + 기수 개막 준비 | DevA(260712) | **배포 확인(완료)** — ①**BBE-49(P0) #676(363ba94)**: 비파일럿(7기) 수료자 11주+ 컨택 저장 500 수리. Cowork 패치 적용 후 **적대리뷰 4렌즈 BLOCKER 2·HIGH 4·MED 3 반영해 수정 머지** (읽기 K캐시 vs 쓰기 O1 게이트 불일치·시트폴백 courseStart 교체로 인한 전지표 0→정본 덮어쓰기·비파일럿 백필부재 누적합 0·주간퍼널 0·dbEnabled 가드 누락·읽기측 테스트 0건). 판정 원천 = 시트 O1 단일. check.sh 초록(1002)·배포 success·health 200·**라이브 실측: POST /api/daily 200 + 새로고침 후 값·주차합계 유지**. 잔여=생산(E)·직접생산 M 동기화(별도 티켓), DB_READ_COHORTS 확대는 belie 결정. ②**10기 날짜 마감 #661(95bba0e)**: 시트 O1=2026-08-07·O2=2026-09-26·B3=10·C3=이름 + 레지스트리 I~L, 실측 6/6·6/6·6/6(cohorts 10=active). 동반 오염(B3=8 → 앱에서 '8기' 표시) 자율 확대 수리, 사전 기록 0건 확인 후 flip. ③앞서 **P0 전광판 500 #639(b981c5c)**: unstable_cache 에 Date 캐싱 → 히트 시 string 강등 → weekIndexOf TypeError. 캐시 경계 ISO 통일. 인시던트 2건 기록(scoreboard-cache-date, bbe49). ⚠️gh-runner-ssh-ban 누적 5회+ (rerun 으로 매번 회복, 제공사 확인 권고). **AR-2a 실행 준비 유지**(belie 명단 승인 대기). 다음: 신규 배정 대기 |
+| A | P0 대응 + 기수 개막 준비 → **R7 레지스트리 DB 전환(BBE-56)** | 데탑 C작업원A(260809) | **BBE-77 배포 확인(완료) — Tailscale 경로 라이브 확정(2026-08-09)**: belie 직접 배차, PR #747 머지(`5a45762`)·배포 run 31311155632 success·health 200 + DB Audit run 31311350830 success로 확정(ssh 런타임 재시도 0회 = tailnet 1번 시도 성공). ‖ **BBE-56 = PR 오픈(#743) — 리베이스 완료·백필 신호 대기**. 트랙 A 승계(작업원A(260805) → 데탑 C작업원A(260809), 구 몸 종료). #743 을 `origin/master=b67de8a` 위로 리베이스(충돌 0) → `e0de6d1`, check.sh 초록(structural 25·unit 1104·doc-drift). **게이트 ON 은 아직 금지** — `users`/`cohorts` 백필 미확인이라 켜도 0행 폴백(무해하나 무의미). ⛔의존: BBE-91(레지스트리 백필 실행 수단) — `git grep backfill-registry origin/master -- .github/` **0건** 재실측(2026-08-09), `db-backfill.yml` 은 `backfill-sheet-rows.mjs` 전용이라 레지스트리와 무관. 머지는 반장 직렬 판정 대기. 이하 이전(DevA(260712)): **배포 확인(완료)** — ①**BBE-49(P0) #676(363ba94)**: 비파일럿(7기) 수료자 11주+ 컨택 저장 500 수리. Cowork 패치 적용 후 **적대리뷰 4렌즈 BLOCKER 2·HIGH 4·MED 3 반영해 수정 머지** (읽기 K캐시 vs 쓰기 O1 게이트 불일치·시트폴백 courseStart 교체로 인한 전지표 0→정본 덮어쓰기·비파일럿 백필부재 누적합 0·주간퍼널 0·dbEnabled 가드 누락·읽기측 테스트 0건). 판정 원천 = 시트 O1 단일. check.sh 초록(1002)·배포 success·health 200·**라이브 실측: POST /api/daily 200 + 새로고침 후 값·주차합계 유지**. 잔여=생산(E)·직접생산 M 동기화(별도 티켓), DB_READ_COHORTS 확대는 belie 결정. ②**10기 날짜 마감 #661(95bba0e)**: 시트 O1=2026-08-07·O2=2026-09-26·B3=10·C3=이름 + 레지스트리 I~L, 실측 6/6·6/6·6/6(cohorts 10=active). 동반 오염(B3=8 → 앱에서 '8기' 표시) 자율 확대 수리, 사전 기록 0건 확인 후 flip. ③앞서 **P0 전광판 500 #639(b981c5c)**: unstable_cache 에 Date 캐싱 → 히트 시 string 강등 → weekIndexOf TypeError. 캐시 경계 ISO 통일. 인시던트 2건 기록(scoreboard-cache-date, bbe49). ⚠️gh-runner-ssh-ban 누적 5회+ (rerun 으로 매번 회복, 제공사 확인 권고). **AR-2a 실행 준비 유지**(belie 명단 승인 대기). 다음: 신규 배정 대기 |
 | B | **작업원 B** — 반장 배차 수행. 구 gcal 계열 잔여 승계 | DevB(260806) | **BBE-57 PR #740 오픈(draft) · 머지는 반장 판정 대기(2026-08-08)** — 수강기간(O1/O2) DB 배선, R7 Phase 1. 티켓 전제 2건 실측 반증(마이그레이션 불필요·UPDATE-only 로 BBE-55 자연키변경과 독립) 후 구현+적대적 리뷰(Agent 2렌즈, HIGH 1건=DB읽기실패시 시트폴백 소실 포함 5건 수정 — 읽기·쓰기 독립 카나리아 게이트 추가)+유닛테스트 4파일 39건, check.sh 초록. 상세=`docs/plans/active/course-dates-db.md`. 이하 이전: **BBE-64 PR #713 오픈(draft) · 머지는 8/7 이후 대기** — R7 Phase 3 #15(`readProfileBundle.stats` DB 대체). 적대적 리뷰 완주(HIGH 1건 수정: 부부/멀티계정 spreadsheetId 공유 시 통계 덮어써지던 실제 버그, index 병합으로 교정 + 회귀테스트). check.sh 초록(1038). **draft 로 연 이유 = 실수 조기머지 방지**(belie 지시). 부수 발견: 기존 `weeklyContractsFromDb` 이월 제외 필터 누락(별도 트랙 소유, R2-7a) · A2 백필 미완료 시 배포하면 통계 조용히 0(백필 확인 후 머지 권장). 상세 = `docs/plans/active/profile-stats-db.md`. 레인 `lane:profile-stats` 유지(머지 전까지). 이하 이전: BBE-45 배포 확인(완료) — #695→`0102a89`·success·health 200. |
 | C | **작업원 C** — 반장 배차 수행. 02 계약수납 append 계열 | 데탑 C작업원C(260809) | **배포 확인(완료) — BBE-53(2026-08-09)**: contracts append 자연키 upsert(매출 이중계상 차단). PR **#746**(`b67de8a`) 머지 · 배포 run `31287998919` **success** · health **200**(16:58 KST 재확인) · check.sh 초록(PR check `31287768440` pass). 파일럿 실데이터 before/after 대조 = 24샘플 전부 "구로직이면 새 행(중복), 신로직은 기존 행 정확"(감사 run `31287774124`, PR #746 코멘트). 구 몸(창 "경영일지 작업원C") 산출물 실측 인수 — **재작업 0**. 남긴 것 = 결정함 **16번**(기존 중복 1건·9기 실데이터) · **17번**(같은날·같은업체 두 계약이 한 행으로 합쳐지는 잔여 위험, 후속 카드 필요). 이하 이전(DevC(260712-2) 수납 트랙 종료 기록): **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
@@ -315,6 +315,34 @@
 
 ## 로그
 
+### 2026-08-09 · 데탑 C작업원A(260809) · BBE-77 완주 — Tailscale 접속 경로 머지·라이브 확정, SSH 간헐 차단 종결
+- 의도: belie 직접 지시 — "Tailscale Secrets 3개 + `tag:ci` ACL 등록 완료. PR #747 머지하고
+  워크플로 1회 실행해서 확정해라." (트랙 A 카드는 아니나 belie 직접 배차 → §0.7 자율 완주)
+- 선행 실측: `gh secret list` — `TS_OAUTH_CLIENT_ID`·`TS_OAUTH_SECRET`·`VPS_HOST_TS` **3건 모두
+  11:32Z 등록 확인**, 워크플로가 참조하는 이름과 **정확히 일치**. PR #747 CI green·mergeable CLEAN.
+- 머지 전 심사: diff 5파일 전수 확인 — ①`steps.if` 의 `secrets` 참조 **0건**(있으면 파싱 에러로
+  배포 워크플로 전체가 무효화됨) ②재시도·`setsid`·`flock`·폴링 로직 **무변경** ③`deploy`·`db-backfill`
+  은 라운드로빈 슬롯2 에 공인 IP 가 들어가 **짝수 시도 자동 폴백** 보유 → 실패해도 배포가 안 멈춘다.
+- 한 것: last-good `27a07b3` 기록 → PR #747 squash 머지(`5a45762`) → §6.8 배포 관찰.
+  배포 run [31311155632](https://github.com/bbelieff/salespt-log/actions/runs/31311155632) **success** ·
+  health **200**. 이어 확정 사격으로 **DB Audit(read-only) run
+  [31311350830](https://github.com/bbelieff/salespt-log/actions/runs/31311350830) success**.
+- 🔎 확정 근거(추정 아님): ①Tailscale 스텝 = `success`(스킵 아님) — 로그 `✅ Tailscale up command
+  completed successfully on attempt 1` / `✅ Tailscale is running and connected!` ②배포 ssh **런타임
+  재시도 0회**(로그의 `↻ ssh 연결 실패` 는 전부 소스 에코, 실제 발생 0) → 라운드로빈 **1번 시도 =
+  tailnet** 이 그대로 성공, 공인 IP 폴백을 쓰지 않았다 ③`db-audit.yml` 은 유일하게
+  `StrictHostKeyChecking=yes` + 이번에 추가된 **keyscan 하드 게이트**라 가장 깨지기 쉬운 경로인데
+  그것까지 통과 — tailnet 위에서 host key 획득·검증이 정상.
+- 결정: BBE-77(GH러너→VPS:22 간헐 차단)의 **우회 경로 확보 완료**. 롤백은 여전히 secret
+  `VPS_HOST_TS` **삭제 1번**(PR·재배포 불요) — 삭제하면 즉시 공인 IP 로 복귀한다.
+- ⚠️ 남은 것(비차단): `db-migrate.yml`·`arena-season2-batch.yml`·신규 `db-backfill-registry.yml`(PR #749)
+  은 이 PR 범위 밖이라 아직 **공인 IP 전용**이다 — 동작은 종전과 동일하나 차단 창이 오면 그대로 맞는다.
+  3종에 같은 tailnet 경로를 붙이는 후속이 필요(카드 발행 대상).
+- SoR: PR #747 · Linear BBE-77
+- 도장 미러(규정 v4.1 ⑤ — 이 세션 Linear 미인증, 반장 전사 요망):
+  `완주 — 데탑 C작업원A(260809) · PR #747 → 머지 5a45762 / 배포 run 31311155632 success · health 200
+  / 확정 실행 = DB Audit run 31311350830 success, Tailscale 연결 attempt 1 성공 · ssh 런타임 재시도 0회`
+
 ### 2026-08-09 · 데탑 C작업원C(260809) · BBE-53 완주 인수 — contracts append 자연키 upsert 배포 확인 + 잔여 위험 2건 등재
 - 의도: 세션 통일 이관. 구 몸(창 "경영일지 작업원C")의 BBE-53(매출 이중계상 차단, R7-#4)을 승계.
   돈 숫자를 다루는 카드라 **재작업 대신 실측 인수**부터 했다(§0.8 ② — 이미 있는지 먼저 찾기).
@@ -340,6 +368,26 @@
 > check.sh 초록 / 잔여 위험 2건 = worklog 결정함 16·17번`
 > ※ 접수 도장도 Linear 에 없을 수 있다(구 몸이 미인증이었다면). 상태가 `In Progress` 인데 접수
 > 코멘트가 없다면 규정 ⑥ 적발 대상이 아니라 **미인증 세션 사유**이니 함께 정정 바랍니다.
+### 2026-08-09 · 데탑 C작업원A(260809) · 트랙 A 승계 + BBE-56 PR #743 리베이스 — 게이트 ON 은 백필 후로 유보
+- 의도: 세션 통일 이관(belie 지시). 구 몸 `작업원A(260805)`(창 제목 "경영일지 작업원A") 종료 →
+  새 몸 `데탑 C작업원A(260809)` 가 트랙 A 를 인수. **구역 소유권은 트랙 귀속 → 재선언 불필요**(§트랙·세션 규칙).
+- 접수 도장 (규정 v4.1 ⑤ — 이 세션 Linear 미인증이라 worklog 미러, 반장 전사 요망):
+  `접수 — 데탑 C작업원A(260809) · 2026-08-09 / 브랜치 feat/registry-db-read · base b67de8a · lane:registry
+  / 범위 = BBE-56 PR #743 인수·리베이스·백필 후 게이트 검증(신규 구현 없음, 재작업 금지)`
+- 승계 실측(재작업 방지): PR [#743](https://github.com/bbelieff/salespt-log/pull/743) **OPEN·CI green**
+  (`31287521205` check pass + GitGuardian pass), 워크트리 `wt/bbe56-registry-read-flip` clean.
+  구 몸의 산출물은 **그대로 인수** — 어댑터·게이트·폴백을 다시 만들지 않는다.
+- 한 것: master 3커밋 뒤처짐 해소 — `origin/master=b67de8a` 위로 리베이스(충돌 0) → `e0de6d1`,
+  로컬 `npm run check` 초록(typecheck·lint·structural 25·unit **1104**·doc-drift) 후 force-with-lease 푸시.
+- 실측(전제 확인): BBE-85 는 #742 로 머지·마이그레이션 0001·0002 적용 완료(run 31287208990).
+  그러나 **레지스트리 백필 실행 수단은 여전히 0건** — `git grep backfill-registry origin/master -- .github/`
+  0건(2026-08-09 재실측), `db-backfill.yml` 은 `backfill-sheet-rows.mjs`(sheet_rows) 전용이라 users·cohorts
+  와 무관. 즉 **BBE-91 미해소** → `REGISTRY_DB_READ=1` 를 켜도 0행 폴백으로 시트에 머문다.
+- 결정(자율·§0.7): **게이트 ON 금지 유지.** 백필 완료 신호(행수 대조 수치) 전에는 flip 의 의미가 없고,
+  0행 폴백이 없었다면 전 사용자 로그인 불가가 될 자리다. 되돌리기 = env 한 줄 제거(재배포 불요).
+- 다음: ① 반장의 백필 실행 결과 회수(users·cohorts 행수) ② 그 후 게이트 ON 라이브 검증
+  (로그인·클레임·admin 목록 + 응답시간 전/후 = 현재 미달인 수용 기준②) ③ 머지는 반장 직렬 판정.
+- SoR: PR #743 · Linear BBE-56 · BBE-91 · `docs/plans/active/sheet-retirement-r7.md`
 
 ### 2026-08-09 · 작업원A(260805) · BBE-56 레지스트리 읽기 DB 전환 PR 오픈 — 기본 OFF 게이트 + 0행 폴백, 후속 갭 BBE-91 발행
 - 의도: R7 임계경로(ADR→스키마→이중기록→**읽기전환**). belie 지시 = "BBE-85 결과 확인하고 시작해라"
