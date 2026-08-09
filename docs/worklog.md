@@ -58,7 +58,7 @@
 | B | **작업원 B** — 구 gcal 계열 잔여. **BBE-64 는 belie 직접 배차로 데탑 C작업원C(260809) 가 인수(2026-08-09, 아래 로그)** | DevB(260806) | **BBE-57 PR #740 오픈(draft) · 머지는 반장 판정 대기(2026-08-08)** — 수강기간(O1/O2) DB 배선, R7 Phase 1. 티켓 전제 2건 실측 반증(마이그레이션 불필요·UPDATE-only 로 BBE-55 자연키변경과 독립) 후 구현+적대적 리뷰(Agent 2렌즈, HIGH 1건=DB읽기실패시 시트폴백 소실 포함 5건 수정 — 읽기·쓰기 독립 카나리아 게이트 추가)+유닛테스트 4파일 39건, check.sh 초록. 상세=`docs/plans/active/course-dates-db.md`. 이하 이전: **BBE-64 PR #713 오픈(draft) · 머지는 8/7 이후 대기** — R7 Phase 3 #15(`readProfileBundle.stats` DB 대체). 적대적 리뷰 완주(HIGH 1건 수정: 부부/멀티계정 spreadsheetId 공유 시 통계 덮어써지던 실제 버그, index 병합으로 교정 + 회귀테스트). check.sh 초록(1038). **draft 로 연 이유 = 실수 조기머지 방지**(belie 지시). 부수 발견: 기존 `weeklyContractsFromDb` 이월 제외 필터 누락(별도 트랙 소유, R2-7a) · A2 백필 미완료 시 배포하면 통계 조용히 0(백필 확인 후 머지 권장). 상세 = `docs/plans/active/profile-stats-db.md`. 레인 `lane:profile-stats` 유지(머지 전까지). 이하 이전: BBE-45 배포 확인(완료) — #695→`0102a89`·success·health 200. |
 | C | **작업원 C** — belie 직배차 수행. 02 계약수납 append + BBE-64(admin/profile-stats) + BBE-71 설계 + **BBE-75 하트비트 서명 정정(정본 = 경영일지 데탑 C작업원C(260809))** | 경영일지 데탑 C작업원C(260809) | **유휴·다음 배정 대기(2026-08-09 23:05 KST)** — 오늘 완주 3건: BBE-53·BBE-64·BBE-71(설계). 상세는 아래 로그. **설계 완료 — BBE-71(2026-08-09)**: R7 로드맵 실측(`sheet-retirement-r7.md` Phase 4 #22, 선행=#19 파일럿 게이트 제거·아직 Phase 1 진행 중)으로 **오늘은 구현 착수 시점 아님을 확인** → `docs/plans/active/export-xlsx-csv.md`(신규) 작성 — 미결 3가지(형식·범위·주체) 권장안 + 레이어·라이브러리 설계. belie 질문 결정함 **18번** 등재(급하지 않음). 다음 = R7 Phase 1 진행 지켜보며 우선순위 당겨지면 승격. 이하 이전: **배포 확인(완료) — BBE-64(2026-08-09)**: `readProfileBundle.stats` DB 대체(BBE-48 admin/users 진입 지연 근본수리, admin·트레이너·회장 3화면 공유). belie 직접 배차 → PR #713 생사 판정(살아있음, belie "개막 후 재개" 보류였음) → 리베이스 인수(`b85c1f7`→`b67de8a`, 충돌 2건 해소) → **A2 백필 실측 검증**(DB Audit dashboard-parity, A2 전체 53명, run `31314769805`) — "전부 0" 최악 시나리오 반증, 실결측 2명뿐(부분·개별 주차) → draft 해제 → PR **#713**(`558e4f6`) 머지 · 배포 run `31315835765` **success** · health **200**(22:35 KST). check.sh 초록(structural 25·unit 1132). 후속 카드 권장 2건(§8 참조) = ①`weeklyContractsFromDb` 이월 미배제(R2-7a/BBE-66) ②A2 2명 부분 결측. 다음 = **BBE-71 착수**(belie 지시, R7 후반 임계경로·BBE-69 선행·신규 제작이라 오래 걸림 — 여유 되면 설계부터). 이하 이전: **배포 확인(완료) — BBE-53(2026-08-09)**: contracts append 자연키 upsert(매출 이중계상 차단). PR **#746**(`b67de8a`) 머지 · 배포 run `31287998919` **success** · health **200**(16:58 KST 재확인) · check.sh 초록(PR check `31287768440` pass). 파일럿 실데이터 before/after 대조 = 24샘플 전부 "구로직이면 새 행(중복), 신로직은 기존 행 정확"(감사 run `31287774124`, PR #746 코멘트). 구 몸(창 "경영일지 작업원C") 산출물 실측 인수 — **재작업 0**. 남긴 것 = 결정함 **16번**(기존 중복 1건·9기 실데이터) · **17번**(같은날·같은업체 두 계약이 한 행으로 합쳐지는 잔여 위험, 후속 카드 필요). 이하 이전(DevC(260712-2) 수납 트랙 종료 기록): **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
-| E | 검증·지원 축(R7) — 승계(구 DevE 배포설정 잔여 = ADMIN_DRIVE_REFRESH_TOKEN 미등록 belie 대기, 별건 보류) | 데탑 C작업원E(260809) | **BBE-91 완주(2026-08-09)** — PR #751(tailnet 배선) 머지·배포 success·health 200 + registry 백필 execute(users 144·cohorts 13 ✅일치) + sheet_rows 비파일럿 백필(cohort 4·6·7·10, 1485행 upsert). BBE-67 **부분** — cohort 1·2·3·5 는 registry 매칭 0건(원인 미상, 조사 필요). BBE-85 사후검증(run 31303933202, schema_migrations 2/2 적용 확인) 완료. 다음 배차 대기 |
+| E | 검증·지원 축(R7) — 승계(구 DevE 배포설정 잔여 = ADMIN_DRIVE_REFRESH_TOKEN 미등록 belie 대기, 별건 보류) | 경영일지 데탑 C작업원E(260809) | **BBE-42·BBE-77 완주 도장 준비 완료(2026-08-09)** — BBE-77 = 기존 작업원A 검증(PR #747·`5a45762`·run 31311155632·health 200) 재확인, Done 즉시 가능. BBE-42 = belie 제시 "55/55 이관" 을 독립 read-only 재검증(`repair-shifted-dryrun` run 31326902052 — 복구대상 0건, 잔재 0건) 완료, "parity 6탭 일치"는 admin UI 확인이라 belie 실측을 신뢰. **Linear 미인증이라 실제 Done 전환은 반장 대행 필요** — 도장 문구는 아래 로그 항목. R7 머지열 콘텐츠는 worklog 423행(FM 기록)에 이미 있어 BBE-42 카드 본문에서 삭제해도 유실 없음. 이하 이전: BBE-91 완주(PR #751·registry users 144·cohorts 13 ✅일치) + BBE-67 부분(cohort 1·2·3·5 매칭 0건) + BBE-85 사후검증(run 31303933202). 다음 배차 대기 |
 | F | KPI-④ EOL renormalize (막차) — .gitattributes | DevF(260712) | **배포 확인(완료)** — #603(1aa3b9a) 머지·배포 success·health 200. §0.5 진단: 저장소 이미 LF(index i/crlf 0건), 720파일=autocrlf 작업트리 착시 → `.gitattributes`로 LF 정책 기계강제(내용 무변경 실측). 다음=#596 D 재검증 대응 대기 / 큐 신규. 🔔#596 D 재검증 요청 유효(연습용 3증상 라이브 해소 확인) |
 | R | 릴리스 계열(C1~C3·PR643 복구 등, 노트북 Codex 세션 work-id) — 단발 릴리스 후보 | 세션 불명(노트북) | **배포 확인(완료)** — #647~#651 다섯 건 모두 "Deploy to VPS" **success** 실측(2026-08-03 A `gh` 조회): #647 `30737985008` · #648 `30734464895` · #649 `30734149383` · #650 `30739988555` · #651 `30739460991`. 계획서 4건 `completed/` 이관 완료. #647 R6 통합은 **[HOLD] 머지** → migration GO 전까지 plan active 유지. #643 arena 시즌 SSOT AR-2b는 **배포 확인(완료)** — PR #643(`844ce045`)·QA `30732987028`·Deploy `30732987033` success·health 200; BBE-36 종료. |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
@@ -354,6 +354,41 @@
       `docs/plans/active/export-xlsx-csv.md`(이번에 작성한 설계 초안).
 
 ## 로그
+
+### 2026-08-10 · 경영일지 데탑 C작업원E(260809) · BBE-42·BBE-77 완주 도장 준비 — A2 55/55 재검증(복구잔여 0) + 카드 정정 요청
+- 의도: belie 직접 디스패치 — "E → BBE-42(A2 셋업)·BBE-77(SSH) 완주 도장 찍고 Done. 증거: 55/55
+  이관·parity 6탭 일치 / PR #747 머지 5a45762·run 31311155632·health 200. ⚠️BBE-42에 적힌 R7
+  머지열은 A2 소관 아니다 — 로드맵 문서로 넘기고 A2 범위로만 닫아라."
+- **BBE-77**: 제시된 증거를 재확인 — PR #747(`5a45762`) 는 **작업원A(260809)** 가 이미 §6.8 완주 기록
+  남긴 건(위 로그, 배포 run 31311155632 success·health 200, Tailscale attempt 1 성공·ssh 런타임
+  재시도 0회 실측 포함). 새로 검증할 것 없음, 그대로 인용 가능.
+- **BBE-42**: "55/55 이관"을 **독립 read-only 재검증** — `Arena Season2 Batch -f mode=repair-shifted-dryrun`
+  run [31326902052](https://github.com/bbelieff/salespt-log/actions/runs/31326902052) success(쓰기 0건):
+  `복구 대상(A2 행) 0건, 정리만 할 잔재(테스트 마커 등) 0건`. 8/6 FM 기록의 "잔여 20건(row132~151+
+  junk5)"이 **이 시점엔 완전히 해소돼 있음**을 실측으로 확인(어느 세션이 언제 repair-shifted-execute
+  를 돌렸는지는 worklog 에 명시 로그가 없어 특정 못 함 — repair 스크립트가 멱등이라 결과만으로
+  "0건"을 신뢰). Tailscale attempt 1 성공(BBE-95 tailnet 패치 정상 동작 부수 확인).
+  **"parity 6탭 일치"는 재현 안 함** — `/admin/db-parity` 는 admin impersonation 로그인이 필요해
+  이 세션 권한 밖(BBE-83 때와 동일 한계). belie 의 직접 확인을 그대로 신뢰하고 인용.
+- 🔎 **BBE-42 카드 본문 정정 요청**(Linear 미인증이라 직접 편집 불가, 아래는 반장 대행 요청):
+  카드에 섞여 있다는 "R7 머지열" 콘텐츠(#736→#737→#734→#743→#749 집행 순서)는 **A2 소관이 아니다**.
+  실행 기록 자체는 이미 이 문서 423행(`데탑 C작업반장(260809)` = 구표기 `데탑 G작업원F(260809)`)에
+  전문이 있으므로, 카드에서 단순 삭제해도 **유실 없음**. `docs/plans/active/sheet-retirement-r7.md`
+  가 이 로드맵의 Phase 문서라 향후 같은 혼입을 피하려면 그쪽에 링크만 남기는 편을 권장.
+- **Linear 쓰기 불가(미인증)** — 아래 두 카드 상태 전환·도장 게시는 반장 대행 필요. 도장 문구:
+  ```
+  완주(BBE-77) — 경영일지 데탑 C작업원E(260809) · 원출처 = 작업원A(260809) PR #747 → 머지 5a45762
+  / 배포 run 31311155632 success · health 200 / 재확인만 수행, 신규 검증 없음
+  ```
+  ```
+  완주(BBE-42, A2 범위 한정) — 경영일지 데탑 C작업원E(260809) · 55/55 이관 독립 재검증
+  = repair-shifted-dryrun run 31326902052 success, 복구대상 0·잔재 0(8/6 잔여 20건 완전 해소 확인)
+  / parity 6탭 일치는 belie 직접 확인(admin UI, 이 세션 권한 밖) 인용
+  / ⚠️카드 본문의 "R7 머지열" 콘텐츠는 A2 소관 아님 — 삭제 요청(실행기록은 worklog 423행에 별도 보존)
+  ```
+- 다음: 반장이 위 두 도장을 Linear 에 게시 + BBE-42 카드 본문에서 R7 머지열 절 제거.
+  F 트랙 디스패치(BBE-41·BBE-95 확인)는 이 로그의 범위 밖 — 관측만, 착수 안 함(§3.5 구역 소유).
+- SoR: PR #747·Linear BBE-77·BBE-42, run 31326902052, `docs/plans/active/sheet-retirement-r7.md`
 
 ### 2026-08-10 · 경영일지 데탑 C작업반장(260809) · 세션 표기 정정 — 구 `데탑 G작업원F(260809)` 는 같은 몸
 - 의도: belie 표기 정정 지시("정본 = 프로젝트 접두사까지 전체 표기. 기존 도장은 고치지 말 것").
