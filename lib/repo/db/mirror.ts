@@ -9,7 +9,9 @@
  *
  * row_key 규칙 (backfill 스크립트와 반드시 동일 — scripts/ops/backfill-sheet-rows.mjs):
  *   meetings(04)·todos(05) = A열 앱 id · contracts(02) = r{행번호} ·
- *   db(03) = {섹션}:r{행번호} · sales(01) = {날짜}:{채널} · company_archive(06) = C열 계약ref.
+ *   db(03) = {섹션}:r{행번호}(레거시) 또는 {섹션}:{uuid}(BBE-59 Phase 1 이후 신규 append, payload._row
+ *     에 행번호 명시 — 마이그레이션 전까지 두 형식 공존, ../db.ts + db/row-key.ts 참고) ·
+ *   sales(01) = {날짜}:{채널} · company_archive(06) = C열 계약ref.
  *   clear 계열 = {_cleared:true} 병합(행 삭제 대신 마킹 — 대조 시 제외).
  */
 import { findOwnerBySpreadsheetId } from "../users";

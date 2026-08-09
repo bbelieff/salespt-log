@@ -64,6 +64,15 @@ function withProductionDerived(p: DBProduction): DBProduction {
 
 interface DbRow { row_key: string; payload: Record<string, unknown> }
 
+/** 행번호 결정 — BBE-59(R7-#10 Phase 1) 이후 신규 append 는 UUID 키(`{섹션}:{uuid}`)라 row_key
+ * 파싱이 안 통한다. payload._row(신규 append 가 명시 기록)를 우선 신뢰하고, 없으면(레거시
+ * `{섹션}:r{row}` 행) 기존 방식대로 row_key 말미를 파싱한다. */
+function rowNumOf(row_key: string, payload: Record<string, unknown>): number {
+  const explicit = Number(payload._row);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  return Number(row_key.replace(/^.*:r/, ""));
+}
+
 /** 4섹션 raw(각 row 포함) — service DBOverview 와 동일 형태(레이어상 repo 로컬 타입). */
 export interface DbTabSections {
   purchases: Array<DBPurchase & { row: number }>;
@@ -89,7 +98,7 @@ export async function readDbTabFromDb(spreadsheetId: string): Promise<DbTabSecti
   const leads: DbTabSections["leads"] = [];
 
   for (const { row_key, payload } of res.rows as DbRow[]) {
-    const rowNum = Number(row_key.replace(/^.*:r/, ""));
+    const rowNum = rowNumOf(row_key, payload);
 
     if (row_key.startsWith(DB_SECTIONS.매입DB.keyPrefix + ":")) {
       const rel = relRowIfColumnForm(payload, "매입DB");

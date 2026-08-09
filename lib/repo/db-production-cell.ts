@@ -2,6 +2,7 @@
 import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "./sheets-client";
 import { mirrorSheetRow } from "./db/mirror";
+import { resolveWriteKey } from "./db/row-key";
 
 const T = /[s()]/.test(SHEET_RANGES.dbManagement.tab)
   ? `'${SHEET_RANGES.dbManagement.tab}'`
@@ -24,5 +25,8 @@ export async function writeProductionCountCell(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[count]] },
   });
-  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: `직접생산:r${row}`, payload: { 생산개수: count } }); // P1 병합
+  // BBE-59: 그 물리 행이 이미 UUID 키로 append 됐을 수 있다 — 레거시 키 고정 사용 시 별도 유령
+  // 행이 생겨 생산개수가 실제 행에 반영 안 될 위험(db/row-key.ts 헤더). 현재 매핑된 키로 병합.
+  const key = await resolveWriteKey(spreadsheetId, "직접생산", row);
+  mirrorSheetRow({ spreadsheetId, tab: "db", rowKey: key, payload: { 생산개수: count } }); // P1 병합
 }

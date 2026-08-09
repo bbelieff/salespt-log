@@ -121,9 +121,9 @@ worktree: (작업별 개별 워크트리 — 아래 §3 배차표 참조)
 ### Phase 2 — 나머지 쓰기 진짜 flip
 | # | 작업 | 선행 | 크기 |
 |---|---|---|---|
-| 10 | 03 append 재키잉(UUID + row_key 마이그레이션) | 4 | L |
+| 10 | 03 append 재키잉(UUID + row_key 마이그레이션) — **Phase 1 완료(2026-08-09, BBE-59)**: UUID 키 발급 + 신규 append 부터 적용, update/clear 는 물리 행의 현재 매핑 키를 조회해 씀(레거시/신규 공존, 행동 변화 0). 미포함 = 기존 행 실제 재작성(Phase 2)·append dual-sync 전환(Phase 3). 상세 = `docs/plans/active/db-append-rekey.md` | 4 | L |
 | 11 | contracts·company_archive·03 → DB-first + 수렴 큐 | 4·10 | L |
-| 12 | `writeProductionCountCell` DB 정본화(R3-4b 잔여) | — | S |
+| 12 | `writeProductionCountCell` DB 정본화(R3-4b 잔여) — BBE-61 다음 착수 예정. §10 Phase 1 에서 이 함수의 rowKey 도 resolveWriteKey 경유로 이미 수정(유령행 방지), "정본화"(dual-sync 전환) 자체는 미착수 | — | S |
 | 13 | gcal 이벤트ID 맵 DB 이전 | 5 | L |
 
 ### Phase 3 — 읽기 잔여 (**체감 즉효 · Phase 1과 병행 가능**)
