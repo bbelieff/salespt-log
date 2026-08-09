@@ -8,15 +8,48 @@
  * lib/repo/db/expense-ledger.ts 의 expense_schema_migrations(자체 추적 테이블)가 이미 이 패턴이
  * 이 레포에서 동작함을 증명했다 — 그 교훈을 도메인마다 재발명하지 않도록 일반화한 버전.
  *
- * 사용: DATABASE_URL=... node scripts/db-migrate.mjs [--dry-run]
+ * 사용: node scripts/db-migrate.mjs [--dry-run]   (DATABASE_URL 은 env 또는 .env 에서)
  * 동시 실행 안전: pg_advisory_lock(고정 키)으로 배포 인스턴스가 여러 개 겹쳐 돌아도 직렬화.
  * 체크섬 보호: 이미 적용된 마이그레이션 파일이 이후 수정되면 즉시 실패 — ADR 불변 원칙과 같은
  *   이유로, 적용된 마이그레이션은 사실상 불변으로 취급한다. 변경이 필요하면 새 번호 파일을 추가한다.
  */
 import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/**
+ * .env / .env.local 에서 DATABASE_URL 을 읽는다 — 형제 ops 스크립트
+ * (scripts/ops/backfill-sheet-rows.mjs · a2-db-parity.mjs)와 **동일한 헬퍼**.
+ *
+ * 왜 필요한가(2026-08-09 BBE-85 실측): 이 러너만 유일하게 이게 없어서
+ * `process.env.DATABASE_URL` 에만 의존했다. VPS 에서 DATABASE_URL 은 `.env` 파일에만 있고
+ * 셸 환경에는 없어서, SSH 로 `node scripts/db-migrate.mjs` 를 돌리면 "DATABASE_URL 미설정"
+ * 으로 죽는다 — 즉 **워크플로에서 호출할 수 없는 상태였다**.
+ *
+ * 대안이었던 "워크플로에서 .env 를 grep 해 export" 는 채택하지 않았다. 2026-07-09 에
+ * `export $(grep ..)` 방식으로 DATABASE_URL 이 세션 로그에 노출된 사고가 있었고(BBE-77 §참고),
+ * 셸 따옴표 처리도 취약하다. 비가역 DDL 을 실행하는 스크립트에서 그 위험을 감수할 이유가 없다.
+ */
+function loadEnv() {
+  const out = {};
+  for (const f of [".env", ".env.local"]) { // 뒤(.env.local)가 우선 덮어씀
+    if (!existsSync(f)) continue;
+    for (const line of readFileSync(f, "utf8").replace(/\r/g, "").split("\n")) {
+      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (!m) continue;
+      let v = m[2].trim();
+      if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
+      out[m[1]] = v;
+    }
+  }
+  return out;
+}
+/** process.env 우선 — CI 가 명시 주입한 값이 파일보다 세다. */
+export function resolveDatabaseUrl() {
+  return (process.env.DATABASE_URL || loadEnv().DATABASE_URL || "").trim();
+}
 
 export const MIGRATIONS_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -67,10 +100,13 @@ export function computePending(files, appliedRows) {
 }
 
 async function run({ dryRun }) {
-  if (!process.env.DATABASE_URL?.trim()) throw new Error("[db-migrate] DATABASE_URL 미설정");
+  const databaseUrl = resolveDatabaseUrl();
+  if (!databaseUrl) {
+    throw new Error("[db-migrate] DATABASE_URL 미설정 — 환경변수 또는 .env 에 있어야 한다");
+  }
   const { Client } = await import("pg");
   const client = new Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false }, // client.ts 와 동일 패턴(Supabase Session Pooler)
   });
   await client.connect();

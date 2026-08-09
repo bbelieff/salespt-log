@@ -4,8 +4,32 @@
  * 확인할 수 있다. 러너 본체(run())는 top-level 부작용이 없어(main-module 가드) 이 import 만으로는
  * DB 에 연결하지 않는다.
  */
-import { describe, expect, it } from "vitest";
-import { computePending, loadMigrationFiles, MIGRATIONS_DIR } from "../../scripts/db-migrate.mjs";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  computePending,
+  loadMigrationFiles,
+  MIGRATIONS_DIR,
+  resolveDatabaseUrl,
+} from "../../scripts/db-migrate.mjs";
+
+describe("resolveDatabaseUrl — env 또는 .env (BBE-85)", () => {
+  const original = process.env.DATABASE_URL;
+  afterEach(() => {
+    if (original === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = original;
+  });
+
+  it("process.env 가 있으면 그 값을 쓴다(CI 명시 주입이 파일보다 세다)", () => {
+    process.env.DATABASE_URL = "postgres://from-env/db";
+    expect(resolveDatabaseUrl()).toBe("postgres://from-env/db");
+  });
+
+  it("공백만 있는 값은 미설정으로 본다 — 빈 문자열로 접속 시도하지 않는다", () => {
+    process.env.DATABASE_URL = "   ";
+    // 이 레포 루트에는 .env 가 없으므로(있으면 그 값이 나옴) 최소한 공백은 트림돼야 한다.
+    expect(resolveDatabaseUrl()).not.toBe("   ");
+  });
+});
 
 describe("computePending — 마이그레이션 대기열 계산(순수 함수)", () => {
   const files = [

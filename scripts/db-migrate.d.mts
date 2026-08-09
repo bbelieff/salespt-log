@@ -13,6 +13,8 @@ export interface AppliedMigrationRow {
 
 export const MIGRATIONS_DIR: string;
 export function loadMigrationFiles(dir?: string): Promise<MigrationFile[]>;
+/** process.env.DATABASE_URL → .env/.env.local 순으로 해석. 없으면 빈 문자열 (BBE-85). */
+export function resolveDatabaseUrl(): string;
 export function computePending(
   files: MigrationFile[],
   appliedRows: AppliedMigrationRow[],
