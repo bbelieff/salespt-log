@@ -1,8 +1,9 @@
 ---
 slug: profile-stats-db
-status: active
+status: completed
 created: 2026-08-06
-owner: 작업원B(260806) → 데탑 C작업원C(260809) 인수(리베이스+A2 실측+머지)
+completed: 2026-08-09
+owner: 작업원B(260806) → 데탑 C작업원C(260809) 인수(리베이스+A2 실측+머지 완주)
 related: sheet-retirement-r7, db-write-flip, db-first-unlimited-roadmap
 ---
 
