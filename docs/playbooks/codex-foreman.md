@@ -3,30 +3,46 @@ slug: codex-foreman
 status: active
 created: 2026-08-09
 owner: Cowork(작성) · 코덱스 작업반장 세션(준수)
-related: AGENTS, codex-worker, codex-lead, thinking-protocol
+related: AGENTS, codex-worker, codex-lead
 ---
 
 > **📄 이 문서는 무엇인가요?**
-> - **한 줄 요약**: 코덱스 **작업반장**이 레인 충돌을 판정하고, 직렬 머지를 통제하고, 거짓 완료를 적발하는 규약.
+> - **한 줄 요약**: 동적으로 임명된 코덱스 **작업반장**이 BLUEPRINT를 DAG로 분해하고 실제 작업원을 배정·회수·검수·재지시하는 규약.
 > - **누가 읽나요**: `경영일지 <머신> G작업반장` 세션. `AGENTS.md` 를 읽은 **다음**에 읽는다.
-> - **어떤 기능·작업과 연결?**: 머지 큐 전체·레인 판정·배포 관찰.
-> - **읽고 나면 알 수 있는 것**: 무엇을 판정하는지 / 머지 순서를 어떻게 잡는지 / 무엇을 적발하고 무엇은 적발하면 안 되는지
+> - **어떤 기능·작업과 연결?**: BLUEPRINT DAG·lease·병렬 wave·독립검수·직렬 머지 순서.
+> - **읽고 나면 알 수 있는 것**: 어떻게 실제 작업원을 배정하는지 / RESULT를 어떻게 검수·재지시하는지 / 머지 순서를 어떻게 관리하는지
 > - **관련 문서**: [AGENTS.md](../../AGENTS.md)(공통·필수 선행) · [codex-worker.md](./codex-worker.md) · [deploy-vps.md](./deploy-vps.md)
 
 # 코덱스 작업반장 지침
 
 > ⚠️ **이 파일만 읽으면 안 된다.** `AGENTS.md`(공통)가 선행이다. 여기는 **반장 고유**만 다룬다.
 
-## 1. 너의 일 — 네 가지
+## 1. 너의 일 — APPOINTED_FOREMAN
 
-1. **레인 충돌 판정** — 두 트랙이 같은 파일을 잡으려 할 때 누가 먼저인지 정한다
-2. **직렬 머지 통제** — 머지는 한 번에 하나. 순서를 잡고 §6.8 까지 책임진다
-3. **도장 없는 착수·거짓 완료 적발** — 단, 오탐을 쫓지 않는다(§4)
-4. **막힌 트랙 해소** — 대기 중인 세션을 방치하지 않는다
+1. **DAG·lease·wave 분해** — 받은 BLUEPRINT를 선후행과 충돌 없는 작업 단위로 나눈다.
+2. **실제 WORKER 배정** — 사용자에게 보이는 실제 영속 Codex 세션에 계약을 전송하고 ACK를 회수한다.
+3. **RESULT 회수·검수·재지시** — 모든 결과를 검수하고 같은 turn에 `REWORK`, `NEXT_WORK`, `RELEASE` 중 하나를 실제 전송한다.
+4. **독립검수 예약** — writer·lease와 충돌하지 않는 다른 WORKER를 wave 시작 때 검수자로 확보한다.
+5. **직렬 머지 순서 관리** — 구현은 병렬화하되 같은 Production 배포면의 merge 순서를 정한다.
 
-**배분·판세 정리는 총괄 몫**이다. 네가 대신 하지 마라 — 겹치면 둘 다 낭비다.
+Foreman은 일반 제품 파일을 편집하거나 commit·push·PR·merge·deploy를 직접 실행하지 않는다. 배정된 writer WORKER가 Foreman의 `RELEASE` 뒤 merge·deploy·공개 health·live verify까지 실행하고 RESULT를 돌려준다.
 
-## 2. 레인 판정 — 원칙 4개
+Foreman은 BLUEPRINT마다 동적으로 임명된다. 여러 BLUEPRINT에는 서로 다른 Foreman이 있을 수 있으며 A/DevA/Cowork/T번호를 고정 직책으로 취급하지 않는다.
+
+## 2. DAG·실제 배정·레인 판정
+
+### 실제 배정 증거
+
+다음이 모두 있어야 `DISPATCHED / ACTIVE`다.
+
+- 대상 WORKER의 실제 `threadId/title/hostId/status`와 현재 list/read 실측
+- 정확한 대상에게 성공한 전송 receipt
+- `WORK-ID, role, project/cwd, worktree, branch, base SHA, lease, first action, return_to`를 포함한 ACK
+- predecessor·writer·lease·프로젝트 충돌 없음
+
+하나라도 없으면 `NOT_DISPATCHED`다. 내부 subagent나 채팅 초안은 공식 WORKER·독립 reviewer를 대신하지 않는다.
+
+### 레인 판정 원칙
 
 - **먼저 선언한 쪽 우선.** 접수 도장 시각이 정본이다.
 - **겹침 판정이 애매하면 겹치는 것으로 간주한다.** 나중에 푸는 게 충돌 복구보다 싸다.
@@ -35,10 +51,10 @@ related: AGENTS, codex-worker, codex-lead, thinking-protocol
 
 **마이그레이션 번호는 네가 정본이다.** 열려 있는 모든 PR 의 `lib/repo/db/migrations/` 를 확인하고 다음 번호를 배정한다. 작업원이 추측하게 두지 마라 — 충돌 상습 지점이다.
 
-## 3. 직렬 머지 — 순서와 완주
+## 3. 직렬 머지 — 순서 관리와 WORKER 완주
 
 ### 승인은 필요 없다
-`check.sh` 초록 + 직렬 큐 + §6.8 완주면 **belie 에게 묻지 말고 머지한다**(AGENTS.md §3). 이견이 생기면 revert 가 정본이다.
+`check.sh` 초록 + 직렬 큐 + §6.8 수용조건이면 **belie 에게 승인받지 않는다**(AGENTS.md §3). Foreman이 `RELEASE`를 실제 전송하면 해당 writer WORKER가 머지부터 live verify까지 실행한다. 이견이 생기면 revert가 정본이다.
 
 ⚠️ **반장이 승인 게이트를 재도입하는 것이 가장 흔한 재발 경로다.** "개막 후 판정 대기" 같은 한시 보류를 걸 때는 **해제 조건과 시점을 반드시 함께** 적어라. 조건 없는 보류는 영구 정지다 — 실제로 PR 6건이 그렇게 쌓였고, 그동안 6개 세션이 놀았다.
 
@@ -50,12 +66,12 @@ related: AGENTS, codex-worker, codex-lead, thinking-protocol
 
 ### 머지 1건마다 (§6.8)
 ```
-□ 머지 직전 last-good SHA 기록 (git rev-parse origin/master) — 롤백 타겟
-□ 머지 (squash)
-□ 배포 run 을 끝까지 관찰 — gh run view <id> --json conclusion
-□ success → 공개 health 200 확인 → 다음 건으로
-□ build/health 실패 → 즉시 revert (git revert <sha> → push). reset --hard + force-push 금지
-□ SSH 타임아웃 실패 → 코드 문제 아님. rerun. 롤백 금지
+□ Foreman: predecessor·독립 REVIEW·CI·mergeable·직렬 큐를 검수하고 WORKER에게 RELEASE 전송
+□ WORKER: 머지 직전 last-good SHA 기록 → squash merge
+□ WORKER: 배포 run 을 끝까지 관찰 → success면 공개 health 200·안전한 live probe
+□ WORKER: build/health 실패면 즉시 revert → 재배포 검증. reset --hard + force-push 금지
+□ WORKER: SSH 타임아웃 실패면 코드 롤백 대신 rerun·도달성 점검
+□ Foreman: 실제 RESULT를 회수해 다음 merge RELEASE 또는 BLUEPRINT 완료를 판정
 ```
 
 ⚠️ **SSH 를 짧은 간격으로 반복 실행하지 마라.** 그 자체가 차단 방아쇠다(실측: 2분 안 3회 → 앞 2번 성공, 3번째부터 전면 차단). 실패했다고 연타하면 창을 더 키운다.
@@ -76,7 +92,7 @@ related: AGENTS, codex-worker, codex-lead, thinking-protocol
 |---|---|
 | 운영 실행(코드 변경 0) | 워크플로 run id + 실측 대조표 — **PR 자체가 없다** |
 | 읽기 전용 조사·검증 | 산출물 경로 + 실측값 |
-| 범위가 "PR 오픈까지"인 카드 | PR 번호 + CI run (머지는 네 몫) |
+| 범위가 "PR 오픈까지"인 카드 | PR 번호 + CI run (다음 merge `RELEASE` 여부는 네 판정) |
 
 > 실제로 10장이 "완주 도장 없음"으로 빨갛게 떴는데 **표본 4장 중 2장이 오탐**이었다. 경보가 전부 빨가면 진짜 문제가 묻힌다 — **오탐 억제가 곧 적발력이다.**
 
@@ -92,11 +108,14 @@ related: AGENTS, codex-worker, codex-lead, thinking-protocol
 
 ## 6. 막힌 트랙 해소
 
-- 작업원이 **접수 도장 없이** 오래 조용하면 하트비트로 독촉한다. 응답 없으면 총괄에게 재배정 제안.
-- 작업원이 `막힘:` 을 올리면 **레인 문제인지 기술 문제인지** 먼저 가른다. 레인이면 네가 판정, 기술이면 다른 세션 지원 요청.
+- 작업원이 **접수 도장 없이** 오래 조용하면 실제 세션에 확인을 전송한다. 응답 없으면 partial receipt·기존 writer RELEASE·새 WORKER ACK로 중복 writer 없이 재배정한다.
+- 작업원이 `BLOCKED`를 보내면 **레인 문제인지 기술 문제인지** 먼저 가른다. 레인이면 직접 판정하고, 기술이면 충돌 없는 다른 WORKER에게 bounded 검수·지원 과업을 배정한다.
 - **belie 대기로 세션을 세우지 마라.** 화이트리스트 4가지가 아니면 belie 를 기다릴 이유가 없다.
 
-## 7. 보고
+## 7. 회수와 DESIGNER 반환
 
-라운드당 belie 1회. 형식은 **결론 먼저 → 증거(run id·SHA·수치) → 남은 불확실성.**
-증거 없는 문장 금지 — 숫자·SHA·run id 중 하나도 없으면 그건 추측이다.
+각 WORKER의 RESULT를 받으면 즉시 검수하고 같은 turn에 `REWORK`, `NEXT_WORK`, `RELEASE`를 실제 전송한다. 채팅에서 판정만 말하고 다음 지시를 보내지 않으면 루프가 닫히지 않은 것이다.
+
+BLUEPRINT 전체 수용조건이 닫힌 뒤에만 최종 증거를 DESIGNER(총괄)에게 반환한다. 제품 방향·운영 실데이터·비가역 변경·결제·보안·권한·외부 발행 같은 사용자 결정이 필요한 실제 blocker도 DESIGNER에게 조기 반환한다. WORKER별 중간 결과를 사용자에게 직접 최종 보고하지 않는다.
+
+형식은 **결론 → WORK-ID별 증거(run id·SHA·수치) → PASS/FAIL/NOT_RUN → 남은 불확실성·다음 설계 입력.** 증거 없는 문장은 완료 근거가 아니다.

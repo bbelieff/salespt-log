@@ -9,17 +9,40 @@
 
 ---
 
+## ABSOLUTE_DIRECTIVE — 프로젝트 규칙보다 먼저 읽는다
+
+모든 경영일지 Codex 세션은 이 저장소의 프로젝트 오버레이보다 먼저 아래 정본을 순서대로 읽는다.
+
+1. `C:\Users\belie\Desktop\Belief\ABSOLUTE-COLLABORATION-STATE-MACHINE.md`
+2. `C:\Users\belie\Desktop\Belief\클로드\prompts\CODEX-T-SESSION-ROUTING.md`
+3. `C:\Users\belie\Desktop\Belief\클로드\prompts\COMMON-PRODUCT-DELIVERY-GATES.md`
+4. `CLAUDE.md`와 이 저장소의 역할 파일·현재 상태 정본
+
+상위 정본의 기계 검증용 불변 식별자:
+
+```text
+STATE_MACHINE_ID=USER-DESIGNER-FOREMAN-WORKER-LOOP-DESIGNER-REPORT
+WORKER_OWNS=IMPLEMENT-TEST-COMMIT-PUSH-PR-MERGE-DEPLOY-LIVE_VERIFY
+FOREMAN_OWNS=DISPATCH-COLLECT-REVIEW-REWORK-NEXT_WORK
+```
+
+- BLUEPRINT마다 `APPOINTED_FOREMAN`은 정확히 한 명이며 동적으로 임명한다. 세션 제목·문자·T번호는 주소와 이력일 뿐 고정 직책이 아니다.
+- 공식 DESIGNER·APPOINTED_FOREMAN·WORKER·독립 REVIEW WORKER는 사용자에게 보이는 실제 영속 Codex 세션이어야 한다.
+- 실제 `threadId/title/hostId/status`, 현재 실측, 정확한 대상에게 성공한 전송 receipt, ACK와 RESULT가 모두 없으면 `NOT_DISPATCHED`다.
+- 내부 subagent는 공식 역할을 대체하지 않는다. 배정된 WORKER만 자기 lease 안의 bounded subset에 `INTERNAL_SUBAGENT_ONLY`로 사용할 수 있고, 공식 ACK·RESULT·review·merge 책임은 WORKER에게 남는다.
+- DESIGNER(총괄)는 사용자 목표·범위·게이트를 BLUEPRINT로 정하고 Foreman을 임명하며 BLUEPRINT 완료 또는 blocker만 돌려받는다. WORKER를 직접 배정·회수하거나 일반 제품을 구현하지 않는다.
+
 ## 0. 먼저 — 네 역할 파일을 하나 더 읽어라
 
 이 파일은 **전 역할 공통**이다. 여기에 더해 **네 역할 파일 1개**를 반드시 읽는다.
 
 | 네가 | 읽을 파일 |
 |---|---|
-| **총괄 세션** (판세 파악·배분·회수) | [`docs/playbooks/codex-lead.md`](./docs/playbooks/codex-lead.md) |
-| **작업반장** (레인 판정·직렬 머지·적발) | [`docs/playbooks/codex-foreman.md`](./docs/playbooks/codex-foreman.md) |
+| **총괄 세션** (`DESIGNER`: BLUEPRINT·Foreman 임명·사용자 보고) | [`docs/playbooks/codex-lead.md`](./docs/playbooks/codex-lead.md) |
+| **작업반장** (`APPOINTED_FOREMAN`: 배정·회수·검수·재지시) | [`docs/playbooks/codex-foreman.md`](./docs/playbooks/codex-foreman.md) |
 | **작업원** (계약 1건 완주) | [`docs/playbooks/codex-worker.md`](./docs/playbooks/codex-worker.md) |
 
-역할을 못 받았으면 **작업원**으로 간주하고 총괄에게 확인한다.
+역할과 실제 전송 증거를 못 받았으면 스스로 역할을 택하지 말고 `PARKED / NOT_DISPATCHED`로 둔다.
 
 ---
 
@@ -49,8 +72,6 @@
 | 세션 간 공유 상태·병렬 트랙 선언 | **`docs/worklog.md`** (Git 공유) |
 | 운영 규칙(도장·자율 완주) | **Linear BBE-73** |
 | 세션 하트비트 | **Linear BBE-75** ⚠️ 모아워크는 BBE-94 — 헷갈리면 상대 관제판이 오염된다 |
-| 사고 절차 상세·실제 사례 | `docs/playbooks/thinking-protocol.md` |
-| 함정 목록 | `docs/playbooks/worker-onboarding.md` |
 
 **코드와 문서가 충돌하면 코드가 진실이다.** 단 변경 전 관련 SSOT·ADR을 확인하고 같은 PR에서 문서를 동기화한다.
 
@@ -71,6 +92,8 @@
 **belie 에게 물어야 하는 것은 4가지뿐**:
 ① 수강생 실데이터 **비가역** 변경 ② 돈·보안(과금·자격증명·방화벽·새 원격접속경로) ③ 수강생 정책·스펙 방향 전환 ④ 외부 발행(공지·문안)
 ※ 코드 변경·머지·배포는 revert 가능하므로 **해당 없음**.
+
+WORKER는 이 게이트를 발견하면 `APPOINTED_FOREMAN`에게 `BLOCKED`로 실제 전송하고, Foreman이 DESIGNER에게 반환한다. 사용자와의 결정은 DESIGNER가 맡는다.
 
 **하지 마라**: "belie 승인 대기"로 카드를 세워두기 · 완주 도장에 "머지는 belie 확인 후" 적기 · 화이트리스트 아닌 건을 belie 결정함(BBE-35)에 올리기.
 한시 보류가 필요하면 **해제 조건과 시점을 반드시 함께** 적어라 — 조건 없는 보류는 영구 정지다(실제로 PR 6건이 그렇게 쌓였다).
@@ -130,7 +153,7 @@
 | 코드 PR | PR #n · 머지 SHA · 배포 run id · health 200 · 검증 수치 |
 | 운영 실행(코드 변경 0) | **워크플로 run id + 실측 대조표** (PR 자체가 없다) |
 | 읽기 전용 조사·검증 | **산출물 경로 + 실측값** |
-| 범위가 "PR 오픈까지"인 카드 | PR 번호 + CI run (머지는 반장 몫) |
+| 범위가 "PR 오픈까지"인 카드 | PR 번호 + CI run (WORKER는 Foreman의 다음 지시까지 HOLD) |
 
 **무기명 변경 금지.** PR 본문에 카드 번호 필수. feat/fix 커밋 본문에 `Changelog: <수강생이 읽는 쉬운 한 줄>`.
 Linear MCP 가 없으면 같은 양식을 `docs/worklog.md` 에 남긴다 — **기록 생략은 안 된다.**
@@ -181,7 +204,7 @@ Linear MCP 가 없으면 같은 양식을 `docs/worklog.md` 에 남긴다 — **
 - 레이어 규칙, Google Sheets 격리, 대시보드 쓰기 금지, §2.5 대량쓰기 보존 가드, 도메인 불변식은 **`CLAUDE.md`** 를 따른다.
 - 도메인 불변: **부가세 제외 · 매출 = 수임비 + 수납액 · 용어 '수임비' · 채널 4색 고정 · 날짜 하드코딩 금지.**
 - 새 컴포넌트·타입·시트 키·디자인 토큰은 **SSOT 4문서를 같은 PR 에서** 갱신한다.
-- **훅·테스트를 우회하지 않는다.** PR 전 `bash scripts/check.sh` + `npx next build` 통과.
+- **훅·테스트를 우회하지 않는다.** PR 전 `bash scripts/check.sh`를 통과한다. runtime/app bytes가 바뀌면 `npx next build`도 필수다. 문서만 바뀌고 runtime bytes가 불변이면 build를 생략할 수 있지만, 이유와 `NOT_RUN`을 증거에 명시한다.
 - 완료 시 plan 을 `completed/` 로 옮기고 worklog 에 결과·검증·남은 위험을 기록한다.
 - **NOT_RUN 을 PASS 로 올리지 않는다.**
 
@@ -217,3 +240,4 @@ Linear MCP 가 없으면 같은 양식을 `docs/worklog.md` 에 남긴다 — **
 
 - 2026-08-02 최초 작성.
 - 2026-08-09 대폭 개정 — 역할 파일 3종 분기(§0), 세션명 규칙(§1), 자율 완주 정책(§3), 사고 절차 §0.8(§4), 하트비트·도장(§5), 최근 함정 4건(§8), 첫 응답 형식(§11) 추가. 존재하지 않는 `HANDOFF.md` 참조 제거.
+- 2026-08-09 R2 — 절대 상태머신·실제 세션 증거를 선행 정본으로 고정하고 DESIGNER·APPOINTED_FOREMAN·WORKER 소유권과 docs-only build 예외를 정렬.

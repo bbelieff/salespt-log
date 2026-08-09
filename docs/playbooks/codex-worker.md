@@ -3,7 +3,7 @@ slug: codex-worker
 status: active
 created: 2026-08-09
 owner: Cowork(작성) · 코덱스 작업원 세션(준수)
-related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
+related: AGENTS, codex-foreman, codex-lead
 ---
 
 > **📄 이 문서는 무엇인가요?**
@@ -11,7 +11,7 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 > - **누가 읽나요**: `경영일지 <머신> G작업원A~F` 세션. `AGENTS.md` 를 읽은 **다음**에 읽는다.
 > - **어떤 기능·작업과 연결?**: 배정받은 카드 1건 전부.
 > - **읽고 나면 알 수 있는 것**: 내 계약이 무엇인지 확정하는 법 / 어디까지가 내 구역인지 / 언제 멈추고 언제 밀어붙이는지 / 완주 판정 기준
-> - **관련 문서**: [AGENTS.md](../../AGENTS.md)(공통·필수 선행) · [thinking-protocol.md](./thinking-protocol.md) · [worker-onboarding.md](./worker-onboarding.md)
+> - **관련 문서**: [AGENTS.md](../../AGENTS.md)(공통·필수 선행) · [codex-foreman.md](./codex-foreman.md)
 
 # 코덱스 작업원 지침
 
@@ -21,7 +21,7 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 
 **계약 1건을 받아, 네 구역 안에서, 증거를 남기며, 배포까지 끝낸다.**
 
-배분·판정·머지 순서 결정은 네 일이 아니다(반장·총괄). 대신 **네 계약 안에서는 네가 결정권자다** — 되돌릴 수 있는 결정은 스스로 하고 근거·복구법을 기록한다.
+배분·검수 판정·머지 순서 결정은 `APPOINTED_FOREMAN`의 일이다. 대신 **네 계약 안에서는 네가 writer다** — 구현·테스트·commit·push·PR을 수행하고, Foreman의 `RELEASE` 뒤 merge·deploy·공개 health·live verify까지 끝낸다.
 
 ## 2. 계약 확정 — 착수 전에 이 표를 채운다
 
@@ -37,6 +37,7 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 | 리스(lane) | **좁게.** `lib/**` 같은 통짜 선언 금지 |
 | 검수자 | 작성자 ≠ 검수자 |
 | 수용 기준 | 검증 가능한 조건 + §6.8 완주 |
+| 반환처 | 실제 `APPOINTED_FOREMAN`의 `threadId` |
 
 **리스를 좁게 잡는 법**: "이 카드를 끝내는 데 반드시 수정해야 하는 파일"만 적는다. "참고할지도 모르는" 파일은 리스가 아니다. 넓게 잡으면 다른 세션이 대기하고, 좁게 잡고 나중에 넓히는 건 반장에게 한 줄 물으면 된다.
 
@@ -51,7 +52,7 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 
 > **실제 사례**: 작업원A 가 "진단 모드를 추가하라"는 지시를 받고 착수 전에 확인해보니 **30분 전 머지된 PR 에 이미 구현돼 있었다.** 새로 안 만들고 실행만 해서 1 PR 을 절약했다. 이건 운이 아니라 절차여야 한다.
 
-겹치거나 이미 있으면 **반려가 올바른 행동이다.** 근거(파일 경로·PR 번호·도장 시각)를 붙여 총괄에게 알린다.
+겹치거나 이미 있으면 **반려가 올바른 행동이다.** 근거(파일 경로·PR 번호·도장 시각)를 붙여 `APPOINTED_FOREMAN`에게 실제 전송한다.
 
 ## 4. 멈출 때 / 밀어붙일 때
 
@@ -62,7 +63,7 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 
 **멈추지 않는다**
 - 되돌릴 수 있는 결정 → 스스로 하고 근거·복구법 기록
-- **머지·배포 승인** → 필요 없다(AGENTS.md §3). `check.sh` 초록 + 직렬 큐 + §6.8 완주면 진행
+- **머지·배포 사용자 승인** → 필요 없다(AGENTS.md §3). 다만 독립 REVIEW·직렬 큐를 확인한 Foreman의 `RELEASE`를 받은 뒤, 같은 writer가 merge → deploy → health → live verify를 수행한다.
 - 같은 목적의 더 나은 방법이 보인다 → **대안을 근거와 함께 제시하고** 진행. 맹종과 반사적 반대는 둘 다 사고 생략이다
 
 ## 5. 완주 판정 — 하나라도 ❌면 완료가 아니다
@@ -70,7 +71,8 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 ```
 □ 수용 기준을 하나씩 짚어 전부 ✅ 인가?        (나열하고 ✅/❌ 표시)
 □ 실행이 필요한 항목을 실제로 실행했나?        (문서만 쓰고 끝낸 것 아닌가)
-□ check.sh 초록 · npx next build 통과?
+□ check.sh 초록인가? runtime/app bytes 변경이면 npx next build도 통과했나?
+□ docs-only라 build를 생략했다면 runtime bytes 불변 근거와 NOT_RUN을 남겼나?
 □ §6.8 완주?  머지 → 배포 run success → health 200
 □ 완주 도장에 증거를 숫자로 남겼나?
 □ 되돌리는 법을 적었나?
@@ -92,12 +94,16 @@ related: AGENTS, codex-foreman, codex-lead, worker-onboarding, thinking-protocol
 
 ## 6. 보고
 
+- CHECKPOINT·RESULT·BLOCKED·idle은 모두 계약의 `return_to`인 실제 `APPOINTED_FOREMAN` 세션에 전송한다. Lead/DESIGNER에게 직접 보내거나 Foreman을 우회하지 않는다.
 - **완주 1회** — 라운드마다 중간보고를 남발하지 않는다. 하트비트(30~60분)가 진행 상황을 대신한다.
-- **막히면 즉시** — 막힘은 숨길수록 손해다. 하트비트 `막힘:` 에 한 줄.
-- **유휴가 되면 총괄에게 알린다** — 조용히 대기하지 마라.
-- belie 에게 쓸 일이 있으면 **화면 이름·버튼 이름**으로. belie 는 개발자가 아니다. "고르면 벌어지는 일"과 "되돌릴 수 있는지"를 붙인다.
+- **막히면 즉시** — 하트비트 `막힘:`과 Foreman `BLOCKED` 패킷에 마지막 성공단계·현재 bytes/hash·다음 안전 행동을 남긴다.
+- **유휴가 되면 Foreman에게 알린다** — 조용히 대기하지 마라.
+- RESULT에는 변경 경로·commit/tree/hash, 실행한 검사와 PASS/FAIL/NOT_RUN, dirty·범위 밖 변경, 위험·rollback·NEXT_WORK 제안, `helper=NONE|INTERNAL_SUBAGENT_ONLY`를 포함한다.
+- 사용자 결정 게이트가 의심되면 Foreman에게 **화면 이름·버튼 이름**으로 `BLOCKED`를 보낸다. "고르면 벌어지는 일"과 "되돌릴 수 있는지"를 붙이면 Foreman이 DESIGNER에게 반환한다.
 
-## 7. 새 함정을 발견하면
+## 7. bounded helper와 새 함정
 
-`docs/playbooks/worker-onboarding.md` §C 에 한 줄 추가하는 PR 을 내라.
+공식 WORKER만 자기 lease 안의 독립적인 bounded subset에 내부 helper를 쓸 수 있다. 이때 `INTERNAL_SUBAGENT_ONLY`로 기록하고, helper는 공식 ACK·RESULT·독립 REVIEW·merge 판정을 소유하지 않는다. 결과 검증과 Foreman 반환 책임은 항상 WORKER에게 있다.
+
+새 함정을 발견하면 현재 lease 안에서 기계 검증 가능한 하네스 개선을 제안한다. lease 밖 파일이 필요하면 임의로 넓히지 말고 Foreman에게 `NEXT_WORK` 또는 lease 확장을 요청한다.
 **같은 실수가 두 번 나오면 skill issue 가 아니라 harness issue 다** — 프롬프트를 더 자세히 쓰는 대신 환경(린터·테스트·문서·훅)을 고친다.
