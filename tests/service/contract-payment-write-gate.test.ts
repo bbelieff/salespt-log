@@ -14,6 +14,9 @@ const updateLinkFields = vi.fn();
 const syncFeeFromContract = vi.fn();
 const writeTermination = vi.fn();
 const appendFromContract = vi.fn();
+// BBE-53: addPriorContract 가 재시도 중복행 판정을 위해 항상 조회한다 — 실제 readAll 처럼
+// 빈 배열이 기본(undefined 아님). 특정 케이스에서 기존 행을 흉내내려면 개별 테스트가 override.
+const readAll = vi.fn(async () => [] as ContractPayment[]);
 
 vi.mock("@/repo/users", () => ({
   findUserByEmail: (...a: unknown[]) => findUserByEmail(...(a as [])),
@@ -28,7 +31,7 @@ vi.mock("@/repo/db/read-daily", () => ({
 vi.mock("@/repo/contract-payment", () => ({
   appendFromContract: (...a: unknown[]) => appendFromContract(...(a as [])),
   clearRow: vi.fn(),
-  readAll: vi.fn(),
+  readAll: (...a: unknown[]) => readAll(...(a as [])),
   readContractCascadeKey: vi.fn(),
   syncFeeFromContract: (...a: unknown[]) => syncFeeFromContract(...(a as [])),
   updateLinkFields: (...a: unknown[]) => updateLinkFields(...(a as [])),
@@ -65,7 +68,7 @@ function setCohort(cohort: string) {
 }
 
 beforeEach(() => {
-  for (const m of [findUserByEmail, dbEnabled, updateUserFields, updateLinkFields, syncFeeFromContract, writeTermination, appendFromContract])
+  for (const m of [findUserByEmail, dbEnabled, updateUserFields, updateLinkFields, syncFeeFromContract, writeTermination, appendFromContract, readAll])
     m.mockReset();
   dbEnabled.mockReturnValue(true);
   setCohort("8"); // 파일럿 기본
@@ -74,6 +77,7 @@ beforeEach(() => {
   syncFeeFromContract.mockResolvedValue({ row: 9 });
   writeTermination.mockResolvedValue(undefined);
   appendFromContract.mockResolvedValue({ row: 9 });
+  readAll.mockResolvedValue([]); // 기본 = 기존 행 없음(정상 append 경로)
 });
 
 describe("patchContractPayment — 수납 슬롯 편집 게이트", () => {
@@ -157,5 +161,45 @@ describe("addPriorContract — append 계열은 dual-sync 제외(중복행 방�
     // 핵심: append 직후 필드채움은 dual-sync throw 경로를 타면 안 됨(재시도 시 append 재실행→중복).
     const opts = updateUserFields.mock.calls[0]?.[2];
     expect(opts?.syncDb).not.toBe(true);
+  });
+
+  // BBE-53 — 재시도 멱등: 같은 (계약일,업체명,수임비) 의 "이월+prior:" 행이 이미 있으면
+  // 새 행을 append 하지 않고 그 행을 그대로 갱신한다(중복 계약행 = 매출 이중계상 방지).
+  it("같은 (계약일·업체명·수임비) 의 이월 prior 행이 이미 있으면 append 없이 그 행을 갱신한다", async () => {
+    readAll.mockResolvedValue([
+      {
+        row: 7,
+        계약일: "2026-07-10",
+        업체명: "가나상사",
+        수임비: 1_000_000,
+        구분: "이월",
+        이월원본행id: "prior:existing-uuid",
+      },
+    ] as ContractPayment[]);
+
+    const result = await addPriorContract(EMAIL, mkCp({ row: undefined }));
+
+    expect(result.row).toBe(7);
+    expect(appendFromContract).not.toHaveBeenCalled();
+    expect(updateUserFields).toHaveBeenCalledTimes(1);
+    expect(updateUserFields.mock.calls[0]?.[1]).toMatchObject({ row: 7 });
+  });
+
+  it("같은 날짜·업체라도 이월(prior:)이 아닌 정식 계약 행은 재시도 판정에서 제외된다(오매칭 방지)", async () => {
+    readAll.mockResolvedValue([
+      {
+        row: 3,
+        계약일: "2026-07-10",
+        업체명: "가나상사",
+        수임비: 1_000_000,
+        구분: "", // 정식 계약(비이월) — prior 재시도 후보가 아님
+        이월원본행id: "",
+      },
+    ] as ContractPayment[]);
+
+    await addPriorContract(EMAIL, mkCp({ row: undefined }));
+
+    // row 3(무관한 정식 계약)을 건드리지 않고 정상적으로 새 행을 append 해야 함.
+    expect(appendFromContract).toHaveBeenCalledTimes(1);
   });
 });

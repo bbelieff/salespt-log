@@ -358,14 +358,48 @@ export async function findRowByLink(
 /**
  * 계약 액션 시 자동 호출: 새 row append (C/D/E만 채움, F~AA는 빈 값).
  * 사용자는 계약수납탭에서 추가 입력.
+ *
+ * BBE-53 자연키 upsert: meetingId 가 있으면 findFirstEmptyRow 전에 findRowByLink 로
+ * 기존 행을 먼저 찾는다. 있으면 그 행을 갱신(append 안 함) — 같은 미팅에서 저장을
+ * 몇 번 재시도해도(응답 유실 등) 행은 하나.
+ *
+ * `dateCompanyFallback`(기본 false): meetingId 매칭이 없을 때 (계약일+업체명) 만으로도
+ * 기존 행을 찾을지 여부. addFromContract(미팅에서 계약, meetingId 조회 실패 폴백)만 true 로
+ * 넘긴다 — addPriorContract(직접 등록)는 이 검사를 타지 않는다. 이유: 직접 등록은 meetingId
+ * 가 원천적으로 없어 (계약일+업체명) 단독 매칭이 **서로 무관한 실제 계약 행을 오매칭**할 위험이
+ * 있다(같은 날 같은 업체의 정식 계약을 "이전 계약 직접등록"이 덮어씀). 그 경로의 멱등 판정은
+ * 호출부(addPriorContract)가 (계약일+업체명+수임비 + 구분=이월) 로 더 좁게 별도 수행한다.
  */
 export async function appendFromContract(
   spreadsheetId: string,
   data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
   carryover?: { 원본행id: string }, // 출발 미팅이 이월(04 AO)이면 깃발 상속 (§3)
   opts?: ContractWriteOpts, // 생략=R2 미러(no-throw). append 는 멱등키가 없어 기본 throw 금지(§6 R3-3)
+  dateCompanyFallback = false,
 ): Promise<{ row: number }> {
+  if (data.meetingId || dateCompanyFallback) {
+    const existing = await findRowByLink(spreadsheetId, {
+      meetingId: data.meetingId,
+      ...(dateCompanyFallback ? { 계약일: data.계약일, 업체명: data.업체명 } : {}),
+    });
+    if (existing !== null) {
+      await writeContractRow(spreadsheetId, existing, data, carryover, opts);
+      return { row: existing };
+    }
+  }
   const row = await findFirstEmptyRow(spreadsheetId);
+  await writeContractRow(spreadsheetId, row, data, carryover, opts);
+  return { row };
+}
+
+/** C:E(+AK 링크·AI:AJ 이월) 를 지정 row 에 쓰고 DB 를 반영 — append(신규 row)·upsert(기존 row) 공용. */
+async function writeContractRow(
+  spreadsheetId: string,
+  row: number,
+  data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
+  carryover: { 원본행id: string } | undefined,
+  opts: ContractWriteOpts | undefined,
+): Promise<void> {
   const { tab } = await resolveLayout(spreadsheetId);
   // AK(col 37) 쓰기 전 그리드 보장 — 기존 02 는 A:AJ(36열)뿐, AK 쓰면 batchUpdate 전체 거부(계약 깨짐).
   if (data.meetingId) await ensureGridColumns(spreadsheetId, tab, 37);
@@ -401,7 +435,6 @@ export async function appendFromContract(
     ...(data.meetingId ? { meetingId: data.meetingId } : {}),
     ...(carryover ? { 구분: "이월", 원본행id: carryover.원본행id } : {}),
   }, opts);
-  return { row };
 }
 
 /** 사용자 입력 영역(F~AD) update — 한 row 통째로. */
