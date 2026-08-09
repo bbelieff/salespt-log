@@ -65,11 +65,27 @@ const auth = new google.auth.JWT(SA_EMAIL, undefined, SA_KEY, [
 ]);
 const sheets = google.sheets({ version: "v4", auth });
 
+/**
+ * ★ 앱의 레지스트리 읽기(`lib/repo/sheets-client.ts:readRange`)와 **같은 렌더 옵션**이어야 한다.
+ *
+ * `dateTimeRenderOption` 을 생략하면 Sheets API 기본값이 `SERIAL_NUMBER` 라, 앱이 늘 보던
+ * `"2026. 8. 7."` 대신 `46241` 이 DB 에 들어간다. 그러면 같은 컬럼이 **출처에 따라 두 형식으로
+ * 갈린다** — 이중기록 미러(BBE-55)는 앱 경로라 문자열, 이 백필은 숫자.
+ *
+ * 영향 컬럼 3개(실측): `users.course_start_iso`(K) · `users.graduation_iso`(L) ·
+ * `cohorts.season_start_iso`(J). 앞의 둘은 BBE-57 의 D-day·주차·퍼널 계산 정본이고,
+ * 마지막은 전광판 시즌 판정 정본이다.
+ *
+ * 이 스크립트의 자동 대조는 **행 수만** 보므로 이 어긋남을 못 잡는다 — 조용히 통과한 뒤
+ * 게이트를 켠 화면에서야 날짜가 깨진 채 드러난다. (지적: 반장 FM·260806, BBE-56 코멘트
+ * 2026-08-09 01:19Z / 확인: 데탑 C작업원A(260809) 실측 — `sheets-client.ts:97-98` 대조)
+ */
 async function readRange(range) {
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId: REGISTRY_ID,
     range,
     valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
   });
   return r.data.values ?? [];
 }
