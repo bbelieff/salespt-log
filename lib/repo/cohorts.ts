@@ -21,6 +21,7 @@ import {
   mirrorCohortCells,
   mirrorCohortRow,
 } from "./db/registry-mirror";
+import { readCohortRowsFromDb } from "./db/registry-read";
 
 export type CohortStatus = "active" | "archived";
 export type CohortType = "cohort" | "arena";
@@ -41,7 +42,7 @@ export interface Cohort {
 
 const COHORTS_TAG = "cohorts";
 
-const cachedCohortsRows = unstable_cache(
+const cachedCohortsSheetRows = unstable_cache(
   async (): Promise<string[][]> => {
     const reg = registry();
     try {
@@ -54,6 +55,14 @@ const cachedCohortsRows = unstable_cache(
   ["cohorts-rows"],
   { revalidate: 60, tags: [COHORTS_TAG] },
 );
+
+/**
+ * cohorts 행 읽기 단일 진입점 (BBE-56). `REGISTRY_DB_READ=1` 이면 DB, 아니면 시트 그대로.
+ * DB 실패·0행이면 null 이 와서 시트로 폴백한다(readCohortRowsFromDb 주석 참조).
+ */
+async function cachedCohortsRows(): Promise<string[][]> {
+  return (await readCohortRowsFromDb()) ?? cachedCohortsSheetRows();
+}
 
 function invalidateCohorts(): void {
   // Server Component 의 render phase 에서 호출되면 Next.js 15+ 가 throw 한다.
