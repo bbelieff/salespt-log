@@ -17,11 +17,31 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # tailnet 전환 스위치 (BBE-77). VPS_HOST_TS 미설정 = 기존 공인 IP = 변경 전과 100% 동일 동작.
+      # 롤백 = GitHub Settings→Secrets 에서 VPS_HOST_TS 삭제 1번(PR·머지 불요).
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      # ⚠️ steps.if 는 secrets 컨텍스트를 못 읽는다(GitHub 공식 컨텍스트 표). 거기서 secrets 를
+      #    참조하면 "Unrecognized named-value: 'secrets'" 파싱 에러로 **이 워크플로 전체가 무효**가
+      #    되어 배포가 아예 트리거되지 않는다. 그래서 잡 레벨 env 로 승격해 env. 로 검사한다.
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
     steps:
       - name: Checkout (just to know the SHA)
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      # Setup SSH 앞에 와야 한다 — 아래 ssh-keyscan 이 이미 tailnet 라우트를 필요로 한다.
+      # Secrets 미설정이면 스텝 자체가 스킵되고, 접속 대상도 공인 IP 라 동작이 바뀌지 않는다.
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
 
       - name: Setup SSH
         run: |
@@ -33,7 +53,7 @@ jobs:
           #       keyscan 이 걸리면 배포 전체가 막혔다(실제 sshd 는 정상, 다른 run 은 접속 성공).
           # 현재: 실제 ssh 가 StrictHostKeyChecking=accept-new(TOFU) 로 known_hosts 없이도 접속하고,
           #       아래 Deploy 단계가 *연결 실패(rc=255)에 한해* 재시도한다.
-          ssh-keyscan -T 15 -t rsa,ecdsa,ed25519 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -T 15 -t rsa,ecdsa,ed25519 -H "$VPS_TARGET_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Inject secrets into VPS .env (idempotent, 값 미출력)
         env:
@@ -58,7 +78,10 @@ jobs:
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -i $HOME/.ssh/id_ed25519"
           # IPv4 실패 시 IPv6(VPS_HOST_V6, 설정된 경우) 교대 시도 — GH IP대역 한정 차단
           # 우회용(2026-08-06 SSH 장애 조사). 미설정이면 기존과 동일하게 IPv4만 사용.
-          HOSTS=("${{ secrets.VPS_HOST }}")
+          HOSTS=("$VPS_TARGET_HOST")
+          # tailnet 사용 중이면 공인 IPv4 를 슬롯2 로 추가 → 짝수 시도가 자동 폴백.
+          # VPS_HOST_TS 미설정이면 두 값이 같아 이 줄은 no-op(배열 = 변경 전과 동일).
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
           if [ -n "${{ secrets.VPS_HOST_V6 }}" ]; then HOSTS+=("${{ secrets.VPS_HOST_V6 }}"); fi
           NHOSTS=${#HOSTS[@]}
           # 원격 편집 스크립트($1=키 이름) — .env 의 해당 키 줄만 제자리 교체(없으면 맨 아래 추가).
@@ -242,8 +265,14 @@ jobs:
           # 해결: 원격 스크립트를 setsid 로 세션 분리해 띄우면 연결이 끊겨도 배포(특히 swap·
           #     health·자동롤백)가 *끝까지 완주*한다. 러너는 재접속하며 상태파일만 폴링해 진짜
           #     종료코드를 보고. flock 으로 VPS 상에서도 배포를 직렬화(GH concurrency 와 이중 안전).
-          HOST="${{ secrets.VPS_HOST }}"
+          HOST="$VPS_TARGET_HOST"
           HOST_V6="${{ secrets.VPS_HOST_V6 }}"
+          # ssh_do 는 HOST/HOST_V6 2슬롯을 홀짝 교대한다. tailnet 사용 + v6 미설정이면 슬롯2 에
+          # 공인 IPv4 를 넣어 폴백 경로를 확보한다. ssh_do 는 콜론 유무로 -4/-6 를 고르므로
+          # v4 주소가 들어가도 안전 — ssh_do 본문은 손대지 않는다.
+          # (슬롯 이름이 _V6 인데 v4 를 담는 건 네이밍 스멜이나, 배열형 개편은 재시도 로직
+          #  수정이라 이 PR 의 "접속 대상만 바꾼다" 범위를 벗어난다.)
+          if [ "$HOST" != "$VPS_FALLBACK_HOST" ] && [ -z "$HOST_V6" ]; then HOST_V6="$VPS_FALLBACK_HOST"; fi
           RUNID="${{ github.run_id }}-${{ github.run_attempt }}"
           DIR="/opt/salespt-log/.deploy"
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i $HOME/.ssh/id_ed25519"

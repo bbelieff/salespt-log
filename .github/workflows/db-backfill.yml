@@ -21,7 +21,27 @@ on:
 jobs:
   backfill:
     runs-on: ubuntu-latest
+    env:
+      # tailnet 전환 스위치 (BBE-77). VPS_HOST_TS 미설정 = 기존 공인 IP = 변경 전과 100% 동일 동작.
+      # 롤백 = GitHub Settings→Secrets 에서 VPS_HOST_TS 삭제 1번(PR·머지 불요).
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      # ⚠️ steps.if 는 secrets 컨텍스트를 못 읽는다 — 거기서 secrets 를 참조하면
+      #    "Unrecognized named-value: 'secrets'" 파싱 에러로 워크플로 전체가 무효가 된다.
+      #    그래서 잡 레벨 env 로 승격해 env. 로 검사한다.
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
     steps:
+      # Setup SSH 앞에 와야 한다 — tailnet 라우트가 먼저 올라와야 ssh 가 100.x 로 붙는다.
+      # Secrets 미설정이면 스텝 스킵 + 접속 대상도 공인 IP → 동작이 바뀌지 않는다.
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -51,7 +71,10 @@ jobs:
           # (SSH 장애 조사 2026-08-06). 미설정이면 기존과 동일 IPv4만. 스크립트 실패(다른 rc)는
           # 즉시 fail — 멱등 설계라 재실행으로 수렴.
           set +e
-          HOSTS=("${{ secrets.VPS_HOST }}")
+          HOSTS=("$VPS_TARGET_HOST")
+          # tailnet 사용 중이면 공인 IPv4 를 슬롯2 로 추가 → 짝수 시도가 자동 폴백.
+          # VPS_HOST_TS 미설정이면 두 값이 같아 no-op(배열 = 변경 전과 동일).
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
           if [ -n "${{ secrets.VPS_HOST_V6 }}" ]; then HOSTS+=("${{ secrets.VPS_HOST_V6 }}"); fi
           NHOSTS=${#HOSTS[@]}
           for i in $(seq 1 15); do
