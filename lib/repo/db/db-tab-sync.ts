@@ -8,8 +8,12 @@
  * 제외(설계): ①append — 행번호=시트 할당이라 재시도 시 중복행(이중계상), R2 async 유지
  * (db-write-flip §6 R3-4). BBE-59(R7-#10) Phase 1 이 append 를 UUID 키(db/row-key.ts)로 바꿔
  * "재시도 시 중복행" 전제를 없앴지만, append 를 실제 dual-sync 로 미는 건 Phase 3(별도 카드) —
- * 이 파일은 아직 update/clear 만 다룬다. ②파생셀 writer(생산개수 M·생산 E) — 컨택 저장 경유 호출이
- * 있어 dual-sync throw 시 이미 저장된 컨택이 사용자 에러가 됨 + 백필 컬럼폼 shadowing → R3-4b 후속.
+ * 이 파일은 아직 update/clear 만 다룬다. ②생산 E(1일 유입 셀) — 컨택 저장이 직접 소유하는 값이라
+ * 이 파일 스코프 밖(§6 71-73 유지, R3-4b 무관). 생산개수 M(writeProductionCountCell)은
+ * **이 파일과 다른 non-throw 안전모드**로 BBE-61 에서 편입됨(db-production-cell.ts 참고) — throw
+ * 하면 안 되는 이유(컨택 저장 경유, 이미 성공한 동작을 되돌리면 안 됨)가 여기(throw-on-fail)와
+ * 상충해서 이 파일의 persistDbRow/clearDbRow 는 안 쓴다. 백필 컬럼폼 shadowing 은 read-db-tab.ts
+ * 의 overlay 우선순위 수정(필드명이 항상 이김)으로 일반 해소됨(db-tab-form-overlay.test.ts).
  * 비파일럿(시트 read)은 기존 async 미러 유지(호출부 게이트).
  */
 import { findOwnerBySpreadsheetId } from "../users";

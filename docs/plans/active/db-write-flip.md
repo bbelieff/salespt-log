@@ -122,10 +122,15 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
     중복행, C2 확정) — R2 async 유지. 읽기 게이트(loadDBOverview=DB) 이미 라이브 → read-your-writes 충족.
   - **critic-2 수정(HIGH)**: append+update DB payload 에 `_cleared:false` 포함 — 삭제 후 같은 행 재추가 시
     _cleared:true 잔존으로 재추가 행이 파일럿 화면에서 사라지던 사고(jsonb 병합) 방지.
-  - **파생셀 writer 제외 → R3-4b 후속**: writeProductionCountCell(생산개수 M)·writeProductionCell(생산 E)는
-    R2 async 유지. 근거: (a) M 은 컨택 저장(contact.ts, 저장 완료 후 try/catch 없이 호출) 경유라 dual-sync
-    throw 시 이미 저장된 컨택이 에러(critic-1) (b) 백필 컬럼폼 행에 필드명 부분쓰기 shadowing(C5-A) (c) E 는
-    본 §6 71-73 에서 R2 유지 명시. R3-4b = 컨택경로 non-throw 분리 + shadowing 처리 후 M/E 편입.
+  - **파생셀 writer 제외 → R3-4b(2026-08-09 M 편입 완료, BBE-61)**: writeProductionCountCell(생산개수 M)·
+    writeProductionCell(생산 E)는 최초 R2 async 유지. 근거: (a) M 은 컨택 저장(contact.ts, 저장 완료 후
+    try/catch 없이 호출) 경유라 dual-sync throw 시 이미 저장된 컨택이 에러(critic-1) (b) 백필 컬럼폼 행에
+    필드명 부분쓰기 shadowing(C5-A) (c) E 는 본 §6 71-73 에서 R2 유지 명시. **해소**: (b)는 read-db-tab.ts
+    overlay 우선순위 수정(필드명이 항상 이김, db-tab-form-overlay.test.ts)으로 이미 일반 해소되어 있었음
+    (실측 확인). (a)는 이 파일의 throw-on-fail dual-sync 를 그대로 쓰지 않고 **별도 non-throw 안전모드**
+    (`mirrorSheetRowAwaitable`, `db/mirror.ts`)로 우회 — 파일럿이면 DB 반영을 기다리되(read-your-writes
+    갭 해소) 실패해도 컨택 저장을 되돌리지 않는다(항상 성공/실패 boolean 반환, throw 없음). E 는 여전히
+    §6 71-73 대로 R2 유지(스코프 밖, 컨택이 직접 소유).
   - **알려진 한계(수용)**: 편집 DB throw 시 syncProduction(E) skip → E 일시 stale(화면 DB 도 옛 값이라 정합,
     재시도 회복). 합계행 방어(isSumRow pre-read)는 드리프트 전제라 미추가(후속).
 - **R3-5** feat/db-cohort-create — admin 기수 생성 DB 정본(선행: chore/deploy-env-admin-token). 시트 복제 실패가 생성을 막지 않게 pending 재시도. O1/O2=USER_ENTERED.
