@@ -1,8 +1,9 @@
 ---
 slug: contract-append-idempotent-flip
-status: active
+status: completed
 created: 2026-08-05
-owner: FM(260804) 발급 · 실행 = DevA 새 몸(레인 repo-db)
+completed: 2026-08-09
+owner: FM(260804) 발급 · 실행 = 경영일지 작업원C → 데탑 C작업원C(260809) 승계 완주(레인 repo-db)
 related: db-write-flip, r3-3-meeting-contract-dual-sync
 ---
 
@@ -99,5 +100,18 @@ lease 밖: lib/service/contact.ts · 06/03/01 구역 · gcal · app/** · compon
 belie 가 조기 머지를 명시 지시하면 그 지시가 우선한다(이 절만 무효).
 
 ## Log
+- **2026-08-09 완주 (데탑 C작업원C(260809) 승계)** — PR **#746**(`b67de8a`) 머지 · 배포 run
+  `31287998919` success · health 200(16:58 KST) · check.sh 초록(PR check `31287768440`).
+  파일럿 실데이터 before/after 대조 = 24샘플 24/24 정상(감사 run `31287774124`, PR #746 코멘트).
+  수용 기준 판정: **1 ✅**(연속 3회 = 1행, 테스트 고정) · **2 부분**(자연키 upsert 로 수렴은 고정,
+  단 이 계약의 NOT_RUN 대로 append 의 `{syncDb}` 관통은 **미실행** — DB 정본 전환은 후속 카드)
+  · **3 ✅**(dbEnabled/cohort 미참조 = 구조적 불변) · **4 ✅**(arena-carryover 회귀 테스트) ·
+  **5 ✅**(동시 2요청 테스트 존재 + §1 잔여 확률 문서화) · **6 ✅**(§6.8 완주).
+  **잔여 위험(신규 발견, worklog 결정함 17번)**: `findRowByLink` 는 meetingId 가 있어도 **못 찾으면**
+  (계약일+업체명) 폴백까지 내려간다(`lib/repo/contract-payment.ts:346`). addFromContract 는 항상
+  `dateCompanyFallback=true` 를 넘기므로, **같은 날·같은 업체의 서로 다른 계약 2건**이 한 행으로
+  합쳐질 수 있다(수리 전에는 2행) → 그 조합에서만 매출 과소계상. 테스트 미커버. 후속 카드 권장안 =
+  "meetingId 가 있는데 못 찾은 경우엔 폴백 금지 + 옛 행은 AK 백필". 별건으로 **기존 중복 1건**
+  (9기 실데이터, 결정함 16번) 발견 — 이 PR 이전부터 존재, NOT_RUN 준수로 미수정.
 - 2026-08-05 FM 발급. belie 승인(앞선 보류 뒤집음) + "중복행 위험 해소 설계 명시" 요구 반영 —
   §1 자연키 upsert 설계로 답함. 실행은 DevA 새 몸 배차(레인 repo-db, 충돌 0).
