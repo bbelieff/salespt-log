@@ -14,6 +14,7 @@ on:
           - r4-week11-audit
           - dashboard-parity
           - contract-append-key-audit
+          - registry-parity
       cohort:
         description: "dashboard-parity·contract-append-key-audit 전용 — 대조할 기수 목록(쉼표 구분). 비우면 파일럿 전체 기본값."
         type: string
