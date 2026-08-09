@@ -100,6 +100,36 @@ export const COMPANY_FIELDS_EXT = [
 ] as const;
 export const COMPANY_EXT_START = 42; // AQ
 
+/** meetingToRow 가 USER_ENTERED 오변환 방지용으로 선행 apostrophe(`'`)를 붙이는 컬럼 전체. */
+const APOSTROPHE_ESCAPED_COL_INDICES = new Set<number>([
+  COL.예약비고,
+  COL.미팅사유,
+  COL.계약조건,
+  ...Array.from({ length: COMPANY_FIELDS.length }, (_, i) => COMPANY_FIELD_START + i),
+  COMPANY_CUSTOM_COL,
+  ...Array.from({ length: COMPANY_FIELDS_EXT.length }, (_, i) => COMPANY_EXT_START + i),
+]);
+
+function stripSheetTextEscape(v: unknown): unknown {
+  return typeof v === "string" && v.startsWith("'") ? v.slice(1) : v;
+}
+
+/**
+ * meetingToRow 출력을 "실제 USER_ENTERED 시트 쓰기를 거쳤다면 어떻게 보였을지"로 정규화.
+ * carryover 처럼 시트를 거치지 않고 meetingToRow 결과를 non-sheet 목적지(jsonb 등)로
+ * 직접 보내는 경로 전용 — listCarrySourceMeetings(진짜 시트 읽기) 결과에는 절대 적용하지
+ * 않는다. 컬럼 인덱스 무관하게 전체 배열에 적용하면 회사명 등 원래 apostrophe 없는
+ * 필드는 그대로 지나가고(meetingToRow 가 그 필드들엔 애초에 apostrophe 를 안 붙임),
+ * escape 대상 컬럼만 정확히 벗겨진다(BBE-65 — arena-carryover.ts:96 이 만드는 raw 전용).
+ */
+export function stripUserEnteredEscapes(
+  row: (string | number | boolean)[],
+): (string | number | boolean)[] {
+  return row.map((v, i) =>
+    APOSTROPHE_ESCAPED_COL_INDICES.has(i) ? (stripSheetTextEscape(v) as string | number | boolean) : v,
+  );
+}
+
 /** 행 배열 T~AN(+AQ~AS) → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
 function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   const ci: Record<string, unknown> = {};
