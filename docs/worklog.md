@@ -58,7 +58,7 @@
 | B | **작업원 B** — 구 gcal 계열 잔여. **BBE-64 는 belie 직접 배차로 데탑 C작업원C(260809) 가 인수(2026-08-09, 아래 로그)** | DevB(260806) | **BBE-57 PR #740 오픈(draft) · 머지는 반장 판정 대기(2026-08-08)** — 수강기간(O1/O2) DB 배선, R7 Phase 1. 티켓 전제 2건 실측 반증(마이그레이션 불필요·UPDATE-only 로 BBE-55 자연키변경과 독립) 후 구현+적대적 리뷰(Agent 2렌즈, HIGH 1건=DB읽기실패시 시트폴백 소실 포함 5건 수정 — 읽기·쓰기 독립 카나리아 게이트 추가)+유닛테스트 4파일 39건, check.sh 초록. 상세=`docs/plans/active/course-dates-db.md`. 이하 이전: **BBE-64 PR #713 오픈(draft) · 머지는 8/7 이후 대기** — R7 Phase 3 #15(`readProfileBundle.stats` DB 대체). 적대적 리뷰 완주(HIGH 1건 수정: 부부/멀티계정 spreadsheetId 공유 시 통계 덮어써지던 실제 버그, index 병합으로 교정 + 회귀테스트). check.sh 초록(1038). **draft 로 연 이유 = 실수 조기머지 방지**(belie 지시). 부수 발견: 기존 `weeklyContractsFromDb` 이월 제외 필터 누락(별도 트랙 소유, R2-7a) · A2 백필 미완료 시 배포하면 통계 조용히 0(백필 확인 후 머지 권장). 상세 = `docs/plans/active/profile-stats-db.md`. 레인 `lane:profile-stats` 유지(머지 전까지). 이하 이전: BBE-45 배포 확인(완료) — #695→`0102a89`·success·health 200. |
 | C | **작업원 C** — belie 직배차 수행. 02 계약수납 append + **BBE-64 인수(admin/profile-stats)** → 다음 **BBE-71(Export xlsx/csv)** | 데탑 C작업원C(260809) | **배포 확인(완료) — BBE-64(2026-08-09)**: `readProfileBundle.stats` DB 대체(BBE-48 admin/users 진입 지연 근본수리, admin·트레이너·회장 3화면 공유). belie 직접 배차 → PR #713 생사 판정(살아있음, belie "개막 후 재개" 보류였음) → 리베이스 인수(`b85c1f7`→`b67de8a`, 충돌 2건 해소) → **A2 백필 실측 검증**(DB Audit dashboard-parity, A2 전체 53명, run `31314769805`) — "전부 0" 최악 시나리오 반증, 실결측 2명뿐(부분·개별 주차) → draft 해제 → PR **#713**(`558e4f6`) 머지 · 배포 run `31315835765` **success** · health **200**(22:35 KST). check.sh 초록(structural 25·unit 1132). 후속 카드 권장 2건(§8 참조) = ①`weeklyContractsFromDb` 이월 미배제(R2-7a/BBE-66) ②A2 2명 부분 결측. 다음 = **BBE-71 착수**(belie 지시, R7 후반 임계경로·BBE-69 선행·신규 제작이라 오래 걸림 — 여유 되면 설계부터). 이하 이전: **배포 확인(완료) — BBE-53(2026-08-09)**: contracts append 자연키 upsert(매출 이중계상 차단). PR **#746**(`b67de8a`) 머지 · 배포 run `31287998919` **success** · health **200**(16:58 KST 재확인) · check.sh 초록(PR check `31287768440` pass). 파일럿 실데이터 before/after 대조 = 24샘플 전부 "구로직이면 새 행(중복), 신로직은 기존 행 정확"(감사 run `31287774124`, PR #746 코멘트). 구 몸(창 "경영일지 작업원C") 산출물 실측 인수 — **재작업 0**. 남긴 것 = 결정함 **16번**(기존 중복 1건·9기 실데이터) · **17번**(같은날·같은업체 두 계약이 한 행으로 합쳐지는 잔여 위험, 후속 카드 필요). 이하 이전(DevC(260712-2) 수납 트랙 종료 기록): **완료(종료)**: belie ①read-only close 확정(2026-07-12) → 마감 절차 실행(plan 2건 completed 이동·worklog 마감·보드 갱신). 스펙 #529~534 MERGED·배포 success·health 200·코드층 재검증 OK. 02 구역 소유권 A(R3-3)로 이관. 유보=퍼널 계약수 해지반영(belie 별도) |
 | D | 게이트키퍼(R3·codex 판정) + R4 wave-0 선행(W0-C) — docs/coordination·worklog 장부 | DevD(260721) | **W0-C 완료(2026-07-24)**: ①R3 재판정=코드레벨 PASS(L4 append-silent → #598 union fallback 종결) ②codex-stability=**STABLE**(#612, 2 blocker 해소·§C.5 전면소진 relay 주체 명문화) ③F 실측=EOL #603·발굴피커 #591 완주·TRACK-F ready → **R4 wave-1 선행 3건 초록**. residual(비차단)=#605 close(belie)·A full 인수왕복 1회 실연. 신규 작업 대기 |
-| E | 배포설정: admin 토큰 주입 — deploy.yml·playbooks | DevE(260712) | ⛔belie 대기: `gh secret list` 재확인 = ADMIN_DRIVE_REFRESH_TOKEN 미등록(선행조건 미충족) → 수용항목2(배포 주입로그 확인·기수 왕복) 착수 불가. 등록되면 즉시 재개. 03 유령진단=무혐의(재검증 OK) |
+| E | 검증·지원 축(R7) — 승계(구 DevE 배포설정 잔여 = ADMIN_DRIVE_REFRESH_TOKEN 미등록 belie 대기, 별건 보류) | 데탑 C작업원E(260809) | **BBE-91 완주(2026-08-09)** — PR #751(tailnet 배선) 머지·배포 success·health 200 + registry 백필 execute(users 144·cohorts 13 ✅일치) + sheet_rows 비파일럿 백필(cohort 4·6·7·10, 1485행 upsert). BBE-67 **부분** — cohort 1·2·3·5 는 registry 매칭 0건(원인 미상, 조사 필요). BBE-85 사후검증(run 31303933202, schema_migrations 2/2 적용 확인) 완료. 다음 배차 대기 |
 | F | KPI-④ EOL renormalize (막차) — .gitattributes | DevF(260712) | **배포 확인(완료)** — #603(1aa3b9a) 머지·배포 success·health 200. §0.5 진단: 저장소 이미 LF(index i/crlf 0건), 720파일=autocrlf 작업트리 착시 → `.gitattributes`로 LF 정책 기계강제(내용 무변경 실측). 다음=#596 D 재검증 대응 대기 / 큐 신규. 🔔#596 D 재검증 요청 유효(연습용 3증상 라이브 해소 확인) |
 | R | 릴리스 계열(C1~C3·PR643 복구 등, 노트북 Codex 세션 work-id) — 단발 릴리스 후보 | 세션 불명(노트북) | **배포 확인(완료)** — #647~#651 다섯 건 모두 "Deploy to VPS" **success** 실측(2026-08-03 A `gh` 조회): #647 `30737985008` · #648 `30734464895` · #649 `30734149383` · #650 `30739988555` · #651 `30739460991`. 계획서 4건 `completed/` 이관 완료. #647 R6 통합은 **[HOLD] 머지** → migration GO 전까지 plan active 유지. #643 arena 시즌 SSOT AR-2b는 **배포 확인(완료)** — PR #643(`844ce045`)·QA `30732987028`·Deploy `30732987033` success·health 200; BBE-36 종료. |
 | Cowork | 오케스트레이터 — 프롬프트 생산·게이트 검증·워크로그 관리 | Cowork | 상시 |
@@ -365,6 +365,58 @@
 - 결정(자율·§0.7): PR #713 draft 해제 → 머지 → §6.8 배포 관찰(다음 로그 항목).
 - SoR: PR #713 · `docs/plans/active/profile-stats-db.md`(§6·§7·§8 갱신) · DB Audit run
   31314769805
+
+### 2026-08-09 · 데탑 C작업원E(260809) · BBE-91 완주 + BBE-85 사후검증 + BBE-67 부분(cohort 1·2·3·5 매칭 0건 미해소)
+- 의도: 반장 디스패치 — ①BBE-85 독립 사후검증(반장이 적용한 0001·0002 확인) ②BBE-91(경영일지)
+  실질 병목 완주(레지스트리 백필 실행) ③완주 후 BBE-67(잔여 기수 sheet_rows 백필) 착수.
+- 접수 도장(규정 v4.1 ⑤ — Linear 미인증, worklog 미러): `접수 — 데탑 C작업원E(260809) · 2026-08-09
+  08:36 KST / base origin/master=27a07b3 / lane: verify-r7`
+- **①BBE-85 사후검증**: 정본 경로(workflow_dispatch) dry-run run
+  [31303933202](https://github.com/bbelieff/salespt-log/actions/runs/31303933202) success —
+  `적용할 마이그레이션 없음(전체 2건 이미 최신)` = 0001·0002 적용 2/2·체크섬 일치 2/2(불일치면
+  `computePending` throw). 반장의 failure run `31287233695`(13m51s)는 재구성 결과 **코드 무관 —
+  SSH 15/15 timeout(BBE-77)**, 실제 마이그레이션 적용은 그 직전 run `31287208990`에서 이미 성공.
+  한계: `schema_migrations` SELECT 직접 덤프는 `db-audit.yml` 화이트리스트 3종 밖이라 미실행 —
+  "정확히 2행"은 러너 동작 역산, SELECT 실측 아님.
+- **②BBE-91**: 착수 시 PR #749(다른 세션 08:07 오픈, CI green)가 이미 존재 — 중복 구현 대신 리뷰로
+  전환, §0.7 발견: 신규 PR **#751**로 병목 해소 — `db-migrate.yml`·`db-backfill-registry.yml` 이
+  BBE-77 Tailscale 배선(#747) 범위 밖(공인 IP 전용)이라 SSH 반복 금지 지시와 충돌 확인 →
+  #747 과 동일 3줄 패턴(잡 env 3개·tailscale 스텝·HOSTS 폴백)만 이식. 머지 `09a0679`·배포 run
+  [31314830780](https://github.com/bbelieff/salespt-log/actions/runs/31314830780) success·health 200.
+  **백필 실행**(SSH 2회, 각 attempt 1 성공·공인 IP 미사용): dry-run
+  [31315082996](https://github.com/bbelieff/salespt-log/actions/runs/31315082996) → execute
+  [31315119463](https://github.com/bbelieff/salespt-log/actions/runs/31315119463). 결과:
+  `users 시트 146행(고유키 144) vs DB 144 → ✅ 일치` · `cohorts 시트 13행(고유키 13) vs DB 13 → ✅ 일치`.
+  자연키 중복 2쌍(`A1-1 김덕호`·`A1-4 박준용`, prep 행) — 마지막 값 수렴, 시트 정리 대상.
+  ⚠️ BBE-55 완주 기록(145행→143키)과 **+1 불일치**(146→144) — dry-run·execute 두 run이 동일 수치라
+  측정오류는 아니고 8/8 이후 신규 등록 추정, 어느 행인지는 미확인(요약 로그만, 개별행 미출력).
+- **③BBE-67 착수 — 부분 완료**: `db-backfill.yml --cohort "1,2,3,4,5,6,7,10"` 콤마 목록으로 SSH
+  2회(dry-run [31315194175](https://github.com/bbelieff/salespt-log/actions/runs/31315194175) →
+  execute [31315377078](https://github.com/bbelieff/salespt-log/actions/runs/31315377078))에 묶어 처리.
+  대상 시트 21개, 시트 추출 총 1485행(meetings 183·contracts 80·todos 6·sales 919·db 259·
+  company_archive 38), `DB upsert 완료: 1485건`, 탭없음(무해) 26건·읽기실패 0건.
+  🔎 **DB 기준 대조 표에 cohort 1·2·3·5 가 아예 없음** — `targets` 필터가 registry
+  `users!B열(cohort, 기 접미 제거)` 매칭이라, 이 4개 기수는 **레지스트리에 매칭 행이 0건**(1~7기·10기
+  전량이 아니라 4·6·7·10 만 실제로 백필됨). 원인 미상 — 후보: ①1~3·5기는 앱(레지스트리) 도입 이전
+  아카이브라 registry 행 자체가 없음 ②라벨 표기가 숫자가 아닌 다른 형식(`PRM N기` 등, 확인 필요).
+  대조 표 합계(cohort 4·6·7·10, 1505) vs 추출 총계(1485)에 **+20 오차** 미해명 — 시간 여유 두고 후속
+  확인 권고(추가 SSH 즉시 재발사 안 함, §SSH 반복금지 준수).
+- 결정(자율·§0.7): SSH 반복 트리거 방지가 최우선 지시라, 콤마 목록으로 **8개 기수를 dry-run·execute
+  각 1회씩(총 2회)**로 묶었다. cohort별 개별 실행(16회)보다 안전.
+- **ADR-0030 §"R7-#18(BBE-67) 완료" 조건 미달** — "잔여 기수(1~7기·10기) 전량 백필 + diff=0"은
+  cohort 1·2·3·5 가 빠져 **미완료**로 남긴다. 완료로 잘못 닫으면 아무도 이어받지 않는다(§0.8).
+- 검증: PR #751 `npm run check` 로컬 초록(typecheck·lint·structural 25·unit) 후 커밋, CI green.
+  실행계 4건(BBE-91 dry-run/execute·BBE-67 dry-run/execute) 전부 워크플로 success, health 200 유지 확인.
+- 다음: ① **A 트랙에 BBE-91 수치 인계**(users 144·cohorts 13 확보 — A의 "게이트 ON 은 백필 후로 유보"
+  선행조건 해소, #743 는 착수 시점 이미 A 가 머지함 확인) ② BBE-67 잔여 = cohort 1·2·3·5 registry
+  매칭 0건 원인 조사(원인 확정 전 diff=0 리포트 발행 불가) ③ +20 오차 원인.
+- SoR: PR #751·#749 · Linear BBE-85·BBE-91·BBE-67 · `docs/decisions/0030-db-ssot-supersede-0002.md`
+  §Phase4 #18 · `docs/plans/active/sheet-retirement-r7.md`
+- 도장 미러(규정 v4.1 ⑤ — Linear 미인증, 반장 전사 요망):
+  `완주(BBE-91) — 데탑 C작업원E(260809) · PR #751 → 머지 09a0679 / 배포 run 31314830780 success ·
+  health 200 / 백필 execute run 31315119463 success — users 144·cohorts 13 ✅일치.
+  부분(BBE-67) — sheet_rows execute run 31315377078 success, cohort 4·6·7·10 만(1·2·3·5 registry
+  매칭 0건, 원인 미상 — 완료 도장 보류)`
 
 ### 2026-08-09 · 데탑 C작업원A(260809) · BBE-77 완주 — Tailscale 접속 경로 머지·라이브 확정, SSH 간헐 차단 종결
 - 의도: belie 직접 지시 — "Tailscale Secrets 3개 + `tag:ci` ACL 등록 완료. PR #747 머지하고
