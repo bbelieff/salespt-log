@@ -107,7 +107,7 @@ Scope→Gather→Solve→Verify→Report 5단계를 순서대로 밟는다. 특�
 | BBE-38 | DevF · #596 재검증 대응 | Medium | — | **라운드1 투입** |
 | BBE-39 | R3-3 contracts+company_archive | High | BBE-35 | 설계도 1호 선행(FM-01) |
 | BBE-40 | DevE · 배포 admin 토큰 | Medium | BBE-35 | 시크릿 등록 시 즉시 |
-| BBE-36 | AR-2b arena(코덱스) | — | — | 관찰만, `lane:arena` 점유 표시 |
+| BBE-36 | AR-2b arena(코덱스) | — | — | **완료** — PR #643(`844ce045`)·Deploy `30732987033` success·health 200; BBE-36 종료 |
 | BBE-37 | R6 통합 HOLD(#647) | — | migration GO | HOLD 유지 |
 
 ### 4-2. 신규 카드 제안 (11장 — 승인 후 생성)
