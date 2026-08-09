@@ -16,7 +16,8 @@
  * 청크: PR B-3 migrate 와 동일하게 100 row/call.
  */
 import { registry, adminNames } from "@/config";
-import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { readRange, sheetsClient } from "./sheets-client";
+import { nextRegistryRowNumber } from "./registry-row";
 import { invalidateRegistry, isAdminSynthCandidate } from "./users";
 import { mirrorUserCells, mirrorUserRow, registryRowFromUser } from "./db/registry-mirror";
 
@@ -100,9 +101,17 @@ export async function setUserSortOrders(
   }
 
   if (appendData.length > 0) {
-    // registry RAW (PR D) — 숫자 문자열 "3" 도 텍스트 그대로. parseRow 가 parseInt 복원.
-    await appendRows(reg.spreadsheetId, DATA_RANGE(reg.tab), appendData, {
-      valueInputOption: "RAW",
+    // 결정적 좌표(claim-append-columns 패턴) — values.append 열밀림 방지.
+    // RAW(PR D) — 숫자 문자열 "3" 도 텍스트 그대로. parseRow 가 parseInt 복원.
+    await sheetsClient().spreadsheets.values.batchUpdate({
+      spreadsheetId: reg.spreadsheetId,
+      requestBody: {
+        valueInputOption: "RAW",
+        data: appendData.map((row, i) => ({
+          range: `${reg.tab}!A${nextRegistryRowNumber(rows.length + i)}`,
+          values: [row],
+        })),
+      },
     });
   }
   if (updates.length > 0) {

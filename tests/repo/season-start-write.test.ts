@@ -44,6 +44,17 @@ vi.mock("@/repo/sheets-client", () => ({
           valueInputOption?: string;
           requestBody: { values: unknown[][] };
         }) => {
+          // BBE-97: 신규 행 결정적 좌표 쓰기(예: "cohorts!A2", 끝 컬럼 없음 — Sheets 가
+          // 배열 길이만큼 오른쪽으로 채운다)는 실제 Sheets 라면 즉시 읽기에 반영된다.
+          // writeSeasonStartRaw 가 바로 뒤에 readRange 로 다시 찾으므로, 이 mock 도
+          // existingRows 에 write-through 해야 그 흐름을 재현한다.
+          const rowOnlyMatch = req.range.match(/^[^!]+!A(\d+)$/);
+          if (rowOnlyMatch) {
+            const idx = Number(rowOnlyMatch[1]) - 2; // A2 = existingRows[0]
+            const row = req.requestBody.values[0]!.map((cell) => String(cell ?? ""));
+            while (existingRows.length <= idx) existingRows.push([]);
+            existingRows[idx] = row;
+          }
           updated.push({
             range: req.range,
             values: req.requestBody.values,
@@ -64,12 +75,15 @@ beforeEach(() => {
 });
 
 describe("setSeasonStart", () => {
-  it("**시즌 행이 없으면 type=arena 로 append** (개막 차단 결함 방지)", async () => {
+  it("**시즌 행이 없으면 type=arena 로 결정적 좌표에 쓴다** (개막 차단 결함 방지 + BBE-97 열밀림 가드)", async () => {
     existingRows = []; // A2 행 없음
     await setSeasonStart("A2", "2026-08-07");
 
-    expect(appended).toHaveLength(1);
-    const row = appended[0]!;
+    // BBE-97: 신규 행도 values.append 가 아니라 결정적 좌표(A{n}) update — appended 는 비어야 한다.
+    expect(appended).toHaveLength(0);
+    const created = updated.find((u) => u.range === "cohorts!A2");
+    expect(created).toBeDefined();
+    const row = created!.values[0]!;
     expect(row[0]).toBe("A2"); // A label
     expect(row[1]).toBe("active"); // B status
     expect(row[3]).toBe("arena"); // D type — "cohort" 면 시즌 판정에서 skip 됨

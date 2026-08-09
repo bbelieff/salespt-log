@@ -16,6 +16,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, cohortsTab } from "@/config";
 import { isValidISODate } from "@/util/week";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { nextRegistryRowNumber } from "./users-claim";
 import {
   cohortRowFromSheetRow,
   mirrorCohortCells,
@@ -181,14 +182,20 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     return;
   }
 
-  // 시드.
+  // 시드 — 위에서 existing.length===0 확인됨(빈 탭)이라 항상 A2 부터 순서대로 쓴다.
+  // values.append 대신 결정적 좌표(claim-append-columns 패턴) — 테이블 자동탐지 열밀림 방지.
   if (seedLabels.length > 0) {
     const uniq = Array.from(new Set(seedLabels.filter(Boolean)));
-    await appendRows(
-      reg.spreadsheetId,
-      `${tab}!A2:J`,
-      uniq.map((l) => [l, "active", "", "cohort", "", "", "", "", "", ""]),
-    );
+    await sheetsClient().spreadsheets.values.batchUpdate({
+      spreadsheetId: reg.spreadsheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: uniq.map((l, i) => ({
+          range: `${tab}!A${nextRegistryRowNumber(i)}`,
+          values: [[l, "active", "", "cohort", "", "", "", "", "", ""]],
+        })),
+      },
+    });
     for (const l of uniq) {
       mirrorCohortRow(cohortRowFromSheetRow([l, "active", "", "cohort", "", "", "", "", "", ""]));
     }
@@ -219,9 +226,14 @@ export async function setCohortStatus(
       return;
     }
   }
-  // 없으면 새 row append.
+  // 없으면 새 row — 결정적 좌표(claim-append-columns 패턴), values.append 열밀림 방지.
   const newRow = [trimmed, status, "", "cohort", "", "", "", "", "", ""];
-  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [newRow]);
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [newRow] },
+  });
   invalidateCohorts();
   mirrorCohortRow(cohortRowFromSheetRow(newRow));
 }
@@ -289,7 +301,13 @@ export async function upsertCohortConfig(
     cfg.companyParentFolderId ?? "",
     cfg.seasonStartISO ?? "",
   ];
-  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [newRow]);
+  // 결정적 좌표(claim-append-columns 패턴) — values.append 열밀림 방지.
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [newRow] },
+  });
   invalidateCohorts();
   mirrorCohortRow(cohortRowFromSheetRow(newRow));
 }
