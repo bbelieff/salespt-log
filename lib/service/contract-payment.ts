@@ -6,7 +6,6 @@
  *   - 계약수납탭에서 사용자가 F~AA 입력 → patch (updateUserFields)
  *   - 삭제 → clearRow
  */
-import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
 import { dbEnabled } from "@/repo/db/client";
@@ -17,7 +16,6 @@ import {
 import { chooseDailySource } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import {
-  appendFromContract,
   clearRow,
   readAll,
   readContractCascadeKey,
@@ -39,8 +37,9 @@ import {
 import { writeTermination } from "@/repo/contract-payment-termination";
 
 /** R3-2: 04 미팅 프리미티브(meetings-write)에 게이트 판정 재료(cohort·email)를 넘기기 위해
- * spreadsheetId 단독 대신 ctx 반환 — 02 시트 경로 자체는 R3-3 소관으로 불변. */
-async function resolveCtx(email: string): Promise<MeetingCtx> {
+ * spreadsheetId 단독 대신 ctx 반환 — 02 시트 경로 자체는 R3-3 소관으로 불변.
+ * export: contract-payment-add.ts(addPriorContract) 재사용 — 새 검색/조회 로직 0. */
+export async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
@@ -164,80 +163,8 @@ export async function editContractLinkedFields(
   return { failures };
 }
 
-/**
- * 일정·계약 탭에서 계약 액션 발생 시 호출.
- * 04 업체관리에서 채워진 자동 연동 필드(계약일/업체명/수임비)로 row append.
- */
-export async function addFromContract(
-  email: string,
-  data: { 계약일: string; 업체명: string; 수임비: number },
-): Promise<{ row: number }> {
-  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
-  // 출발 미팅 lookup — 이월 깃발 상속(§3) + 06 스냅샷 양쪽에 사용.
-  // R3-2: 파일럿은 DB — 시트 미러 lag 로 방금 계약된 미팅을 못 찾아 AK 링크·이월 깃발이
-  // 빠지는 split-brain 방지(읽기 동반 전환 원칙).
-  let m;
-  try {
-    const meetings = await findMeetingsByDateRecord(ctx, data.계약일, "meeting");
-    m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
-  } catch {
-    m = undefined;
-  }
-  // 이월 미팅에서 생긴 계약 = 02 행도 "이월"(집계 제외, 출발 미팅 깃발 상속).
-  const carryover =
-    m?.구분 === "이월" ? { 원본행id: m.이월원본행id || m.id } : undefined;
-  // 연결 미팅 id 기록 — 02↔04 매칭을 개명/계약일변경에도 안전한 id 키로(AK).
-  const result = await appendFromContract(
-    spreadsheetId,
-    { ...data, meetingId: m?.id },
-    carryover,
-  );
-  // 06 업체정보 스냅샷 — 계약 고객 누적 (consultation-log §1-2).
-  // R3-3 PR-2: 파일럿=06 DB 동기 정본({syncDb} 관통) → 자연키(계약ref) 멱등 upsert 라 안전 payload
-  // (_cleared:false·커스텀:{} 기본 병합)로 재사용 자연키의 stale content 부활 차단. **단 warn 유지**:
-  // 부모(appendFromContract)는 findFirstEmptyRow 로 새 행을 잡는 **비멱등 append** 라, 여기서 throw 하면
-  // 사용자 재시도가 append 재실행 → 중복 계약행=매출 이중계상(#558 교훈). 06 스냅샷 실패는 계약을
-  // 깨지 않고, 미러 미반영 시 read 가 시트 fallback(빈 DB 행) 으로 수렴하므로 loud 불요.
-  try {
-    await upsertCompanyInfoArchive(
-      spreadsheetId,
-      { 업체명: data.업체명, 계약일: data.계약일, 업체정보: m?.업체정보 },
-      { syncDb },
-    );
-  } catch (e) {
-    console.warn(
-      "[contract-payment] 06 업체정보 스냅샷 실패 (계약 자체는 성공):",
-      e instanceof Error ? e.message : e,
-    );
-  }
-  return result;
-}
-
-/**
- * 이전(아레나 시작 전) 계약업체 직접 등록 — 실무·수납 관리용 (arena-start-revenue-split §A).
- * 미팅 출발이 아니므로 02 에 직접 append + **구분=이월 강제**(아레나 비집계).
- * 멱등키 = `prior:<uuid>`(랜덤 — 매 등록이 새 행). 폼 전체(수임비·슬롯·서류)는
- * appendFromContract(C/D/E+AI/AJ) 후 updateUserFields(F~AH)로 반영. §2.5 가드는
- * 두 repo 함수가 각자 보유(append=빈 행, updateUserFields=사용자영역).
- */
-export async function addPriorContract(
-  email: string,
-  cp: ContractPayment,
-): Promise<{ row: number }> {
-  const { spreadsheetId } = await resolveCtx(email);
-  // append 계열 = R2 미러 유지(dual-sync 제외). 근거(db-write-flip §6 R3-3): append 는 행번호를
-  // 시트가 할당(findFirstEmptyRow)하고 매 호출 새 prior:uuid 를 부여해 멱등키가 없다. 직후 dual-sync
-  // updateUserFields(실패 throw)를 걸면 사용자 재시도가 append 를 재실행 → 중복 계약행 = 매출 이중계상.
-  // 기존 행 편집(patch/terminate/…)만 dual-sync — 생성 액션은 R2(async 미러, no-throw)로 안전 유지.
-  const { row } = await appendFromContract(
-    spreadsheetId,
-    { 계약일: cp.계약일, 업체명: cp.업체명, 수임비: cp.수임비 },
-    { 원본행id: `prior:${randomUUID()}` }, // 직접 등록 → 이월 깃발(AI=이월) 강제
-  );
-  // 슬롯·서류·메모(F~AH) 반영 — 폼에서 입력했으면 함께 저장.
-  await updateUserFields(spreadsheetId, { ...cp, row });
-  return { row };
-}
+// addFromContract(미팅에서 계약)·addPriorContract(이전 계약 직접등록) — 500줄 캡으로 분리(R3-3 선례).
+export { addFromContract, addPriorContract } from "./contract-payment-add";
 
 /** CompanyInfo 에 채워진 값이 하나라도 있는지(전부 빈 문자열·빈 커스텀이면 false). */
 function hasCompanyInfo(ci: CompanyInfo | null | undefined): boolean {
@@ -367,8 +294,9 @@ export async function terminateContract(
   );
 }
 
-/** 이 사용자의 삭제가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1). */
-async function resolveSheetWithSyncDb(
+/** 이 사용자의 쓰기가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1).
+ * export: contract-payment-add.ts(addFromContract) 재사용. */
+export async function resolveSheetWithSyncDb(
   email: string,
 ): Promise<{ spreadsheetId: string; syncDb: boolean; ctx: MeetingCtx }> {
   const user = await findUserByEmail(email);
