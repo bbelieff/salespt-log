@@ -133,14 +133,17 @@ async function ensureCohortRow() {
   rows.forEach((r, i) => console.log(`cohorts ${i + 2}행: ${(r ?? []).join(" | ")}`));
   const has9 = rows.some((r) => String(r?.[0] ?? "").trim() === COHORT);
   if (has9) return console.log("→ 9 행 이미 존재 (멱등 OK)");
-  await sheets.spreadsheets.values.append({
+  // BBE-97: values.append 는 Sheets 의 테이블 자동탐지에 의존해 열밀림 사고를 냈다
+  // (2026-08-05, arena-season2-batch.mjs 헤더 참고) — 방금 읽은 rows 로 다음 빈 행을
+  // 직접 계산해 values.update(명시 range)로 쓴다.
+  const nextRow = rows.length + 2; // A2 부터 시작하는 데이터 영역
+  await sheets.spreadsheets.values.update({
     spreadsheetId: REGISTRY_ID,
-    range: "'cohorts'!A2:I",
+    range: `'cohorts'!A${nextRow}:I${nextRow}`,
     valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
     requestBody: { values: [[COHORT, "active", "", "cohort", "", "", "", "", ""]] },
   });
-  console.log("→ 9 행 append 완료 (active)");
+  console.log(`→ 9 행 생성 완료 (row${nextRow}, active)`);
 }
 
 async function main() {
