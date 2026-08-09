@@ -15,6 +15,7 @@ import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 import { mirrorSheetRow } from "./db/mirror";
 import { findRowById } from "./meetings";
+import { APOSTROPHE_ESCAPED_COL_INDICES, stripSheetTextEscape } from "./meetings-rows";
 
 const TAB = SHEET_RANGES.meetings.tab;
 const ref = `'${TAB}'`;
@@ -83,7 +84,13 @@ function colName(i: number): string {
 // R(previousMeetingId)은 옛 시트 내부 참조라 시트 쓰기(appendCarriedMeeting)도 비운다.
 const CARRY_DROP = new Set([13, 14, 16, 17, 18]);
 
-/** 이월 미팅 DB payload(열문자 평탄화) — A=새id, AO="이월", AP=원본id. 빈값 skip. */
+/**
+ * 이월 미팅 DB payload(열문자 평탄화) — A=새id, AO="이월", AP=원본id. 빈값 skip.
+ * src.raw 는 두 소스 혼용(시트 읽기 apostrophe 없음 vs meetingToRow 출력 apostrophe 있음,
+ * BBE-65) — jsonb 목적지는 시트의 USER_ENTERED 파싱을 거치지 않으므로 여기서 벗겨
+ * 형식을 시트 읽기 결과와 통일한다(meetingFromDbPayload/rowToMeeting 은 apostrophe 없는
+ * 값을 기대).
+ */
 export function carriedMeetingPayload(
   src: CarrySourceMeeting,
   newId: string,
@@ -91,7 +98,8 @@ export function carriedMeetingPayload(
   const p: Record<string, unknown> = { A: newId };
   for (let i = 1; i <= 39; i++) {
     if (CARRY_DROP.has(i)) continue;
-    const v = src.raw[i];
+    const raw = src.raw[i];
+    const v = APOSTROPHE_ESCAPED_COL_INDICES.has(i) ? stripSheetTextEscape(raw) : raw;
     const s = String(v ?? "").trim();
     if (s !== "") p[colName(i)] = v as unknown;
   }

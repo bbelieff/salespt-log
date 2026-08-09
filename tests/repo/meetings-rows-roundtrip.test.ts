@@ -129,3 +129,43 @@ describe("R3-2 이월 DB payload(열문자 평탄화) ↔ DB 파서 정합", () 
     expect(meetingFromDbPayload(legacy as Record<string, unknown>)).toBeNull();
   });
 });
+
+describe("BBE-65 — DB 유니언 소스(meetingToRow 출력)도 같은 payload 함수로 무손실 왕복", () => {
+  // arena-carryover.ts:96 이 실제로 만드는 raw — listCarrySourceMeetings(시트 읽기, apostrophe
+  // 없음)와 달리 meetingToRow 출력(USER_ENTERED 오변환 방지 apostrophe 포함)이라 형식이 다르다.
+  const DB_SOURCED = Meeting.parse({
+    id: "old-db-id-1",
+    예약일: "2026-07-10",
+    예약시각: "10:00",
+    미팅날짜: "2026-07-12",
+    미팅시간: "14:30",
+    channel: "매입DB",
+    업체명: "이월DB상사",
+    장소: "본사",
+    예약비고: "고객 요청 메모, 재방문 예정",
+    상태: "예약",
+    계약여부: false,
+    수임비: 0,
+    미팅사유: "5% 할인 협의",
+    계약조건: "3%",
+    업체정보: {
+      개업일: "2019-03-01", 신용점수: "800",
+      커스텀: { 업체: { 메모: "특이사항" }, 대표자: { 등급: "A" } },
+    },
+  });
+
+  it("meetingToRow → carriedMeetingPayload → meetingFromDbPayload — apostrophe 잔존·업체정보.커스텀 소실 없음", () => {
+    const raw = meetingToRow(DB_SOURCED); // arena-carryover.ts 가 실제로 하는 것과 동일
+    const p = carriedMeetingPayload({ 원본id: DB_SOURCED.id, raw }, "new-db-id-9");
+    const m = meetingFromDbPayload(p);
+    expect(m).not.toBeNull();
+    // 수정 전엔 이 값들 앞에 apostrophe 가 그대로 남았다("'고객 요청 메모, 재방문 예정" 등).
+    expect(m!.예약비고).toBe("고객 요청 메모, 재방문 예정");
+    expect(m!.미팅사유).toBe("5% 할인 협의");
+    expect(m!.계약조건).toBe("3%");
+    expect(m!.업체정보?.개업일).toBe("2019-03-01");
+    expect(m!.업체정보?.신용점수).toBe("800");
+    // 수정 전엔 JSON.parse("'{...}") 실패 → catch 무시로 커스텀 전체가 조용히 사라졌다.
+    expect(m!.업체정보?.커스텀).toEqual({ 업체: { 메모: "특이사항" }, 대표자: { 등급: "A" } });
+  });
+});
