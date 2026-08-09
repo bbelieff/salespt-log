@@ -1,0 +1,80 @@
+name: DB Backfill (registry)
+
+# 마스터 레지스트리(users·cohorts 탭) 전량 → Postgres 1회 적재 (BBE-91).
+#
+# 왜 별도 워크플로인가: `db-backfill.yml` 은 `backfill-sheet-rows.mjs`(수강생 시트 → sheet_rows)
+# 전용이고 `--cohort` 가 필수 입력이다. 레지스트리 백필은 기수 개념이 없는 전역 테이블이라
+# 인자 모양이 아예 다르다. 기존 워크플로에 분기를 끼우면 필수 입력의 의미가 대상마다 달라져
+# 오조작 표면이 생긴다 — 파일을 나누는 쪽이 안전하다.
+#
+# 왜 필요한가: `scripts/ops/backfill-registry.mjs` 는 #738 로 머지됐지만 **이걸 돌리는 수단이
+# 없었다**(`git grep backfill-registry -- .github/` 0건). BBE-85 와 같은 유형의 갭이다.
+# 그래서 0001·0002 마이그레이션이 적용됐어도(run 31287208990) users·cohorts 는 비어 있고,
+# BBE-56 의 `REGISTRY_DB_READ=1` 은 켜도 0행 폴백으로 시트에 머문다 — R7 임계경로가 여기서
+# 조용히 멈춘다.
+#
+# 기본이 dry-run 이다 — execute 를 명시 체크해야만 적재한다(스크립트도 `--execute` 없으면 쓰기 0).
+# 멱등: upsert 라 몇 번 돌려도 시트 현재값으로 수렴한다(시트가 정본).
+# 시트는 **읽기만** 한다(spreadsheets.readonly) — 시트 쓰기 0.
+#
+# 증빙: `--execute` 실행 로그 끝의 **행수 대조**(시트 고유 자연키 수 vs DB 행수 — `✅ 일치`/`❌ 불일치`)가
+# 백필 완료의 정본. dry-run 은 DB 에 붙지 않으므로 시트 행수·중복 자연키 보고까지만 나온다.
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: "실제 적재 (미체크 = dry-run — 시트 읽기·중복 점검만, 쓰기 0·DB 접속 0)"
+        type: boolean
+        default: false
+
+jobs:
+  backfill-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Run backfill-registry on VPS
+        env:
+          EXECUTE: ${{ inputs.execute }}
+        run: |
+          # 인자는 원격에 env 로 전달(따옴표 안전). DATABASE_URL·SA 키는 원격 .env 에서
+          # 스크립트가 직접 읽는다 — 워크플로가 grep/export 로 만지지 않는다
+          # (2026-07-09 로그 노출 사고 회피, db-migrate.yml 과 동일 원칙).
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          FLAGS=""
+          if [ "$EXEC_ARG" = "true" ]; then FLAGS="--execute"; fi
+          node scripts/ops/backfill-registry.mjs $FLAGS
+          REMOTE_EOF
+          )
+          # rc=255(도달성) 한정 재시도 15×25s(최대 ~13분) — db-backfill.yml 과 동일 예산.
+          # 배경(BBE-77): GH러너→VPS22 간헐 차단 창이 최대 8~10분 지속 관측됨.
+          # IPv4 실패 시 VPS_HOST_V6(설정된 경우) 교대 시도. 스크립트 실패(다른 rc)는 즉시
+          # fail — 멱등 설계라 재실행으로 수렴한다.
+          set +e
+          HOSTS=("${{ secrets.VPS_HOST }}")
+          if [ -n "${{ secrets.VPS_HOST_V6 }}" ]; then HOSTS+=("${{ secrets.VPS_HOST_V6 }}"); fi
+          NHOSTS=${#HOSTS[@]}
+          for i in $(seq 1 15); do
+            rc=0
+            HOST="${HOSTS[$(( (i - 1) % NHOSTS ))]}"
+            if [[ "$HOST" == *:* ]]; then FAM=-6; TARGET="root@[$HOST]"; else FAM=-4; TARGET="root@$HOST"; fi
+            ssh $FAM -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "$TARGET" \
+                "EXEC_ARG=\"$EXECUTE\" bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255, host=$HOST) — 시도 $i/15, 25초 후 재시도" >&2
+              sleep 25
+            else
+              echo "backfill-registry 실패(rc=$rc) — 재시도 안 함(멱등 재실행으로 수렴)" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 15회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
+          exit 1
