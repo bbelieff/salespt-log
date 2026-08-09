@@ -23,15 +23,48 @@ on:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    env:
+      # tailnet 전환 스위치 (BBE-77). VPS_HOST_TS 미설정 = 기존 공인 IP = 변경 전과 100% 동일 동작.
+      # 롤백 = GitHub Settings→Secrets 에서 VPS_HOST_TS 삭제 1번(PR·머지 불요).
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      # ⚠️ steps.if 는 secrets 컨텍스트를 못 읽는다 — 거기서 secrets 를 참조하면
+      #    "Unrecognized named-value: 'secrets'" 파싱 에러로 워크플로 전체가 무효가 된다.
+      #    그래서 잡 레벨 env 로 승격해 env. 로 검사한다.
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
     steps:
+      # Setup SSH 앞에 와야 한다 — tailnet 라우트가 먼저 올라와야 ssh 가 100.x 로 붙는다.
+      # Secrets 미설정이면 스텝 스킵 + 접속 대상도 공인 IP → 동작이 바뀌지 않는다.
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          # ⚠️ 이 워크플로만 아래 ssh 가 StrictHostKeyChecking=yes 라 known_hosts 가 **필수**다.
+          # 기존 루프는 5회 모두 실패해도 마지막 `sleep 20` 의 rc=0 때문에 스텝이 초록으로
+          # 통과했다 → known_hosts 가 빈 채로 ssh 가 host key verification 실패(rc=255)를 내고,
+          # 재시도 루프가 원인 표시 없이 헛돌다 죽는다. tailnet 전환 후 tailscale 스텝이
+          # 스킵/실패하면 정확히 이 시나리오가 재현되므로, 성공 여부를 명시 게이트로 올린다.
+          ok=0
           for i in 1 2 3 4 5; do
-            ssh-keyscan -T 15 -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts && break || sleep 20
+            if ssh-keyscan -T 15 -H "$VPS_TARGET_HOST" >> ~/.ssh/known_hosts; then ok=1; break; fi
+            sleep 20
           done
+          if [ "$ok" != "1" ]; then
+            echo "❌ ssh-keyscan 5회 실패 — 호스트키를 못 얻었습니다." >&2
+            echo "   이 워크플로는 StrictHostKeyChecking=yes 라 이대로면 ssh 가 반드시 실패합니다." >&2
+            echo "   tailnet 사용 중이라면 Tailscale 스텝이 스킵/실패했는지 위 로그를 확인하세요." >&2
+            exit 1
+          fi
       - name: Run audit on VPS (read-only)
         env:
           SCRIPT: ${{ inputs.script }}
@@ -58,7 +91,7 @@ jobs:
           set +e
           for i in 1 2 3 4 5 6 7; do
             ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
-              root@"${{ secrets.VPS_HOST }}" \
+              root@"$VPS_TARGET_HOST" \
               "cd /opt/salespt-log && node scripts/ops/${SCRIPT}.mjs ${ARGS}"
             rc=$?
             [ $rc -ne 255 ] && break
