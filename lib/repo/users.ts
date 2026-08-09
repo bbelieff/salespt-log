@@ -12,6 +12,7 @@ import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
 import { nameMatches } from "./name-match";
 import { pickPreferredUser, pickPreferredRow } from "./user-priority";
+import { cachedRegistryRows, invalidateRegistry } from "./users-rows";
 import {
   mirrorUserCells,
   mirrorUserRekey,
@@ -67,23 +68,8 @@ export function parseRow(r: unknown[]): User | null {
   return parsed.success ? parsed.data : null;
 }
 
-const REGISTRY_TAG = "registry";
-
-/** 레지스트리 전체 row 60초 캐시 — /api/me 매 호출 스캔 비용 흡수.
- * 쓰기 시 revalidateTag("registry") 즉시 무효화. */
-export const cachedRegistryRows = unstable_cache(
-  async (): Promise<string[][]> => {
-    const reg = registry();
-    return readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
-  },
-  ["registry-rows"],
-  { revalidate: 60, tags: [REGISTRY_TAG] },
-);
-
-// sibling 파일에서도 사용 — claimRegistry (users-claim.ts).
-export function invalidateRegistry(): void {
-  revalidateTag(REGISTRY_TAG);
-}
+// 500줄 cap 분리 — 레지스트리 행 읽기 진입점(DB/시트 분기 + 폴백)은 users-rows.ts.
+export { cachedRegistryRows, invalidateRegistry };
 
 /** 보관 기수 라우팅 비활성(rejoin §1) — trainee + 숫자형("6"/"6기")만.
  * 트레이너(T)·연습·아레나 행 절대 비적용(전 트레이너 차단 사고 방지 —
@@ -107,10 +93,8 @@ export async function findUserByEmail(
   email: string,
   opts?: { fresh?: boolean },
 ): Promise<User | null> {
-  const reg = registry();
-  const rows = opts?.fresh
-    ? await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab))
-    : await cachedRegistryRows();
+  // fresh 는 시트 캐시 우회용 — DB 경로는 애초에 캐시를 타지 않아 항상 최신이다.
+  const rows = await cachedRegistryRows({ fresh: opts?.fresh });
   // 다중 행 우선순위: 아레나 > 숫자 active > archived (user-priority.ts, arena-consistency §1).
   const mine: User[] = [];
   for (const r of rows) {
