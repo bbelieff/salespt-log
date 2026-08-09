@@ -23,14 +23,15 @@ import {
   readGcalMap,
   readGcalStates,
   setGcalEventId,
+  EXCLUDE_MARKER,
   type GcalEventKind,
 } from "@/repo/gcal-event-ids";
 import { findById as findMeetingById } from "@/repo/meetings";
 import { findById as findTodoById } from "@/repo/todos";
 import { listAllMeetings, listAllTodos } from "@/repo/gcal-schedule-read";
 
-/** gcal_event_ids 맵 값 = eventId(등록됨) | "-"(일정별 토글로 제외, gcal-2b) | 키없음(기본 ON). */
-const EXCLUDE_MARKER = "-";
+/* gcal_event_ids 맵 값 = eventId(등록됨) | EXCLUDE_MARKER(일정별 토글로 제외, gcal-2b) |
+   키없음(기본 ON). 마커 상수는 저장 계층 규약이라 repo(gcal-event-ids)가 정의한다(BBE-62). */
 
 // ── 도메인 → 이벤트 매핑 ─────────────────────────────────────────
 
