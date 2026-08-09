@@ -23,7 +23,24 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    env:
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
     steps:
+      # BBE-77: GH러너→VPS:22 간헐 차단 우회. 이 파일은 #747(5a45762) 범위 밖이라
+      # 공인 IP 전용으로 남아 있었다 — 실제로 run 31287233695 가 이 경로에서 15/15 timeout
+      # 으로 13m51s 태우고 죽었다(2026-08-09 00:57~01:10Z). 마이그레이션 적용 여부 확인이
+      # 그때 유실됐다. steps.if 는 secrets 를 못 읽으므로 잡 레벨 env 로 승격한다(#747 과 동일).
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -47,7 +64,10 @@ jobs:
           # 차단 창이 최대 8~10분 지속). IPv4 실패 시 VPS_HOST_V6(설정된 경우) 교대 시도.
           # 스크립트 실패(다른 rc)는 즉시 fail — 멱등이라 재실행으로 수렴한다.
           set +e
-          HOSTS=("${{ secrets.VPS_HOST }}")
+          HOSTS=("$VPS_TARGET_HOST")
+          # tailnet 사용 중이면 공인 IPv4 를 슬롯2 로 추가 → 짝수 시도가 자동 폴백.
+          # VPS_HOST_TS 미설정이면 두 값이 같아 no-op(배열 = 변경 전과 동일).
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
           if [ -n "${{ secrets.VPS_HOST_V6 }}" ]; then HOSTS+=("${{ secrets.VPS_HOST_V6 }}"); fi
           NHOSTS=${#HOSTS[@]}
           for i in $(seq 1 15); do
