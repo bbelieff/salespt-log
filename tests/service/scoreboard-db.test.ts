@@ -1,14 +1,16 @@
 /**
  * BBE-63(R7 Phase 3 #14) — 전광판 주차별 5지표 DB 재현 순수함수 단위 대조.
  * ⚠️ dashboard-aggregates.test.ts 헤더와 동일 원칙: 여기 테스트는 "설계대로 구현됐는지"만
- * 고정한다. 대시보드 C33:H40 자체와의 라이브 시트 일치는 scripts/ops/scoreboard-parity.mjs
- * (VPS 실행)로 확정한다 — 미팅=완료 정의는 setup-formulas.ts 01!L 수식 실측에 근거하나
- * 대시보드 셀 자체의 수식 문자열은 코드로 미확인(§0.8 Report: 미확정, PR 설명 참고).
+ * 고정한다. "미팅=미팅완료(01!L)" 정의는 2026-08-09 확정(수식 실측+구조반증+parity run
+ * 31267667665 8·9기 diff 0 — scoreboard-db.ts 헤더 주석 참고). 아래 "01!L·N 수식 결속"
+ * 그룹이 그 정의가 setup-formulas.ts 수식과 계속 맞물려 있는지 가드한다 — 수식이 바뀌면
+ * 여기서 먼저 깨진다(전수 라이브 재대조는 여전히 scripts/ops/scoreboard-parity.mjs 권장).
  */
 import { describe, expect, it } from "vitest";
 import type { Meeting } from "@/types";
 import type { DbSalesRow } from "@/repo/db/client";
 import { weeklyPerfFromDb } from "@/service/scoreboard-db";
+import { formulasForRow } from "@/repo/setup-formulas";
 
 const CS = new Date(2026, 5, 1); // courseStart 2026-06-01 (로컬 자정), dashboard-aggregates.test.ts 와 동일 픽스처
 
@@ -88,5 +90,33 @@ describe("weeklyPerfFromDb", () => {
     const meetings = [mtg({ 상태: "계약", 미팅날짜: "" })];
     const weeks = weeklyPerfFromDb(rows, meetings, CS);
     expect(weeks.every((w) => w.생산 === 0 && w.계약 === 0)).toBe(true);
+  });
+});
+
+describe("01!L·N 수식 결속 — '미팅=미팅완료' 확정의 근거를 계속 지킴", () => {
+  // 2026-08-09 확정 근거 ①(scoreboard-db.ts 헤더 참고): setup-formulas.ts 가 설치하는
+  // 01!L 이 실제로 상태∈{완료,계약}·이월제외·미팅날짜 키인지 — 문자열이 바뀌면 이 확정도
+  // 재검토 대상이라 여기서 먼저 깨지게 한다.
+  const f = formulasForRow(10); // 임의 데이터 행 — L·N 은 채널 무관 부분만 검사
+
+  it("L(미팅완료수) = 완료+계약 COUNTIFS, 이월 제외, 예약/변경/취소 배제", () => {
+    expect(f.L).toContain('"계약"');
+    expect(f.L).toContain('"완료"');
+    expect(f.L).toContain('"<>이월"');
+    expect(f.L).not.toContain('"예약"');
+    expect(f.L).not.toContain('"변경"');
+    expect(f.L).not.toContain('"취소"');
+  });
+
+  it("N(주차계약) = 계약만 COUNTIFS(완료 미포함) — weeklyPerfFromDb 의 계약 정의와 대칭", () => {
+    expect(f.N).toContain('"계약"');
+    expect(f.N).not.toContain('"완료"');
+  });
+
+  it("K(오늘미팅수, 예약 후보)에는 상태 필터가 없다 — '미팅=예약' 가능성을 구조로 배제", () => {
+    // K 는 이월 제외만 걸고 상태 필터가 없다(=날짜만 맞으면 전부 카운트). 이게 미팅예약
+    // 후보라면 상태 구분이 없어야 정합적이고, 반대로 L 처럼 상태 필터가 걸려 있다면
+    // "미팅완료" 해석이 맞다는 방증이다.
+    expect(f.K).not.toMatch(/"완료"|"계약"|"예약"/);
   });
 });

@@ -75,12 +75,23 @@ async function pMap<T, R>(
 
 // 이월 미팅(구분="이월") 제외 — weeklyActivityFromDb(dashboard-aggregates.ts)와 동일 술어를
 // 로컬 재정의(그 파일은 작업원C·BBE-66 점유 — export 추가 대신 여기서 독립 보유, 2줄뿐이라 중복
-// 비용 낮음). "완료" 판정 근거: lib/repo/setup-formulas.ts 설치 수식 실측(01!L =
-// COUNTIFS(04!J,"계약",AO,"<>이월")+COUNTIFS(04!J,"완료",AO,"<>이월") — profile-stats-db.ts
-// 가 이미 같은 근거로 확인) + weeklyActivityFromDb 의 기존 관례. **주의**: 대시보드 C33:H40
-// 자체의 실제 셀 수식 문자열은 템플릿 시트에만 있어 코드로 직접 확인 불가 — 01!L·N 이 그 값을
-// 공급한다는 것은 강한 정황증거(CLAUDE.md §2.5 "앱이 실제로 읽는 건 L·N 둘뿐")이지 라이브 시트
-// 대조 확인은 아니다(§0.8 Report: 미확정). scripts/ops/scoreboard-parity.mjs 로 배포 전 확인 필요.
+// 비용 낮음).
+//
+// ✅ **미팅 = 미팅완료(01!L)** — 구 세션이 "미확정(예약 H 일 수도)"으로 남긴 건을 확정했다
+// (2026-08-09). 근거 3개가 같은 답을 가리킨다:
+//  ① 수식 실측 — setup-formulas.ts:139 이 설치하는 01!L =
+//     COUNTIFS(04!D,<그날>,04!J,"계약",04!AO,"<>이월") + COUNTIFS(...,"완료",...).
+//     즉 상태∈{완료,계약} ∧ 이월제외 ∧ **미팅날짜(D) 키**. 계약(01!N, :141)도 같은 꼴.
+//  ② 구조 반증 — "미팅예약"은 시트에서 01!R4:U5·F4 펀넬로만 존재하고 그 수식은
+//     COUNTIFS(04!F,04!J) 로 **날짜 무필터 누적**이다(setup-formulas.ts:151·157,
+//     dashboard-aggregates.ts 주석 동일). 날짜가 안 걸린 셀에서는 주차별 값이 나올 수
+//     없다 → 주차 블록의 미팅 컬럼이 예약일 가능성은 구조적으로 배제된다.
+//  ③ 라이브 대조 — 같은 블록(C33:H40)의 H(활동량)=생산×1+컨택×1.5+**미팅×2** 를
+//     이 정의 그대로 재현한 weeklyActivityFromDb 가 dashboard-parity run 31267667665
+//     에서 8·9기 12명 **전원 diff 0**. 생산·컨택이 같은 소스이므로 미팅 항도 일치한다.
+// → scripts/ops/scoreboard-parity.mjs 라이브 실행은 여전히 권장(전 기수 확인)이지만,
+//   이 정의 자체는 더 이상 미확정이 아니다. 수식이 바뀌면 아래 가드 테스트가 깨진다
+//   (tests/service/scoreboard-db.test.ts "01!L·N 수식 결속").
 const isDone = (상태: Meeting["상태"]): boolean => 상태 === "완료" || 상태 === "계약";
 const isCarryover = (mt: Meeting): boolean => mt.구분 === "이월";
 
