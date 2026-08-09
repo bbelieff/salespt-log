@@ -60,10 +60,12 @@ const EMPTY_STAGE = (ch: Channel): DashboardChannelMatrix => ({
 /** 미팅이 "살아있는"(변경·취소 아님) 상태 — 누적 퍼널 미팅예약 스테이지. 이월 제외는 호출부에서. */
 const ALIVE = (상태: Meeting["상태"]): boolean =>
   상태 === "예약" || 상태 === "완료" || 상태 === "계약";
-/** 미팅이 성사(미팅완료) — 상태∈{완료,계약}. 활동량·R5 공용. 이월 제외는 호출부에서. */
-const DONE = (상태: Meeting["상태"]): boolean => 상태 === "완료" || 상태 === "계약";
-/** 이월 미팅(구분="이월", 시트 AO열) — 퍼널·활동량 카운트에서 제외. */
-const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
+/** 미팅이 성사(미팅완료) — 상태∈{완료,계약}. 활동량·R5 공용. 이월 제외는 호출부에서.
+ * BBE-64(profile-stats-db) 도 재사용 — 새로 만들지 말 것. */
+export const DONE = (상태: Meeting["상태"]): boolean => 상태 === "완료" || 상태 === "계약";
+/** 이월 미팅(구분="이월", 시트 AO열) — 퍼널·활동량 카운트에서 제외.
+ * BBE-64(profile-stats-db) 도 재사용 — 새로 만들지 말 것. */
+export const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
 
 /** 시트가 물리적으로 담을 수 있는 주차 창(1~MAX_SHEET_WEEK) 안인가 — R4 무제한 쓰기의 집계 클램프.
  * 날짜가 없거나 파싱 불가면 **제외**(fail-closed) — 창 판정을 못 하는 행이 지표를 부풀리지 않게. */

@@ -20,6 +20,9 @@ import {
   resolveOwnArenaSheetId,
 } from "@/repo/users-arena";
 import { readProfileBundle } from "@/repo/sales";
+import { isDbReadPilot } from "@/service/daily-source";
+import { dbEnabled } from "@/repo/db/client";
+import { profileStatsFromDb } from "./profile-stats-db";
 
 /**
  * 종강총회 offset (7기+ 현행 모델): O2 = O1 + 50. ADR-0005 참조.
@@ -299,14 +302,25 @@ export async function enrichUsersWithDates<
 }
 
 /**
- * enrichUsersWithDates 의 보조 — 각 사용자 시트의 8주 funnel 누적 (E4:E6) 을
- * 가져와 `stats` 필드를 추가. admin/trainer 페이지 수강생 카드 표시용.
+ * enrichUsersWithDates 의 보조 — 각 사용자의 8주 funnel 누적을 가져와 `stats` 필드를
+ * 추가. admin/trainer/captain 화면 수강생 카드 표시용 (BBE-64).
  *
- * `readBundle` 공유 → enrichUsersWithDates 가 이미 sheet read 했으면 cache hit
- * (별도 API 호출 0회). registry cache fast-path 로 dates 만 채운 trainee 는
- * 여기서 처음 sheet fetch.
+ * **파일럿 기수는 DB 배치 조회**(시트 batchGet 0회), **비파일럿은 기존 시트 경로 완전
+ * 불변**(`readBundle` 그대로 — R2/R3 전 트랙 공통 불변식). 리스트가 파일럿·비파일럿을
+ * 섞어 받으므로 먼저 분리한 뒤, 파일럿은 배치 DB 1회, 비파일럿은 기존 `pMapBundle`+
+ * `readBundle` 로 처리하고 **원래 입력 순서를 보존**해 합친다.
  *
- * spreadsheetId 없음 / fetch 실패 → stats 미설정 (undefined). 컴포넌트는 optional.
+ * 파일럿 판정에 `courseStartISO`(ISO 형식)가 필요하다 — 호출부 3곳(admin/users·
+ * trainer·captain) 은 전부 `enrichUsersWithDates` 를 먼저 호출해 이 필드를 채운
+ * 뒤 결과를 그대로 넘기므로 항상 충족된다. 없거나 형식이 어긋나면(예: 이 함수를
+ * dates 없이 단독 호출하는 새 호출부) 안전하게 시트 경로로 떨어진다(최적화만 놓침,
+ * 정합은 그대로).
+ *
+ * DB 배치 실패 시 **그 파일럿 배치 전체**를 시트 경로로 폴백(개별 재시도 없음 —
+ * loadDashboard 의 all-or-nothing 폴백과 동일 결 — 부분 재시도는 검증되지 않은 새
+ * 영역이라 이 PR 범위 밖).
+ *
+ * spreadsheetId 없음 / 조회 실패 → stats 미설정 (undefined). 컴포넌트는 optional.
  */
 export interface TraineeFunnelStats {
   미팅예정: number;
@@ -314,12 +328,56 @@ export interface TraineeFunnelStats {
   계약: number;
 }
 
-export async function enrichUsersWithStats<T extends { spreadsheetId: string }>(
-  users: T[],
-): Promise<Array<T & { stats?: TraineeFunnelStats }>> {
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** "YYYY-MM-DD" → 로컬 자정 Date. profile-stats-db.ts/dashboard-aggregates.ts 와 동일 규칙. */
+function parseISOLocal(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y!, m! - 1, d!);
+}
+
+export async function enrichUsersWithStats<
+  T extends { spreadsheetId: string; cohort: string; courseStartISO?: string },
+>(users: T[]): Promise<Array<T & { stats?: TraineeFunnelStats }>> {
+  const dbOn = dbEnabled();
+  const pilot: T[] = [];
+  const sheetPath: T[] = [];
+  for (const u of users) {
+    const pilotEligible =
+      u.spreadsheetId &&
+      dbOn &&
+      isDbReadPilot(u.cohort) &&
+      ISO_DATE_RE.test((u.courseStartISO ?? "").trim());
+    if (pilotEligible) pilot.push(u);
+    else sheetPath.push(u);
+  }
+
+  // index 로 병합 — spreadsheetId 로 Map 을 키 잡지 않는다. 부부/멀티계정은 시트를 공유해
+  // 같은 spreadsheetId 를 쓰므로(users-claim.ts) 문자열 키 Map 은 한쪽 결과가 다른 쪽을
+  // 덮어써 잘못된 통계를 보여줄 수 있다(적대적 리뷰 2026-08-06 확인, tests/service/me.test.ts
+  // "부부/멀티계정 spreadsheetId 공유" 테스트로 고정).
+  let dbStats: TraineeFunnelStats[] = [];
+  if (pilot.length > 0) {
+    try {
+      dbStats = await profileStatsFromDb(
+        pilot.map((u) => ({
+          spreadsheetId: u.spreadsheetId,
+          courseStart: parseISOLocal(u.courseStartISO!.trim()),
+        })),
+      );
+    } catch (e) {
+      console.warn(
+        `[me] profileStatsFromDb 배치 실패(${pilot.length}명) — 전원 sheet 경로로 폴백:`,
+        e instanceof Error ? e.message : e,
+      );
+      sheetPath.push(...pilot);
+      pilot.length = 0;
+    }
+  }
+
   // pMapBundle (concurrency 5) — 콜드 캐시 시 60명 burst → 12 waves × 5 동시.
-  // Sheets API 60 reads/min/SA 한도 안전 범위 (PR #198 stats 추가 후 critical).
-  return pMapBundle(users, async (u) => {
+  // Sheets API 60 reads/min/SA 한도 안전 범위. 이제 비파일럿 subset 만 지난다.
+  const sheetResults = await pMapBundle(sheetPath, async (u) => {
     if (!u.spreadsheetId) return u;
     const who = "email" in u ? (u as { email: string }).email : "?";
     try {
@@ -333,6 +391,12 @@ export async function enrichUsersWithStats<T extends { spreadsheetId: string }>(
       return u;
     }
   });
+
+  // 원래 입력 순서 보존 — 객체 identity 기반(spreadsheetId 는 트레이너/admin 행에서 ""로,
+  // 부부/멀티계정 행에서 공유 값으로 중복될 수 있어 문자열 키 Map 은 둘 다 충돌 위험).
+  const pilotResultByRef = new Map(pilot.map((u, i) => [u, { ...u, stats: dbStats[i] }]));
+  const sheetResultByRef = new Map(sheetPath.map((u, i) => [u, sheetResults[i]!]));
+  return users.map((u) => pilotResultByRef.get(u) ?? sheetResultByRef.get(u) ?? u);
 }
 
 /**
