@@ -394,7 +394,68 @@ jobs:
             *) echo "❌ 원격 배포 실패(exit $STATUS) — health 게이트에서 자동 롤백했을 수 있음(위 로그 확인)." >&2; exit 1 ;;
           esac
 
-      - name: Public health check
+      - name: Public health check (VPS 경유 우선 · 러너 직접은 폴백)
+        env:
+          PUBLIC_URL: https://salesptlog.online
         run: |
+          # BBE-99 — 러너에서 직접 curl 하면 왜 안 되는가
+          # 공개 도메인 앞단(Hostinger 엣지)이 GH 러너의 유동 IP 를 간헐 차단한다(BBE-77 과 같은 근인).
+          # 그래서 원격 배포가 exit 0 로 끝나고 사이트가 실제로 200 인데도 이 단계만 curl (28) 로
+          # 죽어 run 전체가 failure 로 뜬다. 2026-08-09 하루에만 3건 실측 —
+          #   31314389816(#749) · 31315301133(#743) · 31327478562(#737)
+          #   셋 다 원격 로그가 `✅ 원격 배포 성공(exit 0)`, 같은 시각 러너 밖에서는 root 200.
+          # 정상 배포가 failure 로 보이면 §6.8 관찰이 무력화된다: 규칙을 곧이곧대로 따르면 멀쩡한
+          # 배포를 롤백하고, 반대로 "또 그 오탐이겠지"가 습관이 되면 진짜 장애를 흘려보낸다.
+          #
+          # 판정 기준은 그대로다 — "공개 URL 이 200 인가". 바꾸는 것은 **묻는 주체**뿐이다.
+          #   1순위 VPS 에서 공개 URL 을 curl — ssh 가 이미 tailnet 을 타므로(#747) 러너 IP 차단과
+          #         무관하고, 요청 자체는 DNS·엣지·Caddy·TLS·앱 전 구간을 그대로 통과한다.
+          #   2순위 러너에서 직접 curl — VPS 가 자기 공개 도메인으로 되돌아오지 못하는 환경
+          #         (hairpin NAT 미지원)을 대비한 폴백. 둘 다 실패해야 fail.
+          # 성공해도 러너 직접 확인을 1회 더 찍어 남긴다(게이트 아님) — 두 시점의 도달성을 모두
+          # 기록해야 "엣지가 특정 대역만 막는 중"인지 나중에 판별할 수 있다.
+          #
+          # ⚠️ 원격 스크립트의 health 게이트(Local /api/health + 실패 시 자동 롤백)는 **무변경**이다.
+          #    앱이 죽는 진짜 장애는 여기 오기 전에 이미 걸러지고 롤백된다. 이 단계는 그 위의 2차 확인.
+          set +e
+          SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -i $HOME/.ssh/id_ed25519"
+          if [[ "$VPS_TARGET_HOST" == *:* ]]; then FAM=-6; TARGET="root@[$VPS_TARGET_HOST]";
+          else FAM=-4; TARGET="root@$VPS_TARGET_HOST"; fi
+          # --connect-timeout/--max-time 은 필수다. 차단 시 curl 기본값은 한 번에 ~135s 를 태운다(위 실측).
+          PROBE="curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 25 $PUBLIC_URL"
+          runner_probe() { curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 25 "$PUBLIC_URL" 2>/dev/null; }
+
           sleep 5
-          curl -sS -o /dev/null -w "https://salesptlog.online → HTTP %{http_code}\n" https://salesptlog.online
+          VIA=""
+          for i in 1 2 3; do
+            CODE=$(ssh $FAM $SSH_OPTS "$TARGET" "$PROBE" 2>/dev/null)
+            if [ "$CODE" = "200" ]; then VIA="VPS 경유"; break; fi
+            echo "  ↻ VPS 경유 확인 실패(code=${CODE:-none}) — 시도 $i/3" >&2
+            sleep 10
+          done
+
+          if [ -z "$VIA" ]; then
+            echo "  ↪ VPS 경유가 안 된다 — 러너 직접 확인으로 폴백(hairpin 미지원 가능성)" >&2
+            for i in 1 2; do
+              CODE=$(runner_probe)
+              if [ "$CODE" = "200" ]; then VIA="러너 직접"; break; fi
+              echo "  ↻ 러너 직접 확인 실패(code=${CODE:-none}) — 시도 $i/2" >&2
+              sleep 10
+            done
+          fi
+
+          if [ -z "$VIA" ]; then
+            echo "❌ $PUBLIC_URL 공개 health 실패 — VPS 경유·러너 직접 둘 다 200 을 못 받았다." >&2
+            echo "   원격 배포는 위 로그대로 성공했으므로 앱보다 엣지·DNS·TLS 를 먼저 본다." >&2
+            exit 1
+          fi
+
+          echo "$PUBLIC_URL → HTTP 200 ($VIA)"
+          if [ "$VIA" = "VPS 경유" ]; then
+            RC=$(runner_probe)
+            if [ "$RC" = "200" ]; then
+              echo "  (참고) 러너 직접도 200 — 이번 run 은 엣지 차단 없음"
+            else
+              echo "  ⚠️ (참고·비차단) 러너 직접은 ${RC:-실패} — 엣지가 이 러너 IP 를 막고 있다(BBE-99 가 흡수한 경우)"
+            fi
+          fi
