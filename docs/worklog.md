@@ -285,6 +285,37 @@
 
 ## 로그
 
+### 2026-08-09 · 작업원A(260805) · BBE-56 레지스트리 읽기 DB 전환 PR 오픈 — 기본 OFF 게이트 + 0행 폴백, 후속 갭 BBE-91 발행
+- 의도: R7 임계경로(ADR→스키마→이중기록→**읽기전환**). belie 지시 = "BBE-85 결과 확인하고 시작해라"
+  (미확인 상태로 뒤집으면 빈 테이블을 읽는다).
+- 선행조건 실측: 착수 시점 **BBE-85 는 처리 중이 아니었다** — status=Backlog·`startedAt=null`·
+  코멘트 0건·`git grep "db:migrate" origin/master -- .github/` **0건**. 그래서 읽기를 뒤집지 않고
+  **스위치만 만드는** 방향으로 진행(멈추지 않되 위험도 만들지 않음).
+- 한 것: PR [#743](https://github.com/bbelieff/salespt-log/pull/743)(CI green) — DB 를 **시트와 같은 모양
+  (열 순서 배열)** 으로 돌려주는 어댑터(`lib/repo/db/registry-read.ts`)를 초크포인트 2곳에만 연결
+  (`cachedRegistryRows` users A~T · `cachedCohortsRows` cohorts A~J). 카드가 나열한
+  `findUserByEmail`·`listDistinctUsers`·`listCohorts`·`listArenaParticipants` 는 전부 이 둘의 파생이라
+  자동 전환되고 `parseRow`·`pickPreferredUser`·정렬은 **한 줄도 안 바뀐다**(장애 반경 최소화).
+- 게이트: `REGISTRY_DB_READ=1` 없으면 시트 그대로 = 동작 변화 0(BBE-57 `course-dates.ts:31` 패턴 계승).
+  **롤백 = env 한 줄 제거**(재배포 불요).
+- 안전장치: DB **오류**뿐 아니라 **0행**에서도 시트로 폴백. "레지스트리 0명"은 정상일 수 없으므로
+  이상 신호로 취급 — belie 가 경고한 "빈 테이블을 읽는" 실패 모드를 코드로 차단.
+- 작업 중 변동: BBE-85 가 #742 로 머지됨 → DB Migrate run [31287208990](https://github.com/bbelieff/salespt-log/actions/runs/31287208990)
+  에서 **0001·0002 실제 적용 완료 확인**(dry-run 표식 `실행 안 함` 0건 + `✅ 적용 완료` 2건).
+- 🔎 후속 갭 발견 → **BBE-91 발행**: `scripts/ops/backfill-registry.mjs` 를 돌리는 워크플로가 없다
+  (`git grep backfill-registry -- .github/` 0건). BBE-85 와 **같은 유형**(스크립트는 있는데 실행 수단
+  부재) — 테이블이 비어 있어 지금 플래그를 켜도 0행 폴백으로 시트에 머문다. R7 임계경로가 여기서
+  조용히 멈출 자리라 카드로 박아뒀다(BBE-91 → BBE-56 blocks 연결).
+- 수용 기준: ①전 경로 동작 동일 ✅(게이트 OFF 기본값) ②**응답시간 전/후 수치 = 미제시**(테이블이 비어
+  측정 불가 — 미달로 남긴다) ③복귀 스위치 ✅(OFF·오류·0행 3경로 테스트 고정).
+- 검증: check.sh 초록(structural 25·unit **1104**) + CI success. 신규 테스트 12건.
+  `users.ts` 500줄 캡 초과 → `users-rows.ts` 무변경 분리.
+- 한계: 게이트 ON 라이브 미검증. 행 순서 — 시트는 행번호 순, DB 는 `created_at, cohort, name, email`
+  순이라 `pickPreferredUser` 의 **동일 우선순위 내 tie-break** 가 달라질 수 있다(결정적 정렬로 고정).
+- 다음: BBE-91(backfill 실행 수단) → 그 다음에야 `REGISTRY_DB_READ=1` flip 이 의미를 갖는다.
+  ⚠️ **머지 보류** — 아레나2 복구 + 개막 이후 반장 판정(§3.5).
+- SoR: PR #743 · Linear BBE-56 · BBE-91.
+
 ### 2026-08-08 · 경영일지 작업반장(FM·260804) · 머지 대기열 6건 판정 — 3머지·3차단, diff-0 실증 미달
 - 의도: belie 지시 "PR 6건(#738·#740·#736·#737·#734·#708) 순차 판정·머지, §6.8 배포 관찰 포함".
   카드 전제는 "전부 구현·테스트 완료, 머지만 대기"였으나 **실측은 달랐다**.
