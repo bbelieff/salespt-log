@@ -23,7 +23,7 @@ import {
   listCarriedMeetingKeysFromDb,
   readMeetingsFromDb,
 } from "@/repo/db/read-daily";
-import { meetingToRow } from "@/repo/meetings-rows";
+import { meetingToRow, stripUserEnteredEscapes } from "@/repo/meetings-rows";
 import { queueMeetingSheetSync } from "./meetings-write";
 import {
   appendFromContract,
@@ -88,12 +88,18 @@ export async function migrateArenaCarryover(
   // Meeting 필드(A~AN 전체, 수식열 제외)를 손실 없이 raw 행으로 되돌린다.
   // (계약 readAllContracts 는 여기 포함 안 함 — 02 append/update 는 시트에 동기 즉시 쓰기라
   //  같은 비동기 지연 창이 없음, 실측: appendFromContract/updateUserFields 모두 await 직접 update.)
+  // BBE-65(2차, 적대검증) — meetingToRow 는 USER_ENTERED 오변환 방지용 선행 apostrophe 를
+  // 붙인다(예약비고/미팅사유/계약조건/업체정보 등). listCarrySourceMeetings(시트 읽기)는
+  // Sheets 가 이미 그 apostrophe 를 벗겨낸 값이라 형식이 다르다 — carriedMeetingPayload 는
+  // 소스를 구분하지 않으므로 여기서(만) meetingToRow 출력을 "실제 USER_ENTERED 를 거쳤다면"의
+  // 형식으로 정규화해 넘긴다. sheetSources 쪽 진짜 데이터(사용자가 실제로 apostrophe 로 시작하는
+  // 텍스트를 입력했을 가능성)는 손대지 않는다.
   const sources = [...sheetSources];
   if (chooseDailySource(prior.cohort, dbEnabled()) === "db") {
     const seen = new Set(sheetSources.map((s) => s.원본id));
     for (const m of await readMeetingsFromDb(prior.spreadsheetId)) {
       if (m.상태 !== "예약" || seen.has(m.id)) continue;
-      sources.push({ 원본id: m.id, raw: meetingToRow(m) });
+      sources.push({ 원본id: m.id, raw: stripUserEnteredEscapes(meetingToRow(m)) });
     }
   }
   const arenaCtx = {

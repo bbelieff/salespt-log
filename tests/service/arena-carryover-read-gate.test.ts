@@ -49,6 +49,7 @@ vi.mock("@/repo/db/read-daily", () => ({
 }));
 vi.mock("@/repo/meetings-rows", () => ({
   meetingToRow: (m: Meeting) => ["ROW_FOR", m.id],
+  stripUserEnteredEscapes: (row: unknown[]) => row, // BBE-65(2차) — 이 테스트는 apostrophe 무관, 통과만
 }));
 vi.mock("@/service/meetings-write", () => ({
   queueMeetingSheetSync: (...a: unknown[]) => queueMeetingSheetSync(...(a as [])),

@@ -15,7 +15,6 @@ import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 import { mirrorSheetRow } from "./db/mirror";
 import { findRowById } from "./meetings";
-import { APOSTROPHE_ESCAPED_COL_INDICES, stripSheetTextEscape } from "./meetings-rows";
 
 const TAB = SHEET_RANGES.meetings.tab;
 const ref = `'${TAB}'`;
@@ -86,10 +85,11 @@ const CARRY_DROP = new Set([13, 14, 16, 17, 18]);
 
 /**
  * 이월 미팅 DB payload(열문자 평탄화) — A=새id, AO="이월", AP=원본id. 빈값 skip.
- * src.raw 는 두 소스 혼용(시트 읽기 apostrophe 없음 vs meetingToRow 출력 apostrophe 있음,
- * BBE-65) — jsonb 목적지는 시트의 USER_ENTERED 파싱을 거치지 않으므로 여기서 벗겨
- * 형식을 시트 읽기 결과와 통일한다(meetingFromDbPayload/rowToMeeting 은 apostrophe 없는
- * 값을 기대).
+ * src.raw 는 이미 "시트 읽기 결과" 형식이어야 한다(apostrophe 없음) — listCarrySourceMeetings
+ * 는 원래 그렇고, meetingToRow 출신 raw(arena-carryover.ts DB 유니언)는 그 호출부에서
+ * stripUserEnteredEscapes 로 미리 정규화해서 넘긴다(BBE-65). 이 함수는 소스를 구분하지
+ * 않는다 — 구분하려다 시트 읽기(주류) 경로의 진짜 apostrophe 데이터를 훼손한 적대검증
+ * 회귀(BBE-65 2차) 발견 후, 정규화를 소스 쪽으로 옮기고 여기는 원래 단순 복사로 되돌림.
  */
 export function carriedMeetingPayload(
   src: CarrySourceMeeting,
@@ -98,8 +98,7 @@ export function carriedMeetingPayload(
   const p: Record<string, unknown> = { A: newId };
   for (let i = 1; i <= 39; i++) {
     if (CARRY_DROP.has(i)) continue;
-    const raw = src.raw[i];
-    const v = APOSTROPHE_ESCAPED_COL_INDICES.has(i) ? stripSheetTextEscape(raw) : raw;
+    const v = src.raw[i];
     const s = String(v ?? "").trim();
     if (s !== "") p[colName(i)] = v as unknown;
   }

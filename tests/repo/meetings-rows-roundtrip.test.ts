@@ -10,7 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { Meeting } from "@/types";
-import { meetingToRow, rowToMeeting } from "@/repo/meetings-rows";
+import { meetingToRow, rowToMeeting, stripUserEnteredEscapes } from "@/repo/meetings-rows";
 import { carriedMeetingPayload } from "@/repo/carryover";
 import { meetingFromDbPayload } from "@/repo/db/read-daily";
 
@@ -154,8 +154,9 @@ describe("BBE-65 — DB 유니언 소스(meetingToRow 출력)도 같은 payload 
     },
   });
 
-  it("meetingToRow → carriedMeetingPayload → meetingFromDbPayload — apostrophe 잔존·업체정보.커스텀 소실 없음", () => {
-    const raw = meetingToRow(DB_SOURCED); // arena-carryover.ts 가 실제로 하는 것과 동일
+  it("stripUserEnteredEscapes(meetingToRow) → carriedMeetingPayload → meetingFromDbPayload — apostrophe 잔존·업체정보.커스텀 소실 없음", () => {
+    // arena-carryover.ts:96 이 실제로 하는 것과 동일 — meetingToRow 출력을 먼저 정규화한다.
+    const raw = stripUserEnteredEscapes(meetingToRow(DB_SOURCED));
     const p = carriedMeetingPayload({ 원본id: DB_SOURCED.id, raw }, "new-db-id-9");
     const m = meetingFromDbPayload(p);
     expect(m).not.toBeNull();
@@ -167,5 +168,33 @@ describe("BBE-65 — DB 유니언 소스(meetingToRow 출력)도 같은 payload 
     expect(m!.업체정보?.신용점수).toBe("800");
     // 수정 전엔 JSON.parse("'{...}") 실패 → catch 무시로 커스텀 전체가 조용히 사라졌다.
     expect(m!.업체정보?.커스텀).toEqual({ 업체: { 메모: "특이사항" }, 대표자: { 등급: "A" } });
+  });
+
+  it("stripUserEnteredEscapes 없이 meetingToRow 원본을 그대로 넘기면 apostrophe 가 잔존한다(정규화가 정말 필요함을 증명)", () => {
+    const raw = meetingToRow(DB_SOURCED); // 정규화 생략 — 수정 전 버그 상태 재현
+    const p = carriedMeetingPayload({ 원본id: DB_SOURCED.id, raw }, "new-db-id-9");
+    const m = meetingFromDbPayload(p);
+    expect(m!.예약비고).toBe("'고객 요청 메모, 재방문 예정");
+  });
+});
+
+describe("BBE-65(2차, 적대검증) — 시트 읽기(주류) 소스는 apostrophe 를 절대 건드리지 않는다", () => {
+  // 사용자가 실제로 예약비고에 apostrophe 로 시작하는 문구를 입력하고, 그 값이 Sheets 왕복을
+  // 거쳐 listCarrySourceMeetings 로 읽힌 상황을 재현(USER_ENTERED 는 선행 apostrophe 1개만
+  // "이건 텍스트다" 표시로 소비하므로, 진짜 값이 "'로 시작하는 문구"였다면 값 자체엔 apostrophe
+  // 1개가 그대로 남아 읽힌다 — meetings-rows-roundtrip.test.ts 상단 simulateUserEntered 참고).
+  it("carriedMeetingPayload 는 시트에서 읽은 진짜 apostrophe 문자를 벗기지 않는다", () => {
+    const raw: unknown[] = new Array(40).fill("");
+    raw[0] = "sheet-src-1";
+    raw[1] = 46213; raw[2] = "10:00"; raw[3] = 46215; raw[4] = "14:00";
+    raw[5] = "매입DB"; raw[6] = "이월상사"; raw[7] = "고객 사무실"; raw[9] = "예약";
+    raw[10] = false; raw[11] = 0;
+    raw[8] = "'다음주 다시 전화드릴게요"; // 예약비고 — 사용자가 진짜로 입력한 apostrophe 선행 문구
+    raw[15] = "'5% 인상 요청"; // 계약조건 — 동일
+
+    const p = carriedMeetingPayload({ 원본id: "sheet-src-1", raw }, "new-id-10");
+    const m = meetingFromDbPayload(p);
+    expect(m!.예약비고).toBe("'다음주 다시 전화드릴게요"); // 벗겨지면 회귀(BBE-65 2차)
+    expect(m!.계약조건).toBe("'5% 인상 요청");
   });
 });
