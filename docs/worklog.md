@@ -386,6 +386,42 @@
 
 ## 로그
 
+### 2026-08-10 · 경영일지 데탑 C작업원D(260809-2) · BBE-63 머지→롤백 — 라이브 parity 40% diff 발견, 근인은 BBE-66/68 소관
+- 의도: belie 직접 지시 — "BBE-63 완주까지. lib/service/scoreboard.ts·app/admin/arena/scoreboard/**
+  안에서만, scripts/ops/arena-* 금지." PR #720·#753·#755 를 순서대로 머지해 마무리하려 했다.
+- 한 것(전반): #753(`6c5766c`)→#720(`a3ae5c0`) 순서로 머지, 각 §6.8 배포 관찰 완료(#720 배포는
+  Public health check 초록까지 확인). **여기서 멈추지 않고 지시대로 전 기수 라이브 parity 를
+  마저 실행**했다 — `gh workflow run "DB Audit (read-only)" -f script=scoreboard-parity
+  -f cohort=<파일럿 18개 라벨>`(run [31330346822](https://github.com/bbelieff/salespt-log/actions/runs/31330346822)).
+- 🔎 **결과가 심각했다 — 52명 중 21명(40%) diff, 총 83건.** 패턴이 예외 없이 동일: 모든 diff 가
+  `db=0, sheet>0`, 그리고 미팅·계약이 **항상 같은 주차에 동반**으로 틀어졌다(예:
+  `practice@salespt.local` 주1.미팅 sheet=9/db=0 + 주1.계약 sheet=3/db=0). 2026-08-09 에 이미
+  해소했던 "미팅=완료 vs 예약" 정의 문제가 아니다 — DB 배치 조회가 계약 상태 미팅 자체를
+  일부 못 읽어오는 **데이터 완전성 문제**로 판정.
+- 결정(자율·§0.7, §6.8 "build/health 실패 → 즉시 롤백"의 정신 적용): 완주 선언 대신 **즉시
+  `git revert a3ae5c0`**(PR #774, `052a45e`→`9e3cacc`) → 배포 관찰(run
+  [31331333443](https://github.com/bbelieff/salespt-log/actions/runs/31331333443) 전 스텝
+  success, Public health check 포함) → 시트 100% 경로로 복귀. PR #720 은 병합 이력에 코드
+  보존(재적용 시 cherry-pick). 근거: 라이브 프로덕션이 경쟁성 있는 아레나 전광판에서 실제보다
+  낮은 수치를 보여주는 건 "일단 배포하고 나중에 고치기"로 두기엔 사용자 신뢰 파급이 크다.
+- 🔗 **같은 근인 가능성 — 다른 트랙과 교차 확인**: 바로 위 항목(C작업원C, 오늘 아침)이 BBE-66
+  `dashboard-parity` 에서 거의 동일한 성격(sheet>db, 원인 미상)을 이미 재확인해뒀다 — BBE-65
+  머지 후에도 diff 수치가 "한 글자도 안 바뀜". BBE-63 의 diff 도 겹치는 사용자군(A1-x·A2·8기)에서
+  같은 모양으로 재현되어 **같은 근인**(추정: `sheet_rows` 의 계약-상태 미팅 백필/동기화 불완전,
+  BBE-66/67/68 라인 소유)일 가능성이 높다고 판단 — `scoreboard.ts`/`scoreboard-db.ts` 로직
+  자체는 단위테스트 14건이 여전히 정의를 정확히 고정하고 있어 재작업 불필요.
+- 검증: revert 브랜치 check.sh 전체 초록. 배포 2건(머지·되돌리기) 모두 §6.8 완주(last-good SHA
+  기록·배포 run 관찰·공개 health 200 독립 재확인 각 2회).
+- ⚠️ **부수 관찰**: #720 배포에서 GH 러너의 "Public health check" 가 2회 연속 타임아웃(VPS 로컬은
+  매번 정상) — 이미 반장이 BBE-99 로 등록한 기존 이슈와 동일 패턴. 되돌리기 배포부터는 다른
+  세션이 병행 배포한 "Public health check (VPS 경유 우선·러너 직접은 폴백)" 수정(PR #770)이
+  적용돼 1회에 바로 초록.
+- 다음: BBE-63 은 **In Progress 유지, BBE-66/68 근인 규명에 종속**. 그쪽이 풀리면 이 PR(#720)
+  코드를 cherry-pick 재적용 → parity 재실행 → 그때 진짜 완주. `lib/service/dashboard-aggregates.ts`
+  ·`scripts/ops/arena-*`·시즌 SSOT 는 이번 작업 내내 무접촉(디스패치 레인 경고 준수).
+- SoR: Linear BBE-63(전체 경위 코멘트 4건) · PR #720(머지, 보존)·#753(실행수단)·#774(revert)
+  · DB Audit run 31330346822 · Deploy run 31330179046(머지)·31331333443(되돌리기)
+
 ### 2026-08-10 · 경영일지 데탑 C작업원E(260809) · BBE-91 Done — 재백필 대조(users 144·cohorts 13) + BBE-56 인계, Linear 직접 게시
 - 의도: belie 디스패치 — "E: BBE-91 완주까지 밀어라. 백필 실행 → 행수 대조(시트 고유키 143·13 vs
   DB) 숫자를 카드에 남겨라. A: E 의 대조 결과 확인 후 BBE-56 게이트 ON."
