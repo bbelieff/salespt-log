@@ -27,6 +27,41 @@ export type MirrorTab =
   | "db"
   | "company_archive";
 
+/** 재시도 3회(선형 백오프) 시도 후 **절대 throw 하지 않는다** — 성공 true/실패 false 만 반환.
+ * mirrorSheetRow(fire-and-forget)·mirrorSheetRowAwaitable(await 가능) 가 공유하는 코어(BBE-61). */
+async function attemptMirrorUpsert(p: {
+  spreadsheetId: string;
+  tab: MirrorTab;
+  rowKey: string;
+  payload: Record<string, unknown>;
+}): Promise<boolean> {
+  const owner = await findOwnerBySpreadsheetId(p.spreadsheetId).catch(() => null);
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await upsertSheetRow({
+        cohort: owner?.cohort ?? "?",
+        email: owner?.email ?? "",
+        spreadsheetId: p.spreadsheetId,
+        tab: p.tab,
+        rowKey: p.rowKey,
+        payload: p.payload,
+      });
+      return true;
+    } catch (e) {
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 300 * attempt));
+    }
+  }
+  const msg = (lastErr instanceof Error ? lastErr.message : "unknown").replace(
+    /postgres(ql)?:\/\/\S+/gi,
+    "[DATABASE_URL]",
+  );
+  console.warn(`[db-mirror] 실패 tab=${p.tab} key=${p.rowKey}: ${msg}`);
+  captureServerEvent("db_mirror_error", { tab: p.tab });
+  return false;
+}
+
 /** fire-and-forget — await 하지 말 것(비차단 원칙). 시트 쓰기 성공 직후 호출.
  * R2 방향(시트 정본 → DB 미러): 일시 DB blip 이 반쪽쓰기로 굳지 않게 **선형 백오프 3회** 재시도
  * (2026-07-19, mirror_pending 안전망 동반 — 계획서 §486 silent 반쪽쓰기 완화). 최종 실패는
@@ -39,34 +74,22 @@ export function mirrorSheetRow(p: {
   payload: Record<string, unknown>;
 }): void {
   if (!dbEnabled()) return; // 파일럿 밖 환경 — 완전 no-op
-  void (async () => {
-    const owner = await findOwnerBySpreadsheetId(p.spreadsheetId).catch(() => null);
-    let lastErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        await upsertSheetRow({
-          cohort: owner?.cohort ?? "?",
-          email: owner?.email ?? "",
-          spreadsheetId: p.spreadsheetId,
-          tab: p.tab,
-          rowKey: p.rowKey,
-          payload: p.payload,
-        });
-        return;
-      } catch (e) {
-        lastErr = e;
-        await new Promise((r) => setTimeout(r, 300 * attempt));
-      }
-    }
-    throw lastErr;
-  })().catch((e) => {
-    const msg = (e instanceof Error ? e.message : "unknown").replace(
-      /postgres(ql)?:\/\/\S+/gi,
-      "[DATABASE_URL]",
-    );
-    console.warn(`[db-mirror] 실패 tab=${p.tab} key=${p.rowKey}: ${msg}`);
-    captureServerEvent("db_mirror_error", { tab: p.tab });
-  });
+  void attemptMirrorUpsert(p);
+}
+
+/** await 가능한 버전(BBE-61, R3-4b) — mirrorSheetRow 와 재시도·실패 처리는 동일하지만
+ * **호출자가 완료를 기다릴 수 있다**(fire-and-forget 의 read-your-writes 타이밍 갭 해소).
+ * 성공 true/실패 false 를 반환할 뿐 **절대 throw 하지 않는다** — 이미 성공한 주 동작(컨택 저장 등)
+ * 위에 얹힌 파생 갱신이 실패해도 그 동작을 에러로 되돌리면 안 되는 호출부 전용
+ * (db-tab-sync.ts 의 throw-on-fail dual-sync 와는 다른 안전모드 — writeProductionCountCell(M) 참고). */
+export function mirrorSheetRowAwaitable(p: {
+  spreadsheetId: string;
+  tab: MirrorTab;
+  rowKey: string;
+  payload: Record<string, unknown>;
+}): Promise<boolean> {
+  if (!dbEnabled()) return Promise.resolve(false); // 파일럿 밖 환경 — 완전 no-op
+  return attemptMirrorUpsert(p);
 }
 
 /** clear 계열 공용 — 행 삭제 대신 _cleared 마킹(대조·backfill 정합 규칙). */

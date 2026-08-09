@@ -388,20 +388,24 @@ async function assertNoOverlapDirect(
 }
 
 /** 직접생산 레코드 R 의 M = Σ(영업관리 F 직접생산, R 기간) 동기화 (M 셀만 update).
- *  fromDb(R3-1): 쓰기 정본이 DB 인 파일럿이면 유입 합산을 DB 에서(시트 미러 지연/실패 무관·정확). */
+ *  fromDb(R3-1): 쓰기 정본이 DB 인 파일럿이면 유입 합산을 DB 에서(시트 미러 지연/실패 무관·정확).
+ *  syncDb(BBE-61, R3-4b): 파일럿이면 M 의 DB 반영을 **기다린다**(non-throw — 컨택 저장 등 이미
+ *  성공한 주 동작을 M 실패로 되돌리지 않음, db-production-cell.ts 참고). 비파일럿은 R2 미러 불변. */
 async function syncDirectCount(
   sid: string,
   record: { row: number; 시작일: string; 종료일: string },
   fromDb: boolean,
+  syncDb: boolean,
 ): Promise<number> {
   const count = await sumChannelInflowOverPeriod(sid, "직접생산", record.시작일, record.종료일, { fromDb });
-  await writeProductionCountCell(sid, record.row, count);
+  await writeProductionCountCell(sid, record.row, count, { syncDb });
   return count;
 }
 
 /** 컨택 유입 저장 후 그 날짜를 포함하는 활성 직접생산 레코드 M 동기화 (ADR-0024).
  *  활성 레코드 없으면 recordFound=false → 호출측(컨택)이 보류 모달.
- *  cohort: 쓰기 정본 판정용(파일럿+DB → 유입 합산 DB 정본, R3-1). */
+ *  cohort: 쓰기 정본 판정용(파일럿+DB → 유입 합산 DB 정본, R3-1) — 읽기(fromDb)·쓰기(syncDb) 게이트가
+ *  대칭이라 같은 cohort 판정을 두 번 씀(chooseDailySource·chooseWriteSource, daily-source.ts). */
 export async function syncDirectProductionForDate(
   sid: string,
   date: string,
@@ -412,23 +416,26 @@ export async function syncDirectProductionForDate(
     (r) => r.시작일 && r.종료일 && r.시작일 <= date && date <= r.종료일,
   );
   if (!active) return { recordFound: false, count: 0 };
-  const count = await syncDirectCount(sid, active, chooseDailySource(cohort, dbEnabled()) === "db");
+  const on = dbEnabled();
+  const count = await syncDirectCount(
+    sid, active, chooseDailySource(cohort, on) === "db", chooseWriteSource(cohort, on) === "db",
+  );
   return { recordFound: true, count };
 }
 
 export async function addProduction(email: string, p: DBProduction) {
-  const { sid, fromDb } = await resolveWriteCtx(email);
+  const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일);
   const r = await appendProduction(sid, p);
-  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb);
+  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb, syncDb);
   return r;
 }
 export async function patchProduction(email: string, row: number, p: DBProduction) {
   const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일, row);
   const r = await updateProduction(sid, row, p, { syncDb });
-  // syncDirectCount → writeProductionCountCell(M) 은 R2 async 유지(컨택 저장 경유 호출 회귀 회피, R3-4b).
-  await syncDirectCount(sid, { row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb);
+  // syncDirectCount → writeProductionCountCell(M) 은 파일럿이면 DB 반영을 기다리되 non-throw(BBE-61).
+  await syncDirectCount(sid, { row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb, syncDb);
   return r;
 }
 export async function removeProduction(email: string, row: number) {
