@@ -61,6 +61,10 @@ jobs:
           ADMIN_DRIVE_REFRESH_TOKEN: ${{ secrets.ADMIN_DRIVE_REFRESH_TOKEN }}
           # 비밀값 아님(공개 URL) → GitHub Variables 소스. 값 미출력 경로는 동일하게 재사용(무해).
           NEXT_PUBLIC_GUIDE_URL: ${{ vars.NEXT_PUBLIC_GUIDE_URL }}
+          # 비밀값 아님(플래그) → GitHub Variables 소스. 기본 OFF — 미설정/빈값이면 스킵 →
+          # VPS 기존 값(또는 무값=false) 유지. BBE-56 레지스트리 읽기 flip 게이트
+          # (lib/repo/db/registry-read.ts:registryDbReadEnabled — 정확히 "1"일 때만 ON).
+          REGISTRY_DB_READ: ${{ vars.REGISTRY_DB_READ }}
         run: |
           # secret → VPS .env 자동 주입 (db-migration-pilot §3 원칙): 운영자가 SSH 작업 없이
           # GitHub Secrets 등록만으로 VPS .env 에 반영되게 한다.
@@ -74,7 +78,10 @@ jobs:
           #   그것에 기대지 않고 출력 경로 자체를 만들지 않는다.)
           #   - NEXT_PUBLIC_GUIDE_URL: 사용 가이드/새소식 링크(공개 URL, Variables 소스). 미설정이면
           #     스킵 → VPS 기존 값 유지. 값 변경 = GitHub Variables 갱신 + 재배포 1회(NEXT_PUBLIC=빌드 인라인).
-          INJECT_KEYS="DATABASE_URL ADMIN_DRIVE_REFRESH_TOKEN NEXT_PUBLIC_GUIDE_URL"
+          #   - REGISTRY_DB_READ: BBE-56 레지스트리 읽기 게이트(Variables 소스, "1"일 때만 ON).
+          #     롤백 = Variables 값을 "0"으로 바꾸고 재배포(빈 문자열은 injector 가 스킵해 옛 값이
+          #     남으므로 반드시 명시적 "0" — REGISTRY_DB_READ 삭제가 아니라 값 교체로 끈다).
+          INJECT_KEYS="DATABASE_URL ADMIN_DRIVE_REFRESH_TOKEN NEXT_PUBLIC_GUIDE_URL REGISTRY_DB_READ"
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -i $HOME/.ssh/id_ed25519"
           # IPv4 실패 시 IPv6(VPS_HOST_V6, 설정된 경우) 교대 시도 — GH IP대역 한정 차단
           # 우회용(2026-08-06 SSH 장애 조사). 미설정이면 기존과 동일하게 IPv4만 사용.
