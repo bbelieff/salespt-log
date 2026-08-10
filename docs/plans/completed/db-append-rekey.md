@@ -1,7 +1,8 @@
 ---
 slug: db-append-rekey
-status: active
+status: completed
 created: 2026-08-09
+completed: 2026-08-10
 worktree: ../wt/bbe59-db-append-rekey
 ---
 
@@ -156,3 +157,8 @@ Phase 1은 스키마 변경(DDL) 이 없다 — `sheet_rows` 는 이미 범용 j
   lint·structural 25·unit 1122·파일크기·doc-drift). 신규 파일 3(`db/row-key.ts`·`db-tab-writers.ts`·
   `db-write.ts`) + 수정 4(`db.ts`·`db-production-cell.ts`·`db/read-db-tab.ts`·`db/mirror.ts` 주석)
   + 테스트 신규 3파일. PR 오픈 예정, 머지는 반장 판정 대기(R7 매출위험 관례).
+- 2026-08-10 — **완주**. Phase 1 머지(PR #757 → `91bf42d`) + 배포 success + health 200.
+  Phase 2 는 실행 직전 재검토에서 원래 설계(row_key 자체를 UUID 로 rename)의 라이브 경쟁조건
+  위험을 발견해 범위 축소(위 §Phase 2 재설계 섹션) — row_key 불변, payload 에 `_row` 만 jsonb
+  병합. PR #773 머지(`1b7945e`) + 배포 success + health 200. VPS 실행: dry-run 대상 1004건 →
+  `--execute` 1004/1004 갱신, 충돌 0건. R7-#11(BBE-60) 착수 가능(선행 조건 충족).

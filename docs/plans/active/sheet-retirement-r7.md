@@ -121,7 +121,7 @@ worktree: (작업별 개별 워크트리 — 아래 §3 배차표 참조)
 ### Phase 2 — 나머지 쓰기 진짜 flip
 | # | 작업 | 선행 | 크기 |
 |---|---|---|---|
-| 10 | 03 append 재키잉(UUID + row_key 마이그레이션) — **Phase 1 완료(2026-08-09, BBE-59)**: UUID 키 발급 + 신규 append 부터 적용, update/clear 는 물리 행의 현재 매핑 키를 조회해 씀(레거시/신규 공존, 행동 변화 0). 미포함 = 기존 행 실제 재작성(Phase 2)·append dual-sync 전환(Phase 3). 상세 = `docs/plans/active/db-append-rekey.md` | 4 | L |
+| 10 | 03 append 재키잉(UUID + row_key 마이그레이션) — **완료(2026-08-10, BBE-59)**: Phase 1(UUID 키 발급 + 신규 append 부터 적용, update/clear 는 물리 행의 현재 매핑 키 조회) + Phase 2(레거시 행 payload 에 `_row` 백필 — row_key 문자열 자체는 안 바꿈, 실행 직전 발견한 라이브 파일럿 동시편집 경쟁조건 때문에 범위 축소). VPS 실행 완료: dry-run 대상 1004건 → `--execute` 1004/1004 갱신(충돌 0). **행동 변화 0**(순수 additive) — R7-#11(BBE-60) 착수 가능. 상세 = `docs/plans/completed/db-append-rekey.md` | 4 | L |
 | 11 | contracts·company_archive·03 → DB-first + 수렴 큐 | 4·10 | L |
 | 12 | `writeProductionCountCell` DB 정본화(R3-4b 잔여) — **완료(2026-08-09, BBE-61)**: `mirrorSheetRowAwaitable`(재시도 3회·non-throw)로 파일럿(syncDb) 이면 DB 반영을 기다리도록 편입, 컨택 저장 경유 호출은 실패해도 throw 안 함(성공한 주 동작 보호). 상세 = worklog. | — | S |
 | 13 | gcal 이벤트ID 맵 DB 이전 | 5 | L |
