@@ -264,6 +264,18 @@ export default function TopHeader({
                 {hasNews && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" />}
               </span>
             </Link>
+            {/* 내 기록 다운로드 — BBE-71(R7-#22). 본인 세션 인증만으로 xlsx 다운로드,
+                  Content-Disposition:attachment 를 브라우저가 그대로 처리(별도 JS fetch 불요). */}
+            <a
+              href="/api/export"
+              onClick={() => setPopupOpen(false)}
+              className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H8a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v11a2 2 0 01-2 2z"/>
+              </svg>
+              <span>📥 내 기록 다운로드</span>
+            </a>
             {/* 사용 가이드(노션) — env 설정 시 모든 (app) 페이지에서 상시 진입점. 새 탭. */}
             {guideUrl() && (
               <a
