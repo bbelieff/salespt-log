@@ -6,10 +6,6 @@ import { describe, it, expect } from "vitest";
 import { ContractPayment } from "@/types";
 import { isCarryoverContract } from "@/service/contract-payment";
 import { splitContractRevenue } from "@/service/dashboard";
-import {
-  CONTRACT_RECEIVED_FORMULAS,
-  SALES_FEE_TOTAL_FORMULA,
-} from "@/repo/contract-formulas";
 
 const START = "2026-06-12"; // 가정 아레나 시작일 (시즌마다 다름 — 인자로 주입)
 
@@ -106,36 +102,5 @@ describe("splitContractRevenue (아레나/이월/전체 분리)", () => {
     });
     const { arena } = splitContractRevenue([p], START);
     expect(arena.revenue).toBe(2100); // 수임비 100 + 수납 2000 (승인 5000 무시)
-  });
-});
-
-describe("SALES_FEE_TOTAL_FORMULA (영업관리 O5 = 수수료총합)", () => {
-  it("02!D3(수납총액)만 참조 — 승인총액 D2 절대 미포함 (ADR-0026)", () => {
-    expect(SALES_FEE_TOTAL_FORMULA).toContain("'02 계약수납관리'!D3");
-    expect(SALES_FEE_TOTAL_FORMULA).not.toContain("D2");
-  });
-  it("매출 합산식(O5·D3·D4) 어디에도 D2(승인총액) 가 없다", () => {
-    for (const f of [
-      SALES_FEE_TOTAL_FORMULA,
-      CONTRACT_RECEIVED_FORMULAS.arena,
-      CONTRACT_RECEIVED_FORMULAS.carryover,
-    ]) {
-      expect(f).not.toContain("D2");
-    }
-  });
-});
-
-describe("CONTRACT_RECEIVED_FORMULAS (시트 D3 아레나 / D4 이월)", () => {
-  it("아레나 = 구분<>이월, 이월 = 구분=이월 (Q/W/AC 3슬롯)", () => {
-    expect(CONTRACT_RECEIVED_FORMULAS.arena).toContain('$AI$6:$AI,"<>이월"');
-    expect(CONTRACT_RECEIVED_FORMULAS.arena).not.toContain('$AI$6:$AI,"이월"');
-    expect(CONTRACT_RECEIVED_FORMULAS.carryover).toContain('$AI$6:$AI,"이월"');
-    expect(CONTRACT_RECEIVED_FORMULAS.carryover).not.toContain("<>이월");
-    // 두 수식 모두 3슬롯(Q/W/AC) 합산.
-    for (const f of [CONTRACT_RECEIVED_FORMULAS.arena, CONTRACT_RECEIVED_FORMULAS.carryover]) {
-      expect(f).toContain("Q6:Q");
-      expect(f).toContain("W6:W");
-      expect(f).toContain("AC6:AC");
-    }
   });
 });

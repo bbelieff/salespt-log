@@ -77,7 +77,7 @@ types → config → repo → service → app(api·ui) → components
 2. **Sheets 격리** — `googleapis` / `google-auth-library` 는 **오직 `lib/repo/` 에서만** import.
 3. **대시보드 탭 쓰기 금지** — `SHEET_RANGES.dashboard` 를 `appendRows` / `batchUpdate` 근처에서 쓰면 실패. 대시보드는 수식이 계산한다. 쓰기는 `daily` / `contracts` / `db` 섹션으로만.
 4. **경로별칭 고정**: `@/types` · `@/config` · `@/repo/*` · `@/service` · `@/util/*`(순수 유틸 — import 0). 상대경로 import 는 피한다.
-5. **사용자 작성값 절대 보존 (Bulk-write 안전 가드, 2026-05-14 사고 후)** — 시트 셀에 일괄 쓰기 (`spreadsheets.values.batchUpdate`, `batchClear` 등) 하는 모든 함수는 타겟 셀을 `valueRenderOption: "FORMULA"` 로 **pre-read** 한 뒤, raw 값 (텍스트·숫자·boolean) 이 있으면 그 셀은 **skip** 해야 한다. 빈 셀과 수식(`=...`)만 덮어쓰기 허용. 참고: `lib/repo/setup-formulas.ts:isSafeToOverwrite` + `tests/repo/setup-formulas-guard.test.ts`. 새 bulk-write 함수 추가 시 같은 가드 의무 — 안 그러면 사용자 데이터 손실 사고 재발.
+5. **사용자 작성값 절대 보존 (Bulk-write 안전 가드, 2026-05-14 사고 후)** — 시트 셀에 일괄 쓰기 (`spreadsheets.values.batchUpdate`, `batchClear` 등) 하는 모든 함수는 타겟 셀을 `valueRenderOption: "FORMULA"` 로 **pre-read** 한 뒤, raw 값 (텍스트·숫자·boolean) 이 있으면 그 셀은 **skip** 해야 한다. 빈 셀과 수식(`=...`)만 덮어쓰기 허용. 참고: `lib/repo/course-dates.ts:isSafeToOverwrite`(BBE-69 S1 로 `setup-formulas.ts` 폐기 시 이전 — 유일한 외부 소비자) + `tests/repo/course-dates.test.ts`. 새 bulk-write 함수 추가 시 같은 가드 의무 — 안 그러면 사용자 데이터 손실 사고 재발.
 
 예: `❌ components/Chart.tsx 가 googleapis 를 import. → lib/repo/ 에 메서드를 추가해 Service 경유로 호출하세요. 참고: docs/architecture.md#퍼시스턴스-google-sheets`
 
