@@ -16,11 +16,25 @@ on:
           - contract-append-key-audit
           - registry-parity
           - scoreboard-parity
+          - bbe120-diag
       cohort:
         description: "dashboard-parity·contract-append-key-audit·scoreboard-parity 전용 — 대조할 기수 목록(쉼표 구분). 비우면 파일럿 전체 기본값."
         type: string
         required: false
         default: "8,9,연습,A1-0,A1-1,A1-2,A1-3,A1-4,A1-5,A1-6,A2-1,A2-2,A2-3,A2-4,A2-5,A2-6,A2-7,A2-8"
+      user:
+        description: "bbe120-diag 전용 — 대상 사용자 이메일 1명"
+        type: string
+        required: false
+        default: ""
+      mode:
+        description: "bbe120-diag 전용 — 진단 모드"
+        type: choice
+        required: false
+        options:
+          - sales-rows
+          - contract-row
+          - meeting-row
 
 jobs:
   audit:
@@ -71,6 +85,8 @@ jobs:
         env:
           SCRIPT: ${{ inputs.script }}
           COHORT: ${{ inputs.cohort }}
+          DIAG_USER: ${{ inputs.user }}
+          DIAG_MODE: ${{ inputs.mode }}
         run: |
           # 값 미출력. 스크립트명은 choice 로 제한돼 임의 실행 불가.
           # cohort 는 자유 문자열 입력이고 원격에서 **root 로 실행**되므로, ssh 로 넘기기 전에
@@ -89,6 +105,20 @@ jobs:
                 echo "❌ cohort 에 셸 메타문자가 포함돼 있습니다 — 중단합니다." >&2; exit 1 ;;
             esac
             ARGS="--cohort '$COHORT'"
+          fi
+          if [ "$SCRIPT" = "bbe120-diag" ]; then
+            case "$DIAG_USER" in
+              "")
+                echo "❌ user 가 비어 있습니다(bbe120-diag 필수)." >&2; exit 1 ;;
+              *[\`\$\;\&\|\<\>\(\)\{\}\[\]\!\\\"\']*)
+                echo "❌ user 에 셸 메타문자가 포함돼 있습니다 — 중단합니다." >&2; exit 1 ;;
+            esac
+            case "$DIAG_MODE" in
+              sales-rows|contract-row|meeting-row) ;;
+              *)
+                echo "❌ mode 가 비어 있거나 잘못됐습니다(sales-rows|contract-row|meeting-row)." >&2; exit 1 ;;
+            esac
+            ARGS="--user '$DIAG_USER' --mode '$DIAG_MODE'"
           fi
           set +e
           for i in 1 2 3 4 5 6 7; do
