@@ -1,7 +1,8 @@
 ---
 slug: export-xlsx-csv
-status: active
+status: completed
 created: 2026-08-09
+completed: 2026-08-10
 owner: 데탑 C작업원C(260809) — belie 지시("착수. relation 정정 후 지금 시작")
 related: sheet-retirement-r7(#22), db-write-flip, decisions/0030-db-ssot-supersede-0002
 ---
@@ -138,6 +139,12 @@ repo 함수를 그대로 재사용**한다 — 새 읽기 로직을 안 만든�
   이번 스코프에선 미접촉.
 
 ## Log
+- **2026-08-10 완주(데탑 C작업원C(260809))**: MVP 구현·검증·배포 완료. `GET /api/export` +
+  `lib/service/export-xlsx.ts`(시트 읽기 기반 조립) + TopHeader "내 기록 다운로드" 메뉴.
+  유닛테스트 6건(직렬화→파싱 왕복 포함) 신규 + check.sh 전체 그린(structural 28·unit 1270) →
+  PR #784(`bad46e9`) 머지 → 배포 run `31354193131` success · health 200. 카드 relation 정정
+  도장을 `docs/worklog.md`에 남겨 반장 relay 요청(Linear 미인증). 남은 스코프(영업관리 재계산·
+  대시보드 요약 워크시트, admin 일괄 export)는 §4 대로 후속 카드로 분리 — 이 문서는 여기서 완료.
 - **2026-08-10 착수(데탑 C작업원C(260809))**: belie 직접 지시 — "BBE-71 착수. relation 정정하고
   지금 시작해라." §0 에 ADR-0030 §2·§3 재확인 기록(68 무관 확정) + Linear relation 수정 요청
   등재. §2 데이터소스를 시트 읽기 기반으로 재작성(DB-only 전제가 깨져서). MVP 스코프를 3개
