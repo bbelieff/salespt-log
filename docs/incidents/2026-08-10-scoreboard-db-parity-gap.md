@@ -47,6 +47,13 @@ diff 패턴이 예외 없이 동일했다:
 
 ## 재개 조건
 
+> **✅ 2026-08-10 분류기 실측(run [31348578291](https://github.com/bbelieff/salespt-log/actions/runs/31348578291))
+> — 이 인시던트의 가설이 확정됐다.** 아레나 전 기수 45명·diff 72건 중 **69건(96%)이 "시차"로
+> 분류**됨(시트 원본 재계산=수식값 일치, DB 재계산만 다름 = DB 에 그 행이 없음). 렌더옵션·로직차이는
+> 0건 — 코드 문제가 아니라는 판단이 실측으로 재확인됐다. 남은 3건만 사람이 볼 대상(상세는
+> `docs/plans/completed/parity-diff-classifier.md` §7). **다음 단계 = BBE-67(잔여 백필)이 이 갭을
+> 메우는 것 — 아래 절차 그대로 유효.**
+
 BBE-66/68 근인이 해소되어 `sheet_rows`(tab='meetings') 의 계약-상태 데이터 완전성이 회복되면:
 
 1. `gh workflow run "DB Audit (read-only)" -f script=scoreboard-parity -f cohort=<파일럿 전체>` 재실행 —
