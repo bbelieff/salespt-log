@@ -141,6 +141,28 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
 - 롤백 스위치 동작 테스트. **비파일럿 기수 완전 불변**. check.sh 초록. §6.8 배포 관찰 + 실사.
 
 ## Log
+- 2026-08-10 R7-#11(BBE-60) company_archive 단독 진짜 flip 착수(경영일지 데탑 C작업원B(260809)):
+  BBE-60 원안("02·06·03 3탭 일괄")을 접수 조사(작업원A, 2026-08-09)가 반증 — company_archive
+  는 자연키(계약ref)라 선행(#4·#10) 무관·이미 dual-sync(PR-2) 라 리스크 최저, 02·03 은 별도
+  UUID 재키잉 필요. **company_archive 단독 우선 착수**로 스코프 축소(카드 정식 분할은 반장/
+  belie 판단, Linear 코멘트로 진행상황만 등재).
+  **범위**: `upsertCompanyInfoArchive`(생성·갱신)만 진짜 flip — 파일럿은 DB 동기 정본(실패=
+  throw) 먼저, 시트는 `queueCompanyArchiveSheetSync`(meetings-write.ts queueMeetingSheetSync
+  동형 — 최신 DB 상태로 find-or-append 수렴, mirror_pending 안전망 재사용) 로 비동기 강등.
+  **renameCompanyInfoKey(개명)는 이번 스코프 제외** — 시트의 rename 은 "같은 물리행의 A:D 만
+  갈아끼우고 E:AB 컨텐츠는 그대로 둔다"는 의미론이라, 이걸 그대로 비동기 수렴잡으로 옮기려면
+  old/new 키 양쪽 컨텐츠 캐리오버를 DB 에 새로 설계해야 함 — 이 파일 자체가 이미 #559·
+  2026-07-14 두 차례 "rename 부활" 사고를 낸 지점이라 섣부른 재설계 금지, dual-sync 그대로 유지.
+  **read-your-writes**: `hasCompanyInfoArchiveRow` 에 `{fromDb}` 옵션 추가 — 파일럿에서 upsert
+  직후 시트가 아직 안 따라잡은 창에 이 함수가 시트만 보면 "없음"으로 오판(R3-2 §6 교훈 재적용).
+  contact.ts 유일 호출부(patchMeeting)에 `{fromDb:syncDb}` 관통. opts 생략(기본)은 완전 불변.
+  **순환참조 회피**: 새 DB 읽기(`readCompanyArchiveRowPayload`)는 `db/company-archive-sync.ts`
+  에 추가(company-info-archive.ts 의 기존 의존 방향과 동일) — read-daily.ts 는 이미
+  company-info-archive.ts 의 companyContractRef 를 import 하므로 반대 방향 추가 시 순환(row-key.ts
+  가 이미 문서화한 것과 동일 함정).
+  테스트: 신규 `tests/repo/company-archive-flip.test.ts`(14, meetings-write.test.ts 패턴 이식 —
+  DB실패→즉시throw·시트미개입, 성공→큐 수렴 find-or-append, mirror_pending mark/clear/self-heal,
+  hasCompanyInfoArchiveRow fromDb 4종) + 기존 6개 스위트(57 테스트) 무변경 재확인. check.sh 초록.
 - 2026-07-15 R3-3 PR-2 fix-forward#2(DevB): **#559 = PARTIAL(DevD 재플래그) 종결** — rename 경로의 stale 부활.
   근인: `persistCompanyArchiveRename` 이 새 키 payload 를 `upsertArchiveRowWithRetry` 에 **직접** 넘겨
   #559 가 upsert 에만 넣은 정규화(`_cleared:false`+`커스텀:{}`)를 **우회**. rename 의 새 키 payload 는
