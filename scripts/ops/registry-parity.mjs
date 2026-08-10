@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * BBE-56 게이트 ON 실측 대조 — 레지스트리(users·cohorts) 시트 vs DB 값 전수 비교.
  *
@@ -15,6 +16,10 @@
  *            (자립 스크립트라 import 불가 — 두 파일이 갈리면 이 스크립트도 같이 고칠 것).
  *   자연키 = `normalizeUserKey`(lib/repo/db/registry.ts) 규칙 그대로 email 소문자+trim.
  *
+ * BBE-66/63 diff 원인 자동분류(2026-08-10, belie 최우선 지시) — missingInDb 는 정의상 "시차",
+ * fieldMismatches 는 parity-classify.mjs 로 렌더옵션/진짜불일치 판정. 순수 로직은
+ * registry-parity-lib.mjs 로 분리(테스트 가능하게 — 이 파일은 I/O 전용).
+ *
  * 실행(VPS, 읽기 전용 — 시트·DB 쓰기 없음):
  *   node scripts/ops/registry-parity.mjs
  *
@@ -22,8 +27,12 @@
  * 표는 STDOUT 그대로 이 카드/PR 에 첨부해 대조표로 남긴다.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { google } from "googleapis";
 import { Pool } from "pg";
+import { summarizeClassification } from "./parity-classify.mjs";
+import { classifyFieldMismatches, diffByKey, missingInDbAsClassified } from "./registry-parity-lib.mjs";
 
 function loadEnv() {
   const out = {};
@@ -48,16 +57,15 @@ const COHORTS_TAB = env("SHEETS_COHORTS_TAB") || "cohorts";
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
 const SA_KEY = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\\n/g, "\n");
 const DB_URL = env("DATABASE_URL");
-if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY || !DB_URL) {
-  console.error("registry-parity: env 누락(SA/레지스트리/DATABASE_URL)");
-  process.exit(1);
-}
 
-const auth = new google.auth.JWT(SA_EMAIL, undefined, SA_KEY, [
-  "https://www.googleapis.com/auth/spreadsheets.readonly",
-]);
-const sheets = google.sheets({ version: "v4", auth });
-const pool = new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false }, max: 3 });
+let sheets, pool;
+function initClients() {
+  const auth = new google.auth.JWT(SA_EMAIL, undefined, SA_KEY, [
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
+  ]);
+  sheets = google.sheets({ version: "v4", auth });
+  pool = new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false }, max: 3 });
+}
 
 const s = (r, i) => String(r?.[i] ?? "").trim();
 
@@ -146,49 +154,41 @@ async function dbCohorts() {
   return res.rows;
 }
 
-function diffByKey(sheetRows, dbRows, keyOf, fields, label) {
-  const dbMap = new Map(dbRows.map((r) => [keyOf(r), r]));
-  const missingInDb = [];
-  const fieldMismatches = [];
-  const seen = new Set();
-  for (const sr of sheetRows) {
-    const k = keyOf(sr);
-    if (seen.has(k)) continue; // 완전동일 중복 행은 대조 대상에서 1건으로 축약(BBE-91 실측: 2건 존재)
-    seen.add(k);
-    const dr = dbMap.get(k);
-    if (!dr) { missingInDb.push(k); continue; }
-    for (const f of fields) {
-      if ((sr[f] ?? "") !== (dr[f] ?? "")) {
-        fieldMismatches.push({ key: k, field: f, sheet: sr[f] ?? "", db: dr[f] ?? "" });
-      }
-    }
-  }
-  const dbKeys = new Set(dbRows.map(keyOf));
-  const missingInSheet = [...dbKeys].filter((k) => !seen.has(k));
+function report(result, label) {
   console.log(`\n=== ${label} 대조 ===`);
-  console.log(`시트 고유키 ${seen.size} · DB ${dbRows.length}`);
-  console.log(`DB 에 없음(시트에만): ${missingInDb.length}${missingInDb.length ? " → " + missingInDb.slice(0, 10).join(", ") : ""}`);
-  console.log(`시트에 없음(DB에만): ${missingInSheet.length}${missingInSheet.length ? " → " + missingInSheet.slice(0, 10).join(", ") : ""}`);
-  console.log(`필드 불일치: ${fieldMismatches.length}건`);
-  for (const m of fieldMismatches.slice(0, 30)) {
+  console.log(`시트 고유키 ${result.uniqueSheetKeys} · DB ${result.dbCount}`);
+  console.log(`DB 에 없음(시트에만): ${result.missingInDb.length}${result.missingInDb.length ? " → " + result.missingInDb.slice(0, 10).join(", ") : ""}`);
+  console.log(`시트에 없음(DB에만): ${result.missingInSheet.length}${result.missingInSheet.length ? " → " + result.missingInSheet.slice(0, 10).join(", ") : ""}`);
+  console.log(`필드 불일치: ${result.fieldMismatches.length}건`);
+  for (const m of result.fieldMismatches.slice(0, 30)) {
     console.log(`  [${m.key}] ${m.field}: 시트="${m.sheet}" ≠ DB="${m.db}"`);
   }
-  if (fieldMismatches.length > 30) console.log(`  ... 이하 ${fieldMismatches.length - 30}건 생략(전체는 위 카운트로 판단)`);
-  return { unique: seen.size, dbCount: dbRows.length, missingInDb: missingInDb.length, missingInSheet: missingInSheet.length, fieldMismatches: fieldMismatches.length };
+  if (result.fieldMismatches.length > 30) console.log(`  ... 이하 ${result.fieldMismatches.length - 30}건 생략(전체는 위 카운트로 판단)`);
 }
 
 async function main() {
-  const [su, sc, du, dc] = await Promise.all([sheetUsers(), sheetCohorts(), dbUsers(), dbCohorts()]);
-  const uResult = diffByKey(
-    su, du,
-    (r) => `${r.email}|${r.cohort}|${r.name}`,
-    USER_COLS.slice(3),
-    "users",
-  );
-  const cResult = diffByKey(sc, dc, (r) => r.label, COHORT_COLS.slice(1), "cohorts");
+  if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY || !DB_URL) {
+    console.error("registry-parity: env 누락(SA/레지스트리/DATABASE_URL)");
+    process.exit(1);
+  }
+  initClients();
 
-  const total = uResult.missingInDb + uResult.missingInSheet + uResult.fieldMismatches
-    + cResult.missingInDb + cResult.missingInSheet + cResult.fieldMismatches;
+  const [su, sc, du, dc] = await Promise.all([sheetUsers(), sheetCohorts(), dbUsers(), dbCohorts()]);
+  const uResult = diffByKey(su, du, (r) => `${r.email}|${r.cohort}|${r.name}`, USER_COLS.slice(3));
+  const cResult = diffByKey(sc, dc, (r) => r.label, COHORT_COLS.slice(1));
+  report(uResult, "users");
+  report(cResult, "cohorts");
+
+  const classified = [
+    ...missingInDbAsClassified(uResult.missingInDb, "users"),
+    ...classifyFieldMismatches(uResult.fieldMismatches, "users"),
+    ...missingInDbAsClassified(cResult.missingInDb, "cohorts"),
+    ...classifyFieldMismatches(cResult.fieldMismatches, "cohorts"),
+  ];
+  if (classified.length > 0) console.log(summarizeClassification(classified).text);
+
+  const total = uResult.missingInDb.length + uResult.missingInSheet.length + uResult.fieldMismatches.length
+    + cResult.missingInDb.length + cResult.missingInSheet.length + cResult.fieldMismatches.length;
   console.log(`\n=== 판정 ===`);
   console.log(total === 0
     ? "✅ 불일치 0건 — 게이트 ON 유지 근거로 사용 가능"
@@ -196,10 +196,13 @@ async function main() {
   process.exitCode = total === 0 ? 0 : 1;
 }
 
-main()
-  .catch((e) => {
-    const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
-    console.error(`registry-parity 실패: ${msg}`);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end().catch(() => {}));
+const isMainModule = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMainModule) {
+  main()
+    .catch((e) => {
+      const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
+      console.error(`registry-parity 실패: ${msg}`);
+      process.exitCode = 1;
+    })
+    .finally(() => pool?.end().catch(() => {}));
+}

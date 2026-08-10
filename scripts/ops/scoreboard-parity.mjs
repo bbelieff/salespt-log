@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * R2-7a 대시보드 전수 배치 대조 (db-dashboard-aggregates 스코프4).
+ * BBE-63(R7 Phase 3 #14) 전광판 주차별 5지표 배치 대조 — dashboard-parity.mjs 패턴 재사용.
  *
- * 파일럿 전 사용자에 대해 대시보드 시트 수식 결과(01!R1:U6·N{38..276}·대시보드 H33:H40·B21)와
- * DB 재계산(sheet_rows sales/meetings/contracts 로부터)을 대조해 사용자×항목 diff 표를 출력.
- * lib/service/dashboard-aggregates.ts 의 4개 순수 함수를 JS 로 충실 재현(backfill 패턴).
- * 순수 로직은 dashboard-parity-lib.mjs 로 분리(테스트 가능하게 — 이 파일은 I/O 전용).
+ * 대시보드 C33:H40(생산/유입/컨택/미팅/계약, H=활동량 제외)과 lib/service/scoreboard-db.ts
+ * weeklyPerfFromDb() 의 DB 재계산을 대조해 사용자×주차×지표 diff 표를 출력.
+ * 순수 로직은 scoreboard-parity-lib.mjs 로 분리(테스트 가능하게 — 이 파일은 I/O 전용).
  *
- * BBE-66/63 diff 원인 자동분류(2026-08-10, belie 최우선 지시) — 손분류에 카드 하나당 4일씩
- * 쓰던 것을 없앤다. diff 가 있는 사용자만 추가로 시트 04/02 탭 **원본 행**을 읽어(쿼터 절약 —
- * 깨끗한 사용자는 추가 호출 0) 같은 집계 로직으로 재계산 → parity-classify.mjs 로 판정.
- * 시차 판정은 미팅·계약(구분/계약일/수임비) 파생 필드에만 적용 — sales(03 DB관리 4섹션 포맷) 는
- * 이번 스코프 밖(레이아웃이 더 복잡, 후속 카드로 분리 권장. 진짜불일치로 남는다).
+ * ⚠️ BBE-63 본체(#720)는 라이브 parity 40% diff 로 2026-08-10 롤백됐다
+ * (docs/incidents/2026-08-10-scoreboard-db-parity-gap.md). 이 감사 스크립트 자체는 **읽기
+ * 전용·기능 무관**이라 계속 살려둔다 — 근인(BBE-66/67/68) 이 풀렸는지 재확인하는 유일한 수단.
  *
- * 실행(VPS): node scripts/ops/dashboard-parity.mjs --cohort "8,9,연습,A1-0,...,A1-6" [--user email]
+ * BBE-66/63 diff 원인 자동분류(2026-08-10, belie 최우선 지시) — dashboard-parity.mjs 와 동일
+ * 패턴. 시차 판정은 미팅 파생 필드(미팅·계약)에만 적용 — sales(생산/유입/컨택) 는 스코프 밖.
+ *
+ * 실행(VPS): node scripts/ops/scoreboard-parity.mjs --cohort "A1-1,...,A2-8" [--user email]
  * ★URL·비밀번호·SA 키 로그 미출력. 읽기 전용(시트·DB 쓰기 없음).
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -22,12 +22,11 @@ import { resolve } from "node:path";
 import { google } from "googleapis";
 import { Pool } from "pg";
 import { classifyDiff, summarizeClassification } from "./parity-classify.mjs";
+import { normalizeDbSales } from "./dashboard-parity-lib.mjs";
 import {
-  CHANNEL_ORDER, num, parseISO, serialToISO,
-  computeAggregates, diff, isMeetingOrContractField, buildAlternates, lookupField,
-  normalizeDbMeeting, normalizeDbContract, normalizeDbSales,
-  normalizeSheetMeetingRow, normalizeSheetContractRow,
-} from "./dashboard-parity-lib.mjs";
+  buildAlternates, computeWeeklyPerf, diffWeekly, isMeetingField, lookupWeekField,
+  normalizeDbMeeting, normalizeSheetMeetingRow, num, parseISO, serialToISO,
+} from "./scoreboard-parity-lib.mjs";
 
 function loadEnv() {
   const out = {};
@@ -48,7 +47,7 @@ const env = (k) => process.env[k] || fileEnv[k] || "";
 
 const COHORT = (process.argv[process.argv.indexOf("--cohort") + 1] || "").trim();
 const ONLY_USER = (process.argv.includes("--user") ? process.argv[process.argv.indexOf("--user") + 1] : "").trim().toLowerCase();
-const COHORTS = COHORT.split(",").map((s) => s.trim().replace(/기\s*$/, "")).filter(Boolean);
+const COHORTS = COHORT.split(",").map((s) => s.trim()).filter(Boolean);
 
 const REGISTRY_ID = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
@@ -76,46 +75,31 @@ async function batchGet(sid, ranges) {
 async function dbRows(sid) {
   const sres = await pool.query(
     `select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and coalesce((payload->>'_cleared')::boolean,false)=false`, [sid]);
-  const sales = sres.rows.map(({ payload: p }) => normalizeDbSales(p)).filter((r) => r.date && r.channel);
+  const sales = sres.rows.map(({ payload: p }) => normalizeDbSales(p)).filter((r) => r.date);
   const mres = await pool.query(
     `select payload from sheet_rows where spreadsheet_id=$1 and tab='meetings' and coalesce((payload->>'_cleared')::boolean,false)=false`, [sid]);
   const meetings = mres.rows.map(({ payload: p }) => normalizeDbMeeting(p));
-  const cres = await pool.query(
-    `select payload from sheet_rows where spreadsheet_id=$1 and tab='contracts' and coalesce((payload->>'_cleared')::boolean,false)=false`, [sid]);
-  const contracts = cres.rows.map(({ payload: p }) => normalizeDbContract(p));
-  return { sales, meetings, contracts };
+  return { sales, meetings };
 }
 
-/** 시트 04(미팅) / 02(계약) 원본 행 — DB 와 같은 정규화 형태로. diff 있는 사용자에만 호출(쿼터 절약). */
 async function sheetRawMeetingRows(sid) {
   const rows = await grid(sid, "'04 업체관리(앱자동작성용)'!A2:AS");
   return rows.map(normalizeSheetMeetingRow).filter((m) => m.channel || m.상태);
 }
-async function sheetRawContractRows(sid) {
-  const rows = await grid(sid, "'02 계약수납관리'!A6:AK");
-  return rows.map(normalizeSheetContractRow).filter((c) => c.계약일);
-}
 
-const WEEK_ROWS = [38, 72, 106, 140, 174, 208, 242, 276];
-async function sheetFormulaValues(sid) {
-  const ranges = ["'01 영업관리'!O1", "'01 영업관리'!R1:U6", ...WEEK_ROWS.map((r) => `'01 영업관리'!N${r}`), "'대시보드(자동작성)'!C33:H40", "'대시보드(자동작성)'!B21"];
-  const vr = await batchGet(sid, ranges);
-  const g = (i) => vr[i]?.values ?? [];
-  const courseStart = serialToISO(g(0)[0]?.[0]);
-  const stk = g(1); // R1:U6
-  const channelMatrix = CHANNEL_ORDER.map((ch, ci) => ({
-    채널: ch, 생산: num(stk[0]?.[ci]), 유입: num(stk[1]?.[ci]), 컨택진행: num(stk[2]?.[ci]),
-    미팅예약: num(stk[3]?.[ci]), 미팅완료: num(stk[4]?.[ci]), 계약: num(stk[5]?.[ci]),
-  }));
-  const weeklyContracts = WEEK_ROWS.map((_, i) => num(g(2 + i)[0]?.[0]));
-  const wa = g(10); // C33:H40
-  const weeklyActivity = Array.from({ length: 8 }, (_, w) => num(wa[w]?.[5]));
-  const 누적수임비 = num(g(11)[0]?.[0]);
-  return { courseStart, channelMatrix, weeklyContracts, weeklyActivity, 누적수임비 };
+async function sheetWeeklyPerf(sid) {
+  const vr = await batchGet(sid, ["'01 영업관리'!O1", "'대시보드(자동작성)'!C33:H40"]);
+  const courseStart = serialToISO(vr[0]?.values?.[0]?.[0]);
+  const rows = vr[1]?.values ?? [];
+  const weeks = Array.from({ length: 8 }, (_, w) => {
+    const row = rows[w] ?? [];
+    return { week: w + 1, 생산: num(row[0]), 유입: num(row[1]), 컨택: num(row[2]), 미팅: num(row[3]), 계약: num(row[4]) };
+  });
+  return { courseStart, weeks };
 }
 
 async function main() {
-  if (!COHORT) { console.error("사용법: node dashboard-parity.mjs --cohort <라벨목록> [--user email]"); process.exit(1); }
+  if (!COHORT) { console.error("사용법: node scoreboard-parity.mjs --cohort <아레나 라벨목록> [--user email]"); process.exit(1); }
   if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY || !DB_URL) { console.error("parity: env 누락(SA/레지스트리/DATABASE_URL)"); process.exit(1); }
   initClients();
 
@@ -123,19 +107,19 @@ async function main() {
   const seen = new Set();
   const targets = reg.map((r) => ({
     email: String(r[0] ?? "").trim().toLowerCase(), cohort: String(r[1] ?? "").trim(), sid: String(r[3] ?? "").trim(), role: String(r[4] ?? "").trim() || "trainee",
-  })).filter((u) => u.sid && COHORTS.includes(u.cohort.replace(/기\s*$/, "")) && u.role !== "trainer" && u.role !== "admin"
+  })).filter((u) => u.sid && COHORTS.includes(u.cohort) && u.role !== "trainer" && u.role !== "admin"
     && (!ONLY_USER || u.email === ONLY_USER) && !seen.has(u.sid) && seen.add(u.sid));
 
-  console.log(`dashboard-parity: 대상 ${targets.length}명 (cohort=${COHORT}${ONLY_USER ? `, user=${ONLY_USER}` : ""})`);
+  console.log(`scoreboard-parity: 대상 ${targets.length}명 (cohort=${COHORT}${ONLY_USER ? `, user=${ONLY_USER}` : ""})`);
   let totalDiff = 0, cleanUsers = 0;
   const classified = [];
   for (const u of targets) {
-    const sheet = await sheetFormulaValues(u.sid);
+    const sheet = await sheetWeeklyPerf(u.sid);
     if (!sheet.courseStart) { console.log(`  ${u.email}: courseStart(O1) 없음 — 스킵`); continue; }
     const cs = parseISO(sheet.courseStart);
-    const { sales, meetings, contracts } = await dbRows(u.sid);
-    const dbAgg = computeAggregates(meetings, sales, contracts, cs, sheet.courseStart);
-    const ds = diff(sheet, dbAgg);
+    const { sales, meetings } = await dbRows(u.sid);
+    const dbAgg = computeWeeklyPerf(meetings, sales, cs);
+    const ds = diffWeekly(sheet.weeks, dbAgg.weeks);
     totalDiff += ds.length;
     if (ds.length === 0) { cleanUsers++; console.log(`  ✅ ${u.email} (${u.cohort}) — diff 0`); continue; }
 
@@ -143,16 +127,14 @@ async function main() {
     for (const x of ds.slice(0, 12)) console.log(`      ${x.f}: sheet=${x.s} db=${x.d}`);
     if (ds.length > 12) console.log(`      … 외 ${ds.length - 12}건`);
 
-    // diff 있는 사용자만 — 시트 04/02 원본 행 재계산(시차 판정용, 쿼터 절약).
-    const [sheetMeetings, sheetContracts] = await Promise.all([
-      sheetRawMeetingRows(u.sid), sheetRawContractRows(u.sid),
-    ]);
-    const sheetRowAgg = computeAggregates(sheetMeetings, [], sheetContracts, cs, sheet.courseStart);
+    // diff 있는 사용자만 — 시트 04 원본 행 재계산(시차 판정용, 쿼터 절약).
+    const sheetMeetings = await sheetRawMeetingRows(u.sid);
+    const sheetRowAgg = computeWeeklyPerf(sheetMeetings, [], cs);
 
     for (const x of ds) {
       const contributingDbRows = dbAgg.contrib.get(x.f) ?? [];
       const alternates = buildAlternates(x.f);
-      const sheetRowRecount = isMeetingOrContractField(x.f) ? lookupField(sheetRowAgg, x.f) : undefined;
+      const sheetRowRecount = isMeetingField(x.f) ? lookupWeekField(sheetRowAgg.weeks, x.f) : undefined;
       const r = classifyDiff({ field: x.f, sheetValue: x.s, dbValue: x.d }, { contributingDbRows, alternates, sheetRowRecount });
       classified.push({ user: u.email, field: x.f, sheetValue: x.s, dbValue: x.d, type: r.type, detail: r.detail });
     }
@@ -162,8 +144,6 @@ async function main() {
   await pool.end();
 }
 
-// Windows 에서 file:// URL 과 process.argv[1] 슬래시/인코딩 차이로 문자열 비교가 항상 거짓이 되는
-// 함정을 피하려고 경로 비교(backfill-db-row-numbers.mjs 와 동일 패턴) — import 시 부작용 없음.
 const isMainModule = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMainModule) {
   main().catch((e) => { console.error("parity 실패:", (e?.message || e).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]")); process.exit(1); });

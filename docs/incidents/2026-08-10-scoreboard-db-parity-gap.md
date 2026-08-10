@@ -49,11 +49,23 @@ diff 패턴이 예외 없이 동일했다:
 
 BBE-66/68 근인이 해소되어 `sheet_rows`(tab='meetings') 의 계약-상태 데이터 완전성이 회복되면:
 
-1. `gh workflow run "DB Audit (read-only)" -f script=scoreboard-parity -f cohort=<파일럿 전체>` 재실행.
+1. `gh workflow run "DB Audit (read-only)" -f script=scoreboard-parity -f cohort=<파일럿 전체>` 재실행 —
+   2026-08-10 diff 원인 자동분류(아래 하네스 갭 ① 참고) 적용판이라, 재실행 결과가 "시차"(이 인시던트가
+   가리키는 바로 그 문제)로 분류되는지 곧바로 확인 가능. 렌더옵션·로직차이로 분류되는 diff 가 섞여
+   있으면 그건 이 인시던트와 별개 원인이라는 뜻이니 혼동하지 말 것.
 2. diff 0(또는 납득 가능한 소수)이면 PR #720 의 diff 를 cherry-pick(코드는 `a3ae5c0`에 그대로 보존됨) 하여 재적용.
 3. §6.8 배포 관찰 재수행.
 
 ## 하네스 갭 (Hashimoto)
 
-1. **[미해결] `sheet_rows`(meetings) 계약-상태 데이터 완전성 검증 도구 부재** — 이번에 우연히 scoreboard-parity 로 발견했지만, 전용 감사 스크립트가 없다. BBE-66/68 트랙이 근인을 잡을 때, 검증용 read-only 스크립트를 `db-audit.yml` 화이트리스트에 추가하는 편이 재발 확인에 유용할 것.
+1. **[해소 — 2026-08-10] `sheet_rows`(meetings) 계약-상태 데이터 완전성 검증 도구 부재** — belie
+   최우선 지시로 `dashboard-parity.mjs`·`scoreboard-parity.mjs`(이 인시던트로 사라졌던 것을 복원)·
+   `registry-parity.mjs` 3개 모두에 diff 원인 자동분류를 추가했다(공용 모듈
+   `scripts/ops/parity-classify.mjs`). 분류축 = 시차(백필 이후 신규 행 — 이 인시던트가 정확히
+   이 유형)·렌더옵션(#752 패턴)·로직차이(계산식 불일치)·진짜불일치. diff 가 있는 사용자만 추가로
+   시트 04/02 원본 행을 재계산해 "시트 원본과는 일치·DB 재계산과는 다름" 조건으로 시차를 판정한다
+   (쿼터 절약 — 깨끗한 사용자는 추가 호출 0). 손분류에 카드 하나당 며칠 쓰던 것을 없앤다.
+   상세 설계 = `docs/plans/active/parity-diff-classifier.md`(VPS 실데이터 검증만 남음). 단위테스트 47건이 이 인시던트의
+   정확한 패턴("db=0, sheet>0, 미팅+계약 동반")을 합성 데이터로 재현해 고정한다
+   (`tests/ops/scoreboard-parity-lib.test.ts`).
 2. **DB 배치 read 계열 기능의 공통 위험** — BBE-56 처럼 "0행이면 비정상"류 방어가 있는 트랙도 있고 없는 트랙도 있다(scoreboard-db.ts 는 없음). DB 파일럿을 소비하는 새 기능은 머지 전 라이브 parity 를 **머지 게이트**로 명문화하는 것을 고려(현재는 CLAUDE.md 어디에도 강제 규정이 없다 — 이번처럼 다행히 배포 직후 잡았지만 늦게 잡혔으면 더 오래 노출됐을 것).
