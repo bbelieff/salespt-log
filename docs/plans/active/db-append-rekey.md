@@ -40,7 +40,7 @@ row_key 를 실제로 재작성(마이그레이션 실행)하는 건 §0.7 화�
 | 단계 | 내용 | 이 PR? | 벨리 승인 필요? |
 |---|---|---|---|
 | **Phase 1** | UUID 키 발급 메커니즘 + 신규 append 부터 적용 + 레거시(`r{row}`)·신규 키 **양쪽 다 읽기** + update/clear 가 물리 행의 **현재 키**를 조회해서 씀(레거시/신규 무관 정확 타격) | ✅ 이번 | 아니오 — 기존 행 row_key 는 그대로, 순수 additive |
-| **Phase 2** | `scripts/ops/rekey-db-rows-uuid.mjs` — 기존 `{섹션}:r{row}` 행을 UUID 형으로 실제 재작성(dry-run 기본, backfill-sheet-rows.mjs 와 동일 관례) | **미포함**(다음 세션/카드) | **예** — 실행(`--execute`) 전 belie 승인 |
+| **Phase 2** | ~~row_key 자체를 UUID 로 재작성~~ → **범위 축소(2026-08-10, 아래 근거)**: `scripts/ops/backfill-db-row-numbers.mjs` — 기존 레거시 행(`{섹션}:r{row}`) payload 에 `_row` 만 jsonb 병합으로 채운다. **row_key 문자열 자체는 절대 안 바꾼다.** | ✅ 이 카드(별도 PR) | 아니오 — jsonb 병합만, 기존 update/clear 의 안전 패턴과 동일 |
 | **Phase 3** | append 를 실제 dual-sync(동기·throw)로 전환 — Phase 1의 "재시도해도 같은 키" 보장이 전제 | 별도 PR | 아니오(게이트 기본 OFF 패턴 계승 시) |
 
 이번 PR = **Phase 1만**. 완료 정의(§0.8): 코드 배포는 되지만 **행동 변화는 0**(기존 행 read/update/
@@ -61,14 +61,51 @@ clear 전부 이전과 동일 결과) — 새로 append 되는 행만 새 키 �
       왕복 ③행 재사용(clear 후 재-append) 시 신규 키 경로에서 옛 필드 잔존 0 확인(핵심 회귀)
       ④`findCurrentRowKey` 폴백(DB 미설정·미조회) 단위 테스트
 - [x] `npm run check` 통과 (typecheck·lint·structural 25·unit **1122**·파일크기·doc-drift, 전부 초록)
-- [ ] 라이브 dry-run 실측 — **미실행**(Phase 2 스캐폴딩 자체를 이 PR에 포함 안 함, 아래 "의도적 미포함" 참고)
 - [x] `docs/plans/active/sheet-retirement-r7.md` #10 진행상태 갱신
 
-**의도적 미포함(Phase 2·3 이관)**: `rekey-db-rows-uuid.mjs` 스캐폴딩 자체(스크립트 작성 포함) ·
-기존 행 실제 재작성 실행 · append 동기화(dual-sync) 전환. Phase 1 구현 중 500줄 캡(`db.ts`)에
-걸려 `db-tab-writers.ts`(셀 쓰기 공용)·`db-write.ts`(update/clear) 분리까지 하고 나니 이 PR 자체가
-이미 신규 파일 2 + 수정 파일 4 + 테스트 3파일 규모라, Phase 2 스크립트까지 얹으면 리뷰 단위가
-커진다(§3.5 "PR은 작고 원자적") — 다음 세션이 Phase 2 를 별도 카드로 잡는다.
+## Acceptance Criteria (Phase 2 — 별도 PR, 2026-08-10)
+
+- [x] `scripts/ops/backfill-db-row-numbers.mjs` — 레거시 행 payload 에 `_row` jsonb 병합(row_key 불변)
+- [x] 멱등: `payload->>'_row'` 가 이미 유효하면 그 행은 대상에서 제외(재실행 시 자동 수렴)
+- [x] dry-run 기본, `--execute` 로만 실제 UPDATE(backfill-sheet-rows.mjs 관례 계승)
+- [x] 순수 함수 단위 테스트(`legacyRowNumber`·`hasRowNumber`·`pendingRowNumber`) — DB 연결 없이 판정 로직 고정
+- [x] `.github/workflows/db-backfill-row-numbers.yml` — VPS 실행 워크플로(db-backfill.yml 과 동일 SSH/재시도 패턴)
+- [x] `npm run check` 통과
+- [ ] 라이브 dry-run 실측 — VPS 워크플로 1회 실행(dry-run) 후 결과 수치를 PR에 첨부(다음 단계)
+- [ ] `--execute` 실행 — dry-run 결과 확인 후 진행(§0.7: jsonb 병합만이라 벨리 승인 불요로 판단했으나,
+      최초 실행 1회는 dry-run 수치를 belie/반장에게 공유 후 진행 — 완전 자동 결정은 아님)
+
+**의도적 미포함(Phase 3 이관)**: append 실제 dual-sync(동기·throw) 전환 — R7-#11(BBE-60)의
+스코프로 재확인(2026-08-10, 아래 §Phase 2 재설계 근거 참고). Phase 1 은 그 전제조건(재시도해도
+같은 키)만 마련한다.
+
+### Phase 2 재설계 — row_key 개명(rename) 대신 payload 병합으로 축소(2026-08-10)
+
+belie 지시로 BBE-59 완주 착수 — 원래 설계(row_key 자체를 `{섹션}:r{row}` → `{섹션}:{uuid}`
+로 재작성)를 실행 직전 재검토한 결과, **살아있는 파일럿 테이블에 대한 위험한 경쟁 조건**을
+발견해 범위를 축소했다:
+
+- **문제**: 03 화면은 이미 파일럿 기수에서 DB read(R2-5) 라이브다 — 학생이 그 순간에도 03 행을
+  편집·삭제할 수 있다. `resolveWriteKey`(db/row-key.ts)는 "행번호로 현재 키 조회 → 그 키로
+  write" 순서다. 이 스크립트가 SELECT 와 UPDATE(row_key 변경) 사이의 그 틈에 **같은 행의
+  row_key 를 바꿔버리면**, 학생의 동시 편집이 옛 키를 찾다 실패 → `upsertSheetRow`의
+  `ON CONFLICT` 가 그 키를 못 찾아 **엉뚱한 새 행(INSERT 분기)을 만든다** — 이 카드가 원래
+  없애려던 "유령 행" 사고를 마이그레이션 스크립트 자신이 만드는 역설.
+- **반증 시도**: "행 수가 적어 실제로 안 겹칠 것" 이라는 반론을 검토했으나, 파일럿 기수 인원×4섹션
+  누적 행 수 + 마이그레이션 시간(초 단위 이상) 대비 사용자 편집 빈도를 볼 때 **0 이라고 증명할
+  수 없다** — 반증 실패, 위험 채택.
+  락(SELECT FOR UPDATE)으로 직렬화하는 안도 검토했으나 살아있는 요청 경로(`resolveWriteKey`)
+  자체를 이 마이그레이션에 맞춰 잠그도록 고치는 건 스코프 밖(별도 설계 필요)이라 기각.
+- **해법**: row_key 는 그대로 두고 **payload 에 `_row` 필드만 jsonb 병합**한다(신규 스크립트
+  `scripts/ops/backfill-db-row-numbers.mjs`). jsonb 병합(`payload || jsonb_build_object(...)`)은
+  이미 update/clear 전체가 쓰는 검증된 안전 패턴 — 동시 쓰기가 있어도 각자의 병합이 순서대로
+  누적될 뿐 서로를 지우거나 유령 행을 만들지 않는다(경쟁 조건 자체가 성립하지 않는 연산).
+- **이게 R7-#11(BBE-60) 착수를 막지 않는 이유**: `read-db-tab.ts`의 `rowNumOf`·`resolveWriteKey`
+  는 이미 레거시(`r{row}` 파싱)·신규(`_row` 필드) 두 형식을 **동등하게** 다룬다(Phase 1). row_key
+  형식 자체가 통일되지 않아도 #11 이 참조할 "행번호" 는 이 백필로 **모든 행에서 `_row` 로
+  일관되게** 구한다. row_key 문자열 통일(레거시 행의 실제 개명)이 필요해지면 그건 **마이그레이션
+  창(트래픽 없는 시간대) 또는 애플리케이션 레벨 락 설계**가 선행돼야 하는 별도 카드 — belie 결정함
+  섹션에 등재.
 
 ## Context (참고)
 - [[docs/plans/active/sheet-retirement-r7.md]] — #10, 매출 데이터 위험 목록
