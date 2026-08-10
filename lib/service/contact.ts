@@ -341,7 +341,8 @@ export async function patchMeeting(
     try {
       const m = merged ?? (await getMeetingRecord(ctx, id)); // 시트 경로만 merge 후 재읽기
       if (m?.미팅날짜 && m.업체명 &&
-        (m.상태 === "계약" || (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명)))) {
+        (m.상태 === "계약" ||
+          (await hasCompanyInfoArchiveRow(spreadsheetId, m.미팅날짜, m.업체명, { fromDb: syncDb })))) {
         const ci = { 업체명: m.업체명, 계약일: m.미팅날짜, 업체정보: m.업체정보 };
         await upsertCompanyInfoArchive(spreadsheetId, ci, { syncDb });
       }

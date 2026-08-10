@@ -13,7 +13,7 @@
  */
 import { CompanyInfo } from "@/types";
 import { findOwnerBySpreadsheetId } from "../users";
-import { dbEnabled, upsertSheetRow } from "./client";
+import { dbEnabled, ensureSchema, getDbPool, upsertSheetRow } from "./client";
 import { mirrorClearRow, mirrorSheetRow } from "./mirror";
 
 const TAB = "company_archive" as const;
@@ -95,6 +95,28 @@ export async function persistCompanyArchiveRow(
  */
 function renameKeyOnlyPayload(payload: Record<string, unknown>): Record<string, unknown> {
   return { ...CompanyInfo.parse({}), 커스텀: {}, ...payload };
+}
+
+/**
+ * rowKey(계약ref) 의 최신 DB payload 원본 — R7-#11(BBE-60) 시트 수렴잡 전용
+ * (company-info-archive.ts:queueCompanyArchiveSheetSync). `_cleared` 포함 그대로 반환
+ * (필터링은 호출부 소관). 행 없으면 null. read-daily.ts 를 안 쓰는 이유 = 순환참조 회피
+ * (read-daily.ts 가 이미 company-info-archive.ts 의 companyContractRef 를 import).
+ */
+export async function readCompanyArchiveRowPayload(
+  spreadsheetId: string,
+  rowKey: string,
+): Promise<Record<string, unknown> | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = $2 and row_key = $3`,
+    [spreadsheetId, TAB, rowKey],
+  );
+  return (
+    (res.rows[0] as { payload: Record<string, unknown> } | undefined)?.payload ?? null
+  );
 }
 
 /**
