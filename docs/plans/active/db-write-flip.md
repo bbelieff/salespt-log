@@ -163,6 +163,7 @@ related: db-migration-pilot, db-read-contact, api-timing-baseline
   테스트: 신규 `tests/repo/company-archive-flip.test.ts`(14, meetings-write.test.ts 패턴 이식 —
   DB실패→즉시throw·시트미개입, 성공→큐 수렴 find-or-append, mirror_pending mark/clear/self-heal,
   hasCompanyInfoArchiveRow fromDb 4종) + 기존 6개 스위트(57 테스트) 무변경 재확인. check.sh 초록.
+  **PR #786(`574af23`) 머지 · 배포 run `31355596268` success · health 200** — §6.8 완주.
 - 2026-07-15 R3-3 PR-2 fix-forward#2(DevB): **#559 = PARTIAL(DevD 재플래그) 종결** — rename 경로의 stale 부활.
   근인: `persistCompanyArchiveRename` 이 새 키 payload 를 `upsertArchiveRowWithRetry` 에 **직접** 넘겨
   #559 가 upsert 에만 넣은 정규화(`_cleared:false`+`커스텀:{}`)를 **우회**. rename 의 새 키 payload 는
