@@ -27,7 +27,8 @@ import {
   computeAggregates, diff, buildAlternates, lookupField,
   normalizeDbMeeting, normalizeDbContract, normalizeDbSales,
   normalizeSheetMeetingRow, normalizeSheetContractRow,
-  normalizeSheetSalesGrid, diffContractFingerprints, diffSourceFingerprints,
+  normalizeSheetSalesGrid, diffContractFingerprints, diffSourceFingerprints, safeUserKey,
+  redactSensitiveLogText,
 } from "./dashboard-parity-lib.mjs";
 
 function loadEnv() {
@@ -131,20 +132,21 @@ async function main() {
   })).filter((u) => u.sid && COHORTS.includes(u.cohort.replace(/기\s*$/, "")) && u.role !== "trainer" && u.role !== "admin"
     && (!ONLY_USER || u.email === ONLY_USER) && !seen.has(u.sid) && seen.add(u.sid));
 
-  console.log(`dashboard-parity: 대상 ${targets.length}명 (cohort=${COHORT}${ONLY_USER ? `, user=${ONLY_USER}` : ""})`);
+  console.log(`dashboard-parity: 대상 ${targets.length}명 (cohort=${COHORT}${ONLY_USER ? ", user-filter=1" : ""})`);
   let totalDiff = 0, cleanUsers = 0;
   const classified = [];
   for (const u of targets) {
+    const userKey = safeUserKey(u.sid);
     const sheet = await sheetFormulaValues(u.sid);
-    if (!sheet.courseStart) { console.log(`  ${u.email}: courseStart(O1) 없음 — 스킵`); continue; }
+    if (!sheet.courseStart) { console.log(`  ${userKey}: courseStart(O1) 없음 — 스킵`); continue; }
     const cs = parseISO(sheet.courseStart);
     const { sales, meetings, contracts } = await dbRows(u.sid);
     const dbAgg = computeAggregates(meetings, sales, contracts, cs, sheet.courseStart);
     const ds = diff(sheet, dbAgg);
     totalDiff += ds.length;
-    if (ds.length === 0) { cleanUsers++; console.log(`  ✅ ${u.email} (${u.cohort}) — diff 0`); continue; }
+    if (ds.length === 0) { cleanUsers++; console.log(`  ✅ ${userKey} (${u.cohort}) — diff 0`); continue; }
 
-    console.log(`  ⚠️ ${u.email} (${u.cohort}) — diff ${ds.length}:`);
+    console.log(`  ⚠️ ${userKey} (${u.cohort}) — diff ${ds.length}:`);
     for (const x of ds.slice(0, 12)) console.log(`      ${x.f}: sheet=${x.s} db=${x.d}`);
     if (ds.length > 12) console.log(`      … 외 ${ds.length - 12}건`);
 
@@ -159,7 +161,7 @@ async function main() {
       const alternates = buildAlternates(x.f);
       const sheetRowRecount = lookupField(sheetRowAgg, x.f);
       const r = classifyDiff({ field: x.f, sheetValue: x.s, dbValue: x.d }, { contributingDbRows, alternates, sheetRowRecount });
-      classified.push({ user: u.email, field: x.f, sheetValue: x.s, dbValue: x.d, type: r.type, detail: r.detail });
+      classified.push({ user: userKey, field: x.f, sheetValue: x.s, dbValue: x.d, type: r.type, detail: r.detail });
     }
 
     // 진짜 불일치의 원행 방향을 개인정보 없는 지문으로 확정한다. sales/H 는 sales+meetings,
@@ -216,5 +218,5 @@ async function main() {
 // 함정을 피하려고 경로 비교(backfill-db-row-numbers.mjs 와 동일 패턴) — import 시 부작용 없음.
 const isMainModule = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMainModule) {
-  main().catch((e) => { console.error("parity 실패:", (e?.message || e).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]")); process.exit(1); });
+  main().catch((e) => { console.error("parity 실패:", redactSensitiveLogText(e?.message || e)); process.exit(1); });
 }

@@ -72,6 +72,8 @@ export interface Alternate {
 }
 
 export const CHANNEL_ORDER: readonly string[];
+export function safeUserKey(spreadsheetId: unknown): string;
+export function redactSensitiveLogText(value: unknown): string;
 export function num(v: unknown): number;
 export function colName(i: number): string;
 export function coerce(v: unknown): unknown;
