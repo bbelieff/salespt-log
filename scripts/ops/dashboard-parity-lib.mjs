@@ -167,6 +167,8 @@ export function lookupField(agg, field) {
   if (rc) { const m = agg.channelMatrix.find((x) => x.채널 === rc[1]); return m?.[rc[2]] ?? 0; }
   const nc = field.match(/^N\.주(\d+)계약$/);
   if (nc) return agg.weeklyContracts[Number(nc[1]) - 1] ?? 0;
+  const hc = field.match(/^H\.주(\d+)활동$/);
+  if (hc) return agg.weeklyActivity[Number(hc[1]) - 1] ?? 0;
   if (field === "B21.누적수임비") return agg.누적수임비;
   return undefined;
 }
@@ -218,6 +220,55 @@ export function normalizeSheetContractRow(r) {
     수임비: num(r[4]), 구분: String(r[34] ?? "").trim(),
     계약일: (() => { const v = r[2]; return typeof v === "number" ? serialToISO(v) : String(v ?? "").slice(0, 10); })(),
   };
+}
+
+/**
+ * 01 영업관리 E10:H349(10주 × 7일 × 4채널) → DB sales 와 같은 정규화 행.
+ * 빈 행은 제외한다. 날짜·채널은 시트 좌표에서 결정되므로 개인정보를 포함하지 않는다.
+ */
+export function normalizeSheetSalesGrid(rows, courseStartISO) {
+  const start = parseISO(courseStartISO);
+  const out = [];
+  for (let offset = 0; offset < 10 * 7 * 4; offset++) {
+    const r = rows[offset] ?? [];
+    const values = [r[0], r[1], r[2], r[3]];
+    if (values.every((v) => v === undefined || v === null || String(v).trim() === "")) continue;
+    const day = Math.floor(offset / 4);
+    const channel = CHANNEL_ORDER[offset % 4];
+    const dateObj = new Date(start.getFullYear(), start.getMonth(), start.getDate() + day);
+    const date = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+    out.push({
+      date,
+      channel,
+      production: num(values[0]),
+      inflow: num(values[1]),
+      contactProgress: num(values[2]),
+      meetingReservation: num(values[3]),
+    });
+  }
+  return out;
+}
+
+const rowFingerprint = (row, fields) => fields.map((f) => `${f}=${String(row[f] ?? "")}`).join("|");
+
+/** 개인정보 없는 원행 멀티셋 차집합. source 별 필드만 허용한다. */
+export function diffSourceFingerprints(source, sheetRows, dbRows) {
+  const fields = source === "sales"
+    ? ["date", "channel", "production", "inflow", "contactProgress"]
+    : ["미팅날짜", "channel", "상태", "계약여부", "구분"];
+  const sheetMap = countByFingerprint(sheetRows, (r) => rowFingerprint(r, fields));
+  const dbMap = countByFingerprint(dbRows, (r) => rowFingerprint(r, fields));
+  const onlyInSheet = [], onlyInDb = [], countMismatch = [];
+  for (const key of new Set([...sheetMap.keys(), ...dbMap.keys()])) {
+    const sheetCount = sheetMap.get(key) ?? 0;
+    const dbCount = dbMap.get(key) ?? 0;
+    if (sheetCount === dbCount) continue;
+    const entry = { fingerprint: key, sheetCount, dbCount };
+    if (sheetCount > 0 && dbCount === 0) onlyInSheet.push(entry);
+    else if (dbCount > 0 && sheetCount === 0) onlyInDb.push(entry);
+    else countMismatch.push(entry);
+  }
+  return { onlyInSheet, onlyInDb, countMismatch };
 }
 
 // ── B21(누적수임비) 계약 지문 차집합 — BBE-66 550,000원 차이 근인 확정용 ─────────────

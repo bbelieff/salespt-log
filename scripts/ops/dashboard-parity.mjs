@@ -24,10 +24,10 @@ import { Pool } from "pg";
 import { classifyDiff, summarizeClassification } from "./parity-classify.mjs";
 import {
   CHANNEL_ORDER, num, parseISO, serialToISO,
-  computeAggregates, diff, isMeetingOrContractField, buildAlternates, lookupField,
+  computeAggregates, diff, buildAlternates, lookupField,
   normalizeDbMeeting, normalizeDbContract, normalizeDbSales,
   normalizeSheetMeetingRow, normalizeSheetContractRow,
-  diffContractFingerprints,
+  normalizeSheetSalesGrid, diffContractFingerprints, diffSourceFingerprints,
 } from "./dashboard-parity-lib.mjs";
 
 function loadEnv() {
@@ -96,6 +96,10 @@ async function sheetRawContractRows(sid) {
   const rows = await grid(sid, "'02 계약수납관리'!A6:AK");
   return rows.map(normalizeSheetContractRow).filter((c) => c.계약일);
 }
+async function sheetRawSalesRows(sid, courseStartISO) {
+  const rows = await grid(sid, "'01 영업관리'!E10:H349");
+  return normalizeSheetSalesGrid(rows, courseStartISO);
+}
 
 const WEEK_ROWS = [38, 72, 106, 140, 174, 208, 242, 276];
 async function sheetFormulaValues(sid) {
@@ -144,19 +148,37 @@ async function main() {
     for (const x of ds.slice(0, 12)) console.log(`      ${x.f}: sheet=${x.s} db=${x.d}`);
     if (ds.length > 12) console.log(`      … 외 ${ds.length - 12}건`);
 
-    // diff 있는 사용자만 — 시트 04/02 원본 행 재계산(시차 판정용, 쿼터 절약).
-    const [sheetMeetings, sheetContracts] = await Promise.all([
-      sheetRawMeetingRows(u.sid), sheetRawContractRows(u.sid),
+    // diff 있는 사용자만 — 시트 04/02/01 원본 행 재계산(시차 판정용, 쿼터 절약).
+    const [sheetMeetings, sheetContracts, sheetSales] = await Promise.all([
+      sheetRawMeetingRows(u.sid), sheetRawContractRows(u.sid), sheetRawSalesRows(u.sid, sheet.courseStart),
     ]);
-    const sheetRowAgg = computeAggregates(sheetMeetings, [], sheetContracts, cs, sheet.courseStart);
+    const sheetRowAgg = computeAggregates(sheetMeetings, sheetSales, sheetContracts, cs, sheet.courseStart);
 
     for (const x of ds) {
       const contributingDbRows = dbAgg.contrib.get(x.f) ?? [];
       const alternates = buildAlternates(x.f);
-      const sheetRowRecount = isMeetingOrContractField(x.f) ? lookupField(sheetRowAgg, x.f) : undefined;
+      const sheetRowRecount = lookupField(sheetRowAgg, x.f);
       const r = classifyDiff({ field: x.f, sheetValue: x.s, dbValue: x.d }, { contributingDbRows, alternates, sheetRowRecount });
       classified.push({ user: u.email, field: x.f, sheetValue: x.s, dbValue: x.d, type: r.type, detail: r.detail });
     }
+
+    // 진짜 불일치의 원행 방향을 개인정보 없는 지문으로 확정한다. sales/H 는 sales+meetings,
+    // 계약/N 은 meetings 가 원천이다. 날짜·채널·상태·수치·구분만 출력한다.
+    const hasSalesDiff = ds.some((x) => /^R1:U6\.[^.]+\.(생산|유입|컨택진행)$/.test(x.f) || /^H\.주\d+활동$/.test(x.f));
+    const hasMeetingDiff = ds.some((x) => /^R1:U6\.[^.]+\.(계약|미팅예약|미팅완료)$/.test(x.f) || /^N\.주\d+계약$/.test(x.f) || /^H\.주\d+활동$/.test(x.f));
+    const printSourceDiff = (label, fp) => {
+      const groups = [["sheet-only(DB 누락 후보)", fp.onlyInSheet], ["DB-only(extra 후보)", fp.onlyInDb], ["건수 불일치(중복 후보)", fp.countMismatch]];
+      if (groups.every(([, list]) => list.length === 0)) return;
+      console.log(`      ${label} 원행 지문 차집합:`);
+      for (const [name, list] of groups) {
+        if (list.length === 0) continue;
+        console.log(`        [${name}] ${list.length}건`);
+        for (const e of list.slice(0, 8)) console.log(`          ${e.fingerprint} (sheet=${e.sheetCount} db=${e.dbCount})`);
+        if (list.length > 8) console.log(`          … 외 ${list.length - 8}건`);
+      }
+    };
+    if (hasSalesDiff) printSourceDiff("sales", diffSourceFingerprints("sales", sheetSales, sales));
+    if (hasMeetingDiff) printSourceDiff("meetings", diffSourceFingerprints("meetings", sheetMeetings, meetings));
 
     // B21(누적수임비) diff 전용 — belie 지시(2026-08-10): "DB가 정본"이라고 선언 금지, 계약
     // 지문(계약일·수임비·구분) 차집합으로 어느 쪽에 어떤 행이 몇 건 더/덜 있는지 확정만 한다.
