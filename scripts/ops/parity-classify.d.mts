@@ -21,6 +21,7 @@ export interface ClassifyContext {
 export interface ClassifyResult {
   type: string;
   detail: string;
+  direction?: "sheet>db" | "sheet<db";
 }
 
 export interface ClassifiedItem {

@@ -6,7 +6,12 @@
  * 손으로 분류하느라 시간을 쓴다. 유형별 건수 + 샘플 3건 + '진짜 불일치'만 목록으로 뽑아라."
  *
  * 4개 분류축(belie 가 실측으로 이미 확인한 원인들):
- *   ① 시차     — 백필 이후 시트에 쌓인 신규 행(= 그 행 자체가 DB 에 아예 없음).
+ *   ① 시차     — 시트 원본 행 재계산은 시트 수식값과 일치하는데 DB 재계산과는 다름. **방향 2종으로
+ *                분리 출력**(BBE-66, 2026-08-10 — G작업원A 지적: "방향과 무관하게 'DB 에 없는 행'
+ *                이라고 출력"하면 sheet<db 케이스에서 거짓 설명이 된다. DB 가 더 크면 "DB 에 없는
+ *                행" 은 산술적으로 불가능 — sheet 재계산으로 DB 합계가 더 커질 수 없다):
+ *                - 시차(DB 누락 후보)      — sheet > db. 백필 이후 신규 행이 DB 에 아직 없음.
+ *                - 시차(DB extra·중복 후보) — sheet < db. DB 에 시트엔 없는 extra/중복 행 후보.
  *   ② 렌더옵션 — SERIAL_NUMBER vs FORMATTED_STRING(#752 — 날짜 셀이 raw 숫자로 샘).
  *   ③ 로직차이 — 이월 포함/제외, 계약여부 vs 상태 등 계산식 자체가 다름(대안식 재계산이 sheet 와 일치).
  *   ④ 진짜불일치 — 위 어디에도 안 걸리는 것. 이것만 사람이 본다.
@@ -75,15 +80,26 @@ export function classifyDiff(d, ctx = {}) {
     }
   }
 
-  // ③ 시차 — 시트 row 재계산(=수식과 일치)과 DB row 재계산이 다르면, DB 에 없는 행이 있다는 뜻.
+  // ③ 시차 — 시트 row 재계산(=수식과 일치)과 DB row 재계산이 다르면 격차의 방향으로 가설을 가른다.
+  // ⚠️ 방향을 안 보고 "DB 에 없는 행"이라고 단정하면 sheet<db(DB 가 더 큼) 케이스에서 거짓 설명이
+  // 된다 — DB 에서 행이 빠졌다면 DB 합계가 sheet 보다 커질 수 없다(BBE-66 B21 550,000 사례로 반증).
   if (
     ctx.sheetRowRecount !== undefined &&
     ctx.sheetRowRecount === d.sheetValue &&
     ctx.sheetRowRecount !== d.dbValue
   ) {
+    const sheetBigger = Number(d.sheetValue) > Number(d.dbValue);
+    if (sheetBigger) {
+      return {
+        type: "시차(DB 누락 후보)",
+        direction: "sheet>db",
+        detail: `시트 원본 행 재계산(${ctx.sheetRowRecount})은 시트 수식값과 일치하는데 DB 행 재계산(${d.dbValue})보다 큼 — DB 에 없는 행이 있음(백필 이후 신규 행 추정)`,
+      };
+    }
     return {
-      type: "시차",
-      detail: `시트 원본 행 재계산(${ctx.sheetRowRecount})은 시트 수식값과 일치하는데 DB 행 재계산(${d.dbValue})과는 다름 — DB 에 없는 행이 있음(백필 이후 신규 행 추정)`,
+      type: "시차(DB extra·중복 후보)",
+      direction: "sheet<db",
+      detail: `시트 원본 행 재계산(${ctx.sheetRowRecount})은 시트 수식값과 일치하는데 DB 행 재계산(${d.dbValue})보다 작음 — DB 에 시트엔 없는 extra/중복 행이 있을 가능성(직접 조사 필요, "DB 가 정본" 단정 금지)`,
     };
   }
 
@@ -91,7 +107,7 @@ export function classifyDiff(d, ctx = {}) {
   return { type: "진짜불일치", detail: "시차·렌더옵션·로직차이 어디에도 안 걸림 — 직접 조사 필요" };
 }
 
-const TYPE_ORDER = ["시차", "렌더옵션", "로직차이", "진짜불일치"];
+const TYPE_ORDER = ["시차(DB 누락 후보)", "시차(DB extra·중복 후보)", "렌더옵션", "로직차이", "진짜불일치"];
 
 /**
  * classifyDiff 결과들을 belie 가 요청한 출력 형태로 정리한다:
