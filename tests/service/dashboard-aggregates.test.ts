@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContractPayment, Meeting } from "@/types";
 import type { DbSalesRow } from "@/repo/db/client";
-import { MAX_SHEET_WEEK } from "@/config/cohort-dates"; // 리터럴 금지(period-hardcode G3)
+import { MAX_SHEET_WEEK, STATS_WEEKS } from "@/config/cohort-dates"; // 리터럴 금지(period-hardcode G3)
 import {
   arenaFeeFromDb,
   channelStackingFromDb,
@@ -82,9 +82,15 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
     expect(m.every((x) => x.생산 === 0)).toBe(true);
   });
 
-  // R4 W1-1: 무제한 쓰기(11주+ DB-only)가 코스 지표를 오염시키지 않는다는 계약.
-  // 상한 = MAX_SHEET_WEEK(시트 물리 창) — 리터럴 금지(period-hardcode G3).
-  describe("R4 클램프 — 시트 표현 가능 창 밖(11주+) 은 집계 제외", () => {
+  // R4 W1-1: 무제한 쓰기(9주+ DB-only)가 코스 지표를 오염시키지 않는다는 계약.
+  // 상한 = STATS_WEEKS(R1:U6 실제 합산 범위) — 리터럴 금지(period-hardcode G4).
+  // ⚠️ BBE-120(2026-08-10) 실측 정정: FORMULA 렌더옵션으로 R1:U6 수식 원문을 직접 읽어
+  // 확인(연습 계정 + 실제 A2-7기 학생 2곳 모두 동일) — `=E10+E14+…+E272`(56항=8주×7일,
+  // 1~8주만). 이전 버전은 MAX_SHEET_WEEK(10, 시트 쓰기 물리 상한)를 이 클램프에 잘못
+  // 재사용했었다 — MAX_SHEET_WEEK 는 `lib/repo/sales.ts` 의 쓰기 좌표 계산 상한일 뿐,
+  // R1:U6 재계산의 창은 아니다. 이 오분류가 실사용자 3명의 parity 오탐(sheet<db)
+  // 근인이었다(run 31361493846).
+  describe("R4 클램프 — 시트 표현 가능 창 밖(STATS_WEEKS+1주+) 은 집계 제외", () => {
     /** courseStart(CS) 로부터 week 번째 주의 임의 날짜(주 시작일). */
     const dateOfWeek = (week: number): string => {
       const d = new Date(CS);
@@ -92,22 +98,35 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
 
-    it(`${"MAX_SHEET_WEEK"} 이내 행은 그대로 합산(오늘 수치 불변 보증)`, () => {
+    it(`${"STATS_WEEKS"} 이내 행은 그대로 합산(오늘 수치 불변 보증)`, () => {
       const rows = [
         sales(dateOfWeek(1), "매입DB", 1, 0, 0, 0),
-        sales(dateOfWeek(MAX_SHEET_WEEK), "매입DB", 2, 0, 0, 0), // 경계 = 포함
+        sales(dateOfWeek(STATS_WEEKS), "매입DB", 2, 0, 0, 0), // 경계 = 포함
       ];
       const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
       expect(매입.생산).toBe(3);
     });
 
-    it("상한 밖(MAX_SHEET_WEEK+1 주차) 행은 생산/유입/컨택진행에 합산되지 않는다", () => {
+    it("상한 밖(STATS_WEEKS+1 주차) 행은 생산/유입/컨택진행에 합산되지 않는다", () => {
       const rows = [
         sales(dateOfWeek(1), "매입DB", 5, 5, 5, 0),
-        sales(dateOfWeek(MAX_SHEET_WEEK + 1), "매입DB", 100, 100, 100, 0), // 11주+ = DB-only 저장분
+        sales(dateOfWeek(STATS_WEEKS + 1), "매입DB", 100, 100, 100, 0), // 9주+ = DB-only 저장분
       ];
       const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
       expect(매입).toMatchObject({ 생산: 5, 유입: 5, 컨택진행: 5 }); // 부풀림 0
+    });
+
+    it("BBE-120 반증 — MAX_SHEET_WEEK(시트 물리 상한) 이내라도 STATS_WEEKS 밖(9~10주)이면 제외된다", () => {
+      // 이전 버그의 정확한 재현: week9·10 은 시트에 물리적으로 쓸 순 있지만(MAX_SHEET_WEEK=10),
+      // R1:U6 수식은 8주까지만 더한다 — 물리 상한과 합산 창은 다른 개념이다.
+      expect(STATS_WEEKS).toBeLessThan(MAX_SHEET_WEEK); // 전제 고정(두 상수가 같아지면 이 테스트 무의미)
+      const rows = [
+        sales(dateOfWeek(1), "매입DB", 1, 0, 0, 0),
+        sales(dateOfWeek(STATS_WEEKS + 1), "매입DB", 50, 0, 0, 0), // 9주 — MAX_SHEET_WEEK 이내지만 제외 대상
+        sales(dateOfWeek(MAX_SHEET_WEEK), "매입DB", 50, 0, 0, 0), // 10주 — 마찬가지로 제외 대상
+      ];
+      const 매입 = channelStackingFromDb(rows, [], CS).find((x) => x.채널 === "매입DB")!;
+      expect(매입.생산).toBe(1); // 9·10주차 100 이 안 섞여야 함(부풀림 0)
     });
 
     it("먼 미래(수료 한참 뒤) 기록이 쌓여도 코스 지표는 고정", () => {
@@ -134,9 +153,9 @@ describe("R2-7a channelStackingFromDb (01!R1:U6)", () => {
     //   R6 계약        = `=N10+N14+…+N272`            → **주차블록 합**   → 클램프 필요
     // 셋을 같은 규칙으로 묶으면 어느 쪽이든 시트↔DB parity 가 영구 diff 를 낸다.
     // ⚠️ 시트 수식이 바뀌면 이 테스트가 먼저 깨져야 한다(= 그때 코드도 함께 바꾼다).
-    it("11주+ 미팅: 예약·완료는 세고(COUNTIFS 대칭), 계약만 제외(N 주차블록 합 대칭)", () => {
+    it("클램프 밖(먼 미래) 미팅: 예약·완료는 세고(COUNTIFS 대칭), 계약만 제외(N 주차블록 합 대칭)", () => {
       const far = new Date(CS);
-      far.setDate(far.getDate() + (MAX_SHEET_WEEK + 5) * 7); // 15주차쯤
+      far.setDate(far.getDate() + (MAX_SHEET_WEEK + 5) * 7); // 15주차쯤(STATS_WEEKS 도 MAX_SHEET_WEEK 도 넘음)
       const iso = `${far.getFullYear()}-${String(far.getMonth() + 1).padStart(2, "0")}-${String(far.getDate()).padStart(2, "0")}`;
       const 매입 = channelStackingFromDb(
         [],

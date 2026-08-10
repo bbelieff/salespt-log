@@ -32,7 +32,7 @@ import {
   isCarryoverContract,
 } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
-import { MAX_SHEET_WEEK, STATS_WEEKS } from "@/config/cohort-dates";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -67,12 +67,20 @@ export const DONE = (상태: Meeting["상태"]): boolean => 상태 === "완료" 
  * BBE-64(profile-stats-db) 도 재사용 — 새로 만들지 말 것. */
 export const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
 
-/** 시트가 물리적으로 담을 수 있는 주차 창(1~MAX_SHEET_WEEK) 안인가 — R4 무제한 쓰기의 집계 클램프.
- * 날짜가 없거나 파싱 불가면 **제외**(fail-closed) — 창 판정을 못 하는 행이 지표를 부풀리지 않게. */
+/** R1:U6 채널 매트릭스(생산/유입/컨택진행/계약)가 실제로 합산하는 주차 창(1~STATS_WEEKS) 안인가 —
+ * R4 무제한 쓰기의 집계 클램프. 날짜가 없거나 파싱 불가면 **제외**(fail-closed) — 창 판정을 못 하는
+ * 행이 지표를 부풀리지 않게.
+ * ⚠️ BBE-120(2026-08-10) 실측 정정 — 이전 버전은 이 창을 MAX_SHEET_WEEK(10)로 클램프했으나,
+ * FORMULA 렌더옵션으로 R1:U6 수식 원문을 직접 읽어보니(연습 계정 + 실제 A2-7기 학생 2곳 모두 동일)
+ * 실제 합산 범위는 `=E10+E14+…+E272`(8주×7일=56항, 주차블록 1~**8**만 — E272 는 week8 의 마지막
+ * 항이지 week10 이 아니다) 였다. N 주차블록 합(R6 계약)도 동일하게 `=N10+…+N272`(1~8주). MAX_SHEET_WEEK
+ * (10)는 시트 물리 상한(쓰기 좌표 계산용, lib/repo/sales.ts)일 뿐 — 이 대시보드 재계산에는 STATS_WEEKS
+ * (8)가 맞다. 9~10주차 데이터가 있는 사용자는 이 클램프 없이 재계산하면 DB 재계산이 시트 수식보다
+ * 커진다(parity run 31361493846 그룹A 3명 sheet<db 실측과 정확히 일치). */
 function inSheetWindow(dateISO: string | undefined, courseStart: Date): boolean {
   if (!dateISO) return false;
   const w = weekIndexOf(parseISO(dateISO), courseStart);
-  return Number.isFinite(w) && w >= 1 && w <= MAX_SHEET_WEEK;
+  return Number.isFinite(w) && w >= 1 && w <= STATS_WEEKS;
 }
 
 /** 채널별 6단계 stacking (01!R1:U6 재현). 생산/유입/컨택진행=salesRows 합,
@@ -90,10 +98,11 @@ export function channelStackingFromDb(
   for (const r of salesRows) {
     const m = byCh.get(r.channel as Channel);
     if (!m) continue; // 오염 채널 무시(CHANNEL_ORDER 만)
-    // R4 W1-1: **시트 표현 가능 창(1~MAX_SHEET_WEEK) 클램프**(양방향). 무제한 쓰기(11주+ DB-only)를
+    // R4 W1-1: **시트 표현 가능 창(1~STATS_WEEKS) 클램프**(양방향). 무제한 쓰기(9주+ DB-only)를
     // 열면서 이게 없으면 시트가 담지 못하는 행까지 합산돼 대시보드가 영구히 부푼다. 하한도 건다 —
     // 삭제된 쓰기 가드(isWithinSalesWindow=salesRowFor)는 주차 0(수강 시작 전) 기입도 막고 있었다.
-    // 실측 근거: 시트 R1~R3 = `=E10+E14+…+E272`(주차블록 1~10 행 열거) → 창 밖은 시트도 안 센다.
+    // 실측 근거(BBE-120, 2026-08-10 재확인): 시트 R1~R3 = `=E10+E14+…+E272`(56항=8주×7일,
+    // 주차블록 1~8만 — E272 는 week8 마지막 항) → 창 밖은 시트도 안 센다.
     if (!inSheetWindow(r.date, courseStart)) continue;
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
@@ -105,7 +114,7 @@ export function channelStackingFromDb(
     if (CARRYOVER(mt)) continue; // R4/R5 수식 AO<>"이월" — 이월 미팅 제외
     // ⚠️ 시트 수식 실측(2026-07-28, 연습 시트 R1:U6)이 **단계별로 다른 창**을 쓴다:
     //   R4 미팅예약 · R5 미팅완료 = COUNTIFS(04!F:F,J:J) — **날짜 무필터** → 클램프 금지.
-    //   R6 계약        = N10+N14+…+N272 — **주차블록 합(1~MAX_SHEET_WEEK)** → 클램프 필요.
+    //   R6 계약        = N10+N14+…+N272 — **주차블록 합(1~STATS_WEEKS, BBE-120 재확인)** → 클램프 필요.
     // 셋을 같은 규칙으로 묶으면 어느 쪽이든 parity 가 깨진다(reverseShadowCompare 영구 diff).
     if (ALIVE(mt.상태)) m.미팅예약 += 1; // 누적 퍼널: 살아있는 미팅 전부(무필터 = 시트 대칭)
     if (DONE(mt.상태)) m.미팅완료 += 1;
