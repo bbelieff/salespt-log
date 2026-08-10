@@ -10,6 +10,9 @@
  *                         B21 550,000 케이스의 실제 payload(전체 필드) 확인.
  *   --mode=meeting-row  : 지정 사용자의 meetings(04) sheet_rows 원본 행을 주차·상태로 나열 —
  *                         갈래 B/C(sheet>db, 계약 결측) 의 실제 존재 여부 확인.
+ *   --mode=sales-crosscheck : 현재 시트 O1 기준으로 01 영업관리 E10:H349 를 재구성해 기대
+ *                         row_key 집합을 만들고, DB sales row_key 집합과 직접 대조 — DB 에만
+ *                         있는(=현재 시트 어느 셀과도 안 맞는) 행을 "고아 행" 후보로 뽑는다.
  *
  * 실행(VPS, 읽기 전용 — 쓰기 없음): node scripts/ops/bbe120-diag.mjs --user <email> --mode <mode>
  * ★ raw payload 를 그대로 출력한다 — 이 스크립트의 출력은 Linear 에 그대로 올리지 말고
@@ -77,8 +80,16 @@ function redact(payload) {
   return out;
 }
 
+const CH = ["매입DB", "직접생산", "현수막", "콜·지·기·소"];
+function serialToISO(v) {
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 20000) return null;
+  return new Date((n - 25569) * 86400000).toISOString().slice(0, 10);
+}
+
 async function main() {
-  if (!USER || !MODE) { console.error("사용법: node bbe120-diag.mjs --user <email> --mode sales-rows|contract-row|meeting-row"); process.exit(1); }
+  if (!USER || !MODE) { console.error("사용법: node bbe120-diag.mjs --user <email> --mode sales-rows|contract-row|meeting-row|sales-crosscheck"); process.exit(1); }
   if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY || !DB_URL) { console.error("env 누락"); process.exit(1); }
   initClients();
   const sid = await findSid(USER);
@@ -136,6 +147,46 @@ async function main() {
       const id = r[0], status = r[9], channel = r[5], 미팅날짜 = r[3], 구분 = r[40];
       if (status === "계약") console.log(`  row${i + 2}: id=${id} channel=${channel} 미팅날짜=${미팅날짜} 구분=${구분}`);
     });
+  } else if (MODE === "sales-crosscheck") {
+    // 현재 시트 원본(01 영업관리 E10:H349, backfill 과 동일 좌표식)을 현재 O1 기준으로
+    // (date,channel) row_key 집합으로 재구성 → DB sales row_key 집합과 직접 대조.
+    // DB 에만 있는 row_key = 지금 시트 어느 셀로도 매핑 안 되는 "고아" 행(중복적재/구시대 O1 흔적 후보).
+    const o1 = (await grid(sid, "'01 영업관리'!O1"))[0]?.[0];
+    const startISO = serialToISO(o1);
+    if (!startISO) { console.error("O1 파싱 실패"); process.exit(1); }
+    console.log(`현재 O1(수강시작일)=${startISO}`);
+    const start = new Date(startISO + "T00:00:00Z");
+    const block = await grid(sid, "'01 영업관리'!E10:H349");
+    const sheetKeys = new Set();
+    for (let w = 1; w <= 10; w++) {
+      for (let d = 0; d < 7; d++) {
+        for (let c = 0; c < 4; c++) {
+          const sheetRow = 10 + (w - 1) * 34 + d * 4 + c;
+          const r = block[sheetRow - 10] ?? [];
+          const [E, F, G, H] = [r[0], r[1], r[2], r[3]].map((v) => String(v ?? "").trim());
+          if (E === "" && F === "" && G === "" && H === "") continue;
+          const date = new Date(start.getTime() + ((w - 1) * 7 + d) * 86400000).toISOString().slice(0, 10);
+          sheetKeys.add(`${date}:${CH[c]}`);
+        }
+      }
+    }
+    console.log(`현재 시트 비어있지 않은 셀 수(=기대 row_key 수): ${sheetKeys.size}`);
+    const res = await pool.query(
+      `select row_key, payload from sheet_rows where spreadsheet_id=$1 and tab='sales'
+       and coalesce((payload->>'_cleared')::boolean,false)=false`,
+      [sid],
+    );
+    const dbKeys = new Set(res.rows.map((r) => r.row_key));
+    console.log(`DB row_key 수: ${dbKeys.size}`);
+    const orphanInDb = [...dbKeys].filter((k) => !sheetKeys.has(k));
+    const missingInDb = [...sheetKeys].filter((k) => !dbKeys.has(k));
+    console.log(`DB 에만 있음(현재 시트 어느 셀과도 매핑 안 됨 — 중복적재/구 O1 흔적 후보): ${orphanInDb.length}건`);
+    for (const k of orphanInDb) {
+      const row = res.rows.find((r) => r.row_key === k);
+      console.log(`  ${k} :: ${JSON.stringify(redact(row.payload))}`);
+    }
+    console.log(`시트에만 있음(DB 미기록 후보): ${missingInDb.length}건`);
+    for (const k of missingInDb) console.log(`  ${k}`);
   } else {
     console.error("알 수 없는 mode:", MODE);
     process.exit(1);
