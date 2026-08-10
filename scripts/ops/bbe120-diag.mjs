@@ -157,7 +157,7 @@ async function main() {
     console.log(`현재 O1(수강시작일)=${startISO}`);
     const start = new Date(startISO + "T00:00:00Z");
     const block = await grid(sid, "'01 영업관리'!E10:H349");
-    const sheetKeys = new Set();
+    const sheetVals = new Map(); // row_key -> {production,inflow,contactProgress,meetingReservation}
     for (let w = 1; w <= 10; w++) {
       for (let d = 0; d < 7; d++) {
         for (let c = 0; c < 4; c++) {
@@ -166,10 +166,16 @@ async function main() {
           const [E, F, G, H] = [r[0], r[1], r[2], r[3]].map((v) => String(v ?? "").trim());
           if (E === "" && F === "" && G === "" && H === "") continue;
           const date = new Date(start.getTime() + ((w - 1) * 7 + d) * 86400000).toISOString().slice(0, 10);
-          sheetKeys.add(`${date}:${CH[c]}`);
+          sheetVals.set(`${date}:${CH[c]}`, {
+            production: E === "" ? undefined : Number(E),
+            inflow: F === "" ? undefined : Number(F),
+            contactProgress: G === "" ? undefined : Number(G),
+            meetingReservation: H === "" ? undefined : Number(H),
+          });
         }
       }
     }
+    const sheetKeys = new Set(sheetVals.keys());
     console.log(`현재 시트 비어있지 않은 셀 수(=기대 row_key 수): ${sheetKeys.size}`);
     const res = await pool.query(
       `select row_key, payload from sheet_rows where spreadsheet_id=$1 and tab='sales'
@@ -187,6 +193,25 @@ async function main() {
     }
     console.log(`시트에만 있음(DB 미기록 후보): ${missingInDb.length}건`);
     for (const k of missingInDb) console.log(`  ${k}`);
+
+    // 값 대조 — row_key 는 일치해도 payload 의 값 자체가 지금 시트 셀과 다를 수 있다
+    // (예: backfill 이후 시트가 수동으로 수정됐는데 DB 가 재동기화 안 된 stale 값 후보).
+    const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : Number.isFinite(Number(v)) ? Number(v) : 0);
+    const FIELDS = ["production", "inflow", "contactProgress", "meetingReservation"];
+    let valueMismatches = 0;
+    for (const r of res.rows) {
+      const sv = sheetVals.get(r.row_key);
+      if (!sv) continue; // orphan — 이미 위에서 다룸
+      for (const f of FIELDS) {
+        const sheetV = num(sv[f]);
+        const dbV = num(r.payload[f]);
+        if (sheetV !== dbV) {
+          valueMismatches++;
+          console.log(`  값 불일치 ${r.row_key}.${f}: 시트=${sheetV} db=${dbV} (db payload _backfill=${r.payload._backfill ?? false})`);
+        }
+      }
+    }
+    console.log(`값 불일치(row_key 는 같은데 필드값이 다름): ${valueMismatches}건`);
   } else {
     console.error("알 수 없는 mode:", MODE);
     process.exit(1);
