@@ -72,10 +72,21 @@ describe("classifyDiff", () => {
     expect(r.type).not.toBe("로직차이");
   });
 
-  it("③ 시차 — 시트 row 재계산이 수식값과 일치·DB 재계산과는 다르면 '행이 DB 에 없음'으로 판정", () => {
-    const r = classifyDiff(base, { sheetRowRecount: 3 }); // sheetValue=3 과 일치, dbValue=0 과는 다름
-    expect(r.type).toBe("시차");
+  it("③ 시차(sheet>db) — 시트 row 재계산이 수식값과 일치·DB 재계산보다 크면 'DB 누락 후보'로 판정", () => {
+    const r = classifyDiff(base, { sheetRowRecount: 3 }); // sheetValue=3 과 일치, dbValue=0 보다 큼
+    expect(r.type).toBe("시차(DB 누락 후보)");
+    expect(r.direction).toBe("sheet>db");
     expect(r.detail).toContain("DB 에 없는 행");
+  });
+
+  it("③ 시차(sheet<db) — DB 재계산이 더 크면 방향과 무관하게 'DB 에 없는 행'이라 단정하지 않는다(BBE-66 B21 반증)", () => {
+    // G작업원A 지적(2026-08-10): "DB가 550,000 더 큰데 #782는 방향과 무관하게 'DB에 없는 행'이라고
+    // 출력한다. DB 누락으로 DB 합계가 커질 수 없으므로 이 설명은 거짓이다."
+    const d = { field: "B21.누적수임비", sheetValue: 6600000, dbValue: 7150000 };
+    const r = classifyDiff(d, { sheetRowRecount: 6600000 }); // sheetValue 와 일치, dbValue 보다 작음
+    expect(r.type).toBe("시차(DB extra·중복 후보)");
+    expect(r.direction).toBe("sheet<db");
+    expect(r.detail).not.toContain("DB 에 없는 행");
   });
 
   it("시트 row 재계산이 sheet 수식값과도 다르면 시차로 판정하지 않는다(수식 자체가 이상한 케이스는 진짜불일치로 남김)", () => {

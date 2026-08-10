@@ -27,6 +27,7 @@ import {
   computeAggregates, diff, isMeetingOrContractField, buildAlternates, lookupField,
   normalizeDbMeeting, normalizeDbContract, normalizeDbSales,
   normalizeSheetMeetingRow, normalizeSheetContractRow,
+  diffContractFingerprints,
 } from "./dashboard-parity-lib.mjs";
 
 function loadEnv() {
@@ -155,6 +156,33 @@ async function main() {
       const sheetRowRecount = isMeetingOrContractField(x.f) ? lookupField(sheetRowAgg, x.f) : undefined;
       const r = classifyDiff({ field: x.f, sheetValue: x.s, dbValue: x.d }, { contributingDbRows, alternates, sheetRowRecount });
       classified.push({ user: u.email, field: x.f, sheetValue: x.s, dbValue: x.d, type: r.type, detail: r.detail });
+    }
+
+    // B21(누적수임비) diff 전용 — belie 지시(2026-08-10): "DB가 정본"이라고 선언 금지, 계약
+    // 지문(계약일·수임비·구분) 차집합으로 어느 쪽에 어떤 행이 몇 건 더/덜 있는지 확정만 한다.
+    // 개인정보(이름·이메일·회사명·행 인덱스) 없음 — sheetContracts/dbAgg.contrib 는 이미 정규화됨.
+    const b21Diff = ds.find((x) => x.f === "B21.누적수임비");
+    if (b21Diff) {
+      const dbContracts = dbAgg.contrib.get("B21.누적수임비") ?? [];
+      const fp = diffContractFingerprints(sheetContracts, dbContracts);
+      console.log(`      B21 계약 지문 차집합 (sheet=${b21Diff.s} db=${b21Diff.d}, diff=${b21Diff.d - b21Diff.s}):`);
+      const printGroup = (label, list) => {
+        if (list.length === 0) return;
+        console.log(`        [${label}] ${list.length}건`);
+        for (const e of list.slice(0, 5)) {
+          console.log(`          계약일=${e.계약일} 수임비=${e.수임비} 구분=${e.구분 ?? "-"}` +
+            (e.sheetCount !== undefined ? ` (sheet=${e.sheetCount}건 db=${e.dbCount}건)` : "") +
+            (e.detail ? ` — ${e.detail}` : ""));
+        }
+        if (list.length > 5) console.log(`          … 외 ${list.length - 5}건`);
+      };
+      printGroup("sheet 에만 있음(DB 누락 후보)", fp.onlyInSheet);
+      printGroup("DB 에만 있음(DB extra·중복 후보)", fp.onlyInDb);
+      printGroup("둘 다 있는데 건수(중복) 다름", fp.countMismatch);
+      printGroup("구분(이월 판정) 드리프트 후보", fp.typeDrift);
+      if (fp.onlyInSheet.length + fp.onlyInDb.length + fp.countMismatch.length === 0) {
+        console.log("        지문 차집합 0건 — 개별 계약 단위로는 안 잡힘(합산·반올림 등 다른 원인 의심)");
+      }
     }
   }
   console.log(`\n── 요약 ── 사용자 ${targets.length} · diff 0 사용자 ${cleanUsers} · 총 diff ${totalDiff}`);

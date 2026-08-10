@@ -57,7 +57,7 @@ describe("실제 인시던트 재현 — 시차(2026-08-10, db=0·sheet>0·미�
           sheetRowRecount: sheetValue,
         },
       );
-      expect(r.type).toBe("시차");
+      expect(r.type).toBe("시차(DB 누락 후보)"); // sheet(3·2) > db(0) — BBE-66(2026-08-10) 방향분리
     }
   });
 

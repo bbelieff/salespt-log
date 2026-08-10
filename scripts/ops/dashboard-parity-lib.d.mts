@@ -98,3 +98,28 @@ export function normalizeDbContract(p: Record<string, unknown>): NormalizedContr
 export function normalizeDbSales(p: Record<string, unknown>): NormalizedSales;
 export function normalizeSheetMeetingRow(r: unknown[]): NormalizedMeeting;
 export function normalizeSheetContractRow(r: unknown[]): NormalizedContract;
+
+export function inSheetWindow(dateISO: string | undefined, courseStart: Date): boolean;
+
+export interface FingerprintEntry {
+  계약일: string;
+  수임비: number;
+  구분?: string;
+  sheetCount?: number;
+  dbCount?: number;
+  detail?: string;
+}
+
+export interface ContractFingerprintDiff {
+  onlyInSheet: FingerprintEntry[];
+  onlyInDb: FingerprintEntry[];
+  countMismatch: FingerprintEntry[];
+  typeDrift: FingerprintEntry[];
+}
+
+export function contractFingerprint(c: NormalizedContract): string;
+export function contractFingerprintNoType(c: NormalizedContract): string;
+export function diffContractFingerprints(
+  sheetRows: NormalizedContract[],
+  dbRows: NormalizedContract[],
+): ContractFingerprintDiff;

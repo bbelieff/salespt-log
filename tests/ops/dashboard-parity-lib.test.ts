@@ -6,7 +6,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildAlternates,
   computeAggregates,
+  contractFingerprint,
   diff,
+  diffContractFingerprints,
+  inSheetWindow,
   isMeetingOrContractField,
   lookupField,
 } from "../../scripts/ops/dashboard-parity-lib.mjs";
@@ -99,13 +102,124 @@ describe("실제 관측 패턴 재현 — ③ 시차(BBE-63 인시던트 — db=
       { field, sheetValue: 3, dbValue: 0 },
       { contributingDbRows: dbAgg.contrib.get(field) ?? [], alternates: buildAlternates(field), sheetRowRecount },
     );
-    expect(r.type).toBe("시차");
+    expect(r.type).toBe("시차(DB 누락 후보)");
     expect(r.detail).toContain("DB 에 없는 행");
   });
 
   it("H.주X활동(sales 혼합 필드)은 isMeetingOrContractField 가 false — 시차 판정에서 제외된다", () => {
     expect(isMeetingOrContractField("H.주1활동")).toBe(false);
     expect(isMeetingOrContractField("R1:U6.매입DB.생산")).toBe(false);
+  });
+
+  it("반대 방향(sheet<db) — B21 550,000원 패턴 재현: 시차(DB extra·중복 후보)로 분류하고 'DB 에 없는 행'이라 단정하지 않는다", () => {
+    // BBE-66 재분류(G작업원A, 2026-08-10): DB 가 sheet 보다 큰데 방향과 무관하게 "DB 에 없는 행"
+    // 이라고 출력하면 산술적으로 불가능한 설명이 된다(DB 누락으로는 DB 합계가 더 커질 수 없음).
+    const field = "B21.누적수임비";
+    const r = classifyDiff(
+      { field, sheetValue: 6600000, dbValue: 7150000 },
+      { sheetRowRecount: 6600000 }, // 시트 원본 재계산 = 시트 수식값과 일치, DB 재계산과는 다름
+    );
+    expect(r.type).toBe("시차(DB extra·중복 후보)");
+    expect(r.direction).toBe("sheet<db");
+    expect(r.detail).not.toContain("DB 에 없는 행");
+    expect(r.detail).toContain("정본");
+  });
+});
+
+describe("주차 창 클램프 (BBE-66 재분류, G작업원A 진단 — #782 가 정본 inSheetWindow 를 누락)", () => {
+  const CS = new Date(2026, 6, 3); // 2026-07-03
+
+  it("inSheetWindow — 1~10주 안만 true, 시작 전(음수)·11주+ 는 false", () => {
+    expect(inSheetWindow("2026-07-05", CS)).toBe(true); // 주1
+    expect(inSheetWindow("2026-06-01", CS)).toBe(false); // 시작 전(week=0)
+    expect(inSheetWindow("2026-12-01", CS)).toBe(false); // 11주+
+    expect(inSheetWindow(undefined, CS)).toBe(false); // 날짜 없음 — fail-closed
+  });
+
+  it("sales 생산/유입/컨택진행은 창 밖이면 카운트에서 제외된다 — 정본 dashboard-aggregates.ts:97 동치", () => {
+    const sales = [
+      { channel: "매입DB", date: "2026-07-05", production: 5, inflow: 3, contactProgress: 2 }, // 주1 — 창 안
+      { channel: "매입DB", date: "2026-12-01", production: 100, inflow: 100, contactProgress: 100 }, // 창 밖(11주+)
+      { channel: "매입DB", date: "2026-06-01", production: 100, inflow: 100, contactProgress: 100 }, // 창 밖(시작 전)
+    ];
+    const agg = computeAggregates([], sales, [], CS, "2026-07-03");
+    const m = agg.channelMatrix.find((c) => c.채널 === "매입DB")!;
+    // 수정 전엔 205/203/202 로 부풀었다(#782 실측 — 채널별 계약: sheet<db 31/2, sales: sheet<db 4/1).
+    expect(m.생산).toBe(5);
+    expect(m.유입).toBe(3);
+    expect(m.컨택진행).toBe(2);
+  });
+
+  it("R1:U6.계약(채널 계약수)도 미팅날짜가 창 밖이면 계약여부=true 라도 제외된다 — 정본 N 주차블록합 동치", () => {
+    const meetings = [
+      { channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: "2026-07-05", 구분: "" }, // 주1 — 창 안
+      { channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: "2026-12-01", 구분: "" }, // 창 밖
+    ];
+    const agg = computeAggregates(meetings, [], [], CS, "2026-07-03");
+    const m = agg.channelMatrix.find((c) => c.채널 === "매입DB")!;
+    expect(m.계약).toBe(1); // 창 밖 1건은 제외
+    expect(m.미팅예약).toBe(2); // R4/R5 는 COUNTIFS 무필터 — 창 클램프 금지(정본 실측)
+    expect(m.미팅완료).toBe(2);
+    // 창 밖 미팅도 후보 풀엔 남아있어야 한다 — 분류기 대안식이 재검토할 수 있게.
+    expect(agg.contrib.get("R1:U6.매입DB.계약")).toHaveLength(2);
+  });
+
+  it("N 주차계약·H 주차활동은 이미 정본과 동일한 1~8주 클램프를 쓰고 있었다(회귀 없음 확인)", () => {
+    const meetings = [{ channel: "매입DB", 상태: "계약", 계약여부: true, 미팅날짜: "2026-07-05", 구분: "" }];
+    const agg = computeAggregates(meetings, [], [], CS, "2026-07-03");
+    expect(agg.weeklyContracts[0]).toBe(1);
+    expect(agg.weeklyContracts.reduce((a, b) => a + b, 0)).toBe(1);
+  });
+});
+
+describe("diffContractFingerprints — B21 계약 지문 차집합 (PII 없음)", () => {
+  it("sheet 에만 있는 계약(DB 누락 후보)을 잡는다", () => {
+    const sheetRows = [{ 계약일: "2026-07-10", 수임비: 550000, 구분: "" }];
+    const dbRows: typeof sheetRows = [];
+    const r = diffContractFingerprints(sheetRows, dbRows);
+    expect(r.onlyInSheet).toEqual([{ 계약일: "2026-07-10", 수임비: 550000, 구분: "일반", sheetCount: 1, dbCount: 0 }]);
+    expect(r.onlyInDb).toHaveLength(0);
+  });
+
+  it("DB 에만 있는 계약(DB extra·중복 후보)을 잡는다 — B21 550,000 패턴", () => {
+    const sheetRows: { 계약일: string; 수임비: number; 구분: string }[] = [];
+    const dbRows = [{ 계약일: "2026-07-10", 수임비: 550000, 구분: "" }];
+    const r = diffContractFingerprints(sheetRows, dbRows);
+    expect(r.onlyInDb).toEqual([{ 계약일: "2026-07-10", 수임비: 550000, 구분: "일반", sheetCount: 0, dbCount: 1 }]);
+    expect(r.onlyInSheet).toHaveLength(0);
+  });
+
+  it("같은 지문이 양쪽에 같은 건수로 있으면 차집합에 안 잡힌다", () => {
+    const rows = [{ 계약일: "2026-07-10", 수임비: 550000, 구분: "" }];
+    const r = diffContractFingerprints(rows, rows.map((r) => ({ ...r })));
+    expect(r.onlyInSheet).toHaveLength(0);
+    expect(r.onlyInDb).toHaveLength(0);
+    expect(r.countMismatch).toHaveLength(0);
+  });
+
+  it("같은 계약일·수임비인데 구분(이월 여부)만 다르면 '구분 드리프트' 후보로 별도 보고한다", () => {
+    const sheetRows = [{ 계약일: "2026-07-10", 수임비: 550000, 구분: "" }]; // 일반(집계 포함)
+    const dbRows = [{ 계약일: "2026-07-10", 수임비: 550000, 구분: "이월" }]; // 이월(집계 제외)
+    const r = diffContractFingerprints(sheetRows, dbRows);
+    expect(r.onlyInSheet).toHaveLength(1); // 지문(구분 포함) 기준으론 여전히 양쪽 다 unique
+    expect(r.onlyInDb).toHaveLength(1);
+    expect(r.typeDrift).toHaveLength(1);
+    expect(r.typeDrift[0]!.detail).toContain("이월 판정 드리프트");
+  });
+
+  it("중복(같은 지문 2건 vs 1건)은 countMismatch 로 잡는다", () => {
+    const sheetRows = [
+      { 계약일: "2026-07-10", 수임비: 550000, 구분: "" },
+      { 계약일: "2026-07-10", 수임비: 550000, 구분: "" },
+    ];
+    const dbRows = [{ 계약일: "2026-07-10", 수임비: 550000, 구분: "" }];
+    const r = diffContractFingerprints(sheetRows, dbRows);
+    expect(r.countMismatch).toEqual([{ 계약일: "2026-07-10", 수임비: 550000, 구분: "일반", sheetCount: 2, dbCount: 1 }]);
+  });
+
+  it("지문에 이름·이메일·회사명 등 PII 필드가 없다 — 계약일·수임비·구분만", () => {
+    const c = { 계약일: "2026-07-10", 수임비: 550000, 구분: "", 이름: "김덕호", 이메일: "x@y.com" };
+    expect(contractFingerprint(c)).toBe("2026-07-10|550000|일반");
   });
 });
 
