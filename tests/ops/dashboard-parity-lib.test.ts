@@ -9,6 +9,10 @@ import {
   contractFingerprint,
   diff,
   diffContractFingerprints,
+  diffSourceFingerprints,
+  normalizeSheetSalesGrid,
+  safeUserKey,
+  redactSensitiveLogText,
   inSheetWindow,
   isMeetingOrContractField,
   lookupField,
@@ -228,5 +232,61 @@ describe("diff() — sheet vs db 비교", () => {
     const sheet = { channelMatrix: [{ 채널: "매입DB", 생산: 1, 유입: 0, 컨택진행: 0, 미팅예약: 0, 미팅완료: 0, 계약: 0 }], weeklyContracts: new Array(8).fill(0), weeklyActivity: new Array(8).fill(0), 누적수임비: 0 };
     const db = structuredClone(sheet);
     expect(diff(sheet, db)).toHaveLength(0);
+  });
+});
+
+describe("잔여 diff 원행 진단", () => {
+  it("로그 사용자 키에 이메일·sheet id 원문이 0건이다", () => {
+    const email = "person@example.com";
+    const sheetId = "1AbCdEfGhIjKlMnOpQrStUvWxYz987654321";
+    const sampleLog = `${safeUserKey(sheetId)} (A2-7기) — diff 2`;
+    expect(sampleLog).toMatch(/^user-[0-9a-f]{12} /);
+    expect(sampleLog).not.toContain(email);
+    expect(sampleLog).not.toContain(sheetId);
+    expect(sampleLog).not.toMatch(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  });
+
+  it("SDK 오류 샘플 로그에서도 이메일·sheet id 원문이 0건이다", () => {
+    const email = "person@example.com";
+    const sheetId = "1AbCdEfGhIjKlMnOpQrStUvWxYz987654321";
+    const sampleLog = redactSensitiveLogText(`forbidden ${email} spreadsheets/${sheetId}`);
+    expect(sampleLog).toBe("forbidden [EMAIL] spreadsheets/[INTERNAL_ID]");
+    expect(sampleLog).not.toContain(email);
+    expect(sampleLog).not.toContain(sheetId);
+  });
+
+  it("01 E10:H349의 34행 주차 stride와 340행 양 끝을 보존한다", () => {
+    const rows: unknown[][] = Array.from({ length: 340 }, () => []);
+    rows[0] = [1, 2, 3, 4]; // 1주 첫 행: day 0 매입DB
+    rows[27] = [5, 6, 7, 8]; // 1주 마지막 데이터행: day 6 콜·지·기·소
+    rows[28] = [999, 999, 999, 999]; // 1주 간격행: 반드시 무시
+    rows[33] = [999, 999, 999, 999]; // 1주 마지막 간격행: 반드시 무시
+    rows[34] = [9, 10, 11, 12]; // 2주 첫 행: day 7 매입DB
+    rows[333] = [13, 14, 15, 16]; // 10주 마지막 데이터행: day 69 콜·지·기·소
+    rows[339] = [999, 999, 999, 999]; // 전체 마지막 간격행: 반드시 무시
+    const out = normalizeSheetSalesGrid(rows, "2026-07-03");
+    expect(out).toEqual([
+      { date: "2026-07-03", channel: "매입DB", production: 1, inflow: 2, contactProgress: 3, meetingReservation: 4 },
+      { date: "2026-07-09", channel: "콜·지·기·소", production: 5, inflow: 6, contactProgress: 7, meetingReservation: 8 },
+      { date: "2026-07-10", channel: "매입DB", production: 9, inflow: 10, contactProgress: 11, meetingReservation: 12 },
+      { date: "2026-09-10", channel: "콜·지·기·소", production: 13, inflow: 14, contactProgress: 15, meetingReservation: 16 },
+    ]);
+    expect(out.some((r) => r.production === 999)).toBe(false);
+  });
+
+  it("sales 지문 차집합은 날짜·채널·집계수치만 쓰고 누락/extra/중복을 나눈다", () => {
+    const sheet = [{ date: "2026-07-03", channel: "직접생산", production: 38, inflow: 0, contactProgress: 0 }];
+    const db: typeof sheet = [];
+    const r = diffSourceFingerprints("sales", sheet, db);
+    expect(r.onlyInSheet).toHaveLength(1);
+    expect(r.onlyInSheet[0]!.fingerprint).toBe("date=2026-07-03|channel=직접생산|production=38|inflow=0|contactProgress=0");
+    expect(r.onlyInDb).toHaveLength(0);
+  });
+
+  it("meeting 지문 차집합은 계약 동반 누락을 상태·계약여부·구분으로 식별한다", () => {
+    const sheet = [{ 미팅날짜: "2026-07-03", channel: "매입DB", 상태: "계약", 계약여부: true, 구분: "" }];
+    const r = diffSourceFingerprints("meetings", sheet, []);
+    expect(r.onlyInSheet).toHaveLength(1);
+    expect(r.onlyInSheet[0]!.fingerprint).toContain("상태=계약");
   });
 });

@@ -5,7 +5,19 @@
  * 안전하지 않다" 는 문제를 피하려고 분리했다(Hashimoto — 같은 함정을 또 만들지 않기).
  */
 
+import { createHash } from "node:crypto";
+
 export const CHANNEL_ORDER = ["매입DB", "직접생산", "현수막", "콜·지·기·소"];
+
+/** Actions/VPS 로그용 비가역 별칭. 원문 식별자는 반환값에 포함하지 않는다. */
+export const safeUserKey = (spreadsheetId) =>
+  `user-${createHash("sha256").update(String(spreadsheetId)).digest("hex").slice(0, 12)}`;
+
+/** 외부 SDK 오류 문자열에 섞일 수 있는 이메일·긴 내부 식별자를 방어적으로 제거한다. */
+export const redactSensitiveLogText = (value) => String(value)
+  .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[EMAIL]")
+  .replace(/\b[A-Za-z0-9_-]{20,}\b/g, "[INTERNAL_ID]")
+  .replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
 
 export const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -167,6 +179,8 @@ export function lookupField(agg, field) {
   if (rc) { const m = agg.channelMatrix.find((x) => x.채널 === rc[1]); return m?.[rc[2]] ?? 0; }
   const nc = field.match(/^N\.주(\d+)계약$/);
   if (nc) return agg.weeklyContracts[Number(nc[1]) - 1] ?? 0;
+  const hc = field.match(/^H\.주(\d+)활동$/);
+  if (hc) return agg.weeklyActivity[Number(hc[1]) - 1] ?? 0;
   if (field === "B21.누적수임비") return agg.누적수임비;
   return undefined;
 }
@@ -218,6 +232,61 @@ export function normalizeSheetContractRow(r) {
     수임비: num(r[4]), 구분: String(r[34] ?? "").trim(),
     계약일: (() => { const v = r[2]; return typeof v === "number" ? serialToISO(v) : String(v ?? "").slice(0, 10); })(),
   };
+}
+
+/**
+ * 01 영업관리 E10:H349(10주 × 주당 34행) → DB sales 와 같은 정규화 행.
+ * 각 주는 7일 × 4채널 = 28개 데이터행 뒤에 6개 간격행이 붙는다.
+ * 빈 행과 간격행은 제외하며 날짜·채널은 시트 좌표에서 결정한다.
+ */
+export function normalizeSheetSalesGrid(rows, courseStartISO) {
+  const start = parseISO(courseStartISO);
+  const out = [];
+  for (let week = 0; week < 10; week++) {
+    for (let dayInWeek = 0; dayInWeek < 7; dayInWeek++) {
+      for (let channelIndex = 0; channelIndex < 4; channelIndex++) {
+        const offset = week * 34 + dayInWeek * 4 + channelIndex;
+        const r = rows[offset] ?? [];
+        const values = [r[0], r[1], r[2], r[3]];
+        if (values.every((v) => v === undefined || v === null || String(v).trim() === "")) continue;
+        const elapsedDay = week * 7 + dayInWeek;
+        const channel = CHANNEL_ORDER[channelIndex];
+        const dateObj = new Date(start.getFullYear(), start.getMonth(), start.getDate() + elapsedDay);
+        const date = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+        out.push({
+          date,
+          channel,
+          production: num(values[0]),
+          inflow: num(values[1]),
+          contactProgress: num(values[2]),
+          meetingReservation: num(values[3]),
+        });
+      }
+    }
+  }
+  return out;
+}
+
+const rowFingerprint = (row, fields) => fields.map((f) => `${f}=${String(row[f] ?? "")}`).join("|");
+
+/** 개인정보 없는 원행 멀티셋 차집합. source 별 필드만 허용한다. */
+export function diffSourceFingerprints(source, sheetRows, dbRows) {
+  const fields = source === "sales"
+    ? ["date", "channel", "production", "inflow", "contactProgress"]
+    : ["미팅날짜", "channel", "상태", "계약여부", "구분"];
+  const sheetMap = countByFingerprint(sheetRows, (r) => rowFingerprint(r, fields));
+  const dbMap = countByFingerprint(dbRows, (r) => rowFingerprint(r, fields));
+  const onlyInSheet = [], onlyInDb = [], countMismatch = [];
+  for (const key of new Set([...sheetMap.keys(), ...dbMap.keys()])) {
+    const sheetCount = sheetMap.get(key) ?? 0;
+    const dbCount = dbMap.get(key) ?? 0;
+    if (sheetCount === dbCount) continue;
+    const entry = { fingerprint: key, sheetCount, dbCount };
+    if (sheetCount > 0 && dbCount === 0) onlyInSheet.push(entry);
+    else if (dbCount > 0 && sheetCount === 0) onlyInDb.push(entry);
+    else countMismatch.push(entry);
+  }
+  return { onlyInSheet, onlyInDb, countMismatch };
 }
 
 // ── B21(누적수임비) 계약 지문 차집합 — BBE-66 550,000원 차이 근인 확정용 ─────────────

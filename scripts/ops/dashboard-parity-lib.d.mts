@@ -72,6 +72,8 @@ export interface Alternate {
 }
 
 export const CHANNEL_ORDER: readonly string[];
+export function safeUserKey(spreadsheetId: unknown): string;
+export function redactSensitiveLogText(value: unknown): string;
 export function num(v: unknown): number;
 export function colName(i: number): string;
 export function coerce(v: unknown): unknown;
@@ -98,6 +100,13 @@ export function normalizeDbContract(p: Record<string, unknown>): NormalizedContr
 export function normalizeDbSales(p: Record<string, unknown>): NormalizedSales;
 export function normalizeSheetMeetingRow(r: unknown[]): NormalizedMeeting;
 export function normalizeSheetContractRow(r: unknown[]): NormalizedContract;
+export function normalizeSheetSalesGrid(rows: unknown[][], courseStartISO: string): NormalizedSales[];
+export interface SourceFingerprintEntry { fingerprint: string; sheetCount: number; dbCount: number; }
+export function diffSourceFingerprints(
+  source: "sales" | "meetings",
+  sheetRows: Array<Record<string, unknown>>,
+  dbRows: Array<Record<string, unknown>>,
+): { onlyInSheet: SourceFingerprintEntry[]; onlyInDb: SourceFingerprintEntry[]; countMismatch: SourceFingerprintEntry[] };
 
 export function inSheetWindow(dateISO: string | undefined, courseStart: Date): boolean;
 
