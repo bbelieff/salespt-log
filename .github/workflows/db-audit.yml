@@ -36,6 +36,7 @@ on:
           - contract-row
           - meeting-row
           - sales-crosscheck
+          - formula-check
 
 jobs:
   audit:
@@ -115,9 +116,9 @@ jobs:
                 echo "❌ user 에 셸 메타문자가 포함돼 있습니다 — 중단합니다." >&2; exit 1 ;;
             esac
             case "$DIAG_MODE" in
-              sales-rows|contract-row|meeting-row|sales-crosscheck) ;;
+              sales-rows|contract-row|meeting-row|sales-crosscheck|formula-check) ;;
               *)
-                echo "❌ mode 가 비어 있거나 잘못됐습니다(sales-rows|contract-row|meeting-row|sales-crosscheck)." >&2; exit 1 ;;
+                echo "❌ mode 가 비어 있거나 잘못됐습니다(sales-rows|contract-row|meeting-row|sales-crosscheck|formula-check)." >&2; exit 1 ;;
             esac
             ARGS="--user '$DIAG_USER' --mode '$DIAG_MODE'"
           fi

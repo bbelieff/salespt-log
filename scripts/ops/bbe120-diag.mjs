@@ -63,6 +63,14 @@ async function grid(sid, range) {
   return res?.data.values ?? [];
 }
 
+/** FORMULA 렌더옵션 — 셀에 저장된 수식 문자열 그대로(값 아님). */
+async function gridFormula(sid, range) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sid, range, valueRenderOption: "FORMULA",
+  }).catch(() => null);
+  return res?.data.values ?? [];
+}
+
 async function findSid(email) {
   const reg = await grid(REGISTRY_ID, "'users'!A2:R");
   const row = reg.find((r) => String(r[0] ?? "").trim().toLowerCase() === email);
@@ -89,7 +97,7 @@ function serialToISO(v) {
 }
 
 async function main() {
-  if (!USER || !MODE) { console.error("사용법: node bbe120-diag.mjs --user <email> --mode sales-rows|contract-row|meeting-row|sales-crosscheck"); process.exit(1); }
+  if (!USER || !MODE) { console.error("사용법: node bbe120-diag.mjs --user <email> --mode sales-rows|contract-row|meeting-row|sales-crosscheck|formula-check"); process.exit(1); }
   if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY || !DB_URL) { console.error("env 누락"); process.exit(1); }
   initClients();
   const sid = await findSid(USER);
@@ -212,6 +220,16 @@ async function main() {
       }
     }
     console.log(`값 불일치(row_key 는 같은데 필드값이 다름): ${valueMismatches}건`);
+  } else if (MODE === "formula-check") {
+    // R1:U6(채널 매트릭스)·C33:H40(주차활동)·B21(누적수임비) 의 실제 수식 텍스트를 그대로 출력.
+    // 값이 아니라 "무엇을 더하는지" 자체를 봐서, inSheetWindow(MAX_SHEET_WEEK=10) 가정이
+    // 실제 수식의 합산 범위와 맞는지(예: E10+E14+...+E272 처럼 8주까지만인지) 직접 확인한다.
+    const ranges = ["'01 영업관리'!R1:U6", "'대시보드(자동작성)'!C33:H40", "'대시보드(자동작성)'!B21"];
+    for (const range of ranges) {
+      const rows = await gridFormula(sid, range);
+      console.log(`--- ${range} ---`);
+      rows.forEach((r, i) => console.log(`  행${i}: ${JSON.stringify(r)}`));
+    }
   } else {
     console.error("알 수 없는 mode:", MODE);
     process.exit(1);
