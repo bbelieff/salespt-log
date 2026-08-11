@@ -30,7 +30,10 @@ export function diffByKey(
   dbRows: Record<string, unknown>[],
   keyOf: (row: Record<string, unknown>) => string,
   fields: string[],
+  normalizers?: Record<string, (raw: unknown) => string>,
 ): DiffByKeyResult;
 
 export function classifyFieldMismatches(mismatches: FieldMismatch[], label: string): ClassifiedItem[];
 export function missingInDbAsClassified(keys: string[], label: string): ClassifiedItem[];
+export function normalizeSortOrder(raw: unknown): string;
+export function normalizeCohortType(raw: unknown): string;
