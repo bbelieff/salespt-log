@@ -32,7 +32,13 @@ import { resolve } from "node:path";
 import { google } from "googleapis";
 import { Pool } from "pg";
 import { summarizeClassification } from "./parity-classify.mjs";
-import { classifyFieldMismatches, diffByKey, missingInDbAsClassified } from "./registry-parity-lib.mjs";
+import {
+  classifyFieldMismatches,
+  diffByKey,
+  missingInDbAsClassified,
+  normalizeCohortType,
+  normalizeSortOrder,
+} from "./registry-parity-lib.mjs";
 
 function loadEnv() {
   const out = {};
@@ -157,8 +163,8 @@ async function dbCohorts() {
 function report(result, label) {
   console.log(`\n=== ${label} 대조 ===`);
   console.log(`시트 고유키 ${result.uniqueSheetKeys} · DB ${result.dbCount}`);
-  console.log(`DB 에 없음(시트에만): ${result.missingInDb.length}${result.missingInDb.length ? " → " + result.missingInDb.slice(0, 10).join(", ") : ""}`);
-  console.log(`시트에 없음(DB에만): ${result.missingInSheet.length}${result.missingInSheet.length ? " → " + result.missingInSheet.slice(0, 10).join(", ") : ""}`);
+  console.log(`DB 에 없음(시트에만): ${result.missingInDb.length}${result.missingInDb.length ? " → " + result.missingInDb.slice(0, 50).join(", ") : ""}`);
+  console.log(`시트에 없음(DB에만): ${result.missingInSheet.length}${result.missingInSheet.length ? " → " + result.missingInSheet.slice(0, 50).join(", ") : ""}`);
   console.log(`필드 불일치: ${result.fieldMismatches.length}건`);
   for (const m of result.fieldMismatches.slice(0, 30)) {
     console.log(`  [${m.key}] ${m.field}: 시트="${m.sheet}" ≠ DB="${m.db}"`);
@@ -174,8 +180,10 @@ async function main() {
   initClients();
 
   const [su, sc, du, dc] = await Promise.all([sheetUsers(), sheetCohorts(), dbUsers(), dbCohorts()]);
-  const uResult = diffByKey(su, du, (r) => `${r.email}|${r.cohort}|${r.name}`, USER_COLS.slice(3));
-  const cResult = diffByKey(sc, dc, (r) => r.label, COHORT_COLS.slice(1));
+  const uResult = diffByKey(su, du, (r) => `${r.email}|${r.cohort}|${r.name}`, USER_COLS.slice(3), {
+    sort_order: normalizeSortOrder,
+  });
+  const cResult = diffByKey(sc, dc, (r) => r.label, COHORT_COLS.slice(1), { type: normalizeCohortType });
   report(uResult, "users");
   report(cResult, "cohorts");
 
