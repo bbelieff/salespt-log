@@ -7,16 +7,50 @@
  *   node scripts/ops/backfill-sheet-rows.mjs --cohort 연습 --sheet <시트ID> [--execute]
  *     ↑ **파일럿 편입 전 선백필** — registry B(cohort)가 빈 계정은 --cohort 로 못 찾으므로
  *       시트를 명시해 먼저 DB 를 채우고, 그 다음 B 를 쓴다(순서 반대면 게이트가 DB 로 붙어 빈 화면).
+ *   node scripts/ops/backfill-sheet-rows.mjs --cohort 5 --legacy-year 2026 [--execute]
+ *     ↑ **5기 등 무번호 legacy 탭**(BBE-67) — 아래 "Legacy 5기 어댑터" 절 참고.
  *
  * row_key 규칙 — lib/repo/db/mirror.ts 의 dual-write 와 **반드시 동일**:
  *   meetings=A열 id · todos=A열 id · contracts=r{행} · db={섹션}:r{행} ·
  *   sales={ISO날짜}:{채널} · company_archive=C열 계약ref.
  * payload = 열문자→값(비어있지 않은 셀만) + _backfill:true. 멱등: upsert(jsonb 병합).
  * ★URL·비밀번호·SA 키 로그 미출력.
+ *
+ * ── Legacy 5기 어댑터 (BBE-67, 2026-08-11) ──────────────────────────────
+ * 5기 시트는 01~06 번호 탭이 아니라 무번호 구형 세대(영업관리·계약관리·DB관리)를 쓰고,
+ * **구조 자체가 다르다**(고정좌표 재사용 금지 — Linear BBE-67 census 코멘트가 근거).
+ * 확정 근거(Drive 읽기 도구 3표본 + G작업원D 의 masterbot grid sentinel read, PII 없음):
+ *   · db(DB관리): 위치 고정(3표본 완전 일치) — parseLegacyDbManagement.
+ *   · sales(영업관리): **소스마다 컬럼 세트가 다르다**(19열 vs 15열 표본 확인) → 고정 위치
+ *     금지, 매 주차 헤더 행을 다시 읽어 이름으로 컬럼을 찾는다(parseLegacySalesRows).
+ *     날짜는 O1 앵커+34행 stride 가 아니라 **행마다 직접 적힌 M/D 값**이고, 하루=정확히
+ *     4행(매입DB→직접생산→현수막→지-기-소, 항상 존재)이며 날짜는 그 날의 매입DB 행에만
+ *     있고 나머지 3행은 이어받는다. 연도 정보가 시트에 없어 `--legacy-year` 필수(없으면 에러
+ *     — 추측 금지).
+ *   · contracts(계약관리): row10=헤더·11=예시·12+=데이터(G작업원D 판정, 유일한 근거).
+ *     컬럼 의미(C=계약일 등)는 "02 계약관리" alias 와 동일하다는 가정 — TAB_ALIASES 가 이미
+ *     다루는 "이름만 바뀌고 컬럼은 같은" 패턴과 동일 계보로 판단(미검증, dry-run 행수 37 로
+ *     사후 확인 필요).
+ *   · meetings·todos·company_archive: 5기 시트에 **탭 자체가 없다**(3표본 확인) — 기존
+ *     "탭 없음→0행" 처리가 이미 정답이라 코드 변경 없음.
+ * DB payload 키는 항상 **모던 03 DB관리 컬럼 문자**(lib/config/index.ts SHEET_RANGES.
+ * dbManagement.sections 와 동일, SSOT 갱신 시 이 파일도 같이 갱신)로 맞춘다 — legacy 자체
+ * 컬럼 문자를 그대로 쓰면 앱 읽기 코드가 기대하는 자리와 안 맞는다. legacy 필드 중 모던에
+ * 대응 없는 것(예: 매입DB·현수막의 "주문금액" — 모던은 개당단가×주문개수 계산값이라 미저장)
+ * 은 추측해 끼워넣지 않고 버린다.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
 import { Pool } from "pg";
+
+// Windows 에서 file:// URL 과 process.argv[1] 슬래시/인코딩 차이로 문자열 비교가 항상 거짓이
+// 되는 함정을 피한 경로 비교(db-migrate.mjs·backfill-db-row-numbers.mjs 와 동일 패턴).
+// BBE-67 순수 함수(parseLegacyDbManagement 등)를 tests/ops/ 에서 import 할 때 아래 CLI
+// 인자검증·process.exit·main() 이 같이 실행되지 않도록 이 가드로 격리한다.
+const isMainModule =
+  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 // ── env (.env.local 우선 병합 — append-updates 는 첫 파일만 읽는 것과 달리 둘 다) ──
 function loadEnv() {
@@ -52,12 +86,28 @@ const SHEET = (() => {
   return i >= 0 ? String(process.argv[i + 1] ?? "").trim() : "";
 })();
 const EXECUTE = process.argv.includes("--execute");
+/** legacy(무번호) sales 탭은 시트에 연도가 없다(M/D 만) — 추측 금지, 명시 인자 필수.
+ * 값이 있어야만 legacy sales 파싱을 시도한다(없으면 sales 는 조용히 스킵, 에러 아님 —
+ * legacy 탭이 아예 없는 일반 기수 실행에서 이 인자가 없어도 기존 동작 불변). */
+const LEGACY_YEAR = (() => {
+  const i = process.argv.indexOf("--legacy-year");
+  if (i < 0) return null;
+  const n = Number(process.argv[i + 1]);
+  if (!Number.isInteger(n) || n < 2020 || n > 2100) {
+    console.error(`backfill: --legacy-year 값이 이상함(${process.argv[i + 1]}) — 4자리 연도(예: 2026)`);
+    process.exit(1);
+  }
+  return n;
+})();
 // R2-1.5(아레나): 콤마 목록 허용 — 예: --cohort "A1-0,A1-1,A1-2" (단일 라벨 동작 불변).
 const COHORTS = COHORT.split(",").map((s) => s.trim().replace(/기\s*$/, "")).filter(Boolean);
-if (!COHORT) {
+// CLI 인자검증 — isMainModule 가드(직접 실행될 때만). tests/ops/ 의 import 는 여기서
+// process.exit 되면 안 되므로(순수 함수만 쓴다) 실행 시에만 검사한다.
+if (isMainModule && !COHORT) {
   console.error(
-    "사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--sheet <시트ID>] [--execute]\n" +
-      "  --sheet 지정 시: 그 시트만 백필(레지스트리 cohort 무관). --cohort 는 DB 에 스탬프할 라벨.",
+    "사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--sheet <시트ID>] [--legacy-year <YYYY>] [--execute]\n" +
+      "  --sheet 지정 시: 그 시트만 백필(레지스트리 cohort 무관). --cohort 는 DB 에 스탬프할 라벨.\n" +
+      "  --legacy-year: 5기 등 무번호 legacy 탭(영업관리) 대상일 때 필수 — 시트에 연도가 없어 직접 지정.",
   );
   process.exit(1);
 }
@@ -66,10 +116,10 @@ const REGISTRY_ID = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
 const SA_KEY = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\\n/g, "\n");
 const DB_URL = env("DATABASE_URL");
-if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY) {
+if (isMainModule && (!REGISTRY_ID || !SA_EMAIL || !SA_KEY)) {
   console.error("backfill: SA/레지스트리 env 누락"); process.exit(1);
 }
-if (EXECUTE && !DB_URL) {
+if (isMainModule && EXECUTE && !DB_URL) {
   console.error("backfill: --execute 인데 DATABASE_URL 없음"); process.exit(1);
 }
 
@@ -122,6 +172,225 @@ const serialToISO = (v) => {
   return new Date((n - 25569) * 86400000).toISOString().slice(0, 10);
 };
 
+// ══════════════════════════════════════════════════════════════════════
+// Legacy 5기 어댑터 — 순수 함수(테스트 대상, tests/ops/backfill-legacy-adapter.test.ts)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * legacy DB관리 → 모던 03 DB관리 컬럼 문자로 재매핑. **위치 고정**(census 3표본 완전 일치).
+ * SSOT: lib/config/index.ts SHEET_RANGES.dbManagement.sections — 이 맵이 그 코드와
+ * 어긋나면(모던 컬럼 스키마 변경) 이 배열도 같이 갱신해야 한다.
+ *
+ * 섹션별 legacy 필드 순서 → 모던 컬럼 문자. `null` = 모던에 대응 없어 버리는 필드
+ * (예: "주문금액" — 모던은 개당단가×주문개수 계산값이라 미저장, 값 자체를 없는 필드에
+ * 끼워넣지 않는다). "부가세여부"(모던 전용, legacy 에 없음)는 항상 공란.
+ */
+const LEGACY_DB_SECTIONS = [
+  {
+    name: "매입DB",
+    legacyFields: ["구매일", "업체명", "개당단가", "주문개수", null /* 주문금액 */, "기타"],
+    modernCols: ["B", "C", "D", "E", null /* F=부가세여부, legacy 소스 없음 */, "G"],
+    legacyColOffset: 0, // 헤더행에서 "구매일" 이 있는 열(A=0)부터
+  },
+  {
+    name: "직접생산",
+    // legacy: 날짜,소재,기간예산,생산개수,개당단가(대응 없음),기타 — modern: 시작일,종료일,소재,
+    // 기간예산,생산개수,부가세여부,기타. legacy 단일 "날짜" → 시작일(종료일은 정보 없음, 공란).
+    legacyFields: ["시작일" /* legacy "날짜" */, "소재", "기간예산", "생산개수", null /* 개당단가 */, "기타"],
+    modernCols: ["I", "K", "L", "M", null, "O"], // J(종료일) 대응 없음 — 공란 유지
+    legacyColOffset: 6, // 매입DB(6열) 다음부터
+  },
+  {
+    name: "현수막",
+    legacyFields: ["날짜", "업체명", "도착일", "개당단가", "주문개수", null /* 주문금액 */, "기타"],
+    modernCols: ["P", "Q", "R", "S", "T", null /* U=부가세여부, legacy 소스 없음 */, "V"],
+    legacyColOffset: null, // 별도 섹션 블록(아래 헤더 탐색으로 처리)
+  },
+  {
+    name: "콜지기소",
+    // legacy "지인,기고객,소개" 섹션 — 필드 7개가 모던 콜·지·기·소와 완전 일치.
+    legacyFields: ["구분", "접수일", "대표자명", "업체명", "소개처", "연락처", "조건"],
+    modernCols: ["X", "Y", "Z", "AA", "AB", "AC", "AD"],
+    legacyColOffset: null,
+  },
+];
+
+/** rows(2차원 배열, 시트 그대로) 안에서 첫 셀이 target 과 정확히 일치하는 행 index. 없으면 -1. */
+function findRowByFirstCell(rows, target) {
+  return rows.findIndex((r) => String(r?.[0] ?? "").trim() === target);
+}
+
+/** legacyFields/modernCols 매핑으로 한 행을 모던 컬럼-문자 payload 로 변환.
+ * null 필드는 건너뜀(모던에 대응 없음 — 값이 있어도 버림, 잘못된 자리에 끼워넣지 않음). */
+function remapLegacyDbRow(cells, spec) {
+  const payload = { _backfill: true };
+  spec.legacyFields.forEach((_field, i) => {
+    const modernCol = spec.modernCols[i];
+    if (!modernCol) return; // 대응 없음 — 버림
+    const v = String(cells[i] ?? "").trim();
+    if (v !== "") payload[modernCol] = v;
+  });
+  return payload;
+}
+
+/**
+ * legacy DB관리 파싱 — 위치 고정(매입DB+직접생산 나란히 12열 → 합계 → 현수막(7열) → 합계
+ * → 지인/기고객/소개(7열) → 합계). rows = grid(sid, "'DB관리'!A1:L200") 같은 넓은 범위
+ * (합계 행까지 전부 포함하도록 여유 있게). rowKey = `{modern섹션명}:r{절대행1-based}`
+ * (기존 03 DB관리 row_key 규칙과 동일 포맷 — dual-write 와 정합).
+ */
+export function parseLegacyDbManagement(rows) {
+  const out = [];
+  // ① 매입DB + 직접생산 — 같은 헤더행("구매일"이 A열), 같은 데이터 행에 나란히.
+  const buyHeaderIdx = findRowByFirstCell(rows, "구매일");
+  if (buyHeaderIdx >= 0) {
+    for (let i = buyHeaderIdx + 1; i < rows.length; i++) {
+      const r = rows[i] ?? [];
+      const buyDate = String(r[0] ?? "").trim();
+      if (!buyDate || /^합계$|^평균단가/.test(buyDate)) break;
+      const buyCells = r.slice(0, 6);
+      if (String(buyCells[0] ?? "").trim() !== "") {
+        out.push({
+          rowKey: `매입DB:r${i + 1}`,
+          payload: remapLegacyDbRow(buyCells, LEGACY_DB_SECTIONS[0]),
+          row: i + 1,
+        });
+      }
+      const prodCells = r.slice(6, 12);
+      if (String(prodCells[0] ?? "").trim() !== "") {
+        out.push({
+          rowKey: `직접생산:r${i + 1}`,
+          payload: remapLegacyDbRow(prodCells, LEGACY_DB_SECTIONS[1]),
+          row: i + 1,
+        });
+      }
+    }
+  }
+  // ② 현수막 — 독립 헤더행("날짜"가 A열, 매입DB 헤더 이후에 다시 등장).
+  const bannerHeaderIdx = rows.findIndex(
+    (r, i) => i > buyHeaderIdx && String(r?.[0] ?? "").trim() === "날짜",
+  );
+  if (bannerHeaderIdx >= 0) {
+    for (let i = bannerHeaderIdx + 1; i < rows.length; i++) {
+      const r = rows[i] ?? [];
+      const date = String(r[0] ?? "").trim();
+      if (!date || /^합계$|^평균단가/.test(date)) break;
+      out.push({
+        rowKey: `현수막:r${i + 1}`,
+        payload: remapLegacyDbRow(r.slice(0, 7), LEGACY_DB_SECTIONS[2]),
+        row: i + 1,
+      });
+    }
+  }
+  // ③ 지인/기고객/소개 — 독립 헤더행("구분"이 A열).
+  const referralHeaderIdx = findRowByFirstCell(rows, "구분");
+  if (referralHeaderIdx >= 0) {
+    for (let i = referralHeaderIdx + 1; i < rows.length; i++) {
+      const r = rows[i] ?? [];
+      const kind = String(r[0] ?? "").trim();
+      if (!kind || /^합계$/.test(kind)) break;
+      if (!/^(지인|기고객|소개)$/.test(kind)) continue; // 분류행만(빈 템플릿 잔재 skip)
+      out.push({
+        rowKey: `콜지기소:r${i + 1}`,
+        payload: remapLegacyDbRow(r.slice(0, 7), LEGACY_DB_SECTIONS[3]),
+        row: i + 1,
+      });
+    }
+  }
+  return out;
+}
+
+/** legacy sales 헤더 행(2번째 서브헤더, "생산건 수 ▶" 등)에서 컬럼 이름 → index 맵.
+ * 화살표(▶)·트림 차이를 흡수하려 prefix 매칭. census 3표본에서 이 4개 필드는 위치가 아니라
+ * **이름**으로 찾아야 안전함이 확인됨(소스마다 뒤쪽 컬럼 구성이 다름 — 승인/수납 유무 등). */
+function buildLegacySalesColumnMap(headerRow) {
+  const map = {};
+  headerRow.forEach((cell, i) => {
+    const s = String(cell ?? "").trim();
+    if (s) map[s.replace(/\s*▶$/, "")] = i;
+  });
+  const findIdx = (...names) => {
+    for (const n of names) if (map[n] !== undefined) return map[n];
+    return -1;
+  };
+  return {
+    date: 1, // "날짜" 컬럼 — 위치 고정(요일 다음, 3표본 공통)
+    channel: 2, // "채널" 컬럼 — 위치 고정
+    production: findIdx("생산건 수", "생산건수"),
+    inflow: findIdx("유입건 수", "유입건수"),
+    contactProgress: findIdx("컨택진행 수", "컨택진행수"),
+    // "컨택 성공건 수"(구) / "미팅 예약건 수"(신) — 모던 SHEET_RANGES.sales.metricCols.H 와
+    // 동일한 개명 이력(주석 "구 컨택성공"). 표본에 따라 둘 중 하나만 존재.
+    meetingReservation: findIdx("컨택 성공건 수", "컨택성공건수", "미팅 예약건 수", "미팅예약건수"),
+  };
+}
+
+/** 모던 채널 라벨(mirror.ts CH 배열)과 매칭 — "지-기-소"(legacy, 콜 없는 3분류로 보임)를
+ * "콜·지·기·소"(모던)로 정규화. 다른 3채널은 표기 동일. */
+const LEGACY_CHANNEL_TO_MODERN = {
+  매입DB: "매입DB", 직접생산: "직접생산", 현수막: "현수막", "지-기-소": "콜·지·기·소",
+};
+
+/**
+ * legacy 영업관리 파싱 — 순차 스캔(고정좌표 없음). O1 앵커+34행 stride 를 쓰지 않는다
+ * (census: 소스마다 컬럼 구성이 다르고, 주당 정확히 28행=7일×4채널이라 34-stride 와 다름).
+ * 날짜는 각 날의 매입DB 행에만 적혀 있고 나머지 3채널 행은 공란 — 이어받는다(carry-forward).
+ * rows = grid(sid, "'영업관리'!A1:S500") 처럼 전 시트를 넓게(19열까지) 읽은 결과.
+ * year 없이는 M/D 에 연도를 못 붙이므로 호출부가 보장(LEGACY_YEAR 없으면 아예 호출 안 함).
+ */
+export function parseLegacySalesRows(rows, year) {
+  const out = [];
+  let colMap = null;
+  let carryDate = null; // 이 날의 매입DB 행에서 읽은 M/D → carry
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] ?? [];
+    const c0 = String(r[0] ?? "").trim();
+    const c1 = String(r[1] ?? "").trim();
+    // 주차 헤더행("요일" / "날짜"로 시작) → 그 다음 행이 서브헤더(실제 컬럼명).
+    if (c0 === "요일" && c1 === "날짜") {
+      colMap = buildLegacySalesColumnMap(rows[i + 1] ?? []);
+      i += 1; // 서브헤더 행은 데이터가 아니므로 건너뜀
+      carryDate = null;
+      continue;
+    }
+    if (!colMap) continue; // 아직 헤더를 못 만남(예: 요약행 구간) — 스킵
+    const channelRaw = String(r[colMap.channel] ?? "").trim();
+    const modernChannel = LEGACY_CHANNEL_TO_MODERN[channelRaw];
+    if (!modernChannel) {
+      // "주차별합계" 등 주차 종료 마커 — 다음 주차 헤더를 다시 기다린다.
+      if (/^주차별합계|^주간/.test(c0)) colMap = null;
+      continue;
+    }
+    const dateCell = String(r[colMap.date] ?? "").trim();
+    if (channelRaw === "매입DB") carryDate = dateCell || carryDate;
+    const md = carryDate;
+    if (!md) continue; // 이 채널행보다 먼저 매입DB 행에서 날짜를 못 얻음 — 스킵(안전)
+    const m = md.match(/^(\d{1,2})\/(\d{1,2})/);
+    if (!m) continue;
+    const mm = String(m[1]).padStart(2, "0");
+    const dd = String(m[2]).padStart(2, "0");
+    const date = `${year}-${mm}-${dd}`;
+    const payload = { _backfill: true, date, channel: modernChannel };
+    const pick = (key, field) => {
+      const idx = colMap[key];
+      if (idx == null || idx < 0) return;
+      const v = String(r[idx] ?? "").trim();
+      if (v !== "") payload[field] = Number(v) || v;
+    };
+    pick("production", "production");
+    pick("inflow", "inflow");
+    pick("contactProgress", "contactProgress");
+    pick("meetingReservation", "meetingReservation");
+    // 4개 지표가 전부 없으면(빈 채널 행) 적재 안 함 — 현행 sales 스킵 규칙과 동일.
+    if (
+      payload.production === undefined && payload.inflow === undefined &&
+      payload.contactProgress === undefined && payload.meetingReservation === undefined
+    ) continue;
+    out.push({ rowKey: `${date}:${modernChannel}`, payload, row: i + 1 });
+  }
+  return out;
+}
+
 /** 한 사용자 시트 → {tab → [{rowKey, payload}]} (dual-write 와 동일 키 규칙). */
 async function extractUserRows(sid) {
   const out = { meetings: [], contracts: [], todos: [], sales: [], db: [], company_archive: [] };
@@ -140,7 +409,11 @@ async function extractUserRows(sid) {
   // 시작행 = 앱 레이아웃(lib/repo/contract-payment.ts TAB_ALIASES)과 동일: 신형 6 / 구형 5.
   // 과거 `>= 3` 이 헤더·예시 구간(r3 "수납총액" 안내행, r5 "00유통" 템플릿 예시행)을
   // 유령 계약으로 적재한 사고 수정(2026-07-12, 전 기수 94행 — repair 스크립트로 정리).
-  for (const [tabName, firstDataRow] of [["02 계약수납관리", 6], ["02 계약관리", 5]]) {
+  for (const [tabName, firstDataRow] of [
+    ["02 계약수납관리", 6],
+    ["02 계약관리", 5],
+    ["계약관리", 12], // 5기 등 legacy(무번호) — G작업원D census 판정(row10=헤더·11=예시·12+=데이터)
+  ]) {
     const rows = await grid(sid, `'${tabName}'!C1:AK`);
     if (rows.length === 0) continue;
     rows.forEach((r, i) => {
@@ -156,8 +429,10 @@ async function extractUserRows(sid) {
   const SEC = [
     ["매입DB", "B", "H"], ["직접생산", "I", "O"], ["현수막", "P", "V"], ["콜지기소", "X", "AD"],
   ];
+  let dbFound = false;
   for (const [name, c1, c2] of SEC) {
     const rows = await grid(sid, `'03 DB관리'!${c1}4:${c2}100`);
+    if (rows.length > 0) dbFound = true;
     rows.forEach((r, i) => {
       if (String(r[0] ?? "").trim() !== "") {
         const startIdx = c1.length === 1 ? c1.charCodeAt(0) - 65 : 26 + c1.charCodeAt(1) - 65;
@@ -165,11 +440,30 @@ async function extractUserRows(sid) {
       }
     });
   }
+  // 5기 등 legacy(무번호 "DB관리") 폴백 — 모던 "03 DB관리" 탭이 아예 없을 때만.
+  if (!dbFound) {
+    const legacyRows = await grid(sid, "'DB관리'!A1:L200");
+    if (legacyRows.length > 0) out.db.push(...parseLegacyDbManagement(legacyRows));
+  }
   // 01 영업관리 E~H — (날짜,채널) 자연키. 좌표: row = 10 + (주-1)*34 + 일*4 + 채널idx.
   const CH = ["매입DB", "직접생산", "현수막", "콜·지·기·소"];
-  const o1 = (await grid(sid, "'01 영업관리'!O1"))[0]?.[0];
+  const o1Rows = await grid(sid, "'01 영업관리'!O1");
+  if (o1Rows.length === 0) {
+    // 모던 "01 영업관리" 탭 자체가 없음 — 5기 등 legacy(무번호 "영업관리") 폴백.
+    if (LEGACY_YEAR) {
+      const legacySalesRows = await grid(sid, "'영업관리'!A1:S500");
+      if (legacySalesRows.length > 0) {
+        out.sales.push(...parseLegacySalesRows(legacySalesRows, LEGACY_YEAR));
+      }
+    } else {
+      console.warn("    ⚠ '01 영업관리' 탭 없음 — legacy 폴백 하려면 --legacy-year 필요(생략됨, sales 스킵)");
+    }
+  }
+  const o1 = o1Rows[0]?.[0];
   const startISO = serialToISO(o1);
-  if (!startISO) console.warn(`    ⚠ O1(수강시작일) 파싱 실패 — sales 스킵 (raw=${typeof o1})`);
+  if (o1Rows.length > 0 && !startISO) {
+    console.warn(`    ⚠ O1(수강시작일) 파싱 실패 — sales 스킵 (raw=${typeof o1})`);
+  }
   if (startISO) {
     const start = new Date(startISO + "T00:00:00Z");
     const block = await grid(sid, "'01 영업관리'!E10:H349"); // 10주 × 34 stride
@@ -287,8 +581,10 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
-  console.error("backfill 실패:", msg);
-  process.exit(1);
-});
+if (isMainModule) {
+  main().catch((e) => {
+    const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
+    console.error("backfill 실패:", msg);
+    process.exit(1);
+  });
+}
