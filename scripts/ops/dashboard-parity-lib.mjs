@@ -45,14 +45,14 @@ export const weekIndexOf = (date, cs) => { const d = diffDays(date, cs); return 
 
 // MAX-SHEET-WEEK-SSOT-COPY: lib/config/cohort-dates.ts MAX_SHEET_WEEK(10) 사본 — .mjs 는 TS import
 // 불가. 수정 시 정본과 동기(BBE-66, 2026-08-10 — 이 클램프 누락이 채널계약·sales 46건 오탐의 근인이었다).
-const MAX_SHEET_WEEK = 10;
+const STATS_WEEKS = 8;
 
 /** 시트가 물리적으로 담을 수 있는 주차 창(1~MAX_SHEET_WEEK) 안인가 — lib/service/dashboard-aggregates.ts
  * :inSheetWindow 사본. 날짜 없음/파싱 불가는 제외(fail-closed) — 창 판정을 못 하는 행이 지표를 부풀리지 않게. */
 export function inSheetWindow(dateISO, courseStart) {
   if (!dateISO) return false;
   const w = weekIndexOf(parseISO(dateISO), courseStart);
-  return Number.isFinite(w) && w >= 1 && w <= MAX_SHEET_WEEK;
+  return Number.isFinite(w) && w >= 1 && w <= STATS_WEEKS;
 }
 
 /** DB payload → 값 (필드명 우선, 열문자 fallback). */
