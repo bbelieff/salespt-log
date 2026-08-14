@@ -19,6 +19,7 @@
 import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
+import { nextRegistryRowNumber } from "./registry-row";
 import { invalidateRegistry } from "./users";
 import { nameMatches } from "./name-match";
 import {
@@ -50,10 +51,8 @@ const EMPTY_CACHED: CachedLabels = {
   graduationISO: "",
 };
 
-/** 데이터 행 수 → 다음 행 번호(1-index, header 1행 가정). */
-export function nextRegistryRowNumber(existingDataRows: number): number {
-  return existingDataRows + 2;
-}
+// 기존 import 경로 호환을 유지하되 계산 정본은 순환 참조 없는 registry-row.ts에 둔다.
+export { nextRegistryRowNumber };
 
 /** spreadsheetId 가 이미 아레나(A시즌-기수, ^A\d+-) cohort 행으로 등록돼 있으면 그
  *  {cohort, name} 반환. 숫자 기수 클레임이 아레나 시트에 중복 행 만드는 것 차단용
