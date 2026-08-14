@@ -400,6 +400,17 @@
 
 ## 로그
 
+### 2026-08-12 · 경영일지 데탑 C작업원B(260809) · BBE-56 레지스트리 DB 읽기 게이트 ON 완주
+- 목적: BBE-56 최종 운영 전환 증거만 현재 장부에 남긴다. 과거 보드 이력은 다시 쓰지 않는다.
+- 증거: registry parity run `31579030015` **success**(불일치 0) → `REGISTRY_DB_READ=1`
+  재배포 run `31579113930` **success** → ON 후 registry parity run `31579671729`
+  **success**(불일치 0). 이상 징후가 없어 게이트를 ON으로 유지했다.
+- health 분류: run `31579113930`의 GitHub Actions `Public health check` 단계가 **success**여서
+  전환 당시 공개 health 통과를 확인했다. 이 문서 대체 작업에서는 독립적인 새 health 호출을
+  실행하지 않았으며, 로그인 자격증명이 없어 인증된 admin 화면 육안 확인도 `NOT_RUN`이다.
+- 복구: 이상 발생 시 `REGISTRY_DB_READ=0`으로 되돌린 뒤 `Deploy to VPS`를 재실행한다.
+- SoR: GitHub Actions runs `31579030015` · `31579113930` · `31579671729`, Linear BBE-56.
+
 ### 2026-08-12 · 경영일지 데탑 C작업원C(260809) · BBE-67 머지 완료 — PR #804, 중복 PR #807 발견·기술쟁점 실측 반증 후 진행
 - 의도: belie 직접 지시 — "카드: BBE-67 / PR #804. 목표: 5기 legacy census + 어댑터 PR 을
   CI 초록까지 끌고 가 머지. 범위: PR #804 현재 상태 실측 → 미완이면 완성 → 머지(§6.8).
