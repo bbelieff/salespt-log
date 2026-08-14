@@ -155,11 +155,13 @@ async function ensureSeasonRow() {
   }
   const idx = rows.findIndex((r) => String(r?.[0] ?? "").trim() === `A${SEASON}`);
   if (idx < 0) {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: REG, range: "cohorts!A:J", valueInputOption: "RAW",
+    // 결정적 좌표 — values.append 테이블 자동탐지 열밀림 방지.
+    const nextRow = rows.length + 2;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: REG, range: `cohorts!A${nextRow}`, valueInputOption: "RAW",
       requestBody: { values: [[`A${SEASON}`, "active", "아레나 시즌2", "arena", "", "", "", "", "", SEASON_START]] },
     });
-    return `cohorts A${SEASON} 행 생성 (J=${SEASON_START})`;
+    return `cohorts A${SEASON} 행 생성 (row${nextRow}, J=${SEASON_START})`;
   }
   const cur = String(rows[idx]?.[9] ?? "").trim();
   if (cur === SEASON_START) return `cohorts A${SEASON} 이미 정상 (J=${cur})`;
@@ -355,33 +357,8 @@ async function main() {
 
   if (has("--whoami")) { await whoami(); return; }
 
-  // 임시 진단(2026-08-05) — --plan 이 "이미 생성 0"으로 나와 registry 원본을 직접 눈으로 봐야 한다.
-  // 읽기 전용. 마지막 15행 + A2 매칭 여부를 그대로 찍는다.
-  // 임시 진단(2026-08-05) — canary·all 배치는 "✅ 성공" 을 54건 찍었는데 registry 재조회 시
-  // A2 행이 0건이다. append 가 실제로 안 먹는지, 아니면 읽기 쪽이 문제인지를 같은 append→즉시
-  // read 경로로 직접 확인한다. 마커 행(cohort=ZZTEST)은 무해 — 원인 확인 후 수동/후속 삭제.
-  if (has("--diag-append")) {
-    const meta = await sheets.spreadsheets.get({
-      spreadsheetId: REG, fields: "sheets.properties(title,sheetId,gridProperties(rowCount,columnCount))",
-    });
-    console.log(`탭 목록: ${JSON.stringify(meta.data.sheets?.map((s) => s.properties))}`);
-    const before = await readRange(REG, "users!A2:T");
-    console.log(`append 전 read 행수: ${before.length}`);
-    const marker = `ZZTEST-${Date.now() % 100000}`;
-    const appendRes = await sheets.spreadsheets.values.append({
-      spreadsheetId: REG, range: "users!A:T", valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS",
-      requestBody: { values: [["", "ZZTEST", marker, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]] },
-    });
-    console.log(`append 응답 updatedRange: ${appendRes.data.updates?.updatedRange} · updatedRows: ${appendRes.data.updates?.updatedRows}`);
-    const after = await readRange(REG, "users!A2:T");
-    console.log(`append 후 read 행수: ${after.length}`);
-    const idx = after.findIndex((r) => String(r?.[2] ?? "") === marker);
-    console.log(idx >= 0
-      ? `✅ 마커 발견: row${idx + 2} (append→read 경로 정상 — A2 행 소실은 다른 원인)`
-      : `❌ 마커를 못 찾음 — append 응답은 성공인데 후속 read 로 안 보임(경로 자체 문제)`);
-    return;
-  }
+  // 구 --diag-append 진단은 원인 규명이 끝났고 실행할 때마다 운영 registry에
+  // ZZTEST 행을 쓰므로 제거한다(BBE-97). 복구 경로는 아래 repair 모드만 유지한다.
 
   // 2026-08-05 사고 복구 — S~AL 열에 밀려 들어간 A2 행(총 54건 추정)을 A~T 로 되돌린다.
   // 밀림은 정확히 18열(A→S)이라 S~AL 20열 슬라이스가 곧 원래 A~T 값이다(1:1 대응, 재해석 불요).

@@ -133,11 +133,11 @@ async function ensureCohortRow() {
   rows.forEach((r, i) => console.log(`cohorts ${i + 2}행: ${(r ?? []).join(" | ")}`));
   const has9 = rows.some((r) => String(r?.[0] ?? "").trim() === COHORT);
   if (has9) return console.log("→ 9 행 이미 존재 (멱등 OK)");
-  await sheets.spreadsheets.values.append({
+  const nextRow = rows.length + 2;
+  await sheets.spreadsheets.values.update({
     spreadsheetId: REGISTRY_ID,
-    range: "'cohorts'!A2:I",
+    range: `'cohorts'!A${nextRow}`,
     valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
     requestBody: { values: [[COHORT, "active", "", "cohort", "", "", "", "", ""]] },
   });
   console.log("→ 9 행 append 완료 (active)");

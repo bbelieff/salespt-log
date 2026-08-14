@@ -9,7 +9,8 @@
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
 import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
-import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { readRange, sheetsClient } from "./sheets-client";
+import { nextRegistryRowNumber } from "./registry-row";
 import { nameMatches } from "./name-match";
 import { pickPreferredUser, pickPreferredRow } from "./user-priority";
 import { cachedRegistryRows, invalidateRegistry } from "./users-rows";
@@ -322,13 +323,15 @@ export async function setTrainerDepartment(
   // 이름은 ADMIN_NAMES env 매핑 우선, 없으면 email local-part.
   const nameMap = adminNames();
   const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
-  // registry append → RAW (PR D).
-  await appendRows(
-    reg.spreadsheetId,
-    DATA_RANGE(reg.tab),
-    [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", "", "", "", ""]],
-    { valueInputOption: "RAW" },
-  );
+  // 결정적 좌표 + RAW(PR D) — values.append 열밀림과 자동변환을 함께 방지.
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${reg.tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", "", "", "", ""]],
+    },
+  });
   invalidateRegistry();
   mirrorUserRow(registryRowFromUser({
     email: lc, cohort: cohortValue, name: fallbackName, spreadsheetId: "",
@@ -395,30 +398,33 @@ export {
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
   const validated = User.parse(u);
-  // registry append → RAW (PR D). ISO 날짜/숫자형 라벨이 auto-inference 로 변환되는 사고 방지.
-  await appendRows(
-    reg.spreadsheetId,
-    DATA_RANGE(reg.tab),
-    [[
-      validated.email,
-      validated.cohort,
-      validated.name,
-      validated.spreadsheetId,
-      validated.role,
-      validated.status,
-      validated.assignedTrainer,
-      validated.team,
-      validated.cohortLabel,
-      validated.nameLabel,
-      validated.courseStartISO,
-      validated.graduationISO,
-      String(validated.sortOrder),
-      validated.driveParentPath,
-      validated.feedbackFolderId,
-      validated.driveLinkStatus,
-    ]],
-    { valueInputOption: "RAW" },
-  );
+  // 결정적 좌표 + RAW(PR D) — values.append 열밀림과 ISO/숫자 자동변환을 방지.
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${reg.tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[
+        validated.email,
+        validated.cohort,
+        validated.name,
+        validated.spreadsheetId,
+        validated.role,
+        validated.status,
+        validated.assignedTrainer,
+        validated.team,
+        validated.cohortLabel,
+        validated.nameLabel,
+        validated.courseStartISO,
+        validated.graduationISO,
+        String(validated.sortOrder),
+        validated.driveParentPath,
+        validated.feedbackFolderId,
+        validated.driveLinkStatus,
+      ]],
+    },
+  });
   invalidateRegistry();
   // 시트에는 A~P 만 append 한다 — Q~T(memo·captainOf·gcal)는 쓰지 않으므로 미러도 비운다
   // (시트에 없는 값을 DB 에만 남기면 정합 대조가 영구히 어긋난다).
@@ -463,12 +469,15 @@ export async function ensureRegistryHeader(): Promise<void> {
   const reg = registry();
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
-  await appendRows(
-    reg.spreadsheetId,
-    HEADER_RANGE(reg.tab),
-    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo", "captain_of"]],
-    { valueInputOption: "RAW" },
-  );
+  // 헤더는 row 1 고정 좌표에 직접 쓴다.
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: HEADER_RANGE(reg.tab),
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo", "captain_of"]],
+    },
+  });
 }
 
 export async function listCohortMembers(cohort: string): Promise<User[]> {
