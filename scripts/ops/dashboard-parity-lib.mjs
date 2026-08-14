@@ -43,11 +43,11 @@ const diffDays = (a, b) => Math.round((a.getTime() - b.getTime()) / 86400000);
 // WEEK-INDEX-SSOT-COPY: lib/util/week.ts weekIndexOf(시작일 앵커) 사본 — .mjs 는 TS import 불가. 수정 시 정본과 동기 (G8)
 export const weekIndexOf = (date, cs) => { const d = diffDays(date, cs); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
 
-// MAX-SHEET-WEEK-SSOT-COPY: lib/config/cohort-dates.ts MAX_SHEET_WEEK(10) 사본 — .mjs 는 TS import
+// STATS-WEEKS-SSOT-COPY: lib/config/cohort-dates.ts STATS_WEEKS(8) 사본 — .mjs 는 TS import
 // 불가. 수정 시 정본과 동기(BBE-66, 2026-08-10 — 이 클램프 누락이 채널계약·sales 46건 오탐의 근인이었다).
 const STATS_WEEKS = 8;
 
-/** 시트가 물리적으로 담을 수 있는 주차 창(1~MAX_SHEET_WEEK) 안인가 — lib/service/dashboard-aggregates.ts
+/** 대시보드 통계 창(1~STATS_WEEKS) 안인가 — lib/service/dashboard-aggregates.ts
  * :inSheetWindow 사본. 날짜 없음/파싱 불가는 제외(fail-closed) — 창 판정을 못 하는 행이 지표를 부풀리지 않게. */
 export function inSheetWindow(dateISO, courseStart) {
   if (!dateISO) return false;
@@ -83,7 +83,7 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     const m = byCh[r.channel]; if (!m) continue;
     // 후보 풀은 창 여부와 무관하게 전부 담는다(대안식이 다시 걸러볼 수 있게) — 카운트만 창으로 클램프.
     push(`R1:U6.${r.channel}.생산`, r); push(`R1:U6.${r.channel}.유입`, r); push(`R1:U6.${r.channel}.컨택진행`, r);
-    // BBE-66(2026-08-10): 정본(dashboard-aggregates.ts:97)은 시트 표현 가능 창(1~10주) 클램프를
+    // BBE-66(2026-08-10): 정본(dashboard-aggregates.ts:97)은 대시보드 통계 창(1~8주) 클램프를
     // 건다 — 이게 없으면 무제한 쓰기(11주+ DB-only) 행까지 합산돼 채널 매트릭스가 영구히 부푼다.
     if (!inSheetWindow(r.date, courseStart)) continue;
     m.생산 += r.production; m.유입 += r.inflow; m.컨택진행 += r.contactProgress;
@@ -95,7 +95,7 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     // 미팅예약(R4)·미팅완료(R5) = COUNTIFS 무필터(정본 실측) — 창 클램프 금지.
     if (alive(mt.상태)) m.미팅예약 += 1;
     if (done(mt.상태)) m.미팅완료 += 1;
-    // 계약(R6) = N 주차블록 합(1~10주) — 정본과 동치화(BBE-66). 계약여부만 보고 창을 안 걸면 오탐.
+    // 계약(R6) = N 주차블록 합(1~8주) — 정본과 동치화(BBE-66). 계약여부만 보고 창을 안 걸면 오탐.
     if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart)) m.계약 += 1;
   }
   const wc = new Array(8).fill(0);

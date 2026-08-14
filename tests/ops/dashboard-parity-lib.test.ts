@@ -133,8 +133,11 @@ describe("실제 관측 패턴 재현 — ③ 시차(BBE-63 인시던트 — db=
 describe("주차 창 클램프 (BBE-66 재분류, G작업원A 진단 — #782 가 정본 inSheetWindow 를 누락)", () => {
   const CS = new Date(2026, 6, 3); // 2026-07-03
 
-  it("inSheetWindow — 1~10주 안만 true, 시작 전(음수)·11주+ 는 false", () => {
+  it("inSheetWindow — 1~8주 안만 true, 시작 전(음수)·9주+ 는 false", () => {
     expect(inSheetWindow("2026-07-05", CS)).toBe(true); // 주1
+    expect(inSheetWindow("2026-08-21", CS)).toBe(true); // 주8 — 통계 창 마지막
+    expect(inSheetWindow("2026-08-28", CS)).toBe(false); // 주9 — 물리 창 안, 통계 창 밖
+    expect(inSheetWindow("2026-09-04", CS)).toBe(false); // 주10 — 물리 창 안, 통계 창 밖
     expect(inSheetWindow("2026-06-01", CS)).toBe(false); // 시작 전(week=0)
     expect(inSheetWindow("2026-12-01", CS)).toBe(false); // 11주+
     expect(inSheetWindow(undefined, CS)).toBe(false); // 날짜 없음 — fail-closed
