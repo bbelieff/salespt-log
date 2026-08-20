@@ -19,6 +19,7 @@ import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorClearRow } from "./db/mirror";
 import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow, userFieldsMirrorPayload } from "./db/contracts-clear";
 import { queueContractRowSync } from "./contract-sheet-sync";
+import { mirrorContractRowDurable } from "./contract-append-mirror";
 import { cpToRow, rowToCP, serialToISODate, toStr } from "./contract-payment-row";
 
 const CFG = SHEET_RANGES.contractPayment;
@@ -90,19 +91,22 @@ export async function readAll(spreadsheetId: string): Promise<ContractPayment[]>
   return out;
 }
 
+/** C(계약일) 열 전체 read — findFirstEmptyRow·readFilledRowNumbers 공용(41열 A:AO 대비 1열). */
+async function readColumnC(
+  spreadsheetId: string,
+): Promise<{ firstDataRow: number; values: unknown[][] }> {
+  const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
+  const range = `${tabRef(tab)}!C${firstDataRow}:C`;
+  const res = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range });
+  return { firstDataRow, values: (res.data.values ?? []) as unknown[][] };
+}
+
 /**
  * 첫 빈 데이터 행 찾기 (A~AA 모두 빈 row).
  * append용 — 합계 행 없는 시트라 단순.
  */
 async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
-  const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
-  // C(계약일) 컬럼만 읽어서 빈 행 탐색 (자동 연동 필드라 데이터 행 식별 OK)
-  const range = `${tabRef(tab)}!C${firstDataRow}:C`;
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range,
-  });
-  const values = (res.data.values ?? []) as unknown[][];
+  const { firstDataRow, values } = await readColumnC(spreadsheetId);
   for (let i = 0; i < values.length; i++) {
     const v = values[i]?.[0];
     if (v === undefined || v === null || String(v).trim() === "") {
@@ -110,6 +114,24 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
     }
   }
   return firstDataRow + values.length;
+}
+
+/**
+ * 채워진(계약일 존재) row 번호 집합 — BBE-248 ② 저비용 존재확인용.
+ * 목록조회가 전체 A:AO(41열) 대신 이 1열만 읽어 DB 행 집합과 대조 → 빈틈(append 미러 실패로
+ * 누락된 신규행) 없으면 전체 시트 read(union 백필)를 생략할 수 있다. 정합성은 100% 유지
+ * (probabilistic 아님 — 시트에 있는 모든 채워진 row 를 빠짐없이 확인).
+ */
+export async function readFilledRowNumbers(spreadsheetId: string): Promise<Set<number>> {
+  const { firstDataRow, values } = await readColumnC(spreadsheetId);
+  const rows = new Set<number>();
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i]?.[0];
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      rows.add(firstDataRow + i);
+    }
+  }
+  return rows;
 }
 
 /**
@@ -250,13 +272,22 @@ async function writeContractRow(
     spreadsheetId,
     requestBody: { valueInputOption: "USER_ENTERED", data: writes },
   });
-  // DB 반영(_cleared 병합 되살림). 기본=R2 미러, opts.syncDb=동기 upsert(실패 throw). 구분='이월' 의 유일
-  // DB writer 라 미러 1회 실패=시트와 갈림(#558 ② DevD) → AJ 멱등키 보유한 arena-carryover 만 승격.
-  await persistContractRow(spreadsheetId, row, {
+  // DB 반영(_cleared 병합 되살림). opts.syncDb=동기 upsert(실패 throw, AJ 멱등키 보유한
+  // arena-carryover 만 승격 — #558 ② DevD). 기본 경로는 **동기+throw 금지**(row 는 이미
+  // findFirstEmptyRow 로 확정됐지만, throw→사용자 재시도가 appendFromContract 를 다시 태우면
+  // 첫 시도의 시트쓰기가 이미 성공해 있어 재시도가 새 행을 또 잡는다 = 매출 이중계상, BBE-246
+  // 이 append 를 dual-sync 제외한 이유와 동일). 대신 BBE-248 — mirror.ts 표준 3회(~1.8초)보다
+  // 재시도창을 늘린 전용 미러(contract-append-mirror.ts)로 durable 성 강화, 무차단 유지.
+  const payload = {
     _cleared: false, 계약일: data.계약일, 업체명: data.업체명, 수임비: data.수임비,
     ...(data.meetingId ? { meetingId: data.meetingId } : {}),
     ...(carryover ? { 구분: "이월", 원본행id: carryover.원본행id } : {}),
-  }, opts);
+  };
+  if (opts?.syncDb) {
+    await persistContractRow(spreadsheetId, row, payload, opts);
+  } else {
+    mirrorContractRowDurable(spreadsheetId, row, payload);
+  }
 }
 
 /** 사용자 입력 영역(F~AD) update — 한 row 통째로.

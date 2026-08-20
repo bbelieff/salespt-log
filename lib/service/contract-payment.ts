@@ -19,6 +19,7 @@ import {
   clearRow,
   readAll,
   readContractCascadeKey,
+  readFilledRowNumbers,
   syncFeeFromContract,
   updateLinkFields,
   updateUserFields,
@@ -52,39 +53,49 @@ export { isCarryoverContract } from "@/types";
 
 /** 모든 계약수납 row 조회.
  *
- * 파일럿: DB 단일 쿼리(정본) + 시트 전체 read 를 **병렬** 발사해, DB 에 없는(= append
- * 미러 실패로 누락된) 신규 계약행만 시트에서 보충한다(union, R3 §7-3 L4). row(시트 행번호)
- * 조인 + linkedMeetingId 2차 dedupe(수동 행이동 drift 중복 방지). R2-4 의 "시트 0회"
- * 속도이득은 반납하나 지연은 max(DB,시트)=시트 수준. DB read 실패 시 시트 전체 fallback
+ * 파일럿: DB 단일 쿼리(정본) + **저비용 존재확인**(C열 1개, BBE-248 ②)을 병렬 발사한다.
+ * 시트에 채워진 모든 row 가 DB 에도 있으면(빈틈 없음) 전체 시트 read(A:AO 41열)를 생략하고
+ * DB 결과를 그대로 반환 — append 미러 실패로 신규 계약행이 누락된 경우(R3 §7-3 L4)에만
+ * 전체 union 백필로 폴백한다(row 조인 + linkedMeetingId 2차 dedupe, 수동 행이동 drift 방지).
+ * 정합성 보장은 기존 union 과 완전 동일(probabilistic 아님) — 매 요청 시트 호출 자체는
+ * 남지만(존재확인 1열) payload 는 대폭 축소된다. DB read 실패 시 시트 전체 fallback
  * (화면 에러 금지). 비파일럿 불변. */
 export async function loadContractPayments(
   email: string,
 ): Promise<ContractPayment[]> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    const [dbRes, sheetRes] = await Promise.allSettled([
-      readContractsFromDb(user.spreadsheetId),
-      readAll(user.spreadsheetId),
-    ]);
-    if (dbRes.status === "fulfilled") {
-      return sheetRes.status === "fulfilled"
-        ? backfillMissingRows(
-            dbRes.value,
-            sheetRes.value,
-            (c) => c.row,
-            (c) => c.linkedMeetingId || undefined,
-          )
-        : dbRes.value; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
-    }
-    // DB read 실패 → 기존처럼 시트 전체 silent fallback
+  if (chooseDailySource(user.cohort, dbEnabled()) !== "db") {
+    return readAll(user.spreadsheetId);
+  }
+  const [dbRes, presenceRes] = await Promise.allSettled([
+    readContractsFromDb(user.spreadsheetId),
+    readFilledRowNumbers(user.spreadsheetId),
+  ]);
+  if (dbRes.status !== "fulfilled") {
+    // DB read 실패 → 기존처럼 시트 전체 silent fallback(실패 시 그대로 throw, 기존과 동등)
     Sentry.captureException(dbRes.reason, {
       tags: { where: "loadContractPayments-db-read" },
     });
-    if (sheetRes.status === "fulfilled") return sheetRes.value;
-    throw sheetRes.reason; // 둘 다 실패 → 시트 에러 전파(기존 readAll throw 와 동등)
+    return readAll(user.spreadsheetId);
   }
-  return readAll(user.spreadsheetId);
+  const dbRowSet = new Set(dbRes.value.map((c) => c.row));
+  const noGap =
+    presenceRes.status === "fulfilled" &&
+    [...presenceRes.value].every((row) => dbRowSet.has(row));
+  if (noGap) return dbRes.value; // 빈틈 없음 확인됨 — 전체 시트 fetch 생략(BBE-248 ②)
+  // 빈틈 있거나 존재확인 자체가 실패 → 기존 전체 union 폴백(안전 기본값 유지, L4 안전망 존속)
+  try {
+    const sheetRows = await readAll(user.spreadsheetId);
+    return backfillMissingRows(
+      dbRes.value,
+      sheetRows,
+      (c) => c.row,
+      (c) => c.linkedMeetingId || undefined,
+    );
+  } catch {
+    return dbRes.value; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
+  }
 }
 
 /**
