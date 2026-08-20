@@ -57,12 +57,19 @@ const cachedCohortsSheetRows = unstable_cache(
   { revalidate: 60, tags: [COHORTS_TAG] },
 );
 
+/** DB 경로도 시트 경로와 동일하게 60초 캐시(BBE-247) — 같은 태그라 쓰기 시 함께 무효화된다. */
+const cachedCohortsDbRows = unstable_cache(
+  async (): Promise<string[][] | null> => readCohortRowsFromDb(),
+  ["cohorts-rows-db"],
+  { revalidate: 60, tags: [COHORTS_TAG] },
+);
+
 /**
  * cohorts 행 읽기 단일 진입점 (BBE-56). `REGISTRY_DB_READ=1` 이면 DB, 아니면 시트 그대로.
  * DB 실패·0행이면 null 이 와서 시트로 폴백한다(readCohortRowsFromDb 주석 참조).
  */
 async function cachedCohortsRows(): Promise<string[][]> {
-  return (await readCohortRowsFromDb()) ?? cachedCohortsSheetRows();
+  return (await cachedCohortsDbRows()) ?? cachedCohortsSheetRows();
 }
 
 function invalidateCohorts(): void {
