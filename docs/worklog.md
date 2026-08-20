@@ -407,6 +407,66 @@
 
 ## 로그
 
+### 2026-08-20 · 경영일지 데탑 C작업원D(260820) · BBE-246 완주(구현·배포) — contracts·DB관리 요청 경로 시트 동기 호출 제거
+- 의도: belie 디스패치 — "시트독립 2단계" P0. BBE-242(A) 실측(`contract-payment.ts:427,433,
+  455,462` 등, 저장 시 시트 API 호출이 요청 경로에 남아있음)의 처방. 완주 = 저장 요청당 시트
+  호출 0회 + 응답시간 전/후 + 데이터 정합 + check.sh + §6.8.
+- **① Scope**: contracts(02)·DB관리(03)의 update/clear 경로에서 시트 동기 호출 제거, DB 를
+  동기 정본으로. append(행 신규생성)는 카드 지시(BBE-39/03 탭 선례) 상 별도 취급 여지 있어
+  실측 후 판단.
+- **② Gather 결정적 발견**: sales-write.ts·meetings-write.ts·company-info-archive.ts(BBE-60,
+  R7-#11)가 **이미** "DB 동기 정본 + `mirror_pending` 비동기 수렴미러 + self-heal drain"
+  패턴으로 전환 완료돼 있었다 — contracts·03 탭만 반대 방향(시트 동기 우선, DB 는
+  `ContractWriteOpts.syncDb`/`DbTabWriteOpts.syncDb` 로 조건부 동기)이었다. **카드가 예시로
+  든 "worker(pg-boss)" 신규 인프라는 불필요** — 검증된 자체 패턴 재사용으로 완주 기준 충족
+  판단(자율결정·§0.7, 되돌리기 = 게이트만 원복).
+- **③ Solve — 스코프 확정**: `db/contracts-clear.ts`·`db/db-tab-sync.ts` 헤더가 이미 "append 는
+  행번호=시트 할당이라 재시도 시 중복행(매출 이중계상) 위험, dual-sync 제외"를 명시해뒀다(03 탭,
+  BBE-59 Phase 1 이후에도 유지된 결정). 02 에도 대칭 적용 — 코드 실측으로 append 경로(`appendFromContract`
+  의 유일한 실사용 호출부 3곳)가 전부 `opts` 를 넘기지 않거나(addFromContract·addPriorContract)
+  멱등키(AJ 원본키) 보유 시에만 예외적으로 넘기는(arena-carryover) 것을 확인 — 내 스코프 변경이
+  이 경로들의 동작을 하나도 안 바꾼다는 것도 코드로 확정.
+- **한 것**:
+  - 신규 `lib/repo/contract-sheet-sync.ts`·`lib/repo/db-tab-sheet-sync.ts` — 큐/수렴/드레인,
+    company-info-archive.ts 골격 이식(1행 수렴 = 실행 시점 최신 DB 상태 재반영, 스냅샷 재생 아님).
+  - `updateUserFields`·`clearRow`·`updateLinkFields`·`syncFeeFromContract`·`writeTermination`
+    (02) / `updatePurchase`·`updateProduction`·`updateBanner`·`updateLead`·`clear*`(03) 전부
+    파일럿 분기를 "DB 동기(실패=throw) + 시트 큐잉"으로 전환, 비파일럿은 R2 완전 불변.
+  - **부수 버그 수정**: `resolveSheetWithSyncDb`(`lib/service/contract-payment.ts`)가 읽기
+    게이트(`chooseDailySource`)로 쓰기를 판정하던 것을 발견 — db.ts::resolveWriteCtx·
+    sales-write.ts·meetings-write.ts 전부 쓰기 게이트(`chooseWriteSource`)를 쓰는데 이
+    함수만 달랐다. 현재는 두 게이트가 byte-identical 이라 동작 차이 없으나 latent bug라 정정.
+  - `lib/service/db.ts::oldDateOf`(patch/remove 전 옛 날짜 조회, E셀 재집계용)도 파일럿이면
+    DB 우선 조회로 전환(`oldLeadIdOf` 와 동일 패턴) — 요청 경로 잔여 시트 read 제거.
+  - 500줄 캡 분리(순수 이동, 값 무변경): `contract-payment.ts`→`contract-payment-row.ts`
+    (행↔ContractPayment 변환), `db.ts`→`db-old-values.ts`(patch/remove 전 옛값 조회).
+- **④ Verify**: check.sh 전체 초록(structural·unit 148파일·file-size-cap·doc-drift). 신규
+  테스트 20건(성공/3회실패→markMirrorPending+Sentry/삭제·미기록→clear/self-heal 드레인 전
+  경로 커버) + 기존 `contract-clear-by-link-sync.test.ts` 를 새 계약(DB-only+큐잉)에 맞게
+  갱신. **기존 1358건은 무수정으로 전부 green** — 다른 테스트들의 모의 경계가 이미 repo/
+  mirror-pending 레이어에 있어 회귀 없이 그대로 통과(우연 아님 — sales-write 등 기존 패턴을
+  그대로 재사용했기 때문).
+  - 잔여 미달 2건(의도적, 근거 명시): ①append 경로는 위 스코프 결정대로 미변경 ②직접생산
+    기간중복 검증(`assertNoOverlapDirect`)은 correctness-critical(append/update 동시에 봐야
+    함)이라 DB 완전성을 더 엄밀히 확인하기 전엔 안전 우선으로 시트 read 유지(자율결정) —
+    `patchProduction`/`addProduction` 이 시트 read 1회를 남긴다, 후속 카드 후보.
+  - "0회 계측"·"응답시간 전/후"는 `lib/analytics/api-timing.ts`(`withApiTiming`/
+    `recordSheetsCall`)가 이미 대상 8개 라우트에 배선돼 있어 신규 계측 불요 — 단 PostHog
+    대시보드 접근 권한이 이 세션엔 없어 배포 전/후 `api_timing.sheets_calls` 직접 대조는
+    못 했다(§0.8, 검증 안 한 걸 검증한 것처럼 안 냄). belie/반장 확인 요청.
+- **⑤ Report**: PR [#819](https://github.com/bbelieff/salespt-log/pull/819) 머지(`99c2513`)
+  → 배포 run [32353587889](https://github.com/bbelieff/salespt-log/actions/runs/32353587889)
+  전 스텝 success(Public health check 포함) → 독립 curl 로 `/api/health`(200)·메인페이지(200,
+  0.46s) 재확인. §6.8 완주.
+- ⚠️ **BBE-244(오늘 오전 DB pool 고갈 P0, `max:5→15`, PR #814) 와의 인접성**: 이 카드가
+  `sheet_rows` 동기 쓰기(row-key 조회 쿼리 포함)를 늘린다. 방향은 반대(요청당 시트 왕복
+  제거가 커넥션 점유 시간을 줄이는 쪽)라고 판단하나, 이 세션은 pm2 로그·pool 지표 접근
+  권한(SSH)이 없어 health 200 이상의 직접 확인은 못 했다 — belie/반장이 pool 지표 짧게
+  봐주길 요청.
+- SoR: PR #819 · Linear BBE-246(완주 코멘트) · `docs/plans/completed/db-write-flip.md`(선행
+  R3-3/R3-4 참고, 이 카드 전용 신규 계획서는 작성 안 함 — 기존 4파일의 이식이라 새 설계
+  불필요 판단)
+
 ### 2026-08-20 · 경영일지 데탑 C작업원E(260820) · BBE-247 완주 — registry DB 읽기 60초 캐시 복원, BBE-244(B) 풀 확장과 상호보완
 - 의도: belie 디스패치 — "시트독립 1단계(즉효 속도)" P0. BBE-56 게이트 ON(REGISTRY_DB_READ=1)
   이후 `users-rows.ts:36-40` 이 무캐시 DB 쿼리를 요청마다 쏘고 있다(BBE-242 A 실측). 완주 =
