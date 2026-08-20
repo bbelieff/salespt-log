@@ -1,0 +1,25 @@
+-- BBE-250(BBE-242 처방 d) — sheet_rows.payload 의 GIN 인덱스 제거.
+--
+-- 근인: sheet_rows.payload(jsonb) 는 앱 전체에서 `->>` 추출 연산자로만 조회된다
+-- (lib/repo/db/client.ts 4곳 + scripts/ops/*.mjs 전수 grep, `@>`/`?`/`#>` 컨테인먼트
+-- 연산 0건). GIN 은 컨테인먼트 쿼리를 가속하는 인덱스라 이 접근 패턴에서 쓰일 일이 없다.
+-- 모든 실측 쿼리의 필터는 spreadsheet_id/tab/row_key/cohort — unique btree
+-- (spreadsheet_id, tab, row_key) · sheet_rows_cohort_tab · 부분인덱스 sheet_rows_pending
+-- 가 이미 커버한다.
+--
+-- 실측(BBE-242 A, 2026-08-20): idx_scan=2 (unique btree 는 55,106) — 사실상 미사용인데
+-- sheet_rows 는 dual-write·backfill·수렴미러가 전부 upsert 하는 쓰기 빈발 테이블이라
+-- 모든 쓰기의 GIN 갱신 비용만 유발하고 있었다. idx_scan=2 의 정확한 출처(수동 psql
+-- 세션 추정)는 로그가 안 남아 특정 못 했으나, 앱·ops 코드 경로가 아닌 것은 grep 으로
+-- 확정했다.
+--
+-- ⚠️ lib/repo/db/client.ts 의 doEnsureSchema()(지연생성, IF NOT EXISTS)에 있던 동일
+-- CREATE INDEX 문도 이 PR 에서 함께 제거했다 — 여기서 DROP 만 하고 그 줄을 남기면
+-- 다음 ensureSchema() 호출(모든 쓰기 경로가 호출)이 즉시 재생성해 이 마이그레이션이
+-- 무의미해진다.
+drop index if exists sheet_rows_payload;
+
+-- Rollback(이 러너는 down 마이그레이션을 지원하지 않는다 — 필요 시 수동 실행):
+--   create index if not exists sheet_rows_payload on sheet_rows using gin (payload);
+--   (되돌릴 경우 client.ts 의 doEnsureSchema() 에도 같은 줄을 다시 추가해야
+--    다음 배포 이후에도 유지된다.)
