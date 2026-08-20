@@ -11,8 +11,12 @@ import type { DBBanner, DBLead, DBProduction, DBPurchase } from "@/types";
 import { SPEC, clearRowRange, writeRow } from "./db-tab-writers";
 import { clearDbRow, persistDbRow, type DbTabWriteOpts } from "./db/db-tab-sync";
 import { resolveWriteKey } from "./db/row-key";
+import { queueDbTabRowSync } from "./db-tab-sheet-sync";
 
 // ── update (특정 row) ─────────────────────────────────────────
+// BBE-246: 파일럿(opts.syncDb) = DB 동기 정본(실패=throw) 먼저 쓰고, 시트는 큐잉된 비동기
+// 수렴 잡(db-tab-sheet-sync.ts)에 맡긴다 — 요청 경로에서 시트 API 호출 제거. 비파일럿은
+// R2 그대로(시트 동기 정본 + DB 비동기 미러, 완전 불변·롤백 스위치).
 
 export async function updatePurchase(
   spreadsheetId: string,
@@ -20,6 +24,12 @@ export async function updatePurchase(
   p: DBPurchase,
   opts?: DbTabWriteOpts,
 ): Promise<void> {
+  const key = await resolveWriteKey(spreadsheetId, "매입DB", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
+  if (opts?.syncDb) {
+    await persistDbRow(spreadsheetId, key, { ...p, _row: row, _cleared: false }, opts);
+    queueDbTabRowSync(spreadsheetId, "매입DB", row);
+    return;
+  }
   await writeRow(spreadsheetId, SPEC.매입DB, row, [
     p.구매일,
     p.업체명,
@@ -29,8 +39,7 @@ export async function updatePurchase(
     p.기타, // G
     "", // H 정리
   ]);
-  const key = await resolveWriteKey(spreadsheetId, "매입DB", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
-  await persistDbRow(spreadsheetId, key, { ...p, _row: row, _cleared: false }, opts); // R3-4 dual-sync
+  await persistDbRow(spreadsheetId, key, { ...p, _row: row, _cleared: false }, opts); // R2
 }
 
 export async function updateProduction(
@@ -39,6 +48,12 @@ export async function updateProduction(
   p: DBProduction,
   opts?: DbTabWriteOpts,
 ): Promise<void> {
+  const key = await resolveWriteKey(spreadsheetId, "직접생산", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
+  if (opts?.syncDb) {
+    await persistDbRow(spreadsheetId, key, { ...p, _row: row, _cleared: false }, opts);
+    queueDbTabRowSync(spreadsheetId, "직접생산", row);
+    return;
+  }
   await writeRow(spreadsheetId, SPEC.직접생산, row, [
     p.시작일, // I
     p.종료일, // J
@@ -48,8 +63,7 @@ export async function updateProduction(
     p.부가세여부, // N
     p.기타, // O
   ]);
-  const key = await resolveWriteKey(spreadsheetId, "직접생산", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
-  await persistDbRow(spreadsheetId, key, { ...p, _row: row, _cleared: false }, opts); // R3-4 dual-sync
+  await persistDbRow(spreadsheetId, key, { ...p, _row: row, _cleared: false }, opts); // R2
 }
 
 export async function updateBanner(
@@ -58,6 +72,12 @@ export async function updateBanner(
   b: DBBanner,
   opts?: DbTabWriteOpts,
 ): Promise<void> {
+  const key = await resolveWriteKey(spreadsheetId, "현수막", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
+  if (opts?.syncDb) {
+    await persistDbRow(spreadsheetId, key, { ...b, _row: row, _cleared: false }, opts);
+    queueDbTabRowSync(spreadsheetId, "현수막", row);
+    return;
+  }
   await writeRow(spreadsheetId, SPEC.현수막, row, [
     b.날짜,
     b.업체명,
@@ -68,8 +88,7 @@ export async function updateBanner(
     b.기타, // V
     "", // W 정리
   ]);
-  const key = await resolveWriteKey(spreadsheetId, "현수막", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
-  await persistDbRow(spreadsheetId, key, { ...b, _row: row, _cleared: false }, opts); // R3-4 dual-sync
+  await persistDbRow(spreadsheetId, key, { ...b, _row: row, _cleared: false }, opts); // R2
 }
 
 export async function updateLead(
@@ -78,6 +97,12 @@ export async function updateLead(
   l: DBLead,
   opts?: DbTabWriteOpts,
 ): Promise<void> {
+  const key = await resolveWriteKey(spreadsheetId, "콜지기소", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
+  if (opts?.syncDb) {
+    await persistDbRow(spreadsheetId, key, { ...l, _row: row, _cleared: false }, opts);
+    queueDbTabRowSync(spreadsheetId, "콜지기소", row);
+    return;
+  }
   await writeRow(spreadsheetId, SPEC.콜지기소, row, [
     l.구분,
     l.접수일,
@@ -87,30 +112,49 @@ export async function updateLead(
     l.연락처,
     l.조건,
   ]);
-  const key = await resolveWriteKey(spreadsheetId, "콜지기소", row); // BBE-59: 레거시/신규 키 중 현재 매핑된 것
-  await persistDbRow(spreadsheetId, key, { ...l, _row: row, _cleared: false }, opts); // R3-4 dual-sync
+  await persistDbRow(spreadsheetId, key, { ...l, _row: row, _cleared: false }, opts); // R2
 }
 
 // ── clear (특정 row) ──────────────────────────────────────────
 
 export async function clearPurchase(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.매입DB, row);
   const key = await resolveWriteKey(spreadsheetId, "매입DB", row); // BBE-59
-  await clearDbRow(spreadsheetId, key, opts); // R3-4 dual-sync
+  if (opts?.syncDb) {
+    await clearDbRow(spreadsheetId, key, opts);
+    queueDbTabRowSync(spreadsheetId, "매입DB", row);
+    return;
+  }
+  await clearRowRange(spreadsheetId, SPEC.매입DB, row);
+  await clearDbRow(spreadsheetId, key, opts); // R2
 }
 export async function clearProduction(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.직접생산, row);
   const key = await resolveWriteKey(spreadsheetId, "직접생산", row); // BBE-59
-  await clearDbRow(spreadsheetId, key, opts); // R3-4 dual-sync
+  if (opts?.syncDb) {
+    await clearDbRow(spreadsheetId, key, opts);
+    queueDbTabRowSync(spreadsheetId, "직접생산", row);
+    return;
+  }
+  await clearRowRange(spreadsheetId, SPEC.직접생산, row);
+  await clearDbRow(spreadsheetId, key, opts); // R2
 }
 export async function clearBanner(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.현수막, row);
   const key = await resolveWriteKey(spreadsheetId, "현수막", row); // BBE-59
-  await clearDbRow(spreadsheetId, key, opts); // R3-4 dual-sync
+  if (opts?.syncDb) {
+    await clearDbRow(spreadsheetId, key, opts);
+    queueDbTabRowSync(spreadsheetId, "현수막", row);
+    return;
+  }
+  await clearRowRange(spreadsheetId, SPEC.현수막, row);
+  await clearDbRow(spreadsheetId, key, opts); // R2
 }
 export async function clearLead(spreadsheetId: string, row: number, opts?: DbTabWriteOpts) {
-  await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
   const key = await resolveWriteKey(spreadsheetId, "콜지기소", row); // BBE-59
   // 발굴id:"" 함께 무효화(R14) — 행 재사용 시 죽은 발굴id 가 새 lead 로 상속되는 것 차단(lead-chain §4-3 B3).
-  await clearDbRow(spreadsheetId, key, opts, { 발굴id: "" });
+  if (opts?.syncDb) {
+    await clearDbRow(spreadsheetId, key, opts, { 발굴id: "" });
+    queueDbTabRowSync(spreadsheetId, "콜지기소", row);
+    return;
+  }
+  await clearRowRange(spreadsheetId, SPEC.콜지기소, row);
+  await clearDbRow(spreadsheetId, key, opts, { 발굴id: "" }); // R2
 }

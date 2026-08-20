@@ -34,6 +34,7 @@ import { backfillMissingRows } from "./sheet-backfill";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
 import { selectLeadsForPicker, type LeadForPicker } from "./lead-list"; // 발굴 조회 PR-2
+import { oldDateOf, oldLeadIdOf, readChannelRows } from "./db-old-values"; // BBE-246 — 500줄 캡 분리
 import type {
   Channel,
   DBBanner,
@@ -278,20 +279,6 @@ export function productionCountFor(
   return rows.filter((r) => r.접수일 === date).length; // 콜·지·기·소
 }
 
-async function readChannelRows(spreadsheetId: string, channel: Channel) {
-  if (channel === "매입DB") return (await readPurchases(spreadsheetId)).rows;
-  if (channel === "직접생산") return (await readProductions(spreadsheetId)).rows;
-  return (await readLeads(spreadsheetId)).rows;
-}
-
-/** raw 행에서 그 (채널, 날짜)의 날짜 필드 값 (patch/remove 의 옛 날짜 식별용). */
-function dateOfRow(channel: Channel, row: DBPurchase | DBProduction | DBBanner | DBLead): string {
-  if (channel === "매입DB") return (row as DBPurchase).구매일;
-  if (channel === "콜·지·기·소") return (row as DBLead).접수일;
-  if (channel === "직접생산") return (row as DBProduction).종료일; // 집계 기준 = 종료일
-  return (row as DBBanner).날짜; // 현수막
-}
-
 /** DB 변경 후 그 (채널, 날짜) 생산(E) 재집계·기입. 실패해도 DB 저장은 성공(warn). */
 async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
   if (!date) return;
@@ -300,33 +287,6 @@ async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
     await persistProductionCell(ctx, date, channel, productionCountFor(channel, rows, date));
   } catch (e) {
     console.warn(`[db] 생산 집계 기입 실패 (${channel} ${date}):`, e instanceof Error ? e.message : e);
-  }
-}
-
-/** patch/remove 전 해당 row 의 옛 날짜 읽기 (날짜 변경·삭제 시 옛 날짜 E 재집계용). */
-async function oldDateOf(spreadsheetId: string, channel: Channel, row: number): Promise<string> {
-  const rows = await readChannelRows(spreadsheetId, channel);
-  const hit = (rows as Array<{ row: number }>).find((r) => r.row === row);
-  return hit ? dateOfRow(channel, hit as never) : "";
-}
-
-/** oldLeadId 3-state — "없음(mint)" 과 "읽기 실패(보존)" 을 구분한다(핵심).
- *  · string  = 기존 발굴id (보존)
- *  · "mint"  = 기존 id 확실히 없음(백필/legacy/비파일럿) → 새로 부여
- *  · "keep"  = DB read 실패로 알 수 없음 → **발굴id 를 payload 에서 omit**(jsonb 병합이 기존 값 보존) */
-type OldLeadId = string | "mint" | "keep";
-
-/** 콜·지·기·소 특정 row 의 기존 발굴id. ⚠️ 시트 리더(readLeads=X:AD 파서 7필드)는 **발굴id 를 못 만든다**
- * (발굴id=DB payload 전용·시트 컬럼 0). 발굴id 를 실어오는 read 는 **readDbTabFromDb**(DB overlay)뿐 —
- * read-db-tab.ts 헤더가 경고한 "시트 db.ts vs Postgres db/" 혼동에 빠지지 말 것.
- * read 실패를 "없음"과 혼동하면 순단 시 remint 로 안정 id 를 파괴하므로, 실패는 "keep"(보존)으로 분리한다. */
-async function oldLeadIdOf(spreadsheetId: string, row: number, syncDb: boolean): Promise<OldLeadId> {
-  if (!syncDb) return "mint"; // 비파일럿=시트 read라 발굴id 부재 → 새로 부여
-  try {
-    const { leads } = await readDbTabFromDb(spreadsheetId);
-    return leads.find((l) => l.row === row)?.발굴id || "mint";
-  } catch {
-    return "keep"; // DB 순단 등 — 알 수 없음 → 덮지 말고 기존 값 보존(omit)
   }
 }
 
@@ -339,7 +299,7 @@ export async function addPurchase(email: string, p: DBPurchase) {
 }
 export async function patchPurchase(email: string, row: number, p: DBPurchase) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
-  const old = await oldDateOf(sid, "매입DB", row);
+  const old = await oldDateOf(sid, "매입DB", row, syncDb);
   // finally: 시트 쓰기 후 DB dual-sync 가 throw 해도 생산(E) 재집계는 실행. E 는 시트 상태만
   // 의존하고 시트는 이미 확정(writeRow 완료) → skip 시 재시도가 옛 날짜를 잃어 E 영구 오집계(리뷰 CONFIRMED).
   try {
@@ -351,7 +311,7 @@ export async function patchPurchase(email: string, row: number, p: DBPurchase) {
 }
 export async function removePurchase(email: string, row: number) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
-  const old = await oldDateOf(sid, "매입DB", row);
+  const old = await oldDateOf(sid, "매입DB", row, syncDb);
   try {
     return await clearPurchase(sid, row, { syncDb });
   } finally {
@@ -472,9 +432,9 @@ export async function addLead(email: string, l: DBLead) {
 export async function patchLead(email: string, row: number, l: DBLead) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   // R13: 클라이언트 바디 l 은 발굴id 를 모른다. 서버가 기존 id 를 읽어 명시 전달(없으면 지연 부여).
-  //  · 옛 접수일(E 재집계용) = oldDateOf(시트 readLeads — 시트에 있는 값).
+  //  · 옛 접수일(E 재집계용) = oldDateOf(BBE-246: 파일럿은 DB 우선, 실패 시 시트 폴백).
   //  · 기존 발굴id = oldLeadIdOf(파일럿만 DB payload read — 발굴id 는 시트 컬럼 0이라 시트로는 못 읽는다).
-  const old = await oldDateOf(sid, "콜·지·기·소", row);
+  const old = await oldDateOf(sid, "콜·지·기·소", row, syncDb);
   const prevId = await oldLeadIdOf(sid, row, syncDb);
   // "keep"(DB read 실패) = 알 수 없음 → 발굴id 를 payload 에서 omit → jsonb 얕은 병합이 기존 값 보존.
   //   (덮으면 순단 시 remint 로 안정 id 파괴 — read 무재시도·write 재시도 비대칭이라 실제로 발생.)
@@ -489,7 +449,7 @@ export async function patchLead(email: string, row: number, l: DBLead) {
 }
 export async function removeLead(email: string, row: number) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
-  const old = await oldDateOf(sid, "콜·지·기·소", row);
+  const old = await oldDateOf(sid, "콜·지·기·소", row, syncDb);
   try {
     return await clearLead(sid, row, { syncDb });
   } finally {

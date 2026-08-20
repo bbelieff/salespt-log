@@ -7,15 +7,17 @@
  */
 import { sheetsClient } from "./sheets-client";
 import { clearRow, findRowByLink, resolveLayout, tabRef } from "./contract-payment";
-import {
-  clearContractRowInDbSync,
-  type ContractWriteOpts,
-  persistContractRow,
-} from "./db/contracts-clear";
+import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
+import { queueContractRowSync } from "./contract-sheet-sync";
 
 /**
  * (계약일, 업체명) 매칭 row clear. 미팅 계약 되돌리기 cascade 용 (2026-05-17 [2a]).
  * 매칭되는 row 없으면 null 반환, 있으면 clearRow 후 row 번호 반환.
+ *
+ * BBE-246: clearRow 자체가 opts.syncDb 분기를 전담(DB 동기 정본 + 시트 비동기 수렴잡) —
+ * 예전엔 여기서 DB 를 먼저 확정한 뒤 별도로 clearRow(시트만)를 불러 순서를 뒤집었지만,
+ * 파일럿 경로는 이제 clearRow 가 시트를 아예 동기로 건드리지 않으므로 그 순서 문제 자체가
+ * 소멸했다(시트가 "먼저/나중" 일 수가 없다 — 큐로 넘어갈 뿐).
  */
 export async function clearRowByLink(
   spreadsheetId: string,
@@ -25,16 +27,7 @@ export async function clearRowByLink(
 ): Promise<number | null> {
   const row = await findRowByLink(spreadsheetId, { 계약일, 업체명 });
   if (row === null) return null;
-  if (opts?.syncDb) {
-    // R3-3 잔여: 파일럿은 **DB 를 먼저 확정**한 뒤 시트를 지운다(clearRow 의 시트-first 와 반대).
-    // 근거: 이 함수의 키는 (계약일, 업체명) 뿐이라 시트를 먼저 지우면 findRowByLink 가 다음 시도에서
-    // 행을 못 찾는다 → DB 동기 실패 시 유령 계약이 **치유 불가능**해진다. DB 먼저 = 실패해도 시트
-    // 무변경(재시도 성립), 성공 후 시트 실패해도 정본은 정확하고 재시도가 수렴.
-    await clearContractRowInDbSync(spreadsheetId, row);
-    await clearRow(spreadsheetId, row); // 시트 반영(미러 재마킹은 _cleared 멱등이라 무해)
-  } else {
-    await clearRow(spreadsheetId, row); // 비파일럿=시트 정본 + async 미러(기존 불변)
-  }
+  await clearRow(spreadsheetId, row, opts);
   return row;
 }
 
@@ -42,8 +35,9 @@ export async function clearRowByLink(
  * (계약일, 업체명) link key 갱신 — 미팅 수정 시 계약카드 sync (2026-05-19 Phase 3).
  * old 매칭 row 찾아 C(계약일)/D(업체명) 새 값으로 update. 없으면 null.
  *
- * 순서는 시트-first 유지: 호출부가 `meetingId` 를 함께 넘기고 findRowByLink 가 id 를 우선 매칭하므로,
- * 시트가 새 값으로 바뀐 뒤 재시도해도 같은 행을 찾는다(clearRowByLink 와 달리 치유 가능).
+ * BBE-246: 파일럿(opts.syncDb) = DB 동기 정본 먼저, 시트는 비동기 수렴잡 큐(요청 경로에서
+ * 시트 API 호출 제거). 예전 "시트-first" 주석(치유 가능성 논거)은 시트를 동기로 안 건드리는
+ * 이 경로엔 더 이상 적용되지 않는다 — 비파일럿(R2)은 그대로 시트-first 유지.
  */
 export async function updateLinkFields(
   spreadsheetId: string,
@@ -57,6 +51,12 @@ export async function updateLinkFields(
     업체명: old.업체명,
   });
   if (row === null) return null;
+  const payload = { 계약일: next.계약일, 업체명: next.업체명 };
+  if (opts?.syncDb) {
+    await persistContractRow(spreadsheetId, row, payload, opts);
+    queueContractRowSync(spreadsheetId, row);
+    return row;
+  }
   const { tab } = await resolveLayout(spreadsheetId);
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
@@ -64,6 +64,6 @@ export async function updateLinkFields(
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[next.계약일, next.업체명]] },
   });
-  await persistContractRow(spreadsheetId, row, { 계약일: next.계약일, 업체명: next.업체명 }, opts); // R3-3 dual-sync
+  await persistContractRow(spreadsheetId, row, payload, opts); // R2
   return row;
 }
