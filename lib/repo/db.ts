@@ -16,7 +16,7 @@ import type {
   DBPurchase,
 } from "@/types";
 import { sheetsClient } from "./sheets-client";
-import { mirrorSheetRow } from "./db/mirror";
+import { mirrorDbTabRowDurable } from "./db-tab-append-mirror";
 import { mintRowKey } from "./db/row-key";
 import { SPEC, T, writeRow } from "./db-tab-writers";
 
@@ -210,6 +210,45 @@ export async function readLeads(spreadsheetId: string) {
   return readSection<DBLead>(spreadsheetId, "X", "AD", parseLeadRow, isLeadMeaningful);
 }
 
+// ── 저비용 존재확인 (BBE-259, BBE-248/#824 이식) ──────────────────
+// 목록조회가 각 섹션의 전체 열 대신, "의미있음" 판정에 필요한 최소 열만 읽어 채워진 row 번호
+// 집합을 얻는다 — DB row 집합과 대조해 빈틈(append 미러 실패로 누락된 신규행) 없으면 전체
+// union 백필을 생략할 수 있다(정합성은 100% 유지, probabilistic 아님). 매입DB·직접생산·현수막은
+// 판정 열이 섹션 시작열 1개뿐이라 절감폭이 크다(7~8열→1열). 콜·지·기·소는 판정에 3개 열
+// (대표자명·업체명·연락처)이 흩어져 있어 X:AC(6열)까지 읽어야 해 절감폭이 작다(7열→6열,
+// 정직 명기 — §0.8).
+async function readPresenceRows(
+  spreadsheetId: string,
+  probeStartCol: string,
+  probeEndCol: string,
+  isPhantom: (r: unknown[]) => boolean,
+  firstDataRow: number = FIRST_DATA_ROW,
+): Promise<Set<number>> {
+  const range = `${T}!${probeStartCol}${firstDataRow}:${probeEndCol}${MAX_ROW}`;
+  const res = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range });
+  const values = (res.data.values ?? []) as unknown[][];
+  const rows = new Set<number>();
+  for (let i = 0; i < values.length; i++) {
+    const r = values[i] ?? [];
+    if (isSumRow(r[0])) continue;
+    if (!isPhantom(r)) rows.add(firstDataRow + i);
+  }
+  return rows;
+}
+
+export async function readPurchaseFilledRows(spreadsheetId: string): Promise<Set<number>> {
+  return readPresenceRows(spreadsheetId, "B", "B", phantomPurchase);
+}
+export async function readProductionFilledRows(spreadsheetId: string): Promise<Set<number>> {
+  return readPresenceRows(spreadsheetId, "I", "I", phantomProduction);
+}
+export async function readBannerFilledRows(spreadsheetId: string): Promise<Set<number>> {
+  return readPresenceRows(spreadsheetId, "P", "P", phantomBanner);
+}
+export async function readLeadFilledRows(spreadsheetId: string): Promise<Set<number>> {
+  return readPresenceRows(spreadsheetId, "X", "AC", phantomLead);
+}
+
 // ── append / update / clear 헬퍼 ──────────────────────────────
 
 /** 첫 빈 데이터 행 찾기("합계" 위, 없으면 합계 row→insert). isPhantom 은 read isMeaningful 과 동일 기준. */
@@ -273,12 +312,9 @@ export async function appendPurchase(
     "", // H 정리(구 #425 부가세여부 자리)
   ]);
   // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
-  mirrorSheetRow({
-    spreadsheetId,
-    tab: "db",
-    rowKey: mintRowKey("매입DB"),
-    payload: { ...p, _row: row, _cleared: false },
-  });
+  // BBE-259: mirror.ts 표준보다 재시도창을 늘린 전용 durable 미러(#824 이식) — 동기 throw 는
+  // 재시도 시 findFirstEmptyRow 가 새 행에 중복 기재(매출 이중계상)라 여전히 금지.
+  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("매입DB"), { ...p, _row: row, _cleared: false });
   return { row };
 }
 
@@ -303,13 +339,8 @@ export async function appendProduction(
     p.부가세여부, // N
     p.기타, // O (구 스페이서 자리)
   ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
-  mirrorSheetRow({
-    spreadsheetId,
-    tab: "db",
-    rowKey: mintRowKey("직접생산"),
-    payload: { ...p, _row: row, _cleared: false },
-  });
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고. BBE-259: durable 미러(위 참고).
+  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("직접생산"), { ...p, _row: row, _cleared: false });
   return { row };
 }
 
@@ -335,13 +366,8 @@ export async function appendBanner(
     b.기타, // V
     "", // W 정리(구 #425 부가세여부 자리)
   ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
-  mirrorSheetRow({
-    spreadsheetId,
-    tab: "db",
-    rowKey: mintRowKey("현수막"),
-    payload: { ...b, _row: row, _cleared: false },
-  });
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고. BBE-259: durable 미러(위 참고).
+  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("현수막"), { ...b, _row: row, _cleared: false });
   return { row };
 }
 
@@ -366,13 +392,8 @@ export async function appendLead(
     l.연락처,
     l.조건,
   ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
-  mirrorSheetRow({
-    spreadsheetId,
-    tab: "db",
-    rowKey: mintRowKey("콜지기소"),
-    payload: { ...l, _row: row, _cleared: false },
-  });
+  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고. BBE-259: durable 미러(위 참고).
+  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("콜지기소"), { ...l, _row: row, _cleared: false });
   return { row };
 }
 
