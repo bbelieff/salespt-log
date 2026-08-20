@@ -8,8 +8,9 @@
 ---
 
 slug: bbe253-trainer-toggle-coalesce
-status: active
+status: completed
 created: 2026-08-20
+completed: 2026-08-20
 owner: 경영일지 데탑 C작업원C(260820) — belie 직배차 P0
 related: BBE-243, BBE-249, BBE-251
 
@@ -95,3 +96,5 @@ check.sh 전체 green(typecheck·lint·structural·unit·doc-drift).
 
 ## Log
 - **2026-08-20 착수·완주**: belie 직배차 P0, BBE-251 작업 중 우선순위 인터럽트로 착수.
+  PR #827(`4369332`) 머지 → 배포 run `32367358693` **success** → `https://salesptlog.online`
+  **200**. check.sh 전체 green. BBE-251(시트독립 4단계 CI 가드)로 복귀.
