@@ -14,9 +14,13 @@ import {
   clearLead,
   clearProduction,
   clearPurchase,
+  readBannerFilledRows,
   readBanners,
+  readLeadFilledRows,
   readLeads,
+  readProductionFilledRows,
   readProductions,
+  readPurchaseFilledRows,
   readPurchases,
   updateBanner,
   updateLead,
@@ -99,42 +103,74 @@ async function readAllSheetSections(spreadsheetId: string): Promise<DBOverview> 
   };
 }
 
+/** dbRows(row 집합)가 presence(존재확인 결과)의 모든 채워진 row 를 포함하면 true(빈틈 없음).
+ * presence 자체가 실패(rejected)면 안전 기본값(false — 전체 union 폴백으로) BBE-259/#824. */
+function coversAllPresent(
+  dbRows: Array<{ row: number }>,
+  presence: PromiseSettledResult<Set<number>>,
+): boolean {
+  if (presence.status !== "fulfilled") return false;
+  const dbRowSet = new Set(dbRows.map((r) => r.row));
+  for (const row of presence.value) if (!dbRowSet.has(row)) return false;
+  return true;
+}
+
 /**
  * 4섹션 한 번에 조회. allSettled — 한 섹션만 throw 해도 그 채널만 빈 목록, 나머지는 정상.
  * resolveSheet(사용자 없음)만 throw 유지.
  *
- * 파일럿: DB 단일 쿼리(정본) + 4섹션 시트 read 를 **병렬** 발사해, DB 에 없는(= append
- * 미러 실패로 누락된) 신규행만 섹션별 row 로 보충한다(union, R3 §7-3 L4). R2-5 의 "시트
- * 0회" 속도이득은 반납하나 지연은 max(DB,시트)=시트 수준. DB read 실패 시 이미 읽어둔
- * 시트 결과로 fallback(화면 에러 금지). 비파일럿 불변.
+ * 파일럿: DB 단일 쿼리(정본) + 4섹션 각각의 **저비용 존재확인**(BBE-259, #824 이식)을 병렬
+ * 발사한다. 4섹션 전부 빈틈 없으면(append 미러 실패로 누락된 신규행 없음) 전체 시트 read 를
+ * 생략하고 DB 결과를 그대로 반환. 하나라도 빈틈 있으면(또는 존재확인 자체 실패) 기존과 동일한
+ * 전체 union 폴백(R3 §7-3 L4, 섹션별 아닌 4섹션 일괄 재조회 — 단순성 우선, 드문 경로라 절감
+ * 실익 작음). 정합성 보장은 기존과 100% 동일(probabilistic 아님). DB read 실패 시 기존처럼
+ * 시트 전체 fallback(화면 에러 금지). 비파일럿 불변.
  */
 export async function loadDBOverview(email: string): Promise<DBOverview> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const spreadsheetId = user.spreadsheetId;
-
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    const [dbSettled, sheet] = await Promise.all([
-      readDbTabFromDb(spreadsheetId).then(
-        (value) => ({ ok: true, value }) as const,
-        (error) => ({ ok: false, error }) as const,
-      ),
-      readAllSheetSections(spreadsheetId),
-    ]);
-    if (dbSettled.ok) {
-      const db = dbSettled.value;
-      return {
-        purchases: backfillMissingRows(db.purchases, sheet.purchases, (r) => r.row),
-        productions: backfillMissingRows(db.productions, sheet.productions, (r) => r.row),
-        banners: backfillMissingRows(db.banners, sheet.banners, (r) => r.row),
-        leads: backfillMissingRows(db.leads, sheet.leads, (r) => r.row),
-      };
-    }
-    Sentry.captureException(dbSettled.error, { tags: { where: "loadDBOverview-db-read" } });
-    return sheet; // DB 실패 → 이미 읽어둔 시트 결과(추가 read 0)
+  if (chooseDailySource(user.cohort, dbEnabled()) !== "db") {
+    return readAllSheetSections(spreadsheetId);
   }
-
-  return readAllSheetSections(spreadsheetId);
+  const [dbSettled, presence] = await Promise.all([
+    readDbTabFromDb(spreadsheetId).then(
+      (value) => ({ ok: true, value }) as const,
+      (error) => ({ ok: false, error }) as const,
+    ),
+    Promise.allSettled([
+      readPurchaseFilledRows(spreadsheetId),
+      readProductionFilledRows(spreadsheetId),
+      readBannerFilledRows(spreadsheetId),
+      readLeadFilledRows(spreadsheetId),
+    ]),
+  ]);
+  if (!dbSettled.ok) {
+    Sentry.captureException(dbSettled.error, { tags: { where: "loadDBOverview-db-read" } });
+    return readAllSheetSections(spreadsheetId); // DB 실패 → 기존처럼 시트 전체 fallback
+  }
+  const db = dbSettled.value;
+  const [pPurchase, pProduction, pBanner, pLead] = presence;
+  if (
+    coversAllPresent(db.purchases, pPurchase) &&
+    coversAllPresent(db.productions, pProduction) &&
+    coversAllPresent(db.banners, pBanner) &&
+    coversAllPresent(db.leads, pLead)
+  ) {
+    return db; // 4섹션 전부 빈틈 없음 확인됨 — 전체 시트 fetch 생략(BBE-259)
+  }
+  try {
+    const sheet = await readAllSheetSections(spreadsheetId);
+    return {
+      purchases: backfillMissingRows(db.purchases, sheet.purchases, (r) => r.row),
+      productions: backfillMissingRows(db.productions, sheet.productions, (r) => r.row),
+      banners: backfillMissingRows(db.banners, sheet.banners, (r) => r.row),
+      leads: backfillMissingRows(db.leads, sheet.leads, (r) => r.row),
+    };
+  } catch (e) {
+    Sentry.captureException(e, { tags: { where: "loadDBOverview-union-fallback-read" } });
+    return db; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
+  }
 }
 
 /**

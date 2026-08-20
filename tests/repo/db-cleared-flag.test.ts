@@ -11,6 +11,7 @@ const valuesGet = vi.fn(async () => ({ data: { values: [[]] } })); // 첫 데이
 const valuesUpdate = vi.fn(async () => ({}));
 const valuesClear = vi.fn(async () => ({}));
 const mirrorSheetRow = vi.fn();
+const mirrorDbTabRowDurable = vi.fn();
 const persistDbRow = vi.fn();
 const clearDbRow = vi.fn();
 
@@ -22,6 +23,10 @@ vi.mock("@/repo/sheets-client", () => ({
 vi.mock("@/repo/db/mirror", () => ({
   mirrorSheetRow: (...a: unknown[]) => mirrorSheetRow(...(a as [])),
   mirrorClearRow: vi.fn(),
+}));
+// BBE-259: append 은 전용 durable 미러(mirror.ts 비공유) — updatePurchase(persistDbRow)는 불변.
+vi.mock("@/repo/db-tab-append-mirror", () => ({
+  mirrorDbTabRowDurable: (...a: unknown[]) => mirrorDbTabRowDurable(...(a as [])),
 }));
 vi.mock("@/repo/db/db-tab-sync", () => ({
   persistDbRow: (...a: unknown[]) => persistDbRow(...(a as [])),
@@ -39,6 +44,7 @@ beforeEach(() => {
   valuesGet.mockReset().mockResolvedValue({ data: { values: [[]] } });
   valuesUpdate.mockReset().mockResolvedValue({});
   mirrorSheetRow.mockReset();
+  mirrorDbTabRowDurable.mockReset();
   persistDbRow.mockReset();
   clearDbRow.mockReset();
 });
@@ -46,10 +52,10 @@ beforeEach(() => {
 describe("_cleared:false 부활 플래그", () => {
   it("appendPurchase → 미러 payload 에 _cleared:false 포함(재추가 부활)", async () => {
     await appendPurchase("sheet-1", P);
-    expect(mirrorSheetRow).toHaveBeenCalledTimes(1);
-    const arg = mirrorSheetRow.mock.calls[0]?.[0] as { payload: Record<string, unknown> };
-    expect(arg.payload._cleared).toBe(false);
-    expect(arg.payload.업체명).toBe("가나");
+    expect(mirrorDbTabRowDurable).toHaveBeenCalledTimes(1);
+    const [, , payload] = mirrorDbTabRowDurable.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(payload._cleared).toBe(false);
+    expect(payload.업체명).toBe("가나");
   });
 
   it("updatePurchase → persistDbRow payload 에 _cleared:false 포함(편집도 부활)", async () => {
