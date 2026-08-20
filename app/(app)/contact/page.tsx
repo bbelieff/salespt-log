@@ -28,6 +28,7 @@ import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
 import { formatMoney } from "@/lib/format/money";
+import { createSaveCoalescer } from "@/util/save-coalesce";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -290,41 +291,38 @@ export default function ContactPage() {
     channels: Record<Channel, ChannelDailyRowMetrics>,
   ) => saveMetrics.mutateAsync({ date: dateAtClick, channels });
 
-  // 통합 저장: ① 신규슬롯 append → ② dirty 미팅 patch → ③ 지표(H=카드수, 직접생산 M). 실패 격리.
-  const savingRef = useRef(false);
-  const handleSave = async () => {
-    if (savingRef.current) return; // 더블클릭/중복저장 방지 (재진입 가드)
-    savingRef.current = true;
-    try {
-      await runSave();
-    } finally {
-      savingRef.current = false;
-    }
+  // 통합 저장: ① 신규슬롯 append(병렬) → ② dirty 미팅 patch(병렬) → ③ 지표. 실패 격리.
+  // BBE-243: savingRef 애드혹 가드는 저장 중 재클릭을 그냥 버렸다(최신 draft 무시 위험) —
+  // 공용 coalescer 로 교체(마지막 draft 로 1회 더 실행). append 루프도 병렬화해 항목마다
+  // Sheets 429 재시도 백오프가 순차로 쌓이는 "긴 정지"를 없앤다(lib/util/save-coalesce.ts).
+  const saveCoalescer = useRef(createSaveCoalescer<void>());
+  const handleSave = () => {
+    void saveCoalescer.current.trigger(runSave);
   };
   const runSave = async () => {
     const dateAtClick = date;
     const draftAtClick = draft;
+    const newSlotsAtClick = newSlots;
     let failed = 0;
-    let lacking = 0;
-    const keep: NewSlot[] = []; // ① 신규 슬롯: 완료분만 append, 미완/실패분은 유지
-    for (const slot of newSlots) {
-      if (!slotComplete(slot)) {
-        keep.push(slot);
-        lacking++;
-        continue;
-      }
-      try {
-        await appendMeeting.mutateAsync({
+    const completable = newSlotsAtClick.filter(slotComplete);
+    const lacking = newSlotsAtClick.length - completable.length;
+    const completableIds = new Set(completable.map((s) => s.tempId));
+    const results = await Promise.allSettled(
+      completable.map((slot) =>
+        appendMeeting.mutateAsync({
           date: dateAtClick,
           meeting: buildMeetingFromSlot(slot, dateAtClick),
-        });
-      } catch {
-        keep.push(slot);
-        failed++;
-      }
-    }
-    if (keep.length !== newSlots.length) setNewSlots(keep);
-    failed += await saveAllDirty(); // ② dirty 미팅 patch (실패 격리)
+        }),
+      ),
+    );
+    const failedIds = new Set(completable.filter((_, i) => results[i]!.status === "rejected").map((s) => s.tempId));
+    failed += failedIds.size;
+    // ① 완료돼 append 성공한 슬롯만 제거 — 미완료·실패분은 원래 순서 그대로 유지.
+    const keep = newSlotsAtClick.filter(
+      (s) => !completableIds.has(s.tempId) || failedIds.has(s.tempId),
+    );
+    if (keep.length !== newSlotsAtClick.length) setNewSlots(keep);
+    failed += await saveAllDirty(); // ② dirty 미팅 patch (병렬, 실패 격리)
     // ③ 지표 저장 (H=카드수 재계산 + 직접생산 M 동기화).
     try {
       const res = await saveMetricsAndCheck(dateAtClick, draftAtClick);

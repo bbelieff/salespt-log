@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { saveAllParallel } from "@/util/save-coalesce";
 
 /** dirty 입력 1개가 등록하는 항목. save=영속화(await), discard=편집 버림, label=사람이 읽는 이름. */
 export interface DirtyEntry {
@@ -192,17 +193,12 @@ export default function DirtyProvider({ children }: { children: React.ReactNode 
     setPending(() => action);
   }, []);
 
-  const saveAll = useCallback(async (): Promise<number> => {
-    let fail = 0;
-    for (const e of [...ref.current.values()]) {
-      try {
-        await e.save();
-      } catch {
-        fail++;
-      }
-    }
-    return fail;
-  }, []);
+  // 병렬 저장(BBE-243) — 순차 for-await 는 항목 수만큼 대기시간이 누적되고, 항목마다
+  // Sheets 429 재시도 백오프(sheets-client.ts, 최대 ~15s)가 쌓이면 "튕김"(긴 정지)으로
+  // 느껴진다. 항목은 서로 다른 dirty 등록자라 독립적 — 병렬 실행이 안전하다.
+  const saveAll = useCallback((): Promise<number> => saveAllParallel(
+    [...ref.current.values()].map((e) => () => Promise.resolve(e.save())),
+  ), []);
 
   // 브라우저 닫기·새로고침 — dirty 일 때만. labels 길이로 의존(레지스트리 변경마다 갱신).
   useEffect(() => {
