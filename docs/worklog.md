@@ -488,6 +488,29 @@
 
 ## 로그
 
+### 2026-08-20 · 경영일지 데탑 C작업원D(260820) · BBE-259 부분완주 — DB관리(03) 4섹션에 #824 패턴 이식
+- 의도: belie 디스패치 — BBE-248 D 정직 이관분 (a)+(b) 승계. 계약(02)에 적용한 패턴(PR #824)을
+  DB관리(03) 4섹션(매입DB·직접생산·현수막·콜지기소)에 이식. 완주 = 4섹션 각각 존재확인 설계
+  명시 + payload 축소 수치 + check.sh + §6.8. 경계: 공용 mirror.ts 수정 금지(전용 함수로).
+- **한 것**: ① append durable 성 — 4섹션 append(appendPurchase/Production/Banner/Lead)의 DB
+  반영 재시도창을 mirror.ts 표준(3회/~1.8초)→8회/~25초로 확장(`db-tab-append-mirror.ts`, 전용
+  경로 — 공용 mirror.ts 비수정). fire-and-forget 유지 근거는 BBE-248 과 동일(재시도 시
+  findFirstEmptyRow 재호출로 매출 이중계상 위험, BBE-59 UUID row_key 로도 이 위험은 안
+  사라짐 — 시트 쪽 물리 행 중복은 키 스킴과 무관). ② 목록조회 비용 절감 — `loadDBOverview`
+  가 4섹션 각각 저비용 존재확인(`readXFilledRows`)을 DB read 와 병렬 발사, 전부 빈틈 없으면
+  전체 시트 fetch 생략. 신규 테스트 18건 + 기존 회귀 갱신(mirrorSheetRow→mirrorDbTabRowDurable
+  전환, append 경로만) 전부 green, check.sh 전체 green(BBE-251 요청경로 가드 포함 — 새 파일은
+  DB write 경로라 화이트리스트 변경 불요). PR [#836](https://github.com/bbelieff/salespt-log/pull/836)
+  머지(`503b94b`) → 배포 run [32384979525](https://github.com/bbelieff/salespt-log/actions/runs/32384979525)
+  success → health 200 독립 재확인.
+- **결정(정직 명기, §0.8)**: 섹션별 존재확인 절감폭이 비대칭 — 매입DB·직접생산·현수막은
+  판정열이 섹션 시작열 1개뿐이라 7~8열→1열, 콜·지·기·소는 판정열(대표자명·업체명·연락처)이
+  흩어져 있어 7열→6열(AD=조건 만 제외)에 그침. 빈틈 발견 시 4섹션 **전체** 일괄 재조회(섹션별
+  아닌) — 단순성 우선, 드문 경로라 실익 작다고 판단해 자율결정.
+- **미달성(BBE-248 과 동일 구조)**: "시트왕복 0" 문자 그대로 미달성(존재확인 read 는 남음) ·
+  응답시간 전/후 실측(PostHog 접근권한 이 세션엔 없음).
+- SoR: PR #836, Linear BBE-259(설계 근거·완주 코멘트), `db-tab-append-mirror.ts`
+
 ### 2026-08-20 · 경영일지 데탑 C작업원B(260820) · BBE-249 완주 — admin/users readBundle TTL→SWR 교체
 - 의도: BBE-244(제가 복구한 P0)의 구조적 후속 디스패치. `me.ts:380-393` 비파일럿 학생별
   개별 시트 read(N+1)를 "배치 쿼리화(파일럿처럼) 또는 concurrency+캐시" 중 택1해 해소.
