@@ -26,6 +26,7 @@ export default function TrainerAssignCard({
   trainees,
   busy,
   onSave,
+  resolveAssigned,
   onRemoveTrainer,
   onMoveToManagement,
   viewOnly = false,
@@ -39,6 +40,11 @@ export default function TrainerAssignCard({
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
+  /** BBE-253 — 서버 확정 전 "클라이언트가 아는 최신 배정 목록". toggle/bulkApply 가
+   *  이 값을 기준(current)으로 next 를 계산 — t.assignedTrainer(서버 마지막 확정치, stale
+   *  할 수 있음) 직접 사용 금지. 연타 시 두 번째 토글이 첫 번째 토글의 변경을 덮어쓰는
+   *  사고(유실)를 막는다. */
+  resolveAssigned: (email: string, fallback: string[]) => string[];
   onRemoveTrainer?: (email: string) => void;
   onMoveToManagement?: (email: string) => void;
   viewOnly?: boolean;
@@ -53,10 +59,27 @@ export default function TrainerAssignCard({
   const trainerLc = trainer.email.toLowerCase();
 
   // 옵티미스틱 토글 — 체크박스 클릭 즉시 시각 반영 (서버 응답 전).
-  // trainees prop 갱신 시 useEffect 로 클리어 (서버가 진실).
+  // BBE-253: trainees prop 이 바뀔 때마다(=아무 학생의 router.refresh() 든) 전부
+  // 지우면, 아직 내 요청이 안 끝난 학생의 optimistic 값도 같이 사라져 서버의 "옛"
+  // (아직 미반영) 값이 잠깐 보였다가 다시 바뀌는 롤백 플래시가 난다. 이 학생 항목의
+  // 서버값이 실제로 optimistic 값과 일치할 때만(=서버가 따라잡았을 때만) 지운다.
   const [optimistic, setOptimistic] = useState<Map<string, boolean>>(new Map());
   useEffect(() => {
-    setOptimistic(new Map());
+    setOptimistic((prev) => {
+      if (prev.size === 0) return prev;
+      let changed = false;
+      const next = new Map(prev);
+      for (const t of trainees) {
+        if (!next.has(t.email)) continue;
+        const serverChecked = parseAssigned(t.assignedTrainer).includes(trainerLc);
+        if (serverChecked === next.get(t.email)) {
+          next.delete(t.email);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trainees]);
 
   function isChecked(t: PanelUser): boolean {
@@ -73,7 +96,7 @@ export default function TrainerAssignCard({
   function toggle(t: PanelUser) {
     const newChecked = !isChecked(t);
     setOptimistic((prev) => new Map(prev).set(t.email, newChecked));
-    const current = parseAssigned(t.assignedTrainer);
+    const current = resolveAssigned(t.email, parseAssigned(t.assignedTrainer));
     const next = newChecked
       ? Array.from(new Set([...current, trainerLc]))
       : current.filter((e) => e !== trainerLc);
@@ -87,7 +110,7 @@ export default function TrainerAssignCard({
       if (state === "add" && has) continue;
       if (state === "remove" && !has) continue;
       newOpt.set(t.email, state === "add");
-      const current = parseAssigned(t.assignedTrainer);
+      const current = resolveAssigned(t.email, parseAssigned(t.assignedTrainer));
       const next =
         state === "add"
           ? Array.from(new Set([...current, trainerLc]))

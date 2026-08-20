@@ -66,6 +66,31 @@ export function createSaveCoalescer<T = void>() {
 }
 
 /**
+ * 항목(키)별로 독립된 좌표(coalesce) 큐를 관리 — BBE-253("담당 트레이너 토글 연타 시
+ * 롤백"). 화면에 동시에 여러 "행"(수강생 등)이 있고 각 행이 독립적으로 연타될 수 있을 때,
+ * 행마다 별도의 `createSaveCoalescer` 를 두면 ①같은 행에 대한 재트리거는 좌표(마지막
+ * 입력만 반영) ②다른 행끼리는 서로 막지 않고 병렬 진행 — 두 성질을 한 번에 얻는다.
+ */
+export function createKeyedSaveCoalescer<K, T = void>() {
+  const coalescers = new Map<K, ReturnType<typeof createSaveCoalescer<T>>>();
+
+  function trigger(key: K, run: () => Promise<T>): Promise<T> {
+    let c = coalescers.get(key);
+    if (!c) {
+      c = createSaveCoalescer<T>();
+      coalescers.set(key, c);
+    }
+    return c.trigger(run);
+  }
+
+  function isSaving(key: K): boolean {
+    return coalescers.get(key)?.isSaving() ?? false;
+  }
+
+  return { trigger, isSaving };
+}
+
+/**
  * 여러 개의 독립 저장 작업을 **병렬**로 실행 — 항목별 실패 격리(실패 개수 반환).
  * 순차 `for...await` 대신 쓰면: ①총 대기시간이 항목 수에 비례해 늘어나지 않고 ②재시도
  * 백오프가 항목마다 누적(1번 항목 재시도 대기 중 2번은 시작도 못 함)되지 않는다 — 다건

@@ -117,6 +117,7 @@ export function SectionAssign({
   trainees,
   busy,
   onSave,
+  resolveAssigned,
   onRemoveTrainer,
   onMoveToManagement,
   onReorder,
@@ -126,6 +127,9 @@ export function SectionAssign({
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
+  /** BBE-253 — 서버 확정 전 "클라이언트가 아는 최신 배정 목록"을 반환(없으면 fallback 시딩).
+   *  토글이 이걸 기준으로 next 를 계산해야 연타 시 stale prop 덮어쓰기가 안 생긴다. */
+  resolveAssigned: (email: string, fallback: string[]) => string[];
   onRemoveTrainer?: (email: string) => void;
   onMoveToManagement?: (email: string) => void;
   /** PR C-2: 트레이너 카드 드래그 정렬 결과. emails = 새 순서. 미제공이면 dnd 비활성. */
@@ -159,6 +163,7 @@ export function SectionAssign({
                 trainees={trainees}
                 busy={busy}
                 onSave={onSave}
+                resolveAssigned={resolveAssigned}
                 onRemoveTrainer={onRemoveTrainer}
                 onMoveToManagement={onMoveToManagement}
                 viewOnly={viewOnly}

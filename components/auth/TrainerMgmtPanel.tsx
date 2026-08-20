@@ -9,9 +9,10 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createKeyedSaveCoalescer } from "@/util/save-coalesce";
 import {
   type PanelUser,
   SectionPending,
@@ -58,6 +59,35 @@ export default function TrainerMgmtPanel({
     } finally {
       setBusy(null);
     }
+  }
+
+  // 담당 트레이너 배정 — 수강생(traineeEmail) 단위 좌표(BBE-253, BBE-243 패턴 재사용).
+  // ①latestAssigned: 서버 확정을 기다리지 않는 "클라이언트가 아는 최신 의도" — 같은
+  //   수강생을 (같은/다른 트레이너 카드에서) 연타해도 항상 이 값을 기준으로 다음 상태를
+  //   계산해, 시트에서 다시 읽어오기 전(prop 이 아직 stale)에 두 번째 토글이 첫 번째
+  //   토글을 덮어써 유실되는 사고를 막는다.
+  // ②assignCoalescer: 수강생별 저장 큐 — 같은 수강생에 대한 요청은 항상 직렬(동시에
+  //   둘 이상 in-flight 금지) + 좌표(마지막 의도만 서버로), 다른 수강생끼리는 서로 안 막음.
+  const latestAssigned = useRef(new Map<string, string[]>()).current;
+  const assignCoalescer = useRef(createKeyedSaveCoalescer<string, void>()).current;
+
+  function resolveAssigned(email: string, fallback: string[]): string[] {
+    if (!latestAssigned.has(email)) latestAssigned.set(email, fallback);
+    return latestAssigned.get(email)!;
+  }
+
+  // busy 표시는 기존과 동일하게 call() 내부에 위임(단일 문자열 — 여러 수강생이 동시에
+  // in-flight 면 마지막 것만 스피너로 보일 수 있으나, §완주기준(유실 0·롤백 0)은 아래
+  // 좌표 큐가 데이터 정합으로 보장하므로 표시용 busy 정확도는 이 카드 스코프 밖(후속).
+  function saveAssignment(traineeEmail: string, trainerEmails: string[], key: string) {
+    latestAssigned.set(traineeEmail, trainerEmails); // 동기 — 바로 다음 토글이 이 값을 본다
+    void assignCoalescer.trigger(traineeEmail, () =>
+      call(
+        "/api/admin/assign-trainee",
+        { traineeEmail, trainerEmails: latestAssigned.get(traineeEmail)! },
+        key,
+      ),
+    );
   }
 
   /** PR C-2: 트레이너 카드 드래그 정렬 결과 → registry M(sortOrder) 일괄 update.
@@ -139,16 +169,8 @@ export default function TrainerMgmtPanel({
           trainees={trainees}
           busy={busy}
           onReorder={viewOnly ? undefined : reorderTrainers}
-          onSave={
-            viewOnly
-              ? () => {}
-              : (traineeEmail, trainerEmails, key) =>
-                  call(
-                    "/api/admin/assign-trainee",
-                    { traineeEmail, trainerEmails },
-                    key,
-                  )
-          }
+          resolveAssigned={resolveAssigned}
+          onSave={viewOnly ? () => {} : saveAssignment}
           onMoveToManagement={
             viewOnly
               ? undefined
