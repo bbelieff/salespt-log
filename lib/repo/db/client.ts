@@ -73,9 +73,10 @@ async function doEnsureSchema(): Promise<void> {
   await getPool().query(
     `create index if not exists sheet_rows_cohort_tab on sheet_rows (cohort, tab)`,
   );
-  await getPool().query(
-    `create index if not exists sheet_rows_payload on sheet_rows using gin (payload)`,
-  );
+  // sheet_rows_payload(GIN) 은 BBE-250 에서 제거(0004 마이그레이션) — payload 는 앱
+  // 전체에서 `->>` 추출로만 조회되고 컨테인먼트 연산(@>/?/#>) 은 0건이라 GIN 이 조회를
+  // 가속할 일이 없었다(idx_scan=2 vs unique btree 55,106). 여기서 재생성하면 그
+  // 마이그레이션이 다음 ensureSchema() 호출에 즉시 무효화되므로 같이 지운다.
   // mirror_pending (db-write-flip §2.2·§7-3): DB 정본 쓰기는 성공했는데 시트 수렴 미러가
   // 재시도 끝에 실패한 행 표식. 다음 수렴 동기화가 재드라이브(self-heal). ADD COLUMN IF NOT EXISTS
   // = 멱등·가산(기존 행 default false, 롤백 시 코드만 되돌리면 무해). 정본 payload 는 무오염.
