@@ -93,8 +93,30 @@ async function sheetRawMeetingRows(sid) {
   const rows = await grid(sid, "'04 업체관리(앱자동작성용)'!A2:AS");
   return rows.map(normalizeSheetMeetingRow).filter((m) => m.channel || m.상태);
 }
+/** 02 계약 탭 alias — lib/repo/contract-payment.ts TAB_ALIASES 재현(신형→6기 legacy 순).
+ * ★BBE-260(2026-08-20) 확정 사고: 이 함수가 고정 탭명("02 계약수납관리")만 읽어 6기(legacy
+ * 탭명 "02 계약관리") 전원이 grid() 의 `.catch(()=>null)` 로 조용히 빈 배열을 받았다 —
+ * 그 결과 6기 6/6 전원의 실재 DB 계약이 B21 지문 차집합에서 "DB에만 있음"(가짜 중복/삭제
+ * 신호)으로 잘못 잡혔다(BBE-260 재현·확정, run 32394307803→32396445235 전후 대조로
+ * 6기 diff 6/6→0/6 반증). 앱 본체(resolveLayout)는 이미 이 alias 를 쓰므로 실사용 화면은
+ * 항상 정상이었다 — 이 "정본 측정기" 만 뒤처져 있었다. */
+const CONTRACT_TAB_ALIASES = [
+  { tab: "02 계약수납관리", firstDataRow: 6 },
+  { tab: "02 계약관리", firstDataRow: 5 }, // 6기 legacy
+];
+const contractLayoutCache = new Map();
+async function resolveContractLayout(sid) {
+  const cached = contractLayoutCache.get(sid);
+  if (cached) return cached;
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: sid, fields: "sheets(properties(title))" }).catch(() => null);
+  const titles = new Set((meta?.data.sheets ?? []).map((t) => t.properties?.title ?? ""));
+  const found = CONTRACT_TAB_ALIASES.find((a) => titles.has(a.tab)) ?? CONTRACT_TAB_ALIASES[0];
+  contractLayoutCache.set(sid, found);
+  return found;
+}
 async function sheetRawContractRows(sid) {
-  const rows = await grid(sid, "'02 계약수납관리'!A6:AK");
+  const { tab, firstDataRow } = await resolveContractLayout(sid);
+  const rows = await grid(sid, `'${tab}'!A${firstDataRow}:AK`);
   return rows.map(normalizeSheetContractRow).filter((c) => c.계약일);
 }
 async function sheetRawSalesRows(sid, courseStartISO) {
