@@ -8,8 +8,9 @@
 ---
 
 slug: bbe251-sheets-request-path-gate
-status: active
+status: completed
 created: 2026-08-20
+completed: 2026-08-20
 owner: 경영일지 데탑 C작업원C(260820) — BBE-245 프로그램 4단계, belie 디스패치
 related: BBE-245, BBE-242, BBE-246, BBE-97, BBE-253(우선순위 인터럽트로 중간에 처리)
 
@@ -86,3 +87,7 @@ PostHog 접근 불가(§1) 로 카드가 원래 제안한 "api_timing.sheets_cal
 
 ## Log
 - **2026-08-20 착수**: BBE-253(P0) 인터럽트로 중간에 정지, 완주 후 복귀.
+- **2026-08-20 완주**: PR #833(`da6ef5a`) 머지 → 배포 run `32372020765` **success** →
+  `https://salesptlog.online` **200**. check.sh 전체 green. 정적 가드 4건·동적 검증 3건
+  전부 자기검증(실제 화이트리스트 항목 제거/실제 코드에 시트 호출 주입 → 실패 확인 후 원복)
+  완료.
