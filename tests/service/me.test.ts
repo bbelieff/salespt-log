@@ -45,7 +45,14 @@ import {
   computeGraduationISO,
   enrichUsersWithDates,
   enrichUsersWithStats,
+  _resetBundleCacheForTest,
 } from "@/service/me";
+
+// BBE-249 — readBundle 이 SWR 인메모리 캐시(spreadsheetId 키)로 바뀌어 테스트 간 상태가
+// 새 지 않으면 서로 오염될 수 있다. 각 테스트는 고유 spreadsheetId 를 쓰지만 안전하게 리셋.
+beforeEach(() => {
+  _resetBundleCacheForTest();
+});
 
 describe("GRADUATION_OFFSET_DAYS", () => {
   it("종강총회 offset = 50일 (7기+ 현행 모델, ADR-0005)", () => {

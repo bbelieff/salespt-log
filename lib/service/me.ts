@@ -12,17 +12,22 @@
  *  - TopHeader 컴포넌트 — 모든 탭 상단 "{기수} {이름} 대표님" 표시
  *  - DDayBadge — 종강총회일(O2)까지 남은 일수 카운트다운 (D-N = O2 − today)
  */
-import { unstable_cache } from "next/cache";
 import { findUserByEmail } from "@/repo/users";
 import {
   findActiveArenaRowByEmail,
   findArchivedRowByEmail,
   resolveOwnArenaSheetId,
 } from "@/repo/users-arena";
-import { readProfileBundle } from "@/repo/sales";
 import { isDbReadPilot } from "@/service/daily-source";
 import { dbEnabled } from "@/repo/db/client";
 import { profileStatsFromDb } from "./profile-stats-db";
+import { readBundle } from "./profile-bundle-cache";
+// 계측/테스트 전용 export — 이 파일의 소비처(호출부)를 그대로 유지하기 위해 재수출(BBE-249).
+export {
+  _resetSheetBundleFetchCount,
+  _getSheetBundleFetchCount,
+  _resetBundleCacheForTest,
+} from "./profile-bundle-cache";
 
 /**
  * 종강총회 offset (7기+ 현행 모델): O2 = O1 + 50. ADR-0005 참조.
@@ -93,56 +98,22 @@ export function computeGraduationISO(courseStartISO: string): string {
   return toISO(addDays(start, GRADUATION_OFFSET_DAYS));
 }
 
-/**
- * spreadsheetId → bundle(profile + dates) 캐시 — 10분 (600초).
- * 시트 B3/C3/O1/O2 변경은 매우 드물고(수강 시작 시 1회) 페이지 전환 시 매번
- * 다시 읽으면 헤더 표시 지연 주범 + Sheets API quota (60 reads/min/user) 압박.
- *
- * **2026-05-13 quota 사고**: /admin/users 진입 시 23 trainee 시트 read.
- * cache 60s + admin 새로고침 빈번 + PM2 restart 시 cache 비움 → 분당 60 read
- * 한도 초과 → 500 "Quota exceeded for Read requests per minute per user".
- * 캐시 시간 60s → 600s 로 늘려 quota 압박 1/10 감소.
- * trade-off: 시트 B3/C3/O1/O2 직접 수정 시 최대 10분 지연 반영. admin prep 후
- * 거의 변경 안 되는 데이터라 실용상 무관. 즉시 반영 필요한 화면은 명시적
- * `revalidateTag("me-bundle")` 호출 가능.
- *
- * **2026-05-13 사고 fix (앞)**: unstable_cache 가 결과를 JSON 직렬화 → Date 객체가
- * ISO string 으로 복원됨 → cache hit 시 `bundle.courseStart` 가 string →
- * 호출자(`toISO`)가 `string.getFullYear()` 호출 → "a.getFullYear is not a
- * function" 500 에러. cache 내부에서 number(ms) 만 저장하고 호출 부에서 Date 로
- * 복원. JSON 직렬화 안전한 primitive 만 캐시.
- */
-const cachedReadBundle = unstable_cache(
-  async (spreadsheetId: string) => {
-    const b = await readProfileBundle(spreadsheetId);
-    return {
-      cohort: b.cohort,
-      name: b.name,
-      courseStartMs: b.courseStart.getTime(),
-      graduationMs: b.graduation.getTime(),
-      // 2026-05-16: stats(E4:E6) 추가 — admin/trainer 카드의 "예정·완료·계약" 표시용.
-      stats: b.stats,
-    };
-  },
-  ["me-bundle-v3"], // v3: stats 를 E4:E6 → E~N 데이터 컬럼 합산으로 변경 (전원 0 사고 fix)
-  // 2026-05-19: TTL 1800s(30분) → 600s(10분). 수강생관리 카드 합계(E4:E6 미팅
-  // 누적)가 최대 30분 늦게 반영돼 "연동 안 됨" 처럼 보이던 사용자 보고. 10분으로
-  // 단축. 콜드스타트 quota burst 는 PR #244/#245 의 429 retry(backoff) + pMapBundle
-  // 동시성 제한으로 흡수. 즉시 반영 필요 시 invalidateTag("me-bundle").
-  { revalidate: 600, tags: ["me-bundle"] },
-);
+// spreadsheetId → bundle(profile + dates + stats) 캐시(SWR) + readBundle() 은
+// profile-bundle-cache.ts 로 분리(500줄 cap, BBE-249). 설계 근거·incident 이력은
+// 그 파일 상단 docblock 참고.
 
 /**
- * 시트 시퀀스 fetch 동시성 제한 (2026-05-16) — Sheets API quota 60 reads/min/SA
- * 한도 보호. concurrency 5 → 60명 cold-start 시 ~12 waves × 5 동시 = 부드러운 rate.
- * Promise.all 60 동시 burst 는 한도 즉시 hit → 503 retry 폭주 사고 가능.
+ * 시트 시퀀스 fetch 동시성 제한 (2026-05-16, BBE-249 에서 상향) — Sheets API quota
+ * 60 reads/min/SA 한도 보호. concurrency 8 → 60명 콜드스타트 시 ~8 waves × 8 동시로
+ * 완주 시간 단축(SWR 도입으로 이 경로를 타는 빈도 자체도 크게 줄었다 — 위 docblock).
+ * Promise.all 무제한 동시 burst 는 한도 즉시 hit → 503 retry 폭주 사고 가능.
  *
  * 결과 순서는 입력 순서 보존 (results[i] 배열 위치).
  */
 async function pMapBundle<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
-  concurrency = 5,
+  concurrency = 8,
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let idx = 0;
@@ -159,25 +130,6 @@ async function pMapBundle<T, R>(
   return results;
 }
 
-/** cachedReadBundle 결과를 Date 포함 형태로 복원. */
-async function readBundle(spreadsheetId: string): Promise<{
-  cohort: string;
-  name: string;
-  courseStart: Date;
-  graduation: Date;
-  stats: { 미팅예정: number; 미팅완료: number; 계약: number };
-}> {
-  const b = await cachedReadBundle(spreadsheetId);
-  return {
-    cohort: b.cohort,
-    name: b.name,
-    courseStart: new Date(b.courseStartMs),
-    graduation: new Date(b.graduationMs),
-    // 옛 캐시 entries 호환 — stats 없으면 0 으로 fallback.
-    stats: b.stats ?? { 미팅예정: 0, 미팅완료: 0, 계약: 0 },
-  };
-}
-
 /**
  * 사용자 목록을 받아 각자의 개인 시트 B3/C3 에서 cohort/name 을 읽어 덮어쓴다.
  *
@@ -190,13 +142,14 @@ async function readBundle(spreadsheetId: string): Promise<{
  *   - 시트 읽기 실패 (권한/삭제) → registry 값 유지, 에러 로그.
  *   - 시트 B3 가 빈 문자열 → registry 값 fallback.
  *
- * 비용: 사용자 N 명 × cachedReadBundle(60s 캐시) = 첫 호출만 N roundtrip,
- * 이후 60초 동안 0 roundtrip. 병렬 호출.
+ * 비용: 사용자 N 명 × readBundle(SWR, BBE-249) — 신선(10분 이내)하면 0 roundtrip,
+ * 낡았지만 30분 이내면 캐시값 즉시 반환(백그라운드 갱신, 비차단). 완전 콜드일 때만
+ * N roundtrip. 병렬 호출.
  */
 export async function enrichUsersWithSheetCohort<T extends { cohort: string; name: string; spreadsheetId: string }>(
   users: T[],
 ): Promise<T[]> {
-  // pMapBundle (concurrency 5) — 60명 cold-start 시에도 Sheets quota burst 방지.
+  // pMapBundle (concurrency 8, BBE-249) — 콜드스타트 시에도 Sheets quota burst 방지.
   return pMapBundle(users, async (u) => {
     if (!u.spreadsheetId) return u;
     try {
@@ -223,7 +176,8 @@ export async function enrichUsersWithSheetCohort<T extends { cohort: string; nam
 /**
  * enrichUsersWithSheetCohort 의 확장 — cohort/name 외 시작일/종강일(O1/O2)
  * 까지 채움. 수강생관리 화면(/admin/users)이 한 줄 카드에 모든 정보를 표시할 때
- * 사용. 동일하게 cachedReadBundle 재활용 (별도 API 호출 없음).
+ * 사용. 동일하게 readBundle 의 SWR 캐시 재활용 (같은 spreadsheetId 재조회 시 추가
+ * API 호출 없음, BBE-249).
  */
 export interface EnrichedUserWithDates {
   cohort: string;
@@ -244,7 +198,7 @@ export async function enrichUsersWithDates<
     graduationISO?: string;
   },
 >(users: T[]): Promise<Array<T & { courseStartISO: string; graduationISO: string }>> {
-  // pMapBundle (concurrency 5) — Sheets quota 보호 (PR #198 stats 추가 이후 더 중요).
+  // pMapBundle (concurrency 8, BBE-249) — Sheets quota 보호 (PR #198 stats 추가 이후 더 중요).
   return pMapBundle(users, async (u) => {
     const defaults = { ...u, courseStartISO: "", graduationISO: "" };
     const who = ("email" in u ? (u as { email: string }).email : "?");
@@ -375,8 +329,8 @@ export async function enrichUsersWithStats<
     }
   }
 
-  // pMapBundle (concurrency 5) — 콜드 캐시 시 60명 burst → 12 waves × 5 동시.
-  // Sheets API 60 reads/min/SA 한도 안전 범위. 이제 비파일럿 subset 만 지난다.
+  // pMapBundle (concurrency 8, BBE-249) — 완전 콜드일 때만 시트 read(SWR 이 대부분
+  // 흡수, 위 readBundle docblock). 이제 비파일럿 subset 만 지난다.
   const sheetResults = await pMapBundle(sheetPath, async (u) => {
     if (!u.spreadsheetId) return u;
     const who = "email" in u ? (u as { email: string }).email : "?";
