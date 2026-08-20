@@ -2,7 +2,7 @@
  * BBE-243 — 저장 좌표(coalesce) 유틸 회귀. "연타 20회 유실 0 · 튕김 0" 요건의 핵심 증거.
  */
 import { describe, expect, it, vi } from "vitest";
-import { createSaveCoalescer, saveAllParallel } from "@/util/save-coalesce";
+import { createKeyedSaveCoalescer, createSaveCoalescer, saveAllParallel } from "@/util/save-coalesce";
 
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -111,5 +111,55 @@ describe("saveAllParallel", () => {
 
   it("빈 목록은 즉시 0을 반환", async () => {
     expect(await saveAllParallel([])).toBe(0);
+  });
+});
+
+describe("createKeyedSaveCoalescer (BBE-253)", () => {
+  it("같은 키는 좌표(coalesce)된다 — 연타 20회에도 유실 0", async () => {
+    const { trigger } = createKeyedSaveCoalescer<string, number>();
+    const calls: number[] = [];
+    const run = (v: number) => async () => {
+      calls.push(v);
+      await delay(5);
+      return v;
+    };
+    const first = trigger("studentA", run(0));
+    const rest = Array.from({ length: 19 }, (_, i) => trigger("studentA", run(i + 1)));
+    const results = await Promise.all([first, ...rest]);
+    expect(calls).toEqual([0, 19]); // 즉시 1 + 큐의 마지막 1
+    expect(results).toHaveLength(20);
+  });
+
+  it("서로 다른 키는 독립적으로 동시에 진행된다(한쪽이 다른 쪽을 막지 않는다)", async () => {
+    const { trigger } = createKeyedSaveCoalescer<string, string>();
+    const order: string[] = [];
+    const start = Date.now();
+    const a = trigger("A", async () => {
+      await delay(20);
+      order.push("A");
+      return "A";
+    });
+    const b = trigger("B", async () => {
+      await delay(1);
+      order.push("B");
+      return "B";
+    });
+    await Promise.all([a, b]);
+    const elapsed = Date.now() - start;
+    // A 가 B 를 막았다면 B 도 20ms 이후에나 끝난다 — 독립 진행이면 B 가 먼저 끝난다.
+    expect(order[0]).toBe("B");
+    expect(elapsed).toBeLessThan(35); // 순차(21ms+)가 아니라 병렬(약 20ms)임을 넉넉한 마진으로 확인
+  });
+
+  it("isSaving(key) 은 그 키가 진행 중일 때만 true — 다른 키에는 영향 없음", async () => {
+    const { trigger, isSaving } = createKeyedSaveCoalescer<string, void>();
+    expect(isSaving("A")).toBe(false);
+    const p = trigger("A", async () => {
+      expect(isSaving("A")).toBe(true);
+      expect(isSaving("B")).toBe(false);
+      await delay(1);
+    });
+    await p;
+    expect(isSaving("A")).toBe(false);
   });
 });
