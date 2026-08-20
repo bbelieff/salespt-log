@@ -414,6 +414,39 @@
 
 ## 로그
 
+### 2026-08-20 · 경영일지 데탑 C작업원D(260820) · BBE-248 부분완주 — 계약(02) append 미러 재시도창 확장 + 목록조회 저비용 존재확인
+- 의도: belie 디스패치 — "시트독립 3단계-a" P0(#819/BBE-246 레인 연장). 카드 원문: ①append
+  미러 신뢰도 조사 ②목록조회 union 생략(시트 스킵) ③writeContractRow 큐잉편입(행번호 할당
+  해법 설계 포함). 완주 = 계약·DB관리 목록조회 시트왕복 0 + append 유실 0 증명 + 응답시간 전/후.
+- **① 조사 결과 — 카드의 전제 반증**: `appendFromContract`→`writeContractRow` 실측
+  (`contract-payment.ts:195-260`) — 시트쓰기(`findFirstEmptyRow`)가 DB반영보다 **먼저** 끝나
+  row 는 DB 쓰기 시점에 이미 확정돼 있다(행번호 할당 타이밍 문제는 실재하지 않음). 진짜 문제:
+  DB반영을 update/clear 처럼 동기+throw 로 바꾸면 throw→사용자 재시도→findFirstEmptyRow
+  재호출→**새 행에 중복 기재**(첫 시도의 시트쓰기는 이미 성공했으므로) = 매출 이중계상 —
+  BBE-246 이 append 를 dual-sync 제외한 이유와 동일. 게다가 이 실패가 주로 터지는 상황
+  (BBE-244 급 DB pool 고갈)은 DB 자체가 다운된 상태라 "실패 시 DB에 마킹"(mirror_pending)이
+  구조적으로 불가능(마킹도 DB 쓰기이므로) — update/clear 의 mirror_pending 은 DB가 이미
+  정본으로 성공한 뒤 시트미러만 실패하는 반대 방향이라 이 전제가 안 맞는다.
+- **재설계(자율 진행, §0.5·§0.7 — Linear BBE-248 코멘트에 근거 전문)**:
+  - ③ = "행번호 재설계" 대신 **DB반영 재시도창 확장**(fire-and-forget 유지, 무차단) — 신규
+    `lib/repo/contract-append-mirror.ts`(contracts append 전용, mirror.ts 비공유·다른 탭
+    무영향), 8회/700ms 배수(~25초, 표준 3회/~1.8초의 ~14배)로 BBE-244 급 순간 blip 커버리지
+    확장.
+  - ② = "union 전부 생략" 대신 **저비용 존재확인 후 조건부 폴백** — `readFilledRowNumbers`
+    (C열 1개, 41열 대비)를 DB read 와 병렬 발사, 시트에 채워진 모든 row 가 DB 에도 있으면
+    (빈틈 없음) 전체 A:AO fetch 생략, 빈틈 있으면 기존과 동일 전체 union 폴백. 정합성 100%
+    유지(probabilistic 아님) — "시트왕복 0"은 문자 그대로 미달성(1열 read 는 남음, §0.8 정직 보고).
+- **한 것**: 신규 테스트 11건(`contract-append-mirror.test.ts` 6·`contract-payment-list-presence
+  -check.test.ts` 6) + 기존 회귀 전부 green, check.sh 전체 green. PR
+  [#824](https://github.com/bbelieff/salespt-log/pull/824) 머지(`8bd940b`) → 배포 run
+  [32366837689](https://github.com/bbelieff/salespt-log/actions/runs/32366837689) success →
+  health 200 독립 재확인.
+- **스코프 밖(후속 카드 이관, §0.8 완료의 정의 — 임의 완료처리 안 함)**: (a) DB관리(03) 4섹션
+  목록조회 동일 최적화(섹션별 저비용 존재확인 설계 필요) (b) DB관리(03) 4섹션 append durable
+  성 강화(카드 텍스트가 writeContractRow=02 만 명시) (c) 응답시간 전/후·시트콜 실측(PostHog
+  api_timing 접근권한 이 세션엔 없음, BBE-246 과 동일 한계).
+- SoR: PR #824, Linear BBE-248(재정의 근거·완주 코멘트), `contract-append-mirror.ts`
+
 ### 2026-08-20 · 경영일지 데탑 C작업원D(260820) · BBE-246 완주(구현·배포) — contracts·DB관리 요청 경로 시트 동기 호출 제거
 - 의도: belie 디스패치 — "시트독립 2단계" P0. BBE-242(A) 실측(`contract-payment.ts:427,433,
   455,462` 등, 저장 시 시트 API 호출이 요청 경로에 남아있음)의 처방. 완주 = 저장 요청당 시트
