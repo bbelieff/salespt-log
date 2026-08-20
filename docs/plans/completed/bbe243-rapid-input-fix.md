@@ -1,7 +1,8 @@
 ---
 slug: bbe243-rapid-input-fix
-status: active
+status: completed
 created: 2026-08-20
+completed: 2026-08-20
 owner: 경영일지 데탑 C작업원C(260820) — belie 직배차 P0
 related: BBE-242, BBE-75
 ---
@@ -86,5 +87,12 @@ check.sh: typecheck·lint·structural(34)·unit(1338, 신규 9건 포함) 전부
 
 ## Log
 - **2026-08-20 착수(경영일지 데탑 C작업원C(260820))**: 세션 승계(260809→260820).
+- **2026-08-20 완주**: PR #813 머지(squash, master `a7928c5`) → 배포 run `32348207731` success →
+  `curl https://salesptlog.online` 200 확인. check.sh 전부 green(typecheck·lint·structural 34·
+  unit 1338 — 신규 9건 포함). 전/후: 연타 20회 → 이전엔 재클릭 유실(재진입 가드가 무시) 가능,
+  수정 후 20/20 결과 유실 0·예외(튕김) 0(단위테스트로 고정). 다건 저장(예: 10칸)은 이전엔
+  슬롯당 순차 저장이라 429 백오프가 누적됐고(최악 슬롯당 최대 ~15초), 수정 후 `Promise.allSettled`
+  병렬 저장으로 총 소요가 항목 수에 비례하지 않게 됨(테스트로 병렬<순차*0.6 실측 확인).
+  BBE-242 경계(시트 의존 제거) 미침범 — API 호출 총량은 그대로, 재진입/동시성만 개선.
   BBE-243 접수. Explore 조사 → 코드 실측 → 개발서버 기동 중 라이브 429 재현(핵심 증거) →
   수정 3파일 + 신규 유틸 1개 + 테스트 9건 → check.sh 진행 중.
