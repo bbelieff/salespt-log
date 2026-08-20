@@ -86,21 +86,37 @@ async function readRegistryUsers() {
     .filter((u) => u.spreadsheetId && u.role === "trainee");
 }
 
-/** 02 계약수납관리 A6:AK — dashboard-parity.mjs sheetRawContractRows 와 동일 범위,
- * 단 행 번호를 유지해야 row_key 대조가 가능하므로 여기서는 직접 순회한다. */
+/** 02 계약 탭 alias — lib/repo/contract-payment.ts TAB_ALIASES 와 동일(신형→6기 legacy 순).
+ * ★2026-08-20 실측: dashboard-parity.mjs sheetRawContractRows 는 이 alias 를 안 타 6기
+ * 전원(0/6)이 "Unable to parse range: '02 계약수납관리'!A6:AK" 로 조용히 빈 배열([])을
+ * 반환받고, 실재하는 DB 계약이 전부 "DB에만 있음"(가짜 신호)으로 잘못 잡혔다(BBE-260 1차
+ * 실행에서 6기 6/6 전원 같은 에러로 재현·확정). 앱 본체(resolveLayout)는 이 alias 를 이미
+ * 쓰고 있어 실사용 화면은 정상 — 진단 도구만 뒤처진 상태였다. */
+const CONTRACT_TAB_ALIASES = [
+  { tab: "02 계약수납관리", firstDataRow: 6 },
+  { tab: "02 계약관리", firstDataRow: 5 }, // 6기 legacy
+];
 async function readSheetContractsWithRow(sid) {
-  const res = await grid(sid, "'02 계약수납관리'!A6:AK");
-  if (res.err) return { err: res.err, byRow: new Map(), rows: [] };
+  let res = await grid(sid, `'${CONTRACT_TAB_ALIASES[0].tab}'!A${CONTRACT_TAB_ALIASES[0].firstDataRow}:AK`);
+  let firstDataRow = CONTRACT_TAB_ALIASES[0].firstDataRow;
+  let usedAlias = CONTRACT_TAB_ALIASES[0].tab;
+  if (res.err && /Unable to parse range/.test(res.err)) {
+    const alt = CONTRACT_TAB_ALIASES[1];
+    res = await grid(sid, `'${alt.tab}'!A${alt.firstDataRow}:AK`);
+    firstDataRow = alt.firstDataRow;
+    usedAlias = alt.tab;
+  }
+  if (res.err) return { err: res.err, byRow: new Map(), rows: [], usedAlias };
   const byRow = new Map();
   const rows = [];
   res.rows.forEach((r, i) => {
-    const sheetRow = i + 6;
+    const sheetRow = i + firstDataRow;
     const norm = normalizeSheetContractRow(r);
     if (!norm.계약일) return; // 빈 행
     byRow.set(sheetRow, { ...norm, 업체명: s(r, 3) }); // D=업체명(A=idx0 배열 기준 idx3)
     rows.push(norm);
   });
-  return { byRow, rows };
+  return { byRow, rows, usedAlias };
 }
 
 async function readDbContracts(sid) {
@@ -136,11 +152,11 @@ async function auditUser(u) {
   const fp = diffContractFingerprints(sheetRes.rows, dbRows.map((d) => d.norm));
 
   if (fp.onlyInDb.length === 0 && fp.countMismatch.length === 0) {
-    console.log(`\n--- ${u.cohort}기 | ${label} --- diff 없음(onlyInDb 0, countMismatch 0)`);
+    console.log(`\n--- ${u.cohort}기 | ${label} (탭=${sheetRes.usedAlias}) --- diff 없음(onlyInDb 0, countMismatch 0)`);
     return { cohort: u.cohort, label, clean: true, findings: [] };
   }
 
-  console.log(`\n--- ${u.cohort}기 | ${label} --- onlyInDb=${fp.onlyInDb.length}건 countMismatch=${fp.countMismatch.length}건`);
+  console.log(`\n--- ${u.cohort}기 | ${label} (탭=${sheetRes.usedAlias}) --- onlyInDb=${fp.onlyInDb.length}건 countMismatch=${fp.countMismatch.length}건`);
   const findings = [];
 
   // onlyInDb + countMismatch 양쪽 다 "DB 가 시트보다 많은 지문"이 있는 케이스 — 합쳐서 건별 해부.
