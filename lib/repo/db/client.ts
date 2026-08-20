@@ -32,7 +32,12 @@ function getPool(): Pool {
       // Supabase Session Pooler — 전송 암호화 필수. 파일럿은 검증 완화(공용 CA 체인
       // 이슈 회피, Supabase 권장 패턴). P2 정본 전환 시 CA 고정 재검토.
       ssl: { rejectUnauthorized: false },
-      max: 5, // 파일럿 트래픽 소규모 — Session Pooler 커넥션 절약
+      // BBE-244(2026-08-20) — 5 는 부족했다: readProfileStatsRowsFromDbBatch(관리자·
+      // 트레이너·회장 화면 전원 조회, 최대 수십 명 배치)와 registry 읽기(BBE-56)가
+      // 이 풀을 공유하면서 동시 요청 몇 개만 겹쳐도 connectionTimeoutMillis(8초) 안에
+      // 빈 커넥션을 못 얻어 timeout → 배치 실패 → 시트 폴백 대량 발생 → Sheets 쿼터
+      // 소진까지 이어지는 캐스케이드 실측(로컬 재현, 운영 DB/시트 자격 그대로).
+      max: 15,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 8_000,
     });
