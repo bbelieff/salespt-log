@@ -1,11 +1,14 @@
 /**
- * R3-3 잔여 — `clearRowByLink` 의 파일럿 DB-first 순서 계약.
+ * BBE-246 — `clearRowByLink` 의 파일럿 DB-only 계약(요청 경로에서 시트 동기 호출 제거).
  *
- * 왜 순서를 뒤집나: 이 함수의 키는 (계약일, 업체명) 뿐이다. 시트를 먼저 지우면 DB 동기가 실패했을 때
- * 다음 시도에서 `findRowByLink` 가 행을 못 찾아 **DB 의 유령 계약을 영원히 못 지운다**(치유 불가).
- * 그래서 파일럿은 DB `_cleared` 를 먼저 확정하고, 성공했을 때만 시트를 지운다.
- *  · DB 실패 → 시트 무변경 + throw → 재시도가 그대로 성립(멱등)
- *  · DB 성공·시트 실패 → 정본(DB)은 정확, 시트 행이 남아 재시도가 수렴
+ * 이전(R3-3): 파일럿은 DB `_cleared` 를 먼저 확정한 뒤 시트도 같은 요청 안에서 동기로 지웠다
+ * ("DB-first" — 시트를 먼저 지우면 DB 실패 시 다음 재시도가 findRowByLink 로 행을 못 찾아
+ * 유령 계약을 영원히 못 지우는 문제 때문이었다).
+ *
+ * 이후(BBE-246): 파일럿은 **DB 만** 동기로 확정하고 반환한다 — 시트는 `queueContractRowSync`
+ * 에 큐잉되어 응답 이후 비동기로 수렴한다(contract-sheet-sync.ts). clearRow 자체가 이 분기를
+ * 전담하므로(clearRow 테스트 참고) 이 함수는 그저 위임한다. "DB 먼저" 라는 순서 문제 자체가
+ * 소멸했다 — 시트가 같은 요청 안에서 "먼저/나중" 일 수가 없다(아예 안 건드리므로).
  * 비파일럿(시트 정본 + async 미러)은 기존 동작 그대로.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const clearContractRowInDbSync = vi.fn(async () => {});
 const valuesClear = vi.fn(async () => ({}));
 const mirrorClearRow = vi.fn();
+const queueContractRowSync = vi.fn();
 const order: string[] = [];
 
 vi.mock("@/repo/db/contracts-clear", async (importOriginal) => {
@@ -25,6 +29,12 @@ vi.mock("@/repo/db/contracts-clear", async (importOriginal) => {
     },
   };
 });
+vi.mock("@/repo/contract-sheet-sync", () => ({
+  queueContractRowSync: (...a: unknown[]) => {
+    order.push("queue");
+    return queueContractRowSync(...(a as []));
+  },
+}));
 vi.mock("@/repo/sheets-client", () => ({
   sheetsClient: () => ({
     spreadsheets: {
@@ -63,20 +73,24 @@ beforeEach(() => {
   valuesClear.mockReset();
   valuesClear.mockResolvedValue({});
   mirrorClearRow.mockReset();
+  queueContractRowSync.mockReset();
 });
 
 describe("파일럿({syncDb:true})", () => {
-  it("DB _cleared 를 시트 clear 보다 **먼저** 쓴다", async () => {
+  it("DB _cleared 만 동기로 확정 — 시트는 건드리지 않고 큐잉만 한다", async () => {
     const row = await clearRowByLink(SHEET, 계약일, 업체명, { syncDb: true });
     expect(row).not.toBeNull();
     expect(clearContractRowInDbSync).toHaveBeenCalledTimes(1);
-    expect(order).toEqual(["db", "sheet"]);
+    expect(valuesClear).not.toHaveBeenCalled();
+    expect(queueContractRowSync).toHaveBeenCalledWith(SHEET, row);
+    expect(order).toEqual(["db", "queue"]);
   });
 
-  it("DB 실패 시 **시트를 건드리지 않고** throw (재시도 성립)", async () => {
+  it("DB 실패 시 **시트도 큐도 건드리지 않고** throw (재시도 성립)", async () => {
     clearContractRowInDbSync.mockRejectedValueOnce(new Error("db down"));
     await expect(clearRowByLink(SHEET, 계약일, 업체명, { syncDb: true })).rejects.toThrow("db down");
     expect(valuesClear).not.toHaveBeenCalled();
+    expect(queueContractRowSync).not.toHaveBeenCalled();
     expect(order).toEqual(["db"]);
   });
 });

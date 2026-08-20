@@ -13,7 +13,7 @@ import {
   readCompanyInfoFromDb,
   readContractsFromDb,
 } from "@/repo/db/read-daily";
-import { chooseDailySource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import {
   clearRow,
@@ -295,7 +295,13 @@ export async function terminateContract(
 }
 
 /** 이 사용자의 쓰기가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1).
- * export: contract-payment-add.ts(addFromContract) 재사용. */
+ * export: contract-payment-add.ts(addFromContract) 재사용.
+ *
+ * BBE-246: 읽기 게이트(chooseDailySource)가 아니라 **쓰기 게이트**(chooseWriteSource)를 쓴다 —
+ * db.ts::resolveWriteCtx·sales-write.ts::isDbCanonical·meetings-write.ts::isDb 전부 write 게이트를
+ * 쓰는데 이 함수만 read 게이트 이름을 빌려 쓰고 있었다(현재는 두 게이트가 byte-identical 이라
+ * 동작 차이는 없었지만, 읽기·쓰기 파일럿 집합이 갈리는 순간 이 함수만 조용히 잘못된 게이트를
+ * 추적하게 된다 — BBE-246 조사에서 발견, 이번에 정정). */
 export async function resolveSheetWithSyncDb(
   email: string,
 ): Promise<{ spreadsheetId: string; syncDb: boolean; ctx: MeetingCtx }> {
@@ -303,7 +309,7 @@ export async function resolveSheetWithSyncDb(
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   return {
     spreadsheetId: user.spreadsheetId,
-    syncDb: chooseDailySource(user.cohort, dbEnabled()) === "db",
+    syncDb: chooseWriteSource(user.cohort, dbEnabled()) === "db",
     ctx: { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email },
   };
 }
