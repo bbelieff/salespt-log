@@ -164,14 +164,28 @@ export function weeklyActivityFromDb(
 }
 
 /** 누적수임비(B21) = 이월 제외 Σ수임비(arena). 정의 belie 확정(2026-08-05, BBE-66).
- * 파일럿 전원 diff 0 실증은 미완 — 파일 상단 주석 참고. */
+ * ⚠️ BBE-252 후속(2026-08-20) 실측 — 시트 B21 실제 수식은 `='01 영업관리'!O4`
+ * (`O4=O38+O72+...+O276`, 1~8주 stride 8개 셀의 합) 이다. 이 재구현은 "이월 제외
+ * 전체합"으로 STATS_WEEKS(8) 창 클램프가 빠져 있었다 — weeklyContractsFromDb/
+ * weeklyActivityFromDb 등 이 파일의 다른 3개 집계는 이미 이 클램프를 쓴다(BBE-120).
+ * 9주+ 무제한 CRM 기록(ADR-0031)이 있는 사용자는 이 클램프 없이 계산하면 시트보다
+ * 부풀려진다(6·7기 실측, 7기 8명 중 6명이 이 클램프만으로 diff 0 — a808ed0d0385:
+ * 클램프전 sheet=8300000/db=13300000 diff -5000000 → 클램프후 diff 0). 파일럿 전원
+ * diff 0 실증은 미완 — 파일 상단 주석 참고. */
 export function arenaFeeFromDb(
   contracts: ContractPayment[],
+  courseStart: Date,
   courseStartISO: string,
 ): number {
   let fee = 0;
   for (const c of contracts) {
     if (isCarryoverContract(c, courseStartISO)) continue;
+    // ★이 파일의 inSheetWindow()는 MAX_SHEET_WEEK(10) 클램프 — R1:U6 채널매트릭스 전용
+    // (실측 근거 다름, :68-74 주석). B21/O4 는 8개 stride 항(O38..O276)만 합산하므로
+    // STATS_WEEKS(8) 직접 비교를 쓴다 — weeklyContractsFromDb/weeklyActivityFromDb 와 동일 패턴.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.계약일 ?? "")) continue;
+    const w = weekIndexOf(parseISO(c.계약일!), courseStart);
+    if (w < 1 || w > STATS_WEEKS) continue;
     fee += num(c.수임비);
   }
   return fee;
@@ -233,7 +247,7 @@ export function computeDbAggregates(
     channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart),
     weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
     weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
-    누적수임비: arenaFeeFromDb(contracts, courseStartISO),
+    누적수임비: arenaFeeFromDb(contracts, courseStart, courseStartISO),
   };
 }
 
