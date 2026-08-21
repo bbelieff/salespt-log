@@ -99,7 +99,13 @@ async function findTargetUser() {
   throw new Error(`10기 등록자 ${cohort10.length}명 중 해시 ${TARGET_HASH} 일치자 없음 — registry 변경 의심, 재확인 필요`);
 }
 
-/** 대상 행: A열(id) 공란 + 행 전체가 완전공란은 아님(진짜 빈 행 제외). */
+/** 대상 행: A열(id) 공란 + 행 전체가 완전공란은 아님(진짜 빈 행 제외).
+ * ★실측 발견(dry-run #1, 2026-08-21): 계약여부(K, idx10) 컬럼은 체크박스 서식이 걸려있어
+ * 데이터가 전혀 없는 "진짜 빈 행"도 UNFORMATTED_VALUE 로 리터럴 `false` 를 반환한다(전체
+ * 계약여부 열 전체에 체크박스 서식이 깔려 있는 탓 — 시트 자체의 서식 특성, 코드 버그 아님).
+ * 그 결과 최초 필터는 id 없는 아래쪽 빈 행 152건까지 "후보"로 오판(dry-run #1: 후보 160건,
+ * 그중 152건이 K=false 외엔 전부 공란). K 는 계약 성사 여부라는 "있으면 의미있는" 값이라,
+ * true/TRUE 일 때만 "데이터 있음"으로 센다(공란 판정에서 제외) — 나머지 컬럼은 그대로 유지. */
 async function findCandidateRows(sid) {
   const res = await grid(sid, "'04 업체관리(앱자동작성용)'!A2:AP");
   if (res.err) throw new Error(`04 미팅 탭 읽기 실패: ${res.err}`);
@@ -107,8 +113,11 @@ async function findCandidateRows(sid) {
   res.rows.forEach((r, i) => {
     const id = s(r, COL.id);
     if (id) return; // 정상 id 보유 행 — 이미 앱 경로로 미러됐거나 될 수 있는 행, 손대지 않음
-    const nonEmpty = r.some((v) => String(v ?? "").trim() !== "");
-    if (!nonEmpty) return; // 완전 빈 행
+    const nonEmpty = r.some((v, idx) => {
+      if (idx === COL.계약여부) return v === true || v === "TRUE";
+      return String(v ?? "").trim() !== "";
+    });
+    if (!nonEmpty) return; // 완전 빈 행(계약여부 체크박스 기본값 false 는 무시)
     out.push({ row: i + 2, raw: r });
   });
   return out;
