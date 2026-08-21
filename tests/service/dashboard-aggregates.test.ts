@@ -230,7 +230,15 @@ describe("R2-7a weeklyActivityFromDb (대시보드 H33:H40, 불변식①)", () =
 describe("R2-7a arenaFeeFromDb + diff", () => {
   it("이월 제외 Σ수임비", () => {
     const cs = [contract(100), contract(50, "이월"), contract(30)];
-    expect(arenaFeeFromDb(cs, CS_ISO)).toBe(130); // 이월 50 제외
+    expect(arenaFeeFromDb(cs, CS, CS_ISO)).toBe(130); // 이월 50 제외
+  });
+
+  it("BBE-252 후속(2026-08-20) — STATS_WEEKS(8) 창 밖(9주+) 계약은 제외한다(시트 B21=O4=O38+...+O276, 1~8주 stride 합만)", () => {
+    // courseStart+9주째(63일 후) 계약 — weeklyContractsFromDb 등 다른 3개 집계와 동일 클램프.
+    const 창밖계약일 = new Date(CS.getTime() + 63 * 86400000);
+    const iso = `${창밖계약일.getFullYear()}-${String(창밖계약일.getMonth() + 1).padStart(2, "0")}-${String(창밖계약일.getDate()).padStart(2, "0")}`;
+    const cs = [contract(100), contract(9999, "", iso)]; // 두번째는 9주차 — 클램프 대상
+    expect(arenaFeeFromDb(cs, CS, CS_ISO)).toBe(100); // 9999 는 창 밖이라 제외
   });
 
   it("diffDashboardAggregates: 불일치 필드만 반환", () => {
