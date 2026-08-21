@@ -125,7 +125,10 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     // 후보 풀은 "전체 계약"(대안식이 이월/날짜 조건을 다르게 걸어볼 수 있게).
     push("B21.누적수임비", c);
     const carry = c.구분 === "이월" || (c.계약일 && c.계약일 < courseStartISO);
-    if (!carry) fee += c.수임비;
+    // BBE-252 후속(2026-08-20) 실측 — 시트 B21 = O4 = O38+O72+...+O276(1~8주 stride 8개
+    // 셀 합)만 본다. lib/service/dashboard-aggregates.ts arenaFeeFromDb 와 동일 클램프
+    // (그 PR에서 확정) — 이 진단 스크립트도 같이 안 고치면 여기서 계속 옛 결과가 나온다.
+    if (!carry && inSheetWindow(c.계약일, courseStart)) fee += c.수임비;
   }
   return { channelMatrix: cm, weeklyContracts: wc, weeklyActivity: wa, 누적수임비: fee, contrib };
 }
