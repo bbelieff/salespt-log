@@ -191,6 +191,45 @@ export function arenaFeeFromDb(
   return fee;
 }
 
+/** 6기 전용 소스 정렬(BBE-252, 2026-08-21) — 대상 기수(SOURCE_ALIGNED_FEE_COHORTS)만 사용.
+ *
+ * SSH `valueRenderOption:FORMULA` 실측으로 시트 B21 의 진짜 정의를 확인했다:
+ *   `대시보드!B21` = `'01 영업관리'!O4`(또는 6기 `=O4+O5`) · `O4=O38+O72+...+O276`
+ *   (1~8주 stride 8셀 합) · `O38=sum(O10:O37)` 안의 `SUMIFS('04 업체관리(앱자동작성용)'!
+ *   L:L, ..., J:J="계약")` — **02(계약) 테이블이 아니라 04(미팅) L열(수임비)을 상태="계약"
+ *   기준으로 주차합산**한다. `lib/config/index.ts:212-213`("계약 액션 시 D/G/L→C/D/E 자동
+ *   연동")과 정합 — 계약 성사 순간 미팅.L 이 계약.E 로 1회성 복사될 뿐 이후 독립적으로
+ *   벌어질 수 있다(레거시·수기 데이터에서 실측된 드리프트의 근본 원인).
+ *
+ * `arenaFeeFromDb`(계약 테이블 기준)는 **파일럿(8·9·연습)·7기 등에서 이미 검증된 값**이라
+ * 그대로 둔다 — 이 함수는 소스가 확실히 다르다고 실측 확정된 6기에만 쓴다(호출부에서
+ * SOURCE_ALIGNED_FEE_COHORTS 로 분기, cohort 파라미터 없으면 항상 기존 경로 유지 = 회귀 0). */
+export function weeklyFeeFromMeetings(meetings: Meeting[], courseStart: Date): number {
+  let fee = 0;
+  for (const m of meetings) {
+    if (m.상태 !== "계약") continue; // O38 SUMIFS 의 J:J="계약" 과 동일 필터(weeklyContractsFromDb 재사용 패턴)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(m.미팅날짜)) continue;
+    const w = weekIndexOf(parseISO(m.미팅날짜), courseStart);
+    if (w < 1 || w > STATS_WEEKS) continue; // O4=O38+...+O276 은 1~8주 stride 8셀만
+    fee += num(m.수임비);
+  }
+  return fee;
+}
+
+/** 소스 정렬을 적용할 기수(정규화된 라벨, "기" 접미사 제거 형태) — 딱 이 집합만.
+ * 새 기수를 추가하려면 그 기수도 같은 방식(FORMULA 실측 + parity diff 0 재검증)을 거쳐야 한다 —
+ * "아마 같을 것"으로 확장 금지(§0.8 증거 없는 문장 금지). */
+const SOURCE_ALIGNED_FEE_COHORTS = new Set(["6"]);
+
+/** 6기 전용 legacy 오프셋 — `'02 계약관리'!D2`(헤더존 고정 셀, 앱 쓰기 경로 밖) 1회 스냅샷
+ * (SSH 실측 2026-08-21, scripts/ops/bbe252-6gi-o5-snapshot.mjs). 6기 등록 6명 중 1명만
+ * 0 이 아니다(나머지 5명 = 0, 맵에서 생략). 이 값이 나중에 실제로 바뀌는 걸 확인하면
+ * (사용자가 그 헤더존 셀을 직접 편집하는 등) 재스냅샷 스크립트를 다시 돌려 갱신할 것 —
+ * 이 상수 자체는 "언젠가 자동화"할 만큼 크지 않다(대상 6명, 폐쇄 기수). */
+const LEGACY_FEE_OFFSET: Record<string, number> = {
+  "1-yN9iy37CctJ2s_ZUMcb3S7qozIwOfqzdLIHBmyWoXU": 660_000,
+};
+
 // ── 그림자 대조 diff ────────────────────────────────────────────
 export interface ParityDiff {
   field: string; // "channelMatrix.매입DB.생산" | "weeklyContracts[3]" | "누적수임비" 등
@@ -230,24 +269,31 @@ export function diffDashboardAggregates(
   return out;
 }
 
-/** DB 4종 재계산 묶음 — 시트측 값과 대조 가능한 형태. 순수 입력(테스트·parity 스크립트 공용). */
+/** DB 4종 재계산 묶음 — 시트측 값과 대조 가능한 형태. 순수 입력(테스트·parity 스크립트 공용).
+ * `feeSource`(선택) — 기수 한정 소스 정렬(BBE-252, weeklyFeeFromMeetings 주석 참고).
+ * 생략하면 항상 기존 `arenaFeeFromDb`(계약 테이블 기준) — 호출부를 안 고치면 회귀 0. */
 export function computeDbAggregates(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   contracts: ContractPayment[],
   courseStart: Date,
   courseStartISO: string,
+  feeSource?: { cohort?: string; spreadsheetId?: string },
 ): {
   channelMatrix: DashboardChannelMatrix[];
   weeklyContracts: number[];
   weeklyActivity: number[];
   누적수임비: number;
 } {
+  const normalizedCohort = (feeSource?.cohort ?? "").replace(/기\s*$/, "").trim();
+  const fee = SOURCE_ALIGNED_FEE_COHORTS.has(normalizedCohort)
+    ? weeklyFeeFromMeetings(meetings, courseStart) + (LEGACY_FEE_OFFSET[feeSource?.spreadsheetId ?? ""] ?? 0)
+    : arenaFeeFromDb(contracts, courseStart, courseStartISO);
   return {
     channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart),
     weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
     weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
-    누적수임비: arenaFeeFromDb(contracts, courseStart, courseStartISO),
+    누적수임비: fee,
   };
 }
 

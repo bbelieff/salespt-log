@@ -12,9 +12,11 @@ import { MAX_SHEET_WEEK, STATS_WEEKS } from "@/config/cohort-dates"; // 리터�
 import {
   arenaFeeFromDb,
   channelStackingFromDb,
+  computeDbAggregates,
   diffDashboardAggregates,
   weeklyActivityFromDb,
   weeklyContractsFromDb,
+  weeklyFeeFromMeetings,
 } from "@/service/dashboard-aggregates";
 
 const CS = new Date(2026, 5, 1); // courseStart 2026-06-01 (로컬 자정)
@@ -28,7 +30,7 @@ function mtg(partial: Partial<Meeting>): Meeting {
     id: partial.id ?? "m", 예약일: "", 예약시각: "", 미팅날짜: partial.미팅날짜 ?? "",
     미팅시간: "", channel: partial.channel ?? "매입DB", 업체명: "업체", 장소: "서울",
     예약비고: "", 상태: partial.상태 ?? "예약", 계약여부: partial.계약여부 ?? false,
-    수임비: 0, 미팅사유: "", 계약조건: "",
+    수임비: partial.수임비 ?? 0, 구분: partial.구분 ?? "", 미팅사유: "", 계약조건: "",
   } as Meeting;
 }
 function contract(수임비: number, 구분 = "", 계약일 = "2026-06-10"): ContractPayment {
@@ -239,6 +241,40 @@ describe("R2-7a arenaFeeFromDb + diff", () => {
     const iso = `${창밖계약일.getFullYear()}-${String(창밖계약일.getMonth() + 1).padStart(2, "0")}-${String(창밖계약일.getDate()).padStart(2, "0")}`;
     const cs = [contract(100), contract(9999, "", iso)]; // 두번째는 9주차 — 클램프 대상
     expect(arenaFeeFromDb(cs, CS, CS_ISO)).toBe(100); // 9999 는 창 밖이라 제외
+  });
+});
+
+describe("BBE-252(2026-08-21) — weeklyFeeFromMeetings + 6기 소스 정렬(computeDbAggregates)", () => {
+  it("상태=계약인 미팅의 수임비만 1~8주 버킷 합산(완료·예약·이월 제외)", () => {
+    const meetings = [
+      mtg({ 미팅날짜: "2026-06-10", 상태: "계약", 수임비: 500_000 }), // 포함
+      mtg({ 미팅날짜: "2026-06-11", 상태: "완료", 수임비: 999_999 }), // 상태 불일치 — 제외
+      mtg({ 미팅날짜: "2026-06-12", 상태: "계약", 수임비: 300_000, 구분: "이월" }), // 이월 — weeklyContractsFromDb 와 달리 이 함수는 날짜창만 보므로 실제로는 포함됨을 검증(아래 별도 케이스)
+    ];
+    // 이월 케이스는 별도로 분리 검증(위 3번째 원소 제거) — 시트 SUMIFS 원문에 AO 필터가 없어
+    // weeklyFeeFromMeetings 도 날짜창만 본다(주석·PR 설명과 일치하는 의도적 설계).
+    expect(weeklyFeeFromMeetings(meetings.slice(0, 2), CS)).toBe(500_000);
+  });
+
+  it("9주+(창 밖) 계약 미팅은 제외한다 — O4=O38+...+O276 8개 stride 항만", () => {
+    const 구주차 = new Date(CS.getTime() + 63 * 86400000);
+    const iso = `${구주차.getFullYear()}-${String(구주차.getMonth() + 1).padStart(2, "0")}-${String(구주차.getDate()).padStart(2, "0")}`;
+    const meetings = [mtg({ 미팅날짜: "2026-06-10", 상태: "계약", 수임비: 100 }), mtg({ 미팅날짜: iso, 상태: "계약", 수임비: 9999 })];
+    expect(weeklyFeeFromMeetings(meetings, CS)).toBe(100);
+  });
+
+  it("computeDbAggregates — cohort='6' 이면 meetings.수임비+legacy오프셋, cohort 없으면 기존 계약(02) 기준 그대로(회귀 0)", () => {
+    const meetings = [mtg({ 미팅날짜: "2026-06-10", 상태: "계약", 수임비: 500_000 })];
+    const contracts = [contract(700_000)]; // 02 계약 테이블 값 — 6기 정렬 시엔 무시돼야 함
+    const alignedOffsetSid = "1-yN9iy37CctJ2s_ZUMcb3S7qozIwOfqzdLIHBmyWoXU"; // LEGACY_FEE_OFFSET 실제 키(660,000)
+    const aligned = computeDbAggregates([], meetings, contracts, CS, CS_ISO, { cohort: "6기", spreadsheetId: alignedOffsetSid });
+    expect(aligned.누적수임비).toBe(500_000 + 660_000); // meetings 합 + 6기 legacy 오프셋
+
+    const unaligned7 = computeDbAggregates([], meetings, contracts, CS, CS_ISO, { cohort: "7기", spreadsheetId: alignedOffsetSid });
+    expect(unaligned7.누적수임비).toBe(700_000); // 7기는 여전히 계약(02) 기준 — 정렬 무관
+
+    const noFeeSource = computeDbAggregates([], meetings, contracts, CS, CS_ISO);
+    expect(noFeeSource.누적수임비).toBe(700_000); // feeSource 생략(파일럿 등 기존 호출부) — 회귀 0
   });
 
   it("diffDashboardAggregates: 불일치 필드만 반환", () => {

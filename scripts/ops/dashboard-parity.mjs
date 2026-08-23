@@ -163,7 +163,7 @@ async function main() {
     if (!sheet.courseStart) { console.log(`  ${userKey}: courseStart(O1) 없음 — 스킵`); continue; }
     const cs = parseISO(sheet.courseStart);
     const { sales, meetings, contracts } = await dbRows(u.sid);
-    const dbAgg = computeAggregates(meetings, sales, contracts, cs, sheet.courseStart);
+    const dbAgg = computeAggregates(meetings, sales, contracts, cs, sheet.courseStart, { cohort: u.cohort, spreadsheetId: u.sid });
     const ds = diff(sheet, dbAgg);
     totalDiff += ds.length;
     if (ds.length === 0) { cleanUsers++; console.log(`  ✅ ${userKey} (${u.cohort}) — diff 0`); continue; }
@@ -176,7 +176,7 @@ async function main() {
     const [sheetMeetings, sheetContracts, sheetSales] = await Promise.all([
       sheetRawMeetingRows(u.sid), sheetRawContractRows(u.sid), sheetRawSalesRows(u.sid, sheet.courseStart),
     ]);
-    const sheetRowAgg = computeAggregates(sheetMeetings, sheetSales, sheetContracts, cs, sheet.courseStart);
+    const sheetRowAgg = computeAggregates(sheetMeetings, sheetSales, sheetContracts, cs, sheet.courseStart, { cohort: u.cohort, spreadsheetId: u.sid });
 
     for (const x of ds) {
       const contributingDbRows = dbAgg.contrib.get(x.f) ?? [];
