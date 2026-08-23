@@ -1,0 +1,87 @@
+name: DB Backfill (BBE-252 기수 meetings)
+
+# BBE-252 계보 — 지정 기수 전원의 04 업체관리 탭 id 공란 행(시트 직접입력 확정, BBE-252
+# 10기 개별조사 코멘트 근거) 을 DB 에 그대로 백필해 dashboard-parity 정합을 맞춘다.
+# 10기 1명 전용 db-backfill-bbe252-10gi-meetings.yml 의 일반화 버전(기수 free-text 입력).
+# 기본 dry-run. VPS 에서 실행(SA·DATABASE_URL 필요). scripts/ops/bbe252-cohort-meeting-backfill.mjs 참고.
+on:
+  workflow_dispatch:
+    inputs:
+      cohort:
+        description: "대상 기수 라벨(쉼표 구분 가능, 예: 6 또는 6,7)"
+        type: string
+        required: true
+        default: "6"
+      execute:
+        description: "실제 기록 (미체크 = dry-run)"
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    env:
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+    steps:
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Run backfill on VPS
+        env:
+          COHORT: ${{ inputs.cohort }}
+          EXECUTE: ${{ inputs.execute }}
+        run: |
+          # cohort 는 자유 문자열이고 원격에서 root 로 실행되므로, 넘기기 전에 셸 메타문자를
+          # 차단한다(db-audit.yml 의 기존 관례 재사용 — 한글 범위 정규식은 로케일 의존이라
+          # case 패턴으로 대체).
+          case "$COHORT" in
+            "")
+              echo "❌ cohort 가 비어 있습니다." >&2; exit 1 ;;
+            *[\`\$\;\&\|\<\>\(\)\{\}\[\]\!\\\"\']*)
+              echo "❌ cohort 에 셸 메타문자가 포함돼 있습니다 — 중단합니다." >&2; exit 1 ;;
+          esac
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          FLAGS="--cohort $COHORT_ARG"
+          if [ "$EXEC_ARG" = "true" ]; then FLAGS="$FLAGS --execute"; fi
+          node scripts/ops/bbe252-cohort-meeting-backfill.mjs $FLAGS
+          REMOTE_EOF
+          )
+          set +e
+          HOSTS=("$VPS_TARGET_HOST")
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
+          if [ -n "${{ secrets.VPS_HOST_V6 }}" ]; then HOSTS+=("${{ secrets.VPS_HOST_V6 }}"); fi
+          NHOSTS=${#HOSTS[@]}
+          for i in $(seq 1 15); do
+            rc=0
+            HOST="${HOSTS[$(( (i - 1) % NHOSTS ))]}"
+            if [[ "$HOST" == *:* ]]; then FAM=-6; TARGET="root@[$HOST]"; else FAM=-4; TARGET="root@$HOST"; fi
+            ssh $FAM -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "$TARGET" \
+                "COHORT_ARG=\"$COHORT\" EXEC_ARG=\"$EXECUTE\" bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255, host=$HOST) — 시도 $i/15, 25초 후 재시도" >&2
+              sleep 25
+            else
+              echo "backfill 스크립트 실패(rc=$rc) — 재시도 안 함(멱등 재실행으로 수렴)" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 15회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
+          exit 1
