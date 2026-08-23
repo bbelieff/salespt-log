@@ -216,6 +216,9 @@ export function normalizeDbMeeting(p) {
     미팅날짜: (() => { const v = fieldOrCol(p, "미팅날짜", 3); return typeof v === "number" ? serialToISO(v) : String(v ?? "").slice(0, 10); })(),
     계약여부: fieldOrCol(p, "계약여부", 10) === true || fieldOrCol(p, "계약여부", 10) === "TRUE",
     구분: String(fieldOrCol(p, "구분", 40) ?? "").trim(),
+    // BBE-252(2026-08-21) 6기 소스정렬(weeklyFeeFromMeetings) 추가 시 누락 발견 —
+    // 이 필드가 없으면 소스정렬 cohort 의 미팅 기준 fee 합산이 항상 0 이 된다.
+    수임비: num(fieldOrCol(p, "수임비", 11)),
     _raw미팅날짜: fieldOrCol(p, "미팅날짜", 3),
   };
 }
