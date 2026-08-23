@@ -136,14 +136,25 @@ async function pickIdentities(pool) {
   // cohort 컬럼은 레거시 기수에서 "6기" 처럼 접미사가 붙어 저장돼 있을 수 있다
   // (isDbReadPilot 의 정규화 규칙과 동일, daily-source.ts:15-18 참고) — bare 숫자로만
   // 질의하면 0건이 나오는 게 사이클1에서 실측 확인됨. regexp_replace 로 접미사 제거 후 비교.
+  //
+  // BBE-242 사이클3: 4·7·10기가 방금 DB_READ_COHORTS 에 편입됐다(D 집행, 2026-08-23).
+  // 남은 Sheets-path 표본은 6기뿐이라 nonpilot 대상을 '6'만으로 좁히고, 방금 전환된
+  // 기수(7·10)를 별도 identity(migrated)로 뽑아 "전환 전(Sheets) 대비 전환 후(DB)" 개선폭을
+  // 직접 대조한다 — 사이클2 진단축(연습 vs 옛 6/7/10)과는 다른, 전환 자체의 효과 측정.
   const nonpilot = await pool.query(
     `select email, spreadsheet_id from users where role='trainee' and status='active'
        and email is not null and email <> ''
-       and regexp_replace(cohort, '기\\s*$', '') in ('6','7','10') order by email limit 1`,
+       and regexp_replace(cohort, '기\\s*$', '') in ('6') order by email limit 1`,
+  );
+  const migrated = await pool.query(
+    `select email, spreadsheet_id from users where role='trainee' and status='active'
+       and email is not null and email <> ''
+       and regexp_replace(cohort, '기\\s*$', '') in ('7','10') order by email limit 1`,
   );
   return {
     pilotEmail: pilot.rows[0]?.email ?? null,
     nonpilotEmail: nonpilot.rows[0]?.email ?? null,
+    migratedEmail: migrated.rows[0]?.email ?? null,
     adminEmail: ADMIN_EMAILS[0] ?? null,
   };
 }
@@ -172,20 +183,23 @@ async function main() {
   if (!DB_URL) throw new Error("DATABASE_URL 미설정");
 
   const pool = new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false }, max: 2 });
-  const { pilotEmail, nonpilotEmail, adminEmail } = await pickIdentities(pool);
-  console.log(`표본 계정(해시8): pilot(연습)=${pilotEmail ? h8(pilotEmail) : "없음"} nonpilot(6/7/10)=${nonpilotEmail ? h8(nonpilotEmail) : "없음"} admin=${adminEmail ? h8(adminEmail) : "없음"}`);
+  const { pilotEmail, nonpilotEmail, migratedEmail, adminEmail } = await pickIdentities(pool);
+  console.log(`표본 계정(해시8): pilot(연습)=${pilotEmail ? h8(pilotEmail) : "없음"} nonpilot(잔여6기)=${nonpilotEmail ? h8(nonpilotEmail) : "없음"} migrated(7/10기)=${migratedEmail ? h8(migratedEmail) : "없음"} admin=${adminEmail ? h8(adminEmail) : "없음"}`);
 
   const pilotCookie = pilotEmail ? await mintCookie(pilotEmail) : null;
   const nonpilotCookie = nonpilotEmail ? await mintCookie(nonpilotEmail) : null;
+  const migratedCookie = migratedEmail ? await mintCookie(migratedEmail) : null;
   const adminCookie = adminEmail ? await mintCookie(adminEmail) : null;
 
   const today = todayISO();
   const REPS = 5;
   const SLO_MS = 2000;
 
-  // ── 주요 7경로 (public URL, 실사용자 대표 계정 — 비파일럿 6/7/10 우선, 없으면 파일럿) ──
-  const primaryCookie = nonpilotCookie ?? pilotCookie;
-  const primaryLabel = nonpilotCookie ? "비파일럿(6/7/10)" : "파일럿(연습)";
+  // ── 주요 7경로 (public URL, 실사용자 대표 계정) ──
+  // BBE-242 사이클3: 방금 DB 전환된 7/10기 계정을 우선 대표로 써서 "전환 효과가 실제 SLO
+  // 측정치에 반영되는지" 직접 확인한다(방금 전환 없으면 잔여 6기, 그마저 없으면 연습).
+  const primaryCookie = migratedCookie ?? nonpilotCookie ?? pilotCookie;
+  const primaryLabel = migratedCookie ? "방금전환(7/10기)" : nonpilotCookie ? "잔여비파일럿(6기)" : "파일럿(연습)";
 
   // 어드민수강생관리는 의도적으로 이 병렬 배치에서 제외한다(사이클2 실측): 콜드 상태에서
   // N명분 시트 read 를 몰아 쏘는 유일한 경로라, 다른 5경로와 같은 시각에 동시 요청하면
@@ -265,8 +279,8 @@ async function main() {
   const ranked = results.filter((r) => r.res.medianMs !== null).sort((a, b) => b.res.medianMs - a.res.medianMs);
   ranked.forEach((r, i) => console.log(`  ${i + 1}위 ${r.key}: median=${r.res.medianMs}ms max=${r.res.maxMs}ms`));
 
-  // ── 진단축: DB-path(파일럿) vs Sheets-path(비파일럿), localhost vs public — 4개 데이터의존 경로만, 3회 ──
-  console.log("\n=== 진단축 — DB-path vs Sheets-path, localhost vs public (각 3회) ===");
+  // ── 진단축: DB-path(파일럿·방금전환) vs Sheets-path(잔여6기), localhost vs public — 4개 데이터의존 경로만, 3회 ──
+  console.log("\n=== 진단축 — DB(연습)/DB(방금전환7·10)/Sheets(잔여6), localhost vs public (각 3회) ===");
   const DIAG_REPS = 3;
   const diagRoutes = [
     { key: "일지목록", path: `/api/daily/${today}` },
@@ -278,7 +292,11 @@ async function main() {
     diagRoutes.map(async (dr) => {
       const combos = [];
       for (const [baseLabel, base] of [["local", BASE_LOCAL], ["public", BASE_PUBLIC]]) {
-        for (const [idLabel, cookie] of [["DB(연습)", pilotCookie], ["Sheets(비파일럿)", nonpilotCookie]]) {
+        for (const [idLabel, cookie] of [
+          ["DB(연습)", pilotCookie],
+          ["DB(방금전환7/10)", migratedCookie],
+          ["Sheets(잔여6)", nonpilotCookie],
+        ]) {
           if (!cookie) continue;
           combos.push({ baseLabel, base, idLabel, cookie });
         }
