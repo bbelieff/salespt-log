@@ -71,7 +71,12 @@ export function fieldOrCol(p, field, colIdx) {
  * classifyDiff 의 대안식("상태=계약 기준")이 원래 후보군(상태=계약인데 계약여부=false 인 것)을
  * 못 보게 되어 로직차이를 못 잡는다 — 실제로 이 버그를 짜다가 발견해 고쳤다(단위테스트로 고정).
  */
-export function computeAggregates(meetings, sales, contracts, courseStart, courseStartISO) {
+// 6기 전용 소스 정렬(BBE-252) — lib/service/dashboard-aggregates.ts 와 동일 상수·동일 로직.
+// 이 진단 도구가 안 고쳐지면 프로덕션 수정 후에도 --cohort "6" 재검증에서 옛 결과가 나온다(Hashimoto).
+const SOURCE_ALIGNED_FEE_COHORTS = new Set(["6"]);
+const LEGACY_FEE_OFFSET = { "1-yN9iy37CctJ2s_ZUMcb3S7qozIwOfqzdLIHBmyWoXU": 660_000 };
+
+export function computeAggregates(meetings, sales, contracts, courseStart, courseStartISO, feeSource = {}) {
   const alive = (s) => s === "예약" || s === "완료" || s === "계약";
   const done = (s) => s === "완료" || s === "계약";
   const cm = CHANNEL_ORDER.map((ch) => ({ 채널: ch, 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0, 미팅완료: 0, 계약: 0 }));
@@ -120,15 +125,30 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
     if (w >= 1 && w <= 8) { wa[w - 1] += 2; push(`H.주${w}활동`, mt); }
   }
+  // 후보 풀(contrib)은 항상 계약(02) 테이블로 채운다 — B21 지문 차집합 진단(계약 레코드
+  // 단위 대조, BBE-260 패턴)이 소스정렬 여부와 무관하게 계속 동작해야 하기 때문.
+  for (const c of contracts) push("B21.누적수임비", c);
+
+  const normalizedCohort = String(feeSource.cohort ?? "").replace(/기\s*$/, "").trim();
   let fee = 0;
-  for (const c of contracts) {
-    // 후보 풀은 "전체 계약"(대안식이 이월/날짜 조건을 다르게 걸어볼 수 있게).
-    push("B21.누적수임비", c);
-    const carry = c.구분 === "이월" || (c.계약일 && c.계약일 < courseStartISO);
-    // BBE-252 후속(2026-08-20) 실측 — 시트 B21 = O4 = O38+O72+...+O276(1~8주 stride 8개
-    // 셀 합)만 본다. lib/service/dashboard-aggregates.ts arenaFeeFromDb 와 동일 클램프
-    // (그 PR에서 확정) — 이 진단 스크립트도 같이 안 고치면 여기서 계속 옛 결과가 나온다.
-    if (!carry && inSheetWindow(c.계약일, courseStart)) fee += c.수임비;
+  if (SOURCE_ALIGNED_FEE_COHORTS.has(normalizedCohort)) {
+    // 6기 소스 정렬 — 04(미팅).L 기준(상태="계약", 1~8주 버킷) + legacy O5 오프셋.
+    for (const mt of meetings) {
+      if (mt.상태 !== "계약") continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜 || "")) continue;
+      const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
+      if (w < 1 || w > 8) continue;
+      fee += num(mt.수임비);
+    }
+    fee += LEGACY_FEE_OFFSET[feeSource.spreadsheetId ?? ""] ?? 0;
+  } else {
+    for (const c of contracts) {
+      const carry = c.구분 === "이월" || (c.계약일 && c.계약일 < courseStartISO);
+      // BBE-252 후속(2026-08-20) 실측 — 시트 B21 = O4 = O38+O72+...+O276(1~8주 stride 8개
+      // 셀 합)만 본다. lib/service/dashboard-aggregates.ts arenaFeeFromDb 와 동일 클램프
+      // (그 PR에서 확정) — 이 진단 스크립트도 같이 안 고치면 여기서 계속 옛 결과가 나온다.
+      if (!carry && inSheetWindow(c.계약일, courseStart)) fee += c.수임비;
+    }
   }
   return { channelMatrix: cm, weeklyContracts: wc, weeklyActivity: wa, 누적수임비: fee, contrib };
 }
