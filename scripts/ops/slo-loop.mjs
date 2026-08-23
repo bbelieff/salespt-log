@@ -228,16 +228,11 @@ async function main() {
     console.log(`  ${flag} ${key}: n=${res.n}/${REPS} median=${res.medianMs}ms max=${res.maxMs}ms code=${res.codes.join(",")}${res.errs.length ? ` err=${res.errs[0]}` : ""}`);
   }
 
-  console.log(`\n=== 6.어드민수강생관리 (별도 순차, 다른 경로와 비경합, ${REPS}회) ===`);
-  const adminRes = await runReps(BASE_PUBLIC, "/admin/users", { cookie: adminCookie }, REPS);
-  results.push({ key: "6.어드민수강생관리", res: adminRes });
-  {
-    const flag = adminRes.medianMs !== null && (adminRes.medianMs > SLO_MS || adminRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
-    console.log(`  ${flag} 6.어드민수강생관리: n=${adminRes.n}/${REPS} median=${adminRes.medianMs}ms max=${adminRes.maxMs}ms code=${adminRes.codes.join(",")}${adminRes.errs.length ? ` err=${adminRes.errs[0]}` : ""}`);
-  }
-
   // ── 3.일지 저장 — 파일럿(연습) 전용, 멱등 라운드트립(GET한 값 그대로 재-POST) ──
   // 이 워크플로우의 유일한 쓰기(SQL 아님, 앱 API 경유) — SLO_ENABLE_WRITE=0 이면 스킵.
+  // BBE-242 사이클3: 어드민(콜드버스트) **앞에** 배치한다 — 사이클2 실측에서 어드민 직후에
+  // 이걸 재면 어드민이 소진한 Sheets 쿼터의 꼬리를 물려받아 median 이 3배 이상 오염됐다
+  // (1429ms→4674ms, 같은 코드인데 측정순서만 바뀐 것). 어드민보다 먼저 재서 오염을 피한다.
   const writeEnabled = env("SLO_ENABLE_WRITE") !== "0";
   console.log(`\n=== 3.일지저장 (POST, 파일럿(연습) 전용, 멱등 라운드트립, ${REPS}회) ===`);
   if (!writeEnabled) {
@@ -272,6 +267,14 @@ async function main() {
     console.log(`  ${flag} 3.일지저장: n=${res.n}/${REPS} median=${res.medianMs}ms max=${res.maxMs}ms code=${res.codes.join(",")}${res.errs.length ? ` err=${res.errs[0]}` : ""}`);
   } else {
     console.log("  (연습 계정 없음 — 스킵)");
+  }
+
+  console.log(`\n=== 6.어드민수강생관리 (별도 순차, 다른 경로와 비경합, ${REPS}회) ===`);
+  const adminRes = await runReps(BASE_PUBLIC, "/admin/users", { cookie: adminCookie }, REPS);
+  results.push({ key: "6.어드민수강생관리", res: adminRes });
+  {
+    const flag = adminRes.medianMs !== null && (adminRes.medianMs > SLO_MS || adminRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
+    console.log(`  ${flag} 6.어드민수강생관리: n=${adminRes.n}/${REPS} median=${adminRes.medianMs}ms max=${adminRes.maxMs}ms code=${adminRes.codes.join(",")}${adminRes.errs.length ? ` err=${adminRes.errs[0]}` : ""}`);
   }
 
   // ── 초과 순위표 ──
