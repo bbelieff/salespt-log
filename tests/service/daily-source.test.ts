@@ -19,11 +19,11 @@ describe("isDbReadPilot / chooseDailySource (파일럿 게이트)", () => {
     for (const c of ["8", "9", "연습", "8기", "9기"]) expect(isDbReadPilot(c)).toBe(true);
     // R2-1.5(db-pilot-arena): 아레나 라벨 편입 — 현재 라벨(A1-N) 그대로 판정.
     for (const c of ["A1-0", "A1-3", "A1-6", "A1-6기", "A2-1"]) expect(isDbReadPilot(c)).toBe(true);
-    for (const c of ["7", "7기", "T", "관리", "A기", "", null, undefined])
+    for (const c of ["1", "1기", "T", "관리", "A기", "", null, undefined])
       expect(isDbReadPilot(c as string | null | undefined)).toBe(false);
   });
-  it("비대상 기수(7기 등)는 DB 켜져 있어도 시트 경로 고정 (수용 기준 — 불변)", () => {
-    expect(chooseDailySource("7", true)).toBe("sheet");
+  it("비대상 기수(6기 등)는 DB 켜져 있어도 시트 경로 고정 (수용 기준 — 불변)", () => {
+    expect(chooseDailySource("1", true)).toBe("sheet");
     expect(chooseDailySource("6", true)).toBe("sheet");
   });
   it("아레나는 DB 켜져 있으면 db, 꺼져 있으면 시트 (R2-1.5)", () => {
@@ -41,7 +41,7 @@ describe("chooseWriteSource (쓰기 정본 게이트 — R3-1, 읽기와 대칭)
     for (const c of ["9", "8", "8기", "연습", "A1-6"]) expect(chooseWriteSource(c, true)).toBe("db");
   });
   it("비파일럿은 DB 켜져도 시트 — 롤백/불변 (수용 기준)", () => {
-    for (const c of ["7", "6", "관리", "", null, undefined])
+    for (const c of ["1", "6", "관리", "", null, undefined])
       expect(chooseWriteSource(c as string | null | undefined, true)).toBe("sheet");
   });
   it("DATABASE_URL 없으면 파일럿도 시트 — 즉시 R2 복귀", () => {
@@ -49,7 +49,7 @@ describe("chooseWriteSource (쓰기 정본 게이트 — R3-1, 읽기와 대칭)
     expect(chooseWriteSource("A1-6", false)).toBe("sheet");
   });
   it("읽기 게이트와 완전 대칭 — 모든 입력에서 같은 판정(정본 방향 정합)", () => {
-    for (const c of ["9", "8", "연습", "A1-6", "7", "6", "관리", "", null, undefined])
+    for (const c of ["9", "8", "연습", "A1-6", "1", "6", "관리", "", null, undefined])
       for (const on of [true, false])
         expect(chooseWriteSource(c as string | null | undefined, on)).toBe(
           chooseDailySource(c as string | null | undefined, on),
