@@ -11,10 +11,13 @@
  * 비밀값(AUTH_SECRET·이메일 등) 콘솔에 원문 출력 금지 — 이메일은 해시 앞8자만.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execSync, exec as execCb } from "node:child_process";
+import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import { encode } from "next-auth/jwt";
+
+const exec = promisify(execCb);
 
 function loadEnv() {
   const out = {};
@@ -61,7 +64,7 @@ async function mintCookie(email) {
   return `${COOKIE_NAME}=${value}`;
 }
 
-function curlOnce(base, path, { cookie, method = "GET", body } = {}) {
+async function curlOnce(base, path, { cookie, method = "GET", body } = {}) {
   const args = [
     "curl", "-s", "-o", "/dev/null",
     "-w", "'%{http_code} %{time_starttransfer} %{time_total}'",
@@ -73,20 +76,21 @@ function curlOnce(base, path, { cookie, method = "GET", body } = {}) {
   }
   args.push(`'${base}${path}'`);
   try {
-    const out = execSync(args.join(" "), { encoding: "utf8", timeout: 20_000 });
-    const [code, ttfb, total] = out.trim().split(/\s+/);
+    const { stdout } = await exec(args.join(" "), { encoding: "utf8", timeout: 20_000 });
+    const [code, ttfb, total] = stdout.trim().split(/\s+/);
     return { ok: true, code: Number(code), ttfbMs: Math.round(Number(ttfb) * 1000), totalMs: Math.round(Number(total) * 1000) };
   } catch (e) {
     return { ok: false, err: String(e?.message ?? e).slice(0, 150) };
   }
 }
 
-function curlBody(base, path, { cookie } = {}) {
+async function curlBody(base, path, { cookie } = {}) {
   const args = ["curl", "-s", "--max-time", "15"];
   if (cookie) args.push("-H", `'Cookie: ${cookie}'`);
   args.push(`'${base}${path}'`);
   try {
-    return execSync(args.join(" "), { encoding: "utf8", timeout: 20_000 });
+    const { stdout } = await exec(args.join(" "), { encoding: "utf8", timeout: 20_000 });
+    return stdout;
   } catch (e) {
     return null;
   }
@@ -98,12 +102,12 @@ function median(nums) {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
 }
 
-function runReps(base, path, opts, reps) {
+async function runReps(base, path, opts, reps) {
   const samples = [];
   const codes = new Set();
   const errs = [];
   for (let i = 0; i < reps; i++) {
-    const r = curlOnce(base, path, opts);
+    const r = await curlOnce(base, path, opts);
     if (r.ok) {
       samples.push(r.totalMs);
       codes.add(r.code);
@@ -124,8 +128,12 @@ async function pickIdentities(pool) {
   const pilot = await pool.query(
     `select email, spreadsheet_id from users where role='trainee' and cohort='연습' and status='active' order by email limit 1`,
   );
+  // cohort 컬럼은 레거시 기수에서 "6기" 처럼 접미사가 붙어 저장돼 있을 수 있다
+  // (isDbReadPilot 의 정규화 규칙과 동일, daily-source.ts:15-18 참고) — bare 숫자로만
+  // 질의하면 0건이 나오는 게 사이클1에서 실측 확인됨. regexp_replace 로 접미사 제거 후 비교.
   const nonpilot = await pool.query(
-    `select email, spreadsheet_id from users where role='trainee' and cohort in ('6','7','10') and status='active' order by email limit 1`,
+    `select email, spreadsheet_id from users where role='trainee' and status='active'
+       and regexp_replace(cohort, '기\\s*$', '') in ('6','7','10') order by email limit 1`,
   );
   return {
     pilotEmail: pilot.rows[0]?.email ?? null,
@@ -182,13 +190,18 @@ async function main() {
     { key: "7.대시보드", path: "/api/dashboard", opts: { cookie: primaryCookie } },
   ];
 
-  console.log(`\n=== SLO 실측 (public, 대표계정=${primaryLabel}, 경로당 ${REPS}회, SLO=중앙값&최대 ≤ ${SLO_MS}ms) ===`);
-  const results = [];
-  for (const r of routes) {
-    const res = runReps(BASE_PUBLIC, r.path, r.opts, REPS);
-    results.push({ ...r, res });
+  // BBE-242 사이클2: 경로 6개를 순차가 아니라 동시(Promise.all)로 측정 — 한 경로(특히
+  // 배포직후 콜드버스트 같은 이상치)가 15초씩 막혀도 나머지 경로 측정이 뒤로 안 밀린다.
+  // 같은 경로 안의 5회 반복은 순서 유지(실사용자의 연속 재방문과 같은 의미를 보존).
+  console.log(`\n=== SLO 실측 (public, 대표계정=${primaryLabel}, 경로당 ${REPS}회·경로간 병렬, SLO=중앙값&최대 ≤ ${SLO_MS}ms) ===`);
+  const t0 = Date.now();
+  const results = await Promise.all(
+    routes.map(async (r) => ({ ...r, res: await runReps(BASE_PUBLIC, r.path, r.opts, REPS) })),
+  );
+  console.log(`  (병렬 측정 총 소요: ${Date.now() - t0}ms)`);
+  for (const { key, res } of results) {
     const flag = res.medianMs !== null && (res.medianMs > SLO_MS || res.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
-    console.log(`  ${flag} ${r.key}: n=${res.n}/${REPS} median=${res.medianMs}ms max=${res.maxMs}ms code=${res.codes.join(",")}${res.errs.length ? ` err=${res.errs[0]}` : ""}`);
+    console.log(`  ${flag} ${key}: n=${res.n}/${REPS} median=${res.medianMs}ms max=${res.maxMs}ms code=${res.codes.join(",")}${res.errs.length ? ` err=${res.errs[0]}` : ""}`);
   }
 
   // ── 3.일지 저장 — 파일럿(연습) 전용, 멱등 라운드트립(GET한 값 그대로 재-POST) ──
@@ -199,7 +212,7 @@ async function main() {
     console.log("  (SLO_ENABLE_WRITE=0 — 스킵)");
   } else if (pilotCookie) {
     const dailyPath = `/api/daily/${today}`;
-    const raw = curlBody(BASE_PUBLIC, dailyPath, { cookie: pilotCookie });
+    const raw = await curlBody(BASE_PUBLIC, dailyPath, { cookie: pilotCookie });
     let body = null;
     try {
       const view = raw ? JSON.parse(raw) : null;
@@ -221,7 +234,7 @@ async function main() {
       console.log("  (기존값 GET 실패 — 전채널 0 멱등 body 로 대체, 연습 계정이라 안전)");
     }
     const bodyStr = JSON.stringify(body).replace(/'/g, "'\\''");
-    const res = runReps(BASE_PUBLIC, dailyPath, { cookie: pilotCookie, method: "POST", body: bodyStr }, REPS);
+    const res = await runReps(BASE_PUBLIC, dailyPath, { cookie: pilotCookie, method: "POST", body: bodyStr }, REPS);
     const flag = res.medianMs !== null && (res.medianMs > SLO_MS || res.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
     results.push({ key: "3.일지저장", res });
     console.log(`  ${flag} 3.일지저장: n=${res.n}/${REPS} median=${res.medianMs}ms max=${res.maxMs}ms code=${res.codes.join(",")}${res.errs.length ? ` err=${res.errs[0]}` : ""}`);
@@ -243,17 +256,24 @@ async function main() {
     { key: "계약목록", path: "/api/contract-payment" },
     { key: "대시보드", path: "/api/dashboard" },
   ];
-  for (const dr of diagRoutes) {
-    const rows = [];
-    for (const [baseLabel, base] of [["local", BASE_LOCAL], ["public", BASE_PUBLIC]]) {
-      for (const [idLabel, cookie] of [["DB(연습)", pilotCookie], ["Sheets(비파일럿)", nonpilotCookie]]) {
-        if (!cookie) continue;
-        const res = runReps(base, dr.path, { cookie }, DIAG_REPS);
-        rows.push(`${baseLabel}/${idLabel}=${res.medianMs}ms`);
+  await Promise.all(
+    diagRoutes.map(async (dr) => {
+      const combos = [];
+      for (const [baseLabel, base] of [["local", BASE_LOCAL], ["public", BASE_PUBLIC]]) {
+        for (const [idLabel, cookie] of [["DB(연습)", pilotCookie], ["Sheets(비파일럿)", nonpilotCookie]]) {
+          if (!cookie) continue;
+          combos.push({ baseLabel, base, idLabel, cookie });
+        }
       }
-    }
-    console.log(`  ${dr.key}: ${rows.join(" · ")}`);
-  }
+      const rows = await Promise.all(
+        combos.map(async (c) => {
+          const res = await runReps(c.base, dr.path, { cookie: c.cookie }, DIAG_REPS);
+          return `${c.baseLabel}/${c.idLabel}=${res.medianMs}ms`;
+        }),
+      );
+      console.log(`  ${dr.key}: ${rows.join(" · ")}`);
+    }),
+  );
 
   vpsStats();
   await dbConnStats(pool);
