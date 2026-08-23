@@ -152,12 +152,12 @@ describe("enrichUsersWithStats — 파일럿/비파일럿 게이팅 + 순서 보
 
   it("비파일럿 사용자는 DB 를 전혀 건드리지 않고 기존 시트 경로만 탄다", async () => {
     mockReadProfileBundle.mockResolvedValue({
-      cohort: "7기", name: "홍길동",
+      cohort: "1기", name: "홍길동",
       courseStart: new Date(2026, 0, 1), graduation: new Date(2026, 2, 20),
       stats: { 미팅예정: 1, 미팅완료: 2, 계약: 3 },
     });
     const [r] = await enrichUsersWithStats([
-      { spreadsheetId: "sheet-nonpilot-1", cohort: "7", courseStartISO: "2026-01-01" },
+      { spreadsheetId: "sheet-nonpilot-1", cohort: "1", courseStartISO: "2026-01-01" },
     ]);
     expect(r!.stats).toEqual({ 미팅예정: 1, 미팅완료: 2, 계약: 3 });
     expect(mockProfileStatsFromDb).not.toHaveBeenCalled();

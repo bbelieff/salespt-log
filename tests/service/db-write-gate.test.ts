@@ -123,7 +123,7 @@ describe("편집 게이트 — 파일럿→syncDb:true / 비파일럿·DB꺼짐�
     expect(updatePurchase).toHaveBeenCalledWith(SHEET, expect.any(Number), expect.anything(), { syncDb: true });
   });
   it("patchPurchase 비파일럿(7기) → {syncDb:false}(R2 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await patchPurchase(EMAIL, 9, mkPur());
     expect(updatePurchase).toHaveBeenCalledWith(SHEET, expect.any(Number), expect.anything(), { syncDb: false });
   });
@@ -149,7 +149,7 @@ describe("편집 게이트 — 파일럿→syncDb:true / 비파일럿·DB꺼짐�
     expect(updateLead).toHaveBeenCalledWith(SHEET, 9, expect.anything(), { syncDb: true });
   });
   it("removeLead 비파일럿 → clearLead(…, {syncDb:false})", async () => {
-    setCohort("7");
+    setCohort("1");
     await removeLead(EMAIL, 9);
     expect(clearLead).toHaveBeenCalledWith(SHEET, 9, { syncDb: false });
   });
@@ -187,7 +187,7 @@ describe("발굴 안정 id (lead-chain §4-3) — 부여·보존·지연부여",
   });
 
   it("patchLead 비파일럿 → DB 안 읽고 지연 부여(mint)", async () => {
-    setCohort("7"); // 비파일럿 = syncDb false
+    setCohort("1"); // 비파일럿 = syncDb false
     await patchLead(EMAIL, 9, mkLead());
     expect(readDbTabFromDb).not.toHaveBeenCalled(); // 비파일럿은 DB read 안 함
     const arg = (updateLead.mock.calls[0] as unknown as [string, number, DBLead])[2];

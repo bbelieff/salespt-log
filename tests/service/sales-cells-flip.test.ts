@@ -51,7 +51,7 @@ import {
 const SHEET = "sheet-1";
 const DATE = "2026-04-18";
 const pilot: SalesCtx = { spreadsheetId: SHEET, cohort: "8", email: "u@x.y" };
-const nonPilot: SalesCtx = { spreadsheetId: SHEET, cohort: "7", email: "u@x.y" };
+const nonPilot: SalesCtx = { spreadsheetId: SHEET, cohort: "1", email: "u@x.y" };
 
 beforeEach(() => {
   for (const m of [
