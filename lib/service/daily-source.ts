@@ -11,8 +11,12 @@ import { isArenaCohortLabel } from "@/repo/user-priority";
 
 /** R2 파일럿 기수 — backfill(#487·#488) 완료 + 9기(첫날부터 dual-write).
  * 4기(2026-08-20 편입, belie 직접 집행 지시): BBE-252 전환 GO 결정판(전수 1명, parity
- * 대조 클린) 근거. 되돌리는 법 = 이 PR git revert(§6.8 표준). */
-const DB_READ_COHORTS = new Set(["8", "9", "연습", "4"]);
+ * 대조 클린) 근거. 되돌리는 법 = 이 PR git revert(§6.8 표준).
+ * 10기(2026-08-20 편입, belie 명시 재확인): BBE-252 — 6/6명 중 5명 클린 + 1명(13f5c9c271fb)
+ * 8/9건 개별교정 완료(PR #847·#849, 실측검증). **미확정 1건 존재**: 08-17 현수막 미팅
+ * 상태값(시트="계약금 들어올예정" vs DB="계약") — 실데이터 사실판단이라 belie 몫으로 남김,
+ * 전환은 막지 않음(시트값은 백업 보존, 스위치는 revert 가능). */
+const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10"]);
 
 /** 단일 게이트 — cohort 정규화("8기"→"8") 후 판정. null/빈값 = false.
  * 아레나(A{시즌}-{기수}) 포함 — R2-1.5(db-pilot-arena): 최대 활성 집단 편입.
