@@ -102,7 +102,20 @@ types → config → repo → service → app(api·ui) → components
 - 스코프 밖 요청을 받으면 먼저 `docs/scope.md`를 참조해서 거절 또는 확장 제안.
 
 ### 기술 제약
-- **SSOT(Single Source of Truth)는 Google Sheets.** 별도 DB·Redis·ORM 금지.
+- **SSOT(Single Source of Truth)는 Postgres DB(2026-08-24, BBE-245 시트독립 프로그램 종료 —
+  이전 "SSOT는 Google Sheets" 원칙을 대체).** 레지스트리에 등록된 모든 활성 기수(8·9·연습·
+  4·6·7·10기 + 아레나 전 라벨)는 읽기·쓰기 모두 DB 정본이다(`lib/service/daily-source.ts`
+  `DB_READ_COHORTS`/`chooseDailySource`/`chooseWriteSource` 단일 게이트). **시트는 비동기
+  수렴 미러·백업 export 전용**으로 격하됐다 — 요청 경로(사용자가 저장 버튼을 누르는 순간)에서
+  시트 API를 동기 호출하지 않는다. 이 경계는 CI 구조 테스트(`tests/structural/sheets-request
+  -path-guard.test.ts`, BBE-251)가 화이트리스트 기반으로 강제한다 — 화이트리스트 밖의 새
+  동기 시트 호출이 요청 경로에 다시 스며들면 빌드가 깨진다.
+  **전환 스위치(`DB_READ_COHORTS`)는 삭제하지 않고 코드에 존치한다** — 문제 발생 시 그 기수
+  라벨 하나만 Set 에서 빼면 즉시 시트 정본으로 복귀하는 되돌림 안전선이며, 운영에는 보이지
+  않는다. **범위 밖(레거시 미등록, 별도 트랙)**: 1·2·3·5기 — registry 에 `role=trainee` 행
+  자체가 없던 시절의 데이터로 이번 프로그램 조사·전환 범위 밖. 5기는 BBE-67 로 별도 census·
+  백필 승인이 이미 진행 중(FOREMAN 큐), 1·2·3기는 미착수. `lib/repo/*`(sheets-client.ts 등)의
+  Google Sheets 연동 코드 자체는 보존 — 시트 파일도 삭제하지 않는다(비동기 미러·백업 대상).
 - **수강생마다 개별 시트.** `email → spreadsheetId` 매핑은 **마스터 레지스트리 시트** 한 개에 저장 (`lib/repo/users.ts`).
 - **대시보드(탭1)는 읽기 전용.** 기존 시트의 수식이 자동 갱신한다. 재구현 X, 데이터만 읽어 Recharts 로 다시 그린다.
 - **시트 탭 구조**:
