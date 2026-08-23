@@ -125,14 +125,20 @@ async function runReps(base, path, opts, reps) {
 }
 
 async function pickIdentities(pool) {
+  // email is not null/'' 필수 — BBE-252 조사(2026-08-20)에서 4·6·7기 registry 표본
+  // 다수가 email 공란으로 확인됨. 공란 행이 뽑히면 email 이 falsy 라 "없음" 오판정된다
+  // (사이클2 실측: regexp_replace 수정 이후에도 nonpilot 이 여전히 "없음"으로 나온 원인).
   const pilot = await pool.query(
-    `select email, spreadsheet_id from users where role='trainee' and cohort='연습' and status='active' order by email limit 1`,
+    `select email, spreadsheet_id from users
+       where role='trainee' and cohort='연습' and status='active'
+         and email is not null and email <> '' order by email limit 1`,
   );
   // cohort 컬럼은 레거시 기수에서 "6기" 처럼 접미사가 붙어 저장돼 있을 수 있다
   // (isDbReadPilot 의 정규화 규칙과 동일, daily-source.ts:15-18 참고) — bare 숫자로만
   // 질의하면 0건이 나오는 게 사이클1에서 실측 확인됨. regexp_replace 로 접미사 제거 후 비교.
   const nonpilot = await pool.query(
     `select email, spreadsheet_id from users where role='trainee' and status='active'
+       and email is not null and email <> ''
        and regexp_replace(cohort, '기\\s*$', '') in ('6','7','10') order by email limit 1`,
   );
   return {
@@ -181,18 +187,22 @@ async function main() {
   const primaryCookie = nonpilotCookie ?? pilotCookie;
   const primaryLabel = nonpilotCookie ? "비파일럿(6/7/10)" : "파일럿(연습)";
 
+  // 어드민수강생관리는 의도적으로 이 병렬 배치에서 제외한다(사이클2 실측): 콜드 상태에서
+  // N명분 시트 read 를 몰아 쏘는 유일한 경로라, 다른 5경로와 같은 시각에 동시 요청하면
+  // Sheets API 쿼터를 서로 잡아먹어 실제로 더 나빠졌다(사이클2 1차 run: 1/5 성공→0/5 성공,
+  // 병렬 총소요 75초로 오히려 늘어남 — 내 측정 자체가 만든 경합이지 실사용자 경험이 아니다).
+  // 이 경로만 별도로(아래) 순차 측정 — 나머지 6경로는 서로 경합 없는 순수 병렬 이득만 취한다.
   const routes = [
     { key: "1.로그인진입", path: "/", opts: {} },
     { key: "2.일지목록", path: `/api/daily/${today}`, opts: { cookie: primaryCookie } },
     { key: "4.미팅목록", path: `/api/meetings/week/${today}`, opts: { cookie: primaryCookie } },
     { key: "5.계약목록", path: "/api/contract-payment", opts: { cookie: primaryCookie } },
-    { key: "6.어드민수강생관리", path: "/admin/users", opts: { cookie: adminCookie } },
     { key: "7.대시보드", path: "/api/dashboard", opts: { cookie: primaryCookie } },
   ];
 
-  // BBE-242 사이클2: 경로 6개를 순차가 아니라 동시(Promise.all)로 측정 — 한 경로(특히
-  // 배포직후 콜드버스트 같은 이상치)가 15초씩 막혀도 나머지 경로 측정이 뒤로 안 밀린다.
-  // 같은 경로 안의 5회 반복은 순서 유지(실사용자의 연속 재방문과 같은 의미를 보존).
+  // BBE-242 사이클2: 경로들을 순차가 아니라 동시(Promise.all)로 측정 — 한 경로가 느려도
+  // 나머지 경로 측정이 뒤로 안 밀린다. 같은 경로 안의 5회 반복은 순서 유지(실사용자의
+  // 연속 재방문과 같은 의미를 보존). 어드민은 위 사유로 별도 순차 측정(아래).
   console.log(`\n=== SLO 실측 (public, 대표계정=${primaryLabel}, 경로당 ${REPS}회·경로간 병렬, SLO=중앙값&최대 ≤ ${SLO_MS}ms) ===`);
   const t0 = Date.now();
   const results = await Promise.all(
@@ -202,6 +212,14 @@ async function main() {
   for (const { key, res } of results) {
     const flag = res.medianMs !== null && (res.medianMs > SLO_MS || res.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
     console.log(`  ${flag} ${key}: n=${res.n}/${REPS} median=${res.medianMs}ms max=${res.maxMs}ms code=${res.codes.join(",")}${res.errs.length ? ` err=${res.errs[0]}` : ""}`);
+  }
+
+  console.log(`\n=== 6.어드민수강생관리 (별도 순차, 다른 경로와 비경합, ${REPS}회) ===`);
+  const adminRes = await runReps(BASE_PUBLIC, "/admin/users", { cookie: adminCookie }, REPS);
+  results.push({ key: "6.어드민수강생관리", res: adminRes });
+  {
+    const flag = adminRes.medianMs !== null && (adminRes.medianMs > SLO_MS || adminRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
+    console.log(`  ${flag} 6.어드민수강생관리: n=${adminRes.n}/${REPS} median=${adminRes.medianMs}ms max=${adminRes.maxMs}ms code=${adminRes.codes.join(",")}${adminRes.errs.length ? ` err=${adminRes.errs[0]}` : ""}`);
   }
 
   // ── 3.일지 저장 — 파일럿(연습) 전용, 멱등 라운드트립(GET한 값 그대로 재-POST) ──
