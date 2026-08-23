@@ -53,20 +53,59 @@ read-only 조사(BBE-252 10기 코멘트, 2026-08-20T18:40)에서 이미 확정:
 기수별 요약표 패턴 재사용)로 교체했다. 전용 workflow 도 `db-backfill.yml`(cohort
 free-text 입력 + env-passthrough SSH 보안 패턴)을 템플릿으로 신규 작성했다.
 
-## 3. Verify — 실행 절차 (수용 기준)
+## 3. Verify — 실행 절차 및 실측 결과 (정직 보고 — belie 원 진단과 다름)
 
-① **dry-run**(`db-backfill-bbe252-cohort-meetings.yml`, cohort="6", execute=false) — 6기
-등록 trainee 전원의 id 공란 후보 행 목록·건수 확정, 계약여부 체크박스 오탐 필터 포함.
-② **execute**(같은 workflow, execute=true) — 신규 행만 upsert(이미 DB 존재분은 스킵).
-결과 로그에 사용자별 revert SQL(`delete from sheet_rows where ... row_key = any([...])`)
-출력.
-③ **dashboard-parity --cohort "6" 재실행**(`db-audit.yml`, script=dashboard-parity,
-cohort="6") — 백필 전후 diff 비교, meetings 원행 지문 차집합 해소 확인.
-④ id 有 충돌 건(10기 08-17 현수막 유형 — 이미 id 있는 행의 상태값 불일치)이 나오면 그
-건만 "미확정 — belie 확인"으로 개별 문서화하고, **전환 추천 자체는 막지 않는다**(belie
-배차 지시 — 10기 때와 달리 diff 0 이 이번 라운드의 엄격한 기준이 아님).
-⑤ BBE-252 + BBE-75 도장. 트리거되는 즉시 D 가 6기 파일럿 스위치를 켜고 BBE-245 종료로
-이어진다(별도 트랙, 이 카드 범위 밖).
+① **dry-run**(run `32662620038`, cohort="6", execute=false) — **6기 등록 trainee 6명
+전원 후보(id 공란 행) 0건.** 계약여부 체크박스 오탐 필터까지 반영된 상태에서 실측.
+
+② **execute — 실행하지 않음.** 후보가 0건이라 insert 할 대상 자체가 없다(빈 실행은
+의미 없는 로그만 남긴다).
+
+③ **dashboard-parity --cohort "6" 재실행**(`db-audit.yml`, run `32662683896`) — **잔차
+39건 그대로 남음(5/6명 dirty, 1명만 diff 0)**. 그런데 결정적으로: **모든 39건이 "진짜불일치"
+분류이고, meetings/B21 원행 지문 차집합은 6명 전원 0건**(코드: `dashboard-parity.mjs`
+`printSourceDiff` 는 `onlyInSheet/onlyInDb/countMismatch` 세 그룹이 전부 비면 아예 안
+찍는다 — 로그에 그 섹션 자체가 없다는 것 자체가 "지문 완전 일치"의 증거).
+
+같은 시각 `bbe252-cohort-readiness`(run `32662804486`) 로 교차검증: 6기 샘플 3명의
+meetings 행수가 **시트=DB 정확히 일치**(17=17, 5=5, 7=7). cohort=6 전체 meetings DB
+행수도 38건 그대로(2026-08-20 첫 조사 스냅샷과 동일 — 그 사이 줄지 않았다).
+
+**→ belie 배차의 전제("6기 meetings 백필 완결성" — B 19:06/19:21 코멘트, "한 사용자는
+meetings 0건 SQL 직접확인") 가 지금 이 순간 두 개의 독립된 정본 측정기(dashboard-parity
+지문 대조 + cohort-readiness 행수 대조) 로 재현되지 않는다.** meetings raw row 는
+이미 시트=DB 로 맞아있다 — 백필로 해결할 문제가 아니다.
+
+**실제 잔차의 성격**: 39건 전부 **집계값**(R1:U6 채널×계약, N.주N계약, H.주N활동,
+B21.누적수임비) 레벨이고 원행은 일치 → 원인은 **행 존재 여부가 아니라 "그 행을 몇 주차에
+넣을지"(week bucketing) 또는 courseStart 해석**일 가능성이 높다. 근거: `computeAggregates`
+(`dashboard-parity-lib.mjs:79`) 는 `weekIndexOf(parseISO(mt.미팅날짜), courseStart)` 로
+주차를 계산하는데, 6기는 CLAUDE.md 명시대로 **legacy +57일 모델**(7기+ 는 +50일) —
+`lib/util/week.ts` 의 "시작일 앵커 vs 금~목 앵커" 분기가 6기 코드경로에서 시트 수식의
+주차 산정과 다르게 해석되고 있을 가능성을 배제 못 한다(직접 코드 대조는 안 함 — B 의
+활성 작업 영역, 이 카드 스코프 밖).
+
+④ id 有 충돌 건(10기 08-17 유형) — **해당 없음.** 애초에 id 공란 행 자체가 0건이라 이
+케이스가 발생할 조건이 성립하지 않는다.
+
+⑤ **BBE-252 + BBE-75 완료 도장 보류.** 잔차가 안 풀렸는데 도장을 찍으면 D 의 자동
+스위치가 그대로 발동해 6기 학생들이 틀린 숫자를 보게 된다(§0.8 "부분 완료를 완료로
+두는 게 가장 위험하다"). 대신 이 카드는 진단을 정정하고 B 에게 이관한다(아래 §4).
+
+## 4. 남은 항목 (완료 아님 — 정직 보고)
+
+- **meetings 백필**: 필요 없음(이미 해소됨 — 최소 2026-08-20 이후 계속 시트=DB 일치
+  상태였던 것으로 보임). 새로 만든 `bbe252-cohort-meeting-backfill.mjs`/전용 workflow
+  는 정확히 동작함(0건을 0건으로 정직하게 보고) — 폐기하지 않고 남겨둔다(다음에 실제로
+  id 공란 직접입력형 잔차가 나오는 기수가 있으면 즉시 재사용 가능).
+- **6기 39건 잔차**: courseStart/week 버킷팅 or B21 fee 소스정렬 계산 쪽 문제로 추정
+  (증거: raw 지문 100% 일치 + 집계만 어긋남) — **B 에게 이관**(6기 소스정렬 PR #860·#862
+  담당자, `dashboard-aggregates.ts`/`week.ts` 영역).
+- **6기 GO 판정**: 미충족 — D 의 자동 스위치 전환 조건 불충족 그대로 유지.
 
 ## Log
-- **2026-08-24 착수**: 스크립트·workflow 작성, check.sh 검증 진행 중.
+- **2026-08-24 착수**: 스크립트·workflow 작성(PR #867, 머지 `52c4f4c`, 배포 success·
+  health 200 확인).
+- **2026-08-24 부분완주(진단 정정)**: dry-run 0건·parity 잔차 39건 불변 확인. belie 배차의
+  "meetings 백필 완결성" 전제가 실측 재현 안 됨 — 원행 지문 100% 일치, 잔차는 집계
+  로직(week bucketing) 문제로 추정. BBE-252/BBE-75 완료 도장 보류, B 에게 이관.
