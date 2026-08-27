@@ -67,6 +67,11 @@ export function useDay(date: string): UseQueryResult<ContactDayView> {
     // 2026-06: /contact↔/calendar 빠른 전환 시 60s 내 재요청 억제 → 시트 read 폭주(429)
     // 차단. 저장 등 뮤테이션은 invalidateQueries 로 즉시 재요청되므로 신선도 보존.
     staleTime: 60_000,
+    // BBE-242 처방4(2026-08-27): 기본 gcTime(5분)이면 5분+ 자리비움 후 리마운트 시
+    // 캐시가 완전히 비어 로딩부터 다시 시작 — 10분으로 올려 stale-즉시표시+백그라운드
+    // 갱신 창을 넓힌다. invalidateQueries 는 gcTime 과 무관하게 즉시 재요청시키므로
+    // 뮤테이션 후 신선도는 그대로 보존.
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -82,6 +87,7 @@ export function useWeekMeetings(
     // 2026-05-17: 동일 — 주차 이동 시 빈 화면 방지.
     placeholderData: (prev) => prev,
     staleTime: 60_000, // 2026-06: 화면 전환 read 폭주 억제 (뮤테이션은 invalidate).
+    gcTime: 10 * 60_000, // BBE-242 처방4 — useDay 주석 참고.
   });
 }
 
@@ -95,6 +101,7 @@ export function useMonthMeetings(
       fetchJSON<CalendarMonthView>(`/api/meetings/month/${yyyyMM}`),
     enabled: !!yyyyMM,
     staleTime: 60_000, // 2026-06: 캘린더↔컨택 전환 read 폭주 억제 (뮤테이션은 invalidate).
+    gcTime: 10 * 60_000, // BBE-242 처방4 — useDay 주석 참고.
   });
 }
 

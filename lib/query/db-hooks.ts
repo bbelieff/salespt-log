@@ -48,6 +48,7 @@ export function useDBOverview(): UseQueryResult<DBOverview> {
     // 2026-06: 화면 전환 시 60s 내 재요청 억제 → 시트 read 폭주(429) 차단.
     // 뮤테이션은 invalidateQueries 로 즉시 재요청 → 신선도 보존.
     staleTime: 60_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -62,6 +63,7 @@ export function useLeadCandidates(): UseQueryResult<LeadCandidate[]> {
     queryFn: async () =>
       (await fetchJSON<{ leads: LeadCandidate[] }>(`/api/leads`)).leads,
     staleTime: 60_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — contact-hooks.ts useDay 주석 참고.
   });
 }
 

@@ -93,6 +93,7 @@ export function useExpenseLedger(view: ExpenseViewMode, month: string, categoryI
     queryFn: () => request<ExpenseLedgerView>(`/api/expenses?${query}`),
     enabled: view !== "category" || Boolean(categoryId),
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -101,6 +102,7 @@ export function useExpenseCategories() {
     queryKey: expenseCategoriesKey(),
     queryFn: async () => (await request<{ categories: ExpenseCategoryR6[] }>("/api/expense-categories")).categories,
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -110,6 +112,7 @@ export function useExpenseCategoryUsage(categoryId: string) {
     queryFn: () => request<ExpenseCategoryUsage>(`/api/expense-categories/${categoryId}/usage`),
     enabled: Boolean(categoryId),
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -118,6 +121,7 @@ export function useRecurringRules() {
     queryKey: recurringRulesKey(),
     queryFn: () => request<{ asOfDate: string; rules: ManagedRecurringRule[] }>("/api/expense-recurring-rules"),
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 

@@ -42,6 +42,8 @@ export function useContractPayments(): UseQueryResult<ListResponse> {
   return useQuery({
     queryKey: cpKey(),
     queryFn: () => fetchJSON<ListResponse>(`/api/contract-payment`),
+    // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
+    gcTime: 10 * 60_000,
   });
 }
 
