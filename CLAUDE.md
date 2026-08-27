@@ -2,7 +2,8 @@
 
 > **프로젝트**: 세일즈피티 수강생을 위한 반응형 웹앱. 4대 지표(생산/컨택/미팅/계약) 기록 + 게이미피케이션 + 대시보드. Google Sheets 가 유일한 DB, Next.js 풀스택.
 > **스택**: Next.js 15 (App Router) · TypeScript · Tailwind · NextAuth(Google) · googleapis · Recharts · Vitest
-> **배포**: 자체 도메인 + 자체 VPS (Caddy + Docker). 스토어 배포 X, PWA 지원.
+> **배포**: 자체 도메인 + 자체 VPS (Caddy + Docker). 스토어 배포 X, PWA 지원(홈 화면 추가용
+> `app/manifest.ts`만 — 서비스워커·오프라인 캐시 없음, BBE-242 캐시 조사 2026-08-27 확인).
 >
 > 이 파일은 **지도(map)** 이다. 백과사전이 아니다. 상세 규칙은 `docs/`의 원천으로 연결된다.
 > 길이 목표: ~150줄. 이 이상 커지면 `docs/`로 분리한다.
