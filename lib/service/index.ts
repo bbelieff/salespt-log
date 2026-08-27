@@ -92,6 +92,7 @@ export {
   enrichUsersWithSheetCohort,
   enrichUsersWithDates,
   enrichUsersWithStats,
+  warmBundle,
   type MeProfile,
   type TraineeFunnelStats,
 } from "./me";
