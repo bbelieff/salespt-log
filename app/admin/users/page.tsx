@@ -102,8 +102,10 @@ export default async function AdminUsersPage() {
   });
   const enriched = await enrichUsersWithDates(regularTrainees);
   // 8주 funnel stats (E4/E5/E6) — 카드의 "예정/완료/계약" 표시용.
-  // unstable_cache (me-bundle-v2, 600s) 공유라 enrichUsersWithDates 가 이미 sheet
-  // fetch 한 경우 cache hit (별도 호출 0회).
+  // readBundle(profile-bundle-cache.ts) 공유 SWR 캐시(FRESH 10분/GRACE 30분, BBE-249)라
+  // enrichUsersWithDates 가 이미 fetch 한 경우 캐시 히트(별도 호출 0회). (2026-08-27 정정 —
+  // 옛 unstable_cache/"me-bundle-v2" 세대는 BBE-249 때 이 SWR 로 완전히 교체됨, BBE-242 캐시
+  // 조사에서 확인.)
   const withStats = await enrichUsersWithStats(enriched);
   const archivedLabels = Array.from(archivedSet);
   return (
