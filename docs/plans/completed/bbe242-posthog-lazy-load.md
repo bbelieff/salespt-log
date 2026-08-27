@@ -8,7 +8,7 @@
 ---
 
 slug: bbe242-posthog-lazy-load
-status: active
+status: completed
 created: 2026-08-27
 owner: 경영일지 데탑 C작업원C — belie 집행 배차(처방2)
 related: BBE-242, BBE-75
@@ -57,13 +57,19 @@ false 면 **그냥 no-op**한다 — 이 설계는 원래 "로컬/개발 환경(
   email 빈값 가드 보존. **자기검증**: 버퍼링 코드를 되돌려(`git stash`) 재실행 →
   `flushPendingAnalytics is not a function`으로 3/4건 즉시 실패 확인 → 원복 후 4/4 통과
   재확인(진짜로 잡는 테스트임을 증명).
-- **전/후 완전 로딩 시간**(브라우저 Performance API, 프로덕션 `salesptlog.online` 직접측정):
+- **전/후 완전 로딩 시간**(브라우저 Performance API, 프로덕션 `salesptlog.online` 직접측정,
+  배포 `4f5cee1` 전/후):
 
-  | | before(즉시init, 배포 `6e77f8e`) | after(지연init, 배포 후 갱신) |
+  | | before(즉시init, `6e77f8e`) | after(지연init, `4f5cee1`) |
   |---|---|---|
-  | `loadEventEnd`(완전 로딩) | **1659ms** | (§6.8 배포 후 갱신) |
-  | PostHog `config.js` | 970~1616ms(641ms 소요, 페이지 로딩 시간과 정확히 겹침) | (배포 후 갱신) |
-  | PostHog 하위스크립트 6개 시작 시점 | 970~975ms(초기 로딩 중) | (배포 후 갱신 — `load` 이후로 밀림 예상) |
+  | `loadEventEnd`(완전 로딩) | **1659ms** | **1046ms**(재측정 408ms — 네트워크 변동 있음) |
+  | PostHog 하위스크립트 시작 시점 | **970~975ms — loadEventEnd(1659ms) 이전, 로딩 중** | **1022~1046ms / 398ms — loadEventEnd 시점 또는 그 직후**(2회 재현) |
+  | PostHog `config.js` | 970~1616ms(641ms, 페이지 로딩 구간과 완전히 겹침) | 1046~2469ms(로딩 완료 **후** 시작) |
+
+  **판정**: 의도한 효과 확인 — PostHog 스크립트 로딩이 더 이상 페이지 자체 로딩(`load` 이벤트)
+  과 겹치지 않고 그 이후로 밀려났다(2회 독립 측정 재현). `loadEventEnd` 자체의 절대 개선폭
+  (1659→1046ms)은 네트워크 변동(재측정 408ms)이 커서 단정하지 않는다 — **핵심 증거는
+  "겹침 제거"이지 "숫자 감소" 자체가 아니다**(둘 다 있었지만 후자는 조건에 따라 흔들림).
 
 ## 4. 남은 항목
 
@@ -74,3 +80,6 @@ false 면 **그냥 no-op**한다 — 이 설계는 원래 "로컬/개발 환경(
 
 ## Log
 - **2026-08-27 착수**: 구현·단위테스트·before 실측 완료. 배포·after 실측 진행 중.
+- **2026-08-27 완주**: PR #879(`4f5cee1`) 머지·배포 success·health 200. after 실측 2회
+  재현(PostHog 스크립트가 loadEventEnd 시점/직후로 밀림, 페이지 로딩과 겹침 제거 확인) —
+  §3 표 갱신. BBE-242·BBE-75 도장.
