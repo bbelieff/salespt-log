@@ -47,6 +47,8 @@ export function useTodosByContract(
         `/api/todos?contractRef=${encodeURIComponent(contractRef)}`,
       ),
     enabled: !!contractRef,
+    // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
+    gcTime: 10 * 60_000,
   });
 }
 
