@@ -12,22 +12,20 @@
  * 유보(reserved) 도입 배경:
  *   마스터 본인 계정처럼 명단에서 안 보이게 하고 싶지만 row 자체는 살려두고 싶은
  *   trainee 가 있음 (테스트 계정, 임시 인원 등). "관리" 와 동일한 sentinel 패턴.
+ *
+ * **3단 Suspense 스트리밍 (BBE-249, A 설계서 §① — belie "즉각즉각" 요구 반영,
+ * 2026-08-27)**: 이 파일은 권한 게이트만 담당하는 얇은 셸이다. 실제 데이터 fetch
+ * 는 `_components/UsersRoster.tsx`(Tier 1, <1초 목표 — DB fast path 만)와
+ * `_components/UsersStatsFill.tsx`(Tier 2, 느릴 수 있음 — 개인 시트 readBundle
+ * 폴백 경유)로 나뉜다. Tier 1 이 resolve 되는 순간 이름·기수·상태 카드 뼈대가
+ * 뜨고, Tier 2 가 늦게 끝나도 그 화면은 이미 떠 있다(스트리밍이 GRACE-밖 동기
+ * 블로킹을 흡수 — profile-bundle-cache.ts 자체는 무변경).
  */
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import {
-  getSessionEmail,
-  canViewAdminPages,
-  isAdminEmail,
-} from "@/auth/identity";
-import { adminEmails, adminNames } from "@/config";
-import {
-  listDistinctUsers,
-  listPendingTrainees,
-  isReservedTrainee,
-} from "@/repo/users";
-import { getArchivedCohortSet } from "@/repo/cohorts";
-import { enrichUsersWithDates, enrichUsersWithStats } from "@/service";
-import AdminUserPicker from "@/components/auth/AdminUserPicker";
+import { getSessionEmail, canViewAdminPages, isAdminEmail } from "@/auth/identity";
+import UsersRoster from "./_components/UsersRoster";
+import UsersSkeleton from "./_components/UsersSkeleton";
 
 // **force-dynamic** — 매 요청마다 fresh registry 데이터.
 // 이전엔 revalidate=30 이라 self-claim 직후 admin 이 새로고침해도 옛 데이터가
@@ -43,80 +41,9 @@ export default async function AdminUsersPage() {
   }
   // 관리부서 멤버는 read-only.
   const viewOnly = !isAdminEmail(sessionEmail);
-  const [all, archivedSet, pendingTrainees] = await Promise.all([
-    listDistinctUsers(),
-    getArchivedCohortSet(),
-    listPendingTrainees(),
-  ]);
-  // 정식 trainee 만 (admin 승인 완료, status=active).
-  // pending 은 별도 섹션에서만 처리하므로 정규 그룹에서 제외.
-  const activeApprovedTrainees = all.filter(
-    (u) => u.role === "trainee" && u.status === "active",
-  );
-  // 유보 vs 정규 — registry B 컬럼 raw 값으로 분기 (enrich 전).
-  // 유보는 개인 시트 B3 SSOT 로 덮어쓰지 않고 sentinel "유보" 유지 → UI 가 별도 섹션 분류.
-  const reservedTrainees = activeApprovedTrainees.filter(isReservedTrainee);
-  const regularTrainees = activeApprovedTrainees.filter(
-    (u) => !isReservedTrainee(u),
-  );
-
-  // 활성 트레이너 풀 — /admin/trainers 와 동일한 합성·필터 규칙:
-  //   (1) ADMIN_EMAILS 멤버 중 registry row 없는 사람은 synth admin row 합성
-  //       (마스터가 본인을 명단·드롭다운에서 못 보는 사고 방지).
-  //   (2) registry trainer + status=active OR ADMIN_EMAILS 멤버.
-  //   (3) 관리부서(cohort="관리") 는 트레이너 풀에서 제외 — 담당 배정 대상 아님.
-  // 이전엔 (2)·(3) 누락. 김믿음(admin) 누락 + 관리부서 잘못 표시 사고 (2026-05-14).
-  const adminLc = adminEmails();
-  const adminNameMap = adminNames();
-  const allEmailsLc = new Set(all.map((u) => u.email.toLowerCase()));
-  const synthAdmins = adminLc
-    .filter((e) => !allEmailsLc.has(e))
-    .map((e) => ({
-      email: e,
-      cohort: "",
-      name: adminNameMap[e] ?? e.split("@")[0] ?? e,
-      spreadsheetId: "",
-      role: "admin" as const,
-      status: "active" as const,
-      assignedTrainer: "",
-      team: "",
-      cohortLabel: "",
-      nameLabel: "",
-      courseStartISO: "",
-      graduationISO: "",
-      sortOrder: 0,
-    }));
-  const adminSet = new Set(adminLc);
-  const fullList = [...all, ...synthAdmins].map((u) => {
-    const lc = u.email.toLowerCase();
-    if (!adminSet.has(lc)) return u;
-    const override = adminNameMap[lc];
-    return override ? { ...u, name: u.name || override } : u;
-  });
-  const isManagement = (u: { cohort: string }) => u.cohort.trim() === "관리";
-  const activeTrainers = fullList.filter((u) => {
-    if (isManagement(u)) return false;
-    if (u.role === "trainer" && u.status === "active") return true;
-    if (adminSet.has(u.email.toLowerCase())) return true;
-    return false;
-  });
-  const enriched = await enrichUsersWithDates(regularTrainees);
-  // 8주 funnel stats (E4/E5/E6) — 카드의 "예정/완료/계약" 표시용.
-  // readBundle(profile-bundle-cache.ts) 공유 SWR 캐시(FRESH 10분/GRACE 30분, BBE-249)라
-  // enrichUsersWithDates 가 이미 fetch 한 경우 캐시 히트(별도 호출 0회). (2026-08-27 정정 —
-  // 옛 unstable_cache/"me-bundle-v2" 세대는 BBE-249 때 이 SWR 로 완전히 교체됨, BBE-242 캐시
-  // 조사에서 확인.)
-  const withStats = await enrichUsersWithStats(enriched);
-  const archivedLabels = Array.from(archivedSet);
   return (
-    <AdminUserPicker
-      users={withStats}
-      reservedUsers={reservedTrainees}
-      pendingUsers={pendingTrainees}
-      activeTrainers={activeTrainers}
-      sessionEmail={sessionEmail}
-      archivedCohorts={archivedLabels}
-      viewOnly={viewOnly}
-    />
+    <Suspense fallback={<UsersSkeleton />}>
+      <UsersRoster sessionEmail={sessionEmail} viewOnly={viewOnly} />
+    </Suspense>
   );
 }
