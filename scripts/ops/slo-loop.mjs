@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * BBE-242 SLO 루프 전용 — 7개 주요 경로 실측(curl TTFB/총시간, 5회 중앙값+최대) +
+ * BBE-242 SLO 루프 전용 — 주요 경로 실측(curl TTFB/총시간, 5회 중앙값+최대) +
  * 불안정 원인 축(DB-path vs Sheets-path, localhost vs public) 진단.
+ * 2026-08-27 로딩 보고서 처방1: 8.전광판(아레나 스코어보드, 30분/105엔트리 캐시 콜드
+ * 후보) 추가 — E 의 캐시 전수조사 결과를 실측으로 검증.
  *
  * 쓰기는 오직 "일지 저장"(POST /api/daily/:date) 1건뿐이며, 반드시 "연습" 코호트
  * (더미/테스트 계정, DB_READ_COHORTS 파일럿)에서 GET으로 읽은 값을 그대로 재-POST하는
@@ -275,6 +277,18 @@ async function main() {
   {
     const flag = adminRes.medianMs !== null && (adminRes.medianMs > SLO_MS || adminRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
     console.log(`  ${flag} 6.어드민수강생관리: n=${adminRes.n}/${REPS} median=${adminRes.medianMs}ms max=${adminRes.maxMs}ms code=${adminRes.codes.join(",")}${adminRes.errs.length ? ` err=${adminRes.errs[0]}` : ""}`);
+  }
+
+  // ── 8.전광판(아레나 스코어보드) — 로딩 보고서(2026-08-27) 처방1: 콜드 비용 실측 ──
+  // E 의 캐시 전수조사 발견: scoreboard.ts:43,51,61 의 unstable_cache 30분 TTL 이
+  // 참가자별(35명+) × 3종 = 최대 105개 엔트리를 두고, 비슷한 시각에 함께 만료한다.
+  // 어드민과 마찬가지로 콜드 시 다건 시트 read 가 몰릴 수 있어 별도 순차 측정(비경합).
+  console.log(`\n=== 8.전광판(아레나) (별도 순차, 다른 경로와 비경합, ${REPS}회) ===`);
+  const scoreboardRes = await runReps(BASE_PUBLIC, "/admin/arena/scoreboard", { cookie: adminCookie }, REPS);
+  results.push({ key: "8.전광판", res: scoreboardRes });
+  {
+    const flag = scoreboardRes.medianMs !== null && (scoreboardRes.medianMs > SLO_MS || scoreboardRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
+    console.log(`  ${flag} 8.전광판: n=${scoreboardRes.n}/${REPS} median=${scoreboardRes.medianMs}ms max=${scoreboardRes.maxMs}ms code=${scoreboardRes.codes.join(",")}${scoreboardRes.errs.length ? ` err=${scoreboardRes.errs[0]}` : ""}`);
   }
 
   // ── 초과 순위표 ──
