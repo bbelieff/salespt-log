@@ -41,6 +41,13 @@ export default function DateInputCustom({
   // showPicker() 가 (미지원/예외로) 실패했을 때만 native input 을 pointer-events:auto 로
   // 되살려 브라우저 기본 클릭-오픈에 기대는 최후 폴백(BBE-81, 2026-08-07). 평소엔
   // globals.css 의 pointer-events:none 이 클릭을 전부 wrapper(JS)로만 보낸다.
+  //
+  // ⚠️ 이 폴백은 **예외가 났을 때만** 켜진다 — 그래서 "조용한 실패"는 못 잡는다.
+  // 실제로 2026-08-29 에 크롬이 `opacity:0` 인 date input 의 showPicker() 를 예외 없이
+  // 무시하기 시작해 4번째 재발이 났다(호출은 ok, 달력만 안 뜸 → 폴백도 안 켜짐 → 완전 무반응).
+  // 그 방어선은 JS 가 아니라 **CSS 계약**이다 — globals.css 의 `.hidden-native-date` 는
+  // opacity 를 0 으로 두지 않는다(내용만 투명화). tests/components/date-input-picker.test.ts
+  // 의 「가시성 계약」 describe 가 이를 기계 검증한다. 되돌리지 말 것.
   const [fallback, setFallback] = useState(false);
 
   const open = () => {

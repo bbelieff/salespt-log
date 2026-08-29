@@ -17,6 +17,8 @@ import { createElement, act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import DateInputCustom from "@/components/ui/DateInputCustom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 // jsdom + React 18 act 환경 (tests/components/expense-ledger-ui.test.ts 와 동일 패턴)
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -154,5 +156,53 @@ describe("DateInputCustom — picker 재호출 가드", () => {
       expect(native.className).not.toContain("hidden-native-date--fallback");
       expect(wrapper.querySelector('[role="status"]')).toBeNull();
     });
+  });
+});
+
+/**
+ * CSS 계약 가드 (2026-08-29, 4번째 재발 후 신설).
+ *
+ * 위 테스트들은 jsdom 이라 **CSS 로 인한 실패를 원리적으로 못 잡는다** — 실제 사고는
+ * JS 가 아니라 스타일에서 났다. 크롬은 `opacity:0` 인 date input 에 대해 showPicker() 를
+ * 예외 없이 조용히 무시한다(호출은 ok 로 반환되는데 달력이 안 뜸). 예외가 안 나므로
+ * `--fallback` 도 안 켜져 사용자에겐 완전 무반응이 된다.
+ *
+ * 그래서 "요소는 보이는 상태로 두고 내용만 투명화" 라는 계약을 여기서 기계 검증한다.
+ * 이 테스트가 깨지면 그 변경은 전 수강생 미팅예약 달력을 다시 죽인다.
+ */
+describe("globals.css — .hidden-native-date 가시성 계약", () => {
+  // 주석을 먼저 걷어낸다 — 주석 안의 설명 문구("opacity:0 이면 …")가 선언으로 오인되면
+  // 이 가드가 엉뚱하게 통과/실패한다.
+  const css = readFileSync(resolve(process.cwd(), "app/globals.css"), "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+
+  function ruleBody(selector: string): string {
+    const i = css.indexOf(selector + " {");
+    expect(i, `${selector} 규칙을 찾지 못했다`).toBeGreaterThan(-1);
+    return css.slice(i, css.indexOf("}", i));
+  }
+
+  it("opacity 가 0 이면 안 된다 — 크롬이 showPicker() 를 조용히 무시한다", () => {
+    const body = ruleBody(".hidden-native-date");
+    const opacity = /opacity:\s*([^;]+);/.exec(body)?.[1]?.trim();
+    expect(opacity, "opacity 선언이 사라졌다").toBeTruthy();
+    expect(opacity).not.toBe("0");
+    expect(Number(opacity)).toBeGreaterThan(0);
+  });
+
+  it("글자는 투명이어야 한다 — 안 그러면 네이티브 날짜가 우리 표시와 겹쳐 보인다", () => {
+    expect(ruleBody(".hidden-native-date")).toMatch(/color:\s*transparent/);
+  });
+
+  it("크기는 박스 전체를 유지한다 — 0×0 은 iOS/인앱 웹뷰에서 picker 를 못 띄운다(#656)", () => {
+    const body = ruleBody(".hidden-native-date");
+    expect(body).toMatch(/width:\s*100%/);
+    expect(body).toMatch(/height:\s*100%/);
+  });
+
+  it("표시용 span 이 native input 위에 온다 — 겹침 방지", () => {
+    expect(ruleBody(".custom-date-wrapper > span")).toMatch(/z-index:\s*1/);
   });
 });
