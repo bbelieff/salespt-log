@@ -130,89 +130,77 @@
 
 **현재 사용 위치:** 컨택관리 탭 4지표(생산/유입/컨택진행/컨택성공), 수납관리 탭(승인·수납 건수)
 
-### Date Input (커스텀 박스 + 숨겨진 native) ⭐
+### Date Input (커스텀 박스 + **직접 그리는 달력**) ⭐
 
-**왜 커스텀이 필요한가**:
+**컴포넌트**: `components/ui/DateInputCustom.tsx` · props `{ value, onChange, ariaLabel?, min?, max?, placeholder? }`
+
+**왜 커스텀 박스인가**:
 - 한국어 UX는 `2026-04-25 (목)` 처럼 **요일 표시**가 필수
-- 그러나 native `<input type="date">`는 표시 형식을 바꿀 수 없음 (YYYY-MM-DD 고정, 요일 없음)
-- 해결: 보이는 박스는 커스텀, 진짜 input은 박스 전체 크기로 깔되 투명·`pointer-events:none`
-  으로 숨겨 클릭은 JS `showPicker()`만 받게 한다(⚠️ **0×0으로 줄이지 말 것** — iOS Safari·
-  카카오/인스타 인앱 WKWebView는 크기 0 요소에 picker를 안 띄운다, #656/P0-2).
+- native `<input type="date">`는 표시 형식을 못 바꾼다 (YYYY-MM-DD 고정, 요일 없음)
 
-**구현 예시:**
+**왜 달력까지 직접 그리는가 (2026-08-30 전환 — 5번째 재발 후)**:
+원래는 투명한 native input 을 박스 위에 깔고 브라우저 기본 달력을 띄웠다. 그 구조가 **네 번 연속으로 죽었다**:
+
+| 사고 | 원인 |
+|---|---|
+| #654 | `<label>` 이 클릭을 재전달 → `showPicker()` 2차 호출 → 열린 달력이 닫힘 |
+| #656 | 0×0 요소에는 iOS Safari·인앱 WKWebView 가 달력을 안 띄움 |
+| #730 | 브라우저 기본 클릭-오픈이 조용히 안 먹기 시작 |
+| #897 | 크롬이 `opacity:0` 인 입력의 `showPicker()` 를 **예외 없이 무시** — 에러가 안 나서 예외 기반 폴백도 안 켜짐 |
+
+공통점은 **"달력을 여는 주체가 브라우저"** 라서 통제도, 실패 감지도 불가능했다는 것.
+그래서 지금은 **평범한 DOM 으로 달력을 직접 렌더**한다 — 모든 브라우저·인앱 웹뷰에서 같게 동작하고, 자동화 테스트가 "실제로 떴는지"를 검증할 수 있다.
+
+> ⚠️ **`<input type="date">` + `showPicker()` 로 되돌리지 마라.** 위 4건이 다시 열린다.
+> `tests/components/date-input-picker.test.ts` 의 「네이티브 date picker 회귀 가드」가 기계 검증한다.
+
+**구조:**
 ```html
-<div class="custom-date-wrapper" onclick="openDatePicker(this)">
-  <span class="custom-date-display" id="dateDisplay-1">2026-04-25 (목)</span>
-  <span class="text-gray-400">📅</span>
-  <input 
-    type="date" 
-    class="hidden-native-date"
-    id="dateNative-1"
-    value="2026-04-25"
-    onchange="updateDateDisplay(this, 'dateDisplay-1')"
-  >
+<!-- 트리거 박스 -->
+<div class="custom-date-wrapper" role="button" tabindex="0" aria-haspopup="dialog">
+  <span class="custom-date-display">2026-04-25 (목)</span>
+  <span aria-hidden="true">📅</span>
+</div>
+
+<!-- 클릭 시 렌더되는 달력 (position:fixed — 부모 overflow 에 안 잘린다) -->
+<div class="date-pop" role="dialog">
+  <div class="date-pop-head">
+    <button class="date-pop-nav" aria-label="이전 달">‹</button>
+    <span class="date-pop-title">2026년 4월</span>
+    <button class="date-pop-nav" aria-label="다음 달">›</button>
+  </div>
+  <div class="date-pop-dow"><span>일</span>…<span>토</span></div>
+  <div class="date-pop-grid">
+    <!-- 42칸 고정(6주) — 달을 넘겨도 높이가 안 흔들린다 -->
+    <button class="date-pop-day is-selected" aria-label="2026-04-25">25</button>
+  </div>
+  <div class="date-pop-foot">
+    <button class="date-pop-today">오늘</button>
+    <button class="date-pop-close">닫기</button>
+  </div>
 </div>
 ```
 
-**CSS 정의:**
-```css
-.custom-date-wrapper {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-  background: white;
-  user-select: none;
-  position: relative;
-}
-.custom-date-wrapper:hover { border-color: #9ca3af; }
-.custom-date-wrapper:focus-within { border-color: #3b82f6; outline: 2px solid #dbeafe; }
+**클래스:**
 
-.custom-date-display {
-  font-size: 14px; font-weight: 500; color: #111827;
-  flex: 1;
-}
+| 클래스 | 역할 |
+|---|---|
+| `.custom-date-wrapper` | 트리거 박스 (hover·focus-within 테두리) |
+| `.custom-date-display` | `YYYY-MM-DD (요일)` 표시 |
+| `.date-pop` | 달력 컨테이너 · `position:fixed` · `z-index:400` · 288px |
+| `.date-pop-head` / `.date-pop-title` / `.date-pop-nav` | 달 이동 헤더 |
+| `.date-pop-dow` / `.date-pop-grid` | 요일 헤더 · 7열 그리드 |
+| `.date-pop-day` | 날짜 칸 — **높이 36px 이상 유지(모바일 터치 타깃)** |
+| `.date-pop-day.is-selected` / `.is-today` / `.is-out` | 선택 / 오늘 / 앞뒤 달 |
+| `.date-pop-foot` / `.date-pop-today` / `.date-pop-close` | 오늘·닫기 |
 
-/* native input은 박스 전체 크기(showPicker가 iOS 등에서 먹으려면 0×0 금지) +
-   pointer-events:none — 클릭이 항상 wrapper(JS showPicker)로만 가게 해서
-   "브라우저 기본 클릭-오픈에 의존" 자체를 없앤다(BBE-81, 2026-08-07 — 그 기본
-   동작이 조용히 안 먹는 사례가 나와 전 수강생 클릭 무반응이 재발했었다). */
-.hidden-native-date {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  opacity: 0;
-  pointer-events: none;
-}
-/* showPicker() 가 실패(미지원/예외)할 때만 부여 — 최후 수단으로 브라우저 기본
-   클릭-오픈을 되살린다. 이때 화면에는 "다시 눌러주세요" 안내가 함께 뜬다. */
-.hidden-native-date--fallback {
-  pointer-events: auto;
-  cursor: pointer;
-}
-```
+**동작 계약:**
+- 박스 클릭 또는 `Enter`/`Space` → 달력 표시. 바깥 클릭 · `Esc` · 날짜 선택 시 닫힘
+- 날짜 선택 → `onChange(YYYY-MM-DD)` 1회 + 닫힘
+- `min`/`max` 밖 날짜는 `disabled`
+- 화면 아래 공간이 모자라면 박스 **위로** 띄우고, 좌우는 화면 안으로 물린다
+- 날짜는 **문자열로만** 다룬다 — `new Date("2026-08-01")` 은 UTC 파싱이라 KST 에서 하루 밀린다
 
-**JS 헬퍼:**
-```javascript
-const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
-
-function openDatePicker(wrapper) {
-  const native = wrapper.querySelector('.hidden-native-date');
-  if (native.showPicker) {
-    native.showPicker();
-  } else {
-    native.focus(); // 폴백
-  }
-}
-
-function updateDateDisplay(native, displayId) {
-  const display = document.getElementById(displayId);
-  const date = new Date(native.value);
-  const dayKo = DAY_KO[date.getDay()];
-  display.textContent = `${native.value} (${dayKo})`;
-}
-```
 
 **브라우저 호환성**:
 - `showPicker()` 지원: Chrome 99+, Edge 99+, Safari 16+, Firefox 101+
