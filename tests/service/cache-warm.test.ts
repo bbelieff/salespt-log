@@ -1,0 +1,154 @@
+/**
+ * 캐시 워밍 회귀 (2026-08-30 belie 시연 중 지연 신고).
+ *
+ * 사고: `/admin/users` 가 캐시 빈 상태에서 40초+ 동안 통계를 못 채웠다(따뜻하면 261ms).
+ * 캐시가 비는 순간은 ①배포(pm2 reload) ②GRACE(30분) 방치 — 둘 다 사람이 먼저 걸린다.
+ *
+ * 여기서 고정하는 계약:
+ *   ① 활성 수강생 전원의 bundle 을 미리 읽는다(중복 시트ID 는 1회만).
+ *   ② 한 명이 실패해도 나머지를 계속 데운다 — 실패가 워밍 전체를 죽이지 않는다.
+ *   ③ 워밍끼리 겹쳐 돌지 않는다.
+ *   ④ 끄는 스위치(`CACHE_WARM_DISABLED`)와 환경 게이트가 실제로 동작한다.
+ *   ⑤ 주기가 GRACE(30분)보다 **짧다** — 이게 깨지면 워밍 사이에 캐시가 만료돼 사고 재발.
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const readBundle = vi.fn();
+const listDistinctUsers = vi.fn();
+
+vi.mock("@/repo/users", () => ({
+  listDistinctUsers: (...a: unknown[]) => listDistinctUsers(...a),
+}));
+vi.mock("@/service/profile-bundle-cache", () => ({
+  readBundle: (...a: unknown[]) => readBundle(...a),
+}));
+// 상대경로 import 도 같은 모듈을 가리키도록
+vi.mock("../../lib/service/profile-bundle-cache", () => ({
+  readBundle: (...a: unknown[]) => readBundle(...a),
+}));
+
+const trainee = (email: string, spreadsheetId: string, over: Record<string, unknown> = {}) => ({
+  email,
+  spreadsheetId,
+  role: "trainee",
+  status: "active",
+  ...over,
+});
+
+beforeEach(() => {
+  vi.resetModules();
+  readBundle.mockReset().mockResolvedValue({ ok: true });
+  listDistinctUsers.mockReset();
+});
+
+async function load() {
+  return await import("@/service/cache-warm");
+}
+
+describe("warmAllTraineeBundles", () => {
+  it("① 활성 수강생 전원을 데운다 — 시트ID 중복은 1회만", async () => {
+    listDistinctUsers.mockResolvedValue([
+      trainee("a@x.com", "sheet-a"),
+      trainee("b@x.com", "sheet-b"),
+      trainee("c@x.com", "sheet-a"), // 같은 시트 → 중복 제거
+    ]);
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
+
+    expect(r.targets).toBe(2);
+    expect(r.ok).toBe(2);
+    expect(readBundle).toHaveBeenCalledTimes(2);
+    expect(readBundle.mock.calls.map((c) => c[0]).sort()).toEqual(["sheet-a", "sheet-b"]);
+  });
+
+  it("① 대상이 아닌 사람은 건드리지 않는다 — 비활성·트레이너·시트없음", async () => {
+    listDistinctUsers.mockResolvedValue([
+      trainee("ok@x.com", "sheet-ok"),
+      trainee("pending@x.com", "sheet-p", { status: "pending" }),
+      trainee("trainer@x.com", "sheet-t", { role: "trainer" }),
+      trainee("nosheet@x.com", ""),
+    ]);
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
+
+    expect(r.targets).toBe(1);
+    expect(readBundle).toHaveBeenCalledTimes(1);
+    expect(readBundle).toHaveBeenCalledWith("sheet-ok");
+  });
+
+  it("② 한 명이 실패해도 나머지를 계속 데운다", async () => {
+    listDistinctUsers.mockResolvedValue([
+      trainee("a@x.com", "sheet-a"),
+      trainee("b@x.com", "sheet-b"),
+      trainee("c@x.com", "sheet-c"),
+    ]);
+    readBundle.mockImplementation((id: string) =>
+      id === "sheet-b" ? Promise.reject(new Error("시트 폴백 실패")) : Promise.resolve({}),
+    );
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
+
+    expect(r.ok).toBe(2);
+    expect(r.failed).toBe(1);
+    expect(readBundle).toHaveBeenCalledTimes(3);
+  });
+
+  it("② 레지스트리 조회 자체가 실패해도 던지지 않는다 — 다음 주기가 재시도", async () => {
+    listDistinctUsers.mockRejectedValue(new Error("registry down"));
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
+
+    expect(r.targets).toBe(0);
+    expect(r.failed).toBe(0);
+  });
+
+  it("③ 앞 회차가 도는 중이면 이번 회차는 건너뛴다", async () => {
+    let release: () => void = () => {};
+    listDistinctUsers.mockResolvedValue([trainee("a@x.com", "sheet-a")]);
+    readBundle.mockImplementation(() => new Promise((res) => { release = () => res({}); }));
+
+    const { warmAllTraineeBundles } = await load();
+    const first = warmAllTraineeBundles({ gapMs: 0 });
+    const second = await warmAllTraineeBundles({ gapMs: 0 });
+
+    expect(second.skipped).toBe(true);
+    release();
+    await first;
+  });
+});
+
+describe("워밍 게이트", () => {
+  it("④ CACHE_WARM_DISABLED=1 이면 안 돈다 — 재배포 없이 끄는 스위치", async () => {
+    const { shouldWarm } = await load();
+    expect(shouldWarm({ NODE_ENV: "production", CACHE_WARM_DISABLED: "1" } as NodeJS.ProcessEnv)).toBe(false);
+  });
+
+  it("④ 빌드 중에는 안 돈다 — next build 가 시트를 때리면 안 된다", async () => {
+    const { shouldWarm } = await load();
+    expect(shouldWarm({ NODE_ENV: "production", NEXT_PHASE: "phase-production-build" } as NodeJS.ProcessEnv)).toBe(false);
+  });
+
+  it("④ 개발 환경에서는 안 돈다 (강제 플래그로만 켠다)", async () => {
+    const { shouldWarm } = await load();
+    expect(shouldWarm({ NODE_ENV: "development" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(shouldWarm({ NODE_ENV: "development", CACHE_WARM_FORCE: "1" } as NodeJS.ProcessEnv)).toBe(true);
+  });
+
+  it("④ 운영에서는 기본으로 돈다", async () => {
+    const { shouldWarm } = await load();
+    expect(shouldWarm({ NODE_ENV: "production" } as NodeJS.ProcessEnv)).toBe(true);
+  });
+});
+
+describe("주기 계약", () => {
+  it("⑤ **워밍 주기가 캐시 GRACE(30분)보다 짧다** — 길어지면 사이에 캐시가 만료돼 사고 재발", async () => {
+    const { WARM_INTERVAL_MS } = await load();
+    const GRACE_MS = 30 * 60 * 1000;
+    expect(WARM_INTERVAL_MS).toBeLessThan(GRACE_MS);
+  });
+
+  it("⑤ 기동 직후 잠깐 기다린다 — 배포 health 게이트와 안 겹치게", async () => {
+    const { WARM_START_DELAY_MS } = await load();
+    expect(WARM_START_DELAY_MS).toBeGreaterThan(0);
+  });
+});
