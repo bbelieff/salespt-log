@@ -233,6 +233,42 @@ describe("워밍 관측(getWarmStatus) — /api/health 노출용", () => {
     await warmAllTraineeBundles();
 
     const keys = Object.keys(getWarmStatus()).sort();
-    expect(keys).toEqual(["ageSec", "allOk", "enabled", "hasRun", "lastMs"]);
+    expect(keys).toEqual(["ageSec", "allOk", "enabled", "hasRun", "lastMs", "started"]);
+  });
+});
+
+describe("루프 자가 기동 (멱등)", () => {
+  it("**여러 번 불러도 한 번만 시작한다** — instrumentation + /api/health 양쪽에서 불린다", async () => {
+    const { startCacheWarmLoop, getWarmStatus, _resetWarmStateForTest } = await load();
+    _resetWarmStateForTest();
+    const st0 = getWarmStatus();
+    expect(st0.started).toBe(false);
+
+    // 운영이 아니면 게이트에서 막힌다 — 강제 플래그로 켠 상태를 흉내
+    const prev = process.env.CACHE_WARM_FORCE;
+    process.env.CACHE_WARM_FORCE = "1";
+    try {
+      startCacheWarmLoop();
+      startCacheWarmLoop();
+      startCacheWarmLoop();
+      expect(getWarmStatus().started).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.CACHE_WARM_FORCE;
+      else process.env.CACHE_WARM_FORCE = prev;
+    }
+  });
+
+  it("게이트가 꺼져 있으면 시작하지 않는다", async () => {
+    const { startCacheWarmLoop, getWarmStatus, _resetWarmStateForTest } = await load();
+    _resetWarmStateForTest();
+    const prev = process.env.CACHE_WARM_DISABLED;
+    process.env.CACHE_WARM_DISABLED = "1";
+    try {
+      startCacheWarmLoop();
+      expect(getWarmStatus().started).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.CACHE_WARM_DISABLED;
+      else process.env.CACHE_WARM_DISABLED = prev;
+    }
   });
 });
