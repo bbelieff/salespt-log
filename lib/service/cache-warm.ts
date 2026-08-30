@@ -32,12 +32,16 @@ export const WARM_INTERVAL_MS = 20 * 60 * 1000;
  */
 export const WARM_START_DELAY_MS = 15 * 1000;
 /**
- * 학생 1명당 간격. 시트 폴백이 걸리는 학생이 있으면 Sheets 쿼터(60 reads/min/user)를
- * 건드릴 수 있어 순차 + 간격으로 부드럽게 태운다. 백그라운드라 총 소요는 상관없다.
+ * 동시 처리 개수. **앱이 같은 작업에 쓰는 값과 맞춘다**(`me.ts:pMapBundle` concurrency 8,
+ * BBE-249 — "60명 콜드스타트 시 8 waves × 8 동시로 완주 시간 단축" + Sheets 60 reads/min
+ * 한도 보호). 워밍이 페이지 1회 로드보다 세게 때리지 않으므로 쿼터상 새 위험이 없다.
+ *
+ * ⚠️ 여기를 1(순차)로 되돌리지 마라. 초판이 "1명씩 300ms 간격"이었는데, 실측 결과
+ * **활성 수강생이 63명**이라 워밍 한 바퀴가 몇 분씩 걸렸고 — 그 몇 분 동안 들어온
+ * 사람은 여전히 느린 화면을 봤다(2026-08-30 배포 직후 1분·2.5분 시점 실측: 40초+ 미완료,
+ * 8분 시점: 759ms 완전 로드). 워밍이 느리면 워밍을 안 한 것과 같다.
  */
-export const WARM_GAP_MS = 300;
-
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+export const WARM_CONCURRENCY = 8;
 
 /** 워밍 2개가 겹쳐 도는 것 방지 — 앞 회차가 길어지면 이번 회차는 건너뛴다. */
 let warming = false;
@@ -55,12 +59,12 @@ export interface WarmResult {
  * 이미 FRESH 인 항목은 `readBundle` 이 통신 없이 즉시 반환하므로 재워밍은 거의 공짜다.
  */
 export async function warmAllTraineeBundles(
-  opts: { gapMs?: number } = {},
+  opts: { concurrency?: number } = {},
 ): Promise<WarmResult> {
   const started = Date.now();
   if (warming) return { targets: 0, ok: 0, failed: 0, skipped: true, ms: 0 };
   warming = true;
-  const gapMs = opts.gapMs ?? WARM_GAP_MS;
+  const concurrency = opts.concurrency ?? WARM_CONCURRENCY;
   let ok = 0;
   let failed = 0;
   let targets = 0;
@@ -74,16 +78,24 @@ export async function warmAllTraineeBundles(
       ),
     ];
     targets = ids.length;
-    for (const id of ids) {
-      try {
-        await readBundle(id);
-        ok += 1;
-      } catch {
-        // 한 명 실패가 나머지를 막지 않는다 — 그 학생은 다음 회차에 다시 시도된다.
-        failed += 1;
+    // 워커 풀 — me.ts:pMapBundle 과 동일한 형태(동시 N, 무제한 burst 금지).
+    let next = 0;
+    const worker = async () => {
+      while (next < ids.length) {
+        const id = ids[next]!;
+        next += 1;
+        try {
+          await readBundle(id);
+          ok += 1;
+        } catch {
+          // 한 명 실패가 나머지를 막지 않는다 — 그 학생은 다음 회차에 다시 시도된다.
+          failed += 1;
+        }
       }
-      if (gapMs > 0) await sleep(gapMs);
-    }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, ids.length) }, () => worker()),
+    );
   } catch (e) {
     // 레지스트리 조회 자체가 실패 — 이번 회차 포기. 다음 주기가 재시도한다.
     console.warn(

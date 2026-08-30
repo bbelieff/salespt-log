@@ -53,7 +53,7 @@ describe("warmAllTraineeBundles", () => {
       trainee("c@x.com", "sheet-a"), // 같은 시트 → 중복 제거
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ gapMs: 0 });
+    const r = await warmAllTraineeBundles({ concurrency: 1 });
 
     expect(r.targets).toBe(2);
     expect(r.ok).toBe(2);
@@ -69,7 +69,7 @@ describe("warmAllTraineeBundles", () => {
       trainee("nosheet@x.com", ""),
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ gapMs: 0 });
+    const r = await warmAllTraineeBundles({ concurrency: 1 });
 
     expect(r.targets).toBe(1);
     expect(readBundle).toHaveBeenCalledTimes(1);
@@ -86,7 +86,7 @@ describe("warmAllTraineeBundles", () => {
       id === "sheet-b" ? Promise.reject(new Error("시트 폴백 실패")) : Promise.resolve({}),
     );
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ gapMs: 0 });
+    const r = await warmAllTraineeBundles({ concurrency: 1 });
 
     expect(r.ok).toBe(2);
     expect(r.failed).toBe(1);
@@ -96,7 +96,7 @@ describe("warmAllTraineeBundles", () => {
   it("② 레지스트리 조회 자체가 실패해도 던지지 않는다 — 다음 주기가 재시도", async () => {
     listDistinctUsers.mockRejectedValue(new Error("registry down"));
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ gapMs: 0 });
+    const r = await warmAllTraineeBundles({ concurrency: 1 });
 
     expect(r.targets).toBe(0);
     expect(r.failed).toBe(0);
@@ -108,8 +108,8 @@ describe("warmAllTraineeBundles", () => {
     readBundle.mockImplementation(() => new Promise((res) => { release = () => res({}); }));
 
     const { warmAllTraineeBundles } = await load();
-    const first = warmAllTraineeBundles({ gapMs: 0 });
-    const second = await warmAllTraineeBundles({ gapMs: 0 });
+    const first = warmAllTraineeBundles({ concurrency: 1 });
+    const second = await warmAllTraineeBundles({ concurrency: 1 });
 
     expect(second.skipped).toBe(true);
     release();
@@ -137,6 +137,38 @@ describe("워밍 게이트", () => {
   it("④ 운영에서는 기본으로 돈다", async () => {
     const { shouldWarm } = await load();
     expect(shouldWarm({ NODE_ENV: "production" } as NodeJS.ProcessEnv)).toBe(true);
+  });
+});
+
+describe("동시성 계약", () => {
+  it("**기본 동시성이 1보다 크다** — 순차 워밍은 63명에 몇 분이 걸려 워밍을 안 한 것과 같다", async () => {
+    const { WARM_CONCURRENCY } = await load();
+    expect(WARM_CONCURRENCY).toBeGreaterThan(1);
+  });
+
+  it("**앱이 같은 작업에 쓰는 동시성(pMapBundle 8)을 넘지 않는다** — Sheets 60/min 한도 보호", async () => {
+    const { WARM_CONCURRENCY } = await load();
+    expect(WARM_CONCURRENCY).toBeLessThanOrEqual(8);
+  });
+
+  it("실제로 병렬로 돈다 — 동시 실행 최대치가 1을 넘는다", async () => {
+    const ids = Array.from({ length: 20 }, (_, i) => trainee(`u${i}@x.com`, `sheet-${i}`));
+    listDistinctUsers.mockResolvedValue(ids);
+    let inflight = 0;
+    let peak = 0;
+    readBundle.mockImplementation(async () => {
+      inflight += 1;
+      peak = Math.max(peak, inflight);
+      await new Promise((r) => setTimeout(r, 5));
+      inflight -= 1;
+      return {};
+    });
+    const { warmAllTraineeBundles, WARM_CONCURRENCY } = await load();
+    const r = await warmAllTraineeBundles();
+
+    expect(r.ok).toBe(20);
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(WARM_CONCURRENCY);
   });
 });
 
