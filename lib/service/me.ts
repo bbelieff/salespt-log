@@ -27,6 +27,7 @@ export {
   _resetSheetBundleFetchCount,
   _getSheetBundleFetchCount,
   _resetBundleCacheForTest,
+  warmBundle,
 } from "./profile-bundle-cache";
 
 /**

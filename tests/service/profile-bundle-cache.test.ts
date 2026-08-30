@@ -17,6 +17,7 @@ vi.mock("@/repo/sales", async (importOriginal) => ({
 
 import {
   readBundle,
+  warmBundle,
   _getSheetBundleFetchCount,
   _resetSheetBundleFetchCount,
   _resetBundleCacheForTest,
@@ -129,5 +130,44 @@ describe("readBundle — GRACE 초과(30분+)", () => {
     const b = await readBundle("sid-6");
     expect(b.name).toBe("완전갱신"); // 백그라운드가 아니라 이번 호출이 직접 최신값을 받는다
     expect(_getSheetBundleFetchCount()).toBe(2);
+  });
+});
+
+describe("warmBundle — BBE-242 설계서 보강(개별 상세 프리페치, fire-and-forget)", () => {
+  it("호출 즉시 반환한다(await 없이 fetch 를 발사만) — 이후 readBundle 은 이미 데워진 값을 통신 없이 반환", async () => {
+    warmBundle("sid-warm-1");
+    // fire-and-forget 이므로 이 시점엔 아직 완료 안 됐을 수 있다 — 마이크로태스크 큐만 비운다.
+    await flushMicrotasks();
+    expect(_getSheetBundleFetchCount()).toBe(1);
+
+    const b = await readBundle("sid-warm-1");
+    expect(b).toEqual(BUNDLE);
+    expect(_getSheetBundleFetchCount()).toBe(1); // 추가 통신 없음 — warmBundle 이 이미 데웠다
+  });
+
+  it("빈 spreadsheetId 는 아예 fetch 하지 않는다(트레이너/미등록 행 가드)", async () => {
+    warmBundle("");
+    await flushMicrotasks();
+    expect(_getSheetBundleFetchCount()).toBe(0);
+    expect(mockReadProfileBundle).not.toHaveBeenCalled();
+  });
+
+  it("실패해도 예외를 던지지 않는다(호출부를 안 막음) — 다음 readBundle 이 정상 재시도한다", async () => {
+    mockReadProfileBundle.mockRejectedValueOnce(new Error("sheets 500"));
+    expect(() => warmBundle("sid-warm-2")).not.toThrow();
+    await flushMicrotasks();
+    expect(_getSheetBundleFetchCount()).toBe(1); // 실패한 시도도 카운트(fetchBundle 내부에서 증가)
+
+    // 실패로 캐시에 값이 안 남았으니 다음 readBundle 은 정상적으로 새 fetch 를 한다.
+    const b = await readBundle("sid-warm-2");
+    expect(b).toEqual(BUNDLE);
+    expect(_getSheetBundleFetchCount()).toBe(2);
+  });
+
+  it("동시(같은 tick) warmBundle + readBundle 는 in-flight 1회로 합쳐진다", async () => {
+    warmBundle("sid-warm-3");
+    const b = await readBundle("sid-warm-3");
+    expect(b).toEqual(BUNDLE);
+    expect(_getSheetBundleFetchCount()).toBe(1); // 중복 fetch 없음(fetchBundle 의 기존 in-flight dedup 재사용)
   });
 });

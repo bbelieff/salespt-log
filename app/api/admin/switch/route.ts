@@ -12,6 +12,15 @@
  *
  * 2026-05-11: 이전엔 admin only 였음. 트레이너가 본인 담당 trainee 시트 못 열던
  * 버그 fix — canImpersonate() 위임.
+ *
+ * 개별 상세 프리페치 (BBE-242 설계서 보강, 2026-08-27): 클라이언트는 이 응답을 받은 뒤
+ * `window.open('/dashboard', ...)`로 **새 탭**을 연다(AdminUserPicker.pick 등) — 그
+ * 새 탭이 실제로 뜨기까지(TCP+TLS+HTML+hydrate) 걸리는 시간 동안, 서버는 이미
+ * `warmBundle(user.spreadsheetId)` 로 대상 학생의 profile bundle 을 fire-and-forget
+ * 미리 데운다. 새 탭이 자기 `/api/me`(loadMe→readBundle)를 호출할 즈음엔 캐시가
+ * 이미 FRESH 이거나, 최소한 같은 in-flight Promise 를 공유해 중복 fetch 를 피한다 —
+ * 클라이언트측 router.prefetch/queryClient.prefetchQuery 는 새 탭이 별도 JS 컨텍스트라
+ * 효과가 없어(다른 QueryClient 인스턴스) 서버측으로 옮김.
  */
 import { NextResponse } from "next/server";
 import {
@@ -23,6 +32,7 @@ import {
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { findUserByEmail } from "@/repo/users";
+import { warmBundle } from "@/service";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function POST_handler(req: Request) {
@@ -56,6 +66,9 @@ async function POST_handler(req: Request) {
   if (!allowed) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
+
+  // 개별 상세 프리페치 — await 안 함(응답 지연 유발 금지). 위 클래스 docblock 참고.
+  warmBundle(user.spreadsheetId);
 
   // 개인 시트 없는 행(트레이너·미등록) 임퍼스네이션 차단 (P1, 2026-07-28) —
   // 빈 spreadsheetId 로 읽기 라우트 전면 500(구글 HTML 에러)·빈 화면. 볼 수 있는 화면이 없다.

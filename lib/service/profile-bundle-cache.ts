@@ -67,6 +67,23 @@ async function fetchBundle(spreadsheetId: string): Promise<Bundle> {
   }
 }
 
+/**
+ * spreadsheetId 의 bundle 을 백그라운드로 미리 데운다(BBE-242 설계서 보강 — 개별 상세
+ * 진입 프리페치, fire-and-forget). 호출자를 기다리게 하지 않는다 — 실패해도 예외를
+ * 던지지 않고 삼킨다(다음 실제 readBundle 호출이 그대로 재시도).
+ *
+ * 용도: `/api/admin/switch`(impersonation 전환)가 대상 학생 화면을 새 탭으로 열기
+ * **직전에** 호출 — 새 탭이 뜨기까지 걸리는 시간(TCP+TLS+HTML+hydrate) 동안 서버가
+ * 미리 이 캐시를 채워두면, 새 탭의 `/api/me`(loadMe→readBundle) 가 도착했을 때
+ * 이미 FRESH 이거나 최소한 같은 in-flight Promise 를 공유해 중복 fetch 를 피한다.
+ */
+export function warmBundle(spreadsheetId: string): void {
+  if (!spreadsheetId) return;
+  void readBundle(spreadsheetId).catch((e) => {
+    console.warn(`[me] warmBundle 실패(spreadsheetId=${spreadsheetId}):`, e instanceof Error ? e.message : e);
+  });
+}
+
 /** spreadsheetId → bundle. SWR 판정 — 위 파일 docblock 참고. */
 export async function readBundle(spreadsheetId: string): Promise<Bundle> {
   const entry = bundleCache.get(spreadsheetId);
