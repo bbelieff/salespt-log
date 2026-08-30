@@ -8,6 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { adminEmails } from "@/config";
+import { getWarmStatus } from "@/service/cache-warm";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,8 @@ export function GET() {
     ADMIN_EMAILS: adminEmails().length > 0,
   };
   const ok = Object.values(checks).every(Boolean);
-  return NextResponse.json({ ok, checks }, { status: ok ? 200 : 503 });
+  // 캐시 워밍 관측 — "돌고 있나"를 밖에서 확인할 유일한 창(2026-08-30, §0 Observability).
+  // ⚠️ 이 응답은 공개다. 인원수 등 실데이터는 싣지 않는다(위 docblock 원칙과 동일).
+  // 워밍 상태는 **ok 판정에 넣지 않는다** — 배포 health 게이트를 흔들면 안 된다.
+  return NextResponse.json({ ok, checks, warm: getWarmStatus() }, { status: ok ? 200 : 503 });
 }

@@ -46,6 +46,40 @@ export const WARM_CONCURRENCY = 8;
 /** 워밍 2개가 겹쳐 도는 것 방지 — 앞 회차가 길어지면 이번 회차는 건너뛴다. */
 let warming = false;
 
+/**
+ * 마지막 워밍 결과 — `/api/health` 가 노출한다(관측 가능성).
+ *
+ * 왜 필요한가: 2026-08-30 워밍을 넣고도 **실제로 도는지 확인할 방법이 없어** 몇 시간을
+ * 태웠다. 로그는 VPS 안에 있어 밖에서 못 본다. "못 보는 것은 못 고친다"(CLAUDE.md §0
+ * Observability) — 그래서 상태를 밖으로 내보낸다.
+ * ⚠️ `/api/health` 는 공개 엔드포인트라 **값은 안 싣는다**(그 라우트의 기존 원칙과 동일).
+ * 인원수 같은 실데이터는 빼고 boolean·소요시간만 남긴다.
+ */
+let lastWarm: { at: number; ok: number; failed: number; targets: number; ms: number } | null = null;
+
+/** 공개용 요약 — 실데이터(인원수) 없이 "돌았나·언제·얼마나 걸렸나·다 성공했나"만. */
+export function getWarmStatus(now: number = Date.now()): {
+  enabled: boolean;
+  hasRun: boolean;
+  ageSec: number | null;
+  lastMs: number | null;
+  allOk: boolean | null;
+} {
+  return {
+    enabled: shouldWarm(),
+    hasRun: lastWarm !== null,
+    ageSec: lastWarm ? Math.round((now - lastWarm.at) / 1000) : null,
+    lastMs: lastWarm ? lastWarm.ms : null,
+    allOk: lastWarm ? lastWarm.failed === 0 && lastWarm.targets > 0 : null,
+  };
+}
+
+/** 테스트 전용 — 모듈 상태 초기화. */
+export function _resetWarmStateForTest(): void {
+  warming = false;
+  lastWarm = null;
+}
+
 export interface WarmResult {
   targets: number;
   ok: number;
@@ -105,7 +139,9 @@ export async function warmAllTraineeBundles(
   } finally {
     warming = false;
   }
-  return { targets, ok, failed, skipped: false, ms: Date.now() - started };
+  const ms = Date.now() - started;
+  lastWarm = { at: Date.now(), ok, failed, targets, ms };
+  return { targets, ok, failed, skipped: false, ms };
 }
 
 /** 워밍을 켤 조건인지. 개발·빌드·명시적 비활성에서는 돌지 않는다. */

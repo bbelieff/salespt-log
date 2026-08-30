@@ -184,3 +184,55 @@ describe("주기 계약", () => {
     expect(WARM_START_DELAY_MS).toBeGreaterThan(0);
   });
 });
+
+describe("워밍 관측(getWarmStatus) — /api/health 노출용", () => {
+  it("한 번도 안 돌았으면 hasRun=false", async () => {
+    const { getWarmStatus, _resetWarmStateForTest } = await load();
+    _resetWarmStateForTest();
+    const st = getWarmStatus();
+    expect(st.hasRun).toBe(false);
+    expect(st.ageSec).toBeNull();
+    expect(st.lastMs).toBeNull();
+  });
+
+  it("돌고 나면 hasRun=true · 경과·소요시간·전건성공 여부가 잡힌다", async () => {
+    listDistinctUsers.mockResolvedValue([
+      trainee("a@x.com", "sheet-a"),
+      trainee("b@x.com", "sheet-b"),
+    ]);
+    const { warmAllTraineeBundles, getWarmStatus, _resetWarmStateForTest } = await load();
+    _resetWarmStateForTest();
+    await warmAllTraineeBundles();
+
+    const st = getWarmStatus();
+    expect(st.hasRun).toBe(true);
+    expect(st.allOk).toBe(true);
+    expect(st.ageSec).toBeGreaterThanOrEqual(0);
+    expect(st.lastMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("일부 실패하면 allOk=false — 조용한 실패를 밖에서 본다", async () => {
+    listDistinctUsers.mockResolvedValue([
+      trainee("a@x.com", "sheet-a"),
+      trainee("b@x.com", "sheet-b"),
+    ]);
+    readBundle.mockImplementation((id: string) =>
+      id === "sheet-b" ? Promise.reject(new Error("boom")) : Promise.resolve({}),
+    );
+    const { warmAllTraineeBundles, getWarmStatus, _resetWarmStateForTest } = await load();
+    _resetWarmStateForTest();
+    await warmAllTraineeBundles();
+
+    expect(getWarmStatus().allOk).toBe(false);
+  });
+
+  it("**실데이터(인원수)를 노출하지 않는다** — /api/health 는 공개 엔드포인트다", async () => {
+    listDistinctUsers.mockResolvedValue([trainee("a@x.com", "sheet-a")]);
+    const { warmAllTraineeBundles, getWarmStatus, _resetWarmStateForTest } = await load();
+    _resetWarmStateForTest();
+    await warmAllTraineeBundles();
+
+    const keys = Object.keys(getWarmStatus()).sort();
+    expect(keys).toEqual(["ageSec", "allOk", "enabled", "hasRun", "lastMs"]);
+  });
+});
