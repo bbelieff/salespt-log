@@ -8,11 +8,14 @@
  */
 import { NextResponse } from "next/server";
 import { adminEmails } from "@/config";
-import { getWarmStatus } from "@/service/cache-warm";
+import { getWarmStatus, startCacheWarmLoop } from "@/service/cache-warm";
 
 export const dynamic = "force-dynamic";
 
 export function GET() {
+  // 캐시 워밍 루프 자가 기동(멱등) — instrumentation 훅이 안 도는 경우의 보험.
+  // 배포 게이트(§6.8)가 기동 직후 이 경로를 반드시 때리므로, 배포마다 확실히 시작된다.
+  startCacheWarmLoop();
   const checks = {
     AUTH_SECRET: !!(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET),
     AUTH_GOOGLE_ID: !!process.env.AUTH_GOOGLE_ID,

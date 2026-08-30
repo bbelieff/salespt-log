@@ -57,9 +57,13 @@ let warming = false;
  */
 let lastWarm: { at: number; ok: number; failed: number; targets: number; ms: number } | null = null;
 
+/** 루프가 이 프로세스에서 시작됐는지 — 중복 시작 방지 + 관측용. */
+let loopStarted = false;
+
 /** 공개용 요약 — 실데이터(인원수) 없이 "돌았나·언제·얼마나 걸렸나·다 성공했나"만. */
 export function getWarmStatus(now: number = Date.now()): {
   enabled: boolean;
+  started: boolean;
   hasRun: boolean;
   ageSec: number | null;
   lastMs: number | null;
@@ -67,6 +71,7 @@ export function getWarmStatus(now: number = Date.now()): {
 } {
   return {
     enabled: shouldWarm(),
+    started: loopStarted,
     hasRun: lastWarm !== null,
     ageSec: lastWarm ? Math.round((now - lastWarm.at) / 1000) : null,
     lastMs: lastWarm ? lastWarm.ms : null,
@@ -78,6 +83,7 @@ export function getWarmStatus(now: number = Date.now()): {
 export function _resetWarmStateForTest(): void {
   warming = false;
   lastWarm = null;
+  loopStarted = false;
 }
 
 export interface WarmResult {
@@ -154,11 +160,24 @@ export function shouldWarm(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 /**
- * 기동 직후 1회 + `WARM_INTERVAL_MS` 주기로 워밍을 건다. 서버 프로세스당 1회만 호출.
+ * 기동 직후 1회 + `WARM_INTERVAL_MS` 주기로 워밍을 건다.
+ *
+ * **여러 번 불러도 안전하다(멱등).** 그래서 두 군데서 부른다:
+ *   ① `instrumentation.ts` — 정석 경로(서버 기동 훅)
+ *   ② `/api/health` 요청 — **보험**. 배포 게이트가 기동 직후 반드시 이 경로를 때린다.
+ *
+ * ②가 왜 필요한가 (2026-08-31 실측): ①만 걸어놨더니 배포 후 `/api/health` 가
+ * `started:false`·`hasRun:false` 를 계속 반환했다 — instrumentation 훅이 안 돌거나 그 안의
+ * 동적 import 가 조용히 실패한 것인데, **pm2 로그에 앱 stdout 이 아예 안 잡혀**(Next 기동
+ * 배너조차 없음) 원인을 밖에서 못 봤다. 프레임워크 훅 하나에 목숨을 걸지 않는다 —
+ * 요청이 오면 스스로 시작한다.
+ *
  * 타이머는 `unref()` — 워밍이 프로세스 종료를 붙잡지 않는다.
  */
 export function startCacheWarmLoop(): void {
+  if (loopStarted) return;
   if (!shouldWarm()) return;
+  loopStarted = true;
   const run = () => {
     void warmAllTraineeBundles()
       .then((r) => {
