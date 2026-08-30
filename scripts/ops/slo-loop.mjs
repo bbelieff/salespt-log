@@ -106,12 +106,16 @@ function median(nums) {
 
 async function runReps(base, path, opts, reps) {
   const samples = [];
+  const ttfbSamples = []; // BBE-242(2026-08-29): 첫 표시(TTFB) 도 별도 추적 —
+  // Suspense 스트리밍 응답에서 time_starttransfer 는 첫 flush(Tier0/1 골격+명단)
+  // 도달 시점을 근사하고, time_total 은 스트림 끝(Tier2 통계까지 완료) 시점을 근사한다.
   const codes = new Set();
   const errs = [];
   for (let i = 0; i < reps; i++) {
     const r = await curlOnce(base, path, opts);
     if (r.ok) {
       samples.push(r.totalMs);
+      ttfbSamples.push(r.ttfbMs);
       codes.add(r.code);
     } else {
       errs.push(r.err);
@@ -121,6 +125,8 @@ async function runReps(base, path, opts, reps) {
     n: samples.length,
     medianMs: samples.length ? median(samples) : null,
     maxMs: samples.length ? Math.max(...samples) : null,
+    ttfbMedianMs: ttfbSamples.length ? median(ttfbSamples) : null,
+    ttfbMaxMs: ttfbSamples.length ? Math.max(...ttfbSamples) : null,
     codes: [...codes],
     errs,
   };
@@ -271,12 +277,17 @@ async function main() {
     console.log("  (연습 계정 없음 — 스킵)");
   }
 
-  console.log(`\n=== 6.어드민수강생관리 (별도 순차, 다른 경로와 비경합, ${REPS}회) ===`);
+  // BBE-242(2026-08-29): #894(admin/users 3단 Suspense) 이후 「첫 표시」와 「완전 로드」를
+  // 분리 측정한다 — 스트리밍 응답이라 TTFB(첫 flush)와 total(스트림 끝)이 이제 서로 다른
+  // 의미를 갖는다. 목표: 첫 표시 <1초(belie "즉각즉각"), 완전 로드 median ≤2초(기존 SLO).
+  console.log(`\n=== 6.어드민수강생관리 (별도 순차, 다른 경로와 비경합, ${REPS}회) — 첫표시(TTFB)/완전로드(total) 분리 ===`);
   const adminRes = await runReps(BASE_PUBLIC, "/admin/users", { cookie: adminCookie }, REPS);
   results.push({ key: "6.어드민수강생관리", res: adminRes });
   {
-    const flag = adminRes.medianMs !== null && (adminRes.medianMs > SLO_MS || adminRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
-    console.log(`  ${flag} 6.어드민수강생관리: n=${adminRes.n}/${REPS} median=${adminRes.medianMs}ms max=${adminRes.maxMs}ms code=${adminRes.codes.join(",")}${adminRes.errs.length ? ` err=${adminRes.errs[0]}` : ""}`);
+    const totalFlag = adminRes.medianMs !== null && (adminRes.medianMs > SLO_MS || adminRes.maxMs > SLO_MS) ? "⚠️" : "✅";
+    const firstFlag = adminRes.ttfbMedianMs !== null && (adminRes.ttfbMedianMs > 1000 || adminRes.ttfbMaxMs > 1000) ? "⚠️" : "✅";
+    console.log(`  ${firstFlag} 첫표시(TTFB): n=${adminRes.n}/${REPS} median=${adminRes.ttfbMedianMs}ms max=${adminRes.ttfbMaxMs}ms (목표 <1000ms)`);
+    console.log(`  ${totalFlag} 완전로드(total): n=${adminRes.n}/${REPS} median=${adminRes.medianMs}ms max=${adminRes.maxMs}ms (SLO ≤${SLO_MS}ms) code=${adminRes.codes.join(",")}${adminRes.errs.length ? ` err=${adminRes.errs[0]}` : ""}`);
   }
 
   // ── 8.전광판(아레나 스코어보드) — 로딩 보고서(2026-08-27) 처방1: 콜드 비용 실측 ──
