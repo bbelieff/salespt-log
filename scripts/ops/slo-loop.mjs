@@ -4,6 +4,10 @@
  * 불안정 원인 축(DB-path vs Sheets-path, localhost vs public) 진단.
  * 2026-08-27 로딩 보고서 처방1: 8.전광판(아레나 스코어보드, 30분/105엔트리 캐시 콜드
  * 후보) 추가 — E 의 캐시 전수조사 결과를 실측으로 검증.
+ * 2026-08-27 처방2 보강(#882·#893): 9.개별상세 추가 — admin switch(warmBundle 발사)
+ * 직후 /api/me vs switch 없이 /api/me(콜드 대조군) 자연실험으로 프리웜 효과 실측.
+ * trial 마다 서로 다른 real trainee 를 쓴다(재사용 시 캐시가 이미 데워져 콜드 전제가
+ * 깨짐) — impersonation 대상 조회이므로 GET/POST 전부 admin 권한 범위, 실데이터 변경 0.
  *
  * 쓰기는 오직 "일지 저장"(POST /api/daily/:date) 1건뿐이며, 반드시 "연습" 코호트
  * (더미/테스트 계정, DB_READ_COHORTS 파일럿)에서 GET으로 읽은 값을 그대로 재-POST하는
@@ -161,6 +165,29 @@ async function pickIdentities(pool) {
   };
 }
 
+/**
+ * BBE-242 처방2 보강(개별 상세 warmBundle) 콜드 대조용 — 위 pilot/nonpilot/migrated 와
+ * 겹치지 않는 trainee N쌍(warm 대상·cold 대조 대상)을 고른다. 이미 다른 축에서 조회된
+ * 계정은 캐시가 데워져 있어 "콜드" 전제가 깨지므로 반드시 새 계정으로 뽑는다.
+ */
+async function pickDetailPairs(pool, exclude, n) {
+  const res = await pool.query(
+    `select email, spreadsheet_id from users
+       where role='trainee' and status='active'
+         and email is not null and email <> ''
+         and spreadsheet_id is not null and spreadsheet_id <> ''
+         and email <> all($1::text[])
+       order by random() limit $2`,
+    [exclude.filter(Boolean).map((e) => e.toLowerCase()), n * 2],
+  );
+  const rows = res.rows;
+  const pairs = [];
+  for (let i = 0; i + 1 < rows.length; i += 2) {
+    pairs.push({ warm: rows[i], cold: rows[i + 1] });
+  }
+  return pairs;
+}
+
 function vpsStats() {
   const sh = (cmd) => {
     try { return execSync(cmd, { encoding: "utf8", timeout: 10_000 }).trim(); }
@@ -192,6 +219,10 @@ async function main() {
   const nonpilotCookie = nonpilotEmail ? await mintCookie(nonpilotEmail) : null;
   const migratedCookie = migratedEmail ? await mintCookie(migratedEmail) : null;
   const adminCookie = adminEmail ? await mintCookie(adminEmail) : null;
+
+  const detailPairs = adminEmail
+    ? await pickDetailPairs(pool, [pilotEmail, nonpilotEmail, migratedEmail, adminEmail], 3)
+    : [];
 
   const today = todayISO();
   const REPS = 5;
@@ -289,6 +320,46 @@ async function main() {
   {
     const flag = scoreboardRes.medianMs !== null && (scoreboardRes.medianMs > SLO_MS || scoreboardRes.maxMs > SLO_MS) ? "⚠️ 초과" : "✅";
     console.log(`  ${flag} 8.전광판: n=${scoreboardRes.n}/${REPS} median=${scoreboardRes.medianMs}ms max=${scoreboardRes.maxMs}ms code=${scoreboardRes.codes.join(",")}${scoreboardRes.errs.length ? ` err=${scoreboardRes.errs[0]}` : ""}`);
+  }
+
+  // ── 9.개별 상세 진입 — BBE-242 설계서 보강(#882·#893, warmBundle 프리웜 효과) ──
+  // 카드 클릭 → 새 탭(window.open) → 그 탭의 /api/me 도달까지가 belie 체감 대상.
+  // "after"(warm) = 실제 admin switch POST(warmBundle 발사) 직후 /api/me — switch 응답이
+  // 오는 동안 서버가 이미 대상 bundle 을 데우기 시작한다.
+  // "before"(cold, 대조군) = switch 없이 salespt_as 쿠키만 직접 얹어 /api/me — 이건
+  // #893 배포 전 코드가 항상 겪던 경로(그 어떤 사전 워밍도 없이 /api/me 자신의
+  // readBundle 호출이 최초 콜드 트리거)와 동일한 조건을 재현한다(같은 배포·같은 서버,
+  // "switch를 거쳤는지"만 다른 자연실험 — 시간대·VPS부하 변동을 배제).
+  // 각 trial 은 서로 다른 real trainee 1명씩(재사용하면 캐시가 이미 데워져 콜드 전제가
+  // 깨짐) — n=3 trial, trial 당 단일표본(median 아님, 명시).
+  if (detailPairs.length === 0) {
+    console.log("\n=== 9.개별상세(warmBundle 효과) — 스킵(admin 계정 또는 대조 대상 없음) ===");
+  } else {
+    console.log(`\n=== 9.개별상세(warmBundle 효과) — after(switch+즉시 me) vs before(switch 없이 me), trial당 서로 다른 실계정 1명, n=${detailPairs.length} ===`);
+    const afterMs = [];
+    const beforeMs = [];
+    for (const [i, pair] of detailPairs.entries()) {
+      const switchBody = JSON.stringify({ email: pair.warm.email }).replace(/'/g, "'\\''");
+      const t0 = Date.now();
+      const sw = await curlOnce(BASE_PUBLIC, "/api/admin/switch", { cookie: adminCookie, method: "POST", body: switchBody });
+      const afterCookie = `${adminCookie}; salespt_as=${encodeURIComponent(pair.warm.email.toLowerCase())}`;
+      const me = await curlOnce(BASE_PUBLIC, "/api/me", { cookie: afterCookie });
+      const afterTotal = Date.now() - t0; // 클릭~새탭/api/me 도달까지 belie 가 실제 겪는 총시간에 더 가까움
+      if (me.ok) afterMs.push(me.totalMs);
+      console.log(`  [after warm] trial${i + 1}(${h8(pair.warm.email)}): switch=${sw.ok ? `${sw.totalMs}ms(${sw.code})` : `실패(${sw.err})`} me=${me.ok ? `${me.totalMs}ms(${me.code})` : `실패(${me.err})`} 총(switch시작→me응답)=${afterTotal}ms`);
+
+      const coldCookie = `${adminCookie}; salespt_as=${encodeURIComponent(pair.cold.email.toLowerCase())}`;
+      const meCold = await curlOnce(BASE_PUBLIC, "/api/me", { cookie: coldCookie });
+      if (meCold.ok) beforeMs.push(meCold.totalMs);
+      console.log(`  [before cold] trial${i + 1}(${h8(pair.cold.email)}): switch 생략, me=${meCold.ok ? `${meCold.totalMs}ms(${meCold.code})` : `실패(${meCold.err})`}`);
+    }
+    if (afterMs.length && beforeMs.length) {
+      const impr = median(beforeMs) - median(afterMs);
+      console.log(`  요약: before(cold) median=${median(beforeMs)}ms · after(warm) median=${median(afterMs)}ms · 개선=${impr}ms(양수=개선)`);
+      results.push({ key: "9.개별상세-after(warm)", res: { n: afterMs.length, medianMs: median(afterMs), maxMs: Math.max(...afterMs), codes: [], errs: [] } });
+    } else {
+      console.log("  요약: 유효 표본 부족(switch 또는 me 실패) — 판정 보류");
+    }
   }
 
   // ── 초과 순위표 ──
