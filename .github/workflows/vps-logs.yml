@@ -1,0 +1,97 @@
+name: VPS Logs (read-only)
+
+# 앱 서버 로그를 **읽기만** 한다. 쓰기·재시작·설정 변경 없음.
+#
+# 왜 필요한가 (2026-08-31): 캐시 워밍(#903)이 실제로 도는지 확인하려는데 로그가 VPS
+# 안에만 있어 밖에서 못 봤다. 배포 후 재측정만으로는 "고쳐서 빨라진 것"과 "내 요청이
+# 캐시를 데운 것"을 가를 수 없어 몇 시간을 태우고도 미검증으로 남았다.
+# **못 보는 것은 못 고친다**(CLAUDE.md §0 Observability) — 로그를 밖으로 꺼내는 수단을
+# 상설화한다. 다음 세션은 이 워크플로 하나로 끝낸다.
+#
+# 안전 설계:
+#   · grep 패턴은 **choice 화이트리스트** — 자유 문자열이 없어 셸 주입 자체가 불가능.
+#   · `pm2 logs --nostream` = 스트리밍 없이 최근 N줄만. 프로세스에 영향 없음.
+#   · `lines` 는 숫자만 통과 + 상한 1000 (과다 출력·주입 차단).
+on:
+  workflow_dispatch:
+    inputs:
+      pattern:
+        description: "찾을 로그 (화이트리스트)"
+        type: choice
+        required: true
+        options:
+          - cache-warm
+          - instrumentation
+          - error
+          - all
+      lines:
+        description: "최근 몇 줄에서 찾을지 (기본 200, 최대 1000)"
+        type: string
+        required: false
+        default: "200"
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    env:
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+    steps:
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ok=0
+          for i in 1 2 3 4 5; do
+            if ssh-keyscan -T 15 -H "$VPS_TARGET_HOST" >> ~/.ssh/known_hosts; then ok=1; break; fi
+            sleep 20
+          done
+          if [ "$ok" != "1" ]; then
+            echo "ssh-keyscan 5회 실패 — 호스트키를 못 얻었습니다(tailnet 스텝 확인)." >&2
+            exit 1
+          fi
+
+      - name: Read logs (read-only)
+        env:
+          PATTERN: ${{ inputs.pattern }}
+          LINES: ${{ inputs.lines }}
+        run: |
+          case "$LINES" in
+            ''|*[!0-9]*) N=200 ;;
+            *) N=$LINES ;;
+          esac
+          [ "$N" -gt 1000 ] && N=1000
+          [ "$N" -lt 1 ] && N=200
+
+          case "$PATTERN" in
+            cache-warm)      GREP="grep -i 'cache-warm'" ;;
+            instrumentation) GREP="grep -iE 'instrumentation|register|sentry'" ;;
+            error)           GREP="grep -iE 'error|exception|unhandled|ECONN|failed'" ;;
+            all)             GREP="cat" ;;
+            *)               echo "알 수 없는 pattern" >&2; exit 1 ;;
+          esac
+
+          set +e
+          for i in 1 2 3 4 5 6 7; do
+            ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+              root@"$VPS_TARGET_HOST" \
+              "pm2 logs salespt-log --nostream --lines $N 2>&1 | $GREP | tail -n 120"
+            rc=$?
+            [ $rc -ne 255 ] && break
+            echo "ssh 도달 실패(rc=255) — 재시도 $i/7"; sleep 30
+          done
+          if [ $rc -eq 1 ]; then
+            echo "— 해당 패턴의 로그가 최근 ${N}줄 안에 없습니다."
+            exit 0
+          fi
+          exit $rc
