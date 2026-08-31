@@ -43,6 +43,26 @@ export const WARM_START_DELAY_MS = 15 * 1000;
  */
 export const WARM_CONCURRENCY = 8;
 
+/**
+ * 레지스트리 캐시 컬럼(I~L)이 완비인가 — `lib/service/me.ts:enrichUsersWithDates` 의
+ * `cachedComplete` 판정과 **같은 규칙**이어야 한다. 여기만 느슨해지면 페이지가 시트를
+ * 읽는 사람을 워밍이 빠뜨려, 그 사람 화면만 여전히 느린 채로 남는다.
+ */
+function isRegistryCacheComplete(u: {
+  cohortLabel?: string;
+  nameLabel?: string;
+  courseStartISO?: string;
+  graduationISO?: string;
+}): boolean {
+  const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  return (
+    (u.cohortLabel ?? "").trim() !== "" &&
+    (u.nameLabel ?? "").trim() !== "" &&
+    ISO.test((u.courseStartISO ?? "").trim()) &&
+    ISO.test((u.graduationISO ?? "").trim())
+  );
+}
+
 /** 워밍 2개가 겹쳐 도는 것 방지 — 앞 회차가 길어지면 이번 회차는 건너뛴다. */
 let warming = false;
 
@@ -113,7 +133,19 @@ export async function warmAllTraineeBundles(
     const ids = [
       ...new Set(
         users
-          .filter((u) => u.role === "trainee" && u.status === "active" && u.spreadsheetId)
+          .filter(
+            (u) =>
+              u.role === "trainee" &&
+              u.status === "active" &&
+              u.spreadsheetId &&
+              // **캐시 컬럼이 이미 채워진 사람은 데울 이유가 없다.**
+              // `enrichUsersWithDates` 는 I~L 이 완비면 개인 시트를 아예 안 읽는다
+              // (그 함수의 `cachedComplete` 분기 — "평시 목표: 시트 fetch 0회").
+              // 그런 사람까지 워밍하면 아무도 안 쓸 값을 위해 Sheets 쿼터(60 reads/min)를
+              // 태운다 — 2026-08-31 실측: 129명 전원 워밍이 60초·쿼터 초과 2회를 냈고,
+              // 정작 페이지는 캐시 컬럼 덕에 그 값을 안 봤다.
+              !isRegistryCacheComplete(u),
+          )
           .map((u) => u.spreadsheetId),
       ),
     ];
