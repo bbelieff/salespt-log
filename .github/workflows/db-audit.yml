@@ -23,6 +23,7 @@ on:
           - bbe252-cohort-readiness
           - bbe258-sales-drift
           - slo-loop
+          - cache-warm-diag
       cohort:
         description: "dashboard-parity·contract-append-key-audit·scoreboard-parity 전용 — 대조할 기수 목록(쉼표 구분). 비우면 파일럿 전체 기본값."
         type: string
