@@ -56,7 +56,26 @@ const env = (k) => process.env[k] || fileEnv[k] || "";
 const REGISTRY_ID = env("SHEETS_REGISTRY_ID");
 const USERS_TAB = env("SHEETS_REGISTRY_TAB") || "users";
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
-const SA_KEY = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\n/g, "\n");
+/**
+ * PEM 정규화 — 리터럴 \n 을 실개행으로 되돌리고, 개행이 아예 없는 한 줄 키도 복원한다.
+ *
+ * 실측(2026-08-31 VPS): 이 스크립트 초판이 `replace(/\n/g, "\n")` 로 잘못 써 있었다 —
+ * **실개행을 실개행으로 바꾸는 무의미한 치환**이라 리터럴 `\n` 이 그대로 남았고,
+ * Node crypto 가 `DECODER routines::unsupported` 로 죽었다. 진단 로그가
+ * "길이 1726 · PEM머리말 있음 · 실개행 없음" 을 찍어 한 번에 잡혔다.
+ * 앱은 Next 의 dotenv 가 처리해 주지만 ops 스크립트는 손수 해야 한다.
+ */
+function normalizePem(raw) {
+  let k = String(raw || "").replace(/\\n/g, "\n").trim();
+  if (k.includes("\n")) return k;
+  // 개행 표시가 아예 없는 경우 — 헤더/푸터를 떼고 본문을 64자마다 끊어 표준 PEM 복원.
+  const m = k.match(/^(-----BEGIN [A-Z ]+-----)([\s\S]*?)(-----END [A-Z ]+-----)$/);
+  if (!m) return k;
+  const wrapped = m[2].replace(/\s+/g, "").match(/.{1,64}/g) || [];
+  return `${m[1]}\n${wrapped.join("\n")}\n${m[3]}\n`;
+}
+
+const SA_KEY = normalizePem(env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"));
 
 if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY) {
   console.error("cache-warm-diag: SA/레지스트리 env 누락");
