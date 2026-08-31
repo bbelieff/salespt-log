@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-08-31 · DC(260827) · 아레나 「업체관리」 폴더가 아무도 안 만든다 — 감사·복구 도구 신설
+- 의도: belie 신고 "8기 김현민 드라이브 연결 안 됨(The caller does not have permission)". 8·9기 전수 확인 후 직접 생성 + 수강생 시절 폴더 내용 이관 지시.
+- 한 것: 재현 결과 권한이 아니라 **폴더 부재**. `/payment` 자동=`arena_folder_missing`, 수동=`arena_folder_mismatch`. 실측 근거 — `scripts/ops/arena-season2-batch.mjs` 에 "업체관리"·createFolder 참조 **0건**(시트복제+O1/O2+SA공유+registry append 까지만). `decideArenaAction` 이 `folderName` 을 계산해두고 **소비처가 없다**. 즉 A2 참가자 전원 대상 갭.
+- 결정: 복구는 앱이 아니라 ops 스크립트로 — `scripts/ops/arena-company-folder.mjs`(audit/plan/execute 3단, 기본 dry-run, 이동은 addParents/removeParents 라 되돌릴 수 있고 삭제 없음) + `.github/workflows/arena-company-folder.yml`(admin OAuth 가 VPS .env 에만 있어 원격 실행).
+- 다음: audit 로 실제 결손 수 확정 → 8·9기 execute → 재발 방지(생성 배치에 폴더 생성 편입)는 #913 계열로 별건.
+- SoR: scripts/ops/arena-company-folder.mjs 헤더 독블록
+
 ### 2026-08-31 · DC(260827) · 시연 중 지연 P0 완주 — 근인은 「아레나 기수 캐시 컬럼 미충전」, 워밍은 워크어라운드였다
 - 의도: belie 신고("앱 보여주려고 접속했는데 중간에 로딩 너무 길어져 민망했다. 아직도 이런 일이 생기는 이유가 뭐냐"). 추가로 belie 지적 2건 — ①"시트 벗어나는 작업 했는데 아직도 그런다는 건 네가 잘못 아는 것일 수 있다" ②"VPS 접근은 네가 늘 해왔다, 지침에 기록·권한이 있을 것".
 - 한 것: **belie 지적 둘 다 맞았고 내가 틀렸다.** ① 시트독립은 성공했다 — 통계는 129명 중 **126명이 DB 배치**(`profileStatsFromDb`)로 간다. "63명 통계를 한 명씩 시트에서 긁는다"는 내 초기 진단은 과장. 남은 시트 의존은 **기수라벨·이름·날짜**뿐이고 그것도 레지스트리 **캐시 컬럼 I~L 이 빌 때만** 폴백(`enrichUsersWithDates` 의 `cachedComplete` 분기 — "평시 목표: 시트 fetch 0회"). ② VPS 접근은 `.github/workflows` 의 Tailscale+`VPS_SSH_KEY` 였다 — **로그를 읽는 워크플로만 없었다**(PR #907 로 신설). **실측 경로**: `/admin/users` 학생화면 대비 유일 이상 → 콜드 40초+ 미완료 / 웜 261ms(150배) → 캐시가 비는 순간은 ①배포(pm2 reload) ②GRACE 30분 방치 → 워밍 도입(#904 기동훅, #905 동시성8, #906 health 노출) → **그런데 `hasRun:false`** = 워밍이 아예 안 돌고 있었다 → instrumentation 훅 의존 제거하고 `/api/health` 자가기동(#908) → 그제야 돎(`lastMs 61,521 · allOk false`) → 진단 스크립트(#909~#911, 여러 줄 .env·PEM 파싱 2회 자기수정) 로 **근인 확정**: 활성 129명 중 **91명(71%) 캐시 미완비**, 범인은 **아레나 기수 — A2-1~A2-8 전부 `0/N`**(정규 기수는 대부분 완비) → 관리자 [🔄 동기화](`migrate-registry-cache`) 실행 = **갱신 134건·실패 0** → 완비 **38→120/129** → **페이지 580ms**(첫바이트 261ms, 통계 포함) → 워밍이 여전히 129명 전원을 읽어 60초·**Sheets 쿼터 초과 2회**를 내는데 **정작 페이지는 그 값을 안 본다**는 걸 확인, 워밍을 **미완비자만**으로 축소(#912) → **489ms · allOk true**.
