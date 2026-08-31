@@ -26,7 +26,7 @@ import { isArenaCohortLabel } from "@/repo/user-priority";
  * 계속 보여주는 유령값 — 1명은 원행 0건인데 시트 캐시가 5,400,000 표시)로 확정, DB 가 오히려
  * 현재 사실을 더 정확히 반영. 전환 시 일부 학생 화면 숫자가 하락(유령값 제거)할 수 있음 —
  * 오류 아님, belie 에게 트레이너 사전 안내 권장 전달함. */
-const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10", "7", "6"]);
+const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10", "7", "6", "11"]);
 
 /** 단일 게이트 — cohort 정규화("8기"→"8") 후 판정. null/빈값 = false.
  * 아레나(A{시즌}-{기수}) 포함 — R2-1.5(db-pilot-arena): 최대 활성 집단 편입.
