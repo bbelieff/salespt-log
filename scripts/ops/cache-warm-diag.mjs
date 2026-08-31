@@ -17,15 +17,34 @@
 import { existsSync, readFileSync } from "node:fs";
 import { google } from "googleapis";
 
+/**
+ * .env 파서 — **따옴표로 감싼 여러 줄 값**을 지원한다.
+ *
+ * 기존 ops 스크립트들의 한 줄 파서는 값이 물리적으로 여러 줄에 걸치면 **첫 줄만** 집는다.
+ * SA 개인키가 그렇게 저장돼 있으면 `"-----BEGIN PRIVATE KEY-----` 만 읽혀 "비어있지 않음"
+ * 검사를 통과하고, 실제 서명 단계에서야 `DECODER routines::unsupported` 로 죽는다
+ * (2026-08-31 이 스크립트가 정확히 그렇게 실패). 그래서 닫는 따옴표까지 이어 읽는다.
+ */
 function loadEnv() {
   const out = {};
   for (const f of [".env", ".env.local"]) {
     if (!existsSync(f)) continue;
-    for (const line of readFileSync(f, "utf8").replace(/\r/g, "").split("\n")) {
-      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    const lines = readFileSync(f, "utf8").replace(/\r/g, "").split("\n");
+    for (let i = 0; i < lines.length; i += 1) {
+      const m = lines[i].match(/^([A-Z0-9_]+)=(.*)$/);
       if (!m) continue;
-      let v = m[2].trim();
-      if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
+      let v = m[2];
+      const q = v[0] === '"' || v[0] === "'" ? v[0] : "";
+      if (q) {
+        v = v.slice(1);
+        while (!v.endsWith(q) && i + 1 < lines.length) {
+          i += 1;
+          v += "\n" + lines[i];
+        }
+        if (v.endsWith(q)) v = v.slice(0, -1);
+      } else {
+        v = v.trim();
+      }
       out[m[1]] = v;
     }
   }
@@ -42,6 +61,14 @@ const SA_KEY = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\n/g, "\n");
 if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY) {
   console.error("cache-warm-diag: SA/레지스트리 env 누락");
   process.exit(1);
+}
+
+// 키가 깨졌을 때 원인을 바로 알 수 있게 **형태만** 찍는다(내용 미출력).
+{
+  const looksPem = SA_KEY.startsWith("-----BEGIN");
+  const hasRealNewline = SA_KEY.includes("\n");
+  console.log(`[env] SA 키 형태 — 길이 ${SA_KEY.length} · PEM머리말 ${looksPem ? "있음" : "없음"} · 실개행 ${hasRealNewline ? "있음" : "없음"}`);
+  if (!looksPem || !hasRealNewline) console.error("[env] 키 형태가 이상하다 — .env 값이 잘렸을 수 있다(여러 줄 값).");
 }
 
 const auth = new google.auth.JWT(SA_EMAIL, undefined, SA_KEY, [
