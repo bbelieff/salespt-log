@@ -7,6 +7,8 @@
  *   auto = ①registry O 저장값 재확인 ②16C 하위 이름 매칭(부부 이름 포함).
  *   manual = 업체관리 폴더(또는 16C) URL — 본인 토큰(A{n}_{m}기·이름) 검증으로
  *   남의 폴더 연결 방지.
+ *   auto ③ / manual 보조 (2026-09-01): 업체관리 폴더가 아예 없는 참가자는
+ *   **수강생 시절 `01 피드백업체`** 로 연결한다 — findLegacyFeedbackFolder 참조.
  *
  * body: { mode: "auto" } | { parentFolderUrl: string }
  * ADR-0007: Scope 1은 Drive 읽기(files.list / files.get)만.
@@ -91,6 +93,35 @@ async function findArenaCompanyFolder(user: User): Promise<string | null> {
   );
 }
 
+/**
+ * 수강생 시절 `01 피드백업체` 폴더 — **아레나 참가자 구제 경로** (2026-09-01).
+ *
+ * 왜 필요한가 (belie 신고 "8기 김현민 드라이브 연결 안 됨" 실측):
+ * 아레나 편입 방식이 두 갈래인데 한쪽만 업체관리 폴더를 만든다.
+ *   · 관리자 화면(`/api/admin/create-arena-members`) — `createFolder` 로 **만든다**
+ *   · ops 배치(`scripts/ops/arena-season2-batch.mjs`) — 시트 복제·O1/O2·SA공유·registry
+ *     까지만. `createFolder` 참조 **0건** → 폴더가 안 생긴다
+ * 그 결과 2026-08-05 배치로 편입된 A2 7·8기 참가자는 16C 하위에 폴더가 없어
+ * `arena_folder_missing` 만 본다(Drive 전수 확인: `세일즈PT_A2_…업체관리` 폴더 0개,
+ * A1 참가자 40여 명은 전원 존재 — 그쪽은 관리자 화면 경로였다).
+ *
+ * 폴더를 뒤늦게 만들어 주는 것으로는 못 고친다 — 옮겨 담아야 할 업체 폴더의 **주인이
+ * 수강생 본인**이라 운영자 계정이 이동시킬 수 없다(2026-09-01 실측: 김현민 님 업체
+ * 2건 모두 `The caller does not have permission`). 그래서 **폴더를 옮기지 않고,
+ * 원래 있던 자리를 그대로 가리킨다.**
+ *
+ * 안전: **본인 시트의 부모 폴더 한 단계만** 본다. 공유드라이브 전체 검색
+ * (`findFolderByNameInDrive`)은 **쓰지 않는다** — 같은 이름 폴더가 참가자마다 있어
+ * 남의 업체 폴더가 붙을 수 있다. 못 찾으면 조용히 null → 기존 안내가 그대로 뜬다.
+ */
+async function findLegacyFeedbackFolder(user: User): Promise<string | null> {
+  const ssId = (user.spreadsheetId ?? "").trim();
+  if (!ssId) return null;
+  const meta = await getDriveFileMeta(ssId);
+  if (!meta.ok || !meta.parentId) return null;
+  return findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
+}
+
 const ARENA_NOT_FOUND = {
   ok: false,
   status: "error",
@@ -131,6 +162,12 @@ async function POST_handler(req: Request) {
           feedbackFolderId = await findArenaCompanyFolder(user);
           parentPathLabel = "16C";
         }
+        // 3순위: 수강생 시절 `01 피드백업체` — 업체관리 폴더를 못 받은 참가자 구제.
+        // (findLegacyFeedbackFolder 독블록 참조. 폴더 이동이 불가능해 자리를 그대로 쓴다)
+        if (!feedbackFolderId) {
+          feedbackFolderId = await findLegacyFeedbackFolder(user);
+          parentPathLabel = "01";
+        }
         if (!feedbackFolderId) {
           await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
           return NextResponse.json(ARENA_NOT_FOUND);
@@ -159,6 +196,13 @@ async function POST_handler(req: Request) {
               );
               if (feedbackFolderId) break;
             }
+          }
+          // 붙여넣은 것이 **본인의** `01 피드백업체` 폴더면 허용한다.
+          // id 를 직접 대조하므로(이름 매칭 아님) 남의 폴더는 절대 통과 못 한다 —
+          // 운영자가 손으로 고칠 때 쓰는 길. (2026-09-01, auto 3순위와 같은 사유)
+          if (!feedbackFolderId) {
+            const legacy = await findLegacyFeedbackFolder(user);
+            if (legacy && legacy === folderId) feedbackFolderId = legacy;
           }
           if (!feedbackFolderId) {
             // 남의 폴더/무관 폴더 거부 — 본인 토큰 불일치.
