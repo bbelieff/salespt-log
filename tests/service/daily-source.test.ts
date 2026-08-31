@@ -102,3 +102,20 @@ describe("시트 경로 vs DB 경로 정합 (4채널×4지표)", () => {
     expect(CHANNEL_ORDER).toHaveLength(4);
   });
 });
+
+describe("11기 — DB 정본 편입 (2026-09-04 개강)", () => {
+  it("11기는 DB 정본이다 — 안 그러면 11기만 옛 시트 경로로 돌아 느려진다", () => {
+    expect(isDbReadPilot("11")).toBe(true);
+    expect(isDbReadPilot("11기")).toBe(true);
+    expect(chooseDailySource("11", true)).toBe("db");
+    expect(chooseWriteSource("11", true)).toBe("db");
+  });
+
+  it("읽기·쓰기 게이트가 대칭이다 — 한쪽만 켜지면 데이터가 갈린다", () => {
+    expect(chooseDailySource("11", true)).toBe(chooseWriteSource("11", true));
+  });
+
+  it("DB 가 꺼져 있으면 시트로 폴백한다 — 되돌림 안전선", () => {
+    expect(chooseDailySource("11", false)).toBe("sheet");
+  });
+});
