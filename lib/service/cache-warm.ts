@@ -18,6 +18,13 @@
  * **사람 대신 서버가 먼저 데운다** — 기동 직후 1회 + GRACE 보다 짧은 주기로 반복.
  * 이러면 "캐시가 빈 순간"에 실제 사용자가 걸릴 창이 사라진다.
  *
+ * ## 대상은 "활성 수강생 전원"이다 (2026-08-31 회귀 후 확정)
+ * 한 번 "레지스트리 캐시 컬럼이 채워진 사람은 건너뛴다"로 좁혔다가 되돌렸다. 그 조건은
+ * `/admin/users`(운영자 화면)만 보고 세운 것이었는데, **이 캐시를 실제로 쓰는 주인은
+ * 수강생 본인 화면**이다(`me.ts:loadMe` → `readBundle`). 좁히자 워밍 1회가 10ms —
+ * 사실상 대상 0 — 이 되었고, GRACE 를 넘긴 수강생이 다시 콜드 fetch 를 떠안았다.
+ * 쿼터는 **대상을 줄여서가 아니라 `paced()` 로 시작 간격을 묶어** 지킨다.
+ *
  * 되돌리는 법: 환경변수 `CACHE_WARM_DISABLED=1` (재배포 불요, 재기동만). 코드를 지울
  * 필요 없다.
  */
@@ -44,23 +51,25 @@ export const WARM_START_DELAY_MS = 15 * 1000;
 export const WARM_CONCURRENCY = 8;
 
 /**
- * 레지스트리 캐시 컬럼(I~L)이 완비인가 — `lib/service/me.ts:enrichUsersWithDates` 의
- * `cachedComplete` 판정과 **같은 규칙**이어야 한다. 여기만 느슨해지면 페이지가 시트를
- * 읽는 사람을 워밍이 빠뜨려, 그 사람 화면만 여전히 느린 채로 남는다.
+ * Sheets 쿼터(60 reads/min/user) 보호용 **페이싱 게이트**.
+ *
+ * 워밍 1명 = batchGet 1회 = read 1회. 129명을 동시성 8로 몰면 분당 한도를 넘겨
+ * 실제 사용자 요청까지 429 를 맞는다(2026-08-31 실측: 전원 워밍 중 쿼터 초과 2회).
+ * 그래서 **동시성이 아니라 시작 간격**으로 속도를 묶는다 — 40 reads/min 이면
+ * 한도의 2/3 라 실사용자 몫이 남고, 129명도 약 3분이면 한 바퀴가 끝난다
+ * (주기 20분 안에 여유 있게 완주).
  */
-function isRegistryCacheComplete(u: {
-  cohortLabel?: string;
-  nameLabel?: string;
-  courseStartISO?: string;
-  graduationISO?: string;
-}): boolean {
-  const ISO = /^\d{4}-\d{2}-\d{2}$/;
-  return (
-    (u.cohortLabel ?? "").trim() !== "" &&
-    (u.nameLabel ?? "").trim() !== "" &&
-    ISO.test((u.courseStartISO ?? "").trim()) &&
-    ISO.test((u.graduationISO ?? "").trim())
-  );
+export const WARM_MIN_GAP_MS = 1_500;
+
+let nextSlotAt = 0;
+/** 다음 슬롯까지 기다렸다가 실행 — 워커가 몇이든 전체 시작 속도가 일정해진다. */
+async function paced<T>(fn: () => Promise<T>, gapMs: number): Promise<T> {
+  if (gapMs <= 0) return fn();
+  const now = Date.now();
+  const wait = Math.max(0, nextSlotAt - now);
+  nextSlotAt = Math.max(now, nextSlotAt) + gapMs;
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  return fn();
 }
 
 /** 워밍 2개가 겹쳐 도는 것 방지 — 앞 회차가 길어지면 이번 회차는 건너뛴다. */
@@ -119,12 +128,15 @@ export interface WarmResult {
  * 이미 FRESH 인 항목은 `readBundle` 이 통신 없이 즉시 반환하므로 재워밍은 거의 공짜다.
  */
 export async function warmAllTraineeBundles(
-  opts: { concurrency?: number } = {},
+  opts: { concurrency?: number; gapMs?: number } = {},
 ): Promise<WarmResult> {
   const started = Date.now();
   if (warming) return { targets: 0, ok: 0, failed: 0, skipped: true, ms: 0 };
   warming = true;
   const concurrency = opts.concurrency ?? WARM_CONCURRENCY;
+  // 회차마다 페이싱 슬롯 초기화 — 앞 회차 잔여가 이번 회차를 늦추지 않게.
+  nextSlotAt = 0;
+  const gapMs = opts.gapMs ?? WARM_MIN_GAP_MS;
   let ok = 0;
   let failed = 0;
   let targets = 0;
@@ -133,18 +145,16 @@ export async function warmAllTraineeBundles(
     const ids = [
       ...new Set(
         users
+          // ⚠️ **여기에 "레지스트리 캐시 컬럼이 채워졌으면 건너뛴다" 같은 조건을 다시
+          //    넣지 마라.** 2026-08-31 에 그렇게 좁혔다가 되돌린 자리다 — 그 조건은
+          //    `/admin/users`(운영자 화면)만 보고 세운 것이었는데, **이 캐시의 진짜
+          //    주인은 수강생 본인 화면**(`loadMe` → `readBundle`, me.ts)이다.
+          //    좁힌 결과 활성 수강생 대부분이 워밍에서 빠졌고(실측: 워밍 1회가 10ms —
+          //    사실상 대상 0), GRACE(30분)가 지난 뒤 들어온 수강생이 콜드 fetch 를
+          //    떠안아 "불러오고 있어요"에서 한참 멈췄다(belie 재신고 2026-08-31).
+          //    쿼터는 대상을 줄여서가 아니라 `paced()` 로 속도를 묶어 지킨다.
           .filter(
-            (u) =>
-              u.role === "trainee" &&
-              u.status === "active" &&
-              u.spreadsheetId &&
-              // **캐시 컬럼이 이미 채워진 사람은 데울 이유가 없다.**
-              // `enrichUsersWithDates` 는 I~L 이 완비면 개인 시트를 아예 안 읽는다
-              // (그 함수의 `cachedComplete` 분기 — "평시 목표: 시트 fetch 0회").
-              // 그런 사람까지 워밍하면 아무도 안 쓸 값을 위해 Sheets 쿼터(60 reads/min)를
-              // 태운다 — 2026-08-31 실측: 129명 전원 워밍이 60초·쿼터 초과 2회를 냈고,
-              // 정작 페이지는 캐시 컬럼 덕에 그 값을 안 봤다.
-              !isRegistryCacheComplete(u),
+            (u) => u.role === "trainee" && u.status === "active" && u.spreadsheetId,
           )
           .map((u) => u.spreadsheetId),
       ),
@@ -157,7 +167,7 @@ export async function warmAllTraineeBundles(
         const id = ids[next]!;
         next += 1;
         try {
-          await readBundle(id);
+          await paced(() => readBundle(id), gapMs);
           ok += 1;
         } catch {
           // 한 명 실패가 나머지를 막지 않는다 — 그 학생은 다음 회차에 다시 시도된다.

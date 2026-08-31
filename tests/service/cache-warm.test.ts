@@ -62,7 +62,7 @@ describe("warmAllTraineeBundles", () => {
       trainee("c@x.com", "sheet-a"), // 같은 시트 → 중복 제거
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ concurrency: 1 });
+    const r = await warmAllTraineeBundles({ concurrency: 1, gapMs: 0 });
 
     expect(r.targets).toBe(2);
     expect(r.ok).toBe(2);
@@ -78,7 +78,7 @@ describe("warmAllTraineeBundles", () => {
       trainee("nosheet@x.com", ""),
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ concurrency: 1 });
+    const r = await warmAllTraineeBundles({ concurrency: 1, gapMs: 0 });
 
     expect(r.targets).toBe(1);
     expect(readBundle).toHaveBeenCalledTimes(1);
@@ -95,7 +95,7 @@ describe("warmAllTraineeBundles", () => {
       id === "sheet-b" ? Promise.reject(new Error("시트 폴백 실패")) : Promise.resolve({}),
     );
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ concurrency: 1 });
+    const r = await warmAllTraineeBundles({ concurrency: 1, gapMs: 0 });
 
     expect(r.ok).toBe(2);
     expect(r.failed).toBe(1);
@@ -105,7 +105,7 @@ describe("warmAllTraineeBundles", () => {
   it("② 레지스트리 조회 자체가 실패해도 던지지 않는다 — 다음 주기가 재시도", async () => {
     listDistinctUsers.mockRejectedValue(new Error("registry down"));
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles({ concurrency: 1 });
+    const r = await warmAllTraineeBundles({ concurrency: 1, gapMs: 0 });
 
     expect(r.targets).toBe(0);
     expect(r.failed).toBe(0);
@@ -117,8 +117,8 @@ describe("warmAllTraineeBundles", () => {
     readBundle.mockImplementation(() => new Promise((res) => { release = () => res({}); }));
 
     const { warmAllTraineeBundles } = await load();
-    const first = warmAllTraineeBundles({ concurrency: 1 });
-    const second = await warmAllTraineeBundles({ concurrency: 1 });
+    const first = warmAllTraineeBundles({ concurrency: 1, gapMs: 0 });
+    const second = await warmAllTraineeBundles({ concurrency: 1, gapMs: 0 });
 
     expect(second.skipped).toBe(true);
     release();
@@ -160,7 +160,10 @@ describe("동시성 계약", () => {
     expect(WARM_CONCURRENCY).toBeLessThanOrEqual(8);
   });
 
-  it("실제로 병렬로 돈다 — 동시 실행 최대치가 1을 넘는다", async () => {
+  // ⚠️ 페이싱(WARM_MIN_GAP_MS)이 켜져 있으면 시작 간격이 벌어져 동시 실행이 1로 눌린다.
+  // 그게 평시 정상 동작이다(쿼터 보호). 워커 풀 자체가 살아 있는지는 간격 0 에서 본다 —
+  // 풀이 죽으면 나중에 페이싱을 줄일 때 조용히 순차가 되어버린다.
+  it("워커 풀이 살아 있다 — 간격 0 이면 동시 실행 최대치가 1을 넘는다", async () => {
     const ids = Array.from({ length: 20 }, (_, i) => trainee(`u${i}@x.com`, `sheet-${i}`));
     listDistinctUsers.mockResolvedValue(ids);
     let inflight = 0;
@@ -173,7 +176,7 @@ describe("동시성 계약", () => {
       return {};
     });
     const { warmAllTraineeBundles, WARM_CONCURRENCY } = await load();
-    const r = await warmAllTraineeBundles();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
 
     expect(r.ok).toBe(20);
     expect(peak).toBeGreaterThan(1);
@@ -211,7 +214,7 @@ describe("워밍 관측(getWarmStatus) — /api/health 노출용", () => {
     ]);
     const { warmAllTraineeBundles, getWarmStatus, _resetWarmStateForTest } = await load();
     _resetWarmStateForTest();
-    await warmAllTraineeBundles();
+    await warmAllTraineeBundles({ gapMs: 0 });
 
     const st = getWarmStatus();
     expect(st.hasRun).toBe(true);
@@ -230,7 +233,7 @@ describe("워밍 관측(getWarmStatus) — /api/health 노출용", () => {
     );
     const { warmAllTraineeBundles, getWarmStatus, _resetWarmStateForTest } = await load();
     _resetWarmStateForTest();
-    await warmAllTraineeBundles();
+    await warmAllTraineeBundles({ gapMs: 0 });
 
     expect(getWarmStatus().allOk).toBe(false);
   });
@@ -239,7 +242,7 @@ describe("워밍 관측(getWarmStatus) — /api/health 노출용", () => {
     listDistinctUsers.mockResolvedValue([trainee("a@x.com", "sheet-a")]);
     const { warmAllTraineeBundles, getWarmStatus, _resetWarmStateForTest } = await load();
     _resetWarmStateForTest();
-    await warmAllTraineeBundles();
+    await warmAllTraineeBundles({ gapMs: 0 });
 
     const keys = Object.keys(getWarmStatus()).sort();
     expect(keys).toEqual(["ageSec", "allOk", "enabled", "hasRun", "lastMs", "started"]);
@@ -282,45 +285,64 @@ describe("루프 자가 기동 (멱등)", () => {
   });
 });
 
-describe("워밍 대상 — 필요한 사람만", () => {
-  it("**캐시 컬럼이 완비된 학생은 데우지 않는다** — 페이지가 어차피 시트를 안 읽는다", async () => {
+describe("워밍 대상 — ★활성 수강생 전원 (2026-08-31 회귀 가드)", () => {
+  /**
+   * 한 번 "레지스트리 캐시 컬럼이 완비면 건너뛴다"로 좁혔다가 되돌린 자리다.
+   * 그 조건은 `/admin/users`(운영자 화면)만 보고 세운 것인데, 이 캐시의 실제 주인은
+   * **수강생 본인 화면**(`me.ts:loadMe` → `readBundle`)이다. 좁힌 뒤 워밍 1회가 10ms —
+   * 사실상 대상 0 — 이 되었고, GRACE(30분) 지난 수강생이 콜드 fetch 를 떠안아
+   * "불러오고 있어요"에서 멈췄다(belie 재신고). 다시 좁히면 여기서 깨진다.
+   */
+  it("★캐시 컬럼이 완비된 학생도 데운다 — 이 캐시는 수강생 본인 화면이 쓴다", async () => {
     listDistinctUsers.mockResolvedValue([
       cached("done1@x.com", "sheet-done1"),
       cached("done2@x.com", "sheet-done2"),
-      trainee("need@x.com", "sheet-need"), // 캐시 비어있음 → 페이지가 시트를 읽는다
+      trainee("need@x.com", "sheet-need"),
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
 
-    expect(r.targets).toBe(1);
-    expect(readBundle).toHaveBeenCalledTimes(1);
+    expect(r.targets).toBe(3);
+    expect(readBundle).toHaveBeenCalledWith("sheet-done1");
+    expect(readBundle).toHaveBeenCalledWith("sheet-done2");
     expect(readBundle).toHaveBeenCalledWith("sheet-need");
   });
 
-  it("전원 완비면 워밍이 아무것도 안 한다 — 쿼터 0 소모", async () => {
+  it("★전원 완비여도 워밍이 놀지 않는다 — 대상 0 은 곧 아무도 안 데워진다는 뜻", async () => {
     listDistinctUsers.mockResolvedValue([
       cached("a@x.com", "sheet-a"),
       cached("b@x.com", "sheet-b"),
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles();
+    const r = await warmAllTraineeBundles({ gapMs: 0 });
 
-    expect(r.targets).toBe(0);
-    expect(readBundle).not.toHaveBeenCalled();
+    expect(r.targets).toBe(2);
+    expect(readBundle).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("쿼터 보호 — 대상을 줄이지 말고 속도를 묶는다", () => {
+  it("페이싱 간격이 설정돼 있다 — 40 reads/min 이하 (한도 60 의 2/3)", async () => {
+    const { WARM_MIN_GAP_MS } = await load();
+    expect(WARM_MIN_GAP_MS).toBeGreaterThanOrEqual(1_000);
+    expect(60_000 / WARM_MIN_GAP_MS).toBeLessThanOrEqual(60);
   });
 
-  it("날짜가 ISO 형식이 아니면 미완비로 본다 — 시리얼 숫자 저장 사고 대비", async () => {
+  it("★한 바퀴가 워밍 주기 안에 끝난다 — 활성 수강생 150명 기준", async () => {
+    const { WARM_MIN_GAP_MS, WARM_INTERVAL_MS } = await load();
+    expect(150 * WARM_MIN_GAP_MS).toBeLessThan(WARM_INTERVAL_MS);
+  });
+
+  it("간격만큼 실제로 늦춘다 — 두 번째 읽기는 즉시 시작하지 않는다", async () => {
     listDistinctUsers.mockResolvedValue([
-      trainee("serial@x.com", "sheet-serial", {
-        cohortLabel: "8기",
-        nameLabel: "홍길동",
-        courseStartISO: "46241", // 시리얼 숫자 — ISO 아님
-        graduationISO: "2026-09-26",
-      }),
+      trainee("a@x.com", "sheet-a"),
+      trainee("b@x.com", "sheet-b"),
     ]);
     const { warmAllTraineeBundles } = await load();
-    const r = await warmAllTraineeBundles();
+    const started = Date.now();
+    const r = await warmAllTraineeBundles({ gapMs: 120 });
 
-    expect(r.targets).toBe(1);
+    expect(r.targets).toBe(2);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(100);
   });
 });
