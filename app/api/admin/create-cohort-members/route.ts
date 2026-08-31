@@ -381,5 +381,30 @@ async function POST_handler(req: Request) {
   });
 }
 
+/**
+ * 오류를 **응답에 실어 보낸다** (2026-08-31 신설).
+ *
+ * 왜: 11기 생성이 빈 본문 500 으로 죽었는데, 운영 서버 로그가 pm2 에 하나도 안 잡혀
+ * (#914) 원인을 밖에서 볼 방법이 없었다. 멤버별 실패는 이미 `failed[]` 로 오지만,
+ * **멤버 루프 이전**(기수 설정 조회·저장 등)에서 터지면 Next 기본 500 = 빈 본문이라
+ * admin 화면에도 콘솔에도 아무 것도 안 남는다.
+ *
+ * 이 엔드포인트는 **admin 전용**이라 오류 메시지를 그대로 보여줘도 노출면이 늘지 않는다
+ * (권한 검사는 핸들러 안에서 먼저 수행). 값(시트 ID·토큰)은 메시지에 안 싣는다 —
+ * Error.message 만 전달하고 스택은 뺀다.
+ */
+async function POST_guarded(req: Request) {
+  try {
+    return await POST_handler(req);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[create-cohort-members] 실패:", message);
+    return NextResponse.json(
+      { ok: false, error: message, where: "setup" },
+      { status: 500 },
+    );
+  }
+}
+
 // API 타이밍 계측 (db-migration-pilot §1 P0)
-export const POST = withApiTiming("api/admin/create-cohort-members:POST", POST_handler);
+export const POST = withApiTiming("api/admin/create-cohort-members:POST", POST_guarded);
