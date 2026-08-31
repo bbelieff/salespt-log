@@ -35,6 +35,15 @@ const trainee = (email: string, spreadsheetId: string, over: Record<string, unkn
   ...over,
 });
 
+/** 레지스트리 캐시 컬럼(I~L)이 완비된 학생 — 페이지가 시트를 안 읽는 쪽. */
+const cached = (email: string, spreadsheetId: string) =>
+  trainee(email, spreadsheetId, {
+    cohortLabel: "8기",
+    nameLabel: "홍길동",
+    courseStartISO: "2026-08-07",
+    graduationISO: "2026-09-26",
+  });
+
 beforeEach(() => {
   vi.resetModules();
   readBundle.mockReset().mockResolvedValue({ ok: true });
@@ -270,5 +279,48 @@ describe("루프 자가 기동 (멱등)", () => {
       if (prev === undefined) delete process.env.CACHE_WARM_DISABLED;
       else process.env.CACHE_WARM_DISABLED = prev;
     }
+  });
+});
+
+describe("워밍 대상 — 필요한 사람만", () => {
+  it("**캐시 컬럼이 완비된 학생은 데우지 않는다** — 페이지가 어차피 시트를 안 읽는다", async () => {
+    listDistinctUsers.mockResolvedValue([
+      cached("done1@x.com", "sheet-done1"),
+      cached("done2@x.com", "sheet-done2"),
+      trainee("need@x.com", "sheet-need"), // 캐시 비어있음 → 페이지가 시트를 읽는다
+    ]);
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles();
+
+    expect(r.targets).toBe(1);
+    expect(readBundle).toHaveBeenCalledTimes(1);
+    expect(readBundle).toHaveBeenCalledWith("sheet-need");
+  });
+
+  it("전원 완비면 워밍이 아무것도 안 한다 — 쿼터 0 소모", async () => {
+    listDistinctUsers.mockResolvedValue([
+      cached("a@x.com", "sheet-a"),
+      cached("b@x.com", "sheet-b"),
+    ]);
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles();
+
+    expect(r.targets).toBe(0);
+    expect(readBundle).not.toHaveBeenCalled();
+  });
+
+  it("날짜가 ISO 형식이 아니면 미완비로 본다 — 시리얼 숫자 저장 사고 대비", async () => {
+    listDistinctUsers.mockResolvedValue([
+      trainee("serial@x.com", "sheet-serial", {
+        cohortLabel: "8기",
+        nameLabel: "홍길동",
+        courseStartISO: "46241", // 시리얼 숫자 — ISO 아님
+        graduationISO: "2026-09-26",
+      }),
+    ]);
+    const { warmAllTraineeBundles } = await load();
+    const r = await warmAllTraineeBundles();
+
+    expect(r.targets).toBe(1);
   });
 });
