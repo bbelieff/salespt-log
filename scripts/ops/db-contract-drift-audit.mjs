@@ -236,6 +236,18 @@ async function main() {
       console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm} | ${p.pCarry}`);
     }
   }
+  console.log("");
+  console.log(
+    `── 이월로 잡힌 계약 (${carryRows.length}건` +
+      (carryRows.length > CARRY_LIST_CAP ? `, 앞 ${CARRY_LIST_CAP}건만` : "") +
+      ") ──",
+  );
+  console.log("cohort | email | row | 계약일 | 업체명 | 시트 | DB");
+  for (const c of carryRows.slice(0, CARRY_LIST_CAP)) {
+    console.log(
+      `${c.cohort} | ${c.email} | ${c.key} | ${c.계약일} | ${c.업체명} | ${c.시트} | ${c.DB}`,
+    );
+  }
   if (carryDetails.length) {
     console.log("");
     console.log("── ⑤ 이월 깃발 불일치 상세 (화면은 DB 를 본다) ──");
