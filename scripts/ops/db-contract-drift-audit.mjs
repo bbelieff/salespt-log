@@ -168,6 +168,8 @@ async function main() {
   let ghost = 0, mismatch = 0, clearedFlagMismatch = 0, termMismatch = 0, carryMismatch = 0;
   /** ⑤ 이월 깃발이 어긋난 실제 건 — 어느 쪽이 이월인지까지 남긴다(화면은 DB 를 본다). */
   const carryDetails = [];
+  /** ① 유령 계약 상세 — 개수만으론 원인을 못 좁힌다(실행마다 값이 흔들렸다). */
+  const ghostDetails = [];
   /** 시트/DB 어느 쪽이든 "이월"인 계약 전부 — 왜 아레나 집계에서 빠지는지 눈으로 보려고. */
   const carryRows = [];
   const perPerson = [];
@@ -187,7 +189,14 @@ async function main() {
       const d = dbByKey.get(key);  // undefined = DB에 이 행 없음
       if (!d) continue; // DB에 없으면 감사 대상 아님(시트만 있는 미백필 행 — 별건)
       if (!s) {
-        if (!d._cleared) { ghost++; pGhost++; }
+        if (!d._cleared) {
+          ghost++; pGhost++;
+          ghostDetails.push({
+            cohort: u.cohort, email: mask(u.email), key,
+            계약일: d.계약일 || "(빈값)", 업체명: d.업체명 || "(빈값)",
+            구분: d.구분 || "-", 해지일: d.해지일 || "-",
+          });
+        }
         continue;
       }
       if (d._cleared) { clearedFlagMismatch++; pCleared++; continue; }
@@ -235,6 +244,19 @@ async function main() {
     for (const p of perPerson) {
       console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm} | ${p.pCarry}`);
     }
+  }
+  const GHOST_CAP = 60;
+  console.log("");
+  console.log(
+    `── ① 유령 계약 상세 (${ghostDetails.length}건` +
+      (ghostDetails.length > GHOST_CAP ? `, 앞 ${GHOST_CAP}건만` : "") +
+      ") ──",
+  );
+  console.log("cohort | email | row | 계약일 | 업체명 | 구분 | 해지일");
+  for (const g of ghostDetails.slice(0, GHOST_CAP)) {
+    console.log(
+      `${g.cohort} | ${g.email} | ${g.key} | ${g.계약일} | ${g.업체명} | ${g.구분} | ${g.해지일}`,
+    );
   }
   console.log("");
   console.log(
