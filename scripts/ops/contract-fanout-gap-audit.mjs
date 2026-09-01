@@ -98,11 +98,24 @@ const sheets = google.sheets({
 const cell = (row, i) => String(row?.[i] ?? "").trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** 날짜 표기 흔들림 흡수 — "2026-08-31" · "26/08/31" · "2026. 8. 31." → "2026-08-31". */
+/**
+ * 날짜 표기 흔들림 흡수 — "2026-08-31" · "26/08/31" · "2026. 8. 31." · **시리얼 46192** →
+ * "2026-08-31".
+ *
+ * ⚠️ 시리얼 처리를 빼면 **없는 누락이 생긴다.** 2026-09-01 첫 실행에서 강구수(이태평) 님
+ * "국수 50,000원"이 누락으로 잡혔는데, 04 미팅 날짜가 시리얼 숫자(`46192`)라 02 의 ISO
+ * 날짜와 짝이 안 맞았을 뿐이었다. 변환 규칙은 `db-contract-drift-audit.mjs:dateish` 와
+ * 동일하게 맞춘다(같은 시트를 같은 규칙으로 읽어야 두 감사 결과가 서로 어긋나지 않는다).
+ */
 function normDate(raw) {
   const s = String(raw ?? "").trim();
   if (!s) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Sheets 시리얼(1899-12-30 기준). 20000 미만은 날짜로 보지 않는다(금액·개수 오인 방지).
+  const n = Number(s);
+  if (Number.isFinite(n) && n >= 20000) {
+    return new Date((n - 25569) * 86400000).toISOString().slice(0, 10);
+  }
   let m = s.match(/^(\d{2})[./-](\d{1,2})[./-](\d{1,2})\.?$/);
   if (m) return `20${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
   m = s.match(/^(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})\.?$/);
