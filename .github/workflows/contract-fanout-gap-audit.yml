@@ -1,0 +1,79 @@
+name: Contract Fanout Gap Audit (read-only)
+
+# 「계약 도장은 찍혔는데 장부에 줄이 없는」 계약을 전수로 센다. 쓰기 0건.
+# SA 자격증명이 VPS .env 에만 있어 원격 실행(다른 ops 워크플로와 동일 패턴).
+on:
+  workflow_dispatch:
+    inputs:
+      cohort:
+        description: "대상 기수 — 쉼표구분 (예: 10,9). 비우면 활성 전원"
+        required: false
+        default: ""
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+    steps:
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Validate input
+        env:
+          COHORT: ${{ inputs.cohort }}
+        run: |
+          # 원격 셸에 그대로 들어가는 값이라 형식을 좁힌다(기수 라벨 = 숫자·A·하이픈·쉼표).
+          if [ -n "$COHORT" ]; then
+            echo "$COHORT" | grep -Eq '^[0-9A-Za-z-]{1,8}(,[0-9A-Za-z-]{1,8})*$' \
+              || { echo "cohort 형식 오류" >&2; exit 2; }
+          fi
+
+      - name: Run audit on VPS
+        env:
+          COHORT: ${{ inputs.cohort }}
+        run: |
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          FLAGS=""
+          if [ -n "$COHORT_ARG" ]; then FLAGS="--cohort $COHORT_ARG"; fi
+          node scripts/ops/contract-fanout-gap-audit.mjs $FLAGS
+          REMOTE_EOF
+          )
+          set +e
+          HOSTS=("$VPS_TARGET_HOST")
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
+          NHOSTS=${#HOSTS[@]}
+          for i in $(seq 1 7); do
+            HOST="${HOSTS[$(( (i - 1) % NHOSTS ))]}"
+            if [[ "$HOST" == *:* ]]; then FAM=-6; TARGET="root@[$HOST]"; else FAM=-4; TARGET="root@$HOST"; fi
+            ssh $FAM -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "$TARGET" \
+                "COHORT_ARG=\"$COHORT\" bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255, host=$HOST) — 시도 $i/7, 25초 후 재시도" >&2
+              sleep 25
+            else
+              echo "감사 스크립트 실패(rc=$rc)" >&2
+              exit "$rc"
+            fi
+          done
+          echo "ssh 7회 모두 실패 — VPS 도달성 지속 장애" >&2
+          exit 1
