@@ -62,7 +62,9 @@ const COHORT_FILTER = arg("--cohort")
  * 0건이었는데도 화면은 여전히 이월이었던 이유가 이것이다. 원인을 좁히려면
  * "이월 깃발이 실제로 켜져 있나"를 눈으로 봐야 한다.
  */
-const LIST_CARRYOVER = process.argv.includes("--list-carryover");
+/** 워크플로 입력으로 켜고 끄려 했으나 원격까지 값이 안 넘어가 조건을 없앴다 —
+ * 목록이 짧고(이월은 소수) 어차피 매번 보고 싶은 값이라 **항상** 출력한다. */
+const CARRY_LIST_CAP = 80;
 
 const REGISTRY_ID = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
@@ -166,7 +168,7 @@ async function main() {
   let ghost = 0, mismatch = 0, clearedFlagMismatch = 0, termMismatch = 0, carryMismatch = 0;
   /** ⑤ 이월 깃발이 어긋난 실제 건 — 어느 쪽이 이월인지까지 남긴다(화면은 DB 를 본다). */
   const carryDetails = [];
-  /** --list-carryover 용 — 시트/DB 어느 쪽이든 "이월"인 계약 전부. */
+  /** 시트/DB 어느 쪽이든 "이월"인 계약 전부 — 왜 아레나 집계에서 빠지는지 눈으로 보려고. */
   const carryRows = [];
   const perPerson = [];
 
@@ -195,7 +197,7 @@ async function main() {
       // 아무 표식이 없는데도 그 계약이 아레나 점수·매출에서 통째로 빠진다
       // (2026-09-01 belie 신고: 김현민 님 결미담 8/29 ₩500,000 이 이월로 표시됨).
       const sCarry = s.구분 === "이월", dCarry = d.구분 === "이월";
-      if (LIST_CARRYOVER && (sCarry || dCarry)) {
+      if (sCarry || dCarry) {
         carryRows.push({
           cohort: u.cohort, email: mask(u.email), key,
           계약일: d.계약일 || s.계약일, 업체명: d.업체명 || s.업체명,
