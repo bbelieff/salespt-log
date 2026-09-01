@@ -1,6 +1,8 @@
 /** 채널 탭(4) + 채널별 4지표 입력 패널(6:4 그리드). 정본: prototypes/contact-daily-input.html v7 §2-2·§2-3. */
 "use client";
 
+import { useLeadCandidates } from "@/query/db-hooks";
+import { countUnmatchedLeads } from "../_lib/lead-backlog";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CHANNEL_ORDER, type Channel } from "@/types";
@@ -144,6 +146,11 @@ export default function ChannelTabsAndPanel({
   const leadInflow = overview.data
     ? overview.data.leads.filter((l) => strF(l as never, "접수일") === date).length
     : draft["콜·지·기·소"].inflow;
+
+  // 아직 미팅으로 안 이어진 영업기회 — 접수일 무관 누적(belie 선택 A). 규칙·근거는 _lib/lead-backlog.ts.
+  // 저장값(01 영업관리 F)은 ADR-0029 그대로 — 화면 표시만 추가라 통계 불변.
+  const leadPool = useLeadCandidates(active === "콜·지·기·소");
+  const leadBacklog = countUnmatchedLeads(leadPool.data);
 
   // 직접생산: 선택 날짜 포함 활성 레코드(유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
   const directProductions = overview.data?.productions ?? [];
@@ -473,6 +480,17 @@ export default function ChannelTabsAndPanel({
           </div>
         );
       })}
+      {active === "콜·지·기·소" && leadBacklog > 0 && (
+        <div className="flex items-center gap-2 border-t border-gray-100 bg-violet-50 px-3 py-2.5 text-xs text-violet-900">
+          <span aria-hidden="true">📌</span>
+          <span>
+            아직 미팅 안 잡은 영업기회 <b className="font-bold">{leadBacklog}건</b>
+            <span className="block text-[11px] text-violet-500">
+              미팅예약 ＋를 누르면 여기서 골라요
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
