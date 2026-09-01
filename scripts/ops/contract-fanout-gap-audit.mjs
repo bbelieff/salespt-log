@@ -74,8 +74,16 @@ const REG_TAB = env("SHEETS_REGISTRY_TAB") || "users";
 // lib/config/index.ts SHEET_RANGES 와 동일해야 한다 — 어긋나면 감사 결과가 거짓이 된다.
 const MEETINGS_TAB = "04 업체관리(앱자동작성용)";
 const MEETINGS_RANGE = "A2:AS";
-const CONTRACT_TAB = "02 계약수납관리";
-const CONTRACT_RANGE = "A6:AK";
+/**
+ * 계약수납 탭은 **이름이 두 가지**다 — 구버전 시트는 `02 계약관리`(6행이 아니라 5행부터).
+ * 앱(`lib/repo/contract-payment.ts:resolveLayout`)과 `db-contract-drift-audit.mjs` 는 둘 다
+ * 두 이름을 시도한다. 여기만 하나만 보면 구버전 시트가 통째로 "읽기 실패"로 잡혀
+ * **없는 문제를 만든다** — 2026-09-01 첫 실행에서 이장현·황정환 님이 그렇게 잡혔다.
+ */
+const CONTRACT_TABS = [
+  { tab: "02 계약수납관리", firstRow: 6 },
+  { tab: "02 계약관리", firstRow: 5 },
+];
 
 // 04 열: A=id(0) D=미팅날짜(3) G=업체명(6) J=상태(9) L=수임비(11)
 const M = { id: 0, 날짜: 3, 채널: 5, 업체명: 6, 상태: 9, 수임비: 11 };
@@ -164,11 +172,23 @@ async function main() {
     await sleep(GAP_MS);
     let res;
     try {
-      res = await sheets.spreadsheets.values.batchGet({
-        spreadsheetId: u.spreadsheetId,
-        ranges: [`${MEETINGS_TAB}!${MEETINGS_RANGE}`, `${CONTRACT_TAB}!${CONTRACT_RANGE}`],
-        valueRenderOption: "UNFORMATTED_VALUE",
-      });
+      // 계약수납 탭 이름은 두 가지 — 구버전은 `02 계약관리`. 하나만 보면 구버전 시트가
+      // 통째로 "읽기 실패"로 잡혀 없는 문제를 만든다(2026-09-01 이장현·황정환 오탐).
+      let lastErr;
+      for (const { tab, firstRow } of CONTRACT_TABS) {
+        try {
+          res = await sheets.spreadsheets.values.batchGet({
+            spreadsheetId: u.spreadsheetId,
+            ranges: [`${MEETINGS_TAB}!${MEETINGS_RANGE}`, `${tab}!A${firstRow}:AK`],
+            valueRenderOption: "UNFORMATTED_VALUE",
+          });
+          lastErr = undefined;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (lastErr) throw lastErr;
     } catch (e) {
       failed.push({ ...u, error: e?.message || String(e) });
       console.log(`FAIL  ${u.cohort}\t${u.name}\t${e?.message || e}`);
