@@ -17,6 +17,10 @@
  *   ④ 해지 반영 불일치(퍼널 계약수 영향) — 시트 해지일 유무와 DB 해지일 유무가 다름.
  *      `terminatedByChannel`/`terminatedByWeek`(dashboard.ts)가 DB 값으로 계산되므로,
  *      이 드리프트가 있으면 파일럿 화면의 **퍼널 계약수가 실제보다 많이(또는 적게) 표시**된다.
+ *   ⑤ 이월(AI) 깃발 불일치 — 시트엔 표식이 없는데 DB 만 "이월"(또는 그 반대).
+ *      파일럿 화면은 **DB** 를 읽으므로, DB 만 이월이면 시트를 아무리 봐도 이유를 못 찾는데
+ *      그 계약이 **아레나 점수·매출에서 통째로 빠진다**(2026-09-01 belie 신고: 김현민 님
+ *      결미담 8/29 ₩500,000 — 시트 02·04 어디에도 이월 표식이 없는데 화면은 이월로 표시).
  *
  * 파싱은 `lib/repo/db/read-daily.ts contractFromDbPayload` 와 **동일 규칙**(열문자 우선 →
  * 필드명 오버레이)을 손으로 재현한다 — 실제 앱이 그 계약을 어떻게 읽는지와 정확히 같아야
@@ -105,6 +109,8 @@ async function readSheetContracts(sid) {
       out.set(`r${sheetRow}`, {
         계약일, 업체명: str(r[1]), // D
         해지일: dateish(r[35]), // AL (rel idx = 37-2)
+        // AI(구분) — "이월"이면 아레나 점수·매출에서 빠진다. rel idx = 34-2.
+        구분: str(r[32]),
       });
     });
     return out;
@@ -126,11 +132,13 @@ function coerce(v) {
  * "158건 불일치"류 오탐(날짜 표현형 차이일 뿐인데 값이 다르다고 잘못 세는 것)을 안 만든다. */
 function fromDbPayload(p) {
   let 계약일 = dateish(coerce(p.C)), 업체명 = str(coerce(p.D)), 해지일 = dateish(coerce(p.AL));
+  let 구분 = str(coerce(p.AI));
   if (p.계약일 !== undefined && p.계약일 !== null) 계약일 = dateish(p.계약일);
   if (p.업체명 !== undefined && p.업체명 !== null) 업체명 = str(p.업체명);
   if (p.해지일 !== undefined && p.해지일 !== null) 해지일 = dateish(p.해지일);
+  if (p.구분 !== undefined && p.구분 !== null) 구분 = str(p.구분);
   const _cleared = p._cleared === true || p._cleared === "true";
-  return { 계약일, 업체명, 해지일, _cleared };
+  return { 계약일, 업체명, 해지일, 구분, _cleared };
 }
 
 async function main() {
@@ -146,7 +154,9 @@ async function main() {
     .filter((u) => u.sid && u.role === "trainee" && isPilotCohort(u.cohort));
   console.log(`대상: ${COHORT_FILTER.length ? `지정 기수(${COHORT_FILTER.join(",")})` : "파일럿 전 기수(8·9·연습·아레나)"} — 시트 ${targets.length}개\n`);
 
-  let ghost = 0, mismatch = 0, clearedFlagMismatch = 0, termMismatch = 0;
+  let ghost = 0, mismatch = 0, clearedFlagMismatch = 0, termMismatch = 0, carryMismatch = 0;
+  /** ⑤ 이월 깃발이 어긋난 실제 건 — 어느 쪽이 이월인지까지 남긴다(화면은 DB 를 본다). */
+  const carryDetails = [];
   const perPerson = [];
 
   for (const u of targets) {
@@ -154,7 +164,7 @@ async function main() {
       readSheetContracts(u.sid),
       pool.query(`select row_key, payload from sheet_rows where spreadsheet_id=$1 and tab='contracts'`, [u.sid]),
     ]);
-    let pGhost = 0, pMismatch = 0, pCleared = 0, pTerm = 0;
+    let pGhost = 0, pMismatch = 0, pCleared = 0, pTerm = 0, pCarry = 0;
     const rowKeys = new Set([...sheetMap.keys(), ...dbRes.rows.map((r) => r.row_key)]);
     const dbByKey = new Map(dbRes.rows.map((r) => [r.row_key, fromDbPayload(r.payload)]));
 
@@ -170,9 +180,21 @@ async function main() {
       if (d._cleared) { clearedFlagMismatch++; pCleared++; continue; }
       if (s.계약일 !== d.계약일 || s.업체명 !== d.업체명) { mismatch++; pMismatch++; }
       if ((s.해지일 !== "") !== (d.해지일 !== "")) { termMismatch++; pTerm++; }
+      // ⑤ 이월(AI) 불일치 — 파일럿 화면은 **DB** 를 읽으므로, DB 만 "이월"이면 시트에
+      // 아무 표식이 없는데도 그 계약이 아레나 점수·매출에서 통째로 빠진다
+      // (2026-09-01 belie 신고: 김현민 님 결미담 8/29 ₩500,000 이 이월로 표시됨).
+      const sCarry = s.구분 === "이월", dCarry = d.구분 === "이월";
+      if (sCarry !== dCarry) {
+        carryMismatch++; pCarry++;
+        carryDetails.push({
+          cohort: u.cohort, email: mask(u.email), key,
+          계약일: d.계약일 || s.계약일, 업체명: d.업체명 || s.업체명,
+          시트: sCarry ? "이월" : "-", DB: dCarry ? "이월" : "-",
+        });
+      }
     }
-    if (pGhost + pMismatch + pCleared + pTerm > 0) {
-      perPerson.push({ email: mask(u.email), cohort: u.cohort, pGhost, pMismatch, pCleared, pTerm });
+    if (pGhost + pMismatch + pCleared + pTerm + pCarry > 0) {
+      perPerson.push({ email: mask(u.email), cohort: u.cohort, pGhost, pMismatch, pCleared, pTerm, pCarry });
     }
   }
   await pool.end();
@@ -183,14 +205,23 @@ async function main() {
   console.log(`② 계약일/업체명 불일치 : ${mismatch}건`);
   console.log(`③ _cleared 플래그 불일치: ${clearedFlagMismatch}건`);
   console.log(`④ 해지 반영 불일치(퍼널): ${termMismatch}건`);
-  const total = ghost + mismatch + clearedFlagMismatch + termMismatch;
+  console.log(`⑤ 이월 깃발 불일치(집계) : ${carryMismatch}건`);
+  const total = ghost + mismatch + clearedFlagMismatch + termMismatch + carryMismatch;
   console.log(`\n합계: ${total}건${total === 0 ? " — 0건, 이 항목 자동 종결 대상" : ""}`);
 
   if (perPerson.length) {
     console.log("\n── 사람별 내역(영향 있는 사람만, email 마스킹) ──");
-    console.log("email | cohort | 유령 | 불일치 | cleared불일치 | 해지불일치");
+    console.log("email | cohort | 유령 | 불일치 | cleared불일치 | 해지불일치 | 이월불일치");
     for (const p of perPerson) {
-      console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm}`);
+      console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm} | ${p.pCarry}`);
+    }
+  }
+  if (carryDetails.length) {
+    console.log("");
+    console.log("── ⑤ 이월 깃발 불일치 상세 (화면은 DB 를 본다) ──");
+    console.log("cohort | email | row | 계약일 | 업체명 | 시트 | DB");
+    for (const c of carryDetails) {
+      console.log(`${c.cohort} | ${c.email} | ${c.key} | ${c.계약일} | ${c.업체명} | ${c.시트} | ${c.DB}`);
     }
   }
   console.log("\n(데이터 변경 0건 — 이 스크립트는 SELECT/values.get 만 호출했습니다)\n");
