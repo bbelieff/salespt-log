@@ -27,6 +27,7 @@ import {
 } from "@/query/contract-payment-hooks";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import { useGuardedNav } from "@/components/DirtyGuard";
+import { decideContractFanout } from "./_lib/contract-fanout";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -102,33 +103,31 @@ export default function SchedulePage() {
         partial,
       });
 
-      // Fan-out: NEW 계약 액션일 때만 02 계약수납관리에 row 자동 생성.
-      // 이미 계약 상태였던 카드의 수임비/조건 수정은 fan-out 안 함 (중복 row 방지).
-      if (
-        partial.상태 === "계약" &&
-        !wasAlreadyContract &&
-        weekQuery.data
-      ) {
-        const meeting = weekQuery.data.daysByMeetingDate
-          .flatMap((d) => d.meetings)
-          .find((m) => m.id === id);
-        if (meeting) {
+      // Fan-out: 계약 저장 시 02 장부 행 보장. ⚠️ 매출이 사라졌던 자리다
+      // (2026-09-01 · 10기 문병규 ₩1,100,000). 규칙·근거 = ./_lib/contract-fanout.ts
+      const fanout = decideContractFanout(partial, prevMeeting);
+      if (fanout.kind === "blocked") {
+        showToast(
+          "⚠ 계약 상태는 저장됐지만 계약 정보를 읽지 못해 장부에 넣지 못했어요. 새로고침 후 이 카드를 다시 계약으로 저장해 주세요.",
+        );
+        return;
+      }
+      if (fanout.kind === "run") {
+        const payload = fanout.payload;
+        try {
+          await addContractPayment.mutateAsync(payload);
+          showToast("✓ 계약 확정 + 계약수납 row 생성됨");
+        } catch {
+          // 일시적 실패(네트워크·쿼터)로 매출이 사라지지 않게 한 번 더. 멱등이라 안전.
           try {
-            await addContractPayment.mutateAsync({
-              계약일: meeting.미팅날짜,
-              업체명: meeting.업체명,
-              수임비: partial.수임비 ?? meeting.수임비 ?? 0,
-            });
-            showToast("✓ 계약 확정 + 계약수납 row 생성됨");
+            await addContractPayment.mutateAsync(payload);
+            showToast("✓ 계약 확정 + 계약수납 row 생성됨 (재시도 성공)");
           } catch (e) {
             showToast(
-              `⚠ 계약은 저장됐으나 계약수납 row 생성 실패: ${(e as Error).message} — 계약수납 탭에서 수동으로 추가 필요`,
+              `⚠ 계약 상태는 저장됐지만 장부에 넣지 못했어요: ${(e as Error).message} — 이 카드를 다시 계약으로 저장하면 채워져요.`,
             );
             return;
           }
-        } else {
-          showToast("✓ 저장 완료 (meeting lookup 실패 — fan-out 생략)");
-          return;
         }
       } else if (
         wasAlreadyContract &&
