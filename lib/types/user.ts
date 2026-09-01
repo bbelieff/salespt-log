@@ -7,17 +7,7 @@ import { z } from "zod";
 
 // ── 사용자 — 마스터 레지스트리 ─────────────────────────────────
 export const User = z.object({
-  /**
-   * 이메일. **빈 문자열을 허용한다** — 사전 등록(prep) 행은 본인이 로그인해 클레임할 때까지
-   * email 이 비어 있는 것이 설계다(`users-prep.ts:buildPrepRowValues` A열 = "").
-   *
-   * ⚠️ 예전엔 `z.string().email()` 이라 **빈 email 행이 검증에서 탈락해 조용히 사라졌다.**
-   * `users.ts:parseRow` 는 실패를 null 로 삼키므로, 관리자 명단(`/admin/users`)에서
-   * 사전 등록한 수강생이 **아예 안 보였다** — 등록은 됐는데 확인할 방법이 없었다
-   * (2026-09-01 belie 신고: "신규수강생 사전등록이라는게 안되지않나?" · 11기 7명·10기 김옥선 실측).
-   * 로그인·조회는 email 로 매칭하므로 빈 값 행은 그 경로에 자연히 안 걸린다 — 여기서 막을 이유가 없다.
-   */
-  email: z.union([z.string().email(), z.literal("")]),
+  email: z.string().email(),
   cohort: z.string(), // 예: "7" (수강생) / "T" (트레이너) / 빈값(admin)
   name: z.string(),
   spreadsheetId: z.string(), // 트레이너·admin 은 빈 문자열 허용
