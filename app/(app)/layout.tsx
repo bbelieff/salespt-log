@@ -29,6 +29,7 @@ import { shouldRedirectToClaim } from "@/repo/user-priority";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
 import PullToRefresh from "@/components/PullToRefresh";
+import IdentityGuard from "@/components/auth/IdentityGuard";
 
 export default async function AppLayout({
   children,
@@ -86,6 +87,8 @@ export default async function AppLayout({
       <AnnouncementsGate />
       {/* 모바일 당겨서 새로고침 — PC/모달/가로 스와이프 가드 내장. */}
       <PullToRefresh />
+      {/* 탭 신원 가드 — 다른 탭에서 대리접속 대상이 바뀌면 이 탭을 막는다(잘못된 사람에게 저장 방지). */}
+      <IdentityGuard />
     </div>
   );
 }
