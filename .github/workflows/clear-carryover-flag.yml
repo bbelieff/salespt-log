@@ -1,0 +1,94 @@
+name: Clear Carryover Flag (one contract)
+
+# 잘못 붙은 이월 깃발 **한 건**을 시트+DB 에서 지운다. 기본은 계획만(plan).
+# SA·DATABASE_URL 이 VPS .env 에 있어 원격 실행.
+on:
+  workflow_dispatch:
+    inputs:
+      sheet:
+        description: "대상 시트 ID"
+        required: true
+      company:
+        description: "업체명 (시트에 적힌 그대로)"
+        required: true
+      date:
+        description: "계약일 YYYY-MM-DD"
+        required: true
+      mode:
+        description: "plan = 무엇을 지울지만 / execute = 실제 삭제"
+        type: choice
+        options: [plan, execute]
+        default: plan
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+    env:
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+    steps:
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Validate inputs
+        env:
+          SHEET: ${{ inputs.sheet }}
+          DATE: ${{ inputs.date }}
+          COMPANY: ${{ inputs.company }}
+        run: |
+          # 원격 셸에 그대로 들어가는 값이라 형식을 좁힌다.
+          echo "$SHEET" | grep -Eq '^[A-Za-z0-9_-]{20,80}$' || { echo "sheet 형식 오류" >&2; exit 2; }
+          echo "$DATE"  | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "date 형식 오류" >&2; exit 2; }
+          case "$COMPANY" in *"'"*|*'"'*|*'`'*|*'$'*|*';'*|*'&'*|*'|'*) echo "company 에 셸 특수문자" >&2; exit 2;; esac
+          [ -n "$COMPANY" ] || { echo "company 비었음" >&2; exit 2; }
+
+      - name: Run on VPS
+        env:
+          SHEET: ${{ inputs.sheet }}
+          COMPANY: ${{ inputs.company }}
+          DATE: ${{ inputs.date }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          # 업체명에 공백이 있다("김해 결미담") — 따옴표 없이 넘기면 인자가 쪼개진다.
+          EXTRA=""
+          if [ "$MODE_ARG" = "execute" ]; then EXTRA="--execute"; fi
+          node scripts/ops/clear-carryover-flag.mjs --sheet "$SHEET_ARG" --company "$COMPANY_ARG" --date "$DATE_ARG" $EXTRA
+          REMOTE_EOF
+          )
+          set +e
+          HOSTS=("$VPS_TARGET_HOST")
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
+          NHOSTS=${#HOSTS[@]}
+          for i in $(seq 1 7); do
+            HOST="${HOSTS[$(( (i - 1) % NHOSTS ))]}"
+            if [[ "$HOST" == *:* ]]; then FAM=-6; TARGET="root@[$HOST]"; else FAM=-4; TARGET="root@$HOST"; fi
+            ssh $FAM -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "$TARGET" \
+                "SHEET_ARG='$SHEET' COMPANY_ARG='$COMPANY' DATE_ARG='$DATE' MODE_ARG='$MODE' bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 25초 후 재시도" >&2
+              sleep 25
+            else
+              echo "스크립트 실패(rc=$rc) — 재시도 안 함(멱등이라 재실행 안전)" >&2
+              exit "$rc"
+            fi
+          done
+          exit 1
