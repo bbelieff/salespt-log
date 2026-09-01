@@ -89,13 +89,32 @@ function isPilotCohort(cohortRaw) {
   return DB_READ_COHORTS.has(norm) || isArenaLabel(norm);
 }
 
+/**
+ * 범위 읽기. **실패와 빈 시트를 구분해서 돌려준다.**
+ *
+ * ⚠️ 예전엔 `.catch(() => null)` 로 모든 에러를 삼키고 `[]` 를 반환했다. 그러면 읽기가
+ * 실패한 사람의 **DB 계약 전부가 "유령"으로 계수**된다(시트에 행이 없다고 오인).
+ * 108명을 연달아 읽으면 Sheets 쿼터(60 reads/min)를 넘겨 매번 다른 사람이 실패하므로
+ * 유령 수치가 실행마다 요동쳤다 — 2026-09-01 실측 0 → 67 → 71 → 12.
+ * belie 지시 "유령 계약 발본색원"의 답이 이것이다: **대부분 유령이 아니라 읽기 실패였다.**
+ */
 async function grid(sid, range) {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  }).catch(() => null);
-  return res?.data.values ?? [];
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return res?.data.values ?? [];
+  } catch (e) {
+    return { __error: e?.message || String(e) };
+  }
 }
+const isReadError = (v) =>
+  v !== null && typeof v === "object" && !Array.isArray(v) && "__error" in v;
+
+/** Sheets 쿼터(60 reads/min) 보호 — 사람당 1 read 이라 시작 간격만으로 충분하다. */
+const READ_GAP_MS = 1100;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const str = (v) => String(v ?? "").trim();
 /** 날짜 셀(serial 또는 문자열) → ISO. 아니면 원문 trim. */
 function dateish(v) {
@@ -108,8 +127,10 @@ function dateish(v) {
 
 /** 02 탭에서 계약일/업체명/해지일 만 뽑는다(감사 목적 — 전량 파싱 불필요). C 기준 상대 idx. */
 async function readSheetContracts(sid) {
+  let lastError = null;
   for (const [tabName, firstDataRow] of [["02 계약수납관리", 6], ["02 계약관리", 5]]) {
     const rows = await grid(sid, `'${tabName}'!C1:AO`);
+    if (isReadError(rows)) { lastError = rows.__error; continue; }
     if (rows.length === 0) continue;
     const out = new Map();
     rows.forEach((r, i) => {
@@ -126,7 +147,8 @@ async function readSheetContracts(sid) {
     });
     return out;
   }
-  return new Map();
+  // 둘 다 **에러**였으면 "시트에 행이 없음"이 아니라 **읽기 실패**다 — 구분해 올린다.
+  return lastError ? { __error: lastError } : new Map();
 }
 
 /** backfill 문자열 값 → 시트 UNFORMATTED 원형 복원 — read-daily.ts coerce() 와 동일. */
@@ -174,11 +196,19 @@ async function main() {
   const carryRows = [];
   const perPerson = [];
 
+  /** 시트를 못 읽은 사람 — 유령으로 오인하지 않고 여기 모은다. */
+  const readFailed = [];
+
   for (const u of targets) {
+    await sleep(READ_GAP_MS); // 쿼터 보호 — 이게 없어 읽기 실패가 유령으로 둔갑했다.
     const [sheetMap, dbRes] = await Promise.all([
       readSheetContracts(u.sid),
       pool.query(`select row_key, payload from sheet_rows where spreadsheet_id=$1 and tab='contracts'`, [u.sid]),
     ]);
+    if (isReadError(sheetMap)) {
+      readFailed.push({ cohort: u.cohort, email: mask(u.email), error: sheetMap.__error });
+      continue;
+    }
     let pGhost = 0, pMismatch = 0, pCleared = 0, pTerm = 0, pCarry = 0;
     const rowKeys = new Set([...sheetMap.keys(), ...dbRes.rows.map((r) => r.row_key)]);
     const dbByKey = new Map(dbRes.rows.map((r) => [r.row_key, fromDbPayload(r.payload)]));
@@ -245,6 +275,16 @@ async function main() {
       console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm} | ${p.pCarry}`);
     }
   }
+  if (readFailed.length) {
+    console.log("");
+    console.log(`── ⚠ 시트를 못 읽은 사람 (${readFailed.length}명) — 유령 계수에서 제외 ──`);
+    console.log("cohort | email | 사유");
+    for (const f of readFailed) console.log(`${f.cohort} | ${f.email} | ${f.error}`);
+  } else {
+    console.log("");
+    console.log("(시트 읽기 실패 0명 — 유령 수치를 그대로 믿어도 된다)");
+  }
+
   const GHOST_CAP = 60;
   console.log("");
   console.log(
