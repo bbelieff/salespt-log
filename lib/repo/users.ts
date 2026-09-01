@@ -112,7 +112,13 @@ export async function listAllUsers(): Promise<User[]> {
   const rows = await cachedRegistryRows();
   const users: User[] = [];
   for (const r of rows) {
-    if (!r[0]) continue;
+    // **완전히 빈 행만** 건너뛴다. ⚠️ 예전엔 `if (!r[0]) continue`(= email 빈값이면 skip)
+    // 였는데, 사전 등록 행은 본인이 클레임할 때까지 **email 이 비어 있는 것이 설계**라
+    // (`users-prep.ts:buildPrepRowValues` A열 = "") 그 행이 명단에서 통째로 사라졌다.
+    // 등록은 되는데 `/admin/users` 에서 확인할 방법이 없었다 — 2026-09-01 belie 신고
+    // "신규수강생 사전등록이라는게 안되지않나?"(11기 7명·10기 김옥선 실측).
+    // 로그인·조회는 email 로 매칭하므로 빈 값 행은 그 경로에 자연히 안 걸린다.
+    if (!r[0] && !r[1] && !r[2]) continue;
     const u = parseRow(r);
     if (u) users.push(u);
   }
