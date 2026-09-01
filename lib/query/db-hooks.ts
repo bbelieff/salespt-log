@@ -57,8 +57,12 @@ export function useDBOverview(): UseQueryResult<DBOverview> {
  * 피커가 `!matched` 로 필터해 이미 미팅으로 전환된 발굴을 숨긴다(lead-chain §4-1, KPI-④).
  * DBOverview 와 별 쿼리 — 미팅 생성(useAppendMeeting)·03 발굴 편집이 invalidate 해 신선도 보존.
  */
-export function useLeadCandidates(): UseQueryResult<LeadCandidate[]> {
+export function useLeadCandidates(
+  /** 컨택탭이 콜지기소 패널일 때만 켠다 — 다른 채널을 보는 동안 불필요한 요청 0 (2026-09-02). */
+  enabled = true,
+): UseQueryResult<LeadCandidate[]> {
   return useQuery({
+    enabled,
     queryKey: leadsPickerKey(),
     queryFn: async () =>
       (await fetchJSON<{ leads: LeadCandidate[] }>(`/api/leads`)).leads,
