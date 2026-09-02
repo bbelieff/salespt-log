@@ -2,12 +2,13 @@
 "use client";
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
 import {
   useAppendMeeting,
   useDay,
   usePatchMeeting,
+  useMoveDailyMetrics,
   useRemoveMeeting,
   useSaveMetrics,
   useWeekMeetings,
@@ -28,7 +29,13 @@ import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
 import { formatMoney } from "@/lib/format/money";
-import { createSaveCoalescer } from "@/util/save-coalesce";
+import SaveConfirmModal, { isSlotComplete } from "./_components/SaveConfirmModal";
+import RecordMoveModal, {
+  type MoveCandidate,
+  type MoveDecision,
+} from "./_components/RecordMoveModal";
+import { slotComplete, useContactSave } from "./_lib/use-contact-save";
+import { useRecordMove } from "./_lib/use-record-move";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -43,6 +50,9 @@ export default function ContactPage() {
   );
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
   const [pickerMeetings, setPickerMeetings] = useState<Meeting[] | null>(null);
+  // 저장 전 확인 화면 / 「잘못 적었어요」 옮기기 (2026-09-03 belie)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   // 지표 스테퍼를 사용자가 만졌는지(미저장 가드 신호). 로드·저장 시 리셋.
   const [metricsTouched, setMetricsTouched] = useState(false);
 
@@ -54,6 +64,7 @@ export default function ContactPage() {
   const appendMeeting = useAppendMeeting();
   const patchMeeting = usePatchMeeting();
   const removeMeeting = useRemoveMeeting();
+  const moveMetrics = useMoveDailyMetrics();
 
   const countsByDay =
     weekQuery.data?.daysByReservationDate.map((d) => d.meetings.length) ??
@@ -238,27 +249,6 @@ export default function ContactPage() {
     showToast("✕ 삭제 · 미팅예약 -1");
   };
 
-  const slotComplete = (s: NewSlot) =>
-    !!s.미팅날짜 && !!s.미팅시간 && !!s.업체명.trim() && !!s.장소.trim();
-
-  const buildMeetingFromSlot = (slot: NewSlot, reservationDate: string): Meeting => ({
-    id: slot.tempId,
-    예약일: reservationDate,
-    예약시각: new Date().toTimeString().slice(0, 5),
-    미팅날짜: slot.미팅날짜,
-    미팅시간: slot.미팅시간,
-    channel: slot.channel,
-    업체명: slot.업체명.trim(),
-    장소: slot.장소.trim(),
-    예약비고: slot.예약비고.trim(),
-    업체정보: slot.업체정보, // 신규 슬롯에서 입력한 업체정보 → 04 T~AS (§3-1)
-    상태: "예약",
-    계약여부: false,
-    수임비: 0,
-    미팅사유: "",
-    계약조건: "",
-  });
-
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     const hasContract = meeting.상태 === "계약";
     const extra = hasContract ? `\n· 수납탭 계약카드 1건 (₩${formatMoney(meeting.수임비)})` : "";
@@ -286,58 +276,6 @@ export default function ContactPage() {
     }
   };
 
-  const saveMetricsAndCheck = (
-    dateAtClick: string,
-    channels: Record<Channel, ChannelDailyRowMetrics>,
-  ) => saveMetrics.mutateAsync({ date: dateAtClick, channels });
-
-  // 통합 저장: ① 신규슬롯 append(병렬) → ② dirty 미팅 patch(병렬) → ③ 지표. 실패 격리.
-  // BBE-243: savingRef 애드혹 가드는 저장 중 재클릭을 그냥 버렸다(최신 draft 무시 위험) —
-  // 공용 coalescer 로 교체(마지막 draft 로 1회 더 실행). append 루프도 병렬화해 항목마다
-  // Sheets 429 재시도 백오프가 순차로 쌓이는 "긴 정지"를 없앤다(lib/util/save-coalesce.ts).
-  const saveCoalescer = useRef(createSaveCoalescer<void>());
-  const handleSave = () => {
-    void saveCoalescer.current.trigger(runSave);
-  };
-  const runSave = async () => {
-    const dateAtClick = date;
-    const draftAtClick = draft;
-    const newSlotsAtClick = newSlots;
-    let failed = 0;
-    const completable = newSlotsAtClick.filter(slotComplete);
-    const lacking = newSlotsAtClick.length - completable.length;
-    const completableIds = new Set(completable.map((s) => s.tempId));
-    const results = await Promise.allSettled(
-      completable.map((slot) =>
-        appendMeeting.mutateAsync({
-          date: dateAtClick,
-          meeting: buildMeetingFromSlot(slot, dateAtClick),
-        }),
-      ),
-    );
-    const failedIds = new Set(completable.filter((_, i) => results[i]!.status === "rejected").map((s) => s.tempId));
-    failed += failedIds.size;
-    // ① 완료돼 append 성공한 슬롯만 제거 — 미완료·실패분은 원래 순서 그대로 유지.
-    const keep = newSlotsAtClick.filter(
-      (s) => !completableIds.has(s.tempId) || failedIds.has(s.tempId),
-    );
-    if (keep.length !== newSlotsAtClick.length) setNewSlots(keep);
-    failed += await saveAllDirty(); // ② dirty 미팅 patch (병렬, 실패 격리)
-    // ③ 지표 저장 (H=카드수 재계산 + 직접생산 M 동기화).
-    try {
-      const res = await saveMetricsAndCheck(dateAtClick, draftAtClick);
-      if (res?.directProductionHold) setShowProductionHold(true);
-      setMetricsTouched(false); // 지표 저장 성공 → 미저장 표식 해제
-    } catch {
-      failed++;
-    }
-    if (lacking > 0)
-      showToast(`⚠ 필수누락 ${lacking}건은 남겨뒀어요 · 나머지는 저장됨`);
-    else if (failed > 0)
-      showToast(`일부 저장 실패 ${failed}건 — 다시 시도해주세요`);
-    else showToast("✅ 저장 완료");
-  };
-
   /** 2026-05-18 [2]: 슬라이드 방향 state. */
   const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
   const moveWeek = (deltaWeeks: number) => {
@@ -351,6 +289,26 @@ export default function ContactPage() {
 
   const guardedNav = useGuardedNav();
   const saveAllDirty = useSaveAllDirty(); // dirty 미팅카드 전부 저장(전역 레지스트리)
+
+  // 통합 저장은 _lib/use-contact-save.ts 로 분리(500줄 캡). 로직은 그대로.
+  const { handleSave } = useContactSave({
+    date, draft, newSlots, appendMeeting, saveMetrics, saveAllDirty,
+    setNewSlots, setMetricsTouched, setShowProductionHold, showToast,
+  });
+
+  const { moveCandidates, applyMove } = useRecordMove({
+    date, draft, newSlots, appendMeeting, moveMetrics,
+    setNewSlots, setDraft, setActiveChannel,
+    onDone: (reopen) => { setMoveOpen(false); setConfirmOpen(reopen); },
+    showToast,
+  });
+
+  /** 저장하기 → 확인 화면. 새 미팅이 0건이면 확인 없이 통과(숫자만 고친 경우 흐름 안 막음). */
+  const requestSave = () => {
+    if (newSlots.length === 0) { handleSave(); return; }
+    setConfirmOpen(true);
+  };
+
 
   const weekSwipe = useSwipe({
     onSwipeLeft: () => guardedNav(() => moveWeek(1)),
@@ -460,8 +418,31 @@ export default function ContactPage() {
         pending={
           saveMetrics.isPending || appendMeeting.isPending || patchMeeting.isPending
         }
-        onSave={handleSave}
+        onSave={requestSave}
       />
+
+      {/* 저장 전 확인 — 기록하는 날짜·채널·예약된 미팅·회사명을 같은 크기로 (2026-09-03 belie) */}
+      <SaveConfirmModal
+        open={confirmOpen && !moveOpen}
+        date={date}
+        slots={newSlots}
+        draft={draft}
+        saving={saveMetrics.isPending || appendMeeting.isPending}
+        onFix={() => setMoveOpen(true)}
+        onSave={() => { setConfirmOpen(false); handleSave(); }}
+        onClose={() => setConfirmOpen(false)}
+      />
+
+      {moveOpen && (
+        <RecordMoveModal
+          open
+          fromDate={date}
+          candidates={moveCandidates}
+          draft={draft}
+          onBack={() => setMoveOpen(false)}
+          onApply={(d) => { void applyMove(d); }}
+        />
+      )}
 
       {toast && (
         <div className="fixed bottom-[152px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
