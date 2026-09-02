@@ -28,6 +28,14 @@ export {
   type ChannelDailyRowMetrics,
 } from "./contact";
 
+// 기록 옮기기 — 하루치 지표를 다른 날짜·채널로 (2026-09-03 belie「잘못 적었어요」)
+export {
+  moveDailyMetrics,
+  type MoveDailyMetricsInput,
+  type MoveDailyMetricsResult,
+  type MoveMetricDeltas,
+} from "./daily-move";
+
 // 일정·계약 탭 유스케이스 (PR 03)
 export {
   loadWeekMeetings,

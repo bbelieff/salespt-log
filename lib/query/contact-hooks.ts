@@ -150,6 +150,35 @@ export function useSaveMetrics() {
   });
 }
 
+/** 기록 옮기기 — 하루치 지표를 다른 날짜·채널로. 미팅 행 이동은 별도 PATCH.
+ *  양쪽 날짜 캐시를 모두 무효화해야 옮긴 결과가 두 화면에 함께 보인다. */
+export interface MoveMetricsArgs {
+  from: { date: string; channel: Channel; metrics?: ChannelDailyRowMetrics };
+  to: { date: string; channel: Channel; metrics?: ChannelDailyRowMetrics };
+  deltas: { inflow?: number; contactProgress?: number };
+}
+export interface MoveMetricsResult {
+  ok: true;
+  from: ChannelDailyRowMetrics;
+  to: ChannelDailyRowMetrics;
+  applied: { inflow?: number; contactProgress?: number };
+}
+export function useMoveDailyMetrics() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: MoveMetricsArgs) =>
+      fetchJSON<MoveMetricsResult>(`/api/daily/move`, {
+        method: "POST",
+        body: JSON.stringify(args),
+      }),
+    onSuccess: (_, { from, to }) => {
+      qc.invalidateQueries({ queryKey: dayKey(from.date) });
+      if (to.date !== from.date) qc.invalidateQueries({ queryKey: dayKey(to.date) });
+      qc.invalidateQueries({ queryKey: ["week"] });
+    },
+  });
+}
+
 export function useAppendMeeting() {
   const qc = useQueryClient();
   return useMutation({
