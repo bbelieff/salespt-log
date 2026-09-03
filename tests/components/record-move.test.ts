@@ -13,8 +13,10 @@ import {
   describeDeltas,
   hasAnyRecord,
   hasMetricMove,
+  isChannelLocked,
   isDateLocked,
   isInflowLocked,
+  movesDate,
   isSamePlace,
   moveDeltas,
   MOVE_OPTIONS,
@@ -32,9 +34,23 @@ const M = (
   meetingReservation,
 });
 
-describe("네 선택지", () => {
-  it("네 개다 — 미팅만 / 묶음 / 숫자 전부 / 채널만", () => {
+describe("네 선택지 — 두 축 (2026-09-03 belie 정정)", () => {
+  it("네 개다 — 날짜 고치기 셋 + 채널 고치기 하나", () => {
     expect(MOVE_OPTIONS).toEqual(["meet", "part", "all", "chan"]);
+  });
+
+  it("★날짜를 고치는 셋은 채널을 못 바꾼다 — 채널은 맞다는 전제로 고른 선택지다", () => {
+    for (const k of ["meet", "part", "all"] as const) {
+      expect(movesDate(k)).toBe(true);
+      expect(isChannelLocked(k)).toBe(true);
+      expect(isDateLocked(k)).toBe(false);
+    }
+  });
+
+  it("★채널을 고치는 하나는 날짜를 못 바꾼다", () => {
+    expect(movesDate("chan")).toBe(false);
+    expect(isDateLocked("chan")).toBe(true);
+    expect(isChannelLocked("chan")).toBe(false);
   });
 
   it("「미팅만」은 숫자를 하나도 안 옮긴다", () => {
@@ -50,13 +66,14 @@ describe("네 선택지", () => {
     });
   });
 
-  it("「채널만」도 1씩 — 옮기는 양은 묶음과 같고 날짜만 잠긴다", () => {
+  it("★「채널 바꾸기」는 그 자리 숫자를 전부 옮긴다 — 일부만 옮기면 반쪽이 남는다", () => {
     const src = M(8, 3, 2, 2);
-    expect(moveDeltas("chan", src, false)).toEqual(moveDeltas("part", src, false));
-    expect(isDateLocked("chan")).toBe(true);
-    for (const k of ["meet", "part", "all"] as const) {
-      expect(isDateLocked(k)).toBe(false);
-    }
+    expect(moveDeltas("chan", src, false)).toEqual(moveDeltas("all", src, false));
+    expect(moveDeltas("chan", src, false)).toEqual({
+      inflow: 3,
+      contactProgress: 2,
+      meetingReservation: 2,
+    });
   });
 
   it("「숫자 전부」는 그 자리 값을 통째로 옮긴다", () => {
@@ -70,6 +87,7 @@ describe("네 선택지", () => {
   it("원본에 없는 지표는 건너뛴다 — 음수가 나올 수 없다", () => {
     expect(moveDeltas("part", M(0, 0, 1, 0), false)).toEqual({ contactProgress: 1 });
     expect(moveDeltas("all", M(5, 0, 0, 0), false)).toEqual({});
+    expect(moveDeltas("chan", M(5, 0, 0, 0), false)).toEqual({});
   });
 });
 
@@ -154,7 +172,32 @@ describe("★ 서버로 나가는 것 (소스 가드)", () => {
     );
   });
 
+  it("★「채널 바꾸기」는 그날 그 채널의 저장된 미팅도 함께 옮긴다", () => {
+    expect(hook).toContain('const wholeChannel = d.option === "chan"');
+    expect(hook).toContain("savedMeetings.filter");
+    expect(hook).toContain("partial: { channel: d.to.channel }");
+  });
+
   it("같은 자리로는 못 보낸다", () => {
     expect(api).toContain("from.date === to.date && from.channel === to.channel");
+  });
+
+  it("★팝업 옆 빈 곳을 누르면 저장 누르기 전으로 돌아간다", () => {
+    const confirmModal = readFileSync(
+      "app/(app)/contact/_components/SaveConfirmModal.tsx",
+      "utf8",
+    );
+    const moveModal = readFileSync(
+      "app/(app)/contact/_components/RecordMoveModal.tsx",
+      "utf8",
+    );
+    const page = readFileSync("app/(app)/contact/page.tsx", "utf8");
+    expect(confirmModal).toContain("onClick={onClose}");
+    expect(moveModal).toContain("onClick={onDismiss}");
+    // 이동 팝업의 바깥 클릭은 확인 화면까지 함께 닫아야 「저장 누르기 전」이 된다.
+    expect(page).toContain("setMoveOpen(false); setConfirmOpen(false);");
+    // 안쪽을 눌렀을 때 닫히면 안 된다.
+    expect(moveModal).toContain("onClick={(e) => e.stopPropagation()}");
+    expect(confirmModal).toContain("onClick={(e) => e.stopPropagation()}");
   });
 });

@@ -20,6 +20,7 @@ import { useDay } from "@/query/contact-hooks";
 import {
   describeDeltas,
   hasAnyRecord,
+  isChannelLocked,
   isDateLocked,
   isInflowLocked,
   isSamePlace,
@@ -54,6 +55,8 @@ interface Props {
   /** 화면 draft — 저장 안 한 입력까지 포함한 지금 숫자. */
   draft: Record<Channel, ChannelDailyRowMetrics>;
   onBack: () => void;
+  /** 팝업 옆 빈 곳 클릭 — 저장 누르기 전으로 되돌아간다(확인 화면도 함께 닫힘). */
+  onDismiss: () => void;
   onApply: (decision: MoveDecision) => void;
 }
 
@@ -64,40 +67,55 @@ const CHIP_BG: Record<Channel, string> = {
   "콜·지·기·소": "bg-violet-100 text-violet-700",
 };
 
+/** 선택지를 두 묶음으로 나눠 보여준다 — 무엇을 잘못했는지부터 고르게 한다. */
+const GROUPS: { head: string; sub: string; keys: MoveOption[] }[] = [
+  {
+    head: "날짜를 잘못 적었어요",
+    sub: "채널은 맞아요 · 옮길 날짜를 다음 화면에서 골라요",
+    keys: ["meet", "part", "all"],
+  },
+  {
+    head: "채널을 잘못 골랐어요",
+    sub: "날짜는 맞아요 · 옮길 채널을 다음 화면에서 골라요",
+    keys: ["chan"],
+  },
+];
+
 const OPTION_TEXT: Record<MoveOption, { title: string; when: React.ReactNode }> = {
   meet: {
-    title: "미팅만 옮기기",
+    title: "이 미팅예약만",
     when: (
       <>
-        <b>숫자는 맞는데 미팅 카드만 엉뚱한 자리에 걸렸을 때.</b> 유입·컨택진행·미팅예약
-        숫자는 지금 자리에 그대로 남고, 미팅 한 건만 옮겨가요.
+        <b>미팅 날짜만 다른 날에 걸렸을 때.</b> 유입·컨택진행·미팅예약 숫자는 지금 자리에
+        그대로 두고, 이 미팅 한 건만 옮겨가요.
       </>
     ),
   },
   part: {
-    title: "이 미팅과 관련지표들 묶음 옮기기",
+    title: "이 미팅예약과 관련된 유입·컨택·예약 1씩",
     when: (
       <>
-        <b>이 미팅 하나를 통째로 잘못 적었을 때.</b> 미팅 카드와 함께 유입·컨택진행을{" "}
+        <b>이 미팅 하나를 통째로 다른 날에 적었을 때.</b> 미팅 카드와 함께 유입·컨택진행을{" "}
         <b>1씩</b> 데려가요. 가장 많이 쓰는 선택지예요.
       </>
     ),
   },
   all: {
-    title: "기록된 날짜＋채널의 숫자 전부 옮기기",
+    title: "이 날의 컨택관리 수치 전부",
     when: (
       <>
-        <b>그날 그 채널로 한 일을 통째로 다른 날에 적었을 때.</b> 그 자리 숫자가 전부
-        빠져나가고 이 미팅도 함께 가요. 그날 다른 미팅이 있으면 그건 남으니 확인하세요.
+        <b>그날 하루치를 통째로 다른 날에 적었을 때.</b> 그 자리 유입·컨택진행·미팅예약이
+        전부 빠져나가고 이 미팅도 함께 가요.
       </>
     ),
   },
   chan: {
-    title: "같은 날짜에서 채널만 바꾸기",
+    title: "이 기록의 채널 바꾸기",
     when: (
       <>
-        <b>날짜는 맞는데 채널을 잘못 골랐을 때.</b> 날짜는 그대로 두고 채널만 바꿔요 — 미팅
-        카드와 그 몫 1씩이 새 채널로 옮겨가요.
+        <b>알고 보니 현수막이었거나 콜·지·기·소였을 때</b>(혹은 그 반대). 날짜는 그대로 두고
+        <b> 그날 그 채널로 적은 기록 전체</b>가 새 채널로 넘어가요 — 숫자도, 미팅 카드도 함께.
+        일부만 옮기면 반쪽이 남아 어느 쪽도 맞지 않거든요.
       </>
     ),
   },
@@ -111,6 +129,7 @@ export default function RecordMoveModal({
   candidates,
   draft,
   onBack,
+  onDismiss,
   onApply,
 }: Props) {
   const needsPick = candidates.length > 1;
@@ -130,6 +149,7 @@ export default function RecordMoveModal({
   }, [fromDate]);
 
   const dateLocked = option ? isDateLocked(option) : false;
+  const chanLocked = option ? isChannelLocked(option) : false;
   const targetDate = dateLocked ? fromDate : toDate;
   // 옮길 자리에 이미 뭐가 적혀 있는지 — 다른 날짜일 때만 서버에서 확인한다.
   const targetDay = useDay(step === "where" && targetDate !== fromDate ? targetDate : "");
@@ -171,8 +191,12 @@ export default function RecordMoveModal({
   const to = formatKoreanDate(targetDate);
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/45 p-4">
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/45 p-4"
+      onClick={onDismiss}
+    >
       <div
+        onClick={(e) => e.stopPropagation()}
         className="flex max-h-[92vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
         role="dialog"
         aria-modal="true"
@@ -257,7 +281,13 @@ export default function RecordMoveModal({
                 </div>
               </div>
 
-              {MOVE_OPTIONS.map((k) => (
+              {GROUPS.map((g) => (
+                <div key={g.head} className="mb-3 last:mb-0">
+                  <p className="mb-1.5 text-[11px] font-bold leading-tight text-gray-500">
+                    {g.head}
+                    <span className="block text-[10px] font-semibold text-gray-400">{g.sub}</span>
+                  </p>
+                  {g.keys.map((k) => (
                 <div
                   key={k}
                   onClick={() => {
@@ -299,6 +329,8 @@ export default function RecordMoveModal({
                     </p>
                   )}
                 </div>
+                  ))}
+                </div>
               ))}
             </>
           )}
@@ -308,16 +340,18 @@ export default function RecordMoveModal({
               <div className="mb-3">
                 <span className="mb-1.5 block text-[10px] font-bold tracking-wide text-gray-400">
                   채널
+                  {chanLocked ? " — 채널은 맞으니 그대로 둬요" : ""}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {CHANNEL_ORDER.map((c) => (
                     <button
                       key={c}
                       type="button"
+                      disabled={chanLocked}
                       onClick={() => setToChannel(c)}
                       className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${CHIP_BG[c]} ${
                         c === toChannel ? "ring-2 ring-slate-900" : "opacity-40"
-                      }`}
+                      } ${chanLocked && c !== toChannel ? "hidden" : ""}`}
                     >
                       {c}
                     </button>
@@ -328,18 +362,19 @@ export default function RecordMoveModal({
               <div className="mb-3">
                 <span className="mb-1.5 block text-[10px] font-bold tracking-wide text-gray-400">
                   기록하는 날짜
-                  {dateLocked ? " — 이 선택지는 날짜를 안 바꿔요" : ""}
+                  {dateLocked ? " — 날짜는 맞으니 그대로 둬요" : ""}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {weekDates.map((d) => {
                     const k = formatKoreanDate(d);
+                    if (dateLocked && d !== targetDate) return null;
                     return (
                       <button
                         key={d}
                         type="button"
                         disabled={dateLocked}
                         onClick={() => setToDate(d)}
-                        className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40 ${
+                        className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-60 ${
                           d === targetDate
                             ? "bg-slate-900 text-white"
                             : "bg-gray-200 text-gray-600"
@@ -361,7 +396,7 @@ export default function RecordMoveModal({
                   {toChannel} {to.label}
                 </b>
                 <br />
-                미팅 1건
+                {option === "chan" ? "그날 이 채널 기록 전부" : "미팅 1건"}
                 {describeDeltas(deltas) ? ` · ${describeDeltas(deltas)}` : " (숫자는 그대로)"}
               </p>
 

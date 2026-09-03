@@ -18,7 +18,12 @@
 
 import type { Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
-import type { useAppendMeeting, useMoveDailyMetrics } from "@/query/contact-hooks";
+import type {
+  useAppendMeeting,
+  useMoveDailyMetrics,
+  usePatchMeeting,
+} from "@/query/contact-hooks";
+import type { Meeting } from "@/types";
 import type { NewSlot } from "../_components/MeetingSlotItem";
 import type { MoveCandidate, MoveDecision } from "../_components/RecordMoveModal";
 import { isSlotComplete } from "../_components/SaveConfirmModal";
@@ -30,7 +35,10 @@ interface Deps {
   draft: Record<Channel, ChannelDailyRowMetrics>;
   newSlots: NewSlot[];
   appendMeeting: ReturnType<typeof useAppendMeeting>;
+  patchMeeting: ReturnType<typeof usePatchMeeting>;
   moveMetrics: ReturnType<typeof useMoveDailyMetrics>;
+  /** 그날 이미 저장된 미팅 — 「채널 바꾸기」는 이것들도 함께 데려간다. */
+  savedMeetings: Meeting[];
   setNewSlots: React.Dispatch<React.SetStateAction<NewSlot[]>>;
   setDraft: React.Dispatch<React.SetStateAction<Record<Channel, ChannelDailyRowMetrics>>>;
   setActiveChannel: (c: Channel) => void;
@@ -43,7 +51,7 @@ export function useRecordMove(deps: Deps): {
   applyMove: (d: MoveDecision) => Promise<void>;
 } {
   const {
-    date, draft, newSlots, appendMeeting, moveMetrics,
+    date, draft, newSlots, appendMeeting, patchMeeting, moveMetrics, savedMeetings,
     setNewSlots, setDraft, setActiveChannel, onDone, showToast,
   } = deps;
 
@@ -60,7 +68,16 @@ export function useRecordMove(deps: Deps): {
     if (!slot) return;
     const crossDate = d.to.date !== date;
     const wantsMetrics = (d.deltas.inflow ?? 0) > 0 || (d.deltas.contactProgress ?? 0) > 0;
+    // 「채널 바꾸기」는 그 자리 기록이 통째로 다른 채널 몫이라는 뜻 — 그날 그 채널의
+    // **대기 슬롯도 저장된 미팅도 전부** 따라가야 한다. 일부만 옮기면 숫자와 카드가 어긋난다.
+    const wholeChannel = d.option === "chan";
+    const alsoSaved = wholeChannel
+      ? savedMeetings.filter((m) => m.예약일 === date && m.channel === slot.channel)
+      : [];
     try {
+      for (const m of alsoSaved) {
+        await patchMeeting.mutateAsync({ date, id: m.id, partial: { channel: d.to.channel } });
+      }
       if (crossDate) {
         await appendMeeting.mutateAsync({
           date: d.to.date,
@@ -69,7 +86,11 @@ export function useRecordMove(deps: Deps): {
         setNewSlots((prev) => prev.filter((x) => x.tempId !== d.key));
       } else {
         setNewSlots((prev) =>
-          prev.map((x) => (x.tempId === d.key ? { ...x, channel: d.to.channel } : x)),
+          prev.map((x) =>
+            x.tempId === d.key || (wholeChannel && x.channel === slot.channel)
+              ? { ...x, channel: d.to.channel }
+              : x,
+          ),
         );
       }
       if (wantsMetrics) {
@@ -94,7 +115,9 @@ export function useRecordMove(deps: Deps): {
       showToast(
         crossDate
           ? `${d.to.channel} ${fmtMD(parseISO(d.to.date))}로 옮겨 저장했어요`
-          : `${d.to.channel}로 옮겼어요`,
+          : wholeChannel
+            ? `${d.to.channel}로 바꿨어요${alsoSaved.length ? ` · 미팅 ${alsoSaved.length + 1}건 함께` : ""}`
+            : `${d.to.channel}로 옮겼어요`,
       );
     } catch (e) {
       onDone(false);
