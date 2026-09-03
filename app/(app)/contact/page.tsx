@@ -297,7 +297,8 @@ export default function ContactPage() {
   });
 
   const { moveCandidates, applyMove } = useRecordMove({
-    date, draft, newSlots, appendMeeting, moveMetrics,
+    date, draft, newSlots, appendMeeting, patchMeeting, moveMetrics,
+    savedMeetings: dayQuery.data?.meetings ?? [],
     setNewSlots, setDraft, setActiveChannel,
     onDone: (reopen) => { setMoveOpen(false); setConfirmOpen(reopen); },
     showToast,
@@ -440,6 +441,7 @@ export default function ContactPage() {
           candidates={moveCandidates}
           draft={draft}
           onBack={() => setMoveOpen(false)}
+          onDismiss={() => { setMoveOpen(false); setConfirmOpen(false); }}
           onApply={(d) => { void applyMove(d); }}
         />
       )}

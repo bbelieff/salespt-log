@@ -33,7 +33,16 @@ export const MOVABLE_METRICS: readonly MovableMetric[] = [
 /** 콜·지·기·소 — 유입이 파생값인 유일한 채널(ADR-0029). */
 export const DERIVED_INFLOW_CHANNEL: Channel = "콜·지·기·소";
 
-/** 네 선택지. UI 문구는 컴포넌트가, 「무엇이 움직이나」는 여기가 정한다. */
+/**
+ * 네 선택지 — **두 축**이다(2026-09-03 belie 정정).
+ *
+ *   ① 날짜를 잘못 적었다 (채널은 맞다) → `meet` · `part` · `all` 중 얼마나 옮길지 고른다
+ *   ② 채널을 잘못 골랐다 (날짜는 맞다) → `chan` 하나뿐. 「알고 보니 현수막이었다」 같은 경우라
+ *      그 자리 기록이 통째로 다른 채널 것이다 — 얼마나 옮길지 고를 게 없다.
+ *
+ * 그래서 ①은 **채널을 못 바꾸고**, ②는 **날짜를 못 바꾼다**. 넷 다 아무 데나 보낼 수 있게
+ * 두면 「무엇을 고쳤는지」가 흐려지고, 한 번에 둘 다 틀렸다고 가정하는 셈이 된다.
+ */
 export type MoveOption = "meet" | "part" | "all" | "chan";
 
 export const MOVE_OPTIONS: readonly MoveOption[] = ["meet", "part", "all", "chan"] as const;
@@ -42,9 +51,14 @@ export const MOVE_OPTIONS: readonly MoveOption[] = ["meet", "part", "all", "chan
 export const MOVE_OPTION_LABEL: Record<MoveOption, string> = {
   meet: "미팅만",
   part: "이 미팅 묶음",
-  all: "숫자 전부",
-  chan: "채널만",
+  all: "그날 전부",
+  chan: "채널 바꾸기",
 };
+
+/** 이 선택지가 고치는 것 — 화면이 무엇을 고르게 할지(날짜 vs 채널)를 이걸로 정한다. */
+export function movesDate(option: MoveOption): boolean {
+  return option !== "chan";
+}
 
 export interface MovePlace {
   date: string;
@@ -56,9 +70,14 @@ export function isInflowLocked(from: Channel, to: Channel): boolean {
   return from === DERIVED_INFLOW_CHANNEL || to === DERIVED_INFLOW_CHANNEL;
 }
 
-/** 「같은 날짜에서 채널만 바꾸기」는 날짜를 못 고른다 — 그게 이 선택지의 뜻이다. */
+/** 「채널을 잘못 골랐다」는 날짜를 안 건드린다 — 그게 이 선택지의 뜻이다. */
 export function isDateLocked(option: MoveOption): boolean {
   return option === "chan";
+}
+
+/** 「날짜를 잘못 적었다」 셋은 채널을 안 건드린다 — 채널은 맞다는 전제로 고른 선택지다. */
+export function isChannelLocked(option: MoveOption): boolean {
+  return option !== "chan";
 }
 
 /** 옮길 데가 지금 자리와 같으면 옮길 게 없다. */
@@ -70,8 +89,10 @@ export function isSamePlace(from: MovePlace, to: MovePlace): boolean {
  * from 에서 **빼고** to 에 **더할** 양(항상 0 이상).
  *
  * - `meet` — 숫자는 안 건드린다(미팅 카드만 옮김)
- * - `part` · `chan` — 이 미팅 몫 **1씩**. 원본에 없으면(0) 그 지표는 건너뛴다
- * - `all` — 그 자리 숫자 **전부**
+ * - `part` — 이 미팅 몫 **1씩**. 원본에 없으면(0) 그 지표는 건너뛴다
+ * - `all` · `chan` — 그 자리 숫자 **전부**.
+ *   `chan` 이 전부인 이유: 「알고 보니 현수막이었다」면 그날 그 채널로 적은 게 통째로 다른
+ *   채널 몫이다. 일부만 옮기면 반쪽이 남아 어느 쪽도 맞지 않는다.
  *
  * 원본 값으로 clamp 하므로 음수가 되는 조합이 나올 수 없다.
  */
@@ -86,7 +107,7 @@ export function moveDeltas(
     if (key === "inflow" && inflowLocked) continue;
     const have = Math.max(0, source[key] ?? 0);
     if (have === 0) continue;
-    out[key] = option === "all" ? have : Math.min(1, have);
+    out[key] = option === "part" ? Math.min(1, have) : have;
   }
   return out;
 }
