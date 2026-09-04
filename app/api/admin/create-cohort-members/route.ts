@@ -33,6 +33,7 @@ import {
   readCourseDateCells,
   type CourseDateCells,
 } from "@/repo/course-dates";
+import { writeProfile } from "@/repo/sales";
 import {
   computeGraduationISO,
   isValidISODate,
@@ -303,6 +304,26 @@ async function POST_handler(req: Request) {
       // 실패해도 생성은 성공이므로 흡수하되, 결과는 응답 dates[] 로 **화면에 올린다**(로그만 남기고
       // 조용히 넘어가다 개막 후에야 발견된 사고 2회 — 연습용2·10기 6명).
       if (plan.action === "create") {
+        // ★기수·이름(B3:C3) 도장 — 날짜(O1/O2)와 **같은 이유**로 필요하다(2026-09-04 사고).
+        // 복제본의 B3 에는 템플릿(8기 사본)의 기수가, C3 에는 남의 이름 또는 빈값이 딸려온다.
+        // B3 는 기수의 **정본**(sheet-structure.md §6 — registry B 열은 deprecated)이라,
+        // 안 덮으면 11기 수강생이 앱에서 「8기」로 보인다. 클레임 경로는 이걸 못 고친다 —
+        // 사전등록 행에 이미 spreadsheetId 가 있으면 writeProfile 을 건너뛰기 때문
+        // (lib/service/auth.ts `if (!existingSheetId && ...)`). 그래서 **여기서** 찍어야 한다.
+        // 실패해도 생성 자체는 성공 — 날짜와 같은 방침으로 흡수하고 로그만 남긴다.
+        //
+        // 아레나는 제외 — `create-arena-members` 가 **이미** 같은 처리를 한다
+        // (그 라우트 224줄, 주석까지 동일: "claim 시 writeProfile skip 되므로 여기서").
+        // 라벨 모양도 다르다(여기 parsed.label 은 "A2", 아레나가 쓰는 건 "A2-6기") —
+        // 숫자 기수만 찍는다.
+        try {
+          if (parsed.type === "cohort") await writeProfile(newSheetId, parsed.label, name);
+        } catch (e) {
+          console.warn(
+            `[create-cohort-members] B3:C3 기수·이름 기록 실패 — ${parsed.label} ${name}`,
+            e instanceof Error ? e.message : e,
+          );
+        }
         let written: string[] = [];
         let reason = "";
         if (courseStartISO) {
