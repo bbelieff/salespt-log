@@ -205,7 +205,7 @@ const WHITELIST: Record<string, Reason> = {
   "lib/repo/carryover.ts": "append-제외",
 
   // 시트 전용 기능 — DB 에 대응 개념이 없다(설계상 영구 시트, "재이관" 대상 아님).
-  "lib/repo/setup-formulas.ts": "시트전용기능", // 시트 수식 설치/제거(DB엔 수식이 없다)
+  // setup-formulas.ts 는 BBE-69 S1(#799)로 폐기 — 화이트리스트에서도 제거.
   "lib/repo/dashboard.ts": "시트전용기능", // CLAUDE.md: "대시보드는 읽기전용, 시트 수식이 계산 — 재구현 X"
 
   // 레지스트리 탭(개인 시트 아님) — 소량·저빈도 admin 관리 컬렉션, 미전환.
