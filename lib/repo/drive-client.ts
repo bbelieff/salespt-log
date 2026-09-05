@@ -7,7 +7,7 @@
  */
 import { google, type drive_v3 } from "googleapis";
 import { serviceAccount, authConfig, adminDriveRefreshToken } from "@/config";
-import { pickSheetFromCandidates, filterSheetsByTokens } from "./sheet-title-match";
+import { pickSheetFromCandidates } from "./sheet-title-match";
 import { shareWithServiceAccount } from "./drive-sa-share";
 
 let cached: drive_v3.Drive | null = null;
@@ -274,73 +274,6 @@ export async function findSheetByNameContainsAll(
       JSON.stringify({ tokens: clean, candidates: candidates.length, picked: !!picked }),
   );
   return picked;
-}
-
-/**
- * **폴더 트리**(parentFolderId 기준 부모범위 BFS)에서 토큰을 모두 포함하는 스프레드시트
- * enumerate (read-only). 8기 등 레지스트리 미등록 시트 ID 자동 발견 → by-id 수식 설치용.
- *
- *   - `'X' in parents` 부모범위 BFS (기수폴더 > 이름폴더 > 시트), 깊이 MAX_DEPTH(3) 제한.
- *     **공유 드라이브 + 소유자 있는 일반 공유 폴더(Shared with me, driveId 없음) 모두 동작**
- *     — corpora/driveId 의존 제거(2026-06: 일반 폴더는 내부 시트가 corpus 검색에 안 잡힘).
- *   - supportsAllDrives + includeItemsFromAllDrives. corpora 미지정(allDrives 회귀 금지).
- *   - JS 에서 filterSheetsByTokens 재검증(기수 숫자 경계 "8기"≠"18기" 가드 포함).
- *   - 폴더가 SA 에 미공유면 빈 결과(접근 불가).
- */
-export async function listSheetsInDriveByTokens(
-  parentFolderId: string,
-  tokens: string[],
-): Promise<{ id: string; name: string }[]> {
-  const clean = tokens.map((t) => t.trim()).filter(Boolean);
-  if (clean.length === 0) return [];
-  const drive = driveClient();
-  // 부모범위 BFS 트리워크 (폴더 → 하위 이름폴더 → 시트). My Drive 공유 폴더는
-  // 내부 시트가 corpus/driveId 검색에 안 잡혀(2026-06 진단), 부모범위 `'X' in parents`
-  // 만이 견고. 공유 드라이브에도 동일 동작(supportsAllDrives+includeItemsFromAllDrives).
-  const FOLDER = "application/vnd.google-apps.folder";
-  const SHEET = "application/vnd.google-apps.spreadsheet";
-  const MAX_DEPTH = 3; // 기수폴더(0)>이름폴더(1)>시트면 충분 — 안전 여유 3.
-  const candidates: { id: string; name: string }[] = [];
-  const queue: { id: string; depth: number }[] = [{ id: parentFolderId, depth: 0 }];
-  const seen = new Set<string>();
-  let folderBudget = 300; // runaway 방지 상한.
-  while (queue.length > 0 && folderBudget-- > 0) {
-    const { id: folderId, depth } = queue.shift()!;
-    if (seen.has(folderId)) continue;
-    seen.add(folderId);
-    let pageToken: string | undefined;
-    do {
-      const res = await drive.files.list({
-        q: `'${folderId.replace(/'/g, "\\'")}' in parents and trashed = false`,
-        fields: "nextPageToken, files(id, name, mimeType)",
-        pageSize: 200,
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-        pageToken,
-      });
-      for (const f of res.data.files ?? []) {
-        if (!f.id) continue;
-        // 하위 폴더는 깊이 한도 내에서만 더 내려감(업체관리 등 깊은 트리 과탐색 방지).
-        if (f.mimeType === FOLDER) {
-          if (depth + 1 < MAX_DEPTH) queue.push({ id: f.id, depth: depth + 1 });
-        } else if (f.mimeType === SHEET && typeof f.name === "string")
-          candidates.push({ id: f.id, name: f.name });
-      }
-      pageToken = res.data.nextPageToken ?? undefined;
-    } while (pageToken);
-  }
-  const matched = filterSheetsByTokens(candidates, clean);
-  console.warn(
-    "[install-by-folder] listSheetsInDriveByTokens " +
-      JSON.stringify({
-        parentFolderId,
-        foldersWalked: seen.size,
-        tokens: clean,
-        candidates: candidates.length,
-        matched: matched.length,
-      }),
-  );
-  return matched;
 }
 
 /**

@@ -5,8 +5,6 @@
  * 일반 기수 = 피드백업체 폴더(Drive 연동 시 stamp). 빈값이면 명확한 에러.
  * 파일 = `업체정보_{업체명}.txt` 업체당 1본 덮어쓰기.
  */
-import { findUserByEmail } from "@/repo/users";
-import { upsertTxtInFolder } from "@/repo/drive-txt";
 import type { CompanyInfo } from "@/types";
 
 // 키 → 표시 라벨 (CompanyInfoEditor 와 동일 표기, field-grid 2026-06-11 확정).
@@ -133,28 +131,4 @@ export function classifyDriveAuthError(
 /** TXT 파일명 — 업체당 1본 키. */
 export function companyInfoTxtFileName(업체명: string): string {
   return `업체정보_${업체명.trim()}.txt`;
-}
-
-/** 추출 실행 — 사용자 O 폴더에 1본 덮어쓰기. 반환 = 링크 + 갱신 여부. */
-export async function exportCompanyInfoTxt(
-  email: string,
-  data: { 업체명: string; 업체정보: CompanyInfo },
-): Promise<{ webViewLink: string; updated: boolean }> {
-  const user = await findUserByEmail(email);
-  if (!user) throw new Error(`[company-info-txt] 등록되지 않은 사용자: ${email}`);
-  const folderId = (user.feedbackFolderId ?? "").trim();
-  if (!folderId) {
-    throw new Error(
-      "업체관리(피드백업체) 폴더가 연결되어 있지 않습니다 — Drive 연동 후 사용하세요.",
-    );
-  }
-  // 추출시각 — KST 사람이 읽는 형식 (메모장 가독, §3-3)
-  const now = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).slice(0, 16);
-  const content = formatCompanyInfoTxt(data.업체명, data.업체정보, now);
-  const r = await upsertTxtInFolder(
-    folderId,
-    companyInfoTxtFileName(data.업체명),
-    content,
-  );
-  return { webViewLink: r.webViewLink, updated: r.updated };
 }
