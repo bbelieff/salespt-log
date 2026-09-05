@@ -12,8 +12,9 @@
  *
  * ## 막는 것과 안 막는 것
  * - **덜 채운 미팅** → 저장만 잠근다. 숫자만 저장되고 미팅은 안 들어가면 어긋난 채 남는다.
- * - **미팅날짜 = 기록날짜** → 노란 칸으로 눈에만 띄게 한다. 당일 미팅은 실제로 있으므로
- *   판단은 수강생이 한다.
+ * - **미팅날짜 = 기록날짜** → **빨간 칸**(확인 필요)으로 띄운다. 막지는 않는다 — 당일 미팅은
+ *   실제로 있으므로 판단은 수강생이 한다. 노랑(못 채운 칸)과 **색을 나눈 이유**: 둘 다 노랑이면
+ *   「채우면 되는 것」과 「맞는지 봐야 하는 것」이 섞여 안 읽힌다(2026-09-05 belie).
  */
 "use client";
 
@@ -63,36 +64,63 @@ interface Props {
 }
 
 /** 라벨+값 한 칸. 네 요소가 전부 이 한 컴포넌트를 쓴다 = 크기가 어긋날 수 없다. */
+/**
+ * 칸 강조는 **두 종류**이고 색이 달라야 한다(2026-09-05 belie).
+ *   `warn`(노랑) — 아직 못 채운 칸. 채우면 없어진다.
+ *   `check`(빨강) — 기록일과 미팅예정일이 **같은 날**. 틀린 게 아니라 **확인이 필요한** 것.
+ * 둘 다 노랑이면 「채우면 되는 것」과 「맞는지 봐야 하는 것」이 섞여 안 읽힌다.
+ */
+type Mark = "none" | "warn" | "check";
+
+const MARK_BG: Record<Mark, string> = {
+  none: "bg-white",
+  warn: "bg-amber-50",
+  check: "bg-red-50",
+};
+const MARK_LABEL: Record<Mark, string> = {
+  none: "text-gray-400",
+  warn: "text-amber-700",
+  check: "text-red-700",
+};
+const MARK_VALUE: Record<Mark, string> = {
+  none: "text-gray-900",
+  warn: "text-amber-800",
+  check: "text-red-800",
+};
+
 function Cell({
   label,
   value,
   sub,
-  mark,
+  mark = "none",
+  note,
   valueClass,
 }: {
   label: string;
   value: string;
   sub?: string;
-  mark?: boolean;
+  mark?: Mark;
+  note?: string;
   valueClass?: string;
 }) {
   return (
-    <div className={`min-w-0 p-2.5 ${mark ? "bg-amber-50" : "bg-white"}`}>
-      <span
-        className={`block text-[10px] font-bold tracking-wide ${
-          mark ? "text-amber-700" : "text-gray-400"
-        }`}
-      >
+    <div className={`min-w-0 p-2.5 ${MARK_BG[mark]}`}>
+      <span className={`block text-[10px] font-bold tracking-wide ${MARK_LABEL[mark]}`}>
         {label}
       </span>
       <span
         className={`mt-0.5 block break-keep text-base font-bold leading-snug ${
-          valueClass ?? (mark ? "text-amber-800" : "text-gray-900")
+          valueClass ?? MARK_VALUE[mark]
         }`}
       >
         {value}
         {sub ? <span className="ml-1 text-sm text-gray-600">{sub}</span> : null}
       </span>
+      {note ? (
+        <span className={`mt-1 block text-[10px] font-bold leading-tight ${MARK_LABEL[mark]}`}>
+          {note}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -146,7 +174,8 @@ export default function SaveConfirmModal({
 
                 {mine.map((s, i) => {
                   const done = isSlotComplete(s);
-                  const flag = done && s.미팅날짜 === date;
+                  const sameDay = done && s.미팅날짜 === date;
+                  const mark: Mark = !done ? "warn" : sameDay ? "check" : "none";
                   const md = formatKoreanDate(s.미팅날짜);
                   return (
                     <div
@@ -157,12 +186,13 @@ export default function SaveConfirmModal({
                         label={`예약된 미팅${mine.length > 1 ? ` ${i + 1}` : ""}`}
                         value={done ? `${md.label} (${md.dow})` : "시간 미입력"}
                         sub={done ? s.미팅시간 : undefined}
-                        mark={flag || !done}
+                        mark={mark}
+                        note={sameDay ? "확인 필요 · 기록일과 미팅예정일 동일" : undefined}
                       />
                       <Cell
                         label="회사명"
                         value={done ? s.업체명.trim() : "비어 있음"}
-                        mark={flag || !done}
+                        mark={mark}
                       />
                     </div>
                   );
@@ -206,9 +236,9 @@ export default function SaveConfirmModal({
               미팅은 안 들어가요.
             </p>
           ) : sameDay.length > 0 ? (
-            <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-              <b>노란 칸 {sameDay.length}건이 기록하는 날짜와 같은 날</b>이에요. 오늘 만난 게
-              맞으면 그대로 저장하세요.
+            <p className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">
+              <b>빨간 칸 {sameDay.length}건은 확인이 필요해요</b> — 기록하는 날짜와 미팅
+              예정일이 같아요. 오늘 만난 게 맞으면 그대로 저장하세요.
             </p>
           ) : null}
         </div>
