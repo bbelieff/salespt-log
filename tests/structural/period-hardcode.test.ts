@@ -280,7 +280,6 @@ describe("G6: 수강생 데이터 쓰기 route 는 getWritableUserEmail 경유",
     "app/api/drive-link",
     "app/api/expenses",
     "app/api/expense-",
-    "app/api/setup", // 수강생 시트 수식 설치/제거 bulk-write (적대리뷰 확정 — 커버리지 갭)
   ];
   // company-info/export: TXT 내보내기(읽기 파생) — 쓰기 게이트 비대상 (실측 2026-07-26).
   const EXEMPT = new Set(["app/api/company-info/export/route.ts"]);

@@ -18,7 +18,6 @@
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
-import TraineeDiagnoseButton from "./TraineeDiagnoseButton";
 
 /** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
  *  unknown 으로 받아 TraineeCard 가 dnd-kit 에 직접 의존 안 하게 차단. */
@@ -152,7 +151,6 @@ export default function TraineeCard({
   const isAssignedToTrainer =
     !!trainerEmailLc &&
     parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase());
-  const showReserveBtn = !viewOnly;
   const showSheetWebBtns = !viewOnly || isAssignedToTrainer;
 
   const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
@@ -195,12 +193,8 @@ export default function TraineeCard({
               </span>
               <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
             </div>
-            {(showReserveBtn || showSheetWebBtns) && (
+            {showSheetWebBtns && (
               <div className="flex shrink-0 items-center gap-1">
-                {showReserveBtn && u.spreadsheetId && (
-                  // 2026-05-16: 시트 진단 (admin only). 누적 룰 카탈로그.
-                  <TraineeDiagnoseButton email={u.email} name={u.name} />
-                )}
                 {/* 2026-05-17 [A5]: 카드별 유보버튼 제거 → 헤더 BulkReserveButton 으로 통합.
                     onReserve prop 은 컴파일 호환 위해 유지 (호출 측 영향 최소화). */}
                 {showSheetWebBtns && u.spreadsheetId && (

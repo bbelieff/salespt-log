@@ -17,8 +17,6 @@ import {
 } from "./AdminUserPickerSections";
 import { type PrepItem } from "./TraineePrepBulkForm";
 import UnifiedPrepCard from "./UnifiedPrepCard";
-import InstallFormulasButton from "./InstallFormulasButton";
-import InstallFormulasByIdButton from "./InstallFormulasByIdButton";
 import MigrateCacheButton from "./MigrateCacheButton";
 import BulkReserveButton from "./BulkReserveButton";
 
@@ -387,8 +385,6 @@ export default function AdminUserPicker({
                 }}
               />
               <MigrateCacheButton />
-              <InstallFormulasButton />
-              <InstallFormulasByIdButton />
             </div>
           )}
         </div>

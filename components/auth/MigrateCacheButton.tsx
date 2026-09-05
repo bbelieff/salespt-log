@@ -1,8 +1,6 @@
 /**
  * MigrateCacheButton — registry I~L 캐시 일괄 동기화 (헤더용 작은 버튼, PR B-3).
  *
- * InstallFormulasButton 과 동일한 패턴.
- *
  * 동작:
  *   1. [🔄 동기화] 클릭 → confirm
  *   2. POST /api/admin/migrate-registry-cache
