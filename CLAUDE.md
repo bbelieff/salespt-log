@@ -431,6 +431,32 @@ npx·node 해석이 깨진다(이미 반증된 함정).
 
 ---
 
+## 6.10 세션 연결 유지 — 「연결 해제됨」은 고장이 아니다 (2026-09-06)
+
+**무엇이 문제였나**: 폰 「코드」 목록의 세션 대부분이 `연결 해제됨` 으로 남아 있고, 밖에서
+되살릴 방법을 찾다 시간을 버렸다. 원인은 오해였다 — 💻 아이콘 세션은 **클라우드가 아니라
+내 PC 의 `claude` 프로세스**다(Remote Control). **창을 닫으면 수 초 내로 끊긴다. 설계다.**
+
+**세션을 열 때 정하는 것 (지침)**
+1. **먼저 고른다 — 로컬이냐 클라우드냐.** 내 PC 파일·워크트리·git 푸시가 필요하면 **원격 제어**,
+   나가 있는 동안 돌려둘 일·문서·PR 감시면 **클라우드 세션**(claude.ai/code). 클라우드는
+   PC 를 꺼도 살아있고 폰에서 그대로 이어받는다.
+2. **원격 제어면 자동 연결을 켠다** — `/config` → *Enable Remote Control for all sessions* = true
+   (또는 **내 PC 의** `~/.claude/settings.json` 에 `"remoteControlAtStartup": true`).
+   ⚠️ 레포의 `.claude/settings.json` 에 넣은 `true` 는 **무시된다** — 반드시 사용자 설정에.
+3. **이름을 붙인다** — `claude remote-control --name "<세션명>"`. 없으면 자동 이름이라 목록에서 못 찾는다.
+4. **창을 닫지 않는다.** VPS·장시간은 반드시 `tmux`/`screen` 안에서. 잠자기는 자동 복구되지만
+   `Ctrl+C`·창 닫기·재부팅은 복구되지 않는다.
+5. **처음 여는 PC 면 한 번**: `node scripts/ops/rc-doctor.mjs` (읽기 전용 진단 — API 키·프록시
+   주소·텔레메트리 차단 등 **연결을 아예 막는** 설정을 잡아 고치는 법까지 찍는다).
+
+**끊긴 세션 되살리기**: 4시간 안이면 같은 폴더에서 `claude remote-control --continue`,
+넘었으면 `claude --resume` 으로 대화를 되살린 뒤 `/remote-control`. **폰만으로는 불가능하다.**
+
+상세·사유 메시지별 조치 = `docs/playbooks/remote-control-sessions.md`.
+
+---
+
 ## 7. 이 하네스 자체의 관리
 
 이 파일과 `docs/`도 **하네스의 일부**다.

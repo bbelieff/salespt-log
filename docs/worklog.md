@@ -41,6 +41,21 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-06 · 하네스 · 폰 세션 「연결 해제됨」 규명 + 세션 개설 지침(§6.10)
+- 의도: belie 「폰 코드 목록 세션이 자꾸 연결 해제됨 — 이유와 밖에서 되살리는 법. 세션 열 때
+  지침으로 잡고 안 끊기게 보완.」
+- 한 것: 공식 문서 대조 실측 — 💻 세션은 클라우드가 아니라 **내 PC 의 `claude` 프로세스**
+  (Remote Control), 창 닫으면 수 초 내 오프라인(설계). 잠자기·순단은 자동 복구, 실질 원인 1위는
+  **터미널 창 닫기**. `docs/playbooks/remote-control-sessions.md`(원인 7·복구·예방 5·사유
+  메시지표) + `CLAUDE.md §6.10`(세션 열 때 5줄) + `scripts/ops/rc-doctor.mjs`(읽기 전용 진단,
+  OK/FAIL 양쪽 경로 실행 확인) 추가. 런타임 코드 무변경.
+- 결정: **폰만으로는 원격 제어 세션을 되살릴 수 없다** — 4h 내 `claude remote-control --continue`,
+  이후엔 `claude --resume` + `/remote-control`. 「밖에서도 살아있어야 하는 일」의 정답은 복구가
+  아니라 **클라우드 세션으로 여는 것**. 자동 연결(`remoteControlAtStartup`)은 레포에서 강제
+  불가 — 프로젝트 설정의 `true` 는 무시되므로 belie 의 `~/.claude/settings.json` 에만 넣는다.
+- 다음: belie 가 내 PC 에서 자동 연결 켜기(사람 손 필요한 유일한 항목) + 목록의 옛 세션 정리.
+- SoR: docs/plans/active/remote-control-session-continuity.md
+
 ### 2026-09-05 · 오케스트레이터(경영일지봇) · 온보딩 + PR #799 완주(#881) + 로컬 동기화
 - 의도: HANDOFF 문서 온보딩 → 로컬 171커밋 뒤처짐 확인 → 첫 세션 액션(#889 하트비트 취지)으로 방치 PR 판정
 - 한 것: git reset --hard origin/master(백업 완료, 469ed87→efdae94→#940 head), npm ci, check.sh PASS(167파일/1520테스트 전부 통과). PR #799(BBE-69 S1, 관리자 전용 시트진단·수식설치 도구 폐기) — mergeStateStatus CLEAN·충돌無 확인 후 머지(7fa7538c). 배포는 SSH 배너교환 타임아웃으로 2회 실패(exit 137, 사이트는 이전 릴리스로 무중단 서빙 유지) → 3회차 rerun success, health 200 실측. Issue #881에 판정 근거·완주 증거 코멘트.
