@@ -10,6 +10,8 @@
  *   - 회고노트 (자유 텍스트, 1행 = 1주차)
  */
 
+import { GUIDE_URL } from "./links";
+
 function required(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`환경변수 ${name} 가 비어있습니다. .env 를 확인하세요.`);
@@ -92,11 +94,14 @@ export const noticeImageFolderId = (): string =>
   "1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG";
 
 /**
- * 사용 가이드(노션 '웹에 게시' 공개 URL) — NEXT_PUBLIC 이라 클라 인라인.
- * 미설정이면 "" → 호출부가 버튼 자체를 렌더하지 않음(안전 가드, 하드코딩 금지).
+ * 사용 가이드 URL — 팝업·새소식·상단 헤더 **3곳**이 이 한 곳을 본다.
+ *
+ * 2026-09-07: 낡은 노션 → **네이버 카페 게시판**(정본은 `./links.ts` GUIDE_URL).
+ * env(`NEXT_PUBLIC_GUIDE_URL`)가 설정돼 있으면 그쪽이 이긴다 — 서버에서 급히 덮을
+ * 여지를 남긴 것. 둘 다 비면 "" → 호출부가 버튼 자체를 렌더하지 않는다(안전 가드).
  */
 export const guideUrl = (): string =>
-  (process.env.NEXT_PUBLIC_GUIDE_URL ?? "").trim();
+  (process.env.NEXT_PUBLIC_GUIDE_URL ?? "").trim() || GUIDE_URL;
 
 /**
  * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).
