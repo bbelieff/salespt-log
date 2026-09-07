@@ -35,9 +35,17 @@ describe("사용 가이드 목적지", () => {
     expect(guideUrl()).toBe(GUIDE_URL);
   });
 
-  it("env 가 있으면 그쪽이 이긴다 — 서버에서 급히 덮을 여지", () => {
-    process.env.NEXT_PUBLIC_GUIDE_URL = "https://example.com/emergency";
-    expect(guideUrl()).toBe("https://example.com/emergency");
+  it("★VPS 에 남은 옛 env 가 이기지 못한다 — 코드가 유일한 정본", () => {
+    // 2026-09-07: env 우선으로 뒀더니 VPS `.env` 의 옛 노션 주소가 조용히 이겨
+    // 배포하고도 카페로 안 갔다. 그 회귀를 막는다.
+    process.env.NEXT_PUBLIC_GUIDE_URL = "https://old.example.com/stale";
+    expect(guideUrl()).toBe(GUIDE_URL);
+  });
+
+  it("★소스에 env 참조가 남아 있지 않다", () => {
+    const cfg = readFileSync("lib/config/index.ts", "utf8");
+    const at = cfg.indexOf("export const guideUrl");
+    expect(cfg.slice(at, at + 200)).not.toContain("process.env");
   });
 
   it("세 곳이 같은 한 곳을 본다 — 팝업·새소식·상단 헤더", () => {
