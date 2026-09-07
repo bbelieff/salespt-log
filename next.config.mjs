@@ -16,6 +16,8 @@ const nextConfig = {
 
 // Sentry wrapper — DSN 미설정 시에도 무해.
 // 소스맵 업로드는 SENTRY_AUTH_TOKEN 있을 때만 (현재 미설정 — 추후 추가 가능)
+const sentryUploadEnabled = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
 export default withSentryConfig(nextConfig, {
   silent: true,
   org: "salespt",
@@ -25,4 +27,18 @@ export default withSentryConfig(nextConfig, {
   disableLogger: true,
   // 인증 토큰 없으면 업로드 스킵 (빌드 실패 방지)
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  // ★빌드 OOM 방지 (2026-09-07 배포 실패) — 토큰이 없으면 소스맵을 **아예 만들지 않는다**.
+  //
+  // 무슨 일이 있었나: VPS 빌드가 `--max-old-space-size=2048` 에서 힙을 터뜨렸다
+  //   (FATAL: Reached heap limit → JsonStringify). 힙을 4096 으로 올리는 건 이 레포에서
+  //   이미 반증된 처방이다 — RAM 3.8GB 라 OOM-killer 가 프로세스를 죽여 BUILD_ID 누락
+  //   silent failure 를 냈다(2026-05-13). 그래서 **한도를 올리는 대신 일을 줄인다.**
+  //
+  // 왜 안전한가: 토큰이 없으면 소스맵은 **업로드되지 않는다**. `hideSourceMaps: true` 라
+  // 사용자에게 제공되지도 않는다. 즉 만들어서 버리고 있었다 — 끊어도 **잃는 관측성이 0**이다
+  // (Sentry 스택트레이스는 지금도 minified 다, 올라간 맵이 없으니까).
+  //
+  // 자동 복원: SENTRY_AUTH_TOKEN 을 넣는 순간 다시 생성·업로드된다. 그때는 맵이 실제로
+  // 쓰이므로 메모리를 쓸 값어치가 있다. 그 시점에 빌드가 다시 터지면 그때 힙/스왑을 논한다.
+  sourcemaps: { disable: !sentryUploadEnabled },
 });
