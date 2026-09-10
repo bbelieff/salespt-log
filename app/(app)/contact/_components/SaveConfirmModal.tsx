@@ -18,6 +18,7 @@
  */
 "use client";
 
+import { useId, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useMeetingScheduleWeeks } from "@/query/contact-hooks";
@@ -124,6 +125,30 @@ function Cell({
   );
 }
 
+function CorrectionHelp() {
+  const id = useId();
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const expanded = hovered || pinned;
+  return (
+    <div className="mt-3 text-xs leading-relaxed text-gray-600"
+      onMouseLeave={() => setHovered(false)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPinned(false); }}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setHovered(false); setPinned(false); } }}>
+      <span>미팅시간, 회사명, 장소 등을 잘못 적었다면</span>
+      <button type="button" aria-label="미팅 정보 수정 방법" aria-expanded={expanded} aria-controls={id}
+        onMouseEnter={() => setHovered(true)}
+        onClick={() => { setPinned((value) => !value); setHovered(false); }}
+        className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full align-middle focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
+        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] font-bold">?</span>
+      </button>
+      <p id={id} hidden={!expanded} className="mt-1 rounded-lg bg-gray-50 p-2.5">
+        X로 이 창을 닫고 미팅 카드에서 수정하세요. 기록 날짜·채널을 옮기려면 [잘못 적었어요]에서 선택해요. 창을 닫아도 입력은 남고, [저장하기]를 누르기 전에는 저장되지 않아요.
+      </p>
+    </div>
+  );
+}
+
 export default function SaveConfirmModal({
   open,
   date,
@@ -221,7 +246,7 @@ export default function SaveConfirmModal({
             );
           })}
 
-          <p className="mt-3 text-xs leading-relaxed text-gray-600">시간·회사명만 잘못 썼다면 X로 이 창을 닫고 미팅 카드에서 수정하세요. 날짜·채널 이동은 [잘못 적었어요]에서 선택해요. 닫아도 입력은 남고 저장되지는 않아요.</p>
+          <CorrectionHelp />
           {conflicts.length > 0 && <div role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
             <b>같은 날짜·시간에 미팅이 겹쳐요. 일정을 확인하고 수정해주세요.</b>
             {conflicts.map((m) => <p key={m.id}>{m.미팅날짜} {m.미팅시간} · {m.업체명}</p>)}
