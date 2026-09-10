@@ -20,9 +20,10 @@ import type {
 } from "@/query/contact-hooks";
 import { createSaveCoalescer } from "@/util/save-coalesce";
 import type { NewSlot } from "../_components/MeetingSlotItem";
+import { missingSlotFields } from "./slot-validation";
 
 export function slotComplete(s: NewSlot): boolean {
-  return !!s.미팅날짜 && !!s.미팅시간 && !!s.업체명.trim() && !!s.장소.trim();
+  return missingSlotFields(s).length === 0;
 }
 
 /** 슬롯 → 04 업체관리 1행. `reservationDate` 가 예약일(B) = 기록하는 날짜.

@@ -26,6 +26,7 @@ import { meetingConflicts } from "../_lib/meeting-conflicts";
 import { fmtISO, friOf, parseISO } from "../_lib/week";
 import MetricComparison from "./MetricComparison";
 import type { NewSlot } from "./MeetingSlotItem";
+import { missingSlotFields } from "../_lib/slot-validation";
 
 /** 채널 4색(고정, components.md) — Tailwind 는 클래스를 **정적으로** 훑어 만든다.
  *  `text-${color}-700` 처럼 조립하면 빌드 결과물에 그 클래스가 없어 색이 안 나온다. */
@@ -46,7 +47,7 @@ export function formatKoreanDate(iso: string): { label: string; dow: string } {
 }
 
 export function isSlotComplete(s: NewSlot): boolean {
-  return !!s.미팅날짜 && !!s.미팅시간 && !!s.업체명.trim() && !!s.장소.trim();
+  return missingSlotFields(s).length === 0;
 }
 
 interface Props {
@@ -255,8 +256,7 @@ export default function SaveConfirmModal({
           {checkFailed && <p role="alert" className="mt-2 text-xs text-red-700">기존 일정을 확인하지 못했어요. 창을 닫고 다시 시도해주세요.</p>}
           {unfilled.length > 0 ? (
             <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-              <b>{unfilled.length}건을 아직 못 채웠어요.</b> 지금 저장하면 숫자만 올라가고
-              미팅은 안 들어가요.
+              <b>{unfilled.length}건을 아직 못 채웠어요.</b> 필수 입력을 모두 채운 뒤 저장할 수 있어요.
             </p>
           ) : sameDay.length > 0 ? (
             <p className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">
@@ -269,11 +269,11 @@ export default function SaveConfirmModal({
         <div className="flex gap-2 border-t border-gray-100 px-4 py-3">
           <button
             type="button"
-            onClick={onFix}
-            disabled={slots.every((s) => !isSlotComplete(s))}
+            onClick={unfilled.length > 0 ? onClose : onFix}
+            disabled={saving}
             className="flex-1 rounded-lg bg-amber-100 py-3 text-[13px] font-bold text-amber-800 hover:bg-amber-200 disabled:bg-gray-100 disabled:text-gray-400"
           >
-            잘못 적었어요
+            {unfilled.length > 0 ? "입력 수정하기" : "잘못 적었어요"}
           </button>
           <button
             type="button"

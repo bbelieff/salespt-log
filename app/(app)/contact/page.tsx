@@ -304,6 +304,7 @@ export default function ContactPage() {
 
   /** 저장하기 → 확인 화면. 새 미팅이 0건이면 확인 없이 통과(숫자만 고친 경우 흐름 안 막음). */
   const requestSave = () => {
+    if (newSlots.some((s) => !slotComplete(s))) { showToast("미팅 카드의 필수 입력을 먼저 채워주세요."); return; }
     if (newSlots.length === 0) { handleSave(); return; }
     setConfirmOpen(true);
   };
@@ -414,6 +415,7 @@ export default function ContactPage() {
       </main>
 
       <SaveBar
+        incompleteCount={newSlots.filter((s) => !slotComplete(s)).length}
         pending={
           saveMetrics.isPending || appendMeeting.isPending || patchMeeting.isPending
         }
