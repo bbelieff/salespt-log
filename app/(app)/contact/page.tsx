@@ -29,12 +29,10 @@ import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
 import { formatMoney } from "@/lib/format/money";
-import SaveConfirmModal, { isSlotComplete } from "./_components/SaveConfirmModal";
-import RecordMoveModal, {
-  type MoveCandidate,
-  type MoveDecision,
-} from "./_components/RecordMoveModal";
+import SaveConfirmModal from "./_components/SaveConfirmModal";
+import RecordMoveModal from "./_components/RecordMoveModal";
 import { slotComplete, useContactSave } from "./_lib/use-contact-save";
+import RecordMoveReceipt from "./_components/RecordMoveReceipt";
 import { useRecordMove } from "./_lib/use-record-move";
 
 const TODAY_ISO = fmtISO(new Date());
@@ -296,7 +294,7 @@ export default function ContactPage() {
     setNewSlots, setMetricsTouched, setShowProductionHold, showToast,
   });
 
-  const { moveCandidates, applyMove } = useRecordMove({
+  const { moveCandidates, applyMove, saving: moving, error: moveError, receipt, clearReceipt } = useRecordMove({
     date, draft, newSlots, appendMeeting, patchMeeting, moveMetrics,
     savedMeetings: dayQuery.data?.meetings ?? [],
     setNewSlots, setDraft, setActiveChannel,
@@ -406,7 +404,7 @@ export default function ContactPage() {
 
         <MeetingSlotList
           slots={allSlots}
-          reservationDate={TODAY_ISO}
+          reservationDate={date}
           onPatchSaved={handlePatchSavedMeeting}
           onRemoveSaved={handleRemoveSavedMeeting}
           onChangeNew={updateNewSlot}
@@ -428,6 +426,8 @@ export default function ContactPage() {
         date={date}
         slots={newSlots}
         draft={draft}
+        savedMeetings={dayQuery.data.meetings}
+        savedChannels={dayQuery.data.channels}
         saving={saveMetrics.isPending || appendMeeting.isPending}
         onFix={() => setMoveOpen(true)}
         onSave={() => { setConfirmOpen(false); handleSave(); }}
@@ -442,9 +442,14 @@ export default function ContactPage() {
           draft={draft}
           onBack={() => setMoveOpen(false)}
           onDismiss={() => { setMoveOpen(false); setConfirmOpen(false); }}
+          saving={moving}
+          error={moveError}
+          incomplete={newSlots.some((s) => !slotComplete(s))}
           onApply={(d) => { void applyMove(d); }}
         />
       )}
+
+      {receipt && <RecordMoveReceipt receipt={receipt} onClose={clearReceipt} />}
 
       {toast && (
         <div className="fixed bottom-[152px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">

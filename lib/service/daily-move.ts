@@ -120,5 +120,12 @@ export async function moveDailyMetrics(
     >);
   }
 
-  return { from: nextFrom, to: nextTo, applied };
+  // saveContactMetrics가 H를 재계산하므로 입력 스냅샷을 응답하면 안 된다.
+  const sourceDay = await loadDay(email, from.date);
+  const targetDay = from.date === to.date ? sourceDay : await loadDay(email, to.date);
+  return {
+    from: sourceDay.channels[from.channel],
+    to: targetDay.channels[to.channel],
+    applied,
+  };
 }

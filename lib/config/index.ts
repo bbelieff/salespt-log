@@ -10,6 +10,8 @@
  *   - 회고노트 (자유 텍스트, 1행 = 1주차)
  */
 
+import { GUIDE_URL } from "./links";
+
 function required(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`환경변수 ${name} 가 비어있습니다. .env 를 확인하세요.`);
@@ -92,11 +94,21 @@ export const noticeImageFolderId = (): string =>
   "1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG";
 
 /**
- * 사용 가이드(노션 '웹에 게시' 공개 URL) — NEXT_PUBLIC 이라 클라 인라인.
- * 미설정이면 "" → 호출부가 버튼 자체를 렌더하지 않음(안전 가드, 하드코딩 금지).
+ * 사용 가이드 URL — 팝업·새소식·상단 헤더 **3곳**이 이 한 곳을 본다.
+ * 정본은 `./links.ts` 의 `GUIDE_URL` **하나뿐**이다.
+ *
+ * ## env 를 왜 안 보나 (2026-09-07, 같은 날 두 번째 교훈)
+ * 처음엔 `NEXT_PUBLIC_GUIDE_URL` 이 있으면 그쪽이 이기게 뒀다 — "서버에서 급히 덮을
+ * 여지"를 남긴다는 이유였다. 배포하고 보니 **VPS `.env` 에 남아 있던 옛 노션 주소가
+ * 조용히 이겨서** 카페로 안 갔다. 여지가 아니라 **함정**이었다.
+ *
+ * env 로 둘 이유도 애초에 없었다 — `NEXT_PUBLIC_*` 은 **빌드할 때 값이 박히므로**
+ * 서버에서 고쳐도 재배포가 필요하다. 서버에 들어가 고치고 재배포할 바엔 PR 한 줄이 빠르다.
+ * 즉 **긴급 수단으로서 이점이 0 이면서, 낡은 값이 조용히 이기는 위험만 있었다.**
+ *
+ * 주소를 바꾸려면 `links.ts` 한 줄을 고쳐라. 이력이 남고 되돌리기도 한 줄이다.
  */
-export const guideUrl = (): string =>
-  (process.env.NEXT_PUBLIC_GUIDE_URL ?? "").trim();
+export const guideUrl = (): string => GUIDE_URL;
 
 /**
  * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).

@@ -18,8 +18,13 @@
  */
 "use client";
 
-import { CHANNEL_ORDER, METRIC_LABEL, type Channel, type MetricKey } from "@/types";
+import { useId, useState } from "react";
+import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
+import { useMeetingScheduleWeeks } from "@/query/contact-hooks";
+import { meetingConflicts } from "../_lib/meeting-conflicts";
+import { fmtISO, friOf, parseISO } from "../_lib/week";
+import MetricComparison from "./MetricComparison";
 import type { NewSlot } from "./MeetingSlotItem";
 
 /** 채널 4색(고정, components.md) — Tailwind 는 클래스를 **정적으로** 훑어 만든다.
@@ -30,13 +35,6 @@ export const CHANNEL_TEXT: Record<Channel, string> = {
   현수막: "text-amber-700",
   "콜·지·기·소": "text-violet-700",
 };
-
-const METRIC_ORDER: readonly MetricKey[] = [
-  "production",
-  "inflow",
-  "contactProgress",
-  "meetingReservation",
-];
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -57,6 +55,8 @@ interface Props {
   date: string;
   slots: NewSlot[];
   draft: Record<Channel, ChannelDailyRowMetrics>;
+  savedMeetings?: Meeting[];
+  savedChannels?: Record<Channel, ChannelDailyRowMetrics>;
   saving: boolean;
   onFix: () => void;
   onSave: () => void;
@@ -125,16 +125,50 @@ function Cell({
   );
 }
 
+function CorrectionHelp() {
+  const id = useId();
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const expanded = hovered || pinned;
+  return (
+    <div className="mt-3 text-xs leading-relaxed text-gray-600"
+      onMouseLeave={() => setHovered(false)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPinned(false); }}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setHovered(false); setPinned(false); } }}>
+      <span>미팅시간, 회사명, 장소 등을 잘못 적었다면</span>
+      <button type="button" aria-label="미팅 정보 수정 방법" aria-expanded={expanded} aria-controls={id}
+        onMouseEnter={() => setHovered(true)}
+        onClick={() => { setPinned((value) => !value); setHovered(false); }}
+        className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full align-middle focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
+        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] font-bold">?</span>
+      </button>
+      <p id={id} hidden={!expanded} className="mt-1 rounded-lg bg-gray-50 p-2.5">
+        X로 이 창을 닫고 미팅 카드에서 수정하세요. 기록 날짜·채널을 옮기려면 [잘못 적었어요]에서 선택해요. 창을 닫아도 입력은 남고, [저장하기]를 누르기 전에는 저장되지 않아요.
+      </p>
+    </div>
+  );
+}
+
 export default function SaveConfirmModal({
   open,
   date,
   slots,
   draft,
+  savedMeetings = [],
+  savedChannels,
   saving,
   onFix,
   onSave,
   onClose,
 }: Props) {
+  const weeks = [...new Set(slots.filter((s) => s.미팅날짜).map((s) => fmtISO(friOf(parseISO(s.미팅날짜)))))];
+  const schedules = useMeetingScheduleWeeks(weeks, open);
+  const checking = schedules.some((q) => q.isFetching);
+  const checkFailed = schedules.some((q) => q.isError);
+  const conflicts = meetingConflicts(
+    slots.map((s) => ({ ...s, id: s.tempId })),
+    [...savedMeetings, ...schedules.flatMap((q) => q.data?.daysByMeetingDate.flatMap((d) => d.meetings) ?? [])],
+  );
   if (!open) return null;
 
   const { label: dateLabel, dow } = formatKoreanDate(date);
@@ -154,17 +188,20 @@ export default function SaveConfirmModal({
         aria-modal="true"
         aria-label="저장 전 확인"
       >
-        <div className="bg-slate-900 px-4 py-3 text-white">
+        <div className="relative bg-slate-900 px-4 py-3 pr-14 text-white">
           <span className="block text-[10px] font-bold tracking-widest text-slate-400">
             저장 전 확인
           </span>
           <h3 className="text-[15px] font-black">이렇게 기록할까요?</h3>
+          <button type="button" onClick={onClose} disabled={saving} aria-label="확인창 닫고 수정하기" className="absolute right-3 top-3 h-8 w-8 rounded-lg text-xl hover:bg-slate-700">×</button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {channels.map((ch) => {
             const mine = slots.filter((s) => s.channel === ch);
-            const m = draft[ch];
+            const existing = savedMeetings.filter((m) => m.channel === ch);
+            const m = { ...draft[ch], meetingReservation: existing.length + mine.filter(isSlotComplete).length };
+            const before = savedChannels?.[ch] ?? { production: 0, inflow: 0, contactProgress: 0, meetingReservation: existing.length };
             return (
               <div key={ch} className="mb-3 last:mb-0">
                 <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-gray-200">
@@ -172,6 +209,12 @@ export default function SaveConfirmModal({
                   <Cell label="채널" value={ch} valueClass={CHANNEL_TEXT[ch]} />
                 </div>
 
+                <p className="mb-1 mt-3 text-xs font-bold text-gray-500">기존 예약된 미팅 · {existing.length}건</p>
+                {existing.map((m) => <div key={m.id} className="grid grid-cols-2 gap-px rounded-xl bg-gray-200">
+                  <Cell label="기존 예약된 미팅" value={formatKoreanDate(m.미팅날짜).label} sub={m.미팅시간} />
+                  <Cell label="회사명" value={m.업체명} />
+                </div>)}
+                <p className="mb-1 mt-3 text-xs font-bold text-blue-700">이번에 저장할 예약된 미팅 · {mine.length}건</p>
                 {mine.map((s, i) => {
                   const done = isSlotComplete(s);
                   const sameDay = done && s.미팅날짜 === date;
@@ -198,38 +241,18 @@ export default function SaveConfirmModal({
                   );
                 })}
 
-                <p className="mb-1.5 mt-3 text-[10px] font-bold tracking-wide text-gray-400">
-                  {dateLabel} {ch} 숫자
-                </p>
-                <div className="grid grid-cols-4 gap-px overflow-hidden rounded-lg bg-gray-200">
-                  {METRIC_ORDER.map((k) => (
-                    <div
-                      key={k}
-                      className={`py-2 text-center ${
-                        k === "meetingReservation" ? "bg-indigo-50" : "bg-gray-50"
-                      }`}
-                    >
-                      <span
-                        className={`block text-[10px] font-semibold ${
-                          k === "meetingReservation" ? "text-indigo-700" : "text-gray-500"
-                        }`}
-                      >
-                        {METRIC_LABEL[k]}
-                      </span>
-                      <span
-                        className={`block text-lg font-bold leading-tight tabular-nums ${
-                          k === "meetingReservation" ? "text-indigo-800" : "text-gray-900"
-                        }`}
-                      >
-                        {m[k]}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <MetricComparison before={before} after={m} />
               </div>
             );
           })}
 
+          <CorrectionHelp />
+          {conflicts.length > 0 && <div role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+            <b>같은 날짜·시간에 미팅이 겹쳐요. 일정을 확인하고 수정해주세요.</b>
+            {conflicts.map((m) => <p key={m.id}>{m.미팅날짜} {m.미팅시간} · {m.업체명}</p>)}
+          </div>}
+          {checking && <p className="mt-2 text-xs text-gray-500">기존 미팅 일정 확인 중…</p>}
+          {checkFailed && <p role="alert" className="mt-2 text-xs text-red-700">기존 일정을 확인하지 못했어요. 창을 닫고 다시 시도해주세요.</p>}
           {unfilled.length > 0 ? (
             <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
               <b>{unfilled.length}건을 아직 못 채웠어요.</b> 지금 저장하면 숫자만 올라가고
@@ -255,7 +278,7 @@ export default function SaveConfirmModal({
           <button
             type="button"
             onClick={onSave}
-            disabled={unfilled.length > 0 || saving}
+            disabled={unfilled.length > 0 || saving || checking || checkFailed || conflicts.length > 0}
             className="flex-1 rounded-lg bg-slate-900 py-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
           >
             {saving ? "저장 중…" : "저장하기"}

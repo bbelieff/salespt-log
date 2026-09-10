@@ -24,7 +24,7 @@ npx --no -- vitest run tests/structural --reporter=basic || bad "structural"
 
 # ── 4. 단위/통합 테스트 ────────────────────────────────────
 step "unit/integration tests"
-if find tests lib -name "*.test.ts" -not -path "*/structural/*" 2>/dev/null | grep -q .; then
+if find tests lib -name "*.test.ts" -not -path "*/structural/*" 2>/dev/null | grep . > /dev/null; then
   npx --no -- vitest run --reporter=basic --exclude "tests/structural/**" || bad "tests"
 else
   ok "no non-structural tests yet"

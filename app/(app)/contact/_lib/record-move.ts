@@ -90,7 +90,8 @@ export function isSamePlace(from: MovePlace, to: MovePlace): boolean {
  *
  * - `meet` — 숫자는 안 건드린다(미팅 카드만 옮김)
  * - `part` — 이 미팅 몫 **1씩**. 원본에 없으면(0) 그 지표는 건너뛴다
- * - `all` · `chan` — 그 자리 숫자 **전부**.
+ * - `all` — 남는 미팅의 유입·컨택 1씩을 보존하고 나머지 + 선택 미팅 1건.
+ * - `chan` — 그 자리 숫자 **전부**.
  *   `chan` 이 전부인 이유: 「알고 보니 현수막이었다」면 그날 그 채널로 적은 게 통째로 다른
  *   채널 몫이다. 일부만 옮기면 반쪽이 남아 어느 쪽도 맞지 않는다.
  *
@@ -100,6 +101,7 @@ export function moveDeltas(
   option: MoveOption,
   source: ChannelDailyRowMetrics,
   inflowLocked: boolean,
+  remainingMeetings = 0,
 ): Partial<Record<MovableMetric, number>> {
   if (option === "meet") return {};
   const out: Partial<Record<MovableMetric, number>> = {};
@@ -107,7 +109,10 @@ export function moveDeltas(
     if (key === "inflow" && inflowLocked) continue;
     const have = Math.max(0, source[key] ?? 0);
     if (have === 0) continue;
-    out[key] = option === "part" ? Math.min(1, have) : have;
+    const amount = option === "part" || (option === "all" && key === "meetingReservation")
+      ? Math.min(1, have)
+      : option === "all" ? Math.max(0, have - remainingMeetings) : have;
+    if (amount > 0) out[key] = amount;
   }
   return out;
 }
