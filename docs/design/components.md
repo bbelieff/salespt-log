@@ -1271,8 +1271,8 @@ components/dashboard/
 | **MeetingSlotList** | 컨택탭 미팅 슬롯 리스트 (page.tsx 분할, 2026-06). 저장 미팅 + 미등록 신규 슬롯을 채널 순서로 렌더. Props: `slots: SlotEntry[]`, `reservationDate`, `onPatchSaved`, `onRemoveSaved`, `onChangeNew`, `onRegisterNew`, `onRemoveNew`. |
 | **DirtyGuard** | **미저장 이탈 가드(전역, 2026-06-23)**. `components/DirtyGuard.tsx` — `DirtyProvider`(app/(app)/layout 에서 children+TabBar 감쌈) + 훅 `useDirtyRegister`(입력이 dirty 시 {save,discard,label} 등록)·`useGuardedNav`(인앱 이탈 래핑)·`useGuardedRouter`(TabBar 라우팅 가드)·`useSaveAllDirty`(통합 저장). dirty 면 [저장하고 이동]/[무시하고 이동]/취소 모달 + 브라우저 닫기 beforeunload. MeetingDirtyGuard 패턴의 전역 승격. |
 | **MeetingDirtyGuard** | 미저장 이탈 가드 (company-info-unified-save-guard, 2026-06) — `ConfirmLeaveModal`([저장하기][무시하기]) 은 카드 접기 확인에 계속 사용. 전역 가드는 `DirtyGuard` 로 승격(미팅카드는 useDirtyRegister 등록). |
-| **SaveConfirmModal** | 컨택탭 **저장 전 확인 화면**(2026-09-03 belie). 「이렇게 기록할까요?」 — **기록하는 날짜·채널·예약된 미팅·회사명을 정확히 같은 크기**(`text-base font-bold`)로 보여주고 그날 4지표를 붙인다. 버튼 두 개: [잘못 적었어요] / [저장하기]. 덜 채운 미팅이 있으면 저장만 잠기고, 미팅날짜=기록날짜면 그 칸을 노랗게(경고만, 안 막음). 새 미팅 0건이면 호출부가 아예 안 띄운다. Props: `open`, `date`, `slots: NewSlot[]`, `draft`, `saving`, `onFix`, `onSave`, `onClose`. `formatKoreanDate`·`isSlotComplete`·`CHANNEL_TEXT`(채널 4색 정적 매핑) 재수출. |
-| **RecordMoveModal** | 컨택탭 **기록 옮기기**(2026-09-03 belie). 「잘못 적었어요」에서 열리는 3단계 — `어느 미팅`(2건 이상일 때만) → `무엇을`(4선다 + 선택지마다 ⟨?⟩ 로 언제 고르는지 펼침) → `어디로`(채널 칩 + 그 주 7일). **각 단계에 뒤로가기**. 「같은 날짜에서 채널만 바꾸기」를 고르면 날짜 버튼이 잠긴다. 옮길 자리에 기록이 있으면 「더해집니다」, 콜·지·기·소가 끼면 「유입은 못 옮겨요」 안내. 규칙은 `_lib/record-move.ts`, 적용은 `_lib/use-record-move.ts`. Props: `open`, `fromDate`, `candidates: MoveCandidate[]`, `draft`, `onBack`, `onApply(MoveDecision)`. |
+| **SaveConfirmModal** | 컨택탭 **저장 전 확인 화면**(2026-09-03 belie). 「이렇게 기록할까요?」 — **기록하는 날짜·채널·예약된 미팅·회사명을 정확히 같은 크기**(`text-base font-bold`)로 보여주고 그날 4지표를 붙인다. 버튼 두 개: [잘못 적었어요] / [저장하기]. 덜 채운 신규 미팅이 있으면 메인 저장이 잠기며 카드별 누락 항목과 확인하기를 표시한다. 확인창에서도 저장만 잠기고 [입력 수정하기]/X로 돌아갈 수 있다. 미팅날짜=기록날짜면 그 칸은 빨강(경고만, 안 막음), 필수 미입력은 노랑이다. 새 미팅 0건이면 호출부가 아예 안 띄운다. Props: `open`, `date`, `slots: NewSlot[]`, `draft`, `saving`, `onFix`, `onSave`, `onClose`. `formatKoreanDate`·`isSlotComplete`·`CHANNEL_TEXT`(채널 4색 정적 매핑) 재수출. |
+| **RecordMoveModal** | 컨택탭 **기록 옮기기**(2026-09-03 belie). 「잘못 적었어요」에서 열리는 최대 4단계 — `어느 미팅`(2건 이상일 때만) → `무엇을`(4선다 + 선택지마다 ⟨?⟩ 로 언제 고르는지 펼침) → `어디로`(채널 칩 + 그 주 7일) → `최종 확인·저장`(양쪽 수치 비교). **각 단계에 뒤로가기**. 「같은 날짜에서 채널만 바꾸기」를 고르면 날짜 버튼이 잠긴다. 옮길 자리에 기록이 있으면 「더해집니다」, 콜·지·기·소가 끼면 유입은 원래 날짜·채널에 남고 실제로 이동하는 항목·수량만 명시(유입 제외 부분 이동). 규칙은 `_lib/record-move.ts`, 적용은 `_lib/use-record-move.ts`. Props: `open`, `fromDate`, `candidates: MoveCandidate[]`, `draft`, `onBack`, `onApply(MoveDecision)`. |
 | **ContactResultModals** | 컨택탭 결과 모달 클러스터 (page.tsx 분할, 2026-06): DB불일치 안내(CrossTabHintModal) + DB일치 긍정확인 + 미팅 선택삭제(MeetingPickerModal). Props: `dbMismatch`, `onMismatchNavigate`, `onMismatchClose`, `dbMatchOk`, `onMatchOkClose`, `pickerMeetings`, `onPick`, `onPickerClose`. |
 | **SaveBar** | 컨택탭 하단 고정 저장 바 (page.tsx 분할, 500줄 캡). 바 full-bleed + 버튼 6xl 정렬(PageContainer wide). Props: `pending`, `onSave`. |
 
@@ -1514,3 +1514,8 @@ button:focus, input:focus, select:focus {
 - `RecordMoveModal`, `record-move-options`: 이동 대상·범위·목적지 선택 후 최종 저장 확인. 저장 전 X/외부 클릭은 이동 선택 취소 확인; 시간 오기는 카드에서 수정.
 - `RecordMoveReview`: 양쪽 날짜 수치 미리보기. 전체 날짜 이동은 남는 미팅별 유입·컨택 1씩 보존, 선택 미팅예약 1건만 이동. 생산·파생 유입 경계 유지.
 - `RecordMoveReceipt`: 저장 후 양쪽 날짜 수치를 계속 표시. 선택 채널의 남는 신규 미팅도 원래 날짜에 함께 저장해 이동 후 카드 유실을 막음. 다른 채널 입력은 보존.
+
+### 2026-09-11 · 컨택관리 QA 보완
+- `SaveBar`의 `incompleteCount`로 메인 저장 사전 차단, 누락 건수 및 첫 미완성 카드로 이동 제공.
+- `MeetingSlotList`에서 카드 번호별 필수 누락 항목 표시. `slot-validation.ts`를 저장 게이트와 공유. 모두 채우거나 미완성 카드를 삭제하면 즉시 해제.
+- `SaveConfirmModal` 미완성 시 [입력 수정하기]로 복귀 가능. 저장 전에는 쓰기 없음.

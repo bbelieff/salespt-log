@@ -398,8 +398,9 @@ export default function RecordMoveModal({
               )}
               {inflowLocked && (
                 <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600">
-                  <b>콜·지·기·소 유입은 못 옮겨요.</b> 영업기회 접수에서 자동으로 나오는
-                  숫자라서, 옮기려면 STEP 1 에서 그 영업기회의 접수일을 고쳐주세요.
+                  <b>유입은 원래 날짜·채널에 그대로 남아요.</b> 이번에 옮기는 항목은{" "}
+                  <b>{describeDeltas(deltas) || "미팅예약 1건"}</b>이에요. 콜·지·기·소 유입은
+                  영업기회 접수 건수로 자동 집계돼요. 유입 날짜도 바꾸려면 STEP 1에서 해당 영업기회의 접수일을 수정해주세요.
                 </p>
               )}
             </>
