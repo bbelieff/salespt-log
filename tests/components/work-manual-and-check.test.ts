@@ -78,7 +78,7 @@ describe("[2] 기록일 = 미팅예정일 → 빨강", () => {
   });
 
   it("막지는 않는다 — 당일 미팅은 실제로 있으므로 저장 가능", () => {
-    // 저장 잠금은 「못 채운 미팅」에만 걸린다.
-    expect(confirm).toContain("disabled={unfilled.length > 0 || saving}");
+    // 당일 예약 자체는 차단하지 않는다. 미완성/저장 중/일정 조회 실패/동일 일시 충돌만 차단.
+    expect(confirm).toContain("disabled={unfilled.length > 0 || saving || checking || checkFailed || conflicts.length > 0}");
   });
 });

@@ -16,7 +16,7 @@
 import { useMemo, useState } from "react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
-import { useDay } from "@/query/contact-hooks";
+import { useDay, useMeetingScheduleWeeks } from "@/query/contact-hooks";
 import {
   describeDeltas,
   hasAnyRecord,
@@ -25,10 +25,12 @@ import {
   isInflowLocked,
   isSamePlace,
   moveDeltas,
-  MOVE_OPTIONS,
   type MoveOption,
 } from "../_lib/record-move";
 import { CHANNEL_TEXT, formatKoreanDate } from "./SaveConfirmModal";
+import { meetingConflicts } from "../_lib/meeting-conflicts";
+import { GROUPS, OPTION_TEXT } from "./record-move-options";
+import RecordMoveReview from "./RecordMoveReview";
 import { addDays, fmtISO, friOf, parseISO } from "../_lib/week";
 
 /** 옮길 대상 한 건 — 저장 전 슬롯이든 저장된 미팅이든 이 모양으로 넘어온다. */
@@ -43,7 +45,7 @@ export interface MoveCandidate {
 export interface MoveDecision {
   key: string;
   option: MoveOption;
-  to: { date: string; channel: Channel };
+  to: { date: string; channel: Channel; metrics?: ChannelDailyRowMetrics };
   deltas: { inflow?: number; contactProgress?: number };
 }
 
@@ -57,6 +59,9 @@ interface Props {
   onBack: () => void;
   /** 팝업 옆 빈 곳 클릭 — 저장 누르기 전으로 되돌아간다(확인 화면도 함께 닫힘). */
   onDismiss: () => void;
+  saving?: boolean;
+  error?: string;
+  incomplete?: boolean;
   onApply: (decision: MoveDecision) => void;
 }
 
@@ -67,61 +72,7 @@ const CHIP_BG: Record<Channel, string> = {
   "콜·지·기·소": "bg-violet-100 text-violet-700",
 };
 
-/** 선택지를 두 묶음으로 나눠 보여준다 — 무엇을 잘못했는지부터 고르게 한다. */
-const GROUPS: { head: string; sub: string; keys: MoveOption[] }[] = [
-  {
-    head: "날짜를 잘못 적었어요",
-    sub: "채널은 맞아요 · 옮길 날짜를 다음 화면에서 골라요",
-    keys: ["meet", "part", "all"],
-  },
-  {
-    head: "채널을 잘못 골랐어요",
-    sub: "날짜는 맞아요 · 옮길 채널을 다음 화면에서 골라요",
-    keys: ["chan"],
-  },
-];
-
-const OPTION_TEXT: Record<MoveOption, { title: string; when: React.ReactNode }> = {
-  meet: {
-    title: "이 미팅예약만",
-    when: (
-      <>
-        <b>미팅 날짜만 다른 날에 걸렸을 때.</b> 유입·컨택진행·미팅예약 숫자는 지금 자리에
-        그대로 두고, 이 미팅 한 건만 옮겨가요.
-      </>
-    ),
-  },
-  part: {
-    title: "이 미팅예약과 관련된 유입·컨택·예약 1씩",
-    when: (
-      <>
-        <b>이 미팅 하나를 통째로 다른 날에 적었을 때.</b> 미팅 카드와 함께 유입·컨택진행을{" "}
-        <b>1씩</b> 데려가요. 가장 많이 쓰는 선택지예요.
-      </>
-    ),
-  },
-  all: {
-    title: "이 날의 컨택관리 수치 전부",
-    when: (
-      <>
-        <b>그날 하루치를 통째로 다른 날에 적었을 때.</b> 그 자리 유입·컨택진행·미팅예약이
-        전부 빠져나가고 이 미팅도 함께 가요.
-      </>
-    ),
-  },
-  chan: {
-    title: "이 기록의 채널 바꾸기",
-    when: (
-      <>
-        <b>알고 보니 현수막이었거나 콜·지·기·소였을 때</b>(혹은 그 반대). 날짜는 그대로 두고
-        <b> 그날 그 채널로 적은 기록 전체</b>가 새 채널로 넘어가요 — 숫자도, 미팅 카드도 함께.
-        일부만 옮기면 반쪽이 남아 어느 쪽도 맞지 않거든요.
-      </>
-    ),
-  },
-};
-
-type Step = "which" | "what" | "where";
+type Step = "which" | "what" | "where" | "review";
 
 export default function RecordMoveModal({
   open,
@@ -131,6 +82,9 @@ export default function RecordMoveModal({
   onBack,
   onDismiss,
   onApply,
+  saving = false,
+  error = "",
+  incomplete = false,
 }: Props) {
   const needsPick = candidates.length > 1;
   const [step, setStep] = useState<Step>(needsPick ? "which" : "what");
@@ -152,48 +106,65 @@ export default function RecordMoveModal({
   const chanLocked = option ? isChannelLocked(option) : false;
   const targetDate = dateLocked ? fromDate : toDate;
   // 옮길 자리에 이미 뭐가 적혀 있는지 — 다른 날짜일 때만 서버에서 확인한다.
-  const targetDay = useDay(step === "where" && targetDate !== fromDate ? targetDate : "");
+  const targetDay = useDay((step === "where" || step === "review") && targetDate !== fromDate ? targetDate : "");
   const targetMetrics =
     targetDate === fromDate
-      ? undefined // 같은 날짜의 다른 채널 — 화면이 이미 들고 있어 굳이 안 읽는다
-      : targetDay.data?.channels[toChannel];
+      ? draft[toChannel]
+      : targetDay.data?.date === targetDate ? targetDay.data.channels[toChannel] : undefined;
 
+  const scheduleWeeks = [...new Set(candidates.map((c) => fmtISO(friOf(parseISO(c.미팅날짜)))))];
+  const schedules = useMeetingScheduleWeeks(scheduleWeeks, open);
+  const conflicts = meetingConflicts(candidates.map((c) => ({ ...c, id: c.key })), schedules.flatMap((q) => q.data?.daysByMeetingDate.flatMap((d) => d.meetings) ?? []));
+  const scheduleBlocked = schedules.some((q) => q.isFetching || q.isError) || conflicts.length > 0;
   if (!open) return null;
 
   const picked = candidates.find((c) => c.key === pickedKey);
   const fromChannel: Channel = picked?.channel ?? first;
   const inflowLocked = isInflowLocked(fromChannel, toChannel);
-  const deltas = option ? moveDeltas(option, draft[fromChannel], inflowLocked) : {};
+  const deltas = option ? moveDeltas(option, draft[fromChannel], inflowLocked, Math.max(0, draft[fromChannel].meetingReservation - 1)) : {};
   const same = isSamePlace(
     { date: fromDate, channel: fromChannel },
     { date: targetDate, channel: toChannel },
   );
+  const movedMeetings = option === "chan" ? draft[fromChannel].meetingReservation : 1;
+  const invalidFunnel = !!targetMetrics && (
+    targetMetrics.contactProgress + (deltas.contactProgress ?? 0) < targetMetrics.meetingReservation + movedMeetings ||
+    draft[fromChannel].contactProgress - (deltas.contactProgress ?? 0) < draft[fromChannel].meetingReservation - movedMeetings
+  );
   const busy = targetDate !== fromDate && hasAnyRecord(targetMetrics);
 
   const stepNo = needsPick
-    ? { which: 1, what: 2, where: 3 }[step]
-    : { which: 1, what: 1, where: 2 }[step];
-  const stepTotal = needsPick ? 3 : 2;
+    ? { which: 1, what: 2, where: 3, review: 4 }[step]
+    : { which: 1, what: 1, where: 2, review: 3 }[step];
+  const stepTotal = needsPick ? 4 : 3;
   const title =
     step === "which"
       ? "어느 미팅이 잘못됐나요?"
       : step === "what"
         ? "무엇을 옮길까요?"
-        : "어디로 옮길까요?";
+        : step === "review" ? "이대로 옮겨 저장할까요?" : "어디로 옮길까요?";
 
   const goBack = () => {
-    if (step === "where") setStep("what");
+    if (saving || error) return;
+    if (step === "review") setStep("where");
+    else if (step === "where") setStep("what");
     else if (step === "what" && needsPick) setStep("which");
     else onBack();
   };
 
+  const dismiss = () => {
+    if (saving || error) return;
+    if (option && !window.confirm("이동 선택을 취소하고 돌아갈까요? 아직 저장하지 않았으며, 입력한 미팅과 숫자는 그대로 남아요.")) return;
+    onDismiss();
+  };
+  const targetReady = targetDate === fromDate || (!!targetMetrics && !targetDay.isFetching && !targetDay.isError);
   const from = formatKoreanDate(fromDate);
   const to = formatKoreanDate(targetDate);
 
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/45 p-4"
-      onClick={onDismiss}
+      onClick={dismiss}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -218,9 +189,19 @@ export default function RecordMoveModal({
             </span>
             <h3 className="text-[15px] font-black leading-tight">{title}</h3>
           </div>
+          <button type="button" disabled={saving} onClick={dismiss} aria-label="이동 취소하고 닫기" className="ml-auto h-8 w-8 shrink-0 rounded-lg text-xl hover:bg-slate-700">×</button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {incomplete && <p role="alert" className="mb-3 text-xs text-red-700">남은 미팅도 함께 저장하려면 필수 항목을 모두 채워주세요. X로 돌아가 수정할 수 있어요.</p>}
+          {error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs text-red-800">{error}</p>}
+          {step === "review" && scheduleBlocked && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs text-red-800">{conflicts.length ? "같은 예정일시에 미팅이 겹쳐요. 이동을 취소하고 카드의 시간을 수정해주세요." : "기존 미팅 일정을 확인 중이거나 불러오지 못했어요. 확인이 끝나야 저장할 수 있어요."}</p>}
+          {step === "review" && picked && targetMetrics && <RecordMoveReview
+            fromLabel={`${from.label} ${fromChannel}`} toLabel={`${to.label} ${toChannel}`}
+            company={picked.업체명} source={draft[fromChannel]} target={targetMetrics}
+            deltas={deltas} movedMeetings={movedMeetings}
+            remainingNames={option === "chan" ? [] : candidates.filter((c) => c.channel === fromChannel && c.key !== picked.key).map((c) => c.업체명)}
+          />}
           {step === "which" && (
             <>
               {candidates.map((c) => {
@@ -400,6 +381,8 @@ export default function RecordMoveModal({
                 {describeDeltas(deltas) ? ` · ${describeDeltas(deltas)}` : " (숫자는 그대로)"}
               </p>
 
+              {invalidFunnel && <p role="alert" className="mt-2 text-xs text-red-700">이대로 옮기면 미팅예약이 컨택보다 많아져요. 관련 유입·컨택도 함께 옮기는 선택지로 돌아가주세요.</p>}
+              {!targetReady && <p role="status" className="mt-2 text-xs text-red-700">{targetDay.isError ? "옮길 날짜를 불러오지 못했어요. 다른 날짜를 선택한 뒤 다시 시도해주세요." : "옮길 날짜의 기록을 확인하고 있어요…"}</p>}
               {same && (
                 <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600">
                   지금과 <b>같은 자리</b>예요. 채널이나 날짜를 바꿔주세요.
@@ -455,15 +438,15 @@ export default function RecordMoveModal({
               다음
             </button>
           )}
-          {step === "where" && (
+          {(step === "where" || step === "review") && (
             <button
               type="button"
-              disabled={same || !option || !picked}
-              onClick={() =>
+              disabled={saving || (!error && (incomplete || same || !option || !picked || !targetReady || invalidFunnel || (step === "review" && scheduleBlocked)))}
+              onClick={() => step === "where" ? setStep("review") :
                 onApply({
                   key: picked!.key,
                   option: option!,
-                  to: { date: targetDate, channel: toChannel },
+                  to: { date: targetDate, channel: toChannel, metrics: targetMetrics },
                   deltas: {
                     inflow: deltas.inflow,
                     contactProgress: deltas.contactProgress,
@@ -472,7 +455,7 @@ export default function RecordMoveModal({
               }
               className="flex-1 rounded-lg bg-slate-900 py-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
             >
-              옮기기
+              {saving ? "저장 중…" : step === "review" ? "저장하기" : "이동 내용 확인"}
             </button>
           )}
         </div>
