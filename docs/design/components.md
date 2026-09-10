@@ -1506,3 +1506,11 @@ button:focus, input:focus, select:focus {
 - 데스크탑(pc+) 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
 - 정보 중심 화면은 PageContainer(wide) 안에서 카드 리스트를 `pc:grid pc:grid-cols-2 wide:grid-cols-3` 등으로 배치해 가로 공간 활용(세로 스크롤 압박 완화).
 - 파일: `components/PageContainer.tsx`.
+
+
+## 컨택관리 저장·이동 확인 (2026-09-10)
+- `SaveConfirmModal`: 기존 예약과 이번 신규 예약을 별도 표시. 실제 예정 주의 기존 미팅과 동일 일시 충돌 검사. X는 저장하지 않고 입력 카드로 복귀(입력 보존).
+- `MetricComparison`: 채널별 저장 전 / 이번 변경(증감) / 저장 후 최종 4지표 비교.
+- `RecordMoveModal`, `record-move-options`: 이동 대상·범위·목적지 선택 후 최종 저장 확인. 저장 전 X/외부 클릭은 이동 선택 취소 확인; 시간 오기는 카드에서 수정.
+- `RecordMoveReview`: 양쪽 날짜 수치 미리보기. 전체 날짜 이동은 남는 미팅별 유입·컨택 1씩 보존, 선택 미팅예약 1건만 이동. 생산·파생 유입 경계 유지.
+- `RecordMoveReceipt`: 저장 후 양쪽 날짜 수치를 계속 표시. 선택 채널의 남는 신규 미팅도 원래 날짜에 함께 저장해 이동 후 카드 유실을 막음. 다른 채널 입력은 보존.

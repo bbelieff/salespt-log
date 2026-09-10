@@ -68,7 +68,6 @@ describe("네 선택지 — 두 축 (2026-09-03 belie 정정)", () => {
 
   it("★「채널 바꾸기」는 그 자리 숫자를 전부 옮긴다 — 일부만 옮기면 반쪽이 남는다", () => {
     const src = M(8, 3, 2, 2);
-    expect(moveDeltas("chan", src, false)).toEqual(moveDeltas("all", src, false));
     expect(moveDeltas("chan", src, false)).toEqual({
       inflow: 3,
       contactProgress: 2,
@@ -76,11 +75,11 @@ describe("네 선택지 — 두 축 (2026-09-03 belie 정정)", () => {
     });
   });
 
-  it("「숫자 전부」는 그 자리 값을 통째로 옮긴다", () => {
-    expect(moveDeltas("all", M(8, 3, 2, 2), false)).toEqual({
+  it("「수치 전부」도 선택한 미팅 한 건만 옮기고 나머지 몫을 남긴다", () => {
+    expect(moveDeltas("all", M(8, 4, 2, 2), false, 1)).toEqual({
       inflow: 3,
-      contactProgress: 2,
-      meetingReservation: 2,
+      contactProgress: 1,
+      meetingReservation: 1,
     });
   });
 
@@ -107,7 +106,7 @@ describe("★ 절대 안 옮기는 것", () => {
 
     const locked = moveDeltas("all", M(8, 7, 2, 2), true);
     expect(locked).not.toHaveProperty("inflow");
-    expect(locked).toEqual({ contactProgress: 2, meetingReservation: 2 });
+    expect(locked).toEqual({ contactProgress: 2, meetingReservation: 1 });
   });
 });
 
@@ -193,7 +192,8 @@ describe("★ 서버로 나가는 것 (소스 가드)", () => {
     );
     const page = readFileSync("app/(app)/contact/page.tsx", "utf8");
     expect(confirmModal).toContain("onClick={onClose}");
-    expect(moveModal).toContain("onClick={onDismiss}");
+    expect(moveModal).toContain("onClick={dismiss}");
+    expect(moveModal).toContain("window.confirm");
     // 이동 팝업의 바깥 클릭은 확인 화면까지 함께 닫아야 「저장 누르기 전」이 된다.
     expect(page).toContain("setMoveOpen(false); setConfirmOpen(false);");
     // 안쪽을 눌렀을 때 닫히면 안 된다.

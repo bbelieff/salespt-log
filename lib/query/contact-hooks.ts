@@ -17,6 +17,7 @@
 import {
   useMutation,
   useQuery,
+  useQueries,
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
@@ -171,10 +172,13 @@ export function useMoveDailyMetrics() {
         method: "POST",
         body: JSON.stringify(args),
       }),
-    onSuccess: (_, { from, to }) => {
-      qc.invalidateQueries({ queryKey: dayKey(from.date) });
-      if (to.date !== from.date) qc.invalidateQueries({ queryKey: dayKey(to.date) });
-      qc.invalidateQueries({ queryKey: ["week"] });
+    onSuccess: async (_, { from, to }) => {
+      // 완료창을 열기 전에 양쪽 날짜·주차가 최신 카드와 숫자를 함께 갖게 한다.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: dayKey(from.date) }),
+        ...(to.date !== from.date ? [qc.invalidateQueries({ queryKey: dayKey(to.date) })] : []),
+        qc.invalidateQueries({ queryKey: ["week"] }),
+      ]);
     },
   });
 }
@@ -289,4 +293,14 @@ export function useRemoveMeeting() {
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
+}
+
+/** 확인창에서 예약일이 아니라 실제 미팅 예정 주를 조회한다. */
+export function useMeetingScheduleWeeks(weeks: string[], enabled: boolean) {
+  return useQueries({ queries: weeks.map((week) => ({
+    queryKey: weekKey(week),
+    queryFn: () => fetchJSON<ScheduleWeekView>(`/api/meetings/week/${week}`),
+    enabled,
+    staleTime: 0,
+  })) });
 }
