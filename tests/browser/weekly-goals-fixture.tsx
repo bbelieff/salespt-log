@@ -5,6 +5,7 @@ import WeeklyGoalPage from "../../components/weekly-goals/WeeklyGoalPage";
 import WeeklyGoalSummary from "../../components/weekly-goals/WeeklyGoalSummary";
 import TrainerGoalOverview from "../../components/weekly-goals/TrainerGoalOverview";
 import WeekBody from "../../app/(app)/schedule/_components/WeekBody";
+import DashboardPage from "../../app/(app)/dashboard/page";
 import DirtyProvider, { useDirtyEntry } from "../../components/DirtyGuard";
 function BusinessInput() {
   const [value, setValue] = React.useState("");
@@ -16,7 +17,7 @@ const p = new URLSearchParams(location.search);
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const mode = p.get("mode");
 createRoot(document.getElementById("root")!).render(<QueryClientProvider client={client}>
-  {mode === "overview" ? <TrainerGoalOverview /> : mode === "summary" ?
+  {mode === "dashboard" ? <DirtyProvider><DashboardPage /></DirtyProvider> : mode === "overview" ? <TrainerGoalOverview /> : mode === "summary" ?
     <DirtyProvider><BusinessInput /><WeeklyGoalSummary metrics={["production", "inflow"]} /><WeeklyGoalSummary metrics={["inflow", "contacts"]} /><WeekBody weekStart="2026-09-11" firstDays={<p>금토일</p>} lastDays={<p>월화수목</p>} /></DirtyProvider> :
-    <WeeklyGoalPage student="fixture@example.invalid" week="2" date="" trainer={p.get("role") !== "student"} />}
+    <WeeklyGoalPage student="fixture@example.invalid" week="2" date="" trainer={p.get("role") !== "student"} returnTo={p.get("returnTo") ?? undefined} />}
 </QueryClientProvider>);

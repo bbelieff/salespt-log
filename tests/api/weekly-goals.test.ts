@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 const m = vi.hoisted(() => ({ loadWeeklyGoals: vi.fn(), updateWeeklyGoals: vi.fn(), loadWeeklyGoalInternal: vi.fn(), updateWeeklyGoalInternal: vi.fn(), listGoalStudents: vi.fn() }));
 vi.mock("@/service/weekly-goals", () => ({ ...m, WeeklyGoalError: class extends Error { constructor(public status: number, message: string) { super(message); } } }));
@@ -10,6 +10,7 @@ import { GET as studentsGET } from "@/app/api/weekly-goals/students/route";
 const url = "https://fixture.test/api/weekly-goals?week=2&student=fixture%40example.test&enrollment=fixture";
 const request = (headers: Record<string, string> = {}, body = "{}") => new NextRequest(url, { method: "PUT", headers: { "content-type": "application/json", origin: "https://fixture.test", ...headers }, body });
 beforeEach(() => {
+  vi.stubEnv("AUTH_URL", "");
   vi.resetAllMocks();
   m.loadWeeklyGoals.mockResolvedValue({ current: { record: { revision: 1 } } });
   m.updateWeeklyGoals.mockResolvedValue({ revision: 2 });
@@ -17,8 +18,35 @@ beforeEach(() => {
   m.updateWeeklyGoalInternal.mockResolvedValue({ revision: 3 });
   m.listGoalStudents.mockResolvedValue([]);
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("weekly goal API transport", () => {
+  it("accepts configured HTTPS origin behind an internal HTTP listener on both writes", async () => {
+    vi.stubEnv("AUTH_URL", "https://fixture.test/api/auth");
+    const proxied = () => new NextRequest("http://localhost:3000/api/weekly-goals", {
+      method: "PUT", headers: { origin: "https://fixture.test", "sec-fetch-site": "same-origin", "content-type": "application/json" },
+      body: JSON.stringify({ revision: 0, task: "proxy regression" }),
+    });
+    expect((await PUT(proxied())).status).toBe(200);
+    expect((await internalPUT(proxied())).status).toBe(200);
+    expect(m.updateWeeklyGoals).toHaveBeenCalledOnce();
+    expect(m.updateWeeklyGoalInternal).toHaveBeenCalledOnce();
+  });
+  it.each(["https://attacker.test", "http://localhost:3000", "null"])("does not trust forged forwarded hosts or origin %s", async origin => {
+    vi.stubEnv("AUTH_URL", "https://fixture.test");
+    const forged = () => new NextRequest("http://localhost:3000/api/weekly-goals", {
+      method: "PUT", headers: { origin, "x-forwarded-host": "attacker.test", "x-forwarded-proto": "https", "content-type": "application/json" }, body: "{}",
+    });
+    expect((await PUT(forged())).status).toBe(403);
+    expect((await internalPUT(forged())).status).toBe(403);
+    expect(m.updateWeeklyGoals).not.toHaveBeenCalled();
+    expect(m.updateWeeklyGoalInternal).not.toHaveBeenCalled();
+  });
+  it.each(["not-a-url", "file:///fixture"])("fails closed for invalid configured origin %s", async configured => {
+    vi.stubEnv("AUTH_URL", configured);
+    expect((await PUT(request())).status).toBe(403);
+    expect(m.updateWeeklyGoals).not.toHaveBeenCalled();
+  });
   it("marks public and private authenticated responses no-store", async () => {
     for (const response of [await GET(new NextRequest(url)), await internalGET(new NextRequest(url)), await studentsGET()]) {
       expect(response.status).toBe(200);

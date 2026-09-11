@@ -104,7 +104,6 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-50 pb-20">
       <PageContainer width="wide">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
-      <WeeklyGoalSummary />
 
       {/* 수강생출신 트레이너 self-view 중 — 트레이너 관리로 복귀 토글(P14). */}
       {me.data?.ownArenaSheetId && (
@@ -181,6 +180,7 @@ export default function DashboardPage() {
                   totalCost={dash.data.kpi.전체비용}
                 />
                 <ProductivityIndicators matrix={dash.data.channelMatrix} />
+                <WeeklyGoalSummary className="" />
               </div>
               <FunnelChart matrix={dash.data.channelMatrix} />
             </div>

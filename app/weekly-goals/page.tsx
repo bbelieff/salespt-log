@@ -9,5 +9,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   if (status === "pending" || (role === "trainer" && status !== "active")) redirect("/");
   const params = await searchParams;
   const value = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
-  return <WeeklyGoalPage student={value("student")} date={value("date")} week={value("week")} trainer={role === "trainer" || role === "admin"} />;
+  return <WeeklyGoalPage student={value("student")} date={value("date")} week={value("week")} returnTo={value("returnTo")} trainer={role === "trainer" || role === "admin"} />;
 }
