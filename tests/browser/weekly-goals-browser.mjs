@@ -68,6 +68,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   page.on("pageerror", e => errors.push(e.message));
+  await page.route("**/api/contract-payment**", route => route.fulfill({ json: { rows: [] } }));
   await page.route("**/api/me", route => route.fulfill({ json: {} }));
   await page.route("**/api/dashboard", route => route.fulfill({ json: {
     kpi: { 총매출: 0, 총비용: 0, 수임비합: 0, 수수료합: 0, 이월매출: 0, 전체매출: 0, 이월비용: 0, 전체비용: 0 },
@@ -113,7 +114,7 @@ try {
   await page.getByRole("button", { name: "트레이너 기록 열기" }).click();
   await page.getByLabel("트레이닝 후 특이사항", { exact: true }).fill("INTERNAL_ONLY\n<unsafe>");
   await page.getByLabel("지난주 PT과제 성과", { exact: true }).fill("PRIVATE_OUTCOME");
-  await page.getByRole("button", { name: "내부 기록 저장" }).click();
+  await page.getByRole("button", { name: "성과·기록 저장" }).click();
   await page.waitForFunction(() => !document.querySelector("button")?.disabled);
   await page.getByRole("button", { name: "회의록 미리보기" }).click();
   assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 14);
@@ -195,8 +196,9 @@ try {
   results.push("student-no-private-request-or-dom");
   await page.goto(base + "/?mode=summary");
   await page.getByText("목표·PT과제 열기").first().waitFor();
-  assert.equal(await page.getByLabel("주간 목표 실적").count(), 3);
-  results.push("three-tabs-shared-aggregate-components");
+  assert.equal(await page.getByRole("region", { name: "주간 목표", exact: true }).count(), 3);
+  assert.equal(await page.getByLabel("주간 목표 실적").count(), 0);
+  results.push("three-tabs-compact-summary-no-duplicate-rings");
   await page.getByLabel("업무 입력", { exact: true }).fill("업무 미저장");
   for (let i = 0; i < 3; i++) {
     await page.getByRole("button", { name: "목표·PT과제 열기" }).nth(i).click();
@@ -287,7 +289,7 @@ try {
   await page.getByLabel("트레이닝 후 특이사항", { exact: true }).fill("권한 회수 뒤 내부 저장 금지");
   const beforePrivateDenied = structuredClone(internal.get("fixture@example.invalid2"));
   denyRead = true;
-  await page.getByRole("button", { name: "내부 기록 저장", exact: true }).click();
+  await page.getByRole("button", { name: "성과·기록 저장", exact: true }).click();
   await page.waitForFunction(() => !document.querySelector('textarea[aria-label="트레이닝 후 특이사항"]'));
   assert.deepEqual(internal.get("fixture@example.invalid2"), beforePrivateDenied);
   assert.equal((await page.content()).includes("INTERNAL_ONLY"), false);
@@ -305,6 +307,16 @@ try {
     await page.getByRole("button", { name: "목표·PT과제 열기", exact: true }).first().click();
     assert.equal(new URL(await page.evaluate(() => window.__lastNav), base).searchParams.get("returnTo"), "/contact");
     results.push("entry-aware-return-and-summary-link-" + width);
+    for (const host of ["db", "contact", "schedule"]) {
+      const region = page.getByTestId(host + "-goal-host").getByRole("region", { name: "주간 목표", exact: true });
+      await region.getByText("2주 목표", { exact: true }).waitFor();
+      const box = await region.boundingBox();
+      assert.ok(box.height <= (width === 390 ? 100 : 60), host + " compact height " + box.height);
+      assert.ok((await region.getByRole("button").boundingBox()).height >= 44);
+    }
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.screenshot({ path: join(output, "compact-tabs-" + width + ".png"), fullPage: true });
+    results.push("compact-tabs-inside-existing-summaries-touch-and-overflow-" + width);
     await page.goto(base + "/?mode=dashboard");
     await page.getByRole("heading", { name: "생산성 지표", exact: true }).waitFor();
     const summary = page.getByRole("region", { name: "주간 목표", exact: true });
@@ -320,6 +332,32 @@ try {
     await page.screenshot({ path: join(output, "dashboard-" + width + ".png"), fullPage: true });
     results.push("dashboard-goals-below-productivity-" + width);
   }
+  await page.goto(base);
+  await page.getByRole("button", { name: "PT과제 성과 기록", exact: true }).click();
+  const priorTask = structuredClone(records.get("fixture@example.invalid1"));
+  await page.getByLabel("지난주 PT과제 성과", { exact: true }).fill("1주 과제 수행 완료 · 소개 요청 3회");
+  await page.getByRole("button", { name: "성과·기록 저장", exact: true }).click();
+  await page.getByText("성과·기록을 저장했어요.", { exact: true }).waitFor();
+  assert.equal(internal.get("fixture@example.invalid2").priorOutcome, "1주 과제 수행 완료 · 소개 요청 3회");
+  assert.deepEqual(records.get("fixture@example.invalid1"), priorTask);
+  await page.reload();
+  await page.getByRole("button", { name: "PT과제 성과 기록", exact: true }).click();
+  await page.getByLabel("지난주 PT과제 성과", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("지난주 PT과제 성과", { exact: true }).inputValue(), "1주 과제 수행 완료 · 소개 요청 3회");
+  await page.getByRole("button", { name: "다음 주", exact: true }).click();
+  await page.getByRole("button", { name: "PT과제 성과 기록", exact: true }).click();
+  await page.getByLabel("지난주 PT과제 성과", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("지난주 PT과제 성과", { exact: true }).inputValue(), "");
+  await page.getByLabel("지난주 PT과제 성과", { exact: true }).fill("2주 과제 별도 성과");
+  await page.getByRole("button", { name: "성과·기록 저장", exact: true }).click();
+  await page.getByText("성과·기록을 저장했어요.", { exact: true }).waitFor();
+  assert.equal(internal.get("fixture@example.invalid3").priorOutcome, "2주 과제 별도 성과");
+  assert.equal(internal.get("fixture@example.invalid2").priorOutcome, "1주 과제 수행 완료 · 소개 요청 3회");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: join(output, "pt-outcome-mobile.png"), fullPage: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: join(output, "pt-outcome-desktop.png"), fullPage: true });
+  results.push("next-week-outcome-save-reload-and-week-isolation");
   failRead = true;
   await page.goto(base + "/?role=student");
   await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();

@@ -284,12 +284,12 @@ export default function DbPage() {
 
       <main className="px-4 pb-[80px] pt-3">
       <PageContainer width="wide">
-        <WeeklyGoalSummary metrics={["production", "inflow"]} />
         <OverallCard
           items={overall.items}
           totalCost={overall.totalCost}
           totalCount={overall.totalCount}
           activeCh={activeCh}
+          goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />}
         />
 
         <DbNudgeBanner onGoDirect={() => switchChannel("direct")} />

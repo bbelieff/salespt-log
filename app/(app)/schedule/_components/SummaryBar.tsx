@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
@@ -18,12 +18,13 @@ import { formatMoney } from "@/lib/format/money";
 
 interface Props {
   meetings: Meeting[];
+  goalSummary?: ReactNode;
 }
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
 const fmtMoney = formatMoney;
 
-export default function SummaryBar({ meetings }: Props) {
+export default function SummaryBar({ meetings, goalSummary }: Props) {
   const total = meetings.length;
   const reserved = meetings.filter(
     (m) => m.상태 === "예약" || m.상태 === "변경",
@@ -99,6 +100,7 @@ export default function SummaryBar({ meetings }: Props) {
             </span>
           </div>
         )}
+        {goalSummary && <div className="mt-1 border-t border-gray-100">{goalSummary}</div>}
       </div>
     </div>
   );

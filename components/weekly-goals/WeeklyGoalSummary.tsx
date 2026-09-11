@@ -1,12 +1,14 @@
 "use client";
 import { useGuardedRouter } from "@/components/DirtyGuard";
-import type { GoalKey } from "@/types/weekly-goals";
+import { GOAL_KEYS, GOAL_LABELS, type GoalKey } from "@/types/weekly-goals";
 import { useGoalView } from "./client";
 import GoalRings from "./GoalRings";
 import { usePathname } from "next/navigation";
 import { goalReturnTarget } from "@/util/weekly-goal-navigation";
 
-export default function WeeklyGoalSummary({ date, metrics, student, className = "m-4" }: { date?: string; metrics?: readonly GoalKey[]; student?: string; className?: string }) {
+export default function WeeklyGoalSummary({ date, metrics, student, className = "m-4", compact = false }: {
+  date?: string; metrics?: readonly GoalKey[]; student?: string; className?: string; compact?: boolean;
+}) {
   const router = useGuardedRouter();
   const pathname = usePathname();
   const p = new URLSearchParams();
@@ -15,6 +17,15 @@ export default function WeeklyGoalSummary({ date, metrics, student, className = 
   const q = useGoalView(p.toString());
   const entry = new URLSearchParams(p);
   entry.set("returnTo", goalReturnTarget(pathname).href);
+  if (compact) return <section aria-label="주간 목표" className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+    <span className="font-medium text-gray-500">{q.data ? q.data.current.week + "주 목표" : "주간 목표"}</span>
+    {q.isPending ? <span role="status" className="text-gray-500">불러오는 중…</span> :
+      q.isError ? <span role="alert" className="text-red-600">목표를 불러오지 못했어요.</span> :
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">{(metrics ?? GOAL_KEYS).map(k =>
+          <span key={k} className="text-gray-600">{GOAL_LABELS[k]} <strong className="font-semibold tabular-nums text-gray-900">{q.data.current.record.goals[k] ?? "미설정"}</strong></span>)}</div>}
+    <button type="button" onClick={() => router.push("/weekly-goals?" + entry)}
+      className="ml-auto min-h-11 pc:min-h-14 shrink-0 px-1 text-xs font-semibold text-brand-red">목표·PT과제 열기 <span aria-hidden>›</span></button>
+  </section>;
   return <section className={className + " rounded-2xl border border-gray-200 bg-white p-4"} aria-label="주간 목표">
     <div className="mb-3 flex items-center justify-between gap-2">
       <h2 className="font-bold">주간 목표 {q.data && <span className="text-sm text-gray-500">· {q.data.current.week}주차</span>}</h2>

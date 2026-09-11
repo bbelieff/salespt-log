@@ -12,6 +12,7 @@
 
 import PageContainer from "@/components/PageContainer";
 import WeekBody from "./_components/WeekBody";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
@@ -472,11 +473,11 @@ export default function SchedulePage() {
             onClickDay={scrollToDay}
             slideDir={slideDir}
           />
-          <SummaryBar meetings={allMeetings} />
+          <SummaryBar meetings={allMeetings} goalSummary={<WeeklyGoalSummary compact date={weekStart} metrics={["meetings", "contracts"]} />} />
         </PageContainer>
       </div>
 
-      <WeekBody weekStart={weekStart}
+      <WeekBody
         firstDays={daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
         lastDays={daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))} />
 
