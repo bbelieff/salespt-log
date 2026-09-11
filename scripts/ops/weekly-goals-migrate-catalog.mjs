@@ -61,7 +61,7 @@ export function formatMigrationFailure(error, fallback) {
   return JSON.stringify(result);
 }
 
-async function historyDiagnostic(client, relation) {
+export async function historyDiagnostic(client, relation) {
   const { rows } = await client.query(`with target as (
     select c.oid,c.relowner,c.relacl from pg_class c where c.oid=to_regclass('public.schema_migrations')
   ), table_acl as (

@@ -8,15 +8,19 @@ import { loadMigrationFiles } from "../db-migrate.mjs";
 import { VERSION, EXPECTED_CHECKSUM } from "./weekly-goals-migrate.mjs";
 
 export const PAYLOAD = ["scripts/db-migrate.mjs", "scripts/ops/weekly-goals-migrate.mjs",
+  "scripts/ops/weekly-goals-history-repair.mjs", "scripts/ops/weekly-goals-runtime.mjs",
   "scripts/ops/weekly-goals-migrate-catalog.mjs", "scripts/ops/weekly-goals-delivery.mjs",
-  "scripts/ops/weekly-goals-delivery-run.mjs", `lib/repo/db/migrations/${VERSION}`, "inventory.json"];
+  "scripts/ops/weekly-goals-delivery-run.mjs", `lib/repo/db/migrations/${VERSION}`, "inventory.json", "runtime-contract.json"];
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const fail = (code) => { throw new Error(`DELIVERY_${code}`); };
 const hex = (value, length) => typeof value === "string" && new RegExp(`^[a-f0-9]{${length}}$`).test(value);
-export function validateInputs({ sha, actualSha, sqlChecksum, mode, execute, runId, attempt }) {
+export function validateInputs({ sha, actualSha, sqlChecksum, mode, execute, runId, attempt, repairHistoryAcl = "false", compareRuntime = "false" }) {
   if (!hex(sha, 40) || actualSha !== sha) fail("EXPECTED_SHA_MISMATCH");
   if (!hex(sqlChecksum, 64) || sqlChecksum !== EXPECTED_CHECKSUM) fail("SQL_CHECKSUM_MISMATCH");
   if (mode !== VERSION || !["true", "false"].includes(execute)) fail("SCOPE_OR_EXECUTE_INVALID");
+  if (![repairHistoryAcl, compareRuntime].every(v => ["true", "false"].includes(v)) ||
+      (repairHistoryAcl === "true" && execute === "true") ||
+      ((repairHistoryAcl === "true" || execute === "true") && compareRuntime !== "true")) fail("REPAIR_OR_COMPARISON_INVALID");
   if (![runId, attempt].every((v) => typeof v === "string" && /^[1-9][0-9]*$/.test(v))) fail("RUN_ID_INVALID");
   return `/opt/salespt-migrations/${runId}-${attempt}-${sha}`;
 }
@@ -39,12 +43,15 @@ export async function buildArtifact(root, destination, inputs) {
   const inventory = validateInventory(migrations.map(({ version, checksum }) => ({ version, checksum })));
   const files = {};
   for (const name of PAYLOAD) {
-    if (name !== "inventory.json") {
+    if (!["inventory.json", "runtime-contract.json"].includes(name)) {
       const source = resolve(root, name);
       const stat = await lstat(source);
       if (!stat.isFile() || stat.isSymbolicLink() || await realpath(source) !== source) fail("SOURCE_NOT_REGULAR");
     }
-    const bytes = name === "inventory.json" ? Buffer.from(JSON.stringify(inventory, null, 2) + "\n") : await readFile(join(root, name));
+    const runtimeContract = name === "runtime-contract.json" ? Object.fromEntries(await Promise.all(
+      ["lib/repo/db/client.ts", "next.config.mjs"].map(async f => [f, sha256(await readFile(join(root, f)))]))) : null;
+    const bytes = name === "inventory.json" ? Buffer.from(JSON.stringify(inventory, null, 2) + "\n") :
+      runtimeContract ? Buffer.from(JSON.stringify(runtimeContract, null, 2) + "\n") : await readFile(join(root, name));
     if (name.endsWith(`/${VERSION}`) && sha256(bytes) !== EXPECTED_CHECKSUM) fail("SQL_CHECKSUM_MISMATCH");
     await mkdir(dirname(join(destination, name)), { recursive: true });
     await writeFile(join(destination, name), bytes, { flag: "wx", mode: 0o600 });
@@ -87,7 +94,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const [command, destination, ...extra] = process.argv.slice(2);
   const inputs = { sha: process.env.EXPECTED_SHA, actualSha: process.env.GITHUB_SHA,
     sqlChecksum: process.env.EXPECTED_SQL_SHA256, mode: process.env.MODE, execute: process.env.EXECUTE,
-    runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT };
+    runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT,
+    repairHistoryAcl: process.env.REPAIR_HISTORY_ACL, compareRuntime: process.env.COMPARE_RUNTIME };
   Promise.resolve().then(() => {
     if (command !== "build" || !destination || extra.length) fail("ARGUMENTS_INVALID");
     return buildArtifact(process.cwd(), resolve(destination), inputs);

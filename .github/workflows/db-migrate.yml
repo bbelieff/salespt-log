@@ -24,6 +24,14 @@ on:
         type: choice
         options: [installed, 0005_weekly_goals.sql]
         default: installed
+      repair_history_acl:
+        description: "Approved ONLY schema_migrations anon/authenticated revoke (no migration apply)"
+        type: boolean
+        default: false
+      compare_runtime:
+        description: "Read-only actual PM2/Next database resolution comparison (required for writes)"
+        type: boolean
+        default: false
       expected_sha:
         description: "Exact mode: reviewed full lowercase commit SHA"
         type: string
@@ -53,13 +61,20 @@ jobs:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
           EXECUTE: ${{ inputs.execute }}
+          REPAIR_HISTORY_ACL: ${{ inputs.repair_history_acl }}
+          COMPARE_RUNTIME: ${{ inputs.compare_runtime }}
         run: |
           set -euo pipefail
           [[ "$EXECUTE" == true || "$EXECUTE" == false ]]
+          [[ "$REPAIR_HISTORY_ACL" == true || "$REPAIR_HISTORY_ACL" == false ]]
+          [[ "$COMPARE_RUNTIME" == true || "$COMPARE_RUNTIME" == false ]]
+          [[ "$REPAIR_HISTORY_ACL" != true || "$EXECUTE" == false ]]
           if [[ "$MODE" == installed ]]; then
             [[ "$GITHUB_REF" == refs/heads/master ]]
             [[ -z "$EXPECTED_SHA" && -z "$EXPECTED_SQL_SHA256" ]]
+            [[ "$REPAIR_HISTORY_ACL" == false && "$COMPARE_RUNTIME" == false ]]
           elif [[ "$MODE" == 0005_weekly_goals.sql ]]; then
+            [[ "$EXECUTE" != true && "$REPAIR_HISTORY_ACL" != true || "$COMPARE_RUNTIME" == true ]]
             [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ && "$GITHUB_SHA" == "$EXPECTED_SHA" ]]
             [[ "$EXPECTED_SQL_SHA256" == 144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 ]]
             [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
@@ -79,6 +94,8 @@ jobs:
           EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
           MODE: ${{ inputs.mode }}
           EXECUTE: ${{ inputs.execute }}
+          REPAIR_HISTORY_ACL: ${{ inputs.repair_history_acl }}
+          COMPARE_RUNTIME: ${{ inputs.compare_runtime }}
         run: |
           set -euo pipefail
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]]
@@ -163,5 +180,7 @@ jobs:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
           EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
           EXECUTE: ${{ inputs.execute }}
+          REPAIR_HISTORY_ACL: ${{ inputs.repair_history_acl }}
+          COMPARE_RUNTIME: ${{ inputs.compare_runtime }}
           VPS_HOST_V6: ${{ secrets.VPS_HOST_V6 }}
         run: bash scripts/ops/weekly-goals-delivery-ssh.sh

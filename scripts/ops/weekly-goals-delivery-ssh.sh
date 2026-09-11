@@ -5,6 +5,10 @@ set -euo pipefail
 [[ "$EXPECTED_SQL_SHA256" =~ ^[a-f0-9]{64}$ ]]
 [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
 [[ "$EXECUTE" == true || "$EXECUTE" == false ]]
+[[ "${REPAIR_HISTORY_ACL:-false}" == true || "${REPAIR_HISTORY_ACL:-false}" == false ]]
+[[ "${COMPARE_RUNTIME:-false}" == true || "${COMPARE_RUNTIME:-false}" == false ]]
+[[ "${REPAIR_HISTORY_ACL:-false}" != true || "$EXECUTE" == false ]]
+[[ "$EXECUTE" != true && "${REPAIR_HISTORY_ACL:-false}" != true || "${COMPARE_RUNTIME:-false}" == true ]]
 STAGE="/opt/salespt-migrations/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$EXPECTED_SHA"
 ARCHIVE="$RUNNER_TEMP/weekly-payload.tar"
 ARCHIVE_HASH=$(sha256sum "$ARCHIVE" | cut -d' ' -f1)
@@ -35,7 +39,8 @@ GUARD="test ! -L /opt; test \"\$(realpath /opt)\" = /opt
   test \"\$(realpath /opt/salespt-migrations)\" = /opt/salespt-migrations
   test ! -L '$STAGE'; mkdir -p '$STAGE'; test \"\$(realpath '$STAGE')\" = '$STAGE'
   test ! -L '$STAGE/payload.tar.partial'; test ! -L '$STAGE/ARTIFACT_READY'
-  test ! -L '$STAGE/payload'; test ! -L '$STAGE/preflight-result.json'; test ! -L '$STAGE/execute-result.json'"
+  test ! -L '$STAGE/payload'; test ! -L '$STAGE/preflight-result.json'; test ! -L '$STAGE/execute-result.json'
+  test ! -L '$STAGE/repair-history-acl-result.json'; test ! -L '$STAGE/compare-runtime-result.json'"
 # Do not overwrite a fully verified stage on a transport retry; consume stdin safely.
 ssh_retry "set -eu; umask 077; $GUARD
   if test -f '$STAGE/ARTIFACT_READY'; then
@@ -55,9 +60,16 @@ ssh_retry "set -eu; umask 077
 RUNNER="node '$STAGE/payload/scripts/ops/weekly-goals-delivery-run.mjs'"
 ARGS="'$EXPECTED_SHA' '$MANIFEST_HASH' '$EXPECTED_SQL_SHA256'"
 # Bounded DB transaction is safe on interruption. A transport retry revalidates and is exact-only/no-op.
+if [[ "${COMPARE_RUNTIME:-false}" == true ]]; then
+  ssh_retry "set -eu; $GUARD; cd /opt/salespt-log; $RUNNER compare-runtime $ARGS"
+fi
+if [[ "${REPAIR_HISTORY_ACL:-false}" == true ]]; then
+  ssh_retry "set -eu; $GUARD; cd /opt/salespt-log; $RUNNER repair-history-acl $ARGS"
+fi
 ssh_retry "set -eu; $GUARD; cd /opt/salespt-log; $RUNNER preflight $ARGS"
 if [[ "$EXECUTE" == true ]]; then
   ssh_retry "set -eu; $GUARD; cd /opt/salespt-log; $RUNNER execute $ARGS"
   ssh_retry "set -eu; $GUARD; cd /opt/salespt-log; $RUNNER preflight $ARGS"
+  ssh_retry "set -eu; $GUARD; cd /opt/salespt-log; $RUNNER compare-runtime $ARGS"
 fi
 printf 'Artifact SHA256=%s manifest SHA256=%s stage=%s\n' "$ARCHIVE_HASH" "$MANIFEST_HASH" "$STAGE"

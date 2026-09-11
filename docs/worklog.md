@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 승인된 이력 ACL 한정 회수 경로 검수 준비
+- 의도: Camus 11:23:41 KST 승인 범위인 schema_migrations의 anon/authenticated 권한만 회수할 보호된 실행 경로 준비. canonical 2026-09-09 지침 적용을 재확인하고 해당 지침 파일은 변경하지 않음.
+- 한 것: 기본 false인 명시 repair 옵션, 단일 table REVOKE·잠금/timeout·이력 digest/owner/service/server 보존·잔여 권한 rollback. 실제 PM2 listener 초기 환경과 설치 Next env 해석을 통한 DB 대상/역할 READ ONLY 비교; 임의 SQL/환경·연결값 출력 없음.
+- 검증: 신규 disposable PostgreSQL11·합성 runtime8 회귀, 기존 ops60 보존. 타입/문법 및 전체 check.sh 통과 후 최신 커밋 훅·CI/정확한 head·manifest 결과는 #947 체크포인트로 제출; 앱 소스/SQL0005 불변이라 build/브라우저 재실행하지 않음.
+- 다음: OG delta 독립 검수 전 ACL 실행/dispatch/DB apply/머지/배포 HOLD. 실제 host 런타임 비교는 NOT_RUN이며 모호한 프로세스·변경 파일·PG fallback은 자동 설정 변경 없이 중단. KPI/Notion/Kakao 변경 없음.
+- SoR: docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
 ### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 이력 권한 거부의 안전한 진단
 - 의도: OG read-only run34552514192의 UNSAFE_HISTORY_SECURITY 원인을 권한 변경 없이 구분할 수 있게 보강.
 - 한 것: 고정 이력 테이블의 권한별 boolean·column ACL·이름 없는 기타 grantee 수·server 권한만 CLI 실패 JSON에 투영. 비0 종료/READ ONLY/rollback·이력 데이터 조회 차단/SQL0005 불변 유지.

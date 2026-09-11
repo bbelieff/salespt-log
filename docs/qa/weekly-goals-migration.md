@@ -3,6 +3,28 @@
 상태: **현재 진단 head 운영 실행 NOT_RUN / 기존 OG preflight는 아래 실패 증거 참조 / 새 검수 전 실행·머지·배포 금지**.
 기존 custom `schema_migrations` 이력을 유지한다. Supabase CLI 이력/새 자격증명/인프라 정책을 만들지 않는다.
 
+## 승인된 이력 ACL 한정 회수와 앱 연결 비교 (새 delta 검수 전 HOLD)
+
+Camus 승인:2026-09-11 11:23:41 KST, Slack C0BM0JCFM55/thread1788882607.566779/message1789093421.892039. OG run34553595400은 PUBLIC 권한 없음, anon/authenticated7권한, column ACL/기타 grantee 없음으로 보고했다. 승인 범위는 **public.schema_migrations에서 두 browser grantee 권한만 회수**하는 것이며 owner/service/server·이력 데이터·다른 table/role/default privilege/RLS는 보존한다. 재승인은 요구하지 않지만 이 구현 delta의 독립 검수/OG RELEASE 전 실행하지 않는다.
+
+- 기존 exact workflow에 `repair_history_acl=false`, `compare_runtime=false` 기본값을 추가했다. installed 모드에서는 둘 다 false만 허용한다. exact 쓰기는 compare_runtime=true가 필요하며 repair_history_acl=true와 execute=true를 함께 지정하면 보호된 접속 전에 거절한다.
+- 일반 preflight는 여전히 READ ONLY이며 자동 수리하지 않는다. repair 요청은 런타임 비교 → 한정 수리 → preflight, migration apply 요청은 런타임 비교 → preflight → exact0005 → postflight → 런타임 비교로 분리한다.
+- 고정 수리 SQL은 `revoke all privileges on table public.schema_migrations from anon, authenticated restrict` 한 개다. BEGIN·lock/statement timeout·기존 advisory key786569 transaction lock·해당 이력 table exclusive lock 뒤 실행한다. CASCADE/일반 SQL 입력/다른 table/role 변경 없음.
+- 수리 전 카탈로그가 승인된 범위인지 확인한다. PUBLIC/unknown/column ACL/RLS/예상 밖 구조는 수정하지 않고 실패한다. table grant가 이미 없으면 검증된 NO_OP이다. 상속 등으로 browser 실효 권한이 남으면 rollback한다.
+- 이력 count와 digest는 DB aggregate로만 비교한다. 원행은 반환/출력하지 않는다. 두 browser를 제외한 ACL 및 owner/service/current server의 실효 권한 snapshot이 같아야 commit한다. 출력은 count, digestMatches, permissionsPreserved 등이며 실제 hash/이력 내용/역할명을 출력하지 않는다. 수리 전후 런타임 안정성 재확인 실패도 rollback한다.
+
+### 실제 런타임 해석 범위
+
+`pm2 jlist`는 host 내부 메모리로만 읽는다. 고정 salespt-log/online/cwd의 단일 프로세스 계통에서 :3000 listen socket을 실제 소유한 유일한 Next server PID를 선택한다. `/proc`의 초기 환경·시작 tick·cwd와 환경파일의 시각/내용 hash를 비공개로 확인한다. PM2/env/명령줄/URL/driver 오류는 로그로 내보내지 않는다.
+
+설치된 `@next/env`를 별도 host-local child에서 사용하여 process env 우선 → .env.production.local → .env.local → .env.production → .env 및 expansion을 재현한다. URL 전달은 private IPC뿐이며 stdout/stderr는 전달하지 않는다. 이는 debugger로 JS 메모리를 읽는 것이 아니라 실제 시작 입력과 변경되지 않은 파일의 해석이다. 파일/root가 시작 이후 변경됐거나 startup preload/모드/프로세스가 모호하면 성공으로 추정하지 않고 중단한다. 실제 listener와 observer의 Node executable도 같아야 하며, 별도 PG* fallback 환경이 있으면 설정을 바꾸지 않고 거절한다.
+
+artifact의 `runtime-contract.json`은 검수된 db/client.ts와 next.config.mjs의 hash만 담는다. 설치 소스가 다르거나 시작 이후 변경, build config의 DATABASE_URL 치환, Next env 구현 교체 시 중단한다. 실행 중 프로세스 지문과 migration resolver 값도 종료 전에 재확인한다.
+
+앱 해석 URL과 기존 migration resolver(env 우선, .env.local>.env)를 비교한다. endpoint/database/options 및 설정 role이 같아야 두 연결의 READ ONLY DB/current/session role/server endpoint 관찰을 대조한다. 차이·불명확은 실패다. stdout에는 matching boolean과 고정3table의 존재/SELECT/INSERT/UPDATE/DELETE boolean만 낸다. 연결문자열·비밀번호·임의 DB/role명·학생 행 조회 없음. 이 비교는 인증된 앱 저장 E2E의 대체가 아니다.
+
+모든 새 host 관찰/수리/DB apply/배포는 아직 NOT_RUN. 합성 PostgreSQL 및 로컬 Next env 재현만 수행하며 최종 검증 수치와 immutable head/manifest는 #947 체크포인트를 따른다. 코드 수리 없이 런타임이 지원 범위 밖이면 그 관찰을 OG에 반환하며 설정을 자동 변경하지 않는다.
+
 ## OG read-only 관찰과 제한된 실패 진단
 
 OG가 실행한 [run34552514192](https://github.com/bbelieff/salespt-log/actions/runs/34552514192)는 a82f056 artifact/보호된 SSH 검증 후 `UNSAFE_HISTORY_SECURITY`로 exit1했다. 이 writer는 해당 run을 재실행하지 않았다. 목표 migration/머지/배포는 없으며 마지막 정상 앱5790609는 유지된다. 아래 새 진단 helper는 아직 운영 실행하지 않았다.
@@ -52,13 +74,13 @@ gh workflow run db-migrate.yml --repo bbelieff/salespt-log --ref feat/weekly-goa
 ```
 
 1. SSH/Tailscale/키 사용 **전** `github.sha == expected_sha`와 SQL checksum/mode/run id를 검증한다. checkout은 immutable SHA와 `persist-credentials:false`다. [공식 gh 문서](https://cli.github.com/manual/gh_workflow_run)의 `--ref`는 지정 branch workflow를 실행한다. branch가 움직이면 old expected SHA는 실패한다.
-2. `weekly-goals-delivery.mjs`는 다음 allowlist만 보낸다. `scripts/db-migrate.mjs`(resolver만 import), `scripts/ops/weekly-goals-migrate.mjs`, `weekly-goals-migrate-catalog.mjs`, `weekly-goals-delivery.mjs`, `weekly-goals-delivery-run.mjs`, 정확한 `lib/repo/db/migrations/0005_weekly_goals.sql`, `inventory.json`(전체 migration **파일명/checksum만**), `manifest.json`(reviewed SHA/SQL checksum/모든 payload file SHA256). 다른 SQL bytes는 보내지 않는다.
+2. `weekly-goals-delivery.mjs`는 다음 allowlist만 보낸다. `scripts/db-migrate.mjs`(resolver만 import), `scripts/ops/weekly-goals-migrate.mjs`, `weekly-goals-migrate-catalog.mjs`, `weekly-goals-delivery.mjs`, `weekly-goals-delivery-run.mjs`, `weekly-goals-history-repair.mjs`, `weekly-goals-runtime.mjs`, 정확한 `lib/repo/db/migrations/0005_weekly_goals.sql`, `inventory.json`(전체 migration **파일명/checksum만**), `runtime-contract.json`(앱 resolver/config 소스 checksum만), `manifest.json`(reviewed SHA/SQL checksum/모든 payload file SHA256). 다른 SQL bytes는 보내지 않는다.
 3. 기존 SSH/Tailscale/host fallback/`accept-new` 경로로 앱 밖 `/opt/salespt-migrations/<run-id>-<attempt>-<sha>/payload`에 stage한다. archive hash를 먼저 검증한 뒤 extract하고 파일명/regular-file/no-symlink/checksum 검사 후에만 `ARTIFACT_READY`를 기록한다. 앱 checkout/npm/build/PM2/env 파일은 변경·복사하지 않는다.
 4. 매 실행 payload를 재검증한다. cwd `/opt/salespt-log`, 기존 protected env resolver, `createRequire('/opt/salespt-log/package.json')('pg')`를 사용한다. 자격증명을 인자/export/log로 전달하지 않는다. workflow concurrency `db-migrate`와30분 job 한도, SSH rc255만 최대15회 재시도한다. DB/application 오류는 즉시 실패한다.
 5. preflight pending/history/catalog를 검수한다. 예상 밖 보안/구조/이력은 변경 없이 중단한다. 허용된 적용 dispatch는 동일 최종 SHA로 다음 명령이며 preflight → exact execute → 사후 preflight 순이다.
 
 ```sh
-gh workflow run db-migrate.yml --repo bbelieff/salespt-log --ref feat/weekly-goals -f mode=0005_weekly_goals.sql -f expected_sha=<reviewed-full-head-sha> -f expected_sql_sha256=144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 -f execute=true
+gh workflow run db-migrate.yml --repo bbelieff/salespt-log --ref feat/weekly-goals -f mode=0005_weekly_goals.sql -f expected_sha=<reviewed-full-head-sha> -f expected_sql_sha256=144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 -f compare_runtime=true -f repair_history_acl=false -f execute=true
 ```
 
 감사용 원격 형태(직접 실행 권고 아님): cwd `/opt/salespt-log`에서 `node /opt/salespt-migrations/<run>-<attempt>-<sha>/payload/scripts/ops/weekly-goals-delivery-run.mjs preflight|execute <sha> <manifest-sha256> <sql-sha256>`.
