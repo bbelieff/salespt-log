@@ -41,6 +41,41 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 승인된 이력 ACL 한정 회수 경로 검수 준비
+- 의도: Camus 11:23:41 KST 승인 범위인 schema_migrations의 anon/authenticated 권한만 회수할 보호된 실행 경로 준비. canonical 2026-09-09 지침 적용을 재확인하고 해당 지침 파일은 변경하지 않음.
+- 한 것: 기본 false인 명시 repair 옵션, 단일 table REVOKE·잠금/timeout·이력 digest/owner/service/server 보존·잔여 권한 rollback. 실제 PM2 listener 초기 환경과 설치 Next env 해석을 통한 DB 대상/역할 READ ONLY 비교; 임의 SQL/환경·연결값 출력 없음.
+- 검증: 신규 disposable PostgreSQL11·합성 runtime8 회귀, 기존 ops60 보존. 타입/문법 및 전체 check.sh 통과 후 최신 커밋 훅·CI/정확한 head·manifest 결과는 #947 체크포인트로 제출; 앱 소스/SQL0005 불변이라 build/브라우저 재실행하지 않음.
+- 다음: OG delta 독립 검수 전 ACL 실행/dispatch/DB apply/머지/배포 HOLD. 실제 host 런타임 비교는 NOT_RUN이며 모호한 프로세스·변경 파일·PG fallback은 자동 설정 변경 없이 중단. KPI/Notion/Kakao 변경 없음.
+- SoR: docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 이력 권한 거부의 안전한 진단
+- 의도: OG read-only run34552514192의 UNSAFE_HISTORY_SECURITY 원인을 권한 변경 없이 구분할 수 있게 보강.
+- 한 것: 고정 이력 테이블의 권한별 boolean·column ACL·이름 없는 기타 grantee 수·server 권한만 CLI 실패 JSON에 투영. 비0 종료/READ ONLY/rollback·이력 데이터 조회 차단/SQL0005 불변 유지.
+- 검증: 신규 합성 CLI5·일회용 PostgreSQL 카탈로그4 회귀, 타입·JS 문법 확인. 전체 Vitest structural41/non-structural1706 PASS; 집중 ops60/check.sh/CI 및 정확한 head·manifest는 #947 체크포인트.
+- 다음: 새 진단 head를 OG 검수에 반환하며 dispatch 금지. 실제 원인·app/마이그레이션 DB 대상/역할 비교는 운영 read-only 증거 필요; 기존 ACL/role/schema 교정·DB apply·머지·배포는 수행하지 않음.
+- SoR: docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 추가 bounded REWORK
+- 의도: OG 후속 검수의 archived 자기 권한·별칭 담당·지연 내부 응답·migration 이력/전달 경계 교정.
+- 한 것: 모든 자기 수강행 기준 내부 거부, 담당 필터 후 대표 선택, abort/generation 및 비JSON401/403 보호, 신규 이력 ACL/기존 이력 fail-closed·bounded timeout, feature-ref exact0005 외부 artifact 전달. 기존 UI 승인 사항 보존.
+- 검증: 집중211·전체 structural41/non-structural1697·브라우저28·일회용 PostgreSQL18 assertions 및 Next build PASS. optional migration DB18건의 CI skip과 실제 운영 증거를 구별; 최종 check.sh/CI/head는 #947 체크포인트.
+- 다음: 정확한 SHA·SQL/manifest 체크섬·preflight/apply 명령을 OG 독립 검수에 제출. RELEASE 전 dispatch/운영 DB/머지/배포 HOLD, 기존 ACL 결함 발견 시 자의적 수정 금지.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 OG REWORK 보강
+- 의도: OG 검수7건과 운영 migration 순서/보안 결함을 교정하고 재검수 요청.
+- 한 것: 명시 student 저장·시트/수강 별칭 공유·trainer 아레나/자기 내부 권한 분리, 업무탭 dirty 진입, 지난주 초안 복제·5열 모바일·승인 비율 역산. canonical/실데이터 변경 없음.
+- 검증: 집중169 tests·브라우저21 scenarios·일회용 PostgreSQL18 assertions PASS. exact migration25건 중15건은 일회용 DB이며 CI 기본 skip; 최종 전체 게이트·head는 PR 체크포인트 참조.
+- 다음: 정확한0005 preflight/적용 artifact 계약을 OG 독립 검수에 제출. RELEASE 전 운영 실행·머지·배포 HOLD, 실제 Notion/실계정 저장 NOT_RUN.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 주간 목표 검수 제출
+- 의도: #946 v0.4 승인을 실제 학생/담당 트레이너 공통 저장·편집 기능으로 구현.
+- 한 것: 공개/내부 별도 테이블·CAS/API 권한, 실제 주간 집계·목표 링·비교·14열 복사, 학생/트레이너/3탭 진입. 운영 쓰기 없음.
+- 검증: 집중102 tests·브라우저14 scenarios·일회용 PostgreSQL18 assertions PASS. 최종 check.sh/build/CI는 PR head 체크포인트로 제출.
+- 다음: OG 독립 검수/RELEASE 전 머지·배포 HOLD. 운영 migration/health/실계정 화면 및 실제 Notion 붙여넣기 NOT_RUN.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/plans/active/weekly-goals.md, GitHub #947.
+
 ### 2026-09-11 · 컨택관리 QA 후속 보완
 - 의도: PR #940 QA 잔여 3항목을 우선순위대로 해결.
 - 한 것: 미완성 카드 사전 안내·저장 차단·수정 복귀, 콜지기소 부분 이동 항목 명시, 빨강/노랑 문서 정합성.
@@ -3406,3 +3441,7 @@
 - 다음: normal hook 통합 커밋 후 DevD exact-SHA 독립 VERIFY
 - SoR: `docs/plans/active/expense-db-cost-ledger-parity-r5.md`
 - 최종 diff: 승인된 11파일만 변경, DevD 두 테스트 SHA-256 불변, `git diff --check` PASS
+
+## 2026-09-11 OG release review — runtime directory churn
+
+Reviewed 1ad47e5 helper delta; found established deploy removes .next-prev after PM2 reload. Removed only the unrelated app-directory mtime rejection; env file timestamps/hashes and repeated runtime identity fingerprint remain. Regression simulates post-start unrelated entry removal (accepted) then actual env change (rejected). Source-evidenced false positive correction, not a DB/role/environment change. Actual ACL/migration/deployment still not run; final checks required.

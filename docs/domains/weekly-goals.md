@@ -1,0 +1,65 @@
+---
+status: draft
+owner: SALES-WEEKLY-GOALS-947-WRITER
+---
+
+> **📄 이 문서는 무엇인가요?**
+> - **한 줄 요약**: #946 v0.4 주간 목표의 운영 저장·기간·권한·복사 계약.
+> - **누가 읽나요**: 구현·검수·배포 담당.
+> - **관련 문서**: [#947](https://github.com/bbelieff/salespt-log/issues/947), [data-model](./data-model.md), [components](../design/components.md).
+
+## 저장·권한
+
+목표는 서버가 해석한 studentId(spreadsheetId)×cohort×courseStart×weekStart 한 행이다. 같은 시트·수강의 로그인 별칭 E1/E2와 트레이너 명단의 대표 계정은 같은 목표/내부 기록과 revision을 사용한다. 다른 시트·기수·수강 시작일·주는 격리한다. 클라이언트 sheetId를 받거나 신뢰하지 않는다. 실적도 기존 계정→시트 매핑을 따른다. 수강 시작일 변경 시 과거 키를 자동 이관하지 않는다.
+
+공용 테이블 weekly_goals는 nullable 정수 다섯 개와 task만 저장. 내부 weekly_goal_private는 special_notes/prior_outcome을 분리 보관한다. 공용 GET에는 내부 조회 자체가 없고 User 전체를 spread하지 않는다. unknown 입력은 거절한다.
+
+실제 로그인 세션과 기존 관리자/담당 trainer 규칙으로 타깃을 검증한다. pending 접근 금지, 학생은 본인만, trainer는 active·담당만, 관리자는 기존 전원 권한. overview는 권한을 통과한 대상만 최대4동시 공용 목표 조회, 각 학생의 실제 실적은 선택 시만 조회한다. 재조회된 학생의 역할·상태·담당도 다시 검증한다.
+
+로스터는 raw 수강행별 현재 담당 권한을 먼저 검사한 후 studentId/cohort/start 기준 대표를 고른다. E1이 다른 트레이너에게 배정되어도 담당 E2가 사라지지 않으며 미배정 E1 이메일이나 합친 권한을 반환하지 않는다. 기존 이메일/active arena resolver가 가리키지 않는 과거 수강은 다른 수강으로 연결되는 링크를 만들지 않는다.
+
+같은 이메일에 trainer와 active arena trainee 행이 있으면 기존 me/profile의 findActiveArenaRowByEmail로 정확한 수강행을 해석한다. 이름 기반 대체나 다른 수강 합치기는 하지 않는다. 트레이너 자신의 수강(동일 시트 별칭 포함)은 공용 학생 편집만 가능하며 자기 자신이라는 이유로 내부 권한을 주지 않는다. 내부는 실제 admin 또는 해당 타인 수강생의 active assigned trainer만 접근한다.
+
+자기 수강 내부 권한의 **거부** 판단에는 active arena만 쓰지 않고, 서버에서 확인한 동일 로그인 이메일의 모든 trainee 행(active/archived 포함)을 사용한다. sheet/cohort/start가 일치하는 자신의 별칭은 보관 상태여도 내부 접근 불가다. 이 확장은 거부에만 적용하고 공용 조회나 권한 부여를 넓히지 않는다. admin의 기존 권한은 유지한다.
+
+공용/내부 저장은 비어 있지 않은 명시 student와 week 및 enrollment(cohort/courseStart) echo를 요구한다. 학생 생략/빈칸은400, 빈 enrollment나 수강 변경은409이며 쓰기 없다. 조회의 기존 impersonation cookie 편의는 저장 대상의 대체값이 아니다. INSERT 충돌 무시 + UPDATE WHERE revision 비교로 단일 승자만 성공하며 실패는409. 공용/내부 revision은 독립, 내부 저장이 공용 과제를 지우지 않는다. 읽기 오류는 503이며 빈 성공값으로 대체하지 않는다. 테이블이 없으면 목표 기능만 실패하며 migration을 요청 경로에서 실행하지 않는다.
+
+## 주간/실적
+
+`lib/util/week.ts` friWeekIndexOf/friOf를 사용하는 금~목 UI 주차. 시작일 포함 금~목 주가1주차, 현재 날짜는todayKST. 기존 시작일 기반 8주 누적 통계 자체는 변경하지 않는다. 시작 전 첫 주 표시, 완료 주차도 수정 가능(기존 CRM 정책 유지).
+
+| 지표 | 기존 원천·집계 | 날짜/정정 |
+| --- | --- | --- |
+| 생산 | readSalesRowsFromDb production, 기존 CHANNEL_ORDER | sales.date, 정정/삭제 후 재조회 반영 |
+| 유입 | 동일 inflow, 기존 발굴 파생값을 그대로 소비 | sales.date; 발굴/매칭일 규칙 재정의 없음 |
+| 컨택완료 | 동일 contactProgress(기존 컨택 입력 건수) | sales.date |
+| 미팅완료 | 기존 DONE(완료/계약), CARRYOVER 제외 | 미팅날짜; 예약/변경/취소 제외 |
+| 계약 | 기존 weeklyContractsFromDb 및 terminatedByWeek 차감(0하한) | 미팅날짜 귀속, 해지는 기존 계약일 차감; 기존 주간 집계의 이월 포함 의미 유지 |
+
+선택 금~목 날짜 범위를 먼저 적용하고 같은 raw 집계 함수를 호출한다. 신규 목표 화면의 기간 범위가 기존 8주 누적과 다름을 API의 start/end로 명확히 한다. 목표 숫자에서 실제 활동·관찰을 추론하지 않는다. DB 정본 기수 게이트는 daily-source 그대로. 미전환/날짜 미확정은 사용할 수 없음을 명시, 임의 시트 폴백 없음.
+
+저장 후 공통 쿼리 무효화, 기존 앱 mutation 성공 시 동일 aggregate 갱신. 비교와 축약 링은 동일 endpoint. 내부 기록은 필요할 때만 별도 요청, 함께보기에는 렌더하지 않는다.
+
+미저장 주차/화면 이동과 업무탭 목표 진입은 기존 DirtyGuard(저장/무시/취소), 브라우저 뒤로/앞으로 이동은 목표 편집기의 native history 확인으로 보호한다. 일시적 재조회 실패 시 기존 입력을 유지하고 오래된 실적으로 복사하지 못하게 한다. 권한 거부401/403이면 캐시된 내부 편집기를 제거하며, 내부 조회/저장과 명단 반환에도 최신 actor 권한을 다시 확인한다.
+
+내부 요청은 generation과 AbortSignal로 이전 응답을 차단한다. 늦은 A200은 이후 B403/언마운트 뒤 saved/draft/미리보기/복사 fallback을 복구하지 못한다. 내부만 거부되면 공용 목표는 유지하며 내부 dirty 등록과 내용을 제거한다. 공용 접근 거부는 해당 캐시 화면을 잠그고 명시적 재조회 성공 때만 다시 연다. 빈/비JSON 응답도 관찰한 HTTP401/403을 유지하고 응답 본문은 로그에 남기지 않는다. 409·5xx·일시적 네트워크 오류에는 초안을 보존한다. 이미 사용자가 보거나 복사한 내용을 회수할 수 있다는 주장은 하지 않는다.
+
+## 초안 편의 기능
+
+지난주 목표·과제 가져오기는 이전 주의 다섯 목표(null/0 포함)와 task를 현재 초안에 복제한다. 이전 주/저장된 현재 행은 바꾸지 않으며 기존 미저장 입력이 있으면 덮어쓰기 확인한다. 역산은 제안→미리보기→초안 적용→명시적 저장 순서이며 취소/미리보기에는 쓰기가 없다. 적용 후 목표를 직접 고칠 수 있고 현재 PT과제는 유지한다.
+
+내부 계산 계약: 승인된 6기 편의 비율 계약/미팅0.40, 미팅/컨택0.42, 컨택/유입0.48, 유입/생산0.83을 고정 순수 함수로 사용한다. 계약 목표 n에 대해 미팅=ceil(n/.40), 컨택=ceil(n/(.40×.42)), 유입=ceil(n/(.40×.42×.48)), 생산=ceil(n/(.40×.42×.48×.83)). 중간 반올림 없이 각 누적 비율에서 한 번만 올림한다(BigInt 유리수 계산). 모든 결과는0~2147483647 정수, 범위 초과는 적용 거절. n=2는 생산30/유입25/컨택12/미팅5/계약2다. 실시간 통계나 성공 예측이라는 주장은 없고, 데모의 배수 placeholder를 사용하지 않는다. 상세 비율 설명은 사용자 UI에 넣지 않는다.
+
+## 복사
+
+공용은 목표/PT과제만 명시적으로 선택. 내부 회의록은 지역/기수/수강생/담당T/금주미팅/금주계약/특이사항/지난 PT성과/이번 PT과제/다섯 목표, 총14열. 지역은 기존 team, 담당 이름은 등록된 trainer 이름(없으면 기존 식별 이메일).
+
+미리보기 수정은 복사용 편집이며 원본 기록을 바꾸지 않는다. 목표/내부 원본 초안은 먼저 저장해야 복사 가능. HTML은 텍스트 escape와 br로 줄바꿈 보존; TSV는 내부 tab을 공백, 줄바꿈을 / 로 바꿔14열1행 유지. clipboard 실패/미지원이면 선택 가능한 text. 성공 문구는 복사됨뿐. 실제 Notion 표 붙여넣기 호환은 별도 NOT_RUN.
+
+## 외부 연동·운영
+
+#946의 실제 KPI 읽기 결과: ①목표와 보고값/일지값은 별도 구조, 월 기준 주간 매핑도 다르다. 승인된 자동 쓰기 경로/학생 키 매핑/실행 증거 없음. 이 기능은 KPI·Notion 원본에 쓰지 않는다. Notion 자동 페이지·Kakao 생성/발송 없음.
+
+RELEASE 전 migration 및 운영 쓰기 실행 금지. [정확한0005 적용 계약](../qa/weekly-goals-migration.md)의 읽기 전용 preflight와 checksum 고정 exact-only helper를 검수한다. 전체 pending 러너나 미지원 --only/--version은 사용하지 않는다. 기능 노출 전 version/checksum/appliedAt 및 실제 테이블 ACL·RLS·서버 권한 확인이 필요하다. RLS 우회권한/소유자인 기존 서버 연결만 사용하며 새 브라우저 권한 정책을 만들지 않는다. migration 파일 배포나 auth-env health만으로 DB 적용 완료를 선언하지 않는다.
+
+기능 롤백은 PR squash revert, 가산 테이블과 저장 기록은 보존. 기존 학생 자료/시트 수식에 변화 없음. 배포 후 운영 관찰 계약과 실제 인증 흐름·migration 적용·health는 OG RELEASE와 함께 확인한다.

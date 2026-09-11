@@ -10,6 +10,7 @@
 "use client";
 
 import PageContainer from "@/components/PageContainer";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 
 import { useEffect, useMemo, useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
@@ -283,6 +284,7 @@ export default function DbPage() {
 
       <main className="px-4 pb-[80px] pt-3">
       <PageContainer width="wide">
+        <WeeklyGoalSummary metrics={["production", "inflow"]} />
         <OverallCard
           items={overall.items}
           totalCost={overall.totalCost}

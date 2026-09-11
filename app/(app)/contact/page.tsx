@@ -1,6 +1,7 @@
 /** 컨택관리 탭 — 4채널 4지표 + 미팅 슬롯. SSOT: docs/design/prototypes/contact-daily-input.html v7. */
 "use client";
 import PageContainer from "@/components/PageContainer";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 
 import { useEffect, useMemo, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
@@ -362,6 +363,7 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
+      <WeeklyGoalSummary date={date} metrics={["inflow", "contacts"]} />
       {/* WeekHeader 단독 sticky. 2026-05-17 [A3]: 좌우 스와이프로 주 이동. */}
       <div
         className="sticky top-24 z-30 bg-white shadow-sm"

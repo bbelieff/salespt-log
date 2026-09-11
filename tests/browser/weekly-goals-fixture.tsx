@@ -1,0 +1,22 @@
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import WeeklyGoalPage from "../../components/weekly-goals/WeeklyGoalPage";
+import WeeklyGoalSummary from "../../components/weekly-goals/WeeklyGoalSummary";
+import TrainerGoalOverview from "../../components/weekly-goals/TrainerGoalOverview";
+import WeekBody from "../../app/(app)/schedule/_components/WeekBody";
+import DirtyProvider, { useDirtyEntry } from "../../components/DirtyGuard";
+function BusinessInput() {
+  const [value, setValue] = React.useState("");
+  const [saved, setSaved] = React.useState("");
+  useDirtyEntry("business-fixture", value !== saved, () => { setSaved(value); }, () => setValue(saved), "업무 입력");
+  return <label>업무 입력<input aria-label="업무 입력" value={value} onChange={e => setValue(e.target.value)} /></label>;
+}
+const p = new URLSearchParams(location.search);
+const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const mode = p.get("mode");
+createRoot(document.getElementById("root")!).render(<QueryClientProvider client={client}>
+  {mode === "overview" ? <TrainerGoalOverview /> : mode === "summary" ?
+    <DirtyProvider><BusinessInput /><WeeklyGoalSummary metrics={["production", "inflow"]} /><WeeklyGoalSummary metrics={["inflow", "contacts"]} /><WeekBody weekStart="2026-09-11" firstDays={<p>금토일</p>} lastDays={<p>월화수목</p>} /></DirtyProvider> :
+    <WeeklyGoalPage student="fixture@example.invalid" week="2" date="" trainer={p.get("role") !== "student"} />}
+</QueryClientProvider>);

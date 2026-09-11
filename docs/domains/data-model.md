@@ -4,6 +4,20 @@ owner: belie
 last_review: 2026-04-27
 ---
 
+## 주간 목표 (#947)
+
+정본은 별도 Postgres 테이블이다. 시트 보고값/실제값/수식에는 쓰지 않는다.
+
+- `WeeklyGoalValues`: production/inflow/contacts/meetings/contracts 다섯 nullable nonnegative integer. null ≠ 0.
+- `WeeklyGoalInput`: goals, task(최대10000자), revision. strict 입력; 내부필드 주입 거절.
+- `WeeklyGoalPrivateInput`: specialNotes, priorOutcome, revision. 별도 trainer/admin 권한 API.
+- `WeeklyGoalKey`: studentId(서버 해석 spreadsheetId)×cohort×courseStart×weekStart. 같은 수강의 로그인 별칭은 같은 행/revision을 공유한다. 저장 시 명시 student와 수강정보 echo를 확인하며 client sheetId는 받지 않는다.
+- `WeeklyGoalRecord`, `WeeklyGoalPrivateRecord`: 별도 public/private 테이블, 양쪽 독립 revision/updatedAt.
+- `GoalWeek`, `WeeklyGoalView`: 현재/지난 금~목 주간의 저장값과 기존 기록 기반 실적. 학생 payload에 내부기록 없음.
+- `GoalStudent`, `GoalOverviewRow`: 담당 학생 목록 및 공용 목표 집계, 개별 실패는 error로 명시.
+- migration `0005_weekly_goals.sql`: 가산 테이블, 자연 복합키와 CHECK, RLS 활성, public 권한 없음. 운영 적용은 별도 증거 필요.
+- 상세 집계·권한·기간 계약: [weekly-goals.md](./weekly-goals.md).
+
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 세일즈PT 영업일지의 백엔드 데이터 모델과 Google Sheets 1:1 매핑 설명
 > - **누가 읽나요**: 개발자

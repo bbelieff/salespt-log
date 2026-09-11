@@ -19,6 +19,7 @@
  */
 "use client";
 import PageContainer from "@/components/PageContainer";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 
 import { useMemo, useState } from "react";
 import { STATS_WEEKS } from "@/config/cohort-dates";
@@ -103,6 +104,7 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-50 pb-20">
       <PageContainer width="wide">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
+      <WeeklyGoalSummary />
 
       {/* 수강생출신 트레이너 self-view 중 — 트레이너 관리로 복귀 토글(P14). */}
       {me.data?.ownArenaSheetId && (

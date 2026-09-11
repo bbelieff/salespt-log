@@ -10,6 +10,17 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
+## 주간 목표 (#947)
+
+- **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule의 같은 주간 집계 API를 사용하는 링 요약. 컨택과 일정은 선택 날짜의 금~목 주간을 따른다. 진입은 기존 useGuardedRouter로 업무탭 미저장 입력을 보호한다.
+- **GoalRings**: 생산·유입·컨택완료·미팅완료·계약 실적/목표. null은 미기재, 0은 목표 0, 양수만 달성률. 기존 brand-red/green/gray 토큰.
+- **WeeklyGoalPage**, **WeeklyGoalEditor**: 학생/담당 트레이너 공통 화면, PC 지난주 비교와 현재 편집 나란히, 모바일390의 다섯 링/다섯 숫자 셀 각각 한 줄. 모바일 입력·주요 버튼 최소44px. DirtyGuard와 revision 충돌 보호, 일시적 읽기 실패는 초안 보존/권한 거부는 내부 편집 제거.
+- **GoalDraftTools**: 지난주 목표·과제 복제, 계약 목표 역산 미리보기와 초안 적용. dirty 덮어쓰기 확인·취소·명시적 저장 분리. 승인 비율/올림 계약은 weekly-goals 도메인 문서에만 기록한다.
+- **GoalInternalEditor**: 별도 서버 권한을 통과한 내부 특이사항·지난 PT성과. 기본 함께보기에서는 마운트/조회하지 않음. 명시적 내부 재조회와 generation/abort 경합 보호, 관찰한401/403은 내부 기록·dirty 등록·복사 상태를 제거하고409/5xx는 초안 보존.
+- **GoalCopyPanel**: 저장된 공용 목표·과제 복사와 내부 회의록 편집 미리보기/14열 복사. 선택 가능한 텍스트 대체; Notion 자동 기록 없음.
+- **TrainerGoalOverview**: 담당 학생의 공용 저장 목표만 집계. 실제 실적은 선택한 학생에만 요청해 전원 미팅/계약 조회를 방지.
+- 세부 계약과 미검증 운영 경계: [weekly-goals.md](../domains/weekly-goals.md).
+
 ## 1. Buttons
 
 ### Primary Button
@@ -1516,6 +1527,7 @@ button:focus, input:focus, select:focus {
 - `RecordMoveReceipt`: 저장 후 양쪽 날짜 수치를 계속 표시. 선택 채널의 남는 신규 미팅도 원래 날짜에 함께 저장해 이동 후 카드 유실을 막음. 다른 채널 입력은 보존.
 
 ### 2026-09-11 · 컨택관리 QA 보완
+- 일정 `WeekBody`: 선택 주 목표 요약과 기존 금토일/월화수목 반응형 두 열을 감싼다. 입력/저장 로직은 기존 schedule page에 유지한다.
 - `SaveBar`의 `incompleteCount`로 메인 저장 사전 차단, 누락 건수 및 첫 미완성 카드로 이동 제공.
 - `MeetingSlotList`에서 카드 번호별 필수 누락 항목 표시. `slot-validation.ts`를 저장 게이트와 공유. 모두 채우거나 미완성 카드를 삭제하면 즉시 해제.
 - `SaveConfirmModal` 미완성 시 [입력 수정하기]로 복귀 가능. 저장 전에는 쓰기 없음.
