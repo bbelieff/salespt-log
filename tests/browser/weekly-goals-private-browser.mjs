@@ -41,7 +41,7 @@ export async function privateRegressions({ page, base, privateSteps, internal, r
   await field().fill("UNSAVED_PRIVATE_401");
   const before401 = structuredClone(internal.get(target));
   privateSteps.push(denied(401));
-  await page.getByRole("button", { name: "내부 기록 저장", exact: true }).click();
+  await page.getByRole("button", { name: "성과·기록 저장", exact: true }).click();
   await noPrivate(); assert.deepEqual(internal.get(target), before401);
   await page.getByRole("button", { name: "함께 보기", exact: true }).click();
   assert.equal(await page.getByRole("heading", { name: "저장하지 않고 나갈까요?" }).count(), 0);
@@ -65,7 +65,7 @@ export async function privateRegressions({ page, base, privateSteps, internal, r
   const beforeFailures = structuredClone(internal.get(target));
   await field().fill("UNSAVED_PRIVATE_CONTROL");
   privateSteps.push(route => route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: "fixture conflict" }) }));
-  await page.getByRole("button", { name: "내부 기록 저장", exact: true }).click();
+  await page.getByRole("button", { name: "성과·기록 저장", exact: true }).click();
   await page.getByText("fixture conflict", { exact: true }).waitFor();
   assert.equal(await field().inputValue(), "UNSAVED_PRIVATE_CONTROL");
   privateSteps.push(route => route.fulfill({ status: 503, contentType: "text/html", body: "" }));

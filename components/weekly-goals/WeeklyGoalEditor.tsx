@@ -74,7 +74,10 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
               <th className="py-3 font-medium">{GOAL_LABELS[k]}</th><td>{view.previous!.record.goals[k] ?? "—"}</td>
               <td>{view.previous!.actuals[k]}</td><td>{saved.goals[k] ?? "—"}</td></tr>)}</tbody></table>
           <p className="whitespace-pre-wrap break-words text-sm">지난 PT과제: {view.previous.record.task || "미기재"}</p>
+          {view.canReadInternal && together && <button type="button" onClick={() => guarded(() => setTogether(false))}
+            className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm font-semibold">PT과제 성과 기록</button>}
         </> : <p className="text-sm text-gray-500">첫 주예요. 이번 주 PT과제부터 정해 보세요.</p>}
+        {view.canReadInternal && !together && <GoalInternalEditor view={shown} onDirty={setInternalDirty} publicDirty={dirty || readFailed} />}
       </section>
       <form onSubmit={e => { e.preventDefault(); void save().catch(() => {}); }} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="font-bold">이번 주 목표·PT과제</h2>
@@ -95,6 +98,5 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
         <GoalCopyPanel key={saved.revision} view={shown} dirty={dirty || internalDirty || readFailed} />
       </form>
     </div>
-    {view.canReadInternal && !together && <GoalInternalEditor view={shown} onDirty={setInternalDirty} publicDirty={dirty || readFailed} />}
   </div>;
 }

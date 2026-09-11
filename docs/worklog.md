@@ -41,6 +41,12 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · 주간목표 PT성과·업무탭 배치
+- 요청: 다음 주에 트레이너가 PT과제 성과를 저장하고, 업무탭 목표 박스를 공간 효율적으로 통합.
+- 구현: 지난 과제 바로 아래 기존 비공개 성과 편집·저장 안내, DB/컨택/일정 요약 내부 compact 목표값. DB/API/권한 변경 없음.
+- 검증: 목표 회귀177·구조41·브라우저35 통과. 실사용 인증 저장과 노션 표 붙여넣기는 NOT_RUN.
+- 다음: 최종 빌드·필수 훅·CI 후 머지/운영 검증. SoR: [QA](qa/2026-09-11-pt-outcomes-layout.md).
+
 ### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 승인된 이력 ACL 한정 회수 경로 검수 준비
 - 의도: Camus 11:23:41 KST 승인 범위인 schema_migrations의 anon/authenticated 권한만 회수할 보호된 실행 경로 준비. canonical 2026-09-09 지침 적용을 재확인하고 해당 지침 파일은 변경하지 않음.
 - 한 것: 기본 false인 명시 repair 옵션, 단일 table REVOKE·잠금/timeout·이력 digest/owner/service/server 보존·잔여 권한 rollback. 실제 PM2 listener 초기 환경과 설치 Next env 해석을 통한 DB 대상/역할 READ ONLY 비교; 임의 SQL/환경·연결값 출력 없음.

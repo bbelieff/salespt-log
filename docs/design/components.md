@@ -12,7 +12,7 @@
 
 ## 주간 목표 (#947)
 
-- **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule의 같은 주간 집계 API를 사용하는 링 요약. 대시보드에서는 생산성 지표 바로 아래 배치한다. 컨택과 일정은 선택 날짜의 금~목 주간을 따른다. 진입은 기존 useGuardedRouter로 업무탭 미저장 입력을 보호하며 허용된 returnTo 경로를 전달한다. 공통 목표 화면은 로그인 역할보다 진입 경로를 우선해 돌아가고 DirtyGuard를 유지한다.
+- **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule의 같은 주간 집계 API를 사용하는 요약. compact 모드는 별도 링·PT본문 카드 없이 목표 숫자와 44px 진입 버튼을 기존 DB OverallCard/컨택 WeekHeader/일정 SummaryBar 내부에 배치한다. 대시보드에서는 생산성 지표 바로 아래 배치한다. 컨택과 일정은 선택 날짜의 금~목 주간을 따른다. 진입은 기존 useGuardedRouter로 업무탭 미저장 입력을 보호하며 허용된 returnTo 경로를 전달한다. 공통 목표 화면은 로그인 역할보다 진입 경로를 우선해 돌아가고 DirtyGuard를 유지한다.
 - **GoalRings**: 생산·유입·컨택완료·미팅완료·계약 실적/목표. null은 미기재, 0은 목표 0, 양수만 달성률. 기존 brand-red/green/gray 토큰.
 - **WeeklyGoalPage**, **WeeklyGoalEditor**: 학생/담당 트레이너 공통 화면, PC 지난주 비교와 현재 편집 나란히, 모바일390의 다섯 링/다섯 숫자 셀 각각 한 줄. 모바일 입력·주요 버튼 최소44px. DirtyGuard와 revision 충돌 보호, 일시적 읽기 실패는 초안 보존/권한 거부는 내부 편집 제거.
 - **GoalDraftTools**: 지난주 목표·과제 복제, 계약 목표 역산 미리보기와 초안 적용. dirty 덮어쓰기 확인·취소·명시적 저장 분리. 승인 비율/올림 계약은 weekly-goals 도메인 문서에만 기록한다.
@@ -1531,3 +1531,5 @@ button:focus, input:focus, select:focus {
 - `SaveBar`의 `incompleteCount`로 메인 저장 사전 차단, 누락 건수 및 첫 미완성 카드로 이동 제공.
 - `MeetingSlotList`에서 카드 번호별 필수 누락 항목 표시. `slot-validation.ts`를 저장 게이트와 공유. 모두 채우거나 미완성 카드를 삭제하면 즉시 해제.
 - `SaveConfirmModal` 미완성 시 [입력 수정하기]로 복귀 가능. 저장 전에는 쓰기 없음.
+
+- **PT과제 성과 동선 (2026-09-11)**: 지난주 비교의 과제 바로 아래에서 트레이너 기록을 열고 성과를 저장한다. 이전 주차 번호를 입력란에 표시하고 저장 완료를 안내한다. 기존 비공개 저장·권한·함께 보기 경계는 유지한다.

@@ -363,7 +363,6 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
-      <WeeklyGoalSummary date={date} metrics={["inflow", "contacts"]} />
       {/* WeekHeader 단독 sticky. 2026-05-17 [A3]: 좌우 스와이프로 주 이동. */}
       <div
         className="sticky top-24 z-30 bg-white shadow-sm"
@@ -371,6 +370,7 @@ export default function ContactPage() {
       >
         <PageContainer width="wide">
           <WeekHeader
+            goalSummary={<WeeklyGoalSummary compact date={date} metrics={["inflow", "contacts"]} />}
             weekIndex={weekIndex}
             courseStart={courseStart}
             selectedDate={date}
