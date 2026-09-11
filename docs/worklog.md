@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-11 · OG #959 실제 PostgreSQL 경합 검증
+- DH가 fb597f9의 기존 3건 해소 확인. 추가 요구한 독립 DB 연결 경합은 격리 socket-only PostgreSQL16.15로 5건 모두 PASS(exit0).
+- 승인↔취소/수락↔폐기 양순서·중복수락: 서로 다른 backend, advisory lock 대기와 blocker를 실측. 반복 활성 쓰기 1회 검증. 실제 운영 DB/학생/자격증명 사용 없음.
+- CI에서 동일 경합 suite 필수 실행. 새 head 전체검사/빌드·delta 재검수 후 운영 진행, 현재 exact execute/merge/deploy 미실행.
+
 ### 2026-09-11 · OG #959 독립검수 수정
 - DH 검수 3건 반영: 자격-only 해제로 수강행 담당자 불변, 주간목표 roster/detail CRM 선택 통일, Sentry breadcrumb 수집·전송 payload 초대 URL 방어.
 - 실제 SDK8.55.2 합성 토큰 실험: 수정 전 누출 재현, 수정 후 2개 envelope 토큰 없음·일반 오류/성능 기록 유지. 모의 transport이며 운영 발신 없음.

@@ -45,5 +45,15 @@ jobs:
       - name: Install dependencies
         run: npm ci --silent
 
+      - name: Ensure local PostgreSQL for isolated concurrency verification
+        run: |
+          if ! find /usr/lib/postgresql -path '*/bin/initdb' -type f 2>/dev/null | grep -q .; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends postgresql
+          fi
+
       - name: Run check.sh (typecheck + lint + tests + file size + doc-drift + plan)
+        env:
+          # Test starts/destroys its own Unix-socket-only cluster. No production DB credentials.
+          TRAINER_CONCURRENCY_PG: '1'
         run: bash scripts/check.sh

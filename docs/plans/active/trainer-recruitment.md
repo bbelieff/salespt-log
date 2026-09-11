@@ -19,7 +19,8 @@ Base c781feb, branch feat/trainer-recruitment-unified. Preserve DH Windows WIP r
 - [x] Focused auth/service/SQL checks, including cancellation race ordering and stale-token revocation.
 - [x] Full check.sh and prior build; actual rendered PC/mobile component verification with mocked transport. Final release build passed; staged-byte commit hook pending.
 - [x] PR #959 ef77fa4 CI and exact read-only runtime/preflight PASS.
-- [ ] DH 3-item review corrections implemented; full revalidation and new fixed-head re-review.
+- [x] DH 3-item corrections independently verified on fb597f9; CI/read-only preflight PASS.
+- [ ] Added real independent-connection PostgreSQL races (5 local PASS); CI-enabled delta awaiting new head review.
 - [ ] Exact additive DB migration and production rollout + authenticated smoke evidence.
 
 ## Risks to verify

@@ -46,3 +46,17 @@ References: [Supabase Data API grants and RLS](https://supabase.com/docs/guides/
 - Sentry drops invite-containing breadcrumbs at collection and scrubs invitation URLs in queued errors/transactions after SPA navigation. No unrelated analytics policy change.
 - Actual installed Sentry browser SDK 8.55.2 serialized-envelope experiment: synthetic43-character token → invite fragment → replaceState removes fragment → dashboard → ordinary exception + transaction. Before fix: 2 envelopes, token present. After fix: 2 envelopes, token absent; ordinary error, breadcrumb and transaction all preserved. Custom in-memory transport, no external Sentry delivery. Invalid synthetic DSN initial attempt produced zero envelopes and is not counted as a pass.
 - Reproduction fixture: `docs/qa/fixtures/trainer-sentry.js`; bundle with installed esbuild (`platform:browser`, repo node_modules in nodePaths), serve an HTML body loading the bundle over loopback, open `?fixed=false` and `?fixed=true` in separate page loads. Inspect only `window.qaResult`; captured payloads stay in memory.
+
+## Actual independent-connection race evidence (DH follow-up)
+
+`tests/repo/trainer-recruitment-concurrency.test.ts` starts and removes its own socket-only PostgreSQL cluster, ignores DATABASE_URL and uses synthetic local data only. Enable with `TRAINER_CONCURRENCY_PG=1`; optional local binary/share-directory overrides support unpacked OS packages. CI enables this suite and ensures PostgreSQL binaries exist.
+
+Actual PostgreSQL16.15 local run: **5/5 PASS**, exit0, `/tmp/trainer-concurrency.log`. For every case, two different mutation backend PIDs and `pg_stat_activity.wait_event=advisory` with `pg_blocking_pids(second)` containing the first backend were observed before releasing the held first transaction. A separate monitor connection only observes the lock; mutations execute real repository SQL.
+
+- Approve first: cancel rejects, active remains; approve retry idempotent.
+- Cancel first: approve rejects, cancelled remains; cancel retry idempotent.
+- Accept first: revoke rejects, active once; acceptance retry does not re-write qualification.
+- Revoke first: acceptance rejects, no qualification created; revoke retry idempotent.
+- Concurrent duplicate accepts: both succeed after serialization, test-only DB trigger confirms exactly one active qualification write, including an additional retry.
+
+This replaces the earlier explicit NOT_RUN for real concurrent connections, not real authenticated production journeys. No application/SQL/delivery edits were needed for this delta.
