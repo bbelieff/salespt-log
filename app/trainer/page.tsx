@@ -9,6 +9,7 @@
  * 이 페이지를 열면 즉시 반영되어야 함. 페이지 레벨 RSC 캐시 회피.
  */
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import {
   getSessionEmail,
   getEffectiveRole,
@@ -120,6 +121,8 @@ export default async function TrainerPage() {
   const archivedLabels = Array.from(archivedSet);
 
   return (
+    <>
+    <div className="bg-white p-4 text-center"><Link className="inline-block rounded-xl border border-gray-300 px-4 py-3 font-semibold text-brand-red" href="/trainer/weekly-goals">담당 수강생 주간 목표·PT과제</Link></div>
     <TrainerCohortView
       sessionEmail={sessionEmail}
       trainerName={trainerName}
@@ -129,5 +132,6 @@ export default async function TrainerPage() {
       canBackToAdmin={canBackToAdmin}
       archivedCohorts={archivedLabels}
     />
+    </>
   );
 }

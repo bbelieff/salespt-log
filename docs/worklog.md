@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 주간 목표 검수 제출
+- 의도: #946 v0.4 승인을 실제 학생/담당 트레이너 공통 저장·편집 기능으로 구현.
+- 한 것: 공개/내부 별도 테이블·CAS/API 권한, 실제 주간 집계·목표 링·비교·14열 복사, 학생/트레이너/3탭 진입. 운영 쓰기 없음.
+- 검증: 집중102 tests·브라우저14 scenarios·일회용 PostgreSQL18 assertions PASS. 최종 check.sh/build/CI는 PR head 체크포인트로 제출.
+- 다음: OG 독립 검수/RELEASE 전 머지·배포 HOLD. 운영 migration/health/실계정 화면 및 실제 Notion 붙여넣기 NOT_RUN.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/plans/active/weekly-goals.md, GitHub #947.
+
 ### 2026-09-11 · 컨택관리 QA 후속 보완
 - 의도: PR #940 QA 잔여 3항목을 우선순위대로 해결.
 - 한 것: 미완성 카드 사전 안내·저장 차단·수정 복귀, 콜지기소 부분 이동 항목 명시, 빨강/노랑 문서 정합성.

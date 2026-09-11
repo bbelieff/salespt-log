@@ -1,0 +1,182 @@
+// Real React components + local in-memory API; not production auth/DB/live Notion verification.
+// QA_TOOLS_DIR points to an external tooling install containing playwright. No production credentials.
+import { createRequire } from "node:module";
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { resolve, join } from "node:path";
+import { createServer } from "node:http";
+import { spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
+import { build } from "esbuild";
+const requireTools = createRequire(resolve(process.env.QA_TOOLS_DIR, "package.json"));
+const { chromium } = requireTools("playwright");
+const dir = mkdtempSync(join(tmpdir(), "weekly-goals-browser-"));
+const output = resolve("docs/qa/weekly-goals-evidence");
+mkdirSync(output, { recursive: true });
+await build({
+  entryPoints: ["tests/browser/weekly-goals-fixture.tsx"], bundle: true, outfile: join(dir, "app.js"),
+  platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"development"' },
+  plugins: [{ name: "fixture-next", setup(b) {
+    b.onResolve({ filter: /^next\/(navigation|link)$/ }, args => ({ path: args.path, namespace: "fixture" }));
+    b.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({
+      contents: args.path.endsWith("navigation") ? "export const useRouter=()=>({push:p=>{window.__lastNav=p}});" :
+        'import React from "react"; export default function Link({href,children,...rest}){return React.createElement("a",{...rest,href,onClick:e=>{e.preventDefault();window.__lastNav=href}},children)}',
+      loader: "js", resolveDir: process.cwd(),
+    }));
+  }}],
+});
+const tailwind = spawnSync(process.execPath, ["node_modules/tailwindcss/lib/cli.js", "-i", "app/globals.css", "-o", join(dir, "style.css")], { encoding: "utf8" });
+assert.equal(tailwind.status, 0, tailwind.stderr);
+const html = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/style.css"><div id="root"></div><script src="/app.js"></script></html>';
+const server = createServer((req, res) => {
+  const file = req.url?.split("?")[0];
+  res.setHeader("Content-Type", file === "/app.js" ? "application/javascript" : file === "/style.css" ? "text/css" : "text/html");
+  res.end(file === "/app.js" ? readFileSync(join(dir, "app.js")) : file === "/style.css" ? readFileSync(join(dir, "style.css")) : html);
+});
+await new Promise(r => server.listen(0, "127.0.0.1", r));
+const base = "http://127.0.0.1:" + server.address().port;
+const browser = await chromium.launch({ channel: "chrome", headless: true });
+const results = [], errors = [];
+const goals = { production: null, inflow: 0, contacts: 5, meetings: 2, contracts: 1 };
+const records = new Map();
+const internal = new Map();
+let failRead = false, failSave = false, saves = 0, privateReads = 0;
+const empty = () => ({ goals: { ...goals }, task: "", revision: 0, updatedAt: null });
+const dates = { 1: ["2026-09-04", "2026-09-10"], 2: ["2026-09-11", "2026-09-17"], 3: ["2026-09-18", "2026-09-24"] };
+const view = (week, student = "fixture@example.invalid", role = "trainer") => {
+  const item = w => ({ week: w, start: dates[w][0], end: dates[w][1], record: records.get(student + w) ?? empty(),
+    actuals: { production: 12, inflow: 4, contacts: 3, meetings: 2, contracts: 1 } });
+  return { student: { email: student, name: "가상 수강생", cohort: "연습", courseStart: dates[1][0], region: "테스트지역", trainers: ["가상 트레이너"] },
+    current: item(week), previous: week > 1 ? item(week - 1) : null, canReadInternal: role !== "student" };
+};
+try {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  page.on("pageerror", e => errors.push(e.message));
+  await page.route("**/api/weekly-goals**", async route => {
+    const request = route.request(), url = new URL(request.url()), week = Number(url.searchParams.get("week") || 2);
+    const student = url.searchParams.get("student") || "fixture@example.invalid", key = student + week;
+    const role = new URL(page.url()).searchParams.get("role") || "trainer";
+    const reply = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+    if (url.pathname.endsWith("/overview")) return reply([{ email: student, name: "가상 수강생", cohort: "연습", week: 2, record: records.get(key) ?? empty(), error: null }]);
+    const isPrivate = url.pathname.endsWith("/internal");
+    if (isPrivate) { privateReads++; if (role === "student") return reply({ error: "금지" }, 403); }
+    if (request.method() === "PUT") {
+      saves++;
+      if (failSave) return reply({ error: "충돌: 입력을 보관해 주세요." }, 409);
+      const body = request.postDataJSON(), map = isPrivate ? internal : records;
+      const previous = map.get(key);
+      if (body.revision !== (previous?.revision ?? 0)) return reply({ error: "충돌" }, 409);
+      map.set(key, { ...body, revision: body.revision + 1, updatedAt: null });
+      return reply({ revision: body.revision + 1 });
+    }
+    if (failRead) return reply({ error: "조회 실패: 다시 시도해 주세요." }, 503);
+    return reply(isPrivate ? internal.get(key) ?? { specialNotes: "", priorOutcome: "", revision: 0, updatedAt: null } : view(week, student, role));
+  });
+  await page.goto(base);
+  await page.getByRole("heading", { name: "이번 주 목표·PT과제" }).waitFor();
+  await page.getByLabel("이번 주 PT과제", { exact: true }).fill("첫 과제\n둘째 과제 <script>alert(1)</script>");
+  await page.getByLabel("생산", { exact: true }).fill("20");
+  assert.equal(await page.getByRole("button", { name: "목표·PT과제 복사", exact: true }).isDisabled(), true);
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("저장됐어요.", { exact: true }).waitFor();
+  assert.equal(records.get("fixture@example.invalid2").goals.production, 20);
+  assert.equal(records.get("fixture@example.invalid2").goals.inflow, 0);
+  assert.equal(await page.getByRole("cell", { name: "20", exact: true }).count(), 1);
+  results.push("desktop-save-comparison-null-zero");
+  await page.getByRole("button", { name: "트레이너 기록 열기" }).click();
+  await page.getByLabel("트레이닝 후 특이사항", { exact: true }).fill("INTERNAL_ONLY\n<unsafe>");
+  await page.getByLabel("지난주 PT과제 성과", { exact: true }).fill("PRIVATE_OUTCOME");
+  await page.getByRole("button", { name: "내부 기록 저장" }).click();
+  await page.waitForFunction(() => !document.querySelector("button")?.disabled);
+  await page.getByRole("button", { name: "회의록 미리보기" }).click();
+  assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 14);
+  await page.getByLabel("회의록 이번주 PT과제").fill("미리보기 수정\n줄바꿈");
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined }));
+  await page.getByRole("button", { name: "회의록용 복사", exact: true }).click();
+  const fallback = page.getByLabel("직접 선택하여 복사");
+  await fallback.waitFor();
+  assert.equal((await fallback.inputValue()).split("\t").length, 14);
+  results.push("internal-save-editable-preview-14-columns-fallback");
+  await page.getByRole("button", { name: "함께 보기", exact: true }).click();
+  assert.equal(await page.getByText("INTERNAL_ONLY").count(), 0);
+  assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 0);
+  await page.getByRole("button", { name: "목표·PT과제 복사", exact: true }).click();
+  assert.equal((await fallback.inputValue()).includes("INTERNAL_ONLY"), false);
+  results.push("together-public-copy-no-private");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: join(output, "desktop.png"), fullPage: true });
+  await page.getByLabel("이번 주 PT과제", { exact: true }).fill("미저장 유지");
+  await page.getByRole("button", { name: "다음 주", exact: true }).click();
+  await page.getByRole("button", { name: /계속|취소|머무/ }).last().click();
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "미저장 유지");
+  results.push("dirty-week-navigation-cancel-preserves-draft");
+  const historyUrl = page.url();
+  await page.evaluate(() => window.history.pushState({}, "", "?history-test=1"));
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.goBack();
+  assert.equal(page.url(), historyUrl);
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "미저장 유지");
+  results.push("native-history-cancel-preserves-draft");
+  failRead = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("weekly-goals-saved")));
+  await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "미저장 유지");
+  assert.equal(await page.getByRole("button", { name: "목표·PT과제 복사", exact: true }).isDisabled(), true);
+  failRead = false;
+  await page.getByRole("button", { name: "다시 시도", exact: true }).click();
+  results.push("background-read-failure-preserves-draft-blocks-stale-copy");
+  failSave = true;
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("충돌: 입력을 보관해 주세요.", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "미저장 유지");
+  failSave = false;
+  results.push("save-conflict-preserves-draft-and-saved-data");
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("저장됐어요.", { exact: true }).waitFor();
+  await page.reload();
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "미저장 유지");
+  results.push("reload-persistence");
+  await page.getByRole("button", { name: "이전 주", exact: true }).click();
+  await page.getByText("첫 주예요.", { exact: false }).waitFor();
+  for (const label of ["생산", "유입", "컨택완료", "미팅완료", "계약"]) await page.getByLabel(label, { exact: true }).fill("");
+  await page.getByLabel("이번 주 PT과제", { exact: true }).fill("정량 없이 첫 주 과제");
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("저장됐어요.", { exact: true }).waitFor();
+  assert.ok(Object.values(records.get("fixture@example.invalid1").goals).every(v => v === null));
+  assert.equal(records.get("fixture@example.invalid2").task, "미저장 유지");
+  results.push("week-one-task-only-week-isolation");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("이번 주 PT과제", { exact: true }).fill("모바일 긴 과제 ".repeat(50));
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("저장됐어요.", { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: join(output, "mobile.png"), fullPage: true });
+  results.push("mobile390-input-no-overflow");
+  const reads = privateReads;
+  await page.goto(base + "/?role=student");
+  await page.getByRole("heading", { name: "이번 주 목표·PT과제" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "트레이너 기록 열기" }).count(), 0);
+  assert.equal(privateReads, reads);
+  assert.equal((await page.content()).includes("INTERNAL_ONLY"), false);
+  assert.equal((await page.content()).includes("PRIVATE_OUTCOME"), false);
+  results.push("student-no-private-request-or-dom");
+  await page.goto(base + "/?mode=summary");
+  await page.getByText("목표·PT과제 열기").first().waitFor();
+  assert.equal(await page.getByLabel("주간 목표 실적").count(), 3);
+  results.push("three-tabs-shared-aggregate-components");
+  await page.goto(base + "/?mode=overview");
+  await page.getByRole("heading", { name: "담당 수강생 주간 목표" }).waitFor();
+  await page.getByRole("button", { name: "가상 수강생 · 연습" }).click();
+  await page.getByLabel("주간 목표 실적").waitFor();
+  results.push("trainer-overview-and-detail-entry");
+  failRead = true;
+  await page.goto(base + "/?role=student");
+  await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).count(), 0);
+  results.push("initial-read-failure-no-false-empty-save");
+  assert.deepEqual(errors, []);
+  writeFileSync(join(output, "browser-result.json"), JSON.stringify({ results, count: results.length, saves, pageErrors: errors, productionAuth: "NOT_RUN", notionPaste: "NOT_RUN" }, null, 2));
+  console.log(JSON.stringify({ pass: results.length, results, errors, output }));
+} finally { await browser.close(); server.close(); }
