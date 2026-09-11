@@ -11,7 +11,7 @@ export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS }: {
       const label = goal === null ? "미기재" : goal === 0 ? "목표 0" :
         actual > goal ? `초과 ${actual - goal}` : actual === goal ? "달성" : `${goal - actual} 남음`;
       return <div key={key} className="min-w-0 flex-1 text-center pc:max-w-24">
-        <div className="relative mx-auto h-12 w-12 pc:h-20 pc:w-20">
+        <div className="relative mx-auto h-12 w-12 pc:h-16 pc:w-16">
           <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
             <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" className="text-gray-100" />
             <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" pathLength="100"

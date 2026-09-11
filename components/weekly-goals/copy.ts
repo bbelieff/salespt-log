@@ -16,8 +16,7 @@ export function escapeGoalHTML(s: string): string {
 }
 export function meetingClipboard(cells: string[]) {
   if (cells.length !== MEETING_COLUMNS.length) throw new Error("회의록 열 개수를 확인해 주세요.");
-  const html = "<table><thead><tr>" + MEETING_COLUMNS.map(s => "<th>" + escapeGoalHTML(s) + "</th>").join("") +
-    "</tr></thead><tbody><tr>" + cells.map(s => "<td>" + escapeGoalHTML(s).replace(/\r\n|\r|\n/g, "<br>") + "</td>").join("") + "</tr></tbody></table>";
+  const html = "<table><tbody><tr>" + cells.map(s => "<td>" + escapeGoalHTML(s).replace(/\r\n|\r|\n/g, "<br>") + "</td>").join("") + "</tr></tbody></table>";
   // One logical TSV row even when a cell contains tabs/newlines. HTML preserves multiline.
   const plain = cells.map(s => s.replace(/\t/g, " ").replace(/\r\n|\r|\n/g, " / ")).join("\t");
   return { html, plain };

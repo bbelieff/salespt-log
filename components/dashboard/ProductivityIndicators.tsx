@@ -48,14 +48,14 @@ export default function ProductivityIndicators({ matrix }: Props) {
   const salesProductivity = ratio(contract, contactProgress); // 계약 ÷ 컨택진행
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
+    <section className="rounded-2xl bg-white p-3 shadow-sm">
+      <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-indigo-500" />
         <h2 className="text-base font-extrabold text-gray-900">생산성 지표</h2>
         <span className="ml-auto text-xs text-gray-400">{STATS_WEEKS}주 누적</span>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         <Row
           label="DB 퀄리티"
           formula="유입 → 컨택진행"
@@ -86,7 +86,7 @@ export default function ProductivityIndicators({ matrix }: Props) {
         />
 
         {/* 영업생산성 — 종합 강조 */}
-        <div className="mt-3 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-2.5">
+        <div className="col-span-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-2.5">
           <div className="mb-1 flex items-center justify-between">
             <div className="flex items-center gap-1 text-xs">
               <span className="font-bold text-indigo-900">영업생산성</span>
@@ -102,7 +102,7 @@ export default function ProductivityIndicators({ matrix }: Props) {
               {salesProductivity.toFixed(1)}%
             </span>
           </div>
-          <div className="h-2.5 w-full rounded-full bg-indigo-100/60">
+          <div className="h-1.5 w-full rounded-full bg-indigo-100/60">
             <div
               className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600"
               style={{ width: `${Math.max(0, Math.min(100, salesProductivity))}%` }}
@@ -132,7 +132,7 @@ function Row({
       <div className="mb-1 flex items-center justify-between">
         <div className="text-xs">
           <span className="font-semibold text-gray-700">{label}</span>
-          <span className="ml-1 text-gray-400">{formula}</span>
+          <span className="hidden pc:inline ml-1 text-gray-400">{formula}</span>
         </div>
         <span
           className={`text-sm font-bold ${pctCls}`}
@@ -141,7 +141,7 @@ function Row({
           {value.toFixed(1)}%
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-gray-100">
+      <div className="h-1 w-full rounded-full bg-gray-100">
         <div
           className={`h-full rounded-full ${barCls}`}
           style={{ width: `${Math.max(0, Math.min(100, value))}%` }}

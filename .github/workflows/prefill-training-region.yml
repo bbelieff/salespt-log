@@ -1,0 +1,40 @@
+name: Prefill training region
+on:
+  workflow_dispatch:
+    inputs:
+      payload:
+        description: "Opaque SHA-256 keys only; never include names or emails. Verify against Notion baseline schedule."
+        required: true
+        type: string
+      execute:
+        description: "Apply confirmed blank regions only (otherwise read-only)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: prefill-training-region
+  cancel-in-progress: false
+jobs:
+  region:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Stage private input
+        env:
+          REGION_INPUT: ${{ inputs.payload }}
+        run: node -e 'require("fs").writeFileSync("/tmp/training-region-input.json", process.env.REGION_INPUT, {mode: 0o600})'
+      - name: Verify or apply region only
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REGION_EXECUTE: ${{ inputs.execute }}
+        run: |
+          flags=()
+          if [ "$REGION_EXECUTE" = "true" ]; then flags+=(--execute); fi
+          node scripts/ops/prefill-training-region.mjs /tmp/training-region-input.json . "${flags[@]}"

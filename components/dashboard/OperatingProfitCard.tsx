@@ -8,11 +8,7 @@ import { STATS_WEEKS } from "@/config/cohort-dates";
  * SSOT: docs/design/components.md §9-3
  * 디자인 정본: prototype line 265~278
  *
- * 구조:
- *   - 좌측 border-l-4 border-blue-500 + rounded-2xl shadow-sm
- *   - 상단: ＝ 배지 + "영업이익" 라벨 + (우측) "N주 누적 · 계약 N건" (N=STATS_WEEKS)
- *   - 가운데: ₩금액 (text-4xl font-extrabold blue-700)
- *   - 하단: "영업이익률 N%"
+ * 구조: 한 줄 금액·이익률 요약. 펼치면 시즌/이월/전체 매출·비용을 확인한다.
  */
 interface Props {
   revenue: number; // 아레나 집계 매출 (점수·전광판 기준)
@@ -43,77 +39,24 @@ export default function OperatingProfitCard({
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
   return (
-    <section className="rounded-2xl border-l-4 border-blue-500 bg-white p-4 shadow-sm">
-      <div className="mb-1.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-xs font-bold leading-none text-blue-600">
-            ＝
-          </span>
-          <span className="text-xs font-semibold text-blue-600">영업이익</span>
+    <section className="rounded-2xl border-l-4 border-blue-500 bg-white p-3 shadow-sm">
+      <details>
+        <summary aria-label="영업이익과 매출·비용 상세" className="cursor-pointer list-none rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500">
+          <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+            <span className="font-semibold text-blue-600">영업이익</span>
+            <span className="text-gray-400">{STATS_WEEKS}주 누적{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}　⌄</span>
+          </div>
+          <div className="flex min-h-11 items-baseline justify-between gap-2 tabular-nums">
+            <strong className="text-2xl font-extrabold text-blue-700">₩{fmtMoney(profit)}</strong>
+            <span className="text-xs text-gray-500">이익률 <b className="text-blue-700">{profitRate.toFixed(1)}%</b></span>
+          </div>
+        </summary>
+        <div className="mt-2 grid grid-cols-4 gap-2 border-t border-gray-100 pt-2 text-right text-xs tabular-nums">
+          <span /><span>시즌</span><span>이월</span><span>전체</span>
+          <span className="text-left">매출</span><span>₩{fmtMoney(revenue)}</span><span>₩{fmtMoney(carryoverRevenue ?? 0)}</span><span>₩{fmtMoney(totalRevenue ?? revenue + (carryoverRevenue ?? 0))}</span>
+          <span className="text-left">비용</span><span>₩{fmtMoney(cost)}</span><span>₩{fmtMoney(carryoverCost ?? 0)}</span><span>₩{fmtMoney(totalCost ?? cost + (carryoverCost ?? 0))}</span>
         </div>
-        {typeof contractCount === "number" && (
-          <span className="text-xs text-gray-400">
-            {STATS_WEEKS}주 누적 · 계약 {contractCount}건
-          </span>
-        )}
-      </div>
-      <div
-        className="mb-1 text-4xl font-extrabold text-blue-700"
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        ₩{fmtMoney(profit)}
-      </div>
-      <div className="text-sm text-gray-500">
-        영업이익률{" "}
-        <span
-          className="font-bold text-blue-700"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          {profitRate.toFixed(1)}%
-        </span>
-      </div>
-      {typeof carryoverRevenue === "number" && (
-        <div
-          className="mt-2 space-y-0.5 border-t border-gray-100 pt-2 text-xs"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          <div className="flex justify-between text-gray-600">
-            <span>
-              아레나 매출 <span className="text-gray-400">(집계)</span>
-            </span>
-            <span>₩{fmtMoney(revenue)}</span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>이월 매출 (비집계)</span>
-            <span>₩{fmtMoney(carryoverRevenue)}</span>
-          </div>
-          <div className="flex justify-between font-semibold text-gray-700">
-            <span>전체</span>
-            <span>₩{fmtMoney(totalRevenue ?? revenue + carryoverRevenue)}</span>
-          </div>
-        </div>
-      )}
-      {typeof carryoverCost === "number" && (
-        <div
-          className="mt-2 space-y-0.5 border-t border-gray-100 pt-2 text-xs"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          <div className="flex justify-between text-gray-600">
-            <span>
-              시즌 비용 <span className="text-gray-400">(집계)</span>
-            </span>
-            <span>₩{fmtMoney(cost)}</span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>이월 비용 (비집계)</span>
-            <span>₩{fmtMoney(carryoverCost)}</span>
-          </div>
-          <div className="flex justify-between font-semibold text-gray-700">
-            <span>전체</span>
-            <span>₩{fmtMoney(totalCost ?? cost + carryoverCost)}</span>
-          </div>
-        </div>
-      )}
+      </details>
     </section>
   );
 }

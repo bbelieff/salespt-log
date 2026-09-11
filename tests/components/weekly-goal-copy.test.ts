@@ -35,6 +35,8 @@ describe("goal copy serialization", () => {
     expect(html).not.toMatch(/<img|<script/);
     expect(html).toContain("&lt;img");
     expect(html.match(/<td>/g)).toHaveLength(14);
+    expect(html.match(/<tr>/g)).toHaveLength(1);
+    expect(html).not.toMatch(/<thead|<th[ >]/);
   });
   it("preserves multiline HTML and fourteen TSV columns despite tabs and all newline forms", () => {
     const cells = meetingCells(view(), internal);

@@ -66,9 +66,9 @@ export default function DashboardProgressBanner({
     <div className="sticky top-24 z-30 border-b border-gray-100 bg-white">
       {/* === 위: 진행도 === (날짜 미확보 시 생략 — 매출/비용·경비장부는 계속 렌더) */}
       {hasDates && (
-      <div className="px-4 pb-2.5 pt-3">
+      <div className="px-4 pb-1.5 pt-2">
         {/* 상단 라벨 — "현재 5/4 (월) · 4주차 진행중" */}
-        <div className="mb-3 flex items-baseline gap-2.5">
+        <div className="mb-1.5 flex items-baseline gap-2.5">
           <span
             className="text-base font-extrabold text-gray-900"
             style={{ fontVariantNumeric: "tabular-nums" }}
@@ -86,7 +86,7 @@ export default function DashboardProgressBanner({
         </div>
 
         {/* 진행바 + amber 5겹 끝점 */}
-        <div className="relative mb-3 h-1.5 rounded-full bg-slate-100">
+        <div className="relative mb-1.5 h-1 rounded-full bg-slate-100">
           <div
             className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
             style={{ width: `${pct}%` }}
@@ -129,7 +129,7 @@ export default function DashboardProgressBanner({
       {hasDates && <div className="border-t border-gray-100" />}
 
       {/* === 아래: 매출 / 비용 1:1 grid === */}
-      <div className="px-3 py-2.5">
+      <div className="px-3 py-1.5">
         <div className="grid grid-cols-2 gap-2">
           {/* 매출 박스 */}
           <div className="rounded-lg border border-gray-200 px-2.5 py-2">
@@ -146,7 +146,7 @@ export default function DashboardProgressBanner({
               </span>
             </div>
             <div
-              className="pl-5 text-xs leading-snug text-gray-400"
+              className="flex flex-wrap gap-x-2 text-xs leading-snug text-gray-400"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               <div>수임비 ₩{fmtMoney(feeIncome)}</div>
@@ -165,7 +165,7 @@ export default function DashboardProgressBanner({
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-xs font-bold leading-none text-red-600">
                 －
               </span>
-              <span className="text-xs font-medium text-gray-600">비용</span>
+              <span className="text-xs font-medium text-gray-600">비용 <span className="text-red-600">›</span></span>
               <span
                 className="ml-auto text-sm font-bold text-red-600"
                 style={{ fontVariantNumeric: "tabular-nums" }}
@@ -173,14 +173,13 @@ export default function DashboardProgressBanner({
                 ₩{fmtMoney(cost)}
               </span>
             </div>
-            <div className="pl-5 text-xs leading-snug text-gray-400">
+            <div className="flex flex-wrap gap-x-2 text-xs leading-snug text-gray-400">
               <div>DB 비용 합계 ₩{fmtMoney(dbCostTotal)}</div>
               {additionalCost === null ? (
                 <div className="mt-0.5 text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</div>
               ) : (
                 <div>추가 비용 ₩{fmtMoney(additionalCost)}</div>
               )}
-              <div className="mt-1 font-bold text-red-600 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">비용 추가하기</div>
             </div>
           </button>
         </div>

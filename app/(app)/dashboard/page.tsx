@@ -161,15 +161,15 @@ export default function DashboardPage() {
         />
       )}
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-3 p-3">
         {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {dash.data && (
           <>
             {/* 상단 2+1: 좌[영업이익(컴팩트)+생산성] / 우[퍼널(길게)].
                 items-start 로 영업이익 카드가 퍼널 높이만큼 늘어나 비던 문제 해소. */}
-            <div className="space-y-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-4 pc:space-y-0">
-              <div className="space-y-4 pc:flex pc:flex-col pc:gap-4 pc:space-y-0">
+            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0">
+              <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0">
                 <OperatingProfitCard
                   revenue={dash.data.kpi.총매출}
                   cost={dash.data.kpi.총비용}
@@ -186,7 +186,7 @@ export default function DashboardPage() {
             </div>
 
             {/* 하단 2열: 8주차 추이 | 채널별 성과 */}
-            <div className="space-y-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-4 pc:space-y-0">
+            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0">
               <WeeklyDualChart points={dash.data.weeklyTrend} />
               <ChannelPerformance
                 costBreakdown={dash.data.costBreakdown}
