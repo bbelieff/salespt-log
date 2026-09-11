@@ -57,6 +57,21 @@ describe("disposable PostgreSQL trainer qualification", () => {
     await expect(changeTrainerQualification("student@example.com","cancel","student@example.com")).rejects.toThrow("invalid_transition");
     expect((await db.query("select * from users order by id")).rows).toEqual(before);
   });
+  it("qualification-only removal preserves distinct enrollment assignments, including updates between retries", async () => {
+    await db.query(`insert into users(id,email,cohort,name,spreadsheet_id,status,assigned_trainer,course_start_iso) values
+      ('00000000-0000-0000-0000-000000000002','multi@example.com','8','학생','old-sheet','archived','T,U','2025-01-01'),
+      ('00000000-0000-0000-0000-000000000003','multi@example.com','A1-1','학생','arena-sheet','active','V','2026-09-01')`);
+    await applyForTrainer("t@example.com", "T");
+    await changeTrainerQualification("t@example.com", "approve", "admin@example.com");
+    const before = (await db.query("select * from users order by id")).rows;
+    await changeTrainerQualification("t@example.com", "remove", "admin@example.com");
+    expect((await db.query("select * from users order by id")).rows).toEqual(before);
+    await db.query("update users set assigned_trainer='V,W' where email='multi@example.com' and cohort='A1-1'");
+    const reassigned = (await db.query("select * from users order by id")).rows;
+    await changeTrainerQualification("t@example.com", "remove", "admin@example.com");
+    expect((await db.query("select * from users order by id")).rows).toEqual(reassigned);
+    expect((await db.query("select status from trainer_qualifications where email='t@example.com'")).rows[0].status).toBe("revoked");
+  });
   it("public API roles cannot read tokens or create qualifications", async () => {
     for (const role of ["anon","authenticated"]) {
       await db.exec(`set role ${role}`);

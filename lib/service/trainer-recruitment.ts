@@ -1,5 +1,5 @@
 /** Recruitment uses the real session only; never getActiveUserEmail/impersonation. */
-import { findUserByEmail, listAllUsers, parseAssignedTrainers, setTraineeAssignments } from "@/repo/users";
+import { findUserByEmail } from "@/repo/users";
 import { adminNames } from "@/config";
 import { z } from "zod";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
@@ -46,12 +46,9 @@ export async function recruitmentAction(raw: unknown) {
         return { updated:true };
       case "remove":
         if (!isAdminEmail(input.email)) await changeTrainerQualification(input.email,"remove",email);
-        // Revoke authority first. Cleanup is retryable and never deletes an enrollment.
-        for (const user of await listAllUsers()) {
-          if (user.role !== "trainee") continue;
-          const assigned = parseAssignedTrainers(user.assignedTrainer);
-          if (assigned.includes(input.email)) await setTraineeAssignments(user.email,assigned.filter(e=>e!==input.email));
-        }
+        // Qualification-only revocation: never rewrite enrollment assignments by email.
+        // Multiple cohorts/aliases may have different trainers. Dormant assignments grant
+        // no access because every authorization path rechecks the active qualification.
         return {updated:true};
       case "apply": return await applyForTrainer(email, input.name);
       case "accept": return await acceptTrainerInvite(input.token, email, input.name);

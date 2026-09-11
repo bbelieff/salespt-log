@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { applyTrainerQualifications, pickCrmUser } from "@/repo/trainer-qualification";
 import { User } from "@/types";
 import { EMPTY_GOALS, type WeeklyGoalInput, type WeeklyGoalKey, type WeeklyGoalPrivateInput, type WeeklyGoalPrivateRecord, type WeeklyGoalRecord } from "@/types/weekly-goals";
 
@@ -281,5 +282,23 @@ describe("authorization precedes enrollment dedup in real roster and overview se
     const current = { ...e2, cohort: "A2-1", spreadsheetId: "new-course-sheet", assignedTrainer: "different-trainer@example.test" };
     m.listAllUsers.mockResolvedValue([instructor, prior, current]);
     expect(await listGoalStudents()).toEqual([]);
+  });
+});
+
+
+describe("recruitment lifecycle never hides or retargets an existing goal enrollment",()=>{
+  it.each(["active","archived","arena"] as const)("keeps %s student roster and detail keys through every qualification state",async(kind)=>{
+    login(trainerEmail,"trainer");
+    const enrollment=trainee("applicant@example.test",{status:kind==="archived"?"archived":"active",cohort:kind==="arena"?"A1-1":"8",spreadsheetId:"enrollment-key"});
+    const prior=trainee(enrollment.email,{status:"archived",cohort:"4",spreadsheetId:"prior-key",courseStartISO:"2025-01-03",assignedTrainer:"different@example.test"});
+    for(const status of ["pending","active","rejected","cancelled","revoked"] as const){
+      const rows=applyTrainerQualifications([instructor,enrollment,prior],[{email:enrollment.email,name:"Applicant",status,department:"T"}]);
+      m.listAllUsers.mockResolvedValue(rows);
+      m.findUserByEmail.mockImplementation(async(email:string)=>pickCrmUser(rows.filter(u=>u.email===email)));
+      expect(await listGoalStudents()).toEqual([{email:enrollment.email,name:enrollment.name,cohort:enrollment.cohort}]);
+      expect(await resolveGoalStudent(enrollment.email)).toEqual(enrollment);
+      await loadWeeklyGoals(params(enrollment));
+      expect(m.readWeeklyGoal).toHaveBeenLastCalledWith(expect.objectContaining({studentId:enrollment.spreadsheetId,cohort:enrollment.cohort,courseStart:enrollment.courseStartISO}));
+    }
   });
 });

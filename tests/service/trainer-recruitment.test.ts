@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ email: "student@example.com" as string | null, admin: false, apply: vi.fn(), invite: vi.fn(), accept: vi.fn(), change: vi.fn(), revoke: vi.fn(), list: vi.fn() }));
-vi.mock("@/auth/identity", () => ({ getSessionEmail: async () => m.email, isAdminEmail: () => m.admin }));
+const m = vi.hoisted(() => ({ email: "student@example.com" as string | null, admin: false, apply: vi.fn(), invite: vi.fn(), accept: vi.fn(), change: vi.fn(), revoke: vi.fn(), list: vi.fn(), users:vi.fn(), assignments:vi.fn() }));
+vi.mock("@/auth/identity", () => ({ getSessionEmail: async () => m.email, isAdminEmail: (email:string) => m.admin && email === m.email }));
 vi.mock("@/repo/db/trainer-recruitment", () => ({ applyForTrainer: m.apply, createTrainerInvite: m.invite, acceptTrainerInvite: m.accept, changeTrainerQualification: m.change, revokeTrainerInvite: m.revoke, listTrainerInvites: m.list }));
+vi.mock("@/repo/users",()=>({findUserByEmail:vi.fn(),listAllUsers:m.users,setTraineeAssignments:m.assignments}));
 import { recruitmentAction, recruitmentWriteAllowed } from "@/service/trainer-recruitment";
 describe("recruitment boundary", () => {
   beforeEach(() => { vi.clearAllMocks(); m.email = "student@example.com"; m.admin = false; });
@@ -21,6 +22,17 @@ describe("recruitment boundary", () => {
     m.admin = true;
     await recruitmentAction({ action: "invite", email: "Recipient@example.com" });
     expect(m.invite).toHaveBeenCalledWith("student@example.com", "recipient@example.com");
+  });
+  it("trainer removal never rewrites any cohort's assignments by email, including retries",async()=>{
+    m.admin=true;
+    const rows=[{email:"dual@example.com",cohort:"8",status:"archived",assignedTrainer:"old@example.com,other@example.com"},
+      {email:"dual@example.com",cohort:"A1-1",status:"active",assignedTrainer:"current@example.com"}];
+    m.users.mockResolvedValue(rows); const before=structuredClone(rows);
+    await recruitmentAction({action:"remove",email:"old@example.com"});
+    await recruitmentAction({action:"remove",email:"old@example.com"});
+    expect(m.change).toHaveBeenNthCalledWith(1,"old@example.com","remove",m.email);
+    expect(m.change).toHaveBeenNthCalledWith(2,"old@example.com","remove",m.email);
+    expect(m.users).not.toHaveBeenCalled();expect(m.assignments).not.toHaveBeenCalled();expect(rows).toEqual(before);
   });
   it("requires same deployment origin and JSON; forged proxy headers do not count", () => {
     vi.stubEnv("AUTH_URL", "https://app.example.com");

@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-11 · OG #959 독립검수 수정
+- DH 검수 3건 반영: 자격-only 해제로 수강행 담당자 불변, 주간목표 roster/detail CRM 선택 통일, Sentry breadcrumb 수집·전송 payload 초대 URL 방어.
+- 실제 SDK8.55.2 합성 토큰 실험: 수정 전 누출 재현, 수정 후 2개 envelope 토큰 없음·일반 오류/성능 기록 유지. 모의 transport이며 운영 발신 없음.
+- ef77fa4 CI34580656208/운영 read-only34580712941 PASS, 신규 테이블 없음. 새 head 검수 전 DB execute/merge/deploy 미실행.
+
 ### 2026-09-11 · OG #956 트레이너 영입 통합 구현
 - 단일 writer: feat/trainer-recruitment-unified (base c781feb). DH 단일 보고·독립검수/운영 루프43e2abaeb78a; #958 정책 파일과 기존 DH WIP는 변경하지 않음.
 - 구현: 별도 자격/수신자 초대 트랜잭션, 신청 취소·재신청, 최상단 역할 전환/안전 경로 기억, 기존 수강행 보존, 초대 토큰 계측 방지. 헤더 확장에 맞춰 아래 sticky 위치 동기화.
