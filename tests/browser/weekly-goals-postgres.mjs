@@ -25,7 +25,7 @@ try {
       b.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ contents: "export const dbEnabled=()=>true; export const getDbPool=()=>globalThis.__goalDb;", loader: "js" }));
     }}] });
   const repo = await import(pathToFileURL(join(dir, "repo.mjs")));
-  const key = { email: "fixture@example.invalid", cohort: "test", courseStart: "2026-09-07", weekStart: "2026-09-04" };
+  const key = { studentId: "fixture-sheet", cohort: "test", courseStart: "2026-09-07", weekStart: "2026-09-04" };
   const data = { goals: { production: null, inflow: 0, contacts: 1, meetings: 2, contracts: 3 }, task: "line1\n<script>test</script>", revision: 0 };
   const first = await Promise.all([repo.saveWeeklyGoal(key, data), repo.saveWeeklyGoal(key, data)]);
   assert.deepEqual(first.sort(), [false, true]);
@@ -38,7 +38,7 @@ try {
   saved = await repo.readWeeklyGoal(key);
   assert.equal(saved.revision, 2);
   assert.equal(await repo.saveWeeklyGoal(key, data), false);
-  for (const other of [{ email: "other@example.invalid" }, { cohort: "other" }, { courseStart: "2026-09-08" }, { weekStart: "2026-09-11" }]) {
+  for (const other of [{ studentId: "other-sheet" }, { cohort: "other" }, { courseStart: "2026-09-08" }, { weekStart: "2026-09-11" }]) {
     assert.equal((await repo.readWeeklyGoal({ ...key, ...other })).revision, 0);
   }
   const notes = { specialNotes: "PRIVATE", priorOutcome: "PRIOR", revision: 0 };

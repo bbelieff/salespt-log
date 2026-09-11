@@ -4,8 +4,8 @@ const m = vi.hoisted(() => ({ query: vi.fn(), dbEnabled: vi.fn() }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: m.dbEnabled, getDbPool: () => ({ query: m.query }) }));
 import { readWeeklyGoal, readWeeklyGoalPrivate, saveWeeklyGoal, saveWeeklyGoalPrivate } from "@/repo/db/weekly-goals";
 
-const key: WeeklyGoalKey = { email: "fixture@example.test", cohort: "test-cohort", courseStart: "2026-09-04", weekStart: "2026-09-11" };
-const keyArgs = [key.email, key.cohort, key.courseStart, key.weekStart];
+const key: WeeklyGoalKey = { studentId: "fixture-sheet", cohort: "test-cohort", courseStart: "2026-09-04", weekStart: "2026-09-11" };
+const keyArgs = [key.studentId, key.cohort, key.courseStart, key.weekStart];
 const input = (revision = 0) => ({ goals: { ...EMPTY_GOALS, production: 0 }, task: "Task\n<script>fixture</script>", revision });
 beforeEach(() => { vi.resetAllMocks(); m.dbEnabled.mockReturnValue(true); m.query.mockResolvedValue({ rows: [], rowCount: 0 }); });
 
@@ -45,7 +45,7 @@ describe("weekly goal persistence contracts (mocked database only)", () => {
     m.query.mockResolvedValue({ rowCount: 0 });
     expect(await saveWeeklyGoal(key, input(7))).toBe(false);
     const [sql, args] = m.query.mock.calls[0]!;
-    expect(sql).toMatch(/email=\$1 and cohort=\$2 and course_start=\$3::date and week_start=\$4::date and revision=\$11/);
+    expect(sql).toMatch(/student_id=\$1 and cohort=\$2 and course_start=\$3::date and week_start=\$4::date and revision=\$11/);
     expect(sql).toContain("revision=revision+1");
     expect(args).toEqual([...keyArgs, 0, null, null, null, null, input().task, 7]);
   });

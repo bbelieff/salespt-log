@@ -3,11 +3,15 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WeeklyGoalView } from "@/types/weekly-goals";
 
+export class GoalRequestError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+export const goalAccessDenied = (error: unknown) => error instanceof GoalRequestError && (error.status === 401 || error.status === 403);
 export async function goalJSON<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { method: body === undefined ? "GET" : "PUT", cache: "no-store",
     headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal });
   const value = await res.json();
-  if (!res.ok) throw new Error(value.error || "다시 시도해 주세요.");
+  if (!res.ok) throw new GoalRequestError(res.status, value.error || "다시 시도해 주세요.");
   return value as T;
 }
 export function goalParams(view: WeeklyGoalView) {

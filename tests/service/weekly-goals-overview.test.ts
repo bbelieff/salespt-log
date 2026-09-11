@@ -5,7 +5,7 @@ const m = vi.hoisted(() => ({
   listGoalStudents: vi.fn(), assertGoalStudentAccess: vi.fn(), findUserByEmail: vi.fn(), readWeeklyGoal: vi.fn(),
   readWeeklyGoalPrivate: vi.fn(), readSalesRowsFromDb: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(),
 }));
-vi.mock("@/service/weekly-goals", () => ({ listGoalStudents: m.listGoalStudents, assertGoalStudentAccess: m.assertGoalStudentAccess }));
+vi.mock("@/service/weekly-goals", () => ({ listGoalStudents: m.listGoalStudents, assertGoalStudentAccess: m.assertGoalStudentAccess, resolveGoalStudent: m.findUserByEmail }));
 vi.mock("@/repo/users", () => ({ findUserByEmail: m.findUserByEmail }));
 vi.mock("@/repo/db/weekly-goals", () => ({ readWeeklyGoal: m.readWeeklyGoal, readWeeklyGoalPrivate: m.readWeeklyGoalPrivate }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: m.dbEnabled, readSalesRowsFromDb: m.readSalesRowsFromDb }));
@@ -14,7 +14,7 @@ import { loadGoalOverview } from "@/service/weekly-goals-overview";
 
 const student = (index = 1): GoalStudent => ({ email: `student${index}@example.test`, name: `Fixture ${index}`, cohort: "test-cohort" });
 const record = (): WeeklyGoalRecord => ({ goals: { ...EMPTY_GOALS, production: 0 }, task: "Fixture task", revision: 1, updatedAt: "2026-09-11T00:00:00.000Z" });
-const user = (email = student().email, over: Record<string, unknown> = {}) => ({ ...student(), email, role: "trainee", status: "active", assignedTrainer: "trainer@example.test", courseStartISO: "2026-09-07", refreshToken: "PRIVATE-FIXTURE-TOKEN", ...over });
+const user = (email = student().email, over: Record<string, unknown> = {}) => ({ ...student(), email, spreadsheetId: `sheet-${email}`, role: "trainee", status: "active", assignedTrainer: "trainer@example.test", courseStartISO: "2026-09-07", refreshToken: "PRIVATE-FIXTURE-TOKEN", ...over });
 beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers();
@@ -40,7 +40,7 @@ describe("trainer goal overview authorization and row failures", () => {
     m.listGoalStudents.mockResolvedValue([student(2), student(5)]);
     const result = await loadGoalOverview();
     expect(m.findUserByEmail.mock.calls.map(call => call[0])).toEqual([student(2).email, student(5).email]);
-    expect(m.readWeeklyGoal.mock.calls.map(call => call[0].email)).toEqual([student(2).email, student(5).email]);
+    expect(m.readWeeklyGoal.mock.calls.map(call => call[0].studentId)).toEqual([`sheet-${student(2).email}`, `sheet-${student(5).email}`]);
     expect(result.map(row => row.email)).toEqual([student(2).email, student(5).email]);
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE|refreshToken|specialNotes|priorOutcome/);
     expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
@@ -76,15 +76,15 @@ describe("trainer goal overview authorization and row failures", () => {
   });
   it("contains individual read failure without replacing neighboring saved rows", async () => {
     m.listGoalStudents.mockResolvedValue([student(1), student(2), student(3)]);
-    m.readWeeklyGoal.mockImplementation(async (key: { email: string }) => {
-      if (key.email === student(2).email) throw new Error("postgres://fixture:private@fixture-db");
+    m.readWeeklyGoal.mockImplementation(async (key: { studentId: string }) => {
+      if (key.studentId === `sheet-${student(2).email}`) throw new Error("fixture-database-read-failure");
       return record();
     });
     const result = await loadGoalOverview();
     expect(result[0]).toMatchObject({ record: record(), error: null });
     expect(result[1]).toMatchObject({ record: null, week: null, error: "목표를 불러오지 못했어요." });
     expect(result[2]).toMatchObject({ record: record(), error: null });
-    expect(JSON.stringify(result)).not.toContain("postgres");
+    expect(JSON.stringify(result)).not.toContain("fixture-database-read-failure");
   });
   it("distinguishes unsaved revision zero from a failed read and explicit numeric zero", async () => {
     const empty: WeeklyGoalRecord = { goals: { ...EMPTY_GOALS }, task: "", revision: 0, updatedAt: null };
@@ -108,7 +108,7 @@ describe("overview uses course Friday week and KST today", () => {
     vi.setSystemTime(new Date(now));
     const result = await loadGoalOverview();
     expect(result[0]?.week).toBe(week);
-    expect(m.readWeeklyGoal).toHaveBeenCalledWith({ email: student().email, cohort: student().cohort, courseStart: "2026-09-07", weekStart });
+    expect(m.readWeeklyGoal).toHaveBeenCalledWith({ studentId: `sheet-${student().email}`, cohort: student().cohort, courseStart: "2026-09-07", weekStart });
   });
 });
 

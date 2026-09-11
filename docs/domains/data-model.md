@@ -11,7 +11,7 @@ last_review: 2026-04-27
 - `WeeklyGoalValues`: production/inflow/contacts/meetings/contracts 다섯 nullable nonnegative integer. null ≠ 0.
 - `WeeklyGoalInput`: goals, task(최대10000자), revision. strict 입력; 내부필드 주입 거절.
 - `WeeklyGoalPrivateInput`: specialNotes, priorOutcome, revision. 별도 trainer/admin 권한 API.
-- `WeeklyGoalKey`: email×cohort×courseStart×weekStart. 현재 레지스트리에서 서버가 결정하고 저장 시 수강정보 echo 확인.
+- `WeeklyGoalKey`: studentId(서버 해석 spreadsheetId)×cohort×courseStart×weekStart. 같은 수강의 로그인 별칭은 같은 행/revision을 공유한다. 저장 시 명시 student와 수강정보 echo를 확인하며 client sheetId는 받지 않는다.
 - `WeeklyGoalRecord`, `WeeklyGoalPrivateRecord`: 별도 public/private 테이블, 양쪽 독립 revision/updatedAt.
 - `GoalWeek`, `WeeklyGoalView`: 현재/지난 금~목 주간의 저장값과 기존 기록 기반 실적. 학생 payload에 내부기록 없음.
 - `GoalStudent`, `GoalOverviewRow`: 담당 학생 목록 및 공용 목표 집계, 개별 실패는 error로 명시.

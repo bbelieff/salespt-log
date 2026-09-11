@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 OG REWORK 보강
+- 의도: OG 검수7건과 운영 migration 순서/보안 결함을 교정하고 재검수 요청.
+- 한 것: 명시 student 저장·시트/수강 별칭 공유·trainer 아레나/자기 내부 권한 분리, 업무탭 dirty 진입, 지난주 초안 복제·5열 모바일·승인 비율 역산. canonical/실데이터 변경 없음.
+- 검증: 집중169 tests·브라우저21 scenarios·일회용 PostgreSQL18 assertions PASS. exact migration25건 중15건은 일회용 DB이며 CI 기본 skip; 최종 전체 게이트·head는 PR 체크포인트 참조.
+- 다음: 정확한0005 preflight/적용 artifact 계약을 OG 독립 검수에 제출. RELEASE 전 운영 실행·머지·배포 HOLD, 실제 Notion/실계정 저장 NOT_RUN.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
 ### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 주간 목표 검수 제출
 - 의도: #946 v0.4 승인을 실제 학생/담당 트레이너 공통 저장·편집 기능으로 구현.
 - 한 것: 공개/내부 별도 테이블·CAS/API 권한, 실제 주간 집계·목표 링·비교·14열 복사, 학생/트레이너/3탭 진입. 운영 쓰기 없음.

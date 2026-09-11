@@ -1,5 +1,4 @@
-import { listGoalStudents, assertGoalStudentAccess } from "./weekly-goals";
-import { findUserByEmail } from "@/repo/users";
+import { listGoalStudents, assertGoalStudentAccess, resolveGoalStudent } from "./weekly-goals";
 import { readWeeklyGoal } from "@/repo/db/weekly-goals";
 import { dbEnabled } from "@/repo/db/client";
 import { chooseDailySource } from "./daily-source";
@@ -16,13 +15,13 @@ export async function loadGoalOverview(): Promise<GoalOverviewRow[]> {
     while (next < students.length) {
       const i = next++, student = students[i]!;
       try {
-        const u = await findUserByEmail(student.email);
+        const u = await resolveGoalStudent(student.email);
         if (!u || u.cohort !== student.cohort || !isValidISODate(u.courseStartISO) || chooseDailySource(u.cohort, dbEnabled()) !== "db") throw new Error();
         await assertGoalStudentAccess(u);
         const start = parseISO(u.courseStartISO);
         const week = Math.max(1, friWeekIndexOf(today, start));
         const weekStart = fmtISO(friOf(today < friOf(start) ? start : today));
-        const record = await readWeeklyGoal({ email: u.email.toLowerCase(), cohort: u.cohort, courseStart: u.courseStartISO, weekStart });
+        const record = await readWeeklyGoal({ studentId: u.spreadsheetId, cohort: u.cohort, courseStart: u.courseStartISO, weekStart });
         result[i] = { ...student, week, record, error: null };
       } catch {
         result[i] = { ...student, week: null, record: null, error: "목표를 불러오지 못했어요." };

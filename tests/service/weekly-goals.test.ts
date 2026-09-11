@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_GOALS } from "@/types/weekly-goals";
 
 const m = vi.hoisted(() => ({
-  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), canImpersonate: vi.fn(),
+  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
   findUserByEmail: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(),
   readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoal: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
 }));
 vi.mock("@/auth/identity", () => m);
+vi.mock("@/repo/users-arena", () => m);
 vi.mock("@/repo/users", () => ({ ...m, parseAssignedTrainers: (s: string) => s.toLowerCase().split(",").map(v => v.trim()).filter(Boolean) }));
 vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
@@ -25,7 +26,7 @@ beforeEach(() => {
   m.getSessionEmail.mockResolvedValue(student.email);
   m.getActiveUserEmail.mockResolvedValue(student.email);
   m.getEffectiveRole.mockResolvedValue({ role: "trainee", status: "active" });
-  m.canImpersonate.mockResolvedValue(true);
+  m.findActiveArenaRowByEmail.mockResolvedValue(null);
   m.findUserByEmail.mockResolvedValue({ ...student });
   m.listDistinctUsers.mockResolvedValue([{ ...student }, { email: "trainer@example.test", name: "Test Trainer", role: "trainer" }]);
   m.dbEnabled.mockReturnValue(true);
@@ -54,11 +55,11 @@ describe("weekly goals server access and public projection", () => {
   it("checks assignment against the real actor, not submitted role or active target", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
-    m.canImpersonate.mockResolvedValue(false);
+    m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "other-trainer@example.test" });
     const p = params(); p.set("role", "admin");
     await expect(loadWeeklyGoals(p)).rejects.toMatchObject({ status: 403 });
-    expect(m.canImpersonate).toHaveBeenCalledWith("trainer@example.test", student.email);
-    expect(m.findUserByEmail).not.toHaveBeenCalled();
+    expect(m.findUserByEmail).toHaveBeenCalledWith(student.email);
+    expect(m.readWeeklyGoal).not.toHaveBeenCalled();
   });
   it("projects only public fields without reading internal records", async () => {
     const view = await loadWeeklyGoals(params());
@@ -126,6 +127,43 @@ describe("weekly goals server access and public projection", () => {
     await expect(listGoalStudents()).rejects.toMatchObject({ status: 403 });
     expect(m.listDistinctUsers).not.toHaveBeenCalled();
   });
+  it.each([
+    { role: "trainee", status: "active" },
+    { role: "trainer", status: "archived" },
+    { role: "trainer", status: "pending" },
+  ])("does not return a roster after actor downgrade during the roster await: %j", async changedRole => {
+    m.getSessionEmail.mockResolvedValue("trainer@example.test");
+    m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    m.listDistinctUsers.mockImplementation(async () => {
+      m.getEffectiveRole.mockResolvedValue(changedRole);
+      return [student];
+    });
+    await expect(listGoalStudents()).rejects.toMatchObject({ status: 403 });
+    expect(m.listDistinctUsers).toHaveBeenCalledTimes(1);
+    expect(m.getEffectiveRole).toHaveBeenCalledTimes(2);
+    expect(m.readWeeklyGoal).not.toHaveBeenCalled();
+    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+  });
+  it("does not return the prior actor's roster when the session identity changes during lookup", async () => {
+    m.getSessionEmail.mockResolvedValue("trainer@example.test");
+    m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    m.listDistinctUsers.mockImplementation(async () => {
+      m.getSessionEmail.mockResolvedValue("other-trainer@example.test");
+      return [student];
+    });
+    await expect(listGoalStudents()).rejects.toMatchObject({ status: 403 });
+    expect(m.getEffectiveRole).toHaveBeenLastCalledWith("other-trainer@example.test");
+  });
+  it("uses the fresh trainer assignment filter after an administrator is downgraded during roster lookup", async () => {
+    m.getSessionEmail.mockResolvedValue("trainer@example.test");
+    m.getEffectiveRole.mockResolvedValue({ role: "admin", status: "active" });
+    m.listDistinctUsers.mockImplementation(async () => {
+      m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+      return [student, { ...student, email: "unassigned@example.test", assignedTrainer: "other-trainer@example.test" }];
+    });
+    expect(await listGoalStudents()).toEqual([{ email: student.email, name: student.name, cohort: student.cohort }]);
+    expect(m.getEffectiveRole).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("weekly goals validation, key isolation, and failure semantics", () => {
@@ -152,8 +190,8 @@ describe("weekly goals validation, key isolation, and failure semantics", () => 
     expect(view.current).toMatchObject({ week: 2, start: "2026-09-11", end: "2026-09-17" });
     expect(view.previous).toMatchObject({ week: 1, start: "2026-09-04", end: "2026-09-10" });
     expect(m.readWeeklyGoal.mock.calls.map(call => call[0])).toEqual([
-      { email: student.email, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-11" },
-      { email: student.email, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-04" },
+      { studentId: student.spreadsheetId, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-11" },
+      { studentId: student.spreadsheetId, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-04" },
     ]);
   });
   it("uses server target identity and sheet, ignoring submitted cohort and sheet", async () => {

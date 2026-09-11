@@ -8,8 +8,8 @@ function pool() {
   if (!dbEnabled()) throw new Error("weekly_goals_unavailable");
   return getDbPool();
 }
-const keyArgs = (k: WeeklyGoalKey) => [k.email, k.cohort, k.courseStart, k.weekStart];
-const where = "email=$1 and cohort=$2 and course_start=$3::date and week_start=$4::date";
+const keyArgs = (k: WeeklyGoalKey) => [k.studentId, k.cohort, k.courseStart, k.weekStart];
+const where = "student_id=$1 and cohort=$2 and course_start=$3::date and week_start=$4::date";
 export async function readWeeklyGoal(k: WeeklyGoalKey): Promise<WeeklyGoalRecord> {
   const result = await pool().query(
     `select production,inflow,contacts,meetings,contracts,task,revision,updated_at from weekly_goals where ${where}`, keyArgs(k),
@@ -36,7 +36,7 @@ export async function saveWeeklyGoal(k: WeeklyGoalKey, input: WeeklyGoalInput): 
   const args = [...keyArgs(k), v.goals.production, v.goals.inflow, v.goals.contacts, v.goals.meetings, v.goals.contracts, v.task, v.revision];
   const result = v.revision === 0
     ? await pool().query(
-      `insert into weekly_goals(email,cohort,course_start,week_start,production,inflow,contacts,meetings,contracts,task,revision)
+      `insert into weekly_goals(student_id,cohort,course_start,week_start,production,inflow,contacts,meetings,contracts,task,revision)
        values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,1) on conflict do nothing returning revision`, args.slice(0, 10))
     : await pool().query(
       `update weekly_goals set production=$5,inflow=$6,contacts=$7,meetings=$8,contracts=$9,task=$10,
@@ -48,7 +48,7 @@ export async function saveWeeklyGoalPrivate(k: WeeklyGoalKey, input: WeeklyGoalP
   const args = [...keyArgs(k), v.specialNotes, v.priorOutcome, v.revision];
   const result = v.revision === 0
     ? await pool().query(
-      `insert into weekly_goal_private(email,cohort,course_start,week_start,special_notes,prior_outcome,revision)
+      `insert into weekly_goal_private(student_id,cohort,course_start,week_start,special_notes,prior_outcome,revision)
        values($1,$2,$3,$4,$5,$6,1) on conflict do nothing returning revision`, args.slice(0, 6))
     : await pool().query(
       `update weekly_goal_private set special_notes=$5,prior_outcome=$6,revision=revision+1,updated_at=now()

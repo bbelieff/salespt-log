@@ -5,8 +5,9 @@ import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import GoalRings from "./GoalRings";
 import GoalCopyPanel from "./GoalCopyPanel";
 import GoalInternalEditor from "./GoalInternalEditor";
-import { goalJSON, goalParams } from "./client";
+import { goalAccessDenied, goalJSON, goalParams } from "./client";
 import { useGoalHistoryGuard } from "./useGoalHistoryGuard";
+import GoalDraftTools from "./GoalDraftTools";
 
 export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed = false }: {
   view: WeeklyGoalView; changeWeek: (week: number) => void; reload: () => void; readFailed?: boolean;
@@ -37,7 +38,11 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
       const next = { ...draft, revision: result.revision };
       setSaved(next); setDraft(next); setMessage("저장됐어요.");
       window.dispatchEvent(new Event("weekly-goals-saved"));
-    } catch (e) { setMessage((e as Error).message); throw e; }
+    } catch (e) {
+      setMessage((e as Error).message);
+      if (goalAccessDenied(e)) reload();
+      throw e;
+    }
     finally { lock.current = false; setSaving(false); }
   }
   useDirtyEntry("weekly-goal-public", dirty, save, () => setDraft(saved), "주간 목표·PT과제");
@@ -73,18 +78,20 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
       </section>
       <form onSubmit={e => { e.preventDefault(); void save().catch(() => {}); }} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
         <h2 className="font-bold">이번 주 목표·PT과제</h2>
+        <GoalDraftTools previous={view.previous?.record ?? null} dirty={dirty} disabled={saving}
+          apply={(goals, task) => { setDraft(current => ({ ...current, goals, ...(task === undefined ? {} : { task }) })); setMessage("초안에 적용했어요. 확인 후 저장해 주세요."); }} />
         <fieldset disabled={saving} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">{GOAL_KEYS.map(k => <label key={k} className="text-sm font-semibold">{GOAL_LABELS[k]}
-            <input aria-label={GOAL_LABELS[k]} type="number" inputMode="numeric" min="0" max="2147483647" step="1" placeholder="미기재" value={draft.goals[k] ?? ""}
+          <div className="grid grid-cols-5 gap-1 pc:gap-3">{GOAL_KEYS.map(k => <label key={k} className="min-w-0 text-center text-xs font-semibold pc:text-sm">{GOAL_LABELS[k]}
+            <input aria-label={GOAL_LABELS[k]} type="number" inputMode="numeric" min="0" max="2147483647" step="1" placeholder="—" value={draft.goals[k] ?? ""}
               onChange={e => setDraft({ ...draft, goals: { ...draft.goals, [k]: e.target.value === "" ? null : Number(e.target.value) } })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 p-3" /></label>)}</div>
+              className="mt-1 min-h-11 w-full min-w-0 rounded-xl border border-gray-300 px-1 text-center text-sm" /></label>)}</div>
           <label className="block text-sm font-semibold">이번 주 PT과제
             <textarea aria-label="이번 주 PT과제" rows={5} maxLength={10000} value={draft.task} onChange={e => setDraft({ ...draft, task: e.target.value })}
               className="mt-1 w-full rounded-xl border border-gray-300 p-3" placeholder="정량 목표 없이 과제만 적어도 괜찮아요." /></label>
           <button type="submit" disabled={!dirty || saving} className="min-h-11 w-full rounded-xl bg-brand-red px-4 font-bold text-white disabled:opacity-50">{saving ? "저장 중…" : "목표·PT과제 저장"}</button>
         </fieldset>
         <p role="status" className="text-sm">{message}</p>
-        <button type="button" disabled={saving} className="text-sm underline" onClick={() => guarded(reload)}>최신 내용 불러오기</button>
+        <button type="button" disabled={saving} className="min-h-11 text-sm underline" onClick={() => guarded(reload)}>최신 내용 불러오기</button>
         <GoalCopyPanel key={saved.revision} view={shown} dirty={dirty || internalDirty || readFailed} />
       </form>
     </div>

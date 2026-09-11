@@ -27,7 +27,7 @@ export const WeeklyGoalPrivateInput = z.object({
 export type WeeklyGoalPrivateInput = z.infer<typeof WeeklyGoalPrivateInput>;
 export type GoalActuals = Record<GoalKey, number>;
 export interface WeeklyGoalKey {
-  email: string;
+  studentId: string;
   cohort: string;
   courseStart: string;
   weekStart: string;

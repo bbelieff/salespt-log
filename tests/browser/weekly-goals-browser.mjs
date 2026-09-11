@@ -1,7 +1,7 @@
 // Real React components + local in-memory API; not production auth/DB/live Notion verification.
 // QA_TOOLS_DIR points to an external tooling install containing playwright. No production credentials.
 import { createRequire } from "node:module";
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { createServer } from "node:http";
@@ -27,9 +27,19 @@ await build({
 });
 const tailwind = spawnSync(process.execPath, ["node_modules/tailwindcss/lib/cli.js", "-i", "app/globals.css", "-o", join(dir, "style.css")], { encoding: "utf8" });
 assert.equal(tailwind.status, 0, tailwind.stderr);
-const html = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/style.css"><div id="root"></div><script src="/app.js"></script></html>';
+// Reuse the built Next root font assets and body classes, not the browser's fixture default font.
+const builtCss = readdirSync(".next/static/css").filter(f => f.endsWith(".css"))
+  .map(f => readFileSync(join(".next/static/css", f), "utf8")).join("\n");
+const fontFaces = (builtCss.match(/@font-face\{[^}]+\}/g) ?? []).filter(s => s.includes("Noto")).join("\n");
+const fontFamily = fontFaces.match(/font-family:([^;]+);/)?.[1];
+assert.ok(fontFamily, "Run next build first to supply the actual root font assets");
+const fontCss = fontFaces.replaceAll("../media/", "/media/").replaceAll("/_next/static/media/", "/media/") + ':root{--font-noto-sans-kr:' + fontFamily + '}';
+const mediaFiles = new Map(readdirSync(".next/static/media").map(name => ["/media/" + name, join(".next/static/media", name)]));
+const html = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/font.css"><link rel="stylesheet" href="/style.css"><body class="min-h-dvh bg-slate-50 font-sans text-slate-900 antialiased"><div id="root"></div><script src="/app.js"></script></body></html>';
 const server = createServer((req, res) => {
   const file = req.url?.split("?")[0];
+  if (mediaFiles.has(file)) { res.setHeader("Content-Type", "font/woff2"); return res.end(readFileSync(mediaFiles.get(file))); }
+  if (file === "/font.css") { res.setHeader("Content-Type", "text/css"); return res.end(fontCss); }
   res.setHeader("Content-Type", file === "/app.js" ? "application/javascript" : file === "/style.css" ? "text/css" : "text/html");
   res.end(file === "/app.js" ? readFileSync(join(dir, "app.js")) : file === "/style.css" ? readFileSync(join(dir, "style.css")) : html);
 });
@@ -40,7 +50,7 @@ const results = [], errors = [];
 const goals = { production: null, inflow: 0, contacts: 5, meetings: 2, contracts: 1 };
 const records = new Map();
 const internal = new Map();
-let failRead = false, failSave = false, saves = 0, privateReads = 0;
+let failRead = false, denyRead = false, failSave = false, saves = 0, privateReads = 0;
 const empty = () => ({ goals: { ...goals }, task: "", revision: 0, updatedAt: null });
 const dates = { 1: ["2026-09-04", "2026-09-10"], 2: ["2026-09-11", "2026-09-17"], 3: ["2026-09-18", "2026-09-24"] };
 const view = (week, student = "fixture@example.invalid", role = "trainer") => {
@@ -58,6 +68,7 @@ try {
     const student = url.searchParams.get("student") || "fixture@example.invalid", key = student + week;
     const role = new URL(page.url()).searchParams.get("role") || "trainer";
     const reply = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+    if (denyRead) return reply({ error: "권한이 변경됐어요." }, 403);
     if (url.pathname.endsWith("/overview")) return reply([{ email: student, name: "가상 수강생", cohort: "연습", week: 2, record: records.get(key) ?? empty(), error: null }]);
     const isPrivate = url.pathname.endsWith("/internal");
     if (isPrivate) { privateReads++; if (role === "student") return reply({ error: "금지" }, 403); }
@@ -74,7 +85,10 @@ try {
     return reply(isPrivate ? internal.get(key) ?? { specialNotes: "", priorOutcome: "", revision: 0, updatedAt: null } : view(week, student, role));
   });
   await page.goto(base);
+  await page.evaluate(() => document.fonts.ready);
   await page.getByRole("heading", { name: "이번 주 목표·PT과제" }).waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  assert.equal(await page.evaluate(() => [...document.fonts].some(f => f.family.includes("Noto") && f.status === "loaded")), true);
   await page.getByLabel("이번 주 PT과제", { exact: true }).fill("첫 과제\n둘째 과제 <script>alert(1)</script>");
   await page.getByLabel("생산", { exact: true }).fill("20");
   assert.equal(await page.getByRole("button", { name: "목표·PT과제 복사", exact: true }).isDisabled(), true);
@@ -151,6 +165,11 @@ try {
   await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
   await page.getByText("저장됐어요.", { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+  const inputBoxes = await Promise.all(["생산", "유입", "컨택완료", "미팅완료", "계약"].map(label => page.getByLabel(label, { exact: true }).boundingBox()));
+  assert.ok(inputBoxes.every(b => b.height >= 44 && Math.abs(b.y - inputBoxes[0].y) < 1));
+  const ringBoxes = await page.getByLabel("주간 목표 실적").locator("svg").evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().y));
+  assert.equal(new Set(ringBoxes).size, 1);
+  results.push("mobile-five-inputs-and-five-rings-single-row-44px");
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: join(output, "mobile.png"), fullPage: true });
   results.push("mobile390-input-no-overflow");
@@ -166,11 +185,102 @@ try {
   await page.getByText("목표·PT과제 열기").first().waitFor();
   assert.equal(await page.getByLabel("주간 목표 실적").count(), 3);
   results.push("three-tabs-shared-aggregate-components");
+  await page.getByLabel("업무 입력", { exact: true }).fill("업무 미저장");
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole("button", { name: "목표·PT과제 열기" }).nth(i).click();
+    await page.getByRole("button", { name: "취소", exact: true }).click();
+    assert.equal(await page.getByLabel("업무 입력", { exact: true }).inputValue(), "업무 미저장");
+  }
+  await page.getByRole("button", { name: "목표·PT과제 열기" }).first().click();
+  await page.getByRole("button", { name: "💾 저장하고 이동" }).click();
+  assert.ok((await page.evaluate(() => window.__lastNav)).startsWith("/weekly-goals"));
+  await page.getByLabel("업무 입력", { exact: true }).fill("업무 버릴 초안");
+  await page.getByRole("button", { name: "목표·PT과제 열기" }).first().click();
+  await page.getByRole("button", { name: "무시하고 이동" }).click();
+  assert.equal(await page.getByLabel("업무 입력", { exact: true }).inputValue(), "업무 미저장");
+  results.push("business-summary-entry-shared-dirty-guard-cancel-save-discard");
   await page.goto(base + "/?mode=overview");
   await page.getByRole("heading", { name: "담당 수강생 주간 목표" }).waitFor();
   await page.getByRole("button", { name: "가상 수강생 · 연습" }).click();
   await page.getByLabel("주간 목표 실적").waitFor();
   results.push("trainer-overview-and-detail-entry");
+  records.set("fixture@example.invalid1", { ...empty(), goals: { ...goals, production: 7 }, task: "지난 과제 보존", revision: 1 });
+  await page.goto(base);
+  const beforeImport = structuredClone(records.get("fixture@example.invalid2")), beforeWrites = saves;
+  await page.getByRole("button", { name: "지난주 목표·과제 가져오기" }).click();
+  assert.equal(await page.getByLabel("생산", { exact: true }).inputValue(), "7");
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "지난 과제 보존");
+  assert.equal(saves, beforeWrites);
+  assert.deepEqual(records.get("fixture@example.invalid2"), beforeImport);
+  await page.getByLabel("생산", { exact: true }).fill("99");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "지난주 목표·과제 가져오기" }).click();
+  assert.equal(await page.getByLabel("생산", { exact: true }).inputValue(), "99");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "지난주 목표·과제 가져오기" }).click();
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("저장됐어요.", { exact: true }).waitFor();
+  assert.equal(records.get("fixture@example.invalid1").revision, 1);
+  results.push("previous-import-draft-only-confirm-and-week-isolation");
+  const beforeProposal = saves;
+  await page.getByRole("button", { name: "역산 제안", exact: true }).click();
+  await page.getByLabel("제안 계약 목표").fill("2");
+  await page.getByRole("button", { name: "제안 미리보기" }).click();
+  await page.getByRole("button", { name: "제안 취소" }).click();
+  assert.equal(await page.getByLabel("생산", { exact: true }).inputValue(), "7");
+  await page.getByRole("button", { name: "역산 제안", exact: true }).click();
+  await page.getByLabel("제안 계약 목표").fill("2147483647");
+  await page.getByRole("button", { name: "제안 미리보기" }).click();
+  await page.getByText(/제안 목표가 저장 가능한 범위/).waitFor();
+  await page.getByLabel("제안 계약 목표").fill("2");
+  await page.getByRole("button", { name: "제안 미리보기" }).click();
+  await page.getByLabel("생산", { exact: true }).fill("88");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "초안에 적용" }).click();
+  assert.equal(await page.getByLabel("생산", { exact: true }).inputValue(), "88");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "초안에 적용" }).click();
+  assert.equal(await page.getByLabel("생산", { exact: true }).inputValue(), "30");
+  assert.equal(await page.getByLabel("유입", { exact: true }).inputValue(), "25");
+  assert.equal(await page.getByLabel("이번 주 PT과제", { exact: true }).inputValue(), "지난 과제 보존");
+  assert.equal(saves, beforeProposal);
+  await page.getByLabel("생산", { exact: true }).fill("31");
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.getByText("저장됐어요.", { exact: true }).waitFor();
+  assert.equal(records.get("fixture@example.invalid2").goals.production, 31);
+  results.push("proposal-preview-cancel-overflow-dirty-confirm-edit-explicit-save");
+  await page.getByRole("button", { name: "트레이너 기록 열기" }).click();
+  await page.getByLabel("트레이닝 후 특이사항", { exact: true }).waitFor();
+  denyRead = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("weekly-goals-saved")));
+  await page.getByText("권한이 변경됐어요.").waitFor();
+  assert.equal(await page.getByLabel("트레이닝 후 특이사항", { exact: true }).count(), 0);
+  assert.equal((await page.content()).includes("INTERNAL_ONLY"), false);
+  denyRead = false;
+  results.push("permission-revocation-removes-cached-private-editor");
+  await page.goto(base);
+  await page.getByRole("button", { name: "트레이너 기록 열기" }).click();
+  await page.getByLabel("트레이닝 후 특이사항", { exact: true }).waitFor();
+  const beforeDenied = structuredClone(records.get("fixture@example.invalid2"));
+  await page.getByLabel("이번 주 PT과제", { exact: true }).fill("권한 회수 뒤 저장 금지");
+  denyRead = true;
+  await page.getByRole("button", { name: "목표·PT과제 저장", exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector('textarea[aria-label="트레이닝 후 특이사항"]'));
+  assert.deepEqual(records.get("fixture@example.invalid2"), beforeDenied);
+  assert.equal((await page.content()).includes("INTERNAL_ONLY"), false);
+  denyRead = false;
+  results.push("denied-public-save-refetches-access-removes-private-no-write");
+  await page.goto(base);
+  await page.getByRole("button", { name: "트레이너 기록 열기" }).click();
+  await page.getByLabel("트레이닝 후 특이사항", { exact: true }).fill("권한 회수 뒤 내부 저장 금지");
+  const beforePrivateDenied = structuredClone(internal.get("fixture@example.invalid2"));
+  denyRead = true;
+  await page.getByRole("button", { name: "내부 기록 저장", exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector('textarea[aria-label="트레이닝 후 특이사항"]'));
+  assert.deepEqual(internal.get("fixture@example.invalid2"), beforePrivateDenied);
+  assert.equal((await page.content()).includes("INTERNAL_ONLY"), false);
+  denyRead = false;
+  results.push("denied-private-save-clears-private-draft-and-copy-no-write");
   failRead = true;
   await page.goto(base + "/?role=student");
   await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();
