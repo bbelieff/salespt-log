@@ -179,7 +179,7 @@ export default function CalendarPage() {
   return (
     <>
       <TopHeader pageEmoji="📅" pageTitle="캘린더" />
-      <header className="sticky top-24 z-30 bg-white shadow-sm">
+      <header className="sticky top-36 2xl:top-[104px] z-30 bg-white shadow-sm">
         {/* 배경 full-bleed + 월 nav 내용은 본문과 같은 6xl 중앙정렬(헤더 통일 정책) */}
         <div className="mx-auto flex w-full items-center justify-between px-2 py-3 pc:max-w-6xl pc:px-6 wide:px-8">
           <button
@@ -250,9 +250,9 @@ export default function CalendarPage() {
 
             {/* 선택일 통합 리스트 (미팅 + 실무투두, 시간순) */}
             {/* 데스크탑: 스크롤해도 선택일 패널이 따라오게 sticky.
-                top-40 = 상단 고정 바(메뉴 48 + 배너 48 + 월 nav sticky top-24) 합 회피.
+                top-40 = 상단 고정 바(메뉴 48 + 배너 48 + 월 nav sticky top-36 2xl:top-[104px]) 합 회피.
                 길면 자체 스크롤(그리드와 독립). 모바일은 일반 흐름. */}
-            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2 pc:sticky pc:top-40 pc:self-start pc:max-h-[calc(100vh-11rem)] pc:overflow-y-auto">
+            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2 pc:sticky pc:top-[168px] pc:self-start pc:max-h-[calc(100vh-11rem)] pc:overflow-y-auto">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold text-gray-900">
                   {selectedDate.replace(/^\d{4}-/, "").replace("-", "/")} (

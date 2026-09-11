@@ -17,6 +17,7 @@ import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import {
   setTraineeAssignments,
   findUserByEmail,
+  findTrainerByEmail,
   isAdminSynthCandidate,
 } from "@/repo/users";
 import { withApiTiming } from "@/lib/analytics/api-timing";
@@ -65,8 +66,8 @@ async function POST_handler(req: Request) {
   // beliefkimkim 이 registry 에 role="admin" row 가 존재 → t 가 truthy →
   // 1차 fix 가 안 먹어서 not_trainer 재발. (2) 는 row state 무관하게 통과.
   for (const te of trainerEmails) {
-    const t = await findUserByEmail(te);
-    const isTrainerRow = !!t && t.role === "trainer";
+    const t = await findTrainerByEmail(te);
+    const isTrainerRow = !!t && t.role === "trainer" && t.status === "active";
     const isAdminEmail = isAdminSynthCandidate(te);
     if (!isTrainerRow && !isAdminEmail) {
       return NextResponse.json(

@@ -7,6 +7,31 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-11 · OG #959 실제 PostgreSQL 경합 검증
+- DH가 fb597f9의 기존 3건 해소 확인. 추가 요구한 독립 DB 연결 경합은 격리 socket-only PostgreSQL16.15로 5건 모두 PASS(exit0).
+- 승인↔취소/수락↔폐기 양순서·중복수락: 서로 다른 backend, advisory lock 대기와 blocker를 실측. 반복 활성 쓰기 1회 검증. 실제 운영 DB/학생/자격증명 사용 없음.
+- CI에서 동일 경합 suite 필수 실행. 새 head 전체검사/빌드·delta 재검수 후 운영 진행, 현재 exact execute/merge/deploy 미실행.
+
+### 2026-09-11 · OG #959 독립검수 수정
+- DH 검수 3건 반영: 자격-only 해제로 수강행 담당자 불변, 주간목표 roster/detail CRM 선택 통일, Sentry breadcrumb 수집·전송 payload 초대 URL 방어.
+- 실제 SDK8.55.2 합성 토큰 실험: 수정 전 누출 재현, 수정 후 2개 envelope 토큰 없음·일반 오류/성능 기록 유지. 모의 transport이며 운영 발신 없음.
+- ef77fa4 CI34580656208/운영 read-only34580712941 PASS, 신규 테이블 없음. 새 head 검수 전 DB execute/merge/deploy 미실행.
+
+### 2026-09-11 · OG #956 트레이너 영입 통합 구현
+- 단일 writer: feat/trainer-recruitment-unified (base c781feb). DH 단일 보고·독립검수/운영 루프43e2abaeb78a; #958 정책 파일과 기존 DH WIP는 변경하지 않음.
+- 구현: 별도 자격/수신자 초대 트랜잭션, 신청 취소·재신청, 최상단 역할 전환/안전 경로 기억, 기존 수강행 보존, 초대 토큰 계측 방지. 헤더 확장에 맞춰 아래 sticky 위치 동기화.
+- 검사: check.sh PASS(구조40/단위1777, skip38), 격리 PostgreSQL 저장/권한5 및 exact migration3 포함. 실제 컴포넌트 PC/360·390px 모의 API 검증; 운영 OAuth/인증 동선은 미검증.
+- 승인: 사용자가 운영까지 완주 명시. 정확0006 사전검사·적용→독립검수/CI→직렬머지→배포/health/운영동선은 아직 완료 아님.
+- SoR: docs/qa/2026-09-11-trainer-recruitment.md · https://github.com/bbelieff/salespt-log/issues/956
+
+
+### 2026-09-11 · [병렬트랙] OG 트레이너 영입 — 로그인 목적지 보존
+- 요청: 수강생 출신/비수강생의 직접 신청·초대 수락 두 경로와 로그인 후 신청 화면 복귀.
+- 구역: 전용 feat/trainer-recruitment-entry. middleware.ts, app/page.tsx, LoginScene, login-return 유틸·검사·관련 문서. 주간목표/Drive 트랙은 수정하지 않음.
+- 한 것: 내부 목적지 검증 및 로그인 전달·기존 로그인 착지 보존. 최종 회귀39건, 전체 check.sh(구조40/단위1749 PASS, 34 skip), Next build PASS. PC/모바일 로그인 화면 확인; 실제 OAuth 복귀는 NOT_RUN(로컬 UntrustedHost).
+- 남음: 신청/초대 저장·화면과 일반 수강 기록 전환. DH의 초대 발급/활성화 정책 질문 답변 전 권한 부여 구현 확정하지 않음. 운영 DB/환경/배포 미실행.
+- SoR: docs/plans/active/trainer-recruitment.md, Slack thread1789104258.500019.
+
 ## 프로토콜 (모든 세션 의무)
 
 **시작할 때 (읽기)**

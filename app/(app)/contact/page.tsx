@@ -365,7 +365,7 @@ export default function ContactPage() {
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
       {/* WeekHeader 단독 sticky. 2026-05-17 [A3]: 좌우 스와이프로 주 이동. */}
       <div
-        className="sticky top-24 z-30 bg-white shadow-sm"
+        className="sticky top-36 2xl:top-[104px] z-30 bg-white shadow-sm"
         {...weekSwipe}
       >
         <PageContainer width="wide">

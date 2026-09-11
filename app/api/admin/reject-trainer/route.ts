@@ -1,29 +1,10 @@
-/**
- * POST /api/admin/reject-trainer  { email }  — admin only.
- * pending(or active) 트레이너 row 를 registry 에서 물리 삭제.
- */
 import { NextResponse } from "next/server";
-import { getSessionEmail, isAdminEmail } from "@/auth/identity";
-import { revalidateAdminPages } from "@/auth/revalidate-admin";
-import { deleteUserByEmail, findUserByEmail } from "@/repo/users";
-import { withApiTiming } from "@/lib/analytics/api-timing";
-
-async function POST_handler(req: Request) {
-  const sessionEmail = await getSessionEmail();
-  if (!sessionEmail) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  if (!isAdminEmail(sessionEmail)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  let body: { email?: string } = {};
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_input" }, { status: 400 }); }
-  const target = String(body.email ?? "").trim();
-  if (!target) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
-  const u = await findUserByEmail(target);
-  if (!u || u.role !== "trainer") {
-    return NextResponse.json({ error: "not_trainer" }, { status: 404 });
+import { trainerAdminRequest } from "@/service/trainer-admin-request";
+import { RecruitmentError } from "@/service/trainer-recruitment";
+export async function POST(req: Request) {
+  try { return NextResponse.json(await trainerAdminRequest(req,"reject")); }
+  catch (error) {
+    return NextResponse.json({error: error instanceof RecruitmentError ? error.message : "요청을 처리하지 못했습니다."},
+      { status: error instanceof RecruitmentError ? error.status : error instanceof SyntaxError ? 400 : 503 });
   }
-  await deleteUserByEmail(target);
-  revalidateAdminPages();
-  return NextResponse.json({ rejected: target });
 }
-
-// API 타이밍 계측 (db-migration-pilot §1 P0)
-export const POST = withApiTiming("api/admin/reject-trainer:POST", POST_handler);

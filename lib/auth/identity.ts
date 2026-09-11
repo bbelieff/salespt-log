@@ -16,7 +16,7 @@ import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { isDevStubAuthed } from "@/auth/dev-stub";
 import { adminEmails } from "@/config";
-import { findUserByEmail, parseAssignedTrainers } from "@/repo/users";
+import { findUserByEmail, findTrainerByEmail, parseAssignedTrainers } from "@/repo/users";
 
 const AS_COOKIE = "salespt_as";
 const ARENA_SELF_COOKIE = "salespt_arena_self";
@@ -74,7 +74,7 @@ export async function isManagementMember(
   email: string | null | undefined,
 ): Promise<boolean> {
   if (!email) return false;
-  const u = await findUserByEmail(email);
+  const u = await findTrainerByEmail(email);
   return (
     !!u &&
     u.role === "trainer" &&
@@ -98,7 +98,9 @@ export async function getEffectiveRole(
 ): Promise<{ role: EffectiveRole; status: "active" | "pending" | "archived" }> {
   if (!email) return { role: "trainee", status: "active" };
   if (isAdminEmail(email)) return { role: "admin", status: "active" };
-  const u = await findUserByEmail(email);
+  const trainer = await findTrainerByEmail(email);
+  const user = await findUserByEmail(email);
+  const u = trainer?.status === "active" ? trainer : user ?? trainer;
   if (!u) return { role: "trainee", status: "active" };
   return { role: u.role, status: u.status };
 }
@@ -117,7 +119,7 @@ export async function canImpersonate(
 ): Promise<boolean> {
   if (sessionEmail.toLowerCase() === targetEmail.toLowerCase()) return true;
   if (isAdminEmail(sessionEmail)) return true;
-  const session = await findUserByEmail(sessionEmail);
+  const session = await findTrainerByEmail(sessionEmail);
   if (!session || session.role !== "trainer" || session.status !== "active") return false;
   const target = await findUserByEmail(targetEmail);
   if (!target || target.role !== "trainee") return false;

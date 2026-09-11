@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import TopHeader from "@/components/TopHeader";
 import DirtyProvider, { useGuardedNav } from "@/components/DirtyGuard";
 import { useGoalView, goalAccessDenied } from "./client";
 import WeeklyGoalEditor from "./WeeklyGoalEditor";
@@ -36,5 +37,5 @@ function Content({ student, date, week, trainer, returnTo }: { student: string; 
   </main>;
 }
 export default function WeeklyGoalPage(props: { student: string; date: string; week: string; trainer: boolean; returnTo?: string }) {
-  return <DirtyProvider><Content {...props} /></DirtyProvider>;
+  return <DirtyProvider><TopHeader pageEmoji="" pageTitle="주간 목표·PT과제" roleMode={props.student && props.trainer ? "trainer" : "student"} /><Content {...props} /></DirtyProvider>;
 }

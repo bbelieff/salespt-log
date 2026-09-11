@@ -26,7 +26,6 @@ import { STATS_WEEKS } from "@/config/cohort-dates";
 import { parseISO, weekIndexOf } from "@/util/week";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
-import TrainerPlayerToggle from "@/components/auth/TrainerPlayerToggle";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 import OperatingProfitCard from "@/components/dashboard/OperatingProfitCard";
@@ -104,13 +103,6 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-50 pb-20">
       <PageContainer width="wide">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
-
-      {/* 수강생출신 트레이너 self-view 중 — 트레이너 관리로 복귀 토글(P14). */}
-      {me.data?.ownArenaSheetId && (
-        <div className="px-4 pt-3">
-          <TrainerPlayerToggle mode="arena" />
-        </div>
-      )}
 
       {/* 에러 안내 — 500/404 에 무안내 빈 화면이던 부수결함 수리 (P1, 2026-07-28) */}
       {dash.isError && (

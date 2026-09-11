@@ -20,9 +20,9 @@ on:
         type: boolean
         default: false
       mode:
-        description: "installed (master only) or exact reviewed weekly-goal migration"
+        description: "installed (master only) or exact reviewed migration"
         type: choice
-        options: [installed, 0005_weekly_goals.sql]
+        options: [installed, 0005_weekly_goals.sql, 0006_trainer_recruitment.sql]
         default: installed
       repair_history_acl:
         description: "Approved ONLY schema_migrations anon/authenticated revoke (no migration apply)"
@@ -78,11 +78,17 @@ jobs:
             [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ && "$GITHUB_SHA" == "$EXPECTED_SHA" ]]
             [[ "$EXPECTED_SQL_SHA256" == 144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 ]]
             [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          elif [[ "$MODE" == 0006_trainer_recruitment.sql ]]; then
+            [[ "$REPAIR_HISTORY_ACL" == false ]]
+            [[ "$EXECUTE" != true || "$COMPARE_RUNTIME" == true ]]
+            [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ && "$GITHUB_SHA" == "$EXPECTED_SHA" ]]
+            [[ "$EXPECTED_SQL_SHA256" == 86912575f589f0b614ce6d798a966774fe771b6f0f7e92d817d7ff91f35cc8d4 ]]
+            [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
           else
             exit 1
           fi
       - name: Checkout immutable reviewed migration source
-        if: inputs.mode == '0005_weekly_goals.sql'
+        if: inputs.mode != 'installed'
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.expected_sha }}
@@ -111,6 +117,31 @@ jobs:
             ${{ runner.temp }}/weekly-artifact.json
             ${{ runner.temp }}/weekly-payload/manifest.json
             ${{ runner.temp }}/weekly-payload/inventory.json
+          if-no-files-found: error
+      - name: Build checksum-pinned migration-only artifact
+        if: inputs.mode == '0006_trainer_recruitment.sql'
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
+          MODE: ${{ inputs.mode }}
+          EXECUTE: ${{ inputs.execute }}
+          REPAIR_HISTORY_ACL: ${{ inputs.repair_history_acl }}
+          COMPARE_RUNTIME: ${{ inputs.compare_runtime }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]]
+          node scripts/ops/trainer-recruitment-delivery.mjs build "$RUNNER_TEMP/trainer-payload" > "$RUNNER_TEMP/trainer-artifact.json"
+          tar -C "$RUNNER_TEMP/trainer-payload" -cf "$RUNNER_TEMP/trainer-payload.tar" .
+          cat "$RUNNER_TEMP/trainer-artifact.json"
+      - name: Retain reviewed checksums and inventory
+        if: inputs.mode == '0006_trainer_recruitment.sql'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trainer-migration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/trainer-artifact.json
+            ${{ runner.temp }}/trainer-payload/manifest.json
+            ${{ runner.temp }}/trainer-payload/inventory.json
           if-no-files-found: error
       # BBE-77: GH러너→VPS:22 간헐 차단 우회. 이 파일은 #747(5a45762) 범위 밖이라
       # 공인 IP 전용으로 남아 있었다 — 실제로 run 31287233695 가 이 경로에서 15/15 timeout
@@ -184,3 +215,13 @@ jobs:
           COMPARE_RUNTIME: ${{ inputs.compare_runtime }}
           VPS_HOST_V6: ${{ secrets.VPS_HOST_V6 }}
         run: bash scripts/ops/weekly-goals-delivery-ssh.sh
+      - name: Stage and run exact migration through existing protected SSH
+        if: inputs.mode == '0006_trainer_recruitment.sql'
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
+          EXECUTE: ${{ inputs.execute }}
+          REPAIR_HISTORY_ACL: ${{ inputs.repair_history_acl }}
+          COMPARE_RUNTIME: ${{ inputs.compare_runtime }}
+          VPS_HOST_V6: ${{ secrets.VPS_HOST_V6 }}
+        run: bash scripts/ops/trainer-recruitment-delivery-ssh.sh
