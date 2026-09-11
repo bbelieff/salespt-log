@@ -29,6 +29,8 @@ owner: SALES-WEEKLY-GOALS-947-WRITER
 
 ## 남은 운영 검증
 
+OG 운영 read-only run34552514192는 artifact 검증 후 UNSAFE_HISTORY_SECURITY로 중단했다. 이번 범위는 해당 실패의 고정 schema_migrations 권한/카탈로그 진단만 추가한다. PUBLIC/browser privilege별 boolean, column grant 존재, 미확인 grantee 수, server 권한만 허용하며 임의 role명·이력 값·driver 메시지는 출력하지 않는다. 기존 gate/rollback/SQL0005 불변, 운영 재실행·ACL 수정·머지·배포 금지. ops 집중/타입/전체 게이트/CI 후 새 head를 OG 검수에 반환한다. 앱/브라우저 소스는 변경하지 않는다.
+
 추가 bounded REWORK(5cc5e784 이후): archived 자기 수강 내부 권한 차단, 담당 필터 후 별칭 대표 선택, 내부 요청 generation/abort 및 비JSON401/403 보존, 신규 이력 ACL/기존 이력 fail-closed·timeout, feature-ref 보호 전달 workflow. 기존 제안/가져오기/모바일/dirty guard는 보존한다. 서버·migration·전달 helper는 각각 내부 한정이며 main이 UI·통합 검증을 소유한다. 운영 실행/dispatch는 RELEASE 전 금지.
 
 OG 재검수 REWORK 구현/로컬 검증 완료: 명시 student 저장 계약, 시트 단위 별칭/트레이너 아레나 수강행 해석, 미저장 업무탭 가드, 이전 주 가져오기, 모바일5열, 승인 비율 역산 제안, exact0005 read-only preflight/적용 준비. 새 head에 회귀·화면·전체 게이트를 재제출한다. INTERNAL_SUBAGENT_ONLY helper는 서버 회귀 테스트와 migration 준비 파일만 분담하며 독립 검수가 아니다.

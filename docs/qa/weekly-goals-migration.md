@@ -1,7 +1,21 @@
 # #947 주간 목표 — 정확한 0005 적용·전달 검수 계약
 
-상태: **검수용 구현 / 운영 실행 NOT_RUN / OG RELEASE 전 실행·머지·배포 금지**.
+상태: **현재 진단 head 운영 실행 NOT_RUN / 기존 OG preflight는 아래 실패 증거 참조 / 새 검수 전 실행·머지·배포 금지**.
 기존 custom `schema_migrations` 이력을 유지한다. Supabase CLI 이력/새 자격증명/인프라 정책을 만들지 않는다.
+
+## OG read-only 관찰과 제한된 실패 진단
+
+OG가 실행한 [run34552514192](https://github.com/bbelieff/salespt-log/actions/runs/34552514192)는 a82f056 artifact/보호된 SSH 검증 후 `UNSAFE_HISTORY_SECURITY`로 exit1했다. 이 writer는 해당 run을 재실행하지 않았다. 목표 migration/머지/배포는 없으며 마지막 정상 앱5790609는 유지된다. 아래 새 진단 helper는 아직 운영 실행하지 않았다.
+
+거부 조건·비0 종료·rollback은 바꾸지 않는다. 거부된 이력의 데이터 SELECT 전, 같은 READ ONLY transaction에서 카탈로그 CTE만 추가 조회한다. CLI stderr JSON은 고정 error 코드 및 `public.schema_migrations`의 allowlist 필드만 출력한다:
+
+- RLS/force RLS/policy 수, 기존 unexpected ACL/column ACL 여부.
+- PUBLIC/anon/authenticated 존재 여부와 SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER별 boolean. PUBLIC은 직접 grant, 두 browser 역할은 상속/PUBLIC 포함 실효 권한이다.
+- `columnGrants`는 해당 grantee의 직접 column ACL 존재다. `effectiveColumnAccess`는 browser의 table grant까지 포함한 column 접근 여부이므로, true만으로 column grant가 있다고 해석하지 않는다. PUBLIC 항목은 직접 column grant 여부다.
+- `unknownGrantees`는 owner/service_role/PUBLIC/두 browser 역할을 제외한 grantee의 table/column/합집합 수만 표시한다. category는 고정이며 임의 role/account명·OID를 출력하지 않는다. 수가0보다 크다는 사실을 악의적 권한으로 단정하지 않는다.
+- 현재 server의 owner/superuser/role bypass/effective RLS bypass와 권한별 boolean만 표시한다. 연결 대상 비교나 실제 app 저장 검증은 별도 남은 인수 조건이다.
+
+추가 진단 조회 실패는 원래 거부를 유지하며 `available:false`/미확인 값 null로 보고한다. 임의 driver message/stack/cause/연결문자열/환경/이력 값은 출력하지 않는다. 출력 직전에 필드를 다시 투영한다. 기존 ACL/role/schema 교정이나 gate 완화는 없다. 정확한 원인은 새 head 검수 후 OG의 별도 read-only 관찰까지 미확인이다.
 
 ## immutable 대상
 
@@ -63,6 +77,8 @@ manifest/inventory/helper hashes는 Actions artifact와 stdout에 보존한다. 
 
 ## 합성 검증 및 미실행
 
+이번 ops 진단 패치: migration36 + client2 + delivery17 + diagnostics5 =60 tests. 신규9건은 일회용 PostgreSQL 실제 ACL 구분4건과 전달 CLI 실패/비밀값 비출력5건이다. 새 테스트의 mock 출력 인덱스 타입 오류는 optional 접근으로 교정했고 타입 검사 자체는 변경하지 않았다. 전체 게이트/CI 최종 결과와 정확한 head는 #947 체크포인트에 남긴다. 앱/UI 소스 불변이므로 이번 Next build·브라우저는 재실행하지 않으며, 이전 a82f056의 build/브라우저28 증거와 구별한다.
+
 - `tests/ops/weekly-goals-migrate.test.ts`32 + `weekly-goals-migrate-client.test.ts`2: 총34 PASS = pure/synthetic client16 + disposable PGlite18 (migration helper evidence,2026-09-11). QA 도구 미설정 시 PGlite만 skip; CI/운영 PASS로 합산하지 않는다.
 - `tests/ops/weekly-goals-delivery.test.ts`:17 PASS = strict inputs/immutable inventory+hash/missing-extra-tampered files/fresh output/workflow ordering/transport retry contract. 일회용 로컬 합성 파일만 사용한다.
 
@@ -71,4 +87,6 @@ $env:QA_TOOLS_DIR='C:/Users/Public/Documents/ESTsoft/CreatorTemp/weekly-goals-qa
 npx.cmd vitest run tests/ops/weekly-goals-migrate.test.ts tests/ops/weekly-goals-migrate-client.test.ts tests/ops/weekly-goals-delivery.test.ts
 ```
 
-운영 SSH/dispatch/DB preflight·적용/catalog/실계정 저장/Notion 실제 붙여넣기: **NOT_RUN**. KPI/Notion/Kakao 변경 없음. 독립 검수 판정이나 RELEASE가 아니다.
+위34건은 a82f056 이전 증거다. 현재 migration36건 중22건은 일회용 PostgreSQL이며 CI에서 해당 도구가 없으면 명시 skip된다. 나머지38건은 CI에서도 실행 가능한 ops 검사다.
+
+이 writer의 새 운영 SSH/dispatch/진단 DB preflight·적용/실계정 저장/Notion 실제 붙여넣기: **NOT_RUN**. OG가 수행한 이전 run34552514192 실패와 혼동하지 않는다. KPI/Notion/Kakao 변경 없음. 독립 검수 판정이나 RELEASE가 아니다.

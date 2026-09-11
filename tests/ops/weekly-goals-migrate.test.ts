@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { loadMigrationFiles } from "../../scripts/db-migrate.mjs";
 import { DATABASE_LIMITS, EXPECTED_CHECKSUM, VERSION, executeExact, parseArgs, pinnedMigration, preflight } from "../../scripts/ops/weekly-goals-migrate.mjs";
+import { formatMigrationFailure } from "../../scripts/ops/weekly-goals-migrate-catalog.mjs";
 
 type File = { version: string; sql: string; checksum: string };
 type Result = { rows: Record<string, unknown>[] };
@@ -108,6 +109,32 @@ async function fixture(run: (db: Db, client: Db, calls: string[]) => Promise<voi
 }
 
 integration("weekly-goals disposable PostgreSQL exact runner (no operational DB)", () => {
+  it.each([
+    ["grant select,delete,truncate,references,trigger on schema_migrations to public", "PUBLIC", true, false, 0],
+    ["create role anon; grant update(checksum) on schema_migrations to anon", "anon", false, true, 0],
+    ["create role fixture_extra; grant select on schema_migrations to fixture_extra; grant update(checksum) on schema_migrations to fixture_extra", "PUBLIC", false, false, 1],
+    ["create role fixture_extra; create role authenticated; grant fixture_extra to authenticated; grant select on schema_migrations to fixture_extra", "authenticated", true, false, 1],
+  ] as const)("diagnoses actual catalog grants without repair/names/data: %s", async (setup, role, select, columns, unknown) => fixture(async (db, client, calls) => {
+    await db.exec("create table schema_migrations(version text primary key, checksum text not null, applied_at timestamptz not null default now())");
+    await db.exec(setup);
+    let failure: unknown;
+    try { await preflight(client, files); } catch (error) { failure = error; }
+    const output = formatMigrationFailure(failure, "WITHHELD");
+    const report = JSON.parse(output);
+    expect(report.error).toBe("UNSAFE_HISTORY_SECURITY");
+    expect(report.diagnostic.available).toBe(true);
+    expect(report.diagnostic.grantees[role].privileges.SELECT).toBe(select);
+    expect(report.diagnostic.grantees[role].columnGrants).toBe(columns);
+    expect(report.diagnostic.unknownGrantees.total).toBe(unknown);
+    expect(report.diagnostic.server.owner).toBe(true);
+    expect(report.diagnostic.server.privileges.DELETE).toBe(true);
+    if (role === "PUBLIC" && select) expect(report.diagnostic.grantees.PUBLIC.privileges).toEqual({
+      SELECT: true, INSERT: false, UPDATE: false, DELETE: true, TRUNCATE: true, REFERENCES: true, TRIGGER: true });
+    expect(output).not.toContain("fixture_extra");
+    expect(calls.some(sql => /select version, checksum|\b(revoke|grant|alter|insert into|create table)\b/i.test(sql))).toBe(false);
+    expect(calls[0]).toBe("begin read only");
+    expect(calls.at(-1)).toBe("rollback");
+  }), 30000);
   it("absent history preflight creates nothing; exact apply creates only two target tables plus standard history", async () => fixture(async (db, client, calls) => {
     const report = await preflight(client, [...files, extra]);
     expect(report.historyExists).toBe(false);

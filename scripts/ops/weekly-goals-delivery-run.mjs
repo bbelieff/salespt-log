@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { writeFile } from "node:fs/promises";
 import { verifyArtifact } from "./weekly-goals-delivery.mjs";
 import { main } from "./weekly-goals-migrate.mjs";
-import { MigrationGateError } from "./weekly-goals-migrate-catalog.mjs";
+import { formatMigrationFailure } from "./weekly-goals-migrate-catalog.mjs";
 
 export async function runDelivery(args) {
   const [mode, sha, manifestChecksum, sqlChecksum, ...extra] = args;
@@ -19,9 +19,10 @@ export async function runDelivery(args) {
   await writeFile(resolve(root, `../${mode}-result.json`), JSON.stringify(result, null, 2) + "\n", { mode: 0o600 });
   return result;
 }
+export async function runDeliveryCLI(args) {
+  try { console.log(JSON.stringify(await runDelivery(args), null, 2)); return 0; }
+  catch (error) { console.error(formatMigrationFailure(error, "DELIVERY_FAILED_DETAILS_WITHHELD")); return 1; }
+}
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  runDelivery(process.argv.slice(2)).then((result) => console.log(JSON.stringify(result, null, 2))).catch((error) => {
-    console.error(error instanceof MigrationGateError ? error.message : "DELIVERY_FAILED_DETAILS_WITHHELD");
-    process.exitCode = 1;
-  });
+  runDeliveryCLI(process.argv.slice(2)).then((code) => { process.exitCode = code; });
 }

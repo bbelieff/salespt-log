@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadMigrationFiles, resolveDatabaseUrl } from "../db-migrate.mjs";
-import { assertRelation, inspectRelation, inspectState, MigrationGateError, TARGETS } from "./weekly-goals-migrate-catalog.mjs";
+import { assertRelation, inspectRelation, inspectState, MigrationGateError, formatMigrationFailure, TARGETS } from "./weekly-goals-migrate-catalog.mjs";
 
 export const VERSION = "0005_weekly_goals.sql";
 export const EXPECTED_CHECKSUM = "144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831";
@@ -140,7 +140,7 @@ export async function main(args = process.argv.slice(2), runtime = {}) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().then((report) => console.log(JSON.stringify(report, null, 2))).catch((error) => {
     // Driver error messages/details may contain connection or data values. Never print them.
-    console.error(error instanceof MigrationGateError ? error.message : "[weekly-goals-migrate] DATABASE_OR_IO_FAILURE_DETAILS_WITHHELD");
+    console.error(formatMigrationFailure(error, "[weekly-goals-migrate] DATABASE_OR_IO_FAILURE_DETAILS_WITHHELD"));
     process.exitCode = 1;
   });
 }

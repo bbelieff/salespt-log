@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 이력 권한 거부의 안전한 진단
+- 의도: OG read-only run34552514192의 UNSAFE_HISTORY_SECURITY 원인을 권한 변경 없이 구분할 수 있게 보강.
+- 한 것: 고정 이력 테이블의 권한별 boolean·column ACL·이름 없는 기타 grantee 수·server 권한만 CLI 실패 JSON에 투영. 비0 종료/READ ONLY/rollback·이력 데이터 조회 차단/SQL0005 불변 유지.
+- 검증: 신규 합성 CLI5·일회용 PostgreSQL 카탈로그4 회귀, 타입·JS 문법 확인. 전체 Vitest structural41/non-structural1706 PASS; 집중 ops60/check.sh/CI 및 정확한 head·manifest는 #947 체크포인트.
+- 다음: 새 진단 head를 OG 검수에 반환하며 dispatch 금지. 실제 원인·app/마이그레이션 DB 대상/역할 비교는 운영 read-only 증거 필요; 기존 ACL/role/schema 교정·DB apply·머지·배포는 수행하지 않음.
+- SoR: docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
 ### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 추가 bounded REWORK
 - 의도: OG 후속 검수의 archived 자기 권한·별칭 담당·지연 내부 응답·migration 이력/전달 경계 교정.
 - 한 것: 모든 자기 수강행 기준 내부 거부, 담당 필터 후 대표 선택, abort/generation 및 비JSON401/403 보호, 신규 이력 ACL/기존 이력 fail-closed·bounded timeout, feature-ref exact0005 외부 artifact 전달. 기존 UI 승인 사항 보존.
