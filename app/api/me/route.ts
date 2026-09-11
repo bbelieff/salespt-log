@@ -17,6 +17,7 @@ import { findUserByEmail } from "@/repo/users";
 import {
   getActiveUserEmail,
   getSessionEmail,
+  getEffectiveRole,
   isAdminEmail,
   isArenaSelfView,
 } from "@/auth/identity";
@@ -30,12 +31,8 @@ async function GET_handler() {
   const admin = isAdminEmail(sessionEmail);
   const activeEmail = await getActiveUserEmail();
 
-  // 세션 사용자(impersonation 무시) — 실제 role 확인용
-  const sessionUser = sessionEmail === activeEmail ? null : await findUserByEmail(sessionEmail);
   const user = await findUserByEmail(activeEmail);
-  const sessionRole: "admin" | "trainer" | "trainee" = admin
-    ? "admin"
-    : ((sessionUser ?? user)?.role ?? "trainee");
+  const { role: sessionRole } = await getEffectiveRole(sessionEmail);
 
   // 비-Admin + 미등록 = claim 필요
   if (!user && !admin) {
@@ -60,7 +57,7 @@ async function GET_handler() {
       isAdmin: admin,
       sessionEmail,
       sessionRole,
-      impersonating: admin && activeEmail !== sessionEmail ? activeEmail : null,
+      impersonating: activeEmail.toLowerCase() !== sessionEmail.toLowerCase() ? activeEmail : null,
     });
     // **never cache** — 브라우저 HTTP 캐시가 impersonation cookie 변경을 무시하고
     // 이전 trainee 의 응답을 그대로 반환하는 사고가 있었음 (2026-05-13).

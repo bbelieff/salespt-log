@@ -19,6 +19,7 @@ import {
   listDistinctUsers,
   isReservedTrainee,
 } from "@/repo/users";
+import TrainerInvites from "@/components/auth/TrainerInvites";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 
 // /admin/users 와 동일한 정책 — force-dynamic. self-claim/admin 액션 직후
@@ -83,6 +84,8 @@ export default async function AdminTrainersPage() {
   );
 
   return (
+    <>
+    {!viewOnly && <TrainerInvites />}
     <TrainerMgmtPanel
       sessionEmail={sessionEmail}
       pendingTrainers={pending}
@@ -91,5 +94,6 @@ export default async function AdminTrainersPage() {
       trainees={trainees}
       viewOnly={viewOnly}
     />
+    </>
   );
 }

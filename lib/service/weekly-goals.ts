@@ -1,6 +1,6 @@
 import { getSessionEmail, getActiveUserEmail, getEffectiveRole } from "@/auth/identity";
 import { findUserByEmail, listAllUsers, listDistinctUsers, parseAssignedTrainers } from "@/repo/users";
-import { pickActiveArenaRow, pickPreferredUser } from "@/repo/user-priority";
+import { pickCrmUser } from "@/repo/trainer-qualification";
 import { findActiveArenaRowByEmail } from "@/repo/users-arena";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
 import { readMeetingsFromDb, readContractsFromDb } from "@/repo/db/read-daily";
@@ -65,8 +65,7 @@ export async function listGoalStudents(): Promise<GoalStudent[]> {
     if (u.role !== "trainee" || u.status === "pending" || !u.spreadsheetId ||
       (fresh.role !== "admin" && !parseAssignedTrainers(u.assignedTrainer).includes(fresh.email.toLowerCase()))) return false;
     const mine = byEmail.get(u.email.toLowerCase())!;
-    const preferred = pickPreferredUser(mine);
-    const addressable = preferred?.role === "trainer" ? pickActiveArenaRow(mine) : preferred;
+    const addressable = pickCrmUser(mine);
     // Keep the same email-resolution convention as detail; never link an old enrollment to a new one.
     if (addressable !== u) return false;
     const key = JSON.stringify([u.spreadsheetId, u.cohort, u.courseStartISO]);

@@ -1357,7 +1357,7 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
+| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. 선택 props `returnTo`: 검증된 내부 경로를 Google 로그인 후 복귀 목적지로 전달. 기본/잘못된 값은 `/`. 화면·권한 부여 변화 없음. |
 | **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `pendingUsers?` (승인 대기), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 섹션: 승인 대기 → 활성 기수(CohortCategoryBoxes 3분류) → 보관 → 유보. 카드 액션: [승인]/[거절]/[유보]/[시트 열기]. POST /api/admin/switch · approve-trainee · reject-trainee · set-trainee-reserved · remove-trainee. |
 | **CohortCategoryBoxes** | 수강생관리 activeGroups 를 상위 카테고리 3박스(수강생=blue·아레나=purple·테스트=gray)로 묶는 표시 래퍼(admin-cohort-category-boxes). Props: `activeGroups: [string,Trainee[]][]` + CohortSection 콜백(busy·nameByEmail·onPick·onReserve·onSetTeam·onReorder·onAssignTrainers·activeTrainers·linkedBySheet·viewOnly). cohortCategory(types)로 partition, 비어있는 카테고리 박스 숨김. 데이터·정렬 불변. 수강생·테스트 박스 안은 CohortSection 그대로, **아레나 박스만 ArenaSeasonGroups 로 위임**해 시즌 우산을 한 겹 더 씌운다(AR-1). |
 | **SeasonStartInput** | (아레나) **시즌 개강일 입력** — `/admin/cohorts` 의 아레나 시즌 행(label "A{n}")에만 노출(AR-2b). Props: `label`, `initialISO`, `disabled?`. `type="date"` + 변경 시 [저장] → POST `/api/admin/set-season-start` → cohorts **J열 seasonStartISO**. 이 값이 **전광판 시즌 판정 정본** — 비면 전광판이 시즌 번호를 표시하지 않고 집계 스코프도 미적용(데이터 안 감춤), 날짜를 넣으면 그 날부터 해당 시즌 전환. 참가자별 registry K 는 템플릿 O1 스탬프라 출처 불신으로 판정에서 배제. |
@@ -1538,3 +1538,13 @@ button:focus, input:focus, select:focus {
 - `GoalCompactMetrics`: DB/컨택/일정 요약 안에서 기존 STEP 색 배지로 실적/목표/달성률을 표시. 미설정·목표0·달성·초과를 구분하며 대시보드 링과 모양을 분리.
 - 대시보드 재무 상세는 기본 접힘(시즌/이월/전체 값 보존); 생산성 2열 다음에 목표 링을 배치.
 - 회의록 미리보기의 라벨과 달리 HTML/TSV 클립보드는 제목 없는 14열 데이터 한 행.
+
+## Trainer recruitment (#956)
+- `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
+- `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
+- `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
+- `TopHeader`: 첫 줄 로고·대시보드·역할 전환. 모바일 사용자명/D-day는 두 번째 줄, 대리 접속 표시 유지.
+
+- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
+
+- Header stack: 모바일 144px / 2xl(768px)+ 104px. 기존 날짜·검색·대시보드 sticky 바는 이 아래에 배치.

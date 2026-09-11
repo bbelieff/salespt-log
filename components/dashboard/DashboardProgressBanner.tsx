@@ -2,7 +2,7 @@
 
 import { formatMoney } from "@/lib/format/money";
 /**
- * DashboardProgressBanner — 대시보드 메인 배너 (sticky top-24 z-30).
+ * DashboardProgressBanner — 대시보드 메인 배너 (sticky top-36 2xl:top-[104px] z-30).
  *
  * SSOT: docs/design/components.md §9-1
  * 디자인 정본: docs/handoff/inbox/dashboard-2026-05-07/dashboard-prototype.html (line 152~)
@@ -63,7 +63,7 @@ export default function DashboardProgressBanner({
   const pct = Math.max(0, Math.min(100, progressPercent));
 
   return (
-    <div className="sticky top-24 z-30 border-b border-gray-100 bg-white">
+    <div className="sticky top-36 2xl:top-[104px] z-30 border-b border-gray-100 bg-white">
       {/* === 위: 진행도 === (날짜 미확보 시 생략 — 매출/비용·경비장부는 계속 렌더) */}
       {hasDates && (
       <div className="px-4 pb-1.5 pt-2">

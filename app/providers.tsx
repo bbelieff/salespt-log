@@ -33,6 +33,7 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
+import { isSensitiveRecruitmentUrl } from "@/util/recruitment-privacy";
 import { useState } from "react";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
@@ -44,11 +45,13 @@ if (typeof window !== "undefined") {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (key && process.env.NODE_ENV === "production") {
     const initPostHog = () => {
+      if (isSensitiveRecruitmentUrl(window.location.href)) return;
       posthog.init(key, {
         api_host:
           process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
         defaults: "2026-01-30", // SPA 페이지뷰·pageleave·autocapture 권장 기본값
         person_profiles: "identified_only", // 익명 트래픽은 프로필 생성 안 함
+        before_send: event => isSensitiveRecruitmentUrl(window.location.href) || isSensitiveRecruitmentUrl(String(event?.properties?.$current_url ?? "")) ? null : event,
         capture_exceptions: true, // JS 예외 → $exception (Error Tracking)
         session_recording: {
           maskAllInputs: SESSION_MASK_PII,

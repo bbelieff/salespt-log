@@ -678,3 +678,7 @@ GET  /api/schedule                       → 수강시작일/수료일 + 주차 
 - [x] ~~자유 메모(특이사항) 컬럼~~ → **MVP 스코프 제외 결정** (2026-04-27)
 - [ ] **02 계약관리** 탭 연동 시 진입점 위치 (앱 어느 탭의 어느 뷰?) — Phase 2
 - [ ] **03 DB관리** 탭 연동 시 입력 폼 설계 — Phase 2 (현재 앱 DB관리 탭은 UI만 있음)
+
+## Trainer recruitment (#956)
+Trainer qualification is independent of enrollment: `trainer_qualifications` keyed by normalized email, status pending/active/rejected/revoked/cancelled, department T/관리. A projected sheetless trainer row coexists with the original student row; CRM reads/writes select the original student enrollment. Revocation/cancellation tombstones suppress legacy trainer rows.
+`trainer_invitations` stores SHA-256 token hashes only, designated recipient, seven-day expiry, issuer and acceptance/revocation audit. All per-recipient mutations share a transaction advisory lock. Acceptance retries are idempotent only while qualification remains active. Pending-only cancellation cannot demote an approved trainer.
