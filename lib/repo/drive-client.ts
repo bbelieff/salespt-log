@@ -284,7 +284,7 @@ export async function findSheetByNameContainsAll(
  *   - [수동] 붙여넣은 폴더가 01 피드백업체 자체인지(이름) 판별해 직접 사용.
  *
  * 판별형 결과 + 진단 로그(2026-06): 실패 원인을 운영 로그에서 구분.
- *   - ok + parentsCount=0  → 파일만 공유되고 **부모 폴더는 미공유** (Drive 가 parents 를 빈 배열로 반환).
+ *   - ok + parentsCount=0  → 부모 메타 미제공. 미공유의 증거가 아님(#953); 부모 쿼리로 발견 가능.
  *   - !ok + code 403       → 파일 접근 권한 자체 없음.
  *   - !ok + code 404       → 파일 못 찾음(잘못된 id/삭제).
  */

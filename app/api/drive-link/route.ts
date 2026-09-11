@@ -1,7 +1,7 @@
 /**
  * POST /api/drive-link — 업체 폴더 연결 (registry O열).
  *
- * 일반 기수: 참가자 루트 하위 `01 피드백업체` 폴더 (기존 로직 그대로).
+ * 일반 기수 auto: 시트 parent 또는 기수 root 안의 정확한 시트 포함 폴더에서 유일한 01.
  * 아레나(cohort A 접두, fix/drive-connect-arena 2026-06-12): 16C(cohorts!I) 하위
  *   `세일즈PT_A{n}_{m}기 {이름}_대표님 업체관리` 폴더 **자체**가 대상(하위 폴더 없음).
  *   auto = ①registry O 저장값 재확인 ②16C 하위 이름 매칭(부부 이름 포함).
@@ -16,11 +16,11 @@
 import { NextResponse } from "next/server";
 import { findUserByEmail, updateDriveLink } from "@/repo/users";
 import {
-  findFolderByNameInDrive,
   findFolderByNamePrefix,
   getDriveFileMeta,
 } from "@/repo/drive-client";
 import { listCohorts } from "@/repo/cohorts";
+import { discoverRegularFeedbackFolder, findRegularFeedbackInParent } from "@/repo/drive-regular-discovery";
 import { isArenaCohort, normalizeArenaCohort } from "@/repo/users-arena";
 import { nameMatchCandidates } from "@/repo/name-match";
 import { buildArenaCompanyFolderName } from "@/service/cohort-token";
@@ -42,6 +42,13 @@ function folderNotSharedResponse() {
       `이 시트가 들어있는 '폴더'를 서비스계정(${saEmail})에 '뷰어 또는 편집자'로 공유해 주세요. ` +
       `시트 파일만 공유하면 폴더 구조를 볼 수 없어요. ` +
       `폴더가 공유 드라이브에 있으면 그 드라이브에 위 계정을 멤버로 추가해도 자동으로 찾아요.`,
+  });
+}
+
+function regularDiscoveryFailure(reason: string) {
+  return NextResponse.json({
+    ok: false, status: "error", errorKind: "folder_discovery_failed", reason,
+    error: "본인 경영일지가 들어 있는 업체 폴더를 확인하지 못했어요. 운영자에게 폴더 위치를 확인해 주세요.",
   });
 }
 
@@ -218,7 +225,7 @@ async function POST_handler(req: Request) {
         }
       }
     } else if (mode === "auto") {
-      // ── 일반 기수 auto: 기존 로직 그대로 ────────────────────────
+      // ── 일반 기수 auto: 시트 소유 증명 + bounded discovery ───────
       const ssId = user.spreadsheetId;
       if (!ssId) {
         return NextResponse.json(
@@ -239,18 +246,24 @@ async function POST_handler(req: Request) {
         }
         return folderNotSharedResponse();
       }
+      if (meta.parentsCount > 1) return regularDiscoveryFailure("ambiguous");
       if (meta.parentId) {
-        feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
+        const parent = await findRegularFeedbackInParent(meta.parentId);
+        if (parent.ok) feedbackFolderId = parent.feedbackFolderId;
+        else if (parent.reason !== "not_found") return regularDiscoveryFailure(parent.reason);
       }
-      if (!feedbackFolderId && meta.driveId) {
-        feedbackFolderId =
-          (await findFolderByNameInDrive("01 피드백업체", meta.driveId)) ??
-          (await findFolderByNameInDrive(FEEDBACK_PREFIX, meta.driveId));
-      }
-      parentPathLabel = meta.parentId ?? meta.driveId ?? "";
+      parentPathLabel = meta.parentId ?? "";
       if (!feedbackFolderId) {
-        await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
-        return folderNotSharedResponse();
+        const cohorts = (await listCohorts()).filter((c) => c.label === user.cohort);
+        if (cohorts.length > 1) return regularDiscoveryFailure("root_ambiguous");
+        const cohort = cohorts[0];
+        const found = cohort?.rootFolderId && cohort.type !== "arena"
+          ? await discoverRegularFeedbackFolder(ssId, cohort.rootFolderId) : null;
+        if (!found?.ok) {
+          return regularDiscoveryFailure(found?.reason ?? "root_missing");
+        }
+        feedbackFolderId = found.feedbackFolderId;
+        parentPathLabel = found.parentId;
       }
     } else {
       // ── 일반 기수 manual: 기존 로직 그대로 ──────────────────────
