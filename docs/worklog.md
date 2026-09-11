@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · [병렬트랙] [DH-SPO] 일반기수 Drive 자동찾기 #953
+- 의도: 부모 메타 누락을 공유 오류로 오진하지 않고 본인 시트 포함으로 기존 폴더를 증명.
+- 구역: drive-link 일반 auto, 전용 repo discovery, 회귀 테스트·관련 문서. 아레나/manual 불변.
+- 계약: 전용 fix/regular-drive-discovery, base 9c5a7b8. 운영 데이터/권한 수정 금지, PR CI까지만.
+- 다음: TDD·check.sh/build·CI 후 부모 독립검수에 반환. 머지/배포/7명 운영 전수검증 NOT_RUN.
+- SoR: docs/plans/active/regular-drive-discovery.md, GitHub #953.
+
 ### 2026-09-11 · 주간목표 PT성과·업무탭 배치
 - 요청: 다음 주에 트레이너가 PT과제 성과를 저장하고, 업무탭 목표 박스를 공간 효율적으로 통합.
 - 구현: 지난 과제 바로 아래 기존 비공개 성과 편집·저장 안내, DB/컨택/일정 요약 내부 compact 목표값. DB/API/권한 변경 없음.
