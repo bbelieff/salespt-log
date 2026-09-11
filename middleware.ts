@@ -2,7 +2,7 @@
  * NextAuth 5 middleware — (app) 그룹 페이지 보호.
  *
  * 미인증 사용자가 /dashboard /contact /schedule /calendar /payment /db 접근 시
- * → / 로 redirect (LoginScene 표시).
+ * → /?returnTo=... 로 redirect (LoginScene 표시, 검증된 내부 목적지 보존).
  *
  * /api/* 는 미들웨어에서 제외 — 각 라우트가 자체 401 처리.
  *
@@ -14,6 +14,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { isDevStubAuthed } from "@/auth/dev-stub";
+import { safeLoginReturn } from "@/util/login-return";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -28,6 +29,8 @@ export default auth((req) => {
     pathname.startsWith("/trainer");
   if (isProtected && !req.auth && !isDevStubAuthed()) {
     const url = new URL("/", req.url);
+    const returnTo = safeLoginReturn(req.nextUrl.pathname + req.nextUrl.search);
+    if (returnTo) url.searchParams.set("returnTo", returnTo);
     return NextResponse.redirect(url);
   }
   return NextResponse.next();

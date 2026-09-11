@@ -1,5 +1,6 @@
 /**
  * / — 인트로 + 로그인 페이지 (server component).
+ * 검증된 returnTo가 있으면 로그인 후 그 화면으로 복귀하며, 권한은 목적지에서 검사.
  *
  * 라우팅 (역할별):
  *   - 미로그인         → LoginScene (Google 버튼)
@@ -20,10 +21,12 @@
  *          (POST /api/admin/switch + 클라이언트 router.push("/dashboard")).
  */
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import { findUserByEmail } from "@/repo/users";
 import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
+import { safeLoginReturn } from "@/util/login-return";
 
 // **force-dynamic** — claim 직후 router.push("/") 했을 때 옛 캐시가 보이면
 // 안 됨. 사고 (2026-05-13): 새 사용자가 /claim 성공해도 홈 server component
@@ -32,9 +35,18 @@ import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 // 둘 다 보강.
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ returnTo?: string | string[] }>;
+}) {
+  const returnTo = safeLoginReturn((await searchParams)?.returnTo);
   const sessionEmail = await getSessionEmail();
-  if (!sessionEmail) return <LoginScene />;
+  if (!sessionEmail) return <LoginScene returnTo={returnTo ?? "/"} />;
+
+  // An explicit application/invitation entry wins over the default role landing.
+  // The destination still performs its normal authentication/authorization checks.
+  if (returnTo) redirect(returnTo as Route);
 
   const { role } = await getEffectiveRole(sessionEmail);
 

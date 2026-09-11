@@ -1357,7 +1357,7 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
+| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. 선택 props `returnTo`: 검증된 내부 경로를 Google 로그인 후 복귀 목적지로 전달. 기본/잘못된 값은 `/`. 화면·권한 부여 변화 없음. |
 | **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `pendingUsers?` (승인 대기), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 섹션: 승인 대기 → 활성 기수(CohortCategoryBoxes 3분류) → 보관 → 유보. 카드 액션: [승인]/[거절]/[유보]/[시트 열기]. POST /api/admin/switch · approve-trainee · reject-trainee · set-trainee-reserved · remove-trainee. |
 | **CohortCategoryBoxes** | 수강생관리 activeGroups 를 상위 카테고리 3박스(수강생=blue·아레나=purple·테스트=gray)로 묶는 표시 래퍼(admin-cohort-category-boxes). Props: `activeGroups: [string,Trainee[]][]` + CohortSection 콜백(busy·nameByEmail·onPick·onReserve·onSetTeam·onReorder·onAssignTrainers·activeTrainers·linkedBySheet·viewOnly). cohortCategory(types)로 partition, 비어있는 카테고리 박스 숨김. 데이터·정렬 불변. 수강생·테스트 박스 안은 CohortSection 그대로, **아레나 박스만 ArenaSeasonGroups 로 위임**해 시즌 우산을 한 겹 더 씌운다(AR-1). |
 | **SeasonStartInput** | (아레나) **시즌 개강일 입력** — `/admin/cohorts` 의 아레나 시즌 행(label "A{n}")에만 노출(AR-2b). Props: `label`, `initialISO`, `disabled?`. `type="date"` + 변경 시 [저장] → POST `/api/admin/set-season-start` → cohorts **J열 seasonStartISO**. 이 값이 **전광판 시즌 판정 정본** — 비면 전광판이 시즌 번호를 표시하지 않고 집계 스코프도 미적용(데이터 안 감춤), 날짜를 넣으면 그 날부터 해당 시즌 전환. 참가자별 registry K 는 템플릿 O1 스탬프라 출처 불신으로 판정에서 배제. |

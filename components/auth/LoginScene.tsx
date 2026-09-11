@@ -1,11 +1,13 @@
 /**
  * LoginScene — 인트로 + Google 로그인.
  * SSOT: docs/design/prototypes/login.html (v10 — 로고 + 글래스 도넛 + 8 이모지)
+ * returnTo: validated internal login destination; omitted/invalid falls back to `/`.
  */
 "use client";
 
 import { signIn } from "next-auth/react";
 import WebviewWarning from "./WebviewWarning";
+import { safeLoginReturn } from "@/util/login-return";
 
 const FLUENT = "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets";
 const EMOJIS = [
@@ -24,7 +26,7 @@ const POS = [
   { x: 0, y: 1 }, { x: -0.707, y: 0.707 }, { x: -1, y: 0 }, { x: -0.707, y: -0.707 },
 ];
 
-export default function LoginScene() {
+export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-white">
       {/* in-app 웹뷰(카톡·네이버·인스타 등) 감지 시 오버레이로 외부 브라우저 유도. */}
@@ -157,7 +159,7 @@ export default function LoginScene() {
         {/* google button */}
         <button
           type="button"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => signIn("google", { callbackUrl: safeLoginReturn(returnTo) ?? "/" })}
           className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-gray-300 bg-white text-[15px] font-medium text-gray-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md active:scale-[0.99]"
           style={{ height: 52, fontFamily: "Roboto, 'Noto Sans KR', sans-serif" }}
         >

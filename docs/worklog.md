@@ -7,6 +7,13 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-11 · [병렬트랙] OG 트레이너 영입 — 로그인 목적지 보존
+- 요청: 수강생 출신/비수강생의 직접 신청·초대 수락 두 경로와 로그인 후 신청 화면 복귀.
+- 구역: 전용 feat/trainer-recruitment-entry. middleware.ts, app/page.tsx, LoginScene, login-return 유틸·검사·관련 문서. 주간목표/Drive 트랙은 수정하지 않음.
+- 한 것: 내부 목적지 검증 및 로그인 전달·기존 로그인 착지 보존. 최종 회귀39건, 전체 check.sh(구조40/단위1749 PASS, 34 skip), Next build PASS. PC/모바일 로그인 화면 확인; 실제 OAuth 복귀는 NOT_RUN(로컬 UntrustedHost).
+- 남음: 신청/초대 저장·화면과 일반 수강 기록 전환. DH의 초대 발급/활성화 정책 질문 답변 전 권한 부여 구현 확정하지 않음. 운영 DB/환경/배포 미실행.
+- SoR: docs/plans/active/trainer-recruitment.md, Slack thread1789104258.500019.
+
 ## 프로토콜 (모든 세션 의무)
 
 **시작할 때 (읽기)**
