@@ -29,7 +29,8 @@ jobs:
       - name: Stage private input
         env:
           REGION_INPUT: ${{ inputs.payload }}
-        run: node -e 'require("fs").writeFileSync("/tmp/training-region-input.json", process.env.REGION_INPUT, {mode: 0o600})'
+        run: |
+          node -e 'require("fs").writeFileSync("/tmp/training-region-input.json", process.env.REGION_INPUT, {mode: 0o600})'
       - name: Verify or apply region only
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
