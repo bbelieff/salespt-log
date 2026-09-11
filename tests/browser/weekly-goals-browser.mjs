@@ -20,7 +20,7 @@ await build({
   plugins: [{ name: "fixture-next", setup(b) {
     // Unchanged header/closed ledger are outside this dashboard placement fixture.
     b.onResolve({ filter: /^@\/components\/(TopHeader|dashboard\/expense-ledger\/ExpenseLedgerDialog)$/ }, args => ({ path: args.path, namespace: "fixture-shell" }));
-    b.onLoad({ filter: /.*/, namespace: "fixture-shell" }, () => ({ contents: "export default function Shell(){return null}", loader: "js" }));
+    b.onLoad({ filter: /.*/, namespace: "fixture-shell" }, args => ({ contents: args.path.endsWith("TopHeader") ? 'import React from "react"; export default function Shell(){return <header style={{height:96}}>대시보드</header>}' : "export default function Shell(){return null}", loader: "jsx", resolveDir: process.cwd() }));
     b.onResolve({ filter: /^next\/(navigation|link)$/ }, args => ({ path: args.path, namespace: "fixture" }));
     b.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({
       contents: args.path.endsWith("navigation") ? "export const useRouter=()=>({push:p=>{window.__lastNav=p}}); export const usePathname=()=>new URLSearchParams(location.search).get('entry')||'/dashboard';" :
@@ -65,14 +65,14 @@ const view = (week, student = "fixture@example.invalid", role = "trainer") => {
     current: item(week), previous: week > 1 ? item(week - 1) : null, canReadInternal: role !== "student" };
 };
 try {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const context = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const page = await context.newPage();
   page.on("pageerror", e => errors.push(e.message));
   await page.route("**/api/contract-payment**", route => route.fulfill({ json: { rows: [] } }));
-  await page.route("**/api/me", route => route.fulfill({ json: {} }));
+  await page.route("**/api/me", route => route.fulfill({ json: {courseStartISO: "2026-09-04", graduationISO: "2026-10-24"} }));
   await page.route("**/api/dashboard", route => route.fulfill({ json: {
-    kpi: { 총매출: 0, 총비용: 0, 수임비합: 0, 수수료합: 0, 이월매출: 0, 전체매출: 0, 이월비용: 0, 전체비용: 0 },
-    additionalCost: { dbCostTotal: 0, additionalCost: 0, status: "available" },
+    kpi: { 총매출: 12000000, 총비용: 3000000, 수임비합: 8000000, 수수료합: 4000000, 이월매출: 2000000, 전체매출: 14000000, 이월비용: 100000, 전체비용: 3100000 },
+    additionalCost: { dbCostTotal: 2000000, additionalCost: 1000000, status: "available" },
     channelMatrix: [], weeklyTrend: [], costBreakdown: [],
   } }));
   await page.route("**/api/weekly-goals**", async route => {
@@ -195,7 +195,7 @@ try {
   assert.equal((await page.content()).includes("PRIVATE_OUTCOME"), false);
   results.push("student-no-private-request-or-dom");
   await page.goto(base + "/?mode=summary");
-  await page.getByText("목표·PT과제 열기").first().waitFor();
+  await page.getByRole("button", { name: "목표·PT과제 열기", exact: true }).first().waitFor();
   assert.equal(await page.getByRole("region", { name: "주간 목표", exact: true }).count(), 3);
   assert.equal(await page.getByLabel("주간 목표 실적").count(), 0);
   results.push("three-tabs-compact-summary-no-duplicate-rings");
@@ -296,8 +296,9 @@ try {
   denyRead = false;
   results.push("denied-private-save-clears-private-draft-and-copy-no-write");
   await privateRegressions({ page, base, privateSteps, internal, records, results, setPublicDenied: value => { denyRead = value; } });
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 });
+  records.set("fixture@example.invalid2", {...records.get("fixture@example.invalid2"), goals: {...goals}});
+  for (const width of [1366, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 768 });
     for (const [href, label] of [["/dashboard", "대시보드"], ["/trainer/weekly-goals", "담당 수강생"]]) {
       await page.goto(base + "/?role=trainer&returnTo=" + encodeURIComponent(href));
       await page.getByRole("button", { name: "← " + label, exact: true }).click();
@@ -314,6 +315,8 @@ try {
       assert.ok(box.height <= (width === 390 ? 100 : 60), host + " compact height " + box.height);
       assert.ok((await region.getByRole("button").boundingBox()).height >= 44);
     }
+    assert.ok(await page.getByTestId("contact-goal-host").getByLabel("컨택완료 실적 3, 목표 5, 60%", { exact: true }).isVisible());
+    assert.ok(await page.getByTestId("schedule-goal-host").getByLabel("미팅완료 실적 2, 목표 2, 달성", { exact: true }).isVisible());
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: join(output, "compact-tabs-" + width + ".png"), fullPage: true });
     results.push("compact-tabs-inside-existing-summaries-touch-and-overflow-" + width);
@@ -329,6 +332,18 @@ try {
     assert.equal(placement.afterProductivity, true);
     assert.equal(placement.below, true);
     assert.equal(placement.overflow, false);
+    const goalBox = await summary.boundingBox();
+    const usableHeight = width === 390 ? 784 : 768;
+    console.log("goal-first-screen", width, goalBox);
+    await page.screenshot({ path: join(output, "first-screen-" + width + ".png") });
+    assert.ok(goalBox.y + goalBox.height <= usableHeight, "Goal rings must fit before scrolling: " + JSON.stringify(goalBox));
+    results.push("dashboard-first-screen-goals-" + width);
+    const financialDetails = page.getByLabel("영업이익과 매출·비용 상세", { exact: true });
+    await financialDetails.click();
+    assert.ok(await page.getByText("₩14,000,000", { exact: true }).isVisible());
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await financialDetails.click();
+    results.push("financial-details-retain-values-and-no-overflow-" + width);
     await page.screenshot({ path: join(output, "dashboard-" + width + ".png"), fullPage: true });
     results.push("dashboard-goals-below-productivity-" + width);
   }
@@ -358,6 +373,21 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: join(output, "pt-outcome-desktop.png"), fullPage: true });
   results.push("next-week-outcome-save-reload-and-week-isolation");
+  await page.goto(base);
+  await page.getByRole("button", { name: "트레이너 기록 열기", exact: true }).click();
+  await page.getByRole("button", { name: "회의록 미리보기", exact: true }).click();
+  assert.equal(await page.getByLabel("회의록 지역", { exact: true }).inputValue(), "테스트지역");
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+    write: async items => { window.__richCopy = {html: await (await items[0].getType("text/html")).text(),plain: await (await items[0].getType("text/plain")).text()}; }
+  } }));
+  await page.getByRole("button", { name: "회의록용 복사", exact: true }).click();
+  await page.getByText("복사됨", { exact: true }).waitFor();
+  const rich = await page.evaluate(() => window.__richCopy);
+  assert.equal((rich.html.match(/<tr>/g) ?? []).length, 1);
+  assert.equal((rich.html.match(/<td>/g) ?? []).length, 14);
+  assert.equal(/<th[ >]|<thead/.test(rich.html), false);
+  assert.equal(rich.plain.split("\t").length, 14);
+  results.push("browser-rich-clipboard-data-only-fourteen-cells-and-prefilled-region");
   failRead = true;
   await page.goto(base + "/?role=student");
   await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();
