@@ -112,3 +112,5 @@ npx.cmd vitest run tests/ops/weekly-goals-migrate.test.ts tests/ops/weekly-goals
 위34건은 a82f056 이전 증거다. 현재 migration36건 중22건은 일회용 PostgreSQL이며 CI에서 해당 도구가 없으면 명시 skip된다. 나머지38건은 CI에서도 실행 가능한 ops 검사다.
 
 이 writer의 새 운영 SSH/dispatch/진단 DB preflight·적용/실계정 저장/Notion 실제 붙여넣기: **NOT_RUN**. OG가 수행한 이전 run34552514192 실패와 혼동하지 않는다. KPI/Notion/Kakao 변경 없음. 독립 검수 판정이나 RELEASE가 아니다.
+
+OG runtime review correction: root-directory mtime is not an environment signal because normal deploy removes .next-prev after process reload. Actual existing env files must predate process start and remain identical across runtime rechecks; unrelated directory churn is permitted. Historical presence of a now-absent env file is not inferred from root mtime. Live comparison remains read-only and no credentials are emitted.

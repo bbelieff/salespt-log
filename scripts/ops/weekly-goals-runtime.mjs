@@ -89,8 +89,9 @@ async function observe() {
 }
 export async function inspectEnvironmentFiles(root, startedAt) {
   const envMeta = [];
-  // If files/root changed after launch, replay cannot prove the loaded runtime; fail on ambiguity.
-  if ((await stat(root)).mtimeMs > startedAt) fail();
+  // Deployment removes .next-prev after PM2 reload, so root directory mtime is
+  // expected to change after listener startup. Check the actual env files, not
+  // unrelated directory churn; repeated fingerprints still detect env changes.
   for (const name of ENV_FILES) {
     try {
       const s = await lstat(`${root}/${name}`);

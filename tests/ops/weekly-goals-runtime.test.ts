@@ -27,13 +27,27 @@ describe("runtime and approval boundaries (synthetic; no PM2/remote access)", ()
       expect(result.stdout).not.toContain("fixture");
     } finally { await rm(root,{recursive:true,force:true}); }
   });
-  it("rejects env/root changed after process start; observation exposes hashes not values", async () => {
+  it("rejects env files changed after process start; observation exposes hashes not values", async () => {
     const root = await mkdtemp(resolve(".qa-runtime-fixture-"));
     try {
       await writeFile(join(root,".env"),"DATABASE_URL=private-fixture");
       const metadata = await inspectEnvironmentFiles(root,Date.now()+1000);
       expect(JSON.stringify(metadata)).not.toContain("private-fixture");
       await expect(inspectEnvironmentFiles(root,Date.now()-60000)).rejects.toThrow();
+    } finally { await rm(root,{recursive:true,force:true}); }
+  });
+  it("allows normal post-reload build-directory cleanup with unchanged environment files", async () => {
+    const root = await mkdtemp(resolve(".qa-runtime-fixture-"));
+    try {
+      await writeFile(join(root,".env"),"DATABASE_URL=private-fixture");
+      const startedAt = Date.now() + 1000;
+      const before = await inspectEnvironmentFiles(root, startedAt);
+      await new Promise(done => setTimeout(done, 1100));
+      await writeFile(join(root,"old-build-entry"),"unrelated-build");
+      await rm(join(root,"old-build-entry"));
+      expect(await inspectEnvironmentFiles(root, startedAt)).toEqual(before);
+      await writeFile(join(root,".env"),"DATABASE_URL=changed-private-fixture");
+      await expect(inspectEnvironmentFiles(root, startedAt)).rejects.toThrow();
     } finally { await rm(root,{recursive:true,force:true}); }
   });
   it("parses initial process env privately including equals, rejects duplicate ambiguity", () => {

@@ -3441,3 +3441,7 @@
 - 다음: normal hook 통합 커밋 후 DevD exact-SHA 독립 VERIFY
 - SoR: `docs/plans/active/expense-db-cost-ledger-parity-r5.md`
 - 최종 diff: 승인된 11파일만 변경, DevD 두 테스트 SHA-256 불변, `git diff --check` PASS
+
+## 2026-09-11 OG release review — runtime directory churn
+
+Reviewed 1ad47e5 helper delta; found established deploy removes .next-prev after PM2 reload. Removed only the unrelated app-directory mtime rejection; env file timestamps/hashes and repeated runtime identity fingerprint remain. Regression simulates post-start unrelated entry removal (accepted) then actual env change (rejected). Source-evidenced false positive correction, not a DB/role/environment change. Actual ACL/migration/deployment still not run; final checks required.
