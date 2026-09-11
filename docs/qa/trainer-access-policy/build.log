@@ -1,0 +1,174 @@
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * C:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지\wt\trainer-access-policy\package-lock.json
+
+   ▲ Next.js 15.5.15
+   - Environments: .env.production
+   - Experiments (use with caution):
+     · clientTraceMetadata
+
+   Creating an optimized production build ...
+warn  - It seems like you don't have a global error handler set up. It is recommended that you add a global-error.js file with Sentry instrumentation so that React rendering errors are reported to Sentry. Read more: https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/#react-render-errors-in-app-router (you can suppress this warning by setting SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING=1 as environment variable)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (318kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ✓ Compiled successfully in 74s
+   Linting and checking validity of types ...
+
+./app/(app)/db/page.tsx
+134:5  Warning: Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps').
+
+./app/(app)/payment/_components/ContractRow.tsx
+150:9  Warning: The 'allTodos' logical expression could make the dependencies of useMemo Hook (at line 174) change on every render. To fix this, wrap the initialization of 'allTodos' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+
+./app/(app)/updates/page.tsx
+62:5  Warning: Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps').
+
+./app/claim/page.tsx
+128:12  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./components/announcements/MarkdownView.tsx
+34:11  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./components/auth/LoginScene.tsx
+120:18  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+132:12  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./components/TopHeader.tsx
+88:6  Warning: React Hook useEffect has a missing dependency: 'me.data'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+132:14  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+./components/ui/LoadingOverlay.tsx
+36:14  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/71) ...
+   Generating static pages (17/71) 
+   Generating static pages (35/71) 
+   Generating static pages (53/71) 
+ ✓ Generating static pages (71/71)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                             Size  First Load JS
+┌ ƒ /                                                4.08 kB         170 kB
+├ ○ /_not-found                                      1.14 kB         164 kB
+├ ƒ /admin                                            1.5 kB         169 kB
+├ ƒ /admin/arena                                      2.8 kB         183 kB
+├ ƒ /admin/arena/scoreboard                           3.7 kB         168 kB
+├ ƒ /admin/arena/share-scores                        1.87 kB         166 kB
+├ ƒ /admin/cohorts                                    8.1 kB         173 kB
+├ ƒ /admin/db-parity                                   337 B         165 kB
+├ ƒ /admin/popup                                     4.58 kB         169 kB
+├ ƒ /admin/trainers                                  5.74 kB         185 kB
+├ ƒ /admin/users                                     8.66 kB         211 kB
+├ ƒ /api/admin/add-trainee-prep                        527 B         163 kB
+├ ƒ /api/admin/announcements                           527 B         163 kB
+├ ƒ /api/admin/approve-all-pending-trainees            528 B         163 kB
+├ ƒ /api/admin/approve-trainee                         526 B         163 kB
+├ ƒ /api/admin/approve-trainer                         527 B         163 kB
+├ ƒ /api/admin/arena-carryover                         527 B         163 kB
+├ ƒ /api/admin/assign-trainee                          526 B         163 kB
+├ ƒ /api/admin/bulk-add-trainee-prep                   527 B         163 kB
+├ ƒ /api/admin/create-arena-members                    529 B         163 kB
+├ ƒ /api/admin/create-cohort-members                   527 B         163 kB
+├ ƒ /api/admin/migrate-registry-cache                  528 B         163 kB
+├ ƒ /api/admin/notice-image                            528 B         163 kB
+├ ƒ /api/admin/reject-trainee                          529 B         163 kB
+├ ƒ /api/admin/reject-trainer                          527 B         163 kB
+├ ƒ /api/admin/remove-trainee                          527 B         163 kB
+├ ƒ /api/admin/remove-trainer                          527 B         163 kB
+├ ƒ /api/admin/retry-cohort-creates                    527 B         163 kB
+├ ƒ /api/admin/scoreboard                              526 B         163 kB
+├ ƒ /api/admin/set-arena-captain                       527 B         163 kB
+├ ƒ /api/admin/set-cohort-status                       525 B         163 kB
+├ ƒ /api/admin/set-season-start                        527 B         163 kB
+├ ƒ /api/admin/set-trainee-reserved                    526 B         163 kB
+├ ƒ /api/admin/set-trainee-team                        527 B         163 kB
+├ ƒ /api/admin/set-trainer-dept                        528 B         163 kB
+├ ƒ /api/admin/set-user-sort-orders                    527 B         163 kB
+├ ƒ /api/admin/share-scores                            526 B         163 kB
+├ ƒ /api/admin/switch                                  529 B         163 kB
+├ ƒ /api/admin/users                                   527 B         163 kB
+├ ƒ /api/announcements                                 527 B         163 kB
+├ ƒ /api/announcements/archive                         528 B         163 kB
+├ ƒ /api/arena-self                                    528 B         163 kB
+├ ƒ /api/auth/[...nextauth]                            527 B         163 kB
+├ ƒ /api/claim                                         527 B         163 kB
+├ ƒ /api/company-info                                  528 B         163 kB
+├ ƒ /api/company-info/export                           526 B         163 kB
+├ ƒ /api/contract-payment                              526 B         163 kB
+├ ƒ /api/contract-payment/[row]                        527 B         163 kB
+├ ƒ /api/contract-payment/[row]/terminate              527 B         163 kB
+├ ƒ /api/contract-payment/edit-linked                  529 B         163 kB
+├ ƒ /api/contract-payment/prior                        528 B         163 kB
+├ ƒ /api/daily/[date]                                  526 B         163 kB
+├ ƒ /api/daily/move                                    527 B         163 kB
+├ ƒ /api/dashboard                                     526 B         163 kB
+├ ƒ /api/db                                            528 B         163 kB
+├ ƒ /api/db/[channel]                                  529 B         163 kB
+├ ƒ /api/db/[channel]/[row]                            527 B         163 kB
+├ ƒ /api/drive-link                                    530 B         163 kB
+├ ƒ /api/expense-categories                            526 B         163 kB
+├ ƒ /api/expense-categories/[id]                       527 B         163 kB
+├ ƒ /api/expense-categories/[id]/usage                 526 B         163 kB
+├ ƒ /api/expense-categories/unclassified/reclassify    528 B         163 kB
+├ ƒ /api/expense-recurring-rules                       527 B         163 kB
+├ ƒ /api/expense-recurring-rules/[id]                  527 B         163 kB
+├ ƒ /api/expense-recurring-rules/[id]/pause            527 B         163 kB
+├ ƒ /api/expense-recurring-rules/[id]/resume           528 B         163 kB
+├ ƒ /api/expense-recurring-rules/[id]/skip             527 B         163 kB
+├ ƒ /api/expenses                                      527 B         163 kB
+├ ƒ /api/expenses/[id]                                 527 B         163 kB
+├ ƒ /api/export                                        528 B         163 kB
+├ ƒ /api/gcal                                          528 B         163 kB
+├ ƒ /api/gcal/auth                                     527 B         163 kB
+├ ƒ /api/gcal/callback                                 529 B         163 kB
+├ ƒ /api/gcal/resync                                   529 B         163 kB
+├ ƒ /api/gcal/states                                   526 B         163 kB
+├ ƒ /api/gcal/toggle                                   528 B         163 kB
+├ ƒ /api/health                                        527 B         163 kB
+├ ƒ /api/leads                                         526 B         163 kB
+├ ƒ /api/me                                            525 B         163 kB
+├ ƒ /api/meeting                                       527 B         163 kB
+├ ƒ /api/meeting/[id]                                  529 B         163 kB
+├ ƒ /api/meeting/[id]/revert                           528 B         163 kB
+├ ƒ /api/meeting/[id]/revive-case                      526 B         163 kB
+├ ƒ /api/meetings/month/[yyyymm]                       526 B         163 kB
+├ ƒ /api/meetings/week/[weekStart]                     528 B         163 kB
+├ ƒ /api/todos                                         528 B         163 kB
+├ ƒ /api/todos/[id]                                    527 B         163 kB
+├ ƒ /api/weekly-goals                                  527 B         163 kB
+├ ƒ /api/weekly-goals/internal                         526 B         163 kB
+├ ƒ /api/weekly-goals/overview                         527 B         163 kB
+├ ƒ /api/weekly-goals/students                         527 B         163 kB
+├ ƒ /api/whoami                                        527 B         163 kB
+├ ○ /apple-icon                                        526 B         163 kB
+├ ƒ /calendar                                        11.9 kB         307 kB
+├ ƒ /captain                                           338 B         165 kB
+├ ○ /claim                                           4.41 kB         170 kB
+├ ƒ /contact                                         23.2 kB         347 kB
+├ ƒ /dashboard                                         22 kB         331 kB
+├ ƒ /db                                              13.6 kB         323 kB
+├ ○ /icon                                              528 B         163 kB
+├ ○ /manifest.webmanifest                              527 B         163 kB
+├ ○ /opengraph-image                                   527 B         163 kB
+├ ƒ /payment                                           20 kB         333 kB
+├ ƒ /schedule                                        12.4 kB         337 kB
+├ ƒ /trainer                                         3.51 kB         218 kB
+├ ƒ /trainer/weekly-goals                            3.33 kB         194 kB
+├ ƒ /updates                                         1.88 kB         294 kB
+└ ƒ /weekly-goals                                    5.86 kB         195 kB
++ First Load JS shared by all                         163 kB
+  ├ chunks/4bd1b696-dbdbfd9e6e6b8490.js              54.4 kB
+  ├ chunks/8102-3063dfbe8e8ae940.js                   106 kB
+  └ other shared chunks (total)                      2.66 kB
+
+
+ƒ Middleware                                          138 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -10,6 +10,13 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
+## 트레이너 등급·권한 편집 (#958)
+
+- **TrainerAccessEditor** (`components/auth/TrainerAccessEditor.tsx`): 승인 v4의 목록/편집/확인 배치와 CSS를 보존한 독립 컴포넌트. 기본 endpoint `/api/admin/trainer-access`, 선택적 `readOnly`는 표시용이며 서버는 GET/PUT 모두 admin-only. 기존 관리자 page에는 아직 mount하지 않는다.
+- 서버 자격목록의 exact 이메일로 선택하며 이름+이메일을 표시한다. 미분류는 grade=null/version=0/모든 권한 false. 등급 변경은 기본값 reset으로 저장하며 개별 조정은 등급 저장 후 가능하다. write 선택 시 read 활성, read 해제 시 write 해제. 취소/기본값/저장 확인 dialog와 키보드 Escape·focus 복귀·beforeunload 보호.
+- 실패 시 초안 보존, 409는 최신값 조회로 해결, 401/403 관찰 시 편집 차단. 성공한 PUT 뒤 GET 재조회가 끝나야 저장 완료. 재조회 실패는 중복 PUT을 막고 결과 재조회만 허용한다. endpoint 변경·unmount 시 오래된 응답은 무시한다. 360/390 모바일과 PC는 같은 API/정책을 사용한다.
+- 실행 증거 및 공용부 미통합: [trainer-access-settings QA](../qa/trainer-access-settings/README.md).
+
 ## 주간 목표 (#947)
 
 - **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule의 같은 주간 집계 API를 사용하는 요약. compact 모드는 별도 링·PT본문 카드 없이 목표 숫자와 44px 진입 버튼을 기존 DB OverallCard/컨택 WeekHeader/일정 SummaryBar 내부에 배치한다. 대시보드에서는 생산성 지표 바로 아래 배치한다. 컨택과 일정은 선택 날짜의 금~목 주간을 따른다. 진입은 기존 useGuardedRouter로 업무탭 미저장 입력을 보호하며 허용된 returnTo 경로를 전달한다. 공통 목표 화면은 로그인 역할보다 진입 경로를 우선해 돌아가고 DirtyGuard를 유지한다.

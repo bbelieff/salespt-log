@@ -1,0 +1,51 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22msenior gets explicit read/write grants for all categories
+[31m   → expected { active: { read: false, …(1) }, …(2) } to deeply equal { active: { read: true, …(1) }, …(2) }[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22msenior gets explicit read/write grants for all categories
+[31m[1mAssertionError[22m: expected { active: { read: false, …(1) }, …(2) } to deeply equal { active: { read: true, …(1) }, …(2) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  Object {[22m
+[2m    "active": Object {[22m
+[32m-     "read": true,[39m
+[32m-     "write": true,[39m
+[31m+     "read": false,[39m
+[31m+     "write": false,[39m
+[2m    },[22m
+[2m    "archived": Object {[22m
+[32m-     "read": true,[39m
+[32m-     "write": true,[39m
+[31m+     "read": false,[39m
+[31m+     "write": false,[39m
+[2m    },[22m
+[2m    "arena": Object {[22m
+[32m-     "read": true,[39m
+[32m-     "write": true,[39m
+[31m+     "read": false,[39m
+[31m+     "write": false,[39m
+[2m    },[22m
+[2m  }[22m
+
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m9:44[22m[39m
+    [90m  7| [39m[34mdescribe[39m([32m"defaultTrainerGrants"[39m[33m,[39m () [33m=>[39m {
+    [90m  8| [39m  [34mit[39m([32m"senior gets explicit read/write grants for all categories"[39m[33m,[39m () [33m=[39m…
+    [90m  9| [39m    [34mexpect[39m([34mdefaultTrainerGrants[39m([32m"senior"[39m))[33m.[39m[34mtoEqual[39m({ active[33m:[39m rw[33m,[39m arena…
+    [90m   | [39m                                           [31m^[39m
+    [90m 10| [39m  })[33m;[39m
+    [90m 11| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m   Start at [22m 17:09:54
+[2m   Duration [22m 1.16s[2m (transform 45ms, setup 28ms, collect 52ms, tests 15ms, environment 0ms, prepare 574ms)[22m
+
