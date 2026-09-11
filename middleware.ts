@@ -14,6 +14,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { isDevStubAuthed } from "@/auth/dev-stub";
+import { isSensitiveRecruitmentUrl } from "@/util/recruitment-privacy";
 import { safeLoginReturn } from "@/util/login-return";
 
 export default auth((req) => {
@@ -26,14 +27,18 @@ export default auth((req) => {
     pathname.startsWith("/payment") ||
     pathname.startsWith("/db") ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/trainer");
+    (pathname.startsWith("/trainer") && pathname !== "/trainer/invite");
   if (isProtected && !req.auth && !isDevStubAuthed()) {
     const url = new URL("/", req.url);
     const returnTo = safeLoginReturn(req.nextUrl.pathname + req.nextUrl.search);
     if (returnTo) url.searchParams.set("returnTo", returnTo);
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    if (isSensitiveRecruitmentUrl(req.url)) response.headers.set("Referrer-Policy","no-referrer");
+    return response;
   }
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (isSensitiveRecruitmentUrl(req.url)) response.headers.set("Referrer-Policy","no-referrer");
+  return response;
 });
 
 export const config = {

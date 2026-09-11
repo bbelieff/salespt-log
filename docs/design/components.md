@@ -1538,3 +1538,13 @@ button:focus, input:focus, select:focus {
 - `GoalCompactMetrics`: DB/컨택/일정 요약 안에서 기존 STEP 색 배지로 실적/목표/달성률을 표시. 미설정·목표0·달성·초과를 구분하며 대시보드 링과 모양을 분리.
 - 대시보드 재무 상세는 기본 접힘(시즌/이월/전체 값 보존); 생산성 2열 다음에 목표 링을 배치.
 - 회의록 미리보기의 라벨과 달리 HTML/TSV 클립보드는 제목 없는 14열 데이터 한 행.
+
+## Trainer recruitment (#956)
+- `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
+- `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
+- `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
+- `TopHeader`: 첫 줄 로고·대시보드·역할 전환. 모바일 사용자명/D-day는 두 번째 줄, 대리 접속 표시 유지.
+
+- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
+
+- Header stack: 모바일 144px / 2xl(768px)+ 104px. 기존 날짜·검색·대시보드 sticky 바는 이 아래에 배치.

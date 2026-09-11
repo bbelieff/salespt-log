@@ -26,6 +26,7 @@ import { findUserByEmail } from "@/repo/users";
 import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
+import { restoreRolePath } from "@/service/role-view";
 import { safeLoginReturn } from "@/util/login-return";
 
 // **force-dynamic** — claim 직후 router.push("/") 했을 때 옛 캐시가 보이면
@@ -53,6 +54,9 @@ export default async function HomePage({
   if (role === "admin") {
     redirect("/admin");
   }
+
+  const remembered = await restoreRolePath(sessionEmail);
+  if (remembered) redirect(remembered as Route);
 
   if (role === "trainer") {
     // 수강생출신 트레이너 "내 아레나 일지" self-view 중이면 대시보드로(토글 상태 유지, P14).

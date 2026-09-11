@@ -12,7 +12,7 @@ import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
 import { nextRegistryRowNumber } from "./registry-row";
 import { nameMatches } from "./name-match";
-import { pickPreferredUser, pickPreferredRow } from "./user-priority";
+import { pickPreferredRow } from "./user-priority";
 import { cachedRegistryRows, invalidateRegistry } from "./users-rows";
 import {
   mirrorUserCells,
@@ -20,6 +20,9 @@ import {
   mirrorUserRow,
   registryRowFromUser,
 } from "./db/registry-mirror";
+
+import { applyTrainerQualifications, pickCrmUser } from "./trainer-qualification";
+import { listTrainerQualifications } from "./db/trainer-recruitment";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
@@ -86,24 +89,31 @@ export function isNumericCohortArchived(
   return archivedLabels.has(m[1]!) || archivedLabels.has(`${m[1]}기`);
 }
 
-/** email → User. `fresh:true` = 60s 캐시 우회 직접 read (claim 직후 캐시 전파 지연
- * /claim 루프 차단). ⚠️ cohorts-archived 강등(rejoin §1)은 hot-path quota 폭발
- * 방지로 여기서 안 함 — 라우팅 지점(page·layout)·claimAccount 에서만 1회 판정
- * (claim-stuck 2026-06-12). 여기선 행 status="archived" 만 반영. */
+/** CRM identity prefers the original student enrollment; qualification is independent. */
 export async function findUserByEmail(
   email: string,
   opts?: { fresh?: boolean },
 ): Promise<User | null> {
   // fresh 는 시트 캐시 우회용 — DB 경로는 애초에 캐시를 타지 않아 항상 최신이다.
   const rows = await cachedRegistryRows({ fresh: opts?.fresh });
-  // 다중 행 우선순위: 아레나 > 숫자 active > archived (user-priority.ts, arena-consistency §1).
   const mine: User[] = [];
   for (const r of rows) {
     if (typeof r[0] !== "string" || r[0].toLowerCase() !== email.toLowerCase()) continue;
     const u = parseRow(r);
     if (u) mine.push(u);
   }
-  return pickPreferredUser(mine);
+  const student = pickCrmUser(mine.filter(u => u.role === "trainee"));
+  if (student) return student; // Recruitment availability cannot change a student CRM key.
+  return pickCrmUser(applyTrainerQualifications(mine, await listTrainerQualifications(email)));
+}
+
+/** Explicit capability lookup; CRM selection must never double as trainer authorization. */
+export async function findTrainerByEmail(email: string): Promise<User | null> {
+  const rows = await cachedRegistryRows();
+  const mine = rows.filter(r => String(r[0]).toLowerCase() === email.toLowerCase()).map(parseRow).filter((u): u is User => !!u);
+  const projected = applyTrainerQualifications(mine, await listTrainerQualifications(email));
+  return projected.find(u => u.role === "trainer" && u.status === "active")
+    ?? projected.find(u => u.role === "trainer") ?? null;
 }
 
 /** 전체 사용자 정렬 — role(admin→trainer→trainee) → cohort desc →
@@ -116,6 +126,7 @@ export async function listAllUsers(): Promise<User[]> {
     const u = parseRow(r);
     if (u) users.push(u);
   }
+  users.splice(0, users.length, ...applyTrainerQualifications(users, await listTrainerQualifications()));
   const rolePriority: Record<User["role"], number> = { admin: 0, trainer: 1, trainee: 2 };
   users.sort((a, b) => {
     if (rolePriority[a.role] !== rolePriority[b.role]) {
@@ -200,7 +211,8 @@ export async function updateUserCell(
   }
   // 읽기(findUserByEmail=pickPreferredUser)와 동일 우선순위 행에 write — 다행 계정
   // write≠read 불일치 방지(Drive 연결 무한루프 fix). parse 전부 실패 시 첫 행(옛 동작).
-  const picked = pickPreferredRow(matches);
+  const crmMatches = matches.filter(m => m.user.role === "trainee");
+  const picked = pickPreferredRow(crmMatches.length ? crmMatches : matches);
   const targetRow = picked?.sheetRow ?? rawRows[0]!;
   // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
   await sheetsClient().spreadsheets.values.update({

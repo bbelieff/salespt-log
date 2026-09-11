@@ -4,13 +4,14 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   getSessionEmail: vi.fn(), getEffectiveRole: vi.fn(), isArenaSelfView: vi.fn(),
-  findUserByEmail: vi.fn(), signIn: vi.fn(),
+  findUserByEmail: vi.fn(), signIn: vi.fn(), restoreRolePath: vi.fn(),
 }));
 vi.stubGlobal("React", React);
 vi.mock("@/auth", () => ({ auth: (handler: unknown) => handler }));
 vi.mock("@/auth/dev-stub", () => ({ isDevStubAuthed: () => false }));
 vi.mock("@/auth/identity", () => mocks);
 vi.mock("@/repo/users", () => mocks);
+vi.mock("@/service/role-view", () => mocks);
 vi.mock("next-auth/react", () => ({ signIn: mocks.signIn }));
 vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 vi.mock("@/components/auth/WebviewWarning", () => ({ default: () => null }));
@@ -22,6 +23,7 @@ import middleware from "@/middleware";
 describe("recruitment login entry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.restoreRolePath.mockResolvedValue(null);
     mocks.getSessionEmail.mockResolvedValue("student@example.test");
     mocks.getEffectiveRole.mockResolvedValue({ role: "trainee", status: "active" });
     mocks.findUserByEmail.mockResolvedValue({ role: "trainee", status: "active" });
@@ -34,7 +36,7 @@ describe("recruitment login entry", () => {
     const response = handler(Object.assign(request, { auth: null }));
     const location = new URL(response.headers.get("location")!);
     expect(location.pathname).toBe("/");
-    expect(location.searchParams.get("returnTo")).toBe("/trainer/invite/fixture?source=invite");
+    expect(location.searchParams.get("returnTo")).toBe("/trainer/invite");
   });
 
   it("passes authenticated entry through to destination authorization", () => {
@@ -54,7 +56,7 @@ describe("recruitment login entry", () => {
     mocks.getSessionEmail.mockResolvedValue(null);
     const element = await HomePage({ searchParams: Promise.resolve({ returnTo: "/trainer/invite/fixture" }) });
     expect(element.type).toBe(LoginScene);
-    expect(element.props.returnTo).toBe("/trainer/invite/fixture");
+    expect(element.props.returnTo).toBe("/trainer/invite");
   });
 
   it("passes the validated destination to Google sign-in", () => {
@@ -70,7 +72,7 @@ describe("recruitment login entry", () => {
     visit(tree);
     expect(buttons).toHaveLength(1);
     buttons[0]!.props.onClick!();
-    expect(mocks.signIn).toHaveBeenCalledWith("google", { callbackUrl: "/trainer/invite/fixture" });
+    expect(mocks.signIn).toHaveBeenCalledWith("google", { callbackUrl: "/trainer/invite" });
   });
 
   it.each([

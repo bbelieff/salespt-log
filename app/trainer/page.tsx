@@ -8,6 +8,7 @@
  * **force-dynamic**: admin 이 /admin/trainers 에서 담당 배정 직후 트레이너가
  * 이 페이지를 열면 즉시 반영되어야 함. 페이지 레벨 RSC 캐시 회피.
  */
+import TrainerInvites from "@/components/auth/TrainerInvites";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -25,7 +26,6 @@ import {
 import { getArchivedCohortSet } from "@/repo/cohorts";
 import { enrichUsersWithDates, enrichUsersWithStats } from "@/service";
 import TrainerCohortView from "@/components/auth/TrainerCohortView";
-import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +38,7 @@ export default async function TrainerPage() {
   // admin 도 트레이너 페이지 열람 가능 (마스터 메뉴 → "트레이너 페이지").
   const isAdmin = role === "admin";
   if (!isAdmin && role !== "trainer") redirect("/");
-  if (!isAdmin && status === "pending") {
-    return (
-      <PendingApprovalScreen subtitle="관리자 승인 후 담당 수강생을 조회할 수 있습니다." />
-    );
-  }
+  if (!isAdmin && status === "pending") redirect("/trainer/apply");
 
   const trainer = await findUserByEmail(sessionEmail);
 
@@ -123,6 +119,7 @@ export default async function TrainerPage() {
   return (
     <>
     <div className="bg-white p-4 text-center"><Link className="inline-block rounded-xl border border-gray-300 px-4 py-3 font-semibold text-brand-red" href="/trainer/weekly-goals">담당 수강생 주간 목표·PT과제</Link></div>
+    {isAdmin && <TrainerInvites />}
     <TrainerCohortView
       sessionEmail={sessionEmail}
       trainerName={trainerName}

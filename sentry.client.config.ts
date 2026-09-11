@@ -4,6 +4,7 @@
  * NEXT_PUBLIC_SENTRY_DSN 이 없으면 자동 비활성 (dev/local 권장).
  * Next.js 15 App Router 표준 패턴 — 빌드 시 자동 inject.
  */
+import { isSensitiveRecruitmentUrl } from "@/util/recruitment-privacy";
 import * as Sentry from "@sentry/nextjs";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
@@ -11,6 +12,8 @@ const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 if (dsn) {
   Sentry.init({
     dsn,
+    beforeSend: event => isSensitiveRecruitmentUrl(window.location.href) ? null : event,
+    beforeSendTransaction: event => isSensitiveRecruitmentUrl(window.location.href) ? null : event,
     // 성능 추적 샘플레이트 — 프로덕션 트래픽 적으면 1.0 유지, 늘면 0.1로 낮추기
     tracesSampleRate: 1.0,
     // 세션 리플레이 비활성 (무료 플랜 한도 보호 — 필요 시 0.1로 활성)

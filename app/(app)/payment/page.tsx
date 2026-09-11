@@ -380,7 +380,7 @@ export default function PaymentPage() {
             </div>
             {selectedCp && (
               <div
-                className={`sticky top-24 min-w-0 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
+                className={`sticky top-36 2xl:top-[104px] min-w-0 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
               >
                 <ContractRow
                   key={`detail-${selectedCp.row}`}

@@ -5,6 +5,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import WebviewWarning from "./WebviewWarning";
 import { safeLoginReturn } from "@/util/login-return";
@@ -172,8 +173,10 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
           <span>Google 계정으로 로그인</span>
         </button>
 
+        <Link href="/trainer/apply" className="mt-4 block text-center text-sm font-bold text-brand-red">트레이너 신청하기 →</Link>
+
         <div className="mt-4 text-center text-[11px] text-gray-400">
-          세일즈피티 수강생 전용 · v1.0
+          세일즈피티 경영일지 · v1.0
         </div>
       </div>
     </main>

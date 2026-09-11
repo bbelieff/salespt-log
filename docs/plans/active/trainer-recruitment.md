@@ -1,28 +1,28 @@
-# Trainer recruitment — 2026-09-11
+# Trainer recruitment — #956
 
-User request: direct applications and trainer-page invitation links for both former/current students and people without a student account. Preserve recruitment intent through login and retain existing student access.
+Owner: OG sole implementation, DH sole user reporting/operational coordination, VH review.
+Base c781feb, branch feat/trainer-recruitment-unified. Preserve DH Windows WIP read-only.
 
-Owner: OG, Slack thread 1789104258.500019. Base: 9c5a7b8a9cef641825a1424cfa2dc8e1347a2cdb. Dedicated branch feat/trainer-recruitment-entry. Apply canonical checkout's 2026-09-09 AGENTS.md/CLAUDE.md instructions; do not restore old role/absolute-path ceremony from origin.
+## Confirmed scope
+- Direct application for student/nonstudent; administrator approval. Student entry below guide in logo menu, public login entry.
+- Administrator creates recipient-bound invitation; explicit authenticated acceptance immediately activates.
+- Pending cancellation (confirmation), reapplication; no student rows/keys/history changed.
+- Single agreed v3 design: first top header row logo + dashboard + student/trainer segmented buttons; mobile metadata second row, 44px targets, no new sidebar.
+- Role-specific safe last page and account-bound last role. Explicit invitation/application entry wins. Never remember tokens or impersonated targets.
+- User 17:06:59 explicitly requested completion loop through production. Prepare exact migration, checks and PR then coordinate production rollout with DH; do not stop at another mockup.
 
-## Findings
+## Progress
+- [x] Login return destination allowlist and login handoff.
+- [x] Separate qualification projection/authorization and student CRM selection.
+- [x] Recipient-serialized transactional invitation/application/cancel operations, token hash only, RLS and no public grants.
+- [x] Shared header, role memory, actual application/invitation/admin forms.
+- [x] Focused auth/service/SQL checks, including cancellation race ordering and stale-token revocation.
+- [x] Full check.sh and prior build; actual rendered PC/mobile component verification with mocked transport. Final release build passed; staged-byte commit hook pending.
+- [ ] Reviewable commit/PR, independent review, CI.
+- [ ] Exact additive DB migration and production rollout + authenticated smoke evidence.
 
-- lib/service/auth.ts claimAccount returns existing non-archived users before its trainer branch.
-- middleware.ts discards the protected destination; LoginScene always requests callback `/`; app/page.tsx applies role landing unconditionally.
-- user-priority.ts prefers even pending trainer rows over student rows. App layout then blocks pending identities. Merely appending a pending trainer row can suspend existing student access.
-- Existing trainer/student rows and arena-self toggles are reusable foundations, but current own-view lookup is arena-only. Ordinary current/archived student records must also remain usable.
-- Admin approval and deletion currently use email-selected user rows. New recruitment persistence must not accidentally approve, reject, delete, or rekey the student's row.
+## Risks to verify
+Legacy name-based arena access must be restricted to original registry names, never applicant-selected names. Trainer qualification tombstones remove legacy capability. Neither approval/rejection nor removal may select a student enrollment row. Remembered destinations are navigation preferences, never authorization.
 
-## Work
-
-- [x] Preserve validated internal login destinations without granting permissions or changing default landing. Common patch only: 39 focused checks, full check.sh, Next build PASS.
-- [ ] Dedicated direct application UI, including existing students; retain existing admin approval policy.
-- [ ] Invitation creation/acceptance UI and persistence after issuer/activation policy is resolved by the pending DH question.
-- [ ] Separate application status from student access; explicitly select trainer membership and own student context for mutations.
-- [ ] Verify current/archived/arena/nonstudent, pending/active, account switching, duplicate requests and expired/revoked/reused invitations.
-- [ ] Full check.sh, Next build, PC/mobile browser, CI; distinguish mocks from authenticated production verification.
-
-## Pending product decision
-
-DH asked who may issue invitations and whether acceptance grants immediate active trainer access. No answer observed yet. Do not infer approval from elapsed time. Invitation grant mutations await that decision; destination-preservation work is independent.
-
-DB application, environment changes and deployment are not authorized by this local preparation. Prepare reviewable changes before requesting any necessary final execution approval; do not reuse unrelated weekly-goals authorization.
+## Database rollout
+Migration 0006_trainer_recruitment.sql adds two tables only. No lazy DDL and no users mutation. Existing DB Migrate dispatch now supports exact 0006 with immutable artifact and required runtime comparison; legacy history repair is explicitly forbidden for this mode. Apply before new app starts; verify RLS/grants and checksum. Do not run general migrations blindly when other pending migrations exist. Rollback app if needed, retain qualification tombstones and invite audit rows; do not drop security state.

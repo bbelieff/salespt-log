@@ -18,7 +18,7 @@ interface Props {
 export default function CompanySearchBar({ value, onChange, matchCount, total }: Props) {
   const active = value.trim() !== "";
   return (
-    <div className="sticky top-24 z-30 mb-3">
+    <div className="sticky top-36 2xl:top-[104px] z-30 mb-3">
       <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
         <div className="flex items-center gap-2">
           {/* 돋보기 — 기존 인라인 svg 아이콘 세트 패턴 */}

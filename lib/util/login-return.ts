@@ -14,6 +14,8 @@ export function safeLoginReturn(value: unknown): string | null {
   if (/[\\\u0000-\u001f\u007f]/.test(decoded)) return null;
   const path = value.split(/[?#]/, 1)[0]!;
   if (path.includes("%") || path.split("/").some((part) => part === "." || part === "..")) return null;
+  // Invitation secrets live only in a browser fragment/tab storage, never OAuth return URLs.
+  if (path === "/trainer/invite" || path.startsWith("/trainer/invite/")) return "/trainer/invite";
   return DESTINATIONS.some((root) => path === root || path.startsWith(`${root}/`))
     ? value
     : null;

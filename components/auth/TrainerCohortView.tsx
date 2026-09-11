@@ -16,7 +16,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
-import TrainerPlayerToggle from "./TrainerPlayerToggle";
 import { useQueryClient } from "@tanstack/react-query";
 import { cohortGroupKey, cohortGroupCompare } from "@/types";
 import {
@@ -160,7 +159,7 @@ export default function TrainerCohortView({
 
   return (
     <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
+      <header className="sticky top-36 2xl:top-[104px] z-10 border-b border-gray-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
@@ -223,7 +222,6 @@ export default function TrainerCohortView({
 
         <section>
           {/* 수강생출신 트레이너 — 본인 아레나 일지 전환 토글(P14). */}
-          {me.data?.ownArenaSheetId && <TrainerPlayerToggle mode="manager" />}
           <h1 className="text-2xl font-black tracking-tight text-gray-900">
             수강생 명단
           </h1>

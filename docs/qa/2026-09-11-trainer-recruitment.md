@@ -1,47 +1,40 @@
-# Trainer recruitment — investigation and partial verification
+# Trainer recruitment — #956 verification
 
-Status: PARTIAL. No application/invitation feature release. Base 9c5a7b8a9cef641825a1424cfa2dc8e1347a2cdb.
+## Scope / implementation
 
-## Product flow to implement
+OG sole writer: `feat/trainer-recruitment-unified`, base `c781feb`. DH independent review, production coordination and sole user reporter. Approved direct application → admin approval; admin-only recipient-bound invitation → explicit acceptance activates immediately. Pending cancellation and reapplication preserve all student rows/history.
 
-1. Direct entry: login page and a logged-in student's account area expose `트레이너 신청`. Existing students do not need a second Google account. The authenticated applicant sees their application state and can keep using their existing student workspace while pending.
-2. Invitation entry: permitted issuer uses `초대 링크 만들기` on the trainer page; recipient authenticates and explicitly accepts on the invitation screen. Login and account-switching preserve the invitation destination. Opening a link alone must never grant membership.
-3. Approved dual-role account: explicit `트레이너 관리` / `내 수강 일지` transition. Resolve the user's own current/archived/arena registration by authenticated identity; do not infer ownership from name alone or repurpose an impersonation target.
-4. Neither application rejection nor trainer removal may delete or suspend a student's existing registration/history. Trainer access remains limited to assigned students; membership does not grant administration or management-department privileges.
+- Qualification SSOT is separate from student enrollment. Revocation/cancellation tombstones suppress legacy membership; `findTrainerByEmail` authorizes capability while CRM selection retains the student registration. Applicant-chosen names cannot unlock legacy name-based arena records.
+- First top header row contains logo, dashboard and 44px student/trainer segments. Mobile metadata uses second row. Downstream sticky bars account for 144px mobile / 104px desktop total header stack.
+- Account-bound httpOnly role cookie remembers independent safe pages. Explicit apply/invite destinations win. Token/query/admin/impersonated-target paths cannot be remembered. Server rechecks capability; switching clears impersonation and stale client caches.
+- Invitation fragment is removed on mount, held in tab sessionStorage through OAuth, and removed after acceptance. OAuth callback is fixed `/trainer/invite`. Server stores SHA-256 digest only. Analytics excludes invitation URLs and masks generated-link inputs. No invitation is auto-sent.
 
-## Storage/authorization integration requirements
+## Executed verification
 
-Existing generic registration must not be used unchanged:
+- Recovered check.sh: PASS; structural 40 passed / 1 skipped; unit 1777 passed / 37 skipped (190 suites passed / 2 skipped). Skips belong to pre-existing optional operational suites. Trainer SQL 5 tests and exact migration 3 tests ran, not skipped. Final commit hook reruns the full check on staged bytes.
+- Final Next build passed after the header sticky corrections (exit0, /tmp/trainer-build-final-resumed.log).
+- PGlite executes the real 0006 SQL and repository operations: application/approval, same-recipient acceptance/retry, wrong-recipient/forged/revoked/expired rejection, cancel→reapply, stale cancel after approval, student row snapshot preservation, anon/authenticated read/write denial. This is a disposable DB, not production.
+- Service tests exercise real-session authorization, production canonical Origin with internal listener, forged/missing Origin rejection, role memory isolation and capability revocation.
+- Actual Next client components rendered in a separate browser root with real compiled CSS, mocked fetch/account state and pathname/router contexts. No production auth bypass. Mobile 360px: document scrollWidth 360, header96px, dashboard/student/trainer button y6px and height44px. 390px and desktop1440 screenshots captured.
+- Actual application UI: apply → pending → confirmation → cancel → reapply observed; actual switch: explicit switch request and simulated503 error remain on page with visible alert. Role/page persistence and impersonation clearing verified in service tests; authenticated real-browser switch/OAuth remain NOT_RUN.
+- Browser QA failures were harness-only: old Chrome wrapper failed ICU startup (default browser launcher worked); removing Next's original root produced HMR/client errors (replaced with separate fixture root). These attempts are not counted as passing browser evidence. No production credentials or data used.
+- Evidence: workspace artifacts/trainer-release-956 (screenshots); /tmp/trainer-check-resumed.log, /tmp/trainer-migration-tests.log and final build/hook logs.
 
-- `claimAccount`: existing user short-circuit prevents a student's trainer application.
-- `pickPreferredUser`: even pending trainer rows win over active student rows; this would block student access in `(app)/layout.tsx`.
-- `approveTrainer` and email-based mutation selection: explicitly select the trainer application/membership. Never mutate a student's status as an indirect result of its preferred row.
-- `users-delete`: inspect rejection/removal before connecting new membership. Email-wide deletion is not an acceptable trainer-only revoke.
-- `loadMe` / arena self view: current switch only resolves arena records. Ordinary course history needs an explicit own-registration resolver throughout read and write paths, not just a different button label.
-- Registry writes currently use Sheets then async DB mirroring; registry reads may use DB with Sheets fallback. A DB-only active membership insert would not by itself establish a safe durable source of truth. The final implementation must choose and verify one explicit membership authority, without introducing new synchronous Sheets request writes or changing rollout flags.
+## Exact migration / rollout gate
 
-Preferred direction to review: an application record separate from the student registration; approved trainer membership independent of the student's cohort/sheet record. Reuse legacy trainer approval state through an explicit compatibility path. Exact persistence migration and activation policy are not implemented by this partial change.
+`0006_trainer_recruitment.sql`, SHA256 `86912575f589f0b614ce6d798a966774fe771b6f0f7e92d817d7ff91f35cc8d4`.
 
-Invitation integrity requirements (regardless of issuer policy): server-generated unguessable invite, store only its digest, expiry/revocation, atomic single-use redemption bound to the authenticated acceptor, idempotent same-user retry and conflict for another acceptor. Generate/share from UI only; never auto-send email/Slack invitations. Do not put real invitation values into logs or artifacts.
+1. Review fixed PR head and pass CI. Coordinate one release at a time.
+2. On existing trusted deployment/DB execution path, verify pinned source and current runtime contract; execute `scripts/ops/trainer-recruitment-migrate.mjs --preflight` first (default read-only). Existing credential resolver only; do not copy connection values into commands/logs.
+3. Exact runner refuses checksum drift, untracked target objects, unsafe pre-existing ledger, nonmatching columns/constraints/index counts, browser ACL access and missing server DML. No repair/adoption, no broad pending migration execution.
+4. `--execute` applies only the two new tables and exact ledger entry under the shared migration advisory lock, checks catalog/security and is repeat-no-op. Apply before starting the new app. No student data edits.
+5. Merge approved head, observe deploy and merge-SHA CI, public health and authenticated user journeys.
+6. On regression revert the application commit and verify recovery; retain qualification tombstones and invite audit, do not drop security state.
 
-## Implemented common login path
+## Outstanding evidence
 
-- Middleware keeps a validated internal return destination.
-- Home page honors that destination before ordinary role landing, but does not grant roles.
-- LoginScene passes it to Google sign-in. Missing/unsafe values retain `/` default.
-- Destination utility rejects external/protocol-relative URLs, traversal, backslashes, malformed/control escapes, duplicate values and loop/API endpoints.
-- Unit/integration regression: 39 PASS, including actual middleware response and server home-page routing with mocked identities; this is not a live OAuth test.
-- Final full check.sh: PASS (structural40 PASS/1 skip; unit1749 PASS/33 skip). Final focused regression: 39 PASS.
-- Next build: PASS. Initial typed-route error was corrected using a validated Route cast; an overlapping tsc run observed transient missing generated files and was not counted as passing evidence. Final sequential full check passed after build.
-- PC1440x900/mobile390x844: existing login screen renders with the requested application destination in URL; Google button visible, mobile horizontal overflow false. Screenshots inspected. No recruitment form exists yet.
-- Real browser protected-entry/OAuth: NOT_RUN/BLOCKED_AUTH. Local NextAuth reports UntrustedHost; direct `/trainer/apply` reaches 404 (the application page is not implemented). Middleware destination behavior is verified only by mocked-auth integration tests, not this browser observation. No trust configuration, credentials, session cookies or production data were changed.
+Independent full PR review, production exact-migration preflight/apply, merge/deploy/health, authenticated apply/cancel/invite/role switching are NOT_RUN at this checkpoint. The existing DB Migrate workflow now accepts exact `0006_trainer_recruitment.sql` on the reviewed feature ref: `execute=false`, `compare_runtime=true`, full `expected_sha` and pinned `expected_sql_sha256`. After successful read-only results, repeat with execute=true. Immutable artifact/delivery+SQL tests:22/22 PASS (including tampered helpers, unapproved SQL, runnable isolated module graph, repeat-no-op, no ledger repair). Shared runtime/catalog readers are shipped hash-pinned; old weekly-goal runners are unchanged.
 
-## Pending user decision
+Existing DH completion loop `43e2abaeb78a` tracks these; no duplicate loop created. Do not close #956 on local checks alone.
 
-DH's question in Slack thread1789104258.500019: who may create invitations, and whether acceptance immediately activates trainer access or awaits admin approval. No answer observed as of implementation preparation. Existing direct applications retain admin approval. No policy decision was inferred from waiting.
-
-## Release evidence
-
-No production database/environment mutation, live account write, real invitation, merge or deployment performed. Full direct-apply/invitation/member-switch acceptance remains NOT_RUN. Do not close the feature based on this login patch.
-
-Framework references used for the common login implementation: [Next.js async page searchParams](https://nextjs.org/docs/app/api-reference/file-conventions/page), [Auth.js client signIn implementation](https://github.com/nextauthjs/next-auth/blob/main/packages/next-auth/src/react.tsx). Installed package versions, not latest-site examples, determine API compatibility.
+References: [Supabase Data API grants and RLS](https://supabase.com/docs/guides/api/securing-your-api), [Next.js page conventions](https://nextjs.org/docs/app/api-reference/file-conventions/page). Current repo tooling and approved exact-runner contract, not Supabase CLI migration naming, govern this repository's migration inventory.
