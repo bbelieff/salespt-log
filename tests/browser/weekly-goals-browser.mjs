@@ -18,9 +18,12 @@ await build({
   entryPoints: ["tests/browser/weekly-goals-fixture.tsx"], bundle: true, outfile: join(dir, "app.js"),
   platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"development"' },
   plugins: [{ name: "fixture-next", setup(b) {
+    // Unchanged header/closed ledger are outside this dashboard placement fixture.
+    b.onResolve({ filter: /^@\/components\/(TopHeader|dashboard\/expense-ledger\/ExpenseLedgerDialog)$/ }, args => ({ path: args.path, namespace: "fixture-shell" }));
+    b.onLoad({ filter: /.*/, namespace: "fixture-shell" }, () => ({ contents: "export default function Shell(){return null}", loader: "js" }));
     b.onResolve({ filter: /^next\/(navigation|link)$/ }, args => ({ path: args.path, namespace: "fixture" }));
     b.onLoad({ filter: /.*/, namespace: "fixture" }, args => ({
-      contents: args.path.endsWith("navigation") ? "export const useRouter=()=>({push:p=>{window.__lastNav=p}});" :
+      contents: args.path.endsWith("navigation") ? "export const useRouter=()=>({push:p=>{window.__lastNav=p}}); export const usePathname=()=>new URLSearchParams(location.search).get('entry')||'/dashboard';" :
         'import React from "react"; export default function Link({href,children,...rest}){return React.createElement("a",{...rest,href,onClick:e=>{e.preventDefault();window.__lastNav=href}},children)}',
       loader: "js", resolveDir: process.cwd(),
     }));
@@ -65,6 +68,12 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   page.on("pageerror", e => errors.push(e.message));
+  await page.route("**/api/me", route => route.fulfill({ json: {} }));
+  await page.route("**/api/dashboard", route => route.fulfill({ json: {
+    kpi: { 총매출: 0, 총비용: 0, 수임비합: 0, 수수료합: 0, 이월매출: 0, 전체매출: 0, 이월비용: 0, 전체비용: 0 },
+    additionalCost: { dbCostTotal: 0, additionalCost: 0, status: "available" },
+    channelMatrix: [], weeklyTrend: [], costBreakdown: [],
+  } }));
   await page.route("**/api/weekly-goals**", async route => {
     const request = route.request(), url = new URL(request.url()), week = Number(url.searchParams.get("week") || 2);
     const student = url.searchParams.get("student") || "fixture@example.invalid", key = student + week;
@@ -285,6 +294,32 @@ try {
   denyRead = false;
   results.push("denied-private-save-clears-private-draft-and-copy-no-write");
   await privateRegressions({ page, base, privateSteps, internal, records, results, setPublicDenied: value => { denyRead = value; } });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    for (const [href, label] of [["/dashboard", "대시보드"], ["/trainer/weekly-goals", "담당 수강생"]]) {
+      await page.goto(base + "/?role=trainer&returnTo=" + encodeURIComponent(href));
+      await page.getByRole("button", { name: "← " + label, exact: true }).click();
+      assert.equal(await page.evaluate(() => window.__lastNav), href);
+    }
+    await page.goto(base + "/?mode=summary&entry=/contact");
+    await page.getByRole("button", { name: "목표·PT과제 열기", exact: true }).first().click();
+    assert.equal(new URL(await page.evaluate(() => window.__lastNav), base).searchParams.get("returnTo"), "/contact");
+    results.push("entry-aware-return-and-summary-link-" + width);
+    await page.goto(base + "/?mode=dashboard");
+    await page.getByRole("heading", { name: "생산성 지표", exact: true }).waitFor();
+    const summary = page.getByRole("region", { name: "주간 목표", exact: true });
+    await summary.getByText(/2026-09-11/).waitFor();
+    const placement = await summary.evaluate(el => {
+      const previous = el.previousElementSibling;
+      return { afterProductivity: previous?.textContent.includes("생산성 지표"), below: previous && el.getBoundingClientRect().top >= previous.getBoundingClientRect().bottom,
+        overflow: document.documentElement.scrollWidth > innerWidth };
+    });
+    assert.equal(placement.afterProductivity, true);
+    assert.equal(placement.below, true);
+    assert.equal(placement.overflow, false);
+    await page.screenshot({ path: join(output, "dashboard-" + width + ".png"), fullPage: true });
+    results.push("dashboard-goals-below-productivity-" + width);
+  }
   failRead = true;
   await page.goto(base + "/?role=student");
   await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();

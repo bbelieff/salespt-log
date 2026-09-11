@@ -24,7 +24,7 @@ export default function TrainerGoalOverview() {
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white"><table className="w-full text-left text-sm">
           <thead><tr><th className="p-3">수강생</th><th className="p-3">주차</th>{GOAL_KEYS.map(k => <th key={k} className="p-3">{GOAL_LABELS[k]}</th>)}<th className="p-3">PT과제</th></tr></thead>
           <tbody>{q.data.map(u => <tr key={u.email + u.cohort} className="border-t">
-            <th className="p-3"><Link href={{ pathname: "/weekly-goals", query: { student: u.email } }} className="text-blue-700 underline">{u.name} · {u.cohort}</Link></th>
+            <th className="p-3"><Link href={{ pathname: "/weekly-goals", query: { student: u.email, returnTo: "/trainer/weekly-goals" } }} className="text-blue-700 underline">{u.name} · {u.cohort}</Link></th>
             <td className="p-3">{u.week ?? "—"}</td>
             {GOAL_KEYS.map(k => <td key={k} className="p-3">{u.record?.goals[k] ?? "—"}</td>)}
             <td className="p-3 whitespace-pre-wrap">{u.error || u.record?.task || "미기재"}</td>

@@ -3445,3 +3445,8 @@
 ## 2026-09-11 OG release review — runtime directory churn
 
 Reviewed 1ad47e5 helper delta; found established deploy removes .next-prev after PM2 reload. Removed only the unrelated app-directory mtime rejection; env file timestamps/hashes and repeated runtime identity fingerprint remain. Regression simulates post-start unrelated entry removal (accepted) then actual env change (rejected). Source-evidenced false positive correction, not a DB/role/environment change. Actual ACL/migration/deployment still not run; final checks required.
+
+
+## 2026-09-11 OG weekly-goals production feedback
+
+User-reported save403 reproduced using unauthenticated empty JSON: production Origin403 vs omitted Origin domain400 (no student write). Fixed deployment-owned AUTH_URL comparison instead of internal proxy nextUrl origin, retaining cross-site/JSON checks and rejecting forwarded-host spoofing. Added allowlisted entry-aware returnTo; moved dashboard goal rings below productivity. Focused30/type/build PASS; actual React browser32 PASS at1440/390 with placement screenshots. Normal hook fullcheck/CI and production recheck tracked in PR. No DB/environment/data changes. Plan: docs/plans/completed/weekly-goals-live-feedback.md.

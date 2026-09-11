@@ -11,6 +11,16 @@ export async function goalResponse(run: () => Promise<unknown>) {
 }
 export function goalWriteAllowed(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
-  return (!origin || origin === req.nextUrl.origin) && req.headers.get("sec-fetch-site") !== "cross-site" &&
+  // The VPS proxy terminates HTTPS; nextUrl can point at its internal HTTP listener.
+  // Use deployment-owned configuration, never client-supplied forwarded hosts.
+  let expectedOrigin = req.nextUrl.origin;
+  if (process.env.AUTH_URL) {
+    try {
+      const configured = new URL(process.env.AUTH_URL);
+      if (!["https:", "http:"].includes(configured.protocol)) return false;
+      expectedOrigin = configured.origin;
+    } catch { return false; }
+  }
+  return (!origin || origin === expectedOrigin) && req.headers.get("sec-fetch-site") !== "cross-site" &&
     (req.headers.get("content-type") ?? "").startsWith("application/json");
 }
