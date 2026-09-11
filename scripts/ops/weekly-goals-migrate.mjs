@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 // Exact-only #947 runner. CLI defaults to a genuinely read-only catalog preflight.
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadMigrationFiles, resolveDatabaseUrl } from "../db-migrate.mjs";
-import { assertRelation, inspectState, MigrationGateError, TARGETS } from "./weekly-goals-migrate-catalog.mjs";
+import { assertRelation, inspectRelation, inspectState, MigrationGateError, TARGETS } from "./weekly-goals-migrate-catalog.mjs";
 
 export const VERSION = "0005_weekly_goals.sql";
 export const EXPECTED_CHECKSUM = "144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831";
 export const LOCK_KEY = 786569;
+export const DATABASE_LIMITS = Object.freeze({ connectionTimeoutMillis: 15000,
+  statement_timeout: 60000, lock_timeout: 10000, query_timeout: 65000 });
 const fail = (code) => { throw new MigrationGateError(code); };
 
 export function parseArgs(args) {
@@ -21,6 +24,7 @@ export function pinnedMigration(files) {
   const matches = files.filter((f) => f.version === VERSION);
   if (matches.length !== 1) fail("EXACT_MIGRATION_MISSING_OR_DUPLICATED");
   const file = matches[0];
+  if (typeof file.sql !== "string") fail("SQL_CHECKSUM_NOT_APPROVED");
   const rawHash = createHash("sha256").update(file.sql).digest("hex");
   if (file.checksum !== EXPECTED_CHECKSUM || rawHash !== EXPECTED_CHECKSUM) fail("SQL_CHECKSUM_NOT_APPROVED");
   return file;
@@ -52,6 +56,7 @@ export async function preflight(client, files) {
   pinnedMigration(files); // local artifact gate, before any connection query
   await client.query("begin read only");
   try {
+    await setLocalLimits(client);
     const report = summarize(await inspectState(client), files);
     await client.query("rollback");
     return { mode: "PREFLIGHT_READ_ONLY", observedAt: new Date().toISOString(), ...report };
@@ -61,24 +66,46 @@ export async function preflight(client, files) {
   }
 }
 
+async function setLocalLimits(client) {
+  await client.query(`set local lock_timeout = '${DATABASE_LIMITS.lock_timeout}ms'`);
+  await client.query(`set local statement_timeout = '${DATABASE_LIMITS.statement_timeout}ms'`);
+}
+
+async function createProtectedHistory(client) {
+  await client.query(`create table public.schema_migrations (
+    version text primary key, checksum text not null, applied_at timestamptz not null default now())`);
+  // Only the ledger created by this transaction is changed. Never repair an existing ledger's ACL.
+  await client.query("revoke all on public.schema_migrations from public");
+  await client.query(`do $$ begin
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      revoke all on public.schema_migrations from anon;
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      revoke all on public.schema_migrations from authenticated;
+    end if;
+  end $$`);
+  assertRelation("schema_migrations", await inspectRelation(client, "schema_migrations"));
+}
+
 export async function executeExact(client, files) {
   const file = pinnedMigration(files);
-  await client.query("select pg_advisory_lock($1)", [LOCK_KEY]);
+  await client.query("begin");
+  let lockAttempted = false;
   try {
-    await client.query("begin");
     try {
+      // These bounds must precede the advisory wait, not merely the DDL after it.
+      await setLocalLimits(client);
+      lockAttempted = true;
+      await client.query("select pg_advisory_lock($1)", [LOCK_KEY]);
       // Pin schema resolution and check again under the existing runner's shared lock.
       await client.query("set local search_path = pg_catalog, public");
-      await client.query("set local lock_timeout = '10s'");
-      await client.query("set local statement_timeout = '60s'");
       const state = await inspectState(client);
       const before = summarize(state, files);
       if (before.exactStatus === "ALREADY_APPLIED") {
         await client.query("rollback");
         return { mode: "NO_OP", observedAt: new Date().toISOString(), ...before };
       }
-      if (!state.historyExists) await client.query(`create table public.schema_migrations (
-        version text primary key, checksum text not null, applied_at timestamptz not null default now())`);
+      if (!state.historyExists) await createProtectedHistory(client);
       await client.query(file.sql);
       await client.query("insert into public.schema_migrations (version, checksum) values ($1, $2)", [VERSION, file.checksum]);
       const report = summarize(await inspectState(client), files);
@@ -89,18 +116,21 @@ export async function executeExact(client, files) {
       throw error;
     }
   } finally {
-    await client.query("select pg_advisory_unlock($1)", [LOCK_KEY]).catch(() => {});
+    if (lockAttempted) await client.query("select pg_advisory_unlock($1)", [LOCK_KEY]).catch(() => {});
   }
 }
 
-export async function main(args = process.argv.slice(2)) {
+export async function main(args = process.argv.slice(2), runtime = {}) {
   const { execute } = parseArgs(args);
-  const files = await loadMigrationFiles();
+  // Only the manifest-verifying delivery wrapper supplies runtime inventory/appRoot. No CLI override.
+  if (runtime.appRoot && resolve(runtime.appRoot) !== resolve(process.cwd())) fail("APP_ROOT_CWD_MISMATCH");
+  const files = runtime.files ?? await loadMigrationFiles();
   pinnedMigration(files);
   const databaseUrl = resolveDatabaseUrl(); // established resolver: no shell export, no CLI credential argument
   if (!databaseUrl) fail("DATABASE_URL_NOT_CONFIGURED");
-  const { Client } = await import("pg");
-  const client = new Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
+  const { Client } = runtime.appRoot
+    ? createRequire(resolve(runtime.appRoot, "package.json"))("pg") : await import("pg");
+  const client = new Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false }, ...DATABASE_LIMITS });
   try {
     await client.connect();
     return execute ? await executeExact(client, files) : await preflight(client, files);

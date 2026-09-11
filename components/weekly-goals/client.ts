@@ -10,8 +10,13 @@ export const goalAccessDenied = (error: unknown) => error instanceof GoalRequest
 export async function goalJSON<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { method: body === undefined ? "GET" : "PUT", cache: "no-store",
     headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal });
-  const value = await res.json();
-  if (!res.ok) throw new GoalRequestError(res.status, value.error || "다시 시도해 주세요.");
+  let value;
+  try { value = await res.json(); }
+  catch {
+    // Preserve observed transport status even when an auth proxy returns HTML or an empty body.
+    throw new GoalRequestError(res.status, res.status === 401 || res.status === 403 ? "접근 권한을 다시 확인해 주세요." : "응답을 확인하지 못했어요. 다시 시도해 주세요.");
+  }
+  if (!res.ok) throw new GoalRequestError(res.status, typeof value?.error === "string" ? value.error : "다시 시도해 주세요.");
   return value as T;
 }
 export function goalParams(view: WeeklyGoalView) {

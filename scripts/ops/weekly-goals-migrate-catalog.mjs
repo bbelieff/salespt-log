@@ -74,6 +74,8 @@ export function assertRelation(name, relation) {
       relation.constraints.some((c) => !c.validated)) fail("CONFLICTING_CONSTRAINTS");
   if (name === "schema_migrations") {
     if (relation.rls || relation.policies) fail("HISTORY_VISIBILITY_NOT_FULL");
+    if (relation.unexpected_acl || relation.columns.some((c) => c.column_acl) ||
+        relation.browser.some((r) => r.access)) fail("UNSAFE_HISTORY_SECURITY");
     return;
   }
   if (!relation.rls || relation.policies || relation.unexpected_acl ||

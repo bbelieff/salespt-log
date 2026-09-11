@@ -23,11 +23,13 @@ owner: SALES-WEEKLY-GOALS-947-WRITER
 - [x] 지침·승인 목업 hash·원격 master·열린 PR·최근 worklog 확인.
 - [x] 저장 계약/마이그레이션/API/권한/집계.
 - [x] 공통 편집/링/비교/복사와 학생·트레이너·탭 진입.
-- [x] 회귀169건·check.sh(41+1655)·next build·모바일390/PC 컴포넌트 브라우저21건 확인. 실제 인증 앱 화면은 별도 인수 조건.
+- [x] 회귀211건·전체 Vitest(41+1697)·next build·모바일390/PC 컴포넌트 브라우저28건 확인. 실제 인증 앱 화면은 별도 인수 조건.
 - [ ] PR 및 CI 증거를 OG에 제출, 독립 검수 대기.
 - [ ] OG RELEASE 후 직렬 머지·정확한 배포 SHA·migration 적용·health·실화면 증거.
 
 ## 남은 운영 검증
+
+추가 bounded REWORK(5cc5e784 이후): archived 자기 수강 내부 권한 차단, 담당 필터 후 별칭 대표 선택, 내부 요청 generation/abort 및 비JSON401/403 보존, 신규 이력 ACL/기존 이력 fail-closed·timeout, feature-ref 보호 전달 workflow. 기존 제안/가져오기/모바일/dirty guard는 보존한다. 서버·migration·전달 helper는 각각 내부 한정이며 main이 UI·통합 검증을 소유한다. 운영 실행/dispatch는 RELEASE 전 금지.
 
 OG 재검수 REWORK 구현/로컬 검증 완료: 명시 student 저장 계약, 시트 단위 별칭/트레이너 아레나 수강행 해석, 미저장 업무탭 가드, 이전 주 가져오기, 모바일5열, 승인 비율 역산 제안, exact0005 read-only preflight/적용 준비. 새 head에 회귀·화면·전체 게이트를 재제출한다. INTERNAL_SUBAGENT_ONLY helper는 서버 회귀 테스트와 migration 준비 파일만 분담하며 독립 검수가 아니다.
 

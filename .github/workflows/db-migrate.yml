@@ -19,15 +19,82 @@ on:
         description: "실제 적용 (미체크 = dry-run — 대기 목록만 출력하고 종료)"
         type: boolean
         default: false
+      mode:
+        description: "installed (master only) or exact reviewed weekly-goal migration"
+        type: choice
+        options: [installed, 0005_weekly_goals.sql]
+        default: installed
+      expected_sha:
+        description: "Exact mode: reviewed full lowercase commit SHA"
+        type: string
+      expected_sql_sha256:
+        description: "Exact mode: reviewed SQL SHA256"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
 
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
       VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
       TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
     steps:
+      - name: Validate dispatch before protected access
+        env:
+          MODE: ${{ inputs.mode }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
+          EXECUTE: ${{ inputs.execute }}
+        run: |
+          set -euo pipefail
+          [[ "$EXECUTE" == true || "$EXECUTE" == false ]]
+          if [[ "$MODE" == installed ]]; then
+            [[ "$GITHUB_REF" == refs/heads/master ]]
+            [[ -z "$EXPECTED_SHA" && -z "$EXPECTED_SQL_SHA256" ]]
+          elif [[ "$MODE" == 0005_weekly_goals.sql ]]; then
+            [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ && "$GITHUB_SHA" == "$EXPECTED_SHA" ]]
+            [[ "$EXPECTED_SQL_SHA256" == 144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 ]]
+            [[ "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          else
+            exit 1
+          fi
+      - name: Checkout immutable reviewed migration source
+        if: inputs.mode == '0005_weekly_goals.sql'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+      - name: Build checksum-pinned migration-only artifact
+        if: inputs.mode == '0005_weekly_goals.sql'
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
+          MODE: ${{ inputs.mode }}
+          EXECUTE: ${{ inputs.execute }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]]
+          node scripts/ops/weekly-goals-delivery.mjs build "$RUNNER_TEMP/weekly-payload" > "$RUNNER_TEMP/weekly-artifact.json"
+          tar -C "$RUNNER_TEMP/weekly-payload" -cf "$RUNNER_TEMP/weekly-payload.tar" .
+          cat "$RUNNER_TEMP/weekly-artifact.json"
+      - name: Retain reviewed checksums and inventory
+        if: inputs.mode == '0005_weekly_goals.sql'
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-migration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/weekly-artifact.json
+            ${{ runner.temp }}/weekly-payload/manifest.json
+            ${{ runner.temp }}/weekly-payload/inventory.json
+          if-no-files-found: error
       # BBE-77: GH러너→VPS:22 간헐 차단 우회. 이 파일은 #747(5a45762) 범위 밖이라
       # 공인 IP 전용으로 남아 있었다 — 실제로 run 31287233695 가 이 경로에서 15/15 timeout
       # 으로 13m51s 태우고 죽었다(2026-08-09 00:57~01:10Z). 마이그레이션 적용 여부 확인이
@@ -47,6 +114,7 @@ jobs:
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
       - name: Run db-migrate on VPS
+        if: inputs.mode == 'installed'
         env:
           EXECUTE: ${{ inputs.execute }}
         run: |
@@ -89,3 +157,11 @@ jobs:
           done
           echo "ssh 15회 모두 실패 — VPS 도달성 지속 장애, 시간대 이격 후 재실행 권장" >&2
           exit 1
+      - name: Stage and run exact migration through existing protected SSH
+        if: inputs.mode == '0005_weekly_goals.sql'
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_SQL_SHA256: ${{ inputs.expected_sql_sha256 }}
+          EXECUTE: ${{ inputs.execute }}
+          VPS_HOST_V6: ${{ secrets.VPS_HOST_V6 }}
+        run: bash scripts/ops/weekly-goals-delivery-ssh.sh

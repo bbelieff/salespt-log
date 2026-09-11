@@ -16,7 +16,7 @@
 - **GoalRings**: 생산·유입·컨택완료·미팅완료·계약 실적/목표. null은 미기재, 0은 목표 0, 양수만 달성률. 기존 brand-red/green/gray 토큰.
 - **WeeklyGoalPage**, **WeeklyGoalEditor**: 학생/담당 트레이너 공통 화면, PC 지난주 비교와 현재 편집 나란히, 모바일390의 다섯 링/다섯 숫자 셀 각각 한 줄. 모바일 입력·주요 버튼 최소44px. DirtyGuard와 revision 충돌 보호, 일시적 읽기 실패는 초안 보존/권한 거부는 내부 편집 제거.
 - **GoalDraftTools**: 지난주 목표·과제 복제, 계약 목표 역산 미리보기와 초안 적용. dirty 덮어쓰기 확인·취소·명시적 저장 분리. 승인 비율/올림 계약은 weekly-goals 도메인 문서에만 기록한다.
-- **GoalInternalEditor**: 별도 서버 권한을 통과한 내부 특이사항·지난 PT성과. 기본 함께보기에서는 마운트/조회하지 않음.
+- **GoalInternalEditor**: 별도 서버 권한을 통과한 내부 특이사항·지난 PT성과. 기본 함께보기에서는 마운트/조회하지 않음. 명시적 내부 재조회와 generation/abort 경합 보호, 관찰한401/403은 내부 기록·dirty 등록·복사 상태를 제거하고409/5xx는 초안 보존.
 - **GoalCopyPanel**: 저장된 공용 목표·과제 복사와 내부 회의록 편집 미리보기/14열 복사. 선택 가능한 텍스트 대체; Notion 자동 기록 없음.
 - **TrainerGoalOverview**: 담당 학생의 공용 저장 목표만 집계. 실제 실적은 선택한 학생에만 요청해 전원 미팅/계약 조회를 방지.
 - 세부 계약과 미검증 운영 경계: [weekly-goals.md](../domains/weekly-goals.md).

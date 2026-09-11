@@ -1,5 +1,6 @@
 import { getSessionEmail, getActiveUserEmail, getEffectiveRole } from "@/auth/identity";
-import { findUserByEmail, listDistinctUsers, parseAssignedTrainers } from "@/repo/users";
+import { findUserByEmail, listAllUsers, listDistinctUsers, parseAssignedTrainers } from "@/repo/users";
+import { pickActiveArenaRow, pickPreferredUser } from "@/repo/user-priority";
 import { findActiveArenaRowByEmail } from "@/repo/users-arena";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
 import { readMeetingsFromDb, readContractsFromDb } from "@/repo/db/read-daily";
@@ -31,9 +32,10 @@ export async function assertGoalStudentAccess(u: User) {
     throw new WeeklyGoalError(403, "이 수강생을 조회할 권한이 없어요.");
   }
   // A trainer's own student enrollment does not inherit trainer-only note rights.
-  const ownArena = a.role === "trainer" ? await findActiveArenaRowByEmail(a.email) : null;
+  const ownRows = a.role === "trainer" ? await listAllUsers() : [];
   const self = a.email.toLowerCase() === u.email.toLowerCase() ||
-    !!(ownArena && ownArena.spreadsheetId === u.spreadsheetId && ownArena.cohort === u.cohort && ownArena.courseStartISO === u.courseStartISO);
+    ownRows.some(row => row.role === "trainee" && row.email.toLowerCase() === a.email.toLowerCase() &&
+      row.spreadsheetId === u.spreadsheetId && row.cohort === u.cohort && row.courseStartISO === u.courseStartISO);
   return { ...a, internal: a.role === "admin" || (a.role === "trainer" && !self && parseAssignedTrainers(u.assignedTrainer).includes(a.email.toLowerCase())) };
 }
 
@@ -49,12 +51,29 @@ export async function resolveGoalStudent(email: string): Promise<User | null> {
 export async function listGoalStudents(): Promise<GoalStudent[]> {
   const a = await actor();
   if (!a.internal) throw new WeeklyGoalError(403, "트레이너만 조회할 수 있어요.");
-  const users = await listDistinctUsers();
+  const users = await listAllUsers();
   const fresh = await actor();
   if (!fresh.internal || fresh.email !== a.email) throw new WeeklyGoalError(403, "접근 권한이 바뀌었어요.");
-  return users.filter(u => u.role === "trainee" && u.status !== "pending" &&
-    (fresh.role === "admin" || parseAssignedTrainers(u.assignedTrainer).includes(fresh.email.toLowerCase())))
-    .map(u => ({ email: u.email, name: u.name, cohort: u.cohort }));
+  const byEmail = new Map<string, User[]>();
+  for (const u of users) {
+    const email = u.email.toLowerCase();
+    byEmail.set(email, [...(byEmail.get(email) ?? []), u]);
+  }
+  const seen = new Set<string>();
+  return users.filter(u => {
+    // Authorize the actual alias before grouping; an unassigned alias cannot represent it.
+    if (u.role !== "trainee" || u.status === "pending" || !u.spreadsheetId ||
+      (fresh.role !== "admin" && !parseAssignedTrainers(u.assignedTrainer).includes(fresh.email.toLowerCase()))) return false;
+    const mine = byEmail.get(u.email.toLowerCase())!;
+    const preferred = pickPreferredUser(mine);
+    const addressable = preferred?.role === "trainer" ? pickActiveArenaRow(mine) : preferred;
+    // Keep the same email-resolution convention as detail; never link an old enrollment to a new one.
+    if (addressable !== u) return false;
+    const key = JSON.stringify([u.spreadsheetId, u.cohort, u.courseStartISO]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(u => ({ email: u.email, name: u.name, cohort: u.cohort }));
 }
 
 /** Resolve every request on the server; never trust a submitted cohort, role or sheet id. */

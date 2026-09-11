@@ -41,6 +41,13 @@
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
 
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 추가 bounded REWORK
+- 의도: OG 후속 검수의 archived 자기 권한·별칭 담당·지연 내부 응답·migration 이력/전달 경계 교정.
+- 한 것: 모든 자기 수강행 기준 내부 거부, 담당 필터 후 대표 선택, abort/generation 및 비JSON401/403 보호, 신규 이력 ACL/기존 이력 fail-closed·bounded timeout, feature-ref exact0005 외부 artifact 전달. 기존 UI 승인 사항 보존.
+- 검증: 집중211·전체 structural41/non-structural1697·브라우저28·일회용 PostgreSQL18 assertions 및 Next build PASS. optional migration DB18건의 CI skip과 실제 운영 증거를 구별; 최종 check.sh/CI/head는 #947 체크포인트.
+- 다음: 정확한 SHA·SQL/manifest 체크섬·preflight/apply 명령을 OG 독립 검수에 제출. RELEASE 전 dispatch/운영 DB/머지/배포 HOLD, 기존 ACL 결함 발견 시 자의적 수정 금지.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
 ### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 OG REWORK 보강
 - 의도: OG 검수7건과 운영 migration 순서/보안 결함을 교정하고 재검수 요청.
 - 한 것: 명시 student 저장·시트/수강 별칭 공유·trainer 아레나/자기 내부 권한 분리, 업무탭 dirty 진입, 지난주 초안 복제·5열 모바일·승인 비율 역산. canonical/실데이터 변경 없음.

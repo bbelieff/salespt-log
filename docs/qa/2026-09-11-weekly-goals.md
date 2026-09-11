@@ -14,10 +14,10 @@ owner: SALES-WEEKLY-GOALS-947-WRITER
 
 | 검사 | 확인한 결과 |
 | --- | --- |
-| 집중 Vitest | 9 files / 169 tests PASS: service48, overview17, identity26, actuals6, repo11, API13, copy12, proposal11, migration25 |
-| 전체 Vitest | structural 8 files / 41 tests; non-structural 176 files / 1,655 tests PASS (QA_TOOLS_DIR 사용); 정확한 제출 head는 #947 체크포인트 |
+| 집중 Vitest | 12 files / 211 tests PASS: service48, overview17, identity35, actuals6, repo11, API13, copy12, transport7, proposal11, migration32, migration-client2, delivery17 |
+| 전체 Vitest | structural 8 files / 41 tests; non-structural 179 files / 1,697 tests PASS (QA_TOOLS_DIR 사용); 정확한 제출 head는 #947 체크포인트 |
 | PostgreSQL | 실제 migration 재실행·repository SQL 18 assertions PASS; 운영 적용 아님 |
-| 브라우저 | 21 scenarios PASS, pageerror0; desktop1440 / mobile390, 폰트 로드 확인 |
+| 브라우저 | 28 scenarios PASS, pageerror0; desktop1440 / mobile390, 폰트 로드 확인 |
 | check.sh·Next build·PR CI | 최종 제출 head 및 종료 결과는 #947/PR 체크포인트 참조; 아래 실패 이력 포함 |
 | 운영 배포·인증 사용자 실화면·DB 적용 | NOT_RUN — OG 독립 검수/RELEASE 전 HOLD |
 | 실제 Notion 붙여넣기 | NOT_RUN; 클립보드 복사/선택 fallback만 확인 |
@@ -28,7 +28,9 @@ REWORK 전체 게이트 첫 실행은 새 역산 유틸의 타입 import가 `lib
 
 OG REWORK 보강: 공용/내부 명시 student 누락·빈칸 저장 거절; 동일 시트 로그인 별칭 공유 키/CAS와 다른 수강·주차 격리; 동일 이메일 trainer+arena 수강 지원·자기 내부 권한 금지; 업무탭 dirty 진입 가드; 지난주 초안 복제; 모바일 링/숫자 셀5열; 승인 누적 비율 역산. transient read 실패는 초안 유지하고401/403에서는 내부 초안/복사 UI 제거. 명단 반환 직전 권한 하향/세션 변경 회귀도 포함한다. 이 증거는 독립 검수 판정이 아니다.
 
-정확한 migration 실행 준비는 [0005 검수 계약](weekly-goals-migration.md). migration25건 중15건은 외부 QA_TOOLS_DIR의 일회용 PostgreSQL을 사용한다. 도구가 없는 CI에서는 그15건이 명시 skip되므로 CI 통과를15건 실행 증거로 인용하지 않는다. GitGuardian의 기존 synthetic credential-shaped fixture 문제를 수정한 이후 테스트는 비자격증명 형태를 유지하며 보안 검사를 끄지 않았다.
+추가 bounded REWORK: active/archived 자기 별칭의 내부 권한 거부, 담당 필터 이후 대표 선택과 담당 철회, 비JSON 권한 오류와 stale 응답 fence, 새 이력 ACL·기존 이력 fail-closed 및 연결/lock/statement timeout, 보호된 feature-ref artifact 전달을 보강했다. 이전 제안/가져오기/5열 모바일/업무탭 가드 회귀를 유지했다. 새 transport 테스트의 unknown 타입 접근 오류는 instanceof로 교정했으며 타입 검사를 약화하지 않았다.
+
+정확한 migration 실행 준비는 [0005 검수 계약](weekly-goals-migration.md). migration32건 중18건은 외부 QA_TOOLS_DIR의 일회용 PostgreSQL을 사용한다. 도구가 없는 CI에서는 그18건이 명시 skip되므로 CI 통과를18건 실행 증거로 인용하지 않는다. 별도 migration-client2건은 연결 제한과 정리 동작 mock 검사이며 delivery17건은 로컬 artifact/입력/변조/순서 검사다. 실제 SSH·workflow dispatch·운영 preflight는 NOT_RUN이다. GitGuardian의 기존 synthetic credential-shaped fixture 문제를 수정한 이후 테스트는 비자격증명 형태를 유지하며 보안 검사를 끄지 않았다.
 
 ## 브라우저 시나리오
 
@@ -53,6 +55,13 @@ OG REWORK 보강: 공용/내부 명시 student 누락·빈칸 저장 거절; 동
 19. 재조회 권한 거부 시 캐시 내부 편집/내용 제거.
 20. 공용 저장403 시 접근 재조회·내부 내용 제거·저장값 불변.
 21. 내부 저장403 시 내부 초안/복사 제거·저장값 불변.
+22. clean 내부 비JSON403은 열린 회의록 미리보기/fallback 제거, 공용 목표 유지, 명시 재인증 성공 허용.
+23. dirty 내부 빈401은 등록/저장값/복사 상태를 되살리지 않음.
+24. DirtyGuard 통합 저장에서 내부PUT403 후 무시/이동해도 이전 saved/복사 부활 없음.
+25. 내부409/503은 초안과 저장값 보존, stale 복사 차단.
+26. transport abort를 일부러 무시한 지연 A200→후속 B403에서도 이전 내부 응답 폐기.
+27. 지연 initial effect가 언마운트/새 거부 이후 도착해도 내부 상태 부활 없음.
+28. 열린 내부 preview 상태에서 공용 거부 시 전체 대상 잠금, 배경200으로 자동 복원하지 않고 명시 재확인만 허용.
 
 화면 증거: [PC](weekly-goals-evidence/desktop.png), [모바일](weekly-goals-evidence/mobile.png). 전부 가상 인물·가상 날짜이며 production 코드에는 fixture 역할 선택·고정 날짜·localStorage 저장을 넣지 않았다.
 
@@ -63,7 +72,7 @@ OG REWORK 보강: 공용/내부 명시 student 누락·빈칸 저장 거절; 동
 ```powershell
 node tests/browser/weekly-goals-browser.mjs
 node tests/browser/weekly-goals-postgres.mjs
-npx vitest run tests/service/weekly-goals.test.ts tests/service/weekly-goals-overview.test.ts tests/service/weekly-goals-identity.test.ts tests/service/weekly-goals-actuals.test.ts tests/repo/weekly-goals.test.ts tests/api/weekly-goals.test.ts tests/components/weekly-goal-copy.test.ts tests/util/weekly-goal-proposal.test.ts tests/ops/weekly-goals-migrate.test.ts
+npx vitest run weekly-goal
 bash scripts/check.sh
 npx next build
 ```

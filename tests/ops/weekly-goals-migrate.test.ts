@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { loadMigrationFiles } from "../../scripts/db-migrate.mjs";
-import { EXPECTED_CHECKSUM, VERSION, executeExact, parseArgs, pinnedMigration, preflight } from "../../scripts/ops/weekly-goals-migrate.mjs";
+import { DATABASE_LIMITS, EXPECTED_CHECKSUM, VERSION, executeExact, parseArgs, pinnedMigration, preflight } from "../../scripts/ops/weekly-goals-migrate.mjs";
 
 type File = { version: string; sql: string; checksum: string };
 type Result = { rows: Record<string, unknown>[] };
@@ -38,7 +38,9 @@ describe("weekly-goals exact migration artifact (no connection)", () => {
     expect(report.pending).toContain(VERSION);
     expect(calls[0]).toBe("begin read only");
     expect(calls.at(-1)).toBe("rollback");
-    expect(calls.every((sql) => /^(select|begin read only|rollback)\b/i.test(sql))).toBe(true);
+    expect(calls.slice(1, 3)).toEqual([`set local lock_timeout = '${DATABASE_LIMITS.lock_timeout}ms'`,
+      `set local statement_timeout = '${DATABASE_LIMITS.statement_timeout}ms'`]);
+    expect(calls.every((sql) => /^(select|begin read only|rollback|set local (lock_timeout|statement_timeout))\b/i.test(sql))).toBe(true);
     expect(calls.some((sql) => /advisory_lock|create table|insert into|update public|delete from/i.test(sql))).toBe(false);
     expect(calls.filter((sql) => sql.includes("to_regclass")).length).toBe(3);
   });
@@ -50,6 +52,40 @@ describe("weekly-goals exact migration artifact (no connection)", () => {
       return { rows: [] };
     } };
     await expect(preflight(client, files)).rejects.toThrow("fixture catalog failure");
+    expect(calls.at(-1)).toBe("rollback");
+  });
+  it("bounds advisory wait before trying the shared lock and cleans up after timeout", async () => {
+    const calls: string[] = [];
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes("pg_advisory_lock")) throw new Error("fixture lock timeout");
+      return { rows: [] };
+    } };
+    await expect(executeExact(client, files)).rejects.toThrow("fixture lock timeout");
+    expect(calls.slice(0, 4)).toEqual(["begin", `set local lock_timeout = '${DATABASE_LIMITS.lock_timeout}ms'`,
+      `set local statement_timeout = '${DATABASE_LIMITS.statement_timeout}ms'`, "select pg_advisory_lock($1)"]);
+    expect(calls.slice(-2)).toEqual(["rollback", "select pg_advisory_unlock($1)"]);
+    expect(calls.some((sql) => /create table|insert into|to_regclass/.test(sql))).toBe(false);
+  });
+  it.each(["table_acl", "browser_access", "column_acl"])("refuses unsafe ledger catalog %s before reading history metadata", async (kind) => {
+    const calls: string[] = [];
+    const client = { query: async (sql: string) => {
+      calls.push(sql);
+      if (sql.startsWith("select c.oid")) return { rows: [{ oid: 1, relkind: "r", rls: false,
+        policies: 0, triggers: 0, rules: 0, inheritance: 0, indexes: 1, valid_primary_indexes: 1,
+        unexpected_acl: kind === "table_acl", server_rls_bypass: true, server_dml: true }] };
+      if (sql.startsWith("select a.attname")) return { rows: [
+        { name: "version", type: "text", required: true, default_value: null },
+        { name: "checksum", type: "text", required: true, default_value: null },
+        { name: "applied_at", type: "timestamp with time zone", required: true, default_value: "now()" },
+      ].map((c) => ({ ...c, identity: "", generated: "", column_acl: kind === "column_acl" })) };
+      if (sql.startsWith("select pg_get_constraintdef")) return { rows: [{ definition: "PRIMARY KEY (version)", validated: true }] };
+      if (sql.startsWith("select r.rolname")) return { rows: [{ role: "anon", access: kind === "browser_access" }] };
+      return { rows: [] };
+    } };
+    await expect(preflight(client, files)).rejects.toThrow("UNSAFE_HISTORY_SECURITY");
+    expect(calls.some((sql) => sql.includes("select version, checksum, applied_at"))).toBe(false);
+    expect(calls.some((sql) => /^\s*(revoke|grant|create table|insert into)\b/i.test(sql))).toBe(false);
     expect(calls.at(-1)).toBe("rollback");
   });
 });
@@ -83,7 +119,9 @@ integration("weekly-goals disposable PostgreSQL exact runner (no operational DB)
     expect(applied.pending).toContain(extra.version);
     expect((await db.query("select version from schema_migrations")).rows).toEqual([{ version: VERSION }]);
     expect((await db.query("select to_regclass('public.must_not_apply') as value")).rows[0]?.value).toBeNull();
-    expect(calls[0]).toContain("pg_advisory_lock");
+    expect(calls[0]).toBe("begin");
+    expect(calls.findIndex((sql) => sql.startsWith("set local statement_timeout")))
+      .toBeLessThan(calls.findIndex((sql) => sql.includes("pg_advisory_lock")));
     expect(calls.at(-1)).toContain("pg_advisory_unlock");
     expect(calls.indexOf("commit")).toBeGreaterThan(calls.findIndex((q) => q.startsWith("insert into public.schema_migrations")));
   }), 30000);
@@ -104,6 +142,10 @@ integration("weekly-goals disposable PostgreSQL exact runner (no operational DB)
       await db.exec(`set role ${role}`);
       await expect(db.query("select * from weekly_goals")).rejects.toThrow(/permission denied/);
       await expect(db.query("select * from weekly_goal_private")).rejects.toThrow(/permission denied/);
+      await expect(db.query("select * from schema_migrations")).rejects.toThrow(/permission denied/);
+      await expect(db.query("insert into schema_migrations(version,checksum) values ('fixture-fake.sql','fixture-checksum')")).rejects.toThrow(/permission denied/);
+      await expect(db.query("update schema_migrations set checksum='fixture-edit'")).rejects.toThrow(/permission denied/);
+      await expect(db.query("delete from schema_migrations")).rejects.toThrow(/permission denied/);
       await db.exec("reset role");
     }
     await db.exec("create table fixture_default_unchanged(id integer)");
@@ -136,9 +178,27 @@ integration("weekly-goals disposable PostgreSQL exact runner (no operational DB)
   }), 30000);
   it("inherited browser privilege is refused rather than altering shared role grants", async () => fixture(async (db, client) => {
     await db.exec("create role fixture_parent; create role anon; grant fixture_parent to anon; alter default privileges in schema public grant select on tables to fixture_parent;");
-    await expect(executeExact(client, files)).rejects.toThrow("UNSAFE_TABLE_SECURITY");
+    await expect(executeExact(client, files)).rejects.toThrow("UNSAFE_HISTORY_SECURITY");
     expect((await db.query("select to_regclass('public.weekly_goals') as value")).rows[0]?.value).toBeNull();
     expect((await db.query("select pg_has_role('anon','fixture_parent','MEMBER') as member")).rows[0]?.member).toBe(true);
+  }), 30000);
+  it.each([
+    ["grant select, insert, update, delete on schema_migrations to public"],
+    ["create role anon; grant select, update on schema_migrations to anon"],
+    ["create role authenticated; grant insert(version,checksum) on schema_migrations to authenticated"],
+  ])("unsafe existing ledger ACL is never repaired: %s", async (grant) => fixture(async (db, client, calls) => {
+    await db.exec("create table schema_migrations(version text primary key, checksum text not null, applied_at timestamptz not null default now())");
+    await db.query("insert into schema_migrations(version,checksum) values ('fixture-existing.sql','fixture-original')");
+    await db.exec(grant);
+    const beforeAcl = (await db.query("select relacl::text from pg_class where oid='schema_migrations'::regclass")).rows;
+    const beforeRows = (await db.query("select * from schema_migrations")).rows;
+    calls.length = 0;
+    await expect(preflight(client, files)).rejects.toThrow("UNSAFE_HISTORY_SECURITY");
+    await expect(executeExact(client, files)).rejects.toThrow("UNSAFE_HISTORY_SECURITY");
+    expect(calls.some((sql) => /revoke|create table|insert into|^select version, checksum, applied_at/i.test(sql))).toBe(false);
+    expect((await db.query("select relacl::text from pg_class where oid='schema_migrations'::regclass")).rows).toEqual(beforeAcl);
+    expect((await db.query("select * from schema_migrations")).rows).toEqual(beforeRows);
+    expect((await db.query("select to_regclass('public.weekly_goals') as value")).rows[0]?.value).toBeNull();
   }), 30000);
   it("SQL and filename history are atomic when history insert fails", async () => fixture(async (db, client) => {
     const broken = { query: async (sql: string, params?: unknown[]) => {

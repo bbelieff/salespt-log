@@ -4,7 +4,7 @@ import { EMPTY_GOALS, type WeeklyGoalInput, type WeeklyGoalKey, type WeeklyGoalP
 
 const m = vi.hoisted(() => ({
   getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(),
-  findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listDistinctUsers: vi.fn(),
+  findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(),
   dbEnabled: vi.fn(), chooseDailySource: vi.fn(), readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), saveWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
 }));
@@ -15,7 +15,8 @@ vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
 vi.mock("@/service/daily-source", () => m);
-import { loadWeeklyGoals, loadWeeklyGoalInternal, updateWeeklyGoals, updateWeeklyGoalInternal, resolveGoalStudent } from "@/service/weekly-goals";
+import { listGoalStudents, loadWeeklyGoals, loadWeeklyGoalInternal, updateWeeklyGoals, updateWeeklyGoalInternal, resolveGoalStudent } from "@/service/weekly-goals";
+import { loadGoalOverview } from "@/service/weekly-goals-overview";
 
 const trainerEmail = "trainer@example.test";
 const trainee = (email: string, overrides: Partial<User> = {}): User => User.parse({
@@ -46,6 +47,7 @@ beforeEach(() => {
   login(e2.email);
   m.findUserByEmail.mockImplementation(async (email: string) => users.get(email) ?? null);
   m.findActiveArenaRowByEmail.mockImplementation(async (email: string) => arenas.get(email) ?? null);
+  m.listAllUsers.mockImplementation(async () => [...users.values(), ...arenas.values()]);
   // Real distinct roster selects one representative; it does not include login alias E2.
   m.listDistinctUsers.mockImplementation(async () => [users.get(e1.email), users.get(other.email), instructor]);
   m.dbEnabled.mockReturnValue(true); m.chooseDailySource.mockReturnValue("db");
@@ -206,5 +208,78 @@ describe("trainer login with same-email active arena enrollment", () => {
     await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
     await expect(updateWeeklyGoalInternal(params(e1), privateInput())).rejects.toMatchObject({ status: 403 });
     expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled(); expect(m.saveWeeklyGoalPrivate).not.toHaveBeenCalled();
+  });
+});
+
+describe("all own enrollments deny private alias access, including archived rows", () => {
+  it.each(["active", "archived"] as const)("denies private read and write for an alias of own %s enrollment", async status => {
+    login(trainerEmail, "trainer");
+    const oldSelf = trainee(trainerEmail, { status, spreadsheetId: e1.spreadsheetId });
+    const currentArena = trainee(trainerEmail, { cohort: "A2-1", spreadsheetId: "different-current-arena", courseStartISO: "2026-09-11" });
+    m.listAllUsers.mockResolvedValue([instructor, oldSelf, currentArena, e1, e2, other]);
+    m.findActiveArenaRowByEmail.mockResolvedValue(currentArena);
+    expect((await loadWeeklyGoals(params(e1))).canReadInternal).toBe(false);
+    await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
+    await expect(updateWeeklyGoalInternal(params(e1), privateInput())).rejects.toMatchObject({ status: 403 });
+    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled(); expect(m.saveWeeklyGoalPrivate).not.toHaveBeenCalled();
+    // Denial must not remove trainer rights for a genuinely distinct assigned enrollment.
+    expect((await loadWeeklyGoals(params(other))).canReadInternal).toBe(true);
+    await updateWeeklyGoalInternal(params(other), privateInput());
+    expect((await loadWeeklyGoalInternal(params(other))).revision).toBe(1);
+  });
+  it.each(["cohort", "course"])("does not merge separate own and assigned enrollments differing by %s", async dimension => {
+    login(trainerEmail, "trainer");
+    const self = trainee(trainerEmail, { status: "archived" });
+    if (dimension === "cohort") self.cohort = "different-own-cohort";
+    else self.courseStartISO = "2026-08-07";
+    m.listAllUsers.mockResolvedValue([instructor, self, e1]);
+    expect((await loadWeeklyGoals(params(e1))).canReadInternal).toBe(true);
+    await updateWeeklyGoalInternal(params(e1), privateInput());
+    expect((await loadWeeklyGoalInternal(params(e1))).revision).toBe(1);
+  });
+  it("preserves actual administrator private access despite a matching own archived row", async () => {
+    login(trainerEmail, "admin");
+    m.listAllUsers.mockResolvedValue([instructor, trainee(trainerEmail, { status: "archived" }), e1]);
+    await updateWeeklyGoalInternal(params(e1), privateInput());
+    expect((await loadWeeklyGoalInternal(params(e1))).revision).toBe(1);
+  });
+});
+
+describe("authorization precedes enrollment dedup in real roster and overview services", () => {
+  beforeEach(() => {
+    login(trainerEmail, "trainer"); users.delete(other.email);
+    users.set(e1.email, { ...e1, assignedTrainer: "different-trainer@example.test" });
+  });
+  it("keeps assigned E2 instead of unassigned distinct representative E1, including overview", async () => {
+    expect(await listGoalStudents()).toEqual([{ email: e2.email, name: e2.name, cohort: e2.cohort }]);
+    const overview = await loadGoalOverview();
+    expect(overview).toHaveLength(1);
+    expect(overview[0]).toMatchObject({ email: e2.email, error: null, record: { revision: 0 } });
+    expect(m.readWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ studentId: e2.spreadsheetId }));
+    expect(m.listDistinctUsers).not.toHaveBeenCalled();
+    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+    expect(m.readSalesRowsFromDb).not.toHaveBeenCalled();
+  });
+  it("deduplicates both authorized aliases to one enrollment without unioning target permissions", async () => {
+    users.set(e1.email, { ...e1 });
+    expect(await listGoalStudents()).toEqual([{ email: e1.email, name: e1.name, cohort: e1.cohort }]);
+    users.set(e1.email, { ...e1, assignedTrainer: "different-trainer@example.test" });
+    await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
+    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+    expect(await listGoalStudents()).toEqual([{ email: e2.email, name: e2.name, cohort: e2.cohort }]);
+  });
+  it("blocks a representative assignment revoked between roster and overview goal read", async () => {
+    m.findUserByEmail.mockImplementation(async (email: string) => {
+      const row = users.get(email);
+      return row ? { ...row, assignedTrainer: "revoked-trainer@example.test" } : null;
+    });
+    expect(await loadGoalOverview()).toEqual([{ email: e2.email, name: e2.name, cohort: e2.cohort, week: null, record: null, error: "목표를 불러오지 못했어요." }]);
+    expect(m.readWeeklyGoal).not.toHaveBeenCalled(); expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+  });
+  it("omits inaccessible same-email prior enrollment instead of returning a link to a different current enrollment", async () => {
+    const prior = { ...e2, status: "archived" as const, courseStartISO: "2026-08-07" };
+    const current = { ...e2, cohort: "A2-1", spreadsheetId: "new-course-sheet", assignedTrainer: "different-trainer@example.test" };
+    m.listAllUsers.mockResolvedValue([instructor, prior, current]);
+    expect(await listGoalStudents()).toEqual([]);
   });
 });

@@ -16,7 +16,11 @@ owner: SALES-WEEKLY-GOALS-947-WRITER
 
 실제 로그인 세션과 기존 관리자/담당 trainer 규칙으로 타깃을 검증한다. pending 접근 금지, 학생은 본인만, trainer는 active·담당만, 관리자는 기존 전원 권한. overview는 권한을 통과한 대상만 최대4동시 공용 목표 조회, 각 학생의 실제 실적은 선택 시만 조회한다. 재조회된 학생의 역할·상태·담당도 다시 검증한다.
 
+로스터는 raw 수강행별 현재 담당 권한을 먼저 검사한 후 studentId/cohort/start 기준 대표를 고른다. E1이 다른 트레이너에게 배정되어도 담당 E2가 사라지지 않으며 미배정 E1 이메일이나 합친 권한을 반환하지 않는다. 기존 이메일/active arena resolver가 가리키지 않는 과거 수강은 다른 수강으로 연결되는 링크를 만들지 않는다.
+
 같은 이메일에 trainer와 active arena trainee 행이 있으면 기존 me/profile의 findActiveArenaRowByEmail로 정확한 수강행을 해석한다. 이름 기반 대체나 다른 수강 합치기는 하지 않는다. 트레이너 자신의 수강(동일 시트 별칭 포함)은 공용 학생 편집만 가능하며 자기 자신이라는 이유로 내부 권한을 주지 않는다. 내부는 실제 admin 또는 해당 타인 수강생의 active assigned trainer만 접근한다.
+
+자기 수강 내부 권한의 **거부** 판단에는 active arena만 쓰지 않고, 서버에서 확인한 동일 로그인 이메일의 모든 trainee 행(active/archived 포함)을 사용한다. sheet/cohort/start가 일치하는 자신의 별칭은 보관 상태여도 내부 접근 불가다. 이 확장은 거부에만 적용하고 공용 조회나 권한 부여를 넓히지 않는다. admin의 기존 권한은 유지한다.
 
 공용/내부 저장은 비어 있지 않은 명시 student와 week 및 enrollment(cohort/courseStart) echo를 요구한다. 학생 생략/빈칸은400, 빈 enrollment나 수강 변경은409이며 쓰기 없다. 조회의 기존 impersonation cookie 편의는 저장 대상의 대체값이 아니다. INSERT 충돌 무시 + UPDATE WHERE revision 비교로 단일 승자만 성공하며 실패는409. 공용/내부 revision은 독립, 내부 저장이 공용 과제를 지우지 않는다. 읽기 오류는 503이며 빈 성공값으로 대체하지 않는다. 테이블이 없으면 목표 기능만 실패하며 migration을 요청 경로에서 실행하지 않는다.
 
@@ -37,6 +41,8 @@ owner: SALES-WEEKLY-GOALS-947-WRITER
 저장 후 공통 쿼리 무효화, 기존 앱 mutation 성공 시 동일 aggregate 갱신. 비교와 축약 링은 동일 endpoint. 내부 기록은 필요할 때만 별도 요청, 함께보기에는 렌더하지 않는다.
 
 미저장 주차/화면 이동과 업무탭 목표 진입은 기존 DirtyGuard(저장/무시/취소), 브라우저 뒤로/앞으로 이동은 목표 편집기의 native history 확인으로 보호한다. 일시적 재조회 실패 시 기존 입력을 유지하고 오래된 실적으로 복사하지 못하게 한다. 권한 거부401/403이면 캐시된 내부 편집기를 제거하며, 내부 조회/저장과 명단 반환에도 최신 actor 권한을 다시 확인한다.
+
+내부 요청은 generation과 AbortSignal로 이전 응답을 차단한다. 늦은 A200은 이후 B403/언마운트 뒤 saved/draft/미리보기/복사 fallback을 복구하지 못한다. 내부만 거부되면 공용 목표는 유지하며 내부 dirty 등록과 내용을 제거한다. 공용 접근 거부는 해당 캐시 화면을 잠그고 명시적 재조회 성공 때만 다시 연다. 빈/비JSON 응답도 관찰한 HTTP401/403을 유지하고 응답 본문은 로그에 남기지 않는다. 409·5xx·일시적 네트워크 오류에는 초안을 보존한다. 이미 사용자가 보거나 복사한 내용을 회수할 수 있다는 주장은 하지 않는다.
 
 ## 초안 편의 기능
 

@@ -4,6 +4,15 @@ import type { MigrationFile } from "../db-migrate.mjs";
 export const VERSION: "0005_weekly_goals.sql";
 export const EXPECTED_CHECKSUM: string;
 export const LOCK_KEY: 786569;
+export const DATABASE_LIMITS: Readonly<{ connectionTimeoutMillis: 15000; statement_timeout: 60000;
+  lock_timeout: 10000; query_timeout: 65000 }>;
+/** A verified delivery manifest carries only inventory for unrelated SQL, which is never executed. */
+export type MigrationInventoryFile = Omit<MigrationFile, "sql"> & { sql?: string };
+export interface MigrationRuntime {
+  files?: MigrationInventoryFile[];
+  /** Installed application root, required to match process.cwd() for the protected env resolver. */
+  appRoot?: string;
+}
 
 export interface MigrationClient {
   query(sql: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
@@ -32,7 +41,7 @@ export interface MigrationReport<Mode extends MigrationMode = MigrationMode> {
 }
 
 export function parseArgs(args: string[]): { execute: boolean };
-export function pinnedMigration(files: MigrationFile[]): MigrationFile;
-export function preflight(client: MigrationClient, files: MigrationFile[]): Promise<MigrationReport<"PREFLIGHT_READ_ONLY">>;
-export function executeExact(client: MigrationClient, files: MigrationFile[]): Promise<MigrationReport<"NO_OP" | "APPLIED_EXACT_ONLY">>;
-export function main(args?: string[]): Promise<MigrationReport>;
+export function pinnedMigration(files: MigrationInventoryFile[]): MigrationFile;
+export function preflight(client: MigrationClient, files: MigrationInventoryFile[]): Promise<MigrationReport<"PREFLIGHT_READ_ONLY">>;
+export function executeExact(client: MigrationClient, files: MigrationInventoryFile[]): Promise<MigrationReport<"NO_OP" | "APPLIED_EXACT_ONLY">>;
+export function main(args?: string[], runtime?: MigrationRuntime): Promise<MigrationReport>;

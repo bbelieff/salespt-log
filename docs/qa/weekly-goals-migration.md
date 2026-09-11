@@ -1,81 +1,74 @@
-# #947 주간 목표 — 정확한 0005 적용 검수 계약
+# #947 주간 목표 — 정확한 0005 적용·전달 검수 계약
 
 상태: **검수용 구현 / 운영 실행 NOT_RUN / OG RELEASE 전 실행·머지·배포 금지**.
-기존 `schema_migrations`를 사용하는 additive 전용 경로다. Supabase CLI 이력을 새로 만들지 않는다.
+기존 custom `schema_migrations` 이력을 유지한다. Supabase CLI 이력/새 자격증명/인프라 정책을 만들지 않는다.
 
-## 대상과 불변값
+## immutable 대상
 
 - SQL: `lib/repo/db/migrations/0005_weekly_goals.sql`
-- 원문 UTF-8 bytes SHA256: `144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831`
-- 정확한 이력 키: `0005_weekly_goals.sql` **파일명 전체**. 중복 `0002_*.sql`을 숫자로 합치지 않는다.
-- 적용 도구: `scripts/ops/weekly-goals-migrate.mjs`, 카탈로그 검사: `scripts/ops/weekly-goals-migrate-catalog.mjs`.
-- 신규 두 테이블은 `student_id`(서버가 해석한 spreadsheetId) × cohort × course_start × week_start 키를 갖는다. 로그인 이메일 별칭을 영속 키로 사용하지 않는다.
-- 이 SQL은 아직 적용되지 않은 신규 파일이다. 적용 후에는 원문을 고치지 않는다. 이미 다른 checksum으로 적용된 환경은 이 도구가 실패하며 자동 교정하지 않는다.
+- UTF-8 bytes SHA256: `144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831`
+- 이력 키: `0005_weekly_goals.sql` **전체 파일명**. 중복 `0002_*.sql`도 별개다.
+- 도구: `scripts/ops/weekly-goals-migrate.mjs`; 검사: `weekly-goals-migrate-catalog.mjs`.
+- 키는 서버 해석 student_id(spreadsheetId) × cohort × course_start × week_start다. 로그인 이메일 별칭을 영속 키로 쓰지 않는다.
+- 아직 적용되지 않은 SQL이다. 적용 후에는 immutable이며 다른 checksum 환경을 자동 교정하지 않는다.
 
-## 기존 경로를 그대로 dispatch하지 않는 이유
+## broad runner와 분리
 
-현재 `deploy.yml`은 `scripts/db-migrate.mjs`를 호출하지 않는다. `db-migrate.yml`은 VPS에 이미 설치된 코드만 실행하며, fetch/checkout 또는 정확한 버전 선택 기능이 없다. 기존 러너의 `--dry-run`도 `schema_migrations`를 생성한다. 미지원 `--only`/`--version`은 무시되므로 사용하지 않는다. 다른 pending에는 `0004`의 DROP INDEX도 있으므로 전체 pending을 적용하지 않는다.
+`deploy.yml`은 migration을 실행하지 않는다. `db-migrate.yml` 기존 `installed` 모드는 설치된 VPS 코드의 broad pending runner이며 **master에서만** 허용한다. feature-ref는 exact mode만 허용한다. 누락/unknown mode가 broad 실행으로 떨어지지 않는다. 기존 `--dry-run`도 이력 테이블을 생성하므로 진짜 read-only가 아니다. 미지원 `--only`/`--version`은 사용하지 않는다. 다른 pending의 `0004` DROP INDEX를 실행하지 않는다.
 
-새 CLI는 인자 없음 또는 `--preflight`만 읽기 전용, 정확히 `--execute` 하나만 쓰기 모드다. 알 수 없는 인자·중복·충돌 인자는 DB 연결 전 실패한다. 연결은 기존 `resolveDatabaseUrl()`이 env/보호된 `.env` 파일에서 내부적으로 얻는다. 연결 문자열을 셸 export·인자·로그·백업 명령으로 넘기지 않는다. driver 오류 원문도 출력하지 않는다.
+## 진짜 read-only와 안전 gate
 
-## preflight — 실제 읽기 전용
+첫 SQL `BEGIN READ ONLY` → 트랜잭션 한정 timeout 설정 → `to_regclass`/pg_catalog/존재하는 history 조회 → `ROLLBACK`. CREATE/ALTER/INSERT/학생 행 조회/이력 초기화/advisory lock이 없다. 다음은 실패하며 변경하지 않는다.
 
-첫 SQL은 `BEGIN READ ONLY`, 마지막은 `ROLLBACK`이다. `to_regclass`, pg_catalog, 존재하는 `public.schema_migrations`만 읽는다. CREATE/ALTER/INSERT/UPDATE/DELETE/학생 행 조회/이력 초기화/advisory lock은 수행하지 않는다.
+- 승인 SQL bytes/적용된 파일 checksum 불일치.
+- 이력 없이 목표 relation 존재, 적용 이력은 있지만 목표 테이블 부재.
+- 컬럼·타입·NULL·default·PK·CHECK·index·trigger/rule/inheritance 충돌.
+- 목표 RLS 비활성/정책 존재/PUBLIC·미확인 ACL/컬럼 ACL/anon·authenticated 실효 접근.
+- 이력 RLS/정책으로 전체 이력 조회 불가, 이력 PUBLIC·browser·미확인 ACL.
+- 서버 연결의 필요한 권한/RLS 우회·소유권 부족.
 
-검사 결과는 정확한 version/checksum, 관찰 시각, filename별 applied checksum/시각과 pending 목록, 목표 테이블 존재 여부 및 카탈로그 결과다. 다음을 차단한다.
+기존 history ACL이 안전하지 않으면 **읽기 전용 실패 증거만 보고**한다. 기존 보안 정책 변경은 OG/사용자 판단이며 자동 revoke/grant하지 않는다. history 부재 preflight는 생성하지 않는다. exact execute에서 새로 만드는 history만 같은 transaction에서 PUBLIC/anon/authenticated 직접 grants를 회수한다. global default privileges는 유지한다.
 
-- 승인 SQL bytes 변경 또는 이미 적용된 파일의 checksum 불일치.
-- 이력 없이 목표 이름의 테이블/뷰/기타 relation이 하나라도 존재함.
-- 이력은 있지만 목표 테이블 부재, 컬럼·타입·NULL·default·PK·CHECK·index 드리프트, 사용자 trigger/rule/inheritance. 이력 테이블의 RLS/정책으로 전체 이력이 보장되지 않는 경우도 거부한다.
-- 목표 RLS 비활성, 정책 존재, PUBLIC/미확인 역할 ACL, 컬럼 ACL, anon/authenticated의 직접 또는 상속 실효 접근권.
-- 현재 연결 역할에 필요한 SELECT/INSERT/UPDATE 권한 또는 RLS 우회/소유권이 없음.
+## 보호된 feature-ref delivery — RELEASE 후에만
 
-`schema_migrations`가 없고 목표 테이블도 없으면 preflight는 아무것도 만들지 않고 이를 명시한다. 신규 적용 시에만 기존 러너와 같은 version/checksum/applied_at 형식으로 동일 트랜잭션 안에 이력 테이블을 생성한다. 기존 이력 테이블의 충돌 구조는 차단한다.
-
-## 적용과 코드 노출 순서 — RELEASE 후에만
-
-자동 master 배포가 기능을 먼저 노출하지 않도록 **머지 전**, 독립 검수된 최종 PR head에서 아래 운영 도구 artifact만 전달하고 적용한다. 현재 실행 앱 checkout/PM2/build를 바꾸지 않는다. artifact 전달은 기존 보호된 SSH/배포 경로만 사용하며, 새 원격접속·키·설정 변경은 하지 않는다.
-
-1. OG가 최종 PR head SHA, 현재 last-good production SHA, 승인된 도구/SQL hash를 기록한다.
-2. 최종 head의 아래 경로를 **디렉터리 구조를 보존한 채** VPS `/opt/salespt-log/.deploy/weekly-goals-<reviewed-head>/`에 일회용 artifact로 전달한다. 최종 PR head를 `git archive`로 추출할 수 있다. 설치된 앱 코드를 fetch/checkout/reset하지 않는다.
-   - `scripts/db-migrate.mjs` — 기존 resolver와 filename loader 재사용, 실행 진입부는 import 시 실행되지 않음.
-   - `scripts/ops/weekly-goals-migrate.mjs`
-   - `scripts/ops/weekly-goals-migrate-catalog.mjs`
-   - `lib/repo/db/migrations/` 전체 — **이력·pending 대조 입력만**. 적용 SQL은 내부 immutable checksum의 0005 하나.
-3. `/opt/salespt-log`를 cwd로 유지한다. 기존 보호된 `.env`와 설치된 `node_modules/pg`를 사용한다. artifact 전송 bytes와 PR head를 대조한 뒤 다음 명령을 실행·보관한다. 아래 `<reviewed-head>`는 검수된 정확한 SHA로 치환한다.
+OG는 최종 검수한 PR full SHA, last-good production SHA, SQL/helper checksum을 기록한다. 아래 `<reviewed-full-head-sha>`는 그 **40자리 소문자 SHA**로 치환한다. 명령은 제안이며 dispatch NOT_RUN이다.
 
 ```sh
-node .deploy/weekly-goals-<reviewed-head>/scripts/ops/weekly-goals-migrate.mjs --preflight
+gh workflow run db-migrate.yml --repo bbelieff/salespt-log --ref feat/weekly-goals -f mode=0005_weekly_goals.sql -f expected_sha=<reviewed-full-head-sha> -f expected_sql_sha256=144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 -f execute=false
 ```
 
-4. pending 목록·이력·카탈로그가 계약과 일치하는지 검수한다. 예상치 못한 결과면 실패 증거를 남기고 중단한다. 자동으로 이력을 고치거나 누락 테이블을 기존 테이블에 합치지 않는다.
-5. RELEASE 범위의 정확한 적용 명령은 다음이다. **현재 문서는 제안이며 실행 증거가 아니다.**
+1. SSH/Tailscale/키 사용 **전** `github.sha == expected_sha`와 SQL checksum/mode/run id를 검증한다. checkout은 immutable SHA와 `persist-credentials:false`다. [공식 gh 문서](https://cli.github.com/manual/gh_workflow_run)의 `--ref`는 지정 branch workflow를 실행한다. branch가 움직이면 old expected SHA는 실패한다.
+2. `weekly-goals-delivery.mjs`는 다음 allowlist만 보낸다. `scripts/db-migrate.mjs`(resolver만 import), `scripts/ops/weekly-goals-migrate.mjs`, `weekly-goals-migrate-catalog.mjs`, `weekly-goals-delivery.mjs`, `weekly-goals-delivery-run.mjs`, 정확한 `lib/repo/db/migrations/0005_weekly_goals.sql`, `inventory.json`(전체 migration **파일명/checksum만**), `manifest.json`(reviewed SHA/SQL checksum/모든 payload file SHA256). 다른 SQL bytes는 보내지 않는다.
+3. 기존 SSH/Tailscale/host fallback/`accept-new` 경로로 앱 밖 `/opt/salespt-migrations/<run-id>-<attempt>-<sha>/payload`에 stage한다. archive hash를 먼저 검증한 뒤 extract하고 파일명/regular-file/no-symlink/checksum 검사 후에만 `ARTIFACT_READY`를 기록한다. 앱 checkout/npm/build/PM2/env 파일은 변경·복사하지 않는다.
+4. 매 실행 payload를 재검증한다. cwd `/opt/salespt-log`, 기존 protected env resolver, `createRequire('/opt/salespt-log/package.json')('pg')`를 사용한다. 자격증명을 인자/export/log로 전달하지 않는다. workflow concurrency `db-migrate`와30분 job 한도, SSH rc255만 최대15회 재시도한다. DB/application 오류는 즉시 실패한다.
+5. preflight pending/history/catalog를 검수한다. 예상 밖 보안/구조/이력은 변경 없이 중단한다. 허용된 적용 dispatch는 동일 최종 SHA로 다음 명령이며 preflight → exact execute → 사후 preflight 순이다.
 
 ```sh
-node .deploy/weekly-goals-<reviewed-head>/scripts/ops/weekly-goals-migrate.mjs --execute
-node .deploy/weekly-goals-<reviewed-head>/scripts/ops/weekly-goals-migrate.mjs --preflight
+gh workflow run db-migrate.yml --repo bbelieff/salespt-log --ref feat/weekly-goals -f mode=0005_weekly_goals.sql -f expected_sha=<reviewed-full-head-sha> -f expected_sql_sha256=144b15924b59f0ebb757482540752154d48068207f9c905a51293986b2eb4831 -f execute=true
 ```
 
-`--execute`는 기존 러너와 동일 advisory lock **786569**를 획득하고, 트랜잭션 안에서 상태를 재검사한다. 0005 SQL + 정확한 filename/checksum 이력 삽입 + 적용 후 카탈로그 검증을 원자적으로 수행한다. 동일 checksum/정상 catalog면 DDL/DML 없이 `NO_OP`, 다른 checksum/충돌이면 rollback한다. 관련 없는 pending/history는 적용·수정하지 않는다. 글로벌 default privileges는 변경하지 않는다.
+감사용 원격 형태(직접 실행 권고 아님): cwd `/opt/salespt-log`에서 `node /opt/salespt-migrations/<run>-<attempt>-<sha>/payload/scripts/ops/weekly-goals-delivery-run.mjs preflight|execute <sha> <manifest-sha256> <sql-sha256>`.
 
-6. `APPLIED_EXACT_ONLY` 또는 검증된 `NO_OP`, version/checksum/appliedAt, 사후 `ALREADY_APPLIED`, 두 테이블의 RLS/policies/browserAccess/serverCanStore 결과, 관찰시각/운영 run 또는 보호된 실행 기록을 #947에 남긴 후에만 기능 코드의 직렬 머지·배포를 진행한다.
-7. 정확한 merge SHA의 배포 run success/공개 health와 별도로 인증된 앱의 안전한 실제 조회 흐름을 검증한다. **`/api/health`는 auth env만 보며 목표 DB 준비를 증명하지 못한다.** 카탈로그 권한 검증은 실제 인증 저장 end-to-end 증명이 아니다. 실수강생 테스트 쓰기는 하지 않는다. 승인된 합성 테스트 대상이 없다면 실제 저장 검증을 NOT_RUN으로 분리한다.
+manifest/inventory/helper hashes는 Actions artifact와 stdout에 보존한다. 성공 DB 결과는 stage의 `preflight-result.json`/`execute-result.json`에 남는다. 최종 commit 전 artifact checksum을 최종 SHA의 것으로 주장하지 않는다. 부분 업로드·실패 stage는 앱 tree 밖에 남고 실행 증거로 취급하지 않는다.
 
-## ACL/RLS와 복구
+## 적용·노출·복구 순서
 
-PUBLIC revoke만으로는 기존 Supabase의 직접 anon/authenticated 기본 grant가 사라지지 않는다. 신규 두 테이블에만 존재하는 browser role의 권한을 별도 revoke하고 RLS를 활성화한다. 정책은 만들지 않는다. 기존 서버 연결로 접근하며, 브라우저에 권한을 새로 부여하지 않는다. [공식 Data API 보안 문서](https://supabase.com/docs/guides/api/securing-your-api)의 grant/RLS 분리와 기존 프로젝트의 직접 기본 grant를 확인했다. 스킬의 Supabase CLI 신규 이력 절차는 사용자 지정 기존 custom migration 형식 대신 적용하지 않았다.
+`--execute`는 BEGIN과 timeout 설정 **후** 기존 advisory lock **786569**를 획득한다. connection15초/lock10초/statement60초/client query65초로 대기 상한을 둔다. 같은 transaction에서 상태 재검사 → exact SQL → filename/checksum 이력 → 사후 catalog → commit. 동일 hash/정상 catalog는 `NO_OP`, 충돌은 rollback. 관련 없는 pending/history를 적용·수정하지 않는다.
 
-코드 롤백은 문제 기능 커밋 revert와 기존 배포 검증 경로를 따른다. **주간 목표 테이블·저장 데이터·마이그레이션 이력은 유지**한다. down/DROP/DELETE/cleanup SQL은 없다. DB 장애·접근권 문제는 사전 gate에서 중단하며 임의 grant/정책/키 교체로 우회하지 않는다.
+`APPLIED_EXACT_ONLY` 또는 검증된 `NO_OP`, 사후 `ALREADY_APPLIED`, version/checksum/appliedAt/RLS/policies/browserAccess/serverCanStore/관찰시각/run 결과를 #947에 기록한 **뒤에** 기능을 직렬 머지·배포한다. 기능이 먼저 노출되지 않도록 merge 전 feature-ref artifact로 적용한다.
 
-## 합성 검증
+정확한 merge SHA 배포 run success/health와 인증된 안전한 조회 흐름은 별개다. `/api/health`는 auth env만 검사하며 goal DB 준비를 증명하지 않는다. catalog는 실제 인증 저장 E2E 증거가 아니다. 실수강생 테스트 쓰기를 하지 않으며 승인된 합성 운영 대상이 없으면 실제 저장 검증 NOT_RUN을 유지한다.
 
-`tests/ops/weekly-goals-migrate.test.ts`: 25 tests PASS (2026-09-11). 순수/연결 없는 테스트 10개와 일회용 PGlite 실제 PostgreSQL 테스트 15개. 외부 QA 도구가 없으면 후자만 명시 skip이며 운영/CI PASS로 합산하지 않는다. `npx tsc --noEmit --pretty false` exit0 및 소유 파일 `git diff --check` PASS.
+코드 rollback은 feature revert와 기존 배포 절차다. **테이블·저장 데이터·이력은 유지**하며 down/DROP/DELETE/cleanup SQL이 없다. PUBLIC revoke만으로 직접 anon/authenticated grants가 사라지지는 않는다([공식 Data API 보안 문서](https://supabase.com/docs/guides/api/securing-your-api)). 새 테이블 직접 grants만 회수하고 RLS를 켜며 정책은 만들지 않는다.
+
+## 합성 검증 및 미실행
+
+- `tests/ops/weekly-goals-migrate.test.ts`32 + `weekly-goals-migrate-client.test.ts`2: 총34 PASS = pure/synthetic client16 + disposable PGlite18 (migration helper evidence,2026-09-11). QA 도구 미설정 시 PGlite만 skip; CI/운영 PASS로 합산하지 않는다.
+- `tests/ops/weekly-goals-delivery.test.ts`:17 PASS = strict inputs/immutable inventory+hash/missing-extra-tampered files/fresh output/workflow ordering/transport retry contract. 일회용 로컬 합성 파일만 사용한다.
 
 ```powershell
 $env:QA_TOOLS_DIR='C:/Users/Public/Documents/ESTsoft/CreatorTemp/weekly-goals-qa-tools'
-npx.cmd vitest run tests/ops/weekly-goals-migrate.test.ts
+npx.cmd vitest run tests/ops/weekly-goals-migrate.test.ts tests/ops/weekly-goals-migrate-client.test.ts tests/ops/weekly-goals-delivery.test.ts
 ```
 
-합성 검증: preflight 무변경, exact-only/다른 pending 보존, filename 이력/중복 번호, checksum fail/no-op/저장값 보존, unknown flags, untracked/conflicting table 거부, RLS/정책/PUBLIC/컬럼/constraint drift 차단, direct browser default grant 회수와 global defaults 보존, SQL+이력 실패 시 원자 rollback. 실제 외부 DB/SSH/워크플로/실수강생 데이터는 사용하지 않았다.
-
-운영 적용·운영 catalog·실계정 저장·Notion 실제 붙여넣기: **NOT_RUN**. 본 문서는 독립 검수 판정이나 RELEASE가 아니다.
+운영 SSH/dispatch/DB preflight·적용/catalog/실계정 저장/Notion 실제 붙여넣기: **NOT_RUN**. KPI/Notion/Kakao 변경 없음. 독립 검수 판정이나 RELEASE가 아니다.

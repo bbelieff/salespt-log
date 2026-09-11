@@ -7,6 +7,7 @@ import { resolve, join } from "node:path";
 import { createServer } from "node:http";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { privateRegressions } from "./weekly-goals-private-browser.mjs";
 import { build } from "esbuild";
 const requireTools = createRequire(resolve(process.env.QA_TOOLS_DIR, "package.json"));
 const { chromium } = requireTools("playwright");
@@ -50,6 +51,7 @@ const results = [], errors = [];
 const goals = { production: null, inflow: 0, contacts: 5, meetings: 2, contracts: 1 };
 const records = new Map();
 const internal = new Map();
+const privateSteps = [];
 let failRead = false, denyRead = false, failSave = false, saves = 0, privateReads = 0;
 const empty = () => ({ goals: { ...goals }, task: "", revision: 0, updatedAt: null });
 const dates = { 1: ["2026-09-04", "2026-09-10"], 2: ["2026-09-11", "2026-09-17"], 3: ["2026-09-18", "2026-09-24"] };
@@ -72,6 +74,7 @@ try {
     if (url.pathname.endsWith("/overview")) return reply([{ email: student, name: "가상 수강생", cohort: "연습", week: 2, record: records.get(key) ?? empty(), error: null }]);
     const isPrivate = url.pathname.endsWith("/internal");
     if (isPrivate) { privateReads++; if (role === "student") return reply({ error: "금지" }, 403); }
+    if (isPrivate && privateSteps.length) return privateSteps.shift()(route);
     if (request.method() === "PUT") {
       saves++;
       if (failSave) return reply({ error: "충돌: 입력을 보관해 주세요." }, 409);
@@ -281,6 +284,7 @@ try {
   assert.equal((await page.content()).includes("INTERNAL_ONLY"), false);
   denyRead = false;
   results.push("denied-private-save-clears-private-draft-and-copy-no-write");
+  await privateRegressions({ page, base, privateSteps, internal, records, results, setPublicDenied: value => { denyRead = value; } });
   failRead = true;
   await page.goto(base + "/?role=student");
   await page.getByText("조회 실패: 다시 시도해 주세요.", { exact: false }).waitFor();
