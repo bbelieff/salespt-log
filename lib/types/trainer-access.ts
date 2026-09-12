@@ -28,12 +28,7 @@ export type TrainerStudentCategory = "active" | "arena" | "archived";
 export type TrainerAccessOperation = "read" | "write";
 /** One selected registry enrollment. Email alone is intentionally insufficient
  * when a person has more than one trainee registration. */
-export interface TrainerStudentTarget {
-  readonly email: string;
-  readonly spreadsheetId: string;
-  readonly cohort: string;
-  readonly courseStart: string;
-}
+export interface TrainerStudentTarget { readonly email: string; readonly spreadsheetId: string; readonly cohort: string; readonly courseStart: string; }
 export type TrainerCategoryGrant = Readonly<{ read: boolean; write: boolean }>;
 export type TrainerGrants = Readonly<Record<TrainerStudentCategory, TrainerCategoryGrant>>;
 
