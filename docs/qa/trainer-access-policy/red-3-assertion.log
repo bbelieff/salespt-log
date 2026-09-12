@@ -1,0 +1,74 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":true,"write":true},"arena":{"read":false,"write":false},"archived":{"read":false,"write":false}}
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":false,"write":false},"arena":{"read":true,"write":true},"archived":{"read":true,"write":true}}
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":true,"write":false},"arena":{"read":false,"write":false},"archived":{"read":false,"write":false}}
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #+0 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #1 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #2 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #3 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #4 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #5 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #6 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #7 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #8 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #9 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #10 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #11 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #12 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #13 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #14 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #15 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #16 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #17 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #18 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #19 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #20 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22mregular gets only active RW
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22mapprentice gets only active RW
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade undefined denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade null denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "unknown" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "Senior" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade " senior " denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "constructor" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "__proto__" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade 1 denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade {} denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade %j denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22msenior gets explicit read/write grants for all categories
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 3 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":true,"write":true},"arena":{"read":false,"write":false},"archived":{"read":false,"write":false}}
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":false,"write":false},"arena":{"read":true,"write":true},"archived":{"read":true,"write":true}}
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":true,"write":false},"arena":{"read":false,"write":false},"archived":{"read":false,"write":false}}
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m30:39[22m[39m
+    [90m 28| [39m    { active[33m:[39m { read[33m:[39m [35mtrue[39m[33m,[39m write[33m:[39m [35mfalse[39m }[33m,[39m arena[33m:[39m denied[33m,[39m archived[33m:[39m d…
+    [90m 29| [39m    [32m"accepts complete boolean grants %j"[39m[33m,[39m (grants) [33m=>[39m {
+    [90m 30| [39m      [34mexpect[39m([34misTrainerGrants[39m(grants))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                                      [31m^[39m
+    [90m 31| [39m    }[33m,[39m
+    [90m 32| [39m  )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m35 passed[39m[22m[90m (38)[39m
+[2m   Start at [22m 17:11:51
+[2m   Duration [22m 608ms[2m (transform 47ms, setup 15ms, collect 52ms, tests 15ms, environment 0ms, prepare 151ms)[22m
+
