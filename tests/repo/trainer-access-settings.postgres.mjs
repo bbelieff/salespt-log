@@ -10,7 +10,7 @@ const requireTools = createRequire(resolve(process.env.QA_TOOLS_DIR, "package.js
 const { PGlite } = requireTools("@electric-sql/pglite");
 const db = new PGlite();
 const dir = mkdtempSync(join(tmpdir(), "trainer-access-pg-"));
-const output = resolve("docs/qa/trainer-access-settings"); mkdirSync(output, { recursive: true });
+const output = resolve(process.env.QA_OUTPUT_DIR || "docs/qa/trainer-access-settings"); mkdirSync(output, { recursive: true });
 let tail = Promise.resolve();
 const query = async (sql, params) => { const r = await db.query(sql, params); return { rows: r.rows, rowCount: r.affectedRows ?? r.rows.length }; };
 globalThis.__accessPool = {
@@ -31,14 +31,14 @@ try {
     insert into public.trainer_qualifications values ('one@example.test','동명이인','active'),
       ('two@example.test','동명이인','active'), ('pending@example.test','신청자','pending');`);
   await db.exec(readFileSync("lib/repo/db/migrations/0007_trainer_access.sql", "utf8"));
-  await build({ stdin: { contents: 'export * from "@/service/trainer-access-settings"; export { withTrainerAccessLock } from "@/repo/db/trainer-access-settings";', resolveDir: process.cwd(), loader: "ts" }, bundle: true, platform: "node", format: "esm", outfile: join(dir, "service.mjs"),
+  await build({ stdin: { contents: 'export * from "@/service/trainer-access-settings"; export * from "@/service/trainer-student-access"; export { withTrainerAccessLock } from "@/repo/db/trainer-access-settings";', resolveDir: process.cwd(), loader: "ts" }, bundle: true, platform: "node", format: "esm", outfile: join(dir, "service.mjs"),
     plugins: [{ name: "isolated-access", setup(b) {
       // Negative control runs only in this disposable bundle; shipping source stays byte-identical.
       if (process.env.QA_ACCESS_MUTATION) b.onLoad({ filter: /lib[\\/]service[\\/]trainer-access-settings\.ts$/ }, args => {
         const source = readFileSync(args.path, "utf8");
         const mutation = process.env.QA_ACCESS_MUTATION;
         const contents = mutation === "allow-nonadmin" ? source.replace('!email || !isAdminEmail(email)', '!email')
-          : mutation === "skip-grade-reset" ? source.replace('current?.grade === input.grade ? input.grants : defaultTrainerGrants(input.grade)', 'input.grants') : source;
+          : mutation === "force-grade-reset" ? source.replace('tx.save(input, actor)', 'tx.save({ ...input, grants: defaultTrainerGrants(input.grade) }, actor)') : source;
         assert.notEqual(contents, source, "The negative control must modify its specific guard");
         return { contents, loader: "ts", resolveDir: resolve("lib/service") };
       });
@@ -64,7 +64,7 @@ try {
   equal(concurrent.filter(r => r.status === "fulfilled").length, 1);
   equal(concurrent.find(r => r.status === "rejected").reason.status, 409);
   const downgrade = command(3, "regular"); downgrade.grants.active = { read: false, write: false };
-  await service.saveTrainerAccessSettings(downgrade); people = await service.listTrainerAccessSettings(); equal(people[0].grants, grants("regular"));
+  await service.saveTrainerAccessSettings(downgrade); people = await service.listTrainerAccessSettings(); equal(people[0].grants, downgrade.grants);
   equal(people[0].version, 4);
   equal((await db.query("select version, changed_by from trainer_access_audit order by version")).rows,
     [1, 2, 3, 4].map(version => ({ version, changed_by: "admin@example.test" })));
@@ -95,6 +95,29 @@ try {
   }
   equal((await db.query("select relname, relrowsecurity from pg_class where relname in ('trainer_access_settings','trainer_access_audit') order by relname")).rows,
     [{ relname: "trainer_access_audit", relrowsecurity: true }, { relname: "trainer_access_settings", relrowsecurity: true }]);
+  // Execute the real central read-only SQL against isolated raw fixtures (no registry migration).
+  await db.exec(`create table public.users (email text, role text, status text, cohort text, cohort_label text, spreadsheet_id text, course_start_iso text);
+    create table public.cohorts (label text, status text, type text);
+    insert into users values ('student@example.test','trainee','active','8','8기','selected-sheet','2026-09-04');
+    insert into cohorts values ('8','active','cohort');`);
+  await service.saveTrainerAccessSettings(command(0, "regular", "two@example.test"));
+  equal(await service.canAccessManagedStudent("two@example.test", "student@example.test", "read"), true);
+  equal(await service.canAccessManagedStudent("two@example.test", "student@example.test", "write"), true);
+  const restricted = command(1, "regular", "two@example.test"); restricted.grants.active.write = false;
+  await service.saveTrainerAccessSettings(restricted);
+  equal(await service.canAccessManagedStudent("two@example.test", "student@example.test", "read"), true);
+  equal(await service.canAccessManagedStudent("two@example.test", "student@example.test", "write"), false);
+  await db.exec("update cohorts set status='archived'");
+  equal(await service.canAccessManagedStudent("two@example.test", "student@example.test", "read"), false);
+  await db.exec("update cohorts set status='active'; insert into cohorts values ('7','archived','cohort'); insert into users values ('student@example.test','trainee','archived','7','7기','prior-sheet','2025-01-01')");
+  equal(await service.canAccessManagedStudent("two@example.test", "student@example.test", "read"), false);
+  const selected = { email: "student@example.test", spreadsheetId: "selected-sheet", cohort: "8", courseStart: "2026-09-04" };
+  equal(await service.canAccessManagedStudent("two@example.test", selected, "read"), true);
+  equal(await service.canAccessManagedStudent("two@example.test", selected, "write"), false);
+  equal(await service.canAccessManagedStudent("two@example.test", { ...selected, spreadsheetId: "prior-sheet", cohort: "7", courseStart: "2025-01-01" }, "read"), false);
+  equal(await service.canAccessManagedStudent("two@example.test", { ...selected, spreadsheetId: "stale-sheet" }, "read"), false);
+  await db.exec("update trainer_qualifications set status='revoked' where email='two@example.test'");
+  equal(await service.canAccessManagedStudent("two@example.test", selected, "read"), false);
   const result = { result: "PASS", assertions, engine: "PGlite PostgreSQL", syntheticOnly: true,
     concurrency: "overlapping calls serialized by fixture connection lease; real SQL CAS and transaction tested; multi-connection row-lock timing NOT_RUN" };
   writeFileSync(join(output, "postgres-result.json"), JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));
