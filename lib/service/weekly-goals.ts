@@ -117,11 +117,17 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
     const end = fmtISO(addDays(parseISO(start), 6));
     return { week: number, start, end, record: saved, actuals: weeklyGoalActuals(sales, meetings, payments, start, end) };
   };
+  // Same metric definitions, widened to week 1 … end of the previous week. Week 1 has no history.
+  const firstStart = fmtISO(friOf(parseISO(key.courseStart)));
+  const cumulative = week > 1
+    ? weeklyGoalActuals(sales, meetings, payments, firstStart, fmtISO(addDays(parseISO(previousStart), 6)))
+    : { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 };
   // Explicit public projection: never spread User (tokens) or private record into a response.
   return {
     student: { email: u.email, name: u.name, cohort: u.cohort, courseStart: u.courseStartISO, region: u.team, trainers },
     current: weekData(key.weekStart, week, record),
     previous: previous ? weekData(previousStart, week - 1, previous) : null,
+    cumulative,
     canReadInternal: a.internal,
   };
 }
