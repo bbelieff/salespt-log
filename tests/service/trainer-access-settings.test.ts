@@ -15,6 +15,15 @@ beforeEach(() => {
   mocks.lock.mockImplementation(async (_email, fn) => fn({ qualification, read: mocks.read, save: mocks.save }));
 });
 describe("admin trainer access service", () => {
+  it("grade change preserves requested active read-only grants", async () => {
+    mocks.read.mockResolvedValue({ grade: "senior", grants: defaultTrainerGrants("senior"), version: 2 });
+    const grants = defaultTrainerGrants("regular");
+    grants.active.write = false;
+    await saveTrainerAccessSettings({ ...command("regular"), grants, version: 2 });
+    expect(mocks.save).toHaveBeenCalledWith(
+      { ...command("regular"), grants, version: 2 }, "admin@example.test",
+    );
+  });
   it("unclassified active trainer has no implicit grade or grants", async () => {
     expect(await listTrainerAccessSettings()).toEqual([{ ...qualification, grade: null, grants: defaultTrainerGrants(null), version: 0 }]);
   });
@@ -42,10 +51,10 @@ describe("admin trainer access service", () => {
     await expect(saveTrainerAccessSettings(input)).rejects.toMatchObject({ status: 400 });
     expect(mocks.lock).not.toHaveBeenCalled();
   });
-  it("grade downgrade resets defaults and uses authenticated audit actor", async () => {
+  it("grade downgrade preserves full restriction and authenticated audit actor", async () => {
     mocks.read.mockResolvedValue({ grade: "senior", grants: defaultTrainerGrants("senior"), version: 2 });
     await saveTrainerAccessSettings({ ...command("regular"), grants: defaultTrainerGrants(null), version: 2 });
-    expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ grade: "regular", grants: defaultTrainerGrants("regular"), version: 2 }), "admin@example.test");
+    expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ grade: "regular", grants: defaultTrainerGrants(null), version: 2 }), "admin@example.test");
   });
   it("same-grade read-only edit is retained", async () => {
     mocks.read.mockResolvedValue({ ...command(), version: 2 });
