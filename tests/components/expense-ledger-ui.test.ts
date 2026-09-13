@@ -4,7 +4,7 @@ import * as React from "react";
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
+import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
 import ExpenseCategoryPicker from "@/components/dashboard/expense-ledger/ExpenseCategoryPicker";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import type { RecognizedExpense } from "@/types/expense-ledger";
@@ -87,7 +87,7 @@ vi.mock("@/query/expense-ledger-hooks", () => {
     useRecurringRuleAction: idleMutation,
   };
 });
-const bannerProps = {
+const financeProps = {
   dbCostTotal: 3_000,
   additionalCost: 500 as number | null,
   onOpenExpenseLedger: vi.fn(),
@@ -166,7 +166,7 @@ afterEach(() => {
 describe("expense ledger dashboard UI", () => {
   it("uses a labeled native button as the cost-card trigger", () => {
     const onOpenExpenseLedger = vi.fn();
-    const view = render(createElement(DashboardProgressBanner, { ...bannerProps, onOpenExpenseLedger }));
+    const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, onOpenExpenseLedger }));
     const trigger = view.querySelector<HTMLButtonElement>('button[aria-label="비용 추가하기: 비용 원장 열기"]');
     expect(trigger).not.toBeNull();
     expect(trigger?.type).toBe("button");
@@ -175,7 +175,7 @@ describe("expense ledger dashboard UI", () => {
   });
 
   it("does not fabricate a complete additional-cost amount when it is unavailable", () => {
-    const view = render(createElement(DashboardProgressBanner, { ...bannerProps, additionalCost: null }));
+    const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, additionalCost: null }));
     expect(view.textContent).toContain("추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.");
     expect(view.textContent).not.toContain("추가 비용 ₩");
     expect(view.textContent).toContain("DB 비용 합계 ₩3,000");

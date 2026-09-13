@@ -1,22 +1,4 @@
-/**
- * TopHeader — 모든 (app) 탭 상단 공통 헤더.
- *
- * 구성: 모바일 첫 행 56px + 메타 40px, 데스크탑 56px; 페이지 배너 48px.
- * 모바일 전체 sticky stack 144px, 데스크탑 104px.
- * 기존 구성:
- *   [로고 png] [경영일지] [D-day] [{기수} {이름} 대표님]
- *
- * 로고는 /public/salespt-logo.png — 워드마크가 이미 포함되어 있어서
- * "세일즈PT" 텍스트는 별도 표시하지 않고 "경영일지"만 표기.
- *
- * 반응형 (2026-05-16 갱신 — 모바일에서 이름 truncate 방지 우선):
- *   - xs~xl (360~480, 모든 폰): "경영일지" **숨김** → 사용자명이 화면 폭 최대로 표시
- *     (로고 워드마크에 "세일즈PT" 가 이미 포함되어 의미 중복 해소)
- *   - 2xl+ (768+, 태블릿/데스크탑): "경영일지" 표시 (폭 여유)
- *   tailwind.config.ts 의 커스텀 screens: sm=390 / xl=480 / 2xl=768 — 폰은 sm~xl 범위.
- *
- * 사용처: contact / schedule / calendar / payment / db 5개 페이지.
- */
+/** 공용 한 줄 헤더(3.5rem) + 페이지 배너(3rem). D-day는 대시보드 진행 박스 우측. */
 "use client";
 
 import Link from "next/link";
@@ -26,7 +8,6 @@ import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
 import { useAnnouncements } from "@/query/announcements-hook";
-import DDayBadge from "./DDayBadge";
 import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
@@ -115,22 +96,22 @@ export default function TopHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-50 h-24 border-b border-gray-100 bg-white 2xl:h-14">
-        <PageContainer width="wide" className="flex h-full flex-wrap items-center justify-between gap-x-2 px-2 sm:px-3">
-          <button type="button" onClick={()=>setPopupOpen(v=>!v)} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기">
+      <header className="sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
+        <PageContainer width="wide" className="flex h-full flex-nowrap items-center justify-between gap-x-2 px-2 sm:px-3">
+          <button type="button" onClick={()=>setPopupOpen(v=>!v)} className="flex h-11 shrink-0 items-center" aria-label="계정 메뉴 열기">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/salespt-logo.png" alt="세일즈PT" className="h-6 w-auto sm:h-7" />
+            <img src="/salespt-logo.png" alt="세일즈PT" className="h-5 w-auto sm:h-6" />
             {hasNews && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label="새소식 있음" />}
           </button>
-          <div className="order-2 ml-auto flex shrink-0 items-center gap-1 2xl:order-3">
-            <Link href={trainer.data?.canTrainer && !trainer.data.canStudent ? "/trainer" : "/dashboard"} className="inline-flex h-11 items-center rounded-lg border border-brand-red px-2 text-xs font-bold text-brand-red">대시보드</Link>
-            <RoleViewSwitch modeHint={roleMode} />
+          {/* 가운데 사용자 식별 — 1줄에서 가장 늘어나는 영역이라 min-w-0 + truncate 필수 */}
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            {me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
+              : <span className="min-w-0 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
           </div>
-          <div className="order-3 flex h-10 w-full min-w-0 items-center justify-between gap-2 2xl:order-2 2xl:h-14 2xl:w-auto">
-            {me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-bold text-gray-900">{display}</a>
-              : <span className="truncate text-xs font-bold text-gray-900">{trainer.data?.name && display === "—" ? trainer.data.name : display} 경영일지</span>}
-            {trainer.data?.impersonating && <span className="shrink-0 text-xs font-bold text-red-700">대리 접속 중</span>}
-            <DDayBadge graduationISO={me.data?.graduationISO} />
+          {/* 우측 액션 그룹 — 대시보드 버튼(44px) + 역할 전환(44px) + 새소식 점. 1줄 보장 */}
+          <div className="flex shrink-0 items-center gap-1">
+            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex h-11 shrink-0 items-center rounded-lg border border-brand-red px-2 text-xs font-bold text-brand-red">대시보드</Link>
+            <RoleViewSwitch modeHint={roleMode} />
           </div>
         </PageContainer>
       </header>
@@ -277,10 +258,10 @@ export default function TopHeader({
       )}
 
       {/* Admin/Trainer 상태바 제거 — TopHeader 가 이미 impersonation 대상의
-            cohort·이름·D-day 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
+            cohort·이름 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
       {/* 페이지 배너 — 배경 full-bleed + 내용 6xl 중앙정렬 */}
-      <div className="sticky top-24 z-40 2xl:top-14 h-12 border-b border-slate-200 bg-slate-100">
+      <div className="sticky top-app-header z-40 h-12 border-b border-slate-200 bg-slate-100">
         <PageContainer
           width="wide"
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"

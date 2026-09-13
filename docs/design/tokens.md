@@ -208,22 +208,31 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 
 ## Z-Index & Sticky 적층 ⭐
 
-화면에 sticky/fixed 요소가 여럿일 때 순서·top 좌표를 고정한다. 각 페이지는 이 표대로만 쌓는다.
+화면에 sticky/fixed 요소가 여럿일 때 다음 rem 토큰으로 높이와 top 좌표를 맞춘다. 정본은 `tailwind.config.ts > theme.extend.spacing`이다.
+
+| 토큰 | rem | 모바일·태블릿(루트 16px) | PC 1024px+(루트 13.5px) | 사용 |
+|---|---|---|---|---|
+| `app-header` | 3.5rem | 56px | 47.25px | `h-app-header`, `top-app-header` |
+| `app-content` | 6.5rem | 104px | 87.75px | 브랜드 바 + 페이지 배너(3rem), `top-app-content` |
+| `app-calendar-panel` | 11.25rem | 180px 환산 | 151.875px | 헤더6.5 + 월 이동4.25 + 여백0.5rem. PC 캘린더 상세 패널의 `pc:top-app-calendar-panel` |
 
 | 레이어 | 컴포넌트 | z-index | top | 높이 |
 |---|---|---|---|---|
-| 1 (최상단) | `TopHeader` (슬림 브랜드 바) | `z-50` | `top-0` | `h-12` (48px) |
-| 2 | 페이지 배너 (TopHeader 내부 `<div>`. 일정·계약은 `WeekHeader + SummaryBar` wrapper로 변형) | `z-40` | `top-12` (48px) | 가변 |
-| 3 | 대시보드 메인 배너 (`DashboardProgressBanner` — 대시보드 페이지 한정) | `z-30` | `top-24` (96px) | `h-12+` |
-| 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상 (별도) | — | — |
-| 0 | 본문 `main` | (없음) | — | — |
-| -1 | `BottomNav` (모바일) | `z-50` (fixed bottom) | bottom-0 | `h-[60px]` |
+| 1 | `TopHeader` 브랜드 바 | `z-50` | `top-0` | `h-app-header` 3.5rem, 모든 폭에서 한 줄 |
+| 2 | 페이지 배너(TopHeader 내부) | `z-40` | `top-app-header` | `h-12` 3rem |
+| 3 | 대시보드 날짜·진행 래퍼 / 컨택 주차 헤더 / 일정 WeekHeader + SummaryBar / 캘린더 월 이동 / 수납 검색 | `z-30` | `top-app-content` | 내용에 따라 가변 |
+| 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상(별도) | — | — |
+| 0 | 본문 `main`, 대시보드 매출·비용·영업이익 | 없음 | — | 일반 흐름 |
+| -1 | `BottomNav`(모바일) | `z-50`(fixed bottom) | bottom-0 | `h-[60px]` |
 
 **규칙**:
-- 페이지 배너가 두 영역(예: WeekHeader + SummaryBar)이라도 **반드시 한 부모에 묶어 단일 sticky**.
-  자식 각각에 `sticky`를 주면 스크롤 시 약간 어긋남(drift) 발생 — 수정 이력 PR #198da19.
-- `top-12`는 슬림 바 높이와 1:1 매칭 — 슬림 바 높이를 바꾸면 이 값도 동시에 바꾼다.
-- 모달은 별도 z-stack(`z-50` 이상). 슬림 바를 가려야 정상.
+
+- 모바일·태블릿·PC 모두 한 줄 브랜드 바와 페이지 배너를 사용한다. 사용자명 두 번째 행이나 모바일 전용 144px offset을 두지 않는다.
+- `h-app-header`와 `top-app-header`는 같은 토큰을 공유한다. 페이지별 sticky는 브랜드 바와 배너 높이의 합인 `top-app-content`를 사용한다.
+- PC의 실제 px는 전역 루트 13.5px로 환산한다. `104px`·`168px`을 CSS에 고정하면 rem 헤더와 어긋나므로 토큰으로 지정한다. PC 캘린더 상세는 `top-app-calendar-panel`로 월 이동 영역 아래에 둔다.
+- 일정의 WeekHeader + SummaryBar처럼 함께 고정할 영역은 한 부모에 묶는다. 대시보드도 페이지 래퍼만 sticky이며 `DashboardProgressBanner` 자체에는 중복 지정하지 않는다.
+- D-day는 대시보드 진행 영역 우측에 둔다. 매출·비용·영업이익은 일반 본문에서 함께 스크롤하며 고정 영역에 포함하지 않는다.
+- 모달은 별도 z-stack(`z-50` 이상)을 사용한다.
 
 ### Overlay 토큰 (전역 로딩 팝업 — loading-overlay) ⭐
 `LoadingOverlay` 의 글래스·글로우·z 는 arbitrary 직박 대신 아래 값으로 고정

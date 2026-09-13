@@ -7,6 +7,15 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-14 · [병렬트랙] Codex 수강생 대시보드 7개 피드백
+- 작업 STUDENT-DASHBOARD-260913 · fix/student-dashboard-followup-260913 · base fb1f4e0. 기존 dashboard-v4 초안 승계는 사용자 승인, 원본 보존.
+- 소유: 공용 헤더·높이 소비처·대시보드 재무/진행·주간목표 요약·관련 테스트/디자인 정본. 권한/Drive 작업과 데이터 변경 없음.
+- 한 줄 헤더와 /dashboard 링크, rem sticky 간격, D-day 우측, 재무 3종 본문 그룹, 현재 주 기본과 과거 탐색 반영.
+- 운영 이전 간격 16.25px 재현. 합성 320–1920px 6개 폭 간격0·한줄·가로넘침 없음; 모바일/PC 스크롤과 주차 왕복·날짜/학생 초기화·503 재시도 통과.
+- check.sh 통과(구조41 + 단위/통합1803, 기존42 skip). 상세: docs/qa/student-dashboard-followup.md. 최종 커밋/CI/배포 확인 이어서 진행.
+- Muse Spark HTTP402로 위임 결과 없음. 별도 Codex 읽기 리뷰·문서 갱신으로 보완. 성능 #882 완료 주장은 없음.
+
+
 ### 2026-09-11 · OG #959 실제 PostgreSQL 경합 검증
 - DH가 fb597f9의 기존 3건 해소 확인. 추가 요구한 독립 DB 연결 경합은 격리 socket-only PostgreSQL16.15로 5건 모두 PASS(exit0).
 - 승인↔취소/수락↔폐기 양순서·중복수락: 서로 다른 backend, advisory lock 대기와 blocker를 실측. 반복 활성 쓰기 1회 검증. 실제 운영 DB/학생/자격증명 사용 없음.
