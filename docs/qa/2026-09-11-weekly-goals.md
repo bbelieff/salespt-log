@@ -65,6 +65,13 @@ OG REWORK 보강: 공용/내부 명시 student 누락·빈칸 저장 거절; 동
 
 화면 증거: [PC](weekly-goals-evidence/desktop.png), [모바일](weekly-goals-evidence/mobile.png). 전부 가상 인물·가상 날짜이며 production 코드에는 fixture 역할 선택·고정 날짜·localStorage 저장을 넣지 않았다.
 
+> **경고 (수리1 · `fix/weekly-goal-tab`).** 아래 브라우저 스크립트는 수리1 이전 UI 기준이다.
+> 수리1에서 '지난주와 비교' / '이번 주 목표·PT과제' 두 박스가 '목표달성 및 수립' 하나로 합쳐지고,
+> 트레이너 기록 토글('트레이너 기록 열기' / '함께 보기')과 '지난주 목표·과제 가져오기'가 없어졌으며,
+> 저장이 최하단 단일 버튼으로, 복사 버튼이 '클립보드 복사'로 바뀌었다.
+> 따라서 `weekly-goals-browser.mjs` / `weekly-goals-private-browser.mjs` 의 role·name 셀렉터는
+> 현재 UI와 맞지 않는다. 수리1 QA 전에 새 UI 기준으로 다시 작성해야 한다.
+
 ## 재현
 
 프로젝트 npm ci 후, 별도 임시 도구 디렉터리에 playwright1.63.0 및 @electric-sql/pglite0.5.8을 설치했다. 제품 package/lockfile은 변경하지 않았다. QA_TOOLS_DIR은 그 디렉터리를 지정하는 해당 프로세스 환경변수다.

@@ -49,6 +49,8 @@ export interface WeeklyGoalView {
   student: { email: string; name: string; cohort: string; courseStart: string; region: string; trainers: string[] };
   current: GoalWeek;
   previous: GoalWeek | null;
+  /** Week 1 through the end of the previous week. Basis for the cumulative back-calculation. */
+  cumulative: GoalActuals;
   canReadInternal: boolean;
 }
 export interface GoalStudent {
