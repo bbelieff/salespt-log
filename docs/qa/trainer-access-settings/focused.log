@@ -1,0 +1,14 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 C:/Users/Public/Documents/ESTsoft/CreatorTemp/trainer-access-settings-verify
+
+ ✓ tests/util/trainer-access-policy.test.ts (166 tests) 34ms
+ ✓ tests/repo/trainer-access-settings.test.ts (4 tests) 15ms
+ ✓ tests/service/trainer-access-settings.test.ts (30 tests) 32ms
+ ✓ tests/api/trainer-access-settings.test.ts (14 tests) 20ms
+
+ Test Files  4 passed (4)
+      Tests  214 passed (214)
+   Start at  18:43:06
+   Duration  1.64s (transform 429ms, setup 120ms, collect 1.50s, tests 101ms, environment 1ms, prepare 1.02s)
+

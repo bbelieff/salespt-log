@@ -1,0 +1,583 @@
+
+▶ typecheck (tsc --noEmit)
+
+▶ lint (next lint)
+`next lint` is deprecated and will be removed in Next.js 16.
+For new projects, use create-next-app to choose your preferred linter.
+For existing projects, migrate to the ESLint CLI:
+npx @next/codemod@canary next-lint-to-eslint-cli .
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * C:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지\wt\trainer-access-policy\package-lock.json
+
+✔ No ESLint warnings or errors
+
+▶ structural tests (tests/structural/)
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+ [32m✓[39m tests/structural/sheet-read-render-options.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/structural/build-memory-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/structural/dashboard-parity-window-ssot.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/structural/sheets-append-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 94[2mms[22m[39m
+ [32m✓[39m tests/structural/layers.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 759[2mms[22m[39m
+ [32m✓[39m tests/structural/dev-with-watch-windows.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 717[2mms[22m[39m
+   [33m[2m✓[22m[39m dev-with-watch Windows launcher[2m > [22mlaunches npx.cmd without EINVAL on Windows [33m713[2mms[22m[39m
+ [32m✓[39m tests/structural/sheets-request-path-guard.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1343[2mms[22m[39m
+   [33m[2m✓[22m[39m 시트 요청 경로 재유입 차단 게이트 (BBE-251)[2m > [22mapp/api·app/(app) 에서 도달 가능한 lib/repo 파일 중 시트 저수준 호출은 전부 화이트리스트에 등록돼 있다 [33m845[2mms[22m[39m
+   [33m[2m✓[22m[39m 시트 요청 경로 재유입 차단 게이트 (BBE-251)[2m > [22m화이트리스트 항목은 실제로 요청 경로에서 도달 가능하고, 시트 저수준 호출도 실제로 갖고 있다(죽은 등록 방지) [33m496[2mms[22m[39m
+ [32m✓[39m tests/structural/period-hardcode.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1845[2mms[22m[39m
+   [33m[2m✓[22m[39m strip 헬퍼 자기검증[2m > [22mstrip 전후 줄 수 불변 (전 파일) [33m406[2mms[22m[39m
+   [33m[2m✓[22m[39m G1: grad-offset 상수화 (50/57)[2m > [22mGRADUATION_OFFSET* 숫자 정의는 lib/config/cohort-dates.ts 에서만 [33m330[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[32m41 passed[39m[22m[90m (41)[39m
+[2m   Start at [22m 17:23:02
+[2m   Duration [22m 2.56s[2m (transform 279ms, setup 99ms, collect 665ms, tests 4.77s, environment 2ms, prepare 1.89s)[22m
+
+
+▶ unit/integration tests
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+ [32m✓[39m tests/ops/weekly-goals-migrate.test.ts [2m([22m[2m36 tests[22m[2m | [22m[33m22 skipped[39m[2m)[22m[90m 44[2mms[22m[39m
+ [32m✓[39m tests/components/date-input-picker.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 310[2mms[22m[39m
+ [32m✓[39m tests/query/expense-category-lifecycle-cache-r6.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 161[2mms[22m[39m
+ [32m✓[39m tests/components/cohort-create-modal-date.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 270[2mms[22m[39m
+ [32m✓[39m tests/components/trainer-assign-coalesce.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 353[2mms[22m[39m
+ [32m✓[39m tests/service/weekly-goals-identity.test.ts [2m([22m[2m35 tests[22m[2m)[22m[90m 108[2mms[22m[39m
+ [32m✓[39m tests/ops/dashboard-parity-lib.test.ts [2m([22m[2m24 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+ [32m✓[39m tests/components/expense-ledger-ui.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 1474[2mms[22m[39m
+   [33m[2m✓[22m[39m expense ledger dashboard UI[2m > [22mblocks keyboard-cleared one-time day and invalid period dates, then recovers preview and submission [33m404[2mms[22m[39m
+[90mstderr[2m | tests/service/cache-warm.test.ts[2m > [22m[2mwarmAllTraineeBundles[2m > [22m[2m② 레지스트리 조회 자체가 실패해도 던지지 않는다 — 다음 주기가 재시도
+[22m[39m[cache-warm] 대상 목록 조회 실패: registry down
+
+ [32m✓[39m tests/service/cache-warm.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 308[2mms[22m[39m
+ [32m✓[39m tests/service/dashboard-aggregates.test.ts [2m([22m[2m21 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/repo/rejoin-routing.test.ts [2m([22m[2m43 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [32m✓[39m tests/service/weekly-goals.test.ts [2m([22m[2m48 tests[22m[2m)[22m[90m 65[2mms[22m[39m
+ [32m✓[39m tests/repo/company-archive-write-sync.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m✓[39m tests/service/cohort-token.test.ts [2m([22m[2m33 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/util/trainer-access-policy.test.ts [2m([22m[2m166 tests[22m[2m)[22m[90m 25[2mms[22m[39m
+ [32m✓[39m tests/service/db-write-gate.test.ts [2m([22m[2m20 tests[22m[2m)[22m[90m 23[2mms[22m[39m
+[90mstderr[2m | tests/service/me.test.ts[2m > [22m[2menrichUsersWithStats — 파일럿/비파일럿 게이팅 + 순서 보존 병합 (BBE-64)[2m > [22m[2m파일럿 배치 DB 조회가 실패하면 그 배치 전원이 시트 경로로 폴백한다
+[22m[39m[me] profileStatsFromDb 배치 실패(2명) — 전원 sheet 경로로 폴백: pg connection reset
+
+ [32m✓[39m tests/service/me.test.ts [2m([22m[2m18 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32m✓[39m tests/service/sales-write.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 2326[2mms[22m[39m
+   [33m[2m✓[22m[39m 파일럿 DB 정본 + 행별 수렴 미러 표식[2m > [22m시트 미러 최종 실패 → 응답 성공 + markMirrorPending + sheet_mirror_error [33m1908[2mms[22m[39m
+ [32m✓[39m tests/service/todos.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 4334[2mms[22m[39m
+   [33m[2m✓[22m[39m 시트 미러 = 수렴 동기화(fire-and-forget) + 실패 격리[2m > [22m미러 실패는 저장 실패가 아님 — caller 성공 + Sentry 계수(sheet_mirror_error) [33m1912[2mms[22m[39m
+   [33m[2m✓[22m[39m mirror_pending 안전망 (§7-3)[2m > [22m시트 미러 최종 실패 → 응답 성공 + markMirrorPending(tab=todos) (해제는 호출 안 함) [33m1902[2mms[22m[39m
+ [32m✓[39m tests/service/sales-cells-flip.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 134[2mms[22m[39m
+ [32m✓[39m tests/repo/expense-category-migration-freeze-r6.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 131[2mms[22m[39m
+ [32m✓[39m tests/repo/meetings-rows-roundtrip.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [32m✓[39m tests/repo/contract-append-idempotent.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+[90mstderr[2m | tests/repo/db-course-dates.test.ts[2m > [22m[2mreadCourseDatesFromDb — spreadsheet_id 조회[2m > [22m[2m🚨 DB 쿼리 실패(커넥션 끊김 등) → throw 안 함, null 반환(시트 폴백 유지 — 적대적 리뷰 HIGH)
+[22m[39m[course-dates] DB read 실패(시트 폴백으로 진행) — spreadsheetId=sheet-1 Error: connection terminated
+    at [90mC:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지\wt\trainer-access-policy\[39mtests\repo\db-course-dates.test.ts:92:29
+    at [90mfile:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:146:14
+    at [90mfile:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:533:11
+    at runWithTimeout [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:39:7[90m)[39m
+    at runTest [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1056:17[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+    at runSuite [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1205:15[90m)[39m
+    at runSuite [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1205:15[90m)[39m
+    at runFiles [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1262:5[90m)[39m
+    at startTests [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1271:3[90m)[39m
+
+ [32m✓[39m tests/repo/db-course-dates.test.ts [2m([22m[2m22 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+[90mstderr[2m | tests/repo/company-archive-flip.test.ts[2m > [22m[2mmirror_pending 안전망 — company_archive 수렴 잡(§7-3 동형)[2m > [22m[2m시트 수렴 최종 실패 → markMirrorPending(tab=company_archive) + captureServerEvent
+[22m[39m[company-info-archive] 시트 수렴 실패 key=2026-07-10|가나상사: sheet read down
+
+ [32m✓[39m tests/repo/company-archive-flip.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 2496[2mms[22m[39m
+   [33m[2m✓[22m[39m mirror_pending 안전망 — company_archive 수렴 잡(§7-3 동형)[2m > [22m시트 수렴 최종 실패 → markMirrorPending(tab=company_archive) + captureServerEvent [33m1895[2mms[22m[39m
+ [32m✓[39m tests/service/meetings-write.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 2207[2mms[22m[39m
+   [33m[2m✓[22m[39m mirror_pending 안전망 (§7-3) — meetings[2m > [22m시트 미러 최종 실패 → 응답 성공 + markMirrorPending(tab=meetings) [33m1901[2mms[22m[39m
+ [32m✓[39m tests/repo/registry-db.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+[90mstderr[2m | tests/repo/gcal-token-db.test.ts[2m > [22m[2m① 행 존재 = 정본[2m > [22m[2mDB 조회가 throw 하면(순단) 시트로 강등 — 캘린더가 DB 장애로 끊기지 않는다
+[22m[39m[gcal-token] DB 조회 실패 → 시트 폴백 (동작은 계속): connection reset
+
+[90mstderr[2m | tests/repo/gcal-token-db.test.ts[2m > [22m[2m② lazy backfill[2m > [22m[2mbackfill 실패는 읽기를 깨뜨리지 않는다
+[22m[39m[gcal-token] DB lazy backfill 실패 (동작은 계속): db down
+
+[90mstderr[2m | tests/repo/gcal-token-db.test.ts[2m > [22m[2m③ DB 정본 + 시트 미러[2m > [22m[2m시트 미러가 실패해도 저장은 성공(DB 정본) — throw 하지 않는다
+[22m[39m[gcal-token] 시트 미러 실패 — saveGcalToken(DB 정본은 저장됨) (동작은 계속): sheets 429
+
+ [32m✓[39m tests/repo/gcal-token-db.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 22[2mms[22m[39m
+ [32m✓[39m tests/service/expense-ledger.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+[90mstderr[2m | tests/repo/gcal-event-ids-db.test.ts[2m > [22m[2mreadGcalMap — 정본 병합 + lazy backfill[2m > [22m[2mDB 조회 실패 시 시트 단독으로 계속(캘린더가 DB 장애로 멈추지 않는다)
+[22m[39m[gcal-event-ids] DB 조회 실패 → 시트 단독 (동작은 계속): db down
+
+[90mstderr[2m | tests/repo/gcal-event-ids-db.test.ts[2m > [22m[2m쓰기 — DB 정본 + 시트 미러[2m > [22m[2m시트 미러 실패는 저장 실패가 아니다(DB 정본)
+[22m[39m[gcal-event-ids] 시트 미러 실패 — setGcalEventId(DB 정본은 저장됨) (동작은 계속): sheets 429
+
+ [32m✓[39m tests/repo/gcal-event-ids-db.test.ts [2m([22m[2m18 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+ [32m✓[39m tests/service/termination-count.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/service/contact-unlimited-roundtrip.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/service/weekly-goals-overview.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 50[2mms[22m[39m
+ [32m✓[39m tests/repo/db-append-rekey.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+[90mstderr[2m | tests/service/db-overview-presence-check.test.ts[2m > [22m[2mloadDBOverview — 한 섹션이라도 빈틈 있으면 4섹션 전체 union 폴백[2m > [22m[2munion 폴백 중 시트 read 마저 실패 — DB 정본만 반환(기존보다 나쁘지 않음)
+[22m[39m[db] 매입DB read 실패 — 빈 목록으로 강등: sheets down
+
+ [32m✓[39m tests/service/db-overview-presence-check.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m tests/repo/lead-inflow-derive.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 46[2mms[22m[39m
+ [32m✓[39m tests/ops/parity-classify.test.ts [2m([22m[2m18 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m tests/service/lead-candidates.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+[90mstderr[2m | tests/service/contract-payment-write-gate.test.ts[2m > [22m[2meditContractLinkedFields — 링크/수임비 동시 편집 게이트[2m > [22m[2m비파일럿 → 둘 다 {syncDb:false}(R2 미러 불변)
+[22m[39m[gcal-sync] meeting-change m1 동기화 실패(무시): [vitest] No "findById" export is defined on the "@/repo/meetings" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+
+ [32m✓[39m tests/service/contract-payment-write-gate.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+ [32m✓[39m tests/service/lead-prefill.test.ts [2m([22m[2m21 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+ [32m✓[39m tests/service/contract-draft-sync.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m tests/api/create-cohort-members-dates.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m tests/components/record-move.test.ts [2m([22m[2m18 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [32m✓[39m tests/service/dashboard-sheet-latency.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 113[2mms[22m[39m
+ [32m✓[39m tests/service/contact-contract-cascade-sync.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32m✓[39m tests/repo/registry-mirror-isolation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 20[2mms[22m[39m
+ [32m✓[39m tests/service/arena-season-config.test.ts [2m([22m[2m26 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+[90mstderr[2m | tests/service/profile-bundle-cache.test.ts[2m > [22m[2mreadBundle — STALE 구간(10분~30분, BBE-249 핵심)[2m > [22m[2m백그라운드 갱신이 실패해도 예외를 던지지 않고 이전 값을 유지한다
+[22m[39m[me] 백그라운드 bundle 갱신 실패(spreadsheetId=sid-5): sheets 500
+
+[90mstderr[2m | tests/service/profile-bundle-cache.test.ts[2m > [22m[2mwarmBundle — BBE-242 설계서 보강(개별 상세 프리페치, fire-and-forget)[2m > [22m[2m실패해도 예외를 던지지 않는다(호출부를 안 막음) — 다음 readBundle 이 정상 재시도한다
+[22m[39m[me] warmBundle 실패(spreadsheetId=sid-warm-2): sheets 500
+
+ [32m✓[39m tests/service/profile-bundle-cache.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 47[2mms[22m[39m
+ [32m✓[39m tests/repo/expense-category-lifecycle-r6.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+ [32m✓[39m tests/api/drive-link-arena-legacy-folder.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+[90mstderr[2m | tests/repo/db-tab-sheet-sync.test.ts[2m > [22m[2mqueueDbTabRowSync — 실패[2m > [22m[2m시트 반영 3회 실패 → markMirrorPending + sheet_mirror_error 계수
+[22m[39m[db-tab-sheet-sync] 시트 수렴 실패 매입DB row=9: sheets 500
+
+ [32m✓[39m tests/repo/course-dates.test.ts [2m([22m[2m26 tests[22m[2m)[22m[90m 116[2mms[22m[39m
+ [32m✓[39m tests/ops/weekly-goals-diagnostics.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 517[2mms[22m[39m
+   [33m[2m✓[22m[39m weekly-goals actual delivery CLI failure path (synthetic catalog; no remote DB)[2m > [22mactual Node CLI exits1 with a generic error before any DB lookup for invalid inputs [33m427[2mms[22m[39m
+ [32m✓[39m tests/service/contract-termination.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 37[2mms[22m[39m
+ [32m✓[39m tests/repo/db-tab-sheet-sync.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 2502[2mms[22m[39m
+   [33m[2m✓[22m[39m queueDbTabRowSync — 실패[2m > [22m시트 반영 3회 실패 → markMirrorPending + sheet_mirror_error 계수 [33m1948[2mms[22m[39m
+ [32m✓[39m tests/ops/registry-parity-lib.test.ts [2m([22m[2m24 tests[22m[2m)[22m[90m 60[2mms[22m[39m
+ [32m✓[39m tests/util/save-coalesce.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 167[2mms[22m[39m
+ [32m✓[39m tests/api/expense-recurring-route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 23[2mms[22m[39m
+ [32m✓[39m tests/api/weekly-goals.test.ts [2m([22m[2m19 tests[22m[2m)[22m[90m 39[2mms[22m[39m
+ [32m✓[39m tests/repo/db-tab-sync.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m✓[39m tests/repo/parse-prep-text.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/service/daily-source.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+[90mstderr[2m | tests/repo/db-tab-form-overlay.test.ts[2m > [22m[2mreadDbTabFromDb — 열문자/필드명 폼 우선순위[2m > [22m[2m🐛blocker회귀 — Zod refinement 를 깨는 백필 행도 **사라지지 않는다**(렌더 보증 보존)
+[22m[39m[read-db-tab] zod 실패 — 백필 base 로 렌더 유지: 직접생산:r7
+[read-db-tab] zod 실패 — 백필 base 로 렌더 유지: 매입DB:r5
+
+ [32m✓[39m tests/repo/db-tab-form-overlay.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 44[2mms[22m[39m
+ [32m✓[39m tests/service/arena-carryover-read-gate.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+[90mstderr[2m | tests/service/company-archive-write-gate.test.ts[2m > [22m[2maddFromContract — 계약 생성 시 06 스냅샷 게이트 (R3-3 PR-2)[2m > [22m[2m파일럿 → upsertCompanyInfoArchive(…, {syncDb:true}) (자연키 멱등 안전 payload)
+[22m[39m[gcal-sync] meeting-change m1 동기화 실패(무시): error:1E08010C:DECODER routines::unsupported
+
+[90mstderr[2m | tests/service/company-archive-write-gate.test.ts[2m > [22m[2maddFromContract — 계약 생성 시 06 스냅샷 게이트 (R3-3 PR-2)[2m > [22m[2m🔒 06 스냅샷 실패해도 계약(append)은 성공 — warn 유지(비멱등 append throw 금지, #558)
+[22m[39m[contract-payment] 06 업체정보 스냅샷 실패 (계약 자체는 성공): 06 mirror down
+
+ [32m✓[39m tests/service/company-archive-write-gate.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 30[2mms[22m[39m
+ [32m✓[39m tests/repo/season-start-write.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/ops/weekly-goals-history-repair.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [32m✓[39m tests/repo/sheets-zero-calls-pilot.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 99[2mms[22m[39m
+ [32m✓[39m tests/ops/weekly-goals-delivery.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 300[2mms[22m[39m
+[90mstderr[2m | tests/repo/contract-sheet-sync.test.ts[2m > [22m[2mqueueContractRowSync — 실패[2m > [22m[2m시트 반영 3회 실패 → markMirrorPending + sheet_mirror_error 계수
+[22m[39m[contract-sheet-sync] 시트 수렴 실패 row=9: sheets 500
+
+ [32m✓[39m tests/repo/contract-sheet-sync.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 2676[2mms[22m[39m
+   [33m[2m✓[22m[39m queueContractRowSync — 실패[2m > [22m시트 반영 3회 실패 → markMirrorPending + sheet_mirror_error 계수 [33m1982[2mms[22m[39m
+ [32m✓[39m tests/ops/weekly-goals-runtime.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 3317[2mms[22m[39m
+   [33m[2m✓[22m[39m runtime and approval boundaries (synthetic; no PM2/remote access)[2m > [22mreplays installed Next production file priority and process-env precedence: false [33m802[2mms[22m[39m
+   [33m[2m✓[22m[39m runtime and approval boundaries (synthetic; no PM2/remote access)[2m > [22mreplays installed Next production file priority and process-env precedence: true [33m1097[2mms[22m[39m
+   [33m[2m✓[22m[39m runtime and approval boundaries (synthetic; no PM2/remote access)[2m > [22mallows normal post-reload build-directory cleanup with unchanged environment files [33m1389[2mms[22m[39m
+ [32m✓[39m tests/service/export-xlsx.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 71[2mms[22m[39m
+ [32m✓[39m tests/service/contract-payment-list-presence-check.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/registry-read-gate.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32m✓[39m tests/repo/db-profile-stats-batch.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m tests/service/db-read-payments.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 25[2mms[22m[39m
+ [32m✓[39m tests/format/phone.test.ts [2m([22m[2m21 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+[90mstderr[2m | tests/service/contact-company-archive-sync.test.ts[2m > [22m[2m🐛 반쪽쓰기 재현 고정 — 파일럿 06 DB 동기 실패는 삼키지 않는다[2m > [22m[2m비파일럿 + 06 미러 실패 → warn 삼킴, patchMeeting 정상 종료(04 저장 성공 불변)
+[22m[39m[contact] 06 업체정보 동기화 실패: mirror drop
+
+ [32m✓[39m tests/service/contact-company-archive-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+[90mstderr[2m | tests/service/auth-course-dates-db-write.test.ts[2m > [22m[2mclaimAccount → writeCourseDatesToDb 배선[2m > [22m[2mwriteCourseDatesToDb 가 throw 해도 claimAccount 는 정상 완료(non-blocking)
+[22m[39m[auth] course dates DB 동기화 실패(무시, Sheets 폴백 유지) — email=trainee@x.com Error: DB 연결 실패
+    at [90mC:\Users\Belief-desktop\Desktop\개발프로젝트\경영일지\wt\trainer-access-policy\[39mtests\service\auth-course-dates-db-write.test.ts:101:44
+    at [90mfile:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:146:14
+    at [90mfile:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:533:11
+    at runWithTimeout [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:39:7[90m)[39m
+    at runTest [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1056:17[90m)[39m
+[90m    at processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+    at runSuite [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1205:15[90m)[39m
+    at runSuite [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1205:15[90m)[39m
+    at runFiles [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1262:5[90m)[39m
+    at startTests [90m(file:///C:/Users/Belief-desktop/Desktop/%EA%B0%9C%EB%B0%9C%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/%EA%B2%BD%EC%98%81%EC%9D%BC%EC%A7%80/wt/trainer-access-policy/[39mnode_modules/[4m@vitest/runner[24m/dist/index.js:1271:3[90m)[39m
+
+ [32m✓[39m tests/service/auth-course-dates-db-write.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m tests/components/weekly-goal-copy.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 16[2mms[22m[39m
+ [32m✓[39m tests/service/profile-stats-db.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/repo/contracts-write-sync.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/api/expense-category-migration-freeze-r6.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 24[2mms[22m[39m
+ [32m✓[39m tests/service/production-count-sync-db-gate.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/repo/weekly-goals.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 20[2mms[22m[39m
+ [32m✓[39m tests/repo/sheet-title-match.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/service/db-read-production.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/repo/sales-course-dates-db-first.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32m✓[39m tests/repo/contract-user-fields-mirror.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/service/cohort-dates.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/service/lead-picker-prefill.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m tests/service/contract-fanout.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/contract-append-mirror.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32m✓[39m tests/repo/registry-db-cache.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/ops/backfill-sheet-rows-legacy.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/api/expense-category-lifecycle-r6.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+ [32m✓[39m tests/repo/contract-clear-by-link-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/repo/users-cache-migrate-db-backfill.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/service/cost-carryover-split.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/repo/db-tab-append-mirror.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 23[2mms[22m[39m
+ [32m✓[39m tests/service/contract-carryover-split.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 30[2mms[22m[39m
+ [32m✓[39m tests/service/db-read-meetings-banners.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32m✓[39m tests/components/work-manual-and-check.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/service/company-info-txt.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32m✓[39m tests/repo/db-client-gin-index-removed.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32m✓[39m tests/service/sheet-backfill.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/service/expense-category-lifecycle-r6.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/service/arena-parse.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/gcal-event-ids-grid.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32m✓[39m tests/repo/mirror-pending.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/sales-db-payload.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/repo/db-mirror-awaitable.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+ [32m✓[39m tests/service/cohort-sheet-profile.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m lib/analytics/index.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 81[2mms[22m[39m
+[90mstderr[2m | tests/repo/drive-client-sa-share.test.ts[2m > [22m[2mcopyTemplateSheet — SA 공유 동반 (BBE-45)[2m > [22m[2m복제 성공 시 SA 를 writer 로 공유한다
+[22m[39m[cohort-create] copyTemplateSheet {"templateId":"template-id","destFolderId":"folder-id","newId":"new-sheet-id","newTitle":"제목"}
+[cohort-create] SA 공유 추가 {"fileId":"new-sheet-id"}
+
+[90mstderr[2m | tests/repo/drive-client-sa-share.test.ts[2m > [22m[2mcopyTemplateSheet — SA 공유 동반 (BBE-45)[2m > [22m[2m★공유 실패해도 복제 결과를 그대로 반환한다 — 복제 성공을 실패로 뒤집지 않는다
+[22m[39m[cohort-create] copyTemplateSheet {"templateId":"template-id","destFolderId":"folder-id","newId":"new-sheet-id","newTitle":"제목"}
+[cohort-create] SA 공유 실패(복제는 성공 — 링크공유로 동작 중) {"fileId":"new-sheet-id","msg":"The caller does not have permission"}
+
+[90mstderr[2m | tests/repo/drive-client-sa-share.test.ts[2m > [22m[2mcopyTemplateSheet — SA 공유 동반 (BBE-45)[2m > [22m[2m이미 공유돼 있으면(already exists) 조용히 통과한다 — 재시도 멱등
+[22m[39m[cohort-create] copyTemplateSheet {"templateId":"template-id","destFolderId":"folder-id","newId":"new-sheet-id","newTitle":"제목"}
+
+ [32m✓[39m tests/repo/drive-client-sa-share.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m tests/repo/users-prep-columns.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/ops/scoreboard-parity-lib.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/service/no-sheet-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/components/identity-guard.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/service/arena-season-group.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/repo/db-row-key.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/service/expense-ledger-read-repro.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 43[2mms[22m[39m
+ [32m✓[39m tests/service/dashboard-expense-ledger.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 20[2mms[22m[39m
+ [32m✓[39m tests/repo/db-migrate.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 40[2mms[22m[39m
+ [32m✓[39m tests/service/lead-list.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 20[2mms[22m[39m
+ [32m✓[39m tests/service/announcements.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 25[2mms[22m[39m
+ [32m✓[39m tests/repo/roster-dedup.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/service/db-read-schedule.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/service/scoreboard-cache-date.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 3607[2mms[22m[39m
+   [33m[2m✓[22m[39m scoreboard 캐시 직렬화 회귀 (P0 2026-07-29)[2m > [22m캐시 히트(Date→string 강등) + 해지 계약 존재에서 번들이 성공하고 차감이 맞는다 [33m3605[2mms[22m[39m
+ [32m✓[39m tests/format/money.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+ [32m✓[39m tests/repo/db-production-count-cell.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/sales-coords.test.ts [2m([22m[2m17 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/service/weekly-goals-actuals.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m✓[39m tests/repo/db-presence-check.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m tests/repo/db-cleared-flag.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/types/lead-id-contract.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 26[2mms[22m[39m
+ [32m✓[39m tests/components/guide-url.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/components/lead-backlog.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/service/gcal-sync.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/service/db-read-calendar.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 16[2mms[22m[39m
+ [32m✓[39m tests/repo/contracts-clear-sync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m tests/service/append-updates-parse.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/service/active-anchor.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 16[2mms[22m[39m
+ [32m✓[39m tests/service/db-read-company-archive.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 33[2mms[22m[39m
+ [32m✓[39m tests/service/db-row-dirty.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [2m[90m↓[39m[22m tests/ops/training-region.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [32m✓[39m tests/components/weekly-goal-transport.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [32m✓[39m tests/service/notice-html.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 178[2mms[22m[39m
+ [32m✓[39m tests/repo/company-info-archive.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/cohort-pending.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/api/arena-season-start-route.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/app/admin-cohorts-read-only.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/auth/writable-user.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/repo/registry-read-fallback.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m tests/service/payment-progress.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/repo/expense-ledger-date-mapper.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 54[2mms[22m[39m
+ [32m✓[39m tests/repo/gcal-crypto.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m tests/api/dashboard-auth-response.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m tests/repo/week-parse.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/ops/backfill-db-row-numbers.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/service/daily-move.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/api/expense-error-response.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 44[2mms[22m[39m
+[90mstderr[2m | tests/repo/drive-sa-share-unit.test.ts[2m > [22m[2mshareWithServiceAccount[2m > [22m[2m전달받은 client 로 SA 를 writer 공유하고 새 클라이언트를 만들지 않는다
+[22m[39m[cohort-create] SA 공유 추가 {"fileId":"file-1"}
+
+[90mstderr[2m | tests/repo/drive-sa-share-unit.test.ts[2m > [22m[2mshareWithServiceAccount[2m > [22m[2m다른 이유로 실패해도 throw 하지 않는다(경고만)
+[22m[39m[cohort-create] SA 공유 실패(복제는 성공 — 링크공유로 동작 중) {"fileId":"file-1","msg":"The caller does not have permission"}
+
+ [32m✓[39m tests/repo/drive-sa-share-unit.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/ops/weekly-goals-migrate-client.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 31[2mms[22m[39m
+ [32m✓[39m tests/api/gcal-callback-failure-kinds.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/repo/preferred-row.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/repo/db-read-tab-uuid-row.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/repo/active-arena-row.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/repo/name-match.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m tests/service/gcal-guard.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/repo/company-info.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m✓[39m tests/util/weekly-goal-proposal.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m tests/service/dashboard.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m tests/service/db-row-key.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/repo/num-cell.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/repo/gcal-token.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m tests/types/db-vat-flag.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m tests/service/db-production-aggregate.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m lib/pricing.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/util/weekly-goal-navigation.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m tests/service/auth-arena-guard.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 38[2mms[22m[39m
+ [32m✓[39m tests/components/meeting-conflicts.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/auth/dev-stub.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m tests/repo/registry-append.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m tests/service/scoreboard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32m✓[39m tests/service/direct-production-overlap.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m183 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (185)[39m
+[2m      Tests [22m [1m[32m1876 passed[39m[22m[2m | [22m[33m37 skipped[39m[90m (1913)[39m
+[2m   Start at [22m 17:23:07
+[2m   Duration [22m 64.78s[2m (transform 13.45s, setup 760ms, collect 258.71s, tests 30.95s, environment 13.64s, prepare 42.95s)[22m
+
+
+▶ file size cap (500 lines)
+  ✔ all files ≤ 500 lines
+
+▶ doc drift
+▶ A. components/ → components.md
+  ✔ Analytics
+  ✔ AnnouncementsGate
+  ✔ MarkdownView
+  ✔ NewBadge
+  ✔ NoticeContentView
+  ✔ NoticePopup
+  ✔ RichContentView
+  ✔ RichNoticeEditor
+  ✔ UpdateAccordion
+  ✔ AdminUserPicker
+  ✔ AdminUserPickerSections
+  ✔ ArenaCaptainToggle
+  ✔ ArenaCarryoverButton
+  ✔ ArenaCohortBoard
+  ✔ ArenaCreateModal
+  ✔ ArenaSeasonGroups
+  ✔ BulkReserveButton
+  ✔ CohortCategoryBoxes
+  ✔ CohortCreateModal
+  ✔ CohortMgmtPanel
+  ✔ CohortPendingRetryButton
+  ✔ IdentityGuard
+  ✔ ImpersonationBanner
+  ✔ LoginScene
+  ✔ LogoutButton
+  ✔ MigrateCacheButton
+  ✔ PendingApprovalScreen
+  ✔ PersistentDetails
+  ✔ ScoreboardRefreshButton
+  ✔ SeasonStartInput
+  ✔ SortableList
+  ✔ SortableTraineeBox
+  ✔ TraineeCard
+  ✔ TraineePrepBulkForm
+  ✔ TrainerAssignCard
+  ✔ TrainerCohortView
+  ✔ TrainerMgmtManagement
+  ✔ TrainerMgmtPanel
+  ✔ TrainerMgmtSections
+  ✔ TrainerPlayerToggle
+  ✔ UnifiedPrepCard
+  ✔ WebviewWarning
+  ✔ CarryoverBadge
+  ✔ CompanyInfoContractSection
+  ✔ CompanyInfoEditor
+  ✔ ChannelPerformance
+  ✔ DashboardProgressBanner
+  ✔ ExpenseCategoryPicker
+  ✔ ExpenseLedgerDialog
+  ✔ ExpenseLedgerTable
+  ✔ FinanceSummaryBoxes
+  ✔ FunnelChart
+  ✔ OperatingProfitCard
+  ✔ ProductivityIndicators
+  ✔ WeeklyDualChart
+  ✔ DDayBadge
+  ✔ DirtyGuard
+  ✔ PageContainer
+  ✔ PullToRefresh
+  ✔ AwardPodium
+  ✔ CohortSummaryBoard
+  ✔ ScoreboardView
+  ✔ TabBar
+  ✔ TopHeader
+  ✔ ChannelBadge
+  ✔ CrossTabHintModal
+  ✔ DateInputCustom
+  ✔ LoadingOverlay
+  ✔ LoadingProvider
+  ✔ MetricStepper
+  ✔ MoneyInput
+  ✔ PhoneInput
+  ✔ TimePicker15
+  ✔ TimeSelectPair
+  ✔ GoalCompactMetrics
+  ✔ GoalCopyPanel
+  ✔ GoalDraftTools
+  ✔ GoalInternalEditor
+  ✔ GoalRings
+  ✔ TrainerGoalOverview
+  ✔ WeeklyGoalEditor
+  ✔ WeeklyGoalPage
+  ✔ WeeklyGoalSummary
+
+▶ B. app/(app)/_components/ → components.md
+  ✔ GcalConnectCard
+  ✔ GcalItemToggle
+  ✔ GeneralEventModal
+  ✔ MonthGrid
+  ✔ TodoDayCard
+  ✔ TodoTypeIcon
+  ✔ ChannelTabsAndPanel
+  ✔ ContactResultModals
+  ✔ LeadPickerModal
+  ✔ MeetingDirtyGuard
+  ✔ MeetingPickerModal
+  ✔ MeetingSlotCard
+  ✔ MeetingSlotItem
+  ✔ MeetingSlotList
+  ✔ MetricComparison
+  ✔ RecordMoveModal
+  ✔ record-move-options
+  ✔ RecordMoveReceipt
+  ✔ RecordMoveReview
+  ✔ SaveBar
+  ✔ SaveConfirmModal
+  ✔ WeekHeader
+  ✔ ChannelTabs
+  ✔ ConfirmModal
+  ✔ DbNudgeBanner
+  ✔ OverallCard
+  ✔ RowCard
+  ✔ RowForm
+  ✔ RowList
+  ✔ SummaryCard
+  ✔ CheckboxList
+  ✔ CompanySearchBar
+  ✔ ContractRow
+  ✔ DeleteConfirmModal
+  ✔ DriveLinkBar
+  ✔ LinkedFieldsEditor
+  ✔ nameHighlight
+  ✔ PaymentSlotForm
+  ✔ PaymentSortControl
+  ✔ PriorContractRegister
+  ✔ PriorContractSection
+  ✔ TerminationArchive
+  ✔ TerminationModal
+  ✔ TodoFormModal
+  ✔ TodoSection
+  ✔ AddMeetingForm
+  ✔ BasicEditDetails
+  ✔ CancelForm
+  ✔ ContractForm
+  ✔ DaySection
+  ✔ DoneForm
+  ✔ MeetingResultCard
+  ✔ RescheduleForm
+  ✔ SummaryBar
+  ✔ WeekBody
+  ✔ WeekFallback
+  ✔ WeekHeader
+
+▶ C. lib/types exports → data-model.md
+  ✔ AmountWon
+  ✔ CategoryName
+  ✔ Channel
+  ✔ ChannelDailyRow
+  ✔ CompanyInfo
+  ✔ ContractPayment
+  ✔ DashboardChannelMatrix
+  ✔ DashboardCostBreakdown
+  ✔ DashboardKPI
+  ✔ DashboardView
+  ✔ DashboardWeeklyPoint
+  ✔ DBBanner
+  ✔ DBLead
+  ✔ DBProduction
+  ✔ DBPurchase
+  ✔ DeleteExpenseCategoryResult
+  ✔ ExpenseCategory
+  ✔ ExpenseCategoryUsage
+  ✔ ExpenseEntry
+  ✔ ExpenseId
+  ✔ ExpenseLedgerView
+  ✔ ExpenseName
+  ✔ ExpenseQuery
+  ✔ ExpenseReclassificationRef
+  ✔ GoalOverviewRow
+  ✔ GoalStudent
+  ✔ GoalWeek
+  ✔ IsoDate
+  ✔ IsoMonth
+  ✔ Meeting
+  ✔ MeetingState
+  ✔ MetricKey
+  ✔ NormalizedTrainerActor
+  ✔ NormalizedTrainerStudent
+  ✔ Notice
+  ✔ NoticeAudience
+  ✔ NoticeDisplayMode
+  ✔ PatchRecurringRuleBody
+  ✔ PaymentSlot
+  ✔ Progress
+  ✔ RankingEntry
+  ✔ RankingMetric
+  ✔ ReclassifyUnclassifiedBody
+  ✔ ReclassifyUnclassifiedResult
+  ✔ RecurringRule
+  ✔ Todo
+  ✔ TodoType
+  ✔ UpdateItem
+  ✔ User
+  ✔ WeeklyGoalInput
+  ✔ WeeklyGoalKey
+  ✔ WeeklyGoalPrivateInput
+  ✔ WeeklyGoalPrivateRecord
+  ✔ WeeklyGoalRecord
+  ✔ WeeklyGoalValues
+  ✔ WeeklyGoalView
+
+▶ D. SHEET_RANGES.* keys → sheet-structure.md
+  ✔ companyInfoArchive
+  ✔ contractPayment
+  ✔ dashboard
+  ✔ dbManagement
+  ✔ meetings
+  ✔ notices
+  ✔ sales
+  ✔ todos
+  ✔ updates
+
+✅ doc-drift PASSED
+
+▶ active plan present
+
+
+▶ worktree hygiene
+  ⚠ 워크트리 53개 (권장 ≤ 12) · node_modules 보유 8개
+    머지 끝난 것부터 정리하세요 (CLAUDE.md §6.9):
+      git worktree list                     # 등록분 확인
+      rm -rf wt/<이름>/node_modules          # 용량만 회수(npm ci 로 복구)
+      git worktree remove wt/<이름> && git worktree prune
+    근거: 2026-08-20 워크트리 82개로 하드 고갈 (BBE-254)
+✅ check.sh PASSED
