@@ -35,9 +35,9 @@ export default function RoleViewSwitch({modeHint}:{modeHint?:ViewRole}) {
     } catch(e) {setError(e instanceof Error ? e.message : "화면 전환에 실패했습니다.");setBusy(false);}
   };
   return <div className="relative shrink-0">
-    <div role="group" aria-label="접속 역할" className="flex rounded-lg bg-gray-100 p-1">
+    <div role="group" aria-label="접속 역할" className="flex rounded-lg bg-gray-100 p-0.5">
       {(["student","trainer"] as const).map(role=><button key={role} type="button" disabled={busy} aria-pressed={role===mode && !data.impersonating} onClick={()=>guard(()=>void go(role))}
-        className={`h-11 rounded-md px-2 text-xs font-bold disabled:opacity-50 ${role===mode && !data.impersonating ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-200"}`}>{role === "student" ? "수강생" : "트레이너"}</button>)}
+        className={`h-11 min-w-11 rounded-md px-2 text-xs font-bold disabled:opacity-50 ${role===mode && !data.impersonating ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-200"}`}>{role === "student" ? "수강생" : "트레이너"}</button>)}
     </div>
     {error && <p role="alert" className="absolute right-0 top-full w-56 rounded bg-white p-2 text-xs text-red-700 shadow">{error}</p>}
   </div>;
