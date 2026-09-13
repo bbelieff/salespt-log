@@ -975,7 +975,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 
 - 대시보드 화면에서도 같은 링크를 유지한다. `/` 또는 `/trainer`로 조건부 치환하거나 비활성 라벨로 바꾸지 않는다.
 - 로고와 액션은 `shrink-0`, 사용자명은 가용 폭에 맞춰 줄인다. 사용자명 두 번째 행은 없다.
-- 로고·대시보드·역할 버튼은 `h-11`(2.75rem, 모바일 44px). PC에서는 전역 루트 스케일이 적용된다.
+- 로고·역할 버튼은 `h-11`(모바일 44px). 대시보드는 기존 메뉴 복귀와 같은 연한 붉은 알약형(`rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700`)으로 `← 대시보드`를 표시한다. 투명한 링크 클릭 영역은 `min-h-11`로 유지하고 내부 pill을 수직 중앙에 배치한다. 별도 대시보드 아이콘·큰 사각 박스는 사용하지 않는다. PC에서는 전역 루트 스케일이 적용된다.
 - 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 헤더 문구 제거가 대리접속 권한이나 계정 전환 동작을 바꾸지 않는다.
 - 적층은 `sticky top-0 z-50`; 페이지 배너는 `sticky top-app-header z-40`이다.
 
@@ -1019,6 +1019,8 @@ app/(app)/dashboard/page.tsx
     생산성 + WeeklyGoalSummary / FunnelChart
     WeeklyDualChart / ChannelPerformance
 ```
+
+대시보드 상단 카드 묶음은 PC에서 좌측 `생산성 + 주간 목표`와 우측 `영업 퍼널`의 위·아래 끝을 맞춘다. 주간 목표와 퍼널은 `rounded-2xl bg-white p-3 shadow-sm`을 사용하고, 주간 목표 제목은 다른 카드와 같은 `h-5 w-1` 민트(`teal-400`) 강조선을 둔다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
 ### 9-1. DashboardProgressBanner
 

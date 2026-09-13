@@ -150,12 +150,11 @@ export default function DashboardPage() {
               />
             </section>
 
-            {/* 상단 2+1: 좌[생산성 + 주간 목표] / 우[퍼널(길게)].
-                items-start 로 좌 카드가 퍼널 높이만큼 늘어나 비던 문제 해소. */}
-            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0">
+            {/* 좌측 두 카드와 우측 퍼널의 위아래 끝을 맞춘다. */}
+            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-stretch pc:gap-3 pc:space-y-0">
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0">
                 <ProductivityIndicators matrix={dash.data.channelMatrix} />
-                <WeeklyGoalSummary className="" />
+                <WeeklyGoalSummary className="pc:flex-1" />
               </div>
               <FunnelChart matrix={dash.data.channelMatrix} />
             </div>
