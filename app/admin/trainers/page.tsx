@@ -21,6 +21,8 @@ import {
 } from "@/repo/users";
 import TrainerInvites from "@/components/auth/TrainerInvites";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
+import TrainerAccessEditor from "@/components/auth/TrainerAccessEditor";
+import { listTrainerAccessSettings } from "@/service/trainer-access-settings";
 
 // /admin/users 와 동일한 정책 — force-dynamic. self-claim/admin 액션 직후
 // 즉시 반영. (2026-05-12 캐시 stale 사고 후속)
@@ -30,6 +32,9 @@ export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) redirect("/");
   const viewOnly = !isAdminEmail(sessionEmail);
+  // Settings failures are isolated from the existing management page. No private error projection.
+  const access = viewOnly ? null : await listTrainerAccessSettings()
+    .then(people => ({ people })).catch(() => ({ people: null }));
 
   const [pending, all] = await Promise.all([
     listPendingTrainers(),
@@ -86,6 +91,8 @@ export default async function AdminTrainersPage() {
   return (
     <>
     {!viewOnly && <TrainerInvites />}
+    {access && (access.people ? <TrainerAccessEditor initialPeople={access.people} />
+      : <section aria-label="트레이너 권한 설정"><p role="alert">권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.</p></section>)}
     <TrainerMgmtPanel
       sessionEmail={sessionEmail}
       pendingTrainers={pending}

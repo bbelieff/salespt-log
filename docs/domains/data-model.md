@@ -4,6 +4,32 @@ owner: belie
 last_review: 2026-04-27
 ---
 
+## 트레이너 등급·권한 저장 계약 (#958)
+
+- `TrainerGradeSchema`, `TrainerAccountKey`, `TrainerGrantsSchema`, `TrainerAccessValue`, `TrainerAccessCommand`: strict Zod 서버/저장 경계. command는 exact 정규화 이메일, grade, 전체 grants, version만 허용. 이름·status·audit actor를 브라우저에서 받지 않는다.
+- `TrainerAccessSetting`, `TrainerAccessQualification`, `TrainerAccessPerson`: 저장값/서버 자격 계약/관리자 조회 projection. #956의 `trainer_qualifications(email,name,status)`를 현재 서버 DB 연결로 읽으며 자격 생성·변경이나 registry fallback은 없다. 설정 부재는 null grade/전부 false/version 0, unknown/corrupt 저장값은 503.
+- `0007_trainer_access.sql`: 신규 `trainer_access_settings`(email FK→자격, grade, grants JSONB, version, updated_by/at), `trainer_access_audit`(email+version별 저장 snapshot, changed_by/at). 유효 grade·전체 boolean 구조·write requires read·등급 상한 CHECK, 브라우저 역할 ACL 회수 및 RLS. 기존표/role 변경·seed 없음. #956 0006 적용 후 부모 직렬 운영 게이트에서 실행해야 하며 현재 실DB 적용 NOT_RUN.
+- 저장은 service의 실제 session admin 검증 → 자격 행 SHARE lock → active/exact key 확인 → 기존 version 비교 → SQL CAS → 같은 트랜잭션 감사 snapshot. 병행 수정은 409, 잘못된 입력 400, 자격·권한 없음 403, DB/auth 의존 실패 503. grade 변경 여부와 관계없이 검증된 상한 내 요청 grants를 보존한다.
+- 신규 repo는 `lib/repo/db/client`의 기존 pool만 사용한다. 조회·저장 API: GET/PUT `/api/admin/trainer-access`, no-store, PUT은 Origin/JSON/Fetch-Site 검사. 자세한 실행/인계 계약은 [QA](../qa/trainer-access-settings/README.md).
+
+## 트레이너 순수 권한 계약 및 중앙 adapter (#958)
+
+정의: `lib/types/trainer-access.ts`, 판정: `lib/util/trainer-access-policy.ts`.
+`service/trainer-student-access.ts`가 `repo/db/trainer-student-access.ts`의 raw DB snapshot을 검증하여 순수 판정에 전달한다. active qualification과 valid 저장 등급/grants가 모두 필요하다. registry/cohort의 catch→[] 또는 default-active는 권한 근거로 쓰지 않는다. unknown/duplicate metadata, malformed raw status, reserved, 이메일별 다중 trainee 행은 fail-closed. 숫자/참가자/시즌 metadata를 모두 확인하고 archived 우선을 지킨다. 새 스키마나 운영 데이터 변경은 없다.
+
+`identity.ts`의 `canImpersonate`는 read, `getWritableUserEmail`은 write를 별도 검사한다. 쿠키 없는 self 및 admin/self는 기존 별도 경계다. 거부된 명시/기존 target은 `ManagedAccessDenied`(status403/code managed_access_denied)를 던지며 self로 바꾸지 않는다. 호출 API는 `withManagedAccess`로 안전한 no-store 403을 반환한다. 주간목표의 다중 수강 선택은 이메일 대표행이나 active-user cookie로 보충하지 않고, 아래 `TrainerStudentTarget`/`targetRef`를 다시 검증한다.
+
+- `TrainerGrade`: senior / regular / apprentice. `TrainerStudentCategory`: active / arena / archived.
+- `TrainerAccessOperation`: read / write. `TrainerCategoryGrant`: 명시 read/write boolean 쌍.
+- `TrainerStudentTarget`: 중앙 ACL이 검사하는 단일 수강 등록 키(email×spreadsheetId×cohort×courseStart). 이메일만 주어진 다중 등록은 거부하며, browser는 opaque `targetRef`를 전송할 뿐 서버가 매 요청 fresh registry 행과 ACL에 대조한다.
+- `TrainerGrants`: 세 category 모두 필수. 누락/null/배열/여분 키/boolean 아닌 값 및 write=true/read=false를 거절한다. 불완전한 grants를 기본값으로 수리하지 않는다.
+- `NormalizedTrainerActor`: 호출자가 인증된 trainer 자격 행을 특정한 뒤 전달하는 grade/status/grants. active만 허용. unknown grade는 전부 거부. 기본 grants는 senior 모두 RW, regular/apprentice active만 RW. 명시 grants는 이 상한 안에서 제한한다.
+- `NormalizedTrainerStudent`: 호출자가 특정 trainee 행의 rowStatus/cohortStatus/cohortType/cohortMetadataTrusted/isArenaLabel/isReserved를 정규화한다. 보관보다 pending/reserved 제외 우선, 그 다음 archived row/cohort 우선, 그 다음 arena type/label, 마지막 확인된 active cohort. 필수 flag 누락/unknown은 제외한다.
+- cohortMetadataTrusted=true는 읽기 성공과 필요한 기수/시즌 보관 정보가 신뢰 가능하게 해석되었음을 뜻한다. `cohorts.ts`의 catch→[] 결과나 default-active만으로 true를 만들지 않는다. 정상 empty와 실패가 구분되지 않는 현재 경로는 통합 전 보완 필요. 누락 metadata를 active로 허용하지 않는다.
+- 숫자/아레나 parser 근거는 `service/cohort-token.ts`의 parseCohortToken/arenaCohortLabelParts. 참가자/시즌 키와 registry cohort/cohortLabel 불일치를 호출자가 해결하며 util은 parser를 복제하거나 repo/service를 import하지 않는다.
+- 이름/이메일 기반 권한 및 개인 seed 없음. 관리자와 본인 정규/아레나 CRM은 호출자가 별도 처리한다. 이 정책의 false를 본인 CRM 차단으로 사용하지 않는다.
+- 전체 입력은 정규화된 plain object의 정확한 필드만 받으며 공개 함수는 런타임 unknown도 거부한다. 상세 [활성 계획](../plans/active/trainer-access-policy.md) / [QA](../qa/trainer-access-policy/README.md).
+
 ## 주간 목표 (#947)
 
 정본은 별도 Postgres 테이블이다. 시트 보고값/실제값/수식에는 쓰지 않는다.
@@ -14,7 +40,7 @@ last_review: 2026-04-27
 - `WeeklyGoalKey`: studentId(서버 해석 spreadsheetId)×cohort×courseStart×weekStart. 같은 수강의 로그인 별칭은 같은 행/revision을 공유한다. 저장 시 명시 student와 수강정보 echo를 확인하며 client sheetId는 받지 않는다.
 - `WeeklyGoalRecord`, `WeeklyGoalPrivateRecord`: 별도 public/private 테이블, 양쪽 독립 revision/updatedAt.
 - `GoalWeek`, `WeeklyGoalView`: 현재/지난 금~목 주간의 저장값과 기존 기록 기반 실적. 학생 payload에 내부기록 없음.
-- `GoalStudent`, `GoalOverviewRow`: 담당 학생 목록 및 공용 목표 집계, 개별 실패는 error로 명시.
+- `GoalStudent`, `GoalOverviewRow`: 담당/본인 수강 목록 및 공용 목표 집계. `GoalStudent.targetRef`는 단일 수강 등록의 opaque 전달값이며, 개별 실패는 error로 명시. 복수 본인 등록은 명시 선택 전 조회·저장을 하지 않는다.
 - migration `0005_weekly_goals.sql`: 가산 테이블, 자연 복합키와 CHECK, RLS 활성, public 권한 없음. 운영 적용은 별도 증거 필요.
 - 상세 집계·권한·기간 계약: [weekly-goals.md](./weekly-goals.md).
 
