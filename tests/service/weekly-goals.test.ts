@@ -195,6 +195,20 @@ describe("weekly goals validation, key isolation, and failure semantics", () => 
       { studentId: student.spreadsheetId, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-04" },
     ]);
   });
+  it("accumulates week 1 through the previous week for the back-calculation basis", async () => {
+    // Weeks 1–3 start 2026-09-04 / 09-11 / 09-18. Viewing week 3 counts weeks 1–2 only.
+    const row = (date: string) => ({ date, channel: "직접생산", production: 10, inflow: 5, contactProgress: 1, meetingReservation: 0 });
+    m.readSalesRowsFromDb.mockResolvedValue([row("2026-09-04"), row("2026-09-11"), row("2026-09-18")]);
+    const view = await loadWeeklyGoals(params("3"));
+    expect(view.current).toMatchObject({ week: 3, start: "2026-09-18" });
+    expect(view.cumulative).toMatchObject({ production: 20, inflow: 10, contacts: 2 });
+    expect(view.current.actuals).toMatchObject({ production: 10 });
+  });
+  it("reports an empty basis in week 1, where no completed week exists to divide by", async () => {
+    m.readSalesRowsFromDb.mockResolvedValue([{ date: "2026-09-04", channel: "직접생산", production: 10, inflow: 5, contactProgress: 1, meetingReservation: 0 }]);
+    const view = await loadWeeklyGoals(params("1"));
+    expect(view.cumulative).toEqual({ production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 });
+  });
   it("uses server target identity and sheet, ignoring submitted cohort and sheet", async () => {
     const p = params(); p.set("cohort", "forged"); p.set("spreadsheetId", "forged-sheet");
     await loadWeeklyGoals(p);
