@@ -25,16 +25,16 @@ function validPeople(value: unknown): value is TrainerAccessPerson[] {
       : p.version > 0 && TrainerAccessValue.safeParse({ grade: p.grade, grants: p.grants }).success;
   });
 }
-/** Approved v4 editor, deliberately not mounted in the shared admin page yet.
+/** Approved v4 editor, with server-loaded admin-only initial data.
  * readOnly is presentation only; GET and PUT independently require server admin auth.
  */
-export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-access", readOnly = false }: {
-  endpoint?: string; readOnly?: boolean;
+export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-access", readOnly = false, initialPeople }: {
+  endpoint?: string; readOnly?: boolean; initialPeople?: TrainerAccessPerson[];
 }) {
   const id = useId();
-  const [people, setPeople] = useState<TrainerAccessPerson[]>([]);
-  const [draft, setDraft] = useState<TrainerAccessPerson | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [people, setPeople] = useState<TrainerAccessPerson[]>(() => validPeople(initialPeople) ? initialPeople : []);
+  const [draft, setDraft] = useState<TrainerAccessPerson | null>(() => validPeople(initialPeople) && initialPeople[0] ? structuredClone(initialPeople[0]) : null);
+  const [busy, setBusy] = useState(!initialPeople);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [denied, setDenied] = useState(false);
@@ -47,7 +47,6 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
   const saved = people.find(p => p.email === draft?.email);
   const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(saved);
   const locked = busy || readOnly || denied || refreshOnly;
-  const gradeChanged = draft?.grade !== saved?.grade;
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const response = await fetch(endpoint, { cache: "no-store", credentials: "same-origin", signal });
@@ -146,14 +145,13 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
       <div className="permission-section"><div className="permission-section-title"><h3>수강생 접근 권한</h3><button disabled={locked || !draft.grade} onClick={() => setDraft({ ...draft, grants: defaultTrainerGrants(draft.grade) })}>등급 기본값으로</button></div>
         <table className="permission-table"><thead><tr><th scope="col">수강생 구분</th><th scope="col">조회</th><th scope="col">수정</th></tr></thead><tbody>{categoryKeys.map(key => <tr key={key}>
           <th scope="row"><strong>{categories[key]}</strong><small>{notes[key]}</small></th>{(["read", "write"] as const).map(action => <td key={action}><label><input type="checkbox" aria-label={`${categories[key]} ${action === "read" ? "조회" : "수정"}`} checked={draft.grants[key][action]}
-            disabled={locked || gradeChanged || !defaultTrainerGrants(draft.grade)[key][action]} onChange={event => {
+            disabled={locked || !defaultTrainerGrants(draft.grade)[key][action]} onChange={event => {
               const grant = { ...draft.grants[key], [action]: event.target.checked };
               if (action === "read" && !grant.read) grant.write = false;
               if (action === "write" && grant.write) grant.read = true;
               setDraft({ ...draft, grants: { ...draft.grants, [key]: grant } });
             }} /></label></td>)}</tr>)}</tbody></table>
         <p className="permission-note">수정하려면 조회 권한이 필요합니다. 조회 해제 시 수정도 해제됩니다.<br />일반·견습은 활성 수강생만 설정할 수 있습니다. 아레나·보관은 수석 등급에서 설정합니다.</p>
-        {gradeChanged && <p className="permission-note">등급을 먼저 저장한 뒤 개별 권한을 조정할 수 있습니다.</p>}
       </div>
       <div className="permission-scope">{JSON.stringify(draft.grants) === JSON.stringify(defaultTrainerGrants(draft.grade)) ? "등급 기본 권한" : "개별 조정 권한"} · {range(draft)}<br />담당 여부와 관계없이 허용된 범위에 적용됩니다.</div>
       <div className="permission-savebar"><span>{dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 권한과 같습니다."}</span><div>
