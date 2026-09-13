@@ -1,12 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { parseProcessEnv, selectPm2, compareResolvedUrls, inspectEnvironmentFiles, assertNoPgOverrides } from "../../scripts/ops/weekly-goals-runtime.mjs";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, lstat } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { validateInputs } from "../../scripts/ops/weekly-goals-delivery.mjs";
 import { EXPECTED_CHECKSUM, VERSION } from "../../scripts/ops/weekly-goals-migrate.mjs";
 const base = { sha:"a".repeat(40),actualSha:"a".repeat(40),sqlChecksum:EXPECTED_CHECKSUM,mode:VERSION,execute:"false",runId:"1",attempt:"1" };
+async function settleWindowsFixture(path: string) {
+  if (process.platform !== "win32") return;
+  // A newly created Windows fixture can receive a delayed ctime-only update.
+  // Finish setup before declaring process start; all post-start checks remain strict.
+  const initial = await lstat(path);
+  let changedAt = Date.now(), ctime = initial.ctimeMs;
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    await new Promise(done => setTimeout(done, 100));
+    const current = await lstat(path);
+    expect([current.size, current.mtimeMs]).toEqual([initial.size, initial.mtimeMs]);
+    if (current.ctimeMs !== ctime) { ctime = current.ctimeMs; changedAt = Date.now(); }
+    if (Date.now() - changedAt >= 1500) return;
+  }
+  throw new Error("Windows fixture metadata did not settle before process start");
+}
 describe("runtime and approval boundaries (synthetic; no PM2/remote access)", () => {
   it.each([false,true])("replays installed Next production file priority and process-env precedence: %s", async processOverride => {
     const root = await mkdtemp(resolve(".qa-runtime-fixture-"));
@@ -40,6 +56,7 @@ describe("runtime and approval boundaries (synthetic; no PM2/remote access)", ()
     const root = await mkdtemp(resolve(".qa-runtime-fixture-"));
     try {
       await writeFile(join(root,".env"),"DATABASE_URL=private-fixture");
+      await settleWindowsFixture(join(root,".env"));
       const startedAt = Date.now() + 1000;
       const before = await inspectEnvironmentFiles(root, startedAt);
       await new Promise(done => setTimeout(done, 1100));
@@ -49,7 +66,7 @@ describe("runtime and approval boundaries (synthetic; no PM2/remote access)", ()
       await writeFile(join(root,".env"),"DATABASE_URL=changed-private-fixture");
       await expect(inspectEnvironmentFiles(root, startedAt)).rejects.toThrow();
     } finally { await rm(root,{recursive:true,force:true}); }
-  });
+  }, 10000);
   it("parses initial process env privately including equals, rejects duplicate ambiguity", () => {
     expect(parseProcessEnv("A=x=y\0B=z\0")).toEqual({A:"x=y",B:"z"});
     expect(() => parseProcessEnv("A=x\0A=y\0")).toThrow();

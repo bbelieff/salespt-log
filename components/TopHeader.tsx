@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard } from "lucide-react";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
@@ -109,11 +108,12 @@ export default function TopHeader({
             {me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
               : <span className="min-w-0 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
           </div>
-          {/* 두 박스의 외곽 높이 48px 통일. 역할 전환 = 44px 버튼 + 상하 2px 여백. */}
+          {/* 기존 메뉴 복귀 링크와 같은 연한 붉은 알약형 버튼. */}
           <div className="flex shrink-0 items-center gap-1">
-            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex h-12 shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-red bg-white px-2 text-xs font-bold leading-none text-brand-red transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2">
-              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>대시보드</span>
+            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors group-hover:bg-red-100">
+                <span aria-hidden>←</span><span>대시보드</span>
+              </span>
             </Link>
             <RoleViewSwitch modeHint={roleMode} />
           </div>

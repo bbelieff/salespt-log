@@ -50,9 +50,9 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
     <button type="button" aria-label="목표·PT과제 열기" onClick={() => router.push("/weekly-goals?" + entry)}
       className="ml-auto flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 font-semibold text-gray-600 hover:bg-gray-100">목표·PT<ChevronRight className="h-3.5 w-3.5" aria-hidden /></button>
   </section>;
-  return <section className={className + " rounded-2xl border border-gray-200 bg-white p-3"} aria-label="주간 목표">
+  return <section className={className + " rounded-2xl bg-white p-3 shadow-sm"} aria-label="주간 목표">
     <div className="flex flex-wrap items-center justify-between gap-x-2">
-      <h2 className="font-bold">주간 목표 {current && <span className="text-sm text-gray-500">· {current.week}주차</span>}</h2>
+      <h2 className="flex items-center gap-2 text-base font-extrabold text-gray-900"><span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" /><span>주간 목표 {current && <span className="text-sm text-gray-500">· {current.week}주차</span>}</span></h2>
       {navigation}
     </div>
     {status ?? (current && <>

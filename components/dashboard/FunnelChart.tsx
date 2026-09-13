@@ -76,15 +76,15 @@ export default function FunnelChart({ matrix }: Props) {
   const conversionRate = inflow > 0 ? (contract / inflow) * 100 : 0;
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="flex flex-col rounded-2xl bg-white p-3 shadow-sm">
       {/* 섹션 제목 */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-blue-500" />
         <h2 className="text-base font-extrabold text-gray-900">영업 퍼널</h2>
         <span className="ml-auto text-xs text-gray-400">8주 누적</span>
       </div>
 
-      <svg viewBox="0 0 358 260" className="w-full" aria-label="6단계 영업 퍼널">
+      <svg viewBox="0 0 358 260" className="w-full pc:min-h-0 pc:flex-1" aria-label="6단계 영업 퍼널">
         {STAGES.map((stage, i) => {
           const y = rowY(i);
           const totalW = stageWidth(stage);
