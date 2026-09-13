@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { LayoutDashboard } from "lucide-react";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
@@ -108,9 +109,12 @@ export default function TopHeader({
             {me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
               : <span className="min-w-0 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
           </div>
-          {/* 우측 액션 그룹 — 대시보드 버튼(44px) + 역할 전환(44px) + 새소식 점. 1줄 보장 */}
+          {/* 두 박스의 외곽 높이 48px 통일. 역할 전환 = 44px 버튼 + 상하 2px 여백. */}
           <div className="flex shrink-0 items-center gap-1">
-            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex h-11 shrink-0 items-center rounded-lg border border-brand-red px-2 text-xs font-bold text-brand-red">대시보드</Link>
+            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex h-12 shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-red bg-white px-2 text-xs font-bold leading-none text-brand-red transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2">
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>대시보드</span>
+            </Link>
             <RoleViewSwitch modeHint={roleMode} />
           </div>
         </PageContainer>
