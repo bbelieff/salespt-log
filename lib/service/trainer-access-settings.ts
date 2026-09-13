@@ -64,9 +64,8 @@ export async function saveTrainerAccessSettings(raw: unknown): Promise<void> {
       const current = await tx.read();
       validateSetting(current);
       if ((current?.version ?? 0) !== input.version) throw new TrainerAccessError(409);
-      // Changing grade always resets; restricted grants can be saved on the next edit.
-      const grants = current?.grade === input.grade ? input.grants : defaultTrainerGrants(input.grade);
-      if (!await tx.save({ ...input, grants }, actor)) throw new TrainerAccessError(409);
+      // TrainerAccessCommand already enforces the grade ceiling and write => read.
+      if (!await tx.save(input, actor)) throw new TrainerAccessError(409);
     });
   } catch (error) { throw safeError(error); }
 }
