@@ -4,6 +4,7 @@ import { User } from "@/types";
 import { EMPTY_GOALS, type WeeklyGoalInput, type WeeklyGoalKey, type WeeklyGoalPrivateInput, type WeeklyGoalPrivateRecord, type WeeklyGoalRecord } from "@/types/weekly-goals";
 
 const m = vi.hoisted(() => ({
+  grant: vi.fn(),
   getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(),
   findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(),
   dbEnabled: vi.fn(), chooseDailySource: vi.fn(), readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
@@ -16,6 +17,31 @@ vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
 vi.mock("@/service/daily-source", () => m);
+// #958: seed the trainer-access facts these legacy trainer fixtures imply. Without an explicit
+// grant the new ACL is fail-closed by design, so the intent must be stated rather than assumed.
+vi.mock("@/repo/db/trainer-student-access", () => ({
+  readTrainerStudentAccessFacts: async (actor: string, target: string | { email: string; spreadsheetId: string; cohort: string; courseStart: string }) => {
+    const found = (m.listAllUsers.getMockImplementation() ? await m.listAllUsers() : []) as { email: string; role: string; status: string; cohort?: string; spreadsheetId?: string; courseStartISO?: string }[];
+    const email = (typeof target === "string" ? target : target.email).toLowerCase();
+    const rows = found.filter(u => u.email.toLowerCase() === email && u.role === "trainee");
+    const match = typeof target === "string" ? rows
+      : rows.filter(u => u.spreadsheetId === target.spreadsheetId && u.cohort === target.cohort && u.courseStartISO === target.courseStart);
+    return {
+      qualifications: [{ email: actor.toLowerCase(), status: "active" }],
+      settings: [{ grade: "senior", grants: { active: { read: m.grant(), write: m.grant() }, arena: { read: m.grant(), write: m.grant() }, archived: { read: m.grant(), write: m.grant() } }, version: 1 }],
+      students: match.map(u => ({ email: u.email, role: u.role, status: u.status, cohort: u.cohort ?? "", cohort_label: u.cohort ?? "", spreadsheet_id: u.spreadsheetId, course_start_iso: u.courseStartISO })),
+      cohorts: [...new Set(match.flatMap(u => {
+        const label = (u.cohort ?? "").trim();
+        if (!label) return [];
+        // Arena participant label "A{season}-{gisu}" resolves against both the gisu and season rows.
+        const arena = label.match(/^A(\d+)-(\d+)기?$/);
+        return arena ? [arena[2]!, `A${arena[1]}`] : [label];
+      }))].map(label => ({
+        label, status: "active", type: /^A\d+$/i.test(label) ? "arena" : "cohort",
+      })),
+    };
+  },
+}));
 import { listGoalStudents, loadWeeklyGoals, loadWeeklyGoalInternal, updateWeeklyGoals, updateWeeklyGoalInternal, resolveGoalStudent } from "@/service/weekly-goals";
 import { loadGoalOverview } from "@/service/weekly-goals-overview";
 
@@ -43,6 +69,7 @@ function login(email: string, role: "trainee" | "trainer" | "admin" = "trainee")
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  m.grant.mockReturnValue(true);
   users = new Map([e1, e2, other, instructor].map(u => [u.email, { ...u }]));
   arenas = new Map(); publicRows = new Map(); privateRows = new Map();
   login(e2.email);
@@ -194,9 +221,10 @@ describe("trainer login with same-email active arena enrollment", () => {
     expect(await resolveGoalStudent(trainerEmail)).toBeNull();
     expect(m.listDistinctUsers).not.toHaveBeenCalled();
   });
-  it("revokes internal read/write access after assignment changes despite prior successful reads", async () => {
+  it("revokes internal read/write access after saved grants change despite prior successful reads", async () => {
     await loadWeeklyGoalInternal(params(e1));
     users.set(e1.email, { ...e1, assignedTrainer: "new-trainer@example.test" });
+    m.grant.mockReturnValue(false);
     m.readWeeklyGoalPrivate.mockClear();
     await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
     await expect(updateWeeklyGoalInternal(params(e1), privateInput())).rejects.toMatchObject({ status: 403 });
@@ -251,37 +279,36 @@ describe("authorization precedes enrollment dedup in real roster and overview se
     login(trainerEmail, "trainer"); users.delete(other.email);
     users.set(e1.email, { ...e1, assignedTrainer: "different-trainer@example.test" });
   });
-  it("keeps assigned E2 instead of unassigned distinct representative E1, including overview", async () => {
-    expect(await listGoalStudents()).toEqual([{ email: e2.email, name: e2.name, cohort: e2.cohort }]);
+  it("keeps the first grant-allowed alias regardless of assignment, including overview", async () => {
+    expect(await listGoalStudents()).toEqual([{ email: e1.email, name: e1.name, cohort: e1.cohort }]);
     const overview = await loadGoalOverview();
     expect(overview).toHaveLength(1);
-    expect(overview[0]).toMatchObject({ email: e2.email, error: null, record: { revision: 0 } });
-    expect(m.readWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ studentId: e2.spreadsheetId }));
+    expect(overview[0]).toMatchObject({ email: e1.email, error: null, record: { revision: 0 } });
+    expect(m.readWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ studentId: e1.spreadsheetId }));
     expect(m.listDistinctUsers).not.toHaveBeenCalled();
     expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
     expect(m.readSalesRowsFromDb).not.toHaveBeenCalled();
   });
-  it("deduplicates both authorized aliases to one enrollment without unioning target permissions", async () => {
+  it("assignment changes preserve a single grant-allowed enrollment and private access", async () => {
     users.set(e1.email, { ...e1 });
     expect(await listGoalStudents()).toEqual([{ email: e1.email, name: e1.name, cohort: e1.cohort }]);
     users.set(e1.email, { ...e1, assignedTrainer: "different-trainer@example.test" });
-    await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
-    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
-    expect(await listGoalStudents()).toEqual([{ email: e2.email, name: e2.name, cohort: e2.cohort }]);
+    await expect(loadWeeklyGoalInternal(params(e1))).resolves.toMatchObject({ revision: 0 });
+    expect(await listGoalStudents()).toEqual([{ email: e1.email, name: e1.name, cohort: e1.cohort }]);
   });
-  it("blocks a representative assignment revoked between roster and overview goal read", async () => {
+  it("assignment changed between roster and overview does not revoke saved grants", async () => {
     m.findUserByEmail.mockImplementation(async (email: string) => {
       const row = users.get(email);
       return row ? { ...row, assignedTrainer: "revoked-trainer@example.test" } : null;
     });
-    expect(await loadGoalOverview()).toEqual([{ email: e2.email, name: e2.name, cohort: e2.cohort, week: null, record: null, error: "목표를 불러오지 못했어요." }]);
-    expect(m.readWeeklyGoal).not.toHaveBeenCalled(); expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+    expect(await loadGoalOverview()).toEqual([expect.objectContaining({ email: e1.email, error: null, record: expect.objectContaining({ revision: 0 }) })]);
+    expect(m.readWeeklyGoal).toHaveBeenCalled(); expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
   });
-  it("omits inaccessible same-email prior enrollment instead of returning a link to a different current enrollment", async () => {
+  it("selects the exact current enrollment rather than an assigned historical enrollment", async () => {
     const prior = { ...e2, status: "archived" as const, courseStartISO: "2026-08-07" };
     const current = { ...e2, cohort: "A2-1", spreadsheetId: "new-course-sheet", assignedTrainer: "different-trainer@example.test" };
     m.listAllUsers.mockResolvedValue([instructor, prior, current]);
-    expect(await listGoalStudents()).toEqual([]);
+    expect(await listGoalStudents()).toEqual([{ email: current.email, name: current.name, cohort: current.cohort }]);
   });
 });
 
