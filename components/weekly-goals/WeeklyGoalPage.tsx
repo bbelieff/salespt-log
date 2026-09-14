@@ -31,7 +31,8 @@ function Content({ student, date, week }: { student: string; date: string; week:
     </div>
   </main>;
 }
+
 export default function WeeklyGoalPage(props: { student: string; date: string; week: string; trainer: boolean; returnTo?: string }) {
-  return <DirtyProvider><TopHeader pageEmoji="" pageTitle="주간 목표·PT과제" roleMode={props.student && props.trainer ? "trainer" : "student"} />
-    <Content student={props.student} date={props.date} week={props.week} /></DirtyProvider>;
+  return <DirtyProvider><div className="min-h-dvh"><TopHeader pageEmoji="" pageTitle="주간 목표·PT과제" roleMode={props.student && props.trainer ? "trainer" : "student"} />
+    <Content student={props.student} date={props.date} week={props.week} /></div></DirtyProvider>;
 }

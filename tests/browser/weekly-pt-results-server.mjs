@@ -1,5 +1,5 @@
 // Local synthetic API + actual components/CSS/fonts. Browser interaction is performed separately.
-// Run after `npm run build`: node tests/browser/student-dashboard-server.mjs
+// Run: node tests/browser/weekly-pt-results-server.mjs
 import { build } from "esbuild";
 import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -21,7 +21,9 @@ await build({ entryPoints: ["tests/browser/weekly-pt-results-fixture.tsx"], bund
 const css=spawnSync(process.execPath,["node_modules/tailwindcss/lib/cli.js","-i","app/globals.css","-o",join(dir,"style.css")],{encoding:"utf8"});
 assert.equal(css.status,0,css.stderr);
 let record={specialNotes:"테스트 특이사항",priorOutcome:"분석 완료\n\n점검 진행",revision:1,updatedAt:null};
-const html='<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>주간 PT 검증</title><link rel="stylesheet" href="/style.css"><body class="bg-gray-50"><div id="root"></div><script src="/app.js"></script></body></html>';
+// <style> reproduces production constraint html,body{height:100%} extended to #root
+// so the fixture does not conceal the sticky-containment bug with root auto height.
+const html='<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>주간 PT 검증</title><link rel="stylesheet" href="/style.css"><style>html,body,#root{height:100%}</style><body class="bg-gray-50"><div id="root"></div><script src="/app.js"></script></body></html>';
 const server=createServer(async(req,res)=>{
  const path=req.url.split('?')[0];
  if(path.startsWith('/api/')){
