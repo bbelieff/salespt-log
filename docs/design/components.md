@@ -474,7 +474,7 @@ function getTimeValue(hourId, minuteId) {
 - **단계 인디케이터(ADR-0027)**: 아이콘 칩 **위 STEP 배지**("STEP 1~4", `text-[9px]`). 점(dots) 폐기. 캘린더는 단계 없음(도구).
 - **흐름 화살표**: STEP1·2 사이, STEP3·4 사이에만 `›`(chevron, `text-slate-300`, 좁은 고정폭, 행 높이 중앙). **캘린더 양옆엔 없음**.
 - **아이콘 칩**: `h-8 w-9 rounded-lg`. 비활성=`bg-slate-200`+`text-slate-600`, 활성=탭색 채움(`bg-{tab}`)+흰 글리프+`shadow`. STEP 배지·라벨도 같은 탭색(라벨 `font-bold`). **탭색 5종 = tokens.md "탭 단계 색상"**(blue-700/emerald-600/amber-500/violet-600/rose-600).
-- **중앙 캘린더 = 작은 유리 원형**: 44×44px, 흰색45% 배경·60% 테두리·약한 내부빛과 그림자. translateY(-8px)로 낮게 돌출. 활성은 amber22% 배경·amber700 아이콘/라벨. [2026-09-14 결정](../decisions/2026-09-14-tabbar-glass-capsule.md).
+- **중앙 캘린더 = 작은 유리 원형**: 54×54px, 아이콘26px, 라벨 간격6px. 흰색45% 배경·60% 테두리·약한 내부빛과 그림자. 원은 absolute로 크기만 위로 늘어나며 바 높이를 늘리지 않는다. 원·라벨을 함께 이동하는 lift 기본값0px. 활성은 amber22% 배경·amber700 아이콘/라벨. [2026-09-14 결정](../decisions/2026-09-14-tabbar-glass-capsule.md).
 - **유리 바와 본문 공간**: 흰색32% + blur20px/saturate180%. 최소 안전여백8px+추가4px, 70px 행. 모바일 기본 전체83px, 본문 padding도 `--app-tabbar-height` 공유. 라벨 하단 여백18px, 글씨12px 유지.
 - **양끝 여백**: 바 내부 `px-5`(20px) + `env(safe-area-inset-*)` 유지 → 아이폰 라운드 모서리 잘림 방지.
 - **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px) 중앙정렬. **탭타깃 ≥44px**(`minHeight:44`+py).
@@ -937,13 +937,12 @@ function getTimeValue(hourId, minuteId) {
 **구조 (한 컴포넌트, 2 sticky 영역)**:
 
 ```text
-TopHeader: 모바일 첫 행 = 로고 | 대시보드 · 역할 전환
-  모바일 정보 행 = 기수·이름 대표님 | 대리 접속 중 | D-day
-  h-app-header = <768px 6rem / >=768px 3.5rem, sticky top-0 z-50
+TopHeader: 로고 | 기수·이름 대표님 | 대시보드 | 자격이 있는 역할 전환
+  h-app-header = 모든 폭 3.5rem, sticky top-0 z-50
 PageBanner: 페이지 이모지·제목 | 선택적 부제
   h-12 = 3rem, sticky top-app-header z-40
 날짜·검색·진행 등 페이지별 고정 영역
-  sticky top-app-content = 헤더 + 3rem (<768px 9rem / >=768px 6.5rem), z-30
+  sticky top-app-content = 헤더 + 3rem (모든 폭 6.5rem), z-30
 일반 본문
 ```
 
@@ -967,7 +966,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
-**구조**: `h-app-header`, 모바일 `flex-wrap`, `2xl:flex-nowrap`. 모바일 첫 행은 로고·액션, 둘째 정보 행은 사용자명·대리접속 표식·D-day다. 2xl부터 로고·정보·액션 한 행이다.
+**구조**: 모든 폭에서 `h-app-header` 3.5rem, `flex-nowrap` 한 행. 순서는 로고 → 기수·이름·대표님 → 대시보드 → 자격이 있는 본인 역할 토글. D-day는 진행도 박스에만 표시하며 대리접속 문구는 표시하지 않는다.
 
 | 그룹 | 내용 | 데이터와 동작 |
 |---|---|---|
@@ -976,14 +975,14 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 | 액션 | 대시보드 + `RoleViewSwitch` | 대시보드는 모든 화면에서 `/dashboard` 링크. 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시 |
 
 - 대시보드 화면에서도 같은 링크를 유지한다. `/` 또는 `/trainer`로 조건부 치환하거나 비활성 라벨로 바꾸지 않는다.
-- 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 360/390px 긴 이름에서도 실제 첫 글자와 최소 2rem 폭, 표식·D-day 비겹침을 브라우저로 검증한다.
+- 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 320/390px 긴 이름에서도 이름의 가용 폭과 액션 비겹침을 브라우저로 검증한다.
 - 로고·역할 버튼은 `h-11`(모바일 44px). 대시보드는 기존 메뉴 복귀와 같은 연한 붉은 알약형(`rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700`)으로 `← 대시보드`를 표시한다. 투명한 링크 클릭 영역은 `min-h-11`로 유지하고 내부 pill을 수직 중앙에 배치한다. 별도 대시보드 아이콘·큰 사각 박스는 사용하지 않는다. PC에서는 전역 루트 스케일이 적용된다.
 - 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 대리접속 표식과 반응형 배치가 권한이나 계정 전환 동작을 바꾸지 않는다.
 - 적층은 `sticky top-0 z-50`; 페이지 배너는 `sticky top-app-header z-40`이다.
 
 ### DDayBadge
 
-**용도**: 공용 헤더 정보 영역 및 대시보드 날짜·진행도 영역의 카운트다운 배지. 헤더는 invalid/undefined 종강일을 placeholder로 정규화한다.
+**용도**: 대시보드 날짜·진행도 영역의 카운트다운 배지. 최상단 헤더에는 중복 표시하지 않는다.
 
 - 날짜 정본은 `me.graduationISO`, 즉 시트 O2에 저장된 실제 종강총회일(수료일)이다. `courseStart + 57일` 같은 고정 일수로 계산하거나 저장 날짜를 덮어쓰지 않는다.
 - 컴포넌트는 브라우저 로컬 날짜와 `graduationISO`의 일수 차이를 계산한다. 초기에는 placeholder를 렌더하고 `useEffect`에서 오늘을 계산하며, 30분마다 갱신한다.
@@ -1064,8 +1063,8 @@ app/(app)/dashboard/page.tsx
 
 **디자인 / 동작**:
 
-- 매출은 흰색 카드와 ＋ 배지, 비용은 옅은 빨강 버튼과 − 배지다.
-- 모바일 금액은 별도 줄에 표시하며 긴 금액이 카드 밖으로 넘치지 않도록 줄바꿈한다. `sm`부터 가용 폭에 따라 제목 옆에 배치한다.
+- 세 재무 카드는 흰색 배경, slate-200 테두리, rounded-xl, p-3와 text-xl 금액을 공유한다. ＋/−/＝ 배지와 금액 색상으로 구분한다.
+- 모바일 금액은 별도 줄에 표시하며 긴 금액이 카드 밖으로 넘치지 않도록 줄바꿈한다. 모든 폭에서 제목 아래 금액을 배치한다.
 - 비용 카드에는 DB 비용·추가 비용과 `비용 추가하기` 진입 문구를 표시한다. hover/focus 스타일 및 버튼 접근성 라벨을 유지한다.
 - 기존 영업이익·시즌/이월/전체 재무 계산과 실제 값을 보존한다.
 
@@ -1074,9 +1073,9 @@ app/(app)/dashboard/page.tsx
 **용도**: 영업이익 (= 매출 − 비용) 단독 카드.
 
 **디자인**:
-- 좌측 `border-l-4 border-blue-500`
+- 다른 재무 카드와 같은 `rounded-xl border border-slate-200 bg-white p-3`; 두꺼운 좌측바 없음
 - 좌측에 `w-4 h-4 rounded-full bg-blue-100 text-blue-600` ＝ 배지
-- 큰 영업이익 금액 (`text-2xl font-extrabold`)
+- 다른 재무 카드와 같은 금액 (`text-xl font-bold`), indigo700 색상
 - 부연: "영업이익률 N%" (소수 1자리)
 - 매출/비용/영업이익 세 박스의 **+/−/= 배지 산술 흐름** 시각 통일
 
@@ -1457,10 +1456,14 @@ button:focus, input:focus, select:focus {
 - `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
 - `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
-- `TopHeader`: 768px 미만은 로고·대시보드·역할 전환 첫 행과 이름·대리접속 표식·D-day 정보 행으로 나누고, 768px 이상은 한 행이다. 이름은 가용 폭에 맞춰 줄이되 실제 글자가 보여야 한다. 대시보드 링크는 `/dashboard`로 고정한다.
+- `TopHeader`: 모든 폭에서 로고·기수·이름·대시보드·역할 전환 한 행. D-day는 진행도에만 표시한다. 이름은 가용 폭에서 줄이며 대시보드 링크는 `/dashboard`다.
 
 - `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
 
-- Header stack: `app-header`는 <768px 6rem / >=768px 3.5rem, 배너는 3rem이다. `top-app-content`는 합계 9rem / 6.5rem을 공유하므로 모바일 144px, 태블릿 104px, PC 87.75px이다. PC 캘린더 패널은 기존 `top-app-calendar-panel` 11.25rem(151.875px)을 유지한다.
+- Header stack: `app-header` 3.5rem + 배너3rem = `top-app-content` 6.5rem. PC 전역 글자 크기에 따라 함께 축소한다. PC 캘린더 패널의 별도 offset은 유지한다.
 
 - 헤더 대시보드와 역할 토글은 red200 테두리/red50 배경/전체 곡률을 공유한다. 역할은 연결된 세그먼트 트랙(시각26px, 터치44px)이며 선택 영역만 red700/흰색. canStudent와 canTrainer 모두 참일 때만 표시한다.
+
+### 2026-09-14 대시보드 정리 (이전 반응형 2행 규격 대체)
+- 최상단 헤더는 모든 폭에서 3.5rem 한 행, 페이지 배너3rem, top-app-content 합계6.5rem. 대리접속 표시 제거, D-day는 진행도 안에만 표시.
+- 대시보드 주간 목표는 초과/남음 상태 줄을 숨긴다. PT과제는 민트 구획과 명시적 제목으로 분리. 카드 전체 상세 버튼과 주차/재시도 버튼은 독립 포커스·클릭 영역이다. 업무탭 compact 진입은 유지.

@@ -1,7 +1,7 @@
 import { GOAL_KEYS, GOAL_LABELS, type WeeklyGoalValues, type GoalActuals, type GoalKey } from "@/types/weekly-goals";
 
-export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS }: {
-  goals: WeeklyGoalValues; actuals: GoalActuals; metrics?: readonly GoalKey[];
+export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS, showStatus = true }: {
+  goals: WeeklyGoalValues; actuals: GoalActuals; metrics?: readonly GoalKey[]; showStatus?: boolean;
 }) {
   return <div className="flex justify-center gap-1 pc:gap-4" aria-label="주간 목표 실적">
     {metrics.map(key => {
@@ -22,7 +22,7 @@ export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS }: {
         </div>
         <p className="text-xs font-semibold pc:text-sm">{GOAL_LABELS[key]}</p>
         <p className="break-words text-xs tabular-nums pc:text-sm">{actual} / {goal ?? "—"}</p>
-        <p className="break-words text-xs text-gray-500">{label}</p>
+        {showStatus && <p className="break-words text-xs text-gray-500">{label}</p>}
       </div>;
     })}
   </div>;

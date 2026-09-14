@@ -37,7 +37,7 @@ const server = createServer((req, res) => {
   const reply = (body, status = 200) => { res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify(body)); };
   if (url.pathname === "/fixture/fail-next") { failNext = true; return reply({ ok: true }); }
   if (url.pathname === "/api/me") return reply({ email: "fixture@example.invalid", name: "가상수강생긴이름", cohort: "연습", sessionRole: "admin", impersonating: "fixture@example.invalid", courseStartISO: "2026-07-03", graduationISO: "2026-10-24" });
-  if (url.pathname === "/api/trainer/recruitment") return reply({ email: "fixture@example.invalid", name: "가상수강생긴이름", status: "approved", canStudent: true, canTrainer: true, isAdmin: true, impersonating: true });
+  if (url.pathname === "/api/trainer/recruitment") return reply({ email: "fixture@example.invalid", name: "가상수강생긴이름", status: "approved", canStudent: true, canTrainer: !String(req.headers.referer).includes("studentOnly"), isAdmin: true, impersonating: true });
   if (url.pathname === "/api/announcements") return reply({ latestPr: 0, announcements: [], updates: [] });
   if (url.pathname === "/api/dashboard") return reply({
     kpi: { 총매출: 12000000, 총비용: 3000000, 수임비합: 8000000, 수수료합: 4000000, 이월매출: 2000000, 전체매출: 14000000, 이월비용: 100000, 전체비용: 3100000 },
@@ -53,6 +53,7 @@ const server = createServer((req, res) => {
     return reply({ student: { email: student, name: "가상 수강생", cohort: "연습", courseStart: iso(courseStart), region: "합성", trainers: [] }, current: item(week), previous: week > 1 ? item(week - 1) : null, canReadInternal: false });
   }
   if (url.pathname.startsWith("/api/")) return reply({ categories: [], entries: [], rules: [], categoryTotals: [], additionalCostTotal: 0 });
+  if (url.pathname === "/calendar-customizer") { res.setHeader("Content-Type", "text/html; charset=utf-8"); return res.end(readFileSync("artifacts/dashboard-polish/calendar-customizer.html")); }
   const file = media.get(url.pathname) || (url.pathname === "/salespt-logo.png" ? "public/salespt-logo.png" : null);
   if (file) { res.setHeader("Content-Type", file.endsWith("png") ? "image/png" : "font/woff2"); return res.end(readFileSync(file)); }
   const content = url.pathname === "/app.js" ? readFileSync(join(dir, "app.js")) : url.pathname === "/style.css" ? readFileSync(join(dir, "style.css")) : url.pathname === "/font.css" ? fontCss : html;

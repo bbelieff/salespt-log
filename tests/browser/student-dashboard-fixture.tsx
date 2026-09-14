@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import DashboardPage from "../../app/(app)/dashboard/page";
 import WeeklyGoalSummary from "../../components/weekly-goals/WeeklyGoalSummary";
+import TabBar from "../../components/TabBar";
 import DirtyProvider from "../../components/DirtyGuard";
 
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -18,7 +19,7 @@ function Fixture() {
       <button onClick={async () => { await fetch("/fixture/fail-next", { method: "POST" }); setNotice("다음 조회 실패 준비됨"); }}>다음 조회 실패</button>
       <p>{notice}</p>
       <WeeklyGoalSummary date={date} student={student} />
-    </> : <DashboardPage />}
+    </> : <><DashboardPage /><TabBar /></>}
   </DirtyProvider></QueryClientProvider>;
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);
