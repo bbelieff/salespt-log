@@ -60,10 +60,11 @@ export function cohortGroupKey(cohort: string, captainOf?: string): string {
   return base || "—";
 }
 
-/** 정렬 튜플(사전식): 아레나(A시즌-기수) 우선 → 시즌·기수 asc, 일반 숫자 desc, 기타 끝. */
+/** 정렬 튜플(사전식): 아레나(A시즌-기수) 우선 → 시즌·기수 desc, 일반 숫자 desc, 기타 끝.
+ *  기수 박스는 위에서 아래로 최신 → 과거 (2026-09-14 수리3 — 아레나도 최신순 통일). */
 export function cohortSortTuple(groupKey: string): [number, number, number] {
   const m = /^A(\d+)-(\d+)/.exec(groupKey);
-  if (m) return [0, parseInt(m[1]!, 10), parseInt(m[2]!, 10)];
+  if (m) return [0, -parseInt(m[1]!, 10), -parseInt(m[2]!, 10)];
   const n = parseInt(groupKey, 10);
   if (Number.isFinite(n)) return [1, -n, 0];
   return [2, 0, 0];

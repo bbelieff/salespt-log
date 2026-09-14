@@ -17,7 +17,7 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
-import { adminEmails, adminNames, cohortMasterSheetId } from "@/config";
+import { adminEmails, adminNames } from "@/config";
 import {
   findUserByEmail,
   listDistinctUsers,
@@ -98,12 +98,6 @@ export default async function TrainerPage() {
     return false;
   });
 
-  // 기수 전체 현황 마스터 시트 — env SHEETS_COHORT_MASTER_ID.
-  const masterId = cohortMasterSheetId();
-  const masterSheetUrl = masterId
-    ? `https://docs.google.com/spreadsheets/d/${masterId}/edit`
-    : "";
-
   // 관리자(admin) 또는 관리부서(management) 면 마스터 메뉴 진입 가능.
   const canBackToAdmin = await canViewAdminPages(sessionEmail);
 
@@ -125,7 +119,6 @@ export default async function TrainerPage() {
       trainerName={trainerName}
       trainees={withStats}
       activeTrainers={activeTrainers}
-      masterSheetUrl={masterSheetUrl}
       canBackToAdmin={canBackToAdmin}
       archivedCohorts={archivedLabels}
     />

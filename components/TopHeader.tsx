@@ -123,9 +123,9 @@ export default function TopHeader({
           </div>
           {/* 첫 행: 대시보드 바로 옆 본인 역할 전환. 대리접속 표식은 정보 행에 분리. */}
           <div data-header-actions className="order-2 ml-auto flex h-14 shrink-0 items-center gap-1 whitespace-nowrap 2xl:order-3">
-            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
+            <Link href="/dashboard" aria-label="수강생 대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
               <span className="app-header-pill group-hover:bg-red-100">
-                <span aria-hidden>←</span><span>대시보드</span>
+                <span aria-hidden>←</span><span>수강생 대시보드</span>
               </span>
             </Link>
             <RoleViewSwitch modeHint={roleMode} />

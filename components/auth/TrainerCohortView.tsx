@@ -30,7 +30,6 @@ export default function TrainerCohortView({
   trainerName,
   trainees,
   activeTrainers,
-  masterSheetUrl,
   canBackToAdmin,
   archivedCohorts = [],
 }: {
@@ -40,7 +39,6 @@ export default function TrainerCohortView({
   trainees: Trainee[];
   /** 담당 이름 lookup + (현재 viewOnly 라 dropdown 미사용). */
   activeTrainers: Trainer[];
-  masterSheetUrl: string;
   /** admin OR 관리부서 일 때 "← 마스터 메뉴" 노출. */
   canBackToAdmin: boolean;
   archivedCohorts?: string[];
@@ -189,37 +187,6 @@ export default function TrainerCohortView({
       </header>
 
       <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-8">
-        {/* 마스터 시트 — 기수 전체 현황 외부 링크 (URL 미설정 시 숨김). */}
-        {masterSheetUrl && (
-          <a
-            href={masterSheetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md"
-          >
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">📊</div>
-              <div>
-                <div className="text-sm font-bold text-gray-900 group-hover:text-red-600">
-                  마스터 시트 열기
-                </div>
-                <div className="mt-0.5 text-[11px] text-gray-400">
-                  기수 전체 현황 (외부 시트)
-                </div>
-              </div>
-            </div>
-            <svg
-              className="h-4 w-4 text-gray-400 group-hover:text-red-500"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </a>
-        )}
-
         <section>
           {/* 수강생출신 트레이너 — 본인 아레나 일지 전환 토글(P14). */}
           <h1 className="text-2xl font-black tracking-tight text-gray-900">
