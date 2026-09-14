@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-14 · 수리1 릴리스 · release/repair1-20260914 누락분 사후 기록
+- 의도: 수리1 릴리스 누락분 사후 기록 요청 반영.
+- 한 것: release/repair1-20260914 팁 5c18d14 확인, 브랜치 전용 9c55809 · 0049f5c 및 master 머지 #963 · #964 · #966(origin/master=13929ef) 정리 반영.
+- 운영 배포 성공 여부 · health 결과 · 실사용 확인 미확인.
+
 ### 2026-09-14 · [병렬트랙] Codex 수강생 대시보드 7개 피드백
 - 작업 STUDENT-DASHBOARD-260913 · fix/student-dashboard-followup-260913 · base fb1f4e0. 기존 dashboard-v4 초안 승계는 사용자 승인, 원본 보존.
 - 소유: 공용 헤더·높이 소비처·대시보드 재무/진행·주간목표 요약·관련 테스트/디자인 정본. 권한/Drive 작업과 데이터 변경 없음.
