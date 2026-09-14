@@ -9,7 +9,14 @@ import { chooseDailySource } from "./daily-source";
 import { weeklyGoalActuals } from "./weekly-goals-actuals";
 import { addDays, fmtISO, friOf, friWeekIndexOf, isValidISODate, parseISO, todayKST } from "@/util/week";
 import { WeeklyGoalInput, WeeklyGoalPrivateInput, type WeeklyGoalKey, type WeeklyGoalView, type GoalStudent } from "@/types/weekly-goals";
+import { canAccessManagedStudent } from "./trainer-student-access";
+import type { TrainerAccessOperation, TrainerStudentTarget } from "@/types/trainer-access";
 import type { User } from "@/types";
+
+/** Exact enrollment key. Email alone is insufficient when a person has several registrations. */
+function targetOf(u: User): TrainerStudentTarget {
+  return { email: u.email, spreadsheetId: u.spreadsheetId ?? "", cohort: u.cohort ?? "", courseStart: u.courseStartISO ?? "" };
+}
 
 export class WeeklyGoalError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -24,11 +31,17 @@ async function actor() {
   return { email, role: role.role, internal: role.role === "admin" || role.role === "trainer" };
 }
 /** Recheck the actual freshly resolved row, including assignment revocation between roster and detail. */
-export async function assertGoalStudentAccess(u: User) {
+export async function assertGoalStudentAccess(u: User, operation: TrainerAccessOperation = "read") {
   const a = await actor();
   if (u.role !== "trainee" || u.status === "pending" ||
     (a.role !== "admin" && a.email.toLowerCase() !== u.email.toLowerCase() &&
       !(a.role === "trainer" && parseAssignedTrainers(u.assignedTrainer).includes(a.email.toLowerCase())))) {
+    throw new WeeklyGoalError(403, "이 수강생을 조회할 권한이 없어요.");
+  }
+  // #958: assignment alone is not authority. A trainer acting on someone else's enrollment must also
+  // hold the saved grade/grants for this exact enrollment. Admin and self keep their existing boundary.
+  if (a.role === "trainer" && a.email.toLowerCase() !== u.email.toLowerCase() &&
+    !await canAccessManagedStudent(a.email, targetOf(u), operation)) {
     throw new WeeklyGoalError(403, "이 수강생을 조회할 권한이 없어요.");
   }
   // A trainer's own student enrollment does not inherit trainer-only note rights.
@@ -60,7 +73,7 @@ export async function listGoalStudents(): Promise<GoalStudent[]> {
     byEmail.set(email, [...(byEmail.get(email) ?? []), u]);
   }
   const seen = new Set<string>();
-  return users.filter(u => {
+  const candidates = users.filter(u => {
     // Authorize the actual alias before grouping; an unassigned alias cannot represent it.
     if (u.role !== "trainee" || u.status === "pending" || !u.spreadsheetId ||
       (fresh.role !== "admin" && !parseAssignedTrainers(u.assignedTrainer).includes(fresh.email.toLowerCase()))) return false;
@@ -72,16 +85,23 @@ export async function listGoalStudents(): Promise<GoalStudent[]> {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).map(u => ({ email: u.email, name: u.name, cohort: u.cohort }));
+  });
+  // #958: a trainer's roster is narrowed to enrollments its saved grade/grants actually allow.
+  // Admin keeps the existing boundary; a self enrollment is not a managed student.
+  if (fresh.role !== "trainer") return candidates.map(u => ({ email: u.email, name: u.name, cohort: u.cohort }));
+  const allowed = await Promise.all(candidates.map(async u =>
+    u.email.toLowerCase() === fresh.email.toLowerCase() ||
+    await canAccessManagedStudent(fresh.email, targetOf(u), "read")));
+  return candidates.filter((_, i) => allowed[i]).map(u => ({ email: u.email, name: u.name, cohort: u.cohort }));
 }
 
 /** Resolve every request on the server; never trust a submitted cohort, role or sheet id. */
-async function context(params: URLSearchParams) {
+async function context(params: URLSearchParams, operation: TrainerAccessOperation = "read") {
   await actor();
   const target = params.get("student") || await getActiveUserEmail();
   const u = await resolveGoalStudent(target);
   if (!u || u.role !== "trainee" || u.status === "pending") throw new WeeklyGoalError(403, "수강생 계정을 확인해 주세요.");
-  const checkedActor = await assertGoalStudentAccess(u);
+  const checkedActor = await assertGoalStudentAccess(u, operation);
   if (!isValidISODate(u.courseStartISO)) throw new WeeklyGoalError(422, "수강 시작일 확인이 필요해요.");
   if (!u.spreadsheetId || chooseDailySource(u.cohort, dbEnabled()) !== "db") {
     throw new WeeklyGoalError(503, "이 계정의 주간 목표를 아직 불러올 수 없어요.");
@@ -134,7 +154,7 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
 
 export async function updateWeeklyGoals(params: URLSearchParams, body: unknown) {
   if (!params.get("student")?.trim()) throw new WeeklyGoalError(400, "저장할 수강생을 확인해 주세요.");
-  const { key } = await context(params);
+  const { key } = await context(params, "write");
   if (!params.has("week") || !params.has("enrollment")) throw new WeeklyGoalError(400, "저장할 주차와 수강 정보를 확인해 주세요.");
   const parsed = WeeklyGoalInput.safeParse(body);
   if (!parsed.success) throw new WeeklyGoalError(400, "목표는 0 이상의 정수 또는 빈칸으로 입력해 주세요.");
@@ -148,7 +168,7 @@ export async function loadWeeklyGoalInternal(params: URLSearchParams) {
 }
 export async function updateWeeklyGoalInternal(params: URLSearchParams, body: unknown) {
   if (!params.get("student")?.trim()) throw new WeeklyGoalError(400, "저장할 수강생을 확인해 주세요.");
-  const { a, key } = await context(params);
+  const { a, key } = await context(params, "write");
   if (!a.internal) throw new WeeklyGoalError(403, "내부 기록을 수정할 권한이 없어요.");
   if (!params.has("week") || !params.has("enrollment")) throw new WeeklyGoalError(400, "저장할 주차와 수강 정보를 확인해 주세요.");
   const parsed = WeeklyGoalPrivateInput.safeParse(body);

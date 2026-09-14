@@ -16,6 +16,31 @@ vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
 vi.mock("@/service/daily-source", () => m);
+// #958: seed the trainer-access facts these legacy trainer fixtures imply. Without an explicit
+// grant the new ACL is fail-closed by design, so the intent must be stated rather than assumed.
+vi.mock("@/repo/db/trainer-student-access", () => ({
+  readTrainerStudentAccessFacts: async (actor: string, target: string | { email: string; spreadsheetId: string; cohort: string; courseStart: string }) => {
+    const found = (m.listAllUsers.getMockImplementation() ? await m.listAllUsers() : []) as { email: string; role: string; status: string; cohort?: string; spreadsheetId?: string; courseStartISO?: string }[];
+    const email = (typeof target === "string" ? target : target.email).toLowerCase();
+    const rows = found.filter(u => u.email.toLowerCase() === email && u.role === "trainee");
+    const match = typeof target === "string" ? rows
+      : rows.filter(u => u.spreadsheetId === target.spreadsheetId && u.cohort === target.cohort && u.courseStartISO === target.courseStart);
+    return {
+      qualifications: [{ email: actor.toLowerCase(), status: "active" }],
+      settings: [{ grade: "senior", grants: { active: { read: true, write: true }, arena: { read: true, write: true }, archived: { read: true, write: true } }, version: 1 }],
+      students: match.map(u => ({ email: u.email, role: u.role, status: u.status, cohort: u.cohort ?? "", cohort_label: u.cohort ?? "", spreadsheet_id: u.spreadsheetId, course_start_iso: u.courseStartISO })),
+      cohorts: [...new Set(match.flatMap(u => {
+        const label = (u.cohort ?? "").trim();
+        if (!label) return [];
+        // Arena participant label "A{season}-{gisu}" resolves against both the gisu and season rows.
+        const arena = label.match(/^A(\d+)-(\d+)기?$/);
+        return arena ? [arena[2]!, `A${arena[1]}`] : [label];
+      }))].map(label => ({
+        label, status: "active", type: /^A\d+$/i.test(label) ? "arena" : "cohort",
+      })),
+    };
+  },
+}));
 import { listGoalStudents, loadWeeklyGoals, loadWeeklyGoalInternal, updateWeeklyGoals, updateWeeklyGoalInternal, resolveGoalStudent } from "@/service/weekly-goals";
 import { loadGoalOverview } from "@/service/weekly-goals-overview";
 
