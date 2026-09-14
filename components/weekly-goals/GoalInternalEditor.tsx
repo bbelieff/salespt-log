@@ -9,7 +9,7 @@ import { joinAlignedRows, pairPriorOutcomes } from "@/util/weekly-goal-tasks";
 export default function GoalInternalEditor({ view, onDirty, onRecord, bindSave }: {
   view: WeeklyGoalView;
   onDirty: (dirty: boolean) => void;
-  /** Latest saved internal record, so the single copy panel can build the 회의록 row. */
+  /** Latest internal draft, so the single copy panel can build the 회의록 row. */
   onRecord: (record: WeeklyGoalPrivateRecord | null) => void;
   /** Hands the parent this section's save, so one bottom button commits both records. */
   bindSave: (save: (() => Promise<void>) | null) => void;
@@ -46,7 +46,7 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, bindSave }
     return () => currentFence.cancel();
   }, [load]);
   useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
-  useEffect(() => { onRecord(saved); return () => onRecord(null); }, [saved, onRecord]);
+  useEffect(() => { onRecord(draft); return () => onRecord(null); }, [draft, onRecord]);
 
   const save = useCallback(async () => {
     if (!draft || denied.current) throw new Error("입력과 접근 권한을 확인해 주세요.");
@@ -90,8 +90,8 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, bindSave }
       <fieldset disabled={saving} className="space-y-3">
         {view.previous && <div className="space-y-2">
           <p className="text-sm font-semibold">{view.previous.week}주차 PT과제 성과</p>
-          {outcomes.map((row, i) => <label key={i} className="block text-sm">
-            <span className="block text-xs text-gray-600">{row.task || `${i + 1}번 과제 (기록 없음)`}</span>
+          {outcomes.map((row, i) => <label key={i} className="grid items-start gap-2 rounded-xl border border-gray-200 bg-white p-3 text-sm pc:grid-cols-2">
+            <span className="break-words font-medium">{i + 1}. {row.task || "과제 기록 없음"}</span>
             <textarea aria-label={`지난주 PT과제 성과 ${i + 1}번`} rows={2} maxLength={2000} value={row.outcome}
               placeholder="실행한 내용, 결과, 다음에 보완할 점을 기록해 주세요."
               onChange={e => setOutcome(i, e.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 p-3" />

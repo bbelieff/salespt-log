@@ -3496,3 +3496,10 @@ Reviewed 1ad47e5 helper delta; found established deploy removes .next-prev after
 ## 2026-09-11 OG weekly-goals production feedback
 
 User-reported save403 reproduced using unauthenticated empty JSON: production Origin403 vs omitted Origin domain400 (no student write). Fixed deployment-owned AUTH_URL comparison instead of internal proxy nextUrl origin, retaining cross-site/JSON checks and rejecting forwarded-host spoofing. Added allowlisted entry-aware returnTo; moved dashboard goal rings below productivity. Focused30/type/build PASS; actual React browser32 PASS at1440/390 with placement screenshots. Normal hook fullcheck/CI and production recheck tracked in PR. No DB/environment/data changes. Plan: docs/plans/completed/weekly-goals-live-feedback.md.
+
+### 2026-09-14 · 주간 PT과제 행별 성과·노션 복사 일치
+- 지난 과제와 성과를 행별로 함께 배치하고 기존 내부 기록 저장·권한 유지.
+- 노션 원본 표의 14열을 직접 확인. 내부 권한 화면의 기본 표·수동 복사·자동 복사에 같은 데이터 행 적용(헤더 제외). 공용 화면 내부 정보 미포함.
+- 회의록의 상단 편집 항목은 초안에서 파생된 읽기 전용. 상단 필드가 없는 6개 항목만 복사용 편집.
+- 합성 브라우저에서 빈 중간 성과 입력·저장·미리보기 즉시 반영 및 실제 HTML/TSV 14열 확인. 운영 데이터·노션 원본 변경 없음.
+- 2026-09-14 추가 검증: 회의록 6개 기본 정보는 경영일지 파생값으로 고정. 주차 바의 구형 144px 오프셋을 공통 헤더 토큰으로 교체. 가상 데이터 브라우저 390px/1280px에서 미리보기 열기·닫기·스크롤, 헤더 밀착과 전체 가로 넘침 없음 확인.

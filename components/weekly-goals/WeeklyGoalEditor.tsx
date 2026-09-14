@@ -76,7 +76,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
   const previousTasks = splitTaskRows(view.previous?.record.task ?? "");
   return <form onSubmit={e => { e.preventDefault(); void save().catch(() => {}); }} className="space-y-5 ph-no-capture">
     {/* 주차 내비게이터 1행 — 페이지 배너 바로 아래에 고정. */}
-    <header className="sticky top-36 z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 2xl:top-[6.5rem]">
+    <header className="sticky top-app-content z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
       <button type="button" disabled={view.current.week <= 1 || saving} onClick={() => guarded(() => changeWeek(view.current.week - 1))}
         className="min-h-11 shrink-0 rounded-lg border px-3 text-sm disabled:opacity-40">이전 주</button>
       <div className="min-w-0 text-center">
@@ -123,19 +123,20 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
           setMessage("초안에 적용했어요. 확인 후 저장해 주세요.");
         }} />
 
-      {view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+      {!view.canReadInternal && view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
         <p className="text-sm font-semibold">지난 PT과제</p>
         <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm">{previousTasks.map((t, i) => <li key={i} className="break-words">{t}</li>)}</ol>
       </div>}
 
+      {view.canReadInternal && <GoalInternalEditor view={shown} onDirty={setInternalDirty}
+        onRecord={setInternalRecord} bindSave={bindInternalSave} />}
       <GoalTaskRows label="이번 주 PT과제" rows={taskRows} onChange={setTaskRows} disabled={saving}
         placeholder="과제 하나를 한 줄로 적어 주세요." />
     </section>
 
-    {view.canReadInternal && <GoalInternalEditor view={shown} onDirty={setInternalDirty}
-      onRecord={setInternalRecord} bindSave={bindInternalSave} />}
 
-    <GoalCopyPanel view={shown} internal={internalRecord ?? undefined}
+
+    <GoalCopyPanel view={{ ...view, current: { ...view.current, record: { ...draft, task: joinTaskRows(taskRows) } } }} internal={internalRecord ?? undefined}
       dirty={anyDirty || readFailed} autoCopyToken={copyToken} />
 
     <div className="sticky bottom-0 z-20 -mx-1 space-y-2 border-t border-gray-200 bg-white/95 px-1 py-3 backdrop-blur">
