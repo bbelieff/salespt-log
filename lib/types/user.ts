@@ -60,13 +60,18 @@ export function cohortGroupKey(cohort: string, captainOf?: string): string {
   return base || "—";
 }
 
-/** 정렬 튜플(사전식): 아레나(A시즌-기수) 우선 → 시즌·기수 desc, 일반 숫자 desc, 기타 끝.
- *  기수 박스는 위에서 아래로 최신 → 과거 (2026-09-14 수리3 — 아레나도 최신순 통일). */
+/** 정렬 튜플(사전식): 일반 기수 desc → 아레나(A시즌-기수) desc → 기타 끝.
+ *  기수 박스는 위에서 아래로 최신 → 과거이며, 아레나는 정규 기수 아래에 둔다
+ *  (2026-09-14 belie 지시 — 이전에는 아레나가 맨 위였다). */
 export function cohortSortTuple(groupKey: string): [number, number, number] {
+  // 그룹 우선순위: 일반 기수(0) → 아레나(1) → 기타(2).
+  // 아레나를 일반 기수 아래로 내린다 — 평소 보는 것은 최신 정규 기수이고
+  // 아레나는 시즌 단위라 자주 열지 않는다(2026-09-14 belie 지시).
+  // 같은 그룹 안에서는 숫자 desc(최신순): 11기 → 10기 → 9기.
   const m = /^A(\d+)-(\d+)/.exec(groupKey);
-  if (m) return [0, -parseInt(m[1]!, 10), -parseInt(m[2]!, 10)];
+  if (m) return [1, -parseInt(m[1]!, 10), -parseInt(m[2]!, 10)];
   const n = parseInt(groupKey, 10);
-  if (Number.isFinite(n)) return [1, -n, 0];
+  if (Number.isFinite(n)) return [0, -n, 0];
   return [2, 0, 0];
 }
 
