@@ -7,6 +7,14 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-14 · 수리4(DH) · 트레이너 관리 화면 헤더 정렬·아레나 하단·섹션 6순서
+- 의도: 수리3(#973 `e262903`) 배포 직후 belie 가 실화면에서 지적한 5건.
+- 한 것: `/admin/trainers` 를 TrainerMgmtPanel 단일 루트로(헤더 1개·전 섹션 그 아래) · `cohortSortTuple` 그룹 우선순위 반전(일반 기수→아레나) · 초대 취소·만료를 화면에서만 숨김(DB 행 보존) · 섹션 6순서 재배치 · `CollapsibleSection` 신설로 권한부여 접힘.
+- 결정: 아레나는 어떤 일반 기수보다도 아래(belie). 초대 revoke 는 계속 action:"revoke" — delete 아님.
+- 사고: 수리3 배포 검증에서 horizontal_overflow_px:0 만 재고 "정렬 통과"로 보고했다. 넘침 없음 != 기준선 일치. 좌표를 비교했어야 했다.
+- 다음: 회귀 가드가 Fragment 복귀·섹션 순서 변경·invites.map 복귀를 차단한다.
+- SoR: docs/plans/active/trainer-admin-layout-0914.md · 이슈 #975
+
 ### 2026-09-14 · 수리1 릴리스 · release/repair1-20260914 누락분 사후 기록
 - 의도: 수리1 릴리스 누락분 사후 기록 요청 반영.
 - 한 것: release/repair1-20260914 팁 5c18d14 확인, 브랜치 전용 9c55809 · 0049f5c 및 master 머지 #963 · #964 · #966(origin/master=13929ef) 정리 반영.
