@@ -97,7 +97,12 @@ const mocks = [
     });
     const config=repo('tailwindcss/loadConfig')(path.join(root,'tailwind.config.ts'));
     config.content=[{raw:['TopHeader.tsx','DDayBadge.tsx','auth/RoleViewSwitch.tsx','PageContainer.tsx'].map(f=>fs.readFileSync(path.join(root,'components',f),'utf8')).join('\n'),extension:'tsx'}];
-    const css=(await repo('postcss')([repo('tailwindcss')(config)]).process('@tailwind base;@tailwind components;@tailwind utilities;',{from:undefined})).css;
+    const globals=path.join(root,'app/globals.css');
+    const css=(await repo('postcss')([repo('tailwindcss')(config)]).process(fs.readFileSync(globals,'utf8'),{from:globals})).css;
+    const breakpoint=config.theme.screens['2xl'];
+    assert.match(breakpoint,/^\d+px$/, '2xl must be an explicit pixel breakpoint');
+    const desktopMin=Number.parseInt(breakpoint,10);
+    const widths=[...new Set([360,390,desktopMin-1,desktopMin,1440])];
     const js=fs.readFileSync(path.join(temp,'app.js'),'utf8');
     browser=await chromium.launch({headless:true,...(process.env.QA_BROWSER_EXECUTABLE?{executablePath:process.env.QA_BROWSER_EXECUTABLE}:{})});
     const validDate=new Date(Date.now()+30*86400000).toISOString().slice(0,10);
@@ -111,7 +116,7 @@ const mocks = [
       {label:'invalid-calendar-date',date:'2026-02-30'}
     ];
     let cases=0;
-    for(const width of [360,390,767,768]) for(const scenario of scenarios){
+    for(const width of widths) for(const scenario of scenarios){
       const fixture={...base,...scenario};
       const page=await browser.newPage({viewport:{width,height:800}});
       const posts=[]; const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -132,7 +137,7 @@ const mocks = [
       if(fixture.date===validDate)await page.waitForFunction(()=>!document.querySelector('[data-header-dday]').textContent.includes('D-—'));
       const result=await page.evaluate(()=>{
         const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height};};
-        return{width:innerWidth,scroll:document.documentElement.scrollWidth,header:rect('header'),logo:rect('[aria-label="계정 메뉴 열기"]'),actions:rect('[data-header-actions]'),info:rect('[data-header-info]'),name:rect('[data-header-info] > :first-child'),marker:document.querySelector('[data-header-impersonation]')?rect('[data-header-impersonation]'):null,dday:rect('[data-header-dday]'),banner:rect('header ~ .sticky'),date:document.querySelector('[data-header-dday]').textContent,infoText:document.querySelector('[data-header-info]').textContent,actionText:document.querySelector('[data-header-actions]').textContent,overflow:getComputedStyle(document.querySelector('header')).overflowX};
+        return{rem:Number.parseFloat(getComputedStyle(document.documentElement).fontSize),width:innerWidth,scroll:document.documentElement.scrollWidth,header:rect('header'),logo:rect('[aria-label="계정 메뉴 열기"]'),actions:rect('[data-header-actions]'),info:rect('[data-header-info]'),name:rect('[data-header-info] > :first-child'),marker:document.querySelector('[data-header-impersonation]')?rect('[data-header-impersonation]'):null,dday:rect('[data-header-dday]'),banner:rect('header ~ .sticky'),date:document.querySelector('[data-header-dday]').textContent,infoText:document.querySelector('[data-header-info]').textContent,actionText:document.querySelector('[data-header-actions]').textContent,roleButtonHeight:document.querySelector('.app-role-option')?.getBoundingClientRect().height,overflow:getComputedStyle(document.querySelector('header')).overflowX};
       });
       const label=width+' '+scenario.label;
       assert.ok(result.scroll<=width,label+' overflow '+JSON.stringify(result));
@@ -141,8 +146,8 @@ const mocks = [
       assert.ok(Math.abs(result.logo.top-result.actions.top)<=1,label+' first row');
       assert.ok(result.banner.top>=result.header.bottom-1,label+' banner overlaps header');
       assert.ok(!['hidden','clip'].includes(result.overflow),label+' overflow must not be hidden');
-      if(width<768){assert.equal(result.header.height,96,label);assert.ok(result.info.top>=result.actions.bottom-1,label+' information row');}
-      else{assert.equal(result.header.height,56,label);assert.ok(Math.abs(result.info.top-result.actions.top)<=1,label+' desktop single row');}
+      if(width<desktopMin){assert.equal(result.header.height,6*result.rem,label);assert.ok(result.info.top>=result.actions.bottom-1,label+' information row');}
+      else{assert.equal(result.header.height,3.5*result.rem,label);assert.ok(Math.abs(result.info.top-result.actions.top)<=1,label+' desktop single row');}
       assert.ok(result.infoText.includes('합성 긴이름 사용자 테스트') && result.name.right>result.name.left,label+' visible name');
       if(fixture.impersonating)assert.ok(result.marker && result.marker.left>=0 && result.marker.right<=width && result.marker.top>=result.info.top && result.marker.bottom<=result.info.bottom+1,label+' visible marker');
       assert.equal(result.infoText.includes('대리 접속 중'),fixture.impersonating,label+' marker');
@@ -152,6 +157,7 @@ const mocks = [
       const dual=fixture.canStudent&&fixture.canTrainer;
       assert.equal(await page.getByRole('group',{name:'접속 역할'}).count(),dual?1:0,label+' capabilities');
       if(dual){
+        assert.ok(result.roleButtonHeight>=44,label+' real global role styling');
         const group=page.getByRole('group',{name:'접속 역할'});
         assert.equal(await group.locator('[aria-pressed="true"]').count(),fixture.impersonating?0:1,label+' pressed role');
         const target=scenario.start?'수강생':'트레이너';const destination=scenario.start?'/dashboard':'/trainer';
@@ -179,5 +185,5 @@ it.skipIf(!process.env.QA_TOOLS_DIR)("real browser: responsive rows, no overflow
     maxBuffer: 4 * 1024 * 1024,
   });
   console.log(output);
-  expect(output).toContain("Browser matrix: 36 passed");
+  expect(output).toContain("Browser matrix: 45 passed");
 }, 150_000);
