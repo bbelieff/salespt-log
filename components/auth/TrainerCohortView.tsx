@@ -13,7 +13,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useMe } from "@/query/me-hook";
 import { useQueryClient } from "@tanstack/react-query";
@@ -157,24 +156,21 @@ export default function TrainerCohortView({
 
   return (
     <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-app-content z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-xs font-bold uppercase tracking-wider text-red-600">
-              Trainer
+      {/*
+       * 수리3 ①: admin·관리부서는 "← 마스터 메뉴"를 페이지 배너(TopHeader pageAction)에서
+       * 쓴다 → 여기 중복 row 제거. 일반 트레이너만 신원 + 로그아웃 row 유지.
+       */}
+      {!canBackToAdmin && (
+        <header className="sticky top-app-content z-10 border-b border-gray-200 bg-white px-6 py-4">
+          <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-wider text-red-600">
+                Trainer
+              </div>
+              <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
+                {trainerName} · {sessionEmail}
+              </div>
             </div>
-            <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
-              {trainerName} · {sessionEmail}
-            </div>
-          </div>
-          {canBackToAdmin ? (
-            <Link
-              href="/admin"
-              className="shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
-            >
-              ← 마스터 메뉴
-            </Link>
-          ) : (
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: "/" })}
@@ -182,9 +178,9 @@ export default function TrainerCohortView({
             >
               로그아웃
             </button>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
+      )}
 
       <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-8">
         <section>
