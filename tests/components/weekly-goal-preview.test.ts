@@ -23,7 +23,7 @@ it("keeps upper fields read-only and reflects draft changes without reopening", 
   const button = Array.from(host.querySelectorAll("button")).find(b => b.textContent === "회의록 미리보기")!;
   act(() => button.click());
   const field = (label: string) => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="회의록 ${label}"]`)!;
-  expect(field("지역").readOnly).toBe(false);
+  for (const label of ["지역", "기수", "수강생", "담당T", "금주미팅", "금주계약"]) expect(field(label).readOnly).toBe(true);
   for (const label of ["이번주 PT과제", "지난주 PT과제(성과)", "트레이닝 후 특이사항", "목표생산"]) expect(field(label).readOnly).toBe(true);
   render({ ...view, current: { ...view.current, record: { ...view.current.record, task: "Changed", goals: { ...EMPTY_GOALS, production: 9 } } } }, { ...internal, priorOutcome: "Changed outcome", specialNotes: "Changed notes" }, true);
   expect(field("이번주 PT과제").value).toBe("Changed");
@@ -31,6 +31,12 @@ it("keeps upper fields read-only and reflects draft changes without reopening", 
   expect(field("트레이닝 후 특이사항").value).toBe("Changed notes");
   expect(field("목표생산").value).toBe("9");
   expect(Array.from(host.querySelectorAll("button")).find(b => b.textContent === "회의록용 복사")!.disabled).toBe(true);
+  render({ ...view, student: { ...view.student, region: "Other region", cohort: "Next cohort", trainers: ["Trainer B"] }, current: { ...view.current, actuals: { ...view.current.actuals, meetings: 8, contracts: 3 } } }, internal);
+  expect(field("지역").value).toBe("Other region");
+  expect(field("기수").value).toBe("Next cohort");
+  expect(field("담당T").value).toBe("Trainer B");
+  expect(field("금주미팅").value).toBe("8");
+  expect(field("금주계약").value).toBe("3");
   render(view, undefined);
   expect(host.querySelector('textarea[aria-label="회의록 트레이닝 후 특이사항"]')).toBeNull();
 });

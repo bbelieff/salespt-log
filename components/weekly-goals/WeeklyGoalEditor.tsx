@@ -76,7 +76,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
   const previousTasks = splitTaskRows(view.previous?.record.task ?? "");
   return <form onSubmit={e => { e.preventDefault(); void save().catch(() => {}); }} className="space-y-5 ph-no-capture">
     {/* 주차 내비게이터 1행 — 페이지 배너 바로 아래에 고정. */}
-    <header className="sticky top-36 z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2 2xl:top-[6.5rem]">
+    <header className="sticky top-app-content z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
       <button type="button" disabled={view.current.week <= 1 || saving} onClick={() => guarded(() => changeWeek(view.current.week - 1))}
         className="min-h-11 shrink-0 rounded-lg border px-3 text-sm disabled:opacity-40">이전 주</button>
       <div className="min-w-0 text-center">
