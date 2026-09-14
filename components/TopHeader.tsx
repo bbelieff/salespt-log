@@ -1,4 +1,4 @@
-/** 공용 한 줄 헤더(3.5rem) + 페이지 배너(3rem). D-day는 대시보드 진행 박스 우측. */
+/** 공용 헤더: 모바일은 조작/정보 2행, 2xl부터 1행. 페이지 배너는 헤더 바로 아래. */
 "use client";
 
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
 import { useAnnouncements } from "@/query/announcements-hook";
 import PageContainer from "./PageContainer";
+import DDayBadge from "./DDayBadge";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
   ANNOUNCEMENTS_SEEN_EVENT,
@@ -47,6 +48,12 @@ export default function TopHeader({
 }: Props) {
   const me = useMe();
   const trainer = useTrainerState();
+  const graduation = me.data?.graduationISO;
+  // 불완전하거나 잘못된 날짜는 기존 DDayBadge 로딩 표식으로 처리한다.
+  const graduationISO = graduation && /^\d{4}-\d{2}-\d{2}$/.test(graduation)
+    && Number.isFinite(Date.parse(graduation))
+    && new Date(graduation).toISOString().slice(0, 10) === graduation
+    ? graduation : undefined;
 
   // PostHog 식별 + 내부 트래픽 태깅 (ADR-0009/0013).
   //  - 관리자 본인 또는 대리접속(impersonating) = 내부 → is_internal super property.
@@ -96,20 +103,26 @@ export default function TopHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
-        <PageContainer width="wide" className="flex h-full flex-nowrap items-center justify-between gap-x-2 px-2 sm:px-3">
-          <button type="button" onClick={()=>setPopupOpen(v=>!v)} className="flex h-11 shrink-0 items-center" aria-label="계정 메뉴 열기">
+      <header className="sticky top-0 z-50 h-24 border-b border-gray-100 bg-white 2xl:h-14">
+        <PageContainer width="wide" className="flex h-full flex-wrap items-center justify-between gap-x-2 px-2 sm:px-3 2xl:flex-nowrap">
+          <button type="button" onClick={()=>setPopupOpen(v=>!v)} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/salespt-logo.png" alt="세일즈PT" className="h-5 w-auto sm:h-6" />
             {hasNews && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label="새소식 있음" />}
           </button>
           {/* 가운데 사용자 식별 — 1줄에서 가장 늘어나는 영역이라 min-w-0 + truncate 필수 */}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <div data-header-info className="order-3 flex h-10 w-full min-w-0 items-center justify-between gap-2 2xl:order-2 2xl:h-14 2xl:w-auto 2xl:flex-1">
             {me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
               : <span className="min-w-0 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
+            {trainer.data?.impersonating && (
+              <span data-header-impersonation className="inline-flex shrink-0 items-center whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                대리 접속 중
+              </span>
+            )}
+            <div className="shrink-0" data-header-dday><DDayBadge graduationISO={graduationISO} /></div>
           </div>
-          {/* 기존 메뉴 복귀 링크와 같은 연한 붉은 알약형 버튼. */}
-          <div className="flex shrink-0 items-center gap-1">
+          {/* 첫 행: 대시보드 바로 옆 본인 역할 전환. 대리접속 표식은 정보 행에 분리. */}
+          <div data-header-actions className="order-2 ml-auto flex h-14 shrink-0 items-center gap-1 whitespace-nowrap 2xl:order-3">
             <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
               <span className="app-header-pill group-hover:bg-red-100">
                 <span aria-hidden>←</span><span>대시보드</span>
@@ -265,7 +278,7 @@ export default function TopHeader({
             cohort·이름 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
       {/* 페이지 배너 — 배경 full-bleed + 내용 6xl 중앙정렬 */}
-      <div className="sticky top-app-header z-40 h-12 border-b border-slate-200 bg-slate-100">
+      <div className="sticky top-24 z-40 h-12 2xl:top-app-header border-b border-slate-200 bg-slate-100">
         <PageContainer
           width="wide"
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"
