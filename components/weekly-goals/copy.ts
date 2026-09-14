@@ -12,7 +12,7 @@ export function meetingCells(v: WeeklyGoalView, internal: WeeklyGoalPrivateRecor
     internal.priorOutcome, v.current.record.task, ...GOAL_KEYS.map(k => String(v.current.record.goals[k] ?? "미기재"))]
     .map(s => s || "미기재");
 }
-export const GOAL_PIVOT_COLUMNS = ["수강생", "기수", "주차", "기간", ...GOAL_KEYS.map(k => GOAL_LABELS[k]), "PT과제"];
+export const GOAL_PIVOT_COLUMNS = ["수강생", "기수", "주차", "기간", "PT과제", ...GOAL_KEYS.map(k => GOAL_LABELS[k])];
 
 /** Horizontal (pivoted) one-row projection — the shape a Notion table row expects.
  * PT과제 rows stay one cell; they are numbered so several tasks survive the flattening.
@@ -21,8 +21,8 @@ export function goalPivotCells(v: WeeklyGoalView): string[] {
   const tasks = splitTaskRows(v.current.record.task);
   const task = tasks.length > 1 ? tasks.map((t, i) => `${i + 1}. ${t}`).join("\n") : tasks[0] ?? "";
   return [v.student.name, v.student.cohort, `${v.current.week}주차`, `${v.current.start} ~ ${v.current.end}`,
-    ...GOAL_KEYS.map(k => v.current.record.goals[k] === null ? "미기재" : String(v.current.record.goals[k])),
-    task || "미기재"];
+    task || "미기재", ...GOAL_KEYS.map(k => v.current.record.goals[k] === null ? "미기재" : String(v.current.record.goals[k]))
+    ];
 }
 
 /** Header + value rows as real table HTML, so a Notion paste lands in cells instead of one text block.

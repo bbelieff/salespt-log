@@ -56,19 +56,20 @@ describe("pivoted goal clipboard for a Notion table paste", () => {
   it("lays the record out horizontally, one column per field", () => {
     const cells = goalPivotCells(view());
     expect(cells).toHaveLength(GOAL_PIVOT_COLUMNS.length);
+    expect(GOAL_PIVOT_COLUMNS.slice(4)).toEqual(["PT과제", "생산", "유입", "컨택완료", "미팅완료", "계약"]);
     expect(cells.slice(0, 4)).toEqual(["Fixture Student", "test-cohort", "1주차", "2026-09-04 ~ 2026-09-10"]);
-    expect(cells.slice(4, 9)).toEqual(["0", "미기재", "7", "미기재", "미기재"]);
+    expect(cells.slice(5, 10)).toEqual(["0", "미기재", "7", "미기재", "미기재"]);
   });
   it("numbers several PT과제 rows so none are lost in the single cell", () => {
-    expect(goalPivotCells(view()).at(-1)).toBe("1. Task line 1\n2. Task line 2");
+    expect(goalPivotCells(view())[4]).toBe("1. Task line 1\n2. Task line 2");
   });
   it("leaves a single task unnumbered and shows 미기재 for none", () => {
     const one = { ...view() };
     one.current = { ...one.current, record: { ...one.current.record, task: "only task" } };
-    expect(goalPivotCells(one).at(-1)).toBe("only task");
+    expect(goalPivotCells(one)[4]).toBe("only task");
     const none = { ...view() };
     none.current = { ...none.current, record: { ...none.current.record, task: "" } };
-    expect(goalPivotCells(none).at(-1)).toBe("미기재");
+    expect(goalPivotCells(none)[4]).toBe("미기재");
   });
   it("emits a real header+value table so Notion pastes into cells, not one text block", () => {
     const { html } = goalClipboard(goalPivotCells(view()));
@@ -84,11 +85,11 @@ describe("pivoted goal clipboard for a Notion table paste", () => {
     expect(lines).toHaveLength(2);
     expect(lines[0]?.split("\t")).toHaveLength(GOAL_PIVOT_COLUMNS.length);
     expect(lines[1]?.split("\t")).toHaveLength(GOAL_PIVOT_COLUMNS.length);
-    expect(lines[1]?.split("\t").at(-1)).toBe("1. Task line 1 / 2. Task line 2");
+    expect(lines[1]?.split("\t")[4]).toBe("1. Task line 1 / 2. Task line 2");
   });
   it("escapes markup instead of letting a task inject HTML into the paste", () => {
     const cells = goalPivotCells(view());
-    cells[cells.length - 1] = '<img src=x onerror="alert(1)">';
+    cells[4] = '<img src=x onerror="alert(1)">';
     const { html } = goalClipboard(cells);
     expect(html).not.toMatch(/<img/);
     expect(html).toContain("&lt;img");
