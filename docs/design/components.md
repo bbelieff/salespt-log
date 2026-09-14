@@ -937,18 +937,19 @@ function getTimeValue(hourId, minuteId) {
 **구조 (한 컴포넌트, 2 sticky 영역)**:
 
 ```text
-TopHeader: 로고 | 기수·이름 대표님 | 대시보드 · 역할 전환
-  h-app-header = 3.5rem, sticky top-0 z-50
+TopHeader: 모바일 첫 행 = 로고 | 대시보드 · 역할 전환
+  모바일 정보 행 = 기수·이름 대표님 | 대리 접속 중 | D-day
+  h-app-header = <768px 6rem / >=768px 3.5rem, sticky top-0 z-50
 PageBanner: 페이지 이모지·제목 | 선택적 부제
   h-12 = 3rem, sticky top-app-header z-40
 날짜·검색·진행 등 페이지별 고정 영역
-  sticky top-app-content = 6.5rem, z-30
+  sticky top-app-content = 헤더 + 3rem (<768px 9rem / >=768px 6.5rem), z-30
 일반 본문
 ```
 
 - `components/TopHeader.tsx`가 브랜드 바와 페이지 배너를 함께 렌더한다. 별도 `PageBanner` 컴포넌트는 없다.
-- 모든 폭에서 브랜드 바는 한 줄이다. 모바일 루트 16px에서는 56px + 48px = 104px이며, PC(1024px+) 루트 13.5px에서는 47.25px + 40.5px = 87.75px이다. rem 토큰을 사용하고 고정 px offset으로 대체하지 않는다.
-- `DDayBadge`는 대시보드의 진행도 우측에 배치한다. 공용 헤더에는 D-day와 `대리 접속 중` 문구를 표시하지 않는다. 신원 변경 감지·쓰기 보호는 기존 `IdentityGuard`가 담당한다.
+- 768px 미만은 두 줄 브랜드 바 96px + 배너 48px = 144px이다. 768~1023px은 한 줄 56px + 48px = 104px, PC(1024px+) 루트 13.5px에서는 47.25px + 40.5px = 87.75px이다. `2xl`은 이 저장소에서 768px이며, 전역 반응형 높이 변수를 헤더·배너·모든 sticky 소비자가 공유한다.
+- 공용 헤더 정보 영역에 `DDayBadge`와 조건부 `대리 접속 중` 표식을 보존한다. 대리접속 표식은 본인 역할 전환 버튼과 분리한다. 신원 변경 감지·쓰기 보호는 기존 `IdentityGuard`가 담당한다.
 
 **API**:
 
@@ -966,7 +967,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
-**구조**: `h-app-header`, `flex-nowrap`. 좌측 로고·가운데 사용자명·우측 액션 세 그룹이다.
+**구조**: `h-app-header`, 모바일 `flex-wrap`, `2xl:flex-nowrap`. 모바일 첫 행은 로고·액션, 둘째 정보 행은 사용자명·대리접속 표식·D-day다. 2xl부터 로고·정보·액션 한 행이다.
 
 | 그룹 | 내용 | 데이터와 동작 |
 |---|---|---|
@@ -975,14 +976,14 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 | 액션 | 대시보드 + `RoleViewSwitch` | 대시보드는 모든 화면에서 `/dashboard` 링크. 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시 |
 
 - 대시보드 화면에서도 같은 링크를 유지한다. `/` 또는 `/trainer`로 조건부 치환하거나 비활성 라벨로 바꾸지 않는다.
-- 로고와 액션은 `shrink-0`, 사용자명은 가용 폭에 맞춰 줄인다. 사용자명 두 번째 행은 없다.
+- 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 360/390px 긴 이름에서도 실제 첫 글자와 최소 2rem 폭, 표식·D-day 비겹침을 브라우저로 검증한다.
 - 로고·역할 버튼은 `h-11`(모바일 44px). 대시보드는 기존 메뉴 복귀와 같은 연한 붉은 알약형(`rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700`)으로 `← 대시보드`를 표시한다. 투명한 링크 클릭 영역은 `min-h-11`로 유지하고 내부 pill을 수직 중앙에 배치한다. 별도 대시보드 아이콘·큰 사각 박스는 사용하지 않는다. PC에서는 전역 루트 스케일이 적용된다.
-- 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 헤더 문구 제거가 대리접속 권한이나 계정 전환 동작을 바꾸지 않는다.
+- 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 대리접속 표식과 반응형 배치가 권한이나 계정 전환 동작을 바꾸지 않는다.
 - 적층은 `sticky top-0 z-50`; 페이지 배너는 `sticky top-app-header z-40`이다.
 
 ### DDayBadge
 
-**용도**: 대시보드 날짜·진행도 영역 우측의 카운트다운 배지.
+**용도**: 공용 헤더 정보 영역 및 대시보드 날짜·진행도 영역의 카운트다운 배지. 헤더는 invalid/undefined 종강일을 placeholder로 정규화한다.
 
 - 날짜 정본은 `me.graduationISO`, 즉 시트 O2에 저장된 실제 종강총회일(수료일)이다. `courseStart + 57일` 같은 고정 일수로 계산하거나 저장 날짜를 덮어쓰지 않는다.
 - 컴포넌트는 브라우저 로컬 날짜와 `graduationISO`의 일수 차이를 계산한다. 초기에는 placeholder를 렌더하고 `useEffect`에서 오늘을 계산하며, 30분마다 갱신한다.
@@ -1002,7 +1003,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 - `sticky top-app-header z-40 h-12`: 브랜드 바 아래 3rem 높이의 페이지 식별 영역.
 - 바깥 배경은 전체 폭 `bg-slate-100`; 안쪽 `PageContainer width="wide"`가 제목·부제의 본문 정렬을 맞춘다.
 - 좌측은 `w-1 h-5 bg-slate-500` 액센트와 이모지·제목, 우측은 선택적 `pageSubtitle`이다.
-- 두 헤더 영역의 합은 `app-content` 6.5rem이다. 페이지별 sticky 소비처도 이 토큰을 공유한다. [적층 토큰](./tokens.md#z-index--sticky-적층)을 따른다.
+- 두 헤더 영역의 합은 `app-content`: 768px 미만 9rem, 768px 이상 6.5rem이다. 페이지별 sticky 소비처도 이 토큰을 공유한다. [적층 토큰](./tokens.md#z-index--sticky-적층)을 따른다.
 
 ---
 
@@ -1456,10 +1457,10 @@ button:focus, input:focus, select:focus {
 - `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
 - `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
-- `TopHeader`: 모든 폭에서 로고·사용자명·대시보드·역할 전환을 한 줄로 표시한다. 사용자명은 가용 폭에 맞춰 줄이며 대리접속 문구는 제거한다. D-day는 대시보드 진행도 우측으로 이동한다. 대시보드 링크는 `/dashboard`로 고정한다.
+- `TopHeader`: 768px 미만은 로고·대시보드·역할 전환 첫 행과 이름·대리접속 표식·D-day 정보 행으로 나누고, 768px 이상은 한 행이다. 이름은 가용 폭에 맞춰 줄이되 실제 글자가 보여야 한다. 대시보드 링크는 `/dashboard`로 고정한다.
 
 - `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
 
-- Header stack: `app-header` 3.5rem + 페이지 배너 3rem = `app-content` 6.5rem. 날짜·검색·대시보드 진행 래퍼는 `top-app-content`, PC 캘린더 상세 패널은 `top-app-calendar-panel` 10.5rem을 사용한다. 모바일 루트 16px에서는 합 104px, PC 루트 13.5px에서는 합 87.75px이며 캘린더 패널 offset은 PC 141.75px이다.
+- Header stack: `app-header`는 <768px 6rem / >=768px 3.5rem, 배너는 3rem이다. `top-app-content`는 합계 9rem / 6.5rem을 공유하므로 모바일 144px, 태블릿 104px, PC 87.75px이다. PC 캘린더 패널은 기존 `top-app-calendar-panel` 11.25rem(151.875px)을 유지한다.
 
 - 헤더 대시보드와 역할 토글은 red200 테두리/red50 배경/전체 곡률을 공유한다. 역할은 연결된 세그먼트 트랙(시각26px, 터치44px)이며 선택 영역만 red700/흰색. canStudent와 canTrainer 모두 참일 때만 표시한다.

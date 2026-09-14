@@ -103,7 +103,7 @@ export default function TopHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-50 h-24 border-b border-gray-100 bg-white 2xl:h-14">
+      <header className="sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
         <PageContainer width="wide" className="flex h-full flex-wrap items-center justify-between gap-x-2 px-2 sm:px-3 2xl:flex-nowrap">
           <button type="button" onClick={()=>setPopupOpen(v=>!v)} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -278,7 +278,7 @@ export default function TopHeader({
             cohort·이름 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
       {/* 페이지 배너 — 배경 full-bleed + 내용 6xl 중앙정렬 */}
-      <div className="sticky top-24 z-40 h-12 2xl:top-app-header border-b border-slate-200 bg-slate-100">
+      <div className="sticky top-app-header z-40 h-12 border-b border-slate-200 bg-slate-100">
         <PageContainer
           width="wide"
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"
