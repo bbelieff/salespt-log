@@ -12,7 +12,12 @@
  *   (실측 근거·유실 행수는 migrations/0002_users_natural_key.sql 주석 참조).
  * 정합 복구는 backfill(scripts/ops/backfill-registry.mjs) 재실행이 담당한다(시트가 정본).
  */
-import { captureServerEvent } from "@/lib/analytics/api-timing";
+import { captureServerEvent, currentRequestId } from "@/lib/analytics/api-timing";
+import {
+  logMirrorResult,
+  logMirrorSkipped,
+  redactDbError,
+} from "@/lib/analytics/save-observability";
 import { dbEnabled } from "./client";
 import {
   cohortColumnForLetter,
@@ -36,14 +41,23 @@ export interface UserKey {
   name: string;
 }
 
-/** 공통 실행기 — 3회 선형 백오프 후 최종 실패는 삼킨다(호출부로 절대 throw 안 함). */
+/** 공통 실행기 — 3회 선형 백오프 후 최종 실패는 삼킨다(호출부로 절대 throw 안 함).
+ *  2026-09-14: 성공/실패/스킵을 **구조화 한 줄**로도 남긴다(`t":"db_mirror_result"`).
+ *  기존 `[registry-mirror] 실패` 문자열 warn 도 **그대로 유지** — 운영 grep 이 깨지지 않게
+ *  병행한다(전환 완료 후 제거할 것). requestId 는 호출 **동기 시점**에 캡처한다:
+ *  재시도 setTimeout 이후에는 ALS 컨텍스트를 신뢰하지 않는다. */
 function fireAndForget(label: string, run: () => Promise<void>): void {
-  if (!dbEnabled()) return;
+  const requestId = currentRequestId();
+  if (!dbEnabled()) {
+    logMirrorSkipped({ reason: "db_disabled", label, requestId });
+    return;
+  }
   void (async () => {
     let lastErr: unknown;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         await run();
+        logMirrorResult({ requestId, label, outcome: "ok", attempts: attempt });
         return;
       } catch (e) {
         lastErr = e;
@@ -57,6 +71,13 @@ function fireAndForget(label: string, run: () => Promise<void>): void {
       "[DATABASE_URL]",
     );
     console.warn(`[registry-mirror] 실패 ${label}: ${msg}`);
+    logMirrorResult({
+      requestId,
+      label,
+      outcome: "error",
+      attempts: 3,
+      error: redactDbError(e),
+    });
     captureServerEvent("db_mirror_error", { tab: "registry" });
   });
 }
