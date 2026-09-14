@@ -4,6 +4,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
@@ -55,6 +56,16 @@ export default function TopHeader({
 }: Props) {
   const me = useMe();
   const trainer = useTrainerState();
+  const pathname = usePathname();
+  // 트레이너 화면의 `← 수강생 대시보드` Link 는 /dashboard 로 직행해서 (app)/layout 의
+  // 트레이너 가드(role=trainer·active·self-view 아님 → /trainer)에 그대로 튕겼다.
+  // 바로 옆 RoleViewSwitch 는 /api/role-view 로 self-view 를 세운 뒤 이동하므로 정상 동작한다.
+  // 같은 자리에 진입점이 둘이라 생긴 문제 → 토글이 실제로 렌더되는 경우에만 Link 를 접는다.
+  //  - 일반 수강생(canTrainer=false): 토글이 안 뜨므로 Link 유지(9개 화면의 유일한 복귀 동선).
+  //  - roleMode 는 WeeklyGoalPage 한 곳에서만 넘어온다 → RoleViewSwitch 와 **같은** pathname 폴백.
+  const roleView = roleMode ?? (pathname?.startsWith("/trainer") ? "trainer" : "student");
+  const roleToggleShown = !!trainer.data?.canStudent && !!trainer.data?.canTrainer;
+  const dashboardLinkSupersededByToggle = roleView === "trainer" && roleToggleShown;
   const graduation = me.data?.graduationISO;
   // 불완전하거나 잘못된 날짜는 기존 DDayBadge 로딩 표식으로 처리한다.
   const graduationISO = graduation && /^\d{4}-\d{2}-\d{2}$/.test(graduation)
@@ -130,11 +141,13 @@ export default function TopHeader({
           </div>
           {/* 첫 행: 대시보드 바로 옆 본인 역할 전환. 대리접속 표식은 정보 행에 분리. */}
           <div data-header-actions className="order-2 ml-auto flex h-14 shrink-0 items-center gap-1 whitespace-nowrap 2xl:order-3">
-            <Link href="/dashboard" aria-label="수강생 대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
-              <span className="app-header-pill group-hover:bg-red-100">
-                <span aria-hidden>←</span><span>수강생 대시보드</span>
-              </span>
-            </Link>
+            {!dashboardLinkSupersededByToggle && (
+              <Link href="/dashboard" aria-label="수강생 대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
+                <span className="app-header-pill group-hover:bg-red-100">
+                  <span aria-hidden>←</span><span>수강생 대시보드</span>
+                </span>
+              </Link>
+            )}
             <RoleViewSwitch modeHint={roleMode} />
           </div>
         </PageContainer>
