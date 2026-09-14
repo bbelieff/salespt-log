@@ -1,76 +1,184 @@
 import { describe, expect, it } from "vitest";
-import { proposeFromCumulative, proposeWeeklyGoals } from "@/util/weekly-goal-proposal";
-import type { GoalActuals } from "@/types/weekly-goals";
+import { proposeFromCumulative } from "@/util/weekly-goal-proposal";
 
-const cumulative = (over: Partial<GoalActuals> = {}): GoalActuals =>
-  ({ production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0, ...over });
+describe("proposeFromCumulative", () => {
+  it("distinguishes two students using only their own cumulative ratios", () => {
+    const a = proposeFromCumulative(
+      { production: 200, inflow: 200, contacts: 100, meetings: 50, contracts: 10 },
+      5
+    );
+    const b = proposeFromCumulative(
+      { production: 200, inflow: 200, contacts: 20, meetings: 50, contracts: 10 },
+      5
+    );
+    expect(a.goals.contacts).toBe(50);
+    expect(b.goals.contacts).toBe(10);
+    expect(a.goals.meetings).toBe(25);
+    expect(b.goals.meetings).toBe(25);
+    // Same target but different own contacts history => different proposal.
+    expect(a.goals.contacts).not.toBe(b.goals.contacts);
+  });
 
-describe("approved reverse goal proposal, direct cumulative rounding", () => {
-  it("uses approved rates, not demo multipliers or iterative rounded stages", () => {
-    expect(proposeWeeklyGoals(1)).toEqual({ production: 15, inflow: 13, contacts: 6, meetings: 3, contracts: 1 });
-    expect(proposeWeeklyGoals(2)).toEqual({ production: 30, inflow: 25, contacts: 12, meetings: 5, contracts: 2 });
-    expect(proposeWeeklyGoals(5)).toEqual({ production: 75, inflow: 63, contacts: 30, meetings: 13, contracts: 5 });
+  it("rounds up fractional ratios with a direct rational ceil and no intermediate rounding", () => {
+    // ceil(2 * 10 / 3) = ceil(20/3) = 7. Rounding the ratio first would give 8.
+    const r = proposeFromCumulative(
+      { production: 10, inflow: 10, contacts: 10, meetings: 10, contracts: 3 },
+      2
+    );
+    expect(r.goals.production).toBe(7);
+    // ceil(1 * 2 / 3) = 1; truncating the ratio first would give 0.
+    const small = proposeFromCumulative(
+      { production: 2, inflow: 2, contacts: 2, meetings: 2, contracts: 3 },
+      1
+    );
+    expect(small.goals.contacts).toBe(1);
+    // Exact division stays exact.
+    const exact = proposeFromCumulative(
+      { production: 10, inflow: 10, contacts: 10, meetings: 10, contracts: 5 },
+      3
+    );
+    expect(exact.goals.contacts).toBe(6);
   });
-  it("preserves zero", () => expect(Object.values(proposeWeeklyGoals(0))).toEqual([0, 0, 0, 0, 0]));
-  it.each([-1, 1.1, NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1, 2147483648])("rejects invalid target %s", n => {
-    expect(() => proposeWeeklyGoals(n)).toThrow();
-  });
-  it("rejects upstream overflow even when contract target fits", () => {
-    expect(() => proposeWeeklyGoals(2147483647)).toThrow(/범위/);
-  });
-  it("does not mutate or reuse previous proposal objects", () => {
-    const a = proposeWeeklyGoals(2); a.production = 0;
-    expect(proposeWeeklyGoals(2).production).toBe(30);
-  });
-});
 
-describe("back-calculation from the student's own week 1 cumulative record", () => {
-  const record = cumulative({ production: 1000, inflow: 200, contacts: 40, meetings: 8, contracts: 2 });
-  it("scales each metric by its cumulative ratio to contracts, not by the previous week alone", () => {
-    // 4 contracts = twice the cumulative 2, so every upstream target doubles.
-    expect(proposeFromCumulative(record, 4).goals).toEqual({ production: 2000, inflow: 400, contacts: 80, meetings: 16, contracts: 4 });
+  it("returns null upstream with no-contract-history when own contracts are zero", () => {
+    const r = proposeFromCumulative(
+      { production: 100, inflow: 100, contacts: 100, meetings: 100, contracts: 0 },
+      4
+    );
+    expect(r.goals).toEqual({
+      production: null,
+      inflow: null,
+      contacts: null,
+      meetings: null,
+      contracts: 4,
+    });
+    for (const entry of r.basis) {
+      if (entry.key === "contracts") {
+        expect(entry.reason).toBeNull();
+        expect(entry.value).toBe(4);
+      } else {
+        expect(entry.reason).toBe("no-contract-history");
+        expect(entry.value).toBeNull();
+        expect(entry.perContract).toBeNull();
+      }
+    }
   });
-  it("divides once against the cumulative ratio instead of compounding rounded stages", () => {
-    const { goals } = proposeFromCumulative(record, 3);
-    expect(goals).toEqual({ production: 1500, inflow: 300, contacts: 60, meetings: 12, contracts: 3 });
+
+  it("handles partial stage history without substitution between stages", () => {
+    const r = proposeFromCumulative(
+      { production: 0, inflow: 30, contacts: 0, meetings: 12, contracts: 6 },
+      3
+    );
+    // ceil(3 * 30 / 6) = 15, ceil(3 * 12 / 6) = 6; empty stages stay null.
+    expect(r.goals.inflow).toBe(15);
+    expect(r.goals.meetings).toBe(6);
+    expect(r.goals.production).toBeNull();
+    expect(r.goals.contacts).toBeNull();
+    expect(r.goals.contracts).toBe(3);
+    const byKey = Object.fromEntries(r.basis.map((e) => [e.key, e]));
+    expect(byKey.production?.reason).toBe("no-stage-history");
+    expect(byKey.contacts?.reason).toBe("no-stage-history");
+    expect(byKey.inflow?.reason).toBeNull();
   });
-  it("rounds each target up so a fractional requirement is never under-set", () => {
-    const { goals } = proposeFromCumulative(cumulative({ production: 7, inflow: 5, contacts: 3, meetings: 2, contracts: 2 }), 1);
-    expect(goals).toEqual({ production: 4, inflow: 3, contacts: 2, meetings: 1, contracts: 1 });
+
+  it("returns zero upstream goals for a zero target when history is usable", () => {
+    const r = proposeFromCumulative(
+      { production: 100, inflow: 80, contacts: 60, meetings: 40, contracts: 10 },
+      0
+    );
+    expect(r.goals).toEqual({
+      production: 0,
+      inflow: 0,
+      contacts: 0,
+      meetings: 0,
+      contracts: 0,
+    });
+    for (const entry of r.basis) {
+      expect(entry.reason).toBeNull();
+      expect(entry.value).toBe(0);
+    }
   });
-  it("exposes the cumulative numbers behind every row so the basis is auditable", () => {
-    const { basis } = proposeFromCumulative(record, 4);
-    expect(basis.map(b => b.key)).toEqual(["production", "inflow", "contacts", "meetings", "contracts"]);
-    expect(basis[0]).toMatchObject({ cumulative: 1000, perContract: 500, value: 2000, fallback: false });
-    expect(basis[3]).toMatchObject({ cumulative: 8, perContract: 4, value: 16, fallback: false });
+
+  it("retains a zero contracts target even with no history", () => {
+    const r = proposeFromCumulative(
+      { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 },
+      0
+    );
+    expect(r.goals.contracts).toBe(0);
+    expect(r.goals.production).toBeNull();
   });
-  it("falls back to the approved fixed rates when there is no contract history to divide by", () => {
-    const first = proposeFromCumulative(cumulative({ production: 500, inflow: 90 }), 2);
-    expect(first.goals).toEqual(proposeWeeklyGoals(2));
-    expect(first.allFallback).toBe(true);
-    expect(first.basis.every(b => b.perContract === null)).toBe(true);
+
+  it("rejects invalid contracts targets", () => {
+    const good = { production: 10, inflow: 10, contacts: 10, meetings: 10, contracts: 5 };
+    for (const bad of [-1, 1.5, NaN, Infinity, -Infinity, 2147483648, 9007199254740991 + 1]) {
+      expect(() => proposeFromCumulative(good, bad)).toThrow();
+    }
+    expect(() => proposeFromCumulative(good, "5" as unknown as number)).toThrow();
+    expect(() => proposeFromCumulative(good, undefined as unknown as number)).toThrow();
   });
-  it("falls back only for the stages the student has no record for", () => {
-    const partial = proposeFromCumulative(cumulative({ inflow: 100, contacts: 20, meetings: 4, contracts: 2 }), 4);
-    expect(partial.goals.inflow).toBe(200);
-    expect(partial.goals.production).toBe(proposeWeeklyGoals(4).production);
-    expect(partial.allFallback).toBe(false);
-    expect(partial.basis.find(b => b.key === "production")?.fallback).toBe(true);
-    expect(partial.basis.find(b => b.key === "inflow")?.fallback).toBe(false);
+
+  it("rejects result overflow", () => {
+    expect(() =>
+      proposeFromCumulative(
+        { production: 2147483647, inflow: 1, contacts: 1, meetings: 1, contracts: 1 },
+        2
+      )
+    ).toThrow();
   });
-  it("keeps the contract target exactly as entered", () => {
-    expect(proposeFromCumulative(record, 0).goals.contracts).toBe(0);
-    expect(proposeFromCumulative(record, 37).goals.contracts).toBe(37);
+
+  it("accepts the max target when the ratio is exactly 1", () => {
+    const r = proposeFromCumulative(
+      { production: 7, inflow: 7, contacts: 7, meetings: 7, contracts: 7 },
+      2147483647
+    );
+    expect(r.goals).toEqual({
+      production: 2147483647,
+      inflow: 2147483647,
+      contacts: 2147483647,
+      meetings: 2147483647,
+      contracts: 2147483647,
+    });
   });
-  it.each([-1, 1.1, NaN, Infinity, 2147483648])("rejects invalid target %s", n => {
-    expect(() => proposeFromCumulative(record, n)).toThrow();
+
+  it("normalizes NaN, negative, and non-finite cumulative values and truncates fractions", () => {
+    const r = proposeFromCumulative(
+      {
+        production: NaN,
+        inflow: -10,
+        contacts: Infinity,
+        meetings: 3.9,
+        contracts: 5,
+      },
+      2
+    );
+    expect(r.goals.production).toBeNull();
+    expect(r.goals.inflow).toBeNull();
+    expect(r.goals.contacts).toBeNull();
+    // 3.9 truncates to 3: ceil(2 * 3 / 5) = 2.
+    expect(r.goals.meetings).toBe(2);
+    const byKey = Object.fromEntries(r.basis.map((e) => [e.key, e]));
+    expect(byKey.production?.cumulative).toBe(0);
+    expect(byKey.meetings?.cumulative).toBe(3);
   });
-  it("rejects a proposal that would overflow the stored integer column", () => {
-    expect(() => proposeFromCumulative(cumulative({ production: 1000000, contracts: 1 }), 2147483)).toThrow(/범위/);
+
+  it("treats non-positive own contracts history as no-contract-history", () => {
+    const r = proposeFromCumulative(
+      { production: 50, inflow: 50, contacts: 50, meetings: 50, contracts: -4 },
+      3
+    );
+    expect(r.goals.production).toBeNull();
+    expect(r.basis.find((e) => e.key === "production")?.reason).toBe("no-contract-history");
+    expect(r.goals.contracts).toBe(3);
   });
-  it("ignores negative or fractional cumulative input rather than trusting it", () => {
-    const odd = proposeFromCumulative(cumulative({ production: -5, inflow: 10.7, contracts: 1 }), 1);
-    expect(odd.basis.find(b => b.key === "production")?.fallback).toBe(true);
-    expect(odd.goals.inflow).toBe(10);
+
+  it("does not mutate the input cumulative object", () => {
+    const input = { production: 10.9, inflow: 20, contacts: 30, meetings: 40, contracts: 5 };
+    const snapshot = { ...input };
+    const r = proposeFromCumulative(input, 2);
+    expect(input).toEqual(snapshot);
+    // Mutating the result must not affect a fresh call.
+    (r.goals as Record<string, number | null>).contacts = 9999;
+    const again = proposeFromCumulative(input, 2);
+    expect(again.goals.contacts).toBe(12);
   });
 });

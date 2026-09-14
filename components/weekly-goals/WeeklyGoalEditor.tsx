@@ -121,7 +121,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
 
       <GoalDraftTools cumulative={view.cumulative} weeksCounted={Math.max(0, view.current.week - 1)}
         dirty={dirty} disabled={saving} apply={goals => {
-          setDraft(current => ({ ...current, goals }));
+          setDraft(current => ({ ...current, goals: { ...current.goals, ...goals } }));
           setMessage("초안에 적용했어요. 확인 후 저장해 주세요.");
         }} />
 
