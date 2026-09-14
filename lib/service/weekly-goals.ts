@@ -30,15 +30,15 @@ async function actor() {
   }
   return { email, role: role.role, internal: role.role === "admin" || role.role === "trainer" };
 }
-/** Recheck the actual freshly resolved row, including assignment revocation between roster and detail. */
+/** Recheck the actual freshly resolved row, including current saved grants between roster and detail. */
 export async function assertGoalStudentAccess(u: User, operation: TrainerAccessOperation = "read") {
   const a = await actor();
   if (u.role !== "trainee" || u.status === "pending" ||
     (a.role !== "admin" && a.email.toLowerCase() !== u.email.toLowerCase() &&
-      !(a.role === "trainer" && parseAssignedTrainers(u.assignedTrainer).includes(a.email.toLowerCase())))) {
+      a.role !== "trainer")) {
     throw new WeeklyGoalError(403, "이 수강생을 조회할 권한이 없어요.");
   }
-  // #958: assignment alone is not authority. A trainer acting on someone else's enrollment must also
+  // #958: assignment is display data, not an access prerequisite. A trainer acting on another enrollment must
   // hold the saved grade/grants for this exact enrollment. Admin and self keep their existing boundary.
   if (a.role === "trainer" && a.email.toLowerCase() !== u.email.toLowerCase() &&
     !await canAccessManagedStudent(a.email, targetOf(u), operation)) {
@@ -49,7 +49,7 @@ export async function assertGoalStudentAccess(u: User, operation: TrainerAccessO
   const self = a.email.toLowerCase() === u.email.toLowerCase() ||
     ownRows.some(row => row.role === "trainee" && row.email.toLowerCase() === a.email.toLowerCase() &&
       row.spreadsheetId === u.spreadsheetId && row.cohort === u.cohort && row.courseStartISO === u.courseStartISO);
-  return { ...a, internal: a.role === "admin" || (a.role === "trainer" && !self && parseAssignedTrainers(u.assignedTrainer).includes(a.email.toLowerCase())) };
+  return { ...a, internal: a.role === "admin" || (a.role === "trainer" && !self) };
 }
 
 /** Same-email trainer+arena convention used by me/profile; no name-based privilege expansion. */
@@ -74,9 +74,8 @@ export async function listGoalStudents(): Promise<GoalStudent[]> {
   }
   const seen = new Set<string>();
   const candidates = users.filter(u => {
-    // Authorize the actual alias before grouping; an unassigned alias cannot represent it.
-    if (u.role !== "trainee" || u.status === "pending" || !u.spreadsheetId ||
-      (fresh.role !== "admin" && !parseAssignedTrainers(u.assignedTrainer).includes(fresh.email.toLowerCase()))) return false;
+    // Preserve exact enrollment resolution and dedupe; assignment does not narrow saved grants.
+    if (u.role !== "trainee" || u.status === "pending" || !u.spreadsheetId) return false;
     const mine = byEmail.get(u.email.toLowerCase())!;
     const addressable = pickCrmUser(mine);
     // Keep the same email-resolution convention as detail; never link an old enrollment to a new one.

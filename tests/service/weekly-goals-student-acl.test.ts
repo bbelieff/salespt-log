@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import { EMPTY_GOALS } from "@/types/weekly-goals";
 import { User } from "@/types";
 
 /** #958 endpoint-level authorization regression.
@@ -19,7 +20,7 @@ vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
 vi.mock("@/service/daily-source", () => m);
 vi.mock("@/service/trainer-student-access", () => ({ canAccessManagedStudent: m.canAccess }));
-import { listGoalStudents, loadWeeklyGoals, updateWeeklyGoals, updateWeeklyGoalInternal } from "@/service/weekly-goals";
+import { listGoalStudents, loadWeeklyGoals, loadWeeklyGoalInternal, updateWeeklyGoals, updateWeeklyGoalInternal } from "@/service/weekly-goals";
 
 const TRAINER = "trainer@example.test";
 const student = (email: string, o: Partial<User> = {}): User => User.parse({
@@ -62,7 +63,7 @@ it("read grant allows read but a write-denied trainer cannot save", async () => 
 
 it("write grant is checked with the write operation, not read", async () => {
   m.canAccess.mockResolvedValue(true);
-  await updateWeeklyGoals(params(), { goals: {}, revision: 0 }).catch(() => undefined);
+  await expect(updateWeeklyGoals(params(), publicInput())).resolves.toEqual({ revision: 1 });
   expect(m.canAccess).toHaveBeenCalledWith(TRAINER, expect.objectContaining({ email: TARGET.email }), "write");
 });
 
@@ -89,4 +90,60 @@ it("direct call with a forged student parameter still resolves the target server
   const forged = new URLSearchParams({ student: "victim@example.test", week: "1" });
   await expect(loadWeeklyGoals(forged)).rejects.toMatchObject({ status: 403 });
   expect(m.readWeeklyGoal).not.toHaveBeenCalled();
+});
+
+const publicInput = () => ({ goals: { ...EMPTY_GOALS }, task: "Synthetic task", revision: 0 });
+const privateInput = () => ({ specialNotes: "Synthetic note", priorOutcome: "", revision: 0 });
+it.each(["", "other@example.test"])("saved grants allow unassigned target (%s) roster/detail/public and private writes", async assignedTrainer => {
+  const target = student(TARGET.email, { assignedTrainer });
+  m.findUserByEmail.mockResolvedValue(target); m.listAllUsers.mockResolvedValue([target]);
+  m.canAccess.mockResolvedValue(true);
+  expect(await listGoalStudents()).toEqual([{ email: target.email, name: target.name, cohort: target.cohort }]);
+  await expect(loadWeeklyGoals(params())).resolves.toMatchObject({ canReadInternal: true, student: { trainers: assignedTrainer ? [assignedTrainer] : [] } });
+  await expect(loadWeeklyGoalInternal(params())).resolves.toBeNull();
+  await expect(updateWeeklyGoals(params(), publicInput())).resolves.toEqual({ revision: 1 });
+  await expect(updateWeeklyGoalInternal(params(), privateInput())).resolves.toEqual({ revision: 1 });
+  const exact = { email: target.email, spreadsheetId: target.spreadsheetId, cohort: target.cohort, courseStart: target.courseStartISO };
+  expect(m.canAccess).toHaveBeenCalledWith(TRAINER, exact, "read");
+  expect(m.canAccess).toHaveBeenCalledWith(TRAINER, exact, "write");
+  expect(m.saveWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ studentId: target.spreadsheetId, cohort: target.cohort, courseStart: target.courseStartISO }), publicInput());
+  expect(target.assignedTrainer).toBe(assignedTrainer);
+});
+it.each([false, undefined])("missing/denied grants (%s) fail closed for unassigned roster/read/write", async grant => {
+  const target = student(TARGET.email, { assignedTrainer: "" });
+  m.findUserByEmail.mockResolvedValue(target); m.listAllUsers.mockResolvedValue([target]);
+  m.canAccess.mockResolvedValue(grant);
+  expect(await listGoalStudents()).toEqual([]);
+  await expect(loadWeeklyGoals(params())).rejects.toMatchObject({ status: 403 });
+  await expect(loadWeeklyGoalInternal(params())).rejects.toMatchObject({ status: 403 });
+  await expect(updateWeeklyGoals(params(), publicInput())).rejects.toMatchObject({ status: 403 });
+  await expect(updateWeeklyGoalInternal(params(), privateInput())).rejects.toMatchObject({ status: 403 });
+  for (const fn of [m.readWeeklyGoal,m.readWeeklyGoalPrivate,m.readSalesRowsFromDb,m.readMeetingsFromDb,m.readContractsFromDb,m.saveWeeklyGoal,m.saveWeeklyGoalPrivate]) expect(fn).not.toHaveBeenCalled();
+});
+it("grant revocation denies a previously allowed unassigned enrollment", async () => {
+  const target = student(TARGET.email, { assignedTrainer: "" });
+  m.findUserByEmail.mockResolvedValue(target); m.listAllUsers.mockResolvedValue([target]);
+  m.canAccess.mockResolvedValue(true);
+  await loadWeeklyGoals(params());
+  m.canAccess.mockResolvedValue(false); m.readWeeklyGoal.mockClear();
+  await expect(loadWeeklyGoals(params())).rejects.toMatchObject({ status: 403 });
+  await expect(updateWeeklyGoals(params(), publicInput())).rejects.toMatchObject({ status: 403 });
+  expect(m.readWeeklyGoal).not.toHaveBeenCalled(); expect(m.saveWeeklyGoal).not.toHaveBeenCalled();
+});
+
+it("unassigned read-only grant permits roster/detail but rejects both writes", async () => {
+  const target = student(TARGET.email, { assignedTrainer: "" });
+  m.findUserByEmail.mockResolvedValue(target); m.listAllUsers.mockResolvedValue([target]);
+  m.canAccess.mockImplementation(async (_actor: string, _target: unknown, operation: string) => operation === "read");
+  expect(await listGoalStudents()).toHaveLength(1);
+  await expect(loadWeeklyGoals(params())).resolves.toMatchObject({ canReadInternal: true });
+  await expect(updateWeeklyGoals(params(), publicInput())).rejects.toMatchObject({ status: 403 });
+  await expect(updateWeeklyGoalInternal(params(), privateInput())).rejects.toMatchObject({ status: 403 });
+  expect(m.saveWeeklyGoal).not.toHaveBeenCalled(); expect(m.saveWeeklyGoalPrivate).not.toHaveBeenCalled();
+});
+it("policy lookup failure cannot fall back to assignment or reach student data", async () => {
+  m.canAccess.mockRejectedValue(new Error("synthetic policy unavailable"));
+  await expect(loadWeeklyGoals(params())).rejects.toThrow("synthetic policy unavailable");
+  await expect(updateWeeklyGoals(params(), publicInput())).rejects.toThrow("synthetic policy unavailable");
+  expect(m.readWeeklyGoal).not.toHaveBeenCalled(); expect(m.saveWeeklyGoal).not.toHaveBeenCalled();
 });

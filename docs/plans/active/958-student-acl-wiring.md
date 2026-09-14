@@ -7,6 +7,19 @@ issue: 958
 
 # ACTIVE Plan — #958 Student ACL Wiring (+ bounded #956 header)
 
+## Current correction — assignment is not an access prerequisite
+
+- Owner/session/branch remain OG / `feat/958-student-acl-wiring`; PR [#968](https://github.com/bbelieff/salespt-log/pull/968).
+- Starting head: `89f1cdac03f244cc1f228c267664e5886e42077f`.
+- Approved #958 contract: saved grade/grants govern managed enrollment read/write without an additional assignedTrainer restriction.
+- Scope: remove assignment prerequisite in `assertGoalStudentAccess` (including its internal-right calculation) and `listGoalStudents`; preserve assignment display data, actual admin/self boundaries, own-alias private denial, exact server-resolved enrollment, current enrollment selection/dedupe, and fail-closed read/write grants.
+- Tests: unassigned/other-assigned granted roster/detail/public/private writes; denied or missing grants yield empty roster and 403 detail/writes with zero data calls; read-only grant denies writes; grant revocation and lookup failure fail closed. Legacy tests now use real saved-grant revocation rather than assignment revocation.
+- Reproduction: prior service, new regressions **3 failed / 9 passed**. Initial corrected service/identity suites **100 passed**; subsequently added read-only and lookup-failure cases await fixed-head gates.
+- Required gates: normal check.sh, fixed-head focused service/ACL tests plus retained header/browser regressions, next build, pushed-head CI, then DH independent re-review. Results belong to their exact SHAs; no new build/CI result is claimed here before execution.
+- No data/migration/new writer/worktree/merge/deploy. Serial release criteria below remain mandatory. Current runtime correction supersedes the historical DOC ONLY scope below; historical UI-only results are not proof of this new ACL change.
+
+## Historical documentation-only plan addition (89f1cdac)
+
 **Status:** ACTIVE — DOC ONLY
 **Issues:** #958 (weekly-goals ACL wiring) + bounded #956 (shared header correction)
 **Owner:** Existing OG owner

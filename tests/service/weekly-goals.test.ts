@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_GOALS } from "@/types/weekly-goals";
 
 const m = vi.hoisted(() => ({
+  grant: vi.fn(),
   getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
   findUserByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(),
   readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock("@/repo/db/trainer-student-access", () => ({
       : rows.filter(u => u.spreadsheetId === target.spreadsheetId && u.cohort === target.cohort && u.courseStartISO === target.courseStart);
     return {
       qualifications: [{ email: actor.toLowerCase(), status: "active" }],
-      settings: [{ grade: "senior", grants: { active: { read: true, write: true }, arena: { read: true, write: true }, archived: { read: true, write: true } }, version: 1 }],
+      settings: [{ grade: "senior", grants: { active: { read: m.grant(), write: m.grant() }, arena: { read: m.grant(), write: m.grant() }, archived: { read: m.grant(), write: m.grant() } }, version: 1 }],
       students: match.map(u => ({ email: u.email, role: u.role, status: u.status, cohort: u.cohort ?? "", cohort_label: u.cohort ?? "", spreadsheet_id: u.spreadsheetId, course_start_iso: u.courseStartISO })),
       cohorts: [...new Set(match.flatMap(u => {
         const label = (u.cohort ?? "").trim();
@@ -49,6 +50,7 @@ const params = (week = "1") => new URLSearchParams({ student: student.email, wee
 
 beforeEach(() => {
   vi.resetAllMocks();
+  m.grant.mockReturnValue(true);
   m.getSessionEmail.mockResolvedValue(student.email);
   m.getActiveUserEmail.mockResolvedValue(student.email);
   m.getEffectiveRole.mockResolvedValue({ role: "trainee", status: "active" });
@@ -79,10 +81,11 @@ describe("weekly goals server access and public projection", () => {
     await expect(loadWeeklyGoals(params())).rejects.toMatchObject({ status: 403 });
     expect(m.readWeeklyGoal).not.toHaveBeenCalled();
   });
-  it("checks assignment against the real actor, not submitted role or active target", async () => {
+  it("checks saved grants for the real actor, not submitted role or active target", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
     m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "other-trainer@example.test" });
+    m.grant.mockReturnValue(false);
     const p = params(); p.set("role", "admin");
     await expect(loadWeeklyGoals(p)).rejects.toMatchObject({ status: 403 });
     expect(m.findUserByEmail).toHaveBeenCalledWith(student.email);
@@ -109,10 +112,11 @@ describe("weekly goals server access and public projection", () => {
     expect(view.canReadInternal).toBe(true);
     expect(JSON.stringify(view)).not.toContain("PRIVATE");
   });
-  it("denies assignment revoked in fresh user data even when prior impersonation check allowed it", async () => {
+  it("denies revoked grants in fresh policy data despite an obsolete impersonation approval", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
     m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "new-trainer@example.test" });
+    m.grant.mockReturnValue(false);
     await expect(loadWeeklyGoals(params())).rejects.toMatchObject({ status: 403 });
     await expect(loadWeeklyGoalInternal(params())).rejects.toMatchObject({ status: 403 });
     expect(m.readWeeklyGoal).not.toHaveBeenCalled();
@@ -144,7 +148,7 @@ describe("weekly goals server access and public projection", () => {
     await expect(loadWeeklyGoalInternal(params())).rejects.toMatchObject({ status: 403 });
     expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
   });
-  it("restricts trainer roster to assigned non-pending trainees", async () => {
+  it("deduplicates grant-allowed non-pending trainees independent of assignment", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
     m.listAllUsers.mockResolvedValue([student, { ...student, email: "other@example.test", assignedTrainer: "other-trainer@example.test" }, { ...student, email: "pending@example.test", status: "pending" }]);
@@ -181,14 +185,15 @@ describe("weekly goals server access and public projection", () => {
     await expect(listGoalStudents()).rejects.toMatchObject({ status: 403 });
     expect(m.getEffectiveRole).toHaveBeenLastCalledWith("other-trainer@example.test");
   });
-  it("uses the fresh trainer assignment filter after an administrator is downgraded during roster lookup", async () => {
+  it("uses fresh trainer grants after an administrator is downgraded during roster lookup", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "admin", status: "active" });
     m.listAllUsers.mockImplementation(async () => {
       m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+      m.grant.mockReturnValue(false);
       return [student, { ...student, email: "unassigned@example.test", assignedTrainer: "other-trainer@example.test" }];
     });
-    expect(await listGoalStudents()).toEqual([{ email: student.email, name: student.name, cohort: student.cohort }]);
+    expect(await listGoalStudents()).toEqual([]);
     expect(m.getEffectiveRole).toHaveBeenCalledTimes(2);
   });
 });
