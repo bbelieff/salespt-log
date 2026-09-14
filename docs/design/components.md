@@ -474,7 +474,8 @@ function getTimeValue(hourId, minuteId) {
 - **단계 인디케이터(ADR-0027)**: 아이콘 칩 **위 STEP 배지**("STEP 1~4", `text-[9px]`). 점(dots) 폐기. 캘린더는 단계 없음(도구).
 - **흐름 화살표**: STEP1·2 사이, STEP3·4 사이에만 `›`(chevron, `text-slate-300`, 좁은 고정폭, 행 높이 중앙). **캘린더 양옆엔 없음**.
 - **아이콘 칩**: `h-8 w-9 rounded-lg`. 비활성=`bg-slate-200`+`text-slate-600`, 활성=탭색 채움(`bg-{tab}`)+흰 글리프+`shadow`. STEP 배지·라벨도 같은 탭색(라벨 `font-bold`). **탭색 5종 = tokens.md "탭 단계 색상"**(blue-700/emerald-600/amber-500/violet-600/rose-600).
-- **중앙 캘린더 = 입체 FAB**: 흰 원(`h-[52px] w-[52px]`) + `border` + `shadow-lg` + `-mt-6`. 비활성=흰 원+`text-slate-500`, **활성=`bg-amber-500` 채움+흰 글리프**(border-amber-500).
+- **중앙 캘린더 = 작은 유리 원형**: 44×44px, 흰색45% 배경·60% 테두리·약한 내부빛과 그림자. translateY(-8px)로 낮게 돌출. 활성은 amber22% 배경·amber700 아이콘/라벨. [2026-09-14 결정](../decisions/2026-09-14-tabbar-glass-capsule.md).
+- **유리 바와 본문 공간**: 흰색32% + blur20px/saturate180%. 최소 안전여백8px+추가4px, 70px 행. 모바일 기본 전체83px, 본문 padding도 `--app-tabbar-height` 공유. 라벨 하단 여백18px, 글씨12px 유지.
 - **양끝 여백**: 바 내부 `px-5`(20px) + `env(safe-area-inset-*)` 유지 → 아이폰 라운드 모서리 잘림 방지.
 - **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px) 중앙정렬. **탭타깃 ≥44px**(`minHeight:44`+py).
 - **미저장 가드 유지**: 모든 탭/FAB 라우팅은 `useGuardedRouter().push` 경유(절대 제거 금지).
@@ -1460,3 +1461,5 @@ button:focus, input:focus, select:focus {
 - `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
 
 - Header stack: `app-header` 3.5rem + 페이지 배너 3rem = `app-content` 6.5rem. 날짜·검색·대시보드 진행 래퍼는 `top-app-content`, PC 캘린더 상세 패널은 `top-app-calendar-panel` 10.5rem을 사용한다. 모바일 루트 16px에서는 합 104px, PC 루트 13.5px에서는 합 87.75px이며 캘린더 패널 offset은 PC 141.75px이다.
+
+- 헤더 대시보드와 역할 토글은 red200 테두리/red50 배경/전체 곡률을 공유한다. 역할은 연결된 세그먼트 트랙(시각26px, 터치44px)이며 선택 영역만 red700/흰색. canStudent와 canTrainer 모두 참일 때만 표시한다.
