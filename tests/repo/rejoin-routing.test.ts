@@ -161,20 +161,20 @@ describe("cohortGroupKey (아레나 그룹 통일)", () => {
   });
 });
 
-describe("cohortSortTuple (아레나 우선·시즌기수 asc·일반 desc)", () => {
+describe("cohortSortTuple (아레나 우선·시즌기수 desc·일반 desc)", () => {
   it("튜플 분류", () => {
-    expect(cohortSortTuple("A1-1")).toEqual([0, 1, 1]);
-    expect(cohortSortTuple("A1-6")).toEqual([0, 1, 6]);
+    expect(cohortSortTuple("A1-1")).toEqual([0, -1, -1]);
+    expect(cohortSortTuple("A1-6")).toEqual([0, -1, -6]);
     expect(cohortSortTuple("8")).toEqual([1, -8, 0]);
     expect(cohortSortTuple("관리")).toEqual([2, 0, 0]);
   });
-  it("정렬 결과: 아레나(시즌·기수 asc) → 일반 숫자 desc → 기타", () => {
-    const keys = ["8", "관리", "A1-6", "6", "A1-1"];
+  it("정렬 결과: 아레나(시즌·기수 desc) → 일반 숫자 desc → 기타", () => {
+    const keys = ["8", "관리", "A1-6", "6", "A1-1", "A2-1"];
     const sorted = [...keys].sort((a, b) => {
       const ka = cohortSortTuple(a), kb = cohortSortTuple(b);
       return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
     });
-    expect(sorted).toEqual(["A1-1", "A1-6", "8", "6", "관리"]);
+    expect(sorted).toEqual(["A2-1", "A1-6", "A1-1", "8", "6", "관리"]);
   });
 });
 

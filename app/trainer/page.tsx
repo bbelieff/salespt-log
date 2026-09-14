@@ -17,7 +17,7 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
-import { adminEmails, adminNames, cohortMasterSheetId } from "@/config";
+import { adminEmails, adminNames } from "@/config";
 import {
   findUserByEmail,
   listDistinctUsers,
@@ -98,12 +98,6 @@ export default async function TrainerPage() {
     return false;
   });
 
-  // 기수 전체 현황 마스터 시트 — env SHEETS_COHORT_MASTER_ID.
-  const masterId = cohortMasterSheetId();
-  const masterSheetUrl = masterId
-    ? `https://docs.google.com/spreadsheets/d/${masterId}/edit`
-    : "";
-
   // 관리자(admin) 또는 관리부서(management) 면 마스터 메뉴 진입 가능.
   const canBackToAdmin = await canViewAdminPages(sessionEmail);
 
@@ -118,14 +112,27 @@ export default async function TrainerPage() {
 
   return (
     <>
-    <div className="bg-white p-4 text-center"><Link className="inline-block rounded-xl border border-gray-300 px-4 py-3 font-semibold text-brand-red" href="/trainer/weekly-goals">담당 수강생 주간 목표·PT과제</Link></div>
-    {isAdmin && <TrainerInvites />}
+    {/* 수리3 ②: full-bleed 흰 줄 → 본문과 같은 폭·카드 규격. 이동처는 /trainer/weekly-goals. */}
+    <div className="mx-auto max-w-3xl px-6 pt-6">
+      <Link
+        href="/trainer/weekly-goals"
+        className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50"
+      >
+        <span aria-hidden className="text-lg">📋</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-gray-900">담당 수강생 주간 목표·PT과제</span>
+          <span className="block text-xs text-gray-500">이번 주 목표와 PT과제 확인</span>
+        </span>
+        <span aria-hidden className="shrink-0 text-gray-400">→</span>
+      </Link>
+    </div>
+    {/* 수리3 ③: 본문 컨테이너 안으로(좌우 정렬 일치). 카드 자체는 기본 접힘. */}
+    {isAdmin && <div className="mx-auto max-w-3xl px-6"><TrainerInvites /></div>}
     <TrainerCohortView
       sessionEmail={sessionEmail}
       trainerName={trainerName}
       trainees={withStats}
       activeTrainers={activeTrainers}
-      masterSheetUrl={masterSheetUrl}
       canBackToAdmin={canBackToAdmin}
       archivedCohorts={archivedLabels}
     />

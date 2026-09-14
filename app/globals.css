@@ -44,8 +44,6 @@
 .app-calendar-orb > svg { width: var(--calendar-icon-size, 26px); height: var(--calendar-icon-size, 26px); }
 .app-calendar-label { margin-top: var(--calendar-label-gap, 6px); }
 [aria-current="page"] > .app-calendar-orb {
-  position: absolute;
-  bottom: calc(0.375rem + 1.0125rem + var(--calendar-label-gap, 6px));
   background: rgb(251 191 36 / 22%);
   border-color: rgb(251 191 36 / 55%);
   color: #b45309;
@@ -534,11 +532,6 @@ body {
 }
 
 /* One compact account row, including qualified role switch at 320px. */
-@media (max-width: 374px) {
-  .app-header-pill { padding-inline: 5px; font-size: 11px; gap: 2px; }
-  .app-role-label { padding-inline: 5px; font-size: 11px; }
-}
-
 @media (max-width: 639px) {
   .app-header-pill { padding-inline: 6px; font-size: 11px; gap: 3px; }
   .app-role-label { padding-inline: 5px; font-size: 11px; }

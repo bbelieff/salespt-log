@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
@@ -20,6 +21,11 @@ interface Props {
   pageTitle: string;
   pageSubtitle?: string;
   roleMode?: "student" | "trainer";
+  /**
+   * 페이지 배너 우측 액션 링크 — /admin 하위 관리 화면처럼 "← 마스터 메뉴" 복귀
+   * 진입점을 페이지 최상단 행에 두기 위한 슬롯(수리3 ①). 미지정 시 렌더 안 함.
+   */
+  pageAction?: { href: Route; label: string };
 }
 
 /** 시트 B3가 "7"이면 "7기"로, "7기"면 그대로 유지. */
@@ -44,6 +50,7 @@ export default function TopHeader({
   pageTitle,
   pageSubtitle,
   roleMode,
+  pageAction,
 }: Props) {
   const me = useMe();
   const trainer = useTrainerState();
@@ -110,7 +117,7 @@ export default function TopHeader({
           </div>
           {/* 대시보드 바로 옆 자격이 있는 본인 역할 전환. */}
           <div data-header-actions className="ml-auto flex h-full shrink-0 items-center gap-1 whitespace-nowrap">
-            <Link href="/dashboard" aria-label="대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
+            <Link href="/dashboard" aria-label="수강생 대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
               <span className="app-header-pill group-hover:bg-red-100">
                 <span aria-hidden>←</span><span>대시보드</span>
               </span>
@@ -279,6 +286,14 @@ export default function TopHeader({
             <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
               {pageSubtitle}
             </span>
+          )}
+          {pageAction && (
+            <Link
+              href={pageAction.href}
+              className={`${pageSubtitle ? "" : "ml-auto "}shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100`}
+            >
+              {pageAction.label}
+            </Link>
           )}
         </PageContainer>
       </div>
