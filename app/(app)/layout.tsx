@@ -2,7 +2,7 @@
  * (app) route group — 로그인 후 5탭 셸.
  *
  * 모든 (app)/* 페이지는 자동으로 하단 TabBar 를 갖는다.
- * content-area 패딩은 TabBar(76px) 와 겹치지 않도록 76px.
+ * content-area 여백은 TabBar 공통 높이와 iOS 안전 영역을 함께 따른다.
  *
  * 권한 가드 (server component):
  *   - 미로그인 → /
@@ -78,7 +78,7 @@ export default async function AppLayout({
     <div className="min-h-dvh bg-slate-100">
       {/* 미저장 이탈 가드(전역) — children(페이지가 register) + TabBar(가드 라우팅)가 한 컨텍스트 공유. */}
       <DirtyProvider>
-        <main style={{ paddingBottom: "calc(76px + env(safe-area-inset-bottom))" }}>
+        <main style={{ paddingBottom: "var(--app-tabbar-height)" }}>
           {children}
         </main>
         <TabBar />
