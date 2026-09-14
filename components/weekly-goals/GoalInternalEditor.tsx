@@ -1,13 +1,14 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { WeeklyGoalView, WeeklyGoalPrivateRecord } from "@/types/weekly-goals";
 import { goalJSON, goalParams, goalAccessDenied } from "./client";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import { GoalRequestFence } from "./requestFence";
 import { joinAlignedRows, pairPriorOutcomes } from "@/util/weekly-goal-tasks";
 
-export default function GoalInternalEditor({ view, onDirty, onRecord, bindSave }: {
+export default function GoalInternalEditor({ view, onDirty, onRecord, bindSave, children }: {
   view: WeeklyGoalView;
+  children?: ReactNode;
   onDirty: (dirty: boolean) => void;
   /** Latest internal draft, so the single copy panel can build the 회의록 row. */
   onRecord: (record: WeeklyGoalPrivateRecord | null) => void;
@@ -97,6 +98,9 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, bindSave }
               onChange={e => setOutcome(i, e.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 p-3" />
           </label>)}
         </div>}
+      </fieldset>}
+    {children}
+    {draft && <fieldset disabled={saving}>
         <label className="block text-sm font-semibold">트레이닝 후 특이사항<textarea aria-label="트레이닝 후 특이사항" rows={4} maxLength={10000} value={draft.specialNotes}
           onChange={e => setDraft({ ...draft, specialNotes: e.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 p-3" /></label>
       </fieldset>}

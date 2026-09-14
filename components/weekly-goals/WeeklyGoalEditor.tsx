@@ -74,6 +74,8 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
   }, "주간 목표·PT과제");
 
   const previousTasks = splitTaskRows(view.previous?.record.task ?? "");
+  const currentTasks = <GoalTaskRows label="이번 주 PT과제" rows={taskRows} onChange={setTaskRows} disabled={saving}
+    placeholder="과제 하나를 한 줄로 적어 주세요." />;
   return <form onSubmit={e => { e.preventDefault(); void save().catch(() => {}); }} className="space-y-5 ph-no-capture">
     {/* 주차 내비게이터 1행 — 페이지 배너 바로 아래에 고정. */}
     <header className="sticky top-app-content z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
@@ -128,10 +130,8 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
         <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm">{previousTasks.map((t, i) => <li key={i} className="break-words">{t}</li>)}</ol>
       </div>}
 
-      {view.canReadInternal && <GoalInternalEditor view={shown} onDirty={setInternalDirty}
-        onRecord={setInternalRecord} bindSave={bindInternalSave} />}
-      <GoalTaskRows label="이번 주 PT과제" rows={taskRows} onChange={setTaskRows} disabled={saving}
-        placeholder="과제 하나를 한 줄로 적어 주세요." />
+      {view.canReadInternal ? <GoalInternalEditor view={shown} onDirty={setInternalDirty}
+        onRecord={setInternalRecord} bindSave={bindInternalSave}>{currentTasks}</GoalInternalEditor> : currentTasks}
     </section>
 
 
