@@ -22,7 +22,8 @@ export default function TrainerInvites() {
   }
   // 초대는 상시 작업이 아니라 가끔 쓰는 기능 → 기본 접힘 카드(수리3 ③).
   const pending=invites.filter(i=>!i.accepted_at&&!i.revoked_at&&new Date(i.expires_at).getTime()>=Date.now()).length;
-  return <details className="group mx-auto my-4 max-w-3xl overflow-hidden rounded-2xl border border-gray-200 bg-white">
+  // 폭·바깥여백은 호출부(페이지 셸)가 정한다 — 여기서 mx-auto/max-w-* 를 다시 선언하지 않는다.
+  return <details className="group w-full overflow-hidden rounded-2xl border border-gray-200 bg-white">
     <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50">
       <span>트레이너 초대</span>
       {pending>0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">수락 대기 {pending}</span>}

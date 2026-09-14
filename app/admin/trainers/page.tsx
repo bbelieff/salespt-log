@@ -90,9 +90,13 @@ export default async function AdminTrainersPage() {
 
   return (
     <>
-    {!viewOnly && <TrainerInvites />}
-    {access && (access.people ? <TrainerAccessEditor initialPeople={access.people} />
-      : <section aria-label="트레이너 권한 설정"><p role="alert">권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.</p></section>)}
+    {/* 페이지 셸 — 폭·좌우패딩은 여기 한 곳에서만 정의한다. 자식은 폭을 선언하지 않는다.
+        TrainerMgmtPanel 은 sticky 헤더가 의도적 full-bleed 라서 셸 밖에 둔다. */}
+    <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-6">
+      {!viewOnly && <TrainerInvites />}
+      {access && (access.people ? <TrainerAccessEditor initialPeople={access.people} />
+        : <section aria-label="트레이너 권한 설정"><p role="alert">권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.</p></section>)}
+    </div>
     <TrainerMgmtPanel
       sessionEmail={sessionEmail}
       pendingTrainers={pending}
