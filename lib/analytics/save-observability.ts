@@ -44,8 +44,16 @@ export function hashEmailList(raw: string): string[] {
 
 /** DB 에러 문자열에서 접속문자열 제거 + 길이 제한(로그 폭주 방지). */
 export function redactDbError(e: unknown): string {
-  const msg = e instanceof Error ? (e.stack ?? e.message) : String(e ?? "unknown");
-  return String(msg).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]").slice(0, 500);
+  // stack 을 쓰지 않는다: stack = message + 프레임이고, 프레임은 절대경로·머신 계정명·
+  // 코드 스니펫을 끌고 온다. 정작 DB 진단에 필요한 code/constraint/detail 은
+  // node-postgres 가 err.detail 등 별도 필드에 넣어 stack 에도 없다 → 노출만 넓고 효용 0.
+  const raw = e instanceof Error ? e.message : String(e ?? "unknown");
+  return raw
+    .replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]")
+    // 이메일만 확정 치환한다. 한글 이름은 2~4자 일반명사와 구분 불가하고 경계가 없어
+    // 사전 없이 잡으면 정상 로그까지 뭉갠다 → 범위 밖(구조 테스트에 미탐 케이스 명시).
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[EMAIL]")
+    .slice(0, 500);
 }
 
 function emit(stream: "log" | "warn", payload: Record<string, unknown>): void {
@@ -68,16 +76,15 @@ export function logRegistryCellWrite(
   value: string,
   mirrored: boolean,
 ): void {
-  emit("log", {
-    t: "sheet_write",
-    request_id: currentRequestId(),
+  // 방출은 logSheetWrite 한 곳에만 있다 — 여기서 emit 을 다시 부르면 t:"sheet_write"
+  // 방출점이 둘이 되어 조용히 형식이 갈린다(2026-09-14 교차검수 지적).
+  logSheetWrite({
     tab,
-    cell: `${colLetter}${sheetRow}`,
-    col: colLetter,
-    sheet_row: sheetRow,
-    value_len: value.length,
-    value_hash: shortHash(value),
-    ...(colLetter === "G" ? { emails_hash: hashEmailList(value) } : {}),
+    colLetter,
+    sheetRow,
+    valueLen: value.length,
+    valueHash: shortHash(value),
+    ...(colLetter === "G" ? { emailsHash: hashEmailList(value) } : {}),
   });
   if (!mirrored) {
     logMirrorSkipped({ reason: "picked_null", label: `users cells ${colLetter}`, sheetRow });
@@ -130,12 +137,28 @@ export function logMirrorResult(args: {
 /** (c) 미러 스킵 — 기존에 완전 침묵이던 경로. 반드시 warn 으로 남긴다.
  *   picked_null: 시트 행 parse 실패로 자연키를 못 만들어 미러 자체를 건너뜀.
  *   db_disabled: DATABASE_URL 미설정(정상 동작이나 DB 정합은 backfill 이 담당). */
+/** db_disabled 는 프로세스 전역 환경 사실(DATABASE_URL 유무)이라 라벨과 무관하다 →
+ *  라벨별이 아닌 **프로세스당 1회**만 남긴다. 라벨별 1회로 하면 탭·컬럼이 늘 때마다
+ *  로그가 부활해 지적 취지를 반만 해결한다. picked_null 은 행별 사건이라 매번 남긴다.
+ *  ⚠️ pm2 cluster 에서는 프로세스당 1줄 = 워커 수만큼 줄이 나온다. */
+let dbDisabledAlreadyLogged = false;
+
+/** 테스트 전용 — 모듈 전역 억제 플래그를 되돌린다. 프로덕션 코드에서 호출 금지.
+ *  vi.resetModules 만으로는 같은 파일 안 테스트끼리의 오염이 결정적으로 풀리지 않는다. */
+export function resetSaveObservabilityForTests(): void {
+  dbDisabledAlreadyLogged = false;
+}
+
 export function logMirrorSkipped(args: {
   reason: "picked_null" | "db_disabled";
   label?: string;
   sheetRow?: number;
   requestId?: string;
 }): void {
+  if (args.reason === "db_disabled") {
+    if (dbDisabledAlreadyLogged) return;
+    dbDisabledAlreadyLogged = true;
+  }
   emit("warn", {
     t: "db_mirror_result",
     request_id: args.requestId ?? currentRequestId(),

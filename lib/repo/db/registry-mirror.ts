@@ -66,17 +66,17 @@ function fireAndForget(label: string, run: () => Promise<void>): void {
     }
     throw lastErr;
   })().catch((e) => {
-    const msg = (e instanceof Error ? e.message : "unknown").replace(
-      /postgres(ql)?:\/\/\S+/gi,
-      "[DATABASE_URL]",
-    );
+    // 문자열 warn 과 구조화 라인이 **같은 redact 를 통과**해야 한다. 예전엔 여기서
+    // 접속문자열만 따로 치환해 이메일이 문자열 warn 쪽으로 그대로 샜다(2026-09-14 Muse 지적).
+    // prefix `[registry-mirror] 실패` 와 warn 스트림은 운영 grep 보존용으로 유지.
+    const msg = redactDbError(e);
     console.warn(`[registry-mirror] 실패 ${label}: ${msg}`);
     logMirrorResult({
       requestId,
       label,
       outcome: "error",
       attempts: 3,
-      error: redactDbError(e),
+      error: msg,
     });
     captureServerEvent("db_mirror_error", { tab: "registry" });
   });
