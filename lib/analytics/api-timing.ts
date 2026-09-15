@@ -14,13 +14,27 @@
  * median/p95 수학집계 + route 로 breakdown (또는 HogQL quantile(0.5|0.95)(ms)).
  */
 import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
 
 interface TimingStore {
   sheetsMs: number;
   sheetsCalls: number;
+  /** 요청 상관관계 ID — api_timing·sheet_write·db_mirror_result 세 줄을 한 요청으로 묶는다.
+   *  (2026-09-14 저장 무결성 조사: 로그가 요청 단위로 안 묶여 원인 추적이 불가능했다.) */
+  requestId: string;
 }
 
-const als = new AsyncLocalStorage<TimingStore>();
+export const als = new AsyncLocalStorage<TimingStore>();
+
+/** 현재 요청의 상관관계 ID. 컨텍스트 밖(크론·Edge·응답 후 시작한 작업)이면 "none".
+ *  ⚠️ 절대 throw 하지 않는다 — 관측이 앱을 방해하지 않는다. */
+export function currentRequestId(): string {
+  try {
+    return als.getStore()?.requestId ?? "none";
+  } catch {
+    return "none";
+  }
+}
 
 /** Sheets 호출 1건의 소요를 현재 요청 컨텍스트에 누적 (컨텍스트 밖이면 no-op). */
 export function recordSheetsCall(ms: number): void {
@@ -57,6 +71,15 @@ function captureApiTiming(props: Record<string, string | number>): void {
 
 type Handler<A extends unknown[]> = (...args: A) => Promise<Response>;
 
+/** 요청 상관관계 ID 생성 — 실패해도 요청을 깨지 않는다(관측용이라 충돌 감수 fallback). */
+function newRequestId(): string {
+  try {
+    return randomUUID();
+  } catch {
+    return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+  }
+}
+
 /**
  * 라우트 핸들러 래퍼 — 전체 처리시간 + Sheets 구간 분리 계측.
  * 사용: `export const GET = withApiTiming("api/daily/[date]:GET", GET_handler);`
@@ -66,7 +89,11 @@ export function withApiTiming<A extends unknown[]>(
   handler: Handler<A>,
 ): Handler<A> {
   return async (...args: A): Promise<Response> => {
-    const store: TimingStore = { sheetsMs: 0, sheetsCalls: 0 };
+    const store: TimingStore = {
+      sheetsMs: 0,
+      sheetsCalls: 0,
+      requestId: newRequestId(),
+    };
     const t0 = Date.now();
     let status = 0;
     try {
@@ -85,9 +112,20 @@ export function withApiTiming<A extends unknown[]>(
         sheets_ms: Math.round(store.sheetsMs),
         sheets_calls: store.sheetsCalls,
         status,
+        // 기존 필드는 하나도 안 바꾼다(운영 grep 보존) — request_id 만 추가.
+        request_id: store.requestId,
       };
-      console.log(JSON.stringify(line)); // pm2 로그에서 grep '"t":"api_timing"'
-      captureApiTiming(line);
+      // 관측이 응답을 깨지 않게 한다 — 로그 싱크 장애가 500 이 되면 안 된다.
+      try {
+        console.log(JSON.stringify(line)); // pm2 로그에서 grep '"t":"api_timing"'
+      } catch {
+        /* swallow */
+      }
+      try {
+        captureApiTiming(line);
+      } catch {
+        /* swallow */
+      }
     }
   };
 }

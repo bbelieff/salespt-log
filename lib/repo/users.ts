@@ -23,6 +23,7 @@ import {
 
 import { applyTrainerQualifications, pickCrmUser } from "./trainer-qualification";
 import { listTrainerQualifications } from "./db/trainer-recruitment";
+import { logRegistryCellWrite } from "@/lib/analytics/save-observability";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
@@ -222,8 +223,8 @@ export async function updateUserCell(
     requestBody: { values: [[value]] },
   });
   invalidateRegistry();
-  // DB 미러(BBE-55) — 시트 쓰기 성공 후 fire-and-forget. parse 실패로 picked 가 없으면
-  // 자연키(email,cohort)를 알 수 없어 미러를 건너뛴다(정합은 backfill 재실행이 복구).
+  // DB 미러(BBE-55) — 시트 쓰기 후 fire-and-forget. picked 없으면 자연키를 몰라 스킵(로그로 남김).
+  logRegistryCellWrite(reg.tab, colLetter, targetRow, value, !!picked);
   if (picked) {
     const prevKey = {
       email: picked.user.email,
