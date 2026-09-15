@@ -125,7 +125,7 @@ function TabItem({ tab, active, dot }: { tab: Tab; active: boolean; dot: boolean
         <tab.Icon active={active} />
         {dot && <NewDot />}
       </span>
-      <span className={`shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
+      <span className={`app-tab-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
         {tab.label}
       </span>
     </Link>
@@ -153,7 +153,7 @@ function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
         <CalendarIcon active={active} />
         {dot && <NewDot />}
       </span>
-      <span className={`app-calendar-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? "font-bold text-amber-700" : "text-slate-600"}`}>
+      <span className={`app-tab-label app-calendar-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? "font-bold text-amber-700" : "text-slate-600"}`}>
         캘린더
       </span>
     </Link>

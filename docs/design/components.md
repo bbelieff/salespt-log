@@ -474,7 +474,7 @@ function getTimeValue(hourId, minuteId) {
 - **단계 인디케이터(ADR-0027)**: 아이콘 칩 **위 STEP 배지**("STEP 1~4", `text-[9px]`). 점(dots) 폐기. 캘린더는 단계 없음(도구).
 - **흐름 화살표**: STEP1·2 사이, STEP3·4 사이에만 `›`(chevron, `text-slate-300`, 좁은 고정폭, 행 높이 중앙). **캘린더 양옆엔 없음**.
 - **아이콘 칩**: `h-8 w-9 rounded-lg`. 비활성=`bg-slate-200`+`text-slate-600`, 활성=탭색 채움(`bg-{tab}`)+흰 글리프+`shadow`. STEP 배지·라벨도 같은 탭색(라벨 `font-bold`). **탭색 5종 = tokens.md "탭 단계 색상"**(blue-700/emerald-600/amber-500/violet-600/rose-600).
-- **중앙 캘린더 = 작은 유리 원형**: 54×54px, 아이콘26px, 라벨 간격6px. 흰색45% 배경·60% 테두리·약한 내부빛과 그림자. 원은 absolute로 크기만 위로 늘어나며 바 높이를 늘리지 않는다. 원·라벨을 함께 이동하는 lift 기본값0px. 활성은 amber22% 배경·amber700 아이콘/라벨. [2026-09-14 결정](../decisions/2026-09-14-tabbar-glass-capsule.md).
+- **중앙 캘린더 = 작은 유리 원형**: 56×56px, 아이콘24px, 라벨 간격2px. 흰색52% 배경·60% 테두리·약한 내부빛과 그림자. 원은 absolute로 크기만 위로 늘어나며 바 높이를 늘리지 않는다. lift 기본값0px은 원만 이동한다. 다섯 라벨은 공용 글자 크기·행 높이로 수평 정렬하며 원 조절로 움직이지 않는다. 활성은 amber22% 배경·amber700 아이콘/라벨. [2026-09-14 결정](../decisions/2026-09-14-tabbar-glass-capsule.md).
 - **유리 바와 본문 공간**: 흰색32% + blur20px/saturate180%. 최소 안전여백8px+추가4px, 70px 행. 모바일 기본 전체83px, 본문 padding도 `--app-tabbar-height` 공유. 라벨 하단 여백18px, 글씨12px 유지.
 - **양끝 여백**: 바 내부 `px-5`(20px) + `env(safe-area-inset-*)` 유지 → 아이폰 라운드 모서리 잘림 방지.
 - **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px) 중앙정렬. **탭타깃 ≥44px**(`minHeight:44`+py).
@@ -1280,7 +1280,7 @@ app/(app)/dashboard/page.tsx
 | **TraineePrepBulkForm** | 일괄 사전 등록 폼. `parsePrepText` 가 `세일즈PT_ N기 이름 수강생 경영일지` 헤더 + URL 페어 또는 TSV 라인 → `PrepItem[]` 파싱. POST /api/admin/bulk-add-trainee-prep. 500줄 cap 회피로 별도 파일. |
 | **TrainerPlayerToggle** | 수강생출신 트레이너 [트레이너 관리]/[내 아레나 일지] 세그먼트 토글(P14). Props: `mode: "manager"\|"arena"`(현재 화면). 클릭 → POST /api/arena-self(쿠키 flag) → router.push(/dashboard 또는 /trainer)+refresh. me.ownArenaSheetId 있을 때만 TrainerCohortView·대시보드에 노출. self-view sheetId 는 서버가 이름매칭 계산(데이터 쓰기 없음). |
 | **TrainerCohortView** | 트레이너 메인 (수강생 관리의 read-only 권한축소판, 2026-05-15 개편). Props: `sessionEmail`, `trainerName`, `trainees: Trainee[]`, `activeTrainers: Trainer[]`, `canBackToAdmin`, `archivedCohorts?`. AdminUserPickerSections 의 `CohortSection` 을 `viewOnly + trainerEmailLc` 모드로 재사용 → 기수박스>팀박스>TraineeCard 계층 그대로. 전체 명단 표시하되 본인 담당 trainee 만 [시트]/[웹앱] 버튼 노출. 핸들·유보·팀 입력·동기화 UI 미포함. **2026-05-16**: "내 수강생만 보기" 토글 (기본 false=전체, true=본인 담당만 필터). **2026-09-14(수리3)**: "마스터 시트 열기" 외부 링크 카드와 `masterSheetUrl` prop 제거. |
-| **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 4 섹션 (TrainerMgmtSections 분리) — pending 승인/거절, 트레이너별 다중 배정 체크박스, 수강생 명단 아코디언, 트레이너 명단 아코디언. |
+| **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `managementStaff`, `trainees`, `viewOnly?`, `accessSlot?`, `inviteSlot?`. **페이지의 단일 루트이며 sticky 헤더를 소유한다** — 헤더는 페이지 최상단 하나뿐이고 모든 섹션이 그 아래 같은 셸 폭(`max-w-3xl pc:max-w-5xl px-6`)에 들어간다. 폭 선언은 여기 한 곳뿐. **6 섹션 순서(2026-09-14 belie 지정)**: ①담당부여(SectionAssign) ②권한부여(`accessSlot`) ③요청관리(SectionPending) ④초대관리(`inviteSlot`) ⑤수강생 명단 ⑥관리부서 명단. 회귀=tests/structural/admin-page-shell.test.ts. |
 | **TrainerMgmtSections** | TrainerMgmtPanel 의 SectionPending / SectionAssign / SectionTraineeList + parseAssigned, groupByCohort, PanelUser 유틸. SectionManagement 는 TrainerMgmtManagement 에서 re-export. |
 | **TrainerMgmtManagement** | 관리부서 명단 섹션 (`/admin/trainers` 하단). Props: `staff`, `busy`, `onMoveToTrainer`, `onRemove`. 파일 크기 가드. |
 | **LogoutButton** | NextAuth 5 `signOut()` 즉시 호출 클라이언트 버튼 (form POST 우회). Props: `className?`, `label?`. 서버 컴포넌트 페이지(/admin 등)에서 import. |
@@ -1323,7 +1323,8 @@ app/(app)/dashboard/page.tsx
 | **PaymentSortControl** | payment 계약 카드 정렬 세그먼트(검색바 아래, payment-sort §P8). Props: `value: PaymentSortKey`, `onChange`. 4버튼 — 등록 빠른순/늦은순(계약일 asc/desc)·진행 낮은순/높은순(슬롯 진행률 평균 asc/desc). 선택=brand-red pill. 정렬 로직은 `_lib/payment-progress.sortContracts`(빈 계약일 끝·안정정렬), 진행도는 `contractProgress`(ContractRow 공유). |
 | **PullToRefresh** | 모바일 당겨서 새로고침 (feat/pull-to-refresh). Props 없음 — (app) layout 마운트. 루트 최상단에서 세로 당김(임계 70px·저항 0.5) → react-query 활성 쿼리 invalidate + router.refresh(전체 리로드 아님 — 폼 값 보존). 가드: pointer:coarse+<1024 만(PC 무변화), 가로 제스처(위클리 스와이프) 세션 취소, `.fixed`(모달/시트) 내부 무시, 당김 중 preventDefault 로 iOS 고무줄 이중 동작 차단. 스피너 = brand-red 원형(당김 회전→animate-spin). |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
-| **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
+| **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection, CollapsibleSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
+| **CollapsibleSection** | 페이지 섹션을 접었다 펼치는 카드(2026-09-14 수리4). Props: `title`, `badge?`, `persistKey`, `defaultOpen?` (기본 **false** — 가끔 쓰는 섹션용), `children`. PersistentDetails 재사용이라 펼침 상태가 localStorage 에 남는다. summary 에 제목 + 선택 뱃지 + 펼치기/접기 표시. **폭·바깥여백을 선언하지 않는다** — 호출부(페이지 셸)가 정한다. 사용처: `/admin/trainers` 권한부여 섹션. |
 
 ---
 

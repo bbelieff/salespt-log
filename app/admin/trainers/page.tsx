@@ -22,6 +22,7 @@ import {
 import TrainerInvites from "@/components/auth/TrainerInvites";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
 import TrainerAccessEditor from "@/components/auth/TrainerAccessEditor";
+import CollapsibleSection from "@/components/auth/CollapsibleSection";
 import { listTrainerAccessSettings } from "@/service/trainer-access-settings";
 
 // /admin/users 와 동일한 정책 — force-dynamic. self-claim/admin 액션 직후
@@ -89,14 +90,6 @@ export default async function AdminTrainersPage() {
   );
 
   return (
-    <>
-    {/* 페이지 셸 — 폭·좌우패딩은 여기 한 곳에서만 정의한다. 자식은 폭을 선언하지 않는다.
-        TrainerMgmtPanel 은 sticky 헤더가 의도적 full-bleed 라서 셸 밖에 둔다. */}
-    <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-6">
-      {!viewOnly && <TrainerInvites />}
-      {access && (access.people ? <TrainerAccessEditor initialPeople={access.people} />
-        : <section aria-label="트레이너 권한 설정"><p role="alert">권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.</p></section>)}
-    </div>
     <TrainerMgmtPanel
       sessionEmail={sessionEmail}
       pendingTrainers={pending}
@@ -104,7 +97,26 @@ export default async function AdminTrainersPage() {
       managementStaff={managementStaff}
       trainees={trainees}
       viewOnly={viewOnly}
+      // 2) 권한부여 — 패널 셸 안 2번 자리. 접힘(자주 안 씀).
+      accessSlot={
+        access && (
+          <CollapsibleSection
+            title="권한부여"
+            badge={access.people ? `트레이너 ${access.people.length}명` : undefined}
+            persistKey="admin-trainers:access"
+          >
+            {access.people ? (
+              <TrainerAccessEditor initialPeople={access.people} />
+            ) : (
+              <p role="alert" className="text-sm text-gray-600">
+                권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.
+              </p>
+            )}
+          </CollapsibleSection>
+        )
+      }
+      // 4) 초대관리 — 패널 셸 안 4번 자리. TrainerInvites 가 자체 접힘 카드다.
+      inviteSlot={!viewOnly && <TrainerInvites />}
     />
-    </>
   );
 }
