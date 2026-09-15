@@ -16,8 +16,11 @@ export default function GoalDraftTools({ cumulative, weeksCounted, dirty, disabl
   const [error, setError] = useState("");
   const allowOverwrite = () => !dirty || window.confirm("입력 중인 목표를 바꿀까요? 저장 전까지는 반영되지 않아요.");
   return <div className="space-y-3">
-    <button type="button" disabled={disabled} className="min-h-11 rounded-lg border px-3 text-sm"
+    <div className="flex items-center justify-between gap-2">
+    <h2 className="text-sm font-bold text-gray-900">목표달성 및 수립</h2>
+    <button type="button" disabled={disabled} className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
       onClick={() => { setOpen(true); setProposal(null); setError(""); }}>역산 제안</button>
+    </div>
     {open && <section className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-3" aria-label="역산 제안 미리보기">
       <p className="text-xs text-gray-600">{weeksCounted > 0 ? `본인의 1주차부터 ${weeksCounted}주차까지 누적 실적 비율로 역산해요.` : "첫 주차라 이전 누적 실적이 없어요. 목표를 직접 입력해 주세요."}</p>
       <label className="block text-sm">계약 목표
@@ -25,7 +28,7 @@ export default function GoalDraftTools({ cumulative, weeksCounted, dirty, disabl
           onChange={e => { setTarget(e.target.value); setProposal(null); setError(""); }}
           className="ml-2 min-h-11 w-24 rounded-lg border px-2" />
       </label>
-      <button type="button" className="min-h-11 rounded-lg border px-3 text-sm" onClick={() => {
+      <button type="button" className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50" onClick={() => {
         try {
           if (target.trim() === "") throw new Error("계약 목표를 입력해 주세요.");
           setProposal(proposeFromCumulative(cumulative, Number(target))); setError("");
@@ -47,7 +50,7 @@ export default function GoalDraftTools({ cumulative, weeksCounted, dirty, disabl
         <button type="button" disabled={disabled} className="min-h-11 rounded-lg bg-brand-red px-3 text-sm font-bold text-white"
           onClick={() => { if (allowOverwrite()) { apply(Object.fromEntries(Object.entries(proposal.goals).filter(([, value]) => value !== null))); setOpen(false); } }}>초안에 적용</button>
       </>}
-      <button type="button" className="ml-2 min-h-11 px-3 text-sm" onClick={() => setOpen(false)}>제안 취소</button>
+      <button type="button" className="ml-2 min-h-11 rounded-lg px-3 text-sm font-semibold text-gray-600 hover:bg-gray-100" onClick={() => setOpen(false)}>제안 취소</button>
     </section>}
   </div>;
 }

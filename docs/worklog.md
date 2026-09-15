@@ -3549,3 +3549,6 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 ### 2026-09-16 Codex 트레이너 관리 UI 재구성
 - 사용자 지정 3개 상위 그룹·4개 하위 항목으로 재구성. 데이터와 처리 로직 유지.
 - 계획: docs/plans/active/trainer-scaffold.md. Muse 요청은 단계 한도로 실패, GPT 직접 적용.
+
+### 2026-09-16 목표설정 버튼 배치
+- 제목 오른쪽 작업 버튼, 공통 버튼·간격 적용. 데이터/역산 로직 유지. 계획: goal-editor-actions.md.
