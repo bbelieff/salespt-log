@@ -123,7 +123,6 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
   }
   return <div className="trainer-access" aria-busy={busy}>
     <style>{editorStyles}</style>
-    <div className="permission-head"><div><h1>트레이너 관리</h1><p>등급과 수강생별 조회·수정 범위를 관리합니다.</p></div><span className="permission-admin-badge">{readOnly ? "조회 전용" : "관리자 전용"}</span></div>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {busy && <p role="status">{draft ? "권한을 처리하고 있습니다." : "권한을 불러오고 있습니다."}</p>}
     {!busy && !people.length && !error && <p>권한을 설정할 활성 트레이너가 없습니다. 관리자·관리부서는 제외됩니다.</p>}
@@ -142,7 +141,6 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
         <select id={`${id}-grade`} value={draft.grade ?? ""} disabled={locked} onChange={event => {
           const grade = event.target.value as TrainerGrade; setDraft({ ...draft, grade, grants: retainTrainerGrantsForGrade(draft.grants, grade) });
         }}><option value="" disabled>미분류 · 권한 없음</option>{Object.entries(grades).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <p className="permission-note">권한은 직접 체크해 주세요. 등급 변경 시 허용 범위의 기존 체크만 유지되며, 저장해야 적용됩니다.</p>
       </div>
       <div className="permission-section"><div className="permission-section-title"><h3>수강생 접근 권한</h3><button disabled={locked || !draft.grade} onClick={() => setDraft({ ...draft, grants: defaultTrainerGrants(null) })}>권한 모두 해제</button></div>
         <table className="permission-table"><thead><tr><th scope="col">수강생 구분</th><th scope="col">조회</th><th scope="col">수정</th></tr></thead><tbody>{categoryKeys.map(key => <tr key={key}>
@@ -153,10 +151,8 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
               if (action === "write" && grant.write) grant.read = true;
               setDraft({ ...draft, grants: { ...draft.grants, [key]: grant } });
             }} /></label></td>)}</tr>)}</tbody></table>
-        <p className="permission-note">조회 해제 시 수정도 해제됩니다. 일반·견습은 활성 수강생만, 수석은 아레나·보관까지 설정할 수 있습니다.</p>
       </div>
-      <div className="permission-scope">관리자가 선택한 권한 · {range(draft)}<br />담당 여부와 무관하게 적용됩니다. 관리자 권한은 유지됩니다.</div>
-      <div className="permission-savebar"><span>{dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 권한과 같습니다."}</span><div>
+      <div className="permission-savebar"><span>{dirty ? "저장 전 변경사항" : ""}</span><div>
         <button disabled={locked || !dirty} onClick={() => { setDraft(saved ? structuredClone(saved) : null); setError(""); }}>변경 취소</button>
         <button ref={saveButton} className="primary" disabled={locked || !dirty || !draft.grade} onClick={() => dialog.current?.showModal()}>변경사항 저장</button>
       </div></div>

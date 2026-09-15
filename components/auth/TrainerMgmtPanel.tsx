@@ -18,6 +18,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import CollapsibleSection from "./CollapsibleSection";
 import { createKeyedSaveCoalescer } from "@/util/save-coalesce";
 import {
   type PanelUser,
@@ -147,7 +148,7 @@ export default function TrainerMgmtPanel({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-12 px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-5 px-6 py-5">
         {err && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {err}
@@ -161,6 +162,9 @@ export default function TrainerMgmtPanel({
         )}
 
         {/* 1. 트레이너 명단 및 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
+        <section aria-labelledby="trainer-management-title" className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+          <h2 id="trainer-management-title" className="text-base font-bold text-gray-900">트레이너 관리 ({activeTrainers.length})</h2>
+          <CollapsibleSection title="담당부여" persistKey="admin-trainers:assign" defaultOpen>
         <SectionAssign
           trainers={activeTrainers}
           trainees={trainees}
@@ -205,11 +209,14 @@ export default function TrainerMgmtPanel({
           viewOnly={viewOnly}
         />
 
+          </CollapsibleSection>
+
         {/* 2. 권한부여 — 페이지가 주입 (TrainerAccessEditor). 접힘 UI 는 슬롯 안에서 처리. */}
         {accessSlot}
 
         {/* 3. 트레이너 요청관리 — pending 승인/거절. admin 전용. */}
         {!viewOnly && (
+          <CollapsibleSection title="요청관리" badge={`${pendingTrainers.length}`} persistKey="admin-trainers:requests">
           <SectionPending
             pending={pendingTrainers}
             busy={busy}
@@ -221,10 +228,12 @@ export default function TrainerMgmtPanel({
               call("/api/admin/reject-trainer", { email }, `reject:${email}`);
             }}
           />
+          </CollapsibleSection>
         )}
 
         {/* 4. 초대관리 — 페이지가 주입 (TrainerInvites). 기본 접힘. */}
         {inviteSlot}
+        </section>
 
         {/* 5. 수강생 명단 (조회 only) */}
         <SectionTraineeList

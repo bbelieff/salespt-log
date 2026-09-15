@@ -18,13 +18,10 @@ export function SectionManagement({
   onRemove?: (email: string) => void;
 }) {
   return (
-    <section>
-      <h2 className="mb-2 text-lg font-black tracking-tight text-gray-900">
+    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+      <h2 className="mb-2 text-base font-bold text-gray-900">
         관리부서 명단 ({staff.length})
       </h2>
-      <p className="mb-4 text-xs text-gray-500">
-        담당 배정 대상에서 제외된 인원. 언제든 트레이너로 다시 이동 가능.
-      </p>
       {staff.length === 0 ? (
         <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
           관리부서 인원 없음.
