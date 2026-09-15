@@ -9,7 +9,13 @@ export default function GoalTaskRows({ rows, onChange, disabled = false, label, 
 }) {
   const set = (i: number, value: string) => onChange(rows.map((row, j) => i === j ? value.replace(/\r\n|\r|\n/g, " ") : row));
   return <fieldset className="space-y-2" disabled={disabled}>
-    <legend className="text-sm font-semibold">{label}</legend>
+    <legend className="sr-only">{label}</legend>
+    <div className="flex items-center justify-between gap-2"><span className="text-sm font-semibold">{label}</span>
+    <button type="button" onClick={() => onChange([...rows, ""])}
+      className="flex min-h-11 items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 whitespace-nowrap">
+      <Plus className="h-4 w-4" aria-hidden />과제 추가
+    </button>
+    </div>
     {rows.map((row, i) => <div key={i} className="flex items-center gap-2">
       <span aria-hidden className="w-5 shrink-0 text-center text-xs text-gray-400 tabular-nums">{i + 1}</span>
       <input aria-label={`${label} ${i + 1}번`} type="text" maxLength={2000} value={row} placeholder={placeholder}
@@ -21,9 +27,6 @@ export default function GoalTaskRows({ rows, onChange, disabled = false, label, 
         <X className="h-4 w-4" aria-hidden />
       </button>
     </div>)}
-    <button type="button" onClick={() => onChange([...rows, ""])}
-      className="flex min-h-11 items-center gap-1 rounded-lg border border-gray-300 px-3 text-sm font-semibold">
-      <Plus className="h-4 w-4" aria-hidden />과제 추가
-    </button>
+
   </fieldset>;
 }

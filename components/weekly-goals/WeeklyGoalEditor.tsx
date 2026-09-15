@@ -80,21 +80,25 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
     {/* 주차 내비게이터 1행 — 페이지 배너 바로 아래에 고정. */}
     <header className="sticky top-app-content z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
       <button type="button" disabled={view.current.week <= 1 || saving} onClick={() => guarded(() => changeWeek(view.current.week - 1))}
-        className="min-h-11 shrink-0 rounded-lg border px-3 text-sm disabled:opacity-40">이전 주</button>
+        className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40">이전 주</button>
       <div className="min-w-0 text-center">
         <p className="truncate text-sm font-bold">{view.student.name} · {view.student.cohort} · {view.current.week}주차</p>
         <p className="truncate text-xs text-gray-500">{view.current.start} ~ {view.current.end}</p>
       </div>
       <button type="button" disabled={saving} onClick={() => guarded(() => changeWeek(view.current.week + 1))}
-        className="min-h-11 shrink-0 rounded-lg border px-3 text-sm">다음 주</button>
+        className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">다음 주</button>
     </header>
 
     <section className="rounded-2xl border border-gray-200 bg-white p-4">
       <GoalRings goals={saved.goals} actuals={view.current.actuals} />
     </section>
 
-    <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
-      <h2 className="font-bold">목표달성 및 수립</h2>
+    <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+      <GoalDraftTools cumulative={view.cumulative} weeksCounted={Math.max(0, view.current.week - 1)}
+        dirty={dirty} disabled={saving} apply={goals => {
+          setDraft(current => ({ ...current, goals: { ...current.goals, ...goals } }));
+          setMessage("초안에 적용했어요. 확인 후 저장해 주세요.");
+        }} />
       {view.previous && <p className="text-xs text-gray-500">지난주 {view.previous.start} ~ {view.previous.end}</p>}
 
       <div className="overflow-x-auto">
@@ -119,11 +123,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
         </table>
       </div>
 
-      <GoalDraftTools cumulative={view.cumulative} weeksCounted={Math.max(0, view.current.week - 1)}
-        dirty={dirty} disabled={saving} apply={goals => {
-          setDraft(current => ({ ...current, goals: { ...current.goals, ...goals } }));
-          setMessage("초안에 적용했어요. 확인 후 저장해 주세요.");
-        }} />
+
 
       {!view.canReadInternal && view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
         <p className="text-sm font-semibold">지난 PT과제</p>
@@ -146,7 +146,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
       </button>
       <div className="flex items-center justify-between gap-2">
         <p role="status" className="text-sm">{message}</p>
-        <button type="button" disabled={saving} className="min-h-11 shrink-0 text-sm underline"
+        <button type="button" disabled={saving} className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 px-3 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           onClick={() => guarded(reload)}>최신 내용 불러오기</button>
       </div>
     </div>

@@ -1,0 +1,2 @@
+# Weekly goal editor action alignment
+User requests reverse proposal and task-add actions at top-right of their boxes; consistent buttons, typography and spacing. UI only; preserve calculations, data and save behavior. Move proposal tools above metrics table with title/action header; task add alongside fieldset title. Standard neutral borders, semibold text, 44px targets and compact16px panel padding. Run required checks/build and live verification.
