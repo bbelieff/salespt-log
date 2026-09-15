@@ -125,14 +125,14 @@ function TabItem({ tab, active, dot }: { tab: Tab; active: boolean; dot: boolean
         <tab.Icon active={active} />
         {dot && <NewDot />}
       </span>
-      <span className={`shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
+      <span className={`app-tab-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
         {tab.label}
       </span>
     </Link>
   );
 }
 
-/** 중앙 캘린더 — 낮게 돌출된 작은 유리 원형. 단계 없음(도구), 활성 시 amber 틴트. */
+/** 중앙 캘린더 — 글자 간격을 유지하며 돌출된 유리 원형. 단계 없음(도구), 활성 시 amber 틴트. */
 function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
   const { push } = useGuardedRouter();
   return (
@@ -144,7 +144,7 @@ function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
       }}
       aria-label="캘린더"
       aria-current={active ? "page" : undefined}
-      className="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-end pb-1.5 touch-manipulation"
+      className="app-calendar-link flex min-h-11 min-w-0 flex-1 flex-col items-center justify-end pb-1.5 touch-manipulation"
     >
       <span
         aria-hidden="true"
@@ -153,7 +153,7 @@ function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
         <CalendarIcon active={active} />
         {dot && <NewDot />}
       </span>
-      <span className={`mt-[3px] shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? "font-bold text-amber-700" : "text-slate-600"}`}>
+      <span className={`app-tab-label app-calendar-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? "font-bold text-amber-700" : "text-slate-600"}`}>
         캘린더
       </span>
     </Link>

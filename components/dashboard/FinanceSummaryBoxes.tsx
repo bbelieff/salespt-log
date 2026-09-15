@@ -35,21 +35,21 @@ export default function FinanceSummaryBoxes({
   return (
     <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
       {/* 매출 박스 */}
-      <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2">
-        <div className="mb-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-2">
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-xs font-bold leading-none text-gray-700">
             ＋
           </span>
-          <span className="text-xs font-medium text-gray-600">매출</span>
+          <span className="text-xs font-semibold text-slate-600">매출</span>
           <span
-            className="w-full break-all text-base font-bold tabular-nums text-gray-900 sm:ml-auto sm:w-auto"
+            className="w-full break-all text-xl font-bold tabular-nums text-slate-900"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             ₩{fmtMoney(revenue)}
           </span>
         </div>
         <div
-          className="pl-5 text-xs leading-snug text-gray-400"
+          className="text-xs leading-relaxed text-slate-500"
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
           <div>수임비 ₩{fmtMoney(feeIncome)}</div>
@@ -62,21 +62,21 @@ export default function FinanceSummaryBoxes({
         type="button"
         onClick={onOpenExpenseLedger}
         aria-label="비용 추가하기: 비용 원장 열기"
-        className="group rounded-lg border border-red-200/70 bg-red-50/30 px-2.5 py-2 text-left transition hover:border-red-300 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="group rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-red-300 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
-        <div className="mb-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-2">
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-xs font-bold leading-none text-red-600">
             －
           </span>
-          <span className="text-xs font-medium text-gray-600">비용</span>
+          <span className="text-xs font-semibold text-slate-600">비용</span>
           <span
-            className="w-full break-all text-base font-bold tabular-nums text-red-600 sm:ml-auto sm:w-auto"
+            className="w-full break-all text-xl font-bold tabular-nums text-red-600"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             ₩{fmtMoney(cost)}
           </span>
         </div>
-        <div className="pl-5 text-xs leading-snug text-gray-400">
+        <div className="text-xs leading-relaxed text-slate-500">
           <div>DB 비용 합계 ₩{fmtMoney(dbCostTotal)}</div>
           {additionalCost === null ? (
             <div className="mt-0.5 text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</div>

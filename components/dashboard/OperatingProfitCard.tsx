@@ -39,16 +39,16 @@ export default function OperatingProfitCard({
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
   return (
-    <section className="rounded-2xl border-l-4 border-blue-500 bg-white p-3 shadow-sm">
+    <section className="rounded-xl border border-slate-200 bg-white p-3">
       <details>
         <summary aria-label="영업이익과 매출·비용 상세" className="cursor-pointer list-none rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500">
-          <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-            <span className="font-semibold text-blue-600">영업이익</span>
-            <span className="text-gray-400">{STATS_WEEKS}주 누적{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}　⌄</span>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-slate-600"><span aria-hidden className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">＝</span>영업이익</span>
+            <span className="text-slate-500">{STATS_WEEKS}주 누적{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}　⌄</span>
           </div>
-          <div className="flex min-h-11 items-baseline justify-between gap-2 tabular-nums">
-            <strong className="text-2xl font-extrabold text-blue-700">₩{fmtMoney(profit)}</strong>
-            <span className="text-xs text-gray-500">이익률 <b className="text-blue-700">{profitRate.toFixed(1)}%</b></span>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 tabular-nums">
+            <strong className="min-w-0 break-all text-xl font-bold text-indigo-700">₩{fmtMoney(profit)}</strong>
+            <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs text-slate-500">이익률 <b className="text-indigo-700">{profitRate.toFixed(1)}%</b></span>
           </div>
         </summary>
         <div className="mt-2 grid grid-cols-4 gap-2 border-t border-gray-100 pt-2 text-right text-xs tabular-nums">
