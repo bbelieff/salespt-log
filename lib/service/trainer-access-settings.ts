@@ -46,6 +46,10 @@ export async function listTrainerAccessSettings(): Promise<TrainerAccessPerson[]
       if (q.status !== "active" || q.department !== "T" || isAdminEmail(q.email)) return [];
       validateSetting(setting);
       return [{ ...q, grade: setting?.grade ?? null, grants: setting?.grants ?? defaultTrainerGrants(null), version: setting?.version ?? 0 }];
+    }).sort((a, b) => {
+      const rank = { senior: 0, regular: 1, apprentice: 2 };
+      return (a.grade === null ? 3 : rank[a.grade]) - (b.grade === null ? 3 : rank[b.grade])
+        || a.name.localeCompare(b.name, "ko") || a.email.localeCompare(b.email);
     });
   } catch (error) { throw safeError(error); }
 }
