@@ -73,10 +73,10 @@ describe("shared header real React rendering", () => {
     expect(html).not.toContain('aria-label="수강생 대시보드로 이동"');
     expect(html).not.toContain('aria-label="접속 역할"');
   });
-  it.each([true, false])("keeps impersonation marker separate from role actions: %s", impersonating => {
+  it.each([true, false])("omits the user-unwanted impersonation marker: %s", impersonating => {
     state.trainer.impersonating = impersonating;
     const html = render();
-    expect(html.includes("data-header-impersonation")).toBe(impersonating);
+    expect(html).not.toContain("data-header-impersonation");
     expect((html.split("data-header-actions")[1] ?? "").split("</header>")[0] ?? "").not.toContain("대리 접속 중");
     if (impersonating) expect(html).not.toContain('aria-pressed="true"');
   });
@@ -184,22 +184,15 @@ const mocks = [
       assert.ok(Math.abs(result.logo.top-result.actions.top)<=1,label+' first row');
       assert.ok(result.banner.top>=result.header.bottom-1,label+' banner overlaps header');
       assert.ok(!['hidden','clip'].includes(result.overflow),label+' overflow must not be hidden');
-      assert.equal(result.header.height,(width<desktopMin?6:3.5)*result.rem,label+' responsive header height');
+      assert.equal(result.header.height,3.5*result.rem,label+' responsive header height');
       assert.ok(result.info.top>=result.header.top-1 && result.info.bottom<=result.header.bottom+1,label+' identity inside header');
       assert.ok(result.name.right-result.name.left>=2*result.rem-1,label+' name has visibly nonzero width');
       assert.ok(result.glyph.left>=result.name.left && result.glyph.right<=result.name.right,label+' first Korean name glyph visible');
       assert.ok(result.name.right<=(result.marker?.left ?? result.info.right)+1,label+' name does not overlap badges');
       assert.equal(await page.locator('[data-header-dday]').count(),0,label+' no duplicated header D-day');
-      assert.equal(!!result.marker,!!fixture.impersonating,label+' impersonation badge condition');
-      if(result.marker){
-        assert.ok(result.infoText.includes('대리 접속 중'),label+' impersonation text visible');
-      }
-      if(width<desktopMin){
-        assert.ok(result.info.top>=result.actions.bottom-1,label+' mobile information second row');
-      }else{
-        assert.ok(result.info.top<=result.actions.top+1 && result.info.bottom>=result.actions.bottom-1,label+' desktop single row');
-        assert.ok(result.info.right<=result.actions.left,label+' desktop information/action separation');
-      }
+      assert.equal(!!result.marker,false,label+' no impersonation badge');
+      assert.ok(Math.abs(result.info.top-result.actions.top)<=1,label+' all widths single row');
+      assert.ok(result.info.right<=result.actions.left,label+' information/action separation');
       const dual=fixture.canStudent&&fixture.canTrainer;
       const dashboard=page.getByRole('link',{name:'수강생 대시보드로 이동',exact:true});
       const expectedLink=!scenario.start || (fixture.canStudent && !dual);

@@ -77,7 +77,7 @@ export default function FinanceSummaryBoxes({
             type="button"
             onClick={onOpenExpenseLedger}
             aria-label="추가 비용: 비용 원장 열기"
-            className="mt-1 flex min-h-11 w-full items-center justify-between gap-2 rounded-lg bg-red-50 px-2 py-1.5 text-left font-semibold text-red-700 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            className="mt-0.5 flex min-h-6 w-full items-center justify-between gap-1 rounded text-left font-normal text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
           >
             <span className="min-w-0">
               {additionalCost === null ? (
