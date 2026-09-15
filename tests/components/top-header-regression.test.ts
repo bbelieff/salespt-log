@@ -52,7 +52,13 @@ describe("shared header real React rendering", () => {
     expect(html.includes('aria-label="수강생 대시보드로 이동"')).toBe(link);
     expect(html.includes('aria-label="접속 역할"')).toBe(toggle);
   });
-  it("does not expose a student entry while capability is unresolved", () => {
+  it.each(["/dashboard", "/db", "/contact", "/calendar", "/schedule", "/payment", "/weekly-goals", "/updates"])("keeps dashboard entry on %s when trainer capability is unavailable", pathname => {
+    Object.assign(state.trainer, { canStudent: undefined, canTrainer: undefined }); state.pathname = pathname;
+    expect(render()).toContain('aria-label="수강생 대시보드로 이동"');
+    Object.assign(state.trainer, { canStudent: false, canTrainer: false });
+    expect(render()).toContain('aria-label="수강생 대시보드로 이동"');
+  });
+  it("does not expose a trainer-page student entry while capability is unresolved", () => {
     Object.assign(state.trainer, { canStudent: undefined, canTrainer: undefined }); state.pathname = "/trainer";
     const html = render();
     expect(html).not.toContain('aria-label="수강생 대시보드로 이동"');
@@ -175,7 +181,7 @@ const mocks = [
       assert.ok(!result.infoText.includes('대리 접속 중'),label+' no impersonation text');
       const dual=fixture.canStudent&&fixture.canTrainer;
       const dashboard=page.getByRole('link',{name:'수강생 대시보드로 이동',exact:true});
-      const expectedLink=fixture.canStudent && !(scenario.start && dual);
+      const expectedLink=!scenario.start || (fixture.canStudent && !dual);
       assert.equal(await dashboard.count(),expectedLink?1:0,label+' real dashboard entry eligibility');
       if(fixture.canTrainer && !fixture.canStudent){
         assert.equal(new URL(page.url()).pathname,'/trainer',label+' trainer-only stays in trainer view');

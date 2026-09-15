@@ -8,7 +8,7 @@
  * 진입점이 «둘» 이고 그 중 하나만 가드를 지났다.
  *
  * 현재 계약:
- *  1. canStudent=true가 확인되어야 Link를 표시한다. 트레이너 화면의 dual-role은 안전한 토글만 사용한다.
+ *  1. 수강생 화면은 자격 조회 결과와 무관하게 Link를 표시한다. 트레이너 화면의 dual-role은 안전한 토글만 사용한다.
  *  2. 일반 수강생(canStudent=true, canTrainer=false)은 토글이 안 뜨므로 Link 를 유지한다 — /dashboard
  *     /calendar /contact /db /payment /schedule /updates /captain /claim 의 유일한 복귀 동선이다.
  *  3. 화면 판정은 `roleMode` prop 을 믿지 않는다. 실제로 넘기는 호출부가 한 곳뿐이라
@@ -32,7 +32,7 @@ describe("헤더 수강생 대시보드 진입점", () => {
     // 실제 capability/이동 회귀는 components/top-header-regression.test.ts에서 검증한다.
     expect(header).toMatch(/const roleToggleShown\s*=\s*!!trainer\.data\?\.canStudent && !!trainer\.data\?\.canTrainer/);
     expect(header).toMatch(
-      /const showStudentDashboardLink\s*=\s*trainer\.data\?\.canStudent === true &&\s*!\(roleView === "trainer" && roleToggleShown\)/,
+      /const showStudentDashboardLink\s*=\s*roleView === "student" \|\| \(trainer\.data\?\.canStudent === true &&\s*!roleToggleShown\)/,
     );
   });
 

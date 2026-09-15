@@ -27,7 +27,7 @@ function safeError(error: unknown): TrainerAccessError {
 }
 function validateQualification(q: TrainerAccessQualification): void {
   if (!TrainerAccountKey.safeParse(q.email).success || typeof q.name !== "string"
-    || !q.name.trim() || q.name.length > 100
+    || !q.name.trim() || q.name.length > 100 || !["T", "관리"].includes(q.department)
     || !["active", "pending", "rejected", "revoked", "cancelled"].includes(q.status)) throw new TrainerAccessError(503);
 }
 function validateSetting(setting: TrainerAccessSetting | null): void {
@@ -43,7 +43,7 @@ export async function listTrainerAccessSettings(): Promise<TrainerAccessPerson[]
       validateQualification(q);
       if (keys.has(q.email)) throw new TrainerAccessError(503);
       keys.add(q.email);
-      if (q.status !== "active") return [];
+      if (q.status !== "active" || q.department !== "T" || isAdminEmail(q.email)) return [];
       validateSetting(setting);
       return [{ ...q, grade: setting?.grade ?? null, grants: setting?.grants ?? defaultTrainerGrants(null), version: setting?.version ?? 0 }];
     });
@@ -55,10 +55,11 @@ export async function saveTrainerAccessSettings(raw: unknown): Promise<void> {
   const parsed = TrainerAccessCommand.safeParse(raw);
   if (!parsed.success) throw new TrainerAccessError(400);
   const input = parsed.data;
+  if (isAdminEmail(input.email)) throw new TrainerAccessError(403);
   try {
     await withTrainerAccessLock(input.email, async tx => {
       if (!tx.qualification) throw new TrainerAccessError(403);
-      if (tx.qualification.status !== "active") throw new TrainerAccessError(403);
+      if (tx.qualification.status !== "active" || tx.qualification.department !== "T") throw new TrainerAccessError(403);
       validateQualification(tx.qualification);
       if (tx.qualification.email !== input.email) throw new TrainerAccessError(503);
       const current = await tx.read();

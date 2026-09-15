@@ -6,15 +6,41 @@ vi.mock("@/repo/db/trainer-access-settings", () => ({
   listTrainerAccessRows: mocks.list, withTrainerAccessLock: mocks.lock,
 }));
 import { listTrainerAccessSettings, saveTrainerAccessSettings } from "@/service/trainer-access-settings";
-const qualification = { email: "trainer@example.test", name: "동명이인", status: "active" };
+const qualification = { email: "trainer@example.test", name: "동명이인", status: "active", department: "T" };
 const command = (grade = "senior") => ({ email: qualification.email, grade, grants: defaultTrainerGrants(grade), version: 0 });
 beforeEach(() => {
-  vi.resetAllMocks(); mocks.actor.mockResolvedValue("admin@example.test"); mocks.admin.mockReturnValue(true);
+  vi.resetAllMocks(); mocks.actor.mockResolvedValue("admin@example.test"); mocks.admin.mockImplementation(email => email === "admin@example.test");
   mocks.read.mockResolvedValue(null); mocks.save.mockResolvedValue(true);
   mocks.list.mockResolvedValue([{ qualification, setting: null }]);
   mocks.lock.mockImplementation(async (_email, fn) => fn({ qualification, read: mocks.read, save: mocks.save }));
 });
 describe("admin trainer access service", () => {
+  it("lists every active trainer except administrators and management, preserving saved grants", async () => {
+    const setting = { grade: "regular", grants: defaultTrainerGrants(null), version: 4 };
+    mocks.list.mockResolvedValue([
+      { qualification, setting },
+      ...[
+        { email: "legacy@example.test" },
+        { email: "admin@example.test" },
+        { email: "management@example.test", department: "관리" },
+        { email: "revoked@example.test", status: "revoked" },
+      ].map(overrides => ({ qualification: { ...qualification, ...overrides }, setting: null })),
+    ]);
+    expect(await listTrainerAccessSettings()).toEqual([
+      { ...qualification, ...setting },
+      { ...qualification, email: "legacy@example.test", grade: null, grants: defaultTrainerGrants(null), version: 0 },
+    ]);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it("rejects saving an administrator even with a stale visible row", async () => {
+    await expect(saveTrainerAccessSettings({ ...command(), email: "admin@example.test" })).rejects.toMatchObject({ status: 403 });
+    expect(mocks.lock).not.toHaveBeenCalled();
+  });
+  it("rejects saving a trainer moved to management after the list loaded", async () => {
+    mocks.lock.mockImplementation(async (_email, fn) => fn({ qualification: { ...qualification, department: "관리" }, read: mocks.read, save: mocks.save }));
+    await expect(saveTrainerAccessSettings(command())).rejects.toMatchObject({ status: 403 });
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
   it("grade change preserves requested active read-only grants", async () => {
     mocks.read.mockResolvedValue({ grade: "senior", grants: defaultTrainerGrants("senior"), version: 2 });
     const grants = defaultTrainerGrants("regular");

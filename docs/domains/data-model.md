@@ -14,6 +14,8 @@ last_review: 2026-04-27
 
 ## 트레이너 순수 권한 계약 및 중앙 adapter (#958)
 
+2026-09-15 권한 편집 대상: `trainer_qualifications`가 기존 `users` 트레이너 행보다 우선한다. 자격 행이 없는 기존 active/pending 트레이너는 읽기 후보에 포함하며, 서비스가 active·T 부서·비관리자만 반환/저장한다. 조회는 쓰지 않으며 기존 등록자의 명시 저장에서만 동일 트랜잭션으로 자격을 가져온다. 관리부서·비활성 계정의 저장 grants는 삭제하지 않는다. UI 등급 선택은 기존 체크를 등급 상한 내에서만 유지하며 새 권한을 자동 부여하지 않는다.
+
 정의: `lib/types/trainer-access.ts`, 판정: `lib/util/trainer-access-policy.ts`.
 `service/trainer-student-access.ts`가 `repo/db/trainer-student-access.ts`의 raw DB snapshot을 검증하여 순수 판정에 전달한다. active qualification과 valid 저장 등급/grants가 모두 필요하다. registry/cohort의 catch→[] 또는 default-active는 권한 근거로 쓰지 않는다. unknown/duplicate metadata, malformed raw status, reserved, 이메일별 다중 trainee 행은 fail-closed. 숫자/참가자/시즌 metadata를 모두 확인하고 archived 우선을 지킨다. 새 스키마나 운영 데이터 변경은 없다.
 

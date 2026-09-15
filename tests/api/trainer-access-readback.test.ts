@@ -1,18 +1,18 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { defaultTrainerGrants } from "@/util/trainer-access-policy";
-const m = vi.hoisted(() => ({ admin: true, status: "active", setting: null as null | { grade: string; grants: unknown; version: number }, save: vi.fn() }));
-vi.mock("@/auth/identity", () => ({ getSessionEmail: async () => "admin@example.test", isAdminEmail: () => m.admin }));
+const m = vi.hoisted(() => ({ admin: true, status: "active", department: "T", setting: null as null | { grade: string; grants: unknown; version: number }, save: vi.fn() }));
+vi.mock("@/auth/identity", () => ({ getSessionEmail: async () => "admin@example.test", isAdminEmail: (email: string) => m.admin && email === "admin@example.test" }));
 vi.mock("@/repo/db/trainer-access-settings", () => ({
-  listTrainerAccessRows: async () => [{ qualification: { email: "coach@example.test", name: "합성", status: m.status }, setting: m.setting }],
+  listTrainerAccessRows: async () => [{ qualification: { email: "coach@example.test", name: "합성", status: m.status, department: m.department }, setting: m.setting }],
   withTrainerAccessLock: async (_email: string, work: (tx: unknown) => Promise<void>) => work({
-    qualification: { email: "coach@example.test", name: "합성", status: m.status }, read: async () => m.setting, save: m.save,
+    qualification: { email: "coach@example.test", name: "합성", status: m.status, department: m.department }, read: async () => m.setting, save: m.save,
   }),
 }));
 import { GET, PUT } from "@/app/api/admin/trainer-access/route";
 const grants = () => ({ ...defaultTrainerGrants("regular"), active: { read: true, write: false } });
 const put = (version: number) => PUT(new Request("https://app.example.test/api/admin/trainer-access", { method: "PUT", headers: { origin: "https://app.example.test", "content-type": "application/json" }, body: JSON.stringify({ email: "coach@example.test", grade: "regular", grants: grants(), version }) }));
 beforeEach(() => {
-  vi.stubEnv("AUTH_URL", "https://app.example.test"); m.admin = true; m.status = "active";
+  vi.stubEnv("AUTH_URL", "https://app.example.test"); m.admin = true; m.status = "active"; m.department = "T";
   m.setting = { grade: "senior", grants: defaultTrainerGrants("senior"), version: 2 };
   m.save.mockReset().mockImplementation(async (input, actor) => { expect(actor).toBe("admin@example.test"); m.setting = { ...input, version: input.version + 1 }; return true; });
 });
@@ -26,4 +26,11 @@ it.each(["pending", "revoked", "cancelled", "rejected"])("only active qualificat
 });
 it("management/nonadmin receives no API data or mutation", async () => {
   m.admin = false; expect((await GET()).status).toBe(403); expect((await put(2)).status).toBe(403); expect(m.save).not.toHaveBeenCalled();
+});
+it("management target disappears and rejects stale save without changing stored grants", async () => {
+  m.department = "관리";
+  const before = m.setting;
+  expect(await (await GET()).json()).toEqual({ trainers: [] });
+  expect((await put(2)).status).toBe(403);
+  expect(m.save).not.toHaveBeenCalled(); expect(m.setting).toBe(before);
 });

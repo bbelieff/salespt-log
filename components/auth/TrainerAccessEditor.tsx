@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { TrainerAccessValue, TrainerAccountKey } from "@/types/trainer-access";
 import type { TrainerAccessPerson, TrainerGrade, TrainerStudentCategory } from "@/types/trainer-access";
-import { defaultTrainerGrants, isTrainerGrants } from "@/util/trainer-access-policy";
+import { defaultTrainerGrants, isTrainerGrants, retainTrainerGrantsForGrade } from "@/util/trainer-access-policy";
 
 const grades = { senior: "수석", regular: "일반", apprentice: "견습" };
 const categories = { active: "활성", arena: "아레나", archived: "보관" };
@@ -124,7 +124,7 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
     <div className="permission-head"><div><h1>트레이너 관리</h1><p>등급과 수강생별 조회·수정 범위를 관리합니다.</p></div><span className="permission-admin-badge">{readOnly ? "조회 전용" : "관리자 전용"}</span></div>
     {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     {busy && <p role="status">{draft ? "권한을 처리하고 있습니다." : "권한을 불러오고 있습니다."}</p>}
-    {!busy && !people.length && !error && <p>활성 트레이너가 없습니다.</p>}
+    {!busy && !people.length && !error && <p>권한을 설정할 활성 트레이너가 없습니다. 관리자·관리부서는 제외됩니다.</p>}
     {(error || refreshOnly) && <button disabled={busy} onClick={() => {
       if (!refreshOnly && dirty && !window.confirm("변경사항을 버리고 최신 권한을 불러올까요?")) return;
       void refresh();
@@ -138,11 +138,11 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
       <div className="permission-eyebrow">등급·권한 편집</div><h2>{draft.name}</h2><small className="account-email">{draft.email}</small>
       <div className="permission-section"><label className="grade-label" htmlFor={`${id}-grade`}>트레이너 등급</label>
         <select id={`${id}-grade`} value={draft.grade ?? ""} disabled={locked} onChange={event => {
-          const grade = event.target.value as TrainerGrade; setDraft({ ...draft, grade, grants: defaultTrainerGrants(grade) });
+          const grade = event.target.value as TrainerGrade; setDraft({ ...draft, grade, grants: retainTrainerGrantsForGrade(draft.grants, grade) });
         }}><option value="" disabled>미분류 · 권한 없음</option>{Object.entries(grades).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <p className="permission-note">등급 변경 시 아래 권한을 해당 등급의 기본값으로 맞춥니다.<br />저장하기 전에는 실제 권한이 바뀌지 않습니다.</p>
+        <p className="permission-note">등급을 선택해도 권한은 자동 부여되지 않습니다. 관리자가 아래 항목을 직접 체크해 주세요.<br />기존 체크는 새 등급에서 허용되는 범위만 유지되며, 저장 전에는 실제 권한이 바뀌지 않습니다.</p>
       </div>
-      <div className="permission-section"><div className="permission-section-title"><h3>수강생 접근 권한</h3><button disabled={locked || !draft.grade} onClick={() => setDraft({ ...draft, grants: defaultTrainerGrants(draft.grade) })}>등급 기본값으로</button></div>
+      <div className="permission-section"><div className="permission-section-title"><h3>수강생 접근 권한</h3><button disabled={locked || !draft.grade} onClick={() => setDraft({ ...draft, grants: defaultTrainerGrants(null) })}>권한 모두 해제</button></div>
         <table className="permission-table"><thead><tr><th scope="col">수강생 구분</th><th scope="col">조회</th><th scope="col">수정</th></tr></thead><tbody>{categoryKeys.map(key => <tr key={key}>
           <th scope="row"><strong>{categories[key]}</strong><small>{notes[key]}</small></th>{(["read", "write"] as const).map(action => <td key={action}><label><input type="checkbox" aria-label={`${categories[key]} ${action === "read" ? "조회" : "수정"}`} checked={draft.grants[key][action]}
             disabled={locked || !defaultTrainerGrants(draft.grade)[key][action]} onChange={event => {
@@ -153,7 +153,7 @@ export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-acc
             }} /></label></td>)}</tr>)}</tbody></table>
         <p className="permission-note">수정하려면 조회 권한이 필요합니다. 조회 해제 시 수정도 해제됩니다.<br />일반·견습은 활성 수강생만 설정할 수 있습니다. 아레나·보관은 수석 등급에서 설정합니다.</p>
       </div>
-      <div className="permission-scope">{JSON.stringify(draft.grants) === JSON.stringify(defaultTrainerGrants(draft.grade)) ? "등급 기본 권한" : "개별 조정 권한"} · {range(draft)}<br />담당 여부와 관계없이 허용된 범위에 적용됩니다.</div>
+      <div className="permission-scope">관리자가 선택한 권한 · {range(draft)}<br />담당 여부와 관계없이 허용된 범위에 적용됩니다. 관리자 권한은 이 설정의 영향을 받지 않습니다.</div>
       <div className="permission-savebar"><span>{dirty ? "저장하지 않은 변경사항이 있습니다." : "저장된 권한과 같습니다."}</span><div>
         <button disabled={locked || !dirty} onClick={() => { setDraft(saved ? structuredClone(saved) : null); setError(""); }}>변경 취소</button>
         <button ref={saveButton} className="primary" disabled={locked || !dirty || !draft.grade} onClick={() => dialog.current?.showModal()}>변경사항 저장</button>
