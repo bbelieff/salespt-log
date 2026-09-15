@@ -20,6 +20,7 @@ vi.mock("@/config", () => ({ guideUrl: () => "" }));
 vi.mock("@/analytics", () => ({ identifyUser: vi.fn(), resetUser: vi.fn(), markInternal: vi.fn(), clearInternal: vi.fn() }));
 vi.mock("@/components/announcements/AnnouncementsGate", () => ({ ANNOUNCEMENTS_SEEN_EVENT: "synthetic-news", hasUnseenUpdates: () => false }));
 import TopHeader from "@/components/TopHeader";
+import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 
 beforeEach(() => {
   state.pathname = "/dashboard";
@@ -29,12 +30,20 @@ beforeEach(() => {
 const render = () => renderToStaticMarkup(React.createElement(TopHeader, { pageEmoji: "X", pageTitle: "합성 화면" }));
 
 describe("shared header real React rendering", () => {
-  it("renders the real role switch next to dashboard, with identity and D-day in the information group", () => {
+  it.each([true, false])("keeps exactly one D-day in progress banner with dates=%s", hasDates => {
+    const banner = renderToStaticMarkup(React.createElement(DashboardProgressBanner, {
+      today: "9/15", weekday: "화", currentWeek: 2, hasDates,
+      startDate: "9/4", progressPercent: 22, graduationDate: "10/24", graduationISO: "2026-10-24",
+    }));
+    expect(render()).not.toContain("D-—");
+    expect(banner.match(/D-—/g)).toHaveLength(1);
+  });
+  it("renders the real role switch next to dashboard, with identity but no duplicate header D-day", () => {
     const html = render();
     expect(html).toContain('aria-label="접속 역할"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("합성 사용자");
-    expect(html).toContain("data-header-dday");
+    expect(html).not.toContain("data-header-dday");
     const actions = (html.split("data-header-actions")[1] ?? "").split("</header>")[0] ?? "";
     expect(actions).toContain("대시보드");
     expect(actions).toContain("트레이너");
@@ -77,8 +86,8 @@ describe("shared header real React rendering", () => {
   });
   it.each([undefined, "not-a-date", "2026-02-30"])("renders safely with graduationISO=%s", graduation => {
     state.graduationISO = graduation;
-    expect(render()).toContain("data-header-dday");
-    expect(render()).toContain("D-—");
+    expect(render()).not.toContain("data-header-dday");
+    expect(render()).not.toContain("D-—");
     expect(render()).not.toContain("NaN");
   });
 });
@@ -160,23 +169,17 @@ const mocks = [
       });
       await page.goto('http://header.test'+(scenario.start||'/dashboard'));
       await page.waitForSelector('[data-header-info]');
-      const validCalendar = fixture.date===validDate;
-      if(validCalendar) await page.waitForFunction(()=>!document.querySelector('[data-header-dday]').textContent.includes('D-—'));
-      else assert.equal(await page.locator('[data-header-dday]').textContent(),'D-—');
       await page.evaluate(()=>document.fonts.ready);
       await page.waitForFunction(()=>document.querySelector('header img').complete);
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-      if(!validCalendar) assert.equal(await page.locator('[data-header-dday]').textContent(),'D-—');
       const result=await page.evaluate(()=>{
         const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height};};
         const name=document.querySelector('[data-header-info] > :first-child');const range=document.createRange();const nameStart=name.textContent.indexOf('합성');range.setStart(name.firstChild,nameStart);range.setEnd(name.firstChild,nameStart+1);const glyph=range.getBoundingClientRect();
-        return{glyph:{left:glyph.left,right:glyph.right},rem:Number.parseFloat(getComputedStyle(document.documentElement).fontSize),width:innerWidth,scroll:document.documentElement.scrollWidth,header:rect('header'),logo:rect('[aria-label="계정 메뉴 열기"]'),actions:rect('[data-header-actions]'),info:rect('[data-header-info]'),name:rect('[data-header-info] > :first-child'),marker:document.querySelector('[data-header-impersonation]')?rect('[data-header-impersonation]'):null,dday:rect('[data-header-dday]'),ddayText:document.querySelector('[data-header-dday]').textContent,banner:rect('header ~ .sticky'),infoText:document.querySelector('[data-header-info]').textContent,actionText:document.querySelector('[data-header-actions]').textContent,roleButtonHeight:document.querySelector('.app-role-option')?.getBoundingClientRect().height,overflow:getComputedStyle(document.querySelector('header')).overflowX};
+        return{glyph:{left:glyph.left,right:glyph.right},rem:Number.parseFloat(getComputedStyle(document.documentElement).fontSize),width:innerWidth,scroll:document.documentElement.scrollWidth,header:rect('header'),logo:rect('[aria-label="계정 메뉴 열기"]'),actions:rect('[data-header-actions]'),info:rect('[data-header-info]'),name:rect('[data-header-info] > :first-child'),marker:document.querySelector('[data-header-impersonation]')?rect('[data-header-impersonation]'):null,banner:rect('header ~ .sticky'),infoText:document.querySelector('[data-header-info]').textContent,actionText:document.querySelector('[data-header-actions]').textContent,roleButtonHeight:document.querySelector('.app-role-option')?.getBoundingClientRect().height,overflow:getComputedStyle(document.querySelector('header')).overflowX};
       });
       const label=width+' '+scenario.label;
       assert.ok(result.scroll<=width,label+' overflow '+JSON.stringify(result));
       assert.ok(result.actions.right<=width && result.actions.left>=0,label+' action bounds');
-      assert.ok(result.dday.left>=result.info.left && result.dday.right<=result.info.right+1,label+' D-day inside info');
-      assert.ok(!result.ddayText.includes('NaN'),label+' valid date rendering');
       assert.ok(result.actionText.indexOf('대리 접속 중')<0,label+' marker separate from role actions');
       assert.ok(Math.abs(result.logo.top-result.actions.top)<=1,label+' first row');
       assert.ok(result.banner.top>=result.header.bottom-1,label+' banner overlaps header');
@@ -185,10 +188,10 @@ const mocks = [
       assert.ok(result.info.top>=result.header.top-1 && result.info.bottom<=result.header.bottom+1,label+' identity inside header');
       assert.ok(result.name.right-result.name.left>=2*result.rem-1,label+' name has visibly nonzero width');
       assert.ok(result.glyph.left>=result.name.left && result.glyph.right<=result.name.right,label+' first Korean name glyph visible');
-      assert.ok(result.name.right<=(result.marker||result.dday).left,label+' name does not overlap badges');
+      assert.ok(result.name.right<=(result.marker?.left ?? result.info.right)+1,label+' name does not overlap badges');
+      assert.equal(await page.locator('[data-header-dday]').count(),0,label+' no duplicated header D-day');
       assert.equal(!!result.marker,!!fixture.impersonating,label+' impersonation badge condition');
       if(result.marker){
-        assert.ok(result.marker.right<=result.dday.left,label+' marker and date separate');
         assert.ok(result.infoText.includes('대리 접속 중'),label+' impersonation text visible');
       }
       if(width<desktopMin){
@@ -242,7 +245,7 @@ const mocks = [
       if(process.env.QA_HEADER_ARTIFACT_DIR && scenario.label==='impersonating'){
         fs.mkdirSync(process.env.QA_HEADER_ARTIFACT_DIR,{recursive:true});
         // Capture the impersonating state again after the navigation assertion.
-        await page.goto('http://header.test/dashboard');await page.waitForFunction(()=>document.querySelector('[data-header-dday]') && !document.querySelector('[data-header-dday]').textContent.includes('D-—'));await page.waitForFunction(()=>document.querySelector('header img').complete);
+        await page.goto('http://header.test/dashboard');await page.waitForSelector('[data-header-info]');await page.waitForFunction(()=>document.querySelector('header img').complete);
         await page.evaluate(()=>window.scrollTo(0,400));await page.waitForFunction(()=>window.scrollY===400);
         await page.screenshot({path:path.join(process.env.QA_HEADER_ARTIFACT_DIR,'header-'+width+'.png')});
       }

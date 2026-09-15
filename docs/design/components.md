@@ -938,7 +938,7 @@ function getTimeValue(hourId, minuteId) {
 **구조 (한 컴포넌트, 2 sticky 영역)**:
 
 ```text
-TopHeader: 모바일 첫 행 로고 | 대시보드 | 역할 전환, 정보 행 이름 | 대리접속 | D-day
+TopHeader: 모바일 첫 행 로고 | 대시보드 | 역할 전환, 정보 행 이름 | 대리접속
   h-app-header = <768px 6rem, >=768px 3.5rem, sticky top-0 z-50
 PageBanner: 페이지 이모지·제목 | 선택적 부제
   h-12 = 3rem, sticky top-app-header z-40
@@ -1458,7 +1458,7 @@ button:focus, input:focus, select:focus {
 - `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
 - `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
-- `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속·D-day. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
+- `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속. D-day는 DashboardProgressBanner에만 표시한다. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
 
 - `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
 
@@ -1467,7 +1467,7 @@ button:focus, input:focus, select:focus {
 - 헤더 대시보드와 역할 토글은 red200 테두리/red50 배경/전체 곡률을 공유한다. 역할은 연결된 세그먼트 트랙(시각26px, 터치44px)이며 선택 영역만 red700/흰색. canStudent와 canTrainer 모두 참일 때만 표시한다.
 
 ### 2026-09-14 대시보드 정리 / 2026-09-15 헤더 회귀 복원
-- PR980의 헤더 단일행·표식 제거는 #956 승인 계약 복원으로 대체한다. 모바일 두 행·D-day·대리접속 표식과 공유 sticky offset은 위 TopHeader 계약을 따른다. 대시보드 카드 정리는 유지한다.
+- PR980의 헤더 단일행·표식 제거는 #956 승인 계약 복원으로 대체한다. 모바일 두 행·대리접속 표식과 공유 sticky offset은 위 TopHeader 계약을 따른다. 대시보드 카드 정리는 유지한다.
 - 대시보드 주간 목표는 초과/남음 상태 줄을 숨긴다. PT과제는 민트 구획과 명시적 제목으로 분리. 카드 전체 상세 버튼과 주차/재시도 버튼은 독립 포커스·클릭 영역이다. 업무탭 compact 진입은 유지.
 
 ### STEP 1·2 입력 대상 선택 (2026-09-15)
