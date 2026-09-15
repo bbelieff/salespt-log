@@ -3545,3 +3545,7 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 ### 2026-09-16 Codex 헤더 한 줄·추가 비용 밀도
 - 사용자 요청으로 모바일 두 줄 계약을 한 줄로 교체하고 추가 비용 강조/높이를 줄임.
 - 계획: docs/plans/active/header-single-row-expense.md. 운영 데이터 변경 없음.
+
+### 2026-09-16 Codex 트레이너 관리 UI 재구성
+- 사용자 지정 3개 상위 그룹·4개 하위 항목으로 재구성. 데이터와 처리 로직 유지.
+- 계획: docs/plans/active/trainer-scaffold.md. Muse 요청은 단계 한도로 실패, GPT 직접 적용.

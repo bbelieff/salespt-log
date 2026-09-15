@@ -29,13 +29,13 @@ export default function TrainerInvites() {
   // 폭·바깥여백은 호출부(페이지 셸)가 정한다 — 여기서 mx-auto/max-w-* 를 다시 선언하지 않는다.
   return <details className="group w-full overflow-hidden rounded-2xl border border-gray-200 bg-white">
     <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50">
-      <span>트레이너 초대</span>
+      <span>초대관리</span>
       {pending>0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700">수락 대기 {pending}</span>}
       <span className="ml-auto shrink-0 text-xs font-semibold text-gray-400 group-open:hidden">펼치기 ▾</span>
       <span className="ml-auto hidden shrink-0 text-xs font-semibold text-gray-400 group-open:inline">접기 ▴</span>
     </summary>
     <div className="border-t border-gray-100 px-4 pb-4 pt-3">
-    <p className="text-sm text-gray-600">초대받은 계정으로 수락하면 바로 등록됩니다. 링크는 7일 동안 유효합니다.</p>
+    <p className="text-sm text-gray-600">초대 링크 유효기간 7일</p>
     <form onSubmit={create} className="mt-4 flex flex-wrap gap-2">
       <label className="min-w-0 flex-1 text-sm font-bold">초대받을 이메일<input required type="email" maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} className="mt-2 h-11 w-full rounded-lg border px-3 font-normal" /></label>
       <button disabled={busy} className="mt-auto h-11 rounded-lg bg-brand-red px-4 text-sm font-bold text-white disabled:opacity-50">{busy ? "처리 중…" : "초대 링크 생성"}</button>

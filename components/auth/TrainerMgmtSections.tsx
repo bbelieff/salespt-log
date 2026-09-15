@@ -62,14 +62,8 @@ export function SectionPending({
 }) {
   return (
     <section>
-      <h2 className="mb-4 text-lg font-black tracking-tight text-gray-900">
-        트레이너 요청관리
-      </h2>
-      <p className="mb-4 text-xs text-gray-500">
-        승인 대기 중 ({pending.length})명
-      </p>
       {pending.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-gray-100 bg-white p-3 text-center text-sm text-gray-400">
           대기 중 요청 없음.
         </p>
       ) : (
@@ -138,15 +132,8 @@ export function SectionAssign({
 }) {
   return (
     <section>
-      <h2 className="mb-2 text-lg font-black tracking-tight text-gray-900">
-        트레이너 담당 부여
-      </h2>
-      <p className="mb-4 text-xs text-gray-500">
-        트레이너 카드를 펼쳐 담당 수강생을 다중 선택하세요. 한 수강생을 여러
-        트레이너에 동시 배정 가능 — 토글 즉시 저장. 좌측 [⋮⋮] 핸들로 카드 순서 변경.
-      </p>
       {trainers.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-gray-100 bg-white p-3 text-center text-sm text-gray-400">
           활성 트레이너가 없습니다. 요청관리에서 먼저 승인하세요.
         </p>
       ) : (
@@ -199,9 +186,9 @@ export function SectionTraineeList({
   const resolveTrainerName = (e: string) =>
     nameByEmail.get(e.toLowerCase()) ?? e;
   return (
-    <section>
-      <h2 className="mb-4 text-lg font-black tracking-tight text-gray-900">
-        수강생 명단 ({trainees.length})
+    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+      <h2 className="mb-4 text-base font-bold text-gray-900">
+        수강생 명단확인 ({trainees.length})
       </h2>
       <div className="space-y-2">
         {grouped.map(([cohort, list]) => (
