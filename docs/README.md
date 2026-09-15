@@ -111,6 +111,7 @@
 | [setup-sheets.md](./playbooks/setup-sheets.md) | Google Sheets API 설정 | 프로젝트 초기 설정 |
 | [deploy-vps.md](./playbooks/deploy-vps.md) | VPS 배포 및 Caddy 설정 | 배포 시 |
 | [fix-harness.md](./playbooks/fix-harness.md) | 하네스 문제 해결 | 에이전트 실수 반복 시 |
+| [remote-control-sessions.md](./playbooks/remote-control-sessions.md) | 세션이 「연결 해제됨」이 되는 이유·복구·안 끊기게 여는 법 | 세션 열 때 · 폰에서 세션이 안 보일 때 |
 
 ### 🔮 future/ (향후 확장)
 | 문서 | 한 줄 요약 | 업데이트 방식 |
