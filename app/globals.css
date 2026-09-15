@@ -3,16 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --app-header-height: 6rem;
+  --app-header-height: 3.5rem;
   --app-safe-bottom: env(safe-area-inset-bottom);
   --app-tabbar-safe: max(var(--app-safe-bottom, 0px), 8px);
   --app-tabbar-row: max(4.375rem, 68px);
   --app-tabbar-height: calc(var(--app-tabbar-row) + 5px + var(--app-tabbar-safe));
 }
 
-@screen 2xl {
-  :root { --app-header-height: 3.5rem; }
-}
 
 /* Shared with the app shell so the last content row clears the glass bar. */
 .app-header-pill {

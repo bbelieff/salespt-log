@@ -3541,3 +3541,7 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 
 ## 2026-09-16 STEP 1·2 입력 흐름 운영 배포
 사용자 승인 목업 구현: 채널 선택 즉시 입력, 채널 초안 유지, 날짜/채널 통합 선택. 기존 저장 보호 유지. Muse 검토·GPT 구현. 별도 배포 브랜치에서 검증 후 운영 확인.
+
+### 2026-09-16 Codex 헤더 한 줄·추가 비용 밀도
+- 사용자 요청으로 모바일 두 줄 계약을 한 줄로 교체하고 추가 비용 강조/높이를 줄임.
+- 계획: docs/plans/active/header-single-row-expense.md. 운영 데이터 변경 없음.
