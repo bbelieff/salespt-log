@@ -109,3 +109,12 @@ The current change must contain only this plan path. The normal commit hook/chec
 - Retain 70-case real browser capability/width/scroll matrix and existing ACL tests; optional screenshots wait for current compact header rather than removed D-day.
 - Run focused/browser, native check.sh and next build on the new fixed head; publish exact results in PR979. Old-head results are historical only.
 - DH re-review and explicit release pending. No auth scope, data/account/policy, migration, merge or deploy changes.
+
+## 2026-09-15 #956 approved header restore after PR980 removal
+
+- Same OG owner/session/worktree/branch, base master `89380bd`. Previous correction is already merged as `7585e89`; do not replay historical commits or claim them as current validation.
+- Restore approved DDayBadge and conditional impersonation marker to mobile information row; logo/dashboard/RoleViewSwitch remain first row. 2xl=768px uses one row. Restore shared height variable6rem/3.5rem so existing app-content consumers follow9rem/6.5rem.
+- Preserve current master navigation capability logic, PR981 logo-anchored popup, PR982 ACL/roster/grants and all account/auth/data policy behavior. No backend change.
+- Test current-head real marker/date presence, invalid/missing dates, 360/390 and breakpoint edges, long-name glyph visibility, role navigation and sticky payment consumer at scroll400; keep ACL regressions.
+- Commit then run fixed-head focused/browser + native check.sh + next build; publish new SHA and CI/PR evidence. Old-head and WIP tests are not release evidence.
+- DH independent review/serial release still required. No merge/deploy, DB/migration, accounts or real-data actions; authenticated journey gate remains separate.
