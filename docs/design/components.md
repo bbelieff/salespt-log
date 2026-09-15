@@ -937,12 +937,12 @@ function getTimeValue(hourId, minuteId) {
 **구조 (한 컴포넌트, 2 sticky 영역)**:
 
 ```text
-TopHeader: 로고 | 기수·이름 대표님 | 대시보드 | 자격이 있는 역할 전환
-  h-app-header = 모든 폭 3.5rem, sticky top-0 z-50
+TopHeader: 모바일 첫 행 로고 | 대시보드 | 역할 전환, 정보 행 이름 | 대리접속 | D-day
+  h-app-header = <768px 6rem, >=768px 3.5rem, sticky top-0 z-50
 PageBanner: 페이지 이모지·제목 | 선택적 부제
   h-12 = 3rem, sticky top-app-header z-40
 날짜·검색·진행 등 페이지별 고정 영역
-  sticky top-app-content = 헤더 + 3rem (모든 폭 6.5rem), z-30
+  sticky top-app-content = 헤더 + 3rem (<768px 9rem, >=768px 6.5rem), z-30
 일반 본문
 ```
 
@@ -966,23 +966,23 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
-**구조**: 모든 폭에서 `h-app-header` 3.5rem, `flex-nowrap` 한 행. 순서는 로고 → 기수·이름·대표님 → 대시보드 → 자격이 있는 본인 역할 토글. D-day는 진행도 박스에만 표시하며 대리접속 문구는 표시하지 않는다.
+**구조**: 768px 미만은 `h-app-header` 6rem 두 행. 첫 행은 로고 → 대시보드 → 자격이 있는 본인 역할 토글, 정보 행은 기수·이름 → 조건부 대리접속 표식 → DDayBadge. `2xl`(768px)부터 3.5rem 한 행으로 로고 → 정보 → 액션 순서를 유지한다.
 
 | 그룹 | 내용 | 데이터와 동작 |
 |---|---|---|
-| 로고 | `/salespt-logo.png`, `h-4 sm:h-6 w-auto` | 계정 메뉴 열기 버튼, 새소식 점 배지 |
-| 사용자 | 기수·이름·대표님 | `useMe()`의 프로필을 표시. `min-w-0 flex-1` 영역에서 `truncate`; 연결된 시트가 있으면 원본 시트 새 탭 링크. 프로필 이름이 없으면 트레이너 이름으로 보완 |
-| 액션 | 대시보드 + `RoleViewSwitch` | 대시보드는 모든 화면에서 `/dashboard` 링크. 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시 |
+| 로고 | `/salespt-logo.png`, `h-5 sm:h-6 w-auto` | 계정 메뉴 열기 버튼, 새소식 점 배지 |
+| 사용자 | 기수·이름·대표님 | `useMe()`의 프로필을 표시. `min-w-0` 정보 영역 안에서 이름은 `min-w-8 truncate`; 연결된 시트가 있으면 원본 시트 새 탭 링크. 프로필 이름이 없으면 트레이너 이름으로 보완 |
+| 액션 | 대시보드 + `RoleViewSwitch` | 수강생 화면 복귀 링크와 트레이너 화면의 최신 capability 조건을 유지하며 목적지는 `/dashboard`. 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시 |
 
 - 대시보드 화면에서도 같은 링크를 유지한다. `/` 또는 `/trainer`로 조건부 치환하거나 비활성 라벨로 바꾸지 않는다.
-- 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 320/390px 긴 이름에서도 이름의 가용 폭과 액션 비겹침을 브라우저로 검증한다.
+- 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 360/390px 긴 이름에서도 이름의 가용 폭과 액션 비겹침을 브라우저로 검증한다.
 - 로고·역할 버튼은 `h-11`(모바일 44px). 대시보드는 기존 메뉴 복귀와 같은 연한 붉은 알약형(`rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700`)으로 `← 대시보드`를 표시한다. 투명한 링크 클릭 영역은 `min-h-11`로 유지하고 내부 pill을 수직 중앙에 배치한다. 별도 대시보드 아이콘·큰 사각 박스는 사용하지 않는다. PC에서는 전역 루트 스케일이 적용된다.
 - 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 대리접속 표식과 반응형 배치가 권한이나 계정 전환 동작을 바꾸지 않는다.
 - 적층은 `sticky top-0 z-50`; 페이지 배너는 `sticky top-app-header z-40`이다.
 
 ### DDayBadge
 
-**용도**: 대시보드 날짜·진행도 영역의 카운트다운 배지. 최상단 헤더에는 중복 표시하지 않는다.
+**용도**: 공용 헤더 정보 행 및 기존 대시보드 진행도의 카운트다운 배지. 헤더는 날짜가 없거나 유효한 ISO 달력 날짜가 아니면 `D-—` placeholder를 사용한다.
 
 - 날짜 정본은 `me.graduationISO`, 즉 시트 O2에 저장된 실제 종강총회일(수료일)이다. `courseStart + 57일` 같은 고정 일수로 계산하거나 저장 날짜를 덮어쓰지 않는다.
 - 컴포넌트는 브라우저 로컬 날짜와 `graduationISO`의 일수 차이를 계산한다. 초기에는 placeholder를 렌더하고 `useEffect`에서 오늘을 계산하며, 30분마다 갱신한다.
@@ -1012,7 +1012,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 
 ```text
 app/(app)/dashboard/page.tsx
-  TopHeader                                  # 공용 한 줄 헤더 + 페이지 배너
+  TopHeader                                  # 공용 반응형 헤더 + 페이지 배너
   sticky top-app-content z-30 래퍼
     PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
   PageContainer > 일반 본문
@@ -1457,14 +1457,14 @@ button:focus, input:focus, select:focus {
 - `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
 - `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
-- `TopHeader`: 모든 폭에서 로고·기수·이름·대시보드·역할 전환 한 행. D-day는 진행도에만 표시한다. 이름은 가용 폭에서 줄이며 대시보드 링크는 `/dashboard`다.
+- `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속·D-day. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
 
 - `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
 
-- Header stack: `app-header` 3.5rem + 배너3rem = `top-app-content` 6.5rem. PC 전역 글자 크기에 따라 함께 축소한다. PC 캘린더 패널의 별도 offset은 유지한다.
+- Header stack: `app-header`는 <768px 6rem / >=768px 3.5rem이며, 배너3rem을 더한 `top-app-content`는 각각9rem /6.5rem. PC 전역 글자 크기에 따라 함께 축소한다. PC 캘린더 패널의 별도 offset은 유지한다.
 
 - 헤더 대시보드와 역할 토글은 red200 테두리/red50 배경/전체 곡률을 공유한다. 역할은 연결된 세그먼트 트랙(시각26px, 터치44px)이며 선택 영역만 red700/흰색. canStudent와 canTrainer 모두 참일 때만 표시한다.
 
-### 2026-09-14 대시보드 정리 (이전 반응형 2행 규격 대체)
-- 최상단 헤더는 모든 폭에서 3.5rem 한 행, 페이지 배너3rem, top-app-content 합계6.5rem. 대리접속 표시 제거, D-day는 진행도 안에만 표시.
+### 2026-09-14 대시보드 정리 / 2026-09-15 헤더 회귀 복원
+- PR980의 헤더 단일행·표식 제거는 #956 승인 계약 복원으로 대체한다. 모바일 두 행·D-day·대리접속 표식과 공유 sticky offset은 위 TopHeader 계약을 따른다. 대시보드 카드 정리는 유지한다.
 - 대시보드 주간 목표는 초과/남음 상태 줄을 숨긴다. PT과제는 민트 구획과 명시적 제목으로 분리. 카드 전체 상세 버튼과 주차/재시도 버튼은 독립 포커스·클릭 영역이다. 업무탭 compact 진입은 유지.

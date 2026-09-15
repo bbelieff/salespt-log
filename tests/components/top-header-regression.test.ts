@@ -29,12 +29,12 @@ beforeEach(() => {
 const render = () => renderToStaticMarkup(React.createElement(TopHeader, { pageEmoji: "X", pageTitle: "합성 화면" }));
 
 describe("shared header real React rendering", () => {
-  it("renders the real role switch next to dashboard, with identity and no duplicate D-day", () => {
+  it("renders the real role switch next to dashboard, with identity and D-day in the information group", () => {
     const html = render();
     expect(html).toContain('aria-label="접속 역할"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("합성 사용자");
-    expect(html).not.toContain("data-header-dday");
+    expect(html).toContain("data-header-dday");
     const actions = (html.split("data-header-actions")[1] ?? "").split("</header>")[0] ?? "";
     expect(actions).toContain("대시보드");
     expect(actions).toContain("트레이너");
@@ -64,10 +64,10 @@ describe("shared header real React rendering", () => {
     expect(html).not.toContain('aria-label="수강생 대시보드로 이동"');
     expect(html).not.toContain('aria-label="접속 역할"');
   });
-  it.each([true, false])("hides impersonation text without changing role state: %s", impersonating => {
+  it.each([true, false])("keeps impersonation marker separate from role actions: %s", impersonating => {
     state.trainer.impersonating = impersonating;
     const html = render();
-    expect(html).not.toContain("대리 접속 중");
+    expect(html.includes("data-header-impersonation")).toBe(impersonating);
     expect((html.split("data-header-actions")[1] ?? "").split("</header>")[0] ?? "").not.toContain("대리 접속 중");
     if (impersonating) expect(html).not.toContain('aria-pressed="true"');
   });
@@ -77,7 +77,8 @@ describe("shared header real React rendering", () => {
   });
   it.each([undefined, "not-a-date", "2026-02-30"])("renders safely with graduationISO=%s", graduation => {
     state.graduationISO = graduation;
-    expect(render()).not.toContain("data-header-dday");
+    expect(render()).toContain("data-header-dday");
+    expect(render()).toContain("D-—");
     expect(render()).not.toContain("NaN");
   });
 });
@@ -159,26 +160,43 @@ const mocks = [
       });
       await page.goto('http://header.test'+(scenario.start||'/dashboard'));
       await page.waitForSelector('[data-header-info]');
+      const validCalendar = fixture.date===validDate;
+      if(validCalendar) await page.waitForFunction(()=>!document.querySelector('[data-header-dday]').textContent.includes('D-—'));
+      else assert.equal(await page.locator('[data-header-dday]').textContent(),'D-—');
       await page.evaluate(()=>document.fonts.ready);
       await page.waitForFunction(()=>document.querySelector('header img').complete);
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      if(!validCalendar) assert.equal(await page.locator('[data-header-dday]').textContent(),'D-—');
       const result=await page.evaluate(()=>{
         const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height};};
         const name=document.querySelector('[data-header-info] > :first-child');const range=document.createRange();const nameStart=name.textContent.indexOf('합성');range.setStart(name.firstChild,nameStart);range.setEnd(name.firstChild,nameStart+1);const glyph=range.getBoundingClientRect();
-        return{glyph:{left:glyph.left,right:glyph.right},rem:Number.parseFloat(getComputedStyle(document.documentElement).fontSize),width:innerWidth,scroll:document.documentElement.scrollWidth,header:rect('header'),logo:rect('[aria-label="계정 메뉴 열기"]'),actions:rect('[data-header-actions]'),info:rect('[data-header-info]'),name:rect('[data-header-info] > :first-child'),marker:document.querySelector('[data-header-impersonation]')?rect('[data-header-impersonation]'):null,dday:document.querySelector('[data-header-dday]')!==null,banner:rect('header ~ .sticky'),infoText:document.querySelector('[data-header-info]').textContent,actionText:document.querySelector('[data-header-actions]').textContent,roleButtonHeight:document.querySelector('.app-role-option')?.getBoundingClientRect().height,overflow:getComputedStyle(document.querySelector('header')).overflowX};
+        return{glyph:{left:glyph.left,right:glyph.right},rem:Number.parseFloat(getComputedStyle(document.documentElement).fontSize),width:innerWidth,scroll:document.documentElement.scrollWidth,header:rect('header'),logo:rect('[aria-label="계정 메뉴 열기"]'),actions:rect('[data-header-actions]'),info:rect('[data-header-info]'),name:rect('[data-header-info] > :first-child'),marker:document.querySelector('[data-header-impersonation]')?rect('[data-header-impersonation]'):null,dday:rect('[data-header-dday]'),ddayText:document.querySelector('[data-header-dday]').textContent,banner:rect('header ~ .sticky'),infoText:document.querySelector('[data-header-info]').textContent,actionText:document.querySelector('[data-header-actions]').textContent,roleButtonHeight:document.querySelector('.app-role-option')?.getBoundingClientRect().height,overflow:getComputedStyle(document.querySelector('header')).overflowX};
       });
       const label=width+' '+scenario.label;
       assert.ok(result.scroll<=width,label+' overflow '+JSON.stringify(result));
       assert.ok(result.actions.right<=width && result.actions.left>=0,label+' action bounds');
-      assert.equal(result.dday,false,label+' no duplicate D-day');
+      assert.ok(result.dday.left>=result.info.left && result.dday.right<=result.info.right+1,label+' D-day inside info');
+      assert.ok(!result.ddayText.includes('NaN'),label+' valid date rendering');
+      assert.ok(result.actionText.indexOf('대리 접속 중')<0,label+' marker separate from role actions');
       assert.ok(Math.abs(result.logo.top-result.actions.top)<=1,label+' first row');
       assert.ok(result.banner.top>=result.header.bottom-1,label+' banner overlaps header');
       assert.ok(!['hidden','clip'].includes(result.overflow),label+' overflow must not be hidden');
-      assert.equal(result.header.height,3.5*result.rem,label+' single-row height');
-      assert.ok(result.info.top>=result.header.top && result.info.bottom<=result.header.bottom,label+' identity inside row');
-      assert.ok(result.name.right>result.name.left,label+' name has space');
-      assert.ok(result.name.right<=result.actions.left,label+' name does not overlap actions');
-      assert.equal(result.marker,null,label+' no impersonation badge');
-      assert.ok(!result.infoText.includes('대리 접속 중'),label+' no impersonation text');
+      assert.equal(result.header.height,(width<desktopMin?6:3.5)*result.rem,label+' responsive header height');
+      assert.ok(result.info.top>=result.header.top-1 && result.info.bottom<=result.header.bottom+1,label+' identity inside header');
+      assert.ok(result.name.right-result.name.left>=2*result.rem-1,label+' name has visibly nonzero width');
+      assert.ok(result.glyph.left>=result.name.left && result.glyph.right<=result.name.right,label+' first Korean name glyph visible');
+      assert.ok(result.name.right<=(result.marker||result.dday).left,label+' name does not overlap badges');
+      assert.equal(!!result.marker,!!fixture.impersonating,label+' impersonation badge condition');
+      if(result.marker){
+        assert.ok(result.marker.right<=result.dday.left,label+' marker and date separate');
+        assert.ok(result.infoText.includes('대리 접속 중'),label+' impersonation text visible');
+      }
+      if(width<desktopMin){
+        assert.ok(result.info.top>=result.actions.bottom-1,label+' mobile information second row');
+      }else{
+        assert.ok(result.info.top<=result.actions.top+1 && result.info.bottom>=result.actions.bottom-1,label+' desktop single row');
+        assert.ok(result.info.right<=result.actions.left,label+' desktop information/action separation');
+      }
       const dual=fixture.canStudent&&fixture.canTrainer;
       const dashboard=page.getByRole('link',{name:'수강생 대시보드로 이동',exact:true});
       const expectedLink=!scenario.start || (fixture.canStudent && !dual);
@@ -213,11 +231,18 @@ const mocks = [
       assert.ok(sticky.consumerTop>=sticky.bannerBottom-1,label+' scrolled real payment consumer overlaps banner '+JSON.stringify(sticky));
       assert.ok(Math.abs(sticky.consumerTop-sticky.bannerBottom)<=1,label+' consumer sticks immediately below banner');
       console.log('SCROLL '+label+' '+JSON.stringify(sticky));
+      // Preserve master PR981 logo-anchored popup after restoring the two-row header.
+      await page.getByRole('button',{name:'계정 메뉴 열기'}).click();
+      const popup=await page.locator('div.fixed[style]').boundingBox();
+      const logo=await page.getByRole('button',{name:'계정 메뉴 열기'}).boundingBox();
+      assert.ok(popup && logo && Math.abs(popup.y-(logo.y+logo.height+4))<=1,label+' popup remains logo-anchored');
+      assert.ok(popup.x>=0 && popup.x+popup.width<=width,label+' popup within viewport');
+      await page.locator('div.fixed.inset-0').click({position:{x:width-8,y:700}});
       assert.deepEqual(errors,[],label+' page errors');
       if(process.env.QA_HEADER_ARTIFACT_DIR && scenario.label==='impersonating'){
         fs.mkdirSync(process.env.QA_HEADER_ARTIFACT_DIR,{recursive:true});
         // Capture the impersonating state again after the navigation assertion.
-        await page.goto('http://header.test/dashboard');await page.waitForSelector('[data-header-info]');await page.waitForFunction(()=>document.querySelector('header img').complete);
+        await page.goto('http://header.test/dashboard');await page.waitForFunction(()=>document.querySelector('[data-header-dday]') && !document.querySelector('[data-header-dday]').textContent.includes('D-—'));await page.waitForFunction(()=>document.querySelector('header img').complete);
         await page.evaluate(()=>window.scrollTo(0,400));await page.waitForFunction(()=>window.scrollY===400);
         await page.screenshot({path:path.join(process.env.QA_HEADER_ARTIFACT_DIR,'header-'+width+'.png')});
       }
