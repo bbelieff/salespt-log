@@ -164,12 +164,16 @@ afterEach(() => {
 });
 
 describe("expense ledger dashboard UI", () => {
-  it("uses a labeled native button as the cost-card trigger", () => {
+  it("opens the ledger from the additional-cost row without a separate add button", () => {
     const onOpenExpenseLedger = vi.fn();
     const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, onOpenExpenseLedger }));
-    const trigger = view.querySelector<HTMLButtonElement>('button[aria-label="비용 추가하기: 비용 원장 열기"]');
+    const trigger = view.querySelector<HTMLButtonElement>('button[aria-label="추가 비용: 비용 원장 열기"]');
     expect(trigger).not.toBeNull();
     expect(trigger?.type).toBe("button");
+    expect(trigger?.textContent).toContain("추가 비용");
+    expect(trigger?.textContent).not.toContain("DB 비용 합계");
+    expect(trigger?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(view.textContent).not.toContain("비용 추가하기");
     act(() => trigger?.click());
     expect(onOpenExpenseLedger).toHaveBeenCalledOnce();
   });
