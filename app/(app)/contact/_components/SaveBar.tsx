@@ -8,11 +8,12 @@ import PageContainer from "@/components/PageContainer";
 
 interface Props {
   pending: boolean;
+  date?: string;
   incompleteCount?: number;
   onSave: () => void;
 }
 
-export default function SaveBar({ pending, incompleteCount = 0, onSave }: Props) {
+export default function SaveBar({ date, pending, incompleteCount = 0, onSave }: Props) {
   return (
     <div className="fixed bottom-[calc(var(--app-tabbar-height)+8px)] left-0 right-0 z-[49] bg-gradient-to-t from-white via-white to-transparent pb-3 pt-3">
       <PageContainer width="wide" className="px-4">
@@ -36,7 +37,7 @@ export default function SaveBar({ pending, incompleteCount = 0, onSave }: Props)
               시트 저장중...
             </>
           ) : (
-            <>💾 저장하기</>
+            <>💾 {date ? `${Number(date.slice(5, 7))}/${Number(date.slice(8))} 기록 저장` : "저장하기"}</>
           )}
         </button>
       </PageContainer>

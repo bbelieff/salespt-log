@@ -21,7 +21,7 @@ interface Props {
   items: Item[];
   totalCost: number;
   totalCount: number;
-  activeCh: ChannelKey;
+  activeCh: ChannelKey | null;
   goalSummary?: ReactNode;
 }
 

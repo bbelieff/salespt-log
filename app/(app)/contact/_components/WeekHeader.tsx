@@ -177,7 +177,7 @@ export default function WeekHeader({
       </div>
 
       {/* 선택된 날짜 라벨 + 주차합계 inline (2026-05-17, WeekFunnelBar 통합) */}
-      <div className="px-4 pb-3">
+      {(weekFunnel || goalSummary) && <div className="px-4 pb-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-r-xl border-l-4 border-blue-500 bg-blue-50 px-3 py-2">
           <span className="text-sm font-semibold text-blue-800">
             {fmtMD(selectedDay)} ({dayLabelKO(selectedDay)})
@@ -203,6 +203,7 @@ export default function WeekHeader({
           {goalSummary && <div className="w-full border-t border-blue-100 pt-1">{goalSummary}</div>}
         </div>
       </div>
+      }
       {/* 사용된 종속성: startDow 참조 (요일 매핑 계산 의도 보존) */}
       {startDow < 0 ? null : null}
     </header>
