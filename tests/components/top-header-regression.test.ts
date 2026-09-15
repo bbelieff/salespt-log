@@ -5,11 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal("React", React);
 const state = vi.hoisted(() => ({
+  pathname: "/dashboard",
   trainer: { canStudent: true, canTrainer: true, impersonating: false, name: "합성 트레이너" },
   graduationISO: "2026-10-01" as string | undefined,
 }));
 vi.mock("next/link", () => ({ default: (props: React.ComponentProps<"a">) => React.createElement("a", props) }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
+vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn() }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: state.trainer }) }));
 vi.mock("@/components/DirtyGuard", () => ({ useGuardedNav: () => (fn: () => void) => fn() }));
@@ -21,10 +22,11 @@ vi.mock("@/components/announcements/AnnouncementsGate", () => ({ ANNOUNCEMENTS_S
 import TopHeader from "@/components/TopHeader";
 
 beforeEach(() => {
+  state.pathname = "/dashboard";
   state.trainer = { canStudent: true, canTrainer: true, impersonating: false, name: "합성 트레이너" };
   state.graduationISO = "2026-10-01";
 });
-const render = () => renderToStaticMarkup(React.createElement(TopHeader, { pageEmoji: "X", pageTitle: "합성 화면", roleMode: "student" }));
+const render = () => renderToStaticMarkup(React.createElement(TopHeader, { pageEmoji: "X", pageTitle: "합성 화면" }));
 
 describe("shared header real React rendering", () => {
   it("renders the real role switch next to dashboard, with identity and no duplicate D-day", () => {
@@ -38,6 +40,23 @@ describe("shared header real React rendering", () => {
     expect(actions).toContain("트레이너");
     expect(actions).not.toContain("data-header-dday");
     expect(actions).not.toContain("합성 사용자");
+  });
+  it.each([
+    [false, true, "/trainer", false, false],
+    [true, false, "/dashboard", true, false],
+    [true, true, "/trainer", false, true],
+    [true, true, "/dashboard", true, true],
+  ] as const)("student=%s trainer=%s at %s exposes only usable student entry", (canStudent, canTrainer, pathname, link, toggle) => {
+    Object.assign(state.trainer, { canStudent, canTrainer }); state.pathname = pathname;
+    const html = render();
+    expect(html.includes('aria-label="수강생 대시보드로 이동"')).toBe(link);
+    expect(html.includes('aria-label="접속 역할"')).toBe(toggle);
+  });
+  it("does not expose a student entry while capability is unresolved", () => {
+    Object.assign(state.trainer, { canStudent: undefined, canTrainer: undefined }); state.pathname = "/trainer";
+    const html = render();
+    expect(html).not.toContain('aria-label="수강생 대시보드로 이동"');
+    expect(html).not.toContain('aria-label="접속 역할"');
   });
   it.each([true, false])("hides impersonation text without changing role state: %s", impersonating => {
     state.trainer.impersonating = impersonating;
@@ -110,8 +129,9 @@ const mocks = [
     const scenarios=[
       {label:'dual-student'}, {label:'dual-trainer',start:'/trainer'},
       {label:'impersonating',impersonating:true},
-      {label:'student-only',canTrainer:false}, {label:'trainer-only',canStudent:false},
+      {label:'student-only',canTrainer:false}, {label:'trainer-only',canStudent:false,start:'/trainer'},
       {label:'neither',canStudent:false,canTrainer:false},
+      {label:'unresolved',canStudent:undefined,canTrainer:undefined,start:'/trainer'},
       {label:'undefined-date',date:undefined}, {label:'invalid-date',date:'invalid'},
       {label:'invalid-calendar-date',date:'2026-02-30'}
     ];
@@ -154,6 +174,18 @@ const mocks = [
       assert.equal(result.marker,null,label+' no impersonation badge');
       assert.ok(!result.infoText.includes('대리 접속 중'),label+' no impersonation text');
       const dual=fixture.canStudent&&fixture.canTrainer;
+      const dashboard=page.getByRole('link',{name:'수강생 대시보드로 이동',exact:true});
+      const expectedLink=fixture.canStudent && !(scenario.start && dual);
+      assert.equal(await dashboard.count(),expectedLink?1:0,label+' real dashboard entry eligibility');
+      if(fixture.canTrainer && !fixture.canStudent){
+        assert.equal(new URL(page.url()).pathname,'/trainer',label+' trainer-only stays in trainer view');
+        assert.ok(!posts.some(p=>p.role==='student'),label+' no fake student role request');
+      }
+      if(fixture.canStudent && !fixture.canTrainer){
+        assert.equal(await dashboard.getAttribute('href'),'/dashboard',label+' student return destination');
+        await Promise.all([page.waitForNavigation(),dashboard.click()]);
+        assert.equal(new URL(page.url()).pathname,'/dashboard',label+' student-only dashboard navigation');
+      }
       assert.equal(await page.getByRole('group',{name:'접속 역할'}).count(),dual?1:0,label+' capabilities');
       if(dual){
         assert.ok(result.roleButtonHeight>=44,label+' real global role styling');
@@ -179,7 +211,7 @@ const mocks = [
       if(process.env.QA_HEADER_ARTIFACT_DIR && scenario.label==='impersonating'){
         fs.mkdirSync(process.env.QA_HEADER_ARTIFACT_DIR,{recursive:true});
         // Capture the impersonating state again after the navigation assertion.
-        await page.goto('http://header.test/dashboard');await page.waitForFunction(()=>document.querySelector('[data-header-dday]') && !document.querySelector('[data-header-dday]').textContent.includes('D-—'));await page.waitForFunction(()=>document.querySelector('header img').complete);
+        await page.goto('http://header.test/dashboard');await page.waitForSelector('[data-header-info]');await page.waitForFunction(()=>document.querySelector('header img').complete);
         await page.evaluate(()=>window.scrollTo(0,400));await page.waitForFunction(()=>window.scrollY===400);
         await page.screenshot({path:path.join(process.env.QA_HEADER_ARTIFACT_DIR,'header-'+width+'.png')});
       }
@@ -197,5 +229,5 @@ it.skipIf(!process.env.QA_TOOLS_DIR)("real browser: responsive rows, no overflow
     maxBuffer: 4 * 1024 * 1024,
   });
   console.log(output);
-  expect(output).toContain("Browser matrix: 63 passed");
+  expect(output).toContain("Browser matrix: 70 passed");
 }, 150_000);

@@ -92,3 +92,20 @@ Doc-only commit only: revert the single plan-doc commit; no product/data rollbac
 ## Documentation-only validation
 
 The current change must contain only this plan path. The normal commit hook/check.sh must pass; product-tree equality against the verified runtime head is required. No new build is claimed for this documentation-only change: runtime bytes are unchanged. DH will revalidate the new commit head before release.
+
+## 2026-09-15 bounded #956 trainer-only entry correction
+
+- Same OG owner/session/worktree/branch; base current master `32fc90c` (contains merged PR978 `938db322`). Prior ACL/header changes are already merged; do not replay them.
+- Scope: TopHeader shows the student-dashboard link only when canStudent is explicitly true (no loading/error fake entry). Student-only return link and dual-role safe role switch are preserved. No role/policy/account/data/backend changes.
+- Reproduced current master: React regression 1 failed /12 passed /1 optional browser skipped; trainer-only at /trainer incorrectly exposed student dashboard.
+- Add behavioral capability matrix and real browser trainer-only /trainer, student-only link navigation, dual-role POST/navigation. Retain responsive header/sticky and ACL regressions.
+- Gates: fixed-head focused tests/browser, normal check.sh, next build; publish new SHA for DH re-review. Earlier head evidence is not substituted for this change.
+- No new writer/worktree, migration, account/data, merge/deploy. DH independent review and explicit release remain required; authenticated journey remains separate.
+
+## 2026-09-15 PR979 rebase after PR980 compact header
+
+- Same owner/worktree/branch; rebase onto master `c8a59e2` (PR980). Preserve compact single-row markup and current master behavior; do not restore superseded duplicate D-day/impersonation badge.
+- Resolve only TopHeader and its regression conflict: explicit `canStudent === true` dashboard entry gate, student-only navigation, dual-role safe switch, trainer-only and unresolved denial remain intact.
+- Retain 70-case real browser capability/width/scroll matrix and existing ACL tests; optional screenshots wait for current compact header rather than removed D-day.
+- Run focused/browser, native check.sh and next build on the new fixed head; publish exact results in PR979. Old-head results are historical only.
+- DH re-review and explicit release pending. No auth scope, data/account/policy, migration, merge or deploy changes.
