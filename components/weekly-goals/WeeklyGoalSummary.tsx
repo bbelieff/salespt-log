@@ -44,11 +44,14 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
   </div>;
   const status = q.isPending ? <span role="status" className="text-xs text-gray-500">불러오는 중…</span> :
     q.isError ? <div role="alert" className="relative z-20 text-xs text-red-600">목표를 불러오지 못했어요.<button type="button" onClick={() => void q.refetch()} className="min-h-11 px-2 underline">다시 시도</button></div> : null;
-  if (compact) return <section aria-label="주간 목표" className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-    <span className="flex items-center gap-1 font-semibold text-gray-600"><Target className="h-3.5 w-3.5" aria-hidden />{current ? `${current.week}주 목표` : "주간 목표"}</span>
-    {status ?? (current && <GoalCompactMetrics goals={current.record.goals} actuals={current.actuals} metrics={metrics ?? GOAL_KEYS} />)}
+  if (compact) return <section aria-label="주간 목표" className="relative isolate flex min-h-11 min-w-0 items-center gap-2 rounded-lg text-xs">
     <button type="button" aria-label="목표·PT과제 열기" onClick={() => router.push("/weekly-goals?" + entry)}
-      className="ml-auto flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 font-semibold text-gray-600 hover:bg-gray-100">목표·PT<ChevronRight className="h-3.5 w-3.5" aria-hidden /></button>
+      className="absolute inset-0 z-10 rounded-lg hover:bg-blue-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" />
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="flex shrink-0 items-center gap-1 font-semibold text-gray-600"><Target className="h-3.5 w-3.5" aria-hidden />{current ? `${current.week}주 목표` : "주간 목표"}</span>
+      {status ?? (current && <GoalCompactMetrics goals={current.record.goals} actuals={current.actuals} metrics={metrics ?? GOAL_KEYS} />)}
+    </div>
+    <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
   </section>;
   return <section className={className + " relative isolate rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"} aria-label="주간 목표">
     <button type="button" aria-label="주간 목표·PT과제 상세 보기" onClick={() => router.push("/weekly-goals?" + entry)} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />

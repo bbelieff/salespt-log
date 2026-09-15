@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
@@ -100,6 +100,23 @@ export default function TopHeader({
   ]);
   const display = formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
   const [popupOpen, setPopupOpen] = useState(false);
+  const logoRef = useRef<HTMLButtonElement>(null);
+  const [popupPosition, setPopupPosition] = useState({ left: 8, top: 56 });
+  const positionPopup = () => {
+    const rect = logoRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = Math.min(16 * parseFloat(getComputedStyle(document.documentElement).fontSize), window.innerWidth - 16);
+    setPopupPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)), top: rect.bottom + 4 });
+  };
+  useEffect(() => {
+    if (!popupOpen) return;
+    window.addEventListener("resize", positionPopup);
+    window.addEventListener("scroll", positionPopup, true);
+    return () => {
+      window.removeEventListener("resize", positionPopup);
+      window.removeEventListener("scroll", positionPopup, true);
+    };
+  }, [popupOpen]);
 
   // 새소식 점 뱃지 — 안 본 새 업데이트가 있을 때만 (announcement-popup §3).
   // localStorage 는 클라 전용 → mount/[확인] 이벤트 시점에만 재계산 (SSR 안전).
@@ -116,7 +133,7 @@ export default function TopHeader({
     <>
       <header className="sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
         <PageContainer width="wide" className="flex h-full flex-nowrap items-center gap-x-1 px-2 sm:gap-x-2 sm:px-3">
-          <button type="button" onClick={()=>setPopupOpen(v=>!v)} className="flex h-full shrink-0 items-center" aria-label="계정 메뉴 열기">
+          <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="flex h-full shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/salespt-logo.png" alt="세일즈PT" className="h-4 w-auto sm:h-6" />
             {hasNews && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label="새소식 있음" />}
@@ -148,7 +165,7 @@ export default function TopHeader({
             className="fixed inset-0 z-[55]"
             onClick={() => setPopupOpen(false)}
           />
-          <div className="fixed left-3 top-14 z-[56] w-64 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
+          <div style={popupPosition} className="fixed z-[56] w-64 max-w-[calc(100vw-16px)] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
             <div className="border-b border-gray-100 px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-brand-red">
