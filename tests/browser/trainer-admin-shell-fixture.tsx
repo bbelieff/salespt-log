@@ -45,6 +45,7 @@ const people: TrainerAccessPerson[] = [
     name: "테스트 트레이너",
     status: "active",
     grade: null,
+    department: "T",
     version: 0,
     grants: defaultTrainerGrants(null),
   },

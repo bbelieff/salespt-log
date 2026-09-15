@@ -54,7 +54,7 @@ async function submit() {
   await page.getByRole("button", { name: "변경사항 저장", exact: true }).click();
   equal(await page.getByRole("dialog").isVisible(), true);
   await page.getByRole("dialog").getByRole("button", { name: "저장", exact: true }).click();
-  await page.getByRole("button", { name: "등급 기본값으로" }).waitFor();
+  await page.getByRole("button", { name: "권한 모두 해제" }).waitFor();
   await page.waitForFunction(() => document.querySelector('.trainer-access').getAttribute('aria-busy') === 'false');
 }
 try {
@@ -65,7 +65,7 @@ try {
   await page.getByRole("checkbox", { name: "아레나 수정", exact: true }).uncheck();
   await page.getByRole("button", { name: "변경 취소" }).click(); await checked("아레나 수정", true);
   await page.getByRole("checkbox", { name: "아레나 수정", exact: true }).uncheck();
-  await page.getByRole("button", { name: "등급 기본값으로" }).click(); await checked("아레나 수정", true);
+  await page.getByRole("button", { name: "권한 모두 해제" }).click(); await checked("아레나 수정", false); await checked("활성 조회", false); await page.getByRole("button", { name: "변경 취소" }).click();
   await page.getByRole("checkbox", { name: "아레나 수정", exact: true }).uncheck();
   await page.getByRole("button", { name: "변경사항 저장", exact: true }).click();
   await page.keyboard.press("Escape"); equal(await page.getByRole("dialog").isVisible(), false); equal(putCount, 0);
@@ -87,7 +87,7 @@ try {
   // Same display name, exact distinct email selection, no broad default for unclassified.
   await page.getByRole("button", { name: /fixture-1@example.test/ }).click(); equal(await page.getByLabel("트레이너 등급").inputValue(), "regular");
   await page.getByRole("button", { name: /fixture-3@example.test/ }).click(); equal(await page.getByLabel("트레이너 등급").inputValue(), ""); await checked("활성 조회", false);
-  await page.getByLabel("트레이너 등급").selectOption("apprentice"); await submit(); equal(people[3].grade, "apprentice"); equal(people[1].version, 1);
+  await page.getByLabel("트레이너 등급").selectOption("apprentice"); await checked("활성 조회", false); await checked("활성 수정", false); await page.getByRole("checkbox", { name: "활성 수정", exact: true }).check(); await submit(); equal(people[3].grade, "apprentice"); equal(people[1].version, 1);
   // Dirty selection confirmation preserves rejected navigation.
   await page.getByRole("checkbox", { name: "활성 수정", exact: true }).uncheck();
   page.once("dialog", d => d.dismiss()); await page.getByRole("button", { name: /fixture-0@example.test/ }).click(); await checked("활성 수정", false);
@@ -100,7 +100,7 @@ try {
     await page.screenshot({ path: join(output, `editor-${width}.png`), fullPage: true });
   }
   await page.goto(url + "?readonly"); await page.getByLabel("트레이너 등급").waitFor(); equal(await page.getByLabel("트레이너 등급").isDisabled(), true);
-  equal(await page.getByRole("button", { name: "등급 기본값으로" }).isDisabled(), true);
+  equal(await page.getByRole("button", { name: "권한 모두 해제" }).isDisabled(), true);
   equal(errors, []);
   const result = { result: "PASS", assertions, widths, requests: { GET: getCount, PUT: putCount }, reactErrors: errors, syntheticOnly: true };
   writeFileSync(join(output, "browser-result.json"), JSON.stringify(result, null, 2)); console.log(JSON.stringify(result));

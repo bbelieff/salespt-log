@@ -65,3 +65,15 @@ export function defaultTrainerGrants(grade: unknown) {
     archived: { read: senior, write: senior },
   };
 }
+
+/** Grade changes may remove out-of-scope grants, but never grant access. */
+export function retainTrainerGrantsForGrade(grants: unknown, grade: unknown) {
+  const next = defaultTrainerGrants(null);
+  if (!isTrainerGrants(grants)) return next;
+  const ceiling = defaultTrainerGrants(grade);
+  for (const category of categories) {
+    next[category].read = grants[category].read && ceiling[category].read;
+    next[category].write = grants[category].write && ceiling[category].write;
+  }
+  return next;
+}

@@ -7,6 +7,13 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-15 · Codex · 권한부여 대상 명단·수동 체크·수강생 복귀 링크
+- 사용자 직접 요청, fix/trainer-explicit-grants. 소유: trainer-access 목록/저장/편집기, 공통 헤더, 관련 회귀.
+- 기존 등록 트레이너 누락과 관리부서 포함을 교정. 기존 저장 grants는 유지하며 조회 시 데이터 변경 없음.
+- 등급 변경 자동 체크 제거, 수강생 모든 공통 헤더 대시보드 링크 유지.
+- 격리 PostgreSQL 66개·집중 회귀 72개 통과(기존 skip 1). 배포 검증은 PR/워크플로 결과로 기록.
+- 계획: docs/plans/active/trainer-roster-explicit-grants-0915.md. Muse 외부 검토 요청 차단으로 GPT 직접 수행.
+
 ### 2026-09-14 · 수리4(DH) · 트레이너 관리 화면 헤더 정렬·아레나 하단·섹션 6순서
 - 의도: 수리3(#973 `e262903`) 배포 직후 belie 가 실화면에서 지적한 5건.
 - 한 것: `/admin/trainers` 를 TrainerMgmtPanel 단일 루트로(헤더 1개·전 섹션 그 아래) · `cohortSortTuple` 그룹 우선순위 반전(일반 기수→아레나) · 초대 취소·만료를 화면에서만 숨김(DB 행 보존) · 섹션 6순서 재배치 · `CollapsibleSection` 신설로 권한부여 접힘.

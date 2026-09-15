@@ -47,7 +47,7 @@ export const TrainerAccessCommand = z.object({
 export type TrainerAccessCommand = z.infer<typeof TrainerAccessCommand>;
 export interface TrainerAccessSetting { grade: TrainerGrade; grants: TrainerGrants; version: number }
 /** Compatible with #956 trainer_qualifications; display name is never an identity key. */
-export interface TrainerAccessQualification { email: string; name: string; status: string }
+export interface TrainerAccessQualification { email: string; name: string; status: string; department: string }
 export interface TrainerAccessPerson extends TrainerAccessQualification {
   grade: TrainerGrade | null; grants: TrainerGrants; version: number;
 }
