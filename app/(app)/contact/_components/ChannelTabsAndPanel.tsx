@@ -3,15 +3,13 @@
 
 import { useLeadCandidates } from "@/query/db-hooks";
 import { countUnmatchedLeads } from "../_lib/lead-backlog";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
 import { loadChannelOrder, moveChannel, saveChannelOrder } from "../_lib/channel-order";
 import { CHANNEL_META } from "../_lib/channel-meta";
-
-
 const COLOR_CLASS: Record<
   "blue" | "green" | "amber" | "purple",
   { bg50: string; bg100: string; bg500: string; text700: string; under: string; hover: string; border: string }
@@ -66,6 +64,7 @@ const METRICS: Array<{
 ];
 
 interface Props {
+  contextHeader?: ReactNode;
   active: Channel;
   draft: Record<Channel, ChannelDailyRowMetrics>;
   /** 선택 날짜 (YYYY-MM-DD) — 생산 첫 행 읽기전용 파생값 계산용. */
@@ -118,6 +117,7 @@ function firstRowText(
 }
 
 export default function ChannelTabsAndPanel({
+  contextHeader,
   active,
   draft,
   date,
@@ -190,6 +190,8 @@ export default function ChannelTabsAndPanel({
 
   return (
     <div className="mb-3 overflow-hidden rounded-2xl bg-white shadow-sm">
+      {contextHeader}
+      <div className="px-3 pb-2 pt-3 text-xs font-semibold text-slate-700">입력할 채널 <span className="ml-2 font-normal text-slate-400">눌러서 바로 변경</span></div>
       {/* 채널 탭 — 길게 누른 후 드래그하여 순서 변경 (자동 저장) */}
       <div className="flex border-b border-gray-100">
         {order.map((c) => {
@@ -230,7 +232,7 @@ export default function ChannelTabsAndPanel({
                 setDragFrom(null);
                 setDragOver(null);
               }}
-              className={`relative flex-1 px-1 py-2.5 transition-all ${
+              className={`relative min-h-11 min-w-0 flex-1 px-1 py-2.5 transition-all ${
                 isActive ? colorCls.bg50 : "bg-white hover:bg-gray-50"
               } ${isDragging ? "opacity-40" : ""} ${
                 isDragOver ? "ring-2 ring-inset ring-blue-300" : ""
@@ -241,7 +243,7 @@ export default function ChannelTabsAndPanel({
             >
               <div className="flex flex-col items-center gap-1">
                 <span
-                  className={`text-xs font-bold ${
+                  className={`whitespace-nowrap text-xs font-bold ${
                     isActive ? colorCls.text700 : "text-gray-500"
                   }`}
                 >
@@ -271,8 +273,9 @@ export default function ChannelTabsAndPanel({
 
       {/* 채널 헤더 (배지 + 설명) */}
       <div className={`flex items-center gap-2 border-b ${cls.border} ${cls.bg50} px-3 py-2`}>
-        <span className={ch.badgeClass}>{active}</span>
-        <span className="break-keep text-xs text-gray-500">{ch.desc}</span>
+        <span className="shrink-0 text-xs font-semibold text-slate-700">{Number(date.slice(5, 7))}/{Number(date.slice(8))}</span>
+        <span className={`${ch.badgeClass} shrink-0 whitespace-nowrap`}>{active}</span>
+        <span className="break-keep text-xs text-gray-500">{ch.desc} · 이 채널에 기록합니다</span>
       </div>
 
       {/* 입력 헤더 + 생산 첫 행 — 우측 '⭐ 오늘 합계' 제목 셀이 헤더+생산행 높이를 세로 병합 */}
