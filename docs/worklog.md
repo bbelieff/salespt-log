@@ -13,6 +13,11 @@
 - CUA 6개 폭 넘침 0 및 버튼 1줄 확인. 격리 화면에는 합성 계정만 사용, 실제 저장 없음.
 - Muse 구독은 일반 CSS·검증 초안 29.04초 완료. GPT가 제품 토큰 대조·통합·시각 검증. 계획: trainer-management-density-0915.md.
 
+### 2026-09-15 · Codex · D-day 단독 운영 반영
+- 사용자 D-day 게시 승인. fix/header-dday-only, TopHeader·관련 회귀·D-day 문서만 소유.
+- 상단 중복 제거, 아래 DashboardProgressBanner 유지. 다른 대기 수정 미포함.
+- 계획: docs/plans/active/header-dday-only-0915.md. 배포 증거는 PR과 워크플로에 기록.
+
 ### 2026-09-15 · Codex · 권한부여 대상 명단·수동 체크·수강생 복귀 링크
 - 사용자 직접 요청, fix/trainer-explicit-grants. 소유: trainer-access 목록/저장/편집기, 공통 헤더, 관련 회귀.
 - 기존 등록 트레이너 누락과 관리부서 포함을 교정. 기존 저장 grants는 유지하며 조회 시 데이터 변경 없음.
