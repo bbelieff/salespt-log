@@ -106,7 +106,8 @@ export default async function AdminTrainersPage() {
             persistKey="admin-trainers:access"
           >
             {access.people ? (
-              <TrainerAccessEditor initialPeople={access.people} />
+              // 퇴출·부서 이동으로 대상이 바뀌면 이전 선택/초안을 폐기한다.
+              <TrainerAccessEditor key={access.people.map(person => person.email).sort().join("|")} initialPeople={access.people} />
             ) : (
               <p role="alert" className="text-sm text-gray-600">
                 권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.

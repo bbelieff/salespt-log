@@ -12,8 +12,9 @@
 
 ## 트레이너 등급·권한 편집 (#958)
 
-- **TrainerAccessEditor** (`components/auth/TrainerAccessEditor.tsx`): 승인 v4의 목록/편집/확인 배치와 CSS를 보존한 독립 컴포넌트. 기본 endpoint `/api/admin/trainer-access`, 선택적 `readOnly`는 표시용이며 서버는 GET/PUT 모두 admin-only. 기존 관리자 page에는 아직 mount하지 않는다.
-- 서버 자격목록의 exact 이메일로 선택하며 이름+이메일을 표시한다. 미분류는 grade=null/version=0/모든 권한 false. 등급 변경은 기본값 reset으로 저장하며 개별 조정은 등급 저장 후 가능하다. write 선택 시 read 활성, read 해제 시 write 해제. 취소/기본값/저장 확인 dialog와 키보드 Escape·focus 복귀·beforeunload 보호.
+- **TrainerAccessEditor** (`components/auth/TrainerAccessEditor.tsx`, 스타일 `TrainerAccessEditor.styles.ts`): 관리자 트레이너 페이지에 사용한다. 기본 endpoint `/api/admin/trainer-access`, 선택적 `readOnly`는 표시용이며 서버는 GET/PUT 모두 admin-only.
+- 공통 Noto 폰트·rem 밀도·4px 간격 체계를 따른다. 카드 패딩/섹션 간격 1rem, 목록:편집 1:2, 실제 패널 폭 40rem 이하에서 세로 배치. 긴 이름·이메일은 말줄임과 title을 함께 제공한다. 저장 버튼은 nowrap·44px 클릭 영역을 유지하고 안내 문구와 독립적으로 줄바꿈한다.
+- 서버 대상목록의 exact 이메일로 선택하며 이름+이메일을 표시한다. 미분류는 grade=null/version=0/모든 권한 false. 등급 변경은 기존 체크를 상한 안에서 유지하고 권한을 자동 부여하지 않는다. write 선택 시 read 활성, read 해제 시 write 해제. 취소/전체 해제/저장 확인 dialog와 키보드 Escape·focus 복귀·beforeunload 보호.
 - 실패 시 초안 보존, 409는 최신값 조회로 해결, 401/403 관찰 시 편집 차단. 성공한 PUT 뒤 GET 재조회가 끝나야 저장 완료. 재조회 실패는 중복 PUT을 막고 결과 재조회만 허용한다. endpoint 변경·unmount 시 오래된 응답은 무시한다. 360/390 모바일과 PC는 같은 API/정책을 사용한다.
 - 실행 증거 및 공용부 미통합: [trainer-access-settings QA](../qa/trainer-access-settings/README.md).
 
@@ -1474,3 +1475,6 @@ DB생산은 채널 선택을 상단 첫 행동으로 두고 선택한 채널의 
 
 #### DbChannelWorkspace
 채널별 DB 추가·수정 상태와 미저장 등록을 소유한다. 부모가 방문한 인스턴스를 유지하고 비활성 인스턴스는 hidden으로 숨긴다. 신규 등록 ID를 채널별로 분리한다.
+
+### 추가 비용 원장 진입
+FinanceSummaryBoxes의 별도 비용 추가하기 문구를 제거한다. 추가 비용 행 전체를 최소 44px 높이의 버튼으로 사용하고 옅은 강조 배경과 우측 화살표로 원장 진입을 안내한다. 합계 표시와 실제 비용 저장 로직은 유지한다.

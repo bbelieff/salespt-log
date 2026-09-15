@@ -15,6 +15,20 @@ beforeEach(() => {
   mocks.lock.mockImplementation(async (_email, fn) => fn({ qualification, read: mocks.read, save: mocks.save }));
 });
 describe("admin trainer access service", () => {
+  it("sorts senior, regular, apprentice, unclassified with name and email ties", async () => {
+    const fixtures = [
+      ["unclassified", "가", null], ["apprentice", "가", "apprentice"],
+      ["regular", "가", "regular"], ["senior-z", "하", "senior"],
+      ["senior-b", "가", "senior"], ["senior-a", "가", "senior"],
+    ];
+    mocks.list.mockResolvedValue(fixtures.map(([key, name, grade]) => ({
+      qualification: { ...qualification, email: `${key}@example.test`, name },
+      setting: grade ? { grade, grants: defaultTrainerGrants(null), version: 1 } : null,
+    })));
+    expect((await listTrainerAccessSettings()).map(p => p.email.split("@")[0])).toEqual([
+      "senior-a", "senior-b", "senior-z", "regular", "apprentice", "unclassified",
+    ]);
+  });
   it("lists every active trainer except administrators and management, preserving saved grants", async () => {
     const setting = { grade: "regular", grants: defaultTrainerGrants(null), version: 4 };
     mocks.list.mockResolvedValue([

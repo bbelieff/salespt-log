@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/format/money";
  *
  * 변경 (2026-09-11):
  *   - DashboardProgressBanner에서 분리되어 본문 상단으로 이동
- *   - 비용 박스는 경비장부 진입점 (ExpenseLedgerDialog)
+ *   - 추가 비용 행은 경비장부 진입점 (ExpenseLedgerDialog)
  */
 interface Props {
   revenue: number;
@@ -57,13 +57,8 @@ export default function FinanceSummaryBoxes({
         </div>
       </div>
 
-      {/* 비용 박스 — 클릭 시 경비장부 열기 */}
-      <button
-        type="button"
-        onClick={onOpenExpenseLedger}
-        aria-label="비용 추가하기: 비용 원장 열기"
-        className="group rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-red-300 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-      >
+      {/* 비용 요약과 추가 비용 진입 행 */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
         <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-2">
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-100 text-xs font-bold leading-none text-red-600">
             －
@@ -78,16 +73,23 @@ export default function FinanceSummaryBoxes({
         </div>
         <div className="text-xs leading-relaxed text-slate-500">
           <div>DB 비용 합계 ₩{fmtMoney(dbCostTotal)}</div>
-          {additionalCost === null ? (
-            <div className="mt-0.5 text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</div>
-          ) : (
-            <div>추가 비용 ₩{fmtMoney(additionalCost)}</div>
-          )}
-          <div className="mt-1 font-bold text-red-600">
-            비용 추가하기
-          </div>
+          <button
+            type="button"
+            onClick={onOpenExpenseLedger}
+            aria-label="추가 비용: 비용 원장 열기"
+            className="mt-1 flex min-h-11 w-full items-center justify-between gap-2 rounded-lg bg-red-50 px-2 py-1.5 text-left font-semibold text-red-700 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          >
+            <span className="min-w-0">
+              {additionalCost === null ? (
+                <span className="text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</span>
+              ) : (
+                <span className="flex flex-wrap items-baseline gap-x-1"><span>추가 비용</span><span className="break-all tabular-nums">₩{fmtMoney(additionalCost)}</span></span>
+              )}
+            </span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" /></svg>
+          </button>
         </div>
-      </button>
+      </div>
     </div>
   );
 }

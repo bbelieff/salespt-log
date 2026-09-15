@@ -79,7 +79,7 @@ describe("admin trainers page shell", () => {
   });
 
   it(".trainer-access 루트 규칙에 폭·여백을 박지 않는다", () => {
-    const m = read("components/auth/TrainerAccessEditor.tsx").match(/\.trainer-access\s*\{([^}]*)\}/);
+    const m = read("components/auth/TrainerAccessEditor.styles.ts").match(/\.trainer-access\s*\{([^}]*)\}/);
     expect(m).not.toBeNull();
     expect(m![1]).not.toMatch(/\bmax-width\s*:/);
     expect(m![1]).not.toMatch(/\bmargin\s*:/);
@@ -87,7 +87,7 @@ describe("admin trainers page shell", () => {
   });
 
   it("TrainerAccessEditor 의 추가 CSS 규칙은 전부 .trainer-access 로 스코프된다", () => {
-    const src = read("components/auth/TrainerAccessEditor.tsx");
+    const src = read("components/auth/TrainerAccessEditor.styles.ts");
     const open = src.indexOf("const editorStyles = `");
     expect(open).toBeGreaterThan(-1);
     const styles = src
@@ -107,7 +107,7 @@ describe("admin trainers page shell", () => {
     };
     const leaked = [...styles.matchAll(/([^{}]+)\{/g)]
       .map(m => (m[1] ?? "").trim())
-      .filter(s => !s.startsWith("@media"))
+      .filter(s => !s.startsWith("@media") && !s.startsWith("@container"))
       .flatMap(splitGroups)
       .map(s => s.trim())
       .filter(s => s && !s.startsWith(".trainer-access"));
