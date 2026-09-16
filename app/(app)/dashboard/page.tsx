@@ -10,7 +10,6 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
-import OperatingProfitCard from "@/components/dashboard/OperatingProfitCard";
 import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
@@ -71,7 +70,7 @@ export default function DashboardPage() {
     };
   }, [me.data, today, weeks]);
 
-  // 계약 건수 (matrix.계약 합) — OperatingProfitCard 보조 텍스트
+  // 계약 건수 (matrix.계약 합) — 영업이익 상세 패널 보조 텍스트
   const contractCount = useMemo(() => {
     if (!dash.data) return undefined;
     return dash.data.channelMatrix.reduce((s, m) => s + m.계약, 0);
@@ -131,7 +130,9 @@ export default function DashboardPage() {
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {dash.data && (
           <>
-            {/* [3] 매출·비용·영업이익 1세트 — 본문 상단, 진행도와 분리(별도 카드) */}
+            {/* [3] 매출·비용·영업이익 3열 1행 — 본문 상단, 진행도와 분리(별도 카드).
+                상세(수임비·수수료/DB·추가비용/이익률·시즌·이월·전체)는 컬럼 클릭 시
+                행 아래 공용 패널에 펼친다(SSOT: docs/design/components.md §9-2). */}
             <section aria-label="매출·비용·영업이익" className="rounded-2xl border border-slate-200 bg-slate-100 p-2">
               <FinanceSummaryBoxes
                 revenue={dash.data.kpi.총매출}
@@ -141,10 +142,7 @@ export default function DashboardPage() {
                 dbCostTotal={dash.data.additionalCost.dbCostTotal}
                 additionalCost={dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
                 onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
-              />
-              <OperatingProfitCard weeks={weeks}
-                revenue={dash.data.kpi.총매출}
-                cost={dash.data.kpi.총비용}
+                weeks={weeks}
                 contractCount={contractCount}
                 carryoverRevenue={dash.data.kpi.이월매출}
                 totalRevenue={dash.data.kpi.전체매출}
