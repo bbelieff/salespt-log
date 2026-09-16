@@ -103,7 +103,7 @@ function TabItem({ tab, active, dot }: { tab: Tab; active: boolean; dot: boolean
         push(tab.href);
       }}
       // touch-manipulation: 모바일 300ms 탭 지연 제거. minHeight 44: 탭타깃 ≥44px.
-      className="flex flex-1 flex-col items-center gap-1 py-1.5 transition-colors touch-manipulation active:bg-gray-100"
+      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl pb-1.5 transition-colors touch-manipulation active:bg-slate-200/60"
       style={{ minHeight: 44 }}
       aria-current={active ? "page" : undefined}
     >
@@ -125,14 +125,14 @@ function TabItem({ tab, active, dot }: { tab: Tab; active: boolean; dot: boolean
         <tab.Icon active={active} />
         {dot && <NewDot />}
       </span>
-      <span className={`text-xs ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
+      <span className={`app-tab-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? `font-bold ${c.text}` : "text-slate-600"}`}>
         {tab.label}
       </span>
     </Link>
   );
 }
 
-/** 중앙 캘린더 — 입체 FAB. 비활성=흰 원+slate 글리프, 활성=amber 채움+흰 글리프. 단계 없음(도구). */
+/** 중앙 캘린더 — 글자 간격을 유지하며 돌출된 유리 원형. 단계 없음(도구), 활성 시 amber 틴트. */
 function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
   const { push } = useGuardedRouter();
   return (
@@ -144,18 +144,16 @@ function CenterFab({ active, dot }: { active: boolean; dot: boolean }) {
       }}
       aria-label="캘린더"
       aria-current={active ? "page" : undefined}
-      className="flex flex-1 flex-col items-center justify-end touch-manipulation"
+      className="app-calendar-link flex min-h-11 min-w-0 flex-1 flex-col items-center justify-end pb-1.5 touch-manipulation"
     >
       <span
         aria-hidden="true"
-        className={`relative -mt-6 flex h-[52px] w-[52px] items-center justify-center rounded-full border shadow-lg transition-colors ${
-          active ? "border-amber-500 bg-amber-500 text-white" : "border-gray-300 bg-white text-slate-500"
-        }`}
+        className="app-calendar-orb relative flex shrink-0 items-center justify-center transition-colors"
       >
         <CalendarIcon active={active} />
         {dot && <NewDot />}
       </span>
-      <span className={`mt-1 text-xs ${active ? "font-bold text-amber-500" : "text-slate-600"}`}>
+      <span className={`app-tab-label app-calendar-label shrink-0 whitespace-nowrap text-xs leading-[1.35] ${active ? "font-bold text-amber-700" : "text-slate-600"}`}>
         캘린더
       </span>
     </Link>
@@ -167,16 +165,16 @@ export default function TabBar() {
   const dotTab = useAnchorDotTab(pathname);
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white"
+      aria-label="업무 단계 내비게이션"
+      className="app-tabbar fixed bottom-0 left-0 right-0 z-50"
       style={{
         // iOS 라운드 디스플레이 모서리 + 홈 인디케이터 영역 안전 패딩.
         paddingLeft: "env(safe-area-inset-left)",
         paddingRight: "env(safe-area-inset-right)",
-        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       {/* px-5(20px): 아이폰 라운드 모서리에서 양끝 칩이 안쪽에 오도록. 넓은 화면=480px 캡 중앙정렬. */}
-      <div className="mx-auto flex w-full max-w-bottom-nav items-end px-5">
+      <div className="app-tabbar-items mx-auto flex w-full max-w-bottom-nav items-end px-5">
         <TabItem tab={LEFT[0]!} active={LEFT[0]!.match(pathname)} dot={dotTab === LEFT[0]!.href} />
         <FlowArrow />
         <TabItem tab={LEFT[1]!} active={LEFT[1]!.match(pathname)} dot={dotTab === LEFT[1]!.href} />

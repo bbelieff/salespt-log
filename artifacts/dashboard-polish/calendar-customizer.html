@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang='ko'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>모바일 캘린더 모양 직접 조절</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Apple SD Gothic Neo,Noto Sans KR,Segoe UI,sans-serif;background:#e8edf5;color:#0f172a}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 18px 60px}
+.hero h1{font-size:24px;margin:0 0 6px}
+.hero p{margin:0 0 18px;color:#475569;font-size:14px}
+.layout{display:grid;grid-template-columns:360px 360px;gap:28px;justify-content:center;align-items:start}
+@media(max-width:820px){.layout{grid-template-columns:1fr;justify-items:center}}
+.panel{background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.07)}
+.panel h2{font-size:16px;margin:0 0 4px}
+.panel .sub{font-size:12px;color:#64748b;margin:0 0 14px}
+.ctrl{border:1px solid #eef2f7;border-radius:14px;padding:12px;margin-bottom:10px;background:#f8fafc}
+.ctrl label{font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.ctrl .row{display:flex;gap:10px;align-items:center;margin-top:8px}
+.ctrl input[type=range]{flex:1;accent-color:#111827}
+.ctrl input[type=number]{width:72px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}
+.btnrow{display:flex;gap:8px;margin-top:12px}
+button{font:inherit}
+.btn{flex:1;border-radius:12px;padding:10px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:700}
+.btn.primary{background:#111827;color:#fff;border-color:#111827}
+.hint{font-size:12px;color:#64748b;margin-top:10px;line-height:1.6}
+.output{font-size:12px;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px;white-space:pre-wrap;margin-top:10px}
+.phone{width:360px;max-width:100%;height:clamp(440px,calc(100dvh - 130px),760px);position:sticky;top:20px;background:#0f172a;border-radius:44px;padding:10px;box-shadow:0 24px 60px rgba(15,23,42,.3)}
+.screen{position:relative;background:#f1f5f9;border-radius:34px;height:100%;overflow:hidden;display:flex;flex-direction:column;--d:56px;--lift:0px;--icon:24px;--gap:2px}
+.status{display:flex;justify-content:space-between;padding:12px 18px 4px;font-size:12px;color:#334155;font-weight:700}
+.scroll{flex:1;overflow-y:auto;padding:10px 14px 94px}
+.apphead{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 12px}
+.apphead b{font-size:17px}
+.bell{width:36px;height:36px;border-radius:50%;border:1px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:center}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:14px}
+.kpis{display:flex;gap:8px}
+.kpi{flex:1;background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:10px;text-align:center}
+.kpi small{color:#64748b;font-size:11px}
+.kpi strong{display:block;font-size:16px;margin-top:2px}
+.fin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fin{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px}
+.fin small{display:inline-block;font-size:11px;font-weight:700;color:#4f46e5;background:#eef2ff;border-radius:999px;padding:3px 8px;margin-bottom:6px}
+.fin .amt{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
+.fin .cap{font-size:11px;color:#64748b;margin:4px 0 0}
+.fin.full{grid-column:1/-1}
+.weekly{position:relative;overflow:hidden}
+.weekly-head{display:flex;justify-content:space-between;align-items:center;gap:8px;position:relative;z-index:2}
+.weeknav{display:flex;align-items:center;gap:6px;position:relative;z-index:3}
+.weeknav button{width:30px;height:30px;border-radius:50%;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-size:16px;line-height:1}
+.pbar{height:8px;background:#eef2f7;border-radius:999px;margin:10px 0;overflow:hidden}
+.pbar i{display:block;height:100%;width:60%;background:#111827;border-radius:999px}
+.pt{background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:10px;font-size:12px;color:#115e59;position:relative;z-index:2}
+.pt b{display:block;margin-bottom:4px}
+.remain{font-size:12px;color:#64748b;margin:8px 0 0;position:relative;z-index:2}
+.toggle{font-size:12px;color:#475569;display:flex;gap:6px;align-items:center;margin-top:10px;position:relative;z-index:3}
+.overlaybtn{position:absolute;inset:0;z-index:1;background:transparent;border:0;cursor:pointer;border-radius:16px}
+.overlaybtn:focus-visible{outline:3px solid #4f46e5;outline-offset:2px}
+.weeknav button:focus-visible,.tab:focus-visible,.circlebtn:focus-visible{outline:3px solid #4f46e5;outline-offset:2px}
+.tabbar{position:absolute;left:12px;right:12px;bottom:12px;height:78px;display:flex;align-items:stretch;background:rgba(255,255,255,.32);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.6);box-shadow:0 10px 30px rgba(15,23,42,.16);border-radius:24px;z-index:30;overflow:visible}
+.tab{flex:1;background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:10px 2px 9px;gap:4px;color:#475569;font-size:11px;font-weight:600;cursor:pointer;min-width:0}
+.tab svg{width:24px;height:24px;flex:none}
+.tab.center{justify-content:flex-start;overflow:visible;padding-top:8px}
+.circlewrap{margin-top:calc(-20px - var(--lift));display:flex;justify-content:center;overflow:visible}
+.circlebtn{width:var(--d);height:var(--d);border-radius:50%;background:#111827;color:#fff;border:1px solid rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 26px rgba(17,24,39,.32);cursor:pointer;padding:0}
+.circlebtn svg{width:var(--icon);height:var(--icon)}
+.centerlabel{margin-top:var(--gap);color:#0f172a;font-weight:800;line-height:1}
+.toast{position:absolute;left:50%;bottom:104px;transform:translateX(-50%);background:#0f172a;color:#fff;font-size:12px;padding:8px 12px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;white-space:nowrap}
+.toast.show{opacity:1}
+.note{font-size:11px;color:#64748b;text-align:center;margin-top:12px}
+
+/* Match integrated app geometry: fixed bar, circle grows upward, label stays aligned. */
+.tabbar{left:0;right:0;bottom:0;height:83px;border-radius:16px 16px 0 0;box-shadow:0 -2px 12px rgb(15 23 42 /4%)}
+.tabbar .tab{justify-content:flex-end;padding-bottom:17px;gap:6px}
+.tabbar .center{position:relative;justify-content:flex-end;transform:none}
+.circlewrap{position:absolute;bottom:calc(17px + 16.2px + var(--gap) + var(--lift));margin-top:0}
+.circlebtn{background:rgb(255 255 255 /52%);color:#475569;border-color:rgb(255 255 255 /60%);box-shadow:inset 0 1px 1px rgb(255 255 255 /80%),0 4px 10px rgb(30 41 59 /10%)}
+.tabbar .tab > span:last-child{margin:0;line-height:1.35;font-size:12px;font-weight:600;color:#475569;white-space:nowrap}
+.centerlabel{margin-top:0!important;line-height:1.35}
+.weekly-head,.pt,.remain{z-index:auto}
+.overlaybtn{z-index:2}.weeknav,.toggle{z-index:3}
+</style>
+</head>
+<body>
+<div class='wrap'>
+<div class='hero'><h1>캘린더 모양 직접 조절</h1><p>슬라이더를 움직여 마음에 드는 모양을 만든 뒤, 설정 복사를 눌러 이 대화에 붙여 주세요.</p></div>
+<div class='layout'>
+<section class='panel' aria-label='설정 패널'><h2>원형 캘린더 조절</h2><p class='sub'>기본값: 지름 56px · 위로 이동 0px · 아이콘 24px · 간격 2px</p>
+<div class='ctrl'><label for='r-d'>원 지름 <span><output id='o-d'>56</output>px</span></label><div class='row'><input id='r-d' type='range' min='40' max='84' step='1' value='56' aria-label='원 지름'><input id='n-d' type='number' min='40' max='84' value='56' aria-label='원 지름 숫자 입력'></div></div>
+<div class='ctrl'><label for='r-l'>원 위로 이동 <span><output id='o-l'>0</output>px</span></label><div class='row'><input id='r-l' type='range' min='0' max='28' step='1' value='0' aria-label='원 위로 이동'><input id='n-l' type='number' min='0' max='28' value='0' aria-label='원 위로 이동 숫자 입력'></div></div>
+<div class='ctrl'><label for='r-i'>아이콘 크기 <span><output id='o-i'>24</output>px</span></label><div class='row'><input id='r-i' type='range' min='18' max='36' step='1' value='24' aria-label='아이콘 크기'><input id='n-i' type='number' min='18' max='36' value='24' aria-label='아이콘 크기 숫자 입력'></div></div>
+<div class='ctrl'><label for='r-g'>글자 간격 <span><output id='o-g'>2</output>px</span></label><div class='row'><input id='r-g' type='range' min='0' max='16' step='1' value='2' aria-label='글자 간격'><input id='n-g' type='number' min='0' max='16' value='2' aria-label='글자 간격 숫자 입력'></div></div>
+<div class='btnrow'><button class='btn' id='resetBtn' type='button'>설정 초기화</button><button class='btn primary' id='copyBtn' type='button'>설정 복사</button></div>
+<div class='output' id='jsonOut'>{ diameter: 56, lift: 0, icon: 24, gap: 2 }</div>
+<p class='hint'>원 지름은 위쪽으로 커집니다. 글자는 다른 메뉴와 같은 수평선에 고정됩니다. 위로 이동과 글자 간격은 원의 위치만 바꿉니다.</p>
+</section>
+<div>
+<div class='phone'><div class='screen' id='screen'>
+<div class='status' aria-hidden='true'><span>09:41</span><span>LTE ▰▰▰</span></div>
+<div class='scroll'>
+<div class='apphead'><b>수강생 대시보드</b><span class='bell' aria-hidden='true'><svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9'/><path d='M13.7 21a2 2 0 0 1-3.4 0'/></svg></span></div>
+<div class='card'><h3>오늘 운영 요약</h3><div class='kpis'><div class='kpi'><small>신규 DB</small><strong>12</strong></div><div class='kpi'><small>컨택 완료</small><strong>8</strong></div><div class='kpi'><small>계약</small><strong>2</strong></div></div></div>
+<div class='card'><h3>재무 데모</h3><div class='fin-grid'><div class='fin'><small>매출</small><p class='amt'>1,240만원</p><p class='cap'>이번 달 누적</p></div><div class='fin'><small>비용</small><p class='amt'>815만원</p><p class='cap'>인건비 + 운영비</p></div><div class='fin full'><small>영업이익</small><p class='amt'>425만원</p><p class='cap'>매출에서 비용을 제외한 금액</p></div></div></div>
+<div class='card weekly'><h3>주간 목표</h3><div class='weekly-head'><div style='font-size:12px;color:#475569'><strong style='color:#0f172a'>3 / 5 완료 · 60%</strong><br>이번 주 목표 진행률</div><div class='weeknav' role='group' aria-label='주 선택'><button type='button' id='prevW' aria-label='이전 주'>‹</button><span id='weekLabel' style='font-size:12px;font-weight:700'>이번 주</span><button type='button' id='nextW' aria-label='다음 주'>›</button></div></div><div class='pbar' role='progressbar' aria-valuenow='60' aria-valuemin='0' aria-valuemax='100' aria-label='주간 목표 진행률'><i></i></div><div class='pt'><b>이번 주 PT과제</b>경쟁사 세 곳 분석 · 컨택 스크립트 보완</div><p class='remain' id='remainMsg' hidden>2개 남음 · 초과 없음</p><label class='toggle'><input type='checkbox' id='showStatus'> 남음/초과 상태 표시</label><button type='button' class='overlaybtn' id='weeklyOpen' aria-label='주간 목표 상세 보기'></button></div>
+<div class='card'><h3>예정된 일정</h3><p style='font-size:12px;color:#475569;margin:0'>10:00 상담 체험 · 14:00 계약 미팅 · 17:00 수납 마감 (데모 일정)</p></div>
+</div>
+<nav class='tabbar' aria-label='하단 탐색'>
+<button class='tab' type='button' aria-label='DB생산'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><ellipse cx='12' cy='5' rx='8' ry='3'/><path d='M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5'/><path d='M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'/></svg><span>DB생산</span></button>
+<button class='tab' type='button' aria-label='컨택관리'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8'/></svg><span>컨택관리</span></button>
+<div class='tab center'><span class='circlewrap'><button class='circlebtn' type='button' aria-label='캘린더 열기' aria-current='page'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><rect x='3' y='4' width='18' height='18' rx='2'/><path d='M16 2v4M8 2v4M3 10h18'/></svg></button></span><span class='centerlabel'>캘린더</span></div>
+<button class='tab' type='button' aria-label='일정 계약'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6M16 13H8M16 17H8'/></svg><span>일정·계약</span></button>
+<button class='tab' type='button' aria-label='실무 수납'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><rect x='1' y='4' width='22' height='16' rx='2'/><path d='M1 10h22'/></svg><span>실무/수납</span></button>
+</nav>
+<div class='toast' id='toast' role='status'></div>
+</div></div>
+<p class='note'>흰색 32% + 블러 20px 글래스 푸터 · 데모 데이터이며 실제 학생 정보가 없습니다.</p>
+</div>
+</div>
+</div>
+<script>
+var screen=document.getElementById('screen');
+var toast=document.getElementById('toast');
+var t=null;
+function show(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(t);t=setTimeout(function(){toast.classList.remove('show')},1600)}
+var def={d:56,lift:0,icon:24,gap:2};
+var pairs=[['d','r-d','n-d','o-d'],['lift','r-l','n-l','o-l'],['icon','r-i','n-i','o-i'],['gap','r-g','n-g','o-g']];
+function state(){return{d:+document.getElementById('n-d').value,lift:+document.getElementById('n-l').value,icon:+document.getElementById('n-i').value,gap:+document.getElementById('n-g').value}}
+function apply(){var s=state();screen.style.setProperty('--d',s.d+'px');screen.style.setProperty('--lift',s.lift+'px');screen.style.setProperty('--icon',s.icon+'px');screen.style.setProperty('--gap',s.gap+'px');document.getElementById('o-d').textContent=s.d;document.getElementById('o-l').textContent=s.lift;document.getElementById('o-i').textContent=s.icon;document.getElementById('o-g').textContent=s.gap;document.getElementById('jsonOut').textContent='{ diameter: '+s.d+', lift: '+s.lift+', icon: '+s.icon+', gap: '+s.gap+' }'}
+pairs.forEach(function(p){var r=document.getElementById(p[1]),n=document.getElementById(p[2]);r.addEventListener('input',function(){n.value=r.value;apply()});n.addEventListener('input',function(){var v=Math.max(+r.min,Math.min(+r.max,+n.value||0));r.value=v;n.value=v;apply()})});
+document.getElementById('resetBtn').addEventListener('click',function(){document.getElementById('r-d').value=def.d;document.getElementById('n-d').value=def.d;document.getElementById('r-l').value=def.lift;document.getElementById('n-l').value=def.lift;document.getElementById('r-i').value=def.icon;document.getElementById('n-i').value=def.icon;document.getElementById('r-g').value=def.gap;document.getElementById('n-g').value=def.gap;apply();show('기본값으로 초기화했습니다')});
+document.getElementById('copyBtn').addEventListener('click',function(){var s=state();var txt=JSON.stringify({diameter:s.d,lift:s.lift,icon:s.icon,gap:s.gap});function done(){show('설정이 복사되었습니다')}
+if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){fallback()})}else{fallback()}
+function fallback(){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done()}catch(e){show(txt)}document.body.removeChild(ta)}});
+var weeks=['이전 주','이번 주','다음 주'];var wi=1;
+function weekLabel(){document.getElementById('weekLabel').textContent=weeks[wi]}
+document.getElementById('prevW').addEventListener('click',function(e){e.stopPropagation();wi=(wi+weeks.length-1)%weeks.length;weekLabel();show(weeks[wi]+'로 이동 (상세 열지 않음)')});
+document.getElementById('nextW').addEventListener('click',function(e){e.stopPropagation();wi=(wi+1)%weeks.length;weekLabel();show(weeks[wi]+'로 이동 (상세 열지 않음)')});
+document.getElementById('weeklyOpen').addEventListener('click',function(){show('주간 목표 상세로 이동합니다 (데모)')});
+document.getElementById('showStatus').addEventListener('change',function(e){document.getElementById('remainMsg').hidden=!e.target.checked});
+Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(b){b.addEventListener('click',function(){show(b.getAttribute('aria-label')+' 선택 (데모)')})});
+document.querySelector('.circlebtn').addEventListener('click',function(e){e.stopPropagation();show('캘린더 열기 (데모)')});
+apply();
+</script>
+</body>
+</html>

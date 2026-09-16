@@ -10,6 +10,7 @@
  */
 "use client";
 
+import TopHeader from "@/components/TopHeader";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -112,6 +113,7 @@ export default function ClaimPage() {
     "w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100";
 
   return (
+    <><TopHeader pageEmoji="" pageTitle="수강 정보 연결" />
     <main className="relative min-h-dvh bg-white">
       {/* subtle bg */}
       <div
@@ -314,6 +316,6 @@ export default function ClaimPage() {
           다른 Google 계정으로 로그인
         </button>
       </div>
-    </main>
+    </main></>
   );
 }

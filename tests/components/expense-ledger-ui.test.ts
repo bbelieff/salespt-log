@@ -4,7 +4,7 @@ import * as React from "react";
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
+import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
 import ExpenseCategoryPicker from "@/components/dashboard/expense-ledger/ExpenseCategoryPicker";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import type { RecognizedExpense } from "@/types/expense-ledger";
@@ -87,7 +87,7 @@ vi.mock("@/query/expense-ledger-hooks", () => {
     useRecurringRuleAction: idleMutation,
   };
 });
-const bannerProps = {
+const financeProps = {
   dbCostTotal: 3_000,
   additionalCost: 500 as number | null,
   onOpenExpenseLedger: vi.fn(),
@@ -164,18 +164,28 @@ afterEach(() => {
 });
 
 describe("expense ledger dashboard UI", () => {
-  it("uses a labeled native button as the cost-card trigger", () => {
+  it("opens the ledger from the additional-cost row without a separate add button", () => {
     const onOpenExpenseLedger = vi.fn();
-    const view = render(createElement(DashboardProgressBanner, { ...bannerProps, onOpenExpenseLedger }));
-    const trigger = view.querySelector<HTMLButtonElement>('button[aria-label="비용 추가하기: 비용 원장 열기"]');
+    const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, onOpenExpenseLedger }));
+    // 3열 재무 행에서는 비용 컬럼을 열어 상세 패널의 추가 비용 행을 찾는다.
+    const costColumn = view.querySelector<HTMLButtonElement>("#fin-col-cost");
+    expect(costColumn?.getAttribute("aria-expanded")).toBe("false");
+    act(() => costColumn?.click());
+    expect(costColumn?.getAttribute("aria-expanded")).toBe("true");
+    const trigger = view.querySelector<HTMLButtonElement>('button[aria-label="추가 비용: 비용 원장 열기"]');
     expect(trigger).not.toBeNull();
     expect(trigger?.type).toBe("button");
+    expect(trigger?.textContent).toContain("추가 비용");
+    expect(trigger?.textContent).not.toContain("DB 비용 합계");
+    expect(trigger?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(view.textContent).not.toContain("비용 추가하기");
     act(() => trigger?.click());
     expect(onOpenExpenseLedger).toHaveBeenCalledOnce();
   });
 
   it("does not fabricate a complete additional-cost amount when it is unavailable", () => {
-    const view = render(createElement(DashboardProgressBanner, { ...bannerProps, additionalCost: null }));
+    const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, additionalCost: null }));
+    act(() => view.querySelector<HTMLButtonElement>("#fin-col-cost")?.click());
     expect(view.textContent).toContain("추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.");
     expect(view.textContent).not.toContain("추가 비용 ₩");
     expect(view.textContent).toContain("DB 비용 합계 ₩3,000");

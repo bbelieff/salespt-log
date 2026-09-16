@@ -11,6 +11,8 @@
 "use client";
 
 import PageContainer from "@/components/PageContainer";
+import WeekBody from "./_components/WeekBody";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
@@ -458,7 +460,7 @@ export default function SchedulePage() {
       />
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
-      <div className="sticky top-24 z-30 bg-white shadow-sm" {...weekSwipe}>
+      <div className="sticky top-app-content z-30 bg-white shadow-sm" {...weekSwipe}>
         {/* 배경 full-bleed + 내용은 본문과 동일 6xl 중앙정렬 */}
         <PageContainer width="wide">
           <WeekHeader
@@ -471,23 +473,13 @@ export default function SchedulePage() {
             onClickDay={scrollToDay}
             slideDir={slideDir}
           />
-          <SummaryBar meetings={allMeetings} />
+          <SummaryBar meetings={allMeetings} goalSummary={<WeeklyGoalSummary compact date={weekStart} metrics={["meetings", "contracts"]} />} />
         </PageContainer>
       </div>
 
-      <main className="px-4 pb-[80px] pt-1">
-      <PageContainer width="wide">
-        {/* PC 2열(좌 금토일/우 월화수목) — gap-8 + 우 세로 구분선으로 좌우 분리 강화. 모바일 회귀 0. */}
-        <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-8">
-          <div>
-            {daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
-          </div>
-          <div className="pc:border-l pc:border-gray-200 pc:pl-8">
-            {daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))}
-          </div>
-        </div>
-      </PageContainer>
-      </main>
+      <WeekBody
+        firstDays={daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
+        lastDays={daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))} />
 
       {toast && (
         <div className="fixed bottom-[80px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">

@@ -7,6 +7,77 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-16 · Codex · 10기 이후 12주 과정 전환
+- 사용자 승인: 숫자 10기 이후 12주 과정·통계. 11기 이후 마지막 주 토요일 총회, 10기 총회만 2026-10-25. 이전 기수/아레나 보존.
+- Muse 날짜 정책 초안 수령·통합. 첫 광범위 패치 요청은 stream idle timeout, 작은 재요청 성공. Astra가 호출부·통계·테스트·배포를 수행.
+- 기존 기록/O2 일괄 수정 없이 웹 프로필 정책에서 총회일 해석. 신규 기수 날짜 생성과 12기 이후 DB 경로 연결.
+- ADR-0032 및 docs/plans/active/cohort-12-week.md. 필수 검사·배포 결과는 PR에 기록.
+
+### 2026-09-15 · Codex · 트레이너 권한 편집 밀도 개선
+- 사용자 요청: 공간 사용과 줄바꿈을 프로덕션 디자인 시스템에 맞춤. fix/trainer-management-density, TrainerAccessEditor UI·스타일·기존 구조 검사·디자인 정본 소유.
+- PC 고정 px 스타일을 공통 rem 스케일로 교정, 목록 폭/행 높이·카드 패딩 축소, 저장 버튼 한 줄·44px 유지.
+- CUA 6개 폭 넘침 0 및 버튼 1줄 확인. 격리 화면에는 합성 계정만 사용, 실제 저장 없음.
+- Muse 구독은 일반 CSS·검증 초안 29.04초 완료. GPT가 제품 토큰 대조·통합·시각 검증. 계획: trainer-management-density-0915.md.
+
+### 2026-09-15 · Codex · D-day 단독 운영 반영
+- 사용자 D-day 게시 승인. fix/header-dday-only, TopHeader·관련 회귀·D-day 문서만 소유.
+- 상단 중복 제거, 아래 DashboardProgressBanner 유지. 다른 대기 수정 미포함.
+- 계획: docs/plans/active/header-dday-only-0915.md. 배포 증거는 PR과 워크플로에 기록.
+
+### 2026-09-15 · Codex · 권한부여 대상 명단·수동 체크·수강생 복귀 링크
+- 사용자 직접 요청, fix/trainer-explicit-grants. 소유: trainer-access 목록/저장/편집기, 공통 헤더, 관련 회귀.
+- 기존 등록 트레이너 누락과 관리부서 포함을 교정. 기존 저장 grants는 유지하며 조회 시 데이터 변경 없음.
+- 등급 변경 자동 체크 제거, 수강생 모든 공통 헤더 대시보드 링크 유지.
+- 격리 PostgreSQL 66개·집중 회귀 72개 통과(기존 skip 1). 배포 검증은 PR/워크플로 결과로 기록.
+- 계획: docs/plans/active/trainer-roster-explicit-grants-0915.md. Muse 외부 검토 요청 차단으로 GPT 직접 수행.
+
+### 2026-09-14 · 수리4(DH) · 트레이너 관리 화면 헤더 정렬·아레나 하단·섹션 6순서
+- 의도: 수리3(#973 `e262903`) 배포 직후 belie 가 실화면에서 지적한 5건.
+- 한 것: `/admin/trainers` 를 TrainerMgmtPanel 단일 루트로(헤더 1개·전 섹션 그 아래) · `cohortSortTuple` 그룹 우선순위 반전(일반 기수→아레나) · 초대 취소·만료를 화면에서만 숨김(DB 행 보존) · 섹션 6순서 재배치 · `CollapsibleSection` 신설로 권한부여 접힘.
+- 결정: 아레나는 어떤 일반 기수보다도 아래(belie). 초대 revoke 는 계속 action:"revoke" — delete 아님.
+- 사고: 수리3 배포 검증에서 horizontal_overflow_px:0 만 재고 "정렬 통과"로 보고했다. 넘침 없음 != 기준선 일치. 좌표를 비교했어야 했다.
+- 다음: 회귀 가드가 Fragment 복귀·섹션 순서 변경·invites.map 복귀를 차단한다.
+- SoR: docs/plans/active/trainer-admin-layout-0914.md · 이슈 #975
+
+### 2026-09-14 · 수리1 릴리스 · release/repair1-20260914 누락분 사후 기록
+- 의도: 수리1 릴리스 누락분 사후 기록 요청 반영.
+- 한 것: release/repair1-20260914 팁 5c18d14 확인, 브랜치 전용 9c55809 · 0049f5c 및 master 머지 #963 · #964 · #966(origin/master=13929ef) 정리 반영.
+- 운영 배포 성공 여부 · health 결과 · 실사용 확인 미확인.
+
+### 2026-09-14 · [병렬트랙] Codex 수강생 대시보드 7개 피드백
+- 작업 STUDENT-DASHBOARD-260913 · fix/student-dashboard-followup-260913 · base fb1f4e0. 기존 dashboard-v4 초안 승계는 사용자 승인, 원본 보존.
+- 소유: 공용 헤더·높이 소비처·대시보드 재무/진행·주간목표 요약·관련 테스트/디자인 정본. 권한/Drive 작업과 데이터 변경 없음.
+- 한 줄 헤더와 /dashboard 링크, rem sticky 간격, D-day 우측, 재무 3종 본문 그룹, 현재 주 기본과 과거 탐색 반영.
+- 운영 이전 간격 16.25px 재현. 합성 320–1920px 6개 폭 간격0·한줄·가로넘침 없음; 모바일/PC 스크롤과 주차 왕복·날짜/학생 초기화·503 재시도 통과.
+- check.sh 통과(구조41 + 단위/통합1803, 기존42 skip). 상세: docs/qa/student-dashboard-followup.md. 최종 커밋/CI/배포 확인 이어서 진행.
+- Muse Spark HTTP402로 위임 결과 없음. 별도 Codex 읽기 리뷰·문서 갱신으로 보완. 성능 #882 완료 주장은 없음.
+
+
+### 2026-09-11 · OG #959 실제 PostgreSQL 경합 검증
+- DH가 fb597f9의 기존 3건 해소 확인. 추가 요구한 독립 DB 연결 경합은 격리 socket-only PostgreSQL16.15로 5건 모두 PASS(exit0).
+- 승인↔취소/수락↔폐기 양순서·중복수락: 서로 다른 backend, advisory lock 대기와 blocker를 실측. 반복 활성 쓰기 1회 검증. 실제 운영 DB/학생/자격증명 사용 없음.
+- CI에서 동일 경합 suite 필수 실행. 새 head 전체검사/빌드·delta 재검수 후 운영 진행, 현재 exact execute/merge/deploy 미실행.
+
+### 2026-09-11 · OG #959 독립검수 수정
+- DH 검수 3건 반영: 자격-only 해제로 수강행 담당자 불변, 주간목표 roster/detail CRM 선택 통일, Sentry breadcrumb 수집·전송 payload 초대 URL 방어.
+- 실제 SDK8.55.2 합성 토큰 실험: 수정 전 누출 재현, 수정 후 2개 envelope 토큰 없음·일반 오류/성능 기록 유지. 모의 transport이며 운영 발신 없음.
+- ef77fa4 CI34580656208/운영 read-only34580712941 PASS, 신규 테이블 없음. 새 head 검수 전 DB execute/merge/deploy 미실행.
+
+### 2026-09-11 · OG #956 트레이너 영입 통합 구현
+- 단일 writer: feat/trainer-recruitment-unified (base c781feb). DH 단일 보고·독립검수/운영 루프43e2abaeb78a; #958 정책 파일과 기존 DH WIP는 변경하지 않음.
+- 구현: 별도 자격/수신자 초대 트랜잭션, 신청 취소·재신청, 최상단 역할 전환/안전 경로 기억, 기존 수강행 보존, 초대 토큰 계측 방지. 헤더 확장에 맞춰 아래 sticky 위치 동기화.
+- 검사: check.sh PASS(구조40/단위1777, skip38), 격리 PostgreSQL 저장/권한5 및 exact migration3 포함. 실제 컴포넌트 PC/360·390px 모의 API 검증; 운영 OAuth/인증 동선은 미검증.
+- 승인: 사용자가 운영까지 완주 명시. 정확0006 사전검사·적용→독립검수/CI→직렬머지→배포/health/운영동선은 아직 완료 아님.
+- SoR: docs/qa/2026-09-11-trainer-recruitment.md · https://github.com/bbelieff/salespt-log/issues/956
+
+
+### 2026-09-11 · [병렬트랙] OG 트레이너 영입 — 로그인 목적지 보존
+- 요청: 수강생 출신/비수강생의 직접 신청·초대 수락 두 경로와 로그인 후 신청 화면 복귀.
+- 구역: 전용 feat/trainer-recruitment-entry. middleware.ts, app/page.tsx, LoginScene, login-return 유틸·검사·관련 문서. 주간목표/Drive 트랙은 수정하지 않음.
+- 한 것: 내부 목적지 검증 및 로그인 전달·기존 로그인 착지 보존. 최종 회귀39건, 전체 check.sh(구조40/단위1749 PASS, 34 skip), Next build PASS. PC/모바일 로그인 화면 확인; 실제 OAuth 복귀는 NOT_RUN(로컬 UntrustedHost).
+- 남음: 신청/초대 저장·화면과 일반 수강 기록 전환. DH의 초대 발급/활성화 정책 질문 답변 전 권한 부여 구현 확정하지 않음. 운영 DB/환경/배포 미실행.
+- SoR: docs/plans/active/trainer-recruitment.md, Slack thread1789104258.500019.
+
 ## 프로토콜 (모든 세션 의무)
 
 **시작할 때 (읽기)**
@@ -40,6 +111,60 @@
 - 비밀값(비밀번호·토큰·URI) 절대 기록 금지.
 - 이 파일은 append 전용에 가깝게 — 과거 항목 수정은 오기 정정만.
 - 활성 트랙 보드는 예외적으로 갱신 가능 — 단 **자기 트랙 줄만** 수정.
+
+### 2026-09-11 · 주간목표 첫 화면·복사 마감
+- 요청: 재무 압축과 목표 첫 화면 노출, 탭별 달성 배지, 회의록 복사 제목 제거, 기준시간표 지역 사전 입력.
+- 구현: 재무 상세 접기/생산성 2열, 실적·목표·달성률 배지, HTML 단일 데이터행. 지역 원본은 private 입력으로만 다루며 기존 users.team 빈칸만 정확한 키로 반영.
+- 검증: 복사/지역 집중16·실제 React 브라우저40 PASS(합성 API, PC1366/mobile390). 최종 빌드·전체 훅·CI·운영은 단계별 확인.
+- SoR: docs/qa/2026-09-11-weekly-goals-polish.md. 지역 시트/DB 적용 결과와 앱 배포는 별도 기록.
+
+### 2026-09-11 · 주간목표 PT성과·업무탭 배치
+- 요청: 다음 주에 트레이너가 PT과제 성과를 저장하고, 업무탭 목표 박스를 공간 효율적으로 통합.
+- 구현: 지난 과제 바로 아래 기존 비공개 성과 편집·저장 안내, DB/컨택/일정 요약 내부 compact 목표값. DB/API/권한 변경 없음.
+- 검증: 목표 회귀177·구조41·브라우저35 통과. 실사용 인증 저장과 노션 표 붙여넣기는 NOT_RUN.
+- 다음: 최종 빌드·필수 훅·CI 후 머지/운영 검증. SoR: [QA](qa/2026-09-11-pt-outcomes-layout.md).
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 승인된 이력 ACL 한정 회수 경로 검수 준비
+- 의도: Camus 11:23:41 KST 승인 범위인 schema_migrations의 anon/authenticated 권한만 회수할 보호된 실행 경로 준비. canonical 2026-09-09 지침 적용을 재확인하고 해당 지침 파일은 변경하지 않음.
+- 한 것: 기본 false인 명시 repair 옵션, 단일 table REVOKE·잠금/timeout·이력 digest/owner/service/server 보존·잔여 권한 rollback. 실제 PM2 listener 초기 환경과 설치 Next env 해석을 통한 DB 대상/역할 READ ONLY 비교; 임의 SQL/환경·연결값 출력 없음.
+- 검증: 신규 disposable PostgreSQL11·합성 runtime8 회귀, 기존 ops60 보존. 타입/문법 및 전체 check.sh 통과 후 최신 커밋 훅·CI/정확한 head·manifest 결과는 #947 체크포인트로 제출; 앱 소스/SQL0005 불변이라 build/브라우저 재실행하지 않음.
+- 다음: OG delta 독립 검수 전 ACL 실행/dispatch/DB apply/머지/배포 HOLD. 실제 host 런타임 비교는 NOT_RUN이며 모호한 프로세스·변경 파일·PG fallback은 자동 설정 변경 없이 중단. KPI/Notion/Kakao 변경 없음.
+- SoR: docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 이력 권한 거부의 안전한 진단
+- 의도: OG read-only run34552514192의 UNSAFE_HISTORY_SECURITY 원인을 권한 변경 없이 구분할 수 있게 보강.
+- 한 것: 고정 이력 테이블의 권한별 boolean·column ACL·이름 없는 기타 grantee 수·server 권한만 CLI 실패 JSON에 투영. 비0 종료/READ ONLY/rollback·이력 데이터 조회 차단/SQL0005 불변 유지.
+- 검증: 신규 합성 CLI5·일회용 PostgreSQL 카탈로그4 회귀, 타입·JS 문법 확인. 전체 Vitest structural41/non-structural1706 PASS; 집중 ops60/check.sh/CI 및 정확한 head·manifest는 #947 체크포인트.
+- 다음: 새 진단 head를 OG 검수에 반환하며 dispatch 금지. 실제 원인·app/마이그레이션 DB 대상/역할 비교는 운영 read-only 증거 필요; 기존 ACL/role/schema 교정·DB apply·머지·배포는 수행하지 않음.
+- SoR: docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 추가 bounded REWORK
+- 의도: OG 후속 검수의 archived 자기 권한·별칭 담당·지연 내부 응답·migration 이력/전달 경계 교정.
+- 한 것: 모든 자기 수강행 기준 내부 거부, 담당 필터 후 대표 선택, abort/generation 및 비JSON401/403 보호, 신규 이력 ACL/기존 이력 fail-closed·bounded timeout, feature-ref exact0005 외부 artifact 전달. 기존 UI 승인 사항 보존.
+- 검증: 집중211·전체 structural41/non-structural1697·브라우저28·일회용 PostgreSQL18 assertions 및 Next build PASS. optional migration DB18건의 CI skip과 실제 운영 증거를 구별; 최종 check.sh/CI/head는 #947 체크포인트.
+- 다음: 정확한 SHA·SQL/manifest 체크섬·preflight/apply 명령을 OG 독립 검수에 제출. RELEASE 전 dispatch/운영 DB/머지/배포 HOLD, 기존 ACL 결함 발견 시 자의적 수정 금지.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · PR #950 OG REWORK 보강
+- 의도: OG 검수7건과 운영 migration 순서/보안 결함을 교정하고 재검수 요청.
+- 한 것: 명시 student 저장·시트/수강 별칭 공유·trainer 아레나/자기 내부 권한 분리, 업무탭 dirty 진입, 지난주 초안 복제·5열 모바일·승인 비율 역산. canonical/실데이터 변경 없음.
+- 검증: 집중169 tests·브라우저21 scenarios·일회용 PostgreSQL18 assertions PASS. exact migration25건 중15건은 일회용 DB이며 CI 기본 skip; 최종 전체 게이트·head는 PR 체크포인트 참조.
+- 다음: 정확한0005 preflight/적용 artifact 계약을 OG 독립 검수에 제출. RELEASE 전 운영 실행·머지·배포 HOLD, 실제 Notion/실계정 저장 NOT_RUN.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/qa/weekly-goals-migration.md, GitHub #947/PR #950.
+
+### 2026-09-11 · SALES-WEEKLY-GOALS-947-WRITER · 주간 목표 검수 제출
+- 의도: #946 v0.4 승인을 실제 학생/담당 트레이너 공통 저장·편집 기능으로 구현.
+- 한 것: 공개/내부 별도 테이블·CAS/API 권한, 실제 주간 집계·목표 링·비교·14열 복사, 학생/트레이너/3탭 진입. 운영 쓰기 없음.
+- 검증: 집중102 tests·브라우저14 scenarios·일회용 PostgreSQL18 assertions PASS. 최종 check.sh/build/CI는 PR head 체크포인트로 제출.
+- 다음: OG 독립 검수/RELEASE 전 머지·배포 HOLD. 운영 migration/health/실계정 화면 및 실제 Notion 붙여넣기 NOT_RUN.
+- SoR: docs/qa/2026-09-11-weekly-goals.md, docs/plans/active/weekly-goals.md, GitHub #947.
+
+### 2026-09-11 · 컨택관리 QA 후속 보완
+- 의도: PR #940 QA 잔여 3항목을 우선순위대로 해결.
+- 한 것: 미완성 카드 사전 안내·저장 차단·수정 복귀, 콜지기소 부분 이동 항목 명시, 빨강/노랑 문서 정합성.
+- 검증: 모바일/PC 실제 컴포넌트+메모리 API, 저장 전 쓰기 0 및 입력/삭제 후 차단 해제. next build 성공.
+- 다음: 전체 검사 및 PR CI 후 승인된 배포·health 확인. 운영 실데이터 저장 검증은 하지 않음.
+- SoR: docs/qa/2026-09-11-contact-qa-followups.md
 
 ### 2026-09-10 · 컨택관리 연습기 · 미팅 이동·저장 확인 정합성
 - 의도: 가민/로지텍 재현의 수치 유출·예약 잔상·취소 부재·기존/신규 혼동 수정.
@@ -3414,3 +3539,37 @@
 - 다음: normal hook 통합 커밋 후 DevD exact-SHA 독립 VERIFY
 - SoR: `docs/plans/active/expense-db-cost-ledger-parity-r5.md`
 - 최종 diff: 승인된 11파일만 변경, DevD 두 테스트 SHA-256 불변, `git diff --check` PASS
+
+## 2026-09-11 OG release review — runtime directory churn
+
+Reviewed 1ad47e5 helper delta; found established deploy removes .next-prev after PM2 reload. Removed only the unrelated app-directory mtime rejection; env file timestamps/hashes and repeated runtime identity fingerprint remain. Regression simulates post-start unrelated entry removal (accepted) then actual env change (rejected). Source-evidenced false positive correction, not a DB/role/environment change. Actual ACL/migration/deployment still not run; final checks required.
+
+
+## 2026-09-11 OG weekly-goals production feedback
+
+User-reported save403 reproduced using unauthenticated empty JSON: production Origin403 vs omitted Origin domain400 (no student write). Fixed deployment-owned AUTH_URL comparison instead of internal proxy nextUrl origin, retaining cross-site/JSON checks and rejecting forwarded-host spoofing. Added allowlisted entry-aware returnTo; moved dashboard goal rings below productivity. Focused30/type/build PASS; actual React browser32 PASS at1440/390 with placement screenshots. Normal hook fullcheck/CI and production recheck tracked in PR. No DB/environment/data changes. Plan: docs/plans/completed/weekly-goals-live-feedback.md.
+
+### 2026-09-14 · 주간 PT과제 행별 성과·노션 복사 일치
+- 지난 과제와 성과를 행별로 함께 배치하고 기존 내부 기록 저장·권한 유지.
+- 노션 원본 표의 14열을 직접 확인. 내부 권한 화면의 기본 표·수동 복사·자동 복사에 같은 데이터 행 적용(헤더 제외). 공용 화면 내부 정보 미포함.
+- 회의록의 상단 편집 항목은 초안에서 파생된 읽기 전용. 상단 필드가 없는 6개 항목만 복사용 편집.
+- 합성 브라우저에서 빈 중간 성과 입력·저장·미리보기 즉시 반영 및 실제 HTML/TSV 14열 확인. 운영 데이터·노션 원본 변경 없음.
+- 2026-09-14 추가 검증: 회의록 6개 기본 정보는 경영일지 파생값으로 고정. 주차 바의 구형 144px 오프셋을 공통 헤더 토큰으로 교체. 가상 데이터 브라우저 390px/1280px에서 미리보기 열기·닫기·스크롤, 헤더 밀착과 전체 가로 넘침 없음 확인.
+- 2026-09-14 주간 목표 헤더 이탈 재현·교정: Muse가 페이지 공통 부모 구현과 고정 높이 브라우저 fixture 초안을 작성. 운영 body 높이 제한이 원인임을 실측, 페이지 범위 수정과 맨 아래 스크롤 검증. 이전 오프셋 교정만으로 해결되지 않았던 문제를 보완.
+- 2026-09-14 입력 순서 교정: Muse의 children slot 구성안을 통합해 성과 → 이번 과제 → 특이사항으로 배치. 가상 화면에서 DOM 입력 순서와 과제/특이사항 동시 저장 확인. 복사 열 순서·권한·저장 API 유지.
+- 2026-09-14 주차 바 초기 이격: Muse 제안 px-4 pb-4 적용. PC/모바일 최초·스크롤 후 gap 0 실측. 역산 고정 비율 83/48/42/40의 코드·문서 근거 확인, 원본 집계 자료는 미확인(알고리즘 변경 없음).
+- 2026-09-14 개인 역산: Muse 작성 계산 함수·테스트를 통합. 6기 고정 비율 제거, 개인 누적 비율만 사용, 계산 불가 항목은 기존 목표 유지. 집중 검사 62개 통과, 가상 브라우저에서 부분 실적·계약 이력 없음 적용 확인. 서버의 수강생/수강기간/직전 주 집계 경계 유지.
+
+## 2026-09-16 STEP 1·2 입력 흐름 운영 배포
+사용자 승인 목업 구현: 채널 선택 즉시 입력, 채널 초안 유지, 날짜/채널 통합 선택. 기존 저장 보호 유지. Muse 검토·GPT 구현. 별도 배포 브랜치에서 검증 후 운영 확인.
+
+### 2026-09-16 Codex 헤더 한 줄·추가 비용 밀도
+- 사용자 요청으로 모바일 두 줄 계약을 한 줄로 교체하고 추가 비용 강조/높이를 줄임.
+- 계획: docs/plans/active/header-single-row-expense.md. 운영 데이터 변경 없음.
+
+### 2026-09-16 Codex 트레이너 관리 UI 재구성
+- 사용자 지정 3개 상위 그룹·4개 하위 항목으로 재구성. 데이터와 처리 로직 유지.
+- 계획: docs/plans/active/trainer-scaffold.md. Muse 요청은 단계 한도로 실패, GPT 직접 적용.
+
+### 2026-09-16 목표설정 버튼 배치
+- 제목 오른쪽 작업 버튼, 공통 버튼·간격 적용. 데이터/역산 로직 유지. 계획: goal-editor-actions.md.

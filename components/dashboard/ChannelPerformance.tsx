@@ -13,6 +13,7 @@
  * 채널 색: 매입DB=#3b82f6 / 직접생산=#16a34a / 현수막=#f59e0b / 콜·지·기·소=#8b5cf6
  */
 "use client";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 
 import type {
   DashboardChannelMatrix,
@@ -20,6 +21,7 @@ import type {
 } from "@/types";
 
 interface Props {
+  weeks?: number;
   costBreakdown: DashboardCostBreakdown[]; // 3 (매입DB/직접생산/현수막)
   matrix: DashboardChannelMatrix[]; // 4 채널 (유입 추출)
 }
@@ -110,7 +112,7 @@ function DonutSvg({
   );
 }
 
-export default function ChannelPerformance({ costBreakdown, matrix }: Props) {
+export default function ChannelPerformance({ costBreakdown, matrix, weeks = STATS_WEEKS }: Props) {
   // 좌: 비용 (3채널)
   const costSlices: Slice[] = costBreakdown.map((b) => ({
     label: b.채널,
@@ -150,7 +152,7 @@ export default function ChannelPerformance({ costBreakdown, matrix }: Props) {
       <div className="mb-3 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-red-500" />
         <h2 className="text-base font-extrabold text-gray-900">채널별 성과</h2>
-        <span className="ml-auto text-xs text-gray-400">8주 누적</span>
+        <span className="ml-auto text-xs text-gray-400">{weeks}주 누적</span>
       </div>
 
       {/* 좌우 대칭 도넛 2개 */}

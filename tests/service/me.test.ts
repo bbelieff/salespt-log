@@ -60,6 +60,18 @@ describe("GRADUATION_OFFSET_DAYS", () => {
   });
 });
 
+describe("ADR-0032 cached profiles", () => {
+  it("derives new ceremony dates without overwriting stored dates", async () => {
+    const users = ["9", "10", "11"].map(cohort => ({
+      spreadsheetId: `example-${cohort}`, cohort, name: "예시",
+      cohortLabel: cohort, nameLabel: "예시", courseStartISO: "2026-09-04", graduationISO: "2026-10-24",
+    }));
+    const result = await enrichUsersWithDates(users);
+    expect(result.map(u => u.graduationISO)).toEqual(["2026-10-24", "2026-10-25", "2026-11-21"]);
+    expect(users.every(u => u.graduationISO === "2026-10-24")).toBe(true);
+  });
+});
+
 describe("computeGraduationISO — 7기 모델 (O1+50)", () => {
   it("O1=2026-05-15(금) → graduation=2026-07-04(토)", () => {
     expect(computeGraduationISO("2026-05-15")).toBe("2026-07-04");

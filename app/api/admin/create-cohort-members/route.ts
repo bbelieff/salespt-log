@@ -1,3 +1,4 @@
+import { ceremonyISO } from "@/config/cohort-dates";
 /**
  * POST /api/admin/create-cohort-members — admin only.
  *
@@ -134,7 +135,7 @@ async function POST_handler(req: Request) {
     );
   }
   // 종강일 = 수강시작 + 50(ADR-0005 7기+). 요청당 상수 → 루프 밖 1회 계산.
-  const graduationISO = courseStartISO ? computeGraduationISO(courseStartISO) : "";
+
 
   const parsed = parseCohortToken(String(body.token ?? ""));
   if (!parsed) {
@@ -143,6 +144,7 @@ async function POST_handler(req: Request) {
       { status: 400 },
     );
   }
+  const graduationISO = courseStartISO ? ceremonyISO(courseStartISO, parsed.label) || computeGraduationISO(courseStartISO) : "";
   const mode = body.mode === "link" ? "link" : "create";
   const members = Array.isArray(body.members) ? (body.members as MemberInput[]) : [];
   if (members.length === 0) {

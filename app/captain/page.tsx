@@ -6,6 +6,7 @@
  * 가드: captainOf 없으면 redirect("/"). 본인 기수 외 데이터 접근 불가(범위=captainOf).
  * (트레이너 페이지 enrich 재활용. §6/ADR-0014)
  */
+import TopHeader from "@/components/TopHeader";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionEmail } from "@/auth/identity";
@@ -46,6 +47,7 @@ export default async function CaptainPage() {
   const meLc = sessionEmail.toLowerCase();
 
   return (
+    <><TopHeader pageEmoji="" pageTitle="기수임원" />
     <main className="mx-auto min-h-dvh max-w-2xl bg-white px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
         <div>
@@ -107,6 +109,6 @@ export default async function CaptainPage() {
           })}
         </ul>
       )}
-    </main>
+    </main></>
   );
 }

@@ -1,17 +1,24 @@
 /**
  * TrainerMgmtPanel — Admin 트레이너 관리 UI 컨테이너.
  *
- * 섹션 순서 (사용자 요구):
- *   1) SectionPending     — 트레이너 요청관리 (pending 승인/거절)
- *   2) SectionAssign      — 트레이너 담당부여 (트레이너 카드 + 다중 체크)
- *   3) SectionTraineeList — 수강생 명단
- *   4) SectionManagement  — 관리부서 명단
+ * 섹션 순서 (2026-09-14 belie 지시):
+ *   1) SectionAssign      — 트레이너 명단 및 담당부여
+ *   2) 권한부여           — 페이지가 children 으로 주입 (TrainerAccessEditor)
+ *   3) SectionPending     — 트레이너 요청관리 (pending 승인/거절)
+ *   4) 초대관리           — 페이지가 children 으로 주입 (TrainerInvites)
+ *   5) SectionTraineeList — 수강생 명단
+ *   6) SectionManagement  — 관리부서 명단
+ *
+ * ★ 헤더는 이 패널이 소유한다. 페이지 최상단 sticky 한 곳뿐이며, 모든 섹션은
+ *   그 아래 같은 셸 폭(max-w-3xl pc:max-w-5xl) 안에 정렬된다. 이전에는 초대·권한이
+ *   패널 «밖 위쪽» 에 있어 헤더보다 위에 떠 있었다(2026-09-14 사용자 지적).
  */
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import CollapsibleSection from "./CollapsibleSection";
 import { createKeyedSaveCoalescer } from "@/util/save-coalesce";
 import {
   type PanelUser,
@@ -28,6 +35,8 @@ export default function TrainerMgmtPanel({
   managementStaff,
   trainees,
   viewOnly = false,
+  accessSlot,
+  inviteSlot,
 }: {
   sessionEmail: string;
   pendingTrainers: PanelUser[];
@@ -36,6 +45,10 @@ export default function TrainerMgmtPanel({
   trainees: PanelUser[];
   /** 관리부서 read-only — 액션 버튼 모두 숨김. */
   viewOnly?: boolean;
+  /** 2) 권한부여 자리 — 서버 컴포넌트를 셸 안에 끼운다. */
+  accessSlot?: ReactNode;
+  /** 4) 초대관리 자리 — 서버 컴포넌트를 셸 안에 끼운다. */
+  inviteSlot?: ReactNode;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -135,7 +148,7 @@ export default function TrainerMgmtPanel({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-12 px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-5 px-6 py-5">
         {err && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {err}
@@ -148,22 +161,10 @@ export default function TrainerMgmtPanel({
           </div>
         )}
 
-        {/* 1. 트레이너 요청관리 — pending row 노출은 모두에게, 액션 버튼은 admin 만. */}
-        {!viewOnly && (
-          <SectionPending
-            pending={pendingTrainers}
-            busy={busy}
-            onApprove={(email) =>
-              call("/api/admin/approve-trainer", { email }, `approve:${email}`)
-            }
-            onReject={(email) => {
-              if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
-              call("/api/admin/reject-trainer", { email }, `reject:${email}`);
-            }}
-          />
-        )}
-
-        {/* 2. 트레이너 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
+        {/* 1. 트레이너 명단 및 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
+        <section aria-labelledby="trainer-management-title" className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+          <h2 id="trainer-management-title" className="text-base font-bold text-gray-900">트레이너 관리 ({activeTrainers.length})</h2>
+          <CollapsibleSection title="담당부여" persistKey="admin-trainers:assign" defaultOpen>
         <SectionAssign
           trainers={activeTrainers}
           trainees={trainees}
@@ -208,13 +209,39 @@ export default function TrainerMgmtPanel({
           viewOnly={viewOnly}
         />
 
-        {/* 3. 수강생 명단 (조회 only) */}
+          </CollapsibleSection>
+
+        {/* 2. 권한부여 — 페이지가 주입 (TrainerAccessEditor). 접힘 UI 는 슬롯 안에서 처리. */}
+        {accessSlot}
+
+        {/* 3. 트레이너 요청관리 — pending 승인/거절. admin 전용. */}
+        {!viewOnly && (
+          <CollapsibleSection title="요청관리" badge={`${pendingTrainers.length}`} persistKey="admin-trainers:requests">
+          <SectionPending
+            pending={pendingTrainers}
+            busy={busy}
+            onApprove={(email) =>
+              call("/api/admin/approve-trainer", { email }, `approve:${email}`)
+            }
+            onReject={(email) => {
+              if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
+              call("/api/admin/reject-trainer", { email }, `reject:${email}`);
+            }}
+          />
+          </CollapsibleSection>
+        )}
+
+        {/* 4. 초대관리 — 페이지가 주입 (TrainerInvites). 기본 접힘. */}
+        {inviteSlot}
+        </section>
+
+        {/* 5. 수강생 명단 (조회 only) */}
         <SectionTraineeList
           trainees={trainees}
           activeTrainers={activeTrainers}
         />
 
-        {/* 4. 관리부서 명단 — viewOnly 면 액션 버튼 숨김. */}
+        {/* 6. 관리부서 명단 — viewOnly 면 액션 버튼 숨김. */}
         <SectionManagement
           staff={managementStaff}
           busy={busy}

@@ -85,6 +85,7 @@ types → config → repo → service → app(api·ui) → components
 ## 2.5 프로젝트 도메인 제약 (추가)
 
 ### MVP 스코프 (절대 원칙)
+- **ADR-0032 (2026-09-16 사용자 승인)**: 숫자 10기 이후는 12주 과정·누적 통계. 11기 이후 총회는 마지막 주 토요일, 10기는 승인된 예외일. 아래 8주/50일 정책은 9기 이하·비숫자 기수에만 유지. 날짜 정본은 lib/config/cohort-dates.ts. 기존 기록과 물리 시트 10주 상한 보존.
 - **기간 한정** (날짜 규칙 SSOT: `docs/decisions/0005-week-counting-convention.md`):
   - 종강총회(수료일) = 수강시작일(시트 O1) + **50일** (7기+ 현행). 6기 이하 legacy 는 +57.
     진실은 각 시트 **O2 셀 직접값** — 코드는 offset 강제 안 함.

@@ -3,8 +3,8 @@
  *
  * /admin/users 의 기수박스 > 팀박스 > TraineeCard 계층을 그대로 재사용하되
  * 트레이너 권한으로 제한:
- *   - 전체 trainee 명단(활성/보관) 표시. **본인 담당에만** [시트]/[웹앱] 버튼 노출
- *     (TraineeCard 의 `trainerEmailLc` prop 으로 분기).
+ *   - 기본 내 담당만 표시(전체 보기 토글 가능). **본인 담당에만** [주간목표]/[웹앱]
+ *     버튼 노출 (TraineeCard 의 `trainerEmailLc` prop 으로 분기).
  *   - 핸들/유보/팀 입력/담당 토글 등 admin 액션은 전부 비활성 (`viewOnly` + dnd 미연결).
  *   - 검색/등록/동기화 UI 미포함 (admin 전용).
  *
@@ -13,10 +13,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { signOut } from "next-auth/react";
+import PageContainer from "@/components/PageContainer";
 import { useMe } from "@/query/me-hook";
-import TrainerPlayerToggle from "./TrainerPlayerToggle";
 import { useQueryClient } from "@tanstack/react-query";
 import { cohortGroupKey, cohortGroupCompare } from "@/types";
 import {
@@ -28,11 +26,8 @@ import {
 
 export default function TrainerCohortView({
   sessionEmail,
-  trainerName,
   trainees,
   activeTrainers,
-  masterSheetUrl,
-  canBackToAdmin,
   archivedCohorts = [],
 }: {
   sessionEmail: string;
@@ -41,7 +36,6 @@ export default function TrainerCohortView({
   trainees: Trainee[];
   /** 담당 이름 lookup + (현재 viewOnly 라 dropdown 미사용). */
   activeTrainers: Trainer[];
-  masterSheetUrl: string;
   /** admin OR 관리부서 일 때 "← 마스터 메뉴" 노출. */
   canBackToAdmin: boolean;
   archivedCohorts?: string[];
@@ -50,8 +44,8 @@ export default function TrainerCohortView({
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /** "내 수강생만 보기" 토글. 기본 false (전체 명단). */
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
+  /** "내 수강생만 보기" 토글. 기본 true (내 담당만). */
+  const [showOnlyMine, setShowOnlyMine] = useState(true);
 
   const trainerEmailLc = sessionEmail.toLowerCase();
 
@@ -160,91 +154,26 @@ export default function TrainerCohortView({
 
   return (
     <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-xs font-bold uppercase tracking-wider text-red-600">
-              Trainer
-            </div>
-            <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
-              {trainerName} · {sessionEmail}
-            </div>
-          </div>
-          {canBackToAdmin ? (
-            <Link
-              href="/admin"
-              className="shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
-            >
-              ← 마스터 메뉴
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="shrink-0 whitespace-nowrap text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
-            >
-              로그아웃
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-8">
-        {/* 마스터 시트 — 기수 전체 현황 외부 링크 (URL 미설정 시 숨김). */}
-        {masterSheetUrl && (
-          <a
-            href={masterSheetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md"
-          >
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">📊</div>
-              <div>
-                <div className="text-sm font-bold text-gray-900 group-hover:text-red-600">
-                  마스터 시트 열기
-                </div>
-                <div className="mt-0.5 text-[11px] text-gray-400">
-                  기수 전체 현황 (외부 시트)
-                </div>
-              </div>
-            </div>
-            <svg
-              className="h-4 w-4 text-gray-400 group-hover:text-red-500"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </a>
-        )}
-
+      <PageContainer width="wide" className="space-y-4 px-4 py-4">
         <section>
           {/* 수강생출신 트레이너 — 본인 아레나 일지 전환 토글(P14). */}
-          {me.data?.ownArenaSheetId && <TrainerPlayerToggle mode="manager" />}
-          <h1 className="text-2xl font-black tracking-tight text-gray-900">
+          <h1 className="text-lg font-black tracking-tight text-gray-900">
             수강생 명단
           </h1>
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-gray-500">
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">
               {showOnlyMine
                 ? `내 담당 ${myCount}명`
                 : `전체 ${trainees.length}명 (내 담당 ${myCount}명)`}
-              . 본인 담당 카드만 <b>📊 시트</b> · <b>웹앱 →</b> 활성화.
+              {" · 담당 카드에서 주간목표·웹앱 가능."}
             </p>
             <button
               type="button"
               onClick={() => setShowOnlyMine((v) => !v)}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                showOnlyMine
-                  ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
-                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
+              className="app-header-pill shrink-0 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
               title={showOnlyMine ? "전체 명단으로 돌아가기" : `내 담당 ${myCount}명만 표시`}
             >
-              {showOnlyMine ? `✓ 내 수강생만 (${myCount})` : "내 수강생만 보기"}
+              {showOnlyMine ? "전체 수강생 보기" : "내 수강생만 보기"}
             </button>
           </div>
         </section>
@@ -256,7 +185,13 @@ export default function TrainerCohortView({
         )}
 
         {activeGroups.length === 0 && archivedGroups.length === 0 && (
-          <p className="text-sm text-gray-400">등록된 수강생이 없습니다.</p>
+          showOnlyMine && trainees.length > 0 ? (
+            <p className="text-sm text-gray-400">
+              담당 수강생이 없습니다. 전체 명단은 [전체 수강생 보기]로 확인하세요.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-400">등록된 수강생이 없습니다.</p>
+          )
         )}
 
         {/* 활성 기수 — 일반 숫자기수(박스 밖) + 아레나 시즌 컨테이너 박스 */}
@@ -343,7 +278,7 @@ export default function TrainerCohortView({
             </div>
           </details>
         )}
-      </div>
+      </PageContainer>
     </main>
   );
 }

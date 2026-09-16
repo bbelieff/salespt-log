@@ -1,0 +1,28 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Suites 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m [ tests/util/trainer-access-policy.test.ts ][22m
+[31m[1mError[22m: Cannot find module '@/util/trainer-access-policy' imported from 'C:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy/tests/util/trainer-access-policy.test.ts'.
+
+- If you rely on tsconfig.json's "paths" to resolve modules, please install "vite-tsconfig-paths" plugin to handle module resolution.
+- Make sure you don't have relative aliases in your Vitest config. Use absolute paths instead. Read more: https://vitest.dev/guide/common-errors[39m
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m2:31[22m[39m
+    [90m  1| [39m[35mimport[39m { describe[33m,[39m expect[33m,[39m it } [35mfrom[39m [32m"vitest"[39m[33m;[39m
+    [90m  2| [39m[35mimport[39m { defaultTrainerGrants } [35mfrom[39m [32m"@/util/trainer-access-policy"[39m[33m;[39m
+    [90m   | [39m                              [31m^[39m
+    [90m  3| [39m
+    [90m  4| [39m[35mconst[39m rw [33m=[39m { read[33m:[39m [35mtrue[39m[33m,[39m write[33m:[39m [35mtrue[39m }[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ code: 'ERR_MODULE_NOT_FOUND' }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 17:09:08
+[2m   Duration [22m 12.20s[2m (transform 91ms, setup 50ms, collect 0ms, tests 0ms, environment 0ms, prepare 1.62s)[22m
+

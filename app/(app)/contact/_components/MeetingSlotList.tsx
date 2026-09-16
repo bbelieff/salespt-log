@@ -1,6 +1,7 @@
 /** 컨택관리 미팅 슬롯 리스트 (page.tsx 분할). 저장된 미팅 + 미등록 신규 슬롯을 순서대로 렌더. */
 import type { Meeting } from "@/types";
 import MeetingSlotItem, { type NewSlot } from "./MeetingSlotItem";
+import { missingSlotFields } from "../_lib/slot-validation";
 
 export type SlotEntry =
   | { kind: "saved"; meeting: Meeting }
@@ -53,8 +54,13 @@ export default function MeetingSlotList({
               onRemove={() => onRemoveSaved(entry.meeting)}
             />
           ) : (
+            <div key={entry.slot.tempId} tabIndex={-1} className="scroll-mt-80"
+              data-incomplete-slot={missingSlotFields(entry.slot).length > 0 ? "true" : undefined}
+              aria-label={`미팅 #${i + 1} 입력`}>
+            {missingSlotFields(entry.slot).length > 0 && <p className="mb-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <b>미팅 #{i + 1} · 필수 입력 누락</b>: {missingSlotFields(entry.slot).join(" · ")}
+            </p>}
             <MeetingSlotItem
-              key={entry.slot.tempId}
               mode="new"
               index={i}
               slot={entry.slot}
@@ -62,6 +68,7 @@ export default function MeetingSlotList({
               onChange={(next) => onChangeNew(entry.slot.tempId, next)}
               onRemove={() => onRemoveNew(entry.slot.tempId)}
             />
+            </div>
           ),
         )
       )}

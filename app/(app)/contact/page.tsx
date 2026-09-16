@@ -1,6 +1,7 @@
 /** 컨택관리 탭 — 4채널 4지표 + 미팅 슬롯. SSOT: docs/design/prototypes/contact-daily-input.html v7. */
 "use client";
 import PageContainer from "@/components/PageContainer";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 
 import { useEffect, useMemo, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
@@ -304,6 +305,7 @@ export default function ContactPage() {
 
   /** 저장하기 → 확인 화면. 새 미팅이 0건이면 확인 없이 통과(숫자만 고친 경우 흐름 안 막음). */
   const requestSave = () => {
+    if (newSlots.some((s) => !slotComplete(s))) { showToast("미팅 카드의 필수 입력을 먼저 채워주세요."); return; }
     if (newSlots.length === 0) { handleSave(); return; }
     setConfirmOpen(true);
   };
@@ -361,28 +363,6 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
-      {/* WeekHeader 단독 sticky. 2026-05-17 [A3]: 좌우 스와이프로 주 이동. */}
-      <div
-        className="sticky top-24 z-30 bg-white shadow-sm"
-        {...weekSwipe}
-      >
-        <PageContainer width="wide">
-          <WeekHeader
-            weekIndex={weekIndex}
-            courseStart={courseStart}
-            selectedDate={date}
-            todayISO={TODAY_ISO}
-            cohortName={undefined}
-            countsByDay={countsByDay}
-            weekFunnel={weekFunnel}
-            onPrevWeek={() => guardedNav(() => moveWeek(-1))}
-            onNextWeek={() => guardedNav(() => moveWeek(1))}
-            onSelectDay={(d) => guardedNav(() => setDate(d))}
-            slideDir={slideDir}
-          />
-        </PageContainer>
-      </div>
-
       {/* 2026-05-18 [1]: 본문 fade 인터랙션(헤더 고정) */}
       <main
         className={`px-4 pt-4 pb-[160px] transition-opacity duration-200 ${
@@ -390,18 +370,37 @@ export default function ContactPage() {
         }`}
       ><PageContainer width="wide">
         <ChannelTabsAndPanel
+          contextHeader={<div {...weekSwipe}><div className="px-3 pt-3 text-xs font-semibold text-slate-700">기록 날짜</div><WeekHeader
+            weekIndex={weekIndex}
+            courseStart={courseStart}
+            selectedDate={date}
+            todayISO={TODAY_ISO}
+            cohortName={undefined}
+            countsByDay={countsByDay}
+            onPrevWeek={() => guardedNav(() => moveWeek(-1))}
+            onNextWeek={() => guardedNav(() => moveWeek(1))}
+            onSelectDay={(d) => guardedNav(() => setDate(d))}
+            slideDir={slideDir}
+          /></div>}
           active={activeChannel}
           draft={draft}
           date={date}
           inflowWaitBase={dayQuery.data?.inflowWaitBase ?? 0}
           savedInflow={dayQuery.data?.channels[activeChannel]?.inflow ?? 0}
           bannerStockBase={dayQuery.data?.bannerStockBase ?? 0}
-          onSelectChannel={(c) => guardedNav(() => setActiveChannel(c))}
+          onSelectChannel={(channel) => {
+            setActiveChannel(channel);
+            try { sessionStorage.setItem("salespt-contact-channel", channel); } catch { /* Optional preference only. */ }
+          }}
           onStep={step}
           onSetVal={setVal}
           highlightKey={highlightProduction ? "production" : undefined}
         />
 
+        <div className="mb-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <div className="mb-1 flex flex-wrap gap-x-3 text-xs text-slate-500">주차합계 · 생산 {weekFunnel.생산} · 유입 {weekFunnel.유입} · 컨택진행 {weekFunnel.컨택진행} · 미팅예약 {weekFunnel.미팅예약}</div>
+          <WeeklyGoalSummary compact date={date} metrics={["inflow", "contacts"]} />
+        </div>
         <MeetingSlotList
           slots={allSlots}
           reservationDate={date}
@@ -414,6 +413,8 @@ export default function ContactPage() {
       </main>
 
       <SaveBar
+        date={date}
+        incompleteCount={newSlots.filter((s) => !slotComplete(s)).length}
         pending={
           saveMetrics.isPending || appendMeeting.isPending || patchMeeting.isPending
         }

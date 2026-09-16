@@ -1,29 +1,15 @@
-/**
- * TopHeader — 모든 (app) 탭 상단 공통 헤더.
- *
- * 구성 (1줄, h-12):
- *   [로고 png] [경영일지] [D-day] [{기수} {이름} 대표님]
- *
- * 로고는 /public/salespt-logo.png — 워드마크가 이미 포함되어 있어서
- * "세일즈PT" 텍스트는 별도 표시하지 않고 "경영일지"만 표기.
- *
- * 반응형 (2026-05-16 갱신 — 모바일에서 이름 truncate 방지 우선):
- *   - xs~xl (360~480, 모든 폰): "경영일지" **숨김** → 사용자명이 화면 폭 최대로 표시
- *     (로고 워드마크에 "세일즈PT" 가 이미 포함되어 의미 중복 해소)
- *   - 2xl+ (768+, 태블릿/데스크탑): "경영일지" 표시 (폭 여유)
- *   tailwind.config.ts 의 커스텀 screens: sm=390 / xl=480 / 2xl=768 — 폰은 sm~xl 범위.
- *
- * 사용처: contact / schedule / calendar / payment / db 5개 페이지.
- */
+/** 공용 헤더: 모든 화면에서 로고·이름·대시보드·역할 전환 한 행. 페이지 배너는 헤더 바로 아래. */
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import type { Route } from "next";
+import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
 import { useAnnouncements } from "@/query/announcements-hook";
-import DDayBadge from "./DDayBadge";
 import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
@@ -35,6 +21,14 @@ interface Props {
   pageEmoji: string;
   pageTitle: string;
   pageSubtitle?: string;
+  roleMode?: "student" | "trainer";
+  /** 서버가 확인한 접속 계정. 트레이너 화면에서는 대리접속 대상과 구분한다. */
+  sessionIdentity?: { name: string; email: string };
+  /**
+   * 페이지 배너 우측 액션 링크 — /admin 하위 관리 화면처럼 "← 마스터 메뉴" 복귀
+   * 진입점을 페이지 최상단 행에 두기 위한 슬롯(수리3 ①). 미지정 시 렌더 안 함.
+   */
+  pageAction?: { href: Route; label: string };
 }
 
 /** 시트 B3가 "7"이면 "7기"로, "7기"면 그대로 유지. */
@@ -58,9 +52,24 @@ export default function TopHeader({
   pageEmoji,
   pageTitle,
   pageSubtitle,
+  roleMode,
+  pageAction,
+  sessionIdentity,
 }: Props) {
   const me = useMe();
-
+  const trainer = useTrainerState();
+  const pathname = usePathname();
+  // 트레이너 화면의 `← 수강생 대시보드` Link 는 /dashboard 로 직행해서 (app)/layout 의
+  // 트레이너 가드(role=trainer·active·self-view 아님 → /trainer)에 그대로 튕겼다.
+  // 바로 옆 RoleViewSwitch 는 /api/role-view 로 self-view 를 세운 뒤 이동하므로 정상 동작한다.
+  // 수강생 화면에는 항상 복귀 링크를 표시한다. Dual-role 트레이너 화면은 안전한 토글만 사용한다.
+  //  - 일반 수강생(canTrainer=false): 토글이 안 뜨므로 Link 유지(9개 화면의 유일한 복귀 동선).
+  //  - roleMode 는 WeeklyGoalPage 한 곳에서만 넘어온다 → RoleViewSwitch 와 **같은** pathname 폴백.
+  const roleView = roleMode ?? (pathname?.startsWith("/trainer") ? "trainer" : "student");
+  const roleToggleShown = !!trainer.data?.canStudent && !!trainer.data?.canTrainer;
+  // Student-page navigation must not depend on the separate trainer recruitment query.
+  const showStudentDashboardLink = roleView === "student" || (trainer.data?.canStudent === true &&
+    !roleToggleShown);
   // PostHog 식별 + 내부 트래픽 태깅 (ADR-0009/0013).
   //  - 관리자 본인 또는 대리접속(impersonating) = 내부 → is_internal super property.
   //  - 대리접속 중에는 대상 학생 PII 로 identify 하지 않음(ADR-0009). 비-대리 관리자는
@@ -93,8 +102,27 @@ export default function TopHeader({
     me.data?.name,
     me.data?.sessionRole,
   ]);
-  const display = formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
+  const display = sessionIdentity
+    ? sessionIdentity.name || sessionIdentity.email
+    : formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
   const [popupOpen, setPopupOpen] = useState(false);
+  const logoRef = useRef<HTMLButtonElement>(null);
+  const [popupPosition, setPopupPosition] = useState({ left: 8, top: 56 });
+  const positionPopup = () => {
+    const rect = logoRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = Math.min(16 * parseFloat(getComputedStyle(document.documentElement).fontSize), window.innerWidth - 16);
+    setPopupPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)), top: rect.bottom + 4 });
+  };
+  useEffect(() => {
+    if (!popupOpen) return;
+    window.addEventListener("resize", positionPopup);
+    window.addEventListener("scroll", positionPopup, true);
+    return () => {
+      window.removeEventListener("resize", positionPopup);
+      window.removeEventListener("scroll", positionPopup, true);
+    };
+  }, [popupOpen]);
 
   // 새소식 점 뱃지 — 안 본 새 업데이트가 있을 때만 (announcement-popup §3).
   // localStorage 는 클라 전용 → mount/[확인] 이벤트 시점에만 재계산 (SSR 안전).
@@ -109,124 +137,32 @@ export default function TopHeader({
 
   return (
     <>
-      {/* 슬림 브랜드 바 — 의미상 4개 덩어리:
-            ① 로고 / ② [사용자 + 경영일지] / ③ D-day / ④ 대시보드 버튼
-          justify-between으로 4 그룹이 row를 균등 분할.
-          그룹 간 간격은 자동(remaining space), 그룹 내부(②)만 gap-1.5로 타이트 묶음. */}
-      <header className="sticky top-0 z-50 h-12 border-b border-gray-100 bg-white">
-       {/* full-bleed 배경 + 내용만 대시보드와 동일 6xl 중앙정렬 */}
-       <PageContainer
-         width="wide"
-         className="flex h-full items-center justify-between gap-2 px-2 sm:px-3"
-       >
-        {/* ① 로고 — 클릭 시 로그아웃 팝업 토글.
-              sessionRole 이 admin/trainer 면 로고 옆에 작은 "← 메뉴" 백버튼 추가
-              (impersonation 중에도 마스터 메뉴로 빠르게 복귀 가능). */}
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setPopupOpen((v) => !v)}
-            className="relative rounded transition-transform active:scale-95"
-            aria-label="계정 메뉴 열기"
-          >
+      <header className="sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
+        <PageContainer width="wide" className="flex h-full flex-nowrap items-center gap-x-1 px-2 sm:gap-x-2 sm:px-3">
+          <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/salespt-logo.png"
-              alt="세일즈PT"
-              className="h-6 w-auto object-contain sm:h-7"
-            />
-            {/* 새소식 점 뱃지 — 안 본 새 업데이트 있을 때 */}
-            {hasNews && (
-              <span
-                className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-brand-red"
-                aria-label="새소식 있음"
-              />
-            )}
+            <img src="/salespt-logo.png" alt="세일즈PT" className="h-5 w-auto sm:h-6" />
+            {hasNews && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label="새소식 있음" />}
           </button>
-          {me.data?.sessionRole === "admin" && (
-            <Link
-              href="/admin/users"
-              aria-label="수강생 관리로 돌아가기"
-              className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-100 sm:text-xs"
-            >
-              ← 메뉴
-            </Link>
-          )}
-          {me.data?.sessionRole === "trainer" && (
-            <Link
-              href="/trainer"
-              aria-label="트레이너 페이지로 돌아가기"
-              className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-100 sm:text-xs"
-            >
-              ← 메뉴
-            </Link>
-          )}
-          {/* 아레나 회장 — 플레이어 겸직(role=trainee)이라 sessionRole 무관, captainOf 로 판별. */}
-          {me.data?.captainOf && (
-            <Link
-              href="/captain"
-              aria-label="기수임원 페이지"
-              className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100 sm:text-xs"
-            >
-              ★ 기수임원
-            </Link>
-          )}
-        </div>
+          {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
+          <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
+            {!sessionIdentity && me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
+              : <span className="min-w-8 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
 
-        {/* ② 사용자 + 경영일지 — 한 그룹으로 묶음 (gap-1.5 타이트).
-              spreadsheetId 가 있으면 사용자 이름 → 본인 구글 시트 새 탭으로 직접 열기
-              (수강생/impersonation 대상의 시트 빠른 접근). admin 본인 미등록 시 plain span. */}
-        <div className="flex min-w-0 items-center gap-1.5">
-          {me.data?.spreadsheetId ? (
-            <a
-              href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="내 구글 시트 새 탭으로 열기"
-              className="min-w-0 truncate text-[11px] font-black text-gray-900 hover:underline sm:text-sm"
-            >
-              {display}
-            </a>
-          ) : (
-            <span className="min-w-0 truncate text-[11px] font-black text-gray-900 sm:text-sm">
-              {display}
-            </span>
-          )}
-          {/* "경영일지" — 폰은 전 사이즈 숨김 (이름 truncate 방지), 2xl(768px+) 부터 표시.
-                tailwind.config.ts 의 sm(390)·xl(480) 은 모두 폰 → 2xl 만 태블릿+. */}
-          <span className="hidden shrink-0 text-xs font-black text-gray-900 2xl:inline 2xl:text-sm">
-            경영일지
-          </span>
-        </div>
 
-        {/* ③ D-day 카운터 */}
-        <div className="flex shrink-0">
-          <DDayBadge graduationISO={me.data?.graduationISO} />
-        </div>
-
-        {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 (브랜드 #d71617) */}
-        <Link
-          href="/dashboard"
-          className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-red bg-white px-2.5 py-1 text-[11px] font-bold text-brand-red shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
-          aria-label="대시보드로 이동"
-        >
-          <span>대시보드</span>
-          <svg
-            className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            viewBox="0 0 24 24"
-            aria-hidden
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </Link>
-       </PageContainer>
+          </div>
+          {/* 대시보드 바로 옆 역할 전환 */}
+          <div data-header-actions className="order-3 ml-auto flex h-14 shrink-0 items-center gap-1 whitespace-nowrap">
+            {showStudentDashboardLink && (
+              <Link href="/dashboard" aria-label="수강생 대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
+                <span className="app-header-pill group-hover:bg-red-100">
+                  <span aria-hidden>←</span><span>대시보드</span>
+                </span>
+              </Link>
+            )}
+            <RoleViewSwitch modeHint={roleMode} />
+          </div>
+        </PageContainer>
       </header>
 
       {/* 로고 클릭 팝업 — 로그아웃 + 내 시트 열기 */}
@@ -236,16 +172,16 @@ export default function TopHeader({
             className="fixed inset-0 z-[55]"
             onClick={() => setPopupOpen(false)}
           />
-          <div className="fixed left-3 top-14 z-[56] w-64 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
+          <div style={popupPosition} className="fixed z-[56] w-64 max-w-[calc(100vw-16px)] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
             <div className="border-b border-gray-100 px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-brand-red">
-                  {me.data?.name?.[0] ?? "?"}
+                  {(sessionIdentity?.name ?? me.data?.name)?.[0] ?? "?"}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold text-gray-900">{display}</div>
                   <div className="truncate text-[11px] text-gray-500">
-                    {me.data?.email ?? ""}
+                    {sessionIdentity?.email ?? me.data?.email ?? ""}
                   </div>
                 </div>
               </div>
@@ -290,6 +226,11 @@ export default function TopHeader({
                 </svg>
                 <span>📚 사용 가이드</span>
               </a>
+            )}
+            {trainer.data && !trainer.data.canTrainer && !trainer.data.isAdmin && (
+              <Link href="/trainer/apply" onClick={()=>setPopupOpen(false)} className="flex h-11 items-center border-t border-gray-100 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                {trainer.data.status === "pending" ? "승인 대기 · 신청 확인" : "트레이너 신청"}
+              </Link>
             )}
             {me.data?.sessionRole === "admin" && (
               <Link
@@ -366,10 +307,10 @@ export default function TopHeader({
       )}
 
       {/* Admin/Trainer 상태바 제거 — TopHeader 가 이미 impersonation 대상의
-            cohort·이름·D-day 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
+            cohort·이름 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
       {/* 페이지 배너 — 배경 full-bleed + 내용 6xl 중앙정렬 */}
-      <div className="sticky top-12 z-40 h-12 border-b border-slate-200 bg-slate-100">
+      <div className="sticky top-app-header z-40 h-12 border-b border-slate-200 bg-slate-100">
         <PageContainer
           width="wide"
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"
@@ -383,6 +324,14 @@ export default function TopHeader({
             <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
               {pageSubtitle}
             </span>
+          )}
+          {pageAction && (
+            <Link
+              href={pageAction.href}
+              className={`${pageSubtitle ? "" : "ml-auto "}shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100`}
+            >
+              {pageAction.label}
+            </Link>
           )}
         </PageContainer>
       </div>

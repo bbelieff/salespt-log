@@ -32,6 +32,12 @@ export default {
       wide: "1280px", // 와이드 데스크탑
     },
     extend: {
+      // Responsive header height from globals.css + 3rem banner, shared by all sticky consumers.
+      spacing: {
+        "app-header": "var(--app-header-height)",
+        "app-content": "calc(var(--app-header-height) + 3rem)",
+        "app-calendar-panel": "11.25rem",
+      },
       // 하단 네비게이션 4+1 최대폭 캡 (bottom-nav-4plus1 / ADR-0019) — arbitrary 대신 토큰.
       maxWidth: {
         "bottom-nav": "480px",

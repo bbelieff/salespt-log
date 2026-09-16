@@ -6,11 +6,16 @@
  *
  * Next.js 15 App Router 권장 패턴: next/script + strategy="afterInteractive"
  */
+"use client";
 import Script from "next/script";
+import { useEffect, useState } from "react";
+import { isSensitiveRecruitmentUrl } from "@/util/recruitment-privacy";
 
 export default function Analytics() {
+  const [allowed,setAllowed] = useState(false);
+  useEffect(()=>setAllowed(!isSensitiveRecruitmentUrl(window.location.href)),[]);
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  if (!gaId) return null;
+  if (!gaId || !allowed) return null;
 
   return (
     <>

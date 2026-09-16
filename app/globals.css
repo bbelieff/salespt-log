@@ -3,7 +3,61 @@
 @tailwind utilities;
 
 :root {
+  --app-header-height: 3.5rem;
   --app-safe-bottom: env(safe-area-inset-bottom);
+  --app-tabbar-safe: max(var(--app-safe-bottom, 0px), 8px);
+  --app-tabbar-row: max(4.375rem, 68px);
+  --app-tabbar-height: calc(var(--app-tabbar-row) + 5px + var(--app-tabbar-safe));
+}
+
+
+/* Shared with the app shell so the last content row clears the glass bar. */
+.app-header-pill {
+  @apply inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs font-bold text-red-700 transition-colors sm:px-3;
+}
+.app-role-toggle { position: relative; display: flex; align-items: stretch; }
+.app-role-toggle::before { content: ""; position: absolute; inset: 50% 0 auto; height: 26px; transform: translateY(-50%); background: #fef2f2; border: 1px solid #fecaca; border-radius: 999px; pointer-events: none; }
+.app-role-option { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0; border-radius: 999px; }
+.app-role-label { display: flex; align-items: center; justify-content: center; height: 26px; width: 100%; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; color: #b91c1c; transition: background-color 150ms, color 150ms; }
+.app-role-option[aria-pressed="true"] .app-role-label { background: #b91c1c; color: white; }
+.app-role-option:focus-visible { outline: 2px solid #b91c1c; outline-offset: 2px; }
+.app-tabbar {
+  padding-top: 0;
+  padding-bottom: calc(var(--app-tabbar-safe) + 4px);
+  border-top: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 16px 16px 0 0;
+  background: #f8fafc;
+  box-shadow: 0 -2px 12px rgb(15 23 42 / 4%), inset 0 1px 0 rgb(255 255 255 / 30%);
+}
+.app-tabbar-items { min-height: var(--app-tabbar-row); }
+.app-calendar-orb {
+  position: absolute;
+  bottom: calc(0.375rem + 1.0125rem + var(--calendar-label-gap, 2px) + var(--calendar-lift, 0px));
+  width: var(--calendar-diameter, 56px);
+  height: var(--calendar-diameter, 56px);
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 60%);
+  background: rgb(255 255 255 / 52%);
+  color: #475569;
+  box-shadow: inset 0 1px 1px rgb(255 255 255 / 80%), 0 4px 10px rgb(30 41 59 / 10%);
+}
+.app-calendar-link { position: relative; }
+.app-calendar-orb > svg { width: var(--calendar-icon-size, 24px); height: var(--calendar-icon-size, 24px); }
+.app-tab-label { margin: 0; font-size: 0.75rem; line-height: 1.35; }
+[aria-current="page"] > .app-calendar-orb {
+  background: rgb(251 191 36 / 22%);
+  border-color: rgb(251 191 36 / 55%);
+  color: #b45309;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .app-tabbar {
+    background: rgb(255 255 255 / 32%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-tabbar { background: #f8fafc; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
 /**
@@ -476,4 +530,10 @@ body {
   .lo-progress {
     left: 30%;
   }
+}
+
+/* One compact account row, including qualified role switch at 320px. */
+@media (max-width: 639px) {
+  .app-header-pill { padding-inline: 6px; font-size: 11px; gap: 3px; }
+  .app-role-label { padding-inline: 5px; font-size: 11px; }
 }
