@@ -233,3 +233,14 @@ describe("trainer weekly entry", () => {
   });
 });
 
+
+it("uses the common container without a duplicate account header", () => {
+  const html = renderToStaticMarkup(React.createElement(TrainerCohortView, {
+    sessionEmail: TRAINER, trainerName: "접속 트레이너", trainees: [],
+    activeTrainers: [], canBackToAdmin: false,
+  }));
+  expect(html).not.toContain("<header");
+  expect(html).not.toContain("로그아웃");
+  expect(html).toContain("space-y-4 px-4 py-4");
+  expect(html).toContain("app-header-pill");
+});
