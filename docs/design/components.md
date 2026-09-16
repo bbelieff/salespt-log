@@ -1511,3 +1511,5 @@ FinanceSummaryBoxes의 별도 비용 추가하기 문구를 제거한다. 추가
 
 ### 재무 요약 제목 크기 (2026-09-17)
 FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 `text-base`(1rem)를 사용한다. 모바일에서는 장식 화살표를 숨겨 긴 영업이익 제목의 한 줄을 유지한다. 금액 자동 맞춤은 유지한다.
+
+재무 요약 세 제목은 생산성 지표와 같은 `text-base font-extrabold`(1rem/800)를 사용한다(2026-09-17).
