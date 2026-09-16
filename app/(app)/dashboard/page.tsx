@@ -159,13 +159,13 @@ export default function DashboardPage() {
                 <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
                 <WeeklyGoalSummary className="pc:flex-1" />
               </div>
-              <FunnelChart matrix={dash.data.channelMatrix} />
+              <FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} />
             </div>
 
             {/* 하단 2열: 8주차 추이 | 채널별 성과 */}
             <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0">
               <WeeklyDualChart points={dash.data.weeklyTrend} />
-              <ChannelPerformance
+              <ChannelPerformance weeks={weeks}
                 costBreakdown={dash.data.costBreakdown}
                 matrix={dash.data.channelMatrix}
               />
