@@ -11,6 +11,7 @@
  * import 하고 TraineeCard 는 Types 를 import → 사이클 없음.
  */
 "use client";
+import Link from "next/link";
 import { courseEndISO, isExtendedCourseCohort } from "@/config/cohort-dates";
 
 import SortableTraineeBox from "./SortableTraineeBox";
@@ -332,6 +333,7 @@ export function ReservedSection({
             assigned.length > 0
               ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
               : "미배정";
+          const adminGoalHref = `/weekly-goals?student=${encodeURIComponent(u.email)}&returnTo=${encodeURIComponent("/admin/users")}` as const;
           return (
             <div
               key={u.email}
@@ -352,17 +354,13 @@ export function ReservedSection({
               </div>
               {!viewOnly && (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {u.spreadsheetId && (
-                    <a
-                      href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="구글 시트 원본 새 탭으로 열기"
-                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
-                    >
-                      📊 시트
-                    </a>
-                  )}
+                  <Link
+                    href={adminGoalHref}
+                    title="주간 목표·PT과제 열기"
+                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                  >
+                    주간목표
+                  </Link>
                   <button
                     type="button"
                     onClick={() => onRestore(u.email)}
