@@ -710,3 +710,6 @@ GET  /api/schedule                       → 수강시작일/수료일 + 주차 
 ## Trainer recruitment (#956)
 Trainer qualification is independent of enrollment: `trainer_qualifications` keyed by normalized email, status pending/active/rejected/revoked/cancelled, department T/관리. A projected sheetless trainer row coexists with the original student row; CRM reads/writes select the original student enrollment. Revocation/cancellation tombstones suppress legacy trainer rows.
 `trainer_invitations` stores SHA-256 token hashes only, designated recipient, seven-day expiry, issuer and acceptance/revocation audit. All per-recipient mutations share a transaction advisory lock. Acceptance retries are idempotent only while qualification remains active. Pending-only cancellation cannot demote an approved trainer.
+
+### ADR-0032 기간 정책
+숫자 10기 이후 과정·누적 통계·차트는 12주다. 수강 종료일과 총회일을 분리한다. 기존 기록과 시트 물리 10주 상한은 보존하며 주간목표와 11~12주 기록은 DB를 사용한다. 상세: docs/decisions/0032-twelve-week-courses.md.

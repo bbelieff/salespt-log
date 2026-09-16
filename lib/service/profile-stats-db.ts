@@ -30,10 +30,10 @@ function parseISOLocal(s: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
-function inStatsWindow(dateISO: string, courseStart: Date): boolean {
+function inStatsWindow(dateISO: string, courseStart: Date, span: number): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return false; // fail-closed(날짜 파싱 불가 = 제외)
   const w = weekIndexOf(parseISOLocal(dateISO), courseStart);
-  return w >= 1 && w <= STATS_WEEKS;
+  return w >= 1 && w <= span;
 }
 
 /**
@@ -44,17 +44,18 @@ export function traineeFunnelStatsFromDbRows(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): TraineeFunnelStats {
   let 미팅예정 = 0;
   for (const r of salesRows) {
-    if (inStatsWindow(r.date, courseStart)) 미팅예정 += r.meetingReservation;
+    if (inStatsWindow(r.date, courseStart, span)) 미팅예정 += r.meetingReservation;
   }
 
   let 미팅완료 = 0;
   let 계약 = 0;
   for (const m of meetings) {
     if (CARRYOVER(m)) continue; // AO<>이월 (설치 수식과 동일)
-    if (!inStatsWindow(m.미팅날짜, courseStart)) continue;
+    if (!inStatsWindow(m.미팅날짜, courseStart, span)) continue;
     if (DONE(m.상태)) 미팅완료 += 1; // 상태∈{완료,계약}
     if (m.상태 === "계약") 계약 += 1; // 상태="계약" — 계약여부(K) 아님, N열 수식 그대로
   }
@@ -79,12 +80,13 @@ export function traineeFunnelStatsFromDbRows(
  */
 export async function profileStatsFromDb(
   users: Array<{ spreadsheetId: string; courseStart: Date }>,
+  span = STATS_WEEKS,
 ): Promise<TraineeFunnelStats[]> {
   if (users.length === 0) return [];
 
   const rowsById = await readProfileStatsRowsFromDbBatch(users.map((u) => u.spreadsheetId));
   return users.map((u) => {
     const rows = rowsById.get(u.spreadsheetId) ?? { salesRows: [], meetings: [] };
-    return traineeFunnelStatsFromDbRows(rows.salesRows, rows.meetings, u.courseStart);
+    return traineeFunnelStatsFromDbRows(rows.salesRows, rows.meetings, u.courseStart, span);
   });
 }

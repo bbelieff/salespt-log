@@ -16,7 +16,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
 
 /** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
@@ -228,7 +228,7 @@ export default function TraineeCard({
           {u.stats && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
               <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500">
-                {STATS_WEEKS}주 누적
+                {courseWeeksForCohort(u.cohort)}주 누적
               </span>
               <span>
                 📅 예정{" "}

@@ -32,7 +32,7 @@ import {
   isCarryoverContract,
 } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { STATS_WEEKS, courseWeeksForCohort } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -77,10 +77,10 @@ export const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
  * (10)는 시트 물리 상한(쓰기 좌표 계산용, lib/repo/sales.ts)일 뿐 — 이 대시보드 재계산에는 STATS_WEEKS
  * (8)가 맞다. 9~10주차 데이터가 있는 사용자는 이 클램프 없이 재계산하면 DB 재계산이 시트 수식보다
  * 커진다(parity run 31361493846 그룹A 3명 sheet<db 실측과 정확히 일치). */
-function inSheetWindow(dateISO: string | undefined, courseStart: Date): boolean {
+function inSheetWindow(dateISO: string | undefined, courseStart: Date, span = STATS_WEEKS): boolean {
   if (!dateISO) return false;
   const w = weekIndexOf(parseISO(dateISO), courseStart);
-  return Number.isFinite(w) && w >= 1 && w <= STATS_WEEKS;
+  return Number.isFinite(w) && w >= 1 && w <= span;
 }
 
 /** 채널별 6단계 stacking (01!R1:U6 재현). 생산/유입/컨택진행=salesRows 합,
@@ -91,6 +91,7 @@ export function channelStackingFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): DashboardChannelMatrix[] {
   const byCh = new Map<Channel, DashboardChannelMatrix>();
   for (const ch of CHANNEL_ORDER) byCh.set(ch, EMPTY_STAGE(ch));
@@ -103,7 +104,7 @@ export function channelStackingFromDb(
     // 삭제된 쓰기 가드(isWithinSalesWindow=salesRowFor)는 주차 0(수강 시작 전) 기입도 막고 있었다.
     // 실측 근거(BBE-120, 2026-08-10 재확인): 시트 R1~R3 = `=E10+E14+…+E272`(56항=8주×7일,
     // 주차블록 1~8만 — E272 는 week8 마지막 항) → 창 밖은 시트도 안 센다.
-    if (!inSheetWindow(r.date, courseStart)) continue;
+    if (!inSheetWindow(r.date, courseStart, span)) continue;
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
     m.컨택진행 += num(r.contactProgress);
@@ -116,9 +117,10 @@ export function channelStackingFromDb(
     //   R4 미팅예약 · R5 미팅완료 = COUNTIFS(04!F:F,J:J) — **날짜 무필터** → 클램프 금지.
     //   R6 계약        = N10+N14+…+N272 — **주차블록 합(1~STATS_WEEKS, BBE-120 재확인)** → 클램프 필요.
     // 셋을 같은 규칙으로 묶으면 어느 쪽이든 parity 가 깨진다(reverseShadowCompare 영구 diff).
+    if (span !== STATS_WEEKS && !inSheetWindow(mt.미팅날짜, courseStart, span)) continue;
     if (ALIVE(mt.상태)) m.미팅예약 += 1; // 누적 퍼널: 살아있는 미팅 전부(무필터 = 시트 대칭)
     if (DONE(mt.상태)) m.미팅완료 += 1;
-    if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart)) m.계약 += 1; // N 주차블록 합 대칭
+    if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart, span)) m.계약 += 1; // N 주차블록 합 대칭
   }
   return CHANNEL_ORDER.map((ch) => byCh.get(ch)!);
 }
@@ -127,13 +129,14 @@ export function channelStackingFromDb(
 export function weeklyContractsFromDb(
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): number[] {
-  const weeks = new Array(STATS_WEEKS).fill(0);
+  const weeks = new Array(span).fill(0);
   for (const m of meetings) {
     if (m.상태 !== "계약") continue; // N 은 J="계약" COUNTIFS (완료·변경·취소 제외)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(m.미팅날짜)) continue;
     const w = weekIndexOf(parseISO(m.미팅날짜), courseStart);
-    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
+    if (w >= 1 && w <= span) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
   }
   return weeks;
 }
@@ -145,20 +148,21 @@ export function weeklyActivityFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): number[] {
-  const weeks = new Array(STATS_WEEKS).fill(0);
+  const weeks = new Array(span).fill(0);
   for (const r of salesRows) {
     if (!(CHANNEL_ORDER as readonly string[]).includes(r.channel)) continue;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
     const w = weekIndexOf(parseISO(r.date), courseStart);
-    if (w < 1 || w > STATS_WEEKS) continue; // 8주 통계만(유예 9~10·시작 전 제외)
+    if (w < 1 || w > span) continue; // 8주 통계만(유예 9~10·시작 전 제외)
     weeks[w - 1] += num(r.production) * 1 + num(r.contactProgress) * 1.5;
   }
   for (const mt of meetings) {
     if (CARRYOVER(mt) || !DONE(mt.상태)) continue; // 미팅완료(성사)·이월제외 (대시보드 L 수식)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜)) continue;
     const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
-    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] += 2; // 미팅 가중치 2
+    if (w >= 1 && w <= span) weeks[w - 1] += 2; // 미팅 가중치 2
   }
   return weeks;
 }
@@ -176,6 +180,7 @@ export function arenaFeeFromDb(
   contracts: ContractPayment[],
   courseStart: Date,
   courseStartISO: string,
+  span = STATS_WEEKS,
 ): number {
   let fee = 0;
   for (const c of contracts) {
@@ -185,7 +190,7 @@ export function arenaFeeFromDb(
     // STATS_WEEKS(8) 직접 비교를 쓴다 — weeklyContractsFromDb/weeklyActivityFromDb 와 동일 패턴.
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.계약일 ?? "")) continue;
     const w = weekIndexOf(parseISO(c.계약일!), courseStart);
-    if (w < 1 || w > STATS_WEEKS) continue;
+    if (w < 1 || w > span) continue;
     fee += num(c.수임비);
   }
   return fee;
@@ -285,14 +290,15 @@ export function computeDbAggregates(
   weeklyActivity: number[];
   누적수임비: number;
 } {
+  const span = courseWeeksForCohort(feeSource?.cohort);
   const normalizedCohort = (feeSource?.cohort ?? "").replace(/기\s*$/, "").trim();
   const fee = SOURCE_ALIGNED_FEE_COHORTS.has(normalizedCohort)
     ? weeklyFeeFromMeetings(meetings, courseStart) + (LEGACY_FEE_OFFSET[feeSource?.spreadsheetId ?? ""] ?? 0)
-    : arenaFeeFromDb(contracts, courseStart, courseStartISO);
+    : arenaFeeFromDb(contracts, courseStart, courseStartISO, span);
   return {
-    channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart),
-    weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
-    weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
+    channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart, span),
+    weeklyContracts: weeklyContractsFromDb(meetings, courseStart, span),
+    weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart, span),
     누적수임비: fee,
   };
 }

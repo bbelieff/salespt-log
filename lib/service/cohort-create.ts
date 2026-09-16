@@ -1,3 +1,4 @@
+import { ceremonyISO } from "@/config/cohort-dates";
 /**
  * Layer: service — 기수 생성 pending 큐 **재시도** 유스케이스 (R3-5).
  *
@@ -68,7 +69,7 @@ export async function completeOnePending(job: PendingCohortRow): Promise<string>
       const r = await writeCourseDates(
         sheetId,
         job.courseStartISO,
-        computeGraduationISO(job.courseStartISO),
+        ceremonyISO(job.courseStartISO, job.cohortLabel) || computeGraduationISO(job.courseStartISO),
       );
       if (r.written.length === 0 && r.preserved.length > 0) {
         console.warn(

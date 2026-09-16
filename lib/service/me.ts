@@ -37,7 +37,7 @@ export {
  * 정본은 @/config/cohort-dates (R4 W1-0) — 기존 소비처 위해 재수출.
  */
 export { GRADUATION_OFFSET_DAYS } from "@/config/cohort-dates";
-import { GRADUATION_OFFSET_DAYS } from "@/config/cohort-dates";
+import { GRADUATION_OFFSET_DAYS, STATS_WEEKS, ceremonyISO, courseWeeksForCohort } from "@/config/cohort-dates";
 
 export interface MeProfile {
   email: string;
@@ -224,7 +224,7 @@ export async function enrichUsersWithDates<
             ? u.name
             : u.nameLabel ?? u.name,
         courseStartISO: u.courseStartISO ?? "",
-        graduationISO: u.graduationISO ?? "",
+        graduationISO: ceremonyISO(u.courseStartISO ?? "", isArenaReg(u.cohort) ? u.cohort : u.cohortLabel ?? u.cohort) || u.graduationISO || "",
       };
     }
 
@@ -244,7 +244,7 @@ export async function enrichUsersWithDates<
             ? u.name
             : bundle.name || u.name,
         courseStartISO: toISO(bundle.courseStart),
-        graduationISO: toISO(bundle.graduation),
+        graduationISO: ceremonyISO(toISO(bundle.courseStart), isArenaReg(u.cohort) ? u.cohort : bundle.cohort || u.cohort) || toISO(bundle.graduation),
       };
     } catch (e) {
       console.warn(
@@ -314,12 +314,22 @@ export async function enrichUsersWithStats<
   let dbStats: TraineeFunnelStats[] = [];
   if (pilot.length > 0) {
     try {
-      dbStats = await profileStatsFromDb(
-        pilot.map((u) => ({
-          spreadsheetId: u.spreadsheetId,
-          courseStart: parseISOLocal(u.courseStartISO!.trim()),
-        })),
-      );
+      const grouped = new Map<number, number[]>();
+      pilot.forEach((u, i) => {
+        const weeks = courseWeeksForCohort(u.cohort);
+        grouped.set(weeks, [...(grouped.get(weeks) ?? []), i]);
+      });
+      dbStats = new Array(pilot.length);
+      await Promise.all([...grouped].map(async ([weeks, indices]) => {
+        const items = indices.map((i) => ({
+          spreadsheetId: pilot[i]!.spreadsheetId,
+          courseStart: parseISOLocal(pilot[i]!.courseStartISO!.trim()),
+        }));
+        const stats = weeks === STATS_WEEKS
+          ? await profileStatsFromDb(items)
+          : await profileStatsFromDb(items, weeks);
+        indices.forEach((index, i) => { dbStats[index] = stats[i]!; });
+      }));
     } catch (e) {
       console.warn(
         `[me] profileStatsFromDb 배치 실패(${pilot.length}명) — 전원 sheet 경로로 폴백:`,
@@ -422,7 +432,7 @@ export async function loadMe(
     cohort: isArenaReg(user.cohort) ? user.cohort : bundle?.cohort || user.cohort,
     name: bundle?.name || user.name,
     courseStartISO: bundle ? toISO(bundle.courseStart) : "",
-    graduationISO: bundle ? toISO(bundle.graduation) : "",
+    graduationISO: bundle ? ceremonyISO(toISO(bundle.courseStart), isArenaReg(user.cohort) ? user.cohort : bundle.cohort || user.cohort) || toISO(bundle.graduation) : "",
     spreadsheetId: user.spreadsheetId,
     feedbackFolderId: user.feedbackFolderId,
     driveLinkStatus: user.driveLinkStatus,
