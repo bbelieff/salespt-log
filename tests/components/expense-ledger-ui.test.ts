@@ -167,6 +167,11 @@ describe("expense ledger dashboard UI", () => {
   it("opens the ledger from the additional-cost row without a separate add button", () => {
     const onOpenExpenseLedger = vi.fn();
     const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, onOpenExpenseLedger }));
+    // 3열 재무 행에서는 비용 컬럼을 열어 상세 패널의 추가 비용 행을 찾는다.
+    const costColumn = view.querySelector<HTMLButtonElement>("#fin-col-cost");
+    expect(costColumn?.getAttribute("aria-expanded")).toBe("false");
+    act(() => costColumn?.click());
+    expect(costColumn?.getAttribute("aria-expanded")).toBe("true");
     const trigger = view.querySelector<HTMLButtonElement>('button[aria-label="추가 비용: 비용 원장 열기"]');
     expect(trigger).not.toBeNull();
     expect(trigger?.type).toBe("button");
@@ -180,6 +185,7 @@ describe("expense ledger dashboard UI", () => {
 
   it("does not fabricate a complete additional-cost amount when it is unavailable", () => {
     const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, additionalCost: null }));
+    act(() => view.querySelector<HTMLButtonElement>("#fin-col-cost")?.click());
     expect(view.textContent).toContain("추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.");
     expect(view.textContent).not.toContain("추가 비용 ₩");
     expect(view.textContent).toContain("DB 비용 합계 ₩3,000");

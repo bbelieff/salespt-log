@@ -1018,7 +1018,7 @@ app/(app)/dashboard/page.tsx
   sticky top-app-content z-30 래퍼
     PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
   PageContainer > 일반 본문
-    FinanceSummaryBoxes + OperatingProfitCard # 매출·비용·영업이익 한 세트
+    FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     생산성 + WeeklyGoalSummary / FunnelChart
     WeeklyDualChart / ChannelPerformance
 ```
@@ -1052,38 +1052,46 @@ app/(app)/dashboard/page.tsx
 - 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
 - 진행 배너의 코스 주차(시작일 앵커)와 주간목표의 금~목 주차는 서로 다른 계약이다.
 
-### 9-2. FinanceSummaryBoxes
+### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행)
 
-**용도**: 매출/비용 `grid grid-cols-2 gap-2`. `OperatingProfitCard`와 함께 일반 본문 상단의 한 section을 구성하며 스크롤 고정하지 않는다.
+**용도**: 매출/비용/영업이익 `grid grid-cols-3 gap-2` 한 행. 일반 본문 상단의 한 section을
+구성하며 스크롤 고정하지 않는다. 2026-09-16 개편으로 기존 매출/비용 2열 + 별도
+`OperatingProfitCard` 큰 카드를 이 컴포넌트 하나로 통합했다(§9-3 폐지).
 
 **Props**:
 
 - `revenue`, `cost`, `feeIncome`, `commissionIncome`: 대시보드 KPI의 총매출·총비용·수임비·수수료.
 - `dbCostTotal`: DB 비용 합계.
 - `additionalCost: number | null`: 추가 비용. null은 조회 실패 안내를 표시하며 0원으로 대신하지 않는다.
-- `onOpenExpenseLedger: () => void`: 비용 버튼 클릭 시 같은 페이지의 경비장부 모달 열기.
+- `onOpenExpenseLedger: () => void`: 비용 상세 안 추가 비용 행 클릭 시 같은 페이지의 경비장부 모달 열기.
+- `weeks` (기본 `STATS_WEEKS`), `contractCount?`: 영업이익 상세의 주차·계약건수 부연.
+- `carryoverRevenue?`/`totalRevenue?`, `carryoverCost?`/`totalCost?`: 이월 분리 표시(선택).
+  없으면 이월 0, 전체 = 시즌 + 이월로 계산한다(belie 결정 2026-08-07, BBE-83 — 매출과
+  같은 시작일(courseStart) 경계로 03 DB관리 비용을 시즌/이월 분할한 값).
 
 **디자인 / 동작**:
 
-- 세 재무 카드는 흰색 배경, slate-200 테두리, rounded-xl, p-3와 text-xl 금액을 공유한다. ＋/−/＝ 배지와 금액 색상으로 구분한다.
-- 모바일 금액은 별도 줄에 표시하며 긴 금액이 카드 밖으로 넘치지 않도록 줄바꿈한다. 모든 폭에서 제목 아래 금액을 배치한다.
-- 비용 카드에는 DB 비용·추가 비용과 `비용 추가하기` 진입 문구를 표시한다. hover/focus 스타일 및 버튼 접근성 라벨을 유지한다.
+- 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분).
+  흰색 배경, slate-200 테두리, rounded-xl, ＋/−/＝ 배지를 공유하고, 라벨은 금액 위에 둔다.
+- 금액 색: 매출 slate-900, 비용 red-600, 영업이익은 0 이상 파랑 `#1d4ed8`·음수 보라 `#7c3aed`
+  (음수도 비용 빨강과 혼동되지 않게 한다). 영업이익 = 매출 − 비용, 기존 음수 부호 유지.
+- 각 컬럼은 `button`이며 클릭 시 행 아래 공용 상세 패널(`#fin-detail-panel`, 전체 폭)이
+  열린다. 한 번에 하나만 열리고 같은 컬럼을 다시 누르면 닫힌다. `aria-expanded`/
+  `aria-controls`와 컬럼별 `focus-visible:ring-2`를 둔다. 상세 패널은 버튼의 형제이므로
+  중첩 버튼이 생기지 않는다.
+- 상세 내용: 매출 = 수임비·수수료 / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
+  hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·주차·계약건수·
+  시즌/이월/전체 매출·비용 표.
+- 금액은 `formatMoney` 전체 금액(축약·절단 없음). 좁은 폭 대응은 컨테이너 상대 단위(cqi)
+  유동 글꼴·패딩 + 줄바꿈으로 하며, `overflow:hidden`·ellipsis·truncate·nowrap 같은
+  잘라 숨기기는 쓰지 않는다.
 - 기존 영업이익·시즌/이월/전체 재무 계산과 실제 값을 보존한다.
 
-### 9-3. OperatingProfitCard
+### 9-3. OperatingProfitCard (폐지 — §9-2에 통합)
 
-**용도**: 영업이익 (= 매출 − 비용) 단독 카드.
-
-**디자인**:
-- 다른 재무 카드와 같은 `rounded-xl border border-slate-200 bg-white p-3`; 두꺼운 좌측바 없음
-- 좌측에 `w-4 h-4 rounded-full bg-blue-100 text-blue-600` ＝ 배지
-- 다른 재무 카드와 같은 금액 (`text-xl font-bold`), indigo700 색상
-- 부연: "영업이익률 N%" (소수 1자리)
-- 매출/비용/영업이익 세 박스의 **+/−/= 배지 산술 흐름** 시각 통일
-
-**이월 분리 표시(선택)**: `carryoverRevenue`/`totalRevenue` 주면 매출 3줄(아레나·이월·전체) 표시.
-`carryoverCost`/`totalCost` 주면 비용도 동일하게 3줄 표시(belie 결정 2026-08-07, BBE-83) — 매출과
-같은 시작일(courseStart) 경계로 03 DB관리 비용을 시즌/이월 분할한 값.
+2026-09-16 finance-three-columns 개편으로 별도 큰 카드를 두지 않는다. 영업이익 표시·
+이익률(소수 1자리)·시즌/이월/전체·주차/계약건수는 `FinanceSummaryBoxes`의 영업이익
+컬럼과 그 상세 패널이 그대로 제공한다. 컴포넌트 파일은 삭제됐다.
 
 ### 9-4. FunnelChart (6단계 영업퍼널)
 
