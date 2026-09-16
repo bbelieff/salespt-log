@@ -158,9 +158,7 @@ export default function TraineeCard({
     parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase());
   const showSheetWebBtns = !viewOnly || isAssignedToTrainer;
   const isTrainerGoalView = !!viewOnly && !!trainerEmailLc && isAssignedToTrainer;
-  const goalHref =
-    `/weekly-goals?student=${encodeURIComponent(u.email)}` +
-    `&returnTo=${encodeURIComponent("/trainer")}`;
+  const goalHref = `/weekly-goals?student=${encodeURIComponent(u.email)}&returnTo=${encodeURIComponent("/trainer")}` as const;
 
   const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
 
