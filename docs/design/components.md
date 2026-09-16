@@ -1082,9 +1082,14 @@ app/(app)/dashboard/page.tsx
 - 상세 내용: 매출 = 수임비·수수료 / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
   hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·주차·계약건수·
   시즌/이월/전체 매출·비용 표.
-- 금액은 `formatMoney` 전체 금액(축약·절단 없음). 좁은 폭 대응은 컨테이너 상대 단위(cqi)
-  유동 글꼴·패딩 + 줄바꿈으로 하며, `overflow:hidden`·ellipsis·truncate·nowrap 같은
-  잘라 숨기기는 쓰지 않는다.
+- 금액은 `formatMoney` 전체 금액(축약·절단 없음). ₩99,999,999·₩-99,999,999까지
+  320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
+  `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
+  좁은 폭 대응은 cqi 유동 글꼴·최소 패딩 + 실측 맞춤(ResizeObserver·font-load ready·
+  값 변경에 재측정, 3열 동일 최대 폰트·넘칠 때만 축소)이며 DOM 텍스트는 항상 전체
+  금액(접근성 유지). SSR 안전·관찰자/이벤트 정리.
+- 영업이익 상세 표도 320px·8자리까지 금액 분할 없음(숫자열 우선 폭
+  `grid-cols-[2.5rem_repeat(3,minmax(0,1fr))]`·행 라벨열 축소·숫자셀 11px nowrap).
 - 기존 영업이익·시즌/이월/전체 재무 계산과 실제 값을 보존한다.
 
 ### 9-3. OperatingProfitCard (폐지 — §9-2에 통합)

@@ -4,7 +4,7 @@ import * as React from "react";
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
+import FinanceSummaryBoxes, { calcSingleLineScale } from "@/components/dashboard/FinanceSummaryBoxes";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -35,10 +35,21 @@ function render(element: ReactNode) {
   return container;
 }
 
+function rerender(element: ReactNode) {
+  act(() => root?.render(element));
+}
+
 function column(id: string) {
   const button = document.querySelector<HTMLButtonElement>(`#${id}`);
   if (!button) throw new Error(`column '${id}' is missing`);
   return button;
+}
+
+function amountOf(id: string) {
+  const button = column(id);
+  const amount = [...button.querySelectorAll("span")].find((s) => s.textContent?.includes("₩"));
+  if (!amount) throw new Error(`amount in '${id}' is missing`);
+  return amount as HTMLSpanElement;
 }
 
 function clickColumn(id: string) {
@@ -57,6 +68,7 @@ afterEach(() => {
   root = undefined;
   container = undefined;
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("finance three-column row", () => {
@@ -85,13 +97,164 @@ describe("finance three-column row", () => {
     expect(view.textContent).toContain("₩3,500,000");
     expect(view.textContent).toContain("₩8,845,678"); // 영업이익 = 매출 − 비용
 
-    // 잘라 숨기기 금지: truncate/nowrap/ellipsis/overflow-hidden 없음.
+    // 한 줄 보장: 잘라 숨기기(truncate/ellipsis/overflow-hidden) · anywhere 분할 금지.
+    // 금액 자체는 white-space:nowrap 한 줄이 정본이다.
     const html = view.innerHTML;
     expect(html).not.toContain("truncate");
-    expect(html).not.toContain("nowrap");
     expect(html).not.toContain("ellipsis");
     expect(html).not.toContain("overflow-hidden");
+    expect(html).not.toContain("overflow:hidden");
+    expect(html).not.toContain("anywhere");
+    for (const id of ["fin-col-revenue", "fin-col-cost", "fin-col-profit"]) {
+      const amount = amountOf(id);
+      expect(amount.style.whiteSpace).toBe("nowrap");
+      expect(amount.style.overflowWrap).toBe("normal");
+      expect(amount.style.overflow).toBe("");
+      expect(amount.style.textOverflow).toBe("");
+      // 접근성 텍스트는 전체 금액 그대로.
+      expect(amount.textContent).toMatch(/₩-?[\d,]+/);
+    }
     expect(panel().hidden).toBe(true);
+  });
+
+  it("keeps the longest positive and negative amounts on one line with full text", () => {
+    const view = render(
+      createElement(FinanceSummaryBoxes, {
+        ...baseProps,
+        revenue: 99_999_999,
+        cost: 99_999_999,
+        carryoverRevenue: 0,
+        totalRevenue: 99_999_999,
+        carryoverCost: 0,
+        totalCost: 99_999_999,
+      }),
+    );
+    // 양수 최댓값 전체 표시 (₩99,999,999).
+    expect(view.textContent).toContain("₩99,999,999");
+    for (const id of ["fin-col-revenue", "fin-col-cost", "fin-col-profit"]) {
+      expect(amountOf(id).style.whiteSpace).toBe("nowrap");
+    }
+
+    // 음수 최댓값: 매출 0 − 비용 99,999,999 = ₩-99,999,999, 부호 포함 전체.
+    rerender(
+      createElement(FinanceSummaryBoxes, {
+        ...baseProps,
+        revenue: 0,
+        cost: 99_999_999,
+        carryoverRevenue: 0,
+        totalRevenue: 0,
+        carryoverCost: 0,
+        totalCost: 99_999_999,
+      }),
+    );
+    const neg = view.querySelector("#fin-col-profit [data-profit-sign]");
+    expect(neg?.getAttribute("data-profit-sign")).toBe("negative");
+    expect(neg?.textContent).toContain("-99,999,999");
+    expect((neg as HTMLElement).style.whiteSpace).toBe("nowrap");
+    expect((neg as HTMLElement).style.overflowWrap).toBe("normal");
+    // 잘라 숨기기 없음.
+    expect(view.innerHTML).not.toContain("anywhere");
+    expect(view.innerHTML).not.toContain("overflow-hidden");
+  });
+
+  it("keeps single-line fit when the value updates to the longest amount", () => {
+    const view = render(createElement(FinanceSummaryBoxes, { ...baseProps }));
+    expect(amountOf("fin-col-revenue").textContent).toContain("12,345,678");
+    rerender(createElement(FinanceSummaryBoxes, { ...baseProps, revenue: 99_999_999 }));
+    const amount = amountOf("fin-col-revenue");
+    expect(amount.textContent).toContain("₩99,999,999");
+    expect(amount.style.whiteSpace).toBe("nowrap");
+    expect(view.innerHTML).not.toContain("anywhere");
+  });
+
+  it("computes the single-line scale purely: fits when narrow, keeps base when wide", () => {
+    expect(calcSingleLineScale(80, 200)).toBeLessThan(1);
+    expect(calcSingleLineScale(80, 200)).toBeGreaterThanOrEqual(0.55);
+    expect(calcSingleLineScale(200, 80)).toBe(1);
+    expect(calcSingleLineScale(0, 200)).toBe(1);
+    expect(calcSingleLineScale(80, 0)).toBe(1);
+  });
+
+  it("shrinks all three amounts uniformly on observer resize and disconnects on unmount", () => {
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    let roCallback: ResizeObserverCallback | null = null;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(cb: ResizeObserverCallback) {
+          roCallback = cb;
+        }
+        observe = observe;
+        unobserve = vi.fn();
+        disconnect = disconnect;
+      },
+    );
+    render(createElement(FinanceSummaryBoxes, { ...baseProps }));
+    // 컨테이너·컬럼·금액을 관찰한다.
+    expect(observe).toHaveBeenCalled();
+    expect(roCallback).not.toBeNull();
+
+    const ids = ["fin-col-revenue", "fin-col-cost", "fin-col-profit"];
+    const cols = ids.map((id) => document.getElementById(id) as HTMLElement);
+    const amounts = ids.map((id) => amountOf(id));
+    // 좁은 컬럼(80px)에 넓은 텍스트(200px) 강제 — Range/rect는 jsdom에서 0이므로
+    // scrollWidth/clientWidth 폴백 경로로 실측한다.
+    for (const col of cols) {
+      Object.defineProperty(col, "clientWidth", { value: 80, configurable: true });
+    }
+    for (const amt of amounts) {
+      Object.defineProperty(amt, "scrollWidth", { value: 200, configurable: true });
+    }
+    act(() => {
+      roCallback?.([], {} as unknown as ResizeObserver);
+    });
+    const sizes = amounts.map((a) => a.style.fontSize);
+    // 넘칠 때만 축소하고 3열 모두 같은 폰트로 맞춘다.
+    expect(sizes.every((s) => s.endsWith("px"))).toBe(true);
+    expect(new Set(sizes).size).toBe(1);
+    for (const amt of amounts) {
+      expect(amt.style.whiteSpace).toBe("nowrap");
+      expect(amt.textContent).toMatch(/₩-?[\d,]+/);
+    }
+
+    // 정리: 관찰자 해제 (중복 unmount 방지를 위해 root 비움).
+    act(() => root?.unmount());
+    root = undefined;
+    expect(disconnect).toHaveBeenCalled();
+  });
+
+  it("keeps the profit detail table amounts on one line up to 8 digits", () => {
+    render(
+      createElement(FinanceSummaryBoxes, {
+        ...baseProps,
+        revenue: 12_345_678,
+        cost: 3_500_000,
+        carryoverRevenue: 10_000_000,
+        totalRevenue: 22_345_678,
+        carryoverCost: 1_000_000,
+        totalCost: 4_500_000,
+      }),
+    );
+    clickColumn("fin-col-profit");
+    const table = document.querySelector('[data-testid="fin-profit-table"]');
+    expect(table).not.toBeNull();
+    const html = table?.innerHTML ?? "";
+    expect(html).not.toContain("anywhere");
+    // 숫자 셀은 모두 nowrap 한 줄 + 전체 금액.
+    const cells = [...(table?.querySelectorAll("span") ?? [])].filter((s) =>
+      s.textContent?.includes("₩"),
+    ) as HTMLSpanElement[];
+    expect(cells.length).toBe(6);
+    for (const cell of cells) {
+      expect(cell.style.whiteSpace).toBe("nowrap");
+    }
+    const text = table?.textContent ?? "";
+    expect(text).toContain("₩12,345,678");
+    expect(text).toContain("₩10,000,000");
+    expect(text).toContain("₩22,345,678");
+    // 숫자열 우선 폭: 행 라벨열이 좁고 숫자 3열이 균등 분할.
+    expect(table?.className).toContain("grid-cols-[2.5rem_repeat(3,minmax(0,1fr))]");
   });
 
   it("opens one detail panel at a time below the row and closes on second click", () => {
