@@ -3,8 +3,8 @@
  *
  * /admin/users 의 기수박스 > 팀박스 > TraineeCard 계층을 그대로 재사용하되
  * 트레이너 권한으로 제한:
- *   - 전체 trainee 명단(활성/보관) 표시. **본인 담당에만** [시트]/[웹앱] 버튼 노출
- *     (TraineeCard 의 `trainerEmailLc` prop 으로 분기).
+ *   - 기본 내 담당만 표시(전체 보기 토글 가능). **본인 담당에만** [주간목표]/[웹앱]
+ *     버튼 노출 (TraineeCard 의 `trainerEmailLc` prop 으로 분기).
  *   - 핸들/유보/팀 입력/담당 토글 등 admin 액션은 전부 비활성 (`viewOnly` + dnd 미연결).
  *   - 검색/등록/동기화 UI 미포함 (admin 전용).
  *
@@ -46,8 +46,8 @@ export default function TrainerCohortView({
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /** "내 수강생만 보기" 토글. 기본 false (전체 명단). */
-  const [showOnlyMine, setShowOnlyMine] = useState(false);
+  /** "내 수강생만 보기" 토글. 기본 true (내 담당만). */
+  const [showOnlyMine, setShowOnlyMine] = useState(true);
 
   const trainerEmailLc = sessionEmail.toLowerCase();
 
@@ -193,7 +193,7 @@ export default function TrainerCohortView({
               {showOnlyMine
                 ? `내 담당 ${myCount}명`
                 : `전체 ${trainees.length}명 (내 담당 ${myCount}명)`}
-              . 본인 담당 카드만 <b>📊 시트</b> · <b>웹앱 →</b> 활성화.
+              {" · 담당 카드에서 주간목표·웹앱 가능."}
             </p>
             <button
               type="button"
@@ -205,7 +205,7 @@ export default function TrainerCohortView({
               }`}
               title={showOnlyMine ? "전체 명단으로 돌아가기" : `내 담당 ${myCount}명만 표시`}
             >
-              {showOnlyMine ? `✓ 내 수강생만 (${myCount})` : "내 수강생만 보기"}
+              {showOnlyMine ? "전체 수강생 보기" : "내 수강생만 보기"}
             </button>
           </div>
         </section>
@@ -217,7 +217,13 @@ export default function TrainerCohortView({
         )}
 
         {activeGroups.length === 0 && archivedGroups.length === 0 && (
-          <p className="text-sm text-gray-400">등록된 수강생이 없습니다.</p>
+          showOnlyMine && trainees.length > 0 ? (
+            <p className="text-sm text-gray-400">
+              담당 수강생이 없습니다. 전체 명단은 [전체 수강생 보기]로 확인하세요.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-400">등록된 수강생이 없습니다.</p>
+          )
         )}
 
         {/* 활성 기수 — 일반 숫자기수(박스 밖) + 아레나 시즌 컨테이너 박스 */}
