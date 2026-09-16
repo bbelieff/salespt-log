@@ -503,12 +503,12 @@
         </div>
       </div>
       
-      <!-- 트레이너 수강생 카드 액션 (trainer-weekly-entry) -->
+      <!-- 수강생 카드 액션 (trainer-weekly-entry + admin-weekly-entry) -->
       <div class="bg-white rounded-lg p-6">
-        <h3 class="text-lg font-semibold mb-4">Trainer Trainee Actions</h3>
-        <p class="text-xs text-gray-500 mb-3">담당 카드만 노출 · spreadsheetId 무관 · /weekly-goals?student=…&amp;returnTo=%2Ftrainer</p>
+        <h3 class="text-lg font-semibold mb-4">Trainee Actions</h3>
+        <p class="text-xs text-gray-500 mb-3">admin(!viewOnly, returnTo=/admin/users)·담당 카드(returnTo=/trainer)만 노출 · spreadsheetId 무관 · compact 주간목표 + 웹앱</p>
         <div class="flex items-center gap-1">
-          <a href="/weekly-goals?student=student%40example.com&amp;returnTo=%2Ftrainer" class="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50">주간목표</a>
+          <a href="/weekly-goals?student=student%40example.com&amp;returnTo=%2Fadmin%2Fusers" class="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50">주간목표</a>
           <button class="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black">웹앱 →</button>
         </div>
       </div>

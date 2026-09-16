@@ -28,6 +28,7 @@
 - **GoalInternalEditor**: 별도 서버 권한을 통과한 내부 특이사항·지난 PT성과. 토글 없이 항상 펼쳐 두되 권한이 있을 때만 마운트한다. 지난 성과는 지난주 과제 행에 위치로 1:1 대응하므로 중간 빈 행을 보존한다. 저장 버튼을 스스로 두지 않고 상위 단일 저장에 자기 save를 넘긴다. 명시적 내부 재조회와 generation/abort 경합 보호, 관찰한401/403은 내부 기록·dirty 등록·복사 상태를 제거하고409/5xx는 초안 보존.
 - **GoalCopyPanel**: 저장된 공용 목표·과제를 '클립보드 복사'로 내보내고, 같은 내용을 노션 표 모양의 가로형 미리보기로 항상 보여준다. 저장이 성공하면 한 번 자동 복사한다. 복사 형식은 header+value 2행 HTML 표와 같은 모양의 TSV를 함께 실어 노션 표 셀에 붙도록 한다. 내부 회의록 편집 미리보기/14열 복사는 그대로. 선택 가능한 텍스트 대체; Notion 자동 기록 없음.
 - **TrainerGoalOverview**: 담당 학생의 공용 저장 목표만 집계. 실제 실적은 선택한 학생에만 요청해 전원 미팅/계약 조회를 방지.
+- **TraineeCard/ReservedSection 진입**: admin(`!viewOnly`)·담당 트레이너 카드·유보 목록은 녹색 시트 대신 compact [주간목표] (`rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50`, student 인코딩·spreadsheetId 무관). admin `returnTo=/admin/users`, trainer `returnTo=/trainer`. [웹앱 →]·배정·복귀/퇴출·read-only 가드는 그대로.
 - 세부 계약과 미검증 운영 경계: [weekly-goals.md](../domains/weekly-goals.md).
 
 ## 1. Buttons
