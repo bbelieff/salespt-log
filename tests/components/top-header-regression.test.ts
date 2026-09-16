@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("next-auth/react", () => ({ signOut: vi.fn() }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: state.trainer }) }));
 vi.mock("@/components/DirtyGuard", () => ({ useGuardedNav: () => (fn: () => void) => fn() }));
-vi.mock("@/query/me-hook", () => ({ useMe: () => ({ data: { name: "합성 사용자", cohort: "99", graduationISO: state.graduationISO } }) }));
+vi.mock("@/query/me-hook", () => ({ useMe: () => ({ data: { name: "합성 사용자", cohort: "99", spreadsheetId: "synthetic-student-sheet", graduationISO: state.graduationISO } }) }));
 vi.mock("@/query/announcements-hook", () => ({ useAnnouncements: () => ({ data: { latestPr: 0 } }) }));
 vi.mock("@/config", () => ({ guideUrl: () => "" }));
 vi.mock("@/analytics", () => ({ identifyUser: vi.fn(), resetUser: vi.fn(), markInternal: vi.fn(), clearInternal: vi.fn() }));
@@ -30,6 +30,20 @@ beforeEach(() => {
 const render = () => renderToStaticMarkup(React.createElement(TopHeader, { pageEmoji: "X", pageTitle: "합성 화면" }));
 
 describe("shared header real React rendering", () => {
+  it("uses the authenticated identity instead of the selected student on trainer pages", () => {
+    state.pathname = "/trainer";
+    const html = renderToStaticMarkup(React.createElement(TopHeader, {
+      pageEmoji: "", pageTitle: "트레이너",
+      sessionIdentity: { name: "접속 트레이너", email: "trainer@example.test" },
+    }));
+    const identity = (html.split("data-header-info")[1] ?? "").split("data-header-actions")[0];
+    expect(identity).toContain("접속 트레이너");
+    expect(identity).not.toContain("합성 사용자");
+    expect(identity).not.toContain("docs.google.com");
+    expect(html.match(/<header /g)).toHaveLength(1);
+    expect(render()).toContain("합성 사용자");
+    expect(render()).toContain("synthetic-student-sheet");
+  });
   it.each([true, false])("keeps exactly one D-day in progress banner with dates=%s", hasDates => {
     const banner = renderToStaticMarkup(React.createElement(DashboardProgressBanner, {
       today: "9/15", weekday: "화", currentWeek: 2, hasDates,

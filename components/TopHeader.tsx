@@ -22,6 +22,8 @@ interface Props {
   pageTitle: string;
   pageSubtitle?: string;
   roleMode?: "student" | "trainer";
+  /** 서버가 확인한 접속 계정. 트레이너 화면에서는 대리접속 대상과 구분한다. */
+  sessionIdentity?: { name: string; email: string };
   /**
    * 페이지 배너 우측 액션 링크 — /admin 하위 관리 화면처럼 "← 마스터 메뉴" 복귀
    * 진입점을 페이지 최상단 행에 두기 위한 슬롯(수리3 ①). 미지정 시 렌더 안 함.
@@ -52,6 +54,7 @@ export default function TopHeader({
   pageSubtitle,
   roleMode,
   pageAction,
+  sessionIdentity,
 }: Props) {
   const me = useMe();
   const trainer = useTrainerState();
@@ -99,7 +102,9 @@ export default function TopHeader({
     me.data?.name,
     me.data?.sessionRole,
   ]);
-  const display = formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
+  const display = sessionIdentity
+    ? sessionIdentity.name || sessionIdentity.email
+    : formatDisplay(me.data?.cohort ?? "", me.data?.name ?? "");
   const [popupOpen, setPopupOpen] = useState(false);
   const logoRef = useRef<HTMLButtonElement>(null);
   const [popupPosition, setPopupPosition] = useState({ left: 8, top: 56 });
@@ -141,7 +146,7 @@ export default function TopHeader({
           </button>
           {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
           <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
-            {me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
+            {!sessionIdentity && me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
               : <span className="min-w-8 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
 
 
@@ -171,12 +176,12 @@ export default function TopHeader({
             <div className="border-b border-gray-100 px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-brand-red">
-                  {me.data?.name?.[0] ?? "?"}
+                  {(sessionIdentity?.name ?? me.data?.name)?.[0] ?? "?"}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold text-gray-900">{display}</div>
                   <div className="truncate text-[11px] text-gray-500">
-                    {me.data?.email ?? ""}
+                    {sessionIdentity?.email ?? me.data?.email ?? ""}
                   </div>
                 </div>
               </div>

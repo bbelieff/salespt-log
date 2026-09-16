@@ -13,7 +13,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { signOut } from "next-auth/react";
+import PageContainer from "@/components/PageContainer";
 import { useMe } from "@/query/me-hook";
 import { useQueryClient } from "@tanstack/react-query";
 import { cohortGroupKey, cohortGroupCompare } from "@/types";
@@ -26,10 +26,8 @@ import {
 
 export default function TrainerCohortView({
   sessionEmail,
-  trainerName,
   trainees,
   activeTrainers,
-  canBackToAdmin,
   archivedCohorts = [],
 }: {
   sessionEmail: string;
@@ -156,40 +154,14 @@ export default function TrainerCohortView({
 
   return (
     <main className="min-h-dvh bg-gray-50">
-      {/*
-       * 수리3 ①: admin·관리부서는 "← 마스터 메뉴"를 페이지 배너(TopHeader pageAction)에서
-       * 쓴다 → 여기 중복 row 제거. 일반 트레이너만 신원 + 로그아웃 row 유지.
-       */}
-      {!canBackToAdmin && (
-        <header className="sticky top-app-content z-10 border-b border-gray-200 bg-white px-6 py-4">
-          <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-xs font-bold uppercase tracking-wider text-red-600">
-                Trainer
-              </div>
-              <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
-                {trainerName} · {sessionEmail}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="shrink-0 whitespace-nowrap text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
-            >
-              로그아웃
-            </button>
-          </div>
-        </header>
-      )}
-
-      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-8 px-6 py-8">
+      <PageContainer width="wide" className="space-y-4 px-4 py-4">
         <section>
           {/* 수강생출신 트레이너 — 본인 아레나 일지 전환 토글(P14). */}
-          <h1 className="text-2xl font-black tracking-tight text-gray-900">
+          <h1 className="text-lg font-black tracking-tight text-gray-900">
             수강생 명단
           </h1>
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-gray-500">
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">
               {showOnlyMine
                 ? `내 담당 ${myCount}명`
                 : `전체 ${trainees.length}명 (내 담당 ${myCount}명)`}
@@ -198,11 +170,7 @@ export default function TrainerCohortView({
             <button
               type="button"
               onClick={() => setShowOnlyMine((v) => !v)}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                showOnlyMine
-                  ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
-                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
+              className="app-header-pill shrink-0 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
               title={showOnlyMine ? "전체 명단으로 돌아가기" : `내 담당 ${myCount}명만 표시`}
             >
               {showOnlyMine ? "전체 수강생 보기" : "내 수강생만 보기"}
@@ -310,7 +278,7 @@ export default function TrainerCohortView({
             </div>
           </details>
         )}
-      </div>
+      </PageContainer>
     </main>
   );
 }

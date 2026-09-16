@@ -1491,3 +1491,7 @@ FinanceSummaryBoxes의 별도 비용 추가하기 문구를 제거한다. 추가
 
 ### ADR-0032 기간 정책
 숫자 10기 이후 과정·누적 통계·차트는 12주다. 수강 종료일과 총회일을 분리한다. 기존 기록과 시트 물리 10주 상한은 보존하며 주간목표와 11~12주 기록은 DB를 사용한다. 상세: docs/decisions/0032-twelve-week-courses.md.
+
+### 트레이너 공통 헤더·간격 (2026-09-16)
+`app/trainer/layout.tsx`는 실제 접속 계정의 이름·이메일을 `TopHeader.sessionIdentity`에 전달한다. 대리접속 대상의 이름·시트 링크를 접속 계정으로 표시하지 않는다. 로그아웃은 로고 계정 메뉴에 유지하며 본문 계정 헤더는 두지 않는다.
+`TrainerCohortView`는 `PageContainer width="wide"`, `space-y-4 px-4 py-4`, `text-lg` 제목과 `app-header-pill` 필터를 사용한다. 기존 `CohortSection`·`TraineeCard`와 주간목표 경로·권한은 유지한다. Muse 목업과 구현도 이 실제 컴포넌트를 참조한다.
