@@ -11,6 +11,7 @@
  * import 하고 TraineeCard 는 Types 를 import → 사이클 없음.
  */
 "use client";
+import { courseEndISO, isExtendedCourseCohort } from "@/config/cohort-dates";
 
 import SortableTraineeBox from "./SortableTraineeBox";
 import PersistentDetails from "./PersistentDetails";
@@ -118,10 +119,11 @@ export function CohortSection({
   // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
   const rep = list.find((u) => u.courseStartISO && u.graduationISO);
   const start = fmtDateYY(rep?.courseStartISO);
-  const end = fmtDateYY(rep?.graduationISO);
+  const courseEnd = isExtendedCourseCohort(cohort) ? courseEndISO(rep?.courseStartISO ?? "", cohort) : rep?.graduationISO;
+  const end = fmtDateYY(courseEnd);
   const { pct, dday } = cohortProgress(
     rep?.courseStartISO,
-    rep?.graduationISO,
+    courseEnd,
   );
   // 기수 박스: 배경에서 더 잘 구분되게 slate 톤 + 진한 테두리. open 상태일 때
   // 헤더 영역에 좌측 indigo accent bar 로 무게감. (2026-05-13 시인성 개선)

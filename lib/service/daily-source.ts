@@ -6,6 +6,7 @@
  * 순수 변환: 시트 경로(readWeek rows)와 DB 경로(sheet_rows payload)가 **같은 함수**를
  * 지나게 해 정합을 구조적으로 보장 — tests/service/daily-source.test.ts 가 대조 고정.
  */
+import { parseNumericCohort } from "@/config/cohort-dates";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import { isArenaCohortLabel } from "@/repo/user-priority";
 
@@ -33,7 +34,7 @@ const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10", "7", "6", "11"])
  * 라벨은 현재 그대로(A1-N) 판정·적재 — 라벨 통합(A1-N→N)은 R5 범위, 여기서 불변. */
 export function isDbReadPilot(cohort: string | null | undefined): boolean {
   const norm = String(cohort ?? "").replace(/기\s*$/, "").trim();
-  return DB_READ_COHORTS.has(norm) || isArenaCohortLabel(norm);
+  return DB_READ_COHORTS.has(norm) || isArenaCohortLabel(norm) || (parseNumericCohort(norm) ?? 0) >= 12;
 }
 
 /** 읽기 소스 결정 — DB 활성(env) && 파일럿 기수일 때만 "db". */

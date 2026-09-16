@@ -4,7 +4,7 @@ import PageContainer from "@/components/PageContainer";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 
 import { useMemo, useState } from "react";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { courseWeeksForCohort, courseEndISO, ceremonyISO, isExtendedCourseCohort } from "@/config/cohort-dates";
 import { parseISO, todayKST, weekIndexOf } from "@/util/week";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
@@ -39,20 +39,22 @@ export default function DashboardPage() {
   const dash = useDashboard();
 
   const today = todayKST();
+  const weeks = courseWeeksForCohort(me.data?.cohort);
 
   // 진행도 라벨 — 더미 날짜 fallback 은 G5 가드 위반이라 제거(R4 W1-3).
   // ⚠️ 날짜가 없어도 **배너 자체는 렌더**한다(hasDates=false 로 진행도 줄만 숨김) — me 시트 read 가
   // 실패해도(200+빈문자열 강등, me.ts) 본문의 매출/비용과 경비장부 진입점은 유지한다.
   const banner = useMemo(() => {
     const courseStart = me.data?.courseStartISO;
-    const graduation = me.data?.graduationISO;
+    const ceremony = ceremonyISO(me.data?.courseStartISO ?? "", me.data?.cohort) || me.data?.graduationISO;
+    const graduation = isExtendedCourseCohort(me.data?.cohort) ? courseEndISO(courseStart ?? "", me.data?.cohort) : ceremony;
     if (!courseStart || !graduation) return { hasDates: false as const };
     const elapsed = daysBetween(courseStart, today);
     const total = daysBetween(courseStart, graduation); // O2−O1 (7기+ 50일)
     // 주차 앵커 = weekIndexOf 정본(시작일, lib/util/week.ts).
     // 코스주차 = 통계 창 1~STATS_WEEKS clamp / 수료 = 종강일(O2) 경과 — 주차 산술 아님(8주차 도중 종강 가능).
     const actualWeek = weekIndexOf(parseISO(today), parseISO(courseStart));
-    const courseWeek = Math.max(1, Math.min(STATS_WEEKS, actualWeek));
+    const courseWeek = Math.max(1, Math.min(weeks, actualWeek));
     const graduated = daysBetween(graduation, today) > 0;
     const progressPercent = Math.max(0, Math.min(100, (elapsed / total) * 100));
     const weekday = KO_DAY[new Date(today + "T00:00").getDay()] ?? "";
@@ -64,9 +66,10 @@ export default function DashboardPage() {
       graduated,
       startDate: fmtMD(courseStart),
       progressPercent,
-      graduationDate: fmtMD(graduation),
+      graduationDate: fmtMD(ceremony || graduation),
+      endISO: graduation,
     };
-  }, [me.data, today]);
+  }, [me.data, today, weeks]);
 
   // 계약 건수 (matrix.계약 합) — OperatingProfitCard 보조 텍스트
   const contractCount = useMemo(() => {
@@ -76,7 +79,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
-      <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
+      <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${weeks}주 누적`} />
 
       <div className="sticky top-app-content z-30 bg-white" aria-label="오늘 날짜와 수강 진행">
         <PageContainer width="wide">
@@ -89,7 +92,7 @@ export default function DashboardPage() {
             startDate={banner.hasDates ? banner.startDate : ""}
             progressPercent={banner.hasDates ? banner.progressPercent : 0}
             graduationDate={banner.hasDates ? banner.graduationDate : ""}
-            graduationISO={me.data?.graduationISO}
+            graduationISO={banner.hasDates ? banner.endISO : me.data?.graduationISO}
           />
         </PageContainer>
       </div>
@@ -139,7 +142,7 @@ export default function DashboardPage() {
                 additionalCost={dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
                 onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
               />
-              <OperatingProfitCard
+              <OperatingProfitCard weeks={weeks}
                 revenue={dash.data.kpi.총매출}
                 cost={dash.data.kpi.총비용}
                 contractCount={contractCount}
@@ -153,7 +156,7 @@ export default function DashboardPage() {
             {/* 좌측 두 카드와 우측 퍼널의 위아래 끝을 맞춘다. */}
             <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-stretch pc:gap-3 pc:space-y-0">
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0">
-                <ProductivityIndicators matrix={dash.data.channelMatrix} />
+                <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
                 <WeeklyGoalSummary className="pc:flex-1" />
               </div>
               <FunnelChart matrix={dash.data.channelMatrix} />

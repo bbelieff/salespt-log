@@ -246,7 +246,11 @@ describe("G5: YYYY-MM-DD 리터럴 금지 (앱 코드)", () => {
     for (const file of appFiles()) {
       const r = rel(file);
       if (BASELINE.has(r)) continue;
-      const src = stripComments(readFileSync(file, "utf8"));
+      let src = stripComments(readFileSync(file, "utf8"));
+      // ADR-0032: 사용자가 지정한 10기 총회일 한 값만 허용한다.
+      if (r === "lib/config/cohort-dates.ts") {
+        src = src.replace('const COHORT_10_CEREMONY_OVERRIDE = "2026-10-25";', "");
+      }
       const m = src.match(/["'`]\d{4}-\d{2}-\d{2}/g);
       if (m) bad.push(`${r} (${m.length}건)`);
     }

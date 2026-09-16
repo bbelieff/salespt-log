@@ -38,7 +38,7 @@ import {
   type DatedCostRow,
 } from "./dashboard-cost-carryover";
 import { findUserByEmail } from "@/repo/users";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
@@ -267,7 +267,7 @@ function assembleView(input: {
   const cost = finance.totalCost;
   const profit = finance.operatingProfit;
   const profitRate = finance.operatingProfitRate;
-  const weeklyTrend = Array.from({ length: STATS_WEEKS }, (_, i) => ({
+  const weeklyTrend = Array.from({ length: input.weeklyContracts.length }, (_, i) => ({
     주차: i + 1,
     계약수: num(input.weeklyContracts[i]),
     활동량: num(input.weeklyActivity[i]),
@@ -373,7 +373,7 @@ async function loadDashboardFromDb(
   return {
     view,
     termByChannel: term.byChannel,
-    termByWeek: terminatedByWeek(contracts, courseStart),
+    termByWeek: terminatedByWeek(contracts, courseStart, courseWeeksForCohort(cohort)),
   };
 }
 

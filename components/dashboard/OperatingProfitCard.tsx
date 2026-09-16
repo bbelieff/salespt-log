@@ -11,6 +11,7 @@ import { STATS_WEEKS } from "@/config/cohort-dates";
  * 구조: 한 줄 금액·이익률 요약. 펼치면 시즌/이월/전체 매출·비용을 확인한다.
  */
 interface Props {
+  weeks?: number;
   revenue: number; // 아레나 집계 매출 (점수·전광판 기준)
   cost: number; // 총비용
   contractCount?: number; // 계약 건수 (없으면 부연 우측 비움)
@@ -28,6 +29,7 @@ interface Props {
 const fmtMoney = formatMoney;
 
 export default function OperatingProfitCard({
+  weeks = STATS_WEEKS,
   revenue,
   cost,
   contractCount,
@@ -44,7 +46,7 @@ export default function OperatingProfitCard({
         <summary aria-label="영업이익과 매출·비용 상세" className="cursor-pointer list-none rounded-lg focus-visible:ring-2 focus-visible:ring-blue-500">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="flex items-center gap-1.5 font-semibold text-slate-600"><span aria-hidden className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">＝</span>영업이익</span>
-            <span className="text-slate-500">{STATS_WEEKS}주 누적{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}　⌄</span>
+            <span className="text-slate-500">{weeks}주 누적{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}　⌄</span>
           </div>
           <div className="flex flex-wrap items-baseline justify-between gap-2 tabular-nums">
             <strong className="min-w-0 break-all text-xl font-bold text-indigo-700">₩{fmtMoney(profit)}</strong>

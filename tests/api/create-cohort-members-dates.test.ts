@@ -113,7 +113,7 @@ describe("POST /api/admin/create-cohort-members — 수강시작일", () => {
     expect(api.writeCourseDates).toHaveBeenCalledWith(
       NEW_SHEET,
       "2026-08-07",
-      "2026-09-26", // O1 + 50일 (ADR-0005)
+      "2026-10-25", // ADR-0032: 10기 종강총회 예외
       { allowTemplateOverwrite: true },
     );
     expect(body.dates).toEqual([
@@ -123,7 +123,7 @@ describe("POST /api/admin/create-cohort-members — 수강시작일", () => {
         status: "written",
         written: ["O1", "O2"],
         courseStartISO: "2026-08-07",
-        graduationISO: "2026-09-26",
+        graduationISO: "2026-10-25",
       },
     ]);
     // 정상 경로에서는 리포트용 추가 시트 read 를 하지 않는다.

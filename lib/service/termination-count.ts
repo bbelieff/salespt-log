@@ -86,15 +86,16 @@ export function terminatedByChannel(
 export function terminatedByWeek(
   payments: ContractPayment[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): number[] {
-  const weeks = new Array<number>(STATS_WEEKS).fill(0);
+  const weeks = new Array<number>(span).fill(0);
   for (const p of payments) {
     if (!isTerminatedContract(p)) continue;
     const d = (p.계약일 ?? "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
     const w = weekIndexOf(parseISO(d), courseStart);
     // 8주 밖(0·9·10)은 raw 도 미포함 → 차감 안 함. (noUncheckedIndexedAccess 대응)
-    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] = (weeks[w - 1] ?? 0) + 1;
+    if (w >= 1 && w <= span) weeks[w - 1] = (weeks[w - 1] ?? 0) + 1;
   }
   return weeks;
 }
