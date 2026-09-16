@@ -293,7 +293,7 @@ export default function FinanceSummaryBoxes({
             <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-gray-200 text-xs font-bold leading-none text-gray-700">
               ＋
             </span>
-            <span className="min-w-0 whitespace-nowrap text-base font-semibold text-slate-600">매출</span>
+            <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">매출</span>
             <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "revenue" ? "rotate-180" : ""}`}>⌄</span>
           </span>
           <span ref={revenueAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-slate-900" style={amountStyle}>
@@ -315,7 +315,7 @@ export default function FinanceSummaryBoxes({
             <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-red-100 text-xs font-bold leading-none text-red-600">
               －
             </span>
-            <span className="min-w-0 whitespace-nowrap text-base font-semibold text-slate-600">비용</span>
+            <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">비용</span>
             <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "cost" ? "rotate-180" : ""}`}>⌄</span>
           </span>
           <span ref={costAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-red-600" style={amountStyle}>
@@ -337,7 +337,7 @@ export default function FinanceSummaryBoxes({
             <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-blue-100 text-xs font-bold leading-none text-blue-700">
               ＝
             </span>
-            <span className="min-w-0 whitespace-nowrap text-base font-semibold text-slate-600">영업이익</span>
+            <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">영업이익</span>
             <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "profit" ? "rotate-180" : ""}`}>⌄</span>
           </span>
           <span
