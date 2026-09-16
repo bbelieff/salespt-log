@@ -6,8 +6,10 @@
  *   - 정보: 이름·email·다중계정 배지·담당 트레이너
  *   - 팀명 inline input (Enter/blur 시 자동 저장) — admin only
  *   - **[유보]**: admin only (`!viewOnly`)
- *   - **[📊 시트] / [웹앱 →]**: admin (`!viewOnly`) OR trainer 본인 담당
- *     (`trainerEmailLc` 가 `u.assignedTrainer` 에 포함될 때) — 트레이너 뷰 지원
+ *   - **admin**: [📊 시트] / [웹앱 →] (`!viewOnly`).
+ *   - **트레이너 뷰** (`viewOnly` + `trainerEmailLc` + 본인 담당):
+ *     녹색 시트 대신 중립 outlined [주간목표] (`/weekly-goals?student=…&returnTo=%2Ftrainer`,
+ *     spreadsheetId 무관, impersonation 미사용) + [웹앱 →] 유지. 미배정은 액션 없음.
  *   - **PR C-1**: dragListeners 가 있으면 좌측 [⋮⋮] 드래그 핸들 렌더링.
  *     핸들만 dnd-kit 의 listeners 받아 카드 본문 클릭(버튼) 과 분리.
  *
@@ -15,6 +17,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
 import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
@@ -147,11 +150,17 @@ export default function TraineeCard({
     onSetTeam(u.email, trimmed);
   }
 
-  // 트레이너 뷰 — viewOnly 일 때 본인 담당 수강생만 시트/웹앱 버튼 노출.
+  // 트레이너 뷰 — viewOnly 일 때 본인 담당 수강생만 주간목표/웹앱 버튼 노출.
+  // 담당 카드의 주간 목표 진입은 impersonation 없이 서버 권한이 있는
+  // /weekly-goals?student=...&returnTo=%2Ftrainer 로 이동 (spreadsheetId 무관).
   const isAssignedToTrainer =
     !!trainerEmailLc &&
     parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase());
   const showSheetWebBtns = !viewOnly || isAssignedToTrainer;
+  const isTrainerGoalView = !!viewOnly && !!trainerEmailLc && isAssignedToTrainer;
+  const goalHref =
+    `/weekly-goals?student=${encodeURIComponent(u.email)}` +
+    `&returnTo=${encodeURIComponent("/trainer")}`;
 
   const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
 
@@ -197,16 +206,28 @@ export default function TraineeCard({
               <div className="flex shrink-0 items-center gap-1">
                 {/* 2026-05-17 [A5]: 카드별 유보버튼 제거 → 헤더 BulkReserveButton 으로 통합.
                     onReserve prop 은 컴파일 호환 위해 유지 (호출 측 영향 최소화). */}
-                {showSheetWebBtns && u.spreadsheetId && (
-                  <a
-                    href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="구글 시트 원본 새 탭으로 열기"
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                {/* 트레이너 뷰(담당): 녹색 시트 링크 대신 중립 outlined [주간목표]
+                    (spreadsheetId 무관). admin(!viewOnly) 시트 링크는 그대로 유지. */}
+                {isTrainerGoalView ? (
+                  <Link
+                    href={goalHref}
+                    title="주간 목표·PT과제 열기"
+                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
                   >
-                    📊 시트
-                  </a>
+                    주간목표
+                  </Link>
+                ) : (
+                  showSheetWebBtns && u.spreadsheetId && (
+                    <a
+                      href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="구글 시트 원본 새 탭으로 열기"
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      📊 시트
+                    </a>
+                  )
                 )}
                 {showSheetWebBtns && (
                   <button

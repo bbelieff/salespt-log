@@ -2,15 +2,13 @@
  * /trainer — 트레이너 랜딩 (수강생 관리의 read-only 권한축소판).
  *
  * **2026-05-15 개편**: 이전 단순 grid 목록(TrainerLanding) → admin/users 와 동일한
- * 기수박스 > 팀박스 > TraineeCard 계층(TrainerCohortView). 트레이너는 전체 명단을
- * 볼 수 있고, **본인 담당에만** [시트]/[웹앱] 버튼이 활성화됨.
+ * 기수박스 > 팀박스 > TraineeCard 계층(TrainerCohortView). 기본은 내 담당만
+ * 보이고, **본인 담당 카드에만** [주간목표]/[웹앱] 버튼이 활성화됨.
  *
  * **force-dynamic**: admin 이 /admin/trainers 에서 담당 배정 직후 트레이너가
  * 이 페이지를 열면 즉시 반영되어야 함. 페이지 레벨 RSC 캐시 회피.
  */
-import TrainerInvites from "@/components/auth/TrainerInvites";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import {
   getSessionEmail,
   getEffectiveRole,
@@ -110,24 +108,10 @@ export default async function TrainerPage() {
 
   const archivedLabels = Array.from(archivedSet);
 
+  // trainer-weekly-entry: 상단 "담당 수강생 주간 목표·PT과제" 링크와 TrainerInvites
+  // 렌더를 제거. 주간 목표 진입은 담당 카드의 [주간목표] 링크로 이동.
+  // 초대 관리는 admin 화면에 유지, /trainer/weekly-goals 라우트는 그대로 둔다.
   return (
-    <>
-    {/* 수리3 ②: full-bleed 흰 줄 → 본문과 같은 폭·카드 규격. 이동처는 /trainer/weekly-goals. */}
-    <div className="mx-auto max-w-3xl px-6 pt-6">
-      <Link
-        href="/trainer/weekly-goals"
-        className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50"
-      >
-        <span aria-hidden className="text-lg">📋</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-gray-900">담당 수강생 주간 목표·PT과제</span>
-          <span className="block text-xs text-gray-500">이번 주 목표와 PT과제 확인</span>
-        </span>
-        <span aria-hidden className="shrink-0 text-gray-400">→</span>
-      </Link>
-    </div>
-    {/* 수리3 ③: 본문 컨테이너 안으로(좌우 정렬 일치). 카드 자체는 기본 접힘. */}
-    {isAdmin && <div className="mx-auto max-w-3xl px-6"><TrainerInvites /></div>}
     <TrainerCohortView
       sessionEmail={sessionEmail}
       trainerName={trainerName}
@@ -136,6 +120,5 @@ export default async function TrainerPage() {
       canBackToAdmin={canBackToAdmin}
       archivedCohorts={archivedLabels}
     />
-    </>
   );
 }
