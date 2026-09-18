@@ -60,6 +60,46 @@ describe("[1] 업무매뉴얼 버튼", () => {
   });
 });
 
+/**
+ * 2026-09-18 belie — 실무(수납) 탭 업무매뉴얼 **옆에** 정책자금 뉴스 버튼.
+ *
+ * 이 가드가 지키는 것은 문구가 아니라 **날짜를 박지 않는 것**이다.
+ * 뉴스 페이지는 날짜별 주소로도 열리지만 그날치만 남는다(실측 2026-09-18:
+ * `/news/2026-09-17` → 404). 날짜를 박은 링크를 배포하면 **다음 날 404** 를 띄운다.
+ * `/news/latest` 는 그날치와 바이트 단위로 동일한 별칭이라 매일 알아서 최신이 된다.
+ */
+describe("[3] 정책자금 뉴스 버튼", () => {
+  it("업무매뉴얼 옆에 새 탭으로 열리는 버튼이 있다", () => {
+    expect(section).toContain("POLICY_NEWS_URL");
+    expect(section).toContain("정책자금 뉴스");
+    // 두 버튼이 한 줄에 나란히 — 세로로 쌓으면 모바일에서 계약 목록이 밀린다.
+    expect(sectionCode).toContain("grid-cols-2");
+  });
+
+  it("주소는 config 한 곳에만 있다", () => {
+    expect(links).toContain("POLICY_NEWS_URL");
+    expect(sectionCode).not.toContain("salesptlog.online"); // 컴포넌트 하드코딩 금지
+  });
+
+  it("★날짜를 박지 않는다 — 박으면 다음 날 404", () => {
+    const url = links.match(/POLICY_NEWS_URL\s*=\s*"([^"]+)"/)?.[1] ?? "";
+    expect(url).toContain("/news/latest");
+    expect(url).not.toMatch(/\d{4}-\d{2}-\d{2}/); // 날짜가 들어간 주소 금지
+  });
+
+  it("★앱 안에 끼워 넣지 않는다 — X-Frame-Options: DENY 라 빈 화면만 나온다", () => {
+    expect(sectionCode).not.toContain("<iframe");
+    // 새 탭으로 여는 표식이 붙어 있어야 한다(보안 기본값 포함).
+    expect(sectionCode).toContain('target="_blank"');
+    expect(sectionCode).toContain('rel="noopener noreferrer"');
+  });
+
+  it("기존 업무매뉴얼 버튼은 그대로 남아 있다", () => {
+    expect(section).toContain("WORK_MANUAL_URL");
+    expect(section).toContain("업무매뉴얼 보기");
+  });
+});
+
 describe("[2] 기록일 = 미팅예정일 → 빨강", () => {
   it("★같은 날은 빨강, 못 채운 칸은 노랑 — 색이 겹치지 않는다", () => {
     expect(confirm).toContain('check: "bg-red-50"');

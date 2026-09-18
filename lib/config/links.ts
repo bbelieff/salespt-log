@@ -28,3 +28,23 @@ export const WORK_MANUAL_URL =
  */
 export const GUIDE_URL =
   "https://cafe.naver.com/f-e/cafes/31423785/menus/152?viewType=L";
+
+/**
+ * 정책자금 데일리 — 실무(수납) 탭에서 오늘 뜬 공고로 건너가는 문 (2026-09-18 belie).
+ *
+ * ## 왜 `/news/latest` 인가 — 날짜를 박으면 다음 날 죽는다
+ * 이 페이지는 **날짜별 주소**(`/news/2026-09-18`)로도 열리지만 **그날치만 남는다.**
+ * 실측(2026-09-18): `/news/2026-09-17` → **404**, `/news` 목록도 **404**.
+ * 반면 `/news/latest` 는 **그날치와 바이트 단위로 동일한 별칭**이라 매일 알아서 최신이 된다.
+ * 날짜를 박은 링크를 배포하면 **바로 다음 날 404 를 띄운다.**
+ *
+ * ## 왜 같은 도메인인데 절대주소인가
+ * 이 파일은 앱(Next.js)이 만드는 화면이 아니라 **VPS 의 Caddy 가 내려주는 정적 HTML**이다
+ * (Next.js 라우트가 아니라 `app/` 어디에도 없다). 앱 배포와 수명이 다르므로 앱 내부 링크가
+ * 아니라 바깥 링크로 취급한다 — 그래서 `target="_blank"` 로 연다.
+ *
+ * ## 앱 안에 끼워 넣지 못한다
+ * 응답 헤더가 `X-Frame-Options: DENY` 라 iframe 임베드가 **브라우저 차원에서 막힌다.**
+ * 미리보기·모달을 시도해도 빈 화면만 나온다. 새 탭이 유일한 방법이다.
+ */
+export const POLICY_NEWS_URL = "https://salesptlog.online/news/latest";
