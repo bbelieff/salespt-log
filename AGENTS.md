@@ -254,3 +254,65 @@ Linear MCP 가 없으면 같은 양식을 `docs/worklog.md` 에 남긴다 — **
 - 헤더·버튼·폰트·간격은 위 컴포넌트와 `docs/design/components.md`를 기준으로 재사용한다. 임의로 큰 버튼·행을 새로 만들지 않는다.
 - 트레이너 접속 계정은 최상단 공통 헤더에 표시한다. 선택 수강생과 접속 계정을 혼동하거나 본문에 계정 헤더를 중복하지 않는다.
 - 목업의 새 페이지·탭 통합은 제안이다. 승인된 UI 범위를 넘어 경로·권한·데이터를 바꾸지 않는다. 모바일·PC의 헤더 한 줄과 넘침을 검증한다.
+<!-- graft:start -->
+## Graft — repo context graph
+
+> **먼저 확인 — `graft/` 폴더가 없으면 아직 준비가 안 된 것이다.**
+> 그래프(`graft/`, 22MB)와 설정(`.mcp.json`·`.claude/settings.json`)은 이 레포의
+> `.gitignore` 규칙(`/graft/`, `*.json`)에 걸려 **커밋되지 않는다.** 즉 클론·새 워크트리
+> 에서는 **아래 명령을 한 번 돌려야** 이 절의 내용이 사실이 된다. 안 돌린 상태로 graft 를
+> 부르면 빈 결과가 나오므로, 그때는 평소대로 grep 한다.
+>
+> ```bash
+> npm install -g @nanonets/graft   # 최초 1회 (전역)
+> graft init --no-global           # 이 레포에만 배선. --no-global 을 반드시 붙인다
+> graft build                      # 그래프 생성 — 무료·API 키 불필요 (이 레포 기준 46초)
+> ```
+>
+> **`--no-global` 이 빠지면** `~/.claude/settings.json`·`~/.claude.json`·`~/.codex/config.toml`
+> 에 훅과 MCP 가 박혀 **이 사람의 모든 레포**가 영향을 받는다. 되돌리기 번거로우니 꼭 붙인다.
+>
+> **Windows 주의**: `tree-sitter-kotlin` 만 미리 빌드된 바이너리가 없어 Visual Studio C++
+> 빌드도구가 없으면 설치가 실패한다. 이 레포는 Kotlin 을 쓰지 않으므로 빌드도구를 깔거나,
+> 그 패키지의 `bindings/node/index.js` 를 실패해도 넘어가는 스텁으로 바꾸면 된다.
+>
+> **코드를 고친 뒤**: 구조 그래프는 질의 직전에 자동 갱신된다(약 3ms). `graft check` 로 확인.
+
+This repo is indexed in `graft/`: small linked markdown nodes that explain each
+system and carry exact file:line spans, kept in sync with the code through git.
+
+For ANY task here — understanding how something works, finding where code lives,
+or scoping a change — get context from the graph before grepping or opening
+source files. Re-ask freely (it's cheap) and reuse literal identifiers you
+already have (symbol, error string, file name) as the query. New to this repo?
+Run `graft map` first — a token-budgeted orientation (dir clusters, hubs,
+hotspots), no LLM, no key.
+
+- Run `graft ask "<your question>" --source` → ranked nodes with the relevant
+  code spans inlined (each hit's ≤8-line crux by default; `--full` for whole
+  definitions when the crux isn't enough). Match the tool to the task shape:
+  for understanding or editing, the top node IS the answer — cite its
+  `covers:` file:line spans and edit straight from `--source`. For
+  exhaustive tasks ("every occurrence / every caller of this pattern"), ranked
+  results are top-N, not complete — run `graft grep "<literal>"` instead
+  (exhaustive over indexed files, grouped by enclosing symbol), falling back
+  to raw `grep -rn` only for unindexed files.
+- `graft skeleton <file>` → every definition's signature + span, ~10× cheaper
+  than reading the file; use it to skim an API surface.
+- `graft callers <symbol>` gives precomputed, exact edges — who calls this.
+  Add `--direction out` for what it calls, or `--depth N` to walk
+  transitively for the full blast radius. For structural questions, skip
+  ranking and use this directly.
+- Or browse: `graft/INDEX.md` lists every node; follow the links.
+- Monorepos and folders of multiple repos rank fairly across sub-projects —
+  hits carry `[scope/]` labels naming which one they're from. Narrow with
+  `graft ask "<task>" --in <scope>/` once you know where you're working.
+
+If a returned span is truncated ("+N more lines"), open the file at that exact
+range before finalizing. Only open source files when a node genuinely lacks a
+needed detail, and then at the exact file:line the node points to — never
+re-read whole files.
+
+After big code changes, refresh the graph with `graft build` (deterministic,
+no API key, $0).
+<!-- graft:end -->
