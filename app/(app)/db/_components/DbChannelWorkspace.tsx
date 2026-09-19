@@ -36,6 +36,7 @@ import RowForm from "./RowForm";
 import ConfirmModal from "./ConfirmModal";
 import { useRouter } from "next/navigation";
 import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
+import { eulReul, iGa } from "@/util/josa";
 
 type BackendRow = { row: number } & Record<string, unknown>;
 
@@ -74,7 +75,8 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
   const [pendingRow, setPendingRow] = useState<number | "add" | null>(null);
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
-  // 2026-05-17 [DB-1/DB-2]: 추가 후 컨택탭 생산 입력 안내 (현수막 제외).
+  // 2026-05-17 [DB-1/DB-2]: 목록 추가 후 「다음에 뭘 해야 하는지」 안내.
+  // 2026-09-19: 전 채널로 확대(현수막 제외 해제) + 채널별로 말이 갈린다(handleAdd 주석).
   // 2026-06-03 [교차탭1]: 추가행 날짜도 담아 컨택탭에 채널+날짜를 들고 넘김.
   const [productionHint, setProductionHint] = useState<{
     channel: ChannelKey;
@@ -116,14 +118,25 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
   const ch = CHANNELS[activeCh];
   const rows = rowsByChannel[activeCh];
 
-  // 안내 모달이 쓸 말 — **그 채널 화면에 실제로 적혀 있는 단어**여야 한다.
-  // 목록 이름은 채널마다 다르고(구매목록 / 생산목록 / 제작목록 / 영업기회),
-  // 현수막의 컨택탭 스테퍼는 「생산」이 아니라 「게시」다(ADR-0025 — 현수막은 생산=게시).
-  // 안내가 화면에 없는 단어를 말하면 학생이 못 찾고, 못 찾으면 기록이 비어 대시보드도 빈다.
+  // 안내 모달이 쓸 말 — **그 채널 컨택탭 화면에 실제로 있는 것**만 말한다.
+  //
+  // 채널마다 「목록을 넣은 뒤 학생이 더 할 일」이 다르다. 그런데 예전 안내는 전 채널에
+  // "컨택관리에서 **생산**을 기록하라"고 똑같이 말했다. 실측하면 그게 가능한 채널이 없다시피 하다:
+  //   · 매입DB  — 컨택 첫 행이 「유입대기 🔒DB자동」 **읽기전용**. 손으로 못 적는다.
+  //   · 콜·지·기·소 — 첫 행이 「생산 🔒DB자동」, 유입 행도 잠김(ADR-0029 파생). 역시 못 적는다.
+  //   · 직접생산 — 「유입」 스테퍼로 적는다. 「생산」이 아니다(ADR-0024).
+  //   · 현수막   — 「게시」 스테퍼로 적는다. 「생산」이 아니다(ADR-0025).
+  // 즉 "생산을 기록하라"는 **어느 채널에도 맞지 않는 말**이었다. 학생은 화면에 없는 단어를
+  // 찾다 포기하고, 기록이 비면 대시보드도 빈다(대시보드는 주문·재고를 보지 않는다).
+  //
   // ※ 활성 채널이 아니라 **안내가 가리키는 채널**로 조회한다(저장 후 채널을 옮길 수 있다).
-  const hintCh = productionHint ? CHANNELS[productionHint.channel] : null;
-  const hintRecordsLabel = hintCh?.recordsLabel ?? "목록";
-  const hintMetricLabel = productionHint?.channel === "banner" ? "게시" : "생산";
+  const hintKey = productionHint?.channel ?? null;
+  const hintRecordsLabel = hintKey ? CHANNELS[hintKey].recordsLabel : "목록";
+  /** 그 채널에서 학생이 실제로 손으로 넣어야 하는 지표명. null = 넣을 것 없음(자동). */
+  const hintMetricLabel: string | null =
+    hintKey === "banner" ? "게시" : hintKey === "direct" ? "유입" : null;
+  /** 컨택탭에서 강조할 스테퍼 — 채널이 실제로 쓰는 지표여야 한다. */
+  const hintFocus = hintKey === "direct" ? "inflow" : "production";
 
   // DB생산 [1]: 채널 진입 시 최신 행을 기본 펼침(접어두지 않음). 채널당 1회 —
   // 이후 사용자가 접/펼 자유롭게(데이터 refetch 로 되돌리지 않음).
@@ -164,15 +177,20 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
       // 2026-06-03 [교차탭1]: 입력한 날짜를 캡처 (clear 전).
       const addedDate = String(addDraft[CHANNEL_DATE_FIELD[activeCh]] ?? "");
       setAddOpen(false);
-      showToast(`${ch.recordsLabel}이 추가되었습니다 ✨`);
-      // 2026-05-17 [DB-1/DB-2]: 현수막 외 채널은 컨택탭 생산 입력 안내.
-      // 현수막은 게시한날=생산이라 별도 입력 불필요.
-      if (activeCh !== "banner") {
-        setProductionHint({
-          channel: activeCh,
-          date: /^\d{4}-\d{2}-\d{2}$/.test(addedDate) ? addedDate : undefined,
-        });
-      }
+      showToast(`${ch.recordsLabel}${iGa(ch.recordsLabel)} 추가되었습니다 ✨`);
+      // 2026-05-17 [DB-1/DB-2]: 목록 추가 후 다음 할 일 안내.
+      //
+      // 2026-09-19 — 여기 있던 `if (activeCh !== "banner")` 를 **없앴다.** 근거였던
+      // "현수막은 게시한날=생산이라 별도 입력 불필요" 는 ADR-0023(게시로그를 DB생산 탭에
+      // 따로 적으면 syncProduction 이 E 를 채우던 시절) 기준이라 그때는 맞았다. 그러나
+      // **ADR-0025(2026-06-23)가 게시로그를 폐기**하고 생산(E)=게시를 **컨택탭 스테퍼 소유**로
+      // 옮겼다. 그 뒤로 현수막은 **컨택에서 게시를 적어야만** 지표가 생긴다 — 즉 안내가
+      // 가장 필요한 채널인데 유일하게 빠져 있었다. 실제로 「목록을 넣었는데 대시보드에
+      // 안 뜬다」 신고가 여기서 나왔다. 안내 문구는 채널별로 갈린다(위 hintMetricLabel).
+      setProductionHint({
+        channel: activeCh,
+        date: /^\d{4}-\d{2}-\d{2}$/.test(addedDate) ? addedDate : undefined,
+      });
     } catch (e) {
       showToast(`추가 실패: ${(e as Error).message}`);
     } finally {
@@ -367,31 +385,36 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
       <CrossTabHintModal
         open={productionHint !== null}
         title={
-          productionHint?.channel === "direct"
-            ? "📞 컨택관리에서 유입을 입력하세요"
-            : `✏️ 컨택관리에 ${hintMetricLabel} 입력하셨나요?`
+          hintMetricLabel
+            ? `📞 컨택관리에서 ${hintMetricLabel}${eulReul(hintMetricLabel)} 입력하세요`
+            : "✅ 추가됐어요 — 더 하실 일은 없어요"
         }
         body={
-          productionHint?.channel === "direct" ? (
+          hintMetricLabel ? (
+            // 입력형 — 학생이 컨택탭에서 손으로 넣어야 지표가 생긴다.
             <>
-              생산목록(기간)이 추가됐어요. 이제 <b>컨택관리</b>에서 <b>유입</b>을
-              +입력·저장하면 이 기간의 <b>생산개수</b>가 자동으로 집계돼요.
+              <b>{hintKey ? KEY_TO_BACKEND[hintKey] : ""}</b> {hintRecordsLabel}
+              {iGa(hintRecordsLabel)} 추가됐어요. 이제 <b>컨택관리</b>에서{" "}
+              <b>{hintMetricLabel}</b>
+              {eulReul(hintMetricLabel)} 입력하면 <b>대시보드에 바로 보여요.</b>
             </>
           ) : (
+            // 자동형 — 컨택탭 해당 행이 「🔒 DB자동」 읽기전용이라 손댈 것이 없다.
             <>
-              <b>{productionHint ? KEY_TO_BACKEND[productionHint.channel] : ""}</b>{" "}
-              {hintRecordsLabel} 추가됐어요. 컨택관리 탭의 해당 일자/채널에{" "}
-              <b>{hintMetricLabel}</b>도 기록해야 <b>대시보드에 반영</b>돼요.
+              <b>{hintKey ? KEY_TO_BACKEND[hintKey] : ""}</b> {hintRecordsLabel}
+              {iGa(hintRecordsLabel)} 추가됐어요. <b>따로 입력하지 않으셔도 돼요</b> —
+              컨택관리에 자동으로 반영돼요.
             </>
           )
         }
-        navLabel="📞 컨택관리로 이동"
+        navLabel={hintMetricLabel ? "📞 컨택관리로 이동" : "📞 확인하러 가기"}
         onNavigate={() => {
           const hint = productionHint;
+          const focus = hintFocus;
           setProductionHint(null);
           if (hint) {
             const ch = KEY_TO_BACKEND[hint.channel];
-            const qs = new URLSearchParams({ channel: ch, focus: "production" });
+            const qs = new URLSearchParams({ channel: ch, focus });
             if (hint.date) qs.set("date", hint.date);
             router.push(`/contact?${qs.toString()}`);
           } else {
