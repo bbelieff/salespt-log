@@ -17,6 +17,7 @@ import type { PaymentSlot, Progress, Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
+import { sameInstitution } from "@/util/institution-match";
 
 const SLOT_STYLES = {
   1: {
@@ -274,7 +275,13 @@ export default function PaymentSlotForm({
           onChange={(v) => set("메모", v)}
         />
         {/* ToDo 섹션 (Scope 2) — 메모와 진행률 사이, 이 기관(슬롯) 단위.
-            키는 저장본(cp) 진행기관 — draft(미저장)가 아니라 저장값과만 묶음. */}
+            키는 저장본(cp) 진행기관 — draft(미저장)가 아니라 저장값과만 묶음.
+
+            2026-09-19: 공백만 달라도 ToDo 가 통째로 사라지던 것을 고쳤다 — 실제 사고.
+            슬롯 진행기관이 「신용보증기금 」(끝 공백 1개), ToDo 는 「신용보증기금」이라
+            `===` 가 어긋나 탭에서 안 보였다. 캘린더는 날짜로만 보니 계속 보여서
+            「캘린더엔 뜨는데 탭엔 안 뜬다」가 됐다. 눈에 보이지도 않는 차이로 기록이
+            사라지면 안 되므로 `sameInstitution` 으로 **양끝 공백을 무시하고** 비교한다. */}
         {contractRef && (
           <TodoSection
             contractRef={contractRef}
@@ -283,8 +290,8 @@ export default function PaymentSlotForm({
             companyName={companyName ?? ""}
             onEnsureSaved={onEnsureSaved}
             focusId={focusTodoId}
-            todos={(todos ?? []).filter(
-              (t) => t.institutionRef === (savedInstitution ?? ""),
+            todos={(todos ?? []).filter((t) =>
+              sameInstitution(t.institutionRef, savedInstitution),
             )}
           />
         )}
