@@ -116,6 +116,15 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
   const ch = CHANNELS[activeCh];
   const rows = rowsByChannel[activeCh];
 
+  // 안내 모달이 쓸 말 — **그 채널 화면에 실제로 적혀 있는 단어**여야 한다.
+  // 목록 이름은 채널마다 다르고(구매목록 / 생산목록 / 제작목록 / 영업기회),
+  // 현수막의 컨택탭 스테퍼는 「생산」이 아니라 「게시」다(ADR-0025 — 현수막은 생산=게시).
+  // 안내가 화면에 없는 단어를 말하면 학생이 못 찾고, 못 찾으면 기록이 비어 대시보드도 빈다.
+  // ※ 활성 채널이 아니라 **안내가 가리키는 채널**로 조회한다(저장 후 채널을 옮길 수 있다).
+  const hintCh = productionHint ? CHANNELS[productionHint.channel] : null;
+  const hintRecordsLabel = hintCh?.recordsLabel ?? "목록";
+  const hintMetricLabel = productionHint?.channel === "banner" ? "게시" : "생산";
+
   // DB생산 [1]: 채널 진입 시 최신 행을 기본 펼침(접어두지 않음). 채널당 1회 —
   // 이후 사용자가 접/펼 자유롭게(데이터 refetch 로 되돌리지 않음).
   useEffect(() => {
@@ -348,13 +357,19 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
         />
       )}
 
-      {/* 2026-05-17 [DB-1]: 추가 후 컨택탭 안내. 직접생산은 유입→생산개수 자동(ADR-0024). */}
+      {/* 2026-05-17 [DB-1]: 추가 후 컨택탭 안내. 직접생산은 유입→생산개수 자동(ADR-0024).
+          2026-09-19: 이 안내가 **화면에 없는 단어**를 찾게 만들고 있었다 —
+          ① 목록 이름을 「구매목록」으로 통으로 박았는데 현수막은 「제작목록」이고,
+          ② 컨택탭에서 「생산」을 찾으라 했는데 현수막 스테퍼는 「게시」다(ADR-0025).
+          학생이 없는 걸 찾다 기록을 못 하면 대시보드에도 안 잡힌다 —
+          대시보드는 주문·재고를 보지 않고 컨택탭에 적힌 수치만 본다.
+          그래서 채널이 실제로 쓰는 말(recordsLabel·지표명)로 바꾼다. */}
       <CrossTabHintModal
         open={productionHint !== null}
         title={
           productionHint?.channel === "direct"
             ? "📞 컨택관리에서 유입을 입력하세요"
-            : "✏️ 컨택관리에 생산 입력하셨나요?"
+            : `✏️ 컨택관리에 ${hintMetricLabel} 입력하셨나요?`
         }
         body={
           productionHint?.channel === "direct" ? (
@@ -365,8 +380,8 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
           ) : (
             <>
               <b>{productionHint ? KEY_TO_BACKEND[productionHint.channel] : ""}</b>{" "}
-              구매목록 추가됐어요. 컨택관리 탭의 해당 일자/채널에{" "}
-              <b>생산</b>도 기록해야 합니다.
+              {hintRecordsLabel} 추가됐어요. 컨택관리 탭의 해당 일자/채널에{" "}
+              <b>{hintMetricLabel}</b>도 기록해야 <b>대시보드에 반영</b>돼요.
             </>
           )
         }
