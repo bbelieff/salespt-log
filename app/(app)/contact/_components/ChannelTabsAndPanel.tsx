@@ -323,7 +323,8 @@ export default function ChannelTabsAndPanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
                   <div className="text-sm font-medium text-gray-800">게시</div>
-                  <div className="break-keep text-xs text-gray-400">현수막재고 {bannerStock}개</div>
+                  {/* 설명 없으면 아래 「유입」에 적는 사고가 난다 — 2026-09-19 실제 발생. */}
+                  <div className="break-keep text-xs text-gray-400">{ch.helps.production} · 재고 {bannerStock}개</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button

@@ -99,6 +99,15 @@ describe("③ 말이 실제 화면과 맞는지 — 출처 대조", () => {
     expect(contactPanel).toContain('aria-label="게시 수치"');
   });
 
+  it("★「게시」 칸에 무엇을 넣는지 설명이 붙어 있다", () => {
+    // 실제 사고: 설명이 붙은 칸이 바로 아래 「유입」뿐이라, 게시한 장수를 유입에 적었다.
+    // helps.production("오늘 부착·노출된 현수막 수")은 쓰여 있었지만 METRICS 순회가
+    // production 을 제외해 한 번도 그려지지 않았다.
+    expect(contactCode).toContain("ch.helps.production");
+    // 재고만 덩그러니 보여주던 옛 형태로 되돌아가지 않게.
+    expect(contactCode).not.toMatch(/>\s*현수막재고 \{bannerStock\}개\s*</);
+  });
+
   it("★매입DB·콜지기소 첫 행은 읽기전용이다 — 그래서 입력을 요구하면 안 된다", () => {
     // 이 잠금이 풀리면(손으로 입력 가능해지면) 자동형 문구도 다시 봐야 한다.
     expect(contactCode).toContain("🔒 DB자동");
