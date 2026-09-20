@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 interface TraineeBasic {
   email: string;
@@ -55,7 +56,7 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(`${email}: ${data?.error ?? `HTTP ${res.status}`}`);
+          throw new Error(`${email}: ${apiErrorMessage(data, res.status)}`);
         }
       }
       setSelected(new Set());

@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 export default function SeasonStartInput({
   label,
@@ -56,7 +57,7 @@ export default function SeasonStartInput({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.hint ?? d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
         return;
       }
       setSaved(true);

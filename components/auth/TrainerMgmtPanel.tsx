@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import CollapsibleSection from "./CollapsibleSection";
 import { createKeyedSaveCoalescer } from "@/util/save-coalesce";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 import {
   type PanelUser,
   SectionPending,
@@ -65,7 +66,7 @@ export default function TrainerMgmtPanel({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
       } else {
         router.refresh();
       }
@@ -118,7 +119,7 @@ export default function TrainerMgmtPanel({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
       } else {
         router.refresh();
       }

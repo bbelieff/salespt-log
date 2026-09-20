@@ -17,6 +17,7 @@ import PageContainer from "@/components/PageContainer";
 import { useMe } from "@/query/me-hook";
 import { useQueryClient } from "@tanstack/react-query";
 import { cohortGroupKey, cohortGroupCompare } from "@/types";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 import {
   CohortSection,
   parseAssigned,
@@ -81,7 +82,7 @@ export default function TrainerCohortView({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `HTTP ${res.status}`);
+        setError(apiErrorMessage(data, res.status));
         setBusy(null);
         return;
       }

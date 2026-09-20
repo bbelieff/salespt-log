@@ -20,6 +20,7 @@ import {
 } from "@/service/cohort-token";
 import { parseArenaRoster } from "@/service/arena-parse";
 import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 interface ResultReport {
   created: { name: string; sheetId: string }[];
@@ -101,7 +102,7 @@ export default function ArenaCreateModal() {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(d.hint ?? d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
         return;
       }
       setReport({
