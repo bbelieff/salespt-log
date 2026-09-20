@@ -5,6 +5,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 export default function ArenaCarryoverButton({ email }: { email: string }) {
   const [busy, setBusy] = useState(false);
@@ -22,7 +23,7 @@ export default function ArenaCarryoverButton({ email }: { email: string }) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMsg(`✕ ${d.error ?? res.status}`);
+        setMsg(`✕ ${apiErrorMessage(d, res.status)}`);
       } else if (d.reason && !d.prior) {
         setMsg(`— ${d.reason}`);
       } else {

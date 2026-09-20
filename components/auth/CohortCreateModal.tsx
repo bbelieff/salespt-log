@@ -21,6 +21,7 @@ import {
 } from "@/service/cohort-dates";
 import { isExtendedCourseCohort } from "@/config/cohort-dates";
 import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 type Mode = "create" | "link";
 
@@ -142,7 +143,7 @@ export default function CohortCreateModal() {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(d.hint ?? d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
         return;
       }
       setReport({

@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useGlobalLoading } from "@/components/ui/LoadingProvider";
 import { isClaimableCohort } from "@/service/cohort-token";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 type Mode = "cohort" | "arena";
 
@@ -92,7 +93,7 @@ export default function ClaimPage() {
           router.push("/");
           return;
         } else {
-          setError(`오류가 발생했습니다: ${data.error ?? "unknown"}`);
+          setError(apiErrorMessage(data, res.status));
         }
         setLoading(false);
         hide();

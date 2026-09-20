@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 const HINT_KEY = "hideGeneralEventHint";
 const inputCls =
@@ -55,7 +56,7 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
       }),
     });
     const d = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(d.error ?? `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(apiErrorMessage(d, res.status));
     onCreated();
     onClose();
   }

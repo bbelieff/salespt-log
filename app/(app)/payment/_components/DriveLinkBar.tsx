@@ -8,6 +8,7 @@
 
 import { useState, useCallback } from "react";
 import { useMe } from "@/query/me-hook";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 export default function DriveLinkBar() {
   const me = useMe();
@@ -51,7 +52,7 @@ export default function DriveLinkBar() {
           setRelinkUrl("");
           me.refetch();
         } else {
-          setRelinkError(data.error ?? "연결 실패");
+          setRelinkError(apiErrorMessage(data, res.status));
           setErrorKind(data.errorKind ?? "");
           setSaEmail(data.saEmail ?? "");
         }

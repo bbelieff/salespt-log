@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 interface RetryResult {
   processed: number;
@@ -40,7 +41,7 @@ export default function CohortPendingRetryButton({
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(d.hint ?? d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
         return;
       }
       setResult({

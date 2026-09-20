@@ -16,6 +16,7 @@ import CohortCreateModal from "./CohortCreateModal";
 import ArenaCreateModal from "./ArenaCreateModal";
 import CohortPendingRetryButton from "./CohortPendingRetryButton";
 import SeasonStartInput from "./SeasonStartInput";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 interface Cohort {
   label: string;
@@ -59,7 +60,7 @@ export default function CohortMgmtPanel({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
       } else {
         router.refresh();
       }
