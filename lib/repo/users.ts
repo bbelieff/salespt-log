@@ -1,11 +1,4 @@
-/**
- * Layer: repo — 마스터 레지스트리 (사용자 + 시트 매핑 + 역할 + 상태).
- * 컬럼 SSOT: docs/domains/sheet-structure.md §6 (A~R).
- *   A email · B cohort(deprecated, 시트 B3 SSOT) · C name(deprecated) · D spreadsheetId ·
- *   E role(식별·라우팅 SSOT) · F status(active/pending/archived) · G assignedTrainer ·
- *   H team · I~L 시트 캐시(B3/C3/O1/O2) · M sort_order(박스 단위 드래그 정렬) ·
- *   N~P drive 연동 · Q memo(아레나) · R captain_of.
- */
+/** Layer: repo — 마스터 레지스트리 (sheet-structure.md §6). B cohort(deprecated, 시트 B3 SSOT). */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
 import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
@@ -24,6 +17,8 @@ import {
 import { applyTrainerQualifications, pickCrmUser } from "./trainer-qualification";
 import { listTrainerQualifications } from "./db/trainer-recruitment";
 import { logRegistryCellWrite } from "@/lib/analytics/save-observability";
+import { registryDbReadEnabled } from "./db/registry-read";
+import { updateDriveLinkInDb } from "./users-drive-db";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
@@ -73,12 +68,10 @@ export function parseRow(r: unknown[]): User | null {
   return parsed.success ? parsed.data : null;
 }
 
-// 500줄 cap 분리 — 레지스트리 행 읽기 진입점(DB/시트 분기 + 폴백)은 users-rows.ts.
+// 행 읽기 진입점은 users-rows.ts.
 export { cachedRegistryRows, invalidateRegistry };
 
-/** 보관 기수 라우팅 비활성(rejoin §1) — trainee + 숫자형("6"/"6기")만.
- * 트레이너(T)·연습·아레나 행 절대 비적용(전 트레이너 차단 사고 방지 —
- * rejoin-routing.test.ts 박제). */
+/** 보관 기수 라우팅 비활성(rejoin §1) — trainee + 숫자형만. */
 export function isNumericCohortArchived(
   role: User["role"],
   cohort: string,
@@ -387,14 +380,21 @@ export async function setTraineeReservation(
   await updateUserCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
 }
 
-/**
- * Drive 연결 정보 일괄 업데이트 (N/O/P 컬럼).
- * ADR-0007: Scope 1은 Drive 읽기만 — 쓰기 API 절대 호출 금지.
- */
+/** Drive 연결 저장 — DB 읽기 게이트 ON 이면 Postgres 원자 UPDATE 후 무효화, OFF 면 시트 셀 순차. */
 export async function updateDriveLink(
   email: string,
   data: { driveParentPath?: string; feedbackFolderId?: string; driveLinkStatus?: string },
 ): Promise<void> {
+  if (registryDbReadEnabled()) {
+    const user = await findUserByEmail(email, { fresh: true });
+    if (!user) throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+    await updateDriveLinkInDb(
+      { email: user.email, cohort: user.cohort, name: user.name },
+      data,
+    );
+    invalidateRegistry();
+    return;
+  }
   if (data.driveParentPath !== undefined) await updateUserCell(email, "N", data.driveParentPath);
   if (data.feedbackFolderId !== undefined) await updateUserCell(email, "O", data.feedbackFolderId);
   if (data.driveLinkStatus !== undefined) await updateUserCell(email, "P", data.driveLinkStatus);
