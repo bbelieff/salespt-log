@@ -32,14 +32,14 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
   const move = (days: number) => {
     if (!current) return;
     const next = fmtISO(addDays(parseISO(current.start), days));
-    setSelectedDate(next >= anchorStart ? undefined : next);
+    setSelectedDate(next === anchorStart ? undefined : next);
   };
   const navigation = <div className="relative z-20 flex shrink-0 items-center" aria-label="주간 목표 주차 이동">
     <button type="button" aria-label="이전 주차 목표" disabled={!current || q.isFetching || current.week <= 1}
       onClick={() => move(-7)} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-gray-100 disabled:opacity-30"><ChevronLeft className="h-4 w-4" aria-hidden /></button>
     <button type="button" aria-label="현재 주차로" disabled={selectedDate === undefined}
       onClick={() => setSelectedDate(undefined)} className="min-h-11 rounded-lg px-2 text-xs font-semibold hover:bg-gray-100 disabled:opacity-30">{date ? "선택 주" : "이번 주"}</button>
-    <button type="button" aria-label="다음 주차 목표" disabled={!current || q.isFetching || selectedDate === undefined || current.start >= anchorStart}
+    <button type="button" aria-label="다음 주차 목표" disabled={!current || q.isFetching || current.week >= 5200}
       onClick={() => move(7)} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-gray-100 disabled:opacity-30"><ChevronRight className="h-4 w-4" aria-hidden /></button>
   </div>;
   const status = q.isPending ? <span role="status" className="text-xs text-gray-500">불러오는 중…</span> :
