@@ -1,40 +1,27 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { WeeklyGoalView, WeeklyGoalPrivateRecord } from "@/types/weekly-goals";
 import { WEEKLY_GOALS_MEETING_URL } from "@/lib/config/links";
 import { copyGoalText, goalClipboard, goalPivotCells, GOAL_PIVOT_COLUMNS, meetingCells, meetingClipboard, MEETING_COLUMNS } from "./copy";
 
-export default function GoalCopyPanel({ view, internal, dirty, autoCopyToken }: {
+export default function GoalCopyPanel({ view, internal, dirty }: {
   view: WeeklyGoalView; internal?: WeeklyGoalPrivateRecord; dirty: boolean;
-  /** Changes once per successful save; the saved content is copied without another click. */
-  autoCopyToken?: number;
 }) {
   const [fallback, setFallback] = useState("");
   const [status, setStatus] = useState("");
   const pivot = goalPivotCells(view);
-  const copied = useRef(autoCopyToken);
+  // Clipboard is explicit-copy only — no programmatic copy on save/hydration.
   const unavailable = dirty || (view.canReadInternal && !internal);
   const cells = view.canReadInternal && internal ? meetingCells(view, internal) : null;
   const columns = view.canReadInternal ? MEETING_COLUMNS : GOAL_PIVOT_COLUMNS;
   const values = view.canReadInternal ? cells : pivot;
   const content = cells ? meetingClipboard(cells) : goalClipboard(pivot);
   async function copy(plain: string, html?: string) {
-    if (unavailable) { setStatus("수정한 내용을 먼저 저장해 주세요."); return; }
+    if (unavailable) { setStatus("수정한 내용이 저장될 때까지 기다렸다가 복사해 주세요."); return; }
     const ok = await copyGoalText(plain, html);
     setFallback(ok ? "" : plain);
     setStatus(ok ? "복사됨" : "아래 내용을 선택해 복사해 주세요.");
   }
-  useEffect(() => {
-    if (autoCopyToken === undefined || autoCopyToken === copied.current) return;
-    if (unavailable) return;
-    copied.current = autoCopyToken;
-    void copyGoalText(content.plain, content.html).then(ok => {
-      setFallback(ok ? "" : content.plain);
-      setStatus(ok ? "저장하고 클립보드에 복사했어요." : "아래 내용을 선택해 복사해 주세요.");
-    });
-    // The saved view is read through the same render; re-running on view identity would re-copy.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoCopyToken, unavailable]);
   return <section className="space-y-3">
     <div className="flex flex-wrap gap-2">
       <button type="button" disabled={unavailable} className="min-h-11 rounded-xl border border-gray-300 px-4 text-sm disabled:opacity-50"

@@ -6,10 +6,6 @@
 import { randomUUID } from "node:crypto";
 import { findUserByEmail } from "@/repo/users";
 import {
-  appendBanner,
-  appendLead,
-  appendProduction,
-  appendPurchase,
   clearBanner,
   clearLead,
   clearProduction,
@@ -39,6 +35,9 @@ import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
 import { selectLeadsForPicker, type LeadForPicker } from "./lead-list"; // 발굴 조회 PR-2
 import { oldDateOf, oldLeadIdOf, readChannelRows } from "./db-old-values"; // BBE-246 — 500줄 캡 분리
+
+// 생성 경로(add 4종)는 db-creates.ts 로 분리(500줄 캡) — 아래 재수출로 기존 import 경로 유지.
+export { addBanner, addLead, addProduction, addPurchase } from "./db-creates";
 import type {
   Channel,
   DBBanner,
@@ -55,7 +54,7 @@ async function resolveSheet(email: string): Promise<string> {
 
 /** sid + 쓰기 정본 여부. fromDb = 유입 합산 소스(R3-1, 읽기 게이트). syncDb = 03 편집 DB 동기 정본
  *  여부(R3-4, 쓰기 게이트). 현재 두 게이트 동일 판정이나 의미가 달라 각 함수로 산출(향후 분기 대비). */
-async function resolveWriteCtx(
+export async function resolveWriteCtx(
   email: string,
 ): Promise<{ sid: string; fromDb: boolean; syncDb: boolean; salesCtx: SalesCtx }> {
   const user = await findUserByEmail(email);
@@ -316,7 +315,7 @@ export function productionCountFor(
 }
 
 /** DB 변경 후 그 (채널, 날짜) 생산(E) 재집계·기입. 실패해도 DB 저장은 성공(warn). */
-async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
+export async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
   if (!date) return;
   try {
     const rows = await readChannelRows(ctx.spreadsheetId, channel);
@@ -326,13 +325,6 @@ async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
   }
 }
 
-// ── 매입DB ────────────────────────────────────────────────────
-export async function addPurchase(email: string, p: DBPurchase) {
-  const { sid, salesCtx } = await resolveWriteCtx(email);
-  const r = await appendPurchase(sid, p);
-  await syncProduction(salesCtx, "매입DB", p.구매일);
-  return r;
-}
 export async function patchPurchase(email: string, row: number, p: DBPurchase) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   const old = await oldDateOf(sid, "매입DB", row, syncDb);
@@ -365,7 +357,7 @@ export function periodsOverlap(aS: string, aE: string, bS: string, bE: string): 
 }
 
 /** 직접생산 추가/수정 시 기존 레코드와 기간 겹치면 throw (활성 레코드 유일성, ADR-0024). */
-async function assertNoOverlapDirect(
+export async function assertNoOverlapDirect(
   sid: string,
   start: string,
   end: string,
@@ -387,7 +379,7 @@ async function assertNoOverlapDirect(
  *  fromDb(R3-1): 쓰기 정본이 DB 인 파일럿이면 유입 합산을 DB 에서(시트 미러 지연/실패 무관·정확).
  *  syncDb(BBE-61, R3-4b): 파일럿이면 M 의 DB 반영을 **기다린다**(non-throw — 컨택 저장 등 이미
  *  성공한 주 동작을 M 실패로 되돌리지 않음, db-production-cell.ts 참고). 비파일럿은 R2 미러 불변. */
-async function syncDirectCount(
+export async function syncDirectCount(
   sid: string,
   record: { row: number; 시작일: string; 종료일: string },
   fromDb: boolean,
@@ -419,13 +411,6 @@ export async function syncDirectProductionForDate(
   return { recordFound: true, count };
 }
 
-export async function addProduction(email: string, p: DBProduction) {
-  const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
-  await assertNoOverlapDirect(sid, p.시작일, p.종료일);
-  const r = await appendProduction(sid, p);
-  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb, syncDb);
-  return r;
-}
 export async function patchProduction(email: string, row: number, p: DBProduction) {
   const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일, row);
@@ -442,10 +427,6 @@ export async function removeProduction(email: string, row: number) {
 
 // ── 현수막 주문 (P:V) ─────────────────────────────────────────
 // 주문은 생산 E 를 만들지 않는다(생산=게시 로그). 비용(주문금액)만 대시보드에 반영.
-export async function addBanner(email: string, b: DBBanner) {
-  const sid = await resolveSheet(email);
-  return appendBanner(sid, b);
-}
 export async function patchBanner(email: string, row: number, b: DBBanner) {
   const { sid, syncDb } = await resolveWriteCtx(email);
   return updateBanner(sid, row, b, { syncDb });
@@ -457,14 +438,6 @@ export async function removeBanner(email: string, row: number) {
 // (현수막 게시 = 생산 → 컨택 영업관리 E 소유. 게시로그 AF:AI 폐기, ADR-0025.)
 
 // ── 콜·지·기·소 ────────────────────────────────────────────────
-export async function addLead(email: string, l: DBLead) {
-  const { sid, salesCtx } = await resolveWriteCtx(email);
-  // 발굴 안정 id 부여(lead-chain §4-3) — appendLead 가 payload 에 항상 명시(R10: 재사용 행의 옛 id 를 덮음).
-  // 클라이언트발 발굴id 는 라우트에서 strip 되므로 항상 새로 생성한다.
-  const r = await appendLead(sid, { ...l, 발굴id: randomUUID() });
-  await syncProduction(salesCtx, "콜·지·기·소", l.접수일);
-  return r;
-}
 export async function patchLead(email: string, row: number, l: DBLead) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   // R13: 클라이언트 바디 l 은 발굴id 를 모른다. 서버가 기존 id 를 읽어 명시 전달(없으면 지연 부여).

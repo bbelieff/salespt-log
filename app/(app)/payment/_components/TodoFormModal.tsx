@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCreateTodo } from "@/query/todos-hooks";
+import { newTodoOperationId, useCreateTodo } from "@/query/todos-hooks";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import type { TodoType } from "@/types";
 
@@ -39,6 +39,8 @@ export default function TodoFormModal({
   const [detail, setDetail] = useState("");
   const [showOnCalendar, setShowOnCalendar] = useState(true);
   const [error, setError] = useState("");
+  // 마운트당 멱등 키 — 애매한 실패 뒤 재시도·가드 저장이 같은 키로 수렴한다.
+  const [opId] = useState(newTodoOperationId);
 
   // 검증 실패·API 실패 시 throw 하는 코어 — 가드 save 가 이걸 호출해 실패 시 이동을 막는다.
   const doCreate = async () => {
@@ -55,6 +57,7 @@ export default function TodoFormModal({
       장소: "",
       상세: detail.trim(),
       showOnCalendar,
+      operationId: opId,
     });
     onClose();
   };

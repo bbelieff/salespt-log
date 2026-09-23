@@ -16,6 +16,10 @@ interface Props {
   hideSave?: boolean;
   /** 편집 시 부모에 라이브 드래프트 전달. */
   onChange?: (ci: CompanyInfo) => void;
+  /** 자동 저장 라우팅용 안정 레코드 신원(예: 계약 행키). 필수 — 개명 시 바뀌는
+   * 업체명(가변 표시명)을 신원으로 쓰면 빠른 전환·개명 때 다른 레코드로 필드가
+   * 전송되므로, 기존 행은 업체명 폴백을 쓰지 않는다. */
+  identityKey: string;
 }
 
 export default function CompanyInfoContractSection({
@@ -23,6 +27,7 @@ export default function CompanyInfoContractSection({
   업체명,
   hideSave,
   onChange,
+  identityKey,
 }: Props) {
   const [value, setValue] = useState<CompanyInfo | undefined>(undefined);
   const [loaded, setLoaded] = useState(false);
@@ -68,12 +73,15 @@ export default function CompanyInfoContractSection({
       </div>
     );
   // key 로 value 변경 시 에디터 draft 재초기화 (CompanyInfoEditor 는 mount 시 초기화).
+  // identityKey 가 바뀌면 리마운트 — 이전 대상 진행분 전송 차단.
+  // 업체명·계약일은 key·target 에 쓰지 않는다(가변 표시명 — 개명 시 신원 유지).
   return (
     <CompanyInfoEditor
-      key={`${계약일}|${업체명}|${value ? "y" : "n"}`}
+      key={`${identityKey}|${value ? "y" : "n"}`}
       value={value}
       busy={busy}
       txtCompanyName={업체명}
+      identityKey={identityKey}
       hideSave={hideSave}
       onChange={onChange}
       onSave={save}

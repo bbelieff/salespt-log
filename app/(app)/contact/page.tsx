@@ -21,20 +21,26 @@ import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
-import { useGuardedNav, useSaveAllDirty, useDirtyEntry } from "@/components/DirtyGuard";
+import { useGuardedNav, useDirtyEntry } from "@/components/DirtyGuard";
+import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import ContactResultModals from "./_components/ContactResultModals";
 import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 import { useRouter } from "next/navigation";
-import SaveBar from "./_components/SaveBar";
-import { EMPTY_BY_CHANNEL, uuid } from "./_lib/contactDefaults";
+import { uuid } from "./_lib/contactDefaults";
+import { useContactMetrics } from "./_lib/use-contact-metrics";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
 import { formatMoney } from "@/lib/format/money";
-import SaveConfirmModal from "./_components/SaveConfirmModal";
 import RecordMoveModal from "./_components/RecordMoveModal";
-import { slotComplete, useContactSave } from "./_lib/use-contact-save";
+import { slotComplete } from "./_lib/meeting-draft";
+import { useSlotRegister } from "./_lib/use-slot-register";
+import {
+  channelConsistencyWarnings,
+  metricsSavePayload,
+} from "./_lib/metrics-autosave";
 import RecordMoveReceipt from "./_components/RecordMoveReceipt";
 import { useRecordMove } from "./_lib/use-record-move";
+import { discardUnsaved } from "@/components/weekly-goals/weeklyGoalAutosave";
 
 const TODAY_ISO = fmtISO(new Date());
 
@@ -44,16 +50,10 @@ export default function ContactPage() {
   const [showProductionHold, setShowProductionHold] = useState(false); // ADR-0024 보류 모달
   const [activeChannel, setActiveChannel] = useState<Channel>("매입DB");
   const [toast, setToast] = useState<string>("");
-  const [draft, setDraft] = useState<Record<Channel, ChannelDailyRowMetrics>>(
-    EMPTY_BY_CHANNEL,
-  );
   const [newSlots, setNewSlots] = useState<NewSlot[]>([]);
   const [pickerMeetings, setPickerMeetings] = useState<Meeting[] | null>(null);
-  // 저장 전 확인 화면 / 「잘못 적었어요」 옮기기 (2026-09-03 belie)
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  // 「잘못 적었어요」 옮기기 (2026-09-03 belie) — 숫자 확인 모달 없음, 자동 저장.
   const [moveOpen, setMoveOpen] = useState(false);
-  // 지표 스테퍼를 사용자가 만졌는지(미저장 가드 신호). 로드·저장 시 리셋.
-  const [metricsTouched, setMetricsTouched] = useState(false);
 
   const dayQuery = useDay(date);
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
@@ -70,18 +70,23 @@ export default function ContactPage() {
     (Array(7).fill(0) as number[]);
   const weekFunnel = weekQuery.data?.weekFunnel ?? { 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0 };
 
-  useEffect(() => {
-    if (!dayQuery.data) return;
-    setDraft(dayQuery.data.channels);
-    setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
-    setMetricsTouched(false); // 새 날짜 로드 = 깨끗한 상태
+  // 숫자 지표 자동 저장 — 채널 숫자만 POST, 미팅 드래프트·dirty 카드와 무관.
+  // 서버 스냅샷 병합은 훅 안에서 content-keyed syncServer 로 처리.
+  const metrics = useContactMetrics({
+    date,
+    serverChannels: dayQuery.data?.date === date ? dayQuery.data.channels : undefined,
+    saveMetrics,
+    onProductionHold: () => setShowProductionHold(true),
+  });
 
-    const bad: string[] = [];
-    for (const ch of CHANNEL_ORDER) {
-      const h = dayQuery.data.channels[ch].meetingReservation;
-      const cnt = dayQuery.data.meetings.filter((m) => m.channel === ch).length;
-      if (h > cnt) bad.push(`${ch}: 미팅예약 ${h} vs 미팅 ${cnt}건`);
-    }
+  // 날짜 교체 = 신규 슬롯 비움 + 일관성 안내. 숫자 기준 이동은 훅이 담당.
+  useEffect(() => {
+    const server = dayQuery.data;
+    if (!server || server.date !== date) return;
+    setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
+    clearRegisterErrors();
+
+    const bad = channelConsistencyWarnings(server);
     if (bad.length > 0) {
       setToast("⚠ 시트 일관성 경고: " + bad.join(", ") + ". '−' 버튼으로 정정 가능");
       setTimeout(() => setToast(""), 5000);
@@ -115,44 +120,44 @@ export default function ContactPage() {
     setTimeout(() => setToast(""), 2200);
   };
 
+  // Per-draft 예약 등록 (실패해도 폼 유지 + 인라인 재시도, 중복 방지).
+  const { registerSlot, registering, registerErrors, clearRegisterErrors } = useSlotRegister({
+    date, newSlots, serverMeetings: dayQuery.data?.meetings ?? [], appendMeeting, setNewSlots, showToast,
+    refetchMeetings: async () => (await dayQuery.refetch?.())?.data?.meetings ?? [],
+  });
+
   const setMetric = (
     channel: Channel,
     key: keyof ChannelDailyRowMetrics,
     nextValue: number,
   ) => {
-    if (key !== "meetingReservation") setMetricsTouched(true); // 미팅예약은 슬롯/미팅 lifecycle 별도
-    setDraft((d) => {
-      const cur = d[channel];
-      const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
-      if (next.meetingReservation > next.contactProgress) {
-        next.meetingReservation = next.contactProgress;
-      }
-      return { ...d, [channel]: next };
-    });
+    const cur = metrics.draft[channel];
+    const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
+    if (next.meetingReservation > next.contactProgress) {
+      next.meetingReservation = next.contactProgress;
+    }
+    metrics.update({ ...metrics.draft, [channel]: next });
   };
 
-  /** 채널 metric ±delta 조정 (functional setState — stale closure 안전). */
+  /** 채널 metric ±delta 조정 (functional 대신 최신 draft 읽기 — stale closure 안전). */
   const adjustMetric = (
     channel: Channel,
     key: keyof ChannelDailyRowMetrics,
     delta: number,
   ) => {
-    if (key !== "meetingReservation") setMetricsTouched(true); // 미팅예약은 슬롯/미팅 lifecycle 별도
-    setDraft((d) => {
-      const cur = d[channel];
-      const newValue = Math.max(0, cur[key] + delta);
-      const next: ChannelDailyRowMetrics = { ...cur, [key]: newValue };
-      if (next.meetingReservation > next.contactProgress) {
-        next.meetingReservation = next.contactProgress;
-      }
-      return { ...d, [channel]: next };
-    });
+    const cur = metrics.draft[channel];
+    const newValue = Math.max(0, cur[key] + delta);
+    const next: ChannelDailyRowMetrics = { ...cur, [key]: newValue };
+    if (next.meetingReservation > next.contactProgress) {
+      next.meetingReservation = next.contactProgress;
+    }
+    metrics.update({ ...metrics.draft, [channel]: next });
   };
 
   /** step(key, delta): 미팅예약 +1 → 신규 슬롯 생성, -1 → 슬롯 제거 또는 API DELETE. */
   const step = (key: keyof ChannelDailyRowMetrics, delta: number) => {
     const ch = activeChannel;
-    const cur = draft[ch];
+    const cur = metrics.draft[ch];
     const cur2 = cur[key];
 
     if (key === "meetingReservation") {
@@ -186,7 +191,7 @@ export default function ContactPage() {
             handleRemoveSavedMeeting(saved[0]!);
           } else if (cur2 > 0) {
             adjustMetric(ch, "meetingReservation", -1); // 카드 없는 phantom H 정정
-            showToast("미팅 카드가 없어 미팅예약 수치만 −1로 정정했어요 · [저장하기]로 반영");
+            showToast("미팅 카드가 없어 미팅예약 수치만 −1로 정정했어요");
           } else {
             showToast("이 채널의 미팅예약이 이미 0입니다");
           }
@@ -262,18 +267,12 @@ export default function ContactPage() {
     }
   };
 
-  const handlePatchSavedMeeting = async (
+  // 등록 카드 자동 저장 — 성공은 조용히, 실패는 카드 내 재시도로.
+  const handlePatchSavedMeeting = (
     id: string,
     partial: Partial<Omit<Meeting, "id">>,
-  ) => {
-    const dateAtClick = date;
-    try {
-      await patchMeeting.mutateAsync({ date: dateAtClick, id, partial });
-      showToast("💾 수정 완료");
-    } catch (e) {
-      showToast(`수정 실패: ${(e as Error).message}`);
-    }
-  };
+    frozenDate: string,
+  ) => patchMeeting.mutateAsync({ date: frozenDate, id, partial });
 
   /** 2026-05-18 [2]: 슬라이드 방향 state. */
   const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
@@ -287,54 +286,66 @@ export default function ContactPage() {
   };
 
   const guardedNav = useGuardedNav();
-  const saveAllDirty = useSaveAllDirty(); // dirty 미팅카드 전부 저장(전역 레지스트리)
-
-  // 통합 저장은 _lib/use-contact-save.ts 로 분리(500줄 캡). 로직은 그대로.
-  const { handleSave } = useContactSave({
-    date, draft, newSlots, appendMeeting, saveMetrics, saveAllDirty,
-    setNewSlots, setMetricsTouched, setShowProductionHold, showToast,
-  });
 
   const { moveCandidates, applyMove, saving: moving, error: moveError, receipt, clearReceipt } = useRecordMove({
-    date, draft, newSlots, appendMeeting, patchMeeting, moveMetrics,
+    date, draft: metrics.draft, newSlots, appendMeeting, patchMeeting, moveMetrics,
     savedMeetings: dayQuery.data?.meetings ?? [],
-    setNewSlots, setDraft, setActiveChannel,
-    onDone: (reopen) => { setMoveOpen(false); setConfirmOpen(reopen); },
+    setNewSlots,
+    setDraft: (action) => {
+      const next = typeof action === "function"
+        ? (action as (p: Record<Channel, ChannelDailyRowMetrics>) => Record<Channel, ChannelDailyRowMetrics>)(metrics.draft)
+        : action;
+      metrics.syncServer(next); // 옮기기 결과는 서버 쓰기 — 재POST 없이 기준 이동
+    },
+    setActiveChannel,
+    onDone: () => { setMoveOpen(false); },
     showToast,
   });
-
-  /** 저장하기 → 확인 화면. 새 미팅이 0건이면 확인 없이 통과(숫자만 고친 경우 흐름 안 막음). */
-  const requestSave = () => {
-    if (newSlots.some((s) => !slotComplete(s))) { showToast("미팅 카드의 필수 입력을 먼저 채워주세요."); return; }
-    if (newSlots.length === 0) { handleSave(); return; }
-    setConfirmOpen(true);
-  };
-
 
   const weekSwipe = useSwipe({
     onSwipeLeft: () => guardedNav(() => moveWeek(1)),
     onSwipeRight: () => guardedNav(() => moveWeek(-1)),
   });
 
-  // 스테퍼 지표 미저장 가드(unsaved-leave-guard). 숫자만 바꿔도 탭/날짜/주차/닫기 시 모달.
-  // dirty = 만졌고 AND 값이 실제로 서버와 다름 → 저장후 파생필드 드리프트·무변화 클릭 거짓양성 0.
-  // save 는 지표만(leaf) — runSave/saveAllDirty 호출 금지(전역 saveAll 재귀·중복 append 방지).
-  const serverChannels = dayQuery.data?.channels;
-  const metricsDirty =
-    metricsTouched &&
-    !!serverChannels &&
-    JSON.stringify(draft) !== JSON.stringify(serverChannels);
+  // 숫자 미저장 가드 — unsent/invalid 만 등록. 저장 성공분은 조용히 해제.
+  // 이탈-버림은 discard (F2 core discard() 자동 사용; 아래 syncServer 2곳은
+  // 옮기기/버림-복원이라는 서버 쓰기 결과의 기준 이동이라 discard가 아니다).
   useDirtyEntry(
     "contact-metrics",
-    metricsDirty,
+    metrics.dirty,
+    () => metrics.flush(),
+    () => discardUnsaved(metrics),
+    "컨택관리 입력 (저장 안 됨)",
+  );
+
+  // 미등록 신규 슬롯 가드 — save-and-leave 는 완성분만 등록, 미완성은 머무름.
+  useDirtyEntry(
+    "contact-new-slots",
+    newSlots.length > 0,
     async () => {
-      await saveMetrics.mutateAsync({ date, channels: draft });
+      for (const s of newSlots) {
+        if (!slotComplete(s)) throw new Error("필수 입력이 빠진 미팅이 있어요. 카드를 채우거나 삭제해 주세요.");
+      }
+      for (const s of newSlots) {
+        const ok = await registerSlot(s.tempId);
+        if (!ok) throw new Error("미팅 등록에 실패했어요. 다시 시도해 주세요.");
+      }
     },
     () => {
-      if (dayQuery.data) setDraft(dayQuery.data.channels);
-      setMetricsTouched(false);
+      const counts = new Map<Channel, number>();
+      for (const s of newSlots) counts.set(s.channel, (counts.get(s.channel) ?? 0) + 1);
+      setNewSlots([]);
+      if (counts.size > 0 && dayQuery.data) {
+        // 버린 슬롯의 H 복원 — 즉시 1회 전송(디바운스 없이), 실패는 다음 자동 저장에.
+        const next = { ...metrics.draft };
+        for (const [ch, n] of counts) {
+          next[ch] = { ...next[ch], meetingReservation: Math.max(0, next[ch].meetingReservation - n) };
+        }
+        metrics.syncServer(next);
+        void saveMetrics.mutateAsync({ date, channels: metricsSavePayload(next) }).catch(() => {});
+      }
     },
-    "컨택관리 입력 (저장 안 됨)",
+    "미등록 미팅",
   );
 
   if (dayQuery.isLoading) return null; // 전역 오버레이가 처리
@@ -365,7 +376,7 @@ export default function ContactPage() {
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
       {/* 2026-05-18 [1]: 본문 fade 인터랙션(헤더 고정) */}
       <main
-        className={`px-4 pt-4 pb-[160px] transition-opacity duration-200 ${
+        className={`px-4 pt-4 pb-6 transition-opacity duration-200 ${
           dayQuery.isFetching ? "opacity-50" : "opacity-100"
         }`}
       ><PageContainer width="wide">
@@ -383,7 +394,7 @@ export default function ContactPage() {
             slideDir={slideDir}
           /></div>}
           active={activeChannel}
-          draft={draft}
+          draft={metrics.draft}
           date={date}
           inflowWaitBase={dayQuery.data?.inflowWaitBase ?? 0}
           savedInflow={dayQuery.data?.channels[activeChannel]?.inflow ?? 0}
@@ -401,6 +412,11 @@ export default function ContactPage() {
           <div className="mb-1 flex flex-wrap gap-x-3 text-xs text-slate-500">주차합계 · 생산 {weekFunnel.생산} · 유입 {weekFunnel.유입} · 컨택진행 {weekFunnel.컨택진행} · 미팅예약 {weekFunnel.미팅예약}</div>
           <WeeklyGoalSummary compact date={date} metrics={["inflow", "contacts"]} />
         </div>
+        <div className="mb-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-1.5">
+          <span className="text-xs text-slate-500">숫자는 자동으로 저장돼요</span>
+          <AutosaveStatus status={metrics.status} error={metrics.error}
+            savedAt={metrics.savedAt} onRetry={metrics.retry} />
+        </div>
         <MeetingSlotList
           slots={allSlots}
           reservationDate={date}
@@ -408,41 +424,22 @@ export default function ContactPage() {
           onRemoveSaved={handleRemoveSavedMeeting}
           onChangeNew={updateNewSlot}
           onRemoveNew={removeNewSlot}
+          onRegisterNew={(tempId) => { void registerSlot(tempId); }}
+          registeringIds={registering}
+          registerErrors={registerErrors}
+          onMove={newSlots.length > 0 ? () => setMoveOpen(true) : null}
         />
       </PageContainer>
       </main>
-
-      <SaveBar
-        date={date}
-        incompleteCount={newSlots.filter((s) => !slotComplete(s)).length}
-        pending={
-          saveMetrics.isPending || appendMeeting.isPending || patchMeeting.isPending
-        }
-        onSave={requestSave}
-      />
-
-      {/* 저장 전 확인 — 기록하는 날짜·채널·예약된 미팅·회사명을 같은 크기로 (2026-09-03 belie) */}
-      <SaveConfirmModal
-        open={confirmOpen && !moveOpen}
-        date={date}
-        slots={newSlots}
-        draft={draft}
-        savedMeetings={dayQuery.data.meetings}
-        savedChannels={dayQuery.data.channels}
-        saving={saveMetrics.isPending || appendMeeting.isPending}
-        onFix={() => setMoveOpen(true)}
-        onSave={() => { setConfirmOpen(false); handleSave(); }}
-        onClose={() => setConfirmOpen(false)}
-      />
 
       {moveOpen && (
         <RecordMoveModal
           open
           fromDate={date}
           candidates={moveCandidates}
-          draft={draft}
+          draft={metrics.draft}
           onBack={() => setMoveOpen(false)}
-          onDismiss={() => { setMoveOpen(false); setConfirmOpen(false); }}
+          onDismiss={() => setMoveOpen(false)}
           saving={moving}
           error={moveError}
           incomplete={newSlots.some((s) => !slotComplete(s))}

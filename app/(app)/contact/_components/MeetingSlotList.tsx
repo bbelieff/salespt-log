@@ -10,10 +10,16 @@ export type SlotEntry =
 interface Props {
   slots: SlotEntry[];
   reservationDate: string;
-  onPatchSaved: (id: string, partial: Partial<Omit<Meeting, "id">>) => void;
+  onPatchSaved: (id: string, partial: Partial<Omit<Meeting, "id">>, date: string) => Promise<unknown>;
   onRemoveSaved: (meeting: Meeting) => void;
   onChangeNew: (tempId: string, next: NewSlot) => void;
   onRemoveNew: (tempId: string) => void;
+  /** Per-draft semantic register (stable tempId, single-flight, idempotent retry). */
+  onRegisterNew: (tempId: string) => void;
+  registeringIds: Set<string>;
+  registerErrors: Record<string, string>;
+  /** 「잘못 적었어요」 날짜·채널 옮기기 — 신규 카드가 있을 때만 노출. */
+  onMove: (() => void) | null;
 }
 
 export default function MeetingSlotList({
@@ -23,7 +29,12 @@ export default function MeetingSlotList({
   onRemoveSaved,
   onChangeNew,
   onRemoveNew,
+  onRegisterNew,
+  registeringIds,
+  registerErrors,
+  onMove,
 }: Props) {
+  const newCount = slots.filter((e) => e.kind === "new").length;
   return (
     <div className="mb-3">
       <div className="mb-2 flex items-center justify-between px-1">
@@ -31,7 +42,15 @@ export default function MeetingSlotList({
           미팅예약하기
           {slots.length > 0 ? ` · ${slots.length}건` : ""}
         </span>
-        <span className="text-xs text-gray-400">컨택성공 1건 = 미팅예약 1건</span>
+        <span className="flex items-center gap-2">
+          {onMove && newCount > 0 && (
+            <button type="button" onClick={onMove}
+              className="min-h-11 rounded-lg px-2 text-xs font-semibold text-gray-500 underline underline-offset-2">
+              잘못 적었어요
+            </button>
+          )}
+          <span className="text-xs text-gray-400">컨택성공 1건 = 미팅예약 1건</span>
+        </span>
       </div>
 
       {slots.length === 0 ? (
@@ -50,7 +69,8 @@ export default function MeetingSlotList({
               mode="saved"
               index={i}
               meeting={entry.meeting}
-              onPatch={(p) => onPatchSaved(entry.meeting.id, p)}
+              reservationDate={reservationDate}
+              onPatch={(id, p, d) => onPatchSaved(id, p, d)}
               onRemove={() => onRemoveSaved(entry.meeting)}
             />
           ) : (
@@ -67,6 +87,9 @@ export default function MeetingSlotList({
               reservationDate={reservationDate}
               onChange={(next) => onChangeNew(entry.slot.tempId, next)}
               onRemove={() => onRemoveNew(entry.slot.tempId)}
+              onRegister={onRegisterNew}
+              registering={registeringIds.has(entry.slot.tempId)}
+              registerError={registerErrors[entry.slot.tempId] ?? ""}
             />
             </div>
           ),

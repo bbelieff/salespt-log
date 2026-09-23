@@ -182,22 +182,25 @@ describe("★ 서버로 나가는 것 (소스 가드)", () => {
   });
 
   it("★팝업 옆 빈 곳을 누르면 저장 누르기 전으로 돌아간다", () => {
-    const confirmModal = readFileSync(
-      "app/(app)/contact/_components/SaveConfirmModal.tsx",
-      "utf8",
-    );
     const moveModal = readFileSync(
       "app/(app)/contact/_components/RecordMoveModal.tsx",
       "utf8",
     );
+    const slotList = readFileSync(
+      "app/(app)/contact/_components/MeetingSlotList.tsx",
+      "utf8",
+    );
     const page = readFileSync("app/(app)/contact/page.tsx", "utf8");
-    expect(confirmModal).toContain("onClick={onClose}");
     expect(moveModal).toContain("onClick={dismiss}");
     expect(moveModal).toContain("window.confirm");
-    // 이동 팝업의 바깥 클릭은 확인 화면까지 함께 닫아야 「저장 누르기 전」이 된다.
-    expect(page).toContain("setMoveOpen(false); setConfirmOpen(false);");
+    // 숫자용 범용 확인 화면 없음 — 옮기기 취소는 저장 없이 닫히고 드래프트 유지.
+    expect(page).not.toContain("confirmOpen");
+    expect(page).not.toContain("SaveConfirmModal");
+    expect(page).toContain("onDismiss={() => setMoveOpen(false)}");
+    // 옮기기는 신규 카드 맥락의 compact 진입점으로 유지.
+    expect(slotList).toContain("잘못 적었어요");
+    expect(page).toContain("onMove={newSlots.length > 0");
     // 안쪽을 눌렀을 때 닫히면 안 된다.
     expect(moveModal).toContain("onClick={(e) => e.stopPropagation()}");
-    expect(confirmModal).toContain("onClick={(e) => e.stopPropagation()}");
   });
 });

@@ -9,6 +9,7 @@ import {
   patchExpenseCategory, patchExpenseEntry, patchRecurringOccurrence, pauseRecurringRule, resumeRecurringRule,
   skipRecurringOccurrence, splitRecurringRuleFromMonth,
 } from "@/repo/db/expense-ledger";
+import { createExpenseEntryIdempotent } from "@/repo/db/expense-idempotency";
 
 export interface ExpenseScope { spreadsheetId: string; actorEmail: string; }
 type RecurringOccurrence = Awaited<ReturnType<typeof listRecurringOccurrences>>[number];
@@ -127,7 +128,8 @@ export async function getExpenseLedger(email: string, query: { view: "month" | "
   for (const e of entries) {
     if (query.view === "category" && e.categoryId !== query.categoryId) continue;
     const amount = recognizedAmountForRange(e.amountWon, e.periodStart, e.periodEnd, range.from, range.through);
-    if (amount > 0) recognized.push({ source: "one_time", id: e.id, categoryId: e.categoryId, categoryName: e.categoryName, itemName: e.itemName, amountWon: amount, periodStart: e.periodStart, periodEnd: e.periodEnd });
+    if (amount > 0) recognized.push({ source: "one_time",
+      originalAmountWon: e.amountWon, id: e.id, categoryId: e.categoryId, categoryName: e.categoryName, itemName: e.itemName, amountWon: amount, periodStart: e.periodStart, periodEnd: e.periodEnd });
   }
   recognized.push(...recognizeRecurringOccurrencesForRange(
     occurrences,
@@ -185,7 +187,16 @@ export async function reclassifyUnclassifiedForUser(email: string, input: Reclas
 
 export async function addExpenseCategory(email: string, name: string) { const s = await resolveExpenseScope(email); return createExpenseCategory(s.spreadsheetId, s.actorEmail, name); }
 export async function editExpenseCategory(email: string, id: string, patch: { name: string }) { const s = await resolveExpenseScope(email); return patchExpenseCategory(s.spreadsheetId, s.actorEmail, id, patch); }
-export async function addExpense(email: string, input: CreateExpenseBody) { if (dayCount(input.periodStart, input.periodEnd ?? input.periodStart) > 3660) throw new Error("expense_invalid_period"); const s = await resolveExpenseScope(email); return createExpenseEntry(s.spreadsheetId, s.actorEmail, input); }
+export async function addExpense(email: string, input: CreateExpenseBody, key?: string | null) {
+  if (dayCount(input.periodStart, input.periodEnd ?? input.periodStart) > 3660) throw new Error("expense_invalid_period");
+  const s = await resolveExpenseScope(email);
+  // Keyed (autosave draft) ⇒ durable scoped idempotency, key IS the entry PK.
+  if (key) {
+    const { entry, created } = await createExpenseEntryIdempotent(s.spreadsheetId, s.actorEmail, input, key);
+    return { entry, created };
+  }
+  return { entry: await createExpenseEntry(s.spreadsheetId, s.actorEmail, input), created: true };
+}
 export async function editExpense(email: string, id: string, patch: Partial<CreateExpenseBody>) { if (patch.periodStart && patch.periodEnd && dayCount(patch.periodStart, patch.periodEnd) > 3660) throw new Error("expense_invalid_period"); const s = await resolveExpenseScope(email); return patchExpenseEntry(s.spreadsheetId, s.actorEmail, id, patch); }
 export async function removeExpense(email: string, id: string) { const s = await resolveExpenseScope(email); return deleteExpenseEntry(s.spreadsheetId, s.actorEmail, id); }
 export async function addRecurringExpense(email: string, input: CreateRecurringRuleBody) { const s = await resolveExpenseScope(email); return createRecurringRule(s.spreadsheetId, s.actorEmail, input); }

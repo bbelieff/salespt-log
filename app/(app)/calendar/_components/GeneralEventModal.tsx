@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
+import { newTodoOperationId } from "@/query/todos-hooks";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 const HINT_KEY = "hideGeneralEventHint";
@@ -36,6 +37,9 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
 
   const valid = 제목.trim().length >= 1 && /^\d{4}-\d{2}-\d{2}$/.test(날짜);
 
+  // 마운트당 멱등 키 — 애매한 실패 뒤 재시도·가드 저장이 같은 키로 수렴한다.
+  const [opId] = useState(newTodoOperationId);
+
   // 검증·API 실패 시 throw 하는 코어 — 가드 save 가 호출해 실패 시 이동을 막는다.
   async function doSubmit() {
     if (!valid) throw new Error("제목과 날짜를 입력해주세요.");
@@ -53,6 +57,7 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
         예정시각: 시각,
         상세: 상세.trim(),
         showOnCalendar: true,
+        operationId: opId,
       }),
     });
     const d = await res.json().catch(() => ({}));
@@ -94,6 +99,7 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
   }
 
   function confirmHint() {
+    if (busy) return; // 단일 최종 액션 — 진행 중 중복 확정 방지.
     if (hideForever) localStorage.setItem(HINT_KEY, "1");
     setHint(false);
     void submit();

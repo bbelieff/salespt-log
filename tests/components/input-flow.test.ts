@@ -62,18 +62,31 @@ describe("low-click input flow", () => {
  it("restores recent channel but gives an explicit link precedence", () => {
   sessionStorage.setItem("salespt-contact-channel","직접생산"); history.replaceState({},"","/?channel=현수막&date=2026-09-11");
   render(h(ContactPage)); expect(el.querySelector('button[aria-grabbed][aria-pressed="true"]')?.textContent).toContain("현수막");
-  expect(el.textContent).toContain("9/11 기록 저장");
+  // No page save footer — record date stays in the channel header, numbers autosave.
+  expect(el.textContent).toContain("숫자는 자동으로 저장돼요");
+  expect(el.textContent).toContain("9/11");
+  expect(el.textContent).not.toContain("기록 저장");
  });
 });
 vi.mock("@/app/(app)/contact/_components/RecordMoveModal", () => ({ default: () => null }));
 
 
-it("saves the displayed date and preserves values from both channels", async () => {
+it("autosaves the displayed date and preserves values from both channels", async () => {
  history.replaceState({},"","/?date=2026-09-11&channel=매입DB"); render(h(ContactPage));
  click(el.querySelector<HTMLElement>('[aria-label="유입 증가"]')!);
  click(button("직접생산·")); click(el.querySelector<HTMLElement>('[aria-label="컨택진행 증가"]')!);
- await act(async () => { button("💾 9/11 기록 저장").click(); });
- expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({date:"2026-09-11",channels:expect.objectContaining({매입DB:expect.objectContaining({inflow:1}),직접생산:expect.objectContaining({contactProgress:1})})}));
+ // No save button — the debounced autosave sends one merged numeric write.
+ await act(async () => { await new Promise(r => setTimeout(r, 950)); });
+ expect(mocks.save).toHaveBeenCalledTimes(1);
+ const arg = mocks.save.mock.calls[0]![0] as { date: string; channels: Record<string, Record<string, unknown>> };
+ expect(arg.date).toBe("2026-09-11"); // frozen record date survives channel switching
+ expect(arg.channels["매입DB"]).toMatchObject({ inflow: 1 });
+ expect(arg.channels["직접생산"]).toMatchObject({ contactProgress: 1 });
+ // Numeric path never creates meeting drafts or meeting payload keys.
+ for (const row of Object.values(arg.channels)) {
+  expect(Object.keys(row).sort()).toEqual(["contactProgress", "inflow", "meetingReservation", "production"]);
+  for (const v of Object.values(row)) expect(typeof v).toBe("number");
+ }
 });
 it("restores recent channel when no link channel was specified", () => {
  sessionStorage.setItem("salespt-contact-channel","직접생산"); render(h(ContactPage));

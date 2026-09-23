@@ -91,7 +91,10 @@ export {
   createTodo,
   patchTodo,
   removeTodo,
+  sameTodoBusiness,
+  TodoOperationConflict,
   type CreateTodoInput,
+  type CreateTodoOptions,
 } from "./todos";
 
 // 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)

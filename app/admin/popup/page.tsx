@@ -34,8 +34,9 @@ export default async function AdminPopupPage() {
       </header>
 
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-6">
-        <NoticeManager initialNotices={notices} />
-        <UpdatesManager initialUpdates={updates} />
+        {/* 초안 보관 스코프 — 세션 admin 이메일(정규화). 클라 초안 키잉용, auth 가드는 위에서 유지. */}
+        <NoticeManager initialNotices={notices} scopeEmail={sessionEmail.toLowerCase()} />
+        <UpdatesManager initialUpdates={updates} scopeEmail={sessionEmail.toLowerCase()} />
       </main>
     </div>
   );

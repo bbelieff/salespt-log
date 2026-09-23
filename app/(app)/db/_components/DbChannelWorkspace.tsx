@@ -12,7 +12,7 @@
 
 
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import {
   useAppendDB,
@@ -26,6 +26,7 @@ import {
   summarizeCost,
   type ChannelKey,
 } from "../_lib/channels";
+import { useAddRowAutosave } from "../_lib/use-add-autosave";
 
 
 import { CostSummary, LeadSummary } from "./SummaryCard";
@@ -70,8 +71,6 @@ interface ConfirmTarget {
 export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey }) {
   const router = useRouter();
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [addOpen, setAddOpen] = useState(true);
-  const [addDraft, setAddDraft] = useState<Record<string, unknown>>({});
   const [pendingRow, setPendingRow] = useState<number | "add" | null>(null);
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
@@ -91,10 +90,10 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
   const patch = usePatchDB();
   const remove = useRemoveDB();
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2400);
-  };
+  }, []);
 
   // 화면 안 이동도 미저장 가드 — 채널 전환·행 접기 시 dirty 면 모달.
   const guardedNav = useGuardedNav();
@@ -147,6 +146,8 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview.data, activeCh, autoExpandedCh, rows]);
 
+  // 기존 행 자동저장 전송 — 성공 시 확인 토스트·접기 없음(일상 자동저장은 조용히).
+  // RowCard 가 상태·되돌리기·재시도를 소유. 실패는 rethrow → 가드 모달 유지·행 유지.
   const handleSave = async (rowNum: number, data: Record<string, unknown>) => {
     setPendingRow(rowNum);
     try {
@@ -155,10 +156,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
         row: rowNum,
         data: data as never,
       });
-      setExpandedRow(null);
-      showToast("저장되었습니다 📌");
     } catch (e) {
-      showToast(`저장 실패: ${(e as Error).message}`);
       // 가드(saveAll)가 실패를 관측하도록 rethrow → fail>0 → 모달 유지·이동 취소·행 유지
       // (안 그러면 '저장하고 이동' 시 저장 실패해도 접혀서 편집이 무음 유실 — §2.5).
       throw e;
@@ -167,16 +165,11 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
     }
   };
 
-  const handleAdd = async () => {
-    setPendingRow("add");
-    try {
-      await append.mutateAsync({
-        channel: KEY_TO_BACKEND[activeCh],
-        data: addDraft as never,
-      });
+  // 신규 1건 생성 성공 후처리(생성 자체는 useAddRowAutosave 가 소유).
+  const handleAddCreated = useCallback(
+    (frozen: Record<string, unknown>) => {
       // 2026-06-03 [교차탭1]: 입력한 날짜를 캡처 (clear 전).
-      const addedDate = String(addDraft[CHANNEL_DATE_FIELD[activeCh]] ?? "");
-      setAddOpen(false);
+      const addedDate = String(frozen[CHANNEL_DATE_FIELD[activeCh]] ?? "");
       showToast(`${ch.recordsLabel}${iGa(ch.recordsLabel)} 추가되었습니다 ✨`);
       // 2026-05-17 [DB-1/DB-2]: 목록 추가 후 다음 할 일 안내.
       //
@@ -191,12 +184,35 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
         channel: activeCh,
         date: /^\d{4}-\d{2}-\d{2}$/.test(addedDate) ? addedDate : undefined,
       });
-    } catch (e) {
-      showToast(`추가 실패: ${(e as Error).message}`);
-    } finally {
-      setPendingRow(null);
-    }
-  };
+    },
+    [activeCh, ch, showToast],
+  );
+
+  const createRow = useCallback(
+    (data: Record<string, unknown>, key: string) =>
+      append.mutateAsync({
+        channel: KEY_TO_BACKEND[activeCh],
+        data: data as never,
+        idempotencyKey: key,
+      }),
+    [activeCh, append],
+  );
+
+  const {
+    addOpen,
+    addInitial,
+    addDirty,
+    addStatus,
+    addError,
+    addHint,
+    openAdd,
+    dismissAdd,
+    handleAddPayload,
+    flushAdd,
+    requestCloseAdd,
+    saveAddAndSettle,
+    discardAddDraft,
+  } = useAddRowAutosave({ activeCh, ch, guardedNav, createRow, patchRow: handleSave, onCreated: handleAddCreated });
 
   const handleConfirmDelete = async () => {
     if (!confirmTarget) return;
@@ -231,49 +247,66 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
     return null;
   }, [activeCh, rows, ch.isCost]);
 
-  // 신규행 추가 폼 미저장 가드 — 판정은 RowForm(rowFormDirty, 자동 필드 제외 → 거짓 dirty 0).
-  const [addDirty, setAddDirty] = useState(false);
-  useEffect(() => {
-    if (!addOpen) { setAddDraft({}); setAddDirty(false); }
-  }, [addOpen]);
+  // 신규행 추가 폼 미저장 가드 — genuinely unsent/invalid 변경만 보호.
+  // 이탈 시 저장은 대기 중인 최신 쓰기까지 await 후에도 미완성이면 실패로 보고 → 모달 유지.
   useDirtyEntry(
     `db-add-row-${activeCh}`,
     addOpen && addDirty,
-    async () => {
-      await append.mutateAsync({ channel: KEY_TO_BACKEND[activeCh], data: addDraft as never });
-      setAddOpen(false);
-    },
-    () => setAddOpen(false),
+    saveAddAndSettle,
+    discardAddDraft,
     `${ch.recordsLabel} 추가`,
   );
 
   return (
     <>
-{/* 추가 폼 */}
+{/* 추가 폼 — 별도 저장 버튼 없음. 완성된 입력이 그룹을 벗어나면 자동 생성. */}
         {addOpen && (
-          <div className="mb-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md">
+          <div
+            className="mb-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                void flushAdd().catch(() => {});
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.target as HTMLElement)?.tagName === "INPUT") {
+                e.preventDefault();
+                void flushAdd().catch(() => {});
+              }
+            }}
+          >
             <div className="mb-3 flex items-center gap-2">
               <span className={`badge ${BADGE_CLS[activeCh]}`}>{ch.name}</span>
               <span className="text-sm font-semibold text-gray-700">
                 {ch.recordsLabel} 추가
               </span>
             </div>
-            <RowForm channel={ch} onChange={setAddDraft} onDirtyChange={setAddDirty} />
-            <div className="mt-3 flex gap-2">
+            <RowForm channel={ch} initial={addInitial} onChange={handleAddPayload} />
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p aria-live="polite" className="min-h-4 flex-1 text-xs">
+                {addStatus === "pending" && <span className="text-slate-500">기록 중…</span>}
+                {addStatus === "error" && (
+                  <span className="font-semibold text-red-600">
+                    {addError}{" "}
+                    <button
+                      type="button"
+                      onClick={() => void flushAdd().catch(() => {})}
+                      className="font-bold text-red-700 hover:underline"
+                    >
+                      다시 시도
+                    </button>
+                  </span>
+                )}
+                {addStatus !== "error" && addStatus !== "pending" && addHint && (
+                  <span className="font-medium text-amber-700">{addHint}</span>
+                )}
+              </p>
               <button
                 type="button"
-                onClick={() => guardedNav(() => setAddOpen(false))}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                onClick={requestCloseAdd}
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600"
               >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={pendingRow === "add"}
-                className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:bg-gray-300"
-              >
-                {pendingRow === "add" ? "추가중..." : "+ 추가"}
+                닫기
               </button>
             </div>
           </div>
@@ -330,8 +363,8 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
           onExpand={(rowNum) =>
             // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
             guardedNav(() => {
+              dismissAdd();
               setExpandedRow(rowNum);
-              setAddOpen(false);
             })
           }
           onCollapse={() => guardedNav(() => setExpandedRow(null))}
@@ -346,7 +379,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             onClick={() =>
               // 추가폼 열기도 펼친 행을 접으므로 미저장 가드로 감싼다(dirty 면 선확인).
               guardedNav(() => {
-                setAddOpen(true);
+                openAdd();
                 setExpandedRow(null);
               })
             }
@@ -355,9 +388,6 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             + {ch.recordsLabel} 추가
           </button>
         )}
-
-
-
       {/* 토스트 */}
       {toast && (
         <div className="fixed left-1/2 top-5 z-[200] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
