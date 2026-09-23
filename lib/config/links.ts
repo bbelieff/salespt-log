@@ -48,3 +48,10 @@ export const GUIDE_URL =
  * 미리보기·모달을 시도해도 빈 화면만 나온다. 새 탭이 유일한 방법이다.
  */
 export const POLICY_NEWS_URL = "https://salesptlog.online/news/latest";
+
+/**
+ * 주간 목표 회의록 — 내부 기록 권한 사용자가 14열 복사 후 붙여넣는 canonical Notion 페이지.
+ * 화면 안에 별도 미리보기를 복제하지 않고 이 정본을 새 탭으로 연다.
+ */
+export const WEEKLY_GOALS_MEETING_URL =
+  "https://app.notion.com/p/3083fa7fca00806fae60ea8eae34511e";

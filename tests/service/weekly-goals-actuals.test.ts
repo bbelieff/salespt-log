@@ -15,17 +15,22 @@ describe("weekly goal actuals from current raw records", () => {
   });
   it("counts completed meetings from status, excludes carryover, and never uses reservation totals", () => {
     const rows = [meeting({ 상태: "완료" }), meeting(), meeting({ 상태: "예약" }), meeting({ 상태: "취소" }), meeting({ 구분: "이월" })];
-    expect(weeklyGoalActuals([sales()], rows, [], start, end)).toMatchObject({ meetings: 2, contracts: 2 });
+    expect(weeklyGoalActuals([sales()], rows, [], start, end)).toMatchObject({ meetings: 2, contracts: 1 });
   });
   it("preserves historical contract metric using status instead of the separate checkbox", () => {
     expect(weeklyGoalActuals([], [meeting({ 계약여부: false }), meeting({ 상태: "완료", 계약여부: true })], [], start, end).contracts).toBe(1);
   });
-  it("subtracts termination in its original contract week even if terminated later", () => {
-    expect(weeklyGoalActuals([], [meeting(), meeting({ id: "second" })], [payment({ 해지일: "2026-10-01" })], start, end).contracts).toBe(1);
-  });
-  it("does not subtract contracts from another week and clamps over-subtraction at zero", () => {
-    expect(weeklyGoalActuals([], [meeting()], [payment({ 계약일: "2026-09-03", 해지일: end })], start, end).contracts).toBe(1);
-    expect(weeklyGoalActuals([], [], [payment({ 해지일: end })], start, end).contracts).toBe(0);
+  it("counts actual meeting rows only and does not depend on termination or payment rows", () => {
+    const rows = [
+      meeting(),
+      meeting({ id: "completed", 상태: "완료", 계약여부: true }),
+      meeting({ id: "reserved", 상태: "예약", 계약여부: true }),
+      meeting({ id: "carryover", 상태: "계약", 구분: "이월" }),
+    ];
+    const withoutPayments = weeklyGoalActuals([], rows, [], start, end);
+    const withTermination = weeklyGoalActuals([], rows, [payment({ 해지일: end }), payment({ 계약일: "2026-09-03", 해지일: end })], start, end);
+    expect(withoutPayments).toMatchObject({ meetings: 2, contracts: 1 });
+    expect(withTermination).toEqual(withoutPayments);
   });
   it("reflects corrected and deleted rows on the next aggregation without mutating source records", () => {
     const original = [sales()];

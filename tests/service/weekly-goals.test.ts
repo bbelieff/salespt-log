@@ -245,6 +245,8 @@ describe("weekly goals validation, key isolation, and failure semantics", () => 
     await loadWeeklyGoals(p);
     expect(m.readWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ cohort: student.cohort }));
     expect(m.readSalesRowsFromDb).toHaveBeenCalledWith(student.spreadsheetId);
+    expect(m.readMeetingsFromDb).toHaveBeenCalledWith(student.spreadsheetId);
+    expect(m.readContractsFromDb).not.toHaveBeenCalled();
   });
   it.each(["stale-enrollment", ""])("rejects stale or empty enrollment %s without writing", async enrollment => {
     const p = params(); p.set("enrollment", enrollment);

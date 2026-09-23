@@ -3,7 +3,7 @@ import { findUserByEmail, listAllUsers, listDistinctUsers, parseAssignedTrainers
 import { pickCrmUser } from "@/repo/trainer-qualification";
 import { findActiveArenaRowByEmail } from "@/repo/users-arena";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
-import { readMeetingsFromDb, readContractsFromDb } from "@/repo/db/read-daily";
+import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readWeeklyGoal, readWeeklyGoalPrivate, saveWeeklyGoal, saveWeeklyGoalPrivate } from "@/repo/db/weekly-goals";
 import { chooseDailySource } from "./daily-source";
 import { weeklyGoalActuals } from "./weekly-goals-actuals";
@@ -124,22 +124,22 @@ async function context(params: URLSearchParams, operation: TrainerAccessOperatio
 export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGoalView> {
   const { a, u, key, week } = await context(params);
   const previousStart = fmtISO(addDays(parseISO(key.weekStart), -7));
-  const [record, previous, sales, meetings, payments] = await Promise.all([
+  const [record, previous, sales, meetings] = await Promise.all([
     readWeeklyGoal(key),
     week > 1 ? readWeeklyGoal({ ...key, weekStart: previousStart }) : Promise.resolve(null),
-    readSalesRowsFromDb(u.spreadsheetId), readMeetingsFromDb(u.spreadsheetId), readContractsFromDb(u.spreadsheetId),
+    readSalesRowsFromDb(u.spreadsheetId), readMeetingsFromDb(u.spreadsheetId),
   ]);
   const all = await listDistinctUsers();
   const trainers = parseAssignedTrainers(u.assignedTrainer).map(email =>
     all.find(t => t.email.toLowerCase() === email)?.name || email);
   const weekData = (start: string, number: number, saved: typeof record) => {
     const end = fmtISO(addDays(parseISO(start), 6));
-    return { week: number, start, end, record: saved, actuals: weeklyGoalActuals(sales, meetings, payments, start, end) };
+    return { week: number, start, end, record: saved, actuals: weeklyGoalActuals(sales, meetings, [], start, end) };
   };
   // Same metric definitions, widened to week 1 … end of the previous week. Week 1 has no history.
   const firstStart = fmtISO(friOf(parseISO(key.courseStart)));
   const cumulative = week > 1
-    ? weeklyGoalActuals(sales, meetings, payments, firstStart, fmtISO(addDays(parseISO(previousStart), 6)))
+    ? weeklyGoalActuals(sales, meetings, [], firstStart, fmtISO(addDays(parseISO(previousStart), 6)))
     : { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 };
   // Explicit public projection: never spread User (tokens) or private record into a response.
   return {

@@ -16,29 +16,23 @@ const host = document.createElement("div");
 document.body.append(host);
 let root = createRoot(host);
 afterEach(() => { vi.unstubAllGlobals(); act(() => root.unmount()); root = createRoot(host); });
-it("keeps upper fields read-only and reflects draft changes without reopening", () => {
+it("keeps the fourteen-column row live and replaces the expanded preview with the canonical Notion link", () => {
   const render = (v: WeeklyGoalView, record: WeeklyGoalPrivateRecord | undefined, dirty = false) => act(() => root.render(createElement(GoalCopyPanel, { view: v, internal: record, dirty })));
   render(view, internal);
   expect(Array.from(host.querySelectorAll("th")).map(t => t.textContent)).toEqual(["지역", "기수", "수강생", "담당T", "금주미팅", "금주계약", "트레이닝 후 특이사항", "지난주 PT과제(성과)", "이번주 PT과제", "목표생산", "목표 유입", "목표 컨택", "목표미팅", "목표계약"]);
-  const button = Array.from(host.querySelectorAll("button")).find(b => b.textContent === "회의록 미리보기")!;
-  act(() => button.click());
-  const field = (label: string) => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="회의록 ${label}"]`)!;
-  for (const label of ["지역", "기수", "수강생", "담당T", "금주미팅", "금주계약"]) expect(field(label).readOnly).toBe(true);
-  for (const label of ["이번주 PT과제", "지난주 PT과제(성과)", "트레이닝 후 특이사항", "목표생산"]) expect(field(label).readOnly).toBe(true);
+  const link = Array.from(host.querySelectorAll("a")).find(a => a.textContent === "회의록 Notion 열기")!;
+  expect(link.href).toBe("https://app.notion.com/p/3083fa7fca00806fae60ea8eae34511e");
+  expect(link.target).toBe("_blank");
+  expect(link.rel).toContain("noopener");
+  expect(host.querySelector('textarea[aria-label^="회의록 "]')).toBeNull();
   render({ ...view, current: { ...view.current, record: { ...view.current.record, task: "Changed", goals: { ...EMPTY_GOALS, production: 9 } } } }, { ...internal, priorOutcome: "Changed outcome", specialNotes: "Changed notes" }, true);
-  expect(field("이번주 PT과제").value).toBe("Changed");
-  expect(field("지난주 PT과제(성과)").value).toBe("Changed outcome");
-  expect(field("트레이닝 후 특이사항").value).toBe("Changed notes");
-  expect(field("목표생산").value).toBe("9");
-  expect(Array.from(host.querySelectorAll("button")).find(b => b.textContent === "회의록용 복사")!.disabled).toBe(true);
+  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(6, 10)).toEqual(["Changed notes", "Changed outcome", "Changed", "9"]);
+  expect(Array.from(host.querySelectorAll("button")).find(b => b.textContent === "클립보드 복사")!.disabled).toBe(true);
+  expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(true);
   render({ ...view, student: { ...view.student, region: "Other region", cohort: "Next cohort", trainers: ["Trainer B"] }, current: { ...view.current, actuals: { ...view.current.actuals, meetings: 8, contracts: 3 } } }, internal);
-  expect(field("지역").value).toBe("Other region");
-  expect(field("기수").value).toBe("Next cohort");
-  expect(field("담당T").value).toBe("Trainer B");
-  expect(field("금주미팅").value).toBe("8");
-  expect(field("금주계약").value).toBe("3");
+  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(0, 6)).toEqual(["Other region", "Next cohort", "Fixture", "Trainer B", "8", "3"]);
   render(view, undefined);
-  expect(host.querySelector('textarea[aria-label="회의록 트레이닝 후 특이사항"]')).toBeNull();
+  expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(true);
 });
 
 it("copies the displayed Notion row without a header and never falls back while internal data is loading", async () => {
@@ -54,4 +48,10 @@ it("copies the displayed Notion row without a header and never falls back while 
   expect(plain.split("\t").slice(6, 9)).toEqual(["Notes", "Outcome", "Before"]);
   expect(plain).not.toContain("\n");
   expect(plain.startsWith("Region\ttest\tFixture\t")).toBe(true);
+});
+
+it("never exposes the internal Notion destination in a public view", () => {
+  act(() => root.render(createElement(GoalCopyPanel, { view: { ...view, canReadInternal: false }, dirty: false })));
+  expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(false);
+  expect(host.textContent).not.toContain("app.notion.com");
 });
