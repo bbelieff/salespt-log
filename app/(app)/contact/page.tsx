@@ -58,10 +58,13 @@ export default function ContactPage() {
   const dayQuery = useDay(date);
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
-  const saveMetrics = useSaveMetrics();
+  // 수치·미팅 자동저장은 백그라운드(silent) — 전역 차단 오버레이 제외.
+  // 생성/등록/삭제/옮기기는 그대로 차단. 인라인 AutosaveStatus 가 상태 표시.
+  const saveMetrics = useSaveMetrics({ silent: true });
   const [highlightProduction, setHighlightProduction] = useState(false);
   const appendMeeting = useAppendMeeting();
-  const patchMeeting = usePatchMeeting();
+  const patchMeeting = usePatchMeeting(); // 명시적 기록 이동은 기존 로딩 유지
+  const autosaveMeeting = usePatchMeeting({ silent: true });
   const removeMeeting = useRemoveMeeting();
   const moveMetrics = useMoveDailyMetrics();
 
@@ -272,7 +275,7 @@ export default function ContactPage() {
     id: string,
     partial: Partial<Omit<Meeting, "id">>,
     frozenDate: string,
-  ) => patchMeeting.mutateAsync({ date: frozenDate, id, partial });
+  ) => autosaveMeeting.mutateAsync({ date: frozenDate, id, partial });
 
   /** 2026-05-18 [2]: 슬라이드 방향 state. */
   const [slideDir, setSlideDir] = useState<"right" | "left" | null>(null);
@@ -374,11 +377,9 @@ export default function ContactPage() {
   return (
     <>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
-      {/* 2026-05-18 [1]: 본문 fade 인터랙션(헤더 고정) */}
-      <main
-        className={`px-4 pt-4 pb-6 transition-opacity duration-200 ${
-          dayQuery.isFetching ? "opacity-50" : "opacity-100"
-        }`}
+      {/* 백그라운드 refetch 로 본문을 dim 하지 않는다 — 자동저장 invalidate 마다
+          화면이 깜빡여 느리게 느껴진 원인. 초기 로딩은 전역 오버레이+조기 반환이 담당. */}
+      <main className="px-4 pt-4 pb-6"
       ><PageContainer width="wide">
         <ChannelTabsAndPanel
           contextHeader={<div {...weekSwipe}><div className="px-3 pt-3 text-xs font-semibold text-slate-700">기록 날짜</div><WeekHeader

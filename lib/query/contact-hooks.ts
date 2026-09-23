@@ -134,9 +134,22 @@ export interface RemoveMeetingArgs {
 }
 
 // ── 뮤테이션 ──────────────────────────────────────────────────
-export function useSaveMetrics() {
+/**
+ * 백그라운드 자동저장 opt-in — silent === true 일 때만 LoadingProvider 차단
+ * 오버레이에서 제외(meta.silent). 기본값(미지정)은 기존 차단 표시 그대로.
+ * 컨택 수치·미팅 자동저장 호출자만 opt-in, 생성/등록/삭제/옮기기·타 페이지는 기본값.
+ */
+export interface SilentAutosaveOpt {
+  silent?: boolean;
+}
+
+const silentMeta = (opts?: SilentAutosaveOpt) =>
+  opts?.silent === true ? { silent: true } : undefined;
+
+export function useSaveMetrics(opts?: SilentAutosaveOpt) {
   const qc = useQueryClient();
   return useMutation({
+    meta: silentMeta(opts),
     mutationFn: ({ date, channels }: SaveMetricsArgs) =>
       fetchJSON<{ ok: true; directProductionHold?: boolean }>(`/api/daily/${date}`, {
         method: "POST",
@@ -208,9 +221,10 @@ export function useAppendMeeting() {
   });
 }
 
-export function usePatchMeeting() {
+export function usePatchMeeting(opts?: SilentAutosaveOpt) {
   const qc = useQueryClient();
   return useMutation({
+    meta: silentMeta(opts),
     mutationFn: ({ id, partial }: PatchMeetingArgs) =>
       fetchJSON<{ ok: true }>(`/api/meeting/${id}`, {
         method: "PATCH",
