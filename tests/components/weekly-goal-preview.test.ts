@@ -9,6 +9,7 @@ Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const view: WeeklyGoalView = {
   student: { email: "fixture@example.test", name: "Fixture", cohort: "test", courseStart: "2026-09-04", region: "Region", trainers: [] },
   current: { week: 2, start: "2026-09-11", end: "2026-09-17", record: { goals: { ...EMPTY_GOALS }, task: "Before", revision: 1, updatedAt: null }, actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 } },
+  reporting: { start: "2026-09-18", end: "2026-09-24", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 4, contracts: 2 } },
   previous: null, cumulative: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 }, canReadInternal: true,
 };
 const internal: WeeklyGoalPrivateRecord = { specialNotes: "Notes", priorOutcome: "Outcome", revision: 1, updatedAt: null };
@@ -30,7 +31,7 @@ it("keeps the fourteen-column row live and replaces the expanded preview with th
   expect(Array.from(host.querySelectorAll("button")).find(b => b.textContent === "클립보드 복사")!.disabled).toBe(true);
   expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(true);
   render({ ...view, student: { ...view.student, region: "Other region", cohort: "Next cohort", trainers: ["Trainer B"] }, current: { ...view.current, actuals: { ...view.current.actuals, meetings: 8, contracts: 3 } } }, internal);
-  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(0, 6)).toEqual(["Other region", "Next cohort", "Fixture", "Trainer B", "8", "3"]);
+  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(0, 6)).toEqual(["Other region", "Next cohort", "Fixture", "Trainer B", "4", "2"]);
   render(view, undefined);
   expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(true);
 });

@@ -8,7 +8,7 @@ export function publicGoalCopy(v: WeeklyGoalView): string {
 }
 export function meetingCells(v: WeeklyGoalView, internal: WeeklyGoalPrivateRecord): string[] {
   return [v.student.region, v.student.cohort, v.student.name, v.student.trainers.join(", "),
-    String(v.current.actuals.meetings), String(v.current.actuals.contracts), internal.specialNotes,
+    String(v.reporting.actuals.meetings), String(v.reporting.actuals.contracts), internal.specialNotes,
     internal.priorOutcome, v.current.record.task, ...GOAL_KEYS.map(k => String(v.current.record.goals[k] ?? "미기재"))]
     .map(s => s || "미기재");
 }
