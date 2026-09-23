@@ -4,6 +4,12 @@
  *
  * 자동수식 필드는 disabled + auto-field 스타일(노란 점선 박스).
  * 일반 입력 변경 시 클라이언트 미리보기 계산.
+ *
+ * 정렬 계약(2026-09-24): 모든 컨트롤 공통 높이(h-10) + 라벨 하단 baseline
+ * (min-h-8 items-end). 예시 문구는 컨트롤 위 별도 span이 아니라 실제
+ * input placeholder로 이동(라벨은 그대로 유지). 2개 수식 필드는
+ * memo(span=2) 앞의 전용 2열 그룹에만 렌더(계산 순서는 channel.fields
+ * 원본 순서 그대로 — computed는 손대지 않음).
  */
 "use client";
 
@@ -104,19 +110,50 @@ export default function RowForm({ channel, initial = {}, onChange, onDirtyChange
     setDraft((d) => ({ ...d, [key]: value }));
   };
 
+  // 렌더 전용 그룹핑 — 계산 순서(computed)는 channel.fields 원본 그대로.
+  // inline(일반 1칸) → 수식 2열 그룹 → memo(span=2). 일반 필드 원본 순서 유지.
+  const visible = channel.fields.filter((f) => !(isAdd && f.hideInAdd));
+  const formulaFields = visible.filter((f) => f.formula);
+  const memoFields = visible.filter((f) => !f.formula && f.span === 2);
+  const inlineFields = visible.filter((f) => !f.formula && f.span !== 2);
+
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {channel.fields
-        .filter((f) => !(isAdd && f.hideInAdd))
-        .map((f) => (
-          <FieldCell
-            key={f.key}
-            field={f}
-            value={draft[f.key]}
-            allValues={computed}
-            onChange={(v) => setField(f.key, v)}
-          />
-        ))}
+    <div className="flex min-w-0 flex-col gap-2.5">
+      {inlineFields.length > 0 && (
+        <div className="grid min-w-0 grid-cols-2 gap-2.5">
+          {inlineFields.map((f) => (
+            <FieldCell
+              key={f.key}
+              field={f}
+              value={draft[f.key]}
+              allValues={computed}
+              onChange={(v) => setField(f.key, v)}
+            />
+          ))}
+        </div>
+      )}
+      {formulaFields.length > 0 && (
+        <div className="grid min-w-0 grid-cols-2 gap-2.5">
+          {formulaFields.map((f) => (
+            <FieldCell
+              key={f.key}
+              field={f}
+              value={draft[f.key]}
+              allValues={computed}
+              onChange={(v) => setField(f.key, v)}
+            />
+          ))}
+        </div>
+      )}
+      {memoFields.map((f) => (
+        <FieldCell
+          key={f.key}
+          field={f}
+          value={draft[f.key]}
+          allValues={computed}
+          onChange={(v) => setField(f.key, v)}
+        />
+      ))}
     </div>
   );
 }
@@ -132,7 +169,10 @@ function FieldCell({
   allValues: Record<string, unknown>;
   onChange: (v: string) => void;
 }) {
-  const colSpan = field.span === 2 ? "col-span-2" : "";
+  // 라벨 baseline — 2줄 라벨과 1줄 라벨이 섞여도 컨트롤 시작점이 어긋나지 않게
+  // 같은 grid 행의 셀을 늘리고 라벨이 남은 높이를 채워 제어점을 맞춘다.
+  const labelCls =
+    "mb-1 flex min-h-4 flex-1 flex-wrap items-end gap-1 text-xs font-medium leading-tight text-gray-600";
 
   // 자동수식 — disabled + 노란 박스
   if (field.formula) {
@@ -141,10 +181,10 @@ function FieldCell({
       ? `${fmtWon(calcVal)}${field.unit ? ` ${field.unit}` : ""}`
       : "-";
     return (
-      <div className={colSpan}>
-        <label className="mb-1 flex items-center gap-1 text-xs font-medium leading-tight text-gray-600">
-          <span className="break-keep">{field.label}</span>
-          <span className="rounded bg-amber-100 px-1 py-px text-[11px] font-bold text-amber-800">
+      <div className="flex min-w-0 flex-col">
+        <label className={labelCls}>
+          <span className="min-w-0 break-keep">{field.label}</span>
+          <span className="shrink-0 rounded bg-amber-100 px-1 py-px text-[11px] font-bold text-amber-800">
             🔒 자동
           </span>
         </label>
@@ -152,7 +192,10 @@ function FieldCell({
           type="text"
           disabled
           value={display}
-          className="w-full cursor-not-allowed rounded-lg border border-dashed border-amber-600 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 num-mono"
+          title={display}
+          aria-label={field.label}
+          data-field={field.key}
+          className="h-10 w-full min-w-0 max-w-full cursor-not-allowed truncate rounded-lg border border-dashed border-amber-600 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 num-mono"
           style={{ fontVariantNumeric: "tabular-nums" }}
         />
       </div>
@@ -163,22 +206,24 @@ function FieldCell({
   if (field.type === "toggle") {
     const on = Boolean(value);
     return (
-      <div className={colSpan}>
-        <label className="mb-1 block text-xs font-medium leading-tight text-gray-600">
-          {field.label}
-        </label>
+      <div className="flex min-w-0 flex-col">
+        <label className={labelCls}>{field.label}</label>
         <button
           type="button"
           onClick={() => onChange(on ? "false" : "true")}
-          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium ${
+          aria-label={field.label}
+          aria-pressed={on}
+          data-field={field.key}
+          className={`flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
             on
               ? "border-blue-500 bg-blue-50 text-blue-700"
               : "border-gray-300 bg-white text-gray-500"
           }`}
         >
-          <span>{on ? "포함" : "미포함"}</span>
+          <span className="min-w-0 truncate">{on ? "포함" : "미포함"}</span>
           <span
-            className={`inline-flex h-4 w-7 items-center rounded-full px-0.5 transition-colors ${
+            aria-hidden="true"
+            className={`inline-flex h-4 w-7 shrink-0 items-center rounded-full px-0.5 transition-colors ${
               on ? "justify-end bg-blue-500" : "justify-start bg-gray-300"
             }`}
           >
@@ -192,14 +237,14 @@ function FieldCell({
   // select
   if (field.type === "select" && field.options) {
     return (
-      <div className={colSpan}>
-        <label className="mb-1 block text-xs font-medium leading-tight text-gray-600">
-          {field.label}
-        </label>
+      <div className="flex min-w-0 flex-col">
+        <label className={labelCls}>{field.label}</label>
         <select
           value={String(value ?? "")}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          aria-label={field.label}
+          data-field={field.key}
+          className="h-10 w-full min-w-0 max-w-full truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         >
           {field.options.map((o) => (
             <option key={o} value={o}>
@@ -226,27 +271,25 @@ function FieldCell({
   // iOS Safari date input intrinsic-width 오버플로 방지: 부모 min-w-0 + appearance-none.
   const dateOverflowFix = field.type === "date" ? "appearance-none" : "";
   const inputType = field.type === "date" ? "date" : field.type === "number" ? "number" : "text";
-  const inputCls = `w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`;
+  // 예시 문구는 위 별도 span이 아니라 실제 placeholder로 — 별도 행이 생기지 않아
+  // 짝지어진 두 컨트롤 높이가 어긋나지 않는다. 라벨은 그대로 유지.
+  const inputCls = `h-10 w-full min-w-0 max-w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`;
 
   return (
-    <div className={`min-w-0 ${colSpan}`}>
-      <label className="mb-1 flex items-center gap-1 text-xs font-medium leading-tight text-gray-600">
-        <span>
+    <div className="flex min-w-0 flex-col">
+      <label className={labelCls}>
+        <span className="min-w-0 break-keep">
           {field.label}
           {field.unit && (
             <span className="ml-0.5 text-gray-300">({field.unit})</span>
           )}
         </span>
       </label>
-      {field.placeholder && (
-        <span className="mt-0.5 block break-keep text-[11px] leading-tight text-gray-400">
-          {field.placeholder}
-        </span>
-      )}
       {isMoney ? (
         <MoneyInput
           value={numericValue}
           onChange={(n) => onChange(String(n))}
+          placeholder={field.placeholder}
           className={inputCls}
           aria-label={field.label}
         />
@@ -254,7 +297,7 @@ function FieldCell({
         <PhoneInput
           value={String(value ?? "")}
           onChange={onChange}
-          placeholder="" /* 힌트는 위 span 이 이미 노출(중복 방지) */
+          placeholder={field.placeholder}
           className={inputCls}
           aria-label={field.label}
         />
@@ -264,6 +307,8 @@ function FieldCell({
           inputMode={field.type === "number" ? "numeric" : undefined}
           min={field.type === "number" ? 0 : undefined}
           value={inputValue}
+          placeholder={field.placeholder}
+          aria-label={field.label}
           onChange={(e) => onChange(e.target.value)}
           data-field={field.key}
           className={inputCls}
