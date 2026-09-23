@@ -14,3 +14,6 @@ Verification via CUA and real React components with a local in-memory revision-c
 - Focused service/repository baseline 61 tests passed. Added 13 service/structural cases passed (past/current/future, key isolation, invalid weeks, enrollment conflict, revision conflict and private ACL).
 
 No production student records were edited for this verification. The reported user's exact failed interaction is not yet confirmed; the duplicate-save path above is independently reproduced.
+
+## Dashboard navigation clarification
+The dashboard separately clamped selected dates to the current week and disabled Next at that anchor. Removed that ceiling; reset only on exact anchor equality and keep API upper week 5200/loading guards. Selected future date remains in the detail URL. Nine React DOM component tests passed: forward twice, back to anchor, minimum week, reset, future detail route, upper bound and loading/error guards.
