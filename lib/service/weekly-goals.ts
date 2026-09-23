@@ -136,6 +136,10 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
     const end = fmtISO(addDays(parseISO(start), 6));
     return { week: number, start, end, record: saved, actuals: weeklyGoalActuals(sales, meetings, [], start, end) };
   };
+  // The selector controls planning and GoalRings. Meeting-report copy always uses the
+  // server-current KST Friday-Thursday window, never a selected week or client date.
+  const reportingStart = fmtISO(friOf(parseISO(todayKST())));
+  const reportingEnd = fmtISO(addDays(parseISO(reportingStart), 6));
   // Same metric definitions, widened to week 1 … end of the previous week. Week 1 has no history.
   const firstStart = fmtISO(friOf(parseISO(key.courseStart)));
   const cumulative = week > 1
@@ -146,6 +150,7 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
     student: { email: u.email, name: u.name, cohort: u.cohort, courseStart: u.courseStartISO, region: u.team, trainers },
     current: weekData(key.weekStart, week, record),
     previous: previous ? weekData(previousStart, week - 1, previous) : null,
+    reporting: { start: reportingStart, end: reportingEnd, actuals: weeklyGoalActuals(sales, meetings, [], reportingStart, reportingEnd) },
     cumulative,
     canReadInternal: a.internal,
   };

@@ -7,6 +7,7 @@ const m = vi.hoisted(() => ({
   findUserByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(),
   readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoal: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
+  todayKST: vi.fn(),
 }));
 vi.mock("@/auth/identity", () => m);
 vi.mock("@/repo/users-arena", () => m);
@@ -15,6 +16,10 @@ vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
 vi.mock("@/service/daily-source", () => m);
+vi.mock("@/util/week", async importOriginal => ({
+  ...await importOriginal<typeof import("@/util/week")>(),
+  todayKST: () => m.todayKST(),
+}));
 // #958: seed the trainer-access facts these legacy trainer fixtures imply. Without an explicit
 // grant the new ACL is fail-closed by design, so the intent must be stated rather than assumed.
 vi.mock("@/repo/db/trainer-student-access", () => ({
@@ -63,6 +68,7 @@ beforeEach(() => {
   m.readSalesRowsFromDb.mockResolvedValue([]);
   m.readMeetingsFromDb.mockResolvedValue([]);
   m.readContractsFromDb.mockResolvedValue([]);
+  m.todayKST.mockReturnValue("2026-09-23");
   m.readWeeklyGoal.mockImplementation(async () => emptyRecord());
   m.readWeeklyGoalPrivate.mockResolvedValue({ specialNotes: "PRIVATE-NOTE", priorOutcome: "PRIVATE-OUTCOME", revision: 1 });
   m.saveWeeklyGoal.mockResolvedValue(true);
@@ -225,6 +231,28 @@ describe("weekly goals validation, key isolation, and failure semantics", () => 
       { studentId: student.spreadsheetId, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-11" },
       { studentId: student.spreadsheetId, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-04" },
     ]);
+  });
+  it("keeps selected-week goals separate from the server-current Friday-Thursday reporting actuals", async () => {
+    const current = [
+      { 미팅날짜: "2026-09-18", 상태: "완료" },
+      { 미팅날짜: "2026-09-20", 상태: "완료" },
+      { 미팅날짜: "2026-09-22", 상태: "계약" },
+      { 미팅날짜: "2026-09-24", 상태: "계약" },
+    ];
+    m.readMeetingsFromDb.mockResolvedValue([...current, { 미팅날짜: "2026-09-25", 상태: "계약" }]);
+    const p = params("4");
+    p.set("date", "2026-10-02");
+    const view = await loadWeeklyGoals(p);
+    expect(view.current).toMatchObject({ week: 4, start: "2026-09-25", end: "2026-10-01", actuals: { meetings: 1, contracts: 1 } });
+    expect(view.reporting).toEqual({ start: "2026-09-18", end: "2026-09-24", actuals: expect.objectContaining({ meetings: 4, contracts: 2 }) });
+  });
+  it("rolls the authoritative reporting interval only when KST reaches Friday", async () => {
+    const p = params("4");
+    p.set("date", "2026-10-02");
+    m.todayKST.mockReturnValueOnce("2026-09-24");
+    await expect(loadWeeklyGoals(p)).resolves.toMatchObject({ reporting: { start: "2026-09-18", end: "2026-09-24" } });
+    m.todayKST.mockReturnValueOnce("2026-09-25");
+    await expect(loadWeeklyGoals(p)).resolves.toMatchObject({ reporting: { start: "2026-09-25", end: "2026-10-01" } });
   });
   it("accumulates week 1 through the previous week for the back-calculation basis", async () => {
     // Weeks 1–3 start 2026-09-04 / 09-11 / 09-18. Viewing week 3 counts weeks 1–2 only.

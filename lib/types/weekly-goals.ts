@@ -49,6 +49,8 @@ export interface WeeklyGoalView {
   student: { email: string; name: string; cohort: string; courseStart: string; region: string; trainers: string[] };
   current: GoalWeek;
   previous: GoalWeek | null;
+  /** Server-current KST Friday-Thursday actuals used only by the meeting-report clipboard row. */
+  reporting: { start: string; end: string; actuals: GoalActuals };
   /** Week 1 through the end of the previous week. Basis for the cumulative back-calculation. */
   cumulative: GoalActuals;
   canReadInternal: boolean;

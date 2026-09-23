@@ -4,7 +4,8 @@ import { copyGoalText, escapeGoalHTML, goalClipboard, goalPivotCells, GOAL_PIVOT
 
 const view = (): WeeklyGoalView => ({
   student: { email: "fixture@example.test", name: "Fixture Student", cohort: "test-cohort", courseStart: "2026-09-04", region: "Fixture Region", trainers: ["Fixture Trainer 1", "Fixture Trainer 2"] },
-  current: { week: 1, start: "2026-09-04", end: "2026-09-10", record: { goals: { ...EMPTY_GOALS, production: 0, contacts: 7 }, task: "Task line 1\nTask line 2", revision: 1, updatedAt: null }, actuals: { production: 2, inflow: 3, contacts: 4, meetings: 5, contracts: 6 } },
+  current: { week: 1, start: "2026-09-04", end: "2026-09-10", record: { goals: { ...EMPTY_GOALS, production: 0, contacts: 7 }, task: "Task line 1\nTask line 2", revision: 1, updatedAt: null }, actuals: { production: 2, inflow: 3, contacts: 4, meetings: 99, contracts: 88 } },
+  reporting: { start: "2026-09-18", end: "2026-09-24", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 5, contracts: 6 } },
   previous: null, cumulative: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 }, canReadInternal: true,
 });
 const internal: WeeklyGoalPrivateRecord = { specialNotes: "PRIVATE-NOTE", priorOutcome: "PRIVATE-OUTCOME", revision: 1, updatedAt: null };
@@ -20,7 +21,7 @@ describe("goal copy serialization", () => {
     expect(result).toContain("Task line 1\nTask line 2");
     expect(result).not.toMatch(/PRIVATE|fixture@example/);
   });
-  it("creates exactly the approved fourteen ordered columns with current actuals", () => {
+  it("creates exactly the approved fourteen ordered columns with server-current reporting actuals", () => {
     expect(MEETING_COLUMNS).toHaveLength(14);
     expect(meetingCells(view(), internal)).toEqual([
       "Fixture Region", "test-cohort", "Fixture Student", "Fixture Trainer 1, Fixture Trainer 2", "5", "6",

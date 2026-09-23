@@ -64,7 +64,9 @@ const view = (week, student = "fixture@example.invalid", role = "trainer") => {
   const item = w => ({ week: w, start: dates[w][0], end: dates[w][1], record: records.get(student + w) ?? empty(),
     actuals: { production: 12, inflow: 4, contacts: 3, meetings: 2, contracts: 1 } });
   return { student: { email: student, name: "가상 수강생", cohort: "연습", courseStart: dates[1][0], region: "테스트지역", trainers: ["가상 트레이너"] },
-    current: item(week), previous: week > 1 ? item(week - 1) : null, canReadInternal: role !== "student" };
+    current: item(week), previous: week > 1 ? item(week - 1) : null,
+    reporting: { start: "2026-09-18", end: "2026-09-24", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 4, contracts: 2 } },
+    canReadInternal: role !== "student" };
 };
 try {
   const context = await browser.newContext({ viewport: { width: 1366, height: 768 } });
