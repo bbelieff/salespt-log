@@ -12,7 +12,9 @@ import { build } from "esbuild";
 const requireTools = createRequire(resolve(process.env.QA_TOOLS_DIR, "package.json"));
 const { chromium } = requireTools("playwright");
 const dir = mkdtempSync(join(tmpdir(), "weekly-goals-browser-"));
-const output = resolve("docs/qa/weekly-goals-evidence");
+const output = process.env.WEEKLY_GOALS_EVIDENCE_DIR
+  ? resolve(process.env.WEEKLY_GOALS_EVIDENCE_DIR)
+  : resolve("docs/qa/weekly-goals-evidence");
 mkdirSync(output, { recursive: true });
 await build({
   entryPoints: ["tests/browser/weekly-goals-fixture.tsx"], bundle: true, outfile: join(dir, "app.js"),
@@ -116,18 +118,20 @@ try {
   await page.getByLabel("지난주 PT과제 성과", { exact: true }).fill("PRIVATE_OUTCOME");
   await page.getByRole("button", { name: "성과·기록 저장" }).click();
   await page.waitForFunction(() => !document.querySelector("button")?.disabled);
-  await page.getByRole("button", { name: "회의록 미리보기" }).click();
-  assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 14);
-  await page.getByLabel("회의록 이번주 PT과제").fill("미리보기 수정\n줄바꿈");
+  const meetingLink = page.getByRole("link", { name: "회의록 Notion 열기", exact: true });
+  assert.equal(await meetingLink.getAttribute("href"), "https://app.notion.com/p/3083fa7fca00806fae60ea8eae34511e");
+  assert.equal(await meetingLink.getAttribute("target"), "_blank");
+  assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 0);
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined }));
-  await page.getByRole("button", { name: "회의록용 복사", exact: true }).click();
+  await page.getByRole("button", { name: "클립보드 복사", exact: true }).click();
   const fallback = page.getByLabel("직접 선택하여 복사");
   await fallback.waitFor();
   assert.equal((await fallback.inputValue()).split("\t").length, 14);
-  results.push("internal-save-editable-preview-14-columns-fallback");
+  results.push("internal-canonical-notion-link-14-columns-fallback-no-preview");
   await page.getByRole("button", { name: "함께 보기", exact: true }).click();
   assert.equal(await page.getByText("INTERNAL_ONLY").count(), 0);
   assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 0);
+  assert.equal(await page.getByRole("link", { name: "회의록 Notion 열기", exact: true }).count(), 0);
   await page.getByRole("button", { name: "목표·PT과제 복사", exact: true }).click();
   assert.equal((await fallback.inputValue()).includes("INTERNAL_ONLY"), false);
   results.push("together-public-copy-no-private");
@@ -373,14 +377,24 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: join(output, "pt-outcome-desktop.png"), fullPage: true });
   results.push("next-week-outcome-save-reload-and-week-isolation");
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+    await page.goto(base);
+    await page.getByRole("button", { name: "트레이너 기록 열기", exact: true }).click();
+    assert.equal(await page.getByRole("link", { name: "회의록 Notion 열기", exact: true }).isVisible(), true);
+    assert.equal(await page.locator('textarea[aria-label^="회의록 "]').count(), 0);
+    await page.goto(base + "/?role=student");
+    assert.equal(await page.getByRole("link", { name: "회의록 Notion 열기", exact: true }).count(), 0);
+    results.push("canonical-notion-link-internal-only-no-preview-" + width);
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(base);
   await page.getByRole("button", { name: "트레이너 기록 열기", exact: true }).click();
-  await page.getByRole("button", { name: "회의록 미리보기", exact: true }).click();
-  assert.equal(await page.getByLabel("회의록 지역", { exact: true }).inputValue(), "테스트지역");
+  assert.equal(await page.getByRole("cell", { name: "테스트지역", exact: true }).count(), 1);
   await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
     write: async items => { window.__richCopy = {html: await (await items[0].getType("text/html")).text(),plain: await (await items[0].getType("text/plain")).text()}; }
   } }));
-  await page.getByRole("button", { name: "회의록용 복사", exact: true }).click();
+  await page.getByRole("button", { name: "클립보드 복사", exact: true }).click();
   await page.getByText("복사됨", { exact: true }).waitFor();
   const rich = await page.evaluate(() => window.__richCopy);
   assert.equal((rich.html.match(/<tr>/g) ?? []).length, 1);
