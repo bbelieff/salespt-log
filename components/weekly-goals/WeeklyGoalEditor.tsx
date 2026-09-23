@@ -44,20 +44,40 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
 
   const bindInternalSave = useCallback((fn: (() => Promise<void>) | null) => { internalSave.current = fn; }, []);
 
-  async function save() {
-    if (lock.current) throw new Error("저장 중이에요.");
+  // Public-only core: validate + PUT when dirty, preserve draft on error.
+  // Internal notes are saved separately (button chains it; week-move guard runs it in parallel).
+  async function savePublicCore(): Promise<boolean> {
     const task = joinTaskRows(taskRows);
     if (task.length > 10000) { setMessage("PT과제가 너무 길어요. 10,000자 아래로 줄여 주세요."); throw new Error("invalid"); }
     const parsed = WeeklyGoalInput.safeParse({ goals: draft.goals, task, revision: saved.revision });
     if (!parsed.success) { setMessage("목표는 0 이상의 정수 또는 빈칸으로 입력해 주세요."); throw new Error("invalid"); }
+    if (!dirty) return false;
+    const result = await goalJSON<{ revision: number }>("/api/weekly-goals?" + goalParams(view), parsed.data);
+    const next = { ...draft, ...parsed.data, revision: result.revision };
+    setSaved(next); setDraft(next);
+    window.dispatchEvent(new Event("weekly-goals-saved"));
+    return true;
+  }
+  // Week-move guard entry: public record only. Registering the combined save here would
+  // PUT the internal record twice in parallel with the internal editor's own entry
+  // (same revision → spurious 409), blocking week moves with both sections dirty.
+  async function savePublicGuard() {
+    if (lock.current) throw new Error("저장 중이에요.");
+    lock.current = true; setSaving(true); setMessage("");
+    try {
+      await savePublicCore();
+    } catch (e) {
+      setMessage((e as Error).message);
+      if (goalAccessDenied(e)) reload();
+      throw e;
+    }
+    finally { lock.current = false; setSaving(false); }
+  }
+  async function save() {
+    if (lock.current) throw new Error("저장 중이에요.");
     lock.current = true; setSaving(true); setMessage(""); setDone(false);
     try {
-      if (dirty) {
-        const result = await goalJSON<{ revision: number }>("/api/weekly-goals?" + goalParams(view), parsed.data);
-        const next = { ...draft, ...parsed.data, revision: result.revision };
-        setSaved(next); setDraft(next);
-        window.dispatchEvent(new Event("weekly-goals-saved"));
-      }
+      await savePublicCore();
       // 트레이닝 후 특이사항까지 한 번에. Internal failure must still surface as a failed save.
       if (internalSave.current) await internalSave.current();
       setDone(true);
@@ -69,7 +89,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
     }
     finally { lock.current = false; setSaving(false); }
   }
-  useDirtyEntry("weekly-goal-public", dirty, save, () => {
+  useDirtyEntry("weekly-goal-public", dirty, savePublicGuard, () => {
     setDraft(saved); setTaskRows(editableTaskRows(saved.task));
   }, "주간 목표·PT과제");
 
