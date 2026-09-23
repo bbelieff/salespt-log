@@ -79,6 +79,7 @@ vi.mock("@/query/expense-ledger-hooks", () => {
     useDeleteCategory: () => deleteCategoryMutation,
     useDeleteRecurringRule: () => deleteRecurringRuleMutation,
     useCreateExpense: () => createExpenseMutation,
+    usePatchExpense: idleMutation,
     useCreateRecurringRule: () => createRecurringRuleMutation,
     usePatchCategory: idleMutation,
     usePatchRecurringRule: idleMutation,
@@ -191,14 +192,22 @@ describe("expense ledger dashboard UI", () => {
     expect(view.textContent).toContain("DB 비용 합계 ₩3,000");
   });
 
-  it("renders the compact record hub and view shell with a sticky form CTA", () => {
+  it("renders the record hub with autosave status instead of a generic save footer", () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
     expect(document.body.textContent).toContain("DB 비용₩3,000");
     expect(document.body.textContent).toContain("추가 비용₩300");
     expect(document.body.textContent).toContain("총비용₩3,300");
     expect(document.querySelectorAll('[role="tab"][aria-controls]').length).toBe(2);
     expect([...document.querySelectorAll('[role="tab"]')].some((tab) => tab.textContent === "관리")).toBe(false);
-    expect(document.querySelector('button[form="expense-record-form"]')?.textContent).toBe("비용 저장");
+    // Scope B autosave: no sticky generic CTA — one-off auto-records with a
+    // compact status line, recurring registers through one semantic action.
+    expect(document.querySelector('button[form="expense-record-form"]')).toBeNull();
+    expect(document.body.textContent).not.toContain("비용 저장");
+    expect(document.body.textContent).toContain("자동으로 기록돼요");
+    clickButton("매월 반복");
+    expect(
+      [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "매월 반복 등록"),
+    ).toBe(true);
     expect(document.body.textContent).not.toContain("방금 만든 반복 비용 관리");
   });
 
@@ -229,10 +238,19 @@ describe("expense ledger dashboard UI", () => {
 
   it("blocks keyboard-cleared one-time day and invalid period dates, then recovers preview and submission", async () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 })); prepareRequiredExpenseFields();
+    const blurRecordForm = () => {
+      const form = document.querySelector("form");
+      const outside = document.createElement("button");
+      document.body.append(outside);
+      act(() => { form?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: outside })); });
+      outside.remove();
+    };
     let dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]'); clearDateWithKeyboard(dates[0]!);
     expect(dates[0]?.required).toBe(true); expect(dates[0]?.getAttribute("aria-invalid")).toBe("true");
     expect(document.body.textContent).toContain("발생일을 올바르게 입력해 주세요."); expect(document.body.textContent).not.toMatch(/NaN|-24/);
-    expect(document.querySelector<HTMLButtonElement>('button[form="expense-record-form"]')?.disabled).toBe(true); await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
+    // Scope B autosave: invalid input blocks submit AND group-exit auto-record alike.
+    await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
+    blurRecordForm(); await act(async () => {}); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
     clickButton("기간"); dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]'); changeInput(dates[0]!, "2026-07-31"); clearDateWithKeyboard(dates[1]!);
     expect(dates[1]?.required).toBe(true); expect(document.body.textContent).toContain("기간 종료일을 올바르게 입력해 주세요.");
     changeInput(dates[1]!, "2026-07-30"); expect(document.body.textContent).toContain("종료일은 시작일보다 빠를 수 없습니다."); await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
@@ -504,8 +522,10 @@ describe("expense category combobox", () => {
 
     const renameInput = document.querySelector<HTMLInputElement>('[aria-label="선택 카테고리 이름 수정"]');
     if (!renameInput) throw new Error("rename-category input is missing");
+    expect([...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "이름 변경")).toBe(false);
     changeInput(renameInput, "퍼포먼스 마케팅");
-    await act(async () => { clickButton("이름 변경"); });
+    // Scope B autosave: rename commits on group blur instead of a button click.
+    await act(async () => { renameInput.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body })); });
     expect(onRename).toHaveBeenCalledWith("category-marketing", "퍼포먼스 마케팅");
 
     const createInput = document.querySelector<HTMLInputElement>('[aria-label="새 카테고리 이름"]')!;

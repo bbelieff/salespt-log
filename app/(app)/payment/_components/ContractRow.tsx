@@ -1,28 +1,28 @@
 /**
  * ContractRow v2 — 1 계약수납 row 카드 (접힘/펼침).
  *
- * v9 prototype 매칭:
- *   - 좌측 보더 = 활성 슬롯 색 (teal/cyan/fuchsia) 또는 완료 시 green
- *   - visiblePayments (1~3): + 수납 추가 / ✕ 제거 버튼
- *   - 슬롯별 색 진행도 (PaymentSlotForm 내부)
- *   - 헤더: 순번 배지 + 업체명 + ✓(완료) + 계약일·매출 + 📋배지 + 💰배지
+ * 루틴 편집(체크박스·슬롯·메모·금액·날짜)은 자동 저장 — 일반 저장 버튼 없음.
+ * 텍스트/카운트는 디바운스, 금액/날짜 그룹 blur 시 즉시 flush. 무효하면
+ * 저장하지 않고 DirtyGuard 가 보호한다. 계약해지·삭제는 명시적 액션 유지.
  *
- * 시트 매핑: 02 계약수납관리 1 row
- *   - C/D/E (계약일/업체명/수임비) — 자동 연동, read-only 표시
- *   - F~L 7 체크박스 / M~AD 3 슬롯 × 6필드
+ * 시트 매핑: 02 계약수납관리 1 row (C/D/E 자동 연동 read-only 표시,
+ * F~L 7 체크박스 / M~AD 3 슬롯 × 6필드). 업체정보(04·06)는 디바운스 POST.
  */
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { isCarryoverContract, isTerminatedContract, type ContractPayment, type CompanyInfo } from "@/types";
+import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
 import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
-import PaymentSlotForm from "./PaymentSlotForm";
+import ContractSlots from "./ContractSlots";
+import { useContractCompanyInfo } from "./useContractCompanyInfo";
 import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
-import { progressPct, initialVisiblePayments, EMPTY_SLOT } from "../_lib/payment-progress";
+import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
+import { useAutosave } from "@/components/autosave/useAutosave";
+import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import { useTodosByContract } from "@/query/todos-hooks";
 import {
   ACCENT,
@@ -31,42 +31,26 @@ import {
   payBadgeClass,
   type AccentFamily,
 } from "../_lib/contractAccent";
-import { shouldRebaseDraft, shouldRegisterDirty } from "../_lib/draft-sync";
 
 interface Props {
   cp: ContractPayment;
-  ordinal: number; // 1-based, 헤더 순번 배지
+  ordinal: number;
   pending: boolean;
-  /** [3] 진행기관 콤보박스 후보 (전 계약 distinct). */
   institutionOptions?: string[];
-  /** 저장. Promise 를 반환하면 saveAll 이 await 한다 — 미저장 가드가 저장 완료 전에 이동하지 않도록. */
-  onSave: (next: ContractPayment) => Promise<void> | void;
+  /** 자동 저장 경로는 { quiet: true } 로 호출 — 루틴 성공 토스트 없음. */
+  onSave: (next: ContractPayment, opts?: { quiet?: boolean }) => Promise<void> | void;
   onDeleteRequest: () => void;
-  /** [계약해지] — TerminationModal 오픈 (contract-termination). */
   onTerminateRequest: () => void;
-  /** C 마스터-디테일(데스크탑):
-   *  - selectable: 컴팩트 목록 아이템 모드 — 바디 숨김, 헤더 클릭=onSelect.
-   *  - selected: 선택 강조(액센트).
-   *  - forceOpen: 상세 패널 모드 — 바디 항상 열림(아코디언 토글 없음).
-   *  (모두 미지정 = 기존 모바일 아코디언, 회귀 0) */
   selectable?: boolean;
   selected?: boolean;
   onSelect?: () => void;
   forceOpen?: boolean;
-  /** 강조색 패밀리 override (마스터-디테일에서 선택카드↔패널 색 일치용). 없으면 draft 상태로 자동. */
   accentFamily?: AccentFamily;
-  /** bare: 자체 테두리/라운드/그림자 없이 내용만 렌더(page 가 윤곽선 소유 — 데스크탑 마스터-디테일). */
   bare?: boolean;
-  /** 캘린더 → /payment?focus=<todoId>. 이 행에 해당 ToDo 있으면 자동 펼침+하이라이트. */
   focusTodoId?: string | null;
-  /** 업체 검색어 — 업체명 일치 부분 <mark> 하이라이트 (CompanySearchBar). */
   highlight?: string;
-  /** 시작일(courseStart) — 이월 판정(계약일<시작일 OR 깃발)용. 없으면 깃발만. */
   courseStartISO?: string;
 }
-
-// 진행도·슬롯 가시성 헬퍼는 _lib/payment-progress, draft 동기화 판정은 _lib/draft-sync 로 추출(500줄 캡).
-// renderNameWithHighlight 는 ./nameHighlight 로 분리(contract-termination PR).
 
 export default function ContractRow({
   cp,
@@ -86,70 +70,99 @@ export default function ContractRow({
   highlight,
   courseStartISO,
 }: Props) {
-  // 이월(아레나 비집계) 판정 — 깃발(AI=이월) 또는 계약일<시작일(동적). 뱃지·흐림에 사용.
   const isCarryover = isCarryoverContract(cp, courseStartISO ?? "");
-  const isTerminated = isTerminatedContract(cp); // 해지 — 뱃지·흐림·버튼 숨김
+  const isTerminated = isTerminatedContract(cp);
   const [open, setOpen] = useState(false);
-  // 바디 표시: 상세패널(forceOpen)=항상 / 컴팩트 목록(selectable)=숨김 / 그 외=아코디언.
   const showBody = forceOpen || (!selectable && open);
-  const [draft, setDraft] = useState<ContractPayment>(cp);
-  // 편집 의도 — dirty 의 정본(값 비교 아님). 편집 UI 를 안 띄운 인스턴스는 영원히 false. draft-sync 참조.
-  const [touched, setTouched] = useState(false);
-  const editSeq = useRef(0); // 저장 in-flight 중 새 편집이 들어왔는지 감지
-  /** draft 편집 단일 진입점 — 모든 onChange 가 여기를 거친다(의도 기록). */
-  const editDraft = (fn: (d: ContractPayment) => ContractPayment) => {
-    editSeq.current++;
-    setTouched(true);
-    setDraft(fn);
-  };
-  // 업체정보 라이브 드래프트(#411) — 파란 저장이 04+06 까지 함께 영속화.
-  const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(undefined);
-  const [ciTouched, setCiTouched] = useState(false);
-  // cp(서버 정본) 변경 시 미편집이면 draft 재기준 — 저장 후 refetch·계약정보 수정·해지 전부 커버.
-  // 이게 없으면 옛 draft 가 남아 이탈 팝업 저장 시 방금 저장을 롤백한다(hotfix 2026-07-21).
-  const rebaseOk = useRef(true);
-  rebaseOk.current = shouldRebaseDraft({ touched, ciTouched });
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const cpRef = useRef(cp);
+  cpRef.current = cp;
+
+  // 루틴 draft 자동 저장 — target=row 고정, 공유 코어(Scope A)가 영속화.
+  const {
+    draft,
+    status,
+    error,
+    dirty,
+    savedAt,
+    canUndo,
+    update,
+    stage,
+    commit,
+    syncServer,
+    // C3: 공유 useAutosave.discard() — 큐 예약 취소 + draft=saved 강제(공유 코어 소유).
+    discard,
+    retry,
+    flush,
+    undo,
+  } = useAutosave<ContractPayment>({
+    target: { kind: "contract", row: cp.row },
+    initial: cp,
+    delayMs: 700,
+    save: ({ payload }) =>
+      Promise.resolve(onSaveRef.current(payload, { quiet: true })),
+  });
   const cpKey = JSON.stringify(cp);
+  // refetch 재기준은 clean 일 때만 — 편집 중 호출은 큐 예약분을 취소해
+  // 미전송분이 고착된다(공유 syncServer 이슈, REPORT-C2).
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
   useEffect(() => {
-    if (rebaseOk.current) setDraft(cp);
+    if (dirtyRef.current) return;
+    syncServer(JSON.parse(cpKey) as ContractPayment);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cpKey]);
-  // 저장은 **성공했을 때만** 편집 의도를 해제한다 — 실패인데 해제하면 가드가 풀려 무경고 유실(적대리뷰 BLOCKER).
-  const saveAll = async () => {
-    const seq = editSeq.current;
-    let ciOk = true;
-    if (ciTouched && ciDraft) {
-      const res = await fetch("/api/company-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 계약일: cp.계약일, 업체명: cp.업체명, 업체정보: ciDraft }),
-      }).catch(() => null);
-      ciOk = Boolean(res?.ok);
-      if (ciOk && editSeq.current === seq) setCiTouched(false); // POST 중 새 입력이면 의도 유지
-    }
-    await onSave(draft); // 실패 시 throw(page 가 재전파) → 아래 미도달 → touched 유지 → 가드가 붙잡는다
-    if (!ciOk) throw new Error("업체정보를 저장하지 못했어요");
-    if (editSeq.current === seq) setTouched(false); // 저장 중 새 편집이 없었을 때만 해제
+  const commitGroup = () =>
+    commit(validContractDraft(draft), "금액·날짜를 확인해주세요");
+
+  // 업체정보(04·06) 디바운스 영속화 — 계약 PATCH 와 별도 키, 각 1회씩.
+  const { ciDirty, ciState, flushCi, onCiChange, resetCi } =
+    useContractCompanyInfo(() => ({
+      계약일: cpRef.current.계약일,
+      업체명: cpRef.current.업체명,
+    }));
+
+  // 텍스트/카운트 → 디바운스 저장, 금액/날짜 → stage 후 그룹 blur 커밋.
+  const editDraft = (fn: (d: ContractPayment) => ContractPayment) => {
+    update(fn(draft));
   };
-  // 미저장 이탈 가드 — id=useId: 마스터-디테일 동일 행 2인스턴스 키 충돌 방지.
+  const stageDraft = (fn: (d: ContractPayment) => ContractPayment) => {
+    stage(fn(draft));
+  };
+  const saveForGuard = async () => {
+    if (!validContractDraft(draft)) throw new Error("금액·날짜를 확인해주세요");
+    commit(true);
+    await flushCi(true);
+    await flush();
+  };
+  // 파기는 큐 예약 취소 + draft=saved 강제인 discard() — syncServer(saved) 는
+  // dirty draft 를 유지해 파기가 화면 초안을 되돌리지 못한다.
+  const discardAll = () => {
+    resetCi();
+    discard();
+  };
   const dirtyEntryId = useId();
   useDirtyEntry(
     dirtyEntryId,
-    shouldRegisterDirty({ selectable, touched, ciTouched, draft, cp }),
-    saveAll,
-    () => { setDraft(cp); setTouched(false); setCiDraft(undefined); setCiTouched(false); },
+    !selectable && (dirty || ciDirty),
+    saveForGuard,
+    discardAll,
     cp.업체명 || "계약 수납",
   );
+  const retryAll = () => {
+    if (ciState.error) void flushCi(false);
+    retry();
+  };
+
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
   );
 
-  // Scope 2 — 이 계약의 ToDo (계약일|업체명 안정키). 신규 계약(키 미완성)은 비활성.
   const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
   const todosQuery = useTodosByContract(contractRef);
   const allTodos = todosQuery.data?.todos ?? [];
 
-  // 캘린더 포커스 ToDo 가 이 행에 있으면 자동 펼침(모바일 아코디언/PC 목록 선택) → 하이라이트 노출.
   const hasFocusTodo =
     !!focusTodoId && allTodos.some((t) => t.id === focusTodoId);
   useEffect(() => {
@@ -159,7 +172,6 @@ export default function ContractRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFocusTodo]);
 
-  // [3] 진행기관 후보 = 전 계약 distinct(prop) + 이 계약 투두 institutionRef + 현재 슬롯값.
   const slotInstitutionOptions = useMemo(() => {
     const set = new Set<string>(institutionOptions ?? []);
     for (const t of allTodos) {
@@ -179,7 +191,6 @@ export default function ContractRow({
     draft.수납1.수납액 + draft.수납2.수납액 + draft.수납3.수납액;
   const docsDone = checkedCount(draft);
 
-  // 진행도 평균 (보이는 슬롯만)
   const visibleSlots = useMemo(
     () => [draft.수납1, draft.수납2, draft.수납3].slice(0, visiblePayments),
     [draft, visiblePayments],
@@ -193,7 +204,6 @@ export default function ContractRow({
     return Math.round(sum / visibleSlots.length);
   }, [visibleSlots]);
 
-  // 접힘 헤더 sub: 진행 중 기관(진행률<100% + 진행기관명). 예 "미소재단(60%)·…" 한 줄 truncate.
   const ongoingAgencies = useMemo(() => {
     return visibleSlots
       .filter((slot) => {
@@ -207,10 +217,8 @@ export default function ContractRow({
   const isComplete =
     docsDone === TOTAL_CHECKBOXES && visiblePayments >= 1 && avgPct >= 100;
 
-  // 강조색 패밀리 — 진행상태색(완료 green/활성 teal·cyan·fuchsia/전 slate). override 우선(카드↔패널 일치).
   const family = accentFamily ?? contractAccentFamily(draft);
   const accent = ACCENT[family];
-  // 닫힘 시 좌측 상태바(at-a-glance). bare(데스크탑 패널/목록)에선 page 가 윤곽선 소유 → 생략.
   const leftBar = bare ? "" : `border-l-4 ${accent.leftBar}`;
 
   const handleAddSlot = () => {
@@ -219,7 +227,7 @@ export default function ContractRow({
     }
   };
   const handleRemoveSlot = (slotIdx: 1 | 2 | 3) => {
-    if (slotIdx === 1) return; // 슬롯1은 제거 불가
+    if (slotIdx === 1) return;
     editDraft((d) => ({ ...d, [`수납${slotIdx}`]: EMPTY_SLOT }));
     if (slotIdx === visiblePayments)
       setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
@@ -229,8 +237,7 @@ export default function ContractRow({
     <div
       className={
         bare
-          ? // 데스크탑 마스터-디테일: page 가 윤곽선 소유 → 자체 테두리 없음. 모바일/단독: 상태색 2px.
-            "overflow-hidden bg-white transition-all duration-200"
+          ? "overflow-hidden bg-white transition-all duration-200"
           : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
@@ -238,7 +245,6 @@ export default function ContractRow({
             }`
       }
     >
-      {/* 헤더 (접힘/선택) */}
       <button
         type="button"
         onClick={
@@ -251,7 +257,7 @@ export default function ContractRow({
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
           showBody ? accent.tint : ""
         } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"} ${
-          isCarryover || isTerminated ? "opacity-60" : "" /* 이월·해지 흐림 — §4 */
+          isCarryover || isTerminated ? "opacity-60" : ""
         }`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}
@@ -308,7 +314,6 @@ export default function ContractRow({
             💰 {avgPct === 0 ? "—" : `${avgPct}%`}
           </span>
         </div>
-        {/* 아코디언: 아래 chevron(open 시 회전) / 컴팩트 목록: 우향(선택 유도) / 상세: 없음 */}
         {!forceOpen && (
           <svg
             className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
@@ -328,14 +333,40 @@ export default function ContractRow({
         )}
       </button>
 
-      {/* 펼침 — 헤더와 한 덩어리(틴트·ring 연결). 업체정보 박스 제거(헤더가 이미 표시). */}
       {showBody && (
-        <div className="card-open-anim space-y-3 p-3">
+        <div
+          className="card-open-anim space-y-3 p-3"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              commitGroup();
+              if (ciDirty) void flushCi(false);
+            }
+          }}
+        >
+          {(status !== "idle" || canUndo || ciState.error || ciState.saving) && (
+            <div className="flex flex-col gap-1">
+              <AutosaveStatus
+                status={status}
+                error={error}
+                savedAt={savedAt}
+                onRetry={retryAll}
+                canUndo={canUndo}
+                onUndo={undo}
+              />
+              {ciState.saving && status === "idle" && !ciState.error && (
+                <span className="text-[11px] text-gray-400" aria-live="polite">저장 중…</span>
+              )}
+              {ciState.error && (
+                <p className="text-[11px] font-medium text-red-600" aria-live="polite">
+                  ⚠ 업체정보: {ciState.error} — 입력은 유지됩니다
+                </p>
+              )}
+            </div>
+          )}
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           <LinkedFieldsEditor cp={cp} />
-          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={(ci) => { editSeq.current++; setCiDraft(ci); setCiTouched(true); }} />
+          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} />
 
-          {/* 7 체크박스 */}
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-gray-800">
@@ -364,7 +395,6 @@ export default function ContractRow({
             />
           </div>
 
-          {/* 2026-05-17: 로드맵 메모 — 카드 차원, 슬롯들 위에 위치 */}
           <div className="rounded-lg border border-gray-200 bg-amber-50 p-3">
             <label className="mb-1 block text-xs font-semibold text-amber-800">
               📍 로드맵 메모{" "}
@@ -383,97 +413,38 @@ export default function ContractRow({
             />
           </div>
 
-          {/* 수납 현황 */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-800">
-                📈 실무 진행
-              </span>
-              <span
-                className="text-xs text-gray-500"
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                <span className="font-medium text-gray-700">
-                  ₩{fmtMoney(totalReceived)}
-                </span>
-                <span className="mx-0.5 text-gray-400">/</span>
-                <span className="font-medium text-gray-700">
-                  ₩{fmtMoney(totalApproved)}
-                </span>
-              </span>
-            </div>
-            <div className="space-y-2">
-              <PaymentSlotForm
-                index={1}
-                slot={draft.수납1}
-                contractRef={contractRef}
-                companyName={cp.업체명}
-                savedInstitution={cp.수납1.진행기관}
-                institutionOptions={slotInstitutionOptions}
-                todos={allTodos}
-                focusTodoId={focusTodoId}
-                onEnsureSaved={() => void Promise.resolve(onSave(draft)).catch(() => {})}
-                onChange={(next) => editDraft((d) => ({ ...d, 수납1: next }))}
-              />
-              {visiblePayments >= 2 && (
-                <PaymentSlotForm
-                  index={2}
-                  slot={draft.수납2}
-                  removable={visiblePayments === 2}
-                  contractRef={contractRef}
-                  companyName={cp.업체명}
-                  savedInstitution={cp.수납2.진행기관}
-                  institutionOptions={slotInstitutionOptions}
-                  todos={allTodos}
-                  focusTodoId={focusTodoId}
-                  onEnsureSaved={() => void Promise.resolve(onSave(draft)).catch(() => {})}
-                  onChange={(next) =>
-                    editDraft((d) => ({ ...d, 수납2: next }))
-                  }
-                  onRemove={() => handleRemoveSlot(2)}
-                />
-              )}
-              {visiblePayments >= 3 && (
-                <PaymentSlotForm
-                  index={3}
-                  slot={draft.수납3}
-                  removable
-                  contractRef={contractRef}
-                  companyName={cp.업체명}
-                  savedInstitution={cp.수납3.진행기관}
-                  institutionOptions={slotInstitutionOptions}
-                  todos={allTodos}
-                  focusTodoId={focusTodoId}
-                  onEnsureSaved={() => void Promise.resolve(onSave(draft)).catch(() => {})}
-                  onChange={(next) =>
-                    editDraft((d) => ({ ...d, 수납3: next }))
-                  }
-                  onRemove={() => handleRemoveSlot(3)}
-                />
-              )}
-              {visiblePayments < 3 && (
-                <button
-                  type="button"
-                  onClick={handleAddSlot}
-                  className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                >
-                  <span className="text-base leading-none">+</span>
-                  <span>진행 추가 ({visiblePayments + 1}회차)</span>
-                </button>
-              )}
-            </div>
-          </div>
+          <ContractSlots
+            draft={draft}
+            cp={cp}
+            contractRef={contractRef}
+            slotInstitutionOptions={slotInstitutionOptions}
+            todos={allTodos}
+            focusTodoId={focusTodoId}
+            visiblePayments={visiblePayments}
+            totalApproved={totalApproved}
+            totalReceived={totalReceived}
+            onAddSlot={handleAddSlot}
+            onRemoveSlot={handleRemoveSlot}
+            onSlotChange={(index, next) => {
+              // 금액/날짜만 바뀌면 stage(그룹 blur 커밋), 그 외는 디바운스 저장.
+              const prev = draft[`수납${index}`];
+              const moneyDateOnly =
+                next.진행기관 === prev.진행기관 &&
+                next.메모 === prev.메모 &&
+                next.현황 === prev.현황 &&
+                next.진행률 === prev.진행률 &&
+                (next.승인금액 !== prev.승인금액 ||
+                  next.수납액 !== prev.수납액 ||
+                  next.수납일 !== prev.수납일);
+              (moneyDateOnly ? stageDraft : editDraft)((d) => ({
+                ...d,
+                [`수납${index}`]: next,
+              }));
+            }}
+            onEnsureSaved={commitGroup}
+          />
 
-          {/* 액션 */}
           <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => void saveAll().catch(() => {})}
-              disabled={pending}
-              className="h-11 flex-1 rounded-lg bg-blue-500 text-sm font-semibold text-white transition-colors hover:bg-blue-600 active:bg-blue-700 active:scale-95 disabled:bg-gray-300"
-            >
-              {pending ? "저장중..." : "💾 저장"}
-            </button>
             {!isTerminated && (
               <button
                 type="button"

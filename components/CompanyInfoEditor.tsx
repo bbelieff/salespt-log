@@ -14,6 +14,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CompanyInfo } from "@/types";
 import { formatPhone } from "@/lib/format/phone";
+import { useAutosave } from "@/components/autosave/useAutosave";
+import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
@@ -57,13 +59,21 @@ const inputCls =
 
 interface Props {
   value?: CI;
-  onSave: (ci: CI) => void;
+  /** 단독 모드 자동 저장 영속화(ACK 후에만 저장 표시). 임베드(hideSave)에서는 호출하지 않음. */
+  onSave: (ci: CI) => Promise<void> | void;
   busy?: boolean;
   /** 있으면 "업체정보생성(TXT)" 버튼 노출 — O 폴더에 1본 덮어쓰기 (§3-3). */
   txtCompanyName?: string;
+  /** 자동 저장 라우팅용 안정 레코드 신원(미팅 id·계약 행키 등).
+   * txtCompanyName 은 개명 시 바뀌는 표시명이라 신원으로 쓰면 안 된다 —
+   * 빠른 대상 전환·개명 때 다른 레코드로 필드가 전송되는 것을 막는다.
+   * additive optional: 생략 시 기존 동작(txtCompanyName ?? "standalone") — A 소유
+   * contact 호출자 서명 변경 없음. 대상 전환 시 부모가 key={identityKey} 로
+   * 리마운트하면 진행 중 저장이 이전 대상으로 전송되지 않는다. */
+  identityKey?: string;
   /** 사용자 편집마다 호출 — 부모(파란 저장)가 미저장 드래프트를 함께 영속화하도록. */
   onChange?: (ci: CI) => void;
-  /** true 면 자체 인라인 '저장' 버튼 숨김 — 영속화는 부모(파란 저장)가 담당. */
+  /** true 면 자체 자동 저장 없음 — 영속화는 부모가 담당(중복 요청 방지). */
   hideSave?: boolean;
 }
 
@@ -72,12 +82,12 @@ export default function CompanyInfoEditor({
   onSave,
   busy,
   txtCompanyName,
+  identityKey,
   onChange,
   hideSave,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState(false);
-  const [draft, setDraft] = useState<CI>(() => ({ ...emptyCi(), ...value }));
   const [newLabel, setNewLabel] = useState<Record<Grp, string>>({
     업체: "",
     대표자: "",
@@ -85,17 +95,58 @@ export default function CompanyInfoEditor({
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
 
-  // 사용자 편집(draft 변경)마다 부모에 통지 — 마운트(초기값)는 건너뛴다(가짜 dirty 방지).
+  // 단독 모드는 자동 저장, 임베드는 stage 전용(부모가 영속화 — 중복 요청 없음).
+  const auto = !hideSave;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const {
+    draft,
+    status,
+    error,
+    dirty,
+    savedAt,
+    canUndo,
+    update,
+    stage,
+    commit,
+    syncServer,
+    retry,
+    undo,
+  } = useAutosave<CI>({
+    target: { kind: "company-info", key: identityKey ?? txtCompanyName ?? "standalone" },
+    initial: { ...emptyCi(), ...value },
+    delayMs: 700,
+    save: ({ payload }) => Promise.resolve(onSaveRef.current(payload)),
+  });
+
+  // 사용자 편집마다 부모에 통지 — 마운트·재기준(동일값)은 건너뛴다.
   const mounted = useRef(false);
+  const lastNotified = useRef<string | null>(null);
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return;
     }
+    const key = JSON.stringify(draft);
+    if (lastNotified.current === key) return;
+    lastNotified.current = key;
     onChangeRef.current?.(draft);
   }, [draft]);
+
+  // 서버값 변경 — clean 일 때만 재기준, 편집 중 입력은 유지.
+  // (공유 syncServer 는 dirty 여도 큐 예약분은 취소하므로, 여기서 호출 자체를
+  // 막아야 진행 중 자동 저장이 유실되지 않는다 — 미해결 코어 이슈는 REPORT-C2.)
+  const valueKey = JSON.stringify(value ?? null);
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    if (dirtyRef.current) return;
+    const server = { ...emptyCi(), ...(JSON.parse(valueKey) as Partial<CI>) } as CI;
+    syncServer(server);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueKey]);
 
   async function exportTxt() {
     if (!txtCompanyName || txtBusy) return;
@@ -130,11 +181,16 @@ export default function CompanyInfoEditor({
     }
   }
 
+  const apply = (fn: (d: CI) => CI) => {
+    const next = fn(draft);
+    if (auto) update(next);
+    else stage(next);
+  };
   const set = (k: keyof CI, v: string) =>
-    setDraft((d) => ({ ...d, [k]: v }) as CI);
+    apply((d) => ({ ...d, [k]: v }) as CI);
   const customOf = (g: Grp): Record<string, string> => draft.커스텀?.[g] ?? {};
   const setCustom = (g: Grp, label: string, v: string) =>
-    setDraft((d) => ({
+    apply((d) => ({
       ...d,
       커스텀: {
         업체: d.커스텀?.업체 ?? {},
@@ -143,7 +199,7 @@ export default function CompanyInfoEditor({
       },
     }));
   const removeCustom = (g: Grp, label: string) =>
-    setDraft((d) => {
+    apply((d) => {
       const next = { ...(d.커스텀?.[g] ?? {}) };
       delete next[label];
       return {
@@ -167,7 +223,10 @@ export default function CompanyInfoEditor({
       ? `${filled}항목 입력`
       : "미입력";
 
-  const save = () => onSave(draft);
+  const closeModal = () => {
+    if (auto) commit(true);
+    setModal(false);
+  };
 
   // 한 필드 입력 — multiline=textarea(줄 수 따라 자동높이), 아니면 input.
   const field = ([k, label, ph, span, multi]: FieldDef) => {
@@ -270,9 +329,9 @@ export default function CompanyInfoEditor({
     </div>
   );
 
+  const ciSaving = busy || (auto && status === "pending");
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
-      {/* 헤더: 제목+요약(클릭=접기/펴기) 좌, 액션버튼(편집·저장) 우 — '따로 저장' 인지 강화. */}
       <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
         <button
           type="button"
@@ -287,6 +346,12 @@ export default function CompanyInfoEditor({
         </button>
         {open && (
           <div className="flex shrink-0 items-center gap-1.5">
+            {auto && ciSaving && (
+              <span className="text-[11px] text-gray-400" aria-live="polite">저장 중…</span>
+            )}
+            {auto && !ciSaving && status === "error" && (
+              <span className="text-[11px] font-medium text-red-500" aria-live="polite">저장 실패</span>
+            )}
             <button
               type="button"
               onClick={() => setModal(true)}
@@ -294,22 +359,29 @@ export default function CompanyInfoEditor({
             >
               편집
             </button>
-            {!hideSave && (
-              <button
-                type="button"
-                onClick={save}
-                disabled={busy}
-                className="rounded-md bg-brand-red px-3 py-1 text-xs font-bold text-white hover:opacity-90 disabled:opacity-50"
-              >
-                {busy ? "저장 중…" : "저장"}
-              </button>
-            )}
           </div>
         )}
       </div>
 
       {open && (
-        <div className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2">
+        <div
+          className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2"
+          onBlur={(e) => {
+            if (auto && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              commit(true);
+            }
+          }}
+        >
+          {auto && (status !== "idle" || canUndo) && (
+            <AutosaveStatus
+              status={status}
+              error={error}
+              savedAt={savedAt}
+              onRetry={retry}
+              canUndo={canUndo}
+              onUndo={undo}
+            />
+          )}
           {body}
           {txtCompanyName && (
             <div className="flex">
@@ -351,7 +423,8 @@ export default function CompanyInfoEditor({
               <h3 className="text-sm font-black text-gray-900">업체정보 편집</h3>
               <button
                 type="button"
-                onClick={() => setModal(false)}
+                onClick={closeModal}
+                aria-label="닫기"
                 className="rounded-full px-2 text-gray-400 hover:bg-gray-100"
               >
                 ✕
@@ -361,19 +434,8 @@ export default function CompanyInfoEditor({
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  save();
-                  setModal(false);
-                }}
-                disabled={busy}
-                className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
-              >
-                {busy ? "저장 중…" : "저장"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setModal(false)}
-                className="rounded-lg border border-gray-200 px-4 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                onClick={closeModal}
+                className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black"
               >
                 닫기
               </button>

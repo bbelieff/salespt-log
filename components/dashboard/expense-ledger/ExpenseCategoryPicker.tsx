@@ -9,6 +9,7 @@ import {
   type ReclassifyExpenseCategoryBody,
   type ReclassifyExpenseCategoryResult,
 } from "@/query/expense-ledger-hooks";
+import { shouldAutosaveRename } from "./expense-autosave";
 
 export interface ReclassifiableExpenseItem extends ExpenseReclassificationRef {
   label: string;
@@ -98,13 +99,35 @@ export default function ExpenseCategoryPicker(props: Props) {
     } catch (error) { setActionError(safeActionError(error, "분류")); } finally { setActionBusy(false); }
   }
 
-  async function renameCategory() {
-    const name = renameName.trim();
-    if (!selected || isSystemCategory(selected) || !name || name === selected.name) return;
+  // 저장 중에도 입력은 막지 않는다(일반 입력 비활성화 금지). 블러가 겹치면
+  // 최신 텍스트로 최대 1회만 추가 저장한다.
+  const renameTextRef = useRef(renameName);
+  renameTextRef.current = renameName;
+  const renameRecheckRef = useRef(false);
+  async function persistRename(name: string, categoryId: string) {
     setActionBusy(true); setActionError(null);
-    try { await onRename(selected.id, name); onMessage(`카테고리 이름을 '${name}'으로 바꿨습니다.`); }
-    catch (error) { setActionError(safeActionError(error, "분류")); }
-    finally { setActionBusy(false); }
+    try {
+      await onRename(categoryId, name);
+      onMessage(`카테고리 이름을 '${name}'으로 바꿨습니다.`);
+    } catch (error) { setActionError(safeActionError(error, "분류")); }
+    finally {
+      setActionBusy(false);
+      if (renameRecheckRef.current) {
+        renameRecheckRef.current = false;
+        const latest = renameTextRef.current.trim();
+        const current = visible.find((category) => category.id === categoryId);
+        if (current && !isSystemCategory(current) && shouldAutosaveRename(current.name, latest)) {
+          void persistRename(latest, categoryId);
+        }
+      }
+    }
+  }
+  /** 선택 카테고리 이름 변경 — 블러/Enter 로 자동 저장. 실패 시 입력 유지 + 에러 노출. */
+  async function autosaveRename() {
+    if (!selected || isSystemCategory(selected)) return;
+    if (!shouldAutosaveRename(selected.name, renameName)) return;
+    if (actionBusy) { renameRecheckRef.current = true; return; }
+    await persistRename(renameName.trim(), selected.id);
   }
 
   async function deleteSelectedCategory() {
@@ -155,7 +178,7 @@ export default function ExpenseCategoryPicker(props: Props) {
 
         <div className="mt-3 border-t border-gray-100 pt-3"><p className="text-xs font-bold text-gray-700">새 카테고리</p><div className="mt-1 flex gap-2"><input aria-label="새 카테고리 이름" value={createName} onChange={(event) => setCreateName(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-gray-300 px-3 text-sm" maxLength={40} placeholder="예: 소모품" /><button type="button" disabled={busy || actionBusy || !createName.trim()} onClick={() => void createCategory()} className="min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 disabled:opacity-40">추가</button></div></div>
 
-        {selected && !isSystemCategory(selected) && <div className="mt-3 border-t border-gray-100 pt-3"><p className="text-xs font-bold text-gray-700">선택 카테고리 이름</p><div className="mt-1 flex gap-2"><input aria-label="선택 카테고리 이름 수정" value={renameName} onChange={(event) => setRenameName(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-gray-300 px-3 text-sm" maxLength={40} /><button type="button" disabled={busy || actionBusy || !renameName.trim() || renameName.trim() === selected.name} onClick={() => void renameCategory()} className="min-h-11 rounded-lg border border-gray-200 px-3 text-xs font-bold disabled:opacity-40">이름 변경</button></div></div>}
+        {selected && !isSystemCategory(selected) && <div className="mt-3 border-t border-gray-100 pt-3"><p className="text-xs font-bold text-gray-700">선택 카테고리 이름</p><input aria-label="선택 카테고리 이름 수정" value={renameName} onChange={(event) => setRenameName(event.target.value)} onBlur={() => { void autosaveRename(); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void autosaveRename(); } }} className="mt-1 min-h-11 w-full rounded-lg border border-gray-300 px-3 text-sm" maxLength={40} /><p aria-live="polite" className="mt-1 min-h-4 text-xs text-gray-400">{actionBusy ? "이름 변경 중…" : shouldAutosaveRename(selected.name, renameName) ? "입력 그룹을 벗어나면 자동으로 바뀌어요." : ""}</p></div>}
 
         {deleteCategory && <section aria-label={`${deleteCategory.name} 카테고리 삭제 확인`} className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-900">
           <p className="font-bold">{deleteCategory.name}을 삭제할까요?</p>

@@ -19,6 +19,22 @@ import { sheetsClient } from "./sheets-client";
 import { mirrorDbTabRowDurable } from "./db-tab-append-mirror";
 import { mintRowKey } from "./db/row-key";
 import { SPEC, T, writeRow } from "./db-tab-writers";
+import {
+  appendKeyed,
+  readReservedRows,
+  withScopeLock,
+  type KeyedSheetDeps,
+} from "./db/db-append-idempotency";
+import type { IdemPool } from "./db/expense-idempotency";
+import { dbEnabled, getDbPool } from "./db/client";
+
+/** Sheet primitives for keyed appends (module-cycle-free injection). */
+const KEYED_DEPS: KeyedSheetDeps = {
+  findFirstEmptyRow: (sid, startCol, endCol, isPhantom, excluded) =>
+    findFirstEmptyRowExcluding(sid, startCol, endCol, isPhantom, excluded),
+  writeRow: (sid, spec, row, values) => writeRow(sid, spec, row, values),
+  specFor: (section) => SPEC[section as keyof typeof SPEC],
+};
 
 const MAX_ROW = SHEET_RANGES.dbManagement.maxRow;
 const HEADER_ROW = SHEET_RANGES.dbManagement.headerRow;
@@ -287,114 +303,176 @@ const phantomLead = (r: unknown[]) =>
 
 // ── append (4섹션 각각) ───────────────────────────────────────
 
+/** Exclusion-aware scan — first phantom row not in `excluded` (reserved
+ *  physical rows: pending claims incl. abandoned crash-before-write ones +
+ *  live mirrors). Sum-row/MAX_ROW semantics identical to findFirstEmptyRow. */
+async function findFirstEmptyRowExcluding(
+  spreadsheetId: string,
+  startCol: string,
+  endCol: string,
+  isPhantom: (r: unknown[]) => boolean,
+  excluded?: Set<number>,
+  firstDataRow: number = FIRST_DATA_ROW,
+): Promise<{ row: number; needInsert: boolean }> {
+  const range = `${T}!${startCol}${firstDataRow}:${endCol}${MAX_ROW}`;
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range,
+  });
+  const values = (res.data.values ?? []) as unknown[][];
+  for (let i = 0; i < values.length; i++) {
+    const r = values[i] ?? [];
+    if (isSumRow(r[0])) {
+      return { row: firstDataRow + i, needInsert: true };
+    }
+    if (excluded?.has(firstDataRow + i)) continue;
+    if (isPhantom(r)) return { row: firstDataRow + i, needInsert: false };
+  }
+  let tail = MAX_ROW + 1;
+  while (excluded?.has(tail)) tail += 1;
+  return { row: tail, needInsert: false };
+}
+
+/**
+ * Keyless append when the DB is available: scan + sheet write run under the
+ * scope lock excluding every reserved row, so a keyless caller can never
+ * steal a claimed row (and vice versa). DB absent ⇒ legacy path byte-identical.
+ */
+async function appendKeyless(
+  section: "매입DB" | "직접생산" | "현수막" | "콜지기소",
+  spreadsheetId: string,
+  values: (string | number | boolean)[],
+  mirrorPayload: (row: number) => Record<string, unknown>,
+  fullMsg: (lastRow: number) => string,
+): Promise<{ row: number; replayed: boolean }> {
+  const spec = SPEC[section];
+  const startCol = spec.startCol;
+  const endCol = spec.endCol;
+  const isPhantom =
+    section === "매입DB" ? phantomPurchase
+    : section === "직접생산" ? phantomProduction
+    : section === "현수막" ? phantomBanner
+    : phantomLead;
+  if (!dbEnabled()) {
+    const { row, needInsert } = await findFirstEmptyRow(
+      spreadsheetId, startCol, endCol, isPhantom,
+    );
+    if (needInsert) throw new Error(fullMsg(row - 1));
+    await writeRow(spreadsheetId, spec, row, values);
+    mirrorDbTabRowDurable(spreadsheetId, mintRowKey(section), mirrorPayload(row));
+    return { row, replayed: false };
+  }
+  const pool = getDbPool() as unknown as IdemPool;
+  const row = await withScopeLock(pool, spreadsheetId, section, async (db) => {
+    const reserved = await readReservedRows(db, spreadsheetId, section);
+    const found = await findFirstEmptyRowExcluding(
+      spreadsheetId, startCol, endCol, isPhantom, reserved,
+    );
+    if (found.needInsert) throw new Error(fullMsg(found.row - 1));
+    await writeRow(spreadsheetId, spec, found.row, values);
+    return found.row;
+  });
+  // BBE-59 UUID 키 + BBE-259 durable 미러(동기 throw 금지 — 위 주석 유지).
+  mirrorDbTabRowDurable(spreadsheetId, mintRowKey(section), mirrorPayload(row));
+  return { row, replayed: false };
+}
+
+const PURCHASE_VALUES = (p: DBPurchase): (string | number | boolean)[] => [
+  p.구매일,
+  p.업체명,
+  p.개당단가,
+  p.주문개수,
+  p.부가세여부, // F (구 주문금액 자리)
+  p.기타, // G
+  "", // H 정리(구 #425 부가세여부 자리)
+];
+const purchaseFullMsg = (last: number) =>
+  `[db.ts] 매입DB 데이터 영역(${FIRST_DATA_ROW}~${last})이 가득 찼습니다. 시트의 합계 행을 ${MAX_ROW}행 이후로 옮겨주세요.`;
+
 export async function appendPurchase(
   spreadsheetId: string,
   p: DBPurchase,
-): Promise<{ row: number }> {
-  const { row, needInsert } = await findFirstEmptyRow(
-    spreadsheetId,
-    SPEC.매입DB.startCol,
-    SPEC.매입DB.endCol,
-    phantomPurchase,
-  );
-  if (needInsert) {
-    throw new Error(
-      `[db.ts] 매입DB 데이터 영역(${FIRST_DATA_ROW}~${row - 1})이 가득 찼습니다. 시트의 합계 행을 ${MAX_ROW}행 이후로 옮겨주세요.`,
+  key?: string,
+): Promise<{ row: number; replayed: boolean }> {
+  // Keyed (autosave draft, DB available) ⇒ reservation-claimed row: the retry
+  // rewrites the SAME physical row instead of allocating a new one.
+  if (key !== undefined) {
+    return appendKeyed(KEYED_DEPS, spreadsheetId, "매입DB", key, p, phantomPurchase,
+      PURCHASE_VALUES(p), purchaseFullMsg,
     );
   }
-  await writeRow(spreadsheetId, SPEC.매입DB, row, [
-    p.구매일,
-    p.업체명,
-    p.개당단가,
-    p.주문개수,
-    p.부가세여부, // F (구 주문금액 자리)
-    p.기타, // G
-    "", // H 정리(구 #425 부가세여부 자리)
-  ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고.
-  // BBE-259: mirror.ts 표준보다 재시도창을 늘린 전용 durable 미러(#824 이식) — 동기 throw 는
-  // 재시도 시 findFirstEmptyRow 가 새 행에 중복 기재(매출 이중계상)라 여전히 금지.
-  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("매입DB"), { ...p, _row: row, _cleared: false });
-  return { row };
+  return appendKeyless("매입DB", spreadsheetId, PURCHASE_VALUES(p),
+    (row) => ({ ...p, _row: row, _cleared: false }), purchaseFullMsg);
 }
 
 export async function appendProduction(
   spreadsheetId: string,
   p: DBProduction,
-): Promise<{ row: number }> {
-  const { row, needInsert } = await findFirstEmptyRow(
-    spreadsheetId,
-    SPEC.직접생산.startCol,
-    SPEC.직접생산.endCol,
-    phantomProduction,
-  );
-  if (needInsert)
-    throw new Error(`[db.ts] 직접생산 영역 가득 — 합계 행을 옮겨주세요.`);
-  await writeRow(spreadsheetId, SPEC.직접생산, row, [
-    p.시작일, // I
-    p.종료일, // J
-    p.소재, // K
-    p.기간예산, // L (부가세 제외)
-    p.생산개수, // M (빈/0=생산중)
-    p.부가세여부, // N
-    p.기타, // O (구 스페이서 자리)
-  ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고. BBE-259: durable 미러(위 참고).
-  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("직접생산"), { ...p, _row: row, _cleared: false });
-  return { row };
+  key?: string,
+  hooks?: { checkOverlap?: (excludeRow: number) => Promise<void> },
+): Promise<{ row: number; replayed: boolean }> {
+  // Replay lookup runs BEFORE the overlap guard (Phase 1), so a lost-ACK
+  // retry never trips over its own prior row.
+  const productionValues = (v: DBProduction): (string | number | boolean)[] => [
+    v.시작일, // I
+    v.종료일, // J
+    v.소재, // K
+    v.기간예산, // L (부가세 제외)
+    v.생산개수, // M (빈/0=생산중)
+    v.부가세여부, // N
+    v.기타, // O (구 스페이서 자리)
+  ];
+  const productionFullMsg = () => `[db.ts] 직접생산 영역 가득 — 합계 행을 옮겨주세요.`;
+  if (key !== undefined) {
+    return appendKeyed(KEYED_DEPS, spreadsheetId, "직접생산", key, p, phantomProduction,
+      productionValues(p), productionFullMsg,
+      { checkOverlap: hooks?.checkOverlap },
+    );
+  }
+  return appendKeyless("직접생산", spreadsheetId, productionValues(p),
+    (row) => ({ ...p, _row: row, _cleared: false }), productionFullMsg);
 }
 
 export async function appendBanner(
   spreadsheetId: string,
   b: DBBanner,
-): Promise<{ row: number }> {
-  const { row, needInsert } = await findFirstEmptyRow(
-    spreadsheetId,
-    SPEC.현수막.startCol,
-    SPEC.현수막.endCol,
-    phantomBanner,
-  );
-  if (needInsert)
-    throw new Error(`[db.ts] 현수막 영역 가득 — 합계 행을 옮겨주세요.`);
-  await writeRow(spreadsheetId, SPEC.현수막, row, [
-    b.날짜,
-    b.업체명,
-    b.도착일,
-    b.개당단가,
-    b.주문개수,
-    b.부가세여부, // U (구 주문금액 자리)
-    b.기타, // V
+  key?: string,
+): Promise<{ row: number; replayed: boolean }> {
+  const bannerValues = (v: DBBanner): (string | number | boolean)[] => [
+    v.날짜,
+    v.업체명,
+    v.도착일,
+    v.개당단가,
+    v.주문개수,
+    v.부가세여부, // U (구 주문금액 자리)
+    v.기타, // V
     "", // W 정리(구 #425 부가세여부 자리)
-  ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고. BBE-259: durable 미러(위 참고).
-  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("현수막"), { ...b, _row: row, _cleared: false });
-  return { row };
+  ];
+  const bannerFullMsg = () => `[db.ts] 현수막 영역 가득 — 합계 행을 옮겨주세요.`;
+  if (key !== undefined) {
+    return appendKeyed(KEYED_DEPS, spreadsheetId, "현수막", key, b, phantomBanner,
+      bannerValues(b), bannerFullMsg,
+    );
+  }
+  return appendKeyless("현수막", spreadsheetId, bannerValues(b),
+    (row) => ({ ...b, _row: row, _cleared: false }), bannerFullMsg);
 }
 
 export async function appendLead(
   spreadsheetId: string,
   l: DBLead,
-): Promise<{ row: number }> {
-  const { row, needInsert } = await findFirstEmptyRow(
-    spreadsheetId,
-    SPEC.콜지기소.startCol,
-    SPEC.콜지기소.endCol,
-    phantomLead,
-  );
-  if (needInsert)
-    throw new Error(`[db.ts] 콜·지·기·소 영역 가득 — 합계 행을 옮겨주세요.`);
-  await writeRow(spreadsheetId, SPEC.콜지기소, row, [
-    l.구분,
-    l.접수일,
-    l.대표자명,
-    l.업체명,
-    l.소개처,
-    l.연락처,
-    l.조건,
-  ]);
-  // BBE-59: UUID 키(행번호 무관) + _row 명시 — db/row-key.ts 헤더 참고. BBE-259: durable 미러(위 참고).
-  mirrorDbTabRowDurable(spreadsheetId, mintRowKey("콜지기소"), { ...l, _row: row, _cleared: false });
-  return { row };
+  key?: string,
+): Promise<{ row: number; replayed: boolean }> {
+  const leadFullMsg = () => `[db.ts] 콜·지·기·소 영역 가득 — 합계 행을 옮겨주세요.`;
+  if (key !== undefined) {
+    return appendKeyed(KEYED_DEPS, spreadsheetId, "콜지기소", key, l, phantomLead,
+      [l.구분, l.접수일, l.대표자명, l.업체명, l.소개처, l.연락처, l.조건],
+      leadFullMsg,
+    );
+  }
+  return appendKeyless("콜지기소", spreadsheetId,
+    [l.구분, l.접수일, l.대표자명, l.업체명, l.소개처, l.연락처, l.조건],
+    (row) => ({ ...l, _row: row, _cleared: false }), leadFullMsg);
 }
 
 // ── update/clear (특정 row) ───────────────────────────────────

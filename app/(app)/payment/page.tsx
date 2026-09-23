@@ -87,10 +87,8 @@ export default function PaymentPage() {
   const [postDeleteNav, setPostDeleteNav] = useState<PostDeleteNavTarget | null>(
     null,
   );
-  // C 마스터-디테일 (데스크탑만). 선택 row — 기본은 첫 카드(아래 selectedCp fallback).
   const isPc = usePcBreakpoint();
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
-  // 마스터-디테일 선택 행 전환도 미저장 가드 — 펼친 카드 dirty 면 모달.
   const guardedNav = useGuardedNav();
 
   // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
@@ -106,14 +104,15 @@ export default function PaymentPage() {
     setTimeout(() => setToast(""), 2500);
   };
 
-  const handleSave = async (next: ContractPayment) => {
+  const handleSave = async (next: ContractPayment, opts?: { quiet?: boolean }) => {
     if (!next.row) return;
     setPendingRow(next.row);
     try {
       await patch.mutateAsync({ row: next.row, data: next });
-      showToast("✓ 저장 완료");
+      if (!opts?.quiet) showToast("✓ 저장 완료");
     } catch (e) {
-      showToast(`저장하지 못했어요: ${(e as Error).message}`); throw e; // 재전파: 미저장 가드가 붙잡도록
+      if (!opts?.quiet) showToast(`저장하지 못했어요: ${(e as Error).message}`);
+      throw e; // 재전파: 미저장 가드·자동 저장 큐가 붙잡도록
     } finally {
       setPendingRow(null);
     }

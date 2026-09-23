@@ -31,7 +31,13 @@ import {
   updateTodo as updateTodoRow,
 } from "@/repo/todos";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
-import { clearRowInDb, dbEnabled, writeRowToDb } from "@/repo/db/client";
+import {
+  clearRowInDb,
+  dbEnabled,
+  ensureSchema,
+  getDbPool,
+  writeRowToDb,
+} from "@/repo/db/client";
 import {
   clearMirrorPending,
   listMirrorPending,
@@ -163,26 +169,131 @@ export async function listTodos(
 /** 생성 입력 — id/생성시각/완료여부는 서버 기본값. */
 export type CreateTodoInput = Omit<Todo, "id" | "생성시각" | "완료여부">;
 
-/** ToDo 1건 생성 (id=UUID, 생성시각=ISO, 완료여부=false). */
+/** 생성 옵션 — operationId: 클라이언트가 초안당 1회 발행한 안정 키(UUID).
+ * 있으면 Todo id 로 그대로 사용해 같은 scope+같은 operation 은 정확히 1행으로 수렴한다.
+ * 없으면 기존 동작(서버 randomUUID) — 하위 호환. */
+export interface CreateTodoOptions {
+  operationId?: string;
+}
+
+/** 같은 operation 으로 이미 커밋된 행과 내용이 다를 때 — route 가 409 로 매핑. */
+export class TodoOperationConflict extends Error {
+  existing: Todo;
+  constructor(existing: Todo) {
+    super(`[todo-conflict] 같은 작업으로 이미 생성된 ToDo와 내용이 다릅니다: ${existing.id}`);
+    this.name = "TodoOperationConflict";
+    this.existing = existing;
+  }
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 물질적 동일성 — id/생성시각/완료여부(서버 귀속) 제외, 업무 필드 전부 비교.
+ * 제목·날짜만 같은 정상 중복(같은 할 일을 두 번 적기)은 여기서 걸리면 안 되므로
+ * operation(행 id)이 다르면 무조건 별개 행이다. */
+export function sameTodoBusiness(a: CreateTodoInput, b: Todo): boolean {
+  return (
+    a.contractRef === b.contractRef &&
+    (a.institutionRef ?? "") === (b.institutionRef ?? "") &&
+    (a.업체명 ?? "") === (b.업체명 ?? "") &&
+    (a.type ?? "기타") === (b.type ?? "기타") &&
+    (a.분류 ?? "") === (b.분류 ?? "") &&
+    a.제목 === b.제목 &&
+    a.예정일자 === b.예정일자 &&
+    (a.예정시각 ?? "") === (b.예정시각 ?? "") &&
+    (a.장소 ?? "") === (b.장소 ?? "") &&
+    (a.상세 ?? "") === (b.상세 ?? "") &&
+    (a.showOnCalendar ?? true) === (b.showOnCalendar ?? true)
+  );
+}
+
+// 시트 경로 멱등 불가 고지 — Sheets API 에는 행 잠금·트랜잭션·unique 제약이 없어
+// 조회-후-추가를 원자적으로 수행할 방법이 없다. 프로세스 내 직렬화 락은 같은
+// 인스턴스의 동시 요청만 가두고, 다중 인스턴스·재시작 경합에는 아무 보장을 하지
+// 않으므로 cross-process durable 하다고 주장하지 않는다. 안전하지 않은 생성을
+// 수행하는 대신 operationId 있는 요청은 아래에서 거부한다(fail closed).
+// operationId 없는 기존 호출자는 그대로 append 한다(하위 호환).
+
+/** ToDo 1건 생성 (id=UUID, 생성시각=ISO, 완료여부=false).
+ *
+ * operationId 있음 = 멱등 경로: id=operationId 로 생성하고, 같은 키 재시도는
+ * 원본 행을 그대로 반환(같은 업무값)하거나 409(TodoOperationConflict, 다른 업무값).
+ * 서로 다른 operation 의 같은 업무값은 별개 행(정상 중복 허용).
+ * 조회·생성은 전부 호출자 시트(spreadsheetId) 범위 — 타 학생 행을 반환하지 않는다. */
 export async function createTodo(
   email: string,
   input: CreateTodoInput,
+  opts: CreateTodoOptions = {},
 ): Promise<Todo> {
   const ctx = await resolveSheet(email);
+  const { operationId } = opts;
+  if (operationId !== undefined && !UUID_RE.test(operationId)) {
+    throw new Error("[todos] operationId 형식 오류(UUID)");
+  }
+  if (!operationId) {
+    const todo = Todo.parse({
+      ...input,
+      id: randomUUID(),
+      완료여부: false,
+      생성시각: new Date().toISOString(),
+    });
+    if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
+      await writeRowToDb({ ...ctx, tab: "todos", rowKey: todo.id, payload: todo });
+      queueSheetSync(ctx, todo.id); // 시트 반영 + (행 보장 후) gcal 등록
+      return todo;
+    }
+    const saved = await appendTodo(ctx.spreadsheetId, todo);
+    onTodoCreated(email, ctx.spreadsheetId, saved); // gcal 자동 등록(fire-and-forget)
+    return saved;
+  }
+
   const todo = Todo.parse({
     ...input,
-    id: randomUUID(),
+    id: operationId,
     완료여부: false,
     생성시각: new Date().toISOString(),
   });
   if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
-    await writeRowToDb({ ...ctx, tab: "todos", rowKey: todo.id, payload: todo });
-    queueSheetSync(ctx, todo.id); // 시트 반영 + (행 보장 후) gcal 등록
-    return todo;
+    // 기존 unique(spreadsheet_id, tab, row_key) 그대로 — 마이그레이션 없이 원자적 선점.
+    // writeRowToDb(upsert·병합)는 재시도 시 생성시각을 덮어써 원본 반환을 깨므로
+    // 멱등 경로에서는 쓰지 않는다.
+    await ensureSchema();
+    const res = await getDbPool().query(
+      `insert into sheet_rows (cohort, email, spreadsheet_id, tab, row_key, payload, updated_at)
+       values ($1, $2, $3, 'todos', $4, $5::jsonb, now())
+       on conflict (spreadsheet_id, tab, row_key) do nothing
+       returning row_key`,
+      [ctx.cohort, ctx.email, ctx.spreadsheetId, todo.id, JSON.stringify(todo)],
+    );
+    if ((res.rowCount ?? 0) > 0) {
+      queueSheetSync(ctx, todo.id); // 시트 반영 + (행 보장 후) gcal 등록
+      return todo;
+    }
+    // 패자/재시도 — 같은 시트 범위의 승자 행을 읽어 판정(타 학생 행 접근 불가).
+    const state = await readTodoRowStateFromDb(ctx.spreadsheetId, todo.id);
+    if (!state || (!state.todo && !state.cleared)) {
+      throw new Error("[todos] 동시 생성 충돌 후 행을 찾지 못했습니다 — 다시 시도해주세요");
+    }
+    if (state.cleared || !state.todo) {
+      throw new TodoOperationConflict(state.todo ?? todo);
+    }
+    if (!sameTodoBusiness(input, state.todo)) {
+      throw new TodoOperationConflict(state.todo);
+    }
+    return state.todo; // 원본 그대로(최초 생성시각 보존) — gcal·미러 재발행 없음
   }
-  const saved = await appendTodo(ctx.spreadsheetId, todo);
-  onTodoCreated(email, ctx.spreadsheetId, saved); // gcal 자동 등록(fire-and-forget)
-  return saved;
+
+  // 시트 경로는 원자적 선점 수단이 없어 keyed 생성을 거부한다(fail closed).
+  // 조회 실패를 null 로 삼켜 append 하면(구 코드의 .catch(() => null)) 읽지 못한
+  // 기존 행과 중복된다. best-effort 조회-후-추가조차 다중 인스턴스에서 중복을
+  // 막지 못하므로, operationId 가 있으면 생성 자체를 하지 않고 호출자에게
+  // 알린다. 호출자는 키 없이 재호출(기존 동작)하거나 DB 파일럿 경로를 쓴다.
+  // UI 는 이 오류를 실패로 표시하고 초안을 유지한다(중복 생성 없음).
+  throw new Error(
+    "[todos] 시트 저장소에서는 operationId 멱등 생성을 지원하지 않습니다 — " +
+      "안전한 재시도가 불가해 생성을 거부합니다 (operationId 없이 호출하면 기존 방식으로 생성됩니다)",
+  );
 }
 
 /** ToDo 부분 수정 (완료 토글·내용 변경 등). */

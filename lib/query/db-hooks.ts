@@ -82,6 +82,8 @@ type DBRow = DBPurchase | DBProduction | DBBanner | DBLead;
 interface AppendArgs {
   channel: DBChannel;
   data: DBRow;
+  /** Scope B autosave operation identity — server replays instead of duplicating. */
+  idempotencyKey?: string;
 }
 interface PatchArgs {
   channel: DBChannel;
@@ -93,14 +95,58 @@ interface RemoveArgs {
   row: number;
 }
 
+/**
+ * Same-key/different-payload conflict — the server kept the FIRST commit and
+ * tells us its physical row so the client PATCHes it instead of appending.
+ * Never a second row: the error carries where the original lives.
+ */
+export class DbCreateConflictError extends Error {
+  readonly row: number | null;
+  constructor(row: number | null) {
+    super("db_idempotency_conflict");
+    this.name = "DbCreateConflictError";
+    this.row = row;
+  }
+}
+
+/** Extract the conflicted original row from any thrown creation error. */
+export function dbConflictRowOf(error: unknown): number | null {
+  if (error instanceof DbCreateConflictError) return error.row;
+  if (
+    error instanceof Error &&
+    error.message === "db_idempotency_conflict" &&
+    typeof (error as unknown as { row?: unknown }).row === "number"
+  ) {
+    return (error as unknown as { row: number }).row;
+  }
+  return null;
+}
+
 export function useAppendDB() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ channel, data }: AppendArgs) =>
-      fetchJSON<{ ok: true; row: number }>(`/api/db/${enc(channel)}`, {
+    mutationFn: async ({ channel, data, idempotencyKey }: AppendArgs) => {
+      const res = await fetch(`/api/db/${enc(channel)}`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+        },
         body: JSON.stringify(data),
-      }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 409 && body?.error === "db_idempotency_conflict") {
+        throw new DbCreateConflictError(
+          typeof body?.row === "number" ? body.row : null,
+        );
+      }
+      if (!res.ok) {
+        throw new Error(
+          typeof body?.error === "string" ? body.error : `HTTP ${res.status}`,
+        );
+      }
+      return body as { ok: true; row: number; idempotent: boolean; replayed: boolean };
+    },
     onSuccess: (_res, { channel }) => {
       track(EVENTS.DB_ROW_ADDED, { channel });
       qc.invalidateQueries({ queryKey: dbKey() });

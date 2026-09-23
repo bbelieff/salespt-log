@@ -27,7 +27,7 @@ interface Props {
   meeting: Meeting;
   pending: boolean;
   focus?: boolean; // 캘린더 이동 포커스 — 스크롤 + 3초 하이라이트 링.
-  onPatch: (partial: Partial<Omit<Meeting, "id">>) => void;
+  onPatch: (partial: Partial<Omit<Meeting, "id">>, opts?: { quiet?: boolean }) => Promise<void> | void;
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
   onRevert?: () => void;
   onAddMeeting?: (newDate: string, newTime: string) => void;
@@ -56,7 +56,6 @@ export default function MeetingResultCard({
   const [action, setAction] = useState<Action>(null);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  // 업체정보 라이브 드래프트(#411) — 파란 저장(계약/완료/취소/기본수정)이 함께 영속화.
   const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(meeting.업체정보);
   const [ciTouched, setCiTouched] = useState(false);
   const withCi = (p: Partial<Omit<Meeting, "id">>) => (ciTouched ? { ...p, 업체정보: ciDraft } : p);
@@ -76,8 +75,6 @@ export default function MeetingResultCard({
     setAction((cur) => (cur === a ? null : a));
 
   const closeAfter = () => { setAction(null); setEditMode(false); setOpen(false); setCiTouched(false); };
-  // 미저장 가드. 액션폼은 bindSubmit 으로 현재 submit 등록 → 저장하고 이동 시 자동 확정
-  // (검증 실패면 throw 로 차단). 업체정보(ci)는 카드 차원 저장.
   const dirtyEntryId = useId();
   const submitRef = useRef<(() => boolean) | null>(null);
   const bindSubmit = (fn: (() => boolean) | null) => { submitRef.current = fn; };
@@ -99,7 +96,6 @@ export default function MeetingResultCard({
     onPatch(withCi({ 상태: "계약", 계약여부: true, 수임비: fee, 계약조건: terms }));
     closeAfter();
   };
-  // 미팅사유 회차 누적 (빈 reason 은 그대로).
   const accumulateReason = (newReason: string): string => {
     const trimmed = newReason.trim();
     const prev = (meeting.미팅사유 ?? "").trim();
@@ -179,7 +175,7 @@ export default function MeetingResultCard({
           </div>
 
           <CarryoverBadge 구분={meeting.구분} variant="note" />
-          <CompanyInfoEditor value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
+          <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">
@@ -284,6 +280,7 @@ export default function MeetingResultCard({
 
           {showActions && (
             <BasicEditDetails
+              targetKey={meeting.id}
               initial={{
                 미팅날짜: meeting.미팅날짜,
                 미팅시간: meeting.미팅시간,
@@ -292,8 +289,9 @@ export default function MeetingResultCard({
                 예약비고: meeting.예약비고,
               }}
               onSave={(partial) => {
-                onPatch(withCi(partial));
+                const r = onPatch(withCi(partial), { quiet: true });
                 setCiTouched(false);
+                return r;
               }}
               onDelete={onDelete}
               pending={pending}

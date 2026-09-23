@@ -14,7 +14,7 @@ export default function GoalDraftTools({ cumulative, weeksCounted, dirty, disabl
   const [target, setTarget] = useState("");
   const [proposal, setProposal] = useState<GoalProposal | null>(null);
   const [error, setError] = useState("");
-  const allowOverwrite = () => !dirty || window.confirm("입력 중인 목표를 바꿀까요? 저장 전까지는 반영되지 않아요.");
+  const allowOverwrite = () => !dirty || window.confirm("입력 중인 목표를 바꿀까요? 바꾼 내용은 자동으로 저장돼요.");
   return <div className="space-y-3">
     <div className="flex items-center justify-between gap-2">
     <h2 className="text-sm font-bold text-gray-900">목표달성 및 수립</h2>

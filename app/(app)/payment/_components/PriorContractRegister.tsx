@@ -20,6 +20,7 @@
 import { useState } from "react";
 import { ContractPayment } from "@/types";
 import { useAddPriorContract } from "@/query/contract-payment-hooks";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 import ContractForm from "../../schedule/_components/ContractForm";
 
 export default function PriorContractRegister({
@@ -40,6 +41,19 @@ export default function PriorContractRegister({
     set업체명("");
     setWarn("");
   };
+
+  // 초안 보존 — 미완성 이탈 시 버리지 않고 막는다(수임비는 자식 폼 상태라
+  // 가드 저장이 완성할 수 없어 차단+유지로 보호. 현재 화면에 미부착).
+  const hasDraft = step === "form" && (계약일.trim() !== "" || 업체명.trim() !== "");
+  useDirtyEntry(
+    "prior-contract-register",
+    hasDraft,
+    () => {
+      throw new Error("이전 계약 입력을 먼저 완료해주세요 (수임비 입력 후 계약 확정)");
+    },
+    reset,
+    `이전 계약 ${업체명.trim() || "(입력 중)"}`,
+  );
 
   const submit = (fee: number, terms: string) => {
     if (!계약일.trim() || !업체명.trim()) {

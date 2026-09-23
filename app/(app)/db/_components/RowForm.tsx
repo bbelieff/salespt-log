@@ -265,6 +265,7 @@ function FieldCell({
           min={field.type === "number" ? 0 : undefined}
           value={inputValue}
           onChange={(e) => onChange(e.target.value)}
+          data-field={field.key}
           className={inputCls}
           style={
             field.type === "number"

@@ -8,12 +8,12 @@ import { isValidISODate } from "@/lib/service/cohort-dates";
 import {
   type ExpenseViewMode,
   type ExpenseCategoryR6,
-  type ManagedRecurringRule,
   type ReclassifyExpenseCategoryBody,
   useCreateCategory,
   useDeleteCategory,
   useDeleteRecurringRule,
   useCreateExpense,
+  usePatchExpense,
   useCreateRecurringRule,
   useExpenseCategories,
   useExpenseLedger,
@@ -25,6 +25,9 @@ import {
 } from "@/query/expense-ledger-hooks";
 import ExpenseCategoryPicker, { type ReclassifiableExpenseItem } from "./ExpenseCategoryPicker";
 import ExpenseLedgerTable from "./ExpenseLedgerTable";
+import { RecurringRuleManager } from "./ExpenseRecurringManager";
+import { useOneTimeExpenseAutosave } from "./use-one-time-autosave";
+import { newDraftId } from "@/app/(app)/db/_lib/db-autosave";
 
 interface Props {
   open: boolean;
@@ -72,17 +75,6 @@ function safeQueryMessage(resource: "카테고리" | "반복 비용", error: unk
   return `${object} 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.`;
 }
 
-function safeRecurringDeleteMessage(error: unknown) {
-  const detail = error instanceof Error ? error.message : "";
-  if (/\b401\b|로그인|인증|unauthenticated/i.test(detail)) {
-    return "로그인이 만료되어 반복 비용을 종료하지 못했습니다. 다시 로그인한 뒤 다시 시도해 주세요.";
-  }
-  if (/\b403\b|권한|forbidden/i.test(detail)) {
-    return "반복 비용을 종료할 권한이 없습니다. 관리자에게 권한을 요청해 주세요.";
-  }
-  return "반복 비용을 종료하지 못했습니다. 잠시 후 다시 시도해 주세요.";
-}
-
 export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additionalCost }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [workspace, setWorkspace] = useState<Workspace>("record");
@@ -108,6 +100,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
   const deleteCategoryMutation = useDeleteCategory();
   const deleteRecurring = useDeleteRecurringRule();
   const createExpense = useCreateExpense();
+  const patchExpense = usePatchExpense();
   const createRecurring = useCreateRecurringRule();
   const patchCategory = usePatchCategory();
   const patchRule = usePatchRecurringRule();
@@ -187,41 +180,68 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
     }
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  // 일회성 자동 기록 — 완성된 입력이 그룹 블러·제출로 들어오면 1회 생성.
+  const oneTimeAuto = useOneTimeExpenseAutosave({
+    kind,
+    categoryId,
+    itemName,
+    amountWon,
+    start: oneTimeStart,
+    end: oneTimeEnd,
+    range: oneTimeRange,
+    createExpense: (body, key) => createExpense.mutateAsync({ ...body, idempotencyKey: key }),
+    patchExpense: (id, body) => patchExpense.mutateAsync({ id, body }),
+    onCreated: () => {
+      setItemName("");
+      setAmountWon(0);
+      setMessage("비용을 기록했습니다.");
+    },
+  });
+
+  // Reopening preserves the same draft operation key, including a lost-ACK retry.
+
+
+  // 반복 등록 시도 ID — 연타 레이스는 같은 키로 서버 병합, 성공 후에는 회전.
+  const recurringKeyRef = useRef<string | null>(null);
+  /** 반복 규칙 등록 — 매월 반복은 명시적 semantic 액션으로만 생성한다. */
+  async function registerRecurring() {
     setMessage(null);
     if (!categoryId || !itemName.trim() || amountWon < 1) {
       setMessage("카테고리, 항목, 부가세 제외 금액을 입력해 주세요.");
       return;
     }
-    const dateError = kind === "one_time" ? oneTimeDateError : recurringDateError;
-    if (dateError) {
-      setMessage(dateError);
+    if (recurringDateError) {
+      setMessage(recurringDateError);
       return;
     }
+    if (!recurringKeyRef.current) recurringKeyRef.current = newDraftId();
     try {
-      if (kind === "recurring") {
-        await createRecurring.mutateAsync({
-          categoryId,
-          itemName: itemName.trim(),
-          amountWon,
-          anchorDay: Number(anchorDay),
-          startsOn: recurringStart,
-          ...(recurringEnd ? { endsOn: recurringEnd } : {}),
-        });
-        setMessage("반복 비용을 저장했습니다. 기록 화면의 반복 비용 행에서 상세와 작업을 확인할 수 있습니다.");
-      } else {
-        await createExpense.mutateAsync({
-          categoryId,
-          itemName: itemName.trim(),
-          amountWon,
-          periodStart: oneTimeStart,
-          ...(oneTimeRange ? { periodEnd: oneTimeEnd } : {}),
-        });
-        setItemName("");
-        setAmountWon(0);
-        setMessage("비용을 저장했습니다.");
-      }
+      await createRecurring.mutateAsync({
+        categoryId,
+        itemName: itemName.trim(),
+        amountWon,
+        anchorDay: Number(anchorDay),
+        startsOn: recurringStart,
+        ...(recurringEnd ? { endsOn: recurringEnd } : {}),
+        idempotencyKey: recurringKeyRef.current,
+      });
+      recurringKeyRef.current = null;
+      setMessage("반복 비용을 저장했습니다. 기록 화면의 반복 비용 행에서 상세와 작업을 확인할 수 있습니다.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "비용을 저장하지 못했습니다.");
+    }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setMessage(null);
+    if (kind === "recurring") {
+      await registerRecurring();
+      return;
+    }
+    // 일회성 Enter/제출 = 의도적 확정 → 자동 기록과 같은 경로(서명 병합으로 중복 없음).
+    try {
+      await oneTimeAuto.flushOnce();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "비용을 저장하지 못했습니다.");
     }
@@ -253,10 +273,23 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
           </nav>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pc:px-6">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-4 pc:px-6"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
           {workspace === "record" && (
             <section id="expense-record-panel" role="tabpanel" aria-labelledby="expense-ledger-title" className="space-y-5">
-            <form id="expense-record-form" onSubmit={submit} className="space-y-4">
+            <form
+              id="expense-record-form"
+              onSubmit={submit}
+              className="space-y-4"
+              onBlur={(event) => {
+                // 입력 그룹 전체 블러(그룹 밖으로 나갈 때) → 완성된 일회성만 1회 기록.
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  void oneTimeAuto.flushOnce().catch(() => {});
+                }
+              }}
+            >
               <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-white p-1" aria-label="비용 발생 방식">
                 {(["one_time", "recurring"] as const).map((value) => <button key={value} type="button" aria-pressed={kind === value} onClick={() => setKind(value)} className={`min-h-11 rounded-lg text-sm font-bold ${kind === value ? "bg-slate-900 text-white" : "text-gray-500"}`}>{value === "one_time" ? "일회성" : "매월 반복"}</button>)}
               </div>
@@ -274,7 +307,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                     retrying={categories.isFetching}
                     unclassifiedRefs={unclassifiedRefs}
                     onRetry={() => { void categories.refetch(); }}
-                    onChange={setCategoryId}
+                    onChange={(id) => { oneTimeAuto.markTouched(); setCategoryId(id); }}
                     onCreate={addCategory}
                     onRename={renameCategory}
                     onDelete={async (id) => deleteCategoryMutation.mutateAsync(id)}
@@ -283,20 +316,36 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                   />
                 </div>
                 <div className="mt-3 grid gap-3 pc:grid-cols-2">
-                  <label className="text-xs font-bold text-gray-700">항목<input value={itemName} onChange={(event) => setItemName(event.target.value)} className={fieldClass} maxLength={100} placeholder="예: 사무실 임차료" /></label>
-                  <label className="text-xs font-bold text-gray-700">금액 (부가세 제외)<MoneyInput value={amountWon} onChange={setAmountWon} aria-label="부가세 제외 비용 금액" className={fieldClass} placeholder="0" /></label>
+                  <label className="text-xs font-bold text-gray-700">항목<input value={itemName} onChange={(event) => { oneTimeAuto.markTouched(); setItemName(event.target.value); }} className={fieldClass} maxLength={100} placeholder="예: 사무실 임차료" /></label>
+                  <label className="text-xs font-bold text-gray-700">금액 (부가세 제외)<MoneyInput value={amountWon} onChange={(value) => { oneTimeAuto.markTouched(); setAmountWon(value); }} aria-label="부가세 제외 비용 금액" className={fieldClass} placeholder="0" /></label>
                 </div>
               </div>
+              {kind === "one_time" && (
+                <p aria-live="polite" className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs">
+                  {oneTimeAuto.status === "pending" ? (
+                    <span className="text-slate-500">기록 중…</span>
+                  ) : oneTimeAuto.status === "error" ? (
+                    <span className="font-semibold text-red-600">
+                      {oneTimeAuto.error}{" "}
+                      <button type="button" onClick={() => { void oneTimeAuto.flushOnce().catch(() => {}); }} className="font-bold text-red-700 hover:underline">
+                        다시 시도
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">입력이 완성되면 입력 그룹을 벗어날 때 자동으로 기록돼요.</span>
+                  )}
+                </p>
+              )}
 
               {kind === "one_time" ? (
                 <section className="rounded-xl border border-gray-200 bg-white p-3" aria-label="일회성 비용 기간">
                   <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
-                    <button type="button" aria-pressed={!oneTimeRange} onClick={() => setOneTimeRange(false)} className={`min-h-11 rounded-md text-xs font-bold ${!oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>당일</button>
-                    <button type="button" aria-pressed={oneTimeRange} onClick={() => setOneTimeRange(true)} className={`min-h-11 rounded-md text-xs font-bold ${oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>기간</button>
+                    <button type="button" aria-pressed={!oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(false); }} className={`min-h-11 rounded-md text-xs font-bold ${!oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>당일</button>
+                    <button type="button" aria-pressed={oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(true); }} className={`min-h-11 rounded-md text-xs font-bold ${oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>기간</button>
                   </div>
                   <div className={`mt-3 grid gap-3 ${oneTimeRange ? "grid-cols-2" : "grid-cols-1"}`}>
-                    <label className="text-xs font-bold text-gray-700">발생일<input type="date" required value={oneTimeStart} aria-invalid={!isValidISODate(oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => setOneTimeStart(event.target.value)} className={fieldClass} /></label>
-                    {oneTimeRange && <label className="text-xs font-bold text-gray-700">종료일<input type="date" required value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} aria-invalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => setOneTimeEnd(event.target.value)} className={fieldClass} /></label>}
+                    <label className="text-xs font-bold text-gray-700">발생일<input type="date" required value={oneTimeStart} aria-invalid={!isValidISODate(oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeStart(event.target.value); }} className={fieldClass} /></label>
+                    {oneTimeRange && <label className="text-xs font-bold text-gray-700">종료일<input type="date" required value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} aria-invalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeEnd(event.target.value); }} className={fieldClass} /></label>}
                   </div>
                   <div id="one-time-date-preview" role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-gray-600"><p className="font-bold text-gray-800">일할 인식 미리보기</p>{allocation ? <><p className="mt-1">{allocation.days}일 × ₩{formatMoney(allocation.daily)}{allocation.remainder > 0 ? ` + 잔여 ₩${formatMoney(allocation.remainder)} (시작일 우선)` : ""}</p><p className="mt-1 text-xs text-gray-400">시작일과 종료일을 모두 포함해 일별로 배분합니다.</p></> : <p className="mt-1 font-semibold text-amber-700">{oneTimeDateError}</p>}</div>
                 </section>
@@ -310,6 +359,14 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                   </div>
                   <label className="mt-3 block text-xs font-bold text-gray-700">매월 반영일<select value={anchorDay} onChange={(event) => setAnchorDay(event.target.value)} className={fieldClass}>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day}일</option>)}</select></label>
                   <div id="recurring-date-preview" role="status" className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-900">{firstOccurrence ? <><p className="font-bold">첫 반영 예정일 {firstOccurrence}</p><p className="mt-1 text-xs text-blue-700">29~31일이 없는 달은 그 달의 말일로 자동 보정합니다. 종료일이 있으면 해당 날짜 이후에는 발생하지 않습니다.</p></> : <p className="font-semibold text-amber-800">{recurringDateError}</p>}</div>
+                  <button
+                    type="button"
+                    onClick={() => { void registerRecurring(); }}
+                    disabled={busy || Boolean(recurringDateError) || !categoryId || !itemName.trim() || amountWon < 1}
+                    className="mt-3 min-h-11 w-full rounded-lg bg-slate-900 text-sm font-bold text-white disabled:opacity-40"
+                  >
+                    {createRecurring.isPending ? "등록 중…" : "매월 반복 등록"}
+                  </button>
                 </section>
               )}
             </form>
@@ -348,8 +405,6 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 
           {message && <p role="status" className="mt-4 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-800">{message}</p>}
         </div>
-
-        {workspace === "record" && <footer className="sticky bottom-0 z-20 shrink-0 border-t border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur pc:px-6"><button form="expense-record-form" type="submit" disabled={busy || Boolean(kind === "one_time" ? oneTimeDateError : recurringDateError)} aria-describedby={kind === "one_time" ? "one-time-date-preview" : "recurring-date-preview"} className="min-h-12 w-full rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50">{busy ? "저장 중…" : kind === "recurring" ? "반복 비용 저장" : "비용 저장"}</button></footer>}
       </section>
     </div>,
     document.body,
@@ -359,110 +414,4 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 function SummaryCard({ label, value, tone = "plain" }: { label: string; value: string; tone?: "plain" | "red" | "dark" }) {
   const style = tone === "dark" ? "bg-slate-900 text-white" : tone === "red" ? "border border-red-100 bg-red-50 text-red-700" : "border border-gray-200 bg-white text-gray-900";
   return <div className={`min-w-0 rounded-lg px-2 py-2 ${style}`}><p className={`truncate text-xs ${tone === "dark" ? "text-slate-300" : "text-gray-500"}`}>{label}</p><strong className="mt-0.5 block truncate text-xs pc:text-sm">{value}</strong></div>;
-}
-
-interface QueryStateProps {
-  loading: boolean;
-  loaded: boolean;
-  errorMessage: string | null;
-  retrying: boolean;
-  onRetry: () => void;
-}
-
-function QueryStatePanel({ message, error = false, retrying = false, onRetry }: { message: string; error?: boolean; retrying?: boolean; onRetry?: () => void }) {
-  return (
-    <div role={error ? "alert" : "status"} className={`rounded-xl border p-4 text-sm ${error ? "border-red-100 bg-red-50 text-red-800" : "border-gray-200 bg-white text-gray-600"}`}>
-      <p className="font-semibold">{message}</p>
-      {onRetry && <button type="button" disabled={retrying} onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-current bg-white px-4 text-xs font-bold disabled:opacity-50">{retrying ? "다시 불러오는 중…" : "다시 시도"}</button>}
-    </div>
-  );
-}
-
-function RecurringRuleManager({
-  rules,
-  loading,
-  loaded,
-  errorMessage,
-  retrying,
-  onRetry,
-  month,
-  amountWon,
-  onPause,
-  onResume,
-  onSkip,
-  onFutureAmount,
-  onDelete,
-}: QueryStateProps & { rules: ManagedRecurringRule[]; month: string; amountWon: number; onPause: (id: string) => void; onResume: (id: string) => void; onSkip: (id: string) => void; onFutureAmount: (id: string) => void; onDelete: (id: string) => Promise<void> }) {
-  const count = loading || (!loaded && !errorMessage) ? "불러오는 중" : errorMessage ? "확인 필요" : `${rules.length}건`;
-  let content;
-  if (loading || (!loaded && !errorMessage)) {
-    content = <QueryStatePanel message="반복 비용을 불러오고 있습니다." />;
-  } else if (errorMessage) {
-    content = <QueryStatePanel message={errorMessage} error retrying={retrying} onRetry={onRetry} />;
-  } else if (rules.length === 0) {
-    content = <p className="p-6 text-center text-xs text-gray-400">등록된 반복 비용이 없습니다.</p>;
-  } else {
-    content = rules.map((rule) => (
-      <RecurringRuleRow key={rule.id} rule={rule} month={month} amountWon={amountWon} onPause={onPause} onResume={onResume} onSkip={onSkip} onFutureAmount={onFutureAmount} onDelete={onDelete} />
-    ));
-  }
-  return <div><div className="mb-2 flex items-end justify-between"><div><h3 className="text-sm font-black text-gray-900">반복 비용</h3><p className="text-xs text-gray-500">목록 행을 펼쳐 상태와 다음 작업을 관리합니다.</p></div><span className="text-xs font-bold text-gray-500">{count}</span></div><div className="overflow-hidden rounded-xl border border-gray-200 bg-white">{content}</div></div>;
-}
-
-type RecurringRuleRowProps = { rule: ManagedRecurringRule; month: string; amountWon: number; onPause: (id: string) => void; onResume: (id: string) => void; onSkip: (id: string) => void; onFutureAmount: (id: string) => void; onDelete: (id: string) => Promise<void> };
-
-function RecurringRuleRow({ rule, month, amountWon, onPause, onResume, onSkip, onFutureAmount, onDelete }: RecurringRuleRowProps) {
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  async function deleteRule() {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await onDelete(rule.id);
-      setConfirmingDelete(false);
-    } catch (error) {
-      setDeleteError(safeRecurringDeleteMessage(error));
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  return (
-    <details className="group border-b border-gray-100 last:border-b-0">
-      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 marker:hidden">
-        <span className="min-w-0"><strong className="block truncate text-sm text-gray-900">{rule.itemName}</strong><span className="text-xs text-gray-500">{rule.categoryName} · ₩{formatMoney(rule.amountWon)}</span></span>
-        <span className="shrink-0 text-xs font-bold text-blue-600">{rule.status === "archived" ? "종료됨" : "상세·관리"}</span>
-      </summary>
-      <div className="bg-slate-50 p-3 text-xs text-gray-600">
-        <p>상태 <strong className="text-gray-900">{rule.status}</strong></p>
-        <p className="mt-1">이번 발생 <strong className="text-gray-900">{rule.currentOccurrence ? `${rule.currentOccurrence.occurrenceDate} (${rule.currentOccurrence.status})` : "없음"}</strong></p>
-        {rule.nextOccurrence && <p className="mt-1">다음 발생 <strong className="text-gray-900">{rule.nextOccurrence.occurrenceDate}</strong></p>}
-        {rule.status === "archived" ? (
-          <p className="mt-3 rounded-lg bg-white p-3 font-semibold text-gray-500">종료·보관된 규칙은 다시 발생하지 않으며 작업할 수 없습니다. 과거 비용 기록은 그대로 유지됩니다.</p>
-        ) : (
-          <>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" disabled={deleting} onClick={() => rule.status === "paused" ? onResume(rule.id) : onPause(rule.id)} className="min-h-11 rounded-lg border border-gray-200 bg-white font-bold disabled:opacity-40">{rule.status === "paused" ? "재개" : "일시 중지"}</button>
-              <button type="button" disabled={deleting} onClick={() => onSkip(rule.id)} className="min-h-11 rounded-lg border border-gray-200 bg-white font-bold disabled:opacity-40">{month} 건너뛰기</button>
-              <button type="button" disabled={deleting || amountWon < 1} onClick={() => onFutureAmount(rule.id)} className="col-span-2 min-h-11 rounded-lg border border-gray-200 bg-white font-bold disabled:opacity-40">기록 화면 금액을 다음 달부터 적용</button>
-              <button type="button" disabled={deleting} onClick={() => { setConfirmingDelete(true); setDeleteError(null); }} className="col-span-2 min-h-11 rounded-lg border border-red-200 bg-white font-bold text-red-700 disabled:opacity-40">삭제/종료</button>
-            </div>
-            {confirmingDelete && (
-              <div role="alertdialog" aria-label={`${rule.itemName} 반복 비용 삭제 또는 종료 확인`} className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-red-900">
-                <p className="font-bold">이 반복 규칙을 종료할까요?</p>
-                <p className="mt-1 leading-relaxed">앞으로의 비용 발생은 중단되지만 과거 비용 기록은 그대로 유지됩니다. 실제 데이터를 지우는 작업이 아니라 종료·보관 처리입니다.</p>
-                {deleteError && <p role="alert" className="mt-2 rounded-lg bg-white p-2 font-semibold text-red-800">{deleteError}</p>}
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button type="button" disabled={deleting} onClick={() => { setConfirmingDelete(false); setDeleteError(null); }} className="min-h-11 rounded-lg border border-gray-300 bg-white font-bold text-gray-700 disabled:opacity-40">취소</button>
-                  <button type="button" disabled={deleting} onClick={() => { void deleteRule(); }} className="min-h-11 rounded-lg bg-red-600 px-2 font-bold text-white disabled:opacity-50">{deleting ? "종료 중…" : deleteError ? "종료 다시 시도" : "삭제/종료 확인"}</button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </details>
-  );
 }

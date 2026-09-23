@@ -88,7 +88,12 @@ export default function SchedulePage() {
   const handlePatch = async (
     id: string,
     partial: Partial<Omit<Meeting, "id">>,
+    opts?: { quiet?: boolean },
   ) => {
+    // quiet(자동 저장): 루틴 성공 토스트 없음 + 실패는 throw 로 큐에 전달.
+    const say = (msg: string) => {
+      if (!opts?.quiet) showToast(msg);
+    };
     setPendingId(id);
     try {
       // patch 전에 현재 미팅 상태를 lookup — fan-out 중복 방지에 필요.
@@ -109,7 +114,7 @@ export default function SchedulePage() {
       // (2026-09-01 · 10기 문병규 ₩1,100,000). 규칙·근거 = ./_lib/contract-fanout.ts
       const fanout = decideContractFanout(partial, prevMeeting);
       if (fanout.kind === "blocked") {
-        showToast(
+        say(
           "⚠ 계약 상태는 저장됐지만 계약 정보를 읽지 못해 장부에 넣지 못했어요. 새로고침 후 이 카드를 다시 계약으로 저장해 주세요.",
         );
         return;
@@ -118,14 +123,14 @@ export default function SchedulePage() {
         const payload = fanout.payload;
         try {
           await addContractPayment.mutateAsync(payload);
-          showToast("✓ 계약 확정 + 계약수납 row 생성됨");
+          say("✓ 계약 확정 + 계약수납 row 생성됨");
         } catch {
           // 일시적 실패(네트워크·쿼터)로 매출이 사라지지 않게 한 번 더. 멱등이라 안전.
           try {
             await addContractPayment.mutateAsync(payload);
-            showToast("✓ 계약 확정 + 계약수납 row 생성됨 (재시도 성공)");
+            say("✓ 계약 확정 + 계약수납 row 생성됨 (재시도 성공)");
           } catch (e) {
-            showToast(
+            say(
               `⚠ 계약 상태는 저장됐지만 장부에 넣지 못했어요: ${(e as Error).message} — 이 카드를 다시 계약으로 저장하면 채워져요.`,
             );
             return;
@@ -145,21 +150,22 @@ export default function SchedulePage() {
             업체명: prevMeeting.업체명,
             수임비: partial.수임비,
           });
-          showToast(
+          say(
             result.synced
               ? "✓ 저장 완료 + 계약수납 수임비 sync"
               : "✓ 저장 완료 (계약수납 매칭 row 없음 — 시트에서 수동 확인)",
           );
         } catch (e) {
-          showToast(
+          say(
             `⚠ 미팅은 저장됐으나 계약수납 sync 실패: ${(e as Error).message}`,
           );
         }
       } else {
-        showToast("✓ 저장 완료");
+        say("✓ 저장 완료");
       }
     } catch (e) {
-      showToast(`저장 실패: ${(e as Error).message}`);
+      say(`저장 실패: ${(e as Error).message}`);
+      if (opts?.quiet) throw e; // 자동 저장 큐가 실패로 인식해 초안 유지+재시도
     } finally {
       setPendingId(null);
     }

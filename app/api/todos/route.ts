@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createTodo, listTodos } from "@/service";
+import { createTodo, listTodos, TodoOperationConflict } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { getWritableUserEmail } from "@/auth/identity";
 import { TodoType } from "@/types";
@@ -29,6 +29,10 @@ const CreateBody = z.object({
   장소: z.string().default(""),
   상세: z.string().default(""),
   showOnCalendar: z.boolean().default(true),
+  // 초안당 클라이언트 발행 안정 키(UUID) — 있으면 Todo id 로 사용해
+  // 커밋 후 응답 유실 재시도·동시 같은 키를 정확히 1행으로 수렴시킨다.
+  // 없으면 기존 동작(서버 발행 id) — 하위 호환.
+  operationId: z.string().uuid().optional(),
 }).refine((d) => d.type === "일반" || d.contractRef.trim() !== "", {
   message: "contractRef 필수 (일반이벤트 제외)",
 });
@@ -59,9 +63,16 @@ async function POST_handler(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
     const email = await getWritableUserEmail(); // 쓰기 진입점(ADR-0029: archived 차단 폐지)
-    const todo = await createTodo(email, parsed.data);
+    const { operationId, ...input } = parsed.data;
+    const todo = await createTodo(email, input, { operationId });
     return NextResponse.json({ ok: true, todo });
   } catch (e) {
+    if (e instanceof TodoOperationConflict) {
+      return NextResponse.json(
+        { error: e.message, todo: e.existing },
+        { status: 409 },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });

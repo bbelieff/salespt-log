@@ -3,21 +3,29 @@
  * 정본: docs/design/prototypes/contact-daily-input.html (v7) §3 미팅 카드
  *
  * 두 모드:
- *   - 신규(saved=false): 강제 펼침 + [등록] [삭제]
- *   - 등록완료(saved=true): 한 줄 접힘 + 클릭 펼침 + [수정 완료] [삭제]
+ *   - 신규: 강제 펼침 + 드래프트당 ONE [예약 등록] (idempotent, 실패 시 유지·재시도)
+ *   - 등록완료: 한 줄 접힘 + 클릭 펼침 + 편집 자동 저장 (수정 완료 버튼 없음)
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Channel, DBLead, Meeting } from "@/types";
-import DateInputCustom from "@/components/ui/DateInputCustom";
-import TimeSelectPair from "@/components/ui/TimeSelectPair";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import type { CompanyInfo } from "@/types";
-import { ConfirmLeaveModal } from "./MeetingDirtyGuard";
-import { useDirtyRegister } from "@/components/DirtyGuard";
+import { useDirtyEntry } from "@/components/DirtyGuard";
+import { useAutosave } from "@/components/autosave/useAutosave";
+import AutosaveStatus from "@/components/autosave/AutosaveStatus";
+import { discardUnsaved } from "@/components/weekly-goals/weeklyGoalAutosave";
+import { isSameDayMeeting } from "../_lib/metrics-autosave";
 import { mergePick, type PickMerged } from "../_lib/lead-pick";
 import LeadPickerModal from "./LeadPickerModal";
+import {
+  Actions,
+  DateTimeRow,
+  ExpandHeader,
+  FieldNote,
+  FieldText,
+} from "./MeetingSlotForm";
 
 const CHANNEL_BADGE: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
@@ -45,13 +53,18 @@ interface NewProps {
   reservationDate: string;
   onChange: (next: NewSlot) => void;
   onRemove: () => void;
+  /** Per-draft semantic register — stable tempId, single-flight, idempotent retry. */
+  onRegister: (tempId: string) => void;
+  registering: boolean;
+  registerError: string;
 }
 
 interface SavedProps {
   mode: "saved";
   index: number;
   meeting: Meeting;
-  onPatch: (partial: Partial<Omit<Meeting, "id">>) => void | Promise<void>;
+  reservationDate: string;
+  onPatch: (id: string, partial: Partial<Omit<Meeting, "id">>, date: string) => Promise<unknown>;
   onRemove: () => void;
 }
 
@@ -69,6 +82,9 @@ function NewItem({
   reservationDate,
   onChange,
   onRemove,
+  onRegister,
+  registering,
+  registerError,
 }: NewProps) {
   const channel = slot.channel;
   const collapsedTime = slot.미팅시간 || "—:—";
@@ -131,6 +147,11 @@ function NewItem({
           onDate={(v) => onChange({ ...slot, 미팅날짜: v })}
           onTime={(v) => onChange({ ...slot, 미팅시간: v })}
         />
+        {isSameDayMeeting(reservationDate, slot.미팅날짜) && (
+          <p role="note" className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+            기록 날짜와 미팅 날짜가 같아요. 당일 미팅이 맞는지 확인해 주세요.
+          </p>
+        )}
         <FieldText
           label="업체명"
           placeholder="예: ○○부동산"
@@ -150,18 +171,24 @@ function NewItem({
             onChange={(v) => onChange({ ...slot, 예약비고: v })}
           />
         )}
-        {/* 업체정보 — 슬롯 메모리(onChange)에만 반영, 맨 아래 [저장하기]가 등록 시 함께 기록(04 T~AS).
-            key={ciKey}: 발굴 프리필로 업체정보 주입 시 리마운트(에디터는 mount 1회 초기화, R8). */}
+        {/* 업체정보 — 슬롯 메모리(onChange)에만 반영, [예약 등록]이 함께 기록(04 T~AS).
+            key: 발굴 프리필 주입 리마운트(ciKey, R8) + 슬롯별 분리(tempId).
+            identityKey=tempId: 업체명(개명 가능한 표시명)은 신원이 될 수 없다. */}
         <CompanyInfoEditor
-          key={ciKey}
+          key={`new-${slot.tempId}-${ciKey}`}
+          identityKey={slot.tempId}
           value={slot.업체정보}
           hideSave
           onChange={(ci) => onChange({ ...slot, 업체정보: ci })}
           onSave={(ci) => onChange({ ...slot, 업체정보: ci })}
         />
+        {registerError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{registerError}</p>}
         <Actions
+          primaryLabel={registering ? "등록 중…" : registerError ? "다시 등록" : "예약 등록"}
+          onPrimary={() => onRegister(slot.tempId)}
+          primaryDisabled={registering}
           onRemove={onRemove}
-          hint="입력 후 맨 아래 [저장하기]로 등록돼요 · 삭제 시 미팅예약 -1"
+          hint="실패해도 입력은 그대로 남아요 · 삭제 시 미팅예약 -1"
         />
       </div>
       {pickerOpen && (
@@ -171,80 +198,48 @@ function NewItem({
   );
 }
 
-// ── 등록완료 슬롯 ────────────────────────────────────────────
-function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
+// ── 등록완료 슬롯 (편집 자동 저장) ─────────────────────────────
+interface MeetingDraft {
+  미팅날짜: string;
+  미팅시간: string;
+  업체명: string;
+  장소: string;
+  업체정보?: CompanyInfo;
+}
+
+const toDraft = (m: Meeting): MeetingDraft => ({
+  미팅날짜: m.미팅날짜,
+  미팅시간: m.미팅시간,
+  업체명: m.업체명,
+  장소: m.장소,
+  업체정보: m.업체정보,
+});
+
+function SavedItem({ index, meeting, reservationDate, onPatch, onRemove }: SavedProps) {
   const [open, setOpen] = useState(false);
-  // 예약비고 자리는 업체정보(CompanyInfoEditor)로 교체 (consultation-log §3-1).
-  // 기존 예약비고 값은 partial patch 라 보존됨(일정·계약 탭에서 계속 편집 가능).
-  const [draft, setDraft] = useState({
-    미팅날짜: meeting.미팅날짜,
-    미팅시간: meeting.미팅시간,
-    업체명: meeting.업체명,
-    장소: meeting.장소,
+  const auto = useAutosave<MeetingDraft>({
+    target: { kind: "contact-meeting", date: reservationDate, id: meeting.id },
+    initial: toDraft(meeting),
+    delayMs: 1000,
+    save: ({ target, payload }) => onPatch(meeting.id, payload, target.date as string),
   });
-  // 업체정보 라이브 드래프트 — CompanyInfoEditor onChange 로 동기화, 파란 저장이 함께 영속화.
-  const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(
-    meeting.업체정보,
-  );
-  const [ciTouched, setCiTouched] = useState(false); // 업체정보가 편집됐는가
-  const [confirmCollapse, setConfirmCollapse] = useState(false);
 
-  const meetingDirty =
-    draft.미팅날짜 !== meeting.미팅날짜 ||
-    draft.미팅시간 !== meeting.미팅시간 ||
-    draft.업체명 !== meeting.업체명 ||
-    draft.장소 !== meeting.장소;
-  const dirty = meetingDirty || ciTouched;
-
-  // 파란 '수정 완료' — 미팅 + (편집된) 업체정보를 한 patch 로 원자 저장(04/06 동시).
-  // 부분 실패 시 handlePatchSavedMeeting 가 "수정 실패" 토스트로 표시.
-  const saveAll = async () => {
-    await onPatch({
-      ...draft,
-      ...(ciTouched ? { 업체정보: ciDraft } : {}),
-    });
-    setCiTouched(false);
-  };
-  // 무시(버리기) — 편집을 저장본으로 되돌림. CompanyInfoEditor 는 접힘 시 언마운트돼
-  // 다음 펼침에서 meeting.업체정보 로 재초기화되므로 ciTouched 만 리셋하면 된다.
-  const discardAll = () => {
-    setDraft({
-      미팅날짜: meeting.미팅날짜,
-      미팅시간: meeting.미팅시간,
-      업체명: meeting.업체명,
-      장소: meeting.장소,
-    });
-    setCiDraft(meeting.업체정보);
-    setCiTouched(false);
-  };
-
-  // 전역 dirty 레지스트리 등록(탭/날짜/주차·카드접기 이탈 가드 + 브라우저 닫기) — 최신 콜백 ref.
-  const register = useDirtyRegister();
-  const saveRef = useRef(saveAll);
-  saveRef.current = saveAll;
-  const discardRef = useRef(discardAll);
-  discardRef.current = discardAll;
+  // 서버 리패치 병합 — unsent 편집은 유지, 깨끗할 때만 기준 이동.
+  const meetingKey = JSON.stringify(toDraft(meeting));
   useEffect(() => {
-    register(
-      meeting.id,
-      dirty
-        ? {
-            save: () => saveRef.current(),
-            discard: () => discardRef.current(),
-            label: `미팅 ${meeting.업체명 || "(미입력)"}`,
-          }
-        : null,
-    );
-    return () => register(meeting.id, null);
-  }, [dirty, meeting.id, meeting.업체명, register]);
+    auto.syncServer(toDraft(meeting));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meetingKey]);
 
-  // 헤더 토글 — 펼침 상태에서 dirty 면 접기 전에 확인.
-  const handleToggle = () => {
-    if (open && dirty) {
-      setConfirmCollapse(true);
-      return;
-    }
-    setOpen((v) => !v);
+  useDirtyEntry(meeting.id, auto.dirty,
+    () => auto.flush(),
+    () => discardUnsaved(auto), // leave-without-save; F2 core discard() auto-used when present
+    `미팅 ${meeting.업체명 || "(미입력)"}`);
+
+  // 업체정보는 CompanyInfoEditor 인터페이스 그대로(hideSave + onChange/onSave).
+  const setCi = (ci: CompanyInfo | undefined, immediate: boolean) => {
+    auto.update({ ...auto.draft, 업체정보: ci });
+    if (immediate) void auto.flush();
   };
 
   const collapsedTime = meeting.미팅시간 || "—:—";
@@ -260,7 +255,7 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
     <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-blue-400 bg-white shadow-sm">
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors active:bg-black/5"
         aria-expanded={open}
       >
@@ -301,199 +296,46 @@ function SavedItem({ index, meeting, onPatch, onRemove }: SavedProps) {
 
       {open && (
         <div className="space-y-3 border-t border-gray-200 px-3 py-3">
-          <ExpandHeader saved reservationDate={meeting.예약일} />
+          <div className="flex items-center justify-between gap-2">
+            <ExpandHeader saved reservationDate={meeting.예약일} />
+            <AutosaveStatus status={auto.status} error={auto.error}
+              savedAt={auto.savedAt} onRetry={auto.retry} />
+          </div>
           <DateTimeRow
-            미팅날짜={draft.미팅날짜}
-            미팅시간={draft.미팅시간}
-            onDate={(v) => setDraft((d) => ({ ...d, 미팅날짜: v }))}
-            onTime={(v) => setDraft((d) => ({ ...d, 미팅시간: v }))}
+            미팅날짜={auto.draft.미팅날짜}
+            미팅시간={auto.draft.미팅시간}
+            onDate={(v) => auto.stage({ ...auto.draft, 미팅날짜: v })}
+            onTime={(v) => auto.stage({ ...auto.draft, 미팅시간: v })}
+            onBlurGroup={() => auto.commit()}
           />
           <FieldText
             label="업체명"
-            value={draft.업체명}
-            onChange={(v) => setDraft((d) => ({ ...d, 업체명: v }))}
+            value={auto.draft.업체명}
+            onChange={(v) => auto.update({ ...auto.draft, 업체명: v })}
           />
           <FieldText
             label="장소"
-            value={draft.장소}
-            onChange={(v) => setDraft((d) => ({ ...d, 장소: v }))}
+            value={auto.draft.장소}
+            onChange={(v) => auto.update({ ...auto.draft, 장소: v })}
           />
-          {/* 업체정보는 아래 파란 '수정 완료'로 함께 저장됨 → 자체 저장버튼 숨김(hideSave).
-              onChange 로 라이브 드래프트만 부모에 전달. (모달 '저장'은 즉시 저장 보조 경로) */}
+          {/* 업체정보는 자동 저장에 포함된다. 모달 '저장'은 즉시 확정 보조 경로.
+              identityKey=meeting.id: 업체명(txtCompanyName)은 개명 가능한 표시명이라
+              신원으로 쓰면 빠른 전환·개명 때 다른 레코드로 전송된다. */}
           <CompanyInfoEditor
+            key={meeting.id}
+            identityKey={meeting.id}
             value={meeting.업체정보}
             txtCompanyName={meeting.업체명}
             hideSave
-            onChange={(ci) => {
-              setCiDraft(ci);
-              setCiTouched(true);
-            }}
-            onSave={(ci) => {
-              onPatch({ 업체정보: ci });
-              setCiDraft(ci);
-              setCiTouched(false);
-            }}
+            onChange={(ci) => setCi(ci, false)}
+            onSave={(ci) => setCi(ci, true)}
           />
           <Actions
             onRemove={onRemove}
-            hint="수정·업체정보는 맨 아래 [저장하기]로 함께 저장됩니다"
+            hint="수정은 자동 저장돼요 · 삭제·옮기기는 확인 후 따로 실행"
           />
         </div>
       )}
-
-      {confirmCollapse && (
-        <ConfirmLeaveModal
-          onSave={() => {
-            void saveAll();
-            setConfirmCollapse(false);
-            setOpen(false);
-          }}
-          onDiscard={() => {
-            discardAll();
-            setConfirmCollapse(false);
-            setOpen(false);
-          }}
-          onCancel={() => setConfirmCollapse(false)}
-        />
-      )}
     </div>
-  );
-}
-
-// ── 공용 sub ────────────────────────────────────────────────
-function ExpandHeader({
-  saved,
-  reservationDate,
-}: {
-  saved: boolean;
-  reservationDate: string;
-}) {
-  return (
-    <div className="flex items-center justify-between text-xs text-gray-400">
-      <span>예약생성 {reservationDate}</span>
-      {saved ? (
-        <span className="font-semibold text-blue-600">✓ 등록됨</span>
-      ) : (
-        <span className="font-semibold text-amber-600">신규 입력</span>
-      )}
-    </div>
-  );
-}
-
-function DateTimeRow({
-  미팅날짜,
-  미팅시간,
-  onDate,
-  onTime,
-}: {
-  미팅날짜: string;
-  미팅시간: string;
-  onDate: (v: string) => void;
-  onTime: (v: string) => void;
-}) {
-  return (
-    <div className="flex gap-2">
-      <div className="min-w-0 flex-1">
-        <label className="mb-1 block text-xs text-gray-500">미팅 일정</label>
-        <DateInputCustom
-          value={미팅날짜}
-          onChange={onDate}
-          ariaLabel="미팅 일정"
-        />
-      </div>
-      <div className="shrink-0" style={{ width: 140 }}>
-        <label className="mb-1 block text-xs text-gray-500">시간</label>
-        <TimeSelectPair
-          value={미팅시간}
-          onChange={onTime}
-          ariaLabel="미팅 시간"
-        />
-      </div>
-    </div>
-  );
-}
-
-function FieldText({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs text-gray-500">{label}</label>
-      <input
-        type="text"
-        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-function FieldNote({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-gray-600">
-        <span>📝 예약비고</span>
-        <span className="font-normal text-gray-400">· 미팅 전 준비정보</span>
-      </label>
-      <textarea
-        rows={2}
-        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-        placeholder="예: 사장님 부재 시간, 지참서류"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-function Actions({
-  primaryLabel,
-  onPrimary,
-  onRemove,
-  hint,
-}: {
-  primaryLabel?: string;
-  onPrimary?: () => void;
-  onRemove: () => void;
-  hint: string;
-}) {
-  return (
-    <>
-      <div className="flex gap-2 pt-1">
-        {primaryLabel && onPrimary && (
-          <button
-            type="button"
-            onClick={onPrimary}
-            className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600"
-          >
-            {primaryLabel}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onRemove}
-          className="flex-1 rounded-lg border border-red-200 bg-red-50 py-2.5 text-sm font-bold text-red-700 transition-colors hover:bg-red-100"
-        >
-          ✕ 삭제
-        </button>
-      </div>
-      <div className="text-center text-xs text-gray-400">{hint}</div>
-    </>
   );
 }

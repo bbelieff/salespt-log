@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import TimePicker15 from "@/components/ui/TimePicker15";
+import { useDirtyEntry } from "@/components/DirtyGuard";
 
 interface Props {
   vendor: string;
@@ -46,6 +47,20 @@ export default function AddMeetingForm({
     setWarn("");
     onConfirm(newDate, newTime);
   };
+
+  // 초안 보존 — 기본값과 다르면 dirty. 저장하고 이동 시 유효하면 확정.
+  const dirty = newDate !== defaultDate || newTime !== "10:00";
+  useDirtyEntry(
+    `add-meeting-${vendor}-${minDate}`,
+    dirty,
+    () => {
+      if (!newDate || !newTime) throw new Error("새 날짜와 시간을 입력해주세요");
+      if (newDate < minDate) throw new Error("원래 미팅 날짜 이후로 선택해 주세요");
+      onConfirm(newDate, newTime);
+    },
+    onCancel,
+    `추가 미팅 ${vendor}`,
+  );
 
   return (
     <div className="space-y-2.5 rounded-lg border-2 border-blue-300 bg-blue-50 p-3">
