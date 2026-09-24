@@ -1,15 +1,24 @@
 import { GOAL_KEYS, GOAL_LABELS, type WeeklyGoalView, type WeeklyGoalPrivateRecord } from "@/types/weekly-goals";
-import { splitTaskRows } from "@/util/weekly-goal-tasks";
+import { pairPriorOutcomes, splitTaskRows } from "@/util/weekly-goal-tasks";
 export const MEETING_COLUMNS = ["지역", "기수", "수강생", "담당T", "금주미팅", "금주계약", "트레이닝 후 특이사항", "지난주 PT과제(성과)", "이번주 PT과제", "목표생산", "목표 유입", "목표 컨택", "목표미팅", "목표계약"];
 export function publicGoalCopy(v: WeeklyGoalView): string {
   return [`${v.student.name} · ${v.student.cohort} · ${v.current.week}주차 (${v.current.start} ~ ${v.current.end})`,
     ...GOAL_KEYS.map(k => `${GOAL_LABELS[k]}: ${v.current.record.goals[k] ?? "미기재"}`),
     `PT과제: ${v.current.record.task || "미기재"}`].join("\n");
 }
+/** Previous-week task rows paired positionally with their outcome (`과제 → 성과`).
+ * Single pair stays unnumbered; several rows are numbered so none are lost in one cell.
+ */
+function formatPriorOutcomeCell(previousTask: string, priorOutcome: string): string {
+  const pairs = pairPriorOutcomes(previousTask, priorOutcome);
+  if (pairs.every(p => !p.task && !p.outcome)) return "미기재";
+  const rows = pairs.map(({ task, outcome }) => `${task || "과제 미기재"} → ${outcome || "미기재"}`);
+  return rows.length > 1 ? rows.map((row, i) => `${i + 1}. ${row}`).join("\n") : rows[0] ?? "미기재";
+}
 export function meetingCells(v: WeeklyGoalView, internal: WeeklyGoalPrivateRecord): string[] {
   return [v.student.region, v.student.cohort, v.student.name, v.student.trainers.join(", "),
     String(v.reporting.actuals.meetings), String(v.reporting.actuals.contracts), internal.specialNotes,
-    internal.priorOutcome, v.current.record.task, ...GOAL_KEYS.map(k => String(v.current.record.goals[k] ?? "미기재"))]
+    formatPriorOutcomeCell(v.previous?.record.task ?? "", internal.priorOutcome), v.current.record.task, ...GOAL_KEYS.map(k => String(v.current.record.goals[k] ?? "미기재"))]
     .map(s => s || "미기재");
 }
 export const GOAL_PIVOT_COLUMNS = ["수강생", "기수", "주차", "기간", "PT과제", ...GOAL_KEYS.map(k => GOAL_LABELS[k])];

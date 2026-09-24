@@ -25,7 +25,7 @@ describe("goal copy serialization", () => {
     expect(MEETING_COLUMNS).toHaveLength(14);
     expect(meetingCells(view(), internal)).toEqual([
       "Fixture Region", "test-cohort", "Fixture Student", "Fixture Trainer 1, Fixture Trainer 2", "5", "6",
-      "PRIVATE-NOTE", "PRIVATE-OUTCOME", "Task line 1\nTask line 2", "0", "미기재", "7", "미기재", "미기재",
+      "PRIVATE-NOTE", "과제 미기재 → PRIVATE-OUTCOME", "Task line 1\nTask line 2", "0", "미기재", "7", "미기재", "미기재",
     ]);
   });
   it("escapes every HTML metacharacter rather than interpreting editable preview markup", () => {
@@ -50,6 +50,90 @@ describe("goal copy serialization", () => {
   });
   it.each([0, 13, 15])("rejects malformed preview with %i cells", length => {
     expect(() => meetingClipboard(Array<string>(length).fill("test"))).toThrow("열 개수");
+  });
+});
+
+describe("previous-week task/outcome pairing in meeting row", () => {
+  const withPrevious = (previousTask: string | null, priorOutcome: string, currentTask = "이번주 과제") => {
+    const v = view();
+    v.current = { ...v.current, week: 2, record: { ...v.current.record, task: currentTask } };
+    v.previous = previousTask === null ? null : {
+      week: 1,
+      start: "2026-09-04",
+      end: "2026-09-10",
+      record: { goals: { ...EMPTY_GOALS }, task: previousTask, revision: 1, updatedAt: null },
+      actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 },
+    };
+    const record: WeeklyGoalPrivateRecord = { specialNotes: "NOTE", priorOutcome, revision: 1, updatedAt: null };
+    return { v, record };
+  };
+  const priorCell = (v: WeeklyGoalView, record: WeeklyGoalPrivateRecord) => meetingCells(v, record)[7] ?? "";
+  it("pairs two or more tasks with their outcomes and numbers each row", () => {
+    const { v, record } = withPrevious("지난과제A\n지난과제B", "성과A\n성과B");
+    expect(priorCell(v, record)).toBe("1. 지난과제A → 성과A\n2. 지난과제B → 성과B");
+  });
+  it("leaves a single pair unnumbered", () => {
+    const { v, record } = withPrevious("지난과제", "성과");
+    expect(priorCell(v, record)).toBe("지난과제 → 성과");
+  });
+  it("preserves a blank middle outcome without shifting later rows", () => {
+    const { v, record } = withPrevious("t1\nt2\nt3", "o1\n\no3");
+    expect(priorCell(v, record)).toBe("1. t1 → o1\n2. t2 → 미기재\n3. t3 → o3");
+  });
+  it("shows 미기재 for tasks beyond the last recorded outcome", () => {
+    const { v, record } = withPrevious("t1\nt2\nt3", "o1");
+    expect(priorCell(v, record)).toBe("1. t1 → o1\n2. t2 → 미기재\n3. t3 → 미기재");
+  });
+  it("keeps extra outcomes with an explicit 과제 미기재 task label", () => {
+    const { v, record } = withPrevious("t1", "o1\no2");
+    expect(priorCell(v, record)).toBe("1. t1 → o1\n2. 과제 미기재 → o2");
+  });
+  it("shows 미기재 for an empty outcome on a single task", () => {
+    const { v, record } = withPrevious("t1", "");
+    expect(priorCell(v, record)).toBe("t1 → 미기재");
+  });
+  it("keeps a historical outcome even with no previous week", () => {
+    const { v, record } = withPrevious(null, "o1\no2");
+    expect(priorCell(v, record)).toBe("1. 과제 미기재 → o1\n2. 과제 미기재 → o2");
+  });
+  it("returns 미기재 with no invented row when neither task nor outcome exists", () => {
+    const emptyPrevious = withPrevious("", "");
+    expect(priorCell(emptyPrevious.v, emptyPrevious.record)).toBe("미기재");
+    const noWeek = withPrevious(null, "");
+    expect(priorCell(noWeek.v, noWeek.record)).toBe("미기재");
+  });
+  it("handles CRLF and CR row boundaries exactly like the pairing utility", () => {
+    const { v, record } = withPrevious("t1\r\nt2\rt3", "o1\r\no2\ro3");
+    expect(priorCell(v, record)).toBe("1. t1 → o1\n2. t2 → o2\n3. t3 → o3");
+  });
+  it("never uses the current-week task for the previous outcome", () => {
+    const { v, record } = withPrevious("지난과제", "지난성과", "CURRENT-ONLY-TASK");
+    const cells = meetingCells(v, record);
+    expect(cells[7]).toBe("지난과제 → 지난성과");
+    expect(cells[7]).not.toContain("CURRENT-ONLY-TASK");
+    expect(cells[8]).toBe("CURRENT-ONLY-TASK");
+  });
+  it("keeps fourteen ordered columns with the paired cell feeding preview and clipboard", () => {
+    const { v, record } = withPrevious("지난과제A\n지난과제B", "성과A\n성과B");
+    const cells = meetingCells(v, record);
+    expect(MEETING_COLUMNS).toEqual(["지역", "기수", "수강생", "담당T", "금주미팅", "금주계약", "트레이닝 후 특이사항", "지난주 PT과제(성과)", "이번주 PT과제", "목표생산", "목표 유입", "목표 컨택", "목표미팅", "목표계약"]);
+    expect(cells).toHaveLength(14);
+    expect(cells[7]).toBe("1. 지난과제A → 성과A\n2. 지난과제B → 성과B");
+    const { html, plain } = meetingClipboard(cells);
+    expect(html).toContain("1. 지난과제A → 성과A<br>2. 지난과제B → 성과B");
+    expect(plain.split("\t")).toHaveLength(14);
+    expect(plain.split("\t")[7]).toBe("1. 지난과제A → 성과A / 2. 지난과제B → 성과B");
+    expect(plain).not.toMatch(/[\r\n]/);
+  });
+  it("escapes HTML metacharacters in the paired cell without breaking the single TSV row", () => {
+    const { v, record } = withPrevious("a<b\nc&d", "e\"f\ng'h");
+    const cells = meetingCells(v, record);
+    expect(cells[7]).toBe("1. a<b → e\"f\n2. c&d → g'h");
+    const { html, plain } = meetingClipboard(cells);
+    expect(html).not.toMatch(/<b(?=[\s>])/);
+    expect(html).toContain("a&lt;b → e&quot;f<br>2. c&amp;d → g&#39;h");
+    expect(plain.split("\t")).toHaveLength(14);
+    expect(plain).not.toMatch(/[\r\n]/);
   });
 });
 
