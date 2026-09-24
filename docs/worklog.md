@@ -3626,3 +3626,7 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 - 최종 로컬 check.sh 통과: 타입·린트, 구조 82개, 단위/통합 2,515개, 파일 500줄·문서 SSOT 규칙. 선택 검사 45개는 로컬 스킵이며 실제 PostgreSQL 동시성 7개는 CI에서 필수 실행한다.
 - Next production build 성공. 실제 컴포넌트 모바일 390px·PC 1024px, 금액 그룹 blur 단일 쓰기, 오류/재시도 확인. 가상 데이터만 썼다.
 - 운영 반영·읽기 전용 확인 결과는 PR #1012의 실행/완료 기록을 따른다. 기존 사용자 데이터 변경/백필 없음.
+
+### 2026-09-25 · Codex/Muse · PT과제 복사 불릿과 줄바꿈
+- 사용자 요청: 지난주·이번주 PT과제당 불릿·줄바꿈, 특이사항 줄바꿈 안내. 범위는 복사 formatter·내부 편집기 안내·관련 회귀. 앞선 공간 재구성 제안은 구현하지 않는다.
+- Muse 구현·테스트 초안, Codex 통합·전체검사·배포·운영 확인. 실제 기록·접근권한·과제/성과 매칭 보존.

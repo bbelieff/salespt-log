@@ -194,8 +194,10 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, children }
       </fieldset>}
     {children}
     {loaded && <fieldset>
-        <label className="block text-sm font-semibold">트레이닝 후 특이사항<textarea aria-label="트레이닝 후 특이사항" rows={4} maxLength={10000} value={auto.draft.specialNotes}
+        <label className="block text-sm font-semibold">트레이닝 후 특이사항<textarea aria-label="트레이닝 후 특이사항" aria-describedby="goal-internal-special-notes-help" rows={4} maxLength={10000} value={auto.draft.specialNotes}
+          placeholder={"예: 컨택 스크립트 보완 필요\n예: 다음 주 미팅 준비 점검"}
           onChange={e => deferInternal({ ...auto.draft, specialNotes: e.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 p-3" /></label>
+        <p id="goal-internal-special-notes-help" className="text-xs text-gray-500">내용별로 줄을 나눠 작성해 주세요. 입력한 줄바꿈은 복사할 때도 유지됩니다.</p>
       </fieldset>}
   </section>;
 }

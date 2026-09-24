@@ -27,7 +27,7 @@ it("keeps the fourteen-column row live and replaces the expanded preview with th
   expect(link.rel).toContain("noopener");
   expect(host.querySelector('textarea[aria-label^="회의록 "]')).toBeNull();
   render({ ...view, current: { ...view.current, record: { ...view.current.record, task: "Changed", goals: { ...EMPTY_GOALS, production: 9 } } } }, { ...internal, priorOutcome: "Changed outcome", specialNotes: "Changed notes" }, true);
-  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(6, 10)).toEqual(["Changed notes", "Previous task → Changed outcome", "Changed", "9"]);
+  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(6, 10)).toEqual(["Changed notes", "• Previous task → Changed outcome", "• Changed", "9"]);
   expect(Array.from(host.querySelectorAll("button")).find(b => b.textContent === "클립보드 복사")!.disabled).toBe(true);
   expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(true);
   render({ ...view, student: { ...view.student, region: "Other region", cohort: "Next cohort", trainers: ["Trainer B"] }, current: { ...view.current, actuals: { ...view.current.actuals, meetings: 8, contracts: 3 } } }, internal);
@@ -45,10 +45,33 @@ it("copies the displayed Notion row without a header and never falls back while 
   act(() => root.render(createElement(GoalCopyPanel, { view, internal, dirty: false })));
   await act(async () => copy().click());
   const plain = writeText.mock.calls[0]![0] as string;
-  expect(plain.split("\t")).toHaveLength(14);
-  expect(plain.split("\t").slice(6, 9)).toEqual(["Notes", "Previous task → Outcome", "Before"]);
-  expect(plain).not.toContain("\n");
   expect(plain.startsWith("Region\ttest\tFixture\t")).toBe(true);
+  expect(plain).toContain("• Previous task → Outcome");
+  expect(plain).toContain("• Before");
+  const fields: string[][] = (() => {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let inQ = false;
+    for (let i = 0; i < plain.length; i++) {
+      const c = plain[i];
+      if (inQ) {
+        if (c === '"') {
+          if (plain[i + 1] === '"') { field += '"'; i++; }
+          else inQ = false;
+        } else field += c;
+      } else if (c === '"' && field === "") inQ = true;
+      else if (c === "\t") { row.push(field); field = ""; }
+      else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+      else if (c !== "\r") field += c;
+    }
+    row.push(field);
+    rows.push(row);
+    return rows;
+  })();
+  expect(fields).toHaveLength(1);
+  expect(fields[0]).toHaveLength(14);
+  expect(fields[0]?.slice(6, 9)).toEqual(["Notes", "• Previous task → Outcome", "• Before"]);
 });
 
 it("never exposes the internal Notion destination in a public view", () => {
