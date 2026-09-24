@@ -1568,3 +1568,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 ### 회의록 전주 PT과제 복사 (2026-09-25)
 - GoalCopyPanel의 meetingCells는 pairPriorOutcomes로 전주 과제와 성과를 같은 행에 연결한다. 중간 미입력 성과는 미기재, 연결할 과제가 없는 성과는 과제 미기재로 표시한다. 미리보기와 HTML/TSV 복사가 동일한 내용을 사용하며 Notion 14열 순서는 유지한다.
+
+### PT과제 불릿·줄바꿈 복사 (2026-09-25)
+- GoalCopyPanel의 지난주·이번주 PT과제는 한 과제당 • 불릿과 줄바꿈으로 표시하며, HTML은 셀 안의 줄바꿈을 유지한다. 일반 텍스트는 탭·줄바꿈·따옴표가 있는 셀을 인용하는 TSV로 원문을 보존한다.
+- GoalInternalEditor 특이사항 입력은 내용별 줄바꿈 안내를 aria-describedby로 연결한다. 기존 저장·권한·레이아웃을 유지한다.
