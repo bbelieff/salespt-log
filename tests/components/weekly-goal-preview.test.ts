@@ -10,7 +10,7 @@ const view: WeeklyGoalView = {
   student: { email: "fixture@example.test", name: "Fixture", cohort: "test", courseStart: "2026-09-04", region: "Region", trainers: [] },
   current: { week: 2, start: "2026-09-11", end: "2026-09-17", record: { goals: { ...EMPTY_GOALS }, task: "Before", revision: 1, updatedAt: null }, actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 } },
   reporting: { start: "2026-09-18", end: "2026-09-24", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 4, contracts: 2 } },
-  previous: null, cumulative: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 }, canReadInternal: true,
+  previous: { week: 1, start: "2026-09-04", end: "2026-09-10", record: { goals: { ...EMPTY_GOALS }, task: "Previous task", revision: 1, updatedAt: null }, actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 } }, cumulative: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 }, canReadInternal: true,
 };
 const internal: WeeklyGoalPrivateRecord = { specialNotes: "Notes", priorOutcome: "Outcome", revision: 1, updatedAt: null };
 const host = document.createElement("div");
@@ -27,7 +27,7 @@ it("keeps the fourteen-column row live and replaces the expanded preview with th
   expect(link.rel).toContain("noopener");
   expect(host.querySelector('textarea[aria-label^="회의록 "]')).toBeNull();
   render({ ...view, current: { ...view.current, record: { ...view.current.record, task: "Changed", goals: { ...EMPTY_GOALS, production: 9 } } } }, { ...internal, priorOutcome: "Changed outcome", specialNotes: "Changed notes" }, true);
-  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(6, 10)).toEqual(["Changed notes", "Changed outcome", "Changed", "9"]);
+  expect(Array.from(host.querySelectorAll("td")).map(td => td.textContent).slice(6, 10)).toEqual(["Changed notes", "Previous task → Changed outcome", "Changed", "9"]);
   expect(Array.from(host.querySelectorAll("button")).find(b => b.textContent === "클립보드 복사")!.disabled).toBe(true);
   expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(true);
   render({ ...view, student: { ...view.student, region: "Other region", cohort: "Next cohort", trainers: ["Trainer B"] }, current: { ...view.current, actuals: { ...view.current.actuals, meetings: 8, contracts: 3 } } }, internal);
@@ -46,7 +46,7 @@ it("copies the displayed Notion row without a header and never falls back while 
   await act(async () => copy().click());
   const plain = writeText.mock.calls[0]![0] as string;
   expect(plain.split("\t")).toHaveLength(14);
-  expect(plain.split("\t").slice(6, 9)).toEqual(["Notes", "Outcome", "Before"]);
+  expect(plain.split("\t").slice(6, 9)).toEqual(["Notes", "Previous task → Outcome", "Before"]);
   expect(plain).not.toContain("\n");
   expect(plain.startsWith("Region\ttest\tFixture\t")).toBe(true);
 });
