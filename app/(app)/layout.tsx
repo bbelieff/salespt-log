@@ -17,6 +17,7 @@
  */
 import { redirect } from "next/navigation";
 import TabBar from "@/components/TabBar";
+import DesktopNav from "@/components/desktop/DesktopNav";
 import DirtyProvider from "@/components/DirtyGuard";
 import {
   getSessionEmail,
@@ -76,11 +77,20 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-dvh bg-slate-100">
-      {/* 미저장 이탈 가드(전역) — children(페이지가 register) + TabBar(가드 라우팅)가 한 컨텍스트 공유. */}
+      {/* 미저장 이탈 가드(전역) — children(페이지가 register) + TabBar + DesktopNav(사이드바
+          라우팅)가 한 컨텍스트 공유. 사이드바도 이동을 일으키므로 반드시 이 안에 있어야 한다. */}
       <DirtyProvider>
-        <main style={{ paddingBottom: "var(--app-tabbar-height)" }}>
-          {children}
-        </main>
+        {/* pc(1024px+) 에서만 2단. 그 아래는 지금 그대로 1단 — DesktopNav 가 hidden 이라 자리도 없다.
+            데스크탑엔 하단 탭바가 없으므로 --app-tabbar-height 를 여백값으로 덮는다
+            (main 의 인라인 style 은 className 으로 못 이기지만 변수는 덮을 수 있다). */}
+        <div className="pc:flex pc:[--app-tabbar-height:2.5rem]">
+          <DesktopNav />
+          <div className="min-w-0 pc:flex-1">
+            <main style={{ paddingBottom: "var(--app-tabbar-height)" }}>
+              {children}
+            </main>
+          </div>
+        </div>
         <TabBar />
       </DirtyProvider>
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}

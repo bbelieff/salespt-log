@@ -44,6 +44,12 @@ const RIGHT: Tab[] = [
   { href: "/payment" as Route, label: "실무/수납", step: 4, color: "rose", match: (p) => p.startsWith("/payment"), Icon: PaymentIcon },
 ];
 
+/**
+ * 데스크탑 사이드바(DesktopNav)와 공유하는 4단계 SSOT. 순서 = 퍼널 1→4.
+ * 사이드바가 라벨·색·match 를 따로 정의하면 두 벌이 되어 어긋난다 — 반드시 여기서만 온다.
+ */
+export const NAV_STEPS: Tab[] = [...LEFT, ...RIGHT];
+
 /** 단계 사이 흐름 화살표(STEP1›2, STEP3›4). 캘린더 양옆엔 없음. 장식 → aria-hidden. */
 function FlowArrow() {
   return (
@@ -166,7 +172,7 @@ export default function TabBar() {
   return (
     <nav
       aria-label="업무 단계 내비게이션"
-      className="app-tabbar fixed bottom-0 left-0 right-0 z-50"
+      className="app-tabbar fixed bottom-0 left-0 right-0 z-50 pc:hidden"
       style={{
         // iOS 라운드 디스플레이 모서리 + 홈 인디케이터 영역 안전 패딩.
         paddingLeft: "env(safe-area-inset-left)",
