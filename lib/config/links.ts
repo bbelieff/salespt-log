@@ -50,6 +50,21 @@ export const GUIDE_URL =
 export const POLICY_NEWS_URL = "https://salesptlog.online/news/latest";
 
 /**
+ * 정책자금 데일리를 앱 화면 안(iframe)에 띄울지 — 지금은 **false**.
+ *
+ * 위 주석대로 응답 헤더가 `X-Frame-Options: DENY` 라 iframe 이 브라우저 차원에서 막힌다
+ * (2026-09-23 재실측: 앱 루트·`/news/*` 둘 다 DENY). 켜두면 **빈 화면만 나와 고장으로 보인다.**
+ * 그래서 `/payment/news` 는 이 값이 false 인 동안 iframe 을 아예 렌더하지 않고
+ * 「새 창에서 열기」 안내만 보여준다.
+ *
+ * ## 언제 true 로 올리나
+ * VPS Caddy 에서 **`/news/*` 경로만** `SAMEORIGIN` 으로 바꾼 뒤(앱 본체는 DENY 유지 —
+ * 클릭재킹 방어를 넓히지 않는다), 이 한 줄만 true 로 올리는 별도 PR 을 낸다.
+ * 뉴스와 앱은 같은 도메인(salesptlog.online)이라 SAMEORIGIN 이면 임베드가 성립한다.
+ */
+export const POLICY_NEWS_EMBED = false;
+
+/**
  * 주간 목표 회의록 — 내부 기록 권한 사용자가 14열 복사 후 붙여넣는 canonical Notion 페이지.
  * 화면 안에 별도 미리보기를 복제하지 않고 이 정본을 새 탭으로 연다.
  */

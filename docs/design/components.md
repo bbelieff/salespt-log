@@ -1459,6 +1459,43 @@ button:focus, input:focus, select:focus {
 - 파일: `components/PageContainer.tsx`.
 
 
+### DesktopNav — PC 좌측 사이드바 (2026-09-25)
+
+`pc`(1024px+) 에서만 뜨는 좌측 고정 메뉴. **폰은 아무것도 바뀌지 않는다.**
+
+- 분기는 **CSS 로만** 한다: 사이드바 `hidden pc:flex`, `TabBar` 루트 `pc:hidden`.
+  둘 다 렌더되고 하나만 보인다. `window.innerWidth`·`matchMedia` 로 가르면 서버/클라이언트
+  렌더가 갈려 hydration 이 깨지고 첫 화면이 깜빡인다 — **금지**.
+- 4단계(DB생산·컨택관리·일정·계약·실무/수납)는 `TabBar` 가 export 하는 **`NAV_STEPS` 단일 원천**을
+  돌려 그린다. 사이드바가 라벨·색·`match` 를 따로 정의하면 두 벌이 되어 어긋난다.
+- 이동은 `useGuardedRouter` 경유 — 사이드바도 미저장 이탈 가드를 받는다.
+  그래서 `(app)/layout.tsx` 의 **`DirtyProvider` 안**에 있어야 한다.
+- 하단 여백: `main` 은 `paddingBottom: var(--app-tabbar-height)` 를 인라인으로 쓴다.
+  인라인 style 은 className 으로 못 이기므로, 데스크탑에서는 감싸는 div 에
+  `pc:[--app-tabbar-height:2.5rem]` 로 **변수 자체를 덮는다**(탭바가 없으니 76px 빈칸이 남으면 안 된다).
+- **실무/수납 하위 소탭 3개** (항상 펼침):
+
+  | 소탭 | 이동 | 표시 |
+  |---|---|---|
+  | 구글드라이브 | `feedbackFolderId` 있으면 Drive 폴더 **새 탭**, 없으면 `/payment` + 「연결 필요」 | ↗ |
+  | 정책자금뉴스 | 앱 내부 `/payment/news` | — |
+  | 업무매뉴얼 | `WORK_MANUAL_URL` **새 탭** | ↗ |
+
+  **↗ 은 장식이 아니라 약속이다.** 새 탭으로 열리는 링크에만 붙인다. 아무 표시 없이 새 탭이
+  튀어나오면 사용자는 고장으로 느낀다.
+- 관리자 항목은 `useMe()` 가 준 `isAdmin`/`sessionRole` 로만 판정한다. `isAdminEmail` 같은
+  **서버 전용 판정을 클라이언트에서 흉내내지 않는다**(판단이 안 서면 숨기는 쪽).
+- 파일: `components/desktop/DesktopNav.tsx` · 회귀 테스트 `tests/components/desktop-nav.test.ts`.
+
+### /payment/news — 정책자금 데일리 (2026-09-25)
+
+- 앱 안에 **iframe 으로 못 띄운다**: 응답 헤더가 `X-Frame-Options: DENY` 라 브라우저가 막는다
+  (2026-09-23 실측 — 앱 루트·`/news/*` 둘 다 DENY).
+- 그래서 `POLICY_NEWS_EMBED`(`lib/config/links.ts`) 가 **false 인 동안 iframe 을 렌더하지 않고**
+  「새 창에서 열기」 안내만 보여준다. 켜두면 빈 화면이 나와 고장으로 보인다.
+- VPS Caddy 에서 **`/news/*` 경로만** `SAMEORIGIN` 으로 바꾼 뒤 그 상수를 true 로 올린다
+  (앱 본체는 DENY 유지 — 클릭재킹 방어를 넓히지 않는다). 별도 1줄 PR.
+
 ## 컨택관리 저장·이동 확인 (2026-09-10)
 - `SaveConfirmModal`: 기존 예약과 이번 신규 예약을 별도 표시. 실제 예정 주의 기존 미팅과 동일 일시 충돌 검사. X는 저장하지 않고 입력 카드로 복귀(입력 보존). 최종 수치 아래 수정 안내는 짧은 문구와 원형 ?로 표시하며, hover/클릭으로 설명 열기·재클릭/Escape로 닫기를 지원한다.
 - `MetricComparison`: 채널별 저장 전 / 이번 변경(증감) / 저장 후 최종 4지표 비교.
