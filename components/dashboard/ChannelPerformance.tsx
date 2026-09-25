@@ -65,8 +65,9 @@ function DonutSvg({
   const C = 2 * Math.PI * r; // ≈ 301.6
 
   let offset = 0;
+  // channel-donut-svg: desktop max-height from .desktop-shell scope only.
   return (
-    <svg viewBox="0 0 170 160" className="w-full" aria-hidden>
+    <svg viewBox="0 0 170 160" preserveAspectRatio="xMidYMid meet" className="channel-donut-svg w-full" aria-hidden>
       <g transform={`rotate(-90 ${cx} ${cy})`}>
         {slices.map((s) => {
           const portion = total > 0 ? s.value / total : 0;

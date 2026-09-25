@@ -138,11 +138,12 @@ describe("⑦ (app) layout — 구조만 바뀌고 가드·게이트는 그대�
     expect(dirtyClose).toBeLessThan(layout.indexOf("<IdentityGuard />"));
   });
 
-  it("★데스크탑에서 탭바 자리(--app-tabbar-height)를 여백으로 덮는다", () => {
-    // main 의 인라인 style 은 className 으로 못 이긴다. 그래서 패딩을 옮기는 대신
-    // 변수 자체를 pc: 에서 덮는다 — 폰은 globals.css 의 원래 계산값 그대로.
-    expect(layout).toContain('paddingBottom: "var(--app-tabbar-height)"');
-    expect(layout).toContain("pc:[--app-tabbar-height:");
+  it("★모바일 탭바 공간은 유지하고 데스크탑의 불필요한 예약 공간은 제거한다", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(layout).toContain('<main className="app-shell-main">');
+    expect(css).toMatch(/\.app-shell-main\s*\{\s*padding-bottom:\s*var\(--app-tabbar-height\)/);
+    expect(css).toMatch(/\.desktop-shell \.app-shell-main\s*\{\s*padding-bottom:\s*0/);
+    expect(layout).not.toContain("pc:[--app-tabbar-height:");
     expect(layout).toContain("pc:flex");
   });
 

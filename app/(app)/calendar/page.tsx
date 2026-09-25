@@ -180,8 +180,9 @@ export default function CalendarPage() {
     <>
       <TopHeader pageEmoji="📅" pageTitle="캘린더" />
       <header className="sticky top-app-content z-30 bg-white shadow-sm">
-        {/* 배경 full-bleed + 월 nav 내용은 본문과 같은 6xl 중앙정렬(헤더 통일 정책) */}
-        <div className="mx-auto flex w-full items-center justify-between px-2 py-3 pc:max-w-6xl pc:px-6 wide:px-8">
+        {/* 배경 full-bleed + 월 nav 내용은 본문과 같은 fluid 전폭(헤더 통일 정책).
+            구 pc:max-w-6xl 중앙정렬 캡 제거 — 균일 거터 pc:px-6. */}
+        <div className="mx-auto flex w-full max-w-none items-center justify-between px-2 py-3 pc:px-6">
           <button
             type="button"
             onClick={() => moveMonth(-1)}
@@ -224,9 +225,9 @@ export default function CalendarPage() {
         </div>
       </header>
 
-      <main className="pb-[80px]">
-      <PageContainer width="xwide">
-        <div className="px-4 pt-3">
+      <main className="pb-[80px] pc:pb-6">
+      <PageContainer width="fluid">
+        <div className="px-4 pt-3 pc:px-0">
           <GcalConnectCard />
         </div>
         {monthQuery.isLoading ? null : monthQuery.isError ? (

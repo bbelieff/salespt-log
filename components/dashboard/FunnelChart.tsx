@@ -86,7 +86,9 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
         <span className="ml-auto text-xs text-gray-400">{weeks}주 누적</span>
       </div>
 
-      <svg viewBox="0 0 358 260" className="w-full pc:min-h-0 pc:flex-1" aria-label="6단계 영업 퍼널">
+      {/* funnel-svg: desktop max-height comes from the .desktop-shell scope
+          (globals.css) — viewBox + meet keeps aspect, content centers. */}
+      <svg viewBox="0 0 358 260" preserveAspectRatio="xMidYMid meet" className="funnel-svg w-full" aria-label="6단계 영업 퍼널">
         {STAGES.map((stage, i) => {
           const y = rowY(i);
           const totalW = stageWidth(stage);

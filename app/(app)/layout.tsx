@@ -81,14 +81,15 @@ export default async function AppLayout({
           라우팅)가 한 컨텍스트 공유. 사이드바도 이동을 일으키므로 반드시 이 안에 있어야 한다. */}
       <DirtyProvider>
         {/* pc(1024px+) 에서만 2단. 그 아래는 지금 그대로 1단 — DesktopNav 가 hidden 이라 자리도 없다.
-            데스크탑엔 하단 탭바가 없으므로 --app-tabbar-height 를 여백값으로 덮는다
-            (main 의 인라인 style 은 className 으로 못 이기지만 변수는 덮을 수 있다).
+            TabBar 는 pc:hidden 이라 데스크탑 여백이 필요 없다: main 하단 여백은
+            .app-shell-main 이 담당 — 모바일 var(--app-tabbar-height) 그대로,
+            데스크탑 0 (globals.css 스코프). 각 페이지의 작은 pc:pb 는 유지.
             desktop-shell = 글래스 스코프 (globals.css — 이 클래스 안에서만 데스크탑
             도장이 걸린다. 모바일·모달·sticky 오프셋은 손대지 않는다). */}
-        <div className="desktop-shell pc:flex pc:[--app-tabbar-height:2.5rem]">
+        <div className="desktop-shell pc:flex">
           <DesktopNav />
           <div className="min-w-0 pc:flex-1">
-            <main style={{ paddingBottom: "var(--app-tabbar-height)" }}>
+            <main className="app-shell-main">
               {children}
             </main>
           </div>

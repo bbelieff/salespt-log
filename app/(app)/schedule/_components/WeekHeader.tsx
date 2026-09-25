@@ -45,8 +45,9 @@ export default function WeekHeader({
   return (
     <header className="bg-white">
       {/* 부모(schedule/page.tsx)에서 sticky top-24로 묶음 — 자체 sticky 제거 */}
-      {/* 주차 네비 — 원래 크기 회복 (py-3, h-11). 태블릿/데스크탑: 중앙 모아보기 */}
-      <div className="flex items-center justify-between px-2 py-3 2xl:mx-auto 2xl:max-w-xl">
+      {/* 주차 네비 — 원래 크기 회복 (py-3, h-11). 태블릿: 중앙 모아보기(2xl cap),
+          데스크탑 학생 셸(.desktop-shell .week-nav-row, globals.css)에서는 전폭. */}
+      <div className="week-nav-row flex items-center justify-between px-2 py-3 2xl:mx-auto 2xl:max-w-xl">
         <button
           type="button"
           onClick={onPrevWeek}

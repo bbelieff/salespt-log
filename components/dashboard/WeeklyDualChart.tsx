@@ -78,7 +78,8 @@ export default function WeeklyDualChart({ points }: Props) {
         </div>
       </div>
 
-      <svg viewBox="0 0 358 200" className="w-full" aria-label={`코스 ${weeks}주 주차 추이`}>
+      {/* weekly-trend-svg: desktop max-height from .desktop-shell scope only. */}
+      <svg viewBox="0 0 358 200" preserveAspectRatio="xMidYMid meet" className="weekly-trend-svg w-full" aria-label={`코스 ${weeks}주 주차 추이`}>
         {/* 가로 그리드 (활동량 50%, 100%) */}
         <line
           x1={X0}

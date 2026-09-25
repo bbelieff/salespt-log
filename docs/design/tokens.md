@@ -182,6 +182,9 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
 - **메인 컨테이너**: `px-4` (좌우 16px 패딩)
 - **카드 패딩**: `p-3` (12px) 또는 `p-4` (16px)
 - **버튼 패딩**: `px-4 py-2` (가로 16px, 세로 8px)
+- **학생 데스크탑 거터** (desktop-fluid-20260925): 학생 `.desktop-shell` ≥1024px에서
+  균일 `pc:px-6` (≈20px, PC 13.5px 루트 기준) — 헤더·배너·본문이 같은 거터로 정렬.
+  `wide:px-8` 확장은 fluid 경로에서 쓰지 않는다. 모바일(<1024)·admin/trainer/auth는 기존 그대로.
 
 ## Border Radius
 
