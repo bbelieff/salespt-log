@@ -309,8 +309,10 @@ export default function TopHeader({
       {/* Admin/Trainer 상태바 제거 — TopHeader 가 이미 impersonation 대상의
             cohort·이름 표시. 중복 정보. 진입점은 로고 popup 메뉴로. */}
 
-      {/* 페이지 배너 — 배경 full-bleed + 내용 6xl 중앙정렬 */}
-      <div className="sticky top-app-header z-40 h-12 border-b border-slate-200 bg-slate-100">
+      {/* 페이지 배너 — 배경 full-bleed + 내용은 본문과 같은 fluid 전폭(헤더 통일 정책).
+          구 6xl 중앙정렬 캡은 학생 desktop-shell 에서 해제 — 헤더 로고/액션과
+          같은 거터(pc:px-6)로 좌우가 일치한다. */}
+      <div className="page-banner sticky top-app-header z-40 h-12 border-b border-slate-200 bg-slate-100">
         <PageContainer
           width="wide"
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"

@@ -1019,7 +1019,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 ### PageBanner (TopHeader 내부 두 번째 sticky 영역)
 
 - `sticky top-app-header z-40 h-12`: 브랜드 바 아래 3rem 높이의 페이지 식별 영역.
-- 바깥 배경은 전체 폭 `bg-slate-100`; 안쪽 `PageContainer width="wide"`가 제목·부제의 본문 정렬을 맞춘다.
+- 바깥 배경은 전체 폭 `bg-slate-100`; 안쪽 `PageContainer width="wide"`가 제목·부제의 본문 정렬을 맞춘다(학생 셸 ≥1024px에서는 `.desktop-shell .page-banner` 스코프가 전폭으로 해제).
 - 좌측은 `w-1 h-5 bg-slate-500` 액센트와 이모지·제목, 우측은 선택적 `pageSubtitle`이다.
 - 두 헤더 영역의 합은 `app-content`: 768px 미만 9rem, 768px 이상 6.5rem이다. 페이지별 sticky 소비처도 이 토큰을 공유한다. [적층 토큰](./tokens.md#z-index--sticky-적층)을 따른다.
 
@@ -1036,11 +1036,11 @@ app/(app)/dashboard/page.tsx
     PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
-    생산성 + WeeklyGoalSummary / FunnelChart
+    생산성 + WeeklyGoalSummary / FunnelChart  # ≥1600px: 3열(생산성|목표|퍼널)
     WeeklyDualChart / ChannelPerformance
 ```
 
-대시보드 상단 카드 묶음은 PC에서 좌측 `생산성 + 주간 목표`와 우측 `영업 퍼널`의 위·아래 끝을 맞춘다. 주간 목표와 퍼널은 `rounded-2xl bg-white p-3 shadow-sm`을 사용하고, 주간 목표 제목은 다른 카드와 같은 `h-5 w-1` 민트(`teal-400`) 강조선을 둔다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
+대시보드 상단 카드 묶음은 PC에서 자연 높이 그대로 둔다(`pc:items-start`, stretch 빈칸 없음 — 긴 PT과제는 목표 카드만 자란다). 차트 높이는 셸 스코프 max-height(퍼널 220·추이 260·도넛 160, viewBox + meet 스케일·무클리핑·중앙 정렬)로 균형을 맞춘다. 주간 목표와 퍼널은 `rounded-2xl bg-white p-3 shadow-sm`을 사용하고, 주간 목표 제목은 다른 카드와 같은 `h-5 w-1` 민트(`teal-400`) 강조선을 둔다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
 ### 9-1. DashboardProgressBanner
 
@@ -1456,12 +1456,27 @@ button:focus, input:focus, select:focus {
 | `width="narrow"` | 기본 | `md:max-w-md` | `max-w-2xl` 중앙정렬 | 컨택·일정·DB·로그인·온보딩 (입력 중심) |
 | `width="wide"` | — | `md:max-w-2xl` | `max-w-6xl` 중앙정렬 + 내부 멀티컬럼 | 실무수납·대시보드·관리자 (정보 중심) |
 | `width="xwide"` | — | `md:max-w-2xl` | `max-w-[120rem]` 중앙정렬 (가장 넓음) | 캘린더 (월 그리드가 화면 대부분 차지) |
+| `width="fluid"` | 학생 셸 전용 (desktop-fluid-20260925) | `md:max-w-2xl` (wide 와 동일) | `pc:max-w-none` 전폭 + 균일 `pc:px-6` 거터 | 학생 6탭 본문 (대시보드·DB·컨택·일정·캘린더·수납) |
 
 - 모바일에선 `w-full`(기존 레이아웃 그대로). **중간폭 캡**(dashboard-intermediate-width-cap):
   `md:max-w-*` 는 화면이 그 max-w 보다 클 때만 적용돼, 약 672~1024 구간에서 1단
   카드가 화면 전체로 늘어나지 않게 가운데 폭 제한(그 아래 폭은 풀폭 유지). `md:px-4` 여백.
-- 데스크탑(pc+) 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
+- 데스크탑(pc+) 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백. fluid 는 `pc:px-6` 고정
+  (`wide:px-8` 확장 없음 — 헤더·배너·본문 정렬 일치).
 - 정보 중심 화면은 PageContainer(wide) 안에서 카드 리스트를 `pc:grid pc:grid-cols-2 wide:grid-cols-3` 등으로 배치해 가로 공간 활용(세로 스크롤 압박 완화).
+- **학생 셸 전폭 규칙** (desktop-fluid-20260925): `TopHeader` 는 admin/trainer와 공유
+  컴포넌트라 코드상 `width="wide"` 를 유지하고, 학생 셸 전폭은 `app/globals.css` 의
+  `.desktop-shell` 스코프(`.desktop-glass-header > div`, `.page-banner > div`,
+  `.weeklygoal-main > div` + `.weeklygoal-main` 거터, `.week-nav-row`,
+  차트 훅 `.funnel-svg`(220px)/`.weekly-trend-svg`(260px)/`.channel-donut-svg`(160px)
+  max-height, `.app-shell-main` 데스크탑 여백 0)가 ≥1024px에서만 해제한다. 전역
+  `max-w` 오버라이드는 금지 — admin/trainer/auth 캡이 그대로 보존된다.
+  주간목표 공용 Content 에는 무조건 `pc:` 캡·거터 클래스를 두지 않는다(트레이너
+  보조 화면 번짐 버그) — 학생 전폭·거터는 셸 스코프가 맡는다. 차트 SVG 는
+  viewBox + `preserveAspectRatio="xMidYMid meet"` 유지라 캡 안에서도 종횡비·중앙
+  정렬·라벨 가독성이 보존된다(클리핑·압축 없음). 모바일(<1024) SVG 무변경.
+  구 수납 `min-[1440px]:max-w-none` 특례는 fluid 로 대체(삭제).
+  DB ≥1440px 2열은 채널 선택 후(`activeCh !== null`)에만 적용한다.
 - 파일: `components/PageContainer.tsx`.
 
 
@@ -1476,9 +1491,11 @@ button:focus, input:focus, select:focus {
   돌려 그린다. 사이드바가 라벨·색·`match` 를 따로 정의하면 두 벌이 되어 어긋난다.
 - 이동은 `useGuardedRouter` 경유 — 사이드바도 미저장 이탈 가드를 받는다.
   그래서 `(app)/layout.tsx` 의 **`DirtyProvider` 안**에 있어야 한다.
-- 하단 여백: `main` 은 `paddingBottom: var(--app-tabbar-height)` 를 인라인으로 쓴다.
-  인라인 style 은 className 으로 못 이기므로, 데스크탑에서는 감싸는 div 에
-  `pc:[--app-tabbar-height:2.5rem]` 로 **변수 자체를 덮는다**(탭바가 없으니 76px 빈칸이 남으면 안 된다).
+- 하단 여백: 셸 `main` 은 `.app-shell-main` 클래스로 `padding-bottom:
+  var(--app-tabbar-height)` 를 쓴다(모바일 TabBar + safe-area 그대로).
+  데스크탑 TabBar 는 `pc:hidden` 이라 `.desktop-shell` 스코프가 0으로 덮는다
+  (중복 `pc:[--app-tabbar-height:2.5rem]` 변수 덮개는 제거됨). 각 페이지는
+  자신의 작은 `pc:pb` 만 유지한다.
 - **실무/수납 하위 소탭 3개** (항상 펼침):
 
   | 소탭 | 이동 | 표시 |

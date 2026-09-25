@@ -20,6 +20,11 @@ function Content({ student, date, week }: { student: string; date: string; week:
   useEffect(() => { if (denied) setDeniedTarget(target); }, [denied, target]);
   const locked = denied || deniedTarget === target;
   // 탭 안 '대시보드로 돌아가기' 제거 — TopHeader 우상단 버튼이 유일한 복귀 동선.
+  // Content 는 학생/트레이너 공용이라 무조건 pc: 클래스를 두지 않는다 —
+  // 트레이너 보조 화면(셸 없음)까지 데스크탑 전폭·거터가 번지던 버그.
+  // 학생 전폭 + 균일 거터는 globals.css .desktop-shell .weeklygoal-main
+  // 스코프가 맡는다. 트레이너는 전 폭에서 px-4 + max-w-5xl 원본 그대로.
+  // 최소 높이와 하단 여백 역시 학생 셸 스코프에서만 조정한다.
   return <main className="weeklygoal-main min-h-dvh bg-gray-50 px-4 pb-4">
     <div className="mx-auto max-w-5xl space-y-4">
       {(query.isError || locked) && <div role="alert">{query.error?.message || "접근 권한을 다시 확인해 주세요."}<button onClick={() => {

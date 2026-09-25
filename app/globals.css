@@ -10,6 +10,15 @@
   --app-tabbar-height: calc(var(--app-tabbar-row) + 5px + var(--app-tabbar-safe));
 }
 
+/* ── App shell main bottom padding ─────────────────────
+ * Mobile keeps var(--app-tabbar-height) (TabBar + safe-area).
+ * Desktop TabBar is pc:hidden so the shell reserves nothing there —
+ * the zero lives in the fluid scope below; each page keeps its own
+ * small pc:pb. */
+.app-shell-main {
+  padding-bottom: var(--app-tabbar-height);
+}
+
 
 /* Shared with the app shell so the last content row clears the glass bar. */
 .app-header-pill {
@@ -606,5 +615,68 @@ body {
     background: #fff;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+
+/* ── Desktop-fluid student shell (desktop-fluid-20260925) ──────
+ * Student .desktop-shell >=1024px fills the sidebar remainder: the old
+ * pc:max-w-6xl (972px) caps are lifted ONLY inside this scope, so
+ * admin/trainer/auth shells (no .desktop-shell ancestor) keep their caps
+ * and mobile/tablet (<1024px) render exactly as before.
+ * Targeted inner caps — never a global max-w override:
+ *   ① TopHeader header/banner inners (shared component, wide caps stay for
+ *      admin) — direct-child selector beats pc:max-w-6xl on specificity.
+ *   ② Weekly-goals student content cap + gutter (shared Content component
+ *      carries NO pc: classes — trainer assist view keeps px-4 + max-w-5xl).
+ *   ③ Contact/schedule week-nav rows (2xl:max-w-xl tablet grouping → full
+ *      width on desktop; pc: comes after 2xl: in the cascade).
+ *   ④ Chart balance — desktop-only max-height on explicit hooks (funnel 220,
+ *      weekly trend 260, donut 160). viewBox + meet scales the drawing down
+ *      and centers it: no clipping, no squeezing, labels stay legible.
+ *   ⑤ Desktop shell main: zero tabbar reserve (TabBar is pc:hidden).
+ * Uniform gutter = 1.5rem (≈20px at the 13.5px PC root, tokens.md 컨테이너).
+ * No backdrop-filter/transform here (modal/sticky safety inherited above).
+ * No sm:/md:/lg:/xl: phone prefixes in this block. */
+@media (min-width: 1024px) {
+  /* ① header logo/name/actions + page banner align to full content width */
+  .desktop-shell .desktop-glass-header > div {
+    max-width: none;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  .desktop-shell .page-banner > div {
+    max-width: none;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  /* ② weekly-goals student content cap + gutter (trainer: no shell → px-4 kept) */
+  .desktop-shell .weeklygoal-main {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-bottom: 1.5rem;
+    min-height: 0;
+  }
+  .desktop-shell .weeklygoal-main > div {
+    max-width: none;
+  }
+  /* ③ week-nav rows stop centering at desktop widths */
+  .desktop-shell .week-nav-row {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  /* ④ chart balance — capped height, aspect kept, drawing centered */
+  .desktop-shell .funnel-svg {
+    max-height: 220px;
+  }
+  .desktop-shell .weekly-trend-svg {
+    max-height: 260px;
+  }
+  .desktop-shell .channel-donut-svg {
+    max-height: 160px;
+  }
+  /* ⑤ no desktop tabbar reserve — pages keep their own small pc:pb */
+  .desktop-shell .app-shell-main {
+    padding-bottom: 0;
   }
 }

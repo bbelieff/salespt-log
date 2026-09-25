@@ -76,20 +76,30 @@ export default function DbPage() {
 
   return <>
     <TopHeader pageEmoji="📊" pageTitle="DB생산" />
-    <main className="px-4 pb-[80px] pt-3"><PageContainer width="wide">
+    <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6"><PageContainer width="fluid">
       <section aria-label="입력할 채널" className="mb-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-bold text-slate-900">어떤 DB를 기록할까요?</h2>
         <p className="mb-3 mt-1 text-xs text-slate-500">채널을 누르면 바로 입력할 수 있어요.</p>
         <ChannelTabs activeCh={activeCh} onSwitch={switchChannel} />
       </section>
       {activeCh === null && <p className="mb-3 rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">위에서 입력할 채널을 선택해 주세요.</p>}
-      {/* Keep visited channel forms mounted: switching never discards edits or adds confirmation clicks. */}
-      {visited.map((channel) => <div key={channel} hidden={channel !== activeCh}>
-        <DbChannelWorkspace activeCh={channel} />
-      </div>)}
-      <OverallCard items={overall.items} totalCost={overall.totalCost} totalCount={overall.totalCount}
-        activeCh={activeCh} goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />} />
-      <DbNudgeBanner onGoDirect={() => switchChannel("direct")} />
+      {/* >=1440 AND 채널 선택 후: 입력 작업대(좌: 채널 폼·목록 | 우: 합계·안내)
+          2열 워크스페이스. 미선택(activeCh null)에선 2열을 걸지 않는다 —
+          좌 빈칸/우 Overall 반폭이던 버그. 채널 선택이 먼저(상단 full-width)이고
+          폼 마운트 유지라 클릭 수·워크플로 무변경. 목록은 unbounded 자연 스크롤. */}
+      <div className={activeCh !== null ? "min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1440px]:items-start min-[1440px]:gap-4" : undefined}>
+        <div className="min-w-0">
+          {/* Keep visited channel forms mounted: switching never discards edits or adds confirmation clicks. */}
+          {visited.map((channel) => <div key={channel} hidden={channel !== activeCh}>
+            <DbChannelWorkspace activeCh={channel} />
+          </div>)}
+        </div>
+        <div className="min-w-0 space-y-3">
+          <OverallCard items={overall.items} totalCost={overall.totalCost} totalCount={overall.totalCount}
+            activeCh={activeCh} goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />} />
+          <DbNudgeBanner onGoDirect={() => switchChannel("direct")} />
+        </div>
+      </div>
     </PageContainer></main>
   </>;
 }

@@ -234,8 +234,9 @@ export default function PaymentPage() {
         pageTitle="실무/수납"
       />
 
-      <main className="px-4 pb-[80px] pt-3">
-      <PageContainer width="wide" className="min-[1440px]:max-w-none">
+      {/* 구 min-[1440px]:max-w-none 특례는 fluid 로 대체(동일 효과, 전 구간 균일 거터). */}
+      <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6">
+      <PageContainer width="fluid">
         {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}
         <div className="mb-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div

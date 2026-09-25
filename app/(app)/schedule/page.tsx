@@ -467,8 +467,8 @@ export default function SchedulePage() {
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
       <div className="sticky top-app-content z-30 bg-white shadow-sm" {...weekSwipe}>
-        {/* 배경 full-bleed + 내용은 본문과 동일 6xl 중앙정렬 */}
-        <PageContainer width="wide">
+        {/* 배경 full-bleed + 내용은 본문과 동일한 fluid 전폭 */}
+        <PageContainer width="fluid">
           <WeekHeader
             weekIndex={weekIndex}
             weekStart={weekStart}
