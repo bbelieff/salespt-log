@@ -78,7 +78,7 @@ export default function PriorContractSection({
           (등록 흐름은 `PriorContractRegister.tsx` 에 보존 — 되살리는 법은 그 파일 머리말).
           2026-09-18 belie: 정책자금 뉴스를 그 **옆에** 붙였다. 세로로 쌓으면 모바일에서
           계약 목록이 한 칸 더 밀리는데, 둘 다 성격이 같은 바깥 링크라 나란히 두는 게 맞다. */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
+      <div className="mb-3 grid grid-cols-2 gap-2 pc:hidden">
         <a
           href={WORK_MANUAL_URL}
           target="_blank"

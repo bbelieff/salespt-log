@@ -25,6 +25,7 @@ import {
 } from "@/query/contract-payment-hooks";
 import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
+import ContractListTable from "./_components/ContractListTable";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
 import TerminationArchive from "./_components/TerminationArchive";
@@ -34,7 +35,7 @@ import PaymentSortControl from "./_components/PaymentSortControl";
 import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
-import { ACCENT, contractAccentFamily } from "./_lib/contractAccent";
+import { contractAccentFamily } from "./_lib/contractAccent";
 import { formatMoney } from "@/lib/format/money";
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
@@ -223,9 +224,8 @@ export default function PaymentPage() {
   // C: 선택 계약 — selectedRow 없거나 (검색)목록에 없으면 첫 카드로 폴백.
   const selectedCp =
     visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
-  // 선택 카드↔패널을 하나의 윤곽선으로 잇는 상태색(진행상태 기반).
+  // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
-  const selAccent = ACCENT[selFamily];
 
   return (
     <>
@@ -235,7 +235,7 @@ export default function PaymentPage() {
       />
 
       <main className="px-4 pb-[80px] pt-3">
-      <PageContainer width="wide">
+      <PageContainer width="wide" className="min-[1440px]:max-w-none">
         {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}
         <div className="mb-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div
@@ -312,11 +312,11 @@ export default function PaymentPage() {
           <div className="mb-3 space-y-2">
             <CompanySearchBar
               value={companyQuery}
-              onChange={setCompanyQuery}
+              onChange={(v) => guardedNav(() => setCompanyQuery(v))}
               matchCount={visibleRows.length}
               total={rows.length}
             />
-            <PaymentSortControl value={sortKey} onChange={setSortKey} />
+            <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} />
           </div>
         )}
 
@@ -334,53 +334,26 @@ export default function PaymentPage() {
             검색 결과가 없어요. <b>✕</b> 를 눌러 전체 목록으로 돌아갈 수 있어요.
           </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 마스터-디테일 — 선택 카드와 우측 패널이 같은 상태색
-             하나의 윤곽선(탭처럼)으로 이어짐. grid 3.5:6.5 (gap 0 → seam 연결).
-             (요약카드 139줄과 동일한 인라인 gridTemplateColumns 패턴.) */
-          <div
-            className="grid items-start"
-            style={{ gridTemplateColumns: "3.5fr 6.5fr" }}
-          >
-            <div className="min-w-0 space-y-2">
-              {visibleRows.map((cp, i) => {
-                const isSel = selectedCp?.row === cp.row;
-                return (
-                  <div
-                    key={cp.row}
-                    className={
-                      isSel
-                        ? // 선택: 상태색 2px, 우측 테두리 제거 + 좌측만 라운드,
-                          // -mr-0.5 로 패널 왼쪽 테두리에 맞물림, z 위로.
-                          `relative z-10 -mr-0.5 overflow-hidden rounded-l-xl border-2 border-r-0 bg-white shadow-md transition-all duration-200 ${selAccent.border}`
-                        : // 비선택: 회색 + 패널과 간격(mr-1)으로 대비.
-                          "mr-1 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200"
-                    }
-                  >
-                    <ContractRow
-                      cp={cp}
-                      ordinal={i + 1}
-                      pending={pendingRow === cp.row}
-                      institutionOptions={institutionOptions}
-                      bare
-                      selectable
-                      selected={isSel}
-                      accentFamily={isSel ? selFamily : undefined}
-                      onSelect={() => guardedNav(() => setSelectedRow(cp.row ?? null))}
-                      onSave={handleSave}
-                      onDeleteRequest={() => makeDeleteRequest(cp)}
-                      onTerminateRequest={() => setTerminateTarget(cp)}
-                      focusTodoId={focusTodoId}
-                      highlight={companyQuery}
-                      courseStartISO={courseStartISO}
-                    />
-                  </div>
-                );
-              })}
+          /* 데스크탑(pc): 1024~1439는 스택(마스터 위·상세 아래),
+             1440+는 균등 2열(minmax(0,1fr)×2, gap 12px). 520px 테이블이
+             1440+ 각 열에 맞고(사이드바 224·컨테이너 패딩 제외 시 열 ≈540+),
+             좁은 구간은 스택이라 내부 스크롤이 생기지 않는다(래퍼 유지).
+             구 seam(음수 마진·한쪽 보더·상태색 윤곽) 제거 — 양쪽 다 중립
+             full rounded. 상세는 1440+에서만 sticky, 스택 구간은 일반 흐름.
+             마스터는 경량 테이블(행 ~40px, 5열) — 상세 ContractRow 1개만
+             마운트(중복 전체행 제거). */
+          <div className="grid min-w-0 grid-cols-1 items-start gap-3 min-[1440px]:grid-cols-2">
+            <div className="min-w-0 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+              <ContractListTable
+                rows={visibleRows}
+                selectedRow={selectedCp?.row ?? null}
+                onSelect={(row) => guardedNav(() => setSelectedRow(row))}
+                highlight={companyQuery}
+                courseStartISO={courseStartISO}
+              />
             </div>
             {selectedCp && (
-              <div
-                className={`sticky top-app-content min-w-0 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
-              >
+              <div className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm min-[1440px]:sticky min-[1440px]:top-app-content">
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}

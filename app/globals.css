@@ -537,3 +537,74 @@ body {
   .app-header-pill { padding-inline: 6px; font-size: 11px; gap: 3px; }
   .app-role-label { padding-inline: 5px; font-size: 11px; }
 }
+
+/* ── Desktop glass shell (desktop-glass-polish 2026-09-25) ──────────
+ * Scoped student desktop shell — ONLY >=1024px AND inside .desktop-shell
+ * ((app)/layout + WeeklyGoalPage student mode add that class).
+ * Mobile (<1024) renders exactly as before: every rule below sits inside
+ * min-width:1024px, and phone prefixes (sm:/md:/lg:/xl:) are never used.
+ * Safety rails:
+ *   - No backdrop-filter/transform on .desktop-shell itself or on main
+ *     (would break body-level modals/toasts and sticky offsets).
+ *   - .bg-white is never overridden globally — only the two named glass
+ *     elements (.desktop-nav, .desktop-glass-header) get scoped paint.
+ *   - Existing header sticky / banner / week offsets untouched; fonts/density
+ *     untouched (PC 13.5px root stays the SSOT).
+ * Values follow the approved mockup: sidebar white .55 + blur24 saturate150,
+ * hairline edge, inset highlight, subtle shadow; header white .72; quiet
+ * cool (blue/lilac/mint) backdrop. @supports = solid fallback, and
+ * reduced-transparency = flat paint, no filter. */
+@media (min-width: 1024px) {
+  /* Quiet cool backdrop — pale blue/lilac/mint at ~10% so content stays quiet. */
+  .desktop-shell {
+    background:
+      radial-gradient(620px 420px at 8% 0%, rgb(59 130 246 / 10%), transparent 62%),
+      radial-gradient(680px 440px at 92% 6%, rgb(167 139 250 / 10%), transparent 62%),
+      radial-gradient(900px 520px at 50% 112%, rgb(45 212 191 / 10%), transparent 62%),
+      #eef2f6;
+  }
+  /* Sidebar glass. Width is explicit 224px: w-60 (15rem) would shrink to
+     ~202px under the 13.5px PC root. Solid-white base = no-filter fallback. */
+  .desktop-shell .desktop-nav {
+    width: 224px;
+    background: rgb(255 255 255 / 88%);
+    border-right: 1px solid rgb(15 23 42 / 9%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 55%),
+      0 8px 24px -12px rgb(15 23 42 / 18%);
+  }
+  /* Header glass — paint only, text stays fully opaque (crisp legibility). */
+  .desktop-shell .desktop-glass-header {
+    background: rgb(255 255 255 / 92%);
+    border-bottom: 1px solid rgb(15 23 42 / 9%);
+  }
+  /* Weekly-goals content gutter — let the quiet backdrop show between cards. */
+  .desktop-shell .weeklygoal-main {
+    background: transparent;
+  }
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media (min-width: 1024px) {
+    .desktop-shell .desktop-nav {
+      background: rgb(255 255 255 / 55%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      backdrop-filter: blur(24px) saturate(150%);
+    }
+    .desktop-shell .desktop-glass-header {
+      background: rgb(255 255 255 / 72%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      backdrop-filter: blur(24px) saturate(150%);
+    }
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-transparency: reduce) {
+  .desktop-shell {
+    background: #f1f5f9;
+  }
+  .desktop-shell .desktop-nav,
+  .desktop-shell .desktop-glass-header {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

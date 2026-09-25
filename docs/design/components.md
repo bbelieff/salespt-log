@@ -10,6 +10,12 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
+## PC 수납 목록 (2026-09-25)
+
+- `app/(app)/payment/_components/ContractListTable.tsx`: 업체명·계약일·수임비·수납액·진행률의 compact 선택 표. 금액·진행률은 기존 도메인 헬퍼를 재사용하며 상세 편집은 기존 `ContractRow`를 유지한다.
+- 1024~1439px는 표 위·상세 아래, 1440px부터 넓은 컨테이너 안의 균등 2열이다. 표와 상세 모두 중립 테두리·전체 모서리 라운드. 검색·정렬·선택은 기존 DirtyProvider를 통과한다.
+- PC 업무매뉴얼·뉴스 링크는 사이드바에서 제공한다. 수납 본문의 중복 링크는 PC에서 숨기며 모바일에서는 유지한다. 모바일 계약 아코디언·금융 계산·저장 API는 변경하지 않는다.
+
 ## 일반 입력 자동저장 (2026-09-23)
 
 - **AutosaveStatus** (`components/autosave/AutosaveStatus.tsx`): 기존 제목 옆에 작은 저장 중/저장됨/실패·재시도/직전 변경 되돌리기를 표시한다. 서버 응답을 받기 전에는 저장됨을 표시하지 않는다. `useAutosave`는 대상을 고정한 단일 요청 큐와 최신 입력 보존, 명시적 재시도, 이탈 전 `flush`, 입력 버리기 `discard`를 제공한다. 초기 조회·재조회만으로 쓰지 않는다.
@@ -1486,6 +1492,29 @@ button:focus, input:focus, select:focus {
 - 관리자 항목은 `useMe()` 가 준 `isAdmin`/`sessionRole` 로만 판정한다. `isAdminEmail` 같은
   **서버 전용 판정을 클라이언트에서 흉내내지 않는다**(판단이 안 서면 숨기는 쪽).
 - 파일: `components/desktop/DesktopNav.tsx` · 회귀 테스트 `tests/components/desktop-nav.test.ts`.
+
+### Desktop glass polish — scoped 도장 (2026-09-25)
+
+직접 승인된 데스크탑 사이드바/글래스 목업(`approved-reference.html`은 **참고용**,
+그대로 복사하지 않는다)을 기존 셸 위에 얹는 소규모 시각 폴리시. 폰은 무변경.
+
+- 스코프: `>=1024px`이면서 `.desktop-shell` 안쪽에서만. `(app)/layout` 과
+  `WeeklyGoalPage` STUDENT 모드가 그 div 에 `desktop-shell` 을 단다.
+  전역 `.bg-white` 강제·`main` 전체 필터·폰 prefix(`sm:/md:/lg:/xl:`) 금지.
+- `globals.css` 하단 「Desktop glass shell」: 사이드바(`.desktop-nav`) 흰 .55 +
+  blur24 saturate150·헤어라인·inset 하이라이트, 헤더(`.desktop-glass-header`)
+  흰 .72, 배경은 옅은 blue/lilac/mint. `@supports` 폴백 + reduced-transparency
+  평면 도장. 폭은 224px 고정(px — 13.5px 루트에서 `w-60` 은 ~202px 로 준다).
+- 드라이브 소탭: 폴더 있음 + 상태 정상(레거시 미설정 포함) → 기존 외부 링크.
+  폴더 없음·상태 `error` → 가드 경유 `/payment#drive-link`
+  (`DriveLinkBar` 의 `id="drive-link"`+`scroll-mt` 연결 UI 로 스크롤).
+  매뉴얼/뉴스 라우팅 그대로(`/payment/news` 내부, 매뉴얼만 새 탭).
+- 주간목표 STUDENT 화면도 기존 `DesktopNav` 를 그대로 재사용(중복 구현 금지),
+  단일 `DirtyProvider` 안에 사이드바+본문. 트레이너 보조 화면은 1단 유지,
+  모바일 TabBar 추가 없음.
+- 새 기능 점(dot)은 `TabBar` 를 건드려야 해서 baseline 유지(미추가).
+- 회귀: `tests/components/desktop-glass-shell.test.ts` (DOM 렌더 15).
+- 직접 승인 사이드바가 기존 「PC에선 하단탭」 결정을 대체한다. 모바일 탭 순서는 그대로.
 
 ### /payment/news — 정책자금 데일리 (2026-09-25)
 

@@ -137,7 +137,7 @@ export default function TopHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
+      <header className="desktop-glass-header sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
         <PageContainer width="wide" className="flex h-full flex-nowrap items-center gap-x-1 px-2 sm:gap-x-2 sm:px-3">
           <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}

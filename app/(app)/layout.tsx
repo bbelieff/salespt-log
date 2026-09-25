@@ -82,8 +82,10 @@ export default async function AppLayout({
       <DirtyProvider>
         {/* pc(1024px+) 에서만 2단. 그 아래는 지금 그대로 1단 — DesktopNav 가 hidden 이라 자리도 없다.
             데스크탑엔 하단 탭바가 없으므로 --app-tabbar-height 를 여백값으로 덮는다
-            (main 의 인라인 style 은 className 으로 못 이기지만 변수는 덮을 수 있다). */}
-        <div className="pc:flex pc:[--app-tabbar-height:2.5rem]">
+            (main 의 인라인 style 은 className 으로 못 이기지만 변수는 덮을 수 있다).
+            desktop-shell = 글래스 스코프 (globals.css — 이 클래스 안에서만 데스크탑
+            도장이 걸린다. 모바일·모달·sticky 오프셋은 손대지 않는다). */}
+        <div className="desktop-shell pc:flex pc:[--app-tabbar-height:2.5rem]">
           <DesktopNav />
           <div className="min-w-0 pc:flex-1">
             <main style={{ paddingBottom: "var(--app-tabbar-height)" }}>

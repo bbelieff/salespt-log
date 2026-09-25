@@ -92,7 +92,9 @@ export default function DriveLinkBar() {
   const isLinked = driveLinkStatus === "ok" && feedbackFolderId;
 
   return (
-    <div className="mb-3 space-y-2">
+    // id="drive-link" — 사이드바 미연결 폴백(/payment#drive-link)이 여기로 온다.
+    // scroll-mt 로 sticky 헤더+배너(도합 6.5rem) 아래에 정확히 멈춘다.
+    <div id="drive-link" className="mb-3 space-y-2 scroll-mt-28">
       <div className="flex gap-2">
         {isLinked ? (
           <a
