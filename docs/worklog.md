@@ -3648,3 +3648,11 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 ### 2026-09-25 · PC 글래스 셸 검증
 - 기존 DesktopNav 확장·학생 주간목표 연결·수납 표/상세 전환. 320~1440px 실측, 2725개 테스트, check.sh 및 운영 빌드 통과. 로컬 DB 의존 기존 45개는 skip이며 CI에서 확인.
 - PC 수납 표의 1440px 최소 실제 폭을 확보하도록 해당 컨테이너 상한만 해제; 모바일/도메인/API 보존. 복구는 이 변경의 squash 커밋 revert.
+
+
+
+
+### 2026-09-25 · Codex/Muse · 회의록 직전 주 실적 집계
+- 사용자 확인: 목표 주차의 직전 주 실적. 기존 서버 오늘 기준 기간이 선택 주차와 분리되어 금요일에 복사값이0으로 바뀌던 원인 수정.
+- 소유: weekly-goals service·type·GoalCopyPanel 및 관련 테스트/문서. DB 쓰기·권한 변경 없음. Muse 분석·구현·회귀 초안, Codex 읽기 감사·통합·검증·배포.
+

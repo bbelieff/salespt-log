@@ -232,27 +232,95 @@ describe("weekly goals validation, key isolation, and failure semantics", () => 
       { studentId: student.spreadsheetId, cohort: student.cohort, courseStart: student.courseStartISO, weekStart: "2026-09-04" },
     ]);
   });
-  it("keeps selected-week goals separate from the server-current Friday-Thursday reporting actuals", async () => {
-    const current = [
+  it("uses the previous week relative to the selected planning week for reporting actuals", async () => {
+    const previous = [
       { 미팅날짜: "2026-09-18", 상태: "완료" },
       { 미팅날짜: "2026-09-20", 상태: "완료" },
       { 미팅날짜: "2026-09-22", 상태: "계약" },
       { 미팅날짜: "2026-09-24", 상태: "계약" },
     ];
-    m.readMeetingsFromDb.mockResolvedValue([...current, { 미팅날짜: "2026-09-25", 상태: "계약" }]);
+    m.readMeetingsFromDb.mockResolvedValue([...previous, { 미팅날짜: "2026-09-25", 상태: "계약" }]);
     const p = params("4");
     p.set("date", "2026-10-02");
     const view = await loadWeeklyGoals(p);
     expect(view.current).toMatchObject({ week: 4, start: "2026-09-25", end: "2026-10-01", actuals: { meetings: 1, contracts: 1 } });
     expect(view.reporting).toEqual({ start: "2026-09-18", end: "2026-09-24", actuals: expect.objectContaining({ meetings: 4, contracts: 2 }) });
   });
-  it("rolls the authoritative reporting interval only when KST reaches Friday", async () => {
-    const p = params("4");
-    p.set("date", "2026-10-02");
-    m.todayKST.mockReturnValueOnce("2026-09-24");
-    await expect(loadWeeklyGoals(p)).resolves.toMatchObject({ reporting: { start: "2026-09-18", end: "2026-09-24" } });
-    m.todayKST.mockReturnValueOnce("2026-09-25");
-    await expect(loadWeeklyGoals(p)).resolves.toMatchObject({ reporting: { start: "2026-09-25", end: "2026-10-01" } });
+  it("keeps week4 reporting on week3 whether server today is Thursday or Friday", async () => {
+    const meetings = [
+      { 미팅날짜: "2026-09-18", 상태: "완료" },
+      { 미팅날짜: "2026-09-20", 상태: "완료" },
+      { 미팅날짜: "2026-09-22", 상태: "계약" },
+      { 미팅날짜: "2026-09-24", 상태: "계약" },
+      { 미팅날짜: "2026-09-25", 상태: "계약" },
+    ];
+    m.readMeetingsFromDb.mockResolvedValue(meetings);
+    m.todayKST.mockReturnValue("2026-09-24");
+    const thursday = await loadWeeklyGoals(params("4"));
+    m.todayKST.mockReturnValue("2026-09-25");
+    const friday = await loadWeeklyGoals(params("4"));
+    for (const view of [thursday, friday]) {
+      expect(view.reporting).toEqual({ start: "2026-09-18", end: "2026-09-24", actuals: expect.objectContaining({ meetings: 4, contracts: 2 }) });
+      expect(view.current).toMatchObject({ week: 4, start: "2026-09-25", actuals: { meetings: 1, contracts: 1 } });
+    }
+    expect(friday.reporting).toEqual(thursday.reporting);
+  });
+  it("reports week2 actuals when week3 is selected", async () => {
+    const row = (date: string) => ({ date, channel: "직접생산", production: 10, inflow: 5, contactProgress: 1, meetingReservation: 0 });
+    m.readSalesRowsFromDb.mockResolvedValue([row("2026-09-11"), row("2026-09-18")]);
+    m.readMeetingsFromDb.mockResolvedValue([{ 미팅날짜: "2026-09-12", 상태: "계약" }, { 미팅날짜: "2026-09-19", 상태: "계약" }]);
+    const view = await loadWeeklyGoals(params("3"));
+    expect(view.current).toMatchObject({ week: 3, start: "2026-09-18" });
+    expect(view.reporting.start).toBe("2026-09-11");
+    expect(view.reporting.end).toBe("2026-09-17");
+    expect(view.reporting.actuals).toMatchObject({ production: 10, meetings: 1, contracts: 1 });
+    expect(view.current.actuals).toMatchObject({ production: 10, meetings: 1, contracts: 1 });
+  });
+  it("keeps a selected future week and ignores a fake client date for the canonical reporting week", async () => {
+    m.readMeetingsFromDb.mockResolvedValue([{ 미팅날짜: "2026-10-03", 상태: "계약" }, { 미팅날짜: "2026-10-10", 상태: "계약" }]);
+    const p = params("6");
+    p.set("date", "2026-09-04");
+    const view = await loadWeeklyGoals(p);
+    expect(view.current).toMatchObject({ week: 6, start: "2026-10-09", end: "2026-10-15" });
+    expect(view.reporting.start).toBe("2026-10-02");
+    expect(view.reporting.end).toBe("2026-10-08");
+    expect(view.reporting.actuals).toMatchObject({ meetings: 1, contracts: 1 });
+    expect(view.current.actuals).toMatchObject({ meetings: 1, contracts: 1 });
+  });
+  it("reports the genuine preceding calendar week for week1 without a previous saved goal", async () => {
+    const row = (date: string) => ({ date, channel: "직접생산", production: 10, inflow: 5, contactProgress: 1, meetingReservation: 0 });
+    m.readSalesRowsFromDb.mockResolvedValue([row("2026-08-28"), row("2026-09-03"), row("2026-09-04")]);
+    m.readMeetingsFromDb.mockResolvedValue([{ 미팅날짜: "2026-08-29", 상태: "계약" }, { 미팅날짜: "2026-09-04", 상태: "계약" }]);
+    const view = await loadWeeklyGoals(params("1"));
+    expect(view.previous).toBeNull();
+    expect(view.reporting.start).toBe("2026-08-28");
+    expect(view.reporting.end).toBe("2026-09-03");
+    expect(view.reporting.actuals).toMatchObject({ production: 20, meetings: 1, contracts: 1 });
+    expect(view.current.actuals).toMatchObject({ production: 10, meetings: 1, contracts: 1 });
+  });
+  it("returns zero reporting actuals for week1 when no preceding raw records exist", async () => {
+    const view = await loadWeeklyGoals(params("1"));
+    expect(view.previous).toBeNull();
+    expect(view.reporting).toEqual({ start: "2026-08-28", end: "2026-09-03", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 } });
+  });
+  it("shows previous-week actuals even when no previous saved goal exists", async () => {
+    m.readWeeklyGoal.mockImplementation(async (key: { weekStart: string }) =>
+      key.weekStart === "2026-09-11" ? null : emptyRecord());
+    m.readMeetingsFromDb.mockResolvedValue([{ 미팅날짜: "2026-09-12", 상태: "계약" }]);
+    const view = await loadWeeklyGoals(params("3"));
+    expect(view.previous).toBeNull();
+    expect(view.reporting).toMatchObject({ start: "2026-09-11", end: "2026-09-17", actuals: { meetings: 1, contracts: 1 } });
+  });
+  it("derives the reporting window from the enrollment course start, not another enrollment", async () => {
+    const other = { ...student, spreadsheetId: "other-sheet", cohort: "other-cohort", courseStartISO: "2026-09-11" };
+    m.findUserByEmail.mockResolvedValue({ ...other });
+    m.readSalesRowsFromDb.mockImplementation(async (sheet: string) => (sheet === "other-sheet" ? [] : [{ date: "2026-09-11", channel: "직접생산", production: 99, inflow: 0, contactProgress: 0, meetingReservation: 0 }]));
+    const p = new URLSearchParams({ student: other.email, week: "3", enrollment: JSON.stringify([other.cohort, other.courseStartISO]) });
+    const view = await loadWeeklyGoals(p);
+    expect(view.current).toMatchObject({ week: 3, start: "2026-09-25" });
+    expect(view.reporting).toMatchObject({ start: "2026-09-18", end: "2026-09-24" });
+    expect(m.readSalesRowsFromDb).toHaveBeenCalledWith("other-sheet");
+    expect(view.reporting.actuals).toMatchObject({ production: 0 });
   });
   it("accumulates week 1 through the previous week for the back-calculation basis", async () => {
     // Weeks 1–3 start 2026-09-04 / 09-11 / 09-18. Viewing week 3 counts weeks 1–2 only.

@@ -31,6 +31,7 @@ export default function GoalCopyPanel({ view, internal, dirty }: {
     </div>
     {view.canReadInternal && !internal && <p className="text-sm text-gray-500">회의록을 불러온 뒤 복사할 수 있어요.</p>}
     {dirty && <p className="text-sm text-gray-500">저장 후 복사할 수 있어요.</p>}
+    {view.canReadInternal && <p className="text-xs text-gray-500">실적 집계: {view.reporting.start} ~ {view.reporting.end} (목표 주차의 직전 주)</p>}
     <div className="overflow-x-auto rounded-xl border border-gray-200">
       <table className="w-full min-w-max border-collapse text-left text-xs">
         <caption className="px-3 py-2 text-left text-xs text-gray-500">클립보드에 복사되는 내용</caption>
