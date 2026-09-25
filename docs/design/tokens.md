@@ -348,3 +348,16 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 | **`wide`** ⭐ | **1280** | **와이드 데스크탑** |
 
 **규칙**: 데스크탑 전용 스타일은 반드시 `pc:`/`wide:` 프리픽스. `lg`/`xl`/`2xl` 은 폰/태블릿이므로 데스크탑 의미로 쓰지 말 것. 페이지 폭은 `PageContainer`(components.md §10)로 통일.
+
+## 데스크탑 글래스 (scoped, 2026-09-25)
+
+승인 목업값 그대로 — 새 토큰 발명 없음. 전부 `globals.css` 「Desktop glass shell」
+(`>=1024px` + `.desktop-shell` 안쪽 전용, 폰 무변경).
+
+| 용도 | 값 | 비고 |
+|---|---|---|
+| 사이드바 면 | `rgb(255 255 255 / 55%)` + `blur(24px) saturate(150%)` | 미지원 폴백 `rgb(255 255 255 / 88%)` |
+| 헤더 면 | `rgb(255 255 255 / 72%)` + `blur(24px) saturate(150%)` | 글자는 불투명 유지 |
+| 헤어라인 | `rgb(15 23 42 / 9%)` | inset 하이라이트 `rgb(255 255 255 / 55%)` 동반 |
+| 배경 | `#eef2f6` + blue/lilac/mint radial 각 10% | quiet 유지, reduced-transparency 시 `#f1f5f9` 평면 |
+| 사이드바 폭 | `224px` 고정 | `w-60` 은 13.5px 루트에서 ~202px 로 줄어 명시 |

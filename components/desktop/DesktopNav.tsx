@@ -7,6 +7,8 @@
  * 영업 4단계 정의는 TabBar.NAV_STEPS 단일 원천(두 벌 금지).
  * 앱 내부 이동은 useGuardedRouter 경유 — 미저장 이탈 가드를 받는다.
  * 이 컴포넌트는 (app) layout 의 DirtyProvider 안에서 렌더된다.
+ * 글래스 도장은 루트 `desktop-nav` 클래스에 걸고, 실체는 전부
+ * globals.css 의 `.desktop-shell` 스코프 안에만 둔다(모바일 무변경).
  */
 "use client";
 
@@ -96,9 +98,15 @@ function SideLink({
 function PaymentSubTabs({ pathname }: { pathname: string }) {
   const me = useMe();
   const feedbackFolderId = me.data?.feedbackFolderId ?? "";
-  const driveUrl = feedbackFolderId
-    ? `https://drive.google.com/drive/folders/${feedbackFolderId}`
-    : "";
+  // driveLinkStatus 는 레거시 행에서 비어 있을 수 있다 — 폴더가 있으면 연결된
+  // 것으로 보고 기존 동작을 유지한다(멀쩡한 링크를 끊지 않는다).
+  // 명시적 "error" 또는 폴더 없음일 때만 /payment#drive-link 로 보내 기존
+  // DriveLinkBar 연결 UI 로 이어준다(가드 라우터 경유, 같은 DirtyProvider 안).
+  const driveInvalid = (me.data?.driveLinkStatus ?? "") === "error";
+  const driveUrl =
+    feedbackFolderId && !driveInvalid
+      ? `https://drive.google.com/drive/folders/${encodeURIComponent(feedbackFolderId)}`
+      : "";
   const newsActive = pathname.startsWith("/payment/news");
   return (
     <div>
@@ -113,7 +121,7 @@ function PaymentSubTabs({ pathname }: { pathname: string }) {
           <ExternalArrow />
         </a>
       ) : (
-        <SideLink sub href={"/payment" as Route} active={false} label="구글드라이브 — 연결 필요">
+        <SideLink sub href={"/payment#drive-link" as Route} active={false} label="구글드라이브 — 연결 필요">
           구글드라이브
           <span className="rounded-full bg-amber-100 px-1.5 text-xs font-bold text-amber-800">
             연결 필요
@@ -151,7 +159,7 @@ export default function DesktopNav() {
   return (
     <nav
       aria-label="주 메뉴"
-      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-slate-200 bg-white pc:flex"
+      className="desktop-nav sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-slate-200 bg-white pc:flex"
     >
       {/* 로고 블록 */}
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-100 px-4">
