@@ -136,10 +136,11 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
     const end = fmtISO(addDays(parseISO(start), 6));
     return { week: number, start, end, record: saved, actuals: weeklyGoalActuals(sales, meetings, [], start, end) };
   };
-  // The selector controls planning and GoalRings. Meeting-report copy always uses the
-  // server-current KST Friday-Thursday window, never a selected week or client date.
-  const reportingStart = fmtISO(friOf(parseISO(todayKST())));
-  const reportingEnd = fmtISO(addDays(parseISO(reportingStart), 6));
+  // Meeting-report copy uses the previous week relative to the selected planning week
+  // (week4 goals -> week3 actuals), never server today or selected current actuals.
+  // Week 1 reports the genuine immediately preceding Fri-Thu raw records (0 if none).
+  const reportingStart = previousStart;
+  const reportingEnd = fmtISO(addDays(parseISO(previousStart), 6));
   // Same metric definitions, widened to week 1 … end of the previous week. Week 1 has no history.
   const firstStart = fmtISO(friOf(parseISO(key.courseStart)));
   const cumulative = week > 1

@@ -9,7 +9,7 @@ Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const view: WeeklyGoalView = {
   student: { email: "fixture@example.test", name: "Fixture", cohort: "test", courseStart: "2026-09-04", region: "Region", trainers: [] },
   current: { week: 2, start: "2026-09-11", end: "2026-09-17", record: { goals: { ...EMPTY_GOALS }, task: "Before", revision: 1, updatedAt: null }, actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 } },
-  reporting: { start: "2026-09-18", end: "2026-09-24", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 4, contracts: 2 } },
+  reporting: { start: "2026-09-04", end: "2026-09-10", actuals: { production: 0, inflow: 0, contacts: 0, meetings: 4, contracts: 2 } },
   previous: { week: 1, start: "2026-09-04", end: "2026-09-10", record: { goals: { ...EMPTY_GOALS }, task: "Previous task", revision: 1, updatedAt: null }, actuals: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 } }, cumulative: { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 }, canReadInternal: true,
 };
 const internal: WeeklyGoalPrivateRecord = { specialNotes: "Notes", priorOutcome: "Outcome", revision: 1, updatedAt: null };
@@ -78,4 +78,15 @@ it("never exposes the internal Notion destination in a public view", () => {
   act(() => root.render(createElement(GoalCopyPanel, { view: { ...view, canReadInternal: false }, dirty: false })));
   expect(Array.from(host.querySelectorAll("a")).some(a => a.textContent === "회의록 Notion 열기")).toBe(false);
   expect(host.textContent).not.toContain("app.notion.com");
+  expect(host.textContent).not.toContain("실적 집계");
+});
+
+it("shows the previous-week aggregation period near the preview for internal viewers only", () => {
+  act(() => root.render(createElement(GoalCopyPanel, { view, internal, dirty: false })));
+  expect(host.textContent).toContain("실적 집계: 2026-09-04 ~ 2026-09-10 (목표 주차의 직전 주)");
+  expect(Array.from(host.querySelectorAll("th"))).toHaveLength(14);
+  const updated: WeeklyGoalView = { ...view, current: { ...view.current, week: 4, start: "2026-09-25", end: "2026-10-01" }, reporting: { ...view.reporting, start: "2026-09-18", end: "2026-09-24" } };
+  act(() => root.render(createElement(GoalCopyPanel, { view: updated, internal, dirty: false })));
+  expect(host.textContent).toContain("실적 집계: 2026-09-18 ~ 2026-09-24 (목표 주차의 직전 주)");
+  expect(Array.from(host.querySelectorAll("th")).map(t => t.textContent)).toEqual(["지역", "기수", "수강생", "담당T", "금주미팅", "금주계약", "트레이닝 후 특이사항", "지난주 PT과제(성과)", "이번주 PT과제", "목표생산", "목표 유입", "목표 컨택", "목표미팅", "목표계약"]);
 });
