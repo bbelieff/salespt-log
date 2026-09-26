@@ -37,13 +37,17 @@ export function buildInstitutionWorkItems(rows: ContractPayment[], courseStartIS
     const visible = populated.length ? populated : ([1] as const);
     for (const slot of visible) {
       const data: PaymentSlot = cp[`수납${slot}`];
+      const storedInstitution = data.진행기관.trim();
+      // 예전 자유입력은 "소진공 신취"처럼 상품을 기관 칸에 함께 적었다.
+      // 보기에서만 분리한다. 원본 기관 키는 Todo/캘린더 연결을 위해 그대로 둔다.
+      const legacyProduct = /^소진공\s+(.+)$/u.exec(storedInstitution)?.[1]?.trim() ?? "";
       out.push({
         key: `${cp.row ?? `${cp.계약일}|${cp.업체명}`}-${slot}`,
         row: cp.row ?? null,
         slot,
         company: cp.업체명,
-        institution: data.진행기관.trim(),
-        product: data.진행상품.trim(),
+        institution: legacyProduct ? "소진공" : storedInstitution,
+        product: data.진행상품.trim() || legacyProduct,
         progress: progressPct(data.진행률),
         muted: isCarryoverContract(cp, courseStartISO) || isTerminatedContract(cp),
       });
