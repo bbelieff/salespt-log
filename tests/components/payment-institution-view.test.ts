@@ -49,4 +49,17 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
     expect(groupInstitutionWorkItems(items, "한빛")[0]?.items[0]?.row).toBe(3);
     expect(groupInstitutionWorkItems(items, "소진공")[0]?.count).toBe(2);
   });
+
+  it("예전 소진공 기관 칸에 적힌 상품을 보기에서만 분리해 한 기관으로 묶는다", () => {
+    const rows = [
+      contract(3, "가업체", [slot({ 진행기관: "소진공 신취" })]),
+      contract(4, "나업체", [slot({ 진행기관: "소진공 재도전" })]),
+      contract(5, "다업체", [slot({ 진행기관: "소진공", 진행상품: "혁신" })]),
+      contract(6, "라업체", [slot({ 진행기관: "전북재단 부안지점" })]),
+    ];
+    const groups = groupInstitutionWorkItems(buildInstitutionWorkItems(rows));
+    expect(groups.find((g) => g.institution === "소진공")?.items.map((i) => i.product)).toEqual(["신취", "재도전", "혁신"]);
+    expect(groups.find((g) => g.institution === "전북재단 부안지점")?.count).toBe(1);
+    expect(rows[0]?.수납1.진행기관).toBe("소진공 신취");
+  });
 });
