@@ -326,7 +326,7 @@ export default function CompanyInfoEditor({
 
   // 2xl(768+)에서 [업체]|[대표자] 좌우 2단 — 그 미만은 세로.
   const body = (
-    <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4">
+    <div className={desktopHeading ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
       {group("업체", 업체_DEFS)}
       {group("대표자", 대표자_DEFS)}
     </div>
