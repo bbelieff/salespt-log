@@ -7,6 +7,14 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-27 · [병렬트랙] Codex · 실무/수납 확정 목업 운영 이식
+- 사용자 요청: 현재 확정된 실무/수납 목업을 운영에 배포하고 Supabase 저장 구조까지 반영.
+- 범위: `/payment` PC 마스터·디테일, 성과 요약/업무 상태, 업체정보·계약·서류·로드맵·실무진행, Todo/History, 새 JSONB/시트 필드와 관련 테스트·문서. 모바일·권한·기존 계산·과거 저장값 보존.
+- Muse 구독은 직전 실행에서 한도 소진(2026-09-28 00:00 UTC 초기화)으로 확인되어 Codex가 직접 구현·검증·배포한다.
+- 구현: 리사이즈·독립 스크롤 PC 2열, 선택 업체 그라데이션, 접이식 계약/서류, 노란 로드맵·실무진행, 기간별 성과/상태 단일 바와 진행 바로가기, 진행상품·계약비고, Todo/History 15분 입력, 플러그 UI 제거. 업체정보 기존 필드·편집 팝업·모바일 아코디언은 유지.
+- 저장: 계약 확장 필드는 기존 `sheet_rows.payload` JSONB에 additive 저장. Todo/History는 O열 gcal 이벤트 ID를 보존하고 P열만 분리 write. 운영 DB dry-run은 8개 마이그레이션 최신, `sheet_rows.payload=jsonb` 확인으로 신규 DDL 불필요.
+- 검증: 타입·lint·doc-drift·프로덕션 build 통과. 전체 회귀 2,798개 중 새 레이아웃으로 바뀐 기대값 1건을 갱신한 뒤 해당 포함 집중 회귀 84개 통과. 운영 배포 후 `/payment`와 health를 읽기 확인한다.
+
 ### 2026-09-25 · [병렬트랙] Codex/Muse · 사이드바 기준 PC 전체 폭·다열 배치
 - 사용자 요청: 각 탭의 과거 좌우 폭 제한을 해제하고 큰 PC 화면의 공간 활용/스크롤 개선. 기준 50f3aec, 전용 feat/desktop-fluid-layout-20260925.
 - 범위: 학생 셸 안 PageContainer/헤더 폭, 대시보드/DB/컨택/일정/캘린더/수납/주간목표의 PC 레이아웃. 모바일·관리자/트레이너·데이터/계산/권한/저장 보존. Muse 구현·테스트, Codex 실측·통합·배포 검증.
@@ -3655,4 +3663,3 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 ### 2026-09-25 · Codex/Muse · 회의록 직전 주 실적 집계
 - 사용자 확인: 목표 주차의 직전 주 실적. 기존 서버 오늘 기준 기간이 선택 주차와 분리되어 금요일에 복사값이0으로 바뀌던 원인 수정.
 - 소유: weekly-goals service·type·GoalCopyPanel 및 관련 테스트/문서. DB 쓰기·권한 변경 없음. Muse 분석·구현·회귀 초안, Codex 읽기 감사·통합·검증·배포.
-

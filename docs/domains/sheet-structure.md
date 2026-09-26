@@ -397,7 +397,7 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 | **I** | 드라이브 업로드 | bool | 사용자 입력 |
 | **J** | 사업계획서 초안발송 | bool | 사용자 입력 |
 | **K** | 컨설팅 5종서류 발송 | bool | 사용자 입력 |
-| **L** | 플러그 이관 | bool | 사용자 입력 (7번째 체크박스) |
+| **L** | 플러그 이관(레거시) | bool | 과거 값 호환 보존. 신규 UI·완료 집계에서는 사용하지 않음 |
 | **M** | 수납1 진행기관 | text | 사용자 입력 |
 | **N** | 수납1 진행률 | dropdown | `0% / 20% / 40% / 60% / 80% / 100%` |
 | **O** | 수납1 현황 | text | 사용자 입력 |
@@ -488,7 +488,7 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 
 **SHEET_RANGES.todos 키 매핑**:
 - `todos` (JS 키) ↔ "05 실무투두" (시트 탭명)
-- 범위: `A2:N` (14컬럼 A~N, 1행=1투두, append/update)
+- 범위: `A2:P` (A~N 앱 본문, O 캘린더 이벤트 ID, P Todo/History 구분)
 - `headerRow = A1:N1`
 - **앱 자동 생성** (`ensureTodoTab`): 탭이 없으면 `addSheet` + 헤더행 write. 04처럼 사전 존재 가정 안 함 — 신규 탭이라 전 수강생 시트에 **lazy 생성**(첫 접근 시). in-process 캐시로 중복 호출 회피.
 
@@ -511,10 +511,11 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | **M** | 생성시각 | text | created_at (ISO) |
 | **N** | 분류 | text | 일반이벤트 카테고리 `기존`(기존 고객) \| `기타`(개인 일정). 그 외 type 은 빈값 |
 | **O** | gcal_event_ids | text | 사용자별 JSON 맵 `{"salesptEmail":"eventId"}` (gcal-2, google-calendar-sync §2). **`lib/repo/gcal-event-ids.ts` 만 read-merge-write** — writeTodoRow(A:N) 범위 밖이라 투두 행 쓰기와 독립 보존. 미연결 사용자 빈값 |
+| **P** | 기록종류 | enum | `todo` / `history`. 기존 빈값은 `todo`로 읽는다. 앱은 A:N과 P를 분리 write하여 O를 보존한다. |
 
 **키 설계** (design §6.1): `contractRef` = `${계약일}|${업체명}` 합성키(행 이동에 강건), `institutionRef` = 슬롯 진행기관 텍스트. 슬롯 ToDo 조회 = (contractRef 일치 && institutionRef 일치).
 
-**수식 컬럼 없음** → 04의 split-write(N/O/Q/S 수식 보존) 불필요. 전체 행 `A:N` 한 번에 write. update는 자기 `id` 행만(findById→merge), append는 A열 기준 빈 행만 → 타 사용자값 침범 0.
+앱 본문 `A:N`과 기록종류 `P`를 분리 write한다. `O`의 캘린더 이벤트 ID 맵은 절대 덮어쓰지 않는다. update는 자기 `id` 행만(findById→merge), append는 A열 기준 빈 행만 사용한다.
 
 **자동 연동 없음** — 앱이 직접 append/update/clear (id = UUID).
 

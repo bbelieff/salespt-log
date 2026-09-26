@@ -10,11 +10,14 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
-## PC 수납 목록 (2026-09-25)
+## PC 실무/수납 워크스페이스 (2026-09-27)
 
-- `app/(app)/payment/_components/ContractListTable.tsx`: 업체명·계약일·수임비·수납액·진행률의 compact 선택 표. 금액·진행률은 기존 도메인 헬퍼를 재사용하며 상세 편집은 기존 `ContractRow`를 유지한다.
-- 1024~1439px는 표 위·상세 아래, 1440px부터 넓은 컨테이너 안의 균등 2열이다. 표와 상세 모두 중립 테두리·전체 모서리 라운드. 검색·정렬·선택은 기존 DirtyProvider를 통과한다.
-- PC 업무매뉴얼·뉴스 링크는 사이드바에서 제공한다. 수납 본문의 중복 링크는 PC에서 숨기며 모바일에서는 유지한다. 모바일 계약 아코디언·금융 계산·저장 API는 변경하지 않는다.
+- `ContractListTable`은 표 대신 업체명, 계약일·수임비, 수수료, 진행률만 담은 compact 1뎁스 카드다. 선택 카드는 파란 그라데이션과 `조회 중` 표시로 분명히 구분한다.
+- PC는 목록과 상세를 항상 2열로 배치하고 중앙 핸들을 드래그해 열 폭을 조절한다. 두 열은 뷰포트 높이 안에서 각각 스크롤한다. 상세 상단은 선택 업체명을 표시하는 옅은 그라데이션 배너다.
+- 2뎁스는 업체정보와 실무정보 2열이다. 업체정보는 기존 대표자정보·기업정보 필드를 유지하고 기존 편집 팝업을 사용한다. 우측은 계약정보, 서류·진행 체크, 노란 로드맵 메모, 노란 실무진행 순서다. 계약정보와 체크리스트는 접을 수 있다.
+- `PaymentPerformanceSummary`는 전체·이번 달·이번 주·직접 기간의 계약/매출과 전체 진행건 상태를 한 줄에 가깝게 압축한다. 상태 바의 각 구간을 누르면 해당 업체·진행 목록이 최상위 팝오버로 열리고 선택 시 해당 슬롯으로 이동한다.
+- 실무진행은 진행기관:진행상품을 3.5:6.5로 배치한다. Todo/History 입력은 제목·날짜·시·분을 한 줄에서 받고, 추가 후 상세 팝업을 연다. 시간은 09:00~20:00, 분은 00·15·30·45이고 20시는 00분만 허용한다. 캘린더 표시는 기본 ON이다.
+- `플러그 이관`은 화면과 완료 집계에서 제거한다. 과거 시트 값은 호환을 위해 읽기 스키마에만 남긴다. 모바일 계약 아코디언과 기존 저장 API는 유지한다.
 
 ## 일반 입력 자동저장 (2026-09-23)
 
@@ -1288,10 +1291,10 @@ app/(app)/dashboard/page.tsx
 | **nameHighlight** | (컴포넌트 아님·헬퍼 모듈) `renderNameWithHighlight`(업체명 검색어 `<mark>`)·`fmtMoney`·`fmtDate` — ContractRow 500줄 캡으로 분리. |
 | **PriorContractSection** | 이전(아레나 시작 전) 계약업체 등록 버튼 + 알림 모달({시작일} 동적) + ContractForm(수임비·계약조건) 재사용 폼 → POST /api/contract-payment/prior(구분=이월). + 아레나/이월 매출 2카드(isCarryoverContract 로 분리 합산). Props: `contracts`, `courseStartISO`. arena-start-revenue-split §A·B. |
 | **PriorContractRegister** | 「이전 계약업체 등록」 흐름(버튼 + 2단계 모달 + 토스트). **2026-09-05 belie 요청으로 화면에서 뗐다** — 실무·수납 탭 그 자리는 업무매뉴얼(노션) 버튼이 차지. 기능은 **지우지 않고 통째로 보존**: 되살리려면 `PriorContractSection.tsx` 에 import 한 줄 + `<PriorContractRegister courseStartISO={...} />` 한 줄(파일 머리말에 안내). 서버(POST /api/contract-payment/prior · lib/service/contract-payment-add.ts)는 손대지 않아 붙이는 즉시 동작한다. **이미 등록된 이월 계약 데이터는 그대로 보인다.** Props: `courseStartISO`. |
-| **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
+| **CheckboxList** | 6개 서류·진행 체크. 과거 `플러그이관` 값은 표시·완료 집계에서 제외. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
 | **LinkedFieldsEditor** | 계약 핵심필드(업체명·계약일·수임비) 수정 토글(payment_contract_edit_toggle). Props: `cp: ContractPayment`. **평소 = [✎ 계약정보 수정] 버튼만**(값 미표시 — 업체명·계약일·수임비는 ContractRow 헤더가 이미 표시. 중복 박스 제거 2026-07-14; 헤더가 `<button>`이라 버튼 중첩 불가 → 펼침 본문 최상단 우측 배치). 클릭 시 이 카드만 편집모드(input+[저장]/[취소]+배지). 변경 없으면 시트 쓰기 0. 저장 시 연결 미팅 id(AK)로 대상 특정해 02↔04↔06 양방향 연동(업체명→02 D+04 G+06 / 계약일→02 C만, 미팅날짜·통계 불변 / 수임비→02 E+04 L). `useEditContractLinkedFields`, DirtyGuard(편집중 변경 시), 일부 시트 실패 시 시트명 안내+save throw. contract-edit-linked-fields. |
-| **DriveLinkBar** | Drive 바로가기 + 플러그 바로가기 버튼. 미연결 시 재연결 폼. ADR-0007. |
+| **DriveLinkBar** | Drive 바로가기 버튼. 미연결 시 재연결 폼. |
 | **TodoSection** | 진행 슬롯 내 ToDo 목록 + 추가 버튼 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). Props: `contractRef/institutionRef/companyName/todos`. 완료 토글·삭제. |
 | **TodoFormModal** | 실무 ToDo 생성 팝업 (Pluuug 모티브, 담당자 없음). type 4종·제목·예정일자·예정시각(시08~20/분00·30)·상세·캘린더표시 ON. Props: `contractRef/institutionRef/companyName/onClose`. |
 

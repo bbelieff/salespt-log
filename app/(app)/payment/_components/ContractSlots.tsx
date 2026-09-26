@@ -52,6 +52,7 @@ export default function ContractSlots({
       </div>
       <div className="space-y-2">
         <PaymentSlotForm
+          slotId={`payment-slot-${cp.row}-1`}
           index={1}
           slot={draft.수납1}
           contractRef={contractRef}
@@ -65,6 +66,7 @@ export default function ContractSlots({
         />
         {visiblePayments >= 2 && (
           <PaymentSlotForm
+            slotId={`payment-slot-${cp.row}-2`}
             index={2}
             slot={draft.수납2}
             removable={visiblePayments === 2}
@@ -81,6 +83,7 @@ export default function ContractSlots({
         )}
         {visiblePayments >= 3 && (
           <PaymentSlotForm
+            slotId={`payment-slot-${cp.row}-3`}
             index={3}
             slot={draft.수납3}
             removable
@@ -109,4 +112,3 @@ export default function ContractSlots({
     </div>
   );
 }
-

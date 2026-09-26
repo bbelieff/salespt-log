@@ -6,10 +6,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createTodo, listTodos, TodoOperationConflict } from "@/service";
+import { createTodo, listAllTodos, listTodos, TodoOperationConflict } from "@/service";
 import { getCurrentUserEmail } from "@/auth/stub";
 import { getWritableUserEmail } from "@/auth/identity";
-import { TodoType } from "@/types";
+import { TodoRecordKind, TodoType } from "@/types";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const CreateBody = z.object({
@@ -29,6 +29,7 @@ const CreateBody = z.object({
   장소: z.string().default(""),
   상세: z.string().default(""),
   showOnCalendar: z.boolean().default(true),
+  기록종류: TodoRecordKind.default("todo"),
   // 초안당 클라이언트 발행 안정 키(UUID) — 있으면 Todo id 로 사용해
   // 커밋 후 응답 유실 재시도·동시 같은 키를 정확히 1행으로 수렴시킨다.
   // 없으면 기존 동작(서버 발행 id) — 하위 호환.
@@ -40,10 +41,12 @@ const CreateBody = z.object({
 async function GET_handler(req: NextRequest) {
   try {
     const contractRef = req.nextUrl.searchParams.get("contractRef");
+    const all = req.nextUrl.searchParams.get("all") === "1";
+    const email = await getCurrentUserEmail();
+    if (all) return NextResponse.json({ todos: await listAllTodos(email) });
     if (!contractRef) {
       return NextResponse.json({ error: "contractRef 필수" }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
     const todos = await listTodos(email, contractRef);
     return NextResponse.json({ todos });
   } catch (e) {

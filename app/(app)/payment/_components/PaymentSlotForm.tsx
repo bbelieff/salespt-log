@@ -70,6 +70,7 @@ function getSegClass(slotIdx: 1 | 2 | 3, pct: number): string {
 }
 
 interface Props {
+  slotId?: string;
   index: 1 | 2 | 3;
   slot: PaymentSlot;
   removable?: boolean; // 슬롯 2/3만 제거 가능
@@ -93,6 +94,7 @@ interface Props {
 const fmtComma = formatMoneyInput;
 
 export default function PaymentSlotForm({
+  slotId,
   index,
   slot,
   removable,
@@ -125,7 +127,7 @@ export default function PaymentSlotForm({
     pct === 0 ? "text-gray-400" : pct >= 100 ? "text-green-600" : "text-blue-600";
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div id={slotId} className="scroll-mt-28 rounded-lg border border-amber-200 bg-white/90 p-3 shadow-sm">
       {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 완료 슬롯은 기본 접힘. */}
       <div
         className={`flex cursor-pointer items-center justify-between gap-2 ${
@@ -141,8 +143,8 @@ export default function PaymentSlotForm({
           >
             {index}
           </div>
-          <span className="shrink-0 text-sm font-semibold text-gray-800">
-            {style.name}
+          <span className="min-w-0 truncate text-sm font-semibold text-gray-800">
+            {style.name}{slot.진행상품 ? ` : ${slot.진행상품}` : ""}
           </span>
           {/* 접힘 요약: 진행기관 · 진행률 · 수납/승인 */}
           {!open && (
@@ -169,7 +171,7 @@ export default function PaymentSlotForm({
               className="max-w-[140px] truncate text-xs font-semibold text-gray-600"
               title={slot.진행기관}
             >
-              🏛 {slot.진행기관}
+              {slot.진행기관}
             </span>
           )}
           {removable && onRemove && (
@@ -261,14 +263,11 @@ export default function PaymentSlotForm({
       {/* 입력 필드 — 2026-05-17 재구성:
           진행기관 → 메모 → (진행률 + 진행내용) → (승인금액 + 수납일 + 수납액) */}
       <div className="space-y-1.5">
-        <FieldCombo
-          label="진행기관"
-          value={slot.진행기관}
-          placeholder="예: 미소재단 (입력하면 다음부터 목록에 떠요)"
-          options={institutionOptions ?? []}
-          onChange={(v) => set("진행기관", v)}
-        />
-        <FieldText
+        <div className="grid grid-cols-[minmax(0,3.5fr)_minmax(0,6.5fr)] gap-2">
+          <FieldCombo label="진행기관" value={slot.진행기관} placeholder="예: 소진공" options={institutionOptions ?? []} onChange={(v) => set("진행기관", v)}/>
+          <FieldText label="진행상품" value={slot.진행상품} placeholder="예: 혁신성장촉진자금 일반형" onChange={(v) => set("진행상품", v)}/>
+        </div>
+        <FieldTextarea
           label="메모"
           value={slot.메모}
           placeholder="이 기관 진행 메모"
@@ -365,6 +364,10 @@ function FieldText({
       />
     </div>
   );
+}
+
+function FieldTextarea({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) {
+  return <div><label className={FIELD_LABEL_CLASS}>{label}</label><textarea rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
 }
 
 /** [3] 자유입력 + 과거값 자동완성(구글시트 드롭다운형). native datalist 사용. */

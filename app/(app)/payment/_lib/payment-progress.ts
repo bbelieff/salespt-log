@@ -37,6 +37,7 @@ export function linkedNext(
 /** 빈 슬롯 — 수납 회차 제거 시 덮어쓸 값(시트 M~AD 대응 6필드 + 메모). */
 export const EMPTY_SLOT: Slot = {
   진행기관: "",
+  진행상품: "",
   진행률: "",
   현황: "",
   승인금액: 0,
@@ -55,6 +56,7 @@ export function progressPct(p: string): number {
 export function hasSlotData(slot: Slot): boolean {
   return Boolean(
     slot.진행기관 ||
+      slot.진행상품 ||
       slot.현황 ||
       slot.수납일 ||
       slot.승인금액 > 0 ||

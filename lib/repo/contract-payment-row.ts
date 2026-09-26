@@ -102,6 +102,8 @@ export function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null
   // 슬롯 메모 (2026-05-17): AF=31 / AG=32 / AH=33.
   const slot = (start: number, memoCol: number): PaymentSlot => ({
     진행기관: toStr(r[start]),
+    // 진행상품은 고정 시트 열을 늘리지 않고 DB JSONB 확장 필드로만 보존한다.
+    진행상품: "",
     진행률: toProgress(r[start + 1]),
     현황: toStr(r[start + 2]),
     승인금액: toNum(r[start + 3]),

@@ -90,6 +90,17 @@ describe("R2-4 contracts: DB payload ↔ 시트 파서(rowToCP) 정합", () => {
     expect(cp.수납1.수납액).toBe(400); // 나머지는 backfill 값 유지
   });
 
+  it("JSONB 확장 필드 계약비고·진행상품을 손실 없이 읽는다", () => {
+    const p = {
+      ...backfillPayload(raw),
+      계약비고: "성과보수 별도",
+      수납1: { ...expected.수납1, 진행상품: "혁신성장촉진자금 일반형" },
+    };
+    const cp = contractFromDbPayload(p, 10)!;
+    expect(cp.계약비고).toBe("성과보수 별도");
+    expect(cp.수납1.진행상품).toBe("혁신성장촉진자금 일반형");
+  });
+
   it("⑤ 빈/무의미 payload 는 null (phantom row 방지 — 시트와 동일 기준)", () => {
     expect(contractFromDbPayload({ _backfill: true }, 3)).toBeNull();
   });

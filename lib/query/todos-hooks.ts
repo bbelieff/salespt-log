@@ -12,7 +12,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import type { Todo, TodoType } from "@/types";
+import type { Todo, TodoRecordKind, TodoType } from "@/types";
 import { track, EVENTS } from "@/analytics";
 
 export const todosKey = (contractRef: string) =>
@@ -52,6 +52,15 @@ export function useTodosByContract(
   });
 }
 
+/** 실무/수납 상단 업무현황용 전체 기록. */
+export function useAllTodos(): UseQueryResult<ListResponse> {
+  return useQuery({
+    queryKey: ["todos", "all"],
+    queryFn: () => fetchJSON<ListResponse>("/api/todos?all=1"),
+    gcTime: 10 * 60_000,
+  });
+}
+
 export interface CreateTodoArgs {
   contractRef: string;
   institutionRef: string;
@@ -63,6 +72,7 @@ export interface CreateTodoArgs {
   장소: string;
   상세: string;
   showOnCalendar: boolean;
+  기록종류?: TodoRecordKind;
   /** 초안당 안정 멱등 키(UUID) — 있으면 서버가 Todo id 로 사용한다.
    * 같은 키 재시도는 원본 반환, 다른 내용이면 409. 없으면 서버 발행 id(하위 호환). */
   operationId?: string;
@@ -101,6 +111,7 @@ export function useCreateTodo() {
       track(EVENTS.TODO_CREATED, { todo_type: type });
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] }); // 캘린더 갱신
+      qc.invalidateQueries({ queryKey: ["todos", "all"] });
     },
   });
 }
@@ -139,6 +150,7 @@ export function usePatchTodo() {
     onSettled: (_d, _e, { contractRef }) => {
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
+      qc.invalidateQueries({ queryKey: ["todos", "all"] });
     },
   });
 }
@@ -158,6 +170,7 @@ export function useRemoveTodo() {
       track(EVENTS.TODO_REMOVED);
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
+      qc.invalidateQueries({ queryKey: ["todos", "all"] });
     },
   });
 }

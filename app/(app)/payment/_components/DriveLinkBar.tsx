@@ -1,8 +1,7 @@
 /**
- * DriveLinkBar — 요약카드 아래 Drive + 플러그 바로가기 (Scope 1).
+ * DriveLinkBar — 요약카드 아래 Drive 바로가기.
  *
  * [Drive 바로가기]: 01 피드백업체 폴더 새 탭. 미연결 시 [다시 연결].
- * [플러그 바로가기]: pluuug.com 새 탭 (임시 — Scope 3에서 제거).
  */
 "use client";
 
@@ -120,19 +119,6 @@ export default function DriveLinkBar() {
             {driveLinkStatus === "error" ? "다시 연결" : "Drive 연결"}
           </button>
         )}
-        <a
-          href="https://www.pluuug.com/"
-          target="_blank"
-          rel="noopener"
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
-          플러그 바로가기
-        </a>
       </div>
 
       {showRelink && (

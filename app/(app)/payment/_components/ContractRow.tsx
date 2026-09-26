@@ -161,7 +161,7 @@ export default function ContractRow({
 
   const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
   const todosQuery = useTodosByContract(contractRef);
-  const allTodos = todosQuery.data?.todos ?? [];
+  const allTodos = useMemo(() => todosQuery.data?.todos ?? [], [todosQuery.data?.todos]);
 
   const hasFocusTodo =
     !!focusTodoId && allTodos.some((t) => t.id === focusTodoId);
@@ -245,7 +245,7 @@ export default function ContractRow({
             }`
       }
     >
-      <button
+      {!bare && <button
         type="button"
         onClick={
           selectable
@@ -331,7 +331,7 @@ export default function ContractRow({
             />
           </svg>
         )}
-      </button>
+      </button>}
 
       {showBody && (
         <div
@@ -364,85 +364,34 @@ export default function ContractRow({
             </div>
           )}
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
-          <LinkedFieldsEditor cp={cp} />
-          <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} />
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-800">
-                📋 계약 후 프로세스
-              </span>
-              <span className="text-xs text-gray-500">
-                <span
-                  className={`font-semibold ${
-                    docsDone === TOTAL_CHECKBOXES
-                      ? "text-green-600"
-                      : docsDone === 0
-                        ? "text-gray-400"
-                        : "text-blue-600"
-                  }`}
-                >
-                  {docsDone}
-                </span>{" "}
-                / {TOTAL_CHECKBOXES}
-              </span>
+          <div className="grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]">
+            <div className="min-w-0">
+              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} />
             </div>
-            <CheckboxList
-              draft={draft}
-              onChange={(key, next) =>
-                editDraft((d) => ({ ...d, [key]: next }))
-              }
-            />
+            <div className="min-w-0 space-y-2">
+              <details className="group rounded-lg border border-slate-200 bg-white">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-slate-800">
+                  <span>계약정보</span><span className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span>
+                </summary>
+                <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} value={draft.계약비고} onChange={(e) => editDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
+              </details>
+              <details className="group rounded-lg border border-slate-200 bg-white">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-bold text-slate-800"><span>서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
+                <div className="border-t border-slate-100 p-3"><CheckboxList draft={draft} onChange={(key, next) => editDraft((d) => ({ ...d, [key]: next }))}/></div>
+              </details>
+              <details open className="rounded-lg border border-amber-200 bg-amber-50/80">
+                <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-amber-900">로드맵 메모</summary>
+                <div className="px-3 pb-3"><textarea rows={1} value={draft.로드맵메모} onChange={(e) => editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
+              </details>
+              <section className="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+                <ContractSlots draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
+                  const prev = draft[`수납${index}`];
+                  const moneyDateOnly = next.진행기관 === prev.진행기관 && next.진행상품 === prev.진행상품 && next.메모 === prev.메모 && next.현황 === prev.현황 && next.진행률 === prev.진행률 && (next.승인금액 !== prev.승인금액 || next.수납액 !== prev.수납액 || next.수납일 !== prev.수납일);
+                  (moneyDateOnly ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
+                }} onEnsureSaved={commitGroup}/>
+              </section>
+            </div>
           </div>
-
-          <div className="rounded-lg border border-gray-200 bg-amber-50 p-3">
-            <label className="mb-1 block text-xs font-semibold text-amber-800">
-              📍 로드맵 메모{" "}
-              <span className="font-normal text-amber-600/70">
-                · 전체 수납기관 진행 로드맵
-              </span>
-            </label>
-            <textarea
-              rows={2}
-              value={draft.로드맵메모}
-              onChange={(e) =>
-                editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))
-              }
-              placeholder="예: [1] 미소재단 후 [2] 대환으로 신용점수 올리고 [3] 신용보증재단 진행"
-              className="w-full resize-none rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"
-            />
-          </div>
-
-          <ContractSlots
-            draft={draft}
-            cp={cp}
-            contractRef={contractRef}
-            slotInstitutionOptions={slotInstitutionOptions}
-            todos={allTodos}
-            focusTodoId={focusTodoId}
-            visiblePayments={visiblePayments}
-            totalApproved={totalApproved}
-            totalReceived={totalReceived}
-            onAddSlot={handleAddSlot}
-            onRemoveSlot={handleRemoveSlot}
-            onSlotChange={(index, next) => {
-              // 금액/날짜만 바뀌면 stage(그룹 blur 커밋), 그 외는 디바운스 저장.
-              const prev = draft[`수납${index}`];
-              const moneyDateOnly =
-                next.진행기관 === prev.진행기관 &&
-                next.메모 === prev.메모 &&
-                next.현황 === prev.현황 &&
-                next.진행률 === prev.진행률 &&
-                (next.승인금액 !== prev.승인금액 ||
-                  next.수납액 !== prev.수납액 ||
-                  next.수납일 !== prev.수납일);
-              (moneyDateOnly ? stageDraft : editDraft)((d) => ({
-                ...d,
-                [`수납${index}`]: next,
-              }));
-            }}
-            onEnsureSaved={commitGroup}
-          />
 
           <div className="flex gap-2 pt-1">
             {!isTerminated && (

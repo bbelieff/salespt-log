@@ -1,6 +1,6 @@
 /**
  * Layer: repo — 05 실무투두 탭 I/O.
- * 1행 = 1투두. 13컬럼 A~M. (계약 × 기관) 단위 ToDo.
+ * 1행 = 1투두. 앱 본문 A~N, O는 gcal_event_ids, P는 Todo/History 구분.
  *
  * 04 미팅·02 수납과 완전 격리 (미팅 집계 수식 영향 0, ADR-0006).
  * 수식 컬럼 없음 → meetings 의 split-write 불필요, 전체 행 A:M 한 번에 write.
@@ -14,7 +14,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { Todo, type TodoType } from "@/types";
-import { sheetsClient } from "./sheets-client";
+import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 
 function tabRef(tab: string): string {
@@ -66,8 +66,9 @@ function toISO(d: Date): string {
 }
 
 const TAB = SHEET_RANGES.todos.tab;
-const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.todos.range}`; // A2:N
-const HEADER_RANGE = `${tabRef(TAB)}!${SHEET_RANGES.todos.headerRow}`; // A1:M1
+const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.todos.range}`; // A2:P
+const HEADER_RANGE = `${tabRef(TAB)}!${SHEET_RANGES.todos.headerRow}`; // A1:N1
+const KIND_HEADER_RANGE = `${tabRef(TAB)}!P1`;
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`;
 
 // 컬럼 인덱스 (0-based, A=0)
@@ -86,6 +87,7 @@ const COL = {
   완료여부: 11,
   생성시각: 12,
   분류: 13, // N — 일반이벤트 카테고리(기존/기타), consultation-log §1-3
+  기록종류: 15, // P — O(gcal_event_ids)를 보존, 기존 빈칸은 todo
 } as const;
 
 const HEADER: string[] = [
@@ -111,7 +113,7 @@ function text(v: string): string {
   return v ? `'${v}` : "";
 }
 
-/** Todo → 시트 1행 배열 (A~N, 14칸). */
+/** Todo → 시트 앱 본문 배열 (A~N, 14칸). O는 캘린더 ID라 절대 포함하지 않는다. */
 function todoToRow(t: Todo): (string | number | boolean)[] {
   const row: (string | number | boolean)[] = new Array(14).fill("");
   row[COL.id] = t.id;
@@ -154,6 +156,7 @@ export function rowToTodo(r: unknown[]): Todo | null {
     완료여부: r[COL.완료여부] === true || r[COL.완료여부] === "TRUE",
     생성시각: String(r[COL.생성시각] ?? ""),
     분류: String(r[COL.분류] ?? "").trim(),
+    기록종류: String(r[COL.기록종류] ?? "todo").trim() || "todo",
   });
   return parsed.success ? parsed.data : null;
 }
@@ -216,6 +219,16 @@ async function doEnsureTodoTab(spreadsheetId: string): Promise<void> {
       requestBody: { values: [HEADER] },
     });
   }
+  await ensureGridColumns(spreadsheetId, TAB, 16);
+  const kindHeader = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range: KIND_HEADER_RANGE });
+  if (!kindHeader.data.values?.[0]?.[0]) {
+    await sheetsClient().spreadsheets.values.update({
+      spreadsheetId,
+      range: KIND_HEADER_RANGE,
+      valueInputOption: "RAW",
+      requestBody: { values: [["기록종류"]] },
+    });
+  }
 }
 
 // ── 행 위치 헬퍼 ───────────────────────────────────────────────
@@ -247,17 +260,22 @@ export async function findRowById(
   return idx < 0 ? null : idx + 2;
 }
 
-/** A~M 전체 행 write (수식 컬럼 없으므로 split 불필요). */
+/** A~N + P 분리 write. O(gcal_event_ids)는 캘린더 연동 정본/미러라 비접촉. */
 async function writeTodoRow(
   spreadsheetId: string,
   sheetRow: number,
   row: (string | number | boolean)[],
+  recordKind: Todo["기록종류"],
 ): Promise<void> {
-  await sheetsClient().spreadsheets.values.update({
+  await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] },
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data: [
+        { range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`, values: [row] },
+        { range: `${tabRef(TAB)}!P${sheetRow}`, values: [[recordKind]] },
+      ],
+    },
   });
 }
 
@@ -272,7 +290,7 @@ export async function findById(
   if (sheetRow === null) return null;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`,
+    range: `${tabRef(TAB)}!A${sheetRow}:P${sheetRow}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
@@ -289,7 +307,7 @@ export async function appendTodo(
   await ensureTodoTab(spreadsheetId);
   const validated = Todo.parse(todo);
   const targetRow = await findFirstEmptyRow(spreadsheetId);
-  await writeTodoRow(spreadsheetId, targetRow, todoToRow(validated));
+  await writeTodoRow(spreadsheetId, targetRow, todoToRow(validated), validated.기록종류);
   // dual-write 미러 (P1) — fire-and-forget. R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기).
   if (opts.mirror !== false) mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: validated.id, payload: validated });
   return validated;
@@ -312,7 +330,7 @@ export async function updateTodo(
     throw new Error(`[todos.ts] id로 행은 찾았으나 파싱 실패: ${id}`);
   }
   const merged: Todo = Todo.parse({ ...current, ...partial });
-  await writeTodoRow(spreadsheetId, sheetRow, todoToRow(merged));
+  await writeTodoRow(spreadsheetId, sheetRow, todoToRow(merged), merged.기록종류);
   // R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기 저장).
   if (opts.mirror !== false) mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: id, payload: merged }); // P1
 }
@@ -325,11 +343,15 @@ export async function clearTodo(
 ): Promise<void> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return;
-  await sheetsClient().spreadsheets.values.update({
+  await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [Array(13).fill("")] },
+    requestBody: {
+      valueInputOption: "USER_ENTERED",
+      data: [
+        { range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`, values: [Array(14).fill("")] },
+        { range: `${tabRef(TAB)}!P${sheetRow}`, values: [[""]] },
+      ],
+    },
   });
   // R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기 clear).
   if (opts.mirror !== false) mirrorClearRow({ spreadsheetId, tab: "todos", rowKey: id }); // P1
@@ -356,6 +378,26 @@ export async function listTodosByContract(
     if (seen.has(t.id)) continue;
     seen.add(t.id);
     out.push(t);
+  }
+  return out;
+}
+
+/** 현재 사용자 시트의 전체 실무 기록. 상단 업무현황 파생 집계용. */
+export async function listAllTodos(spreadsheetId: string): Promise<Todo[]> {
+  await ensureTodoTab(spreadsheetId);
+  const res = await sheetsClient().spreadsheets.values.get({
+    spreadsheetId,
+    range: RANGE_ALL,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "SERIAL_NUMBER",
+  });
+  const out: Todo[] = [];
+  const seen = new Set<string>();
+  for (const r of (res.data.values ?? []) as unknown[][]) {
+    const todo = rowToTodo(r);
+    if (!todo || seen.has(todo.id)) continue;
+    seen.add(todo.id);
+    out.push(todo);
   }
   return out;
 }

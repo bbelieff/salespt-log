@@ -593,8 +593,8 @@ interface DashboardView {
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `Progress` | z.enum | 진행률 6단계: `""` / `0%` / `20%` / `40%` / `60%` / `80%` / `100%` |
-| `PaymentSlot` | z.object | 분할 수납 1슬롯 (7필드: 진행기관/진행률/현황/승인금액/수납액/수납일 + **메모** 2026-05-17). UI 라벨: 현황 → "진행내용" |
-| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 + 로드맵메모 = A~AH + AI~AJ 이월깃발(`구분`·`이월원본행id`, arena-carryover §3) + **AK `linkedMeetingId`**(연결 미팅 id, 02↔04 매칭 키 — 개명 안전, contract-edit-linked-fields) + **AL~AO 계약해지**(`해지일`·`해지사유`·`반환액`·`해지숨김`, contract-termination 2026-07-12 — 해지일 존재=해지, 매출=수임비+수납−반환액, 숨김=soft delete). 2026-05-17 재구성: AE 로드맵, AF/AG/AH 슬롯메모) |
+| `PaymentSlot` | z.object | 분할 수납 1슬롯. 기존 필드에 `진행상품`을 추가한다. 기존 시트의 고정 열은 그대로 두고 Postgres `sheet_rows.payload` JSONB에 필드명으로 저장한다. |
+| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. |
 | `isTerminatedContract` | function | 해지 판정 단일 결정점 — `해지일` 존재 = 해지. 클라·서버 공용 (contract-termination) |
 | `TERMINATED_IN_CONTRACT_COUNT` | const | 해지 계약의 건수 포함 여부 (기본 `false` = 제외 + "해지 N건" 별도 표시. belie 미확정 — 정책 변경 시 이 상수만) |
 
@@ -602,7 +602,8 @@ interface DashboardView {
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `TodoType` | z.enum | 실무투두 종류 4: `기타` / `미팅` / `전화` / `메시지` (캘린더 type 아이콘) |
-| `Todo` | z.object | (계약×기관) 실무 ToDo 1행 (05 실무투두, A~N 14컬럼 — N=분류, type 에 `일반` 추가: 캘린더 일반이벤트·비집계). 키: `contractRef`(계약일+업체명) · `institutionRef`(슬롯 진행기관). 캘린더는 04 미팅 + 05 투두 합쳐 표시(읽기전용). 상세 스키마 design §6.3 |
+| `TodoRecordKind` | z.enum | 기록 의미: `todo`(할 일) / `history`(한 일). 기존 행 기본값은 `todo`. |
+| `Todo` | z.object | (계약×기관) 실무 기록. `기록종류=todo|history`를 추가한다. 시트 A~N은 기존 본문, O는 gcal 이벤트 ID로 보존하고 P에 기록종류를 저장한다. 기존 P 빈값은 `todo`로 읽는다. 캘린더는 04 미팅 + 05 기록을 합쳐 표시한다. |
 
 ### 새소식 (레지스트리 updates·notices 탭 · announcement-popup §1)
 | 식별자 | 종류 | 의미 |
