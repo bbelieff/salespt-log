@@ -86,7 +86,7 @@ export default function CompanyInfoEditor({
   onChange,
   hideSave,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(hideSave === true);
   const [modal, setModal] = useState(false);
   const [newLabel, setNewLabel] = useState<Record<Grp, string>>({
     업체: "",

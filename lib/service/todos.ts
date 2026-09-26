@@ -28,6 +28,7 @@ import {
   findById as findTodoInSheet,
   findRowById,
   listTodosByContract,
+  listAllTodos as listAllTodosFromSheet,
   updateTodo as updateTodoRow,
 } from "@/repo/todos";
 import { chooseDailySource, chooseWriteSource } from "./daily-source";
@@ -51,7 +52,7 @@ import {
   reconcileTodoEvent,
   syncTodoRemoved,
 } from "@/service/gcal-sync";
-import { Todo } from "@/types";
+import { Todo, type TodoRecordKind } from "@/types";
 
 interface SheetCtx {
   spreadsheetId: string;
@@ -166,8 +167,20 @@ export async function listTodos(
   return listTodosByContract(ctx.spreadsheetId, contractRef);
 }
 
+/** 상단 업무현황용 전체 기록. 현재 사용자 소유 시트/DB 범위만 반환한다. */
+export async function listAllTodos(email: string): Promise<Todo[]> {
+  const ctx = await resolveSheet(email);
+  const todos = chooseDailySource(ctx.cohort, dbEnabled()) === "db"
+    ? await readTodosFromDb(ctx.spreadsheetId)
+    : await listAllTodosFromSheet(ctx.spreadsheetId);
+  return todos.sort((a, b) => a.생성시각.localeCompare(b.생성시각) || a.id.localeCompare(b.id));
+}
+
 /** 생성 입력 — id/생성시각/완료여부는 서버 기본값. */
-export type CreateTodoInput = Omit<Todo, "id" | "생성시각" | "완료여부">;
+export type CreateTodoInput = Omit<
+  Todo,
+  "id" | "생성시각" | "완료여부" | "기록종류"
+> & { 기록종류?: TodoRecordKind };
 
 /** 생성 옵션 — operationId: 클라이언트가 초안당 1회 발행한 안정 키(UUID).
  * 있으면 Todo id 로 그대로 사용해 같은 scope+같은 operation 은 정확히 1행으로 수렴한다.
@@ -205,6 +218,7 @@ export function sameTodoBusiness(a: CreateTodoInput, b: Todo): boolean {
     (a.장소 ?? "") === (b.장소 ?? "") &&
     (a.상세 ?? "") === (b.상세 ?? "") &&
     (a.showOnCalendar ?? true) === (b.showOnCalendar ?? true)
+    && (a.기록종류 ?? "todo") === (b.기록종류 ?? "todo")
   );
 }
 

@@ -4,7 +4,7 @@
  *
  * 시트: 02 계약수납관리 (A~AA)
  *   - C/D/E 자동 연동 (계약일/업체명/수임비) — 일정·계약 탭 계약 액션 시 자동 생성
- *   - F~L 7 체크박스 (서류 6 + 플러그이관 1)
+ *   - F~K 6개 서류/진행 체크. L 플러그이관은 과거 호환용으로만 보존
  *   - M~Q / R~V / W~AA: 3 분할 수납
  *
  * URL: /payment 유지 (Architecture C — Plan 결정)
@@ -13,10 +13,10 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
-import { isCarryoverContract, isTerminatedContract, TERMINATED_IN_CONTRACT_COUNT, type ContractPayment } from "@/types";
+import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
 import {
   usePatchContractPayment,
   useRemoveContractPayment,
@@ -26,6 +26,7 @@ import {
 import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
 import ContractListTable from "./_components/ContractListTable";
+import PaymentPerformanceSummary from "./_components/PaymentPerformanceSummary";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
 import TerminationArchive from "./_components/TerminationArchive";
@@ -36,16 +37,13 @@ import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
-import { formatMoney } from "@/lib/format/money";
-
-/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
-const fmtMoney = formatMoney;
+import { useAllTodos } from "@/query/todos-hooks";
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
 function usePcBreakpoint(): boolean {
   const [isPc, setIsPc] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
+    const mq = window.matchMedia("(min-width: 1280px)");
     const sync = () => setIsPc(mq.matches);
     sync();
     mq.addEventListener("change", sync);
@@ -91,6 +89,23 @@ export default function PaymentPage() {
   const isPc = usePcBreakpoint();
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const guardedNav = useGuardedNav();
+  const allTodos = useAllTodos();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [masterWidth, setMasterWidth] = useState(360);
+  const beginResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const root = workspaceRef.current;
+    if (!root) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const startX = event.clientX;
+    const startWidth = masterWidth;
+    const move = (e: PointerEvent) => {
+      const max = Math.max(360, root.clientWidth * 0.48);
+      setMasterWidth(Math.min(max, Math.max(300, startWidth + e.clientX - startX)));
+    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
   // Next 15 useSearchParams Suspense 회피 → mount 시 window.location 직접 파싱.
@@ -176,33 +191,6 @@ export default function PaymentPage() {
   // 해지+숨김(soft delete)은 목록·합계에서 제외(반환액 차감은 유지) — 열람은 해지 보관함.
   const rows = allRows.filter((cp) => !cp.해지숨김);
   const archivedRows = allRows.filter((cp) => cp.해지숨김);
-  const terminatedCount = allRows.filter(isTerminatedContract).length;
-  const contractCount = TERMINATED_IN_CONTRACT_COUNT ? rows.length : rows.filter((cp) => !isTerminatedContract(cp)).length;
-  // 단위는 모두 원. 단어 약속:
-  //   수임비합     = sum(cp.수임비)            — 04 업체관리!L에서 동기화된 계약 금액
-  //   수납액합     = sum(슬롯별 수납액 = Q+W+AC) — "수수료" (= 실제 입금된 부가 수수료) 합
-  //   승인금액합   = sum(슬롯별 승인금액)        — 진행 중인 수납 약정 총액 (목표)
-  //   총매출       = 수임비합 + 수납액합        — v2 SSOT (수수료=수납액합)
-  //   수납진척     = 수납액합 / 승인금액합
-  // 이월(시작일 이전 또는 깃발) 계약은 아레나 비집계 — 합계(매출·수수료·승인)에서 제외.
-  // 경계는 isCarryoverContract(동적, 하드코딩X). 카드 목록은 회색 표시(carryover-profit §1).
-  const billable = rows.filter((cp) => !isCarryoverContract(cp, courseStartISO));
-  const totalReceived = billable.reduce(
-    (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
-    0,
-  );
-  const totalApproved = billable.reduce(
-    (s, cp) =>
-      s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
-    0,
-  );
-  const totalContract = billable.reduce((s, cp) => s + (cp.수임비 || 0), 0);
-  // 반환액(계약해지)은 숨김(soft delete) 계약 포함 전체에서 차감 — 대시보드 computeContractRevenue 와 동일 정의.
-  const totalRefunded = allRows.filter((cp) => !isCarryoverContract(cp, courseStartISO)).reduce((s, cp) => s + (cp.반환액 || 0), 0);
-  const totalRevenue = totalContract + totalReceived - totalRefunded;
-  const overallPct =
-    totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
-
   // [3] 진행기관 콤보박스 후보 — 그동안 입력한 모든 슬롯 진행기관 distinct (시트 드롭다운처럼).
   const institutionOptions = Array.from(
     new Set(
@@ -237,67 +225,16 @@ export default function PaymentPage() {
       {/* 구 min-[1440px]:max-w-none 특례는 fluid 로 대체(동일 효과, 전 구간 균일 거터). */}
       <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6">
       <PageContainer width="fluid">
-        {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}
-        <div className="mb-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div
-            className="grid gap-3 text-center"
-            style={{ gridTemplateColumns: "2.5fr 4.5fr 3fr" }}
-          >
-            <div>
-              <div className="mb-1 text-xs text-gray-500">계약</div>
-              <div
-                className="text-xl font-bold text-gray-900"
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                {contractCount}
-                <span className="text-sm font-medium text-gray-500">건</span>
-              </div>
-              {terminatedCount > 0 && (
-                <div className="mt-0.5 text-[11px] text-red-500">해지 {terminatedCount}건</div>
-              )}
-            </div>
-            <div className="border-x border-gray-100">
-              <div className="mb-1 text-xs text-gray-500">총매출</div>
-              <div
-                className="text-xl font-bold text-gray-900"
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                ₩{fmtMoney(totalRevenue)}
-              </div>
-              <div className="mt-0.5 text-xs text-gray-400">
-                {totalRefunded > 0 ? "수임비 + 수수료 − 반환" : "수임비 + 수수료"}
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 text-xs text-gray-500">수납 진척</div>
-              <div
-                className={`text-xl font-bold ${
-                  overallPct >= 100
-                    ? "text-green-600"
-                    : overallPct === 0
-                      ? "text-gray-400"
-                      : "text-blue-600"
-                }`}
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                {overallPct}%
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
-            <span className="text-gray-500">누적 수납 / 승인</span>
-            <span
-              className="font-medium text-gray-700"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              ₩{fmtMoney(totalReceived)}
-              <span className="mx-1 text-gray-400">/</span>
-              ₩{fmtMoney(totalApproved)}
-            </span>
-          </div>
-        </div>
+        <PaymentPerformanceSummary
+          rows={rows.filter((cp) => !isCarryoverContract(cp, courseStartISO) && !isTerminatedContract(cp))}
+          todos={allTodos.data?.todos ?? []}
+          onNavigate={(row, slot) => {
+            guardedNav(() => setSelectedRow(row));
+            window.setTimeout(() => document.getElementById(`payment-slot-${row}-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+          }}
+        />
 
-        {/* Drive + 플러그 바로가기 */}
+        {/* Drive 바로가기 */}
         <DriveLinkBar />
 
         {/* 이전 계약업체 등록 + 아레나/이월 매출 분리 (arena-start-revenue-split) */}
@@ -335,16 +272,10 @@ export default function PaymentPage() {
             검색 결과가 없어요. <b>✕</b> 를 눌러 전체 목록으로 돌아갈 수 있어요.
           </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 1024~1439는 스택(마스터 위·상세 아래),
-             1440+는 균등 2열(minmax(0,1fr)×2, gap 12px). 520px 테이블이
-             1440+ 각 열에 맞고(사이드바 224·컨테이너 패딩 제외 시 열 ≈540+),
-             좁은 구간은 스택이라 내부 스크롤이 생기지 않는다(래퍼 유지).
-             구 seam(음수 마진·한쪽 보더·상태색 윤곽) 제거 — 양쪽 다 중립
-             full rounded. 상세는 1440+에서만 sticky, 스택 구간은 일반 흐름.
-             마스터는 경량 테이블(행 ~40px, 5열) — 상세 ContractRow 1개만
-             마운트(중복 전체행 제거). */
-          <div className="grid min-w-0 grid-cols-1 items-start gap-3 min-[1440px]:grid-cols-2">
-            <div className="min-w-0 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+          /* 데스크탑(pc): 리사이즈 가능한 목록/상세 2열. 각 열은 독립 스크롤하며
+             목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
+          <div ref={workspaceRef} className="grid min-w-0 items-start" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
+            <div className="min-w-0 max-h-[calc(100vh-230px)] overflow-y-auto rounded-l-2xl border border-blue-200 bg-slate-50/80 shadow-sm">
               <ContractListTable
                 rows={visibleRows}
                 selectedRow={selectedCp?.row ?? null}
@@ -353,8 +284,15 @@ export default function PaymentPage() {
                 courseStartISO={courseStartISO}
               />
             </div>
+            <button type="button" onPointerDown={beginResize} className="group relative h-full min-h-[420px] cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
+              <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-blue-200 transition-colors group-hover:bg-blue-500" />
+            </button>
             {selectedCp && (
-              <div className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm min-[1440px]:sticky min-[1440px]:top-app-content">
+              <div className="relative min-w-0 max-h-[calc(100vh-230px)] overflow-y-auto rounded-r-2xl border border-blue-200 bg-white shadow-sm">
+                <div className="sticky top-0 z-20 flex items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
+                  <h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>
+                  <button type="button" onClick={() => setMasterWidth(360)} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}

@@ -117,6 +117,8 @@ const USER_AREA_KEYS = [
   "수납3",
   // AE 로드맵메모
   "로드맵메모",
+  // DB JSONB 확장: 기존 시트 열을 침범하지 않는 계약 메모
+  "계약비고",
 ] as const;
 
 export function userFieldsMirrorPayload(

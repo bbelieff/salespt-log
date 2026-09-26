@@ -209,7 +209,17 @@ export function contractFromDbPayload(
       if (o.메모 !== undefined) r[pos.memo] = o.메모;
     }
   }
-  return rowToCP(r, rowNumber);
+  const parsed = rowToCP(r, rowNumber);
+  if (!parsed) return null;
+  // 새 필드는 레거시 시트 좌표를 늘리지 않고 JSONB 에 additive 저장한다.
+  // nested slot 은 Zod 기본값을 포함한 기존 파서 결과에 DB 값을 덮어쓴다.
+  return ContractPayment.parse({
+    ...parsed,
+    계약비고: p.계약비고 ?? parsed.계약비고,
+    수납1: { ...parsed.수납1, ...((p.수납1 as Record<string, unknown> | undefined) ?? {}) },
+    수납2: { ...parsed.수납2, ...((p.수납2 as Record<string, unknown> | undefined) ?? {}) },
+    수납3: { ...parsed.수납3, ...((p.수납3 as Record<string, unknown> | undefined) ?? {}) },
+  });
 }
 
 /** 02 헤더존 정크 판정 (contract-delete-ghost, 2026-07-12).
@@ -256,8 +266,8 @@ export async function readContractsFromDb(
 }
 
 // ── R2-6: todos(05 실무투두) read (db-read-calendar) — meetings 와 동일 구조(A열 id) ──
-// payload 2형태: dual-write=Todo 필드명 / backfill=열문자 A..N(rowObj 기본 start 0).
-// 열문자는 A..N → 행배열 복원 후 시트 파서 rowToTodo 재사용(showOnCalendar 기본 ON 규칙 포함).
+// payload 2형태: dual-write=Todo 필드명 / backfill=열문자 A..P(rowObj 기본 start 0).
+// O는 gcal_event_ids, P는 기록종류. 행배열 복원 후 시트 파서를 재사용한다.
 
 /** payload(필드명/열문자 겸용) → Todo. 실패 null. */
 export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
@@ -266,7 +276,7 @@ export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
     if (direct.success) return direct.data;
   }
   const r: unknown[] = [];
-  for (let i = 0; i <= 13; i++) r.push(coerce(p[colName(i)])); // A..N
+  for (let i = 0; i <= 15; i++) r.push(coerce(p[colName(i)])); // A..P
   return rowToTodo(r);
 }
 

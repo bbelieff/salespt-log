@@ -99,6 +99,7 @@ const mkTodo = (o: Partial<Todo> = {}): Todo => ({
   완료여부: false,
   생성시각: "2026-07-10T00:00:00.000Z",
   분류: "",
+  기록종류: "todo",
   ...o,
 });
 

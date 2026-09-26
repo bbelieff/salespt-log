@@ -1,11 +1,11 @@
 /**
- * CheckboxList — 7 체크박스 그리드 (수집 3 + 진행 4).
+ * CheckboxList — 6 체크박스 그리드 (수집 3 + 진행 3).
  * 시트 매핑: 02 계약수납관리!F~L
  *
  * 2026-05-19 사용자 디자인 변경:
  *  - 헤더 "서류 진행" → "실무 진행"
  *  - 수집: 공동인증서 · 임대차계약서 · 신분증
- *  - 진행: 드라이브업로드 · 컨설팅5종서류 · 사업계획서초안 · 플러그이관
+ *  - 진행: 드라이브업로드 · 컨설팅5종서류 · 사업계획서초안
  */
 "use client";
 
@@ -17,8 +17,7 @@ type CheckKey =
   | "신분증"
   | "드라이브업로드"
   | "사업계획서초안발송"
-  | "컨설팅5종서류발송"
-  | "플러그이관";
+  | "컨설팅5종서류발송";
 
 interface Item {
   key: CheckKey;
@@ -36,7 +35,6 @@ const PROGRESS: Item[] = [
   { key: "드라이브업로드", label: "드라이브 업로드", emoji: "☁️" },
   { key: "컨설팅5종서류발송", label: "컨설팅 5종 서류", emoji: "📋" },
   { key: "사업계획서초안발송", label: "사업계획서 초안", emoji: "📊" },
-  { key: "플러그이관", label: "플러그 이관", emoji: "🔌" },
 ];
 
 const ALL_ITEMS: Item[] = [...COLLECT, ...PROGRESS];
@@ -81,8 +79,8 @@ function renderItem(
 
 export default function CheckboxList({ draft, onChange }: Props) {
   return (
-    <div className="space-y-2.5">
-      <div>
+    <div className="grid gap-2.5 min-[1500px]:grid-cols-2">
+      <div className="min-w-0">
         <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
           수집
         </div>
@@ -90,11 +88,11 @@ export default function CheckboxList({ draft, onChange }: Props) {
           {COLLECT.map((it) => renderItem(it, draft, onChange))}
         </div>
       </div>
-      <div>
+      <div className="min-w-0">
         <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
           진행
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {PROGRESS.map((it) => renderItem(it, draft, onChange))}
         </div>
       </div>

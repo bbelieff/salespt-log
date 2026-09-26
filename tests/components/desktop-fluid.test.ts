@@ -245,7 +245,8 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     expect(cal).toContain("pc:grid-cols-7");
     expect(cal).toContain("pc:col-span-5");
     const pay = read("app/(app)/payment/page.tsx");
-    expect(pay).toContain("min-[1440px]:grid-cols-2");
+    expect(pay).toContain("gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)`");
+    expect(pay).toContain("aria-label=\"목록과 상세 너비 조절\"");
     // Mobile payment accordion branch is intact.
     expect(pay).toContain("모바일(<pc): 기존 아코디언");
   });

@@ -290,5 +290,7 @@ describe("⑤ glass CSS stays scoped — desktop shell only, with fallback", () 
     const bar = readFileSync("app/(app)/payment/_components/DriveLinkBar.tsx", "utf8");
     expect(bar).toContain('id="drive-link"');
     expect(bar).toContain("scroll-mt-");
+    expect(bar).not.toContain("pluuug.com");
+    expect(bar).not.toContain("플러그 바로가기");
   });
 });

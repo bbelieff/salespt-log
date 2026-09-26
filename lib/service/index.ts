@@ -89,6 +89,7 @@ export {
 export {
   listTodos,
   createTodo,
+  listAllTodos,
   patchTodo,
   removeTodo,
   sameTodoBusiness,
