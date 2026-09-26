@@ -55,10 +55,13 @@ describe("ContractListTable 1뎁스 카드", () => {
 
 describe("payment PC workspace 배선", () => {
   const src = readFileSync(join(process.cwd(), "app/(app)/payment/page.tsx"), "utf8");
-  it("목록과 상세를 리사이즈 가능한 2열로 두고 각각 독립 스크롤한다", () => {
+  it("목록은 페이지와 함께 스크롤하고 상세 좌우 열은 따로 스크롤한다", () => {
     expect(src).toContain("gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)`");
     expect(src).toContain("aria-label=\"목록과 상세 너비 조절\"");
-    expect((src.match(/max-h-\[calc\(100vh-230px\)\] overflow-y-auto/g) ?? []).length).toBe(2);
+    expect(src).not.toContain("max-h-[calc(100vh-230px)] overflow-y-auto");
+    expect(src).toContain("sticky top-app-content flex h-[calc(100vh-7rem)]");
+    const detail = readFileSync(join(process.cwd(), "app/(app)/payment/_components/ContractRow.tsx"), "utf8");
+    expect((detail.match(/payment-detail-scroll/g) ?? []).length).toBe(2);
   });
   it("선택 업체명 배너와 성과 요약을 사용한다", () => {
     expect(src).toContain("<PaymentPerformanceSummary"); expect(src).toContain("{selectedCp.업체명}");

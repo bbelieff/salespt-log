@@ -27,7 +27,7 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect }: P
       {groups.map((group) => {
         const open = openInstitutions.has(group.institution);
         return (
-          <section key={group.institution || "no-institution"} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <section key={group.institution || "no-institution"} className="rounded-xl border border-slate-200 bg-white">
             <button type="button" aria-expanded={open} onClick={() => setOpenInstitutions((current) => {
               const next = new Set(current);
               if (next.has(group.institution)) next.delete(group.institution);
@@ -46,7 +46,7 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect }: P
                   return (
                     <button key={item.key} type="button" role="option" aria-selected={selected} data-work-key={item.key}
                       onClick={() => onSelect(item)}
-                      className={`w-full rounded-lg border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? "border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-sm" : "border-transparent hover:border-blue-100 hover:bg-slate-50"} ${item.muted ? "opacity-60" : ""}`}>
+                      className={`relative w-full rounded-lg border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? "payment-selected-bridge payment-selected-bridge--institution z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-sm" : "border-transparent hover:border-blue-100 hover:bg-slate-50"} ${item.muted ? "opacity-60" : ""}`}>
                       <span className="flex min-w-0 items-center gap-1.5">
                         <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-900">{item.company}</span>
                         <span className="shrink-0 text-[11px] font-semibold text-blue-700">진행 {item.slot}</span>

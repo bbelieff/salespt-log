@@ -48,7 +48,7 @@ export default function PriorContractSection({
   return (
     <>
       {/* 아레나/이월 매출 2 카드 */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
+      <div className="mb-3 grid grid-cols-2 gap-2 min-[1280px]:hidden">
         <div className="rounded-xl border border-gray-100 bg-white p-3 text-center shadow-sm">
           <div className="mb-1 text-xs text-gray-500">
             아레나 매출 <span className="text-gray-400">(집계)</span>

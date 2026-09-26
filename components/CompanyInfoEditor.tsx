@@ -75,6 +75,8 @@ interface Props {
   onChange?: (ci: CI) => void;
   /** true 면 자체 자동 저장 없음 — 영속화는 부모가 담당(중복 요청 방지). */
   hideSave?: boolean;
+  /** PC 실무/수납의 다른 1레벨 섹션과 같은 헤더 규격. */
+  desktopHeading?: boolean;
 }
 
 export default function CompanyInfoEditor({
@@ -85,6 +87,7 @@ export default function CompanyInfoEditor({
   identityKey,
   onChange,
   hideSave,
+  desktopHeading,
 }: Props) {
   const [open, setOpen] = useState(hideSave === true);
   const [modal, setModal] = useState(false);
@@ -332,13 +335,13 @@ export default function CompanyInfoEditor({
   const ciSaving = busy || (auto && status === "pending");
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+      <div className={`flex items-center justify-between gap-2 ${desktopHeading ? "px-3 py-2" : "px-2.5 py-1.5"}`}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-1.5 text-xs"
+          className={`flex min-w-0 flex-1 items-center gap-1.5 ${desktopHeading ? "text-sm" : "text-xs"}`}
         >
-          <span className="truncate font-semibold text-gray-700">
+          <span className={`truncate ${desktopHeading ? "font-bold text-slate-800" : "font-semibold text-gray-700"}`}>
             🏢 업체정보{" "}
             <span className="font-normal text-gray-400">{summary}</span>
           </span>

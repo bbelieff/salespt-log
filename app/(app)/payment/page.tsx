@@ -303,11 +303,11 @@ export default function PaymentPage() {
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 리사이즈 가능한 목록/상세 2열. 각 열은 독립 스크롤하며
+          /* 데스크탑(pc): 목록은 페이지와 함께 스크롤하고 상세의 좌우 열만 독립 스크롤.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
           <div ref={workspaceRef} className="grid min-w-0 items-start" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
-            <div className="min-w-0 max-h-[calc(100vh-230px)] overflow-y-auto rounded-l-2xl border border-blue-200 bg-slate-50/80 shadow-sm">
-              <div className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50/95 p-2 backdrop-blur-xl">{listModeTabs}</div>
+            <div className="min-w-0 rounded-l-2xl border border-blue-200 bg-slate-50/80 shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50/95 p-2">{listModeTabs}</div>
               {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
               ) : listMode === "company" ? <ContractListTable
@@ -322,8 +322,8 @@ export default function PaymentPage() {
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-blue-200 transition-colors group-hover:bg-blue-500" />
             </button>
             {selectedCp && (
-              <div className="relative min-w-0 max-h-[calc(100vh-230px)] overflow-y-auto rounded-r-2xl border border-blue-200 bg-white shadow-sm">
-                <div className="sticky top-0 z-20 flex items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
+              <div className="sticky top-app-content flex h-[calc(100vh-7rem)] min-w-0 flex-col overflow-hidden rounded-r-2xl border border-blue-200 bg-white shadow-sm">
+                <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
                   <div className="min-w-0"><h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-blue-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
                   <button type="button" onClick={() => setMasterWidth(360)} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>

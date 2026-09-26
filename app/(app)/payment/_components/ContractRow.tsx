@@ -240,11 +240,16 @@ export default function ContractRow({
       setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
   };
 
+  const actionButtons = <div className="flex gap-2 pt-1">
+    {!isTerminated && <button type="button" onClick={onTerminateRequest} disabled={pending} className="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-50">계약해지</button>}
+    <button type="button" onClick={onDeleteRequest} disabled={pending} className="h-11 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 disabled:opacity-50">🗑 삭제</button>
+  </div>;
+
   return (
     <div
       className={
         bare
-          ? "overflow-hidden bg-white transition-all duration-200"
+          ? "flex min-h-0 flex-1 flex-col bg-white transition-all duration-200"
           : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
@@ -342,7 +347,7 @@ export default function ContractRow({
 
       {showBody && (
         <div
-          className="card-open-anim space-y-3 p-3"
+          className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : "card-open-anim space-y-3 p-3"}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commitGroup();
@@ -371,55 +376,36 @@ export default function ContractRow({
             </div>
           )}
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
-          <div className="grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]">
-            <div className="min-w-0">
-              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} />
+          <div className={bare ? "grid min-h-0 min-w-0 flex-1 gap-3 min-[1280px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"}>
+            <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
+              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading={bare} />
             </div>
-            <div className="min-w-0 space-y-2">
+            <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
               <details className="group rounded-lg border border-slate-200 bg-white">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-slate-800">
-                  <span>계약정보</span><span className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span>
+                  <span>{bare ? "📑 " : ""}계약정보</span><span className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span>
                 </summary>
                 <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} value={draft.계약비고} onChange={(e) => editDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
               </details>
               <details className="group rounded-lg border border-slate-200 bg-white">
-                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-bold text-slate-800"><span>서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
+                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-bold text-slate-800"><span>{bare ? "📋 " : ""}서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
                 <div className="border-t border-slate-100 p-3"><CheckboxList draft={draft} onChange={(key, next) => editDraft((d) => ({ ...d, [key]: next }))}/></div>
               </details>
               <details open className="rounded-lg border border-amber-200 bg-amber-50/80">
-                <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-amber-900">로드맵 메모</summary>
+                <summary className={`cursor-pointer list-none px-3 py-2 text-sm font-bold ${bare ? "text-slate-800" : "text-amber-900"}`}>{bare ? "🗺️ " : ""}로드맵 메모</summary>
                 <div className="px-3 pb-3"><textarea rows={1} value={draft.로드맵메모} onChange={(e) => editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
               </details>
               <section className="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
-                <ContractSlots draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
+                <ContractSlots desktopHeading={bare} draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
                   const prev = draft[`수납${index}`];
                   const moneyDateOnly = next.진행기관 === prev.진행기관 && next.진행상품 === prev.진행상품 && next.메모 === prev.메모 && next.현황 === prev.현황 && next.진행률 === prev.진행률 && (next.승인금액 !== prev.승인금액 || next.수납액 !== prev.수납액 || next.수납일 !== prev.수납일);
                   (moneyDateOnly ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
                 }} onEnsureSaved={commitGroup}/>
               </section>
+              {bare && actionButtons}
             </div>
           </div>
-
-          <div className="flex gap-2 pt-1">
-            {!isTerminated && (
-              <button
-                type="button"
-                onClick={onTerminateRequest}
-                disabled={pending}
-                className="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-50"
-              >
-                계약해지
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onDeleteRequest}
-              disabled={pending}
-              className="h-11 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 disabled:opacity-50"
-            >
-              🗑 삭제
-            </button>
-          </div>
+          {!bare && actionButtons}
         </div>
       )}
     </div>
