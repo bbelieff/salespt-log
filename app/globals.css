@@ -576,11 +576,15 @@ body {
      ~202px under the 13.5px PC root. Solid-white base = no-filter fallback. */
   .desktop-shell .desktop-nav {
     width: 224px;
+    transition: width 180ms ease;
     background: rgb(255 255 255 / 88%);
     border-right: 1px solid rgb(15 23 42 / 9%);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 55%),
       0 8px 24px -12px rgb(15 23 42 / 18%);
+  }
+  .desktop-shell .desktop-nav[data-collapsed="true"] {
+    width: 68px;
   }
   /* Header glass — paint only, text stays fully opaque (crisp legibility). */
   .desktop-shell .desktop-glass-header {
@@ -590,6 +594,11 @@ body {
   /* Weekly-goals content gutter — let the quiet backdrop show between cards. */
   .desktop-shell .weeklygoal-main {
     background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desktop-shell .desktop-nav {
+    transition: none;
   }
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
