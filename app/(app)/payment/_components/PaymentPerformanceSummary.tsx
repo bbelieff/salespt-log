@@ -53,7 +53,7 @@ export default function PaymentPerformanceSummary({ rows, todos, onNavigate }: P
   const periodLabel = period === "all" ? "전체" : period === "month" ? "이번 달" : period === "week" ? "이번 주" : "직접 설정";
 
   return (
-    <section className="relative z-50 mb-3 overflow-visible rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_8px_28px_rgba(15,23,42,.08)] backdrop-blur-xl" aria-label="실무 수납 성과 요약">
+    <section className="relative z-50 mb-3 overflow-visible rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_8px_28px_rgba(15,23,42,.08)] backdrop-blur-xl min-[1280px]:z-[35]" aria-label="실무 수납 성과 요약">
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <strong className="mr-1 text-sm text-slate-900">성과 요약</strong>
         {(["all", "month", "week", "custom"] as Period[]).map((p) => (

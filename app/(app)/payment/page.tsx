@@ -26,6 +26,7 @@ import {
 import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
 import ContractListTable from "./_components/ContractListTable";
+import InstitutionWorkList from "./_components/InstitutionWorkList";
 import PaymentPerformanceSummary from "./_components/PaymentPerformanceSummary";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
@@ -37,6 +38,7 @@ import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
+import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { useAllTodos } from "@/query/todos-hooks";
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
@@ -75,6 +77,9 @@ export default function PaymentPage() {
   const [pendingRow, setPendingRow] = useState<number | null>(null);
   // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
   const [companyQuery, setCompanyQuery] = useState("");
+  const [listMode, setListMode] = useState<"company" | "institution">("company");
+  const [selectedWorkKey, setSelectedWorkKey] = useState<string | null>(null);
+  const [focusRequestId, setFocusRequestId] = useState(0);
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
@@ -208,12 +213,39 @@ export default function PaymentPage() {
     : rows;
   // 정렬(필터 결과에 적용) — 렌더·선택폴백·ordinal 모두 sortedRows 기준 일관(§P8).
   const visibleRows = sortContracts(filteredRows, sortKey);
+  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO);
+  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "");
+  const institutionVisible = institutionGroups.flatMap((group) => group.items);
+  const selectedWork = institutionVisible.find((item) => item.key === selectedWorkKey) ?? institutionVisible[0];
 
   // C: 선택 계약 — selectedRow 없거나 (검색)목록에 없으면 첫 카드로 폴백.
-  const selectedCp =
-    visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
+  const selectedCp = listMode === "institution"
+    ? selectedWork ? rows.find((r) => r.row === selectedWork.row) ?? rows[0] : undefined
+    : visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
   // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
+  const selectWork = (item: InstitutionWorkItem) => guardedNav(() => {
+    setSelectedWorkKey(item.key);
+    setSelectedRow(item.row);
+    setFocusRequestId((id) => id + 1);
+    window.setTimeout(() => document.getElementById(`payment-slot-${item.row}-${item.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  });
+  const listModeTabs = (
+    <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1" role="group" aria-label="계약 목록 기준">
+      {(["company", "institution"] as const).map((mode) => (
+        <button key={mode} type="button" aria-pressed={listMode === mode}
+          onClick={() => guardedNav(() => {
+            if (mode === listMode) return;
+            if (mode === "institution") setSelectedWorkKey(institutionItems.find((item) => item.row === selectedCp?.row)?.key ?? null);
+            else setSelectedRow(selectedWork?.row ?? selectedRow);
+            setCompanyQuery(""); setListMode(mode);
+          })}
+          className={`h-8 flex-1 rounded-md px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${listMode === mode ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+          {mode === "company" ? "업체" : "진행기관"}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <>
@@ -229,7 +261,7 @@ export default function PaymentPage() {
           rows={rows.filter((cp) => !isCarryoverContract(cp, courseStartISO) && !isTerminatedContract(cp))}
           todos={allTodos.data?.todos ?? []}
           onNavigate={(row, slot) => {
-            guardedNav(() => setSelectedRow(row));
+            guardedNav(() => { setListMode("company"); setCompanyQuery(""); setSelectedRow(row); });
             window.setTimeout(() => document.getElementById(`payment-slot-${row}-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
           }}
         />
@@ -251,10 +283,13 @@ export default function PaymentPage() {
             <CompanySearchBar
               value={companyQuery}
               onChange={(v) => guardedNav(() => setCompanyQuery(v))}
-              matchCount={visibleRows.length}
-              total={rows.length}
+              matchCount={listMode === "company" ? visibleRows.length : institutionVisible.length}
+              total={listMode === "company" ? rows.length : institutionItems.length}
+              placeholder={listMode === "company" ? "업체명 검색" : "기관·상품·업체 검색"}
+              unit={listMode === "company" ? "개 업체" : "건 진행"}
+              matchUnit={listMode === "company" ? "개 업체" : "건"}
             />
-            <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} />
+            {listMode === "company" && <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} />}
           </div>
         )}
 
@@ -267,36 +302,35 @@ export default function PaymentPage() {
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
-        ) : visibleRows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
-            검색 결과가 없어요. <b>✕</b> 를 눌러 전체 목록으로 돌아갈 수 있어요.
-          </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 리사이즈 가능한 목록/상세 2열. 각 열은 독립 스크롤하며
+          /* 데스크탑(pc): 목록은 페이지와 함께 스크롤하고 상세의 좌우 열만 독립 스크롤.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
           <div ref={workspaceRef} className="grid min-w-0 items-start" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
-            <div className="min-w-0 max-h-[calc(100vh-230px)] overflow-y-auto rounded-l-2xl border border-blue-200 bg-slate-50/80 shadow-sm">
-              <ContractListTable
+            <div className="min-w-0 rounded-l-2xl border border-blue-200 bg-slate-50/80 shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50/95 p-2">{listModeTabs}</div>
+              {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
+                <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
+              ) : listMode === "company" ? <ContractListTable
                 rows={visibleRows}
                 selectedRow={selectedCp?.row ?? null}
                 onSelect={(row) => guardedNav(() => setSelectedRow(row))}
                 highlight={companyQuery}
                 courseStartISO={courseStartISO}
-              />
+              /> : <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />}
             </div>
             <button type="button" onPointerDown={beginResize} className="group relative h-full min-h-[420px] cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-blue-200 transition-colors group-hover:bg-blue-500" />
             </button>
             {selectedCp && (
-              <div className="relative min-w-0 max-h-[calc(100vh-230px)] overflow-y-auto rounded-r-2xl border border-blue-200 bg-white shadow-sm">
-                <div className="sticky top-0 z-20 flex items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
-                  <h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>
+              <div className="sticky top-app-content flex h-[calc(100vh-7rem)] min-w-0 flex-col overflow-hidden rounded-r-2xl border border-blue-200 bg-white shadow-sm">
+                <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
+                  <div className="min-w-0"><h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-blue-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
                   <button type="button" onClick={() => setMasterWidth(360)} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}
-                  ordinal={visibleRows.findIndex((r) => r.row === selectedCp.row) + 1}
+                  ordinal={(listMode === "company" ? visibleRows : rows).findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row}
                   institutionOptions={institutionOptions}
                   bare
@@ -306,6 +340,8 @@ export default function PaymentPage() {
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)}
                   focusTodoId={focusTodoId}
+                  focusedSlot={listMode === "institution" ? selectedWork?.slot : null}
+                  focusRequestId={focusRequestId}
                   highlight={companyQuery}
                   courseStartISO={courseStartISO}
                 />
@@ -315,7 +351,20 @@ export default function PaymentPage() {
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
           <div>
-            {visibleRows.map((cp, i) => (
+            <div className="mb-2">{listModeTabs}</div>
+            {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
+            ) : listMode === "institution" ? <>
+              <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />
+              {selectedCp && <div className="mt-3" id="payment-mobile-detail"><ContractRow
+                key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
+                pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen
+                onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={focusTodoId}
+                focusedSlot={selectedWork?.slot} courseStartISO={courseStartISO}
+                focusRequestId={focusRequestId}
+              /></div>}
+            </> : visibleRows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
                 cp={cp}

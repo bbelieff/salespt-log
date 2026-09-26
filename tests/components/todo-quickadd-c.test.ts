@@ -25,6 +25,7 @@ describe("Todo 및 History 입력", () => {
     expect(node.querySelector('[data-testid="detail-modal"]')).not.toBeNull();
     expect(modal.seeds.at(-1)).toMatchObject({ 기록종류: "todo", 제목: "담당자 통화", 예정일자: "2026-09-28", hour: "14", minute: "30" });
     expect(node.textContent).not.toContain("ToDo 추가 (상세)");
+    expect(node.textContent).not.toContain("`r`n");
   });
   it("History 토글과 20시의 00분 고정을 적용한다", () => {
     const node = render(); act(() => [...node.querySelectorAll("button")].find((b) => b.textContent === "History")!.click());

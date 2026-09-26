@@ -57,6 +57,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
         <div className="grid grid-cols-2 gap-1"><select aria-label="시" value={hour} onChange={(e) => { setHour(e.target.value); if (e.target.value === "20") setMinute("00"); }} className="h-9 rounded-md border border-slate-300 bg-white px-1 text-xs">{HOURS.map((h) => <option key={h} value={h}>{h}시</option>)}</select><select aria-label="분" value={hour === "20" ? "00" : minute} disabled={hour === "20"} onChange={(e) => setMinute(e.target.value)} className="h-9 rounded-md border border-slate-300 bg-white px-1 text-xs">{MINUTES.map((m) => <option key={m} value={m}>{m}분</option>)}</select></div>
         <button type="button" onClick={add} disabled={!effective || !title.trim() || !date} className="h-9 rounded-md bg-slate-900 text-xs font-bold text-white disabled:opacity-40">추가</button>
       </div>
-      {seed && <TodoFormModal contractRef={contractRef} institutionRef={effective} companyName={companyName} initial={seed} onClose={() => { setSeed(null); setTitle(""); }}/>}`r`n    </div>
+      {seed && <TodoFormModal contractRef={contractRef} institutionRef={effective} companyName={companyName} initial={seed} onClose={() => { setSeed(null); setTitle(""); }}/>}
+    </div>
   );
 }

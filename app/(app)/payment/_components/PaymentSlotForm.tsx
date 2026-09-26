@@ -12,7 +12,7 @@
  */
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { PaymentSlot, Progress, Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoneyInput } from "@/lib/format/money";
@@ -88,6 +88,9 @@ interface Props {
   institutionOptions?: string[];
   /** [4] ToDo 추가 시 미저장 진행기관이면 이 콜백으로 슬롯(계약)을 먼저 저장. */
   onEnsureSaved?: () => void;
+  /** 기관 목록의 진행건 선택 시 완료되어 접힌 슬롯도 연다. */
+  autoOpen?: boolean;
+  focusRequestId?: number;
 }
 
 /** 공용 부품 별칭 — 0/빈값은 빈칸(기존 fmtComma 시맨틱 승계). 중복 구현 제거. */
@@ -107,6 +110,8 @@ export default function PaymentSlotForm({
   savedInstitution,
   institutionOptions,
   onEnsureSaved,
+  autoOpen = false,
+  focusRequestId,
 }: Props) {
   const style = SLOT_STYLES[index];
   const pct = progressToPct(slot.진행률);
@@ -123,6 +128,7 @@ export default function PaymentSlotForm({
   const isDone =
     pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
   const [open, setOpen] = useState(!isDone);
+  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
   const pctColor =
     pct === 0 ? "text-gray-400" : pct >= 100 ? "text-green-600" : "text-blue-600";
 

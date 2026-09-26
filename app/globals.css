@@ -689,3 +689,33 @@ body {
     padding-bottom: 0;
   }
 }
+
+/* PC 실무/수납: 목록은 문서 스크롤, 상세의 두 열만 조용한 독립 스크롤. */
+@media (min-width: 1280px) {
+  .desktop-shell .payment-detail-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .desktop-shell .payment-detail-scroll::-webkit-scrollbar { width: 6px; }
+  .desktop-shell .payment-detail-scroll::-webkit-scrollbar-track { background: transparent; }
+  .desktop-shell .payment-detail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+  .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+
+  .desktop-shell .payment-selected-bridge::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    right: -18px;
+    width: 18px;
+    z-index: 2;
+    border-top: 1px solid #60a5fa;
+    border-bottom: 1px solid #60a5fa;
+    border-radius: 0 11px 11px 0;
+    background: linear-gradient(90deg, #eff6ff 0%, #f8fbff 68%, #fff 100%);
+    pointer-events: none;
+  }
+  .desktop-shell .payment-selected-bridge--institution::after { right: -25px; width: 25px; }
+}
