@@ -83,6 +83,7 @@ beforeEach(() => {
   state.pathname = "/dashboard";
   state.me = {};
   state.pushes = [];
+  localStorage.removeItem("salespt:desktop-nav:collapsed");
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -189,6 +190,50 @@ describe("③ admin item + payment sub-tab routing preserved", () => {
     const manual = host.querySelector(`a[href="${WORK_MANUAL_URL}"]`)!;
     expect(manual.getAttribute("target")).toBe("_blank");
     expect(manual.getAttribute("aria-label")).toBe("업무매뉴얼 (새 탭에서 열림)");
+  });
+});
+
+describe("PC 사이드탭 계층과 축소 모드", () => {
+  it("대시보드 다음 캘린더, 4단계 다음 업무도구 순서로 이동할 수 있다", () => {
+    render(createElement(DesktopNav));
+    const nav = host.querySelector('nav[aria-label="주 메뉴"]')!;
+    const links = Array.from(nav.querySelectorAll("a"));
+    const labels = links.map((link) => link.getAttribute("aria-label"));
+    expect(labels.slice(0, 6)).toEqual([
+      "대시보드", "캘린더", "STEP 1 DB생산", "STEP 2 컨택관리",
+      "STEP 3 일정·계약", "STEP 4 실무/수납",
+    ]);
+    const tools = nav.querySelector('section[aria-label="업무도구"]')!;
+    expect(tools.className).toContain("rounded-xl");
+    expect(tools.className).toContain("bg-slate-200/65");
+    expect(Array.from(tools.querySelectorAll("a")).map((link) => link.getAttribute("href"))).toEqual([
+      "/payment#drive-link", "/payment/news", WORK_MANUAL_URL,
+    ]);
+  });
+
+  it("축소 시 단계 숫자와 전체 접근성 이름을 유지하고 다시 열어도 축소 상태를 복원한다", () => {
+    render(createElement(DesktopNav));
+    const nav = host.querySelector('nav[aria-label="주 메뉴"]')!;
+    act(() => {
+      (nav.querySelector('button[aria-label="사이드탭 축소하기"]') as HTMLButtonElement).click();
+    });
+    expect(nav.getAttribute("data-collapsed")).toBe("true");
+    expect(localStorage.getItem("salespt:desktop-nav:collapsed")).toBe("1");
+    const steps = Array.from(nav.querySelectorAll('a[aria-label^="STEP "]'));
+    expect(steps.map((link) => link.getAttribute("aria-label"))).toEqual([
+      "STEP 1 DB생산", "STEP 2 컨택관리", "STEP 3 일정·계약", "STEP 4 실무/수납",
+    ]);
+    expect(steps.map((link) => link.textContent?.trim())).toEqual(["1", "2", "3", "4"]);
+    expect(nav.querySelector('section[aria-label="업무도구"] a[title="업무매뉴얼 (새 탭)"]')).not.toBeNull();
+
+    act(() => root.unmount());
+    root = createRoot(host);
+    render(createElement(DesktopNav));
+    expect(host.querySelector('nav[aria-label="주 메뉴"]')?.getAttribute("data-collapsed")).toBe("true");
+    act(() => {
+      (host.querySelector('button[aria-label="사이드탭 펼치기"]') as HTMLButtonElement).click();
+    });
+    expect(localStorage.getItem("salespt:desktop-nav:collapsed")).toBe("0");
   });
 });
 
