@@ -163,14 +163,13 @@ export default function DesktopNav() {
     >
       {/* 로고 블록 */}
       <div className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-100 px-4">
-        <span
-          aria-hidden="true"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-red text-lg font-black text-white"
-        >
-          $
-        </span>
+        <img
+          src="/salespt-logo.png"
+          alt="세일즈PT"
+          className="h-6 w-auto shrink-0 object-contain"
+        />
         <span className="truncate text-sm font-black text-slate-900">
-          세일즈PT 영업일지
+          경영일지
         </span>
       </div>
 
