@@ -64,7 +64,10 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain("<PaymentPerformanceSummary"); expect(src).toContain("{selectedCp.업체명}");
     expect(src).toContain("from-blue-100/95 via-indigo-50/95 to-white/95");
   });
-  it("모바일은 기존 ContractRow 목록을 유지한다", () => {
-    expect(src).toContain("visibleRows.map((cp, i) =>"); expect((src.match(/<ContractRow/g) ?? []).length).toBe(2);
+  it("모바일 업체 모드는 기존 ContractRow 목록을 유지하고 기관 모드에서만 선택 상세를 더한다", () => {
+    expect(src).toContain("visibleRows.map((cp, i) =>");
+    expect(src).toContain('listMode === "institution" ? <>');
+    expect(src).toContain("institution-detail-${selectedCp.row}");
+    expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
   });
 });

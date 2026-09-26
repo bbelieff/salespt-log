@@ -16,6 +16,8 @@ interface Props {
   slotInstitutionOptions: string[];
   todos: Todo[];
   focusTodoId?: string | null;
+  focusedSlot?: 1 | 2 | 3 | null;
+  focusRequestId?: number;
   visiblePayments: 1 | 2 | 3;
   totalApproved: number;
   totalReceived: number;
@@ -32,6 +34,8 @@ export default function ContractSlots({
   slotInstitutionOptions,
   todos,
   focusTodoId,
+  focusedSlot,
+  focusRequestId,
   visiblePayments,
   totalApproved,
   totalReceived,
@@ -61,6 +65,8 @@ export default function ContractSlots({
           institutionOptions={slotInstitutionOptions}
           todos={todos}
           focusTodoId={focusTodoId}
+          autoOpen={focusedSlot === 1}
+          focusRequestId={focusRequestId}
           onEnsureSaved={onEnsureSaved}
           onChange={(next) => onSlotChange(1, next)}
         />
@@ -76,6 +82,8 @@ export default function ContractSlots({
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
+            autoOpen={focusedSlot === 2}
+            focusRequestId={focusRequestId}
             onEnsureSaved={onEnsureSaved}
             onChange={(next) => onSlotChange(2, next)}
             onRemove={() => onRemoveSlot(2)}
@@ -93,6 +101,8 @@ export default function ContractSlots({
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
+            autoOpen={focusedSlot === 3}
+            focusRequestId={focusRequestId}
             onEnsureSaved={onEnsureSaved}
             onChange={(next) => onSlotChange(3, next)}
             onRemove={() => onRemoveSlot(3)}

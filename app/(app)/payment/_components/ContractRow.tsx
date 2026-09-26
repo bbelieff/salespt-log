@@ -48,6 +48,8 @@ interface Props {
   accentFamily?: AccentFamily;
   bare?: boolean;
   focusTodoId?: string | null;
+  focusedSlot?: 1 | 2 | 3 | null;
+  focusRequestId?: number;
   highlight?: string;
   courseStartISO?: string;
 }
@@ -67,6 +69,8 @@ export default function ContractRow({
   accentFamily,
   bare = false,
   focusTodoId,
+  focusedSlot,
+  focusRequestId,
   highlight,
   courseStartISO,
 }: Props) {
@@ -158,6 +162,9 @@ export default function ContractRow({
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
   );
+  useEffect(() => {
+    if (focusedSlot) setVisiblePayments((current) => Math.max(current, focusedSlot) as 1 | 2 | 3);
+  }, [focusedSlot]);
 
   const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
   const todosQuery = useTodosByContract(contractRef);
@@ -384,7 +391,7 @@ export default function ContractRow({
                 <div className="px-3 pb-3"><textarea rows={1} value={draft.로드맵메모} onChange={(e) => editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
               </details>
               <section className="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
-                <ContractSlots draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
+                <ContractSlots draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
                   const prev = draft[`수납${index}`];
                   const moneyDateOnly = next.진행기관 === prev.진행기관 && next.진행상품 === prev.진행상품 && next.메모 === prev.메모 && next.현황 === prev.현황 && next.진행률 === prev.진행률 && (next.승인금액 !== prev.승인금액 || next.수납액 !== prev.수납액 || next.수납일 !== prev.수납일);
                   (moneyDateOnly ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
