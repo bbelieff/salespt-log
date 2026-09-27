@@ -3,6 +3,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { InstitutionGroup, InstitutionWorkItem } from "../_lib/institution-view";
+import WorkActivityBadge from "./WorkActivityBadge";
 
 interface Props {
   groups: InstitutionGroup[];
@@ -62,9 +63,7 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect, ren
                       <span className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-slate-500">
                         <span className="min-w-0 flex-1 truncate">{item.product || "상품 미입력"}</span>
                         <span className="shrink-0 tabular-nums">{item.progress}%</span>
-                        {renderDetail && <span className={`shrink-0 rounded px-1.5 py-0.5 font-semibold tabular-nums ${activityState !== "ready" || item.activityKind === "none" ? "bg-slate-100 text-slate-600" : item.activityKind === "history" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`} aria-label={activityState === "loading" ? "활동 불러오는 중" : activityState === "error" ? "활동 조회 실패" : item.activityKind === "none" ? "Todo·History 없음" : item.activityKind === "history" ? `최근 History ${item.activityLabel}` : `미완료 Todo ${item.activityLabel}`}>
-                          {activityState === "loading" ? "…" : activityState === "error" ? "조회 실패" : <>{item.activityKind === "history" ? "History " : item.activityKind === "todo" ? "Todo " : ""}{item.activityLabel}</>}
-                        </span>}
+                        {renderDetail && <WorkActivityBadge activity={item} state={activityState} />}
                       </span>
                     </button>
                     {renderDetail && selected && <div id={`payment-inline-detail-${item.key}`} hidden={!detailExpanded} className="rounded-b-lg border border-t-0 border-red-400 bg-white">{renderDetail(item)}</div>}

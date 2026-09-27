@@ -4,7 +4,9 @@
 import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
 import { formatMoney } from "@/lib/format/money";
 import { contractProgress } from "../_lib/payment-progress";
+import { companyActivityKey, type WorkActivitySummary } from "../_lib/institution-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
+import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 
 interface Props {
   rows: ContractPayment[];
@@ -12,9 +14,11 @@ interface Props {
   onSelect: (row: number | null) => void;
   highlight?: string;
   courseStartISO?: string;
+  activities?: ReadonlyMap<string, WorkActivitySummary>;
+  activityState?: ActivityLoadState;
 }
 
-export default function ContractListTable({ rows, selectedRow, onSelect, highlight, courseStartISO }: Props) {
+export default function ContractListTable({ rows, selectedRow, onSelect, highlight, courseStartISO, activities, activityState }: Props) {
   return (
     <div className="space-y-1.5 p-2" aria-label="계약 목록" role="listbox">
       {rows.map((cp, index) => {
@@ -28,6 +32,7 @@ export default function ContractListTable({ rows, selectedRow, onSelect, highlig
             <div className="flex min-w-0 items-center gap-2">
               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>
               <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>
+              {activities && <WorkActivityBadge activity={activities.get(companyActivityKey(cp))} state={activityState} />}
               {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">조회 중</span>}
             </div>
             <div className="mt-1 grid grid-cols-[1fr_auto] gap-x-2 pl-7 text-[11px] tabular-nums">

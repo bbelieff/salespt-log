@@ -52,6 +52,17 @@ describe("ContractListTable 1뎁스 카드", () => {
     const node = renderList({ rows: [bare], selectedRow: 3, onSelect: vi.fn() });
     expect(node.textContent).toContain("수수료 ₩0"); expect(node.textContent).toContain("진행 0%");
   });
+  it("업체 목록에 대표 Todo 날짜를 표시하고 로딩 중에는 D-??로 오인하지 않게 한다", () => {
+    const activities = new Map([["row:3", { activityKind: "todo" as const, activityDate: "2026-09-28", activityLabel: "D-00" }]]);
+    const node = renderList({ rows: [cp()], selectedRow: 3, onSelect: vi.fn(), activities, activityState: "ready" });
+    expect(node.textContent).toContain("Todo D-00");
+    expect(node.querySelector('[aria-label="미완료 Todo D-00"]')).not.toBeNull();
+  });
+  it("활동 조회 중에는 미기록으로 표시하지 않는다", () => {
+    const node = renderList({ rows: [cp()], selectedRow: 3, onSelect: vi.fn(), activities: new Map(), activityState: "loading" });
+    expect(node.querySelector('[aria-label="활동 불러오는 중"]')).not.toBeNull();
+    expect(node.textContent).not.toContain("D-??");
+  });
 });
 
 describe("payment PC workspace 배선", () => {
@@ -78,6 +89,7 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain('forceOpen inline');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
+    expect(src).toContain("activity={companyActivities.get(companyActivityKey(cp))}");
   });
 });
 
