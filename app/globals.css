@@ -639,9 +639,11 @@ body {
  *      carries NO pc: classes — trainer assist view keeps px-4 + max-w-5xl).
  *   ③ Contact/schedule week-nav rows (2xl:max-w-xl tablet grouping → full
  *      width on desktop; pc: comes after 2xl: in the cascade).
- *   ④ Chart balance — desktop-only max-height on explicit hooks (funnel 220,
- *      weekly trend 260, donut 160). viewBox + meet scales the drawing down
- *      and centers it: no clipping, no squeezing, labels stay legible.
+ *   ④ Chart balance — funnel/weekly-trend fill the height their card is given
+ *      (.chart-fill: svg out of flow, so the chart never makes the row taller;
+ *      the row is set by the tallest card's own content, min 14rem chart area).
+ *      viewBox + meet scales the drawing and centers it: no clipping, no
+ *      squeezing. The channel donuts are fixed-size (svg classes), no cap here.
  *   ⑤ Desktop shell main: zero tabbar reserve (TabBar is pc:hidden).
  * Uniform gutter = 1.5rem (≈20px at the 13.5px PC root, tokens.md 컨테이너).
  * No backdrop-filter/transform here (modal/sticky safety inherited above).
@@ -674,15 +676,20 @@ body {
     margin-left: 0;
     margin-right: 0;
   }
-  /* ④ chart balance — capped height, aspect kept, drawing centered */
-  .desktop-shell .funnel-svg {
-    max-height: 220px;
+  /* ④ chart balance — same-row cards share one height (belie 2026-09-28).
+     The chart area takes the card's leftover height; the svg is absolutely
+     placed so its aspect ratio never pushes the row taller. Aspect kept,
+     drawing centered. */
+  .desktop-shell .chart-fill {
+    position: relative;
+    min-height: 14rem;
   }
-  .desktop-shell .weekly-trend-svg {
-    max-height: 260px;
-  }
-  .desktop-shell .channel-donut-svg {
-    max-height: 160px;
+  .desktop-shell .chart-fill > .funnel-svg,
+  .desktop-shell .chart-fill > .weekly-trend-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
   }
   /* ⑤ no desktop tabbar reserve — pages keep their own small pc:pb */
   .desktop-shell .app-shell-main {

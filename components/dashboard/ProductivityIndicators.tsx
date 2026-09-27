@@ -22,6 +22,8 @@ import { STATS_WEEKS } from "@/config/cohort-dates";
 
 interface Props {
   weeks?: number;
+  /** 배치용 추가 클래스(예: 넓은 화면에서 옆 카드 높이에 맞춰 늘리기). */
+  className?: string;
   matrix: DashboardChannelMatrix[];
 }
 
@@ -29,7 +31,7 @@ function ratio(a: number, b: number): number {
   return b > 0 ? (a / b) * 100 : 0;
 }
 
-export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS }: Props) {
+export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, className = "" }: Props) {
   const sum = (key: keyof DashboardChannelMatrix) =>
     matrix.reduce(
       (s, m) => s + (typeof m[key] === "number" ? (m[key] as number) : 0),
@@ -49,7 +51,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS }: 
   const salesProductivity = ratio(contract, contactProgress); // 계약 ÷ 컨택진행
 
   return (
-    <section className="rounded-2xl bg-white p-3 shadow-sm">
+    <section className={`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}>
       <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-indigo-500" />
         <h2 className="text-base font-extrabold text-gray-900">생산성 지표</h2>

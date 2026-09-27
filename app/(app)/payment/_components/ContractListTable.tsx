@@ -38,11 +38,12 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
               aria-controls={inlineOpen ? `payment-company-detail-${item.key}` : undefined}
               data-row={cp.row ?? undefined} data-work-key={item.key}
               onClick={() => selected && renderDetail ? onToggleDetail?.() : !selected ? onSelect(item) : undefined}
-              className={`relative w-full border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? `z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-50 shadow-[0_8px_24px_rgba(37,99,235,.12)] ${inlineOpen ? "rounded-t-xl border-b-blue-100" : renderDetail ? "rounded-xl" : "rounded-l-xl"} min-[1280px]:rounded-r-none min-[1280px]:border-r-0` : "rounded-xl border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted && !selected ? "opacity-60" : ""}`}>
+              className={`relative w-full border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? `z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-[0_8px_24px_rgba(37,99,235,.12)] ${inlineOpen ? "rounded-t-xl border-b-blue-100" : renderDetail ? "rounded-xl" : "rounded-l-xl"} pc:rounded-r-none pc:border-r-0` : "rounded-xl border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted && !selected ? "opacity-60" : ""}`}>
               <span className="flex min-w-0 items-center gap-2">
                 <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">진행 없음</span>}
+                {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">조회 중</span>}
               </span>
               <span className="mt-1 block truncate pl-7 text-[11px] font-semibold text-blue-700">
                 {hasProgress ? `진행 ${work.slot} · ${work.institution || "기관 미입력"}${work.product ? ` · ${work.product}` : ""}` : "진행건 미등록"}

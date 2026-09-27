@@ -12,6 +12,13 @@
 - 정렬 버튼은 등록 빠른순(기본)·등록 늦은순·D-day순 세 개다. D-day순은 진행건 없는 업체 → `D-??` → 최근 History(`D+00`) → 임박 Todo(`D-00`) 순서다. 활동은 업체 전체 대표값이 아니라 각 진행건의 연결값이다.
 - 기존 계약·Todo/History 조회와 저장 구조를 재사용한다. 변경 대상은 목록 투영·정렬·선택·관련 화면과 검사다.
 
+### 2026-09-28 · DC 총괄(데탑 C총괄 260927) · 대시보드 카드 서식 통일·높이 정렬·채널별 성과 압축
+- 사용자 요청: 대시보드 박스 테두리 서식 통일, 높이 정렬, 아래 3열의 채널별 성과 여백 줄이기(도넛 제목 좌측·도넛에 붙이기)로 높이 최소화 후 높이 맞추기.
+- 구역: `components/dashboard/{ProductivityIndicators,FunnelChart,WeeklyDualChart,ChannelPerformance}.tsx` · `components/weekly-goals/WeeklyGoalSummary.tsx` · `app/(app)/dashboard/page.tsx` · `app/globals.css` ④ · 관련 테스트·components.md. payment·셸(Codex 레인) 무접촉.
+- 결정: 카드 6종 한 틀(`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm`, 제목 mb-2). 그리드 `pc:items-stretch` + 카드 안 흡수(퍼널·추이 `.chart-fill` 로 남은 높이 채움 — svg 흐름 밖, 최소 14rem; PT과제 mt-auto; 넓은 화면 생산성 flex-1). 채널별 성과 = 도넛 제목 좌측 + 도넛별 범례 2개·계약단가 카드 4개를 채널 표 1개로 통합.
+- 실측(합성 fixture + desktop-shell): 1920·1600 아랫줄 3카드 모두 255px(기존 채널 카드 약 450px·줄 309px), 윗줄 바닥 일치. 1280·1100 2열 각 줄 바닥 일치, 375 모바일 가로 넘침 없음.
+- 독립 검토(3관점 12건 → 반박 검증 2표): 확인 6건 반영 — 360px 폰에서 도넛 옆 제목이 글자 단위로 쪼개짐(→ 402px 미만 도넛 96px + break-keep, 360 실측 2줄), 긴 총비용이 도넛 고리에 닿음(→ 글자 수별 글꼴 축소), 옛 max-height 서술·죽은 도넛 캡·카드 제목 문구 정정, 높이 정렬 테스트 보강. 기각 6건(차트 글자 크기·퍼센트 반올림·툴팁 접근성 등)은 반박 근거대로 미반영.
+
 ### 2026-09-28 · Codex · 업체 목록 활동 날짜 표시와 정렬
 - 사용자 요청에 따라 업체 보기의 PC·모바일 목록에도 진행기관 보기와 같은 `D-??`·`History D+00`·`Todo D-00` 배지를 표시한다. 기본 `활동순`은 미기록 → 최근 History → 임박 Todo이며 기존 등록일·진행도 정렬은 유지한다.
 - 한 업체에 여러 진행이 있으면 가장 이른 미완료 Todo를, 없으면 가장 최근 History를 대표로 표시한다. 조회 중·실패는 `D-??`로 오인하지 않게 구분한다. 기존 Todo/History 조회와 연결 키를 재사용하며 저장 구조는 바꾸지 않는다.
