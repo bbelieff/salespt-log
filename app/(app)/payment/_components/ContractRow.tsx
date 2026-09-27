@@ -168,8 +168,11 @@ export default function ContractRow({
     initialVisiblePayments(cp),
   );
   useEffect(() => {
-    if (focusedSlot) setVisiblePayments((current) => Math.max(current, focusedSlot) as 1 | 2 | 3);
-  }, [focusedSlot]);
+    if (focusedSlot) {
+      setVisiblePayments((current) => Math.max(current, focusedSlot) as 1 | 2 | 3);
+      if (!selectable) setOpen(true);
+    }
+  }, [focusedSlot, selectable]);
 
   const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
   const todosQuery = useTodosByContract(contractRef);

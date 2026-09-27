@@ -1,4 +1,9 @@
-import type { ContractPayment, PaymentSlot, Todo } from "@/types";
+import { isCarryoverContract, isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
+
+/** 실무/수납 성과 요약과 대시보드 업무 현황의 동일한 계약 범위. */
+export function activeWorkContracts(contracts: ContractPayment[], courseStartISO: string): ContractPayment[] {
+  return contracts.filter((cp) => !cp.해지숨김 && !isCarryoverContract(cp, courseStartISO) && !isTerminatedContract(cp));
+}
 
 export type WorkStatusKey = "waiting" | "progress" | "approved" | "collection-waiting" | "collected";
 

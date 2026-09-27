@@ -15,6 +15,7 @@ import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
+import DashboardWorkStatus from "@/components/dashboard/DashboardWorkStatus";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 
 function fmtMD(iso: string): string {
@@ -176,6 +177,7 @@ export default function DashboardPage() {
                 matrix={dash.data.channelMatrix}
               />
             </div>
+            <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
           </>
         )}
       </div>

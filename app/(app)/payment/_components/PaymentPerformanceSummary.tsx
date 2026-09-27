@@ -3,17 +3,10 @@
 import { useMemo, useState } from "react";
 import type { ContractPayment, Todo } from "@/types";
 import { formatMoney } from "@/lib/format/money";
-import { buildWorkStatusItems, type WorkStatusKey } from "../_lib/work-status";
+import { buildWorkStatusItems } from "@/lib/analytics/payment-work-status";
+import WorkStatusBar from "@/components/payment/WorkStatusBar";
 
 type Period = "all" | "month" | "week" | "custom";
-const STATUS: Array<{ key: WorkStatusKey; label: string; color: string }> = [
-  { key: "waiting", label: "진행대기", color: "bg-slate-300" },
-  { key: "progress", label: "진행", color: "bg-gradient-to-r from-sky-400 to-blue-500" },
-  { key: "approved", label: "승인", color: "bg-gradient-to-r from-violet-400 to-fuchsia-400" },
-  { key: "collection-waiting", label: "수납대기", color: "bg-gradient-to-r from-amber-300 to-orange-400" },
-  { key: "collected", label: "수납완료", color: "bg-gradient-to-r from-emerald-400 to-teal-400" },
-];
-
 function isoToday() { return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }); }
 function bounds(period: Period, from: string, to: string): [string, string] | null {
   if (period === "all") return null;
@@ -41,7 +34,6 @@ export default function PaymentPerformanceSummary({ rows, todos, onNavigate }: P
   const [period, setPeriod] = useState<Period>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [open, setOpen] = useState<WorkStatusKey | null>(null);
   const range = bounds(period, from, to);
   const filtered = range ? rows.filter((r) => r.계약일 >= range[0] && r.계약일 <= range[1]) : rows;
   const contractRevenue = filtered.reduce((sum, r) => sum + r.수임비, 0);
@@ -49,7 +41,6 @@ export default function PaymentPerformanceSummary({ rows, todos, onNavigate }: P
     .filter((s) => !range || (s.수납일 && s.수납일 >= range[0] && s.수납일 <= range[1]))
     .reduce((s, slot) => s + slot.수납액, 0), 0);
   const items = useMemo(() => buildWorkStatusItems(rows, todos, isoToday()), [rows, todos]);
-  const active = open ? items.filter((i) => i.status === open) : [];
   const periodLabel = period === "all" ? "전체" : period === "month" ? "이번 달" : period === "week" ? "이번 주" : "직접 설정";
 
   return (
@@ -68,18 +59,7 @@ export default function PaymentPerformanceSummary({ rows, todos, onNavigate }: P
           <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{periodLabel} 계약</span><span className="text-lg font-black tabular-nums text-slate-950 min-[1280px]:text-2xl">{filtered.length}<span className="ml-0.5 text-sm font-bold">건</span></span></div>
           <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{period === "all" ? "총 매출" : "기간 매출"}</span><span className="break-all text-[clamp(12px,3.8vw,16px)] font-extrabold tabular-nums leading-tight text-slate-950 min-[1280px]:text-xl">₩{formatMoney(contractRevenue + received)}</span></div>
         </div>
-        <div className="relative min-w-0 self-center">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><strong className="whitespace-nowrap text-xs text-slate-800">전체 진행건</strong><b className="whitespace-nowrap text-base tabular-nums text-slate-950">{items.length}건</b>
-          <div className="flex h-4 w-full min-w-12 overflow-hidden rounded-full border border-white/80 bg-slate-100 p-[2px] shadow-inner min-[1280px]:w-auto min-[1280px]:flex-1" role="group" aria-label="업무 상태">
-            {STATUS.map((s) => { const count = items.filter((i) => i.status === s.key).length; return count > 0 ? <button key={s.key} type="button" onClick={() => setOpen(s.key)} onMouseEnter={() => setOpen(s.key)} className={`${s.color} h-full min-w-[8px] rounded-full transition-[filter] hover:brightness-105`} style={{ width: `${count / items.length * 100}%` }} aria-label={`${s.label} ${count}건`} /> : null; })}
-          </div>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">{STATUS.map((s) => <button type="button" key={s.key} onClick={() => setOpen(s.key)} className="inline-flex items-center gap-1 hover:text-slate-900"><span className={`h-2 w-2 rounded-full ${s.color}`}/>{s.label} <b className="tabular-nums text-slate-700">{items.filter((i) => i.status === s.key).length}</b></button>)}</div>
-          {open && <div className="absolute right-0 top-[calc(100%+8px)] z-[500] max-h-64 w-[min(360px,90vw)] overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl" onMouseLeave={() => setOpen(null)}>
-            <div className="mb-1 flex items-center justify-between px-1 text-xs font-bold text-slate-800"><span>{STATUS.find((s) => s.key === open)?.label} {active.length}건</span><button type="button" onClick={() => setOpen(null)} className="p-1 text-slate-400" aria-label="닫기">×</button></div>
-            {active.map((i) => <button type="button" key={i.key} onClick={() => { onNavigate(i.row, i.slot); setOpen(null); }} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-blue-50"><span className="block truncate text-xs font-semibold text-slate-800">{i.company} · 진행 {i.slot} · {i.product || "상품 미정"}</span><span className="block truncate text-[11px] text-slate-400">{i.institution || "기관 미정"}</span></button>)}
-          </div>}
-        </div>
+        <WorkStatusBar items={items} onNavigate={onNavigate} />
       </div>
     </section>
   );
