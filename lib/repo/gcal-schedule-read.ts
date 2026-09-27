@@ -4,8 +4,8 @@
  */
 import { SHEET_RANGES } from "@/config";
 import type { Meeting, Todo } from "@/types";
-import { sheetsClient } from "./sheets-client";
-import { rowToMeeting } from "./meetings";
+import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { MEETING_ROW_WIDTH, rowToMeeting } from "./meetings";
 import { ensureTodoTab, rowToTodo } from "./todos";
 
 function tabRef(tab: string): string {
@@ -15,6 +15,8 @@ function tabRef(tab: string): string {
 /** 04 미팅 전체(취소 포함, id 중복 제거 — 첫 행 우선). */
 export async function listAllMeetings(spreadsheetId: string): Promise<Meeting[]> {
   const tab = SHEET_RANGES.meetings.tab;
+  // A2:BN 읽기 전 grid 보장(업체정보 확장2) — 실패해도 읽기는 시도(관용).
+  await ensureGridColumns(spreadsheetId, tab, MEETING_ROW_WIDTH).catch(() => {});
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range: `${tabRef(tab)}!${SHEET_RANGES.meetings.range}`,

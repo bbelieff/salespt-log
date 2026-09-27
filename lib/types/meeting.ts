@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import { Channel } from "./channel";
+import { normalizeRrnFront } from "@/util/rrn-front";
 
 // ── 미팅 상태 (5종) ─────────────────────────────────────────
 export const MeetingState = z.enum(["예약", "계약", "완료", "변경", "취소"]);
@@ -12,7 +13,8 @@ export type MeetingState = z.infer<typeof MeetingState>;
 
 // ── 업체정보 (04 업체관리 T~AN, 미팅 단위 작성 — consultation-log §1-1) ──────
 // [업체] 12(T~AE) + [대표자] 8(AF~AM) + 커스텀 JSON 1(AN)
-// + 확장 3(AQ~AS — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11).
+// + 확장 3(AQ~AS — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11)
+// + 확장2 20(AU~BN — AT gcal맵 뒤 append, company-info-new-fields 2026-09-28).
 // 모두 자유 텍스트, 빈값 허용. 기대출 2필드는 셀 내 `\n` 허용(Sheets 표준).
 // 키는 식별자 안전형(업종주생산품목/사대보험직원). UI 라벨은 별도 매핑
 // (과년도매출 = 표시 "과년도 매출 Y-1" — 키 유지로 라이브 데이터 보존).
@@ -43,6 +45,31 @@ export const CompanyInfo = z.object({
   대표자생년월일: z.string().default(""),
   과년도매출Y2: z.string().default(""),
   과년도매출Y3: z.string().default(""),
+  // 확장2 20필드 (04 AU~BN · 06 AC~AV — company-info-new-fields 2026-09-28). 전부 자유 텍스트.
+  // [업체]
+  과세유형: z.string().default(""),
+  업태: z.string().default(""),
+  법인등록번호: z.string().default(""),
+  임차보증금: z.string().default(""),
+  임차월세: z.string().default(""),
+  임차면적: z.string().default(""),
+  // [대표자] — 앞 6자리만 저장(belie 결정). 어떤 입력이 와도 "NNNNNN-" 또는 "" 로 잘린다
+  // — 화면을 우회한 요청도 이 스키마를 지나므로 뒷자리는 저장 경로에 도달하지 못한다.
+  주민등록번호: z.string().default("").transform(normalizeRrnFront),
+  // [재무] — 비율 4칸도 이번엔 직접 입력(자동 계산은 서류 인식 PR 소관).
+  결산연도: z.string().default(""),
+  영업이익: z.string().default(""),
+  당기순이익: z.string().default(""),
+  이자비용: z.string().default(""),
+  자산총계: z.string().default(""),
+  부채총계: z.string().default(""),
+  자본총계: z.string().default(""),
+  반기별매출: z.string().default(""),
+  면세수입금액: z.string().default(""),
+  부채비율: z.string().default(""),
+  이자보상배율: z.string().default(""),
+  당기순이익률: z.string().default(""),
+  매출증가율: z.string().default(""),
   // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
   커스텀: z
     .object({

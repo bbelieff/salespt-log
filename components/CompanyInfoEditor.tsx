@@ -1,10 +1,13 @@
 /**
- * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS) 드롭다운 + 팝업 편집.
+ * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~BN) 드롭다운 + 팝업 편집.
  * 정본: consultation-log-and-calendar.md §3-2 (2026-06-11 혼합 그리드 확정).
  * contact/schedule/payment 공용 — 탭별 분기 금지.
  *
  * 반응형 3단계: 기본(<390) 1열 강하 · sm(390+) 혼합 그리드(2열, short=span1,
  * long=span2) · 2xl(768+) [업체]|[대표자] 그룹 좌우 2단(모달·PC 카드).
+ * [재무](2026-09-28 확장2) = 두 그룹 아래 전폭 섹션, 같은 카드·그리드 규격(커스텀 추가 없음).
+ * 필드 정의 = company-info-defs.ts. 주민등록번호 앞자리는 입력 중·blur 에 6자리로 잘린다
+ * (서버 스키마도 한 번 더 자른다 — 뒷자리 저장 불가).
  * 필드 설명(FieldDef 3번째) = 라벨 옆 (?) 툴팁(HintTooltip) — 회색 설명 줄 없음. 기대출 2필드 = textarea
  * 자동높이(줄 수 따라) — 시트에 \n 그대로 저장.
  */
@@ -17,41 +20,11 @@ import { formatPhone } from "@/lib/format/phone";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import HintTooltip from "@/components/ui/HintTooltip";
+import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
+import { type FieldDef, 대표자_DEFS, 업체_DEFS, 재무_DEFS } from "./company-info-defs";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
-
-// 필드 정의: [키, 라벨, 설명(툴팁), span(1|2), multiline?]
-type FieldDef = [keyof CI, string, string, 1 | 2, boolean?];
-
-// §3-2 확정 배치 순서 그대로.
-const 업체_DEFS: FieldDef[] = [
-  ["개업일", "개업일", "25.01.24", 1],
-  ["사업자구분", "사업자구분", "개인/법인", 1],
-  ["사업자등록번호", "사업자등록번호", "000-00-0000", 1],
-  ["사대보험직원", "4대보험 직원", "0명 + 프리0명", 1],
-  ["소재지", "소재지", "주소지", 2],
-  ["소유여부", "소유여부", "자가 / 임차 : 보 00만, 월 00만", 2],
-  ["업종주생산품목", "업종/주생산품목", "제조/필름 등", 2],
-  ["금년도매출", "금년도 매출", "26' 6월 100백만", 1],
-  ["과년도매출", "과년도 매출 Y-1", "25' 250백만", 1],
-  ["과년도매출Y2", "과년도 매출 Y-2", "24' 148백만", 1],
-  ["과년도매출Y3", "과년도 매출 Y-3", "23' 70백만", 1],
-  ["기대출사업자", "기대출 사업자", "신보 100백만\n재단 50백만\n중진공 150백만", 2, true],
-  ["특허및인증", "특허 및 인증", "특허, ISO, 연구소, 벤처, 메인/이노비즈 등", 2],
-  ["업체기타메모", "기타메모", "자유 메모", 2, true],
-];
-const 대표자_DEFS: FieldDef[] = [
-  ["대표자이름", "이름", "이름", 1],
-  ["대표자생년월일", "생년월일", "88.01.24", 1],
-  ["신용점수", "신용점수(KCB/NCB)", "919/855", 1],
-  ["연락처통신사", "연락처/통신사", "010-0000-0000(통신사)", 2],
-  ["기대출개인", "기대출 개인", "캐피탈 38백만\n카드론 10백만\n00은행 20백만", 2, true],
-  ["자택주소지", "자택주소지", "주소지", 2],
-  ["대표소유여부", "소유여부", "자가 / 임차 : 보 00만, 월 00만", 2],
-  ["동종업계경력", "동종업계경력", "연차 및 경력기록", 2],
-  ["대표기타메모", "기타메모", "자유 메모", 2, true],
-];
 
 const emptyCi = (): CI => CompanyInfo.parse({});
 const inputCls =
@@ -222,7 +195,7 @@ export default function CompanyInfoEditor({
     setNewLabel((n) => ({ ...n, [g]: "" }));
   };
 
-  const filled = [...업체_DEFS, ...대표자_DEFS].filter(
+  const filled = [...업체_DEFS, ...대표자_DEFS, ...재무_DEFS].filter(
     ([k]) => String(draft[k] ?? "").trim() !== "",
   ).length;
   const summary = draft.대표자이름?.trim()
@@ -243,12 +216,16 @@ export default function CompanyInfoEditor({
     // 깨뜨리므로, blur 시에만 formatPhone 으로 정규화한다(선행 숫자 런만 포맷·접미 보존).
     // 기존 저장분(하이픈 없음·시트가 숫자로 먹어 선행 0 소실)도 이때 흡수된다.
     const isPhone = String(k) === "연락처통신사";
+    // 주민등록번호 = 앞 6자리만(belie 결정). 입력 중엔 6자리 초과분을 즉시 잘라 뒷자리가 화면·
+    // 자동저장에 남지 않게 하고, blur 에서 "NNNNNN-" 로 마무리(6자리 미만이면 비움).
+    const isRrn = String(k) === "주민등록번호";
     const inputId = `${uid}-${where}-${String(k)}`;
     // 설명은 툴팁 + 화면낭독기용 상시 설명(sr-only) — 입력칸에 포커스하면 예시 형식을 읽어준다.
     const hintId = ph && ph !== label ? `${inputId}-hint` : undefined;
-    const onBlurNormalize = isPhone
+    const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrnFront : null;
+    const onBlurNormalize = normalizeOnBlur
       ? () => {
-          const next = formatPhone(v);
+          const next = normalizeOnBlur(v);
           if (next !== v) set(k, next);
         }
       : undefined;
@@ -282,9 +259,10 @@ export default function CompanyInfoEditor({
             className={inputCls}
             placeholder={undefined}
             aria-describedby={hintId}
-            inputMode={isPhone ? "tel" : undefined}
+            inputMode={isPhone ? "tel" : isRrn ? "numeric" : undefined}
+            autoComplete={isRrn ? "off" : undefined}
             value={v}
-            onChange={(e) => set(k, e.target.value)}
+            onChange={(e) => set(k, isRrn ? sanitizeRrnFrontTyping(e.target.value) : e.target.value)}
             onBlur={onBlurNormalize}
           />
         )}
@@ -293,17 +271,28 @@ export default function CompanyInfoEditor({
   };
 
   // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
-  const group = (g: Grp, defs: FieldDef[], inline: boolean, where: string) => (
-    <div className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
+  // g = 커스텀 필드 그룹(업체/대표자). 재무처럼 커스텀이 없는 그룹은 null.
+  const group = (
+    title: string,
+    g: Grp | null,
+    defs: FieldDef[],
+    inline: boolean,
+    where: string,
+  ) => (
+    <div
+      className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm"
+      role="group"
+      aria-label={title}
+    >
       <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-xs font-bold text-gray-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
-        [{g}]
+        [{title}]
       </div>
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
       <div className={inline ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-1 gap-1.5 sm:grid-cols-2"}>
         {defs.map((def) => field(def, inline, where))}
-        {Object.entries(customOf(g)).map(([label, v]) => (
+        {g && Object.entries(customOf(g)).map(([label, v]) => (
           <label key={`c-${label}`} className={inline ? "block" : "block sm:col-span-2"}>
             <span className="flex items-center justify-between text-xs text-purple-500">
               {label}
@@ -323,30 +312,36 @@ export default function CompanyInfoEditor({
           </label>
         ))}
       </div>
-      <div className="flex gap-1">
-        <input
-          className={`${inputCls} flex-1`}
-          placeholder="필드 추가+ (라벨)"
-          value={newLabel[g]}
-          onChange={(e) => setNewLabel((n) => ({ ...n, [g]: e.target.value }))}
-          onKeyDown={(e) => e.key === "Enter" && addCustom(g)}
-        />
-        <button
-          type="button"
-          onClick={() => addCustom(g)}
-          className="shrink-0 rounded-md border border-purple-200 px-2 text-[11px] text-purple-600 hover:bg-purple-50"
-        >
-          추가
-        </button>
-      </div>
+      {g && (
+        <div className="flex gap-1">
+          <input
+            className={`${inputCls} flex-1`}
+            placeholder="필드 추가+ (라벨)"
+            value={newLabel[g]}
+            onChange={(e) => setNewLabel((n) => ({ ...n, [g]: e.target.value }))}
+            onKeyDown={(e) => e.key === "Enter" && addCustom(g)}
+          />
+          <button
+            type="button"
+            onClick={() => addCustom(g)}
+            className="shrink-0 rounded-md border border-purple-200 px-2 text-[11px] text-purple-600 hover:bg-purple-50"
+          >
+            추가
+          </button>
+        </div>
+      )}
     </div>
   );
 
   // PC 상세에서만 너비 비율을 따른다. 편집 팝업은 원래 반응형 배치를 유지한다.
+  // [재무] 는 두 그룹 아래 전폭(모든 단 너비 걸침). 내부 그리드는 업체/대표자와 같은 규격.
   const body = (inline: boolean, where: "panel" | "modal") => (
     <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
-      {group("업체", 업체_DEFS, inline, where)}
-      {group("대표자", 대표자_DEFS, inline, where)}
+      {group("업체", "업체", 업체_DEFS, inline, where)}
+      {group("대표자", "대표자", 대표자_DEFS, inline, where)}
+      <div className={desktopHeading ? inline ? "col-span-2 min-w-0" : "min-w-0" : "min-w-0 2xl:col-span-2"}>
+        {group("재무", null, 재무_DEFS, inline, where)}
+      </div>
     </div>
   );
 
