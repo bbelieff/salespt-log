@@ -254,7 +254,8 @@ export default function PaymentPage() {
         const root = workspaceRef.current;
         if (!root) return;
         const pageTop = root.getBoundingClientRect().top + window.scrollY;
-        root.style.height = `${Math.max(320, Math.floor(window.innerHeight - pageTop - 12))}px`;
+        const bottomSpace = Number.parseFloat(getComputedStyle(root.closest("main") ?? root).paddingBottom) || 0;
+        root.style.height = `${Math.max(320, Math.floor(window.innerHeight - pageTop - bottomSpace))}px`;
         syncBridge();
       });
     };
