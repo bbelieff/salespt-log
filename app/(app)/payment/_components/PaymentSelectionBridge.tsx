@@ -20,17 +20,21 @@ const PaymentSelectionBridge = forwardRef<SVGSVGElement, { mode?: "company" | "i
         </linearGradient>
       </defs>
       <path data-bridge-fill fill="url(#payment-selection-gradient)" />
-      <path data-bridge-edge fill="none" stroke="url(#payment-selection-edge-gradient)" strokeWidth="1" />
+      <path data-bridge-edge fill="none" stroke="url(#payment-selection-edge-gradient)" strokeWidth="1" strokeLinecap="square" />
     </svg>
   );
 });
 
 export default PaymentSelectionBridge;
 
-/** 곡선이 선택 행 위아래로 벌어지는 높이(px). */
-const BRIDGE_FLARE = 24;
-/** 상세 패널 외곽선(1px)을 덮는 폭(px). */
+/** 선이 선택 박스 테두리·패널 외곽선과 겹치는 길이(px) — 이음매 틈을 없앤다. 같은 색이라 겹침은 안 보인다. */
 const BRIDGE_OVERLAP = 2;
+
+/** 선택 박스의 모서리 R(px) — 연결부의 역라운드도 같은 R 로 뒤집어 쓴다. */
+function cornerRadius(el: HTMLElement): number {
+  const r = parseFloat(getComputedStyle(el).borderTopLeftRadius);
+  return Number.isFinite(r) && r > 0 ? r : 12;
+}
 
 export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HTMLDivElement | null, bridge: SVGSVGElement | null) {
   const detail = root?.querySelector<HTMLElement>(".payment-detail-shell");
@@ -54,20 +58,28 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   const startY = Math.max(0, Math.min(height, top - panel.top));
   const endY = Math.max(0, Math.min(height, bottom - panel.top));
   if (endY <= startY) { bridge.style.opacity = "0"; return; }
-  // 곡선은 양 끝 접선이 수평인 S자로 넉넉히(FLARE) 벌어져 패널 외곽선에 붙는다.
-  const upperY = Math.max(0, startY - BRIDGE_FLARE);
-  const lowerY = Math.min(height, endY + BRIDGE_FLARE);
-  const midX = width * 0.5;
-  const upper = `M 0 ${startY} C ${midX} ${startY} ${midX} ${upperY} ${width} ${upperY}`;
-  const lowerCurve = `C ${midX} ${lowerY} ${midX} ${endY} 0 ${endY}`;
-  // 채움은 패널 외곽선(1px) 위로 BRIDGE_OVERLAP 만큼 들어가 이어지는 구간의 테두리를 지운다.
-  const edgeX = width + BRIDGE_OVERLAP;
-  bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upper} L ${edgeX} ${upperY} L ${edgeX} ${lowerY} L ${width} ${lowerY} ${lowerCurve} Z`);
-  // 외곽선은 두 곡선만 — 이어지는 구간에는 세로선을 긋지 않는다.
-  bridge.querySelector("[data-bridge-edge]")?.setAttribute("d", `${upper} M ${width} ${lowerY} ${lowerCurve}`);
+  // 물방울 연결: 선택 박스의 위·아래 직선이 상세 패널 앞까지 그대로 뻗고, 끝에서 박스와 같은 R 로
+  // 바깥쪽(위는 위로, 아래는 아래로) 뒤집혀 휘어 패널 외곽선에 수직으로 붙는다(역라운드).
+  // 선이 끊겨 보이지 않게: ① 1px 선을 테두리 픽셀 한가운데(+0.5)에 맞추고 ② SVG 를 박스 안쪽 OVERLAP 만큼
+  // 당겨 시작해 박스 테두리와 겹치고 ③ 역라운드 끝도 패널 외곽선을 따라 OVERLAP 만큼 더 긋는다.
+  const lead = BRIDGE_OVERLAP;
+  const topLine = startY + 0.5;
+  const bottomLine = endY - 0.5;
+  const panelLine = lead + width + 0.5;
+  const r = Math.max(0, Math.min(cornerRadius(selected), width + 0.5, topLine, height - bottomLine));
+  const straight = panelLine - r;
+  const upperY = topLine - r;
+  const lowerY = bottomLine + r;
+  const upperArc = `M 0 ${topLine} L ${straight} ${topLine} A ${r} ${r} 0 0 0 ${panelLine} ${upperY}`;
+  const lowerArc = `L ${panelLine} ${lowerY} A ${r} ${r} 0 0 0 ${straight} ${bottomLine} L 0 ${bottomLine}`;
+  // 채움은 패널 외곽선 픽셀을 넘어 edgeX 까지 — 이어지는 구간의 테두리를 지운다.
+  const edgeX = panelLine + 1.5;
+  bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upperArc} L ${edgeX} ${upperY} L ${edgeX} ${lowerY} ${lowerArc} Z`);
+  // 외곽선 = 박스 위·아래 선의 연장 + 역라운드. 이어지는 구간에는 세로선이 없다.
+  bridge.querySelector("[data-bridge-edge]")?.setAttribute("d", `${upperArc} L ${panelLine} ${Math.max(0, upperY - BRIDGE_OVERLAP)} M ${panelLine} ${Math.min(height, lowerY + BRIDGE_OVERLAP)} ${lowerArc}`);
   bridge.setAttribute("viewBox", `0 0 ${edgeX} ${height}`);
   const bounds = root.getBoundingClientRect();
-  bridge.style.left = `${row.right - bounds.left}px`;
+  bridge.style.left = `${row.right - lead - bounds.left}px`;
   bridge.style.top = `${panel.top - bounds.top}px`;
   bridge.style.width = `${edgeX}px`;
   bridge.style.height = `${height}px`;
