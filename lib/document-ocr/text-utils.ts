@@ -13,6 +13,8 @@ export function normalizeOcrText(raw: string): string {
     .replace(/[‐‑‒–—―─ㅡ]/g, "-")
     .replace(/：/g, ":")
     .replace(/．/g, ".")
+    // 실제 tesseract 결과는 칸 사이 밑줄을 _ 로 읽는다("성 _ 명: 홍길동") — 라벨·값을 끊지 않게 공백으로.
+    .replace(/[_＿]+/g, " ")
     .replace(/\u00a0/g, " ");
 }
 

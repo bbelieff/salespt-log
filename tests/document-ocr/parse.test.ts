@@ -178,3 +178,29 @@ describe("redactOcrText — state 에 두기 전 가리기", () => {
     expect(byKey(parseBusinessCertificate(red).fields).법인등록번호?.value).toBe(VALID_CORPNO);
   });
 });
+
+describe("실제 tesseract 결과(합성 사업자등록증 이미지, 2026-09-28 실측)", () => {
+  const real = `사업자등록증
+
+( 일반과세자 )
+등록번호 : 123-45-67891
+상 _ 호 :：예시상사
+성 _ 명: 홍길동
+생 년 월 일 : 1980 년 01 월 01 일
+개 업 연 월 일 : 2025 년 03 월 02 일
+사업장 소재지 : 서울특별시 중구 예시로 1,25
+사업의 종류: 업태 도소매 _종목 전자상거래업
+발급 사 유 : 신규
+공동사업자 :
+2025 년 03 월 05 일
+예시세무서장`;
+  it("밑줄·전각 콜론 잡음이 있어도 대표자·상호·업태를 읽는다", () => {
+    const r = parseDocument("사업자등록증", real)!;
+    const v = (k: string) => r.fields.find((f) => f.key === k)?.value;
+    expect(v("대표자이름")).toBe("홍길동");
+    expect(v("업태")).toBe("도소매");
+    expect(v("업종주생산품목")).toBe("전자상거래업");
+    expect(v("사업자등록번호")).toBe("123-45-67891");
+    expect(JSON.stringify(r.info)).toContain("예시상사");
+  });
+});
