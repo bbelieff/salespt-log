@@ -7,6 +7,8 @@
  *  ④ Esc · 바깥 누르기로 닫힌다. 한 번에 하나만 열린다.
  *  ⑤ 설명 없는 필드(라벨과 같은 설명 = 이름, 사용자 추가 필드)는 버튼이 없다.
  *  ⑥ 입력칸은 htmlFor/id 로 라벨과 연결된다(버튼은 label 밖).
+ *  ⑦ 화면낭독기: 입력칸 aria-describedby → sr-only 설명(툴팁을 안 열어도 예시 형식을 읽음).
+ *  ⑧ 스크롤(안쪽 컨테이너 포함)되면 말풍선이 닫힌다 — 가려진 버튼 위에 떠 있지 않게.
  */
 import * as React from "react";
 import { act, createElement as h } from "react";
@@ -66,10 +68,38 @@ afterEach(() => {
 describe("CompanyInfoEditor hint tooltip", () => {
   it("does not render the grey hint line by default", () => {
     renderOpen();
-    expect(el!.textContent).toContain("개업일");
-    expect(el!.textContent).not.toContain("25.01.24");
-    expect(el!.textContent).not.toContain("0명 + 프리0명");
+    // 화면에 보이는 글자만(sr-only 화면낭독 설명 제외).
+    const clone = el!.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(".sr-only").forEach((n) => n.remove());
+    expect(clone.textContent).toContain("개업일");
+    expect(clone.textContent).not.toContain("25.01.24");
+    expect(clone.textContent).not.toContain("0명 + 프리0명");
     expect(tooltip()).toBeNull();
+  });
+
+  it("describes each hinted input to screen readers without opening the tooltip", () => {
+    renderOpen();
+    const label = [...el!.querySelectorAll("label")].find((l) => l.textContent === "개업일")!;
+    const input = document.getElementById(label.htmlFor)!;
+    const descId = input.getAttribute("aria-describedby");
+    expect(descId).toBeTruthy();
+    const desc = document.getElementById(descId!)!;
+    expect(desc.textContent).toBe("25.01.24");
+    expect(desc.classList.contains("sr-only")).toBe(true);
+    // 설명 없는 필드(이름)는 describedby 없음.
+    const nameLabel = [...el!.querySelectorAll("label")].find((l) => l.textContent === "이름")!;
+    expect(document.getElementById(nameLabel.htmlFor)!.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("closes a pinned tooltip when an inner scroll container scrolls", () => {
+    renderOpen();
+    act(() => hintBtn("개업일")!.click());
+    expect(tooltip()).not.toBeNull();
+    act(() => {
+      el!.dispatchEvent(new Event("scroll")); // 버블링 안 함 — capture 리스너로 잡혀야 한다.
+    });
+    expect(tooltip()).toBeNull();
+    expect(hintBtn("개업일")!.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("shows the hint in a tooltip on click and closes on Escape", () => {

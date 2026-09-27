@@ -6,7 +6,8 @@
  * - 한 번에 하나만 열린다(모듈 단일 활성 슬롯).
  * - 말풍선은 document.body 로 portal + fixed 좌표 → overflow hidden/auto 부모(실무수납
  *   상세패널·모바일 아코디언)에 잘리지 않는다. 가로는 화면 안(8px 여백)으로 clamp,
- *   아래 공간이 없으면 버튼 위로 뒤집는다. 스크롤·리사이즈 시 좌표를 다시 잡는다.
+ *   아래 공간이 없으면 버튼 위로 뒤집는다. 리사이즈 시 좌표를 다시 잡고, 스크롤(바깥·안쪽
+ *   스크롤 컨테이너 모두)되면 닫는다 — 버튼이 가려진 뒤 말풍선만 떠 있지 않게.
  */
 "use client";
 
@@ -80,12 +81,13 @@ export default function HintTooltip({ label, text }: Props) {
     const onMove = () => place();
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);
-    window.addEventListener("scroll", onMove, true);
+    // capture — 안쪽 overflow 컨테이너 스크롤도 잡는다(scroll 은 버블링 안 됨).
+    window.addEventListener("scroll", close, true);
     window.addEventListener("resize", onMove);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", onMove);
     };
   }, [open, close, place]);

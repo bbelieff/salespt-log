@@ -244,6 +244,8 @@ export default function CompanyInfoEditor({
     // 기존 저장분(하이픈 없음·시트가 숫자로 먹어 선행 0 소실)도 이때 흡수된다.
     const isPhone = String(k) === "연락처통신사";
     const inputId = `${uid}-${where}-${String(k)}`;
+    // 설명은 툴팁 + 화면낭독기용 상시 설명(sr-only) — 입력칸에 포커스하면 예시 형식을 읽어준다.
+    const hintId = ph && ph !== label ? `${inputId}-hint` : undefined;
     const onBlurNormalize = isPhone
       ? () => {
           const next = formatPhone(v);
@@ -257,14 +259,20 @@ export default function CompanyInfoEditor({
           <label htmlFor={inputId} className="text-xs font-medium text-gray-800">
             {label}
           </label>
-          {ph && ph !== label && <HintTooltip label={label} text={ph} />}
+          {hintId && <HintTooltip label={label} text={ph} />}
         </div>
+        {hintId && (
+          <span id={hintId} className="sr-only">
+            {ph}
+          </span>
+        )}
         {multi ? (
           <textarea
             id={inputId}
             className={`${inputCls} resize-none leading-5`}
             rows={Math.max(2, v.split("\n").length)}
             placeholder={undefined}
+            aria-describedby={hintId}
             value={v}
             onChange={(e) => set(k, e.target.value)}
           />
@@ -273,6 +281,7 @@ export default function CompanyInfoEditor({
             id={inputId}
             className={inputCls}
             placeholder={undefined}
+            aria-describedby={hintId}
             inputMode={isPhone ? "tel" : undefined}
             value={v}
             onChange={(e) => set(k, e.target.value)}
