@@ -105,18 +105,20 @@ describe("선택 행과 상세의 연결부", () => {
     syncPaymentSelectionBridge(workspace, pane, bridge);
     expect(bridge.style.opacity).toBe("1");
     expect(bridge.style.left).toBe("360px");
-    expect(bridge.style.width).toBe("22px");
+    expect(bridge.style.width).toBe("24px"); // 틈 22 + 패널 외곽선 덮기 2
     expect(bridge.style.top).toBe("0px");
     expect(bridge.style.height).toBe("500px");
-    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("22 90 L 22 180");
-    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).not.toContain("22 500");
-    expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).toContain("L 21.5 500");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("22 76 L 24 76 L 24 194 L 22 194");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).not.toContain(" 500");
+    // 이어지는 구간엔 세로 외곽선이 없다 — 곡선 두 개만.
+    expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).not.toContain(" 500");
+    expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).toBe("M 0 100 C 11 100 11 76 22 76 M 22 194 C 11 194 11 170 0 170");
 
     row.remove();
     syncPaymentSelectionBridge(workspace, pane, bridge);
     expect(bridge.style.opacity).toBe("1");
     expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("M 0 30 ");
-    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("22 20 L 22 75");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("22 6 L 24 6 L 24 89");
 
     pane.append(row);
     rowRect.mockReturnValue(rect(10, 520, 360, 590));
