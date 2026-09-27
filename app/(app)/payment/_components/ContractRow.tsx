@@ -249,7 +249,7 @@ export default function ContractRow({
     <div
       className={
         bare
-          ? "flex min-h-0 flex-1 flex-col bg-white transition-all duration-200"
+          ? "flex min-h-0 flex-1 flex-col bg-transparent transition-all duration-200"
           : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
