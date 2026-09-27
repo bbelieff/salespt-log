@@ -35,6 +35,7 @@ const GCAL_TOAST_FALLBACK = "연결에 실패했어요. 다시 시도해도 안 
 
 export default function GcalConnectCard() {
   const [state, setState] = useState<CardState | null>(null);
+  const [expanded, setExpanded] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -89,85 +90,86 @@ export default function GcalConnectCard() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const card = "rounded-2xl border border-neutral-200 bg-white p-4 text-sm";
+  const card = "rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm";
 
   if (state === null) {
     return <div className={`${card} text-neutral-400`}>구글 캘린더 연동 …</div>;
   }
 
-  // 실패(토큰 무효) — "연결이 풀렸어요"
-  if (state.error) {
-    return (
-      <div className={card}>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="font-semibold">구글 캘린더 연동</span>
-          <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">연결이 풀렸어요</span>
-        </div>
-        {state.impersonated ? (
-          <p className="text-xs text-neutral-400">{SELF_ONLY_MSG}</p>
-        ) : (
-          <a href="/api/gcal/auth" className="inline-block rounded-lg bg-neutral-900 px-3 py-2 text-white">다시 연결</a>
-        )}
-        {toast && <p className="mt-2 text-xs text-neutral-500">{toast}</p>}
-      </div>
-    );
-  }
+  const status = state.error ? "연결이 풀렸어요" : state.connected ? "연결됨" : "연결 필요";
+  const statusClass = state.error
+    ? "bg-red-50 text-red-600"
+    : state.connected
+      ? "bg-green-50 text-green-700"
+      : "bg-neutral-100 text-neutral-500";
 
-  // 미연결
-  if (!state.connected) {
-    return (
-      <div className={card}>
-        <div className="mb-1 font-semibold">구글 캘린더 연동</div>
-        <p className="mb-3 text-neutral-500">예약한 일정이 내 구글 캘린더에 자동으로 등록돼요</p>
-        {state.impersonated ? (
-          // 임퍼스네이션 — 마스터 계정이 남의 화면에서 연결되는 경로 차단(귀속 사고 2026-07-10).
-          <p className="text-xs text-neutral-400">{SELF_ONLY_MSG}</p>
+  return (
+    <section className={card} aria-label="구글 캘린더 연동">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls="gcal-connect-controls"
+        onClick={() => setExpanded((open) => !open)}
+        className="flex w-full min-w-0 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+      >
+        <span className="shrink-0 font-semibold text-neutral-900">구글 캘린더 연동</span>
+        {state.account && <span className="min-w-0 flex-1 truncate text-xs text-neutral-400" title={state.account}>{state.account}</span>}
+        {!state.account && <span className="min-w-0 flex-1" />}
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusClass}`}>{status}</span>
+        <span className="shrink-0 text-xs text-neutral-400" aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+        <span className="sr-only">{expanded ? "접기" : "펼치기"}</span>
+      </button>
+
+      <div id="gcal-connect-controls" hidden={!expanded} className="mt-2 border-t border-neutral-100 pt-2">
+        {state.error ? (
+          state.impersonated ? (
+            <p className="text-xs text-neutral-400">{SELF_ONLY_MSG}</p>
+          ) : (
+            <a href="/api/gcal/auth" className="inline-flex h-8 items-center rounded-lg bg-neutral-900 px-3 text-xs font-medium text-white">다시 연결</a>
+          )
+        ) : !state.connected ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="min-w-0 flex-1 text-xs text-neutral-500">예약한 일정이 내 구글 캘린더에 자동으로 등록돼요</p>
+              {state.impersonated ? (
+                <p className="text-xs text-neutral-400">{SELF_ONLY_MSG}</p>
+              ) : (
+                <a href="/api/gcal/auth" className="inline-flex h-8 shrink-0 items-center rounded-lg bg-neutral-900 px-3 text-xs font-medium text-white">연결하기</a>
+              )}
+            </div>
+            {!state.impersonated && <p className="mt-1 text-xs text-neutral-400">경고가 떠도 안전해요. [고급] → [이동]을 눌러 주세요.</p>}
+          </>
         ) : (
           <>
-            <a href="/api/gcal/auth" className="inline-block rounded-lg bg-neutral-900 px-3 py-2 text-white">연결하기</a>
-            <p className="mt-2 text-xs text-neutral-400">경고가 떠도 안전해요. [고급] → [이동]을 눌러 주세요.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex min-w-[180px] flex-[1_1_260px] items-center gap-2">
+                <span className="shrink-0 text-neutral-500">캘린더</span>
+                <select
+                  disabled={busy || state.impersonated}
+                  value={state.settings.calendarId}
+                  onChange={(e) => patch({ calendarId: e.target.value })}
+                  className="min-w-0 flex-1 truncate rounded-lg border border-neutral-200 px-2 py-1.5 disabled:opacity-50"
+                >
+                  {(state.calendars.length ? state.calendars : [{ id: "primary", summary: "기본 캘린더", primary: true }]).map((c) => (
+                    <option key={c.id} value={c.id}>{c.summary}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={busy || state.impersonated}
+                onClick={resync}
+                className="shrink-0 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-600 disabled:opacity-50"
+              >
+                다시 올리기
+              </button>
+              <button type="button" disabled={busy || state.impersonated} onClick={disconnect} className="shrink-0 px-1 text-xs text-neutral-400 underline disabled:opacity-50">연결 해제</button>
+            </div>
+            {state.impersonated && <p className="mt-2 text-xs text-neutral-400">{SELF_ONLY_MSG}</p>}
           </>
         )}
-        {toast && <p className="mt-2 text-xs text-neutral-500">{toast}</p>}
       </div>
-    );
-  }
-
-  // 연결됨
-  return (
-    <div className={card}>
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="font-semibold">구글 캘린더 연동</span>
-        <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">연결됨</span>
-      </div>
-      {state.account && (
-        <p className="mb-3 truncate text-xs text-neutral-400">{state.account}</p>
-      )}
-      <label className="mb-3 flex items-center gap-2">
-        <span className="shrink-0 text-neutral-500">캘린더</span>
-        <select
-          disabled={busy || state.impersonated}
-          value={state.settings.calendarId}
-          onChange={(e) => patch({ calendarId: e.target.value })}
-          className="min-w-0 flex-1 truncate rounded-lg border border-neutral-200 px-2 py-1.5 disabled:opacity-50"
-        >
-          {(state.calendars.length ? state.calendars : [{ id: "primary", summary: "기본 캘린더", primary: true }]).map((c) => (
-            <option key={c.id} value={c.id}>{c.summary}</option>
-          ))}
-        </select>
-      </label>
-      <div className="flex items-center justify-between gap-2">
-        <button
-          disabled={busy || state.impersonated}
-          onClick={resync}
-          className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 disabled:opacity-50"
-        >
-          다시 올리기
-        </button>
-        <button disabled={busy || state.impersonated} onClick={disconnect} className="text-xs text-neutral-400 underline disabled:opacity-50">연결 해제</button>
-      </div>
-      {state.impersonated && <p className="mt-2 text-xs text-neutral-400">{SELF_ONLY_MSG}</p>}
-      {toast && <p className="mt-2 text-xs text-neutral-500">{toast}</p>}
-    </div>
+      {toast && <p role="status" className="mt-2 text-xs text-neutral-500">{toast}</p>}
+    </section>
   );
 }

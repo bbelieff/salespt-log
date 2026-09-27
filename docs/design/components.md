@@ -1260,10 +1260,10 @@ app/(app)/dashboard/page.tsx
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2) |
+| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2). 투두 pill은 `시간 · 업체명 · 제목` 순서로 표시하고, 업체명이 빈 기존 진행건은 계약 ref에서 업체명을 복원한다. 좁은 셀은 말줄임하되 전체 문자열은 툴팁으로 확인한다. |
 | **TodoTypeIcon** | 실무투두 type(기타/미팅/전화/메시지) 인라인 SVG. 캘린더 투두 pill·일자상세 "실무" 배지·범례 공용. Props: `type` / `size`. currentColor (진회색 위 흰색). |
 | **GeneralEventModal** | 캘린더 일반이벤트 생성 모달 (consultation-log §4-3·4-4). Props: `defaultDate`, `onClose`, `onCreated`. 카테고리(기존/기타)·이벤트명·업체명·상세·날짜·시간 → POST /api/todos(type=일반, contractRef 빈값). 첫 추가 시 경고 모달 + "다시 보지 않기"(localStorage hideGeneralEventHint). teal(#0d9488, tokens). |
-| **GcalConnectCard** | 구글 캘린더 연동 카드 (gcal-1/2b, google-calendar-sync §4-1 문구 정본). Props 없음 — /api/gcal(GET 상태·POST 설정·DELETE 해제)·/api/gcal/resync fetch. 미연결/연결됨/실패("연결이 풀렸어요") 3상태. 연결됨: 계정 표시 + 캘린더 드롭다운 + [다시 올리기](전체 재푸시) + [연결 해제]. 유형 토글 3종은 폐기(2026-07-09), 일정별 토글은 GcalItemToggle. [연결하기]→/api/gcal/auth. 금지 용어(동기화·토큰·OAuth) 화면 미노출(ADR-0028). |
+| **GcalConnectCard** | 구글 캘린더 연동 카드 (gcal-1/2b, google-calendar-sync §4-1 문구 정본). Props 없음 — /api/gcal(GET 상태·POST 설정·DELETE 해제)·/api/gcal/resync fetch. 미연결/연결됨/실패("연결이 풀렸어요") 3상태. 제목·계정·상태를 한 줄에 요약하고 제목 행으로 접고 펼친다(기본 펼침). 연결됨: 캘린더 드롭다운 + [다시 올리기](전체 재푸시) + [연결 해제]를 PC에서는 한 줄에 배치하고 좁은 화면에서 줄바꿈한다. 유형 토글 3종은 폐기(2026-07-09), 일정별 토글은 GcalItemToggle. [연결하기]→/api/gcal/auth. 금지 용어(동기화·토큰·OAuth) 화면 미노출(ADR-0028). |
 | **GcalItemToggle** | 일정 항목별 구글 캘린더 담기/빼기 토글 (gcal-2b). Props: `kind`(meeting/todo)·`id`·`on`·`onChange`·`onToast`. 제어형 — 부모(캘린더 페이지)가 상태 배치조회(/api/gcal/states) 후 보유. 낙관적 갱신 → POST /api/gcal/toggle, 실패 롤백. 항목 클릭(네비)과 분리(stopPropagation). 캘린더 아이콘(담김=파랑+체크/뺌=회색). 금지 용어 미노출. |
 | **TodoDayCard** | 일자상세 ToDo 1건 카드 (page.tsx 500줄 캡으로 분리). Props: `t`(Todo)·`gcalConnected`·`gcalOn`·`onGcalChange`·`onGcalToast`. 실무(미팅/전화/메시지/기타)=카드 클릭 시 `/payment?focus=` 점프. **일반**(type=일반)=다른 탭에 안 보여 삭제 경로가 없던 고아 → 카드 우측 휴지통 버튼 + 확인 모달(z-[300], DeleteConfirmModal 패턴) → `useRemoveTodo`(DELETE /api/todos/[id], 구글 캘린더 이벤트도 정리). 좌측바·배지색 = 실무 진회색/일반 teal (tokens). |
 
