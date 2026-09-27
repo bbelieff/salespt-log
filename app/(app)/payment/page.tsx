@@ -13,7 +13,7 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
@@ -96,6 +96,8 @@ export default function PaymentPage() {
   const guardedNav = useGuardedNav();
   const allTodos = useAllTodos();
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const listPaneRef = useRef<HTMLDivElement>(null);
+  const bridgeRef = useRef<HTMLDivElement>(null);
   const [masterWidth, setMasterWidth] = useState(360);
   const beginResize = (event: React.PointerEvent<HTMLButtonElement>) => {
     const root = workspaceRef.current;
@@ -222,6 +224,45 @@ export default function PaymentPage() {
   const selectedCp = listMode === "institution"
     ? selectedWork ? rows.find((r) => r.row === selectedWork.row) ?? rows[0] : undefined
     : visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
+  // 연결 그라데이션은 스크롤 영역 밖의 작업판에 둔다. 선택 행이 화면 밖으로
+  // 나가면 함께 숨겨져 목록 스크롤 중에도 상세 열 위에 잔상이 남지 않는다.
+  const syncBridge = () => {
+    const root = workspaceRef.current;
+    const pane = listPaneRef.current;
+    const bridge = bridgeRef.current;
+    const selected = pane?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!root || !pane || !bridge || !selected) {
+      if (bridge) bridge.style.opacity = "0";
+      return;
+    }
+    const row = selected.getBoundingClientRect();
+    const viewport = pane.getBoundingClientRect();
+    const tabsBottom = pane.querySelector<HTMLElement>("[data-payment-mode-tabs]")?.getBoundingClientRect().bottom ?? viewport.top;
+    const top = Math.max(row.top, tabsBottom);
+    const bottom = Math.min(row.bottom, viewport.bottom);
+    if (bottom - top < 12) { bridge.style.opacity = "0"; return; }
+    bridge.style.top = `${top - root.getBoundingClientRect().top}px`;
+    bridge.style.height = `${bottom - top}px`;
+    bridge.style.opacity = "1";
+  };
+  useLayoutEffect(() => {
+    if (!isPc) return;
+    let frame = 0;
+    const sync = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const root = workspaceRef.current;
+        if (!root) return;
+        const pageTop = root.getBoundingClientRect().top + window.scrollY;
+        root.style.height = `${Math.max(320, Math.floor(window.innerHeight - pageTop - 12))}px`;
+        syncBridge();
+      });
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", sync); };
+  // Re-measure when async summary/list content or the selected row changes.
+  }, [isPc, list.isLoading, rows.length, listMode, selectedCp?.row, selectedWorkKey, companyQuery, sortKey, masterWidth]);
   // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
   const selectWork = (item: InstitutionWorkItem) => guardedNav(() => {
@@ -231,7 +272,7 @@ export default function PaymentPage() {
     window.setTimeout(() => document.getElementById(`payment-slot-${item.row}-${item.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   });
   const listModeTabs = (
-    <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1" role="group" aria-label="계약 목록 기준">
+    <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1" role="group" aria-label="계약 목록 기준" data-payment-mode-tabs>
       {(["company", "institution"] as const).map((mode) => (
         <button key={mode} type="button" aria-pressed={listMode === mode}
           onClick={() => guardedNav(() => {
@@ -272,14 +313,9 @@ export default function PaymentPage() {
         {/* 이전 계약업체 등록 + 아레나/이월 매출 분리 (arena-start-revenue-split) */}
         <PriorContractSection contracts={rows} courseStartISO={courseStartISO} />
 
-        {/* 안내 */}
-        <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-          일정·계약 탭에서 미팅을 <b>계약</b>으로 처리하면 여기에 자동으로 추가돼요.
-        </div>
-
-        {/* 업체 검색 — 첫 업체 카드 위 sticky (CompanySearchBar) + 정렬 컨트롤 */}
+        {/* 업체 검색·정렬: PC에서는 한 줄, 모바일에서는 기존 순서. */}
         {!list.isLoading && !list.isError && rows.length > 0 && (
-          <div className="mb-3 space-y-2">
+          <div className="mb-3 space-y-2 min-[1280px]:mb-2 min-[1280px]:flex min-[1280px]:items-center min-[1280px]:gap-3 min-[1280px]:space-y-0">
             <CompanySearchBar
               value={companyQuery}
               onChange={(v) => guardedNav(() => setCompanyQuery(v))}
@@ -303,11 +339,11 @@ export default function PaymentPage() {
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
           </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 목록은 페이지와 함께 스크롤하고 상세의 좌우 열만 독립 스크롤.
+          /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
-          <div ref={workspaceRef} className="grid min-w-0 items-start" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
-            <div className="min-w-0 rounded-l-2xl border border-blue-200 bg-slate-50/80 shadow-sm">
-              <div className="border-b border-slate-200 bg-slate-50/95 p-2">{listModeTabs}</div>
+          <div ref={workspaceRef} className="payment-workspace relative grid h-[calc(100dvh-18rem)] min-h-[320px] min-w-0 items-stretch" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
+            <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 overflow-y-auto">
+              <div className="sticky top-0 z-20 bg-slate-50/90 p-1.5 backdrop-blur-md">{listModeTabs}</div>
               {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
               ) : listMode === "company" ? <ContractListTable
@@ -318,11 +354,11 @@ export default function PaymentPage() {
                 courseStartISO={courseStartISO}
               /> : <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />}
             </div>
-            <button type="button" onPointerDown={beginResize} className="group relative h-full min-h-[420px] cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
-              <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-blue-200 transition-colors group-hover:bg-blue-500" />
+            <button type="button" onPointerDown={beginResize} className="group relative z-10 h-full cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
+              <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors group-hover:bg-blue-400" />
             </button>
             {selectedCp && (
-              <div className="sticky top-app-content flex h-[calc(100vh-7rem)] min-w-0 flex-col overflow-hidden rounded-r-2xl border border-blue-200 bg-white shadow-sm">
+              <div className="payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl bg-white/75 shadow-sm">
                 <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
                   <div className="min-w-0"><h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-blue-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
                   <button type="button" onClick={() => setMasterWidth(360)} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
@@ -347,6 +383,7 @@ export default function PaymentPage() {
                 />
               </div>
             )}
+            <div ref={bridgeRef} aria-hidden="true" className="payment-selection-link pointer-events-none absolute z-20 opacity-0" style={{ left: masterWidth - 10, width: 28 }} />
           </div>
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
