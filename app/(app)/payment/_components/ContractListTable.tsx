@@ -24,7 +24,7 @@ export default function ContractListTable({ rows, selectedRow, onSelect, highlig
         const muted = isCarryoverContract(cp, courseStartISO ?? "") || isTerminatedContract(cp);
         return (
           <button key={cp.row} type="button" role="option" aria-selected={selected} data-row={cp.row} onClick={() => { if (!selected) onSelect(cp.row ?? null); }}
-            className={`relative w-full rounded-xl border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? "z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-50/70 shadow-[0_8px_24px_rgba(37,99,235,.12)] ring-1 ring-blue-200" : "border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted ? "opacity-60" : ""}`}>
+            className={`relative w-full border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? "z-10 rounded-l-xl border-r-0 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 shadow-[0_8px_24px_rgba(37,99,235,.12)]" : "rounded-xl border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted ? "opacity-60" : ""}`}>
             <div className="flex min-w-0 items-center gap-2">
               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>
               <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>

@@ -38,10 +38,12 @@ const PROGRESS: Item[] = [
 ];
 
 const ALL_ITEMS: Item[] = [...COLLECT, ...PROGRESS];
+const COMPACT_LABELS = ["인증서", "임대차", "신분증", "드라이브", "5종서류", "계획서"];
 
 interface Props {
   draft: Pick<ContractPayment, CheckKey>;
   onChange: (key: CheckKey, next: boolean) => void;
+  compact?: boolean;
 }
 
 function renderItem(
@@ -77,7 +79,15 @@ function renderItem(
   );
 }
 
-export default function CheckboxList({ draft, onChange }: Props) {
+export default function CheckboxList({ draft, onChange, compact = false }: Props) {
+  if (compact) return (
+    <div className="grid grid-cols-6 gap-1" aria-label="서류·진행 체크 항목">
+      {ALL_ITEMS.map((it, index) => <label key={it.key} title={`${index < 3 ? "수집" : "진행"} · ${it.label}`} className={`flex min-w-0 cursor-pointer items-center justify-center gap-0.5 rounded-md border px-0.5 py-1.5 ${draft[it.key] ? "border-blue-300 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600"}`}>
+        <input type="checkbox" aria-label={`${index < 3 ? "수집" : "진행"} · ${it.label}`} checked={draft[it.key]} onChange={(e) => onChange(it.key, e.target.checked)} className="h-3.5 w-3.5 shrink-0 accent-blue-500"/>
+        <span className="min-w-0 truncate text-[10px] font-medium">{COMPACT_LABELS[index]}</span>
+      </label>)}
+    </div>
+  );
   return (
     <div className="grid gap-2.5 min-[1500px]:grid-cols-2">
       <div className="min-w-0">

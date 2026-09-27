@@ -46,7 +46,7 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect }: P
                   return (
                     <button key={item.key} type="button" role="option" aria-selected={selected} data-work-key={item.key}
                       onClick={() => onSelect(item)}
-                      className={`relative w-full rounded-lg border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? "z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-50/70 shadow-sm" : "border-transparent hover:border-blue-100 hover:bg-slate-50"} ${item.muted ? "opacity-60" : ""}`}>
+                      className={`relative w-full border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? "z-10 rounded-l-lg border-r-0 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 shadow-sm" : "rounded-lg border-transparent hover:border-blue-100 hover:bg-slate-50"} ${item.muted ? "opacity-60" : ""}`}>
                       <span className="flex min-w-0 items-center gap-1.5">
                         <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-900">{item.company}</span>
                         <span className="shrink-0 text-[11px] font-semibold text-blue-700">진행 {item.slot}</span>

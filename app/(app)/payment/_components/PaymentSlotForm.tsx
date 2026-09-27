@@ -289,6 +289,7 @@ export default function PaymentSlotForm({
             사라지면 안 되므로 `sameInstitution` 으로 **양끝 공백을 무시하고** 비교한다. */}
         {contractRef && (
           <TodoSection
+            accentFamily={style.family}
             contractRef={contractRef}
             institutionRef={savedInstitution ?? ""}
             draftInstitution={slot.진행기관}

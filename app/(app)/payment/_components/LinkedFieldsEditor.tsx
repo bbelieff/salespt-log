@@ -31,8 +31,8 @@ const isValidDraft = (d: LinkedDraft): boolean =>
   Number.isFinite(d.수임비) &&
   d.수임비 >= 0;
 
-export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
-  const [editing, setEditing] = useState(false);
+export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { cp: ContractPayment; initiallyEditing?: boolean }) {
+  const [editing, setEditing] = useState(initiallyEditing);
   const edit = useEditContractLinkedFields();
   const mutateRef = useRef(edit.mutateAsync);
   mutateRef.current = edit.mutateAsync;
@@ -147,7 +147,7 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
             canUndo={canUndo}
             onUndo={undo}
           />
-          <button
+          {!initiallyEditing && <button
             type="button"
             onClick={() => setEditing(false)}
             disabled={dirty}
@@ -155,7 +155,7 @@ export default function LinkedFieldsEditor({ cp }: { cp: ContractPayment }) {
             className="rounded px-1.5 py-0.5 text-[11px] font-medium text-gray-400 hover:bg-white hover:text-gray-600 disabled:opacity-40"
           >
             접기
-          </button>
+          </button>}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
