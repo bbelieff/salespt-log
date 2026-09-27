@@ -28,6 +28,7 @@ import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
 import ContractListTable from "./_components/ContractListTable";
 import InstitutionWorkList from "./_components/InstitutionWorkList";
+import PaymentSelectionBridge, { syncPaymentSelectionBridge } from "./_components/PaymentSelectionBridge";
 import PaymentPerformanceSummary from "./_components/PaymentPerformanceSummary";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
@@ -100,9 +101,9 @@ export default function PaymentPage() {
   const allTodos = useAllTodos();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const listPaneRef = useRef<HTMLDivElement>(null);
-  const bridgeRef = useRef<HTMLDivElement>(null);
+  const bridgeRef = useRef<SVGSVGElement>(null);
   const { masterWidth, setMasterWidth, beginResize } = useMasterPaneWidth(workspaceRef);
-  const [detailLeftPct, setDetailLeftPct] = useState(45);
+  const [detailLeftPct, setDetailLeftPct] = useState(60);
 
   const { focusTodoId, focusPayment } = usePaymentFocus(list.data?.rows, isPc);
   useEffect(() => {
@@ -214,31 +215,8 @@ export default function PaymentPage() {
   const selectedCp = listMode === "institution"
     ? selectedWork ? rows.find((r) => r.row === selectedWork.row) ?? rows[0] : undefined
     : visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
-  // 연결 그라데이션은 스크롤 영역 밖의 작업판에 둔다. 선택 행이 화면 밖으로
-  // 나가면 함께 숨겨져 목록 스크롤 중에도 상세 열 위에 잔상이 남지 않는다.
-  const syncBridge = () => {
-    const root = workspaceRef.current;
-    const pane = listPaneRef.current;
-    const bridge = bridgeRef.current;
-    const detail = root?.querySelector<HTMLElement>(".payment-detail-shell");
-    const selected = pane?.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!root || !pane || !bridge || !detail || !selected) {
-      if (bridge) bridge.style.opacity = "0";
-      return;
-    }
-    const row = selected.getBoundingClientRect();
-    const viewport = pane.getBoundingClientRect();
-    const top = Math.max(row.top, viewport.top);
-    const bottom = Math.min(row.bottom, viewport.bottom);
-    if (bottom - top < 12) { bridge.style.opacity = "0"; return; }
-    const gap = detail.getBoundingClientRect().left - row.right;
-    if (gap < 2) { bridge.style.opacity = "0"; return; }
-    bridge.style.left = `${row.right - root.getBoundingClientRect().left - 1}px`;
-    bridge.style.width = `${gap + 2}px`;
-    bridge.style.top = `${top - root.getBoundingClientRect().top}px`;
-    bridge.style.height = `${bottom - top}px`;
-    bridge.style.opacity = "1";
-  };
+  // 선택 행이 스크롤 밖으로 나가면 연결부도 숨겨 상세 위에 잔상을 남기지 않는다.
+  const syncBridge = () => syncPaymentSelectionBridge(workspaceRef.current, listPaneRef.current, bridgeRef.current);
   useLayoutEffect(() => {
     if (!isPc) return;
     let frame = 0;
@@ -357,10 +335,10 @@ export default function PaymentPage() {
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors group-hover:bg-blue-400" />
             </button>
             {selectedCp && (
-              <div className="payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl bg-white/75 shadow-sm">
+              <div className="payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl bg-white shadow-sm">
                 <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
                   <div className="min-w-0"><h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-blue-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
-                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(45); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
@@ -384,7 +362,7 @@ export default function PaymentPage() {
                 />
               </div>
             )}
-            <div ref={bridgeRef} aria-hidden="true" className="payment-selection-link pointer-events-none absolute z-20 opacity-0" />
+            <PaymentSelectionBridge ref={bridgeRef} />
           </div>
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */

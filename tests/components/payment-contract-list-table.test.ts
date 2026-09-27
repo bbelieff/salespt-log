@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContractPayment } from "@/types";
 import ContractListTable from "@/app/(app)/payment/_components/ContractListTable";
+import PaymentSelectionBridge, { syncPaymentSelectionBridge } from "@/app/(app)/payment/_components/PaymentSelectionBridge";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const slot = (over: Record<string, unknown> = {}) => ({ 진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "", ...over });
@@ -60,7 +61,7 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain("aria-label=\"목록과 상세 너비 조절\"");
     expect(src).toContain("payment-list-scroll");
     expect(src).toContain("payment-detail-shell");
-    expect(src).toContain("payment-selection-link");
+    expect(src).toContain("<PaymentSelectionBridge");
     expect(src).not.toContain("sticky top-app-content flex h-[calc(100vh-7rem)]");
     const detail = readFileSync(join(process.cwd(), "app/(app)/payment/_components/ContractRow.tsx"), "utf8");
     expect((detail.match(/payment-detail-scroll/g) ?? []).length).toBe(2);
@@ -74,5 +75,38 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain('listMode === "institution" ? <>');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
+  });
+});
+
+describe("선택 행과 상세의 연결부", () => {
+  it("간격이 좁아도 역라운드를 그리고 목록 밖으로 스크롤되면 숨긴다", () => {
+    const workspace = document.createElement("div");
+    const pane = document.createElement("div");
+    const row = document.createElement("button");
+    const detail = document.createElement("div");
+    row.setAttribute("aria-selected", "true");
+    detail.className = "payment-detail-shell";
+    pane.append(row); workspace.append(pane, detail); document.body.append(workspace);
+    const host = document.createElement("div"); workspace.append(host);
+    const svgRoot = createRoot(host);
+    act(() => svgRoot.render(h(PaymentSelectionBridge)));
+    const bridge = host.querySelector("svg")!;
+    const rect = (left: number, top: number, right: number, bottom: number) =>
+      ({ left, top, right, bottom, width: right - left, height: bottom - top }) as DOMRect;
+    vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue(rect(0, 0, 800, 500));
+    vi.spyOn(pane, "getBoundingClientRect").mockReturnValue(rect(0, 0, 350, 500));
+    const rowRect = vi.spyOn(row, "getBoundingClientRect").mockReturnValue(rect(10, 100, 360, 170));
+    vi.spyOn(detail, "getBoundingClientRect").mockReturnValue(rect(360, 0, 800, 500));
+
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    expect(bridge.style.opacity).toBe("1");
+    expect(bridge.style.width).toBe("8px");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain(" C ");
+    expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).toContain(" M ");
+
+    rowRect.mockReturnValue(rect(10, 520, 360, 590));
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    expect(bridge.style.opacity).toBe("0");
+    act(() => svgRoot.unmount()); workspace.remove();
   });
 });
