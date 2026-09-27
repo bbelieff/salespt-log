@@ -124,12 +124,13 @@ describe("parseBusinessCertificate — 개인정보·오독", () => {
 });
 
 describe("registry", () => {
-  it("사업자등록증만 등록 — 나머지는 null(곧 지원돼요)", () => {
-    expect(isSupportedDocType("사업자등록증")).toBe(true);
-    for (const t of ["부가세과세표준증명", "재무제표", "신분증", "임대차계약서", "unknown"] as const) {
-      expect(isSupportedDocType(t)).toBe(false);
-      expect(parseDocument(t, PERSONAL_CERT)).toBeNull();
+  it("다섯 서류 모두 등록 — 모르는 문서만 null", () => {
+    for (const t of ["사업자등록증", "부가세과세표준증명", "재무제표", "신분증", "임대차계약서"] as const) {
+      expect(isSupportedDocType(t)).toBe(true);
+      expect(parseDocument(t, PERSONAL_CERT)).not.toBeNull();
     }
+    expect(isSupportedDocType("unknown")).toBe(false);
+    expect(parseDocument("unknown", PERSONAL_CERT)).toBeNull();
     expect(parseDocument("사업자등록증", PERSONAL_CERT)?.fields.length).toBeGreaterThan(5);
   });
 });

@@ -134,19 +134,35 @@ export function findCorpNo(text: string): string {
   return "";
 }
 
-const DRIVER_LICENSE = /(?<!\d)\d{2}\s*-\s*\d{2}\s*-\s*\d{6}\s*-\s*\d{2}(?!\d)/g;
+/** 숫자 n자리 — 숫자 사이 공백 1칸까지 허용(OCR 자간 노이즈 "8 0 0 1 0 1"). */
+const spacedDigits = (n: number) => String.raw`\d(?:[ \t]?\d){${n - 1}}`;
+
+/**
+ * 운전면허번호: "11-12-345678-90" · "12-345678-90"(옛 양식) · 앞에 지역명("서울 12-345678-90").
+ * 숫자 사이 공백 노이즈도 잡는다. 신분증 파서와 redactOcrText 가 같은 식을 쓴다.
+ */
+export const DRIVER_LICENSE_ID = new RegExp(
+  String.raw`(?<!\d)(?:(?:${spacedDigits(2)}|[가-힣]{2})[ \t]*-?[ \t]*)?${spacedDigits(2)}[ \t]*-[ \t]*${spacedDigits(6)}[ \t]*-[ \t]*${spacedDigits(2)}(?!\d)`,
+  "g",
+);
+
+/** 대시형 주민등록번호(숫자 사이 공백 노이즈 포함) — 앞 6자리 + "-" + 뒷자리 5~7자(가림 "*" 포함). */
+const SPACED_RRN = new RegExp(String.raw`(?<!\d)(${spacedDigits(6)})[ \t]*-[ \t]*[\d*](?:[ \t]*[\d*]){4,6}(?![\d*])`, "g");
 
 /**
  * 화면 메모리에 두기 전 OCR 원문 가리기 — 13자리 등록번호는 법인등록번호(라벨에 붙은 값)만 남기고
  * 앞 6자리 + "-*******" 로, 운전면허번호는 통째로 가린다(주민등록번호 뒷자리가 state 에 남지 않게).
+ * 숫자 사이에 공백이 낀 번호("800101 - 1 234 567")도 가린다.
  */
 export function redactOcrText(raw: string): string {
   const text = normalizeOcrText(raw);
   const corp = findCorpNo(text);
+  const mask = (m: string) => {
+    const d = m.replace(/\D/g, "");
+    return corp && d === corp ? m : `${d.slice(0, 6)}-*******`;
+  };
   return text
-    .replace(THIRTEEN_DIGIT_ID, (m) => {
-      const d = m.replace(/\D/g, "");
-      return corp && d === corp ? m : `${d.slice(0, 6)}-*******`;
-    })
-    .replace(DRIVER_LICENSE, "**-**-******-**");
+    .replace(DRIVER_LICENSE_ID, "**-**-******-**")
+    .replace(THIRTEEN_DIGIT_ID, mask)
+    .replace(SPACED_RRN, mask);
 }
