@@ -62,6 +62,7 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain("payment-list-scroll");
     expect(src).toContain("payment-detail-shell");
     expect(src).toContain("<PaymentSelectionBridge");
+    expect(src).toContain("new MutationObserver(sync)");
     expect(src).not.toContain("sticky top-app-content flex h-[calc(100vh-7rem)]");
     const detail = readFileSync(join(process.cwd(), "app/(app)/payment/_components/ContractRow.tsx"), "utf8");
     expect((detail.match(/payment-detail-scroll/g) ?? []).length).toBe(2);
@@ -79,14 +80,16 @@ describe("payment PC workspace 배선", () => {
 });
 
 describe("선택 행과 상세의 연결부", () => {
-  it("간격이 좁아도 역라운드를 그리고 목록 밖으로 스크롤되면 숨긴다", () => {
+  it("상세 외곽선에만 닿고 접힌 기관 헤더로 옮겨 붙으며 스크롤 밖에서는 숨는다", () => {
     const workspace = document.createElement("div");
     const pane = document.createElement("div");
     const row = document.createElement("button");
+    const activeHeader = document.createElement("button");
     const detail = document.createElement("div");
     row.setAttribute("aria-selected", "true");
+    activeHeader.dataset.activeInstitution = "true";
     detail.className = "payment-detail-shell";
-    pane.append(row); workspace.append(pane, detail); document.body.append(workspace);
+    pane.append(activeHeader, row); workspace.append(pane, detail); document.body.append(workspace);
     const host = document.createElement("div"); workspace.append(host);
     const svgRoot = createRoot(host);
     act(() => svgRoot.render(h(PaymentSelectionBridge)));
@@ -94,16 +97,26 @@ describe("선택 행과 상세의 연결부", () => {
     const rect = (left: number, top: number, right: number, bottom: number) =>
       ({ left, top, right, bottom, width: right - left, height: bottom - top }) as DOMRect;
     vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue(rect(0, 0, 800, 500));
-    vi.spyOn(pane, "getBoundingClientRect").mockReturnValue(rect(0, 0, 350, 500));
+    vi.spyOn(pane, "getBoundingClientRect").mockReturnValue(rect(0, 0, 380, 500));
+    vi.spyOn(activeHeader, "getBoundingClientRect").mockReturnValue(rect(10, 30, 360, 65));
     const rowRect = vi.spyOn(row, "getBoundingClientRect").mockReturnValue(rect(10, 100, 360, 170));
-    vi.spyOn(detail, "getBoundingClientRect").mockReturnValue(rect(360, 0, 800, 500));
+    vi.spyOn(detail, "getBoundingClientRect").mockReturnValue(rect(382, 0, 800, 500));
 
     syncPaymentSelectionBridge(workspace, pane, bridge);
     expect(bridge.style.opacity).toBe("1");
-    expect(bridge.style.width).toBe("8px");
+    expect(bridge.style.left).toBe("360px");
+    expect(bridge.style.width).toBe("22px");
+    expect(bridge.style.top).toBe("0px");
+    expect(bridge.style.height).toBe("500px");
     expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain(" C ");
-    expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).toContain(" M ");
+    expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).toContain("L 21.5 500");
 
+    row.remove();
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    expect(bridge.style.opacity).toBe("1");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("M 0 30 ");
+
+    pane.append(row);
     rowRect.mockReturnValue(rect(10, 520, 360, 590));
     syncPaymentSelectionBridge(workspace, pane, bridge);
     expect(bridge.style.opacity).toBe("0");

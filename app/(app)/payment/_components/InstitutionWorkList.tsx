@@ -26,15 +26,16 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect }: P
     <div className="space-y-1.5 p-2" aria-label="진행기관별 진행 목록">
       {groups.map((group) => {
         const open = openInstitutions.has(group.institution);
+        const active = group.institution === activeInstitution;
         return (
-          <section key={group.institution || "no-institution"} className={`rounded-xl border bg-white ${group.institution === activeInstitution ? "border-red-200" : "border-slate-200"}`}>
-            <button type="button" aria-expanded={open} onClick={() => setOpenInstitutions((current) => {
+          <section key={group.institution || "no-institution"} className={`rounded-xl border bg-white ${active ? "border-red-200" : "border-slate-200"}`}>
+            <button type="button" aria-expanded={open} data-active-institution={active ? "true" : undefined} onClick={() => setOpenInstitutions((current) => {
               const next = new Set(current);
               if (next.has(group.institution)) next.delete(group.institution);
               else next.add(group.institution);
               return next;
             })}
-              className={`flex min-h-9 w-full items-center gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${open ? "bg-red-50 text-red-900" : "text-slate-800 hover:bg-red-50/50"}`}>
+              className={`flex min-h-9 w-full items-center gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${open || active ? "bg-red-50 text-red-900" : "text-slate-800 hover:bg-red-50/50"}`}>
               <span className="min-w-0 flex-1 truncate font-bold">{group.institution || "기관 미입력"}</span>
               <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-semibold text-red-700">{group.count}건</span>
               <span className="shrink-0 text-xs text-slate-400" aria-hidden>{open ? "⌃" : "⌄"}</span>

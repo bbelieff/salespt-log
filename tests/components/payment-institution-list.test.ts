@@ -35,5 +35,10 @@ describe("기관 1뎁스 목록", () => {
     act(() => (node?.querySelectorAll("section > button")[1] as HTMLButtonElement).click());
     expect(node.querySelector('[data-work-key="5-1"]')).not.toBeNull();
     expect(node.querySelector('[data-work-key="3-1"]')).not.toBeNull();
+    const activeHeader = node.querySelector('section > [data-active-institution="true"]') as HTMLButtonElement;
+    act(() => activeHeader.click());
+    expect(activeHeader.getAttribute("aria-expanded")).toBe("false");
+    expect(node.querySelector('[data-work-key="3-1"]')).toBeNull();
+    expect(activeHeader.className).toContain("bg-red-50");
   });
 });
