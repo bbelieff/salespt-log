@@ -35,3 +35,6 @@ scripts/_backup-*.json
 # 클로드코드 워크트리는 .claude/ 아래에 산다. graft 가 .claude/settings.json 을
 # 커밋 대상으로 만들기 때문에, 워크트리까지 딸려 들어가지 않도록 여기서 막는다.
 /.claude/worktrees/
+
+# 브라우저 OCR 에셋(tesseract·pdfjs) — `npm run build` 가 scripts/vendor-document-ocr.mjs 로 매번 재생성. 커밋 금지.
+/public/document-ocr/

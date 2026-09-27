@@ -43,6 +43,7 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|salespt-logo.png).*)",
+    // document-ocr = 브라우저 OCR 정적 에셋(약 12MB, 공개 라이브러리) — 인증 확인 없이 바로 서빙.
+    "/((?!api|_next/static|_next/image|favicon.ico|salespt-logo.png|document-ocr/).*)",
   ],
 };
