@@ -48,6 +48,7 @@ import {
   buildPendingCohortJob,
 } from "@/repo/db/cohort-pending";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+import { extractDriveFolderId } from "@/util/drive-folder-id";
 
 interface MemberInput {
   name?: unknown;
@@ -166,9 +167,10 @@ async function POST_handler(req: Request) {
       rootFolderId?: unknown;
       rosterSheetId?: unknown;
     };
-    const templateSheetId = String(c.templateSheetId ?? "").trim();
-    const rootFolderId = String(c.rootFolderId ?? "").trim();
-    const rosterSheetId = String(c.rosterSheetId ?? "").trim();
+    // 주소를 통째로 붙여넣어도 ID 만 저장한다(12기 생성 전원 File not found 사고).
+    const templateSheetId = extractSpreadsheetId(String(c.templateSheetId ?? ""));
+    const rootFolderId = extractDriveFolderId(String(c.rootFolderId ?? ""));
+    const rosterSheetId = extractSpreadsheetId(String(c.rosterSheetId ?? ""));
     if (templateSheetId || rootFolderId || rosterSheetId) {
       await upsertCohortConfig(parsed.label, {
         type: parsed.type,
@@ -233,7 +235,8 @@ async function POST_handler(req: Request) {
       let folderId: string | null = null;
       let folderError: string | undefined;
       if (mode === "create" && name && !existingSheetId) {
-        const fm = await findFolderContainingName(name, cfg!.rootFolderId);
+        // 이미 주소로 저장된 설정도 구제한다.
+        const fm = await findFolderContainingName(name, extractDriveFolderId(cfg!.rootFolderId));
         folderId = fm.id;
         if (!fm.id) {
           folderError =
