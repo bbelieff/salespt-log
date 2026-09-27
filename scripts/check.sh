@@ -66,12 +66,14 @@ echo ""
 # (wt/<슬러그>/ 에는 wt/ 가 없어서, cwd 기준으로만 보면 정작 필요한 사람에게 안 뜬다)
 step "worktree hygiene"
 WT_CAP=12
-MAIN_ROOT="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+MAIN_ROOT="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
 MAIN_ROOT="${MAIN_ROOT%/.git}"
 WT_DIR="${MAIN_ROOT:-.}/wt"
-if [ -d "$WT_DIR" ]; then
-  wt_count=$(ls -1 "$WT_DIR" 2>/dev/null | wc -l | tr -d ' ')
-  nm_count=$(find "$WT_DIR" -maxdepth 2 -name node_modules -type d 2>/dev/null | wc -l | tr -d ' ')
+if [ -z "$MAIN_ROOT" ]; then
+  echo "  ⚠ 현재 셸에서 Git 공통 디렉터리를 읽지 못해 워크트리 개수 확인을 건너뜀"
+elif [ -d "$WT_DIR" ]; then
+  wt_count=$({ ls -1 "$WT_DIR" 2>/dev/null || true; } | wc -l | tr -d ' ')
+  nm_count=$({ find "$WT_DIR" -maxdepth 2 -name node_modules -type d 2>/dev/null || true; } | wc -l | tr -d ' ')
   if [ "$wt_count" -gt "$WT_CAP" ]; then
     echo "  ⚠ 워크트리 ${wt_count}개 (권장 ≤ ${WT_CAP}) · node_modules 보유 ${nm_count}개"
     echo "    머지 끝난 것부터 정리하세요 (CLAUDE.md §6.9):"

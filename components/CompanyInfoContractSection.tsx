@@ -15,6 +15,8 @@ interface Props {
   /** true 면 자체 저장 버튼 숨김 — 영속화는 부모(계약 카드 파란 저장)가 담당(#411 통합저장). */
   hideSave?: boolean;
   desktopHeading?: boolean;
+  /** PC 상세의 업체정보 열이 55% 이상일 때 업체·대표자 그룹을 병렬로 표시. */
+  splitInline?: boolean;
   /** 편집 시 부모에 라이브 드래프트 전달. */
   onChange?: (ci: CompanyInfo) => void;
   /** 자동 저장 라우팅용 안정 레코드 신원(예: 계약 행키). 필수 — 개명 시 바뀌는
@@ -28,6 +30,7 @@ export default function CompanyInfoContractSection({
   업체명,
   hideSave,
   desktopHeading,
+  splitInline,
   onChange,
   identityKey,
 }: Props) {
@@ -86,6 +89,7 @@ export default function CompanyInfoContractSection({
       identityKey={identityKey}
       hideSave={hideSave}
       desktopHeading={desktopHeading}
+      splitInline={splitInline}
       onChange={onChange}
       onSave={save}
     />

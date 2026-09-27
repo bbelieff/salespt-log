@@ -10,9 +10,9 @@ const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 9).padStart(2, "0"
 const MINUTES = ["00", "15", "30", "45"];
 const TYPE_BADGE: Record<TodoType, string> = { 미팅: "bg-blue-100 text-blue-700", 전화: "bg-green-100 text-green-700", 메시지: "bg-violet-100 text-violet-700", 기타: "bg-gray-100 text-gray-600", 일반: "bg-teal-100 text-teal-700" };
 const SLOT_ACCENT = {
-  teal: { shell: "border-teal-300 bg-teal-100", active: "bg-teal-600" },
-  cyan: { shell: "border-cyan-300 bg-cyan-100", active: "bg-cyan-600" },
-  fuchsia: { shell: "border-fuchsia-300 bg-fuchsia-100", active: "bg-fuchsia-600" },
+  emerald: { shell: "border-emerald-300 bg-emerald-100", active: "bg-emerald-600" },
+  blue: { shell: "border-blue-300 bg-blue-100", active: "bg-blue-600" },
+  violet: { shell: "border-violet-300 bg-violet-100", active: "bg-violet-600" },
 } as const;
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 
@@ -27,7 +27,7 @@ interface Props {
   accentFamily?: keyof typeof SLOT_ACCENT;
 }
 
-export default function TodoSection({ contractRef, institutionRef, draftInstitution, companyName, todos, focusId, onEnsureSaved, accentFamily = "teal" }: Props) {
+export default function TodoSection({ contractRef, institutionRef, draftInstitution, companyName, todos, focusId, onEnsureSaved, accentFamily = "emerald" }: Props) {
   const patch = usePatchTodo();
   const remove = useRemoveTodo();
   const [kind, setKind] = useState<TodoRecordKind>("todo");

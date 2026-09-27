@@ -5,7 +5,7 @@
  * 필드: 진행기관 / 진행률(dropdown) / 현황 / 승인금액(원) / 수납액(원) / 수납일
  *
  * v9 prototype 매칭:
- *   - 슬롯별 색상 (1=teal / 2=cyan / 3=fuchsia)
+ *   - 슬롯별 색상 (1=emerald / 2=blue / 3=violet)
  *   - 진행도 볼륨바 (5등분 클릭 — 0/20/40/60/80/100%)
  *   - 천 단위 콤마 input + 커서 위치 보정
  *   - 동일 % 재클릭 시 0% 토글
@@ -22,30 +22,36 @@ import { sameInstitution } from "@/util/institution-match";
 const SLOT_STYLES = {
   1: {
     name: "진행 1",
-    family: "teal" as const,
-    chip: "bg-teal-100 text-teal-700",
-    chipFull: "bg-teal-600 text-white",
-    segLow: "bg-teal-300",
-    segMid: "bg-teal-500",
-    segHigh: "bg-teal-700",
+    family: "emerald" as const,
+    card: "border-emerald-300 bg-emerald-50/70",
+    pctText: "text-emerald-700",
+    chip: "bg-emerald-100 text-emerald-800",
+    chipFull: "bg-emerald-600 text-white",
+    segLow: "bg-emerald-300",
+    segMid: "bg-emerald-500",
+    segHigh: "bg-emerald-700",
   },
   2: {
     name: "진행 2",
-    family: "cyan" as const,
-    chip: "bg-cyan-100 text-cyan-700",
-    chipFull: "bg-cyan-600 text-white",
-    segLow: "bg-cyan-300",
-    segMid: "bg-cyan-500",
-    segHigh: "bg-cyan-700",
+    family: "blue" as const,
+    card: "border-blue-300 bg-blue-50/70",
+    pctText: "text-blue-700",
+    chip: "bg-blue-100 text-blue-800",
+    chipFull: "bg-blue-600 text-white",
+    segLow: "bg-blue-300",
+    segMid: "bg-blue-500",
+    segHigh: "bg-blue-700",
   },
   3: {
     name: "진행 3",
-    family: "fuchsia" as const,
-    chip: "bg-fuchsia-100 text-fuchsia-700",
-    chipFull: "bg-fuchsia-600 text-white",
-    segLow: "bg-fuchsia-300",
-    segMid: "bg-fuchsia-500",
-    segHigh: "bg-fuchsia-700",
+    family: "violet" as const,
+    card: "border-violet-300 bg-violet-50/70",
+    pctText: "text-violet-700",
+    chip: "bg-violet-100 text-violet-800",
+    chipFull: "bg-violet-600 text-white",
+    segLow: "bg-violet-300",
+    segMid: "bg-violet-500",
+    segHigh: "bg-violet-700",
   },
 } as const;
 
@@ -129,11 +135,10 @@ export default function PaymentSlotForm({
     pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
   const [open, setOpen] = useState(!isDone);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
-  const pctColor =
-    pct === 0 ? "text-gray-400" : pct >= 100 ? "text-green-600" : "text-blue-600";
+  const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
 
   return (
-    <div id={slotId} className="scroll-mt-28 rounded-lg border border-amber-200 bg-white/90 p-3 shadow-sm">
+    <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
       {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 완료 슬롯은 기본 접힘. */}
       <div
         className={`flex cursor-pointer items-center justify-between gap-2 ${
@@ -221,13 +226,7 @@ export default function PaymentSlotForm({
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-xs text-gray-500">진행도</span>
           <span
-            className={`text-xs font-semibold ${
-              pct === 0
-                ? "text-gray-400"
-                : pct >= 100
-                  ? "text-green-600"
-                  : "text-gray-700"
-            }`}
+            className={`text-xs font-semibold ${pctColor}`}
           >
             {pct}%
           </span>

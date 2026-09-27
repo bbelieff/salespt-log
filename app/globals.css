@@ -714,12 +714,4 @@ body {
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
-  .desktop-shell .payment-selection-link {
-    border-top: 1px solid rgb(96 165 250 / 75%);
-    border-bottom: 1px solid rgb(96 165 250 / 75%);
-    border-radius: 0 12px 12px 0;
-    background: linear-gradient(90deg, rgb(219 234 254 / 98%), rgb(229 238 255 / 94%) 58%, rgb(239 246 255 / 88%));
-    box-shadow: 0 6px 16px rgb(59 130 246 / 9%);
-    transition: opacity 120ms ease;
-  }
 }

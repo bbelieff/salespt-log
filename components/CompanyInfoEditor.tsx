@@ -77,6 +77,7 @@ interface Props {
   hideSave?: boolean;
   /** PC 실무/수납의 다른 1레벨 섹션과 같은 헤더 규격. */
   desktopHeading?: boolean;
+  splitInline?: boolean;
 }
 
 export default function CompanyInfoEditor({
@@ -88,6 +89,7 @@ export default function CompanyInfoEditor({
   onChange,
   hideSave,
   desktopHeading,
+  splitInline = false,
 }: Props) {
   const [open, setOpen] = useState(hideSave === true);
   const [modal, setModal] = useState(false);
@@ -232,7 +234,7 @@ export default function CompanyInfoEditor({
   };
 
   // 한 필드 입력 — multiline=textarea(줄 수 따라 자동높이), 아니면 input.
-  const field = ([k, label, ph, span, multi]: FieldDef) => {
+  const field = ([k, label, ph, span, multi]: FieldDef, inline: boolean) => {
     const v = String(draft[k] ?? "");
     // 연락처통신사 = "010-1234-5678(SKT)" **합본 자유문자열**. 매 키 입력 마스킹은 괄호부를
     // 깨뜨리므로, blur 시에만 formatPhone 으로 정규화한다(선행 숫자 런만 포맷·접미 보존).
@@ -245,7 +247,7 @@ export default function CompanyInfoEditor({
         }
       : undefined;
     return (
-      <label key={String(k)} className={span === 2 ? "block sm:col-span-2" : "block"}>
+      <label key={String(k)} className={!inline && span === 2 ? "block sm:col-span-2" : "block"}>
         <span className="text-xs font-medium text-gray-800">{label}</span>
         {ph && (
           <span className="mt-0.5 block break-keep text-[11px] leading-tight text-gray-400">
@@ -275,18 +277,18 @@ export default function CompanyInfoEditor({
   };
 
   // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
-  const group = (g: Grp, defs: FieldDef[]) => (
-    <div className="space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
+  const group = (g: Grp, defs: FieldDef[], inline: boolean) => (
+    <div className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
       <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-xs font-bold text-gray-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
         [{g}]
       </div>
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-        {defs.map(field)}
+      <div className={inline ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-1 gap-1.5 sm:grid-cols-2"}>
+        {defs.map((def) => field(def, inline))}
         {Object.entries(customOf(g)).map(([label, v]) => (
-          <label key={`c-${label}`} className="block sm:col-span-2">
+          <label key={`c-${label}`} className={inline ? "block" : "block sm:col-span-2"}>
             <span className="flex items-center justify-between text-xs text-purple-500">
               {label}
               <button
@@ -324,11 +326,11 @@ export default function CompanyInfoEditor({
     </div>
   );
 
-  // 2xl(768+)에서 [업체]|[대표자] 좌우 2단 — 그 미만은 세로.
-  const body = (
-    <div className={desktopHeading ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
-      {group("업체", 업체_DEFS)}
-      {group("대표자", 대표자_DEFS)}
+  // PC 상세에서만 너비 비율을 따른다. 편집 팝업은 원래 반응형 배치를 유지한다.
+  const body = (inline: boolean) => (
+    <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
+      {group("업체", 업체_DEFS, inline)}
+      {group("대표자", 대표자_DEFS, inline)}
     </div>
   );
 
@@ -385,7 +387,7 @@ export default function CompanyInfoEditor({
               onUndo={undo}
             />
           )}
-          {body}
+          {body(splitInline)}
           {txtCompanyName && (
             <div className="flex">
               <button
@@ -433,7 +435,7 @@ export default function CompanyInfoEditor({
                 ✕
               </button>
             </div>
-            {body}
+            {body(false)}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

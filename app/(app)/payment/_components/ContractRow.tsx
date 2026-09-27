@@ -70,7 +70,7 @@ export default function ContractRow({
   forceOpen = false,
   accentFamily,
   bare = false,
-  detailLeftPct = 45,
+  detailLeftPct = 60,
   onDetailLeftPctChange,
   focusTodoId,
   focusedSlot,
@@ -386,13 +386,13 @@ export default function ContractRow({
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           <div className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
-              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading={bare} />
+              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading={bare} splitInline={bare && detailLeftPct >= 55} />
             </div>
             {bare && <button type="button" role="separator" aria-label="업체정보와 실무정보 열 너비 조절" aria-orientation="vertical" aria-valuemin={38} aria-valuemax={62} aria-valuenow={detailLeftPct} title="드래그하거나 화살표 키로 열 너비 조절" className="group relative h-full w-2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
               onPointerDown={(e) => { const grid = e.currentTarget.parentElement; if (!grid || !onDetailLeftPctChange) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const gap = parseFloat(getComputedStyle(grid).columnGap) || 0; detailResizeStart.current = { x: e.clientX, pct: detailLeftPct, width: Math.max(1, grid.clientWidth - 8 - 2 * gap) }; }}
               onPointerMove={(e) => { const start = detailResizeStart.current; if (start) onDetailLeftPctChange?.(Math.max(38, Math.min(62, Math.round(start.pct + (e.clientX - start.x) / start.width * 100)))); }}
               onPointerUp={() => { detailResizeStart.current = null; }} onPointerCancel={() => { detailResizeStart.current = null; }} onLostPointerCapture={() => { detailResizeStart.current = null; }}
-              onKeyDown={(e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); onDetailLeftPctChange?.(Math.max(38, Math.min(62, detailLeftPct + (e.key === "ArrowLeft" ? -2 : 2)))); } if (e.key === "Home") { e.preventDefault(); onDetailLeftPctChange?.(45); } }}>
+              onKeyDown={(e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); onDetailLeftPctChange?.(Math.max(38, Math.min(62, detailLeftPct + (e.key === "ArrowLeft" ? -2 : 2)))); } if (e.key === "Home") { e.preventDefault(); onDetailLeftPctChange?.(60); } }}>
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200 group-hover:bg-blue-400 group-focus-visible:bg-blue-400"/><span className="absolute left-1/2 top-1/2 h-8 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"/>
             </button>}
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
