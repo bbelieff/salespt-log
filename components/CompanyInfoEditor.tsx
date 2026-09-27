@@ -22,6 +22,7 @@ import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import HintTooltip from "@/components/ui/HintTooltip";
 import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
 import { type FieldDef, 대표자_DEFS, 업체_DEFS, 재무_DEFS } from "./company-info-defs";
+import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
@@ -386,6 +387,8 @@ export default function CompanyInfoEditor({
             {auto && !ciSaving && status === "error" && (
               <span className="text-[11px] font-medium text-red-500" aria-live="polite">저장 실패</span>
             )}
+            {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
+            <CompanyDocAutofillButton current={draft} onApply={(p) => apply((d) => ({ ...d, ...p }))} />
             <button
               type="button"
               onClick={() => setModal(true)}

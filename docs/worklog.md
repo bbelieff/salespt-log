@@ -7,6 +7,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-28 · Claude(워크플로 하위작업) · 업체정보 「문서로 자동입력」 PR-4 (feat/company-doc-autofill)
+- CompanyInfoEditor 헤더 버튼 → 팝업: 여러 서류 끌어놓기 → 이 기기 안 OCR(tesseract.js 7.0.0·pdfjs-dist 6.3.289, MoaWork 엔진 이식) → 문서 종류 자동 판별 → 비교표에서 체크한 칸만 기존 `apply()` 로 반영(새 저장 경로 없음).
+- 파서는 사업자등록증만(법인등록번호 포함). 나머지 4종은 분류만 + "곧 지원돼요" — PR-5 는 `lib/document-ocr/registry.ts` PARSERS 에 등록만 하면 됨.
+- 자율결정: 순수 코드는 `lib/document-ocr/`(lib/format 선례) — `lib/util` 은 import 0 구조 테스트라 형제 import 파서를 못 둠. `npm run build` 앞에 vendor 스크립트, `public/document-ocr/` gitignore, middleware matcher 에서 에셋 제외.
+- 주민등록번호 뒷자리: 파서가 13자리 번호를 원문에서 지운 뒤 읽음 + 반영 직전 normalizeRrnFront. 실제 브라우저 OCR 은 미실측. 상세·되돌리기 = `docs/plans/active/company-doc-autofill.md`. push·PR·배포 미수행.
+
 ### 2026-09-28 · Claude(워크플로 하위작업) · 업체정보 새 칸 20개 (feat/company-info-new-fields)
 - CompanyInfo 에 과세유형·업태·법인등록번호·임차 3칸·주민등록번호 앞자리·재무 13칸 추가. 편집기 [재무] 전폭 섹션, TXT [재무](값 있을 때만).
 - 자율결정: 04 새 열은 **AU~BN**(지시 AT~BM 대신) — AT 가 gcal_event_ids 맵 열이라 침범 금지. 06 은 AC~AV. 헤더는 빈 셀에만 보강.
