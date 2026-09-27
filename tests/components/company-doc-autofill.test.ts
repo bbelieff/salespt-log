@@ -191,3 +191,57 @@ describe("CompanyInfoEditor 헤더 「문서로 자동입력」", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 });
+
+describe("CompanyDocAutofillDialog — 리뷰 회귀", () => {
+  it("충돌 행에서 다른 값을 고르면 안내 문구도 그 값 기준으로 바뀐다", async () => {
+    // 지금 개업일 = 개인 사업자등록증 값(20.03.02). 법인 문서는 19.07.15.
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({ 개업일: "20.03.02" }), onApply: vi.fn(), onClose: vi.fn() }));
+    await pickFiles(png("a.png"));
+    ocrText.value = CORP_CERT;
+    await pickFiles(png("b.png"));
+    const pick = document.querySelector<HTMLSelectElement>('select[aria-label="개업일 값 고르기"]')!;
+    const row = () => document.querySelector('[data-row="개업일"]')!.textContent ?? "";
+    const other = [...pick.options].find((o) => !o.text.startsWith("20.03.02"))!;
+    const same = [...pick.options].find((o) => o.text.startsWith("20.03.02"))!;
+    await act(async () => {
+      pick.value = same.value;
+      pick.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(row()).toContain("지금 값과 같아요");
+    await act(async () => {
+      pick.value = other.value;
+      pick.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(row()).toContain("지금 값이 있어 기본으로 안 덮어요");
+    expect(row()).not.toContain("지금 값과 같아요");
+  });
+
+  it("포커스가 바깥(body)에 있어도 Esc 로 닫힌다", () => {
+    const onClose = vi.fn();
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose }));
+    (document.activeElement as HTMLElement | null)?.blur();
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("모르는 문서는 종류를 골라 달라고 안내한다", async () => {
+    ocrText.value = "아무 글자나 적힌 메모";
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
+    await pickFiles(png("memo.png"));
+    expect(document.body.textContent).toContain("어떤 서류인지 알아보지 못했어요");
+    expect(document.body.textContent).not.toContain("곧 지원돼요");
+  });
+
+  it("라이브러리 오류 원문은 보이지 않고 쉬운 안내만", async () => {
+    runDocumentOcr.mockImplementationOnce(async () => {
+      throw new Error("Invalid PDF structure");
+    });
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
+    await pickFiles(png("bad.png"));
+    const alert = document.querySelector('[role="alert"]')!.textContent ?? "";
+    expect(alert).toContain("이 파일은 읽지 못했어요");
+    expect(alert).not.toContain("Invalid");
+  });
+});

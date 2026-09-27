@@ -78,12 +78,12 @@ export function buildOcrAssetUrls(manifest: Manifest): OcrAssetUrls {
   const pdfWorkerSrc = inside("pdf.worker.min.mjs");
   if (!workerPath || !corePath || !pdfWorkerSrc) {
     throw new Error(
-      "로컬 OCR 에셋이 올바르지 않습니다. `npm run vendor:document-ocr` 를 다시 실행하세요.",
+      "로컬 OCR 에셋이 올바르지 않아요(개발: npm run vendor:document-ocr).",
     );
   }
   if (!manifest.langs || manifest.langs.length === 0) {
     throw new Error(
-      "로컬 OCR 언어팩 목록이 비어 있습니다. `npm run vendor:document-ocr` 를 다시 실행하세요.",
+      "로컬 OCR 언어팩 목록이 비어 있어요(개발: npm run vendor:document-ocr).",
     );
   }
   return { workerPath, langPath, corePath, pdfWorkerSrc };
@@ -111,7 +111,7 @@ async function loadManifest(signal: AbortSignal): Promise<Manifest> {
   }), signal);
   if (!res.ok) {
     throw new Error(
-      "로컬 OCR 에셋이 없습니다. `npm run vendor:document-ocr` 를 먼저 실행하세요.",
+      "로컬 OCR 에셋이 없어요(개발: npm run vendor:document-ocr).",
     );
   }
   return (await raceWithAbort(res.json(), signal)) as Manifest;
@@ -155,7 +155,7 @@ async function toCappedImageBlob(
         const blob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((b) => {
             if (b) resolve(b);
-            else reject(new Error("이미지 변환에 실패했습니다."));
+            else reject(new Error("이미지를 바꾸지 못했어요."));
           }, "image/png");
         });
         canvas.width = 0;
@@ -352,6 +352,10 @@ export async function runDocumentOcr(
     }
   } catch (error) {
     const mapped = toOcrFileError(error);
+    // 기술 원인은 개발 콘솔에만(오류 객체만 — OCR 글자는 담기지 않는다).
+    if (mapped.code === "unavailable" && process.env.NODE_ENV !== "production") {
+      console.warn("[document-ocr]", error instanceof Error ? error.message : error);
+    }
     throw Object.assign(
       new Error(mapped.message),
       { code: mapped.code },

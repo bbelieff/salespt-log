@@ -36,7 +36,7 @@ export type DiffRow = {
   candidates: Candidate[];
   conflict: boolean;
   defaultChecked: boolean;
-  /** 기본 체크 해제 사유 등 행 안내(없으면 ""). */
+  /** candidates[0] 기준 안내(없으면 ""). 다른 후보를 고르면 checkState 로 다시 구한다. */
   note: string;
 };
 
@@ -52,7 +52,8 @@ export function sanitizeForKey(key: CompanyInfoKey, value: string): string {
   return key === "주민등록번호" ? normalizeRrnFront(v) : v;
 }
 
-function checkState(current: string, top: Candidate): { checked: boolean; note: string } {
+/** 지금 값과 고른 후보로 기본 체크·안내 문구를 정한다(충돌 행에서 다른 후보를 고르면 다시 부른다). */
+export function checkState(current: string, top: Candidate): { checked: boolean; note: string } {
   if (top.valid === false) return { checked: false, note: INVALID_NOTE };
   if (current.trim() === top.value.trim()) return { checked: false, note: SAME_NOTE };
   if (current.trim() !== "") return { checked: false, note: KEEP_NOTE };
@@ -63,6 +64,7 @@ function checkState(current: string, top: Candidate): { checked: boolean; note: 
 export function defaultCheckFor(current: string, candidate: Candidate): boolean {
   return checkState(current, candidate).checked;
 }
+
 
 export function buildDiffRows(
   current: Partial<CompanyInfo>,

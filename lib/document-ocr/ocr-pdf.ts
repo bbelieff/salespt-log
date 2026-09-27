@@ -39,7 +39,7 @@ export async function readPdfTextLayer(
       signal.removeEventListener("abort", onAbortDestroy);
     }
     throwIfAborted(signal);
-    if (doc.numPages < 1) throw new Error("PDF에 페이지가 없습니다.");
+    if (doc.numPages < 1) throw new Error("PDF에 페이지가 없어요.");
     const page = await raceWithAbort(doc.getPage(1), signal);
     emit(onProgress, "pdf-text", 0.1, "PDF 텍스트층 읽는 중");
     const content = await raceWithAbort(page.getTextContent(), signal);
@@ -91,13 +91,13 @@ export async function renderPdfFirstPageToBlob(
     canvas.width = Math.round(viewport.width);
     canvas.height = Math.round(viewport.height);
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("PDF를 그릴 수 없습니다.");
+    if (!ctx) throw new Error("PDF를 그리지 못했어요.");
     await raceWithAbort(page.render({ canvasContext: ctx, viewport }).promise, signal);
     throwIfAborted(signal);
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((b) => {
         if (b) resolve(b);
-        else reject(new Error("PDF 페이지 변환에 실패했습니다."));
+        else reject(new Error("PDF 페이지를 바꾸지 못했어요."));
       }, "image/png");
     });
     canvas.width = 0;

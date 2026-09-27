@@ -9,6 +9,7 @@ import {
   SAME_NOTE,
   accuracyOf,
   buildDiffRows,
+  checkState,
   defaultCheckFor,
   selectedPatch,
 } from "@/lib/document-ocr/diff";
@@ -125,5 +126,19 @@ describe("accuracyOf / defaultCheckFor", () => {
   it("후보를 바꾸면 기본 체크를 다시 계산", () => {
     expect(defaultCheckFor("", { value: "x", confidence: 0.5, warnings: [], sources: [] })).toBe(true);
     expect(defaultCheckFor("", { value: "x", confidence: 0.5, warnings: [], sources: [], valid: false })).toBe(false);
+  });
+});
+
+describe("checkState — 충돌 행에서 고른 후보 기준 안내(리뷰 회귀)", () => {
+  it("지금 값과 같은 후보 → SAME, 다른 후보 → KEEP", () => {
+    const rows = buildDiffRows(CompanyInfo.parse({ 업태: "제조업" }), [
+      { fileName: "a", fields: [f("업태", "제조업", 0.9)] },
+      { fileName: "b", fields: [f("업태", "도매업", 0.6)] },
+    ]);
+    const row = rows[0]!;
+    expect(row.conflict).toBe(true);
+    expect(checkState(row.current, row.candidates[0]!).note).toBe(SAME_NOTE);
+    expect(checkState(row.current, row.candidates[1]!).note).toBe(KEEP_NOTE);
+    expect(checkState("", { value: "x", confidence: 0.4, warnings: [], sources: [], valid: false }).note).toBe(INVALID_NOTE);
   });
 });

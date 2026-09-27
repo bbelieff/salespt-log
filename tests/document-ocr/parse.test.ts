@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { findBizNoCandidates, formatBizNo, isValidBizNo, isValidCorpNo } from "@/lib/document-ocr/bizno";
 import { parseBusinessCertificate } from "@/lib/document-ocr/parse-certificate";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
+import { findCorpNo, redactOcrText } from "@/lib/document-ocr/text-utils";
 import { validateOcrFile } from "@/lib/document-ocr/limits";
 import type { ParsedField } from "@/lib/document-ocr/types";
 import { BAD_BIZNO, CERT_WITH_RRN, CORP_CERT, LEASE_TEXT, PERSONAL_CERT, VALID_BIZNO, VALID_CORPNO } from "./fixtures";
@@ -140,5 +141,39 @@ describe("validateOcrFile", () => {
     expect(validateOcrFile({ size: 16 * 1024 * 1024, type: "image/png" })).toHaveProperty("error.code", "too-large");
     expect(validateOcrFile({ size: 10, type: "text/plain", name: "a.txt" })).toHaveProperty("error.code", "unsupported-type");
     expect(validateOcrFile({ size: 0, type: "image/png" })).toHaveProperty("error.code", "empty");
+  });
+});
+
+describe("법인등록번호 — 다른 번호 줄을 빌려오지 않는다(리뷰 회귀)", () => {
+  it("라벨 값이 비고 다음 줄이 주민등록번호면 법인등록번호·법인 구분을 내지 않는다", () => {
+    const text = ["사업자등록증", `등록번호 : ${VALID_BIZNO}`, "성명 : 홍길동", "법인등록번호 :", "주민등록번호 : 800101-1234567"].join("\n");
+    const out = parseBusinessCertificate(text);
+    const k = byKey(out.fields);
+    expect(k.법인등록번호).toBeUndefined();
+    expect(k.사업자구분?.value).not.toBe("법인");
+    expect(JSON.stringify(out)).not.toContain("1234567");
+    expect(findCorpNo(text)).toBe("");
+  });
+  it("라벨 다음 줄에 번호만 있으면 읽는다", () => {
+    expect(findCorpNo(`법인등록번호 :\n${VALID_CORPNO}`)).toBe(VALID_CORPNO.replace("-", ""));
+  });
+  it("검증식이 틀린 법인등록번호는 valid=false(기본 해제) 이고 법인 구분 근거로 쓰지 않는다", () => {
+    const text = ["사업자등록증", "상호 : 예시상사", "법인등록번호 : 110111-1234560"].join("\n");
+    const k = byKey(parseBusinessCertificate(text).fields);
+    expect(k.법인등록번호).toMatchObject({ value: "110111-1234560", valid: false });
+    expect(k.사업자구분).toBeUndefined();
+  });
+});
+
+describe("redactOcrText — state 에 두기 전 가리기", () => {
+  it("주민등록번호 뒷자리·운전면허번호는 가리고 법인등록번호는 남긴다", () => {
+    const raw = [...CORP_CERT.split("\n"), "주민등록번호 : 800101-1234567", "면허번호 11-22-333333-44"].join("\n");
+    const red = redactOcrText(raw);
+    expect(red).not.toContain("1234567");
+    expect(red).toContain("800101-*******");
+    expect(red).not.toContain("333333");
+    expect(red).toContain(VALID_CORPNO);
+    // 가린 글로 읽어도 결과는 같다.
+    expect(byKey(parseBusinessCertificate(red).fields).법인등록번호?.value).toBe(VALID_CORPNO);
   });
 });

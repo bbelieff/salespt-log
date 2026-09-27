@@ -109,3 +109,44 @@ export function toYyMmDd(raw: string): string | null {
 
 /** 13자리 등록번호 꼴(주민등록번호·외국인등록번호·법인등록번호). 파서는 원문에서 이것을 지운 뒤 읽는다. */
 export const THIRTEEN_DIGIT_ID = /(?<!\d)\d{6}\s*-?\s*[\d*]{7}(?!\d)/g;
+
+const CORP_NO = /(?<!\d)(\d{6})\s*-?\s*(\d{7})(?!\d)/;
+/** 법인등록번호가 아닌 다른 번호 라벨(다음 줄 값을 빌려오면 안 되는 줄). */
+const OTHER_ID_LABEL = /주\s*민|생\s*년\s*월\s*일|등\s*록\s*번\s*호|면\s*허|외\s*국\s*인/;
+
+/**
+ * 법인등록번호 라벨에 붙은 13자리 숫자(구분자 없음, 없으면 "").
+ * 값은 라벨 같은 줄(다른 번호 라벨 앞까지)에서 찾고, 없을 때만 다음 줄을 본다 —
+ * 단 다음 줄에 다른 번호 라벨(주민등록번호·생년월일 등)이 있으면 빌려오지 않는다.
+ */
+export function findCorpNo(text: string): string {
+  const lines = toLines(normalizeOcrText(text));
+  for (const hit of findLabelLines(lines, ["법인등록번호"])) {
+    const lm = hit.line.match(labelPattern("법인등록번호"))!;
+    let own = hit.line.slice((lm.index ?? 0) + lm[0].length);
+    const other = own.search(OTHER_ID_LABEL);
+    if (other >= 0) own = own.slice(0, other);
+    let m = own.match(CORP_NO);
+    const next = lines[hit.index + 1] ?? "";
+    if (!m && !OTHER_ID_LABEL.test(next)) m = next.match(CORP_NO);
+    if (m) return `${m[1]}${m[2]}`;
+  }
+  return "";
+}
+
+const DRIVER_LICENSE = /(?<!\d)\d{2}\s*-\s*\d{2}\s*-\s*\d{6}\s*-\s*\d{2}(?!\d)/g;
+
+/**
+ * 화면 메모리에 두기 전 OCR 원문 가리기 — 13자리 등록번호는 법인등록번호(라벨에 붙은 값)만 남기고
+ * 앞 6자리 + "-*******" 로, 운전면허번호는 통째로 가린다(주민등록번호 뒷자리가 state 에 남지 않게).
+ */
+export function redactOcrText(raw: string): string {
+  const text = normalizeOcrText(raw);
+  const corp = findCorpNo(text);
+  return text
+    .replace(THIRTEEN_DIGIT_ID, (m) => {
+      const d = m.replace(/\D/g, "");
+      return corp && d === corp ? m : `${d.slice(0, 6)}-*******`;
+    })
+    .replace(DRIVER_LICENSE, "**-**-******-**");
+}

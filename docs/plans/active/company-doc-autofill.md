@@ -59,10 +59,19 @@ branch: feat/company-doc-autofill
 - `npm run build` = `npm run vendor:document-ocr && next build`. `.github/workflows/deploy.yml` 은 VPS 에서 `npm ci`(또는 lock 해시 동일 시 스킵 — 새 lock 이라 이번엔 실행) 후 `BUILD_DIST_DIR=.next-build npm run build` 를 부르므로 vendor 가 매 배포 실행된다. 스크립트는 로컬 node_modules 만 복사(네트워크 없음) → `public/document-ocr/`(약 12MB: worker·core simd-lstm·kor/eng best_int gz·pdf.worker). `git reset --hard` 는 untracked 를 지우지 않지만 매 빌드 재생성이라 무관.
 - `public/document-ocr/` 는 gitignore. `middleware.ts` matcher 에서 `document-ocr/` 제외(정적 에셋에 인증 확인 생략).
 - 데이터 패키지 `@tesseract.js-data/kor`·`eng` 는 MoaWork 처럼 devDependencies — VPS `npm ci` 는 dev 포함(빌드에 typescript 등 필요)이라 설치됨.
-- `check.sh`(CI) 는 build 를 돌리지 않으므로 네트워크·에셋 없이 통과. 로컬 `npm run dev` 는 vendor 를 돌리지 않는다 → 처음 한 번 `npm run vendor:document-ocr`(없으면 팝업이 그렇게 안내).
+- `check.sh`(CI) 는 build 를 돌리지 않으므로 네트워크·에셋 없이 통과. 로컬 `npm run dev`·`dev:no-watch`·`dev:fresh` 는 `predev*` 훅으로 vendor 를 먼저 돌린다(0.4초, 로컬 복사만).
+- **Node 버전**: `pdfjs-dist` 6.3.289 는 engines `>=22.13`. 브라우저 전용이라 CI(Node 20, check.sh)는 경고만 내고 통과한다(pdfjs 를 import 하지 않음). VPS 의 `npm run build` 도 vendor 는 파일 복사, next build 는 번들만 하므로 실행하지 않는다 — 다만 머지 전 VPS `node -v` 가 22.13+ 인지 확인해 두면 안전하다(Dockerfile 은 node:22).
 
 ## 8. 검증 · 남은 위험
 
 - vitest: `tests/document-ocr/{parse,diff,ocr-client}.test.ts`, `tests/components/company-doc-autofill.test.ts`(OCR mock — 파일 고르기→행→적용=체크 칸만, 편집기 stage 경로, 충돌, 미지원 문서, Esc).
 - **실제 브라우저 미검증**: tesseract 인식 정확도(실물 사업자등록증), PDF 텍스트층/렌더 폴백, WASM SIMD 미지원 기기, 375px 실화면, 포커스 순환 실기기. 배포 후 합성 사업자등록증 이미지로 1회 실측 필요.
 - 되돌리기: 이 PR squash revert(스키마·시트 변경 없음 — 데이터 영향 0).
+
+## 9. 리뷰 반영 (2026-09-28)
+
+- 법인등록번호: 라벨 값이 비고 다음 줄이 다른 번호 라벨(주민등록번호·생년월일 등)이면 빌려오지 않는다(`findCorpNo`). 검증식 실패는 `valid=false` → 기본 해제, 사업자구분=법인 근거로 쓰지 않는다.
+- 팝업 state 에는 가린 원문만(`redactOcrText` — 13자리는 법인등록번호만 남기고 `앞6-*******`, 운전면허번호 통째 가림).
+- 오류 문구: 라이브러리 원문·개발자 안내 대신 "이 파일은 읽지 못했어요…" 한 문구(원인은 개발 콘솔에만). 남은 습니다체 → 해요체.
+- 대화상자: 바깥 클릭이 포커스를 빼앗지 않고, 포커스가 밖에 있어도 Esc·Tab 을 잡는다. 진행 틱마다 읽히던 role=status 제거.
+- 비교표: 충돌 행 안내 문구는 고른 후보 기준(`checkState`). 모르는 문서 = "어떤 서류인지 알아보지 못했어요…", 0칸 = ✓ 없이 "채울 수 있는 칸을 찾지 못했어요". 375px 열 폭·닫기 버튼 36px.

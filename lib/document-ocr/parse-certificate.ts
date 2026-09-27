@@ -15,8 +15,8 @@
 import { findBizNoCandidates, formatBizNo, formatCorpNo, isValidBizNo, isValidCorpNo, digitsOnly } from "./bizno";
 import {
   THIRTEEN_DIGIT_ID,
+  findCorpNo,
   findLabelLines,
-  labelPattern,
   normalizeOcrText,
   stripSep,
   toLines,
@@ -49,17 +49,9 @@ export function parseBusinessCertificate(rawText: string): DocParseResult {
     fields.push({ key, value, confidence, warnings, ...(valid === undefined ? {} : { valid }) });
   };
 
-  // ── 법인등록번호: 라벨 줄에서만 꺼낸다(다른 13자리 번호와 섞이지 않게) ──
-  const rawLines = toLines(normalized);
-  let corpNo = "";
-  for (const hit of findLabelLines(rawLines, ["법인등록번호"])) {
-    const scope = `${hit.line} ${rawLines[hit.index + 1] ?? ""}`;
-    const m = scope.slice(scope.search(labelPattern("법인등록번호"))).match(/(\d{6})\s*-?\s*(\d{7})(?!\d)/);
-    if (m) {
-      corpNo = `${m[1]}${m[2]}`;
-      break;
-    }
-  }
+  // ── 법인등록번호: 라벨에 붙은 값만(다음 줄이 주민등록번호 줄이면 빌려오지 않는다) ──
+  const corpNo = findCorpNo(normalized);
+  const corpOk = corpNo !== "" && isValidCorpNo(corpNo);
   if (/주\s*민\s*등\s*록\s*번\s*호/.test(normalized)) {
     documentWarnings.push("주민등록번호는 읽지 않았어요. 필요하면 앞 6자리만 직접 적어 주세요.");
   }
@@ -138,8 +130,13 @@ export function parseBusinessCertificate(rawText: string): DocParseResult {
 
   // 법인등록번호
   if (corpNo) {
-    const ok = isValidCorpNo(corpNo);
-    push("법인등록번호", formatCorpNo(corpNo), ok ? 0.9 : 0.4, ok ? [] : ["번호 검증이 맞지 않아요. 숫자를 직접 확인해 주세요."]);
+    push(
+      "법인등록번호",
+      formatCorpNo(corpNo),
+      corpOk ? 0.9 : 0.4,
+      corpOk ? [] : ["번호 검증이 맞지 않아요. 숫자를 직접 확인해 주세요."],
+      corpOk,
+    );
   }
 
   // 과세유형
@@ -156,7 +153,7 @@ export function parseBusinessCertificate(rawText: string): DocParseResult {
 
   // 사업자구분 — 법인등록번호·"법인사업자"·법인 형태가 있으면 법인, 과세자/생년월일 표기면 개인.
   const legal = LEGAL_FORMS.some((f) => compactText(companyName).includes(f)) || /\(주\)|（주）/.test(companyName);
-  if (corpNo) push("사업자구분", "법인", 0.9);
+  if (corpOk) push("사업자구분", "법인", 0.9);
   else if (compact.includes("법인사업자")) push("사업자구분", "법인", 0.85);
   else if (legal) push("사업자구분", "법인", 0.7);
   else if (taxFound.length > 0 || birth) push("사업자구분", "개인", 0.7);

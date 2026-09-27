@@ -110,6 +110,9 @@ export function raceWithAbort<T>(task: Promise<T>, signal: AbortSignal): Promise
   });
 }
 
+/** 읽기 실패 때 사용자에게 보이는 한 가지 문구. */
+export const OCR_UNAVAILABLE_MESSAGE = "이 파일은 읽지 못했어요. 다른 사진이나 PDF로 다시 해 보세요.";
+
 export function toOcrFileError(error: unknown): OcrFileError {
   if (error instanceof DOMException) {
     if (error.name === "AbortError") return { code: "aborted", message: "취소했어요." };
@@ -119,7 +122,7 @@ export function toOcrFileError(error: unknown): OcrFileError {
   }
   if (error instanceof Error) {
     if (/취소|abort/i.test(error.message)) return { code: "aborted", message: "취소했어요." };
-    return { code: "unavailable", message: error.message };
   }
-  return { code: "unavailable", message: "문서를 읽지 못했어요." };
+  // 라이브러리·에셋 오류 원문(영어·개발자 안내)은 화면에 내지 않는다.
+  return { code: "unavailable", message: OCR_UNAVAILABLE_MESSAGE };
 }

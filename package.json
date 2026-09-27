@@ -3,9 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "predev": "npm run vendor:document-ocr",
     "dev": "node scripts/dev-with-watch.mjs",
+    "predev:no-watch": "npm run vendor:document-ocr",
     "dev:no-watch": "next dev",
     "dev:watch-bash": "bash scripts/dev-watch-master.sh",
+    "predev:fresh": "npm run vendor:document-ocr",
     "dev:fresh": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && node scripts/dev-with-watch.mjs",
     "build": "npm run vendor:document-ocr && next build",
     "vendor:document-ocr": "node scripts/vendor-document-ocr.mjs",
