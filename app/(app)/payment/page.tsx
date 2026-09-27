@@ -34,6 +34,7 @@ import TerminationArchive from "./_components/TerminationArchive";
 import PriorContractSection from "./_components/PriorContractSection";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
+import useMasterPaneWidth from "./_components/useMasterPaneWidth";
 import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
@@ -98,21 +99,8 @@ export default function PaymentPage() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const listPaneRef = useRef<HTMLDivElement>(null);
   const bridgeRef = useRef<HTMLDivElement>(null);
-  const [masterWidth, setMasterWidth] = useState(360);
-  const beginResize = (event: React.PointerEvent<HTMLButtonElement>) => {
-    const root = workspaceRef.current;
-    if (!root) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const startX = event.clientX;
-    const startWidth = masterWidth;
-    const move = (e: PointerEvent) => {
-      const max = Math.max(360, root.clientWidth * 0.48);
-      setMasterWidth(Math.min(max, Math.max(300, startWidth + e.clientX - startX)));
-    };
-    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  };
+  const { masterWidth, setMasterWidth, beginResize } = useMasterPaneWidth(workspaceRef);
+  const [detailLeftPct, setDetailLeftPct] = useState(45);
 
   // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
   // Next 15 useSearchParams Suspense 회피 → mount 시 window.location 직접 파싱.
@@ -230,17 +218,21 @@ export default function PaymentPage() {
     const root = workspaceRef.current;
     const pane = listPaneRef.current;
     const bridge = bridgeRef.current;
+    const detail = root?.querySelector<HTMLElement>(".payment-detail-shell");
     const selected = pane?.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!root || !pane || !bridge || !selected) {
+    if (!root || !pane || !bridge || !detail || !selected) {
       if (bridge) bridge.style.opacity = "0";
       return;
     }
     const row = selected.getBoundingClientRect();
     const viewport = pane.getBoundingClientRect();
-    const tabsBottom = pane.querySelector<HTMLElement>("[data-payment-mode-tabs]")?.getBoundingClientRect().bottom ?? viewport.top;
-    const top = Math.max(row.top, tabsBottom);
+    const top = Math.max(row.top, viewport.top);
     const bottom = Math.min(row.bottom, viewport.bottom);
     if (bottom - top < 12) { bridge.style.opacity = "0"; return; }
+    const gap = detail.getBoundingClientRect().left - row.right;
+    if (gap < 2) { bridge.style.opacity = "0"; return; }
+    bridge.style.left = `${row.right - root.getBoundingClientRect().left - 1}px`;
+    bridge.style.width = `${gap + 2}px`;
     bridge.style.top = `${top - root.getBoundingClientRect().top}px`;
     bridge.style.height = `${bottom - top}px`;
     bridge.style.opacity = "1";
@@ -345,8 +337,9 @@ export default function PaymentPage() {
           /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
           <div ref={workspaceRef} className="payment-workspace relative grid h-[calc(100dvh-18rem)] min-h-[320px] min-w-0 items-stretch" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
-            <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 overflow-y-auto">
-              <div className="sticky top-0 z-20 bg-slate-50/90 p-1.5 backdrop-blur-md">{listModeTabs}</div>
+            <div className="flex min-h-0 min-w-0 flex-col">
+              <div className="shrink-0 p-1.5">{listModeTabs}</div>
+              <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
               {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
               ) : listMode === "company" ? <ContractListTable
@@ -356,6 +349,7 @@ export default function PaymentPage() {
                 highlight={companyQuery}
                 courseStartISO={courseStartISO}
               /> : <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />}
+              </div>
             </div>
             <button type="button" onPointerDown={beginResize} className="group relative z-10 h-full cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors group-hover:bg-blue-400" />
@@ -364,7 +358,7 @@ export default function PaymentPage() {
               <div className="payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl bg-white/75 shadow-sm">
                 <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
                   <div className="min-w-0"><h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-blue-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
-                  <button type="button" onClick={() => setMasterWidth(360)} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(45); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
@@ -374,6 +368,8 @@ export default function PaymentPage() {
                   institutionOptions={institutionOptions}
                   bare
                   forceOpen
+                  detailLeftPct={detailLeftPct}
+                  onDetailLeftPctChange={setDetailLeftPct}
                   accentFamily={selFamily}
                   onSave={handleSave}
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
@@ -386,7 +382,7 @@ export default function PaymentPage() {
                 />
               </div>
             )}
-            <div ref={bridgeRef} aria-hidden="true" className="payment-selection-link pointer-events-none absolute z-20 opacity-0" style={{ left: masterWidth - 10, width: 28 }} />
+            <div ref={bridgeRef} aria-hidden="true" className="payment-selection-link pointer-events-none absolute z-20 opacity-0" />
           </div>
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */

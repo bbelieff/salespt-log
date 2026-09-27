@@ -9,6 +9,11 @@ import TodoFormModal, { type TodoDraftSeed } from "./TodoFormModal";
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 9).padStart(2, "0"));
 const MINUTES = ["00", "15", "30", "45"];
 const TYPE_BADGE: Record<TodoType, string> = { 미팅: "bg-blue-100 text-blue-700", 전화: "bg-green-100 text-green-700", 메시지: "bg-violet-100 text-violet-700", 기타: "bg-gray-100 text-gray-600", 일반: "bg-teal-100 text-teal-700" };
+const SLOT_ACCENT = {
+  teal: { shell: "border-teal-300 bg-teal-50/70", active: "bg-teal-600" },
+  cyan: { shell: "border-cyan-300 bg-cyan-50/70", active: "bg-cyan-600" },
+  fuchsia: { shell: "border-fuchsia-300 bg-fuchsia-50/70", active: "bg-fuchsia-600" },
+} as const;
 const todayISO = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 
 interface Props {
@@ -19,9 +24,10 @@ interface Props {
   todos: Todo[];
   focusId?: string | null;
   onEnsureSaved?: () => void;
+  accentFamily?: keyof typeof SLOT_ACCENT;
 }
 
-export default function TodoSection({ contractRef, institutionRef, draftInstitution, companyName, todos, focusId, onEnsureSaved }: Props) {
+export default function TodoSection({ contractRef, institutionRef, draftInstitution, companyName, todos, focusId, onEnsureSaved, accentFamily = "teal" }: Props) {
   const patch = usePatchTodo();
   const remove = useRemoveTodo();
   const [kind, setKind] = useState<TodoRecordKind>("todo");
@@ -34,13 +40,14 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
   const effective = saved || (draftInstitution ?? "").trim();
   const focusActive = !!focusId && todos.some((t) => t.id === focusId);
   const { ref: focusedRef, ring } = useFocusScroll<HTMLDivElement>(focusActive);
+  const accent = SLOT_ACCENT[accentFamily];
   const add = () => {
     if (!effective || !title.trim() || !date) return;
     if (!saved) onEnsureSaved?.();
     setSeed({ 기록종류: kind, 제목: title.trim(), 예정일자: date, hour, minute: hour === "20" ? "00" : minute });
   };
   return (
-    <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50/60 p-2.5">
+    <div className={`rounded-lg border border-dashed p-2.5 ${accent.shell}`}>
       <div className="mb-1.5 flex items-center justify-between"><span className="text-xs font-bold text-slate-700">Todo 및 History</span><span className="text-[10px] text-slate-400">캘린더 연동</span></div>
       {todos.length > 0 && <div className="mb-2 space-y-1.5">{todos.map((t) => { const history = t.기록종류 === "history"; return <div key={t.id} ref={t.id === focusId ? focusedRef : undefined} className={`flex items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 ${ring && t.id === focusId ? "ring-2 ring-blue-400" : "border-slate-200"}`}>
         {!history && <input type="checkbox" aria-label="완료 토글" checked={t.완료여부} onChange={(e) => patch.mutate({ contractRef, id: t.id, partial: { 완료여부: e.target.checked } })} className="h-4 w-4 accent-blue-600"/>}
@@ -51,7 +58,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
         <button type="button" onClick={() => remove.mutate({ contractRef, id: t.id })} className="text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
       </div>; })}</div>}
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <div className="flex rounded-md bg-white p-0.5 ring-1 ring-slate-200">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button type="button" key={k} onClick={() => setKind(k)} className={`h-8 rounded px-2 text-[11px] font-bold ${kind === k ? "bg-slate-900 text-white" : "text-slate-500"}`}>{k === "todo" ? "Todo" : "History"}</button>)}</div>
+        <div className="flex rounded-md bg-white p-0.5 ring-1 ring-slate-200">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button type="button" key={k} onClick={() => setKind(k)} className={`h-8 rounded px-2 text-[11px] font-bold ${kind === k ? `${accent.active} text-white` : "text-slate-500"}`}>{k === "todo" ? "Todo" : "History"}</button>)}</div>
         <input aria-label="기록 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={effective ? "제목 입력" : "진행기관 입력 필요"} disabled={!effective} className="h-9 min-w-[140px] flex-[1_1_180px] rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none disabled:bg-slate-100"/>
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <input aria-label="기록 날짜" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 w-32 max-w-full rounded-md border border-slate-300 bg-white px-1.5 text-xs"/>
