@@ -7,16 +7,22 @@
  */
 import type { CompanyInfo } from "@/types";
 
-// 키 → 표시 라벨 (CompanyInfoEditor 와 동일 표기, field-grid 2026-06-11 확정).
-// [업체] 14 (매출 최신순 금년→Y-1→Y-2→Y-3) + [대표자] 9.
+// 키 → 표시 라벨 (CompanyInfoEditor 와 동일 표기·순서 — components/company-info-defs.ts).
+// [업체] 20 (매출 최신순 금년→Y-1→Y-2→Y-3) + [대표자] 10 + [재무] 13(2026-09-28 확장2).
 const 업체_LABELS: [keyof CompanyInfo, string][] = [
   ["개업일", "개업일"],
   ["사업자구분", "사업자구분"],
+  ["과세유형", "과세유형"],
   ["사업자등록번호", "사업자등록번호"],
+  ["법인등록번호", "법인등록번호"],
   ["사대보험직원", "4대보험 직원"],
   ["소재지", "소재지"],
   ["소유여부", "소유여부"],
+  ["임차보증금", "임차 보증금"],
+  ["임차월세", "임차 월세"],
+  ["임차면적", "임차 면적"],
   ["업종주생산품목", "업종/주생산품목"],
+  ["업태", "업태"],
   ["금년도매출", "금년도 매출"],
   ["과년도매출", "과년도 매출 Y-1"],
   ["과년도매출Y2", "과년도 매출 Y-2"],
@@ -28,6 +34,7 @@ const 업체_LABELS: [keyof CompanyInfo, string][] = [
 const 대표자_LABELS: [keyof CompanyInfo, string][] = [
   ["대표자이름", "이름"],
   ["대표자생년월일", "생년월일"],
+  ["주민등록번호", "주민등록번호 앞자리"],
   ["신용점수", "신용점수(KCB/NCB)"],
   ["연락처통신사", "연락처/통신사"],
   ["기대출개인", "기대출(개인)"],
@@ -35,6 +42,21 @@ const 대표자_LABELS: [keyof CompanyInfo, string][] = [
   ["대표소유여부", "소유여부"],
   ["동종업계경력", "동종업계경력"],
   ["대표기타메모", "기타메모"],
+];
+const 재무_LABELS: [keyof CompanyInfo, string][] = [
+  ["결산연도", "결산연도"],
+  ["영업이익", "영업이익"],
+  ["당기순이익", "당기순이익"],
+  ["이자비용", "이자비용"],
+  ["자산총계", "자산총계"],
+  ["부채총계", "부채총계"],
+  ["자본총계", "자본총계"],
+  ["면세수입금액", "면세 수입금액"],
+  ["반기별매출", "반기별 매출"],
+  ["부채비율", "부채비율"],
+  ["이자보상배율", "이자보상배율"],
+  ["당기순이익률", "당기순이익률"],
+  ["매출증가율", "매출증가율"],
 ];
 
 // ── 정렬형 포맷 (§3-3 확정) — 탭 금지, EAW 공백 패딩 ─────────────
@@ -59,9 +81,9 @@ export function displayWidth(s: string): number {
 }
 
 const BULLET = "● ";
-// 값 시작 열 = 가장 긴 라벨("신용점수(KCB/NCB)"=17칸) + 2칸 여유 — 전 줄 공통.
+// 값 시작 열 = 가장 긴 라벨("주민등록번호 앞자리"=19칸) + 2칸 여유 — 전 줄 공통.
 const LABEL_CELL = Math.max(
-  ...[...업체_LABELS, ...대표자_LABELS].map(([, l]) => displayWidth(l)),
+  ...[...업체_LABELS, ...대표자_LABELS, ...재무_LABELS].map(([, l]) => displayWidth(l)),
   displayWidth("업체명"),
   displayWidth("추출시각"),
 ) + 2;
@@ -82,7 +104,7 @@ function fieldLines(label: string, value: string): string[] {
 
 /**
  * 사람이 읽는 TXT 본문 (정렬형, 2026-06-11 확정) — 순수(테스트 대상).
- * 머리(구분선+업체명+추출시각) → [업체] → [대표자]. 커스텀은 그룹 끝.
+ * 머리(구분선+업체명+추출시각) → [업체] → [대표자] → [재무](값 있을 때만). 커스텀은 그룹 끝.
  * 메모장(고정폭)에서 값들이 한 세로선에 정렬되도록 EAW 공백 패딩.
  */
 export function formatCompanyInfoTxt(
@@ -94,14 +116,17 @@ export function formatCompanyInfoTxt(
   const section = (
     title: string,
     labels: [keyof CompanyInfo, string][],
-    g: "업체" | "대표자",
+    g?: "업체" | "대표자",
   ) => [
     `[${title}]`,
     ...labels.flatMap(([k, label]) => fieldLines(label, String(c[k] ?? ""))),
-    ...Object.entries(ci.커스텀?.[g] ?? {}).flatMap(([label, v]) =>
+    ...Object.entries((g && ci.커스텀?.[g]) || {}).flatMap(([label, v]) =>
       fieldLines(label, v),
     ),
   ];
+  // [재무] 는 새 그룹 — 한 칸도 안 채운 업체의 TXT 에 빈 머리글만 남기지 않는다.
+  const 재무 = section("재무", 재무_LABELS);
+  const 재무있음 = 재무.length > 1;
   return [
     RULE,
     "세일즈PT 업체정보",
@@ -112,6 +137,7 @@ export function formatCompanyInfoTxt(
     ...section("업체", 업체_LABELS, "업체"),
     "",
     ...section("대표자", 대표자_LABELS, "대표자"),
+    ...(재무있음 ? ["", ...재무] : []),
   ].join("\n");
 }
 

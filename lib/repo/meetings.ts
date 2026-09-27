@@ -1,6 +1,6 @@
 /**
  * Layer: repo — 04 업체관리(앱자동작성용) 탭 I/O.
- * 1행 = 1미팅. 19컬럼 A~S (+업체정보 T~AN·AQ~AS, 이월깃발 AO/AP).
+ * 1행 = 1미팅. 19컬럼 A~S (+업체정보 T~AN·AQ~AS·AU~BN, 이월깃발 AO/AP, gcal맵 AT).
  *
  * 가드레일:
  *   • N/O/Q/S는 시트 수식 자동 — 쓰기 안 함 (split write 가 비접촉)
@@ -12,12 +12,18 @@
 import { SHEET_RANGES } from "@/config";
 import { Meeting } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { isGridLimitsError } from "./grid-limits";
 import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 import {
   COL,
   COMPANY_CUSTOM_COL,
   COMPANY_EXT_START,
+  COMPANY_EXT2_START,
+  COMPANY_FIELDS_EXT,
+  COMPANY_FIELDS_EXT2,
   COMPANY_FIELD_START,
+  MEETING_ROW_WIDTH,
+  headerBackfillPlan,
   meetingToRow,
   rowToMeeting,
   serialToISODate,
@@ -30,16 +36,88 @@ export {
   COMPANY_FIELD_START,
   COMPANY_CUSTOM_COL,
   COMPANY_EXT_START,
+  COMPANY_FIELDS_EXT2,
+  COMPANY_EXT2_START,
+  MEETING_ROW_WIDTH,
   rowToMeeting,
 } from "./meetings-rows";
+import { colName } from "@/util/sheet-column";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
 }
 
 const TAB = SHEET_RANGES.meetings.tab;
-const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.meetings.range}`; // A2:S
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`; // id 검색용
+const EXT2_FIRST = colName(COMPANY_EXT2_START); // AU
+const LAST_COL = colName(MEETING_ROW_WIDTH - 1); // BN
+
+/** 확장2 이전 폭의 마지막 열(AS) — grid 가 BN 미만인 시트의 읽기 폴백 폭. */
+const LEGACY_LAST_COL = colName(COMPANY_EXT_START + COMPANY_FIELDS_EXT.length - 1); // AS
+
+/**
+ * 04 행 읽기(UNFORMATTED·SERIAL) — `rangeFor(lastCol)` 로 A:BN 을 먼저 읽고, grid 가 BN 까지
+ * 안 넓혀진 시트("exceeds grid limits" 400)면 확장2 이전 폭(A:AS)으로 한 번 더 읽는다
+ * (AU~BN 값 = 없음). **읽기 경로는 grid 를 넓히지 않는다** — 확장은 쓰기 경로(split write·
+ * clear·이월 쓰기)만(gcal-event-ids 규약, 2026-07-12 카나리아 실측). 그 외 오류는 그대로 throw.
+ */
+export async function readMeetingRows(
+  spreadsheetId: string,
+  rangeFor: (lastCol: string) => string,
+): Promise<unknown[][]> {
+  const get = async (lastCol: string) => {
+    const res = await sheetsClient().spreadsheets.values.get({
+      spreadsheetId,
+      range: rangeFor(lastCol),
+      valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return (res.data.values ?? []) as unknown[][];
+  };
+  try {
+    return await get(LAST_COL);
+  } catch (e) {
+    if (!isGridLimitsError(e)) throw e;
+    return get(LEGACY_LAST_COL);
+  }
+}
+
+/** 04 전체 데이터 행(A2:<lastCol>) 범위. */
+const allRows = (lastCol: string) => `${tabRef(TAB)}!A2:${lastCol}`;
+
+// 확장2(AU~BN) 헤더 라벨 보강 — 시트당 프로세스 1회(promise 캐시, 실패 시 재시도 허용).
+const ext2HeaderEnsured = new Map<string, Promise<void>>();
+
+/** AU1:BN1 중 **빈 셀에만** 필드 키를 라벨로 쓴다(§2.5 — 사용자가 바꾼 헤더 보존). */
+function ensureExt2HeaderLabels(spreadsheetId: string): Promise<void> {
+  let p = ext2HeaderEnsured.get(spreadsheetId);
+  if (!p) {
+    p = (async () => {
+      const res = await sheetsClient().spreadsheets.values.get({
+        spreadsheetId,
+        range: `${tabRef(TAB)}!${EXT2_FIRST}1:${LAST_COL}1`,
+        valueRenderOption: "FORMULA",
+      });
+      const plan = headerBackfillPlan(res.data.values?.[0] ?? [], COMPANY_EXT2_START, COMPANY_FIELDS_EXT2);
+      if (plan.length === 0) return;
+      await sheetsClient().spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "RAW",
+          data: plan.map(({ col, label }) => ({
+            range: `${tabRef(TAB)}!${colName(col)}1`,
+            values: [[label]],
+          })),
+        },
+      });
+    })().catch((e) => {
+      ext2HeaderEnsured.delete(spreadsheetId);
+      throw e;
+    });
+    ext2HeaderEnsured.set(spreadsheetId, p);
+  }
+  return p;
+}
 
 // ── Public API ─────────────────────────────────────────────────
 
@@ -101,14 +179,17 @@ async function writeMeetingRowSplit(
   sheetRow: number,
   fullRow: (string | number | boolean)[],
 ): Promise<void> {
-  await ensureGridColumns(spreadsheetId, TAB, 45); // AS 까지 — grid limit 가드
+  await ensureGridColumns(spreadsheetId, TAB, MEETING_ROW_WIDTH); // BN 까지 — grid limit 가드
+  // 헤더 라벨은 부가 정보 — 실패해도 행 쓰기는 진행(다음 쓰기 때 재시도).
+  await ensureExt2HeaderLabels(spreadsheetId).catch(() => {});
   const A_to_M = fullRow.slice(0, 13); // A=0 ~ M=12 (사용자 입력)
   const P_only = [fullRow[COL.계약조건]]; // P=15
   const R_only = [fullRow[COL.previousMeetingId]]; // R=17
-  // 업체정보 T~AN (T=19~AN=39) + 확장 AQ~AS (42~44). 미팅(A:M/P/R)·수식(N/O/Q/S)·
-  // 이월깃발(AO/AP)과 전부 분리 — 서로 보존.
+  // 업체정보 T~AN (T=19~AN=39) + 확장 AQ~AS (42~44) + 확장2 AU~BN (46~65). 미팅(A:M/P/R)·
+  // 수식(N/O/Q/S)·이월깃발(AO/AP)·gcal맵(AT)과 전부 분리 — 서로 보존.
   const T_to_AN = fullRow.slice(COMPANY_FIELD_START, COMPANY_CUSTOM_COL + 1);
   const AQ_to_AS = fullRow.slice(COMPANY_EXT_START, COMPANY_EXT_START + 3);
+  const AU_to_BN = fullRow.slice(COMPANY_EXT2_START, MEETING_ROW_WIDTH);
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -133,6 +214,10 @@ async function writeMeetingRowSplit(
         {
           range: `${tabRef(TAB)}!AQ${sheetRow}:AS${sheetRow}`,
           values: [AQ_to_AS],
+        },
+        {
+          range: `${tabRef(TAB)}!${EXT2_FIRST}${sheetRow}:${LAST_COL}${sheetRow}`,
+          values: [AU_to_BN],
         },
       ],
     },
@@ -161,16 +246,14 @@ export async function findById(
 ): Promise<Meeting | null> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return null;
-  // A:AS — 업체정보(T~AN·AQ~AS)·이월(AO/AP) 포함. (구 A:S — 업체정보 누락으로
+  // A:BN — 업체정보(T~AN·AQ~AS·AU~BN)·이월(AO/AP) 포함. (구 A:S — 업체정보 누락으로
   // 계약 06 스냅샷 경로(re-findById)가 빈 업체정보를 받던 잠복 결함, field-grid fix)
-  const range = `${tabRef(TAB)}!A${sheetRow}:AS${sheetRow}`;
-  const res = await sheetsClient().spreadsheets.values.get({
+  // grid 가 BN 미만인 시트는 A:AS 폴백(readMeetingRows) — 읽기에서 grid 를 넓히지 않는다.
+  const rows = await readMeetingRows(
     spreadsheetId,
-    range,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const r = res.data.values?.[0];
+    (last) => `${tabRef(TAB)}!A${sheetRow}:${last}${sheetRow}`,
+  );
+  const r = rows[0];
   if (!r) return null;
   return rowToMeeting(r as unknown[]);
 }
@@ -219,13 +302,7 @@ export async function findByDateRange(
   const result = new Map<string, Meeting[]>();
   for (const d of dates) result.set(d, []);
 
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE_ALL,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const all = (res.data.values ?? []) as unknown[][];
+  const all = await readMeetingRows(spreadsheetId, allRows);
   const targetCol = type === "reservation" ? COL.예약일 : COL.미팅날짜;
   // dedupe: 같은 id 첫 번째만
   const seenIds = new Set<string>();
@@ -244,13 +321,7 @@ export async function findByDateRange(
 /** 전체 미팅 1-read — 발굴 후보 matched 파생용(콜·지·기·소 미팅의 발굴id·업체명 집합, lead-chain §7-1).
  * id 중복은 첫 행만. 시트는 발굴id 컬럼이 없으므로 비파일럿 미팅은 발굴id 미보유(업체명 폴백으로 매칭). */
 export async function readAllMeetings(spreadsheetId: string): Promise<Meeting[]> {
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE_ALL,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const all = (res.data.values ?? []) as unknown[][];
+  const all = await readMeetingRows(spreadsheetId, allRows);
   const out: Meeting[] = [];
   const seen = new Set<string>();
   for (const r of all) {
@@ -281,13 +352,7 @@ export async function findByDateRangeBoth(
     byReservationDate.set(d, []);
   }
 
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE_ALL,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const all = (res.data.values ?? []) as unknown[][];
+  const all = await readMeetingRows(spreadsheetId, allRows);
   const seenIds = new Set<string>();
   for (const r of all) {
     const parsed = rowToMeeting(r);
@@ -338,7 +403,7 @@ export async function clearMeeting(
 ): Promise<void> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return;
-  await ensureGridColumns(spreadsheetId, TAB, 45); // AQ~AS 클리어 — grid limit 가드
+  await ensureGridColumns(spreadsheetId, TAB, MEETING_ROW_WIDTH); // AQ~BN 클리어 — grid limit 가드
   // A~M, P, R 비우기 (수식 컬럼 N/O/Q/S는 건드리지 않음)
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
@@ -364,6 +429,10 @@ export async function clearMeeting(
         {
           range: `${tabRef(TAB)}!AQ${sheetRow}:AS${sheetRow}`,
           values: [Array(3).fill("")], // 확장 3필드 — AO/AP(이월)는 비접촉
+        },
+        {
+          range: `${tabRef(TAB)}!${EXT2_FIRST}${sheetRow}:${LAST_COL}${sheetRow}`,
+          values: [Array(COMPANY_FIELDS_EXT2.length).fill("")], // 확장2 20필드 — AT(gcal)는 비접촉
         },
       ],
     },

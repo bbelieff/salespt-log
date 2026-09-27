@@ -5,6 +5,7 @@ import {
   COMPANY_CUSTOM_COL,
   COMPANY_FIELDS_EXT,
   COMPANY_EXT_START,
+  COMPANY_FIELDS_EXT2,
 } from "@/repo/meetings";
 import { CompanyInfo, Meeting } from "@/types";
 
@@ -23,9 +24,9 @@ describe("업체정보 컬럼 매핑 (04 T~AN + AQ~AS)", () => {
     expect(COMPANY_EXT_START).toBeGreaterThan(41); // AP(이월원본행id) 침범 금지
   });
 
-  it("COMPANY_FIELDS(+EXT) 키가 CompanyInfo 스키마 키와 일치", () => {
+  it("COMPANY_FIELDS(+EXT·EXT2) 키가 CompanyInfo 스키마 키와 일치", () => {
     const ciKeys = new Set(Object.keys(CompanyInfo.parse({})));
-    for (const f of [...COMPANY_FIELDS, ...COMPANY_FIELDS_EXT]) {
+    for (const f of [...COMPANY_FIELDS, ...COMPANY_FIELDS_EXT, ...COMPANY_FIELDS_EXT2]) {
       expect(ciKeys.has(f)).toBe(true);
     }
   });

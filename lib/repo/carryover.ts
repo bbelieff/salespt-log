@@ -1,8 +1,8 @@
 /**
  * Layer: repo — 아레나 재참가 이월 I/O (arena-carryover §2, 읽기=이전 기수 시트 / 쓰기=아레나).
  *
- * 04: 이전 시트의 상태=예약 미팅 raw(A~AN)를 아레나 04에 복사 — 새 id 발급,
- *     AO="이월"/AP=원본 미팅 id. N/O/Q/S(수식)·기존 행 비접촉(split write).
+ * 04: 이전 시트의 상태=예약 미팅 raw(A~AN + 업체정보 확장 AQ~AS·AU~BN)를 아레나 04에 복사
+ *     — 새 id 발급, AO="이월"/AP=원본 미팅 id. N/O/Q/S(수식)·AT(gcal 맵)·기존 행 비접촉(split write).
  * 02: service 가 기존 contract-payment repo(appendFromContract+updateUserFields) 재사용.
  * 멱등: 아레나 04 AP / 02 AJ 컬럼의 원본키 집합으로 중복 삽입 방지.
  * 이전 기수 시트는 읽기 전용 — 이 파일은 old 시트에 어떤 쓰기도 하지 않는다.
@@ -15,13 +15,55 @@ import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
 import { mirrorSheetRow } from "./db/mirror";
 import { findRowById } from "./meetings";
+// 좌표 상수는 순수 코덱에서 직접 — 모듈 로드 시점에 쓰므로 meetings(I/O) 목킹과 무관해야 한다.
+import {
+  COMPANY_EXT_START,
+  COMPANY_EXT2_START,
+  COMPANY_FIELDS_EXT,
+  COMPANY_FIELDS_EXT2,
+  MEETING_ROW_WIDTH,
+} from "./meetings-rows";
+import { isGridLimitsError } from "./grid-limits";
+import { colName } from "@/util/sheet-column";
+import { normalizeRrnFront } from "@/util/rrn-front";
 
 const TAB = SHEET_RANGES.meetings.tab;
 const ref = `'${TAB}'`;
 
 export interface CarrySourceMeeting {
   원본id: string;
-  raw: unknown[]; // A~AN (0..39)
+  raw: unknown[]; // A~AN (0..39) + 확장 AQ~AS(42..44)·AU~BN(46..65) — 없으면 빈칸
+}
+
+/** 업체정보 확장 열 인덱스 — AQ~AS + AU~BN. AO/AP(이월 깃발)·AT(gcal 맵)는 이월 대상 아님. */
+const EXT_INDICES: number[] = [
+  ...Array.from({ length: COMPANY_FIELDS_EXT.length }, (_, i) => COMPANY_EXT_START + i),
+  ...Array.from({ length: MEETING_ROW_WIDTH - COMPANY_EXT2_START }, (_, i) => COMPANY_EXT2_START + i),
+];
+const EXT_FIRST = colName(COMPANY_EXT_START); // AQ
+const EXT_LAST = colName(MEETING_ROW_WIDTH - 1); // BN
+/** 확장2 이전 폭의 마지막 열(AS) — BN 까지 안 넓혀진 이전 시트의 확장 읽기 폴백. */
+const EXT_LEGACY_LAST = colName(COMPANY_EXT_START + COMPANY_FIELDS_EXT.length - 1); // AS
+/** 주민등록번호 앞자리 열(BA) — 이월 쓰기 전 앞 6자리만 남긴다(belie 결정, 다른 저장 경로와 동일). */
+const RRN_IDX = COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.indexOf("주민등록번호");
+
+/**
+ * 이월 raw 저장 직전 정규화 — 순수. 주민등록번호(BA)는 앞 6자리 "NNNNNN-" 만(뒷자리 저장 불가).
+ * 이전 시트는 학생이 직접 고칠 수 있어 BA 에 전체 번호가 있을 수 있다 — DB payload·아레나 시트
+ * 어느 쪽에도 뒷자리가 넘어가지 않게 두 쓰기 경로가 이 함수를 공유한다.
+ */
+export function sanitizeCarryRaw(raw: readonly unknown[]): unknown[] {
+  const out = [...raw];
+  if (RRN_IDX < out.length && String(out[RRN_IDX] ?? "").trim() !== "") {
+    out[RRN_IDX] = normalizeRrnFront(out[RRN_IDX]);
+  }
+  return out;
+}
+
+/** 확장 열 시트 쓰기값 — 비지 않은 문자열은 선행 apostrophe(plain text 강제, meetingToRow 규약). */
+function extCell(v: unknown): string | number | boolean {
+  if (typeof v === "string") return v.trim() === "" ? "" : `'${v}`;
+  return (v ?? "") as string | number | boolean;
 }
 
 /** 이전 시트 04 에서 상태=예약 행 raw 추출 (J=9 가 "예약"). */
@@ -38,13 +80,43 @@ export async function listCarrySourceMeetings(
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
+  // 업체정보 확장(AQ~BN)은 별도 읽기 — 이전 기수 시트는 읽기 전용이라 grid 를 넓히지 않는다.
+  // BN 까지 안 넓혀진 시트(대부분 45~46열 — AS/AT 까지)는 범위 초과 400 → AQ~AS 만 다시 읽어
+  // 기존 확장 3칸은 살린다. 그것도 안 되면(AQ 이전에서 끝나는 시트) 확장값 없음으로 간주.
+  const readExt = async (last: string) => {
+    const ext = await sheetsClient().spreadsheets.values.get({
+      spreadsheetId: oldSheetId,
+      range: `${ref}!${EXT_FIRST}2:${last}`,
+      valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return (ext.data.values ?? []) as unknown[][];
+  };
+  let extRows: unknown[][] = [];
+  try {
+    extRows = await readExt(EXT_LAST);
+  } catch (e) {
+    extRows = isGridLimitsError(e) ? await readExt(EXT_LEGACY_LAST).catch(() => []) : [];
+  }
   const out: CarrySourceMeeting[] = [];
-  for (const r of res.data.values ?? []) {
+  (res.data.values ?? []).forEach((r, rowIdx) => {
     const id = String(r[0] ?? "").trim();
     const 상태 = String(r[9] ?? "").trim();
-    if (id && 상태 === "예약") out.push({ 원본id: id, raw: r });
-  }
+    if (!id || 상태 !== "예약") return;
+    out.push({ 원본id: id, raw: withExtColumns(r, extRows[rowIdx]) });
+  });
   return out;
+}
+
+/** A~AN raw + (AQ 부터 읽은) 확장 행 → A~BN raw. 확장 행이 없으면 A~AN 그대로. 순수. */
+export function withExtColumns(base: unknown[], ext: unknown[] | undefined): unknown[] {
+  const raw = [...base];
+  if (!ext) return raw;
+  for (const idx of EXT_INDICES) {
+    const v = ext[idx - COMPANY_EXT_START];
+    if (v !== undefined) raw[idx] = v;
+  }
+  return raw;
 }
 
 /** 아레나 시트에 이미 이월된 원본키 집합 — 04 AP 컬럼. */
@@ -74,11 +146,6 @@ async function firstEmptyRow(spreadsheetId: string): Promise<number> {
   return ids.length + 2;
 }
 
-/** 열 인덱스 → 열문자 (backfill rowObj 규칙과 동일, ~AP=41 충분). */
-function colName(i: number): string {
-  return i < 26 ? String.fromCharCode(65 + i) : "A" + String.fromCharCode(65 + i - 26);
-}
-
 // 이월 DB payload 에서 제외할 인덱스 — 수식(N/O/Q/S)은 옛 시트의 stale 계산값이고,
 // R(previousMeetingId)은 옛 시트 내부 참조라 시트 쓰기(appendCarriedMeeting)도 비운다.
 const CARRY_DROP = new Set([13, 14, 16, 17, 18]);
@@ -96,9 +163,10 @@ export function carriedMeetingPayload(
   newId: string,
 ): Record<string, unknown> {
   const p: Record<string, unknown> = { A: newId };
-  for (let i = 1; i <= 39; i++) {
+  const raw = sanitizeCarryRaw(src.raw);
+  for (const i of [...Array.from({ length: 39 }, (_, k) => k + 1), ...EXT_INDICES]) {
     if (CARRY_DROP.has(i)) continue;
-    const v = src.raw[i];
+    const v = raw[i];
     const s = String(v ?? "").trim();
     if (s !== "") p[colName(i)] = v as unknown;
   }
@@ -107,7 +175,7 @@ export function carriedMeetingPayload(
   return p;
 }
 
-/** 이월 행 split write — append/스냅샷 공용 (A:M / P / T~AN / AO:AP, R·수식 비접촉). */
+/** 이월 행 split write — append/스냅샷 공용 (A:M / P / T~AN / AO:AP / AQ:AS / AU:BN, R·수식·AT 비접촉). */
 async function writeCarriedRowAt(
   arenaSheetId: string,
   row: number,
@@ -117,9 +185,26 @@ async function writeCarriedRowAt(
   const a2m = src.raw.slice(0, 13).map((v) => v ?? "");
   a2m[0] = newId; // 새 id (옛/새 시트 id 혼동 방지 — 원본은 AP 에)
   const t2an = Array.from({ length: 21 }, (_, i) => src.raw[19 + i] ?? "");
-  // AO:AP 쓰기 — 04 grid 가 AN(40)까지인 시트에서 grid limit 에러 (field-grid 실측,
-  // 잠복 버그: 라이브 이월 0건이라 미발현이었음) → 45열 보장 후 쓰기.
-  await ensureGridColumns(arenaSheetId, SHEET_RANGES.meetings.tab, 45);
+  // 확장 열: 주민등록번호 앞자리 정규화 + 문자열은 apostrophe(USER_ENTERED 가 "1988-01-24"·
+  // "120%"·"1,000" 을 날짜·숫자로 바꾸지 않게 — UNFORMATTED 읽기는 원래 apostrophe 를 떼고 준다).
+  const extRaw = sanitizeCarryRaw(src.raw);
+  const aq2as = Array.from({ length: COMPANY_FIELDS_EXT.length }, (_, i) => extCell(extRaw[COMPANY_EXT_START + i]));
+  const au2bn = Array.from(
+    { length: MEETING_ROW_WIDTH - COMPANY_EXT2_START },
+    (_, i) => extCell(extRaw[COMPANY_EXT2_START + i]),
+  );
+  // 확장값이 실린 raw 만 AQ:AS·AU:BN 을 쓴다 — 레거시 A~AN raw(_carryRaw 등)로 기존 행을
+  // 갱신할 때 확장 칸을 빈값으로 덮지 않기 위함(§2.5 취지).
+  const hasExt = src.raw.length > COMPANY_EXT_START;
+  const extData = hasExt
+    ? [
+        { range: `${ref}!AQ${row}:AS${row}`, values: [aq2as] },
+        { range: `${ref}!${colName(COMPANY_EXT2_START)}${row}:${EXT_LAST}${row}`, values: [au2bn] },
+      ]
+    : [];
+  // AO:AP·AQ:BN 쓰기 — 04 grid 가 AN(40)까지인 시트에서 grid limit 에러 (field-grid 실측,
+  // 잠복 버그: 라이브 이월 0건이라 미발현이었음) → BN(66열) 보장 후 쓰기.
+  await ensureGridColumns(arenaSheetId, SHEET_RANGES.meetings.tab, MEETING_ROW_WIDTH);
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId: arenaSheetId,
     requestBody: {
@@ -129,6 +214,7 @@ async function writeCarriedRowAt(
         { range: `${ref}!P${row}`, values: [[src.raw[15] ?? ""] as (string | number | boolean)[]] },
         { range: `${ref}!T${row}:AN${row}`, values: [t2an as (string | number | boolean)[]] },
         { range: `${ref}!AO${row}:AP${row}`, values: [["이월", src.원본id]] },
+        ...extData,
       ],
     },
   });

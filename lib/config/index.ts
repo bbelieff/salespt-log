@@ -190,21 +190,22 @@ export const SHEET_RANGES = {
   // 표시_요약(수식)/계약조건/계약합성라인(수식)/previousMeetingId/주차(수식)
   meetings: {
     tab: "04 업체관리(앱자동작성용)",
-    headerRow: "A1:AS1",
+    headerRow: "A1:BN1",
     // A~S(미팅) + T~AN(업체정보) + AO~AP(이월 깃발: 구분/이월원본행id — 마이그레이션만 기록).
     // + AQ~AS(업체정보 확장 3 — field-grid; AO~AP 이월깃발 뒤 append).
-    // 읽기는 전체, 쓰기는 split(A:M/P/R/T~AN/AQ~AS)이라 수식·이월깃발 비접촉 보존.
-    range: "A2:AS",
+    // + AT(gcal_event_ids 맵 — gcal-event-ids.ts 전용) + AU~BN(업체정보 확장2 20 — 2026-09-28).
+    // 쓰기는 split(A:M/P/R/T~AN/AQ~AS/AU~BN)이라 수식·이월깃발·gcal맵 비접촉 보존.
+    range: "A2:BN",
   },
 
   // ── 06 업체정보 (계약 고객 동기화 표 — consultation-log §1-2) ─────
   // 신규 탭(ensure 자동 생성). A=업체명 B=계약일 C=계약ref(계약일|업체명) D=갱신시각
-  // + E~X=04 업체정보 20필드 미러 + Y=커스텀 JSON + Z~AB=확장 3필드 미러(field-grid).
-  // 키=계약ref. 04 가 SSOT, 06 은 동기화 사본.
+  // + E~X=04 업체정보 20필드 미러 + Y=커스텀 JSON + Z~AB=확장 3필드 미러(field-grid)
+  // + AC~AV=확장2 20필드 미러(04 AU~BN, 2026-09-28). 키=계약ref. 04 가 SSOT, 06 은 동기화 사본.
   companyInfoArchive: {
     tab: "06 업체정보",
-    headerRow: "A1:AB1",
-    range: "A2:AB",
+    headerRow: "A1:AV1",
+    range: "A2:AV",
   },
 
   // ── 계약수납관리 v2 (1행 = 1계약, A~AD) ─────────────────────

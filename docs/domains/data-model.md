@@ -584,8 +584,8 @@ interface DashboardView {
 | `RankingMetric` | z.enum | 전광판 개인 랭킹 지표: `미팅` / `계약` / `매출` / `앱사용량` / `공유왕` (arena-scoreboard-v2). 미팅·계약=8주 합, 매출=총매출, 앱사용량=5지표 8주 합(활동 프록시), 공유왕=share_scores points |
 | `RankingEntry` | interface | 개인 랭킹 1행: `{name, cohort, value, rank}`. value desc·동점 동순위·이름 asc, rank 1부터. 이름 공개(아레나 경쟁) |
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
-| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-5 v2 — 어느 03 발굴에서 왔나. optional 고정=R11) |
-| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS, 미팅 단위): [업체]14 + [대표자]9 = 23필드 고정 + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. 기대출 2필드는 셀 내 `\n` 허용. consultation-log §1-1 (2026-06-11 확정) |
+| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS·AU~BN 업체정보 + AO~AP 이월깃발 + AT gcal맵). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-5 v2 — 어느 03 발굴에서 왔나. optional 고정=R11) |
+| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS + AU~BN, 미팅 단위): 43필드 고정 + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. **확장2 20필드(2026-09-28, 04 AU~BN · 06 AC~AV)**: [업체] `과세유형`·`업태`·`법인등록번호`·`임차보증금`·`임차월세`·`임차면적` / [대표자] `주민등록번호`(**앞 6자리만 `NNNNNN-` — zod transform `normalizeRrnFront` 가 서버에서 강제, 뒷자리 저장 불가**) / [재무] `결산연도`·`영업이익`·`당기순이익`·`이자비용`·`자산총계`·`부채총계`·`자본총계`·`반기별매출`·`면세수입금액`·`부채비율`·`이자보상배율`·`당기순이익률`·`매출증가율` — 전부 자유 텍스트 default ""(비율도 직접 입력). DB payload JSONB 라 마이그레이션 없음 — 옛 행은 키 부재 → "" 로 파싱. 기대출 2필드·반기별매출은 셀 내 `\n` 허용. consultation-log §1-1 (2026-06-11 확정) |
 | `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
 | `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금 — 전광판 입금자 모수 필터) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
 
