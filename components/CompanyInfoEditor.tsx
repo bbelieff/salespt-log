@@ -5,22 +5,23 @@
  *
  * 반응형 3단계: 기본(<390) 1열 강하 · sm(390+) 혼합 그리드(2열, short=span1,
  * long=span2) · 2xl(768+) [업체]|[대표자] 그룹 좌우 2단(모달·PC 카드).
- * placeholder = 필드 안 옅은 안내(별도 설명 줄 없음). 기대출 2필드 = textarea
+ * 필드 설명(FieldDef 3번째) = 라벨 옆 (?) 툴팁(HintTooltip) — 회색 설명 줄 없음. 기대출 2필드 = textarea
  * 자동높이(줄 수 따라) — 시트에 \n 그대로 저장.
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CompanyInfo } from "@/types";
 import { formatPhone } from "@/lib/format/phone";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
+import HintTooltip from "@/components/ui/HintTooltip";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
 
-// 필드 정의: [키, 라벨, placeholder, span(1|2), multiline?]
+// 필드 정의: [키, 라벨, 설명(툴팁), span(1|2), multiline?]
 type FieldDef = [keyof CI, string, string, 1 | 2, boolean?];
 
 // §3-2 확정 배치 순서 그대로.
@@ -99,6 +100,8 @@ export default function CompanyInfoEditor({
   });
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
+  // 패널·모달이 같은 필드를 동시에 그리므로 위치(where)까지 넣어 id 충돌을 막는다.
+  const uid = useId();
 
   // 단독 모드는 자동 저장, 임베드는 stage 전용(부모가 영속화 — 중복 요청 없음).
   const auto = !hideSave;
@@ -234,12 +237,13 @@ export default function CompanyInfoEditor({
   };
 
   // 한 필드 입력 — multiline=textarea(줄 수 따라 자동높이), 아니면 input.
-  const field = ([k, label, ph, span, multi]: FieldDef, inline: boolean) => {
+  const field = ([k, label, ph, span, multi]: FieldDef, inline: boolean, where: string) => {
     const v = String(draft[k] ?? "");
     // 연락처통신사 = "010-1234-5678(SKT)" **합본 자유문자열**. 매 키 입력 마스킹은 괄호부를
     // 깨뜨리므로, blur 시에만 formatPhone 으로 정규화한다(선행 숫자 런만 포맷·접미 보존).
     // 기존 저장분(하이픈 없음·시트가 숫자로 먹어 선행 0 소실)도 이때 흡수된다.
     const isPhone = String(k) === "연락처통신사";
+    const inputId = `${uid}-${where}-${String(k)}`;
     const onBlurNormalize = isPhone
       ? () => {
           const next = formatPhone(v);
@@ -247,15 +251,17 @@ export default function CompanyInfoEditor({
         }
       : undefined;
     return (
-      <label key={String(k)} className={!inline && span === 2 ? "block sm:col-span-2" : "block"}>
-        <span className="text-xs font-medium text-gray-800">{label}</span>
-        {ph && (
-          <span className="mt-0.5 block break-keep text-[11px] leading-tight text-gray-400">
-            {ph}
-          </span>
-        )}
+      <div key={String(k)} className={!inline && span === 2 ? "block sm:col-span-2" : "block"}>
+        {/* (?) 버튼은 <label> 밖 — 눌러도 입력칸이 포커스·활성되지 않는다. */}
+        <div className="flex items-center gap-1">
+          <label htmlFor={inputId} className="text-xs font-medium text-gray-800">
+            {label}
+          </label>
+          {ph && ph !== label && <HintTooltip label={label} text={ph} />}
+        </div>
         {multi ? (
           <textarea
+            id={inputId}
             className={`${inputCls} resize-none leading-5`}
             rows={Math.max(2, v.split("\n").length)}
             placeholder={undefined}
@@ -264,6 +270,7 @@ export default function CompanyInfoEditor({
           />
         ) : (
           <input
+            id={inputId}
             className={inputCls}
             placeholder={undefined}
             inputMode={isPhone ? "tel" : undefined}
@@ -272,12 +279,12 @@ export default function CompanyInfoEditor({
             onBlur={onBlurNormalize}
           />
         )}
-      </label>
+      </div>
     );
   };
 
   // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
-  const group = (g: Grp, defs: FieldDef[], inline: boolean) => (
+  const group = (g: Grp, defs: FieldDef[], inline: boolean, where: string) => (
     <div className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
       <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-xs font-bold text-gray-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
@@ -286,7 +293,7 @@ export default function CompanyInfoEditor({
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
       <div className={inline ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-1 gap-1.5 sm:grid-cols-2"}>
-        {defs.map((def) => field(def, inline))}
+        {defs.map((def) => field(def, inline, where))}
         {Object.entries(customOf(g)).map(([label, v]) => (
           <label key={`c-${label}`} className={inline ? "block" : "block sm:col-span-2"}>
             <span className="flex items-center justify-between text-xs text-purple-500">
@@ -327,10 +334,10 @@ export default function CompanyInfoEditor({
   );
 
   // PC 상세에서만 너비 비율을 따른다. 편집 팝업은 원래 반응형 배치를 유지한다.
-  const body = (inline: boolean) => (
+  const body = (inline: boolean, where: "panel" | "modal") => (
     <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
-      {group("업체", 업체_DEFS, inline)}
-      {group("대표자", 대표자_DEFS, inline)}
+      {group("업체", 업체_DEFS, inline, where)}
+      {group("대표자", 대표자_DEFS, inline, where)}
     </div>
   );
 
@@ -387,7 +394,7 @@ export default function CompanyInfoEditor({
               onUndo={undo}
             />
           )}
-          {body(splitInline)}
+          {body(splitInline, "panel")}
           {txtCompanyName && (
             <div className="flex">
               <button
@@ -435,7 +442,7 @@ export default function CompanyInfoEditor({
                 ✕
               </button>
             </div>
-            {body(false)}
+            {body(false, "modal")}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
