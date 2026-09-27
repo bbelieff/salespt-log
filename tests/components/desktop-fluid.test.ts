@@ -198,11 +198,21 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     expect(src).toContain("<WeeklyDualChart");
     expect(src).toContain("<ChannelPerformance");
     expect(src).not.toMatch(/h-\[\d+px\]/);
-    // No stretch empty height — cards keep natural heights (goal grows with
-    // long PT tasks); chart balance comes from the shell-scope max-height.
-    expect(src).toContain("pc:items-start");
-    expect(src).not.toContain("pc:items-stretch");
-    expect(src).not.toContain("pc:flex-1");
+    // Same-row cards share one bottom line (belie 2026-09-28): the grid stretches
+    // and each card absorbs the extra height inside — charts fill it (.chart-fill),
+    // the PT box sits at the bottom (mt-auto), the wide-screen productivity card
+    // grows above the work status (flex-1). No fixed pixel heights.
+    expect(src).toContain("pc:items-stretch");
+    expect(src).not.toContain("pc:items-start");
+    expect(src).toContain('className="min-[1600px]:flex-1"');
+    for (const rel of [
+      "components/dashboard/FunnelChart.tsx",
+      "components/dashboard/WeeklyDualChart.tsx",
+      "components/dashboard/ChannelPerformance.tsx",
+    ]) {
+      expect(read(rel)).toContain("flex h-full flex-col");
+    }
+    expect(read("components/weekly-goals/WeeklyGoalSummary.tsx")).toContain("mt-auto");
     // Short content must not force viewport height (shell reserves nothing).
     expect(src).toContain("pc:min-h-0");
   });
@@ -291,16 +301,17 @@ describe("⑥ bottom spacers — desktop scoped, mobile safe-area intact", () =>
 
 describe("⑦ chart hooks — desktop-only balance, mobile SVG unchanged", () => {
   const hooks: Array<[string, string, string]> = [
-    ["components/dashboard/FunnelChart.tsx", "funnel-svg", "0 0 358 260"],
-    ["components/dashboard/WeeklyDualChart.tsx", "weekly-trend-svg", "0 0 358 200"],
-    ["components/dashboard/ChannelPerformance.tsx", "channel-donut-svg", "0 0 170 160"],
+    ["components/dashboard/FunnelChart.tsx", "funnel-svg w-full", "0 0 358 260"],
+    ["components/dashboard/WeeklyDualChart.tsx", "weekly-trend-svg w-full", "0 0 358 200"],
+    // 도넛은 여백 없는 정사각 viewBox + 고정 크기(채널별 성과 높이 압축, 2026-09-28).
+    ["components/dashboard/ChannelPerformance.tsx", "channel-donut-svg h-24 w-24 shrink-0 md:h-28 md:w-28", "0 0 116 116"],
   ];
 
   it.each(hooks)("%s exposes its hook with viewBox + meet intact", (rel, hook, vb) => {
     const src = read(rel as string);
     expect(src).toContain(`viewBox="${vb}"`);
     expect(src).toContain('preserveAspectRatio="xMidYMid meet"');
-    expect(src).toContain(`${hook} w-full`);
+    expect(src).toContain(hook);
   });
 
   it("mobile SVG is untouched: no pc: sizing or clipping on the svg elements", () => {
@@ -320,13 +331,14 @@ describe("⑦ chart hooks — desktop-only balance, mobile SVG unchanged", () =>
     const block = read("app/globals.css").slice(
       read("app/globals.css").indexOf("Desktop-fluid student shell"),
     );
-    for (const [hook, cap] of [
-      [".desktop-shell .funnel-svg", "max-height: 220px"],
-      [".desktop-shell .weekly-trend-svg", "max-height: 260px"],
-      [".desktop-shell .channel-donut-svg", "max-height: 160px"],
-    ] as Array<[string, string]>) {
-      expect(block).toContain(hook);
-      expect(block).toContain(cap);
+    // Funnel / weekly trend fill their card's leftover height (row height comes
+    // from card content, not the chart's aspect) — 2026-09-28 height alignment.
+    expect(block).toContain(".desktop-shell .chart-fill {");
+    expect(block).toContain(".desktop-shell .chart-fill > .funnel-svg");
+    expect(block).toContain(".desktop-shell .chart-fill > .weekly-trend-svg");
+    expect(block).toContain("min-height: 14rem");
+    for (const rel of ["components/dashboard/FunnelChart.tsx", "components/dashboard/WeeklyDualChart.tsx"]) {
+      expect(read(rel)).toContain('className="chart-fill flex flex-1 items-center"');
     }
     expect(block).not.toContain("overflow:hidden");
     expect(block).not.toContain("overflow: hidden");
