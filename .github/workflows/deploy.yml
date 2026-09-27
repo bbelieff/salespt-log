@@ -254,7 +254,9 @@ jobs:
               fi
               exit 1
             fi
-            rm -rf .next-prev
+            # 실패 빌드(.next-broken)는 다음 성공 배포까지만 보존 — 안 지우면 무기한 남는다
+            # (07-11 실패분 1.9G 가 2.5개월 잔류, 디스크 95% 의 원인 중 하나, 2026-09-27).
+            rm -rf .next-prev .next-broken
             echo "새 빌드 헬스 OK (/api/health=200) — 무중단 컷오버 완료"
             echo "::endgroup::"
             echo "::group::Updates collect"
