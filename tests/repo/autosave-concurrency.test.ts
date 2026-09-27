@@ -31,9 +31,16 @@ describe.skipIf(process.env.TRAINER_CONCURRENCY_PG !== "1")("autosave independen
   },30000);
   afterAll(async () => {
     if (pool) await pool.end();
-    if (started) execFileSync(join(bin,"pg_ctl"),["-D",join(dir,"data"),"-m","fast","-w","stop"],{stdio:"pipe"});
+    // pool.end() resolves before the ended clients' sockets actually close. A fast stop
+    // then hits them with FATAL 57P01, which surfaces as an unhandled error and fails CI
+    // (runs 36298707404, 36299592336). Smart stop waits for those sessions to leave;
+    // fast stop stays as the fallback so a stuck session cannot hang teardown.
+    if (started) {
+      const stop = (mode: string) => execFileSync(join(bin,"pg_ctl"),["-D",join(dir,"data"),"-m",mode,"-t","10","-w","stop"],{stdio:"pipe"});
+      try { stop("smart"); } catch { stop("fast"); }
+    }
     if (dir) rmSync(dir,{recursive:true,force:true});
-  });
+  },30000);
 
   it.each([true,false])("serializes separate workers (same key=%s) until write and completion", async sameKey => {
     vi.resetModules();

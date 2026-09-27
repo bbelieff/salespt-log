@@ -7,6 +7,13 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-27 · [병렬트랙] DC 총괄(데탑 C총괄 260927) · 끝내기 5건 직접 수행
+- 사용자 지시: Muse 한도(09-28 09:00 KST 초기화) 전까지 총괄이 직접 수행. 새 기능 없음.
+- 구역: `tests/repo/autosave-concurrency.test.ts` · `.github/workflows/deploy.yml` · 루트 `ecosystem.config.cjs`(신규) · 머지 끝난 로컬 워크트리 회수 · 열린 PR #1003/#1002/#954/#798 판정. **payment·데스크톱 셸(Codex 레인) 무접촉.**
+- 판정: master CI 빨강 2회(run 36298707404·36299592336)는 제품 무관 — `pool.end()` 가 소켓 종료 전에 끝나고 `pg_ctl -m fast` 가 남은 세션에 FATAL 57P01 을 보내 vitest unhandled error. 이후 2회 초록(같은 테스트 코드). → smart stop(세션 퇴장 대기) + fast 폴백.
+- VPS(관제 세션이 belie 승인으로 실행): `.next-broken` 1.9G(07-11 실패 빌드가 성공 배포 후에도 무기한 잔류) 등 삭제, 디스크 95%→51%. 재발 방지로 성공 배포 시 `.next-broken` 도 정리. pm2 설정 `ecosystem.config.cjs` 는 09-14 운영에서 직접 바꾼 뒤 레포에 없어 서버 재구축 시 유실 위험 → 레포 편입.
+- 하트비트: Linear 는 08-27 아카이브 — GitHub #889 에 기록.
+
 ### 2026-09-27 · [병렬트랙] Codex · 실무/수납 확정 목업 운영 이식
 - 사용자 요청: 현재 확정된 실무/수납 목업을 운영에 배포하고 Supabase 저장 구조까지 반영.
 - 범위: `/payment` PC 마스터·디테일, 성과 요약/업무 상태, 업체정보·계약·서류·로드맵·실무진행, Todo/History, 새 JSONB/시트 필드와 관련 테스트·문서. 모바일·권한·기존 계산·과거 저장값 보존.
