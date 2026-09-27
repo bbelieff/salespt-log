@@ -235,8 +235,11 @@ export default function PaymentPage() {
     const summary = document.querySelector<HTMLElement>("[data-payment-summary]");
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(sync);
     if (summary) observer?.observe(summary);
+    // 기관을 접고 펼칠 때 선택 행의 DOM 위치가 바뀌므로 연결부를 즉시 재배치한다.
+    const listObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver(sync);
+    if (listPaneRef.current) listObserver?.observe(listPaneRef.current, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-expanded", "aria-selected", "data-active-institution"] });
     window.addEventListener("resize", sync);
-    return () => { cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener("resize", sync); };
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); listObserver?.disconnect(); window.removeEventListener("resize", sync); };
   }, [isPc, list.isLoading, rows.length, listMode, selectedCp?.row, selectedWorkKey, companyQuery, sortKey, masterWidth]);
   // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
@@ -335,7 +338,7 @@ export default function PaymentPage() {
               <span className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors ${listMode === "institution" ? "group-hover:bg-red-400" : "group-hover:bg-blue-400"}`} />
             </button>
             {selectedCp && (
-              <div className="payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl bg-white shadow-sm">
+              <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
                 <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
                   <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
                   <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
