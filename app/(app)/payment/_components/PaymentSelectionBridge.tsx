@@ -8,14 +8,17 @@ const PaymentSelectionBridge = forwardRef<SVGSVGElement, { mode?: "company" | "i
   return (
     <svg ref={ref} aria-hidden="true" preserveAspectRatio="none" className="payment-selection-link pointer-events-none absolute z-20 overflow-hidden opacity-0 transition-opacity duration-150">
       <defs>
-        <linearGradient id="payment-selection-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={institution ? "#fee2e2" : "#dbeafe"} />
-          <stop offset="35%" stopColor={institution ? "#fef2f2" : "#eff6ff"} />
-          <stop offset="100%" stopColor="#ffffff" />
+        <linearGradient id="payment-selection-gradient" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={institution ? "#fef2f2" : "#eff6ff"} />
+          <stop offset="100%" stopColor={institution ? "#fee2e2" : "#dbeafe"} />
+        </linearGradient>
+        <linearGradient id="payment-selection-edge-gradient" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={institution ? "#f87171" : "#60a5fa"} />
+          <stop offset="100%" stopColor={institution ? "#fecaca" : "#bfdbfe"} />
         </linearGradient>
       </defs>
       <path data-bridge-fill fill="url(#payment-selection-gradient)" />
-      <path data-bridge-edge fill="none" stroke={institution ? "#fecaca" : "#bfdbfe"} strokeWidth="1" />
+      <path data-bridge-edge fill="none" stroke="url(#payment-selection-edge-gradient)" strokeWidth="1" />
     </svg>
   );
 });
@@ -44,12 +47,16 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   const startY = Math.max(0, Math.min(height, top - panel.top));
   const endY = Math.max(0, Math.min(height, bottom - panel.top));
   if (endY <= startY) { bridge.style.opacity = "0"; return; }
-  const curveX = Math.max(3, width * 0.55);
-  const upper = `M 0 ${startY} C ${curveX} ${startY} ${curveX} 0 ${width} 0`;
-  const lowerCurve = `C ${curveX} ${height} ${curveX} ${endY} 0 ${endY}`;
-  bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upper} L ${width} ${height} ${lowerCurve} Z`);
-  // 오른쪽 선은 SVG 안쪽 0.5px에 그려 상세 패널 외곽선을 침범하지 않는다.
-  bridge.querySelector("[data-bridge-edge]")?.setAttribute("d", `${upper} M ${width - 0.5} 0 L ${width - 0.5} ${height} M ${width} ${height} ${lowerCurve}`);
+  // 곡선은 선택 행 가까이에서만 휘고, 패널 전체 높이에는 얇은 외곽선만 남긴다.
+  const upperY = Math.max(0, startY - 10);
+  const lowerY = Math.min(height, endY + 10);
+  const nearX = width * 0.4;
+  const farX = width * 0.8;
+  const upper = `M 0 ${startY} C ${nearX} ${startY} ${farX} ${upperY} ${width} ${upperY}`;
+  const lowerCurve = `C ${farX} ${lowerY} ${nearX} ${endY} 0 ${endY}`;
+  bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upper} L ${width} ${lowerY} ${lowerCurve} Z`);
+  // 세로선은 SVG 안쪽 0.5px에 그려 상세 패널 외곽선을 침범하지 않는다.
+  bridge.querySelector("[data-bridge-edge]")?.setAttribute("d", `M ${width - 0.5} 0 L ${width - 0.5} ${height} ${upper} M ${width} ${lowerY} ${lowerCurve}`);
   bridge.setAttribute("viewBox", `0 0 ${width} ${height}`);
   const bounds = root.getBoundingClientRect();
   bridge.style.left = `${row.right - bounds.left}px`;

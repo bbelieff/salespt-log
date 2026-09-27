@@ -108,13 +108,15 @@ describe("선택 행과 상세의 연결부", () => {
     expect(bridge.style.width).toBe("22px");
     expect(bridge.style.top).toBe("0px");
     expect(bridge.style.height).toBe("500px");
-    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain(" C ");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("22 90 L 22 180");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).not.toContain("22 500");
     expect(bridge.querySelector("[data-bridge-edge]")?.getAttribute("d")).toContain("L 21.5 500");
 
     row.remove();
     syncPaymentSelectionBridge(workspace, pane, bridge);
     expect(bridge.style.opacity).toBe("1");
     expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("M 0 30 ");
+    expect(bridge.querySelector("[data-bridge-fill]")?.getAttribute("d")).toContain("22 20 L 22 75");
 
     pane.append(row);
     rowRect.mockReturnValue(rect(10, 520, 360, 590));
