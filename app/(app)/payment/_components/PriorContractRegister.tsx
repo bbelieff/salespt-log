@@ -6,14 +6,14 @@
  * 통째로 이 파일에 옮겨 두었다 — 언제든 되살릴 수 있다.
  *
  * ## 되살리는 법 (두 줄)
- *   1) `PriorContractSection.tsx` 에  `import PriorContractRegister from "./PriorContractRegister";`
- *   2) 매출 2카드 아래에  `<PriorContractRegister courseStartISO={courseStartISO} />`
+ *   1) `page.tsx` 에  `import PriorContractRegister from "./_components/PriorContractRegister";`
+ *   2) 모바일 링크 아래에  `<PriorContractRegister courseStartISO={courseStartISO} />`
  * 서버(API·서비스·시트 쓰기)는 **손대지 않았다** — `POST /api/contract-payment/prior` 와
  * `lib/service/contract-payment-add.ts` 가 그대로 있으니 붙이는 즉시 동작한다.
  *
  * ## 이미 등록된 이전 계약은 그대로 보인다
  * 버튼이 사라졌다고 데이터가 사라지지 않는다. 02 계약수납관리에 남아 있고, 실무·수납
- * 목록과 「이월 매출」 카드에 계속 집계된다(`isCarryoverContract`).
+ * 계약 목록에는 계속 표시된다(`isCarryoverContract`).
  */
 "use client";
 

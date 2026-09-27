@@ -15,9 +15,9 @@
 - `ContractListTable`은 표 대신 업체명, 계약일·수임비, 수수료, 진행률만 담은 compact 1뎁스 카드다. 선택 카드는 파란 그라데이션과 `조회 중` 표시로 분명히 구분한다.
 - 목록 상단의 `업체 / 진행기관` 토글은 같은 계약 데이터를 다른 기준으로 읽는다. `InstitutionWorkList`는 진행기관을 1뎁스로 펼치고 그 안의 진행건을 상품명순(미입력은 마지막)으로 정렬한다. 상품별 하위 그룹은 만들지 않는다. 예전 자유입력의 `소진공 신취` 같은 값은 보기에서만 기관 `소진공`·상품 `신취`로 나누며 저장된 기관 키는 Todo/캘린더 연결을 위해 보존한다. 업체가 여러 기관에서 진행하면 각 슬롯을 따로 보여 주며, 선택 시 기존 업체 상세의 해당 진행 슬롯을 연다. 기관·상품을 비워 둔 계약도 `기관 미입력`에 남긴다. 검색은 모드에 맞게 업체 또는 기관·상품·업체에 적용하고, 기존 업체 정렬은 업체 모드에서만 표시한다. 데이터 저장 구조와 성과 집계는 바꾸지 않는다.
 - PC는 목록과 상세를 항상 2열로 배치하고 중앙 핸들을 드래그해 열 폭을 조절한다. 작업판 높이는 현재 뷰포트의 남은 공간에 맞춘다. 목록과 상세의 업체정보/실무정보 세 열은 각각 휠을 소유하고 끝까지 스크롤해도 문서로 전파하지 않는다. 스크롤바는 얇고 화살표가 없다. 선택 행이 목록에 보일 때에만 그라데이션 연결부를 작업판 위에 그려 스크롤 중 잘리거나 잔상이 남지 않는다. 목록 외곽의 직각 테두리는 제거하고 상세 상단은 선택 업체명 배너로 유지한다. PC 검색·정렬은 한 줄이며 파란 계약 안내 줄은 표시하지 않는다.
-- 1280px 이상 실무/수납에서 연결된 Drive 바로가기와 아레나/이월 매출 보조 카드는 숨긴다. 미연결 Drive는 사이드바의 연결 필요 링크에서 기존 연결 UI로 이동한다. 상단 배너는 성과 요약 팝오버보다 높은 레이어다.
+- 1280px 이상 실무/수납에서 연결된 Drive 바로가기는 숨긴다. 아레나/이월 매출 보조 카드는 모바일에서도 성과 요약과 중복되어 표시하지 않는다. 미연결 Drive는 사이드바의 연결 필요 링크에서 기존 연결 UI로 이동한다. 상단 배너는 성과 요약 팝오버보다 높은 레이어다.
 - 2뎁스는 업체정보와 실무정보 2열이다. 업체정보는 기존 대표자정보·기업정보 필드를 유지하고 기존 편집 팝업을 사용한다. 우측은 계약정보, 서류·진행 체크, 노란 로드맵 메모, 노란 실무진행 순서다. 계약정보와 체크리스트는 접을 수 있다.
-- `PaymentPerformanceSummary`는 전체·이번 달·이번 주·직접 기간의 계약/매출과 전체 진행건 상태를 한 줄에 가깝게 압축한다. 상태 바의 각 구간을 누르면 해당 업체·진행 목록이 최상위 팝오버로 열리고 선택 시 해당 슬롯으로 이동한다.
+- `PaymentPerformanceSummary`는 전체·이번 달·이번 주·직접 기간의 계약/매출과 전체 진행건 상태를 병렬로 보여 준다. 모바일에서는 기간 선택 아래 계약·매출과 업무 현황을 2열로 놓고, PC에서는 기간 선택까지 한 줄에 배치한다. 상태 바의 각 구간을 누르면 해당 업체·진행 목록이 최상위 팝오버로 열리고 선택 시 해당 슬롯으로 이동한다.
 - 실무진행은 진행기관:진행상품을 3.5:6.5로 배치한다. Todo/History 입력은 제목·날짜·시·분을 넓은 열에서는 한 줄로, 좁은 상세 열에서는 입력 묶음 단위로 자연스럽게 접어 가로 스크롤을 만들지 않는다. 추가 후 상세 팝업을 연다. 시간은 09:00~20:00, 분은 00·15·30·45이고 20시는 00분만 허용한다. 캘린더 표시는 기본 ON이다.
 - `플러그 이관`은 화면과 완료 집계에서 제거한다. 과거 시트 값은 호환을 위해 읽기 스키마에만 남긴다. 모바일 계약 아코디언과 기존 저장 API는 유지한다.
 
@@ -1291,8 +1291,8 @@ app/(app)/dashboard/page.tsx
 | **DeleteConfirmModal** | 계약수납 삭제 확인 모달(cascade 옵션) — page.tsx 500줄 캡으로 분리(contract-termination PR), 마크업·동작 무변경. Props: `label`, `cascadeOpt`, `onCascadeChange`, `onCancel`, `onConfirm`. |
 | **TerminationArchive** | 해지 보관함 (contract-termination 스펙) — 숨김(soft delete) 해지 계약을 접힌 아코디언에서 열람. 행: 업체명·해지일·사유·반환액(읽기전용). 기본 접힘, 숨김 건 0이면 미표시. Props: `contracts: ContractPayment[]`(숨김 해지만). |
 | **nameHighlight** | (컴포넌트 아님·헬퍼 모듈) `renderNameWithHighlight`(업체명 검색어 `<mark>`)·`fmtMoney`·`fmtDate` — ContractRow 500줄 캡으로 분리. |
-| **PriorContractSection** | 이전(아레나 시작 전) 계약업체 등록 버튼 + 알림 모달({시작일} 동적) + ContractForm(수임비·계약조건) 재사용 폼 → POST /api/contract-payment/prior(구분=이월). + 아레나/이월 매출 2카드(isCarryoverContract 로 분리 합산). Props: `contracts`, `courseStartISO`. arena-start-revenue-split §A·B. |
-| **PriorContractRegister** | 「이전 계약업체 등록」 흐름(버튼 + 2단계 모달 + 토스트). **2026-09-05 belie 요청으로 화면에서 뗐다** — 실무·수납 탭 그 자리는 업무매뉴얼(노션) 버튼이 차지. 기능은 **지우지 않고 통째로 보존**: 되살리려면 `PriorContractSection.tsx` 에 import 한 줄 + `<PriorContractRegister courseStartISO={...} />` 한 줄(파일 머리말에 안내). 서버(POST /api/contract-payment/prior · lib/service/contract-payment-add.ts)는 손대지 않아 붙이는 즉시 동작한다. **이미 등록된 이월 계약 데이터는 그대로 보인다.** Props: `courseStartISO`. |
+| **PriorContractSection** | 모바일의 업무매뉴얼·정책자금 뉴스 외부 링크 2개. 아레나/이월 매출 보조 카드는 성과 요약과 중복되어 제거했다. Props 없음. |
+| **PriorContractRegister** | 「이전 계약업체 등록」 흐름(버튼 + 2단계 모달 + 토스트). **2026-09-05 belie 요청으로 화면에서 뗐다** — 실무·수납 탭 그 자리는 업무매뉴얼(노션) 버튼이 차지. 기능은 **지우지 않고 통째로 보존**: 되살리려면 `page.tsx` 에 import 한 줄 + `<PriorContractRegister courseStartISO={courseStartISO} />` 한 줄(파일 머리말에 안내). 서버(POST /api/contract-payment/prior · lib/service/contract-payment-add.ts)는 손대지 않아 붙이는 즉시 동작한다. **이미 등록된 이월 계약 데이터는 계약 목록에 그대로 보인다.** Props: `courseStartISO`. |
 | **CheckboxList** | 6개 서류·진행 체크. 과거 `플러그이관` 값은 표시·완료 집계에서 제외. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
 | **LinkedFieldsEditor** | 계약 핵심필드(업체명·계약일·수임비) 수정 토글(payment_contract_edit_toggle). Props: `cp: ContractPayment`. **평소 = [✎ 계약정보 수정] 버튼만**(값 미표시 — 업체명·계약일·수임비는 ContractRow 헤더가 이미 표시. 중복 박스 제거 2026-07-14; 헤더가 `<button>`이라 버튼 중첩 불가 → 펼침 본문 최상단 우측 배치). 클릭 시 이 카드만 편집모드(input+[저장]/[취소]+배지). 변경 없으면 시트 쓰기 0. 저장 시 연결 미팅 id(AK)로 대상 특정해 02↔04↔06 양방향 연동(업체명→02 D+04 G+06 / 계약일→02 C만, 미팅날짜·통계 불변 / 수임비→02 E+04 L). `useEditContractLinkedFields`, DirtyGuard(편집중 변경 시), 일부 시트 실패 시 시트명 안내+save throw. contract-edit-linked-fields. |

@@ -53,10 +53,10 @@ describe("[1] 업무매뉴얼 버튼", () => {
     expect(register).toContain("되살리는 법"); // 복구 안내가 파일 머리말에 있다
   });
 
-  it("★이미 등록된 이전 계약은 계속 보인다 — 매출 2카드는 그대로", () => {
-    expect(section).toContain("isCarryoverContract");
-    expect(section).toContain("이월 매출");
-    expect(section).toContain("아레나 매출");
+  it("★성과 요약과 중복되는 모바일 매출 2카드는 보이지 않는다", () => {
+    expect(sectionCode).not.toContain("isCarryoverContract");
+    expect(sectionCode).not.toContain("이월 매출");
+    expect(sectionCode).not.toContain("아레나 매출");
   });
 });
 

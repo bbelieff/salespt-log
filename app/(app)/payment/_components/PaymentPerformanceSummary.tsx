@@ -54,8 +54,8 @@ export default function PaymentPerformanceSummary({ rows, todos, onNavigate }: P
 
   return (
     <section data-payment-summary className="relative z-50 mb-3 overflow-visible rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-[0_8px_28px_rgba(15,23,42,.08)] backdrop-blur-xl min-[1280px]:z-[35]" aria-label="실무 수납 성과 요약">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-stretch gap-x-2 gap-y-2 min-[1280px]:grid-cols-[auto_auto_minmax(0,1fr)] min-[1280px]:gap-x-4">
+        <div className="col-span-2 flex flex-wrap items-center gap-1.5 min-[1280px]:col-span-1">
           <strong className="mr-1 whitespace-nowrap text-sm text-slate-900">성과 요약</strong>
           {(["all", "month", "week", "custom"] as Period[]).map((p) => (
             <button key={p} type="button" onClick={() => setPeriod(p)} className={`h-7 whitespace-nowrap rounded-full border px-2.5 text-xs font-semibold ${period === p ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-500"}`}>
@@ -64,13 +64,13 @@ export default function PaymentPerformanceSummary({ rows, todos, onNavigate }: P
           ))}
           {period === "custom" && <><input aria-label="조회 시작일" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-7 rounded-md border border-slate-200 px-1.5 text-xs"/><span className="text-slate-300">–</span><input aria-label="조회 종료일" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-7 rounded-md border border-slate-200 px-1.5 text-xs"/></>}
         </div>
-        <div className="flex shrink-0 items-baseline gap-4 rounded-xl bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/60 px-3 py-1">
-          <div className="flex items-baseline gap-1.5"><span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{periodLabel} 계약</span><span className="text-2xl font-black tabular-nums text-slate-950">{filtered.length}<span className="ml-0.5 text-sm font-bold">건</span></span></div>
-          <div className="flex items-baseline gap-1.5"><span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{period === "all" ? "총 매출" : "기간 매출"}</span><span className="text-xl font-extrabold tabular-nums text-slate-950">₩{formatMoney(contractRevenue + received)}</span></div>
+        <div className="flex min-w-0 flex-col justify-center gap-1 rounded-xl bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/60 px-2 py-1 min-[640px]:flex-row min-[640px]:items-center min-[640px]:gap-3 min-[1280px]:gap-4 min-[1280px]:px-3">
+          <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{periodLabel} 계약</span><span className="text-lg font-black tabular-nums text-slate-950 min-[1280px]:text-2xl">{filtered.length}<span className="ml-0.5 text-sm font-bold">건</span></span></div>
+          <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-[11px] font-medium text-slate-500">{period === "all" ? "총 매출" : "기간 매출"}</span><span className="break-all text-[clamp(12px,3.8vw,16px)] font-extrabold tabular-nums leading-tight text-slate-950 min-[1280px]:text-xl">₩{formatMoney(contractRevenue + received)}</span></div>
         </div>
-        <div className="relative min-w-0 flex-[1_1_440px]">
-          <div className="flex items-center gap-2"><strong className="whitespace-nowrap text-xs text-slate-800">전체 진행건</strong><b className="whitespace-nowrap text-base tabular-nums text-slate-950">{items.length}건</b>
-          <div className="flex h-4 min-w-12 flex-1 overflow-hidden rounded-full border border-white/80 bg-slate-100 p-[2px] shadow-inner" role="group" aria-label="업무 상태">
+        <div className="relative min-w-0 self-center">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><strong className="whitespace-nowrap text-xs text-slate-800">전체 진행건</strong><b className="whitespace-nowrap text-base tabular-nums text-slate-950">{items.length}건</b>
+          <div className="flex h-4 w-full min-w-12 overflow-hidden rounded-full border border-white/80 bg-slate-100 p-[2px] shadow-inner min-[1280px]:w-auto min-[1280px]:flex-1" role="group" aria-label="업무 상태">
             {STATUS.map((s) => { const count = items.filter((i) => i.status === s.key).length; return count > 0 ? <button key={s.key} type="button" onClick={() => setOpen(s.key)} onMouseEnter={() => setOpen(s.key)} className={`${s.color} h-full min-w-[8px] rounded-full transition-[filter] hover:brightness-105`} style={{ width: `${count / items.length * 100}%` }} aria-label={`${s.label} ${count}건`} /> : null; })}
           </div>
           </div>
