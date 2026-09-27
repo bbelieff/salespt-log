@@ -16,6 +16,10 @@
 
 **배포(자동)**: `master` push → `.github/workflows/deploy.yml` 자동 실행. 수동 = `gh workflow run "Deploy to VPS"`.
 워크플로우: `git reset --hard origin/master` → `npm ci` → `rm -rf .next && npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → `pm2 save` → health(`:3000` + `https://salesptlog.online`).
+- **pm2 설정 정본 = 레포 루트 `ecosystem.config.cjs`**(2026-09-27 편입 — 09-14 운영에서 직접 바꾼 뒤
+  레포에 없었다). 배포는 `pm2 reload` 만 하므로 **설정을 바꿨으면 VPS 에서 한 번
+  `pm2 delete salespt-log && pm2 start ecosystem.config.cjs && pm2 save`** 로 반영한다.
+- 롤백 시 실패 빌드는 `.next-broken` 에 보존되고, **다음 성공 배포가 지운다**(2026-09-27 — 전에는 무기한 잔류).
 - RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
 - **빌드 캐시(2026-07-08 chore/deploy-build-cache)**: `npm ci` 는 package-lock.json
   sha256 이 마커(`.npm-ci.hash`, VPS untracked)와 같으면 **스킵**, 직전 릴리스의
