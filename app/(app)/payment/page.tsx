@@ -260,9 +260,11 @@ export default function PaymentPage() {
       });
     };
     sync();
+    const summary = document.querySelector<HTMLElement>("[data-payment-summary]");
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(sync);
+    if (summary) observer?.observe(summary);
     window.addEventListener("resize", sync);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", sync); };
-  // Re-measure when async summary/list content or the selected row changes.
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener("resize", sync); };
   }, [isPc, list.isLoading, rows.length, listMode, selectedCp?.row, selectedWorkKey, companyQuery, sortKey, masterWidth]);
   // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
