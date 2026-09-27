@@ -181,9 +181,11 @@ describe("④ all six student tabs use the full available width", () => {
 });
 
 describe("⑤ desktop arrangements keep order, workflow, and natural scroll", () => {
-  it("dashboard: 1600 3-col via contents (DOM order 생산성→목표→퍼널 kept)", () => {
+  it("dashboard: 1600 6-col grid — top 생산성+진행건 | 목표, bottom 퍼널 | 추이 | 채널 (DOM order kept)", () => {
     const src = read("app/(app)/dashboard/page.tsx");
-    expect(src).toContain("min-[1600px]:grid-cols-3");
+    expect(src).toContain("min-[1600px]:grid-cols-6");
+    expect(src.match(/min-\[1600px\]:col-span-3/g)?.length).toBe(2);
+    expect(src.match(/min-\[1600px\]:col-span-2/g)?.length).toBe(3);
     expect(src).toContain("min-[1600px]:contents");
     const body = src.slice(src.indexOf("<ProductivityIndicators"));
     expect(body.indexOf("<ProductivityIndicators")).toBeLessThan(

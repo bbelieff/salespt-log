@@ -154,30 +154,30 @@ export default function DashboardPage() {
               />
             </section>
 
-            {/* pc(1024~1599): 좌측(생산성+주간목표 stacked) | 우측 퍼널 2열.
-                wide1600+(뷰포트−사이드바 224 ≥1376): 생산성 | 주간목표 | 퍼널
-                균등 3열 — 래퍼를 contents 로 풀어 DOM 순서(생산성→목표→퍼널)
-                그대로 3칸에 앉힌다. 모바일은 원래 stacked 순서. 시맨틱 순서·
-                전 콘텐츠 유지. items-start + flex-none: 카드 자연 높이 그대로 —
-                stretch 빈칸 없음. 차트 높이는 .desktop-shell 스코프 max-height
+            {/* pc(1024~1599): 좌측(생산성+진행건+주간목표 stacked) | 우측 퍼널, 아래 추이 | 채널 2열.
+                wide1600+(뷰포트−사이드바 224 ≥1376, 6칸 그리드 — 2026-09-28 belie 안):
+                윗줄 [생산성+전체 진행건 | 주간목표] 반반, 아랫줄 [퍼널 | 추이 | 채널] 3등분.
+                좌측 래퍼를 contents 로 풀어 DOM 순서(생산성→진행건→목표→퍼널→추이→채널)는
+                그대로다. 모바일은 원래 stacked 순서. items-start + flex-none: 카드 자연 높이
+                그대로 — stretch 빈칸 없음. 차트 높이는 .desktop-shell 스코프 max-height
                 (퍼널 220/추이 260/도넛 160, meet 스케일·클리핑 없음)로 균형. */}
-            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 min-[1600px]:grid-cols-3">
+            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 min-[1600px]:grid-cols-6">
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:contents min-[1600px]:space-y-0">
-                <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
-                <WeeklyGoalSummary className="pc:flex-none" />
+                <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:col-span-3">
+                  <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
+                  <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
+                </div>
+                <WeeklyGoalSummary className="pc:flex-none min-[1600px]:col-span-3" />
               </div>
-              <FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} />
+              <div className="min-w-0 min-[1600px]:col-span-2"><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
+              <div className="min-w-0 min-[1600px]:col-span-2"><WeeklyDualChart points={dash.data.weeklyTrend} /></div>
+              <div className="min-w-0 min-[1600px]:col-span-2">
+                <ChannelPerformance weeks={weeks}
+                  costBreakdown={dash.data.costBreakdown}
+                  matrix={dash.data.channelMatrix}
+                />
+              </div>
             </div>
-
-            {/* 하단 2열: 8주차 추이 | 채널별 성과 */}
-            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 min-[1600px]:gap-4">
-              <WeeklyDualChart points={dash.data.weeklyTrend} />
-              <ChannelPerformance weeks={weeks}
-                costBreakdown={dash.data.costBreakdown}
-                matrix={dash.data.channelMatrix}
-              />
-            </div>
-            <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
           </>
         )}
       </div>
