@@ -467,19 +467,21 @@ export default function SchedulePage() {
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
       <div className="sticky top-app-content z-30 bg-white shadow-sm" {...weekSwipe}>
-        {/* 배경 full-bleed + 내용은 본문과 동일한 fluid 전폭 */}
+        {/* sticky 배경은 전폭, 주차·실적 요약만 풀사이즈에서 중앙 50% */}
         <PageContainer width="fluid">
-          <WeekHeader
-            weekIndex={weekIndex}
-            weekStart={weekStart}
-            todayISO={TODAY_ISO}
-            countsByDay={countsByDay}
-            onPrevWeek={() => moveWeek(-1)}
-            onNextWeek={() => moveWeek(1)}
-            onClickDay={scrollToDay}
-            slideDir={slideDir}
-          />
-          <SummaryBar meetings={allMeetings} goalSummary={<WeeklyGoalSummary compact date={weekStart} metrics={["meetings", "contracts"]} />} />
+          <div className="min-[1440px]:mx-auto min-[1440px]:w-1/2">
+            <WeekHeader
+              weekIndex={weekIndex}
+              weekStart={weekStart}
+              todayISO={TODAY_ISO}
+              countsByDay={countsByDay}
+              onPrevWeek={() => moveWeek(-1)}
+              onNextWeek={() => moveWeek(1)}
+              onClickDay={scrollToDay}
+              slideDir={slideDir}
+            />
+            <SummaryBar meetings={allMeetings} goalSummary={<WeeklyGoalSummary compact date={weekStart} metrics={["meetings", "contracts"]} />} />
+          </div>
         </PageContainer>
       </div>
 
