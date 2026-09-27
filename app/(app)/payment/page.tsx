@@ -16,7 +16,8 @@ import PageContainer from "@/components/PageContainer";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
-import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
+import { type ContractPayment } from "@/types";
+import { activeWorkContracts } from "@/lib/analytics/payment-work-status";
 import {
   usePatchContractPayment,
   useRemoveContractPayment,
@@ -35,6 +36,7 @@ import PriorContractSection from "./_components/PriorContractSection";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
 import useMasterPaneWidth from "./_components/useMasterPaneWidth";
+import usePaymentFocus from "./_components/usePaymentFocus";
 import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
@@ -102,13 +104,13 @@ export default function PaymentPage() {
   const { masterWidth, setMasterWidth, beginResize } = useMasterPaneWidth(workspaceRef);
   const [detailLeftPct, setDetailLeftPct] = useState(45);
 
-  // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
-  // Next 15 useSearchParams Suspense 회피 → mount 시 window.location 직접 파싱.
-  const [focusTodoId, setFocusTodoId] = useState<string | null>(null);
+  const { focusTodoId, focusPayment } = usePaymentFocus(list.data?.rows, isPc);
   useEffect(() => {
-    const f = new URLSearchParams(window.location.search).get("focus");
-    if (f) setFocusTodoId(f);
-  }, []);
+    if (focusPayment) {
+      setSelectedRow(focusPayment.row);
+      setFocusRequestId((id) => id + 1);
+    }
+  }, [focusPayment]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -294,7 +296,7 @@ export default function PaymentPage() {
       <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6">
       <PageContainer width="fluid">
         <PaymentPerformanceSummary
-          rows={rows.filter((cp) => !isCarryoverContract(cp, courseStartISO) && !isTerminatedContract(cp))}
+          rows={activeWorkContracts(allRows, courseStartISO)}
           todos={allTodos.data?.todos ?? []}
           onNavigate={(row, slot) => {
             guardedNav(() => { setListMode("company"); setCompanyQuery(""); setSelectedRow(row); });
@@ -375,7 +377,7 @@ export default function PaymentPage() {
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)}
                   focusTodoId={focusTodoId}
-                  focusedSlot={listMode === "institution" ? selectedWork?.slot : null}
+                  focusedSlot={listMode === "institution" ? selectedWork?.slot : focusPayment && focusPayment.row === selectedCp.row ? focusPayment.slot : null}
                   focusRequestId={focusRequestId}
                   highlight={companyQuery}
                   courseStartISO={courseStartISO}
@@ -411,6 +413,8 @@ export default function PaymentPage() {
                 onDeleteRequest={() => makeDeleteRequest(cp)}
                 onTerminateRequest={() => setTerminateTarget(cp)}
                 focusTodoId={focusTodoId}
+                focusedSlot={focusPayment && focusPayment.row === cp.row ? focusPayment.slot : null}
+                focusRequestId={focusRequestId}
                 highlight={companyQuery}
                 courseStartISO={courseStartISO}
               />

@@ -1,6 +1,6 @@
 import { isCarryoverContract, isTerminatedContract, type ContractPayment, type PaymentSlot } from "@/types";
 import { progressPct } from "./payment-progress";
-import { slotHasData } from "./work-status";
+import { slotHasData } from "@/lib/analytics/payment-work-status";
 
 export interface InstitutionWorkItem {
   key: string;
