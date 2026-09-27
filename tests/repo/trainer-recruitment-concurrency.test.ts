@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Pool } from "pg";
+import { stopTestPostgres } from "./pg-test-server";
 
 const state = vi.hoisted(() => ({ pool: null as unknown }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: () => true, getDbPool: () => state.pool }));
@@ -61,9 +62,9 @@ describe.skipIf(!enabled)("real independent PostgreSQL recruitment transactions"
   afterAll(async () => {
     gate?.release(); gate = null;
     if (pool) await pool.end();
-    if (started) execFileSync(join(bin,"pg_ctl"),["-D",join(dir,"data"),"-m","fast","-w","stop"],{stdio:"pipe"});
+    if (started) stopTestPostgres(bin, join(dir,"data"));
     if (dir) rmSync(dir,{recursive:true,force:true});
-  });
+  },30000);
 
   async function race(label: string, first: () => Promise<unknown>, second: () => Promise<unknown>) {
     let enter!: () => void, release!: () => void;
