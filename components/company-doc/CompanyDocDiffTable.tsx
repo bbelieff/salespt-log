@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { accuracyOf, checkState, type Accuracy, type DiffRow } from "@/lib/document-ocr/diff";
+import { accuracyOf, checkState, optionLabel, type Accuracy, type DiffRow } from "@/lib/document-ocr/diff";
 
 const ACC_CLS: Record<Accuracy, string> = {
   높음: "bg-emerald-50 text-emerald-700",
@@ -56,18 +56,22 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
               </td>
               <td className="break-words py-1.5 pr-1 text-gray-900">
                 {row.conflict ? (
-                  <select
-                    aria-label={`${label} 값 고르기`}
-                    className="w-full rounded border border-amber-300 bg-amber-50 px-1 py-0.5 text-xs"
-                    value={idx}
-                    onChange={(e) => onChoose(row.key, Number(e.target.value))}
-                  >
-                    {row.candidates.map((o, i) => (
-                      <option key={`${o.value}-${i}`} value={i}>
-                        {o.value} ({o.sources.join(", ")})
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      aria-label={`${label} 값 고르기`}
+                      className="w-full rounded border border-amber-300 bg-amber-50 px-1 py-0.5 text-xs"
+                      value={idx}
+                      onChange={(e) => onChoose(row.key, Number(e.target.value))}
+                    >
+                      {row.candidates.map((o, i) => (
+                        <option key={`${o.value}-${i}`} value={i}>
+                          {optionLabel(o.value)} ({o.sources.join(", ")})
+                        </option>
+                      ))}
+                    </select>
+                    {/* 여러 줄 값(반기별매출)은 option 이 줄바꿈을 못 보여 주므로 고른 값 전체를 아래에 펼친다. */}
+                    {c.value.includes("\n") && <span className="mt-0.5 block whitespace-pre-line">{c.value}</span>}
+                  </>
                 ) : (
                   <span className="whitespace-pre-line">{c.value}</span>
                 )}

@@ -309,7 +309,7 @@ export function parseLeaseContract(rawText: string): DocParseResult {
       ...(rent ? [`월 ${formatManwon(rent.won, { sep: false })}`] : []),
     ];
     const conf = Math.min(deposit?.confidence ?? 1, rent?.confidence ?? 1, 0.8);
-    push("소유여부", `임차 : ${parts.join(", ")}`, conf, conf < 0.5 ? ["금액을 확인한 뒤 체크해 주세요."] : []);
+    push("소유여부", `임차 : ${parts.join(", ")}`, conf, conf < 0.5 ? ["금액이 맞는지 확인해 주세요."] : []);
   }
 
   if (fields.length === 0) {

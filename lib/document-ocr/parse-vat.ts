@@ -46,7 +46,8 @@ const HALF = /(20\d{2})\s*년?\s*(?:제\s*)?([12])\s*기/;
 const HALF_G = new RegExp(HALF.source, "g");
 const SINGLE_DATE = /(?:19|20)\d{2}\s*[.\-/년]\s*\d{1,2}\s*[.\-/월]\s*\d{1,2}\s*일?|(?<!\d)20\d{6}(?!\d)/g;
 const BIZNO_LIKE = /\d{3}\s*-\s*\d{2}\s*-\s*\d{5}/g;
-const AMOUNT = /(?<![\d,.\-])(\d{1,3}(?:[,.]\d{3})+|\d{6,})(?!\d|[,.]\d)/g;
+/** 금액 토큰. 그룹1 = 음수 표시("-" 바로 붙음 · "△"/"▲"). 앞이 숫자·"-"인 대시 번호 꼬리는 잡지 않는다. */
+const AMOUNT = /(?<![\d,.\-])(-(?=\d)|[△▲]\s*)?(\d{1,3}(?:[,.]\d{3})+|\d{6,})(?!\d|[,.]\d)/g;
 const ZERO = /(?<![\d,.\-])0(?![\d,.])/;
 const TAX_FREE = /면\s*세\s*(?:수\s*입\s*)?금\s*액|면\s*세\s*수\s*입/;
 /** 과세기간 줄이 아닌 기간(증명·조회·발급 기간). */
@@ -56,11 +57,15 @@ function stripNonAmounts(s: string): string {
   return s.replace(RANGE_G, " ").replace(HALF_G, " ").replace(SINGLE_DATE, " ").replace(BIZNO_LIKE, " ");
 }
 
+/**
+ * 첫 금액. 음수(수정·환급 줄의 "-5,000,000" · "△5,000,000")면 음수로 돌려준다 —
+ * 호출부가 그 줄을 빼고 경고한다(다음 칸 납부세액을 매출로 잘못 읽지 않게).
+ */
 function firstAmount(s: string, allowZero: boolean): number | null {
   const body = stripNonAmounts(s);
   for (const m of body.matchAll(AMOUNT)) {
-    const v = parseAmountToken(m[1]!);
-    if (v !== null) return v;
+    const v = parseAmountToken(m[2]!);
+    if (v !== null) return m[1] ? -v : v;
   }
   return allowZero && ZERO.test(body) ? 0 : null;
 }
@@ -193,6 +198,7 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
   const taxFree = new Map<number | null, { amount: number; pieced: boolean }>();
   let lastYear: number | null = null;
   let unread = 0;
+  let negative = 0;
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i]!;
@@ -210,7 +216,8 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
       }
       const yearHere = line.match(/(20\d{2})\s*년/);
       const year = yearHere ? Number(yearHere[1]) : (readPeriod(taxPart)?.year ?? lastYear);
-      if (amt !== null) {
+      if (amt !== null && amt < 0) negative += 1;
+      else if (amt !== null) {
         const prev = taxFree.get(year) ?? { amount: 0, pieced: false };
         taxFree.set(year, { amount: prev.amount + amt * unit, pieced: prev.pieced || pieced });
       }
@@ -231,10 +238,15 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
       unread += 1;
       continue;
     }
+    if (amount < 0) {
+      negative += 1;
+      continue;
+    }
     rows.push({ ...period, amount: amount * unit, pieced });
   }
 
   if (unread > 0) documentWarnings.push(`과세기간 ${unread}줄은 금액을 못 읽었어요.`);
+  if (negative > 0) documentWarnings.push(`금액이 마이너스(-)인 ${negative}줄은 합계에서 뺐어요. 확인해 주세요.`);
 
   // 연도·반기별 묶기
   const byKey = new Map<string, Row[]>();
