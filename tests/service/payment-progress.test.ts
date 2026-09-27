@@ -5,7 +5,6 @@ import { describe, it, expect } from "vitest";
 import { ContractPayment } from "@/types";
 import {
   contractProgress,
-  sortContracts,
   progressPct,
 } from "@/app/(app)/payment/_lib/payment-progress";
 
@@ -42,45 +41,5 @@ describe("contractProgress (보이는 슬롯 진행률 평균)", () => {
   });
   it("데이터 없음 → 0", () => {
     expect(contractProgress(cp({}))).toBe(0);
-  });
-});
-
-describe("sortContracts", () => {
-  const rows = [
-    cp({ row: 6, 계약일: "2026-06-10", slots: [{ 진행률: "40%" }] }),
-    cp({ row: 7, 계약일: "2026-06-05", slots: [{ 진행률: "80%" }] }),
-    cp({ row: 8, 계약일: "", slots: [{ 진행률: "20%" }] }), // 빈 계약일
-  ];
-  it("date-asc: 빠른 날짜 먼저, 빈값 끝", () => {
-    const r = sortContracts(rows, "date-asc");
-    expect(r.map((x) => x.row)).toEqual([7, 6, 8]);
-  });
-  it("date-desc: 늦은 날짜 먼저, 빈값 끝", () => {
-    const r = sortContracts(rows, "date-desc");
-    expect(r.map((x) => x.row)).toEqual([6, 7, 8]);
-  });
-  it("progress-asc: 진행 낮은순", () => {
-    const r = sortContracts(rows, "progress-asc");
-    expect(r.map((x) => x.row)).toEqual([8, 6, 7]); // 20,40,80
-  });
-  it("progress-desc: 진행 높은순", () => {
-    const r = sortContracts(rows, "progress-desc");
-    expect(r.map((x) => x.row)).toEqual([7, 6, 8]); // 80,40,20
-  });
-  it("activity: D-?? → 최근 History → 임박 Todo 순으로 업체를 정렬한다", () => {
-    const activities = new Map([
-      [4, { activityKind: "history" as const, activityDate: "2026-09-26" }],
-      [5, { activityKind: "todo" as const, activityDate: "2026-09-29" }],
-      [6, { activityKind: "history" as const, activityDate: "2026-09-28" }],
-      [7, { activityKind: "todo" as const, activityDate: "2026-09-28" }],
-    ]);
-    const input = [7, 4, 5, 3, 6].map((row) => cp({ row }));
-    expect(sortContracts(input, "activity", (item) => activities.get(item.row!)).map((item) => item.row))
-      .toEqual([3, 6, 4, 7, 5]);
-  });
-  it("원본 불변", () => {
-    const before = rows.map((x) => x.row);
-    sortContracts(rows, "date-asc");
-    expect(rows.map((x) => x.row)).toEqual(before);
   });
 });

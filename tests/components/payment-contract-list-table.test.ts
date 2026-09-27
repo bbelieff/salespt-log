@@ -7,6 +7,9 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContractPayment } from "@/types";
 import ContractListTable from "@/app/(app)/payment/_components/ContractListTable";
+import PaymentSortControl from "@/app/(app)/payment/_components/PaymentSortControl";
+import { buildCompanyWorkItems } from "@/app/(app)/payment/_lib/company-work-view";
+import { buildInstitutionWorkItems } from "@/app/(app)/payment/_lib/institution-view";
 import PaymentSelectionBridge, { syncPaymentSelectionBridge } from "@/app/(app)/payment/_components/PaymentSelectionBridge";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -18,6 +21,7 @@ const cp = (over: Record<string, unknown> = {}): ContractPayment => ({
   수납1: slot({ 진행기관: "미소재단", 진행률: "80%", 수납액: 1_200_000 }),
   수납2: slot(), 수납3: slot(), 로드맵메모: "", 해지일: "", 해지사유: "", 반환액: 0, 해지숨김: false, ...over,
 } as ContractPayment);
+const itemsFor = (rows: ContractPayment[]) => buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows));
 
 let root: Root | undefined;
 let el: HTMLDivElement | undefined;
@@ -28,40 +32,49 @@ function renderList(props: React.ComponentProps<typeof ContractListTable>) {
 afterEach(() => { act(() => root?.unmount()); el?.remove(); root = undefined; el = undefined; });
 
 describe("ContractListTable 1뎁스 카드", () => {
-  it("업체명·계약일/수임비·수수료·진행만 compact하게 표시한다", () => {
-    const node = renderList({ rows: [cp()], selectedRow: 3, onSelect: vi.fn() });
+  it("업체명·진행 슬롯·계약일/수임비·수수료를 compact하게 표시한다", () => {
+    const node = renderList({ items: itemsFor([cp()]), selectedKey: "3-1", onSelect: vi.fn() });
     expect(node.querySelector('[role="listbox"]')).not.toBeNull();
     expect(node.textContent).toContain("한빛상사");
     expect(node.textContent).toContain("9/4 · 수임비 ₩5,000,000");
     expect(node.textContent).toContain("수수료 ₩1,200,000");
     expect(node.textContent).toContain("진행 80%");
-    expect(node.textContent).toContain("조회 중");
+    expect(node.textContent).toContain("진행 1 · 미소재단");
     expect(node.querySelector("table")).toBeNull();
   });
   it("선택 대비를 유지하고 다른 업체만 선택 콜백을 부른다", () => {
     const onSelect = vi.fn(); const second = cp({ row: 4, 업체명: "두리상회" });
-    const node = renderList({ rows: [cp(), second], selectedRow: 3, onSelect });
+    const node = renderList({ items: itemsFor([cp(), second]), selectedKey: "3-1", onSelect });
     const selected = node.querySelector('[role="option"][aria-selected="true"]') as HTMLButtonElement;
     expect(selected.dataset.row).toBe("3"); expect(selected.className).toContain("from-blue-100");
     act(() => selected.click()); expect(onSelect).not.toHaveBeenCalled();
     act(() => (node.querySelector('[data-row="4"]') as HTMLButtonElement).click());
-    expect(onSelect).toHaveBeenCalledWith(4);
+    expect(onSelect.mock.calls[0]?.[0].key).toBe("4-1");
   });
-  it("빈 진행은 0%로 명시한다", () => {
+  it("진행 없는 업체는 한 행으로 남기고 D-??와 구별한다", () => {
     const bare = cp({ 수납1: slot(), 수납2: slot(), 수납3: slot() });
-    const node = renderList({ rows: [bare], selectedRow: 3, onSelect: vi.fn() });
+    const node = renderList({ items: itemsFor([bare]), selectedKey: "3-1", onSelect: vi.fn() });
     expect(node.textContent).toContain("수수료 ₩0"); expect(node.textContent).toContain("진행 0%");
+    expect(node.textContent).toContain("진행 없음"); expect(node.textContent).not.toContain("D-??");
   });
-  it("업체 목록에 대표 Todo 날짜를 표시하고 로딩 중에는 D-??로 오인하지 않게 한다", () => {
-    const activities = new Map([["row:3", { activityKind: "todo" as const, activityDate: "2026-09-28", activityLabel: "D-00" }]]);
-    const node = renderList({ rows: [cp()], selectedRow: 3, onSelect: vi.fn(), activities, activityState: "ready" });
+  it("진행마다 Todo 날짜를 따로 표시한다", () => {
+    const items = itemsFor([cp({ 수납2: slot({ 진행기관: "소진공" }) })]);
+    items[0]!.work = { ...items[0]!.work, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" };
+    const node = renderList({ items, selectedKey: "3-1", onSelect: vi.fn(), activityState: "ready" });
     expect(node.textContent).toContain("Todo D-00");
     expect(node.querySelector('[aria-label="미완료 Todo D-00"]')).not.toBeNull();
+    expect(node.querySelectorAll('[role="option"]')).toHaveLength(2);
+    expect(node.querySelector('[data-work-key="3-2"]')?.textContent).toContain("D-??");
   });
   it("활동 조회 중에는 미기록으로 표시하지 않는다", () => {
-    const node = renderList({ rows: [cp()], selectedRow: 3, onSelect: vi.fn(), activities: new Map(), activityState: "loading" });
+    const node = renderList({ items: itemsFor([cp()]), selectedKey: "3-1", onSelect: vi.fn(), activityState: "loading" });
     expect(node.querySelector('[aria-label="활동 불러오는 중"]')).not.toBeNull();
     expect(node.textContent).not.toContain("D-??");
+  });
+  it("모바일에서 선택한 진행 행 바로 아래에 상세가 열린다", () => {
+    const node = renderList({ items: itemsFor([cp()]), selectedKey: "3-1", onSelect: vi.fn(), renderDetail: () => h("div", null, "진행 상세") });
+    expect(node.querySelector('[data-work-key="3-1"]')?.getAttribute("aria-expanded")).toBe("true");
+    expect(node.querySelector('#payment-company-detail-3-1')?.textContent).toBe("진행 상세");
   });
 });
 
@@ -82,14 +95,25 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain("<PaymentPerformanceSummary"); expect(src).toContain("{selectedCp.업체명}");
     expect(src).toContain("from-blue-100/95 via-indigo-50/95 to-white/95");
   });
-  it("모바일 업체 모드는 기존 ContractRow 목록을 유지하고 기관 모드에서만 선택 상세를 더한다", () => {
-    expect(src).toContain("visibleRows.map((cp, i) =>");
+  it("모바일 업체·기관 모드 모두 진행 행 아래의 상세와 해당 슬롯을 연결한다", () => {
+    expect(src).toContain('items={companyItems} selectedKey={selectedCompanyKey}');
     expect(src).toContain('listMode === "institution" ? <InstitutionWorkList');
     expect(src).toContain('renderDetail={(item) =>');
     expect(src).toContain('forceOpen inline');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
-    expect(src).toContain("activity={companyActivities.get(companyActivityKey(cp))}");
+    expect(src).toContain("focusedSlot={item.hasProgress ? item.work.slot : null}");
+  });
+});
+
+describe("업체 보기 정렬 버튼", () => {
+  it("등록 빠른순·등록 늦은순·D-day순만 표시한다", () => {
+    el = document.createElement("div"); document.body.append(el); root = createRoot(el);
+    const onChange = vi.fn();
+    act(() => root?.render(h(PaymentSortControl, { value: "date-asc", onChange })));
+    expect(Array.from(el.querySelectorAll("button"), (button) => button.textContent)).toEqual(["등록 빠른순", "등록 늦은순", "D-day순"]);
+    act(() => (el?.querySelectorAll("button")[2] as HTMLButtonElement).click());
+    expect(onChange).toHaveBeenCalledWith("dday");
   });
 });
 

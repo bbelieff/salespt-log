@@ -1,6 +1,5 @@
 /**
- * 계약 카드 진행도·슬롯 가시성 순수 헬퍼 (payment-sort §P8).
- * ContractRow(카드 표시)와 page.tsx(진행도 정렬)가 공유 — 중복 제거.
+ * 계약 카드 진행도·슬롯 가시성 및 활동 날짜 순수 헬퍼.
  */
 import type { ContractPayment } from "@/types";
 
@@ -82,13 +81,6 @@ export function contractProgress(cp: ContractPayment): number {
   );
 }
 
-export type PaymentSortKey =
-  | "activity"
-  | "date-asc"
-  | "date-desc"
-  | "progress-asc"
-  | "progress-desc";
-
 export interface ActivitySortValue {
   activityKind: "none" | "history" | "todo";
   activityDate: string;
@@ -104,38 +96,4 @@ export function compareWorkActivity(a?: ActivitySortValue, b?: ActivitySortValue
   if (aKind === "history") return (b?.activityDate ?? "").localeCompare(a?.activityDate ?? "");
   if (aKind === "todo") return (a?.activityDate ?? "").localeCompare(b?.activityDate ?? "");
   return 0;
-}
-
-/** 계약일 파싱(ms). 빈값/파싱불가 → null(정렬 끝으로). */
-function dateMs(s: string): number | null {
-  const t = Date.parse(String(s ?? "").trim());
-  return Number.isNaN(t) ? null : t;
-}
-
-/** visibleRows 를 sortKey 로 정렬(원본 불변, 안정정렬). 빈 계약일은 항상 끝. */
-export function sortContracts(
-  rows: ContractPayment[],
-  key: PaymentSortKey,
-  activityFor?: (cp: ContractPayment) => ActivitySortValue | undefined,
-): ContractPayment[] {
-  const withIdx = rows.map((cp, i) => ({ cp, i }));
-  withIdx.sort((a, b) => {
-    let d = 0;
-    if (key === "activity") {
-      d = compareWorkActivity(activityFor?.(a.cp), activityFor?.(b.cp));
-    } else if (key === "date-asc" || key === "date-desc") {
-      const ma = dateMs(a.cp.계약일);
-      const mb = dateMs(b.cp.계약일);
-      if (ma === null && mb === null) d = 0;
-      else if (ma === null) return 1; // 빈값 끝
-      else if (mb === null) return -1;
-      else d = key === "date-asc" ? ma - mb : mb - ma;
-    } else {
-      const pa = contractProgress(a.cp);
-      const pb = contractProgress(b.cp);
-      d = key === "progress-asc" ? pa - pb : pb - pa;
-    }
-    return d !== 0 ? d : a.i - b.i; // 동률 → 원래 순서(안정)
-  });
-  return withIdx.map((x) => x.cp);
 }
