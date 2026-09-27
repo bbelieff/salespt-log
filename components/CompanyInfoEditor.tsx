@@ -27,6 +27,8 @@ type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
 
 const emptyCi = (): CI => CompanyInfo.parse({});
+const RRN_CUT_MSG = "앞 6자리만 저장해요. 뒷자리는 입력되지 않아요.";
+const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
 const inputCls =
   // 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게.
   "w-full rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder:text-gray-300 focus:border-brand-red focus:outline-none";
@@ -73,6 +75,8 @@ export default function CompanyInfoEditor({
   });
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
+  // 주민등록번호 앞자리 칸이 입력을 잘랐거나 비웠을 때 그 이유를 칸 아래에 보여준다(말없이 사라지지 않게).
+  const [rrnNotice, setRrnNotice] = useState("");
   // 패널·모달이 같은 필드를 동시에 그리므로 위치(where)까지 넣어 id 충돌을 막는다.
   const uid = useId();
 
@@ -226,9 +230,16 @@ export default function CompanyInfoEditor({
     const onBlurNormalize = normalizeOnBlur
       ? () => {
           const next = normalizeOnBlur(v);
+          if (isRrn && v.trim() !== "" && next === "") setRrnNotice(RRN_SHORT_MSG);
           if (next !== v) set(k, next);
         }
       : undefined;
+    const onInput = (raw: string) => {
+      if (!isRrn) return set(k, raw);
+      // 숫자가 6자리를 넘으면 뒷자리는 잘린다 — 잘린 이유를 칸 아래에 알린다.
+      setRrnNotice(raw.replace(/\D/g, "").length > 6 ? RRN_CUT_MSG : "");
+      set(k, sanitizeRrnFrontTyping(raw));
+    };
     return (
       <div key={String(k)} className={!inline && span === 2 ? "block sm:col-span-2" : "block"}>
         {/* (?) 버튼은 <label> 밖 — 눌러도 입력칸이 포커스·활성되지 않는다. */}
@@ -262,9 +273,14 @@ export default function CompanyInfoEditor({
             inputMode={isPhone ? "tel" : isRrn ? "numeric" : undefined}
             autoComplete={isRrn ? "off" : undefined}
             value={v}
-            onChange={(e) => set(k, isRrn ? sanitizeRrnFrontTyping(e.target.value) : e.target.value)}
+            onChange={(e) => onInput(e.target.value)}
             onBlur={onBlurNormalize}
           />
+        )}
+        {isRrn && rrnNotice && (
+          <p className="mt-0.5 text-xs text-amber-700" role="status">
+            {rrnNotice}
+          </p>
         )}
       </div>
     );
@@ -334,13 +350,15 @@ export default function CompanyInfoEditor({
   );
 
   // PC 상세에서만 너비 비율을 따른다. 편집 팝업은 원래 반응형 배치를 유지한다.
-  // [재무] 는 두 그룹 아래 전폭(모든 단 너비 걸침). 내부 그리드는 업체/대표자와 같은 규격.
+  // [재무] 는 두 그룹 아래 전폭(모든 단 너비 걸침).
   const body = (inline: boolean, where: "panel" | "modal") => (
     <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
       {group("업체", "업체", 업체_DEFS, inline, where)}
       {group("대표자", "대표자", 대표자_DEFS, inline, where)}
+      {/* PC 상세 2단(inline)에서 [재무] 는 두 단 전폭이라 내부도 2열(짧은 칸 짝) — 1열이면 13칸이
+          전폭으로 길게 늘어진다. 그 외는 업체/대표자와 같은 규격. */}
       <div className={desktopHeading ? inline ? "col-span-2 min-w-0" : "min-w-0" : "min-w-0 2xl:col-span-2"}>
-        {group("재무", null, 재무_DEFS, inline, where)}
+        {group("재무", null, 재무_DEFS, inline && !desktopHeading, where)}
       </div>
     </div>
   );

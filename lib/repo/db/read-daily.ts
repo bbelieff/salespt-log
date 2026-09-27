@@ -343,7 +343,7 @@ export async function readBannerOrderQtyFromDb(
 // payload 형태: ① upsert 미러 = {업체명, 계약일, ...CompanyInfo 평탄화(커스텀 포함)}
 // ② backfill = 열문자 A..AV(E..X=COMPANY_FIELDS, Y=커스텀 JSON 문자열, Z..AB=EXT, AC..AV=EXT2)
 // ③ rename 미러 = 키 필드만(스냅샷 없음) — 실질 빈 결과는 호출부가 시트 fallback
-//   (renameCompanyInfoKey 는 시트 E~AB 를 보존하지만 DB 새 키엔 스냅샷이 없다).
+//   (renameCompanyInfoKey 는 시트 E~AV 를 보존하지만 DB 새 키엔 스냅샷이 없다).
 
 const COMPANY_LETTER_START = 4; // E — 06 탭 A~AV 중 업체정보 시작 열
 

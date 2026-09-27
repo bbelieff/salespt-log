@@ -12,12 +12,14 @@
 import { SHEET_RANGES } from "@/config";
 import { Meeting } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { isGridLimitsError } from "./grid-limits";
 import { mirrorSheetRow, mirrorClearRow } from "./db/mirror";
 import {
   COL,
   COMPANY_CUSTOM_COL,
   COMPANY_EXT_START,
   COMPANY_EXT2_START,
+  COMPANY_FIELDS_EXT,
   COMPANY_FIELDS_EXT2,
   COMPANY_FIELD_START,
   MEETING_ROW_WIDTH,
@@ -46,18 +48,42 @@ function tabRef(tab: string): string {
 }
 
 const TAB = SHEET_RANGES.meetings.tab;
-const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.meetings.range}`; // A2:BN
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`; // id 검색용
 const EXT2_FIRST = colName(COMPANY_EXT2_START); // AU
 const LAST_COL = colName(MEETING_ROW_WIDTH - 1); // BN
 
+/** 확장2 이전 폭의 마지막 열(AS) — grid 가 BN 미만인 시트의 읽기 폴백 폭. */
+const LEGACY_LAST_COL = colName(COMPANY_EXT_START + COMPANY_FIELDS_EXT.length - 1); // AS
+
 /**
- * 읽기 전 grid 폭(BN) 보장 — BN 까지 안 넓혀진 시트에 A:BN 을 읽으면 범위 초과 400.
- * 읽기 경로는 관용(실패해도 읽기 시도는 계속 — 실제 오류는 그 읽기가 드러낸다).
+ * 04 행 읽기(UNFORMATTED·SERIAL) — `rangeFor(lastCol)` 로 A:BN 을 먼저 읽고, grid 가 BN 까지
+ * 안 넓혀진 시트("exceeds grid limits" 400)면 확장2 이전 폭(A:AS)으로 한 번 더 읽는다
+ * (AU~BN 값 = 없음). **읽기 경로는 grid 를 넓히지 않는다** — 확장은 쓰기 경로(split write·
+ * clear·이월 쓰기)만(gcal-event-ids 규약, 2026-07-12 카나리아 실측). 그 외 오류는 그대로 throw.
  */
-function ensureReadGrid(spreadsheetId: string): Promise<void> {
-  return ensureGridColumns(spreadsheetId, TAB, MEETING_ROW_WIDTH).catch(() => {});
+export async function readMeetingRows(
+  spreadsheetId: string,
+  rangeFor: (lastCol: string) => string,
+): Promise<unknown[][]> {
+  const get = async (lastCol: string) => {
+    const res = await sheetsClient().spreadsheets.values.get({
+      spreadsheetId,
+      range: rangeFor(lastCol),
+      valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return (res.data.values ?? []) as unknown[][];
+  };
+  try {
+    return await get(LAST_COL);
+  } catch (e) {
+    if (!isGridLimitsError(e)) throw e;
+    return get(LEGACY_LAST_COL);
+  }
 }
+
+/** 04 전체 데이터 행(A2:<lastCol>) 범위. */
+const allRows = (lastCol: string) => `${tabRef(TAB)}!A2:${lastCol}`;
 
 // 확장2(AU~BN) 헤더 라벨 보강 — 시트당 프로세스 1회(promise 캐시, 실패 시 재시도 허용).
 const ext2HeaderEnsured = new Map<string, Promise<void>>();
@@ -222,16 +248,12 @@ export async function findById(
   if (sheetRow === null) return null;
   // A:BN — 업체정보(T~AN·AQ~AS·AU~BN)·이월(AO/AP) 포함. (구 A:S — 업체정보 누락으로
   // 계약 06 스냅샷 경로(re-findById)가 빈 업체정보를 받던 잠복 결함, field-grid fix)
-  // grid 가 BN 미만인 시트는 범위 초과 400 — 읽기 전 보장(쓰기 경로와 같은 캐시 키).
-  await ensureReadGrid(spreadsheetId);
-  const range = `${tabRef(TAB)}!A${sheetRow}:${LAST_COL}${sheetRow}`;
-  const res = await sheetsClient().spreadsheets.values.get({
+  // grid 가 BN 미만인 시트는 A:AS 폴백(readMeetingRows) — 읽기에서 grid 를 넓히지 않는다.
+  const rows = await readMeetingRows(
     spreadsheetId,
-    range,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const r = res.data.values?.[0];
+    (last) => `${tabRef(TAB)}!A${sheetRow}:${last}${sheetRow}`,
+  );
+  const r = rows[0];
   if (!r) return null;
   return rowToMeeting(r as unknown[]);
 }
@@ -280,14 +302,7 @@ export async function findByDateRange(
   const result = new Map<string, Meeting[]>();
   for (const d of dates) result.set(d, []);
 
-  await ensureReadGrid(spreadsheetId);
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE_ALL,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const all = (res.data.values ?? []) as unknown[][];
+  const all = await readMeetingRows(spreadsheetId, allRows);
   const targetCol = type === "reservation" ? COL.예약일 : COL.미팅날짜;
   // dedupe: 같은 id 첫 번째만
   const seenIds = new Set<string>();
@@ -306,14 +321,7 @@ export async function findByDateRange(
 /** 전체 미팅 1-read — 발굴 후보 matched 파생용(콜·지·기·소 미팅의 발굴id·업체명 집합, lead-chain §7-1).
  * id 중복은 첫 행만. 시트는 발굴id 컬럼이 없으므로 비파일럿 미팅은 발굴id 미보유(업체명 폴백으로 매칭). */
 export async function readAllMeetings(spreadsheetId: string): Promise<Meeting[]> {
-  await ensureReadGrid(spreadsheetId);
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE_ALL,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const all = (res.data.values ?? []) as unknown[][];
+  const all = await readMeetingRows(spreadsheetId, allRows);
   const out: Meeting[] = [];
   const seen = new Set<string>();
   for (const r of all) {
@@ -344,14 +352,7 @@ export async function findByDateRangeBoth(
     byReservationDate.set(d, []);
   }
 
-  await ensureReadGrid(spreadsheetId);
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE_ALL,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const all = (res.data.values ?? []) as unknown[][];
+  const all = await readMeetingRows(spreadsheetId, allRows);
   const seenIds = new Set<string>();
   for (const r of all) {
     const parsed = rowToMeeting(r);

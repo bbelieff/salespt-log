@@ -288,7 +288,7 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 | **AR** | 과년도매출Y2 (표시 "과년도 매출 Y-2") | 업체 |
 | **AS** | 과년도매출Y3 (표시 "과년도 매출 Y-3") | 업체 |
 
-**확장2 20필드 (AU~BN, 2026-09-28 company-info-new-fields)** — AT(gcal_event_ids 맵)가 먼저 점유되어 있어 그 **뒤** AU 부터 append(컬럼 이동 금지). `COMPANY_FIELDS_EXT2` 순서 그대로, 전부 자유 텍스트(`'` prefix plain text). 헤더 AU1:BN1 은 쓰기 경로가 **빈 셀에만** 필드 키를 라벨로 보강(`ensureExt2HeaderLabels`). grid 는 66열(BN)로 lazy 확장 — 읽기(A:BN)도 읽기 전 보장.
+**확장2 20필드 (AU~BN, 2026-09-28 company-info-new-fields)** — AT(gcal_event_ids 맵)가 먼저 점유되어 있어 그 **뒤** AU 부터 append(컬럼 이동 금지). `COMPANY_FIELDS_EXT2` 순서 그대로, 전부 자유 텍스트(`'` prefix plain text). 헤더 AU1:BN1 은 쓰기 경로가 **빈 셀에만** 필드 키를 라벨로 보강(`ensureExt2HeaderLabels`). grid 는 66열(BN)로 **쓰기 경로에서만** lazy 확장. 읽기(A:BN)는 grid 를 넓히지 않고, BN 미만 시트(범위 초과 400)면 A:AS 로 폴백(`readMeetingRows`).
 
 | 컬럼 | 필드(키) | 그룹 | 비고 |
 |---|---|---|---|

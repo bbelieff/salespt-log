@@ -37,12 +37,15 @@ vi.mock("@/components/autosave/useAutosave", () => ({
 let root: Root | undefined;
 let el: HTMLDivElement | undefined;
 
-function render(value = CompanyInfo.parse({ 대표자이름: "홍길동" })) {
+function render(
+  value = CompanyInfo.parse({ 대표자이름: "홍길동" }),
+  extra: { desktopHeading?: boolean; splitInline?: boolean } = {},
+) {
   el = document.createElement("div");
   document.body.append(el);
   root = createRoot(el);
   act(() => {
-    root?.render(h(CompanyInfoEditor, { value, onSave: () => undefined, hideSave: true }));
+    root?.render(h(CompanyInfoEditor, { value, onSave: () => undefined, hideSave: true, ...extra }));
   });
 }
 
@@ -114,5 +117,32 @@ describe("CompanyInfoEditor 확장2 칸", () => {
     });
     const staged = stage.mock.calls.at(-1)![0] as CompanyInfo;
     expect(staged.주민등록번호).toBe("800101-");
+  });
+
+  it("주민등록번호 — 뒷자리가 잘리면 칸 아래에 이유를 보여준다", () => {
+    render();
+    const input = groupEl("대표자")!.querySelector<HTMLInputElement>('input[id$="-주민등록번호"]')!;
+    typeInto(input, "8001011");
+    const notice = groupEl("대표자")!.querySelector('[role="status"]');
+    expect(notice?.textContent).toContain("앞 6자리만 저장해요");
+  });
+
+  it("주민등록번호 — 6자리 미만으로 blur 하면 비우면서 이유를 알린다", () => {
+    render({ ...CompanyInfo.parse({}), 주민등록번호: "80010" } as CompanyInfo);
+    const input = groupEl("대표자")!.querySelector<HTMLInputElement>('input[id$="-주민등록번호"]')!;
+    act(() => {
+      input.focus();
+      input.blur();
+    });
+    expect((stage.mock.calls.at(-1)![0] as CompanyInfo).주민등록번호).toBe("");
+    const notice = groupEl("대표자")!.querySelector('[role="status"]');
+    expect(notice?.textContent).toContain("앞 6자리를 모두 입력해야");
+  });
+
+  it("PC 상세 2단(inline)에서 [재무] 내부는 2열 그리드(전폭 1열 금지)", () => {
+    render(undefined, { desktopHeading: true, splitInline: true });
+    const grid = (name: string) => groupEl(name)!.querySelector<HTMLElement>("div.grid")!.className;
+    expect(grid("업체")).not.toContain("grid-cols-2"); // 반폭 그룹은 1열 유지
+    expect(grid("재무")).toContain("sm:grid-cols-2");
   });
 });

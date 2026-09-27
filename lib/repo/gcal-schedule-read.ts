@@ -4,8 +4,8 @@
  */
 import { SHEET_RANGES } from "@/config";
 import type { Meeting, Todo } from "@/types";
-import { ensureGridColumns, sheetsClient } from "./sheets-client";
-import { MEETING_ROW_WIDTH, rowToMeeting } from "./meetings";
+import { sheetsClient } from "./sheets-client";
+import { readMeetingRows, rowToMeeting } from "./meetings";
 import { ensureTodoTab, rowToTodo } from "./todos";
 
 function tabRef(tab: string): string {
@@ -15,17 +15,11 @@ function tabRef(tab: string): string {
 /** 04 미팅 전체(취소 포함, id 중복 제거 — 첫 행 우선). */
 export async function listAllMeetings(spreadsheetId: string): Promise<Meeting[]> {
   const tab = SHEET_RANGES.meetings.tab;
-  // A2:BN 읽기 전 grid 보장(업체정보 확장2) — 실패해도 읽기는 시도(관용).
-  await ensureGridColumns(spreadsheetId, tab, MEETING_ROW_WIDTH).catch(() => {});
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tabRef(tab)}!${SHEET_RANGES.meetings.range}`,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
+  // A2:BN — grid 가 BN 미만인 시트는 A2:AS 폴백(readMeetingRows, 읽기에서 grid 확장 안 함).
+  const rows = await readMeetingRows(spreadsheetId, (last) => `${tabRef(tab)}!A2:${last}`);
   const seen = new Set<string>();
   const out: Meeting[] = [];
-  for (const r of (res.data.values ?? []) as unknown[][]) {
+  for (const r of rows) {
     const m = rowToMeeting(r);
     if (!m || seen.has(m.id)) continue;
     seen.add(m.id);
