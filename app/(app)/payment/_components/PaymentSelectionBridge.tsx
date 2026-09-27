@@ -9,9 +9,9 @@ const PaymentSelectionBridge = forwardRef<SVGSVGElement, { mode?: "company" | "i
     <svg ref={ref} aria-hidden="true" preserveAspectRatio="none" className="payment-selection-link pointer-events-none absolute z-20 overflow-hidden opacity-0 transition-opacity duration-150">
       <defs>
         <linearGradient id="payment-selection-gradient" x1="0" y1="0" x2="1" y2="0">
-          {/* 선택 행 오른쪽 끝색(red/blue-50)에서 시작해 상세 패널 바탕(흰색)으로 끝난다 —
-              양 끝 이음새에 색 경계가 생기지 않게. */}
-          <stop offset="0%" stopColor={institution ? "#fef2f2" : "#eff6ff"} />
+          {/* 선택 박스는 오른쪽 끝이 흰색으로 끝나고(목록 컴포넌트의 to-white) 상세 패널도 흰색이라
+              연결부도 흰색 한 가지 — 사이에 바래는 띠가 생기지 않아 박스가 패널까지 한 덩어리로 보인다. */}
+          <stop offset="0%" stopColor="#ffffff" />
           <stop offset="100%" stopColor="#ffffff" />
         </linearGradient>
         <linearGradient id="payment-selection-edge-gradient" x1="0" y1="0" x2="1" y2="0">
@@ -66,7 +66,9 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   const topLine = startY + 0.5;
   const bottomLine = endY - 0.5;
   const panelLine = lead + width + 0.5;
-  const r = Math.max(0, Math.min(cornerRadius(selected), width + 0.5, topLine, height - bottomLine));
+  // R 은 박스 모서리 값을 쓰되 틈의 55% 를 넘지 않게 — 틈이 좁을 때 곧은 연장선이 너무 짧아
+  // 갈고리처럼 보이지 않도록(belie 2026-09-28 "R 수정해도 됨").
+  const r = Math.max(0, Math.min(cornerRadius(selected), width * 0.55, topLine, height - bottomLine));
   const straight = panelLine - r;
   const upperY = topLine - r;
   const lowerY = bottomLine + r;
