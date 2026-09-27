@@ -7,12 +7,14 @@
 import * as React from "react";
 import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mutation = vi.hoisted(() => ({ mutateAsync: vi.fn(), isPending: false }));
 vi.mock("@/query/contract-payment-hooks", () => ({ useAddStandaloneContract: () => mutation }));
 
-import StandaloneCompanyAdd from "@/app/(app)/payment/_components/StandaloneCompanyAdd";
+import StandaloneCompanyAdd, { STANDALONE_ADD_ERROR } from "@/app/(app)/payment/_components/StandaloneCompanyAdd";
 import { todayKST } from "@/util/week";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -84,7 +86,8 @@ describe("StandaloneCompanyAdd", () => {
     act(() => q<HTMLButtonElement>(node, "[data-standalone-add]").click());
     type(q(node, 'input[name="업체명"]'), "예시상사");
     await submit(node);
-    expect(node.querySelector('[role="alert"]')?.textContent).toBe("시트 오류");
+    // 서버 원문("시트 오류"·HTTP 500 등)은 노출하지 않고 쉬운 고정 문구를 보인다.
+    expect(node.querySelector('[role="alert"]')?.textContent).toBe(STANDALONE_ADD_ERROR);
     expect(q<HTMLInputElement>(node, 'input[name="업체명"]').value).toBe("예시상사");
     expect(onCreated).not.toHaveBeenCalled();
     await submit(node);
@@ -105,6 +108,15 @@ describe("StandaloneCompanyAdd", () => {
     expect(a.requestKey).not.toBe(b.requestKey);
   });
 
+  it("취소하면 폼이 닫히고 포커스가 점선 버튼으로 돌아온다", () => {
+    const node = render({ listMode: "company", onCreated: vi.fn() });
+    act(() => q<HTMLButtonElement>(node, "[data-standalone-add]").click());
+    const cancel = Array.from(node.querySelectorAll("button")).find((x) => x.textContent?.includes("취소"))!;
+    act(() => cancel.click());
+    expect(node.querySelector("[data-standalone-form]")).toBeNull();
+    expect(document.activeElement).toBe(q(node, "[data-standalone-add]"));
+  });
+
   it("요청 중에는 추가 버튼이 비활성", () => {
     mutation.isPending = true;
     const node = render({ listMode: "company", onCreated: vi.fn() });
@@ -113,5 +125,15 @@ describe("StandaloneCompanyAdd", () => {
     const btn = q<HTMLButtonElement>(node, 'button[type="submit"]');
     expect(btn.disabled).toBe(true);
     expect(btn.textContent).toContain("추가 중");
+  });
+});
+
+describe("추가 후 새 업체 선택 — 진행건 목록(#1060)의 선택 모델을 따른다", () => {
+  const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
+  it("page: 키 대신 행으로 선택하고 상세를 펼친 뒤 새 행에 포커스한다(PC·모바일 공통 data-row)", () => {
+    const src = read("app/(app)/payment/page.tsx");
+    expect(src).toContain('setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true);');
+    expect(src).toContain('b?.focus({ preventScroll: true })');
+    expect(src).not.toContain("openedRow");
   });
 });

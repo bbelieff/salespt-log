@@ -272,7 +272,7 @@ export default function PaymentPage() {
   });
   const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
 
-  const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => document.querySelector(`[data-row="${row}"]`)?.scrollIntoView({ block: "nearest" }), 80); })} />;
+  const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
       <TopHeader

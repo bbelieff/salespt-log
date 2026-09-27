@@ -15,6 +15,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { ContractPayment } from "@/types";
+import { isManualContractLink } from "@/util/contract-link";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorClearRow } from "./db/mirror";
 import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow, userFieldsMirrorPayload } from "./db/contracts-clear";
@@ -146,22 +147,22 @@ export async function readContractCascadeKey(
   row: number,
 ): Promise<{ 계약일: string; 업체명: string; linkId: string }> {
   const { tab } = await resolveLayout(spreadsheetId);
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tabRef(tab)}!C${row}:D${row}`,
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  });
-  const r = (res.data.values?.[0] ?? []) as unknown[];
   // AK(연결 미팅 id) — 「영업기록 없이 추가」 행(manual:…) 판별용. 옛 02(A:AJ 그리드)는 AK 가
   // 없어 range 오류가 날 수 있으므로 별도 호출 + 실패 시 빈 값(= 기존 cascade 동작 그대로).
-  let linkId = "";
-  try {
-    const ak = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range: `${tabRef(tab)}!AK${row}` });
-    linkId = toStr(ak.data.values?.[0]?.[0]).trim();
-  } catch {
-    linkId = "";
-  }
+  // C:D 와 **병렬**로 읽는다 — 삭제 요청의 대기 시간에 시트 왕복을 직렬로 하나 더 얹지 않는다.
+  const [res, linkId] = await Promise.all([
+    sheetsClient().spreadsheets.values.get({
+      spreadsheetId,
+      range: `${tabRef(tab)}!C${row}:D${row}`,
+      valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    }),
+    Promise.resolve()
+      .then(() => sheetsClient().spreadsheets.values.get({ spreadsheetId, range: `${tabRef(tab)}!AK${row}` }))
+      .then((ak) => toStr(ak.data.values?.[0]?.[0]).trim())
+      .catch(() => ""),
+  ]);
+  const r = (res.data.values?.[0] ?? []) as unknown[];
   return {
     계약일: serialToISODate(r[0]),
     업체명: toStr(r[1]).trim(),
@@ -197,10 +198,13 @@ export async function findRowByLink(
       }
     }
   }
-  // 2) 레거시 폴백 (계약일+업체명)
+  // 2) 레거시 폴백 (계약일+업체명). 「영업기록 없이 추가」 행(AK=manual:…)은 제외 — 그 행은
+  //    자기 manual:<key> 로만 찾는다(같은 날짜·이름의 미팅 계약이 지우기·수임비 동기·병합으로
+  //    남의 수동 행을 건드리지 않게).
   if (key.계약일 && key.업체명) {
     for (let i = 0; i < values.length; i++) {
       const r = values[i] ?? [];
+      if (isManualContractLink(toStr(r[LINK_ID_OFFSET]))) continue;
       if (serialToISODate(r[0]) === key.계약일 && toStr(r[1]).trim() === key.업체명.trim()) {
         return firstDataRow + i;
       }

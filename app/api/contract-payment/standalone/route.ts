@@ -12,8 +12,8 @@ import { getSessionEmail, getWritableUserEmail } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const StandaloneContractBody = z.object({
-  계약일: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "계약일은 YYYY-MM-DD"),
-  업체명: z.string().trim().min(1, "업체명을 입력해주세요.").max(100, "업체명은 100자 이하"),
+  계약일: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "계약일을 다시 골라 주세요."),
+  업체명: z.string().trim().min(1, "업체명을 입력해주세요.").max(100, "업체명은 100자까지 적을 수 있어요."),
   수임비: z.number().int().min(0),
   requestKey: z.string().uuid(),
 });

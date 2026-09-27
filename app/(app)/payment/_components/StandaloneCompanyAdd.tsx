@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAddStandaloneContract } from "@/query/contract-payment-hooks";
 import { formatMoneyInput, parseMoney } from "@/lib/format/money";
 import { todayKST } from "@/util/week";
@@ -17,6 +17,9 @@ interface Props {
   onCreated: (row: number) => void;
   className?: string;
 }
+
+/** 서버·네트워크 원문(HTTP 500·unauthenticated·영문 예외) 대신 수강생에게 보이는 고정 문구. */
+export const STANDALONE_ADD_ERROR = "업체를 추가하지 못했어요. 잠시 후 다시 눌러 주세요.";
 
 function newRequestKey(): string {
   return crypto.randomUUID();
@@ -30,6 +33,14 @@ export default function StandaloneCompanyAdd({ listMode, onCreated, className = 
   const [계약일, set계약일] = useState("");
   const [수임비, set수임비] = useState("");
   const [error, setError] = useState("");
+  const addBtnRef = useRef<HTMLButtonElement>(null);
+  const [refocus, setRefocus] = useState(false);
+  // 취소로 폼이 닫히면 포커스를 점선 버튼으로 돌려준다(폼 subtree 가 사라져 <body> 로 떨어지지 않게).
+  useEffect(() => {
+    if (open || !refocus) return;
+    addBtnRef.current?.focus();
+    setRefocus(false);
+  }, [open, refocus]);
 
   if (listMode !== "company") return null;
 
@@ -56,14 +67,15 @@ export default function StandaloneCompanyAdd({ listMode, onCreated, className = 
       onCreated(res.row);
     } catch (err) {
       // 입력값과 requestKey 는 그대로 둔다 — 다시 누르면 같은 행으로 이어진다.
-      setError(err instanceof Error ? err.message : "추가하지 못했어요");
+      console.warn("[standalone-company-add] failed", err);
+      setError(STANDALONE_ADD_ERROR);
     }
   };
 
   if (!open) {
     return (
       <div className={className}>
-        <button type="button" onClick={openForm} data-standalone-add
+        <button ref={addBtnRef} type="button" onClick={openForm} data-standalone-add
           className="flex h-11 w-full items-center justify-center gap-1 rounded-xl border border-dashed border-blue-300 bg-white px-3 text-sm font-semibold text-blue-600 transition-colors hover:border-blue-400 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
           ＋ 영업기록 없이 업체추가
         </button>
@@ -96,7 +108,7 @@ export default function StandaloneCompanyAdd({ listMode, onCreated, className = 
         <p className="text-xs text-slate-500">계약일이 수강 시작일보다 앞이면 이월로, 이후면 이번 과정 매출로 잡혀요.</p>
         {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => setOpen(false)} disabled={pending}
+          <button type="button" onClick={() => { setOpen(false); setRefocus(true); }} disabled={pending}
             className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
             취소
           </button>

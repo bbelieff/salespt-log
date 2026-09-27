@@ -34,6 +34,9 @@
 - [x] `POST /api/contract-payment/standalone` (zod: 계약일 YYYY-MM-DD, 업체명 trim 1~100, 수임비 정수 ≥0, requestKey uuid)
 - [x] `useAddStandaloneContract` 훅(재조회까지 대기) + `StandaloneCompanyAdd` 컴포넌트 + page.tsx 배선(PC 목록·모바일·빈 안내) + `ContractRow openSignal`
 - [x] 테스트: 서비스·유틸·repo 멱등·라우트·컴포넌트
+- [x] 리뷰 후속: `findRowByLink` 의 (계약일+업체명) 폴백이 `manual:` 행을 건너뜀 — 미팅 계약 되돌리기·삭제(clearRowByLink)·수임비 동기(syncFeeFromContract)·미팅 계약 병합(addFromContract 폴백)이 같은 날짜·이름의 수동 행을 지우거나 덮지 않는다(수동 행은 자기 `manual:<key>` 로만 찾힘)
+- [x] 리뷰 후속: 삭제 cascade 의 AK 읽기를 C:D 읽기와 병렬화(요청 경로 직렬 시트 왕복 추가 없음)
+- [x] 리뷰 후속: 모바일 펼침 신호 1회 소비(`onOpened` → openedRow null, PC 는 신호 안 켬) · 오류는 고정 쉬운 문구 · 취소 시 점선 버튼·성공 시 새 업체로 포커스
 
 ## 남은 위험
 - 수동 추가 업체는 미팅이 없어 **계약 건수(미팅 기준 통계)에는 잡히지 않고 매출(02 기준)에만 잡힌다** — 의도된 비대칭이지만 대시보드 건수와 매출 합계가 1건 어긋나 보일 수 있다.
