@@ -1,6 +1,7 @@
 /**
  * Layer: service — 계약수납 "추가" 유스케이스 (contract-payment.ts 500줄 캡으로 분리, R3-3 선례대로 재수출).
- * addFromContract(미팅에서 계약) · addPriorContract(이전 계약 직접등록) — 둘 다 append 경로.
+ * addFromContract(미팅에서 계약) · addPriorContract(이전 계약 직접등록) ·
+ * addStandaloneContract(영업기록 없이 업체추가) — 모두 append 경로.
  */
 import { randomUUID } from "node:crypto";
 import {
@@ -9,6 +10,7 @@ import {
   updateUserFields,
 } from "@/repo/contract-payment";
 import type { ContractPayment } from "@/types";
+import { manualContractLink } from "@/util/contract-link";
 import { findMeetingsByDateRecord } from "./meetings-write";
 import { upsertCompanyInfoArchive } from "@/repo/company-info-archive";
 import { resolveCtx, resolveSheetWithSyncDb } from "./contract-payment";
@@ -124,4 +126,30 @@ async function findPriorContractRetry(
       r.수임비 === cp.수임비,
   );
   return found?.row ?? null;
+}
+
+/**
+ * 「영업기록 없이 업체추가」 — 실무/수납에서 미팅(04) 없이 계약 업체를 바로 만든다
+ * (payment-standalone-company). addPriorContract 와 달리 **이월을 강제하지 않는다** —
+ * 매출 귀속은 읽기 시점 규칙 isCarryoverContract(깃발 OR 계약일 < 수강시작일)가 계약일로
+ * 가른다(belie 결정). 그래서 carryover 인자를 넘기지 않는다(AI:AJ 미기록).
+ *
+ * 멱등: AK 에 `manual:<requestKey>` 를 적고 appendFromContract 의 meetingId 자연키 upsert 를
+ * 그대로 탄다 — 응답 유실로 같은 requestKey 가 다시 오면 findRowByLink 가 같은 행을 찾아
+ * 갱신만 한다(중복행=매출 이중계상 방지, #558 교훈). dateCompanyFallback 은 쓰지 않는다 —
+ * (계약일+업체명) 만으로 무관한 정식 계약행을 덮어쓰지 않도록.
+ * 시트 쓰기 뒤에는 아무 것도 throw 하지 않는다(DB 미러는 appendFromContract 기본 R2 no-throw).
+ */
+export async function addStandaloneContract(
+  email: string,
+  data: { 계약일: string; 업체명: string; 수임비: number; requestKey: string },
+): Promise<{ row: number }> {
+  const { spreadsheetId } = await resolveCtx(email);
+  const { row } = await appendFromContract(spreadsheetId, {
+    계약일: data.계약일,
+    업체명: data.업체명.trim(),
+    수임비: data.수임비,
+    meetingId: manualContractLink(data.requestKey),
+  });
+  return { row };
 }

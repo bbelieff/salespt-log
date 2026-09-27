@@ -144,7 +144,7 @@ export async function readFilledRowNumbers(spreadsheetId: string): Promise<Set<n
 export async function readContractCascadeKey(
   spreadsheetId: string,
   row: number,
-): Promise<{ 계약일: string; 업체명: string }> {
+): Promise<{ 계약일: string; 업체명: string; linkId: string }> {
   const { tab } = await resolveLayout(spreadsheetId);
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -153,9 +153,19 @@ export async function readContractCascadeKey(
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
   const r = (res.data.values?.[0] ?? []) as unknown[];
+  // AK(연결 미팅 id) — 「영업기록 없이 추가」 행(manual:…) 판별용. 옛 02(A:AJ 그리드)는 AK 가
+  // 없어 range 오류가 날 수 있으므로 별도 호출 + 실패 시 빈 값(= 기존 cascade 동작 그대로).
+  let linkId = "";
+  try {
+    const ak = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range: `${tabRef(tab)}!AK${row}` });
+    linkId = toStr(ak.data.values?.[0]?.[0]).trim();
+  } catch {
+    linkId = "";
+  }
   return {
     계약일: serialToISODate(r[0]),
     업체명: toStr(r[1]).trim(),
+    linkId,
   };
 }
 

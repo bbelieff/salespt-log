@@ -85,6 +85,27 @@ export function useAddPriorContract() {
   });
 }
 
+export interface AddStandaloneContractArgs extends AddFromContractArgs {
+  /** 폼을 열 때 한 번 만든 uuid — 재시도에도 같게 보내 중복 행을 막는다. */
+  requestKey: string;
+}
+
+/** 「영업기록 없이 업체추가」 — 미팅 없이 02 행 생성(이월 강제 없음). 목록 재조회까지 기다린다. */
+export function useAddStandaloneContract() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddStandaloneContractArgs) =>
+      fetchJSON<{ ok: true; row: number }>(`/api/contract-payment/standalone`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      track(EVENTS.CONTRACT_PAYMENT_ADDED);
+      return qc.invalidateQueries({ queryKey: cpKey() });
+    },
+  });
+}
+
 /**
  * 이미 계약 상태인 미팅 카드의 수임비를 수정한 경우 호출.
  * (계약일+업체명) 매칭 row의 E열만 sync 업데이트. 매칭 없으면 synced: false.

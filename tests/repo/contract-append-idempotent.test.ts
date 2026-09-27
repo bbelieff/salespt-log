@@ -111,6 +111,16 @@ describe("appendFromContract — meetingId 자연키 upsert (BBE-53 수용기준
     expect(store.get(r1.row)?.AK).toBe("m-1");
   });
 
+  it("영업기록 없이 추가(manual:<requestKey>) 재시도도 1행 — 이월(AI:AJ) 미기록", async () => {
+    const data = { 계약일: "2026-09-10", 업체명: "예시상사", 수임비: 3_000_000, meetingId: "manual:11111111-1111-4111-8111-111111111111" };
+    const r1 = await appendFromContract(SHEET, data);
+    const r2 = await appendFromContract(SHEET, data); // 응답 유실 후 같은 requestKey 로 재시도
+    expect(r1.row).toBe(r2.row);
+    expect(store.size).toBe(1);
+    expect(store.get(r1.row)?.AK).toBe(data.meetingId);
+    expect(store.get(r1.row)?.AI).toBeUndefined();
+  });
+
   it("다른 meetingId 는 다른 행 — 정상 계약은 서로 안 합쳐짐", async () => {
     const r1 = await appendFromContract(SHEET, { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 1_000_000, meetingId: "m-1" });
     const r2 = await appendFromContract(SHEET, { 계약일: "2026-07-11", 업체명: "다른상사", 수임비: 500_000, meetingId: "m-2" });
