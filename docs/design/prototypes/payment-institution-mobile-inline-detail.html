@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>실무·수납 — 모바일 진행기관 선택 상세 목업</title>
+  <style>
+    :root { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; color: #172033; background: #edf2f7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .stage { max-width: 860px; margin: 0 auto; padding: 24px 20px 40px; }
+    .intro { max-width: 640px; margin: 0 auto 18px; }
+    .intro h1 { margin: 0 0 6px; font-size: 19px; line-height: 1.4; }
+    .intro p { margin: 0; color: #526078; font-size: 13px; line-height: 1.65; }
+    .intro strong { color: #b91c1c; }
+    .demo { width: min(390px, 100%); min-height: 780px; margin: auto; overflow: hidden; border: 1px solid #dbe3ed; border-radius: 20px; background: #eef2f7; box-shadow: 0 16px 45px #33415520; }
+    .topbar { display: flex; align-items: center; gap: 8px; min-height: 45px; padding: 0 14px; border-bottom: 1px solid #dce4ef; background: #fff; }
+    .brand { color: #d71617; font-size: 13px; font-weight: 900; font-style: italic; }
+    .topbar b { font-size: 12px; }
+    .page-label { display: flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; font-size: 12px; font-weight: 750; color: #334155; }
+    .page-label::before { content: ""; width: 4px; height: 16px; border-radius: 3px; background: #64748b; }
+    .content { padding: 9px 12px 28px; }
+    .summary { display: flex; align-items: center; gap: 8px; min-height: 51px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; }
+    .summary .title { flex: 0 0 auto; font-size: 12px; font-weight: 800; }
+    .summary .metric { font-size: 11px; color: #64748b; }
+    .summary .metric strong { margin-left: 4px; color: #111827; font-size: 13px; }
+    .search { display: flex; align-items: center; gap: 6px; height: 33px; margin-top: 9px; padding: 0 10px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; color: #94a3b8; font-size: 11px; }
+    .mode { display: flex; gap: 4px; margin: 9px 0 8px; padding: 4px; border: 1px solid #dce4ee; border-radius: 9px; background: #e9eef5; }
+    .mode span { flex: 1; padding: 8px; border-radius: 6px; text-align: center; color: #64748b; font-size: 11px; font-weight: 700; }
+    .mode .active { background: #fff; color: #b91c1c; box-shadow: 0 1px 3px #0f172a12; }
+    .groups { display: grid; gap: 7px; }
+    .institution { overflow: hidden; border: 1px solid #dce4ee; border-radius: 12px; background: #fff; }
+    .institution.active { border-color: #fecaca; }
+    .group-head { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 42px; padding: 9px 12px; border: 0; background: #fff; color: #334155; text-align: left; font-size: 13px; }
+    .institution.active .group-head { background: #fff1f2; color: #7f1d1d; }
+    .group-head .name { flex: 1; font-weight: 800; }
+    .count { padding: 4px 7px; border-radius: 999px; background: #fff; color: #b91c1c; font-size: 10px; font-weight: 800; }
+    .chevron { color: #94a3b8; font-size: 12px; }
+    .items { display: grid; gap: 6px; padding: 6px; border-top: 1px solid #fee2e2; }
+    .item-block { min-width: 0; }
+    .item-button { display: block; width: 100%; min-height: 54px; padding: 8px 10px; border: 1px solid transparent; border-radius: 8px; background: #fff; text-align: left; }
+    .item-button.selected { border-color: #f87171; background: linear-gradient(105deg, #fee2e2 0%, #fff4f4 74%, #fff 100%); }
+    .item-button.selected.expanded { border-bottom-color: #fecaca; border-radius: 8px 8px 0 0; }
+    .item-line { display: flex; gap: 7px; align-items: center; font-size: 11px; }
+    .item-line strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .item-line .slot { flex: none; color: #b91c1c; font-weight: 800; }
+    .item-sub { display: flex; gap: 8px; margin-top: 3px; color: #64748b; font-size: 11px; }
+    .item-sub .product { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-sub .pct { flex: none; }
+    .detail { margin-top: -1px; padding: 10px; border: 1px solid #f87171; border-top: 0; border-radius: 0 0 8px 8px; background: #fff; box-shadow: inset 0 7px 10px -10px #991b1b; }
+    .detail-meta { display: flex; align-items: center; gap: 6px; min-height: 27px; padding-bottom: 9px; border-bottom: 1px solid #fee2e2; color: #64748b; font-size: 11px; }
+    .detail-meta .meta-copy { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pill { padding: 4px 6px; border-radius: 5px; background: #eff6ff; color: #2563eb; font-size: 10px; font-weight: 750; }
+    .section { margin-top: 8px; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+    .section .section-title { display: flex; justify-content: space-between; align-items: center; gap: 5px; min-height: 35px; padding: 8px 9px; color: #1e293b; font-size: 11px; font-weight: 800; }
+    .section .section-title small { color: #64748b; font-size: 10px; font-weight: 500; white-space: nowrap; }
+    .section .section-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 9px; border-top: 1px solid #f1f5f9; }
+    .field { min-width: 0; }
+    .field label { display: block; margin-bottom: 4px; color: #64748b; font-size: 10px; }
+    .field .value { overflow: hidden; min-height: 26px; padding: 5px 6px; border: 1px solid #cbd5e1; border-radius: 5px; color: #334155; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .roadmap, .work { border-color: #fde68a; background: #fffbeb; }
+    .roadmap .section-title, .work .section-title { background: #fffbeb; }
+    .work-preview { margin: 0 9px 9px; padding: 8px; border: 1px solid #fde68a; border-radius: 7px; background: #fff; color: #475569; font-size: 10px; line-height: 1.5; }
+    .work-preview strong { color: #0f172a; font-size: 11px; }
+    .other { color: #94a3b8; }
+    .note { max-width: 640px; margin: 18px auto 0; padding: 12px 14px; border: 1px solid #dbe4ef; border-radius: 10px; background: #fff; color: #475569; font-size: 12px; line-height: 1.65; }
+    .note b { color: #0f172a; }
+    button:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
+    @media (max-width: 450px) { .stage { padding: 0; } .intro, .note { margin-left: 12px; margin-right: 12px; } .intro { padding-top: 13px; } .demo { width: 100%; border: 0; border-radius: 0; box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div class="intro">
+      <h1>모바일 진행기관 뷰 · 연결형 상세 시안</h1>
+      <p>업체를 누르면 <strong>선택한 행 바로 아래</strong>에서 상세가 펼쳐집니다. 기관 카드와 업체 행의 흐름을 유지하며, 아래 기관은 상세 뒤로 이어집니다.</p>
+    </div>
+    <div class="demo" aria-label="모바일 화면 목업">
+      <div class="topbar"><span class="brand">S 세일즈PT</span><b>10기 대표님</b></div>
+      <div class="page-label">💰 실무/수납</div>
+      <div class="content">
+        <div class="summary"><span class="title">성과 요약</span><span class="metric">전체 계약 <strong>10건</strong></span><span class="metric">총 매출 <strong>₩5,390만</strong></span></div>
+        <div class="search">⌕ &nbsp; 기관·상품·업체 검색</div>
+        <div class="mode"><span>업체</span><span class="active">진행기관</span></div>
+        <div id="groups" class="groups"></div>
+      </div>
+    </div>
+    <div class="note"><b>동작 확인:</b> 업체 행을 누르면 바로 아래에서 상세가 열리고, 다시 누르면 접힙니다. 다른 업체를 누르면 열린 상세가 그 업체 밑으로 이동합니다. 기관 제목은 독립적으로 접고 펼칠 수 있습니다. 이 파일은 화면 검토용 목업이며 운영 화면은 변경하지 않았습니다.</div>
+  </main>
+  <script>
+    const groups = [
+      { name: '신용보증기금', items: [{ key: 'a', company: '예시전기진단', slot: 1, product: '상품 미입력', progress: 20, date: '8/31', fee: '₩1,000,000' }] },
+      { name: '신용보증재단', items: [
+        { key: 'b', company: '바른솔루션', slot: 2, product: '운전자금', progress: 60, date: '9/3', fee: '₩550,000' },
+        { key: 'c', company: '새봄상사', slot: 1, product: '창업자금', progress: 0, date: '9/8', fee: '₩300,000' },
+        { key: 'd', company: '서린기획', slot: 3, product: '시설자금', progress: 40, date: '9/10', fee: '₩700,000' },
+      ] },
+      { name: '기관 미입력', items: [{ key: 'e', company: '한결제작소', slot: 1, product: '상품 미입력', progress: 0, date: '9/12', fee: '₩400,000' }] },
+    ];
+    const state = { openGroups: new Set(['신용보증기금']), selected: 'a', detailOpen: true };
+    const root = document.querySelector('#groups');
+    function detail(item, institution) {
+      return `<div class="detail" id="detail-${item.key}" role="region" aria-label="${item.company} 진행 ${item.slot} 상세">
+        <div class="detail-meta"><span class="meta-copy">${institution} · 진행 ${item.slot} · ${item.date} 계약 · 수임비 ${item.fee}</span><span class="pill">📋 6/6</span></div>
+        <div class="section"><div class="section-title"><span>🏢 업체정보</span><small>기본 정보 ›</small></div><div class="section-body">
+          <div class="field"><label>사업자구분</label><div class="value">개인</div></div><div class="field"><label>대표자</label><div class="value">예시 대표</div></div>
+          <div class="field"><label>사업자등록번호</label><div class="value">000-00-00000</div></div><div class="field"><label>소재지</label><div class="value">주소 입력</div></div>
+        </div></div>
+        <div class="section"><div class="section-title"><span>📑 계약정보</span><small>${item.date} · 수임비 ${item.fee} ›</small></div></div>
+        <div class="section"><div class="section-title"><span>📋 서류·진행 체크</span><small>6/6 ›</small></div></div>
+        <div class="section roadmap"><div class="section-title"><span>🗺️ 로드맵 메모</span><small>›</small></div></div>
+        <div class="section work"><div class="section-title"><span>📝 실무 진행</span><small>진행 ${item.slot} · ${item.progress}%</small></div><div class="work-preview"><strong>진행 ${item.slot}</strong> · ${institution}<br>${item.product} · 메모 · Todo 및 History</div></div>
+      </div>`;
+    }
+    function render() {
+      root.innerHTML = groups.map(group => {
+        const isOpen = state.openGroups.has(group.name);
+        const isActive = group.items.some(item => item.key === state.selected);
+        return `<section class="institution ${isActive ? 'active' : ''}">
+          <button class="group-head" type="button" data-group="${group.name}" aria-expanded="${isOpen}"><span class="name">${group.name}</span><span class="count">${group.items.length}건</span><span class="chevron" aria-hidden="true">${isOpen ? '⌃' : '⌄'}</span></button>
+          ${isOpen ? `<div class="items">${group.items.map(item => {
+            const selected = item.key === state.selected;
+            const expanded = selected && state.detailOpen;
+            return `<div class="item-block"><button type="button" class="item-button ${selected ? 'selected' : ''} ${expanded ? 'expanded' : ''}" data-item="${item.key}" aria-expanded="${expanded}" ${expanded ? `aria-controls="detail-${item.key}"` : ''}>
+              <span class="item-line"><strong>${item.company}</strong><span class="slot">진행 ${item.slot}</span></span>
+              <span class="item-sub"><span class="product">${item.product}</span><span class="pct">${item.progress}% ${expanded ? '⌃' : '⌄'}</span></span>
+            </button>${expanded ? detail(item, group.name) : ''}</div>`;
+          }).join('')}</div>` : ''}
+        </section>`;
+      }).join('');
+    }
+    root.addEventListener('click', event => {
+      const groupButton = event.target.closest('[data-group]');
+      if (groupButton) {
+        const name = groupButton.dataset.group;
+        if (state.openGroups.has(name)) state.openGroups.delete(name);
+        else state.openGroups.add(name);
+        render();
+        root.querySelectorAll('[data-group]').forEach(button => { if (button.dataset.group === name) button.focus(); });
+        return;
+      }
+      const itemButton = event.target.closest('[data-item]');
+      if (!itemButton) return;
+      const key = itemButton.dataset.item;
+      if (key === state.selected) state.detailOpen = !state.detailOpen;
+      else { state.selected = key; state.detailOpen = true; }
+      render();
+      root.querySelector(`[data-item="${key}"]`)?.focus();
+    });
+    render();
+  </script>
+</body>
+</html>
