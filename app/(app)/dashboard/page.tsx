@@ -160,10 +160,15 @@ export default function DashboardPage() {
                 그대로 3칸에 앉힌다. 모바일은 원래 stacked 순서. 시맨틱 순서·
                 전 콘텐츠 유지. items-start + flex-none: 카드 자연 높이 그대로 —
                 stretch 빈칸 없음. 차트 높이는 .desktop-shell 스코프 max-height
-                (퍼널 220/추이 260/도넛 160, meet 스케일·클리핑 없음)로 균형. */}
+                (퍼널 220/추이 260/도넛 160, meet 스케일·클리핑 없음)로 균형.
+                전체 진행건은 생산성 바로 밑 같은 칸 — 3열에서 생산성이 주간목표보다
+                짧아 생기던 좌측 빈칸을 채운다(2026-09-28 belie 요청). */}
             <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 min-[1600px]:grid-cols-3">
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:contents min-[1600px]:space-y-0">
-                <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
+                <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0">
+                  <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
+                  <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
+                </div>
                 <WeeklyGoalSummary className="pc:flex-none" />
               </div>
               <FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} />
@@ -177,7 +182,6 @@ export default function DashboardPage() {
                 matrix={dash.data.channelMatrix}
               />
             </div>
-            <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
           </>
         )}
       </div>
