@@ -73,7 +73,9 @@ describe("payment PC workspace 배선", () => {
   });
   it("모바일 업체 모드는 기존 ContractRow 목록을 유지하고 기관 모드에서만 선택 상세를 더한다", () => {
     expect(src).toContain("visibleRows.map((cp, i) =>");
-    expect(src).toContain('listMode === "institution" ? <>');
+    expect(src).toContain('listMode === "institution" ? <InstitutionWorkList');
+    expect(src).toContain('renderDetail={(item) =>');
+    expect(src).toContain('forceOpen inline');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
   });

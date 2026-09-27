@@ -47,6 +47,8 @@ interface Props {
   forceOpen?: boolean;
   accentFamily?: AccentFamily;
   bare?: boolean;
+  /** 모바일 기관 행에 붙는 상세: 중복 업체 헤더·외곽 카드를 그리지 않는다. */
+  inline?: boolean;
   detailLeftPct?: number;
   onDetailLeftPctChange?: (pct: number) => void;
   focusTodoId?: string | null;
@@ -70,6 +72,7 @@ export default function ContractRow({
   forceOpen = false,
   accentFamily,
   bare = false,
+  inline = false,
   detailLeftPct = 60,
   onDetailLeftPctChange,
   focusTodoId,
@@ -258,6 +261,8 @@ export default function ContractRow({
       className={
         bare
           ? "flex min-h-0 flex-1 flex-col bg-transparent transition-all duration-200"
+          : inline
+            ? "bg-white"
           : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
@@ -265,7 +270,7 @@ export default function ContractRow({
             }`
       }
     >
-      {!bare && <button
+      {!bare && !inline && <button
         type="button"
         onClick={
           selectable
@@ -355,7 +360,7 @@ export default function ContractRow({
 
       {showBody && (
         <div
-          className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : "card-open-anim space-y-3 p-3"}
+          className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : `card-open-anim space-y-3 ${inline ? "p-2.5" : "p-3"}`}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commitGroup();

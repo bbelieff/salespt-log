@@ -49,6 +49,10 @@
     .item-sub { display: flex; gap: 8px; margin-top: 3px; color: #64748b; font-size: 11px; }
     .item-sub .product { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .item-sub .pct { flex: none; }
+    .item-sub .due { flex: none; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+    .item-sub .due.none { background: #f1f5f9; color: #475569; }
+    .item-sub .due.history { background: #fef3c7; color: #92400e; }
+    .item-sub .due.todo { background: #fee2e2; color: #b91c1c; }
     .detail { margin-top: -1px; padding: 10px; border: 1px solid #f87171; border-top: 0; border-radius: 0 0 8px 8px; background: #fff; box-shadow: inset 0 7px 10px -10px #991b1b; }
     .detail-meta { display: flex; align-items: center; gap: 6px; min-height: 27px; padding-bottom: 9px; border-bottom: 1px solid #fee2e2; color: #64748b; font-size: 11px; }
     .detail-meta .meta-copy { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -75,7 +79,7 @@
   <main class="stage">
     <div class="intro">
       <h1>모바일 진행기관 뷰 · 연결형 상세 시안</h1>
-      <p>업체를 누르면 <strong>선택한 행 바로 아래</strong>에서 상세가 펼쳐집니다. 기관 카드와 업체 행의 흐름을 유지하며, 아래 기관은 상세 뒤로 이어집니다.</p>
+      <p>업체를 누르면 <strong>선택한 행 바로 아래</strong>에서 상세가 펼쳐집니다. 기관 안의 순서는 <strong>D-?? → D+00 → D-00</strong>이며, 각각 기록 없음·최근 History·임박 Todo를 뜻합니다.</p>
     </div>
     <div class="demo" aria-label="모바일 화면 목업">
       <div class="topbar"><span class="brand">S 세일즈PT</span><b>10기 대표님</b></div>
@@ -91,13 +95,13 @@
   </main>
   <script>
     const groups = [
-      { name: '신용보증기금', items: [{ key: 'a', company: '예시전기진단', slot: 1, product: '상품 미입력', progress: 20, date: '8/31', fee: '₩1,000,000' }] },
+      { name: '신용보증기금', items: [{ key: 'a', company: '예시전기진단', slot: 1, product: '상품 미입력', progress: 20, date: '8/31', fee: '₩1,000,000', activity: 'todo', due: 'D-00' }] },
       { name: '신용보증재단', items: [
-        { key: 'b', company: '바른솔루션', slot: 2, product: '운전자금', progress: 60, date: '9/3', fee: '₩550,000' },
-        { key: 'c', company: '새봄상사', slot: 1, product: '창업자금', progress: 0, date: '9/8', fee: '₩300,000' },
-        { key: 'd', company: '서린기획', slot: 3, product: '시설자금', progress: 40, date: '9/10', fee: '₩700,000' },
+        { key: 'b', company: '바른솔루션', slot: 2, product: '운전자금', progress: 60, date: '9/3', fee: '₩550,000', activity: 'none', due: 'D-??' },
+        { key: 'c', company: '새봄상사', slot: 1, product: '창업자금', progress: 0, date: '9/8', fee: '₩300,000', activity: 'history', due: 'D+00' },
+        { key: 'd', company: '서린기획', slot: 3, product: '시설자금', progress: 40, date: '9/10', fee: '₩700,000', activity: 'todo', due: 'D-02' },
       ] },
-      { name: '기관 미입력', items: [{ key: 'e', company: '한결제작소', slot: 1, product: '상품 미입력', progress: 0, date: '9/12', fee: '₩400,000' }] },
+      { name: '기관 미입력', items: [{ key: 'e', company: '한결제작소', slot: 1, product: '상품 미입력', progress: 0, date: '9/12', fee: '₩400,000', activity: 'none', due: 'D-??' }] },
     ];
     const state = { openGroups: new Set(['신용보증기금']), selected: 'a', detailOpen: true };
     const root = document.querySelector('#groups');
@@ -125,7 +129,7 @@
             const expanded = selected && state.detailOpen;
             return `<div class="item-block"><button type="button" class="item-button ${selected ? 'selected' : ''} ${expanded ? 'expanded' : ''}" data-item="${item.key}" aria-expanded="${expanded}" ${expanded ? `aria-controls="detail-${item.key}"` : ''}>
               <span class="item-line"><strong>${item.company}</strong><span class="slot">진행 ${item.slot}</span></span>
-              <span class="item-sub"><span class="product">${item.product}</span><span class="pct">${item.progress}% ${expanded ? '⌃' : '⌄'}</span></span>
+              <span class="item-sub"><span class="product">${item.product}</span><span class="pct">${item.progress}%</span><span class="due ${item.activity}">${item.activity === 'todo' ? 'Todo ' : item.activity === 'history' ? 'History ' : ''}${item.due}</span><span>${expanded ? '⌃' : '⌄'}</span></span>
             </button>${expanded ? detail(item, group.name) : ''}</div>`;
           }).join('')}</div>` : ''}
         </section>`;

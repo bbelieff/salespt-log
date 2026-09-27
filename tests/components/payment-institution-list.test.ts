@@ -10,11 +10,11 @@ Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
 const groups: InstitutionGroup[] = [
   { institution: "소진공", count: 2, items: [
-    { key: "3-1", row: 3, slot: 1, company: "한빛상사", institution: "소진공", product: "혁신성장", progress: 60, muted: false },
-    { key: "4-2", row: 4, slot: 2, company: "두리상사", institution: "소진공", product: "일반형", progress: 20, muted: false },
+    { key: "3-1", row: 3, slot: 1, company: "한빛상사", institution: "소진공", product: "혁신성장", progress: 60, muted: false, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" },
+    { key: "4-2", row: 4, slot: 2, company: "두리상사", institution: "소진공", product: "일반형", progress: 20, muted: false, activityKind: "none", activityDate: "", activityLabel: "D-??" },
   ] },
   { institution: "신보", count: 1, items: [
-    { key: "5-1", row: 5, slot: 1, company: "가온상사", institution: "신보", product: "", progress: 0, muted: false },
+    { key: "5-1", row: 5, slot: 1, company: "가온상사", institution: "신보", product: "", progress: 0, muted: false, activityKind: "history", activityDate: "2026-09-27", activityLabel: "D+01" },
   ] },
 ];
 
@@ -40,5 +40,29 @@ describe("기관 1뎁스 목록", () => {
     expect(activeHeader.getAttribute("aria-expanded")).toBe("false");
     expect(node.querySelector('[data-work-key="3-1"]')).toBeNull();
     expect(activeHeader.className).toContain("bg-red-50");
+  });
+
+  it("모바일 선택 행 바로 아래에 상세를 붙이고 접어도 편집기를 마운트 상태로 보존한다", () => {
+    node = document.createElement("div"); document.body.append(node); root = createRoot(node);
+    const onSelect = vi.fn();
+    const onToggleDetail = vi.fn();
+    const props = { groups, selectedKey: "3-1", onSelect, onToggleDetail, renderDetail: () => h("div", { "data-editor": true }, "업체정보 · 계약정보") };
+    act(() => root?.render(h(InstitutionWorkList, { ...props, detailExpanded: true })));
+    const selected = node.querySelector('[data-work-key="3-1"]') as HTMLButtonElement;
+    const detail = node.querySelector('#payment-inline-detail-3-1') as HTMLDivElement;
+    expect(selected.nextElementSibling).toBe(detail);
+    expect(detail.hidden).toBe(false);
+    expect(selected.textContent).toContain("D-00");
+    act(() => selected.click());
+    expect(onToggleDetail).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
+    act(() => root?.render(h(InstitutionWorkList, { ...props, detailExpanded: false })));
+    expect((node.querySelector('#payment-inline-detail-3-1') as HTMLDivElement).hidden).toBe(true);
+    expect(node.querySelector('[data-editor]')).not.toBeNull();
+    act(() => (node?.querySelector('section > button') as HTMLButtonElement).click());
+    expect((node.querySelector('[role="group"]') as HTMLDivElement).hidden).toBe(true);
+    expect(node.querySelector('[data-editor]')).not.toBeNull();
+    act(() => root?.render(h(InstitutionWorkList, { ...props, detailExpanded: true, activityState: "loading" })));
+    expect(node.querySelector('[data-work-key="3-1"]')?.textContent).not.toContain("D-00");
   });
 });

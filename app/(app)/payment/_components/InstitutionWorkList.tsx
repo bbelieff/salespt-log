@@ -1,16 +1,21 @@
-/** 진행기관을 1뎁스로, 해당 기관의 업체별 진행건을 상품명순으로 표시한다. */
+/** 진행기관을 1뎁스로 표시한다. PC는 상품순, 모바일은 활동 우선순위로 정렬한다. */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { InstitutionGroup, InstitutionWorkItem } from "../_lib/institution-view";
 
 interface Props {
   groups: InstitutionGroup[];
   selectedKey: string | null;
   onSelect: (item: InstitutionWorkItem) => void;
+  /** 모바일에서 선택 행 바로 밑에 같은 계약 편집기를 표시한다. PC 목록은 전달하지 않는다. */
+  renderDetail?: (item: InstitutionWorkItem) => ReactNode;
+  detailExpanded?: boolean;
+  onToggleDetail?: () => void;
+  activityState?: "loading" | "ready" | "error";
 }
 
-export default function InstitutionWorkList({ groups, selectedKey, onSelect }: Props) {
+export default function InstitutionWorkList({ groups, selectedKey, onSelect, renderDetail, detailExpanded = true, onToggleDetail, activityState = "ready" }: Props) {
   const activeInstitution = groups.find((group) => group.items.some((item) => item.key === selectedKey))?.institution;
   const [openInstitutions, setOpenInstitutions] = useState<Set<string>>(
     () => new Set(activeInstitution !== undefined ? [activeInstitution] : groups[0] ? [groups[0].institution] : []),
@@ -40,14 +45,16 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect }: P
               <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-semibold text-red-700">{group.count}건</span>
               <span className="shrink-0 text-xs text-slate-400" aria-hidden>{open ? "⌃" : "⌄"}</span>
             </button>
-            {open && (
-              <div className="space-y-1 border-t border-red-100 p-1.5" role="listbox" aria-label={`${group.institution || "기관 미입력"} 진행건`}>
+            {(open || (renderDetail && active)) && (
+              <div hidden={!open} className="space-y-1 border-t border-red-100 p-1.5" role={renderDetail ? "group" : "listbox"} aria-label={`${group.institution || "기관 미입력"} 진행건`}>
                 {group.items.map((item) => {
                   const selected = item.key === selectedKey;
+                  const inlineOpen = Boolean(renderDetail && selected && detailExpanded);
                   return (
-                    <button key={item.key} type="button" role="option" aria-selected={selected} data-work-key={item.key}
-                      onClick={() => onSelect(item)}
-                      className={`relative w-full border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${selected ? "z-10 rounded-lg border-red-400 bg-gradient-to-r from-red-100 via-red-50 to-red-50 shadow-sm min-[1280px]:rounded-r-none min-[1280px]:border-r-0" : "rounded-lg border-transparent hover:border-red-100 hover:bg-red-50/40"} ${item.muted && !selected ? "opacity-60" : ""}`}>
+                    <div key={item.key}>
+                    <button type="button" role={renderDetail ? undefined : "option"} aria-selected={renderDetail ? undefined : selected} aria-current={renderDetail && selected ? "true" : undefined} aria-expanded={renderDetail ? inlineOpen : undefined} aria-controls={inlineOpen ? `payment-inline-detail-${item.key}` : undefined} data-work-key={item.key}
+                      onClick={() => selected && renderDetail ? onToggleDetail?.() : onSelect(item)}
+                      className={`relative w-full border px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${selected ? `z-10 border-red-400 bg-gradient-to-r from-red-100 via-red-50 to-red-50 shadow-sm ${inlineOpen ? "rounded-t-lg border-b-red-100" : "rounded-lg"} min-[1280px]:rounded-r-none min-[1280px]:border-r-0` : "rounded-lg border-transparent hover:border-red-100 hover:bg-red-50/40"} ${item.muted && !selected ? "opacity-60" : ""}`}>
                       <span className="flex min-w-0 items-center gap-1.5">
                         <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-900">{item.company}</span>
                         <span className="shrink-0 text-[11px] font-semibold text-red-700">진행 {item.slot}</span>
@@ -55,8 +62,13 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect }: P
                       <span className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-slate-500">
                         <span className="min-w-0 flex-1 truncate">{item.product || "상품 미입력"}</span>
                         <span className="shrink-0 tabular-nums">{item.progress}%</span>
+                        {renderDetail && <span className={`shrink-0 rounded px-1.5 py-0.5 font-semibold tabular-nums ${activityState !== "ready" || item.activityKind === "none" ? "bg-slate-100 text-slate-600" : item.activityKind === "history" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`} aria-label={activityState === "loading" ? "활동 불러오는 중" : activityState === "error" ? "활동 조회 실패" : item.activityKind === "none" ? "Todo·History 없음" : item.activityKind === "history" ? `최근 History ${item.activityLabel}` : `미완료 Todo ${item.activityLabel}`}>
+                          {activityState === "loading" ? "…" : activityState === "error" ? "조회 실패" : <>{item.activityKind === "history" ? "History " : item.activityKind === "todo" ? "Todo " : ""}{item.activityLabel}</>}
+                        </span>}
                       </span>
                     </button>
+                    {renderDetail && selected && <div id={`payment-inline-detail-${item.key}`} hidden={!detailExpanded} className="rounded-b-lg border border-t-0 border-red-400 bg-white">{renderDetail(item)}</div>}
+                    </div>
                   );
                 })}
               </div>
