@@ -1041,12 +1041,13 @@ app/(app)/dashboard/page.tsx
     PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
-    생산성 + WeeklyGoalSummary / FunnelChart  # ≥1600px: 3열(생산성|목표|퍼널)
-    WeeklyDualChart / ChannelPerformance
-    DashboardWorkStatus > WorkStatusBar  # 본문 맨 아래, 실무/수납과 동일한 전체 진행건
+    [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
+    FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열)
 ```
 
-대시보드 상단 카드 묶음은 PC에서 자연 높이 그대로 둔다(`pc:items-start`, stretch 빈칸 없음 — 긴 PT과제는 목표 카드만 자란다). 차트 높이는 셸 스코프 max-height(퍼널 220·추이 260·도넛 160, viewBox + meet 스케일·무클리핑·중앙 정렬)로 균형을 맞춘다. 주간 목표와 퍼널은 `rounded-2xl bg-white p-3 shadow-sm`을 사용하고, 주간 목표 제목은 다른 카드와 같은 `h-5 w-1` 민트(`teal-400`) 강조선을 둔다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
+**카드 서식 통일(2026-09-28)**: 대시보드 본문 카드 6종(생산성·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨을 그대로 쓴다.
+
+**높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간 목표의 PT과제 상자는 `mt-auto`로 바닥, ≥1600px 생산성 카드는 진행건 위 남는 칸을 `flex-1`로 채운다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
 `DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다. 이월·해지·숨김 계약을 동일하게 제외하고, 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
 
@@ -1171,17 +1172,14 @@ app/(app)/dashboard/page.tsx
 
 ### 9-7. ChannelPerformance
 
-**용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`).
+**용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`) + 채널 표 1개. 높이를 줄이려고(2026-09-28 belie) 도넛 제목을 도넛 **왼쪽**에 붙이고, 도넛별 범례 2개와 계약단가 카드 4개를 채널 표 하나로 합쳤다(채널 색이 같아 범례가 중복이었다).
 
 **구조**:
-- **좌**: 채널별 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외)
-  - 가운데: `−총비용` (만원 단위, brand red)
-  - 도넛 밑: 채널별 비용 + % 라벨 리스트
-- **우**: 채널별 DB유입 도넛 (4채널 — 콜·지·기·소 포함)
-  - 가운데: 총유입 건수 (blue-700)
-  - 도넛 밑: 채널별 유입 + % 라벨 리스트
+- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−총비용` (만원 단위, brand red)
+- **우**: `채널별 DB유입` 제목 + 유입 도넛 (4채널 — 콜·지·기·소 포함), 가운데 총유입 건수 (blue-700)
+- **아래 채널 표**: 채널(색 dot) · 비용(만원 + %) · DB유입(건 + %) · 계약단가 — 4행
 
-**SVG (각 도넛)**: `viewBox="0 0 170 160"`, `cx=85 cy=80 r=48 stroke=20`, `rotate(-90)` 12시 시작.
+**SVG (각 도넛)**: `viewBox="0 0 116 116"`(여백 없음), `cx=58 cy=58 r=48 stroke=20`, `rotate(-90)` 12시 시작, 표시 `h-24 w-24`(402px 미만 — 360px 폰에서 옆 제목이 쪼개지지 않게) / `md:h-28 md:w-28`. 값이 0이어도 옅은 바탕 고리(`#f1f5f9`)를 그린다.
 
 **섹션 제목 액센트**: `w-1 h-5 rounded-full bg-red-500`.
 
@@ -1191,11 +1189,10 @@ app/(app)/dashboard/page.tsx
 
 **제거**: 콜·지·기·소 수임비 별도 박스 (사용자 결정 2026-05-08 — 빼버림).
 
-**채널별 계약단가** (도넛 2개 아래 full-width, 사용자 결정 2026-05-08):
-- 4채널 grid (`grid-cols-4 gap-2`)
-- 공식: `채널 비용 ÷ 채널 계약건수` (1계약당 들어간 비용 — 낮을수록 효율적)
-- 콜·지·기·소는 비용 0이라 "—" 표시 + "비용 없음" 부연
-- 각 셀: 채널 색 dot + 채널명 + 단가(만원) + "비용 ÷ 건수" 보조
+**채널별 계약단가** (채널 표의 마지막 열, 사용자 결정 2026-05-08 · 표 통합 2026-09-28):
+- 공식: `채널 비용 ÷ 채널 계약건수` (1계약당 들어간 비용 — 낮을수록 효율적). 열 제목에 마우스를 올리면 설명이 뜬다
+- 비용이 없거나(콜·지·기·소) 계약이 0건이면 "—"
+- "비용 ÷ 건수" 보조는 셀에 마우스를 올리면 보인다(`title`)
 
 ---
 
@@ -1476,13 +1473,14 @@ button:focus, input:focus, select:focus {
   컴포넌트라 코드상 `width="wide"` 를 유지하고, 학생 셸 전폭은 `app/globals.css` 의
   `.desktop-shell` 스코프(`.desktop-glass-header > div`, `.page-banner > div`,
   `.weeklygoal-main > div` + `.weeklygoal-main` 거터, `.week-nav-row`,
-  차트 훅 `.funnel-svg`(220px)/`.weekly-trend-svg`(260px)/`.channel-donut-svg`(160px)
-  max-height, `.app-shell-main` 데스크탑 여백 0)가 ≥1024px에서만 해제한다. 전역
+  차트 훅 `.chart-fill`(퍼널·주차 추이가 카드의 남은 높이를 채움, 최소 14rem),
+  `.app-shell-main` 데스크탑 여백 0)가 ≥1024px에서만 해제한다. 전역
   `max-w` 오버라이드는 금지 — admin/trainer/auth 캡이 그대로 보존된다.
   주간목표 공용 Content 에는 무조건 `pc:` 캡·거터 클래스를 두지 않는다(트레이너
   보조 화면 번짐 버그) — 학생 전폭·거터는 셸 스코프가 맡는다. 차트 SVG 는
-  viewBox + `preserveAspectRatio="xMidYMid meet"` 유지라 캡 안에서도 종횡비·중앙
-  정렬·라벨 가독성이 보존된다(클리핑·압축 없음). 모바일(<1024) SVG 무변경.
+  viewBox + `preserveAspectRatio="xMidYMid meet"` 유지라 채움 영역 안에서도 종횡비·중앙
+  정렬이 보존된다(클리핑·압축 없음). 퍼널·추이 SVG 는 모바일(<1024)에서 무변경.
+  채널별 성과 도넛은 모든 폭에서 고정 크기(402px 미만 `h-24 w-24`, 이상 `h-28 w-28`)다.
   구 수납 `min-[1440px]:max-w-none` 특례는 fluid 로 대체(삭제).
   DB ≥1440px 2열은 채널 선택 후(`activeCh !== null`)에만 적용한다.
 - 파일: `components/PageContainer.tsx`.

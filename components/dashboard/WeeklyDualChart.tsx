@@ -60,9 +60,9 @@ export default function WeeklyDualChart({ points }: Props) {
     .join(" ");
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
       {/* 섹션 제목 + 범례 */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-slate-500" />
         <h2 className="text-base font-extrabold text-gray-900">주차 추이</h2>
         <span className="text-xs text-gray-400">코스 {weeks}주 기준</span>
@@ -78,7 +78,8 @@ export default function WeeklyDualChart({ points }: Props) {
         </div>
       </div>
 
-      {/* weekly-trend-svg: desktop max-height from .desktop-shell scope only. */}
+      {/* chart-fill: 데스크탑에서만 카드의 남은 높이를 채운다(globals.css ④). 모바일 무변경. */}
+      <div className="chart-fill flex flex-1 items-center">
       <svg viewBox="0 0 358 200" preserveAspectRatio="xMidYMid meet" className="weekly-trend-svg w-full" aria-label={`코스 ${weeks}주 주차 추이`}>
         {/* 가로 그리드 (활동량 50%, 100%) */}
         <line
@@ -190,6 +191,7 @@ export default function WeeklyDualChart({ points }: Props) {
           계약수(건)
         </text>
       </svg>
+      </div>
     </section>
   );
 }

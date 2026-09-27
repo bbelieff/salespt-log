@@ -158,13 +158,16 @@ export default function DashboardPage() {
                 wide1600+(뷰포트−사이드바 224 ≥1376, 6칸 그리드 — 2026-09-28 belie 안):
                 윗줄 [생산성+전체 진행건 | 주간목표] 반반, 아랫줄 [퍼널 | 추이 | 채널] 3등분.
                 좌측 래퍼를 contents 로 풀어 DOM 순서(생산성→진행건→목표→퍼널→추이→채널)는
-                그대로다. 모바일은 원래 stacked 순서. items-start + flex-none: 카드 자연 높이
-                그대로 — stretch 빈칸 없음. 차트 높이는 .desktop-shell 스코프 max-height
-                (퍼널 220/추이 260/도넛 160, meet 스케일·클리핑 없음)로 균형. */}
-            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 min-[1600px]:grid-cols-6">
+                그대로다. 모바일은 원래 stacked 순서.
+                높이 정렬(2026-09-28 belie): items-stretch 로 같은 줄 카드의 바닥선을 맞춘다.
+                줄 높이는 카드 내용(차트 영역 최소 14rem 포함)이 정하고, 퍼널·추이 차트는
+                .desktop-shell .chart-fill 로 남은 높이를 채운다(차트 비율이 줄을 키우지 않음,
+                meet 스케일·클리핑 없음). 범례·PT과제는 바닥, 넓은 화면 생산성 카드는 진행건 위
+                남는 칸을 채운다(flex-1). 채널별 성과는 도넛 제목을 좌측에 붙이고 표 1개로 합쳐 줄였다. */}
+            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-stretch pc:gap-3 pc:space-y-0 min-[1600px]:grid-cols-6">
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:contents min-[1600px]:space-y-0">
                 <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:col-span-3">
-                  <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} />
+                  <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} className="min-[1600px]:flex-1" />
                   <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
                 </div>
                 <WeeklyGoalSummary className="pc:flex-none min-[1600px]:col-span-3" />
