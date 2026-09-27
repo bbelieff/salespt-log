@@ -205,24 +205,30 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     expect(src).toContain("pc:min-h-0");
   });
 
-  it("DB: channel chooser stays first, form/list grouped, summary aside", () => {
+  it("DB: overall, channel chooser, details and add form follow the requested order", () => {
     const src = read("app/(app)/db/page.tsx");
-    expect(src).toContain(
-      "min-[1440px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]",
-    );
+    const workspaceSrc = read("app/(app)/db/_components/DbChannelWorkspace.tsx");
     const chooser = src.indexOf('aria-label="입력할 채널"');
+    const channelHint = src.indexOf("CHANNELS[activeCh].hint");
     const workspace = src.indexOf("<DbChannelWorkspace");
     const overall = src.indexOf("<OverallCard");
     expect(chooser).toBeGreaterThan(-1);
+    expect(overall).toBeLessThan(chooser);
+    expect(chooser).toBeLessThan(channelHint);
+    expect(channelHint).toBeLessThan(workspace);
     expect(chooser).toBeLessThan(workspace);
-    expect(workspace).toBeLessThan(overall);
-    // Desktop 2-col applies only after a channel is picked — no empty left /
-    // half-width Overall when activeCh is null.
-    expect(src).toMatch(/activeCh !== null \?/);
-    // Visited forms stay mounted (no extra clicks), no fixed-height boxes.
+    // 선택 채널 작업대는 전체 너비를 사용한다.
+    expect(src).not.toContain("min-[1440px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]");
+    const summary = workspaceSrc.indexOf("<CostSummary");
+    const list = workspaceSrc.indexOf("<RowList");
+    const add = workspaceSrc.indexOf("<RowForm channel={ch} initial={addInitial}");
+    expect(summary).toBeLessThan(list);
+    expect(list).toBeLessThan(add);
+    expect(workspaceSrc).toContain("min-[1440px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]");
+    // 채널 전환 시 초안과 목록 스크롤 정책은 유지한다.
     expect(src).toContain("hidden={channel !== activeCh}");
-    expect(src).not.toMatch(/max-h-\[500px\]/);
-    expect(src).not.toContain("overflow-hidden");
+    expect(workspaceSrc).not.toMatch(/max-h-\[500px\]/);
+    expect(workspaceSrc).not.toContain("overflow-hidden");
   });
 
   it("contact: date→channel→input before the slot list, same DOM order", () => {
