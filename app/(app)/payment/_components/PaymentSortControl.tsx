@@ -22,14 +22,14 @@ export default function PaymentSortControl({
   onChange: (k: PaymentSortKey) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label="정렬">
+    <div className="flex gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1.5" role="group" aria-label="정렬">
       {OPTIONS.map((o) => (
         <button
           key={o.key}
           type="button"
           onClick={() => onChange(o.key)}
           aria-pressed={value === o.key}
-          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+          className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${
             value === o.key
               ? "border-brand-red bg-red-50 text-brand-red"
               : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
