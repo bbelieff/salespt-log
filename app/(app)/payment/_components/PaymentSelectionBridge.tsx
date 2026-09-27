@@ -27,10 +27,14 @@ const PaymentSelectionBridge = forwardRef<SVGSVGElement, { mode?: "company" | "i
 
 export default PaymentSelectionBridge;
 
-/** 곡선이 선택 행 위아래로 벌어지는 높이(px). */
-const BRIDGE_FLARE = 24;
 /** 상세 패널 외곽선(1px)을 덮는 폭(px). */
 const BRIDGE_OVERLAP = 2;
+
+/** 선택 박스의 모서리 R(px) — 연결부의 역라운드도 같은 R 로 뒤집어 쓴다. */
+function cornerRadius(el: HTMLElement): number {
+  const r = parseFloat(getComputedStyle(el).borderTopLeftRadius);
+  return Number.isFinite(r) && r > 0 ? r : 12;
+}
 
 export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HTMLDivElement | null, bridge: SVGSVGElement | null) {
   const detail = root?.querySelector<HTMLElement>(".payment-detail-shell");
@@ -54,16 +58,18 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   const startY = Math.max(0, Math.min(height, top - panel.top));
   const endY = Math.max(0, Math.min(height, bottom - panel.top));
   if (endY <= startY) { bridge.style.opacity = "0"; return; }
-  // 곡선은 양 끝 접선이 수평인 S자로 넉넉히(FLARE) 벌어져 패널 외곽선에 붙는다.
-  const upperY = Math.max(0, startY - BRIDGE_FLARE);
-  const lowerY = Math.min(height, endY + BRIDGE_FLARE);
-  const midX = width * 0.5;
-  const upper = `M 0 ${startY} C ${midX} ${startY} ${midX} ${upperY} ${width} ${upperY}`;
-  const lowerCurve = `C ${midX} ${lowerY} ${midX} ${endY} 0 ${endY}`;
+  // 물방울 연결: 선택 박스의 위·아래 직선이 상세 패널 앞까지 그대로 뻗고, 끝에서 박스와 같은 R 로
+  // 바깥쪽(위는 위로, 아래는 아래로) 뒤집혀 휘어 패널 외곽선에 수직으로 붙는다(역라운드).
+  const r = Math.max(0, Math.min(cornerRadius(selected), width, startY, height - endY));
+  const upperY = startY - r;
+  const lowerY = endY + r;
+  const straight = width - r;
+  const upper = `M 0 ${startY} L ${straight} ${startY} A ${r} ${r} 0 0 0 ${width} ${upperY}`;
+  const lowerCurve = `A ${r} ${r} 0 0 0 ${straight} ${endY} L 0 ${endY}`;
   // 채움은 패널 외곽선(1px) 위로 BRIDGE_OVERLAP 만큼 들어가 이어지는 구간의 테두리를 지운다.
   const edgeX = width + BRIDGE_OVERLAP;
   bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upper} L ${edgeX} ${upperY} L ${edgeX} ${lowerY} L ${width} ${lowerY} ${lowerCurve} Z`);
-  // 외곽선은 두 곡선만 — 이어지는 구간에는 세로선을 긋지 않는다.
+  // 외곽선은 박스 위·아래 선의 연장 + 역라운드만 — 이어지는 구간에는 세로선이 없다.
   bridge.querySelector("[data-bridge-edge]")?.setAttribute("d", `${upper} M ${width} ${lowerY} ${lowerCurve}`);
   bridge.setAttribute("viewBox", `0 0 ${edgeX} ${height}`);
   const bounds = root.getBoundingClientRect();
