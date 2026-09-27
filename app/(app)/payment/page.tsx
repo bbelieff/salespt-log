@@ -305,8 +305,8 @@ export default function PaymentPage() {
         {/* Drive 바로가기 */}
         <DriveLinkBar />
 
-        {/* 이전 계약업체 등록 + 아레나/이월 매출 분리 (arena-start-revenue-split) */}
-        <PriorContractSection contracts={rows} courseStartISO={courseStartISO} />
+        {/* 모바일 업무매뉴얼·정책자금 뉴스 바로가기 */}
+        <PriorContractSection />
 
         {/* 업체 검색·정렬: PC에서는 한 줄, 모바일에서는 기존 순서. */}
         {!list.isLoading && !list.isError && rows.length > 0 && (
