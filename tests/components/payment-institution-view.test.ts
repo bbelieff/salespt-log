@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ContractPayment, PaymentSlot, Todo } from "@/types";
-import { buildInstitutionWorkItems, groupInstitutionWorkItems } from "@/app/(app)/payment/_lib/institution-view";
+import { buildCompanyActivities, buildInstitutionWorkItems, companyActivityKey, groupInstitutionWorkItems } from "@/app/(app)/payment/_lib/institution-view";
 
 const slot = (over: Partial<PaymentSlot> = {}): PaymentSlot => ({
   진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0,
@@ -100,5 +100,24 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
     expect(items.map((item) => [item.slot, item.institution, item.activityLabel])).toEqual([
       [1, "소진공", "D-01"], [2, "신보", "D+00"],
     ]);
+  });
+
+  it("업체 카드는 여러 진행의 가장 이른 미완료 Todo, 없으면 최근 History를 대표로 삼는다", () => {
+    const rows = [
+      contract(3, "기록없음", []),
+      contract(4, "한일만", [slot({ 진행기관: "신보" })]),
+      contract(5, "여러진행", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
+    ];
+    const records = [
+      todo("한일만", "신보", "2026-09-26", { 기록종류: "history" }),
+      todo("한일만", "신보", "2026-09-28", { 기록종류: "history" }),
+      todo("여러진행", "신보", "2026-09-28", { 기록종류: "history" }),
+      todo("여러진행", "신보", "2026-10-01"),
+      todo("여러진행", "소진공", "2026-09-29"),
+      todo("여러진행", "소진공", "2026-09-25", { 완료여부: true }),
+    ];
+    const activities = buildCompanyActivities(buildInstitutionWorkItems(rows, "", records, "2026-09-28"));
+    expect(rows.map((row) => activities.get(companyActivityKey(row))?.activityLabel)).toEqual(["D-??", "D+00", "D-01"]);
+    expect(activities.get(companyActivityKey(rows[2]!))?.activityKind).toBe("todo");
   });
 });

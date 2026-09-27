@@ -21,6 +21,8 @@ import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
+import type { WorkActivitySummary } from "../_lib/institution-view";
+import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import { useTodosByContract } from "@/query/todos-hooks";
@@ -56,6 +58,8 @@ interface Props {
   focusRequestId?: number;
   highlight?: string;
   courseStartISO?: string;
+  activity?: WorkActivitySummary;
+  activityState?: ActivityLoadState;
 }
 
 export default function ContractRow({
@@ -80,6 +84,8 @@ export default function ContractRow({
   focusRequestId,
   highlight,
   courseStartISO,
+  activity,
+  activityState,
 }: Props) {
   const isCarryover = isCarryoverContract(cp, courseStartISO ?? "");
   const isTerminated = isTerminatedContract(cp);
@@ -292,13 +298,14 @@ export default function ContractRow({
           {ordinal}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-gray-900">
+          <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-gray-900">
             {isCarryover && <CarryoverBadge 구분="이월" variant="badge" />}
             {isTerminated && (
               <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">해지</span>
             )}
-            {renderNameWithHighlight(cp.업체명, highlight)}
+            <span className="min-w-0 truncate">{renderNameWithHighlight(cp.업체명, highlight)}</span>
             {isComplete && <span className="text-xs text-green-600">✓</span>}
+            {(activity || activityState) && <WorkActivityBadge activity={activity} state={activityState} />}
           </div>
           <div
             className="mt-0.5 text-xs text-gray-500"

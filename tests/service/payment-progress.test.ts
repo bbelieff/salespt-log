@@ -67,6 +67,17 @@ describe("sortContracts", () => {
     const r = sortContracts(rows, "progress-desc");
     expect(r.map((x) => x.row)).toEqual([7, 6, 8]); // 80,40,20
   });
+  it("activity: D-?? → 최근 History → 임박 Todo 순으로 업체를 정렬한다", () => {
+    const activities = new Map([
+      [4, { activityKind: "history" as const, activityDate: "2026-09-26" }],
+      [5, { activityKind: "todo" as const, activityDate: "2026-09-29" }],
+      [6, { activityKind: "history" as const, activityDate: "2026-09-28" }],
+      [7, { activityKind: "todo" as const, activityDate: "2026-09-28" }],
+    ]);
+    const input = [7, 4, 5, 3, 6].map((row) => cp({ row }));
+    expect(sortContracts(input, "activity", (item) => activities.get(item.row!)).map((item) => item.row))
+      .toEqual([3, 6, 4, 7, 5]);
+  });
   it("원본 불변", () => {
     const before = rows.map((x) => x.row);
     sortContracts(rows, "date-asc");

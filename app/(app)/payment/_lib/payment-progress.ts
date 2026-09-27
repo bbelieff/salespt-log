@@ -83,10 +83,28 @@ export function contractProgress(cp: ContractPayment): number {
 }
 
 export type PaymentSortKey =
+  | "activity"
   | "date-asc"
   | "date-desc"
   | "progress-asc"
   | "progress-desc";
+
+export interface ActivitySortValue {
+  activityKind: "none" | "history" | "todo";
+  activityDate: string;
+}
+
+/** D-?? → 최근 History → 임박 Todo. 조회 전 활동은 미기록으로 취급한다. */
+export function compareWorkActivity(a?: ActivitySortValue, b?: ActivitySortValue): number {
+  const priority = { none: 0, history: 1, todo: 2 };
+  const aKind = a?.activityKind ?? "none";
+  const bKind = b?.activityKind ?? "none";
+  const category = priority[aKind] - priority[bKind];
+  if (category) return category;
+  if (aKind === "history") return (b?.activityDate ?? "").localeCompare(a?.activityDate ?? "");
+  if (aKind === "todo") return (a?.activityDate ?? "").localeCompare(b?.activityDate ?? "");
+  return 0;
+}
 
 /** 계약일 파싱(ms). 빈값/파싱불가 → null(정렬 끝으로). */
 function dateMs(s: string): number | null {
@@ -98,11 +116,14 @@ function dateMs(s: string): number | null {
 export function sortContracts(
   rows: ContractPayment[],
   key: PaymentSortKey,
+  activityFor?: (cp: ContractPayment) => ActivitySortValue | undefined,
 ): ContractPayment[] {
   const withIdx = rows.map((cp, i) => ({ cp, i }));
   withIdx.sort((a, b) => {
     let d = 0;
-    if (key === "date-asc" || key === "date-desc") {
+    if (key === "activity") {
+      d = compareWorkActivity(activityFor?.(a.cp), activityFor?.(b.cp));
+    } else if (key === "date-asc" || key === "date-desc") {
       const ma = dateMs(a.cp.계약일);
       const mb = dateMs(b.cp.계약일);
       if (ma === null && mb === null) d = 0;

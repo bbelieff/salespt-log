@@ -1,5 +1,5 @@
 import { isCarryoverContract, isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
-import { progressPct } from "./payment-progress";
+import { compareWorkActivity, progressPct } from "./payment-progress";
 import { slotHasData } from "@/lib/analytics/payment-work-status";
 import { normalizeInstitution } from "@/lib/util/institution-match";
 
@@ -7,6 +7,7 @@ export type WorkActivityKind = "none" | "history" | "todo";
 
 export interface InstitutionWorkItem {
   key: string;
+  contractKey: string;
   row: number | null;
   slot: 1 | 2 | 3;
   company: string;
@@ -17,6 +18,28 @@ export interface InstitutionWorkItem {
   activityKind: WorkActivityKind;
   activityDate: string;
   activityLabel: string;
+}
+
+export type WorkActivitySummary = Pick<InstitutionWorkItem, "activityKind" | "activityDate" | "activityLabel">;
+
+export function companyActivityKey(cp: Pick<ContractPayment, "row" | "계약일" | "업체명">): string {
+  return cp.row != null ? `row:${cp.row}` : `contract:${cp.계약일}|${cp.업체명}`;
+}
+
+/** 업체 카드는 전체 진행의 가장 이른 미완료 Todo, 없으면 가장 최근 History를 대표로 보여준다. */
+export function buildCompanyActivities(items: InstitutionWorkItem[]): Map<string, WorkActivitySummary> {
+  const byCompany = new Map<string, WorkActivitySummary>();
+  const priority = { none: 0, history: 1, todo: 2 };
+  for (const item of items) {
+    const current = byCompany.get(item.contractKey);
+    const next = { activityKind: item.activityKind, activityDate: item.activityDate, activityLabel: item.activityLabel };
+    if (!current || priority[next.activityKind] > priority[current.activityKind] ||
+      (next.activityKind === current.activityKind && (
+        next.activityKind === "todo" ? next.activityDate < current.activityDate :
+          next.activityKind === "history" && next.activityDate > current.activityDate
+      ))) byCompany.set(item.contractKey, next);
+  }
+  return byCompany;
 }
 
 export interface InstitutionGroup {
@@ -88,6 +111,7 @@ export function buildInstitutionWorkItems(
       const date = kind === "todo" ? activity!.todo : kind === "history" ? activity!.history : "";
       out.push({
         key: `${cp.row ?? `${cp.계약일}|${cp.업체명}`}-${slot}`,
+        contractKey: companyActivityKey(cp),
         row: cp.row ?? null,
         slot,
         company: cp.업체명,
@@ -124,11 +148,7 @@ export function groupInstitutionWorkItems(
     count: matches.length,
     // 모바일은 활동 우선순위, PC는 기존 상품명순을 유지한다.
     items: [...matches].sort((a, b) =>
-      (sortBy === "activity" ?
-        ({ none: 0, history: 1, todo: 2 })[a.activityKind] - ({ none: 0, history: 1, todo: 2 })[b.activityKind] ||
-        (a.activityKind === "history" ? b.activityDate.localeCompare(a.activityDate) :
-          a.activityKind === "todo" ? a.activityDate.localeCompare(b.activityDate) : 0)
-        : 0) ||
+      (sortBy === "activity" ? compareWorkActivity(a, b) : 0) ||
       sortNamedLast(a.product, b.product) || ko.compare(a.company, b.company) ||
       a.slot - b.slot || (a.row ?? 0) - (b.row ?? 0)),
   })).sort((a, b) => sortNamedLast(a.institution, b.institution));

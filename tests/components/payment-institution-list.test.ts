@@ -10,11 +10,11 @@ Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
 const groups: InstitutionGroup[] = [
   { institution: "소진공", count: 2, items: [
-    { key: "3-1", row: 3, slot: 1, company: "한빛상사", institution: "소진공", product: "혁신성장", progress: 60, muted: false, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" },
-    { key: "4-2", row: 4, slot: 2, company: "두리상사", institution: "소진공", product: "일반형", progress: 20, muted: false, activityKind: "none", activityDate: "", activityLabel: "D-??" },
+    { key: "3-1", contractKey: "row:3", row: 3, slot: 1, company: "한빛상사", institution: "소진공", product: "혁신성장", progress: 60, muted: false, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" },
+    { key: "4-2", contractKey: "row:4", row: 4, slot: 2, company: "두리상사", institution: "소진공", product: "일반형", progress: 20, muted: false, activityKind: "none", activityDate: "", activityLabel: "D-??" },
   ] },
   { institution: "신보", count: 1, items: [
-    { key: "5-1", row: 5, slot: 1, company: "가온상사", institution: "신보", product: "", progress: 0, muted: false, activityKind: "history", activityDate: "2026-09-27", activityLabel: "D+01" },
+    { key: "5-1", contractKey: "row:5", row: 5, slot: 1, company: "가온상사", institution: "신보", product: "", progress: 0, muted: false, activityKind: "history", activityDate: "2026-09-27", activityLabel: "D+01" },
   ] },
 ];
 

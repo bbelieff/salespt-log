@@ -42,7 +42,7 @@ import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
-import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
+import { buildCompanyActivities, buildInstitutionWorkItems, companyActivityKey, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { useAllTodos } from "@/query/todos-hooks";
 import { fmtDate, fmtMoney } from "./_components/nameHighlight";
 import { checkedCount, TOTAL_CHECKBOXES } from "./_components/CheckboxList";
@@ -87,7 +87,7 @@ export default function PaymentPage() {
   const [selectedWorkKey, setSelectedWorkKey] = useState<string | null>(null);
   const [mobileDetailExpanded, setMobileDetailExpanded] = useState(true);
   const [focusRequestId, setFocusRequestId] = useState(0);
-  const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
+  const [sortKey, setSortKey] = useState<PaymentSortKey>("activity");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   /** 계약해지 모달 대상 (contract-termination). */
@@ -208,8 +208,10 @@ export default function PaymentPage() {
     ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
     : rows;
   // 정렬(필터 결과에 적용) — 렌더·선택폴백·ordinal 모두 sortedRows 기준 일관(§P8).
-  const visibleRows = sortContracts(filteredRows, sortKey);
   const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? []);
+  const companyActivities = buildCompanyActivities(institutionItems);
+  const activityState = allTodos.isError ? "error" : allTodos.data ? "ready" : "loading";
+  const visibleRows = sortContracts(filteredRows, sortKey, (cp) => companyActivities.get(companyActivityKey(cp)));
   const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "", isPc ? "product" : "activity");
   const institutionVisible = institutionGroups.flatMap((group) => group.items);
   const selectedWork = institutionVisible.find((item) => item.key === selectedWorkKey) ?? institutionVisible[0];
@@ -331,7 +333,7 @@ export default function PaymentPage() {
               {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
               ) : listMode === "company" ? <ContractListTable
-                rows={visibleRows}
+                rows={visibleRows} activities={companyActivities} activityState={activityState}
                 selectedRow={selectedCp?.row ?? null}
                 onSelect={(row) => guardedNav(() => setSelectedRow(row))}
                 highlight={companyQuery}
@@ -380,7 +382,7 @@ export default function PaymentPage() {
               <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
             ) : listMode === "institution" ? <InstitutionWorkList
               groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
-              activityState={allTodos.isError ? "error" : allTodos.data ? "ready" : "loading"}
+              activityState={activityState}
               detailExpanded={mobileDetailExpanded} onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
               renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-red-100 px-2.5 py-2 text-[11px] text-slate-500">
@@ -399,7 +401,7 @@ export default function PaymentPage() {
             /> : visibleRows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
-                cp={cp}
+                cp={cp} activity={companyActivities.get(companyActivityKey(cp))} activityState={activityState}
                 ordinal={i + 1}
                 pending={pendingRow === cp.row}
                 institutionOptions={institutionOptions}
