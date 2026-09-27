@@ -36,6 +36,7 @@ import {
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
 import { writeTermination } from "@/repo/contract-payment-termination";
+import { isManualContractLink, meetingIdFromLink } from "@/util/contract-link";
 
 /** R3-2: 04 미팅 프리미티브(meetings-write)에 게이트 판정 재료(cohort·email)를 넘기기 위해
  * spreadsheetId 단독 대신 ctx 반환 — 02 시트 경로 자체는 R3-3 소관으로 불변.
@@ -149,12 +150,14 @@ export async function editContractLinkedFields(
     }
   }
   // 04 미팅: 업체명 G·수임비 L 만. 미팅날짜 D 비접촉(계약일은 04 미반영 — 통계 안전).
-  if ((업체명Changed || 수임료Changed) && input.meetingId) {
+  // 「영업기록 없이 추가」 행의 AK(manual:…)는 미팅 id 가 아니다 → 04 는 건드리지 않는다.
+  const linkedMeetingId = meetingIdFromLink(input.meetingId);
+  if ((업체명Changed || 수임료Changed) && linkedMeetingId) {
     try {
       const partial: { 업체명?: string; 수임비?: number } = {};
       if (업체명Changed) partial.업체명 = new업체명;
       if (수임료Changed) partial.수임비 = input.next.수임비;
-      await patchMeetingRecord(ctx, input.meetingId, partial);
+      await patchMeetingRecord(ctx, linkedMeetingId, partial);
     } catch {
       failures.push("04 업체관리(미팅)");
     }
@@ -175,7 +178,7 @@ export async function editContractLinkedFields(
 }
 
 // addFromContract(미팅에서 계약)·addPriorContract(이전 계약 직접등록) — 500줄 캡으로 분리(R3-3 선례).
-export { addFromContract, addPriorContract } from "./contract-payment-add";
+export { addFromContract, addPriorContract, addStandaloneContract } from "./contract-payment-add";
 
 /** CompanyInfo 에 채워진 값이 하나라도 있는지(전부 빈 문자열·빈 커스텀이면 false). */
 function hasCompanyInfo(ci: CompanyInfo | null | undefined): boolean {
@@ -358,11 +361,15 @@ export async function removeContractPaymentWithCascade(
 
   // 1) 삭제 전 row 의 (계약일, 업체명) 읽기 — cascade key.
   // resolveLayout 경유로 6기 `02 계약관리` 탭 alias 자동 처리 (bugfix 2026-06).
-  const { 계약일, 업체명 } = await readContractCascadeKey(spreadsheetId, row);
+  const { 계약일, 업체명, linkId } = await readContractCascadeKey(spreadsheetId, row);
 
   // 2) clearRow — 파일럿은 시트+DB 동시(조용한 반쪽 삭제 금지)
   await clearRow(spreadsheetId, row, { syncDb });
 
+  // 「영업기록 없이 추가」 행은 미팅이 없다 — 같은 날짜·이름의 무관한 계약 미팅을 되돌리지 않는다.
+  if (isManualContractLink(linkId)) {
+    return { cascade: "영업기록 없이 추가한 업체 — 되돌릴 미팅 없음", meetingId: null, 미팅날짜: null };
+  }
   // 3) 매칭 미팅 찾기 (R3-2: 파일럿=DB — 읽기 동반 전환)
   if (!계약일 || !업체명) {
     return {

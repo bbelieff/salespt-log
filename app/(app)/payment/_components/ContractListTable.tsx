@@ -8,6 +8,7 @@ import { progressPct } from "../_lib/payment-progress";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
+import { isManualContractLink } from "@/util/contract-link";
 
 interface Props {
   items: CompanyWorkItem[];
@@ -42,6 +43,7 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
               <span className="flex min-w-0 items-center gap-2">
                 <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>
+                {isManualContractLink(cp.linkedMeetingId) && <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">영업기록 없음</span>}
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">진행 없음</span>}
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">조회 중</span>}
               </span>

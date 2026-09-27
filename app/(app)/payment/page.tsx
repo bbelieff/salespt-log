@@ -34,6 +34,7 @@ import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
 import TerminationArchive from "./_components/TerminationArchive";
 import PriorContractSection from "./_components/PriorContractSection";
+import StandaloneCompanyAdd from "./_components/StandaloneCompanyAdd";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
 import PaymentListModeTabs from "./_components/PaymentListModeTabs";
@@ -271,6 +272,7 @@ export default function PaymentPage() {
   });
   const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
 
+  const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
       <TopHeader
@@ -317,10 +319,10 @@ export default function PaymentPage() {
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>
-        ) : rows.length === 0 ? (
+        ) : rows.length === 0 ? (<div className="space-y-3">{standaloneAdd}
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
-            아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
-          </div>
+            아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가되고, 위 버튼으로 바로 추가할 수도 있어요.
+          </div></div>
         ) : isPc ? (
           /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
@@ -328,6 +330,7 @@ export default function PaymentPage() {
             <div className="flex min-h-0 min-w-0 flex-col">
               <div className="shrink-0 p-1.5">{listModeTabs}</div>
               <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
+              {standaloneAdd}
               {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
               ) : listMode === "company" ? <ContractListTable
@@ -374,7 +377,7 @@ export default function PaymentPage() {
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
           <div>
-            <div className="mb-2">{listModeTabs}</div>
+            <div className="mb-2">{listModeTabs}</div>{standaloneAdd}
             {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
             ) : listMode === "institution" ? <InstitutionWorkList

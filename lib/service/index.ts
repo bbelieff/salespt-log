@@ -77,6 +77,7 @@ export {
   loadContractPayments,
   addFromContract,
   addPriorContract,
+  addStandaloneContract,
   syncContractFee,
   patchContractPayment,
   editContractLinkedFields,

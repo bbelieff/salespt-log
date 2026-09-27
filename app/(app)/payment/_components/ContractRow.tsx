@@ -26,6 +26,7 @@ import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import { useTodosByContract } from "@/query/todos-hooks";
+import { isManualContractLink } from "@/util/contract-link";
 import {
   ACCENT,
   contractAccentFamily,
@@ -304,6 +305,7 @@ export default function ContractRow({
               <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">해지</span>
             )}
             <span className="min-w-0 truncate">{renderNameWithHighlight(cp.업체명, highlight)}</span>
+            {isManualContractLink(cp.linkedMeetingId) && <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">영업기록 없음</span>}
             {isComplete && <span className="text-xs text-green-600">✓</span>}
             {(activity || activityState) && <WorkActivityBadge activity={activity} state={activityState} />}
           </div>

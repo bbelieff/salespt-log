@@ -18,6 +18,10 @@
 - 결정: 카드 6종 한 틀(`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm`, 제목 mb-2). 그리드 `pc:items-stretch` + 카드 안 흡수(퍼널·추이 `.chart-fill` 로 남은 높이 채움 — svg 흐름 밖, 최소 14rem; PT과제 mt-auto; 넓은 화면 생산성 flex-1). 채널별 성과 = 도넛 제목 좌측 + 도넛별 범례 2개·계약단가 카드 4개를 채널 표 1개로 통합.
 - 실측(합성 fixture + desktop-shell): 1920·1600 아랫줄 3카드 모두 255px(기존 채널 카드 약 450px·줄 309px), 윗줄 바닥 일치. 1280·1100 2열 각 줄 바닥 일치, 375 모바일 가로 넘침 없음.
 - 독립 검토(3관점 12건 → 반박 검증 2표): 확인 6건 반영 — 360px 폰에서 도넛 옆 제목이 글자 단위로 쪼개짐(→ 402px 미만 도넛 96px + break-keep, 360 실측 2줄), 긴 총비용이 도넛 고리에 닿음(→ 글자 수별 글꼴 축소), 옛 max-height 서술·죽은 도넛 캡·카드 제목 문구 정정, 높이 정렬 테스트 보강. 기각 6건(차트 글자 크기·퍼센트 반올림·툴팁 접근성 등)은 반박 근거대로 미반영.
+### 2026-09-28 · Claude(워크플로 하위작업) · 실무/수납 「영업기록 없이 업체추가」 (feat/payment-standalone-company)
+- 업체 모드 목록 맨 위·빈 안내에 점선 버튼 → 인라인 폼(업체명·계약일·수임비). `POST /api/contract-payment/standalone` → `addStandaloneContract` → `appendFromContract(meetingId=manual:<requestKey>)`, 이월 강제 없음(계약일로 isCarryoverContract 판정).
+- `manual:` 링크를 미팅 id 로 오인하지 않게 `lib/util/contract-link.ts` 로 편집(04 patch 생략)·삭제 cascade(미팅 복원 생략)·해지 차감(제외)을 가드. payment 기존 파일은 한두 줄 삽입만(page.tsx 500줄).
+- 남은 위험·되돌리기: `docs/plans/active/payment-standalone-company.md`. push·PR·배포는 이 작업 범위 밖(미수행).
 
 ### 2026-09-28 · Codex · 업체 목록 활동 날짜 표시와 정렬
 - 사용자 요청에 따라 업체 보기의 PC·모바일 목록에도 진행기관 보기와 같은 `D-??`·`History D+00`·`Todo D-00` 배지를 표시한다. 기본 `활동순`은 미기록 → 최근 History → 임박 Todo이며 기존 등록일·진행도 정렬은 유지한다.

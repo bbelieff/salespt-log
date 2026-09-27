@@ -91,7 +91,7 @@ vi.mock("@/repo/db/mirror", () => ({
   mirrorClearRow: vi.fn(),
 }));
 
-import { appendFromContract } from "@/repo/contract-payment";
+import { appendFromContract, findRowByLink } from "@/repo/contract-payment";
 
 beforeEach(() => {
   reset();
@@ -109,6 +109,16 @@ describe("appendFromContract — meetingId 자연키 upsert (BBE-53 수용기준
     expect(r2.row).toBe(r3.row);
     expect(store.size).toBe(1);
     expect(store.get(r1.row)?.AK).toBe("m-1");
+  });
+
+  it("영업기록 없이 추가(manual:<requestKey>) 재시도도 1행 — 이월(AI:AJ) 미기록", async () => {
+    const data = { 계약일: "2026-09-10", 업체명: "예시상사", 수임비: 3_000_000, meetingId: "manual:11111111-1111-4111-8111-111111111111" };
+    const r1 = await appendFromContract(SHEET, data);
+    const r2 = await appendFromContract(SHEET, data); // 응답 유실 후 같은 requestKey 로 재시도
+    expect(r1.row).toBe(r2.row);
+    expect(store.size).toBe(1);
+    expect(store.get(r1.row)?.AK).toBe(data.meetingId);
+    expect(store.get(r1.row)?.AI).toBeUndefined();
   });
 
   it("다른 meetingId 는 다른 행 — 정상 계약은 서로 안 합쳐짐", async () => {
@@ -141,6 +151,27 @@ describe("appendFromContract — meetingId 자연키 upsert (BBE-53 수용기준
     expect(r1.row).toBe(r2.row);
     expect(store.size).toBe(1);
     expect(store.get(r1.row)?.E).toBe(1_100_000);
+  });
+
+  it("같은 날짜·업체명의 미팅 계약은 「영업기록 없이 추가」 행을 덮어쓰지 않고 자기 행을 만든다(폴백에서 manual: 제외)", async () => {
+    const manual = { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 3_000_000, meetingId: "manual:22222222-2222-4222-8222-222222222222" };
+    const rManual = await appendFromContract(SHEET, manual);
+    const rMeeting = await appendFromContract(
+      SHEET, { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 1_000_000, meetingId: "m-9" }, undefined, undefined, true,
+    );
+    expect(rMeeting.row).not.toBe(rManual.row);
+    expect(store.size).toBe(2);
+    expect(store.get(rManual.row)?.AK).toBe(manual.meetingId);
+    expect(store.get(rManual.row)?.E).toBe(3_000_000);
+  });
+
+  it("findRowByLink (계약일+업체명) 폴백은 manual: 행을 건너뛰고, 자기 manual id 로는 찾힌다", async () => {
+    const manual = { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 3_000_000, meetingId: "manual:33333333-3333-4333-8333-333333333333" };
+    const rManual = await appendFromContract(SHEET, manual);
+    expect(await findRowByLink(SHEET, { 계약일: "2026-07-10", 업체명: "가나상사" })).toBeNull();
+    const rMeeting = await appendFromContract(SHEET, { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 1_000_000, meetingId: "m-10" });
+    expect(await findRowByLink(SHEET, { 계약일: "2026-07-10", 업체명: "가나상사" })).toBe(rMeeting.row);
+    expect(await findRowByLink(SHEET, { meetingId: manual.meetingId })).toBe(rManual.row);
   });
 
   it("arena-carryover 호출 형태(meetingId 없음·dateCompanyFallback 안 넘김)는 기존처럼 매번 새 행 — 동작 무변경(수용기준 4)", async () => {
