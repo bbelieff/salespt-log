@@ -71,6 +71,7 @@ interface ConfirmTarget {
 export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey }) {
   const router = useRouter();
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [listOpen, setListOpen] = useState(true);
   const [pendingRow, setPendingRow] = useState<number | "add" | null>(null);
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
@@ -259,10 +260,68 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
 
   return (
     <>
-{/* 추가 폼 — 별도 저장 버튼 없음. 완성된 입력이 그룹을 벗어나면 자동 생성. */}
+      <div className="min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] min-[1440px]:items-start min-[1440px]:gap-4">
+        <div className="min-w-0">
+          {/* 합계 카드 (선택 채널) */}
+          <div
+            className="mb-4 rounded-xl border-l-4 bg-white p-4 shadow-sm"
+            style={{ borderLeftColor: ch.color }}
+          >
+            {ch.isCost && summary ? (
+              <CostSummary
+                channel={ch}
+                rowCount={rows.length}
+                totalCost={summary.totalCost}
+                avgUnit={summary.avgUnit}
+                totalQty={summary.totalCount}
+                unitLabel={summary.unitLabel}
+              />
+            ) : (
+              <LeadSummary count={rows.length} />
+            )}
+          </div>
+
+          {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
+          <h3 className="mb-2 text-sm font-semibold text-gray-700">
+            <button
+              type="button"
+              aria-expanded={listOpen}
+              aria-controls={`db-${activeCh}-records`}
+              onClick={() => guardedNav(() => setListOpen((open) => !open))}
+              className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            >
+              <span>{ch.recordsLabel}</span>
+              <span className="text-xs font-medium text-slate-500">{rows.length}건 <span aria-hidden="true">{listOpen ? "▴" : "▾"}</span></span>
+            </button>
+          </h3>
+          <div id={`db-${activeCh}-records`} hidden={!listOpen}>
+            <RowList
+              loading={overview.isLoading}
+              error={overview.isError ? overview.error : null}
+              rows={rows}
+              ch={ch}
+              chKey={activeCh}
+              expandedRow={expandedRow}
+              pendingRow={pendingRow}
+              badgeCls={BADGE_CLS[activeCh]}
+              onExpand={(rowNum) =>
+                // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
+                guardedNav(() => {
+                  dismissAdd();
+                  setExpandedRow(rowNum);
+                })
+              }
+              onCollapse={() => guardedNav(() => setExpandedRow(null))}
+              onSave={handleSave}
+              onDeleteRequest={requestDelete}
+            />
+          </div>
+        </div>
+        <div className="min-w-0">
+          {/* 추가 폼 — 좁은 화면에서는 목록 뒤, 풀사이즈에서는 오른쪽. */}
         {addOpen && (
           <div
-            className="mb-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md"
+            className="mt-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md min-[1440px]:mt-0"
             onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
                 void flushAdd().catch(() => {});
@@ -311,67 +370,6 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             </div>
           </div>
         )}
-
-        {/* 힌트 카드 */}
-        <div
-          className="mb-3 flex items-start gap-2 rounded-xl border px-3 py-2.5"
-          style={{
-            background: ch.bgLight,
-            borderColor: ch.borderLight,
-            color: ch.textDark,
-          }}
-        >
-          <span className="shrink-0 text-base">💡</span>
-          <p className="flex-1 text-xs leading-relaxed">{ch.hint}</p>
-        </div>
-
-        {/* 합계 카드 (선택 채널) */}
-        <div
-          className="mb-4 rounded-xl border-l-4 bg-white p-4 shadow-sm"
-          style={{ borderLeftColor: ch.color }}
-        >
-          {ch.isCost && summary ? (
-            <CostSummary
-              channel={ch}
-              rowCount={rows.length}
-              totalCost={summary.totalCost}
-              avgUnit={summary.avgUnit}
-              totalQty={summary.totalCount}
-              unitLabel={summary.unitLabel}
-            />
-          ) : (
-            <LeadSummary count={rows.length} />
-          )}
-        </div>
-
-        {/* 행 리스트 헤더 */}
-        <div className="mb-2 flex items-center justify-between px-1">
-          <h3 className="text-sm font-semibold text-gray-700">
-            {ch.recordsLabel}
-          </h3>
-        </div>
-
-        <RowList
-          loading={overview.isLoading}
-          error={overview.isError ? overview.error : null}
-          rows={rows}
-          ch={ch}
-          chKey={activeCh}
-          expandedRow={expandedRow}
-          pendingRow={pendingRow}
-          badgeCls={BADGE_CLS[activeCh]}
-          onExpand={(rowNum) =>
-            // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
-            guardedNav(() => {
-              dismissAdd();
-              setExpandedRow(rowNum);
-            })
-          }
-          onCollapse={() => guardedNav(() => setExpandedRow(null))}
-          onSave={handleSave}
-          onDeleteRequest={requestDelete}
-        />
-
         {/* + 추가 버튼 */}
         {!addOpen && !overview.isLoading && (
           <button
@@ -383,11 +381,13 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                 setExpandedRow(null);
               })
             }
-            className="mt-3 w-full rounded-xl border-2 border-dashed border-gray-300 bg-white py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600"
+            className="mt-3 w-full rounded-xl border-2 border-dashed border-gray-300 bg-white py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600 min-[1440px]:mt-0"
           >
             + {ch.recordsLabel} 추가
           </button>
         )}
+        </div>
+      </div>
       {/* 토스트 */}
       {toast && (
         <div className="fixed left-1/2 top-5 z-[200] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
