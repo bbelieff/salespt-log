@@ -7,6 +7,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-28 · Claude(워크플로 하위작업) · 문서로 자동입력 PR-5 — 서류 파서 4종 (feat/company-doc-parsers)
+- 신분증·부가세 과세표준증명·재무제표·임대차계약서 파서를 `lib/document-ocr/registry.ts` PARSERS 에 등록 → "곧 지원돼요" 상태 제거(남은 미지원 = 모르는 문서 뿐).
+- 금액 표기를 `lib/document-ocr/amount.ts` 하나로 통합(자율결정: "3,200만"·"1.2억"·"1억 2,500만" — 천만 단위로 떨어질 때만 소수 억, 반올림으로 금액이 바뀌지 않게). 매출 칸은 기존 "백만".
+- 개인정보: `redactOcrText` 가 공백 낀 주민등록번호도 가리고 면허번호 식을 신분증 파서와 공유. 팝업·레지스트리 경로 테스트로 뒷자리·면허번호 비노출 확인. 가린 원문이라 생년월일 세기는 늘 추정+경고(표시값 YY.MM.DD 엔 영향 없음).
+- 자율결정: 부가세 예정(1~3월)+확정(4~6월)처럼 안 겹치는 기간은 합산. 실물 OCR 미실측. 상세·되돌리기 = `docs/plans/active/company-doc-parsers.md`. push·PR·배포 미수행.
+
 ### 2026-09-28 · Claude(워크플로 하위작업) · 업체정보 「문서로 자동입력」 PR-4 (feat/company-doc-autofill)
 - CompanyInfoEditor 헤더 버튼 → 팝업: 여러 서류 끌어놓기 → 이 기기 안 OCR(tesseract.js 7.0.0·pdfjs-dist 6.3.289, MoaWork 엔진 이식) → 문서 종류 자동 판별 → 비교표에서 체크한 칸만 기존 `apply()` 로 반영(새 저장 경로 없음).
 - 파서는 사업자등록증만(법인등록번호 포함). 나머지 4종은 분류만 + "곧 지원돼요" — PR-5 는 `lib/document-ocr/registry.ts` PARSERS 에 등록만 하면 됨.

@@ -286,10 +286,9 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
                     </div>
                   ) : f.status === "error" ? (
                     <p className="mt-1 text-red-600" role="alert">✕ {f.message}</p>
-                  ) : f.docType === "unknown" ? (
-                    <p className="mt-1 text-gray-500">어떤 서류인지 알아보지 못했어요. 옆에서 서류 종류를 골라 주세요.</p>
                   ) : !isSupportedDocType(f.docType) ? (
-                    <p className="mt-1 text-gray-500">이 문서는 곧 지원돼요</p>
+                    // 다섯 서류 파서가 모두 등록돼 있어 여기 오는 건 "모르는 문서" 뿐이다.
+                    <p className="mt-1 text-gray-500">어떤 서류인지 알아보지 못했어요. 옆에서 서류 종류를 골라 주세요.</p>
                   ) : (
                     <div className="mt-1 text-gray-500">
                       {(result?.fields.length ?? 0) > 0 ? (

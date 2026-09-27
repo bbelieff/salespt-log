@@ -4,7 +4,8 @@
  *  ① 파일 고르기 → 파일 행(문서 종류 자동 판별) → 비교표 행.
  *  ② 기본 체크: 빈 칸만 체크, 지금 값이 있으면 해제. 상호는 참고 정보로만.
  *  ③ 「선택 항목 적용」 = 체크된 칸만 onApply. 편집기에서는 기존 set 경로(stage)로 들어간다.
- *  ④ 등록 안 된 문서 종류 = "이 문서는 곧 지원돼요", 칸 없음. Esc 로 닫힘.
+ *  ④ 다섯 서류 모두 파서가 붙는다(임대차계약서 → 임차보증금). 신분증은 가린 원문으로 읽어
+ *     뒷자리·운전면허번호가 화면 어디에도 없다. Esc 로 닫힘.
  */
 import * as React from "react";
 import { act, createElement as h } from "react";
@@ -143,13 +144,32 @@ describe("CompanyDocAutofillDialog", () => {
     expect(pick!.options).toHaveLength(2);
   });
 
-  it("지원 전 문서는 '곧 지원돼요' 이고 칸을 채우지 않는다", async () => {
+  it("임대차계약서도 읽어 임차보증금·소유여부 칸을 제안한다", async () => {
     ocrText.value = LEASE_TEXT;
     mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
     await pickFiles(png("lease.png"));
-    expect(document.body.textContent).toContain("이 문서는 곧 지원돼요");
-    expect(document.querySelector("table")).toBeNull();
-    expect(buttonByText("선택 항목 적용").disabled).toBe(true);
+    expect(document.body.textContent).not.toContain("곧 지원돼요");
+    expect(document.querySelector("table")!.textContent).toContain("1,000만");
+    expect(buttonByText("선택 항목 적용").disabled).toBe(false);
+  });
+
+  it("신분증 — 주민등록번호 뒷자리·운전면허번호는 화면 어디에도 없다", async () => {
+    ocrText.value = [
+      "자동차운전면허증",
+      "11-12-345678-90",
+      "홍길동",
+      "800101 - 1 234 567",
+      "서울특별시 강남구 예시대로 100",
+    ].join("\n");
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
+    await pickFiles(png("id.png"));
+    const shown = document.body.textContent ?? "";
+    expect(shown).toContain("800101-");
+    expect(shown).toContain("홍길동");
+    const digits = shown.replace(/\D/g, "");
+    expect(digits).not.toContain("1234567");
+    expect(digits).not.toContain("11123456789");
+    expect(digits).not.toContain("34567890");
   });
 
   it("형식이 안 맞는 파일은 OCR 없이 오류 안내", async () => {

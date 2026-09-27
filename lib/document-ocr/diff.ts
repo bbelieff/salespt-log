@@ -121,3 +121,9 @@ export function selectedPatch(
   }
   return out;
 }
+
+/** 충돌 행 고르기 상자의 한 줄 이름 — 여러 줄 값(반기별매출)은 첫 줄 + " 외"(option 은 줄바꿈을 못 보여 준다). */
+export function optionLabel(value: string): string {
+  const lines = value.split("\n").filter((l) => l.trim());
+  return lines.length > 1 ? `${lines[0]} 외` : value;
+}

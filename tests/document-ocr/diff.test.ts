@@ -10,6 +10,7 @@ import {
   accuracyOf,
   buildDiffRows,
   checkState,
+  optionLabel,
   defaultCheckFor,
   selectedPatch,
 } from "@/lib/document-ocr/diff";
@@ -140,5 +141,12 @@ describe("checkState — 충돌 행에서 고른 후보 기준 안내(리뷰 회
     expect(checkState(row.current, row.candidates[0]!).note).toBe(SAME_NOTE);
     expect(checkState(row.current, row.candidates[1]!).note).toBe(KEEP_NOTE);
     expect(checkState("", { value: "x", confidence: 0.4, warnings: [], sources: [], valid: false }).note).toBe(INVALID_NOTE);
+  });
+});
+
+describe("optionLabel — 충돌 행 고르기 상자 이름", () => {
+  it("여러 줄 값은 첫 줄 + 외, 한 줄 값은 그대로", () => {
+    expect(optionLabel(["25년 하반기 1.5억", "25년 상반기 1.2억"].join(String.fromCharCode(10)))).toBe("25년 하반기 1.5억 외");
+    expect(optionLabel("25' 250백만")).toBe("25' 250백만");
   });
 });
