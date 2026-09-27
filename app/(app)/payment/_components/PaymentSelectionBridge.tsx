@@ -3,17 +3,18 @@
 import { forwardRef } from "react";
 
 /** 선택 행의 경계에서 상세 배경으로 퍼지는 역라운드 연결부. */
-const PaymentSelectionBridge = forwardRef<SVGSVGElement>(function PaymentSelectionBridge(_, ref) {
+const PaymentSelectionBridge = forwardRef<SVGSVGElement, { mode?: "company" | "institution" }>(function PaymentSelectionBridge({ mode = "company" }, ref) {
+  const institution = mode === "institution";
   return (
     <svg ref={ref} aria-hidden="true" preserveAspectRatio="none" className="payment-selection-link pointer-events-none absolute z-20 overflow-visible opacity-0 transition-opacity duration-150">
       <defs>
         <linearGradient id="payment-selection-gradient" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#eff6ff" />
+          <stop offset="0%" stopColor={institution ? "#fef2f2" : "#eff6ff"} />
           <stop offset="100%" stopColor="#ffffff" />
         </linearGradient>
       </defs>
       <path data-bridge-fill fill="url(#payment-selection-gradient)" />
-      <path data-bridge-edge fill="none" stroke="#60a5fa" strokeOpacity="0.8" strokeWidth="1" />
+      <path data-bridge-edge fill="none" stroke={institution ? "#f87171" : "#60a5fa"} strokeOpacity="0.8" strokeWidth="1" />
     </svg>
   );
 });

@@ -256,7 +256,7 @@ export default function PaymentPage() {
             else setSelectedRow(selectedWork?.row ?? selectedRow);
             setCompanyQuery(""); setListMode(mode);
           })}
-          className={`h-8 flex-1 rounded-md px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${listMode === mode ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+          className={`h-8 flex-1 rounded-md px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${mode === "institution" ? "focus-visible:ring-red-400" : "focus-visible:ring-blue-400"} ${listMode === mode ? mode === "institution" ? "bg-white text-red-700 shadow-sm" : "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
           {mode === "company" ? "업체" : "진행기관"}
         </button>
       ))}
@@ -332,12 +332,12 @@ export default function PaymentPage() {
               </div>
             </div>
             <button type="button" onPointerDown={beginResize} className="group relative z-10 h-full cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
-              <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors group-hover:bg-blue-400" />
+              <span className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors ${listMode === "institution" ? "group-hover:bg-red-400" : "group-hover:bg-blue-400"}`} />
             </button>
             {selectedCp && (
               <div className="payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl bg-white shadow-sm">
-                <div className="flex shrink-0 items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-100/95 via-indigo-50/95 to-white/95 px-4 py-2.5 backdrop-blur-xl">
-                  <div className="min-w-0"><h2 className="truncate text-base font-black text-blue-950">{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-blue-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
+                <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
+                  <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork && <p className="truncate text-[11px] text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p>}</div>
                   <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>
                 <ContractRow
@@ -362,7 +362,7 @@ export default function PaymentPage() {
                 />
               </div>
             )}
-            <PaymentSelectionBridge ref={bridgeRef} />
+            <PaymentSelectionBridge ref={bridgeRef} mode={listMode} />
           </div>
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
