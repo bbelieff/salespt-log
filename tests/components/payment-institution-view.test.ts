@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ContractPayment, PaymentSlot } from "@/types";
+import type { ContractPayment, PaymentSlot, Todo } from "@/types";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems } from "@/app/(app)/payment/_lib/institution-view";
 
 const slot = (over: Partial<PaymentSlot> = {}): PaymentSlot => ({
@@ -12,6 +12,12 @@ const contract = (row: number, company: string, slots: PaymentSlot[]): ContractP
   사업계획서초안발송: false, 컨설팅5종서류발송: false, 플러그이관: false,
   수납1: slots[0] ?? slot(), 수납2: slots[1] ?? slot(), 수납3: slots[2] ?? slot(),
   로드맵메모: "", 계약비고: "", 해지일: "", 해지사유: "", 반환액: 0, 해지숨김: false,
+});
+const todo = (company: string, institution: string, date: string, over: Partial<Todo> = {}): Todo => ({
+  id: `${company}-${institution}-${date}`, contractRef: `2026-09-04|${company}`,
+  institutionRef: institution, 업체명: company, type: "기타", 제목: "연락",
+  예정일자: date, 예정시각: "09:00", 장소: "", 상세: "", showOnCalendar: true,
+  완료여부: false, 생성시각: "", 분류: "", 기록종류: "todo", ...over,
 });
 
 describe("진행기관 보기의 계약→진행건 투영", () => {
@@ -61,5 +67,38 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
     expect(groups.find((g) => g.institution === "소진공")?.items.map((i) => i.product)).toEqual(["신취", "재도전", "혁신"]);
     expect(groups.find((g) => g.institution === "전북재단 부안지점")?.count).toBe(1);
     expect(rows[0]?.수납1.진행기관).toBe("소진공 신취");
+  });
+
+  it("D-?? → 최근 History → 임박 Todo 순으로 같은 기관의 진행건을 정렬한다", () => {
+    const rows = [
+      contract(3, "기록없음", [slot({ 진행기관: "신보" })]),
+      contract(4, "최근한일", [slot({ 진행기관: "신보" })]),
+      contract(5, "오래된한일", [slot({ 진행기관: "신보" })]),
+      contract(6, "오늘할일", [slot({ 진행기관: "신보" })]),
+      contract(7, "내일할일", [slot({ 진행기관: "신보" })]),
+      contract(8, "완료한일", [slot({ 진행기관: "신보" })]),
+      contract(9, "지난할일", [slot({ 진행기관: "신보" })]),
+    ];
+    const records = [
+      todo("최근한일", "신보", "2026-09-28", { 기록종류: "history" }),
+      todo("오래된한일", "신보", "2026-09-26", { 기록종류: "history" }),
+      todo("오늘할일", "신보", "2026-09-28"),
+      todo("내일할일", "신보", "2026-09-29"),
+      todo("완료한일", "신보", "2026-09-25", { 완료여부: true }),
+      todo("지난할일", "신보", "2026-09-27"),
+    ];
+    const items = groupInstitutionWorkItems(buildInstitutionWorkItems(rows, "", records, "2026-09-28"), "", "activity")[0]!.items;
+    expect(items.slice(0, 2).map((item) => item.activityLabel)).toEqual(["D-??", "D-??"]);
+    expect(items.slice(2).map((item) => item.company)).toEqual(["최근한일", "오래된한일", "지난할일", "오늘할일", "내일할일"]);
+    expect(items.slice(2).map((item) => item.activityLabel)).toEqual(["D+00", "D+02", "D+01", "D-00", "D-01"]);
+  });
+
+  it("Todo 연결에는 화면상 그룹명이 아니라 저장된 슬롯 기관명을 사용한다", () => {
+    const rows = [contract(3, "예시", [slot({ 진행기관: "소진공 신취 ", 진행상품: "" }), slot({ 진행기관: "신보" })])];
+    const records = [todo("예시", "소진공 신취", "2026-09-29"), todo("예시", "신보", "2026-09-28", { 기록종류: "history" })];
+    const items = buildInstitutionWorkItems(rows, "", records, "2026-09-28");
+    expect(items.map((item) => [item.slot, item.institution, item.activityLabel])).toEqual([
+      [1, "소진공", "D-01"], [2, "신보", "D+00"],
+    ]);
   });
 });

@@ -44,6 +44,8 @@ import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { useAllTodos } from "@/query/todos-hooks";
+import { fmtDate, fmtMoney } from "./_components/nameHighlight";
+import { checkedCount, TOTAL_CHECKBOXES } from "./_components/CheckboxList";
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
 function usePcBreakpoint(): boolean {
@@ -83,6 +85,7 @@ export default function PaymentPage() {
   const [companyQuery, setCompanyQuery] = useState("");
   const [listMode, setListMode] = useState<"company" | "institution">("company");
   const [selectedWorkKey, setSelectedWorkKey] = useState<string | null>(null);
+  const [mobileDetailExpanded, setMobileDetailExpanded] = useState(true);
   const [focusRequestId, setFocusRequestId] = useState(0);
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
   const [toast, setToast] = useState("");
@@ -206,14 +209,14 @@ export default function PaymentPage() {
     : rows;
   // 정렬(필터 결과에 적용) — 렌더·선택폴백·ordinal 모두 sortedRows 기준 일관(§P8).
   const visibleRows = sortContracts(filteredRows, sortKey);
-  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO);
-  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "");
+  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? []);
+  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "", isPc ? "product" : "activity");
   const institutionVisible = institutionGroups.flatMap((group) => group.items);
   const selectedWork = institutionVisible.find((item) => item.key === selectedWorkKey) ?? institutionVisible[0];
 
   // C: 선택 계약 — selectedRow 없거나 (검색)목록에 없으면 첫 카드로 폴백.
   const selectedCp = listMode === "institution"
-    ? selectedWork ? rows.find((r) => r.row === selectedWork.row) ?? rows[0] : undefined
+    ? selectedWork ? rows.find((r) => r.row === selectedWork.row) : undefined
     : visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
   // 선택 행이 스크롤 밖으로 나가면 연결부도 숨겨 상세 위에 잔상을 남기지 않는다.
   const syncBridge = () => syncPaymentSelectionBridge(workspaceRef.current, listPaneRef.current, bridgeRef.current);
@@ -246,8 +249,10 @@ export default function PaymentPage() {
   const selectWork = (item: InstitutionWorkItem) => guardedNav(() => {
     setSelectedWorkKey(item.key);
     setSelectedRow(item.row);
+    setMobileDetailExpanded(true);
     setFocusRequestId((id) => id + 1);
-    window.setTimeout(() => document.getElementById(`payment-slot-${item.row}-${item.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    // 모바일은 선택 업체 바로 아래에 상세가 열리므로 슬롯으로 강제 점프하지 않는다.
+    if (isPc) window.setTimeout(() => document.getElementById(`payment-slot-${item.row}-${item.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   });
   const listModeTabs = (
     <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1" role="group" aria-label="계약 목록 기준" data-payment-mode-tabs>
@@ -255,7 +260,7 @@ export default function PaymentPage() {
         <button key={mode} type="button" aria-pressed={listMode === mode}
           onClick={() => guardedNav(() => {
             if (mode === listMode) return;
-            if (mode === "institution") setSelectedWorkKey(institutionItems.find((item) => item.row === selectedCp?.row)?.key ?? null);
+            if (mode === "institution") { setSelectedWorkKey(institutionItems.find((item) => item.row === selectedCp?.row)?.key ?? null); setMobileDetailExpanded(true); }
             else setSelectedRow(selectedWork?.row ?? selectedRow);
             setCompanyQuery(""); setListMode(mode);
           })}
@@ -373,17 +378,25 @@ export default function PaymentPage() {
             <div className="mb-2">{listModeTabs}</div>
             {(listMode === "company" ? visibleRows.length : institutionVisible.length) === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
-            ) : listMode === "institution" ? <>
-              <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />
-              {selectedCp && <div className="mt-3" id="payment-mobile-detail"><ContractRow
-                key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
-                pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen
-                onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
-                onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={focusTodoId}
-                focusedSlot={selectedWork?.slot} courseStartISO={courseStartISO}
-                focusRequestId={focusRequestId}
-              /></div>}
-            </> : visibleRows.map((cp, i) => (
+            ) : listMode === "institution" ? <InstitutionWorkList
+              groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
+              activityState={allTodos.isError ? "error" : allTodos.data ? "ready" : "loading"}
+              detailExpanded={mobileDetailExpanded} onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
+              renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-red-100 px-2.5 py-2 text-[11px] text-slate-500">
+                  <span className="min-w-0 flex-1">{fmtDate(selectedCp.계약일)} · 수임비 ₩{fmtMoney(selectedCp.수임비)}</span>
+                  <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(selectedCp)}/{TOTAL_CHECKBOXES}</span>
+                </div>
+                <ContractRow
+                  key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
+                  pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
+                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                  onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={focusTodoId}
+                  focusedSlot={item.slot} courseStartISO={courseStartISO}
+                  focusRequestId={focusRequestId}
+                />
+              </> : null}
+            /> : visibleRows.map((cp, i) => (
               <ContractRow
                 key={cp.row}
                 cp={cp}
