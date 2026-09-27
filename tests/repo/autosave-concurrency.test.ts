@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
+import { stopTestPostgres } from "./pg-test-server";
 import type { IdemPool } from "@/repo/db/expense-idempotency";
 
 // CI requires this. Each module instance represents a separate application worker.
@@ -31,14 +32,7 @@ describe.skipIf(process.env.TRAINER_CONCURRENCY_PG !== "1")("autosave independen
   },30000);
   afterAll(async () => {
     if (pool) await pool.end();
-    // pool.end() resolves before the ended clients' sockets actually close. A fast stop
-    // then hits them with FATAL 57P01, which surfaces as an unhandled error and fails CI
-    // (runs 36298707404, 36299592336). Smart stop waits for those sessions to leave;
-    // fast stop stays as the fallback so a stuck session cannot hang teardown.
-    if (started) {
-      const stop = (mode: string) => execFileSync(join(bin,"pg_ctl"),["-D",join(dir,"data"),"-m",mode,"-t","10","-w","stop"],{stdio:"pipe"});
-      try { stop("smart"); } catch { stop("fast"); }
-    }
+    if (started) stopTestPostgres(bin, join(dir,"data"));
     if (dir) rmSync(dir,{recursive:true,force:true});
   },30000);
 
