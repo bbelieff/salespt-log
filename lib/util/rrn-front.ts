@@ -31,3 +31,21 @@ export function sanitizeRrnFrontTyping(input: unknown): string {
   if (digits.length === 6) return s.startsWith(digits) ? s.slice(0, 7) : `${digits}-`;
   return digits;
 }
+
+/**
+ * 생년월일 글 → 주민등록번호 앞자리 `YYMMDD-` (company-finance-won-grid, belie 2026-09-28).
+ * 편집기는 주민등록번호가 비었을 때 이 값을 **보여 주기만** 하고(열기만 해서 저장하지 않음),
+ * 사용자가 무엇이든 고칠 때 apply() 가 함께 저장한다. 못 읽으면 "".
+ *   "88.01.24" · "1988-01-24" · "880124" · "19880124" · "1988년 1월 24일" → "880124-"
+ */
+export function birthToRrnFront(input: unknown): string {
+  const s = String(input ?? "").replace(/\s+/g, "");
+  const m =
+    s.match(/^(\d{2})(\d{2})(\d{2})$/) ??
+    s.match(/^\d{2}(\d{2})(\d{2})(\d{2})$/) ??
+    s.match(/^(?:\d{2})?(\d{2})[.\-/년](\d{1,2})[.\-/월](\d{1,2})일?\.?$/);
+  if (!m) return "";
+  const [yy, mm, dd] = [m[1]!, m[2]!.padStart(2, "0"), m[3]!.padStart(2, "0")];
+  if (Number(mm) < 1 || Number(mm) > 12 || Number(dd) < 1 || Number(dd) > 31) return "";
+  return `${yy}${mm}${dd}-`;
+}

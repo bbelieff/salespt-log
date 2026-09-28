@@ -1,10 +1,11 @@
 /**
  * 문서로 자동입력 — 재무제표(표준재무제표증명) 파서. 네트워크 없음 · 합성 OCR 텍스트만(잡음 포함).
+ * 금액은 백만원 정본("3,200" · "-12.3") + 원문 원 금액(sourceWon). 천원 문서는 ×1,000 뒤 백만원.
+ * 부채비율·이자보상배율·당기순이익률은 파서가 채우지 않는다 — 편집기가 계산(company-finance-won-grid).
  */
 import { describe, expect, it } from "vitest";
 import {
   detectAmountUnit,
-  formatRatio,
   parseAmountTokens,
   parseFinancialStatement,
 } from "@/lib/document-ocr/parse-fs";
@@ -55,12 +56,6 @@ const FS_LOSS_WON = `
 `;
 
 describe("parse-fs 헬퍼", () => {
-  it("비율", () => {
-    expect(formatRatio(122.2222)).toBe("122.2");
-    expect(formatRatio(120)).toBe("120");
-    expect(formatRatio(-0.01)).toBe("0");
-  });
-
   it("단위 감지", () => {
     expect(detectAmountUnit("( 단 위 : 천 원 )")?.multiplier).toBe(1000);
     expect(detectAmountUnit("(단위: 원)")?.multiplier).toBe(1);
@@ -76,26 +71,35 @@ describe("parse-fs 헬퍼", () => {
 });
 
 describe("parseFinancialStatement", () => {
-  it("천원 단위 표준재무제표증명 — 금액·비율·과년도 매출", () => {
+  it("천원 단위 표준재무제표증명 — 백만원 금액·연도별 매출 합계(비율은 안 채움)", () => {
     const r = parseFinancialStatement(FS_THOUSAND, NOW);
     expect(val(r.fields)).toEqual({
       결산연도: "2025",
-      과년도매출: "25' 3,200백만",
-      과년도매출Y2: "24' 2,800백만",
-      영업이익: "2.4억",
-      당기순이익: "9,600만",
-      이자비용: "1억",
-      자산총계: "25억",
-      부채총계: "13억 7,500만",
-      자본총계: "11억 2,500만",
-      부채비율: "122.2%",
-      이자보상배율: "2.4배",
-      당기순이익률: "3%",
+      과년도매출: "3,200",
+      과년도매출Y2: "2,800",
+      영업이익: "240",
+      당기순이익: "96",
+      이자비용: "100",
+      자산총계: "2,500",
+      부채총계: "1,375",
+      자본총계: "1,125",
     });
-    // 매출증가율은 파서가 채우지 않는다 — 편집기가 연도별 매출(과년도매출·Y2)에서 3칸으로 계산.
-    expect(r.fields.map((x) => x.key)).not.toContain("매출증가율");
+    // 매출증가율·비율은 파서가 채우지 않는다 — 편집기가 금액 칸에서 계산.
+    for (const k of ["매출증가율", "부채비율", "이자보상배율", "당기순이익률"]) {
+      expect(r.fields.map((x) => x.key)).not.toContain(k);
+    }
+    expect(byKey(r.fields).과년도매출?.sourceWon).toBe(3_200_000_000);
+    expect(byKey(r.fields).영업이익?.sourceWon).toBe(240_000_000);
     expect(r.info).toContainEqual({ label: "금액 단위", value: "천원" });
+    expect(r.info).toContainEqual({ label: "매출액(당기)", value: "3,200백만원 (약 32억)" });
     expect(r.documentWarnings).toEqual([]);
+  });
+
+  it("매출 기준 연도로 칸을 고른다(결산연도 = 기준 연도면 Y)", () => {
+    const f = byKey(parseFinancialStatement(FS_THOUSAND, NOW, { baseYear: 2025 }).fields);
+    expect(f.금년도매출?.value).toBe("3,200");
+    expect(f.과년도매출?.value).toBe("2,800");
+    expect(f.과년도매출Y2).toBeUndefined();
   });
 
   it("주민등록번호는 어떤 결과에도 남지 않는다", () => {
@@ -109,18 +113,17 @@ describe("parseFinancialStatement", () => {
     const r = parseFinancialStatement(FS_LOSS_WON, NOW);
     const f = byKey(r.fields);
     expect(f.결산연도?.value).toBe("2023");
-    expect(f.과년도매출Y3?.value).toBe("23' 400백만");
+    expect(f.과년도매출Y3?.value).toBe("400");
     expect(f.과년도매출).toBeUndefined();
-    expect(f.영업이익?.value).toBe("-1,235만");
-    expect(f.당기순이익?.value).toBe("-2,000만");
-    expect(f.자본총계?.value).toBe("-3,000만");
-    expect(f.이자비용?.value).toBe("0원");
+    expect(f.영업이익?.value).toBe("-12.3");
+    expect(f.영업이익?.sourceWon).toBe(-12_345_678);
+    expect(f.당기순이익?.value).toBe("-20");
+    expect(f.자본총계?.value).toBe("-30");
+    expect(f.이자비용?.value).toBe("0");
     expect(f.이자보상배율).toBeUndefined();
-    expect(f.부채비율?.value).toBe("자본잠식");
-    expect(f.부채비율?.warnings.join()).toContain("자본잠식");
-    expect(f.당기순이익률?.value).toBe("-5%");
+    expect(f.부채비율).toBeUndefined();
+    expect(f.당기순이익률).toBeUndefined();
     expect(f.매출증가율).toBeUndefined();
-    expect(r.documentWarnings.join()).toContain("이자보상배율");
   });
 
   it("오래된 연도 매출은 넣지 않고, 단위가 없으면 경고", () => {
@@ -128,8 +131,10 @@ describe("parseFinancialStatement", () => {
     const r = parseFinancialStatement(text, NOW);
     const f = byKey(r.fields);
     expect(f.결산연도?.value).toBe("2020");
-    expect(f.과년도매출 ?? f.과년도매출Y2 ?? f.과년도매출Y3).toBeUndefined();
-    expect(f.이자보상배율?.value).toBe("5배");
+    expect(f.과년도매출 ?? f.과년도매출Y2 ?? f.과년도매출Y3 ?? f.금년도매출).toBeUndefined();
+    expect(f.영업이익?.value).toBe("50");
+    expect(f.이자비용?.value).toBe("10");
+    expect(f.이자보상배율).toBeUndefined();
     expect(r.documentWarnings.join()).toContain("단위");
     expect(r.documentWarnings.join()).toContain("2020년 매출");
     expect(f.영업이익!.confidence).toBeLessThan(0.6);
@@ -147,10 +152,11 @@ describe("parseFinancialStatement", () => {
       "당기순이익(손실)  (45,000)",
     ].join("\n");
     const f = byKey(parseFinancialStatement(text, NOW).fields);
-    expect(f.과년도매출?.value).toBe("25' 1,500백만");
+    expect(f.과년도매출?.value).toBe("1,500");
     expect(f.과년도매출?.warnings.join()).toContain("다음 줄");
-    expect(f.영업이익?.value).toBe("-3,000만");
-    expect(f.당기순이익률?.value).toBe("-3%");
+    expect(f.영업이익?.value).toBe("-30");
+    expect(f.당기순이익?.value).toBe("-45");
+    expect(f.당기순이익률).toBeUndefined();
   });
 
   it("대차가 안 맞으면 경고하고 신뢰도를 낮춘다", () => {

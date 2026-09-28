@@ -1,15 +1,16 @@
 /**
- * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~CC) 드롭다운 + 팝업 편집.
+ * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~CD) 드롭다운 + 팝업 편집.
  * 정본: consultation-log-and-calendar.md §3-2 (2026-06-11 혼합 그리드 확정)
- *       + company-info-restructure(belie 2026-09-28 — 섹션 순서·선택형 칸·매출 재배치).
+ *       + company-info-restructure · company-finance-won-grid(belie 2026-09-28).
  * contact/schedule/payment 공용 — 탭별 분기 금지.
  *
  * 섹션 순서 = [대표자] → [기업정보] → [재무]. 반응형 3단계: 기본(<390) 1열 강하 · sm(390+) 혼합
  * 그리드(2열, short=span1, long=span2) · 2xl(768+) [대표자]|[기업정보] 그룹 좌우 2단(모달·PC 카드).
- * [재무] = 두 그룹 아래 전폭 섹션, 같은 카드·그리드 규격(커스텀 추가 없음).
- * 필드 정의 = company-info-defs.ts, 칸 그리기 = components/company-info/*(보통 칸·선택형·매출 묶음).
- * 저장 직전(apply) 매출증가율 3칸을 연도별 매출로 다시 계산한다(withSalesGrowth) — 직접 입력·
- * 문서 자동입력 어느 경로든 같은 값이 저장된다. 기업정보 그룹의 커스텀 저장 키는 "업체" 그대로.
+ * [재무] = 두 그룹 아래 전폭 섹션, 같은 카드·그리드 규격(커스텀 추가 없음). 금액은 백만원.
+ * 필드 정의 = company-info-defs.ts, 칸 그리기 = components/company-info/*(CompanyInfoItem).
+ * 저장 직전(apply) 연도별 합계·매출증가율·재무 비율·기준 연도·주민등록번호 앞자리를 다시 채운다
+ * (deriveCompanyInfo) — 직접 입력·문서 자동입력 어느 경로든 같은 값이 저장된다. 열기만 해선 저장 없음.
+ * 기업정보 그룹의 커스텀 저장 키는 "업체" 그대로.
  */
 "use client";
 
@@ -18,8 +19,8 @@ import { createPortal } from "react-dom";
 import { CompanyInfo } from "@/types";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
-import { isCorporation } from "@/util/company-choice";
-import { withSalesGrowth } from "@/util/company-sales";
+import { resolveBaseYear } from "@/util/company-sales";
+import { companyInfoForExport, deriveCompanyInfo } from "@/service/company-finance";
 import {
   type EditorItem,
   companyInfoFieldList,
@@ -27,9 +28,8 @@ import {
   대표자_ITEMS,
   재무_ITEMS,
 } from "./company-info-defs";
-import CompanyInfoField, { inputCls } from "./company-info/CompanyInfoField";
-import { BizTypeField, OwnershipField } from "./company-info/CompanyInfoChoiceFields";
-import CompanyInfoSalesFields from "./company-info/CompanyInfoSalesFields";
+import { inputCls } from "./company-info/CompanyInfoField";
+import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 
 type CI = CompanyInfo;
@@ -79,7 +79,7 @@ export default function CompanyInfoEditor({
   });
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
-  // 매출 연도 라벨 기준일 — 편집기를 연 날(렌더마다 바뀌지 않게 고정).
+  // 매출 기준 연도가 비었을 때 쓰는 오늘 — 편집기를 연 날(렌더마다 바뀌지 않게 고정).
   const [today] = useState(() => new Date());
   // 패널·모달이 같은 필드를 동시에 그리므로 위치(where)까지 넣어 id 충돌을 막는다.
   const uid = useId();
@@ -145,8 +145,8 @@ export default function CompanyInfoEditor({
       const res = await fetch("/api/company-info/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 연도 매출만 있고 아직 편집 전이라 증가율 칸이 비어 있어도 TXT 엔 계산값이 들어가게.
-        body: JSON.stringify({ 업체명: txtCompanyName, 업체정보: withSalesGrowth(draft) }),
+        // 아직 편집 전이라 합계·증가율·비율 칸이 비어 있어도 TXT 엔 저장할 때와 같은 계산값이 들어가게.
+        body: JSON.stringify({ 업체명: txtCompanyName, 업체정보: companyInfoForExport(draft, today) }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -171,9 +171,9 @@ export default function CompanyInfoEditor({
     }
   }
 
-  // 모든 편집(직접 입력·선택·문서 자동입력)이 지나는 한 곳 — 매출증가율 3칸을 여기서 다시 계산.
+  // 모든 편집(직접 입력·선택·문서 자동입력)이 지나는 한 곳 — 합계·증가율·비율 등을 여기서 다시 채운다.
   const apply = (fn: (d: CI) => CI) => {
-    const next = withSalesGrowth(fn(draft));
+    const next = deriveCompanyInfo(draft, fn(draft), today);
     if (auto) update(next);
     else stage(next);
   };
@@ -206,7 +206,7 @@ export default function CompanyInfoEditor({
     setNewLabel((n) => ({ ...n, [g]: "" }));
   };
 
-  const filled = companyInfoFieldList(today).filter(
+  const filled = companyInfoFieldList(resolveBaseYear(draft.매출기준연도, today)).filter(
     ([k]) => String(draft[k] ?? "").trim() !== "",
   ).length;
   const summary = draft.대표자이름?.trim()
@@ -220,63 +220,19 @@ export default function CompanyInfoEditor({
     setModal(false);
   };
 
-  // 한 항목 그리기 — 보통 칸 · 선택형(사업자구분·소유여부) · 한 줄 묶음 · 매출 묶음.
-  // wide = 2열 그리드에서 전폭(sm:col-span-2). inline(PC 좁은 단)은 1열이라 전폭 개념 없음.
-  const item = (it: EditorItem, i: number, inline: boolean, where: string) => {
-    const idBase = `${uid}-${where}`;
-    const wide = inline ? "block" : "block sm:col-span-2";
-    switch (it.kind) {
-      case "field": {
-        const [k, , , span] = it.def;
-        // 법인등록번호 = 법인일 때만 보인다. 이미 값이 있으면(옛 자유 글 구분·자동입력) 늘 보인다 — 숨은 데이터 방지.
-        if (it.onlyCorporation && !isCorporation(draft.사업자구분) && !String(draft[k] ?? "").trim()) return null;
-        return (
-          <CompanyInfoField
-            key={String(k)}
-            def={it.def}
-            value={String(draft[k] ?? "")}
-            onChange={set}
-            id={`${idBase}-${String(k)}`}
-            className={span === 2 ? wide : "block"}
-          />
-        );
-      }
-      case "bizType":
-        return <BizTypeField key="bizType" draft={draft} onPatch={patch} id={`${idBase}-사업자구분`} />;
-      case "ownership":
-        return (
-          <OwnershipField key={it.spec.key} spec={it.spec} draft={draft} onPatch={patch} idBase={idBase} className={wide} />
-        );
-      case "row":
-        // 좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 한 줄 — 가로 넘침 없음.
-        return (
-          <div key={`row-${i}`} className={`${wide} grid min-w-0 grid-cols-1 gap-1.5 xs:grid-cols-3`}>
-            {it.defs.map((d) => (
-              <CompanyInfoField
-                key={String(d[0])}
-                def={d}
-                value={String(draft[d[0]] ?? "")}
-                onChange={set}
-                id={`${idBase}-${String(d[0])}`}
-                className="block min-w-0"
-              />
-            ))}
-          </div>
-        );
-      case "sales":
-        return (
-          <CompanyInfoSalesFields
-            key="sales"
-            draft={draft}
-            onField={set}
-            idBase={idBase}
-            inline={inline}
-            today={today}
-            className={inline ? "" : "sm:col-span-2"}
-          />
-        );
-    }
-  };
+  // 한 항목 그리기 — components/company-info/CompanyInfoItem.tsx.
+  const item = (it: EditorItem, i: number, inline: boolean, where: string) => (
+    <CompanyInfoItem
+      key={i}
+      it={it}
+      draft={draft}
+      inline={inline}
+      idBase={`${uid}-${where}`}
+      today={today}
+      onField={set}
+      onPatch={patch}
+    />
+  );
 
   // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
   // g = 커스텀 필드 그룹(업체/대표자). 재무처럼 커스텀이 없는 그룹은 null.

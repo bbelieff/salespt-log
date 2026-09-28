@@ -32,8 +32,11 @@ export function hintIdOf(inputId: string, label: string, hint?: string): string 
   return hint && hint !== label ? `${inputId}-hint` : undefined;
 }
 
-/** 라벨 + (?) 설명. (?) 버튼은 <label> 밖 — 눌러도 입력칸이 포커스·활성되지 않는다. */
-export function FieldLabel({ htmlFor, label, hint }: { htmlFor: string; label: string; hint?: string }) {
+/**
+ * 라벨 + (?) 설명. (?) 버튼은 <label> 밖 — 눌러도 입력칸이 포커스·활성되지 않는다.
+ * tag = 라벨 옆 작은 회색 표시(자동 계산 칸의 "(자동)") — 입력칸 이름(label)에는 들어가지 않는다.
+ */
+export function FieldLabel({ htmlFor, label, hint, tag }: { htmlFor: string; label: string; hint?: string; tag?: string }) {
   const hintId = hintIdOf(htmlFor, label, hint);
   return (
     <>
@@ -41,6 +44,7 @@ export function FieldLabel({ htmlFor, label, hint }: { htmlFor: string; label: s
         <label htmlFor={htmlFor} className="text-xs font-medium text-gray-800">
           {label}
         </label>
+        {tag && <span className="text-xs text-gray-500">{tag}</span>}
         {hintId && <HintTooltip label={label} text={hint!} />}
       </div>
       {hintId && (

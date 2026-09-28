@@ -17,8 +17,9 @@ import type { CompanyInfo } from "@/types";
 import { OCR_ACCEPT_ATTR, OCR_UNAVAILABLE_MESSAGE, validateOcrFile } from "@/lib/document-ocr/limits";
 import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
-import { buildDiffRows, defaultCheckFor, selectedPatch } from "@/lib/document-ocr/diff";
+import { buildDiffRows, defaultCheckFor, selectedPatch, withBaseYear } from "@/lib/document-ocr/diff";
 import { DOC_TYPES, DOC_TYPE_LABEL, type CompanyInfoKey, type DocType } from "@/lib/document-ocr/types";
+import { resolveBaseYear } from "@/util/company-sales";
 import { companyInfoFieldList } from "@/components/company-info-defs";
 import CompanyDocDiffTable from "./CompanyDocDiffTable";
 
@@ -34,11 +35,12 @@ type Row = {
   docType: DocType;
 };
 
-// 비교표 행 순서·라벨 = 편집기 화면 순서([대표자] → [기업정보] → [재무]) · 같은 라벨(매출은 연도 포함).
-const FIELDS = companyInfoFieldList(new Date());
-const ORDER = FIELDS.map(([k]) => String(k));
-const LABEL = new Map<string, string>(FIELDS.map(([k, l]) => [String(k), l]));
-const labelOf = (k: string) => LABEL.get(k) ?? k;
+/** 비교표 행 순서·라벨 = 편집기 화면 순서([대표자] → [기업정보] → [재무]) · 같은 라벨(매출은 기준 연도 포함). */
+function fieldOrder(baseYear: number) {
+  const fields = companyInfoFieldList(baseYear);
+  const label = new Map<string, string>(fields.map(([k, l]) => [String(k), l]));
+  return { order: fields.map(([k]) => String(k)), labelOf: (k: string) => label.get(k) ?? k };
+}
 
 interface Props {
   current: CompanyInfo;
@@ -59,6 +61,9 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
   const descId = useId();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  // 매출 칸 기준 연도 = 업체 저장값, 없으면 오늘 연도 — 파서가 문서 연도를 Y~Y-3 칸에 놓는 기준.
+  const baseYear = resolveBaseYear(current.매출기준연도, new Date());
+  const { order, labelOf } = useMemo(() => fieldOrder(baseYear), [baseYear]);
 
   // 열릴 때 제목에 포커스, 닫힐 때 원래 버튼으로 복귀. 닫히면 진행 중 OCR 취소.
   useEffect(() => {
@@ -134,17 +139,17 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
     () =>
       files
         .filter((f) => f.status === "done")
-        .map((f) => ({ f, result: parseDocument(f.docType, f.text) })),
-    [files],
+        .map((f) => ({ f, result: parseDocument(f.docType, f.text, { baseYear }) })),
+    [files, baseYear],
   );
   const rows = useMemo(
     () =>
       buildDiffRows(
         current,
         parsed.flatMap(({ f, result }) => (result ? [{ fileName: f.name, fields: result.fields }] : [])),
-        ORDER,
+        order,
       ),
-    [current, parsed],
+    [current, parsed, order],
   );
   const checked = useMemo(() => {
     const out: Record<string, boolean> = {};
@@ -345,7 +350,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
             type="button"
             disabled={count === 0}
             onClick={() => {
-              onApply(patch);
+              onApply(withBaseYear(patch, current, baseYear));
               onClose();
             }}
             className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-40"

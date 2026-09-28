@@ -10,9 +10,12 @@ import {
   accuracyOf,
   buildDiffRows,
   checkState,
+  displayValue,
   optionLabel,
   defaultCheckFor,
   selectedPatch,
+  sourceNote,
+  withBaseYear,
 } from "@/lib/document-ocr/diff";
 import type { ParsedField } from "@/lib/document-ocr/types";
 
@@ -148,5 +151,31 @@ describe("optionLabel — 충돌 행 고르기 상자 이름", () => {
   it("여러 줄 값은 첫 줄 + 외, 한 줄 값은 그대로", () => {
     expect(optionLabel(["25년 하반기 1.5억", "25년 상반기 1.2억"].join(String.fromCharCode(10)))).toBe("25년 하반기 1.5억 외");
     expect(optionLabel("25' 250백만")).toBe("25' 250백만");
+  });
+});
+
+describe("[재무] 금액 칸 — 백만원 표시·원문·기준 연도 (company-finance-won-grid)", () => {
+  it("금액 칸 숫자는 '250.1백만원', 옛 글·다른 칸은 그대로", () => {
+    expect(displayValue("과년도매출", "250.1")).toBe("250.1백만원");
+    expect(displayValue("영업이익", "-3.2")).toBe("-3.2백만원");
+    expect(displayValue("과년도매출", "25' 250백만")).toBe("25' 250백만");
+    expect(displayValue("결산연도", "2025")).toBe("2025");
+    expect(displayValue("과년도매출", "")).toBe("");
+  });
+
+  it("후보에 원문 원 금액이 실린다 — '원문 250,123,456원'", () => {
+    const rows = buildDiffRows(cur(), [
+      { fileName: "vat.png", fields: [f("매출Y1상", "250.1", 0.85, { sourceWon: 250_123_456 })] },
+    ]);
+    const c = rowOf(rows, "매출Y1상").candidates[0]!;
+    expect(c.sourceWon).toBe(250_123_456);
+    expect(sourceNote(c)).toBe("원문 250,123,456원");
+    expect(sourceNote({ ...c, sourceWon: undefined })).toBe("");
+  });
+
+  it("기준 연도가 빈 업체에 매출·금액 칸을 넣으면 기준 연도도 함께", () => {
+    expect(withBaseYear({ 과년도매출: "250" }, cur(), 2026)).toEqual({ 과년도매출: "250", 매출기준연도: "2026" });
+    expect(withBaseYear({ 과년도매출: "250" }, cur({ 매출기준연도: "2025" }), 2025)).toEqual({ 과년도매출: "250" });
+    expect(withBaseYear({ 사업자등록번호: "123-45-67891" }, cur(), 2026)).toEqual({ 사업자등록번호: "123-45-67891" });
   });
 });

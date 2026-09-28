@@ -7,9 +7,16 @@
  * - 읽은 값이 비면 → 행 자체가 없다(빈 값은 절대 덮지 않는다).
  * - 형식 검증 실패(사업자등록번호 체크섬 등) → 체크 해제 + 경고.
  * - 두 문서가 같은 칸에 다른 값을 내면 → 충돌 표시, 정확도 높은 쪽이 기본 선택.
+ *
+ * [재무] 금액 칸(백만원, company-finance-won-grid)은 비교표에서 "250.1백만원 (원문 250,123,456원)" 으로
+ * 보여 준다(displayValue·sourceNote). 매출 칸을 채우는데 업체에 기준 연도가 없으면 반영값에
+ * 매출기준연도도 함께 넣는다(withBaseYear) — 칸 이름(Y·Y-1…)이 읽은 문서 연도와 어긋나지 않게.
  */
 import { normalizeRrnFront } from "@/util/rrn-front";
+import { SALES_BASE_YEAR_KEY } from "@/util/company-sales";
+import { isMoneyKey, isSignedMoneyKey, moneyWithUnit } from "@/util/company-money";
 import type { CompanyInfo } from "@/types";
+import { groupThousands } from "./amount";
 import type { CompanyInfoKey, ParsedField } from "./types";
 
 export type Accuracy = "높음" | "보통" | "낮음";
@@ -25,6 +32,8 @@ export type Candidate = {
   confidence: number;
   warnings: string[];
   valid?: boolean;
+  /** 금액 칸: 문서의 원 금액(가장 정확한 후보 기준). */
+  sourceWon?: number;
   /** 이 값을 낸 파일 이름들(같은 값이면 합친다). */
   sources: string[];
 };
@@ -81,10 +90,17 @@ export function buildDiffRows(
       if (same) {
         if (!same.sources.includes(p.fileName)) same.sources.push(p.fileName);
         if (f.confidence > same.confidence) {
-          Object.assign(same, { confidence: f.confidence, warnings: f.warnings, valid: f.valid });
+          Object.assign(same, { confidence: f.confidence, warnings: f.warnings, valid: f.valid, sourceWon: f.sourceWon });
         }
       } else {
-        list.push({ value, confidence: f.confidence, warnings: [...f.warnings], valid: f.valid, sources: [p.fileName] });
+        list.push({
+          value,
+          confidence: f.confidence,
+          warnings: [...f.warnings],
+          valid: f.valid,
+          ...(f.sourceWon === undefined ? {} : { sourceWon: f.sourceWon }),
+          sources: [p.fileName],
+        });
       }
       byKey.set(f.key, list);
     }
@@ -126,4 +142,28 @@ export function selectedPatch(
 export function optionLabel(value: string): string {
   const lines = value.split("\n").filter((l) => l.trim());
   return lines.length > 1 ? `${lines[0]} 외` : value;
+}
+
+/** 비교표에 보일 값 — 금액 칸의 숫자는 "250.1백만원", 그 밖(옛 자유 글·다른 칸)은 그대로. */
+export function displayValue(key: string, value: string): string {
+  return isMoneyKey(key) ? moneyWithUnit(value, isSignedMoneyKey(key)) : value;
+}
+
+/** 금액 후보의 원문 표기 "원문 250,123,456원" (원 금액이 없으면 ""). */
+export function sourceNote(c: Candidate): string {
+  return c.sourceWon === undefined ? "" : `원문 ${groupThousands(c.sourceWon)}원`;
+}
+
+/**
+ * 반영값에 매출 칸이 있는데 업체에 기준 연도가 비었으면 기준 연도(파서가 칸을 고른 해)를 함께 넣는다.
+ * 이미 기준 연도가 있거나 금액 칸이 없으면 그대로.
+ */
+export function withBaseYear(
+  patch: Partial<Record<CompanyInfoKey, string>>,
+  current: Partial<CompanyInfo>,
+  baseYear: number,
+): Partial<Record<CompanyInfoKey, string>> {
+  if (String(current[SALES_BASE_YEAR_KEY as CompanyInfoKey] ?? "").trim()) return patch;
+  if (!Object.keys(patch).some(isMoneyKey)) return patch;
+  return { ...patch, [SALES_BASE_YEAR_KEY]: String(baseYear) };
 }

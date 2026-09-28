@@ -5,7 +5,8 @@
  *  ② 사업자구분 · 과세유형 한 칸 선택(옛 값 보존) · 법인등록번호는 법인일 때만
  *  ③ 소유여부 자가/임차 선택 + 임차 한 줄(보증금 원·월세 원·면적 ㎡) + 옛 글 안내 — 기업정보·대표자 같은 모양
  *  ④ 업종 · 업태 · 주생산품목 한 줄
- *  ⑤ [재무] 연도 라벨(주입한 오늘) · 반기 4×2 · 매출증가율 자동 · 옛 한 칸 값 읽기 전용 메모
+ *  ⑤ [재무] 연도 라벨(주입한 오늘) · 연도별 매출 4줄×3칸(상반기|하반기|합계, company-finance-won-grid) ·
+ *     매출증가율 자동 · 옛 한 칸 값 읽기 전용 메모
  *  ⑥ 좁은 폰(375px): 한 줄 묶음은 360px 미만에서 세로로 쌓이고 칸이 줄어들 수 있다(가로 넘침 방지 클래스)
  */
 import * as React from "react";
@@ -304,43 +305,39 @@ describe("⑤ [재무] 매출", () => {
     ]);
   });
 
-  it("해가 바뀌면 라벨 연도도 따라간다", () => {
+  it("해가 바뀌면 라벨 연도도 따라간다(기준 연도가 비어 있을 때)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2027, 0, 2));
     render();
     expect(labelOf(byKey(groupEl("재무"), "금년도매출")!)).toBe("매출 Y(2027)");
     expect(labelOf(byKey(groupEl("재무"), "매출Y3하")!)).toBe("Y-3(2024) 하반기");
-    // 설명의 예시 연도 표시도 라벨과 같은 해를 따른다(고정 "25'" 이면 라벨과 어긋난다).
-    const hintOf = (k: string) =>
-      document.getElementById(byKey(groupEl("재무"), k)!.getAttribute("aria-describedby")!)!.textContent;
-    expect(hintOf("금년도매출")).toBe("올해 매출 — 몇 월까지인지 함께 적어요. 예: 27' 6월 100백만");
-    expect(hintOf("과년도매출")).toBe("작년 매출. 예: 26' 250백만");
-    expect(hintOf("과년도매출Y3")).toBe("3년 전 매출. 예: 24' 70백만");
+    expect(byKey(groupEl("연도별 매출"), "매출기준연도")!.value).toBe("2027");
+    expect(stage).not.toHaveBeenCalled(); // 열기만 해선 기준 연도를 저장하지 않는다
   });
 
-  it("반기 매출 = 4줄 × 2칸(상반기 | 하반기)", () => {
+  it("연도별 매출 = 4줄 × 3칸(상반기 | 하반기 | 합계)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 8, 28));
-    render({ 매출Y1상: "1.2억" });
-    const grid = groupEl("반기별 매출");
-    expect(grid.className).toContain("grid-cols-2");
-    const inputs = [...grid.querySelectorAll("input")];
-    expect(inputs.map((i) => labelOf(i))).toEqual([
-      "Y(2026) 상반기",
-      "Y(2026) 하반기",
-      "Y-1(2025) 상반기",
-      "Y-1(2025) 하반기",
-      "Y-2(2024) 상반기",
-      "Y-2(2024) 하반기",
-      "Y-3(2023) 상반기",
-      "Y-3(2023) 하반기",
+    render({ 매출Y1상: "120" });
+    const grid = groupEl("연도별 매출");
+    const rows = [...grid.querySelectorAll<HTMLElement>("[data-sales-row]")];
+    expect(rows).toHaveLength(4);
+    const cells = rows.map((r) =>
+      [...r.querySelectorAll<HTMLInputElement>("input")].filter((i) => !i.id.endsWith("-매출기준연도")),
+    );
+    expect(cells.map((c) => c.map((i) => labelOf(i)))).toEqual([
+      ["Y(2026) 상반기", "Y(2026) 하반기", "매출 Y(2026)"],
+      ["Y-1(2025) 상반기", "Y-1(2025) 하반기", "매출 Y-1(2025)"],
+      ["Y-2(2024) 상반기", "Y-2(2024) 하반기", "매출 Y-2(2024)"],
+      ["Y-3(2023) 상반기", "Y-3(2023) 하반기", "매출 Y-3(2023)"],
     ]);
-    expect(inputs[2]!.value).toBe("1.2억");
-    typeInto(inputs[7]!, "9,000만");
-    expect(staged().매출Y3하).toBe("9,000만");
+    expect(cells[1]![0]!.value).toBe("120");
+    typeInto(cells[3]![1]!, "90");
+    expect(staged().매출Y3하).toBe("90");
+    expect(staged().과년도매출Y3).toBe("90"); // 합계 자동 저장
   });
 
-  it("매출증가율 3칸은 연도 매출에서 자동 계산(읽기 전용), 저장 때 같은 값이 들어간다", () => {
+  it("매출증가율 3칸은 연도 합계에서 자동 계산(읽기 전용), 저장 때 같은 값이 들어간다", () => {
     render({ 과년도매출Y3: "23' 100백만", 과년도매출Y2: "24' 125백만", 과년도매출: "25' 200백만" });
     const g = groupEl("매출증가율");
     const y3y2 = byKey(g, "매출증가율Y3Y2")!;
@@ -349,18 +346,20 @@ describe("⑤ [재무] 매출", () => {
     expect(byKey(g, "매출증가율Y2Y1")!.value).toBe("+60.0%");
     expect(byKey(g, "매출증가율Y1Y")!.value).toBe(""); // 올해 매출 없음
     expect([...g.querySelectorAll("label")].map((l) => l.textContent)).toEqual(["Y-3→Y-2", "Y-2→Y-1", "Y-1→Y"]);
-    typeInto(byKey(groupEl("재무"), "금년도매출")!, "26' 6월 150백만");
+    typeInto(byKey(groupEl("재무"), "금년도매출")!, "150");
     expect(staged().매출증가율Y1Y).toBe("-25.0%");
     expect(staged().매출증가율Y3Y2).toBe("+25.0%");
   });
 
-  it("올해가 몇 월까지인 매출이면 Y-1→Y 설명에 안내가 붙는다", () => {
-    render({ 과년도매출: "25' 200백만", 금년도매출: "26' 6월 150백만" });
+  it("Y 가 몇 월까지인 매출이면 Y-1→Y 설명에 안내가 붙는다(기준 연도로 — '올해' 가 아님)", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 28));
+    render({ 매출기준연도: "2025", 과년도매출: "24' 200백만", 금년도매출: "25' 6월 150백만" });
     const input = byKey(groupEl("매출증가율"), "매출증가율Y1Y")!;
     const desc = document.getElementById(input.getAttribute("aria-describedby")!)!;
-    expect(desc.textContent).toContain("올해는 6월까지 매출이라 낮게 보일 수 있어요");
+    expect(desc.textContent).toContain("Y(2025)는 6월까지 매출이라 낮게 보일 수 있어요");
     const y2y1 = byKey(groupEl("매출증가율"), "매출증가율Y2Y1")!;
-    expect(document.getElementById(y2y1.getAttribute("aria-describedby")!)!.textContent).not.toContain("올해는");
+    expect(document.getElementById(y2y1.getAttribute("aria-describedby")!)!.textContent).not.toContain("6월까지");
   });
 
   it("옛 한 칸 반기별매출·매출증가율은 입력칸 없이 읽기 전용 메모로만(값이 있을 때)", () => {

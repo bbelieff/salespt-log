@@ -13,12 +13,12 @@ describe("06 업체정보 아카이브 행 빌더", () => {
     expect(companyContractRef("2026-06-10", " A업체 ")).toBe("2026-06-10|A업체");
   });
 
-  it("행 = A~BK 63컬럼: 키 4 + 필드 20 + 커스텀 1 + 확장 3 + 확장2 20 + 확장3 15", () => {
+  it("행 = A~BL 64컬럼: 키 4 + 필드 20 + 커스텀 1 + 확장 3 + 확장2 20 + 확장3 15 + 확장4 1", () => {
     const row = companyInfoToArchiveRow("A업체", "2026-06-10", undefined, "T0");
     expect(row).toHaveLength(
-      4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + COMPANY_FIELDS_EXT2.length + 15,
-    ); // 63
-    expect(row).toHaveLength(63);
+      4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + COMPANY_FIELDS_EXT2.length + 15 + 1,
+    ); // 64
+    expect(row).toHaveLength(64);
     expect(row[0]).toBe("A업체");
     expect(row[1]).toBe("2026-06-10");
     expect(row[2]).toBe("2026-06-10|A업체");

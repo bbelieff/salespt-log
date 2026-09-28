@@ -1,12 +1,12 @@
 /**
  * document-ocr/parse-vat — 부가가치세 과세표준증명 OCR 텍스트 → 업체정보 매출 칸 제안.
  *
- * 채우는 칸: 반기 매출 8칸(매출Y상·매출Y하 … 매출Y3상·매출Y3하 — 값만 "1.2억", 공용 formatManwon) ·
- *   금년도매출("26' 6월 100백만" — 월 = 신고로 덮인 마지막 달) · 과년도매출("25' 250백만") ·
- *   과년도매출Y2 · 과년도매출Y3 · 면세수입금액("25년 3,200만").
- * 올해/작년 판단은 today(주입 가능) 기준이다. 반기 칸은 올해~3년 전(Y~Y-3)만 — 그보다 오래된 반기와
- * 간이과세 연간 신고(반기 구분 없음)는 연도 합계에만 들어간다. 옛 한 칸 반기별매출은 더 채우지 않는다
- * (company-info-restructure 2026-09-28).
+ * 채우는 칸(모두 백만원 정본 — wonToMillion, company-finance-won-grid 2026-09-28): 반기 매출 8칸
+ *   (매출Y상·매출Y하 … 매출Y3상·매출Y3하 — "120") · 연도 합계 금년도매출·과년도매출·과년도매출Y2·Y3("250") ·
+ *   면세수입금액("32"). 칸마다 원문 원 금액(sourceWon)을 같이 실어 비교표가 "원문 250,123,456원" 을 보여 준다.
+ * 칸 = 업체의 매출 기준 연도(baseYear, 없으면 오늘 연도) − 문서 연도(0=Y … 3=Y-3). 칸 밖 연도는 넣지 않고
+ * 경고한다. 간이과세 연간 신고(반기 구분 없음)는 연도 합계에만. 옛 한 칸 반기별매출은 채우지 않는다.
+ * 올해가 아닌 해의 연도 합계가 12개월이 아니면 "일부만" 경고, 올해면 몇 월까지인지 알린다(today 기준).
  *
  * 한 과세기간 줄 = 연도+기수("2025년 1기") 또는 기간("2025.01.01~2025.06.30") + 신고구분 + 금액.
  * 금액은 날짜·기간·사업자번호를 지운 뒤 **첫 번째 금액**(과세표준 열)이다.
@@ -18,12 +18,13 @@
  *
  * 개인정보: 13자리 등록번호 꼴은 읽기 전에 원문에서 지운다. 원문은 결과·경고에 싣지 않는다.
  */
-import { formatBaekman, formatManwon } from "./amount";
 import { THIRTEEN_DIGIT_ID, compactText, normalizeOcrText, toLines } from "./text-utils";
-import type { CompanyInfoKey, DocParseResult, ParsedField } from "./types";
-import { SALES_HALF_KEYS } from "@/util/company-sales";
+import type { CompanyInfoKey, DocParseResult, ParsedField, ParsedInfo } from "./types";
+import { SALES_HALF_KEYS, SALES_YEAR_KEYS, salesSlotOf } from "@/util/company-sales";
+import { wonToMillion } from "@/util/company-money";
 
-export type VatParseOptions = { today?: Date };
+/** today = 올해 판단(부분 연도 경고) · baseYear = 칸 기준 연도(없으면 today 연도). */
+export type VatParseOptions = { today?: Date; baseYear?: number };
 
 // ── 금액 토큰 ─────────────────────────────────────────────────────────────
 /** "125,000,000" / "125.000.000" / "125000000" → 125000000 (아니면 null). */
@@ -185,8 +186,10 @@ const yy = (y: number) => String(y % 100).padStart(2, "0");
 export function parseVatCertificate(rawText: string, opts: VatParseOptions = {}): DocParseResult {
   const today = opts.today ?? new Date();
   const thisYear = today.getFullYear();
+  const baseYear = opts.baseYear ?? thisYear;
   const normalized = normalizeOcrText(rawText);
   const fields: ParsedField[] = [];
+  const info: ParsedInfo[] = [];
   const documentWarnings: string[] = [];
   if (!normalized.trim()) {
     return { fields, documentWarnings: ["읽힌 글자가 없어요. 더 선명한 사진으로 다시 해 보세요."] };
@@ -254,43 +257,44 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
   // 연도·반기별 묶기
   const byKey = new Map<string, Row[]>();
   for (const r of rows) {
-    if (r.year > thisYear) continue;
     const key = `${r.year}-${r.half}`;
     byKey.set(key, [...(byKey.get(key) ?? []), r]);
   }
-  if (rows.some((r) => r.year > thisYear)) documentWarnings.push("오늘보다 뒤 연도의 줄은 뺐어요.");
   const groups = [...byKey.values()]
     .map(resolveGroup)
     .sort((a, b) => b.year - a.year || b.end - a.end);
+  // 칸(Y~Y-3) 밖 연도 — 넣지 않고 알린다.
+  const outside = [...new Set(groups.filter((g) => salesSlotOf(g.year, baseYear) === null).map((g) => g.year))];
+  if (outside.length > 0) {
+    documentWarnings.push(
+      `${outside.join("·")}년 금액은 매출 칸(${baseYear - 3}~${baseYear}년) 밖이라 넣지 않았어요.`,
+    );
+  }
 
-  // 반기 칸 — 올해(Y)~3년 전(Y-3)의 상·하반기. 반기를 다 못 채운 신고(예정 1~3월만)는 값은 그대로 두고
+  // 반기 칸 — 기준 연도(Y)~3년 전(Y-3)의 상·하반기. 반기를 다 못 채운 신고(예정 1~3월만)는 값은 그대로 두고
   // 몇 월 신고인지 경고한다(칸 이름이 "상반기"라 1~3월 금액을 반기 전체로 오해하지 않게).
   for (const g of groups) {
     if (g.half === 0) continue; // 간이과세 연간 — 반기 구분 없음(연도 합계 칸에만)
-    const pair = SALES_HALF_KEYS[thisYear - g.year];
-    if (!pair) continue; // 3년보다 오래된 반기
-    const key: CompanyInfoKey = pair[g.half - 1]!;
+    const slot = salesSlotOf(g.year, baseYear);
+    if (slot === null) continue;
+    const key: CompanyInfoKey = SALES_HALF_KEYS[slot]![g.half - 1]!;
     const full = g.end - g.start === 5;
     const warnings = [...g.warnings];
     if (!full) warnings.push(`${yy(g.year)}년 ${halfLabel(g)} 신고 금액이에요. 반기 전체가 아니에요.`);
     fields.push({
       key,
-      value: formatManwon(g.amount),
+      value: wonToMillion(g.amount),
+      sourceWon: g.amount,
       confidence: Math.min(0.85, g.confidence, full ? 1 : 0.6),
       warnings,
     });
   }
 
-  // 연도 합계 → 금년도/과년도 칸
+  // 연도 합계 → Y~Y-3 칸
   const years = new Map<number, Group[]>();
   for (const g of groups) years.set(g.year, [...(years.get(g.year) ?? []), g]);
-  const yearKeys = [
-    [thisYear, "금년도매출"],
-    [thisYear - 1, "과년도매출"],
-    [thisYear - 2, "과년도매출Y2"],
-    [thisYear - 3, "과년도매출Y3"],
-  ] as const;
-  for (const [year, key] of yearKeys) {
+  for (const [slot, key] of SALES_YEAR_KEYS.entries()) {
+    const year = baseYear - slot;
     const gs = years.get(year);
     if (!gs) continue;
     const annual = gs.find((g) => g.half === 0);
@@ -303,15 +307,13 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
     const sum = used.reduce((s, g) => s + g.amount, 0);
     let confidence = Math.min(...used.map((g) => g.confidence));
     const partial = months.size < 12;
-    if (key !== "금년도매출" && partial) {
+    if (year < thisYear && partial) {
       warnings.push(`${yy(year)}년은 ${months.size}개월 신고만 있어요. 일부만 합했어요.`);
       confidence = Math.min(confidence, 0.5);
+    } else if (partial) {
+      warnings.push(`${yy(year)}년은 ${lastMonth}월까지 신고 금액이에요.`);
     }
-    const value =
-      key === "금년도매출"
-        ? `${yy(year)}' ${lastMonth}월 ${formatBaekman(sum)}`
-        : `${yy(year)}' ${formatBaekman(sum)}`;
-    fields.push({ key, value, confidence: Math.min(confidence, 0.85), warnings });
+    fields.push({ key, value: wonToMillion(sum), sourceWon: sum, confidence: Math.min(confidence, 0.85), warnings });
   }
 
   // 면세 수입금액 — 가장 최근 연도 하나
@@ -321,10 +323,12 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
     const hit = taxFree.get(year)!;
     const warnings: string[] = [];
     if (year === null) warnings.push("면세 금액의 연도를 못 찾았어요. 확인해 주세요.");
+    else info.push({ label: "면세 수입금액 연도", value: `${year}년` });
     if (hit.pieced) warnings.push("금액을 끊어진 줄에서 이어 읽었어요. 확인해 주세요.");
     fields.push({
       key: "면세수입금액",
-      value: `${year === null ? "" : `${yy(year)}년 `}${formatManwon(hit.amount)}`,
+      value: wonToMillion(hit.amount),
+      sourceWon: hit.amount,
       confidence: year === null || hit.pieced ? 0.55 : 0.75,
       warnings,
     });
@@ -333,5 +337,5 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
   if (fields.length === 0) {
     documentWarnings.push("과세기간별 금액을 찾지 못했어요. 문서 종류가 맞는지 확인해 주세요.");
   }
-  return { fields, documentWarnings };
+  return { fields, documentWarnings, ...(info.length > 0 ? { info } : {}) };
 }
