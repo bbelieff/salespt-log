@@ -1,14 +1,17 @@
 /**
  * CompanyInfoFinanceFields — 업체정보 [재무] 금액·비율 칸 (company-finance-won-grid, belie 2026-09-28).
  *
- * - MoneyInput: 백만원 금액 입력. 숫자만 친 값은 소수 한 자리까지(넘치면 잘라 알림), 칸을 떠날 때(blur)
+ * - MillionWonInput: 백만원 금액 입력(원 단위 공용 입력 components/ui/MoneyInput 과는 다른 칸 — 값은 글).
+ *   숫자만 친 값은 소수 한 자리까지(넘치면 잘라 알림, 칸을 떠나면 알림을 거둔다), 칸을 떠날 때(blur)
  *   천 단위 쉼표("1,234" — 입력 중에 찍으면 커서가 튄다, 임차 칸과 같은 방식). 손익 칸만 앞 "-".
  *   칸 아래 "약 2.5억" · "약 3,200만" 읽기 도움말. 옛 자유 글은 그대로 보여 준다(열기만 해선 안 바꿈).
- * - MoneyLegacyNote: 옛 자유 글 안내 — 읽히면 "글로 적힌 값이에요 — 계산에는 X백만원으로 써요" +
- *   「백만원으로 바꾸기」(그 칸만), 못 읽으면 "읽을 수 없어 계산에서 빠져요".
- * - MoneyField: 라벨 + (?) + MoneyInput("백만원" 단위 표시) + 옛 글 안내 — 영업이익 등.
- * - RatioField: 자동 계산 비율(읽기 전용). 저장된 옛 값이 계산값과 다르면 "이전에 적은 값" 으로 보여 준다
- *   (다음 저장 때 계산값으로 바뀐다 — 계산할 금액이 없으면 옛 값은 그대로 둔다).
+ * - MoneyLegacyNote: 옛 자유 글 안내 — 읽히면 "글로 적힌 값이에요 — 계산에는 X백만원으로 써요"(원 단위로
+ *   적은 큰 숫자는 "원 단위로 적은 숫자 같아요 — …") + 「백만원으로 바꾸기」(그 칸만, 화면낭독기엔 어느 칸인지),
+ *   못 읽으면 "읽을 수 없어 계산에서 빠져요".
+ * - MoneyField: 라벨 + (?) + MillionWonInput("백만원" 단위 표시) + 옛 글 안내 — 영업이익 등.
+ * - RatioField: 자동 계산 비율(읽기 전용, 라벨 옆 "(자동)"). 저장된 옛 값이 계산값과 다른 값이면
+ *   "이전에 적은 값" 으로 보여 준다("120%" 와 "120.0%" 처럼 모양만 다르면 안 보임). 다음 저장 때
+ *   계산값으로 바뀐다 — 계산할 금액이 없으면 옛 값은 그대로 둔다.
  */
 "use client";
 
@@ -21,12 +24,14 @@ import {
   readMoney,
   sanitizeMoneyTyping,
 } from "@/util/company-money";
+import { sameRatioText } from "@/service/company-finance";
 import type { FieldDef } from "@/components/company-info-defs";
 import { FieldLabel, hintIdOf, inputCls, readOnlyCls } from "./CompanyInfoField";
 
 const CUT_MSG = "소수는 한 자리까지만 적어요";
+const RATIO_PLACEHOLDER = "금액을 적으면 자동 계산";
 
-interface MoneyInputProps {
+interface MillionWonInputProps {
   id: string;
   value: string;
   signed: boolean;
@@ -36,7 +41,7 @@ interface MoneyInputProps {
   describedBy?: string;
 }
 
-export function MoneyInput({ id, value, signed, onChange, suffix = false, describedBy }: MoneyInputProps) {
+export function MillionWonInput({ id, value, signed, onChange, suffix = false, describedBy }: MillionWonInputProps) {
   const [cut, setCut] = useState(false);
   const read = readMoney(value, signed);
   const hint = read.kind === "number" ? moneyHint(read.tenths) : "";
@@ -56,6 +61,8 @@ export function MoneyInput({ id, value, signed, onChange, suffix = false, descri
             onChange(r.value);
           }}
           onBlur={() => {
+            // 잘랐다는 알림은 입력 중에만 — 칸을 떠나면 "약 …" 도움말로 돌아간다.
+            setCut(false);
             const next = formatMoneyOnBlur(value, signed);
             if (next !== value) onChange(next);
           }}
@@ -90,7 +97,11 @@ export function MoneyLegacyNote({
   const r = readMoney(value, signed);
   if (r.kind !== "legacy") return null;
   const text =
-    r.tenths === null ? "읽을 수 없어 계산에서 빠져요" : `글로 적힌 값이에요 — 계산에는 ${formatTenths(r.tenths)}백만원으로 써요`;
+    r.tenths === null
+      ? "읽을 수 없어 계산에서 빠져요"
+      : r.wonScale
+        ? `원 단위로 적은 숫자 같아요 — 계산에는 ${formatTenths(r.tenths)}백만원으로 써요`
+        : `글로 적힌 값이에요 — 계산에는 ${formatTenths(r.tenths)}백만원으로 써요`;
   return (
     <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-amber-700" role="note">
       <span className="min-w-0 break-words">
@@ -101,6 +112,8 @@ export function MoneyLegacyNote({
         <button
           type="button"
           onClick={onConvert}
+          // 표 안에선 같은 버튼이 여러 개 — 화면낭독기가 어느 칸을 바꾸는지 알 수 있게.
+          aria-label={label ? `${label} 백만원으로 바꾸기` : undefined}
           className="shrink-0 rounded border border-amber-300 px-1.5 text-amber-800 hover:bg-amber-50"
         >
           백만원으로 바꾸기
@@ -131,7 +144,7 @@ export function MoneyField({
   return (
     <div className={`${className} min-w-0`}>
       <FieldLabel htmlFor={id} label={label} hint={hint} />
-      <MoneyInput
+      <MillionWonInput
         id={id}
         value={value}
         signed={signed}
@@ -158,16 +171,18 @@ export function RatioField({
   className?: string;
 }) {
   const [, label, hint] = def;
-  const legacy = stored.trim() !== "" && stored.trim() !== computed ? stored.trim() : "";
+  const old = stored.trim();
+  const legacy = old !== "" && !sameRatioText(old, computed) ? old : "";
   return (
     <div className={`${className} min-w-0`}>
-      <FieldLabel htmlFor={id} label={label} hint={hint} />
+      <FieldLabel htmlFor={id} label={label} hint={hint} tag="(자동)" />
       <input
         id={id}
-        className={readOnlyCls}
+        className={`${readOnlyCls} placeholder:text-gray-400`}
         readOnly
         aria-readonly="true"
         aria-describedby={hintIdOf(id, label, hint)}
+        placeholder={RATIO_PLACEHOLDER}
         value={computed}
       />
       {legacy && (

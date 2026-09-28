@@ -5,6 +5,7 @@
  * - field/row/pair: 보통 칸. pair = 두 칸을 늘 한 줄(375px 폰에서도) — 이름·주민등록번호, 신용점수·연락처.
  * - 주민등록번호가 비었고 (화면에서 뺀) 생년월일을 읽을 수 있으면 "880124-" 를 **보여 주기만** 한다
  *   (설명에 "자동으로 채운 값"). 저장은 사용자가 무엇이든 고칠 때 apply() 가 한다 — 열기만 해선 안 함.
+ *   그 값을 통째로 지우면 생년월일도 함께 지운다(비운 채로 남게).
  * - money: 백만원 금액 칸 + 옛 자유 글 「백만원으로 바꾸기」. ratio: 자동 계산 비율(읽기 전용).
  * - bizType·ownership: 선택형 칸. sales: 연도별 매출 표. hidden: 그리지 않는다.
  * wide = 2열 그리드에서 전폭(sm:col-span-2). inline(PC 좁은 단)은 1열이라 전폭 개념 없음.
@@ -43,14 +44,17 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
     const k = d[0];
     let value = String(draft[k] ?? "");
     let def = d;
+    let onChange = onField;
     if (k === "주민등록번호" && value.trim() === "") {
       const derived = birthToRrnFront(draft.대표자생년월일);
       if (derived) {
         value = derived;
         def = [d[0], d[1], RRN_DERIVED_HINT, d[3], d[4]];
+        // 보여 주기만 하던 값을 통째로 지우면 생년월일도 함께 지운다 — 안 그러면 곧바로 다시 채워진다.
+        onChange = (key, v) => (v.trim() === "" ? onPatch({ 주민등록번호: "", 대표자생년월일: "" }) : onField(key, v));
       }
     }
-    return <CompanyInfoField key={String(k)} def={def} value={value} onChange={onField} id={idOf(k)} className={className} />;
+    return <CompanyInfoField key={String(k)} def={def} value={value} onChange={onChange} id={idOf(k)} className={className} />;
   };
 
   switch (it.kind) {

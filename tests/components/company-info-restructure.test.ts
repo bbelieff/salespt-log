@@ -351,13 +351,15 @@ describe("⑤ [재무] 매출", () => {
     expect(staged().매출증가율Y3Y2).toBe("+25.0%");
   });
 
-  it("올해가 몇 월까지인 매출이면 Y-1→Y 설명에 안내가 붙는다", () => {
-    render({ 과년도매출: "25' 200백만", 금년도매출: "26' 6월 150백만" });
+  it("Y 가 몇 월까지인 매출이면 Y-1→Y 설명에 안내가 붙는다(기준 연도로 — '올해' 가 아님)", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 28));
+    render({ 매출기준연도: "2025", 과년도매출: "24' 200백만", 금년도매출: "25' 6월 150백만" });
     const input = byKey(groupEl("매출증가율"), "매출증가율Y1Y")!;
     const desc = document.getElementById(input.getAttribute("aria-describedby")!)!;
-    expect(desc.textContent).toContain("올해는 6월까지 매출이라 낮게 보일 수 있어요");
+    expect(desc.textContent).toContain("Y(2025)는 6월까지 매출이라 낮게 보일 수 있어요");
     const y2y1 = byKey(groupEl("매출증가율"), "매출증가율Y2Y1")!;
-    expect(document.getElementById(y2y1.getAttribute("aria-describedby")!)!.textContent).not.toContain("올해는");
+    expect(document.getElementById(y2y1.getAttribute("aria-describedby")!)!.textContent).not.toContain("6월까지");
   });
 
   it("옛 한 칸 반기별매출·매출증가율은 입력칸 없이 읽기 전용 메모로만(값이 있을 때)", () => {

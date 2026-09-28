@@ -96,6 +96,9 @@ describe("A 금액 칸 — 백만원", () => {
     typeInto(input, "250.12");
     expect(staged().영업이익).toBe("250.1");
     expect(fieldBox(input).textContent).toContain("소수는 한 자리까지만 적어요");
+    // 칸을 떠나면 알림을 거두고 "약 …" 도움말로 돌아간다.
+    blur(input);
+    expect(fieldBox(input).textContent).not.toContain("소수는 한 자리까지만 적어요");
   });
 
   it("손익 칸만 음수, 칸을 떠날 때 천 단위 쉼표, 읽기 도움말 '약 …'", () => {
@@ -137,6 +140,24 @@ describe("A 금액 칸 — 백만원", () => {
     expect(staged().업체기타메모).toBe("기존\n매출 Y(2026) 원래 적은 값: 26' 6월 100백만");
     expect(staged().과년도매출).toBe("25' 250"); // 다른 칸은 그대로
   });
+
+  it("표 안 「백만원으로 바꾸기」는 화면낭독기에 어느 칸인지 알린다", () => {
+    render({ 과년도매출: "25' 250", 매출Y1상: "1.2억" });
+    const names = [...rowOf(1).querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));
+    expect(names).toEqual(["Y-1(2025) 상반기 백만원으로 바꾸기"]);
+    unmount();
+    render({ 과년도매출: "25' 250" });
+    expect(buttonIn(rowOf(1), "백만원으로 바꾸기")!.getAttribute("aria-label")).toBe("매출 Y-1(2025) 백만원으로 바꾸기");
+  });
+
+  it("원 단위로 적은 큰 숫자(250,000,000) — 백만원으로 계산하지 않고 안내 + 바꾸기", () => {
+    render({ 과년도매출: "250,000,000", 자산총계: "250123456" });
+    expect(rowOf(1).textContent).toContain("원 단위로 적은 숫자 같아요 — 계산에는 250백만원으로 써요");
+    expect(fieldBox(byKey(groupEl("재무"), "자산총계")!).textContent).toContain("계산에는 250.1백만원으로 써요");
+    expect(stage).not.toHaveBeenCalled(); // 열기만 해선 안 바꾼다
+    act(() => buttonIn(rowOf(1), "백만원으로 바꾸기")!.click());
+    expect(staged().과년도매출).toBe("250");
+  });
 });
 
 describe("B 연도별 매출 합계", () => {
@@ -145,7 +166,7 @@ describe("B 연도별 매출 합계", () => {
     const total = byKey(rowOf(1), "과년도매출")!;
     expect(total.readOnly).toBe(true);
     expect(total.value).toBe("250.5");
-    expect(rowOf(1).textContent).toContain("약 2.5억");
+    expect(rowOf(1).textContent).toContain("자동 · 약 2.5억"); // 읽기 전용 합계는 "자동" 이라고 보인다
     expect(stage).not.toHaveBeenCalled(); // 표시만 — 저장은 다음 편집 때
   });
 
@@ -174,9 +195,9 @@ describe("B 연도별 매출 합계", () => {
     expect(staged().과년도매출Y3).toBe("300");
   });
 
-  it("다른 금액의 옛 합계 → '이전에 적은 합계', 저장하면 기타메모로 옮기고 합계를 반기 합으로", () => {
+  it("다른 금액의 옛 합계 → '이전 합계', 저장하면 기타메모로 옮기고 합계를 반기 합으로", () => {
     render({ 매출Y1상: "1.2억", 매출Y1하: "1.3억", 과년도매출: "25' 260백만" });
-    expect(rowOf(1).textContent).toContain("이전에 적은 합계 25' 260백만");
+    expect(rowOf(1).textContent).toContain("이전 합계 25' 260백만 — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요");
     typeInto(byKey(groupEl("재무"), "영업이익")!, "10");
     expect(staged().과년도매출).toBe("250");
     expect(staged().업체기타메모).toBe("매출 Y-1(2025) 이전 합계: 25' 260백만");
@@ -217,9 +238,24 @@ describe("C 매출 기준 연도", () => {
     act(() => year.focus());
     typeInto(year, "1999");
     expect(stage).not.toHaveBeenCalled();
-    expect(el!.querySelector('[role="alert"]')!.textContent).toContain("2000~2100");
+    // 안내는 Y 줄 바로 아래(입력칸 가까이), 입력칸 설명에도 연결.
+    const alert = rowOf(0).querySelector<HTMLElement>('[role="alert"]')!;
+    expect(alert.textContent).toContain("2000~2100");
+    expect(year.getAttribute("aria-describedby")).toContain(alert.id);
     act(() => year.blur());
     expect(year.value).toBe("2025");
+    // 다시 칸에 들어가면 안내를 거둔다.
+    act(() => year.focus());
+    expect(el!.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("기준 연도 칸은 화면낭독기에도 '칸 이름만 바뀌어요' 설명이 붙는다", () => {
+    render();
+    const year = byKey(groupEl("연도별 매출"), "매출기준연도")!;
+    const ids = year.getAttribute("aria-describedby")!.split(" ");
+    expect(ids.map((id) => document.getElementById(id)?.textContent).join(" ")).toContain(
+      "기준 연도를 바꾸면 칸 이름만 바뀌어요. 값은 그대로예요.",
+    );
   });
 
   it("비어 있으면 재무 칸을 처음 고칠 때 오늘 연도를 함께 저장, 다른 칸이면 비움 그대로", () => {
@@ -240,6 +276,22 @@ describe("D 재무 비율(자동)", () => {
     expect(byKey(g, "이자보상배율")!.value).toBe("2.4배");
     typeInto(byKey(g, "자본총계")!, "-1");
     expect(staged().부채비율).toBe("자본잠식");
+  });
+
+  it("자동 칸이라고 보인다 — 라벨 옆 '(자동)', 비었으면 '금액을 적으면 자동 계산'", () => {
+    render({ 부채총계: "100", 자본총계: "50" });
+    const g = groupEl("재무");
+    const ratio = byKey(g, "이자보상배율")!;
+    expect(ratio.value).toBe("");
+    expect(ratio.placeholder).toBe("금액을 적으면 자동 계산");
+    expect(labelOf(ratio)).toBe("이자보상배율"); // 칸 이름은 그대로
+    expect(ratio.parentElement!.textContent).toContain("이자보상배율(자동)");
+  });
+
+  it("옛 값이 계산값과 모양만 다르면(120% vs 120.0%) '이전에 적은 값' 을 안 보인다", () => {
+    render({ 부채비율: "200%", 부채총계: "100", 자본총계: "50" });
+    const box = byKey(groupEl("재무"), "부채비율")!.parentElement!;
+    expect(box.textContent).not.toContain("이전에 적은 값");
   });
 
   it("옛 값이 계산값과 다르면 '이전에 적은 값' 으로 보인다", () => {
@@ -285,5 +337,14 @@ describe("E·F 배치", () => {
     typeInto(byKey(g, "대표자이름")!, "홍길동");
     expect(staged().주민등록번호).toBe("880124-");
     expect(staged().대표자생년월일).toBe("1988-01-24"); // 숨긴 칸 값은 그대로
+  });
+
+  it("F 자동으로 보이던 주민등록번호를 지우면 생년월일도 함께 지워 비운 채로 저장", () => {
+    render({ 대표자생년월일: "1988-01-24" });
+    const rrn = byKey(groupEl("대표자"), "주민등록번호")!;
+    expect(rrn.value).toBe("880124-");
+    typeInto(rrn, "");
+    expect(staged().주민등록번호).toBe("");
+    expect(staged().대표자생년월일).toBe("");
   });
 });

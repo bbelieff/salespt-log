@@ -84,6 +84,24 @@ describe("② 저장값 읽기", () => {
     expect(moneyTenths("△1.2억", true)).toBe(-1200);
     expect(moneyTenths("-3,200만")).toBeNull();
   });
+
+  it("괄호 음수(재무제표 표기) — 손익 칸은 음수 옛 글, 그 밖 칸은 읽을 수 없는 글", () => {
+    expect(readMoney("(1,234)", true)).toEqual({ kind: "legacy", tenths: -12340, month: null });
+    expect(readMoney("(3,200만)", true)).toEqual({ kind: "legacy", tenths: -320, month: null });
+    expect(readMoney("( 0 )", true)).toEqual({ kind: "legacy", tenths: 0, month: null });
+    expect(readMoney("(1,234)")).toEqual({ kind: "legacy", tenths: null, month: null });
+    expect(readMoney("(-5)", true)).toEqual({ kind: "legacy", tenths: null, month: null });
+    expect(formatMoneyOnBlur("(1,234)", true)).toBe("(1,234)"); // 저장값은 바꾸지 않는다
+  });
+
+  it("1,000,000 이상(백만원으로 1조 이상) 숫자는 원으로 적은 값 — 옛 '쉼표 숫자 = 원' 글·원 단위 서류 숫자", () => {
+    expect(readMoney("250,000,000")).toEqual({ kind: "legacy", tenths: 2500, month: null, wonScale: true });
+    expect(readMoney("250123456")).toEqual({ kind: "legacy", tenths: 2501, month: null, wonScale: true });
+    expect(readMoney("-3,250,000", true)).toEqual({ kind: "legacy", tenths: -33, month: null, wonScale: true });
+    expect(readMoney("999,999.9")).toEqual({ kind: "number", tenths: 9999999 }); // 1조 바로 아래는 백만원 그대로
+    expect(formatMoneyOnBlur("250123456", false)).toBe("250123456"); // 쉼표를 찍어 백만원으로 굳히지 않는다
+    expect(formatMoneyTxt("250,000,000")).toBe("250,000,000"); // TXT 는 옛 글처럼 그대로
+  });
 });
 
 describe("③ 입력칸", () => {

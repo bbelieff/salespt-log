@@ -8,6 +8,9 @@
  *   250,123,456원 → "250.1" · 12,345,678원 → "12.3" · 40,000원 → "0". 천원 문서는 호출부가 ×1,000 먼저.
  * - 옛 자유 글("25' 250백만" · "3,200만" · "1.2억")은 저장값을 바꾸지 않고 읽기만 한다(readMoney).
  *   단위 없는 숫자는 칸 단위(백만원)로 읽는다 — "25' 250" = 250백만원.
+ *   단, 1,000,000 이상(백만원으로는 1조 이상)인 숫자는 원으로 적은 값으로 본다("250,000,000" = 250백만원 —
+ *   #1068 까지 "쉼표 숫자 = 원" 이었고, 원 단위 서류 숫자를 그대로 옮겨 적는 실수도 막는다).
+ *   괄호 숫자("(1,234)" — 재무제표 음수 표기)는 손익 칸에서 음수, 그 밖 칸에선 읽을 수 없는 글.
  * - parseSalesAmount: 매출 글 → 원(+ 몇 월까지). company-info-restructure 에서 옮겨 왔다.
  */
 
@@ -155,10 +158,15 @@ export function wonToMillion(won: number): string {
 export type MoneyRead =
   | { kind: "empty" }
   | { kind: "number"; tenths: number }
-  | { kind: "legacy"; tenths: number | null; month: number | null };
+  /** wonScale = 원 단위로 적은 큰 숫자(1,000,000 이상)를 원으로 읽었다. */
+  | { kind: "legacy"; tenths: number | null; month: number | null; wonScale?: true };
 
 const NUMERIC = /^([-−]?)(\d[\d,]*)?(?:\.(\d*))?$/;
 const LEGACY_NONE: MoneyRead = { kind: "legacy", tenths: null, month: null };
+/** 이 크기(십만원) 이상의 숫자 글 = 백만원으로 1,000,000(1조) 이상 → 원으로 적은 값으로 본다. */
+const WON_SCALE_TENTHS = 10_000_000;
+/** 괄호로 감싼 금액 "(1,234)" · "( 3,200만 )". */
+const PAREN = /^\(\s*(.+?)\s*\)$/;
 
 /** 숫자만 적힌 글(쉼표·소수점·앞 마이너스) → 십만원. 소수 둘째 자리는 반올림. 숫자 글이 아니면 null. */
 function readNumeric(s: string): { tenths: number; negative: boolean } | null {
@@ -180,8 +188,24 @@ function readNumeric(s: string): { tenths: number; negative: boolean } | null {
 export function readMoney(raw: unknown, signed = false): MoneyRead {
   const s = String(raw ?? "").trim();
   if (!s) return { kind: "empty" };
+  const paren = s.match(PAREN);
+  if (paren) {
+    // 재무제표식 음수 "(1,234)" — 손익 칸만. 부호 없는 칸에서 부호를 떼면 틀린 값이 된다.
+    const inner = signed ? readMoney(paren[1], false) : LEGACY_NONE;
+    if (inner.kind === "empty" || inner.tenths === null) return LEGACY_NONE;
+    const tenths = inner.tenths === 0 ? 0 : -inner.tenths;
+    return inner.kind === "legacy"
+      ? { ...inner, tenths }
+      : { kind: "legacy", tenths, month: null };
+  }
   const n = readNumeric(s);
-  if (n) return n.negative && !signed ? LEGACY_NONE : { kind: "number", tenths: n.tenths };
+  if (n) {
+    if (n.negative && !signed) return LEGACY_NONE;
+    if (Math.abs(n.tenths) < WON_SCALE_TENTHS) return { kind: "number", tenths: n.tenths };
+    // 1조(백만원) 이상 = 원으로 적은 숫자("250,000,000") — 원 → 백만원으로 읽는다(저장값은 그대로).
+    const won = Number(s.replace(/,/g, "").replace(/−/g, "-"));
+    return { kind: "legacy", tenths: wonToTenths(won), month: null, wonScale: true };
+  }
   const neg = s.match(/^[-−–△▲]\s*/);
   if (neg && !signed) return LEGACY_NONE;
   const a = parseSalesAmount(neg ? s.slice(neg[0].length) : s, { bareUnit: 1e6 });

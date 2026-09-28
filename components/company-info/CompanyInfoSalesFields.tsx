@@ -4,11 +4,13 @@
  * 1) 「연도별 매출」 한 표: 머리글 "상반기 · 하반기 · 합계"(단위 백만원), 줄 Y · Y-1 · Y-2 · Y-3.
  *    한 줄 = 상반기(매출Y상…) | 하반기(매출Y하…) | 합계(금년도매출·과년도매출·과년도매출Y2·Y3) 세 칸 나란히 —
  *    375px 폰에서도 한 줄(칸 아래 "약 …" 도움말).
- * 2) 합계: 반기 칸에 값이 있으면 반기 합(읽기 전용) — 편집기 apply() 가 같은 값을 저장한다(열기만 해선 안 함).
- *    한쪽만 있으면 그 반기만 더하고 안내, 둘 다 비면 합계는 직접 적는 칸(옛 연도 합계·재무제표 연 매출).
- *    반기 칸에 읽을 수 없는 글이 있으면 합계를 덮지 않고 알린다. 다른 금액의 옛 합계는 "이전에 적은 합계".
- * 3) Y 줄 연도 = 매출 기준 연도(네 자리 입력). 비었으면 오늘 연도로 보이고, 재무 칸을 처음 고칠 때 저장된다.
- *    바꾸면 칸 이름만 바뀐다. 2000~2100 밖이면 저장하지 않고 안내.
+ * 2) 합계: 반기 칸에 값이 있으면 반기 합(읽기 전용, 칸 아래 "자동") — 편집기 apply() 가 같은 값을 저장한다
+ *    (열기만 해선 안 함). 한쪽만 있으면 그 반기만 더하고 안내, 둘 다 비면 합계는 직접 적는 칸(옛 연도 합계·
+ *    재무제표 연 매출). 반기 칸에 읽을 수 없는 글이 있으면 합계를 덮지 않고 알린다. 반기 합과 다른 옛 합계는
+ *    "이전 합계 … — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요".
+ * 3) Y 줄 연도 = 매출 기준 연도(네 자리 입력, 설명은 화면낭독기에도). 비었으면 오늘 연도로 보이고, 재무 값이
+ *    있는 업체를 처음 고칠 때 저장된다. 바꾸면 칸 이름만 바뀐다. 2000~2100 밖이면 저장하지 않고 Y 줄 바로 아래
+ *    안내(칸에 다시 들어가면 거둔다).
  * 4) 매출증가율 3칸(Y-3→Y-2 · Y-2→Y-1 · Y-1→Y): 줄 합계에서 자동 계산(읽기 전용).
  * 옛 한 칸 반기별매출·매출증가율 값은 숨기되, 값이 있으면 읽기 전용 메모로 보여 준다(데이터 보존).
  */
@@ -27,7 +29,7 @@ import {
 import { LEGACY_SALES_NOTES, salesDefs, type FieldDef } from "@/components/company-info-defs";
 import HintTooltip from "@/components/ui/HintTooltip";
 import { FieldLabel, hintIdOf, readOnlyCls } from "./CompanyInfoField";
-import { MoneyInput, MoneyLegacyNote } from "./CompanyInfoFinanceFields";
+import { MillionWonInput, MoneyLegacyNote } from "./CompanyInfoFinanceFields";
 
 type CI = CompanyInfo;
 
@@ -62,7 +64,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
   const baseYear = resolveBaseYear(draft.매출기준연도, today);
   const defs = salesDefs(baseYear);
   const growth = computeSalesGrowth(draft);
-  const note = partialYearNote(draft);
+  const note = partialYearNote(draft, baseYear);
   // 기준 연도 칸 — 입력 중 글(null = 입력 중 아님)과 틀린 연도 안내.
   const [yearText, setYearText] = useState<string | null>(null);
   const [yearError, setYearError] = useState("");
@@ -92,7 +94,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
       <label htmlFor={idOf(k)} className="sr-only">
         {label}
       </label>
-      <MoneyInput id={idOf(k)} value={text(k)} signed={false} onChange={(v) => onField(k, v)} />
+      <MillionWonInput id={idOf(k)} value={text(k)} signed={false} onChange={(v) => onField(k, v)} />
     </div>
   );
 
@@ -131,15 +133,21 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                       <label htmlFor={yearId} className="sr-only">
                         매출 기준 연도(Y)
                       </label>
+                      <span id={`${yearId}-hint`} className="sr-only">
+                        {YEAR_HINT}
+                      </span>
                       <input
                         id={yearId}
                         className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs tabular-nums text-gray-900 focus:border-brand-red focus:outline-none"
                         inputMode="numeric"
                         maxLength={4}
                         aria-invalid={yearError ? true : undefined}
-                        aria-describedby={yearError ? `${yearId}-err` : undefined}
+                        aria-describedby={yearError ? `${yearId}-hint ${yearId}-err` : `${yearId}-hint`}
                         value={yearText ?? String(baseYear)}
-                        onFocus={() => setYearText(String(baseYear))}
+                        onFocus={() => {
+                          setYearText(String(baseYear));
+                          setYearError("");
+                        }}
                         onChange={(e) => typeYear(e.target.value)}
                         onBlur={() => {
                           if (yearText !== null && baseYearInputError(yearText)) setYearError(baseYearInputError(yearText));
@@ -166,13 +174,20 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                         aria-readonly="true"
                         value={formatTenths(row.total)}
                       />
-                      {moneyHint(row.total) && <p className="mt-0.5 truncate text-xs text-gray-500">{moneyHint(row.total)}</p>}
+                      <p className="mt-0.5 truncate text-xs text-gray-500">
+                        {["자동", moneyHint(row.total)].filter(Boolean).join(" · ")}
+                      </p>
                     </div>
                   ) : (
                     cell(합)
                   )}
                 </div>
               </div>
+              {i === 0 && yearError && (
+                <p id={`${yearId}-err`} className="mt-0.5 text-xs text-red-600" role="alert">
+                  {yearError} — 이전 연도({baseYear})를 그대로 써요
+                </p>
+              )}
               {row.only && (
                 <p className="mt-0.5 text-xs text-gray-500" role="note">
                   {tag}: {other}가 비어 있어 {row.only}만 더했어요
@@ -185,7 +200,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
               )}
               {row.staleTotal && (
                 <p className="mt-0.5 break-words text-xs text-gray-500" role="note">
-                  {tag}: 이전에 적은 합계 {row.staleTotal} — 저장할 때 업체 기타메모로 옮겨 둬요
+                  {tag}: 이전 합계 {row.staleTotal} — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요
                 </p>
               )}
               {[상, 하, ...(row.auto ? [] : [합])].map(([k, label]) => (
@@ -195,11 +210,6 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
           );
         })}
       </div>
-      {yearError && (
-        <p id={`${yearId}-err`} className="text-xs text-red-600" role="alert">
-          {yearError} — 이전 연도({baseYear})를 그대로 써요
-        </p>
-      )}
       {legacyNote("반기별매출")}
       <SubHead>매출증가율 (자동 계산)</SubHead>
       <div className="grid grid-cols-1 gap-1.5 xs:grid-cols-3" role="group" aria-label="매출증가율">
