@@ -28,7 +28,7 @@ import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
 import ContractListTable from "./_components/ContractListTable";
 import InstitutionWorkList from "./_components/InstitutionWorkList";
-import PaymentSelectionBridge, { syncPaymentSelectionBridge } from "./_components/PaymentSelectionBridge";
+import PaymentSelectionBridge, { syncPaymentSelectionBridge, watchDevicePixelRatio } from "./_components/PaymentSelectionBridge";
 import PaymentPerformanceSummary from "./_components/PaymentPerformanceSummary";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
@@ -246,8 +246,8 @@ export default function PaymentPage() {
     // 기관을 접고 펼칠 때 선택 행의 DOM 위치가 바뀌므로 연결부를 즉시 재배치한다.
     const listObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver(sync);
     if (listPaneRef.current) listObserver?.observe(listPaneRef.current, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-expanded", "aria-selected", "data-active-institution"] });
-    window.addEventListener("resize", sync);
-    return () => { cancelAnimationFrame(frame); observer?.disconnect(); listObserver?.disconnect(); window.removeEventListener("resize", sync); };
+    window.addEventListener("resize", sync); const unwatchDpr = watchDevicePixelRatio(sync); // 모니터 배율 변경은 resize 없이 올 수 있다
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); listObserver?.disconnect(); window.removeEventListener("resize", sync); unwatchDpr(); };
   }, [isPc, list.isLoading, rows.length, listMode, selectedCp?.row, selectedWorkKey, companyQuery, sortKey, masterWidth]);
   // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
