@@ -19,6 +19,15 @@ import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
 import { buildDiffRows, defaultCheckFor, selectedPatch, withBaseYear } from "@/lib/document-ocr/diff";
 import { DOC_TYPES, DOC_TYPE_LABEL, type CompanyInfoKey, type DocType } from "@/lib/document-ocr/types";
+
+/** 팝업에 안내하는 서류 목록 [서류, 채워 주는 칸] — 파서 레지스트리(lib/document-ocr/registry.ts)와 같게 유지. */
+export const SUPPORTED_DOCS: readonly (readonly [string, string])[] = [
+  ["사업자등록증", "사업자등록번호·개업일·사업자구분/과세유형·업태·종목·소재지·법인등록번호"],
+  ["부가세 과세표준증명원", "연도별 상·하반기 매출(백만원)·면세 수입금액"],
+  ["재무제표(표준재무제표증명)", "영업이익·당기순이익·이자비용·자산/부채/자본총계"],
+  ["신분증(주민등록증·운전면허증)", "대표자 이름·주민등록번호 앞자리·자택주소"],
+  ["임대차계약서", "소유여부(임차)·보증금·월세·면적"],
+];
 import { resolveBaseYear } from "@/util/company-sales";
 import { companyInfoFieldList } from "@/components/company-info-defs";
 import CompanyDocDiffTable from "./CompanyDocDiffTable";
@@ -226,7 +235,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
           }}
           className={`rounded-lg border-2 border-dashed p-3 text-center text-xs ${dragOver ? "border-gray-900 bg-gray-50" : "border-gray-300"}`}
         >
-          <p className="text-gray-600">사업자등록증 같은 서류를 여기에 끌어놓거나</p>
+          <p className="text-gray-600">아래 서류를 여기에 끌어놓거나</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -248,6 +257,17 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
               e.target.value = "";
             }}
           />
+        </div>
+        <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs" aria-label="읽을 수 있는 서류">
+          <p className="font-semibold text-gray-700">읽을 수 있는 서류</p>
+          <ul className="mt-1 space-y-0.5">
+            {SUPPORTED_DOCS.map(([doc, fills]) => (
+              <li key={doc} className="flex gap-1.5 text-gray-600">
+                <span className="shrink-0 font-medium text-gray-800">{doc}</span>
+                <span className="min-w-0 text-gray-500">— {fills}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {files.length > 0 && (

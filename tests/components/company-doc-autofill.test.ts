@@ -100,6 +100,15 @@ describe("CompanyDocAutofillDialog", () => {
     expect(document.getElementById(dlg.getAttribute("aria-labelledby")!)!.textContent).toContain("문서로 자동입력");
     expect(dlg.textContent).toContain("파일은 이 기기 안에서만 읽고 저장하지 않아요.");
   });
+  it("읽을 수 있는 서류 5종과 채워 주는 칸을 안내한다", () => {
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
+    const list = document.querySelector('[aria-label="읽을 수 있는 서류"]')!;
+    const items = [...list.querySelectorAll("li")].map((li) => li.textContent ?? "");
+    expect(items).toHaveLength(5);
+    for (const doc of ["사업자등록증", "부가세 과세표준증명원", "재무제표", "신분증", "임대차계약서"]) {
+      expect(items.some((t) => t.includes(doc))).toBe(true);
+    }
+  });
 
   it("사업자등록증 → 비교표, 기본 체크 규칙, 체크한 칸만 적용", async () => {
     const onApply = vi.fn();
