@@ -3,6 +3,20 @@ import type { WorkActivitySummary } from "../_lib/institution-view";
 
 export type ActivityLoadState = "loading" | "ready" | "error";
 
+/** D-day 색 — belie 2026-09-28: 다음 일정은 항상 D- 로 돌아가야 한다.
+ *  D-?? = 일정 없음(회색) · D-NN = 다가오는 일정(노랑, 임박) · D+NN = 날짜가 지났거나 다음 일정이 없음(빨강). */
+export function ddayTone(label: string): "none" | "upcoming" | "overdue" {
+  if (label.startsWith("D+")) return "overdue";
+  if (/^D-\d/.test(label)) return "upcoming";
+  return "none";
+}
+
+const TONE_CLASS = {
+  none: "bg-slate-100 text-slate-600",
+  upcoming: "bg-yellow-100 text-yellow-800",
+  overdue: "bg-red-100 text-red-700",
+} as const;
+
 export default function WorkActivityBadge({ activity, state = "ready" }: {
   activity?: WorkActivitySummary;
   state?: ActivityLoadState;
@@ -11,12 +25,24 @@ export default function WorkActivityBadge({ activity, state = "ready" }: {
   const label = activity?.activityLabel ?? "D-??";
   const description = state === "loading" ? "활동 불러오는 중" : state === "error" ? "활동 조회 실패" :
     kind === "none" ? "Todo·History 없음" : kind === "history" ? `최근 History ${label}` : `미완료 Todo ${label}`;
+  if (state !== "ready") {
+    return (
+      <span aria-label={description} className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
+        {state === "loading" ? "…" : "조회 실패"}
+      </span>
+    );
+  }
+  // 「Todo/History」 종류와 D-day 는 따로 떼어 보여 준다 — 색은 D-day 부호만 따른다.
   return (
-    <span aria-label={description} className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${
-      state !== "ready" || kind === "none" ? "bg-slate-100 text-slate-600" :
-        kind === "history" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-    }`}>
-      {state === "loading" ? "…" : state === "error" ? "조회 실패" : <>{kind === "history" ? "History " : kind === "todo" ? "Todo " : ""}{label}</>}
+    <span aria-label={description} className="inline-flex shrink-0 items-center gap-1">
+      {kind !== "none" && (
+        <span aria-hidden className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] font-semibold text-slate-500">
+          {kind === "history" ? "History" : "Todo"}
+        </span>
+      )}
+      <span aria-hidden className={`rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${TONE_CLASS[ddayTone(label)]}`}>
+        {label}
+      </span>
     </span>
   );
 }

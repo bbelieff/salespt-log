@@ -45,27 +45,37 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
     if (bridge) bridge.style.opacity = "0";
     return;
   }
+  // 브라우저는 박스 테두리를 기기 픽셀 칸에 반올림해 그린다. 연결선도 같은 칸에 맞추지 않으면 목록 칸마다
+  // 세로 위치의 소수점이 달라 0.25~0.75px 씩 어긋나 선이 흐리거나 이가 빠져 보인다(2026-09-28 10기 실측).
+  const dpr = typeof window !== "undefined" && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+  const snap = (v: number) => Math.round(v * dpr) / dpr;
+  // 1px 테두리가 실제로 그려지는 두께 — 기기 픽셀 정수배(최소 1칸).
+  const bw = Math.max(1, Math.floor(dpr + 1e-6)) / dpr;
   const row = selected.getBoundingClientRect();
   const viewport = pane.getBoundingClientRect();
-  const top = Math.max(row.top, viewport.top);
-  const bottom = Math.min(row.bottom, viewport.bottom);
+  const top = snap(Math.max(row.top, viewport.top));
+  const bottom = snap(Math.min(row.bottom, viewport.bottom));
   if (bottom - top < 12) { bridge.style.opacity = "0"; return; }
 
-  const panel = detail.getBoundingClientRect();
-  const width = panel.left - row.right;
-  const height = panel.height;
+  const panelRect = detail.getBoundingClientRect();
+  const rowRight = snap(row.right);
+  const panelLeft = snap(panelRect.left);
+  const panelTop = snap(panelRect.top);
+  const width = panelLeft - rowRight;
+  const height = snap(panelRect.bottom) - panelTop;
   if (width <= 1 || height <= 0) { bridge.style.opacity = "0"; return; }
-  const startY = Math.max(0, Math.min(height, top - panel.top));
-  const endY = Math.max(0, Math.min(height, bottom - panel.top));
+  const startY = Math.max(0, Math.min(height, top - panelTop));
+  const endY = Math.max(0, Math.min(height, bottom - panelTop));
   if (endY <= startY) { bridge.style.opacity = "0"; return; }
   // 물방울 연결: 선택 박스의 위·아래 직선이 상세 패널 앞까지 그대로 뻗고, 끝에서 박스와 같은 R 로
   // 바깥쪽(위는 위로, 아래는 아래로) 뒤집혀 휘어 패널 외곽선에 수직으로 붙는다(역라운드).
-  // 선이 끊겨 보이지 않게: ① 1px 선을 테두리 픽셀 한가운데(+0.5)에 맞추고 ② SVG 를 박스 안쪽 OVERLAP 만큼
+  // 선이 끊겨 보이지 않게: ① 선을 테두리 픽셀 한가운데(두께 bw 의 절반)에 맞추고 ② SVG 를 박스 안쪽 OVERLAP 만큼
   // 당겨 시작해 박스 테두리와 겹치고 ③ 역라운드 끝도 패널 외곽선을 따라 OVERLAP 만큼 더 긋는다.
-  const lead = BRIDGE_OVERLAP;
-  const topLine = startY + 0.5;
-  const bottomLine = endY - 0.5;
-  const panelLine = lead + width + 0.5;
+  const lead = Math.max(1, Math.round(BRIDGE_OVERLAP * dpr)) / dpr; // 겹침 길이도 기기 픽셀 칸 단위
+  const half = bw / 2;
+  const topLine = startY + half;
+  const bottomLine = endY - half;
+  const panelLine = lead + width + half;
   // R 은 박스 모서리 값을 쓰되 틈의 55% 를 넘지 않게 — 틈이 좁을 때 곧은 연장선이 너무 짧아
   // 갈고리처럼 보이지 않도록(belie 2026-09-28 "R 수정해도 됨").
   const r = Math.max(0, Math.min(cornerRadius(selected), width * 0.55, topLine, height - bottomLine));
@@ -75,14 +85,17 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   const upperArc = `M 0 ${topLine} L ${straight} ${topLine} A ${r} ${r} 0 0 0 ${panelLine} ${upperY}`;
   const lowerArc = `L ${panelLine} ${lowerY} A ${r} ${r} 0 0 0 ${straight} ${bottomLine} L 0 ${bottomLine}`;
   // 채움은 패널 외곽선 픽셀을 넘어 edgeX 까지 — 이어지는 구간의 테두리를 지운다.
-  const edgeX = panelLine + 1.5;
+  const edgeX = lead + width + bw + 1;
   bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upperArc} L ${edgeX} ${upperY} L ${edgeX} ${lowerY} ${lowerArc} Z`);
   // 외곽선 = 박스 위·아래 선의 연장 + 역라운드. 이어지는 구간에는 세로선이 없다.
-  bridge.querySelector("[data-bridge-edge]")?.setAttribute("d", `${upperArc} L ${panelLine} ${Math.max(0, upperY - BRIDGE_OVERLAP)} M ${panelLine} ${Math.min(height, lowerY + BRIDGE_OVERLAP)} ${lowerArc}`);
+  const edge = bridge.querySelector("[data-bridge-edge]");
+  edge?.setAttribute("d", `${upperArc} L ${panelLine} ${Math.max(0, upperY - BRIDGE_OVERLAP)} M ${panelLine} ${Math.min(height, lowerY + BRIDGE_OVERLAP)} ${lowerArc}`);
+  edge?.setAttribute("stroke-width", String(bw));
   bridge.setAttribute("viewBox", `0 0 ${edgeX} ${height}`);
+  // SVG 원점도 기기 픽셀 칸 위(스냅된 절대 좌표)에 둔다 — 원점이 소수점이면 브라우저가 다시 반올림해 전체가 밀린다.
   const bounds = root.getBoundingClientRect();
-  bridge.style.left = `${row.right - lead - bounds.left}px`;
-  bridge.style.top = `${panel.top - bounds.top}px`;
+  bridge.style.left = `${rowRight - lead - bounds.left}px`;
+  bridge.style.top = `${panelTop - bounds.top}px`;
   bridge.style.width = `${edgeX}px`;
   bridge.style.height = `${height}px`;
   bridge.style.opacity = "1";

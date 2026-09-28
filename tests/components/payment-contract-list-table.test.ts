@@ -11,6 +11,7 @@ import PaymentSortControl from "@/app/(app)/payment/_components/PaymentSortContr
 import { buildCompanyWorkItems } from "@/app/(app)/payment/_lib/company-work-view";
 import { buildInstitutionWorkItems } from "@/app/(app)/payment/_lib/institution-view";
 import PaymentSelectionBridge, { syncPaymentSelectionBridge } from "@/app/(app)/payment/_components/PaymentSelectionBridge";
+import WorkActivityBadge, { ddayTone } from "@/app/(app)/payment/_components/WorkActivityBadge";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const slot = (over: Record<string, unknown> = {}) => ({ 진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "", ...over });
@@ -61,7 +62,11 @@ describe("ContractListTable 1뎁스 카드", () => {
     const items = itemsFor([cp({ 수납2: slot({ 진행기관: "소진공" }) })]);
     items[0]!.work = { ...items[0]!.work, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" };
     const node = renderList({ items, selectedKey: "3-1", onSelect: vi.fn(), activityState: "ready" });
-    expect(node.textContent).toContain("Todo D-00");
+    // 종류(Todo)와 D-day 는 따로 떼어진 칩 — D-00(오늘)은 다가오는 일정이라 노랑.
+    const badge = node.querySelector('[aria-label="미완료 Todo D-00"]')!;
+    const chips = [...badge.querySelectorAll("span")].map((el) => [el.textContent, el.className]);
+    expect(chips.map(([t]) => t)).toEqual(["Todo", "D-00"]);
+    expect(chips[1]![1]).toContain("bg-yellow-100");
     expect(node.querySelector('[aria-label="미완료 Todo D-00"]')).not.toBeNull();
     expect(node.querySelectorAll('[role="option"]')).toHaveLength(2);
     expect(node.querySelector('[data-work-key="3-2"]')?.textContent).toContain("D-??");
@@ -114,6 +119,81 @@ describe("업체 보기 정렬 버튼", () => {
     expect(Array.from(el.querySelectorAll("button"), (button) => button.textContent)).toEqual(["등록 빠른순", "등록 늦은순", "D-day순"]);
     act(() => (el?.querySelectorAll("button")[2] as HTMLButtonElement).click());
     expect(onChange).toHaveBeenCalledWith("dday");
+  });
+});
+
+describe("D-day 배지 색 (belie 2026-09-28)", () => {
+  it("D-?? 회색 · D-NN 노랑(임박) · D+NN 빨강(지남)", () => {
+    expect(ddayTone("D-??")).toBe("none");
+    expect(ddayTone("D-00")).toBe("upcoming");
+    expect(ddayTone("D-126")).toBe("upcoming");
+    expect(ddayTone("D+00")).toBe("overdue");
+    expect(ddayTone("D+05")).toBe("overdue");
+  });
+  it("History D+NN 도 빨강 — 다음 일정(Todo)이 없다는 뜻", () => {
+    const node = document.createElement("div"); document.body.append(node);
+    const root = createRoot(node);
+    act(() => root.render(h(WorkActivityBadge, { activity: { activityKind: "history", activityDate: "2026-09-20", activityLabel: "D+08" }, state: "ready" })));
+    const chips = [...node.querySelectorAll('[aria-label="최근 History D+08"] span')];
+    expect(chips.map((el) => el.textContent)).toEqual(["History", "D+08"]);
+    expect(chips[1]!.className).toContain("bg-red-100");
+    act(() => root.unmount()); node.remove();
+  });
+});
+
+describe("선택 행과 상세의 연결부 — 기기 픽셀 정렬(10기 실측 좌표)", () => {
+  const rect = (left: number, top: number, right: number, bottom: number) =>
+    ({ left, top, right, bottom, width: right - left, height: bottom - top }) as DOMRect;
+  const mount = () => {
+    const workspace = document.createElement("div");
+    const pane = document.createElement("div");
+    const row = document.createElement("button");
+    const detail = document.createElement("div");
+    row.setAttribute("aria-selected", "true");
+    detail.className = "payment-detail-shell";
+    pane.append(row); workspace.append(pane, detail); document.body.append(workspace);
+    const host = document.createElement("div"); workspace.append(host);
+    const svgRoot = createRoot(host);
+    act(() => svgRoot.render(h(PaymentSelectionBridge)));
+    const bridge = host.querySelector("svg")!;
+    // 실측(1848px 창, 루트 13.5px): 목록 두 번째 업체 — 소수점 좌표.
+    vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue(rect(246.25, 0.375, 1840, 780.375));
+    vi.spyOn(pane, "getBoundingClientRect").mockReturnValue(rect(251, 114.25, 597.5, 780.375));
+    vi.spyOn(row, "getBoundingClientRect").mockReturnValue(rect(251, 266.625, 597.5, 363.3125));
+    vi.spyOn(detail, "getBoundingClientRect").mockReturnValue(rect(612.25, 68.375, 1840, 780.375));
+    return { workspace, pane, bridge, svgRoot };
+  };
+  const setDpr = (v: number) => Object.defineProperty(window, "devicePixelRatio", { value: v, configurable: true });
+  afterEach(() => setDpr(1));
+
+  it("dpr 1: SVG 원점과 선이 박스·패널 테두리 픽셀 한가운데에 놓인다", () => {
+    setDpr(1);
+    const { workspace, pane, bridge, svgRoot } = mount();
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    const absLeft = 246.25 + parseFloat(bridge.style.left);
+    const absTop = 0.375 + parseFloat(bridge.style.top);
+    expect(absLeft).toBe(596); // round(597.5) - 겹침 2
+    expect(absTop).toBe(68); // round(68.375)
+    const d = bridge.querySelector("[data-bridge-edge]")!.getAttribute("d")!;
+    // 윗선: 박스 윗테두리 픽셀 [267,268] 의 중앙 267.5 = 원점 68 + 199.5
+    expect(d.startsWith("M 0 199.5 ")).toBe(true);
+    // 아랫선: 박스 아랫테두리 픽셀 [362,363] 의 중앙 362.5 = 68 + 294.5
+    expect(d).toContain("L 0 294.5");
+    // 패널 쪽 끝: 패널 왼쪽 테두리 픽셀 [612,613] 의 중앙 612.5 = 596 + 16.5
+    expect(d).toContain(" 16.5 ");
+    expect(bridge.querySelector("[data-bridge-edge]")!.getAttribute("stroke-width")).toBe("1");
+    act(() => svgRoot.unmount()); workspace.remove();
+  });
+
+  it("dpr 1.25: 선 두께는 기기 픽셀 1칸(0.8px), 좌표는 기기 픽셀 격자 위", () => {
+    setDpr(1.25);
+    const { workspace, pane, bridge, svgRoot } = mount();
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    const onGrid = (v: number) => Math.abs(v * 1.25 - Math.round(v * 1.25)) < 1e-6;
+    expect(onGrid(246.25 + parseFloat(bridge.style.left))).toBe(true);
+    expect(onGrid(0.375 + parseFloat(bridge.style.top))).toBe(true);
+    expect(bridge.querySelector("[data-bridge-edge]")!.getAttribute("stroke-width")).toBe("0.8");
+    act(() => svgRoot.unmount()); workspace.remove();
   });
 });
 
