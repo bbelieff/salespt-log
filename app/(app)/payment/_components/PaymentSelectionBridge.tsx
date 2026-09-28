@@ -36,6 +36,21 @@ function cornerRadius(el: HTMLElement): number {
   return Number.isFinite(r) && r > 0 ? r : 12;
 }
 
+/** 모니터 배율(devicePixelRatio)이 바뀌면 onChange. 창을 배율이 다른 모니터로 옮기면 resize 없이 바뀔 수 있어
+ *  연결부가 이전 픽셀 격자에 남는다 — 현재 배율의 matchMedia 를 걸고, 바뀔 때마다 새 배율로 다시 건다. */
+export function watchDevicePixelRatio(onChange: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  let query: MediaQueryList | null = null;
+  function arm() {
+    query?.removeEventListener("change", handle);
+    query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    query.addEventListener("change", handle);
+  }
+  function handle() { arm(); onChange(); }
+  arm();
+  return () => query?.removeEventListener("change", handle);
+}
+
 export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HTMLDivElement | null, bridge: SVGSVGElement | null) {
   const detail = root?.querySelector<HTMLElement>(".payment-detail-shell");
   // 접힌 기관에서는 선택 행이 DOM에서 사라지므로 활성 기관 헤더에 연결한다.
@@ -48,7 +63,9 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   // 브라우저는 박스 테두리를 기기 픽셀 칸에 반올림해 그린다. 연결선도 같은 칸에 맞추지 않으면 목록 칸마다
   // 세로 위치의 소수점이 달라 0.25~0.75px 씩 어긋나 선이 흐리거나 이가 빠져 보인다(2026-09-28 10기 실측).
   const dpr = typeof window !== "undefined" && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
-  const snap = (v: number) => Math.round(v * dpr) / dpr;
+  // 정확히 반 칸이면 브라우저(LayoutUnit::Round)는 올림한다. getBoundingClientRect 값은 float32 로 반올림돼 반 칸이
+  // 살짝 모자라게(420.49999) 올 수 있어 1/1000 칸을 더해 같은 쪽으로 올린다(1.25·1.5배 배율에서만 생김).
+  const snap = (v: number) => Math.floor(v * dpr + 0.5 + 1e-3) / dpr;
   // 1px 테두리가 실제로 그려지는 두께 — 기기 픽셀 정수배(최소 1칸).
   const bw = Math.max(1, Math.floor(dpr + 1e-6)) / dpr;
   const row = selected.getBoundingClientRect();
@@ -84,8 +101,9 @@ export function syncPaymentSelectionBridge(root: HTMLDivElement | null, pane: HT
   const lowerY = bottomLine + r;
   const upperArc = `M 0 ${topLine} L ${straight} ${topLine} A ${r} ${r} 0 0 0 ${panelLine} ${upperY}`;
   const lowerArc = `L ${panelLine} ${lowerY} A ${r} ${r} 0 0 0 ${straight} ${bottomLine} L 0 ${bottomLine}`;
-  // 채움은 패널 외곽선 픽셀을 넘어 edgeX 까지 — 이어지는 구간의 테두리를 지운다.
-  const edgeX = lead + width + bw + 1;
+  // 채움은 패널 외곽선 픽셀을 넘어 edgeX 까지 — 이어지는 구간의 테두리를 지운다. 여유분도 기기 픽셀 정수 칸이어야
+  // SVG 박스 폭이 격자에 맞아 브라우저가 내용을 가로로 늘이거나 줄이지 않는다(1.25·1.5배 배율).
+  const edgeX = lead + width + bw + Math.max(1, Math.round(dpr)) / dpr;
   bridge.querySelector("[data-bridge-fill]")?.setAttribute("d", `${upperArc} L ${edgeX} ${upperY} L ${edgeX} ${lowerY} ${lowerArc} Z`);
   // 외곽선 = 박스 위·아래 선의 연장 + 역라운드. 이어지는 구간에는 세로선이 없다.
   const edge = bridge.querySelector("[data-bridge-edge]");

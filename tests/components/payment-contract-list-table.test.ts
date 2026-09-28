@@ -10,7 +10,7 @@ import ContractListTable from "@/app/(app)/payment/_components/ContractListTable
 import PaymentSortControl from "@/app/(app)/payment/_components/PaymentSortControl";
 import { buildCompanyWorkItems } from "@/app/(app)/payment/_lib/company-work-view";
 import { buildInstitutionWorkItems } from "@/app/(app)/payment/_lib/institution-view";
-import PaymentSelectionBridge, { syncPaymentSelectionBridge } from "@/app/(app)/payment/_components/PaymentSelectionBridge";
+import PaymentSelectionBridge, { syncPaymentSelectionBridge, watchDevicePixelRatio } from "@/app/(app)/payment/_components/PaymentSelectionBridge";
 import WorkActivityBadge, { ddayTone } from "@/app/(app)/payment/_components/WorkActivityBadge";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -92,6 +92,9 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain("payment-detail-shell");
     expect(src).toContain("<PaymentSelectionBridge");
     expect(src).toContain("new MutationObserver(sync)");
+    // 모니터 배율이 resize 없이 바뀌어도 연결부를 새 픽셀 격자로 다시 맞춘다.
+    expect(src).toContain("const unwatchDpr = watchDevicePixelRatio(sync);");
+    expect(src).toContain("unwatchDpr(); };");
     expect(src).not.toContain("sticky top-app-content flex h-[calc(100vh-7rem)]");
     const detail = readFileSync(join(process.cwd(), "app/(app)/payment/_components/ContractRow.tsx"), "utf8");
     expect((detail.match(/payment-detail-scroll/g) ?? []).length).toBe(2);
@@ -139,12 +142,24 @@ describe("D-day 배지 색 (belie 2026-09-28)", () => {
     expect(chips[1]!.className).toContain("bg-red-100");
     act(() => root.unmount()); node.remove();
   });
+  it("종류 칩은 border 없이 ring 으로 — D-day 칩과 높이가 같고 폭을 덜 먹는다", () => {
+    const node = document.createElement("div"); document.body.append(node);
+    const root = createRoot(node);
+    act(() => root.render(h(WorkActivityBadge, { activity: { activityKind: "todo", activityDate: "2026-09-30", activityLabel: "D-02" }, state: "ready" })));
+    const badge = node.querySelector('[aria-label="미완료 Todo D-02"]')!;
+    const [kind, dday] = [...badge.querySelectorAll("span")];
+    expect(kind!.className.split(" ").some((c) => c === "border" || c.startsWith("border-"))).toBe(false);
+    expect(kind!.className).toContain("ring-inset");
+    for (const chip of [kind!, dday!]) { expect(chip.className).toContain("py-0.5"); expect(chip.className).toContain("text-[11px]"); }
+    expect(badge.className).toContain("gap-0.5");
+    act(() => root.unmount()); node.remove();
+  });
 });
 
 describe("선택 행과 상세의 연결부 — 기기 픽셀 정렬(10기 실측 좌표)", () => {
   const rect = (left: number, top: number, right: number, bottom: number) =>
     ({ left, top, right, bottom, width: right - left, height: bottom - top }) as DOMRect;
-  const mount = () => {
+  const mount = (rowRect = rect(251, 266.625, 597.5, 363.3125)) => {
     const workspace = document.createElement("div");
     const pane = document.createElement("div");
     const row = document.createElement("button");
@@ -159,7 +174,7 @@ describe("선택 행과 상세의 연결부 — 기기 픽셀 정렬(10기 실�
     // 실측(1848px 창, 루트 13.5px): 목록 두 번째 업체 — 소수점 좌표.
     vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue(rect(246.25, 0.375, 1840, 780.375));
     vi.spyOn(pane, "getBoundingClientRect").mockReturnValue(rect(251, 114.25, 597.5, 780.375));
-    vi.spyOn(row, "getBoundingClientRect").mockReturnValue(rect(251, 266.625, 597.5, 363.3125));
+    vi.spyOn(row, "getBoundingClientRect").mockReturnValue(rowRect);
     vi.spyOn(detail, "getBoundingClientRect").mockReturnValue(rect(612.25, 68.375, 1840, 780.375));
     return { workspace, pane, bridge, svgRoot };
   };
@@ -194,6 +209,53 @@ describe("선택 행과 상세의 연결부 — 기기 픽셀 정렬(10기 실�
     expect(onGrid(0.375 + parseFloat(bridge.style.top))).toBe(true);
     expect(bridge.querySelector("[data-bridge-edge]")!.getAttribute("stroke-width")).toBe("0.8");
     act(() => svgRoot.unmount()); workspace.remove();
+  });
+
+  it.each([1.25, 1.5, 1.75])("dpr %s: SVG 폭도 기기 픽셀 정수 칸 — 브라우저가 내용을 가로로 늘이지 않는다", (dpr) => {
+    setDpr(dpr);
+    const { workspace, pane, bridge, svgRoot } = mount();
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    const width = parseFloat(bridge.style.width);
+    expect(Math.abs(width * dpr - Math.round(width * dpr))).toBeLessThan(1e-6);
+    expect(Number(bridge.getAttribute("viewBox")!.split(" ")[2])).toBeCloseTo(width, 9);
+    act(() => svgRoot.unmount()); workspace.remove();
+  });
+
+  it("dpr 1.25: float32 로 반 칸이 살짝 모자라게 온 테두리도 브라우저처럼 올림한다", () => {
+    setDpr(1.25);
+    // 기기 픽셀 420.5(=CSS 336.4)가 getBoundingClientRect 에서 336.3999938964844 로 온다 — Chromium 은 421 칸에 그린다.
+    const { workspace, pane, bridge, svgRoot } = mount(rect(251, 336.3999938964844, 597.5, 430.3999938964844));
+    syncPaymentSelectionBridge(workspace, pane, bridge);
+    const absTop = 0.375 + parseFloat(bridge.style.top);
+    const topLine = Number(/^M 0 (\S+) /.exec(bridge.querySelector("[data-bridge-edge]")!.getAttribute("d")!)![1]);
+    // 기기 픽셀 421칸 [336.8, 337.6) 의 한가운데 = 337.2
+    expect(absTop + topLine).toBeCloseTo(337.2, 9);
+    act(() => svgRoot.unmount()); workspace.remove();
+  });
+});
+
+describe("모니터 배율 변경 감시", () => {
+  it("배율이 바뀌면 다시 맞추고 새 배율로 감시를 옮기며, 해제하면 멈춘다", () => {
+    const queries: { media: string; listeners: Set<() => void> }[] = [];
+    const matchMedia = vi.fn((media: string) => {
+      const q = { media, listeners: new Set<() => void>() };
+      queries.push(q);
+      return { media, addEventListener: (_: string, fn: () => void) => q.listeners.add(fn), removeEventListener: (_: string, fn: () => void) => q.listeners.delete(fn) };
+    });
+    vi.stubGlobal("matchMedia", matchMedia);
+    Object.defineProperty(window, "devicePixelRatio", { value: 1.5, configurable: true });
+    const onChange = vi.fn();
+    const stop = watchDevicePixelRatio(onChange);
+    expect(matchMedia).toHaveBeenLastCalledWith("(resolution: 1.5dppx)");
+    Object.defineProperty(window, "devicePixelRatio", { value: 1, configurable: true });
+    [...queries[0]!.listeners].forEach((fn) => fn());
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(matchMedia).toHaveBeenLastCalledWith("(resolution: 1dppx)");
+    expect(queries[0]!.listeners.size).toBe(0);
+    expect(queries[1]!.listeners.size).toBe(1);
+    stop();
+    expect(queries[1]!.listeners.size).toBe(0);
+    vi.unstubAllGlobals();
   });
 });
 

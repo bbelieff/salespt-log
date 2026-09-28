@@ -33,10 +33,11 @@ export default function WorkActivityBadge({ activity, state = "ready" }: {
     );
   }
   // 「Todo/History」 종류와 D-day 는 따로 떼어 보여 준다 — 색은 D-day 부호만 따른다.
+  // 종류 칩 테두리는 ring(inset)으로 — border 는 높이·폭을 2px 늘려 D-day 칩과 키가 달라지고 좁은 목록에서 넘친다.
   return (
-    <span aria-label={description} className="inline-flex shrink-0 items-center gap-1">
+    <span aria-label={description} className="inline-flex shrink-0 items-center gap-0.5">
       {kind !== "none" && (
-        <span aria-hidden className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] font-semibold text-slate-500">
+        <span aria-hidden className="rounded bg-white px-1 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-inset ring-slate-200">
           {kind === "history" ? "History" : "Todo"}
         </span>
       )}
