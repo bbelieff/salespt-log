@@ -2,10 +2,19 @@
  * CompanyDocDiffTable — 「문서로 자동입력」 비교표. 항목 | 지금 값 | 문서에서 읽은 값 | 정확도 | 적용.
  * 행·기본 체크 규칙은 lib/document-ocr/diff.ts(buildDiffRows) 가 정한다 — 이 파일은 그리기만.
  * 두 문서가 다른 값을 내면(충돌) 값 칸이 고르기 상자가 되고, 기본은 정확도 높은 값.
+ * [재무] 금액 칸은 "250.1백만원 (원문 250,123,456원)" — 저장되는 값은 백만원 숫자뿐이다.
  */
 "use client";
 
-import { accuracyOf, checkState, optionLabel, type Accuracy, type DiffRow } from "@/lib/document-ocr/diff";
+import {
+  accuracyOf,
+  checkState,
+  displayValue,
+  optionLabel,
+  sourceNote,
+  type Accuracy,
+  type DiffRow,
+} from "@/lib/document-ocr/diff";
 
 const ACC_CLS: Record<Accuracy, string> = {
   높음: "bg-emerald-50 text-emerald-700",
@@ -52,7 +61,7 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
                 <label htmlFor={boxId}>{label}</label>
               </th>
               <td className="whitespace-pre-line break-words py-1.5 pr-1 text-gray-500">
-                {row.current || <span className="text-gray-300">비어 있음</span>}
+                {displayValue(row.key, row.current) || <span className="text-gray-300">비어 있음</span>}
               </td>
               <td className="break-words py-1.5 pr-1 text-gray-900">
                 {row.conflict ? (
@@ -65,7 +74,7 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
                     >
                       {row.candidates.map((o, i) => (
                         <option key={`${o.value}-${i}`} value={i}>
-                          {optionLabel(o.value)} ({o.sources.join(", ")})
+                          {optionLabel(displayValue(row.key, o.value))} ({o.sources.join(", ")})
                         </option>
                       ))}
                     </select>
@@ -73,8 +82,9 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
                     {c.value.includes("\n") && <span className="mt-0.5 block whitespace-pre-line">{c.value}</span>}
                   </>
                 ) : (
-                  <span className="whitespace-pre-line">{c.value}</span>
+                  <span className="whitespace-pre-line">{displayValue(row.key, c.value)}</span>
                 )}
+                {sourceNote(c) && <span className="ml-1 text-gray-500">({sourceNote(c)})</span>}
                 {warn.map((w) => (
                   <p key={w} className="mt-0.5 text-amber-700">
                     ⚠ {w}

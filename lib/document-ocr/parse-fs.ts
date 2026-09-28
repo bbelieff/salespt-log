@@ -1,11 +1,12 @@
 /**
  * document-ocr/parse-fs — 재무제표(표준재무제표증명: 재무상태표 + 손익계산서) OCR 텍스트 → 업체정보 칸 제안.
  *
- * 채우는 칸: 결산연도 · 과년도매출(Y-1/Y-2/Y-3 중 결산연도에 맞는 칸) · 영업이익 · 당기순이익 · 이자비용 ·
- *   자산총계 · 부채총계 · 자본총계 · 부채비율 · 이자보상배율 · 당기순이익률.
- *   매출증가율은 채우지 않는다 — 편집기가 연도별 매출 칸(Y~Y-3)에서 3칸으로 자동 계산한다
- *   (company-info-restructure 2026-09-28). 전기 매출은 과년도 칸 + 참고 정보로 들어간다.
- * 금액 칸은 공용 formatManwon("3,200만"·"1.2억", 음수 "-3,200만"), 매출 칸은 기존 "25' 250백만" 꼴.
+ * 채우는 칸: 결산연도 · 연도별 매출 합계(Y~Y-3 중 결산연도에 맞는 칸 — 칸 = 매출 기준 연도 − 결산연도) ·
+ *   영업이익 · 당기순이익 · 이자비용 · 자산총계 · 부채총계 · 자본총계.
+ *   매출증가율·부채비율·이자보상배율·당기순이익률은 채우지 않는다 — 편집기가 금액 칸에서 자동 계산한다
+ *   (lib/service/company-finance.ts). 전기 매출은 한 해 앞 칸 + 참고 정보로 들어간다.
+ * 금액은 모두 백만원 정본(wonToMillion — "3,200" · "240" · "-12.3", company-finance-won-grid 2026-09-28).
+ * 천원·백만원 문서는 원으로 먼저 바꾼 뒤 백만원으로 — 칸마다 원문 원 금액(sourceWon)을 같이 싣는다.
  *
  * 읽는 법:
  * - 단위는 머리글 "(단위: 원)" / "(단위: 천원)" / "(단위: 백만원)" 에서 고른다. 없으면 원으로 읽고 경고.
@@ -14,21 +15,13 @@
  * - 음수: "(1,234)", "△1,234", "▲1,234", "-1,234". "영업손실"/"당기순손실" 처럼 손실 과목명이면 양수도 음수로.
  *
  * 개인정보: 표준재무제표증명 머리글의 13자리 등록번호(주민·법인)는 원문에서 지운 뒤 읽는다. 원문은 결과에 싣지 않는다.
- *
- * 금액 표기는 공용 ./amount(formatManwon "3,200만"/"1.2억" · formatBaekman "250백만").
  */
-import { formatBaekman, formatManwon } from "./amount";
 import { THIRTEEN_DIGIT_ID, compactText, labelPattern, normalizeOcrText, toLines } from "./text-utils";
 import type { CompanyInfoKey, DocParseResult, ParsedField, ParsedInfo } from "./types";
+import { SALES_YEAR_KEYS, salesSlotOf } from "@/util/company-sales";
+import { formatMoneyTxt, wonToMillion } from "@/util/company-money";
 
 // ───────────────────────── 공용 후보 헬퍼 ─────────────────────────
-
-/** 비율 → 소수 한 자리까지("120", "2.4", "-8.3"). 끝 ".0" 은 뗀다. */
-export function formatRatio(x: number): string {
-  const r = Math.round(x * 10) / 10;
-  const s = (Object.is(r, -0) ? 0 : r).toFixed(1);
-  return s.endsWith(".0") ? s.slice(0, -2) : s;
-}
 
 /** 머리글 단위 → 원 환산 배수. 못 찾으면 null. */
 export function detectAmountUnit(text: string): { multiplier: number; label: string } | null {
@@ -167,9 +160,15 @@ export function findFiscalYear(lines: string[]): { year: number; confidence: num
 
 // ───────────────────────── 파서 ─────────────────────────
 
-const SALES_KEYS: Record<number, CompanyInfoKey> = { 1: "과년도매출", 2: "과년도매출Y2", 3: "과년도매출Y3" };
+/** baseYear = 매출 칸 기준 연도(없으면 now 연도). */
+export type FsParseOptions = { baseYear?: number };
 
-export function parseFinancialStatement(rawText: string, now: Date = new Date()): DocParseResult {
+export function parseFinancialStatement(
+  rawText: string,
+  now: Date = new Date(),
+  opts: FsParseOptions = {},
+): DocParseResult {
+  const baseYear = opts.baseYear ?? now.getFullYear();
   const normalized = normalizeOcrText(rawText);
   const fields: ParsedField[] = [];
   const info: ParsedInfo[] = [];
@@ -177,9 +176,9 @@ export function parseFinancialStatement(rawText: string, now: Date = new Date())
   if (!normalized.trim()) {
     return { fields, info, documentWarnings: ["읽힌 글자가 없어요. 더 선명한 사진으로 다시 해 보세요."] };
   }
-  const push = (key: CompanyInfoKey, value: string, confidence: number, warnings: string[] = [], valid?: boolean) => {
+  const push = (key: CompanyInfoKey, value: string, confidence: number, warnings: string[] = [], sourceWon?: number) => {
     if (!value) return;
-    fields.push({ key, value, confidence, warnings, ...(valid === undefined ? {} : { valid }) });
+    fields.push({ key, value, confidence, warnings, ...(sourceWon === undefined ? {} : { sourceWon }) });
   };
 
   const text = normalized.replace(THIRTEEN_DIGIT_ID, " ");
@@ -222,21 +221,18 @@ export function parseFinancialStatement(rawText: string, now: Date = new Date())
   if (fy) push("결산연도", String(fy.year), fy.confidence);
   else documentWarnings.push("사업연도(결산연도)를 찾지 못했어요.");
 
-  // 매출 → 결산연도에 맞는 과년도 칸
+  // 매출 → 결산연도에 맞는 연도별 매출 합계 칸(칸 = 기준 연도 − 결산연도)
   const sales = got.매출액;
   if (sales) {
-    info.push({ label: "매출액(당기)", value: formatManwon(sales.current) });
-    if (sales.prior !== null) info.push({ label: "매출액(전기)", value: formatManwon(sales.prior) });
+    info.push({ label: "매출액(당기)", value: formatMoneyTxt(wonToMillion(sales.current)) });
+    if (sales.prior !== null) info.push({ label: "매출액(전기)", value: formatMoneyTxt(wonToMillion(sales.prior)) });
     if (fy) {
-      const nowYear = now.getFullYear();
       const place = (year: number, won: number, conf: number, warnings: string[]) => {
-        const key = SALES_KEYS[nowYear - year];
-        if (key) push(key, `${String(year % 100).padStart(2, "0")}' ${formatBaekman(won)}`, conf, warnings);
-        return Boolean(key);
+        const slot = salesSlotOf(year, baseYear);
+        if (slot !== null) push(SALES_YEAR_KEYS[slot]!, wonToMillion(won), conf, warnings, won);
+        else documentWarnings.push(`${year}년 매출은 매출 칸(${baseYear - 3}~${baseYear}년)에 맞지 않아 넣지 않았어요.`);
       };
-      if (!place(fy.year, sales.current, Math.min(sales.confidence, fy.confidence), sales.warnings)) {
-        documentWarnings.push(`${fy.year}년 매출은 과년도 매출 칸(최근 3년)에 맞지 않아 넣지 않았어요.`);
-      }
+      place(fy.year, sales.current, Math.min(sales.confidence, fy.confidence), sales.warnings);
       if (sales.prior !== null) {
         place(fy.year - 1, sales.prior, Math.min(sales.confidence, fy.confidence) - 0.1, [
           "전기(작년) 칸에서 읽었어요. 확인해 주세요.",
@@ -252,29 +248,11 @@ export function parseFinancialStatement(rawText: string, now: Date = new Date())
   ];
   for (const [src, key] of money) {
     const g = got[src];
-    if (g) push(key, formatManwon(key === "이자비용" ? Math.abs(g.current) : g.current), g.confidence, g.warnings);
+    if (!g) continue;
+    const won = key === "이자비용" ? Math.abs(g.current) : g.current;
+    push(key, wonToMillion(won), g.confidence, g.warnings, won);
   }
-
-  // 비율
-  const ratioConf = (...gs: ({ confidence: number } | undefined)[]) =>
-    Math.max(0.3, Math.min(...gs.map((g) => g?.confidence ?? 0)) - 0.05);
-  if (L && E) {
-    if (E.current <= 0) {
-      push("부채비율", "자본잠식", ratioConf(L, E), ["자본총계가 0 이하(자본잠식)라 부채비율을 계산할 수 없어요."]);
-    } else {
-      push("부채비율", `${formatRatio((L.current / E.current) * 100)}%`, ratioConf(L, E));
-    }
-  }
-  const op = got.영업이익, interest = got.이자비용;
-  if (op && interest && interest.current !== 0) {
-    push("이자보상배율", `${formatRatio(op.current / Math.abs(interest.current))}배`, ratioConf(op, interest));
-  } else if (op) {
-    documentWarnings.push("이자비용이 없거나 0이라 이자보상배율은 비워 뒀어요.");
-  }
-  const net = got.당기순이익;
-  if (net && sales && sales.current > 0) {
-    push("당기순이익률", `${formatRatio((net.current / sales.current) * 100)}%`, ratioConf(net, sales));
-  }
+  // 부채비율·이자보상배율·당기순이익률은 편집기가 위 금액으로 계산한다(파서는 채우지 않음).
 
   if (Object.keys(got).length === 0) {
     documentWarnings.push("재무제표 과목(매출액·자산총계 등)을 찾지 못했어요. 문서 종류가 맞는지 확인해 주세요.");

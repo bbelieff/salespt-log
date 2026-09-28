@@ -1,41 +1,15 @@
 /**
- * 문서 파서 공용 금액 표기 — 새 금액 칸은 formatManwon 한 가지, 기존 매출 칸은 formatBaekman.
+ * 문서 파서 공용 원 금액 표기 — groupThousands(임차 원 금액·비교표 원문).
+ * [재무] 금액 칸의 백만원 표기는 tests/util/company-money.test.ts.
  */
 import { describe, expect, it } from "vitest";
-import { formatBaekman, formatManwon, groupThousands } from "@/lib/document-ocr/amount";
+import { groupThousands } from "@/lib/document-ocr/amount";
 
-describe("formatManwon", () => {
-  it("만 단위 반올림 · 쉼표 · 음수", () => {
-    expect(formatManwon(10_000_000)).toBe("1,000만");
-    expect(formatManwon(500_000)).toBe("50만");
-    expect(formatManwon(32_000_000)).toBe("3,200만");
-    expect(formatManwon(32_004_999)).toBe("3,200만");
-    expect(formatManwon(-32_000_000)).toBe("-3,200만");
-    expect(formatManwon(5_000)).toBe("5,000원");
-    expect(formatManwon(0)).toBe("0원");
-  });
-  it("1억 이상 — 천만 단위로 떨어지면 소수, 아니면 만 단위까지(반올림으로 금액이 바뀌지 않게)", () => {
-    expect(formatManwon(120_000_000)).toBe("1.2억");
-    expect(formatManwon(300_000_000)).toBe("3억");
-    expect(formatManwon(125_000_000)).toBe("1억 2,500만");
-    expect(formatManwon(1_234_000_000)).toBe("12억 3,400만");
-    expect(formatManwon(2_500_000_000)).toBe("25억");
-    expect(formatManwon(-240_000_000)).toBe("-2.4억");
-    expect(formatManwon(99_995_000)).toBe("1억");
-  });
-  it("sep=false — 소유여부 문구용", () => {
-    expect(formatManwon(10_000_000, { sep: false })).toBe("1000만");
-    expect(formatManwon(1_255_000_000, { sep: false })).toBe("12억 5500만");
-  });
-});
-
-describe("formatBaekman · groupThousands", () => {
-  it("기존 매출 칸 표기", () => {
-    expect(formatBaekman(250_400_000)).toBe("250백만");
-    expect(formatBaekman(3_200_000_000)).toBe("3,200백만");
-    expect(formatBaekman(300_000)).toBe("0.3백만");
-    expect(formatBaekman(0)).toBe("0백만");
-    expect(formatBaekman(-1_234_000_000)).toBe("-1,234백만");
+describe("groupThousands", () => {
+  it("천 단위 쉼표, 부호 유지, 소수 버림", () => {
     expect(groupThousands(-1234567)).toBe("-1,234,567");
+    expect(groupThousands(250_123_456)).toBe("250,123,456");
+    expect(groupThousands(999)).toBe("999");
+    expect(groupThousands(1234.9)).toBe("1,234");
   });
 });

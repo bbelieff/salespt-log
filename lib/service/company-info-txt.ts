@@ -10,18 +10,21 @@ import {
   SALES_GROWTH_DEFS,
   SALES_HALF_KEYS,
   SALES_YEAR_KEYS,
+  parseBaseYear,
   salesGrowthName,
   salesYearTag,
 } from "@/util/company-sales";
+import { formatMoneyTxt, isMoneyKey, isSignedMoneyKey } from "@/util/company-money";
 
 type Labels = [keyof CompanyInfo, string][];
 
 // 키 → 표시 라벨 (CompanyInfoEditor 와 같은 순서·표기 — components/company-info-defs.ts).
 // 순서(belie 2026-09-28): [대표자] → [기업정보] → [재무]. 매출·기대출(사업자)은 [재무] 로 옮겼다.
+// 생년월일은 편집기에서 뺐다 — 주민등록번호가 비었을 때만 줄을 쓴다(company-finance-won-grid).
 const 대표자_LABELS: Labels = [
   ["대표자이름", "이름"],
-  ["대표자생년월일", "생년월일"],
   ["주민등록번호", "주민등록번호"],
+  ["대표자생년월일", "생년월일"],
   ["신용점수", "신용점수(KCB/NCB)"],
   ["연락처통신사", "연락처/통신사"],
   ["기대출개인", "기대출(개인)"],
@@ -39,27 +42,27 @@ const 기업정보_LABELS: Labels = [
   ["과세유형", "과세유형"],
   ["사업자등록번호", "사업자등록번호"],
   ["법인등록번호", "법인등록번호"],
-  ["사대보험직원", "4대보험 직원"],
+  ["업종주생산품목", "업종"],
+  ["업태", "업태"],
+  ["주생산품목", "주생산품목"],
   ["소재지", "소재지"],
   ["소유여부", "소유여부"],
   ["임차보증금", "임차 보증금"],
   ["임차월세", "임차 월세"],
   ["임차면적", "임차 면적"],
-  ["업종주생산품목", "업종"],
-  ["업태", "업태"],
-  ["주생산품목", "주생산품목"],
+  ["사대보험직원", "4대보험 직원"],
   ["특허및인증", "특허 및 인증"],
   ["업체기타메모", "기타메모"],
 ];
 
-/** [재무] 라벨 — 매출 칸은 연도가 붙어 해마다 바뀐다(baseYear 기준). */
+/** [재무] 라벨 — 매출 칸은 기준 연도(baseYear)가 붙는다. 편집기 표와 같은 줄 순서(상반기·하반기·합계). */
 function 재무Labels(baseYear: number): Labels {
-  const today = new Date(baseYear, 0, 1);
   return [
-    ...SALES_YEAR_KEYS.map((k, i): [keyof CompanyInfo, string] => [k, `매출 ${salesYearTag(i, today)}`]),
-    ...SALES_HALF_KEYS.flatMap(([상, 하], i): [keyof CompanyInfo, string][] => [
-      [상, `${salesYearTag(i, today)} 상반기`],
-      [하, `${salesYearTag(i, today)} 하반기`],
+    ["매출기준연도", "매출 기준 연도"],
+    ...SALES_YEAR_KEYS.flatMap((k, i): [keyof CompanyInfo, string][] => [
+      [SALES_HALF_KEYS[i]![0], `${salesYearTag(i, baseYear)} 상반기`],
+      [SALES_HALF_KEYS[i]![1], `${salesYearTag(i, baseYear)} 하반기`],
+      [k, `매출 ${salesYearTag(i, baseYear)}`],
     ]),
     ["반기별매출", "이전 반기별 매출 메모"],
     ...SALES_GROWTH_DEFS.map((d): [keyof CompanyInfo, string] => [d.key, `매출증가율 ${salesGrowthName(d.fromAgo)}`]),
@@ -89,6 +92,8 @@ const UNIT_OF: Partial<Record<keyof CompanyInfo, string>> = {
   대표임차면적: "㎡",
 };
 function withUnit(k: keyof CompanyInfo, v: string): string {
+  // [재무] 금액 = 백만원 숫자 → "250.1백만원 (약 2.5억)". 옛 자유 글은 그대로.
+  if (isMoneyKey(k)) return formatMoneyTxt(v, isSignedMoneyKey(k));
   const unit = UNIT_OF[k];
   return unit && /^[\d,.]+$/.test(v.trim()) ? `${v.trim()}${unit}` : v;
 }
@@ -138,8 +143,10 @@ function fieldLines(label: string, value: string): string[] {
   return parts.map((p, i) => (i === 0 ? `${head}- ${p}` : `${indent}- ${p}`));
 }
 
-/** 추출시각("2026-09-28 10:00", KST) 의 연도 — 매출 라벨 기준 연도. 못 읽으면 오늘. */
-function baseYearOf(extractedAt: string): number {
+/** 매출 라벨 기준 연도 — 업체의 매출기준연도, 없으면 추출시각("2026-09-28 10:00", KST) 연도, 그것도 없으면 오늘. */
+function baseYearOf(ci: CompanyInfo, extractedAt: string): number {
+  const saved = parseBaseYear(ci.매출기준연도);
+  if (saved !== null) return saved;
   const m = extractedAt.match(/^(\d{4})-/);
   return m ? Number(m[1]) : new Date().getFullYear();
 }
@@ -156,20 +163,23 @@ export function formatCompanyInfoTxt(
   extractedAt: string,
 ): string {
   const c = ci as unknown as Record<string, string>;
+  // 생년월일 줄은 주민등록번호가 비었을 때만(같은 뜻 — 편집기에서도 뺐다).
+  const skip = (k: keyof CompanyInfo) => k === "대표자생년월일" && String(c.주민등록번호 ?? "").trim() !== "";
   const section = (
     title: string,
     labels: Labels,
     g?: "업체" | "대표자",
   ) => [
     `[${title}]`,
-    ...labels.flatMap(([k, label]) => fieldLines(label, withUnit(k, String(c[k] ?? "")))),
+    ...labels.flatMap(([k, label]) => (skip(k) ? [] : fieldLines(label, withUnit(k, String(c[k] ?? ""))))),
     ...Object.entries((g && ci.커스텀?.[g]) || {}).flatMap(([label, v]) =>
       fieldLines(label, v),
     ),
   ];
-  // [재무] 는 새 그룹 — 한 칸도 안 채운 업체의 TXT 에 빈 머리글만 남기지 않는다.
-  const 재무 = section("재무", 재무Labels(baseYearOf(extractedAt)));
-  const 재무있음 = 재무.length > 1;
+  // [재무] 는 새 그룹 — 한 칸도 안 채운 업체의 TXT 에 빈 머리글만 남기지 않는다(기준 연도만 있으면 없는 것으로).
+  const financeLabels = 재무Labels(baseYearOf(ci, extractedAt));
+  const 재무 = section("재무", financeLabels);
+  const 재무있음 = financeLabels.some(([k]) => k !== "매출기준연도" && String(c[k] ?? "").trim() !== "");
   return [
     RULE,
     "세일즈PT 업체정보",

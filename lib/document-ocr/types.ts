@@ -44,6 +44,8 @@ export type ParsedField = {
   warnings: string[];
   /** false 면 형식 검증 실패(예: 사업자등록번호 체크섬) — 기본 체크 해제. */
   valid?: boolean;
+  /** 금액 칸: 문서에 적힌 원 금액(백만원으로 바꾸기 전) — 비교표가 "원문 250,123,456원" 으로 보여 준다. */
+  sourceWon?: number;
 };
 
 /** 화면에만 보여주고 저장하지 않는 참고 정보(예: 상호 — CompanyInfo 칸이 아니다). */
@@ -56,7 +58,10 @@ export type DocParseResult = {
   info?: ParsedInfo[];
 };
 
-export type DocParser = (text: string) => DocParseResult;
+/** 파서에 넘기는 업체 문맥 — baseYear = 업체의 매출 기준 연도(없으면 오늘 연도). */
+export type DocParseContext = { baseYear?: number };
+
+export type DocParser = (text: string, ctx?: DocParseContext) => DocParseResult;
 
 /** OCR 진행 단계(진행 막대용). */
 export type OcrStage = "validating" | "pdf-text" | "pdf-render" | "recognizing" | "done";

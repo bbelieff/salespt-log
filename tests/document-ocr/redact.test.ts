@@ -134,6 +134,6 @@ describe("부가세 — 음수 과세표준 줄", () => {
       "2025.01.01~2025.06.30 수정 2025.09.01 -5,000,000 300,000",
     ].join(NL);
     const r = parseVatCertificate(text, { today: TODAY });
-    expect(r.fields.find((f) => f.key === "과년도매출")?.value).toBe("25' 120백만");
+    expect(r.fields.find((f) => f.key === "과년도매출")?.value).toBe("120"); // 백만원 정본
   });
 });
