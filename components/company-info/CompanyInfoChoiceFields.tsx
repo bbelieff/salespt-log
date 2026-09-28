@@ -6,8 +6,10 @@
  *   목록 밖 자유 글은 새 값으로 바꿀 때 기타메모로 옮겨 둔다(말없이 지우지 않는다).
  * - OwnershipField: 소유여부 자가/임차 select. 임차면(또는 임차 칸에 이미 값이 있으면) 보증금(원)·
  *   월세(원)·면적(㎡) 세 칸을 한 줄에. 옛 자유 글("임차 : 보 1000만, 월 50만")은 선택을 짐작해 보여 주고
- *   원문을 "이전에 적은 내용"으로 칸 아래에 둔다 — 선택을 바꾸면 그 원문을 기타메모로 옮긴다.
+ *   원문을 "이전에 적은 내용"으로 칸 아래에 둔다 — 선택을 바꾸거나, 짐작이 맞으면 "임차로 확정"을 누르면
+ *   (이미 선택된 값을 다시 고르면 change 가 안 일어나므로) 선택값을 저장하고 원문을 기타메모로 옮긴다.
  *   기업정보(소유여부)·대표자(대표소유여부)가 같은 모양.
+ * - 보증금·월세 쉼표는 칸을 떠날 때(blur) 찍는다 — 입력 중에 다시 찍으면 커서가 끝으로 튄다(연락처와 같은 방식).
  */
 "use client";
 
@@ -82,6 +84,10 @@ function UnitInput({
   won: boolean;
   onChange: (v: string) => void;
 }) {
+  const formatOnBlur = () => {
+    const next = formatWonInput(value);
+    if (next !== value) onChange(next);
+  };
   return (
     <div className="min-w-0">
       <FieldLabel htmlFor={id} label={label} hint={hint} />
@@ -92,7 +98,8 @@ function UnitInput({
           aria-describedby={hintIdOf(id, label, hint)}
           inputMode={won ? "numeric" : "decimal"}
           value={value}
-          onChange={(e) => onChange(won ? formatWonInput(e.target.value) : e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={won ? formatOnBlur : undefined}
         />
         {/* 옛 "1,000만"·"33㎡(10평)" 처럼 단위가 이미 적힌 값엔 단위를 또 붙이지 않는다. */}
         {showsUnitSuffix(value) && <span className="shrink-0 text-xs text-gray-500">{unit}</span>}
@@ -150,9 +157,18 @@ export function OwnershipField({
         <option value="임차">임차</option>
       </select>
       {legacy && (
-        <p className="mt-0.5 break-words text-xs text-gray-500" role="note">
-          이전에 적은 내용: {legacy} · 선택을 바꾸면 기타메모로 옮겨 둬요
-        </p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500" role="note">
+          <span className="min-w-0 break-words">이전에 적은 내용: {legacy} · 선택하면 기타메모로 옮겨 둬요</span>
+          {choice && (
+            <button
+              type="button"
+              onClick={() => choose(choice)}
+              className="shrink-0 rounded border border-gray-300 px-1.5 text-gray-700 hover:bg-gray-50"
+            >
+              {choice}로 확정
+            </button>
+          )}
+        </div>
       )}
       {(choice === "임차" || hasLease) && (
         // 좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 세 칸 한 줄 — 가로 넘침 없음.

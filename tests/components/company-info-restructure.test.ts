@@ -130,14 +130,26 @@ describe("② 사업자구분 · 과세유형 / 법인등록번호", () => {
     expect(staged().업체기타메모).toBe("기존 메모\n이전 사업자구분: 개인(공동대표)");
   });
 
-  it("법인등록번호는 법인일 때만 보인다(개인이면 숨기고 저장값은 건드리지 않는다)", () => {
-    render({ 사업자구분: "개인", 법인등록번호: "110111-0000000" });
+  it("법인등록번호 빈 칸은 법인일 때만 보인다", () => {
+    render({ 사업자구분: "개인", 과세유형: "일반과세자" });
     expect(byKey(groupEl("기업정보"), "법인등록번호")).toBeNull();
-    expect(stage).not.toHaveBeenCalled();
     act(() => root?.unmount());
     el?.remove();
-    render({ 사업자구분: "법인", 과세유형: "일반과세자", 법인등록번호: "110111-0000000" });
-    expect(byKey(groupEl("기업정보"), "법인등록번호")!.value).toBe("110111-0000000");
+    render({ 사업자구분: "법인", 과세유형: "일반과세자" });
+    const sel = byKey<HTMLSelectElement>(groupEl("기업정보"), "사업자구분")!;
+    expect(byKey(groupEl("기업정보"), "법인등록번호")!.value).toBe("");
+    expect(sel.value).toBe("법인|일반과세자");
+  });
+
+  it("이미 적힌 법인등록번호는 구분이 법인이 아니어도 보인다(안 보이는 데이터 방지)", () => {
+    // 옛 자유 글 구분("주식회사") · 자동입력이 개인 구분 옆에 번호를 채운 경우 — 숨으면 고칠 수도 없다.
+    for (const 사업자구분 of ["주식회사", "개인", ""]) {
+      render({ 사업자구분, 법인등록번호: "110111-0000000" });
+      expect(byKey(groupEl("기업정보"), "법인등록번호")!.value).toBe("110111-0000000");
+      expect(stage).not.toHaveBeenCalled(); // 보여 주기만 — 값은 건드리지 않는다
+      act(() => root?.unmount());
+      el?.remove();
+    }
   });
 });
 
@@ -161,10 +173,27 @@ describe("③ 소유여부 — 기업정보", () => {
     expect(row.textContent).toContain("원");
     expect(row.textContent).toContain("㎡");
     expect(row.className).toContain("xs:grid-cols-3");
+    // 입력 중엔 친 그대로(쉼표를 다시 찍으면 커서가 끝으로 튄다) — 쉼표는 칸을 떠날 때.
     typeInto(inputs[0]!, "10000000");
-    expect(staged().임차보증금).toBe("10,000,000");
+    expect(staged().임차보증금).toBe("10000000");
     typeInto(inputs[2]!, "33.5");
     expect(staged().임차면적).toBe("33.5");
+  });
+
+  it("보증금·월세는 칸을 떠날 때 천 단위 쉼표, 옛 '1,000만' 은 그대로", () => {
+    render({ 소유여부: "임차", 임차보증금: "10000000", 임차월세: "1,000만", 임차면적: "33000" });
+    const g = groupEl("기업정보");
+    const blur = (key: string) =>
+      act(() => {
+        byKey(g, key)!.focus();
+        byKey(g, key)!.blur();
+      });
+    blur("임차보증금");
+    expect(staged().임차보증금).toBe("10,000,000");
+    stage.mockReset();
+    blur("임차월세");
+    blur("임차면적"); // 면적(㎡)은 원 금액이 아니라 쉼표를 찍지 않는다
+    expect(stage).not.toHaveBeenCalled();
   });
 
   it("옛 자유 글 → 선택을 짐작하고 원문은 칸 아래에, 바꾸면 기타메모로 옮긴다", () => {
@@ -176,6 +205,24 @@ describe("③ 소유여부 — 기업정보", () => {
     choose(sel, "자가");
     expect(staged().소유여부).toBe("자가");
     expect(staged().업체기타메모).toBe("소유여부 이전 내용: 임차 : 보 1000만, 월 50만");
+  });
+
+  it("짐작이 맞으면 '임차로 확정' 으로 선택값을 저장하고 원문을 기타메모로 옮긴다", () => {
+    // 이미 선택된 값(임차)을 다시 고르면 change 가 안 일어나 옛 글이 영영 남는다 — 확정 버튼으로 정리.
+    render({ 소유여부: "임차 : 보 1000만, 월 50만", 업체기타메모: "기존 메모" });
+    const note = groupEl("기업정보").querySelector<HTMLElement>('[role="note"]')!;
+    const btn = [...note.querySelectorAll("button")].find((b) => b.textContent === "임차로 확정")!;
+    act(() => btn.click());
+    expect(staged().소유여부).toBe("임차");
+    expect(staged().업체기타메모).toBe("기존 메모\n소유여부 이전 내용: 임차 : 보 1000만, 월 50만");
+  });
+
+  it("짐작할 수 없는 옛 글이면 확정 버튼 없이 선택만 기다린다", () => {
+    render({ 소유여부: "모름" });
+    const g = groupEl("기업정보");
+    expect(byKey<HTMLSelectElement>(g, "소유여부")!.value).toBe("");
+    expect(g.querySelector('[role="note"]')!.textContent).toContain("이전에 적은 내용: 모름");
+    expect(g.querySelector('[role="note"] button')).toBeNull();
   });
 
   it("낱말 그대로(자가)면 안내가 없고, 이미 적힌 임차 값(1,000만)은 선택과 무관하게 보인다", () => {
@@ -191,7 +238,7 @@ describe("③ 소유여부 — 기업정보", () => {
 
 describe("③ 소유여부 — 대표자(같은 모양, 대표 전용 키)", () => {
   it("대표소유여부 선택 + 대표임차 3칸", () => {
-    render({ 대표소유여부: "임차", 대표임차면적: "33" });
+    render({ 대표소유여부: "임차", 대표임차면적: "33", 대표임차보증금: "50000000" });
     const g = groupEl("대표자");
     expect(byKey<HTMLSelectElement>(g, "대표소유여부")!.value).toBe("임차");
     const row = g.querySelector<HTMLElement>('[aria-label="임차 조건"]')!;
@@ -202,8 +249,13 @@ describe("③ 소유여부 — 대표자(같은 모양, 대표 전용 키)", () 
     ]);
     expect(byKey(g, "대표임차면적")!.value).toBe("33");
     typeInto(byKey(g, "대표임차월세")!, "500000");
-    expect(staged().대표임차월세).toBe("500,000");
+    expect(staged().대표임차월세).toBe("500000"); // 쉼표는 칸을 떠날 때
     expect(staged().임차월세).toBe(""); // 기업정보 칸은 그대로
+    act(() => {
+      byKey(g, "대표임차보증금")!.focus();
+      byKey(g, "대표임차보증금")!.blur();
+    });
+    expect(staged().대표임차보증금).toBe("50,000,000");
   });
 
   it("옛 글은 대표 기타메모로 옮긴다", () => {
@@ -258,6 +310,12 @@ describe("⑤ [재무] 매출", () => {
     render();
     expect(labelOf(byKey(groupEl("재무"), "금년도매출")!)).toBe("매출 Y(2027)");
     expect(labelOf(byKey(groupEl("재무"), "매출Y3하")!)).toBe("Y-3(2024) 하반기");
+    // 설명의 예시 연도 표시도 라벨과 같은 해를 따른다(고정 "25'" 이면 라벨과 어긋난다).
+    const hintOf = (k: string) =>
+      document.getElementById(byKey(groupEl("재무"), k)!.getAttribute("aria-describedby")!)!.textContent;
+    expect(hintOf("금년도매출")).toBe("올해 매출 — 몇 월까지인지 함께 적어요. 예: 27' 6월 100백만");
+    expect(hintOf("과년도매출")).toBe("작년 매출. 예: 26' 250백만");
+    expect(hintOf("과년도매출Y3")).toBe("3년 전 매출. 예: 24' 70백만");
   });
 
   it("반기 매출 = 4줄 × 2칸(상반기 | 하반기)", () => {

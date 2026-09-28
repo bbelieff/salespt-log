@@ -228,8 +228,8 @@ export default function CompanyInfoEditor({
     switch (it.kind) {
       case "field": {
         const [k, , , span] = it.def;
-        // 법인등록번호 = 법인일 때만 보인다(숨겨도 저장값은 그대로 — TXT·시트에 남는다).
-        if (it.onlyCorporation && !isCorporation(draft.사업자구분)) return null;
+        // 법인등록번호 = 법인일 때만 보인다. 이미 값이 있으면(옛 자유 글 구분·자동입력) 늘 보인다 — 숨은 데이터 방지.
+        if (it.onlyCorporation && !isCorporation(draft.사업자구분) && !String(draft[k] ?? "").trim()) return null;
         return (
           <CompanyInfoField
             key={String(k)}

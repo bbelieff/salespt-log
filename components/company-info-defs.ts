@@ -125,12 +125,17 @@ export const 재무_ITEMS: EditorItem[] = [
   f(["당기순이익률", "당기순이익률", "당기순이익 ÷ 매출액 × 100", 1]),
 ];
 
+/** 연도 매출 칸 설명 [앞말, 예시 금액] — 예시의 연도 표시("26'")는 라벨처럼 오늘 기준으로 붙인다. */
 const YEAR_HINTS = [
-  "올해 매출 — 몇 월까지인지 함께 적어요. 예: 26' 6월 100백만",
-  "작년 매출. 예: 25' 250백만",
-  "2년 전 매출. 예: 24' 148백만",
-  "3년 전 매출. 예: 23' 70백만",
-];
+  ["올해 매출 — 몇 월까지인지 함께 적어요", "6월 100백만"],
+  ["작년 매출", "250백만"],
+  ["2년 전 매출", "148백만"],
+  ["3년 전 매출", "70백만"],
+] as const;
+const yearHint = (yearsAgo: number, today: Date) => {
+  const [lead, sample] = YEAR_HINTS[yearsAgo]!;
+  return `${lead}. 예: ${String(today.getFullYear() - yearsAgo).slice(-2)}' ${sample}`;
+};
 
 export type SalesDefs = {
   years: FieldDef[];
@@ -142,7 +147,7 @@ export type SalesDefs = {
 /** [재무] 매출 칸 정의 — 라벨에 오늘 기준 달력 연도를 괄호로 붙인다("매출 Y-1(2025)"). */
 export function salesDefs(today: Date): SalesDefs {
   return {
-    years: SALES_YEAR_KEYS.map((k, i): FieldDef => [k, `매출 ${salesYearTag(i, today)}`, YEAR_HINTS[i]!, 1]),
+    years: SALES_YEAR_KEYS.map((k, i): FieldDef => [k, `매출 ${salesYearTag(i, today)}`, yearHint(i, today), 1]),
     halves: SALES_HALF_KEYS.map(([상, 하], i): [FieldDef, FieldDef] => {
       const tag = salesYearTag(i, today);
       const year = today.getFullYear() - i;

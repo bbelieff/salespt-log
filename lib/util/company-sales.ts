@@ -3,8 +3,9 @@
  *
  * - 연도 라벨: "Y(2026)" · "Y-1(2025)" … 오늘 날짜(주입 가능)로 달력 연도를 붙인다.
  * - 매출 금액 읽기: 학생이 적는 여러 모양을 원 단위로 — "250백만" · "1.2억" · "3,200만" ·
- *   "1억 2,500만" · "25' 250백만"(앞 연도 표시) · "26' 6월 100백만"(6월까지) · "250,000,000"(원).
- *   금액 덩어리가 둘 이상이거나 못 읽으면 null(추측하지 않는다).
+ *   "1억 2,500만" · "2억5천"(= 2억 5천만) · "25' 250백만"(앞 연도 표시) · "26' 6월 100백만"(6월까지) ·
+ *   "250,000,000"(원). 금액 덩어리가 둘 이상 · 음수 · 단위 없는 작은 숫자("250") · 맨 앞 "3천"(천만인지
+ *   천 원인지 모름)처럼 못 읽거나 뜻이 갈리면 null(추측하지 않는다 — 틀린 증가율이 저장되지 않게).
  * - 매출증가율 3칸: Y-3→Y-2 · Y-2→Y-1 · Y-1→Y. "+12.5%" / "-3.0%" (소수 한 자리). 한쪽이라도
  *   못 읽거나 이전 해 매출이 0 이하면 "".
  *
@@ -67,7 +68,8 @@ const MONTH = /(\d{1,2})\s*개?\s*월/;
 
 /**
  * 매출 칸 글 → 원 단위 금액(+ 몇 월까지인지). 못 읽거나 금액 덩어리가 둘 이상이면 null.
- * 단위 없는 숫자는 원("250,000,000"). 음수 표시는 지원하지 않는다(매출 칸).
+ * 단위 없는 숫자는 원("250,000,000") — 단, 쉼표 없는 1만 미만("250"·"1.5")은 단위를 빠뜨린 글로 보고 null.
+ * 음수("-50백만")도 null(매출 칸).
  */
 export function parseSalesAmount(raw: string): SalesAmount | null {
   let s = String(raw ?? "")
@@ -84,15 +86,27 @@ export function parseSalesAmount(raw: string): SalesAmount | null {
     if (m >= 1 && m <= 12) month = m;
     s = `${s.slice(0, hit.index)} ${s.slice(hit.index + hit[0].length)}`;
   }
-  type Tok = { value: number; unit: number | null; start: number; end: number };
+  type Tok = { value: number; unit: number | null; comma: boolean; start: number; end: number };
   const toks: Tok[] = [];
   for (const m of s.matchAll(TOKEN)) {
     const value = Number(m[1]!.replace(/,/g, ""));
     if (!Number.isFinite(value)) return null;
     const start = m.index ?? 0;
-    toks.push({ value, unit: m[2] ? UNIT[m[2]]! : null, start, end: start + m[0].length });
+    toks.push({ value, unit: m[2] ? UNIT[m[2]]! : null, comma: m[1]!.includes(","), start, end: start + m[0].length });
   }
   if (toks.length === 0) return null;
+  // 숫자에 붙은 음수 표시("-50백만" · "△50백만")는 매출로 읽지 않는다 — 부호를 떼면 틀린 값이 된다.
+  // 띄어 쓴 "2025년 - 250백만" 의 "-" 는 구분 기호라 그대로 읽는다.
+  if (/[-−–△]$/.test(s.slice(0, toks[0]!.start))) return null;
+  // "천" 홀로: 억 바로 뒤면 한국어 관례상 천만("2억5천" = 2억 5천만, "1억 2천 5백만" = 1억 2,500만).
+  // 맨 앞 "3천" 은 3천만인지 3천 원인지 갈리므로 읽지 않는다.
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i]!;
+    if (t.unit !== UNIT.천) continue;
+    const prev = toks[i - 1];
+    if (!prev) return null;
+    if (prev.unit === UNIT.억 && s.slice(prev.end, t.start).trim() === "") t.unit = UNIT.천만!;
+  }
   // 한 덩어리 = 큰 단위 → 작은 단위로 공백만 끼고 이어지는 토큰들("1억 2,500만", "2억5천만").
   let chains = 1;
   for (let i = 1; i < toks.length; i++) {
@@ -106,6 +120,9 @@ export function parseSalesAmount(raw: string): SalesAmount | null {
     if (!joined) chains += 1;
   }
   if (chains !== 1) return null;
+  // 단위 없는 숫자는 원 — 쉼표 없는 1만 미만("25' 250")은 단위를 빠뜨린 글이라 읽지 않는다("0" 은 0원).
+  const only = toks.length === 1 ? toks[0]! : null;
+  if (only && only.unit === null && !only.comma && only.value > 0 && only.value < 1e4) return null;
   const won = Math.round(toks.reduce((sum, t) => sum + t.value * (t.unit ?? 1), 0));
   return { won, month };
 }
