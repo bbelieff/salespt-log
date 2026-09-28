@@ -122,7 +122,7 @@ describe("부가세 — 음수 과세표준 줄", () => {
   it.each(["-5,000,000", "△5,000,000"])("%s 줄은 다음 칸(납부세액)을 매출로 읽지 않고 빼며 경고한다", (neg) => {
     const text = ["과세기간 과세표준", `2025.01.01~2025.06.30 확정 2025.07.25 ${neg} 300,000`].join(NL);
     const r = parseVatCertificate(text, { today: TODAY });
-    expect(r.fields.find((f) => f.key === "반기별매출")).toBeUndefined();
+    expect(r.fields.find((f) => f.key === "매출Y1상")).toBeUndefined();
     expect(r.fields.find((f) => f.key === "과년도매출")).toBeUndefined();
     expect(r.documentWarnings.join(" ")).toContain("마이너스");
   });

@@ -63,7 +63,7 @@ export async function persistCompanyArchiveRow(
   opts?: CompanyArchiveWriteOpts,
 ): Promise<void> {
   if (opts?.syncDb) {
-    // upsert = 행 활성화(시트는 A:AV 전체행 replace). jsonb 병합(payload || excluded)상 payload 에
+    // upsert = 행 활성화(시트는 A:BK 전체행 replace). jsonb 병합(payload || excluded)상 payload 에
     // 없는 키는 생존하므로 두 기본값을 명시해 시트 전체행 쓰기와 의미를 맞춘다:
     //  · _cleared:false — rename 이 남긴 _cleared:true 를 부활(없으면 재사용 자연키가 DB 에서 영구 숨김).
     //  · 커스텀:{} — CompanyInfo 스칼라는 default("") 라 항상 덮이지만 커스텀만 optional(키 부재) →
@@ -82,7 +82,7 @@ export async function persistCompanyArchiveRow(
 /**
  * rename 새 키 payload 정규화 — **content 를 명시적으로 비운다.**
  *
- * 설계 불변식: rename 은 06 의 키(A~D)만 옮기고 **E~AV 스냅샷은 시트가 보존**한다 → DB 의 새 키 행은
+ * 설계 불변식: rename 은 06 의 키(A~D)만 옮기고 **E~BK 스냅샷은 시트가 보존**한다 → DB 의 새 키 행은
  * "키필드만" 이어야 하고, 업체정보 read 는 `hasCompanyInfo(fromDb)=false` 로 **시트 fallback** 을 타야 한다.
  *
  * 그런데 jsonb 는 **얕은 병합**(payload || excluded)이라 키필드만 보내면 **그 자연키에 남아 있던 옛 행의
@@ -121,7 +121,7 @@ export async function readCompanyArchiveRowPayload(
 
 /**
  * 06 개명(키 이동) 정본 라우팅 — old 키 _cleared 후 new 키 **키필드만**(content 비움) 병합.
- * 파일럿=둘 다 동기(실패=throw), 비파일럿=R2 미러(async). E~AV 스냅샷은 시트가 보존(양 경로 공통).
+ * 파일럿=둘 다 동기(실패=throw), 비파일럿=R2 미러(async). E~BK 스냅샷은 시트가 보존(양 경로 공통).
  *
  * 순서 = clear old → set new (역순 금지): set-new 성공 후 clear-old 실패 시 old/new 중복행이
  * 남아 stale 읽기 위험. clear-old 우선이면 최악이 "new 키 DB 부재"뿐이고 시트 fallback 이 흡수.

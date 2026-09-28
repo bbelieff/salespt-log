@@ -19,7 +19,7 @@ import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
 import { buildDiffRows, defaultCheckFor, selectedPatch } from "@/lib/document-ocr/diff";
 import { DOC_TYPES, DOC_TYPE_LABEL, type CompanyInfoKey, type DocType } from "@/lib/document-ocr/types";
-import { 대표자_DEFS, 업체_DEFS, 재무_DEFS } from "@/components/company-info-defs";
+import { companyInfoFieldList } from "@/components/company-info-defs";
 import CompanyDocDiffTable from "./CompanyDocDiffTable";
 
 type Status = "queued" | "reading" | "done" | "error";
@@ -34,9 +34,10 @@ type Row = {
   docType: DocType;
 };
 
-const DEFS = [...업체_DEFS, ...대표자_DEFS, ...재무_DEFS];
-const ORDER = DEFS.map(([k]) => String(k));
-const LABEL = new Map<string, string>(DEFS.map(([k, l]) => [String(k), l]));
+// 비교표 행 순서·라벨 = 편집기 화면 순서([대표자] → [기업정보] → [재무]) · 같은 라벨(매출은 연도 포함).
+const FIELDS = companyInfoFieldList(new Date());
+const ORDER = FIELDS.map(([k]) => String(k));
+const LABEL = new Map<string, string>(FIELDS.map(([k, l]) => [String(k), l]));
 const labelOf = (k: string) => LABEL.get(k) ?? k;
 
 interface Props {

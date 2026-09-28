@@ -86,8 +86,10 @@ describe("② 04 코덱 좌표 (AU~BN)", () => {
     expect(colName(COMPANY_EXT2_START)).toBe("AU");
     expect(GCAL_MAP_COL).toBe(45);
     expect(colName(GCAL_MAP_COL)).toBe("AT");
-    expect(MEETING_ROW_WIDTH).toBe(66);
-    expect(colName(MEETING_ROW_WIDTH - 1)).toBe("BN");
+    // 확장2 끝 = BN(65). 그 뒤 BO~CC 는 확장3(company-info-restructure) — 전체 폭 81(CC).
+    expect(colName(COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.length - 1)).toBe("BN");
+    expect(MEETING_ROW_WIDTH).toBe(81);
+    expect(colName(MEETING_ROW_WIDTH - 1)).toBe("CC");
   });
 
   it("기존 열 불변 — T(19)·AN 커스텀·AQ(42) 시작 그대로", () => {
@@ -98,7 +100,7 @@ describe("② 04 코덱 좌표 (AU~BN)", () => {
 
   it("새 필드가 정해진 순서로 AU~BN 에 apostrophe 텍스트로, AT 는 빈칸", () => {
     const row = meetingToRow(BASE);
-    expect(row).toHaveLength(66);
+    expect(row).toHaveLength(81);
     expect(row[GCAL_MAP_COL]).toBe("");
     COMPANY_FIELDS_EXT2.forEach((f, i) => {
       expect(row[COMPANY_EXT2_START + i]).toBe(`'${NEW_VALUES[f]}`);
@@ -171,17 +173,18 @@ describe("④ 이월(carryover)이 새 필드를 옮긴다", () => {
 });
 
 describe("⑥ TXT 추출", () => {
-  it("업체·대표자 그룹에 새 칸, [재무] 섹션에 재무 칸", () => {
+  it("기업정보·대표자 그룹에 새 칸, [재무] 섹션에 재무 칸(옛 한 칸 값은 '이전 … 메모')", () => {
     const txt = formatCompanyInfoTxt("예시상사", BASE.업체정보!, "2026-09-28 10:00");
-    const 업체 = txt.slice(txt.indexOf("[업체]"), txt.indexOf("[대표자]"));
-    const 대표자 = txt.slice(txt.indexOf("[대표자]"), txt.indexOf("[재무]"));
+    const 대표자 = txt.slice(txt.indexOf("[대표자]"), txt.indexOf("[기업정보]"));
+    const 기업 = txt.slice(txt.indexOf("[기업정보]"), txt.indexOf("[재무]"));
     const 재무 = txt.slice(txt.indexOf("[재무]"));
     for (const label of ["과세유형", "업태", "법인등록번호", "임차 보증금", "임차 월세", "임차 면적"]) {
-      expect(업체).toContain(label);
+      expect(기업).toContain(label);
     }
-    expect(대표자).toContain("주민등록번호 앞자리");
+    expect(대표자).toContain("주민등록번호");
+    expect(대표자).not.toContain("주민등록번호 앞자리");
     expect(대표자).toContain("800101-");
-    for (const label of ["결산연도", "영업이익", "반기별 매출", "면세 수입금액", "부채비율", "매출증가율"]) {
+    for (const label of ["결산연도", "영업이익", "이전 반기별 매출 메모", "면세 수입금액", "부채비율", "이전 매출증가율 메모"]) {
       expect(재무).toContain(label);
     }
     expect(재무).toContain("- 25년 하반기 1.5억"); // 멀티라인 목록

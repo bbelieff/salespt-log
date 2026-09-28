@@ -2,7 +2,9 @@
  * document-ocr/parse-fs — 재무제표(표준재무제표증명: 재무상태표 + 손익계산서) OCR 텍스트 → 업체정보 칸 제안.
  *
  * 채우는 칸: 결산연도 · 과년도매출(Y-1/Y-2/Y-3 중 결산연도에 맞는 칸) · 영업이익 · 당기순이익 · 이자비용 ·
- *   자산총계 · 부채총계 · 자본총계 · 부채비율 · 이자보상배율 · 당기순이익률 · 매출증가율.
+ *   자산총계 · 부채총계 · 자본총계 · 부채비율 · 이자보상배율 · 당기순이익률.
+ *   매출증가율은 채우지 않는다 — 편집기가 연도별 매출 칸(Y~Y-3)에서 3칸으로 자동 계산한다
+ *   (company-info-restructure 2026-09-28). 전기 매출은 과년도 칸 + 참고 정보로 들어간다.
  * 금액 칸은 공용 formatManwon("3,200만"·"1.2억", 음수 "-3,200만"), 매출 칸은 기존 "25' 250백만" 꼴.
  *
  * 읽는 법:
@@ -272,14 +274,6 @@ export function parseFinancialStatement(rawText: string, now: Date = new Date())
   const net = got.당기순이익;
   if (net && sales && sales.current > 0) {
     push("당기순이익률", `${formatRatio((net.current / sales.current) * 100)}%`, ratioConf(net, sales));
-  }
-  if (sales && sales.prior !== null && sales.prior > 0) {
-    push(
-      "매출증가율",
-      `${formatRatio(((sales.current - sales.prior) / sales.prior) * 100)}%`,
-      ratioConf(sales) - 0.05,
-      ["전기 매출과 비교해 계산했어요."],
-    );
   }
 
   if (Object.keys(got).length === 0) {

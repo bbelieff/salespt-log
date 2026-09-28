@@ -55,7 +55,7 @@ describe("R3-2 meetings 코덱 라운드트립", () => {
 
   it("수식(N/O/Q/S)·이월(AO/AP)·gcal맵(AT~) 셀은 항상 빈 문자열 — split write 전제", () => {
     const row = meetingToRow(BASE);
-    expect(row).toHaveLength(66); // A~BN
+    expect(row).toHaveLength(81); // A~CC
     expect(row[45]).toBe(""); // AT(gcal 맵) — 코덱 비접촉
     for (const i of [...FORMULA_IDX, ...CARRY_IDX]) {
       expect(row[i]).toBe("");

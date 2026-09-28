@@ -6,10 +6,34 @@
  * 파일 = `업체정보_{업체명}.txt` 업체당 1본 덮어쓰기.
  */
 import type { CompanyInfo } from "@/types";
+import {
+  SALES_GROWTH_DEFS,
+  SALES_HALF_KEYS,
+  SALES_YEAR_KEYS,
+  salesGrowthName,
+  salesYearTag,
+} from "@/util/company-sales";
 
-// 키 → 표시 라벨 (CompanyInfoEditor 와 동일 표기·순서 — components/company-info-defs.ts).
-// [업체] 20 (매출 최신순 금년→Y-1→Y-2→Y-3) + [대표자] 10 + [재무] 13(2026-09-28 확장2).
-const 업체_LABELS: [keyof CompanyInfo, string][] = [
+type Labels = [keyof CompanyInfo, string][];
+
+// 키 → 표시 라벨 (CompanyInfoEditor 와 같은 순서·표기 — components/company-info-defs.ts).
+// 순서(belie 2026-09-28): [대표자] → [기업정보] → [재무]. 매출·기대출(사업자)은 [재무] 로 옮겼다.
+const 대표자_LABELS: Labels = [
+  ["대표자이름", "이름"],
+  ["대표자생년월일", "생년월일"],
+  ["주민등록번호", "주민등록번호"],
+  ["신용점수", "신용점수(KCB/NCB)"],
+  ["연락처통신사", "연락처/통신사"],
+  ["기대출개인", "기대출(개인)"],
+  ["자택주소지", "자택주소지"],
+  ["대표소유여부", "소유여부"],
+  ["대표임차보증금", "임차 보증금"],
+  ["대표임차월세", "임차 월세"],
+  ["대표임차면적", "임차 면적"],
+  ["동종업계경력", "동종업계경력"],
+  ["대표기타메모", "기타메모"],
+];
+const 기업정보_LABELS: Labels = [
   ["개업일", "개업일"],
   ["사업자구분", "사업자구분"],
   ["과세유형", "과세유형"],
@@ -21,43 +45,53 @@ const 업체_LABELS: [keyof CompanyInfo, string][] = [
   ["임차보증금", "임차 보증금"],
   ["임차월세", "임차 월세"],
   ["임차면적", "임차 면적"],
-  ["업종주생산품목", "업종/주생산품목"],
+  ["업종주생산품목", "업종"],
   ["업태", "업태"],
-  ["금년도매출", "금년도 매출"],
-  ["과년도매출", "과년도 매출 Y-1"],
-  ["과년도매출Y2", "과년도 매출 Y-2"],
-  ["과년도매출Y3", "과년도 매출 Y-3"],
-  ["기대출사업자", "기대출(사업자)"],
+  ["주생산품목", "주생산품목"],
   ["특허및인증", "특허 및 인증"],
   ["업체기타메모", "기타메모"],
 ];
-const 대표자_LABELS: [keyof CompanyInfo, string][] = [
-  ["대표자이름", "이름"],
-  ["대표자생년월일", "생년월일"],
-  ["주민등록번호", "주민등록번호 앞자리"],
-  ["신용점수", "신용점수(KCB/NCB)"],
-  ["연락처통신사", "연락처/통신사"],
-  ["기대출개인", "기대출(개인)"],
-  ["자택주소지", "자택주소지"],
-  ["대표소유여부", "소유여부"],
-  ["동종업계경력", "동종업계경력"],
-  ["대표기타메모", "기타메모"],
-];
-const 재무_LABELS: [keyof CompanyInfo, string][] = [
-  ["결산연도", "결산연도"],
-  ["영업이익", "영업이익"],
-  ["당기순이익", "당기순이익"],
-  ["이자비용", "이자비용"],
-  ["자산총계", "자산총계"],
-  ["부채총계", "부채총계"],
-  ["자본총계", "자본총계"],
-  ["면세수입금액", "면세 수입금액"],
-  ["반기별매출", "반기별 매출"],
-  ["부채비율", "부채비율"],
-  ["이자보상배율", "이자보상배율"],
-  ["당기순이익률", "당기순이익률"],
-  ["매출증가율", "매출증가율"],
-];
+
+/** [재무] 라벨 — 매출 칸은 연도가 붙어 해마다 바뀐다(baseYear 기준). */
+function 재무Labels(baseYear: number): Labels {
+  const today = new Date(baseYear, 0, 1);
+  return [
+    ...SALES_YEAR_KEYS.map((k, i): [keyof CompanyInfo, string] => [k, `매출 ${salesYearTag(i, today)}`]),
+    ...SALES_HALF_KEYS.flatMap(([상, 하], i): [keyof CompanyInfo, string][] => [
+      [상, `${salesYearTag(i, today)} 상반기`],
+      [하, `${salesYearTag(i, today)} 하반기`],
+    ]),
+    ["반기별매출", "이전 반기별 매출 메모"],
+    ...SALES_GROWTH_DEFS.map((d): [keyof CompanyInfo, string] => [d.key, `매출증가율 ${salesGrowthName(d.fromAgo)}`]),
+    ["매출증가율", "이전 매출증가율 메모"],
+    ["기대출사업자", "기대출(사업자)"],
+    ["결산연도", "결산연도"],
+    ["영업이익", "영업이익"],
+    ["당기순이익", "당기순이익"],
+    ["이자비용", "이자비용"],
+    ["자산총계", "자산총계"],
+    ["부채총계", "부채총계"],
+    ["자본총계", "자본총계"],
+    ["면세수입금액", "면세 수입금액"],
+    ["부채비율", "부채비율"],
+    ["이자보상배율", "이자보상배율"],
+    ["당기순이익률", "당기순이익률"],
+  ];
+}
+
+/** 숫자만 적힌 임차 칸에 단위를 붙인다(편집기 칸 옆 "원"·"㎡" 와 같은 뜻). 옛 "1,000만" 은 그대로. */
+const UNIT_OF: Partial<Record<keyof CompanyInfo, string>> = {
+  임차보증금: "원",
+  임차월세: "원",
+  임차면적: "㎡",
+  대표임차보증금: "원",
+  대표임차월세: "원",
+  대표임차면적: "㎡",
+};
+function withUnit(k: keyof CompanyInfo, v: string): string {
+  const unit = UNIT_OF[k];
+  return unit && /^[\d,.]+$/.test(v.trim()) ? `${v.trim()}${unit}` : v;
+}
 
 // ── 정렬형 포맷 (§3-3 확정) — 탭 금지, EAW 공백 패딩 ─────────────
 /** East Asian Width 환산 표시폭 — 한글·CJK=2칸, 그 외=1칸. */
@@ -67,6 +101,7 @@ export function displayWidth(s: string): number {
     const c = ch.codePointAt(0)!;
     w +=
       (c >= 0x1100 && c <= 0x115f) || // 한글 자모
+      (c >= 0x2190 && c <= 0x21ff) || // → 등 화살표(매출증가율 라벨) — 한글 고정폭에서 2칸 (EAW Ambiguous)
       (c >= 0x25a0 && c <= 0x25ff) || // ●▲ 등 도형 — 한글 고정폭에서 2칸 (EAW Ambiguous)
       (c >= 0x2e80 && c <= 0xa4cf) || // CJK 부수~한자
       (c >= 0xac00 && c <= 0xd7a3) || // 한글 음절
@@ -81,9 +116,10 @@ export function displayWidth(s: string): number {
 }
 
 const BULLET = "● ";
-// 값 시작 열 = 가장 긴 라벨("주민등록번호 앞자리"=19칸) + 2칸 여유 — 전 줄 공통.
+// 값 시작 열 = 가장 긴 라벨("이전 반기별 매출 메모"=21칸) + 2칸 여유 — 전 줄 공통.
+// 매출 라벨의 연도 숫자는 해마다 바뀌어도 폭(4자리)이 같아 열이 흔들리지 않는다.
 const LABEL_CELL = Math.max(
-  ...[...업체_LABELS, ...대표자_LABELS, ...재무_LABELS].map(([, l]) => displayWidth(l)),
+  ...[...대표자_LABELS, ...기업정보_LABELS, ...재무Labels(2000)].map(([, l]) => displayWidth(l)),
   displayWidth("업체명"),
   displayWidth("추출시각"),
 ) + 2;
@@ -102,9 +138,16 @@ function fieldLines(label: string, value: string): string[] {
   return parts.map((p, i) => (i === 0 ? `${head}- ${p}` : `${indent}- ${p}`));
 }
 
+/** 추출시각("2026-09-28 10:00", KST) 의 연도 — 매출 라벨 기준 연도. 못 읽으면 오늘. */
+function baseYearOf(extractedAt: string): number {
+  const m = extractedAt.match(/^(\d{4})-/);
+  return m ? Number(m[1]) : new Date().getFullYear();
+}
+
 /**
  * 사람이 읽는 TXT 본문 (정렬형, 2026-06-11 확정) — 순수(테스트 대상).
- * 머리(구분선+업체명+추출시각) → [업체] → [대표자] → [재무](값 있을 때만). 커스텀은 그룹 끝.
+ * 머리(구분선+업체명+추출시각) → [대표자] → [기업정보] → [재무](값 있을 때만). 커스텀은 그룹 끝
+ * (저장 키는 커스텀.업체·커스텀.대표자 그대로 — [기업정보] = 커스텀.업체).
  * 메모장(고정폭)에서 값들이 한 세로선에 정렬되도록 EAW 공백 패딩.
  */
 export function formatCompanyInfoTxt(
@@ -115,17 +158,17 @@ export function formatCompanyInfoTxt(
   const c = ci as unknown as Record<string, string>;
   const section = (
     title: string,
-    labels: [keyof CompanyInfo, string][],
+    labels: Labels,
     g?: "업체" | "대표자",
   ) => [
     `[${title}]`,
-    ...labels.flatMap(([k, label]) => fieldLines(label, String(c[k] ?? ""))),
+    ...labels.flatMap(([k, label]) => fieldLines(label, withUnit(k, String(c[k] ?? "")))),
     ...Object.entries((g && ci.커스텀?.[g]) || {}).flatMap(([label, v]) =>
       fieldLines(label, v),
     ),
   ];
   // [재무] 는 새 그룹 — 한 칸도 안 채운 업체의 TXT 에 빈 머리글만 남기지 않는다.
-  const 재무 = section("재무", 재무_LABELS);
+  const 재무 = section("재무", 재무Labels(baseYearOf(extractedAt)));
   const 재무있음 = 재무.length > 1;
   return [
     RULE,
@@ -134,9 +177,9 @@ export function formatCompanyInfoTxt(
     ...fieldLines("추출시각", extractedAt),
     RULE,
     "",
-    ...section("업체", 업체_LABELS, "업체"),
-    "",
     ...section("대표자", 대표자_LABELS, "대표자"),
+    "",
+    ...section("기업정보", 기업정보_LABELS, "업체"),
     ...(재무있음 ? ["", ...재무] : []),
   ].join("\n");
 }

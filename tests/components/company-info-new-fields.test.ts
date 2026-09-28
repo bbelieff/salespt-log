@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * 업체정보 편집기 — 확장2 20칸 (company-info-new-fields).
- *  ① 새 라벨이 제 그룹([업체]/[대표자])에, [재무] 섹션이 따로 보인다.
+ *  ① 새 라벨이 제 그룹([기업정보]/[대표자])에, [재무] 섹션이 따로 보인다
+ *     (company-info-restructure 2026-09-28 — 업체 → 기업정보, 과세유형은 사업자구분과 한 칸 선택).
  *  ② 새 칸마다 (?) 설명 버튼이 있다.
  *  ③ 주민등록번호 앞자리 — 전체 번호를 붙여넣어도 앞 6자리만 stage 된다, blur 에 마무리.
  */
@@ -70,13 +71,15 @@ afterEach(() => {
 });
 
 describe("CompanyInfoEditor 확장2 칸", () => {
-  it("[업체]·[대표자]·[재무] 그룹에 새 라벨이 각각 들어간다", () => {
-    render();
-    const 업체 = groupEl("업체")!.textContent!;
-    for (const l of ["과세유형", "업태", "법인등록번호", "임차 보증금", "임차 월세", "임차 면적"]) {
-      expect(업체).toContain(l);
+  it("[기업정보]·[대표자]·[재무] 그룹에 새 라벨이 각각 들어간다", () => {
+    // 법인·임차일 때만 보이는 칸까지 보이도록 값을 준다.
+    render(CompanyInfo.parse({ 대표자이름: "홍길동", 사업자구분: "법인", 과세유형: "일반과세자", 소유여부: "임차" }));
+    const 기업 = groupEl("기업정보")!.textContent!;
+    for (const l of ["사업자구분 · 과세유형", "업태", "법인등록번호", "보증금", "월세", "면적"]) {
+      expect(기업).toContain(l);
     }
-    expect(groupEl("대표자")!.textContent).toContain("주민등록번호 앞자리");
+    expect(groupEl("대표자")!.textContent).toContain("주민등록번호");
+    expect(groupEl("대표자")!.textContent).not.toContain("주민등록번호 앞자리");
     const 재무 = groupEl("재무")!;
     expect(재무.textContent).toContain("[재무]");
     for (const l of [
@@ -85,14 +88,14 @@ describe("CompanyInfoEditor 확장2 칸", () => {
     ]) {
       expect(재무.textContent).toContain(l);
     }
-    // 재무엔 사용자 필드 추가 입력이 없다(업체·대표자만).
+    // 재무엔 사용자 필드 추가 입력이 없다(기업정보·대표자만).
     expect(재무.querySelector('input[placeholder="필드 추가+ (라벨)"]')).toBeNull();
-    expect(재무.querySelector("textarea")).not.toBeNull(); // 반기별 매출 = 여러 줄
+    expect(재무.querySelector("textarea")).not.toBeNull(); // 기대출 사업자 = 여러 줄
   });
 
   it("새 칸마다 (?) 설명 버튼이 있다", () => {
     render();
-    for (const l of ["과세유형", "주민등록번호 앞자리", "이자보상배율", "매출증가율"]) {
+    for (const l of ["사업자구분 · 과세유형", "주민등록번호", "이자보상배율", "Y-1→Y"]) {
       expect(el!.querySelector(`button[aria-label="${l} 설명 보기"]`)).not.toBeNull();
     }
   });
@@ -142,7 +145,7 @@ describe("CompanyInfoEditor 확장2 칸", () => {
   it("PC 상세 2단(inline)에서 [재무] 내부는 2열 그리드(전폭 1열 금지)", () => {
     render(undefined, { desktopHeading: true, splitInline: true });
     const grid = (name: string) => groupEl(name)!.querySelector<HTMLElement>("div.grid")!.className;
-    expect(grid("업체")).not.toContain("grid-cols-2"); // 반폭 그룹은 1열 유지
+    expect(grid("기업정보")).not.toContain("grid-cols-2"); // 반폭 그룹은 1열 유지
     expect(grid("재무")).toContain("sm:grid-cols-2");
   });
 });

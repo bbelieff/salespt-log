@@ -7,6 +7,7 @@ import {
   findAmounts,
   findAreas,
   formatArea,
+  formatSqm,
   parseKoreanAmount,
   parseLeaseContract,
 } from "@/lib/document-ocr/parse-lease";
@@ -83,6 +84,12 @@ describe("면적", () => {
     expect(formatArea(null, 20)).toBe("66.12㎡(20평)");
     expect(formatArea(33.06, 10)).toBe("33.06㎡(10평)");
   });
+  it("임차면적 칸 값 = ㎡ 숫자만, 평만 있으면 ×3.3058 소수 한 자리", () => {
+    expect(formatSqm(33, 10)).toBe("33");
+    expect(formatSqm(null, 10)).toBe("33.1");
+    expect(formatSqm(33.06, null)).toBe("33.1");
+    expect(formatSqm(null, null)).toBe("");
+  });
   it("㎡·평 병기는 한 면적, '평택' 은 면적이 아니다", () => {
     expect(findAreas("면적 33.06㎡(10평)")).toEqual([{ sqm: 33.06, pyeong: 10 }]);
     expect(findAreas("123 평택로")).toEqual([]);
@@ -106,14 +113,14 @@ describe("detectVat", () => {
 describe("parseLeaseContract — 표준 양식", () => {
   const r = parseLeaseContract(STANDARD_LEASE);
   const f = byKey(r.fields);
-  it("업체정보 키·형식으로 낸다", () => {
+  it("업체정보 키·형식으로 낸다 — 보증금·월세 원 숫자, 면적 ㎡ 숫자, 소유여부 임차", () => {
     expect(f.소재지?.value).toBe("서울특별시 중구 예시로 1, 예시빌딩");
-    expect(f.임차보증금?.value).toBe("1,000만");
+    expect(f.임차보증금?.value).toBe("10,000,000");
     expect(f.임차보증금?.confidence).toBeGreaterThanOrEqual(0.9); // 한글·숫자 일치
-    expect(f.임차월세?.value).toBe("50만");
+    expect(f.임차월세?.value).toBe("500,000");
     expect(f.임차월세?.warnings).toEqual([]); // 부가세 포함에 체크
-    expect(f.임차면적?.value).toBe("33㎡(10평)"); // 토지·건물 면적이 아니라 임대할 부분
-    expect(f.소유여부?.value).toBe("임차 : 보 1000만, 월 50만");
+    expect(f.임차면적?.value).toBe("33"); // 토지·건물 면적이 아니라 임대할 부분, ㎡ 숫자만
+    expect(f.소유여부?.value).toBe("임차");
   });
   it("계약기간·임대인·용도는 읽지 않고, 주민등록번호 뒷자리는 어디에도 없다", () => {
     const keys = r.fields.map((x) => x.key);
@@ -130,11 +137,15 @@ describe("parseLeaseContract — 상가·숫자 금액", () => {
   const f = byKey(parseLeaseContract(SHOP_LEASE).fields);
   it("金 숫자·평 표기·부가세 별도", () => {
     expect(f.소재지?.value).toBe("경기도 평택시 예시로 12 (예시동)");
-    expect(f.임차보증금?.value).toBe("3,000만");
-    expect(f.임차월세?.value).toBe("150만");
+    expect(f.임차보증금?.value).toBe("30,000,000");
+    expect(f.임차월세?.value).toBe("1,500,000");
     expect(f.임차월세?.warnings.join(" ")).toContain("부가세 별도");
-    expect(f.임차면적?.value).toBe("66.12㎡(20평)");
-    expect(f.소유여부?.value).toBe("임차 : 보 3000만, 월 150만");
+    expect(f.임차면적?.value).toBe("66.1"); // 20평 × 3.3058 = 66.116 → 소수 한 자리
+    expect(f.소유여부?.value).toBe("임차");
+  });
+  it("평 병기는 저장하지 않는 참고 정보로만", () => {
+    const r = parseLeaseContract(SHOP_LEASE);
+    expect(r.info).toContainEqual({ label: "임차 면적(평 병기)", value: "66.12㎡(20평)" });
   });
 });
 
@@ -142,33 +153,33 @@ describe("parseLeaseContract — 불확실", () => {
   it("한글·숫자가 다르게 읽히면 확신도를 낮춘다", () => {
     const text = ["임대차계약서", "보증금 금 일천만원정 (₩10,000,00)", "차임 금 오십만원"].join("\n");
     const f = byKey(parseLeaseContract(text).fields);
-    expect(f.임차보증금?.value).toBe("1,000만");
+    expect(f.임차보증금?.value).toBe("10,000,000");
     expect(f.임차보증금?.confidence).toBeLessThan(0.5);
     expect(f.임차보증금?.warnings.join(" ")).toContain("여러 개");
     expect(f.소유여부?.confidence).toBeLessThan(0.5);
   });
-  it("전세(월세 없음) — 소유여부는 보증금만", () => {
+  it("전세(월세 없음) — 보증금만 있어도 소유여부는 임차", () => {
     const text = ["부동산 임대차 계약서", "소재지", "서울특별시 중구 예시로 5", "보증금", "금 이억원정"].join("\n");
     const r = parseLeaseContract(text);
     const f = byKey(r.fields);
-    expect(f.임차보증금?.value).toBe("2억");
+    expect(f.임차보증금?.value).toBe("200,000,000");
     expect(f.임차월세).toBeUndefined();
-    expect(f.소유여부?.value).toBe("임차 : 보 2억");
+    expect(f.소유여부?.value).toBe("임차");
     expect(f.소재지?.warnings.join(" ")).toContain("다음 줄");
   });
   it("임대할 부분이 없으면 가장 작은 면적을 낮은 확신도로", () => {
     const text = ["임대차계약서", "토지 면적 330㎡", "건물 면적 99㎡"].join("\n");
     const f = byKey(parseLeaseContract(text).fields);
-    expect(f.임차면적?.value).toBe("99㎡(29.9평)");
+    expect(f.임차면적?.value).toBe("99");
     expect(f.임차면적?.confidence).toBeLessThan(0.5);
   });
   it("한 줄에 보증금·월세가 함께 — 서로의 금액을 빌려오지 않는다", () => {
     const text = ["월세 계약서 임대차계약서", "보증금 1,000만원 월세 50만원 관리비 5만원"].join("\n");
     const f = byKey(parseLeaseContract(text).fields);
-    expect(f.임차보증금?.value).toBe("1,000만");
+    expect(f.임차보증금?.value).toBe("10,000,000");
     expect(f.임차보증금?.confidence).toBeGreaterThan(0.5);
-    expect(f.임차월세?.value).toBe("50만");
-    expect(f.소유여부?.value).toBe("임차 : 보 1000만, 월 50만");
+    expect(f.임차월세?.value).toBe("500,000");
+    expect(f.소유여부?.value).toBe("임차");
   });
   it("부가세 체크를 못 읽으면 경고", () => {
     const text = ["임대차계약서", "월세 금 오십만원 (부가세 □불포함 □포함)"].join("\n");

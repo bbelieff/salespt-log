@@ -1,10 +1,12 @@
 /**
  * document-ocr/parse-vat — 부가가치세 과세표준증명 OCR 텍스트 → 업체정보 매출 칸 제안.
  *
- * 채우는 칸: 반기별매출(여러 줄, 최신 반기 먼저 "25년 상반기 1.2억") ·
+ * 채우는 칸: 반기 매출 8칸(매출Y상·매출Y하 … 매출Y3상·매출Y3하 — 값만 "1.2억", 공용 formatManwon) ·
  *   금년도매출("26' 6월 100백만" — 월 = 신고로 덮인 마지막 달) · 과년도매출("25' 250백만") ·
  *   과년도매출Y2 · 과년도매출Y3 · 면세수입금액("25년 3,200만").
- * 올해/작년 판단은 today(주입 가능) 기준이다.
+ * 올해/작년 판단은 today(주입 가능) 기준이다. 반기 칸은 올해~3년 전(Y~Y-3)만 — 그보다 오래된 반기와
+ * 간이과세 연간 신고(반기 구분 없음)는 연도 합계에만 들어간다. 옛 한 칸 반기별매출은 더 채우지 않는다
+ * (company-info-restructure 2026-09-28).
  *
  * 한 과세기간 줄 = 연도+기수("2025년 1기") 또는 기간("2025.01.01~2025.06.30") + 신고구분 + 금액.
  * 금액은 날짜·기간·사업자번호를 지운 뒤 **첫 번째 금액**(과세표준 열)이다.
@@ -18,7 +20,8 @@
  */
 import { formatBaekman, formatManwon } from "./amount";
 import { THIRTEEN_DIGIT_ID, compactText, normalizeOcrText, toLines } from "./text-utils";
-import type { DocParseResult, ParsedField } from "./types";
+import type { CompanyInfoKey, DocParseResult, ParsedField } from "./types";
+import { SALES_HALF_KEYS } from "@/util/company-sales";
 
 export type VatParseOptions = { today?: Date };
 
@@ -260,12 +263,21 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
     .map(resolveGroup)
     .sort((a, b) => b.year - a.year || b.end - a.end);
 
-  if (groups.length > 0) {
+  // 반기 칸 — 올해(Y)~3년 전(Y-3)의 상·하반기. 반기를 다 못 채운 신고(예정 1~3월만)는 값은 그대로 두고
+  // 몇 월 신고인지 경고한다(칸 이름이 "상반기"라 1~3월 금액을 반기 전체로 오해하지 않게).
+  for (const g of groups) {
+    if (g.half === 0) continue; // 간이과세 연간 — 반기 구분 없음(연도 합계 칸에만)
+    const pair = SALES_HALF_KEYS[thisYear - g.year];
+    if (!pair) continue; // 3년보다 오래된 반기
+    const key: CompanyInfoKey = pair[g.half - 1]!;
+    const full = g.end - g.start === 5;
+    const warnings = [...g.warnings];
+    if (!full) warnings.push(`${yy(g.year)}년 ${halfLabel(g)} 신고 금액이에요. 반기 전체가 아니에요.`);
     fields.push({
-      key: "반기별매출",
-      value: groups.map((g) => `${yy(g.year)}년 ${halfLabel(g)} ${formatManwon(g.amount)}`).join("\n"),
-      confidence: Math.min(0.85, ...groups.map((g) => g.confidence)),
-      warnings: [...new Set(groups.flatMap((g) => g.warnings))],
+      key,
+      value: formatManwon(g.amount),
+      confidence: Math.min(0.85, g.confidence, full ? 1 : 0.6),
+      warnings,
     });
   }
 

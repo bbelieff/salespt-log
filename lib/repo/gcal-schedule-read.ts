@@ -15,7 +15,7 @@ function tabRef(tab: string): string {
 /** 04 미팅 전체(취소 포함, id 중복 제거 — 첫 행 우선). */
 export async function listAllMeetings(spreadsheetId: string): Promise<Meeting[]> {
   const tab = SHEET_RANGES.meetings.tab;
-  // A2:BN — grid 가 BN 미만인 시트는 A2:AS 폴백(readMeetingRows, 읽기에서 grid 확장 안 함).
+  // A2:CC — grid 가 CC 미만인 시트는 A2:BN → A2:AS 폴백(readMeetingRows, 읽기에서 grid 확장 안 함).
   const rows = await readMeetingRows(spreadsheetId, (last) => `${tabRef(tab)}!A2:${last}`);
   const seen = new Set<string>();
   const out: Meeting[] = [];

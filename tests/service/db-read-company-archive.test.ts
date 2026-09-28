@@ -4,7 +4,7 @@
  * payload 3형태(upsert 평탄화 / backfill 열문자 / rename 키-only) 전부.
  */
 import { describe, expect, it } from "vitest";
-import { COMPANY_FIELDS, COMPANY_FIELDS_EXT, COMPANY_FIELDS_EXT2 } from "@/repo/meetings";
+import { COMPANY_FIELDS, COMPANY_FIELDS_EXT, COMPANY_FIELDS_EXT2, COMPANY_FIELDS_EXT3 } from "@/repo/meetings";
 import { companyInfoFromDbPayload } from "@/repo/db/read-daily";
 
 import { colName } from "@/util/sheet-column";
@@ -20,6 +20,9 @@ const FILLED: Record<string, string> = {
   과세유형: "일반과세자", // EXT2 첫 칸(AC)
   주민등록번호: "800101-", // EXT2
   매출증가율: "12%", // EXT2 마지막 칸(AV)
+  주생산품목: "포장용 필름", // EXT3 첫 칸(AW)
+  매출Y1상: "1.2억", // EXT3
+  매출증가율Y1Y: "+12.5%", // EXT3 마지막 칸(BK)
 };
 // CompanyInfo.커스텀 정식 스키마 = {업체:{라벨:값}, 대표자:{라벨:값}} (types/index.ts AN)
 const CUSTOM = { 업체: { 메모1: "커스텀 값" }, 대표자: {} };
@@ -30,6 +33,7 @@ function expected(): Record<string, unknown> {
   for (const f of COMPANY_FIELDS) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT2) ci[f] = FILLED[f] ?? "";
+  for (const f of COMPANY_FIELDS_EXT3) ci[f] = FILLED[f] ?? "";
   ci.커스텀 = CUSTOM;
   return ci;
 }
@@ -56,14 +60,20 @@ describe("R2-4b company_archive: DB payload ↔ 시트 read 정합", () => {
       const letter = colName(4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + i);
       if (FILLED[f]) p[letter] = FILLED[f]; // AC..AV
     });
+    const ext3 = 4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + COMPANY_FIELDS_EXT2.length;
+    COMPANY_FIELDS_EXT3.forEach((f, i) => {
+      if (FILLED[f]) p[colName(ext3 + i)] = FILLED[f]; // AW..BK
+    });
     expect(colName(4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length)).toBe("AC");
+    expect(colName(ext3)).toBe("AW");
+    expect(colName(ext3 + COMPANY_FIELDS_EXT3.length - 1)).toBe("BK");
     expect(companyInfoFromDbPayload(p)).toEqual(expected());
   });
 
   it("③ rename 키-only payload → 전 필드 빈값 (호출부 hasCompanyInfo 가 시트 fallback 유도)", () => {
     const ci = companyInfoFromDbPayload({ _cleared: false, 업체명: "개명상사", 계약일: "2026-07-02" })!;
     expect(ci).not.toBeNull();
-    for (const f of [...COMPANY_FIELDS, ...COMPANY_FIELDS_EXT, ...COMPANY_FIELDS_EXT2]) {
+    for (const f of [...COMPANY_FIELDS, ...COMPANY_FIELDS_EXT, ...COMPANY_FIELDS_EXT2, ...COMPANY_FIELDS_EXT3]) {
       expect(ci[f as keyof typeof ci] ?? "").toBe("");
     }
     expect(ci.커스텀).toBeUndefined();

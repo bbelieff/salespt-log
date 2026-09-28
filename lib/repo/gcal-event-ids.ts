@@ -23,7 +23,7 @@
  * 해졌다. 단일 pm2 인스턴스 전제도 함께 사라진다(카드의 "부수 효과"). 시트 미러 경로에는 남는다.
  *
  * ★설계(위험 최소화, 유지): meetings.ts/todos.ts/carryover.ts 의 행 쓰기(writeMeetingRowSplit·
- * 이월 writeCarriedRowAt 은 A:M/P/R/T:AN/AQ:AS/AU:BN, writeTodoRow 는 A:N)는 이 컬럼을
+ * 이월 writeCarriedRowAt 은 A:M/P/R/T:AN/AQ:AS/AU:CC, writeTodoRow 는 A:N)는 이 컬럼을
  * **범위 밖**으로 두어 안 건드린다.
  */
 import { SHEET_RANGES } from "@/config";

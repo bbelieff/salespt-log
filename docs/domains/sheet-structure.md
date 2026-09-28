@@ -262,9 +262,9 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 | **R** | previousMeetingId | UUID | 웹 자동 (변경 시) | "변경" 액션 시 기존 미팅 카드 id 보존 — 변경 추적용 |
 | **S** | 주차 | formula | 시트 수식 | 미팅날짜로 1~10 주차 자동 계산 (= floor((D − N1) / 7) + 1) |
 
-#### 업체정보 (T~AN + AQ~AS + AU~BN) — 미팅 단위 작성 (lib/types `CompanyInfo`, consultation-log §1-1)
+#### 업체정보 (T~AN + AQ~AS + AU~CC) — 미팅 단위 작성 (lib/types `CompanyInfo`, consultation-log §1-1)
 
-웹 입력. 쓰기는 업체정보 전용 함수가 §2.5 보존가드로 T~AN·AQ~AS·AU~BN만 타격(미팅 split write A:M/P/R, 이월 AO~AP 와 분리). 빈값 허용. 기대출사업자(AB)·기대출개인(AI)은 셀 내 줄바꿈(`\n`) 저장 허용(Sheets 표준).
+웹 입력. 쓰기는 업체정보 전용 함수가 §2.5 보존가드로 T~AN·AQ~AS·AU~CC만 타격(미팅 split write A:M/P/R, 이월 AO~AP 와 분리). 빈값 허용. 기대출사업자(AB)·기대출개인(AI)은 셀 내 줄바꿈(`\n`) 저장 허용(Sheets 표준).
 
 | 컬럼 | 필드(키) | 그룹 | | 컬럼 | 필드(키) | 그룹 |
 |---|---|---|---|---|---|---|
@@ -288,7 +288,7 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 | **AR** | 과년도매출Y2 (표시 "과년도 매출 Y-2") | 업체 |
 | **AS** | 과년도매출Y3 (표시 "과년도 매출 Y-3") | 업체 |
 
-**확장2 20필드 (AU~BN, 2026-09-28 company-info-new-fields)** — AT(gcal_event_ids 맵)가 먼저 점유되어 있어 그 **뒤** AU 부터 append(컬럼 이동 금지). `COMPANY_FIELDS_EXT2` 순서 그대로, 전부 자유 텍스트(`'` prefix plain text). 헤더 AU1:BN1 은 쓰기 경로가 **빈 셀에만** 필드 키를 라벨로 보강(`ensureExt2HeaderLabels`). grid 는 66열(BN)로 **쓰기 경로에서만** lazy 확장. 읽기(A:BN)는 grid 를 넓히지 않고, BN 미만 시트(범위 초과 400)면 A:AS 로 폴백(`readMeetingRows`).
+**확장2 20필드 (AU~BN, 2026-09-28 company-info-new-fields)** — AT(gcal_event_ids 맵)가 먼저 점유되어 있어 그 **뒤** AU 부터 append(컬럼 이동 금지). `COMPANY_FIELDS_EXT2` 순서 그대로, 전부 자유 텍스트(`'` prefix plain text). 헤더 AU1:BN1 은 쓰기 경로가 **빈 셀에만** 필드 키를 라벨로 보강(`ensureExt2HeaderLabels`). grid 는 66열(BN)로 **쓰기 경로에서만** lazy 확장(확장3 이후 81열 CC). 읽기는 grid 를 넓히지 않고 범위 초과 400 이면 좁혀 읽는다(확장3 이후 A:CC → A:BN → A:AS, `readMeetingRows`).
 
 | 컬럼 | 필드(키) | 그룹 | 비고 |
 |---|---|---|---|
@@ -311,7 +311,29 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 | **BK** | 부채비율 | 재무 | 직접 입력(자동 계산 없음) |
 | **BL** | 이자보상배율 | 재무 | 직접 입력 |
 | **BM** | 당기순이익률 | 재무 | 직접 입력 |
-| **BN** | 매출증가율 | 재무 | 직접 입력 |
+| **BN** | 매출증가율 | 재무 | 직접 입력 — 2026-09-28 재구성 후 편집기에서 숨김(값이 있으면 "이전 매출증가율 메모" 읽기 전용). 열·값 유지 |
+
+**확장3 15필드 (BO~CC, 2026-09-28 company-info-restructure)** — 확장2(BN) 바로 **뒤** BO 부터 append(컬럼 이동 금지). `COMPANY_FIELDS_EXT3` 순서 그대로, 전부 자유 텍스트(`'` prefix plain text — "+12.5%"·"10,000,000" 이 숫자로 바뀌지 않게). AU~CC 가 맞닿아 있어 쓰기·지우기는 **AU:CC 한 범위**(AT gcal 맵 비접촉). 헤더 AU1:CC1 은 쓰기 경로가 **빈 셀에만** 라벨 보강. grid 는 81열(CC)로 **쓰기 경로에서만** lazy 확장. 읽기는 grid 를 넓히지 않고 범위 초과 400 이면 **한 단계씩** 좁혀 읽는다: A:CC → A:BN → A:AS(`readMeetingRows`·이월 `listCarrySourceMeetings` 공통 — BN 까지만 넓힌 시트에서 확장2 값이 사라지지 않게).
+
+| 컬럼 | 필드(키) | 그룹 | 비고 |
+|---|---|---|---|
+| **BO** | 주생산품목 | 기업정보 | 업종(T~AN 의 업종주생산품목 — 표시 "업종")·업태 옆 세 번째 칸 |
+| **BP** | 대표임차보증금 | 대표자 | 자택 임차 — 원 단위 숫자("5,000,000") |
+| **BQ** | 대표임차월세 | 대표자 | 원 단위 숫자 |
+| **BR** | 대표임차면적 | 대표자 | ㎡ 숫자("59.5") |
+| **BS** | 매출Y상 | 재무 | 올해(Y) 상반기 매출 — 부가세 과세표준증명 자동입력 |
+| **BT** | 매출Y하 | 재무 | 올해 하반기 |
+| **BU** | 매출Y1상 | 재무 | Y-1 상반기 |
+| **BV** | 매출Y1하 | 재무 | Y-1 하반기 |
+| **BW** | 매출Y2상 | 재무 | Y-2 상반기 |
+| **BX** | 매출Y2하 | 재무 | Y-2 하반기 |
+| **BY** | 매출Y3상 | 재무 | Y-3 상반기 |
+| **BZ** | 매출Y3하 | 재무 | Y-3 하반기 |
+| **CA** | 매출증가율Y3Y2 | 재무 | 편집기가 연도 매출(과년도매출Y3→Y2)에서 자동 계산해 저장("+12.5%") |
+| **CB** | 매출증가율Y2Y1 | 재무 | 자동(과년도매출Y2→과년도매출) |
+| **CC** | 매출증가율Y1Y | 재무 | 자동(과년도매출→금년도매출) |
+
+재구성(2026-09-28)으로 **뜻이 바뀐 옛 칸**(열·키는 그대로, 값 보존): 소유여부(X)·대표소유여부(AK) = 편집기 선택 "자가"/"임차"(옛 자유 글은 편집기가 짐작해 보여 주고, 선택을 바꾸면 기타메모로 옮김) · 사업자구분(U)+과세유형(AU) = 한 칸 조합 선택 · 업종주생산품목(Y) = 표시 "업종" · 임차보증금·임차월세(AX·AY) = 원 단위 숫자(옛 "1,000만" 도 그대로 표시) · 임차면적(AZ) = ㎡ 숫자 · 반기별매출(BI)·매출증가율(BN) = 편집기에서 숨김(값 있으면 읽기 전용 메모).
 
 #### 이월 플래그 (AO~AP) — 아레나 재참가 (arena-carryover-migration §3·§7)
 
@@ -324,7 +346,7 @@ COUNTIFS('04 업체관리(앱자동작성용)'!D:D, $C2,
 
 | 컬럼 | 필드 | 설명 |
 |---|---|---|
-| **AT** | gcal_event_ids | 사용자별 JSON 맵 `{"salesptEmail":"eventId"}` — 이 미팅이 각 연결 사용자 구글 캘린더에서 갖는 eventId. **`lib/repo/gcal-event-ids.ts` 만 read-merge-write**(meetings.ts 의 split write A:M/P/R/T:AN/AQ:AS/AU:BN 범위 밖 → 미팅 행 쓰기와 독립 보존). 그리드 46열로 lazy 확장. 미연결 사용자는 빈값 |
+| **AT** | gcal_event_ids | 사용자별 JSON 맵 `{"salesptEmail":"eventId"}` — 이 미팅이 각 연결 사용자 구글 캘린더에서 갖는 eventId. **`lib/repo/gcal-event-ids.ts` 만 read-merge-write**(meetings.ts 의 split write A:M/P/R/T:AN/AQ:AS/AU:CC 범위 밖 → 미팅 행 쓰기와 독립 보존). 그리드 46열로 lazy 확장. 미연결 사용자는 빈값 |
 
 ### J열: 미팅 상태 5가지 ⭐
 
@@ -550,8 +572,8 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 
 **SHEET_RANGES.companyInfoArchive 키 매핑**:
 - `companyInfoArchive` (JS 키) ↔ "06 업체정보" (시트 탭명)
-- 범위: `A2:AV` (48컬럼, 1행=1계약고객), `headerRow = A1:AV1`
-- **앱 자동 생성** (`ensureCompanyInfoTab`, 05와 동일 lazy 패턴). 2026-06-11 field-grid 로 Z~AB 3컬럼, 2026-09-28 확장2 로 AC~AV 20컬럼 확장 — 기존 탭은 ensure 가 Z1 이후 헤더 라벨을 **빈 셀에만** 셀 단위로 보강(사용자가 고친 헤더 보존, `headerBackfillPlan`).
+- 범위: `A2:BK` (63컬럼, 1행=1계약고객), `headerRow = A1:BK1`
+- **앱 자동 생성** (`ensureCompanyInfoTab`, 05와 동일 lazy 패턴). 2026-06-11 field-grid 로 Z~AB 3컬럼, 2026-09-28 확장2 로 AC~AV 20컬럼, 같은 날 확장3 으로 AW~BK 15컬럼 확장 — 기존 탭은 ensure 가 Z1 이후 헤더 라벨을 **빈 셀에만** 셀 단위로 보강(사용자가 고친 헤더 보존, `headerBackfillPlan`).
 
 **역할**: 계약 액션 시 그 업체의 04 업체정보(T~AN)를 **스냅샷으로 1행 추가**(계약 고객 누적). 이후 04 업체정보가 바뀌면 같은 키 행을 **동기화 갱신**(박제 아님 — 04 가 SSOT, 06 은 "계약 고객만 모아 보는 동기화 사본").
 
@@ -565,6 +587,7 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | **Y** | 업체정보_커스텀 | 04 AN 미러 (JSON) |
 | **Z~AB** | 확장 3필드 | 04 AQ~AS 미러 (`COMPANY_FIELDS_EXT`: 대표자생년월일·과년도매출Y2·과년도매출Y3) — 커스텀(Y) 뒤 append (컬럼 이동 금지) |
 | **AC~AV** | 확장2 20필드 | 04 AU~BN 미러 (`COMPANY_FIELDS_EXT2` 순서: AC 과세유형 · AD 업태 · AE 법인등록번호 · AF 임차보증금 · AG 임차월세 · AH 임차면적 · AI 주민등록번호(앞 6자리만) · AJ 결산연도 · AK 영업이익 · AL 당기순이익 · AM 이자비용 · AN 자산총계 · AO 부채총계 · AP 자본총계 · AQ 반기별매출 · AR 면세수입금액 · AS 부채비율 · AT 이자보상배율 · AU 당기순이익률 · AV 매출증가율) — Z~AB 뒤 append |
+| **AW~BK** | 확장3 15필드 | 04 BO~CC 미러 (`COMPANY_FIELDS_EXT3` 순서: AW 주생산품목 · AX 대표임차보증금 · AY 대표임차월세 · AZ 대표임차면적 · BA 매출Y상 · BB 매출Y하 · BC 매출Y1상 · BD 매출Y1하 · BE 매출Y2상 · BF 매출Y2하 · BG 매출Y3상 · BH 매출Y3하 · BI 매출증가율Y3Y2 · BJ 매출증가율Y2Y1 · BK 매출증가율Y1Y) — AC~AV 뒤 append |
 
 **쓰기 규칙 (§2.5 가드)**: upsert 는 **자기 키(계약ref) 행만** 갱신. 신규 append 는 A열 빈 행 탐색 후 그 행을 FORMULA pre-read — raw 값이 있으면 그 행을 건너뛰고 다음 빈 행 재탐색(타 데이터 덮어쓰기 방지). 수식 컬럼 없음.
 

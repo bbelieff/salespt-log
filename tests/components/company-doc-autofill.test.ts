@@ -149,7 +149,7 @@ describe("CompanyDocAutofillDialog", () => {
     mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
     await pickFiles(png("lease.png"));
     expect(document.body.textContent).not.toContain("곧 지원돼요");
-    expect(document.querySelector("table")!.textContent).toContain("1,000만");
+    expect(document.querySelector("table")!.textContent).toContain("10,000,000"); // 원 단위 숫자
     expect(buttonByText("선택 항목 적용").disabled).toBe(false);
   });
 
@@ -209,6 +209,37 @@ describe("CompanyInfoEditor 헤더 「문서로 자동입력」", () => {
     expect(staged.사업자등록번호).toBe("123-45-67891");
     expect(staged.업태).toBe("도매 및 소매업");
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("부가세 과세표준증명 → 반기 칸 + 연도 매출, 적용하면 매출증가율도 다시 계산돼 함께 저장", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 8, 28));
+    try {
+      ocrText.value = [
+        "부가가치세 과세표준증명",
+        "2025년 2기 확정 2026.01.25 130,000,000",
+        "2025년 1기 확정 2025.07.25 120,000,000",
+        "2024년 2기 확정 2025.01.25 90,000,000",
+        "2024년 1기 확정 2024.07.25 80,000,000",
+      ].join("\n");
+      mount(h(CompanyInfoEditor, { value: CompanyInfo.parse({}), onSave: () => undefined, hideSave: true }));
+      await act(async () => buttonByText("문서로 자동입력").click());
+      await flush();
+      await pickFiles(png("vat.png"));
+      expect(document.querySelector("table")!.textContent).toContain("상반기");
+      expect(document.querySelector("table")!.textContent).not.toContain("반기별 매출");
+      await act(async () => buttonByText("선택 항목 적용").click());
+      const staged = stage.mock.calls.at(-1)![0] as CompanyInfo;
+      expect(staged.매출Y1상).toBe("1.2억");
+      expect(staged.매출Y1하).toBe("1.3억");
+      expect(staged.매출Y2상).toBe("8,000만");
+      expect(staged.과년도매출).toBe("25' 250백만");
+      expect(staged.과년도매출Y2).toBe("24' 170백만");
+      expect(staged.매출증가율Y2Y1).toBe("+47.1%"); // (250 − 170) ÷ 170
+      expect(staged.반기별매출).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
