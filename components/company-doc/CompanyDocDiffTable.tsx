@@ -69,7 +69,7 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
                         </option>
                       ))}
                     </select>
-                    {/* 여러 줄 값(반기별매출)은 option 이 줄바꿈을 못 보여 주므로 고른 값 전체를 아래에 펼친다. */}
+                    {/* 여러 줄 값은 option 이 줄바꿈을 못 보여 주므로 고른 값 전체를 아래에 펼친다. */}
                     {c.value.includes("\n") && <span className="mt-0.5 block whitespace-pre-line">{c.value}</span>}
                   </>
                 ) : (

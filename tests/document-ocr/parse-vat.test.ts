@@ -44,20 +44,21 @@ describe("금액 표기 헬퍼", () => {
 describe("parseVatCertificate — 개인 반기 확정", () => {
   const r = parseVatCertificate(PERSONAL, { today: TODAY });
   const f = byKey(r.fields);
-  it("반기별매출 — 최신 먼저, 한 줄에 한 반기", () => {
-    expect(f.반기별매출?.value).toBe(
-      [
-        "26년 상반기 1억",
-        "25년 하반기 1.3억",
-        "25년 상반기 1.2억",
-        "24년 하반기 9,000만",
-        "24년 상반기 8,000만",
-        "23년 하반기 6,000만",
-        "23년 상반기 5,000만",
-        "22년 하반기 4,000만",
-      ].join("\n"),
-    );
-    expect(f.반기별매출?.confidence).toBeGreaterThanOrEqual(0.8);
+  it("반기 매출 8칸 — 올해(Y)~3년 전(Y-3) 상·하반기에 값만", () => {
+    expect(f.매출Y상?.value).toBe("1억");
+    expect(f.매출Y하).toBeUndefined(); // 26년 2기 신고 없음
+    expect(f.매출Y1상?.value).toBe("1.2억");
+    expect(f.매출Y1하?.value).toBe("1.3억");
+    expect(f.매출Y2상?.value).toBe("8,000만");
+    expect(f.매출Y2하?.value).toBe("9,000만");
+    expect(f.매출Y3상?.value).toBe("5,000만");
+    expect(f.매출Y3하?.value).toBe("6,000만");
+    expect(f.매출Y1상?.confidence).toBeGreaterThanOrEqual(0.8);
+    expect(f.매출Y1상?.warnings).toEqual([]);
+  });
+  it("옛 한 칸 반기별매출은 더 채우지 않고, 3년보다 오래된 반기(22년)는 반기 칸에 없다", () => {
+    expect(f.반기별매출).toBeUndefined();
+    expect(r.fields.some((x) => x.value === "4,000만")).toBe(false);
   });
   it("연도 합계를 올해 기준으로 칸에 나눈다", () => {
     expect(f.금년도매출?.value).toBe("26' 6월 100백만");
@@ -77,6 +78,10 @@ describe("parseVatCertificate — 개인 반기 확정", () => {
   it("today 를 바꾸면 칸이 따라 움직인다", () => {
     const f27 = byKey(parseVatCertificate(PERSONAL, { today: new Date(2027, 1, 1) }).fields);
     expect(f27.금년도매출).toBeUndefined();
+    expect(f27.매출Y상).toBeUndefined();
+    expect(f27.매출Y1상?.value).toBe("1억"); // 26년 상반기 → 이제 Y-1
+    expect(f27.매출Y3하?.value).toBe("9,000만"); // 24년 하반기 → 이제 Y-3
+    expect(Object.values(f27).some((x) => x.value === "6,000만")).toBe(false); // 23년 = Y-4, 칸 밖
     expect(f27.과년도매출?.value).toBe("26' 100백만");
     expect(f27.과년도매출?.warnings.join()).toContain("6개월");
     expect(f27.과년도매출?.confidence).toBeLessThanOrEqual(0.5);
@@ -94,7 +99,8 @@ describe("예정·확정 겹침", () => {
       "2025년 1기 예정 2025.04.25 55,000,000 5,000,000",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 하반기 1.3억\n25년 상반기 1.2억");
+    expect(f.매출Y1하?.value).toBe("1.3억");
+    expect(f.매출Y1상?.value).toBe("1.2억");
     expect(f.과년도매출?.value).toBe("25' 250백만");
   });
   it("법인: 기간이 안 겹치면(예정 1~3월 + 확정 4~6월) 더한다", () => {
@@ -107,7 +113,9 @@ describe("예정·확정 겹침", () => {
       "2025.07.01 ~ 2025.09.30 예정 2025.10.25 60,000,000 5,000,000",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("26년 상반기 1.2억\n25년 하반기 1.4억");
+    expect(f.매출Y상?.value).toBe("1.2억");
+    expect(f.매출Y상?.warnings).toEqual([]); // 1~3월+4~6월 = 반기 전체
+    expect(f.매출Y1하?.value).toBe("1.4억");
     expect(f.금년도매출?.value).toBe("26' 6월 120백만");
     expect(f.과년도매출?.value).toBe("25' 140백만");
     expect(f.과년도매출?.warnings.join()).toContain("6개월");
@@ -119,12 +127,14 @@ describe("예정·확정 겹침", () => {
       "2025년 1기 수정 2025.09.10 125,000,000",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 상반기 1억 2,500만");
+    expect(f.매출Y1상?.value).toBe("1억 2,500만");
   });
-  it("예정만 있으면 몇 월까지인지 표시하고 금년도 월도 그 달", () => {
+  it("예정만 있으면 반기 칸은 값만 두고 몇 월 신고인지 경고, 금년도 월도 그 달", () => {
     const text = ["부가가치세 과세표준증명", "2026년 1기 예정 2026.04.25 30,000,000"].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("26년 상반기(1~3월) 3,000만");
+    expect(f.매출Y상?.value).toBe("3,000만");
+    expect(f.매출Y상?.warnings.join()).toContain("상반기(1~3월)");
+    expect(f.매출Y상?.confidence).toBeLessThanOrEqual(0.6);
     expect(f.금년도매출?.value).toBe("26' 3월 30백만");
   });
 });
@@ -139,9 +149,10 @@ describe("OCR 노이즈", () => {
       "2025년 1기 정기(확정) 2025-07-25 120,000,000",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 하반기 1.3억\n25년 상반기 1.2억");
-    expect(f.반기별매출?.confidence).toBeLessThanOrEqual(0.6);
-    expect(f.반기별매출?.warnings.join()).toContain("끊어진 줄");
+    expect(f.매출Y1하?.value).toBe("1.3억");
+    expect(f.매출Y1하?.confidence).toBeLessThanOrEqual(0.6);
+    expect(f.매출Y1하?.warnings.join()).toContain("끊어진 줄");
+    expect(f.매출Y1상?.value).toBe("1.2억");
     expect(f.과년도매출?.confidence).toBeLessThanOrEqual(0.6);
   });
   it("O→0, l→1, 마침표 쉼표, 전각 숫자를 고친다", () => {
@@ -151,9 +162,10 @@ describe("OCR 노이즈", () => {
       "2025년 제 1 기 확정 2025.07.25 l20,000,000",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 하반기 1.3억\n25년 상반기 1.2억");
+    expect(f.매출Y1하?.value).toBe("1.3억");
+    expect(f.매출Y1상?.value).toBe("1.2억");
   });
-  it("간이과세자 연간(1~12월) 신고", () => {
+  it("간이과세자 연간(1~12월) 신고 — 반기 칸 없이 연도 합계만", () => {
     const text = [
       "부가가치세 과세표준증명",
       "(간이과세자)",
@@ -161,14 +173,14 @@ describe("OCR 노이즈", () => {
       "2024.01.01~2024.12.31 확정 2025.01.25 0",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 연간 4,500만\n24년 연간 0원");
+    expect(Object.keys(f).filter((k) => k.startsWith("매출Y"))).toEqual([]);
     expect(f.과년도매출?.value).toBe("25' 45백만");
     expect(f.과년도매출Y2?.value).toBe("24' 0백만");
   });
   it("단위: 천원 표기면 1000배", () => {
     const text = ["부가가치세 과세표준증명", "(단위 : 천원)", "2025년 1기 확정 2025.07.25 120,000"].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 상반기 1.2억");
+    expect(f.매출Y1상?.value).toBe("1.2억");
   });
   it("금액을 못 읽은 줄은 세고 넘어간다", () => {
     const r = parseVatCertificate(["부가가치세 과세표준증명", "2025년 1기 확정 흐림"].join("\n"), { today: TODAY });
@@ -189,7 +201,9 @@ describe("면세수입금액", () => {
       "2024년 2기 확정 2025.01.25 90,000,000 면세수입금액 5,000,000",
     ].join("\n");
     const f = byKey(parseVatCertificate(text, { today: TODAY }).fields);
-    expect(f.반기별매출?.value).toBe("25년 하반기 1.3억\n25년 상반기 1.2억\n24년 하반기 9,000만");
+    expect(f.매출Y1하?.value).toBe("1.3억");
+    expect(f.매출Y1상?.value).toBe("1.2억");
+    expect(f.매출Y2하?.value).toBe("9,000만");
     expect(f.면세수입금액?.value).toBe("25년 3,200만");
     expect(f.면세수입금액?.confidence).toBeGreaterThan(0.6);
   });

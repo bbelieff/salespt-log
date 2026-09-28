@@ -124,9 +124,9 @@ describe("CompanyInfoEditor hint tooltip", () => {
   it("closes when tapping elsewhere and keeps only one open", () => {
     renderOpen();
     act(() => hintBtn("개업일")!.click());
-    act(() => hintBtn("사업자구분")!.click());
+    act(() => hintBtn("사업자구분 · 과세유형")!.click());
     expect(document.body.querySelectorAll('[role="tooltip"]')).toHaveLength(1);
-    expect(tooltip()?.textContent).toBe("개인/법인");
+    expect(tooltip()?.textContent).toContain("개인/법인과 과세유형을 한 번에 골라요");
     act(() => {
       document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     });

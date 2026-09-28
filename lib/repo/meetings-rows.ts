@@ -1,7 +1,7 @@
 /**
  * Layer: repo — 04 업체관리 행 코덱 (meetings.ts 에서 무동작 추출, R3-2 500줄 캡).
  *
- * Meeting ↔ 시트 행 배열(A~BN, 66셀 — AT=gcal 맵은 항상 빈칸) 변환 + 컬럼 좌표 상수. googleapis 비접촉(순수 함수).
+ * Meeting ↔ 시트 행 배열(A~CC, 81셀 — AT=gcal 맵은 항상 빈칸) 변환 + 컬럼 좌표 상수. googleapis 비접촉(순수 함수).
  * I/O(append/update/clear/find)는 meetings.ts — 외부 임포터는 meetings.ts 재수출을 계속 사용.
  *
  * SSOT: docs/domains/sheet-structure.md §3
@@ -113,8 +113,26 @@ export const COMPANY_FIELDS_EXT2 = [
   "반기별매출", "면세수입금액", "부채비율", "이자보상배율", "당기순이익률", "매출증가율",
 ] as const;
 export const COMPANY_EXT2_START = 46; // AU
-/** 04 행 코덱 폭 = A~BN (66셀). grid 보장·읽기 범위의 단일 기준. */
-export const MEETING_ROW_WIDTH = COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.length; // 66
+
+// 확장3 15필드 (BO=66~CC=80 — 확장2 바로 뒤 append, company-info-restructure 2026-09-28).
+// 기존 열은 한 칸도 옮기지 않는다. 순서 = 06 AW~BK 미러도 같은 순서.
+export const COMPANY_FIELDS_EXT3 = [
+  "주생산품목", "대표임차보증금", "대표임차월세", "대표임차면적",
+  "매출Y상", "매출Y하", "매출Y1상", "매출Y1하", "매출Y2상", "매출Y2하", "매출Y3상", "매출Y3하",
+  "매출증가율Y3Y2", "매출증가율Y2Y1", "매출증가율Y1Y",
+] as const;
+export const COMPANY_EXT3_START = COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.length; // 66 = BO
+/** 04 행 코덱 폭 = A~CC (81셀). grid 보장·읽기 범위의 단일 기준. */
+export const MEETING_ROW_WIDTH = COMPANY_EXT3_START + COMPANY_FIELDS_EXT3.length; // 81
+/**
+ * 확장 단계별 옛 폭(끝 열 인덱스+1) — 읽기 폴백 순서(넓은 것부터). grid 를 아직 안 넓힌 시트는
+ * 범위 초과 400 이 나므로 한 단계씩 좁혀 읽는다: A:CC → A:BN(확장2까지) → A:AS(확장1까지).
+ */
+export const MEETING_READ_WIDTHS = [
+  MEETING_ROW_WIDTH,
+  COMPANY_EXT3_START,
+  COMPANY_EXT_START + COMPANY_FIELDS_EXT.length,
+] as const;
 
 /**
  * 헤더 라벨 보강 계획 — 순수. existing = 시작 열(startIdx)부터 읽은 헤더 셀들.
@@ -141,6 +159,7 @@ const APOSTROPHE_ESCAPED_COL_INDICES = new Set<number>([
   COMPANY_CUSTOM_COL,
   ...Array.from({ length: COMPANY_FIELDS_EXT.length }, (_, i) => COMPANY_EXT_START + i),
   ...Array.from({ length: COMPANY_FIELDS_EXT2.length }, (_, i) => COMPANY_EXT2_START + i),
+  ...Array.from({ length: COMPANY_FIELDS_EXT3.length }, (_, i) => COMPANY_EXT3_START + i),
 ]);
 
 function stripSheetTextEscape(v: unknown): unknown {
@@ -163,7 +182,7 @@ export function stripUserEnteredEscapes(
   );
 }
 
-/** 행 배열 T~AN(+AQ~AS·AU~BN) → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
+/** 행 배열 T~AN(+AQ~AS·AU~BN·BO~CC) → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
 function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   const ci: Record<string, unknown> = {};
   let any = false;
@@ -182,6 +201,12 @@ function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
     ci[f] = v;
     if (v) any = true;
   });
+  // 옛 폭(A~BN) 행은 여기 셀이 없다 → "" (스키마 default 와 동일).
+  COMPANY_FIELDS_EXT3.forEach((f, i) => {
+    const v = String(r[COMPANY_EXT3_START + i] ?? "").trim();
+    ci[f] = v;
+    if (v) any = true;
+  });
   const rawCustom = String(r[COMPANY_CUSTOM_COL] ?? "").trim();
   if (rawCustom) {
     try {
@@ -194,7 +219,7 @@ function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   return any ? ci : undefined;
 }
 
-/** Meeting → 시트 1행 배열 (A~BN, 66셀). 수식·이월(AO/AP)·gcal(AT)·미설정은 빈 문자열. */
+/** Meeting → 시트 1행 배열 (A~CC, 81셀). 수식·이월(AO/AP)·gcal(AT)·미설정은 빈 문자열. */
 export function meetingToRow(m: Meeting): (string | number | boolean)[] {
   const row: (string | number | boolean)[] = new Array(MEETING_ROW_WIDTH).fill("");
   row[COL.id] = m.id;
@@ -237,6 +262,11 @@ export function meetingToRow(m: Meeting): (string | number | boolean)[] {
     // 스키마 우회 호출 방어 — 주민등록번호는 코덱에서도 앞 6자리만(뒷자리 시트 기록 불가).
     const v = f === "주민등록번호" ? normalizeRrnFront(raw) : raw;
     row[COMPANY_EXT2_START + i] = v ? `'${v}` : "";
+  });
+  // 확장3 15필드 BO~CC — 같은 apostrophe 규약("+12.5%"·"10,000,000" 이 숫자로 바뀌지 않게).
+  COMPANY_FIELDS_EXT3.forEach((f, i) => {
+    const v = ci ? String(ci[f] ?? "").trim() : "";
+    row[COMPANY_EXT3_START + i] = v ? `'${v}` : "";
   });
   // 표시상세/표시요약/계약합성라인/주차는 시트 수식이 채움 → 빈 문자열 유지
   return row;

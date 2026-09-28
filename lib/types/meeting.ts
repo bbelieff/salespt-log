@@ -14,7 +14,8 @@ export type MeetingState = z.infer<typeof MeetingState>;
 // ── 업체정보 (04 업체관리 T~AN, 미팅 단위 작성 — consultation-log §1-1) ──────
 // [업체] 12(T~AE) + [대표자] 8(AF~AM) + 커스텀 JSON 1(AN)
 // + 확장 3(AQ~AS — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11)
-// + 확장2 20(AU~BN — AT gcal맵 뒤 append, company-info-new-fields 2026-09-28).
+// + 확장2 20(AU~BN — AT gcal맵 뒤 append, company-info-new-fields 2026-09-28)
+// + 확장3 15(BO~CC — 확장2 뒤 append, company-info-restructure 2026-09-28).
 // 모두 자유 텍스트, 빈값 허용. 기대출 2필드는 셀 내 `\n` 허용(Sheets 표준).
 // 키는 식별자 안전형(업종주생산품목/사대보험직원). UI 라벨은 별도 매핑
 // (과년도매출 = 표시 "과년도 매출 Y-1" — 키 유지로 라이브 데이터 보존).
@@ -69,7 +70,28 @@ export const CompanyInfo = z.object({
   부채비율: z.string().default(""),
   이자보상배율: z.string().default(""),
   당기순이익률: z.string().default(""),
+  // 옛 한 칸 매출증가율·반기별매출은 편집기에서 숨기고(값이 있으면 읽기 전용 메모로 보임) 키·열은 유지.
   매출증가율: z.string().default(""),
+  // 확장3 15필드 (04 BO~CC · 06 AW~BK — company-info-restructure 2026-09-28). 전부 자유 텍스트.
+  // [기업정보] 업종·업태 옆 세 번째 칸
+  주생산품목: z.string().default(""),
+  // [대표자] 자택 임차 조건(기업정보 임차 3칸과 같은 모양 — 보증금·월세 원, 면적 ㎡)
+  대표임차보증금: z.string().default(""),
+  대표임차월세: z.string().default(""),
+  대표임차면적: z.string().default(""),
+  // [재무] 반기 매출 8칸 — Y(올해)·Y1·Y2·Y3 × 상/하반기
+  매출Y상: z.string().default(""),
+  매출Y하: z.string().default(""),
+  매출Y1상: z.string().default(""),
+  매출Y1하: z.string().default(""),
+  매출Y2상: z.string().default(""),
+  매출Y2하: z.string().default(""),
+  매출Y3상: z.string().default(""),
+  매출Y3하: z.string().default(""),
+  // [재무] 매출증가율 3칸 — 연도 매출 칸에서 편집기가 자동 계산해 저장("+12.5%"). 직접 입력 없음.
+  매출증가율Y3Y2: z.string().default(""),
+  매출증가율Y2Y1: z.string().default(""),
+  매출증가율Y1Y: z.string().default(""),
   // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
   커스텀: z
     .object({

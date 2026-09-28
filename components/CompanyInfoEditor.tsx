@@ -1,38 +1,41 @@
 /**
- * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~BN) 드롭다운 + 팝업 편집.
- * 정본: consultation-log-and-calendar.md §3-2 (2026-06-11 혼합 그리드 확정).
+ * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~CC) 드롭다운 + 팝업 편집.
+ * 정본: consultation-log-and-calendar.md §3-2 (2026-06-11 혼합 그리드 확정)
+ *       + company-info-restructure(belie 2026-09-28 — 섹션 순서·선택형 칸·매출 재배치).
  * contact/schedule/payment 공용 — 탭별 분기 금지.
  *
- * 반응형 3단계: 기본(<390) 1열 강하 · sm(390+) 혼합 그리드(2열, short=span1,
- * long=span2) · 2xl(768+) [업체]|[대표자] 그룹 좌우 2단(모달·PC 카드).
- * [재무](2026-09-28 확장2) = 두 그룹 아래 전폭 섹션, 같은 카드·그리드 규격(커스텀 추가 없음).
- * 필드 정의 = company-info-defs.ts. 주민등록번호 앞자리는 입력 중·blur 에 6자리로 잘린다
- * (서버 스키마도 한 번 더 자른다 — 뒷자리 저장 불가).
- * 필드 설명(FieldDef 3번째) = 라벨 옆 (?) 툴팁(HintTooltip) — 회색 설명 줄 없음. 기대출 2필드 = textarea
- * 자동높이(줄 수 따라) — 시트에 \n 그대로 저장.
+ * 섹션 순서 = [대표자] → [기업정보] → [재무]. 반응형 3단계: 기본(<390) 1열 강하 · sm(390+) 혼합
+ * 그리드(2열, short=span1, long=span2) · 2xl(768+) [대표자]|[기업정보] 그룹 좌우 2단(모달·PC 카드).
+ * [재무] = 두 그룹 아래 전폭 섹션, 같은 카드·그리드 규격(커스텀 추가 없음).
+ * 필드 정의 = company-info-defs.ts, 칸 그리기 = components/company-info/*(보통 칸·선택형·매출 묶음).
+ * 저장 직전(apply) 매출증가율 3칸을 연도별 매출로 다시 계산한다(withSalesGrowth) — 직접 입력·
+ * 문서 자동입력 어느 경로든 같은 값이 저장된다. 기업정보 그룹의 커스텀 저장 키는 "업체" 그대로.
  */
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CompanyInfo } from "@/types";
-import { formatPhone } from "@/lib/format/phone";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
-import HintTooltip from "@/components/ui/HintTooltip";
-import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
-import { type FieldDef, 대표자_DEFS, 업체_DEFS, 재무_DEFS } from "./company-info-defs";
+import { isCorporation } from "@/util/company-choice";
+import { withSalesGrowth } from "@/util/company-sales";
+import {
+  type EditorItem,
+  companyInfoFieldList,
+  기업정보_ITEMS,
+  대표자_ITEMS,
+  재무_ITEMS,
+} from "./company-info-defs";
+import CompanyInfoField, { inputCls } from "./company-info/CompanyInfoField";
+import { BizTypeField, OwnershipField } from "./company-info/CompanyInfoChoiceFields";
+import CompanyInfoSalesFields from "./company-info/CompanyInfoSalesFields";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
 
 const emptyCi = (): CI => CompanyInfo.parse({});
-const RRN_CUT_MSG = "앞 6자리만 저장해요. 뒷자리는 입력되지 않아요.";
-const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
-const inputCls =
-  // 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게.
-  "w-full rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder:text-gray-300 focus:border-brand-red focus:outline-none";
 
 interface Props {
   value?: CI;
@@ -76,8 +79,8 @@ export default function CompanyInfoEditor({
   });
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
-  // 주민등록번호 앞자리 칸이 입력을 잘랐거나 비웠을 때 그 이유를 칸 아래에 보여준다(말없이 사라지지 않게).
-  const [rrnNotice, setRrnNotice] = useState("");
+  // 매출 연도 라벨 기준일 — 편집기를 연 날(렌더마다 바뀌지 않게 고정).
+  const [today] = useState(() => new Date());
   // 패널·모달이 같은 필드를 동시에 그리므로 위치(where)까지 넣어 id 충돌을 막는다.
   const uid = useId();
 
@@ -142,7 +145,8 @@ export default function CompanyInfoEditor({
       const res = await fetch("/api/company-info/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 업체명: txtCompanyName, 업체정보: draft }),
+        // 연도 매출만 있고 아직 편집 전이라 증가율 칸이 비어 있어도 TXT 엔 계산값이 들어가게.
+        body: JSON.stringify({ 업체명: txtCompanyName, 업체정보: withSalesGrowth(draft) }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -167,13 +171,15 @@ export default function CompanyInfoEditor({
     }
   }
 
+  // 모든 편집(직접 입력·선택·문서 자동입력)이 지나는 한 곳 — 매출증가율 3칸을 여기서 다시 계산.
   const apply = (fn: (d: CI) => CI) => {
-    const next = fn(draft);
+    const next = withSalesGrowth(fn(draft));
     if (auto) update(next);
     else stage(next);
   };
   const set = (k: keyof CI, v: string) =>
     apply((d) => ({ ...d, [k]: v }) as CI);
+  const patch = (p: Partial<CI>) => apply((d) => ({ ...d, ...p }));
   const customOf = (g: Grp): Record<string, string> => draft.커스텀?.[g] ?? {};
   const setCustom = (g: Grp, label: string, v: string) =>
     apply((d) => ({
@@ -200,7 +206,7 @@ export default function CompanyInfoEditor({
     setNewLabel((n) => ({ ...n, [g]: "" }));
   };
 
-  const filled = [...업체_DEFS, ...대표자_DEFS, ...재무_DEFS].filter(
+  const filled = companyInfoFieldList(today).filter(
     ([k]) => String(draft[k] ?? "").trim() !== "",
   ).length;
   const summary = draft.대표자이름?.trim()
@@ -214,77 +220,62 @@ export default function CompanyInfoEditor({
     setModal(false);
   };
 
-  // 한 필드 입력 — multiline=textarea(줄 수 따라 자동높이), 아니면 input.
-  const field = ([k, label, ph, span, multi]: FieldDef, inline: boolean, where: string) => {
-    const v = String(draft[k] ?? "");
-    // 연락처통신사 = "010-1234-5678(SKT)" **합본 자유문자열**. 매 키 입력 마스킹은 괄호부를
-    // 깨뜨리므로, blur 시에만 formatPhone 으로 정규화한다(선행 숫자 런만 포맷·접미 보존).
-    // 기존 저장분(하이픈 없음·시트가 숫자로 먹어 선행 0 소실)도 이때 흡수된다.
-    const isPhone = String(k) === "연락처통신사";
-    // 주민등록번호 = 앞 6자리만(belie 결정). 입력 중엔 6자리 초과분을 즉시 잘라 뒷자리가 화면·
-    // 자동저장에 남지 않게 하고, blur 에서 "NNNNNN-" 로 마무리(6자리 미만이면 비움).
-    const isRrn = String(k) === "주민등록번호";
-    const inputId = `${uid}-${where}-${String(k)}`;
-    // 설명은 툴팁 + 화면낭독기용 상시 설명(sr-only) — 입력칸에 포커스하면 예시 형식을 읽어준다.
-    const hintId = ph && ph !== label ? `${inputId}-hint` : undefined;
-    const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrnFront : null;
-    const onBlurNormalize = normalizeOnBlur
-      ? () => {
-          const next = normalizeOnBlur(v);
-          if (isRrn && v.trim() !== "" && next === "") setRrnNotice(RRN_SHORT_MSG);
-          if (next !== v) set(k, next);
-        }
-      : undefined;
-    const onInput = (raw: string) => {
-      if (!isRrn) return set(k, raw);
-      // 숫자가 6자리를 넘으면 뒷자리는 잘린다 — 잘린 이유를 칸 아래에 알린다.
-      setRrnNotice(raw.replace(/\D/g, "").length > 6 ? RRN_CUT_MSG : "");
-      set(k, sanitizeRrnFrontTyping(raw));
-    };
-    return (
-      <div key={String(k)} className={!inline && span === 2 ? "block sm:col-span-2" : "block"}>
-        {/* (?) 버튼은 <label> 밖 — 눌러도 입력칸이 포커스·활성되지 않는다. */}
-        <div className="flex items-center gap-1">
-          <label htmlFor={inputId} className="text-xs font-medium text-gray-800">
-            {label}
-          </label>
-          {hintId && <HintTooltip label={label} text={ph} />}
-        </div>
-        {hintId && (
-          <span id={hintId} className="sr-only">
-            {ph}
-          </span>
-        )}
-        {multi ? (
-          <textarea
-            id={inputId}
-            className={`${inputCls} resize-none leading-5`}
-            rows={Math.max(2, v.split("\n").length)}
-            placeholder={undefined}
-            aria-describedby={hintId}
-            value={v}
-            onChange={(e) => set(k, e.target.value)}
+  // 한 항목 그리기 — 보통 칸 · 선택형(사업자구분·소유여부) · 한 줄 묶음 · 매출 묶음.
+  // wide = 2열 그리드에서 전폭(sm:col-span-2). inline(PC 좁은 단)은 1열이라 전폭 개념 없음.
+  const item = (it: EditorItem, i: number, inline: boolean, where: string) => {
+    const idBase = `${uid}-${where}`;
+    const wide = inline ? "block" : "block sm:col-span-2";
+    switch (it.kind) {
+      case "field": {
+        const [k, , , span] = it.def;
+        // 법인등록번호 = 법인일 때만 보인다(숨겨도 저장값은 그대로 — TXT·시트에 남는다).
+        if (it.onlyCorporation && !isCorporation(draft.사업자구분)) return null;
+        return (
+          <CompanyInfoField
+            key={String(k)}
+            def={it.def}
+            value={String(draft[k] ?? "")}
+            onChange={set}
+            id={`${idBase}-${String(k)}`}
+            className={span === 2 ? wide : "block"}
           />
-        ) : (
-          <input
-            id={inputId}
-            className={inputCls}
-            placeholder={undefined}
-            aria-describedby={hintId}
-            inputMode={isPhone ? "tel" : isRrn ? "numeric" : undefined}
-            autoComplete={isRrn ? "off" : undefined}
-            value={v}
-            onChange={(e) => onInput(e.target.value)}
-            onBlur={onBlurNormalize}
+        );
+      }
+      case "bizType":
+        return <BizTypeField key="bizType" draft={draft} onPatch={patch} id={`${idBase}-사업자구분`} />;
+      case "ownership":
+        return (
+          <OwnershipField key={it.spec.key} spec={it.spec} draft={draft} onPatch={patch} idBase={idBase} className={wide} />
+        );
+      case "row":
+        // 좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 한 줄 — 가로 넘침 없음.
+        return (
+          <div key={`row-${i}`} className={`${wide} grid min-w-0 grid-cols-1 gap-1.5 xs:grid-cols-3`}>
+            {it.defs.map((d) => (
+              <CompanyInfoField
+                key={String(d[0])}
+                def={d}
+                value={String(draft[d[0]] ?? "")}
+                onChange={set}
+                id={`${idBase}-${String(d[0])}`}
+                className="block min-w-0"
+              />
+            ))}
+          </div>
+        );
+      case "sales":
+        return (
+          <CompanyInfoSalesFields
+            key="sales"
+            draft={draft}
+            onField={set}
+            idBase={idBase}
+            inline={inline}
+            today={today}
+            className={inline ? "" : "sm:col-span-2"}
           />
-        )}
-        {isRrn && rrnNotice && (
-          <p className="mt-0.5 text-xs text-amber-700" role="status">
-            {rrnNotice}
-          </p>
-        )}
-      </div>
-    );
+        );
+    }
   };
 
   // 그룹 = 흰 카드(틴트 배경 위) + 혼합 그리드 (기본 1열 → sm 2열; span2 필드는 전폭).
@@ -292,7 +283,7 @@ export default function CompanyInfoEditor({
   const group = (
     title: string,
     g: Grp | null,
-    defs: FieldDef[],
+    items: EditorItem[],
     inline: boolean,
     where: string,
   ) => (
@@ -308,7 +299,7 @@ export default function CompanyInfoEditor({
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
       <div className={inline ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-1 gap-1.5 sm:grid-cols-2"}>
-        {defs.map((def) => field(def, inline, where))}
+        {items.map((it, i) => item(it, i, inline, where))}
         {g && Object.entries(customOf(g)).map(([label, v]) => (
           <label key={`c-${label}`} className={inline ? "block" : "block sm:col-span-2"}>
             <span className="flex items-center justify-between text-xs text-purple-500">
@@ -351,15 +342,16 @@ export default function CompanyInfoEditor({
   );
 
   // PC 상세에서만 너비 비율을 따른다. 편집 팝업은 원래 반응형 배치를 유지한다.
-  // [재무] 는 두 그룹 아래 전폭(모든 단 너비 걸침).
+  // 순서 = [대표자] → [기업정보] → [재무](두 그룹 아래 전폭 — 모든 단 너비 걸침).
+  // 기업정보의 커스텀 저장 키는 "업체"(기존 데이터 호환).
   const body = (inline: boolean, where: "panel" | "modal") => (
     <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
-      {group("업체", "업체", 업체_DEFS, inline, where)}
-      {group("대표자", "대표자", 대표자_DEFS, inline, where)}
+      {group("대표자", "대표자", 대표자_ITEMS, inline, where)}
+      {group("기업정보", "업체", 기업정보_ITEMS, inline, where)}
       {/* PC 상세 2단(inline)에서 [재무] 는 두 단 전폭이라 내부도 2열(짧은 칸 짝) — 1열이면 13칸이
-          전폭으로 길게 늘어진다. 그 외는 업체/대표자와 같은 규격. */}
+          전폭으로 길게 늘어진다. 그 외는 대표자/기업정보와 같은 규격. */}
       <div className={desktopHeading ? inline ? "col-span-2 min-w-0" : "min-w-0" : "min-w-0 2xl:col-span-2"}>
-        {group("재무", null, 재무_DEFS, inline && !desktopHeading, where)}
+        {group("재무", null, 재무_ITEMS, inline && !desktopHeading, where)}
       </div>
     </div>
   );

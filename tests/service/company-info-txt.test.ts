@@ -49,7 +49,7 @@ describe("업체정보 TXT 포맷 (정렬형)", () => {
     expect(cols.every((c) => c > 0)).toBe(true);
     expect(new Set(cols).size).toBe(1); // 전부 같은 열
     expect(txt).toContain("세일즈PT 업체정보");
-    expect(txt).toContain("과년도 매출 Y-2");
+    expect(txt).toContain("매출 Y-2(2024)"); // 추출시각(2026) 기준 연도
     expect(txt).toContain("신용점수(KCB/NCB)");
   });
 

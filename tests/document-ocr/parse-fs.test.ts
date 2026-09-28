@@ -91,8 +91,9 @@ describe("parseFinancialStatement", () => {
       부채비율: "122.2%",
       이자보상배율: "2.4배",
       당기순이익률: "3%",
-      매출증가율: "14.3%",
     });
+    // 매출증가율은 파서가 채우지 않는다 — 편집기가 연도별 매출(과년도매출·Y2)에서 3칸으로 계산.
+    expect(r.fields.map((x) => x.key)).not.toContain("매출증가율");
     expect(r.info).toContainEqual({ label: "금액 단위", value: "천원" });
     expect(r.documentWarnings).toEqual([]);
   });
