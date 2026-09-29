@@ -89,6 +89,8 @@ type Row = {
   amount: number;
   pieced: boolean;
   kindGuessed: boolean;
+  /** 표에 「면세분」 열이 있을 때 그 줄의 면세 금액(원). 없으면 null. */
+  taxFree: number | null;
 };
 
 function detectKind(s: string): { kind: Kind; guessed: boolean } {
@@ -99,7 +101,7 @@ function detectKind(s: string): { kind: Kind; guessed: boolean } {
   return { kind: "확정", guessed: true };
 }
 
-type Period = Omit<Row, "amount" | "pieced">;
+type Period = Omit<Row, "amount" | "pieced" | "taxFree">;
 
 function readPeriod(line: string): Period | null {
   if (NOT_ROW.test(line)) return null;
@@ -122,12 +124,25 @@ function readPeriod(line: string): Period | null {
   return null;
 }
 
+/**
+ * 홈택스 증명 표는 「계 · 과세분 · 면세분 · 납부할 세액」 열이다. 날짜를 지운 줄의 금액 칸을 순서대로
+ * 읽어 셋째(면세분)를 돌려준다. "0" 도 칸이다. 칸이 모자라면 null.
+ */
+function taxFreeColumn(line: string): number | null {
+  const cells = stripNonAmounts(line).trim().split(/\s+/).filter(Boolean).map(parseAmountToken);
+  if (cells.length < 3 || cells.slice(0, 3).some((v) => v === null)) return null;
+  return cells[2]!;
+}
+
 function hasPeriod(line: string): boolean {
   return RANGE.test(line) || HALF.test(line);
 }
 
 // ── 겹침 정리 ──────────────────────────────────────────────────────────────
-type Group = { year: number; half: 0 | 1 | 2; start: number; end: number; amount: number; confidence: number; warnings: string[] };
+type Group = {
+  year: number; half: 0 | 1 | 2; start: number; end: number; amount: number;
+  taxFree: number | null; confidence: number; warnings: string[];
+};
 
 function rowConfidence(r: Row): number {
   if (r.pieced) return 0.6;
@@ -170,6 +185,7 @@ function resolveGroup(rows: Row[]): Group {
     start: Math.min(...chosen.map((r) => r.start)),
     end: Math.max(...chosen.map((r) => r.end)),
     amount: chosen.reduce((s, r) => s + r.amount, 0),
+    taxFree: chosen.every((r) => r.taxFree === null) ? null : chosen.reduce((s, r) => s + (r.taxFree ?? 0), 0),
     confidence,
     warnings: [...new Set(warnings)],
   };
@@ -200,6 +216,8 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
   }
   const unit = /단위\S{0,2}천원/.test(compactText(normalized)) ? 1000 : 1;
   const lines = toLines(normalized.replace(THIRTEEN_DIGIT_ID, " ")).map(fixNumericNoise);
+  // 표 머리에 「과세분」·「면세분」 열이 있으면(홈택스 증명) 줄마다 면세분 칸도 읽는다.
+  const hasTaxFreeColumn = lines.some((l) => /과세분/.test(compactText(l)) && /면세분/.test(compactText(l)));
 
   const rows: Row[] = [];
   const taxFree = new Map<number | null, { amount: number; pieced: boolean }>();
@@ -249,7 +267,8 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
       negative += 1;
       continue;
     }
-    rows.push({ ...period, amount: amount * unit, pieced });
+    const tfCell = hasTaxFreeColumn && !pieced ? taxFreeColumn(taxPart) : null;
+    rows.push({ ...period, amount: amount * unit, pieced, taxFree: tfCell === null ? null : tfCell * unit });
   }
 
   if (unread > 0) documentWarnings.push(`과세기간 ${unread}줄은 금액을 못 읽었어요.`);
@@ -315,6 +334,15 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
       warnings.push(`${yy(year)}년은 ${lastMonth}월까지 신고 금액이에요.`);
     }
     fields.push({ key, value: wonToMillion(sum), sourceWon: sum, confidence: Math.min(confidence, 0.85), warnings });
+  }
+
+  // 「면세분」 열 → 연도별 합(라벨 "면세 수입금액" 이 없는 문서만). 가장 최근 연도를 아래에서 고른다.
+  if (taxFree.size === 0) {
+    for (const g of groups) {
+      if (g.taxFree === null) continue;
+      const prev = taxFree.get(g.year) ?? { amount: 0, pieced: false };
+      taxFree.set(g.year, { amount: prev.amount + g.taxFree, pieced: false });
+    }
   }
 
   // 면세 수입금액 — 가장 최근 연도 하나
