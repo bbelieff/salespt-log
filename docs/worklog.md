@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 업체정보 입력 동시 서식 (feat/company-info-live-format)
+- belie: 금액 뒤 "백만원", 입력 동시 쉼표, 사업자번호 입력 동시 대시, 「편집」→「팝업」. 상세 = `docs/plans/active/company-info-live-format.md`.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 업체 보기 업체당 한 카드 (fix/company-list-one-per-contract)
 - belie: 같은 업체가 진행건마다 두 번 보임 → 업체 보기는 계약 1건당 1카드(진행건 줄 여러 개, 수납 합계·진행률 평균). 진행기관 보기는 그대로. 상세 = `docs/plans/active/company-list-one-per-contract.md`.
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 글자 크기 버튼 위치 정리 (fix/font-control-placement)

@@ -153,7 +153,7 @@ describe("CompanyInfoEditor identity", () => {
     toggleOpen();
     const buttons = [...el!.querySelectorAll("button")];
     const txt = buttons.find((b) => b.textContent === "업체정보생성(TXT)")!;
-    const edit = buttons.find((b) => b.textContent === "편집")!;
+    const edit = buttons.find((b) => b.textContent === "팝업")!; // 편집 → 팝업 이름 변경(belie 2026-09-29)
     expect(txt).toBeTruthy();
     expect(txt.parentElement).toBe(edit.parentElement);
     expect(txt.nextElementSibling).toBe(edit);
@@ -166,7 +166,7 @@ describe("CompanyInfoEditor identity", () => {
     const control = el!.querySelector("[data-font-scale-control]")!;
     expect(control).toBeTruthy();
     expect(control.nextElementSibling).toBeNull();
-    expect(control.previousElementSibling?.textContent).toContain("편집");
+    expect(control.previousElementSibling?.textContent).toContain("팝업");
   });
 });
 

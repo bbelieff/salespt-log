@@ -174,9 +174,9 @@ describe("③ 소유여부 — 기업정보", () => {
     expect(row.textContent).toContain("원");
     expect(row.textContent).toContain("㎡");
     expect(row.className).toContain("xs:grid-cols-3");
-    // 입력 중엔 친 그대로(쉼표를 다시 찍으면 커서가 끝으로 튄다) — 쉼표는 칸을 떠날 때.
+    // 입력하는 동시에 쉼표 — 커서는 친 숫자 뒤로 보정(useLiveInput · lib/util/live-format.ts).
     typeInto(inputs[0]!, "10000000");
-    expect(staged().임차보증금).toBe("10000000");
+    expect(staged().임차보증금).toBe("10,000,000"); // 입력하는 동시에 쉼표(belie 2026-09-29)
     typeInto(inputs[2]!, "33.5");
     expect(staged().임차면적).toBe("33.5");
   });
@@ -250,7 +250,7 @@ describe("③ 소유여부 — 대표자(같은 모양, 대표 전용 키)", () 
     ]);
     expect(byKey(g, "대표임차면적")!.value).toBe("33");
     typeInto(byKey(g, "대표임차월세")!, "500000");
-    expect(staged().대표임차월세).toBe("500000"); // 쉼표는 칸을 떠날 때
+    expect(staged().대표임차월세).toBe("500,000"); // 입력하는 동시에 쉼표(belie 2026-09-29)
     expect(staged().임차월세).toBe(""); // 기업정보 칸은 그대로
     act(() => {
       byKey(g, "대표임차보증금")!.focus();

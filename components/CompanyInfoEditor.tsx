@@ -361,7 +361,7 @@ export default function CompanyInfoEditor({
               onClick={() => setModal(true)}
               className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
-              편집
+              팝업
             </button>
           </div>
         )}

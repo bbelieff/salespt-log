@@ -2,8 +2,8 @@
  * CompanyInfoFinanceFields — 업체정보 [재무] 금액·비율 칸 (company-finance-won-grid, belie 2026-09-28).
  *
  * - MillionWonInput: 백만원 금액 입력(원 단위 공용 입력 components/ui/MoneyInput 과는 다른 칸 — 값은 글).
- *   숫자만 친 값은 소수 한 자리까지(넘치면 잘라 알림, 칸을 떠나면 알림을 거둔다), 칸을 떠날 때(blur)
- *   천 단위 쉼표("1,234" — 입력 중에 찍으면 커서가 튄다, 임차 칸과 같은 방식). 손익 칸만 앞 "-".
+ *   숫자만 친 값은 소수 한 자리까지(넘치면 잘라 알림, 칸을 떠나면 알림을 거둔다), 입력하는 동시에
+ *   천 단위 쉼표("1,234" — 커서는 useLiveInput 이 보정, belie 2026-09-29), 단위 "백만원" 은 칸 안 오른쪽. 손익 칸만 앞 "-".
  *   칸 아래 "약 2.5억" · "약 3,200만" 읽기 도움말. 옛 자유 글은 그대로 보여 준다(열기만 해선 안 바꿈).
  * - MoneyLegacyNote: 옛 자유 글 안내 — 읽히면 "글로 적힌 값이에요 — 계산에는 X백만원으로 써요"(원 단위로
  *   적은 큰 숫자는 "원 단위로 적은 숫자 같아요 — …") + 「백만원으로 바꾸기」(그 칸만, 화면낭독기엔 어느 칸인지),
@@ -27,6 +27,8 @@ import {
 import { sameRatioText } from "@/service/company-finance";
 import type { FieldDef } from "@/components/company-info-defs";
 import { FieldLabel, hintIdOf, inputCls, readOnlyCls } from "./CompanyInfoField";
+import { groupTyping } from "@/util/live-format";
+import { useLiveInput } from "./useLiveInput";
 
 const CUT_MSG = "소수는 한 자리까지만 적어요";
 const RATIO_PLACEHOLDER = "금액을 적으면 자동 계산";
@@ -36,30 +38,34 @@ interface MillionWonInputProps {
   value: string;
   signed: boolean;
   onChange: (v: string) => void;
-  /** 입력칸 옆 "백만원" 표시(연도별 매출 표는 머리글에 단위가 있어 끈다). */
+  /** @deprecated 단위 "백만원" 은 이제 늘 숫자 뒤(칸 안 오른쪽)에 보인다(belie 2026-09-29). */
   suffix?: boolean;
   describedBy?: string;
 }
 
-export function MillionWonInput({ id, value, signed, onChange, suffix = false, describedBy }: MillionWonInputProps) {
+export function MillionWonInput({ id, value, signed, onChange, describedBy }: MillionWonInputProps) {
   const [cut, setCut] = useState(false);
   const read = readMoney(value, signed);
   const hint = read.kind === "number" ? moneyHint(read.tenths) : "";
+  // 입력하는 동시에 천 단위 쉼표(belie 2026-09-29) — 소수 한 자리 제한(sanitize) 뒤 쉼표, 커서는 친 숫자 뒤.
+  const live = useLiveInput((raw, caret, prev) => {
+    const r = sanitizeMoneyTyping(raw, signed);
+    setCut(r.cut);
+    return groupTyping(r.value, caret, prev, signed);
+  }, value, onChange);
+  const showUnit = read.kind !== "legacy"; // 옛 "3,200만" 처럼 글로 적힌 값엔 단위를 또 붙이지 않는다.
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-1">
+      <div className="relative">
         <input
           id={id}
-          // 숫자는 오른쪽 정렬, 옛 자유 글은 앞부분이 보이게 왼쪽.
-          className={`${inputCls} min-w-0 tabular-nums ${read.kind === "legacy" ? "" : "text-right"}`}
+          ref={live.ref}
+          // 숫자는 오른쪽 정렬(단위 "백만원" 은 칸 안 오른쪽 끝), 옛 자유 글은 앞부분이 보이게 왼쪽.
+          className={`${inputCls} min-w-0 tabular-nums ${read.kind === "legacy" ? "" : "text-right"} ${showUnit ? "pr-12" : ""}`}
           inputMode={signed ? "text" : "decimal"}
           aria-describedby={describedBy}
           value={value}
-          onChange={(e) => {
-            const r = sanitizeMoneyTyping(e.target.value, signed);
-            setCut(r.cut);
-            onChange(r.value);
-          }}
+          onChange={live.onChange}
           onBlur={() => {
             // 잘랐다는 알림은 입력 중에만 — 칸을 떠나면 "약 …" 도움말로 돌아간다.
             setCut(false);
@@ -67,8 +73,7 @@ export function MillionWonInput({ id, value, signed, onChange, suffix = false, d
             if (next !== value) onChange(next);
           }}
         />
-        {/* 옛 "3,200만" 처럼 글로 적힌 값엔 단위를 또 붙이지 않는다. */}
-        {suffix && read.kind !== "legacy" && <span className="shrink-0 text-xs text-gray-500">백만원</span>}
+        {showUnit && <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400">백만원</span>}
       </div>
       {cut ? (
         <p className="mt-0.5 text-xs text-amber-700" role="status">
