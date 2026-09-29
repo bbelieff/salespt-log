@@ -7,6 +7,8 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 실무/수납 접기 동작 (fix/institution-active-group-open)
+- belie 요청: 선택된 진행건의 기관 묶음은 접히지 않게, Drive 연결 패널은 다시 눌러 접히게. 상세 = `docs/plans/active/payment-list-collapse-tweaks.md`.
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 부가세 증명 「면세분」 열 읽기 (fix/vat-parse-redact)
 - belie 재제보 확인: 운영 브라우저에서 같은 파일 → #1073 이후 매출 9칸 정상. 빠진 면세 수입금액을 「과세분·면세분」 표 열에서 읽도록 추가(최근 연도 합). 실제 파일 로컬 확인 4.1백만원. 상세 = `docs/plans/active/hometax-pdf-autofill.md` 후속.
 
