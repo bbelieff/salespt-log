@@ -44,7 +44,8 @@ function fixNumericNoise(line: string): string {
 }
 
 const D = String.raw`(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})\s*일?`;
-const RANGE = new RegExp(`${D}\\s*[~∼〜-]\\s*${D}`);
+// 홈택스 증명은 "2023/01/01 2023/06/30" 처럼 물결 없이 두 날짜를 나란히 적는다 — 공백만으로도 기간.
+const RANGE = new RegExp(`${D}(?:\\s*[~∼〜-]\\s*|\\s+)${D}`);
 const RANGE_G = new RegExp(RANGE.source, "g");
 const HALF = /(20\d{2})\s*년?\s*(?:제\s*)?([12])\s*기/;
 const HALF_G = new RegExp(HALF.source, "g");

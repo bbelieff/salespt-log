@@ -1,9 +1,10 @@
 /**
- * document-ocr/ocr-pdf — PDF 첫 페이지 텍스트층 읽기·그리기(pdfjs-dist 6, 함수 안 dynamic import).
+ * document-ocr/ocr-pdf — PDF 텍스트층 읽기(최대 pdfTextMaxPages 쪽)·첫 페이지 그리기(pdfjs-dist 6, 함수 안 dynamic import).
  * ocr-client.ts 에서 분리(500줄 캡). 출처: MoaWork app/src/lib/document-ocr/ocr-client.ts.
  */
 import { OCR_LIMITS, raceWithAbort, throwIfAborted } from "./limits";
 import type { OcrProgress, OcrStage } from "./types";
+import { pdfPagesToText, type PdfTextPiece } from "./pdf-lines";
 
 type OnProgress = ((progress: OcrProgress) => void) | undefined;
 
@@ -40,13 +41,21 @@ export async function readPdfTextLayer(
     }
     throwIfAborted(signal);
     if (doc.numPages < 1) throw new Error("PDF에 페이지가 없어요.");
-    const page = await raceWithAbort(doc.getPage(1), signal);
     emit(onProgress, "pdf-text", 0.1, "PDF 텍스트층 읽는 중");
-    const content = await raceWithAbort(page.getTextContent(), signal);
-    const layerText = content.items
-      .map((item) => item.str ?? "")
-      .join("\n")
-      .trim();
+    // 글자가 든 PDF 는 여러 쪽을 읽는다(표준재무제표는 숫자가 2쪽 이후). 조각은 같은 높이끼리 한 줄로.
+    const pages: PdfTextPiece[][] = [];
+    for (let n = 1; n <= Math.min(doc.numPages, OCR_LIMITS.pdfTextMaxPages); n += 1) {
+      const page = await raceWithAbort(doc.getPage(n), signal);
+      const content = await raceWithAbort(page.getTextContent(), signal);
+      pages.push(
+        content.items.map((item) => ({
+          str: item.str ?? "",
+          x: item.transform?.[4] ?? 0,
+          y: item.transform?.[5] ?? 0,
+        })),
+      );
+    }
+    const layerText = pdfPagesToText(pages);
     if (layerText.replace(/\s+/g, "").length >= OCR_LIMITS.pdfTextMinChars) {
       return layerText;
     }
@@ -116,7 +125,7 @@ type PdfLoadingTask = {
     numPages: number;
     getPage: (n: number) => Promise<{
       getViewport: (opt: { scale: number }) => { width: number; height: number };
-      getTextContent: () => Promise<{ items: { str?: string }[] }>;
+      getTextContent: () => Promise<{ items: { str?: string; transform?: number[] }[] }>;
       render: (opt: {
         canvasContext: CanvasRenderingContext2D;
         viewport: { width: number; height: number };
