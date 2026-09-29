@@ -371,7 +371,7 @@ export async function clearRow(
 }
 export { syncFeeFromContract } from "./contract-payment-sync";
 // 링크키(계약일·업체명) 기반 쓰기 — 500줄 캡으로 분리(R3-3 잔여). 공개 API 경로는 유지.
-export { clearRowByLink, updateLinkFields } from "./contract-payment-link";
+export { clearRowByLink, relinkContractRow, updateLinkFields } from "./contract-payment-link";
 // 행 ↔ ContractPayment 순수 변환 — 500줄 캡으로 분리(BBE-246). read-daily.ts 등 기존 소비처의
 // import 경로("@/repo/contract-payment")를 그대로 유지하기 위한 재수출(R3-3 선례와 동일).
 export { rowToCP } from "./contract-payment-row";

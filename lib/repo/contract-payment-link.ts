@@ -67,3 +67,43 @@ export async function updateLinkFields(
   await persistContractRow(spreadsheetId, row, payload, opts); // R2
   return row;
 }
+
+/**
+ * 「영업기록 없이 추가」 행(AK=manual:…)을 미팅에 연결 — C/D/E(계약일·업체명·수임비) + AK(미팅 id)
+ * (+ 출발 미팅이 이월이면 AI/AJ) 를 한 번에 바꾼다. 행 번호로 대상 확정(링크 검색 없음 — manual 행은
+ * findRowByLink 가 일부러 건너뛴다).
+ * 파일럿(opts.syncDb) = DB 동기 정본 + 시트 수렴 큐(C:AO 전체를 DB 에서 다시 쓴다), 비파일럿 = 시트 먼저.
+ * DB payload 는 `linkedMeetingId`·`meetingId` 둘 다 쓴다 — 읽기 복원이 두 이름을 모두 AK 로 올리고
+ * append 미러의 `meetingId`(manual:…)가 나중 키라 이긴다(read-daily CP_FIELD_IDX).
+ */
+export async function relinkContractRow(
+  spreadsheetId: string,
+  row: number,
+  next: { 계약일: string; 업체명: string; 수임비: number; meetingId: string; 이월원본행id?: string },
+  opts?: ContractWriteOpts,
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    계약일: next.계약일,
+    업체명: next.업체명,
+    수임비: next.수임비,
+    linkedMeetingId: next.meetingId,
+    meetingId: next.meetingId,
+    ...(next.이월원본행id ? { 구분: "이월", 이월원본행id: next.이월원본행id, 원본행id: next.이월원본행id } : {}),
+  };
+  if (opts?.syncDb) {
+    await persistContractRow(spreadsheetId, row, payload, opts);
+    queueContractRowSync(spreadsheetId, row);
+    return;
+  }
+  const { tab } = await resolveLayout(spreadsheetId);
+  const data = [
+    { range: `${tabRef(tab)}!C${row}:E${row}`, values: [[next.계약일, next.업체명, next.수임비] as (string | number)[]] },
+    { range: `${tabRef(tab)}!AK${row}`, values: [[`'${next.meetingId}`]] },
+  ];
+  if (next.이월원본행id) data.push({ range: `${tabRef(tab)}!AI${row}:AJ${row}`, values: [["이월", `'${next.이월원본행id}`]] });
+  await sheetsClient().spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: { valueInputOption: "USER_ENTERED", data },
+  });
+  await persistContractRow(spreadsheetId, row, payload, opts); // R2
+}

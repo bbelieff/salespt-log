@@ -1,7 +1,7 @@
 /** 업체 보기 목록. PC와 모바일 모두 진행건 단위이며 진행이 없는 계약만 업체 단위다. */
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { isCarryoverContract, isTerminatedContract } from "@/types";
 import { formatMoney } from "@/lib/format/money";
 import { progressPct } from "../_lib/payment-progress";
@@ -9,6 +9,7 @@ import type { CompanyWorkItem } from "../_lib/company-work-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { isManualContractLink } from "@/util/contract-link";
+import MeetingLinkPicker from "./MeetingLinkPicker";
 
 interface Props {
   items: CompanyWorkItem[];
@@ -23,7 +24,17 @@ interface Props {
 }
 
 export default function ContractListTable({ items, selectedKey, onSelect, highlight, courseStartISO, activityState, renderDetail, detailExpanded = true, onToggleDetail }: Props) {
-  return (
+  // 「영업기록 없음」 을 누르면 미팅 고르기 → 연결(belie 2026-09-29). 행 선택 버튼 안이라 클릭을 행으로 넘기지 않는다.
+  const [linking, setLinking] = useState<{ row: number; 업체명: string } | null>(null);
+  const openLink = (row: number | undefined, 업체명: string) => (e: MouseEvent | KeyboardEvent) => {
+    if ("key" in e && e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (row) setLinking({ row, 업체명 });
+  };
+  return (<>
+    {linking && <MeetingLinkPicker row={linking.row} 업체명={linking.업체명} onClose={() => setLinking(null)}
+      onLinked={(failures) => { setLinking(null); if (failures.length) window.alert(`연결했어요. 다만 ${failures.join("·")} 옮기기에 실패했어요. 새로고침 후 확인해 주세요.`); }} />}
     <div className="space-y-1.5 p-2" aria-label="계약 목록" role={renderDetail ? "group" : "listbox"}>
       {items.map((item, index) => {
         const { cp, work, hasProgress } = item;
@@ -43,7 +54,9 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
               <span className="flex min-w-0 items-center gap-2">
                 <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>
-                {isManualContractLink(cp.linkedMeetingId) && <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500">영업기록 없음</span>}
+                {isManualContractLink(cp.linkedMeetingId) && <span role="button" tabIndex={0} title="눌러서 영업기록(미팅)과 연결" aria-label={`${cp.업체명} 영업기록과 연결`}
+                  onClick={openLink(cp.row, cp.업체명)} onKeyDown={openLink(cp.row, cp.업체명)}
+                  className="shrink-0 rounded border border-dashed border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700">영업기록 없음 ＋</span>}
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">진행 없음</span>}
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">조회 중</span>}
               </span>
@@ -61,5 +74,5 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
         );
       })}
     </div>
-  );
+  </>);
 }
