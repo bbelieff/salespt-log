@@ -118,7 +118,7 @@ export default function MonthGrid({
                   {visible.map((m) => (
                     <div
                       key={m.id}
-                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-[10px] leading-tight pc:text-xs ${
+                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-px-10 leading-tight pc:text-xs ${
                         PILL_CLS[m.channel]
                       } ${m.상태 === "완료" ? "opacity-70" : ""}`}
                       title={`${m.미팅시간} ${m.업체명} · ${m.상태}`}
@@ -136,7 +136,7 @@ export default function MonthGrid({
                     return (
                       <div
                         key={t.id}
-                        className="flex min-w-0 items-center gap-0.5 overflow-hidden rounded-sm px-1 py-0.5 text-[10px] leading-tight text-white pc:text-xs"
+                        className="flex min-w-0 items-center gap-0.5 overflow-hidden rounded-sm px-1 py-0.5 text-px-10 leading-tight text-white pc:text-xs"
                         style={{ background: t.type === "일반" ? "#0d9488" : "#334155" }}
                         title={label}
                       >
@@ -149,7 +149,7 @@ export default function MonthGrid({
                     );
                   })}
                   {overflow > 0 && (
-                    <div className="text-center text-[10px] font-semibold leading-tight text-gray-500">
+                    <div className="text-center text-px-10 font-semibold leading-tight text-gray-500">
                       +{overflow}
                     </div>
                   )}

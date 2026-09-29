@@ -111,13 +111,13 @@ export default function WebviewWarning() {
             >
               크롬·사파리에서 열기
             </button>
-            <p className="text-center text-[11px] text-gray-400">
+            <p className="text-center text-px-11 text-gray-400">
               버튼이 동작하지 않으면 아래 URL을 복사해 브라우저에 붙여넣어주세요.
             </p>
           </div>
         ) : (
           <div className="mt-6 space-y-3">
-            <ol className="space-y-1.5 rounded-xl bg-gray-50 p-4 text-[12px] leading-relaxed text-gray-700">
+            <ol className="space-y-1.5 rounded-xl bg-gray-50 p-4 text-px-12 leading-relaxed text-gray-700">
               <li>
                 <strong>1.</strong> 화면 오른쪽 위{" "}
                 <code className="rounded bg-white px-1">⋮</code> 또는{" "}
@@ -128,20 +128,20 @@ export default function WebviewWarning() {
                 &quot;Chrome/Safari로 열기&quot; 선택
               </li>
             </ol>
-            <p className="text-center text-[11px] text-gray-400">
+            <p className="text-center text-px-11 text-gray-400">
               또는 URL을 복사해 직접 붙여넣기:
             </p>
           </div>
         )}
 
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-          <code className="min-w-0 flex-1 truncate text-[11px] text-gray-700">
+          <code className="min-w-0 flex-1 truncate text-px-11 text-gray-700">
             {url}
           </code>
           <button
             type="button"
             onClick={handleCopy}
-            className="shrink-0 rounded-full border border-gray-300 bg-white px-3 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
+            className="shrink-0 rounded-full border border-gray-300 bg-white px-3 py-1 text-px-11 font-bold text-gray-700 hover:bg-gray-50"
           >
             {copied ? "복사됨" : "복사"}
           </button>

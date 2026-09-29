@@ -71,7 +71,7 @@ export default function SeasonStartInput({
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2">
-      <label className="text-[11px] font-bold text-purple-700" htmlFor={`ss-${label}`}>
+      <label className="text-px-11 font-bold text-purple-700" htmlFor={`ss-${label}`}>
         시즌 개강일
       </label>
       <input
@@ -90,7 +90,7 @@ export default function SeasonStartInput({
           type="button"
           onClick={save}
           disabled={busy}
-          className="rounded-full bg-purple-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-purple-700 disabled:opacity-50"
+          className="rounded-full bg-purple-600 px-3 py-1 text-px-11 font-bold text-white hover:bg-purple-700 disabled:opacity-50"
         >
           {busy ? "저장중…" : "저장"}
         </button>
@@ -99,19 +99,19 @@ export default function SeasonStartInput({
         <button
           type="button"
           onClick={() => setValue("")}
-          className="rounded-full border border-gray-300 px-2 py-1 text-[11px] font-medium text-gray-500 hover:bg-gray-50"
+          className="rounded-full border border-gray-300 px-2 py-1 text-px-11 font-medium text-gray-500 hover:bg-gray-50"
           title="개강일을 비우면 전광판이 시즌 번호를 표시하지 않습니다(데이터는 그대로)."
         >
           비우기
         </button>
       )}
-      {saved && <span className="text-[11px] font-bold text-green-600">저장됨</span>}
+      {saved && <span className="text-px-11 font-bold text-green-600">저장됨</span>}
       {value === "" && (
-        <span className="text-[11px] text-gray-400">
+        <span className="text-px-11 text-gray-400">
           미정 — 전광판에 시즌 번호가 표시되지 않아요
         </span>
       )}
-      {err && <span className="text-[11px] font-medium text-red-600">{err}</span>}
+      {err && <span className="text-px-11 font-medium text-red-600">{err}</span>}
     </div>
   );
 }

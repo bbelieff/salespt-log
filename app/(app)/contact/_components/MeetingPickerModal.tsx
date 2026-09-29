@@ -39,7 +39,7 @@ export default function MeetingPickerModal({ meetings, onPick, onClose }: Props)
             ✕ 닫기
           </button>
         </div>
-        <p className="mb-2 text-[11px] text-gray-500">
+        <p className="mb-2 text-px-11 text-gray-500">
           선택한 미팅이 삭제됩니다 (계약카드 있으면 함께). 미팅예약 -1.
         </p>
         <div className="space-y-1.5">

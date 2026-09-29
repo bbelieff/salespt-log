@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 글자 크기 단계 [− 가 +] (feat/font-size-control)
+- belie: 글씨 크게 의견 → 실무/수납 2뎁스 상세·업체정보에 3단계 버튼(글자만 ×1.1~1.3, 배치 유지). 임의 픽셀 글자 230곳 → `text-px-N` 토큰(배율 적용), 구조 테스트로 재발 방지. 상세 = `docs/plans/active/font-size-steps.md`.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 영업기록 연결 시트 읽기 축소 + 이자보상배율 표시 (fix/link-meeting-db-reads)
 - #1077 운영 확인에서 비교 팝업이 Sheets 공용 읽기 한도에 걸림 → DB 기수는 DB 만 읽게. 이자비용 0 → 이자보상배율 「이자비용 없음」. 상세 = `docs/plans/active/contract-meeting-link.md` 후속.
 

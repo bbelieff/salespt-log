@@ -31,6 +31,9 @@ import {
 import { inputCls } from "./company-info/CompanyInfoField";
 import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
+import FontScaleControl from "./FontScaleControl";
+import { useFontStep } from "./font-scale/useFontStep";
+import { fontScaleOf } from "@/util/font-scale";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
@@ -288,7 +291,7 @@ export default function CompanyInfoEditor({
           <button
             type="button"
             onClick={() => addCustom(g)}
-            className="shrink-0 rounded-md border border-purple-200 px-2 text-[11px] text-purple-600 hover:bg-purple-50"
+            className="shrink-0 rounded-md border border-purple-200 px-2 text-px-11 text-purple-600 hover:bg-purple-50"
           >
             추가
           </button>
@@ -312,9 +315,11 @@ export default function CompanyInfoEditor({
     </div>
   );
 
+  const [fontStep, setFontStep] = useFontStep("company-info");
   const ciSaving = busy || (auto && status === "pending");
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
+    // 글자 크기 = 바깥 상세 박스 배율 × 업체정보 배율(belie 2026-09-29 — 업체정보는 작게 느껴져 따로 +−).
+    <div className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: `calc(var(--font-scale-box, 1) * ${fontScaleOf(fontStep)})` }}>
       <div className={`flex items-center justify-between gap-2 ${desktopHeading ? "px-3 py-2" : "px-2.5 py-1.5"}`}>
         <button
           type="button"
@@ -327,13 +332,14 @@ export default function CompanyInfoEditor({
           </span>
           <span className="shrink-0 text-gray-400">{open ? "▴" : "▾"}</span>
         </button>
+        <FontScaleControl step={fontStep} onChange={setFontStep} label="업체정보" />
         {open && (
           <div className="flex shrink-0 items-center gap-1.5">
             {auto && ciSaving && (
-              <span className="text-[11px] text-gray-400" aria-live="polite">저장 중…</span>
+              <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>
             )}
             {auto && !ciSaving && status === "error" && (
-              <span className="text-[11px] font-medium text-red-500" aria-live="polite">저장 실패</span>
+              <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span>
             )}
             {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
             <CompanyDocAutofillButton current={draft} onApply={(p) => apply((d) => ({ ...d, ...p }))} />
@@ -380,7 +386,7 @@ export default function CompanyInfoEditor({
           )}
           {body(splitInline, "panel")}
           {txtMsg && (
-            <p className={`text-[11px] ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
+            <p className={`text-px-11 ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
               {txtMsg.ok ? "✓" : "✕"} {txtMsg.text}
               {txtMsg.link && (
                 <>
@@ -400,7 +406,7 @@ export default function CompanyInfoEditor({
       {modal &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+          <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
           {/* PC(2xl+) 모달은 좌우 2단이 펼쳐지도록 넓게 */}
           <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
             <div className="mb-3 flex items-center justify-between">

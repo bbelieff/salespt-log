@@ -126,17 +126,17 @@ function DashboardMode({ data }: { data: ScoreboardViewData }) {
                 <h3 className="text-xs font-black text-gray-700">
                   {c.cohort}기
                 </h3>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-px-11 text-gray-400">
                   입금자 {c.paidMembers}명
                 </span>
               </div>
               {c.paidMembers === 0 ? (
-                <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-[11px] text-gray-400">
+                <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-px-11 text-gray-400">
                   입금자 없음
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-100">
-                  <table className="w-full min-w-[560px] border-collapse text-center text-[11px]">
+                  <table className="w-full min-w-[560px] border-collapse text-center text-px-11">
                     <thead>
                       <tr className="bg-gray-50 text-gray-500">
                         <th className="px-2 py-1 text-left font-bold">지표</th>
@@ -210,7 +210,7 @@ function RankingTable({
         {title}
       </div>
       {entries.length === 0 ? (
-        <div className="px-3 py-3 text-[11px] text-gray-400">데이터 없음</div>
+        <div className="px-3 py-3 text-px-11 text-gray-400">데이터 없음</div>
       ) : (
         <ul>
           {entries.map((e) => (
@@ -221,13 +221,13 @@ function RankingTable({
               <span className="w-5 font-black text-gray-400">{e.rank}</span>
               <span className="min-w-0 flex-1 truncate font-bold text-gray-900">
                 {e.name}
-                <span className="ml-1 text-[10px] font-bold text-gray-400">
+                <span className="ml-1 text-px-10 font-bold text-gray-400">
                   {e.cohort}기
                 </span>
               </span>
               <span className="font-black tabular-nums text-gray-800">
                 {Math.round(e.value).toLocaleString("ko-KR")}
-                <span className="ml-0.5 text-[10px] text-gray-400">{unit}</span>
+                <span className="ml-0.5 text-px-10 text-gray-400">{unit}</span>
               </span>
             </li>
           ))}
@@ -296,7 +296,7 @@ function CaptureMode({
           />
         ) : null}
 
-        <p className="mt-4 text-center text-[11px] text-gray-400">
+        <p className="mt-4 text-center text-px-11 text-gray-400">
           {CAPTION[tab] ?? ""}
         </p>
       </div>

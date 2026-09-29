@@ -100,7 +100,7 @@ export default function ShareScoresManager({
                 dirty ? "border-yellow-400 bg-yellow-50" : "border-transparent"
               }`}
             >
-              <span className="w-14 shrink-0 truncate text-[11px] font-bold text-gray-400">
+              <span className="w-14 shrink-0 truncate text-px-11 font-bold text-gray-400">
                 {r.cohort}기
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-gray-900">

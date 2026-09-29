@@ -27,7 +27,7 @@ export default function PaymentSortControl({
           type="button"
           onClick={() => onChange(o.key)}
           aria-pressed={value === o.key}
-          className={`shrink-0 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${
+          className={`shrink-0 rounded-full border px-2 py-1 text-px-11 font-medium transition-colors sm:px-3 sm:text-xs ${
             value === o.key
               ? "border-brand-red bg-red-50 text-brand-red"
               : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"

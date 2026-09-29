@@ -150,7 +150,7 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
 
         {/* welcome */}
         <div className="text-center">
-          <h1 className="text-[22px] font-bold leading-snug tracking-tight text-gray-900">
+          <h1 className="text-px-22 font-bold leading-snug tracking-tight text-gray-900">
             세일즈피티 경영일지에
             <br />
             오신 걸 환영합니다
@@ -161,7 +161,7 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
         <button
           type="button"
           onClick={() => signIn("google", { callbackUrl: safeLoginReturn(returnTo) ?? "/" })}
-          className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-gray-300 bg-white text-[15px] font-medium text-gray-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md active:scale-[0.99]"
+          className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-gray-300 bg-white text-px-15 font-medium text-gray-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md active:scale-[0.99]"
           style={{ height: 52, fontFamily: "Roboto, 'Noto Sans KR', sans-serif" }}
         >
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -175,7 +175,7 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
 
         <Link href="/trainer/apply" className="mt-4 block text-center text-sm font-bold text-brand-red">트레이너 신청하기 →</Link>
 
-        <div className="mt-4 text-center text-[11px] text-gray-400">
+        <div className="mt-4 text-center text-px-11 text-gray-400">
           세일즈피티 경영일지 · v1.0
         </div>
       </div>

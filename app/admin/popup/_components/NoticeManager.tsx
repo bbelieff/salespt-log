@@ -239,11 +239,11 @@ export default function NoticeManager({
         <h2 className="text-sm font-black text-gray-900">공지 작성/수정</h2>
         {/* truthful 상태 — 보관 성공시에만 '초안 보관됨', ACK 직후 '게시됨'. */}
         {justPublished && !dirty ? (
-          <span className="text-[11px] font-bold text-green-600">게시됨</span>
+          <span className="text-px-11 font-bold text-green-600">게시됨</span>
         ) : dirty && draftSaved ? (
-          <span className="text-[11px] font-bold text-amber-600">초안 보관됨</span>
+          <span className="text-px-11 font-bold text-amber-600">초안 보관됨</span>
         ) : dirty && !storageOk ? (
-          <span className="text-[11px] font-bold text-red-500">
+          <span className="text-px-11 font-bold text-red-500">
             초안 보관 안 됨 — 창을 닫으면 입력이 사라져요
           </span>
         ) : null}
@@ -266,7 +266,7 @@ export default function NoticeManager({
         </div>
       </div>
       {conflict && (
-        <p className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700">
+        <p className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-px-11 font-semibold text-amber-700">
           게시본이 보관 이후 바뀌었어요. 게시 전 내용을 확인해 주세요.
         </p>
       )}

@@ -69,7 +69,7 @@ function CohortBox({
             {group.label}
           </h2>
         </div>
-        <span className="shrink-0 text-[11px] text-gray-500">
+        <span className="shrink-0 text-px-11 text-gray-500">
           {group.members.length}명 · 회장 {captainCount}
         </span>
       </div>
@@ -83,7 +83,7 @@ function CohortBox({
               <div className="truncate text-sm font-semibold text-gray-900">
                 {m.nameLabel || m.name}
               </div>
-              <div className="flex items-center gap-2 truncate text-[11px] text-gray-400">
+              <div className="flex items-center gap-2 truncate text-px-11 text-gray-400">
                 <span className="truncate">{m.email || "(미클레임)"}</span>
                 <ArenaCarryoverButton email={m.email} />
               </div>

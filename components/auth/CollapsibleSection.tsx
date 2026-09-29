@@ -39,7 +39,7 @@ export default function CollapsibleSection({
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50">
         <span>{title}</span>
         {badge && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-px-11 font-bold text-gray-600">
             {badge}
           </span>
         )}

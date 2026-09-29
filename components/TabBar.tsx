@@ -115,7 +115,7 @@ function TabItem({ tab, active, dot }: { tab: Tab; active: boolean; dot: boolean
     >
       {/* STEP 배지 — 선택 시 탭색 채움(흰 글자), 비활성은 진한 회색. */}
       <span
-        className={`rounded-full px-1.5 text-[9px] font-bold leading-tight ${
+        className={`rounded-full px-1.5 text-px-9 font-bold leading-tight ${
           active ? `${c.fill} text-white` : "bg-slate-100 text-slate-500"
         }`}
       >

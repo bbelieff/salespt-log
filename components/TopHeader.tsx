@@ -180,7 +180,7 @@ export default function TopHeader({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-bold text-gray-900">{display}</div>
-                  <div className="truncate text-[11px] text-gray-500">
+                  <div className="truncate text-px-11 text-gray-500">
                     {sessionIdentity?.email ?? me.data?.email ?? ""}
                   </div>
                 </div>
@@ -299,7 +299,7 @@ export default function TopHeader({
               </svg>
               <span>로그아웃</span>
             </button>
-            <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-[10px] text-gray-400">
+            <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-px-10 text-gray-400">
               © SalesPT · v1.0
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function TopHeader({
             <span className="truncate">{pageTitle}</span>
           </h1>
           {pageSubtitle && (
-            <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
+            <span className="ml-auto shrink-0 truncate text-px-10 text-slate-500 sm:text-xs">
               {pageSubtitle}
             </span>
           )}

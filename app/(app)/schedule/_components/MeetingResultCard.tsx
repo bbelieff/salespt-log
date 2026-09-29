@@ -194,7 +194,7 @@ export default function MeetingResultCard({
                     <button
                       type="button"
                       onClick={() => setEditMode(true)}
-                      className="shrink-0 rounded-md border border-green-300 bg-white px-2 py-0.5 text-[11px] font-medium text-green-700 hover:bg-green-50"
+                      className="shrink-0 rounded-md border border-green-300 bg-white px-2 py-0.5 text-px-11 font-medium text-green-700 hover:bg-green-50"
                     >
                       ✏️ 수정
                     </button>
@@ -413,7 +413,7 @@ export default function MeetingResultCard({
             <div className="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-2 py-1.5 text-xs text-gray-600">
               <span>🔚 케이스 종료 — 추가 미팅 카드에서 진행</span>
               {onReviveCase && (
-                <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">↩️ 되살리기</button>
+                <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-px-11 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">↩️ 되살리기</button>
               )}
             </div>
           )}

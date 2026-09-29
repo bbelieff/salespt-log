@@ -64,7 +64,7 @@ export default function DbNudgeBanner({ onGoDirect }: Props) {
         <button
           type="button"
           onClick={onGoDirect}
-          className="mt-1 rounded-md bg-amber-500 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-600"
+          className="mt-1 rounded-md bg-amber-500 px-2.5 py-1 text-px-11 font-semibold text-white hover:bg-amber-600"
         >
           직접생산 보기
         </button>

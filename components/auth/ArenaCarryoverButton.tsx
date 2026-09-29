@@ -49,12 +49,12 @@ export default function ArenaCarryoverButton({ email }: { email: string }) {
         type="button"
         onClick={run}
         disabled={busy}
-        className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
+        className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-px-10 font-bold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
         title="이전 기수 예약 미팅·계약을 이월 깃발로 복사 (멱등)"
       >
         {busy ? "이월 중…" : "↩ 이월 실행"}
       </button>
-      {msg && <span className="text-[10px] text-gray-500">{msg}</span>}
+      {msg && <span className="text-px-10 text-gray-500">{msg}</span>}
     </span>
   );
 }

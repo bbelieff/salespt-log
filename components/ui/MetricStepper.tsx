@@ -54,7 +54,7 @@ export default function MetricStepper({
           type="button"
           onClick={() => handle(-bigStep)}
           disabled={!canBigDec}
-          className="rounded-full bg-gray-200 px-2 py-1 text-[11px] font-bold text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full bg-gray-200 px-2 py-1 text-px-11 font-bold text-gray-800 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={ariaLabel ? `${ariaLabel} ${bigStep} 감소` : `${bigStep} 감소`}
           title={`${bigStep}개 한꺼번에 감소`}
         >
@@ -104,7 +104,7 @@ export default function MetricStepper({
           onClick={() => handle(bigStep)}
           disabled={!canBigInc}
           title={capped ? cappedHint : `${bigStep}개 한꺼번에 증가`}
-          className="rounded-full bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full bg-blue-100 px-2 py-1 text-px-11 font-bold text-blue-700 hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={ariaLabel ? `${ariaLabel} ${bigStep} 증가` : `${bigStep} 증가`}
         >
           +{bigStep}

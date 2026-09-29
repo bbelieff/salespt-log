@@ -150,7 +150,7 @@ describe("D-day 배지 색 (belie 2026-09-28)", () => {
     const [kind, dday] = [...badge.querySelectorAll("span")];
     expect(kind!.className.split(" ").some((c) => c === "border" || c.startsWith("border-"))).toBe(false);
     expect(kind!.className).toContain("ring-inset");
-    for (const chip of [kind!, dday!]) { expect(chip.className).toContain("py-0.5"); expect(chip.className).toContain("text-[11px]"); }
+    for (const chip of [kind!, dday!]) { expect(chip.className).toContain("py-0.5"); expect(chip.className).toContain("text-px-11"); }
     expect(badge.className).toContain("gap-0.5");
     act(() => root.unmount()); node.remove();
   });

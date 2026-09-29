@@ -187,7 +187,7 @@ export default function TrainerAssignCard({
               busy === `dept:${trainer.email}` ||
               busy === `remove:${trainer.email}`
             }
-            className="shrink-0 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            className="shrink-0 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-px-11 font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
             title="이 사람을 관리부서로 이동 (담당 매핑 자동 정리)"
           >
             {busy === `dept:${trainer.email}` ? "..." : "관리부서"}
@@ -201,7 +201,7 @@ export default function TrainerAssignCard({
               busy === `dept:${trainer.email}` ||
               busy === `remove:${trainer.email}`
             }
-            className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-px-11 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
             title="이 트레이너를 퇴출 (담당 매핑 자동 정리 + row 삭제)"
           >
             {busy === `remove:${trainer.email}` ? "..." : "퇴출"}
@@ -212,7 +212,7 @@ export default function TrainerAssignCard({
         <div className="border-t border-gray-100 bg-gray-50 p-3">
           {/* 전체 일괄 토글 — 트레이너 연습용 시트 등 모두 배정 필요할 때. */}
           {trainees.length > 0 && (
-            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-gray-200 pb-2 text-[11px]">
+            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-gray-200 pb-2 text-px-11">
               <span className="mr-auto text-gray-500">일괄 토글:</span>
               <button
                 type="button"
@@ -239,7 +239,7 @@ export default function TrainerAssignCard({
             <div className="space-y-3">
               {grouped.map(([cohort, list]) => (
                 <div key={cohort}>
-                  <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-px-10 font-bold uppercase tracking-wider text-gray-500">
                     <span>
                       {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
                     </span>
@@ -248,7 +248,7 @@ export default function TrainerAssignCard({
                         type="button"
                         disabled={bulkBusy}
                         onClick={() => bulkApply(list, "add")}
-                        className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-[9px] font-bold normal-case text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-px-9 font-bold normal-case text-red-700 hover:bg-red-50 disabled:opacity-50"
                       >
                         기수 선택
                       </button>
@@ -256,7 +256,7 @@ export default function TrainerAssignCard({
                         type="button"
                         disabled={bulkBusy}
                         onClick={() => bulkApply(list, "remove")}
-                        className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[9px] font-bold normal-case text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-px-9 font-bold normal-case text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                       >
                         기수 해제
                       </button>
@@ -283,7 +283,7 @@ export default function TrainerAssignCard({
                             {s.name || s.email}
                             {s.captainOf ? <span title="회장"> 👑</span> : null}
                           </span>
-                          <span className="shrink-0 text-[10px] text-gray-400">
+                          <span className="shrink-0 text-px-10 text-gray-400">
                             {s.email}
                           </span>
                         </label>

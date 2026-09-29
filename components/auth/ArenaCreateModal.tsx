@@ -217,7 +217,7 @@ export default function ArenaCreateModal() {
               placeholder={"1기\n*김지훈, 김소라\n2기\n류서하(심나영), 김태현$"}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs"
             />
-            <p className="mt-1 text-[11px] text-gray-400">
+            <p className="mt-1 text-px-11 text-gray-400">
               레지스트리 라벨 = A{effSeason || "?"}-기수기. 부부는 둘 중 한 이름만
               입력해도 클레임 인식.
             </p>
@@ -231,13 +231,13 @@ export default function ArenaCreateModal() {
                 · 입금 {depositCount}
               </div>
               {preview && (
-                <div className="mb-2 space-y-0.5 text-[11px] text-purple-700">
+                <div className="mb-2 space-y-0.5 text-px-11 text-purple-700">
                   <div>📄 {preview.sheet}</div>
                   <div>📁 {preview.folder}</div>
                 </div>
               )}
               <div className="max-h-44 overflow-y-auto">
-                <table className="w-full text-left text-[11px]">
+                <table className="w-full text-left text-px-11">
                   <thead className="text-purple-500">
                     <tr>
                       <th className="pr-2">기수</th>
@@ -259,7 +259,7 @@ export default function ArenaCreateModal() {
                 </table>
               </div>
               {parsed.errors.length > 0 && (
-                <ul className="mt-2 space-y-0.5 text-[11px] text-amber-700">
+                <ul className="mt-2 space-y-0.5 text-px-11 text-amber-700">
                   {parsed.errors.map((e, i) => (
                     <li key={i}>⚠ {e}</li>
                   ))}

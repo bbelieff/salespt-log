@@ -185,19 +185,19 @@ export default function DriveLinkBar() {
               </p>
               {saEmail && (
                 <div className="mb-2 flex items-center gap-1.5">
-                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-[11px] text-gray-800">
+                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-px-11 text-gray-800">
                     {saEmail}
                   </code>
                   <button
                     type="button"
                     onClick={copySaEmail}
-                    className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100"
+                    className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-px-11 font-medium text-red-700 hover:bg-red-100"
                   >
                     {copied ? "복사됨 ✓" : "복사"}
                   </button>
                 </div>
               )}
-              <p className="text-[11px] leading-relaxed text-red-500">
+              <p className="text-px-11 leading-relaxed text-red-500">
                 공유 방법: 드라이브에서 폴더 우클릭 → <b>공유</b> → 위 이메일 추가 →
                 권한 <b>뷰어/편집자</b> → 완료. 그다음 위 <b>[✨ 자동으로 찾기]</b>를 다시 눌러 주세요.
               </p>

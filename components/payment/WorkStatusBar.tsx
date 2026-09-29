@@ -54,13 +54,13 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
           })}
         </div>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-px-11 text-slate-500">
         {STATUS.map((s) => <button type="button" key={s.key} onClick={(e) => openAt(s.key, e)} className="inline-flex items-center gap-1 hover:text-slate-900"><span className={`h-2 w-2 rounded-full ${s.color}`}/>{s.label} <b className="tabular-nums text-slate-700">{items.filter((item) => item.status === s.key).length}</b></button>)}
       </div>
       {open && status && <div data-work-status-popover className={`absolute z-[500] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl ${left === null ? "right-0" : ""} ${popoverPlacement === "top" ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]"}`} style={{ width: popoverWidth, ...(left === null ? {} : { left }) }} onMouseLeave={() => setOpen(null)}>
         {/* 제목줄을 해당 상태의 막대 색으로 채워 어떤 상태 목록인지 바로 알아보게. */}
         <div data-work-status-banner className={`mb-1 flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-bold ${status.color} ${status.text}`}><span>{status.label} {active.length}건</span><button type="button" onClick={() => setOpen(null)} className="rounded p-0.5 leading-none opacity-80 hover:opacity-100" aria-label="닫기">×</button></div>
-        {active.map((item) => <button type="button" key={item.key} onClick={() => { onNavigate(item.row, item.slot); setOpen(null); }} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-blue-50"><span className="block truncate text-xs font-semibold text-slate-800">{item.company} · 진행 {item.slot} · {item.product || "상품 미정"}</span><span className="block truncate text-[11px] text-slate-400">{item.institution || "기관 미정"}</span></button>)}
+        {active.map((item) => <button type="button" key={item.key} onClick={() => { onNavigate(item.row, item.slot); setOpen(null); }} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-blue-50"><span className="block truncate text-xs font-semibold text-slate-800">{item.company} · 진행 {item.slot} · {item.product || "상품 미정"}</span><span className="block truncate text-px-11 text-slate-400">{item.institution || "기관 미정"}</span></button>)}
       </div>}
     </div>
   );

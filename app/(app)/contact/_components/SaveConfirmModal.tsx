@@ -106,7 +106,7 @@ function Cell({
 }) {
   return (
     <div className={`min-w-0 p-2.5 ${MARK_BG[mark]}`}>
-      <span className={`block text-[10px] font-bold tracking-wide ${MARK_LABEL[mark]}`}>
+      <span className={`block text-px-10 font-bold tracking-wide ${MARK_LABEL[mark]}`}>
         {label}
       </span>
       <span
@@ -118,7 +118,7 @@ function Cell({
         {sub ? <span className="ml-1 text-sm text-gray-600">{sub}</span> : null}
       </span>
       {note ? (
-        <span className={`mt-1 block text-[10px] font-bold leading-tight ${MARK_LABEL[mark]}`}>
+        <span className={`mt-1 block text-px-10 font-bold leading-tight ${MARK_LABEL[mark]}`}>
           {note}
         </span>
       ) : null}
@@ -141,7 +141,7 @@ function CorrectionHelp() {
         onMouseEnter={() => setHovered(true)}
         onClick={() => { setPinned((value) => !value); setHovered(false); }}
         className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full align-middle focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
-        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-[10px] font-bold">?</span>
+        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-px-10 font-bold">?</span>
       </button>
       <p id={id} hidden={!expanded} className="mt-1 rounded-lg bg-gray-50 p-2.5">
         X로 이 창을 닫고 미팅 카드에서 수정하세요. 기록 날짜·채널을 옮기려면 [잘못 적었어요]에서 선택해요. 창을 닫아도 입력은 남고, [저장하기]를 누르기 전에는 저장되지 않아요.
@@ -190,10 +190,10 @@ export default function SaveConfirmModal({
         aria-label="저장 전 확인"
       >
         <div className="relative bg-slate-900 px-4 py-3 pr-14 text-white">
-          <span className="block text-[10px] font-bold tracking-widest text-slate-400">
+          <span className="block text-px-10 font-bold tracking-widest text-slate-400">
             저장 전 확인
           </span>
-          <h3 className="text-[15px] font-black">이렇게 기록할까요?</h3>
+          <h3 className="text-px-15 font-black">이렇게 기록할까요?</h3>
           <button type="button" onClick={onClose} disabled={saving} aria-label="확인창 닫고 수정하기" className="absolute right-3 top-3 h-8 w-8 rounded-lg text-xl hover:bg-slate-700">×</button>
         </div>
 
@@ -271,7 +271,7 @@ export default function SaveConfirmModal({
             type="button"
             onClick={unfilled.length > 0 ? onClose : onFix}
             disabled={saving}
-            className="flex-1 rounded-lg bg-amber-100 py-3 text-[13px] font-bold text-amber-800 hover:bg-amber-200 disabled:bg-gray-100 disabled:text-gray-400"
+            className="flex-1 rounded-lg bg-amber-100 py-3 text-px-13 font-bold text-amber-800 hover:bg-amber-200 disabled:bg-gray-100 disabled:text-gray-400"
           >
             {unfilled.length > 0 ? "입력 수정하기" : "잘못 적었어요"}
           </button>
@@ -279,7 +279,7 @@ export default function SaveConfirmModal({
             type="button"
             onClick={onSave}
             disabled={unfilled.length > 0 || saving || checking || checkFailed || conflicts.length > 0}
-            className="flex-1 rounded-lg bg-slate-900 py-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+            className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
           >
             {saving ? "저장 중…" : "저장하기"}
           </button>
