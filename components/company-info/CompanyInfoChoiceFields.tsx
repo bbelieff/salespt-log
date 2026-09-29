@@ -26,6 +26,8 @@ import {
 } from "@/util/company-choice";
 import { BIZ_TYPE_HINT, BIZ_TYPE_LABEL, LEASE_PARTS, type OwnershipSpec } from "@/components/company-info-defs";
 import { FieldLabel, hintIdOf, inputCls } from "./CompanyInfoField";
+import { groupTyping } from "@/util/live-format";
+import { useLiveInput } from "./useLiveInput";
 
 type CI = CompanyInfo;
 type Patch = (p: Partial<CI>) => void;
@@ -88,6 +90,8 @@ function UnitInput({
     const next = formatWonInput(value);
     if (next !== value) onChange(next);
   };
+  // 원 단위 칸(보증금·월세)은 입력하는 동시에 천 단위 쉼표(belie 2026-09-29). 면적(㎡)은 그대로.
+  const live = useLiveInput((raw, caret, prev) => (won ? groupTyping(raw, caret, prev) : null), value, onChange);
   return (
     <div className="min-w-0">
       <FieldLabel htmlFor={id} label={label} hint={hint} />
@@ -97,8 +101,9 @@ function UnitInput({
           className={`${inputCls} min-w-0`}
           aria-describedby={hintIdOf(id, label, hint)}
           inputMode={won ? "numeric" : "decimal"}
+          ref={live.ref}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={live.onChange}
           onBlur={won ? formatOnBlur : undefined}
         />
         {/* 옛 "1,000만"·"33㎡(10평)" 처럼 단위가 이미 적힌 값엔 단위를 또 붙이지 않는다. */}

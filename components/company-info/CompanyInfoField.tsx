@@ -16,6 +16,8 @@ import { formatPhone } from "@/lib/format/phone";
 import HintTooltip from "@/components/ui/HintTooltip";
 import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
 import type { FieldDef } from "@/components/company-info-defs";
+import { bizNoTyping } from "@/util/live-format";
+import { useLiveInput } from "./useLiveInput";
 
 /** 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게. */
 export const inputCls =
@@ -80,6 +82,9 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
         if (next !== v) onChange(k, next);
       }
     : undefined;
+  const isBizNo = k === "사업자등록번호";
+  // 사업자등록번호는 입력하는 동시에 000-00-00000(belie 2026-09-29). 숫자 아닌 글이면 그대로.
+  const bizLive = useLiveInput((raw, caret, prev) => (isBizNo ? bizNoTyping(raw, caret, prev) : null), v, (next) => onChange(k, next));
   const onInput = (raw: string) => {
     if (!isRrn) return onChange(k, raw);
     // 숫자가 6자리를 넘으면 뒷자리는 잘린다 — 잘린 이유를 칸 아래에 알린다.
@@ -103,10 +108,11 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
           id={id}
           className={inputCls}
           aria-describedby={hintId}
-          inputMode={isPhone ? "tel" : isRrn ? "numeric" : undefined}
+          inputMode={isPhone ? "tel" : isRrn || isBizNo ? "numeric" : undefined}
           autoComplete={isRrn ? "off" : undefined}
+          ref={isBizNo ? bizLive.ref : undefined}
           value={v}
-          onChange={(e) => onInput(e.target.value)}
+          onChange={isBizNo ? bizLive.onChange : (e) => onInput(e.target.value)}
           onBlur={onBlur}
         />
       )}
