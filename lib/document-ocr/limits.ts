@@ -16,7 +16,8 @@ export const OCR_LIMITS = {
   pdfTextMaxPages: 10,
   /** 인식 입력 최대 변(넘으면 축소). */
   maxImageDim: 3000,
-  pdfRenderScale: 2,
+  /** 스캔 PDF 를 그리는 배율 — A4 가 maxImageDim(3000) 안에 들도록(행 높이 ~15px 로는 숫자가 깨졌다). */
+  pdfRenderScale: 3.5,
   ocrTimeoutMs: 120_000,
   pdfTimeoutMs: 60_000,
   /** same-origin 에셋 경로 — 런타임 CDN 호출 금지. scripts/vendor-document-ocr.mjs 가 채운다. */

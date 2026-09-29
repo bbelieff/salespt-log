@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 스캔 부가세 PDF 인식 (fix/vat-parse-layout2)
+- belie 제보: 글자층 없는 부가세 과세표준증명 스캔 PDF 인식 실패. 워터마크·표 선 → 흑백화+선 제거, 배율 3.5, kor+eng, "중명" 오독 판별. 실제 파일 11칸 일치(로컬). 상세 = `docs/plans/active/hometax-pdf-autofill.md` 후속 2.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 실무/수납 접기 동작 (fix/institution-active-group-open)
 - belie 요청: 선택된 진행건의 기관 묶음은 접히지 않게, Drive 연결 패널은 다시 눌러 접히게. 상세 = `docs/plans/active/payment-list-collapse-tweaks.md`.
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 부가세 증명 「면세분」 열 읽기 (fix/vat-parse-redact)
