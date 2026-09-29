@@ -40,7 +40,7 @@ import PaymentSortControl from "./_components/PaymentSortControl";
 import PaymentListModeTabs from "./_components/PaymentListModeTabs";
 import useMasterPaneWidth from "./_components/useMasterPaneWidth";
 import usePaymentFocus from "./_components/usePaymentFocus";
-import { buildCompanyWorkItems, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
+import { buildCompanyWorkItems, companyKeyOfRow, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
@@ -112,10 +112,11 @@ export default function PaymentPage() {
   const [detailLeftPct, setDetailLeftPct] = useState(60);
 
   const { focusTodoId, focusPayment } = usePaymentFocus(list.data?.rows, isPc);
+  const rowsRef = useRef(list.data?.rows); rowsRef.current = list.data?.rows; // 링크 row → 업체 키(목록 재조회로 선택이 되풀이되지 않게 ref)
   useEffect(() => {
     if (focusPayment) {
       setSelectedRow(focusPayment.row);
-      setSelectedCompanyKey(`${focusPayment.row}-${focusPayment.slot}`);
+      setSelectedCompanyKey(companyKeyOfRow(rowsRef.current, focusPayment.row));
       setFocusRequestId((id) => id + 1);
     }
   }, [focusPayment]);
@@ -266,8 +267,8 @@ export default function PaymentPage() {
   });
   const changeListMode = (mode: "company" | "institution") => guardedNav(() => {
     if (mode === listMode) return;
-    if (mode === "institution") setSelectedWorkKey(institutionItems.find((item) => item.key === selectedCompany?.key)?.key ?? null);
-    else { setSelectedCompanyKey(selectedWork?.key ?? null); setSelectedRow(selectedWork?.row ?? null); }
+    if (mode === "institution") setSelectedWorkKey(selectedCompany?.work.key ?? null); // 업체 카드 = 계약 1건 → 대표 진행건으로
+    else { setSelectedCompanyKey(selectedWork?.contractKey ?? null); setSelectedRow(selectedWork?.row ?? null); }
     setMobileDetailExpanded(true); setCompanyQuery(""); setListMode(mode);
   });
   const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
@@ -287,7 +288,7 @@ export default function PaymentPage() {
           rows={activeWorkContracts(allRows, courseStartISO)}
           todos={allTodos.data?.todos ?? []}
           onNavigate={(row, slot) => {
-            guardedNav(() => { setListMode("company"); setCompanyQuery(""); setSelectedRow(row); setSelectedCompanyKey(`${row}-${slot}`); setFocusRequestId((id) => id + 1); });
+            guardedNav(() => { setListMode("company"); setCompanyQuery(""); setSelectedRow(row); setSelectedCompanyKey(companyKeyOfRow(allRows, row)); setFocusRequestId((id) => id + 1); });
             window.setTimeout(() => document.getElementById(`payment-slot-${row}-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
           }}
         />

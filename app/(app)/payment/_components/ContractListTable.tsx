@@ -37,10 +37,12 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
       onLinked={(failures) => { setLinking(null); if (failures.length) window.alert(`연결했어요. 다만 ${failures.join("·")} 옮기기에 실패했어요. 새로고침 후 확인해 주세요.`); }} />}
     <div className="space-y-1.5 p-2" aria-label="계약 목록" role={renderDetail ? "group" : "listbox"}>
       {items.map((item, index) => {
-        const { cp, work, hasProgress } = item;
+        const { cp, work, works, hasProgress } = item;
         const selected = item.key === selectedKey;
-        const slot = cp[`수납${work.slot}`];
-        const pct = hasProgress ? progressPct(slot.진행률) : 0;
+        // 업체당 한 장 — 진행건이 여럿이면 줄마다 보여 주고, 수수료는 합계·진행률은 평균(belie 2026-09-29).
+        const pcts = works.map((w) => progressPct(cp[`수납${w.slot}`].진행률));
+        const pct = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
+        const fee = works.reduce((sum, w) => sum + cp[`수납${w.slot}`].수납액, 0);
         const muted = isCarryoverContract(cp, courseStartISO ?? "") || isTerminatedContract(cp);
         const inlineOpen = Boolean(renderDetail && selected && detailExpanded);
         return (
@@ -60,13 +62,15 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600">진행 없음</span>}
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
               </span>
-              <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">
-                {hasProgress ? `진행 ${work.slot} · ${work.institution || "기관 미입력"}${work.product ? ` · ${work.product}` : ""}` : "진행건 미등록"}
-              </span>
+              {hasProgress ? works.map((w) => (
+                <span key={w.key} className={`mt-1 block truncate pl-7 text-px-11 font-semibold ${w.key === work.key ? "text-blue-700" : "text-blue-600/80"}`}>
+                  {`진행 ${w.slot} · ${w.institution || "기관 미입력"}${w.product ? ` · ${w.product}` : ""}`}
+                </span>
+              )) : <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">진행건 미등록</span>}
               <span className="mt-0.5 grid grid-cols-[1fr_auto] gap-x-2 pl-7 text-px-11 tabular-nums">
                 <span className="truncate text-slate-500">{fmtDate(cp.계약일)} · 수임비 ₩{formatMoney(cp.수임비)}</span>
-                <span className="font-semibold text-emerald-600">수수료 ₩{formatMoney(hasProgress ? slot.수납액 : 0)}</span>
-                <span className="col-span-2 mt-1 flex items-center gap-2 text-blue-600"><span>진행 {pct}%</span><span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200"><span className="block h-full rounded-full bg-gradient-to-r from-sky-400 to-blue-600" style={{ width: `${pct}%` }}/></span></span>
+                <span className="font-semibold text-emerald-600">수수료 ₩{formatMoney(fee)}</span>
+                <span className="col-span-2 mt-1 flex items-center gap-2 text-blue-600"><span>진행 {pct}%{works.length > 1 ? ` (평균 · ${works.length}건)` : ""}</span><span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200"><span className="block h-full rounded-full bg-gradient-to-r from-sky-400 to-blue-600" style={{ width: `${pct}%` }}/></span></span>
               </span>
             </button>
             {renderDetail && selected && <div id={`payment-company-detail-${item.key}`} hidden={!detailExpanded} className="rounded-b-xl border border-t-0 border-blue-400 bg-white">{renderDetail(item)}</div>}
