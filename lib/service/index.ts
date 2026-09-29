@@ -85,6 +85,14 @@ export {
   removeContractPaymentWithCascade,
   terminateContract,
 } from "./contract-payment";
+// 「영업기록 없이 추가」 업체 ↔ 미팅 연결 (contract-meeting-link, 2026-09-29)
+export {
+  ContractLinkError,
+  linkMeetingToContract,
+  listLinkableMeetings,
+  previewMeetingLink,
+} from "./contract-meeting-link";
+export type { LinkableMeeting, MeetingLinkPreview } from "./contract-meeting-link";
 
 // 실무투두 유스케이스 (Scope 2 — 05 실무투두)
 export {

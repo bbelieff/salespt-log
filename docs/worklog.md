@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 영업기록 없이 추가 업체 ↔ 미팅 연결 (feat/link-manual-contract-meeting)
+- belie 요청: 양방향 연결(실무/수납 `영업기록 없음 ＋` · 일정·계약 계약 전환 시 제안), 계약일=미팅 날짜, 값 충돌은 최근 기록 기본+칸별 선택. 같은 02 행 재사용(이중계상 0), 할일·06 키 이동. 연결 끊기는 범위 밖(자율결정·사유 문서). 상세 = `docs/plans/active/contract-meeting-link.md`.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 스캔 부가세 PDF 인식 (fix/vat-parse-layout2)
 - belie 제보: 글자층 없는 부가세 과세표준증명 스캔 PDF 인식 실패. 워터마크·표 선 → 흑백화+선 제거, 배율 3.5, kor+eng, "중명" 오독 판별. 실제 파일 11칸 일치(로컬). 상세 = `docs/plans/active/hometax-pdf-autofill.md` 후속 2.
 

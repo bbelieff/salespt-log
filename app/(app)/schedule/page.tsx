@@ -23,10 +23,8 @@ import {
   useReviveCaseClosure,
   useWeekMeetings,
 } from "@/query/contact-hooks";
-import {
-  useAddContractPayment,
-  useSyncContractFee,
-} from "@/query/contract-payment-hooks";
+import { useAddContractPayment, useSyncContractFee } from "@/query/contract-payment-hooks";
+import { useManualLinkPrompt } from "./_lib/use-manual-link-prompt";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { decideContractFanout } from "./_lib/contract-fanout";
@@ -61,6 +59,7 @@ export default function SchedulePage() {
   const reviveCaseClosure = useReviveCaseClosure();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
+  const manualLink = useManualLinkPrompt(); // 같은 이름 「영업기록 없이 추가」 업체 → 연결 제안
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -121,6 +120,7 @@ export default function SchedulePage() {
       }
       if (fanout.kind === "run") {
         const payload = fanout.payload;
+        if (!wasAlreadyContract && (await manualLink.ask(id, payload.업체명)) === "linked") return say("✓ 계약 확정 + 기존 업체와 연결됨");
         try {
           await addContractPayment.mutateAsync(payload);
           say("✓ 계약 확정 + 계약수납 row 생성됨");
@@ -494,6 +494,7 @@ export default function SchedulePage() {
           {toast}
         </div>
       )}
+      {manualLink.element}
     </>
   );
 }
