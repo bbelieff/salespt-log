@@ -149,7 +149,7 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
 ### 폰트 크기
 **글자 크기 단계(2026-09-29 belie)** — 모든 글자 토큰은 `calc(크기 × var(--font-scale, 1))` 이다
 (`tailwind.config.ts` fontSize). 박스에 `--font-scale` 을 걸면 그 안의 글자만 커지고 여백·너비는 그대로다.
-단계 = 1 · 1.1 · 1.2 · 1.3(`lib/util/font-scale.ts`). 적용 범위: 실무/수납 2뎁스 상세 박스, 업체정보(박스 배율 × 자기 배율).
+단계 = 1 · 1.1 · 1.2 · 1.3(`lib/util/font-scale.ts`). 적용 범위: 업체정보 컴포넌트(모든 탭).
 고정 픽셀 글자는 임의값 대신 토큰 `text-px-9·10·11·12·13·14·15·22` 를 쓴다 — `text-[11px]` 는 배율이 안 곱해져
 `tests/structural/font-scale.test.ts` 가 막는다.
 
