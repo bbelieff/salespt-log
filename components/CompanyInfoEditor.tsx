@@ -316,10 +316,11 @@ export default function CompanyInfoEditor({
   );
 
   const [fontStep, setFontStep] = useFontStep("company-info");
+  const fontControl = <FontScaleControl step={fontStep} onChange={setFontStep} label="업체정보" />;
   const ciSaving = busy || (auto && status === "pending");
   return (
-    // 글자 크기 = 바깥 상세 박스 배율 × 업체정보 배율(belie 2026-09-29 — 업체정보는 작게 느껴져 따로 +−).
-    <div className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: `calc(var(--font-scale-box, 1) * ${fontScaleOf(fontStep)})` }}>
+    // 글자 크기 단계(belie 2026-09-29 — 업체정보는 작게 느껴져 +−). 글자만 커지고 배치는 그대로.
+    <div className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <div className={`flex items-center justify-between gap-2 ${desktopHeading ? "px-3 py-2" : "px-2.5 py-1.5"}`}>
         <button
           type="button"
@@ -332,7 +333,8 @@ export default function CompanyInfoEditor({
           </span>
           <span className="shrink-0 text-gray-400">{open ? "▴" : "▾"}</span>
         </button>
-        <FontScaleControl step={fontStep} onChange={setFontStep} label="업체정보" />
+        {/* 실무/수납(desktopHeading)은 도구 앞, 컨택관리·일정·계약은 박스 맨 오른쪽(belie 2026-09-29). */}
+        {desktopHeading && fontControl}
         {open && (
           <div className="flex shrink-0 items-center gap-1.5">
             {auto && ciSaving && (
@@ -363,6 +365,7 @@ export default function CompanyInfoEditor({
             </button>
           </div>
         )}
+        {!desktopHeading && fontControl}
       </div>
 
       {open && (

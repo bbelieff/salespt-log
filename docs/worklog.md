@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 글자 크기 버튼 위치 정리 (fix/font-control-placement)
+- belie: 실무/수납 상세 박스 글자 버튼 제거(업체정보 버튼만), STEP2·3 업체정보는 버튼을 헤더 맨 오른쪽으로. 상세 = `docs/plans/active/font-size-steps.md` 후속.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 글자 크기 단계 [− 가 +] (feat/font-size-control)
 - belie: 글씨 크게 의견 → 실무/수납 2뎁스 상세·업체정보에 3단계 버튼(글자만 ×1.1~1.3, 배치 유지). 임의 픽셀 글자 230곳 → `text-px-N` 토큰(배율 적용), 구조 테스트로 재발 방지. 상세 = `docs/plans/active/font-size-steps.md`.
 

@@ -159,6 +159,15 @@ describe("CompanyInfoEditor identity", () => {
     expect(txt.nextElementSibling).toBe(edit);
     expect(txt.className).toContain("bg-white");
   });
+
+  it("글자 크기 [− 가 +] — 실무/수납 밖(컨택관리·일정·계약)에선 머리 맨 오른쪽 (belie 2026-09-29)", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    toggleOpen();
+    const control = el!.querySelector("[data-font-scale-control]")!;
+    expect(control).toBeTruthy();
+    expect(control.nextElementSibling).toBeNull();
+    expect(control.previousElementSibling?.textContent).toContain("편집");
+  });
 });
 
 describe("CompanyInfoContractSection stable identity (C3)", () => {
