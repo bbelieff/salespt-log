@@ -25,7 +25,7 @@ export default function CompanyDocAutofillButton({ current, onApply }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
       >
         문서로 자동입력
       </button>

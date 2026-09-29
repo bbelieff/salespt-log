@@ -337,10 +337,21 @@ export default function CompanyInfoEditor({
             )}
             {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
             <CompanyDocAutofillButton current={draft} onApply={(p) => apply((d) => ({ ...d, ...p }))} />
+            {/* 업체정보생성(TXT) — 편집 옆, 흰 바탕(belie 2026-09-29). */}
+            {txtCompanyName && (
+              <button
+                type="button"
+                onClick={exportTxt}
+                disabled={txtBusy}
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {txtBusy ? "생성 중…" : "업체정보생성(TXT)"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setModal(true)}
-              className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
               편집
             </button>
@@ -368,18 +379,6 @@ export default function CompanyInfoEditor({
             />
           )}
           {body(splitInline, "panel")}
-          {txtCompanyName && (
-            <div className="flex">
-              <button
-                type="button"
-                onClick={exportTxt}
-                disabled={txtBusy}
-                className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-              >
-                {txtBusy ? "생성 중…" : "📄 업체정보생성(TXT)"}
-              </button>
-            </div>
-          )}
           {txtMsg && (
             <p className={`text-[11px] ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
               {txtMsg.ok ? "✓" : "✕"} {txtMsg.text}
