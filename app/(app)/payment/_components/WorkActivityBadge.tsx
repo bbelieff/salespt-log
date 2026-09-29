@@ -27,7 +27,7 @@ export default function WorkActivityBadge({ activity, state = "ready" }: {
     kind === "none" ? "Todo·History 없음" : kind === "history" ? `최근 History ${label}` : `미완료 Todo ${label}`;
   if (state !== "ready") {
     return (
-      <span aria-label={description} className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
+      <span aria-label={description} className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600">
         {state === "loading" ? "…" : "조회 실패"}
       </span>
     );
@@ -37,11 +37,11 @@ export default function WorkActivityBadge({ activity, state = "ready" }: {
   return (
     <span aria-label={description} className="inline-flex shrink-0 items-center gap-0.5">
       {kind !== "none" && (
-        <span aria-hidden className="rounded bg-white px-1 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-inset ring-slate-200">
+        <span aria-hidden className="rounded bg-white px-1 py-0.5 text-px-11 font-semibold text-slate-500 ring-1 ring-inset ring-slate-200">
           {kind === "history" ? "History" : "Todo"}
         </span>
       )}
-      <span aria-hidden className={`rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${TONE_CLASS[ddayTone(label)]}`}>
+      <span aria-hidden className={`rounded px-1.5 py-0.5 text-px-11 font-semibold tabular-nums ${TONE_CLASS[ddayTone(label)]}`}>
         {label}
       </span>
     </span>

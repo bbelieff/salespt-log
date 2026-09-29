@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 :root {
+  /* 글자 크기 단계(FontScaleControl · lib/util/font-scale.ts). 글자만 키우고 여백·칸 너비는 그대로. */
+  --font-scale: 1;
   --app-header-height: 3.5rem;
   --app-safe-bottom: env(safe-area-inset-bottom);
   --app-tabbar-safe: max(var(--app-safe-bottom, 0px), 8px);
@@ -27,7 +29,7 @@
 .app-role-toggle { position: relative; display: flex; align-items: stretch; }
 .app-role-toggle::before { content: ""; position: absolute; inset: 50% 0 auto; height: 26px; transform: translateY(-50%); background: #fef2f2; border: 1px solid #fecaca; border-radius: 999px; pointer-events: none; }
 .app-role-option { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0; border-radius: 999px; }
-.app-role-label { display: flex; align-items: center; justify-content: center; height: 26px; width: 100%; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; color: #b91c1c; transition: background-color 150ms, color 150ms; }
+.app-role-label { display: flex; align-items: center; justify-content: center; height: 26px; width: 100%; padding: 0 8px; border-radius: 999px; font-size: calc(12px * var(--font-scale, 1)); font-weight: 700; line-height: 1; white-space: nowrap; color: #b91c1c; transition: background-color 150ms, color 150ms; }
 .app-role-option[aria-pressed="true"] .app-role-label { background: #b91c1c; color: white; }
 .app-role-option:focus-visible { outline: 2px solid #b91c1c; outline-offset: 2px; }
 .app-tabbar {
@@ -52,7 +54,7 @@
 }
 .app-calendar-link { position: relative; }
 .app-calendar-orb > svg { width: var(--calendar-icon-size, 24px); height: var(--calendar-icon-size, 24px); }
-.app-tab-label { margin: 0; font-size: 0.75rem; line-height: 1.35; }
+.app-tab-label { margin: 0; font-size: calc(0.75rem * var(--font-scale, 1)); line-height: 1.35; }
 [aria-current="page"] > .app-calendar-orb {
   background: rgb(251 191 36 / 22%);
   border-color: rgb(251 191 36 / 55%);
@@ -86,7 +88,7 @@
  * 페이지별 밀도 조정 금지 — 이 한 곳이 SSOT. */
 @media (min-width: 1024px) {
   html {
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--font-scale, 1));
   }
 }
 
@@ -123,7 +125,7 @@ body {
 
 /* ── 채널 배지 (docs/design/components.md §4) ─────────────── */
 .badge {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
@@ -156,7 +158,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
   font-weight: 700;
   cursor: pointer;
   user-select: none;
@@ -170,7 +172,7 @@ body {
 .stepper-val {
   width: 32px;
   text-align: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
   font-weight: 700;
   border: none;
   background: transparent;
@@ -210,7 +212,7 @@ body {
   outline: 2px solid #dbeafe;
 }
 .custom-date-display {
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 500;
   color: #111827;
   flex: 1;
@@ -237,7 +239,7 @@ body {
   margin-bottom: 6px;
 }
 .date-pop-title {
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 700;
   color: #111827;
 }
@@ -245,7 +247,7 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  font-size: 18px;
+  font-size: calc(18px * var(--font-scale, 1));
   line-height: 1;
   color: #374151;
   background: #f3f4f6;
@@ -262,7 +264,7 @@ body {
 .date-pop-dow {
   margin-bottom: 2px;
   text-align: center;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 600;
   color: #9ca3af;
 }
@@ -270,7 +272,7 @@ body {
 .date-pop-day {
   height: 36px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: #111827;
   background: transparent;
 }
@@ -303,7 +305,7 @@ body {
   flex: 1;
   height: 34px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
 }
 .date-pop-today {
@@ -337,7 +339,7 @@ body {
 .time-minute {
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 500;
   cursor: pointer;
   appearance: none;
@@ -393,17 +395,17 @@ body {
   margin: 0.125rem 0;
 }
 .notice-rich h1 {
-  font-size: 1.25rem;
+  font-size: calc(1.25rem * var(--font-scale, 1));
   font-weight: 800;
   margin: 0.5rem 0;
 }
 .notice-rich h2 {
-  font-size: 1.125rem;
+  font-size: calc(1.125rem * var(--font-scale, 1));
   font-weight: 800;
   margin: 0.5rem 0;
 }
 .notice-rich h3 {
-  font-size: 1rem;
+  font-size: calc(1rem * var(--font-scale, 1));
   font-weight: 700;
   margin: 0.5rem 0;
 }
@@ -543,8 +545,8 @@ body {
 
 /* One compact account row, including qualified role switch at 320px. */
 @media (max-width: 639px) {
-  .app-header-pill { padding-inline: 6px; font-size: 11px; gap: 3px; }
-  .app-role-label { padding-inline: 5px; font-size: 11px; }
+  .app-header-pill { padding-inline: 6px; font-size: calc(11px * var(--font-scale, 1)); gap: 3px; }
+  .app-role-label { padding-inline: 5px; font-size: calc(11px * var(--font-scale, 1)); }
 }
 
 /* ── Desktop glass shell (desktop-glass-polish 2026-09-25) ──────────

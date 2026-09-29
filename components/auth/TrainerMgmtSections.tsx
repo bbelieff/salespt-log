@@ -77,7 +77,7 @@ export function SectionPending({
                 <div className="truncate text-sm font-bold text-gray-900">
                   {t.name || t.email}
                 </div>
-                <div className="truncate text-[11px] text-gray-500">{t.email}</div>
+                <div className="truncate text-px-11 text-gray-500">{t.email}</div>
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
@@ -222,7 +222,7 @@ export function SectionTraineeList({
                         {s.captainOf ? <span title="회장"> 👑</span> : null}{" "}
                         <span className="text-gray-400">({s.email})</span>
                       </div>
-                      <div className="ml-4 text-[10px] text-gray-500">
+                      <div className="ml-4 text-px-10 text-gray-500">
                         {names.length > 0 ? `담당: ${names.join(", ")}` : "미배정"}
                       </div>
                     </li>

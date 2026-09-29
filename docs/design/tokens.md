@@ -142,14 +142,20 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
 - rem 기반 Tailwind 유틸(글자·간격·카드)이 일괄 비례 축소. **모바일(<1024px) 무변경.**
 - 구현 = `app/globals.css` 의 `@media (min-width: 1024px) { html { font-size: 13.5px } }` 한 곳.
   개별 페이지에서 PC 밀도를 따로 만지지 않는다(전역 스케일이 SSOT).
-- px 고정값(`.badge` 11px, `text-[11px]` arbitrary, 인라인 px)은 축소되지 않음 — 작은 보조
+- px 고정값(`.badge` 11px, `text-px-11` 토큰(옛 `text-[11px]`), 인라인 px)은 축소되지 않음 — 작은 보조
   텍스트가 상대적으로 약간 커 보이는 정도로 가독에 유리, 의도된 예외.
 - 아래 폰트 크기 표의 px 값은 **루트 16px(모바일) 기준**. PC 에서는 ×0.84.
 
 ### 폰트 크기
+**글자 크기 단계(2026-09-29 belie)** — 모든 글자 토큰은 `calc(크기 × var(--font-scale, 1))` 이다
+(`tailwind.config.ts` fontSize). 박스에 `--font-scale` 을 걸면 그 안의 글자만 커지고 여백·너비는 그대로다.
+단계 = 1 · 1.1 · 1.2 · 1.3(`lib/util/font-scale.ts`). 적용 범위: 실무/수납 2뎁스 상세 박스, 업체정보(박스 배율 × 자기 배율).
+고정 픽셀 글자는 임의값 대신 토큰 `text-px-9·10·11·12·13·14·15·22` 를 쓴다 — `text-[11px]` 는 배율이 안 곱해져
+`tests/structural/font-scale.test.ts` 가 막는다.
+
 | 이름 | Tailwind Class | Size | Line Height | 사용처 |
 |------|---------------|------|-------------|--------|
-| step | `text-[9px]` | 9px | tight | **하단 탭 STEP 배지 전용**(ADR-0027). 일반 12px·배지 11px 하한의 의도적 예외 — 보조 단계 표식이라 칩 위 좁은 공간에만. 다른 곳 사용 금지. |
+| step | `text-px-9` | 9px | tight | **하단 탭 STEP 배지 전용**(ADR-0027). 일반 12px·배지 11px 하한의 의도적 예외 — 보조 단계 표식이라 칩 위 좁은 공간에만. 다른 곳 사용 금지. |
 | xs | `text-xs` | 12px | 16px | 배지, 캡션 |
 | sm | `text-sm` | 14px | 20px | 라벨, 보조 텍스트 |
 | base | `text-base` | 16px | 24px | 기본 본문 |

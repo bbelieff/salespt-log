@@ -56,7 +56,7 @@ export default function ImpersonationBanner({
       className="mb-4 flex cursor-pointer items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm transition-all hover:border-red-300 hover:bg-red-100"
       title="클릭하여 이 시트로 진입"
     >
-      <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+      <span className="rounded bg-red-600 px-1.5 py-0.5 text-px-9 font-bold uppercase tracking-wider text-white">
         Impersonating
       </span>
       <span className="min-w-0 flex-1 truncate text-red-800">
@@ -68,7 +68,7 @@ export default function ImpersonationBanner({
         disabled={busy}
         aria-label="impersonation 해제"
         title="해제 (본인 모드로 돌아가기)"
-        className="shrink-0 rounded-full border border-red-200 bg-white px-2 py-0.5 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+        className="shrink-0 rounded-full border border-red-200 bg-white px-2 py-0.5 text-px-10 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
       >
         {busy ? "…" : "✕"}
       </button>

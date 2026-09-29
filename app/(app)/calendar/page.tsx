@@ -320,7 +320,7 @@ export default function CalendarPage() {
                             <div className="truncate text-sm font-semibold text-gray-900">
                               {m.업체명}
                             </div>
-                            <div className="truncate text-[11px] text-gray-400">
+                            <div className="truncate text-px-11 text-gray-400">
                               {m.channel}
                             </div>
                           </div>
@@ -395,7 +395,7 @@ export default function CalendarPage() {
             → 좁은 패널에서 '콜·지·기·소' wrap 되던 문제 해소. 아주 좁으면 가로 스크롤. */}
         {!monthQuery.isLoading && !monthQuery.isError && (
           <div className="mt-4">
-            <div className="mb-1 text-[11px] text-gray-400">범례</div>
+            <div className="mb-1 text-px-11 text-gray-400">범례</div>
             <div className="flex flex-col gap-1.5 overflow-x-auto rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-xs text-gray-600 sm:flex-row sm:flex-wrap sm:gap-x-5">
               <div className="flex flex-nowrap items-center gap-2 break-keep">
                 <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>

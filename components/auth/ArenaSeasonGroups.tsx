@@ -99,7 +99,7 @@ export default function ArenaSeasonGroups({
                 시즌{s.season}
               </span>
               <span className="text-xs font-bold text-purple-700">· {s.count}명</span>
-              <span className="text-[11px] font-medium text-gray-400">
+              <span className="text-px-11 font-medium text-gray-400">
                 · {s.groups.length}개 기수
               </span>
               {start && end && (

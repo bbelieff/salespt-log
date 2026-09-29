@@ -255,7 +255,7 @@ export default function PaymentSlotForm({
             })}
           </div>
         </div>
-        <div className="mt-1 flex justify-between px-0.5 text-[10px] text-gray-400">
+        <div className="mt-1 flex justify-between px-0.5 text-px-11 text-gray-400">
           <span>0</span>
           <span>20</span>
           <span>40</span>

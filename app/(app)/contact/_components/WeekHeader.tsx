@@ -138,7 +138,7 @@ export default function WeekHeader({
             >
               {isToday && (
                 /* 2026-05-18: 뱃지 가림 방지 — 왼쪽 정렬 + 우측 padding 으로 뱃지 영역 회피. */
-                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black pl-1.5 pr-5 text-left text-[9px] font-extrabold leading-[14px] tracking-wider text-white">
+                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black pl-1.5 pr-5 text-left text-px-9 font-extrabold leading-[14px] tracking-wider text-white">
                   TODAY
                 </span>
               )}

@@ -90,7 +90,7 @@ export default function DaySection({
           ({dayLabelKO(d)})
         </span>
         {isToday && (
-          <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+          <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-px-10 font-bold text-white shadow">
             오늘
           </span>
         )}
@@ -105,7 +105,7 @@ export default function DaySection({
 
       {meetings.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-2 text-center">
-          <span className="text-[11px] text-gray-400">미팅 없음</span>
+          <span className="text-px-11 text-gray-400">미팅 없음</span>
         </div>
       ) : (
         meetings.map((m) => (

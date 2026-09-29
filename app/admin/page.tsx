@@ -75,7 +75,7 @@ export default async function AdminLandingPage() {
             className="group relative rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
             {pendingTrainees.length > 0 && (
-              <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-px-11 font-bold text-amber-800">
                 ⏳ 승인 대기 {pendingTrainees.length}
               </span>
             )}
@@ -93,7 +93,7 @@ export default async function AdminLandingPage() {
             className="group relative rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
             {pendingTrainers.length > 0 && (
-              <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-px-11 font-bold text-amber-800">
                 ⏳ 승인 대기 {pendingTrainers.length}
               </span>
             )}

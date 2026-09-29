@@ -34,6 +34,9 @@ import {
   payBadgeClass,
   type AccentFamily,
 } from "../_lib/contractAccent";
+import FontScaleControl from "@/components/FontScaleControl";
+import { useFontStep } from "@/components/font-scale/useFontStep";
+import { fontScaleOf } from "@/util/font-scale";
 
 interface Props {
   cp: ContractPayment;
@@ -258,6 +261,9 @@ export default function ContractRow({
       setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
   };
 
+  // 2뎁스 상세 글자 크기(belie 2026-09-29) — 박스 안 글자만 키운다. 안쪽 업체정보는 이 배율 × 자기 배율.
+  const [boxFontStep, setBoxFontStep] = useFontStep("payment-detail");
+  const boxScale = String(fontScaleOf(boxFontStep));
   const actionButtons = <div className="flex gap-2 pt-1">
     {!isTerminated && <button type="button" onClick={onTerminateRequest} disabled={pending} className="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-50">계약해지</button>}
     <button type="button" onClick={onDeleteRequest} disabled={pending} className="h-11 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 disabled:opacity-50">🗑 삭제</button>
@@ -324,12 +330,12 @@ export default function ContractRow({
             )}
           </div>
           {ongoingAgencies && (
-            <div className="mt-0.5 truncate text-[11px] text-blue-600">
+            <div className="mt-0.5 truncate text-px-11 text-blue-600">
               🔄 {ongoingAgencies}
             </div>
           )}
           {isTerminated && (
-            <div className="mt-0.5 truncate text-[11px] text-red-500">
+            <div className="mt-0.5 truncate text-px-11 text-red-500">
               해지 {fmtDate(cp.해지일)}
               {cp.반환액 > 0 && <> · 반환 ₩{fmtMoney(cp.반환액)}</>}
               {cp.해지사유 && <> · {cp.해지사유}</>}
@@ -370,6 +376,7 @@ export default function ContractRow({
       {showBody && (
         <div
           className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : `card-open-anim space-y-3 ${inline ? "p-2.5" : "p-3"}`}
+          style={{ ["--font-scale" as string]: boxScale, ["--font-scale-box" as string]: boxScale }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commitGroup();
@@ -388,15 +395,16 @@ export default function ContractRow({
                 onUndo={undo}
               />
               {ciState.saving && status === "idle" && !ciState.error && (
-                <span className="text-[11px] text-gray-400" aria-live="polite">저장 중…</span>
+                <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>
               )}
               {ciState.error && (
-                <p className="text-[11px] font-medium text-red-600" aria-live="polite">
+                <p className="text-px-11 font-medium text-red-600" aria-live="polite">
                   ⚠ 업체정보: {ciState.error} — 입력은 유지됩니다
                 </p>
               )}
             </div>
           )}
+          <div className="flex items-center justify-end gap-1.5"><span className="text-xs text-slate-400">글자 크기</span><FontScaleControl step={boxFontStep} onChange={setBoxFontStep} label="실무/수납 상세" /></div>
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           <div className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>

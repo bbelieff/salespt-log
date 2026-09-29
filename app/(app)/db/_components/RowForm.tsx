@@ -184,7 +184,7 @@ function FieldCell({
       <div className="flex min-w-0 flex-col">
         <label className={labelCls}>
           <span className="min-w-0 break-keep">{field.label}</span>
-          <span className="shrink-0 rounded bg-amber-100 px-1 py-px text-[11px] font-bold text-amber-800">
+          <span className="shrink-0 rounded bg-amber-100 px-1 py-px text-px-11 font-bold text-amber-800">
             🔒 자동
           </span>
         </label>

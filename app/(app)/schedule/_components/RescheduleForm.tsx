@@ -137,7 +137,7 @@ export default function RescheduleForm({
         {pending ? "저장중..." : "📅 일정 변경 확정"}
       </button>
 
-      <div className="rounded-md bg-white/60 px-2 py-1.5 text-[11px] text-gray-500">
+      <div className="rounded-md bg-white/60 px-2 py-1.5 text-px-11 text-gray-500">
         💡 이전 카드는 보라색 &ldquo;변경됨&rdquo;으로 보존 · 새 카드가 새 날짜에 생성
       </div>
     </div>

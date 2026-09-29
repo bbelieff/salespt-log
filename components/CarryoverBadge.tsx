@@ -14,13 +14,13 @@ export default function CarryoverBadge({
   if (구분 !== "이월") return null;
   if (variant === "note") {
     return (
-      <p className="text-[11px] text-gray-400">
+      <p className="text-px-11 text-gray-400">
         ↩ 이월 — 이 건은 아레나 점수에 들어가지 않습니다.
       </p>
     );
   }
   return (
-    <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
+    <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 text-px-10 font-bold text-gray-500">
       이월
     </span>
   );

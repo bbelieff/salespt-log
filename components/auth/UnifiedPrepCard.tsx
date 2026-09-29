@@ -37,7 +37,7 @@ export default function UnifiedPrepCard({
       </summary>
       <div className="border-t border-sky-200 px-4 py-4">
         {/* 모드 토글 */}
-        <div className="mb-3 inline-flex rounded-full border border-sky-200 bg-white p-0.5 text-[11px]">
+        <div className="mb-3 inline-flex rounded-full border border-sky-200 bg-white p-0.5 text-px-11">
           <button
             type="button"
             onClick={() => setMode("single")}
@@ -97,7 +97,7 @@ function SingleForm({
         (e.currentTarget as HTMLFormElement).reset();
       }}
     >
-      <p className="text-[11px] text-gray-500">
+      <p className="text-px-11 text-gray-500">
         시트 URL 입력하면 자동으로 ID 추출. 본인이 같은 기수·이름으로 로그인
         하면 즉시 활성.
       </p>
@@ -171,7 +171,7 @@ https://docs.google.com/spreadsheets/d/.../edit`;
         form.reset();
       }}
     >
-      <p className="text-[11px] text-gray-500">
+      <p className="text-px-11 text-gray-500">
         시트 이름 줄 + URL 줄 페어 (페어 사이 빈 줄 OK).
       </p>
       <textarea
@@ -179,7 +179,7 @@ https://docs.google.com/spreadsheets/d/.../edit`;
         rows={6}
         placeholder={placeholder}
         required
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-[11px] outline-none focus:border-sky-500"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-px-11 outline-none focus:border-sky-500"
       />
       <button
         type="submit"

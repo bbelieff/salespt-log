@@ -347,8 +347,8 @@ export default function PaymentPage() {
             {selectedCp && (
               <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
                 <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
-                  <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork ? <p className="truncate text-[11px] text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-[11px] text-blue-700">{selectedCompany.hasProgress ? `진행 ${selectedCompany.work.slot} · ${selectedCompany.work.institution || "기관 미입력"}${selectedCompany.work.product ? ` · ${selectedCompany.work.product}` : ""}` : "진행건 미등록"}</p>}</div>
-                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-[11px] font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                  <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{selectedCompany.hasProgress ? `진행 ${selectedCompany.work.slot} · ${selectedCompany.work.institution || "기관 미입력"}${selectedCompany.work.product ? ` · ${selectedCompany.work.product}` : ""}` : "진행건 미등록"}</p>}</div>
+                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
@@ -385,7 +385,7 @@ export default function PaymentPage() {
               activityState={activityState}
               detailExpanded={mobileDetailExpanded} onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
               renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-red-100 px-2.5 py-2 text-[11px] text-slate-500">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-red-100 px-2.5 py-2 text-px-11 text-slate-500">
                   <span className="min-w-0 flex-1">{fmtDate(selectedCp.계약일)} · 수임비 ₩{fmtMoney(selectedCp.수임비)}</span>
                   <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(selectedCp)}/{TOTAL_CHECKBOXES}</span>
                 </div>
@@ -404,7 +404,7 @@ export default function PaymentPage() {
               onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
               highlight={companyQuery} courseStartISO={courseStartISO}
               renderDetail={(item) => selectedCompanyKey === item.key ? <>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-blue-100 px-2.5 py-2 text-[11px] text-slate-500">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-blue-100 px-2.5 py-2 text-px-11 text-slate-500">
                   <span className="min-w-0 flex-1">{fmtDate(item.cp.계약일)} · 수임비 ₩{fmtMoney(item.cp.수임비)}</span>
                   <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(item.cp)}/{TOTAL_CHECKBOXES}</span>
                 </div>

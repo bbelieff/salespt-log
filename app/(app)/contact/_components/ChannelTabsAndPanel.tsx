@@ -251,14 +251,14 @@ export default function ChannelTabsAndPanel({
                 </span>
                 {total > 0 ? (
                   <span
-                    className={`rounded-full px-1.5 py-px text-[11px] font-semibold leading-none ${
+                    className={`rounded-full px-1.5 py-px text-px-11 font-semibold leading-none ${
                       isActive ? `${colorCls.bg100} ${colorCls.text700}` : "bg-gray-100 text-gray-500"
                     }`}
                   >
                     {total}
                   </span>
                 ) : (
-                  <span className="text-[11px] leading-none text-gray-300">·</span>
+                  <span className="text-px-11 leading-none text-gray-300">·</span>
                 )}
               </div>
               {isActive && (
@@ -305,7 +305,7 @@ export default function ChannelTabsAndPanel({
                     <div className="num-mono text-sm font-bold text-green-700">
                       생산 {directLiveCount}건
                     </div>
-                    <div className="text-[11px] text-gray-400">유입 집계</div>
+                    <div className="text-px-11 text-gray-400">유입 집계</div>
                   </div>
                 </div>
               ) : (
@@ -367,7 +367,7 @@ export default function ChannelTabsAndPanel({
                 <div className="min-w-0 pr-1">
                   <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
                     {active === "매입DB" ? "유입대기" : "생산"}
-                    <span className="rounded bg-gray-100 px-1 py-px text-[11px] font-bold text-gray-500">
+                    <span className="rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   </div>
@@ -422,7 +422,7 @@ export default function ChannelTabsAndPanel({
                 <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
                   {m.label}
                   {isLeadInflow && (
-                    <span className="rounded bg-gray-100 px-1 py-px text-[11px] font-bold text-gray-500">
+                    <span className="rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   )}
@@ -489,7 +489,7 @@ export default function ChannelTabsAndPanel({
           <span aria-hidden="true">📌</span>
           <span>
             아직 미팅 안 잡은 영업기회 <b className="font-bold">{leadBacklog}건</b>
-            <span className="block text-[11px] text-violet-500">
+            <span className="block text-px-11 text-violet-500">
               미팅예약 ＋를 누르면 여기서 골라요
             </span>
           </span>

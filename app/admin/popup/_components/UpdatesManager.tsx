@@ -227,13 +227,13 @@ export default function UpdatesManager({
         <div className="flex shrink-0 items-center gap-2">
           {/* truthful 상태 — 보관 성공시에만, 게시 ACK 후 dirty 0이면 게시됨. */}
           {justPublished && dirtyRows.length === 0 ? (
-            <span className="text-[11px] font-bold text-green-600">게시됨</span>
+            <span className="text-px-11 font-bold text-green-600">게시됨</span>
           ) : dirtyRows.length > 0 && draftSaved ? (
-            <span className="text-[11px] font-bold text-amber-600">
+            <span className="text-px-11 font-bold text-amber-600">
               초안 {dirtyRows.length}건 보관됨
             </span>
           ) : dirtyRows.length > 0 && !storageOk ? (
-            <span className="text-[11px] font-bold text-red-500">초안 보관 안 됨</span>
+            <span className="text-px-11 font-bold text-red-500">초안 보관 안 됨</span>
           ) : null}
           <button
             type="button"
@@ -249,7 +249,7 @@ export default function UpdatesManager({
         배포할 때마다 자동으로 쌓여요. 문구를 수강생이 읽기 쉽게 다듬고, 보여줄지 정하세요.
       </p>
       {conflictPrs.size > 0 && (
-        <p className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700">
+        <p className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-px-11 font-semibold text-amber-700">
           {conflictPrs.size}건이 보관 이후 바뀐 게시본과 달라요. 게시 전 내용을 확인해 주세요.
         </p>
       )}
@@ -257,7 +257,7 @@ export default function UpdatesManager({
       {/* 열 헤더 — 데스크탑(pc:)만. 모바일은 카드 자체 라벨이라 헤더 불필요.
           순서는 본문 데스크탑 컬럼(유형·#·날짜·내용·마일스톤·노출)과 1:1. */}
       {rows.length > 0 && (
-        <div className="hidden items-center gap-2 border-b border-gray-100 px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400 pc:flex">
+        <div className="hidden items-center gap-2 border-b border-gray-100 px-2 pb-1.5 text-px-10 font-bold uppercase tracking-wide text-gray-400 pc:flex">
           <span className="w-10 shrink-0">유형</span>
           <span className="w-10 shrink-0">#</span>
           <span className="w-16 shrink-0">날짜</span>
@@ -283,7 +283,7 @@ export default function UpdatesManager({
               <div className="flex items-center justify-between gap-2 pc:contents">
                 <div className="flex items-center gap-2 pc:contents">
                   <span
-                    className={`shrink-0 rounded-full px-1 py-0.5 text-center text-[10px] font-bold pc:w-10 ${
+                    className={`shrink-0 rounded-full px-1 py-0.5 text-center text-px-10 font-bold pc:w-10 ${
                       u.type === "feat" || u.type === "fix"
                         ? "bg-red-50 text-brand-red"
                         : "bg-gray-100 text-gray-500"
@@ -301,7 +301,7 @@ export default function UpdatesManager({
                 {/* 노출 라벨 + 표준 스위치 — 모바일 우측, 데스크탑 끝 컬럼(pc:order-last, w-24). */}
                 <div className="flex shrink-0 items-center justify-end gap-2 pc:order-last pc:w-24">
                   <span
-                    className={`w-7 text-right text-[11px] font-bold ${
+                    className={`w-7 text-right text-px-11 font-bold ${
                       u.visible ? "text-brand-red" : "text-gray-400"
                     }`}
                   >
@@ -349,7 +349,7 @@ export default function UpdatesManager({
                 placeholder="앵커 키 (선택)"
               />
               {conflictPrs.has(u.pr) && (
-                <span className="shrink-0 text-[11px] font-bold text-amber-600">
+                <span className="shrink-0 text-px-11 font-bold text-amber-600">
                   ⚠ 새 게시본 있음
                 </span>
               )}

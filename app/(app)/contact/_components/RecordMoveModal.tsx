@@ -183,11 +183,11 @@ export default function RecordMoveModal({
             ←
           </button>
           <div>
-            <span className="block text-[10px] font-bold tracking-wide text-slate-400">
+            <span className="block text-px-10 font-bold tracking-wide text-slate-400">
               {stepNo} / {stepTotal} 단계
               {step === "where" && option ? ` · ${OPTION_TEXT[option].title}` : ""}
             </span>
-            <h3 className="text-[15px] font-black leading-tight">{title}</h3>
+            <h3 className="text-px-15 font-black leading-tight">{title}</h3>
           </div>
           <button type="button" disabled={saving} onClick={dismiss} aria-label="이동 취소하고 닫기" className="ml-auto h-8 w-8 shrink-0 rounded-lg text-xl hover:bg-slate-700">×</button>
         </div>
@@ -225,10 +225,10 @@ export default function RecordMoveModal({
                       }`}
                     />
                     <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-bold text-gray-900">
+                      <span className="block truncate text-px-13 font-bold text-gray-900">
                         {c.업체명}
                       </span>
-                      <span className="block text-[11px] font-semibold text-gray-500">
+                      <span className="block text-px-11 font-semibold text-gray-500">
                         {md.label} ({md.dow}) {c.미팅시간}
                       </span>
                     </span>
@@ -242,7 +242,7 @@ export default function RecordMoveModal({
             <>
               <div className="mb-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-gray-200">
                 <div className="bg-white p-2.5">
-                  <span className="block text-[10px] font-bold tracking-wide text-gray-400">
+                  <span className="block text-px-10 font-bold tracking-wide text-gray-400">
                     고칠 미팅
                   </span>
                   <span className="mt-0.5 block truncate text-base font-bold text-gray-900">
@@ -250,7 +250,7 @@ export default function RecordMoveModal({
                   </span>
                 </div>
                 <div className="bg-white p-2.5">
-                  <span className="block text-[10px] font-bold tracking-wide text-gray-400">
+                  <span className="block text-px-10 font-bold tracking-wide text-gray-400">
                     지금 기록
                   </span>
                   <span
@@ -264,9 +264,9 @@ export default function RecordMoveModal({
 
               {GROUPS.map((g) => (
                 <div key={g.head} className="mb-3 last:mb-0">
-                  <p className="mb-1.5 text-[11px] font-bold leading-tight text-gray-500">
+                  <p className="mb-1.5 text-px-11 font-bold leading-tight text-gray-500">
                     {g.head}
-                    <span className="block text-[10px] font-semibold text-gray-400">{g.sub}</span>
+                    <span className="block text-px-10 font-semibold text-gray-400">{g.sub}</span>
                   </p>
                   {g.keys.map((k) => (
                 <div
@@ -286,7 +286,7 @@ export default function RecordMoveModal({
                       }`}
                     />
                     <span
-                      className={`text-[13px] font-bold leading-snug ${
+                      className={`text-px-13 font-bold leading-snug ${
                         option === k ? "text-indigo-700" : "text-gray-900"
                       }`}
                     >
@@ -299,13 +299,13 @@ export default function RecordMoveModal({
                         e.stopPropagation();
                         setOpenTip(openTip === k ? null : k);
                       }}
-                      className="ml-auto h-5 w-5 shrink-0 rounded-full border border-gray-300 bg-white text-[10px] font-bold text-gray-500 hover:border-gray-400 hover:text-gray-900"
+                      className="ml-auto h-5 w-5 shrink-0 rounded-full border border-gray-300 bg-white text-px-10 font-bold text-gray-500 hover:border-gray-400 hover:text-gray-900"
                     >
                       ?
                     </button>
                   </div>
                   {openTip === k && (
-                    <p className="ml-5 mt-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600">
+                    <p className="ml-5 mt-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2 text-px-11 leading-relaxed text-gray-600">
                       {OPTION_TEXT[k].when}
                     </p>
                   )}
@@ -319,7 +319,7 @@ export default function RecordMoveModal({
           {step === "where" && (
             <>
               <div className="mb-3">
-                <span className="mb-1.5 block text-[10px] font-bold tracking-wide text-gray-400">
+                <span className="mb-1.5 block text-px-10 font-bold tracking-wide text-gray-400">
                   채널
                   {chanLocked ? " — 채널은 맞으니 그대로 둬요" : ""}
                 </span>
@@ -330,7 +330,7 @@ export default function RecordMoveModal({
                       type="button"
                       disabled={chanLocked}
                       onClick={() => setToChannel(c)}
-                      className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${CHIP_BG[c]} ${
+                      className={`rounded-full px-3 py-1.5 text-px-11 font-bold ${CHIP_BG[c]} ${
                         c === toChannel ? "ring-2 ring-slate-900" : "opacity-40"
                       } ${chanLocked && c !== toChannel ? "hidden" : ""}`}
                     >
@@ -341,7 +341,7 @@ export default function RecordMoveModal({
               </div>
 
               <div className="mb-3">
-                <span className="mb-1.5 block text-[10px] font-bold tracking-wide text-gray-400">
+                <span className="mb-1.5 block text-px-10 font-bold tracking-wide text-gray-400">
                   기록하는 날짜
                   {dateLocked ? " — 날짜는 맞으니 그대로 둬요" : ""}
                 </span>
@@ -355,7 +355,7 @@ export default function RecordMoveModal({
                         type="button"
                         disabled={dateLocked}
                         onClick={() => setToDate(d)}
-                        className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-60 ${
+                        className={`rounded-lg px-2.5 py-1.5 text-px-11 font-bold disabled:opacity-60 ${
                           d === targetDate
                             ? "bg-slate-900 text-white"
                             : "bg-gray-200 text-gray-600"
@@ -368,7 +368,7 @@ export default function RecordMoveModal({
                 </div>
               </div>
 
-              <p className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-[11px] leading-relaxed text-indigo-900">
+              <p className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-px-11 leading-relaxed text-indigo-900">
                 <b>
                   {fromChannel} {from.label}
                 </b>{" "}
@@ -384,12 +384,12 @@ export default function RecordMoveModal({
               {invalidFunnel && <p role="alert" className="mt-2 text-xs text-red-700">이대로 옮기면 미팅예약이 컨택보다 많아져요. 관련 유입·컨택도 함께 옮기는 선택지로 돌아가주세요.</p>}
               {!targetReady && <p role="status" className="mt-2 text-xs text-red-700">{targetDay.isError ? "옮길 날짜를 불러오지 못했어요. 다른 날짜를 선택한 뒤 다시 시도해주세요." : "옮길 날짜의 기록을 확인하고 있어요…"}</p>}
               {same && (
-                <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600">
+                <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-px-11 leading-relaxed text-gray-600">
                   지금과 <b>같은 자리</b>예요. 채널이나 날짜를 바꿔주세요.
                 </p>
               )}
               {busy && (
-                <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+                <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-px-11 leading-relaxed text-amber-800">
                   <b>
                     {to.label} {toChannel}에 이미 기록이 있어요.
                   </b>{" "}
@@ -397,7 +397,7 @@ export default function RecordMoveModal({
                 </p>
               )}
               {inflowLocked && (
-                <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-600">
+                <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-px-11 leading-relaxed text-gray-600">
                   <b>유입은 원래 날짜·채널에 그대로 남아요.</b> 이번에 옮기는 항목은{" "}
                   <b>{describeDeltas(deltas) || "미팅예약 1건"}</b>이에요. 콜·지·기·소 유입은
                   영업기회 접수 건수로 자동 집계돼요. 유입 날짜도 바꾸려면 STEP 1에서 해당 영업기회의 접수일을 수정해주세요.
@@ -411,7 +411,7 @@ export default function RecordMoveModal({
           <button
             type="button"
             onClick={goBack}
-            className="flex-1 rounded-lg bg-gray-100 py-3 text-[13px] font-bold text-gray-700 hover:bg-gray-200"
+            className="flex-1 rounded-lg bg-gray-100 py-3 text-px-13 font-bold text-gray-700 hover:bg-gray-200"
           >
             뒤로
           </button>
@@ -420,7 +420,7 @@ export default function RecordMoveModal({
               type="button"
               disabled={!pickedKey}
               onClick={() => setStep("what")}
-              className="flex-1 rounded-lg bg-slate-900 py-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+              className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
             >
               다음
             </button>
@@ -434,7 +434,7 @@ export default function RecordMoveModal({
                 setToDate(fromDate);
                 setStep("where");
               }}
-              className="flex-1 rounded-lg bg-slate-900 py-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+              className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
             >
               다음
             </button>
@@ -454,7 +454,7 @@ export default function RecordMoveModal({
                   },
                 })
               }
-              className="flex-1 rounded-lg bg-slate-900 py-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+              className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
             >
               {saving ? "저장 중…" : step === "review" ? "저장하기" : "이동 내용 확인"}
             </button>

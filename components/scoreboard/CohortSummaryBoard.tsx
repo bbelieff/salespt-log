@@ -80,7 +80,7 @@ export default function CohortSummaryBoard({
                   >
                     {c.cohort}기
                   </span>
-                  <span className="ml-1 text-[11px] font-bold text-gray-400">
+                  <span className="ml-1 text-px-11 font-bold text-gray-400">
                     {c.paidMembers}명
                   </span>
                 </td>

@@ -227,7 +227,7 @@ export default function DesktopNav() {
                 className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tab.match(pathname) ? "bg-white shadow-sm" : ""}`}
               >
                 <tab.Icon active={tab.match(pathname)} />
-                {collapsed && <span className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-white text-[10px] font-bold ${STEP_BADGE[tab.color] ?? "bg-slate-100 text-slate-600"}`}>{tab.step}</span>}
+                {collapsed && <span className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-white text-px-10 font-bold ${STEP_BADGE[tab.color] ?? "bg-slate-100 text-slate-600"}`}>{tab.step}</span>}
               </span>
               {!collapsed && <><span aria-hidden="true" className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${STEP_BADGE[tab.color] ?? "bg-slate-100 text-slate-600"}`}>STEP {tab.step}</span><span className="truncate">{tab.label}</span></>}
             </SideLink>

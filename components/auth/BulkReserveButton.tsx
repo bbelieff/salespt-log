@@ -133,10 +133,10 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                             <span className="font-semibold text-gray-900">
                               {t.name}
                             </span>
-                            <span className="ml-1.5 text-[11px] text-gray-500">
+                            <span className="ml-1.5 text-px-11 text-gray-500">
                               · {t.cohort}
                             </span>
-                            <span className="ml-1.5 break-all text-[10px] text-gray-400">
+                            <span className="ml-1.5 break-all text-px-10 text-gray-400">
                               {t.email}
                             </span>
                           </span>

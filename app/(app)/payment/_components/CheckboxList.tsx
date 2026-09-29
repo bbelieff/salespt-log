@@ -84,14 +84,14 @@ export default function CheckboxList({ draft, onChange, compact = false }: Props
     <div className="grid grid-cols-6 gap-1" aria-label="서류·진행 체크 항목">
       {ALL_ITEMS.map((it, index) => <label key={it.key} title={`${index < 3 ? "수집" : "진행"} · ${it.label}`} className={`flex min-w-0 cursor-pointer items-center justify-center gap-0.5 rounded-md border px-0.5 py-1.5 ${draft[it.key] ? "border-blue-300 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600"}`}>
         <input type="checkbox" aria-label={`${index < 3 ? "수집" : "진행"} · ${it.label}`} checked={draft[it.key]} onChange={(e) => onChange(it.key, e.target.checked)} className="h-3.5 w-3.5 shrink-0 accent-blue-500"/>
-        <span className="min-w-0 truncate text-[10px] font-medium">{COMPACT_LABELS[index]}</span>
+        <span className="min-w-0 truncate text-px-11 font-medium">{COMPACT_LABELS[index]}</span>
       </label>)}
     </div>
   );
   return (
     <div className="grid gap-2.5 min-[1500px]:grid-cols-2">
       <div className="min-w-0">
-        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-1.5 text-px-11 font-semibold uppercase tracking-wider text-gray-500">
           수집
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -99,7 +99,7 @@ export default function CheckboxList({ draft, onChange, compact = false }: Props
         </div>
       </div>
       <div className="min-w-0">
-        <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-1.5 text-px-11 font-semibold uppercase tracking-wider text-gray-500">
           진행
         </div>
         <div className="grid grid-cols-3 gap-1.5">

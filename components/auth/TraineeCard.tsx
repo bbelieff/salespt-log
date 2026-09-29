@@ -32,7 +32,7 @@ function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   return (
     <span
       title={`같은 시트 공유: ${siblings.join(", ")}`}
-      className="ml-1 text-[10px] font-medium text-sky-600"
+      className="ml-1 text-px-10 font-medium text-sky-600"
     >
       🔗 +{siblings.length}
     </span>
@@ -246,7 +246,7 @@ export default function TraineeCard({
               stats 없는 trainee (spreadsheetId 미설정 / fetch 실패) 는 렌더 안 함.
               SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
           {u.stats && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-px-11 text-gray-500">
               <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500">
                 {courseWeeksForCohort(u.cohort)}주 누적
               </span>
@@ -265,7 +265,7 @@ export default function TraineeCard({
             </div>
           )}
           {/* Row 2: 팀 (compact) + 담당 (flex-1, 카드 우측 끝까지 + 줄바꿈). */}
-          <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-[11px] text-gray-600">
+          <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-px-11 text-gray-600">
             {!viewOnly && (
               <span className="inline-flex shrink-0 items-center gap-1">
                 <span className="text-gray-400">팀</span>
@@ -281,7 +281,7 @@ export default function TraineeCard({
                     }
                   }}
                   placeholder="미배정"
-                  className={`rounded border px-1 py-0.5 text-[11px] outline-none ${
+                  className={`rounded border px-1 py-0.5 text-px-11 outline-none ${
                     dirty
                       ? "border-indigo-400 bg-indigo-50"
                       : "border-gray-200 bg-white"
@@ -294,7 +294,7 @@ export default function TraineeCard({
               <button
                 type="button"
                 onClick={() => setTrainerOpen((v) => !v)}
-                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-px-11 font-bold text-indigo-700 hover:bg-indigo-100"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
                 <span className="shrink-0">담당:</span>
@@ -324,7 +324,7 @@ export default function TraineeCard({
       </div>
       {canAssign && trainerOpen && (
         <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+          <div className="mb-2 text-px-10 font-bold uppercase tracking-wider text-indigo-700">
             담당 트레이너 — 토글 즉시 저장
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -338,7 +338,7 @@ export default function TraineeCard({
                   type="button"
                   onClick={() => toggleTrainer(lc)}
                   disabled={isBusy}
-                  className={`rounded-full border px-3 py-1 text-[11px] font-bold transition disabled:opacity-50 ${
+                  className={`rounded-full border px-3 py-1 text-px-11 font-bold transition disabled:opacity-50 ${
                     checked
                       ? "border-indigo-500 bg-indigo-500 text-white"
                       : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"

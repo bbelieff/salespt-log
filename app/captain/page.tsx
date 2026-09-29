@@ -86,7 +86,7 @@ export default async function CaptainPage() {
                     {m.name}
                   </span>
                   {isMe && (
-                    <span className="rounded-full bg-brand-red px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="rounded-full bg-brand-red px-1.5 py-0.5 text-px-10 font-bold text-white">
                       나
                     </span>
                   )}
@@ -97,7 +97,7 @@ export default async function CaptainPage() {
                       key={key}
                       className="rounded-lg bg-gray-50 px-2 py-1.5 text-center"
                     >
-                      <div className="text-[10px] text-gray-400">{label}</div>
+                      <div className="text-px-10 text-gray-400">{label}</div>
                       <div className="text-base font-black text-gray-900">
                         {s[key]}
                       </div>

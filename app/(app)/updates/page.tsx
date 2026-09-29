@@ -118,7 +118,7 @@ export default function UpdatesArchivePage() {
                       {n.title}
                     </h3>
                     {noticeDate(n) && (
-                      <p className="mb-1.5 text-[11px] font-bold text-gray-400">
+                      <p className="mb-1.5 text-px-11 font-bold text-gray-400">
                         {noticeDate(n)}
                       </p>
                     )}

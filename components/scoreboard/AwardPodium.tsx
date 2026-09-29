@@ -80,13 +80,13 @@ function PodiumCard({
         <span className="px-1 text-center text-base font-black leading-tight text-white">
           {entry.name}
         </span>
-        <span className="text-[11px] font-bold text-white/80">
+        <span className="text-px-11 font-bold text-white/80">
           {entry.cohort}기
         </span>
         <span className="mt-1 text-xl font-black tabular-nums text-white">
           {fmt(entry.value)}
         </span>
-        <span className="text-[11px] font-bold text-white/80">{unit}</span>
+        <span className="text-px-11 font-bold text-white/80">{unit}</span>
       </div>
     </div>
   );
@@ -167,13 +167,13 @@ export default function AwardPodium({
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-gray-900">
                 {e.name}
-                <span className="ml-1 text-[11px] font-bold text-gray-400">
+                <span className="ml-1 text-px-11 font-bold text-gray-400">
                   {e.cohort}기
                 </span>
               </span>
               <span className="text-sm font-black tabular-nums text-gray-800">
                 {fmt(e.value)}
-                <span className="ml-0.5 text-[11px] font-bold text-gray-400">
+                <span className="ml-0.5 text-px-11 font-bold text-gray-400">
                   {unit}
                 </span>
               </span>

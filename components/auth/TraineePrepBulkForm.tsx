@@ -123,7 +123,7 @@ https://docs.google.com/spreadsheets/d/.../edit
           form.reset();
         }}
       >
-        <p className="text-[11px] text-gray-500">
+        <p className="text-px-11 text-gray-500">
           시트 이름 줄 + URL 줄 페어 (페어 사이 빈 줄 OK) — 사용자에게 받은
           메시지를 그대로 paste 하면 자동 파싱.
         </p>
@@ -132,7 +132,7 @@ https://docs.google.com/spreadsheets/d/.../edit
           rows={8}
           placeholder={placeholder}
           required
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-[11px] outline-none focus:border-emerald-500"
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-px-11 outline-none focus:border-emerald-500"
         />
         <button
           type="submit"

@@ -152,7 +152,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { c
             onClick={() => setEditing(false)}
             disabled={dirty}
             title={dirty ? "저장되지 않은 변경이 있어요" : "접기"}
-            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-gray-400 hover:bg-white hover:text-gray-600 disabled:opacity-40"
+            className="rounded px-1.5 py-0.5 text-px-11 font-medium text-gray-400 hover:bg-white hover:text-gray-600 disabled:opacity-40"
           >
             접기
           </button>}
@@ -188,7 +188,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { c
           />
         </div>
       </div>
-      <p className="mt-2 text-[11px] leading-tight text-gray-500">
+      <p className="mt-2 text-px-11 leading-tight text-gray-500">
         업체명·수임비는 일정·계약 미팅과 시트에 함께 반영돼요. 계약일은 이 계약카드에만 적용돼요
         (미팅 날짜·달력·주차 통계는 그대로).
       </p>
