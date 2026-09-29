@@ -88,6 +88,8 @@ type Found = { current: number; prior: number | null; sameLine: boolean; loss: b
 function stripAfterLabel(rest: string): string {
   return rest
     .replace(/^\s*\(\s*(?:손\s*실|이\s*익)\s*\)/, "")
+    // 표준재무제표의 계산식 꼬리 "(Ⅰ+Ⅱ)" · "(Ⅲ-Ⅳ)" — 로마 숫자뿐인 괄호는 금액이 아니다.
+    .replace(/^\s*\([ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ+\-−\s]+\)/, "")
     .replace(/\(\s*주\s*석?\s*[\d,\s]+\)/g, " ")
     .replace(/주\s*석\s*[\d,]+/g, " ");
 }
@@ -99,7 +101,34 @@ function pickAmounts(tokens: AmountToken[]): number[] {
   return kept.map((t) => t.value);
 }
 
-function findItem(lines: string[], spec: ItemSpec): Found | null {
+/**
+ * 홈택스 표준재무제표는 한 줄에 두 열이 나란하다("Ⅰ.매출액 01 285,000,000 9.가스.수도비 30 800,000").
+ * 숫자 뒤에 다시 글자(과목명)가 나오면 거기서 끊어 과목마다 한 조각으로 만든다 — 오른쪽 열 과목
+ * (자산총계·이자비용 …)도 줄 첫머리로 오고, 옆 과목 금액이 전기 금액으로 잘못 붙지 않는다.
+ */
+export function splitItemColumns(line: string): string[] {
+  const out: string[] = [];
+  let cur: string[] = [];
+  let sawNumber = false;
+  for (const tok of line.trim().split(/\s+/)) {
+    if (/[가-힣ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]/.test(tok) && sawNumber && cur.length > 0) {
+      out.push(cur.join(" "));
+      cur = [];
+      sawNumber = false;
+    }
+    cur.push(tok);
+    if (/^[\d,.()△▲-]+$/.test(tok) && /\d/.test(tok)) sawNumber = true;
+  }
+  if (cur.length > 0) out.push(cur.join(" "));
+  return out;
+}
+
+/** 표준재무제표(홈택스) — 과목 뒤 두 자리 코드("01" · "62")가 금액 앞에 붙는다. */
+function isStandardStatement(text: string): boolean {
+  return /표준(?:재무|손익|원가)/.test(compactText(text));
+}
+
+function findItem(lines: string[], spec: ItemSpec, standard = false): Found | null {
   const all = [...spec.labels.map((l) => ({ l, loss: false })), ...(spec.lossLabels ?? []).map((l) => ({ l, loss: true }))];
   for (let i = 0; i < lines.length; i += 1) {
     const head = itemHead(lines[i]!);
@@ -107,7 +136,9 @@ function findItem(lines: string[], spec: ItemSpec): Found | null {
     if (!hit) continue;
     const m = lines[i]!.match(labelPattern(hit.l));
     const rest = m && m.index !== undefined ? lines[i]!.slice(m.index + m[0].length) : "";
-    const cleaned = stripAfterLabel(rest);
+    let cleaned = stripAfterLabel(rest);
+    // 표준재무제표: 과목 코드(두 자리) 다음에 금액이 오면 코드를 뗀다("이자비용 82 0" → 0).
+    if (standard) cleaned = cleaned.replace(/^\s*\d{2}(?=\s+[\d(△▲-])/, "");
     // 재무제표의 "-" 는 0 이다(예: "이자비용  -  -").
     let amounts = /^[\s-]*-[\s-]*$/.test(cleaned) ? [0] : pickAmounts(parseAmountTokens(cleaned));
     let sameLine = true;
@@ -182,7 +213,8 @@ export function parseFinancialStatement(
   };
 
   const text = normalized.replace(THIRTEEN_DIGIT_ID, " ");
-  const lines = toLines(text);
+  const standard = isStandardStatement(text);
+  const lines = standard ? toLines(text).flatMap(splitItemColumns) : toLines(text);
 
   const unit = detectAmountUnit(text);
   if (!unit) documentWarnings.push("금액 단위(원·천원)를 찾지 못해 원으로 읽었어요. 금액 자릿수를 확인해 주세요.");
@@ -192,7 +224,7 @@ export function parseFinancialStatement(
 
   const got: Record<string, { current: number; prior: number | null; confidence: number; warnings: string[] }> = {};
   for (const spec of ITEMS) {
-    const f = findItem(lines, spec);
+    const f = findItem(lines, spec, standard);
     if (!f) continue;
     const warnings = f.sameLine ? [] : ["과목 다음 줄에서 읽었어요. 확인해 주세요."];
     got[spec.key] = {

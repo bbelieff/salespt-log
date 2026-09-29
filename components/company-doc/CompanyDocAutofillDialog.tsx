@@ -243,7 +243,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
           >
             파일 고르기
           </button>
-          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF, 15MB 이하 · PDF 는 첫 페이지만 읽어요</p>
+          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF, 15MB 이하 · PDF 는 10쪽까지(스캔본은 첫 쪽) 읽어요</p>
           <input
             ref={inputRef}
             type="file"

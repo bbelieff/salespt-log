@@ -2,8 +2,9 @@
  * document-ocr/limits — 파일·시간 상한과 취소 도구. 전부 브라우저 안에서만 강제한다(서버 전송 없음).
  * 출처: MoaWork app/src/lib/document-ocr/limits.ts (origin/main, 2026-09) — 문구만 이 앱 말투로.
  *
- * - 이미지는 JPEG/PNG/WebP 만. PDF 는 첫 페이지만 읽는다.
- * - PDF 텍스트층이 충분하면 OCR 을 건너뛰고(빠르고 정확), 부족하면 첫 페이지를 그려 OCR 한다.
+ * - 이미지는 JPEG/PNG/WebP 만.
+ * - PDF 텍스트층이 충분하면 OCR 을 건너뛰고(빠르고 정확) 최대 pdfTextMaxPages 쪽까지 읽는다.
+ *   텍스트층이 부족한 스캔 PDF 는 첫 페이지만 그려 OCR 한다.
  */
 
 export const OCR_LIMITS = {
@@ -11,6 +12,8 @@ export const OCR_LIMITS = {
   maxPages: 1,
   /** PDF 텍스트층이 이 글자 수(공백 제외) 이상이면 OCR 생략. */
   pdfTextMinChars: 30,
+  /** 텍스트층을 읽는 최대 쪽 수 — 표준재무제표(표지+5쪽) 전체를 덮는다. */
+  pdfTextMaxPages: 10,
   /** 인식 입력 최대 변(넘으면 축소). */
   maxImageDim: 3000,
   pdfRenderScale: 2,
