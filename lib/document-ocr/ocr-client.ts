@@ -325,9 +325,10 @@ export async function runDocumentOcr(
       );
       const capped = await toCappedImageBlob(blob, guard.signal);
       try {
+        // 스캔 서류 표의 숫자는 영어 모델을 함께 써야 한글 잡음으로 바뀌지 않는다(2026-09-29 실측).
         const out = await recognizeBlob(
           capped.blob,
-          opts.langs ?? "kor",
+          opts.langs ?? "kor+eng",
           manifest,
           guard.signal,
           opts.onProgress,

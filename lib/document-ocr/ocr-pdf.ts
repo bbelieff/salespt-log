@@ -5,6 +5,7 @@
 import { OCR_LIMITS, raceWithAbort, throwIfAborted } from "./limits";
 import type { OcrProgress, OcrStage } from "./types";
 import { pdfPagesToText, type PdfTextPiece } from "./pdf-lines";
+import { binarizeAndStripLines } from "./scan-clean";
 
 type OnProgress = ((progress: OcrProgress) => void) | undefined;
 
@@ -103,6 +104,10 @@ export async function renderPdfFirstPageToBlob(
     if (!ctx) throw new Error("PDF를 그리지 못했어요.");
     await raceWithAbort(page.render({ canvasContext: ctx, viewport }).promise, signal);
     throwIfAborted(signal);
+    // 스캔 PDF — 워터마크·표 선을 지워야 표 숫자가 읽힌다(scan-clean.ts).
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    binarizeAndStripLines(pixels.data, canvas.width, canvas.height);
+    ctx.putImageData(pixels, 0, 0);
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((b) => {
         if (b) resolve(b);
