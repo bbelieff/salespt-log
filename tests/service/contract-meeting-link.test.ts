@@ -20,11 +20,17 @@ const patchTodo = vi.fn();
 vi.mock("@/repo/contract-payment", () => ({ relinkContractRow: (...a: unknown[]) => relinkContractRow(...a) }));
 vi.mock("@/repo/company-info-archive", () => ({
   companyContractRef: (d: string, n: string) => `${d}|${n.trim()}`,
+  readCompanyInfoArchiveRow: vi.fn(async () => null),
   renameCompanyInfoKey: (...a: unknown[]) => renameCompanyInfoKey(...(a as [])),
   upsertCompanyInfoArchive: (...a: unknown[]) => upsertCompanyInfoArchive(...a),
 }));
 vi.mock("@/repo/db/company-archive-sync", () => ({
   persistCompanyArchiveRename: (...a: unknown[]) => persistCompanyArchiveRename(...a),
+}));
+const readContractsFromDb = vi.fn();
+vi.mock("@/repo/db/read-daily", () => ({
+  readContractsFromDb: (...a: unknown[]) => readContractsFromDb(...a),
+  readCompanyInfoFromDb: vi.fn(async () => null),
 }));
 vi.mock("@/repo/db/row-updated-at", () => ({
   readRowsUpdatedAt: vi.fn(async () => ({
@@ -39,7 +45,6 @@ vi.mock("@/service/meetings-write", () => ({
 }));
 vi.mock("@/service/contract-payment", () => ({
   loadContractPayments: (...a: unknown[]) => loadContractPayments(...a),
-  loadCompanyInfoByContract: vi.fn(async () => null),
   resolveSheetWithSyncDb: vi.fn(async () => ({
     spreadsheetId: "S",
     syncDb: true,
@@ -65,6 +70,8 @@ const meeting = (over: Partial<Meeting> = {}) => ({ ...BASE_M, ...over }) as unk
 beforeEach(() => {
   vi.clearAllMocks();
   loadContractPayments.mockResolvedValue([cp()]);
+  // DB 기수 = DB 만 읽는다(시트 읽기 0) — 기본은 DB 가 비어 시트 합본 경로도 함께 검증.
+  readContractsFromDb.mockImplementation(async () => loadContractPayments());
   getMeetingRecord.mockResolvedValue(meeting());
   listTodos.mockImplementation(async (_e: string, ref: string) =>
     ref === "2026-09-01|예시상사" ? ([{ id: "t1", contractRef: ref }] as Todo[]) : [],
@@ -117,6 +124,15 @@ describe("linkMeetingToContract", () => {
     const r = await linkMeetingToContract("e", { row: 7, meetingId: "m1", 업체명: "예시상사", 수임비: 1, 업체정보: {} });
     expect(relinkContractRow).toHaveBeenCalled();
     expect(r.failures).toEqual(["업체정보", "할일·History"]);
+  });
+});
+
+describe("시트 읽기 최소화", () => {
+  it("DB 에 행이 있으면 시트 합본(loadContractPayments)을 부르지 않는다", async () => {
+    readContractsFromDb.mockResolvedValue([cp()]);
+    await previewMeetingLink("e", 7, "m1");
+    await linkMeetingToContract("e", { row: 7, meetingId: "m1", 업체명: "예시상사", 수임비: 1, 업체정보: {} });
+    expect(loadContractPayments).not.toHaveBeenCalled();
   });
 });
 

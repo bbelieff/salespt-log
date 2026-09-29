@@ -19,7 +19,11 @@ export interface MeetingLinkPreview {
 async function fetchJSON<T>(input: string, init?: RequestInit): Promise<T> {
   const res = await fetch(input, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof data?.error === "string" ? data.error : `HTTP ${res.status}`);
+  if (!res.ok) {
+    const raw = typeof data?.error === "string" ? data.error : `HTTP ${res.status}`;
+    // Google Sheets 공용 한도 — 기술 문구 대신 다시 해 볼 수 있다는 안내(2026-09-29 운영 확인).
+    throw new Error(/quota|rate limit|429/i.test(raw) ? "지금 사용량이 많아요. 1분쯤 뒤 다시 해 주세요." : raw);
+  }
   return data as T;
 }
 

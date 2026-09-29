@@ -187,7 +187,8 @@ function fiscalYearOf(raw: unknown): number | null {
 
 /**
  * 부채비율 = 부채총계 ÷ 자본총계 × 100 ("120.0%", 자본총계 0 이하면 "자본잠식")
- * 이자보상배율 = 영업이익 ÷ 이자비용 ("2.4배", 이자비용 없거나 0 이면 "")
+ * 이자보상배율 = 영업이익 ÷ 이자비용 ("2.4배"). 이자비용을 0 으로 적었으면 "이자비용 없음"(0 으로 나눌 수 없다 —
+ *   빈칸이면 "못 구했다" 로 보여 belie 2026-09-29 문의), 이자비용 칸이 비었으면 ""
  * 당기순이익률 = 당기순이익 ÷ 결산연도 매출(기준 연도로 찾은 줄 합계) × 100 ("3.0%", 매출 없으면 "")
  */
 export function computeRatios(ci: Values, baseYear: number): Record<RatioKey, string> {
@@ -206,7 +207,8 @@ export function computeRatios(ci: Values, baseYear: number): Record<RatioKey, st
         : debt !== null && equity !== null
           ? `${oneDecimal((debt / equity) * 100)}%`
           : "",
-    이자보상배율: op !== null && interest !== null && interest !== 0 ? `${oneDecimal(op / interest)}배` : "",
+    이자보상배율:
+      op === null || interest === null ? "" : interest === 0 ? "이자비용 없음" : `${oneDecimal(op / interest)}배`,
     당기순이익률: net !== null && sales !== null && sales > 0 ? `${oneDecimal((net / sales) * 100)}%` : "",
   };
 }
