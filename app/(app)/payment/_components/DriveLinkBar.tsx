@@ -111,19 +111,23 @@ export default function DriveLinkBar() {
         ) : (
           <button
             type="button"
-            onClick={() => setShowRelink(true)}
+            // 연결하지 않을 거면 다시 눌러 접는다(belie 2026-09-29).
+            onClick={() => setShowRelink((v) => !v)}
+            aria-expanded={showRelink}
+            aria-controls="drive-link-panel"
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             {driveLinkStatus === "error" ? "다시 연결" : "Drive 연결"}
+            <span className="text-xs text-amber-500" aria-hidden>{showRelink ? "⌃" : "⌄"}</span>
           </button>
         )}
       </div>
 
       {showRelink && (
-        <div className="space-y-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div id="drive-link-panel" className="space-y-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
           {/* 개선 A — 자동으로 찾기 (URL 불필요, 우선 권장). 아레나는 폴더 구조가 달라 문구 분기. */}
           <div>
             <p className="mb-2 text-xs text-amber-800">

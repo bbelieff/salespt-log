@@ -31,11 +31,12 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect, ren
   return (
     <div className="space-y-1.5 p-2" aria-label="진행기관별 진행 목록">
       {groups.map((group) => {
-        const open = openInstitutions.has(group.institution);
         const active = group.institution === activeInstitution;
+        // 선택된 진행건이 든 기관은 늘 펼친다 — 접으면 선택·상세가 숨어 어디를 보고 있는지 잃는다(belie 2026-09-29).
+        const open = active || openInstitutions.has(group.institution);
         return (
           <section key={group.institution || "no-institution"} className={`rounded-xl border bg-white ${active ? "border-red-200" : "border-slate-200"}`}>
-            <button type="button" aria-expanded={open} data-active-institution={active ? "true" : undefined} onClick={() => setOpenInstitutions((current) => {
+            <button type="button" aria-expanded={open} aria-disabled={active || undefined} data-active-institution={active ? "true" : undefined} onClick={() => !active && setOpenInstitutions((current) => {
               const next = new Set(current);
               if (next.has(group.institution)) next.delete(group.institution);
               else next.add(group.institution);
@@ -44,7 +45,7 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect, ren
               className={`flex min-h-9 w-full items-center gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${open ? "rounded-t-[11px]" : "rounded-[11px]"} ${open || active ? "bg-red-50 text-red-900" : "text-slate-800 hover:bg-red-50/50"}`}>
               <span className="min-w-0 flex-1 truncate font-bold">{group.institution || "기관 미입력"}</span>
               <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-semibold text-red-700">{group.count}건</span>
-              <span className="shrink-0 text-xs text-slate-400" aria-hidden>{open ? "⌃" : "⌄"}</span>
+              {!active && <span className="shrink-0 text-xs text-slate-400" aria-hidden>{open ? "⌃" : "⌄"}</span>}
             </button>
             {(open || (renderDetail && active)) && (
               <div hidden={!open} className="space-y-1 border-t border-red-100 p-1.5" role={renderDetail ? "group" : "listbox"} aria-label={`${group.institution || "기관 미입력"} 진행건`}>

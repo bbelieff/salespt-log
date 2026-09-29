@@ -36,9 +36,10 @@ describe("기관 1뎁스 목록", () => {
     expect(node.querySelector('[data-work-key="5-1"]')).not.toBeNull();
     expect(node.querySelector('[data-work-key="3-1"]')).not.toBeNull();
     const activeHeader = node.querySelector('section > [data-active-institution="true"]') as HTMLButtonElement;
+    // 선택된 진행건이 든 기관은 눌러도 접히지 않는다(belie 2026-09-29).
     act(() => activeHeader.click());
-    expect(activeHeader.getAttribute("aria-expanded")).toBe("false");
-    expect(node.querySelector('[data-work-key="3-1"]')).toBeNull();
+    expect(activeHeader.getAttribute("aria-expanded")).toBe("true");
+    expect(node.querySelector('[data-work-key="3-1"]')).not.toBeNull();
     expect(activeHeader.className).toContain("bg-red-50");
   });
 
@@ -60,7 +61,7 @@ describe("기관 1뎁스 목록", () => {
     expect((node.querySelector('#payment-inline-detail-3-1') as HTMLDivElement).hidden).toBe(true);
     expect(node.querySelector('[data-editor]')).not.toBeNull();
     act(() => (node?.querySelector('section > button') as HTMLButtonElement).click());
-    expect((node.querySelector('[role="group"]') as HTMLDivElement).hidden).toBe(true);
+    expect((node.querySelector('[role="group"]') as HTMLDivElement).hidden).toBe(false);
     expect(node.querySelector('[data-editor]')).not.toBeNull();
     act(() => root?.render(h(InstitutionWorkList, { ...props, detailExpanded: true, activityState: "loading" })));
     expect(node.querySelector('[data-work-key="3-1"]')?.textContent).not.toContain("D-00");
