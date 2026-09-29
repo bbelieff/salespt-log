@@ -16,13 +16,15 @@ import { isManualContractLink } from "@/util/contract-link";
 import { relinkContractRow } from "@/repo/contract-payment";
 import {
   companyContractRef,
+  readCompanyInfoArchiveRow,
   renameCompanyInfoKey,
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
+import { readCompanyInfoFromDb, readContractsFromDb } from "@/repo/db/read-daily";
 import { persistCompanyArchiveRename } from "@/repo/db/company-archive-sync";
 import { readRowsUpdatedAt } from "@/repo/db/row-updated-at";
 import { getMeetingRecord, listAllMeetingsRecord, patchMeetingRecord } from "./meetings-write";
-import { loadCompanyInfoByContract, loadContractPayments, resolveSheetWithSyncDb } from "./contract-payment";
+import { loadContractPayments, resolveSheetWithSyncDb } from "./contract-payment";
 import { listTodos, patchTodo } from "./todos";
 
 export class ContractLinkError extends Error {
@@ -40,8 +42,29 @@ export interface MeetingLinkPreview {
   updatedAt: { contract: string | null; contractInfo: string | null; meeting: string | null };
 }
 
-async function manualRow(email: string, row: number): Promise<ContractPayment> {
-  const cp = (await loadContractPayments(email)).find((c) => c.row === row);
+/**
+ * 계약 행 전체 — DB 기수는 DB 만 읽는다(시트 읽기 0). 2026-09-29 운영 확인에서 비교 팝업이 Sheets 분당
+ * 읽기 한도(프로젝트 공용)에 걸려 실패했다. 찾는 행이 DB 에 없을 때만(append 미러 누락) 시트 합본으로 한 번 더.
+ */
+async function contractRows(email: string, spreadsheetId: string, syncDb: boolean, row?: number): Promise<ContractPayment[]> {
+  if (syncDb) {
+    try {
+      const rows = await readContractsFromDb(spreadsheetId);
+      if (row === undefined || rows.some((c) => c.row === row)) return rows;
+    } catch {
+      // DB 읽기 실패 — 아래 기존 경로
+    }
+  }
+  return loadContractPayments(email);
+}
+
+/** 06 업체정보 — DB 기수는 DB 만(시트·미팅 fallback 없음: 수동 업체는 미팅이 없다). */
+async function contractCompanyInfo(spreadsheetId: string, syncDb: boolean, 계약일: string, 업체명: string): Promise<CompanyInfo | null> {
+  return syncDb ? readCompanyInfoFromDb(spreadsheetId, 계약일, 업체명) : readCompanyInfoArchiveRow(spreadsheetId, 계약일, 업체명);
+}
+
+function manualRow(rows: ContractPayment[], row: number): ContractPayment {
+  const cp = rows.find((c) => c.row === row);
   if (!cp) throw new ContractLinkError("업체를 찾지 못했어요. 새로고침 후 다시 해 주세요.", 404);
   if (!isManualContractLink(cp.linkedMeetingId)) {
     throw new ContractLinkError("이미 영업기록과 연결된 업체예요.", 409);
@@ -56,8 +79,8 @@ function linkedIds(rows: ContractPayment[]): Set<string> {
 
 /** 연결할 수 있는 미팅 — 취소 제외, 다른 계약에 이미 붙은 미팅 제외. 최근 미팅날짜 순. */
 export async function listLinkableMeetings(email: string): Promise<LinkableMeeting[]> {
-  const { ctx } = await resolveSheetWithSyncDb(email);
-  const [meetings, rows] = await Promise.all([listAllMeetingsRecord(ctx), loadContractPayments(email)]);
+  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
+  const [meetings, rows] = await Promise.all([listAllMeetingsRecord(ctx), contractRows(email, spreadsheetId, syncDb)]);
   const taken = linkedIds(rows);
   return meetings
     .filter((m) => m.상태 !== "취소" && !taken.has(m.id) && m.업체명.trim())
@@ -67,12 +90,12 @@ export async function listLinkableMeetings(email: string): Promise<LinkableMeeti
 
 /** 연결 전 비교 자료 — 두 쪽의 값과 마지막 저장 시각. */
 export async function previewMeetingLink(email: string, row: number, meetingId: string): Promise<MeetingLinkPreview> {
-  const { spreadsheetId, ctx } = await resolveSheetWithSyncDb(email);
-  const cp = await manualRow(email, row);
+  const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
+  const cp = manualRow(await contractRows(email, spreadsheetId, syncDb, row), row);
   const meeting = await getMeetingRecord(ctx, meetingId);
   if (!meeting) throw new ContractLinkError("미팅을 찾지 못했어요.", 404);
   const [contractInfo, stamps] = await Promise.all([
-    loadCompanyInfoByContract(email, { 계약일: cp.계약일, 업체명: cp.업체명 }),
+    contractCompanyInfo(spreadsheetId, syncDb, cp.계약일, cp.업체명),
     readRowsUpdatedAt(spreadsheetId, [
       { tab: "contracts", rowKey: `r${row}` },
       { tab: "company_archive", rowKey: companyContractRef(cp.계약일, cp.업체명) },
@@ -104,10 +127,10 @@ export interface LinkInput {
 /** 연결 실행. 02 행 → 미팅 → 06 업체정보 → 할일 순. 02·미팅 실패는 throw, 06·할일 실패는 failures 로 알린다. */
 export async function linkMeetingToContract(email: string, input: LinkInput): Promise<{ row: number; failures: string[] }> {
   const { spreadsheetId, syncDb, ctx } = await resolveSheetWithSyncDb(email);
-  const cp = await manualRow(email, input.row);
+  const rows = await contractRows(email, spreadsheetId, syncDb, input.row);
+  const cp = manualRow(rows, input.row);
   const meeting = await getMeetingRecord(ctx, input.meetingId);
   if (!meeting) throw new ContractLinkError("미팅을 찾지 못했어요.", 404);
-  const rows = await loadContractPayments(email);
   if (linkedIds(rows).has(meeting.id)) throw new ContractLinkError("이 미팅은 이미 다른 업체와 연결돼 있어요.", 409);
   const 업체명 = input.업체명.trim();
   if (!업체명) throw new ContractLinkError("업체명을 골라 주세요.");

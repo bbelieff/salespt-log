@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-09-29 · Claude(경영일지 DC 260927) · 영업기록 연결 시트 읽기 축소 + 이자보상배율 표시 (fix/link-meeting-db-reads)
+- #1077 운영 확인에서 비교 팝업이 Sheets 공용 읽기 한도에 걸림 → DB 기수는 DB 만 읽게. 이자비용 0 → 이자보상배율 「이자비용 없음」. 상세 = `docs/plans/active/contract-meeting-link.md` 후속.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 영업기록 없이 추가 업체 ↔ 미팅 연결 (feat/link-manual-contract-meeting)
 - belie 요청: 양방향 연결(실무/수납 `영업기록 없음 ＋` · 일정·계약 계약 전환 시 제안), 계약일=미팅 날짜, 값 충돌은 최근 기록 기본+칸별 선택. 같은 02 행 재사용(이중계상 0), 할일·06 키 이동. 연결 끊기는 범위 밖(자율결정·사유 문서). 상세 = `docs/plans/active/contract-meeting-link.md`.
 
