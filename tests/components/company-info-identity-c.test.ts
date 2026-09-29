@@ -147,6 +147,18 @@ describe("CompanyInfoEditor identity", () => {
       expect((input as HTMLInputElement).disabled).toBe(false);
     }
   });
+
+  it("업체정보생성(TXT) 버튼은 머리의 편집 바로 옆, 흰 바탕 (belie 2026-09-29)", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    toggleOpen();
+    const buttons = [...el!.querySelectorAll("button")];
+    const txt = buttons.find((b) => b.textContent === "업체정보생성(TXT)")!;
+    const edit = buttons.find((b) => b.textContent === "편집")!;
+    expect(txt).toBeTruthy();
+    expect(txt.parentElement).toBe(edit.parentElement);
+    expect(txt.nextElementSibling).toBe(edit);
+    expect(txt.className).toContain("bg-white");
+  });
 });
 
 describe("CompanyInfoContractSection stable identity (C3)", () => {
