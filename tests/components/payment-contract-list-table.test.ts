@@ -34,7 +34,7 @@ afterEach(() => { act(() => root?.unmount()); el?.remove(); root = undefined; el
 
 describe("ContractListTable 1뎁스 카드", () => {
   it("업체명·진행 슬롯·계약일/수임비·수수료를 compact하게 표시한다", () => {
-    const node = renderList({ items: itemsFor([cp()]), selectedKey: "3-1", onSelect: vi.fn() });
+    const node = renderList({ items: itemsFor([cp()]), selectedKey: "row:3", onSelect: vi.fn() });
     expect(node.querySelector('[role="listbox"]')).not.toBeNull();
     expect(node.textContent).toContain("한빛상사");
     expect(node.textContent).toContain("9/4 · 수임비 ₩5,000,000");
@@ -45,41 +45,44 @@ describe("ContractListTable 1뎁스 카드", () => {
   });
   it("선택 대비를 유지하고 다른 업체만 선택 콜백을 부른다", () => {
     const onSelect = vi.fn(); const second = cp({ row: 4, 업체명: "두리상회" });
-    const node = renderList({ items: itemsFor([cp(), second]), selectedKey: "3-1", onSelect });
+    const node = renderList({ items: itemsFor([cp(), second]), selectedKey: "row:3", onSelect });
     const selected = node.querySelector('[role="option"][aria-selected="true"]') as HTMLButtonElement;
     expect(selected.dataset.row).toBe("3"); expect(selected.className).toContain("from-blue-100");
     act(() => selected.click()); expect(onSelect).not.toHaveBeenCalled();
     act(() => (node.querySelector('[data-row="4"]') as HTMLButtonElement).click());
-    expect(onSelect.mock.calls[0]?.[0].key).toBe("4-1");
+    expect(onSelect.mock.calls[0]?.[0].key).toBe("row:4");
   });
   it("진행 없는 업체는 한 행으로 남기고 D-??와 구별한다", () => {
     const bare = cp({ 수납1: slot(), 수납2: slot(), 수납3: slot() });
-    const node = renderList({ items: itemsFor([bare]), selectedKey: "3-1", onSelect: vi.fn() });
+    const node = renderList({ items: itemsFor([bare]), selectedKey: "row:3", onSelect: vi.fn() });
     expect(node.textContent).toContain("수수료 ₩0"); expect(node.textContent).toContain("진행 0%");
     expect(node.textContent).toContain("진행 없음"); expect(node.textContent).not.toContain("D-??");
   });
-  it("진행마다 Todo 날짜를 따로 표시한다", () => {
+  it("같은 업체는 한 카드 — 진행건을 줄마다 보여 주고 대표 진행의 Todo 날짜를 표시한다 (belie 2026-09-29)", () => {
     const items = itemsFor([cp({ 수납2: slot({ 진행기관: "소진공" }) })]);
     items[0]!.work = { ...items[0]!.work, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" };
-    const node = renderList({ items, selectedKey: "3-1", onSelect: vi.fn(), activityState: "ready" });
+    const node = renderList({ items, selectedKey: "row:3", onSelect: vi.fn(), activityState: "ready" });
     // 종류(Todo)와 D-day 는 따로 떼어진 칩 — D-00(오늘)은 다가오는 일정이라 노랑.
     const badge = node.querySelector('[aria-label="미완료 Todo D-00"]')!;
     const chips = [...badge.querySelectorAll("span")].map((el) => [el.textContent, el.className]);
     expect(chips.map(([t]) => t)).toEqual(["Todo", "D-00"]);
     expect(chips[1]![1]).toContain("bg-yellow-100");
     expect(node.querySelector('[aria-label="미완료 Todo D-00"]')).not.toBeNull();
-    expect(node.querySelectorAll('[role="option"]')).toHaveLength(2);
-    expect(node.querySelector('[data-work-key="3-2"]')?.textContent).toContain("D-??");
+    expect(node.querySelectorAll('[role="option"]')).toHaveLength(1);
+    const card = node.querySelector('[data-work-key="row:3"]')!;
+    expect(card.textContent).toContain("진행 1 · 미소재단");
+    expect(card.textContent).toContain("진행 2 · 소진공");
+    expect(card.textContent).toContain("평균 · 2건");
   });
   it("활동 조회 중에는 미기록으로 표시하지 않는다", () => {
-    const node = renderList({ items: itemsFor([cp()]), selectedKey: "3-1", onSelect: vi.fn(), activityState: "loading" });
+    const node = renderList({ items: itemsFor([cp()]), selectedKey: "row:3", onSelect: vi.fn(), activityState: "loading" });
     expect(node.querySelector('[aria-label="활동 불러오는 중"]')).not.toBeNull();
     expect(node.textContent).not.toContain("D-??");
   });
   it("모바일에서 선택한 진행 행 바로 아래에 상세가 열린다", () => {
-    const node = renderList({ items: itemsFor([cp()]), selectedKey: "3-1", onSelect: vi.fn(), renderDetail: () => h("div", null, "진행 상세") });
-    expect(node.querySelector('[data-work-key="3-1"]')?.getAttribute("aria-expanded")).toBe("true");
-    expect(node.querySelector('#payment-company-detail-3-1')?.textContent).toBe("진행 상세");
+    const node = renderList({ items: itemsFor([cp()]), selectedKey: "row:3", onSelect: vi.fn(), renderDetail: () => h("div", null, "진행 상세") });
+    expect(node.querySelector('[data-work-key="row:3"]')?.getAttribute("aria-expanded")).toBe("true");
+    expect(node.querySelector('[id="payment-company-detail-row:3"]')?.textContent).toBe("진행 상세");
   });
 });
 

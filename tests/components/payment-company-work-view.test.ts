@@ -22,14 +22,14 @@ const todo = (name: string, date: string, kind: "todo" | "history"): Todo => ({
 });
 
 describe("업체 보기 진행건 목록", () => {
-  it("진행 슬롯마다 한 항목을 만들고 진행 없는 업체는 한 항목만 남긴다", () => {
+  it("계약(업체)마다 한 항목 — 진행이 여럿이면 works 에 모두, 진행 없는 업체도 한 항목 (belie 2026-09-29)", () => {
     const rows = [
       contract(3, "진행둘", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
       contract(4, "진행없음", "2026-09-05", []),
     ];
     const items = buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows));
-    expect(items.map(({ key, hasProgress }) => [key, hasProgress])).toEqual([
-      ["3-1", true], ["3-2", true], ["4-1", false],
+    expect(items.map(({ cp, hasProgress, works }) => [cp.업체명, hasProgress, works.map((w) => w.slot)])).toEqual([
+      ["진행둘", true, [1, 2]], ["진행없음", false, []],
     ]);
   });
 
@@ -51,13 +51,13 @@ describe("업체 보기 진행건 목록", () => {
     ]);
   });
 
-  it("등록 빠른순·늦은순은 계약일로 정렬하고 같은 계약의 진행 1·2 순서를 유지한다", () => {
+  it("등록 빠른순·늦은순은 계약일로 정렬(업체당 한 항목)", () => {
     const rows = [
       contract(3, "늦게등록", "2026-09-10", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
       contract(4, "먼저등록", "2026-09-04", [slot({ 진행기관: "신보" })]),
     ];
     const items = buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows));
-    expect(sortCompanyWorkItems(items, "date-asc").map((item) => item.key)).toEqual(["4-1", "3-1", "3-2"]);
-    expect(sortCompanyWorkItems(items, "date-desc").map((item) => item.key)).toEqual(["3-1", "3-2", "4-1"]);
+    expect(sortCompanyWorkItems(items, "date-asc").map((item) => item.cp.업체명)).toEqual(["먼저등록", "늦게등록"]);
+    expect(sortCompanyWorkItems(items, "date-desc").map((item) => item.cp.업체명)).toEqual(["늦게등록", "먼저등록"]);
   });
 });
