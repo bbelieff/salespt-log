@@ -23,6 +23,10 @@ export function useContractCompanyInfo(getKey: () => {
     error: null as string | null,
   });
   const ciTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 동일 계약 키에는 POST 를 한 번에 하나만 보낸다. 늦은 이전 응답이 최신
+  // payload 뒤에 서버값을 되돌릴 수 있으므로, 성공한 뒤 새 draft 가 있으면
+  // 같은 실행 안에서 최신 snapshot 을 직렬 전송한다.
+  const inFlight = useRef<Promise<void> | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -37,34 +41,55 @@ export function useContractCompanyInfo(getKey: () => {
       clearTimeout(ciTimer.current);
       ciTimer.current = null;
     }
-    const cur = ciRef.current;
-    if (!cur.touched || !cur.draft) {
-      setCiState((s) => ({ ...s, saving: false }));
+    if (inFlight.current) {
+      await inFlight.current;
+      // 저장하고 이동은 기존 비동기 실패를 그냥 통과하면 안 된다. 앞 요청이 실패해
+      // 최신 draft 가 남아 있으면 여기서 명시적으로 다시 시도한다.
+      if (throwing && ciRef.current.touched) await flushCi(true);
       return;
     }
-    const seq = cur.seq;
-    const attempt = cur.draft;
-    setCiState({ saving: true, error: null });
+
+    const run = async () => {
+      while (true) {
+        const cur = ciRef.current;
+        if (!cur.touched || !cur.draft) {
+          if (mounted.current) setCiState((s) => ({ ...s, saving: false }));
+          return;
+        }
+        const seq = cur.seq;
+        const attempt = cur.draft;
+        if (mounted.current) setCiState({ saving: true, error: null });
+        try {
+          const key = keyRef.current();
+          const res = await fetch("/api/company-info", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 계약일: key.계약일, 업체명: key.업체명, 업체정보: attempt }),
+          }).catch(() => null);
+          if (!res?.ok) throw new Error("업체정보를 저장하지 못했어요");
+        } catch (e) {
+          if (mounted.current) {
+            setCiState({ saving: false, error: e instanceof Error ? e.message : "저장 실패" });
+          }
+          if (throwing) throw e;
+          return;
+        }
+
+        if (!mounted.current) return;
+        if (ciRef.current.seq === seq) {
+          ciRef.current.touched = false;
+          setCiState({ saving: false, error: null });
+          return;
+        }
+        // 입력이 비행 중 바뀌었다. 이전 요청의 ACK 뒤에 최신값만 다음으로 보낸다.
+      }
+    };
+    const active = run();
+    inFlight.current = active;
     try {
-      const key = keyRef.current();
-      const res = await fetch("/api/company-info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 계약일: key.계약일, 업체명: key.업체명, 업체정보: attempt }),
-      }).catch(() => null);
-      if (!res?.ok) throw new Error("업체정보를 저장하지 못했어요");
-      if (!mounted.current) return;
-      if (ciRef.current.seq === seq) {
-        ciRef.current.touched = false;
-        setCiState({ saving: false, error: null });
-      } else {
-        setCiState((s) => ({ ...s, saving: false }));
-      }
-    } catch (e) {
-      if (mounted.current) {
-        setCiState({ saving: false, error: e instanceof Error ? e.message : "저장 실패" });
-      }
-      if (throwing) throw e;
+      await active;
+    } finally {
+      if (inFlight.current === active) inFlight.current = null;
     }
   };
 

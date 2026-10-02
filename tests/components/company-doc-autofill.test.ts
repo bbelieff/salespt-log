@@ -143,6 +143,35 @@ describe("CompanyDocAutofillDialog", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("사용자가 고른 세 칸만 한 번의 apply 로 넘기고, 취소는 apply 를 만들지 않는다", async () => {
+    const onApply = vi.fn();
+    const onClose = vi.fn();
+    ocrText.value = CORP_CERT;
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply, onClose }));
+    await pickFiles(png("three-fields.png"));
+
+    const keep = new Set(["이름", "사업자등록번호", "개업일"]);
+    const checks = [...document.querySelectorAll<HTMLInputElement>("table input[type=checkbox]")];
+    for (const input of checks) {
+      const label = document.querySelector(`label[for=\"${input.id}\"]`)?.textContent ?? "";
+      if (input.checked && !keep.has(label)) await act(async () => input.click());
+    }
+    await act(async () => buttonByText("선택 항목 적용").click());
+
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0]![0]).toEqual({
+      대표자이름: "홍길동",
+      사업자등록번호: "123-45-67891",
+      개업일: "19.07.15",
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    const cancelled = vi.fn();
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: cancelled, onClose: vi.fn() }));
+    await act(async () => buttonByText("취소").click());
+    expect(cancelled).not.toHaveBeenCalled();
+  });
+
   it("두 파일이 같은 칸에 다른 값을 내면 충돌 고르기 상자", async () => {
     mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
     await pickFiles(png("a.png"));
