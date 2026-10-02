@@ -701,6 +701,27 @@ body {
 
 /* PC 실무/수납: 세 열의 휠은 각각 해당 열에서 끝난다. */
 @media (min-width: 1280px) {
+  /* The payment page is the only desktop route that owns a fixed-height
+     workspace.  Its own 100dvh flex shell is insufficient if the shared app
+     ancestors keep visible overflow: then their document box grows even while
+     the list and detail panes already scroll internally.  Scope the complete
+     containment chain to this marker so all other routes retain document
+     scrolling. */
+  .desktop-shell:has([data-payment-desktop-shell]) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .desktop-shell:has(> div > .app-shell-main > [data-payment-desktop-shell]) > div {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .desktop-shell:has([data-payment-desktop-shell]) .app-shell-main {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
   .desktop-shell .payment-workspace { isolation: isolate; }
   .desktop-shell .payment-list-scroll,
   .desktop-shell .payment-detail-scroll {

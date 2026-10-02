@@ -271,15 +271,15 @@ export default function PaymentPage() {
   const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
-      <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col">
+      <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <TopHeader
           pageEmoji="💰"
           pageTitle="실무/수납"
         />
 
         {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
-        <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col">
-        <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col">
+        <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PaymentPerformanceSummary
           rows={activeWorkContracts(allRows, courseStartISO)}
           todos={allTodos.data?.todos ?? []}
@@ -325,7 +325,7 @@ export default function PaymentPage() {
         ) : isPc ? (
           /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
-          <div ref={workspaceRef} className="payment-workspace relative grid min-h-[320px] min-w-0 items-stretch min-[1280px]:min-h-0 min-[1280px]:flex-1" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
+          <div ref={workspaceRef} className="payment-workspace relative grid min-h-[320px] min-w-0 items-stretch min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-hidden" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
             <div className="flex min-h-0 min-w-0 flex-col">
               <div className="shrink-0 p-1.5">{listModeTabs}</div>
               <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
