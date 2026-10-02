@@ -43,26 +43,12 @@ export const GUIDE_URL =
  * (Next.js 라우트가 아니라 `app/` 어디에도 없다). 앱 배포와 수명이 다르므로 앱 내부 링크가
  * 아니라 바깥 링크로 취급한다 — 그래서 `target="_blank"` 로 연다.
  *
- * ## 앱 안에 끼워 넣지 못한다
- * 응답 헤더가 `X-Frame-Options: DENY` 라 iframe 임베드가 **브라우저 차원에서 막힌다.**
- * 미리보기·모달을 시도해도 빈 화면만 나온다. 새 탭이 유일한 방법이다.
+ * 2026-10-02 live probe: `news/latest` 는 200, 로그인·리다이렉트 없음,
+ * X-Frame-Options 없음, `frame-ancestors 'self'` 이므로 같은 앱 origin 안에서만 표시한다.
+ * 외부 source·프록시·쿠키 중계는 쓰지 않는다.
  */
+export const POLICY_NEWS_ORIGIN = "https://salesptlog.online";
 export const POLICY_NEWS_URL = "https://salesptlog.online/news/latest";
-
-/**
- * 정책자금 데일리를 앱 화면 안(iframe)에 띄울지 — 지금은 **false**.
- *
- * 위 주석대로 응답 헤더가 `X-Frame-Options: DENY` 라 iframe 이 브라우저 차원에서 막힌다
- * (2026-09-23 재실측: 앱 루트·`/news/*` 둘 다 DENY). 켜두면 **빈 화면만 나와 고장으로 보인다.**
- * 그래서 `/payment/news` 는 이 값이 false 인 동안 iframe 을 아예 렌더하지 않고
- * 「새 창에서 열기」 안내만 보여준다.
- *
- * ## 언제 true 로 올리나
- * VPS Caddy 에서 **`/news/*` 경로만** `SAMEORIGIN` 으로 바꾼 뒤(앱 본체는 DENY 유지 —
- * 클릭재킹 방어를 넓히지 않는다), 이 한 줄만 true 로 올리는 별도 PR 을 낸다.
- * 뉴스와 앱은 같은 도메인(salesptlog.online)이라 SAMEORIGIN 이면 임베드가 성립한다.
- */
-export const POLICY_NEWS_EMBED = false;
 
 /**
  * 주간 목표 회의록 — 내부 기록 권한 사용자가 14열 복사 후 붙여넣는 canonical Notion 페이지.

@@ -172,19 +172,18 @@ describe("⑧ 관리자 항목 — 서버가 준 값(useMe)으로만 판정", ()
   });
 });
 
-describe("⑨ 링크 상수 — 추가만, 기존 줄 무수정", () => {
-  it("POLICY_NEWS_URL·POLICY_NEWS_EMBED 가 있고 기존 WORK_MANUAL_URL 이 그대로다", () => {
+describe("⑨ 링크 상수 — 기존 업무매뉴얼과 same-origin 뉴스 주소", () => {
+  it("POLICY_NEWS_URL·ORIGIN 이 있고 기존 WORK_MANUAL_URL 이 그대로다", () => {
     // 주소는 master 가 이미 갖고 있던 값 — 날짜를 박으면 다음 날 404 가 된다(links.ts 주석).
+    expect(links).toContain('POLICY_NEWS_ORIGIN = "https://salesptlog.online"');
     expect(links).toContain('POLICY_NEWS_URL = "https://salesptlog.online/news/latest"');
-    expect(links).toContain("POLICY_NEWS_EMBED = false");
     expect(links).toContain("WORK_MANUAL_URL");
   });
 
-  it("뉴스 페이지가 상수를 쓰고, EMBED=false 일 때 iframe 을 켜지 않는다", () => {
+  it("뉴스 페이지가 same-origin viewer를 쓰고 외부 전용 placeholder를 남기지 않는다", () => {
     expect(news).toContain("POLICY_NEWS_URL");
-    expect(news).toContain("POLICY_NEWS_EMBED");
-    expect(news).toContain('title="정책자금 데일리"');
-    expect(news).toContain('loading="lazy"');
-    expect(news).toContain("아직 새 창에서 열립니다");
+    expect(news).toContain("PolicyNewsEmbed");
+    expect(news).not.toContain("POLICY_NEWS_EMBED");
+    expect(news).not.toContain("아직 새 창에서 열립니다");
   });
 });
