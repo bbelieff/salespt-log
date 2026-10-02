@@ -180,9 +180,11 @@ describe("⑨ 링크 상수 — 기존 업무매뉴얼과 same-origin 뉴스 주
     expect(links).toContain("WORK_MANUAL_URL");
   });
 
-  it("뉴스 페이지가 same-origin viewer를 쓰고 외부 전용 placeholder를 남기지 않는다", () => {
+  it("뉴스 페이지가 safe native viewer를 쓰고 외부 전용 placeholder를 남기지 않는다", () => {
     expect(news).toContain("POLICY_NEWS_URL");
     expect(news).toContain("PolicyNewsEmbed");
+    expect(news).toContain("loadPolicyNews");
+    expect(news).not.toContain("<iframe");
     expect(news).not.toContain("POLICY_NEWS_EMBED");
     expect(news).not.toContain("아직 새 창에서 열립니다");
   });

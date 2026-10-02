@@ -87,7 +87,7 @@ describe("[3] 정책자금 뉴스 버튼", () => {
     expect(url).not.toMatch(/\d{4}-\d{2}-\d{2}/); // 날짜가 들어간 주소 금지
   });
 
-  it("★모바일은 앱 안 정책 뉴스 화면으로 이동하고, iframe 검증은 전용 컴포넌트에 맡긴다", () => {
+  it("★모바일은 앱 안 정책 뉴스 화면으로 이동하고, 원문 DATA 검증은 전용 뉴스 화면에 맡긴다", () => {
     const policyNewsLink = sectionCode.match(/<a\s+href="\/payment\/news"[\s\S]*?정책자금 뉴스[\s\S]*?<\/a>/)?.[0] ?? "";
     expect(policyNewsLink).not.toContain('target="_blank"');
     expect(policyNewsLink).not.toContain('rel="noopener noreferrer"');

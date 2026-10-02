@@ -1,113 +1,159 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { POLICY_NEWS_ORIGIN, POLICY_NEWS_URL } from "@/config/links";
+import { useMemo, useState } from "react";
+import {
+  POLICY_NEWS_URL,
+  type PolicyNewsItem,
+  type PolicyNewsLoadResult,
+} from "@/config/links";
 
-export const POLICY_NEWS_LOAD_TIMEOUT_MS = 10_000;
-
-function isAllowedPolicyNewsUrl(src: string): boolean {
-  try {
-    const intended = new URL(POLICY_NEWS_URL);
-    const candidate = new URL(src);
-    return src === POLICY_NEWS_URL
-      && candidate.href === intended.href
-      && candidate.origin === POLICY_NEWS_ORIGIN
-      && candidate.username === ""
-      && candidate.password === ""
-      && candidate.port === intended.port;
-  } catch {
-    return false;
-  }
-}
-
-/** same-origin iframe가 실제 뉴스 문서를 그렸는지, 빈 frame이 아닌지 확인한다. */
-export function isLoadedPolicyNewsDocument(doc: Document | null): boolean {
-  if (!doc) return false;
-  const text = doc.body?.textContent?.replace(/\s+/g, " ").trim() ?? "";
-  const hasHeading = [...doc.querySelectorAll("h1")].some((node) => node.textContent?.includes("정책자금 데일리"));
-  const hasCountHeading = [...doc.querySelectorAll("h2")].some((node) => node.textContent?.includes("성격별 건수"));
-  return doc.title.includes("정책자금 데일리")
-    && hasHeading
-    && hasCountHeading
-    && /\b20\d{2}[-./](?:0[1-9]|1[0-2])[-./](?:0[1-9]|[12]\d|3[01])\b/.test(text)
-    && doc.querySelectorAll("article").length > 0
-    && Boolean(doc.querySelector("article a[href]"))
-    && text.length >= 40;
-}
-
-function OriginalLink({ src }: { src: string }) {
+function OriginalLink({ href, children }: { href: string; children: string }) {
   return (
     <a
-      href={src}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
     >
-      원문 새 창에서 열기
+      {children}
     </a>
   );
 }
 
-/** 정적 same-origin 정책자금 데일리만 최소 sandbox 권한으로 앱 안에 표시한다. */
-export default function PolicyNewsEmbed({ src }: { src: string }) {
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const allowed = isAllowedPolicyNewsUrl(src);
-  const frameRef = useRef<HTMLIFrameElement>(null);
+function Detail({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div>
+      <dt className="text-xs font-semibold text-slate-500">{label}</dt>
+      <dd className="mt-0.5 whitespace-pre-wrap text-sm text-slate-700">{value}</dd>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (!allowed || state !== "loading") return;
-    const timer = window.setTimeout(() => setState("error"), POLICY_NEWS_LOAD_TIMEOUT_MS);
-    return () => window.clearTimeout(timer);
-  }, [allowed, attempt, state]);
+function PolicyNewsCard({ item }: { item: PolicyNewsItem }) {
+  const links = [
+    [item.noticeUrl, "공고 원문"],
+    [item.downloadUrl, "첨부 다운로드"],
+    [item.newsUrl, "관련 뉴스"],
+  ] as const;
 
-  const retry = () => {
-    setState("loading");
-    setAttempt((value) => value + 1);
-  };
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-brand-red">
+          {item.category}
+        </span>
+        {item.status && (
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+            {item.status}
+          </span>
+        )}
+        {item.region && <span className="text-xs text-slate-500">{item.region}</span>}
+      </div>
+      <h2 className="mt-3 text-base font-bold leading-6 text-slate-900">{item.name}</h2>
+      <p className="mt-1 text-sm text-slate-500">{item.agency}</p>
 
-  const confirmLoadedNews = () => {
-    setState(isLoadedPolicyNewsDocument(frameRef.current?.contentDocument ?? null) ? "ready" : "error");
-  };
+      <dl className="mt-4 grid gap-3 pc:grid-cols-2">
+        <Detail label="최대 지원금액" value={item.amount} />
+        <Detail label="공고일 · 마감일" value={[item.announcedAt, item.deadline].filter(Boolean).join(" · ")} />
+        <Detail label="지원 대상" value={item.target} />
+        <Detail label="업종 제한" value={item.industryRestriction} />
+        <Detail label="창업 업력 제한" value={item.historyRestriction} />
+        <Detail label="특정 타겟" value={item.specificTarget} />
+        <Detail label="대출 종류" value={item.loanType} />
+        <Detail label="상환 조건" value={item.repayment} />
+        <Detail label="대출 금리" value={item.interest} />
+        <Detail label="기타 조건" value={item.fees} />
+        <Detail label="신청 방법" value={item.application} />
+      </dl>
 
-  if (!allowed) {
+      {links.some(([href]) => href) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {links.map(([href, label]) =>
+            href ? (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {label} ↗
+              </a>
+            ) : null,
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default function PolicyNewsEmbed({ result }: { result: PolicyNewsLoadResult }) {
+  const [category, setCategory] = useState("전체");
+
+  const categories = useMemo(
+    () => result.status === "ready"
+      ? ["전체", ...new Set(result.data.items.map((item) => item.category))]
+      : ["전체"],
+    [result],
+  );
+  const items = result.status === "ready"
+    ? result.data.items.filter((item) => category === "전체" || item.category === category)
+    : [];
+
+  if (result.status === "error") {
     return (
-      <section className="rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="정책자금 뉴스 원문 안내">
-        <p className="mb-3 text-sm text-amber-900">허용된 정책자금 뉴스 원문만 앱 안에서 표시할 수 있어요.</p>
-        <OriginalLink src={src} />
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center" aria-label="정책자금 뉴스 오류" role="alert">
+        <p className="text-sm font-bold text-amber-950">뉴스를 안전하게 불러오지 못했어요.</p>
+        <p className="mt-2 text-sm text-amber-800">{result.message}</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <a
+            href="/payment/news?retry=1"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-red px-4 text-sm font-bold text-white hover:bg-red-700"
+          >
+            다시 시도
+          </a>
+          <OriginalLink href={POLICY_NEWS_URL}>원문 새 창에서 열기</OriginalLink>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="정책자금 데일리 실제 뉴스">
-      <div className="flex min-h-10 items-center justify-between gap-2 px-2 text-xs text-slate-500" aria-live="polite">
-        <span role="status">{state === "loading" ? "정책자금 뉴스를 불러오는 중…" : "앱 안에서 최신 뉴스를 보고 있어요."}</span>
-        {state === "ready" && <span className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">실시간 원문</span>}
-      </div>
-      {state === "error" ? (
-        <div className="flex min-h-[28rem] flex-col items-center justify-center gap-3 p-6 text-center" role="alert">
-          <p className="text-sm font-semibold text-slate-800">뉴스 화면을 불러오지 못했어요.</p>
-          <p className="text-sm text-slate-500">다시 시도하거나 원문을 새 창에서 열어 확인할 수 있어요.</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={retry} className="min-h-11 rounded-lg bg-brand-red px-4 text-sm font-bold text-white hover:bg-red-700">다시 시도</button>
-            <OriginalLink src={src} />
-          </div>
+    <section className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm" aria-label="정책자금 데일리 뉴스 목록">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">{result.data.date} 정책자금 뉴스</p>
+          <p className="mt-0.5 text-xs text-slate-500">총 {result.data.total}건</p>
         </div>
-      ) : (
-        <iframe
-          key={attempt}
-          src={src}
-          title="정책자금 데일리 실제 뉴스"
-          className="h-[65dvh] min-h-[28rem] w-full rounded-lg border border-slate-100 bg-white pc:h-[calc(100dvh-13rem)]"
-          loading="eager"
-          sandbox="allow-same-origin"
-          referrerPolicy="strict-origin-when-cross-origin"
-          ref={frameRef}
-          onLoad={confirmLoadedNews}
-          onError={() => setState("error")}
-        />
-      )}
+        <div className="flex flex-wrap gap-2" role="group" aria-label="뉴스 성격 필터">
+          {categories.map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={category === value}
+              onClick={() => setCategory(value)}
+              className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${
+                category === value
+                  ? "bg-brand-red text-white"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 max-h-[65dvh] space-y-3 overflow-y-auto pr-1 pc:max-h-[calc(100dvh-13rem)]">
+        {items.length > 0 ? (
+          items.map((item) => <PolicyNewsCard key={item.id} item={item} />)
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+            {result.data.items.length === 0 ? "오늘 등록된 정책자금 뉴스가 없어요." : "이 성격의 뉴스가 없어요."}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
