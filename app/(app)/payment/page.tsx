@@ -232,18 +232,13 @@ export default function PaymentPage() {
     const sync = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const root = workspaceRef.current;
-        if (!root) return;
-        const pageTop = root.getBoundingClientRect().top + window.scrollY;
-        const bottomSpace = Number.parseFloat(getComputedStyle(root.closest("main") ?? root).paddingBottom) || 0;
-        root.style.height = `${Math.max(320, Math.floor(window.innerHeight - pageTop - bottomSpace))}px`;
         syncBridge();
       });
     };
     sync();
-    const summary = document.querySelector<HTMLElement>("[data-payment-summary]");
+    const workspace = workspaceRef.current;
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(sync);
-    if (summary) observer?.observe(summary);
+    if (workspace) observer?.observe(workspace);
     // 기관을 접고 펼칠 때 선택 행의 DOM 위치가 바뀌므로 연결부를 즉시 재배치한다.
     const listObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver(sync);
     if (listPaneRef.current) listObserver?.observe(listPaneRef.current, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-expanded", "aria-selected", "data-active-institution"] });
@@ -276,14 +271,15 @@ export default function PaymentPage() {
   const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
-      <TopHeader
-        pageEmoji="💰"
-        pageTitle="실무/수납"
-      />
+      <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col">
+        <TopHeader
+          pageEmoji="💰"
+          pageTitle="실무/수납"
+        />
 
-      {/* 구 min-[1440px]:max-w-none 특례는 fluid 로 대체(동일 효과, 전 구간 균일 거터). */}
-      <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6">
-      <PageContainer width="fluid">
+        {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
+        <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col">
+        <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col">
         <PaymentPerformanceSummary
           rows={activeWorkContracts(allRows, courseStartISO)}
           todos={allTodos.data?.todos ?? []}
@@ -320,14 +316,16 @@ export default function PaymentPage() {
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>
-        ) : rows.length === 0 ? (<div className="space-y-3">{standaloneAdd}
+        ) : rows.length === 0 ? (<div className="space-y-3 min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-y-auto">{standaloneAdd}
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가되고, 위 버튼으로 바로 추가할 수도 있어요.
-          </div></div>
+          </div>
+          <TerminationArchive contracts={archivedRows} />
+        </div>
         ) : isPc ? (
           /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
-          <div ref={workspaceRef} className="payment-workspace relative grid h-[calc(100dvh-18rem)] min-h-[320px] min-w-0 items-stretch" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
+          <div ref={workspaceRef} className="payment-workspace relative grid min-h-[320px] min-w-0 items-stretch min-[1280px]:min-h-0 min-[1280px]:flex-1" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
             <div className="flex min-h-0 min-w-0 flex-col">
               <div className="shrink-0 p-1.5">{listModeTabs}</div>
               <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
@@ -340,6 +338,7 @@ export default function PaymentPage() {
                 highlight={companyQuery}
                 courseStartISO={courseStartISO}
               /> : <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />}
+              {archivedRows.length > 0 && <div className="px-2 pt-2"><TerminationArchive contracts={archivedRows} /></div>}
               </div>
             </div>
             <button type="button" onPointerDown={beginResize} className="group relative z-10 h-full cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
@@ -420,10 +419,11 @@ export default function PaymentPage() {
             />}
           </div>
         )}
-        {/* 해지 보관함 — 숨김 해지 계약 열람(읽기전용) */}
-        <TerminationArchive contracts={archivedRows} />
-      </PageContainer>
-      </main>
+        {/* 모바일은 기존 문서 흐름, PC는 위 목록 pane 안에서 해지 보관함을 읽는다. */}
+        {!isPc && rows.length > 0 && <TerminationArchive contracts={archivedRows} />}
+        </PageContainer>
+        </main>
+      </div>
 
       {/* 토스트 */}
       {toast && (
