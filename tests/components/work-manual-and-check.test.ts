@@ -69,8 +69,8 @@ describe("[1] 업무매뉴얼 버튼", () => {
  * `/news/latest` 는 그날치와 바이트 단위로 동일한 별칭이라 매일 알아서 최신이 된다.
  */
 describe("[3] 정책자금 뉴스 버튼", () => {
-  it("업무매뉴얼 옆에 새 탭으로 열리는 버튼이 있다", () => {
-    expect(section).toContain("POLICY_NEWS_URL");
+  it("업무매뉴얼 옆에 앱 안 정책자금 뉴스 진입점이 있다", () => {
+    expect(sectionCode).toContain('href="/payment/news"');
     expect(section).toContain("정책자금 뉴스");
     // 두 버튼이 한 줄에 나란히 — 세로로 쌓으면 모바일에서 계약 목록이 밀린다.
     expect(sectionCode).toContain("grid-cols-2");
@@ -87,11 +87,11 @@ describe("[3] 정책자금 뉴스 버튼", () => {
     expect(url).not.toMatch(/\d{4}-\d{2}-\d{2}/); // 날짜가 들어간 주소 금지
   });
 
-  it("★앱 안에 끼워 넣지 않는다 — X-Frame-Options: DENY 라 빈 화면만 나온다", () => {
+  it("★모바일은 앱 안 정책 뉴스 화면으로 이동하고, iframe 검증은 전용 컴포넌트에 맡긴다", () => {
+    const policyNewsLink = sectionCode.match(/<a\s+href="\/payment\/news"[\s\S]*?정책자금 뉴스[\s\S]*?<\/a>/)?.[0] ?? "";
+    expect(policyNewsLink).not.toContain('target="_blank"');
+    expect(policyNewsLink).not.toContain('rel="noopener noreferrer"');
     expect(sectionCode).not.toContain("<iframe");
-    // 새 탭으로 여는 표식이 붙어 있어야 한다(보안 기본값 포함).
-    expect(sectionCode).toContain('target="_blank"');
-    expect(sectionCode).toContain('rel="noopener noreferrer"');
   });
 
   it("기존 업무매뉴얼 버튼은 그대로 남아 있다", () => {
