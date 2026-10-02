@@ -41,6 +41,19 @@ const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), "ut
 const classAttrs = (src: string) =>
   [...src.matchAll(/className="([^"]*)"/g)].map((m) => m[1] ?? "");
 
+// /payment alone owns a fixed-height desktop workspace.  Its containment
+// selectors must stay exact; every other desktop-fluid rule must remain free
+// to use natural document overflow.
+const paymentContainmentBlocks = [
+  /\.desktop-shell:has\(\[data-payment-desktop-shell\]\)\s*\{[^}]*\}/g,
+  /\.desktop-shell:has\(> div > \.app-shell-main > \[data-payment-desktop-shell\]\) > div\s*\{[^}]*\}/g,
+  /\.desktop-shell:has\(\[data-payment-desktop-shell\]\) \.app-shell-main\s*\{[^}]*\}/g,
+];
+const withoutPaymentContainment = (src: string) =>
+  paymentContainmentBlocks.reduce((remaining, block) => remaining.replace(block, ""), src);
+const hasUnscopedOverflowLock = (src: string) =>
+  /overflow\s*:\s*hidden/.test(withoutPaymentContainment(src));
+
 import PageContainer from "@/components/PageContainer";
 
 const render = (width: "narrow" | "wide" | "xwide" | "fluid", child = "본문") =>
@@ -126,8 +139,13 @@ describe("③ globals.css fluid block stays scoped", () => {
     expect(rules).not.toMatch(/[\s("'](sm|md|lg|xl):/);
     expect(rules).not.toMatch(/\.desktop-shell\s*\{[^}]*backdrop-filter/);
     expect(rules).not.toMatch(/\.desktop-shell\s*\{[^}]*transform/);
-    expect(rules).not.toContain("overflow:hidden");
-    expect(rules).not.toContain("overflow: hidden");
+    for (const block of paymentContainmentBlocks) {
+      expect(rules).toMatch(block);
+    }
+    expect(hasUnscopedOverflowLock(rules)).toBe(false);
+    // Mutation proof: a generic desktop-shell lock must not become valid just
+    // because the payment exception exists.
+    expect(hasUnscopedOverflowLock(`${rules}\n.desktop-shell { overflow: hidden; }`)).toBe(true);
   });
 });
 
@@ -340,8 +358,7 @@ describe("⑦ chart hooks — desktop-only balance, mobile SVG unchanged", () =>
     for (const rel of ["components/dashboard/FunnelChart.tsx", "components/dashboard/WeeklyDualChart.tsx"]) {
       expect(read(rel)).toContain('className="chart-fill flex flex-1 items-center"');
     }
-    expect(block).not.toContain("overflow:hidden");
-    expect(block).not.toContain("overflow: hidden");
+    expect(hasUnscopedOverflowLock(block)).toBe(false);
   });
 });
 
