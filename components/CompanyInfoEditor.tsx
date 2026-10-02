@@ -116,12 +116,21 @@ export default function CompanyInfoEditor({
   // 사용자 편집마다 부모에 통지 — 마운트·재기준(동일값)은 건너뛴다.
   const mounted = useRef(false);
   const lastNotified = useRef<string | null>(null);
+  // 서버의 clean 재기준은 사용자 입력이 아니다. syncServer 뒤의 draft effect 가
+  // 부모 autosave 를 깨우지 않도록, 실제로 재기준을 요청한 snapshot 만 한 번 억제한다.
+  const serverSyncKey = useRef<string | null>(null);
   useEffect(() => {
+    const key = JSON.stringify(draft);
     if (!mounted.current) {
       mounted.current = true;
+      lastNotified.current = key;
       return;
     }
-    const key = JSON.stringify(draft);
+    if (serverSyncKey.current === key) {
+      serverSyncKey.current = null;
+      lastNotified.current = key;
+      return;
+    }
     if (lastNotified.current === key) return;
     lastNotified.current = key;
     onChangeRef.current?.(draft);
@@ -136,6 +145,10 @@ export default function CompanyInfoEditor({
   useEffect(() => {
     if (dirtyRef.current) return;
     const server = { ...emptyCi(), ...(JSON.parse(valueKey) as Partial<CI>) } as CI;
+    const nextKey = JSON.stringify(server);
+    // 동일값 sync 는 state 변경도 필요 없고, 다음 실제 입력을 억제해서도 안 된다.
+    if (nextKey === JSON.stringify(draft)) return;
+    serverSyncKey.current = nextKey;
     syncServer(server);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valueKey]);
@@ -321,7 +334,7 @@ export default function CompanyInfoEditor({
   return (
     // 글자 크기 단계(belie 2026-09-29 — 업체정보는 작게 느껴져 +−). 글자만 커지고 배치는 그대로.
     <div className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
-      <div className={`flex items-center justify-between gap-2 ${desktopHeading ? "px-3 py-2" : "px-2.5 py-1.5"}`}>
+      <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? "px-3 py-2" : "px-2.5 py-1.5"}`}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -333,39 +346,43 @@ export default function CompanyInfoEditor({
           </span>
           <span className="shrink-0 text-gray-400">{open ? "▴" : "▾"}</span>
         </button>
-        {/* 실무/수납(desktopHeading)은 도구 앞, 컨택관리·일정·계약은 박스 맨 오른쪽(belie 2026-09-29). */}
-        {desktopHeading && fontControl}
-        {open && (
-          <div className="flex shrink-0 items-center gap-1.5">
-            {auto && ciSaving && (
-              <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>
-            )}
-            {auto && !ciSaving && status === "error" && (
-              <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span>
-            )}
-            {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
-            <CompanyDocAutofillButton current={draft} onApply={(p) => apply((d) => ({ ...d, ...p }))} />
-            {/* 업체정보생성(TXT) — 편집 옆, 흰 바탕(belie 2026-09-29). */}
-            {txtCompanyName && (
+        <div
+          data-company-info-header-actions
+          className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? "basis-full justify-end sm:basis-auto sm:flex-1" : "shrink-0"}`}
+        >
+          {open && (
+            <>
+              {auto && ciSaving && (
+                <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>
+              )}
+              {auto && !ciSaving && status === "error" && (
+                <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span>
+              )}
+              {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
+              <CompanyDocAutofillButton current={draft} onApply={(p) => apply((d) => ({ ...d, ...p }))} />
+              {/* 업체정보생성(TXT) — 편집 옆, 흰 바탕(belie 2026-09-29). */}
+              {txtCompanyName && (
+                <button
+                  type="button"
+                  onClick={exportTxt}
+                  disabled={txtBusy}
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {txtBusy ? "생성 중…" : "업체정보생성(TXT)"}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={exportTxt}
-                disabled={txtBusy}
-                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => setModal(true)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
               >
-                {txtBusy ? "생성 중…" : "업체정보생성(TXT)"}
+                팝업
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setModal(true)}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-            >
-              팝업
-            </button>
-          </div>
-        )}
-        {!desktopHeading && fontControl}
+            </>
+          )}
+          {/* 실무/수납은 도구 마지막(우측), 컨택관리·일정·계약도 기존 오른쪽 정렬을 유지한다. */}
+          {fontControl}
+        </div>
       </div>
 
       {open && (

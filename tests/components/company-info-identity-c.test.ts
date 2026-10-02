@@ -65,6 +65,8 @@ const ci = () => CompanyInfo.parse({ 대표자이름: "홍길동" });
 function renderEditor(props: {
   txtCompanyName?: string;
   identityKey?: string;
+  desktopHeading?: boolean;
+  onChange?: (next: CompanyInfo) => void;
 }) {
   el = document.createElement("div");
   document.body.append(el);
@@ -76,6 +78,8 @@ function renderEditor(props: {
         onSave: () => undefined,
         txtCompanyName: props.txtCompanyName,
         identityKey: props.identityKey,
+        desktopHeading: props.desktopHeading,
+        onChange: props.onChange,
       }),
     );
   });
@@ -167,6 +171,37 @@ describe("CompanyInfoEditor identity", () => {
     expect(control).toBeTruthy();
     expect(control.nextElementSibling).toBeNull();
     expect(control.previousElementSibling?.textContent).toContain("팝업");
+  });
+
+  it("실무/수납 헤더는 도구 순서와 좁은 폭 줄바꿈을 유지하고, 헤더 제어는 자동저장을 만들지 않는다", () => {
+    const onChange = vi.fn();
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "contract-row:7", desktopHeading: true, onChange });
+    toggleOpen();
+    vi.clearAllMocks();
+
+    const header = el!.querySelector("[data-company-info-header]")!;
+    const actions = el!.querySelector("[data-company-info-header-actions]")!;
+    const buttons = [...actions.querySelectorAll("button")];
+    const documentButton = buttons.find((button) => button.textContent === "문서로 자동입력")!;
+    const txtButton = buttons.find((button) => button.textContent === "업체정보생성(TXT)")!;
+    const popupButton = buttons.find((button) => button.textContent === "팝업")!;
+    const fontDown = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 작게")!;
+    const fontUp = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 크게")!;
+
+    expect(header.firstElementChild?.textContent).toContain("업체정보");
+    expect(header.className).toContain("flex-wrap");
+    expect(actions.className).toContain("basis-full"); // 360/390에서는 제목과 도구가 줄바꿈된다.
+    expect(actions.className).toContain("sm:basis-auto");
+    expect(documentButton.compareDocumentPosition(txtButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(txtButton.compareDocumentPosition(popupButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(popupButton.compareDocumentPosition(fontDown) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(fontDown.compareDocumentPosition(fontUp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const button of [documentButton, txtButton, popupButton, fontDown, fontUp]) expect(button.type).toBe("button");
+
+    act(() => fontUp.click());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(autoMocks.stage).not.toHaveBeenCalled();
+    expect(autoMocks.update).not.toHaveBeenCalled();
   });
 });
 
