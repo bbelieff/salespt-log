@@ -103,7 +103,7 @@ export default function PolicyNewsEmbed({ result }: { result: PolicyNewsLoadResu
 
   if (result.status === "error") {
     return (
-      <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center" aria-label="정책자금 뉴스 오류" role="alert">
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center pc:h-full pc:min-h-0 pc:overflow-y-auto" aria-label="정책자금 뉴스 오류" role="alert">
         <p className="text-sm font-bold text-amber-950">뉴스를 안전하게 불러오지 못했어요.</p>
         <p className="mt-2 text-sm text-amber-800">{result.message}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -120,8 +120,8 @@ export default function PolicyNewsEmbed({ result }: { result: PolicyNewsLoadResu
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm" aria-label="정책자금 데일리 뉴스 목록">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-3">
+    <section className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm pc:flex pc:h-full pc:min-h-0 pc:flex-col pc:overflow-hidden" aria-label="정책자금 데일리 뉴스 목록">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-3">
         <div>
           <p className="text-sm font-bold text-slate-900">{result.data.date} 정책자금 뉴스</p>
           <p className="mt-0.5 text-xs text-slate-500">총 {result.data.total}건</p>
@@ -145,7 +145,7 @@ export default function PolicyNewsEmbed({ result }: { result: PolicyNewsLoadResu
         </div>
       </div>
 
-      <div className="mt-3 max-h-[65dvh] space-y-3 overflow-y-auto pr-1 pc:max-h-[calc(100dvh-13rem)]">
+      <div data-policy-news-scroll className="mt-3 max-h-[65dvh] space-y-3 overflow-y-auto pr-1 pc:min-h-0 pc:max-h-none pc:flex-1">
         {items.length > 0 ? (
           items.map((item) => <PolicyNewsCard key={item.id} item={item} />)
         ) : (

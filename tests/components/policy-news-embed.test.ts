@@ -160,6 +160,21 @@ describe("native viewer UX", () => {
     expect(host.textContent).not.toContain(rawItem.사업명);
   });
 
+  it("desktop은 route 남은 높이를 목록 스크롤에만 주고 mobile은 자연 흐름을 유지한다", () => {
+    render(readyResult([rawItem]));
+    const viewer = host.querySelector('section[aria-label="정책자금 데일리 뉴스 목록"]')!;
+    const list = host.querySelector("[data-policy-news-scroll]")!;
+    expect(viewer.className).toContain("pc:h-full");
+    expect(viewer.className).toContain("pc:min-h-0");
+    expect(viewer.className).toContain("pc:overflow-hidden");
+    expect(list.className).toContain("overflow-y-auto");
+    expect(list.className).toContain("pc:flex-1");
+    expect(list.className).toContain("pc:min-h-0");
+    expect(list.className).toContain("pc:max-h-none");
+    expect(list.className).toContain("max-h-[65dvh]");
+    expect(list.className).not.toContain("h-dvh");
+  });
+
   it("빈 목록을 0으로 렌더하되 오류로 오인하지 않는다", () => {
     render(readyResult([]));
     expect(host.textContent).toContain("총 0건");
@@ -182,5 +197,16 @@ describe("native viewer UX", () => {
     expect(page).toContain("<Suspense");
     expect(page).toContain("정책자금 뉴스를 불러오는 중…");
     expect(page).not.toContain("실시간 원문");
+  });
+
+  it("route-local desktop height chain만 만들고 global body lock을 추가하지 않는다", () => {
+    const page = readFileSync("app/(app)/payment/news/page.tsx", "utf8");
+    expect(page).toContain("data-policy-news-desktop-shell");
+    expect(page).toContain("pc:flex pc:h-dvh pc:min-h-0 pc:flex-col pc:overflow-hidden");
+    expect(page).toContain("pc:flex pc:min-h-0 pc:flex-1 pc:flex-col pc:overflow-hidden pc:pb-3");
+    expect(page).toContain('className="pc:flex pc:h-full pc:min-h-0 pc:flex-col"');
+    expect(page).toContain('className="pc:min-h-0 pc:flex-1"');
+    expect(page).not.toMatch(/(?:document\.body|documentElement).*overflow|overflow:\s*hidden/);
+    expect(page).not.toContain("data-payment-desktop-shell");
   });
 });

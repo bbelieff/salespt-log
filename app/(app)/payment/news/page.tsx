@@ -22,7 +22,7 @@ async function PolicyNewsContent() {
 
 function PolicyNewsLoading() {
   return (
-    <section className="flex min-h-[28rem] items-center justify-center rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500" aria-live="polite">
+    <section className="flex min-h-[28rem] items-center justify-center rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 pc:h-full pc:min-h-0" aria-live="polite">
       정책자금 뉴스를 불러오는 중…
     </section>
   );
@@ -30,11 +30,14 @@ function PolicyNewsLoading() {
 
 export default function PolicyNewsPage() {
   return (
-    <>
+    <div
+      data-policy-news-desktop-shell
+      className="pc:flex pc:h-dvh pc:min-h-0 pc:flex-col pc:overflow-hidden"
+    >
       <TopHeader pageEmoji="📰" pageTitle="정책자금 데일리" pageSubtitle="매일 자동 수집" />
-      <div className="px-4 pb-10 pt-3">
-        <PageContainer width="xwide">
-          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+      <div className="px-4 pb-10 pt-3 pc:flex pc:min-h-0 pc:flex-1 pc:flex-col pc:overflow-hidden pc:pb-3">
+        <PageContainer width="xwide" className="pc:flex pc:h-full pc:min-h-0 pc:flex-col">
+          <div className="mb-3 flex shrink-0 items-center justify-between gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
             <p className="min-w-0 truncate text-sm text-slate-500">
               출처 <span className="font-semibold text-slate-700">salesptlog.online/news</span>
             </p>
@@ -43,11 +46,13 @@ export default function PolicyNewsPage() {
               <ExternalArrow />
             </a>
           </div>
-          <Suspense fallback={<PolicyNewsLoading />}>
-            <PolicyNewsContent />
-          </Suspense>
+          <div className="pc:min-h-0 pc:flex-1">
+            <Suspense fallback={<PolicyNewsLoading />}>
+              <PolicyNewsContent />
+            </Suspense>
+          </div>
         </PageContainer>
       </div>
-    </>
+    </div>
   );
 }
