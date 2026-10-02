@@ -44,11 +44,169 @@ export const GUIDE_URL =
  * 아니라 바깥 링크로 취급한다 — 그래서 `target="_blank"` 로 연다.
  *
  * 2026-10-02 live probe: `news/latest` 는 200, 로그인·리다이렉트 없음,
- * X-Frame-Options 없음, `frame-ancestors 'self'` 이므로 같은 앱 origin 안에서만 표시한다.
- * 외부 source·프록시·쿠키 중계는 쓰지 않는다.
+ * 앱 안에서는 이 공개 주소의 고정 JSON payload만 서버에서 읽고 허용 필드를 React로 그린다.
+ * 원문 HTML/script 실행, 쿠키 중계, 임의 URL 프록시는 쓰지 않는다.
  */
 export const POLICY_NEWS_ORIGIN = "https://salesptlog.online";
 export const POLICY_NEWS_URL = "https://salesptlog.online/news/latest";
+export const POLICY_NEWS_FETCH_TIMEOUT_MS = 8_000;
+
+export type PolicyNewsItem = {
+  id: string;
+  status: string;
+  name: string;
+  agency: string;
+  region: string;
+  category: string;
+  amount: string;
+  announcedAt: string;
+  deadline: string;
+  target: string;
+  industryRestriction: string;
+  historyRestriction: string;
+  specificTarget: string;
+  loanType: string;
+  repayment: string;
+  interest: string;
+  fees: string;
+  application: string;
+  noticeUrl: string | null;
+  downloadUrl: string | null;
+  newsUrl: string | null;
+};
+
+export type PolicyNewsData = {
+  date: string;
+  total: number;
+  items: PolicyNewsItem[];
+};
+
+export type PolicyNewsLoadResult =
+  | { status: "ready"; data: PolicyNewsData }
+  | { status: "error"; message: string };
+
+const POLICY_NEWS_DATA_MARKER = "const DATA = /*__DATA__*/";
+const POLICY_NEWS_MAX_ITEMS = 250;
+
+type JsonObject = Record<string, unknown>;
+
+function isObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function policyNewsText(value: unknown, max = 2_000): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+export function safePolicyNewsExternalUrl(value: unknown): string | null {
+  const candidate = policyNewsText(value, 2_048);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+/** 고정 marker 뒤의 JSON 객체 하나만 추출한다. source HTML/script는 실행하지 않는다. */
+export function extractEmbeddedPolicyNewsData(html: string): unknown {
+  const markerAt = html.indexOf(POLICY_NEWS_DATA_MARKER);
+  if (markerAt < 0 || markerAt !== html.lastIndexOf(POLICY_NEWS_DATA_MARKER)) {
+    throw new Error("정책자금 데이터 표식을 확인할 수 없습니다.");
+  }
+
+  let cursor = markerAt + POLICY_NEWS_DATA_MARKER.length;
+  while (/\s/.test(html[cursor] ?? "")) cursor += 1;
+  if (html[cursor] !== "{") throw new Error("정책자금 데이터 형식이 올바르지 않습니다.");
+
+  const start = cursor;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (; cursor < html.length; cursor += 1) {
+    const char = html[cursor];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "{") depth += 1;
+    else if (char === "}" && --depth === 0) {
+      return JSON.parse(html.slice(start, cursor + 1));
+    }
+  }
+  throw new Error("정책자금 데이터가 끝나지 않았습니다.");
+}
+
+function normalizePolicyNewsItem(raw: unknown, index: number): PolicyNewsItem {
+  if (!isObject(raw)) throw new Error("정책자금 항목 형식이 올바르지 않습니다.");
+  const name = policyNewsText(raw["사업명"], 300);
+  if (!name) throw new Error("정책자금 항목에 사업명이 없습니다.");
+  return {
+    id: `${index}-${name}`,
+    status: policyNewsText(raw["확인상태"], 80),
+    name,
+    agency: policyNewsText(raw["주관기관"], 200),
+    region: policyNewsText(raw["지역"], 100),
+    category: policyNewsText(raw["성격"], 80) || "기타",
+    amount: policyNewsText(raw["최대지원금액"], 200),
+    announcedAt: policyNewsText(raw["공고일"], 40),
+    deadline: policyNewsText(raw["마감일"], 80),
+    target: policyNewsText(raw["지원대상"]),
+    industryRestriction: policyNewsText(raw["업종제한"]),
+    historyRestriction: policyNewsText(raw["창업업력제한"]),
+    specificTarget: policyNewsText(raw["특정타겟"]),
+    loanType: policyNewsText(raw["대출종류"], 200),
+    repayment: policyNewsText(raw["상환조건"]),
+    interest: policyNewsText(raw["대출금리"], 200),
+    fees: policyNewsText(raw["기타조건(보증료 등)"]),
+    application: policyNewsText(raw["신청방법"]),
+    noticeUrl: safePolicyNewsExternalUrl(raw["공고원문링크"]),
+    downloadUrl: safePolicyNewsExternalUrl(raw["다운로드링크"]),
+    newsUrl: safePolicyNewsExternalUrl(raw["뉴스·보도링크"]),
+  };
+}
+
+export function normalizePolicyNewsData(raw: unknown): PolicyNewsData {
+  if (!isObject(raw) || !isObject(raw.meta) || !Array.isArray(raw.items) || raw.items.length > POLICY_NEWS_MAX_ITEMS) {
+    throw new Error("정책자금 데이터 구조가 올바르지 않습니다.");
+  }
+  const date = policyNewsText(raw.meta["기준일"], 10);
+  if (!/^20\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/.test(date)) {
+    throw new Error("정책자금 기준일 형식이 올바르지 않습니다.");
+  }
+  const items = raw.items.map(normalizePolicyNewsItem);
+  return { date, total: items.length, items };
+}
+
+/** 서버 컴포넌트에서만 호출한다. 고정 공개 URL 외의 입력은 받지 않는다. */
+export async function loadPolicyNews(fetcher: typeof fetch = fetch): Promise<PolicyNewsLoadResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), POLICY_NEWS_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetcher(POLICY_NEWS_URL, {
+      cache: "no-store",
+      credentials: "omit",
+      headers: { Accept: "text/html" },
+      redirect: "error",
+      signal: controller.signal,
+    });
+    if (!response.ok || !response.headers.get("content-type")?.toLowerCase().startsWith("text/html")) {
+      throw new Error("원문 응답을 확인할 수 없습니다.");
+    }
+    const html = await response.text();
+    return { status: "ready", data: normalizePolicyNewsData(extractEmbeddedPolicyNewsData(html)) };
+  } catch {
+    return { status: "error", message: "잠시 뒤 다시 시도하거나 원문을 새 창에서 확인해 주세요." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * 주간 목표 회의록 — 내부 기록 권한 사용자가 14열 복사 후 붙여넣는 canonical Notion 페이지.
