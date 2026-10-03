@@ -35,6 +35,16 @@ const targetKey = (target: ContractCompanyInfoTarget) =>
 
 const emptyQueue = (): OwnerQueue => ({ order: [], drafts: new Map() });
 
+function releaseOwnerQueueIfIdle(ownerKey: string, queue: OwnerQueue) {
+  if (
+    !queue.drain
+    && queue.drafts.size === 0
+    && queuesByOwner.get(ownerKey) === queue
+  ) {
+    queuesByOwner.delete(ownerKey);
+  }
+}
+
 async function drainQueue(queue: OwnerQueue) {
   while (queue.order.length > 0) {
     const key = queue.order[0]!;
@@ -110,6 +120,7 @@ export function useContractCompanyInfo(
         await active;
       } catch (error) {
         if (queue.drain === active) queue.drain = undefined;
+        releaseOwnerQueueIfIdle(ownerKey, queue);
         if (mounted.current) {
           setCiState({
             saving: false,
@@ -122,7 +133,7 @@ export function useContractCompanyInfo(
       if (queue.drain === active) queue.drain = undefined;
       // drain 종료 직후 새 draft가 들어온 경계도 같은 flush에서 다시 직렬 처리한다.
     }
-    if (queuesByOwner.get(ownerKey) === queue) queuesByOwner.delete(ownerKey);
+    releaseOwnerQueueIfIdle(ownerKey, queue);
     if (mounted.current) setCiState({ saving: false, error: null });
   };
   flushRef.current = flushCi;
@@ -148,7 +159,7 @@ export function useContractCompanyInfo(
     }
     queue.order.length = 0;
     queue.drafts.clear();
-    if (queuesByOwner.get(ownerKey) === queue) queuesByOwner.delete(ownerKey);
+    releaseOwnerQueueIfIdle(ownerKey, queue);
     setCiState({ saving: false, error: null });
   };
 

@@ -69,7 +69,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 const SYNTHETIC_TARGET = { 계약일: "2026-07-10", 업체명: "합성상사" };
 
 function PaymentHarness({ target = SYNTHETIC_TARGET }: { target?: typeof SYNTHETIC_TARGET }) {
-  const { onCiChange, ciPending, ciState, flushCi } = useContractCompanyInfo(
+  const { onCiChange, ciPending, ciState, flushCi, resetCi } = useContractCompanyInfo(
     "test:payment-harness",
     target,
   );
@@ -85,6 +85,7 @@ function PaymentHarness({ target = SYNTHETIC_TARGET }: { target?: typeof SYNTHET
       onSave: () => undefined,
     }),
     h("button", { type: "button", onClick: () => void flushCi(false) }, "합성 재시도"),
+    h("button", { type: "button", onClick: resetCi }, "합성 초기화"),
     h("output", { "data-testid": "save-state" }, ciState.error || (ciState.saving ? "saving" : "idle")),
   );
 }
@@ -342,6 +343,39 @@ describe("payment CompanyInfo document/direct autosave", () => {
     expect(posts).toHaveLength(1);
     expect(stored.대표자이름).toBe("재열기 값");
     expect(document.querySelector('[data-testid="save-state"]')?.textContent).toBe("idle");
+  });
+
+  it("비행 중 저장을 초기화한 뒤 같은 owner를 다시 열어 편집해도 이전 POST 뒤에 새 값 하나만 저장한다", async () => {
+    deferFirstPost = true;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "폐기한 이전값");
+    await advanceAutosave();
+    expect(posts).toHaveLength(1);
+
+    await act(async () => button("합성 초기화").click());
+    await act(async () => root?.unmount());
+    host?.remove();
+    host = undefined;
+    root = undefined;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "새 최종값");
+    await advanceAutosave();
+
+    expect(posts).toHaveLength(1);
+    await act(async () => resolveFirstPost?.());
+    await settle();
+    expect(posts).toHaveLength(2);
+    expect(posts[1]!.업체정보.대표자이름).toBe("새 최종값");
+    expect(stored.대표자이름).toBe("새 최종값");
+  });
+
+  it("디바운스 대기 중 초기화하고 언마운트하면 폐기한 draft를 POST하지 않는다", async () => {
+    render(h(PaymentHarness));
+    setInput("대표자이름", "보내면 안 되는 값");
+    await act(async () => button("합성 초기화").click());
+    await act(async () => root?.unmount());
+    await advanceAutosave();
+    expect(posts).toHaveLength(0);
   });
 
   it("편집 뒤 대상 prop이 바뀌어도 초안은 편집 시점 계약에만 저장한다", async () => {
