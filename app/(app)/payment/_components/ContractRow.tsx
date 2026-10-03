@@ -94,8 +94,6 @@ export default function ContractRow({
   const showBody = forceOpen || (!selectable && open);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
-  const cpRef = useRef(cp);
-  cpRef.current = cp;
   const detailResizeStart = useRef<{ x: number; pct: number; width: number } | null>(null);
 
   // 루틴 draft 자동 저장 — target=row 고정, 공유 코어(Scope A)가 영속화.
@@ -136,11 +134,8 @@ export default function ContractRow({
     commit(validContractDraft(draft), "금액·날짜를 확인해주세요");
 
   // 업체정보(04·06) 디바운스 영속화 — 계약 PATCH 와 별도 키, 각 1회씩.
-  const { ciDirty, ciState, flushCi, onCiChange, resetCi } =
-    useContractCompanyInfo(() => ({
-      계약일: cpRef.current.계약일,
-      업체명: cpRef.current.업체명,
-    }));
+  const { ciDirty, ciDraft, ciState, flushCi, onCiChange, resetCi } =
+    useContractCompanyInfo({ 계약일: cp.계약일, 업체명: cp.업체명 });
 
   // 텍스트/카운트 → 디바운스 저장, 금액/날짜 → stage 후 그룹 blur 커밋.
   const editDraft = (fn: (d: ContractPayment) => ContractPayment) => {
@@ -400,7 +395,7 @@ export default function ContractRow({
           <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
           <div className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
-              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading splitInline={bare && detailLeftPct >= 55} />
+              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} pendingValue={ciDraft} hideSave onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading splitInline={bare && detailLeftPct >= 55} />
             </div>
             {bare && <button type="button" role="separator" aria-label="업체정보와 실무정보 열 너비 조절" aria-orientation="vertical" aria-valuemin={38} aria-valuemax={62} aria-valuenow={detailLeftPct} title="드래그하거나 화살표 키로 열 너비 조절" className="group relative h-full w-2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
               onPointerDown={(e) => { const grid = e.currentTarget.parentElement; if (!grid || !onDetailLeftPctChange) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const gap = parseFloat(getComputedStyle(grid).columnGap) || 0; detailResizeStart.current = { x: e.clientX, pct: detailLeftPct, width: Math.max(1, grid.clientWidth - 8 - 2 * gap) }; }}

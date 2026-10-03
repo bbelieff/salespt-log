@@ -1,6 +1,6 @@
 /**
  * useContractCompanyInfo — 계약 카드의 업체정보(04·06) 디바운스 영속화.
- * 계약 PATCH 와 별도 키(계약일|업체명 POST) — 각 1회씩, 실패 시 초안 유지+재시도.
+ * 계약 PATCH 와 별도 키(계약일|업체명 POST) — 직렬 저장, 실패 시 초안 유지+재시도.
  * ContractRow 500줄 캡 분리.
  */
 "use client";
@@ -8,31 +8,55 @@
 import { useEffect, useRef, useState } from "react";
 import type { CompanyInfo } from "@/types";
 
-export function useContractCompanyInfo(getKey: () => {
+export type ContractCompanyInfoTarget = Readonly<{
   계약일: string;
   업체명: string;
-}) {
-  const keyRef = useRef(getKey);
-  keyRef.current = getKey;
-  const ciRef = useRef<{ draft?: CompanyInfo; touched: boolean; seq: number }>({
-    touched: false,
-    seq: 0,
-  });
+}>;
+
+type PendingDraft = {
+  id: number;
+  target: ContractCompanyInfoTarget;
+  draft: CompanyInfo;
+  request?: Promise<void>;
+};
+
+// 상세가 닫힌 직후 요청이 실패해도 같은 계약을 다시 열면 미저장 초안을 복구한다.
+// 성공 ACK 또는 명시적 파기 때만 제거한다. 실제 영속화는 각 훅의 단일 직렬 writer가 담당한다.
+const pendingByTarget = new Map<string, PendingDraft>();
+let nextPendingId = 1;
+
+const targetKey = (target: ContractCompanyInfoTarget) =>
+  `${target.계약일}\u0000${target.업체명}`;
+
+export function useContractCompanyInfo(target: ContractCompanyInfoTarget) {
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  const initialPendingRef = useRef(pendingByTarget.get(targetKey(target)));
+  const ciRef = useRef<PendingDraft | undefined>(initialPendingRef.current);
   const [ciState, setCiState] = useState({
-    saving: false,
-    error: null as string | null,
+    saving: Boolean(initialPendingRef.current?.request),
+    error: initialPendingRef.current && !initialPendingRef.current.request
+      ? "저장되지 않은 업체정보가 있어요. 다시 시도해주세요"
+      : null as string | null,
   });
   const ciTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 동일 계약 키에는 POST 를 한 번에 하나만 보낸다. 늦은 이전 응답이 최신
-  // payload 뒤에 서버값을 되돌릴 수 있으므로, 성공한 뒤 새 draft 가 있으면
-  // 같은 실행 안에서 최신 snapshot 을 직렬 전송한다.
   const inFlight = useRef<Promise<void> | null>(null);
   const mounted = useRef(true);
+  const flushRef = useRef<(throwing: boolean) => Promise<void>>(async () => undefined);
+
   useEffect(() => {
     mounted.current = true;
+    // 직전 인스턴스의 cleanup 요청이 아직 진행 중이면 새 인스턴스도 같은 Promise를
+    // 기다려 상태를 수렴시킨다. 별도 POST는 만들지 않는다.
+    if (initialPendingRef.current?.request) void flushRef.current(false).catch(() => undefined);
     return () => {
       mounted.current = false;
-      if (ciTimer.current) clearTimeout(ciTimer.current);
+      if (ciTimer.current) {
+        clearTimeout(ciTimer.current);
+        ciTimer.current = null;
+      }
+      // 화면 전환/모바일 상세 닫기에서도 마지막 draft를 즉시 보낸다.
+      void flushRef.current(false).catch(() => undefined);
     };
   }, []);
 
@@ -42,46 +66,67 @@ export function useContractCompanyInfo(getKey: () => {
       ciTimer.current = null;
     }
     if (inFlight.current) {
-      await inFlight.current;
-      // 저장하고 이동은 기존 비동기 실패를 그냥 통과하면 안 된다. 앞 요청이 실패해
-      // 최신 draft 가 남아 있으면 여기서 명시적으로 다시 시도한다.
-      if (throwing && ciRef.current.touched) await flushCi(true);
+      try {
+        await inFlight.current;
+      } catch (error) {
+        if (throwing) throw error;
+        return;
+      }
+      // 저장하고 이동은 앞 요청 실패 뒤 남은 초안을 명시적으로 재시도한다.
+      if (throwing && ciRef.current) await flushCi(true);
       return;
     }
 
     const run = async () => {
       while (true) {
-        const cur = ciRef.current;
-        if (!cur.touched || !cur.draft) {
-          if (mounted.current) setCiState((s) => ({ ...s, saving: false }));
+        const attempt = ciRef.current;
+        if (!attempt) {
+          if (mounted.current) setCiState((state) => ({ ...state, saving: false }));
           return;
         }
-        const seq = cur.seq;
-        const attempt = cur.draft;
         if (mounted.current) setCiState({ saving: true, error: null });
         try {
-          const key = keyRef.current();
-          const res = await fetch("/api/company-info", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 계약일: key.계약일, 업체명: key.업체명, 업체정보: attempt }),
-          }).catch(() => null);
-          if (!res?.ok) throw new Error("업체정보를 저장하지 못했어요");
-        } catch (e) {
-          if (mounted.current) {
-            setCiState({ saving: false, error: e instanceof Error ? e.message : "저장 실패" });
+          if (attempt.request) {
+            await attempt.request;
+          } else {
+            const request = (async () => {
+              const res = await fetch("/api/company-info", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  계약일: attempt.target.계약일,
+                  업체명: attempt.target.업체명,
+                  업체정보: attempt.draft,
+                }),
+              }).catch(() => null);
+              if (!res?.ok) throw new Error("업체정보를 저장하지 못했어요");
+            })();
+            attempt.request = request;
+            try {
+              await request;
+            } finally {
+              if (attempt.request === request) attempt.request = undefined;
+            }
           }
-          if (throwing) throw e;
+        } catch (error) {
+          if (mounted.current) {
+            setCiState({
+              saving: false,
+              error: error instanceof Error ? error.message : "저장 실패",
+            });
+          }
+          if (throwing) throw error;
           return;
         }
 
-        if (!mounted.current) return;
-        if (ciRef.current.seq === seq) {
-          ciRef.current.touched = false;
-          setCiState({ saving: false, error: null });
+        const cached = pendingByTarget.get(targetKey(attempt.target));
+        if (cached?.id === attempt.id) pendingByTarget.delete(targetKey(attempt.target));
+        if (ciRef.current?.id === attempt.id) {
+          ciRef.current = undefined;
+          if (mounted.current) setCiState({ saving: false, error: null });
           return;
         }
-        // 입력이 비행 중 바뀌었다. 이전 요청의 ACK 뒤에 최신값만 다음으로 보낸다.
+        // 입력이 비행 중 바뀌었다. 언마운트 뒤에도 최신 snapshot을 다음에 직렬 전송한다.
       }
     };
     const active = run();
@@ -92,10 +137,17 @@ export function useContractCompanyInfo(getKey: () => {
       if (inFlight.current === active) inFlight.current = null;
     }
   };
+  flushRef.current = flushCi;
 
-  const onCiChange = (ci: CompanyInfo) => {
-    ciRef.current = { draft: ci, touched: true, seq: ciRef.current.seq + 1 };
-    setCiState((s) => ({ ...s, saving: true, error: null }));
+  const onCiChange = (draft: CompanyInfo) => {
+    const frozenTarget = {
+      계약일: targetRef.current.계약일,
+      업체명: targetRef.current.업체명,
+    };
+    const pending = { id: nextPendingId++, target: frozenTarget, draft };
+    ciRef.current = pending;
+    pendingByTarget.set(targetKey(frozenTarget), pending);
+    setCiState({ saving: true, error: null });
     if (ciTimer.current) clearTimeout(ciTimer.current);
     ciTimer.current = setTimeout(() => void flushCi(false), 800);
   };
@@ -105,12 +157,18 @@ export function useContractCompanyInfo(getKey: () => {
       clearTimeout(ciTimer.current);
       ciTimer.current = null;
     }
-    ciRef.current = { draft: undefined, touched: false, seq: ciRef.current.seq + 1 };
+    const pending = ciRef.current;
+    if (pending) {
+      const cached = pendingByTarget.get(targetKey(pending.target));
+      if (cached?.id === pending.id) pendingByTarget.delete(targetKey(pending.target));
+    }
+    ciRef.current = undefined;
     setCiState({ saving: false, error: null });
   };
 
   return {
-    ciDirty: ciRef.current.touched,
+    ciDirty: Boolean(ciRef.current),
+    ciDraft: ciRef.current?.draft,
     ciState,
     flushCi,
     onCiChange,
