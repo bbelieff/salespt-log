@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { newTodoOperationId, useCreateTodo } from "@/query/todos-hooks";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import type { TodoRecordKind, TodoType } from "@/types";
@@ -27,6 +28,7 @@ interface Props {
 
 export default function TodoFormModal({ contractRef, institutionRef, companyName, initial, onClose }: Props) {
   const create = useCreateTodo();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [kind, setKind] = useState<TodoRecordKind>(initial.기록종류);
   const [type, setType] = useState<TodoType>("기타");
   const [title, setTitle] = useState(initial.제목);
@@ -46,11 +48,42 @@ export default function TodoFormModal({ contractRef, institutionRef, companyName
   };
   useDirtyEntry(`todo-${contractRef}-${institutionRef}`, true, doCreate, onClose, `${kind === "todo" ? "Todo" : "History"} · ${companyName}`);
   const guardedNav = useGuardedNav();
-  const close = () => guardedNav(onClose);
+  const close = useCallback(() => guardedNav(onClose), [guardedNav, onClose]);
+
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.focus({ preventScroll: true });
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      opener?.focus({ preventScroll: true });
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      close();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [close]);
+
   const selectClass = "h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm focus:border-blue-500 focus:outline-none";
-  return (
+  const modal = (
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={close}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${kind === "todo" ? "Todo" : "History"} 상세`}
+        tabIndex={-1}
+        className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl focus:outline-none"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-3 flex items-center justify-between"><div><p className="text-px-11 font-semibold text-blue-600">{institutionRef}</p><h3 className="text-lg font-black text-slate-950">{kind === "todo" ? "할 일" : "한 일"} 상세</h3></div><button type="button" onClick={close} className="p-2 text-slate-400" aria-label="닫기">×</button></div>
         <div className="mb-3 grid grid-cols-2 rounded-lg bg-slate-100 p-1">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button key={k} type="button" onClick={() => setKind(k)} className={`h-8 rounded-md text-xs font-bold ${kind === k ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>{k === "todo" ? "Todo · 할 일" : "History · 한 일"}</button>)}</div>
         <div className="mb-3 flex flex-wrap gap-1.5">{TYPES.map((t) => <button key={t} type="button" onClick={() => setType(t)} className={`h-7 rounded-full border px-2.5 text-xs font-semibold ${type === t ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-500"}`}>{t}</button>)}</div>
@@ -63,4 +96,5 @@ export default function TodoFormModal({ contractRef, institutionRef, companyName
       </div>
     </div>
   );
+  return typeof document === "undefined" ? null : createPortal(modal, document.body);
 }
