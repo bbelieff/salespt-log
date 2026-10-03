@@ -35,12 +35,14 @@ let posts: RequestBody[] = [];
 let failNextPost = false;
 let deferFirstPost = false;
 let resolveFirstPost: (() => void) | undefined;
+let getHandler: ((url: string) => Promise<{ ok: boolean; json: () => Promise<unknown> }>) | undefined;
 
 const ok = () => ({ ok: true, json: async () => ({ ok: true }) });
 
 const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
   if (url.startsWith("/api/company-info?") && (!init?.method || init.method === "GET")) {
+    if (getHandler) return getHandler(url);
     return { ok: true, json: async () => ({ 업체정보: stored }) };
   }
   if (url === "/api/company-info" && init?.method === "POST") {
@@ -64,16 +66,18 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
   throw new Error(`unexpected fetch: ${url}`);
 });
 
-function PaymentHarness() {
-  const { onCiChange, ciState, flushCi } = useContractCompanyInfo(() => ({
-    계약일: "2026-07-10",
-    업체명: "합성상사",
-  }));
+const SYNTHETIC_TARGET = { 계약일: "2026-07-10", 업체명: "합성상사" };
+
+function PaymentHarness({ target = SYNTHETIC_TARGET }: { target?: typeof SYNTHETIC_TARGET }) {
+  const { onCiChange, ciPending, ciState, flushCi, resetCi } = useContractCompanyInfo(
+    "test:payment-harness",
+    target,
+  );
   return h(
     React.Fragment,
     null,
     h(CompanyInfoEditor, {
-      value: CompanyInfo.parse({}),
+      value: ciPending?.value ?? CompanyInfo.parse({}),
       identityKey: "contract-row:synthetic",
       txtCompanyName: "합성상사",
       hideSave: true,
@@ -81,7 +85,29 @@ function PaymentHarness() {
       onSave: () => undefined,
     }),
     h("button", { type: "button", onClick: () => void flushCi(false) }, "합성 재시도"),
+    h("button", { type: "button", onClick: resetCi }, "합성 초기화"),
     h("output", { "data-testid": "save-state" }, ciState.error || (ciState.saving ? "saving" : "idle")),
+  );
+}
+
+function TargetSwitchHarness({ target }: { target: typeof SYNTHETIC_TARGET }) {
+  const { ciPending, ciState, flushCi, onCiChange } = useContractCompanyInfo(
+    "test:same-mounted-row",
+    target,
+  );
+  return h(
+    React.Fragment,
+    null,
+    h(CompanyInfoContractSection, {
+      계약일: target.계약일,
+      업체명: target.업체명,
+      pendingValue: ciPending,
+      identityKey: "contract-row:same-mounted-row",
+      hideSave: true,
+      onChange: onCiChange,
+    }),
+    h("button", { type: "button", onClick: () => void flushCi(false) }, "합성 전환 재시도"),
+    h("output", { "data-testid": "switch-save-state" }, ciState.error || (ciState.saving ? "saving" : "idle")),
   );
 }
 
@@ -164,6 +190,7 @@ beforeEach(() => {
   failNextPost = false;
   deferFirstPost = false;
   resolveFirstPost = undefined;
+  getHandler = undefined;
   fetchMock.mockClear();
   runDocumentOcr.mockClear();
 });
@@ -274,5 +301,224 @@ describe("payment CompanyInfo document/direct autosave", () => {
     expect(stored.사업자등록번호).toBe("234-56-78902");
     await remountAndRead();
     expect(document.querySelector<HTMLInputElement>('input[id$="-사업자등록번호"]')?.value).toBe("234-56-78902");
+  });
+
+  it("디바운스 중 상세가 언마운트돼도 마지막 입력을 즉시 저장한다", async () => {
+    render(h(PaymentHarness));
+    setInput("대표자이름", "최종값");
+    await act(async () => root?.unmount());
+    await settle();
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.업체정보.대표자이름).toBe("최종값");
+  });
+
+  it("첫 저장 비행 중 마지막 입력 뒤 언마운트돼도 직렬로 마지막 값을 저장한다", async () => {
+    deferFirstPost = true;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "첫값");
+    await advanceAutosave();
+    setInput("대표자이름", "최종값");
+    await act(async () => root?.unmount());
+    await act(async () => resolveFirstPost?.());
+    await settle();
+    expect(posts).toHaveLength(2);
+    expect(posts[1]!.업체정보.대표자이름).toBe("최종값");
+  });
+
+  it("cleanup 저장 중 같은 계약을 즉시 다시 열어도 POST를 중복하지 않고 상태가 수렴한다", async () => {
+    deferFirstPost = true;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "재열기 값");
+    await act(async () => root?.unmount());
+    await settle();
+    expect(posts).toHaveLength(1);
+
+    host?.remove();
+    host = undefined;
+    root = undefined;
+    render(h(PaymentHarness));
+    expect(document.querySelector('[data-testid="save-state"]')?.textContent).toBe("saving");
+    await act(async () => resolveFirstPost?.());
+    await settle();
+    expect(posts).toHaveLength(1);
+    expect(stored.대표자이름).toBe("재열기 값");
+    expect(document.querySelector('[data-testid="save-state"]')?.textContent).toBe("idle");
+  });
+
+  it("비행 중 저장을 초기화한 뒤 같은 owner를 다시 열어 편집해도 이전 POST 뒤에 새 값 하나만 저장한다", async () => {
+    deferFirstPost = true;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "폐기한 이전값");
+    await advanceAutosave();
+    expect(posts).toHaveLength(1);
+
+    await act(async () => button("합성 초기화").click());
+    await act(async () => root?.unmount());
+    host?.remove();
+    host = undefined;
+    root = undefined;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "새 최종값");
+    await advanceAutosave();
+
+    expect(posts).toHaveLength(1);
+    await act(async () => resolveFirstPost?.());
+    await settle();
+    expect(posts).toHaveLength(2);
+    expect(posts[1]!.업체정보.대표자이름).toBe("새 최종값");
+    expect(stored.대표자이름).toBe("새 최종값");
+  });
+
+  it("디바운스 대기 중 초기화하고 언마운트하면 폐기한 draft를 POST하지 않는다", async () => {
+    render(h(PaymentHarness));
+    setInput("대표자이름", "보내면 안 되는 값");
+    await act(async () => button("합성 초기화").click());
+    await act(async () => root?.unmount());
+    await advanceAutosave();
+    expect(posts).toHaveLength(0);
+  });
+
+  it("편집 뒤 대상 prop이 바뀌어도 초안은 편집 시점 계약에만 저장한다", async () => {
+    const original = { 계약일: "2026-07-10", 업체명: "원계약" };
+    const next = { 계약일: "2026-07-11", 업체명: "다음계약" };
+    render(h(PaymentHarness, { target: original }));
+    setInput("대표자이름", "원계약 값");
+    await act(async () => root?.render(h(PaymentHarness, { target: next })));
+    await advanceAutosave();
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toMatchObject(original);
+    expect(posts[0]!.업체정보.대표자이름).toBe("원계약 값");
+  });
+
+  it("GET 실패를 빈 업체정보 성공으로 보이지 않고, 명시적 재시도로 복구한다", async () => {
+    let attempt = 0;
+    getHandler = async () => {
+      attempt += 1;
+      if (attempt === 1) return { ok: false, json: async () => ({ error: "synthetic GET failure" }) };
+      return { ok: true, json: async () => ({ 업체정보: CompanyInfo.parse({ 대표자이름: "복구값" }) }) };
+    };
+    render(h(CompanyInfoContractSection, {
+      계약일: "2026-07-10",
+      업체명: "합성상사",
+      identityKey: "contract-row:synthetic",
+      hideSave: true,
+    }));
+    await settle();
+    expect(document.body.textContent).toContain("업체정보를 불러오지 못했어요");
+    expect(document.querySelector('input[id$="-대표자이름"]')).toBeNull();
+    await act(async () => button("다시 시도").click());
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("복구값");
+  });
+
+  it("언마운트 flush가 실패해도 같은 계약을 다시 열면 초안을 복구해 재시도한다", async () => {
+    failNextPost = true;
+    render(h(PaymentHarness));
+    setInput("대표자이름", "복구할 최종값");
+    await act(async () => root?.unmount());
+    await settle();
+    expect(posts).toHaveLength(1);
+    expect(stored.대표자이름).toBe("");
+
+    host?.remove();
+    host = undefined;
+    root = undefined;
+    render(h(PaymentHarness));
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("복구할 최종값");
+    expect(document.querySelector('[data-testid="save-state"]')?.textContent).toContain("다시 시도");
+    await act(async () => button("합성 재시도").click());
+    await settle();
+    expect(posts).toHaveLength(2);
+    expect(stored.대표자이름).toBe("복구할 최종값");
+  });
+
+  it("단독 편집기의 비-2xx 저장은 성공 표시 없이 입력을 유지하고 재시도한다", async () => {
+    failNextPost = true;
+    render(h(CompanyInfoContractSection, {
+      계약일: "2026-07-10",
+      업체명: "합성상사",
+      identityKey: "contract-row:standalone",
+    }));
+    await settle();
+    const header = document.querySelector<HTMLButtonElement>("[data-company-info-header] > button");
+    if (!header) throw new Error("company info header not found");
+    await act(async () => header.click());
+    setInput("대표자이름", "실패 뒤 유지값");
+    await advanceAutosave();
+    expect(posts).toHaveLength(1);
+    expect(stored.대표자이름).toBe("");
+    expect(document.body.textContent).toContain("저장 실패");
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("실패 뒤 유지값");
+    await act(async () => button("다시 시도").click());
+    await settle();
+    expect(posts).toHaveLength(2);
+    expect(stored.대표자이름).toBe("실패 뒤 유지값");
+  });
+
+  it("이전 계약의 늦은 GET 응답이 새 계약 값을 덮지 않는다", async () => {
+    let resolveOld: ((value: { ok: boolean; json: () => Promise<unknown> }) => void) | undefined;
+    getHandler = async (url) => {
+      if (url.includes(encodeURIComponent("이전계약"))) {
+        return new Promise((resolve) => { resolveOld = resolve; });
+      }
+      return { ok: true, json: async () => ({ 업체정보: CompanyInfo.parse({ 대표자이름: "새값" }) }) };
+    };
+    render(h(CompanyInfoContractSection, {
+      계약일: "2026-07-10", 업체명: "이전계약", identityKey: "contract-row:1", hideSave: true,
+    }));
+    await act(async () => root?.render(h(CompanyInfoContractSection, {
+      계약일: "2026-07-11", 업체명: "새계약", identityKey: "contract-row:2", hideSave: true,
+    })));
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("새값");
+    await act(async () => resolveOld?.({
+      ok: true,
+      json: async () => ({ 업체정보: CompanyInfo.parse({ 대표자이름: "늦은 이전값" }) }),
+    }));
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("새값");
+  });
+
+  it("같은 mounted row가 A→B로 바뀌기 전후 두 편집을 각 target에 직렬 저장하고 A draft를 B에 보이지 않는다", async () => {
+    const targetA = { 계약일: "2026-07-10", 업체명: "A계약" };
+    const targetB = { 계약일: "2026-07-11", 업체명: "B계약" };
+    render(h(TargetSwitchHarness, { target: targetA }));
+    await settle();
+    setInput("대표자이름", "A 최종값");
+
+    await act(async () => root?.render(h(TargetSwitchHarness, { target: targetB })));
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).not.toBe("A 최종값");
+    setInput("대표자이름", "B 최종값");
+    await advanceAutosave();
+
+    expect(posts).toHaveLength(2);
+    expect(posts[0]).toMatchObject({ ...targetA, 업체정보: { 대표자이름: "A 최종값" } });
+    expect(posts[1]).toMatchObject({ ...targetB, 업체정보: { 대표자이름: "B 최종값" } });
+  });
+
+  it("A target 실패는 A·B pending을 보존하고 재시도에서 A→B 순서로 모두 저장한다", async () => {
+    const targetA = { 계약일: "2026-07-10", 업체명: "A실패계약" };
+    const targetB = { 계약일: "2026-07-11", 업체명: "B대기계약" };
+    failNextPost = true;
+    render(h(TargetSwitchHarness, { target: targetA }));
+    await settle();
+    setInput("대표자이름", "A 보존값");
+
+    await act(async () => root?.render(h(TargetSwitchHarness, { target: targetB })));
+    await settle();
+    setInput("대표자이름", "B 보존값");
+    await advanceAutosave();
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toMatchObject({ ...targetA, 업체정보: { 대표자이름: "A 보존값" } });
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("B 보존값");
+    expect(document.querySelector('[data-testid="switch-save-state"]')?.textContent).toContain("저장하지 못했어요");
+
+    await act(async () => button("합성 전환 재시도").click());
+    await settle();
+    expect(posts).toHaveLength(3);
+    expect(posts[1]).toMatchObject({ ...targetA, 업체정보: { 대표자이름: "A 보존값" } });
+    expect(posts[2]).toMatchObject({ ...targetB, 업체정보: { 대표자이름: "B 보존값" } });
+    expect(document.querySelector('[data-testid="switch-save-state"]')?.textContent).toBe("idle");
   });
 });
