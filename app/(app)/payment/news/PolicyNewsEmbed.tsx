@@ -75,18 +75,7 @@ export default function PolicyNewsEmbed({ src }: { src: string }) {
       aria-label="정책자금 데일리 원문"
       data-policy-news-frame-state={state}
     >
-      <div className="flex min-h-10 shrink-0 items-center justify-between gap-2 px-2 text-xs text-slate-500" aria-live="polite">
-        <span role="status">
-          {state === "loading"
-            ? "정책자금 원문 프레임을 불러오는 중…"
-            : state === "ready"
-              ? "정책자금 원문 프레임이 로드됐어요."
-              : "정책자금 원문 프레임 로드를 확인하지 못했어요."}
-        </span>
-        {state === "ready" && (
-          <span className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">원문 프레임 로드됨</span>
-        )}
-      </div>
+      {state === "loading" && <span className="sr-only" role="status">정책자금 원문 프레임을 불러오는 중…</span>}
 
       {state === "error" ? (
         <div className="flex h-[65dvh] min-h-[28rem] flex-col items-center justify-center gap-3 p-6 text-center pc:h-full pc:min-h-0" role="alert">
