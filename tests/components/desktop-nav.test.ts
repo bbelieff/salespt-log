@@ -20,6 +20,7 @@ const desktopNav = readFileSync("components/desktop/DesktopNav.tsx", "utf8");
 const tabBar = readFileSync("components/TabBar.tsx", "utf8");
 const layout = readFileSync("app/(app)/layout.tsx", "utf8");
 const news = readFileSync("app/(app)/payment/news/page.tsx", "utf8");
+const newsEmbed = readFileSync("app/(app)/payment/news/PolicyNewsEmbed.tsx", "utf8");
 const links = readFileSync("lib/config/links.ts", "utf8");
 
 /** 첫 번째 <nav className="..."> 의 클래스 토큰 목록. */
@@ -180,11 +181,13 @@ describe("⑨ 링크 상수 — 기존 업무매뉴얼과 same-origin 뉴스 주
     expect(links).toContain("WORK_MANUAL_URL");
   });
 
-  it("뉴스 페이지가 safe native viewer를 쓰고 외부 전용 placeholder를 남기지 않는다", () => {
+  it("뉴스 페이지가 original HTML iframe viewer를 쓰고 외부 전용 placeholder를 남기지 않는다", () => {
     expect(news).toContain("POLICY_NEWS_URL");
     expect(news).toContain("PolicyNewsEmbed");
-    expect(news).toContain("loadPolicyNews");
     expect(news).not.toContain("<iframe");
+    expect(newsEmbed).toContain("<iframe");
+    expect(newsEmbed).toContain('POLICY_NEWS_SANDBOX = "allow-scripts allow-popups"');
+    expect(newsEmbed).not.toContain("allow-same-origin");
     expect(news).not.toContain("POLICY_NEWS_EMBED");
     expect(news).not.toContain("아직 새 창에서 열립니다");
   });

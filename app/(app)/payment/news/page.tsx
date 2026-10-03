@@ -1,11 +1,7 @@
-/**
- * 정책자금 데일리 — 앱 안에서는 원문 script를 실행하지 않고, 공개 페이지가 품은
- * 고정 JSON payload만 서버에서 읽어 허용 필드로 다시 그린다.
- */
-import { Suspense } from "react";
+/** 정책자금 데일리 — 공개 원문 전체 기능을 최소 권한 iframe으로 앱 안에 표시한다. */
 import TopHeader from "@/components/TopHeader";
 import PageContainer from "@/components/PageContainer";
-import { loadPolicyNews, POLICY_NEWS_URL } from "@/config/links";
+import { POLICY_NEWS_URL } from "@/config/links";
 import PolicyNewsEmbed from "./PolicyNewsEmbed";
 
 function ExternalArrow() {
@@ -13,18 +9,6 @@ function ExternalArrow() {
     <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />
     </svg>
-  );
-}
-
-async function PolicyNewsContent() {
-  return <PolicyNewsEmbed result={await loadPolicyNews()} />;
-}
-
-function PolicyNewsLoading() {
-  return (
-    <section className="flex min-h-[28rem] items-center justify-center rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 pc:h-full pc:min-h-0" aria-live="polite">
-      정책자금 뉴스를 불러오는 중…
-    </section>
   );
 }
 
@@ -47,9 +31,7 @@ export default function PolicyNewsPage() {
             </a>
           </div>
           <div className="pc:min-h-0 pc:flex-1">
-            <Suspense fallback={<PolicyNewsLoading />}>
-              <PolicyNewsContent />
-            </Suspense>
+            <PolicyNewsEmbed src={POLICY_NEWS_URL} />
           </div>
         </PageContainer>
       </div>
