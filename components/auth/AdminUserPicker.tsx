@@ -17,10 +17,9 @@ import {
 } from "./AdminUserPickerSections";
 import { type PrepItem } from "./TraineePrepBulkForm";
 import UnifiedPrepCard from "./UnifiedPrepCard";
-import InstallFormulasButton from "./InstallFormulasButton";
-import InstallFormulasByIdButton from "./InstallFormulasByIdButton";
 import MigrateCacheButton from "./MigrateCacheButton";
 import BulkReserveButton from "./BulkReserveButton";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 export default function AdminUserPicker({
   users,
@@ -65,7 +64,7 @@ export default function AdminUserPicker({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `HTTP ${res.status}`);
+        setError(apiErrorMessage(data, res.status));
         return false;
       }
       await queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -112,7 +111,7 @@ export default function AdminUserPicker({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `HTTP ${res.status}`);
+        setError(apiErrorMessage(data, res.status));
         setBusy(null);
         return;
       }
@@ -167,7 +166,7 @@ export default function AdminUserPicker({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `HTTP ${res.status}`);
+        setError(apiErrorMessage(data, res.status));
         setBusy(null);
         return;
       }
@@ -211,7 +210,7 @@ export default function AdminUserPicker({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? `HTTP ${res.status}`);
+        setError(apiErrorMessage(data, res.status));
       } else {
         const { approved = 0, failed = [] } = data;
         window.alert(
@@ -328,7 +327,7 @@ export default function AdminUserPicker({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `HTTP ${res.status}`);
+        setError(apiErrorMessage(data, res.status));
         setBusy(null);
         return;
       }
@@ -387,8 +386,6 @@ export default function AdminUserPicker({
                 }}
               />
               <MigrateCacheButton />
-              <InstallFormulasButton />
-              <InstallFormulasByIdButton />
             </div>
           )}
         </div>

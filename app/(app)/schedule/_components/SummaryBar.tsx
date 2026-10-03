@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
@@ -18,12 +18,13 @@ import { formatMoney } from "@/lib/format/money";
 
 interface Props {
   meetings: Meeting[];
+  goalSummary?: ReactNode;
 }
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
 const fmtMoney = formatMoney;
 
-export default function SummaryBar({ meetings }: Props) {
+export default function SummaryBar({ meetings, goalSummary }: Props) {
   const total = meetings.length;
   const reserved = meetings.filter(
     (m) => m.상태 === "예약" || m.상태 === "변경",
@@ -92,13 +93,14 @@ export default function SummaryBar({ meetings }: Props) {
               ₩{fmtMoney(revenueSum)}
             </span>
             <span
-              className="text-[10px] text-gray-500"
+              className="text-px-10 text-gray-500"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               수임 ₩{fmtMoney(feeSum)} · 수수료 ₩{fmtMoney(commissionSum)}
             </span>
           </div>
         )}
+        {goalSummary && <div className="mt-1 border-t border-gray-100">{goalSummary}</div>}
       </div>
     </div>
   );
@@ -127,7 +129,7 @@ function Counter({
         {value}
       </span>
       <span
-        className={`mt-0.5 text-[10px] ${highlight ? "font-bold text-green-700" : "text-gray-500"}`}
+        className={`mt-0.5 text-px-10 ${highlight ? "font-bold text-green-700" : "text-gray-500"}`}
       >
         {label}
       </span>

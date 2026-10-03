@@ -7,10 +7,12 @@
 "use client";
 
 import { addDays, dayLabelKO, fmtMD, friOf, parseISO } from "../_lib/week";
+import type { ReactNode } from "react";
 
 const JS_DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 interface Props {
+  goalSummary?: ReactNode;
   weekIndex: number;
   courseStart: string; // YYYY-MM-DD
   selectedDate: string; // YYYY-MM-DD
@@ -35,6 +37,7 @@ interface Props {
 
 export default function WeekHeader({
   weekIndex,
+  goalSummary,
   courseStart,
   selectedDate,
   todayISO,
@@ -71,8 +74,9 @@ export default function WeekHeader({
     // sticky 는 parent(page.tsx) 에서 처리 — WeekFunnelBar 와 한 그룹으로 묶기 위해
     // (일정·계약 탭의 WeekHeader+SummaryBar 패턴과 동일, 2026-05-16).
     <header className="bg-white">
-      {/* 주차 타이틀 + 좌우 화살표 (태블릿/데스크탑: 중앙 모아보기) */}
-      <div className="flex items-center justify-between px-2 py-3 2xl:mx-auto 2xl:max-w-xl">
+      {/* 주차 타이틀 + 좌우 화살표 (태블릿: 중앙 모아보기 2xl cap,
+          데스크탑 학생 셸(.desktop-shell .week-nav-row, globals.css)에서는 전폭). */}
+      <div className="week-nav-row flex items-center justify-between px-2 py-3 2xl:mx-auto 2xl:max-w-xl">
         <button
           type="button"
           onClick={onPrevWeek}
@@ -134,7 +138,7 @@ export default function WeekHeader({
             >
               {isToday && (
                 /* 2026-05-18: 뱃지 가림 방지 — 왼쪽 정렬 + 우측 padding 으로 뱃지 영역 회피. */
-                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black pl-1.5 pr-5 text-left text-[9px] font-extrabold leading-[14px] tracking-wider text-white">
+                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black pl-1.5 pr-5 text-left text-px-9 font-extrabold leading-[14px] tracking-wider text-white">
                   TODAY
                 </span>
               )}
@@ -174,7 +178,7 @@ export default function WeekHeader({
       </div>
 
       {/* 선택된 날짜 라벨 + 주차합계 inline (2026-05-17, WeekFunnelBar 통합) */}
-      <div className="px-4 pb-3">
+      {(weekFunnel || goalSummary) && <div className="px-4 pb-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-r-xl border-l-4 border-blue-500 bg-blue-50 px-3 py-2">
           <span className="text-sm font-semibold text-blue-800">
             {fmtMD(selectedDay)} ({dayLabelKO(selectedDay)})
@@ -197,8 +201,10 @@ export default function WeekHeader({
               </span>
             </span>
           )}
+          {goalSummary && <div className="w-full border-t border-blue-100 pt-1">{goalSummary}</div>}
         </div>
       </div>
+      }
       {/* 사용된 종속성: startDow 참조 (요일 매핑 계산 의도 보존) */}
       {startDow < 0 ? null : null}
     </header>

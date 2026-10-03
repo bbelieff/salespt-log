@@ -17,6 +17,7 @@ const valuesGet = vi.fn(async () => ({ data: { values: [[]] } })); // phantom �
 const valuesUpdate = vi.fn(async () => ({}));
 const valuesClear = vi.fn(async () => ({}));
 const mirrorSheetRow = vi.fn();
+const mirrorDbTabRowDurable = vi.fn();
 const persistDbRow = vi.fn();
 const clearDbRow = vi.fn();
 const mintRowKey = vi.fn((section: string) => `${section}:minted-uuid`);
@@ -30,6 +31,10 @@ vi.mock("@/repo/sheets-client", () => ({
 vi.mock("@/repo/db/mirror", () => ({
   mirrorSheetRow: (...a: unknown[]) => mirrorSheetRow(...(a as [])),
   mirrorClearRow: vi.fn(),
+}));
+// BBE-259: append 4경로는 mirror.ts 표준이 아니라 전용 durable 미러(db-tab-append-mirror.ts)를 쓴다.
+vi.mock("@/repo/db-tab-append-mirror", () => ({
+  mirrorDbTabRowDurable: (...a: unknown[]) => mirrorDbTabRowDurable(...(a as [])),
 }));
 vi.mock("@/repo/db/db-tab-sync", () => ({
   persistDbRow: (...a: unknown[]) => persistDbRow(...(a as [])),
@@ -75,6 +80,7 @@ beforeEach(() => {
   valuesUpdate.mockReset().mockResolvedValue({});
   valuesClear.mockReset().mockResolvedValue({});
   mirrorSheetRow.mockReset();
+  mirrorDbTabRowDurable.mockReset();
   persistDbRow.mockReset();
   clearDbRow.mockReset();
   mintRowKey.mockReset().mockImplementation((section: string) => `${section}:minted-uuid`);
@@ -84,37 +90,40 @@ beforeEach(() => {
 });
 
 describe("append 4경로 — UUID 키 발급 + _row 명시(신규 append, 레거시 키 미사용)", () => {
+  // BBE-259: 미러는 이제 mirrorDbTabRowDurable(spreadsheetId, rowKey, payload) — 위치 인자 3개.
   it("appendPurchase", async () => {
     await appendPurchase("sheet-1", P);
     expect(mintRowKey).toHaveBeenCalledWith("매입DB");
-    const arg = mirrorSheetRow.mock.calls[0]?.[0] as { rowKey: string; payload: Record<string, unknown> };
-    expect(arg.rowKey).toBe("매입DB:minted-uuid");
-    expect(arg.payload._row).toBeTypeOf("number");
-    expect(arg.payload._cleared).toBe(false);
+    const [sid, rowKey, payload] = mirrorDbTabRowDurable.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(sid).toBe("sheet-1");
+    expect(rowKey).toBe("매입DB:minted-uuid");
+    expect(payload._row).toBeTypeOf("number");
+    expect(payload._cleared).toBe(false);
+    expect(mirrorSheetRow).not.toHaveBeenCalled(); // 공용 mirror.ts 는 append 경로에서 더는 안 쓴다
   });
 
   it("appendProduction", async () => {
     await appendProduction("sheet-1", PROD);
     expect(mintRowKey).toHaveBeenCalledWith("직접생산");
-    const arg = mirrorSheetRow.mock.calls[0]?.[0] as { rowKey: string; payload: Record<string, unknown> };
-    expect(arg.rowKey).toBe("직접생산:minted-uuid");
-    expect(arg.payload._row).toBeTypeOf("number");
+    const [, rowKey, payload] = mirrorDbTabRowDurable.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(rowKey).toBe("직접생산:minted-uuid");
+    expect(payload._row).toBeTypeOf("number");
   });
 
   it("appendBanner", async () => {
     await appendBanner("sheet-1", B);
     expect(mintRowKey).toHaveBeenCalledWith("현수막");
-    const arg = mirrorSheetRow.mock.calls[0]?.[0] as { rowKey: string; payload: Record<string, unknown> };
-    expect(arg.rowKey).toBe("현수막:minted-uuid");
-    expect(arg.payload._row).toBeTypeOf("number");
+    const [, rowKey, payload] = mirrorDbTabRowDurable.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(rowKey).toBe("현수막:minted-uuid");
+    expect(payload._row).toBeTypeOf("number");
   });
 
   it("appendLead", async () => {
     await appendLead("sheet-1", L);
     expect(mintRowKey).toHaveBeenCalledWith("콜지기소");
-    const arg = mirrorSheetRow.mock.calls[0]?.[0] as { rowKey: string; payload: Record<string, unknown> };
-    expect(arg.rowKey).toBe("콜지기소:minted-uuid");
-    expect(arg.payload._row).toBeTypeOf("number");
+    const [, rowKey, payload] = mirrorDbTabRowDurable.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(rowKey).toBe("콜지기소:minted-uuid");
+    expect(payload._row).toBeTypeOf("number");
   });
 });
 

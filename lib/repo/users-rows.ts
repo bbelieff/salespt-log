@@ -33,8 +33,16 @@ function readRegistrySheetRows(): Promise<string[][]> {
   return readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
 }
 
+/** DB 경로도 시트 경로와 동일하게 60초 캐시(BBE-247) — 같은 태그라 쓰기 시 함께 무효화된다.
+ * null(게이트 OFF·DB 오류·0행)도 그대로 캐시돼 재시도 폭주를 막는다(장애 시 60초는 시트로 버틴다). */
+const cachedRegistryDbRows = unstable_cache(
+  async (): Promise<string[][] | null> => readUserRowsFromDb(),
+  ["registry-rows-db"],
+  { revalidate: 60, tags: [REGISTRY_TAG] },
+);
+
 export async function cachedRegistryRows(opts?: { fresh?: boolean }): Promise<string[][]> {
-  const fromDb = await readUserRowsFromDb();
+  const fromDb = opts?.fresh ? await readUserRowsFromDb() : await cachedRegistryDbRows();
   if (fromDb) return fromDb;
   return opts?.fresh ? readRegistrySheetRows() : cachedRegistrySheetRows();
 }

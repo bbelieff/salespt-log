@@ -1,0 +1,275 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":true,"write":true},"arena":{"read":false,"write":false},"archived":{"read":false,"write":false}}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":false,"write":false},"arena":{"read":true,"write":true},"archived":{"read":true,"write":true}}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22maccepts complete boolean grants {"active":{"read":true,"write":false},"arena":{"read":false,"write":false},"archived":{"read":false,"write":false}}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #+0 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #1 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #2 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #3 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #4 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #5 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #6 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #7 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #8 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #9 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #10 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #11 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #12 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #13 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #14 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #15 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #16 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #17 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #18 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #19 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22misTrainerGrants[2m > [22mrejects malformed grants #20 without repairing them
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrequires a confirmed regular cohort before returning active
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marena evidence overrides ordinary type: {"cohortType":"arena"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marena evidence overrides ordinary type: {"isArenaLabel":true}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marena evidence overrides ordinary type: {"cohortType":"cohort","isArenaLabel":true}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marchived row/cohort wins over active and arena: {"rowStatus":"archived"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marchived row/cohort wins over active and arena: {"cohortStatus":"archived"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marchived row/cohort wins over active and arena: {"cohortStatus":"archived","rowStatus":"archived"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marchived row/cohort wins over active and arena: {"cohortStatus":"archived","cohortType":"arena","isArenaLabel":true}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22marchived row/cohort wins over active and arena: {"rowStatus":"archived","cohortType":"arena","isArenaLabel":true}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":"pending"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":"inactive"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":null}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":"reserved"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":""}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":"unknown"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"isReserved":true}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"isReserved":true,"rowStatus":"archived"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"rowStatus":"pending","cohortStatus":"archived"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortStatus":null}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortStatus":"unknown"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortType":null}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortType":"unknown"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortMetadataTrusted":false}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortMetadataTrusted":"true"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"cohortMetadataTrusted":false,"rowStatus":"archived"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"isArenaLabel":"false"}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mexcludes ineligible or unknown input: {"isReserved":0}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrejects non-contract input null
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrejects non-contract input undefined
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrejects non-contract input %j
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrejects non-contract input {"rowStatus":"active","cohortStatus":"active","cohortType":"cohort","cohortMetadataTrusted":true,"isArenaLabel":false,"isReserved":false}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrejects non-contract input {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mrejects non-contract input {}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mconsumes existing parser evidence for 12, not an active fallback
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mconsumes existing parser evidence for 12기, not an active fallback
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mconsumes existing parser evidence for A2, not an active fallback
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mconsumes existing parser evidence for A2회, not an active fallback
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mconsumes existing parser evidence for A2-1, not an active fallback
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mclassifyTrainerStudent[2m > [22mconsumes existing parser evidence for A2-1기, not an active fallback
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'active' / 'read' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'active' / 'write' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'arena' / 'read' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'arena' / 'write' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'archived' / 'read' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'archived' / 'write' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'active' / 'read' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'active' / 'write' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'arena' / 'read' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'arena' / 'write' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'archived' / 'read' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'archived' / 'write' default matrix
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'active' / 'read' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'active' / 'write' default matrix
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'arena' / 'read' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'arena' / 'write' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'archived' / 'read' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'archived' / 'write' default matrix
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor "pending" cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor "inactive" cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor "archived" cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor "" cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor "unknown" cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor null cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mnon-active actor undefined cannot read or write
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade "" cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade "unknown" cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade "Senior" cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade " senior " cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade "__proto__" cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade "constructor" cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade null cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade undefined cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade 1 cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade %j cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown grade {} cannot use even fully permissive grants
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #+0 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #1 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #2 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #3 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #4 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #5 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #6 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #7 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #8 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #9 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #10 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #11 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #12 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #13 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #14 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #15 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #16 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #17 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #18 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #19 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22minvalid grants #20 deny the entire policy (no fallback)
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mmissing/invalid actor null denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mmissing/invalid actor undefined denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mmissing/invalid actor %j denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mmissing/invalid actor {} denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mmissing/invalid actor {"grade":"senior","status":"active"} denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mmissing/invalid actor {} denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown operation null denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown operation undefined denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown operation %j denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown operation "READ" denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown operation "delete" denies
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22munknown operation "constructor" denies
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mexplicit read-only grants do not acquire write permission
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mregular cannot exceed its grade ceiling
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mapprentice cannot exceed its grade ceiling
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student null
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student %j
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student {"rowStatus":"pending","cohortStatus":"active","cohortType":"cohort","cohortMetadataTrusted":true,"isArenaLabel":false,"isReserved":false}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student {"rowStatus":"active","cohortStatus":"active","cohortType":"cohort","cohortMetadataTrusted":true,"isArenaLabel":false,"isReserved":true}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student {"rowStatus":"active","cohortStatus":"active","cohortType":"cohort","cohortMetadataTrusted":false,"isArenaLabel":false,"isReserved":false}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student {"rowStatus":"active","cohortStatus":null,"cohortType":"cohort","cohortMetadataTrusted":true,"isArenaLabel":false,"isReserved":false}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22meven senior cannot access excluded/unknown student {"rowStatus":"active","cohortStatus":"active","cohortType":"cohort","cohortMetadataTrusted":true,"isReserved":false}
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mcohort archive prevents a regular actor using an active row
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22marena evidence in cached label prevents numeric registry active misclassification
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mdoes not mutate frozen actor, grants or normalized student
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22mreturns independent grants for each category and call
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22mregular gets only active RW
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22mapprentice gets only active RW
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade undefined denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade null denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "unknown" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "Senior" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade " senior " denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "constructor" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade "__proto__" denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade 1 denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade {} denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22munknown grade %j denies every category
+ [32m✓[39m tests/util/trainer-access-policy.test.ts[2m > [22mdefaultTrainerGrants[2m > [22msenior gets explicit read/write grants for all categories
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 13 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'active' / 'read' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'active' / 'write' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'arena' / 'read' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'arena' / 'write' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'archived' / 'read' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'senior' / 'archived' / 'write' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'active' / 'read' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'regular' / 'active' / 'write' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'active' / 'read' default matrix
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22m'apprentice' / 'active' / 'write' default matrix
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m114:8[22m[39m
+    [90m112| [39m  )))([32m"$grade / $category / $operation default matrix"[39m[33m,[39m ({ grade[33m,[39m cate…
+    [90m113| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m([34mactor[39m(grade)[33m,[39m [34mtarget[39m(category)[33m,[39m ope…
+    [90m114| [39m      [33m.[39m[34mtoBe[39m(grade [33m===[39m [32m"senior"[39m [33m||[39m category [33m===[39m [32m"active"[39m)[33m;[39m
+    [90m   | [39m       [31m^[39m
+    [90m115| [39m  })[33m;[39m
+    [90m116| [39m  it[33m.[39m[34meach[39m([[32m"pending"[39m[33m,[39m [32m"inactive"[39m[33m,[39m [32m"archived"[39m[33m,[39m [32m""[39m[33m,[39m [32m"unknown"[39m[33m,[39m [35mnull[39m[33m,[39m und…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mexplicit read-only grants do not acquire write permission
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m149:64[22m[39m
+    [90m147| [39m      active[33m:[39m { read[33m:[39m [35mtrue[39m[33m,[39m write[33m:[39m [35mfalse[39m }[33m,[39m arena[33m:[39m denied[33m,[39m archived[33m:[39m d…
+    [90m148| [39m    } }[33m;[39m
+    [90m149| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m(readOnly[33m,[39m student[33m,[39m [32m"read"[39m))[33m.[39m[34mtoBe[39m([35mtr[39m…
+    [90m   | [39m                                                               [31m^[39m
+    [90m150| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m(readOnly[33m,[39m student[33m,[39m [32m"write"[39m))[33m.[39m[34mtoBe[39m([35mf[39m…
+    [90m151| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m(readOnly[33m,[39m [34mtarget[39m([32m"arena"[39m)[33m,[39m [32m"read"[39m))…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22marena evidence in cached label prevents numeric registry active misclassification
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m181:74[22m[39m
+    [90m179| [39m    }[33m;[39m
+    [90m180| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m([34mactor[39m([32m"regular"[39m)[33m,[39m normalized[33m,[39m [32m"read[39m…
+    [90m181| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m([34mactor[39m([32m"senior"[39m)[33m,[39m normalized[33m,[39m [32m"read"[39m…
+    [90m   | [39m                                                                         [31m^[39m
+    [90m182| [39m  })[33m;[39m
+    [90m183| [39m  [34mit[39m([32m"does not mutate frozen actor, grants or normalized student"[39m[33m,[39m () …
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/util/trainer-access-policy.test.ts[2m > [22mcanTrainerAccessStudent[2m > [22mdoes not mutate frozen actor, grants or normalized student
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m tests/util/trainer-access-policy.test.ts:[2m187:85[22m[39m
+    [90m185| [39m    [33mObject[39m[33m.[39m[34mvalues[39m(grants)[33m.[39m[34mforEach[39m([33mObject[39m[33m.[39mfreeze)[33m;[39m
+    [90m186| [39m    [35mconst[39m frozen [33m=[39m [33mObject[39m[33m.[39m[34mfreeze[39m({ [33m...[39m[34mactor[39m()[33m,[39m grants[33m:[39m [33mObject[39m[33m.[39m[34mfreeze[39m(g…
+    [90m187| [39m    [34mexpect[39m([34mcanTrainerAccessStudent[39m(frozen[33m,[39m [33mObject[39m[33m.[39m[34mfreeze[39m({ [33m...[39mstudent …
+    [90m   | [39m                                                                                    [31m^[39m
+    [90m188| [39m    [34mexpect[39m(frozen[33m.[39mgrants)[33m.[39m[34mtoEqual[39m([34mdefaultTrainerGrants[39m([32m"senior"[39m))[33m;[39m
+    [90m189| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m13 failed[39m[22m[2m | [22m[1m[32m152 passed[39m[22m[90m (165)[39m
+[2m   Start at [22m 17:15:12
+[2m   Duration [22m 1.45s[2m (transform 101ms, setup 28ms, collect 137ms, tests 60ms, environment 0ms, prepare 159ms)[22m
+

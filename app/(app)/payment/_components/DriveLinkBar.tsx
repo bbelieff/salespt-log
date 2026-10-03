@@ -1,13 +1,13 @@
 /**
- * DriveLinkBar — 요약카드 아래 Drive + 플러그 바로가기 (Scope 1).
+ * DriveLinkBar — 요약카드 아래 Drive 바로가기.
  *
  * [Drive 바로가기]: 01 피드백업체 폴더 새 탭. 미연결 시 [다시 연결].
- * [플러그 바로가기]: pluuug.com 새 탭 (임시 — Scope 3에서 제거).
  */
 "use client";
 
 import { useState, useCallback } from "react";
 import { useMe } from "@/query/me-hook";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 export default function DriveLinkBar() {
   const me = useMe();
@@ -51,7 +51,7 @@ export default function DriveLinkBar() {
           setRelinkUrl("");
           me.refetch();
         } else {
-          setRelinkError(data.error ?? "연결 실패");
+          setRelinkError(apiErrorMessage(data, res.status));
           setErrorKind(data.errorKind ?? "");
           setSaEmail(data.saEmail ?? "");
         }
@@ -88,10 +88,13 @@ export default function DriveLinkBar() {
     runLink({ parentFolderUrl: relinkUrl });
   }, [relinkUrl, runLink]);
 
-  const isLinked = driveLinkStatus === "ok" && feedbackFolderId;
+  // 레거시 행의 status는 비어도 폴더가 있으면 사이드바와 동일하게 연결로 본다.
+  const isLinked = !!feedbackFolderId && driveLinkStatus !== "error";
 
   return (
-    <div className="mb-3 space-y-2">
+    // id="drive-link" — 사이드바 미연결 폴백(/payment#drive-link)이 여기로 온다.
+    // scroll-mt 로 sticky 헤더+배너(도합 6.5rem) 아래에 정확히 멈춘다.
+    <div id="drive-link" className={`mb-3 space-y-2 scroll-mt-28 ${isLinked ? "min-[1280px]:hidden" : ""}`}>
       <div className="flex gap-2">
         {isLinked ? (
           <a
@@ -108,32 +111,23 @@ export default function DriveLinkBar() {
         ) : (
           <button
             type="button"
-            onClick={() => setShowRelink(true)}
+            // 연결하지 않을 거면 다시 눌러 접는다(belie 2026-09-29).
+            onClick={() => setShowRelink((v) => !v)}
+            aria-expanded={showRelink}
+            aria-controls="drive-link-panel"
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             {driveLinkStatus === "error" ? "다시 연결" : "Drive 연결"}
+            <span className="text-xs text-amber-500" aria-hidden>{showRelink ? "⌃" : "⌄"}</span>
           </button>
         )}
-        <a
-          href="https://www.pluuug.com/"
-          target="_blank"
-          rel="noopener"
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
-          플러그 바로가기
-        </a>
       </div>
 
       {showRelink && (
-        <div className="space-y-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div id="drive-link-panel" className="space-y-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
           {/* 개선 A — 자동으로 찾기 (URL 불필요, 우선 권장). 아레나는 폴더 구조가 달라 문구 분기. */}
           <div>
             <p className="mb-2 text-xs text-amber-800">
@@ -191,19 +185,19 @@ export default function DriveLinkBar() {
               </p>
               {saEmail && (
                 <div className="mb-2 flex items-center gap-1.5">
-                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-[11px] text-gray-800">
+                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-px-11 text-gray-800">
                     {saEmail}
                   </code>
                   <button
                     type="button"
                     onClick={copySaEmail}
-                    className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-[11px] font-medium text-red-700 hover:bg-red-100"
+                    className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-px-11 font-medium text-red-700 hover:bg-red-100"
                   >
                     {copied ? "복사됨 ✓" : "복사"}
                   </button>
                 </div>
               )}
-              <p className="text-[11px] leading-relaxed text-red-500">
+              <p className="text-px-11 leading-relaxed text-red-500">
                 공유 방법: 드라이브에서 폴더 우클릭 → <b>공유</b> → 위 이메일 추가 →
                 권한 <b>뷰어/편집자</b> → 완료. 그다음 위 <b>[✨ 자동으로 찾기]</b>를 다시 눌러 주세요.
               </p>

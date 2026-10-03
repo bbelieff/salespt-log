@@ -10,7 +10,7 @@
  */
 import type { ContractPayment } from "@/types";
 import { findOwnerBySpreadsheetId } from "../users";
-import { dbEnabled, upsertSheetRow } from "./client";
+import { dbEnabled, ensureSchema, getDbPool, upsertSheetRow } from "./client";
 import { mirrorSheetRow } from "./mirror";
 
 /** R3-3 dual-write 옵션 — 파일럿(화면=DB read)이면 DB 동기 정본(실패=throw), 아니면 R2 미러(async). */
@@ -117,6 +117,8 @@ const USER_AREA_KEYS = [
   "수납3",
   // AE 로드맵메모
   "로드맵메모",
+  // DB JSONB 확장: 기존 시트 열을 침범하지 않는 계약 메모
+  "계약비고",
 ] as const;
 
 export function userFieldsMirrorPayload(
@@ -128,4 +130,25 @@ export function userFieldsMirrorPayload(
     if (src[k] !== undefined) payload[k] = src[k];
   }
   return payload;
+}
+
+/**
+ * r{row} 의 최신 DB payload 원본 — BBE-246 시트 수렴잡 전용(contract-sheet-sync.ts).
+ * `_cleared` 포함 그대로 반환(필터링은 호출부 소관). 행 없으면 null.
+ * (company-info-archive.ts:readCompanyArchiveRowPayload 와 동일 패턴 — R7-#11 BBE-60 선례.)
+ */
+export async function readContractRowPayload(
+  spreadsheetId: string,
+  row: number,
+): Promise<Record<string, unknown> | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'contracts' and row_key = $2`,
+    [spreadsheetId, `r${row}`],
+  );
+  return (
+    (res.rows[0] as { payload: Record<string, unknown> } | undefined)?.payload ?? null
+  );
 }

@@ -12,7 +12,7 @@ function toSerial(iso: string): number {
   return Date.UTC(y!, m! - 1, d!) / 86_400_000 + 25569;
 }
 
-/** backfill 05 A2:N → rowObj(r) 재현(열문자 A..N, 문자열화, 빈값 skip). */
+/** backfill 05 A2:P → rowObj(r) 재현(O=gcal map, P=기록종류). */
 function backfillPayload(raw: unknown[]): Record<string, unknown> {
   const colName = (i: number) => String.fromCharCode(65 + i); // A..N (i<26)
   const o: Record<string, unknown> = { _backfill: true };
@@ -23,10 +23,9 @@ function backfillPayload(raw: unknown[]): Record<string, unknown> {
   return o;
 }
 
-/** 05 실무투두 원시 행(A..N) — COL: id0 contractRef1 institutionRef2 업체명3 type4 제목5
- *  예정일자6 예정시각7 장소8 상세9 showOnCalendar10 완료여부11 생성시각12 분류13. */
-function sheetRow(showCal: unknown): unknown[] {
-  const r: unknown[] = new Array(14).fill("");
+/** 05 실무투두 원시 행(A..P) — O는 gcal map, P는 Todo/History 기록종류. */
+function sheetRow(showCal: unknown, kind: "todo" | "history" | "" = "todo"): unknown[] {
+  const r: unknown[] = new Array(16).fill("");
   r[0] = "todo-001";
   r[3] = "테스트업체";
   r[4] = "전화"; // TodoType enum(기타/미팅/전화/메시지/일반)
@@ -38,6 +37,8 @@ function sheetRow(showCal: unknown): unknown[] {
   r[10] = showCal; // K showOnCalendar
   r[11] = false;   // L 완료여부
   r[13] = "기타";
+  r[14] = '{"owner@example.com":"event-id"}';
+  r[15] = kind;
   return r;
 }
 
@@ -71,5 +72,10 @@ describe("R2-6 todos: DB payload ↔ 시트 파서 정합", () => {
 
   it("id 없는 payload 는 null (행 제외)", () => {
     expect(todoFromDbPayload({ _backfill: true })).toBeNull();
+  });
+
+  it("O열 캘린더 맵을 건드리지 않고 P열 기록종류를 읽으며 기존 빈값은 todo로 호환한다", () => {
+    expect(todoFromDbPayload(backfillPayload(sheetRow(true, "history")))!.기록종류).toBe("history");
+    expect(todoFromDbPayload(backfillPayload(sheetRow(true, "")))!.기록종류).toBe("todo");
   });
 });

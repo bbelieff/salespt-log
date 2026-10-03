@@ -92,7 +92,7 @@ describe("saveCompanyInfoByContract — 직접 저장 upsert 게이트", () => {
     );
   });
   it("비파일럿(7기) → {syncDb:false}(R2 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await saveCompanyInfoByContract(EMAIL, { 계약일: "2026-07-10", 업체명: "가나상사", 업체정보: CI });
     expect(upsertCompanyInfoArchive).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: false });
   });
@@ -118,7 +118,7 @@ describe("editContractLinkedFields — 개명 시 06 rename 게이트", () => {
     );
   });
   it("비파일럿 → {syncDb:false}(R2 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await editContractLinkedFields(EMAIL, {
       meetingId: "m1",
       old: { 계약일: "2026-07-10", 업체명: "가나상사" },
@@ -143,7 +143,7 @@ describe("addFromContract — 계약 생성 시 06 스냅샷 게이트 (R3-3 PR-
     );
   });
   it("비파일럿(7기) → {syncDb:false}(R2 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await addFromContract(EMAIL, { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 1000 });
     expect(upsertCompanyInfoArchive).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: false });
   });

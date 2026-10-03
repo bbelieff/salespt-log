@@ -1,0 +1,104 @@
+name: Set Course Dates (one trainee)
+
+# 수강생 한 명의 수강시작일·종강일을 고친다(시트 O1/O2 + registry K/L). 기본은 계획만.
+# 4주 과정처럼 기수 기본값(시작+50)과 다른 개별 예외에 쓴다.
+on:
+  workflow_dispatch:
+    inputs:
+      cohort:
+        description: "기수 (예: 11)"
+        required: true
+      name:
+        description: "이름 (시트에 적힌 그대로)"
+        required: true
+      graduation:
+        description: "종강일 YYYY-MM-DD (비우면 안 바꿈)"
+        required: false
+        default: ""
+      start:
+        description: "수강시작일 YYYY-MM-DD (비우면 안 바꿈)"
+        required: false
+        default: ""
+      mode:
+        description: "plan = 확인만 / execute = 실제 반영"
+        type: choice
+        options: [plan, execute]
+        default: plan
+
+jobs:
+  set-dates:
+    runs-on: ubuntu-latest
+    env:
+      VPS_TARGET_HOST: ${{ secrets.VPS_HOST_TS || secrets.VPS_HOST }}
+      VPS_FALLBACK_HOST: ${{ secrets.VPS_HOST }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+    steps:
+      - name: Tailscale (Secrets 미설정 시 스킵)
+        if: env.TS_OAUTH_CLIENT_ID != ''
+        continue-on-error: true
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Validate inputs
+        env:
+          COHORT: ${{ inputs.cohort }}
+          NAME: ${{ inputs.name }}
+          GRAD: ${{ inputs.graduation }}
+          START: ${{ inputs.start }}
+        run: |
+          echo "$COHORT" | grep -Eq '^[0-9A-Za-z-]{1,8}$' || { echo "cohort 형식 오류" >&2; exit 2; }
+          [ -n "$NAME" ] || { echo "name 비었음" >&2; exit 2; }
+          case "$NAME" in *"'"*|*'"'*|*'`'*|*'$'*|*';'*|*'&'*|*'|'*) echo "name 에 셸 특수문자" >&2; exit 2;; esac
+          for d in "$GRAD" "$START"; do
+            if [ -n "$d" ]; then echo "$d" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "날짜 형식 오류: $d" >&2; exit 2; }; fi
+          done
+          if [ -z "$GRAD" ] && [ -z "$START" ]; then echo "graduation 또는 start 중 하나는 필요" >&2; exit 2; fi
+
+      - name: Run on VPS
+        env:
+          COHORT: ${{ inputs.cohort }}
+          NAME: ${{ inputs.name }}
+          GRAD: ${{ inputs.graduation }}
+          START: ${{ inputs.start }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          REMOTE=$(cat <<'REMOTE_EOF'
+          set -e
+          cd /opt/salespt-log
+          EXTRA=""
+          if [ -n "$GRAD_ARG" ]; then EXTRA="$EXTRA --graduation $GRAD_ARG"; fi
+          if [ -n "$START_ARG" ]; then EXTRA="$EXTRA --start $START_ARG"; fi
+          if [ "$MODE_ARG" = "execute" ]; then EXTRA="$EXTRA --execute"; fi
+          node scripts/ops/set-course-dates.mjs --cohort "$COHORT_ARG" --name "$NAME_ARG" $EXTRA
+          REMOTE_EOF
+          )
+          set +e
+          HOSTS=("$VPS_TARGET_HOST")
+          if [ "$VPS_FALLBACK_HOST" != "$VPS_TARGET_HOST" ]; then HOSTS+=("$VPS_FALLBACK_HOST"); fi
+          NHOSTS=${#HOSTS[@]}
+          for i in $(seq 1 7); do
+            HOST="${HOSTS[$(( (i - 1) % NHOSTS ))]}"
+            if [[ "$HOST" == *:* ]]; then FAM=-6; TARGET="root@[$HOST]"; else FAM=-4; TARGET="root@$HOST"; fi
+            ssh $FAM -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
+                -i ~/.ssh/id_ed25519 "$TARGET" \
+                "COHORT_ARG='$COHORT' NAME_ARG='$NAME' GRAD_ARG='$GRAD' START_ARG='$START' MODE_ARG='$MODE' bash -s" <<<"$REMOTE"
+            rc=$?
+            if [ "$rc" = "0" ]; then exit 0; fi
+            if [ "$rc" = "255" ]; then
+              echo "ssh 연결 실패(rc=255) — 시도 $i/7, 25초 후 재시도" >&2
+              sleep 25
+            else
+              echo "스크립트 실패(rc=$rc)" >&2
+              exit "$rc"
+            fi
+          done
+          exit 1

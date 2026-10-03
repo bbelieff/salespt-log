@@ -26,6 +26,7 @@ export default function TrainerAssignCard({
   trainees,
   busy,
   onSave,
+  resolveAssigned,
   onRemoveTrainer,
   onMoveToManagement,
   viewOnly = false,
@@ -39,6 +40,11 @@ export default function TrainerAssignCard({
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
+  /** BBE-253 — 서버 확정 전 "클라이언트가 아는 최신 배정 목록". toggle/bulkApply 가
+   *  이 값을 기준(current)으로 next 를 계산 — t.assignedTrainer(서버 마지막 확정치, stale
+   *  할 수 있음) 직접 사용 금지. 연타 시 두 번째 토글이 첫 번째 토글의 변경을 덮어쓰는
+   *  사고(유실)를 막는다. */
+  resolveAssigned: (email: string, fallback: string[]) => string[];
   onRemoveTrainer?: (email: string) => void;
   onMoveToManagement?: (email: string) => void;
   viewOnly?: boolean;
@@ -53,10 +59,27 @@ export default function TrainerAssignCard({
   const trainerLc = trainer.email.toLowerCase();
 
   // 옵티미스틱 토글 — 체크박스 클릭 즉시 시각 반영 (서버 응답 전).
-  // trainees prop 갱신 시 useEffect 로 클리어 (서버가 진실).
+  // BBE-253: trainees prop 이 바뀔 때마다(=아무 학생의 router.refresh() 든) 전부
+  // 지우면, 아직 내 요청이 안 끝난 학생의 optimistic 값도 같이 사라져 서버의 "옛"
+  // (아직 미반영) 값이 잠깐 보였다가 다시 바뀌는 롤백 플래시가 난다. 이 학생 항목의
+  // 서버값이 실제로 optimistic 값과 일치할 때만(=서버가 따라잡았을 때만) 지운다.
   const [optimistic, setOptimistic] = useState<Map<string, boolean>>(new Map());
   useEffect(() => {
-    setOptimistic(new Map());
+    setOptimistic((prev) => {
+      if (prev.size === 0) return prev;
+      let changed = false;
+      const next = new Map(prev);
+      for (const t of trainees) {
+        if (!next.has(t.email)) continue;
+        const serverChecked = parseAssigned(t.assignedTrainer).includes(trainerLc);
+        if (serverChecked === next.get(t.email)) {
+          next.delete(t.email);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trainees]);
 
   function isChecked(t: PanelUser): boolean {
@@ -73,7 +96,7 @@ export default function TrainerAssignCard({
   function toggle(t: PanelUser) {
     const newChecked = !isChecked(t);
     setOptimistic((prev) => new Map(prev).set(t.email, newChecked));
-    const current = parseAssigned(t.assignedTrainer);
+    const current = resolveAssigned(t.email, parseAssigned(t.assignedTrainer));
     const next = newChecked
       ? Array.from(new Set([...current, trainerLc]))
       : current.filter((e) => e !== trainerLc);
@@ -87,7 +110,7 @@ export default function TrainerAssignCard({
       if (state === "add" && has) continue;
       if (state === "remove" && !has) continue;
       newOpt.set(t.email, state === "add");
-      const current = parseAssigned(t.assignedTrainer);
+      const current = resolveAssigned(t.email, parseAssigned(t.assignedTrainer));
       const next =
         state === "add"
           ? Array.from(new Set([...current, trainerLc]))
@@ -164,7 +187,7 @@ export default function TrainerAssignCard({
               busy === `dept:${trainer.email}` ||
               busy === `remove:${trainer.email}`
             }
-            className="shrink-0 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            className="shrink-0 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-px-11 font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
             title="이 사람을 관리부서로 이동 (담당 매핑 자동 정리)"
           >
             {busy === `dept:${trainer.email}` ? "..." : "관리부서"}
@@ -178,7 +201,7 @@ export default function TrainerAssignCard({
               busy === `dept:${trainer.email}` ||
               busy === `remove:${trainer.email}`
             }
-            className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-px-11 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
             title="이 트레이너를 퇴출 (담당 매핑 자동 정리 + row 삭제)"
           >
             {busy === `remove:${trainer.email}` ? "..." : "퇴출"}
@@ -189,7 +212,7 @@ export default function TrainerAssignCard({
         <div className="border-t border-gray-100 bg-gray-50 p-3">
           {/* 전체 일괄 토글 — 트레이너 연습용 시트 등 모두 배정 필요할 때. */}
           {trainees.length > 0 && (
-            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-gray-200 pb-2 text-[11px]">
+            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-gray-200 pb-2 text-px-11">
               <span className="mr-auto text-gray-500">일괄 토글:</span>
               <button
                 type="button"
@@ -216,7 +239,7 @@ export default function TrainerAssignCard({
             <div className="space-y-3">
               {grouped.map(([cohort, list]) => (
                 <div key={cohort}>
-                  <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-px-10 font-bold uppercase tracking-wider text-gray-500">
                     <span>
                       {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
                     </span>
@@ -225,7 +248,7 @@ export default function TrainerAssignCard({
                         type="button"
                         disabled={bulkBusy}
                         onClick={() => bulkApply(list, "add")}
-                        className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-[9px] font-bold normal-case text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-px-9 font-bold normal-case text-red-700 hover:bg-red-50 disabled:opacity-50"
                       >
                         기수 선택
                       </button>
@@ -233,7 +256,7 @@ export default function TrainerAssignCard({
                         type="button"
                         disabled={bulkBusy}
                         onClick={() => bulkApply(list, "remove")}
-                        className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[9px] font-bold normal-case text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-px-9 font-bold normal-case text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                       >
                         기수 해제
                       </button>
@@ -260,7 +283,7 @@ export default function TrainerAssignCard({
                             {s.name || s.email}
                             {s.captainOf ? <span title="회장"> 👑</span> : null}
                           </span>
-                          <span className="shrink-0 text-[10px] text-gray-400">
+                          <span className="shrink-0 text-px-10 text-gray-400">
                             {s.email}
                           </span>
                         </label>

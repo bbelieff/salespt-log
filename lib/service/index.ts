@@ -28,6 +28,14 @@ export {
   type ChannelDailyRowMetrics,
 } from "./contact";
 
+// 기록 옮기기 — 하루치 지표를 다른 날짜·채널로 (2026-09-03 belie「잘못 적었어요」)
+export {
+  moveDailyMetrics,
+  type MoveDailyMetricsInput,
+  type MoveDailyMetricsResult,
+  type MoveMetricDeltas,
+} from "./daily-move";
+
 // 일정·계약 탭 유스케이스 (PR 03)
 export {
   loadWeekMeetings,
@@ -69,6 +77,7 @@ export {
   loadContractPayments,
   addFromContract,
   addPriorContract,
+  addStandaloneContract,
   syncContractFee,
   patchContractPayment,
   editContractLinkedFields,
@@ -76,14 +85,26 @@ export {
   removeContractPaymentWithCascade,
   terminateContract,
 } from "./contract-payment";
+// 「영업기록 없이 추가」 업체 ↔ 미팅 연결 (contract-meeting-link, 2026-09-29)
+export {
+  ContractLinkError,
+  linkMeetingToContract,
+  listLinkableMeetings,
+  previewMeetingLink,
+} from "./contract-meeting-link";
+export type { LinkableMeeting, MeetingLinkPreview } from "./contract-meeting-link";
 
 // 실무투두 유스케이스 (Scope 2 — 05 실무투두)
 export {
   listTodos,
   createTodo,
+  listAllTodos,
   patchTodo,
   removeTodo,
+  sameTodoBusiness,
+  TodoOperationConflict,
   type CreateTodoInput,
+  type CreateTodoOptions,
 } from "./todos";
 
 // 사용자 프로필 (모든 탭 상단 헤더 — 시트 01 영업관리!B3:C3 SSOT)
@@ -92,20 +113,13 @@ export {
   enrichUsersWithSheetCohort,
   enrichUsersWithDates,
   enrichUsersWithStats,
+  warmBundle,
   type MeProfile,
   type TraineeFunnelStats,
 } from "./me";
 
 // 대시보드 view (PR feat/dashboard-page — read-only, 시트 디스커버리 후 wiring)
 export { loadDashboard, resolveArenaOverride } from "./dashboard";
-
-// 시트 진단/픽스 카탈로그 (2026-05-16) — 개별 trainee 단위 + Hashimoto 누적 룰.
-export {
-  diagnoseSheet,
-  fixSheet,
-  type DiagnosticResult,
-  type DiagnosticSeverity,
-} from "./sheet-diagnostics";
 
 // 새소식 (공지 + 업데이트, announcement-popup §3·§4)
 export {

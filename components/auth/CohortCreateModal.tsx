@@ -19,7 +19,9 @@ import {
   resolveCourseStartInput,
   type CourseDateStatus,
 } from "@/service/cohort-dates";
+import { isExtendedCourseCohort } from "@/config/cohort-dates";
 import { DEFAULT_COHORT_TEMPLATE_ID } from "@/config/cohort-template";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 type Mode = "create" | "link";
 
@@ -141,7 +143,7 @@ export default function CohortCreateModal() {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(d.hint ?? d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
         return;
       }
       setReport({
@@ -279,7 +281,7 @@ export default function CohortCreateModal() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 템플릿(이전 기수) 날짜가 그대로 남아요.
+                  {isExtendedCourseCohort(parsed?.label) ? "12주 과정의 시작일과 종강총회일을 기록해요. 10기는 승인된 별도 총회일이 적용돼요." : "넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 템플릿(이전 기수) 날짜가 그대로 남아요."}
                 </p>
               </div>
             </div>

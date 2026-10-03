@@ -65,7 +65,7 @@ function mtg(over: Partial<Meeting> = {}): Meeting {
 }
 
 function pilot() { findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "8", email: EMAIL }); }
-function nonPilot() { findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "7", email: EMAIL }); }
+function nonPilot() { findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "1", email: EMAIL }); }
 
 beforeEach(() => {
   for (const m of [findUserByEmail, dbEnabled, readLeads, readDbTabFromDb, readMeetingsFromDb, readAllMeetings])

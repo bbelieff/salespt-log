@@ -31,6 +31,8 @@ export type Progress = z.infer<typeof Progress>;
  */
 export const PaymentSlot = z.object({
   진행기관: z.string().default(""),
+  /** 실제 진행 상품·자금명. DB JSONB additive field. */
+  진행상품: z.string().default(""),
   진행률: Progress.default(""),
   현황: z.string().default(""), // UI 라벨: '진행내용' (2026-05-17)
   승인금액: z.number().nonnegative().default(0),
@@ -43,6 +45,7 @@ export type PaymentSlot = z.infer<typeof PaymentSlot>;
 
 const EMPTY_SLOT: PaymentSlot = {
   진행기관: "",
+  진행상품: "",
   진행률: "",
   현황: "",
   승인금액: 0,
@@ -72,6 +75,8 @@ export const ContractPayment = z.object({
   수납3: PaymentSlot.default(EMPTY_SLOT),
   /** 로드맵 메모 (카드 차원, 슬롯들 위) — 시트 AE. 2026-05-17 재배치. */
   로드맵메모: z.string().default(""),
+  /** 계약 특약·지급 조건 메모. DB JSONB additive field. */
+  계약비고: z.string().default(""),
   // 2026-05-17: 카드 차원 메모사항 제거 — 슬롯별 PaymentSlot.메모 로 이동 (AF/AG/AH).
   /** 이월 깃발 (AI, arena-carryover §3) — "이월"=아레나 집계 제외, 미설정=native. 출발 미팅(04 AO) 상속. */
   구분: z.string().optional(),

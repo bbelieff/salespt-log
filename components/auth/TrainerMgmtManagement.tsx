@@ -18,13 +18,10 @@ export function SectionManagement({
   onRemove?: (email: string) => void;
 }) {
   return (
-    <section>
-      <h2 className="mb-2 text-lg font-black tracking-tight text-gray-900">
+    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+      <h2 className="mb-2 text-base font-bold text-gray-900">
         관리부서 명단 ({staff.length})
       </h2>
-      <p className="mb-4 text-xs text-gray-500">
-        담당 배정 대상에서 제외된 인원. 언제든 트레이너로 다시 이동 가능.
-      </p>
       {staff.length === 0 ? (
         <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
           관리부서 인원 없음.
@@ -43,7 +40,7 @@ export function SectionManagement({
                   <div className="truncate text-sm font-bold text-gray-900">
                     {m.name || m.email}
                   </div>
-                  <div className="truncate text-[11px] text-gray-500">{m.email}</div>
+                  <div className="truncate text-px-11 text-gray-500">{m.email}</div>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   {onMoveToTrainer && (
@@ -51,7 +48,7 @@ export function SectionManagement({
                       type="button"
                       disabled={disabled}
                       onClick={() => onMoveToTrainer(m.email)}
-                      className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                      className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-px-11 font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                       title="트레이너로 다시 이동"
                     >
                       {busy === `dept:${m.email}` ? "..." : "트레이너로"}
@@ -62,7 +59,7 @@ export function SectionManagement({
                       type="button"
                       disabled={disabled}
                       onClick={() => onRemove(m.email)}
-                      className="rounded-full border border-red-200 bg-white px-2.5 py-1 text-[11px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      className="rounded-full border border-red-200 bg-white px-2.5 py-1 text-px-11 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
                     >
                       {busy === `remove:${m.email}` ? "..." : "삭제"}
                     </button>

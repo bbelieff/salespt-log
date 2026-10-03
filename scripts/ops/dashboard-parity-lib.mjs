@@ -43,16 +43,16 @@ const diffDays = (a, b) => Math.round((a.getTime() - b.getTime()) / 86400000);
 // WEEK-INDEX-SSOT-COPY: lib/util/week.ts weekIndexOf(시작일 앵커) 사본 — .mjs 는 TS import 불가. 수정 시 정본과 동기 (G8)
 export const weekIndexOf = (date, cs) => { const d = diffDays(date, cs); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
 
-// MAX-SHEET-WEEK-SSOT-COPY: lib/config/cohort-dates.ts MAX_SHEET_WEEK(10) 사본 — .mjs 는 TS import
+// STATS-WEEKS-SSOT-COPY: lib/config/cohort-dates.ts STATS_WEEKS(8) 사본 — .mjs 는 TS import
 // 불가. 수정 시 정본과 동기(BBE-66, 2026-08-10 — 이 클램프 누락이 채널계약·sales 46건 오탐의 근인이었다).
-const MAX_SHEET_WEEK = 10;
+const STATS_WEEKS = 8;
 
-/** 시트가 물리적으로 담을 수 있는 주차 창(1~MAX_SHEET_WEEK) 안인가 — lib/service/dashboard-aggregates.ts
+/** 대시보드 통계 창(1~STATS_WEEKS) 안인가 — lib/service/dashboard-aggregates.ts
  * :inSheetWindow 사본. 날짜 없음/파싱 불가는 제외(fail-closed) — 창 판정을 못 하는 행이 지표를 부풀리지 않게. */
 export function inSheetWindow(dateISO, courseStart) {
   if (!dateISO) return false;
   const w = weekIndexOf(parseISO(dateISO), courseStart);
-  return Number.isFinite(w) && w >= 1 && w <= MAX_SHEET_WEEK;
+  return Number.isFinite(w) && w >= 1 && w <= STATS_WEEKS;
 }
 
 /** DB payload → 값 (필드명 우선, 열문자 fallback). */
@@ -71,7 +71,12 @@ export function fieldOrCol(p, field, colIdx) {
  * classifyDiff 의 대안식("상태=계약 기준")이 원래 후보군(상태=계약인데 계약여부=false 인 것)을
  * 못 보게 되어 로직차이를 못 잡는다 — 실제로 이 버그를 짜다가 발견해 고쳤다(단위테스트로 고정).
  */
-export function computeAggregates(meetings, sales, contracts, courseStart, courseStartISO) {
+// 6기 전용 소스 정렬(BBE-252) — lib/service/dashboard-aggregates.ts 와 동일 상수·동일 로직.
+// 이 진단 도구가 안 고쳐지면 프로덕션 수정 후에도 --cohort "6" 재검증에서 옛 결과가 나온다(Hashimoto).
+const SOURCE_ALIGNED_FEE_COHORTS = new Set(["6"]);
+const LEGACY_FEE_OFFSET = { "1-yN9iy37CctJ2s_ZUMcb3S7qozIwOfqzdLIHBmyWoXU": 660_000 };
+
+export function computeAggregates(meetings, sales, contracts, courseStart, courseStartISO, feeSource = {}) {
   const alive = (s) => s === "예약" || s === "완료" || s === "계약";
   const done = (s) => s === "완료" || s === "계약";
   const cm = CHANNEL_ORDER.map((ch) => ({ 채널: ch, 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0, 미팅완료: 0, 계약: 0 }));
@@ -83,7 +88,7 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     const m = byCh[r.channel]; if (!m) continue;
     // 후보 풀은 창 여부와 무관하게 전부 담는다(대안식이 다시 걸러볼 수 있게) — 카운트만 창으로 클램프.
     push(`R1:U6.${r.channel}.생산`, r); push(`R1:U6.${r.channel}.유입`, r); push(`R1:U6.${r.channel}.컨택진행`, r);
-    // BBE-66(2026-08-10): 정본(dashboard-aggregates.ts:97)은 시트 표현 가능 창(1~10주) 클램프를
+    // BBE-66(2026-08-10): 정본(dashboard-aggregates.ts:97)은 대시보드 통계 창(1~8주) 클램프를
     // 건다 — 이게 없으면 무제한 쓰기(11주+ DB-only) 행까지 합산돼 채널 매트릭스가 영구히 부푼다.
     if (!inSheetWindow(r.date, courseStart)) continue;
     m.생산 += r.production; m.유입 += r.inflow; m.컨택진행 += r.contactProgress;
@@ -95,7 +100,7 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     // 미팅예약(R4)·미팅완료(R5) = COUNTIFS 무필터(정본 실측) — 창 클램프 금지.
     if (alive(mt.상태)) m.미팅예약 += 1;
     if (done(mt.상태)) m.미팅완료 += 1;
-    // 계약(R6) = N 주차블록 합(1~10주) — 정본과 동치화(BBE-66). 계약여부만 보고 창을 안 걸면 오탐.
+    // 계약(R6) = N 주차블록 합(1~8주) — 정본과 동치화(BBE-66). 계약여부만 보고 창을 안 걸면 오탐.
     if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart)) m.계약 += 1;
   }
   const wc = new Array(8).fill(0);
@@ -120,12 +125,30 @@ export function computeAggregates(meetings, sales, contracts, courseStart, cours
     const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
     if (w >= 1 && w <= 8) { wa[w - 1] += 2; push(`H.주${w}활동`, mt); }
   }
+  // 후보 풀(contrib)은 항상 계약(02) 테이블로 채운다 — B21 지문 차집합 진단(계약 레코드
+  // 단위 대조, BBE-260 패턴)이 소스정렬 여부와 무관하게 계속 동작해야 하기 때문.
+  for (const c of contracts) push("B21.누적수임비", c);
+
+  const normalizedCohort = String(feeSource.cohort ?? "").replace(/기\s*$/, "").trim();
   let fee = 0;
-  for (const c of contracts) {
-    // 후보 풀은 "전체 계약"(대안식이 이월/날짜 조건을 다르게 걸어볼 수 있게).
-    push("B21.누적수임비", c);
-    const carry = c.구분 === "이월" || (c.계약일 && c.계약일 < courseStartISO);
-    if (!carry) fee += c.수임비;
+  if (SOURCE_ALIGNED_FEE_COHORTS.has(normalizedCohort)) {
+    // 6기 소스 정렬 — 04(미팅).L 기준(상태="계약", 1~8주 버킷) + legacy O5 오프셋.
+    for (const mt of meetings) {
+      if (mt.상태 !== "계약") continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜 || "")) continue;
+      const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
+      if (w < 1 || w > 8) continue;
+      fee += num(mt.수임비);
+    }
+    fee += LEGACY_FEE_OFFSET[feeSource.spreadsheetId ?? ""] ?? 0;
+  } else {
+    for (const c of contracts) {
+      const carry = c.구분 === "이월" || (c.계약일 && c.계약일 < courseStartISO);
+      // BBE-252 후속(2026-08-20) 실측 — 시트 B21 = O4 = O38+O72+...+O276(1~8주 stride 8개
+      // 셀 합)만 본다. lib/service/dashboard-aggregates.ts arenaFeeFromDb 와 동일 클램프
+      // (그 PR에서 확정) — 이 진단 스크립트도 같이 안 고치면 여기서 계속 옛 결과가 나온다.
+      if (!carry && inSheetWindow(c.계약일, courseStart)) fee += c.수임비;
+    }
   }
   return { channelMatrix: cm, weeklyContracts: wc, weeklyActivity: wa, 누적수임비: fee, contrib };
 }
@@ -193,6 +216,9 @@ export function normalizeDbMeeting(p) {
     미팅날짜: (() => { const v = fieldOrCol(p, "미팅날짜", 3); return typeof v === "number" ? serialToISO(v) : String(v ?? "").slice(0, 10); })(),
     계약여부: fieldOrCol(p, "계약여부", 10) === true || fieldOrCol(p, "계약여부", 10) === "TRUE",
     구분: String(fieldOrCol(p, "구분", 40) ?? "").trim(),
+    // BBE-252(2026-08-21) 6기 소스정렬(weeklyFeeFromMeetings) 추가 시 누락 발견 —
+    // 이 필드가 없으면 소스정렬 cohort 의 미팅 기준 fee 합산이 항상 0 이 된다.
+    수임비: num(fieldOrCol(p, "수임비", 11)),
     _raw미팅날짜: fieldOrCol(p, "미팅날짜", 3),
   };
 }

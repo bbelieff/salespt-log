@@ -6,17 +6,17 @@
 import { randomUUID } from "node:crypto";
 import { findUserByEmail } from "@/repo/users";
 import {
-  appendBanner,
-  appendLead,
-  appendProduction,
-  appendPurchase,
   clearBanner,
   clearLead,
   clearProduction,
   clearPurchase,
+  readBannerFilledRows,
   readBanners,
+  readLeadFilledRows,
   readLeads,
+  readProductionFilledRows,
   readProductions,
+  readPurchaseFilledRows,
   readPurchases,
   updateBanner,
   updateLead,
@@ -34,6 +34,10 @@ import { backfillMissingRows } from "./sheet-backfill";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
 import { selectLeadsForPicker, type LeadForPicker } from "./lead-list"; // 발굴 조회 PR-2
+import { oldDateOf, oldLeadIdOf, readChannelRows } from "./db-old-values"; // BBE-246 — 500줄 캡 분리
+
+// 생성 경로(add 4종)는 db-creates.ts 로 분리(500줄 캡) — 아래 재수출로 기존 import 경로 유지.
+export { addBanner, addLead, addProduction, addPurchase } from "./db-creates";
 import type {
   Channel,
   DBBanner,
@@ -50,7 +54,7 @@ async function resolveSheet(email: string): Promise<string> {
 
 /** sid + 쓰기 정본 여부. fromDb = 유입 합산 소스(R3-1, 읽기 게이트). syncDb = 03 편집 DB 동기 정본
  *  여부(R3-4, 쓰기 게이트). 현재 두 게이트 동일 판정이나 의미가 달라 각 함수로 산출(향후 분기 대비). */
-async function resolveWriteCtx(
+export async function resolveWriteCtx(
   email: string,
 ): Promise<{ sid: string; fromDb: boolean; syncDb: boolean; salesCtx: SalesCtx }> {
   const user = await findUserByEmail(email);
@@ -98,42 +102,74 @@ async function readAllSheetSections(spreadsheetId: string): Promise<DBOverview> 
   };
 }
 
+/** dbRows(row 집합)가 presence(존재확인 결과)의 모든 채워진 row 를 포함하면 true(빈틈 없음).
+ * presence 자체가 실패(rejected)면 안전 기본값(false — 전체 union 폴백으로) BBE-259/#824. */
+function coversAllPresent(
+  dbRows: Array<{ row: number }>,
+  presence: PromiseSettledResult<Set<number>>,
+): boolean {
+  if (presence.status !== "fulfilled") return false;
+  const dbRowSet = new Set(dbRows.map((r) => r.row));
+  for (const row of presence.value) if (!dbRowSet.has(row)) return false;
+  return true;
+}
+
 /**
  * 4섹션 한 번에 조회. allSettled — 한 섹션만 throw 해도 그 채널만 빈 목록, 나머지는 정상.
  * resolveSheet(사용자 없음)만 throw 유지.
  *
- * 파일럿: DB 단일 쿼리(정본) + 4섹션 시트 read 를 **병렬** 발사해, DB 에 없는(= append
- * 미러 실패로 누락된) 신규행만 섹션별 row 로 보충한다(union, R3 §7-3 L4). R2-5 의 "시트
- * 0회" 속도이득은 반납하나 지연은 max(DB,시트)=시트 수준. DB read 실패 시 이미 읽어둔
- * 시트 결과로 fallback(화면 에러 금지). 비파일럿 불변.
+ * 파일럿: DB 단일 쿼리(정본) + 4섹션 각각의 **저비용 존재확인**(BBE-259, #824 이식)을 병렬
+ * 발사한다. 4섹션 전부 빈틈 없으면(append 미러 실패로 누락된 신규행 없음) 전체 시트 read 를
+ * 생략하고 DB 결과를 그대로 반환. 하나라도 빈틈 있으면(또는 존재확인 자체 실패) 기존과 동일한
+ * 전체 union 폴백(R3 §7-3 L4, 섹션별 아닌 4섹션 일괄 재조회 — 단순성 우선, 드문 경로라 절감
+ * 실익 작음). 정합성 보장은 기존과 100% 동일(probabilistic 아님). DB read 실패 시 기존처럼
+ * 시트 전체 fallback(화면 에러 금지). 비파일럿 불변.
  */
 export async function loadDBOverview(email: string): Promise<DBOverview> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const spreadsheetId = user.spreadsheetId;
-
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    const [dbSettled, sheet] = await Promise.all([
-      readDbTabFromDb(spreadsheetId).then(
-        (value) => ({ ok: true, value }) as const,
-        (error) => ({ ok: false, error }) as const,
-      ),
-      readAllSheetSections(spreadsheetId),
-    ]);
-    if (dbSettled.ok) {
-      const db = dbSettled.value;
-      return {
-        purchases: backfillMissingRows(db.purchases, sheet.purchases, (r) => r.row),
-        productions: backfillMissingRows(db.productions, sheet.productions, (r) => r.row),
-        banners: backfillMissingRows(db.banners, sheet.banners, (r) => r.row),
-        leads: backfillMissingRows(db.leads, sheet.leads, (r) => r.row),
-      };
-    }
-    Sentry.captureException(dbSettled.error, { tags: { where: "loadDBOverview-db-read" } });
-    return sheet; // DB 실패 → 이미 읽어둔 시트 결과(추가 read 0)
+  if (chooseDailySource(user.cohort, dbEnabled()) !== "db") {
+    return readAllSheetSections(spreadsheetId);
   }
-
-  return readAllSheetSections(spreadsheetId);
+  const [dbSettled, presence] = await Promise.all([
+    readDbTabFromDb(spreadsheetId).then(
+      (value) => ({ ok: true, value }) as const,
+      (error) => ({ ok: false, error }) as const,
+    ),
+    Promise.allSettled([
+      readPurchaseFilledRows(spreadsheetId),
+      readProductionFilledRows(spreadsheetId),
+      readBannerFilledRows(spreadsheetId),
+      readLeadFilledRows(spreadsheetId),
+    ]),
+  ]);
+  if (!dbSettled.ok) {
+    Sentry.captureException(dbSettled.error, { tags: { where: "loadDBOverview-db-read" } });
+    return readAllSheetSections(spreadsheetId); // DB 실패 → 기존처럼 시트 전체 fallback
+  }
+  const db = dbSettled.value;
+  const [pPurchase, pProduction, pBanner, pLead] = presence;
+  if (
+    coversAllPresent(db.purchases, pPurchase) &&
+    coversAllPresent(db.productions, pProduction) &&
+    coversAllPresent(db.banners, pBanner) &&
+    coversAllPresent(db.leads, pLead)
+  ) {
+    return db; // 4섹션 전부 빈틈 없음 확인됨 — 전체 시트 fetch 생략(BBE-259)
+  }
+  try {
+    const sheet = await readAllSheetSections(spreadsheetId);
+    return {
+      purchases: backfillMissingRows(db.purchases, sheet.purchases, (r) => r.row),
+      productions: backfillMissingRows(db.productions, sheet.productions, (r) => r.row),
+      banners: backfillMissingRows(db.banners, sheet.banners, (r) => r.row),
+      leads: backfillMissingRows(db.leads, sheet.leads, (r) => r.row),
+    };
+  } catch (e) {
+    Sentry.captureException(e, { tags: { where: "loadDBOverview-union-fallback-read" } });
+    return db; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
+  }
 }
 
 /**
@@ -278,22 +314,8 @@ export function productionCountFor(
   return rows.filter((r) => r.접수일 === date).length; // 콜·지·기·소
 }
 
-async function readChannelRows(spreadsheetId: string, channel: Channel) {
-  if (channel === "매입DB") return (await readPurchases(spreadsheetId)).rows;
-  if (channel === "직접생산") return (await readProductions(spreadsheetId)).rows;
-  return (await readLeads(spreadsheetId)).rows;
-}
-
-/** raw 행에서 그 (채널, 날짜)의 날짜 필드 값 (patch/remove 의 옛 날짜 식별용). */
-function dateOfRow(channel: Channel, row: DBPurchase | DBProduction | DBBanner | DBLead): string {
-  if (channel === "매입DB") return (row as DBPurchase).구매일;
-  if (channel === "콜·지·기·소") return (row as DBLead).접수일;
-  if (channel === "직접생산") return (row as DBProduction).종료일; // 집계 기준 = 종료일
-  return (row as DBBanner).날짜; // 현수막
-}
-
 /** DB 변경 후 그 (채널, 날짜) 생산(E) 재집계·기입. 실패해도 DB 저장은 성공(warn). */
-async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
+export async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
   if (!date) return;
   try {
     const rows = await readChannelRows(ctx.spreadsheetId, channel);
@@ -303,43 +325,9 @@ async function syncProduction(ctx: SalesCtx, channel: Channel, date: string) {
   }
 }
 
-/** patch/remove 전 해당 row 의 옛 날짜 읽기 (날짜 변경·삭제 시 옛 날짜 E 재집계용). */
-async function oldDateOf(spreadsheetId: string, channel: Channel, row: number): Promise<string> {
-  const rows = await readChannelRows(spreadsheetId, channel);
-  const hit = (rows as Array<{ row: number }>).find((r) => r.row === row);
-  return hit ? dateOfRow(channel, hit as never) : "";
-}
-
-/** oldLeadId 3-state — "없음(mint)" 과 "읽기 실패(보존)" 을 구분한다(핵심).
- *  · string  = 기존 발굴id (보존)
- *  · "mint"  = 기존 id 확실히 없음(백필/legacy/비파일럿) → 새로 부여
- *  · "keep"  = DB read 실패로 알 수 없음 → **발굴id 를 payload 에서 omit**(jsonb 병합이 기존 값 보존) */
-type OldLeadId = string | "mint" | "keep";
-
-/** 콜·지·기·소 특정 row 의 기존 발굴id. ⚠️ 시트 리더(readLeads=X:AD 파서 7필드)는 **발굴id 를 못 만든다**
- * (발굴id=DB payload 전용·시트 컬럼 0). 발굴id 를 실어오는 read 는 **readDbTabFromDb**(DB overlay)뿐 —
- * read-db-tab.ts 헤더가 경고한 "시트 db.ts vs Postgres db/" 혼동에 빠지지 말 것.
- * read 실패를 "없음"과 혼동하면 순단 시 remint 로 안정 id 를 파괴하므로, 실패는 "keep"(보존)으로 분리한다. */
-async function oldLeadIdOf(spreadsheetId: string, row: number, syncDb: boolean): Promise<OldLeadId> {
-  if (!syncDb) return "mint"; // 비파일럿=시트 read라 발굴id 부재 → 새로 부여
-  try {
-    const { leads } = await readDbTabFromDb(spreadsheetId);
-    return leads.find((l) => l.row === row)?.발굴id || "mint";
-  } catch {
-    return "keep"; // DB 순단 등 — 알 수 없음 → 덮지 말고 기존 값 보존(omit)
-  }
-}
-
-// ── 매입DB ────────────────────────────────────────────────────
-export async function addPurchase(email: string, p: DBPurchase) {
-  const { sid, salesCtx } = await resolveWriteCtx(email);
-  const r = await appendPurchase(sid, p);
-  await syncProduction(salesCtx, "매입DB", p.구매일);
-  return r;
-}
 export async function patchPurchase(email: string, row: number, p: DBPurchase) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
-  const old = await oldDateOf(sid, "매입DB", row);
+  const old = await oldDateOf(sid, "매입DB", row, syncDb);
   // finally: 시트 쓰기 후 DB dual-sync 가 throw 해도 생산(E) 재집계는 실행. E 는 시트 상태만
   // 의존하고 시트는 이미 확정(writeRow 완료) → skip 시 재시도가 옛 날짜를 잃어 E 영구 오집계(리뷰 CONFIRMED).
   try {
@@ -351,7 +339,7 @@ export async function patchPurchase(email: string, row: number, p: DBPurchase) {
 }
 export async function removePurchase(email: string, row: number) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
-  const old = await oldDateOf(sid, "매입DB", row);
+  const old = await oldDateOf(sid, "매입DB", row, syncDb);
   try {
     return await clearPurchase(sid, row, { syncDb });
   } finally {
@@ -369,7 +357,7 @@ export function periodsOverlap(aS: string, aE: string, bS: string, bE: string): 
 }
 
 /** 직접생산 추가/수정 시 기존 레코드와 기간 겹치면 throw (활성 레코드 유일성, ADR-0024). */
-async function assertNoOverlapDirect(
+export async function assertNoOverlapDirect(
   sid: string,
   start: string,
   end: string,
@@ -391,7 +379,7 @@ async function assertNoOverlapDirect(
  *  fromDb(R3-1): 쓰기 정본이 DB 인 파일럿이면 유입 합산을 DB 에서(시트 미러 지연/실패 무관·정확).
  *  syncDb(BBE-61, R3-4b): 파일럿이면 M 의 DB 반영을 **기다린다**(non-throw — 컨택 저장 등 이미
  *  성공한 주 동작을 M 실패로 되돌리지 않음, db-production-cell.ts 참고). 비파일럿은 R2 미러 불변. */
-async function syncDirectCount(
+export async function syncDirectCount(
   sid: string,
   record: { row: number; 시작일: string; 종료일: string },
   fromDb: boolean,
@@ -423,13 +411,6 @@ export async function syncDirectProductionForDate(
   return { recordFound: true, count };
 }
 
-export async function addProduction(email: string, p: DBProduction) {
-  const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
-  await assertNoOverlapDirect(sid, p.시작일, p.종료일);
-  const r = await appendProduction(sid, p);
-  await syncDirectCount(sid, { row: r.row, 시작일: p.시작일, 종료일: p.종료일 }, fromDb, syncDb);
-  return r;
-}
 export async function patchProduction(email: string, row: number, p: DBProduction) {
   const { sid, fromDb, syncDb } = await resolveWriteCtx(email);
   await assertNoOverlapDirect(sid, p.시작일, p.종료일, row);
@@ -446,10 +427,6 @@ export async function removeProduction(email: string, row: number) {
 
 // ── 현수막 주문 (P:V) ─────────────────────────────────────────
 // 주문은 생산 E 를 만들지 않는다(생산=게시 로그). 비용(주문금액)만 대시보드에 반영.
-export async function addBanner(email: string, b: DBBanner) {
-  const sid = await resolveSheet(email);
-  return appendBanner(sid, b);
-}
 export async function patchBanner(email: string, row: number, b: DBBanner) {
   const { sid, syncDb } = await resolveWriteCtx(email);
   return updateBanner(sid, row, b, { syncDb });
@@ -461,20 +438,12 @@ export async function removeBanner(email: string, row: number) {
 // (현수막 게시 = 생산 → 컨택 영업관리 E 소유. 게시로그 AF:AI 폐기, ADR-0025.)
 
 // ── 콜·지·기·소 ────────────────────────────────────────────────
-export async function addLead(email: string, l: DBLead) {
-  const { sid, salesCtx } = await resolveWriteCtx(email);
-  // 발굴 안정 id 부여(lead-chain §4-3) — appendLead 가 payload 에 항상 명시(R10: 재사용 행의 옛 id 를 덮음).
-  // 클라이언트발 발굴id 는 라우트에서 strip 되므로 항상 새로 생성한다.
-  const r = await appendLead(sid, { ...l, 발굴id: randomUUID() });
-  await syncProduction(salesCtx, "콜·지·기·소", l.접수일);
-  return r;
-}
 export async function patchLead(email: string, row: number, l: DBLead) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
   // R13: 클라이언트 바디 l 은 발굴id 를 모른다. 서버가 기존 id 를 읽어 명시 전달(없으면 지연 부여).
-  //  · 옛 접수일(E 재집계용) = oldDateOf(시트 readLeads — 시트에 있는 값).
+  //  · 옛 접수일(E 재집계용) = oldDateOf(BBE-246: 파일럿은 DB 우선, 실패 시 시트 폴백).
   //  · 기존 발굴id = oldLeadIdOf(파일럿만 DB payload read — 발굴id 는 시트 컬럼 0이라 시트로는 못 읽는다).
-  const old = await oldDateOf(sid, "콜·지·기·소", row);
+  const old = await oldDateOf(sid, "콜·지·기·소", row, syncDb);
   const prevId = await oldLeadIdOf(sid, row, syncDb);
   // "keep"(DB read 실패) = 알 수 없음 → 발굴id 를 payload 에서 omit → jsonb 얕은 병합이 기존 값 보존.
   //   (덮으면 순단 시 remint 로 안정 id 파괴 — read 무재시도·write 재시도 비대칭이라 실제로 발생.)
@@ -489,7 +458,7 @@ export async function patchLead(email: string, row: number, l: DBLead) {
 }
 export async function removeLead(email: string, row: number) {
   const { sid, syncDb, salesCtx } = await resolveWriteCtx(email);
-  const old = await oldDateOf(sid, "콜·지·기·소", row);
+  const old = await oldDateOf(sid, "콜·지·기·소", row, syncDb);
   try {
     return await clearLead(sid, row, { syncDb });
   } finally {

@@ -15,6 +15,8 @@ import { z } from "zod";
 // "일반" = 캘린더 일반이벤트(기존고객/개인 일정, 통계·아레나 비집계 — consultation-log §1-3).
 export const TodoType = z.enum(["기타", "미팅", "전화", "메시지", "일반"]);
 export type TodoType = z.infer<typeof TodoType>;
+export const TodoRecordKind = z.enum(["todo", "history"]);
+export type TodoRecordKind = z.infer<typeof TodoRecordKind>;
 
 export const Todo = z.object({
   id: z.string(),
@@ -36,5 +38,7 @@ export const Todo = z.object({
   생성시각: z.string().default(""), // ISO
   /** 일반이벤트(type=일반) 카테고리 — N 컬럼: "기존"(기존 고객) | "기타"(개인 일정). 그 외 type 은 빈값. */
   분류: z.string().default(""),
+  /** Todo=할 일, History=이미 한 일. 기존 행은 Todo로 읽는다. */
+  기록종류: TodoRecordKind.default("todo"),
 });
 export type Todo = z.infer<typeof Todo>;

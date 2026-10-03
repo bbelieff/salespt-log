@@ -6,8 +6,11 @@
  *   - 정보: 이름·email·다중계정 배지·담당 트레이너
  *   - 팀명 inline input (Enter/blur 시 자동 저장) — admin only
  *   - **[유보]**: admin only (`!viewOnly`)
- *   - **[📊 시트] / [웹앱 →]**: admin (`!viewOnly`) OR trainer 본인 담당
- *     (`trainerEmailLc` 가 `u.assignedTrainer` 에 포함될 때) — 트레이너 뷰 지원
+ *   - **admin**: [주간목표] / [웹앱 →] (`!viewOnly`,
+ *     `/weekly-goals?student=…&returnTo=%2Fadmin%2Fusers`, spreadsheetId 무관).
+ *   - **트레이너 뷰** (`viewOnly` + `trainerEmailLc` + 본인 담당):
+ *     중립 outlined [주간목표] (`/weekly-goals?student=…&returnTo=%2Ftrainer`,
+ *     spreadsheetId 무관, impersonation 미사용) + [웹앱 →] 유지. 미배정은 액션 없음.
  *   - **PR C-1**: dragListeners 가 있으면 좌측 [⋮⋮] 드래그 핸들 렌더링.
  *     핸들만 dnd-kit 의 listeners 받아 카드 본문 클릭(버튼) 과 분리.
  *
@@ -15,10 +18,10 @@
  */
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
-import TraineeDiagnoseButton from "./TraineeDiagnoseButton";
 
 /** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
  *  unknown 으로 받아 TraineeCard 가 dnd-kit 에 직접 의존 안 하게 차단. */
@@ -29,7 +32,7 @@ function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   return (
     <span
       title={`같은 시트 공유: ${siblings.join(", ")}`}
-      className="ml-1 text-[10px] font-medium text-sky-600"
+      className="ml-1 text-px-10 font-medium text-sky-600"
     >
       🔗 +{siblings.length}
     </span>
@@ -148,12 +151,18 @@ export default function TraineeCard({
     onSetTeam(u.email, trimmed);
   }
 
-  // 트레이너 뷰 — viewOnly 일 때 본인 담당 수강생만 시트/웹앱 버튼 노출.
+  // 주간목표 진입 — impersonation 없이 서버 권한이 있는
+  // /weekly-goals?student=... 로 이동 (spreadsheetId 무관).
+  // admin(!viewOnly): returnTo=/admin/users, 트레이너 담당: returnTo=/trainer.
+  // 웹앱 노출 게이트(showSheetWebBtns)는 그대로 — read-only 는 둘 다 없음.
   const isAssignedToTrainer =
     !!trainerEmailLc &&
     parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase());
-  const showReserveBtn = !viewOnly;
   const showSheetWebBtns = !viewOnly || isAssignedToTrainer;
+  const isTrainerGoalView = !!viewOnly && !!trainerEmailLc && isAssignedToTrainer;
+  const isAdminGoalView = !viewOnly;
+  const trainerGoalHref = `/weekly-goals?student=${encodeURIComponent(u.email)}&returnTo=${encodeURIComponent("/trainer")}` as const;
+  const adminGoalHref = `/weekly-goals?student=${encodeURIComponent(u.email)}&returnTo=${encodeURIComponent("/admin/users")}` as const;
 
   const canAssign = !viewOnly && onAssignTrainers && (activeTrainers?.length ?? 0) > 0;
 
@@ -185,7 +194,7 @@ export default function TraineeCard({
           </button>
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          {/* Row 1: 이름 + 다중계정 배지 ↔ 액션 버튼 (유보/시트/웹앱).
+          {/* Row 1: 이름 + 다중계정 배지 ↔ 액션 버튼 (주간목표/웹앱).
               email 은 숨김 — 관리 화면 가독성 (시트 공유는 +N 배지 hover). */}
           <div className="flex items-center justify-between gap-x-2">
             <div className="flex min-w-0 items-baseline gap-x-2">
@@ -195,24 +204,29 @@ export default function TraineeCard({
               </span>
               <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
             </div>
-            {(showReserveBtn || showSheetWebBtns) && (
+            {showSheetWebBtns && (
               <div className="flex shrink-0 items-center gap-1">
-                {showReserveBtn && u.spreadsheetId && (
-                  // 2026-05-16: 시트 진단 (admin only). 누적 룰 카탈로그.
-                  <TraineeDiagnoseButton email={u.email} name={u.name} />
-                )}
                 {/* 2026-05-17 [A5]: 카드별 유보버튼 제거 → 헤더 BulkReserveButton 으로 통합.
                     onReserve prop 은 컴파일 호환 위해 유지 (호출 측 영향 최소화). */}
-                {showSheetWebBtns && u.spreadsheetId && (
-                  <a
-                    href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="구글 시트 원본 새 탭으로 열기"
-                    className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                {/* admin(!viewOnly)·트레이너 담당: 녹색 시트 대신 중립 outlined [주간목표]
+                    (student 인코딩, spreadsheetId 무관). 카드 크기 유지. */}
+                {isAdminGoalView && (
+                  <Link
+                    href={adminGoalHref}
+                    title="주간 목표·PT과제 열기"
+                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
                   >
-                    📊 시트
-                  </a>
+                    주간목표
+                  </Link>
+                )}
+                {isTrainerGoalView && (
+                  <Link
+                    href={trainerGoalHref}
+                    title="주간 목표·PT과제 열기"
+                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                  >
+                    주간목표
+                  </Link>
                 )}
                 {showSheetWebBtns && (
                   <button
@@ -232,9 +246,9 @@ export default function TraineeCard({
               stats 없는 trainee (spreadsheetId 미설정 / fetch 실패) 는 렌더 안 함.
               SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
           {u.stats && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-px-11 text-gray-500">
               <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500">
-                {STATS_WEEKS}주 누적
+                {courseWeeksForCohort(u.cohort)}주 누적
               </span>
               <span>
                 📅 예정{" "}
@@ -251,7 +265,7 @@ export default function TraineeCard({
             </div>
           )}
           {/* Row 2: 팀 (compact) + 담당 (flex-1, 카드 우측 끝까지 + 줄바꿈). */}
-          <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-[11px] text-gray-600">
+          <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-px-11 text-gray-600">
             {!viewOnly && (
               <span className="inline-flex shrink-0 items-center gap-1">
                 <span className="text-gray-400">팀</span>
@@ -267,7 +281,7 @@ export default function TraineeCard({
                     }
                   }}
                   placeholder="미배정"
-                  className={`rounded border px-1 py-0.5 text-[11px] outline-none ${
+                  className={`rounded border px-1 py-0.5 text-px-11 outline-none ${
                     dirty
                       ? "border-indigo-400 bg-indigo-50"
                       : "border-gray-200 bg-white"
@@ -280,7 +294,7 @@ export default function TraineeCard({
               <button
                 type="button"
                 onClick={() => setTrainerOpen((v) => !v)}
-                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
+                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-px-11 font-bold text-indigo-700 hover:bg-indigo-100"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
                 <span className="shrink-0">담당:</span>
@@ -310,7 +324,7 @@ export default function TraineeCard({
       </div>
       {canAssign && trainerOpen && (
         <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+          <div className="mb-2 text-px-10 font-bold uppercase tracking-wider text-indigo-700">
             담당 트레이너 — 토글 즉시 저장
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -324,7 +338,7 @@ export default function TraineeCard({
                   type="button"
                   onClick={() => toggleTrainer(lc)}
                   disabled={isBusy}
-                  className={`rounded-full border px-3 py-1 text-[11px] font-bold transition disabled:opacity-50 ${
+                  className={`rounded-full border px-3 py-1 text-px-11 font-bold transition disabled:opacity-50 ${
                     checked
                       ? "border-indigo-500 bg-indigo-500 text-white"
                       : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -342,3 +356,4 @@ export default function TraineeCard({
     </div>
   );
 }
+

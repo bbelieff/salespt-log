@@ -157,7 +157,7 @@ interface RecognizedExpenseBase {
 }
 
 export type RecognizedExpense = RecognizedExpenseBase & (
-  | { source: "one_time"; recurringRuleId?: never; isOverride?: never }
+  | { source: "one_time"; recurringRuleId?: never; isOverride?: never; originalAmountWon?: number }
   | { source: "recurring"; recurringRuleId: string; isOverride: boolean }
 );
 

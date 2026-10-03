@@ -85,7 +85,7 @@ describe("syncDirectProductionForDate — 컨택경로, syncDb 게이트(BBE-61)
 
   it("비파일럿 기수(7) — {syncDb:false}", async () => {
     readProductions.mockResolvedValue({ rows: [{ ...mkProd(), row: 5 }] });
-    await syncDirectProductionForDate(SHEET, "2026-07-10", "7");
+    await syncDirectProductionForDate(SHEET, "2026-07-10", "1");
     expect(writeProductionCountCell).toHaveBeenCalledWith(SHEET, 5, 7, { syncDb: false });
   });
 
@@ -112,7 +112,7 @@ describe("addProduction/patchProduction — syncDb 관통", () => {
   });
 
   it("patchProduction(비파일럿) — {syncDb:false}", async () => {
-    setCohort("7");
+    setCohort("1");
     await patchProduction(EMAIL, 9, mkProd());
     expect(writeProductionCountCell).toHaveBeenCalledWith(SHEET, 9, 7, { syncDb: false });
   });

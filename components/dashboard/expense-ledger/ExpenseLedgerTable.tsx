@@ -3,6 +3,7 @@
 import { formatMoney } from "@/lib/format/money";
 import type { ExpenseLedgerView } from "@/types";
 import type { ExpenseViewMode } from "@/query/expense-ledger-hooks";
+import ExpenseEntryEditor from "./ExpenseEntryEditor";
 
 interface Props {
   data?: ExpenseLedgerView;
@@ -72,7 +73,7 @@ export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenR
               <div className="mt-1 flex justify-between gap-3"><span>발생 방식</span><strong className="text-gray-800">{entry.source === "recurring" ? "매월 반복 발생" : "일회성 비용"}</strong></div>
               {entry.source === "recurring" ? (
                 <button type="button" onClick={onOpenRecord} className="mt-3 min-h-11 w-full rounded-lg border border-gray-200 bg-white font-bold text-gray-700">기록 화면의 반복 규칙으로 이동</button>
-              ) : <p className="mt-2 text-xs text-gray-400">수정 범위를 확인한 뒤 안전하게 관리할 수 있도록 행 안에서 상세를 유지합니다.</p>}
+              ) : <ExpenseEntryEditor entry={entry} categories={data.categories} view={data.view} month={data.month} />}
             </div>
           </details>
         ))}

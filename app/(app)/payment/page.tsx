@@ -4,7 +4,7 @@
  *
  * 시트: 02 계약수납관리 (A~AA)
  *   - C/D/E 자동 연동 (계약일/업체명/수임비) — 일정·계약 탭 계약 액션 시 자동 생성
- *   - F~L 7 체크박스 (서류 6 + 플러그이관 1)
+ *   - F~K 6개 서류/진행 체크. L 플러그이관은 과거 호환용으로만 보존
  *   - M~Q / R~V / W~AA: 3 분할 수납
  *
  * URL: /payment 유지 (Architecture C — Plan 결정)
@@ -13,10 +13,11 @@
 
 import PageContainer from "@/components/PageContainer";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
-import { isCarryoverContract, isTerminatedContract, TERMINATED_IN_CONTRACT_COUNT, type ContractPayment } from "@/types";
+import { type ContractPayment } from "@/types";
+import { activeWorkContracts } from "@/lib/analytics/payment-work-status";
 import {
   usePatchContractPayment,
   useRemoveContractPayment,
@@ -25,26 +26,34 @@ import {
 } from "@/query/contract-payment-hooks";
 import { useMe } from "@/query/me-hook";
 import ContractRow from "./_components/ContractRow";
+import ContractListTable from "./_components/ContractListTable";
+import InstitutionWorkList from "./_components/InstitutionWorkList";
+import PaymentSelectionBridge, { syncPaymentSelectionBridge, watchDevicePixelRatio } from "./_components/PaymentSelectionBridge";
+import PaymentPerformanceSummary from "./_components/PaymentPerformanceSummary";
 import TerminationModal from "./_components/TerminationModal";
 import DeleteConfirmModal from "./_components/DeleteConfirmModal";
 import TerminationArchive from "./_components/TerminationArchive";
 import PriorContractSection from "./_components/PriorContractSection";
+import StandaloneCompanyAdd from "./_components/StandaloneCompanyAdd";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
-import { sortContracts, type PaymentSortKey } from "./_lib/payment-progress";
+import PaymentListModeTabs from "./_components/PaymentListModeTabs";
+import useMasterPaneWidth from "./_components/useMasterPaneWidth";
+import usePaymentFocus from "./_components/usePaymentFocus";
+import { buildCompanyWorkItems, companyKeyOfRow, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
-import { ACCENT, contractAccentFamily } from "./_lib/contractAccent";
-import { formatMoney } from "@/lib/format/money";
-
-/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
-const fmtMoney = formatMoney;
+import { contractAccentFamily } from "./_lib/contractAccent";
+import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
+import { useAllTodos } from "@/query/todos-hooks";
+import { fmtDate, fmtMoney } from "./_components/nameHighlight";
+import { checkedCount, TOTAL_CHECKBOXES } from "./_components/CheckboxList";
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
 function usePcBreakpoint(): boolean {
   const [isPc, setIsPc] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
+    const mq = window.matchMedia("(min-width: 1280px)");
     const sync = () => setIsPc(mq.matches);
     sync();
     mq.addEventListener("change", sync);
@@ -76,6 +85,11 @@ export default function PaymentPage() {
   const [pendingRow, setPendingRow] = useState<number | null>(null);
   // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
   const [companyQuery, setCompanyQuery] = useState("");
+  const [listMode, setListMode] = useState<"company" | "institution">("company");
+  const [selectedWorkKey, setSelectedWorkKey] = useState<string | null>(null);
+  const [selectedCompanyKey, setSelectedCompanyKey] = useState<string | null>(null);
+  const [mobileDetailExpanded, setMobileDetailExpanded] = useState(true);
+  const [focusRequestId, setFocusRequestId] = useState(0);
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
@@ -87,33 +101,40 @@ export default function PaymentPage() {
   const [postDeleteNav, setPostDeleteNav] = useState<PostDeleteNavTarget | null>(
     null,
   );
-  // C 마스터-디테일 (데스크탑만). 선택 row — 기본은 첫 카드(아래 selectedCp fallback).
   const isPc = usePcBreakpoint();
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
-  // 마스터-디테일 선택 행 전환도 미저장 가드 — 펼친 카드 dirty 면 모달.
   const guardedNav = useGuardedNav();
+  const allTodos = useAllTodos();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const listPaneRef = useRef<HTMLDivElement>(null);
+  const bridgeRef = useRef<SVGSVGElement>(null);
+  const { masterWidth, setMasterWidth, beginResize } = useMasterPaneWidth(workspaceRef);
+  const [detailLeftPct, setDetailLeftPct] = useState(60);
 
-  // 캘린더 → /payment?focus=<todoId> 이동 시 그 ToDo 행 자동 펼침+하이라이트.
-  // Next 15 useSearchParams Suspense 회피 → mount 시 window.location 직접 파싱.
-  const [focusTodoId, setFocusTodoId] = useState<string | null>(null);
+  const { focusTodoId, focusPayment } = usePaymentFocus(list.data?.rows, isPc);
+  const rowsRef = useRef(list.data?.rows); rowsRef.current = list.data?.rows; // 링크 row → 업체 키(목록 재조회로 선택이 되풀이되지 않게 ref)
   useEffect(() => {
-    const f = new URLSearchParams(window.location.search).get("focus");
-    if (f) setFocusTodoId(f);
-  }, []);
+    if (focusPayment) {
+      setSelectedRow(focusPayment.row);
+      setSelectedCompanyKey(companyKeyOfRow(rowsRef.current, focusPayment.row));
+      setFocusRequestId((id) => id + 1);
+    }
+  }, [focusPayment]);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
   };
 
-  const handleSave = async (next: ContractPayment) => {
+  const handleSave = async (next: ContractPayment, opts?: { quiet?: boolean }) => {
     if (!next.row) return;
     setPendingRow(next.row);
     try {
       await patch.mutateAsync({ row: next.row, data: next });
-      showToast("✓ 저장 완료");
+      if (!opts?.quiet) showToast("✓ 저장 완료");
     } catch (e) {
-      showToast(`저장하지 못했어요: ${(e as Error).message}`); throw e; // 재전파: 미저장 가드가 붙잡도록
+      if (!opts?.quiet) showToast(`저장하지 못했어요: ${(e as Error).message}`);
+      throw e; // 재전파: 미저장 가드·자동 저장 큐가 붙잡도록
     } finally {
       setPendingRow(null);
     }
@@ -176,33 +197,6 @@ export default function PaymentPage() {
   // 해지+숨김(soft delete)은 목록·합계에서 제외(반환액 차감은 유지) — 열람은 해지 보관함.
   const rows = allRows.filter((cp) => !cp.해지숨김);
   const archivedRows = allRows.filter((cp) => cp.해지숨김);
-  const terminatedCount = allRows.filter(isTerminatedContract).length;
-  const contractCount = TERMINATED_IN_CONTRACT_COUNT ? rows.length : rows.filter((cp) => !isTerminatedContract(cp)).length;
-  // 단위는 모두 원. 단어 약속:
-  //   수임비합     = sum(cp.수임비)            — 04 업체관리!L에서 동기화된 계약 금액
-  //   수납액합     = sum(슬롯별 수납액 = Q+W+AC) — "수수료" (= 실제 입금된 부가 수수료) 합
-  //   승인금액합   = sum(슬롯별 승인금액)        — 진행 중인 수납 약정 총액 (목표)
-  //   총매출       = 수임비합 + 수납액합        — v2 SSOT (수수료=수납액합)
-  //   수납진척     = 수납액합 / 승인금액합
-  // 이월(시작일 이전 또는 깃발) 계약은 아레나 비집계 — 합계(매출·수수료·승인)에서 제외.
-  // 경계는 isCarryoverContract(동적, 하드코딩X). 카드 목록은 회색 표시(carryover-profit §1).
-  const billable = rows.filter((cp) => !isCarryoverContract(cp, courseStartISO));
-  const totalReceived = billable.reduce(
-    (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
-    0,
-  );
-  const totalApproved = billable.reduce(
-    (s, cp) =>
-      s + cp.수납1.승인금액 + cp.수납2.승인금액 + cp.수납3.승인금액,
-    0,
-  );
-  const totalContract = billable.reduce((s, cp) => s + (cp.수임비 || 0), 0);
-  // 반환액(계약해지)은 숨김(soft delete) 계약 포함 전체에서 차감 — 대시보드 computeContractRevenue 와 동일 정의.
-  const totalRefunded = allRows.filter((cp) => !isCarryoverContract(cp, courseStartISO)).reduce((s, cp) => s + (cp.반환액 || 0), 0);
-  const totalRevenue = totalContract + totalReceived - totalRefunded;
-  const overallPct =
-    totalApproved > 0 ? Math.round((totalReceived / totalApproved) * 100) : 0;
-
   // [3] 진행기관 콤보박스 후보 — 그동안 입력한 모든 슬롯 진행기관 distinct (시트 드롭다운처럼).
   const institutionOptions = Array.from(
     new Set(
@@ -218,106 +212,102 @@ export default function PaymentPage() {
   const filteredRows = companyQuery.trim()
     ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
     : rows;
-  // 정렬(필터 결과에 적용) — 렌더·선택폴백·ordinal 모두 sortedRows 기준 일관(§P8).
-  const visibleRows = sortContracts(filteredRows, sortKey);
+  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? []);
+  const activityState = allTodos.isError ? "error" : allTodos.data ? "ready" : "loading";
+  const companyItems = sortCompanyWorkItems(buildCompanyWorkItems(filteredRows, institutionItems), sortKey);
+  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "", isPc ? "product" : "activity");
+  const institutionVisible = institutionGroups.flatMap((group) => group.items);
+  const selectedWork = institutionVisible.find((item) => item.key === selectedWorkKey) ?? institutionVisible[0];
+  const selectedCompany = companyItems.find((item) => item.key === selectedCompanyKey)
+    ?? companyItems.find((item) => item.cp.row === selectedRow) ?? companyItems[0];
 
-  // C: 선택 계약 — selectedRow 없거나 (검색)목록에 없으면 첫 카드로 폴백.
-  const selectedCp =
-    visibleRows.find((r) => r.row === selectedRow) ?? visibleRows[0];
-  // 선택 카드↔패널을 하나의 윤곽선으로 잇는 상태색(진행상태 기반).
+  const selectedCp = listMode === "institution"
+    ? selectedWork ? rows.find((r) => r.row === selectedWork.row) : undefined
+    : selectedCompany?.cp;
+  // 선택 행이 스크롤 밖으로 나가면 연결부도 숨겨 상세 위에 잔상을 남기지 않는다.
+  const syncBridge = () => syncPaymentSelectionBridge(workspaceRef.current, listPaneRef.current, bridgeRef.current);
+  useLayoutEffect(() => {
+    if (!isPc) return;
+    let frame = 0;
+    const sync = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        syncBridge();
+      });
+    };
+    sync();
+    const workspace = workspaceRef.current;
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(sync);
+    if (workspace) observer?.observe(workspace);
+    // 기관을 접고 펼칠 때 선택 행의 DOM 위치가 바뀌므로 연결부를 즉시 재배치한다.
+    const listObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver(sync);
+    if (listPaneRef.current) listObserver?.observe(listPaneRef.current, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-expanded", "aria-selected", "data-active-institution"] });
+    window.addEventListener("resize", sync); const unwatchDpr = watchDevicePixelRatio(sync); // 모니터 배율 변경은 resize 없이 올 수 있다
+    return () => { cancelAnimationFrame(frame); observer?.disconnect(); listObserver?.disconnect(); window.removeEventListener("resize", sync); unwatchDpr(); };
+  }, [isPc, list.isLoading, rows.length, listMode, selectedCp?.row, selectedWorkKey, companyQuery, sortKey, masterWidth]);
+  // 선택 상세의 내부 강조색(진행상태 기반) — ContractRow에 전달.
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
-  const selAccent = ACCENT[selFamily];
+  const selectWork = (item: InstitutionWorkItem) => guardedNav(() => {
+    setSelectedWorkKey(item.key);
+    setSelectedRow(item.row);
+    setMobileDetailExpanded(true);
+    setFocusRequestId((id) => id + 1);
+    // 모바일은 선택 업체 바로 아래에 상세가 열리므로 슬롯으로 강제 점프하지 않는다.
+    if (isPc) window.setTimeout(() => document.getElementById(`payment-slot-${item.row}-${item.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  });
+  const selectCompany = (item: CompanyWorkItem) => guardedNav(() => {
+    setSelectedCompanyKey(item.key); setSelectedRow(item.cp.row ?? null);
+    setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1);
+    if (isPc && item.hasProgress) window.setTimeout(() => document.getElementById(`payment-slot-${item.cp.row}-${item.work.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  });
+  const changeListMode = (mode: "company" | "institution") => guardedNav(() => {
+    if (mode === listMode) return;
+    if (mode === "institution") setSelectedWorkKey(selectedCompany?.work.key ?? null); // 업체 카드 = 계약 1건 → 대표 진행건으로
+    else { setSelectedCompanyKey(selectedWork?.contractKey ?? null); setSelectedRow(selectedWork?.row ?? null); }
+    setMobileDetailExpanded(true); setCompanyQuery(""); setListMode(mode);
+  });
+  const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
 
+  const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
-      <TopHeader
-        pageEmoji="💰"
-        pageTitle="실무/수납"
-      />
+      <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <TopHeader
+          pageEmoji="💰"
+          pageTitle="실무/수납"
+        />
 
-      <main className="px-4 pb-[80px] pt-3">
-      <PageContainer width="wide">
-        {/* 전체 요약 카드 (25:45:30 비율 — prototype v9) */}
-        <div className="mb-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-          <div
-            className="grid gap-3 text-center"
-            style={{ gridTemplateColumns: "2.5fr 4.5fr 3fr" }}
-          >
-            <div>
-              <div className="mb-1 text-xs text-gray-500">계약</div>
-              <div
-                className="text-xl font-bold text-gray-900"
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                {contractCount}
-                <span className="text-sm font-medium text-gray-500">건</span>
-              </div>
-              {terminatedCount > 0 && (
-                <div className="mt-0.5 text-[11px] text-red-500">해지 {terminatedCount}건</div>
-              )}
-            </div>
-            <div className="border-x border-gray-100">
-              <div className="mb-1 text-xs text-gray-500">총매출</div>
-              <div
-                className="text-xl font-bold text-gray-900"
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                ₩{fmtMoney(totalRevenue)}
-              </div>
-              <div className="mt-0.5 text-xs text-gray-400">
-                {totalRefunded > 0 ? "수임비 + 수수료 − 반환" : "수임비 + 수수료"}
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 text-xs text-gray-500">수납 진척</div>
-              <div
-                className={`text-xl font-bold ${
-                  overallPct >= 100
-                    ? "text-green-600"
-                    : overallPct === 0
-                      ? "text-gray-400"
-                      : "text-blue-600"
-                }`}
-                style={{ fontVariantNumeric: "tabular-nums" }}
-              >
-                {overallPct}%
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
-            <span className="text-gray-500">누적 수납 / 승인</span>
-            <span
-              className="font-medium text-gray-700"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              ₩{fmtMoney(totalReceived)}
-              <span className="mx-1 text-gray-400">/</span>
-              ₩{fmtMoney(totalApproved)}
-            </span>
-          </div>
-        </div>
+        {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
+        <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <PaymentPerformanceSummary
+          rows={activeWorkContracts(allRows, courseStartISO)}
+          todos={allTodos.data?.todos ?? []}
+          onNavigate={(row, slot) => {
+            guardedNav(() => { setListMode("company"); setCompanyQuery(""); setSelectedRow(row); setSelectedCompanyKey(companyKeyOfRow(allRows, row)); setFocusRequestId((id) => id + 1); });
+            window.setTimeout(() => document.getElementById(`payment-slot-${row}-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+          }}
+        />
 
-        {/* Drive + 플러그 바로가기 */}
+        {/* Drive 바로가기 */}
         <DriveLinkBar />
 
-        {/* 이전 계약업체 등록 + 아레나/이월 매출 분리 (arena-start-revenue-split) */}
-        <PriorContractSection contracts={rows} courseStartISO={courseStartISO} />
+        {/* 모바일 업무매뉴얼·정책자금 뉴스 바로가기 */}
+        <PriorContractSection />
 
-        {/* 안내 */}
-        <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-          일정·계약 탭에서 미팅을 <b>계약</b>으로 처리하면 여기에 자동으로 추가돼요.
-        </div>
-
-        {/* 업체 검색 — 첫 업체 카드 위 sticky (CompanySearchBar) + 정렬 컨트롤 */}
+        {/* 업체 검색·정렬: PC에서는 한 줄, 모바일에서는 기존 순서. */}
         {!list.isLoading && !list.isError && rows.length > 0 && (
-          <div className="mb-3 space-y-2">
+          <div className="mb-3 space-y-2 min-[1280px]:mb-2 min-[1280px]:flex min-[1280px]:items-center min-[1280px]:gap-3 min-[1280px]:space-y-0">
             <CompanySearchBar
               value={companyQuery}
-              onChange={setCompanyQuery}
-              matchCount={visibleRows.length}
-              total={rows.length}
+              onChange={(v) => guardedNav(() => setCompanyQuery(v))}
+              matchCount={listMode === "company" ? companyItems.length : institutionVisible.length}
+              total={institutionItems.length}
+              placeholder={listMode === "company" ? "업체명 검색" : "기관·상품·업체 검색"}
+              unit={listMode === "company" ? "개 항목" : "건 진행"}
+              matchUnit={listMode === "company" ? "개 항목" : "건"}
             />
-            <PaymentSortControl value={sortKey} onChange={setSortKey} />
+            {listMode === "company" && <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} />}
           </div>
         )}
 
@@ -326,105 +316,114 @@ export default function PaymentPage() {
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>
-        ) : rows.length === 0 ? (
+        ) : rows.length === 0 ? (<div className="space-y-3 min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-y-auto">{standaloneAdd}
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
-            아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가돼요.
+            아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가되고, 위 버튼으로 바로 추가할 수도 있어요.
           </div>
-        ) : visibleRows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
-            검색 결과가 없어요. <b>✕</b> 를 눌러 전체 목록으로 돌아갈 수 있어요.
-          </div>
+          <TerminationArchive contracts={archivedRows} />
+        </div>
         ) : isPc ? (
-          /* 데스크탑(pc): 마스터-디테일 — 선택 카드와 우측 패널이 같은 상태색
-             하나의 윤곽선(탭처럼)으로 이어짐. grid 3.5:6.5 (gap 0 → seam 연결).
-             (요약카드 139줄과 동일한 인라인 gridTemplateColumns 패턴.) */
-          <div
-            className="grid items-start"
-            style={{ gridTemplateColumns: "3.5fr 6.5fr" }}
-          >
-            <div className="min-w-0 space-y-2">
-              {visibleRows.map((cp, i) => {
-                const isSel = selectedCp?.row === cp.row;
-                return (
-                  <div
-                    key={cp.row}
-                    className={
-                      isSel
-                        ? // 선택: 상태색 2px, 우측 테두리 제거 + 좌측만 라운드,
-                          // -mr-0.5 로 패널 왼쪽 테두리에 맞물림, z 위로.
-                          `relative z-10 -mr-0.5 overflow-hidden rounded-l-xl border-2 border-r-0 bg-white shadow-md transition-all duration-200 ${selAccent.border}`
-                        : // 비선택: 회색 + 패널과 간격(mr-1)으로 대비.
-                          "mr-1 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200"
-                    }
-                  >
-                    <ContractRow
-                      cp={cp}
-                      ordinal={i + 1}
-                      pending={pendingRow === cp.row}
-                      institutionOptions={institutionOptions}
-                      bare
-                      selectable
-                      selected={isSel}
-                      accentFamily={isSel ? selFamily : undefined}
-                      onSelect={() => guardedNav(() => setSelectedRow(cp.row ?? null))}
-                      onSave={handleSave}
-                      onDeleteRequest={() => makeDeleteRequest(cp)}
-                      onTerminateRequest={() => setTerminateTarget(cp)}
-                      focusTodoId={focusTodoId}
-                      highlight={companyQuery}
-                      courseStartISO={courseStartISO}
-                    />
-                  </div>
-                );
-              })}
+          /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
+             목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
+          <div ref={workspaceRef} className="payment-workspace relative grid min-h-[320px] min-w-0 items-stretch min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-hidden" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
+            <div className="flex min-h-0 min-w-0 flex-col">
+              <div className="shrink-0 p-1.5">{listModeTabs}</div>
+              <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
+              {standaloneAdd}
+              {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
+                <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
+              ) : listMode === "company" ? <ContractListTable
+                items={companyItems} activityState={activityState}
+                selectedKey={selectedCompany?.key ?? null} onSelect={selectCompany}
+                highlight={companyQuery}
+                courseStartISO={courseStartISO}
+              /> : <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />}
+              {archivedRows.length > 0 && <div className="px-2 pt-2"><TerminationArchive contracts={archivedRows} /></div>}
+              </div>
             </div>
+            <button type="button" onPointerDown={beginResize} className="group relative z-10 h-full cursor-col-resize bg-transparent" aria-label="목록과 상세 너비 조절" title="좌우로 드래그해 너비 조절">
+              <span className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors ${listMode === "institution" ? "group-hover:bg-red-400" : "group-hover:bg-blue-400"}`} />
+            </button>
             {selectedCp && (
-              <div
-                className={`sticky top-24 min-w-0 overflow-hidden rounded-r-xl border-2 bg-white shadow-md transition-all duration-200 ${selAccent.border}`}
-              >
+              <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
+                <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
+                  <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{selectedCompany.hasProgress ? `진행 ${selectedCompany.work.slot} · ${selectedCompany.work.institution || "기관 미입력"}${selectedCompany.work.product ? ` · ${selectedCompany.work.product}` : ""}` : "진행건 미등록"}</p>}</div>
+                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}
-                  ordinal={visibleRows.findIndex((r) => r.row === selectedCp.row) + 1}
+                  ordinal={listMode === "company" ? companyItems.findIndex((item) => item.key === selectedCompany?.key) + 1 : rows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row}
                   institutionOptions={institutionOptions}
                   bare
                   forceOpen
+                  detailLeftPct={detailLeftPct}
+                  onDetailLeftPctChange={setDetailLeftPct}
                   accentFamily={selFamily}
                   onSave={handleSave}
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)}
                   focusTodoId={focusTodoId}
+                  focusedSlot={listMode === "institution" ? selectedWork?.slot : selectedCompany?.hasProgress ? selectedCompany.work.slot : null}
+                  focusRequestId={focusRequestId}
                   highlight={companyQuery}
                   courseStartISO={courseStartISO}
                 />
               </div>
             )}
+            <PaymentSelectionBridge ref={bridgeRef} mode={listMode} />
           </div>
         ) : (
           /* 모바일(<pc): 기존 아코디언 (회귀 금지) */
           <div>
-            {visibleRows.map((cp, i) => (
-              <ContractRow
-                key={cp.row}
-                cp={cp}
-                ordinal={i + 1}
-                pending={pendingRow === cp.row}
-                institutionOptions={institutionOptions}
-                onSave={handleSave}
-                onDeleteRequest={() => makeDeleteRequest(cp)}
-                onTerminateRequest={() => setTerminateTarget(cp)}
-                focusTodoId={focusTodoId}
-                highlight={companyQuery}
-                courseStartISO={courseStartISO}
-              />
-            ))}
+            <div className="mb-2">{listModeTabs}</div>{standaloneAdd}
+            {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
+            ) : listMode === "institution" ? <InstitutionWorkList
+              groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
+              activityState={activityState}
+              detailExpanded={mobileDetailExpanded} onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
+              renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-red-100 px-2.5 py-2 text-px-11 text-slate-500">
+                  <span className="min-w-0 flex-1">{fmtDate(selectedCp.계약일)} · 수임비 ₩{fmtMoney(selectedCp.수임비)}</span>
+                  <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(selectedCp)}/{TOTAL_CHECKBOXES}</span>
+                </div>
+                <ContractRow
+                  key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
+                  pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
+                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                  onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={focusTodoId}
+                  focusedSlot={item.slot} courseStartISO={courseStartISO}
+                  focusRequestId={focusRequestId}
+                />
+              </> : null}
+            /> : <ContractListTable
+              items={companyItems} selectedKey={selectedCompanyKey} onSelect={selectCompany}
+              activityState={activityState} detailExpanded={mobileDetailExpanded}
+              onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
+              highlight={companyQuery} courseStartISO={courseStartISO}
+              renderDetail={(item) => selectedCompanyKey === item.key ? <>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-blue-100 px-2.5 py-2 text-px-11 text-slate-500">
+                  <span className="min-w-0 flex-1">{fmtDate(item.cp.계약일)} · 수임비 ₩{fmtMoney(item.cp.수임비)}</span>
+                  <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(item.cp)}/{TOTAL_CHECKBOXES}</span>
+                </div>
+                <ContractRow key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
+                  pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
+                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
+                  onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={focusTodoId}
+                  focusedSlot={item.hasProgress ? item.work.slot : null} courseStartISO={courseStartISO}
+                  focusRequestId={focusRequestId}
+                />
+              </> : null}
+            />}
           </div>
         )}
-        {/* 해지 보관함 — 숨김 해지 계약 열람(읽기전용) */}
-        <TerminationArchive contracts={archivedRows} />
-      </PageContainer>
-      </main>
+        {/* 모바일은 기존 문서 흐름, PC는 위 목록 pane 안에서 해지 보관함을 읽는다. */}
+        {!isPc && rows.length > 0 && <TerminationArchive contracts={archivedRows} />}
+        </PageContainer>
+        </main>
+      </div>
 
       {/* 토스트 */}
       {toast && (

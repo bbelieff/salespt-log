@@ -1,0 +1,266 @@
+// @vitest-environment jsdom
+/**
+ * Scope C2 — CompanyInfoEditor 안정 신원(identityKey) 렌더 회귀.
+ *
+ * txtCompanyName 은 개명 시 바뀌는 표시명이라 자동 저장 라우팅 키로 쓰면
+ * 빠른 대상 전환·개명 때 다른 레코드로 필드가 전송된다. useAutosave 를
+ * 스텁해 전달된 target 을 직접 고정한다:
+ *  ① identityKey 가 있으면 target.key 로 사용한다.
+ *  ② 개명(txtCompanyName 변경)해도 identityKey 가 같으면 target 이 안 바뀐다.
+ *  ③ identityKey 없으면 기존 폴백(txtCompanyName) — A 소유 호출자 무영향.
+ *  ④ 일상 입력은 pending 과 무관하게 막히지 않는다.
+ *
+ * C3 추가 — CompanyInfoContractSection 실제 렌더:
+ *  ⑤ 섹션은 identityKey 를 그대로 에디터에 전달한다(가변 업체명 미사용).
+ *  ⑥ 개명(업체명 변경) 후에도 target 신원이 유지된다.
+ */
+import * as React from "react";
+import { act, createElement as h } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CompanyInfo } from "@/types";
+import CompanyInfoEditor from "@/components/CompanyInfoEditor";
+import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
+
+Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
+
+const autoMocks = vi.hoisted(() => ({
+  lastTarget: null as unknown,
+  syncServer: vi.fn(),
+  update: vi.fn(),
+  stage: vi.fn(),
+  commit: vi.fn(),
+  retry: vi.fn(),
+  undo: vi.fn(),
+  flush: vi.fn(),
+}));
+
+vi.mock("@/components/autosave/useAutosave", () => ({
+  useAutosave: (opts: { target: unknown; initial: unknown }) => {
+    autoMocks.lastTarget = opts.target;
+    return {
+      draft: opts.initial,
+      saved: opts.initial,
+      status: "idle",
+      error: "",
+      dirty: false,
+      savedAt: null,
+      canUndo: false,
+      update: autoMocks.update,
+      stage: autoMocks.stage,
+      commit: autoMocks.commit,
+      syncServer: autoMocks.syncServer,
+      retry: autoMocks.retry,
+      flush: autoMocks.flush,
+      undo: autoMocks.undo,
+    };
+  },
+}));
+
+let root: Root | undefined;
+let el: HTMLDivElement | undefined;
+
+const ci = () => CompanyInfo.parse({ 대표자이름: "홍길동" });
+
+function renderEditor(props: {
+  txtCompanyName?: string;
+  identityKey?: string;
+  desktopHeading?: boolean;
+  onChange?: (next: CompanyInfo) => void;
+}) {
+  el = document.createElement("div");
+  document.body.append(el);
+  root = createRoot(el);
+  act(() => {
+    root?.render(
+      h(CompanyInfoEditor, {
+        value: ci(),
+        onSave: () => undefined,
+        txtCompanyName: props.txtCompanyName,
+        identityKey: props.identityKey,
+        desktopHeading: props.desktopHeading,
+        onChange: props.onChange,
+      }),
+    );
+  });
+}
+
+function rerenderEditor(props: { txtCompanyName?: string; identityKey?: string }) {
+  act(() => {
+    root?.render(
+      h(CompanyInfoEditor, {
+        value: ci(),
+        onSave: () => undefined,
+        txtCompanyName: props.txtCompanyName,
+        identityKey: props.identityKey,
+      }),
+    );
+  });
+}
+
+function toggleOpen() {
+  const btn = [...el!.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("업체정보"),
+  );
+  if (!btn) throw new Error("editor toggle is missing");
+  act(() => {
+    btn.click();
+  });
+}
+
+afterEach(() => {
+  act(() => root?.unmount());
+  el?.remove();
+  root = undefined;
+  el = undefined;
+  vi.clearAllMocks();
+});
+
+describe("CompanyInfoEditor identity", () => {
+  it("uses identityKey for the autosave target when provided", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    expect(autoMocks.lastTarget).toEqual({
+      kind: "company-info",
+      key: "meeting-m1",
+    });
+  });
+
+  it("keeps the target across a rename while identityKey is stable", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    rerenderEditor({ txtCompanyName: "다라상사", identityKey: "meeting-m1" });
+    expect(autoMocks.lastTarget).toEqual({
+      kind: "company-info",
+      key: "meeting-m1",
+    });
+  });
+
+  it("falls back to txtCompanyName without identityKey (existing callers unchanged)", () => {
+    renderEditor({ txtCompanyName: "가나상사" });
+    expect(autoMocks.lastTarget).toEqual({
+      kind: "company-info",
+      key: "가나상사",
+    });
+  });
+
+  it("never disables routine inputs", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    toggleOpen();
+    const inputs = [...el!.querySelectorAll("input, textarea")];
+    expect(inputs.length).toBeGreaterThan(0);
+    for (const input of inputs) {
+      expect((input as HTMLInputElement).disabled).toBe(false);
+    }
+  });
+
+  it("업체정보생성(TXT) 버튼은 머리의 편집 바로 옆, 흰 바탕 (belie 2026-09-29)", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    toggleOpen();
+    const buttons = [...el!.querySelectorAll("button")];
+    const txt = buttons.find((b) => b.textContent === "업체정보생성(TXT)")!;
+    const edit = buttons.find((b) => b.textContent === "팝업")!; // 편집 → 팝업 이름 변경(belie 2026-09-29)
+    expect(txt).toBeTruthy();
+    expect(txt.parentElement).toBe(edit.parentElement);
+    expect(txt.nextElementSibling).toBe(edit);
+    expect(txt.className).toContain("bg-white");
+  });
+
+  it("글자 크기 [− 가 +] — 실무/수납 밖(컨택관리·일정·계약)에선 머리 맨 오른쪽 (belie 2026-09-29)", () => {
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "meeting-m1" });
+    toggleOpen();
+    const control = el!.querySelector("[data-font-scale-control]")!;
+    expect(control).toBeTruthy();
+    expect(control.nextElementSibling).toBeNull();
+    expect(control.previousElementSibling?.textContent).toContain("팝업");
+  });
+
+  it("실무/수납 헤더는 도구 순서와 좁은 폭 줄바꿈을 유지하고, 헤더 제어는 자동저장을 만들지 않는다", () => {
+    const onChange = vi.fn();
+    renderEditor({ txtCompanyName: "가나상사", identityKey: "contract-row:7", desktopHeading: true, onChange });
+    toggleOpen();
+    vi.clearAllMocks();
+
+    const header = el!.querySelector("[data-company-info-header]")!;
+    const actions = el!.querySelector("[data-company-info-header-actions]")!;
+    const buttons = [...actions.querySelectorAll("button")];
+    const documentButton = buttons.find((button) => button.textContent === "문서로 자동입력")!;
+    const txtButton = buttons.find((button) => button.textContent === "업체정보생성(TXT)")!;
+    const popupButton = buttons.find((button) => button.textContent === "팝업")!;
+    const fontDown = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 작게")!;
+    const fontUp = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 크게")!;
+
+    expect(header.firstElementChild?.textContent).toContain("업체정보");
+    expect(header.className).toContain("flex-wrap");
+    expect(actions.className).toContain("basis-full"); // 360/390에서는 제목과 도구가 줄바꿈된다.
+    expect(actions.className).toContain("sm:basis-auto");
+    expect(documentButton.compareDocumentPosition(txtButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(txtButton.compareDocumentPosition(popupButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(popupButton.compareDocumentPosition(fontDown) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(fontDown.compareDocumentPosition(fontUp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const button of [documentButton, txtButton, popupButton, fontDown, fontUp]) expect(button.type).toBe("button");
+
+    act(() => fontUp.click());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(autoMocks.stage).not.toHaveBeenCalled();
+    expect(autoMocks.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("CompanyInfoContractSection stable identity (C3)", () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function renderSection(업체명: string) {
+    el = document.createElement("div");
+    document.body.append(el);
+    root = createRoot(el);
+    await act(async () => {
+      root?.render(
+        h(CompanyInfoContractSection, {
+          계약일: "2026-07-10",
+          업체명,
+          hideSave: true,
+          identityKey: "contract-row:7",
+        }),
+      );
+      await Promise.resolve();
+    });
+    // fetch effect + loaded 상태 반영을 플러시한다.
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it("routes the editor by identityKey, never the mutable company name", async () => {
+    await renderSection("가나상사");
+    expect(autoMocks.lastTarget).toEqual({
+      kind: "company-info",
+      key: "contract-row:7",
+    });
+  });
+
+  it("keeps the identity when the company is renamed", async () => {
+    await renderSection("가나상사");
+    await act(async () => {
+      root?.render(
+        h(CompanyInfoContractSection, {
+          계약일: "2026-07-10",
+          업체명: "다라상사",
+          hideSave: true,
+          identityKey: "contract-row:7",
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(autoMocks.lastTarget).toEqual({
+      kind: "company-info",
+      key: "contract-row:7",
+    });
+  });
+});

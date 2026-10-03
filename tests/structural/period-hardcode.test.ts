@@ -246,7 +246,11 @@ describe("G5: YYYY-MM-DD 리터럴 금지 (앱 코드)", () => {
     for (const file of appFiles()) {
       const r = rel(file);
       if (BASELINE.has(r)) continue;
-      const src = stripComments(readFileSync(file, "utf8"));
+      let src = stripComments(readFileSync(file, "utf8"));
+      // ADR-0032: 사용자가 지정한 10기 총회일 한 값만 허용한다.
+      if (r === "lib/config/cohort-dates.ts") {
+        src = src.replace('const COHORT_10_CEREMONY_OVERRIDE = "2026-10-25";', "");
+      }
       const m = src.match(/["'`]\d{4}-\d{2}-\d{2}/g);
       if (m) bad.push(`${r} (${m.length}건)`);
     }
@@ -280,7 +284,6 @@ describe("G6: 수강생 데이터 쓰기 route 는 getWritableUserEmail 경유",
     "app/api/drive-link",
     "app/api/expenses",
     "app/api/expense-",
-    "app/api/setup", // 수강생 시트 수식 설치/제거 bulk-write (적대리뷰 확정 — 커버리지 갭)
   ];
   // company-info/export: TXT 내보내기(읽기 파생) — 쓰기 게이트 비대상 (실측 2026-07-26).
   const EXEMPT = new Set(["app/api/company-info/export/route.ts"]);

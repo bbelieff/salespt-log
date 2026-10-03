@@ -13,12 +13,13 @@ import {
   readCompanyInfoFromDb,
   readContractsFromDb,
 } from "@/repo/db/read-daily";
-import { chooseDailySource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import {
   clearRow,
   readAll,
   readContractCascadeKey,
+  readFilledRowNumbers,
   syncFeeFromContract,
   updateLinkFields,
   updateUserFields,
@@ -35,6 +36,7 @@ import {
   upsertCompanyInfoArchive,
 } from "@/repo/company-info-archive";
 import { writeTermination } from "@/repo/contract-payment-termination";
+import { isManualContractLink, meetingIdFromLink } from "@/util/contract-link";
 
 /** R3-2: 04 미팅 프리미티브(meetings-write)에 게이트 판정 재료(cohort·email)를 넘기기 위해
  * spreadsheetId 단독 대신 ctx 반환 — 02 시트 경로 자체는 R3-3 소관으로 불변.
@@ -52,39 +54,49 @@ export { isCarryoverContract } from "@/types";
 
 /** 모든 계약수납 row 조회.
  *
- * 파일럿: DB 단일 쿼리(정본) + 시트 전체 read 를 **병렬** 발사해, DB 에 없는(= append
- * 미러 실패로 누락된) 신규 계약행만 시트에서 보충한다(union, R3 §7-3 L4). row(시트 행번호)
- * 조인 + linkedMeetingId 2차 dedupe(수동 행이동 drift 중복 방지). R2-4 의 "시트 0회"
- * 속도이득은 반납하나 지연은 max(DB,시트)=시트 수준. DB read 실패 시 시트 전체 fallback
+ * 파일럿: DB 단일 쿼리(정본) + **저비용 존재확인**(C열 1개, BBE-248 ②)을 병렬 발사한다.
+ * 시트에 채워진 모든 row 가 DB 에도 있으면(빈틈 없음) 전체 시트 read(A:AO 41열)를 생략하고
+ * DB 결과를 그대로 반환 — append 미러 실패로 신규 계약행이 누락된 경우(R3 §7-3 L4)에만
+ * 전체 union 백필로 폴백한다(row 조인 + linkedMeetingId 2차 dedupe, 수동 행이동 drift 방지).
+ * 정합성 보장은 기존 union 과 완전 동일(probabilistic 아님) — 매 요청 시트 호출 자체는
+ * 남지만(존재확인 1열) payload 는 대폭 축소된다. DB read 실패 시 시트 전체 fallback
  * (화면 에러 금지). 비파일럿 불변. */
 export async function loadContractPayments(
   email: string,
 ): Promise<ContractPayment[]> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
-    const [dbRes, sheetRes] = await Promise.allSettled([
-      readContractsFromDb(user.spreadsheetId),
-      readAll(user.spreadsheetId),
-    ]);
-    if (dbRes.status === "fulfilled") {
-      return sheetRes.status === "fulfilled"
-        ? backfillMissingRows(
-            dbRes.value,
-            sheetRes.value,
-            (c) => c.row,
-            (c) => c.linkedMeetingId || undefined,
-          )
-        : dbRes.value; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
-    }
-    // DB read 실패 → 기존처럼 시트 전체 silent fallback
+  if (chooseDailySource(user.cohort, dbEnabled()) !== "db") {
+    return readAll(user.spreadsheetId);
+  }
+  const [dbRes, presenceRes] = await Promise.allSettled([
+    readContractsFromDb(user.spreadsheetId),
+    readFilledRowNumbers(user.spreadsheetId),
+  ]);
+  if (dbRes.status !== "fulfilled") {
+    // DB read 실패 → 기존처럼 시트 전체 silent fallback(실패 시 그대로 throw, 기존과 동등)
     Sentry.captureException(dbRes.reason, {
       tags: { where: "loadContractPayments-db-read" },
     });
-    if (sheetRes.status === "fulfilled") return sheetRes.value;
-    throw sheetRes.reason; // 둘 다 실패 → 시트 에러 전파(기존 readAll throw 와 동등)
+    return readAll(user.spreadsheetId);
   }
-  return readAll(user.spreadsheetId);
+  const dbRowSet = new Set(dbRes.value.map((c) => c.row));
+  const noGap =
+    presenceRes.status === "fulfilled" &&
+    [...presenceRes.value].every((row) => dbRowSet.has(row));
+  if (noGap) return dbRes.value; // 빈틈 없음 확인됨 — 전체 시트 fetch 생략(BBE-248 ②)
+  // 빈틈 있거나 존재확인 자체가 실패 → 기존 전체 union 폴백(안전 기본값 유지, L4 안전망 존속)
+  try {
+    const sheetRows = await readAll(user.spreadsheetId);
+    return backfillMissingRows(
+      dbRes.value,
+      sheetRows,
+      (c) => c.row,
+      (c) => c.linkedMeetingId || undefined,
+    );
+  } catch {
+    return dbRes.value; // 시트 read 실패 → DB 정본만(기존보다 나쁘지 않음)
+  }
 }
 
 /**
@@ -138,12 +150,14 @@ export async function editContractLinkedFields(
     }
   }
   // 04 미팅: 업체명 G·수임비 L 만. 미팅날짜 D 비접촉(계약일은 04 미반영 — 통계 안전).
-  if ((업체명Changed || 수임료Changed) && input.meetingId) {
+  // 「영업기록 없이 추가」 행의 AK(manual:…)는 미팅 id 가 아니다 → 04 는 건드리지 않는다.
+  const linkedMeetingId = meetingIdFromLink(input.meetingId);
+  if ((업체명Changed || 수임료Changed) && linkedMeetingId) {
     try {
       const partial: { 업체명?: string; 수임비?: number } = {};
       if (업체명Changed) partial.업체명 = new업체명;
       if (수임료Changed) partial.수임비 = input.next.수임비;
-      await patchMeetingRecord(ctx, input.meetingId, partial);
+      await patchMeetingRecord(ctx, linkedMeetingId, partial);
     } catch {
       failures.push("04 업체관리(미팅)");
     }
@@ -164,7 +178,7 @@ export async function editContractLinkedFields(
 }
 
 // addFromContract(미팅에서 계약)·addPriorContract(이전 계약 직접등록) — 500줄 캡으로 분리(R3-3 선례).
-export { addFromContract, addPriorContract } from "./contract-payment-add";
+export { addFromContract, addPriorContract, addStandaloneContract } from "./contract-payment-add";
 
 /** CompanyInfo 에 채워진 값이 하나라도 있는지(전부 빈 문자열·빈 커스텀이면 false). */
 function hasCompanyInfo(ci: CompanyInfo | null | undefined): boolean {
@@ -295,7 +309,13 @@ export async function terminateContract(
 }
 
 /** 이 사용자의 쓰기가 DB 동기 반영 대상인지 — 화면이 DB read(파일럿)면 true (Dev3-A 작업1).
- * export: contract-payment-add.ts(addFromContract) 재사용. */
+ * export: contract-payment-add.ts(addFromContract) 재사용.
+ *
+ * BBE-246: 읽기 게이트(chooseDailySource)가 아니라 **쓰기 게이트**(chooseWriteSource)를 쓴다 —
+ * db.ts::resolveWriteCtx·sales-write.ts::isDbCanonical·meetings-write.ts::isDb 전부 write 게이트를
+ * 쓰는데 이 함수만 read 게이트 이름을 빌려 쓰고 있었다(현재는 두 게이트가 byte-identical 이라
+ * 동작 차이는 없었지만, 읽기·쓰기 파일럿 집합이 갈리는 순간 이 함수만 조용히 잘못된 게이트를
+ * 추적하게 된다 — BBE-246 조사에서 발견, 이번에 정정). */
 export async function resolveSheetWithSyncDb(
   email: string,
 ): Promise<{ spreadsheetId: string; syncDb: boolean; ctx: MeetingCtx }> {
@@ -303,7 +323,7 @@ export async function resolveSheetWithSyncDb(
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   return {
     spreadsheetId: user.spreadsheetId,
-    syncDb: chooseDailySource(user.cohort, dbEnabled()) === "db",
+    syncDb: chooseWriteSource(user.cohort, dbEnabled()) === "db",
     ctx: { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email },
   };
 }
@@ -341,11 +361,15 @@ export async function removeContractPaymentWithCascade(
 
   // 1) 삭제 전 row 의 (계약일, 업체명) 읽기 — cascade key.
   // resolveLayout 경유로 6기 `02 계약관리` 탭 alias 자동 처리 (bugfix 2026-06).
-  const { 계약일, 업체명 } = await readContractCascadeKey(spreadsheetId, row);
+  const { 계약일, 업체명, linkId } = await readContractCascadeKey(spreadsheetId, row);
 
   // 2) clearRow — 파일럿은 시트+DB 동시(조용한 반쪽 삭제 금지)
   await clearRow(spreadsheetId, row, { syncDb });
 
+  // 「영업기록 없이 추가」 행은 미팅이 없다 — 같은 날짜·이름의 무관한 계약 미팅을 되돌리지 않는다.
+  if (isManualContractLink(linkId)) {
+    return { cascade: "영업기록 없이 추가한 업체 — 되돌릴 미팅 없음", meetingId: null, 미팅날짜: null };
+  }
   // 3) 매칭 미팅 찾기 (R3-2: 파일럿=DB — 읽기 동반 전환)
   if (!계약일 || !업체명) {
     return {

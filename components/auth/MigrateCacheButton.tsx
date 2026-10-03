@@ -1,8 +1,6 @@
 /**
  * MigrateCacheButton — registry I~L 캐시 일괄 동기화 (헤더용 작은 버튼, PR B-3).
  *
- * InstallFormulasButton 과 동일한 패턴.
- *
  * 동작:
  *   1. [🔄 동기화] 클릭 → confirm
  *   2. POST /api/admin/migrate-registry-cache
@@ -93,7 +91,7 @@ export default function MigrateCacheButton() {
       onClick={migrate}
       disabled={busy}
       title="registry I~L 캐시 컬럼 일괄 backfill (멱등)"
-      className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+      className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-px-11 font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
     >
       {busy ? "동기화 중..." : "🔄 동기화"}
     </button>

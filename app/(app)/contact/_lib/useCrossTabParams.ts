@@ -14,7 +14,10 @@ export function useCrossTabParams(opts: {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const ch = params.get("channel");
+    let recent: string | null = null;
+    try { recent = sessionStorage.getItem("salespt-contact-channel"); } catch { /* Storage can be unavailable. */ }
+    const requested = params.get("channel");
+    const ch = requested && (CHANNEL_ORDER as readonly string[]).includes(requested) ? requested : recent;
     const d = params.get("date");
     const focus = params.get("focus");
     if (ch && (CHANNEL_ORDER as readonly string[]).includes(ch)) setActiveChannel(ch as Channel);

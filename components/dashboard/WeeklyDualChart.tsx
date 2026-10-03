@@ -31,15 +31,16 @@ const X0 = 30;
 const X1 = 328;
 const Y_TOP = 16;
 const Y_BOT = 160;
-const STEP = (X1 - X0) / STATS_WEEKS; // 37.25 (8주 기준)
-const BAR_W = 24;
 
-const xAt = (i: number) => X0 + STEP * (i + 0.5);
 
 export default function WeeklyDualChart({ points }: Props) {
+  const weeks = Math.max(STATS_WEEKS, points.length);
+  const step = (X1 - X0) / weeks;
+  const BAR_W = Math.min(24, step * 0.65);
+  const xAt = (i: number) => X0 + step * (i + 0.5);
   // 코스 주차 padding (부족하면 0으로 채움)
   const data: DashboardWeeklyPoint[] = Array.from(
-    { length: STATS_WEEKS },
+    { length: weeks },
     (_, i) => points[i] ?? { 주차: i + 1, 계약수: 0, 활동량: 0 },
   );
 
@@ -59,12 +60,12 @@ export default function WeeklyDualChart({ points }: Props) {
     .join(" ");
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
       {/* 섹션 제목 + 범례 */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-slate-500" />
         <h2 className="text-base font-extrabold text-gray-900">주차 추이</h2>
-        <span className="text-xs text-gray-400">코스 {STATS_WEEKS}주 기준</span>
+        <span className="text-xs text-gray-400">코스 {weeks}주 기준</span>
         <div className="ml-auto flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-300" />
@@ -77,7 +78,9 @@ export default function WeeklyDualChart({ points }: Props) {
         </div>
       </div>
 
-      <svg viewBox="0 0 358 200" className="w-full" aria-label={`코스 ${STATS_WEEKS}주 주차 추이`}>
+      {/* chart-fill: 데스크탑에서만 카드의 남은 높이를 채운다(globals.css ④). 모바일 무변경. */}
+      <div className="chart-fill flex flex-1 items-center">
+      <svg viewBox="0 0 358 200" preserveAspectRatio="xMidYMid meet" className="weekly-trend-svg w-full" aria-label={`코스 ${weeks}주 주차 추이`}>
         {/* 가로 그리드 (활동량 50%, 100%) */}
         <line
           x1={X0}
@@ -188,6 +191,7 @@ export default function WeeklyDualChart({ points }: Props) {
           계약수(건)
         </text>
       </svg>
+      </div>
     </section>
   );
 }

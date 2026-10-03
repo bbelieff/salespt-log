@@ -25,6 +25,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import { UndoRedo } from "@tiptap/extensions";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 const EXTENSIONS = [
   Document,
@@ -209,7 +210,7 @@ export default function RichNoticeEditor({
             ? "이미지를 올릴 권한이 없어요(관리자만)"
             : res.status === 413
               ? "이미지가 너무 커요(5MB 이하만)"
-              : `이미지 업로드 실패: ${data.error ?? res.status}`,
+              : `이미지 업로드 실패: ${apiErrorMessage(data, res.status)}`,
         );
       }
     } catch {

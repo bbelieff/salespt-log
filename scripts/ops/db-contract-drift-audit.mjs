@@ -17,6 +17,10 @@
  *   ④ 해지 반영 불일치(퍼널 계약수 영향) — 시트 해지일 유무와 DB 해지일 유무가 다름.
  *      `terminatedByChannel`/`terminatedByWeek`(dashboard.ts)가 DB 값으로 계산되므로,
  *      이 드리프트가 있으면 파일럿 화면의 **퍼널 계약수가 실제보다 많이(또는 적게) 표시**된다.
+ *   ⑤ 이월(AI) 깃발 불일치 — 시트엔 표식이 없는데 DB 만 "이월"(또는 그 반대).
+ *      파일럿 화면은 **DB** 를 읽으므로, DB 만 이월이면 시트를 아무리 봐도 이유를 못 찾는데
+ *      그 계약이 **아레나 점수·매출에서 통째로 빠진다**(2026-09-01 belie 신고: 김현민 님
+ *      결미담 8/29 ₩500,000 — 시트 02·04 어디에도 이월 표식이 없는데 화면은 이월로 표시).
  *
  * 파싱은 `lib/repo/db/read-daily.ts contractFromDbPayload` 와 **동일 규칙**(열문자 우선 →
  * 필드명 오버레이)을 손으로 재현한다 — 실제 앱이 그 계약을 어떻게 읽는지와 정확히 같아야
@@ -50,6 +54,17 @@ const arg = (name) => {
 };
 const COHORT_FILTER = arg("--cohort")
   .split(",").map((s) => s.trim().replace(/기\s*$/, "")).filter(Boolean);
+/**
+ * `--list-carryover` : **이월로 잡힌 계약을 전부 나열**한다(불일치가 아니라 값 자체).
+ *
+ * ⑤(시트↔DB 불일치)는 **양쪽이 서로 다를 때만** 잡는다. 그래서 **둘 다 "이월"이면 0건**으로
+ * 보인다 — 2026-09-01 belie 신고(김현민 님 결미담 8/29 ₩500,000 이 이월로 표시)에서 ⑤가
+ * 0건이었는데도 화면은 여전히 이월이었던 이유가 이것이다. 원인을 좁히려면
+ * "이월 깃발이 실제로 켜져 있나"를 눈으로 봐야 한다.
+ */
+/** 워크플로 입력으로 켜고 끄려 했으나 원격까지 값이 안 넘어가 조건을 없앴다 —
+ * 목록이 짧고(이월은 소수) 어차피 매번 보고 싶은 값이라 **항상** 출력한다. */
+const CARRY_LIST_CAP = 80;
 
 const REGISTRY_ID = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
@@ -74,13 +89,32 @@ function isPilotCohort(cohortRaw) {
   return DB_READ_COHORTS.has(norm) || isArenaLabel(norm);
 }
 
+/**
+ * 범위 읽기. **실패와 빈 시트를 구분해서 돌려준다.**
+ *
+ * ⚠️ 예전엔 `.catch(() => null)` 로 모든 에러를 삼키고 `[]` 를 반환했다. 그러면 읽기가
+ * 실패한 사람의 **DB 계약 전부가 "유령"으로 계수**된다(시트에 행이 없다고 오인).
+ * 108명을 연달아 읽으면 Sheets 쿼터(60 reads/min)를 넘겨 매번 다른 사람이 실패하므로
+ * 유령 수치가 실행마다 요동쳤다 — 2026-09-01 실측 0 → 67 → 71 → 12.
+ * belie 지시 "유령 계약 발본색원"의 답이 이것이다: **대부분 유령이 아니라 읽기 실패였다.**
+ */
 async function grid(sid, range) {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "SERIAL_NUMBER",
-  }).catch(() => null);
-  return res?.data.values ?? [];
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sid, range, valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "SERIAL_NUMBER",
+    });
+    return res?.data.values ?? [];
+  } catch (e) {
+    return { __error: e?.message || String(e) };
+  }
 }
+const isReadError = (v) =>
+  v !== null && typeof v === "object" && !Array.isArray(v) && "__error" in v;
+
+/** Sheets 쿼터(60 reads/min) 보호 — 사람당 1 read 이라 시작 간격만으로 충분하다. */
+const READ_GAP_MS = 1100;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const str = (v) => String(v ?? "").trim();
 /** 날짜 셀(serial 또는 문자열) → ISO. 아니면 원문 trim. */
 function dateish(v) {
@@ -93,8 +127,10 @@ function dateish(v) {
 
 /** 02 탭에서 계약일/업체명/해지일 만 뽑는다(감사 목적 — 전량 파싱 불필요). C 기준 상대 idx. */
 async function readSheetContracts(sid) {
+  let lastError = null;
   for (const [tabName, firstDataRow] of [["02 계약수납관리", 6], ["02 계약관리", 5]]) {
     const rows = await grid(sid, `'${tabName}'!C1:AO`);
+    if (isReadError(rows)) { lastError = rows.__error; continue; }
     if (rows.length === 0) continue;
     const out = new Map();
     rows.forEach((r, i) => {
@@ -105,11 +141,14 @@ async function readSheetContracts(sid) {
       out.set(`r${sheetRow}`, {
         계약일, 업체명: str(r[1]), // D
         해지일: dateish(r[35]), // AL (rel idx = 37-2)
+        // AI(구분) — "이월"이면 아레나 점수·매출에서 빠진다. rel idx = 34-2.
+        구분: str(r[32]),
       });
     });
     return out;
   }
-  return new Map();
+  // 둘 다 **에러**였으면 "시트에 행이 없음"이 아니라 **읽기 실패**다 — 구분해 올린다.
+  return lastError ? { __error: lastError } : new Map();
 }
 
 /** backfill 문자열 값 → 시트 UNFORMATTED 원형 복원 — read-daily.ts coerce() 와 동일. */
@@ -126,11 +165,13 @@ function coerce(v) {
  * "158건 불일치"류 오탐(날짜 표현형 차이일 뿐인데 값이 다르다고 잘못 세는 것)을 안 만든다. */
 function fromDbPayload(p) {
   let 계약일 = dateish(coerce(p.C)), 업체명 = str(coerce(p.D)), 해지일 = dateish(coerce(p.AL));
+  let 구분 = str(coerce(p.AI));
   if (p.계약일 !== undefined && p.계약일 !== null) 계약일 = dateish(p.계약일);
   if (p.업체명 !== undefined && p.업체명 !== null) 업체명 = str(p.업체명);
   if (p.해지일 !== undefined && p.해지일 !== null) 해지일 = dateish(p.해지일);
+  if (p.구분 !== undefined && p.구분 !== null) 구분 = str(p.구분);
   const _cleared = p._cleared === true || p._cleared === "true";
-  return { 계약일, 업체명, 해지일, _cleared };
+  return { 계약일, 업체명, 해지일, 구분, _cleared };
 }
 
 async function main() {
@@ -146,15 +187,29 @@ async function main() {
     .filter((u) => u.sid && u.role === "trainee" && isPilotCohort(u.cohort));
   console.log(`대상: ${COHORT_FILTER.length ? `지정 기수(${COHORT_FILTER.join(",")})` : "파일럿 전 기수(8·9·연습·아레나)"} — 시트 ${targets.length}개\n`);
 
-  let ghost = 0, mismatch = 0, clearedFlagMismatch = 0, termMismatch = 0;
+  let ghost = 0, mismatch = 0, clearedFlagMismatch = 0, termMismatch = 0, carryMismatch = 0;
+  /** ⑤ 이월 깃발이 어긋난 실제 건 — 어느 쪽이 이월인지까지 남긴다(화면은 DB 를 본다). */
+  const carryDetails = [];
+  /** ① 유령 계약 상세 — 개수만으론 원인을 못 좁힌다(실행마다 값이 흔들렸다). */
+  const ghostDetails = [];
+  /** 시트/DB 어느 쪽이든 "이월"인 계약 전부 — 왜 아레나 집계에서 빠지는지 눈으로 보려고. */
+  const carryRows = [];
   const perPerson = [];
 
+  /** 시트를 못 읽은 사람 — 유령으로 오인하지 않고 여기 모은다. */
+  const readFailed = [];
+
   for (const u of targets) {
+    await sleep(READ_GAP_MS); // 쿼터 보호 — 이게 없어 읽기 실패가 유령으로 둔갑했다.
     const [sheetMap, dbRes] = await Promise.all([
       readSheetContracts(u.sid),
       pool.query(`select row_key, payload from sheet_rows where spreadsheet_id=$1 and tab='contracts'`, [u.sid]),
     ]);
-    let pGhost = 0, pMismatch = 0, pCleared = 0, pTerm = 0;
+    if (isReadError(sheetMap)) {
+      readFailed.push({ cohort: u.cohort, email: mask(u.email), error: sheetMap.__error });
+      continue;
+    }
+    let pGhost = 0, pMismatch = 0, pCleared = 0, pTerm = 0, pCarry = 0;
     const rowKeys = new Set([...sheetMap.keys(), ...dbRes.rows.map((r) => r.row_key)]);
     const dbByKey = new Map(dbRes.rows.map((r) => [r.row_key, fromDbPayload(r.payload)]));
 
@@ -164,15 +219,41 @@ async function main() {
       const d = dbByKey.get(key);  // undefined = DB에 이 행 없음
       if (!d) continue; // DB에 없으면 감사 대상 아님(시트만 있는 미백필 행 — 별건)
       if (!s) {
-        if (!d._cleared) { ghost++; pGhost++; }
+        if (!d._cleared) {
+          ghost++; pGhost++;
+          ghostDetails.push({
+            cohort: u.cohort, email: mask(u.email), key,
+            계약일: d.계약일 || "(빈값)", 업체명: d.업체명 || "(빈값)",
+            구분: d.구분 || "-", 해지일: d.해지일 || "-",
+          });
+        }
         continue;
       }
       if (d._cleared) { clearedFlagMismatch++; pCleared++; continue; }
       if (s.계약일 !== d.계약일 || s.업체명 !== d.업체명) { mismatch++; pMismatch++; }
       if ((s.해지일 !== "") !== (d.해지일 !== "")) { termMismatch++; pTerm++; }
+      // ⑤ 이월(AI) 불일치 — 파일럿 화면은 **DB** 를 읽으므로, DB 만 "이월"이면 시트에
+      // 아무 표식이 없는데도 그 계약이 아레나 점수·매출에서 통째로 빠진다
+      // (2026-09-01 belie 신고: 김현민 님 결미담 8/29 ₩500,000 이 이월로 표시됨).
+      const sCarry = s.구분 === "이월", dCarry = d.구분 === "이월";
+      if (sCarry || dCarry) {
+        carryRows.push({
+          cohort: u.cohort, email: mask(u.email), key,
+          계약일: d.계약일 || s.계약일, 업체명: d.업체명 || s.업체명,
+          시트: sCarry ? "이월" : "-", DB: dCarry ? "이월" : "-",
+        });
+      }
+      if (sCarry !== dCarry) {
+        carryMismatch++; pCarry++;
+        carryDetails.push({
+          cohort: u.cohort, email: mask(u.email), key,
+          계약일: d.계약일 || s.계약일, 업체명: d.업체명 || s.업체명,
+          시트: sCarry ? "이월" : "-", DB: dCarry ? "이월" : "-",
+        });
+      }
     }
-    if (pGhost + pMismatch + pCleared + pTerm > 0) {
-      perPerson.push({ email: mask(u.email), cohort: u.cohort, pGhost, pMismatch, pCleared, pTerm });
+    if (pGhost + pMismatch + pCleared + pTerm + pCarry > 0) {
+      perPerson.push({ email: mask(u.email), cohort: u.cohort, pGhost, pMismatch, pCleared, pTerm, pCarry });
     }
   }
   await pool.end();
@@ -183,14 +264,58 @@ async function main() {
   console.log(`② 계약일/업체명 불일치 : ${mismatch}건`);
   console.log(`③ _cleared 플래그 불일치: ${clearedFlagMismatch}건`);
   console.log(`④ 해지 반영 불일치(퍼널): ${termMismatch}건`);
-  const total = ghost + mismatch + clearedFlagMismatch + termMismatch;
+  console.log(`⑤ 이월 깃발 불일치(집계) : ${carryMismatch}건`);
+  const total = ghost + mismatch + clearedFlagMismatch + termMismatch + carryMismatch;
   console.log(`\n합계: ${total}건${total === 0 ? " — 0건, 이 항목 자동 종결 대상" : ""}`);
 
   if (perPerson.length) {
     console.log("\n── 사람별 내역(영향 있는 사람만, email 마스킹) ──");
-    console.log("email | cohort | 유령 | 불일치 | cleared불일치 | 해지불일치");
+    console.log("email | cohort | 유령 | 불일치 | cleared불일치 | 해지불일치 | 이월불일치");
     for (const p of perPerson) {
-      console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm}`);
+      console.log(`${p.email} | ${p.cohort} | ${p.pGhost} | ${p.pMismatch} | ${p.pCleared} | ${p.pTerm} | ${p.pCarry}`);
+    }
+  }
+  if (readFailed.length) {
+    console.log("");
+    console.log(`── ⚠ 시트를 못 읽은 사람 (${readFailed.length}명) — 유령 계수에서 제외 ──`);
+    console.log("cohort | email | 사유");
+    for (const f of readFailed) console.log(`${f.cohort} | ${f.email} | ${f.error}`);
+  } else {
+    console.log("");
+    console.log("(시트 읽기 실패 0명 — 유령 수치를 그대로 믿어도 된다)");
+  }
+
+  const GHOST_CAP = 60;
+  console.log("");
+  console.log(
+    `── ① 유령 계약 상세 (${ghostDetails.length}건` +
+      (ghostDetails.length > GHOST_CAP ? `, 앞 ${GHOST_CAP}건만` : "") +
+      ") ──",
+  );
+  console.log("cohort | email | row | 계약일 | 업체명 | 구분 | 해지일");
+  for (const g of ghostDetails.slice(0, GHOST_CAP)) {
+    console.log(
+      `${g.cohort} | ${g.email} | ${g.key} | ${g.계약일} | ${g.업체명} | ${g.구분} | ${g.해지일}`,
+    );
+  }
+  console.log("");
+  console.log(
+    `── 이월로 잡힌 계약 (${carryRows.length}건` +
+      (carryRows.length > CARRY_LIST_CAP ? `, 앞 ${CARRY_LIST_CAP}건만` : "") +
+      ") ──",
+  );
+  console.log("cohort | email | row | 계약일 | 업체명 | 시트 | DB");
+  for (const c of carryRows.slice(0, CARRY_LIST_CAP)) {
+    console.log(
+      `${c.cohort} | ${c.email} | ${c.key} | ${c.계약일} | ${c.업체명} | ${c.시트} | ${c.DB}`,
+    );
+  }
+  if (carryDetails.length) {
+    console.log("");
+    console.log("── ⑤ 이월 깃발 불일치 상세 (화면은 DB 를 본다) ──");
+    console.log("cohort | email | row | 계약일 | 업체명 | 시트 | DB");
+    for (const c of carryDetails) {
+      console.log(`${c.cohort} | ${c.email} | ${c.key} | ${c.계약일} | ${c.업체명} | ${c.시트} | ${c.DB}`);
     }
   }
   console.log("\n(데이터 변경 0건 — 이 스크립트는 SELECT/values.get 만 호출했습니다)\n");

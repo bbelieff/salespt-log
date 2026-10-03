@@ -1,11 +1,14 @@
 /**
  * LoginScene — 인트로 + Google 로그인.
  * SSOT: docs/design/prototypes/login.html (v10 — 로고 + 글래스 도넛 + 8 이모지)
+ * returnTo: validated internal login destination; omitted/invalid falls back to `/`.
  */
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import WebviewWarning from "./WebviewWarning";
+import { safeLoginReturn } from "@/util/login-return";
 
 const FLUENT = "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets";
 const EMOJIS = [
@@ -24,7 +27,7 @@ const POS = [
   { x: 0, y: 1 }, { x: -0.707, y: 0.707 }, { x: -1, y: 0 }, { x: -0.707, y: -0.707 },
 ];
 
-export default function LoginScene() {
+export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-white">
       {/* in-app 웹뷰(카톡·네이버·인스타 등) 감지 시 오버레이로 외부 브라우저 유도. */}
@@ -147,7 +150,7 @@ export default function LoginScene() {
 
         {/* welcome */}
         <div className="text-center">
-          <h1 className="text-[22px] font-bold leading-snug tracking-tight text-gray-900">
+          <h1 className="text-px-22 font-bold leading-snug tracking-tight text-gray-900">
             세일즈피티 경영일지에
             <br />
             오신 걸 환영합니다
@@ -157,8 +160,8 @@ export default function LoginScene() {
         {/* google button */}
         <button
           type="button"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
-          className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-gray-300 bg-white text-[15px] font-medium text-gray-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md active:scale-[0.99]"
+          onClick={() => signIn("google", { callbackUrl: safeLoginReturn(returnTo) ?? "/" })}
+          className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-gray-300 bg-white text-px-15 font-medium text-gray-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md active:scale-[0.99]"
           style={{ height: 52, fontFamily: "Roboto, 'Noto Sans KR', sans-serif" }}
         >
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -170,8 +173,10 @@ export default function LoginScene() {
           <span>Google 계정으로 로그인</span>
         </button>
 
-        <div className="mt-4 text-center text-[11px] text-gray-400">
-          세일즈피티 수강생 전용 · v1.0
+        <Link href="/trainer/apply" className="mt-4 block text-center text-sm font-bold text-brand-red">트레이너 신청하기 →</Link>
+
+        <div className="mt-4 text-center text-px-11 text-gray-400">
+          세일즈피티 경영일지 · v1.0
         </div>
       </div>
     </main>

@@ -16,17 +16,17 @@ import { CompanyInfo, ContractPayment, Meeting, Todo } from "@/types";
 import {
   COMPANY_FIELDS,
   COMPANY_FIELDS_EXT,
+  COMPANY_FIELDS_EXT2,
+  COMPANY_FIELDS_EXT3,
+  COMPANY_FIELDS_EXT4,
+  MEETING_ROW_WIDTH,
   rowToMeeting,
 } from "../meetings";
+import { colName } from "@/util/sheet-column";
 import { rowToCP } from "../contract-payment";
 import { rowToTodo } from "../todos";
 import { companyContractRef } from "../company-info-archive";
 import { dbEnabled, ensureSchema, getDbPool } from "./client";
-
-/** 열 인덱스 → 시트 열문자 (backfill rowObj 의 colName 과 동일 규칙, AP=41 까지 충분). */
-function colName(i: number): string {
-  return i < 26 ? String.fromCharCode(65 + i) : "A" + String.fromCharCode(65 + i - 26);
-}
 
 /** backfill 문자열 값 → 시트 UNFORMATTED 원형 복원(숫자 직렬·boolean). */
 function coerce(v: unknown): unknown {
@@ -48,7 +48,8 @@ export function meetingFromDbPayload(
   }
   // 2) backfill 열문자 형태 → 행 배열 복원 후 시트 파서(rowToMeeting) 그대로 재사용.
   const r: unknown[] = [];
-  for (let i = 0; i <= 44; i++) r.push(coerce(p[colName(i)]));
+  // A~CD(82열) — 이월 payload(carriedMeetingPayload)가 확장 AQ~AS·AU~CD 도 열문자로 싣는다.
+  for (let i = 0; i < MEETING_ROW_WIDTH; i++) r.push(coerce(p[colName(i)]));
   return rowToMeeting(r);
 }
 
@@ -209,7 +210,17 @@ export function contractFromDbPayload(
       if (o.메모 !== undefined) r[pos.memo] = o.메모;
     }
   }
-  return rowToCP(r, rowNumber);
+  const parsed = rowToCP(r, rowNumber);
+  if (!parsed) return null;
+  // 새 필드는 레거시 시트 좌표를 늘리지 않고 JSONB 에 additive 저장한다.
+  // nested slot 은 Zod 기본값을 포함한 기존 파서 결과에 DB 값을 덮어쓴다.
+  return ContractPayment.parse({
+    ...parsed,
+    계약비고: p.계약비고 ?? parsed.계약비고,
+    수납1: { ...parsed.수납1, ...((p.수납1 as Record<string, unknown> | undefined) ?? {}) },
+    수납2: { ...parsed.수납2, ...((p.수납2 as Record<string, unknown> | undefined) ?? {}) },
+    수납3: { ...parsed.수납3, ...((p.수납3 as Record<string, unknown> | undefined) ?? {}) },
+  });
 }
 
 /** 02 헤더존 정크 판정 (contract-delete-ghost, 2026-07-12).
@@ -256,8 +267,8 @@ export async function readContractsFromDb(
 }
 
 // ── R2-6: todos(05 실무투두) read (db-read-calendar) — meetings 와 동일 구조(A열 id) ──
-// payload 2형태: dual-write=Todo 필드명 / backfill=열문자 A..N(rowObj 기본 start 0).
-// 열문자는 A..N → 행배열 복원 후 시트 파서 rowToTodo 재사용(showOnCalendar 기본 ON 규칙 포함).
+// payload 2형태: dual-write=Todo 필드명 / backfill=열문자 A..P(rowObj 기본 start 0).
+// O는 gcal_event_ids, P는 기록종류. 행배열 복원 후 시트 파서를 재사용한다.
 
 /** payload(필드명/열문자 겸용) → Todo. 실패 null. */
 export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
@@ -266,7 +277,7 @@ export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
     if (direct.success) return direct.data;
   }
   const r: unknown[] = [];
-  for (let i = 0; i <= 13; i++) r.push(coerce(p[colName(i)])); // A..N
+  for (let i = 0; i <= 15; i++) r.push(coerce(p[colName(i)])); // A..P
   return rowToTodo(r);
 }
 
@@ -332,11 +343,12 @@ export async function readBannerOrderQtyFromDb(
 
 // ── R2-4b: company_archive(06 업체정보) read (db-read-company-archive) ────────
 // payload 형태: ① upsert 미러 = {업체명, 계약일, ...CompanyInfo 평탄화(커스텀 포함)}
-// ② backfill = 열문자 A..AB(E..X=COMPANY_FIELDS, Y=커스텀 JSON 문자열, Z..AB=EXT)
+// ② backfill = 열문자 A..BL(E..X=COMPANY_FIELDS, Y=커스텀 JSON 문자열, Z..AB=EXT, AC..AV=EXT2,
+//    AW..BK=EXT3, BL=EXT4)
 // ③ rename 미러 = 키 필드만(스냅샷 없음) — 실질 빈 결과는 호출부가 시트 fallback
-//   (renameCompanyInfoKey 는 시트 E~AB 를 보존하지만 DB 새 키엔 스냅샷이 없다).
+//   (renameCompanyInfoKey 는 시트 E~BL 을 보존하지만 DB 새 키엔 스냅샷이 없다).
 
-const COMPANY_LETTER_START = 4; // E — 06 탭 A~AB 중 업체정보 시작 열
+const COMPANY_LETTER_START = 4; // E — 06 탭 A~BL 중 업체정보 시작 열
 
 /** payload(3형태 겸용) → CompanyInfo. 파싱 불가 시 null. */
 export function companyInfoFromDbPayload(
@@ -350,6 +362,24 @@ export function companyInfoFromDbPayload(
   COMPANY_FIELDS_EXT.forEach((f, i) => {
     // Z..AB = 커스텀(Y) 다음 3열
     const v = p[f] ?? p[colName(COMPANY_LETTER_START + COMPANY_FIELDS.length + 1 + i)];
+    ci[f] = String(v ?? "").trim();
+  });
+  const ext2Letter = COMPANY_LETTER_START + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length;
+  COMPANY_FIELDS_EXT2.forEach((f, i) => {
+    // AC..AV = EXT(Z..AB) 다음 20열. 옛 행(키 없음)은 "" — 스키마 default 와 동일.
+    const v = p[f] ?? p[colName(ext2Letter + i)];
+    ci[f] = String(v ?? "").trim();
+  });
+  const ext3Letter = ext2Letter + COMPANY_FIELDS_EXT2.length;
+  COMPANY_FIELDS_EXT3.forEach((f, i) => {
+    // AW..BK = EXT2(AC..AV) 다음 15열. 옛 행(키 없음)은 "".
+    const v = p[f] ?? p[colName(ext3Letter + i)];
+    ci[f] = String(v ?? "").trim();
+  });
+  const ext4Letter = ext3Letter + COMPANY_FIELDS_EXT3.length;
+  COMPANY_FIELDS_EXT4.forEach((f, i) => {
+    // BL = EXT3(AW..BK) 다음 1열. 옛 행(키 없음)은 "".
+    const v = p[f] ?? p[colName(ext4Letter + i)];
     ci[f] = String(v ?? "").trim();
   });
   const custom = p["커스텀"];

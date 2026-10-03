@@ -3,6 +3,7 @@
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { resolveLayout, tabRef } from "./contract-payment";
 import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
+import { queueContractRowSync } from "./contract-sheet-sync";
 
 export interface TerminationWrite {
   해지일: string; // ISO — 존재 = 해지
@@ -12,7 +13,10 @@ export interface TerminationWrite {
 }
 
 /** AL~AO 한 번에 기록. 기존 02 시트는 A:AK(37열)뿐일 수 있어 그리드 41열 선보장
- *  (banner-post-grid-columns 사고 계열 — 없는 컬럼 쓰기는 조용히 reject). */
+ *  (banner-post-grid-columns 사고 계열 — 없는 컬럼 쓰기는 조용히 reject).
+ *
+ * BBE-246: 파일럿(opts.syncDb) = DB 동기 병합(실패=throw) 먼저, 시트는 비동기 수렴잡 큐
+ * (그리드 보장도 그 잡이 전담 — contract-sheet-sync.ts). 비파일럿 = R2 그대로. */
 export async function writeTermination(
   spreadsheetId: string,
   row: number,
@@ -23,6 +27,12 @@ export async function writeTermination(
   if (row < firstDataRow) {
     throw new Error(`[contract-termination] 헤더 행 보호: row ${row} 거부`);
   }
+  const payload = { 해지일: t.해지일, 해지사유: t.해지사유, 반환액: t.반환액, 해지숨김: t.해지숨김 };
+  if (opts?.syncDb) {
+    await persistContractRow(spreadsheetId, row, payload, opts);
+    queueContractRowSync(spreadsheetId, row);
+    return;
+  }
   await ensureGridColumns(spreadsheetId, tab, 41); // AO = 41열
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
@@ -32,12 +42,6 @@ export async function writeTermination(
       values: [[t.해지일, t.해지사유, t.반환액, t.해지숨김 ? "Y" : ""]],
     },
   });
-  // 필드명 payload(dual-write 규칙). 시트 "Y" 표기와 무관하게 boolean 저장.
-  // R3-3: 파일럿 = DB 동기 병합(실패=throw), 비파일럿 = R2 미러(async).
-  await persistContractRow(
-    spreadsheetId,
-    row,
-    { 해지일: t.해지일, 해지사유: t.해지사유, 반환액: t.반환액, 해지숨김: t.해지숨김 },
-    opts,
-  );
+  // 필드명 payload(dual-write 규칙). 시트 "Y" 표기와 무관하게 boolean 저장. R2.
+  await persistContractRow(spreadsheetId, row, payload, opts);
 }

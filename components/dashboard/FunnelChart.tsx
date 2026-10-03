@@ -15,10 +15,12 @@
  *   계약 행은 폰트 22 강조 (text-blue-700 fw-800)
  */
 "use client";
+import { STATS_WEEKS } from "@/config/cohort-dates";
 
 import type { DashboardChannelMatrix } from "@/types";
 
 interface Props {
+  weeks?: number;
   matrix: DashboardChannelMatrix[]; // 4 채널
 }
 
@@ -43,7 +45,7 @@ const BAR_MAX_W = 220;
 const BAR_H = 22;
 const TRAP_H = 15;
 
-export default function FunnelChart({ matrix }: Props) {
+export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
   // 채널별 lookup (CH_ORDER 순서 보장)
   const ordered: Record<DashboardChannelMatrix["채널"], DashboardChannelMatrix> =
     Object.fromEntries(
@@ -76,15 +78,19 @@ export default function FunnelChart({ matrix }: Props) {
   const conversionRate = inflow > 0 ? (contract / inflow) * 100 : 0;
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
       {/* 섹션 제목 */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-blue-500" />
         <h2 className="text-base font-extrabold text-gray-900">영업 퍼널</h2>
-        <span className="ml-auto text-xs text-gray-400">8주 누적</span>
+        <span className="ml-auto text-xs text-gray-400">{weeks}주 누적</span>
       </div>
 
-      <svg viewBox="0 0 358 260" className="w-full" aria-label="6단계 영업 퍼널">
+      {/* chart-fill: 데스크탑(.desktop-shell, globals.css ④)에서는 카드의 남은 높이를 차트가
+          채운다(최소 14rem, svg 흐름 밖 — 차트 비율이 줄 높이를 키우지 않음). viewBox + meet 로
+          비율 유지·중앙 정렬, 범례는 바닥. 모바일은 일반 흐름 그대로. */}
+      <div className="chart-fill flex flex-1 items-center">
+      <svg viewBox="0 0 358 260" preserveAspectRatio="xMidYMid meet" className="funnel-svg w-full" aria-label="6단계 영업 퍼널">
         {STAGES.map((stage, i) => {
           const y = rowY(i);
           const totalW = stageWidth(stage);
@@ -186,6 +192,7 @@ export default function FunnelChart({ matrix }: Props) {
           </tspan>
         </text>
       </svg>
+      </div>
 
       {/* 채널 범례 */}
       <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-gray-600">

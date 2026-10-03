@@ -10,6 +10,8 @@
  *   - 회고노트 (자유 텍스트, 1행 = 1주차)
  */
 
+import { GUIDE_URL } from "./links";
+
 function required(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`환경변수 ${name} 가 비어있습니다. .env 를 확인하세요.`);
@@ -92,11 +94,21 @@ export const noticeImageFolderId = (): string =>
   "1vujHrGt5gf6iIERz8-LpmLt2mLoXt5xG";
 
 /**
- * 사용 가이드(노션 '웹에 게시' 공개 URL) — NEXT_PUBLIC 이라 클라 인라인.
- * 미설정이면 "" → 호출부가 버튼 자체를 렌더하지 않음(안전 가드, 하드코딩 금지).
+ * 사용 가이드 URL — 팝업·새소식·상단 헤더 **3곳**이 이 한 곳을 본다.
+ * 정본은 `./links.ts` 의 `GUIDE_URL` **하나뿐**이다.
+ *
+ * ## env 를 왜 안 보나 (2026-09-07, 같은 날 두 번째 교훈)
+ * 처음엔 `NEXT_PUBLIC_GUIDE_URL` 이 있으면 그쪽이 이기게 뒀다 — "서버에서 급히 덮을
+ * 여지"를 남긴다는 이유였다. 배포하고 보니 **VPS `.env` 에 남아 있던 옛 노션 주소가
+ * 조용히 이겨서** 카페로 안 갔다. 여지가 아니라 **함정**이었다.
+ *
+ * env 로 둘 이유도 애초에 없었다 — `NEXT_PUBLIC_*` 은 **빌드할 때 값이 박히므로**
+ * 서버에서 고쳐도 재배포가 필요하다. 서버에 들어가 고치고 재배포할 바엔 PR 한 줄이 빠르다.
+ * 즉 **긴급 수단으로서 이점이 0 이면서, 낡은 값이 조용히 이기는 위험만 있었다.**
+ *
+ * 주소를 바꾸려면 `links.ts` 한 줄을 고쳐라. 이력이 남고 되돌리기도 한 줄이다.
  */
-export const guideUrl = (): string =>
-  (process.env.NEXT_PUBLIC_GUIDE_URL ?? "").trim();
+export const guideUrl = (): string => GUIDE_URL;
 
 /**
  * Admin email → 표시 이름 매핑 (env ADMIN_NAMES).
@@ -178,21 +190,25 @@ export const SHEET_RANGES = {
   // 표시_요약(수식)/계약조건/계약합성라인(수식)/previousMeetingId/주차(수식)
   meetings: {
     tab: "04 업체관리(앱자동작성용)",
-    headerRow: "A1:AS1",
+    headerRow: "A1:CD1",
     // A~S(미팅) + T~AN(업체정보) + AO~AP(이월 깃발: 구분/이월원본행id — 마이그레이션만 기록).
     // + AQ~AS(업체정보 확장 3 — field-grid; AO~AP 이월깃발 뒤 append).
-    // 읽기는 전체, 쓰기는 split(A:M/P/R/T~AN/AQ~AS)이라 수식·이월깃발 비접촉 보존.
-    range: "A2:AS",
+    // + AT(gcal_event_ids 맵 — gcal-event-ids.ts 전용) + AU~BN(업체정보 확장2 20 — 2026-09-28)
+    // + BO~CC(업체정보 확장3 15 — company-info-restructure 2026-09-28)
+    // + CD(업체정보 확장4 — 매출기준연도, company-finance-won-grid 2026-09-28).
+    // 쓰기는 split(A:M/P/R/T~AN/AQ~AS/AU~CD)이라 수식·이월깃발·gcal맵 비접촉 보존.
+    range: "A2:CD",
   },
 
   // ── 06 업체정보 (계약 고객 동기화 표 — consultation-log §1-2) ─────
   // 신규 탭(ensure 자동 생성). A=업체명 B=계약일 C=계약ref(계약일|업체명) D=갱신시각
-  // + E~X=04 업체정보 20필드 미러 + Y=커스텀 JSON + Z~AB=확장 3필드 미러(field-grid).
-  // 키=계약ref. 04 가 SSOT, 06 은 동기화 사본.
+  // + E~X=04 업체정보 20필드 미러 + Y=커스텀 JSON + Z~AB=확장 3필드 미러(field-grid)
+  // + AC~AV=확장2 20필드 미러(04 AU~BN, 2026-09-28) + AW~BK=확장3 15필드 미러(04 BO~CC)
+  // + BL=확장4 매출기준연도 미러(04 CD). 키=계약ref. 04 가 SSOT, 06 은 동기화 사본.
   companyInfoArchive: {
     tab: "06 업체정보",
-    headerRow: "A1:AB1",
-    range: "A2:AB",
+    headerRow: "A1:BL1",
+    range: "A2:BL",
   },
 
   // ── 계약수납관리 v2 (1행 = 1계약, A~AD) ─────────────────────
@@ -277,14 +293,14 @@ export const SHEET_RANGES = {
     },
   },
 
-  // ── 실무투두 (1행 = 1투두, 13컬럼 A~M) — Scope 2, ADR-0006 ──
+  // ── 실무투두 (A:N 앱 데이터, O 캘린더 ID, P 기록종류) ──
   // 앱이 자동 생성(ensureTodoTab): 탭 없으면 addSheet + 헤더행.
   // (계약 × 기관) 단위 ToDo. 04 미팅·02 수납과 격리. 수식 컬럼 없음.
   // SSOT: docs/domains/sheet-structure.md §5-2
   todos: {
     tab: "05 실무투두",
     headerRow: "A1:N1",
-    range: "A2:N", // append + update 대상
+    range: "A2:P", // O=gcal_event_ids 보존, P=Todo/History 구분
   },
 
   // ── 새소식 (레지스트리 SHEETS_REGISTRY_ID 내 탭 — 개인 시트 아님!) ──

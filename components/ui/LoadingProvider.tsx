@@ -3,6 +3,8 @@
  *
  * React Query 전역 상태를 구독해 자동 표시(페이지별 수동 호출 없이 어디서나 일관):
  *  - 뮤테이션 진행(status==='pending') → 표시(쓰기/저장).
+ *    ※ 단, meta.silent === true 인 뮤테이션은 백그라운드 자동저장이라 제외
+ *    (컨택 수치·미팅 자동저장만 opt-in). 그 외 모든 값(미지정 포함)은 차단 표시.
  *  - 쿼리 '초기 로딩'(status==='pending' && fetchStatus==='fetching', 즉 데이터 없음) → 표시.
  *    ※ 백그라운드 refetch(데이터 있음)·창 포커스 refetch 는 제외 → 깜빡임 방지.
  *  - 명령형 show()/hide(): React Query 밖 비동기(클레임 후 풀리로드 등)용 카운터.
@@ -45,6 +47,18 @@ function metaMessage(meta: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * 백그라운드 자동저장 여부 — 엄격한 명시적 opt-out.
+ * meta.silent === true 일 때만 제외. 미지정·false·다른 값은 모두 차단 표시.
+ */
+function isSilentMutation(meta: unknown): boolean {
+  return (
+    !!meta &&
+    typeof meta === "object" &&
+    (meta as { silent?: unknown }).silent === true
+  );
+}
+
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
@@ -75,7 +89,10 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     const qc = queryClient.getQueryCache();
     const mc = queryClient.getMutationCache();
     const recompute = () => {
-      const mutations = mc.getAll().filter((m) => m.state.status === "pending");
+      const pending = mc.getAll().filter((m) => m.state.status === "pending");
+      // silent 백그라운드 자동저장은 차단 집계에서 제외. 전경 뮤테이션이
+      // 하나라도 있으면 그대로 차단 표시(혼합 pending → 차단).
+      const mutations = pending.filter((m) => !isSilentMutation(m.meta));
       // 초기 로딩 쿼리 = 데이터 없음(pending) + 실제 fetching. refetch(success+fetching) 제외.
       const queries = qc
         .getAll()

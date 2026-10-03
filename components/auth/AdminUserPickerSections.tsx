@@ -11,6 +11,8 @@
  * import 하고 TraineeCard 는 Types 를 import → 사이클 없음.
  */
 "use client";
+import Link from "next/link";
+import { courseEndISO, isExtendedCourseCohort } from "@/config/cohort-dates";
 
 import SortableTraineeBox from "./SortableTraineeBox";
 import PersistentDetails from "./PersistentDetails";
@@ -46,7 +48,7 @@ function LinkedAccountsBadge({ siblings }: { siblings: string[] }) {
   return (
     <span
       title={`같은 시트 공유: ${siblings.join(", ")}`}
-      className="ml-1 text-[10px] font-medium text-sky-600"
+      className="ml-1 text-px-10 font-medium text-sky-600"
     >
       🔗 +{siblings.length}
     </span>
@@ -118,10 +120,11 @@ export function CohortSection({
   // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
   const rep = list.find((u) => u.courseStartISO && u.graduationISO);
   const start = fmtDateYY(rep?.courseStartISO);
-  const end = fmtDateYY(rep?.graduationISO);
+  const courseEnd = isExtendedCourseCohort(cohort) ? courseEndISO(rep?.courseStartISO ?? "", cohort) : rep?.graduationISO;
+  const end = fmtDateYY(courseEnd);
   const { pct, dday } = cohortProgress(
     rep?.courseStartISO,
-    rep?.graduationISO,
+    courseEnd,
   );
   // 기수 박스: 배경에서 더 잘 구분되게 slate 톤 + 진한 테두리. open 상태일 때
   // 헤더 영역에 좌측 indigo accent bar 로 무게감. (2026-05-13 시인성 개선)
@@ -152,7 +155,7 @@ export function CohortSection({
           · {list.length}명
         </span>
         {archived && (
-          <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
+          <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-px-10 font-bold text-gray-600">
             보관
           </span>
         )}
@@ -255,7 +258,7 @@ function CohortBody({
           defaultOpen
           className="overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50/30 open:bg-white"
         >
-          <summary className="cursor-pointer px-3 py-2 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50">
+          <summary className="cursor-pointer px-3 py-2 text-px-11 font-bold text-indigo-700 hover:bg-indigo-50">
             🏷️ {teamName} · {members.length}명
           </summary>
           <div className="space-y-2 border-t border-indigo-100 px-3 py-2">
@@ -320,7 +323,7 @@ export function ReservedSection({
         </svg>
       </summary>
       <div className="space-y-2 border-t border-amber-200 px-4 py-4">
-        <p className="mb-2 text-[11px] text-gray-500">
+        <p className="mb-2 text-px-11 text-gray-500">
           명단에서 숨겨진 수강생. 복귀 시 정규 기수 그룹으로 돌아갑니다.
           퇴출은 registry row 영구 삭제 (개인 시트·권한은 그대로 유지).
         </p>
@@ -330,6 +333,7 @@ export function ReservedSection({
             assigned.length > 0
               ? assigned.map((e) => nameByEmail.get(e) ?? e).join(", ")
               : "미배정";
+          const adminGoalHref = `/weekly-goals?student=${encodeURIComponent(u.email)}&returnTo=${encodeURIComponent("/admin/users")}` as const;
           return (
             <div
               key={u.email}
@@ -340,32 +344,28 @@ export function ReservedSection({
                   <span className="text-sm font-black text-gray-900">
                     {u.name || "(이름 없음)"}
                   </span>
-                  <span className="text-[11px] text-gray-400">{u.email}</span>
+                  <span className="text-px-11 text-gray-400">{u.email}</span>
                   <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
                 </div>
-                <div className="mt-1.5 text-[11px] text-gray-600">
+                <div className="mt-1.5 text-px-11 text-gray-600">
                   <span className="text-gray-400">담당</span>{" "}
                   <span className="font-semibold">{trainerNames}</span>
                 </div>
               </div>
               {!viewOnly && (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {u.spreadsheetId && (
-                    <a
-                      href={`https://docs.google.com/spreadsheets/d/${u.spreadsheetId}/edit`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="구글 시트 원본 새 탭으로 열기"
-                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
-                    >
-                      📊 시트
-                    </a>
-                  )}
+                  <Link
+                    href={adminGoalHref}
+                    title="주간 목표·PT과제 열기"
+                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                  >
+                    주간목표
+                  </Link>
                   <button
                     type="button"
                     onClick={() => onRestore(u.email)}
                     disabled={busy !== null}
-                    className="rounded-full border border-green-200 bg-green-50 px-3 py-2 text-[11px] font-bold text-green-700 hover:bg-green-100 disabled:opacity-50"
+                    className="rounded-full border border-green-200 bg-green-50 px-3 py-2 text-px-11 font-bold text-green-700 hover:bg-green-100 disabled:opacity-50"
                   >
                     {busy === u.email ? "..." : "복귀"}
                   </button>
@@ -374,7 +374,7 @@ export function ReservedSection({
                     onClick={() => onPurge(u.email, u.name)}
                     disabled={busy !== null}
                     title="registry row 영구 삭제"
-                    className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-px-11 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
                   >
                     퇴출
                   </button>
@@ -423,7 +423,7 @@ export function PendingTraineesSection({
             type="button"
             onClick={onApproveAll}
             disabled={busy !== null}
-            className="rounded-full bg-green-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-green-700 disabled:opacity-50"
+            className="rounded-full bg-green-600 px-3 py-1 text-px-11 font-bold text-white hover:bg-green-700 disabled:opacity-50"
           >
             모두 승인 ({list.length})
           </button>
@@ -440,10 +440,10 @@ export function PendingTraineesSection({
                 <span className="text-sm font-black text-gray-900">
                   {u.name || "(이름 없음)"}
                 </span>
-                <span className="text-[11px] text-gray-400">{u.email}</span>
+                <span className="text-px-11 text-gray-400">{u.email}</span>
                 <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
               </div>
-              <div className="mt-1.5 text-[11px] text-gray-600">
+              <div className="mt-1.5 text-px-11 text-gray-600">
                 <span className="text-gray-400">기수</span>{" "}
                 <span className="font-semibold">{u.cohort || "—"}</span>
               </div>

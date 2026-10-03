@@ -17,7 +17,7 @@
  * 비파일럿(시트 read)은 기존 async 미러 유지(호출부 게이트).
  */
 import { findOwnerBySpreadsheetId } from "../users";
-import { dbEnabled, upsertSheetRow } from "./client";
+import { dbEnabled, ensureSchema, getDbPool, upsertSheetRow } from "./client";
 import { mirrorSheetRow, mirrorClearRow } from "./mirror";
 
 /** R3-4 dual-write 옵션 — 파일럿(화면=DB read)이면 DB 동기 정본(실패=throw), 아니면 R2 미러(async). */
@@ -96,4 +96,26 @@ export async function clearDbRow(
   } else {
     mirrorClearRow({ spreadsheetId, tab: "db", rowKey });
   }
+}
+
+/**
+ * rowKey 의 최신 DB payload 원본 — BBE-246 시트 수렴잡 전용(../db-tab-sheet-sync.ts).
+ * `_cleared` 포함 그대로 반환(필터링은 호출부 소관). 행 없으면 null.
+ * (contracts-clear.ts:readContractRowPayload·company-archive-sync.ts:readCompanyArchiveRowPayload
+ * 와 동일 패턴 — R7-#11 BBE-60 선례.)
+ */
+export async function readDbRowPayload(
+  spreadsheetId: string,
+  rowKey: string,
+): Promise<Record<string, unknown> | null> {
+  if (!dbEnabled()) throw new Error("[db] DATABASE_URL 미설정 — 호출부 게이트 오류");
+  await ensureSchema();
+  const res = await getDbPool().query(
+    `select payload from sheet_rows
+     where spreadsheet_id = $1 and tab = 'db' and row_key = $2`,
+    [spreadsheetId, rowKey],
+  );
+  return (
+    (res.rows[0] as { payload: Record<string, unknown> } | undefined)?.payload ?? null
+  );
 }

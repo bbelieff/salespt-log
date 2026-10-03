@@ -10,11 +10,13 @@
  */
 "use client";
 
+import TopHeader from "@/components/TopHeader";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useGlobalLoading } from "@/components/ui/LoadingProvider";
 import { isClaimableCohort } from "@/service/cohort-token";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 type Mode = "cohort" | "arena";
 
@@ -91,7 +93,7 @@ export default function ClaimPage() {
           router.push("/");
           return;
         } else {
-          setError(`오류가 발생했습니다: ${data.error ?? "unknown"}`);
+          setError(apiErrorMessage(data, res.status));
         }
         setLoading(false);
         hide();
@@ -109,9 +111,10 @@ export default function ClaimPage() {
   }
 
   const inputCls =
-    "w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-[15px] font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100";
+    "w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-px-15 font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100";
 
   return (
+    <><TopHeader pageEmoji="" pageTitle="수강 정보 연결" />
     <main className="relative min-h-dvh bg-white">
       {/* subtle bg */}
       <div
@@ -173,7 +176,7 @@ export default function ClaimPage() {
         <div className="mt-7 space-y-5">
           {mode === "cohort" ? (
             <div>
-              <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+              <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
                 기수
               </label>
               {/* inputMode=text: 숫자 기수 외에 "T"(트레이너)·"연습"(온보딩)도
@@ -193,14 +196,14 @@ export default function ClaimPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
                   시즌
                 </label>
                 <div
                   className="flex items-center rounded-xl border-[1.5px] border-gray-200 bg-white pl-4 focus-within:border-brand-red focus-within:ring-4 focus-within:ring-red-100"
                   style={{ height: 52 }}
                 >
-                  <span className="text-[15px] font-extrabold text-gray-400">
+                  <span className="text-px-15 font-extrabold text-gray-400">
                     A
                   </span>
                   <input
@@ -210,13 +213,13 @@ export default function ClaimPage() {
                     placeholder="1"
                     value={season}
                     onChange={(e) => setSeason(e.target.value)}
-                    className="h-full w-full appearance-none bg-transparent px-2 text-[15px] font-semibold text-gray-900 outline-none"
+                    className="h-full w-full appearance-none bg-transparent px-2 text-px-15 font-semibold text-gray-900 outline-none"
                     autoComplete="off"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
                   본인 기수
                 </label>
                 <input
@@ -235,7 +238,7 @@ export default function ClaimPage() {
           )}
 
           <div>
-            <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+            <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
               본인 이름
             </label>
             <input
@@ -260,13 +263,13 @@ export default function ClaimPage() {
                   → {arenaCohort} {name.trim() || "이름"}
                 </p>
               )}
-              <p className="text-[11px] leading-relaxed text-gray-400">
+              <p className="text-px-11 leading-relaxed text-gray-400">
                 아레나 참가자는 시즌(A1)·본인 기수·이름을 넣어주세요. 본인 아레나
                 시트와 자동 연결됩니다.
                 <br />
                 <span className="text-gray-600">
                   (시트 이름:{" "}
-                  <code className="rounded bg-gray-100 px-1 text-[10px] text-gray-700">
+                  <code className="rounded bg-gray-100 px-1 text-px-10 text-gray-700">
                     세일즈PT_A시즌_기수기 이름_대표님 경영일지
                   </code>
                   )
@@ -274,12 +277,12 @@ export default function ClaimPage() {
               </p>
             </div>
           ) : (
-            <p className="text-[11px] leading-relaxed text-gray-400">
+            <p className="text-px-11 leading-relaxed text-gray-400">
               본인 수강생 시트와 자동 연결됩니다.
               <br />
               <span className="text-gray-600">
                 (시트 이름:{" "}
-                <code className="rounded bg-gray-100 px-1 text-[10px] text-gray-700">
+                <code className="rounded bg-gray-100 px-1 text-px-10 text-gray-700">
                   세일즈PT_ 기수 이름 수강생 경영일지
                 </code>
                 )
@@ -300,7 +303,7 @@ export default function ClaimPage() {
           type="button"
           disabled={!valid || loading}
           onClick={handleSubmit}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gray-900 text-[15px] font-bold text-white shadow-md transition-all hover:bg-black hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:shadow-none"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gray-900 text-px-15 font-bold text-white shadow-md transition-all hover:bg-black hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:shadow-none"
           style={{ height: 56 }}
         >
           {loading ? "연결 중..." : "경영일지 시작하기 →"}
@@ -314,6 +317,6 @@ export default function ClaimPage() {
           다른 Google 계정으로 로그인
         </button>
       </div>
-    </main>
+    </main></>
   );
 }

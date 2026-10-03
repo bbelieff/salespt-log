@@ -62,7 +62,7 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
             ✕ 닫기
           </button>
         </div>
-        <p className="px-4 pt-1 text-[11px] text-gray-500">
+        <p className="px-4 pt-1 text-px-11 text-gray-500">
           선택하면 업체명·업체정보·비고가 자동으로 채워져요. 직접 입력한 값은 덮지 않아요.
         </p>
         <div className="px-4 pt-2">
@@ -108,7 +108,7 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
                   ) : null}
                 </span>
                 {l.구분 ? (
-                  <span className="shrink-0 rounded bg-purple-100 px-1.5 py-px text-[11px] font-medium text-purple-700">
+                  <span className="shrink-0 rounded bg-purple-100 px-1.5 py-px text-px-11 font-medium text-purple-700">
                     {l.구분}
                   </span>
                 ) : null}

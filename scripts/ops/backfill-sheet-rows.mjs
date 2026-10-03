@@ -15,8 +15,18 @@
  * ★URL·비밀번호·SA 키 로그 미출력.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { google } from "googleapis";
 import { Pool } from "pg";
+import {
+  LEGACY_CONTRACT_TAB,
+  LEGACY_CONTRACT_FIRST_DATA_ROW,
+  LEGACY_DB_SECTIONS,
+  isLegacyDbSectionTotalRow,
+  LEGACY_SALES_CHANNELS,
+  legacySalesBlockRow,
+} from "./backfill-sheet-rows-legacy.mjs";
 
 // ── env (.env.local 우선 병합 — append-updates 는 첫 파일만 읽는 것과 달리 둘 다) ──
 function loadEnv() {
@@ -54,23 +64,31 @@ const SHEET = (() => {
 const EXECUTE = process.argv.includes("--execute");
 // R2-1.5(아레나): 콤마 목록 허용 — 예: --cohort "A1-0,A1-1,A1-2" (단일 라벨 동작 불변).
 const COHORTS = COHORT.split(",").map((s) => s.trim().replace(/기\s*$/, "")).filter(Boolean);
-if (!COHORT) {
-  console.error(
-    "사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--sheet <시트ID>] [--execute]\n" +
-      "  --sheet 지정 시: 그 시트만 백필(레지스트리 cohort 무관). --cohort 는 DB 에 스탬프할 라벨.",
-  );
-  process.exit(1);
-}
 
 const REGISTRY_ID = env("SHEETS_REGISTRY_ID");
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
 const SA_KEY = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\\n/g, "\n");
 const DB_URL = env("DATABASE_URL");
-if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY) {
-  console.error("backfill: SA/레지스트리 env 누락"); process.exit(1);
-}
-if (EXECUTE && !DB_URL) {
-  console.error("backfill: --execute 인데 DATABASE_URL 없음"); process.exit(1);
+
+// CLI 인자 검증(process.exit) — BBE-67 이 extractUserRows 를 단위테스트로 직접 import 할 수
+// 있도록 isMainModule 뒤로 미룬다. 클라이언트 생성 자체는 빈 문자열이어도 던지지 않는다
+// (googleapis JWT — 실측 확인됨, CI 에 SA 자격 없어도 import 만으로는 안전).
+const isMainModule =
+  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMainModule) {
+  if (!COHORT) {
+    console.error(
+      "사용법: node backfill-sheet-rows.mjs --cohort <기수라벨> [--sheet <시트ID>] [--execute]\n" +
+        "  --sheet 지정 시: 그 시트만 백필(레지스트리 cohort 무관). --cohort 는 DB 에 스탬프할 라벨.",
+    );
+    process.exit(1);
+  }
+  if (!REGISTRY_ID || !SA_EMAIL || !SA_KEY) {
+    console.error("backfill: SA/레지스트리 env 누락"); process.exit(1);
+  }
+  if (EXECUTE && !DB_URL) {
+    console.error("backfill: --execute 인데 DATABASE_URL 없음"); process.exit(1);
+  }
 }
 
 const auth = new google.auth.JWT(SA_EMAIL, undefined, SA_KEY, [
@@ -122,9 +140,32 @@ const serialToISO = (v) => {
   return new Date((n - 25569) * 86400000).toISOString().slice(0, 10);
 };
 
+/** 시트 탭 제목 집합(1회 메타 조회) — 현행/5기 legacy 분기 판정용.
+ * 실패하면 빈 Set — 호출부는 `titles.size === 0` 을 "판정 불가 → 현행 그대로 시도"로 취급해
+ * 메타 조회 실패가 곧 회귀가 되지 않게 한다(BBE-67 census, `docs/plans/active/
+ * bbe67-legacy-5gi-adapter.md` §3). */
+async function tabTitles(sid) {
+  try {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: sid, fields: "sheets(properties(title))",
+    });
+    return new Set((meta.data.sheets ?? []).map((s) => s.properties.title));
+  } catch {
+    return new Set();
+  }
+}
+
+// BBE-67 5기 legacy sales 채널 포지션 표본검증(반장 요구 §4-A) — 전수(5행이 아니라 전체) 대조.
+let legacySalesChannelChecked = 0, legacySalesChannelMismatch = 0;
+/** dry-run 검증 스크립트가 누적 카운터를 읽기 위한 접근자(let 은 자동 export 안 됨). */
+export function getLegacySalesChannelStats() {
+  return { checked: legacySalesChannelChecked, mismatch: legacySalesChannelMismatch };
+}
+
 /** 한 사용자 시트 → {tab → [{rowKey, payload}]} (dual-write 와 동일 키 규칙). */
 async function extractUserRows(sid) {
   const out = { meetings: [], contracts: [], todos: [], sales: [], db: [], company_archive: [] };
+  const titles = await tabTitles(sid);
 
   // 04 미팅 — A=id
   for (const [i, r] of (await grid(sid, "'04 업체관리(앱자동작성용)'!A2:AP")).entries()) {
@@ -136,11 +177,16 @@ async function extractUserRows(sid) {
     const id = String(r[0] ?? "").trim();
     if (id) out.todos.push({ rowKey: id, payload: rowObj(r), row: i + 2 });
   }
-  // 02 계약수납 — 행 고정 키 r{행}. 신형(계약수납관리) 우선, 구형(계약관리) 폴백.
+  // 02 계약수납 — 행 고정 키 r{행}. 신형(계약수납관리) → 6기 구형(계약관리 5) → 5기 legacy
+  // (계약관리, 번호 없음, firstDataRow=12: row10=헤더·row11=예시행·row12+=실데이터 — BBE-67
+  // census 로 실측 확정, `bbe67-legacy-5gi-adapter.md` §2).
   // 시작행 = 앱 레이아웃(lib/repo/contract-payment.ts TAB_ALIASES)과 동일: 신형 6 / 구형 5.
   // 과거 `>= 3` 이 헤더·예시 구간(r3 "수납총액" 안내행, r5 "00유통" 템플릿 예시행)을
   // 유령 계약으로 적재한 사고 수정(2026-07-12, 전 기수 94행 — repair 스크립트로 정리).
-  for (const [tabName, firstDataRow] of [["02 계약수납관리", 6], ["02 계약관리", 5]]) {
+  for (const [tabName, firstDataRow] of [
+    ["02 계약수납관리", 6], ["02 계약관리", 5],
+    [LEGACY_CONTRACT_TAB, LEGACY_CONTRACT_FIRST_DATA_ROW],
+  ]) {
     const rows = await grid(sid, `'${tabName}'!C1:AK`);
     if (rows.length === 0) continue;
     rows.forEach((r, i) => {
@@ -152,40 +198,100 @@ async function extractUserRows(sid) {
     });
     break; // 첫 존재 탭만
   }
-  // 03 DB관리 — 4섹션, {섹션}:r{행}, 행 4~100, 첫 컬럼 비면 제외
-  const SEC = [
-    ["매입DB", "B", "H"], ["직접생산", "I", "O"], ["현수막", "P", "V"], ["콜지기소", "X", "AD"],
-  ];
-  for (const [name, c1, c2] of SEC) {
-    const rows = await grid(sid, `'03 DB관리'!${c1}4:${c2}100`);
-    rows.forEach((r, i) => {
-      if (String(r[0] ?? "").trim() !== "") {
-        const startIdx = c1.length === 1 ? c1.charCodeAt(0) - 65 : 26 + c1.charCodeAt(1) - 65;
-        out.db.push({ rowKey: `${name}:r${i + 4}`, payload: rowObj(r, startIdx), row: i + 4 });
+  // 03 DB관리 — 현행 4섹션 병렬 우선, 없으면 5기 legacy(DB관리, 번호 없음) 폴백.
+  if (titles.has("03 DB관리") || titles.size === 0) {
+    const SEC = [
+      ["매입DB", "B", "H"], ["직접생산", "I", "O"], ["현수막", "P", "V"], ["콜지기소", "X", "AD"],
+    ];
+    for (const [name, c1, c2] of SEC) {
+      const rows = await grid(sid, `'03 DB관리'!${c1}4:${c2}100`);
+      rows.forEach((r, i) => {
+        if (String(r[0] ?? "").trim() !== "") {
+          const startIdx = c1.length === 1 ? c1.charCodeAt(0) - 65 : 26 + c1.charCodeAt(1) - 65;
+          out.db.push({ rowKey: `${name}:r${i + 4}`, payload: rowObj(r, startIdx), row: i + 4 });
+        }
+      });
+    }
+  } else if (titles.has("DB관리")) {
+    // 5기 legacy — 현행과 배치가 다르다(census §2): 매입DB·직접생산 은 같은 행 범위에서
+    // 나란히(컬럼만 다름), 현수막·지인기고객소개 는 그 아래로 쌓인다. 섹션마다 "합계" 행에서
+    // 종료(수기 시트라 실사용 행수가 학생마다 다름 — 고정 행수 가정 대신 라벨 감지).
+    for (const { name, c1, c2, rowStart, rowMax } of LEGACY_DB_SECTIONS) {
+      const rows = await grid(sid, `'DB관리'!${c1}${rowStart}:${c2}${rowMax}`);
+      const startIdx = c1.length === 1 ? c1.charCodeAt(0) - 65 : 26 + c1.charCodeAt(1) - 65;
+      // "합계" 행에서 멈춘다(break) — 빈 슬롯은 건너뛴다(continue). forEach 로는 break 를
+      // 못 걸어 합계 뒤 잔여 행까지 잘못 집계되는 사고가 났었다(census dry-run 실측으로 발견).
+      for (let i = 0; i < rows.length; i++) {
+        const first = rows[i][0];
+        if (isLegacyDbSectionTotalRow(first)) break;
+        if (String(first ?? "").trim() === "") continue;
+        out.db.push({
+          rowKey: `${name}:r${rowStart + i}`, payload: rowObj(rows[i], startIdx), row: rowStart + i,
+        });
       }
-    });
+    }
   }
-  // 01 영업관리 E~H — (날짜,채널) 자연키. 좌표: row = 10 + (주-1)*34 + 일*4 + 채널idx.
+  // 01 영업관리 — 현행(O1 앵커 + E~H) 우선, 없으면 5기 legacy(영업관리, 번호 없음) 폴백.
+  // (날짜,채널) 자연키. 좌표: row = 10 + (주-1)*34 + 일*4 + 채널idx — 두 세대 공통(census §2 실측).
   const CH = ["매입DB", "직접생산", "현수막", "콜·지·기·소"];
-  const o1 = (await grid(sid, "'01 영업관리'!O1"))[0]?.[0];
-  const startISO = serialToISO(o1);
-  if (!startISO) console.warn(`    ⚠ O1(수강시작일) 파싱 실패 — sales 스킵 (raw=${typeof o1})`);
-  if (startISO) {
-    const start = new Date(startISO + "T00:00:00Z");
-    const block = await grid(sid, "'01 영업관리'!E10:H349"); // 10주 × 34 stride
-    for (let w = 1; w <= 10; w++) {
+  if (titles.has("01 영업관리") || titles.size === 0) {
+    const o1 = (await grid(sid, "'01 영업관리'!O1"))[0]?.[0];
+    const startISO = serialToISO(o1);
+    if (!startISO) console.warn(`    ⚠ O1(수강시작일) 파싱 실패 — sales 스킵 (raw=${typeof o1})`);
+    if (startISO) {
+      const start = new Date(startISO + "T00:00:00Z");
+      const block = await grid(sid, "'01 영업관리'!E10:H349"); // 10주 × 34 stride
+      for (let w = 1; w <= 10; w++) {
+        for (let d = 0; d < 7; d++) {
+          for (let c = 0; c < 4; c++) {
+            const sheetRow = 10 + (w - 1) * 34 + d * 4 + c;
+            const r = block[sheetRow - 10] ?? [];
+            const [E, F, G, H] = [r[0], r[1], r[2], r[3]].map((v) => String(v ?? "").trim());
+            if (E === "" && F === "" && G === "" && H === "") continue;
+            const date = new Date(start.getTime() + ((w - 1) * 7 + d) * 86400000)
+              .toISOString().slice(0, 10);
+            out.sales.push({
+              rowKey: `${date}:${CH[c]}`,
+              payload: {
+                _backfill: true, date, channel: CH[c],
+                ...(E !== "" ? { production: Number(E) || E } : {}),
+                ...(F !== "" ? { inflow: Number(F) || F } : {}),
+                ...(G !== "" ? { contactProgress: Number(G) || G } : {}),
+                ...(H !== "" ? { meetingReservation: Number(H) || H } : {}),
+              },
+              row: sheetRow,
+            });
+          }
+        }
+      }
+    }
+  } else if (titles.has("영업관리")) {
+    // 5기 legacy — O1 앵커 없음(census §2). 요일 블록(4행=1일, 채널은 행 포지션으로 결정 —
+    // 현행과 동일 규칙) 첫 행의 C열에서 날짜를 직접 읽는다(계산이 아니라 실측이라 더 견고함).
+    // 4번째 채널 라벨은 5기 원문("지-기-소", "콜" 없음)을 그대로 보존한다 — 없는 데이터를
+    // 지어내지 않는다(belie/반장 결정 대기, adapter 문서 §5). E~H 지표 컬럼 의미는 현행과
+    // 동일(census 로 헤더 텍스트까지 확인: 생산건수▶·유입건수▶·컨택진행수▶·컨택성공건수▶).
+    const block = await grid(sid, "'영업관리'!C10:H400"); // 넉넉히(최대 ~11주), 빈 구간은 skip
+    for (let w = 1; w <= 12; w++) {
       for (let d = 0; d < 7; d++) {
+        const dateRow = block[legacySalesBlockRow(w, d, 0) - 10];
+        if (!dateRow) continue;
+        const iso = serialToISO(dateRow[0]); // C열
+        if (!iso) continue;
         for (let c = 0; c < 4; c++) {
-          const sheetRow = 10 + (w - 1) * 34 + d * 4 + c;
+          const sheetRow = legacySalesBlockRow(w, d, c);
           const r = block[sheetRow - 10] ?? [];
-          const [E, F, G, H] = [r[0], r[1], r[2], r[3]].map((v) => String(v ?? "").trim());
+          const actualLabel = String(r[1] ?? "").trim(); // D열 — 포지션 채널과 교차검증
+          if (actualLabel) {
+            legacySalesChannelChecked++;
+            if (actualLabel !== LEGACY_SALES_CHANNELS[c]) legacySalesChannelMismatch++;
+          }
+          const [E, F, G, H] = [r[2], r[3], r[4], r[5]].map((v) => String(v ?? "").trim());
           if (E === "" && F === "" && G === "" && H === "") continue;
-          const date = new Date(start.getTime() + ((w - 1) * 7 + d) * 86400000)
-            .toISOString().slice(0, 10);
           out.sales.push({
-            rowKey: `${date}:${CH[c]}`,
+            rowKey: `${iso}:${LEGACY_SALES_CHANNELS[c]}`,
             payload: {
-              _backfill: true, date, channel: CH[c],
+              _backfill: true, date: iso, channel: LEGACY_SALES_CHANNELS[c],
               ...(E !== "" ? { production: Number(E) || E } : {}),
               ...(F !== "" ? { inflow: Number(F) || F } : {}),
               ...(G !== "" ? { contactProgress: Number(G) || G } : {}),
@@ -267,6 +373,13 @@ async function main() {
   for (const t of TABS) console.log(`${t} | ${totals[t]}`);
   console.log(`탭 없음(영구·무해 추정) ${gridMissingTab}건 · 진짜 읽기실패(재시도 후에도) ${gridReadFailures}건`);
   if (gridReadFailures > 0) console.log("⚠️ 읽기실패가 남아있음 — 위 시트 유효행수가 과소집계됐을 수 있음(재실행 권장)");
+  if (legacySalesChannelChecked > 0) {
+    // BBE-67 5기 legacy sales 채널 포지션 표본검증(반장 lease §4-A) — 전수 대조.
+    console.log(
+      `5기 legacy sales 채널 포지션 검증: ${legacySalesChannelChecked}건 확인 · 불일치 ${legacySalesChannelMismatch}건` +
+        (legacySalesChannelMismatch > 0 ? " ⚠️ 포지션 규칙 재검토 필요" : " ✅"),
+    );
+  }
 
   if (EXECUTE && pool) {
     console.log(`\nDB upsert 완료: ${upserted}건`);
@@ -287,8 +400,14 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
-  console.error("backfill 실패:", msg);
-  process.exit(1);
-});
+if (isMainModule) {
+  main().catch((e) => {
+    const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
+    console.error("backfill 실패:", msg);
+    process.exit(1);
+  });
+}
+
+// BBE-67 census/dry-run 검증 스크립트가 실제 추출 로직을 직접 호출할 수 있도록 export.
+// CLI 동작(위 isMainModule 분기)에는 영향 없음 — 순수 함수 참조 노출뿐.
+export { extractUserRows };

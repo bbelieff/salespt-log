@@ -53,7 +53,7 @@ export default function DDayBadge({ graduationISO }: Props) {
   if (!graduationISO || !today) {
     // 로딩 placeholder
     return (
-      <div className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-400">
+      <div className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-px-11 font-bold text-gray-400">
         <span>D-—</span>
       </div>
     );
@@ -68,7 +68,7 @@ export default function DDayBadge({ graduationISO }: Props) {
   let cls = "bg-gray-900 text-white";
   if (remain === 0) {
     return (
-      <div className="flex items-center rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-extrabold tracking-wider text-white">
+      <div className="flex items-center rounded-md bg-red-600 px-2 py-0.5 text-px-11 font-extrabold tracking-wider text-white">
         D-DAY
       </div>
     );
@@ -76,7 +76,7 @@ export default function DDayBadge({ graduationISO }: Props) {
   if (remain < 0) {
     // 종강 경과 = 수료 — D+N 카운트 대신 상태 뱃지 (R4 W1-3).
     return (
-      <div className="flex items-center rounded-md bg-emerald-600 px-2 py-0.5 text-[11px] font-extrabold tracking-wider text-white">
+      <div className="flex items-center rounded-md bg-emerald-600 px-2 py-0.5 text-px-11 font-extrabold tracking-wider text-white">
         🎓 수료
       </div>
     );
@@ -99,7 +99,7 @@ export default function DDayBadge({ graduationISO }: Props) {
 function CharBox({ char, cls }: { char: string; cls: string }) {
   return (
     <div
-      className={`relative flex h-6 w-5 items-center justify-center rounded-sm font-mono text-[14px] font-extrabold leading-none ${cls}`}
+      className={`relative flex h-6 w-5 items-center justify-center rounded-sm font-mono text-px-14 font-extrabold leading-none ${cls}`}
     >
       <span
         className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-px border-t border-black/30"
@@ -113,7 +113,7 @@ function CharBox({ char, cls }: { char: string; cls: string }) {
 function DigitBox({ digit, cls }: { digit: number; cls: string }) {
   return (
     <div
-      className={`relative flex h-6 w-5 items-center justify-center rounded-sm font-mono text-[14px] font-extrabold leading-none ${cls}`}
+      className={`relative flex h-6 w-5 items-center justify-center rounded-sm font-mono text-px-14 font-extrabold leading-none ${cls}`}
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
       {/* 가운데 가로선 — flip clock 분할 표시 */}

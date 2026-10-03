@@ -2,7 +2,7 @@
  * (app) route group — 로그인 후 5탭 셸.
  *
  * 모든 (app)/* 페이지는 자동으로 하단 TabBar 를 갖는다.
- * content-area 패딩은 TabBar(76px) 와 겹치지 않도록 76px.
+ * content-area 여백은 TabBar 공통 높이와 iOS 안전 영역을 함께 따른다.
  *
  * 권한 가드 (server component):
  *   - 미로그인 → /
@@ -17,6 +17,7 @@
  */
 import { redirect } from "next/navigation";
 import TabBar from "@/components/TabBar";
+import DesktopNav from "@/components/desktop/DesktopNav";
 import DirtyProvider from "@/components/DirtyGuard";
 import {
   getSessionEmail,
@@ -29,6 +30,7 @@ import { shouldRedirectToClaim } from "@/repo/user-priority";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
 import PullToRefresh from "@/components/PullToRefresh";
+import IdentityGuard from "@/components/auth/IdentityGuard";
 
 export default async function AppLayout({
   children,
@@ -75,17 +77,31 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-dvh bg-slate-100">
-      {/* 미저장 이탈 가드(전역) — children(페이지가 register) + TabBar(가드 라우팅)가 한 컨텍스트 공유. */}
+      {/* 미저장 이탈 가드(전역) — children(페이지가 register) + TabBar + DesktopNav(사이드바
+          라우팅)가 한 컨텍스트 공유. 사이드바도 이동을 일으키므로 반드시 이 안에 있어야 한다. */}
       <DirtyProvider>
-        <main style={{ paddingBottom: "calc(76px + env(safe-area-inset-bottom))" }}>
-          {children}
-        </main>
+        {/* pc(1024px+) 에서만 2단. 그 아래는 지금 그대로 1단 — DesktopNav 가 hidden 이라 자리도 없다.
+            TabBar 는 pc:hidden 이라 데스크탑 여백이 필요 없다: main 하단 여백은
+            .app-shell-main 이 담당 — 모바일 var(--app-tabbar-height) 그대로,
+            데스크탑 0 (globals.css 스코프). 각 페이지의 작은 pc:pb 는 유지.
+            desktop-shell = 글래스 스코프 (globals.css — 이 클래스 안에서만 데스크탑
+            도장이 걸린다. 모바일·모달·sticky 오프셋은 손대지 않는다). */}
+        <div className="desktop-shell pc:flex">
+          <DesktopNav />
+          <div className="min-w-0 pc:flex-1">
+            <main className="app-shell-main">
+              {children}
+            </main>
+          </div>
+        </div>
         <TabBar />
       </DirtyProvider>
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}
       <AnnouncementsGate />
       {/* 모바일 당겨서 새로고침 — PC/모달/가로 스와이프 가드 내장. */}
       <PullToRefresh />
+      {/* 탭 신원 가드 — 다른 탭에서 대리접속 대상이 바뀌면 이 탭을 막는다(잘못된 사람에게 저장 방지). */}
+      <IdentityGuard />
     </div>
   );
 }

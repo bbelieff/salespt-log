@@ -45,11 +45,30 @@ import {
   computeGraduationISO,
   enrichUsersWithDates,
   enrichUsersWithStats,
+  _resetBundleCacheForTest,
 } from "@/service/me";
+
+// BBE-249 — readBundle 이 SWR 인메모리 캐시(spreadsheetId 키)로 바뀌어 테스트 간 상태가
+// 새 지 않으면 서로 오염될 수 있다. 각 테스트는 고유 spreadsheetId 를 쓰지만 안전하게 리셋.
+beforeEach(() => {
+  _resetBundleCacheForTest();
+});
 
 describe("GRADUATION_OFFSET_DAYS", () => {
   it("종강총회 offset = 50일 (7기+ 현행 모델, ADR-0005)", () => {
     expect(GRADUATION_OFFSET_DAYS).toBe(50);
+  });
+});
+
+describe("ADR-0032 cached profiles", () => {
+  it("derives new ceremony dates without overwriting stored dates", async () => {
+    const users = ["9", "10", "11"].map(cohort => ({
+      spreadsheetId: `example-${cohort}`, cohort, name: "예시",
+      cohortLabel: cohort, nameLabel: "예시", courseStartISO: "2026-09-04", graduationISO: "2026-10-24",
+    }));
+    const result = await enrichUsersWithDates(users);
+    expect(result.map(u => u.graduationISO)).toEqual(["2026-10-24", "2026-10-25", "2026-11-21"]);
+    expect(users.every(u => u.graduationISO === "2026-10-24")).toBe(true);
   });
 });
 
@@ -145,12 +164,12 @@ describe("enrichUsersWithStats — 파일럿/비파일럿 게이팅 + 순서 보
 
   it("비파일럿 사용자는 DB 를 전혀 건드리지 않고 기존 시트 경로만 탄다", async () => {
     mockReadProfileBundle.mockResolvedValue({
-      cohort: "7기", name: "홍길동",
+      cohort: "1기", name: "홍길동",
       courseStart: new Date(2026, 0, 1), graduation: new Date(2026, 2, 20),
       stats: { 미팅예정: 1, 미팅완료: 2, 계약: 3 },
     });
     const [r] = await enrichUsersWithStats([
-      { spreadsheetId: "sheet-nonpilot-1", cohort: "7", courseStartISO: "2026-01-01" },
+      { spreadsheetId: "sheet-nonpilot-1", cohort: "1", courseStartISO: "2026-01-01" },
     ]);
     expect(r!.stats).toEqual({ 미팅예정: 1, 미팅완료: 2, 계약: 3 });
     expect(mockProfileStatsFromDb).not.toHaveBeenCalled();

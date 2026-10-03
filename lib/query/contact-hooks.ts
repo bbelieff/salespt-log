@@ -17,6 +17,7 @@
 import {
   useMutation,
   useQuery,
+  useQueries,
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
@@ -67,6 +68,11 @@ export function useDay(date: string): UseQueryResult<ContactDayView> {
     // 2026-06: /contact↔/calendar 빠른 전환 시 60s 내 재요청 억제 → 시트 read 폭주(429)
     // 차단. 저장 등 뮤테이션은 invalidateQueries 로 즉시 재요청되므로 신선도 보존.
     staleTime: 60_000,
+    // BBE-242 처방4(2026-08-27): 기본 gcTime(5분)이면 5분+ 자리비움 후 리마운트 시
+    // 캐시가 완전히 비어 로딩부터 다시 시작 — 10분으로 올려 stale-즉시표시+백그라운드
+    // 갱신 창을 넓힌다. invalidateQueries 는 gcTime 과 무관하게 즉시 재요청시키므로
+    // 뮤테이션 후 신선도는 그대로 보존.
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -82,6 +88,7 @@ export function useWeekMeetings(
     // 2026-05-17: 동일 — 주차 이동 시 빈 화면 방지.
     placeholderData: (prev) => prev,
     staleTime: 60_000, // 2026-06: 화면 전환 read 폭주 억제 (뮤테이션은 invalidate).
+    gcTime: 10 * 60_000, // BBE-242 처방4 — useDay 주석 참고.
   });
 }
 
@@ -95,6 +102,7 @@ export function useMonthMeetings(
       fetchJSON<CalendarMonthView>(`/api/meetings/month/${yyyyMM}`),
     enabled: !!yyyyMM,
     staleTime: 60_000, // 2026-06: 캘린더↔컨택 전환 read 폭주 억제 (뮤테이션은 invalidate).
+    gcTime: 10 * 60_000, // BBE-242 처방4 — useDay 주석 참고.
   });
 }
 
@@ -126,9 +134,22 @@ export interface RemoveMeetingArgs {
 }
 
 // ── 뮤테이션 ──────────────────────────────────────────────────
-export function useSaveMetrics() {
+/**
+ * 백그라운드 자동저장 opt-in — silent === true 일 때만 LoadingProvider 차단
+ * 오버레이에서 제외(meta.silent). 기본값(미지정)은 기존 차단 표시 그대로.
+ * 컨택 수치·미팅 자동저장 호출자만 opt-in, 생성/등록/삭제/옮기기·타 페이지는 기본값.
+ */
+export interface SilentAutosaveOpt {
+  silent?: boolean;
+}
+
+const silentMeta = (opts?: SilentAutosaveOpt) =>
+  opts?.silent === true ? { silent: true } : undefined;
+
+export function useSaveMetrics(opts?: SilentAutosaveOpt) {
   const qc = useQueryClient();
   return useMutation({
+    meta: silentMeta(opts),
     mutationFn: ({ date, channels }: SaveMetricsArgs) =>
       fetchJSON<{ ok: true; directProductionHold?: boolean }>(`/api/daily/${date}`, {
         method: "POST",
@@ -139,6 +160,38 @@ export function useSaveMetrics() {
         channel_count: Object.keys(channels ?? {}).length,
       });
       qc.invalidateQueries({ queryKey: dayKey(date) });
+    },
+  });
+}
+
+/** 기록 옮기기 — 하루치 지표를 다른 날짜·채널로. 미팅 행 이동은 별도 PATCH.
+ *  양쪽 날짜 캐시를 모두 무효화해야 옮긴 결과가 두 화면에 함께 보인다. */
+export interface MoveMetricsArgs {
+  from: { date: string; channel: Channel; metrics?: ChannelDailyRowMetrics };
+  to: { date: string; channel: Channel; metrics?: ChannelDailyRowMetrics };
+  deltas: { inflow?: number; contactProgress?: number };
+}
+export interface MoveMetricsResult {
+  ok: true;
+  from: ChannelDailyRowMetrics;
+  to: ChannelDailyRowMetrics;
+  applied: { inflow?: number; contactProgress?: number };
+}
+export function useMoveDailyMetrics() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: MoveMetricsArgs) =>
+      fetchJSON<MoveMetricsResult>(`/api/daily/move`, {
+        method: "POST",
+        body: JSON.stringify(args),
+      }),
+    onSuccess: async (_, { from, to }) => {
+      // 완료창을 열기 전에 양쪽 날짜·주차가 최신 카드와 숫자를 함께 갖게 한다.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: dayKey(from.date) }),
+        ...(to.date !== from.date ? [qc.invalidateQueries({ queryKey: dayKey(to.date) })] : []),
+        qc.invalidateQueries({ queryKey: ["week"] }),
+      ]);
     },
   });
 }
@@ -168,9 +221,10 @@ export function useAppendMeeting() {
   });
 }
 
-export function usePatchMeeting() {
+export function usePatchMeeting(opts?: SilentAutosaveOpt) {
   const qc = useQueryClient();
   return useMutation({
+    meta: silentMeta(opts),
     mutationFn: ({ id, partial }: PatchMeetingArgs) =>
       fetchJSON<{ ok: true }>(`/api/meeting/${id}`, {
         method: "PATCH",
@@ -253,4 +307,14 @@ export function useRemoveMeeting() {
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
   });
+}
+
+/** 확인창에서 예약일이 아니라 실제 미팅 예정 주를 조회한다. */
+export function useMeetingScheduleWeeks(weeks: string[], enabled: boolean) {
+  return useQueries({ queries: weeks.map((week) => ({
+    queryKey: weekKey(week),
+    queryFn: () => fetchJSON<ScheduleWeekView>(`/api/meetings/week/${week}`),
+    enabled,
+    staleTime: 0,
+  })) });
 }

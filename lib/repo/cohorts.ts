@@ -16,6 +16,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, cohortsTab } from "@/config";
 import { isValidISODate } from "@/util/week";
 import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { nextRegistryRowNumber } from "./registry-row";
 import {
   cohortRowFromSheetRow,
   mirrorCohortCells,
@@ -56,12 +57,19 @@ const cachedCohortsSheetRows = unstable_cache(
   { revalidate: 60, tags: [COHORTS_TAG] },
 );
 
+/** DB 경로도 시트 경로와 동일하게 60초 캐시(BBE-247) — 같은 태그라 쓰기 시 함께 무효화된다. */
+const cachedCohortsDbRows = unstable_cache(
+  async (): Promise<string[][] | null> => readCohortRowsFromDb(),
+  ["cohorts-rows-db"],
+  { revalidate: 60, tags: [COHORTS_TAG] },
+);
+
 /**
  * cohorts 행 읽기 단일 진입점 (BBE-56). `REGISTRY_DB_READ=1` 이면 DB, 아니면 시트 그대로.
  * DB 실패·0행이면 null 이 와서 시트로 폴백한다(readCohortRowsFromDb 주석 참조).
  */
 async function cachedCohortsRows(): Promise<string[][]> {
-  return (await readCohortRowsFromDb()) ?? cachedCohortsSheetRows();
+  return (await cachedCohortsDbRows()) ?? cachedCohortsSheetRows();
 }
 
 function invalidateCohorts(): void {
@@ -181,14 +189,19 @@ export async function ensureCohortsTab(seedLabels: string[] = []): Promise<void>
     return;
   }
 
-  // 시드.
+  // 시드 — 빈 탭이므로 A2부터 결정적 좌표에 쓴다(values.append 열밀림 방지).
   if (seedLabels.length > 0) {
     const uniq = Array.from(new Set(seedLabels.filter(Boolean)));
-    await appendRows(
-      reg.spreadsheetId,
-      `${tab}!A2:J`,
-      uniq.map((l) => [l, "active", "", "cohort", "", "", "", "", "", ""]),
-    );
+    await sheetsClient().spreadsheets.values.batchUpdate({
+      spreadsheetId: reg.spreadsheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: uniq.map((l, i) => ({
+          range: `${tab}!A${nextRegistryRowNumber(i)}`,
+          values: [[l, "active", "", "cohort", "", "", "", "", "", ""]],
+        })),
+      },
+    });
     for (const l of uniq) {
       mirrorCohortRow(cohortRowFromSheetRow([l, "active", "", "cohort", "", "", "", "", "", ""]));
     }
@@ -219,9 +232,14 @@ export async function setCohortStatus(
       return;
     }
   }
-  // 없으면 새 row append.
+  // 없으면 결정적 다음 행 좌표에 쓴다(values.append 열밀림 방지).
   const newRow = [trimmed, status, "", "cohort", "", "", "", "", "", ""];
-  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [newRow]);
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [newRow] },
+  });
   invalidateCohorts();
   mirrorCohortRow(cohortRowFromSheetRow(newRow));
 }
@@ -289,7 +307,13 @@ export async function upsertCohortConfig(
     cfg.companyParentFolderId ?? "",
     cfg.seasonStartISO ?? "",
   ];
-  await appendRows(reg.spreadsheetId, `${tab}!A2:J`, [newRow]);
+  // 결정적 다음 행 좌표에 쓴다(values.append 열밀림 방지).
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [newRow] },
+  });
   invalidateCohorts();
   mirrorCohortRow(cohortRowFromSheetRow(newRow));
 }

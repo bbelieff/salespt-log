@@ -19,7 +19,11 @@ import {
   listDistinctUsers,
   isReservedTrainee,
 } from "@/repo/users";
+import TrainerInvites from "@/components/auth/TrainerInvites";
 import TrainerMgmtPanel from "@/components/auth/TrainerMgmtPanel";
+import TrainerAccessEditor from "@/components/auth/TrainerAccessEditor";
+import CollapsibleSection from "@/components/auth/CollapsibleSection";
+import { listTrainerAccessSettings } from "@/service/trainer-access-settings";
 
 // /admin/users 와 동일한 정책 — force-dynamic. self-claim/admin 액션 직후
 // 즉시 반영. (2026-05-12 캐시 stale 사고 후속)
@@ -29,6 +33,9 @@ export default async function AdminTrainersPage() {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail || !(await canViewAdminPages(sessionEmail))) redirect("/");
   const viewOnly = !isAdminEmail(sessionEmail);
+  // Settings failures are isolated from the existing management page. No private error projection.
+  const access = viewOnly ? null : await listTrainerAccessSettings()
+    .then(people => ({ people })).catch(() => ({ people: null }));
 
   const [pending, all] = await Promise.all([
     listPendingTrainers(),
@@ -90,6 +97,27 @@ export default async function AdminTrainersPage() {
       managementStaff={managementStaff}
       trainees={trainees}
       viewOnly={viewOnly}
+      // 2) 권한부여 — 패널 셸 안 2번 자리. 접힘(자주 안 씀).
+      accessSlot={
+        access && (
+          <CollapsibleSection
+            title="권한부여"
+            badge={access.people ? `트레이너 ${access.people.length}명` : undefined}
+            persistKey="admin-trainers:access"
+          >
+            {access.people ? (
+              // 퇴출·부서 이동으로 대상이 바뀌면 이전 선택/초안을 폐기한다.
+              <TrainerAccessEditor key={access.people.map(person => person.email).sort().join("|")} initialPeople={access.people} />
+            ) : (
+              <p role="alert" className="text-sm text-gray-600">
+                권한 설정을 불러올 수 없습니다. 잠시 후 페이지를 다시 열어 주세요.
+              </p>
+            )}
+          </CollapsibleSection>
+        )
+      }
+      // 4) 초대관리 — 패널 셸 안 4번 자리. TrainerInvites 가 자체 접힘 카드다.
+      inviteSlot={!viewOnly && <TrainerInvites />}
     />
   );
 }

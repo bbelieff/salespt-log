@@ -185,6 +185,12 @@ export async function persistSalesRows(
       return;
     }
     const ctx: SalesCtx = { spreadsheetId, cohort, email };
+    // BBE-242 SLO: 채널 루프가 매번 readCourseStart(=O1 시트 read)를 새로 하면 한 저장에
+    // 최대 4회 순차 Sheets 왕복(각 수백ms)이 쌓여 POST 전체가 2~3초로 늘어난다(실측).
+    // 같은 spreadsheetId 안에서 courseStart 는 불변이므로 루프 밖에서 1회만 읽어 재사용 —
+    // 실패해도 undefined 로 두면 isWithinSalesWindow 가 그 행에 한해 기존처럼 직접 읽는다
+    // (동작·에러 흡수 의미 불변, 성공 경로만 4회→1회로 준다).
+    const windowCourseStart = await readCourseStart(spreadsheetId).catch(() => undefined);
     for (const r of rows) {
       // R4 W1-1: 11주+(시트 좌표 없음)는 **미러 큐에 넣지 않는다** — 넣어도 수렴 잡이 no-op 이지만
       // 매 저장마다 무의미한 시트 read 를 지불하고, 실패 시 mirror_pending 에 **영원히 수렴 못 할
@@ -192,7 +198,7 @@ export async function persistSalesRows(
       // 판정 실패(시트 429/5xx/O1 공백)는 **true 로 흡수** — 정본(DB)은 이미 커밋됐고, 미러 큐는
       // 자체 재시도·mirror_pending·Sentry 를 갖는다. 여기서 throw 하면 "저장은 됐는데 사용자에겐
       // 실패" + 나머지 행이 큐에도 pending 에도 없어 self-heal 대상에서 영구 누락된다(적대리뷰 M4).
-      if (await isWithinSalesWindow(spreadsheetId, r.date, r.channel).catch(() => true)) {
+      if (await isWithinSalesWindow(spreadsheetId, r.date, r.channel, windowCourseStart).catch(() => true)) {
         queueSalesRowSync(ctx, r.date, r.channel); // 수렴 미러(스냅샷 재생 아님)
       }
     }

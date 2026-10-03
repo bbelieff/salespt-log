@@ -12,27 +12,65 @@ import { classifyDiff, looksLikeUnrenderedSerial, serialToISO } from "./parity-c
  * @param {object[]} sheetRows @param {object[]} dbRows
  * @param {(row: object) => string} keyOf 자연키 추출
  * @param {string[]} fields 대조할 필드명 목록
+ * @param {Record<string, (raw: string) => string>} [normalizers] 필드별 비교 전 정규화(앱이 그
+ *   값을 실제로 읽는 방식 그대로 — BBE-143). 미지정 필드는 raw 문자열 그대로 비교.
+ *   fieldMismatches 에는 원본(raw) 값을 그대로 남긴다 — 판정만 정규화 기준.
  */
-export function diffByKey(sheetRows, dbRows, keyOf, fields) {
+export function diffByKey(sheetRows, dbRows, keyOf, fields, normalizers = {}) {
+  const norm = (f, v) => (normalizers[f] ? normalizers[f](v) : v);
   const dbMap = new Map(dbRows.map((r) => [keyOf(r), r]));
   const missingInDb = [];
   const fieldMismatches = [];
-  const seen = new Set();
-  for (const sr of sheetRows) {
-    const k = keyOf(sr);
-    if (seen.has(k)) continue; // 완전동일 중복 행은 대조 대상에서 1건으로 축약(BBE-91 실측: 2건 존재)
-    seen.add(k);
+  // 같은 자연키가 여러 행이면 **마지막(최신) 행을 대표로 쓴다** — BBE-143 실측(15scQKx.../
+  // 1m_yc3... 두 spreadsheetId, 김덕호·박준용): 완전동일 중복(BBE-91)뿐 아니라 값이 다른
+  // 중복(구 prep 행 + 완료 행)도 실재한다. `scripts/ops/backfill-registry.mjs:170`
+  // (reportDuplicates)가 이미 "마지막 값으로 수렴" 이라 명시하고, 실제 적재도 시트 행 순서대로
+  // upsert(on conflict do update)해 DB 는 항상 마지막 행 값을 갖는다 — 대조기가 첫 행을 대표로
+  // 쓰면 DB 와 영원히 어긋난다. Map.set 은 같은 키 재설정 시 뒤 값으로 덮어써 이 순서를 그대로 재현.
+  const bySheetKey = new Map();
+  for (const sr of sheetRows) bySheetKey.set(keyOf(sr), sr);
+  for (const [k, sr] of bySheetKey) {
     const dr = dbMap.get(k);
     if (!dr) { missingInDb.push(k); continue; }
     for (const f of fields) {
-      if ((sr[f] ?? "") !== (dr[f] ?? "")) {
-        fieldMismatches.push({ key: k, field: f, sheet: sr[f] ?? "", db: dr[f] ?? "" });
+      const sv = sr[f] ?? "";
+      const dv = dr[f] ?? "";
+      if (norm(f, sv) !== norm(f, dv)) {
+        fieldMismatches.push({ key: k, field: f, sheet: sv, db: dv });
       }
     }
   }
   const dbKeys = new Set(dbRows.map(keyOf));
-  const missingInSheet = [...dbKeys].filter((k) => !seen.has(k));
-  return { uniqueSheetKeys: seen.size, dbCount: dbRows.length, missingInDb, missingInSheet, fieldMismatches };
+  const missingInSheet = [...dbKeys].filter((k) => !bySheetKey.has(k));
+  return {
+    uniqueSheetKeys: bySheetKey.size,
+    dbCount: dbRows.length,
+    missingInDb,
+    missingInSheet,
+    fieldMismatches,
+  };
+}
+
+/**
+ * sort_order 정규화 — SSOT-COPY of `lib/repo/users.ts`(parseRow) 의 M 컬럼 처리(줄 51-58).
+ * 앱은 raw 값을 int-parse 후 음수/NaN 은 0 으로, 소수는 floor 로 읽는다 — 대조기도 같은
+ * 규칙으로 읽어야 "05" vs "5", "" vs "0" 같은 표현 차이를 진짜불일치로 오분류하지 않는다.
+ * 원본이 바뀌면 이 사본도 같이 고칠 것(WEEK-INDEX-SSOT-COPY 선례와 동일 패턴).
+ */
+export function normalizeSortOrder(raw) {
+  const s = String(raw ?? "").trim();
+  if (s === "") return "0";
+  const n = parseInt(s, 10);
+  return String(Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0);
+}
+
+/**
+ * cohorts.type 정규화 — SSOT-COPY of `lib/repo/cohorts.ts:106`
+ * (`r[3] === "arena" ? "arena" : "cohort"`). "arena" 가 아닌 모든 값(빈값 포함)은
+ * "cohort" 로 앱이 읽는다 — 대조기도 동일 규칙 적용.
+ */
+export function normalizeCohortType(raw) {
+  return raw === "arena" ? "arena" : "cohort";
 }
 
 /**

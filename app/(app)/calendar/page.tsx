@@ -179,9 +179,10 @@ export default function CalendarPage() {
   return (
     <>
       <TopHeader pageEmoji="📅" pageTitle="캘린더" />
-      <header className="sticky top-24 z-30 bg-white shadow-sm">
-        {/* 배경 full-bleed + 월 nav 내용은 본문과 같은 6xl 중앙정렬(헤더 통일 정책) */}
-        <div className="mx-auto flex w-full items-center justify-between px-2 py-3 pc:max-w-6xl pc:px-6 wide:px-8">
+      <header className="sticky top-app-content z-30 bg-white shadow-sm">
+        {/* 배경 full-bleed + 월 nav 내용은 본문과 같은 fluid 전폭(헤더 통일 정책).
+            구 pc:max-w-6xl 중앙정렬 캡 제거 — 균일 거터 pc:px-6. */}
+        <div className="mx-auto flex w-full max-w-none items-center justify-between px-2 py-3 pc:px-6">
           <button
             type="button"
             onClick={() => moveMonth(-1)}
@@ -224,9 +225,9 @@ export default function CalendarPage() {
         </div>
       </header>
 
-      <main className="pb-[80px]">
-      <PageContainer width="xwide">
-        <div className="px-4 pt-3">
+      <main className="pb-[80px] pc:pb-6">
+      <PageContainer width="fluid">
+        <div className="px-4 pt-3 pc:px-0">
           <GcalConnectCard />
         </div>
         {monthQuery.isLoading ? null : monthQuery.isError ? (
@@ -250,9 +251,9 @@ export default function CalendarPage() {
 
             {/* 선택일 통합 리스트 (미팅 + 실무투두, 시간순) */}
             {/* 데스크탑: 스크롤해도 선택일 패널이 따라오게 sticky.
-                top-40 = 상단 고정 바(메뉴 48 + 배너 48 + 월 nav sticky top-24) 합 회피.
+                app-calendar-panel = 헤더 6.5rem + 월 이동 4.25rem + 여백 0.5rem.
                 길면 자체 스크롤(그리드와 독립). 모바일은 일반 흐름. */}
-            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2 pc:sticky pc:top-40 pc:self-start pc:max-h-[calc(100vh-11rem)] pc:overflow-y-auto">
+            <section className="mt-4 px-4 pc:mt-0 pc:col-span-2 pc:sticky pc:top-app-calendar-panel pc:self-start pc:max-h-[calc(100vh-11rem)] pc:overflow-y-auto">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold text-gray-900">
                   {selectedDate.replace(/^\d{4}-/, "").replace("-", "/")} (
@@ -319,7 +320,7 @@ export default function CalendarPage() {
                             <div className="truncate text-sm font-semibold text-gray-900">
                               {m.업체명}
                             </div>
-                            <div className="truncate text-[11px] text-gray-400">
+                            <div className="truncate text-px-11 text-gray-400">
                               {m.channel}
                             </div>
                           </div>
@@ -394,7 +395,7 @@ export default function CalendarPage() {
             → 좁은 패널에서 '콜·지·기·소' wrap 되던 문제 해소. 아주 좁으면 가로 스크롤. */}
         {!monthQuery.isLoading && !monthQuery.isError && (
           <div className="mt-4">
-            <div className="mb-1 text-[11px] text-gray-400">범례</div>
+            <div className="mb-1 text-px-11 text-gray-400">범례</div>
             <div className="flex flex-col gap-1.5 overflow-x-auto rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-xs text-gray-600 sm:flex-row sm:flex-wrap sm:gap-x-5">
               <div className="flex flex-nowrap items-center gap-2 break-keep">
                 <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>

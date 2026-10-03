@@ -2,7 +2,8 @@
 
 > **프로젝트**: 세일즈피티 수강생을 위한 반응형 웹앱. 4대 지표(생산/컨택/미팅/계약) 기록 + 게이미피케이션 + 대시보드. Google Sheets 가 유일한 DB, Next.js 풀스택.
 > **스택**: Next.js 15 (App Router) · TypeScript · Tailwind · NextAuth(Google) · googleapis · Recharts · Vitest
-> **배포**: 자체 도메인 + 자체 VPS (Caddy + Docker). 스토어 배포 X, PWA 지원.
+> **배포**: 자체 도메인 + 자체 VPS (Caddy + Docker). 스토어 배포 X, PWA 지원(홈 화면 추가용
+> `app/manifest.ts`만 — 서비스워커·오프라인 캐시 없음, BBE-242 캐시 조사 2026-08-27 확인).
 >
 > 이 파일은 **지도(map)** 이다. 백과사전이 아니다. 상세 규칙은 `docs/`의 원천으로 연결된다.
 > 길이 목표: ~150줄. 이 이상 커지면 `docs/`로 분리한다.
@@ -77,13 +78,14 @@ types → config → repo → service → app(api·ui) → components
 2. **Sheets 격리** — `googleapis` / `google-auth-library` 는 **오직 `lib/repo/` 에서만** import.
 3. **대시보드 탭 쓰기 금지** — `SHEET_RANGES.dashboard` 를 `appendRows` / `batchUpdate` 근처에서 쓰면 실패. 대시보드는 수식이 계산한다. 쓰기는 `daily` / `contracts` / `db` 섹션으로만.
 4. **경로별칭 고정**: `@/types` · `@/config` · `@/repo/*` · `@/service` · `@/util/*`(순수 유틸 — import 0). 상대경로 import 는 피한다.
-5. **사용자 작성값 절대 보존 (Bulk-write 안전 가드, 2026-05-14 사고 후)** — 시트 셀에 일괄 쓰기 (`spreadsheets.values.batchUpdate`, `batchClear` 등) 하는 모든 함수는 타겟 셀을 `valueRenderOption: "FORMULA"` 로 **pre-read** 한 뒤, raw 값 (텍스트·숫자·boolean) 이 있으면 그 셀은 **skip** 해야 한다. 빈 셀과 수식(`=...`)만 덮어쓰기 허용. 참고: `lib/repo/setup-formulas.ts:isSafeToOverwrite` + `tests/repo/setup-formulas-guard.test.ts`. 새 bulk-write 함수 추가 시 같은 가드 의무 — 안 그러면 사용자 데이터 손실 사고 재발.
+5. **사용자 작성값 절대 보존 (Bulk-write 안전 가드, 2026-05-14 사고 후)** — 시트 셀에 일괄 쓰기 (`spreadsheets.values.batchUpdate`, `batchClear` 등) 하는 모든 함수는 타겟 셀을 `valueRenderOption: "FORMULA"` 로 **pre-read** 한 뒤, raw 값 (텍스트·숫자·boolean) 이 있으면 그 셀은 **skip** 해야 한다. 빈 셀과 수식(`=...`)만 덮어쓰기 허용. 참고: `lib/repo/course-dates.ts:isSafeToOverwrite`(BBE-69 S1 로 `setup-formulas.ts` 폐기 시 이전 — 유일한 외부 소비자) + `tests/repo/course-dates.test.ts`. 새 bulk-write 함수 추가 시 같은 가드 의무 — 안 그러면 사용자 데이터 손실 사고 재발.
 
 예: `❌ components/Chart.tsx 가 googleapis 를 import. → lib/repo/ 에 메서드를 추가해 Service 경유로 호출하세요. 참고: docs/architecture.md#퍼시스턴스-google-sheets`
 
 ## 2.5 프로젝트 도메인 제약 (추가)
 
 ### MVP 스코프 (절대 원칙)
+- **ADR-0032 (2026-09-16 사용자 승인)**: 숫자 10기 이후는 12주 과정·누적 통계. 11기 이후 총회는 마지막 주 토요일, 10기는 승인된 예외일. 아래 8주/50일 정책은 9기 이하·비숫자 기수에만 유지. 날짜 정본은 lib/config/cohort-dates.ts. 기존 기록과 물리 시트 10주 상한 보존.
 - **기간 한정** (날짜 규칙 SSOT: `docs/decisions/0005-week-counting-convention.md`):
   - 종강총회(수료일) = 수강시작일(시트 O1) + **50일** (7기+ 현행). 6기 이하 legacy 는 +57.
     진실은 각 시트 **O2 셀 직접값** — 코드는 offset 강제 안 함.
@@ -102,7 +104,20 @@ types → config → repo → service → app(api·ui) → components
 - 스코프 밖 요청을 받으면 먼저 `docs/scope.md`를 참조해서 거절 또는 확장 제안.
 
 ### 기술 제약
-- **SSOT(Single Source of Truth)는 Google Sheets.** 별도 DB·Redis·ORM 금지.
+- **SSOT(Single Source of Truth)는 Postgres DB(2026-08-24, BBE-245 시트독립 프로그램 종료 —
+  이전 "SSOT는 Google Sheets" 원칙을 대체).** 레지스트리에 등록된 모든 활성 기수(8·9·연습·
+  4·6·7·10기 + 아레나 전 라벨)는 읽기·쓰기 모두 DB 정본이다(`lib/service/daily-source.ts`
+  `DB_READ_COHORTS`/`chooseDailySource`/`chooseWriteSource` 단일 게이트). **시트는 비동기
+  수렴 미러·백업 export 전용**으로 격하됐다 — 요청 경로(사용자가 저장 버튼을 누르는 순간)에서
+  시트 API를 동기 호출하지 않는다. 이 경계는 CI 구조 테스트(`tests/structural/sheets-request
+  -path-guard.test.ts`, BBE-251)가 화이트리스트 기반으로 강제한다 — 화이트리스트 밖의 새
+  동기 시트 호출이 요청 경로에 다시 스며들면 빌드가 깨진다.
+  **전환 스위치(`DB_READ_COHORTS`)는 삭제하지 않고 코드에 존치한다** — 문제 발생 시 그 기수
+  라벨 하나만 Set 에서 빼면 즉시 시트 정본으로 복귀하는 되돌림 안전선이며, 운영에는 보이지
+  않는다. **범위 밖(레거시 미등록, 별도 트랙)**: 1·2·3·5기 — registry 에 `role=trainee` 행
+  자체가 없던 시절의 데이터로 이번 프로그램 조사·전환 범위 밖. 5기는 BBE-67 로 별도 census·
+  백필 승인이 이미 진행 중(FOREMAN 큐), 1·2·3기는 미착수. `lib/repo/*`(sheets-client.ts 등)의
+  Google Sheets 연동 코드 자체는 보존 — 시트 파일도 삭제하지 않는다(비동기 미러·백업 대상).
 - **수강생마다 개별 시트.** `email → spreadsheetId` 매핑은 **마스터 레지스트리 시트** 한 개에 저장 (`lib/repo/users.ts`).
 - **대시보드(탭1)는 읽기 전용.** 기존 시트의 수식이 자동 갱신한다. 재구현 X, 데이터만 읽어 Recharts 로 다시 그린다.
 - **시트 탭 구조**:
@@ -380,6 +395,68 @@ git push origin master          # push → 자동 재배포(직전 정상 코드
 - 롤백 배포도 동일하게 success + health 확인.
 - 롤백 후: 원인 분석 → fix-forward PR. 실패·롤백 기록은 `docs/incidents/` 에 남긴다(§5.5).
 - 상세 = `docs/playbooks/deploy-vps.md`.
+
+## 6.9 워크트리 위생 — 디스크는 유한하다 (2026-08-20 고갈 사고 후)
+
+**무엇이 터졌나**: `wt/` 워크트리가 **82개**까지 쌓였고 대부분 `node_modules`(개당
+0.5~1.5GB)를 들고 있어 개발 PC 하드가 가득 찼다(C: 여유 19GB/476GB). 생성 규약(§3-4)만
+있고 **정리 규약이 없었다.** 참고: BBE-254.
+
+**규칙 3개 — 어기면 같은 일이 재발한다**
+
+1. **문서만 고치는 작업에 `npm ci` 금지.** worklog·docs·ADR 같은 `.md` 전용 변경은
+   워크트리를 만들더라도 의존성을 설치하지 마라. `check.sh` 를 돌릴 이유가 없고
+   (코드 무변경), CI 가 어차피 검증한다. 실측: `-worklog` 워크트리 14개가 각각
+   1.3GB 를 먹고 있었다 — **한 줄 고치려고 1.3GB.**
+
+2. **완주 = 머지 + 배포 + health + 뒷정리** (§6.8 확장).
+   머지 후 그 워크트리는 역할이 끝났다. 완주 도장 찍기 전에:
+   ```bash
+   rm -rf wt/<이름>/node_modules   # 최소 — npm ci 로 복구되므로 무손실
+   git worktree remove wt/<이름>   # 권장 — 브랜치가 남으면 언제든 재생성
+   git worktree prune              # 등록 잔재 청소
+   ```
+
+3. **워크트리 상한 12개.** `check.sh` 가 초과 시 경고한다(차단은 안 함 — 용량은
+   코드 품질이 아니다). 경고가 뜨면 그 세션이 **머지 끝난 것부터 정리하고** 진행한다.
+   「내 것 아니니까」로 넘기면 아무도 안 치운다.
+
+**하지 마라**: `node_modules` 를 심볼릭 링크·junction 으로 공유하는 것 —
+npx·node 해석이 깨진다(이미 반증된 함정).
+
+**되살리기**: 지워진 워크트리에서 다시 작업하려면 그 디렉토리에서 `npm ci` 한 번.
+`node_modules` 없는 워크트리에서 `check.sh` 를 돌리면 죽는다 — 설치가 먼저다.
+
+**근본 해결 후보**: pnpm 전환(전역 스토어 + 하드링크 → 82개가 사실상 1개 용량).
+마이그레이션 비용이 있어 별도 ADR·카드로 검토한다. 위 3규칙은 그 전까지의 방어선이다.
+
+---
+
+## 6.10 세션 연결 유지 — 「연결 해제됨」은 고장이 아니다 (2026-09-06)
+
+**무엇이 문제였나**: 폰 「코드」 목록의 세션 대부분이 `연결 해제됨` 으로 남아 있고, 밖에서
+되살릴 방법을 찾다 시간을 버렸다. 원인은 오해였다 — 💻 아이콘 세션은 **클라우드가 아니라
+내 PC 의 `claude` 프로세스**다(Remote Control). **창을 닫으면 수 초 내로 끊긴다. 설계다.**
+
+**세션을 열 때 정하는 것 (지침)**
+1. **먼저 고른다 — 로컬이냐 클라우드냐.** 내 PC 파일·워크트리·git 푸시가 필요하면 **원격 제어**,
+   나가 있는 동안 돌려둘 일·문서·PR 감시면 **클라우드 세션**(claude.ai/code). 클라우드는
+   PC 를 꺼도 살아있고 폰에서 그대로 이어받는다.
+2. **원격 제어면 자동 연결을 켠다** — `/config` → *Enable Remote Control for all sessions* = true
+   (또는 **내 PC 의** `~/.claude/settings.json` 에 `"remoteControlAtStartup": true`).
+   ⚠️ 레포의 `.claude/settings.json` 에 넣은 `true` 는 **무시된다** — 반드시 사용자 설정에.
+3. **이름을 붙인다** — `claude remote-control --name "<세션명>"`. 없으면 자동 이름이라 목록에서 못 찾는다.
+4. **창을 닫지 않는다.** VPS·장시간은 반드시 `tmux`/`screen` 안에서. 잠자기는 자동 복구되지만
+   `Ctrl+C`·창 닫기·재부팅은 복구되지 않는다.
+5. **처음 여는 PC 면 한 번**: `node scripts/ops/rc-doctor.mjs` (읽기 전용 진단 — API 키·프록시
+   주소·텔레메트리 차단 등 **연결을 아예 막는** 설정을 잡아 고치는 법까지 찍는다).
+
+**끊긴 세션 되살리기**: 4시간 안이면 같은 폴더에서 `claude remote-control --continue`,
+넘었으면 `claude --resume` 으로 대화를 되살린 뒤 `/remote-control`. **폰만으로는 불가능하다.**
+
+상세·사유 메시지별 조치 = `docs/playbooks/remote-control-sessions.md`.
+
+---
 
 ## 7. 이 하네스 자체의 관리
 

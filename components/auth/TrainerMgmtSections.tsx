@@ -62,14 +62,8 @@ export function SectionPending({
 }) {
   return (
     <section>
-      <h2 className="mb-4 text-lg font-black tracking-tight text-gray-900">
-        트레이너 요청관리
-      </h2>
-      <p className="mb-4 text-xs text-gray-500">
-        승인 대기 중 ({pending.length})명
-      </p>
       {pending.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-gray-100 bg-white p-3 text-center text-sm text-gray-400">
           대기 중 요청 없음.
         </p>
       ) : (
@@ -83,7 +77,7 @@ export function SectionPending({
                 <div className="truncate text-sm font-bold text-gray-900">
                   {t.name || t.email}
                 </div>
-                <div className="truncate text-[11px] text-gray-500">{t.email}</div>
+                <div className="truncate text-px-11 text-gray-500">{t.email}</div>
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
@@ -117,6 +111,7 @@ export function SectionAssign({
   trainees,
   busy,
   onSave,
+  resolveAssigned,
   onRemoveTrainer,
   onMoveToManagement,
   onReorder,
@@ -126,6 +121,9 @@ export function SectionAssign({
   trainees: PanelUser[];
   busy: string | null;
   onSave: (traineeEmail: string, trainerEmails: string[], key: string) => void;
+  /** BBE-253 — 서버 확정 전 "클라이언트가 아는 최신 배정 목록"을 반환(없으면 fallback 시딩).
+   *  토글이 이걸 기준으로 next 를 계산해야 연타 시 stale prop 덮어쓰기가 안 생긴다. */
+  resolveAssigned: (email: string, fallback: string[]) => string[];
   onRemoveTrainer?: (email: string) => void;
   onMoveToManagement?: (email: string) => void;
   /** PR C-2: 트레이너 카드 드래그 정렬 결과. emails = 새 순서. 미제공이면 dnd 비활성. */
@@ -134,15 +132,8 @@ export function SectionAssign({
 }) {
   return (
     <section>
-      <h2 className="mb-2 text-lg font-black tracking-tight text-gray-900">
-        트레이너 담당 부여
-      </h2>
-      <p className="mb-4 text-xs text-gray-500">
-        트레이너 카드를 펼쳐 담당 수강생을 다중 선택하세요. 한 수강생을 여러
-        트레이너에 동시 배정 가능 — 토글 즉시 저장. 좌측 [⋮⋮] 핸들로 카드 순서 변경.
-      </p>
       {trainers.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-gray-100 bg-white p-3 text-center text-sm text-gray-400">
           활성 트레이너가 없습니다. 요청관리에서 먼저 승인하세요.
         </p>
       ) : (
@@ -159,6 +150,7 @@ export function SectionAssign({
                 trainees={trainees}
                 busy={busy}
                 onSave={onSave}
+                resolveAssigned={resolveAssigned}
                 onRemoveTrainer={onRemoveTrainer}
                 onMoveToManagement={onMoveToManagement}
                 viewOnly={viewOnly}
@@ -194,9 +186,9 @@ export function SectionTraineeList({
   const resolveTrainerName = (e: string) =>
     nameByEmail.get(e.toLowerCase()) ?? e;
   return (
-    <section>
-      <h2 className="mb-4 text-lg font-black tracking-tight text-gray-900">
-        수강생 명단 ({trainees.length})
+    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+      <h2 className="mb-4 text-base font-bold text-gray-900">
+        수강생 명단확인 ({trainees.length})
       </h2>
       <div className="space-y-2">
         {grouped.map(([cohort, list]) => (
@@ -230,7 +222,7 @@ export function SectionTraineeList({
                         {s.captainOf ? <span title="회장"> 👑</span> : null}{" "}
                         <span className="text-gray-400">({s.email})</span>
                       </div>
-                      <div className="ml-4 text-[10px] text-gray-500">
+                      <div className="ml-4 text-px-10 text-gray-500">
                         {names.length > 0 ? `담당: ${names.join(", ")}` : "미배정"}
                       </div>
                     </li>

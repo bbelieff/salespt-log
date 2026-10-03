@@ -1,0 +1,466 @@
+/**
+ * 「잘못 적었어요」 → 기록 옮기기. `어느 미팅` → `무엇을` → `어디로` 3단계.
+ *
+ * ## 왜 3단계인가
+ * 한 화면에 미팅 고르기 + 네 선택지 + 채널 + 날짜를 다 넣으면 휴대폰에서 스크롤 지옥이 된다.
+ * belie 요구대로 각 단계에 **뒤로가기**를 두어 되짚을 수 있게 했다.
+ *
+ * ## 각 선택지가 언제인지 ⟨?⟩ 로 알려준다
+ * 셋(넷)을 놓고 매번 헷갈리는 게 진짜 문제다. 마우스를 올릴 수 없는 휴대폰이라
+ * **눌러서 펼치는** 방식으로 넣었다. 고른 선택지의 팁은 저절로 펼쳐진다.
+ *
+ * 규칙(무엇이 얼마나 움직이나)은 전부 `_lib/record-move.ts` 가 정한다 — 여기는 그리기만.
+ */
+"use client";
+
+import { useMemo, useState } from "react";
+import { CHANNEL_ORDER, type Channel } from "@/types";
+import type { ChannelDailyRowMetrics } from "@/service";
+import { useDay, useMeetingScheduleWeeks } from "@/query/contact-hooks";
+import {
+  describeDeltas,
+  hasAnyRecord,
+  isChannelLocked,
+  isDateLocked,
+  isInflowLocked,
+  isSamePlace,
+  moveDeltas,
+  type MoveOption,
+} from "../_lib/record-move";
+import { CHANNEL_TEXT, formatKoreanDate } from "./SaveConfirmModal";
+import { meetingConflicts } from "../_lib/meeting-conflicts";
+import { GROUPS, OPTION_TEXT } from "./record-move-options";
+import RecordMoveReview from "./RecordMoveReview";
+import { addDays, fmtISO, friOf, parseISO } from "../_lib/week";
+
+/** 옮길 대상 한 건 — 저장 전 슬롯이든 저장된 미팅이든 이 모양으로 넘어온다. */
+export interface MoveCandidate {
+  key: string;
+  channel: Channel;
+  업체명: string;
+  미팅날짜: string;
+  미팅시간: string;
+}
+
+export interface MoveDecision {
+  key: string;
+  option: MoveOption;
+  to: { date: string; channel: Channel; metrics?: ChannelDailyRowMetrics };
+  deltas: { inflow?: number; contactProgress?: number };
+}
+
+interface Props {
+  open: boolean;
+  /** 기록된 날짜 — 옮기기 전 자리. 채널은 고른 미팅이 정한다. */
+  fromDate: string;
+  candidates: MoveCandidate[];
+  /** 화면 draft — 저장 안 한 입력까지 포함한 지금 숫자. */
+  draft: Record<Channel, ChannelDailyRowMetrics>;
+  onBack: () => void;
+  /** 팝업 옆 빈 곳 클릭 — 저장 누르기 전으로 되돌아간다(확인 화면도 함께 닫힘). */
+  onDismiss: () => void;
+  saving?: boolean;
+  error?: string;
+  incomplete?: boolean;
+  onApply: (decision: MoveDecision) => void;
+}
+
+const CHIP_BG: Record<Channel, string> = {
+  매입DB: "bg-blue-100 text-blue-700",
+  직접생산: "bg-green-100 text-green-700",
+  현수막: "bg-amber-100 text-amber-700",
+  "콜·지·기·소": "bg-violet-100 text-violet-700",
+};
+
+type Step = "which" | "what" | "where" | "review";
+
+export default function RecordMoveModal({
+  open,
+  fromDate,
+  candidates,
+  draft,
+  onBack,
+  onDismiss,
+  onApply,
+  saving = false,
+  error = "",
+  incomplete = false,
+}: Props) {
+  const needsPick = candidates.length > 1;
+  const [step, setStep] = useState<Step>(needsPick ? "which" : "what");
+  const [pickedKey, setPickedKey] = useState<string>(
+    needsPick ? "" : (candidates[0]?.key ?? ""),
+  );
+  const [option, setOption] = useState<MoveOption | null>(null);
+  const [openTip, setOpenTip] = useState<MoveOption | null>(null);
+  const first = candidates[0]?.channel ?? "매입DB";
+  const [toChannel, setToChannel] = useState<Channel>(first);
+  const [toDate, setToDate] = useState<string>(fromDate);
+
+  const weekDates = useMemo(() => {
+    const fri = friOf(parseISO(fromDate));
+    return Array.from({ length: 7 }, (_, i) => fmtISO(addDays(fri, i)));
+  }, [fromDate]);
+
+  const dateLocked = option ? isDateLocked(option) : false;
+  const chanLocked = option ? isChannelLocked(option) : false;
+  const targetDate = dateLocked ? fromDate : toDate;
+  // 옮길 자리에 이미 뭐가 적혀 있는지 — 다른 날짜일 때만 서버에서 확인한다.
+  const targetDay = useDay((step === "where" || step === "review") && targetDate !== fromDate ? targetDate : "");
+  const targetMetrics =
+    targetDate === fromDate
+      ? draft[toChannel]
+      : targetDay.data?.date === targetDate ? targetDay.data.channels[toChannel] : undefined;
+
+  const scheduleWeeks = [...new Set(candidates.map((c) => fmtISO(friOf(parseISO(c.미팅날짜)))))];
+  const schedules = useMeetingScheduleWeeks(scheduleWeeks, open);
+  const conflicts = meetingConflicts(candidates.map((c) => ({ ...c, id: c.key })), schedules.flatMap((q) => q.data?.daysByMeetingDate.flatMap((d) => d.meetings) ?? []));
+  const scheduleBlocked = schedules.some((q) => q.isFetching || q.isError) || conflicts.length > 0;
+  if (!open) return null;
+
+  const picked = candidates.find((c) => c.key === pickedKey);
+  const fromChannel: Channel = picked?.channel ?? first;
+  const inflowLocked = isInflowLocked(fromChannel, toChannel);
+  const deltas = option ? moveDeltas(option, draft[fromChannel], inflowLocked, Math.max(0, draft[fromChannel].meetingReservation - 1)) : {};
+  const same = isSamePlace(
+    { date: fromDate, channel: fromChannel },
+    { date: targetDate, channel: toChannel },
+  );
+  const movedMeetings = option === "chan" ? draft[fromChannel].meetingReservation : 1;
+  const invalidFunnel = !!targetMetrics && (
+    targetMetrics.contactProgress + (deltas.contactProgress ?? 0) < targetMetrics.meetingReservation + movedMeetings ||
+    draft[fromChannel].contactProgress - (deltas.contactProgress ?? 0) < draft[fromChannel].meetingReservation - movedMeetings
+  );
+  const busy = targetDate !== fromDate && hasAnyRecord(targetMetrics);
+
+  const stepNo = needsPick
+    ? { which: 1, what: 2, where: 3, review: 4 }[step]
+    : { which: 1, what: 1, where: 2, review: 3 }[step];
+  const stepTotal = needsPick ? 4 : 3;
+  const title =
+    step === "which"
+      ? "어느 미팅이 잘못됐나요?"
+      : step === "what"
+        ? "무엇을 옮길까요?"
+        : step === "review" ? "이대로 옮겨 저장할까요?" : "어디로 옮길까요?";
+
+  const goBack = () => {
+    if (saving || error) return;
+    if (step === "review") setStep("where");
+    else if (step === "where") setStep("what");
+    else if (step === "what" && needsPick) setStep("which");
+    else onBack();
+  };
+
+  const dismiss = () => {
+    if (saving || error) return;
+    if (option && !window.confirm("이동 선택을 취소하고 돌아갈까요? 아직 저장하지 않았으며, 입력한 미팅과 숫자는 그대로 남아요.")) return;
+    onDismiss();
+  };
+  const targetReady = targetDate === fromDate || (!!targetMetrics && !targetDay.isFetching && !targetDay.isError);
+  const from = formatKoreanDate(fromDate);
+  const to = formatKoreanDate(targetDate);
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/45 p-4"
+      onClick={dismiss}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[92vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <div className="flex items-center gap-2 bg-slate-900 px-3 py-3 text-white">
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="뒤로"
+            className="h-7 w-7 shrink-0 rounded-lg bg-slate-700 text-sm font-bold text-slate-200 hover:bg-slate-600 hover:text-white"
+          >
+            ←
+          </button>
+          <div>
+            <span className="block text-px-10 font-bold tracking-wide text-slate-400">
+              {stepNo} / {stepTotal} 단계
+              {step === "where" && option ? ` · ${OPTION_TEXT[option].title}` : ""}
+            </span>
+            <h3 className="text-px-15 font-black leading-tight">{title}</h3>
+          </div>
+          <button type="button" disabled={saving} onClick={dismiss} aria-label="이동 취소하고 닫기" className="ml-auto h-8 w-8 shrink-0 rounded-lg text-xl hover:bg-slate-700">×</button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {incomplete && <p role="alert" className="mb-3 text-xs text-red-700">남은 미팅도 함께 저장하려면 필수 항목을 모두 채워주세요. X로 돌아가 수정할 수 있어요.</p>}
+          {error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs text-red-800">{error}</p>}
+          {step === "review" && scheduleBlocked && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-xs text-red-800">{conflicts.length ? "같은 예정일시에 미팅이 겹쳐요. 이동을 취소하고 카드의 시간을 수정해주세요." : "기존 미팅 일정을 확인 중이거나 불러오지 못했어요. 확인이 끝나야 저장할 수 있어요."}</p>}
+          {step === "review" && picked && targetMetrics && <RecordMoveReview
+            fromLabel={`${from.label} ${fromChannel}`} toLabel={`${to.label} ${toChannel}`}
+            company={picked.업체명} source={draft[fromChannel]} target={targetMetrics}
+            deltas={deltas} movedMeetings={movedMeetings}
+            remainingNames={option === "chan" ? [] : candidates.filter((c) => c.channel === fromChannel && c.key !== picked.key).map((c) => c.업체명)}
+          />}
+          {step === "which" && (
+            <>
+              {candidates.map((c) => {
+                const md = formatKoreanDate(c.미팅날짜);
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setPickedKey(c.key)}
+                    className={`mb-1.5 flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left ${
+                      pickedKey === c.key
+                        ? "border-indigo-300 bg-indigo-50"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <span
+                      className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 ${
+                        pickedKey === c.key
+                          ? "border-indigo-600 bg-indigo-600"
+                          : "border-gray-300"
+                      }`}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-px-13 font-bold text-gray-900">
+                        {c.업체명}
+                      </span>
+                      <span className="block text-px-11 font-semibold text-gray-500">
+                        {md.label} ({md.dow}) {c.미팅시간}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {step === "what" && (
+            <>
+              <div className="mb-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-gray-200">
+                <div className="bg-white p-2.5">
+                  <span className="block text-px-10 font-bold tracking-wide text-gray-400">
+                    고칠 미팅
+                  </span>
+                  <span className="mt-0.5 block truncate text-base font-bold text-gray-900">
+                    {picked?.업체명 ?? "—"}
+                  </span>
+                </div>
+                <div className="bg-white p-2.5">
+                  <span className="block text-px-10 font-bold tracking-wide text-gray-400">
+                    지금 기록
+                  </span>
+                  <span
+                    className={`mt-0.5 block text-base font-bold ${CHANNEL_TEXT[fromChannel]}`}
+                  >
+                    {fromChannel}
+                    <span className="block text-sm text-gray-600">{from.label}</span>
+                  </span>
+                </div>
+              </div>
+
+              {GROUPS.map((g) => (
+                <div key={g.head} className="mb-3 last:mb-0">
+                  <p className="mb-1.5 text-px-11 font-bold leading-tight text-gray-500">
+                    {g.head}
+                    <span className="block text-px-10 font-semibold text-gray-400">{g.sub}</span>
+                  </p>
+                  {g.keys.map((k) => (
+                <div
+                  key={k}
+                  onClick={() => {
+                    setOption(k);
+                    setOpenTip(k);
+                  }}
+                  className={`mb-1.5 cursor-pointer rounded-xl border px-3 py-2.5 ${
+                    option === k ? "border-indigo-300 bg-indigo-50" : "border-gray-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-3.5 w-3.5 shrink-0 rounded-full border-2 ${
+                        option === k ? "border-indigo-600 bg-indigo-600" : "border-gray-300"
+                      }`}
+                    />
+                    <span
+                      className={`text-px-13 font-bold leading-snug ${
+                        option === k ? "text-indigo-700" : "text-gray-900"
+                      }`}
+                    >
+                      {OPTION_TEXT[k].title}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`${OPTION_TEXT[k].title} — 언제 고르나요`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenTip(openTip === k ? null : k);
+                      }}
+                      className="ml-auto h-5 w-5 shrink-0 rounded-full border border-gray-300 bg-white text-px-10 font-bold text-gray-500 hover:border-gray-400 hover:text-gray-900"
+                    >
+                      ?
+                    </button>
+                  </div>
+                  {openTip === k && (
+                    <p className="ml-5 mt-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2.5 py-2 text-px-11 leading-relaxed text-gray-600">
+                      {OPTION_TEXT[k].when}
+                    </p>
+                  )}
+                </div>
+                  ))}
+                </div>
+              ))}
+            </>
+          )}
+
+          {step === "where" && (
+            <>
+              <div className="mb-3">
+                <span className="mb-1.5 block text-px-10 font-bold tracking-wide text-gray-400">
+                  채널
+                  {chanLocked ? " — 채널은 맞으니 그대로 둬요" : ""}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {CHANNEL_ORDER.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      disabled={chanLocked}
+                      onClick={() => setToChannel(c)}
+                      className={`rounded-full px-3 py-1.5 text-px-11 font-bold ${CHIP_BG[c]} ${
+                        c === toChannel ? "ring-2 ring-slate-900" : "opacity-40"
+                      } ${chanLocked && c !== toChannel ? "hidden" : ""}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <span className="mb-1.5 block text-px-10 font-bold tracking-wide text-gray-400">
+                  기록하는 날짜
+                  {dateLocked ? " — 날짜는 맞으니 그대로 둬요" : ""}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {weekDates.map((d) => {
+                    const k = formatKoreanDate(d);
+                    if (dateLocked && d !== targetDate) return null;
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        disabled={dateLocked}
+                        onClick={() => setToDate(d)}
+                        className={`rounded-lg px-2.5 py-1.5 text-px-11 font-bold disabled:opacity-60 ${
+                          d === targetDate
+                            ? "bg-slate-900 text-white"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {k.label} ({k.dow})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-px-11 leading-relaxed text-indigo-900">
+                <b>
+                  {fromChannel} {from.label}
+                </b>{" "}
+                →{" "}
+                <b>
+                  {toChannel} {to.label}
+                </b>
+                <br />
+                {option === "chan" ? "그날 이 채널 기록 전부" : "미팅 1건"}
+                {describeDeltas(deltas) ? ` · ${describeDeltas(deltas)}` : " (숫자는 그대로)"}
+              </p>
+
+              {invalidFunnel && <p role="alert" className="mt-2 text-xs text-red-700">이대로 옮기면 미팅예약이 컨택보다 많아져요. 관련 유입·컨택도 함께 옮기는 선택지로 돌아가주세요.</p>}
+              {!targetReady && <p role="status" className="mt-2 text-xs text-red-700">{targetDay.isError ? "옮길 날짜를 불러오지 못했어요. 다른 날짜를 선택한 뒤 다시 시도해주세요." : "옮길 날짜의 기록을 확인하고 있어요…"}</p>}
+              {same && (
+                <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-px-11 leading-relaxed text-gray-600">
+                  지금과 <b>같은 자리</b>예요. 채널이나 날짜를 바꿔주세요.
+                </p>
+              )}
+              {busy && (
+                <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-px-11 leading-relaxed text-amber-800">
+                  <b>
+                    {to.label} {toChannel}에 이미 기록이 있어요.
+                  </b>{" "}
+                  덮어쓰지 않고 더해집니다.
+                </p>
+              )}
+              {inflowLocked && (
+                <p className="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-px-11 leading-relaxed text-gray-600">
+                  <b>유입은 원래 날짜·채널에 그대로 남아요.</b> 이번에 옮기는 항목은{" "}
+                  <b>{describeDeltas(deltas) || "미팅예약 1건"}</b>이에요. 콜·지·기·소 유입은
+                  영업기회 접수 건수로 자동 집계돼요. 유입 날짜도 바꾸려면 STEP 1에서 해당 영업기회의 접수일을 수정해주세요.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="flex gap-2 border-t border-gray-100 px-4 py-3">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex-1 rounded-lg bg-gray-100 py-3 text-px-13 font-bold text-gray-700 hover:bg-gray-200"
+          >
+            뒤로
+          </button>
+          {step === "which" && (
+            <button
+              type="button"
+              disabled={!pickedKey}
+              onClick={() => setStep("what")}
+              className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              다음
+            </button>
+          )}
+          {step === "what" && (
+            <button
+              type="button"
+              disabled={!option}
+              onClick={() => {
+                setToChannel(picked?.channel ?? first);
+                setToDate(fromDate);
+                setStep("where");
+              }}
+              className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              다음
+            </button>
+          )}
+          {(step === "where" || step === "review") && (
+            <button
+              type="button"
+              disabled={saving || (!error && (incomplete || same || !option || !picked || !targetReady || invalidFunnel || (step === "review" && scheduleBlocked)))}
+              onClick={() => step === "where" ? setStep("review") :
+                onApply({
+                  key: picked!.key,
+                  option: option!,
+                  to: { date: targetDate, channel: toChannel, metrics: targetMetrics },
+                  deltas: {
+                    inflow: deltas.inflow,
+                    contactProgress: deltas.contactProgress,
+                  },
+                })
+              }
+              className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              {saving ? "저장 중…" : step === "review" ? "저장하기" : "이동 내용 확인"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

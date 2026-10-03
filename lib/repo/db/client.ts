@@ -32,7 +32,12 @@ function getPool(): Pool {
       // Supabase Session Pooler — 전송 암호화 필수. 파일럿은 검증 완화(공용 CA 체인
       // 이슈 회피, Supabase 권장 패턴). P2 정본 전환 시 CA 고정 재검토.
       ssl: { rejectUnauthorized: false },
-      max: 5, // 파일럿 트래픽 소규모 — Session Pooler 커넥션 절약
+      // BBE-244(2026-08-20) — 5 는 부족했다: readProfileStatsRowsFromDbBatch(관리자·
+      // 트레이너·회장 화면 전원 조회, 최대 수십 명 배치)와 registry 읽기(BBE-56)가
+      // 이 풀을 공유하면서 동시 요청 몇 개만 겹쳐도 connectionTimeoutMillis(8초) 안에
+      // 빈 커넥션을 못 얻어 timeout → 배치 실패 → 시트 폴백 대량 발생 → Sheets 쿼터
+      // 소진까지 이어지는 캐스케이드 실측(로컬 재현, 운영 DB/시트 자격 그대로).
+      max: 15,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 8_000,
     });
@@ -68,9 +73,10 @@ async function doEnsureSchema(): Promise<void> {
   await getPool().query(
     `create index if not exists sheet_rows_cohort_tab on sheet_rows (cohort, tab)`,
   );
-  await getPool().query(
-    `create index if not exists sheet_rows_payload on sheet_rows using gin (payload)`,
-  );
+  // sheet_rows_payload(GIN) 은 BBE-250 에서 제거(0004 마이그레이션) — payload 는 앱
+  // 전체에서 `->>` 추출로만 조회되고 컨테인먼트 연산(@>/?/#>) 은 0건이라 GIN 이 조회를
+  // 가속할 일이 없었다(idx_scan=2 vs unique btree 55,106). 여기서 재생성하면 그
+  // 마이그레이션이 다음 ensureSchema() 호출에 즉시 무효화되므로 같이 지운다.
   // mirror_pending (db-write-flip §2.2·§7-3): DB 정본 쓰기는 성공했는데 시트 수렴 미러가
   // 재시도 끝에 실패한 행 표식. 다음 수렴 동기화가 재드라이브(self-heal). ADD COLUMN IF NOT EXISTS
   // = 멱등·가산(기존 행 default false, 롤백 시 코드만 되돌리면 무해). 정본 payload 는 무오염.

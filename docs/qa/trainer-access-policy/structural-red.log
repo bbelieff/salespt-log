@@ -1,0 +1,49 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Belief-desktop/Desktop/개발프로젝트/경영일지/wt/trainer-access-policy[39m
+
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mstrip 헬퍼 자기검증[2m > [22mstrip 전후 줄 수 불변 (전 파일)
+ [31m×[39m tests/structural/period-hardcode.test.ts[2m > [22mlib/util 순수성[2m > [22mlib/util 은 import 금지 (순수 유틸 — 상위 레이어 역류 원천 차단)
+[31m   → lib/util 은 의존 0 계약 (CLAUDE.md §2 — 어느 레이어에서나 안전하게 import 가능해야 함).
+  • lib/util/trainer-access-policy.ts: expected [ 'lib/util/trainer-access-policy.ts' ] to deeply equal [][39m
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG1: grad-offset 상수화 (50/57)[2m > [22mGRADUATION_OFFSET* 숫자 정의는 lib/config/cohort-dates.ts 에서만
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG1: grad-offset 상수화 (50/57)[2m > [22moffset 문맥의 50/57 리터럴 금지 (grad/offset/O2 키워드 라인)
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG2: 편집 유예(69일) 상수화[2m > [22m숫자 69 는 lib/config/cohort-dates.ts(EDIT_WINDOW_DAYS) 밖 금지
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG3: 시트 주차상한(10) 상수화[2m > [22mweek 문맥의 10 비교/클램프는 MAX_SHEET_WEEK 로
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG4: 통계 주차수(8) 상수화[2m > [22mweek 문맥의 8-루프/버킷/클램프는 STATS_WEEKS 로
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG5: YYYY-MM-DD 리터럴 금지 (앱 코드)[2m > [22m날짜 리터럴은 테스트 fixture·ops 스크립트에서만
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG6: 수강생 데이터 쓰기 route 는 getWritableUserEmail 경유[2m > [22mwrite 메서드(POST/PATCH/PUT/DELETE) 가진 gated route 전수
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG7: app 레이어 "archived" 리터럴 분기 금지[2m > [22m새 app 파일에서 "archived" 문자열 분기 금지 — 공용 헬퍼 사용
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG8: 주차 계산(weekIndexOf) 단일 소스[2m > [22mlib/app/components 에서 주차식 재구현 금지 — 정본은 lib/util/week.ts
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mG8: 주차 계산(weekIndexOf) 단일 소스[2m > [22mscripts/ 의 사본은 WEEK-INDEX-SSOT-COPY 마커 의무 (.mjs 는 TS import 불가)
+ [32m✓[39m tests/structural/period-hardcode.test.ts[2m > [22mcohort-dates 계약값[2m > [22m현행 정책값 고정 (변경은 ADR + belie 결정)
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m tests/structural/period-hardcode.test.ts[2m > [22mlib/util 순수성[2m > [22mlib/util 은 import 금지 (순수 유틸 — 상위 레이어 역류 원천 차단)
+[31m[1mAssertionError[22m: lib/util 은 의존 0 계약 (CLAUDE.md §2 — 어느 레이어에서나 안전하게 import 가능해야 함).
+  • lib/util/trainer-access-policy.ts: expected [ 'lib/util/trainer-access-policy.ts' ] to deeply equal [][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Array [][39m
+[31m+ Array [[39m
+[31m+   "lib/util/trainer-access-policy.ts",[39m
+[31m+ ][39m
+
+[36m [2m❯[22m tests/structural/period-hardcode.test.ts:[2m99:7[22m[39m
+    [90m 97| [39m      [32m"lib/util 은 의존 0 계약 (CLAUDE.md §2 — 어느 레이어에서나 안전[39m…
+    [90m 98| [39m        bad[33m.[39m[34mmap[39m((b) [33m=>[39m [32m"  • "[39m [33m+[39m b)[33m.[39m[34mjoin[39m([32m"\n"[39m)[33m,[39m
+    [90m 99| [39m    )[33m.[39m[34mtoEqual[39m([])[33m;[39m
+    [90m   | [39m      [31m^[39m
+    [90m100| [39m  })[33m;[39m
+    [90m101| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m12 passed[39m[22m[90m (13)[39m
+[2m   Start at [22m 17:21:32
+[2m   Duration [22m 1.85s[2m (transform 78ms, setup 26ms, collect 92ms, tests 1.16s, environment 0ms, prepare 143ms)[22m
+

@@ -5,46 +5,53 @@
  * 필드: 진행기관 / 진행률(dropdown) / 현황 / 승인금액(원) / 수납액(원) / 수납일
  *
  * v9 prototype 매칭:
- *   - 슬롯별 색상 (1=teal / 2=cyan / 3=fuchsia)
+ *   - 슬롯별 색상 (1=emerald / 2=blue / 3=violet)
  *   - 진행도 볼륨바 (5등분 클릭 — 0/20/40/60/80/100%)
  *   - 천 단위 콤마 input + 커서 위치 보정
  *   - 동일 % 재클릭 시 0% 토글
  */
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { PaymentSlot, Progress, Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
+import { sameInstitution } from "@/util/institution-match";
 
 const SLOT_STYLES = {
   1: {
     name: "진행 1",
-    family: "teal" as const,
-    chip: "bg-teal-100 text-teal-700",
-    chipFull: "bg-teal-600 text-white",
-    segLow: "bg-teal-300",
-    segMid: "bg-teal-500",
-    segHigh: "bg-teal-700",
+    family: "emerald" as const,
+    card: "border-emerald-300 bg-emerald-50/70",
+    pctText: "text-emerald-700",
+    chip: "bg-emerald-100 text-emerald-800",
+    chipFull: "bg-emerald-600 text-white",
+    segLow: "bg-emerald-300",
+    segMid: "bg-emerald-500",
+    segHigh: "bg-emerald-700",
   },
   2: {
     name: "진행 2",
-    family: "cyan" as const,
-    chip: "bg-cyan-100 text-cyan-700",
-    chipFull: "bg-cyan-600 text-white",
-    segLow: "bg-cyan-300",
-    segMid: "bg-cyan-500",
-    segHigh: "bg-cyan-700",
+    family: "blue" as const,
+    card: "border-blue-300 bg-blue-50/70",
+    pctText: "text-blue-700",
+    chip: "bg-blue-100 text-blue-800",
+    chipFull: "bg-blue-600 text-white",
+    segLow: "bg-blue-300",
+    segMid: "bg-blue-500",
+    segHigh: "bg-blue-700",
   },
   3: {
     name: "진행 3",
-    family: "fuchsia" as const,
-    chip: "bg-fuchsia-100 text-fuchsia-700",
-    chipFull: "bg-fuchsia-600 text-white",
-    segLow: "bg-fuchsia-300",
-    segMid: "bg-fuchsia-500",
-    segHigh: "bg-fuchsia-700",
+    family: "violet" as const,
+    card: "border-violet-300 bg-violet-50/70",
+    pctText: "text-violet-700",
+    chip: "bg-violet-100 text-violet-800",
+    chipFull: "bg-violet-600 text-white",
+    segLow: "bg-violet-300",
+    segMid: "bg-violet-500",
+    segHigh: "bg-violet-700",
   },
 } as const;
 
@@ -69,6 +76,7 @@ function getSegClass(slotIdx: 1 | 2 | 3, pct: number): string {
 }
 
 interface Props {
+  slotId?: string;
   index: 1 | 2 | 3;
   slot: PaymentSlot;
   removable?: boolean; // 슬롯 2/3만 제거 가능
@@ -86,12 +94,16 @@ interface Props {
   institutionOptions?: string[];
   /** [4] ToDo 추가 시 미저장 진행기관이면 이 콜백으로 슬롯(계약)을 먼저 저장. */
   onEnsureSaved?: () => void;
+  /** 기관 목록의 진행건 선택 시 완료되어 접힌 슬롯도 연다. */
+  autoOpen?: boolean;
+  focusRequestId?: number;
 }
 
 /** 공용 부품 별칭 — 0/빈값은 빈칸(기존 fmtComma 시맨틱 승계). 중복 구현 제거. */
 const fmtComma = formatMoneyInput;
 
 export default function PaymentSlotForm({
+  slotId,
   index,
   slot,
   removable,
@@ -104,6 +116,8 @@ export default function PaymentSlotForm({
   savedInstitution,
   institutionOptions,
   onEnsureSaved,
+  autoOpen = false,
+  focusRequestId,
 }: Props) {
   const style = SLOT_STYLES[index];
   const pct = progressToPct(slot.진행률);
@@ -120,11 +134,11 @@ export default function PaymentSlotForm({
   const isDone =
     pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
   const [open, setOpen] = useState(!isDone);
-  const pctColor =
-    pct === 0 ? "text-gray-400" : pct >= 100 ? "text-green-600" : "text-blue-600";
+  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
+  const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
       {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 완료 슬롯은 기본 접힘. */}
       <div
         className={`flex cursor-pointer items-center justify-between gap-2 ${
@@ -140,8 +154,8 @@ export default function PaymentSlotForm({
           >
             {index}
           </div>
-          <span className="shrink-0 text-sm font-semibold text-gray-800">
-            {style.name}
+          <span className="min-w-0 truncate text-sm font-semibold text-gray-800">
+            {style.name}{slot.진행상품 ? ` : ${slot.진행상품}` : ""}
           </span>
           {/* 접힘 요약: 진행기관 · 진행률 · 수납/승인 */}
           {!open && (
@@ -168,7 +182,7 @@ export default function PaymentSlotForm({
               className="max-w-[140px] truncate text-xs font-semibold text-gray-600"
               title={slot.진행기관}
             >
-              🏛 {slot.진행기관}
+              {slot.진행기관}
             </span>
           )}
           {removable && onRemove && (
@@ -212,13 +226,7 @@ export default function PaymentSlotForm({
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-xs text-gray-500">진행도</span>
           <span
-            className={`text-xs font-semibold ${
-              pct === 0
-                ? "text-gray-400"
-                : pct >= 100
-                  ? "text-green-600"
-                  : "text-gray-700"
-            }`}
+            className={`text-xs font-semibold ${pctColor}`}
           >
             {pct}%
           </span>
@@ -247,7 +255,7 @@ export default function PaymentSlotForm({
             })}
           </div>
         </div>
-        <div className="mt-1 flex justify-between px-0.5 text-[10px] text-gray-400">
+        <div className="mt-1 flex justify-between px-0.5 text-px-11 text-gray-400">
           <span>0</span>
           <span>20</span>
           <span>40</span>
@@ -260,31 +268,35 @@ export default function PaymentSlotForm({
       {/* 입력 필드 — 2026-05-17 재구성:
           진행기관 → 메모 → (진행률 + 진행내용) → (승인금액 + 수납일 + 수납액) */}
       <div className="space-y-1.5">
-        <FieldCombo
-          label="진행기관"
-          value={slot.진행기관}
-          placeholder="예: 미소재단 (입력하면 다음부터 목록에 떠요)"
-          options={institutionOptions ?? []}
-          onChange={(v) => set("진행기관", v)}
-        />
-        <FieldText
+        <div className="grid grid-cols-[minmax(0,3.5fr)_minmax(0,6.5fr)] gap-2">
+          <FieldCombo label="진행기관" value={slot.진행기관} placeholder="예: 소진공" options={institutionOptions ?? []} onChange={(v) => set("진행기관", v)}/>
+          <FieldText label="진행상품" value={slot.진행상품} placeholder="예: 혁신성장촉진자금 일반형" onChange={(v) => set("진행상품", v)}/>
+        </div>
+        <FieldTextarea
           label="메모"
           value={slot.메모}
           placeholder="이 기관 진행 메모"
           onChange={(v) => set("메모", v)}
         />
         {/* ToDo 섹션 (Scope 2) — 메모와 진행률 사이, 이 기관(슬롯) 단위.
-            키는 저장본(cp) 진행기관 — draft(미저장)가 아니라 저장값과만 묶음. */}
+            키는 저장본(cp) 진행기관 — draft(미저장)가 아니라 저장값과만 묶음.
+
+            2026-09-19: 공백만 달라도 ToDo 가 통째로 사라지던 것을 고쳤다 — 실제 사고.
+            슬롯 진행기관이 「신용보증기금 」(끝 공백 1개), ToDo 는 「신용보증기금」이라
+            `===` 가 어긋나 탭에서 안 보였다. 캘린더는 날짜로만 보니 계속 보여서
+            「캘린더엔 뜨는데 탭엔 안 뜬다」가 됐다. 눈에 보이지도 않는 차이로 기록이
+            사라지면 안 되므로 `sameInstitution` 으로 **양끝 공백을 무시하고** 비교한다. */}
         {contractRef && (
           <TodoSection
+            accentFamily={style.family}
             contractRef={contractRef}
             institutionRef={savedInstitution ?? ""}
             draftInstitution={slot.진행기관}
             companyName={companyName ?? ""}
             onEnsureSaved={onEnsureSaved}
             focusId={focusTodoId}
-            todos={(todos ?? []).filter(
-              (t) => t.institutionRef === (savedInstitution ?? ""),
+            todos={(todos ?? []).filter((t) =>
+              sameInstitution(t.institutionRef, savedInstitution),
             )}
           />
         )}
@@ -358,6 +370,10 @@ function FieldText({
       />
     </div>
   );
+}
+
+function FieldTextarea({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) {
+  return <div><label className={FIELD_LABEL_CLASS}>{label}</label><textarea rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
 }
 
 /** [3] 자유입력 + 과거값 자동완성(구글시트 드롭다운형). native datalist 사용. */

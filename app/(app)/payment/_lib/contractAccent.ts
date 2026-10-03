@@ -4,13 +4,13 @@
  * borderClass(좌측바) 로직과 동일 기준을 공유 — 선택 카드와 우측 상세 패널이
  * **같은 상태색**으로 하나의 윤곽선을 이루게 page 와 ContractRow 가 함께 사용.
  *   - 완료(체크 전부 + 평균 진행률 100%) = green
- *   - 진행 중 활성 슬롯 = teal(1)/cyan(2)/fuchsia(3)
+ *   - 진행 중 활성 슬롯 = emerald(1)/blue(2)/violet(3)
  *   - 진행 전 = slate(중립)
  */
 import type { ContractPayment } from "@/types";
 import { checkedCount, TOTAL_CHECKBOXES } from "../_components/CheckboxList";
 
-export type AccentFamily = "green" | "teal" | "cyan" | "fuchsia" | "slate";
+export type AccentFamily = "green" | "emerald" | "blue" | "violet" | "slate";
 
 type Slot = ContractPayment["수납1"];
 
@@ -45,7 +45,7 @@ export function contractAccentFamily(cp: ContractPayment): AccentFamily {
   const isComplete =
     checkedCount(cp) === TOTAL_CHECKBOXES && vis >= 1 && avg >= 100;
   if (isComplete) return "green";
-  const fam = ["teal", "cyan", "fuchsia"] as const;
+  const fam = ["emerald", "blue", "violet"] as const;
   for (let i = vis - 1; i >= 0; i--) {
     if (pct(visSlots[i]?.진행률 ?? "") > 0) return fam[i] ?? "slate";
   }
@@ -70,8 +70,8 @@ export const ACCENT: Record<
   { border: string; tint: string; leftBar: string }
 > = {
   green: { border: "border-green-500", tint: "bg-green-50/50", leftBar: "border-l-green-500" },
-  teal: { border: "border-teal-500", tint: "bg-teal-50/50", leftBar: "border-l-teal-500" },
-  cyan: { border: "border-cyan-500", tint: "bg-cyan-50/50", leftBar: "border-l-cyan-500" },
-  fuchsia: { border: "border-fuchsia-500", tint: "bg-fuchsia-50/50", leftBar: "border-l-fuchsia-500" },
+  emerald: { border: "border-emerald-500", tint: "bg-emerald-50/50", leftBar: "border-l-emerald-500" },
+  blue: { border: "border-blue-500", tint: "bg-blue-50/50", leftBar: "border-l-blue-500" },
+  violet: { border: "border-violet-500", tint: "bg-violet-50/50", leftBar: "border-l-violet-500" },
   slate: { border: "border-slate-400", tint: "bg-slate-50", leftBar: "border-l-slate-400" },
 };

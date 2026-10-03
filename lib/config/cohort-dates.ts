@@ -37,3 +37,56 @@ export const MAX_SHEET_WEEK = 10;
 
 /** 통계(퍼널·주차별 집계·전광판) 창 = 8주. 유예 주(9~10)는 통계 밖. CLAUDE.md §2.5. */
 export const STATS_WEEKS = 8;
+const EXTENDED_COURSE_WEEKS = 12;
+const EXTENDED_COHORT_MIN = 10;
+const COHORT_10_CEREMONY_OVERRIDE = "2026-10-25";
+export function parseNumericCohort(cohort: string | null | undefined): number | null {
+  if (cohort == null) return null;
+  const t = cohort.trim();
+  if (t === "") return null;
+  const m = t.match(/^(\d+)기?$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isSafeInteger(n) ? n : null;
+}
+export function courseWeeksForCohort(cohort: string | null | undefined): number {
+  const n = parseNumericCohort(cohort);
+  return n !== null && n >= EXTENDED_COHORT_MIN ? EXTENDED_COURSE_WEEKS : STATS_WEEKS;
+}
+export function isExtendedCourseCohort(cohort: string | null | undefined): boolean {
+  const n = parseNumericCohort(cohort);
+  return n !== null && n >= EXTENDED_COHORT_MIN;
+}
+function parseISODateUTC(s: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const parts = s.split("-").map(Number);
+  const y = parts[0]!;
+  const mo = parts[1]!;
+  const d = parts[2]!;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+  return dt;
+}
+function toISODateUTC(dt: Date): string {
+  return dt.toISOString().slice(0, 10);
+}
+export function courseEndISO(start: string, cohort?: string | null): string {
+  const s = parseISODateUTC(start);
+  if (!s) return "";
+  const weeks = courseWeeksForCohort(cohort ?? null);
+  const end = new Date(s.getTime() + (weeks * 7 - 1) * 86400000);
+  return toISODateUTC(end);
+}
+export function ceremonyISO(start: string, cohort?: string | null): string {
+  const n = parseNumericCohort(cohort ?? null);
+  if (n === null || n < EXTENDED_COHORT_MIN) return "";
+  const s = parseISODateUTC(start);
+  if (!s) return "";
+  if (n === EXTENDED_COHORT_MIN) return COHORT_10_CEREMONY_OVERRIDE;
+  const lastWeek = (EXTENDED_COURSE_WEEKS - 1) * 7;
+  for (let off = lastWeek; off < lastWeek + 7; off++) {
+    const d = new Date(s.getTime() + off * 86400000);
+    if (d.getUTCDay() === 6) return toISODateUTC(d);
+  }
+  return "";
+}

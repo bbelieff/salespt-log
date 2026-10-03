@@ -1,17 +1,26 @@
 /**
  * TrainerMgmtPanel — Admin 트레이너 관리 UI 컨테이너.
  *
- * 섹션 순서 (사용자 요구):
- *   1) SectionPending     — 트레이너 요청관리 (pending 승인/거절)
- *   2) SectionAssign      — 트레이너 담당부여 (트레이너 카드 + 다중 체크)
- *   3) SectionTraineeList — 수강생 명단
- *   4) SectionManagement  — 관리부서 명단
+ * 섹션 순서 (2026-09-14 belie 지시):
+ *   1) SectionAssign      — 트레이너 명단 및 담당부여
+ *   2) 권한부여           — 페이지가 children 으로 주입 (TrainerAccessEditor)
+ *   3) SectionPending     — 트레이너 요청관리 (pending 승인/거절)
+ *   4) 초대관리           — 페이지가 children 으로 주입 (TrainerInvites)
+ *   5) SectionTraineeList — 수강생 명단
+ *   6) SectionManagement  — 관리부서 명단
+ *
+ * ★ 헤더는 이 패널이 소유한다. 페이지 최상단 sticky 한 곳뿐이며, 모든 섹션은
+ *   그 아래 같은 셸 폭(max-w-3xl pc:max-w-5xl) 안에 정렬된다. 이전에는 초대·권한이
+ *   패널 «밖 위쪽» 에 있어 헤더보다 위에 떠 있었다(2026-09-14 사용자 지적).
  */
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import CollapsibleSection from "./CollapsibleSection";
+import { createKeyedSaveCoalescer } from "@/util/save-coalesce";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 import {
   type PanelUser,
   SectionPending,
@@ -27,6 +36,8 @@ export default function TrainerMgmtPanel({
   managementStaff,
   trainees,
   viewOnly = false,
+  accessSlot,
+  inviteSlot,
 }: {
   sessionEmail: string;
   pendingTrainers: PanelUser[];
@@ -35,6 +46,10 @@ export default function TrainerMgmtPanel({
   trainees: PanelUser[];
   /** 관리부서 read-only — 액션 버튼 모두 숨김. */
   viewOnly?: boolean;
+  /** 2) 권한부여 자리 — 서버 컴포넌트를 셸 안에 끼운다. */
+  accessSlot?: ReactNode;
+  /** 4) 초대관리 자리 — 서버 컴포넌트를 셸 안에 끼운다. */
+  inviteSlot?: ReactNode;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -51,13 +66,42 @@ export default function TrainerMgmtPanel({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
       } else {
         router.refresh();
       }
     } finally {
       setBusy(null);
     }
+  }
+
+  // 담당 트레이너 배정 — 수강생(traineeEmail) 단위 좌표(BBE-253, BBE-243 패턴 재사용).
+  // ①latestAssigned: 서버 확정을 기다리지 않는 "클라이언트가 아는 최신 의도" — 같은
+  //   수강생을 (같은/다른 트레이너 카드에서) 연타해도 항상 이 값을 기준으로 다음 상태를
+  //   계산해, 시트에서 다시 읽어오기 전(prop 이 아직 stale)에 두 번째 토글이 첫 번째
+  //   토글을 덮어써 유실되는 사고를 막는다.
+  // ②assignCoalescer: 수강생별 저장 큐 — 같은 수강생에 대한 요청은 항상 직렬(동시에
+  //   둘 이상 in-flight 금지) + 좌표(마지막 의도만 서버로), 다른 수강생끼리는 서로 안 막음.
+  const latestAssigned = useRef(new Map<string, string[]>()).current;
+  const assignCoalescer = useRef(createKeyedSaveCoalescer<string, void>()).current;
+
+  function resolveAssigned(email: string, fallback: string[]): string[] {
+    if (!latestAssigned.has(email)) latestAssigned.set(email, fallback);
+    return latestAssigned.get(email)!;
+  }
+
+  // busy 표시는 기존과 동일하게 call() 내부에 위임(단일 문자열 — 여러 수강생이 동시에
+  // in-flight 면 마지막 것만 스피너로 보일 수 있으나, §완주기준(유실 0·롤백 0)은 아래
+  // 좌표 큐가 데이터 정합으로 보장하므로 표시용 busy 정확도는 이 카드 스코프 밖(후속).
+  function saveAssignment(traineeEmail: string, trainerEmails: string[], key: string) {
+    latestAssigned.set(traineeEmail, trainerEmails); // 동기 — 바로 다음 토글이 이 값을 본다
+    void assignCoalescer.trigger(traineeEmail, () =>
+      call(
+        "/api/admin/assign-trainee",
+        { traineeEmail, trainerEmails: latestAssigned.get(traineeEmail)! },
+        key,
+      ),
+    );
   }
 
   /** PR C-2: 트레이너 카드 드래그 정렬 결과 → registry M(sortOrder) 일괄 update.
@@ -75,7 +119,7 @@ export default function TrainerMgmtPanel({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
       } else {
         router.refresh();
       }
@@ -105,7 +149,7 @@ export default function TrainerMgmtPanel({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-12 px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-5xl space-y-5 px-6 py-5">
         {err && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {err}
@@ -118,37 +162,17 @@ export default function TrainerMgmtPanel({
           </div>
         )}
 
-        {/* 1. 트레이너 요청관리 — pending row 노출은 모두에게, 액션 버튼은 admin 만. */}
-        {!viewOnly && (
-          <SectionPending
-            pending={pendingTrainers}
-            busy={busy}
-            onApprove={(email) =>
-              call("/api/admin/approve-trainer", { email }, `approve:${email}`)
-            }
-            onReject={(email) => {
-              if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
-              call("/api/admin/reject-trainer", { email }, `reject:${email}`);
-            }}
-          />
-        )}
-
-        {/* 2. 트레이너 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
+        {/* 1. 트레이너 명단 및 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
+        <section aria-labelledby="trainer-management-title" className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+          <h2 id="trainer-management-title" className="text-base font-bold text-gray-900">트레이너 관리 ({activeTrainers.length})</h2>
+          <CollapsibleSection title="담당부여" persistKey="admin-trainers:assign" defaultOpen>
         <SectionAssign
           trainers={activeTrainers}
           trainees={trainees}
           busy={busy}
           onReorder={viewOnly ? undefined : reorderTrainers}
-          onSave={
-            viewOnly
-              ? () => {}
-              : (traineeEmail, trainerEmails, key) =>
-                  call(
-                    "/api/admin/assign-trainee",
-                    { traineeEmail, trainerEmails },
-                    key,
-                  )
-          }
+          resolveAssigned={resolveAssigned}
+          onSave={viewOnly ? () => {} : saveAssignment}
           onMoveToManagement={
             viewOnly
               ? undefined
@@ -186,13 +210,39 @@ export default function TrainerMgmtPanel({
           viewOnly={viewOnly}
         />
 
-        {/* 3. 수강생 명단 (조회 only) */}
+          </CollapsibleSection>
+
+        {/* 2. 권한부여 — 페이지가 주입 (TrainerAccessEditor). 접힘 UI 는 슬롯 안에서 처리. */}
+        {accessSlot}
+
+        {/* 3. 트레이너 요청관리 — pending 승인/거절. admin 전용. */}
+        {!viewOnly && (
+          <CollapsibleSection title="요청관리" badge={`${pendingTrainers.length}`} persistKey="admin-trainers:requests">
+          <SectionPending
+            pending={pendingTrainers}
+            busy={busy}
+            onApprove={(email) =>
+              call("/api/admin/approve-trainer", { email }, `approve:${email}`)
+            }
+            onReject={(email) => {
+              if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
+              call("/api/admin/reject-trainer", { email }, `reject:${email}`);
+            }}
+          />
+          </CollapsibleSection>
+        )}
+
+        {/* 4. 초대관리 — 페이지가 주입 (TrainerInvites). 기본 접힘. */}
+        {inviteSlot}
+        </section>
+
+        {/* 5. 수강생 명단 (조회 only) */}
         <SectionTraineeList
           trainees={trainees}
           activeTrainers={activeTrainers}
         />
 
-        {/* 4. 관리부서 명단 — viewOnly 면 액션 버튼 숨김. */}
+        {/* 6. 관리부서 명단 — viewOnly 면 액션 버튼 숨김. */}
         <SectionManagement
           staff={managementStaff}
           busy={busy}

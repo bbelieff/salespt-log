@@ -32,7 +32,7 @@ import {
   isCarryoverContract,
 } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { STATS_WEEKS, courseWeeksForCohort } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -77,10 +77,10 @@ export const CARRYOVER = (mt: Meeting): boolean => mt.구분 === "이월";
  * (10)는 시트 물리 상한(쓰기 좌표 계산용, lib/repo/sales.ts)일 뿐 — 이 대시보드 재계산에는 STATS_WEEKS
  * (8)가 맞다. 9~10주차 데이터가 있는 사용자는 이 클램프 없이 재계산하면 DB 재계산이 시트 수식보다
  * 커진다(parity run 31361493846 그룹A 3명 sheet<db 실측과 정확히 일치). */
-function inSheetWindow(dateISO: string | undefined, courseStart: Date): boolean {
+function inSheetWindow(dateISO: string | undefined, courseStart: Date, span = STATS_WEEKS): boolean {
   if (!dateISO) return false;
   const w = weekIndexOf(parseISO(dateISO), courseStart);
-  return Number.isFinite(w) && w >= 1 && w <= STATS_WEEKS;
+  return Number.isFinite(w) && w >= 1 && w <= span;
 }
 
 /** 채널별 6단계 stacking (01!R1:U6 재현). 생산/유입/컨택진행=salesRows 합,
@@ -91,6 +91,7 @@ export function channelStackingFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): DashboardChannelMatrix[] {
   const byCh = new Map<Channel, DashboardChannelMatrix>();
   for (const ch of CHANNEL_ORDER) byCh.set(ch, EMPTY_STAGE(ch));
@@ -103,7 +104,7 @@ export function channelStackingFromDb(
     // 삭제된 쓰기 가드(isWithinSalesWindow=salesRowFor)는 주차 0(수강 시작 전) 기입도 막고 있었다.
     // 실측 근거(BBE-120, 2026-08-10 재확인): 시트 R1~R3 = `=E10+E14+…+E272`(56항=8주×7일,
     // 주차블록 1~8만 — E272 는 week8 마지막 항) → 창 밖은 시트도 안 센다.
-    if (!inSheetWindow(r.date, courseStart)) continue;
+    if (!inSheetWindow(r.date, courseStart, span)) continue;
     m.생산 += num(r.production);
     m.유입 += num(r.inflow);
     m.컨택진행 += num(r.contactProgress);
@@ -116,9 +117,10 @@ export function channelStackingFromDb(
     //   R4 미팅예약 · R5 미팅완료 = COUNTIFS(04!F:F,J:J) — **날짜 무필터** → 클램프 금지.
     //   R6 계약        = N10+N14+…+N272 — **주차블록 합(1~STATS_WEEKS, BBE-120 재확인)** → 클램프 필요.
     // 셋을 같은 규칙으로 묶으면 어느 쪽이든 parity 가 깨진다(reverseShadowCompare 영구 diff).
+    if (span !== STATS_WEEKS && !inSheetWindow(mt.미팅날짜, courseStart, span)) continue;
     if (ALIVE(mt.상태)) m.미팅예약 += 1; // 누적 퍼널: 살아있는 미팅 전부(무필터 = 시트 대칭)
     if (DONE(mt.상태)) m.미팅완료 += 1;
-    if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart)) m.계약 += 1; // N 주차블록 합 대칭
+    if (mt.계약여부 && inSheetWindow(mt.미팅날짜, courseStart, span)) m.계약 += 1; // N 주차블록 합 대칭
   }
   return CHANNEL_ORDER.map((ch) => byCh.get(ch)!);
 }
@@ -127,13 +129,14 @@ export function channelStackingFromDb(
 export function weeklyContractsFromDb(
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): number[] {
-  const weeks = new Array(STATS_WEEKS).fill(0);
+  const weeks = new Array(span).fill(0);
   for (const m of meetings) {
     if (m.상태 !== "계약") continue; // N 은 J="계약" COUNTIFS (완료·변경·취소 제외)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(m.미팅날짜)) continue;
     const w = weekIndexOf(parseISO(m.미팅날짜), courseStart);
-    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
+    if (w >= 1 && w <= span) weeks[w - 1] += 1; // 8주 밖(0·9·10) 자연 제외
   }
   return weeks;
 }
@@ -145,37 +148,92 @@ export function weeklyActivityFromDb(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): number[] {
-  const weeks = new Array(STATS_WEEKS).fill(0);
+  const weeks = new Array(span).fill(0);
   for (const r of salesRows) {
     if (!(CHANNEL_ORDER as readonly string[]).includes(r.channel)) continue;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
     const w = weekIndexOf(parseISO(r.date), courseStart);
-    if (w < 1 || w > STATS_WEEKS) continue; // 8주 통계만(유예 9~10·시작 전 제외)
+    if (w < 1 || w > span) continue; // 8주 통계만(유예 9~10·시작 전 제외)
     weeks[w - 1] += num(r.production) * 1 + num(r.contactProgress) * 1.5;
   }
   for (const mt of meetings) {
     if (CARRYOVER(mt) || !DONE(mt.상태)) continue; // 미팅완료(성사)·이월제외 (대시보드 L 수식)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(mt.미팅날짜)) continue;
     const w = weekIndexOf(parseISO(mt.미팅날짜), courseStart);
-    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] += 2; // 미팅 가중치 2
+    if (w >= 1 && w <= span) weeks[w - 1] += 2; // 미팅 가중치 2
   }
   return weeks;
 }
 
 /** 누적수임비(B21) = 이월 제외 Σ수임비(arena). 정의 belie 확정(2026-08-05, BBE-66).
- * 파일럿 전원 diff 0 실증은 미완 — 파일 상단 주석 참고. */
+ * ⚠️ BBE-252 후속(2026-08-20) 실측 — 시트 B21 실제 수식은 `='01 영업관리'!O4`
+ * (`O4=O38+O72+...+O276`, 1~8주 stride 8개 셀의 합) 이다. 이 재구현은 "이월 제외
+ * 전체합"으로 STATS_WEEKS(8) 창 클램프가 빠져 있었다 — weeklyContractsFromDb/
+ * weeklyActivityFromDb 등 이 파일의 다른 3개 집계는 이미 이 클램프를 쓴다(BBE-120).
+ * 9주+ 무제한 CRM 기록(ADR-0031)이 있는 사용자는 이 클램프 없이 계산하면 시트보다
+ * 부풀려진다(6·7기 실측, 7기 8명 중 6명이 이 클램프만으로 diff 0 — a808ed0d0385:
+ * 클램프전 sheet=8300000/db=13300000 diff -5000000 → 클램프후 diff 0). 파일럿 전원
+ * diff 0 실증은 미완 — 파일 상단 주석 참고. */
 export function arenaFeeFromDb(
   contracts: ContractPayment[],
+  courseStart: Date,
   courseStartISO: string,
+  span = STATS_WEEKS,
 ): number {
   let fee = 0;
   for (const c of contracts) {
     if (isCarryoverContract(c, courseStartISO)) continue;
+    // ★이 파일의 inSheetWindow()는 MAX_SHEET_WEEK(10) 클램프 — R1:U6 채널매트릭스 전용
+    // (실측 근거 다름, :68-74 주석). B21/O4 는 8개 stride 항(O38..O276)만 합산하므로
+    // STATS_WEEKS(8) 직접 비교를 쓴다 — weeklyContractsFromDb/weeklyActivityFromDb 와 동일 패턴.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(c.계약일 ?? "")) continue;
+    const w = weekIndexOf(parseISO(c.계약일!), courseStart);
+    if (w < 1 || w > span) continue;
     fee += num(c.수임비);
   }
   return fee;
 }
+
+/** 6기 전용 소스 정렬(BBE-252, 2026-08-21) — 대상 기수(SOURCE_ALIGNED_FEE_COHORTS)만 사용.
+ *
+ * SSH `valueRenderOption:FORMULA` 실측으로 시트 B21 의 진짜 정의를 확인했다:
+ *   `대시보드!B21` = `'01 영업관리'!O4`(또는 6기 `=O4+O5`) · `O4=O38+O72+...+O276`
+ *   (1~8주 stride 8셀 합) · `O38=sum(O10:O37)` 안의 `SUMIFS('04 업체관리(앱자동작성용)'!
+ *   L:L, ..., J:J="계약")` — **02(계약) 테이블이 아니라 04(미팅) L열(수임비)을 상태="계약"
+ *   기준으로 주차합산**한다. `lib/config/index.ts:212-213`("계약 액션 시 D/G/L→C/D/E 자동
+ *   연동")과 정합 — 계약 성사 순간 미팅.L 이 계약.E 로 1회성 복사될 뿐 이후 독립적으로
+ *   벌어질 수 있다(레거시·수기 데이터에서 실측된 드리프트의 근본 원인).
+ *
+ * `arenaFeeFromDb`(계약 테이블 기준)는 **파일럿(8·9·연습)·7기 등에서 이미 검증된 값**이라
+ * 그대로 둔다 — 이 함수는 소스가 확실히 다르다고 실측 확정된 6기에만 쓴다(호출부에서
+ * SOURCE_ALIGNED_FEE_COHORTS 로 분기, cohort 파라미터 없으면 항상 기존 경로 유지 = 회귀 0). */
+export function weeklyFeeFromMeetings(meetings: Meeting[], courseStart: Date): number {
+  let fee = 0;
+  for (const m of meetings) {
+    if (m.상태 !== "계약") continue; // O38 SUMIFS 의 J:J="계약" 과 동일 필터(weeklyContractsFromDb 재사용 패턴)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(m.미팅날짜)) continue;
+    const w = weekIndexOf(parseISO(m.미팅날짜), courseStart);
+    if (w < 1 || w > STATS_WEEKS) continue; // O4=O38+...+O276 은 1~8주 stride 8셀만
+    fee += num(m.수임비);
+  }
+  return fee;
+}
+
+/** 소스 정렬을 적용할 기수(정규화된 라벨, "기" 접미사 제거 형태) — 딱 이 집합만.
+ * 새 기수를 추가하려면 그 기수도 같은 방식(FORMULA 실측 + parity diff 0 재검증)을 거쳐야 한다 —
+ * "아마 같을 것"으로 확장 금지(§0.8 증거 없는 문장 금지). */
+const SOURCE_ALIGNED_FEE_COHORTS = new Set(["6"]);
+
+/** 6기 전용 legacy 오프셋 — `'02 계약관리'!D2`(헤더존 고정 셀, 앱 쓰기 경로 밖) 1회 스냅샷
+ * (SSH 실측 2026-08-21, scripts/ops/bbe252-6gi-o5-snapshot.mjs). 6기 등록 6명 중 1명만
+ * 0 이 아니다(나머지 5명 = 0, 맵에서 생략). 이 값이 나중에 실제로 바뀌는 걸 확인하면
+ * (사용자가 그 헤더존 셀을 직접 편집하는 등) 재스냅샷 스크립트를 다시 돌려 갱신할 것 —
+ * 이 상수 자체는 "언젠가 자동화"할 만큼 크지 않다(대상 6명, 폐쇄 기수). */
+const LEGACY_FEE_OFFSET: Record<string, number> = {
+  "1-yN9iy37CctJ2s_ZUMcb3S7qozIwOfqzdLIHBmyWoXU": 660_000,
+};
 
 // ── 그림자 대조 diff ────────────────────────────────────────────
 export interface ParityDiff {
@@ -216,24 +274,32 @@ export function diffDashboardAggregates(
   return out;
 }
 
-/** DB 4종 재계산 묶음 — 시트측 값과 대조 가능한 형태. 순수 입력(테스트·parity 스크립트 공용). */
+/** DB 4종 재계산 묶음 — 시트측 값과 대조 가능한 형태. 순수 입력(테스트·parity 스크립트 공용).
+ * `feeSource`(선택) — 기수 한정 소스 정렬(BBE-252, weeklyFeeFromMeetings 주석 참고).
+ * 생략하면 항상 기존 `arenaFeeFromDb`(계약 테이블 기준) — 호출부를 안 고치면 회귀 0. */
 export function computeDbAggregates(
   salesRows: DbSalesRow[],
   meetings: Meeting[],
   contracts: ContractPayment[],
   courseStart: Date,
   courseStartISO: string,
+  feeSource?: { cohort?: string; spreadsheetId?: string },
 ): {
   channelMatrix: DashboardChannelMatrix[];
   weeklyContracts: number[];
   weeklyActivity: number[];
   누적수임비: number;
 } {
+  const span = courseWeeksForCohort(feeSource?.cohort);
+  const normalizedCohort = (feeSource?.cohort ?? "").replace(/기\s*$/, "").trim();
+  const fee = SOURCE_ALIGNED_FEE_COHORTS.has(normalizedCohort)
+    ? weeklyFeeFromMeetings(meetings, courseStart) + (LEGACY_FEE_OFFSET[feeSource?.spreadsheetId ?? ""] ?? 0)
+    : arenaFeeFromDb(contracts, courseStart, courseStartISO, span);
   return {
-    channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart),
-    weeklyContracts: weeklyContractsFromDb(meetings, courseStart),
-    weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart),
-    누적수임비: arenaFeeFromDb(contracts, courseStartISO),
+    channelMatrix: channelStackingFromDb(salesRows, meetings, courseStart, span),
+    weeklyContracts: weeklyContractsFromDb(meetings, courseStart, span),
+    weeklyActivity: weeklyActivityFromDb(salesRows, meetings, courseStart, span),
+    누적수임비: fee,
   };
 }
 

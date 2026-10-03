@@ -22,11 +22,13 @@
  * `withCellLock`(프로세스 내 셀 락) — 사용자별 행이 분리돼 lost update 가 **구조적으로 불가능**
  * 해졌다. 단일 pm2 인스턴스 전제도 함께 사라진다(카드의 "부수 효과"). 시트 미러 경로에는 남는다.
  *
- * ★설계(위험 최소화, 유지): meetings.ts/todos.ts 의 행 쓰기(writeMeetingRowSplit 은 A:M/P/R/
- * T:AN/AQ:AS, writeTodoRow 는 A:N)는 이 컬럼을 **범위 밖**으로 두어 안 건드린다.
+ * ★설계(위험 최소화, 유지): meetings.ts/todos.ts/carryover.ts 의 행 쓰기(writeMeetingRowSplit·
+ * 이월 writeCarriedRowAt 은 A:M/P/R/T:AN/AQ:AS/AU:CD, writeTodoRow 는 A:N)는 이 컬럼을
+ * **범위 밖**으로 두어 안 건드린다.
  */
 import { SHEET_RANGES } from "@/config";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
+import { isGridLimitsError } from "./grid-limits";
 import { dbEnabled } from "./db/client";
 import {
   backfillGcalMapIfAbsent,
@@ -76,12 +78,7 @@ async function findRow(
  * 컬럼 없음 = 매핑·마커 없음이므로 읽기 경로는 빈 값과 동치. 그리드 확장(ensureGridColumns)은
  * 쓰기 경로(setGcalEventId)만 수행 — 읽기에 쓰기 작업을 붙이지 않는다 (2026-07-12 카나리아 실측).
  */
-function isGridLimitsError(e: unknown): boolean {
-  if (!e || typeof e !== "object") return false;
-  const err = e as { code?: number; status?: number; message?: string };
-  const is400 = err.code === 400 || err.status === 400;
-  return is400 && /exceeds grid limits/i.test(String(err.message ?? ""));
-}
+// 판별기 본체 = ./grid-limits (04 확장2 읽기 폴백과 공용).
 
 function parseMap(raw: string): Record<string, string> {
   if (!raw.trim()) return {};

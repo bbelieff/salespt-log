@@ -11,6 +11,8 @@
 "use client";
 
 import PageContainer from "@/components/PageContainer";
+import WeekBody from "./_components/WeekBody";
+import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting } from "@/types";
 import {
@@ -21,12 +23,11 @@ import {
   useReviveCaseClosure,
   useWeekMeetings,
 } from "@/query/contact-hooks";
-import {
-  useAddContractPayment,
-  useSyncContractFee,
-} from "@/query/contract-payment-hooks";
+import { useAddContractPayment, useSyncContractFee } from "@/query/contract-payment-hooks";
+import { useManualLinkPrompt } from "./_lib/use-manual-link-prompt";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import { useGuardedNav } from "@/components/DirtyGuard";
+import { decideContractFanout } from "./_lib/contract-fanout";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -58,6 +59,7 @@ export default function SchedulePage() {
   const reviveCaseClosure = useReviveCaseClosure();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
+  const manualLink = useManualLinkPrompt(); // 같은 이름 「영업기록 없이 추가」 업체 → 연결 제안
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -85,7 +87,12 @@ export default function SchedulePage() {
   const handlePatch = async (
     id: string,
     partial: Partial<Omit<Meeting, "id">>,
+    opts?: { quiet?: boolean },
   ) => {
+    // quiet(자동 저장): 루틴 성공 토스트 없음 + 실패는 throw 로 큐에 전달.
+    const say = (msg: string) => {
+      if (!opts?.quiet) showToast(msg);
+    };
     setPendingId(id);
     try {
       // patch 전에 현재 미팅 상태를 lookup — fan-out 중복 방지에 필요.
@@ -102,33 +109,32 @@ export default function SchedulePage() {
         partial,
       });
 
-      // Fan-out: NEW 계약 액션일 때만 02 계약수납관리에 row 자동 생성.
-      // 이미 계약 상태였던 카드의 수임비/조건 수정은 fan-out 안 함 (중복 row 방지).
-      if (
-        partial.상태 === "계약" &&
-        !wasAlreadyContract &&
-        weekQuery.data
-      ) {
-        const meeting = weekQuery.data.daysByMeetingDate
-          .flatMap((d) => d.meetings)
-          .find((m) => m.id === id);
-        if (meeting) {
+      // Fan-out: 계약 저장 시 02 장부 행 보장. ⚠️ 매출이 사라졌던 자리다
+      // (2026-09-01 · 10기 문병규 ₩1,100,000). 규칙·근거 = ./_lib/contract-fanout.ts
+      const fanout = decideContractFanout(partial, prevMeeting);
+      if (fanout.kind === "blocked") {
+        say(
+          "⚠ 계약 상태는 저장됐지만 계약 정보를 읽지 못해 장부에 넣지 못했어요. 새로고침 후 이 카드를 다시 계약으로 저장해 주세요.",
+        );
+        return;
+      }
+      if (fanout.kind === "run") {
+        const payload = fanout.payload;
+        if (!wasAlreadyContract && (await manualLink.ask(id, payload.업체명)) === "linked") return say("✓ 계약 확정 + 기존 업체와 연결됨");
+        try {
+          await addContractPayment.mutateAsync(payload);
+          say("✓ 계약 확정 + 계약수납 row 생성됨");
+        } catch {
+          // 일시적 실패(네트워크·쿼터)로 매출이 사라지지 않게 한 번 더. 멱등이라 안전.
           try {
-            await addContractPayment.mutateAsync({
-              계약일: meeting.미팅날짜,
-              업체명: meeting.업체명,
-              수임비: partial.수임비 ?? meeting.수임비 ?? 0,
-            });
-            showToast("✓ 계약 확정 + 계약수납 row 생성됨");
+            await addContractPayment.mutateAsync(payload);
+            say("✓ 계약 확정 + 계약수납 row 생성됨 (재시도 성공)");
           } catch (e) {
-            showToast(
-              `⚠ 계약은 저장됐으나 계약수납 row 생성 실패: ${(e as Error).message} — 계약수납 탭에서 수동으로 추가 필요`,
+            say(
+              `⚠ 계약 상태는 저장됐지만 장부에 넣지 못했어요: ${(e as Error).message} — 이 카드를 다시 계약으로 저장하면 채워져요.`,
             );
             return;
           }
-        } else {
-          showToast("✓ 저장 완료 (meeting lookup 실패 — fan-out 생략)");
-          return;
         }
       } else if (
         wasAlreadyContract &&
@@ -144,21 +150,22 @@ export default function SchedulePage() {
             업체명: prevMeeting.업체명,
             수임비: partial.수임비,
           });
-          showToast(
+          say(
             result.synced
               ? "✓ 저장 완료 + 계약수납 수임비 sync"
               : "✓ 저장 완료 (계약수납 매칭 row 없음 — 시트에서 수동 확인)",
           );
         } catch (e) {
-          showToast(
+          say(
             `⚠ 미팅은 저장됐으나 계약수납 sync 실패: ${(e as Error).message}`,
           );
         }
       } else {
-        showToast("✓ 저장 완료");
+        say("✓ 저장 완료");
       }
     } catch (e) {
-      showToast(`저장 실패: ${(e as Error).message}`);
+      say(`저장 실패: ${(e as Error).message}`);
+      if (opts?.quiet) throw e; // 자동 저장 큐가 실패로 인식해 초안 유지+재시도
     } finally {
       setPendingId(null);
     }
@@ -459,42 +466,35 @@ export default function SchedulePage() {
       />
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
-      <div className="sticky top-24 z-30 bg-white shadow-sm" {...weekSwipe}>
-        {/* 배경 full-bleed + 내용은 본문과 동일 6xl 중앙정렬 */}
-        <PageContainer width="wide">
-          <WeekHeader
-            weekIndex={weekIndex}
-            weekStart={weekStart}
-            todayISO={TODAY_ISO}
-            countsByDay={countsByDay}
-            onPrevWeek={() => moveWeek(-1)}
-            onNextWeek={() => moveWeek(1)}
-            onClickDay={scrollToDay}
-            slideDir={slideDir}
-          />
-          <SummaryBar meetings={allMeetings} />
+      <div className="sticky top-app-content z-30 bg-white shadow-sm" {...weekSwipe}>
+        {/* sticky 배경은 전폭, 주차·실적 요약만 풀사이즈에서 중앙 50% */}
+        <PageContainer width="fluid">
+          <div className="min-[1440px]:mx-auto min-[1440px]:w-1/2">
+            <WeekHeader
+              weekIndex={weekIndex}
+              weekStart={weekStart}
+              todayISO={TODAY_ISO}
+              countsByDay={countsByDay}
+              onPrevWeek={() => moveWeek(-1)}
+              onNextWeek={() => moveWeek(1)}
+              onClickDay={scrollToDay}
+              slideDir={slideDir}
+            />
+            <SummaryBar meetings={allMeetings} goalSummary={<WeeklyGoalSummary compact date={weekStart} metrics={["meetings", "contracts"]} />} />
+          </div>
         </PageContainer>
       </div>
 
-      <main className="px-4 pb-[80px] pt-1">
-      <PageContainer width="wide">
-        {/* PC 2열(좌 금토일/우 월화수목) — gap-8 + 우 세로 구분선으로 좌우 분리 강화. 모바일 회귀 0. */}
-        <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-8">
-          <div>
-            {daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
-          </div>
-          <div className="pc:border-l pc:border-gray-200 pc:pl-8">
-            {daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))}
-          </div>
-        </div>
-      </PageContainer>
-      </main>
+      <WeekBody
+        firstDays={daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
+        lastDays={daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))} />
 
       {toast && (
         <div className="fixed bottom-[80px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}
+      {manualLink.element}
     </>
   );
 }

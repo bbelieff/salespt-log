@@ -3,7 +3,7 @@ import {
   companyContractRef,
   companyInfoToArchiveRow,
 } from "@/repo/company-info-archive";
-import { COMPANY_FIELDS, COMPANY_FIELDS_EXT } from "@/repo/meetings";
+import { COMPANY_FIELDS, COMPANY_FIELDS_EXT, COMPANY_FIELDS_EXT2 } from "@/repo/meetings";
 import { CompanyInfo } from "@/types";
 
 const CUSTOM_IDX = 4 + COMPANY_FIELDS.length; // Y
@@ -13,9 +13,12 @@ describe("06 업체정보 아카이브 행 빌더", () => {
     expect(companyContractRef("2026-06-10", " A업체 ")).toBe("2026-06-10|A업체");
   });
 
-  it("행 = A~AB 28컬럼: 키 4 + 필드 20 + 커스텀 1 + 확장 3 (field-grid)", () => {
+  it("행 = A~BL 64컬럼: 키 4 + 필드 20 + 커스텀 1 + 확장 3 + 확장2 20 + 확장3 15 + 확장4 1", () => {
     const row = companyInfoToArchiveRow("A업체", "2026-06-10", undefined, "T0");
-    expect(row).toHaveLength(4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length); // 28
+    expect(row).toHaveLength(
+      4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + COMPANY_FIELDS_EXT2.length + 15 + 1,
+    ); // 64
+    expect(row).toHaveLength(64);
     expect(row[0]).toBe("A업체");
     expect(row[1]).toBe("2026-06-10");
     expect(row[2]).toBe("2026-06-10|A업체");
@@ -58,5 +61,34 @@ describe("06 업체정보 아카이브 행 빌더", () => {
 
     const empty = companyInfoToArchiveRow("D업체", "2026-06-12", CompanyInfo.parse({}), "T3");
     expect(empty[CUSTOM_IDX]).toBe("");
+  });
+});
+
+describe("06 확장2 20필드 (AC~AV — company-info-new-fields)", () => {
+  const EXT2_START = 4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length; // 28 = AC
+
+  it("확장2 = Z~AB 바로 뒤 AC(28)부터, 확정 순서 그대로", () => {
+    expect(EXT2_START).toBe(28);
+    expect(COMPANY_FIELDS_EXT2).toEqual([
+      "과세유형", "업태", "법인등록번호", "임차보증금", "임차월세", "임차면적",
+      "주민등록번호",
+      "결산연도", "영업이익", "당기순이익", "이자비용", "자산총계", "부채총계", "자본총계",
+      "반기별매출", "면세수입금액", "부채비율", "이자보상배율", "당기순이익률", "매출증가율",
+    ]);
+  });
+
+  it("값은 apostrophe plain-text, 기존 열(Z~AB) 위치 불변", () => {
+    const ci = CompanyInfo.parse({
+      과년도매출Y3: "23' 70백만",
+      과세유형: "일반과세자",
+      주민등록번호: "800101-1234567", // 스키마가 앞자리만 남김
+      매출증가율: "12%",
+    });
+    const row = companyInfoToArchiveRow("예시상사", "2026-09-28", ci, "T");
+    expect(row[CUSTOM_IDX + 1 + COMPANY_FIELDS_EXT.indexOf("과년도매출Y3")]).toBe("'23' 70백만");
+    expect(row[EXT2_START]).toBe("'일반과세자");
+    expect(row[EXT2_START + COMPANY_FIELDS_EXT2.indexOf("주민등록번호")]).toBe("'800101-");
+    expect(row[47]).toBe("'12%"); // AV
+    expect(row.join("|")).not.toContain("1234567");
   });
 });

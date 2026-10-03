@@ -83,7 +83,7 @@ export default function TodoDayCard({
         <div className="truncate text-sm font-semibold text-gray-900">
           {t.업체명 || t.제목}
         </div>
-        <div className="truncate text-[11px] text-gray-400">{t.제목}</div>
+        <div className="truncate text-px-11 text-gray-400">{t.제목}</div>
       </div>
       {t.장소 && (
         <span className="max-w-20 shrink-0 truncate text-xs text-gray-400">

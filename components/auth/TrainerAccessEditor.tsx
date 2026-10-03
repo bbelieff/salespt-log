@@ -1,0 +1,166 @@
+"use client";
+
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { TrainerAccessValue, TrainerAccountKey } from "@/types/trainer-access";
+import type { TrainerAccessPerson, TrainerGrade, TrainerStudentCategory } from "@/types/trainer-access";
+import { defaultTrainerGrants, isTrainerGrants, retainTrainerGrantsForGrade } from "@/util/trainer-access-policy";
+
+import { editorStyles } from "./TrainerAccessEditor.styles";
+
+const grades = { senior: "수석", regular: "일반", apprentice: "견습" };
+const categories = { active: "활성", arena: "아레나", archived: "보관" };
+const notes = { active: "현재 활성 수강생", arena: "아레나에 속한 수강생", archived: "보관된 수강생·기수" };
+const categoryKeys = Object.keys(categories) as TrainerStudentCategory[];
+function range(person: TrainerAccessPerson) {
+  const allowed = categoryKeys.filter(key => person.grants[key].read).map(key => categories[key]);
+  return allowed.length === 3 ? "전체 수강생" : allowed.join(" · ") || "조회 권한 없음";
+}
+function validPeople(value: unknown): value is TrainerAccessPerson[] {
+  if (!Array.isArray(value)) return false;
+  const keys = new Set<string>();
+  return value.every(p => {
+    if (!p || !TrainerAccountKey.safeParse(p.email).success || keys.has(p.email)
+      || typeof p.name !== "string" || !p.name.trim() || p.status !== "active"
+      || !Number.isInteger(p.version) || !isTrainerGrants(p.grants)) return false;
+    keys.add(p.email);
+    return p.grade === null ? p.version === 0 && JSON.stringify(p.grants) === JSON.stringify(defaultTrainerGrants(null))
+      : p.version > 0 && TrainerAccessValue.safeParse({ grade: p.grade, grants: p.grants }).success;
+  });
+}
+/** Approved v4 editor, with server-loaded admin-only initial data.
+ * readOnly is presentation only; GET and PUT independently require server admin auth.
+ */
+export default function TrainerAccessEditor({ endpoint = "/api/admin/trainer-access", readOnly = false, initialPeople }: {
+  endpoint?: string; readOnly?: boolean; initialPeople?: TrainerAccessPerson[];
+}) {
+  const id = useId();
+  const [people, setPeople] = useState<TrainerAccessPerson[]>(() => validPeople(initialPeople) ? initialPeople : []);
+  const [draft, setDraft] = useState<TrainerAccessPerson | null>(() => validPeople(initialPeople) && initialPeople[0] ? structuredClone(initialPeople[0]) : null);
+  const [busy, setBusy] = useState(!initialPeople);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [denied, setDenied] = useState(false);
+  const [refreshOnly, setRefreshOnly] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const generation = useRef(0);
+  const inFlight = useRef(false);
+  const savedTarget = useRef<{ email: string; version: number } | null>(null);
+  const saved = people.find(p => p.email === draft?.email);
+  const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(saved);
+  const locked = busy || readOnly || denied || refreshOnly;
+
+  const load = useCallback(async (signal?: AbortSignal) => {
+    const response = await fetch(endpoint, { cache: "no-store", credentials: "same-origin", signal });
+    if (response.status === 401 || response.status === 403) throw new Error("denied");
+    if (!response.ok) throw new Error("unavailable");
+    const body = await response.json();
+    if (!validPeople(body.trainers)) throw new Error("unavailable");
+    return body.trainers as TrainerAccessPerson[];
+  }, [endpoint]);
+  useEffect(() => {
+    const controller = new AbortController(); const current = ++generation.current;
+    setPeople([]); setDraft(null); setBusy(true); setError(""); setNotice(""); setDenied(false); setRefreshOnly(false);
+    savedTarget.current = null; inFlight.current = false;
+    load(controller.signal).then(rows => {
+      if (generation.current !== current) return;
+      setPeople(rows); setDraft(rows[0] ? structuredClone(rows[0]) : null);
+    }).catch(err => {
+      if (controller.signal.aborted || generation.current !== current) return;
+      setDenied(err.message === "denied"); setError(err.message === "denied" ? "관리자만 권한 설정을 볼 수 있습니다." : "권한을 불러오지 못했습니다. 다시 시도해 주세요.");
+    }).finally(() => { if (generation.current === current) setBusy(false); });
+    return () => { controller.abort(); generation.current++; };
+  }, [load]);
+  useEffect(() => {
+    if (!dirty) return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty]);
+  function closeDialog() { dialog.current?.close(); saveButton.current?.focus(); }
+  async function refresh() {
+    if (inFlight.current) return;
+    inFlight.current = true; const current = generation.current; setBusy(true); setError("");
+    try {
+      const rows = await load();
+      if (generation.current !== current) return;
+      const target = savedTarget.current;
+      if (target && !rows.some(p => p.email === target.email && p.version >= target.version)) throw new Error("unavailable");
+      const next = rows.find(p => p.email === draft?.email) ?? rows[0] ?? null;
+      setPeople(rows); setDraft(next ? structuredClone(next) : null); setRefreshOnly(false); setDenied(false);
+      setNotice(target ? "저장한 권한을 다시 확인했습니다." : "최신 권한을 불러왔습니다."); savedTarget.current = null;
+    } catch (err) {
+      if (generation.current !== current) return;
+      if (err instanceof Error && err.message === "denied") setDenied(true);
+      setError("권한을 다시 확인하지 못했습니다. 변경사항은 유지됩니다.");
+    } finally { if (generation.current === current) { setBusy(false); inFlight.current = false; } }
+  }
+  async function save() {
+    if (!draft?.grade || locked || inFlight.current) return;
+    inFlight.current = true; const current = generation.current; setBusy(true); setError(""); setNotice(""); closeDialog();
+    try {
+      const response = await fetch(endpoint, { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: draft.email, grade: draft.grade, grants: draft.grants, version: draft.version }) });
+      if (generation.current !== current) return;
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) setDenied(true);
+        throw new Error(response.status === 409 ? "다른 변경사항이 먼저 저장되었습니다. 초안을 확인한 뒤 최신 권한을 불러와 주세요."
+          : "저장하지 못했습니다. 변경사항은 유지됩니다.");
+      }
+      savedTarget.current = { email: draft.email, version: draft.version + 1 }; setRefreshOnly(true);
+      const rows = await load();
+      if (generation.current !== current) return;
+      const next = rows.find(p => p.email === draft.email);
+      if (!next || next.version < savedTarget.current.version) throw new Error("재조회 실패");
+      setPeople(rows); setDraft(structuredClone(next)); setRefreshOnly(false); savedTarget.current = null;
+      setNotice("저장하고 최신 권한을 다시 확인했습니다.");
+    } catch (err) {
+      if (generation.current !== current) return;
+      if (err instanceof Error && err.message === "denied") setDenied(true);
+      setError(savedTarget.current ? "저장 요청은 처리됐지만 재조회하지 못했습니다. 변경사항을 유지하며 재조회를 기다립니다."
+        : err instanceof Error ? err.message : "저장하지 못했습니다. 변경사항은 유지됩니다.");
+    } finally { if (generation.current === current) { inFlight.current = false; setBusy(false); } }
+  }
+  return <div className="trainer-access" aria-busy={busy}>
+    <style>{editorStyles}</style>
+    {error && <p role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
+    {busy && <p role="status">{draft ? "권한을 처리하고 있습니다." : "권한을 불러오고 있습니다."}</p>}
+    {!busy && !people.length && !error && <p>권한을 설정할 활성 트레이너가 없습니다. 관리자·관리부서는 제외됩니다.</p>}
+    {(error || refreshOnly) && <button disabled={busy} onClick={() => {
+      if (!refreshOnly && dirty && !window.confirm("변경사항을 버리고 최신 권한을 불러올까요?")) return;
+      void refresh();
+    }}>{refreshOnly ? "저장 결과 다시 조회" : "최신 권한 불러오기"}</button>}
+    <div className="permission-layout"><section className="permission-list" aria-label="트레이너 선택"><h2>트레이너 {people.length}명</h2>
+      {people.map(person => <button key={person.email} className="trainer-pick" aria-pressed={person.email === draft?.email} disabled={busy || refreshOnly} onClick={() => {
+        if (dirty && !window.confirm("저장하지 않은 변경사항을 버리고 다른 트레이너를 선택할까요?")) return;
+        setDraft(structuredClone(person)); setError(""); setNotice("");
+      }}><span><strong title={person.name}>{person.name}</strong><small className="account-email" title={person.email}>{person.email}</small><small>{range(person)}</small></span><span className="grade-tag">{person.grade ? grades[person.grade] : "미분류"}</span></button>)}
+    </section>{draft && <section className="permission-editor" aria-label="등급·권한 편집">
+      <div className="permission-eyebrow">등급·권한 편집</div><h2>{draft.name}</h2><small className="account-email" title={draft.email}>{draft.email}</small>
+      <div className="permission-section"><label className="grade-label" htmlFor={`${id}-grade`}>트레이너 등급</label>
+        <select id={`${id}-grade`} value={draft.grade ?? ""} disabled={locked} onChange={event => {
+          const grade = event.target.value as TrainerGrade; setDraft({ ...draft, grade, grants: retainTrainerGrantsForGrade(draft.grants, grade) });
+        }}><option value="" disabled>미분류 · 권한 없음</option>{Object.entries(grades).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+      </div>
+      <div className="permission-section"><div className="permission-section-title"><h3>수강생 접근 권한</h3><button disabled={locked || !draft.grade} onClick={() => setDraft({ ...draft, grants: defaultTrainerGrants(null) })}>권한 모두 해제</button></div>
+        <table className="permission-table"><thead><tr><th scope="col">수강생 구분</th><th scope="col">조회</th><th scope="col">수정</th></tr></thead><tbody>{categoryKeys.map(key => <tr key={key}>
+          <th scope="row"><strong>{categories[key]}</strong><small>{notes[key]}</small></th>{(["read", "write"] as const).map(action => <td key={action}><label><input type="checkbox" aria-label={`${categories[key]} ${action === "read" ? "조회" : "수정"}`} checked={draft.grants[key][action]}
+            disabled={locked || !defaultTrainerGrants(draft.grade)[key][action]} onChange={event => {
+              const grant = { ...draft.grants[key], [action]: event.target.checked };
+              if (action === "read" && !grant.read) grant.write = false;
+              if (action === "write" && grant.write) grant.read = true;
+              setDraft({ ...draft, grants: { ...draft.grants, [key]: grant } });
+            }} /></label></td>)}</tr>)}</tbody></table>
+      </div>
+      <div className="permission-savebar"><span>{dirty ? "저장 전 변경사항" : ""}</span><div>
+        <button disabled={locked || !dirty} onClick={() => { setDraft(saved ? structuredClone(saved) : null); setError(""); }}>변경 취소</button>
+        <button ref={saveButton} className="primary" disabled={locked || !dirty || !draft.grade} onClick={() => dialog.current?.showModal()}>변경사항 저장</button>
+      </div></div>
+    </section>}</div>
+    <dialog ref={dialog} aria-labelledby={`${id}-confirm`} onCancel={() => saveButton.current?.focus()}><h2 id={`${id}-confirm`}>{draft?.name}님의 권한을 변경할까요?</h2>
+      <p className="permission-note">저장하면 변경된 범위로 조회·수정 권한이 적용됩니다.</p>
+      {draft && <div className="permission-summary">{draft.email}<br />등급: {saved?.grade ? grades[saved.grade] : "미분류"} → {draft.grade ? grades[draft.grade] : "미분류"}<br /><br />{categoryKeys.map(key => <div key={key}>{categories[key]}: {draft.grants[key].write ? "조회·수정" : draft.grants[key].read ? "조회만" : "접근 불가"}</div>)}</div>}
+      <div className="dialog-actions"><button onClick={closeDialog}>돌아가기</button><button className="primary" disabled={locked} onClick={() => void save()}>저장</button></div>
+    </dialog>
+  </div>;
+}

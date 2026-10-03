@@ -1,12 +1,13 @@
 /**
  * Layer: repo — 04 업체관리 행 코덱 (meetings.ts 에서 무동작 추출, R3-2 500줄 캡).
  *
- * Meeting ↔ 시트 행 배열(A~AS, 45셀) 변환 + 컬럼 좌표 상수. googleapis 비접촉(순수 함수).
+ * Meeting ↔ 시트 행 배열(A~CD, 82셀 — AT=gcal 맵은 항상 빈칸) 변환 + 컬럼 좌표 상수. googleapis 비접촉(순수 함수).
  * I/O(append/update/clear/find)는 meetings.ts — 외부 임포터는 meetings.ts 재수출을 계속 사용.
  *
  * SSOT: docs/domains/sheet-structure.md §3
  */
 import { Meeting, MeetingState } from "@/types";
+import { normalizeRrnFront } from "@/util/rrn-front";
 
 // ── 시트 직렬값 ↔ ISO 변환 — USER_ENTERED 자동 변환분을 SERIAL_NUMBER 로 받아 ISO 복원.
 
@@ -100,6 +101,62 @@ export const COMPANY_FIELDS_EXT = [
 ] as const;
 export const COMPANY_EXT_START = 42; // AQ
 
+// AT(45) = gcal_event_ids 사용자별 JSON 맵(lib/repo/gcal-event-ids.ts 전용) — 이 코덱은 비접촉.
+export const GCAL_MAP_COL = 45; // AT
+
+// 확장2 20필드 (AU=46~BN=65 — AT gcal맵 뒤 append, company-info-new-fields 2026-09-28).
+// 기존 열은 한 칸도 옮기지 않는다. 순서 = belie 확정 순서(06 AC~AV 미러도 같은 순서).
+export const COMPANY_FIELDS_EXT2 = [
+  "과세유형", "업태", "법인등록번호", "임차보증금", "임차월세", "임차면적",
+  "주민등록번호",
+  "결산연도", "영업이익", "당기순이익", "이자비용", "자산총계", "부채총계", "자본총계",
+  "반기별매출", "면세수입금액", "부채비율", "이자보상배율", "당기순이익률", "매출증가율",
+] as const;
+export const COMPANY_EXT2_START = 46; // AU
+
+// 확장3 15필드 (BO=66~CC=80 — 확장2 바로 뒤 append, company-info-restructure 2026-09-28).
+// 기존 열은 한 칸도 옮기지 않는다. 순서 = 06 AW~BK 미러도 같은 순서.
+export const COMPANY_FIELDS_EXT3 = [
+  "주생산품목", "대표임차보증금", "대표임차월세", "대표임차면적",
+  "매출Y상", "매출Y하", "매출Y1상", "매출Y1하", "매출Y2상", "매출Y2하", "매출Y3상", "매출Y3하",
+  "매출증가율Y3Y2", "매출증가율Y2Y1", "매출증가율Y1Y",
+] as const;
+export const COMPANY_EXT3_START = COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.length; // 66 = BO
+
+// 확장4 1필드 (CD=81 — 확장3 바로 뒤 append, company-finance-won-grid 2026-09-28).
+// 연도별 매출 Y 칸의 기준 연도("2026"). 06 BL 미러도 같은 순서.
+export const COMPANY_FIELDS_EXT4 = ["매출기준연도"] as const;
+export const COMPANY_EXT4_START = COMPANY_EXT3_START + COMPANY_FIELDS_EXT3.length; // 81 = CD
+/** 04 행 코덱 폭 = A~CD (82셀). grid 보장·읽기 범위의 단일 기준. */
+export const MEETING_ROW_WIDTH = COMPANY_EXT4_START + COMPANY_FIELDS_EXT4.length; // 82
+/**
+ * 확장 단계별 옛 폭(끝 열 인덱스+1) — 읽기 폴백 순서(넓은 것부터). grid 를 아직 안 넓힌 시트는
+ * 범위 초과 400 이 나므로 한 단계씩 좁혀 읽는다: A:CD → A:CC(확장3까지) → A:BN(확장2까지) → A:AS(확장1까지).
+ * 단계를 건너뛰면 CC 까지만 넓힌 시트에서 확장3 값이 읽기에서 사라진다.
+ */
+export const MEETING_READ_WIDTHS = [
+  MEETING_ROW_WIDTH,
+  COMPANY_EXT4_START,
+  COMPANY_EXT3_START,
+  COMPANY_EXT_START + COMPANY_FIELDS_EXT.length,
+] as const;
+
+/**
+ * 헤더 라벨 보강 계획 — 순수. existing = 시작 열(startIdx)부터 읽은 헤더 셀들.
+ * **빈 셀에만** 라벨을 채운다(§2.5 — 사용자가 고쳐 쓴 헤더 문구는 보존). 반환 = 채울 (열 인덱스, 라벨).
+ */
+export function headerBackfillPlan(
+  existing: readonly unknown[],
+  startIdx: number,
+  labels: readonly string[],
+): { col: number; label: string }[] {
+  const out: { col: number; label: string }[] = [];
+  labels.forEach((label, i) => {
+    if (String(existing[i] ?? "").trim() === "") out.push({ col: startIdx + i, label });
+  });
+  return out;
+}
+
 /** meetingToRow 가 USER_ENTERED 오변환 방지용으로 선행 apostrophe(`'`)를 붙이는 컬럼 전체. */
 const APOSTROPHE_ESCAPED_COL_INDICES = new Set<number>([
   COL.예약비고,
@@ -108,6 +165,9 @@ const APOSTROPHE_ESCAPED_COL_INDICES = new Set<number>([
   ...Array.from({ length: COMPANY_FIELDS.length }, (_, i) => COMPANY_FIELD_START + i),
   COMPANY_CUSTOM_COL,
   ...Array.from({ length: COMPANY_FIELDS_EXT.length }, (_, i) => COMPANY_EXT_START + i),
+  ...Array.from({ length: COMPANY_FIELDS_EXT2.length }, (_, i) => COMPANY_EXT2_START + i),
+  ...Array.from({ length: COMPANY_FIELDS_EXT3.length }, (_, i) => COMPANY_EXT3_START + i),
+  ...Array.from({ length: COMPANY_FIELDS_EXT4.length }, (_, i) => COMPANY_EXT4_START + i),
 ]);
 
 function stripSheetTextEscape(v: unknown): unknown {
@@ -130,7 +190,7 @@ export function stripUserEnteredEscapes(
   );
 }
 
-/** 행 배열 T~AN(+AQ~AS) → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
+/** 행 배열 T~AN(+AQ~AS·AU~BN·BO~CC·CD) → CompanyInfo (모든 필드 빈값이고 커스텀 없으면 undefined). */
 function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   const ci: Record<string, unknown> = {};
   let any = false;
@@ -141,6 +201,23 @@ function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   });
   COMPANY_FIELDS_EXT.forEach((f, i) => {
     const v = String(r[COMPANY_EXT_START + i] ?? "").trim();
+    ci[f] = v;
+    if (v) any = true;
+  });
+  COMPANY_FIELDS_EXT2.forEach((f, i) => {
+    const v = String(r[COMPANY_EXT2_START + i] ?? "").trim();
+    ci[f] = v;
+    if (v) any = true;
+  });
+  // 옛 폭(A~BN) 행은 여기 셀이 없다 → "" (스키마 default 와 동일).
+  COMPANY_FIELDS_EXT3.forEach((f, i) => {
+    const v = String(r[COMPANY_EXT3_START + i] ?? "").trim();
+    ci[f] = v;
+    if (v) any = true;
+  });
+  // 옛 폭(A~CC) 행은 CD 셀이 없다 → "".
+  COMPANY_FIELDS_EXT4.forEach((f, i) => {
+    const v = String(r[COMPANY_EXT4_START + i] ?? "").trim();
     ci[f] = v;
     if (v) any = true;
   });
@@ -156,9 +233,9 @@ function buildCompanyInfo(r: unknown[]): Record<string, unknown> | undefined {
   return any ? ci : undefined;
 }
 
-/** Meeting → 시트 1행 배열 (A~AS, 45셀). 수식·이월(AO/AP)·미설정은 빈 문자열. */
+/** Meeting → 시트 1행 배열 (A~CD, 82셀). 수식·이월(AO/AP)·gcal(AT)·미설정은 빈 문자열. */
 export function meetingToRow(m: Meeting): (string | number | boolean)[] {
-  const row: (string | number | boolean)[] = new Array(45).fill("");
+  const row: (string | number | boolean)[] = new Array(MEETING_ROW_WIDTH).fill("");
   row[COL.id] = m.id;
   row[COL.예약일] = m.예약일;
   row[COL.예약시각] = m.예약시각;
@@ -192,6 +269,23 @@ export function meetingToRow(m: Meeting): (string | number | boolean)[] {
   COMPANY_FIELDS_EXT.forEach((f, i) => {
     const v = ci ? String(ci[f] ?? "").trim() : "";
     row[COMPANY_EXT_START + i] = v ? `'${v}` : "";
+  });
+  // 확장2 20필드 AU~BN (AT gcal 맵은 빈 문자열 — split write 가 비접촉)
+  COMPANY_FIELDS_EXT2.forEach((f, i) => {
+    const raw = ci ? String(ci[f] ?? "").trim() : "";
+    // 스키마 우회 호출 방어 — 주민등록번호는 코덱에서도 앞 6자리만(뒷자리 시트 기록 불가).
+    const v = f === "주민등록번호" ? normalizeRrnFront(raw) : raw;
+    row[COMPANY_EXT2_START + i] = v ? `'${v}` : "";
+  });
+  // 확장3 15필드 BO~CC — 같은 apostrophe 규약("+12.5%"·"10,000,000" 이 숫자로 바뀌지 않게).
+  COMPANY_FIELDS_EXT3.forEach((f, i) => {
+    const v = ci ? String(ci[f] ?? "").trim() : "";
+    row[COMPANY_EXT3_START + i] = v ? `'${v}` : "";
+  });
+  // 확장4 CD(매출기준연도) — "2026" 이 숫자로 바뀌지 않게 같은 apostrophe 규약.
+  COMPANY_FIELDS_EXT4.forEach((f, i) => {
+    const v = ci ? String(ci[f] ?? "").trim() : "";
+    row[COMPANY_EXT4_START + i] = v ? `'${v}` : "";
   });
   // 표시상세/표시요약/계약합성라인/주차는 시트 수식이 채움 → 빈 문자열 유지
   return row;

@@ -24,9 +24,20 @@ const captureServerEvent = vi.fn();
 vi.mock("@/repo/db/client", () => ({
   dbEnabled: (...a: unknown[]) => dbEnabled(...(a as [])),
 }));
-vi.mock("@/lib/analytics/api-timing", () => ({
-  captureServerEvent: (...a: unknown[]) => captureServerEvent(...(a as [])),
-}));
+// ⚠️ importActual 로 실제 모듈 표면을 유지한 뒤 필요한 것만 덮는다.
+// 예전엔 `captureServerEvent` 하나만 반환했는데, api-timing 에 export 가 하나 추가되자
+// (currentRequestId, 2026-09-14) 이 파일 6건이 "No export is defined on the mock" 으로
+// 통째로 터졌다 — 미러 로직은 멀쩡했는데 목이 낡아서 깨진 것. 부분 목으로 고정한다.
+vi.mock("@/lib/analytics/api-timing", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/lib/analytics/api-timing")>(
+      "@/lib/analytics/api-timing",
+    );
+  return {
+    ...actual,
+    captureServerEvent: (...a: unknown[]) => captureServerEvent(...(a as [])),
+  };
+});
 vi.mock("@/repo/db/registry", async () => {
   const actual = await vi.importActual<typeof import("@/repo/db/registry")>("@/repo/db/registry");
   return {

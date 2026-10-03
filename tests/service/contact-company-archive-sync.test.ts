@@ -102,7 +102,7 @@ describe("patchMeeting 06 업체정보 sync — 파일럿 dual-sync 게이트", 
   });
 
   it("비파일럿(7기) → {syncDb:false}(R2 async 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await patchMeeting(EMAIL, "m1", EDIT);
     expect(upsertCompanyInfoArchive).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: false });
   });
@@ -124,7 +124,7 @@ describe("🐛 반쪽쓰기 재현 고정 — 파일럿 06 DB 동기 실패는 �
   });
 
   it("비파일럿 + 06 미러 실패 → warn 삼킴, patchMeeting 정상 종료(04 저장 성공 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     upsertCompanyInfoArchive.mockRejectedValue(new Error("mirror drop"));
     await expect(patchMeeting(EMAIL, "m1", EDIT)).resolves.toBeUndefined();
   });

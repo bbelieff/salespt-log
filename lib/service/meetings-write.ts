@@ -21,6 +21,7 @@ import {
   findByDate,
   findById,
   findByPreviousMeetingId,
+  readAllMeetings,
   updateMeeting,
   upsertMeetingRowSnapshot,
 } from "@/repo/meetings";
@@ -220,6 +221,11 @@ export async function getMeetingRecord(
     return findById(ctx.spreadsheetId, id); // DB 공백·이월 raw — 시트 보충(self-heal 입력)
   }
   return findById(ctx.spreadsheetId, id);
+}
+
+/** 전체 미팅 — 파일럿: DB, 비파일럿: 시트. 영업기록 연결 고르기(contract-meeting-link)용. */
+export async function listAllMeetingsRecord(ctx: MeetingCtx): Promise<Meeting[]> {
+  return isDb(ctx) ? readMeetingsFromDb(ctx.spreadsheetId) : readAllMeetings(ctx.spreadsheetId);
 }
 
 /** 날짜 조회 — 파일럿: DB 전체 read 후 필터(예약일/미팅날짜). 비파일럿: 시트 findByDate. */

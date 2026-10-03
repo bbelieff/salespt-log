@@ -179,7 +179,7 @@ describe("drain — 밀린 행 self-heal (행별)", () => {
 
 describe("비파일럿/미설정 = 시트 정본, 표식 미개입", () => {
   it("7기 = batchWrite 시트 정본, DB·mark/clear 안 씀", async () => {
-    await persistSalesRows("7", EMAIL, SHEET, [mkRow()]);
+    await persistSalesRows("1", EMAIL, SHEET, [mkRow()]);
     expect(batchWriteChannelDailyRows).toHaveBeenCalledWith(SHEET, [mkRow()]);
     expect(writeSalesRowsToDb).not.toHaveBeenCalled();
     expect(markMirrorPending).not.toHaveBeenCalled();
@@ -227,7 +227,7 @@ describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
 
   it("비파일럿이라도 물리한계 안(1~10주)이면 완전 불변 — 창 판정 자체를 하지 않고 기존 시트 경로", async () => {
     isWithinSalesWindow.mockResolvedValue(false); // 호출 자체가 안 되는지가 핵심이라 값은 무관
-    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-07-15" })]); // courseStart 2026-06-01 기준 ~7주차
+    await persistSalesRows("1", EMAIL, SHEET, [mkRow({ date: "2026-07-15" })]); // courseStart 2026-06-01 기준 ~7주차
     expect(batchWriteChannelDailyRows).toHaveBeenCalledTimes(1); // R2 그대로
     expect(isWithinSalesWindow).not.toHaveBeenCalled();
     expect(writeSalesRowsToDb).not.toHaveBeenCalled();
@@ -236,7 +236,7 @@ describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
   // 🔧 BBE-49(2026-08-05, 김현지/7기 라이브 P0): 위 테스트와 대칭 짝 — 물리한계 "밖"은 예외적으로 DB.
   // 시트에 애초에 좌표가 없어 batchWriteChannelDailyRows→salesRowFor 가 항상 throw했다(저장 영구실패).
   it("비파일럿이라도 물리한계(11주+) 밖이면 DB 로 우회 — 시트엔 애초에 좌표가 없어 판정도 불필요", async () => {
-    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]); // courseStart 기준 ~18주차
+    await persistSalesRows("1", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]); // courseStart 기준 ~18주차
     expect(readCourseStart).toHaveBeenCalledWith(SHEET);
     expect(writeSalesRowsToDb).toHaveBeenCalledTimes(1); // 저장 성공(정본=DB)
     expect(batchWriteChannelDailyRows).not.toHaveBeenCalled(); // 시트엔 안 씀(좌표 없음)
@@ -249,7 +249,7 @@ describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
   // "호출부 게이트 오류" 로 500 → 롤백 레버가 무력해진다. 읽기측 loadDay 와 동일 가드.
   it("DB 가 꺼져 있으면 물리한계 밖이라도 DB 로 새지 않는다 — 롤백 레버 보존", async () => {
     dbEnabled.mockReturnValue(false);
-    await persistSalesRows("7", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]);
+    await persistSalesRows("1", EMAIL, SHEET, [mkRow({ date: "2026-09-30" })]);
     expect(writeSalesRowsToDb).not.toHaveBeenCalled();
     expect(readCourseStart).not.toHaveBeenCalled(); // 판정 read 조차 하지 않는다
     expect(batchWriteChannelDailyRows).toHaveBeenCalledTimes(1); // 기존 시트 경로(= 기존 좌표 에러)
@@ -257,7 +257,7 @@ describe("R4 무제한 — 시트 창 밖(11주+) 은 DB-only", () => {
 
   it("비파일럿 배치에 날짜가 섞이면 즉시 실패 — 일부 행만 틀린 정본으로 가는 것 차단", async () => {
     await expect(
-      persistSalesRows("7", EMAIL, SHEET, [
+      persistSalesRows("1", EMAIL, SHEET, [
         mkRow({ date: "2026-07-15" }),
         mkRow({ date: "2026-09-30" }),
       ]),

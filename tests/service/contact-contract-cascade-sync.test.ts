@@ -115,7 +115,7 @@ describe("① 계약→비계약 수정 (patchMeeting)", () => {
   });
 
   it("비파일럿(7기) → {syncDb:false} (R2 async 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await patchMeeting(EMAIL, "m1", DROP);
     expect(lastClearOpts()).toEqual({ syncDb: false });
   });
@@ -141,7 +141,7 @@ describe("② 계약 미팅의 날짜·업체명 수정 (patchMeeting 링크 편
   });
 
   it("비파일럿 → {syncDb:false}", async () => {
-    setCohort("7");
+    setCohort("1");
     await patchMeeting(EMAIL, "m1", RENAME);
     const calls = updateLinkFields.mock.calls;
     expect(calls[calls.length - 1]?.[3]).toEqual({ syncDb: false });
@@ -163,7 +163,7 @@ describe("③④ 미팅 삭제 cascade (본인 계약 + 자손 계약)", () => {
   });
 
   it("비파일럿 → 전부 {syncDb:false}", async () => {
-    setCohort("7");
+    setCohort("1");
     findChildMeetingRecord.mockResolvedValueOnce({ ...CONTRACT, id: "child" });
     await removeMeetingWithCascade(EMAIL, "m1");
     for (const c of clearRowByLink.mock.calls) expect(c[3]).toEqual({ syncDb: false });
@@ -182,7 +182,7 @@ describe("⑤ 미팅 결과 되돌리기 (계약→예약)", () => {
   });
 
   it("비파일럿 → {syncDb:false}", async () => {
-    setCohort("7");
+    setCohort("1");
     await revertMeeting(EMAIL, "m1");
     expect(lastClearOpts()).toEqual({ syncDb: false });
   });

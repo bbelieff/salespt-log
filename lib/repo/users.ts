@@ -1,17 +1,11 @@
-/**
- * Layer: repo — 마스터 레지스트리 (사용자 + 시트 매핑 + 역할 + 상태).
- * 컬럼 SSOT: docs/domains/sheet-structure.md §6 (A~R).
- *   A email · B cohort(deprecated, 시트 B3 SSOT) · C name(deprecated) · D spreadsheetId ·
- *   E role(식별·라우팅 SSOT) · F status(active/pending/archived) · G assignedTrainer ·
- *   H team · I~L 시트 캐시(B3/C3/O1/O2) · M sort_order(박스 단위 드래그 정렬) ·
- *   N~P drive 연동 · Q memo(아레나) · R captain_of.
- */
+/** Layer: repo — 마스터 레지스트리 (sheet-structure.md §6). B cohort(deprecated, 시트 B3 SSOT). */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { registry, adminEmails, adminNames } from "@/config";
 import { User, cohortGroupKey, cohortGroupCompare } from "@/types";
-import { readRange, appendRows, sheetsClient } from "./sheets-client";
+import { readRange, sheetsClient } from "./sheets-client";
+import { nextRegistryRowNumber } from "./registry-row";
 import { nameMatches } from "./name-match";
-import { pickPreferredUser, pickPreferredRow } from "./user-priority";
+import { pickPreferredRow } from "./user-priority";
 import { cachedRegistryRows, invalidateRegistry } from "./users-rows";
 import {
   mirrorUserCells,
@@ -19,6 +13,12 @@ import {
   mirrorUserRow,
   registryRowFromUser,
 } from "./db/registry-mirror";
+
+import { applyTrainerQualifications, pickCrmUser } from "./trainer-qualification";
+import { listTrainerQualifications } from "./db/trainer-recruitment";
+import { logRegistryCellWrite } from "@/lib/analytics/save-observability";
+import { registryDbReadEnabled } from "./db/registry-read";
+import { updateDriveLinkInDb } from "./users-drive-db";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
@@ -68,12 +68,10 @@ export function parseRow(r: unknown[]): User | null {
   return parsed.success ? parsed.data : null;
 }
 
-// 500줄 cap 분리 — 레지스트리 행 읽기 진입점(DB/시트 분기 + 폴백)은 users-rows.ts.
+// 행 읽기 진입점은 users-rows.ts.
 export { cachedRegistryRows, invalidateRegistry };
 
-/** 보관 기수 라우팅 비활성(rejoin §1) — trainee + 숫자형("6"/"6기")만.
- * 트레이너(T)·연습·아레나 행 절대 비적용(전 트레이너 차단 사고 방지 —
- * rejoin-routing.test.ts 박제). */
+/** 보관 기수 라우팅 비활성(rejoin §1) — trainee + 숫자형만. */
 export function isNumericCohortArchived(
   role: User["role"],
   cohort: string,
@@ -85,24 +83,31 @@ export function isNumericCohortArchived(
   return archivedLabels.has(m[1]!) || archivedLabels.has(`${m[1]}기`);
 }
 
-/** email → User. `fresh:true` = 60s 캐시 우회 직접 read (claim 직후 캐시 전파 지연
- * /claim 루프 차단). ⚠️ cohorts-archived 강등(rejoin §1)은 hot-path quota 폭발
- * 방지로 여기서 안 함 — 라우팅 지점(page·layout)·claimAccount 에서만 1회 판정
- * (claim-stuck 2026-06-12). 여기선 행 status="archived" 만 반영. */
+/** CRM identity prefers the original student enrollment; qualification is independent. */
 export async function findUserByEmail(
   email: string,
   opts?: { fresh?: boolean },
 ): Promise<User | null> {
   // fresh 는 시트 캐시 우회용 — DB 경로는 애초에 캐시를 타지 않아 항상 최신이다.
   const rows = await cachedRegistryRows({ fresh: opts?.fresh });
-  // 다중 행 우선순위: 아레나 > 숫자 active > archived (user-priority.ts, arena-consistency §1).
   const mine: User[] = [];
   for (const r of rows) {
     if (typeof r[0] !== "string" || r[0].toLowerCase() !== email.toLowerCase()) continue;
     const u = parseRow(r);
     if (u) mine.push(u);
   }
-  return pickPreferredUser(mine);
+  const student = pickCrmUser(mine.filter(u => u.role === "trainee"));
+  if (student) return student; // Recruitment availability cannot change a student CRM key.
+  return pickCrmUser(applyTrainerQualifications(mine, await listTrainerQualifications(email)));
+}
+
+/** Explicit capability lookup; CRM selection must never double as trainer authorization. */
+export async function findTrainerByEmail(email: string): Promise<User | null> {
+  const rows = await cachedRegistryRows();
+  const mine = rows.filter(r => String(r[0]).toLowerCase() === email.toLowerCase()).map(parseRow).filter((u): u is User => !!u);
+  const projected = applyTrainerQualifications(mine, await listTrainerQualifications(email));
+  return projected.find(u => u.role === "trainer" && u.status === "active")
+    ?? projected.find(u => u.role === "trainer") ?? null;
 }
 
 /** 전체 사용자 정렬 — role(admin→trainer→trainee) → cohort desc →
@@ -115,6 +120,7 @@ export async function listAllUsers(): Promise<User[]> {
     const u = parseRow(r);
     if (u) users.push(u);
   }
+  users.splice(0, users.length, ...applyTrainerQualifications(users, await listTrainerQualifications()));
   const rolePriority: Record<User["role"], number> = { admin: 0, trainer: 1, trainee: 2 };
   users.sort((a, b) => {
     if (rolePriority[a.role] !== rolePriority[b.role]) {
@@ -199,7 +205,8 @@ export async function updateUserCell(
   }
   // 읽기(findUserByEmail=pickPreferredUser)와 동일 우선순위 행에 write — 다행 계정
   // write≠read 불일치 방지(Drive 연결 무한루프 fix). parse 전부 실패 시 첫 행(옛 동작).
-  const picked = pickPreferredRow(matches);
+  const crmMatches = matches.filter(m => m.user.role === "trainee");
+  const picked = pickPreferredRow(crmMatches.length ? crmMatches : matches);
   const targetRow = picked?.sheetRow ?? rawRows[0]!;
   // registry 쓰기는 RAW — 자동 type inference 차단 (PR D, 2026-05-14).
   await sheetsClient().spreadsheets.values.update({
@@ -209,8 +216,8 @@ export async function updateUserCell(
     requestBody: { values: [[value]] },
   });
   invalidateRegistry();
-  // DB 미러(BBE-55) — 시트 쓰기 성공 후 fire-and-forget. parse 실패로 picked 가 없으면
-  // 자연키(email,cohort)를 알 수 없어 미러를 건너뛴다(정합은 backfill 재실행이 복구).
+  // DB 미러(BBE-55) — 시트 쓰기 후 fire-and-forget. picked 없으면 자연키를 몰라 스킵(로그로 남김).
+  logRegistryCellWrite(reg.tab, colLetter, targetRow, value, !!picked);
   if (picked) {
     const prevKey = {
       email: picked.user.email,
@@ -322,13 +329,15 @@ export async function setTrainerDepartment(
   // 이름은 ADMIN_NAMES env 매핑 우선, 없으면 email local-part.
   const nameMap = adminNames();
   const fallbackName = nameMap[lc] ?? lc.split("@")[0] ?? lc;
-  // registry append → RAW (PR D).
-  await appendRows(
-    reg.spreadsheetId,
-    DATA_RANGE(reg.tab),
-    [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", "", "", "", ""]],
-    { valueInputOption: "RAW" },
-  );
+  // 결정적 좌표 + RAW(PR D) — values.append 열밀림과 자동변환을 함께 방지.
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${reg.tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[lc, cohortValue, fallbackName, "", "trainer", "active", "", "", "", "", "", "", "", "", "", ""]],
+    },
+  });
   invalidateRegistry();
   mirrorUserRow(registryRowFromUser({
     email: lc, cohort: cohortValue, name: fallbackName, spreadsheetId: "",
@@ -371,14 +380,21 @@ export async function setTraineeReservation(
   await updateUserCell(email, "B", reserved ? TRAINEE_RESERVED_SENTINEL : "");
 }
 
-/**
- * Drive 연결 정보 일괄 업데이트 (N/O/P 컬럼).
- * ADR-0007: Scope 1은 Drive 읽기만 — 쓰기 API 절대 호출 금지.
- */
+/** Drive 연결 저장 — DB 읽기 게이트 ON 이면 Postgres 원자 UPDATE 후 무효화, OFF 면 시트 셀 순차. */
 export async function updateDriveLink(
   email: string,
   data: { driveParentPath?: string; feedbackFolderId?: string; driveLinkStatus?: string },
 ): Promise<void> {
+  if (registryDbReadEnabled()) {
+    const user = await findUserByEmail(email, { fresh: true });
+    if (!user) throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
+    await updateDriveLinkInDb(
+      { email: user.email, cohort: user.cohort, name: user.name },
+      data,
+    );
+    invalidateRegistry();
+    return;
+  }
   if (data.driveParentPath !== undefined) await updateUserCell(email, "N", data.driveParentPath);
   if (data.feedbackFolderId !== undefined) await updateUserCell(email, "O", data.feedbackFolderId);
   if (data.driveLinkStatus !== undefined) await updateUserCell(email, "P", data.driveLinkStatus);
@@ -395,30 +411,33 @@ export {
 export async function registerUser(u: User): Promise<void> {
   const reg = registry();
   const validated = User.parse(u);
-  // registry append → RAW (PR D). ISO 날짜/숫자형 라벨이 auto-inference 로 변환되는 사고 방지.
-  await appendRows(
-    reg.spreadsheetId,
-    DATA_RANGE(reg.tab),
-    [[
-      validated.email,
-      validated.cohort,
-      validated.name,
-      validated.spreadsheetId,
-      validated.role,
-      validated.status,
-      validated.assignedTrainer,
-      validated.team,
-      validated.cohortLabel,
-      validated.nameLabel,
-      validated.courseStartISO,
-      validated.graduationISO,
-      String(validated.sortOrder),
-      validated.driveParentPath,
-      validated.feedbackFolderId,
-      validated.driveLinkStatus,
-    ]],
-    { valueInputOption: "RAW" },
-  );
+  // 결정적 좌표 + RAW(PR D) — values.append 열밀림과 ISO/숫자 자동변환을 방지.
+  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: `${reg.tab}!A${nextRegistryRowNumber(rows.length)}`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [[
+        validated.email,
+        validated.cohort,
+        validated.name,
+        validated.spreadsheetId,
+        validated.role,
+        validated.status,
+        validated.assignedTrainer,
+        validated.team,
+        validated.cohortLabel,
+        validated.nameLabel,
+        validated.courseStartISO,
+        validated.graduationISO,
+        String(validated.sortOrder),
+        validated.driveParentPath,
+        validated.feedbackFolderId,
+        validated.driveLinkStatus,
+      ]],
+    },
+  });
   invalidateRegistry();
   // 시트에는 A~P 만 append 한다 — Q~T(memo·captainOf·gcal)는 쓰지 않으므로 미러도 비운다
   // (시트에 없는 값을 DB 에만 남기면 정합 대조가 영구히 어긋난다).
@@ -463,12 +482,15 @@ export async function ensureRegistryHeader(): Promise<void> {
   const reg = registry();
   const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
   if (existing[0]?.[0] === "email") return;
-  await appendRows(
-    reg.spreadsheetId,
-    HEADER_RANGE(reg.tab),
-    [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo", "captain_of"]],
-    { valueInputOption: "RAW" },
-  );
+  // 헤더는 row 1 고정 좌표에 직접 쓴다.
+  await sheetsClient().spreadsheets.values.update({
+    spreadsheetId: reg.spreadsheetId,
+    range: HEADER_RANGE(reg.tab),
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo", "captain_of"]],
+    },
+  });
 }
 
 export async function listCohortMembers(cohort: string): Promise<User[]> {

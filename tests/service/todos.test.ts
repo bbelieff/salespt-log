@@ -99,6 +99,7 @@ const mkTodo = (o: Partial<Todo> = {}): Todo => ({
   완료여부: false,
   생성시각: "2026-07-10T00:00:00.000Z",
   분류: "",
+  기록종류: "todo",
   ...o,
 });
 
@@ -162,7 +163,7 @@ describe("createTodo — 파일럿 DB 정본 vs 비파일럿 시트 불변", () 
   });
 
   it("비파일럿(7기) = R2 시트 정본(appendTodo) + gcal onTodoCreated, DB 안 씀", async () => {
-    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "7", email: EMAIL });
+    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "1", email: EMAIL });
     await createTodo(EMAIL, input);
     expect(appendTodo).toHaveBeenCalledTimes(1);
     expect(onTodoCreated).toHaveBeenCalledTimes(1);
@@ -219,7 +220,7 @@ describe("patchTodo — 삭제됨/부재 방어 + 병합 저장 (파일럿 DB)",
   });
 
   it("비파일럿 = 시트 update + gcal onTodoChanged, DB 안 씀", async () => {
-    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "7", email: EMAIL });
+    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "1", email: EMAIL });
     await patchTodo(EMAIL, "t1", { 완료여부: true });
     expect(updateTodo).toHaveBeenCalledWith(SHEET, "t1", { 완료여부: true });
     expect(onTodoChanged).toHaveBeenCalledTimes(1);
@@ -245,7 +246,7 @@ describe("removeTodo — 이벤트 삭제 순서 + 경로별 정본", () => {
   });
 
   it("비파일럿 = 시트 clearTodo, DB clearRowInDb 안 씀", async () => {
-    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "7", email: EMAIL });
+    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "1", email: EMAIL });
     await removeTodo(EMAIL, "t1");
     expect(clearTodo).toHaveBeenCalledWith(SHEET, "t1");
     expect(clearRowInDb).not.toHaveBeenCalled();
@@ -266,7 +267,7 @@ describe("listTodos — DB 경로 필터 + 결정적 정렬", () => {
   });
 
   it("비파일럿 = 시트 listTodosByContract, DB 안 읽음", async () => {
-    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "7", email: EMAIL });
+    findUserByEmail.mockResolvedValue({ spreadsheetId: SHEET, cohort: "1", email: EMAIL });
     listTodosByContract.mockResolvedValue([]);
     await listTodos(EMAIL, "c1");
     expect(listTodosByContract).toHaveBeenCalledWith(SHEET, "c1");

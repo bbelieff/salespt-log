@@ -1,15 +1,15 @@
 /** 채널 탭(4) + 채널별 4지표 입력 패널(6:4 그리드). 정본: prototypes/contact-daily-input.html v7 §2-2·§2-3. */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLeadCandidates } from "@/query/db-hooks";
+import { countUnmatchedLeads } from "../_lib/lead-backlog";
+import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
 import { loadChannelOrder, moveChannel, saveChannelOrder } from "../_lib/channel-order";
 import { CHANNEL_META } from "../_lib/channel-meta";
-
-
 const COLOR_CLASS: Record<
   "blue" | "green" | "amber" | "purple",
   { bg50: string; bg100: string; bg500: string; text700: string; under: string; hover: string; border: string }
@@ -64,6 +64,7 @@ const METRICS: Array<{
 ];
 
 interface Props {
+  contextHeader?: ReactNode;
   active: Channel;
   draft: Record<Channel, ChannelDailyRowMetrics>;
   /** 선택 날짜 (YYYY-MM-DD) — 생산 첫 행 읽기전용 파생값 계산용. */
@@ -116,6 +117,7 @@ function firstRowText(
 }
 
 export default function ChannelTabsAndPanel({
+  contextHeader,
   active,
   draft,
   date,
@@ -144,6 +146,11 @@ export default function ChannelTabsAndPanel({
   const leadInflow = overview.data
     ? overview.data.leads.filter((l) => strF(l as never, "접수일") === date).length
     : draft["콜·지·기·소"].inflow;
+
+  // 아직 미팅으로 안 이어진 영업기회 — 접수일 무관 누적(belie 선택 A). 규칙·근거는 _lib/lead-backlog.ts.
+  // 저장값(01 영업관리 F)은 ADR-0029 그대로 — 화면 표시만 추가라 통계 불변.
+  const leadPool = useLeadCandidates(active === "콜·지·기·소");
+  const leadBacklog = countUnmatchedLeads(leadPool.data);
 
   // 직접생산: 선택 날짜 포함 활성 레코드(유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
   const directProductions = overview.data?.productions ?? [];
@@ -183,6 +190,8 @@ export default function ChannelTabsAndPanel({
 
   return (
     <div className="mb-3 overflow-hidden rounded-2xl bg-white shadow-sm">
+      {contextHeader}
+      <div className="px-3 pb-2 pt-3 text-xs font-semibold text-slate-700">입력할 채널 <span className="ml-2 font-normal text-slate-400">눌러서 바로 변경</span></div>
       {/* 채널 탭 — 길게 누른 후 드래그하여 순서 변경 (자동 저장) */}
       <div className="flex border-b border-gray-100">
         {order.map((c) => {
@@ -223,7 +232,7 @@ export default function ChannelTabsAndPanel({
                 setDragFrom(null);
                 setDragOver(null);
               }}
-              className={`relative flex-1 px-1 py-2.5 transition-all ${
+              className={`relative min-h-11 min-w-0 flex-1 px-1 py-2.5 transition-all ${
                 isActive ? colorCls.bg50 : "bg-white hover:bg-gray-50"
               } ${isDragging ? "opacity-40" : ""} ${
                 isDragOver ? "ring-2 ring-inset ring-blue-300" : ""
@@ -234,7 +243,7 @@ export default function ChannelTabsAndPanel({
             >
               <div className="flex flex-col items-center gap-1">
                 <span
-                  className={`text-xs font-bold ${
+                  className={`whitespace-nowrap text-xs font-bold ${
                     isActive ? colorCls.text700 : "text-gray-500"
                   }`}
                 >
@@ -242,14 +251,14 @@ export default function ChannelTabsAndPanel({
                 </span>
                 {total > 0 ? (
                   <span
-                    className={`rounded-full px-1.5 py-px text-[11px] font-semibold leading-none ${
+                    className={`rounded-full px-1.5 py-px text-px-11 font-semibold leading-none ${
                       isActive ? `${colorCls.bg100} ${colorCls.text700}` : "bg-gray-100 text-gray-500"
                     }`}
                   >
                     {total}
                   </span>
                 ) : (
-                  <span className="text-[11px] leading-none text-gray-300">·</span>
+                  <span className="text-px-11 leading-none text-gray-300">·</span>
                 )}
               </div>
               {isActive && (
@@ -264,8 +273,9 @@ export default function ChannelTabsAndPanel({
 
       {/* 채널 헤더 (배지 + 설명) */}
       <div className={`flex items-center gap-2 border-b ${cls.border} ${cls.bg50} px-3 py-2`}>
-        <span className={ch.badgeClass}>{active}</span>
-        <span className="break-keep text-xs text-gray-500">{ch.desc}</span>
+        <span className="shrink-0 text-xs font-semibold text-slate-700">{Number(date.slice(5, 7))}/{Number(date.slice(8))}</span>
+        <span className={`${ch.badgeClass} shrink-0 whitespace-nowrap`}>{active}</span>
+        <span className="break-keep text-xs text-gray-500">{ch.desc} · 이 채널에 기록합니다</span>
       </div>
 
       {/* 입력 헤더 + 생산 첫 행 — 우측 '⭐ 오늘 합계' 제목 셀이 헤더+생산행 높이를 세로 병합 */}
@@ -295,7 +305,7 @@ export default function ChannelTabsAndPanel({
                     <div className="num-mono text-sm font-bold text-green-700">
                       생산 {directLiveCount}건
                     </div>
-                    <div className="text-[11px] text-gray-400">유입 집계</div>
+                    <div className="text-px-11 text-gray-400">유입 집계</div>
                   </div>
                 </div>
               ) : (
@@ -313,7 +323,8 @@ export default function ChannelTabsAndPanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
                   <div className="text-sm font-medium text-gray-800">게시</div>
-                  <div className="break-keep text-xs text-gray-400">현수막재고 {bannerStock}개</div>
+                  {/* 설명 없으면 아래 「유입」에 적는 사고가 난다 — 2026-09-19 실제 발생. */}
+                  <div className="break-keep text-xs text-gray-400">{ch.helps.production} · 재고 {bannerStock}개</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
@@ -356,7 +367,7 @@ export default function ChannelTabsAndPanel({
                 <div className="min-w-0 pr-1">
                   <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
                     {active === "매입DB" ? "유입대기" : "생산"}
-                    <span className="rounded bg-gray-100 px-1 py-px text-[11px] font-bold text-gray-500">
+                    <span className="rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   </div>
@@ -411,7 +422,7 @@ export default function ChannelTabsAndPanel({
                 <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
                   {m.label}
                   {isLeadInflow && (
-                    <span className="rounded bg-gray-100 px-1 py-px text-[11px] font-bold text-gray-500">
+                    <span className="rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   )}
@@ -473,6 +484,17 @@ export default function ChannelTabsAndPanel({
           </div>
         );
       })}
+      {active === "콜·지·기·소" && leadBacklog > 0 && (
+        <div className="flex items-center gap-2 border-t border-gray-100 bg-violet-50 px-3 py-2.5 text-xs text-violet-900">
+          <span aria-hidden="true">📌</span>
+          <span>
+            아직 미팅 안 잡은 영업기회 <b className="font-bold">{leadBacklog}건</b>
+            <span className="block text-px-11 text-violet-500">
+              미팅예약 ＋를 누르면 여기서 골라요
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

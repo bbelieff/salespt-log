@@ -10,6 +10,53 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
+## PC 실무/수납 워크스페이스 (2026-09-27)
+
+- `ContractListTable`은 업체 보기의 PC·모바일 공통 목록이다. **계약(업체) 한 건당 한 카드**(belie 2026-09-29 — 같은 업체가 진행건마다 두 번 보이던 것을 합침). 카드에 업체명, 진행건마다 `진행 N · 기관 · 상품` 한 줄씩, 계약일·수임비, 수납액 합계·진행률 평균(여러 건이면 「평균 · N건」), 대표 진행(가장 급한 진행건)의 Todo/History 날짜를 표시한다. 진행기관 보기는 그대로 진행건 단위. 진행이 없는 업체는 `진행 없음`으로 구별한다. 모바일은 선택한 행 바로 아래에 계약 편집기를 열고 해당 진행 슬롯을 연다. PC 선택 행은 불투명한 파란색→상세 배경색 그라데이션으로 구분한다. `WorkActivityBadge`는 업체·진행기관 목록에서 같은 색·문구를 사용하며 조회 중·실패를 `D-??`와 구별한다. 종류(`Todo`/`History`)는 흰 테두리 칩, D-day 는 별도 칩으로 떼어 보이고 색은 D-day 부호만 따른다 — `D-??` 회색, `D-NN` 노랑(다가오는 일정), `D+NN` 빨강(날짜가 지났거나 다음 일정 없음 — 다음 일정은 항상 D- 로 돌아가야 함, belie 2026-09-28).
+- `PaymentListModeTabs`는 업체/진행기관 표시 기준을 전환하며, 선택한 진행건의 계약·슬롯 연결을 유지한다.
+- 목록 상단의 `업체 / 진행기관` 토글은 같은 계약 데이터를 다른 기준으로 읽는다. 업체 보기는 파랑, 진행기관 보기의 토글·그룹 헤더·선택 행·연결부·상세 배너는 빨강 계열로 구분한다. `InstitutionWorkList`는 진행기관을 1뎁스로 펼치고 그 안의 진행건을 상품명순(미입력은 마지막)으로 정렬한다. 상품별 하위 그룹은 만들지 않는다. 예전 자유입력의 `소진공 신취` 같은 값은 보기에서만 기관 `소진공`·상품 `신취`로 나누며 저장된 기관 키는 Todo/캘린더 연결을 위해 보존한다. 업체가 여러 기관에서 진행하면 각 슬롯을 따로 보여 주며, 선택 시 기존 업체 상세의 해당 진행 슬롯을 연다. 기관·상품을 비워 둔 계약도 `기관 미입력`에 남긴다. 검색은 모드에 맞게 업체 또는 기관·상품·업체에 적용하고, 기존 업체 정렬은 업체 모드에서만 표시한다. 데이터 저장 구조와 성과 집계는 바꾸지 않는다.
+- PC는 목록과 상세를 항상 2열로 배치하고 중앙 핸들을 드래그해 열 폭을 조절한다. 작업판 높이는 현재 뷰포트의 남은 공간에 맞춘다. 목록과 상세의 업체정보/실무정보 세 열은 각각 휠을 소유하고 끝까지 스크롤해도 문서로 전파하지 않는다. 스크롤바는 얇고 화살표가 없다. `PaymentSelectionBridge`는 선택 박스의 위·아래 직선을 상세 패널 앞까지 그대로 늘이고, 끝에서 박스와 같은 R(업체 12px·기관 8px, 계산값 — 단 틈 폭의 55% 이하)로 바깥쪽으로 뒤집혀 휘어(역라운드, 물방울 모양) 패널 외곽선에 붙는다. 모든 좌표·선 두께·SVG 폭은 기기 픽셀 칸에 맞춰(브라우저 테두리 반올림과 동일, 모니터 배율이 바뀌면 다시 맞춘다) 목록 칸마다 이가 빠지지 않게 한다. 선택 박스 배경은 오른쪽 끝이 흰색으로 끝나고 연결부도 흰색이라 박스·연결부·패널이 한 덩어리로 보인다. 이어지는 구간은 패널 외곽선을 2px 덮어 테두리가 없고, 면은 선택 카드 끝색(파랑/빨강-50)에서 패널 바탕 흰색으로 그라데이션되어 양쪽 이음새에 색 경계가 없다. 곡선 바깥 패널 외곽선은 그대로 둔다. 상세 내부를 침범하지 않으며 선택 행이 스크롤 밖으로 나가면 숨긴다. 진행기관 그룹을 접어 선택 행이 사라지면 활성 기관 헤더에 연결한다. 목록 외곽의 직각 테두리는 제거하고 상세 상단은 선택 업체명 배너로 유지한다. PC 검색·정렬은 한 줄이며 파란 계약 안내 줄은 표시하지 않는다.
+- 1280px 이상 실무/수납에서 연결된 Drive 바로가기는 숨긴다. 아레나/이월 매출 보조 카드는 모바일에서도 성과 요약과 중복되어 표시하지 않는다. 미연결 Drive는 사이드바의 연결 필요 링크에서 기존 연결 UI로 이동한다. 상단 배너는 성과 요약 팝오버보다 높은 레이어다.
+- 2뎁스는 업체정보와 실무정보 2열이며 기본 너비는 6:4다. 업체정보 열이 55% 이상이면 기업정보와 대표자정보를 병렬로 보여 주고 그보다 좁으면 세로로 쌓는다. 기존 필드와 편집 팝업은 유지한다. 우측은 계약정보, 서류·진행 체크, 노란 로드맵 메모, 노란 실무진행 순서다. PC와 모바일 모두 이 다섯 섹션 제목을 같은 `text-sm font-bold text-slate-800` 단계와 같은 이모지로 표시한다. 모바일의 선택 진행 상세는 해당 목록 행 바로 아래에서 열리고, 계약정보를 펼치면 두 화면 모두 업체명·계약일·수임비 연동 필드와 비고가 바로 보인다. 계약정보와 체크리스트는 접을 수 있다. 진행 슬롯 1/2/3의 카드·번호·진행바·Todo 색상은 에메랄드/파랑/보라로 구별한다.
+- `PaymentPerformanceSummary`는 전체·이번 달·이번 주·직접 기간의 계약/매출과 전체 진행건 상태를 병렬로 보여 준다. 모바일에서는 기간 선택 아래 계약·매출과 업무 현황을 2열로 놓고, PC에서는 기간 선택까지 한 줄에 배치한다. `WorkStatusBar`는 대시보드와 공유하는 진행 상태 바로, 상태 구간을 누르면 해당 업체·진행 목록이 팝오버로 열리고 선택 시 해당 슬롯으로 이동한다. `usePaymentFocus`는 대시보드의 회차 링크와 기존 캘린더 Todo 링크를 받아 해당 상세를 펼친다.
+- 실무진행은 진행기관:진행상품을 3.5:6.5로 배치한다. Todo/History 입력은 제목·날짜·시·분을 넓은 열에서는 한 줄로, 좁은 상세 열에서는 입력 묶음 단위로 자연스럽게 접어 가로 스크롤을 만들지 않는다. 추가 후 상세 팝업을 연다. 시간은 09:00~20:00, 분은 00·15·30·45이고 20시는 00분만 허용한다. 캘린더 표시는 기본 ON이다.
+- `StandaloneCompanyAdd`(2026-09-28, payment-standalone-company): 업체 모드 목록 맨 위(토글과 첫 업체 사이)·빈 목록 안내 위에 점선 1줄 버튼 「＋ 영업기록 없이 업체추가」. 누르면 제자리 인라인 폼(업체명 필수·계약일 기본 오늘 KST·수임비 천단위 콤마)과 이월 안내 한 줄, 취소/추가. 폼을 열 때 requestKey(uuid) 1개를 만들어 재시도에도 같게 보낸다. 성공 시 목록 재조회 후 새 업체를 선택(PC)하거나 펼친다(모바일, `ContractRow openSignal`). 진행기관 모드에서는 그리지 않는다. 이렇게 만든 업체는 목록·카드에 회색 `영업기록 없음` 배지를 붙인다(AK=`manual:`). Props: `listMode`, `onCreated(row)`, `className`.
+- `MeetingLinkPicker`·`MeetingLinkDialog`(2026-09-29, contract-meeting-link): 1뎁스 `영업기록 없음 ＋` 배지(점선·호버 파랑, 행 선택과 분리된 role=button)를 누르면 `MeetingLinkPicker`(연결 가능한 미팅 목록 — 이름 비슷한 미팅 먼저, 나머지 최근 순, 검색)가 열리고, 고르면 `MeetingLinkDialog`(components/payment)로 비교·선택한다. 계약일은 미팅 날짜로 바뀐다는 안내 + 업체명·수임비·업체정보 다른 칸마다 실무/수납↔영업기록 라디오(마지막 저장이 최근인 쪽 기본·「최근」 표시), 빈 칸은 자동 채움. 일정·계약에서 미팅을 계약으로 바꿀 때 같은 이름의 수동 업체가 있으면 같은 팝업이 [따로 등록]과 함께 뜬다(`useManualLinkPrompt`). Props: Picker `row, 업체명, onClose, onLinked(failures)` · Dialog `row, meetingId, onClose, onLinked(failures), onSkip?`.
+- `FontScaleControl`(2026-09-29, 글자 크기 단계): `[ − 가 + ]` 둥근 3버튼(버튼 자체는 14px 고정). 지금 크기 기준 3단계(×1.1·1.2·1.3)까지. 상태는 부모가 `useFontStep("company-info")`(components/font-scale — 이 기기 localStorage)로 들고 박스에 `--font-scale` 을 건다. 위치 = `CompanyInfoEditor` 헤더 — 실무/수납(desktopHeading)은 문서로 자동입력 앞, 컨택관리·일정·계약은 헤더 맨 오른쪽(편집 뒤). 편집 팝업에도 같은 단계. 실무/수납 상세 박스 전체용 버튼은 belie 요청으로 제거(2026-09-29). Props: `step, onChange(next), label`.
+- `플러그 이관`은 화면과 완료 집계에서 제거한다. 과거 시트 값은 호환을 위해 읽기 스키마에만 남긴다. 모바일 계약 아코디언과 기존 저장 API는 유지한다.
+
+## 일반 입력 자동저장 (2026-09-23)
+
+- **AutosaveStatus** (`components/autosave/AutosaveStatus.tsx`): 기존 제목 옆에 작은 저장 중/저장됨/실패·재시도/직전 변경 되돌리기를 표시한다. 서버 응답을 받기 전에는 저장됨을 표시하지 않는다. `useAutosave`는 대상을 고정한 단일 요청 큐와 최신 입력 보존, 명시적 재시도, 이탈 전 `flush`, 입력 버리기 `discard`를 제공한다. 초기 조회·재조회만으로 쓰지 않는다.
+- 금액·날짜는 개별 필드 blur가 아니라 유효한 **입력 묶음 전체를 벗어날 때** 반영한다. 일반 입력은 저장 요청 중에도 편집할 수 있다. 없어지는 저장 버튼의 래퍼·구분선·고정바 여백도 제거하되 스텝바 safe-area는 보존한다.
+- **MeetingSlotForm**: 컨택의 공통 예약 필드. 기존 예약은 기본정보 자동저장, 신규 예약은 카드 안의 `예약 등록` 한 번으로 확정한다. 수치 자동저장이 신규 예약을 만들지 않는다.
+- **ContractSlots**: 기존 수납 슬롯 입력. 유효한 슬롯 묶음을 자동 반영하며 계약 확정·해지·삭제 같은 결과 동작은 별도로 유지한다. 연동 필드는 연결 저장 완료 후에만 저장됨으로 표시한다.
+- **ExpenseRecurringManager**: 비용 원장의 기존 반복 규칙 관리를 분리한 컴포넌트. 반복 등록·중지·향후 적용·삭제는 명시적 동작이다. 일회성 비용의 자동저장과 함께 실행하지 않는다.
+- **ExpenseEntryEditor**: 기존 일회성 비용의 원본 금액·인식 기간 편집 영역. 월별 배분 금액을 원본 금액으로 저장하지 않는다. 반복 발생분은 이 편집기를 사용하지 않는다.
+- 공지·업데이트 편집은 관리자별 세션 초안을 보존한다. 공개 게시/게시 반영은 명시적 버튼으로만 수행하며 브라우저 세션을 넘는 영속 보존으로 설명하지 않는다.
+- **백그라운드 자동저장 표시** (2026-09-24): 컨택 수치·미팅 자동저장은 `meta.silent` opt-in 으로 전역 차단 오버레이를 띄우지 않고 제목 옆 `AutosaveStatus`로만 표시한다. 그 외 뮤테이션(생성/등록/삭제/옮기기·초기 로딩)은 그대로 차단 표시. 컨택 본문은 백그라운드 refetch 로 dim 하지 않는다.
+
+## 트레이너 등급·권한 편집 (#958)
+
+- **TrainerAccessEditor** (`components/auth/TrainerAccessEditor.tsx`, 스타일 `TrainerAccessEditor.styles.ts`): 관리자 트레이너 페이지에 사용한다. 기본 endpoint `/api/admin/trainer-access`, 선택적 `readOnly`는 표시용이며 서버는 GET/PUT 모두 admin-only.
+- 공통 Noto 폰트·rem 밀도·4px 간격 체계를 따른다. 카드 패딩/섹션 간격 1rem, 목록:편집 1:2, 실제 패널 폭 40rem 이하에서 세로 배치. 긴 이름·이메일은 말줄임과 title을 함께 제공한다. 저장 버튼은 nowrap·44px 클릭 영역을 유지하고 안내 문구와 독립적으로 줄바꿈한다.
+- 서버 대상목록의 exact 이메일로 선택하며 이름+이메일을 표시한다. 미분류는 grade=null/version=0/모든 권한 false. 등급 변경은 기존 체크를 상한 안에서 유지하고 권한을 자동 부여하지 않는다. write 선택 시 read 활성, read 해제 시 write 해제. 취소/전체 해제/저장 확인 dialog와 키보드 Escape·focus 복귀·beforeunload 보호.
+- 실패 시 초안 보존, 409는 최신값 조회로 해결, 401/403 관찰 시 편집 차단. 성공한 PUT 뒤 GET 재조회가 끝나야 저장 완료. 재조회 실패는 중복 PUT을 막고 결과 재조회만 허용한다. endpoint 변경·unmount 시 오래된 응답은 무시한다. 360/390 모바일과 PC는 같은 API/정책을 사용한다.
+- 실행 증거 및 공용부 미통합: [trainer-access-settings QA](../qa/trainer-access-settings/README.md).
+
+## 주간 목표 (#947)
+
+- **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule/트레이너의 같은 주간 집계 API를 사용하는 요약. 대시보드에서는 생산성 아래 목표 링·기간·PT과제 미리보기, compact 모드는 DB OverallCard/컨택 WeekHeader/일정 SummaryBar 안에 숫자 배지와 목표·PT 진입 버튼을 배치한다. `date`가 없으면 KST 이번 주, 있으면 선택 날짜의 금~목 주간을 기본으로 표시한다. 전체 카드(non-compact)에만 이전/다음/현재 주 탐색 버튼을 둔다. 이전/다음은 서버가 반환한 주 시작일에서 7일씩 이동하며 1주차 이전·기준 주 이후는 막는다. `이번 주`(`date` 제공 시 `선택 주`)로 기준 주에 복귀한다. compact에는 별도 주차 탐색 버튼을 추가하지 않으며, 컨택·일정의 상위 날짜 선택을 그대로 따라가 고정 헤더 높이 증가를 피한다. 조회 중에는 이전/다음 이동을 막고, 실패 시 오류 안내와 `다시 시도`를 제공하며 남은 캐시 숫자를 성공 결과처럼 표시하지 않는다. `student` 또는 기준 `date`가 바뀌면 내부 탐색 상태를 초기화한다(`date` 미제공은 렌더 시 KST 날짜 키 사용). 목표 화면 진입에는 현재 탐색 날짜·학생과 허용된 `returnTo`를 전달하고 `useGuardedRouter`로 업무탭 미저장 입력을 보호한다.
+- **GoalRings**: 생산·유입·컨택완료·미팅완료·계약 실적/목표. null은 미기재, 0은 목표 0, 양수만 달성률. 기존 brand-red/green/gray 토큰.
+- **WeeklyGoalPage**, **WeeklyGoalEditor**: 학생/담당 트레이너 공통 화면. 지난 목표·지난 성과·이번 목표(입력)를 '목표달성 및 수립' 한 박스의 한 표로 묶는다. 주차 내비게이터는 1행이며 페이지 배너 바로 아래 sticky로 고정한다. 탭 안 복귀 버튼은 두지 않고 TopHeader 우상단 버튼만 쓴다. 공용 목표·PT과제와 내부 성과·특이사항은 각자의 revision으로 자동저장한다. 최하단 저장 푸터는 없으며 관련 제목 옆에 작은 상태를 표시한다. 모바일390의 다섯 링·입력·주요 버튼 최소44px. DirtyGuard와 revision 충돌 보호, 일시적 읽기 실패는 초안 보존/권한 거부는 내부 편집 제거.
+- **GoalTaskRows**: PT과제 1개=1 row 단일행 입력과 '과제 추가'/행 삭제. 행은 기존 text 컬럼에 줄 단위로 저장하므로 행 안에 줄바꿈을 허용하지 않는다. 이번 주 행 수는 지난주 행 수와 연동하지 않는다.
+- **GoalDraftTools**: 계약 목표 역산 미리보기와 초안 적용. 역산은 직전 주차가 아니라 해당 수강생 1주차~직전 주차 누적 실적 비율을 쓰고 누적 실적·계약 1건당 비율·제안을 근거 표로 노출한다. 누적 기록이 없는 항목만 승인된 표준 전환율로 폴백한다. dirty 덮어쓰기 확인 후 초안에 적용하고 일반 입력과 같은 자동저장을 사용한다. 승인 비율/올림 계약은 weekly-goals 도메인 문서에만 기록한다.
+- **GoalInternalEditor**: 별도 서버 권한을 통과한 내부 특이사항·지난 PT성과. 토글 없이 항상 펼쳐 두되 권한이 있을 때만 마운트한다. 지난 성과는 지난주 과제 행에 위치로 1:1 대응하므로 중간 빈 행을 보존한다. 독립 자동저장 큐와 내부 revision을 사용하며 공용 목표와 연쇄 저장하지 않는다. 명시적 내부 재조회와 generation/abort 경합 보호, 관찰한401/403은 내부 기록·dirty 등록·복사 상태를 제거하고409/5xx는 초안 보존.
+- **GoalCopyPanel**: 저장된 공용 목표·과제를 '클립보드 복사'로 내보내고, 같은 내용을 노션 표 모양의 가로형 미리보기로 항상 보여준다. 복사는 명시적인 복사 클릭으로만 실행한다. 자동저장 완료가 클립보드를 바꾸지 않는다. 복사 형식은 header+value 2행 HTML 표와 같은 모양의 TSV를 함께 실어 노션 표 셀에 붙도록 한다. 내부 회의록 편집 미리보기/14열 복사는 그대로. 선택 가능한 텍스트 대체; Notion 자동 기록 없음.
+- **TrainerGoalOverview**: 담당 학생의 공용 저장 목표만 집계. 실제 실적은 선택한 학생에만 요청해 전원 미팅/계약 조회를 방지.
+- **TraineeCard/ReservedSection 진입**: admin(`!viewOnly`)·담당 트레이너 카드·유보 목록은 녹색 시트 대신 compact [주간목표] (`rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50`, student 인코딩·spreadsheetId 무관). admin `returnTo=/admin/users`, trainer `returnTo=/trainer`. [웹앱 →]·배정·복귀/퇴출·read-only 가드는 그대로.
+- 세부 계약과 미검증 운영 경계: [weekly-goals.md](../domains/weekly-goals.md).
+
 ## 1. Buttons
 
 ### Primary Button
@@ -130,89 +177,77 @@
 
 **현재 사용 위치:** 컨택관리 탭 4지표(생산/유입/컨택진행/컨택성공), 수납관리 탭(승인·수납 건수)
 
-### Date Input (커스텀 박스 + 숨겨진 native) ⭐
+### Date Input (커스텀 박스 + **직접 그리는 달력**) ⭐
 
-**왜 커스텀이 필요한가**:
+**컴포넌트**: `components/ui/DateInputCustom.tsx` · props `{ value, onChange, ariaLabel?, min?, max?, placeholder? }`
+
+**왜 커스텀 박스인가**:
 - 한국어 UX는 `2026-04-25 (목)` 처럼 **요일 표시**가 필수
-- 그러나 native `<input type="date">`는 표시 형식을 바꿀 수 없음 (YYYY-MM-DD 고정, 요일 없음)
-- 해결: 보이는 박스는 커스텀, 진짜 input은 박스 전체 크기로 깔되 투명·`pointer-events:none`
-  으로 숨겨 클릭은 JS `showPicker()`만 받게 한다(⚠️ **0×0으로 줄이지 말 것** — iOS Safari·
-  카카오/인스타 인앱 WKWebView는 크기 0 요소에 picker를 안 띄운다, #656/P0-2).
+- native `<input type="date">`는 표시 형식을 못 바꾼다 (YYYY-MM-DD 고정, 요일 없음)
 
-**구현 예시:**
+**왜 달력까지 직접 그리는가 (2026-08-30 전환 — 5번째 재발 후)**:
+원래는 투명한 native input 을 박스 위에 깔고 브라우저 기본 달력을 띄웠다. 그 구조가 **네 번 연속으로 죽었다**:
+
+| 사고 | 원인 |
+|---|---|
+| #654 | `<label>` 이 클릭을 재전달 → `showPicker()` 2차 호출 → 열린 달력이 닫힘 |
+| #656 | 0×0 요소에는 iOS Safari·인앱 WKWebView 가 달력을 안 띄움 |
+| #730 | 브라우저 기본 클릭-오픈이 조용히 안 먹기 시작 |
+| #897 | 크롬이 `opacity:0` 인 입력의 `showPicker()` 를 **예외 없이 무시** — 에러가 안 나서 예외 기반 폴백도 안 켜짐 |
+
+공통점은 **"달력을 여는 주체가 브라우저"** 라서 통제도, 실패 감지도 불가능했다는 것.
+그래서 지금은 **평범한 DOM 으로 달력을 직접 렌더**한다 — 모든 브라우저·인앱 웹뷰에서 같게 동작하고, 자동화 테스트가 "실제로 떴는지"를 검증할 수 있다.
+
+> ⚠️ **`<input type="date">` + `showPicker()` 로 되돌리지 마라.** 위 4건이 다시 열린다.
+> `tests/components/date-input-picker.test.ts` 의 「네이티브 date picker 회귀 가드」가 기계 검증한다.
+
+**구조:**
 ```html
-<div class="custom-date-wrapper" onclick="openDatePicker(this)">
-  <span class="custom-date-display" id="dateDisplay-1">2026-04-25 (목)</span>
-  <span class="text-gray-400">📅</span>
-  <input 
-    type="date" 
-    class="hidden-native-date"
-    id="dateNative-1"
-    value="2026-04-25"
-    onchange="updateDateDisplay(this, 'dateDisplay-1')"
-  >
+<!-- 트리거 박스 -->
+<div class="custom-date-wrapper" role="button" tabindex="0" aria-haspopup="dialog">
+  <span class="custom-date-display">2026-04-25 (목)</span>
+  <span aria-hidden="true">📅</span>
+</div>
+
+<!-- 클릭 시 렌더되는 달력 (position:fixed — 부모 overflow 에 안 잘린다) -->
+<div class="date-pop" role="dialog">
+  <div class="date-pop-head">
+    <button class="date-pop-nav" aria-label="이전 달">‹</button>
+    <span class="date-pop-title">2026년 4월</span>
+    <button class="date-pop-nav" aria-label="다음 달">›</button>
+  </div>
+  <div class="date-pop-dow"><span>일</span>…<span>토</span></div>
+  <div class="date-pop-grid">
+    <!-- 42칸 고정(6주) — 달을 넘겨도 높이가 안 흔들린다 -->
+    <button class="date-pop-day is-selected" aria-label="2026-04-25">25</button>
+  </div>
+  <div class="date-pop-foot">
+    <button class="date-pop-today">오늘</button>
+    <button class="date-pop-close">닫기</button>
+  </div>
 </div>
 ```
 
-**CSS 정의:**
-```css
-.custom-date-wrapper {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-  background: white;
-  user-select: none;
-  position: relative;
-}
-.custom-date-wrapper:hover { border-color: #9ca3af; }
-.custom-date-wrapper:focus-within { border-color: #3b82f6; outline: 2px solid #dbeafe; }
+**클래스:**
 
-.custom-date-display {
-  font-size: 14px; font-weight: 500; color: #111827;
-  flex: 1;
-}
+| 클래스 | 역할 |
+|---|---|
+| `.custom-date-wrapper` | 트리거 박스 (hover·focus-within 테두리) |
+| `.custom-date-display` | `YYYY-MM-DD (요일)` 표시 |
+| `.date-pop` | 달력 컨테이너 · `position:fixed` · `z-index:400` · 288px |
+| `.date-pop-head` / `.date-pop-title` / `.date-pop-nav` | 달 이동 헤더 |
+| `.date-pop-dow` / `.date-pop-grid` | 요일 헤더 · 7열 그리드 |
+| `.date-pop-day` | 날짜 칸 — **높이 36px 이상 유지(모바일 터치 타깃)** |
+| `.date-pop-day.is-selected` / `.is-today` / `.is-out` | 선택 / 오늘 / 앞뒤 달 |
+| `.date-pop-foot` / `.date-pop-today` / `.date-pop-close` | 오늘·닫기 |
 
-/* native input은 박스 전체 크기(showPicker가 iOS 등에서 먹으려면 0×0 금지) +
-   pointer-events:none — 클릭이 항상 wrapper(JS showPicker)로만 가게 해서
-   "브라우저 기본 클릭-오픈에 의존" 자체를 없앤다(BBE-81, 2026-08-07 — 그 기본
-   동작이 조용히 안 먹는 사례가 나와 전 수강생 클릭 무반응이 재발했었다). */
-.hidden-native-date {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  opacity: 0;
-  pointer-events: none;
-}
-/* showPicker() 가 실패(미지원/예외)할 때만 부여 — 최후 수단으로 브라우저 기본
-   클릭-오픈을 되살린다. 이때 화면에는 "다시 눌러주세요" 안내가 함께 뜬다. */
-.hidden-native-date--fallback {
-  pointer-events: auto;
-  cursor: pointer;
-}
-```
+**동작 계약:**
+- 박스 클릭 또는 `Enter`/`Space` → 달력 표시. 바깥 클릭 · `Esc` · 날짜 선택 시 닫힘
+- 날짜 선택 → `onChange(YYYY-MM-DD)` 1회 + 닫힘
+- `min`/`max` 밖 날짜는 `disabled`
+- 화면 아래 공간이 모자라면 박스 **위로** 띄우고, 좌우는 화면 안으로 물린다
+- 날짜는 **문자열로만** 다룬다 — `new Date("2026-08-01")` 은 UTC 파싱이라 KST 에서 하루 밀린다
 
-**JS 헬퍼:**
-```javascript
-const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
-
-function openDatePicker(wrapper) {
-  const native = wrapper.querySelector('.hidden-native-date');
-  if (native.showPicker) {
-    native.showPicker();
-  } else {
-    native.focus(); // 폴백
-  }
-}
-
-function updateDateDisplay(native, displayId) {
-  const display = document.getElementById(displayId);
-  const date = new Date(native.value);
-  const dayKo = DAY_KO[date.getDay()];
-  display.textContent = `${native.value} (${dayKo})`;
-}
-```
 
 **브라우저 호환성**:
 - `showPicker()` 지원: Chrome 99+, Edge 99+, Safari 16+, Firefox 101+
@@ -467,7 +502,8 @@ function getTimeValue(hourId, minuteId) {
 - **단계 인디케이터(ADR-0027)**: 아이콘 칩 **위 STEP 배지**("STEP 1~4", `text-[9px]`). 점(dots) 폐기. 캘린더는 단계 없음(도구).
 - **흐름 화살표**: STEP1·2 사이, STEP3·4 사이에만 `›`(chevron, `text-slate-300`, 좁은 고정폭, 행 높이 중앙). **캘린더 양옆엔 없음**.
 - **아이콘 칩**: `h-8 w-9 rounded-lg`. 비활성=`bg-slate-200`+`text-slate-600`, 활성=탭색 채움(`bg-{tab}`)+흰 글리프+`shadow`. STEP 배지·라벨도 같은 탭색(라벨 `font-bold`). **탭색 5종 = tokens.md "탭 단계 색상"**(blue-700/emerald-600/amber-500/violet-600/rose-600).
-- **중앙 캘린더 = 입체 FAB**: 흰 원(`h-[52px] w-[52px]`) + `border` + `shadow-lg` + `-mt-6`. 비활성=흰 원+`text-slate-500`, **활성=`bg-amber-500` 채움+흰 글리프**(border-amber-500).
+- **중앙 캘린더 = 작은 유리 원형**: 56×56px, 아이콘24px, 라벨 간격2px. 흰색52% 배경·60% 테두리·약한 내부빛과 그림자. 원은 absolute로 크기만 위로 늘어나며 바 높이를 늘리지 않는다. lift 기본값0px은 원만 이동한다. 다섯 라벨은 공용 글자 크기·행 높이로 수평 정렬하며 원 조절로 움직이지 않는다. 활성은 amber22% 배경·amber700 아이콘/라벨. [2026-09-14 결정](../decisions/2026-09-14-tabbar-glass-capsule.md).
+- **유리 바와 본문 공간**: 흰색32% + blur20px/saturate180%. 최소 안전여백8px+추가4px, 70px 행. 모바일 기본 전체83px, 본문 padding도 `--app-tabbar-height` 공유. 라벨 하단 여백18px, 글씨12px 유지.
 - **양끝 여백**: 바 내부 `px-5`(20px) + `env(safe-area-inset-*)` 유지 → 아이폰 라운드 모서리 잘림 방지.
 - **반응형**: 모바일 전폭(flex-1) / 넓은 화면 `max-w-bottom-nav`(480px) 중앙정렬. **탭타깃 ≥44px**(`minHeight:44`+py).
 - **미저장 가드 유지**: 모든 탭/FAB 라우팅은 `useGuardedRouter().push` 경유(절대 제거 금지).
@@ -924,252 +960,173 @@ function getTimeValue(hourId, minuteId) {
 
 ## 8. App Shell
 
-모든 (app) 탭(컨택관리/일정·계약/캘린더/수납/DB관리)이 공유하는 최상단 셸.
+대시보드(`/dashboard`)와 업무 탭이 공유하는 최상단 셸. `TopHeader`는 트레이너·주간목표 화면에서도 사용한다.
 
 **구조 (한 컴포넌트, 2 sticky 영역)**:
 
-```
-┌─────────────────────────────────────────────────────────┐ ← TopHeader (h-12, top-0, z-50)
-│ [logo] [기수 이름 대표님 · 경영일지] [D-23] [대시보드 →] │   슬림 브랜드 바
-├─────────────────────────────────────────────────────────┤ ← PageBanner   (h-12, top-12, z-40)
-│ ▍ 📞 컨택관리                              01 영업관리 │   페이지 식별
-└─────────────────────────────────────────────────────────┘
-   본문 영역 ─────────────────────────────────────────────
+```text
+TopHeader: 모바일 첫 행 로고 | 대시보드 | 역할 전환, 정보 행 이름 | 대리접속
+  h-app-header = <768px 6rem, >=768px 3.5rem, sticky top-0 z-50
+PageBanner: 페이지 이모지·제목 | 선택적 부제
+  h-12 = 3rem, sticky top-app-header z-40
+날짜·검색·진행 등 페이지별 고정 영역
+  sticky top-app-content = 헤더 + 3rem (<768px 9rem, >=768px 6.5rem), z-30
+일반 본문
 ```
 
-**구현 파일**:
-- `components/TopHeader.tsx` — **두 sticky 영역을 한 컴포넌트로 묶음**
-  (TopHeader = 슬림 브랜드 바 + PageBanner. 별도 `<PageBanner />` 컴포넌트 없음)
-- `components/DDayBadge.tsx` — TopHeader 그룹 ③에서 import
+- `components/TopHeader.tsx`가 브랜드 바와 페이지 배너를 함께 렌더한다. 별도 `PageBanner` 컴포넌트는 없다.
+- 768px 미만은 두 줄 브랜드 바 96px + 배너 48px = 144px이다. 768~1023px은 한 줄 56px + 48px = 104px, PC(1024px+) 루트 13.5px에서는 47.25px + 40.5px = 87.75px이다. `2xl`은 이 저장소에서 768px이며, 전역 반응형 높이 변수를 헤더·배너·모든 sticky 소비자가 공유한다.
+- 공용 헤더 정보 영역에 `DDayBadge`와 조건부 `대리 접속 중` 표식을 보존한다. 대리접속 표식은 본인 역할 전환 버튼과 분리한다. 신원 변경 감지·쓰기 보호는 기존 `IdentityGuard`가 담당한다.
 
 **API**:
+
 ```tsx
-<TopHeader pageEmoji="📞" pageTitle="컨택관리" pageSubtitle="01 영업관리" />
+<TopHeader pageEmoji="📞" pageTitle="컨택관리" />
+<TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
 ```
 
 | Prop | 타입 | 필수 | 비고 |
 |---|---|---|---|
-| `pageEmoji` | string | ✅ | PageBanner 좌측 이모지. 탭별 고정값 (아래 표) |
-| `pageTitle` | string | ✅ | PageBanner 한글 라벨 |
-| `pageSubtitle` | string \| undefined | — | PageBanner 우측 회색 보조 (시트 탭 출처 등) |
-
-**탭별 고정 props** (5개 탭 일관성):
-
-| 페이지 | pageEmoji | pageTitle | pageSubtitle |
-|---|---|---|---|
-| 컨택관리 (`/contact`) | 📞 | 컨택관리 | `01 영업관리` |
-| 일정·계약 (`/schedule`) | 📅 | 일정·계약 | `04 업체관리` |
-| 캘린더 (`/calendar`) | 🗓️ | 캘린더 | `04 업체관리` |
-| 수납 (`/payment`) | 💰 | 수납 | `02 계약수납관리` |
-| DB관리 (`/db`) | 🗂️ | DB관리 | `03 DB관리` |
-| 대시보드 (`/`) | 📊 | 대시보드 | `8주 누적` (Q3 A 결정 — 5탭과 동일한 TopHeader 사용. ④ 대시보드 버튼 자리만 변형 — 아래 §대시보드 변형 참조) |
+| `pageEmoji` | string | ✅ | 페이지 배너 이모지. 빈 문자열 허용 |
+| `pageTitle` | string | ✅ | 페이지 한글 라벨 |
+| `pageSubtitle` | string | — | 우측 회색 부제 |
+| `roleMode` | `"student"` 또는 `"trainer"` | — | 역할 전환 표시 힌트. 미제공 시 경로로 판정 |
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
-**용도**: 5개 탭 페이지 최상단 sticky 브랜드 바. 사용자/D-day/대시보드 진입 한 줄.
+**구조**: 768px 미만은 `h-app-header` 6rem 두 행. 첫 행은 로고 → 대시보드 → 자격이 있는 본인 역할 토글, 정보 행은 기수·이름 → 조건부 대리접속 표식 → DDayBadge. `2xl`(768px)부터 3.5rem 한 행으로 로고 → 정보 → 액션 순서를 유지한다.
 
-**구조** — 한 줄, `h-12` (48px), `justify-between`으로 4 그룹 균등 분할:
+| 그룹 | 내용 | 데이터와 동작 |
+|---|---|---|
+| 로고 | `/salespt-logo.png`, `h-5 sm:h-6 w-auto` | 계정 메뉴 열기 버튼, 새소식 점 배지 |
+| 사용자 | 기수·이름·대표님 | `useMe()`의 프로필을 표시. `min-w-0` 정보 영역 안에서 이름은 `min-w-8 truncate`; 연결된 시트가 있으면 원본 시트 새 탭 링크. 프로필 이름이 없으면 트레이너 이름으로 보완 |
+| 액션 | 대시보드 + `RoleViewSwitch` | 수강생 화면 복귀 링크와 트레이너 화면의 최신 capability 조건을 유지하며 목적지는 `/dashboard`. 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시 |
 
-```
-[① 로고 png]   [② {기수} {이름} 대표님 · 경영일지]   [③ DDayBadge]   [④ 대시보드 →]
-```
-
-| 그룹 | 내용 | 데이터 출처 | 비고 |
-|---|---|---|---|
-| ① 로고 | **`/salespt-logo.png`** (PNG, 워드마크 포함) | `public/salespt-logo.png` 정적 자산 | `h-6 sm:h-7 w-auto object-contain`. **SVG 인라인 아님 — PNG 파일**. "세일즈PT" 워드마크가 이미지에 포함되어 있어서 별도 텍스트 워드마크 추가하지 않음 |
-| ② 사용자 + 라벨 | `formatDisplay(cohort, name)` + `"경영일지"` | `useMe()` ([data-model.md](../domains/data-model.md#사용자-프로필--d-day-topheader-ssot)) | 그룹 내부만 `gap-1.5` 타이트 묶음. xs(<sm)에선 `"경영일지"` 숨김(워드마크에 포함됨) |
-| ③ D-day | `<DDayBadge />` | `me.graduationISO` (= `courseStartISO + 57d`, 종강총회일 = 수료일) | 아래 §DDayBadge 참고 |
-| ④ 대시보드 버튼 | "대시보드 →" Link to `/` | — | 흰 배경 + **brand red #d71617** 테두리/글자, hover `bg-red-50` |
-
-**대시보드 버튼 동작 사양**:
-- 표시 위치: **모든 (app) 탭의 우상단** (5개 탭 동일 — contact/schedule/calendar/payment/db).
-- 활성/비활성 상태 **없음** — 항상 동일하게 노출.
-- **대시보드 페이지(`/`) 자체에서도 동일한 TopHeader 사용** — 단, ④ 대시보드 버튼은 **현 페이지 표시 라벨**(비활성 링크)로 대체 (Q3 결정 2026-05-08, 옵션 A).
-- 탭 표시(active 표시)는 하단 `BottomNav`(§5)의 책임. TopHeader는 브랜드/사용자/D-day/대시보드 진입 4가지만 다룬다.
-
-**대시보드 페이지(`/`) TopHeader 변형 (Q3 A)**:
-- 슬림 바 + PageBanner 구조 그대로 (5탭과 일관성).
-- ④ 자리: `<Link href="/">대시보드 →</Link>` 대신 현 페이지 라벨 또는 빈 칸:
-  - 옵션 A1: 그냥 비움 (가장 단순, 시각 일관성)
-  - 옵션 A2: `📊 대시보드` 텍스트만 (현재 위치 표시) — 권장
-- PageBanner: `pageEmoji="📊"`, `pageTitle="대시보드"`, `pageSubtitle="8주 누적"` (prototype 기준)
-
-**HTML/Tailwind 규격** (안정 버전, 변경 시 PR로 동시 갱신):
-
-```tsx
-<header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-2 border-b border-gray-100 bg-white px-2 sm:px-3">
-  {/* ① 로고 */}
-  <img src="/salespt-logo.png" alt="세일즈PT"
-       className="h-6 w-auto shrink-0 object-contain sm:h-7" />
-
-  {/* ② 사용자 + 경영일지 — 한 그룹 */}
-  <div className="flex min-w-0 items-center gap-1.5">
-    <span className="min-w-0 truncate text-[11px] font-black text-gray-900 sm:text-sm">
-      {display}  {/* "7기 김믿음 대표님" */}
-    </span>
-    <span className="hidden shrink-0 text-xs font-black text-gray-900 sm:inline sm:text-sm">
-      경영일지
-    </span>
-  </div>
-
-  {/* ③ D-day */}
-  <div className="flex shrink-0">
-    <DDayBadge graduationISO={me.data?.graduationISO} />
-  </div>
-
-  {/* ④ 대시보드 버튼 — 흰 배경 + 빨간 글자 */}
-  <Link href="/"
-        className="group inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-red bg-white px-2.5 py-1 text-[11px] font-bold text-brand-red shadow-sm transition-all hover:bg-red-50 hover:shadow-md active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
-    <span>대시보드</span>
-    <svg className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /* arrow */ />
-  </Link>
-</header>
-```
-
-**의미 그룹 간격 원칙**:
-- 4 그룹은 `justify-between`으로 균등 분배(자동 여백) — `gap-2`는 최소 안전 간격.
-- ② 그룹 **내부**만 `gap-1.5`로 타이트하게 묶어 한 덩어리로 보이게.
-- 그룹 ↔ 그룹 사이는 `gap-1.5` 같은 작은 값으로 **추가 묶기 금지**(④가 우측 끝에 명확히 떨어져야 함).
-
-**반응형 (display-reference-v2.html 기준)**:
-- xs(<640, Galaxy 360px): "경영일지" 숨김(`hidden sm:inline`), 폰트 `text-[11px]`/`text-xs`
-- sm(≥640, iPhone 12~17e): "경영일지" 표시, 폰트 `sm:text-sm`
-- md+ : 동일 (여유)
-
-**적층 (sticky)**: `top-0 z-50`. 그 아래 페이지 배너는 `top-12 z-40`. → [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
+- 대시보드 화면에서도 같은 링크를 유지한다. `/` 또는 `/trainer`로 조건부 치환하거나 비활성 라벨로 바꾸지 않는다.
+- 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 360/390px 긴 이름에서도 이름의 가용 폭과 액션 비겹침을 브라우저로 검증한다.
+- 로고·역할 버튼은 `h-11`(모바일 44px). 대시보드는 기존 메뉴 복귀와 같은 연한 붉은 알약형(`rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700`)으로 `← 대시보드`를 표시한다. 투명한 링크 클릭 영역은 `min-h-11`로 유지하고 내부 pill을 수직 중앙에 배치한다. 별도 대시보드 아이콘·큰 사각 박스는 사용하지 않는다. PC에서는 전역 루트 스케일이 적용된다.
+- 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 대리접속 표식과 반응형 배치가 권한이나 계정 전환 동작을 바꾸지 않는다.
+- 적층은 `sticky top-0 z-50`; 페이지 배너는 `sticky top-app-header z-40`이다.
 
 ### DDayBadge
 
-**용도**: TopHeader ③에 들어가는 카운트다운 배지. **종강총회일 = 수료일**(`courseStart + 57일`, 토요일)까지 남은 일수.
+**용도**: 공용 헤더 정보 행 및 기존 대시보드 진행도의 카운트다운 배지. 헤더는 날짜가 없거나 유효한 ISO 달력 날짜가 아니면 `D-—` placeholder를 사용한다.
 
-**표시 규칙** ([data-model.md §D-day 계산 규칙](../domains/data-model.md#d-day-계산-규칙-ddaybadge) SSOT):
+- 날짜 정본은 `me.graduationISO`, 즉 시트 O2에 저장된 실제 종강총회일(수료일)이다. `courseStart + 57일` 같은 고정 일수로 계산하거나 저장 날짜를 덮어쓰지 않는다.
+- 컴포넌트는 브라우저 로컬 날짜와 `graduationISO`의 일수 차이를 계산한다. 초기에는 placeholder를 렌더하고 `useEffect`에서 오늘을 계산하며, 30분마다 갱신한다.
 
-| 상태 | 텍스트 | 색상 | 비고 |
-|---|---|---|---|
-| 양수 N (남음) | `D-N` (두 자리 박스 분할: 10의 자리 / 1의 자리) | 검정 박스 / 흰 글자 | 카운트다운 강조 |
-| 0 | `D-DAY` | **brand red #d71617** | 발표일 강조 |
-| 음수 N (지남) | `D+\|N\|` | 회색조 | 지난 일수 |
-| loading/error | `D-—` | `bg-gray-100 text-gray-400` | placeholder |
+| 상태 | 표시 | 색상 |
+|---|---|---|
+| 남은 일수 > 7 | `D-N`, 숫자 박스 | 검정 배경·흰 글자 |
+| 남은 일수 1~7 | `D-N`, 숫자 박스 | 빨강 배경·흰 글자 |
+| 당일 | `D-DAY` | 빨강 강조 |
+| 종강일 경과 | `🎓 수료` | emerald |
+| 날짜 없음·초기 렌더 | `D-—` | 회색 placeholder |
 
-**갱신**: 30분 polling(`setInterval` 30 * 60 * 1000ms)으로 자정 넘어가는 케이스 대응.
-**Hydration**: SSR mismatch 방지 위해 `today`는 `useEffect` 안에서만 계산(초기 렌더는 placeholder).
-
-**한도**: 두 자리 박스 가정으로 99일까지. 종강총회까지 57일 기준이라 충분.
-
-**현재 사용 위치**: TopHeader 그룹 ③ 단독.
+두 자리 숫자 박스는 남은 일수 표현에 사용한다. 지난 일수는 `D+N`으로 늘리지 않고 수료 상태로 표시한다.
 
 ### PageBanner (TopHeader 내부 두 번째 sticky 영역)
 
-**용도**: 슬림 브랜드 바 바로 아래 붙어 현재 페이지가 어느 탭인지 식별. 별도 컴포넌트가 아니라
-**TopHeader.tsx 내부의 두 번째 `<div sticky>`**. props는 `pageEmoji` / `pageTitle` / `pageSubtitle` (TopHeader가 전달).
-
-**HTML/Tailwind 규격**:
-
-```tsx
-{/* 페이지 배너 — TopHeader 내부, 슬림 바 바로 아래 */}
-<div className="sticky top-12 z-40 flex h-12 items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 sm:gap-3 sm:px-4">
-  {/* 좌측 세로 막대 */}
-  <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
-
-  {/* 이모지 + 제목 */}
-  <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
-    <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
-    <span className="truncate">{pageTitle}</span>
-  </h1>
-
-  {/* 보조(시트 탭 출처 등, 우측 회색) */}
-  {pageSubtitle && (
-    <span className="ml-auto shrink-0 truncate text-[10px] text-slate-500 sm:text-xs">
-      {pageSubtitle}
-    </span>
-  )}
-</div>
-```
-
-**디자인 규격**:
-- 높이: `h-12` (슬림 바와 동일). 두 영역 합쳐 96px 고정.
-- 배경: `bg-slate-100` (슬림 바의 `bg-white`와 시각 구분).
-- 좌측 액센트 바: `w-1 h-5 bg-slate-500` (페이지 안에 들어왔다는 시각 신호).
-- 적층: `sticky top-12 z-40` (슬림 바 바로 아래, 본문 위) — [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
+- `sticky top-app-header z-40 h-12`: 브랜드 바 아래 3rem 높이의 페이지 식별 영역.
+- 바깥 배경은 전체 폭 `bg-slate-100`; 안쪽 `PageContainer width="wide"`가 제목·부제의 본문 정렬을 맞춘다(학생 셸 ≥1024px에서는 `.desktop-shell .page-banner` 스코프가 전폭으로 해제).
+- 좌측은 `w-1 h-5 bg-slate-500` 액센트와 이모지·제목, 우측은 선택적 `pageSubtitle`이다.
+- 두 헤더 영역의 합은 `app-content`: 768px 미만 9rem, 768px 이상 6.5rem이다. 페이지별 sticky 소비처도 이 토큰을 공유한다. [적층 토큰](./tokens.md#z-index--sticky-적층)을 따른다.
 
 ---
 
 ## 9. Dashboard
 
-대시보드 페이지(`/`) 전용 컴포넌트. 핸드오프: `docs/handoff/inbox/dashboard-2026-05-07/`.
+대시보드 페이지(`/dashboard`) 전용 컴포넌트. 과거 핸드오프는 `docs/handoff/inbox/dashboard-2026-05-07/`이며 현재 배치와 props는 아래 구현을 따른다.
 
-**디렉토리 구조**:
+```text
+app/(app)/dashboard/page.tsx
+  TopHeader                                  # 공용 반응형 헤더 + 페이지 배너
+  sticky top-app-content z-30 래퍼
+    PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
+  PageContainer > 일반 본문
+    FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
+    [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
+    FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열)
 ```
-app/(app)/dashboard/page.tsx                # 대시보드 메인 페이지 (TopHeader 사용 — §8 변형)
-components/dashboard/
-  ├── DashboardProgressBanner.tsx           # 메인 배너 (h-12 sticky top-24, 진행도 + 매출/비용)
-  ├── FinanceSummaryBoxes.tsx               # 매출 / 비용 1:1 grid 박스
-  ├── OperatingProfitCard.tsx               # 영업이익 카드 (좌측 border-l-4 blue-500)
-  ├── FunnelChart.tsx                       # 6단계 영업퍼널 SVG (생산→유입→컨택진행→미팅예약→미팅완료→계약)
-  ├── ProductivityIndicators.tsx            # 생산성 지표 4개 (indigo gradient: 입구 옅음 → 종착 진함)
-  ├── WeeklyDualChart.tsx                   # 8주차 듀얼 차트 (활동량 + 영업이익, 영업이익 음수도 표시)
-  └── ChannelPerformance.tsx                # 채널별 성과 (좌: 비용 도넛 / 우: DB유입 도넛 — 좌우 대칭)
-```
+
+**카드 서식 통일(2026-09-28)**: 대시보드 본문 카드 6종(생산성·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨을 그대로 쓴다.
+
+**높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간 목표의 PT과제 상자는 `mt-auto`로 바닥, ≥1600px 생산성 카드는 진행건 위 남는 칸을 `flex-1`로 채운다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
+
+`DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다. 이월·해지·숨김 계약을 동일하게 제외하고, 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
 
 ### 9-1. DashboardProgressBanner
 
-**용도**: 대시보드 메인 배너. PageBanner(top-12) 바로 아래 sticky.
+**용도**: 현재 날짜·수강 주차·진행률·수료일을 표시한다. 재무 금액과 경비장부 진입점은 일반 본문의 `FinanceSummaryBoxes`로 분리한다.
 
 **위치 / 적층**:
-- `sticky top-24 z-30` — TopHeader(top-0) + PageBanner(top-12) + 본 배너(top-24).
-- 자식 sticky 각각 금지 — TopHeader처럼 부모 묶기 패턴.
-- z-index 추가 (메인 배너 = z-30): [tokens.md §Z-Index & Sticky 적층](./tokens.md#z-index--sticky-적층).
+
+- 대시보드 페이지가 전체 폭 `sticky top-app-content z-30` 래퍼를 소유하고 그 안에 `PageContainer`와 본 컴포넌트를 둔다.
+- `DashboardProgressBanner` 자체에는 sticky를 중복 지정하지 않는다.
+- 날짜가 없거나 조회 중이어도 날짜·일정 확인 안내·D-day placeholder 영역은 표시한다. `dash.data`가 있는 재무 본문은 수강 일정 유무와 별개로 렌더한다.
 
 **Props**:
-- `cohort: string` — `"6기"` (formatCohort 적용)
-- `today: string` — MM/DD (`"5/4"`)
-- `weekday: string` — 한글 한 글자 (`"월"`)
-- `currentWeek: number` — 1~8
-- `progressPercent: number` — `(today − N1) / 57 × 100`, 0~100
-- `graduationDate: string` — `"6/6"` MM/DD (graduationISO에서 추출)
-- `revenue: number` — 총매출
-- `cost: number` — 총비용
-- `feeIncome: number` — 수임비
-- `commissionIncome: number` — 수수료
 
-**상단 라벨 형식 (Belief 결정 2026-05-07)**:
-```
-현재 [today] ([요일]) · [N주차] 진행중
-```
-- 그룹 1 (`현재 5/4 (월)`): `text-base font-extrabold text-gray-900 tabular-nums`
-- 구분자 (`·`): `text-base text-gray-300`
-- 그룹 2 (`4주차 진행중`): `text-base font-extrabold text-blue-600`
+| Prop | 타입 | 의미 |
+|---|---|---|
+| `today`, `weekday` | string | 현재 날짜 M/D와 한글 요일. 페이지는 `todayKST()` 기준 |
+| `currentWeek` | number | 페이지에서 시작일 앵커로 구한 코스 주차, `1~STATS_WEEKS` 범위 |
+| `hasDates` | boolean, 기본 true | 시작·종강일 확보 여부 |
+| `graduated` | boolean, 기본 false | 실제 종강일 경과 여부 |
+| `startDate`, `graduationDate` | string | 시작일·종강총회일 M/D 표시 |
+| `progressPercent` | number | `(오늘 − 시작일) / (종강일 − 시작일) × 100`, 표시 범위 0~100 |
+| `graduationISO` | string, 선택 | `DDayBadge`에 전달하는 실제 수료일(O2) |
 
-**진행바 디자인**:
-- 배경: `h-2 bg-gray-200 rounded-full`
-- 진행: `bg-gradient-to-r from-blue-400 to-blue-600 rounded-full`
-- 끝점 빛나는 SVG: 5겹 amber halo (외곽/중간/메인 dot/안쪽 빛/광택)
-- 진행바 위/아래 마진: `mb-3` / 컨테이너 패딩: `pt-3 pb-2.5`
+- 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료`. 오른쪽: `DDayBadge`.
+- 진행바: `h-1.5 bg-slate-100 rounded-full`, 파란 그라데이션과 amber SVG 끝점. 위아래 `mb-3`, 컨테이너 `pt-3 pb-2.5`.
+- 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
+- 진행 배너의 코스 주차(시작일 앵커)와 주간목표의 금~목 주차는 서로 다른 계약이다.
 
-**하단 우측**: `🎓 [graduationDate] 종강총회` (= 수료일 통합 표시)
+### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행)
 
-### 9-2. FinanceSummaryBoxes
+**용도**: 매출/비용/영업이익 `grid grid-cols-3 gap-2` 한 행. 일반 본문 상단의 한 section을
+구성하며 스크롤 고정하지 않는다. 2026-09-16 개편으로 기존 매출/비용 2열 + 별도
+`OperatingProfitCard` 큰 카드를 이 컴포넌트 하나로 통합했다(§9-3 폐지).
 
-**용도**: 매출/비용 1:1 grid (`grid grid-cols-2 gap-3`). 비용 박스 ₩4,800,000 짤림 방지로 1:1 (이전 3:2 폐기).
+**Props**:
 
-**디자인**:
-- 매출 박스: `bg-white border border-gray-200` + 좌측에 `w-4 h-4 rounded-full bg-gray-200 text-gray-700` ＋ 배지
-- 비용 박스: `bg-white border border-gray-200` + 좌측에 `w-4 h-4 rounded-full bg-red-100 text-red-600` − 배지
+- `revenue`, `cost`, `feeIncome`, `commissionIncome`: 대시보드 KPI의 총매출·총비용·수임비·수수료.
+- `dbCostTotal`: DB 비용 합계.
+- `additionalCost: number | null`: 추가 비용. null은 조회 실패 안내를 표시하며 0원으로 대신하지 않는다.
+- `onOpenExpenseLedger: () => void`: 비용 상세 안 추가 비용 행 클릭 시 같은 페이지의 경비장부 모달 열기.
+- `weeks` (기본 `STATS_WEEKS`), `contractCount?`: 영업이익 상세의 주차·계약건수 부연.
+- `carryoverRevenue?`/`totalRevenue?`, `carryoverCost?`/`totalCost?`: 이월 분리 표시(선택).
+  없으면 이월 0, 전체 = 시즌 + 이월로 계산한다(belie 결정 2026-08-07, BBE-83 — 매출과
+  같은 시작일(courseStart) 경계로 03 DB관리 비용을 시즌/이월 분할한 값).
 
-### 9-3. OperatingProfitCard
+**디자인 / 동작**:
 
-**용도**: 영업이익 (= 매출 − 비용) 단독 카드.
+- 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분).
+  흰색 배경, slate-200 테두리, rounded-xl, ＋/−/＝ 배지를 공유하고, 라벨은 금액 위에 둔다.
+- 금액 색: 매출 slate-900, 비용 red-600, 영업이익은 0 이상 파랑 `#1d4ed8`·음수 보라 `#7c3aed`
+  (음수도 비용 빨강과 혼동되지 않게 한다). 영업이익 = 매출 − 비용, 기존 음수 부호 유지.
+- 각 컬럼은 `button`이며 클릭 시 행 아래 공용 상세 패널(`#fin-detail-panel`, 전체 폭)이
+  열린다. 한 번에 하나만 열리고 같은 컬럼을 다시 누르면 닫힌다. `aria-expanded`/
+  `aria-controls`와 컬럼별 `focus-visible:ring-2`를 둔다. 상세 패널은 버튼의 형제이므로
+  중첩 버튼이 생기지 않는다.
+- 상세 내용: 매출 = 수임비·수수료 / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
+  hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·주차·계약건수·
+  시즌/이월/전체 매출·비용 표.
+- 금액은 `formatMoney` 전체 금액(축약·절단 없음). ₩99,999,999·₩-99,999,999까지
+  320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
+  `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
+  좁은 폭 대응은 cqi 유동 글꼴·최소 패딩 + 실측 맞춤(ResizeObserver·font-load ready·
+  값 변경에 재측정, 3열 동일 최대 폰트·넘칠 때만 축소)이며 DOM 텍스트는 항상 전체
+  금액(접근성 유지). SSR 안전·관찰자/이벤트 정리.
+- 영업이익 상세 표도 320px·8자리까지 금액 분할 없음(숫자열 우선 폭
+  `grid-cols-[2.5rem_repeat(3,minmax(0,1fr))]`·행 라벨열 축소·숫자셀 11px nowrap).
+- 기존 영업이익·시즌/이월/전체 재무 계산과 실제 값을 보존한다.
 
-**디자인**:
-- 좌측 `border-l-4 border-blue-500`
-- 좌측에 `w-4 h-4 rounded-full bg-blue-100 text-blue-600` ＝ 배지
-- 큰 영업이익 금액 (`text-2xl font-extrabold`)
-- 부연: "영업이익률 N%" (소수 1자리)
-- 매출/비용/영업이익 세 박스의 **+/−/= 배지 산술 흐름** 시각 통일
+### 9-3. OperatingProfitCard (폐지 — §9-2에 통합)
 
-**이월 분리 표시(선택)**: `carryoverRevenue`/`totalRevenue` 주면 매출 3줄(아레나·이월·전체) 표시.
-`carryoverCost`/`totalCost` 주면 비용도 동일하게 3줄 표시(belie 결정 2026-08-07, BBE-83) — 매출과
-같은 시작일(courseStart) 경계로 03 DB관리 비용을 시즌/이월 분할한 값.
+2026-09-16 finance-three-columns 개편으로 별도 큰 카드를 두지 않는다. 영업이익 표시·
+이익률(소수 1자리)·시즌/이월/전체·주차/계약건수는 `FinanceSummaryBoxes`의 영업이익
+컬럼과 그 상세 패널이 그대로 제공한다. 컴포넌트 파일은 삭제됐다.
 
 ### 9-4. FunnelChart (6단계 영업퍼널)
 
@@ -1219,17 +1176,14 @@ components/dashboard/
 
 ### 9-7. ChannelPerformance
 
-**용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`).
+**용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`) + 채널 표 1개. 높이를 줄이려고(2026-09-28 belie) 도넛 제목을 도넛 **왼쪽**에 붙이고, 도넛별 범례 2개와 계약단가 카드 4개를 채널 표 하나로 합쳤다(채널 색이 같아 범례가 중복이었다).
 
 **구조**:
-- **좌**: 채널별 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외)
-  - 가운데: `−총비용` (만원 단위, brand red)
-  - 도넛 밑: 채널별 비용 + % 라벨 리스트
-- **우**: 채널별 DB유입 도넛 (4채널 — 콜·지·기·소 포함)
-  - 가운데: 총유입 건수 (blue-700)
-  - 도넛 밑: 채널별 유입 + % 라벨 리스트
+- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−총비용` (만원 단위, brand red)
+- **우**: `채널별 DB유입` 제목 + 유입 도넛 (4채널 — 콜·지·기·소 포함), 가운데 총유입 건수 (blue-700)
+- **아래 채널 표**: 채널(색 dot) · 비용(만원 + %) · DB유입(건 + %) · 계약단가 — 4행
 
-**SVG (각 도넛)**: `viewBox="0 0 170 160"`, `cx=85 cy=80 r=48 stroke=20`, `rotate(-90)` 12시 시작.
+**SVG (각 도넛)**: `viewBox="0 0 116 116"`(여백 없음), `cx=58 cy=58 r=48 stroke=20`, `rotate(-90)` 12시 시작, 표시 `h-24 w-24`(402px 미만 — 360px 폰에서 옆 제목이 쪼개지지 않게) / `md:h-28 md:w-28`. 값이 0이어도 옅은 바탕 고리(`#f1f5f9`)를 그린다.
 
 **섹션 제목 액센트**: `w-1 h-5 rounded-full bg-red-500`.
 
@@ -1239,11 +1193,10 @@ components/dashboard/
 
 **제거**: 콜·지·기·소 수임비 별도 박스 (사용자 결정 2026-05-08 — 빼버림).
 
-**채널별 계약단가** (도넛 2개 아래 full-width, 사용자 결정 2026-05-08):
-- 4채널 grid (`grid-cols-4 gap-2`)
-- 공식: `채널 비용 ÷ 채널 계약건수` (1계약당 들어간 비용 — 낮을수록 효율적)
-- 콜·지·기·소는 비용 0이라 "—" 표시 + "비용 없음" 부연
-- 각 셀: 채널 색 dot + 채널명 + 단가(만원) + "비용 ÷ 건수" 보조
+**채널별 계약단가** (채널 표의 마지막 열, 사용자 결정 2026-05-08 · 표 통합 2026-09-28):
+- 공식: `채널 비용 ÷ 채널 계약건수` (1계약당 들어간 비용 — 낮을수록 효율적). 열 제목에 마우스를 올리면 설명이 뜬다
+- 비용이 없거나(콜·지·기·소) 계약이 0건이면 "—"
+- "비용 ÷ 건수" 보조는 셀에 마우스를 올리면 보인다(`title`)
 
 ---
 
@@ -1267,6 +1220,7 @@ components/dashboard/
 | **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |
 | **TimeSelectPair** | `components/ui/TimeSelectPair.tsx` | §2 Time Input — 시·분 분리 select (15분 단위 강제) |
 | **CrossTabHintModal** | `components/ui/CrossTabHintModal.tsx` | 탭 간 cascade 안내 모달 (2026-05-17 [DB-1/C-2]). Props: `open`, `title`, `body: ReactNode`, `navLabel`, `onNavigate`, `onClose`. [화면 유지 / 바로가기] 통일 패턴. |
+| **HintTooltip** | `components/ui/HintTooltip.tsx` | 라벨 옆 (?) 설명 버튼(h-4 원, slate 테두리) + 다크 말풍선(bg-slate-800·text-xs·max-w-60). Props: `label`(aria-label "<라벨> 설명 보기"), `text`(`\n` 줄바꿈 표시). 스크롤되면 닫힘(버튼이 가려진 뒤 말풍선만 남지 않게), 입력칸 화면낭독 설명은 사용처가 sr-only + aria-describedby 로 따로 둔다. 마우스 올림·키보드 포커스로 열림, 터치/클릭은 토글 고정, Esc·blur·바깥 누르기로 닫힘, 한 번에 하나만. 말풍선은 body portal + fixed 좌표(가로 8px clamp, 아래 공간 없으면 위로) → overflow 부모에 안 잘림. role=tooltip + aria-describedby/aria-expanded. 첫 사용처: `CompanyInfoEditor` 필드 설명(2026-09-28). |
 | **LoadingOverlay** | `components/ui/LoadingOverlay.tsx` | 전역 로딩 팝업(loading-overlay/v3 글로우 링). Props: `message?`(기본 "불러오고 있어요"). **라이트 프로스트 글래스 카드**+회전 conic 링(96px)+궤도 점+**세일즈PT 로고 원본 호흡**(`/salespt-logo.png`, 무가공·`alt=""` 장식)+문구 페이드(다크 잉크)+하단 sweep. fixed z-[400] 중앙·dim(어둡게 유지), role=status, prefers-reduced-motion 정적 폴백. 스타일=globals.css `.lo-*`(tokens.md overlay 토큰). ※2026-07-15 이전: 다크 카드 + 가운데 'S' 글자. |
 | **LoadingProvider** | `components/ui/LoadingProvider.tsx` | 전역 로딩 상태 + `useGlobalLoading()` 훅. providers.tsx(QueryClientProvider 안)에서 1회 마운트, 내부 `<LoadingOverlay>` 렌더. 명령형 show(문구)/hide(카운터) + `useIsMutating()>0` 자동("저장하고 있어요"). useIsFetching 은 안 검(과노출 방지). |
 
@@ -1283,6 +1237,8 @@ components/dashboard/
 | **MeetingSlotList** | 컨택탭 미팅 슬롯 리스트 (page.tsx 분할, 2026-06). 저장 미팅 + 미등록 신규 슬롯을 채널 순서로 렌더. Props: `slots: SlotEntry[]`, `reservationDate`, `onPatchSaved`, `onRemoveSaved`, `onChangeNew`, `onRegisterNew`, `onRemoveNew`. |
 | **DirtyGuard** | **미저장 이탈 가드(전역, 2026-06-23)**. `components/DirtyGuard.tsx` — `DirtyProvider`(app/(app)/layout 에서 children+TabBar 감쌈) + 훅 `useDirtyRegister`(입력이 dirty 시 {save,discard,label} 등록)·`useGuardedNav`(인앱 이탈 래핑)·`useGuardedRouter`(TabBar 라우팅 가드)·`useSaveAllDirty`(통합 저장). dirty 면 [저장하고 이동]/[무시하고 이동]/취소 모달 + 브라우저 닫기 beforeunload. MeetingDirtyGuard 패턴의 전역 승격. |
 | **MeetingDirtyGuard** | 미저장 이탈 가드 (company-info-unified-save-guard, 2026-06) — `ConfirmLeaveModal`([저장하기][무시하기]) 은 카드 접기 확인에 계속 사용. 전역 가드는 `DirtyGuard` 로 승격(미팅카드는 useDirtyRegister 등록). |
+| **SaveConfirmModal** | 컨택탭 **저장 전 확인 화면**(2026-09-03 belie). 「이렇게 기록할까요?」 — **기록하는 날짜·채널·예약된 미팅·회사명을 정확히 같은 크기**(`text-base font-bold`)로 보여주고 그날 4지표를 붙인다. 버튼 두 개: [잘못 적었어요] / [저장하기]. 덜 채운 신규 미팅이 있으면 메인 저장이 잠기며 카드별 누락 항목과 확인하기를 표시한다. 확인창에서도 저장만 잠기고 [입력 수정하기]/X로 돌아갈 수 있다. 미팅날짜=기록날짜면 그 칸은 빨강(경고만, 안 막음), 필수 미입력은 노랑이다. 새 미팅 0건이면 호출부가 아예 안 띄운다. Props: `open`, `date`, `slots: NewSlot[]`, `draft`, `saving`, `onFix`, `onSave`, `onClose`. `formatKoreanDate`·`isSlotComplete`·`CHANNEL_TEXT`(채널 4색 정적 매핑) 재수출. |
+| **RecordMoveModal** | 컨택탭 **기록 옮기기**(2026-09-03 belie). 「잘못 적었어요」에서 열리는 최대 4단계 — `어느 미팅`(2건 이상일 때만) → `무엇을`(4선다 + 선택지마다 ⟨?⟩ 로 언제 고르는지 펼침) → `어디로`(채널 칩 + 그 주 7일) → `최종 확인·저장`(양쪽 수치 비교). **각 단계에 뒤로가기**. 「같은 날짜에서 채널만 바꾸기」를 고르면 날짜 버튼이 잠긴다. 옮길 자리에 기록이 있으면 「더해집니다」, 콜·지·기·소가 끼면 유입은 원래 날짜·채널에 남고 실제로 이동하는 항목·수량만 명시(유입 제외 부분 이동). 규칙은 `_lib/record-move.ts`, 적용은 `_lib/use-record-move.ts`. Props: `open`, `fromDate`, `candidates: MoveCandidate[]`, `draft`, `onBack`, `onApply(MoveDecision)`. |
 | **ContactResultModals** | 컨택탭 결과 모달 클러스터 (page.tsx 분할, 2026-06): DB불일치 안내(CrossTabHintModal) + DB일치 긍정확인 + 미팅 선택삭제(MeetingPickerModal). Props: `dbMismatch`, `onMismatchNavigate`, `onMismatchClose`, `dbMatchOk`, `onMatchOkClose`, `pickerMeetings`, `onPick`, `onPickerClose`. |
 | **SaveBar** | 컨택탭 하단 고정 저장 바 (page.tsx 분할, 500줄 캡). 바 full-bleed + 버튼 6xl 정렬(PageContainer wide). Props: `pending`, `onSave`. |
 
@@ -1291,7 +1247,7 @@ components/dashboard/
 | 컴포넌트 | 역할 / Props |
 |---|---|
 | **WeekHeader** | 일정·계약 주차 네비 (컨택과 변형: 일자 클릭 = `scrollIntoView`, 주차 변경 X) |
-| **SummaryBar** | 주간 5칸 카운터 (미팅총건/미팅예정/미팅완료/미팅취소/계약) + 매출 합계 배너. sticky 부모 묶기 |
+| **SummaryBar** | 주간 5칸 카운터 (미팅총건/미팅예정/미팅완료/미팅취소/계약) + 매출 합계 배너. WeekHeader와 sticky 부모로 묶고, 1440px 이상에서 이 상단 묶음만 중앙 50% 폭으로 표시한다. 아래 WeekBody는 전폭 2열 유지 |
 | **WeekFallback** | 일정·계약 주간 로딩/에러 상태 (schedule/page.tsx 500줄 분리). Props: `state:"loading"\|"error"`, `onRetry`, `retrying`. 에러 시 "다시 시도"(refetch) 버튼 — 네트워크 단절 새로고침 없이 재요청 (2026-06 PostHog P2). |
 | **DaySection** | 일별 미팅 섹션. 오늘 강조 좌측바 (`border-l-blue-500`). 토요일 좌측바 빨강 |
 | **MeetingResultCard** | Full 미팅 카드 (4종 액션 버튼 — 계약/완료/변경/취소 + 기본편집). Props: `meeting` / 액션 콜백 |
@@ -1306,10 +1262,10 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2) |
+| **MonthGrid** | 월 캘린더 그리드 (날짜 셀 + 미팅 pill + 실무투두 pill). Props: `yyyyMM` / `meetingsByDate` / `todosByDate` / `selectedDate` / `onSelectDate`. 미팅=채널색, 투두=진회색+아이콘 (Scope 2). 투두 pill은 `시간 · 업체명 · 제목` 순서로 표시하고, 업체명이 빈 기존 진행건은 계약 ref에서 업체명을 복원한다. 좁은 셀은 말줄임하되 전체 문자열은 툴팁으로 확인한다. |
 | **TodoTypeIcon** | 실무투두 type(기타/미팅/전화/메시지) 인라인 SVG. 캘린더 투두 pill·일자상세 "실무" 배지·범례 공용. Props: `type` / `size`. currentColor (진회색 위 흰색). |
 | **GeneralEventModal** | 캘린더 일반이벤트 생성 모달 (consultation-log §4-3·4-4). Props: `defaultDate`, `onClose`, `onCreated`. 카테고리(기존/기타)·이벤트명·업체명·상세·날짜·시간 → POST /api/todos(type=일반, contractRef 빈값). 첫 추가 시 경고 모달 + "다시 보지 않기"(localStorage hideGeneralEventHint). teal(#0d9488, tokens). |
-| **GcalConnectCard** | 구글 캘린더 연동 카드 (gcal-1/2b, google-calendar-sync §4-1 문구 정본). Props 없음 — /api/gcal(GET 상태·POST 설정·DELETE 해제)·/api/gcal/resync fetch. 미연결/연결됨/실패("연결이 풀렸어요") 3상태. 연결됨: 계정 표시 + 캘린더 드롭다운 + [다시 올리기](전체 재푸시) + [연결 해제]. 유형 토글 3종은 폐기(2026-07-09), 일정별 토글은 GcalItemToggle. [연결하기]→/api/gcal/auth. 금지 용어(동기화·토큰·OAuth) 화면 미노출(ADR-0028). |
+| **GcalConnectCard** | 구글 캘린더 연동 카드 (gcal-1/2b, google-calendar-sync §4-1 문구 정본). Props 없음 — /api/gcal(GET 상태·POST 설정·DELETE 해제)·/api/gcal/resync fetch. 미연결/연결됨/실패("연결이 풀렸어요") 3상태. 제목·계정·상태를 한 줄에 요약하고 제목 행으로 접고 펼친다(기본 펼침). 연결됨: 캘린더 드롭다운 + [다시 올리기](전체 재푸시) + [연결 해제]를 PC에서는 한 줄에 배치하고 좁은 화면에서 줄바꿈한다. 유형 토글 3종은 폐기(2026-07-09), 일정별 토글은 GcalItemToggle. [연결하기]→/api/gcal/auth. 금지 용어(동기화·토큰·OAuth) 화면 미노출(ADR-0028). |
 | **GcalItemToggle** | 일정 항목별 구글 캘린더 담기/빼기 토글 (gcal-2b). Props: `kind`(meeting/todo)·`id`·`on`·`onChange`·`onToast`. 제어형 — 부모(캘린더 페이지)가 상태 배치조회(/api/gcal/states) 후 보유. 낙관적 갱신 → POST /api/gcal/toggle, 실패 롤백. 항목 클릭(네비)과 분리(stopPropagation). 캘린더 아이콘(담김=파랑+체크/뺌=회색). 금지 용어 미노출. |
 | **TodoDayCard** | 일자상세 ToDo 1건 카드 (page.tsx 500줄 캡으로 분리). Props: `t`(Todo)·`gcalConnected`·`gcalOn`·`onGcalChange`·`onGcalToast`. 실무(미팅/전화/메시지/기타)=카드 클릭 시 `/payment?focus=` 점프. **일반**(type=일반)=다른 탭에 안 보여 삭제 경로가 없던 고아 → 카드 우측 휴지통 버튼 + 확인 모달(z-[300], DeleteConfirmModal 패턴) → `useRemoveTodo`(DELETE /api/todos/[id], 구글 캘린더 이벤트도 정리). 좌측바·배지색 = 실무 진회색/일반 teal (tokens). |
 
@@ -1340,11 +1296,12 @@ components/dashboard/
 | **DeleteConfirmModal** | 계약수납 삭제 확인 모달(cascade 옵션) — page.tsx 500줄 캡으로 분리(contract-termination PR), 마크업·동작 무변경. Props: `label`, `cascadeOpt`, `onCascadeChange`, `onCancel`, `onConfirm`. |
 | **TerminationArchive** | 해지 보관함 (contract-termination 스펙) — 숨김(soft delete) 해지 계약을 접힌 아코디언에서 열람. 행: 업체명·해지일·사유·반환액(읽기전용). 기본 접힘, 숨김 건 0이면 미표시. Props: `contracts: ContractPayment[]`(숨김 해지만). |
 | **nameHighlight** | (컴포넌트 아님·헬퍼 모듈) `renderNameWithHighlight`(업체명 검색어 `<mark>`)·`fmtMoney`·`fmtDate` — ContractRow 500줄 캡으로 분리. |
-| **PriorContractSection** | 이전(아레나 시작 전) 계약업체 등록 버튼 + 알림 모달({시작일} 동적) + ContractForm(수임비·계약조건) 재사용 폼 → POST /api/contract-payment/prior(구분=이월). + 아레나/이월 매출 2카드(isCarryoverContract 로 분리 합산). Props: `contracts`, `courseStartISO`. arena-start-revenue-split §A·B. |
-| **CheckboxList** | 7 체크박스 (서류 6 + 플러그 이관 1). "ㅇ" / "" 표기. Props: `value: ContractPayment` 부분 |
+| **PriorContractSection** | 모바일의 업무매뉴얼·정책자금 뉴스 외부 링크 2개. 아레나/이월 매출 보조 카드는 성과 요약과 중복되어 제거했다. Props 없음. |
+| **PriorContractRegister** | 「이전 계약업체 등록」 흐름(버튼 + 2단계 모달 + 토스트). **2026-09-05 belie 요청으로 화면에서 뗐다** — 실무·수납 탭 그 자리는 업무매뉴얼(노션) 버튼이 차지. 기능은 **지우지 않고 통째로 보존**: 되살리려면 `page.tsx` 에 import 한 줄 + `<PriorContractRegister courseStartISO={courseStartISO} />` 한 줄(파일 머리말에 안내). 서버(POST /api/contract-payment/prior · lib/service/contract-payment-add.ts)는 손대지 않아 붙이는 즉시 동작한다. **이미 등록된 이월 계약 데이터는 계약 목록에 그대로 보인다.** Props: `courseStartISO`. |
+| **CheckboxList** | 6개 서류·진행 체크. 과거 `플러그이관` 값은 표시·완료 집계에서 제외. Props: `value: ContractPayment` 부분 |
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
 | **LinkedFieldsEditor** | 계약 핵심필드(업체명·계약일·수임비) 수정 토글(payment_contract_edit_toggle). Props: `cp: ContractPayment`. **평소 = [✎ 계약정보 수정] 버튼만**(값 미표시 — 업체명·계약일·수임비는 ContractRow 헤더가 이미 표시. 중복 박스 제거 2026-07-14; 헤더가 `<button>`이라 버튼 중첩 불가 → 펼침 본문 최상단 우측 배치). 클릭 시 이 카드만 편집모드(input+[저장]/[취소]+배지). 변경 없으면 시트 쓰기 0. 저장 시 연결 미팅 id(AK)로 대상 특정해 02↔04↔06 양방향 연동(업체명→02 D+04 G+06 / 계약일→02 C만, 미팅날짜·통계 불변 / 수임비→02 E+04 L). `useEditContractLinkedFields`, DirtyGuard(편집중 변경 시), 일부 시트 실패 시 시트명 안내+save throw. contract-edit-linked-fields. |
-| **DriveLinkBar** | Drive 바로가기 + 플러그 바로가기 버튼. 미연결 시 재연결 폼. ADR-0007. |
+| **DriveLinkBar** | Drive 바로가기 버튼. 미연결 시 재연결 폼. |
 | **TodoSection** | 진행 슬롯 내 ToDo 목록 + 추가 버튼 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). Props: `contractRef/institutionRef/companyName/todos`. 완료 토글·삭제. |
 | **TodoFormModal** | 실무 ToDo 생성 팝업 (Pluuug 모티브, 담당자 없음). type 4종·제목·예정일자·예정시각(시08~20/분00·30)·상세·캘린더표시 ON. Props: `contractRef/institutionRef/companyName/onClose`. |
 
@@ -1355,30 +1312,28 @@ components/dashboard/
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. Props 없음. |
+| **LoginScene** | 인트로 + Google 로그인 화면 (client component). 로고 중심 + Aurora 배경 + 글래스 도넛 + 8 Fluent 3D 이모지 (5탭 + 데코 3). v10 프로토타입 (docs/design/prototypes/login.html) → React. 선택 props `returnTo`: 검증된 내부 경로를 Google 로그인 후 복귀 목적지로 전달. 기본/잘못된 값은 `/`. 화면·권한 부여 변화 없음. |
 | **AdminUserPicker** | Admin 전용 수강생 관리 (`/admin/users`). Props: `users` (trainee + dates enriched), `reservedUsers?` (유보), `pendingUsers?` (승인 대기), `activeTrainers`, `sessionEmail`, `archivedCohorts?`, `viewOnly?`. 섹션: 승인 대기 → 활성 기수(CohortCategoryBoxes 3분류) → 보관 → 유보. 카드 액션: [승인]/[거절]/[유보]/[시트 열기]. POST /api/admin/switch · approve-trainee · reject-trainee · set-trainee-reserved · remove-trainee. |
 | **CohortCategoryBoxes** | 수강생관리 activeGroups 를 상위 카테고리 3박스(수강생=blue·아레나=purple·테스트=gray)로 묶는 표시 래퍼(admin-cohort-category-boxes). Props: `activeGroups: [string,Trainee[]][]` + CohortSection 콜백(busy·nameByEmail·onPick·onReserve·onSetTeam·onReorder·onAssignTrainers·activeTrainers·linkedBySheet·viewOnly). cohortCategory(types)로 partition, 비어있는 카테고리 박스 숨김. 데이터·정렬 불변. 수강생·테스트 박스 안은 CohortSection 그대로, **아레나 박스만 ArenaSeasonGroups 로 위임**해 시즌 우산을 한 겹 더 씌운다(AR-1). |
 | **SeasonStartInput** | (아레나) **시즌 개강일 입력** — `/admin/cohorts` 의 아레나 시즌 행(label "A{n}")에만 노출(AR-2b). Props: `label`, `initialISO`, `disabled?`. `type="date"` + 변경 시 [저장] → POST `/api/admin/set-season-start` → cohorts **J열 seasonStartISO**. 이 값이 **전광판 시즌 판정 정본** — 비면 전광판이 시즌 번호를 표시하지 않고 집계 스코프도 미적용(데이터 안 감춤), 날짜를 넣으면 그 날부터 해당 시즌 전환. 참가자별 registry K 는 템플릿 O1 스탬프라 출처 불신으로 판정에서 배제. |
 | **ArenaSeasonGroups** | 아레나 카테고리 안을 **시즌 collapsible** 로 묶는 표시 컴포넌트(AR-1). Props: `groups: [string,Trainee[]][]` + CohortSection 콜백 일체(ArenaSeasonHandlers). 헤더 = `시즌N · M명 · K개 기수 · 개강~종강 · D-N`, 펼치면 기존 CohortSection 카드 그대로. 그룹핑은 순수함수 `groupArenaBySeason`(components/auth/arena-season.ts — 시즌 파싱은 `arenaCohortLabelParts`(lib/service/cohort-token) **재사용**, 신규 파서 금지). A{n+1} 기수 등장 시 시즌 그룹 **자동** 생성(데이터 파생). 기간·D-day 는 시즌 소속 trainee 의 courseStart(최소)~graduation(최대)에서 파생 — 날짜 하드코딩 금지. 시즌 파싱 실패분은 orphans 로 그대로 노출(유실 방지). PersistentDetails key=`arena-season:{n}`. 회귀=tests/service/arena-season-group.test.ts. |
 | **AdminUserPickerSections** | AdminUserPicker 의 CohortSection + ReservedSection + PendingTraineesSection + TraineePrepForm + parseAssigned/fmtDateYY/cohortProgress/groupByTeam 유틸 분리 (500줄 cap). Trainee/Trainer 타입 re-export. CohortSection 내부 CohortBody (팀별 그룹화 — 미배정 카드 먼저, 그 다음 팀 박스). |
-| **TraineeCard** | /admin/users + /trainer 공통 수강생 카드 (CohortSection + 팀 박스 안에서 사용). Props: `u` (Trainee, optional `stats`), `archived`, `viewOnly`, `busy`, `nameByEmail`, `linkedBySheet?`, `onPick`, `onReserve`, `onSetTeam`, `trainerEmailLc?`. **유보** = admin only(`!viewOnly`), **시트/웹앱** = admin OR (trainer + 본인 담당, `parseAssigned(u.assignedTrainer).includes(trainerEmailLc)`). 인라인 팀명 input (Enter/blur 자동 저장). **Row 1.5** (2026-05-16): `u.stats` 가 있으면 `📅 예정 X · ✓ 완료 Y · 💼 계약 Z` 표시 (시트 01 영업관리!E4/E5/E6 8주 누적 — /schedule funnel 과 동일 SSOT). 500줄 cap 회피로 별도 파일. |
-| **TraineeDiagnoseButton** | 개별 trainee 시트 진단/픽스 버튼 (2026-05-16). Props: `email`, `name`. admin only — TraineeCard 의 액션 row 에 표시. 클릭 → POST `/api/admin/diagnose-sheet` → modal 결과 + fixable 룰 옆 [🔧 fix] (POST `/api/admin/fix-sheet`). **누적 룰 카탈로그** (`lib/service/sheet-diagnostics.ts:RULES`) — 새 사고 발견 시 룰 추가 → 동일 패턴 자동 감지·픽스 (Hashimoto). v1 룰: `formula-needs-restore` (fixable), `metric-vs-meeting-mismatch` (detect-only), `o1-o2-validity` (detect-only). |
+| **TraineeCard** | /admin/users + /trainer 공통 수강생 카드 (CohortSection + 팀 박스 안에서 사용). Props: `u` (Trainee, optional `stats`), `archived`, `viewOnly`, `busy`, `nameByEmail`, `linkedBySheet?`, `onPick`, `onReserve`, `onSetTeam`, `trainerEmailLc?`. **유보** = admin only(`!viewOnly`), **시트/웹앱** = admin(`!viewOnly`). **트레이너 뷰**(`viewOnly` + `trainerEmailLc` + 본인 담당): 녹색 시트 대신 중립 outlined [주간목표] (`/weekly-goals?student=<encoded>&returnTo=%2Ftrainer`, spreadsheetId 무관, impersonation 미사용) + [웹앱 →] 유지, 미배정은 액션 없음. 인라인 팀명 input (Enter/blur 자동 저장). **Row 1.5** (2026-05-16): `u.stats` 가 있으면 `📅 예정 X · ✓ 완료 Y · 💼 계약 Z` 표시 (시트 01 영업관리!E4/E5/E6 8주 누적 — /schedule funnel 과 동일 SSOT). 500줄 cap 회피로 별도 파일. |
 | **TraineePrepBulkForm** | 일괄 사전 등록 폼. `parsePrepText` 가 `세일즈PT_ N기 이름 수강생 경영일지` 헤더 + URL 페어 또는 TSV 라인 → `PrepItem[]` 파싱. POST /api/admin/bulk-add-trainee-prep. 500줄 cap 회피로 별도 파일. |
 | **TrainerPlayerToggle** | 수강생출신 트레이너 [트레이너 관리]/[내 아레나 일지] 세그먼트 토글(P14). Props: `mode: "manager"\|"arena"`(현재 화면). 클릭 → POST /api/arena-self(쿠키 flag) → router.push(/dashboard 또는 /trainer)+refresh. me.ownArenaSheetId 있을 때만 TrainerCohortView·대시보드에 노출. self-view sheetId 는 서버가 이름매칭 계산(데이터 쓰기 없음). |
-| **TrainerCohortView** | 트레이너 메인 (수강생 관리의 read-only 권한축소판, 2026-05-15 개편). Props: `sessionEmail`, `trainerName`, `trainees: Trainee[]`, `activeTrainers: Trainer[]`, `masterSheetUrl`, `canBackToAdmin`, `archivedCohorts?`. AdminUserPickerSections 의 `CohortSection` 을 `viewOnly + trainerEmailLc` 모드로 재사용 → 기수박스>팀박스>TraineeCard 계층 그대로. 전체 명단 표시하되 본인 담당 trainee 만 [시트]/[웹앱] 버튼 노출. 핸들·유보·팀 입력·동기화 UI 미포함. **2026-05-16**: "내 수강생만 보기" 토글 (기본 false=전체, true=본인 담당만 필터). |
-| **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `trainees`. 4 섹션 (TrainerMgmtSections 분리) — pending 승인/거절, 트레이너별 다중 배정 체크박스, 수강생 명단 아코디언, 트레이너 명단 아코디언. |
+| **TrainerCohortView** | 트레이너 메인 (수강생 관리의 read-only 권한축소판, 2026-05-15 개편). Props: `sessionEmail`, `trainerName`, `trainees: Trainee[]`, `activeTrainers: Trainer[]`, `canBackToAdmin`, `archivedCohorts?`. AdminUserPickerSections 의 `CohortSection` 을 `viewOnly + trainerEmailLc` 모드로 재사용 → 기수박스>팀박스>TraineeCard 계층 그대로. 기본 내 담당만 표시하되 본인 담당 trainee 만 [주간목표]/[웹앱] 버튼 노출. 핸들·유보·팀 입력·동기화 UI 미포함. **2026-05-16**: "내 수강생만 보기" 토글 (기본 false=전체, true=본인 담당만 필터). **2026-09-14(수리3)**: "마스터 시트 열기" 외부 링크 카드와 `masterSheetUrl` prop 제거. **trainer-weekly-entry**: 토글 기본 true(내 담당), 라벨 `전체 수강생 보기`/`내 수강생만 보기`, 담당 0명은 자동 전환 없이 안내. `/trainer` 상단 주간 목표 링크·초대 렌더 제거 (초대는 admin 화면 유지, `/trainer/weekly-goals` 라우트 유지). |
+| **TrainerMgmtPanel** | Admin 전용 트레이너 관리 패널 (`/admin/trainers`). Props: `sessionEmail`, `pendingTrainers`, `activeTrainers`, `managementStaff`, `trainees`, `viewOnly?`, `accessSlot?`, `inviteSlot?`. **페이지의 단일 루트이며 sticky 헤더를 소유한다** — 헤더는 페이지 최상단 하나뿐이고 모든 섹션이 그 아래 같은 셸 폭(`max-w-3xl pc:max-w-5xl px-6`)에 들어간다. 폭 선언은 여기 한 곳뿐. **6 섹션 순서(2026-09-14 belie 지정)**: ①담당부여(SectionAssign) ②권한부여(`accessSlot`) ③요청관리(SectionPending) ④초대관리(`inviteSlot`) ⑤수강생 명단 ⑥관리부서 명단. 회귀=tests/structural/admin-page-shell.test.ts. |
 | **TrainerMgmtSections** | TrainerMgmtPanel 의 SectionPending / SectionAssign / SectionTraineeList + parseAssigned, groupByCohort, PanelUser 유틸. SectionManagement 는 TrainerMgmtManagement 에서 re-export. |
 | **TrainerMgmtManagement** | 관리부서 명단 섹션 (`/admin/trainers` 하단). Props: `staff`, `busy`, `onMoveToTrainer`, `onRemove`. 파일 크기 가드. |
 | **LogoutButton** | NextAuth 5 `signOut()` 즉시 호출 클라이언트 버튼 (form POST 우회). Props: `className?`, `label?`. 서버 컴포넌트 페이지(/admin 등)에서 import. |
 | **PendingApprovalScreen** | 승인 대기 안내 화면 (트레이너·수강생 공용). Props: `subtitle?` (역할별 안내 한 줄). 사용처: `app/page.tsx` (pending trainee), `app/trainer/page.tsx` (pending trainer), `app/(app)/layout.tsx` (직접 URL 진입 차단). 로그아웃 버튼만 노출. |
-| **InstallFormulasButton** | 모든 trainee 시트의 자동 집계 수식 일괄 복원 헤더 버튼 (`/admin/users` 우측 상단). [🛠️ 수식 복원] → confirm → POST /api/admin/install-formulas-bulk. props 없음. 기존 InstallFormulasCard 가 본문 공간 차지해서 헤더로 이동 (2026-05-13). |
-| **InstallFormulasByIdButton** | 레지스트리 **미등록** 시트(★ 양식 템플릿·8기 기복사본 등)에 수식 설치 (`/admin/users` 헤더). [📋 ID로 수식 설치] → 인라인 패널: ① **폴더에서 자동 찾기**(폴더 ID/URL + 제목 토큰 → POST /api/admin/discover-folder-sheets, read-only, 발견 ID 를 textarea 에 채움) ② 줄단위 시트/**폴더** URL → POST /api/admin/install-formulas-by-id (폴더 URL `/folders/{id}` 은 안의 경영일지 시트를 BFS 자동 발견·설치, 폴더ID 오인설치 방지 분기). props 없음. install-formulas-bulk 와 동일 installFormulas + §2.5 보존 가드 (2026-06, 콜지기소 계약 fix #319 템플릿/8기 전파용). |
 | **MigrateCacheButton** | registry I~L 캐시 컬럼 (cohort_label/name_label/course_start_iso/graduation_iso) 일괄 backfill 헤더 버튼 (`/admin/users` 우측 상단). [🔄 동기화] → confirm → POST /api/admin/migrate-registry-cache. props 없음. 빈 캐시 row 만 시트 read → I~L stamp (멱등). PR B-3 (2026-05-13) 추가 — PR B-1 이전 row 일괄 backfill + B-2 시트 read 실패 row retry 용. |
 | **BulkReserveButton** | 다수 trainee 일괄 유보 처리 헤더 버튼 (`/admin/users` 우측 상단, 2026-05-17 [A5]). [✋ 유보 처리] → 모달 (활성 trainee 체크박스 리스트) → 선택 → 확정 → 각 email 에 POST /api/admin/set-trainee-reserved 순차 호출. Props: `trainees: {email, name, cohort}[]`, `onDone`. 카드별 유보 버튼 제거 → 헤더 통합. |
 | **SortableTraineeBox** | 박스(같은 cohort+team) 내 TraineeCard 들을 dnd-kit 로 묶는 어댑터. PR C-1 (2026-05-13). PR C-2 에서 generic SortableList 사용으로 리팩터 — TraineeCard 전용 props 매핑만 담당 (~40줄). Props: `members`, `onReorder?(emails)`, 그 외 BoxCommonProps. |
 | **SortableList** | Generic dnd-kit wrapper (render prop). PR C-2 (2026-05-13). Props: `items: T[]`, `getId: (t) => string`, `onReorder?(ids)`, `renderItem: (t, drag) => ReactNode`, `disabled?`. DndContext + SortableContext + 3 Sensors (Pointer 5px, Touch 200ms, Keyboard). 사용처: SortableTraineeBox (/admin/users), SectionAssign (/admin/trainers). disabled / onReorder 없음 → plain 렌더 (dnd 비활성). |
 | **TrainerAssignCard** | /admin/trainers SectionAssign 의 단일 트레이너 카드. 카드 헤더(이름·email·담당 N명) + [관리부서]·[퇴출] 버튼. 펼침: 기수별 수강생 다중 체크박스 (optimistic toggle) + 기수/전체 일괄. PR C-2 에서 TrainerMgmtSections.tsx 에서 분리(500줄 cap) + dragRef/dragStyle/dragAttributes/dragListeners/isDragging optional props 추가 → 좌측 [⋮⋮] 핸들 노출 시 SortableList 가 reorder. |
 | **UnifiedPrepCard** | 신규 수강생 사전 등록 (단일/일괄 paste 모드 토글 통합 카드). Props: `busy`, `onSubmitSingle`, `onSubmitBulk`. 기존 BulkPrepForm + TraineePrepForm 두 카드 통합 (2026-05-13). 내부 SingleForm / BulkForm 모드 전환. parsePrepText 는 TraineePrepBulkForm 에서 import. |
+| **IdentityGuard** | (app) 셸 전역. Props 없음. `/api/whoami`(세션+쿠키만 읽는 초경량 라우트)를 마운트·창 포커스·30초 주기로 확인해, **탭이 열릴 때의 사람**과 지문이 달라지면 전체 화면 오버레이로 조작을 막는다. 대리접속 신원(`salespt_as`)이 httpOnly 쿠키(브라우저 공용)인데 전환은 새 탭을 여는 방식이라, A 학생 탭이 열린 채 B 를 열면 A 탭도 B 로 동작하고 **저장이 B 기록에 써진다**(2026-09-01 belie 신고). 자동 새로고침은 하지 않는다(입력 유실 방지) — 사람이 버튼을 누른다. 지문을 못 받으면 아무것도 막지 않는다(오탐 금지). |
 | **ImpersonationBanner** | Admin 페이지 상단 impersonation 상태 표시 + 해제 버튼. Props: `impersonating: string`. 클릭 → POST /api/admin/switch `{email:null}` → router.refresh. |
 | **WebviewWarning** | 카카오톡·네이버·인스타·페북 등 in-app 웹뷰 감지 시 풀스크린 오버레이 노출. Props 없음. KakaoTalk 안드로이드는 `kakaotalk://web/openExternal?url=` scheme 으로 외부 Chrome 점프, 그 외는 단계 안내 + URL 복사. Google OAuth가 webview UA를 차단(disallowed_useragent)하는 문제 우회. |
 | **CohortMgmtPanel** | Admin 전용 기수 관리 (`/admin/cohorts`). Props: `sessionEmail`, `cohorts: {label, status, note, traineeCount, type?}[]`, `viewOnly?`, `pendingCreateCount?`. 활성/보관 두 섹션 + 토글 버튼. 헤더에 CohortCreateModal·ArenaCreateModal·CohortPendingRetryButton(admin only). 표시 라벨: 아레나 "A1회" / 일반 "8기". POST /api/admin/set-cohort-status. |
@@ -1391,8 +1346,16 @@ components/dashboard/
 | **AwardPodium** | 전광판 캡쳐 탭 지표별 시상대 (arena-scoreboard-v2). Props: `metric`(라벨), `unit`, `color: "blue"\|"purple"\|"teal"\|"amber"\|"rose"`, `entries: RankingEntry[]`. 1·2·3등 큰 카드(이름 공개·큰 숫자, 1등 중앙·강조) + 4~6등 리스트. 색만 지표별로 바꿔 재사용(미팅=blue·계약=purple·매출=teal·앱사용량=amber·공유왕=rose). |
 | **CohortSummaryBoard** | 전광판 메인 종합요약 보드 (arena-scoreboard-v2, 1안). Props: `cohorts: {cohort,paidMembers,total:{생산,유입,컨택,미팅,계약}}[]`, `week`. 기수별 5지표 평균을 계약 평균 desc 순위로 정렬, 1위 강조. 캡쳐 친화 고정폭·큰 숫자. |
 | **ScoreboardView** | 전광판 클라이언트 뷰 (arena-scoreboard-v2). Props: `data: {byCohort, rankings, seasonWeek, season}`. 상단 [관리자 대시보드]/[캡쳐 모드] 토글. 대시보드=기수 평균 표+5지표 개인 랭킹 표 밀도형. 캡쳐=탭(메인 종합/미팅/계약/매출/앱사용량/공유왕), 메인=CohortSummaryBoard·지표탭=AwardPodium, 공통 헤더 `"아레나 시즌N · M주차 · {지표}왕"` — **시즌 번호는 SSOT(`lib/service/arena-season-config`)가 준 `data.season` 만 사용, 하드코딩 금지**(AR-2b). 표기=`seasonDisplayLabel`(미상 0 이면 "아레나"), 주차 미상(0)이면 주차 칸 생략. 표·랭킹·공유왕 모수도 같은 SSOT(`isInSeason`)로 현재 시즌만 — 헤더/데이터 시즌 불일치 금지. **시즌 정본 = cohorts 탭 J열 `seasonStartISO`**(admin 입력, SeasonStartInput): 개강일이 오늘(KST) 이하인 활성 아레나 시즌 중 최대. 더 높은 시즌의 개강일이 **미입력**이면 옛 시즌으로 고정하지 않고 0 → 라벨 "아레나" + 스코프 미적용(새 시즌 참가자를 숨기지 않음). 참가자별 registry K 는 템플릿 O1 스탬프라 판정에서 배제. 탭 전환=hydration 후 useState(스트리밍 중 display:none 아님). |
-| **CompanyInfoEditor** | 미팅 업체정보(04 T~AN + AQ~AS, 23필드) 드롭다운+팝업 편집 — 혼합 그리드(2026-06-11 §3-2 확정: 기본 1열 → sm 2열 short=span1/long=span2 → 2xl [업체]\|[대표자] 좌우 2단, 모달 2xl:max-w-3xl). placeholder 확정 문구, 기대출 2필드 textarea 자동높이(
+| **CompanyInfoEditor** | 헤더 「편집」 왼쪽에 「문서로 자동입력」(`CompanyDocAutofillButton`, 2026-09-28 — 체크한 칸만 같은 set 경로로 반영). 미팅 업체정보(04 T~AN + AQ~AS + AU~CD, 59필드) 드롭다운+팝업 편집 — 필드 정의는 `components/company-info-defs.ts`(대표자_ITEMS·기업정보_ITEMS·재무_ITEMS = EditorItem 목록: field·bizType·ownership·row·pair·hidden·money·ratio·sales, `salesDefs(baseYear)`·`companyInfoFieldList(baseYear)`), 항목 그리기는 `components/company-info/CompanyInfoItem`(→ CompanyInfoField·CompanyInfoChoiceFields·CompanyInfoFinanceFields·CompanyInfoSalesFields). **2026-09-28 company-finance-won-grid**: [재무] 금액 = 백만원(칸 옆 "백만원"·"약 2.5억"·옛 자유 글 안내+「백만원으로 바꾸기」), 연도별 매출 = 상반기·하반기·합계 표(반기별 매출 묶음 삭제), Y 줄 연도 = 저장 가능한 매출 기준 연도, 부채비율·이자보상배율·당기순이익률 자동(읽기 전용). [기업정보] 업종 줄을 등록번호 뒤·4대보험 직원을 소유여부 뒤로, [대표자] 생년월일 칸 삭제(값 유지) + 이름·주민등록번호 / 신용점수·연락처 한 줄(375px 에서도, 입력칸 아래 정렬). 저장 경로 `apply()` = `deriveCompanyInfo`(lib/service/company-finance.ts — 합계·증가율·비율·기준 연도·주민등록번호 앞자리, 덮이는 옛 합계는 기타메모로), TXT 내보내기 = `companyInfoForExport`. **2026-09-28 재구성(company-info-restructure)**: 섹션 순서 [대표자] → [기업정보](옛 [업체], 커스텀 저장 키 "업체" 유지) → [재무], 2xl 좌우 2단 = [대표자]\|[기업정보]. 사업자구분·과세유형 한 칸 조합 select, 법인등록번호는 법인일 때만(이미 값이 있으면 늘 보임), 소유여부·대표소유여부 자가/임차 select + 임차 한 줄(보증금 원·월세 원·면적 ㎡), 업종·업태·주생산품목 한 줄, 매출·기대출(사업자)은 [재무]. 저장 경로 `apply()` 가 매출증가율 3칸을 연도 매출에서 다시 계산(PR-7 부터 `deriveCompanyInfo` — lib/service/company-finance.ts) — 직접 입력·문서 자동입력 공통, TXT 내보내기도 계산값 포함. 2026-09-28 확장2: [업체]·[대표자]에 새 칸 + 두 그룹 아래 전폭 **[재무]** 섹션(같은 카드·그리드, 사용자 필드 추가 없음, `role=group`), 주민등록번호 앞자리는 입력 중 6자리 초과분 즉시 절단·blur 에 `NNNNNN-` 마무리. 혼합 그리드(2026-06-11 §3-2 확정: 기본 1열 → sm 2열 short=span1/long=span2 → 2xl [업체]\|[대표자] 좌우 2단, 모달 2xl:max-w-3xl). placeholder 확정 문구, 기대출 2필드 textarea 자동높이(
  저장). Props: `value?: CompanyInfo`, `onSave(ci)`, `busy?`, `txtCompanyName?`(있으면 [📄 업체정보생성] — POST /api/company-info/export 로 O 폴더 TXT 1본 덮어쓰기 + 성공/실패 메시지·파일 링크, §3-3/ADR-0016). [업체]12+[대표자]8+커스텀(필드추가+). 사용처: schedule MeetingResultCard·contact SavedItem+NewItem(미팅예약+1 신규 슬롯 — 예약비고 자리 교체, 등록 시 04 포함)·payment(CompanyInfoContractSection 경유). consultation-log §3. |
+| **CompanyDocAutofillButton** | `components/company-doc/CompanyDocAutofillButton.tsx` — CompanyInfoEditor 헤더(「편집」 왼쪽)의 「문서로 자동입력」 버튼(`aria-haspopup=dialog`, 편집 버튼과 같은 회색 테두리 xs). Props: `current: CompanyInfo`, `onApply(patch)`. 누르면 `CompanyDocAutofillDialog` 를 React.lazy 로 내려받아 연다 — 업체정보를 열기만 하면 OCR 코드는 받지 않는다. 편집기는 onApply 를 기존 `apply()`(자동저장 update / 임베드 stage)에 연결 — 새 저장 경로 없음. company-doc-autofill 2026-09-28. |
+| **CompanyDocAutofillDialog** | `components/company-doc/CompanyDocAutofillDialog.tsx` — 「문서로 자동입력」 팝업(body portal, `fixed inset-0 z-50`, `max-w-2xl`, 375px 1열). Props: `current`, `onApply(patch)`, `onClose`. 머리말 "파일은 이 기기 안에서만 읽고 저장하지 않아요." · 점선 끌어놓기 칸 + [파일 고르기](JPG/PNG/WebP/PDF, 15MB, PDF 첫 페이지, 여러 개) · 파일 행 = 이름 + 문서 종류 고르기 상자(자동 판별, 바꾸면 다시 해석) + 진행 막대(role=progressbar)/오류(role=alert)/모르는 문서 안내("어떤 서류인지 알아보지 못했어요…")/참고 정보(상호·금액 단위 등, 저장 안 함) · `CompanyDocDiffTable` · 바닥 "N개 선택" 「취소」「선택 항목 적용」(0개면 비활성). OCR 은 한 번에 한 파일, `@/lib/document-ocr/ocr-client` 를 읽는 순간 dynamic import, 닫으면 진행 중 OCR 취소. 파서(2026-09-28 company-doc-parsers): 사업자등록증·부가세 과세표준증명·재무제표·신분증·임대차계약서 5종 모두 `lib/document-ocr/registry.ts` PARSERS 등록 — "곧 지원돼요" 상태 없음. 신분증은 가린 원문(주민등록번호 `앞6-*******`·운전면허번호 통째 가림)으로 읽는다. 접근성: role=dialog·aria-modal·aria-labelledby/-describedby, 열리면 제목 포커스, Tab 순환, Esc 닫기, 닫히면 여는 버튼으로 포커스 복귀. |
+| **CompanyDocDiffTable** | `components/company-doc/CompanyDocDiffTable.tsx` — 비교표 `table-fixed text-xs`: 항목 \| 지금 값 \| 문서에서 읽은 값 \| 정확도(높음 emerald·보통 amber·낮음 red 칩) \| 적용 체크(라벨=항목명). 행·기본 체크는 `lib/document-ocr/diff.ts` 가 정함(빈 칸만 체크, 지금 값 있으면 해제+"지금 값이 있어 기본으로 안 덮어요", 검증 실패 번호 해제, 빈 읽은 값은 행 없음). 충돌(문서마다 다른 값)은 값 칸이 amber 고르기 상자(`<값> (<파일명>)`), 기본은 정확도 높은 값. 경고는 ⚠ amber 줄. |
+| **CompanyInfoField** | `components/company-info/CompanyInfoField.tsx` — 업체정보 편집기 한 칸(default) + `FieldLabel`(라벨 + (?) HintTooltip + sr-only 설명, 버튼은 label 밖, 선택 `tag` = 라벨 옆 회색 "(자동)" — 칸 이름엔 안 들어감) + `inputCls`·`readOnlyCls`·`hintIdOf`. Props: `def: FieldDef`, `value`, `onChange(k, v)`, `id`(패널·모달 구분 고유 id), `className`. 여러 줄 칸 = textarea 자동높이, 연락처통신사 = blur 에 formatPhone, 주민등록번호 = 입력 중 6자리 초과분 절단·blur `NNNNNN-`·자른/비운 이유 role=status(amber), placeholder 없음. company-info-restructure 2026-09-28 에 CompanyInfoEditor 에서 분리. |
+| **CompanyInfoChoiceFields** | `components/company-info/CompanyInfoChoiceFields.tsx` — 업체정보 선택형 칸 두 개(named export). **BizTypeField**: 사업자구분 · 과세유형 한 칸 select(선택 · 개인·일반과세 / 개인·간이과세 / 개인·면세 / 법인·일반과세 / 법인·면세) — 고르면 두 저장 키를 함께, 옛 값(과세유형 빈칸·목록 밖 글)은 disabled "지금 값" 선택지로 선택된 채 표시("개인 · 과세유형 선택"), 목록 밖 글은 바꿀 때 기업정보 기타메모로 옮김. **OwnershipField**(Props `spec: OwnershipSpec`·`draft`·`onPatch`·`idBase`·`className`): 소유여부 선택/자가/임차 select, 임차면(또는 임차 칸에 값이 있으면) `role=group aria-label="임차 조건"` 한 줄 `grid-cols-1 xs:grid-cols-3`(360px 미만 세로) — 보증금·월세(숫자만 친 값은 칸을 떠날 때(blur) 천 단위 쉼표 — 입력 중 커서 튐 방지, 옆에 "원")·면적(옆에 "㎡"), 단위가 이미 적힌 옛 값("1,000만")엔 단위 안 붙임. 옛 자유 글은 선택을 짐작 + 아래 `role=note` "이전에 적은 내용: … · 선택하면 기타메모로 옮겨 둬요" + 짐작한 선택이 있으면 「임차로 확정」(「자가로 확정」) 버튼(같은 값을 다시 고르면 change 가 안 나므로 — 누르면 선택값 저장 + 원문을 기타메모로). 기업정보(소유여부)·대표자(대표소유여부) 공용. company-info-restructure 2026-09-28. |
+| **CompanyInfoSalesFields** | `components/company-info/CompanyInfoSalesFields.tsx` — 업체정보 [재무] 「연도별 매출」 표(company-finance-won-grid 2026-09-28). Props: `draft`, `onField`, `onPatch`, `idBase`, `today`(기준 연도가 비었을 때), `className`. 제목 줄 "연도별 매출 (?)" + "단위: 백만원", `role=group aria-label="연도별 매출"` 머리글 "연도 · 상반기 · 하반기 · 합계", 줄 `data-sales-row` 4개(Y·Y-1·Y-2·Y-3): 왼쪽 `w-12` 연도 칸(Y 줄 = 네 자리 기준 연도 입력 + (?) "기준 연도를 바꾸면 칸 이름만 바뀌어요. 값은 그대로예요.", 2000~2100 밖이면 저장 안 하고 `role=alert`), 오른쪽 `grid min-w-0 flex-1 grid-cols-3`(375px 에서도 세 칸 한 줄, 칸 라벨은 sr-only "Y(2026) 상반기"·"매출 Y(2026)"). 합계 = 반기 칸에 값이 있으면 읽기 전용 반기 합(bg-gray-50) + "자동 · 약 …", 한쪽만이면 줄 아래 "하반기가 비어 있어 상반기만 더했어요", 반기에 읽을 수 없는 글이면 amber 안내 + 합계 직접 입력, 둘 다 비면 합계 직접 입력, 반기 합과 다른 옛 합계는 "이전 합계 … — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요"(#1068 자동입력의 백만 반올림·반기로 드러나는 6월/12월 표시는 같은 값). 기준 연도 칸은 sr-only 설명 연결, 틀린 연도 `role=alert` 는 Y 줄 바로 아래(칸에 다시 들어가면 거둠). 칸마다 옛 자유 글 안내(MoneyLegacyNote). 아래 매출증가율 `role=group aria-label="매출증가율"` `grid-cols-1 xs:grid-cols-3` 읽기 전용 3칸(줄 합계에서 계산, Y 상반기만이면 Y-1→Y 설명에 안내). 옛 한 칸 반기별매출·매출증가율은 값이 있을 때만 읽기 전용 메모. |
+| **CompanyInfoFinanceFields** | `components/company-info/CompanyInfoFinanceFields.tsx` — [재무] 금액·비율 칸(named export, company-finance-won-grid 2026-09-28). **MillionWonInput**(Props `id`·`value`·`signed`·`onChange`·`suffix?`·`describedBy?` — 원 단위 공용 `components/ui/MoneyInput` 과 다른 칸, 값은 글): 백만원 입력 `tabular-nums`(숫자는 오른쪽·옛 글은 왼쪽 정렬), 숫자만 친 값은 소수 한 자리까지(넘치면 자르고 `role=status` "소수는 한 자리까지만 적어요" — blur 에 거둠), 손익 칸만 앞 "-", blur 에 천 단위 쉼표, 칸 아래 "약 2.5억"·"약 3,200만". **MoneyLegacyNote**: 옛 자유 글 `role=note` amber — "글로 적힌 값이에요 — 계산에는 X백만원으로 써요"(1,000,000 이상 숫자는 "원 단위로 적은 숫자 같아요 — …") + 「백만원으로 바꾸기」(표 안에선 `aria-label` "<칸 이름> 백만원으로 바꾸기") / "읽을 수 없어 계산에서 빠져요". **MoneyField**: 라벨+(?)+MillionWonInput+"백만원"+옛 글 안내(영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세 수입금액). **RatioField**: 자동 비율 읽기 전용(bg-gray-50, 라벨 옆 "(자동)" — `FieldLabel` `tag`, 비었으면 placeholder "금액을 적으면 자동 계산") + 저장된 옛 값이 다른 값이면 "이전에 적은 값: …"(숫자가 같고 모양만 다르면 안 보임). |
+| **CompanyInfoItem** | `components/company-info/CompanyInfoItem.tsx` — 업체정보 편집기 항목 하나(EditorItem) 그리기, CompanyInfoEditor 에서 분리(500줄 캡). Props: `it`, `draft`, `inline`, `idBase`, `today`, `onField`, `onPatch`. field/row(업종 줄 `xs:grid-cols-3`)/pair(늘 한 줄 `grid-cols-2` 또는 2:3 `grid-cols-5`, `items-end`)/bizType/ownership/money/ratio/sales, hidden 은 그리지 않음. 주민등록번호가 비었고 생년월일을 읽을 수 있으면 "880124-" 를 보여 주기만(설명 "생년월일에서 자동으로 채운 값이에요…") — 저장은 편집 때 apply(). 그 값을 통째로 지우면 생년월일도 함께 지워(onPatch) 비운 채로 남는다. |
 | **CompanyInfoContractSection** | payment 계약 카드 업체정보 섹션. Props: `계약일`, `업체명`. GET /api/company-info(06 read) → CompanyInfoEditor → POST(04 원본+06 동기화 저장, saveCompanyInfoByContract). §3-1. |
 | **CarryoverBadge** | 이월(arena-carryover §5) 표시. Props: `구분?`, `variant?: "badge"\|"note"`. 구분≠"이월"이면 null. badge=회색 "이월" 칩, note="아레나 점수 미포함" 한 줄. 사용처: MeetingResultCard(뱃지+흐림+note)·ContractRow(note). |
 | **ArenaCarryoverButton** | admin 아레나 관리 사용자별 "↩ 이월 실행"(backfill, carryover §2-b). Props: `email`. POST /api/admin/arena-carryover — 멱등, 결과(복사/스킵/실패) inline 표시. 미클레임(email 없음)은 미노출. |
@@ -1406,11 +1369,12 @@ components/dashboard/
 | **RichNoticeEditor** | 공지 리치 텍스트 에디터 (ADR-0017). Props: `value`(HTML), `onChange(html)`. tiptap v3 headless(@tiptap/react useEditor)+자작 툴바(굵게·기울임·밑줄·삭선·글씨색·형광펜·목록·제목·링크·이미지·서식지움·undo/redo). 이미지=POST /api/admin/notice-image. SSR 비호환 → NoticeManager 가 next/dynamic{ssr:false}+immediatelyRender:false 로 로드. |
 | **NoticeManager** | admin 팝업관리(`/admin/popup`) 상단 — 공지 작성/수정 (announcement-popup §4). Props: `initialNotices`. 목록 선택→폼 로드, MD 에디터(편집/미리보기 토글 — MarkdownView 재사용), [🖼 이미지] → POST /api/admin/notice-image(Drive belie OAuth + anyoneWithLink reader) → MD 이미지 문법 자동 삽입. 노출 옵션(audience/display_mode/start/end/pinned/active) 폼 → POST /api/admin/announcements(upsert). 비활성 = active 토글 저장. |
 | **UpdatesManager** | admin 팝업관리 하단 — 자동 수집 업데이트 현황 테이블 (§4). Props: `initialUpdates`. 행별 title_user 인라인 수정·milestone 입력·visible 토글 → PATCH /api/admin/announcements(pr 키, 전달 필드 셀만). 저장 시 수강생 캐시(tag "announcements") 무효화 → 팝업 목록 즉시 반영. |
-| **CompanySearchBar** | payment 업체 검색 바 (목록 상단 sticky top-24·z-30, feat/payment-company-search). Props: `value`, `onChange`, `matchCount`, `total`. 돋보기 svg + input("업체명 검색") + 입력 시 X 초기화 버튼 + "N개 업체 일치" 카운트. 클라 필터 전용(부분일치 — 대소문자·공백 무시, 서버 호출·데이터 무변경). 0건 빈 상태는 page 가 렌더. |
-| **PaymentSortControl** | payment 계약 카드 정렬 세그먼트(검색바 아래, payment-sort §P8). Props: `value: PaymentSortKey`, `onChange`. 4버튼 — 등록 빠른순/늦은순(계약일 asc/desc)·진행 낮은순/높은순(슬롯 진행률 평균 asc/desc). 선택=brand-red pill. 정렬 로직은 `_lib/payment-progress.sortContracts`(빈 계약일 끝·안정정렬), 진행도는 `contractProgress`(ContractRow 공유). |
+| **CompanySearchBar** | payment 업체 검색 바 (목록 상단 sticky top-app-content·z-30, feat/payment-company-search). Props: `value`, `onChange`, `matchCount`, `total`. 돋보기 svg + input("업체명 검색") + 입력 시 X 초기화 버튼 + "N개 업체 일치" 카운트. 클라 필터 전용(부분일치 — 대소문자·공백 무시, 서버 호출·데이터 무변경). 0건 빈 상태는 page 가 렌더. |
+| **PaymentSortControl** | payment 업체 보기 정렬 세그먼트(검색바 아래). Props: `value: PaymentSortKey`, `onChange`. 등록 빠른순(기본)·등록 늦은순·D-day순 세 버튼만 표시한다. D-day순은 진행건 없는 업체 → 날짜 없는 진행(`D-??`) → 최근 History(`D+00`) → 임박 Todo(`D-00`)이며 각 진행건을 개별 정렬한다. 모바일은 버튼을 한 줄에 두고 좁은 화면에서는 가로 스크롤한다. 선택=brand-red pill. 정렬 로직은 `_lib/company-work-view.sortCompanyWorkItems`를 사용한다. |
 | **PullToRefresh** | 모바일 당겨서 새로고침 (feat/pull-to-refresh). Props 없음 — (app) layout 마운트. 루트 최상단에서 세로 당김(임계 70px·저항 0.5) → react-query 활성 쿼리 invalidate + router.refresh(전체 리로드 아님 — 폼 값 보존). 가드: pointer:coarse+<1024 만(PC 무변화), 가로 제스처(위클리 스와이프) 세션 취소, `.fixed`(모달/시트) 내부 무시, 당김 중 preventDefault 로 iOS 고무줄 이중 동작 차단. 스피너 = brand-red 원형(당김 회전→animate-spin). |
 | **Analytics** | GA4 측정 ID 주입 (PR #107). `next/script` 두 개 inject. props 없음. |
-| **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
+| **PersistentDetails** | `<details>` 래퍼 — 펼침/닫힘 상태를 localStorage(`salespt:admin:collapsed`)에 영구 저장. Props: `persistKey`, `defaultOpen?` (기본 true), 나머지 native `<details>` 속성 그대로. 사용처: /admin/users 의 CohortSection · 팀 박스 · ReservedSection, CollapsibleSection. SSR 안전 — 첫 paint 는 defaultOpen, mount 후 useEffect 가 저장값 적용. |
+| **CollapsibleSection** | 페이지 섹션을 접었다 펼치는 카드(2026-09-14 수리4). Props: `title`, `badge?`, `persistKey`, `defaultOpen?` (기본 **false** — 가끔 쓰는 섹션용), `children`. PersistentDetails 재사용이라 펼침 상태가 localStorage 에 남는다. summary 에 제목 + 선택 뱃지 + 펼치기/접기 표시. **폭·바깥여백을 선언하지 않는다** — 호출부(페이지 셸)가 정한다. 사용처: `/admin/trainers` 권한부여 섹션. |
 
 ---
 
@@ -1488,7 +1452,7 @@ button:focus, input:focus, select:focus {
 
 ### ExpenseLedgerDialog (2026-07-23)
 
-- DashboardProgressBanner의 비용 카드는 버튼이며 hover/focus에서 `비용 추가하기`를 안내하고 동일 페이지의 모달을 연다.
+- 일반 본문의 FinanceSummaryBoxes 비용 카드는 `비용 추가하기`를 표시하는 버튼이며, 클릭하면 동일 페이지의 경비장부 모달을 연다. 날짜·진행 고정 영역과 분리한다.
 - 모바일 Option A(Quick Action Dock)는 상단의 압축된 `DB 비용 / 추가 비용 / 총비용` 요약과 `기록 / 조회 / 관리` 작업 탭, 스크롤 영역, 기록 화면의 하단 고정 저장 CTA로 구성한다. 360px·390px에서도 각 터치 표적은 최소 44px을 유지한다.
 - 기록의 카테고리는 접근 가능한 combobox/popover에서 선택·추가·이름 변경·보관할 수 있다. 사용 이력 보존 때문에 삭제는 차단하고 보관을 안내한다.
 - 일회성 비용만 당일/기간과 포함 일할 인식 미리보기를 사용한다. 반복비용은 토글과 분리된 `반복 시작일 / 선택 종료일 / 매월 반영일 1~31`을 사용하며, 없는 날짜는 월 말일로 보정한 첫 발생일을 미리 보여 준다.
@@ -1510,10 +1474,172 @@ button:focus, input:focus, select:focus {
 | `width="narrow"` | 기본 | `md:max-w-md` | `max-w-2xl` 중앙정렬 | 컨택·일정·DB·로그인·온보딩 (입력 중심) |
 | `width="wide"` | — | `md:max-w-2xl` | `max-w-6xl` 중앙정렬 + 내부 멀티컬럼 | 실무수납·대시보드·관리자 (정보 중심) |
 | `width="xwide"` | — | `md:max-w-2xl` | `max-w-[120rem]` 중앙정렬 (가장 넓음) | 캘린더 (월 그리드가 화면 대부분 차지) |
+| `width="fluid"` | 학생 셸 전용 (desktop-fluid-20260925) | `md:max-w-2xl` (wide 와 동일) | `pc:max-w-none` 전폭 + 균일 `pc:px-6` 거터 | 학생 6탭 본문 (대시보드·DB·컨택·일정·캘린더·수납) |
 
 - 모바일에선 `w-full`(기존 레이아웃 그대로). **중간폭 캡**(dashboard-intermediate-width-cap):
   `md:max-w-*` 는 화면이 그 max-w 보다 클 때만 적용돼, 약 672~1024 구간에서 1단
   카드가 화면 전체로 늘어나지 않게 가운데 폭 제한(그 아래 폭은 풀폭 유지). `md:px-4` 여백.
-- 데스크탑(pc+) 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백.
+- 데스크탑(pc+) 폭 제한 + `pc:px-6 wide:px-8` 좌우 여백. fluid 는 `pc:px-6` 고정
+  (`wide:px-8` 확장 없음 — 헤더·배너·본문 정렬 일치).
 - 정보 중심 화면은 PageContainer(wide) 안에서 카드 리스트를 `pc:grid pc:grid-cols-2 wide:grid-cols-3` 등으로 배치해 가로 공간 활용(세로 스크롤 압박 완화).
+- **학생 셸 전폭 규칙** (desktop-fluid-20260925): `TopHeader` 는 admin/trainer와 공유
+  컴포넌트라 코드상 `width="wide"` 를 유지하고, 학생 셸 전폭은 `app/globals.css` 의
+  `.desktop-shell` 스코프(`.desktop-glass-header > div`, `.page-banner > div`,
+  `.weeklygoal-main > div` + `.weeklygoal-main` 거터, `.week-nav-row`,
+  차트 훅 `.chart-fill`(퍼널·주차 추이가 카드의 남은 높이를 채움, 최소 14rem),
+  `.app-shell-main` 데스크탑 여백 0)가 ≥1024px에서만 해제한다. 전역
+  `max-w` 오버라이드는 금지 — admin/trainer/auth 캡이 그대로 보존된다.
+  주간목표 공용 Content 에는 무조건 `pc:` 캡·거터 클래스를 두지 않는다(트레이너
+  보조 화면 번짐 버그) — 학생 전폭·거터는 셸 스코프가 맡는다. 차트 SVG 는
+  viewBox + `preserveAspectRatio="xMidYMid meet"` 유지라 채움 영역 안에서도 종횡비·중앙
+  정렬이 보존된다(클리핑·압축 없음). 퍼널·추이 SVG 는 모바일(<1024)에서 무변경.
+  채널별 성과 도넛은 모든 폭에서 고정 크기(402px 미만 `h-24 w-24`, 이상 `h-28 w-28`)다.
+  구 수납 `min-[1440px]:max-w-none` 특례는 fluid 로 대체(삭제).
+  DB ≥1440px 2열은 채널 선택 후(`activeCh !== null`)에만 적용한다.
 - 파일: `components/PageContainer.tsx`.
+
+
+### DesktopNav — PC 좌측 사이드바 (2026-09-25)
+
+`pc`(1024px+) 에서만 뜨는 좌측 고정 메뉴. **폰은 아무것도 바뀌지 않는다.**
+
+- 분기는 **CSS 로만** 한다: 사이드바 `hidden pc:flex`, `TabBar` 루트 `pc:hidden`.
+  둘 다 렌더되고 하나만 보인다. `window.innerWidth`·`matchMedia` 로 가르면 서버/클라이언트
+  렌더가 갈려 hydration 이 깨지고 첫 화면이 깜빡인다 — **금지**.
+- 4단계(DB생산·컨택관리·일정·계약·실무/수납)는 `TabBar` 가 export 하는 **`NAV_STEPS` 단일 원천**을
+  돌려 그린다. 사이드바가 라벨·색·`match` 를 따로 정의하면 두 벌이 되어 어긋난다.
+- 이동은 `useGuardedRouter` 경유 — 사이드바도 미저장 이탈 가드를 받는다.
+  그래서 `(app)/layout.tsx` 의 **`DirtyProvider` 안**에 있어야 한다.
+- 하단 여백: 셸 `main` 은 `.app-shell-main` 클래스로 `padding-bottom:
+  var(--app-tabbar-height)` 를 쓴다(모바일 TabBar + safe-area 그대로).
+  데스크탑 TabBar 는 `pc:hidden` 이라 `.desktop-shell` 스코프가 0으로 덮는다
+  (중복 `pc:[--app-tabbar-height:2.5rem]` 변수 덮개는 제거됨). 각 페이지는
+  자신의 작은 `pc:pb` 만 유지한다.
+- 데스크탑은 대시보드 바로 아래 캘린더, 그 아래 영업 4단계, 마지막에 업무도구를 배치한다. 축소 버튼은 224px ↔ 68px 폭을 전환하며 선택을 브라우저에 보관한다. 축소 상태에서도 각 단계의 공통 아이콘과 1~4 숫자 배지, 이동 링크의 전체 이름·키보드 접근을 유지한다.
+- **업무도구 3개**는 영업 단계 바깥의 음영 라운드 박스로 묶는다. 축소 상태에서는 아이콘으로 표시한다:
+
+  | 소탭 | 이동 | 표시 |
+  |---|---|---|
+  | 구글드라이브 | `feedbackFolderId` 있으면 Drive 폴더 **새 탭**, 없으면 `/payment` + 「연결 필요」 | ↗ |
+  | 정책자금뉴스 | 앱 내부 `/payment/news` | — |
+  | 업무매뉴얼 | `WORK_MANUAL_URL` **새 탭** | ↗ |
+
+  **↗ 은 장식이 아니라 약속이다.** 새 탭으로 열리는 링크에만 붙인다. 아무 표시 없이 새 탭이
+  튀어나오면 사용자는 고장으로 느낀다.
+- 관리자 항목은 `useMe()` 가 준 `isAdmin`/`sessionRole` 로만 판정한다. `isAdminEmail` 같은
+  **서버 전용 판정을 클라이언트에서 흉내내지 않는다**(판단이 안 서면 숨기는 쪽).
+- 파일: `components/desktop/DesktopNav.tsx` · 회귀 테스트 `tests/components/desktop-nav.test.ts`.
+
+### Desktop glass polish — scoped 도장 (2026-09-25)
+
+직접 승인된 데스크탑 사이드바/글래스 목업(`approved-reference.html`은 **참고용**,
+그대로 복사하지 않는다)을 기존 셸 위에 얹는 소규모 시각 폴리시. 폰은 무변경.
+
+- 스코프: `>=1024px`이면서 `.desktop-shell` 안쪽에서만. `(app)/layout` 과
+  `WeeklyGoalPage` STUDENT 모드가 그 div 에 `desktop-shell` 을 단다.
+  전역 `.bg-white` 강제·`main` 전체 필터·폰 prefix(`sm:/md:/lg:/xl:`) 금지.
+- `globals.css` 하단 「Desktop glass shell」: 사이드바(`.desktop-nav`) 흰 .55 +
+  blur24 saturate150·헤어라인·inset 하이라이트, 헤더(`.desktop-glass-header`)
+  흰 .72, 배경은 옅은 blue/lilac/mint. `@supports` 폴백 + reduced-transparency
+  평면 도장. 폭은 224px 고정(px — 13.5px 루트에서 `w-60` 은 ~202px 로 준다).
+- 드라이브 소탭: 폴더 있음 + 상태 정상(레거시 미설정 포함) → 기존 외부 링크.
+  폴더 없음·상태 `error` → 가드 경유 `/payment#drive-link`
+  (`DriveLinkBar` 의 `id="drive-link"`+`scroll-mt` 연결 UI 로 스크롤).
+  매뉴얼/뉴스 라우팅 그대로(`/payment/news` 내부, 매뉴얼만 새 탭).
+- 주간목표 STUDENT 화면도 기존 `DesktopNav` 를 그대로 재사용(중복 구현 금지),
+  단일 `DirtyProvider` 안에 사이드바+본문. 트레이너 보조 화면은 1단 유지,
+  모바일 TabBar 추가 없음.
+- 새 기능 점(dot)은 `TabBar` 를 건드려야 해서 baseline 유지(미추가).
+- 회귀: `tests/components/desktop-glass-shell.test.ts` (DOM 렌더 15).
+- 직접 승인 사이드바가 기존 「PC에선 하단탭」 결정을 대체한다. 모바일 탭 순서는 그대로.
+
+### /payment/news — 정책자금 데일리 (2026-09-25)
+
+- 앱 안에 **iframe 으로 못 띄운다**: 응답 헤더가 `X-Frame-Options: DENY` 라 브라우저가 막는다
+  (2026-09-23 실측 — 앱 루트·`/news/*` 둘 다 DENY).
+- 그래서 `POLICY_NEWS_EMBED`(`lib/config/links.ts`) 가 **false 인 동안 iframe 을 렌더하지 않고**
+  「새 창에서 열기」 안내만 보여준다. 켜두면 빈 화면이 나와 고장으로 보인다.
+- VPS Caddy 에서 **`/news/*` 경로만** `SAMEORIGIN` 으로 바꾼 뒤 그 상수를 true 로 올린다
+  (앱 본체는 DENY 유지 — 클릭재킹 방어를 넓히지 않는다). 별도 1줄 PR.
+
+## 컨택관리 저장·이동 확인 (2026-09-10)
+- `SaveConfirmModal`: 기존 예약과 이번 신규 예약을 별도 표시. 실제 예정 주의 기존 미팅과 동일 일시 충돌 검사. X는 저장하지 않고 입력 카드로 복귀(입력 보존). 최종 수치 아래 수정 안내는 짧은 문구와 원형 ?로 표시하며, hover/클릭으로 설명 열기·재클릭/Escape로 닫기를 지원한다.
+- `MetricComparison`: 채널별 저장 전 / 이번 변경(증감) / 저장 후 최종 4지표 비교.
+- `RecordMoveModal`, `record-move-options`: 이동 대상·범위·목적지 선택 후 최종 저장 확인. 저장 전 X/외부 클릭은 이동 선택 취소 확인; 시간 오기는 카드에서 수정.
+- `RecordMoveReview`: 양쪽 날짜 수치 미리보기. 전체 날짜 이동은 남는 미팅별 유입·컨택 1씩 보존, 선택 미팅예약 1건만 이동. 생산·파생 유입 경계 유지.
+- `RecordMoveReceipt`: 저장 후 양쪽 날짜 수치를 계속 표시. 선택 채널의 남는 신규 미팅도 원래 날짜에 함께 저장해 이동 후 카드 유실을 막음. 다른 채널 입력은 보존.
+
+### 2026-09-11 · 컨택관리 QA 보완
+- 일정 `WeekBody`: 선택 주 목표 요약과 기존 금토일/월화수목 반응형 두 열을 감싼다. 입력/저장 로직은 기존 schedule page에 유지한다.
+- `SaveBar`의 `incompleteCount`로 메인 저장 사전 차단, 누락 건수 및 첫 미완성 카드로 이동 제공.
+- `MeetingSlotList`에서 카드 번호별 필수 누락 항목 표시. `slot-validation.ts`를 저장 게이트와 공유. 모두 채우거나 미완성 카드를 삭제하면 즉시 해제.
+- `SaveConfirmModal` 미완성 시 [입력 수정하기]로 복귀 가능. 저장 전에는 쓰기 없음.
+
+- **PT과제 성과 동선 (2026-09-11)**: 지난주 비교의 과제 바로 아래에서 트레이너 기록을 열고 성과를 저장한다. 이전 주차 번호를 입력란에 표시하고 저장 완료를 안내한다. 기존 비공개 저장·권한·함께 보기 경계는 유지한다.
+
+### 주간목표 밀도 개선 (2026-09-11)
+- `GoalCompactMetrics`: DB/컨택/일정 요약 안에서 기존 STEP 색 배지로 실적/목표/달성률을 표시. 미설정·목표0·달성·초과를 구분하며 대시보드 링과 모양을 분리.
+- 대시보드 재무 상세는 기본 접힘(시즌/이월/전체 값 보존); 생산성 2열 다음에 목표 링을 배치.
+- 회의록 미리보기의 라벨과 달리 HTML/TSV 클립보드는 제목 없는 14열 데이터 한 행.
+
+## Trainer recruitment (#956)
+- `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
+- `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인·재신청, 별도 초대 수락. 기존 학생 기록 유지.
+- `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
+- `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속. D-day는 DashboardProgressBanner에만 표시한다. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
+
+- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
+
+- Header stack: `app-header`는 <768px 6rem / >=768px 3.5rem이며, 배너3rem을 더한 `top-app-content`는 각각9rem /6.5rem. PC 전역 글자 크기에 따라 함께 축소한다. PC 캘린더 패널의 별도 offset은 유지한다.
+
+- 헤더 대시보드와 역할 토글은 red200 테두리/red50 배경/전체 곡률을 공유한다. 역할은 연결된 세그먼트 트랙(시각26px, 터치44px)이며 선택 영역만 red700/흰색. canStudent와 canTrainer 모두 참일 때만 표시한다.
+
+### 2026-09-14 대시보드 정리 / 2026-09-15 헤더 회귀 복원
+- PR980의 헤더 단일행·표식 제거는 #956 승인 계약 복원으로 대체한다. 모바일 두 행·대리접속 표식과 공유 sticky offset은 위 TopHeader 계약을 따른다. 대시보드 카드 정리는 유지한다.
+- 대시보드 주간 목표는 초과/남음 상태 줄을 숨긴다. PT과제는 민트 구획과 명시적 제목으로 분리. 카드 전체 상세 버튼과 주차/재시도 버튼은 독립 포커스·클릭 영역이다. 업무탭 compact 진입은 유지.
+
+### STEP 1·2 입력 대상 선택 (2026-09-15)
+DB생산은 전체 4채널 종합 바로 아래에 채널 선택을 두고, 선택한 채널의 추가 폼을 바로 연다. 방문 채널 폼은 hidden 상태로 유지해 전환 시 초안을 보존한다. 컨택관리는 날짜·채널을 한 카드에 배치하며 입력 상단에 날짜와 채널을 표시한다. 최근 채널은 sessionStorage 선호값, 명시적 URL이 우선이다. 저장 버튼은 해당 날짜의 모든 채널 저장 범위를 표현한다. 날짜 변경의 미저장 보호·미팅 등록 확인은 유지한다.
+
+#### DbChannelWorkspace
+채널별 DB 추가·수정 상태와 미저장 등록을 소유한다. 부모가 방문한 인스턴스를 유지하고 비활성 인스턴스는 hidden으로 숨긴다. 신규 등록 ID를 채널별로 분리한다.
+
+전체 4채널 종합→채널 선택(네 버튼 바로 아래 선택 채널 설명)→단독채널 합계→해당 채널 목록→목록 추가 순서로 읽힌다. 채널 설명에는 별도 카드를 쓰지 않는다. 1440px 이상에서는 합계·목록을 왼쪽, 기존 자동저장 추가 폼(닫으면 추가 버튼)을 오른쪽에 둔다. 좁은 화면은 같은 DOM 순서로 한 열이다. 채널별 목록은 기본 펼침이며 제목 버튼으로 접으면 건수만 남는다. 편집 중 접기는 기존 미저장 이동 보호를 따른다. 채널 안내 배너는 작업대 뒤에 둔다. 입력 필드·자동저장·미저장 이동 보호는 유지한다.
+
+### 추가 비용 원장 진입
+FinanceSummaryBoxes의 별도 비용 추가하기 문구를 제거한다. 추가 비용 행 전체를 최소 44px 높이의 버튼으로 사용하고 옅은 강조 배경과 우측 화살표로 원장 진입을 안내한다. 합계 표시와 실제 비용 저장 로직은 유지한다.
+
+### 2026-09-16 공통 헤더·추가 비용
+공통 헤더는 모든 폭에서 로고·이름·대시보드·권한 있는 역할 토글 한 줄, 높이 3.5rem. 긴 이름만 말줄임하며 대리접속 문구와 상단 D-day는 표시하지 않는다. 추가 비용 행은 24px 최소 높이·기본 슬레이트 글자와 은은한 hover를 사용한다.
+
+### 2026-09-16 트레이너 관리 위계
+트레이너 관리(인원) 안에 담당부여·권한부여·요청관리·초대관리를 같은 접힘 카드로 배치한다. 수강생 명단확인·관리부서 명단은 동일한 상위 카드다. 중복 설명은 생략하고 오류·변경 상태는 유지한다.
+
+### 2026-09-16 목표설정 작업 버튼
+역산 제안·과제 추가는 각 제목의 우측. 보조 버튼은 회색 테두리·흰 배경·semibold·44px 최소 높이, 박스 패딩은 p-4로 통일한다.
+
+### ADR-0032 기간 정책
+숫자 10기 이후 과정·누적 통계·차트는 12주다. 수강 종료일과 총회일을 분리한다. 기존 기록과 시트 물리 10주 상한은 보존하며 주간목표와 11~12주 기록은 DB를 사용한다. 상세: docs/decisions/0032-twelve-week-courses.md.
+
+### 트레이너 공통 헤더·간격 (2026-09-16)
+`app/trainer/layout.tsx`는 실제 접속 계정의 이름·이메일을 `TopHeader.sessionIdentity`에 전달한다. 대리접속 대상의 이름·시트 링크를 접속 계정으로 표시하지 않는다. 로그아웃은 로고 계정 메뉴에 유지하며 본문 계정 헤더는 두지 않는다.
+`TrainerCohortView`는 `PageContainer width="wide"`, `space-y-4 px-4 py-4`, `text-lg` 제목과 `app-header-pill` 필터를 사용한다. 기존 `CohortSection`·`TraineeCard`와 주간목표 경로·권한은 유지한다. Muse 목업과 구현도 이 실제 컴포넌트를 참조한다.
+
+### 재무 요약 제목 크기 (2026-09-17)
+FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 `text-base`(1rem)를 사용한다. 모바일에서는 장식 화살표를 숨겨 긴 영업이익 제목의 한 줄을 유지한다. 금액 자동 맞춤은 유지한다.
+
+재무 요약 세 제목은 생산성 지표와 같은 `text-base font-extrabold`(1rem/800)를 사용한다(2026-09-17).
+
+### DB생산 RowForm 필드 정렬 (2026-09-24)
+
+4채널 추가·편집 공통 폼은 2열 입력 및 전체 너비 메모를 유지한다. 예시는 실제 placeholder로 표시하며 라벨은 계속 노출한다. 같은 행의 라벨 영역을 flex로 늘려 줄바꿈에도 컨트롤 하단을 정렬하고, 모든 컨트롤은 h-10(PC 공통 rem 축소 적용)을 사용한다. 자동계산 필드는 메모 앞의 독립 2열 그룹으로 함께 표시한다. 렌더 순서만 그룹화하며 계산 순서·필드 키·자동저장 이벤트는 바꾸지 않는다.
+
+### 회의록 전주 PT과제 복사 (2026-09-25)
+- GoalCopyPanel의 meetingCells는 pairPriorOutcomes로 전주 과제와 성과를 같은 행에 연결한다. 중간 미입력 성과는 미기재, 연결할 과제가 없는 성과는 과제 미기재로 표시한다. 미리보기와 HTML/TSV 복사가 동일한 내용을 사용하며 Notion 14열 순서는 유지한다.
+
+### PT과제 불릿·줄바꿈 복사 (2026-09-25)
+- GoalCopyPanel의 지난주·이번주 PT과제는 한 과제당 • 불릿과 줄바꿈으로 표시하며, HTML은 셀 안의 줄바꿈을 유지한다. 일반 텍스트는 탭·줄바꿈·따옴표가 있는 셀을 인용하는 TSV로 원문을 보존한다.
+- GoalInternalEditor 특이사항 입력은 내용별 줄바꿈 안내를 aria-describedby로 연결한다. 기존 저장·권한·레이아웃을 유지한다.
+
+### 회의록 실적 집계 기간 (2026-09-25 사용자 확인)
+- GoalCopyPanel 금주미팅·금주계약은 목표를 세우는 선택 주차의 직전 금~목 미팅 기록을 집계한다. 현재 날짜가 금요일로 넘어가도 같은 선택 주차의 결과는 변하지 않는다. 내부 복사 미리보기에는 reporting.start/end 기간을 표시한다. 선택 주차 목표·누적 실적·상태/이월 기준·14열 순서는 유지한다.

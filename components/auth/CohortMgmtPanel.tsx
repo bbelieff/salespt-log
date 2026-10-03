@@ -16,6 +16,7 @@ import CohortCreateModal from "./CohortCreateModal";
 import ArenaCreateModal from "./ArenaCreateModal";
 import CohortPendingRetryButton from "./CohortPendingRetryButton";
 import SeasonStartInput from "./SeasonStartInput";
+import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 interface Cohort {
   label: string;
@@ -59,7 +60,7 @@ export default function CohortMgmtPanel({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setErr(d.error ?? `HTTP ${res.status}`);
+        setErr(apiErrorMessage(d, res.status));
       } else {
         router.refresh();
       }
@@ -134,7 +135,7 @@ export default function CohortMgmtPanel({
                       {displayLabel(c)} · {c.traineeCount}명
                     </div>
                     {c.note && (
-                      <div className="mt-0.5 text-[11px] text-gray-500">
+                      <div className="mt-0.5 text-px-11 text-gray-500">
                         {c.note}
                       </div>
                     )}
@@ -200,7 +201,7 @@ export default function CohortMgmtPanel({
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-gray-700">
                       {displayLabel(c)} · {c.traineeCount}명{" "}
-                      <span className="ml-1 rounded bg-gray-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                      <span className="ml-1 rounded bg-gray-400 px-1.5 py-0.5 text-px-9 font-bold uppercase tracking-wider text-white">
                         archived
                       </span>
                     </div>

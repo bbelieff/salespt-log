@@ -7,6 +7,8 @@
  *   auto = ①registry O 저장값 재확인 ②16C 하위 이름 매칭(부부 이름 포함).
  *   manual = 업체관리 폴더(또는 16C) URL — 본인 토큰(A{n}_{m}기·이름) 검증으로
  *   남의 폴더 연결 방지.
+ *   auto ③ / manual 보조 (2026-09-01): 업체관리 폴더가 아예 없는 참가자는
+ *   **수강생 시절 `01 피드백업체`** 로 연결한다 — findLegacyFeedbackFolder 참조.
  *
  * body: { mode: "auto" } | { parentFolderUrl: string }
  * ADR-0007: Scope 1은 Drive 읽기(files.list / files.get)만.
@@ -14,10 +16,14 @@
 import { NextResponse } from "next/server";
 import { findUserByEmail, updateDriveLink } from "@/repo/users";
 import {
-  findFolderByNameInDrive,
   findFolderByNamePrefix,
   getDriveFileMeta,
 } from "@/repo/drive-client";
+import {
+  discoverFeedbackFolder,
+  verifySavedFeedbackFolder,
+  type DiscoveryReason,
+} from "@/repo/drive-feedback-discovery";
 import { listCohorts } from "@/repo/cohorts";
 import { isArenaCohort, normalizeArenaCohort } from "@/repo/users-arena";
 import { nameMatchCandidates } from "@/repo/name-match";
@@ -91,6 +97,35 @@ async function findArenaCompanyFolder(user: User): Promise<string | null> {
   );
 }
 
+/**
+ * 수강생 시절 `01 피드백업체` 폴더 — **아레나 참가자 구제 경로** (2026-09-01).
+ *
+ * 왜 필요한가 (belie 신고 "8기 김현민 드라이브 연결 안 됨" 실측):
+ * 아레나 편입 방식이 두 갈래인데 한쪽만 업체관리 폴더를 만든다.
+ *   · 관리자 화면(`/api/admin/create-arena-members`) — `createFolder` 로 **만든다**
+ *   · ops 배치(`scripts/ops/arena-season2-batch.mjs`) — 시트 복제·O1/O2·SA공유·registry
+ *     까지만. `createFolder` 참조 **0건** → 폴더가 안 생긴다
+ * 그 결과 2026-08-05 배치로 편입된 A2 7·8기 참가자는 16C 하위에 폴더가 없어
+ * `arena_folder_missing` 만 본다(Drive 전수 확인: `세일즈PT_A2_…업체관리` 폴더 0개,
+ * A1 참가자 40여 명은 전원 존재 — 그쪽은 관리자 화면 경로였다).
+ *
+ * 폴더를 뒤늦게 만들어 주는 것으로는 못 고친다 — 옮겨 담아야 할 업체 폴더의 **주인이
+ * 수강생 본인**이라 운영자 계정이 이동시킬 수 없다(2026-09-01 실측: 김현민 님 업체
+ * 2건 모두 `The caller does not have permission`). 그래서 **폴더를 옮기지 않고,
+ * 원래 있던 자리를 그대로 가리킨다.**
+ *
+ * 안전: **본인 시트의 부모 폴더 한 단계만** 본다. 공유드라이브 전체 검색
+ * (`findFolderByNameInDrive`)은 **쓰지 않는다** — 같은 이름 폴더가 참가자마다 있어
+ * 남의 업체 폴더가 붙을 수 있다. 못 찾으면 조용히 null → 기존 안내가 그대로 뜬다.
+ */
+async function findLegacyFeedbackFolder(user: User): Promise<string | null> {
+  const ssId = (user.spreadsheetId ?? "").trim();
+  if (!ssId) return null;
+  const meta = await getDriveFileMeta(ssId);
+  if (!meta.ok || !meta.parentId) return null;
+  return findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
+}
+
 const ARENA_NOT_FOUND = {
   ok: false,
   status: "error",
@@ -99,9 +134,33 @@ const ARENA_NOT_FOUND = {
     "'업체관리' 폴더를 찾지 못했어요. 운영자에게 받은 업체관리 폴더 주소를 붙여넣거나, 운영자에게 알려주세요.",
 };
 
+/** 발견 실패 → 보존(지우지 않음) 응답. folder_not_shared 만 전용 안내. */
+function discoveryErrorResponse(reason: DiscoveryReason, message: string) {
+  if (reason === "sheet_not_found") {
+    return NextResponse.json({
+      ok: false,
+      status: "error",
+      errorKind: "sheet_not_found",
+      error: message,
+    });
+  }
+  if (reason === "folder_not_shared") return folderNotSharedResponse();
+  return NextResponse.json({
+    ok: false,
+    status: "error",
+    errorKind: reason,
+    error: message,
+  });
+}
+
 async function POST_handler(req: Request) {
+  let email: string;
   try {
-    const email = await getWritableUserEmail();
+    email = await getWritableUserEmail();
+  } catch {
+    return NextResponse.json({ error: "등록되지 않은 사용자" }, { status: 401 });
+  }
+  try {
     const user = await findUserByEmail(email);
     if (!user) {
       return NextResponse.json({ error: "등록되지 않은 사용자" }, { status: 401 });
@@ -130,6 +189,12 @@ async function POST_handler(req: Request) {
         if (!feedbackFolderId) {
           feedbackFolderId = await findArenaCompanyFolder(user);
           parentPathLabel = "16C";
+        }
+        // 3순위: 수강생 시절 `01 피드백업체` — 업체관리 폴더를 못 받은 참가자 구제.
+        // (findLegacyFeedbackFolder 독블록 참조. 폴더 이동이 불가능해 자리를 그대로 쓴다)
+        if (!feedbackFolderId) {
+          feedbackFolderId = await findLegacyFeedbackFolder(user);
+          parentPathLabel = "01";
         }
         if (!feedbackFolderId) {
           await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
@@ -160,6 +225,13 @@ async function POST_handler(req: Request) {
               if (feedbackFolderId) break;
             }
           }
+          // 붙여넣은 것이 **본인의** `01 피드백업체` 폴더면 허용한다.
+          // id 를 직접 대조하므로(이름 매칭 아님) 남의 폴더는 절대 통과 못 한다 —
+          // 운영자가 손으로 고칠 때 쓰는 길. (2026-09-01, auto 3순위와 같은 사유)
+          if (!feedbackFolderId) {
+            const legacy = await findLegacyFeedbackFolder(user);
+            if (legacy && legacy === folderId) feedbackFolderId = legacy;
+          }
           if (!feedbackFolderId) {
             // 남의 폴더/무관 폴더 거부 — 본인 토큰 불일치.
             await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
@@ -174,42 +246,48 @@ async function POST_handler(req: Request) {
         }
       }
     } else if (mode === "auto") {
-      // ── 일반 기수 auto: 기존 로직 그대로 ────────────────────────
-      const ssId = user.spreadsheetId;
+      // ── 일반 기수 auto (drive-auto-link 2026-09-24) ─────────────
+      // 1순위: 서버 저장 feedbackFolderId 재검증(SA GET+LIST) — 부모 메타 불필요.
+      // 2순위: 등록 시트 기준 발견(helper). 실패 시 기존값 보존 — 지우지 않는다.
+      // 공유 드라이브 전체 탐색은 하지 않는다(다른 학생 동명 폴더 혼입 방지).
+      const ssId = (user.spreadsheetId ?? "").trim();
       if (!ssId) {
         return NextResponse.json(
           { ok: false, error: "연동된 경영일지 시트가 없어요. 먼저 시트를 연결해 주세요.", status: "error" },
           { status: 400 },
         );
       }
-      const meta = await getDriveFileMeta(ssId);
-      if (!meta.ok) {
-        await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
-        if (meta.code === 404) {
-          return NextResponse.json({
-            ok: false,
-            status: "error",
-            errorKind: "sheet_not_found",
-            error: "연동된 시트를 찾을 수 없어요. 시트 연결을 다시 확인해 주세요.",
-          });
+      const saved = (user.feedbackFolderId ?? "").trim();
+      if (saved) {
+        const checked = await verifySavedFeedbackFolder(saved);
+        if (checked.ok) {
+          // 이미 ok 면 저장 없이 반환. 아니면 O/P 단일 호출로 확정한다.
+          if (user.driveLinkStatus === "ok" && user.feedbackFolderId === saved) {
+            return NextResponse.json({ ok: true, feedbackFolderId: saved, status: "ok" });
+          }
+          await updateDriveLink(email, { feedbackFolderId: saved, driveLinkStatus: "ok" });
+          return NextResponse.json({ ok: true, feedbackFolderId: saved, status: "ok" });
         }
-        return folderNotSharedResponse();
       }
-      if (meta.parentId) {
-        feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, meta.parentId);
+      // 서버 확인 등록 시트 ID만 사용 — 요청 본문의 임의 sheetId 는 절대 쓰지 않는다.
+      const found = await discoverFeedbackFolder(ssId);
+      if (!found.ok) {
+        // 보존: 기존 folder/path/status 를 지우지 않는다(성공 시에만 단일 저장).
+        return discoveryErrorResponse(found.reason, found.message);
       }
-      if (!feedbackFolderId && meta.driveId) {
-        feedbackFolderId =
-          (await findFolderByNameInDrive("01 피드백업체", meta.driveId)) ??
-          (await findFolderByNameInDrive(FEEDBACK_PREFIX, meta.driveId));
-      }
-      parentPathLabel = meta.parentId ?? meta.driveId ?? "";
-      if (!feedbackFolderId) {
-        await updateDriveLink(email, { feedbackFolderId: "", driveLinkStatus: "error" });
-        return folderNotSharedResponse();
-      }
+      await updateDriveLink(email, {
+        driveParentPath: found.parentId,
+        feedbackFolderId: found.feedbackFolderId,
+        driveLinkStatus: "ok",
+      });
+      return NextResponse.json({
+        ok: true,
+        feedbackFolderId: found.feedbackFolderId,
+        status: "ok",
+      });
     } else {
-      // ── 일반 기수 manual: 기존 로직 그대로 ──────────────────────
+      // ── 일반 기수 manual: 발견된 내 폴더/그 부모만 허용 ─────────
+      // 임의 `01` 폴더 URL 은 받지 않는다. 저장 driveParentPath 는 소유 증명이 아니다.
       const url = String(body.parentFolderUrl ?? "").trim();
       const folderId = extractFolderId(url);
       if (!folderId) {
@@ -218,13 +296,37 @@ async function POST_handler(req: Request) {
           { status: 400 },
         );
       }
-      parentPathLabel = url;
-      const meta = await getDriveFileMeta(folderId);
-      if (meta.ok && meta.name.startsWith(FEEDBACK_PREFIX)) {
-        feedbackFolderId = folderId;
-      } else {
-        feedbackFolderId = await findFolderByNamePrefix(FEEDBACK_PREFIX, folderId);
+      const ssId = (user.spreadsheetId ?? "").trim();
+      if (!ssId) {
+        return NextResponse.json(
+          { ok: false, error: "연동된 경영일지 시트가 없어요. 먼저 시트를 연결해 주세요.", status: "error" },
+          { status: 400 },
+        );
       }
+      const found = await discoverFeedbackFolder(ssId);
+      if (!found.ok) {
+        return discoveryErrorResponse(found.reason, found.message);
+      }
+      if (folderId !== found.feedbackFolderId && folderId !== found.parentId) {
+        // 보존: 기존값 유지(성공 시에만 단일 저장).
+        return NextResponse.json({
+          ok: false,
+          status: "error",
+          errorKind: "folder_missing",
+          error:
+            "입력한 폴더는 내 피드백 폴더가 아니에요. 내 피드백 폴더 또는 그 상위 폴더 주소를 입력해 주세요.",
+        });
+      }
+      await updateDriveLink(email, {
+        driveParentPath: found.parentId,
+        feedbackFolderId: found.feedbackFolderId,
+        driveLinkStatus: "ok",
+      });
+      return NextResponse.json({
+        ok: true,
+        feedbackFolderId: found.feedbackFolderId,
+        status: "ok",
+      });
     }
 
     await updateDriveLink(email, { driveParentPath: parentPathLabel });
@@ -245,9 +347,11 @@ async function POST_handler(req: Request) {
 
     await updateDriveLink(email, { feedbackFolderId, driveLinkStatus: "ok" });
     return NextResponse.json({ ok: true, feedbackFolderId, status: "ok" });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "unknown";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { ok: false, status: "error", errorKind: "retryable", error: "일시적인 오류예요. 잠시 후 다시 시도해 주세요." },
+      { status: 500 },
+    );
   }
 }
 

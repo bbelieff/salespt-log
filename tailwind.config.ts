@@ -17,6 +17,23 @@ export default {
     "border-l-teal-500", "border-l-cyan-500", "border-l-fuchsia-500", "border-l-green-500",
   ],
   theme: {
+    // 글자 크기 = 기본 크기 × --font-scale(글자 크기 단계 버튼, 2026-09-29). 줄 높이도 함께 키워 겹치지 않게.
+    // 여백·너비(spacing)는 rem 그대로 — 글자만 커지고 배치는 유지된다.
+    fontSize: Object.fromEntries(
+      (
+        [
+          ["xs", 0.75, 1], ["sm", 0.875, 1.25], ["base", 1, 1.5], ["lg", 1.125, 1.75], ["xl", 1.25, 1.75],
+          ["2xl", 1.5, 2], ["3xl", 1.875, 2.25], ["4xl", 2.25, 2.5], ["5xl", 3, 0], ["6xl", 3.75, 0],
+          ["7xl", 4.5, 0], ["8xl", 6, 0], ["9xl", 8, 0],
+        ] as const
+      ).map(([k, size, lh]) => [
+        k,
+        [`calc(${size}rem * var(--font-scale, 1))`, { lineHeight: lh ? `calc(${lh}rem * var(--font-scale, 1))` : "1" }],
+      ]).concat(
+        // 고정 픽셀 글자(예전 text-[11px] 임의값 → 토큰 text-px-11, 2026-09-29) — 같은 배율을 곱한다.
+        [9, 10, 11, 12, 13, 14, 15, 22].map((px) => [`px-${px}`, `calc(${px}px * var(--font-scale, 1))`]),
+      ),
+    ),
     // 모바일 우선 브레이크포인트 — display-reference-v2.html 매핑
     // (수강생 기기: iPhone 12~17 / Galaxy S21~S26 = 360~480px)
     screens: {
@@ -32,6 +49,12 @@ export default {
       wide: "1280px", // 와이드 데스크탑
     },
     extend: {
+      // Responsive header height from globals.css + 3rem banner, shared by all sticky consumers.
+      spacing: {
+        "app-header": "var(--app-header-height)",
+        "app-content": "calc(var(--app-header-height) + 3rem)",
+        "app-calendar-panel": "11.25rem",
+      },
       // 하단 네비게이션 4+1 최대폭 캡 (bottom-nav-4plus1 / ADR-0019) — arbitrary 대신 토큰.
       maxWidth: {
         "bottom-nav": "480px",

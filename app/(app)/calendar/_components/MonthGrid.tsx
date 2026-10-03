@@ -118,7 +118,7 @@ export default function MonthGrid({
                   {visible.map((m) => (
                     <div
                       key={m.id}
-                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-[10px] leading-tight pc:text-xs ${
+                      className={`flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-px-10 leading-tight pc:text-xs ${
                         PILL_CLS[m.channel]
                       } ${m.상태 === "완료" ? "opacity-70" : ""}`}
                       title={`${m.미팅시간} ${m.업체명} · ${m.상태}`}
@@ -128,22 +128,28 @@ export default function MonthGrid({
                     </div>
                   ))}
                   {/* 실무투두 pill — 진회색 + type 아이콘 (Scope 2) */}
-                  {visibleTodos.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-0.5 truncate rounded-sm px-1 py-0.5 text-[10px] leading-tight text-white pc:text-xs"
-                      style={{ background: t.type === "일반" ? "#0d9488" : "#334155" }}
-                      title={`${t.예정시각} ${t.제목}`.trim()}
-                    >
-                      <TodoTypeIcon type={t.type} size={9} />
-                      {t.예정시각 && (
-                        <span className="font-bold">{t.예정시각}</span>
-                      )}
-                      <span className="truncate">{t.제목}</span>
-                    </div>
-                  ))}
+                  {visibleTodos.map((t) => {
+                    // 오래된 진행건은 업체명 셀이 비어 있어도 계약 ref 에 업체명이 남아 있다.
+                    const company = t.업체명.trim() || (t.contractRef ? t.contractRef.split("|").slice(1).join("|").trim() : "");
+                    const time = t.예정시각 || "시간 미정";
+                    const label = `${time} ${company ? `${company} · ` : ""}${t.제목}`;
+                    return (
+                      <div
+                        key={t.id}
+                        className="flex min-w-0 items-center gap-0.5 overflow-hidden rounded-sm px-1 py-0.5 text-px-10 leading-tight text-white pc:text-xs"
+                        style={{ background: t.type === "일반" ? "#0d9488" : "#334155" }}
+                        title={label}
+                      >
+                        <TodoTypeIcon type={t.type} size={9} />
+                        <span className="shrink-0 font-bold tabular-nums">{t.예정시각 || "—"}</span>
+                        {company && <span className="max-w-[40%] shrink-0 truncate font-semibold">{company}</span>}
+                        {company && <span aria-hidden="true">·</span>}
+                        <span className="min-w-0 flex-1 truncate">{t.제목}</span>
+                      </div>
+                    );
+                  })}
                   {overflow > 0 && (
-                    <div className="text-center text-[10px] font-semibold leading-tight text-gray-500">
+                    <div className="text-center text-px-10 font-semibold leading-tight text-gray-500">
                       +{overflow}
                     </div>
                   )}

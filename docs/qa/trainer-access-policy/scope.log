@@ -1,0 +1,46 @@
+{
+  "result": "PASS",
+  "base_head": "c781febca94c9b476409d6f9db0da8ac512bb49a",
+  "branch": "feat/trainer-access-policy",
+  "changed_count": 25,
+  "owned_count": 25,
+  "outside_owned": [],
+  "changed_paths": [
+    "docs/domains/data-model.md",
+    "docs/plans/active/trainer-access-policy.md",
+    "docs/qa/trainer-access-policy/README.md",
+    "docs/qa/trainer-access-policy/build.log",
+    "docs/qa/trainer-access-policy/check-final.log",
+    "docs/qa/trainer-access-policy/check.log",
+    "docs/qa/trainer-access-policy/green-1.log",
+    "docs/qa/trainer-access-policy/green-2.log",
+    "docs/qa/trainer-access-policy/green-3.log",
+    "docs/qa/trainer-access-policy/green-4.log",
+    "docs/qa/trainer-access-policy/green-5.log",
+    "docs/qa/trainer-access-policy/red-1-assertion.log",
+    "docs/qa/trainer-access-policy/red-1.log",
+    "docs/qa/trainer-access-policy/red-2.log",
+    "docs/qa/trainer-access-policy/red-3-assertion.log",
+    "docs/qa/trainer-access-policy/red-3.log",
+    "docs/qa/trainer-access-policy/red-4.log",
+    "docs/qa/trainer-access-policy/red-5.log",
+    "docs/qa/trainer-access-policy/scope.log",
+    "docs/qa/trainer-access-policy/structural-green.log",
+    "docs/qa/trainer-access-policy/structural-red.log",
+    "docs/qa/trainer-access-policy/verify-scope.py",
+    "lib/types/trainer-access.ts",
+    "lib/util/trainer-access-policy.ts",
+    "tests/util/trainer-access-policy.test.ts"
+  ],
+  "product_sha256": {
+    "lib/types/trainer-access.ts": "07cfbbb9125e79bb2a3ae2c4cfce5a172c9487b02a7e1ef4d88bf9db84f652cb",
+    "lib/util/trainer-access-policy.ts": "79858e8b6df39ce77c8ba903f90c10cba58bda6a72e1d78f0068986bcb711737",
+    "tests/util/trainer-access-policy.test.ts": "cdceb1c7331bf1e5d8a4fa5688c9a9b06f834c0422b8d88e57d59f3788e35e1c"
+  },
+  "products_line_counts": {
+    "lib/types/trainer-access.ts": 29,
+    "lib/util/trainer-access-policy.ts": 67,
+    "tests/util/trainer-access-policy.test.ts": 217
+  },
+  "no_commit_created": true
+}

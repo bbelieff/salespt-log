@@ -142,14 +142,20 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
 - rem 기반 Tailwind 유틸(글자·간격·카드)이 일괄 비례 축소. **모바일(<1024px) 무변경.**
 - 구현 = `app/globals.css` 의 `@media (min-width: 1024px) { html { font-size: 13.5px } }` 한 곳.
   개별 페이지에서 PC 밀도를 따로 만지지 않는다(전역 스케일이 SSOT).
-- px 고정값(`.badge` 11px, `text-[11px]` arbitrary, 인라인 px)은 축소되지 않음 — 작은 보조
+- px 고정값(`.badge` 11px, `text-px-11` 토큰(옛 `text-[11px]`), 인라인 px)은 축소되지 않음 — 작은 보조
   텍스트가 상대적으로 약간 커 보이는 정도로 가독에 유리, 의도된 예외.
 - 아래 폰트 크기 표의 px 값은 **루트 16px(모바일) 기준**. PC 에서는 ×0.84.
 
 ### 폰트 크기
+**글자 크기 단계(2026-09-29 belie)** — 모든 글자 토큰은 `calc(크기 × var(--font-scale, 1))` 이다
+(`tailwind.config.ts` fontSize). 박스에 `--font-scale` 을 걸면 그 안의 글자만 커지고 여백·너비는 그대로다.
+단계 = 1 · 1.1 · 1.2 · 1.3(`lib/util/font-scale.ts`). 적용 범위: 업체정보 컴포넌트(모든 탭).
+고정 픽셀 글자는 임의값 대신 토큰 `text-px-9·10·11·12·13·14·15·22` 를 쓴다 — `text-[11px]` 는 배율이 안 곱해져
+`tests/structural/font-scale.test.ts` 가 막는다.
+
 | 이름 | Tailwind Class | Size | Line Height | 사용처 |
 |------|---------------|------|-------------|--------|
-| step | `text-[9px]` | 9px | tight | **하단 탭 STEP 배지 전용**(ADR-0027). 일반 12px·배지 11px 하한의 의도적 예외 — 보조 단계 표식이라 칩 위 좁은 공간에만. 다른 곳 사용 금지. |
+| step | `text-px-9` | 9px | tight | **하단 탭 STEP 배지 전용**(ADR-0027). 일반 12px·배지 11px 하한의 의도적 예외 — 보조 단계 표식이라 칩 위 좁은 공간에만. 다른 곳 사용 금지. |
 | xs | `text-xs` | 12px | 16px | 배지, 캡션 |
 | sm | `text-sm` | 14px | 20px | 라벨, 보조 텍스트 |
 | base | `text-base` | 16px | 24px | 기본 본문 |
@@ -182,6 +188,9 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
 - **메인 컨테이너**: `px-4` (좌우 16px 패딩)
 - **카드 패딩**: `p-3` (12px) 또는 `p-4` (16px)
 - **버튼 패딩**: `px-4 py-2` (가로 16px, 세로 8px)
+- **학생 데스크탑 거터** (desktop-fluid-20260925): 학생 `.desktop-shell` ≥1024px에서
+  균일 `pc:px-6` (≈20px, PC 13.5px 루트 기준) — 헤더·배너·본문이 같은 거터로 정렬.
+  `wide:px-8` 확장은 fluid 경로에서 쓰지 않는다. 모바일(<1024)·admin/trainer/auth는 기존 그대로.
 
 ## Border Radius
 
@@ -208,22 +217,31 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 
 ## Z-Index & Sticky 적층 ⭐
 
-화면에 sticky/fixed 요소가 여럿일 때 순서·top 좌표를 고정한다. 각 페이지는 이 표대로만 쌓는다.
+화면의 sticky/fixed 적층은 `tailwind.config.ts > theme.extend.spacing`을 사용한다. 반응형 높이 정본은 `app/globals.css`의 `--app-header-height`이며 `@screen 2xl`은 저장소 설정의 768px을 따른다.
+
+| 토큰 | <768px (루트 16px) | 768~1023px (루트 16px) | PC 1024px+ (루트 13.5px) | 사용 |
+|---|---|---|---|---|
+| `app-header` | 6rem / 96px | 3.5rem / 56px | 3.5rem / 47.25px | `h-app-header`, `top-app-header` |
+| `app-content` | 9rem / 144px | 6.5rem / 104px | 6.5rem / 87.75px | `calc(var(--app-header-height) + 3rem)`, `top-app-content` |
+| `app-calendar-panel` | PC 전용 | PC 전용 | 11.25rem / 151.875px | PC 헤더6.5 + 월 이동4.25 + 여백0.5rem. `pc:top-app-calendar-panel` |
 
 | 레이어 | 컴포넌트 | z-index | top | 높이 |
 |---|---|---|---|---|
-| 1 (최상단) | `TopHeader` (슬림 브랜드 바) | `z-50` | `top-0` | `h-12` (48px) |
-| 2 | 페이지 배너 (TopHeader 내부 `<div>`. 일정·계약은 `WeekHeader + SummaryBar` wrapper로 변형) | `z-40` | `top-12` (48px) | 가변 |
-| 3 | 대시보드 메인 배너 (`DashboardProgressBanner` — 대시보드 페이지 한정) | `z-30` | `top-24` (96px) | `h-12+` |
-| 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상 (별도) | — | — |
-| 0 | 본문 `main` | (없음) | — | — |
-| -1 | `BottomNav` (모바일) | `z-50` (fixed bottom) | bottom-0 | `h-[60px]` |
+| 1 | `TopHeader` 브랜드 바 | `z-50` | `top-0` | `h-app-header`: <768px 두 행 6rem, >=768px 한 행 3.5rem |
+| 2 | 페이지 배너(TopHeader 내부) | `z-40` | `top-app-header` | `h-12` 3rem |
+| 3 | 대시보드 날짜·진행 / 컨택 주차 / 일정 WeekHeader + SummaryBar / 캘린더 월 이동 / 수납 검색·상세 / 트레이너 기수 | 기존 소비자 z-index 유지 | `top-app-content` | 내용에 따라 가변 |
+| 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상(별도) | — | — |
+| 0 | 본문 `main`, 대시보드 매출·비용·영업이익 | 없음 | — | 일반 흐름 |
+| -1 | `BottomNav`(모바일) | `z-50`(fixed bottom) | bottom-0 | `h-[60px]` |
 
 **규칙**:
-- 페이지 배너가 두 영역(예: WeekHeader + SummaryBar)이라도 **반드시 한 부모에 묶어 단일 sticky**.
-  자식 각각에 `sticky`를 주면 스크롤 시 약간 어긋남(drift) 발생 — 수정 이력 PR #198da19.
-- `top-12`는 슬림 바 높이와 1:1 매칭 — 슬림 바 높이를 바꾸면 이 값도 동시에 바꾼다.
-- 모달은 별도 z-stack(`z-50` 이상). 슬림 바를 가려야 정상.
+
+- 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 이름·별도 대리접속 표식·D-day다. 2xl(768px)부터 한 행이다.
+- 헤더 높이와 배너 top은 `app-header`, 모든 페이지 sticky는 헤더+배너 합인 `app-content`를 공유한다. 각 소비자에 고정 104px이나 별도 breakpoint를 복제하지 않는다.
+- 360/390px 실제 스크롤에서 수납 검색 sticky 상단은 배너 하단 144px과 일치해야 한다. PC 실제 px는 전역 루트 13.5px로 환산한다. PC 캘린더 상세의 `app-calendar-panel`은 11.25rem을 유지한다.
+- 일정 WeekHeader + SummaryBar처럼 함께 고정할 영역은 한 부모에 묶는다. 대시보드도 페이지 래퍼만 sticky이며 `DashboardProgressBanner` 자체에는 중복 지정하지 않는다.
+- D-day는 공용 헤더 정보 영역에 보존한다. 매출·비용·영업이익은 일반 본문에서 함께 스크롤하며 고정 영역에 포함하지 않는다.
+- 모달은 별도 z-stack(`z-50` 이상)을 사용한다.
 
 ### Overlay 토큰 (전역 로딩 팝업 — loading-overlay) ⭐
 `LoadingOverlay` 의 글래스·글로우·z 는 arbitrary 직박 대신 아래 값으로 고정
@@ -339,3 +357,16 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 | **`wide`** ⭐ | **1280** | **와이드 데스크탑** |
 
 **규칙**: 데스크탑 전용 스타일은 반드시 `pc:`/`wide:` 프리픽스. `lg`/`xl`/`2xl` 은 폰/태블릿이므로 데스크탑 의미로 쓰지 말 것. 페이지 폭은 `PageContainer`(components.md §10)로 통일.
+
+## 데스크탑 글래스 (scoped, 2026-09-25)
+
+승인 목업값 그대로 — 새 토큰 발명 없음. 전부 `globals.css` 「Desktop glass shell」
+(`>=1024px` + `.desktop-shell` 안쪽 전용, 폰 무변경).
+
+| 용도 | 값 | 비고 |
+|---|---|---|
+| 사이드바 면 | `rgb(255 255 255 / 55%)` + `blur(24px) saturate(150%)` | 미지원 폴백 `rgb(255 255 255 / 88%)` |
+| 헤더 면 | `rgb(255 255 255 / 72%)` + `blur(24px) saturate(150%)` | 글자는 불투명 유지 |
+| 헤어라인 | `rgb(15 23 42 / 9%)` | inset 하이라이트 `rgb(255 255 255 / 55%)` 동반 |
+| 배경 | `#eef2f6` + blue/lilac/mint radial 각 10% | quiet 유지, reduced-transparency 시 `#f1f5f9` 평면 |
+| 사이드바 폭 | `224px` 고정 | `w-60` 은 13.5px 루트에서 ~202px 로 줄어 명시 |

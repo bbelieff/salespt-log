@@ -119,7 +119,7 @@ describe("POST /api/admin/create-cohort-members (DB-only, BBE-70)", () => {
       expect.objectContaining({
         email: "", cohort: "10", name: "김도연", role: "trainee", status: "active",
         cohortLabel: "10기", nameLabel: "김도연",
-        courseStartISO: "2026-08-07", graduationISO: "2026-09-26", // O1+50(ADR-0005)
+        courseStartISO: "2026-08-07", graduationISO: "2026-10-25", // ADR-0032: 10기 종강총회 예외
       }),
     );
     expect(body.created).toEqual([{ name: "김도연" }]);
@@ -159,6 +159,18 @@ describe("POST /api/admin/create-cohort-members (DB-only, BBE-70)", () => {
     expect(body.created).toEqual([{ name: "박준용" }]);
   });
 
+  it("기수 DB 저장 실패는 setup 오류 JSON으로 반환한다", async () => {
+    api.upsertCohortCells.mockRejectedValueOnce(new Error("DB_SETUP_ERROR"));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = await post({ token: "10", members: [{ name: "테스트" }] });
+      expect(result.status).toBe(500);
+      expect(result.body).toEqual({ ok: false, error: "DB_SETUP_ERROR", where: "setup" });
+      expect(api.upsertUserRow).not.toHaveBeenCalled();
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
   it("아레나 토큰(a1) 도 동일하게 동작 — label/type/display 정확", async () => {
     const { body } = await post({ token: "a1", members: [{ name: "김도연" }] });
     expect(body.label).toBe("A1");

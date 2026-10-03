@@ -4,10 +4,18 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "./sheets-client";
-import { isSafeToOverwrite } from "./setup-formulas";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
+}
+
+/** 셀 덮어쓰기 안전 검사(§2.5 bulk-write 가드, 2026-05-14 사고 후). empty·"=수식"=안전,
+ * raw text/number=위험(보존). 기준: FORMULA mode read(수식은 "=..." 문자열, 일반값은 raw).
+ * BBE-69(S1) 로 `lib/repo/setup-formulas.ts` 폐기 시 이 파일(유일한 외부 소비자)로 이전. */
+export function isSafeToOverwrite(current: unknown): boolean {
+  if (current === undefined || current === null || current === "") return true;
+  if (typeof current === "string" && current.startsWith("=")) return true;
+  return false;
 }
 
 /**

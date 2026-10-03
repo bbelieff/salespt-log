@@ -1,8 +1,8 @@
 /**
- * CompanySearchBar — payment 업체 검색 (feat/payment-company-search).
+ * CompanySearchBar — payment 업체/진행기관 보기의 목록 검색.
  *
- * 목록 상단 sticky(top-24 — TopHeader 48 + 배너 48 아래, z-30 — tokens z-stack).
- * 클라 표시 필터 전용: 부분일치(대소문자·공백 무시)는 page 가 수행, 여기는 입력 UI.
+ * 모바일은 목록 상단 sticky, PC 작업판에서는 정렬 버튼과 같은 줄의 compact 입력.
+ * 클라 표시 필터 전용: 모드별 부분일치는 page 가 수행, 여기는 입력 UI.
  * 입력 중 X 버튼 = 초기화 → 전체 목록 복귀. 시트·데이터 로직 무변경.
  */
 "use client";
@@ -13,13 +13,16 @@ interface Props {
   /** 검색 중일 때 일치 업체 수 (빈 검색이면 표시 안 함). */
   matchCount: number;
   total: number;
+  placeholder?: string;
+  unit?: string;
+  matchUnit?: string;
 }
 
-export default function CompanySearchBar({ value, onChange, matchCount, total }: Props) {
+export default function CompanySearchBar({ value, onChange, matchCount, total, placeholder = "업체명 검색", unit = "개 업체", matchUnit = "개 업체" }: Props) {
   const active = value.trim() !== "";
   return (
-    <div className="sticky top-24 z-30 mb-3">
-      <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+    <div className="sticky top-app-content z-30 mb-3 min-[1280px]:static min-[1280px]:mb-0 min-[1280px]:min-w-[180px] min-[1280px]:max-w-[360px] min-[1280px]:flex-1">
+      <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm min-[1280px]:py-1">
         <div className="flex items-center gap-2">
           {/* 돋보기 — 기존 인라인 svg 아이콘 세트 패턴 */}
           <svg
@@ -39,14 +42,14 @@ export default function CompanySearchBar({ value, onChange, matchCount, total }:
           <input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="업체명 검색"
-            aria-label="업체명 검색"
-            className="h-8 min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none"
+            placeholder={placeholder}
+            aria-label={placeholder}
+            className="h-8 min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none min-[1280px]:h-6"
           />
           {active && (
             <>
               <span className="shrink-0 text-xs font-semibold text-gray-500">
-                {matchCount}개 업체 일치
+                {matchCount}{matchUnit} 일치
               </span>
               <button
                 type="button"
@@ -59,7 +62,7 @@ export default function CompanySearchBar({ value, onChange, matchCount, total }:
             </>
           )}
           {!active && total > 0 && (
-            <span className="shrink-0 text-xs text-gray-300">{total}개 업체</span>
+            <span className="shrink-0 text-xs text-gray-300">{total}{unit}</span>
           )}
         </div>
       </div>

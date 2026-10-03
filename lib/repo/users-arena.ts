@@ -7,7 +7,7 @@
 import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
-import { listAllUsers, invalidateRegistry } from "./users";
+import { listAllUsers, invalidateRegistry, cachedRegistryRows, parseRow } from "./users";
 import { pickActiveArenaRow } from "./user-priority";
 import { nameMatches } from "./name-match";
 import { mirrorUserCells } from "./db/registry-mirror";
@@ -81,11 +81,15 @@ export async function findArenaSheetIdByName(name: string): Promise<string | nul
  */
 export async function resolveOwnArenaSheetId(
   email: string,
-  name: string,
+  _name: string,
 ): Promise<string | null> {
   const byEmail = await findActiveArenaRowByEmail(email);
   if (byEmail?.spreadsheetId) return byEmail.spreadsheetId;
-  return (await findArenaSheetIdByName(name)) ?? null;
+  // A newly chosen application name must never unlock somebody else's student record.
+  // Preserve name fallback only for a pre-existing trusted registry trainer row.
+  const raw = await cachedRegistryRows();
+  const legacy = raw.map(parseRow).find(u => u?.email.toLowerCase() === email.toLowerCase() && u.role === "trainer" && u.status === "active");
+  return legacy?.name ? (await findArenaSheetIdByName(legacy.name)) ?? null : null;
 }
 
 /** 같은 email 의 archived 행 — "이전 N기 일지 보기" 링크용 (carryover §1). */

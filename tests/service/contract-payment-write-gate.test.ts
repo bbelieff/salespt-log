@@ -86,7 +86,7 @@ describe("patchContractPayment — 수납 슬롯 편집 게이트", () => {
     expect(updateUserFields).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: true });
   });
   it("비파일럿(7기) → {syncDb:false}(R2 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await patchContractPayment(EMAIL, mkCp());
     expect(updateUserFields).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: false });
   });
@@ -108,7 +108,7 @@ describe("terminateContract — 해지 게이트", () => {
     );
   });
   it("비파일럿 → {syncDb:false}", async () => {
-    setCohort("7");
+    setCohort("1");
     await terminateContract(EMAIL, { row: 9, 사유: "폐업", 반환액: 0, 숨김: false });
     expect(writeTermination).toHaveBeenCalledWith(SHEET, 9, expect.anything(), { syncDb: false });
   });
@@ -120,7 +120,7 @@ describe("syncContractFee — 수임비 sync 게이트", () => {
     expect(syncFeeFromContract).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: true });
   });
   it("비파일럿 → {syncDb:false}", async () => {
-    setCohort("7");
+    setCohort("1");
     await syncContractFee(EMAIL, { 계약일: "2026-07-10", 업체명: "가나상사", 수임비: 500 });
     expect(syncFeeFromContract).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: false });
   });
@@ -142,7 +142,7 @@ describe("editContractLinkedFields — 링크/수임비 동시 편집 게이트"
     expect(syncFeeFromContract).toHaveBeenCalledWith(SHEET, expect.anything(), { syncDb: true });
   });
   it("비파일럿 → 둘 다 {syncDb:false}(R2 미러 불변)", async () => {
-    setCohort("7");
+    setCohort("1");
     await editContractLinkedFields(EMAIL, {
       meetingId: "m1",
       old: { 계약일: "2026-07-10", 업체명: "가나상사" },

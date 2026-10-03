@@ -4,8 +4,10 @@
  * 계약 액션 시 04 업체정보(T~AN) 스냅샷 1행 추가, 이후 04 변경 시 같은 키 행 동기화.
  * 키 = 계약ref(`${계약일}|${업체명}`, 05 contractRef 와 동일 포맷). 04 가 SSOT.
  *
- * 컬럼 (A~AB, sheet-structure §5-3): A=업체명 B=계약일 C=계약ref D=갱신시각
- * E~X=COMPANY_FIELDS 20필드 미러 Y=커스텀 JSON Z~AB=확장 3필드 미러(04 AQ~AS).
+ * 컬럼 (A~BL, sheet-structure §5-3): A=업체명 B=계약일 C=계약ref D=갱신시각
+ * E~X=COMPANY_FIELDS 20필드 미러 Y=커스텀 JSON Z~AB=확장 3필드 미러(04 AQ~AS)
+ * AC~AV=확장2 20필드 미러(04 AU~BN, 2026-09-28) AW~BK=확장3 15필드 미러(04 BO~CC, 2026-09-28)
+ * BL=확장4 매출기준연도 미러(04 CD, company-finance-won-grid 2026-09-28).
  *
  * §2.5 가드: append 는 A열 빈 행 탐색 + 그 행 FORMULA pre-read 로 raw 값 있으면
  * 다음 빈 행 재탐색(타 데이터 덮어쓰기 방지). update 는 자기 키(계약ref) 행만 타격.
@@ -13,7 +15,16 @@
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
-import { COMPANY_FIELDS, COMPANY_FIELDS_EXT } from "./meetings";
+import {
+  COMPANY_FIELDS,
+  COMPANY_FIELDS_EXT,
+  COMPANY_FIELDS_EXT2,
+  COMPANY_FIELDS_EXT3,
+  COMPANY_FIELDS_EXT4,
+} from "./meetings";
+import { headerBackfillPlan } from "./meetings-rows";
+import { colName } from "@/util/sheet-column";
+import { normalizeRrnFront } from "@/util/rrn-front";
 import { CompanyInfo } from "@/types";
 import { dbEnabled } from "./db/client";
 import {
@@ -33,20 +44,25 @@ const HEADER_RANGE = `'${TAB}'!${SHEET_RANGES.companyInfoArchive.headerRow}`;
 const KEY_COL_RANGE = `'${TAB}'!C2:C`; // 계약ref 검색용
 const ID_COL_RANGE = `'${TAB}'!A2:A`; // 빈 행 탐색용
 
-// A~Y(기존 25) + Z~AB(확장 3 미러 — 04 AQ~AS, field-grid). 커스텀(Y) 뒤 append.
-const HEADER = [
-  [
-    "업체명", "계약일", "계약ref", "갱신시각",
-    ...COMPANY_FIELDS, "업체정보_커스텀", ...COMPANY_FIELDS_EXT,
-  ],
+// A~Y(기존 25) + Z~AB(확장 3 미러 — 04 AQ~AS, field-grid) + AC~AV(확장2 20 미러 — 04 AU~BN)
+// + AW~BK(확장3 15 미러 — 04 BO~CC) + BL(확장4 매출기준연도 — 04 CD). 커스텀(Y) 뒤 append — 기존 열 이동 금지.
+const HEADER_LABELS = [
+  "업체명", "계약일", "계약ref", "갱신시각",
+  ...COMPANY_FIELDS, "업체정보_커스텀", ...COMPANY_FIELDS_EXT, ...COMPANY_FIELDS_EXT2,
+  ...COMPANY_FIELDS_EXT3, ...COMPANY_FIELDS_EXT4,
 ];
+/** 06 행 폭 = A~BL (64열). grid 보장·쓰기/읽기 범위의 단일 기준. */
+export const ARCHIVE_ROW_WIDTH = HEADER_LABELS.length; // 64
+const LAST_COL = colName(ARCHIVE_ROW_WIDTH - 1); // BL
+/** 06 확장 라벨 시작 열(Z=25) — 이 뒤로는 빈 헤더 셀에만 라벨 보강. */
+const EXT_HEADER_START = 4 + COMPANY_FIELDS.length + 1; // 25 (Z)
 
 /** 계약ref 합성키 — 05 contractRef 와 동일 포맷. */
 export function companyContractRef(계약일: string, 업체명: string): string {
   return `${계약일}|${업체명.trim()}`;
 }
 
-/** (업체명·계약일·업체정보) → 06 1행 배열 (A~AB, 28컬럼). 순수 — 테스트 대상. */
+/** (업체명·계약일·업체정보) → 06 1행 배열 (A~BL, 64컬럼). 순수 — 테스트 대상. */
 export function companyInfoToArchiveRow(
   업체명: string,
   계약일: string,
@@ -55,7 +71,9 @@ export function companyInfoToArchiveRow(
 ): string[] {
   const c = (ci ?? {}) as Record<string, unknown>;
   const toCell = (f: string) => {
-    const v = String(c[f] ?? "").trim();
+    const raw = String(c[f] ?? "").trim();
+    // 스키마 우회 호출 방어 — 주민등록번호는 앞 6자리만(04 코덱과 동일).
+    const v = f === "주민등록번호" ? normalizeRrnFront(raw) : raw;
     return v ? `'${v}` : ""; // plain text 강제 (USER_ENTERED 오변환 방지)
   };
   const custom = ci?.커스텀 ? JSON.stringify(ci.커스텀) : "";
@@ -67,6 +85,9 @@ export function companyInfoToArchiveRow(
     ...COMPANY_FIELDS.map(toCell),
     custom && custom !== "{}" ? `'${custom}` : "",
     ...COMPANY_FIELDS_EXT.map(toCell), // Z~AB (04 AQ~AS 미러)
+    ...COMPANY_FIELDS_EXT2.map(toCell), // AC~AV (04 AU~BN 미러)
+    ...COMPANY_FIELDS_EXT3.map(toCell), // AW~BK (04 BO~CC 미러)
+    ...COMPANY_FIELDS_EXT4.map(toCell), // BL (04 CD 미러 — 매출기준연도)
   ];
 }
 
@@ -101,11 +122,12 @@ async function doEnsure(spreadsheetId: string): Promise<void> {
       /* 동시 생성 — 이미 존재로 간주 */
     }
   }
-  // addSheet 기본 26열(Z) — AB(28)까지 grid 보장 (field-grid).
-  await ensureGridColumns(spreadsheetId, TAB, 28);
+  // addSheet 기본 26열(Z) — BL(64)까지 grid 보장 (field-grid · 확장2 · 확장3 · 확장4).
+  await ensureGridColumns(spreadsheetId, TAB, ARCHIVE_ROW_WIDTH);
   const header = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
     range: HEADER_RANGE,
+    valueRenderOption: "FORMULA",
   });
   const cells = header.data.values?.[0] ?? [];
   if (!cells[0]) {
@@ -113,17 +135,27 @@ async function doEnsure(spreadsheetId: string): Promise<void> {
       spreadsheetId,
       range: HEADER_RANGE,
       valueInputOption: "RAW",
-      requestBody: { values: HEADER },
+      requestBody: { values: [HEADER_LABELS] },
     });
-  } else if (!String(cells[25] ?? "").trim()) {
-    // 확장 전(25컬럼) 기존 탭 — Z1:AB1 라벨만 보강 (빈 셀에만, §2.5)
-    await sheetsClient().spreadsheets.values.update({
-      spreadsheetId,
-      range: `'${TAB}'!Z1:AB1`,
-      valueInputOption: "RAW",
-      requestBody: { values: [[...COMPANY_FIELDS_EXT]] },
-    });
+    return;
   }
+  // 확장 전 기존 탭 — Z1 이후 라벨을 **빈 셀에만** 보강(§2.5 — 사용자가 고친 헤더 보존).
+  const plan = headerBackfillPlan(
+    cells.slice(EXT_HEADER_START),
+    EXT_HEADER_START,
+    HEADER_LABELS.slice(EXT_HEADER_START),
+  );
+  if (plan.length === 0) return;
+  await sheetsClient().spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: plan.map(({ col, label }) => ({
+        range: `'${TAB}'!${colName(col)}1`,
+        values: [[label]],
+      })),
+    },
+  });
 }
 
 /** 계약ref 로 기존 행 번호(1-based) 찾기. 없으면 null. */
@@ -158,7 +190,7 @@ async function findSafeEmptyRow(spreadsheetId: string): Promise<number> {
     const row = candidate + attempt;
     const pre = await sheetsClient().spreadsheets.values.get({
       spreadsheetId,
-      range: `'${TAB}'!A${row}:AB${row}`,
+      range: `'${TAB}'!A${row}:${LAST_COL}${row}`,
       valueRenderOption: "FORMULA",
     });
     const cells = pre.data.values?.[0] ?? [];
@@ -173,7 +205,7 @@ async function findSafeEmptyRow(spreadsheetId: string): Promise<number> {
 
 // ── 시트 수렴 동기화 (R7-#11 BBE-60 — DB 정본 경로 전용, meetings-write.ts 패턴 이식) ──
 // 스코프: upsertCompanyInfoArchive(생성·갱신)만. renameCompanyInfoKey(개명)는 제외 —
-// 시트의 rename 은 "같은 물리행의 A:D 만 갈아끼우고 E:AB 컨텐츠는 그대로 둔다"는 의미론이라
+// 시트의 rename 은 "같은 물리행의 A:D 만 갈아끼우고 E:BL 컨텐츠는 그대로 둔다"는 의미론이라
 // (upsertArchiveRowWithRetry 처럼 새 키에 컨텐츠를 통째로 다시 쓰는 구조가 아님), 이걸 비동기
 // 수렴잡으로 옮기려면 old/new 키 양쪽에 컨텐츠 캐리오버를 DB 에 새로 설계해야 한다(#559·
 // 2026-07-14 사고 2건이 이미 이 파일의 "부활" 함정을 보여줌 — 섣부른 재설계 금지).
@@ -232,7 +264,7 @@ async function syncCompanyArchiveRowToSheet(spreadsheetId: string, rowKey: strin
   );
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: `'${TAB}'!A${row}:AB${row}`,
+    range: `'${TAB}'!A${row}:${LAST_COL}${row}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [rowValues] },
   });
@@ -286,7 +318,7 @@ export async function upsertCompanyInfoArchive(
   const row = existing ?? (await findSafeEmptyRow(spreadsheetId));
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
-    range: `'${TAB}'!A${row}:AB${row}`,
+    range: `'${TAB}'!A${row}:${LAST_COL}${row}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [rowValues] },
   });
@@ -306,7 +338,7 @@ export async function readCompanyInfoArchiveRow(
   if (row === null) return null;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
-    range: `'${TAB}'!E${row}:AB${row}`,
+    range: `'${TAB}'!E${row}:${LAST_COL}${row}`,
   });
   const r = res.data.values?.[0] ?? [];
   const ci: Record<string, unknown> = {};
@@ -315,6 +347,19 @@ export async function readCompanyInfoArchiveRow(
   });
   COMPANY_FIELDS_EXT.forEach((f, i) => {
     ci[f] = String(r[COMPANY_FIELDS.length + 1 + i] ?? "").trim(); // Z~AB
+  });
+  COMPANY_FIELDS_EXT2.forEach((f, i) => {
+    // AC~AV = Z~AB 다음 20열
+    ci[f] = String(r[COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + i] ?? "").trim();
+  });
+  const ext3Off = COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length + COMPANY_FIELDS_EXT2.length;
+  COMPANY_FIELDS_EXT3.forEach((f, i) => {
+    // AW~BK = AC~AV 다음 15열. 옛 행(셀 없음)은 "".
+    ci[f] = String(r[ext3Off + i] ?? "").trim();
+  });
+  COMPANY_FIELDS_EXT4.forEach((f, i) => {
+    // BL = AW~BK 다음 1열. 옛 행(셀 없음)은 "".
+    ci[f] = String(r[ext3Off + COMPANY_FIELDS_EXT3.length + i] ?? "").trim();
   });
   const raw = String(r[COMPANY_FIELDS.length] ?? "").trim();
   if (raw) {
@@ -361,7 +406,7 @@ export async function hasCompanyInfoArchiveRow(
 
 /**
  * 06 키 행 재키 — 계약 업체명·계약일 변경 시 A(업체명)/B(계약일)/C(계약ref)/D(갱신시각)만 갱신.
- * E~AB 업체정보 스냅샷은 보존(중복 행 생성·고아 방지). old 키 행 없으면 no-op.
+ * E~BL 업체정보 스냅샷은 보존(중복 행 생성·고아 방지). old 키 행 없으면 no-op.
  */
 export async function renameCompanyInfoKey(
   spreadsheetId: string,

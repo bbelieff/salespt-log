@@ -4,6 +4,48 @@ owner: belie
 last_review: 2026-04-27
 ---
 
+## 트레이너 등급·권한 저장 계약 (#958)
+
+- `TrainerGradeSchema`, `TrainerAccountKey`, `TrainerGrantsSchema`, `TrainerAccessValue`, `TrainerAccessCommand`: strict Zod 서버/저장 경계. command는 exact 정규화 이메일, grade, 전체 grants, version만 허용. 이름·status·audit actor를 브라우저에서 받지 않는다.
+- `TrainerAccessSetting`, `TrainerAccessQualification`, `TrainerAccessPerson`: 저장값/서버 자격 계약/관리자 조회 projection. #956의 `trainer_qualifications(email,name,status)`를 현재 서버 DB 연결로 읽으며 자격 생성·변경이나 registry fallback은 없다. 설정 부재는 null grade/전부 false/version 0, unknown/corrupt 저장값은 503.
+- `0007_trainer_access.sql`: 신규 `trainer_access_settings`(email FK→자격, grade, grants JSONB, version, updated_by/at), `trainer_access_audit`(email+version별 저장 snapshot, changed_by/at). 유효 grade·전체 boolean 구조·write requires read·등급 상한 CHECK, 브라우저 역할 ACL 회수 및 RLS. 기존표/role 변경·seed 없음. #956 0006 적용 후 부모 직렬 운영 게이트에서 실행해야 하며 현재 실DB 적용 NOT_RUN.
+- 저장은 service의 실제 session admin 검증 → 자격 행 SHARE lock → active/exact key 확인 → 기존 version 비교 → SQL CAS → 같은 트랜잭션 감사 snapshot. 병행 수정은 409, 잘못된 입력 400, 자격·권한 없음 403, DB/auth 의존 실패 503. grade 변경 여부와 관계없이 검증된 상한 내 요청 grants를 보존한다.
+- 신규 repo는 `lib/repo/db/client`의 기존 pool만 사용한다. 조회·저장 API: GET/PUT `/api/admin/trainer-access`, no-store, PUT은 Origin/JSON/Fetch-Site 검사. 자세한 실행/인계 계약은 [QA](../qa/trainer-access-settings/README.md).
+
+## 트레이너 순수 권한 계약 및 중앙 adapter (#958)
+
+2026-09-15 권한 편집 대상: `trainer_qualifications`가 기존 `users` 트레이너 행보다 우선한다. 자격 행이 없는 기존 active/pending 트레이너는 읽기 후보에 포함하며, 서비스가 active·T 부서·비관리자만 반환/저장한다. 조회는 쓰지 않으며 기존 등록자의 명시 저장에서만 동일 트랜잭션으로 자격을 가져온다. 관리부서·비활성 계정의 저장 grants는 삭제하지 않는다. UI 등급 선택은 기존 체크를 등급 상한 내에서만 유지하며 새 권한을 자동 부여하지 않는다.
+
+정의: `lib/types/trainer-access.ts`, 판정: `lib/util/trainer-access-policy.ts`.
+`service/trainer-student-access.ts`가 `repo/db/trainer-student-access.ts`의 raw DB snapshot을 검증하여 순수 판정에 전달한다. active qualification과 valid 저장 등급/grants가 모두 필요하다. registry/cohort의 catch→[] 또는 default-active는 권한 근거로 쓰지 않는다. unknown/duplicate metadata, malformed raw status, reserved, 이메일별 다중 trainee 행은 fail-closed. 숫자/참가자/시즌 metadata를 모두 확인하고 archived 우선을 지킨다. 새 스키마나 운영 데이터 변경은 없다.
+
+`identity.ts`의 `canImpersonate`는 read, `getWritableUserEmail`은 write를 별도 검사한다. 쿠키 없는 self 및 admin/self는 기존 별도 경계다. 거부된 명시/기존 target은 `ManagedAccessDenied`(status403/code managed_access_denied)를 던지며 self로 바꾸지 않는다. 호출 API는 `withManagedAccess`로 안전한 no-store 403을 반환한다. 주간목표의 다중 수강 선택은 이메일 대표행이나 active-user cookie로 보충하지 않고, 아래 `TrainerStudentTarget`/`targetRef`를 다시 검증한다.
+
+- `TrainerGrade`: senior / regular / apprentice. `TrainerStudentCategory`: active / arena / archived.
+- `TrainerAccessOperation`: read / write. `TrainerCategoryGrant`: 명시 read/write boolean 쌍.
+- `TrainerStudentTarget`: 중앙 ACL이 검사하는 단일 수강 등록 키(email×spreadsheetId×cohort×courseStart). 이메일만 주어진 다중 등록은 거부하며, browser는 opaque `targetRef`를 전송할 뿐 서버가 매 요청 fresh registry 행과 ACL에 대조한다.
+- `TrainerGrants`: 세 category 모두 필수. 누락/null/배열/여분 키/boolean 아닌 값 및 write=true/read=false를 거절한다. 불완전한 grants를 기본값으로 수리하지 않는다.
+- `NormalizedTrainerActor`: 호출자가 인증된 trainer 자격 행을 특정한 뒤 전달하는 grade/status/grants. active만 허용. unknown grade는 전부 거부. 기본 grants는 senior 모두 RW, regular/apprentice active만 RW. 명시 grants는 이 상한 안에서 제한한다.
+- `NormalizedTrainerStudent`: 호출자가 특정 trainee 행의 rowStatus/cohortStatus/cohortType/cohortMetadataTrusted/isArenaLabel/isReserved를 정규화한다. 보관보다 pending/reserved 제외 우선, 그 다음 archived row/cohort 우선, 그 다음 arena type/label, 마지막 확인된 active cohort. 필수 flag 누락/unknown은 제외한다.
+- cohortMetadataTrusted=true는 읽기 성공과 필요한 기수/시즌 보관 정보가 신뢰 가능하게 해석되었음을 뜻한다. `cohorts.ts`의 catch→[] 결과나 default-active만으로 true를 만들지 않는다. 정상 empty와 실패가 구분되지 않는 현재 경로는 통합 전 보완 필요. 누락 metadata를 active로 허용하지 않는다.
+- 숫자/아레나 parser 근거는 `service/cohort-token.ts`의 parseCohortToken/arenaCohortLabelParts. 참가자/시즌 키와 registry cohort/cohortLabel 불일치를 호출자가 해결하며 util은 parser를 복제하거나 repo/service를 import하지 않는다.
+- 이름/이메일 기반 권한 및 개인 seed 없음. 관리자와 본인 정규/아레나 CRM은 호출자가 별도 처리한다. 이 정책의 false를 본인 CRM 차단으로 사용하지 않는다.
+- 전체 입력은 정규화된 plain object의 정확한 필드만 받으며 공개 함수는 런타임 unknown도 거부한다. 상세 [활성 계획](../plans/active/trainer-access-policy.md) / [QA](../qa/trainer-access-policy/README.md).
+
+## 주간 목표 (#947)
+
+정본은 별도 Postgres 테이블이다. 시트 보고값/실제값/수식에는 쓰지 않는다.
+
+- `WeeklyGoalValues`: production/inflow/contacts/meetings/contracts 다섯 nullable nonnegative integer. null ≠ 0.
+- `WeeklyGoalInput`: goals, task(최대10000자), revision. strict 입력; 내부필드 주입 거절.
+- `WeeklyGoalPrivateInput`: specialNotes, priorOutcome, revision. 별도 trainer/admin 권한 API.
+- `WeeklyGoalKey`: studentId(서버 해석 spreadsheetId)×cohort×courseStart×weekStart. 같은 수강의 로그인 별칭은 같은 행/revision을 공유한다. 저장 시 명시 student와 수강정보 echo를 확인하며 client sheetId는 받지 않는다.
+- `WeeklyGoalRecord`, `WeeklyGoalPrivateRecord`: 별도 public/private 테이블, 양쪽 독립 revision/updatedAt.
+- `GoalWeek`, `WeeklyGoalView`: 현재/지난 금~목 주간의 저장값과 기존 기록 기반 실적. 학생 payload에 내부기록 없음.
+- `GoalStudent`, `GoalOverviewRow`: 담당/본인 수강 목록 및 공용 목표 집계. `GoalStudent.targetRef`는 단일 수강 등록의 opaque 전달값이며, 개별 실패는 error로 명시. 복수 본인 등록은 명시 선택 전 조회·저장을 하지 않는다.
+- migration `0005_weekly_goals.sql`: 가산 테이블, 자연 복합키와 CHECK, RLS 활성, public 권한 없음. 운영 적용은 별도 증거 필요.
+- 상세 집계·권한·기간 계약: [weekly-goals.md](./weekly-goals.md).
+
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 세일즈PT 영업일지의 백엔드 데이터 모델과 Google Sheets 1:1 매핑 설명
 > - **누가 읽나요**: 개발자
@@ -542,8 +584,8 @@ interface DashboardView {
 | `RankingMetric` | z.enum | 전광판 개인 랭킹 지표: `미팅` / `계약` / `매출` / `앱사용량` / `공유왕` (arena-scoreboard-v2). 미팅·계약=8주 합, 매출=총매출, 앱사용량=5지표 8주 합(활동 프록시), 공유왕=share_scores points |
 | `RankingEntry` | interface | 개인 랭킹 1행: `{name, cohort, value, rank}`. value desc·동점 동순위·이름 asc, rank 1부터. 이름 공개(아레나 경쟁) |
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
-| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS 업체정보 + AO~AP 이월깃발). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-5 v2 — 어느 03 발굴에서 왔나. optional 고정=R11) |
-| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS, 미팅 단위): [업체]14 + [대표자]9 = 23필드 고정 + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. 기대출 2필드는 셀 내 `\n` 허용. consultation-log §1-1 (2026-06-11 확정) |
+| `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS·AU~CC 업체정보 + AO~AP 이월깃발 + AT gcal맵). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-5 v2 — 어느 03 발굴에서 왔나. optional 고정=R11) |
+| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS + AU~CD, 미팅 단위): 59필드 고정(43 + 확장3 15 + 확장4 1) + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. **확장2 20필드(2026-09-28, 04 AU~BN · 06 AC~AV)**: [업체] `과세유형`·`업태`·`법인등록번호`·`임차보증금`·`임차월세`·`임차면적` / [대표자] `주민등록번호`(**앞 6자리만 `NNNNNN-` — zod transform `normalizeRrnFront` 가 서버에서 강제, 뒷자리 저장 불가**) / [재무] `결산연도`·`영업이익`·`당기순이익`·`이자비용`·`자산총계`·`부채총계`·`자본총계`·`반기별매출`·`면세수입금액`·`부채비율`·`이자보상배율`·`당기순이익률`·`매출증가율` — 전부 자유 텍스트 default ""(비율도 직접 입력). DB payload JSONB 라 마이그레이션 없음 — 옛 행은 키 부재 → "" 로 파싱. 기대출 2필드·반기별매출은 셀 내 `\n` 허용. **확장3 15필드(2026-09-28 company-info-restructure, 04 BO~CC · 06 AW~BK)**: [기업정보] `주생산품목` / [대표자] `대표임차보증금`·`대표임차월세`·`대표임차면적`(자택 임차 — 보증금·월세 원 숫자, 면적 ㎡) / [재무] 반기 매출 8칸 `매출Y상`·`매출Y하`·`매출Y1상`·`매출Y1하`·`매출Y2상`·`매출Y2하`·`매출Y3상`·`매출Y3하` + 매출증가율 3칸 `매출증가율Y3Y2`·`매출증가율Y2Y1`·`매출증가율Y1Y`(**편집기가 연도 매출에서 자동 계산해 저장** — `lib/service/company-finance.ts` `deriveCompanyInfo`(편집기 apply 경로: 합계·증가율·비율·기준 연도·주민등록번호 앞자리), "+12.5%"). 모두 자유 텍스트 default "" — 옛 행은 "" 로 파싱. 같은 재구성으로 옛 키 뜻이 바뀜(값 보존): `소유여부`·`대표소유여부` = "자가"/"임차" 선택(옛 자유 글 호환 표시), `사업자구분`+`과세유형` = 한 칸 조합 선택, `업종주생산품목` = 표시 "업종", `반기별매출`·`매출증가율` = 편집기에서 숨김(값 있으면 읽기 전용 메모). **확장4 1필드(2026-09-28 company-finance-won-grid, 04 CD · 06 BL)**: [재무] `매출기준연도`("2026" — 연도별 매출 Y 줄의 연도, 비었으면 화면은 오늘 연도·재무 칸을 처음 고칠 때 편집기가 저장). 같은 작업으로 [재무] 금액 19칸(반기 8·연도 합계 4·영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세수입금액)의 새 값 모양 = **백만원 숫자 글**("250.1"·"1,234"·"-3.2", 소수 한 자리, 음수는 손익 3칸만 — `lib/util/company-money.ts`), 옛 자유 글은 그대로 두고 읽기만(단위 없는 숫자 = 백만원, 단 1,000,000 이상 숫자는 원으로 적은 값 · 괄호 숫자는 손익 칸 음수). 연도 합계는 반기 칸이 있으면 반기 합, `부채비율`·`이자보상배율`·`당기순이익률`은 편집기가 금액에서 계산해 저장(`lib/service/company-finance.ts` `deriveCompanyInfo`). `대표자생년월일`은 편집기에서 숨김(값 유지 — 주민등록번호가 비면 앞자리를 보여 주고 편집 때 함께 저장). 스키마는 여전히 자유 텍스트 default "". consultation-log §1-1 (2026-06-11 확정) |
 | `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
 | `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금 — 전광판 입금자 모수 필터) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
 
@@ -551,8 +593,8 @@ interface DashboardView {
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `Progress` | z.enum | 진행률 6단계: `""` / `0%` / `20%` / `40%` / `60%` / `80%` / `100%` |
-| `PaymentSlot` | z.object | 분할 수납 1슬롯 (7필드: 진행기관/진행률/현황/승인금액/수납액/수납일 + **메모** 2026-05-17). UI 라벨: 현황 → "진행내용" |
-| `ContractPayment` | z.object | 1계약 row (자동연동 3 + 체크박스 7 + 슬롯 3 + 로드맵메모 = A~AH + AI~AJ 이월깃발(`구분`·`이월원본행id`, arena-carryover §3) + **AK `linkedMeetingId`**(연결 미팅 id, 02↔04 매칭 키 — 개명 안전, contract-edit-linked-fields) + **AL~AO 계약해지**(`해지일`·`해지사유`·`반환액`·`해지숨김`, contract-termination 2026-07-12 — 해지일 존재=해지, 매출=수임비+수납−반환액, 숨김=soft delete). 2026-05-17 재구성: AE 로드맵, AF/AG/AH 슬롯메모) |
+| `PaymentSlot` | z.object | 분할 수납 1슬롯. 기존 필드에 `진행상품`을 추가한다. 기존 시트의 고정 열은 그대로 두고 Postgres `sheet_rows.payload` JSONB에 필드명으로 저장한다. |
+| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. |
 | `isTerminatedContract` | function | 해지 판정 단일 결정점 — `해지일` 존재 = 해지. 클라·서버 공용 (contract-termination) |
 | `TERMINATED_IN_CONTRACT_COUNT` | const | 해지 계약의 건수 포함 여부 (기본 `false` = 제외 + "해지 N건" 별도 표시. belie 미확정 — 정책 변경 시 이 상수만) |
 
@@ -560,7 +602,8 @@ interface DashboardView {
 | 식별자 | 종류 | 의미 |
 |---|---|---|
 | `TodoType` | z.enum | 실무투두 종류 4: `기타` / `미팅` / `전화` / `메시지` (캘린더 type 아이콘) |
-| `Todo` | z.object | (계약×기관) 실무 ToDo 1행 (05 실무투두, A~N 14컬럼 — N=분류, type 에 `일반` 추가: 캘린더 일반이벤트·비집계). 키: `contractRef`(계약일+업체명) · `institutionRef`(슬롯 진행기관). 캘린더는 04 미팅 + 05 투두 합쳐 표시(읽기전용). 상세 스키마 design §6.3 |
+| `TodoRecordKind` | z.enum | 기록 의미: `todo`(할 일) / `history`(한 일). 기존 행 기본값은 `todo`. |
+| `Todo` | z.object | (계약×기관) 실무 기록. `기록종류=todo|history`를 추가한다. 시트 A~N은 기존 본문, O는 gcal 이벤트 ID로 보존하고 P에 기록종류를 저장한다. 기존 P 빈값은 `todo`로 읽는다. 캘린더는 04 미팅 + 05 기록을 합쳐 표시한다. |
 
 ### 새소식 (레지스트리 updates·notices 탭 · announcement-popup §1)
 | 식별자 | 종류 | 의미 |
@@ -664,3 +707,18 @@ GET  /api/schedule                       → 수강시작일/수료일 + 주차 
 - [x] ~~자유 메모(특이사항) 컬럼~~ → **MVP 스코프 제외 결정** (2026-04-27)
 - [ ] **02 계약관리** 탭 연동 시 진입점 위치 (앱 어느 탭의 어느 뷰?) — Phase 2
 - [ ] **03 DB관리** 탭 연동 시 입력 폼 설계 — Phase 2 (현재 앱 DB관리 탭은 UI만 있음)
+
+## Trainer recruitment (#956)
+Trainer qualification is independent of enrollment: `trainer_qualifications` keyed by normalized email, status pending/active/rejected/revoked/cancelled, department T/관리. A projected sheetless trainer row coexists with the original student row; CRM reads/writes select the original student enrollment. Revocation/cancellation tombstones suppress legacy trainer rows.
+`trainer_invitations` stores SHA-256 token hashes only, designated recipient, seven-day expiry, issuer and acceptance/revocation audit. All per-recipient mutations share a transaction advisory lock. Acceptance retries are idempotent only while qualification remains active. Pending-only cancellation cannot demote an approved trainer.
+
+### ADR-0032 기간 정책
+숫자 10기 이후 과정·누적 통계·차트는 12주다. 수강 종료일과 총회일을 분리한다. 기존 기록과 시트 물리 10주 상한은 보존하며 주간목표와 11~12주 기록은 DB를 사용한다. 상세: docs/decisions/0032-twelve-week-courses.md.
+
+### 일반 입력 자동저장 (2026-09-23)
+- 기존 수정은 기존 API와 대상 식별자를 유지한다. 주간목표 공개/내부 기록은 각각 revision을 검사하며 자동 클립보드 복사는 하지 않는다.
+- 신규 DB 입력은 `Idempotency-Key` UUID를 같은 초안의 재시도에 재사용한다. `sheet_rows`의 별도 `db_idem` 탭이 요청 지문과 물리 행 예약을 보관한다. 기존 DB 기록 탭/수식/조회 스키마는 유지한다. 미완료 예약 행은 다른 신규 입력이 재사용하지 않는다. 예약 수명 정리는 이번 범위에 포함하지 않는다.
+- 단건 비용은 서버가 최초 요청 지문을 `expense_entry_idempotency`에 보관한다. 최초 사용 시 트랜잭션 안에서 테이블 생성, RLS 활성화, PUBLIC/anon/authenticated 권한 회수를 함께 수행한다. 사용자 공개 정책은 없으며 서버 DB 경로만 사용한다. 기존 비용 백필/변경은 없다.
+- 신규 할 일의 `operationId`는 동일 범위·동일 내용 재시도를 1행으로 수렴시킨다. 멱등 저장이 불가능한 경로에서는 키를 무시하지 않고 쓰기 전에 실패한다.
+- 비용 원장의 `one_time` 응답은 `originalAmountWon`(원본 전액)을 추가로 제공한다. `amountWon`은 선택 범위에서 인식한 비용이므로 수정 원금으로 사용하지 않는다. 구형 응답의 부분 인식 항목은 원본 전액이 없으면 금액 편집을 막는다.
+- 메모리 초안은 탭 종료 후 복원을 보장하지 않는다. 공지/업데이트 초안은 계정·편집 슬롯별 sessionStorage에 보존하며 게시 버튼은 유지한다.

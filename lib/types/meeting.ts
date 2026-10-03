@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import { Channel } from "./channel";
+import { normalizeRrnFront } from "@/util/rrn-front";
 
 // ── 미팅 상태 (5종) ─────────────────────────────────────────
 export const MeetingState = z.enum(["예약", "계약", "완료", "변경", "취소"]);
@@ -12,7 +13,10 @@ export type MeetingState = z.infer<typeof MeetingState>;
 
 // ── 업체정보 (04 업체관리 T~AN, 미팅 단위 작성 — consultation-log §1-1) ──────
 // [업체] 12(T~AE) + [대표자] 8(AF~AM) + 커스텀 JSON 1(AN)
-// + 확장 3(AQ~AS — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11).
+// + 확장 3(AQ~AS — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11)
+// + 확장2 20(AU~BN — AT gcal맵 뒤 append, company-info-new-fields 2026-09-28)
+// + 확장3 15(BO~CC — 확장2 뒤 append, company-info-restructure 2026-09-28)
+// + 확장4 1(CD — 확장3 뒤 append, company-finance-won-grid 2026-09-28).
 // 모두 자유 텍스트, 빈값 허용. 기대출 2필드는 셀 내 `\n` 허용(Sheets 표준).
 // 키는 식별자 안전형(업종주생산품목/사대보험직원). UI 라벨은 별도 매핑
 // (과년도매출 = 표시 "과년도 매출 Y-1" — 키 유지로 라이브 데이터 보존).
@@ -43,6 +47,56 @@ export const CompanyInfo = z.object({
   대표자생년월일: z.string().default(""),
   과년도매출Y2: z.string().default(""),
   과년도매출Y3: z.string().default(""),
+  // 확장2 20필드 (04 AU~BN · 06 AC~AV — company-info-new-fields 2026-09-28). 전부 자유 텍스트.
+  // [업체]
+  과세유형: z.string().default(""),
+  업태: z.string().default(""),
+  법인등록번호: z.string().default(""),
+  임차보증금: z.string().default(""),
+  임차월세: z.string().default(""),
+  임차면적: z.string().default(""),
+  // [대표자] — 앞 6자리만 저장(belie 결정). 어떤 입력이 와도 "NNNNNN-" 또는 "" 로 잘린다
+  // — 화면을 우회한 요청도 이 스키마를 지나므로 뒷자리는 저장 경로에 도달하지 못한다.
+  주민등록번호: z.string().default("").transform(normalizeRrnFront),
+  // [재무] — 금액 칸은 백만원 숫자("250.1" · "1,234" · "-3.2", company-finance-won-grid). 옛 자유 글은
+  // 그대로 두고 읽기만 한다. 비율 3칸은 편집기가 금액에서 계산해 저장(lib/service/company-finance.ts).
+  결산연도: z.string().default(""),
+  영업이익: z.string().default(""),
+  당기순이익: z.string().default(""),
+  이자비용: z.string().default(""),
+  자산총계: z.string().default(""),
+  부채총계: z.string().default(""),
+  자본총계: z.string().default(""),
+  반기별매출: z.string().default(""),
+  면세수입금액: z.string().default(""),
+  부채비율: z.string().default(""),
+  이자보상배율: z.string().default(""),
+  당기순이익률: z.string().default(""),
+  // 옛 한 칸 매출증가율·반기별매출은 편집기에서 숨기고(값이 있으면 읽기 전용 메모로 보임) 키·열은 유지.
+  매출증가율: z.string().default(""),
+  // 확장3 15필드 (04 BO~CC · 06 AW~BK — company-info-restructure 2026-09-28). 전부 자유 텍스트.
+  // [기업정보] 업종·업태 옆 세 번째 칸
+  주생산품목: z.string().default(""),
+  // [대표자] 자택 임차 조건(기업정보 임차 3칸과 같은 모양 — 보증금·월세 원, 면적 ㎡)
+  대표임차보증금: z.string().default(""),
+  대표임차월세: z.string().default(""),
+  대표임차면적: z.string().default(""),
+  // [재무] 반기 매출 8칸 — Y(올해)·Y1·Y2·Y3 × 상/하반기
+  매출Y상: z.string().default(""),
+  매출Y하: z.string().default(""),
+  매출Y1상: z.string().default(""),
+  매출Y1하: z.string().default(""),
+  매출Y2상: z.string().default(""),
+  매출Y2하: z.string().default(""),
+  매출Y3상: z.string().default(""),
+  매출Y3하: z.string().default(""),
+  // [재무] 매출증가율 3칸 — 연도 매출 칸에서 편집기가 자동 계산해 저장("+12.5%"). 직접 입력 없음.
+  매출증가율Y3Y2: z.string().default(""),
+  매출증가율Y2Y1: z.string().default(""),
+  매출증가율Y1Y: z.string().default(""),
+  // 확장4 1필드 (04 CD · 06 BL — company-finance-won-grid 2026-09-28). 연도별 매출 Y 칸의 연도("2026").
+  // 비었으면 화면은 오늘 연도로 보이고, 재무 칸을 처음 고칠 때 편집기가 함께 저장한다.
+  매출기준연도: z.string().default(""),
   // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
   커스텀: z
     .object({

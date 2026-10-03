@@ -2,8 +2,8 @@
  * /trainer — 트레이너 랜딩 (수강생 관리의 read-only 권한축소판).
  *
  * **2026-05-15 개편**: 이전 단순 grid 목록(TrainerLanding) → admin/users 와 동일한
- * 기수박스 > 팀박스 > TraineeCard 계층(TrainerCohortView). 트레이너는 전체 명단을
- * 볼 수 있고, **본인 담당에만** [시트]/[웹앱] 버튼이 활성화됨.
+ * 기수박스 > 팀박스 > TraineeCard 계층(TrainerCohortView). 기본은 내 담당만
+ * 보이고, **본인 담당 카드에만** [주간목표]/[웹앱] 버튼이 활성화됨.
  *
  * **force-dynamic**: admin 이 /admin/trainers 에서 담당 배정 직후 트레이너가
  * 이 페이지를 열면 즉시 반영되어야 함. 페이지 레벨 RSC 캐시 회피.
@@ -15,7 +15,7 @@ import {
   canViewAdminPages,
   isAdminEmail,
 } from "@/auth/identity";
-import { adminEmails, adminNames, cohortMasterSheetId } from "@/config";
+import { adminEmails, adminNames } from "@/config";
 import {
   findUserByEmail,
   listDistinctUsers,
@@ -24,7 +24,6 @@ import {
 import { getArchivedCohortSet } from "@/repo/cohorts";
 import { enrichUsersWithDates, enrichUsersWithStats } from "@/service";
 import TrainerCohortView from "@/components/auth/TrainerCohortView";
-import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +36,7 @@ export default async function TrainerPage() {
   // admin 도 트레이너 페이지 열람 가능 (마스터 메뉴 → "트레이너 페이지").
   const isAdmin = role === "admin";
   if (!isAdmin && role !== "trainer") redirect("/");
-  if (!isAdmin && status === "pending") {
-    return (
-      <PendingApprovalScreen subtitle="관리자 승인 후 담당 수강생을 조회할 수 있습니다." />
-    );
-  }
+  if (!isAdmin && status === "pending") redirect("/trainer/apply");
 
   const trainer = await findUserByEmail(sessionEmail);
 
@@ -101,12 +96,6 @@ export default async function TrainerPage() {
     return false;
   });
 
-  // 기수 전체 현황 마스터 시트 — env SHEETS_COHORT_MASTER_ID.
-  const masterId = cohortMasterSheetId();
-  const masterSheetUrl = masterId
-    ? `https://docs.google.com/spreadsheets/d/${masterId}/edit`
-    : "";
-
   // 관리자(admin) 또는 관리부서(management) 면 마스터 메뉴 진입 가능.
   const canBackToAdmin = await canViewAdminPages(sessionEmail);
 
@@ -119,13 +108,15 @@ export default async function TrainerPage() {
 
   const archivedLabels = Array.from(archivedSet);
 
+  // trainer-weekly-entry: 상단 "담당 수강생 주간 목표·PT과제" 링크와 TrainerInvites
+  // 렌더를 제거. 주간 목표 진입은 담당 카드의 [주간목표] 링크로 이동.
+  // 초대 관리는 admin 화면에 유지, /trainer/weekly-goals 라우트는 그대로 둔다.
   return (
     <TrainerCohortView
       sessionEmail={sessionEmail}
       trainerName={trainerName}
       trainees={withStats}
       activeTrainers={activeTrainers}
-      masterSheetUrl={masterSheetUrl}
       canBackToAdmin={canBackToAdmin}
       archivedCohorts={archivedLabels}
     />

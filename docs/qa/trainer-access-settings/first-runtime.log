@@ -1,0 +1,40 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 C:/Users/Public/Documents/ESTsoft/CreatorTemp/trainer-access-settings-verify
+
+ ✓ tests/util/trainer-access-policy.test.ts (166 tests) 29ms
+ ✓ tests/repo/trainer-access-settings.test.ts (4 tests) 14ms
+ ✓ tests/service/trainer-access-settings.test.ts (30 tests) 35ms
+ ❯ tests/api/trainer-access-settings.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api/trainer-access-settings.test.ts [ tests/api/trainer-access-settings.test.ts ]
+Error: [vitest] There was an error when mocking a module. If you are using "vi.mock" factory, make sure there are no top level variables inside, since this call is hoisted to top of the file. Read more: https://vitest.dev/api/vi.html#vi-mock
+ ❯ app/api/admin/trainer-access/route.ts:2:31
+      1| import { NextResponse } from "next/server";
+      2| import { listTrainerAccessSettings, saveTrainerAccessSettings, require…
+       |                               ^
+      3| export const dynamic = "force-dynamic";
+      4| export const runtime = "nodejs";
+
+Caused by: Error: Cannot find module 'xtend/mutable'
+Require stack:
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\postgres-interval\index.js
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg-types\lib\textParsers.js
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg-types\index.js
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\defaults.js
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\utils.js
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\client.js
+- C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\index.js
+ ❯ Object.<anonymous> node_modules/postgres-interval/index.js:3:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'MODULE_NOT_FOUND', requireStack: [ 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\postgres-interval\index.js', 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg-types\lib\textParsers.js', 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg-types\index.js', 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\defaults.js', 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\utils.js', 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\client.js', 'C:\Users\Public\Documents\ESTsoft\CreatorTemp\trainer-access-settings-verify\node_modules\pg\lib\index.js' ] }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  200 passed (200)
+   Start at  18:41:47
+   Duration  2.55s (transform 446ms, setup 126ms, collect 905ms, tests 77ms, environment 1ms, prepare 2.26s)
+

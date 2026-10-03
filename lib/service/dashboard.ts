@@ -38,7 +38,7 @@ import {
   type DatedCostRow,
 } from "./dashboard-cost-carryover";
 import { findUserByEmail } from "@/repo/users";
-import { STATS_WEEKS } from "@/config/cohort-dates";
+import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
@@ -267,7 +267,7 @@ function assembleView(input: {
   const cost = finance.totalCost;
   const profit = finance.operatingProfit;
   const profitRate = finance.operatingProfitRate;
-  const weeklyTrend = Array.from({ length: STATS_WEEKS }, (_, i) => ({
+  const weeklyTrend = Array.from({ length: input.weeklyContracts.length }, (_, i) => ({
     주차: i + 1,
     계약수: num(input.weeklyContracts[i]),
     활동량: num(input.weeklyActivity[i]),
@@ -315,7 +315,7 @@ export async function loadDashboard(
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
   if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
     try {
-      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email);
+      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email, user.cohort);
       reverseShadowCompare(sheetId, view); // 기본 off — 아래 함수 주석(R3 종료) 참고
       // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
       return applyTerminationExclusion(view, termByChannel, termByWeek);
@@ -333,6 +333,7 @@ async function loadDashboardFromDb(
   sheetId: string,
   courseStartISOCache?: string,
   actorEmail = "",
+  cohort?: string,
 ): Promise<{
   view: DashboardView;
   termByChannel: Record<Channel, number>;
@@ -348,7 +349,7 @@ async function loadDashboardFromDb(
     readContractsFromDb(sheetId),
     readDbTabFromDb(sheetId),
   ]);
-  const agg = computeDbAggregates(salesRows, meetings, contracts, courseStart, courseStartISO);
+  const agg = computeDbAggregates(salesRows, meetings, contracts, courseStart, courseStartISO, { cohort, spreadsheetId: sheetId });
   const additionalCost = await loadDashboardAdditionalCost(sheetId, actorEmail, courseStartISO);
   const view = assembleView({
     courseStartISO,
@@ -372,7 +373,7 @@ async function loadDashboardFromDb(
   return {
     view,
     termByChannel: term.byChannel,
-    termByWeek: terminatedByWeek(contracts, courseStart),
+    termByWeek: terminatedByWeek(contracts, courseStart, courseWeeksForCohort(cohort)),
   };
 }
 

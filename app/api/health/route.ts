@@ -8,10 +8,14 @@
  */
 import { NextResponse } from "next/server";
 import { adminEmails } from "@/config";
+import { getWarmStatus, startCacheWarmLoop } from "@/service/cache-warm";
 
 export const dynamic = "force-dynamic";
 
 export function GET() {
+  // 캐시 워밍 루프 자가 기동(멱등) — instrumentation 훅이 안 도는 경우의 보험.
+  // 배포 게이트(§6.8)가 기동 직후 이 경로를 반드시 때리므로, 배포마다 확실히 시작된다.
+  startCacheWarmLoop();
   const checks = {
     AUTH_SECRET: !!(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET),
     AUTH_GOOGLE_ID: !!process.env.AUTH_GOOGLE_ID,
@@ -19,5 +23,8 @@ export function GET() {
     ADMIN_EMAILS: adminEmails().length > 0,
   };
   const ok = Object.values(checks).every(Boolean);
-  return NextResponse.json({ ok, checks }, { status: ok ? 200 : 503 });
+  // 캐시 워밍 관측 — "돌고 있나"를 밖에서 확인할 유일한 창(2026-08-30, §0 Observability).
+  // ⚠️ 이 응답은 공개다. 인원수 등 실데이터는 싣지 않는다(위 docblock 원칙과 동일).
+  // 워밍 상태는 **ok 판정에 넣지 않는다** — 배포 health 게이트를 흔들면 안 된다.
+  return NextResponse.json({ ok, checks, warm: getWarmStatus() }, { status: ok ? 200 : 503 });
 }

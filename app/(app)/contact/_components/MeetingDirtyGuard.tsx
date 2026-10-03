@@ -12,6 +12,7 @@
 "use client";
 
 import { createContext, useCallback, useRef, useState } from "react";
+import { saveAllParallel } from "@/util/save-coalesce";
 
 /** dirty 카드 1개가 등록하는 항목. save=영속화(await), discard=편집 버림. */
 export interface DirtyEntry {
@@ -89,18 +90,10 @@ export function useDirtyGuard() {
     else ref.current.delete(id);
   }, []);
 
-  // 등록된 dirty 카드 전부 저장 — 통합 [저장하기]용. 항목별 실패 격리(실패 수 반환).
-  const saveAllDirty = useCallback(async (): Promise<number> => {
-    let fail = 0;
-    for (const e of [...ref.current.values()]) {
-      try {
-        await e.save();
-      } catch {
-        fail++;
-      }
-    }
-    return fail;
-  }, []);
+  // 등록된 dirty 카드 전부 저장 — 통합 [저장하기]용. 병렬 실행(BBE-243, 항목별 실패 격리).
+  const saveAllDirty = useCallback((): Promise<number> => saveAllParallel(
+    [...ref.current.values()].map((e) => () => Promise.resolve(e.save())),
+  ), []);
 
   // dirty 카드 없으면 즉시 진행, 있으면 확인 모달.
   const guardedNav = useCallback((action: () => void) => {
@@ -116,11 +109,10 @@ export function useDirtyGuard() {
       saving={saving}
       onSave={async () => {
         setSaving(true);
-        try {
-          for (const e of [...ref.current.values()]) await e.save();
-        } finally {
-          setSaving(false);
-        }
+        // saveAllDirty() 재사용(BBE-243) — 병렬 실행 + 항목별 실패 격리를 중복 구현하지 않는다.
+        // 구판은 예외 무보호 for-await 라 항목 1개 실패 시 unhandled rejection 이 났었다.
+        await saveAllDirty();
+        setSaving(false);
         const a = pending;
         setPending(null);
         a();

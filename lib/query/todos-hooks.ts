@@ -12,7 +12,7 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import type { Todo, TodoType } from "@/types";
+import type { Todo, TodoRecordKind, TodoType } from "@/types";
 import { track, EVENTS } from "@/analytics";
 
 export const todosKey = (contractRef: string) =>
@@ -47,6 +47,17 @@ export function useTodosByContract(
         `/api/todos?contractRef=${encodeURIComponent(contractRef)}`,
       ),
     enabled: !!contractRef,
+    // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
+    gcTime: 10 * 60_000,
+  });
+}
+
+/** 실무/수납 상단 업무현황용 전체 기록. */
+export function useAllTodos(): UseQueryResult<ListResponse> {
+  return useQuery({
+    queryKey: ["todos", "all"],
+    queryFn: () => fetchJSON<ListResponse>("/api/todos?all=1"),
+    gcTime: 10 * 60_000,
   });
 }
 
@@ -61,6 +72,30 @@ export interface CreateTodoArgs {
   장소: string;
   상세: string;
   showOnCalendar: boolean;
+  기록종류?: TodoRecordKind;
+  /** 초안당 안정 멱등 키(UUID) — 있으면 서버가 Todo id 로 사용한다.
+   * 같은 키 재시도는 원본 반환, 다른 내용이면 409. 없으면 서버 발행 id(하위 호환). */
+  operationId?: string;
+}
+
+/** 초안당 멱등 키 발행 — 항상 UUID 형(route uuid 검증 통과). */
+export function newTodoOperationId(): string {
+  try {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      return crypto.randomUUID();
+    }
+  } catch {
+    /* 아래 폴백 */
+  }
+  // SSR·구형 환경 폴백 — UUIDv4 직접 생성.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /** ToDo 생성 → 해당 계약 + 캘린더 무효화. */
@@ -76,6 +111,7 @@ export function useCreateTodo() {
       track(EVENTS.TODO_CREATED, { todo_type: type });
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] }); // 캘린더 갱신
+      qc.invalidateQueries({ queryKey: ["todos", "all"] });
     },
   });
 }
@@ -114,6 +150,7 @@ export function usePatchTodo() {
     onSettled: (_d, _e, { contractRef }) => {
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
+      qc.invalidateQueries({ queryKey: ["todos", "all"] });
     },
   });
 }
@@ -133,6 +170,7 @@ export function useRemoveTodo() {
       track(EVENTS.TODO_REMOVED);
       qc.invalidateQueries({ queryKey: todosKey(contractRef) });
       qc.invalidateQueries({ queryKey: ["month"] });
+      qc.invalidateQueries({ queryKey: ["todos", "all"] });
     },
   });
 }

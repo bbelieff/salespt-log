@@ -1,7 +1,19 @@
 /**
  * POST /api/db/:channel → append (channel = 매입DB | 직접생산 | 현수막 | 콜·지·기·소)
  *
- * 응답: { ok: true, row: number }
+ * 응답: { ok: true, row: number, idempotent: boolean, replayed: boolean }
+ *  · idempotent=false — keyless legacy path only: executed exactly like
+ *    before; a lost-ACK retry may duplicate. Never claims dedup it cannot
+ *    enforce. A PROVIDED key is never downgraded here: with the DB available
+ *    it is durably honored (any cohort); with the DB down the request is
+ *    rejected BEFORE any side effect as 503 db_idempotency_unavailable and
+ *    the client retains the draft for a safe same-key retry.
+ *  · idempotent=true — the key scoped to the authenticated owner's
+ *    spreadsheet: same key+payload replays the first row, same key+different
+ *    payload ⇒ 409 { error, row } (never the stale original, never overwrite).
+ *
+ * 응답: 409 { error: "db_idempotency_conflict", row? } — row (own scope only)
+ * lets the client PATCH the original instead of appending again.
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -18,19 +30,51 @@ import {
 } from "@/service";
 import { getWritableUserEmail } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+import { normalizeIdempotencyKey } from "@/repo/db/idempotency-keys";
+import {
+  DB_ENTRY_NOT_FOUND,
+  DB_IDEMPOTENCY_CONFLICT,
+  DB_IDEMPOTENCY_UNAVAILABLE,
+} from "@/repo/db/db-append-idempotency";
 
 interface RouteContext {
   params: Promise<{ channel: string }>;
+}
+
+function conflictResponse(e: Error): NextResponse {
+  const row = (e as Error & { row?: unknown }).row;
+  return NextResponse.json(
+    typeof row === "number" && Number.isInteger(row)
+      ? { error: DB_IDEMPOTENCY_CONFLICT, row }
+      : { error: DB_IDEMPOTENCY_CONFLICT },
+    { status: 409 },
+  );
 }
 
 async function POST_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { channel } = await ctx.params;
     const decoded = decodeURIComponent(channel);
-    const body = await req.json();
+    const body: unknown = await req.json();
     const email = await getWritableUserEmail();
+    // Scope B autosave: append-only creates are server-idempotent per
+    // Idempotency-Key header (ambiguous ACK retry replays the original row).
+    // Body fallback is plucked BEFORE zod parse — the channel schemas strip
+    // unknown keys by design, so reading it after parse would silently drop it.
+    const rawBodyKey =
+      body !== null && typeof body === "object"
+        ? (body as Record<string, unknown>).idempotencyKey
+        : undefined;
+    let idempotencyKey: string | null = null;
+    try {
+      idempotencyKey =
+        normalizeIdempotencyKey(req.headers.get("idempotency-key")) ??
+        normalizeIdempotencyKey(rawBodyKey);
+    } catch {
+      return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    }
 
-    let result: { row: number };
+    let result: { row: number; idempotent: boolean; replayed: boolean };
     switch (decoded) {
       case "매입DB": {
         const parsed = DBPurchase.safeParse(body);
@@ -40,7 +84,7 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
             { status: 400 },
           );
         }
-        result = await addPurchase(email, parsed.data);
+        result = await addPurchase(email, parsed.data, idempotencyKey);
         break;
       }
       case "직접생산": {
@@ -51,7 +95,7 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
             { status: 400 },
           );
         }
-        result = await addProduction(email, parsed.data);
+        result = await addProduction(email, parsed.data, idempotencyKey);
         break;
       }
       case "현수막": {
@@ -62,7 +106,7 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
             { status: 400 },
           );
         }
-        result = await addBanner(email, parsed.data);
+        result = await addBanner(email, parsed.data, idempotencyKey);
         break;
       }
       case "콜·지·기·소": {
@@ -74,7 +118,7 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
             { status: 400 },
           );
         }
-        result = await addLead(email, parsed.data);
+        result = await addLead(email, parsed.data, idempotencyKey);
         break;
       }
       default:
@@ -85,6 +129,22 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
     }
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    if (e instanceof Error && e.message === DB_IDEMPOTENCY_CONFLICT) {
+      return conflictResponse(e);
+    }
+    if (e instanceof Error && e.message === DB_IDEMPOTENCY_UNAVAILABLE) {
+      // Fail closed BEFORE any side effect: the draft key needs durable
+      // enforcement the DB cannot provide here. The client retains the draft
+      // (same key) and the user retries when the DB is back — never an
+      // unsafe write, never a "retry" disclaimer over a duplicate.
+      return NextResponse.json({ error: DB_IDEMPOTENCY_UNAVAILABLE }, { status: 503 });
+    }
+    if (e instanceof Error && e.message === DB_ENTRY_NOT_FOUND) {
+      return NextResponse.json({ error: DB_ENTRY_NOT_FOUND }, { status: 404 });
+    }
+    if (e instanceof Error && e.message === "invalid_request") {
+      return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

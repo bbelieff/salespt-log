@@ -109,7 +109,7 @@ describe("R4 무제한 왕복 — 11주+ 저장분이 화면에서 사라지지 
 describe("BBE-49 — 비파일럿(7기) 수료자의 11주+ 읽기 대칭", () => {
   beforeEach(() => {
     findUserByEmail.mockResolvedValue({
-      email: EMAIL, spreadsheetId: SHEET, cohort: "7", // 비파일럿
+      email: EMAIL, spreadsheetId: SHEET, cohort: "1", // 비파일럿
       status: "archived", courseStartISO: COURSE_START, role: "trainee",
     });
   });
@@ -126,7 +126,7 @@ describe("BBE-49 — 비파일럿(7기) 수료자의 11주+ 읽기 대칭", () =
   it("판정 원천은 시트 O1 — 레지스트리 K 캐시가 어긋나도 O1 기준으로 DB 경로를 탄다", async () => {
     // K 캐시가 6주 늦게 박혀 있으면(캐시 오염 전례 있음) K 기준 주차는 상한 안 → 시트 경로로 샌다.
     findUserByEmail.mockResolvedValue({
-      email: EMAIL, spreadsheetId: SHEET, cohort: "7",
+      email: EMAIL, spreadsheetId: SHEET, cohort: "1",
       status: "archived", courseStartISO: "2026-07-13", role: "trainee",
     });
     readSalesRowsFromDb.mockResolvedValue([

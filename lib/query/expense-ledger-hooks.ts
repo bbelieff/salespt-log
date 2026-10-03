@@ -93,6 +93,7 @@ export function useExpenseLedger(view: ExpenseViewMode, month: string, categoryI
     queryFn: () => request<ExpenseLedgerView>(`/api/expenses?${query}`),
     enabled: view !== "category" || Boolean(categoryId),
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -101,6 +102,7 @@ export function useExpenseCategories() {
     queryKey: expenseCategoriesKey(),
     queryFn: async () => (await request<{ categories: ExpenseCategoryR6[] }>("/api/expense-categories")).categories,
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -110,6 +112,7 @@ export function useExpenseCategoryUsage(categoryId: string) {
     queryFn: () => request<ExpenseCategoryUsage>(`/api/expense-categories/${categoryId}/usage`),
     enabled: Boolean(categoryId),
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -118,6 +121,7 @@ export function useRecurringRules() {
     queryKey: recurringRulesKey(),
     queryFn: () => request<{ asOfDate: string; rules: ManagedRecurringRule[] }>("/api/expense-recurring-rules"),
     staleTime: 30_000,
+    gcTime: 10 * 60_000, // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
   });
 }
 
@@ -132,10 +136,75 @@ function useInvalidateLedger() {
   ]);
 }
 
+/**
+ * Same-key/different-payload conflict — the server kept the FIRST commit and
+ * (same owner scope only) tells us its entry id so the client PATCHes it
+ * instead of appending. A cross-scope collision carries no id.
+ */
+export class ExpenseCreateConflictError extends Error {
+  readonly entryId: string | null;
+  constructor(entryId: string | null) {
+    super("expense_idempotency_conflict");
+    this.name = "ExpenseCreateConflictError";
+    this.entryId = entryId;
+  }
+}
+
+/** Extract the conflicted original entry id from any thrown creation error. */
+export function expenseConflictIdOf(error: unknown): string | null {
+  if (error instanceof ExpenseCreateConflictError) return error.entryId;
+  if (
+    error instanceof Error &&
+    error.message === "expense_idempotency_conflict" &&
+    typeof (error as unknown as { id?: unknown }).id === "string"
+  ) {
+    return (error as unknown as { id: string }).id;
+  }
+  return null;
+}
+
+async function requestCreateExpense(
+  vars: CreateExpenseBody & { idempotencyKey?: string },
+): Promise<{ expense: unknown; replayed: boolean }> {
+  const { idempotencyKey, ...body } = vars;
+  const res = await fetch("/api/expenses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const responseBody = await res.json().catch(() => ({}));
+  if (res.status === 409 && responseBody?.error === "expense_idempotency_conflict") {
+    throw new ExpenseCreateConflictError(
+      typeof responseBody?.id === "string" ? responseBody.id : null,
+    );
+  }
+  if (!res.ok) {
+    throw new Error(
+      typeof responseBody?.error === "string" ? responseBody.error : `HTTP ${res.status}`,
+    );
+  }
+  return responseBody as { expense: unknown; replayed: boolean };
+}
+
 export function useCreateExpense() {
   const invalidate = useInvalidateLedger();
   return useMutation({
-    mutationFn: (body: CreateExpenseBody) => request<{ expense: unknown }>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
+    mutationFn: requestCreateExpense,
+    onSuccess: invalidate,
+  });
+}
+
+export function usePatchExpense() {
+  const invalidate = useInvalidateLedger();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<CreateExpenseBody> }) =>
+      request<{ expense: unknown }>(`/api/expenses/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
     onSuccess: invalidate,
   });
 }
@@ -176,7 +245,14 @@ export function useReclassifyUnclassified() {
 export function useCreateRecurringRule() {
   const invalidate = useInvalidateLedger();
   return useMutation({
-    mutationFn: (body: CreateRecurringRuleBody) => request<{ rule: { id: string } }>("/api/expense-recurring-rules", { method: "POST", body: JSON.stringify(body) }),
+    mutationFn: (vars: CreateRecurringRuleBody & { idempotencyKey?: string }) => {
+      const { idempotencyKey, ...body } = vars;
+      return request<{ rule: { id: string } }>("/api/expense-recurring-rules", {
+        method: "POST",
+        headers: idempotencyKey ? { "idempotency-key": idempotencyKey } : undefined,
+        body: JSON.stringify(body),
+      });
+    },
     onSuccess: invalidate,
   });
 }

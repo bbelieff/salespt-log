@@ -15,5 +15,7 @@ import { distinctByPreferred } from "./user-priority";
  * 를 써야 타겟 행이 살아있다. dedup 하면 대표 아닌 행이 사라져 그 행을 못 건드린다.
  */
 export async function listDistinctUsers(): Promise<User[]> {
-  return distinctByPreferred(await listAllUsers());
+  const all = await listAllUsers();
+  return [...distinctByPreferred(all.filter(u => u.role !== "trainee")),
+    ...distinctByPreferred(all.filter(u => u.role === "trainee"))];
 }

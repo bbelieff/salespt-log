@@ -16,6 +16,7 @@ export default defineConfig({
       { find: /^@\/types$/, replacement: root("lib/types/index.ts") },
       { find: /^@\/config$/, replacement: root("lib/config/index.ts") },
       { find: /^@\/service$/, replacement: root("lib/service/index.ts") },
+      { find: /^@\/analytics$/, replacement: root("lib/analytics/index.ts") },
       { find: /^@\/types\/(.*)$/, replacement: root("lib/types/$1") },
       { find: /^@\/config\/(.*)$/, replacement: root("lib/config/$1") },
       { find: /^@\/repo\/(.*)$/, replacement: root("lib/repo/$1") },

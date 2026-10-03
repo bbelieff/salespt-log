@@ -9,6 +9,11 @@ on:
         description: "기수 라벨 콤마목록(선택) — 비우면 파일럿 전 기수 자동(8·9·연습·아레나)"
         required: false
         default: ""
+      list_carryover:
+        description: "이월로 잡힌 계약을 전부 나열 (⑤ 는 불일치만 잡아 '둘 다 이월'을 못 본다)"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   audit:
@@ -42,12 +47,14 @@ jobs:
       - name: Run drift audit on VPS
         env:
           COHORT: ${{ inputs.cohort }}
+          LIST_CARRY: ${{ inputs.list_carryover }}
         run: |
           REMOTE=$(cat <<'REMOTE_EOF'
           set -e
           cd /opt/salespt-log
           FLAGS=""
           if [ -n "$COHORT_ARG" ]; then FLAGS="--cohort $COHORT_ARG"; fi
+          if [ "$LIST_CARRY_ARG" = "true" ]; then FLAGS="$FLAGS --list-carryover"; fi
           node scripts/ops/db-contract-drift-audit.mjs $FLAGS
           REMOTE_EOF
           )
@@ -56,7 +63,7 @@ jobs:
             rc=0
             ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 \
                 -i ~/.ssh/id_ed25519 "root@$VPS_TARGET_HOST" \
-                "COHORT_ARG=\"$COHORT\" bash -s" <<<"$REMOTE"
+                "COHORT_ARG=\"$COHORT\" LIST_CARRY_ARG=\"$LIST_CARRY\" bash -s" <<<"$REMOTE"
             rc=$?
             if [ "$rc" = "0" ]; then exit 0; fi
             if [ "$rc" = "255" ]; then

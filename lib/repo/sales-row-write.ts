@@ -58,13 +58,17 @@ export async function writeSalesRowCells(
   return true;
 }
 
-/** 편집 가능 기간 안인지(= 시트에 좌표가 있는지). DB 쓰기 전 가드에 사용. */
+/** 편집 가능 기간 안인지(= 시트에 좌표가 있는지). DB 쓰기 전 가드에 사용.
+ *  precomputedCourseStart: 같은 spreadsheetId 로 여러 채널을 연속 판정하는 호출부(예:
+ *  persistSalesRows 의 4채널 루프)가 courseStart 를 채널마다 매번 다시 읽지 않도록 재사용
+ *  가능 — 생략 시 이전과 동일하게 이 함수가 직접 읽는다(BBE-242 SLO, sales-write.ts:187). */
 export async function isWithinSalesWindow(
   spreadsheetId: string,
   date: string,
   channel: Channel,
+  precomputedCourseStart?: Date,
 ): Promise<boolean> {
-  const courseStart = await readCourseStart(spreadsheetId);
+  const courseStart = precomputedCourseStart ?? (await readCourseStart(spreadsheetId));
   try {
     salesRowFor(parseISO(date), channel, courseStart);
     return true;

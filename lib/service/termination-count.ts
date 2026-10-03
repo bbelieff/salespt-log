@@ -11,6 +11,7 @@ import { Channel, isTerminatedContract } from "@/types";
 import type { ContractPayment, Meeting } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
 import { STATS_WEEKS } from "@/config/cohort-dates";
+import { isManualContractLink } from "@/util/contract-link";
 
 /** "YYYY-MM-DD" → 로컬 자정 Date (dashboard-aggregates.parseISO 와 동일 규칙 — 주차 버킷 패리티). */
 function parseISO(s: string): Date {
@@ -58,6 +59,8 @@ export function terminatedByChannel(
   let unknown = 0;
   for (const p of payments) {
     if (!isTerminatedContract(p)) continue;
+    // 「영업기록 없이 추가」 계약은 미팅이 없어 raw 채널 계약수에 없다 → 차감도 안 한다.
+    if (isManualContractLink(p.linkedMeetingId)) continue;
     const linked = p.linkedMeetingId ? byId.get(p.linkedMeetingId) : undefined;
     const m = linked ?? byKey.get(`${p.계약일}|${p.업체명}`);
     if (!m) {
@@ -86,15 +89,17 @@ export function terminatedByChannel(
 export function terminatedByWeek(
   payments: ContractPayment[],
   courseStart: Date,
+  span = STATS_WEEKS,
 ): number[] {
-  const weeks = new Array<number>(STATS_WEEKS).fill(0);
+  const weeks = new Array<number>(span).fill(0);
   for (const p of payments) {
     if (!isTerminatedContract(p)) continue;
+    if (isManualContractLink(p.linkedMeetingId)) continue; // raw(미팅 기준 주차 계약수)에 없음
     const d = (p.계약일 ?? "").trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
     const w = weekIndexOf(parseISO(d), courseStart);
     // 8주 밖(0·9·10)은 raw 도 미포함 → 차감 안 함. (noUncheckedIndexedAccess 대응)
-    if (w >= 1 && w <= STATS_WEEKS) weeks[w - 1] = (weeks[w - 1] ?? 0) + 1;
+    if (w >= 1 && w <= span) weeks[w - 1] = (weeks[w - 1] ?? 0) + 1;
   }
   return weeks;
 }

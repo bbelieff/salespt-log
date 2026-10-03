@@ -5,6 +5,7 @@
 "use client";
 
 import { fmtWon, type ChannelKey } from "../_lib/channels";
+import type { ReactNode } from "react";
 
 interface Item {
   key: ChannelKey;
@@ -20,7 +21,8 @@ interface Props {
   items: Item[];
   totalCost: number;
   totalCount: number;
-  activeCh: ChannelKey;
+  activeCh: ChannelKey | null;
+  goalSummary?: ReactNode;
 }
 
 const numStyle = { fontVariantNumeric: "tabular-nums" } as const;
@@ -30,6 +32,7 @@ export default function OverallCard({
   totalCost,
   totalCount,
   activeCh,
+  goalSummary,
 }: Props) {
   return (
     <div className="mb-3 rounded-xl bg-white p-4 shadow-sm">
@@ -80,6 +83,7 @@ export default function OverallCard({
           </span>
         </div>
       </div>
+      {goalSummary && <div className="mt-2 border-t border-gray-100 pt-1">{goalSummary}</div>}
     </div>
   );
 }
