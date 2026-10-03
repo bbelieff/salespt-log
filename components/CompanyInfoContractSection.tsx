@@ -19,8 +19,11 @@ interface Props {
   splitInline?: boolean;
   /** 편집 시 부모에 라이브 드래프트 전달. */
   onChange?: (ci: CompanyInfo) => void;
-  /** 전환 중 저장 실패 뒤 같은 계약을 다시 열었을 때 복구할 미저장 초안. */
-  pendingValue?: CompanyInfo;
+  /** 전환 중 저장 실패 뒤 복구할 미저장 초안. 현재 요청 target과 일치할 때만 표시한다. */
+  pendingValue?: {
+    target: { 계약일: string; 업체명: string };
+    value: CompanyInfo;
+  };
   /** 자동 저장 라우팅용 안정 레코드 신원(예: 계약 행키). 필수 — 개명 시 바뀌는
    * 업체명(가변 표시명)을 신원으로 쓰면 빠른 전환·개명 때 다른 레코드로 필드가
    * 전송되므로, 기존 행은 업체명 폴백을 쓰지 않는다. */
@@ -59,10 +62,14 @@ export default function CompanyInfoContractSection({
         const d = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error("업체정보를 불러오지 못했어요");
         if (alive) {
+          const pending = pendingValueRef.current;
+          const pendingKey = pending
+            ? `${pending.target.계약일}\u0000${pending.target.업체명}`
+            : null;
           setLoad({
             key: requestKey,
             status: "ready",
-            value: pendingValueRef.current ?? d.업체정보 ?? undefined,
+            value: pendingKey === requestKey ? pending?.value : d.업체정보 ?? undefined,
           });
         }
       } catch {
@@ -112,12 +119,11 @@ export default function CompanyInfoContractSection({
         </button>
       </div>
     );
-  // key 로 value 변경 시 에디터 draft 재초기화 (CompanyInfoEditor 는 mount 시 초기화).
-  // identityKey 가 바뀌면 리마운트 — 이전 대상 진행분 전송 차단.
-  // 업체명·계약일은 key·target 에 쓰지 않는다(가변 표시명 — 개명 시 신원 유지).
+  // 요청 target이 바뀌면 에디터를 리마운트해 이전 target draft를 화면에서도 격리한다.
+  // 저장 라우팅 신원은 계속 안정 identityKey이며, 실제 POST target은 부모 큐가 편집 시점에 고정한다.
   return (
     <CompanyInfoEditor
-      key={`${identityKey}|${load.value ? "y" : "n"}`}
+      key={`${identityKey}|${requestKey}|${load.value ? "y" : "n"}`}
       value={load.value}
       busy={busy}
       txtCompanyName={업체명}

@@ -69,12 +69,15 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
 const SYNTHETIC_TARGET = { 계약일: "2026-07-10", 업체명: "합성상사" };
 
 function PaymentHarness({ target = SYNTHETIC_TARGET }: { target?: typeof SYNTHETIC_TARGET }) {
-  const { onCiChange, ciDraft, ciState, flushCi } = useContractCompanyInfo(target);
+  const { onCiChange, ciPending, ciState, flushCi } = useContractCompanyInfo(
+    "test:payment-harness",
+    target,
+  );
   return h(
     React.Fragment,
     null,
     h(CompanyInfoEditor, {
-      value: ciDraft ?? CompanyInfo.parse({}),
+      value: ciPending?.value ?? CompanyInfo.parse({}),
       identityKey: "contract-row:synthetic",
       txtCompanyName: "합성상사",
       hideSave: true,
@@ -83,6 +86,27 @@ function PaymentHarness({ target = SYNTHETIC_TARGET }: { target?: typeof SYNTHET
     }),
     h("button", { type: "button", onClick: () => void flushCi(false) }, "합성 재시도"),
     h("output", { "data-testid": "save-state" }, ciState.error || (ciState.saving ? "saving" : "idle")),
+  );
+}
+
+function TargetSwitchHarness({ target }: { target: typeof SYNTHETIC_TARGET }) {
+  const { ciPending, ciState, flushCi, onCiChange } = useContractCompanyInfo(
+    "test:same-mounted-row",
+    target,
+  );
+  return h(
+    React.Fragment,
+    null,
+    h(CompanyInfoContractSection, {
+      계약일: target.계약일,
+      업체명: target.업체명,
+      pendingValue: ciPending,
+      identityKey: "contract-row:same-mounted-row",
+      hideSave: true,
+      onChange: onCiChange,
+    }),
+    h("button", { type: "button", onClick: () => void flushCi(false) }, "합성 전환 재시도"),
+    h("output", { "data-testid": "switch-save-state" }, ciState.error || (ciState.saving ? "saving" : "idle")),
   );
 }
 
@@ -419,5 +443,48 @@ describe("payment CompanyInfo document/direct autosave", () => {
     }));
     await settle();
     expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("새값");
+  });
+
+  it("같은 mounted row가 A→B로 바뀌기 전후 두 편집을 각 target에 직렬 저장하고 A draft를 B에 보이지 않는다", async () => {
+    const targetA = { 계약일: "2026-07-10", 업체명: "A계약" };
+    const targetB = { 계약일: "2026-07-11", 업체명: "B계약" };
+    render(h(TargetSwitchHarness, { target: targetA }));
+    await settle();
+    setInput("대표자이름", "A 최종값");
+
+    await act(async () => root?.render(h(TargetSwitchHarness, { target: targetB })));
+    await settle();
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).not.toBe("A 최종값");
+    setInput("대표자이름", "B 최종값");
+    await advanceAutosave();
+
+    expect(posts).toHaveLength(2);
+    expect(posts[0]).toMatchObject({ ...targetA, 업체정보: { 대표자이름: "A 최종값" } });
+    expect(posts[1]).toMatchObject({ ...targetB, 업체정보: { 대표자이름: "B 최종값" } });
+  });
+
+  it("A target 실패는 A·B pending을 보존하고 재시도에서 A→B 순서로 모두 저장한다", async () => {
+    const targetA = { 계약일: "2026-07-10", 업체명: "A실패계약" };
+    const targetB = { 계약일: "2026-07-11", 업체명: "B대기계약" };
+    failNextPost = true;
+    render(h(TargetSwitchHarness, { target: targetA }));
+    await settle();
+    setInput("대표자이름", "A 보존값");
+
+    await act(async () => root?.render(h(TargetSwitchHarness, { target: targetB })));
+    await settle();
+    setInput("대표자이름", "B 보존값");
+    await advanceAutosave();
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toMatchObject({ ...targetA, 업체정보: { 대표자이름: "A 보존값" } });
+    expect(document.querySelector<HTMLInputElement>('input[id$="-대표자이름"]')?.value).toBe("B 보존값");
+    expect(document.querySelector('[data-testid="switch-save-state"]')?.textContent).toContain("저장하지 못했어요");
+
+    await act(async () => button("합성 전환 재시도").click());
+    await settle();
+    expect(posts).toHaveLength(3);
+    expect(posts[1]).toMatchObject({ ...targetA, 업체정보: { 대표자이름: "A 보존값" } });
+    expect(posts[2]).toMatchObject({ ...targetB, 업체정보: { 대표자이름: "B 보존값" } });
+    expect(document.querySelector('[data-testid="switch-save-state"]')?.textContent).toBe("idle");
   });
 });
