@@ -21,6 +21,7 @@ vi.mock("@/repo/db/client", () => ({
 
 import {
   deleteUserRow,
+  findUserByCohortName,
   rekeyUserRow,
   upsertCohortCells,
   upsertUserCells,
@@ -156,6 +157,44 @@ describe("rekey — 자연키 변경은 한 트랜잭션", () => {
     await expect(rekeyUserRow({ email: "a@b.com", cohort: "7", name: "홍" }, ROW)).rejects.toThrow();
     expect(client.query.mock.calls.map((c) => String(c[0]))).toContain("rollback");
     expect(client.release).toHaveBeenCalled();
+  });
+});
+
+describe("findUserByCohortName — BBE-70 기수 생성 멱등 판정 조회", () => {
+  it("DATABASE_URL 미설정이면 쿼리 없이 null(폴백 없음 — 호출부가 라우트 자체를 막는다)", async () => {
+    dbEnabled.mockReturnValue(false);
+    const r = await findUserByCohortName("8", "홍길동");
+    expect(r).toBeNull();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("행이 없으면 null", async () => {
+    query.mockResolvedValue({ rows: [] });
+    const r = await findUserByCohortName("8", "홍길동");
+    expect(r).toBeNull();
+  });
+
+  it("매칭 행을 RegistryUserRow 로 변환해 반환한다", async () => {
+    query.mockResolvedValue({
+      rows: [{
+        email: "a@b.com", cohort: "8", name: "홍길동", spreadsheet_id: "",
+        role: "trainee", status: "active", assigned_trainer: "", team: "",
+        cohort_label: "8기", name_label: "홍길동", course_start_iso: "2026-08-10",
+        graduation_iso: "2026-09-29", sort_order: 0, drive_parent_path: "",
+        feedback_folder_id: "", drive_link_status: "", memo: "", captain_of: "",
+        gcal_token: "", gcal_settings: "",
+      }],
+    });
+    const r = await findUserByCohortName("8", "홍길동");
+    expect(r).toMatchObject({ email: "a@b.com", cohort: "8", name: "홍길동", sortOrder: 0 });
+  });
+
+  it("cohort·name 을 trim 해 쿼리에 넘긴다", async () => {
+    query.mockResolvedValue({ rows: [] });
+    await findUserByCohortName(" 8 ", " 홍길동 ");
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("where cohort = $1 and name = $2");
+    expect(params).toEqual(["8", "홍길동"]);
   });
 });
 
