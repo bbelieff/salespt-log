@@ -83,11 +83,14 @@ describe("PolicyNewsEmbed 최소 권한", () => {
     }
   });
 
-  it("부모가 아는 load event만 상태로 말하고 child DOM을 읽지 않는다", () => {
+  it("ready 상태는 app chrome 없이 frame만 보이고 child DOM을 읽지 않는다", () => {
     render();
     expect(host.querySelector('[role="status"]')?.textContent).toContain("불러오는 중");
     act(() => host.querySelector("iframe")!.dispatchEvent(new Event("load")));
-    expect(host.querySelector('[role="status"]')?.textContent).toContain("프레임이 로드됐어요");
+    expect(host.querySelector('[data-policy-news-frame-state]')?.getAttribute("data-policy-news-frame-state")).toBe("ready");
+    expect(host.querySelector('[role="status"]')).toBeNull();
+    expect(host.textContent).not.toContain("원문 프레임 로드됨");
+    expect(host.textContent).not.toContain("원문 프레임이 로드됐어요");
 
     const viewer = readFileSync("app/(app)/payment/news/PolicyNewsEmbed.tsx", "utf8");
     expect(viewer).not.toMatch(/contentDocument|contentWindow|querySelectorAll?\s*\(/);
@@ -98,8 +101,7 @@ describe("PolicyNewsEmbed 최소 권한", () => {
     render();
     const first = host.querySelector("iframe")!;
     act(() => vi.advanceTimersByTime(POLICY_NEWS_LOAD_TIMEOUT_MS));
-    expect(host.querySelector('[role="status"]')?.textContent).toContain("확인하지 못했어요");
-    expect(host.querySelector('[role="status"]')?.textContent).not.toContain("프레임이 로드됐어요");
+    expect(host.querySelector('[role="status"]')).toBeNull();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("불러오지 못했어요");
     expect(host.querySelector(`a[href="${POLICY_NEWS_URL}"]`)).not.toBeNull();
     act(() => (host.querySelector("button") as HTMLButtonElement).click());
@@ -116,20 +118,24 @@ describe("원본 frame route 계약", () => {
     expect(viewer.className).toContain("pc:h-full");
     expect(viewer.className).toContain("pc:min-h-0");
     expect(viewer.className).toContain("pc:overflow-hidden");
+    expect(viewer.className).not.toContain("overflow-x");
     expect(frame.className).toContain("h-[65dvh]");
     expect(frame.className).toContain("pc:h-full");
     expect(frame.className).toContain("pc:min-h-0");
   });
 
-  it("SalesPT header·source link·route-local containment를 유지한다", () => {
+  it("SalesPT header·route-local containment를 유지하고 source/new-window banner를 렌더하지 않는다", () => {
     const page = readFileSync("app/(app)/payment/news/page.tsx", "utf8");
     expect(page).toContain('pageTitle="정책자금 데일리"');
     expect(page).toContain("POLICY_NEWS_URL");
-    expect(page).toContain('target="_blank"');
-    expect(page).toContain('rel="noopener noreferrer"');
     expect(page).toContain("data-policy-news-desktop-shell");
     expect(page).toContain("pc:flex pc:h-dvh pc:min-h-0 pc:flex-col pc:overflow-hidden");
     expect(page).toContain('className="pc:min-h-0 pc:flex-1"');
+    expect(page).not.toContain('target="_blank"');
+    expect(page).not.toContain('rel="noopener noreferrer"');
+    expect(page).not.toContain("ExternalArrow");
+    expect(page).not.toContain("출처");
+    expect(page).not.toContain("새 창에서 열기");
     expect(page).not.toContain("loadPolicyNews");
     expect(page).not.toContain("<Suspense");
   });
