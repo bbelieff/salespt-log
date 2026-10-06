@@ -29,7 +29,7 @@ import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readAllMeetings } from "@/repo/meetings";
-import { chooseDailySource, chooseWriteSource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource, sourceCohort } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
@@ -62,9 +62,9 @@ export async function resolveWriteCtx(
   const on = dbEnabled();
   return {
     sid: user.spreadsheetId,
-    fromDb: chooseDailySource(user.cohort, on) === "db",
-    syncDb: chooseWriteSource(user.cohort, on) === "db",
-    salesCtx: { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email },
+    fromDb: chooseDailySource(sourceCohort(user), on) === "db",
+    syncDb: chooseWriteSource(sourceCohort(user), on) === "db",
+    salesCtx: { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email },
   };
 }
 
@@ -129,7 +129,7 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const spreadsheetId = user.spreadsheetId;
-  if (chooseDailySource(user.cohort, dbEnabled()) !== "db") {
+  if (chooseDailySource(sourceCohort(user), dbEnabled()) !== "db") {
     return readAllSheetSections(spreadsheetId);
   }
   const [dbSettled, presence] = await Promise.all([
@@ -189,7 +189,7 @@ export async function loadLeadsForPicker(
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const spreadsheetId = user.spreadsheetId;
 
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+  if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
     const [dbSettled, sheetLeads] = await Promise.all([
       readDbTabFromDb(spreadsheetId).then(
         (value) => ({ ok: true, value }) as const,
@@ -256,7 +256,7 @@ async function readMeetingLinkSets(email: string): Promise<MeetingLinkSets> {
   if (!user) return { ids, names };
   try {
     const meetings =
-      chooseDailySource(user.cohort, dbEnabled()) === "db"
+      chooseDailySource(sourceCohort(user), dbEnabled()) === "db"
         ? await readMeetingsFromDb(user.spreadsheetId)
         : await readAllMeetings(user.spreadsheetId);
     for (const m of meetings) {

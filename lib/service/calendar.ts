@@ -10,7 +10,7 @@ import { findByDateRange } from "@/repo/meetings";
 import { findTodosByDateRange } from "@/repo/todos";
 import { dbEnabled } from "@/repo/db/client";
 import { readMeetingsFromDb, readTodosFromDb } from "@/repo/db/read-daily";
-import { chooseDailySource } from "./daily-source";
+import { chooseDailySource, sourceCohort } from "./daily-source";
 import type { Meeting, Todo } from "@/types";
 
 /** DB 경로 월간 조회 — 전체 미팅/투두 read 후 월 dates 로 필터(시트 findByDateRange 동치).
@@ -79,7 +79,7 @@ export async function loadMonthMeetings(
   let map: Map<string, Meeting[]>;
   let todoMap: Map<string, Todo[]>;
   const fromDb =
-    chooseDailySource(user.cohort, dbEnabled()) === "db"
+    chooseDailySource(sourceCohort(user), dbEnabled()) === "db"
       ? await loadMonthFromDb(spreadsheetId, dates)
       : null;
   if (fromDb) {

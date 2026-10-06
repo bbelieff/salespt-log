@@ -18,7 +18,7 @@ import {
   findArchivedRowByEmail,
   resolveOwnArenaSheetId,
 } from "@/repo/users-arena";
-import { isDbReadPilot } from "@/service/daily-source";
+import { isDbReadPilot, sourceCohort } from "@/service/daily-source";
 import { dbEnabled } from "@/repo/db/client";
 import { profileStatsFromDb } from "./profile-stats-db";
 import { readBundle } from "./profile-bundle-cache";
@@ -301,7 +301,7 @@ export async function enrichUsersWithStats<
     const pilotEligible =
       u.spreadsheetId &&
       dbOn &&
-      isDbReadPilot(u.cohort) &&
+      isDbReadPilot(sourceCohort(u)) &&
       ISO_DATE_RE.test((u.courseStartISO ?? "").trim());
     if (pilotEligible) pilot.push(u);
     else sheetPath.push(u);

@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-06 · Claude(경영일지 DC 260927)+Muse(문서 초안) · 유보 수강생 DB 읽기 복구·0기 추가 (fix/reserved-db-source)
+- 유보생도 원래 기수로 DB/시트를 판단하고 0기를 DB 목록에 추가. 상세 = `docs/plans/active/reserved-db-source.md`.
+
 ### 2026-09-29 · Claude(경영일지 DC 260927) · 업체정보 입력 동시 서식 (feat/company-info-live-format)
 - belie: 금액 뒤 "백만원", 입력 동시 쉼표, 사업자번호 입력 동시 대시, 「편집」→「팝업」. 상세 = `docs/plans/active/company-info-live-format.md`.
 
