@@ -146,6 +146,36 @@ export async function deleteUserRow(key: {
   );
 }
 
+/** (cohort, name) 매칭 users 행 1건 — BBE-70 기수 생성 멱등 판정 전용(prep 행이 이미
+ * 있으면 재제출해도 새로 만들지 않는다, `findPrepRowIndex` 의 DB 버전). dbEnabled=false 면
+ * null(폴백 없음 — 호출부가 이 라우트 자체를 503 으로 막는다, ADR-0030 §2 "R7-#21 이후 신규
+ * 기수는 시트가 없다"). */
+export async function findUserByCohortName(
+  cohort: string,
+  name: string,
+): Promise<RegistryUserRow | null> {
+  if (!dbEnabled()) return null;
+  const c = cohort.trim();
+  const n = name.trim();
+  const res = await getDbPool().query(
+    `select ${USER_COLUMNS.join(", ")} from users where cohort = $1 and name = $2 limit 1`,
+    [c, n],
+  );
+  const row = res.rows[0] as Record<string, string | number> | undefined;
+  if (!row) return null;
+  return {
+    email: String(row.email), cohort: String(row.cohort), name: String(row.name),
+    spreadsheetId: String(row.spreadsheet_id), role: String(row.role), status: String(row.status),
+    assignedTrainer: String(row.assigned_trainer), team: String(row.team),
+    cohortLabel: String(row.cohort_label), nameLabel: String(row.name_label),
+    courseStartISO: String(row.course_start_iso), graduationISO: String(row.graduation_iso),
+    sortOrder: Number(row.sort_order), driveParentPath: String(row.drive_parent_path),
+    feedbackFolderId: String(row.feedback_folder_id), driveLinkStatus: String(row.drive_link_status),
+    memo: String(row.memo), captainOf: String(row.captain_of),
+    gcalToken: String(row.gcal_token), gcalSettings: String(row.gcal_settings),
+  };
+}
+
 /** 자연키 변경(A/B/C 열 갱신) — 옛 키 삭제 + 새 행 삽입을 **한 트랜잭션**으로.
  * 나눠 실행하면 삭제만 성공하고 삽입이 실패했을 때 행이 사라진 채로 남는다(적대검증 5-a). */
 export async function rekeyUserRow(

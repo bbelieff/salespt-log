@@ -14,45 +14,21 @@
  * 그래서 아무도 B3 를 고치지 않았다.
  *
  * 아레나 라우트는 **이미** 이 처리를 하고 있었다(create-arena-members). 숫자 기수만 빠져 있었다.
- * 이 테스트는 그 비대칭이 다시 생기지 않게 양쪽을 함께 못 박는다.
+ * BBE-70 이후 숫자 기수는 시트를 만들지 않고 DB에 기수·이름을 저장한다.
+ * DB 경로는 tests/api/create-cohort-members-db.test.ts가 검증한다. 여기서는 남은 시트 경로를 보호한다.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-const COHORT_ROUTE = "app/api/admin/create-cohort-members/route.ts";
 const ARENA_ROUTE = "app/api/admin/create-arena-members/route.ts";
 const AUTH = "lib/service/auth.ts";
 
-const cohortSrc = readFileSync(COHORT_ROUTE, "utf8");
 const arenaSrc = readFileSync(ARENA_ROUTE, "utf8");
 const authSrc = readFileSync(AUTH, "utf8");
 
-describe("★새 시트에 기수·이름을 찍는다", () => {
-  it("★숫자 기수 생성 경로가 writeProfile 로 B3:C3 를 찍는다", () => {
-    expect(cohortSrc).toContain('from "@/repo/sales"');
-    expect(cohortSrc).toMatch(/writeProfile\(\s*newSheetId\s*,\s*parsed\.label\s*,\s*name\s*\)/);
-  });
-
-  it("★아레나 경로도 여전히 찍는다 — 한쪽만 고쳐 비대칭이 되지 않게", () => {
+describe("아레나 생성 시 새 시트에 기수·이름을 찍는다", () => {
+  it("아레나 경로는 여전히 writeProfile 로 기록한다", () => {
     expect(arenaSrc).toMatch(/writeProfile\(/);
-  });
-
-  it("아레나는 숫자 기수 경로에서 찍지 않는다 — 라벨 모양이 다르다(A2 vs A2-6기)", () => {
-    expect(cohortSrc).toContain('parsed.type === "cohort"');
-  });
-
-  it("복제(create) 때만 찍는다 — 남의 기존 시트(link)는 안 건드린다", () => {
-    const at = cohortSrc.indexOf("writeProfile(newSheetId");
-    expect(at).toBeGreaterThan(-1);
-    const createGuard = cohortSrc.lastIndexOf('plan.action === "create"', at);
-    expect(createGuard).toBeGreaterThan(-1);
-  });
-
-  it("기록 실패가 기수 생성을 막지 않는다 — 날짜와 같은 방침", () => {
-    const at = cohortSrc.indexOf("writeProfile(newSheetId");
-    const around = cohortSrc.slice(Math.max(0, at - 400), at + 400);
-    expect(around).toMatch(/try\s*\{/);
-    expect(around).toMatch(/catch/);
   });
 });
 
