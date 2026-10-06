@@ -31,7 +31,7 @@ import {
   listAllTodos as listAllTodosFromSheet,
   updateTodo as updateTodoRow,
 } from "@/repo/todos";
-import { chooseDailySource, chooseWriteSource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource, sourceCohort } from "./daily-source";
 import {
   clearRowInDb,
   dbEnabled,
@@ -64,7 +64,7 @@ async function resolveSheet(email: string): Promise<SheetCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[todos] 등록되지 않은 사용자: ${email}`);
   if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
-  return { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email };
+  return { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email };
 }
 
 // ── R3-2 시트 수렴 동기화 (DB 정본 경로 전용) ──────────────────────

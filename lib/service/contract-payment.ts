@@ -13,7 +13,7 @@ import {
   readCompanyInfoFromDb,
   readContractsFromDb,
 } from "@/repo/db/read-daily";
-import { chooseDailySource, chooseWriteSource } from "./daily-source";
+import { chooseDailySource, chooseWriteSource, sourceCohort } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import {
   clearRow,
@@ -45,7 +45,7 @@ export async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
-  return { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email };
+  return { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email };
 }
 
 // isCarryoverContract(이월 판정 단일 결정점)은 클라이언트(실무수납 UI)도 써야 하므로
@@ -66,7 +66,7 @@ export async function loadContractPayments(
 ): Promise<ContractPayment[]> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
-  if (chooseDailySource(user.cohort, dbEnabled()) !== "db") {
+  if (chooseDailySource(sourceCohort(user), dbEnabled()) !== "db") {
     return readAll(user.spreadsheetId);
   }
   const [dbRes, presenceRes] = await Promise.allSettled([
@@ -209,7 +209,7 @@ export async function loadCompanyInfoByContract(
   const spreadsheetId = user.spreadsheetId;
   // R2-4b: 파일럿은 06 미러 DB 조회 먼저. 실질 값이 있으면 그대로(시트 read 0회),
   // 빈 결과(rename 새 키 = 스냅샷 미보유 부류)·실패는 기존 시트 경로로 자연 fallback.
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+  if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
     try {
       const fromDb = await readCompanyInfoFromDb(spreadsheetId, data.계약일, data.업체명);
       if (hasCompanyInfo(fromDb)) return fromDb;
@@ -221,7 +221,7 @@ export async function loadCompanyInfoByContract(
   if (hasCompanyInfo(archived)) return archived;
   try {
     const meetings = await findMeetingsByDateRecord(
-      { spreadsheetId, cohort: user.cohort, email },
+      { spreadsheetId, cohort: sourceCohort(user), email },
       data.계약일,
       "meeting",
     );
@@ -323,8 +323,8 @@ export async function resolveSheetWithSyncDb(
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   return {
     spreadsheetId: user.spreadsheetId,
-    syncDb: chooseWriteSource(user.cohort, dbEnabled()) === "db",
-    ctx: { spreadsheetId: user.spreadsheetId, cohort: user.cohort, email },
+    syncDb: chooseWriteSource(sourceCohort(user), dbEnabled()) === "db",
+    ctx: { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email },
   };
 }
 

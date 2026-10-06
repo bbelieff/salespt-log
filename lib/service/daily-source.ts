@@ -27,7 +27,19 @@ import { isArenaCohortLabel } from "@/repo/user-priority";
  * 계속 보여주는 유령값 — 1명은 원행 0건인데 시트 캐시가 5,400,000 표시)로 확정, DB 가 오히려
  * 현재 사실을 더 정확히 반영. 전환 시 일부 학생 화면 숫자가 하락(유령값 제거)할 수 있음 —
  * 오류 아님, belie 에게 트레이너 사전 안내 권장 전달함. */
-const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10", "7", "6", "11"]);
+// "0" = 관리자 본인 시험 계정(0기 GM, 2026-10-06 belie) — 새 시트라 옮길 과거 데이터가 없어 처음부터 DB 정본.
+const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10", "7", "6", "11", "0"]);
+
+/**
+ * 저장 위치(DB·시트)를 고를 때 쓰는 기수. 유보(registry B="유보")는 관리자 명단에서 숨기는 표시일 뿐이라
+ * 원래 기수(registry I = 시트 B3 캐시)로 판단한다 — 안 그러면 유보로 바꾸는 순간 DB 기수 학생이 시트 경로로
+ * 바뀌어 최신 DB 기록 대신 시트 사본을 읽고 쓴다(2026-10-06 발견: 11기 하차 2명·0기 GM).
+ * 유보가 아니면 cohort 그대로 — 다른 수강생 동작은 바뀌지 않는다.
+ */
+export function sourceCohort(u: { cohort: string; cohortLabel?: string }): string {
+  const label = (u.cohortLabel ?? "").trim();
+  return u.cohort.trim() === "유보" && label && label !== "유보" ? label : u.cohort;
+}
 
 /** 단일 게이트 — cohort 정규화("8기"→"8") 후 판정. null/빈값 = false.
  * 아레나(A{시즌}-{기수}) 포함 — R2-1.5(db-pilot-arena): 최대 활성 집단 편입.

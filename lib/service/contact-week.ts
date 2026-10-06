@@ -15,6 +15,7 @@ import {
   chooseDailySource,
   weekFunnelFromRows,
   type DailyMetricRow,
+  sourceCohort,
 } from "./daily-source";
 import { CHANNEL_ORDER, Meeting } from "@/types";
 
@@ -100,7 +101,7 @@ export async function loadWeekMeetings(
   // 7일 ISO 날짜 생성 (양 경로 공용 — 카드 슬롯 기준)
   const dates = sevenDays(wsDate);
 
-  const pilotDb = chooseDailySource(user.cohort, dbEnabled()) === "db";
+  const pilotDb = chooseDailySource(sourceCohort(user), dbEnabled()) === "db";
 
   if (pilotDb) {
     try {

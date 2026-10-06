@@ -51,7 +51,7 @@ import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { isCarryoverContract } from "./contract-payment";
 import { findByDateRange } from "@/repo/meetings";
 import { terminatedByChannel, terminatedByWeek } from "./termination-count";
-import { chooseDailySource } from "./daily-source";
+import { chooseDailySource, sourceCohort } from "./daily-source";
 import { computeDbAggregates } from "./dashboard-aggregates";
 import { recognizedAmountForRange, recognizeRecurringOccurrencesForRange } from "./expense-ledger";
 import {
@@ -313,9 +313,9 @@ export async function loadDashboard(
 
   // R2-7b: 파일럿 기수는 DB 집계 서빙(대시보드 시트 왕복 0). 실패 시 시트 경로로 강등
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
-  if (chooseDailySource(user.cohort, dbEnabled()) === "db") {
+  if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
     try {
-      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email, user.cohort);
+      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email, sourceCohort(user));
       reverseShadowCompare(sheetId, view); // 기본 off — 아래 함수 주석(R3 종료) 참고
       // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
       return applyTerminationExclusion(view, termByChannel, termByWeek);
