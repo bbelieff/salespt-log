@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-06 · Claude(경영일지 DC 260927)+Muse(패치 초안) · 관리자 이메일 수강생 클레임 (fix/admin-trainee-claim)
+- 트레이너 행이 있는 관리자도 사전등록 수강생 행(0기 GM)을 클레임하게. 상세 = `docs/plans/active/reserved-db-source.md` 후속.
+
 ### 2026-10-06 · Claude(경영일지 DC 260927)+Muse(문서 초안) · 유보 수강생 DB 읽기 복구·0기 추가 (fix/reserved-db-source)
 - 유보생도 원래 기수로 DB/시트를 판단하고 0기를 DB 목록에 추가. 상세 = `docs/plans/active/reserved-db-source.md`.
 

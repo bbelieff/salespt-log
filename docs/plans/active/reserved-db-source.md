@@ -25,3 +25,8 @@
 
 ## 되돌리기
 squash 커밋 revert. 데이터 변경 없음.
+
+## 후속 (같은 날) — 관리자 이메일의 수강생 클레임
+- 관리자 이메일에 트레이너 행(T)이 있으면 /claim 이 기존 행을 돌려주고 끝나서 0기 GM 사전등록 행을 클레임할 수 없었다.
+- 수정: claimAccount — 관리자 이메일 + 기존 행이 수강생이 아님 + 클레임 기수가 T 가 아니면 일반 수강생 클레임을 진행. 일반 사용자 영향 없음.
+- 테스트 tests/service/auth-admin-trainee-claim.test.ts (패치·테스트 초안: Muse muse-spark-1.3-contributor, 총괄 검토·적용).

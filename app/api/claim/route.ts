@@ -16,6 +16,7 @@ import { claimAccount, ClaimError } from "@/service/auth";
 import { isClaimableCohort } from "@/service/cohort-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+import { isAdminEmail } from "@/auth/identity";
 
 async function POST_handler(req: Request) {
   let email: string;
@@ -40,7 +41,8 @@ async function POST_handler(req: Request) {
   }
 
   try {
-    const result = await claimAccount(email, cohortStr, nameStr);
+    // 관리자 본인 시험 계정(0기 GM) — 트레이너 행이 있어도 사전등록 수강생 행을 클레임(2026-10-06).
+    const result = await claimAccount(email, cohortStr, nameStr, { isAdmin: isAdminEmail(email) });
     // claim 후 캐시 즉시 무효화:
     //   - admin 페이지: 승인 대기 섹션 즉시 노출.
     //   - 홈 페이지("/"): claim 성공한 사용자가 router.push("/") 후 server
