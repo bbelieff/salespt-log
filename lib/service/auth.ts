@@ -120,6 +120,8 @@ export async function claimAccount(
   email: string,
   cohort: string,
   name: string,
+  /** 관리자 이메일이면 true — 라우트가 판정해 넘긴다(서비스는 로그인 모듈을 부르지 않는다). */
+  opts: { isAdmin?: boolean } = {},
 ): Promise<ClaimResult> {
   const existing = await findUserByEmail(email);
   // 보관(행 status=archived 또는 cohorts 탭 보관 기수)뿐이면 short-circuit 하지 않고
@@ -131,14 +133,20 @@ export async function claimAccount(
     existingArchived = isNumericCohortArchived(existing.role, existing.cohort, archivedLabels);
   }
   if (existing && !existingArchived) {
-    return {
-      email: existing.email,
-      cohort: existing.cohort,
-      name: existing.name,
-      spreadsheetId: existing.spreadsheetId,
-      role: existing.role === "admin" ? "trainer" : existing.role,
-      status: existing.status,
-    };
+    // 관리자 본인 시험 계정(0기 GM, 2026-10-06 belie) — 트레이너 행이 있는 관리자도 사전등록 수강생 행을 클레임할 수 있게. 일반 사용자는 영향 없음.
+    const claimCohortUpper = String(cohort).trim().toUpperCase();
+    const isAdminTraineeClaim =
+      opts.isAdmin === true && existing.role !== "trainee" && claimCohortUpper !== "T";
+    if (!isAdminTraineeClaim) {
+      return {
+        email: existing.email,
+        cohort: existing.cohort,
+        name: existing.name,
+        spreadsheetId: existing.spreadsheetId,
+        role: existing.role === "admin" ? "trainer" : existing.role,
+        status: existing.status,
+      };
+    }
   }
 
   const cohortTrim = String(cohort).trim();
