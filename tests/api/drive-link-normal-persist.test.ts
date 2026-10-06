@@ -17,6 +17,9 @@ const api = vi.hoisted(() => ({
 
 vi.mock("@/auth/identity", () => ({
   getWritableUserEmail: api.getWritableUserEmail,
+  // 일반 사용자 흐름 — 관리자 바로 연결(admin-anywhere)은 타지 않는다.
+  getSessionEmail: async () => "student@example.com",
+  isAdminEmail: () => false,
 }));
 vi.mock("@/repo/users", () => ({
   findUserByEmail: api.findUserByEmail,

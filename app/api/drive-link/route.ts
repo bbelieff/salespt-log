@@ -28,7 +28,7 @@ import { listCohorts } from "@/repo/cohorts";
 import { isArenaCohort, normalizeArenaCohort } from "@/repo/users-arena";
 import { nameMatchCandidates } from "@/repo/name-match";
 import { buildArenaCompanyFolderName } from "@/service/cohort-token";
-import { getWritableUserEmail } from "@/auth/identity";
+import { getSessionEmail, getWritableUserEmail, isAdminEmail } from "@/auth/identity";
 import type { User } from "@/types";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
@@ -168,6 +168,14 @@ async function POST_handler(req: Request) {
 
     const body = await req.json().catch(() => ({}));
     const mode = String(body.mode ?? "manual");
+    // 관리자는 원하는 폴더를 바로 연결한다.
+    if (body.parentFolderUrl && isAdminEmail(await getSessionEmail())) {
+      const adminFolderId = extractFolderId(String(body.parentFolderUrl));
+      if (adminFolderId) {
+        await updateDriveLink(email, { feedbackFolderId: adminFolderId, driveLinkStatus: "ok", driveParentPath: "관리자 지정" });
+        return NextResponse.json({ ok: true, feedbackFolderId: adminFolderId, status: "ok" });
+      }
+    }
     const arena = isArenaCohort(user.cohort);
 
     let feedbackFolderId: string | null = null;

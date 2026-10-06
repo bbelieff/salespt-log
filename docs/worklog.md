@@ -7,6 +7,9 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-06 · Claude(경영일지 DC 260927)+Muse(패치 초안) · 관리자는 어디든 (feat/admin-anywhere)
+- 이름 폴더 없으면 루트에 바로 생성 · 관리자 Drive 연결 검증 생략. Muse 스타일 지시문(.agents/tools/muse-coding-style.md) 첫 적용. 상세 = `docs/plans/active/admin-anywhere.md`.
+
 ### 2026-10-06 · Claude(경영일지 DC 260927)+Muse(패치 초안) · 관리자 이메일 수강생 클레임 (fix/admin-trainee-claim)
 - 트레이너 행이 있는 관리자도 사전등록 수강생 행(0기 GM)을 클레임하게. 상세 = `docs/plans/active/reserved-db-source.md` 후속.
 

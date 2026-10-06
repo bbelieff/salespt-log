@@ -231,7 +231,7 @@ async function POST_handler(req: Request) {
         ? await findExistingSheetIdByCohortName(parsed.label, name)
         : null;
 
-      // create 모드: 루트 폴더 안에서 이름 포함 폴더 매칭 (0=없음 / 1=사용 / 2+=명확화).
+      // create 모드: 루트 폴더 안에서 이름 포함 폴더 매칭 (0=루트에 바로 만들기 / 1=사용 / 2+=명확화).
       let folderId: string | null = null;
       let folderError: string | undefined;
       if (mode === "create" && name && !existingSheetId) {
@@ -239,10 +239,12 @@ async function POST_handler(req: Request) {
         const fm = await findFolderContainingName(name, extractDriveFolderId(cfg!.rootFolderId));
         folderId = fm.id;
         if (!fm.id) {
-          folderError =
-            fm.matchedNames.length > 1
-              ? `이름 폴더 여러 개 — 명확화 필요: ${fm.matchedNames.join(" / ")}`
-              : "이름 폴더 없음 (루트 폴더 내 매칭 실패)";
+          // 이름 폴더가 없으면 루트 폴더에 바로 만든다.
+          if (fm.matchedNames.length === 0) {
+            folderId = extractDriveFolderId(cfg!.rootFolderId);
+          } else {
+            folderError = `이름 폴더 여러 개 — 명확화 필요: ${fm.matchedNames.join(" / ")}`;
+          }
         }
       }
 
