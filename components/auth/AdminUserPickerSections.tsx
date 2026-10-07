@@ -291,6 +291,7 @@ export function ReservedSection({
   nameByEmail,
   onRestore,
   onPurge,
+  onPick,
   linkedBySheet,
   viewOnly = false,
 }: {
@@ -299,6 +300,8 @@ export function ReservedSection({
   nameByEmail: Map<string, string>;
   onRestore: (email: string) => void;
   onPurge: (email: string, name: string) => void;
+  /** 유보여도 관리자는 웹앱으로 들어가 본다(예: 0기 GM 시험 계정). */
+  onPick?: (email: string) => void;
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
 }) {
@@ -378,6 +381,17 @@ export function ReservedSection({
                   >
                     퇴출
                   </button>
+                  {onPick && u.spreadsheetId && (
+                    <button
+                      type="button"
+                      onClick={() => onPick(u.email)}
+                      disabled={busy !== null}
+                      title="웹앱 (5탭 UI) 으로 진입 — impersonation"
+                      className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                    >
+                      {busy === u.email ? "여는 중..." : "웹앱 →"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

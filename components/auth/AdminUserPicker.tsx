@@ -486,6 +486,7 @@ export default function AdminUserPicker({
               nameByEmail={nameByEmail}
               onRestore={restore}
               onPurge={purge}
+              onPick={pick}
               linkedBySheet={linkedBySheet}
               viewOnly={viewOnly}
             />
