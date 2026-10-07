@@ -49,7 +49,9 @@ async function POST_handler(req: Request) {
   }
   const target = body.email;
 
-  if (target === null || target === "" || target === undefined) {
+  // 본인 선택(관리자 본인의 수강생 시트, 예: 0기 GM)은 대리 보기를 끄고 본인 화면으로 연다.
+  const isSelf = typeof target === "string" && target.trim().toLowerCase() === sessionEmail.toLowerCase();
+  if (target === null || target === "" || target === undefined || isSelf) {
     await setImpersonation(null);
     revalidateAdminPages();
     return NextResponse.json({ impersonating: null });

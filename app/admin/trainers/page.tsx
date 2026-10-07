@@ -74,7 +74,8 @@ export default async function AdminTrainersPage() {
   const adminSet = new Set(adminLc);
   const activeAll = fullList.filter((u) => {
     if (u.role === "trainer" && u.status === "active") return true;
-    if (adminSet.has(u.email.toLowerCase())) return true;
+    // 관리자 본인의 수강생 행(예: 0기 GM)은 트레이너가 아니다.
+    if (u.role !== "trainee" && adminSet.has(u.email.toLowerCase())) return true;
     return false;
   });
 
