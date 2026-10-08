@@ -175,7 +175,7 @@ export default function MeetingResultCard({
           </div>
 
           <CarryoverBadge 구분={meeting.구분} variant="note" />
-          <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
+          <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} vaultTarget={{ meetingId: meeting.id }} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">

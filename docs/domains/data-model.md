@@ -59,6 +59,18 @@ last_review: 2026-04-27
 
 # 백엔드 데이터 모델 — 경영일지 시트 1:1 매핑
 
+## 업체 계정 보관함 (2026-10-08, DB 전용·암호화)
+
+수강생이 고객 대신 관리하는 아이디·비밀번호·계좌·주민번호 전체를 업체별로 보관한다. **시트 미러에 보내지 않는다.**
+
+- `VaultItem`: kind(`login`·`bank`·`rrn`·`other`), label, id, secret, note. `VaultItems` 최대 50개.
+- `VaultPin`: 숫자 4~8자리. 시트(수강생)마다 하나, 해시(scrypt)만 저장.
+- `VaultTarget`: meetingId 또는 계약일+업체명. 서버가 `m:<미팅 id>`(계약은 그 계약의 미팅) 또는 영업기록 없는 업체만 `c:<계약일>|<업체명>` 키로 바꾼다.
+- `VaultView`: hasPin, unlocked, unlockedUntil, count, items(열렸을 때만).
+- 테이블 `company_vault`(spreadsheet_id, company_key, sealed=AES-256-GCM 암호문, item_count) · `vault_pins`(spreadsheet_id, pin_hash, failed_count, locked_until). 런타임 `create table if not exists`.
+- 열림: PIN 한 번 → 그 수강생의 모든 업체 보관함 10분(쓸 때마다 연장). 서명된 httpOnly 쿠키 `salespt_vault`. 5번 틀리면 5분 잠금. 관리자는 PIN 초기화만(내용 유지).
+- 키는 `AUTH_SECRET` HKDF 파생(salt `salespt-company-vault.v1`) — AUTH_SECRET 교체 시 기존 보관 내용 열 수 없음.
+
 ## 비용 원장 (2026-07-23, DB 전용)
 
 ### Expense ledger exports

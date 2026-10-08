@@ -26,7 +26,7 @@ export const inputCls =
 export const readOnlyCls =
   "w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:outline-none";
 
-const RRN_CUT_MSG = "앞 6자리만 저장해요. 뒷자리는 입력되지 않아요.";
+const RRN_CUT_MSG = "여기엔 앞 6자리만 저장해요. 뒷자리는 아래 계정 보관함에 넣어 주세요.";
 const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
 
 /** 설명이 라벨과 다를 때만 (?) 와 sr-only 설명을 단다 — 그 설명 요소 id. */
