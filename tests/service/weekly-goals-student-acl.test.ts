@@ -8,7 +8,7 @@ import { User } from "@/types";
 const m = vi.hoisted(() => ({
   getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(),
   findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(),
-  dbEnabled: vi.fn(), chooseDailySource: vi.fn(), readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
+  dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort, readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), saveWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
   canAccess: vi.fn(),
 }));

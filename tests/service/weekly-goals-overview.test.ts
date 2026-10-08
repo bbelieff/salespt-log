@@ -9,7 +9,7 @@ vi.mock("@/service/weekly-goals", () => ({ listGoalStudents: m.listGoalStudents,
 vi.mock("@/repo/users", () => ({ findUserByEmail: m.findUserByEmail }));
 vi.mock("@/repo/db/weekly-goals", () => ({ readWeeklyGoal: m.readWeeklyGoal, readWeeklyGoalPrivate: m.readWeeklyGoalPrivate }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: m.dbEnabled, readSalesRowsFromDb: m.readSalesRowsFromDb }));
-vi.mock("@/service/daily-source", () => ({ chooseDailySource: m.chooseDailySource }));
+vi.mock("@/service/daily-source", () => ({ chooseDailySource: m.chooseDailySource, sourceCohort: (u: { cohort: string }) => u.cohort }));
 import { loadGoalOverview } from "@/service/weekly-goals-overview";
 
 const student = (index = 1): GoalStudent => ({ email: `student${index}@example.test`, name: `Fixture ${index}`, cohort: "test-cohort" });

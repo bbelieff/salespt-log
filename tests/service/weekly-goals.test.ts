@@ -4,7 +4,7 @@ import { EMPTY_GOALS } from "@/types/weekly-goals";
 const m = vi.hoisted(() => ({
   grant: vi.fn(),
   getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
-  findUserByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(),
+  findUserByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort,
   readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoal: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
   todayKST: vi.fn(),
