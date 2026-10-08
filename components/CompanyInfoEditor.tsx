@@ -31,6 +31,8 @@ import {
 import { inputCls } from "./company-info/CompanyInfoField";
 import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
+import CompanyVaultSection from "./company-info/CompanyVaultSection";
+import type { VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
 import { fontScaleOf } from "@/util/font-scale";
@@ -61,6 +63,8 @@ interface Props {
   /** PC 실무/수납의 다른 1레벨 섹션과 같은 헤더 규격. */
   desktopHeading?: boolean;
   splitInline?: boolean;
+  /** 있으면 「계정 보관함」을 보여 준다 — 미팅 id 또는 계약일+업체명(아직 저장 안 된 미팅은 없음). */
+  vaultTarget?: VaultTarget;
 }
 
 export default function CompanyInfoEditor({
@@ -73,6 +77,7 @@ export default function CompanyInfoEditor({
   hideSave,
   desktopHeading,
   splitInline = false,
+  vaultTarget,
 }: Props) {
   const [open, setOpen] = useState(hideSave === true);
   const [modal, setModal] = useState(false);
@@ -405,6 +410,7 @@ export default function CompanyInfoEditor({
             />
           )}
           {body(splitInline, "panel")}
+          {vaultTarget && !modal && <CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-panel`} />}
           {txtMsg && (
             <p className={`text-px-11 ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
               {txtMsg.ok ? "✓" : "✕"} {txtMsg.text}
@@ -441,6 +447,7 @@ export default function CompanyInfoEditor({
               </button>
             </div>
             {body(false, "modal")}
+            {vaultTarget && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} /></div>}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

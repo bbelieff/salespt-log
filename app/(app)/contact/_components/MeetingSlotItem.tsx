@@ -324,6 +324,7 @@ function SavedItem({ index, meeting, reservationDate, onPatch, onRemove }: Saved
           <CompanyInfoEditor
             key={meeting.id}
             identityKey={meeting.id}
+            vaultTarget={{ meetingId: meeting.id }}
             value={meeting.업체정보}
             txtCompanyName={meeting.업체명}
             hideSave

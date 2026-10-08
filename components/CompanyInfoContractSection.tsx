@@ -128,6 +128,7 @@ export default function CompanyInfoContractSection({
       busy={busy}
       txtCompanyName={업체명}
       identityKey={identityKey}
+      vaultTarget={{ 계약일, 업체명 }}
       hideSave={hideSave}
       desktopHeading={desktopHeading}
       splitInline={splitInline}

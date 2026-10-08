@@ -57,6 +57,10 @@
 - **TraineeCard/ReservedSection 진입**: admin(`!viewOnly`)·담당 트레이너 카드·유보 목록은 녹색 시트 대신 compact [주간목표] (`rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50`, student 인코딩·spreadsheetId 무관). admin `returnTo=/admin/users`, trainer `returnTo=/trainer`. [웹앱 →]·배정·복귀/퇴출·read-only 가드는 그대로.
 - 세부 계약과 미검증 운영 경계: [weekly-goals.md](../domains/weekly-goals.md).
 
+## 업체 계정 보관함 (2026-10-08)
+
+- **CompanyVaultSection** (`components/company-info/CompanyVaultSection.tsx`): 업체정보 편집기(패널·팝업) 안 「계정 보관함」 카드. `rounded-xl border border-gray-200 bg-white p-3 shadow-sm`, 머리 「계정 보관함」 + 배지 「잠금 저장」(emerald-50/700). 상태 4가지 — 불러오는 중 / PIN 만들기(4~8자리 2칸) / 잠김(항목 수 + PIN 1칸 + [열기]) / 열림(mm:ss 카운트다운·[PIN 바꾸기]·[지금 잠그기], 항목 카드: 종류·이름·앞값[복사]·가릴값 password[보기][복사]·메모, 점선 [+ 항목 추가]). 편집 800ms 뒤 자동 저장, 401 이면 잠김으로 돌아가 입력값 보존 후 다시 열면 저장. 주 행동만 brand-red 채움. 초안 Muse, 총괄 검수.
+
 ## 1. Buttons
 
 ### Primary Button
