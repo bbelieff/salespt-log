@@ -39,4 +39,12 @@ describe("★빌드가 2GB 안에 들어오게 유지한다", () => {
     expect(deploy).toContain("--max-old-space-size=2048");
     expect(deploy).not.toContain("--max-old-space-size=4096");
   });
+
+  it("★배포 빌드는 CI 와 중복인 린트·타입검사를 건너뛴다(2026-10-09 타입검사 단계 OOM)", () => {
+    expect(deploy).toContain("SKIP_BUILD_CHECKS=1 BUILD_DIST_DIR=.next-build npm run build");
+    expect(config).toContain('eslint: { ignoreDuringBuilds: process.env.SKIP_BUILD_CHECKS === "1" }');
+    expect(config).toContain('typescript: { ignoreBuildErrors: process.env.SKIP_BUILD_CHECKS === "1" }');
+    // 로컬·CI 빌드에서는 검사를 끄지 않는다(상수 true 로 굳는 회귀 방지).
+    expect(config).not.toMatch(/ignoreDuringBuilds: true|ignoreBuildErrors: true/);
+  });
 });

@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 배포 빌드 OOM — CI 중복 린트·타입검사 생략
+- 사고: #1104 머지 후 Deploy to VPS 2연속 실패(run 37814981429 attempt 1·2). 로그상 린트 경고 출력 직후 「Ineffective mark-compacts near heap limit」 — next build 의 린트·타입검사 단계가 2048MB 힙 초과. 빌드 실패라 swap 안 됨 → 옛 버전 계속 서빙, health 200(사용자 영향 없음).
+- 결정(자율, 되돌리기 쉬움): 힙 상향은 반증된 처방(2026-05-13 OOM-killer)이라 일을 줄임. `SKIP_BUILD_CHECKS=1` 일 때만 next.config 의 eslint/typescript 빌드 검사 생략, deploy.yml 빌드에 그 환경변수. 같은 검사는 CI check.sh 가 PR·master 푸시마다 수행. 구조 테스트 `build-memory-guard` 에 가드 추가.
+- 되돌리기: 이 squash 커밋 revert.
+
 ### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 대시보드 모바일 차트 옆으로 넘기기 (인터랙션 ②)
 - 사용자 승인 목업(인터랙션 3종 중 ②). 구역: `components/dashboard/MobileChartCarousel.tsx`(신규) · `app/(app)/dashboard/page.tsx` · `app/globals.css` · 테스트·components.md.
 - 결정: 1024px 미만에서만 퍼널·주차 추이·채널별 성과를 가로 스냅(칩+점). PC 는 `pc:contents` 로 그리드 그대로. 재무·생산성·목표 카드는 제외.

@@ -224,7 +224,8 @@ jobs:
             else
               echo "빌드 캐시 미복사 (clean=${CLEAN_BUILD:-false} 또는 직전 캐시 없음) — 맨땅 빌드"
             fi
-            BUILD_DIST_DIR=.next-build npm run build
+            # 린트·타입검사는 CI(check.sh)가 이미 통과시켰다 — 배포 빌드에선 중복 생략(2026-10-09 OOM, next.config.mjs).
+            SKIP_BUILD_CHECKS=1 BUILD_DIST_DIR=.next-build npm run build
             # 새 빌드 검증 — 실패 시 swap 안 함 → 옛 .next 그대로 서빙(빌드 실패도 무중단).
             test -f .next-build/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패, swap 안 함(무중단 유지)"; exit 1; }
             echo "::endgroup::"
