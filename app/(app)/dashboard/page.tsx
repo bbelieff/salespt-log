@@ -10,7 +10,7 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
-import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
+import DashboardFinance from "@/components/dashboard/DashboardFinance";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
@@ -71,12 +71,6 @@ export default function DashboardPage() {
     };
   }, [me.data, today, weeks]);
 
-  // 계약 건수 (matrix.계약 합) — 영업이익 상세 패널 보조 텍스트
-  const contractCount = useMemo(() => {
-    if (!dash.data) return undefined;
-    return dash.data.channelMatrix.reduce((s, m) => s + m.계약, 0);
-  }, [dash.data]);
-
   // pc:min-h-0: short content must not force viewport height — the (app)
   // shell reserves no desktop tabbar space and page bottom padding stays small.
   return (
@@ -133,26 +127,10 @@ export default function DashboardPage() {
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {dash.data && (
           <>
-            {/* [3] 매출·비용·영업이익 3열 1행 — 본문 상단, 진행도와 분리(별도 카드).
-                상세(수임비·수수료/DB·추가비용/이익률·시즌·이월·전체)는 컬럼 클릭 시
-                행 아래 공용 패널에 펼친다(SSOT: docs/design/components.md §9-2). */}
-            <section aria-label="매출·비용·영업이익" className="rounded-2xl border border-slate-200 bg-slate-100 p-2">
-              <FinanceSummaryBoxes
-                revenue={dash.data.kpi.총매출}
-                cost={dash.data.kpi.총비용}
-                feeIncome={dash.data.kpi.수임비합}
-                commissionIncome={dash.data.kpi.수수료합}
-                dbCostTotal={dash.data.additionalCost.dbCostTotal}
-                additionalCost={dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
-                onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
-                weeks={weeks}
-                contractCount={contractCount}
-                carryoverRevenue={dash.data.kpi.이월매출}
-                totalRevenue={dash.data.kpi.전체매출}
-                carryoverCost={dash.data.kpi.이월비용}
-                totalCost={dash.data.kpi.전체비용}
-              />
-            </section>
+            {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).
+                아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
+                상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
+            <DashboardFinance onOpenExpenseLedger={() => setExpenseLedgerOpen(true)} />
 
             {/* pc(1024~1599): 좌측(생산성+진행건+주간목표 stacked) | 우측 퍼널, 아래 추이 | 채널 2열.
                 wide1600+(뷰포트−사이드바 224 ≥1376, 6칸 그리드 — 2026-09-28 belie 안):
@@ -168,7 +146,7 @@ export default function DashboardPage() {
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:contents min-[1600px]:space-y-0">
                 <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:col-span-3">
                   <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} className="min-[1600px]:flex-1" />
-                  <DashboardWorkStatus courseStartISO={me.data?.courseStartISO ?? ""} todayISO={today} />
+                  <DashboardWorkStatus todayISO={today} />
                 </div>
                 <WeeklyGoalSummary className="pc:flex-none min-[1600px]:col-span-3" />
               </div>

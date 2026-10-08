@@ -281,7 +281,8 @@ export default function PaymentPage() {
         <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PaymentPerformanceSummary
-          rows={activeWorkContracts(allRows, courseStartISO)}
+          rows={allRows}
+          workRows={activeWorkContracts(allRows)}
           todos={allTodos.data?.todos ?? []}
           onNavigate={(row, slot) => {
             guardedNav(() => { setListMode("company"); setCompanyQuery(""); setSelectedRow(row); setSelectedCompanyKey(companyKeyOfRow(allRows, row)); setFocusRequestId((id) => id + 1); });

@@ -8,19 +8,18 @@ import { activeWorkContracts, buildWorkStatusItems } from "@/lib/analytics/payme
 import WorkStatusBar from "@/components/payment/WorkStatusBar";
 
 interface Props {
-  courseStartISO: string;
   todayISO: string;
 }
 
-export default function DashboardWorkStatus({ courseStartISO, todayISO }: Props) {
+export default function DashboardWorkStatus({ todayISO }: Props) {
   const router = useRouter();
   const contracts = useContractPayments();
   const todos = useAllTodos();
   const items = useMemo(() => buildWorkStatusItems(
-    activeWorkContracts(contracts.data?.rows ?? [], courseStartISO),
+    activeWorkContracts(contracts.data?.rows ?? []),
     todos.data?.todos ?? [],
     todayISO,
-  ), [contracts.data?.rows, todos.data?.todos, courseStartISO, todayISO]);
+  ), [contracts.data?.rows, todos.data?.todos, todayISO]);
 
   return (
     <section data-dashboard-work-status aria-label="전체 진행건" className="relative z-20 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">

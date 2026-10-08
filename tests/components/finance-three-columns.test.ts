@@ -16,12 +16,8 @@ const baseProps = {
   dbCostTotal: 3_000_000,
   additionalCost: 500_000 as number | null,
   onOpenExpenseLedger: () => {},
-  weeks: 8,
+  periodLabel: "전체",
   contractCount: 12,
-  carryoverRevenue: 1_000_000,
-  totalRevenue: 13_345_678,
-  carryoverCost: 200_000,
-  totalCost: 3_700_000,
 };
 
 let root: Root | undefined;
@@ -123,10 +119,6 @@ describe("finance three-column row", () => {
         ...baseProps,
         revenue: 99_999_999,
         cost: 99_999_999,
-        carryoverRevenue: 0,
-        totalRevenue: 99_999_999,
-        carryoverCost: 0,
-        totalCost: 99_999_999,
       }),
     );
     // 양수 최댓값 전체 표시 (₩99,999,999).
@@ -141,10 +133,6 @@ describe("finance three-column row", () => {
         ...baseProps,
         revenue: 0,
         cost: 99_999_999,
-        carryoverRevenue: 0,
-        totalRevenue: 0,
-        carryoverCost: 0,
-        totalCost: 99_999_999,
       }),
     );
     const neg = view.querySelector("#fin-col-profit [data-profit-sign]");
@@ -224,37 +212,17 @@ describe("finance three-column row", () => {
     expect(disconnect).toHaveBeenCalled();
   });
 
-  it("keeps the profit detail table amounts on one line up to 8 digits", () => {
-    render(
-      createElement(FinanceSummaryBoxes, {
-        ...baseProps,
-        revenue: 12_345_678,
-        cost: 3_500_000,
-        carryoverRevenue: 10_000_000,
-        totalRevenue: 22_345_678,
-        carryoverCost: 1_000_000,
-        totalCost: 4_500_000,
-      }),
-    );
-    clickColumn("fin-col-profit");
-    const table = document.querySelector('[data-testid="fin-profit-table"]');
-    expect(table).not.toBeNull();
-    const html = table?.innerHTML ?? "";
-    expect(html).not.toContain("anywhere");
-    // 숫자 셀은 모두 nowrap 한 줄 + 전체 금액.
-    const cells = [...(table?.querySelectorAll("span") ?? [])].filter((s) =>
-      s.textContent?.includes("₩"),
-    ) as HTMLSpanElement[];
-    expect(cells.length).toBe(6);
-    for (const cell of cells) {
-      expect(cell.style.whiteSpace).toBe("nowrap");
-    }
-    const text = table?.textContent ?? "";
-    expect(text).toContain("₩12,345,678");
-    expect(text).toContain("₩10,000,000");
-    expect(text).toContain("₩22,345,678");
-    // 숫자열 우선 폭: 행 라벨열이 좁고 숫자 3열이 균등 분할.
-    expect(table?.className).toContain("grid-cols-[2.5rem_repeat(3,minmax(0,1fr))]");
+  it("shows refunds as a separate revenue detail line only when there are any", () => {
+    render(createElement(FinanceSummaryBoxes, { ...baseProps, refunded: 300_000 }));
+    clickColumn("fin-col-revenue");
+    expect(panel().textContent).toContain("반환(계약해지)");
+    expect(panel().textContent).toContain("−₩300,000");
+    act(() => root?.unmount());
+    container?.remove();
+    root = undefined;
+    render(createElement(FinanceSummaryBoxes, { ...baseProps }));
+    clickColumn("fin-col-revenue");
+    expect(panel().textContent).not.toContain("반환");
   });
 
   it("opens one detail panel at a time below the row and closes on second click", () => {
@@ -307,23 +275,18 @@ describe("finance three-column row", () => {
     expect(view.querySelector("#fin-col-cost span.text-red-600")).not.toBeNull();
   });
 
-  it("keeps margin, season/carryover/total, weeks, and contract count in the profit panel", () => {
-    render(createElement(FinanceSummaryBoxes, { ...baseProps }));
+  it("keeps margin, the chosen period, and contract count in the profit panel — no season/carryover table", () => {
+    render(createElement(FinanceSummaryBoxes, { ...baseProps, periodLabel: "이번 달 10/01~10/31" }));
     clickColumn("fin-col-profit");
     const text = panel().textContent ?? "";
     // 이익률 = (12,345,678 − 3,500,000) / 12,345,678 × 100 = 71.6%
     expect(text).toContain("이익률");
     expect(text).toContain("71.6%");
-    expect(text).toContain("8주 누적");
+    expect(text).toContain("이번 달 10/01~10/31");
     expect(text).toContain("계약 12건");
-    expect(text).toContain("시즌");
-    expect(text).toContain("이월");
-    expect(text).toContain("전체");
-    expect(text).toContain("₩12,345,678"); // 시즌 매출
-    expect(text).toContain("₩1,000,000"); // 이월 매출
-    expect(text).toContain("₩13,345,678"); // 전체 매출
-    expect(text).toContain("₩200,000"); // 이월 비용
-    expect(text).toContain("₩3,700,000"); // 전체 비용
+    expect(text).not.toContain("시즌");
+    expect(text).not.toContain("이월");
+    expect(document.querySelector('[data-testid="fin-profit-table"]')).toBeNull();
   });
 
   it("keeps fee/commission revenue detail and the ledger entry inside cost detail", () => {
