@@ -1051,7 +1051,7 @@ app/(app)/dashboard/page.tsx
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
-    FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열)
+    MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
 
 **카드 서식 통일(2026-09-28)**: 대시보드 본문 카드 6종(생산성·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨을 그대로 쓴다.
@@ -1650,3 +1650,6 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 ### 회의록 실적 집계 기간 (2026-09-25 사용자 확인)
 - GoalCopyPanel 금주미팅·금주계약은 목표를 세우는 선택 주차의 직전 금~목 미팅 기록을 집계한다. 현재 날짜가 금요일로 넘어가도 같은 선택 주차의 결과는 변하지 않는다. 내부 복사 미리보기에는 reporting.start/end 기간을 표시한다. 선택 주차 목표·누적 실적·상태/이월 기준·14열 순서는 유지한다.
+
+### MobileChartCarousel — 대시보드 차트 옆으로 넘기기 (2026-10-09, 인터랙션 ②)
+`components/dashboard/MobileChartCarousel.tsx`. 1024px 미만에서 아래 차트 3종(영업 퍼널·주차 추이·채널별 성과)을 한 장씩 멈추는 가로 넘기기(CSS scroll-snap)로 보여 준다. 카드 폭 5/6이라 다음 카드가 살짝 보인다. 위 칩(현재 차트 `aria-pressed`)을 누르면 그 차트로 이동하고, 아래 점이 위치를 보여 준다. 움직임 줄이기 설정이면 즉시 이동한다. PC(≥1024px)에서는 래퍼·스크롤러가 `pc:contents` 로 풀려 기존 그리드 칸·높이 정렬이 그대로다(칩·점 숨김). 재무·생산성·주간 목표 카드는 넘기기에 넣지 않는다. 스크롤바 숨김은 `.chart-snap-scroller`(globals.css).

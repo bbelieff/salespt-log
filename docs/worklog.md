@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 대시보드 모바일 차트 옆으로 넘기기 (인터랙션 ②)
+- 사용자 승인 목업(인터랙션 3종 중 ②). 구역: `components/dashboard/MobileChartCarousel.tsx`(신규) · `app/(app)/dashboard/page.tsx` · `app/globals.css` · 테스트·components.md.
+- 결정: 1024px 미만에서만 퍼널·주차 추이·채널별 성과를 가로 스냅(칩+점). PC 는 `pc:contents` 로 그리드 그대로. 재무·생산성·목표 카드는 제외.
+- 검증: 합성 대시보드 375px — 슬라이드 293px×3, 페이지 가로 넘침 없음, 칩 「채널별 성과」→ 끝까지 이동·aria-pressed 갱신. 1280px — 칩 숨김, 그리드 2열 배치 그대로.
+
 ### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 인터랙션 ① 실무/수납 상세 스티키
 - 사용자 요청: 제품 인터랙션(스티키·스크롤 스냅·패럴랙스) 설계 → 목업 승인(3종 모두) → 추천 순서대로 운영 배포. 이 항목은 ①.
 - 구역: `app/(app)/payment/{page.tsx,_components/{ContractRow,ContractSlots,ContractListTable,InstitutionWorkList}.tsx}` · `components/CompanyInfoEditor.tsx`(desktopHeading 전용 클래스) · `app/globals.css`(글래스 구역 앞) · 테스트·tokens.md·components.md.

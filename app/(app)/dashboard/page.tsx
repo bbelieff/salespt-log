@@ -11,12 +11,17 @@ import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
 import DashboardFinance from "@/components/dashboard/DashboardFinance";
+import MobileChartCarousel from "@/components/dashboard/MobileChartCarousel";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
 import DashboardWorkStatus from "@/components/dashboard/DashboardWorkStatus";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
+
+/** 모바일 차트 카드: 다음 카드가 살짝 보이는 폭 + 한 장씩 멈춤. PC 는 그리드 칸(폭 자동). */
+const CHART_SLIDE = "min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto";
+const CHART_LABELS = ["영업 퍼널", "주차 추이", "채널별 성과"] as const;
 
 function fmtMD(iso: string): string {
   const [, m, d] = iso.split("-").map((s) => parseInt(s, 10));
@@ -150,14 +155,17 @@ export default function DashboardPage() {
                 </div>
                 <WeeklyGoalSummary className="pc:flex-none min-[1600px]:col-span-3" />
               </div>
-              <div className="min-w-0 min-[1600px]:col-span-2"><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
-              <div className="min-w-0 min-[1600px]:col-span-2"><WeeklyDualChart points={dash.data.weeklyTrend} /></div>
-              <div className="min-w-0 min-[1600px]:col-span-2">
-                <ChannelPerformance weeks={weeks}
-                  costBreakdown={dash.data.costBreakdown}
-                  matrix={dash.data.channelMatrix}
-                />
-              </div>
+              {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
+              <MobileChartCarousel labels={CHART_LABELS}>
+                <div className={CHART_SLIDE + " min-[1600px]:col-span-2"}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
+                <div className={CHART_SLIDE + " min-[1600px]:col-span-2"}><WeeklyDualChart points={dash.data.weeklyTrend} /></div>
+                <div className={CHART_SLIDE + " min-[1600px]:col-span-2"}>
+                  <ChannelPerformance weeks={weeks}
+                    costBreakdown={dash.data.costBreakdown}
+                    matrix={dash.data.channelMatrix}
+                  />
+                </div>
+              </MobileChartCarousel>
             </div>
           </>
         )}
