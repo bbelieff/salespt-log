@@ -12,7 +12,12 @@
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
-import { findUserByEmail, setTraineeReservation } from "@/repo/users";
+import {
+  findUserByEmail,
+  isReservedTrainee,
+  listAllUsers,
+  setTraineeReservation,
+} from "@/repo/users";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function POST_handler(req: Request) {
@@ -39,11 +44,28 @@ async function POST_handler(req: Request) {
     return NextResponse.json({ error: "not_trainee" }, { status: 404 });
   }
 
-  await setTraineeReservation(target, body.reserved);
+  // 한 사람이 여러 이메일로 같은 시트를 쓰면(연결 계정) 함께 유보·복귀한다.
+  const emails = await linkedTraineeEmails(target, u.spreadsheetId, body.reserved);
+  for (const email of emails) await setTraineeReservation(email, body.reserved);
   revalidateAdminPages();
   return NextResponse.json({
-    updated: { email: target, reserved: body.reserved },
+    updated: { email: target, reserved: body.reserved, emails },
   });
+}
+
+async function linkedTraineeEmails(
+  target: string,
+  spreadsheetId: string,
+  reserved: boolean,
+): Promise<string[]> {
+  const emails = new Set([target]);
+  if (!spreadsheetId) return [...emails];
+  for (const other of await listAllUsers()) {
+    if (other.role !== "trainee" || other.spreadsheetId !== spreadsheetId) continue;
+    if (isReservedTrainee(other) === reserved) continue;
+    emails.add(other.email);
+  }
+  return [...emails];
 }
 
 // API 타이밍 계측 (db-migration-pilot §1 P0)
