@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 로그인 PC 포인터 패럴랙스 (인터랙션 ③)
+- 사용자 승인 목업(인터랙션 3종 중 ③). 구역: `components/auth/{LoginScene,LoginParallaxStage(신규)}.tsx` · 테스트·components.md.
+- 결정: PC(마우스)에서만 층별 깊이 이동(배경 6 · 오라 10 · 도넛 14 · 이모지 20/26 · 로고 4px), 글·버튼 고정. 터치·움직임 줄이기는 무동작. 함께 고침: 움직임 줄이기 설정을 무시하던 애니메이션 → 끄고 이모지 바로 표시.
+- 검증: 합성 로그인 1280px — 좌상단 마우스에서 층별 이동량 6:10:14:20:26:4 비율, `<main>` transform 없음, 버튼 1개. 375px(터치) — 변수 미기록, 가로 넘침 없음.
+
 ### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 배포 빌드 OOM — CI 중복 린트·타입검사 생략
 - 사고: #1104 머지 후 Deploy to VPS 2연속 실패(run 37814981429 attempt 1·2). 로그상 린트 경고 출력 직후 「Ineffective mark-compacts near heap limit」 — next build 의 린트·타입검사 단계가 2048MB 힙 초과. 빌드 실패라 swap 안 됨 → 옛 버전 계속 서빙, health 200(사용자 영향 없음).
 - 결정(자율, 되돌리기 쉬움): 힙 상향은 반증된 처방(2026-05-13 OOM-killer)이라 일을 줄임. `SKIP_BUILD_CHECKS=1` 일 때만 next.config 의 eslint/typescript 빌드 검사 생략, deploy.yml 빌드에 그 환경변수. 같은 검사는 CI check.sh 가 PR·master 푸시마다 수행. 구조 테스트 `build-memory-guard` 에 가드 추가.

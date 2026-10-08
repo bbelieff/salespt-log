@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import WebviewWarning from "./WebviewWarning";
+import LoginParallaxStage from "./LoginParallaxStage";
 import { safeLoginReturn } from "@/util/login-return";
 
 const FLUENT = "https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets";
@@ -27,6 +28,10 @@ const POS = [
   { x: 0, y: 1 }, { x: -0.707, y: 0.707 }, { x: -1, y: 0 }, { x: -0.707, y: -0.707 },
 ];
 
+/** PC 포인터 패럴랙스 깊이(px) — `--lp-x/y`(-1~1, LoginParallaxStage)에 곱한다. 0 이면 제자리. */
+const depth = (px: number) => `calc(var(--lp-x, 0) * ${px}px) calc(var(--lp-y, 0) * ${px}px)`;
+const PARALLAX_EASE = "translate 0.6s cubic-bezier(.22,1,.36,1)";
+
 export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-white">
@@ -35,8 +40,10 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
 
       {/* aurora bg */}
       <div
-        className="pointer-events-none fixed inset-0 z-0"
+        className="login-anim pointer-events-none fixed -inset-2 z-0"
         style={{
+          translate: depth(6),
+          transition: PARALLAX_EASE,
           background:
             "radial-gradient(ellipse 60% 40% at 20% 20%, rgba(215,22,23,0.10) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 80% 30%, rgba(255,107,107,0.08) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 50% 100%, rgba(0,0,0,0.04) 0%, transparent 60%), linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%)",
           animation: "auroraShift 14s ease-in-out infinite alternate",
@@ -49,12 +56,15 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
         @keyframes donutPulse { 0%,100% {transform:scale(1);opacity:.95} 50% {transform:scale(1.02);opacity:1} }
         @keyframes emojiPop { 0% {opacity:0;transform:scale(0)} 60% {opacity:1;transform:scale(1.15)} 100% {opacity:1;transform:scale(1)} }
         @keyframes emojiFloat { 0%,100% {translate:0 0} 50% {translate:0 -8px} }
+        @media (prefers-reduced-motion: reduce) {
+          .login-anim { animation: none !important; }
+          .login-emoji { animation: none !important; opacity: 1 !important; }
+        }
       `}</style>
 
       <div className="relative z-10 mx-auto flex min-h-dvh max-w-sm flex-col px-8 pb-8">
         {/* logo stage */}
-        <div
-          className="relative flex flex-1 items-center justify-center py-12"
+        <LoginParallaxStage
           style={
             {
               ["--r" as never]: "min(140px, 38vw)",
@@ -64,8 +74,10 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
         >
           {/* aura */}
           <div
-            className="pointer-events-none absolute"
+            className="login-anim pointer-events-none absolute"
             style={{
+              translate: depth(10),
+              transition: PARALLAX_EASE,
               width: 420,
               height: 420,
               borderRadius: "50%",
@@ -78,8 +90,10 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
 
           {/* glass donut */}
           <div
-            className="pointer-events-none absolute"
+            className="login-anim pointer-events-none absolute"
             style={{
+              translate: depth(14),
+              transition: PARALLAX_EASE,
               width: "calc(var(--r) * 2 + 100px)",
               height: "calc(var(--r) * 2 + 100px)",
               borderRadius: "50%",
@@ -97,9 +111,12 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
             }}
           />
 
-          {/* 8 emojis */}
+          {/* 8 emojis — 업무 5개(±20px)·장식 3개(±26px) 층으로 나눠 움직인다. */}
+          {[false, true].map((deco) => (
+          <div key={deco ? "deco" : "main"} className="pointer-events-none absolute inset-0" style={{ translate: depth(deco ? 26 : 20), transition: PARALLAX_EASE }}>
           {EMOJIS.map((e, i) => {
             const isDeco = i >= 5;
+            if (isDeco !== deco) return null;
             const size = isDeco ? 44 : 56;
             const half = size / 2;
             const p = POS[i]!;
@@ -108,7 +125,7 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
             return (
               <div
                 key={i}
-                className="pointer-events-none absolute"
+                className="login-emoji pointer-events-none absolute"
                 style={{
                   width: size,
                   height: size,
@@ -130,14 +147,18 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
               </div>
             );
           })}
+          </div>
+          ))}
 
           {/* logo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/salespt-logo.png"
             alt="세일즈PT"
-            className="relative z-10"
+            className="login-anim relative z-10"
             style={{
+              translate: depth(4),
+              transition: PARALLAX_EASE,
               width: "80%",
               maxWidth: 220,
               height: "auto",
@@ -146,7 +167,7 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
               animation: "logoBreathe 5s ease-in-out infinite",
             }}
           />
-        </div>
+        </LoginParallaxStage>
 
         {/* welcome */}
         <div className="text-center">
