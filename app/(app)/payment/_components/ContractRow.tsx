@@ -52,6 +52,8 @@ interface Props {
   bare?: boolean;
   /** 모바일 기관 행에 붙는 상세: 중복 업체 헤더·외곽 카드를 그리지 않는다. */
   inline?: boolean;
+  /** inline 상세의 고정 업체 이름 줄 「접기」 — 부모가 상세를 접는다(그 뒤 목록의 업체 행으로 돌아간다). */
+  onCollapse?: () => void;
   detailLeftPct?: number;
   onDetailLeftPctChange?: (pct: number) => void;
   focusTodoId?: string | null;
@@ -78,6 +80,7 @@ export default function ContractRow({
   accentFamily,
   bare = false,
   inline = false,
+  onCollapse,
   detailLeftPct = 60,
   onDetailLeftPctChange,
   focusTodoId,
@@ -171,6 +174,36 @@ export default function ContractRow({
     if (ciState.error) void flushCi(false);
     retry();
   };
+
+  // 모바일 inline 상세의 고정 업체 이름 줄(2026-10-09, payment-sticky-detail).
+  // 길게 스크롤해도 어느 업체를 고치는지·저장됐는지 보이게 한다. 상태는 항상 한 단어로 보인다.
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const collapseToList = () => {
+    const detail = barRef.current?.closest<HTMLElement>('[id^="payment-company-detail-"], [id^="payment-inline-detail-"]');
+    const anchor = (detail?.previousElementSibling ?? detail?.parentElement) as HTMLElement | null | undefined;
+    onCollapse?.();
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+      anchor?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+      // 접기 버튼이 숨겨지므로 키보드·화면낭독기 사용자의 위치를 목록의 그 업체 행으로 옮긴다.
+      anchor?.focus({ preventScroll: true });
+    });
+  };
+  const barStatus = status === "error" || ciState.error ? (
+    <span title={ciState.error || error || undefined} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-red-600">
+      저장 실패
+      <button type="button" onClick={retryAll} className="min-h-9 underline underline-offset-2">다시 시도</button>
+    </span>
+  ) : status === "pending" || ciState.saving ? (
+    <span className="whitespace-nowrap text-slate-500">저장 중…</span>
+  ) : dirty || ciDirty ? (
+    <span className="whitespace-nowrap text-slate-400">입력 중</span>
+  ) : (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-emerald-600">
+      저장됨
+      {canUndo && <button type="button" onClick={undo} className="min-h-9 text-slate-500 underline underline-offset-2">되돌리기</button>}
+    </span>
+  );
 
   const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
     initialVisiblePayments(cp),
@@ -369,6 +402,7 @@ export default function ContractRow({
       {showBody && (
         <div
           className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : `card-open-anim space-y-3 ${inline ? "p-2.5" : "p-3"}`}
+          data-payment-inline-detail={inline ? "" : undefined}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commitGroup();
@@ -376,7 +410,26 @@ export default function ContractRow({
             }
           }}
         >
-          {(status !== "idle" || canUndo || ciState.error || ciState.saving) && (
+          {inline && (
+            <div ref={barRef} data-payment-sticky-bar className="sticky top-app-content z-20 -mx-2.5 -mt-2.5 flex h-12 items-center gap-2 border-b border-slate-200 bg-white px-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-slate-900">{cp.업체명}</p>
+                <p className="truncate text-px-11 text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {fmtDate(cp.계약일)} · 수임비 ₩{fmtMoney(cp.수임비)} · 📋 {docsDone}/{TOTAL_CHECKBOXES}
+                </p>
+              </div>
+              <span aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>
+              {onCollapse && (
+                <button type="button" onClick={collapseToList} aria-label={`${cp.업체명} 상세 접기`} className="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">접기 ▴</button>
+              )}
+            </div>
+          )}
+          {inline && (ciState.error || (status === "error" && error)) && (
+            <p className="text-px-11 font-medium text-red-600" aria-live="polite">
+              ⚠ {ciState.error ? `업체정보: ${ciState.error}` : error} — 입력은 유지됩니다
+            </p>
+          )}
+          {!inline && (status !== "idle" || canUndo || ciState.error || ciState.saving) && (
             <div className="flex flex-col gap-1">
               <AutosaveStatus
                 status={status}
@@ -410,20 +463,20 @@ export default function ContractRow({
             </button>}
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
               <details className="group rounded-lg border border-slate-200 bg-white">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-slate-800">
+                <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">
                   <span className="shrink-0">📑 계약정보</span><span className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span>
                 </summary>
                 <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} initiallyEditing /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} value={draft.계약비고} onChange={(e) => editDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
               </details>
               <details className="group rounded-lg border border-slate-200 bg-white">
-                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-bold text-slate-800"><span>📋 서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
+                <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800"><span>📋 서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
                 <div className="border-t border-slate-100 p-3"><CheckboxList compact={bare} draft={draft} onChange={(key, next) => editDraft((d) => ({ ...d, [key]: next }))}/></div>
               </details>
-              <details open className="rounded-lg border border-amber-200 bg-amber-50/80">
-                <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-slate-800">🗺️ 로드맵 메모</summary>
+              <details open className="group rounded-lg border border-amber-200 bg-amber-50">
+                <summary className="payment-sticky-title cursor-pointer list-none rounded-lg bg-amber-50 group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">🗺️ 로드맵 메모</summary>
                 <div className="px-3 pb-3"><textarea rows={1} value={draft.로드맵메모} onChange={(e) => editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
               </details>
-              <section className="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+              <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
                   const prev = draft[`수납${index}`];
                   const moneyDateOnly = next.진행기관 === prev.진행기관 && next.진행상품 === prev.진행상품 && next.메모 === prev.메모 && next.현황 === prev.현황 && next.진행률 === prev.진행률 && (next.승인금액 !== prev.승인금액 || next.수납액 !== prev.수납액 || next.수납일 !== prev.수납일);

@@ -341,7 +341,7 @@ export default function CompanyInfoEditor({
   return (
     // 글자 크기 단계(belie 2026-09-29 — 업체정보는 작게 느껴져 +−). 글자만 커지고 배치는 그대로.
     <div className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
-      <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? "px-3 py-2" : "px-2.5 py-1.5"}`}>
+      <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? "rounded-t-lg" : "rounded-lg"}` : "px-2.5 py-1.5"}`}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

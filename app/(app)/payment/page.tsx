@@ -46,8 +46,6 @@ import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { useAllTodos } from "@/query/todos-hooks";
-import { fmtDate, fmtMoney } from "./_components/nameHighlight";
-import { checkedCount, TOTAL_CHECKBOXES } from "./_components/CheckboxList";
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
 function usePcBreakpoint(): boolean {
@@ -386,17 +384,13 @@ export default function PaymentPage() {
               activityState={activityState}
               detailExpanded={mobileDetailExpanded} onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
               renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-red-100 px-2.5 py-2 text-px-11 text-slate-500">
-                  <span className="min-w-0 flex-1">{fmtDate(selectedCp.계약일)} · 수임비 ₩{fmtMoney(selectedCp.수임비)}</span>
-                  <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(selectedCp)}/{TOTAL_CHECKBOXES}</span>
-                </div>
                 <ContractRow
                   key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={focusTodoId}
                   focusedSlot={item.slot} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId}
+                  focusRequestId={focusRequestId} onCollapse={() => setMobileDetailExpanded(false)}
                 />
               </> : null}
             /> : <ContractListTable
@@ -405,16 +399,12 @@ export default function PaymentPage() {
               onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
               highlight={companyQuery} courseStartISO={courseStartISO}
               renderDetail={(item) => selectedCompanyKey === item.key ? <>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-blue-100 px-2.5 py-2 text-px-11 text-slate-500">
-                  <span className="min-w-0 flex-1">{fmtDate(item.cp.계약일)} · 수임비 ₩{fmtMoney(item.cp.수임비)}</span>
-                  <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 font-semibold text-blue-700">📋 {checkedCount(item.cp)}/{TOTAL_CHECKBOXES}</span>
-                </div>
                 <ContractRow key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
                   pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
                   onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={focusTodoId}
                   focusedSlot={item.hasProgress ? item.work.slot : null} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId}
+                  focusRequestId={focusRequestId} onCollapse={() => setMobileDetailExpanded(false)}
                 />
               </> : null}
             />}

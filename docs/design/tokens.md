@@ -230,6 +230,8 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 | 1 | `TopHeader` 브랜드 바 | `z-50` | `top-0` | `h-app-header`: <768px 두 행 6rem, >=768px 한 행 3.5rem |
 | 2 | 페이지 배너(TopHeader 내부) | `z-40` | `top-app-header` | `h-12` 3rem |
 | 3 | 대시보드 날짜·진행 / 컨택 주차 / 일정 WeekHeader + SummaryBar / 캘린더 월 이동 / 수납 검색·상세 / 트레이너 기수 | 기존 소비자 z-index 유지 | `top-app-content` | 내용에 따라 가변 |
+| 3a | 실무/수납 모바일 상세 업체 이름 줄(ContractRow inline, 2026-10-09) | `z-20` | `top-app-content` | `h-12` 3rem |
+| 3b | 실무/수납 상세 섹션 제목 `.payment-sticky-title`(globals.css) | `z-10` | 1280 미만 `calc(var(--app-header-height) + 6rem)` = 배너 아래 + 업체 줄 3rem · 1280 이상 PC 열 안 `0` | 내용 |
 | 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상(별도) | — | — |
 | 0 | 본문 `main`, 대시보드 매출·비용·영업이익 | 없음 | — | 일반 흐름 |
 | -1 | `BottomNav`(모바일) | `z-50`(fixed bottom) | bottom-0 | `h-[60px]` |
@@ -242,6 +244,7 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 - 일정 WeekHeader + SummaryBar처럼 함께 고정할 영역은 한 부모에 묶는다. 대시보드도 페이지 래퍼만 sticky이며 `DashboardProgressBanner` 자체에는 중복 지정하지 않는다.
 - D-day는 공용 헤더 정보 영역에 보존한다. 매출·비용·영업이익은 일반 본문에서 함께 스크롤하며 고정 영역에 포함하지 않는다.
 - 모달은 별도 z-stack(`z-50` 이상)을 사용한다.
+- 실무/수납 상세 섹션 제목은 터치 기기에서 상세 안 입력칸에 포커스가 있으면(키보드) 고정을 푼다 — 위에 붙는 줄이 키보드 위 입력칸을 가리지 않게. 업체 이름 줄은 남는다.
 
 ### Overlay 토큰 (전역 로딩 팝업 — loading-overlay) ⭐
 `LoadingOverlay` 의 글래스·글로우·z 는 arbitrary 직박 대신 아래 값으로 고정

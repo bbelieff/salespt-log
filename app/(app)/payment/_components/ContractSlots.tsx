@@ -48,7 +48,8 @@ export default function ContractSlots({
 }: Props) {
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
+      {/* 실무/수납 상세(desktopHeading)에서는 제목이 스크롤 중 위에 붙는다 — payment-sticky-title(globals.css). */}
+      <div className={desktopHeading ? "payment-sticky-title -mx-3 -mt-3 mb-2 flex items-center justify-between rounded-t-lg bg-amber-50 px-3 py-2" : "mb-2 flex items-center justify-between"}>
         <span className={`text-sm text-slate-800 ${desktopHeading ? "font-bold" : "font-semibold"}`}>📈 {desktopHeading ? "실무진행" : "실무 진행"}</span>
         <span className="text-xs text-gray-500" style={{ fontVariantNumeric: "tabular-nums" }}>
           <span className="font-medium text-gray-700">₩{fmtMoney(totalReceived)}</span>
