@@ -1280,7 +1280,7 @@ app/(app)/dashboard/page.tsx
 | **OverallCard** | 4채널 합계 카드 (총 비용 + 채널별 분해) |
 | **SummaryCard** | 채널별 요약 카드 (해당 채널의 합계·평균단가) |
 | **RowList** | DB row 목록 컨테이너 |
-| **RowCard** | DB raw row 표시 카드 (read-only). 클릭 시 RowForm으로 편집 |
+| **RowCard** | DB raw row 표시 카드. 클릭 시 RowForm으로 편집, 펼친 카드는 제목 줄(번호·배지 ▴)이나 × 로 접는다. 기본은 자동저장, `channel.manualSave`(콜·지·기·소)는 자동 전송 없이 「저장」 버튼으로만 저장하고 추가 폼도 「저장」으로 추가한다(2026-10-08) |
 | **RowForm** | DB raw row 입력/편집 폼 (4채널 각각 다른 필드 — DBPurchase/DBProduction/DBBanner/DBLead) |
 <!-- BannerPostingLog 폐기 — ADR-0025: 현수막 게시=생산은 컨택 게시 스테퍼가 영업관리 E 소유. -->
 | **DbNudgeBanner** | 미기록 넛지(C5) — 직접생산 종료일 지난 미완·비용 0 감지 배너(클라 빈도제어) |

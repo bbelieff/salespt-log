@@ -12,6 +12,10 @@
  * 이동은 절대 플러시하지 않는다. 유효하지 않으면 전송하지 않고 초안을 유지한다.
  * 단일 비행 + 최신 우선 병합 + 리비전 가드(오래된 응답이 새 변경을 못 지움).
  * 저장은 서버 ACK 이후에만 "저장됨"으로 표시한다.
+ *
+ * 수동 저장 채널(channel.manualSave — 콜·지·기·소, 2026-10-08): 디바운스·블러·Enter
+ * 자동 전송을 모두 끄고 「저장」 버튼으로만 보낸다. 같은 큐·검증·리비전 가드를 쓴다.
+ * 펼친 카드는 제목 줄(번호·배지)을 눌러도 접힌다(× 와 같은 동작, 전 채널).
  */
 "use client";
 
@@ -261,6 +265,7 @@ export default function RowCard({
   // 금액·날짜 입력에 포커스가 있으면 타이머 없이 힌트만 유지(전송 0).
   // 금액·날짜는 행 전체 블러/Enter 로만 확정된다. invalid 도 전송 0.
   useEffect(() => {
+    if (channel.manualSave) return; // 수동 저장 채널 — 버튼으로만 보낸다.
     if (payloadTick === 0 || !dirtyRef.current) return;
     if (moneyDateFocused) return;
     const payload = payloadRef.current;
@@ -355,7 +360,12 @@ export default function RowCard({
 
   // × = 편집 완료. 대기 쓰기를 먼저 플러시하고 clean 일 때만 접는다.
   // invalid/실패면 부모 가드(등록 dirty → 이탈 모달)로 이어진다.
+  // 수동 저장 채널은 몰래 저장하지 않는다 — 바로 접기를 요청하고, 미저장이면 가드 모달이 묻는다.
   const finishEditing = () => {
+    if (channel.manualSave) {
+      onCollapseRef.current();
+      return;
+    }
     void flush()
       .then(() => onCollapseRef.current())
       .catch(() => onCollapseRef.current());
@@ -371,6 +381,7 @@ export default function RowCard({
         if (key) setMoneyDateFocused(isMoneyDateField(channel, key));
       }}
       onBlur={(e) => {
+        if (channel.manualSave) return;
         // 행 내부 포커스 이동 추적 — 금액·날짜 안에 머물면 디바운스 유지 차단.
         const next = e.relatedTarget as Node | null;
         if (e.currentTarget.contains(next)) {
@@ -383,6 +394,7 @@ export default function RowCard({
         void flush().catch(() => {});
       }}
       onKeyDown={(e) => {
+        if (channel.manualSave) return;
         if (e.key === "Enter" && (e.target as HTMLElement)?.tagName === "INPUT") {
           e.preventDefault();
           void flush().catch(() => {});
@@ -390,12 +402,19 @@ export default function RowCard({
       }}
     >
       <div className="mb-1 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        {/* 제목 줄을 눌러도 접힌다 — 펼치기만 되고 접는 곳이 × 하나라 찾기 어려웠다. */}
+        <button
+          type="button"
+          onClick={finishEditing}
+          aria-label={`${channel.name} ${displayNum}행 접기`}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+        >
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold tracking-wider text-slate-600 num-mono">
             {displayNum}
           </span>
           <span className={`badge ${badgeCls}`}>{channel.name}</span>
-        </div>
+          <span aria-hidden="true" className="text-xs text-gray-400">▴</span>
+        </button>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -419,6 +438,9 @@ export default function RowCard({
 
       {/* 저장 상태 — 제목줄 바로 아래 작은 한 줄(추가 카드 없음). */}
       <p aria-live="polite" className="mb-2 min-h-4 text-xs">
+        {channel.manualSave && saveStatus !== "pending" && saveStatus !== "error" && dirty && !invalidHint && (
+          <span className="font-medium text-amber-700">저장하지 않은 변경이 있어요</span>
+        )}
         {saveStatus === "pending" && <span className="text-slate-500">저장 중…</span>}
         {saveStatus === "saved" && (
           <span className="text-slate-400">
@@ -452,6 +474,18 @@ export default function RowCard({
         initial={restoreValues ?? row}
         onChange={handlePayload}
       />
+      {channel.manualSave && (
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => void flush().catch(() => {})}
+            disabled={!dirty || saveStatus === "pending"}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {saveStatus === "pending" ? "저장 중…" : "저장"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

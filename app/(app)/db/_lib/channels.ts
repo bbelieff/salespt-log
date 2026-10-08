@@ -46,6 +46,12 @@ export interface ChannelMeta {
   countUnit: string;
   hint: string;
   isCost: boolean;
+  /**
+   * true = 자동저장 대신 「저장」 버튼으로만 저장(기존 행 수정·새 기록 추가 모두).
+   * 콜·지·기·소는 대표자명·업체명·연락처를 한 번에 적는 채널이라, 입력 도중 디바운스/블러로
+   * 저장·생성되는 흐름이 어색했다(belie 2026-10-08). 미저장 변경은 이탈 가드가 그대로 지킨다.
+   */
+  manualSave?: boolean;
   fields: readonly FieldDef[];
 }
 
@@ -184,6 +190,7 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
     countUnit: "건",
     hint: "콜드콜·지인·기고객·소개 등의 영업기회",
     isCost: false,
+    manualSave: true,
     fields: [
       {
         key: "구분",
