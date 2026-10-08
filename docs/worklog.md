@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 인터랙션 ① 실무/수납 상세 스티키
+- 사용자 요청: 제품 인터랙션(스티키·스크롤 스냅·패럴랙스) 설계 → 목업 승인(3종 모두) → 추천 순서대로 운영 배포. 이 항목은 ①.
+- 구역: `app/(app)/payment/{page.tsx,_components/{ContractRow,ContractSlots,ContractListTable,InstitutionWorkList}.tsx}` · `components/CompanyInfoEditor.tsx`(desktopHeading 전용 클래스) · `app/globals.css`(글래스 구역 앞) · 테스트·tokens.md·components.md.
+- 결정: 1280 미만 inline 상세 맨 위 업체 이름 줄 고정(저장 상태 항상 표시·접기 시 목록 행으로 스크롤) + 섹션 제목 고정(헤더+배너+3rem 아래, PC 열은 0) + 터치 입력 중 제목 고정 해제. 같은 내용 반복이던 날짜·📋 띠 삭제(page.tsx 500→492줄). 로드맵·실무진행 배경 amber-50/80 → amber-50(고정 제목 뒤 비침 방지).
+
 ### 2026-10-08 · DC 총괄(데탑 C총괄 260927) · 아레나 구분 없이 보이기 + 대시보드 매출 기간 선택 (ADR-0034)
 - 사용자 요청: 아레나 미포함(이월) 계약 흐림 제거, 매출 집계도 아레나와 상관없이. 대시보드에도 실무/수납처럼 전체·이번 달·이번 주·직접 설정(전체 = 기록된 기간 전체). 해지 흐림은 유지.
 - 구역: `lib/util/finance-period.ts`(신규) · `components/ui/PeriodPicker.tsx`(신규) · `components/dashboard/{DashboardFinance(신규),FinanceSummaryBoxes,DashboardWorkStatus}.tsx` · `app/(app)/dashboard/page.tsx` · `app/(app)/payment/{page.tsx,_components/{PaymentPerformanceSummary,ContractRow,ContractListTable}.tsx,_lib/institution-view.ts}` · `app/(app)/schedule/_components/MeetingResultCard.tsx` · `lib/analytics/payment-work-status.ts` · `lib/service/expense-ledger.ts`(배분 함수 유틸로 이동) · 테스트·ADR·components.md.

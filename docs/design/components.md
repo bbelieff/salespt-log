@@ -1296,7 +1296,7 @@ app/(app)/dashboard/page.tsx
 
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동). `courseStartISO?` — 이월 판정(isCarryoverContract: 계약일<시작일 OR 깃발)으로 뱃지·배지 표시(흐림은 해지만 — ADR-0034)(arena-start-revenue-split). |
+| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동). `courseStartISO?` — 이월 판정(isCarryoverContract: 계약일<시작일 OR 깃발)으로 뱃지·배지 표시(흐림은 해지만 — ADR-0034)(arena-start-revenue-split). 모바일 inline 상세(2026-10-09): 맨 위 고정 업체 이름 줄(`data-payment-sticky-bar`, `sticky top-app-content z-20 h-12` — 업체명·계약일·수임비·📋·저장 상태 항상 표시·「접기」→ 목록의 업체 행으로 스크롤, 움직임 줄이기 존중). 계약정보·서류·로드맵·실무진행·업체정보 제목은 `.payment-sticky-title`로 붙는다(1280 이상 PC 열은 열 맨 위). |
 | **TerminationModal** | 계약해지 입력 모달 (contract-termination). 사유(필수 textarea) + 반환 라디오(없음/일부/전액 — 일부=금액 input) + 처리 라디오(해지 상태 보존/카드 숨김 soft delete). 확인 시 POST /api/contract-payment/[row]/terminate. Props: `cp: ContractPayment`, `onClose`, `onDone`. 해지 카드엔 ContractRow 가 "해지" 뱃지+사유·반환액 노출. |
 | **DeleteConfirmModal** | 계약수납 삭제 확인 모달(cascade 옵션) — page.tsx 500줄 캡으로 분리(contract-termination PR), 마크업·동작 무변경. Props: `label`, `cascadeOpt`, `onCascadeChange`, `onCancel`, `onConfirm`. |
 | **TerminationArchive** | 해지 보관함 (contract-termination 스펙) — 숨김(soft delete) 해지 계약을 접힌 아코디언에서 열람. 행: 업체명·해지일·사유·반환액(읽기전용). 기본 접힘, 숨김 건 0이면 미표시. Props: `contracts: ContractPayment[]`(숨김 해지만). |

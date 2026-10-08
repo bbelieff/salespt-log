@@ -549,6 +549,26 @@ body {
   .app-role-label { padding-inline: 5px; font-size: calc(11px * var(--font-scale, 1)); }
 }
 
+/* ── 실무/수납 상세 스티키 섹션 제목 (payment-sticky-detail 2026-10-09) ──
+ * 1280px 미만(모바일 아코디언): 창이 스크롤 주체. 헤더+배너(app-content) 아래에
+ * 업체 이름 줄(ContractRow inline, h-12 = 3rem)이 붙고, 섹션 제목은 그 아래
+ * (app-content + 3rem)에 붙어 다음 섹션이 오면 밀려 올라간다.
+ * 1280px 이상 PC: 상세 두 열(.payment-detail-scroll)이 각자 스크롤 주체라 열 맨 위(0).
+ * 터치 기기에서 상세 안 입력칸에 포커스가 있으면(키보드가 열린 상태) 제목 고정을 풀어
+ * 위에 붙은 줄들이 입력칸을 가리지 않게 한다 — 업체 이름 줄은 그대로 남는다.
+ * 이 블록은 데스크탑 글래스 셸 구역 표식보다 위에 둔다(그 아래 규칙은 .desktop-shell 범위 전용). */
+.payment-sticky-title {
+  position: sticky;
+  top: calc(var(--app-header-height) + 6rem);
+  z-index: 10;
+}
+@media (min-width: 1280px) {
+  .payment-sticky-title { top: 0; }
+}
+@media (pointer: coarse) {
+  [data-payment-inline-detail]:has(:is(input, textarea, select):focus) .payment-sticky-title { position: static; }
+}
+
 /* ── Desktop glass shell (desktop-glass-polish 2026-09-25) ──────────
  * Scoped student desktop shell — ONLY >=1024px AND inside .desktop-shell
  * ((app)/layout + WeeklyGoalPage student mode add that class).
