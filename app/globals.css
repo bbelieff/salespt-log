@@ -543,6 +543,11 @@ body {
   }
 }
 
+/* 대시보드 모바일 차트 카드(MobileChartCarousel, 2026-10-09): 스크롤바 숨김.
+ * 1024 이상에서는 스크롤러가 pc:contents 로 풀려 이 규칙이 의미 없다. */
+.chart-snap-scroller { scrollbar-width: none; }
+.chart-snap-scroller::-webkit-scrollbar { display: none; }
+
 /* One compact account row, including qualified role switch at 320px. */
 @media (max-width: 639px) {
   .app-header-pill { padding-inline: 6px; font-size: calc(11px * var(--font-scale, 1)); gap: 3px; }
