@@ -5,7 +5,7 @@ import { findActiveArenaRowByEmail } from "@/repo/users-arena";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readWeeklyGoal, readWeeklyGoalPrivate, saveWeeklyGoal, saveWeeklyGoalPrivate } from "@/repo/db/weekly-goals";
-import { chooseDailySource } from "./daily-source";
+import { chooseDailySource, sourceCohort } from "./daily-source";
 import { weeklyGoalActuals } from "./weekly-goals-actuals";
 import { addDays, fmtISO, friOf, friWeekIndexOf, isValidISODate, parseISO, todayKST } from "@/util/week";
 import { WeeklyGoalInput, WeeklyGoalPrivateInput, type WeeklyGoalKey, type WeeklyGoalView, type GoalStudent } from "@/types/weekly-goals";
@@ -61,6 +61,13 @@ export async function resolveGoalStudent(email: string): Promise<User | null> {
     arena.email.toLowerCase() === email.toLowerCase() ? arena : null;
 }
 
+/** 관리자 이메일에 붙은 수강생 행(예: 관리자 본인 0기 GM) — 명단(listGoalStudents)과 같은 규칙. */
+async function adminOwnTraineeRow(email: string): Promise<User | null> {
+  const lc = email.toLowerCase();
+  const own = pickCrmUser((await listAllUsers()).filter(u => u.email.toLowerCase() === lc));
+  return own?.role === "trainee" && own.status === "active" ? own : null;
+}
+
 export async function listGoalStudents(): Promise<GoalStudent[]> {
   const a = await actor();
   if (!a.internal) throw new WeeklyGoalError(403, "트레이너만 조회할 수 있어요.");
@@ -96,13 +103,14 @@ export async function listGoalStudents(): Promise<GoalStudent[]> {
 
 /** Resolve every request on the server; never trust a submitted cohort, role or sheet id. */
 async function context(params: URLSearchParams, operation: TrainerAccessOperation = "read") {
-  await actor();
+  const a = await actor();
   const target = params.get("student") || await getActiveUserEmail();
-  const u = await resolveGoalStudent(target);
+  const resolved = await resolveGoalStudent(target);
+  const u = resolved?.role !== "trainee" && a.role === "admin" ? await adminOwnTraineeRow(target) ?? resolved : resolved;
   if (!u || u.role !== "trainee" || u.status === "pending") throw new WeeklyGoalError(403, "수강생 계정을 확인해 주세요.");
   const checkedActor = await assertGoalStudentAccess(u, operation);
   if (!isValidISODate(u.courseStartISO)) throw new WeeklyGoalError(422, "수강 시작일 확인이 필요해요.");
-  if (!u.spreadsheetId || chooseDailySource(u.cohort, dbEnabled()) !== "db") {
+  if (!u.spreadsheetId || chooseDailySource(sourceCohort(u), dbEnabled()) !== "db") {
     throw new WeeklyGoalError(503, "이 계정의 주간 목표를 아직 불러올 수 없어요.");
   }
   const courseStart = parseISO(u.courseStartISO);

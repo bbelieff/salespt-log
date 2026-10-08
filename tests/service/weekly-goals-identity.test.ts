@@ -7,7 +7,7 @@ const m = vi.hoisted(() => ({
   grant: vi.fn(),
   getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(),
   findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(),
-  dbEnabled: vi.fn(), chooseDailySource: vi.fn(), readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
+  dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort, readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), saveWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
 }));
 vi.mock("@/auth/identity", () => m);
@@ -327,5 +327,26 @@ describe("recruitment lifecycle never hides or retargets an existing goal enroll
       await loadWeeklyGoals(params(enrollment));
       expect(m.readWeeklyGoal).toHaveBeenLastCalledWith(expect.objectContaining({studentId:enrollment.spreadsheetId,cohort:enrollment.cohort,courseStart:enrollment.courseStartISO}));
     }
+  });
+});
+
+describe("관리자 본인 수강생 행", () => {
+  it("관리자 이메일의 트레이너 행 대신 같은 이메일의 수강생 행으로 주간 목표를 연다", async () => {
+    const adminEmail = "admin-self@example.test";
+    const adminTrainer = trainee(adminEmail, { role: "trainer", cohort: "T", spreadsheetId: "" });
+    const adminStudent = trainee(adminEmail, { cohort: "0", spreadsheetId: "admin-own-sheet" });
+    users.set(adminEmail, adminTrainer);
+    m.listAllUsers.mockImplementation(async () => [...users.values(), adminStudent]);
+    login(adminEmail, "admin");
+    const view = await loadWeeklyGoals(new URLSearchParams({ student: adminEmail, week: "1" }));
+    expect(m.readWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ studentId: "admin-own-sheet" }));
+    expect(view).toBeTruthy();
+  });
+
+  it("트레이너는 같은 대체 경로를 쓰지 않는다", async () => {
+    const tStudent = trainee(trainerEmail, { cohort: "0", spreadsheetId: "trainer-own-sheet" });
+    m.listAllUsers.mockImplementation(async () => [...users.values(), tStudent]);
+    login(trainerEmail, "trainer");
+    await expect(loadWeeklyGoals(new URLSearchParams({ student: trainerEmail, week: "1" }))).rejects.toMatchObject({ status: 403 });
   });
 });
