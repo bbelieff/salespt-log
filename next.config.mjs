@@ -12,6 +12,11 @@ const nextConfig = {
   // 빌드한 뒤 원자 swap 한다. 런타임(next start)은 BUILD_DIST_DIR unset → 기본 ".next".
   // dev/local/CI 도 unset → ".next" 라 무영향. 참고: docs/plans/active/zero-downtime-deploy.md
   distDir: process.env.BUILD_DIST_DIR || ".next",
+  // ★VPS 빌드 메모리(2026-10-09 배포 OOM 2연속): next build 의 린트·타입검사 단계가 2048MB 힙을
+  // 넘겼다. 같은 검사는 PR·master 푸시마다 CI(scripts/check.sh: typecheck·lint)가 이미 통과시킨
+  // 코드만 배포되므로, 배포 빌드에서만(SKIP_BUILD_CHECKS=1) 중복 검사를 건너뛴다. 로컬·CI 빌드는 그대로 검사.
+  eslint: { ignoreDuringBuilds: process.env.SKIP_BUILD_CHECKS === "1" },
+  typescript: { ignoreBuildErrors: process.env.SKIP_BUILD_CHECKS === "1" },
 };
 
 // Sentry wrapper — DSN 미설정 시에도 무해.
