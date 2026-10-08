@@ -9,15 +9,17 @@
 import { lazy, Suspense, useState } from "react";
 import type { CompanyInfo } from "@/types";
 import type { CompanyInfoKey } from "@/lib/document-ocr/types";
+import type { VaultItem } from "@/types/company-vault";
 
 const CompanyDocAutofillDialog = lazy(() => import("./CompanyDocAutofillDialog"));
 
 interface Props {
   current: CompanyInfo;
   onApply: (patch: Partial<Record<CompanyInfoKey, string>>) => void;
+  onVault?: (items: VaultItem[]) => void;
 }
 
-export default function CompanyDocAutofillButton({ current, onApply }: Props) {
+export default function CompanyDocAutofillButton({ current, onApply, onVault }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -31,7 +33,7 @@ export default function CompanyDocAutofillButton({ current, onApply }: Props) {
       </button>
       {open && (
         <Suspense fallback={null}>
-          <CompanyDocAutofillDialog current={current} onApply={onApply} onClose={() => setOpen(false)} />
+          <CompanyDocAutofillDialog current={current} onApply={onApply} onVault={onVault} onClose={() => setOpen(false)} />
         </Suspense>
       )}
     </>

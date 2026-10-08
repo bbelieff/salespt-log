@@ -100,12 +100,12 @@ describe("CompanyDocAutofillDialog", () => {
     expect(document.getElementById(dlg.getAttribute("aria-labelledby")!)!.textContent).toContain("문서로 자동입력");
     expect(dlg.textContent).toContain("파일은 이 기기 안에서만 읽고 저장하지 않아요.");
   });
-  it("읽을 수 있는 서류 5종과 채워 주는 칸을 안내한다", () => {
+  it("읽을 수 있는 서류 5종 + 미팅 메모와 채워 주는 칸을 안내한다", () => {
     mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
     const list = document.querySelector('[aria-label="읽을 수 있는 서류"]')!;
     const items = [...list.querySelectorAll("li")].map((li) => li.textContent ?? "");
-    expect(items).toHaveLength(5);
-    for (const doc of ["사업자등록증", "부가세 과세표준증명원", "재무제표", "신분증", "임대차계약서"]) {
+    expect(items).toHaveLength(6);
+    for (const doc of ["사업자등록증", "부가세 과세표준증명원", "재무제표", "신분증", "임대차계약서", "미팅 메모"]) {
       expect(items.some((t) => t.includes(doc))).toBe(true);
     }
   });
@@ -212,9 +212,27 @@ describe("CompanyDocAutofillDialog", () => {
 
   it("형식이 안 맞는 파일은 OCR 없이 오류 안내", async () => {
     mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
-    await pickFiles(new File(["x"], "memo.txt", { type: "text/plain" }));
+    await pickFiles(new File(["x"], "report.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
     expect(runDocumentOcr).not.toHaveBeenCalled();
     expect(document.querySelector('[role="alert"]')!.textContent).toContain("PDF");
+  });
+
+  it("미팅 메모(txt)는 OCR 없이 읽고, 계정은 칸이 아니라 보관함 후보로 보낸다", async () => {
+    const onApply = vi.fn();
+    const onVault = vi.fn();
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply, onVault, onClose: vi.fn() }));
+    const memo = "가상상사 / 홍길동\n● 업종\t\t한식\n● 소진공\t\tsample-id / Sample!pw1";
+    await pickFiles(new File([memo], "memo.txt", { type: "text/plain" }));
+    await flush();
+    expect(runDocumentOcr).not.toHaveBeenCalled();
+    const dlg = document.querySelector('[role="dialog"]')!;
+    expect(dlg.textContent).toContain("계정 보관함으로 보낼 항목");
+    expect(dlg.textContent).not.toContain("Sample!pw1");
+    const apply = [...dlg.querySelectorAll("button")].find((b) => b.textContent === "선택 항목 적용")!;
+    act(() => apply.click());
+    expect(onApply.mock.calls[0]![0]).toMatchObject({ 업종주생산품목: "한식" });
+    expect(JSON.stringify(onApply.mock.calls[0]![0])).not.toContain("Sample!pw1");
+    expect(onVault).toHaveBeenCalledWith([expect.objectContaining({ label: "소진공", id: "sample-id", secret: "Sample!pw1" })]);
   });
 
   it("Esc 로 닫힌다", () => {

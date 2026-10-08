@@ -12,6 +12,7 @@ import { parseBusinessCertificate } from "./parse-certificate";
 import { parseFinancialStatement } from "./parse-fs";
 import { parseIdCard } from "./parse-id-card";
 import { parseLeaseContract } from "./parse-lease";
+import { parseMeetingMemo } from "./parse-memo";
 import { parseVatCertificate } from "./parse-vat";
 import { compactText } from "./text-utils";
 import type { DocParseContext, DocParseResult, DocParser, DocType } from "./types";
@@ -44,6 +45,7 @@ export const PARSERS: Partial<Record<DocType, DocParser>> = {
   재무제표: (text, ctx) => parseFinancialStatement(text, new Date(), { baseYear: ctx?.baseYear }),
   신분증: (text) => parseIdCard(text),
   임대차계약서: (text) => parseLeaseContract(text),
+  미팅메모: (text, ctx) => parseMeetingMemo(text, ctx),
 };
 
 export function isSupportedDocType(type: DocType): boolean {
