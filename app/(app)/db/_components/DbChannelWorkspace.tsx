@@ -211,6 +211,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
     handleAddPayload,
     flushAdd,
     requestCloseAdd,
+    closeAddForm,
     saveAddAndSettle,
     discardAddDraft,
   } = useAddRowAutosave({ activeCh, ch, guardedNav, createRow, patchRow: handleSave, onCreated: handleAddCreated });
@@ -323,11 +324,13 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
           <div
             className="mt-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md min-[1440px]:mt-0"
             onBlur={(e) => {
+              if (ch.manualSave) return; // 수동 저장 채널 — 「저장」 버튼으로만 추가한다.
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
                 void flushAdd().catch(() => {});
               }
             }}
             onKeyDown={(e) => {
+              if (ch.manualSave) return;
               if (e.key === "Enter" && (e.target as HTMLElement)?.tagName === "INPUT") {
                 e.preventDefault();
                 void flushAdd().catch(() => {});
@@ -362,11 +365,22 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
               </p>
               <button
                 type="button"
-                onClick={requestCloseAdd}
+                // 수동 저장 채널은 닫을 때 몰래 추가하지 않는다 — 미저장이면 가드 모달이 묻는다.
+                onClick={ch.manualSave ? closeAddForm : requestCloseAdd}
                 className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600"
               >
                 닫기
               </button>
+              {ch.manualSave && (
+                <button
+                  type="button"
+                  onClick={() => void flushAdd().catch(() => {})}
+                  disabled={!addDirty || addStatus === "pending"}
+                  className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
+                >
+                  {addStatus === "pending" ? "추가 중…" : "저장"}
+                </button>
+              )}
             </div>
           </div>
         )}

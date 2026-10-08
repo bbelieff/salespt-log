@@ -267,6 +267,7 @@ export function useAddRowAutosave({ activeCh, ch, guardedNav, createRow, onCreat
     handleAddPayload,
     flushAdd,
     requestCloseAdd,
+    closeAddForm,
     parkAddDraft,
     saveAddAndSettle,
     discardAddDraft,

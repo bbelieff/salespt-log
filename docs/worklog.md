@@ -7,6 +7,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-08 · DC 총괄(데탑 C총괄 260927) · DB생산 콜·지·기·소 저장 버튼 복원 + 카드 접기
+- 사용자 요청: 콜·지·기·소 자동저장 UX가 어색하니 저장 버튼 살리기, 카드가 열리기만 하고 접히지 않으니 접을 수 있게.
+- 구역: `app/(app)/db/_components/{RowCard,DbChannelWorkspace}.tsx` · `_lib/{channels,use-add-autosave}.ts` · 테스트·components.md.
+- 결정: 채널 메타 `manualSave`(콜·지·기·소만 true) — 기존 행은 디바운스·블러·Enter 자동 전송 끔, 「저장」 버튼(미저장 안내 줄) / 추가 폼도 「저장」으로만 생성, 「닫기」·× 는 몰래 저장하지 않고 이탈 가드가 묻는다. 펼친 카드는 전 채널 제목 줄 클릭으로 접힘(자동저장 채널은 기존 × 와 같이 플러시 후 접기). 다른 3채널 자동저장 그대로.
+- 검증: 신규 테스트 5 + 기존 자동저장 12 통과, 합성 화면(375px)에서 미저장 안내 → 저장 중 → 저장됨·되돌리기 → 제목 줄 접기 확인.
+
 ### 2026-10-06 · Claude(경영일지 DC 260927)+Muse(패치 초안) · 관리자는 어디든 (feat/admin-anywhere)
 - 이름 폴더 없으면 루트에 바로 생성 · 관리자 Drive 연결 검증 생략. Muse 스타일 지시문(.agents/tools/muse-coding-style.md) 첫 적용. 상세 = `docs/plans/active/admin-anywhere.md`.
 
