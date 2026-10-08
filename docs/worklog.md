@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-08 · DC 총괄(데탑 C총괄 260927) · 아레나 구분 없이 보이기 + 대시보드 매출 기간 선택 (ADR-0034)
+- 사용자 요청: 아레나 미포함(이월) 계약 흐림 제거, 매출 집계도 아레나와 상관없이. 대시보드에도 실무/수납처럼 전체·이번 달·이번 주·직접 설정(전체 = 기록된 기간 전체). 해지 흐림은 유지.
+- 구역: `lib/util/finance-period.ts`(신규) · `components/ui/PeriodPicker.tsx`(신규) · `components/dashboard/{DashboardFinance(신규),FinanceSummaryBoxes,DashboardWorkStatus}.tsx` · `app/(app)/dashboard/page.tsx` · `app/(app)/payment/{page.tsx,_components/{PaymentPerformanceSummary,ContractRow,ContractListTable}.tsx,_lib/institution-view.ts}` · `app/(app)/schedule/_components/MeetingResultCard.tsx` · `lib/analytics/payment-work-status.ts` · `lib/service/expense-ledger.ts`(배분 함수 유틸로 이동) · 테스트·ADR·components.md.
+- 결정: 매출 = 수임비(계약일)+수납(수납일)−반환(해지일) 화면 공통, 비용 = DB(채널별 날짜)+원장(일할, 오늘까지). 시즌/이월/전체 표 삭제. 순위표·점수·활동 집계·일정 주간 합계는 그대로.
+
 ### 2026-10-08 · DC 총괄(데탑 C총괄 260927) · DB생산 콜·지·기·소 저장 버튼 복원 + 카드 접기
 - 사용자 요청: 콜·지·기·소 자동저장 UX가 어색하니 저장 버튼 살리기, 카드가 열리기만 하고 접히지 않으니 접을 수 있게.
 - 구역: `app/(app)/db/_components/{RowCard,DbChannelWorkspace}.tsx` · `_lib/{channels,use-add-autosave}.ts` · 테스트·components.md.

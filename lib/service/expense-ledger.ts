@@ -10,6 +10,7 @@ import {
   skipRecurringOccurrence, splitRecurringRuleFromMonth,
 } from "@/repo/db/expense-ledger";
 import { createExpenseEntryIdempotent } from "@/repo/db/expense-idempotency";
+import { recognizedAmountForRange } from "@/util/finance-period";
 
 export interface ExpenseScope { spreadsheetId: string; actorEmail: string; }
 type RecurringOccurrence = Awaited<ReturnType<typeof listRecurringOccurrences>>[number];
@@ -70,22 +71,8 @@ export function manageRecurringRules(rules: RecurringRule[], occurrences: Recurr
   });
 }
 
-/** 양끝 포함, 나머지 원은 앞선 달력일에 배정한다. 순수 함수라 조회 순서에 흔들리지 않는다. */
-export function allocateExpenseByDay(amountWon: number, periodStart: string, periodEnd: string): Array<{ date: string; amountWon: number }> {
-  const days = dayCount(periodStart, periodEnd);
-  // NaN 가드 필수 — 날짜 문자열이 깨지면 days=NaN 이고 NaN 은 두 부등호를 모두 통과해
-  // 빈 배열 → 인식금액 0 → 화면에서 조용히 사라진다(2026-07-28 P1 의 전파 경로).
-  if (!Number.isFinite(days) || days < 1 || days > 3660) throw new Error("expense_invalid_period");
-  const quotient = Math.floor(amountWon / days); const remainder = amountWon % days;
-  const out: Array<{ date: string; amountWon: number }> = [];
-  const d = parseUtc(periodStart);
-  for (let i = 0; i < days; i += 1) { out.push({ date: iso(d), amountWon: quotient + (i < remainder ? 1 : 0) }); d.setUTCDate(d.getUTCDate() + 1); }
-  return out;
-}
-
-export function recognizedAmountForRange(amountWon: number, start: string, end: string, from: string, through: string): number {
-  return allocateExpenseByDay(amountWon, start, end).reduce((sum, d) => sum + (d.date >= from && d.date <= through ? d.amountWon : 0), 0);
-}
+// 일할 배분은 화면(대시보드 기간 선택)도 같은 결과를 내야 해서 순수 유틸로 옮겼다(2026-10-08).
+export { allocateExpenseByDay, recognizedAmountForRange } from "@/util/finance-period";
 
 /** 원장·카테고리·대시보드가 동일한 active occurrence 인식 규칙을 사용한다. */
 export function recognizeRecurringOccurrencesForRange(

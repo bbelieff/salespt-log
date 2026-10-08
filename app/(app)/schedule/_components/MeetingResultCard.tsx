@@ -125,13 +125,13 @@ export default function MeetingResultCard({
 
   const showActions = state === "reserved";
 
-  const carried = meeting.구분 === "이월"; // 이월 = 흐림+뱃지+점수 미포함 (§5)
+  const carried = meeting.구분 === "이월"; // 이월 = 뱃지+점수 미포함 안내 (흐림은 2026-10-08 폐지)
   return (
     <div
       ref={rootRef}
       className={`relative ml-4 mb-2 overflow-hidden rounded-xl shadow-sm scroll-mt-[280px] ${CARD_CLS[state]} ${
         ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""
-      } ${carried ? "opacity-60" : ""}`}
+      }`}
     >
       <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-gray-200" />
 

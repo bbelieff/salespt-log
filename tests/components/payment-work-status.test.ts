@@ -6,9 +6,9 @@ const slot = (over: Partial<PaymentSlot> = {}): PaymentSlot => ({ 진행기관: 
 const contract = (over: Partial<ContractPayment> = {}): ContractPayment => ({ row: 3, 계약일: "2026-09-01", 업체명: "한빛", 수임비: 100, 계약비고: "", 공동인증서: false, 임대차계약서: false, 신분증: false, 드라이브업로드: false, 사업계획서초안발송: false, 컨설팅5종서류발송: false, 플러그이관: false, 수납1: slot(), 수납2: slot(), 수납3: slot(), 로드맵메모: "", 해지일: "", 해지사유: "", 반환액: 0, 해지숨김: false, ...over } as ContractPayment);
 
 describe("업무현황 분류", () => {
-  it("대시보드와 실무/수납은 이월·해지·숨김을 같은 기준으로 제외한다", () => {
-    const contracts = [contract(), contract({ row: 4, 구분: "이월" }), contract({ row: 5, 해지일: "2026-09-20" }), contract({ row: 6, 해지숨김: true })];
-    expect(activeWorkContracts(contracts, "2026-08-01").map((cp) => cp.row)).toEqual([3]);
+  it("대시보드와 실무/수납은 해지·숨김만 같은 기준으로 빼고 이월 계약은 포함한다 (ADR-0034)", () => {
+    const contracts = [contract(), contract({ row: 4, 구분: "이월" }), contract({ row: 7, 계약일: "2026-07-01" }), contract({ row: 5, 해지일: "2026-09-20" }), contract({ row: 6, 해지숨김: true })];
+    expect(activeWorkContracts(contracts).map((cp) => cp.row)).toEqual([3, 4, 7]);
   });
   it("수납완료 > 수납대기 > 승인 > 진행 > 진행대기 순으로 한 건에 한 상태만 준다", () => {
     expect(classifyWorkStatus(slot({ 수납액: 1 }), false, "2026-09-27")).toBe("collected");

@@ -1,4 +1,4 @@
-import { isCarryoverContract, isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
+import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { compareWorkActivity, progressPct } from "./payment-progress";
 import { slotHasData } from "@/lib/analytics/payment-work-status";
 import { normalizeInstitution } from "@/lib/util/institution-match";
@@ -91,7 +91,7 @@ function sortNamedLast(a: string, b: string): number {
 
 /** 계약의 저장된 진행 슬롯을 기관→진행건으로 투영한다. 원본은 바꾸지 않는다. */
 export function buildInstitutionWorkItems(
-  rows: ContractPayment[], courseStartISO = "", todos: Todo[] = [],
+  rows: ContractPayment[], _courseStartISO = "", todos: Todo[] = [],
   todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }),
 ): InstitutionWorkItem[] {
   const out: InstitutionWorkItem[] = [];
@@ -118,7 +118,7 @@ export function buildInstitutionWorkItems(
         institution: legacyProduct ? "소진공" : storedInstitution,
         product: data.진행상품.trim() || legacyProduct,
         progress: progressPct(data.진행률),
-        muted: isCarryoverContract(cp, courseStartISO) || isTerminatedContract(cp),
+        muted: isTerminatedContract(cp), // 해지만 흐림 — 이월은 또렷하게(2026-10-08)
         activityKind: kind,
         activityDate: date,
         activityLabel: activityLabel(kind, date, todayISO),

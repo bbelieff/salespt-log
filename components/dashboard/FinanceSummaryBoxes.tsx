@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { formatMoney } from "@/lib/format/money";
-import { STATS_WEEKS } from "@/config/cohort-dates";
 
 /**
  * FinanceSummaryBoxes — 매출/비용/영업이익 3열 1행 요약.
@@ -23,6 +22,9 @@ import { STATS_WEEKS } from "@/config/cohort-dates";
  *     보인다. `overflowWrap:anywhere`·줄바꿈·overflow:hidden·ellipsis·
  *     truncate·축약 금지. 금액은 `white-space:nowrap` + 실측 맞춤으로만
  *     축소한다(아래 useUniformSingleLineFit).
+ * 변경 (2026-10-08, ADR-0034): 시즌/이월/전체 표를 없앴다. 숫자는 부모(DashboardFinance)가
+ *   고른 기간(전체·이번 달·이번 주·직접 설정)으로 계산해 넘기고, 이 컴포넌트는 표시만 한다.
+ *   매출 상세에 반환(계약해지)이 있으면 따로 보인다.
  */
 interface Props {
   revenue: number;
@@ -32,16 +34,11 @@ interface Props {
   dbCostTotal: number;
   additionalCost: number | null;
   onOpenExpenseLedger: () => void;
-  weeks?: number;
-  contractCount?: number; // 계약 건수 (없으면 부연 우측 비움)
-  /** 이월(아레나 비집계, 시작일 이전) 매출 — 있으면 매출 3줄 분리 표시. */
-  carryoverRevenue?: number;
-  /** 전체 매출 (= 아레나 + 이월). 없으면 revenue+carryover 로 계산. */
-  totalRevenue?: number;
-  /** 이월(시작일 이전 발생) 비용 — 있으면 비용도 3줄 분리 표시 (belie 결정 2026-08-07, BBE-83). */
-  carryoverCost?: number;
-  /** 전체 비용 (= 시즌 + 이월). 없으면 cost+carryoverCost 로 계산. */
-  totalCost?: number;
+  /** 반환액(계약해지) — 매출에서 이미 뺀 금액. 0 이면 상세에 줄을 만들지 않는다. */
+  refunded?: number;
+  /** 영업이익 상세의 기간 표시(예: 「전체」, 「이번 달 10/01~10/31」). */
+  periodLabel?: string;
+  contractCount?: number; // 기간 안 계약 건수 (없으면 부연 우측 비움)
 }
 
 /** 실측 맞춤 하한 — 그 아래로는 줄이지 않는다(가독성). */
@@ -231,12 +228,6 @@ const columnStyle: CSSProperties = {
 };
 
 /** 상세 이익표 숫자 셀 — 320px·8자리까지 분할 없이 한 줄. */
-const profitCellStyle: CSSProperties = {
-  whiteSpace: "nowrap",
-  overflowWrap: "normal",
-  wordBreak: "normal",
-  fontSize: "11px",
-};
 
 const PROFIT_OK = "#1d4ed8"; // 0 이상 영업이익 (파랑)
 const PROFIT_NEG = "#7c3aed"; // 음수 영업이익 (보라 — 비용 빨강과 혼동 금지)
@@ -249,12 +240,9 @@ export default function FinanceSummaryBoxes({
   dbCostTotal,
   additionalCost,
   onOpenExpenseLedger,
-  weeks = STATS_WEEKS,
+  refunded = 0,
+  periodLabel = "전체",
   contractCount,
-  carryoverRevenue,
-  totalRevenue,
-  carryoverCost,
-  totalCost,
 }: Props) {
   const [open, setOpen] = useState<Panel | null>(null);
   const toggle = (panel: Panel) => setOpen((prev) => (prev === panel ? null : panel));
@@ -262,10 +250,6 @@ export default function FinanceSummaryBoxes({
   // 기존 OperatingProfitCard 계산 그대로.
   const profit = revenue - cost;
   const profitRate = revenue > 0 ? (profit / revenue) * 100 : 0;
-  const carryRev = carryoverRevenue ?? 0;
-  const totRev = totalRevenue ?? revenue + carryRev;
-  const carryCost = carryoverCost ?? 0;
-  const totCost = totalCost ?? cost + carryCost;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const revenueAmountRef = useRef<HTMLSpanElement | null>(null);
@@ -364,6 +348,9 @@ export default function FinanceSummaryBoxes({
           <div className="space-y-1 text-xs leading-relaxed text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
             <div className="flex items-baseline justify-between gap-2"><span>수임비</span><span className="break-all">₩{fmtMoney(feeIncome)}</span></div>
             <div className="flex items-baseline justify-between gap-2"><span>수수료</span><span className="break-all">₩{fmtMoney(commissionIncome)}</span></div>
+            {refunded > 0 && (
+              <div className="flex items-baseline justify-between gap-2"><span>반환(계약해지)</span><span className="break-all">−₩{fmtMoney(refunded)}</span></div>
+            )}
           </div>
         )}
         {open === "cost" && (
@@ -387,20 +374,9 @@ export default function FinanceSummaryBoxes({
           </div>
         )}
         {open === "profit" && (
-          <div>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-slate-500">{weeks}주 누적{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}</span>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">이익률 <b style={{ color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}>{profitRate.toFixed(1)}%</b></span>
-            </div>
-            <div
-              className="grid min-w-0 grid-cols-[2.5rem_repeat(3,minmax(0,1fr))] gap-1 border-t border-gray-100 pt-2 text-right text-xs tabular-nums"
-              style={{ overflowWrap: "normal" }}
-              data-testid="fin-profit-table"
-            >
-              <span /><span>시즌</span><span>이월</span><span>전체</span>
-              <span className="text-left">매출</span><span style={profitCellStyle}>₩{fmtMoney(revenue)}</span><span style={profitCellStyle}>₩{fmtMoney(carryRev)}</span><span style={profitCellStyle}>₩{fmtMoney(totRev)}</span>
-              <span className="text-left">비용</span><span style={profitCellStyle}>₩{fmtMoney(cost)}</span><span style={profitCellStyle}>₩{fmtMoney(carryCost)}</span><span style={profitCellStyle}>₩{fmtMoney(totCost)}</span>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-slate-500">{periodLabel}{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">이익률 <b style={{ color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}>{profitRate.toFixed(1)}%</b></span>
           </div>
         )}
       </div>

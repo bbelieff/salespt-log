@@ -287,7 +287,8 @@ export default function ContractRow({
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
           showBody ? accent.tint : ""
         } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"} ${
-          isCarryover || isTerminated ? "opacity-60" : ""
+          // 이월(아레나 시작 전) 계약은 흐리게 하지 않는다 — 해지만 흐림(2026-10-08 belie).
+          isTerminated ? "opacity-60" : ""
         }`}
         style={{ minHeight: 60 }}
         aria-expanded={showBody}

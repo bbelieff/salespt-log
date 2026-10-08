@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { isCarryoverContract, isTerminatedContract } from "@/types";
+import { isTerminatedContract } from "@/types";
 import { formatMoney } from "@/lib/format/money";
 import { progressPct } from "../_lib/payment-progress";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
@@ -23,7 +23,7 @@ interface Props {
   onToggleDetail?: () => void;
 }
 
-export default function ContractListTable({ items, selectedKey, onSelect, highlight, courseStartISO, activityState, renderDetail, detailExpanded = true, onToggleDetail }: Props) {
+export default function ContractListTable({ items, selectedKey, onSelect, highlight, activityState, renderDetail, detailExpanded = true, onToggleDetail }: Props) {
   // 「영업기록 없음」 을 누르면 미팅 고르기 → 연결(belie 2026-09-29). 행 선택 버튼 안이라 클릭을 행으로 넘기지 않는다.
   const [linking, setLinking] = useState<{ row: number; 업체명: string } | null>(null);
   const openLink = (row: number | undefined, 업체명: string) => (e: MouseEvent | KeyboardEvent) => {
@@ -43,7 +43,8 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
         const pcts = works.map((w) => progressPct(cp[`수납${w.slot}`].진행률));
         const pct = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         const fee = works.reduce((sum, w) => sum + cp[`수납${w.slot}`].수납액, 0);
-        const muted = isCarryoverContract(cp, courseStartISO ?? "") || isTerminatedContract(cp);
+        // 해지만 흐리게 — 이월(아레나 시작 전) 계약도 또렷하게(2026-10-08 belie).
+        const muted = isTerminatedContract(cp);
         const inlineOpen = Boolean(renderDetail && selected && detailExpanded);
         return (
           <div key={item.key}>
