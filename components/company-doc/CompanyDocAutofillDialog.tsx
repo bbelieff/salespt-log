@@ -4,7 +4,8 @@
  * 흐름: 파일 여러 개 끌어놓기/고르기 → 파일마다 이 기기 안에서 OCR(한 번에 하나씩) → 문서 종류 자동 판별
  * (고르기 상자로 바꿀 수 있음) → 등록된 파서가 칸 제안 → 비교표에서 체크한 칸만 onApply.
  *
- * 개인정보(belie 결정): 파일은 서버로 보내지 않고 저장하지 않는다. 읽은 글자는 **가린 뒤**(redactOcrText —
+ * 미팅 메모(txt·붙여넣기)는 OCR 없이 바로 읽고, 계정·계좌·주민번호는 칸이 아니라 계정 보관함 후보로 보여 준다.
+ * 개인정보(belie 결정): 파일은 서버로 보내지 않고 저장하지 않는다. 서류 사진·PDF 에서 읽은 글자는 **가린 뒤**(redactOcrText —
  * 주민등록번호 뒷자리·운전면허번호) 이 팝업 메모리에만 있다가(문서 종류를 바꾸면 다시 읽으려고) 팝업을 닫으면
  * 사라진다. 로그로 남기지 않는다.
  * OCR 실행기(@/lib/document-ocr/ocr-client → tesseract/pdfjs)는 파일을 읽는 순간 dynamic import.
@@ -19,6 +20,10 @@ import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
 import { buildDiffRows, defaultCheckFor, selectedPatch, withBaseYear } from "@/lib/document-ocr/diff";
 import { DOC_TYPES, DOC_TYPE_LABEL, type CompanyInfoKey, type DocType } from "@/lib/document-ocr/types";
+import { MEMO_MAX_BYTES, decodeMemoBytes, isMemoFile } from "@/lib/document-ocr/memo-file";
+import type { MemoParseResult } from "@/lib/document-ocr/parse-memo";
+import type { VaultItem } from "@/types/company-vault";
+import CompanyDocMemoExtras from "./CompanyDocMemoExtras";
 
 /** 팝업에 안내하는 서류 목록 [서류, 채워 주는 칸] — 파서 레지스트리(lib/document-ocr/registry.ts)와 같게 유지. */
 export const SUPPORTED_DOCS: readonly (readonly [string, string])[] = [
@@ -27,6 +32,7 @@ export const SUPPORTED_DOCS: readonly (readonly [string, string])[] = [
   ["재무제표(표준재무제표증명)", "영업이익·당기순이익·이자비용·자산/부채/자본총계"],
   ["신분증(주민등록증·운전면허증)", "대표자 이름·주민등록번호 앞자리·자택주소"],
   ["임대차계약서", "소유여부(임차)·보증금·월세·면적"],
+  ["미팅 메모(txt·붙여넣기)", "업체·대표자 칸·연도별 매출 + 아이디·비번·계좌·주민번호는 계정 보관함으로"],
 ];
 import { resolveBaseYear } from "@/util/company-sales";
 import { companyInfoFieldList } from "@/components/company-info-defs";
@@ -54,14 +60,19 @@ function fieldOrder(baseYear: number) {
 interface Props {
   current: CompanyInfo;
   onApply: (patch: Partial<Record<CompanyInfoKey, string>>) => void;
+  /** 미팅 메모에서 뽑은 계정·계좌 — 편집기의 계정 보관함으로 넘긴다. */
+  onVault?: (items: VaultItem[]) => void;
   onClose: () => void;
 }
 
-export default function CompanyDocAutofillDialog({ current, onApply, onClose }: Props) {
+export default function CompanyDocAutofillDialog({ current, onApply, onVault, onClose }: Props) {
   const [files, setFiles] = useState<Row[]>([]);
   const [userChecked, setUserChecked] = useState<Record<string, boolean>>({});
   const [choice, setChoice] = useState<Record<string, number>>({});
   const [dragOver, setDragOver] = useState(false);
+  const [pasteText, setPasteText] = useState<string | null>(null);
+  const [vaultOff, setVaultOff] = useState<Record<string, boolean>>({});
+  const [leftoverOn, setLeftoverOn] = useState(false);
   const seq = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -131,9 +142,24 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
     })();
   }, [busy, next]);
 
+  // 미팅 메모는 OCR 없이 글자를 바로 읽는다(가리지 않음 — 계정·주민번호를 보관함으로 옮기려고, 팝업 메모리에만 있다).
+  const addMemo = (name: string, text: string) => {
+    seq.current += 1;
+    const row: Row = { id: seq.current, name, status: "done", ratio: 1, message: "다 읽었어요", text, docType: "미팅메모" };
+    setFiles((fs) => [...fs, row]);
+  };
+
   const addFiles = (list: FileList | File[] | null) => {
     if (!list) return;
-    const rows: Row[] = [...list].map((file) => {
+    for (const file of [...list].filter(isMemoFile)) {
+      if (file.size > MEMO_MAX_BYTES) {
+        seq.current += 1;
+        setFiles((fs) => [...fs, { id: seq.current, name: file.name, status: "error", ratio: 0, message: "메모 파일은 1MB 이하만 읽어요.", text: "", docType: "unknown" }]);
+        continue;
+      }
+      void file.arrayBuffer().then((buf) => addMemo(file.name, decodeMemoBytes(buf)));
+    }
+    const rows: Row[] = [...list].filter((file) => !isMemoFile(file)).map((file) => {
       const v = validateOcrFile({ size: file.size, type: file.type, name: file.name });
       seq.current += 1;
       const base = { id: seq.current, name: file.name, ratio: 0, text: "", docType: "unknown" as DocType };
@@ -168,8 +194,16 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
     }
     return out;
   }, [rows, userChecked, choice]);
+  const memos = parsed.flatMap(({ f, result }) =>
+    result && "vault" in result ? [{ id: f.id, ...(result as MemoParseResult) }] : [],
+  );
+  const vaultItems = memos.flatMap((m) => m.vault.map((v, i) => ({ key: `${m.id}:${i}`, v })));
+  const vaultOn = vaultItems.map(({ key }) => !vaultOff[key]);
+  const pickedVault = vaultItems.filter((_, i) => vaultOn[i]).map(({ v }) => v);
+  const leftover = memos.map((m) => m.leftover).filter(Boolean).join("\n\n");
   const patch = selectedPatch(rows, checked, choice);
-  const count = Object.keys(patch).length;
+  const memoNote = leftoverOn && leftover ? [current.업체기타메모?.trim(), leftover].filter(Boolean).join("\n") : null;
+  const count = Object.keys(patch).length + (memoNote ? 1 : 0) + pickedVault.length;
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -243,12 +277,19 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
           >
             파일 고르기
           </button>
-          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF, 15MB 이하 · PDF 는 10쪽까지(스캔본은 첫 쪽) 읽어요</p>
+          <button
+            type="button"
+            onClick={() => setPasteText((t) => (t === null ? "" : null))}
+            className="ml-2 mt-2 rounded-md border border-gray-300 bg-white px-3 py-1 font-medium text-gray-700 hover:bg-gray-50"
+          >
+            메모 붙여넣기
+          </button>
+          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF 15MB 이하 · PDF 는 10쪽까지(스캔본은 첫 쪽) · 미팅 메모 TXT</p>
           <input
             ref={inputRef}
             type="file"
             multiple
-            accept={OCR_ACCEPT_ATTR}
+            accept={`${OCR_ACCEPT_ATTR},.txt,text/plain`}
             className="sr-only"
             tabIndex={-1}
             aria-label="서류 파일 고르기"
@@ -258,6 +299,30 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
             }}
           />
         </div>
+        {pasteText !== null && (
+          <div className="mt-2 space-y-1.5">
+            <label htmlFor={`${titleId}-paste`} className="sr-only">미팅 메모 붙여넣기</label>
+            <textarea
+              id={`${titleId}-paste`}
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              rows={6}
+              placeholder="메모장에 적은 미팅 메모를 그대로 붙여넣어 주세요."
+              className="w-full rounded-md border border-gray-300 p-2 text-xs text-gray-900 focus:border-gray-900 focus:outline-none"
+            />
+            <button
+              type="button"
+              disabled={!pasteText.trim()}
+              onClick={() => {
+                addMemo("붙여넣은 메모", pasteText);
+                setPasteText(null);
+              }}
+              className="rounded-md bg-gray-900 px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+            >
+              메모 읽기
+            </button>
+          </div>
+        )}
         <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs" aria-label="읽을 수 있는 서류">
           <p className="font-semibold text-gray-700">읽을 수 있는 서류</p>
           <ul className="mt-1 space-y-0.5">
@@ -359,6 +424,15 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
           />
         </div>
 
+        <CompanyDocMemoExtras
+          vault={vaultItems.map(({ v }) => v)}
+          vaultOn={vaultOn}
+          onVault={(i, on) => setVaultOff((o) => ({ ...o, [vaultItems[i]!.key]: !on }))}
+          leftover={leftover}
+          leftoverOn={leftoverOn}
+          onLeftover={setLeftoverOn}
+        />
+
         <div className="mt-3 flex items-center gap-2">
           <span className="flex-1 text-xs text-gray-500" aria-live="polite">
             {count}개 선택
@@ -370,7 +444,8 @@ export default function CompanyDocAutofillDialog({ current, onApply, onClose }: 
             type="button"
             disabled={count === 0}
             onClick={() => {
-              onApply(withBaseYear(patch, current, baseYear));
+              onApply(withBaseYear(memoNote ? { ...patch, 업체기타메모: memoNote } : patch, current, baseYear));
+              if (pickedVault.length > 0) onVault?.(pickedVault);
               onClose();
             }}
             className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-40"

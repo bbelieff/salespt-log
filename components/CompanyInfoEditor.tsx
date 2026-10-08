@@ -32,7 +32,7 @@ import { inputCls } from "./company-info/CompanyInfoField";
 import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 import CompanyVaultSection from "./company-info/CompanyVaultSection";
-import type { VaultTarget } from "@/types/company-vault";
+import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
 import { fontScaleOf } from "@/util/font-scale";
@@ -87,6 +87,8 @@ export default function CompanyInfoEditor({
   });
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
+  // 미팅 메모에서 뽑아 계정 보관함에 넣을 항목 — 보관함이 열리면 넣고 비운다(메모리에만).
+  const [vaultIncoming, setVaultIncoming] = useState<VaultItem[]>([]);
   // 매출 기준 연도가 비었을 때 쓰는 오늘 — 편집기를 연 날(렌더마다 바뀌지 않게 고정).
   const [today] = useState(() => new Date());
   // 패널·모달이 같은 필드를 동시에 그리므로 위치(where)까지 넣어 id 충돌을 막는다.
@@ -364,7 +366,11 @@ export default function CompanyInfoEditor({
                 <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span>
               )}
               {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
-              <CompanyDocAutofillButton current={draft} onApply={(p) => apply((d) => ({ ...d, ...p }))} />
+              <CompanyDocAutofillButton
+                current={draft}
+                onApply={(p) => apply((d) => ({ ...d, ...p }))}
+                onVault={vaultTarget ? (items) => setVaultIncoming((v) => [...v, ...items]) : undefined}
+              />
               {/* 업체정보생성(TXT) — 편집 옆, 흰 바탕(belie 2026-09-29). */}
               {txtCompanyName && (
                 <button
@@ -410,7 +416,7 @@ export default function CompanyInfoEditor({
             />
           )}
           {body(splitInline, "panel")}
-          {vaultTarget && !modal && <CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-panel`} />}
+          {vaultTarget && !modal && <CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-panel`} incoming={vaultIncoming} onIncomingDone={() => setVaultIncoming([])} />}
           {txtMsg && (
             <p className={`text-px-11 ${txtMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
               {txtMsg.ok ? "✓" : "✕"} {txtMsg.text}
@@ -447,7 +453,7 @@ export default function CompanyInfoEditor({
               </button>
             </div>
             {body(false, "modal")}
-            {vaultTarget && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} /></div>}
+            {vaultTarget && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} incoming={vaultIncoming} onIncomingDone={() => setVaultIncoming([])} /></div>}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

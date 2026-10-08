@@ -4,6 +4,7 @@
  * 고객 아이디·비밀번호·계좌·주민번호 전체를 업체별로 잠가 보관한다. PIN 하나로 한 번 열면
  * 모든 업체 보관함이 10분 열리고(쓸 때마다 연장), 편집은 800ms 뒤 자동 저장한다.
  * 저장 도중 잠기면 입력하던 값은 화면에 남겨 두고, 다시 열면 그 값을 저장한다.
+ * incoming = 미팅 메모에서 뽑은 항목 — 열려 있으면 바로, 잠겨 있으면 PIN 을 넣은 뒤 같은 값이 없을 때만 더한다.
  * 초안: Muse(muse-spark-1.3-contributor) — 총괄 검수·수정.
  */
 "use client";
@@ -41,7 +42,17 @@ function PinInput({ id, label, value, onChange, auto }: { id: string; label: str
   );
 }
 
-export default function CompanyVaultSection({ target, idBase }: { target: VaultTarget; idBase: string }) {
+const sameItem = (a: VaultItem, b: VaultItem) =>
+  a.kind === b.kind && a.label === b.label && a.id === b.id && a.secret === b.secret;
+
+interface Props {
+  target: VaultTarget;
+  idBase: string;
+  incoming?: VaultItem[];
+  onIncomingDone?: () => void;
+}
+
+export default function CompanyVaultSection({ target, idBase, incoming = [], onIncomingDone }: Props) {
   const query = toQuery(target);
   const [view, setView] = useState<VaultView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,6 +69,7 @@ export default function CompanyVaultSection({ target, idBase }: { target: VaultT
   const [copied, setCopied] = useState<string | null>(null);
   const [pinEdit, setPinEdit] = useState(false);
   const [curPin, setCurPin] = useState("");
+  const [addedNote, setAddedNote] = useState("");
   // 사용자가 고친 뒤 아직 서버에 못 넣은 값 — 잠겼다 다시 열어도 이 값을 저장한다.
   const unsaved = useRef<VaultItem[] | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,6 +203,17 @@ export default function CompanyVaultSection({ target, idBase }: { target: VaultT
     }
   };
 
+  // 메모에서 온 항목은 열려 있고 불러오기가 끝났을 때 한 번만 더한다.
+  const ready0 = !loading && view?.unlocked;
+  useEffect(() => {
+    if (!ready0 || incoming.length === 0) return;
+    const fresh = incoming.filter((n) => !items.some((it) => sameItem(it, n)));
+    if (fresh.length > 0) edit([...items, ...fresh]);
+    setAddedNote(fresh.length > 0 ? `메모에서 ${fresh.length}건을 넣었어요.` : "메모의 항목은 이미 보관함에 있어요.");
+    onIncomingDone?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 열린 직후·새 항목이 왔을 때만
+  }, [ready0, incoming]);
+
   const patch = (i: number, k: keyof VaultItem, v: string) =>
     edit(items.map((it, n) => (n === i ? { ...it, [k]: v } : it)));
 
@@ -230,6 +253,11 @@ export default function CompanyVaultSection({ target, idBase }: { target: VaultT
             <button type="submit" disabled={busy || pin1.length < 4} className={primaryCls}>{busy ? "여는 중…" : "열기"}</button>
           </div>
           <p className="text-xs text-gray-500">한 번 열면 모든 업체 보관함이 10분 동안 열려요.</p>
+          {incoming.length > 0 && (
+            <p className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">
+              메모에서 가져온 {incoming.length}건 — PIN을 넣으면 보관함에 들어가요.
+            </p>
+          )}
           {pinError && <p role="alert" className="text-xs text-red-600">{pinError}</p>}
         </form>
       )}
@@ -257,6 +285,7 @@ export default function CompanyVaultSection({ target, idBase }: { target: VaultT
             </form>
           )}
 
+          {addedNote && <p className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">{addedNote}</p>}
           {items.length === 0 && (
             <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">아직 보관한 항목이 없어요. 아래 [+ 항목 추가]로 넣어 주세요.</p>
           )}

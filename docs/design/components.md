@@ -59,7 +59,8 @@
 
 ## 업체 계정 보관함 (2026-10-08)
 
-- **CompanyVaultSection** (`components/company-info/CompanyVaultSection.tsx`): 업체정보 편집기(패널·팝업) 안 「계정 보관함」 카드. `rounded-xl border border-gray-200 bg-white p-3 shadow-sm`, 머리 「계정 보관함」 + 배지 「잠금 저장」(emerald-50/700). 상태 4가지 — 불러오는 중 / PIN 만들기(4~8자리 2칸) / 잠김(항목 수 + PIN 1칸 + [열기]) / 열림(mm:ss 카운트다운·[PIN 바꾸기]·[지금 잠그기], 항목 카드: 종류·이름·앞값[복사]·가릴값 password[보기][복사]·메모, 점선 [+ 항목 추가]). 편집 800ms 뒤 자동 저장, 401 이면 잠김으로 돌아가 입력값 보존 후 다시 열면 저장. 주 행동만 brand-red 채움. 초안 Muse, 총괄 검수.
+- **CompanyVaultSection** (`components/company-info/CompanyVaultSection.tsx`): 업체정보 편집기(패널·팝업) 안 「계정 보관함」 카드. `rounded-xl border border-gray-200 bg-white p-3 shadow-sm`, 머리 「계정 보관함」 + 배지 「잠금 저장」(emerald-50/700). 상태 4가지 — 불러오는 중 / PIN 만들기(4~8자리 2칸) / 잠김(항목 수 + PIN 1칸 + [열기]) / 열림(mm:ss 카운트다운·[PIN 바꾸기]·[지금 잠그기], 항목 카드: 종류·이름·앞값[복사]·가릴값 password[보기][복사]·메모, 점선 [+ 항목 추가]). 편집 800ms 뒤 자동 저장, 401 이면 잠김으로 돌아가 입력값 보존 후 다시 열면 저장. 주 행동만 brand-red 채움. 초안 Muse, 총괄 검수. `incoming`(미팅 메모에서 뽑은 항목)은 열려 있으면 바로, 잠겨 있으면 PIN 입력 뒤 같은 값이 없을 때만 더하고 「메모에서 N건을 넣었어요」를 보여 준다.
+- **CompanyDocMemoExtras** (`components/company-doc/CompanyDocMemoExtras.tsx`): 「문서로 자동입력」에서 미팅 메모(txt·붙여넣기)를 읽었을 때만 — 계정 보관함으로 보낼 항목(emerald 상자, 기본 체크, 값은 앞 2자 + •• 로 가림)과 「나머지 메모를 업체 기타메모에 붙이기」(기본 꺼짐).
 
 ## 1. Buttons
 

@@ -19,6 +19,7 @@ export const DOC_TYPES = [
   "재무제표",
   "신분증",
   "임대차계약서",
+  "미팅메모",
   "unknown",
 ] as const;
 export type DocType = (typeof DOC_TYPES)[number];
@@ -29,6 +30,7 @@ export const DOC_TYPE_LABEL: Record<DocType, string> = {
   재무제표: "재무제표",
   신분증: "신분증",
   임대차계약서: "임대차계약서",
+  미팅메모: "미팅 메모(txt)",
   unknown: "모르는 문서",
 };
 
