@@ -41,7 +41,7 @@ interface MillionWonInputProps {
   /** @deprecated 단위 "백만원" 은 이제 늘 숫자 뒤(칸 안 오른쪽)에 보인다(belie 2026-09-29). */
   suffix?: boolean;
   describedBy?: string;
-  /** 연도별 매출 표처럼 표 머리에 단위가 있을 때 — 칸 안 "백만원" 을 빼고, 도움말 줄 높이를 고정해 칸 줄을 맞춘다. */
+  /** 연도별 매출 표처럼 칸이 좁을 때 — 칸 안 단위를 짧고 옅은 "백만" 으로. */
   bare?: boolean;
 }
 
@@ -55,7 +55,7 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy, bare
     setCut(r.cut);
     return groupTyping(r.value, caret, prev, signed);
   }, value, onChange);
-  const showUnit = !bare && read.kind !== "legacy"; // 옛 "3,200만" 처럼 글로 적힌 값엔 단위를 또 붙이지 않는다.
+  const showUnit = read.kind !== "legacy"; // 옛 "3,200만" 처럼 글로 적힌 값엔 단위를 또 붙이지 않는다.
   return (
     <div className="min-w-0">
       <div className="relative">
@@ -63,7 +63,7 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy, bare
           id={id}
           ref={live.ref}
           // 숫자는 오른쪽 정렬(단위 "백만원" 은 칸 안 오른쪽 끝), 옛 자유 글은 앞부분이 보이게 왼쪽.
-          className={`${inputCls} min-w-0 tabular-nums ${read.kind === "legacy" ? "" : "text-right"} ${showUnit ? "pr-12" : ""}`}
+          className={`${inputCls} min-w-0 tabular-nums ${read.kind === "legacy" ? "" : "text-right"} ${showUnit ? (bare ? "pr-7" : "pr-12") : ""}`}
           inputMode={signed ? "text" : "decimal"}
           aria-describedby={describedBy}
           value={value}
@@ -75,14 +75,16 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy, bare
             if (next !== value) onChange(next);
           }}
         />
-        {showUnit && <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400">백만원</span>}
+        {showUnit && (
+          <span aria-hidden className={`pointer-events-none absolute inset-y-0 flex items-center text-xs ${bare ? "right-1.5 text-gray-300" : "right-2 text-gray-400"}`}>
+            {bare ? "백만" : "백만원"}
+          </span>
+        )}
       </div>
       {cut ? (
-        <p className={`mt-0.5 text-xs text-amber-700 ${bare ? "h-4 truncate" : ""}`} role="status">
+        <p className={`mt-0.5 text-xs text-amber-700 ${bare ? "truncate" : ""}`} role="status">
           {CUT_MSG}
         </p>
-      ) : bare ? (
-        <p className="mt-0.5 h-4 truncate text-xs text-gray-500">{hint}</p>
       ) : (
         hint && <p className="mt-0.5 truncate text-xs text-gray-500">{hint}</p>
       )}

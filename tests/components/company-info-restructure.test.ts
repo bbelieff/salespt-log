@@ -320,10 +320,9 @@ describe("⑤ [재무] 매출", () => {
     vi.setSystemTime(new Date(2026, 8, 28));
     render({ 매출Y1상: "120" });
     const grid = groupEl("연도별 매출");
-    const rows = [...grid.querySelectorAll<HTMLElement>("[data-sales-row]")];
-    expect(rows).toHaveLength(4);
-    const cells = rows.map((r) =>
-      [...r.querySelectorAll<HTMLInputElement>("input")].filter((i) => !i.id.endsWith("-매출기준연도")),
+    expect(grid.querySelectorAll("[data-sales-row]")).toHaveLength(4);
+    const cells = [0, 1, 2, 3].map((y) =>
+      [...grid.querySelectorAll<HTMLElement>(`[data-sales-cell="${y}"]`)].map((c) => c.querySelector<HTMLInputElement>("input")!),
     );
     expect(cells.map((c) => c.map((i) => labelOf(i)))).toEqual([
       ["매출 Y(2026)", "Y(2026) 상반기", "Y(2026) 하반기"],

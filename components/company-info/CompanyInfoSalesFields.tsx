@@ -2,8 +2,8 @@
  * CompanyInfoSalesFields — 업체정보 [재무] 연도별 매출 표 (company-finance-won-grid, belie 2026-09-28).
  *
  * 1) 「연도별 매출」 한 표(belie 2026-10-09 피벗): 연도가 가로(Y · Y-1 · Y-2 · Y-3), 아래로 연매출(합계) →
- *    상반기 → 하반기. 단위 "백만원" 은 표 머리에 한 번만 — 칸은 숫자만(375px 폰에서도 네 연도가 한 줄).
- *    연도마다 한 세로 줄([data-sales-row]), 연도별 안내(한쪽만·읽을 수 없음·이전 합계·옛 글)는 표 아래 [data-sales-note].
+ *    상반기 → 하반기. 칸 안 오른쪽에 옅은 "백만"(표 머리에도 "단위: 백만원"). 표(table)라 줄 높이가 저절로 맞는다.
+ *    연도 머리 [data-sales-row], 칸 [data-sales-cell], 연도별 안내(한쪽만·읽을 수 없음·이전 합계·옛 글)는 표 아래 [data-sales-note].
  * 2) 합계: 반기 칸에 값이 있으면 반기 합(읽기 전용, 칸 아래 "자동") — 편집기 apply() 가 같은 값을 저장한다
  *    (열기만 해선 안 함). 한쪽만 있으면 그 반기만 더하고 안내, 둘 다 비면 합계는 직접 적는 칸(옛 연도 합계·
  *    재무제표 연 매출). 반기 칸에 읽을 수 없는 글이 있으면 합계를 덮지 않고 알린다. 반기 합과 다른 옛 합계는
@@ -107,82 +107,101 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
         </div>
         <span className="text-xs text-gray-400">단위: 백만원</span>
       </div>
-      {/* 연도가 가로(Y·Y-1·Y-2·Y-3), 아래로 연매출 → 상반기 → 하반기(belie 2026-10-09 피벗). 연도마다 한 세로 줄. */}
-      <div className="flex gap-1" role="group" aria-label="연도별 매출">
-        <div className="w-11 shrink-0 text-xs font-medium text-gray-500" aria-hidden="true">
-          <div className="h-12" />
-          <div className="flex h-11 items-start pt-1.5 font-semibold text-gray-800">연매출</div>
-          <div className="flex h-11 items-start pt-1.5">상반기</div>
-          <div className="flex h-11 items-start pt-1.5">하반기</div>
-        </div>
-        <div className="grid min-w-0 flex-1 grid-cols-4 gap-1">
-          {defs.rows.map(([상, 하, 합], i) => {
-            const row = salesRowView(draft, i);
-            return (
-              <div key={String(합[0])} className="min-w-0" data-sales-row={i}>
-                <div className="h-12 text-xs">
-                  <div className="flex items-center justify-center gap-0.5 font-semibold text-gray-800">
-                    {salesYearToken(i)}
-                    {i === 0 && <HintTooltip label="기준 연도" text={YEAR_HINT} />}
-                  </div>
-                  {i === 0 ? (
-                    <>
-                      <label htmlFor={yearId} className="sr-only">
-                        매출 기준 연도(Y)
-                      </label>
-                      <span id={`${yearId}-hint`} className="sr-only">
-                        {YEAR_HINT}
-                      </span>
-                      <input
-                        id={yearId}
-                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-center text-xs tabular-nums text-gray-900 focus:border-brand-red focus:outline-none"
-                        inputMode="numeric"
-                        maxLength={4}
-                        aria-invalid={yearError ? true : undefined}
-                        aria-describedby={yearError ? `${yearId}-hint ${yearId}-err` : `${yearId}-hint`}
-                        value={yearText ?? String(baseYear)}
-                        onFocus={() => {
-                          setYearText(String(baseYear));
-                          setYearError("");
-                        }}
-                        onChange={(e) => typeYear(e.target.value)}
-                        onBlur={() => {
-                          if (yearText !== null && baseYearInputError(yearText)) setYearError(baseYearInputError(yearText));
-                          setYearText(null);
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <p className="pt-0.5 text-center tabular-nums text-gray-500">{baseYear - i}</p>
-                  )}
+      {/* 연도가 가로(Y·Y-1·Y-2·Y-3), 아래로 연매출 → 상반기 → 하반기(belie 2026-10-09 피벗).
+          표(table)라 칸 아래 "약 …" 줄이 생겨도 같은 줄끼리 높이가 저절로 맞는다(글자 크기를 키워도 안 잘림). */}
+      <div role="group" aria-label="연도별 매출">
+      <table className="w-full table-fixed border-separate border-spacing-1">
+        <colgroup>
+          <col className="w-11" />
+          <col />
+          <col />
+          <col />
+          <col />
+        </colgroup>
+        <thead>
+          <tr className="text-xs">
+            <th scope="col" className="sr-only">구분</th>
+            {defs.rows.map((_, i) => (
+              <th key={i} scope="col" className="align-top font-normal" data-sales-row={i}>
+                <div className="flex items-center justify-center gap-0.5 font-semibold text-gray-800">
+                  {salesYearToken(i)}
+                  {i === 0 && <HintTooltip label="기준 연도" text={YEAR_HINT} />}
                 </div>
-                <div className="h-11">
-                  {row.auto && row.total !== null ? (
-                    <div className="min-w-0">
-                      <label htmlFor={idOf(합[0])} className="sr-only">
-                        {합[1]}
-                      </label>
-                      <input
-                        id={idOf(합[0])}
-                        className={`${readOnlyCls} text-right font-semibold tabular-nums`}
-                        readOnly
-                        aria-readonly="true"
-                        value={formatTenths(row.total)}
-                      />
-                      <p className="mt-0.5 h-4 truncate text-xs text-gray-500">
-                        {["자동", moneyHint(row.total)].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                  ) : (
-                    cell(합)
-                  )}
-                </div>
-                <div className="h-11">{cell(상)}</div>
-                <div className="h-11">{cell(하)}</div>
-              </div>
-            );
-          })}
-        </div>
+                {i === 0 ? (
+                  <>
+                    <label htmlFor={yearId} className="sr-only">
+                      매출 기준 연도(Y)
+                    </label>
+                    <span id={`${yearId}-hint`} className="sr-only">
+                      {YEAR_HINT}
+                    </span>
+                    <input
+                      id={yearId}
+                      className="w-full rounded border border-gray-300 px-1 py-0.5 text-center text-xs tabular-nums text-gray-900 focus:border-brand-red focus:outline-none"
+                      inputMode="numeric"
+                      maxLength={4}
+                      aria-invalid={yearError ? true : undefined}
+                      aria-describedby={yearError ? `${yearId}-hint ${yearId}-err` : `${yearId}-hint`}
+                      value={yearText ?? String(baseYear)}
+                      onFocus={() => {
+                        setYearText(String(baseYear));
+                        setYearError("");
+                      }}
+                      onChange={(e) => typeYear(e.target.value)}
+                      onBlur={() => {
+                        if (yearText !== null && baseYearInputError(yearText)) setYearError(baseYearInputError(yearText));
+                        setYearText(null);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <p className="pt-0.5 text-center tabular-nums text-gray-500">{baseYear - i}</p>
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {(["연매출", "상반기", "하반기"] as const).map((name, line) => (
+            <tr key={name}>
+              <th scope="row" className={`pt-1.5 text-left align-top text-xs ${line === 0 ? "font-semibold text-gray-800" : "font-medium text-gray-500"}`}>
+                {name}
+              </th>
+              {defs.rows.map(([상, 하, 합], i) => {
+                const row = salesRowView(draft, i);
+                if (line === 1) return <td key={i} className="min-w-0 align-top" data-sales-cell={i}>{cell(상)}</td>;
+                if (line === 2) return <td key={i} className="min-w-0 align-top" data-sales-cell={i}>{cell(하)}</td>;
+                return (
+                  <td key={i} className="min-w-0 align-top" data-sales-cell={i}>
+                    {row.auto && row.total !== null ? (
+                      <div className="min-w-0">
+                        <label htmlFor={idOf(합[0])} className="sr-only">
+                          {합[1]}
+                        </label>
+                        <div className="relative">
+                          <input
+                            id={idOf(합[0])}
+                            className={`${readOnlyCls} pr-7 text-right font-semibold tabular-nums`}
+                            readOnly
+                            aria-readonly="true"
+                            value={formatTenths(row.total)}
+                          />
+                          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-xs text-gray-300">백만</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          {["자동", moneyHint(row.total)].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    ) : (
+                      cell(합)
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
       </div>
       {yearError && (
         <p id={`${yearId}-err`} className="text-xs text-red-600" role="alert">
