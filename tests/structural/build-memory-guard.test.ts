@@ -41,10 +41,17 @@ describe("★빌드가 2GB 안에 들어오게 유지한다", () => {
   });
 
   it("★배포 빌드는 CI 와 중복인 린트·타입검사를 건너뛴다(2026-10-09 타입검사 단계 OOM)", () => {
-    expect(deploy).toContain("SKIP_BUILD_CHECKS=1 BUILD_DIST_DIR=.next-build npm run build");
+    expect(deploy).toContain("SKIP_BUILD_CHECKS=1 BUILD_DIST_DIR=.next-build $MEASURE npm run build");
     expect(config).toContain('eslint: { ignoreDuringBuilds: process.env.SKIP_BUILD_CHECKS === "1" }');
     expect(config).toContain('typescript: { ignoreBuildErrors: process.env.SKIP_BUILD_CHECKS === "1" }');
     // 로컬·CI 빌드에서는 검사를 끄지 않는다(상수 true 로 굳는 회귀 방지).
     expect(config).not.toMatch(/ignoreDuringBuilds: true|ignoreBuildErrors: true/);
+  });
+
+  it("★배포 빌드는 피크 메모리를 로그에 남긴다 — 힙 한도 조정의 근거(2026-10-09)", () => {
+    expect(deploy).toContain("/usr/bin/time -f build_peak_rss_kb=%M,elapsed_s=%e");
+    // 원격 스크립트는 REMOTE='...' 홑따옴표 안이다 — 측정 줄에 홑따옴표가 들어가면 스크립트가 깨진다.
+    const line = deploy.split("\n").find((l) => l.includes("MEASURE=\"\"")) ?? "";
+    expect(line).not.toContain("'");
   });
 });

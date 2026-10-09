@@ -7,6 +7,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-09 · 데탑 Claude Code(sharp-nash) · 배포 빌드 힙 한도 재검토 — 3072 상향 보류, 피크 메모리 기록 추가
+- 요청: run 37808444078(#1102) 힙 OOM 후 힙 상향(3072) 또는 빌드 메모리 감소. 확인 결과 감소안은 #1105 로 이미 머지·배포 2연속 성공(run 37818456499·37819674693, 로그 「Skipping linting / Skipping validation of types」). 실패 로그(37814981429-2.log:38→87)상 OOM 지점이 바로 그 린트·타입검사 단계.
+- 결정(자율): 3072 상향 보류. VPS 실측 `free -m` available 2356MB · swap 1507MB 사용 중 · salespt-log 422MB · hermes 380MB → 3GB 힙은 스왑에서만 나오고, 오늘 00:29 KST 전역 OOM 도 이미 발생(배포 아님 — root ssh 세션의 node 1.29GB).
+- 변경: deploy.yml 빌드를 `/usr/bin/time -f build_peak_rss_kb=%M` 로 감싸 피크 RSS 와 빌드 직전 `free -m` 을 배포 로그에 남김(없으면 측정 없이 빌드). 구조 테스트·playbook 갱신. 다음 힙 논의는 이 숫자로.
+- 되돌리기: 이 squash 커밋 revert.
+
 ### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 로그인 PC 포인터 패럴랙스 (인터랙션 ③)
 - 사용자 승인 목업(인터랙션 3종 중 ③). 구역: `components/auth/{LoginScene,LoginParallaxStage(신규)}.tsx` · 테스트·components.md.
 - 결정: PC(마우스)에서만 층별 깊이 이동(배경 6 · 오라 10 · 도넛 14 · 이모지 20/26 · 로고 4px), 글·버튼 고정. 터치·움직임 줄이기는 무동작. 함께 고침: 움직임 줄이기 설정을 무시하던 애니메이션 → 끄고 이모지 바로 표시.
