@@ -38,7 +38,7 @@ import StandaloneCompanyAdd from "./_components/StandaloneCompanyAdd";
 import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
 import PaymentListModeTabs from "./_components/PaymentListModeTabs";
-import useMasterPaneWidth from "./_components/useMasterPaneWidth";
+import useMasterPaneWidth, { MASTER_PANE_MIN_WIDTH } from "./_components/useMasterPaneWidth";
 import usePaymentFocus from "./_components/usePaymentFocus";
 import { buildCompanyWorkItems, companyKeyOfRow, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
 import TopHeader from "@/components/TopHeader";
@@ -347,7 +347,7 @@ export default function PaymentPage() {
               <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
                 <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
                   <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{selectedCompany.hasProgress ? `진행 ${selectedCompany.work.slot} · ${selectedCompany.work.institution || "기관 미입력"}${selectedCompany.work.product ? ` · ${selectedCompany.work.product}` : ""}` : "진행건 미등록"}</p>}</div>
-                  <button type="button" onClick={() => { setMasterWidth(360); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                  <button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
                 </div>
                 <ContractRow
                   key={`detail-${selectedCp.row}`}
