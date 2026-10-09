@@ -4,15 +4,15 @@
  * - BizTypeField: 사업자구분 · 과세유형 한 칸 select. 고르면 두 저장 키를 함께 쓴다.
  *   옛 값(과세유형 빈칸·목록 밖 자유 글)은 고를 수 없는 "지금 값" 선택지로 그대로 보인다.
  *   목록 밖 자유 글은 새 값으로 바꿀 때 기타메모로 옮겨 둔다(말없이 지우지 않는다).
- * - OwnershipField: 소유여부 자가/임차 select. 임차면(또는 임차 칸에 이미 값이 있으면) 보증금(원)·
- *   월세(원)·면적(㎡) 세 칸을 한 줄에. 옛 자유 글("임차 : 보 1000만, 월 50만")은 선택을 짐작해 보여 주고
- *   원문을 "이전에 적은 내용"으로 칸 아래에 둔다 — 선택을 바꾸거나, 짐작이 맞으면 "임차로 확정"을 누르면
- *   (이미 선택된 값을 다시 고르면 change 가 안 일어나므로) 선택값을 저장하고 원문을 기타메모로 옮긴다.
- *   기업정보(소유여부)·대표자(대표소유여부)가 같은 모양.
+ * - OwnershipField: 소유여부 글칸(belie 2026-10-09 — 「선택」 드롭다운 폐지). 칸을 누르면 자가·임차 빠른 선택이
+ *   뜨고, 그 밖(무상사용 등)은 칸에 그대로 적는다. 옛 자유 글은 칸에 그대로 보인다. 빠른 선택으로 바꿀 때
+ *   칸의 다른 글은 지우지 않고 기타메모로 옮긴다. 면적(㎡)은 늘 보이고, 보증금(원)·월세(원)는 임차일 때
+ *   (또는 이미 값이 있을 때)만 — 한 줄 세 칸. 기업정보(소유여부)·대표자(대표소유여부)가 같은 모양.
  * - 보증금·월세 쉼표는 칸을 떠날 때(blur) 찍는다 — 입력 중에 다시 찍으면 커서가 끝으로 튄다(연락처와 같은 방식).
  */
 "use client";
 
+import { useState } from "react";
 import type { CompanyInfo } from "@/types";
 import {
   BIZ_TYPE_OPTIONS,
@@ -126,14 +126,17 @@ export function OwnershipField({
   idBase: string;
   className?: string;
 }) {
-  const { choice, legacy } = ownershipView(String(draft[spec.key] ?? ""));
-  const selectId = `${idBase}-${spec.key}`;
+  const inputId = `${idBase}-${spec.key}`;
   const text = (k: keyof CI) => String(draft[k] ?? "");
-  const hasLease = [spec.deposit, spec.rent, spec.area].some((k) => text(k).trim() !== "");
-  const choose = (next: OwnershipChoice) => {
+  const raw = text(spec.key);
+  const { choice } = ownershipView(raw);
+  const [focused, setFocused] = useState(false);
+  const hasLease = [spec.deposit, spec.rent].some((k) => text(k).trim() !== "");
+  // 자가·임차 빠른 선택. 칸에 직접 적은 다른 글(기타)이 있으면 지우지 않고 기타메모로 옮겨 둔다.
+  const pick = (next: Exclude<OwnershipChoice, "">) => {
     const patch: Partial<CI> = { [spec.key]: next };
-    // 옛 자유 글은 기타메모로 옮겨 둔다(보증금·월세 같은 글이 선택 하나로 사라지지 않게).
-    if (legacy) patch[spec.memo] = appendMemoLine(text(spec.memo), `소유여부 이전 내용: ${legacy}`);
+    const old = raw.trim();
+    if (old && old !== "자가" && old !== "임차") patch[spec.memo] = appendMemoLine(text(spec.memo), `소유여부 이전 내용: ${old}`);
     onPatch(patch);
   };
   const part = (k: keyof CI, p: readonly [string, string, string], won: boolean) => (
@@ -149,40 +152,42 @@ export function OwnershipField({
   );
   return (
     <div className={`${className} min-w-0`}>
-      <FieldLabel htmlFor={selectId} label="소유여부" hint={spec.hint} />
-      <select
-        id={selectId}
+      <FieldLabel htmlFor={inputId} label="소유여부" hint={spec.hint} />
+      {/* 「선택」 드롭다운 대신 글칸(belie 2026-10-09): 누르면 자가·임차를 바로 고르거나, 그 밖(무상사용 등)은 그대로 적는다. */}
+      <input
+        id={inputId}
         className={inputCls}
-        aria-describedby={hintIdOf(selectId, "소유여부", spec.hint)}
-        value={choice}
-        onChange={(e) => choose(e.target.value as OwnershipChoice)}
-      >
-        <option value="">선택</option>
-        <option value="자가">자가</option>
-        <option value="임차">임차</option>
-      </select>
-      {legacy && (
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-500" role="note">
-          <span className="min-w-0 break-words">이전에 적은 내용: {legacy} · 선택하면 기타메모로 옮겨 둬요</span>
-          {choice && (
+        aria-describedby={hintIdOf(inputId, "소유여부", spec.hint)}
+        placeholder="자가 · 임차 · 그 밖은 직접 적기"
+        value={raw}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => onPatch({ [spec.key]: e.target.value } as Partial<CI>)}
+      />
+      {focused && (
+        <div className="mt-1 flex gap-1.5" role="group" aria-label="소유여부 빠른 선택">
+          {(["자가", "임차"] as const).map((c) => (
             <button
+              key={c}
               type="button"
-              onClick={() => choose(choice)}
-              className="shrink-0 rounded border border-gray-300 px-1.5 text-gray-700 hover:bg-gray-50"
+              // 누르는 순간 칸이 포커스를 잃어 버튼이 사라지지 않게(클릭 전에 blur 막기).
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => pick(c)}
+              aria-pressed={raw.trim() === c}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${raw.trim() === c ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
             >
-              {choice}로 확정
+              {c}
             </button>
-          )}
+          ))}
         </div>
       )}
-      {(choice === "임차" || hasLease) && (
-        // 좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 세 칸 한 줄 — 가로 넘침 없음.
-        <div className="mt-1.5 grid grid-cols-1 gap-1.5 xs:grid-cols-3" role="group" aria-label="임차 조건">
-          {part(spec.deposit, LEASE_PARTS.deposit, true)}
-          {part(spec.rent, LEASE_PARTS.rent, true)}
-          {part(spec.area, LEASE_PARTS.area, false)}
-        </div>
-      )}
+      {/* 면적은 자가·임차 상관없이 늘 보인다(belie 2026-10-09). 보증금·월세는 임차일 때(또는 이미 값이 있을 때)만.
+          좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 세 칸 한 줄 — 가로 넘침 없음. */}
+      <div className="mt-1.5 grid grid-cols-1 gap-1.5 xs:grid-cols-3" role="group" aria-label="면적·임차 조건">
+        {(choice === "임차" || hasLease) && part(spec.deposit, LEASE_PARTS.deposit, true)}
+        {(choice === "임차" || hasLease) && part(spec.rent, LEASE_PARTS.rent, true)}
+        {part(spec.area, LEASE_PARTS.area, false)}
+      </div>
     </div>
   );
 }

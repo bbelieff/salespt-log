@@ -194,15 +194,17 @@ describe("③ admin item + payment sub-tab routing preserved", () => {
 });
 
 describe("PC 사이드탭 계층과 축소 모드", () => {
-  it("대시보드 다음 캘린더, 4단계 다음 업무도구 순서로 이동할 수 있다", () => {
+  it("대시보드 다음 캘린더·주간목표, 4단계 다음 업무도구 순서로 이동할 수 있다", () => {
     render(createElement(DesktopNav));
     const nav = host.querySelector('nav[aria-label="주 메뉴"]')!;
     const links = Array.from(nav.querySelectorAll("a"));
     const labels = links.map((link) => link.getAttribute("aria-label"));
-    expect(labels.slice(0, 6)).toEqual([
-      "대시보드", "캘린더", "STEP 1 DB생산", "STEP 2 컨택관리",
+    // 주간목표는 캘린더 바로 아래(belie 2026-10-09).
+    expect(labels.slice(0, 7)).toEqual([
+      "대시보드", "캘린더", "주간목표", "STEP 1 DB생산", "STEP 2 컨택관리",
       "STEP 3 일정·계약", "STEP 4 실무/수납",
     ]);
+    expect(links[2]!.getAttribute("href")).toBe("/weekly-goals");
     const tools = nav.querySelector('section[aria-label="업무도구"]')!;
     expect(tools.className).toContain("rounded-xl");
     expect(tools.className).toContain("bg-slate-200/65");

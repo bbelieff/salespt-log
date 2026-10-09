@@ -17,7 +17,7 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { BookOpen, CalendarDays, FolderOpen, LayoutDashboard, Newspaper, PanelLeftClose, PanelLeftOpen, Shield } from "lucide-react";
+import { BookOpen, CalendarDays, FolderOpen, LayoutDashboard, Newspaper, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
 import { NAV_STEPS } from "@/components/TabBar";
 import { useGuardedRouter } from "@/components/DirtyGuard";
 import { WORK_MANUAL_URL } from "@/config/links";
@@ -216,6 +216,11 @@ export default function DesktopNav() {
         <SideLink href={"/calendar" as Route} active={pathname.startsWith("/calendar")} label="캘린더" compact={collapsed}>
           <CalendarDays className="h-5 w-5 shrink-0" aria-hidden="true" />
           {!collapsed && "캘린더"}
+        </SideLink>
+        {/* 주간목표 — 캘린더 바로 아래(belie 2026-10-09). 수강생 주간목표·PT과제 화면(/weekly-goals). */}
+        <SideLink href={"/weekly-goals" as Route} active={pathname.startsWith("/weekly-goals")} label="주간목표" compact={collapsed}>
+          <Target className="h-5 w-5 shrink-0" aria-hidden="true" />
+          {!collapsed && "주간목표"}
         </SideLink>
         {!collapsed && <p className="px-3 pb-1 pt-4 text-xs font-bold text-slate-400">영업 4단계</p>}
         {collapsed && <div className="mx-2 my-3 border-t border-slate-200" aria-hidden="true" />}

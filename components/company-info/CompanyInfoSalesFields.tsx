@@ -110,7 +110,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
       {/* 연도가 가로(Y·Y-1·Y-2·Y-3), 아래로 연매출 → 상반기 → 하반기(belie 2026-10-09 피벗).
           표(table)라 칸 아래 "약 …" 줄이 생겨도 같은 줄끼리 높이가 저절로 맞는다(글자 크기를 키워도 안 잘림). */}
       <div role="group" aria-label="연도별 매출">
-      <table className="w-full table-fixed border-separate border-spacing-1">
+      <table className="w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-1">
         <colgroup>
           <col className="w-11" />
           <col />
@@ -122,7 +122,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
           <tr className="text-xs">
             <th scope="col" className="sr-only">구분</th>
             {defs.rows.map((_, i) => (
-              <th key={i} scope="col" className="align-top font-normal" data-sales-row={i}>
+              <th key={i} scope="col" className="px-0.5 align-top font-normal" data-sales-row={i}>
                 <div className="flex items-center justify-center gap-0.5 font-semibold text-gray-800">
                   {salesYearToken(i)}
                   {i === 0 && <HintTooltip label="기준 연도" text={YEAR_HINT} />}
@@ -163,16 +163,19 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
         </thead>
         <tbody>
           {(["연매출", "상반기", "하반기"] as const).map((name, line) => (
-            <tr key={name}>
-              <th scope="row" className={`pt-1.5 text-left align-top text-xs ${line === 0 ? "font-semibold text-gray-800" : "font-medium text-gray-500"}`}>
+            // 연매출 줄은 업무도구의 선택 블록처럼 옅은 파랑 띠로 강조(belie 2026-10-09).
+            // 띠가 끊기지 않게 표는 가로 간격 0, 칸 안쪽 여백(px-0.5)으로 칸 사이를 띄운다.
+            <tr key={name} data-sales-line={line === 0 ? "total" : undefined}>
+              <th scope="row" className={`pl-1 pt-1.5 text-left align-top text-xs ${line === 0 ? "rounded-l-md bg-blue-50 py-1 font-bold text-blue-900" : "font-medium text-gray-500"}`}>
                 {name}
               </th>
               {defs.rows.map(([상, 하, 합], i) => {
                 const row = salesRowView(draft, i);
-                if (line === 1) return <td key={i} className="min-w-0 align-top" data-sales-cell={i}>{cell(상)}</td>;
-                if (line === 2) return <td key={i} className="min-w-0 align-top" data-sales-cell={i}>{cell(하)}</td>;
+                if (line === 1) return <td key={i} className="min-w-0 px-0.5 align-top" data-sales-cell={i}>{cell(상)}</td>;
+                if (line === 2) return <td key={i} className="min-w-0 px-0.5 align-top" data-sales-cell={i}>{cell(하)}</td>;
+                const last = i === defs.rows.length - 1;
                 return (
-                  <td key={i} className="min-w-0 align-top" data-sales-cell={i}>
+                  <td key={i} className={`min-w-0 bg-blue-50 px-0.5 py-1 align-top ${last ? "rounded-r-md pr-1" : ""}`} data-sales-cell={i}>
                     {row.auto && row.total !== null ? (
                       <div className="min-w-0">
                         <label htmlFor={idOf(합[0])} className="sr-only">
