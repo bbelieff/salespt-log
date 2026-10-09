@@ -60,6 +60,7 @@
 ## 업체 계정 보관함 (2026-10-08)
 
 - **CompanyVaultSection** (`components/company-info/CompanyVaultSection.tsx`): 업체정보 편집기(패널·팝업) 안 「계정 보관함」 카드. `rounded-xl border border-gray-200 bg-white p-3 shadow-sm`, 머리 「계정 보관함」 + 배지 「잠금 저장」(emerald-50/700). 상태 4가지 — 불러오는 중 / PIN 만들기(4~8자리 2칸) / 잠김(항목 수 + PIN 1칸 + [열기]) / 열림(mm:ss 카운트다운·[PIN 바꾸기]·[지금 잠그기], 항목 카드: 종류·이름·앞값[복사]·가릴값 password[보기][복사]·메모, 점선 [+ 항목 추가]). 편집 800ms 뒤 자동 저장, 401 이면 잠김으로 돌아가 입력값 보존 후 다시 열면 저장. 주 행동만 brand-red 채움. 초안 Muse, 총괄 검수. `incoming`(미팅 메모에서 뽑은 항목)은 열려 있으면 바로, 잠겨 있으면 PIN 입력 뒤 같은 값이 없을 때만 더하고 「메모에서 N건을 넣었어요」를 보여 준다.
+- **CompanyInfoViewToggle** (`components/company-info/CompanyInfoViewToggle.tsx` + `view-filter.ts`, 2026-10-09): 업체정보 편집기(패널·팝업) 맨 위 오른쪽 [전체 | 적은 것 N | 안 적은 것 N] (흰 바탕 테두리 상자, 고른 칸 slate-800 채움, 개수 tabular-nums). 전체 = 묶음마다 적은 항목 위·안 적은 항목 아래·자동 비율 맨 끝, 적은 것/안 적은 것 = 해당 항목만(한 줄 여러 칸은 하나라도 맞으면), 묶음이 비면 「다 적었어요 ✓」/「아직 적은 칸이 없어요」. 보일 칸은 편집기를 열 때·보기를 바꿀 때의 값으로 고정(적는 도중 안 움직임), 개수는 지금 값. 자동 계산 칸 제외, 연도별 매출은 해마다 합계·반기 중 하나라도 있으면 적은 것. 고른 보기는 기기에 기억(localStorage `salespt:company-info-view`).
 - **CompanyDocMemoExtras** (`components/company-doc/CompanyDocMemoExtras.tsx`): 「문서로 자동입력」에서 미팅 메모(txt·붙여넣기)를 읽었을 때만 — 계정 보관함으로 보낼 항목(emerald 상자, 기본 체크, 값은 앞 2자 + •• 로 가림)과 「나머지 메모를 업체 기타메모에 붙이기」(기본 꺼짐).
 
 ## 1. Buttons

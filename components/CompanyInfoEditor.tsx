@@ -32,6 +32,8 @@ import { inputCls } from "./company-info/CompanyInfoField";
 import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 import CompanyVaultSection from "./company-info/CompanyVaultSection";
+import CompanyInfoViewToggle, { useInfoView } from "./company-info/CompanyInfoViewToggle";
+import { countFields, visibleItems } from "./company-info/view-filter";
 import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
@@ -238,6 +240,10 @@ export default function CompanyInfoEditor({
       ? `${filled}항목 입력`
       : "미입력";
 
+  // 보기(전체/적은 것/안 적은 것) — 보일 칸은 열 때의 값(snap)으로 고정, 개수는 지금 값.
+  const view = useInfoView(draft, open, modal);
+  const counts = countFields([대표자_ITEMS, 기업정보_ITEMS, 재무_ITEMS], draft);
+
   const closeModal = () => {
     if (auto) commit(true);
     setModal(false);
@@ -278,8 +284,14 @@ export default function CompanyInfoEditor({
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
       <div className={inline ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-1 gap-1.5 sm:grid-cols-2"}>
-        {items.map((it, i) => item(it, i, inline, where))}
-        {g && Object.entries(customOf(g)).map(([label, v]) => (
+        {visibleItems(items, view.snap, view.mode).map((i) => item(items[i]!, i, inline, where))}
+        {view.mode !== "all" && visibleItems(items, view.snap, view.mode).length === 0 && (
+          <p className="text-xs text-gray-400 sm:col-span-2">{view.mode === "empty" ? "다 적었어요 ✓" : "아직 적은 칸이 없어요"}</p>
+        )}
+        {g && Object.entries(customOf(g)).filter(([label]) => {
+          const had = String(view.snap.커스텀?.[g]?.[label] ?? "").trim() !== "";
+          return view.mode === "all" || (view.mode === "filled") === had;
+        }).map(([label, v]) => (
           <label key={`c-${label}`} className={inline ? "block" : "block sm:col-span-2"}>
             <span className="flex items-center justify-between text-xs text-purple-500">
               {label}
@@ -324,6 +336,10 @@ export default function CompanyInfoEditor({
   // 순서 = [대표자] → [기업정보] → [재무](두 그룹 아래 전폭 — 모든 단 너비 걸침).
   // 기업정보의 커스텀 저장 키는 "업체"(기존 데이터 호환).
   const body = (inline: boolean, where: "panel" | "modal") => (
+    <>
+    <div className="mb-2 flex justify-end">
+      <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} />
+    </div>
     <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
       {group("대표자", "대표자", 대표자_ITEMS, inline, where)}
       {group("기업정보", "업체", 기업정보_ITEMS, inline, where)}
@@ -333,6 +349,7 @@ export default function CompanyInfoEditor({
         {group("재무", null, 재무_ITEMS, inline && !desktopHeading, where)}
       </div>
     </div>
+    </>
   );
 
   const [fontStep, setFontStep] = useFontStep("company-info");
