@@ -63,6 +63,13 @@
 - **CompanyInfoViewToggle** (`components/company-info/CompanyInfoViewToggle.tsx` + `view-filter.ts`, 2026-10-09): 업체정보 편집기(패널·팝업) 맨 위 오른쪽 [전체 | 적은 것 N | 안 적은 것 N] (흰 바탕 테두리 상자, 고른 칸 slate-800 채움, 개수 tabular-nums). 전체 = 묶음마다 적은 항목 위·안 적은 항목 아래·자동 비율 맨 끝, 적은 것/안 적은 것 = 해당 항목만(한 줄 여러 칸은 하나라도 맞으면), 묶음이 비면 「다 적었어요 ✓」/「아직 적은 칸이 없어요」. 보일 칸은 편집기를 열 때·보기를 바꿀 때의 값으로 고정(적는 도중 안 움직임), 개수는 지금 값. 자동 계산 칸 제외, 연도별 매출은 해마다 합계·반기 중 하나라도 있으면 적은 것. 고른 보기는 기기에 기억(localStorage `salespt:company-info-view`).
 - **CompanyDocMemoExtras** (`components/company-doc/CompanyDocMemoExtras.tsx`): 「문서로 자동입력」에서 미팅 메모(txt·붙여넣기)를 읽었을 때만 — 계정 보관함으로 보낼 항목(emerald 상자, 기본 체크, 값은 앞 2자 + •• 로 가림)과 「나머지 메모를 업체 기타메모에 붙이기」(기본 꺼짐).
 
+## 대시보드 움직임 (2026-10-09)
+
+- **CountUp** / `useCountUp` (`components/motion/CountUp.tsx`): 숫자를 처음엔 0에서 700ms 동안 올라가며 멈추게, 값이 바뀌면 이전 값에서 이어서 움직인다(easeOutCubic, requestAnimationFrame). 동작 줄이기면 즉시 최종 값, 화면낭독기는 최종 값(aria-label). SVG 글자 안에서는 훅을 직접 쓴다.
+- **useFirstPlay** (`components/motion/useMotion.ts`): 효과 key 별로 이 탭(sessionStorage)에서 처음 한 번만 true — 다른 탭을 다녀와도 다시 안 돈다. 동작 줄이기면 false.
+- 움직임 클래스는 `app/globals.css` 의 `fx-*`(fx-grow-x/y·fx-draw·fx-ring·fx-pop·fx-fade·fx-rise·fx-ping·fx-glow·fx-skeleton, transform·opacity·stroke 만, 1초 안, 동작 줄이기면 끔). 적용: GoalRings(링 차오름·% 올라감·100% 달성 반짝), DashboardProgressBanner(진행바·%·지금 위치 맥박 3번), ProductivityIndicators(막대 차례로·%), FunnelChart(단계 차례로·합계), WeeklyDualChart(막대 차례로·계약수 선 그리기·점), ChannelPerformance(도넛 나타남), FinanceSummaryBoxes(금액 올라감·기간 바꾸면 이전 금액에서 이어짐 — 칸 너비는 최종 금액으로 잡음), MobileChartCarousel(지금 카드 점 길게).
+- **DashboardSkeleton** (`components/dashboard/DashboardSkeleton.tsx`): 대시보드 숫자를 불러오는 동안 재무 3칸 + 카드 4개 자리를 반짝이는 회색 상자로 먼저 잡아 둔다(`aria-busy`).
+
 ## 1. Buttons
 
 ### Primary Button

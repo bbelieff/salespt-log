@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── 대시보드 움직임(belie 2026-10-09, 스크롤 인터랙션 도감 1~3순위) ──────────────────────
+ * 등장은 처음 한 번만(useFirstPlay 가 클래스를 붙일 때만), 1초 안. transform·opacity·stroke 만 움직인다.
+ * 동작 줄이기면 전부 끈다. 지연은 요소의 style animation-delay 로 준다. */
+@keyframes fx-grow { from { transform: scale(var(--fx-sx, 1), var(--fx-sy, 1)); } }
+@keyframes fx-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes fx-ring { from { stroke-dashoffset: 100; } }
+@keyframes fx-pop { from { transform: scale(0); } 60% { transform: scale(1.35); } }
+@keyframes fx-fade { from { opacity: 0; } }
+@keyframes fx-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes fx-ping { from { transform: scale(1); opacity: 0.7; } to { transform: scale(3); opacity: 0; } }
+@keyframes fx-glow { from { box-shadow: 0 0 0 0 rgb(22 163 74 / 0.55); } to { box-shadow: 0 0 0 10px rgb(22 163 74 / 0); } }
+@keyframes fx-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.fx-box { transform-box: fill-box; }
+.fx-grow-x { --fx-sx: 0; animation: fx-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: left center; }
+.fx-grow-y { --fx-sy: 0; animation: fx-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: center bottom; }
+.fx-draw { stroke-dasharray: 1; animation: fx-draw 0.9s cubic-bezier(0.3, 0.7, 0.2, 1) both; }
+.fx-ring { animation: fx-ring 0.9s cubic-bezier(0.3, 0.7, 0.2, 1) both; }
+.fx-pop { animation: fx-pop 0.35s ease-out both; transform-origin: center; }
+.fx-fade { animation: fx-fade 0.5s ease-out both; }
+.fx-rise { animation: fx-rise 0.45s ease-out both; }
+.fx-ping { animation: fx-ping 1.6s ease-out 3; transform-origin: center; }
+.fx-glow { animation: fx-glow 1.4s ease-out 2; }
+.fx-skeleton {
+  background: linear-gradient(90deg, #f1f5f9 0 35%, #e2e8f0 50%, #f1f5f9 65% 100%);
+  background-size: 300% 100%;
+  animation: fx-shimmer 1.3s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-grow-x, .fx-grow-y, .fx-draw, .fx-ring, .fx-pop, .fx-fade, .fx-rise, .fx-ping, .fx-glow, .fx-skeleton { animation: none; }
+  .fx-draw { stroke-dasharray: none; }
+}
+
+
 :root {
   /* 글자 크기 단계(FontScaleControl · lib/util/font-scale.ts). 글자만 키우고 여백·칸 너비는 그대로. */
   --font-scale: 1;
@@ -770,3 +803,4 @@ body {
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
 }
+

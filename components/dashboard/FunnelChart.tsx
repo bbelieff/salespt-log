@@ -18,6 +18,8 @@
 import { STATS_WEEKS } from "@/config/cohort-dates";
 
 import type { DashboardChannelMatrix } from "@/types";
+import { useFirstPlay } from "@/components/motion/useMotion";
+import { useCountUp } from "@/components/motion/CountUp";
 
 interface Props {
   weeks?: number;
@@ -76,6 +78,8 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
   const inflow = stageTotal("유입");
   const contract = stageTotal("계약");
   const conversionRate = inflow > 0 ? (contract / inflow) * 100 : 0;
+  // 처음 한 번만 단계가 위에서부터 차례로 차오르고 합계가 올라간다(belie 2026-10-09).
+  const play = useFirstPlay("funnel");
 
   return (
     <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -136,7 +140,8 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
                 {stage}
               </text>
 
-              {/* stacked 막대 */}
+              {/* stacked 막대 — 처음엔 왼쪽 끝에서부터 차례로 차오른다. */}
+              <g className={play ? "fx-grow-x" : undefined} style={play ? { transformOrigin: `${BAR_X}px ${y}px`, animationDelay: `${i * 90}ms` } : undefined}>
               {segments.map((s, idx) => (
                 <rect
                   key={s.ch}
@@ -148,6 +153,7 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
                   rx={idx === 0 ? 2 : 0}
                 />
               ))}
+              </g>
 
               {/* 합계 */}
               <text
@@ -158,7 +164,7 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
                 fontWeight={valueWeight}
                 style={{ fontVariantNumeric: "tabular-nums" }}
               >
-                {totals[i]}
+                <Count value={totals[i] ?? 0} play={play} />
               </text>
 
               {/* 사다리꼴 connector (마지막 단계 제외) */}
@@ -208,4 +214,9 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
       </div>
     </section>
   );
+}
+
+/** SVG 글자 안 숫자 — 처음엔 0에서 올라가 멈춘다. */
+function Count({ value, play }: { value: number; play: boolean }) {
+  return <>{useCountUp(value, play)}</>;
 }

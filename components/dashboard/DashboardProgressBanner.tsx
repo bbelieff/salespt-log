@@ -1,6 +1,8 @@
 "use client";
 
 import DDayBadge from "@/components/DDayBadge";
+import { useFirstPlay } from "@/components/motion/useMotion";
+import CountUp from "@/components/motion/CountUp";
 
 /**
  * DashboardProgressBanner — 대시보드 진행도 라인 (D-day 통합).
@@ -36,6 +38,8 @@ export default function DashboardProgressBanner({
   graduationISO,
 }: Props) {
   const pct = Math.max(0, Math.min(100, progressPercent));
+  // 처음 한 번만: 진행바가 왼쪽부터 차고, 지금 위치 점이 세 번 맥박친다(belie 2026-10-09).
+  const play = useFirstPlay("progress-banner");
 
   if (!hasDates) {
     // 진행도 데이터가 없으면 헤더만 보여주고 D-day는 그대로 표시 (R4 W1-3 — 매출/비용·경비장부 진입점 보호)
@@ -75,7 +79,7 @@ export default function DashboardProgressBanner({
         {/* 진행바 + amber 5겹 끝점 */}
         <div className="relative mb-3 h-1.5 rounded-full bg-slate-100">
           <div
-            className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
+            className={`absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600 ${play ? "fx-grow-x" : ""}`}
             style={{ width: `${pct}%` }}
           />
           <svg
@@ -88,8 +92,10 @@ export default function DashboardProgressBanner({
               transform: "translateY(-50%)",
             }}
             viewBox="0 0 18 18"
+            overflow="visible"
             aria-hidden
           >
+            {play && <circle cx="9" cy="9" r="6" fill="#f59e0b" opacity="0" className="fx-box fx-ping" style={{ animationDelay: "700ms" }} />}
             <circle cx="9" cy="9" r="8" fill="#fbbf24" opacity="0.2" />
             <circle cx="9" cy="9" r="6" fill="#fbbf24" opacity="0.45" />
             <circle cx="9" cy="9" r="3.5" fill="#f59e0b" />
@@ -105,7 +111,7 @@ export default function DashboardProgressBanner({
             className="font-bold text-blue-600"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
-            {Math.round(pct)}% 진행
+            <CountUp value={Math.round(pct)} play={play} format={(n) => `${n}%`} /> 진행
           </span>
           <span className="text-gray-500">🎓 {graduationDate} 종강총회</span>
         </div>

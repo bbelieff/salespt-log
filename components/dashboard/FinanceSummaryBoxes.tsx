@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { formatMoney } from "@/lib/format/money";
+import { useFirstPlay } from "@/components/motion/useMotion";
+import { useCountUp } from "@/components/motion/CountUp";
 
 /**
  * FinanceSummaryBoxes — 매출/비용/영업이익 3열 1행 요약.
@@ -245,6 +247,8 @@ export default function FinanceSummaryBoxes({
   contractCount,
 }: Props) {
   const [open, setOpen] = useState<Panel | null>(null);
+  // 처음엔 금액이 올라가며 멈추고, 기간을 바꾸면 이전 금액에서 이어서 바뀐다(belie 2026-10-09).
+  const play = useFirstPlay("finance-amounts");
   const toggle = (panel: Panel) => setOpen((prev) => (prev === panel ? null : panel));
 
   // 기존 OperatingProfitCard 계산 그대로.
@@ -281,7 +285,7 @@ export default function FinanceSummaryBoxes({
             <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "revenue" ? "rotate-180" : ""}`}>⌄</span>
           </span>
           <span ref={revenueAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-slate-900" style={amountStyle}>
-            ₩{fmtMoney(revenue)}
+            <Amount value={revenue} play={play} />
           </span>
         </button>
 
@@ -303,7 +307,7 @@ export default function FinanceSummaryBoxes({
             <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "cost" ? "rotate-180" : ""}`}>⌄</span>
           </span>
           <span ref={costAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-red-600" style={amountStyle}>
-            ₩{fmtMoney(cost)}
+            <Amount value={cost} play={play} />
           </span>
         </button>
 
@@ -330,7 +334,7 @@ export default function FinanceSummaryBoxes({
             style={{ ...amountStyle, color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}
             data-profit-sign={profit < 0 ? "negative" : "nonnegative"}
           >
-            ₩{fmtMoney(profit)}
+            <Amount value={profit} play={play} />
           </span>
         </button>
       </div>
@@ -384,3 +388,14 @@ export default function FinanceSummaryBoxes({
   );
 }
 
+/** 움직이는 금액 — 칸 너비는 최종 금액(안 보이게 겹쳐 둠)으로 잡아 글자 크기 맞춤이 흔들리지 않는다. */
+function Amount({ value, play }: { value: number; play: boolean }) {
+  const shown = Math.round(useCountUp(value, play));
+  if (shown === value) return <>₩{fmtMoney(value)}</>;
+  return (
+    <span className="inline-grid">
+      <span className="invisible col-start-1 row-start-1">₩{fmtMoney(value)}</span>
+      <span aria-hidden="true" className="col-start-1 row-start-1">₩{fmtMoney(shown)}</span>
+    </span>
+  );
+}

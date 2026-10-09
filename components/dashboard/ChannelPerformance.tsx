@@ -11,6 +11,7 @@
  */
 "use client";
 import { STATS_WEEKS } from "@/config/cohort-dates";
+import { useFirstPlay } from "@/components/motion/useMotion";
 
 import type {
   DashboardChannelMatrix,
@@ -48,7 +49,9 @@ function DonutSvg({
   centerLabel,
   centerValue,
   centerValueColor,
+  play,
 }: {
+  play: boolean;
   slices: Slice[];
   centerLabel: string;
   centerValue: string;
@@ -71,7 +74,8 @@ function DonutSvg({
     <svg viewBox="0 0 116 116" preserveAspectRatio="xMidYMid meet" className="channel-donut-svg h-24 w-24 shrink-0 md:h-28 md:w-28" aria-hidden>
       {/* 값이 0이어도 도넛 자리가 보이게 옅은 바탕 고리 */}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
-      <g transform={`rotate(-90 ${cx} ${cy})`}>
+      {/* 처음 한 번만 고리가 돌며 나타난다(belie 2026-10-09). */}
+      <g transform={`rotate(-90 ${cx} ${cy})`} className={play ? "fx-fade" : undefined}>
         {slices.map((s) => {
           const portion = total > 0 ? s.value / total : 0;
           const dash = portion * C;
@@ -117,6 +121,7 @@ function DonutSvg({
 }
 
 export default function ChannelPerformance({ costBreakdown, matrix, weeks = STATS_WEEKS }: Props) {
+  const play = useFirstPlay("channel-donuts");
   // 좌: 비용 (3채널)
   const costSlices: Slice[] = costBreakdown.map((b) => ({
     label: b.채널,
@@ -169,6 +174,7 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
           <div className="flex items-center justify-center gap-1.5">
             <span className="shrink-0 break-keep text-right text-xs font-semibold leading-tight text-gray-700">채널별<br />비용</span>
             <DonutSvg
+              play={play}
               slices={costSlices}
               centerLabel="총비용"
               centerValue={`−${fmtMan(costTotal)}`}
@@ -178,6 +184,7 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
           <div className="flex items-center justify-center gap-1.5">
             <span className="shrink-0 break-keep text-right text-xs font-semibold leading-tight text-gray-700">채널별<br />DB유입</span>
             <DonutSvg
+              play={play}
               slices={inflowSlices}
               centerLabel="총유입"
               centerValue={fmtCount(inflowTotal)}

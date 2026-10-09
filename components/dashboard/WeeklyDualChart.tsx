@@ -22,6 +22,7 @@
 
 import type { DashboardWeeklyPoint } from "@/types";
 import { STATS_WEEKS } from "@/config/cohort-dates";
+import { useFirstPlay } from "@/components/motion/useMotion";
 
 interface Props {
   points: DashboardWeeklyPoint[]; // 길이 STATS_WEEKS
@@ -34,6 +35,8 @@ const Y_BOT = 160;
 
 
 export default function WeeklyDualChart({ points }: Props) {
+  // 처음 한 번만: 막대가 차례로 올라오고, 계약수 선이 왼쪽부터 그려지고, 점이 톡 나타난다(belie 2026-10-09).
+  const play = useFirstPlay("weekly-trend");
   const weeks = Math.max(STATS_WEEKS, points.length);
   const step = (X1 - X0) / weeks;
   const BAR_W = Math.min(24, step * 0.65);
@@ -142,6 +145,8 @@ export default function WeeklyDualChart({ points }: Props) {
               height={Math.max(0, Y_BOT - y)}
               fill="#cbd5e1"
               rx={2}
+              className={play ? "fx-box fx-grow-y" : undefined}
+              style={play ? { animationDelay: `${i * 50}ms` } : undefined}
             />
           );
         })}
@@ -149,6 +154,9 @@ export default function WeeklyDualChart({ points }: Props) {
         {/* 계약수 라인 (blue-500) */}
         <polyline
           points={linePoints}
+          pathLength={1}
+          className={play ? "fx-draw" : undefined}
+          style={play ? { animationDelay: "350ms" } : undefined}
           fill="none"
           stroke="#3b82f6"
           strokeWidth={2.5}
@@ -164,6 +172,8 @@ export default function WeeklyDualChart({ points }: Props) {
             fill="#3b82f6"
             stroke={i === data.length - 1 ? "#fff" : undefined}
             strokeWidth={i === data.length - 1 ? 1.5 : 0}
+            className={play ? "fx-box fx-pop" : undefined}
+            style={play ? { animationDelay: `${900 + i * 30}ms` } : undefined}
           />
         ))}
 
