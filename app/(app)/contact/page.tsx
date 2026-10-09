@@ -390,10 +390,10 @@ export default function ContactPage() {
           화면이 깜빡여 느리게 느껴진 원인. 초기 로딩은 전역 오버레이+조기 반환이 담당. */}
       <main className="px-4 pt-4 pb-6 pc:px-0"
       ><PageContainer width="fluid">
-        {/* >=1440: 입력 워크스페이스(좌: 날짜→채널→수치 입력 | 우: 미팅 슬롯 목록).
+        {/* PC(1024+) 5:5 분할(belie 2026-10-09, 옛 1440+): 좌 날짜→채널→수치 입력 | 우 미팅 슬롯 목록.
             DOM 순서는 입력→목록 그대로라 모바일 stacked 순서·날짜→채널→입력
             워크플로·클릭 수 무변경. 목록은 unbounded 자연 스크롤. */}
-        <div className="min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1440px]:items-start min-[1440px]:gap-4">
+        <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-4">
         <div className="min-w-0">
         <ChannelTabsAndPanel
           contextHeader={<div {...weekSwipe}><div className="px-3 pt-3 text-xs font-semibold text-slate-700">기록 날짜</div><WeekHeader
