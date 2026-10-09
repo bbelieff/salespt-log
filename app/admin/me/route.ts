@@ -8,12 +8,13 @@
 import { NextResponse } from "next/server";
 import { getSessionEmail, isAdminEmail, setImpersonation } from "@/auth/identity";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
+import { appBaseUrl } from "@/config";
 
-export async function GET(req: Request) {
+export async function GET() {
   const email = await getSessionEmail();
-  if (!email) return NextResponse.redirect(new URL("/", req.url));
-  if (!isAdminEmail(email)) return NextResponse.redirect(new URL("/dashboard", req.url));
+  if (!email) return NextResponse.redirect(new URL("/", appBaseUrl()));
+  if (!isAdminEmail(email)) return NextResponse.redirect(new URL("/dashboard", appBaseUrl()));
   await setImpersonation(null);
   revalidateAdminPages();
-  return NextResponse.redirect(new URL("/dashboard", req.url));
+  return NextResponse.redirect(new URL("/dashboard", appBaseUrl()));
 }
