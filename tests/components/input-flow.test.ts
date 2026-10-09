@@ -50,14 +50,18 @@ describe("low-click input flow", () => {
   history.replaceState({},"","/?channel=현수막&focus=add"); render(h(DbPage));
   expect(el.querySelector('[aria-pressed="true"]')?.textContent).toBe("현수막"); expect(el.querySelector("input")).not.toBeNull();
  });
- it("keeps channel metrics and protects a dirty date change", () => {
+ it("keeps channel metrics and saves before a dirty date change (belie 2026-10-09)", async () => {
   render(h(ContactPage));
   click(el.querySelector<HTMLElement>('[aria-label="유입 증가"]')!);
   click(button("직접생산·")); click(button("매입DB1"));
   expect(el.querySelector<HTMLInputElement>('[aria-label="유입 수치"]')?.value).toBe("1");
-  expect(el.textContent).not.toContain("저장하지 않고 나갈까요?");
+  expect(el.textContent).toContain("💾 저장");
   click(el.querySelector<HTMLElement>('[aria-label="이전 주차"]')!);
-  expect(el.textContent).toContain("저장하지 않고 나갈까요?");
+  await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+  // 묻지 않고 남은 숫자를 먼저 저장한 뒤 넘어간다.
+  expect(mocks.save).toHaveBeenCalledTimes(1);
+  expect((mocks.save.mock.calls[0]![0] as { channels: Record<string, Record<string, unknown>> }).channels["매입DB"]).toMatchObject({ inflow: 1 });
+  expect(el.textContent).not.toContain("저장하지 않고 나갈까요?");
  });
  it("restores recent channel but gives an explicit link precedence", () => {
   sessionStorage.setItem("salespt-contact-channel","직접생산"); history.replaceState({},"","/?channel=현수막&date=2026-09-11");

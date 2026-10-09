@@ -70,6 +70,10 @@
 - 움직임 클래스는 `app/globals.css` 의 `fx-*`(fx-grow-x/y·fx-draw·fx-ring·fx-pop·fx-fade·fx-rise·fx-ping·fx-glow·fx-skeleton, transform·opacity·stroke 만, 1초 안, 동작 줄이기면 끔). 적용: GoalRings(링 차오름·% 올라감·100% 달성 반짝), DashboardProgressBanner(진행바·%·지금 위치 맥박 3번), ProductivityIndicators(막대 차례로·%), FunnelChart(단계 차례로·합계), WeeklyDualChart(막대 차례로·계약수 선 그리기·점), ChannelPerformance(도넛 나타남), FinanceSummaryBoxes(금액 올라감·기간 바꾸면 이전 금액에서 이어짐 — 칸 너비는 최종 금액으로 잡음), MobileChartCarousel(지금 카드 점 길게).
 - **DashboardSkeleton** (`components/dashboard/DashboardSkeleton.tsx`): 대시보드 숫자를 불러오는 동안 재무 3칸 + 카드 4개 자리를 반짝이는 회색 상자로 먼저 잡아 둔다(`aria-busy`).
 
+## 컨택관리 저장 (2026-10-09)
+
+- **ContactSaveRow** (`app/(app)/contact/_components/ContactSaveRow.tsx`): 컨택관리 숫자 입력 아래 저장 줄. 왼쪽 안내(「숫자는 자동으로 저장돼요」/「저장 안 된 숫자가 있어요」) + AutosaveStatus + **[💾 저장]** 버튼(저장 안 된 숫자가 있으면 brand-red 채움, 없으면 흰 바탕 「저장됨 ✓」). 실패는 줄 아래 `role=alert`. `useFlushOnHide(flush, dirty)` — 화면이 가려질 때(visibilitychange hidden·pagehide) 남은 저장을 바로 보낸다. 날짜·주 이동은 먼저 저장하고 넘어가며, 저장 실패 때만 기존 확인 창(DirtyGuard).
+
 ## 1. Buttons
 
 ### Primary Button
