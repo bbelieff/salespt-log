@@ -1,4 +1,10 @@
-# 협업 관제 (Coordination) — Claude ↔ Codex 영구 협업 체계
+# 과거 협업 관제 기록 (Coordination)
+
+현재 개발 흐름은 [workflow](../development/workflow.md), 실행·제품 규칙은 [AGENTS](../../AGENTS.md)·[CLAUDE](../../CLAUDE.md)다. 사용자 창구는 총괄 하나, 현행 역할은 총괄·제작·독립 검증이며 [시작 안내](codex-bootstrap.md)를 따른다.
+
+아래 내용과 provider-status/session-registry/dispatch-queue/takeover는 과거 편제·교대 기록이다. 현재 지휘자·writer·승인·자동 재개·문서 우선순위의 근거로 사용하지 않는다. 사용자가 특정 이력을 요청한 경우에만 읽고 현재 상태를 대조한다. 과거 보류·checkpoint는 보존하며 역사 기록을 지우거나 완료 처리하지 않는다.
+
+## 보존한 과거 문서
 
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: Claude 전체 사용 한도 종료 시 Codex가 이어받고, 복귀 시 안전하게 돌려받는 관제 체계의 입구.

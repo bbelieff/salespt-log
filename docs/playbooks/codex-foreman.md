@@ -1,5 +1,5 @@
 # 병렬 개발 조율
-> **요약**: 독립 작업 병렬화에만 적용한다. [AGENTS](../../AGENTS.md)·[CLAUDE](../../CLAUDE.md).
+> **요약**: [workflow](../development/workflow.md)의 독립 작업 병렬화에만 적용한다. 별도 영속 작업반장은 두지 않고 총괄이 조율한다. [AGENTS](../../AGENTS.md)·[CLAUDE](../../CLAUDE.md).
 
 - 실제 임명·ACK를 받은 담당이 해당 과업의 배정·회수·병합 순서를 관리한다.
 - 좁은 파일 범위·선후행·writer·검수자·base·수용조건·반환처를 명시한다.
