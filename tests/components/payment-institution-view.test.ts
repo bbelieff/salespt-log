@@ -87,10 +87,10 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
       todo("완료한일", "신보", "2026-09-25", { 완료여부: true }),
       todo("지난할일", "신보", "2026-09-27"),
     ];
-    const items = groupInstitutionWorkItems(buildInstitutionWorkItems(rows, "", records, "2026-09-28"), "", "activity")[0]!.items;
-    expect(items.slice(0, 2).map((item) => item.activityLabel)).toEqual(["D-??", "D-??"]);
-    expect(items.slice(2).map((item) => item.company)).toEqual(["최근한일", "오래된한일", "지난할일", "오늘할일", "내일할일"]);
-    expect(items.slice(2).map((item) => item.activityLabel)).toEqual(["D+00", "D+02", "D+01", "D-00", "D-01"]);
+    const items = groupInstitutionWorkItems(buildInstitutionWorkItems(rows, "", records, "2026-09-28"), "", "activity", "2026-09-28")[0]!.items;
+    expect(items.slice(0, 2).map((item) => item.activityLabel)).toEqual(["D?", "D?"]);
+    expect(items.slice(2).map((item) => item.company)).toEqual(["지난할일", "오늘할일", "오래된한일", "최근한일", "내일할일"]);
+    expect(items.slice(2).map((item) => item.activityLabel)).toEqual(["D+01", "D0", "H+02", "H+00", "D-01"]);
   });
 
   it("Todo 연결에는 화면상 그룹명이 아니라 저장된 슬롯 기관명을 사용한다", () => {
@@ -98,7 +98,7 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
     const records = [todo("예시", "소진공 신취", "2026-09-29"), todo("예시", "신보", "2026-09-28", { 기록종류: "history" })];
     const items = buildInstitutionWorkItems(rows, "", records, "2026-09-28");
     expect(items.map((item) => [item.slot, item.institution, item.activityLabel])).toEqual([
-      [1, "소진공", "D-01"], [2, "신보", "D+00"],
+      [1, "소진공", "D-01"], [2, "신보", "H+00"],
     ]);
   });
 
@@ -116,8 +116,23 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
       todo("여러진행", "소진공", "2026-09-29"),
       todo("여러진행", "소진공", "2026-09-25", { 완료여부: true }),
     ];
-    const activities = buildCompanyActivities(buildInstitutionWorkItems(rows, "", records, "2026-09-28"));
-    expect(rows.map((row) => activities.get(companyActivityKey(row))?.activityLabel)).toEqual(["D-??", "D+00", "D-01"]);
+    const activities = buildCompanyActivities(buildInstitutionWorkItems(rows, "", records, "2026-09-28"), "2026-09-28");
+    expect(rows.map((row) => activities.get(companyActivityKey(row))?.activityLabel)).toEqual(["D?", "H+00", "D-01"]);
     expect(activities.get(companyActivityKey(rows[2]!))?.activityKind).toBe("todo");
   });
 });
+
+  it("blank date cannot erase valid Todo; completed Todo never outranks History", () => {
+    const rows = [contract(3, "합성", [slot({ 진행기관: "신보" })])];
+    const records = [todo("합성", "신보", "2026-10-12"), todo("합성", "신보", ""), todo("합성", "신보", "2026-10-01", { 완료여부: true }), todo("합성", "신보", "2026-10-08", { 기록종류: "history" })];
+    expect(buildInstitutionWorkItems(rows, "", records, "2026-10-10")[0]?.activityLabel).toBe("D-02");
+    expect(buildInstitutionWorkItems(rows, "", records.slice(1), "2026-10-10")[0]?.activityLabel).toBe("H+02");
+  });
+  it("company representative shares priority and institution ties preserve stored order", () => {
+    const rows = [contract(3, "합성", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })])];
+    const records = [todo("합성", "신보", "2026-10-11"), todo("합성", "소진공", "2026-10-08", { 기록종류: "history" })];
+    const items = buildInstitutionWorkItems(rows, "", records, "2026-10-10");
+    expect(buildCompanyActivities(items, "2026-10-10").get(companyActivityKey(rows[0]!))?.activityKind).toBe("history");
+    const tied = [ {...items[0]!, company: "Z", product: "Z"}, {...items[0]!, company: "A", product: "A"} ];
+    expect(groupInstitutionWorkItems(tied, "", "activity", "2026-10-10")[0]?.items.map(x => x.company)).toEqual(["Z", "A"]);
+  });

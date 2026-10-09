@@ -1,6 +1,6 @@
 import type { ContractPayment } from "@/types";
 import { slotHasData } from "@/lib/analytics/payment-work-status";
-import { compareWorkActivity } from "./payment-progress";
+import { activityTodayISO, compareWorkActivity } from "./payment-progress";
 import { companyActivityKey, type InstitutionWorkItem } from "./institution-view";
 
 export type PaymentSortKey = "date-asc" | "date-desc" | "dday";
@@ -17,7 +17,7 @@ export interface CompanyWorkItem {
 }
 
 /** 계약마다 한 항목. 진행이 여럿이면 works 에 모두 담고, 대표는 가장 급한 진행건. */
-export function buildCompanyWorkItems(rows: ContractPayment[], works: InstitutionWorkItem[]): CompanyWorkItem[] {
+export function buildCompanyWorkItems(rows: ContractPayment[], works: InstitutionWorkItem[], todayISO = activityTodayISO()): CompanyWorkItem[] {
   const contracts = new Map(rows.map((cp) => [companyActivityKey(cp), cp]));
   const byContract = new Map<string, InstitutionWorkItem[]>();
   for (const work of works) {
@@ -27,7 +27,7 @@ export function buildCompanyWorkItems(rows: ContractPayment[], works: Institutio
   return [...byContract.entries()].map(([key, group]) => {
     const cp = contracts.get(key)!;
     const populated = group.filter((w) => slotHasData(cp[`수납${w.slot}`])).sort((a, b) => a.slot - b.slot);
-    const primary = [...populated].sort(compareWorkActivity)[0] ?? group[0]!;
+    const primary = [...populated].sort((a, b) => compareWorkActivity(a, b, todayISO))[0] ?? group[0]!;
     return { key, cp, work: primary, works: populated, hasProgress: populated.length > 0 };
   });
 }
@@ -38,15 +38,12 @@ export function companyKeyOfRow(rows: ContractPayment[] | undefined, row: number
   return cp ? companyActivityKey(cp) : null;
 }
 
-/** D-day: 진행 없음 → 날짜 없는 진행 → 최근 History → 임박 Todo. 동률은 저장 순서. */
-export function sortCompanyWorkItems(items: CompanyWorkItem[], key: PaymentSortKey): CompanyWorkItem[] {
+/** D-day: D? → 연체 Todo → 오늘 Todo → 오래된 History → 미래 Todo. 동률은 저장 순서. */
+export function sortCompanyWorkItems(items: CompanyWorkItem[], key: PaymentSortKey, todayISO = activityTodayISO()): CompanyWorkItem[] {
   return items.map((item, index) => ({ item, index })).sort((a, b) => {
     if (key === "dday") {
-      if (a.item.hasProgress !== b.item.hasProgress) return a.item.hasProgress ? 1 : -1;
-      if (a.item.hasProgress) {
-        const byActivity = compareWorkActivity(a.item.work, b.item.work);
-        if (byActivity) return byActivity;
-      }
+      const byActivity = compareWorkActivity(a.item.work, b.item.work, todayISO);
+      if (byActivity) return byActivity;
     } else {
       const aDate = Date.parse(a.item.cp.계약일.trim());
       const bDate = Date.parse(b.item.cp.계약일.trim());

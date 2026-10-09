@@ -45,6 +45,7 @@ import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import { contractAccentFamily } from "./_lib/contractAccent";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
+import { activityTodayISO } from "./_lib/payment-progress";
 import { useAllTodos } from "@/query/todos-hooks";
 
 /** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
@@ -210,10 +211,13 @@ export default function PaymentPage() {
   const filteredRows = companyQuery.trim()
     ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
     : rows;
-  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? []);
+  const today = activityTodayISO();
+  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? [], today);
   const activityState = allTodos.isError ? "error" : allTodos.data ? "ready" : "loading";
-  const companyItems = sortCompanyWorkItems(buildCompanyWorkItems(filteredRows, institutionItems), sortKey);
-  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "", isPc ? "product" : "activity");
+  const unsortedCompanyItems = buildCompanyWorkItems(filteredRows, institutionItems, today);
+  const companyItems = sortKey === "dday" && activityState !== "ready" ? unsortedCompanyItems
+    : sortCompanyWorkItems(unsortedCompanyItems, sortKey, today);
+  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "", "activity", today);
   const institutionVisible = institutionGroups.flatMap((group) => group.items);
   const selectedWork = institutionVisible.find((item) => item.key === selectedWorkKey) ?? institutionVisible[0];
   const selectedCompany = companyItems.find((item) => item.key === selectedCompanyKey)

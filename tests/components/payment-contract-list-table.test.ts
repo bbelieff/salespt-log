@@ -136,13 +136,13 @@ describe("D-day 배지 색 (belie 2026-09-28)", () => {
     expect(ddayTone("D+00")).toBe("overdue");
     expect(ddayTone("D+05")).toBe("overdue");
   });
-  it("History D+NN 도 빨강 — 다음 일정(Todo)이 없다는 뜻", () => {
+  it("History는 H+NN 중립색으로 연체 Todo와 구분", () => {
     const node = document.createElement("div"); document.body.append(node);
     const root = createRoot(node);
-    act(() => root.render(h(WorkActivityBadge, { activity: { activityKind: "history", activityDate: "2026-09-20", activityLabel: "D+08" }, state: "ready" })));
-    const chips = [...node.querySelectorAll('[aria-label="최근 History D+08"] span')];
-    expect(chips.map((el) => el.textContent)).toEqual(["History", "D+08"]);
-    expect(chips[1]!.className).toContain("bg-red-100");
+    act(() => root.render(h(WorkActivityBadge, { activity: { activityKind: "history", activityDate: "2026-09-20", activityLabel: "H+08" }, state: "ready" })));
+    const chips = [...node.querySelectorAll('[aria-label="최근 History H+08"] span')];
+    expect(chips.map((el) => el.textContent)).toEqual(["History", "H+08"]);
+    expect(chips[1]!.className).toContain("bg-slate-100");
     act(() => root.unmount()); node.remove();
   });
   it("종류 칩은 border 없이 ring 으로 — D-day 칩과 높이가 같고 폭을 덜 먹는다", () => {
