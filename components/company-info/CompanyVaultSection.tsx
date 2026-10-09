@@ -21,6 +21,8 @@ const SECRET_PH: Record<VaultKind, string> = { login: "비밀번호", bank: "계
 const btnCls = "shrink-0 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50";
 const primaryCls = "rounded-md bg-brand-red px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50";
 const pinInputCls = `${inputCls} w-28 tabular-nums`;
+/** 종류 select — inputCls 의 w-full 을 빼야 w-24 로 좁아진다(둘 다 있으면 w-full 이 이겨 한 줄을 다 썼다). */
+const kindCls = inputCls.replace("w-full ", "");
 
 const onlyDigits = (v: string) => v.replace(/\D/g, "").slice(0, 8);
 const toQuery = (t: VaultTarget) =>
@@ -292,14 +294,15 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
 
           {items.map((it, i) => (
             <div key={i} className="space-y-1.5 rounded-lg border border-gray-200 bg-white p-2">
-              <div className="flex items-center gap-2">
-                <label htmlFor={`${idBase}-kind-${i}`} className="sr-only">항목 {i + 1} 종류</label>
-                <select id={`${idBase}-kind-${i}`} value={it.kind} onChange={(e) => patch(i, "kind", e.target.value)} className={`${inputCls} w-24 shrink-0`}>
-                  {VAULT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-                </select>
+              {/* 어디 계정인지(이름)가 먼저, 종류는 옆에 좁게 — 한 줄을 종류 칸이 다 쓰지 않게(belie 2026-10-09). */}
+              <div className="flex items-center gap-1.5">
                 <label htmlFor={`${idBase}-label-${i}`} className="sr-only">항목 {i + 1} 이름</label>
                 <input id={`${idBase}-label-${i}`} value={it.label} onChange={(e) => patch(i, "label", e.target.value)}
-                  placeholder={LABEL_PH[it.kind]} className={`${inputCls} font-semibold`} />
+                  placeholder={LABEL_PH[it.kind]} className={`${inputCls} min-w-0 flex-1 font-semibold`} />
+                <label htmlFor={`${idBase}-kind-${i}`} className="sr-only">항목 {i + 1} 종류</label>
+                <select id={`${idBase}-kind-${i}`} value={it.kind} onChange={(e) => patch(i, "kind", e.target.value)} className={`${kindCls} w-24 shrink-0`}>
+                  {VAULT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
+                </select>
                 <button type="button" onClick={() => edit(items.filter((_, n) => n !== i))}
                   aria-label={`항목 ${i + 1} 삭제`} className="shrink-0 px-1 text-xs text-gray-500 hover:text-red-600">삭제</button>
               </div>

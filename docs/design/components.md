@@ -1655,3 +1655,11 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 ### MobileChartCarousel — 대시보드 차트 옆으로 넘기기 (2026-10-09, 인터랙션 ②)
 `components/dashboard/MobileChartCarousel.tsx`. 1024px 미만에서 아래 차트 3종(영업 퍼널·주차 추이·채널별 성과)을 한 장씩 멈추는 가로 넘기기(CSS scroll-snap)로 보여 준다. 카드 폭 5/6이라 다음 카드가 살짝 보인다. 위 칩(현재 차트 `aria-pressed`)을 누르면 그 차트로 이동하고, 아래 점이 위치를 보여 준다. 움직임 줄이기 설정이면 즉시 이동한다. PC(≥1024px)에서는 래퍼·스크롤러가 `pc:contents` 로 풀려 기존 그리드 칸·높이 정렬이 그대로다(칩·점 숨김). 재무·생산성·주간 목표 카드는 넘기기에 넣지 않는다. 스크롤바 숨김은 `.chart-snap-scroller`(globals.css).
+
+### 업체정보 다듬기 (2026-10-09 belie)
+- **CompanyInfoSalesFields**: 연매출 줄(`data-sales-line="total"`)의 머리·네 칸을 `bg-blue-50` 띠로 강조(머리 굵게 blue-900, 양끝 둥근 모서리). 띠가 끊기지 않게 표는 `border-spacing-x-0`, 칸 사이는 `px-0.5`.
+- **CompanyVaultSection**: 항목 첫 줄 = 이름(어디 계정인지, `flex-1`) → 종류 select(`w-24`, inputCls 의 w-full 제거) → 삭제. 종류 칸이 한 줄을 다 쓰던 문제 수정.
+- **OwnershipField**: 「선택」 select 폐지 → 글칸. 칸을 누르면 아래 자가·임차 빠른 선택(`aria-label="소유여부 빠른 선택"`), 그 밖(무상사용 등)은 그대로 적는다. 빠른 선택으로 바꿀 때 칸의 다른 글은 기타메모로 옮김. 면적은 자가·임차와 상관없이 늘 보이고, 보증금·월세는 임차(또는 값이 있을 때)만 — `aria-label="면적·임차 조건"`. 기업정보·대표자 공용.
+- **기업정보**: 4대보험 직원 | 특허 및 인증 한 줄(`pair`).
+- **DesktopNav**: 캘린더 바로 아래 「주간목표」(`/weekly-goals`, Target 아이콘).
+

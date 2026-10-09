@@ -7,6 +7,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-09 · DC 총괄(데탑 C총괄 260927) · 업체정보 다듬기 6건 + 사이드바 주간목표
+- belie 요청(스크린샷 5장): [1] 연매출 강조 [2] 계정 보관함 종류 칸이 한 줄을 다 씀 → 이름 먼저·종류 좁게 [3] 면적은 자가여도 보이게 [4] 소유여부 「선택」 없애고 글칸+자가·임차 빠른 선택 [5] 4대보험|특허 한 줄 [6] 사이드바 캘린더 밑 주간목표.
+- 구역: `components/company-info/{CompanyInfoSalesFields,CompanyVaultSection,CompanyInfoChoiceFields}.tsx` · `components/company-info-defs.ts` · `components/desktop/DesktopNav.tsx` · 테스트·components.md.
+- 자율결정: [4] 「자택사무실」을 자택(대표자)·사무실(기업정보) 둘 다로 해석 — 같은 컴포넌트라 함께 바뀜. 빠른 선택으로 덮을 때 기존 글은 기타메모로 보존(기존 정책 유지).
+
 ### 2026-10-09 · 데탑 Claude Code(sharp-nash) · 배포 빌드 힙 한도 재검토 — 3072 상향 보류, 피크 메모리 기록 추가
 - 요청: run 37808444078(#1102) 힙 OOM 후 힙 상향(3072) 또는 빌드 메모리 감소. 확인 결과 감소안은 #1105 로 이미 머지·배포 2연속 성공(run 37818456499·37819674693, 로그 「Skipping linting / Skipping validation of types」). 실패 로그(37814981429-2.log:38→87)상 OOM 지점이 바로 그 린트·타입검사 단계.
 - 결정(자율): 3072 상향 보류. VPS 실측 `free -m` available 2356MB · swap 1507MB 사용 중 · salespt-log 422MB · hermes 380MB → 3GB 힙은 스왑에서만 나오고, 오늘 00:29 KST 전역 OOM 도 이미 발생(배포 아님 — root ssh 세션의 node 1.29GB).
