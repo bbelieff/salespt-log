@@ -1,155 +1,38 @@
-# Playbook — 자체 VPS 배포 & 롤백
+# VPS 배포·실패 대응
 
-> **📄 이 문서는 무엇인가요?**
-> - **한 줄 요약**: 현행 배포(PM2 + GitHub Actions 자동) 절차와 **롤백** 정본. CLAUDE.md §6.8 의 상세판.
-> - **누가 읽나요**: 개발자, 에이전트
-> - **관련 문서**: `CLAUDE.md §6.8`, `.github/workflows/deploy.yml`
+> **요약**: 현재 PM2 운영의 배포·확인·복구 절차.
+> **관련**: [CLAUDE §6.8](../../CLAUDE.md), [.github/workflows/deploy.yml](../../.github/workflows/deploy.yml), [ecosystem.config.cjs](../../ecosystem.config.cjs).
 
----
+## 현행 운영
+- 공개 https://salesptlog.online, VPS /opt/salespt-log, PM2 salespt-log, Caddy.
+- master push → Deploy to VPS. 수동은 gh workflow run "Deploy to VPS".
+- 구현 정본은 deploy.yml: 원격 Git 동기화 → lock hash 기준 npm ci → .next-build 빌드 → BUILD_ID 검증 → 원자 swap → PM2 reload → 내부/공개 health.
+- 원격은 setsid로 분리 실행하고 flock으로 직렬화한다. .deploy/<run>.status·로그로 완료를 판정한다. 러너 연결 끊김과 원격 실패는 다르다.
+- 빌드 힙 2048MB. 다른 서비스 종료나 힙 상향으로 우회하지 않는다.
+- 모아워크 /srv/moawork-direct·:3100 및 다른 운영 서비스 접근/수정/종료 금지. 배포 외 수동 운영 조작은 요청된 범위를 확인한다.
 
-## 0. 현행 운영 (정본) — PM2 + GitHub Actions
+## 정상 완료
+1. 병합 직전 최신 origin/master의 last-good SHA 기록.
+2. 현재 PR head의 check.sh·필요한 build·CI 확인, 직렬 순서로 squash.
+3. 해당 병합 SHA의 배포 run을 끝까지 확인: gh run view <id> --json conclusion,status,headSha.
+4. conclusion=success와 공개 health HTTP 200 확인, 안전한 실제 기능 검증.
+5. SHA·run·검사·live 확인·미완료를 worklog/PR에 기록. 200만으로 새 버전 성공을 주장하지 않는다.
 
-> ⚠️ 아래 §1~9 의 **Docker Compose/`/srv/salespt`** 설명은 **legacy 참고용**. 실제 운영은
-> **PM2 + `/opt/salespt-log` + GitHub Actions(`deploy.yml`)** 이다. 충돌 시 이 §0 이 정본.
+## 실패 분류
+- SSH/러너 접속 실패: 원격 .deploy 상태와 도달성을 확인한다. 원격이 계속 실행 중이면 중복 배포를 띄우지 않는다. 완료 상태를 확인하거나 gh run rerun <id> --failed로 재확인한다. 접속 실패만으로 코드 revert하지 않는다.
+- heap OOM: 같은 커밋을 1회 rerun하고 결과 확인. 반복 실패는 로그·build_peak_rss_kb·빌드 전 메모리로 원인을 좁힌다. 반복 rerun이나 힙 상향을 자동 실행하지 않는다.
+- build/BUILD_ID 실패: 기존 릴리스가 유지됐는지 확인한다. 실제 코드 결함이면 fix-forward 또는 정상 커밋으로 revert한다.
+- swap 후 health 실패: 원격 자동 롤백과 로그를 확인한다. 필요하면 실패 squash를 git revert하고 새 배포·health까지 확인한다.
+- 캐시 오염 근거가 있으면 gh workflow run "Deploy to VPS" -f clean=true 1회. 일반 접속/OOM 문제를 캐시 문제로 단정하지 않는다.
+- Git reset --hard + force-push로 master 역사를 변경하지 않는다. SSH를 짧은 간격으로 반복하거나 다른 서비스 설정을 고치지 않는다.
+- 롤백/실패/복구 증거는 비식별 인시던트로 남긴다. 원시 환경변수·인증정보 출력 금지.
 
-**스택**: VPS `/opt/salespt-log` · Next.js standalone(`npm run build`) · **PM2**(`salespt-log`) · Caddy 리버스프록시(자동 HTTPS) · 공개 `https://salesptlog.online`.
+## Secret 추가 절차
+- 비밀값 정본은 VPS .env이며 승인된 GitHub Secrets 주입을 통해 전달한다. 로컬·문서·커밋·로그로 복사하지 않는다.
+- 운영자는 GitHub Settings → Secrets and variables → Actions에서 값을 직접 입력한다.
+- 새 주입 키는 deploy.yml의 INJECT_KEYS/env 매핑을 별도 변경으로 검토한다. 값은 stdin/권한 제한 파일로만 전달하고 존재 여부만 확인한다.
+- 배포가 DB migration apply를 대신하지 않는다. migration/백필은 데이터 범위·보존 가드·dry-run과 기존 승인 범위를 확인한다. 새 비가역 데이터 변경·권한 등 범위가 달라질 때만 추가 확인한다.
 
-**배포(자동)**: `master` push → `.github/workflows/deploy.yml` 자동 실행. 수동 = `gh workflow run "Deploy to VPS"`.
-워크플로우: `git reset --hard origin/master` → `npm ci` → `rm -rf .next && npm run build`(`NODE_OPTIONS=--max-old-space-size=2048`, **BUILD_ID 검증**) → `pm2 restart salespt-log --update-env` → `pm2 save` → health(`:3000` + `https://salesptlog.online`).
-- **pm2 설정 정본 = 레포 루트 `ecosystem.config.cjs`**(2026-09-27 편입 — 09-14 운영에서 직접 바꾼 뒤
-  레포에 없었다). 배포는 `pm2 reload` 만 하므로 **설정을 바꿨으면 VPS 에서 한 번
-  `pm2 delete salespt-log && pm2 start ecosystem.config.cjs && pm2 save`** 로 반영한다.
-- 롤백 시 실패 빌드는 `.next-broken` 에 보존되고, **다음 성공 배포가 지운다**(2026-09-27 — 전에는 무기한 잔류).
-- RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
-  - 2026-10-09 재검토: 3072 상향도 보류 — 실측 가용 RAM ~2.3GB(스왑 1.5GB 사용 중)라 3GB 힙은 스왑에서만 나온다. 대신 린트·타입검사 중복을 빼서(#1105) 일을 줄였다.
-  - 배포 로그의 `build_peak_rss_kb=` 줄(빌드 직전 `free -m` 포함)이 빌드 피크 메모리 실측이다. 한도를 다시 논할 땐 이 숫자부터 본다: `grep build_peak /opt/salespt-log/.deploy/*.log`.
-- **빌드 캐시(2026-07-08 chore/deploy-build-cache)**: `npm ci` 는 package-lock.json
-  sha256 이 마커(`.npm-ci.hash`, VPS untracked)와 같으면 **스킵**, 직전 릴리스의
-  `.next/cache` 는 `.next-build/cache` 로 복사(cp -al 하드링크 우선)해 재활용.
-  **빌드가 이상하면(캐시 오염 의심) `gh workflow run "Deploy to VPS" -f clean=true` 1회**
-  — 마커 무시+캐시 미복사로 완전 클린 빌드. 무중단·롤백 경로 영향 없음(런타임은
-  cache 디렉토리 미사용).
-- **SSH 접속(2026-06-04 개선)**: `ssh-keyscan` 은 best-effort(`|| true`) — 하드 게이트 아님. 실제 ssh 는 `StrictHostKeyChecking=accept-new`(TOFU) + `ConnectTimeout=30` 으로 known_hosts 없이도 접속. 러너↔VPS 22번의 **간헐적 연결 타임아웃**은 각 ssh 호출이 **연결 실패(ssh rc=255)에 한해 최대 7회×20s 재시도**로 흡수(빌드/원격 실패=다른 rc 는 즉시 fail → 롤백 신호). 주입 스텝도 rc=255 시 1회 재시도. 과거: keyscan 을 하드 게이트로 둬서 간헐 타임아웃에 배포 전체가 막히던 오진 유발(sshd 는 정상이었음).
-- **⭐ detached 실행(2026-07-09 chore/deploy-detached-remote — 사이트다운 인시던트 재발방지)**:
-  배포 원격 스크립트를 ssh 로 **동기 실행하지 않는다.** 러너는 스크립트를 VPS `.deploy/` 에
-  업로드한 뒤 `setsid ... </dev/null >/dev/null 2>&1 &` 로 **세션 분리(detached)** 해 띄우고,
-  상태파일(`.deploy/<run>.status`)을 **재접속하며 폴링**해 진짜 종료코드를 보고한다. 이유:
-  동기 실행이면 러너↔VPS 연결이 **원자 swap(`mv .next ...`)·health 게이트 도중** 끊길 때
-  원격 셸이 SIGHUP 으로 죽어 `.next` 가 반쯤 스왑된 손상 상태로 남아 크래시루프→502 사이트다운
-  (2026-07-09 실사고, `docs/incidents/2026-07-09-deploy-connection-drop-site-down.md`). detached
-  면 연결이 끊겨도 배포(특히 swap·health·자동롤백)가 **끝까지 완주**하고, 러너는 상태만 다시
-  붙어 읽는다. VPS 상에서도 `flock` 으로 배포를 직렬화(GH concurrency 와 이중 안전). 폴링은
-  최대 25분(초과 시 타임아웃 fail — 원격은 계속 진행 중일 수 있음). 즉 **배포 성공/실패 판정은
-  원격이 남긴 `.status` 코드가 정본**, 러너 연결 상태가 아니다.
-
-**Secret 추가 절차 (운영자용 — SSH 불필요, 2026-07-06 도입 · 2026-07-12 다중 키 일반화)**:
-배포 파이프라인이 GitHub Secrets 를 VPS `/opt/salespt-log/.env` 에 자동 주입한다
-(deploy.yml "Inject secrets" 스텝 — 멱등: 해당 키 한 줄만 교체/추가, 다른 줄 비파괴,
-값은 stdin→원격 600 파일로만 이동해 **로그에 절대 안 찍힘**, 성공 시 "키 존재 확인(값 미출력)" 로그).
-현재 주입 키: `DATABASE_URL`(DB 파일럿) · `ADMIN_DRIVE_REFRESH_TOKEN`(admin 기수 생성
-시트 복제용 belie OAuth, ADR-0015 — 9기 때 VPS 미설정으로 기수 생성 버튼이 전원 실패했던 키).
-- **운영자(belie)**: GitHub 레포 → **Settings → Secrets and variables → Actions →
-  New repository secret** → Name 에 키 이름, Value 에 값 입력 → 다음 배포부터 자동 반영.
-- **새 키를 파이프라인에 추가(에이전트)**: deploy.yml "Inject secrets" 스텝의
-  `INJECT_KEYS` 목록 + 스텝 `env:` 매핑에 각 1줄 추가 — 그게 전부.
-- secret 미설정이면 해당 키만 **경고+스킵**, 주입 실패도 경고만 남기고 배포는 계속
-  (파일럿 dual-write 비차단 원칙, db-migration-pilot §3).
-
-**머지 후 에이전트 절차** (CLAUDE.md §6.8):
-1. 머지 직전 `git rev-parse origin/master` 로 **last-good SHA** 기록.
-2. 배포 run 관찰: `gh run list --workflow="Deploy to VPS" -L1` → `gh run view <id> --json conclusion,status`.
-3. **success 판정은 반드시 `--json conclusion` 의 "success" 문자열로** — 무중단 설계상 **사이트 200 은 성공 증거가 아니다**(빨간 run 이어도 옛/이전 attempt 릴리스가 200 으로 서빙됨 — 2026-07-07 오보고 사고, incidents/2026-07-07-deploy-426-vps-unreachable.md). success 확인 후 `curl -I`(200)는 "다운 아님" 보조 확인. / **detached(2026-07-09~)**: 배포 성공/실패의 정본은 **원격이 남긴 `.deploy/<run>.status` 코드**다. run 이 빨강이어도 원격 배포는 이미 완주해 사이트가 정상일 수 있고(연결만 끊긴 경우), 반대로 status=1 이면 원격 스크립트가 health 게이트에서 **자동 롤백**했을 수 있다 — 로그 확인 후 필요 시 fix-forward. / **연결 실패(ssh rc=255)** → 각 ssh 호출 7회×20s 자동 재시도 내장(⚠️ GH 기본 `bash -e` 때문에 `|| rc=$?` 로 포착해야 재시도가 작동 — 2026-06-04 수정). 도달성 장애 창이 길어 폴링이 다 실패해도 **원격 배포 자체는 손상 없이 완주**(detached) → `gh run rerun <id> --failed` 로 러너만 재부착/재확인. 제공사 edge 도달성 장애 의심(sshd active·다른 run 접속됨이면 OS 손질 불필요). / **build·health 실패(status≠0)** → 원격 자동 롤백 확인 + 원인 분석.
-
-**롤백 (정본 — force-push 금지)**:
-```bash
-# 이 레포 PR = --squash → master 에 단일 커밋. 그 커밋만 되돌림(머지커밋 아님 → -m 불필요).
-git revert <bad-squash-sha>
-git push origin master          # → 자동 재배포(직전 정상 코드)
-# 확인: gh run view <new-id> --json conclusion  + curl -I https://salesptlog.online
-```
-- 절대 `git reset --hard` + `push --force` 로 master 역사 훼손 금지.
-- 롤백 후 원인분석 → fix-forward PR. 실패·롤백은 `docs/incidents/` 기록.
-
----
-
-## (Legacy 참고) Caddy + Docker Compose 초기 셋업
-
-**목표**: Next.js 앱을 VPS 에 올리고 자체 도메인으로 자동 HTTPS 제공.
-**전제**: Ubuntu/Debian 계열 VPS, 포트 80/443 오픈, 도메인 1개 보유.
-
-## 1. 도메인 DNS
-1. 도메인 등록 (가비아, Namecheap, Cloudflare Registrar 등).
-2. A 레코드 생성: `app.example.com → <VPS 공인 IP>`
-3. Cloudflare 사용 시 **Proxy 끄고 (DNS only)** 두는 편이 Caddy 의 자동 HTTPS 와 궁합이 좋음 (ACME HTTP-01 통과).
-
-## 2. VPS 준비
-```bash
-ssh root@<vps-ip>
-apt update && apt -y upgrade
-apt -y install docker.io docker-compose-plugin git
-systemctl enable --now docker
-```
-
-## 3. 레포 배치
-```bash
-mkdir -p /srv/salespt && cd /srv/salespt
-git clone <repo-url> .
-# 또는: git pull 로 업데이트
-```
-
-## 4. 프로덕션 환경변수
-`/srv/salespt/.env.production` 을 아래 형식으로. **커밋 금지**.
-```
-DOMAIN=app.example.com
-AUTH_SECRET=<openssl rand -base64 32>
-AUTH_URL=https://app.example.com
-AUTH_GOOGLE_ID=...
-AUTH_GOOGLE_SECRET=...
-GOOGLE_SERVICE_ACCOUNT_EMAIL=...@....iam.gserviceaccount.com
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-SHEETS_REGISTRY_ID=...
-SHEETS_REGISTRY_TAB=users
-```
-
-Google Cloud Console 에서 OAuth 리디렉션 URI 에 `https://app.example.com/api/auth/callback/google` 추가하는 것을 **잊지 말 것** (안 하면 로그인 시 400).
-
-## 5. 빌드 & 기동
-```bash
-cd /srv/salespt
-docker compose build
-docker compose up -d
-docker compose logs -f caddy   # 인증서 발급 확인
-```
-
-Caddy 가 Let's Encrypt 인증서를 자동 발급한다 (1분 내외).
-
-## 6. 헬스 체크
-```bash
-curl -I https://app.example.com
-# HTTP/2 200
-```
-
-## 7. 배포 업데이트 루틴
-```bash
-cd /srv/salespt
-git pull
-docker compose build app
-docker compose up -d app
-```
-
-롤백:
-```bash
-git checkout <prev-commit>
-docker compose build app && docker compose up -d app
-```
-
-## 8. 백업 (Sheets 가 SSOT 이지만)
-- `/srv/salespt/.env.production` → 암호화 후 별도 저장.
-- Caddy volume (`caddy_data`) — 인증서 보관용. 재발급 가능하지만 rate limit 있음.
-- 서비스 계정 JSON 원본 — **VPS 바깥** 안전한 곳에.
-
-## 9. 흔한 오류
-- **ACME 실패**: 80 포트 막힘 → 방화벽(`ufw allow 80,443/tcp`).
-- **OAuth redirect_uri_mismatch**: GCP 콘솔의 리디렉션 URI 누락.
-- **Sheets 403**: 서비스 계정이 대상 시트에 공유되지 않음.
-- **standalone not found**: `next.config.mjs` 에 `output: "standalone"` 누락.
+## 설정·자원
+- PM2 설정 정본은 ecosystem.config.cjs. 설정 변경은 reload만으로 충분한지 확인하고 필요한 운영 적용을 별도 범위로 검증한다.
+- 현재 빌드·캐시·상태파일 경로는 deploy.yml을 확인한다. 옛 Docker Compose·/srv/salespt 초기 설정을 현재 운영 명령으로 실행하지 않는다.
