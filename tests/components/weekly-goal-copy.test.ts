@@ -60,7 +60,7 @@ describe("goal copy serialization", () => {
     const { html } = meetingClipboard(cells);
     expect(html).not.toMatch(/<img|<script/);
     expect(html).toContain("&lt;img");
-    expect(html.match(/<td>/g)).toHaveLength(14);
+    expect(html.match(/<td style="white-space:pre-wrap">/g)).toHaveLength(14);
     expect(html.match(/<tr>/g)).toHaveLength(1);
     expect(html).not.toMatch(/<thead|<th[ >]/);
   });
@@ -68,7 +68,7 @@ describe("goal copy serialization", () => {
     const cells = meetingCells(view(), internal);
     cells[6] = "first\tvalue\r\nsecond\nthird\rfourth";
     const { html, plain } = meetingClipboard(cells);
-    expect(html).toContain("first\tvalue<br>second<br>third<br>fourth");
+    expect(html).toContain("first\tvalue\nsecond\nthird\nfourth");
     expect(plain).toContain("\n");
     expect(plain).not.toMatch(/\r/);
     const rows = parseTsv(plain);
@@ -168,7 +168,7 @@ describe("previous-week task/outcome pairing in meeting row", () => {
     expect(cells).toHaveLength(14);
     expect(cells[7]).toBe("• 지난과제A → 성과A\n• 지난과제B → 성과B");
     const { html, plain } = meetingClipboard(cells);
-    expect(html).toContain("• 지난과제A → 성과A<br>• 지난과제B → 성과B");
+    expect(html).toContain("• 지난과제A → 성과A\n• 지난과제B → 성과B");
     const rows = parseTsv(plain);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveLength(14);
@@ -180,7 +180,7 @@ describe("previous-week task/outcome pairing in meeting row", () => {
     expect(cells[7]).toBe("• a<b → e\"f\n• c&d → g'h");
     const { html, plain } = meetingClipboard(cells);
     expect(html).not.toMatch(/<b(?=[\s>])/);
-    expect(html).toContain("a&lt;b → e&quot;f<br>• c&amp;d → g&#39;h");
+    expect(html).toContain("a&lt;b → e&quot;f\n• c&amp;d → g&#39;h");
     const rows = parseTsv(plain);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveLength(14);
@@ -209,11 +209,11 @@ describe("pivoted goal clipboard for a Notion table paste", () => {
   });
   it("emits a real header+value table so Notion pastes into cells, not one text block", () => {
     const { html } = goalClipboard(goalPivotCells(view()));
-    expect(html).toMatch(/^<table><thead><tr><th>/);
+    expect(html).toMatch(/^<table><thead><tr><th style="white-space:pre-wrap">/);
     expect(html.match(/<tr>/g)).toHaveLength(2);
-    expect(html.match(/<th>/g)).toHaveLength(GOAL_PIVOT_COLUMNS.length);
-    expect(html.match(/<td>/g)).toHaveLength(GOAL_PIVOT_COLUMNS.length);
-    expect(html).toContain("• Task line 1<br>• Task line 2");
+    expect(html.match(/<th style="white-space:pre-wrap">/g)).toHaveLength(GOAL_PIVOT_COLUMNS.length);
+    expect(html.match(/<td style="white-space:pre-wrap">/g)).toHaveLength(GOAL_PIVOT_COLUMNS.length);
+    expect(html).toContain("• Task line 1\n• Task line 2");
   });
   it("keeps the plain fallback to header+record logical rows with quoted multiline tasks", () => {
     const { plain } = goalClipboard(goalPivotCells(view()));

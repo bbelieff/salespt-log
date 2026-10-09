@@ -52,13 +52,18 @@ function tsvRow(values: string[]): string {
   return values.map(tsvCell).join("\t");
 }
 
+/** 칸 안 줄바꿈은 글자 그대로 두고 white-space:pre-wrap 으로 지킨다 — 노션은 붙여넣을 때 <br> 을 버려
+ * 과제가 한 줄로 붙었다(belie 2026-10-09). 노션이 자기 표를 복사할 때 쓰는 모양과 같다. */
+function htmlCell(tag: "th" | "td", s: string): string {
+  return `<${tag} style="white-space:pre-wrap">` + escapeGoalHTML(s.replace(/\r\n|\r/g, "\n")) + `</${tag}>`;
+}
+
 /** Header + value rows as real table HTML, so a Notion paste lands in cells instead of one text block.
  * Plain text stays TSV with the same two rows for editors without HTML clipboard support.
  */
 export function goalClipboard(cells: string[]) {
   if (cells.length !== GOAL_PIVOT_COLUMNS.length) throw new Error("복사할 열 개수를 확인해 주세요.");
-  const row = (values: string[], tag: "th" | "td") => "<tr>" + values
-    .map(s => `<${tag}>` + escapeGoalHTML(s).replace(/\r\n|\r|\n/g, "<br>") + `</${tag}>`).join("") + "</tr>";
+  const row = (values: string[], tag: "th" | "td") => "<tr>" + values.map(s => htmlCell(tag, s)).join("") + "</tr>";
   const html = "<table><thead>" + row(GOAL_PIVOT_COLUMNS, "th") + "</thead><tbody>" + row(cells, "td") + "</tbody></table>";
   return { html, plain: tsvRow(GOAL_PIVOT_COLUMNS) + "\n" + tsvRow(cells) };
 }
@@ -68,7 +73,7 @@ export function escapeGoalHTML(s: string): string {
 }
 export function meetingClipboard(cells: string[]) {
   if (cells.length !== MEETING_COLUMNS.length) throw new Error("회의록 열 개수를 확인해 주세요.");
-  const html = "<table><tbody><tr>" + cells.map(s => "<td>" + escapeGoalHTML(s).replace(/\r\n|\r|\n/g, "<br>") + "</td>").join("") + "</tr></tbody></table>";
+  const html = "<table><tbody><tr>" + cells.map(s => htmlCell("td", s)).join("") + "</tr></tbody></table>";
   // One logical TSV row; multiline/tab/quote cells are quoted so line breaks survive. HTML preserves multiline.
   return { html, plain: tsvRow(cells) };
 }
