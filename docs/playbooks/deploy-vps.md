@@ -21,6 +21,8 @@
   `pm2 delete salespt-log && pm2 start ecosystem.config.cjs && pm2 save`** 로 반영한다.
 - 롤백 시 실패 빌드는 `.next-broken` 에 보존되고, **다음 성공 배포가 지운다**(2026-09-27 — 전에는 무기한 잔류).
 - RAM 3.8GB VPS — 빌드 메모리 **2048MB** 고정(4096 시 OOM-killer → silent 옛빌드 잔존 사고, 2026-05-13).
+  - 2026-10-09 재검토: 3072 상향도 보류 — 실측 가용 RAM ~2.3GB(스왑 1.5GB 사용 중)라 3GB 힙은 스왑에서만 나온다. 대신 린트·타입검사 중복을 빼서(#1105) 일을 줄였다.
+  - 배포 로그의 `build_peak_rss_kb=` 줄(빌드 직전 `free -m` 포함)이 빌드 피크 메모리 실측이다. 한도를 다시 논할 땐 이 숫자부터 본다: `grep build_peak /opt/salespt-log/.deploy/*.log`.
 - **빌드 캐시(2026-07-08 chore/deploy-build-cache)**: `npm ci` 는 package-lock.json
   sha256 이 마커(`.npm-ci.hash`, VPS untracked)와 같으면 **스킵**, 직전 릴리스의
   `.next/cache` 는 `.next-build/cache` 로 복사(cp -al 하드링크 우선)해 재활용.
