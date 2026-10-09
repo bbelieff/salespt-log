@@ -18,7 +18,7 @@
 import { STATS_WEEKS } from "@/config/cohort-dates";
 
 import type { DashboardChannelMatrix } from "@/types";
-import { useFirstPlay } from "@/components/motion/useMotion";
+import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
 
 interface Props {
@@ -78,8 +78,8 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
   const inflow = stageTotal("유입");
   const contract = stageTotal("계약");
   const conversionRate = inflow > 0 ? (contract / inflow) * 100 : 0;
-  // 처음 한 번만 단계가 위에서부터 차례로 차오르고 합계가 올라간다(belie 2026-10-09).
-  const play = useFirstPlay("funnel");
+  // 열 때마다 단계가 위에서부터 차례로 차오르고 합계가 올라간다(belie 2026-10-09).
+  const play = usePlayOnOpen("funnel");
 
   return (
     <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">

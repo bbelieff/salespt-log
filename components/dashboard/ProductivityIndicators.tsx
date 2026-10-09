@@ -19,7 +19,7 @@
 
 import type { DashboardChannelMatrix } from "@/types";
 import { STATS_WEEKS } from "@/config/cohort-dates";
-import { useFirstPlay } from "@/components/motion/useMotion";
+import { usePlayOnOpen } from "@/components/motion/useMotion";
 import CountUp from "@/components/motion/CountUp";
 
 const pctText = (n: number) => `${n.toFixed(1)}%`;
@@ -53,8 +53,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
   const meetingExecuteRate = ratio(meetingCompleted, meetingReservation); // 미팅완료 ÷ 미팅예약
   const meetingSkill = ratio(contract, meetingCompleted); // 계약 ÷ 미팅완료
   const salesProductivity = ratio(contract, contactProgress); // 계약 ÷ 컨택진행
-  // 처음 한 번만 막대가 차례로 차고 % 가 올라간다(belie 2026-10-09).
-  const play = useFirstPlay("productivity");
+  // 열 때마다 막대가 차례로 차고 % 가 올라간다(belie 2026-10-09).
+  const play = usePlayOnOpen("productivity");
 
   return (
     <section className={`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}>

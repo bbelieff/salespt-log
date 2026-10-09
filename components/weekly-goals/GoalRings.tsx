@@ -1,14 +1,14 @@
 "use client";
 
-import { useFirstPlay } from "@/components/motion/useMotion";
+import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
 import { GOAL_KEYS, GOAL_LABELS, type WeeklyGoalValues, type GoalActuals, type GoalKey } from "@/types/weekly-goals";
 
 export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS, showStatus = true }: {
   goals: WeeklyGoalValues; actuals: GoalActuals; metrics?: readonly GoalKey[]; showStatus?: boolean;
 }) {
-  // 처음 한 번만 링이 차오르고 숫자가 올라간다(대시보드 움직임, belie 2026-10-09).
-  const play = useFirstPlay("goal-rings");
+  // 열 때마다 링이 차오르고 숫자가 올라간다(대시보드 움직임, belie 2026-10-09).
+  const play = usePlayOnOpen("goal-rings");
   return <div className="flex justify-center gap-1 pc:gap-4" aria-label="주간 목표 실적">
     {metrics.map((key, i) => {
       const goal = goals[key], actual = actuals[key];

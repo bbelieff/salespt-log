@@ -1,7 +1,7 @@
 "use client";
 
 import DDayBadge from "@/components/DDayBadge";
-import { useFirstPlay } from "@/components/motion/useMotion";
+import { usePlayOnOpen } from "@/components/motion/useMotion";
 import CountUp from "@/components/motion/CountUp";
 
 /**
@@ -38,8 +38,8 @@ export default function DashboardProgressBanner({
   graduationISO,
 }: Props) {
   const pct = Math.max(0, Math.min(100, progressPercent));
-  // 처음 한 번만: 진행바가 왼쪽부터 차고, 지금 위치 점이 세 번 맥박친다(belie 2026-10-09).
-  const play = useFirstPlay("progress-banner");
+  // 열 때마다: 진행바가 왼쪽부터 차고, 지금 위치 점이 세 번 맥박친다(belie 2026-10-09).
+  const play = usePlayOnOpen("progress-banner");
 
   if (!hasDates) {
     // 진행도 데이터가 없으면 헤더만 보여주고 D-day는 그대로 표시 (R4 W1-3 — 매출/비용·경비장부 진입점 보호)
