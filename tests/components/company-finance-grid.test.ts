@@ -63,6 +63,8 @@ const byKey = (scope: HTMLElement, key: string) => scope.querySelector<HTMLInput
 const labelOf = (input: HTMLElement) => el!.querySelector(`label[for="${input.id}"]`)?.textContent;
 const staged = () => stage.mock.calls.at(-1)![0] as CompanyInfo;
 const rowOf = (i: number) => groupEl("연도별 매출").querySelector<HTMLElement>(`[data-sales-row="${i}"]`)!;
+// 연도별 안내(한쪽만·이전 합계·옛 글)는 표 아래 연도별 줄에 모인다(2026-10-09 피벗).
+const noteOf = (i: number) => el!.querySelector<HTMLElement>(`[data-sales-note="${i}"]`)!;
 /** 금액 칸 하나(라벨·입력·도움말·옛 글 안내)를 감싼 상자. */
 const fieldBox = (input: HTMLInputElement) => input.closest("div.min-w-0")!.parentElement!;
 const buttonIn = (scope: HTMLElement, text: string) =>
@@ -132,8 +134,8 @@ describe("A 금액 칸 — 백만원", () => {
 
   it("매출 칸 옛 글 — 단위 없는 숫자는 백만원, 몇 월 표시는 바꿀 때 기타메모로", () => {
     render({ 과년도매출: "25' 250", 금년도매출: "26' 6월 100백만", 업체기타메모: "기존" });
-    const r0 = rowOf(0);
-    expect(rowOf(1).textContent).toContain("매출 Y-1(2025): 글로 적힌 값이에요 — 계산에는 250백만원으로 써요");
+    const r0 = noteOf(0);
+    expect(noteOf(1).textContent).toContain("매출 Y-1(2025): 글로 적힌 값이에요 — 계산에는 250백만원으로 써요");
     expect(r0.textContent).toContain("매출 Y(2026): 글로 적힌 값이에요 — 계산에는 100백만원으로 써요");
     act(() => buttonIn(r0, "백만원으로 바꾸기")!.click());
     expect(staged().금년도매출).toBe("100");
@@ -143,19 +145,19 @@ describe("A 금액 칸 — 백만원", () => {
 
   it("표 안 「백만원으로 바꾸기」는 화면낭독기에 어느 칸인지 알린다", () => {
     render({ 과년도매출: "25' 250", 매출Y1상: "1.2억" });
-    const names = [...rowOf(1).querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));
+    const names = [...noteOf(1).querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));
     expect(names).toEqual(["Y-1(2025) 상반기 백만원으로 바꾸기"]);
     unmount();
     render({ 과년도매출: "25' 250" });
-    expect(buttonIn(rowOf(1), "백만원으로 바꾸기")!.getAttribute("aria-label")).toBe("매출 Y-1(2025) 백만원으로 바꾸기");
+    expect(buttonIn(noteOf(1), "백만원으로 바꾸기")!.getAttribute("aria-label")).toBe("매출 Y-1(2025) 백만원으로 바꾸기");
   });
 
   it("원 단위로 적은 큰 숫자(250,000,000) — 백만원으로 계산하지 않고 안내 + 바꾸기", () => {
     render({ 과년도매출: "250,000,000", 자산총계: "250123456" });
-    expect(rowOf(1).textContent).toContain("원 단위로 적은 숫자 같아요 — 계산에는 250백만원으로 써요");
+    expect(noteOf(1).textContent).toContain("원 단위로 적은 숫자 같아요 — 계산에는 250백만원으로 써요");
     expect(fieldBox(byKey(groupEl("재무"), "자산총계")!).textContent).toContain("계산에는 250.1백만원으로 써요");
     expect(stage).not.toHaveBeenCalled(); // 열기만 해선 안 바꾼다
-    act(() => buttonIn(rowOf(1), "백만원으로 바꾸기")!.click());
+    act(() => buttonIn(noteOf(1), "백만원으로 바꾸기")!.click());
     expect(staged().과년도매출).toBe("250");
   });
 });
@@ -176,7 +178,7 @@ describe("B 연도별 매출 합계", () => {
     expect(staged().과년도매출Y2).toBe("80");
     unmount();
     render({ 매출Y2상: "80" });
-    expect(rowOf(2).textContent).toContain("하반기가 비어 있어 상반기만 더했어요");
+    expect(noteOf(2).textContent).toContain("하반기가 비어 있어 상반기만 더했어요");
   });
 
   it("반기에 읽을 수 없는 글 → 합계를 덮지 않고 알림(합계는 직접 적는 칸)", () => {
@@ -184,7 +186,7 @@ describe("B 연도별 매출 합계", () => {
     const total = byKey(rowOf(1), "과년도매출")!;
     expect(total.readOnly).toBe(false);
     expect(total.value).toBe("300");
-    expect(rowOf(1).textContent).toContain("합계를 자동으로 더하지 않아요");
+    expect(noteOf(1).textContent).toContain("합계를 자동으로 더하지 않아요");
   });
 
   it("반기가 둘 다 비면 합계를 직접 적는다(재무제표 연 매출)", () => {
@@ -197,22 +199,21 @@ describe("B 연도별 매출 합계", () => {
 
   it("다른 금액의 옛 합계 → '이전 합계', 저장하면 기타메모로 옮기고 합계를 반기 합으로", () => {
     render({ 매출Y1상: "1.2억", 매출Y1하: "1.3억", 과년도매출: "25' 260백만" });
-    expect(rowOf(1).textContent).toContain("이전 합계 25' 260백만 — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요");
+    expect(noteOf(1).textContent).toContain("이전 합계 25' 260백만 — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요");
     typeInto(byKey(groupEl("재무"), "영업이익")!, "10");
     expect(staged().과년도매출).toBe("250");
     expect(staged().업체기타메모).toBe("매출 Y-1(2025) 이전 합계: 25' 260백만");
   });
 
-  it("375px 폰에서도 세 칸 한 줄 — 줄마다 grid-cols-3, 칸은 줄어들 수 있다(min-w-0)", () => {
+  it("375px 폰에서도 네 연도가 한 줄 — 연도가 가로(grid-cols-4), 아래로 연매출·상반기·하반기, 칸은 숫자만", () => {
     render();
-    for (const i of [0, 1, 2, 3]) {
-      const cells = rowOf(i).querySelector<HTMLElement>(".grid-cols-3")!;
-      expect(cells.className).toContain("min-w-0");
-      expect(cells.className).not.toContain("xs:");
-      expect(cells.children).toHaveLength(3);
-      for (const c of cells.children) expect((c as HTMLElement).className).toContain("min-w-0");
-    }
-    expect(groupEl("연도별 매출").textContent).toContain("상반기하반기합계");
+    const cols = rowOf(0).parentElement!;
+    expect(cols.className).toContain("grid-cols-4");
+    expect(cols.className).toContain("min-w-0");
+    expect(cols.children).toHaveLength(4);
+    for (const c of cols.children) expect((c as HTMLElement).className).toContain("min-w-0");
+    expect(groupEl("연도별 매출").textContent).toContain("연매출상반기하반기");
+    expect(groupEl("연도별 매출").textContent).not.toContain("백만원"); // 단위는 표 머리에 한 번만
   });
 });
 
@@ -239,7 +240,7 @@ describe("C 매출 기준 연도", () => {
     typeInto(year, "1999");
     expect(stage).not.toHaveBeenCalled();
     // 안내는 Y 줄 바로 아래(입력칸 가까이), 입력칸 설명에도 연결.
-    const alert = rowOf(0).querySelector<HTMLElement>('[role="alert"]')!;
+    const alert = el!.querySelector<HTMLElement>('[role="alert"]')!;
     expect(alert.textContent).toContain("2000~2100");
     expect(year.getAttribute("aria-describedby")).toContain(alert.id);
     act(() => year.blur());

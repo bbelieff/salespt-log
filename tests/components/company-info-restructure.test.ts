@@ -315,7 +315,7 @@ describe("⑤ [재무] 매출", () => {
     expect(stage).not.toHaveBeenCalled(); // 열기만 해선 기준 연도를 저장하지 않는다
   });
 
-  it("연도별 매출 = 4줄 × 3칸(상반기 | 하반기 | 합계)", () => {
+  it("연도별 매출 = 연도 4개(가로) × 연매출·상반기·하반기(세로)", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 8, 28));
     render({ 매출Y1상: "120" });
@@ -326,13 +326,13 @@ describe("⑤ [재무] 매출", () => {
       [...r.querySelectorAll<HTMLInputElement>("input")].filter((i) => !i.id.endsWith("-매출기준연도")),
     );
     expect(cells.map((c) => c.map((i) => labelOf(i)))).toEqual([
-      ["Y(2026) 상반기", "Y(2026) 하반기", "매출 Y(2026)"],
-      ["Y-1(2025) 상반기", "Y-1(2025) 하반기", "매출 Y-1(2025)"],
-      ["Y-2(2024) 상반기", "Y-2(2024) 하반기", "매출 Y-2(2024)"],
-      ["Y-3(2023) 상반기", "Y-3(2023) 하반기", "매출 Y-3(2023)"],
+      ["매출 Y(2026)", "Y(2026) 상반기", "Y(2026) 하반기"],
+      ["매출 Y-1(2025)", "Y-1(2025) 상반기", "Y-1(2025) 하반기"],
+      ["매출 Y-2(2024)", "Y-2(2024) 상반기", "Y-2(2024) 하반기"],
+      ["매출 Y-3(2023)", "Y-3(2023) 상반기", "Y-3(2023) 하반기"],
     ]);
-    expect(cells[1]![0]!.value).toBe("120");
-    typeInto(cells[3]![1]!, "90");
+    expect(cells[1]![1]!.value).toBe("120");
+    typeInto(cells[3]![2]!, "90");
     expect(staged().매출Y3하).toBe("90");
     expect(staged().과년도매출Y3).toBe("90"); // 합계 자동 저장
   });

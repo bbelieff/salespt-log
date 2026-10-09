@@ -1,9 +1,9 @@
 /**
  * CompanyInfoSalesFields — 업체정보 [재무] 연도별 매출 표 (company-finance-won-grid, belie 2026-09-28).
  *
- * 1) 「연도별 매출」 한 표: 머리글 "상반기 · 하반기 · 합계"(단위 백만원), 줄 Y · Y-1 · Y-2 · Y-3.
- *    한 줄 = 상반기(매출Y상…) | 하반기(매출Y하…) | 합계(금년도매출·과년도매출·과년도매출Y2·Y3) 세 칸 나란히 —
- *    375px 폰에서도 한 줄(칸 아래 "약 …" 도움말).
+ * 1) 「연도별 매출」 한 표(belie 2026-10-09 피벗): 연도가 가로(Y · Y-1 · Y-2 · Y-3), 아래로 연매출(합계) →
+ *    상반기 → 하반기. 단위 "백만원" 은 표 머리에 한 번만 — 칸은 숫자만(375px 폰에서도 네 연도가 한 줄).
+ *    연도마다 한 세로 줄([data-sales-row]), 연도별 안내(한쪽만·읽을 수 없음·이전 합계·옛 글)는 표 아래 [data-sales-note].
  * 2) 합계: 반기 칸에 값이 있으면 반기 합(읽기 전용, 칸 아래 "자동") — 편집기 apply() 가 같은 값을 저장한다
  *    (열기만 해선 안 함). 한쪽만 있으면 그 반기만 더하고 안내, 둘 다 비면 합계는 직접 적는 칸(옛 연도 합계·
  *    재무제표 연 매출). 반기 칸에 읽을 수 없는 글이 있으면 합계를 덮지 않고 알린다. 반기 합과 다른 옛 합계는
@@ -94,7 +94,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
       <label htmlFor={idOf(k)} className="sr-only">
         {label}
       </label>
-      <MillionWonInput id={idOf(k)} value={text(k)} signed={false} onChange={(v) => onField(k, v)} />
+      <MillionWonInput id={idOf(k)} value={text(k)} signed={false} bare onChange={(v) => onField(k, v)} />
     </div>
   );
 
@@ -105,26 +105,23 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
           <SubHead>연도별 매출</SubHead>
           <HintTooltip label="연도별 매출" text={GRID_HINT} />
         </div>
-        <span className="text-xs text-gray-500">단위: 백만원</span>
+        <span className="text-xs text-gray-400">단위: 백만원</span>
       </div>
-      <div className="space-y-1.5" role="group" aria-label="연도별 매출">
-        <div className="flex gap-1 text-xs font-medium text-gray-500" aria-hidden="true">
-          <span className="w-12 shrink-0">연도</span>
-          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1 text-center">
-            <span>상반기</span>
-            <span>하반기</span>
-            <span>합계</span>
-          </div>
+      {/* 연도가 가로(Y·Y-1·Y-2·Y-3), 아래로 연매출 → 상반기 → 하반기(belie 2026-10-09 피벗). 연도마다 한 세로 줄. */}
+      <div className="flex gap-1" role="group" aria-label="연도별 매출">
+        <div className="w-11 shrink-0 text-xs font-medium text-gray-500" aria-hidden="true">
+          <div className="h-12" />
+          <div className="flex h-11 items-start pt-1.5 font-semibold text-gray-800">연매출</div>
+          <div className="flex h-11 items-start pt-1.5">상반기</div>
+          <div className="flex h-11 items-start pt-1.5">하반기</div>
         </div>
-        {defs.rows.map(([상, 하, 합], i) => {
-          const row = salesRowView(draft, i);
-          const tag = salesYearTag(i, baseYear);
-          const other = row.only === "상반기" ? "하반기" : "상반기";
-          return (
-            <div key={String(합[0])} className="min-w-0" data-sales-row={i}>
-              <div className="flex items-start gap-1">
-                <div className="w-12 shrink-0 text-xs">
-                  <div className="flex items-center gap-0.5 font-semibold text-gray-800">
+        <div className="grid min-w-0 flex-1 grid-cols-4 gap-1">
+          {defs.rows.map(([상, 하, 합], i) => {
+            const row = salesRowView(draft, i);
+            return (
+              <div key={String(합[0])} className="min-w-0" data-sales-row={i}>
+                <div className="h-12 text-xs">
+                  <div className="flex items-center justify-center gap-0.5 font-semibold text-gray-800">
                     {salesYearToken(i)}
                     {i === 0 && <HintTooltip label="기준 연도" text={YEAR_HINT} />}
                   </div>
@@ -138,7 +135,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                       </span>
                       <input
                         id={yearId}
-                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs tabular-nums text-gray-900 focus:border-brand-red focus:outline-none"
+                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-center text-xs tabular-nums text-gray-900 focus:border-brand-red focus:outline-none"
                         inputMode="numeric"
                         maxLength={4}
                         aria-invalid={yearError ? true : undefined}
@@ -156,12 +153,10 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                       />
                     </>
                   ) : (
-                    <span className="text-gray-500">({baseYear - i})</span>
+                    <p className="pt-0.5 text-center tabular-nums text-gray-500">{baseYear - i}</p>
                   )}
                 </div>
-                <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-                  {cell(상)}
-                  {cell(하)}
+                <div className="h-11">
                   {row.auto && row.total !== null ? (
                     <div className="min-w-0">
                       <label htmlFor={idOf(합[0])} className="sr-only">
@@ -169,12 +164,12 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                       </label>
                       <input
                         id={idOf(합[0])}
-                        className={`${readOnlyCls} text-right tabular-nums`}
+                        className={`${readOnlyCls} text-right font-semibold tabular-nums`}
                         readOnly
                         aria-readonly="true"
                         value={formatTenths(row.total)}
                       />
-                      <p className="mt-0.5 truncate text-xs text-gray-500">
+                      <p className="mt-0.5 h-4 truncate text-xs text-gray-500">
                         {["자동", moneyHint(row.total)].filter(Boolean).join(" · ")}
                       </p>
                     </div>
@@ -182,34 +177,48 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                     cell(합)
                   )}
                 </div>
+                <div className="h-11">{cell(상)}</div>
+                <div className="h-11">{cell(하)}</div>
               </div>
-              {i === 0 && yearError && (
-                <p id={`${yearId}-err`} className="mt-0.5 text-xs text-red-600" role="alert">
-                  {yearError} — 이전 연도({baseYear})를 그대로 써요
-                </p>
-              )}
-              {row.only && (
-                <p className="mt-0.5 text-xs text-gray-500" role="note">
-                  {tag}: {other}가 비어 있어 {row.only}만 더했어요
-                </p>
-              )}
-              {row.blocked && (
-                <p className="mt-0.5 text-xs text-amber-700" role="note">
-                  {tag}: 반기 칸에 읽을 수 없는 값이 있어 합계를 자동으로 더하지 않아요
-                </p>
-              )}
-              {row.staleTotal && (
-                <p className="mt-0.5 break-words text-xs text-gray-500" role="note">
-                  {tag}: 이전 합계 {row.staleTotal} — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요
-                </p>
-              )}
-              {[상, 하, ...(row.auto ? [] : [합])].map(([k, label]) => (
-                <MoneyLegacyNote key={String(k)} label={label} value={text(k)} signed={false} onConvert={() => convert(k, label)} />
-              ))}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+      {yearError && (
+        <p id={`${yearId}-err`} className="text-xs text-red-600" role="alert">
+          {yearError} — 이전 연도({baseYear})를 그대로 써요
+        </p>
+      )}
+      {defs.rows.map(([상, 하, 합], i) => {
+        const row = salesRowView(draft, i);
+        const tag = salesYearTag(i, baseYear);
+        const other = row.only === "상반기" ? "하반기" : "상반기";
+        const notes = [
+          row.only && (
+            <p key="only" className="text-xs text-gray-500" role="note">
+              {tag}: {other}가 비어 있어 {row.only}만 더했어요
+            </p>
+          ),
+          row.blocked && (
+            <p key="blocked" className="text-xs text-amber-700" role="note">
+              {tag}: 반기 칸에 읽을 수 없는 값이 있어 합계를 자동으로 더하지 않아요
+            </p>
+          ),
+          row.staleTotal && (
+            <p key="stale" className="break-words text-xs text-gray-500" role="note">
+              {tag}: 이전 합계 {row.staleTotal} — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요
+            </p>
+          ),
+          ...[상, 하, ...(row.auto ? [] : [합])].map(([k, label]) => (
+            <MoneyLegacyNote key={String(k)} label={label} value={text(k)} signed={false} onConvert={() => convert(k, label)} />
+          )),
+        ];
+        return (
+          <div key={String(합[0])} className="space-y-0.5 empty:hidden" data-sales-note={i}>
+            {notes}
+          </div>
+        );
+      })}
       {legacyNote("반기별매출")}
       <SubHead>매출증가율 (자동 계산)</SubHead>
       <div className="grid grid-cols-1 gap-1.5 xs:grid-cols-3" role="group" aria-label="매출증가율">

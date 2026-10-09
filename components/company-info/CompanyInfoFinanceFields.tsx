@@ -41,9 +41,11 @@ interface MillionWonInputProps {
   /** @deprecated 단위 "백만원" 은 이제 늘 숫자 뒤(칸 안 오른쪽)에 보인다(belie 2026-09-29). */
   suffix?: boolean;
   describedBy?: string;
+  /** 연도별 매출 표처럼 표 머리에 단위가 있을 때 — 칸 안 "백만원" 을 빼고, 도움말 줄 높이를 고정해 칸 줄을 맞춘다. */
+  bare?: boolean;
 }
 
-export function MillionWonInput({ id, value, signed, onChange, describedBy }: MillionWonInputProps) {
+export function MillionWonInput({ id, value, signed, onChange, describedBy, bare = false }: MillionWonInputProps) {
   const [cut, setCut] = useState(false);
   const read = readMoney(value, signed);
   const hint = read.kind === "number" ? moneyHint(read.tenths) : "";
@@ -53,7 +55,7 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy }: Mi
     setCut(r.cut);
     return groupTyping(r.value, caret, prev, signed);
   }, value, onChange);
-  const showUnit = read.kind !== "legacy"; // 옛 "3,200만" 처럼 글로 적힌 값엔 단위를 또 붙이지 않는다.
+  const showUnit = !bare && read.kind !== "legacy"; // 옛 "3,200만" 처럼 글로 적힌 값엔 단위를 또 붙이지 않는다.
   return (
     <div className="min-w-0">
       <div className="relative">
@@ -76,9 +78,11 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy }: Mi
         {showUnit && <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400">백만원</span>}
       </div>
       {cut ? (
-        <p className="mt-0.5 text-xs text-amber-700" role="status">
+        <p className={`mt-0.5 text-xs text-amber-700 ${bare ? "h-4 truncate" : ""}`} role="status">
           {CUT_MSG}
         </p>
+      ) : bare ? (
+        <p className="mt-0.5 h-4 truncate text-xs text-gray-500">{hint}</p>
       ) : (
         hint && <p className="mt-0.5 truncate text-xs text-gray-500">{hint}</p>
       )}
