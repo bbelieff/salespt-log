@@ -12,6 +12,12 @@
 - 구역: `components/CompanyInfoEditor.tsx` · `components/company-info/{CompanyInfoLayoutToggle,CompanyInfoSalesTotals(신규),CompanyInfoItem,view-filter,CompanyVaultSection}.tsx|ts` · `components/company-info-defs.ts` · `components/CompanyInfoContractSection.tsx` · 테스트·components.md.
 - 결정: 확장보기 = 지금 전체 화면 그대로(순서 안 바꿈). 「전체/적은 것/안 적은 것」은 확장보기 안에서만. 기본보기에서 숨는 칸은 지우지 않고 「확장보기에 적힌 항목 N개」로 알림. 보관함(목업 확인 후 belie 추가 지시): 아이디|비번 한 줄 + 보기만(복사 없음), 메모 칸 제거(기존 메모 있는 항목만 표시), 열림 10분→30분, 잠금 저장 배지·지금 잠그기 제거·「열림 · 시간 뒤 잠겨요」를 제목 줄에. 삭제는 디바운스 없이 즉시 저장 + 되돌리기(옛 첫 줄은 종류 칸이 한 줄을 다 써 삭제 버튼이 밀려나 있었음 — #1111 로 줄 배치는 고쳤고 이번에 버튼을 키움).
 - 검증: 합성 화면 375px — 기본보기 칸 순서 16개 일치, 연매출 68·120(자동), 「확장보기에 적힌 항목 3개」, 보관함 이름 153px·종류 80px·삭제 32px 높이 화면 안, 삭제 클릭 즉시 PUT(남은 항목만) + 되돌리기 표시.
+### 2026-10-09 · [병렬트랙] 경영일지 데탑 G총괄(261009) · DC 인계·운영 화면 확인
+- 인계 정본 #1117 머지 확인: master eac6e2f, 배포 run 37924487499 success, 공개 HTTP 200. #1002·#798 무접촉.
+- 노트북 경로 상위 정본 3개 없음. 레포 AGENTS·CLAUDE·codex-lead·인계와 최근 10건·company-vault 계획 확인. Linear는 재인증 요구로 조회/하트비트 미게시.
+- 사용자 지정 인계 범위로 운영 확인 착수. GM 본인 바로가기 `/admin/me`가 `https://localhost:3000/dashboard`로 이동하는 실제 오류 발견; 직접 `/dashboard`는 정상. 새소식 팝업은 닫지 않고 사용자에게 넘김.
+- 소유: `app/admin/me/route.ts`, `tests/api/admin-me-bookmark.test.ts`, 해당 계획·worklog. 기존 공개 주소 정본 `appBaseUrl()` 재사용. 보관함 3단계·컨택 후속은 별도 진행.
+- 로컬 check.sh PASS(구조 92, 단위·통합 3,326 통과·45 기존 스킵), 프로덕션 build PASS. 운영 화면 전체 검증은 새소식 팝업 사용자 확인 대기; PIN·항목 저장 미검증.
 
 ### 2026-10-09 · 경영일지 DC(260927, 데탑 Claude) · 10/8~10/9 묶음 기록 + GPT 인계
 - 배포 완료(전부 CI·배포 success·health 200): #1097 관리자 본인 수강생행(0기 GM) 트레이너 풀 제외·유보 웹앱 버튼 · #1098 연결계정 유보 일괄·관리자 본인 주간목표 · #1101 업체 계정 보관함(AES-GCM·PIN 4~8·10분 열림·시트 미러 제외)+`/admin/me` · #1102 미팅 메모(txt·붙여넣기) 자동입력→업체정보+보관함 · #1108/#1109 연도별 매출 가로(표, 옅은 「백만」) · #1110 업체정보 보기(전체/적은 것/안 적은 것) · #1112 주간목표 노션 복사 줄바꿈(pre-wrap) · #1113/#1114 대시보드 움직임(열 때마다, 동작 줄이기 존중)·스켈레톤 · #1115 컨택관리 💾저장 버튼 복원+화면 가려질 때 즉시 저장+날짜 이동 전 저장 · #1116 컨택관리 PC(1024+) 5:5 분할.
