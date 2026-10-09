@@ -105,7 +105,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
           <SubHead>연도별 매출</SubHead>
           <HintTooltip label="연도별 매출" text={GRID_HINT} />
         </div>
-        <span className="text-xs text-gray-500">단위: 백만원</span>
+        <span className="text-xs text-gray-400">단위: 백만원</span>
       </div>
       {/* 연도가 가로(Y·Y-1·Y-2·Y-3), 아래로 연매출 → 상반기 → 하반기(belie 2026-10-09 피벗). 연도마다 한 세로 줄. */}
       <div className="flex gap-1" role="group" aria-label="연도별 매출">
