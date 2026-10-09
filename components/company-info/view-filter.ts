@@ -34,6 +34,7 @@ export function itemKeys(it: EditorItem, ci: CompanyInfo): Key[] {
     case "ownership":
       return [it.spec.key];
     case "sales":
+    case "salesTotals":
       // 연도별 매출은 한 덩어리 — 해마다 합계 또는 반기 중 하나라도 있으면 그 해는 적은 것.
       return [...SALES_YEAR_KEYS];
     default:
@@ -80,3 +81,22 @@ export function countFields(groups: EditorItem[][], ci: CompanyInfo): [number, n
   }
   return [filled, empty];
 }
+
+/**
+ * 기본보기에서 안 보이는데 값이 적힌 칸 수(belie 2026-10-09 — "확장보기에 적힌 항목 N개 더 있어요").
+ * groups = 확장보기 전체 묶음, basic = 기본보기 묶음. 칸(저장 키) 단위로 센다.
+ */
+export function hiddenFilledCount(groups: EditorItem[][], basic: EditorItem[][], ci: CompanyInfo): number {
+  const shown = new Set(basic.flat().flatMap((it) => itemKeys(it, ci)));
+  const seen = new Set<Key>();
+  let n = 0;
+  for (const it of groups.flat()) {
+    for (const k of itemKeys(it, ci)) {
+      if (shown.has(k) || seen.has(k)) continue;
+      seen.add(k);
+      if (keyFilled(ci, k)) n++;
+    }
+  }
+  return n;
+}
+

@@ -47,7 +47,7 @@ function render(value: Partial<CompanyInfo> = {}) {
   document.body.append(el);
   root = createRoot(el);
   act(() => {
-    root?.render(h(CompanyInfoEditor, { value: CompanyInfo.parse(value), onSave: () => undefined, hideSave: true }));
+    root?.render(h(CompanyInfoEditor, { value: CompanyInfo.parse(value), onSave: () => undefined, hideSave: true, defaultLayout: "extended" }));
   });
 }
 

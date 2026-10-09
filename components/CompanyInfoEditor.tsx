@@ -21,19 +21,14 @@ import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import { resolveBaseYear } from "@/util/company-sales";
 import { companyInfoForExport, deriveCompanyInfo } from "@/service/company-finance";
-import {
-  type EditorItem,
-  companyInfoFieldList,
-  기업정보_ITEMS,
-  대표자_ITEMS,
-  재무_ITEMS,
-} from "./company-info-defs";
+import { type EditorItem, companyInfoFieldList, 기업정보_ITEMS, 대표자_ITEMS, 재무_ITEMS, 기본_대표자_ITEMS, 기본_사업자_ITEMS } from "./company-info-defs";
 import { inputCls } from "./company-info/CompanyInfoField";
 import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 import CompanyVaultSection from "./company-info/CompanyVaultSection";
 import CompanyInfoViewToggle, { useInfoView } from "./company-info/CompanyInfoViewToggle";
 import { countFields, visibleItems } from "./company-info/view-filter";
+import CompanyInfoLayoutToggle, { HiddenFilledNotice, useInfoLayout, type InfoLayout } from "./company-info/CompanyInfoLayoutToggle";
 import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
@@ -67,19 +62,13 @@ interface Props {
   splitInline?: boolean;
   /** 있으면 「계정 보관함」을 보여 준다 — 미팅 id 또는 계약일+업체명(아직 저장 안 된 미팅은 없음). */
   vaultTarget?: VaultTarget;
+  /** 처음 여는 보기 — 계약 전 화면(컨택·일정계약)은 basic, 계약 후(실무/수납)는 extended (belie 2026-10-09). */
+  defaultLayout?: InfoLayout;
 }
 
 export default function CompanyInfoEditor({
-  value,
-  onSave,
-  busy,
-  txtCompanyName,
-  identityKey,
-  onChange,
-  hideSave,
-  desktopHeading,
-  splitInline = false,
-  vaultTarget,
+  value, onSave, busy, txtCompanyName, identityKey, onChange,
+  hideSave, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic",
 }: Props) {
   const [open, setOpen] = useState(hideSave === true);
   const [modal, setModal] = useState(false);
@@ -242,6 +231,9 @@ export default function CompanyInfoEditor({
 
   // 보기(전체/적은 것/안 적은 것) — 보일 칸은 열 때의 값(snap)으로 고정, 개수는 지금 값.
   const view = useInfoView(draft, open, modal);
+  const { layout, setLayout } = useInfoLayout(defaultLayout);
+  const basic = layout === "basic";
+
   const counts = countFields([대표자_ITEMS, 기업정보_ITEMS, 재무_ITEMS], draft);
 
   const closeModal = () => {
@@ -271,6 +263,7 @@ export default function CompanyInfoEditor({
     items: EditorItem[],
     inline: boolean,
     where: string,
+    ordered = false,
   ) => (
     <div
       className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm"
@@ -284,8 +277,9 @@ export default function CompanyInfoEditor({
       {/* 신용점수(span1) 옆 빈 칸은 grid auto-flow 가 자연 확보 — 다음 항목(연락처)이
           span2 라 줄바꿈되며 col2 가 빈다 (§3-2 배치표). */}
       <div className={inline ? "grid grid-cols-1 gap-1.5" : "grid grid-cols-1 gap-1.5 sm:grid-cols-2"}>
-        {visibleItems(items, view.snap, view.mode).map((i) => item(items[i]!, i, inline, where))}
-        {view.mode !== "all" && visibleItems(items, view.snap, view.mode).length === 0 && (
+        {/* 기본보기(ordered)는 컨택가이드 순서 그대로 — 적은 것 위로 올리기·거르기를 하지 않는다. */}
+        {(ordered ? items.map((_, i) => i) : visibleItems(items, view.snap, view.mode)).map((i) => item(items[i]!, i, inline, where))}
+        {!ordered && view.mode !== "all" && visibleItems(items, view.snap, view.mode).length === 0 && (
           <p className="text-xs text-gray-400 sm:col-span-2">{view.mode === "empty" ? "다 적었어요 ✓" : "아직 적은 칸이 없어요"}</p>
         )}
         {g && Object.entries(customOf(g)).filter(([label]) => {
@@ -337,9 +331,20 @@ export default function CompanyInfoEditor({
   // 기업정보의 커스텀 저장 키는 "업체"(기존 데이터 호환).
   const body = (inline: boolean, where: "panel" | "modal") => (
     <>
-    <div className="mb-2 flex justify-end">
-      <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} />
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} />
+      {/* 「전체 / 적은 것 / 안 적은 것」 거르기는 확장보기 안에서만. */}
+      {!basic && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} />}
     </div>
+    {basic ? (
+      <div className="space-y-2">
+        <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
+          {group("대표자", null, 기본_대표자_ITEMS, inline, `${where}-basic`, true)}
+          {group("사업자", null, 기본_사업자_ITEMS, inline, `${where}-basic`, true)}
+        </div>
+        <HiddenFilledNotice draft={draft} onOpen={() => setLayout("extended")} />
+      </div>
+    ) : (
     <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
       {group("대표자", "대표자", 대표자_ITEMS, inline, where)}
       {group("기업정보", "업체", 기업정보_ITEMS, inline, where)}
@@ -349,6 +354,7 @@ export default function CompanyInfoEditor({
         {group("재무", null, 재무_ITEMS, inline && !desktopHeading, where)}
       </div>
     </div>
+    )}
     </>
   );
 

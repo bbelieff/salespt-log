@@ -22,6 +22,7 @@ import CompanyInfoField from "./CompanyInfoField";
 import { BizTypeField, OwnershipField } from "./CompanyInfoChoiceFields";
 import { MoneyField, RatioField } from "./CompanyInfoFinanceFields";
 import CompanyInfoSalesFields from "./CompanyInfoSalesFields";
+import CompanyInfoSalesTotals from "./CompanyInfoSalesTotals";
 
 type CI = CompanyInfo;
 
@@ -118,5 +119,7 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
           className={inline ? "" : "sm:col-span-2"}
         />
       );
+    case "salesTotals":
+      return <CompanyInfoSalesTotals draft={draft} onField={onField} idBase={idBase} today={today} className={wide} />;
   }
 }

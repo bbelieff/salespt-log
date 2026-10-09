@@ -46,7 +46,7 @@ function render(
   document.body.append(el);
   root = createRoot(el);
   act(() => {
-    root?.render(h(CompanyInfoEditor, { value, onSave: () => undefined, hideSave: true, ...extra }));
+    root?.render(h(CompanyInfoEditor, { value, onSave: () => undefined, hideSave: true, defaultLayout: "extended", ...extra }));
   });
 }
 

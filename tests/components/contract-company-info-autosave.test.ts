@@ -80,6 +80,7 @@ function PaymentHarness({ target = SYNTHETIC_TARGET }: { target?: typeof SYNTHET
       value: ciPending?.value ?? CompanyInfo.parse({}),
       identityKey: "contract-row:synthetic",
       txtCompanyName: "합성상사",
+      defaultLayout: "extended",
       hideSave: true,
       onChange: onCiChange,
       onSave: () => undefined,

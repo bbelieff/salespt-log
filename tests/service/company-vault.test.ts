@@ -21,6 +21,7 @@ vi.mock("@/repo/db/company-vault", () => ({
 }));
 
 import { loadVault, resetVaultPin, saveVault, setVaultPin, unlockVault } from "@/service/company-vault";
+import { VAULT_UNLOCK_MS } from "@/types/company-vault";
 
 const item = { kind: "login", label: "홈택스", id: "sample-id", secret: "sample-pw", note: "" };
 const byMeeting = { meetingId: "meet-1" };
@@ -41,7 +42,7 @@ describe("업체 계정 보관함", () => {
   it("잠겨 있으면 항목 수만 보이고 저장은 거절한다", async () => {
     const ticket = await setVaultPin("a@example.com", "4821", undefined, 1_000);
     await saveVault("a@example.com", byMeeting, [item], ticket, 2_000);
-    const later = 1_000 + 11 * 60 * 1000;
+    const later = 1_000 + VAULT_UNLOCK_MS + 60 * 1000; // 열림 시간(30분)이 지난 뒤
     const { view } = await loadVault("a@example.com", byMeeting, ticket, later);
     expect(view).toMatchObject({ unlocked: false, count: 1, items: null });
     await expect(saveVault("a@example.com", byMeeting, [item], ticket, later)).rejects.toMatchObject({ status: 401 });

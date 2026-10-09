@@ -49,7 +49,9 @@ export type EditorItem =
   | { kind: "hidden"; key: Key; label: string }
   | { kind: "money"; def: FieldDef; signed?: boolean }
   | { kind: "ratio"; def: FieldDef }
-  | { kind: "sales" };
+  | { kind: "sales" }
+  /** 기본보기의 연도별 연매출 한 줄(올해·Y-1·Y-2·Y-3 합계만) — 상·하반기는 확장보기. */
+  | { kind: "salesTotals" };
 
 const f = (def: FieldDef, onlyCorporation?: boolean): EditorItem =>
   onlyCorporation ? { kind: "field", def, onlyCorporation } : { kind: "field", def };
@@ -228,3 +230,43 @@ export function companyInfoFieldList(baseYear: number): [Key, string][] {
   push(재무_ITEMS);
   return out;
 }
+
+/**
+ * 기본보기(belie 2026-10-09) — 계약 전(컨택·미팅 예약)에 필요한 칸만, 컨택가이드 스크립트 순서대로.
+ * 칸 정의(키·라벨·설명)는 확장보기와 같은 것을 쓴다 — 같은 값을 두 화면이 함께 고친다.
+ * 확장보기 = 위 대표자_ITEMS·기업정보_ITEMS·재무_ITEMS 전체(지금 배치 그대로).
+ */
+export const 기본_대표자_ITEMS: EditorItem[] = [
+  {
+    kind: "pair",
+    defs: [
+      ["대표자이름", "이름", "이름", 1],
+      ["신용점수", "신용점수(KCB/NCB)", "919/855", 1],
+    ],
+  },
+  f(["기대출개인", "기대출 개인", "캐피탈 38백만\n카드론 10백만\n00은행 20백만", 2, true]),
+];
+
+export const 기본_사업자_ITEMS: EditorItem[] = [
+  f(["개업일", "개업일", "25.01.24", 1]),
+  { kind: "bizType" },
+  {
+    kind: "pair",
+    defs: [
+      ["업종주생산품목", "업종", "사업자등록증의 종목. 예: 제조/필름", 1],
+      ["주생산품목", "주요품목", "주로 만들거나 파는 물건. 예: 포장용 필름", 1],
+    ],
+  },
+  { kind: "salesTotals" },
+  f(["기대출사업자", "사업자 대출", "신보 100백만\n재단 50백만\n중진공 150백만", 2, true]),
+  {
+    kind: "pair",
+    defs: [
+      ["사대보험직원", "4대보험 직원", "0명 + 프리0명", 1],
+      ["특허및인증", "특허 및 인증", "특허, ISO, 연구소, 벤처, 메인/이노비즈 등", 1],
+    ],
+  },
+  f(["소재지", "소재지", "주소지", 2]),
+  f(["업체기타메모", "기타메모", "자유 메모", 2, true]),
+];
+
