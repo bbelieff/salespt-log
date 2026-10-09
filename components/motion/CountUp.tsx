@@ -12,7 +12,7 @@ const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
 interface Props {
   value: number;
-  /** 처음 마운트 때 0부터 올라갈지(useFirstPlay 결과). 아니면 처음엔 바로 값. */
+  /** 처음 마운트 때 0부터 올라갈지(usePlayOnOpen 결과). 아니면 처음엔 바로 값. */
   play: boolean;
   format?: (n: number) => string;
   /** 소수 자리(중간 값 반올림용). */

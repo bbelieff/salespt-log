@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { formatMoney } from "@/lib/format/money";
-import { useFirstPlay } from "@/components/motion/useMotion";
+import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
 
 /**
@@ -248,7 +248,7 @@ export default function FinanceSummaryBoxes({
 }: Props) {
   const [open, setOpen] = useState<Panel | null>(null);
   // 처음엔 금액이 올라가며 멈추고, 기간을 바꾸면 이전 금액에서 이어서 바뀐다(belie 2026-10-09).
-  const play = useFirstPlay("finance-amounts");
+  const play = usePlayOnOpen("finance-amounts");
   const toggle = (panel: Panel) => setOpen((prev) => (prev === panel ? null : panel));
 
   // 기존 OperatingProfitCard 계산 그대로.

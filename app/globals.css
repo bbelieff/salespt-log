@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ── 대시보드 움직임(belie 2026-10-09, 스크롤 인터랙션 도감 1~3순위) ──────────────────────
- * 등장은 처음 한 번만(useFirstPlay 가 클래스를 붙일 때만), 1초 안. transform·opacity·stroke 만 움직인다.
+ * 등장은 화면을 열 때마다(usePlayOnOpen 가 클래스를 붙일 때만), 1초 안. transform·opacity·stroke 만 움직인다.
  * 동작 줄이기면 전부 끈다. 지연은 요소의 style animation-delay 로 준다. */
 @keyframes fx-grow { from { transform: scale(var(--fx-sx, 1), var(--fx-sy, 1)); } }
 @keyframes fx-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
