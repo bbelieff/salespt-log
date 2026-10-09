@@ -21,8 +21,8 @@ import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
-import { useGuardedNav, useDirtyEntry } from "@/components/DirtyGuard";
-import AutosaveStatus from "@/components/autosave/AutosaveStatus";
+import { useGuardedNav, useDirtyEntry, useDirtyRegister } from "@/components/DirtyGuard";
+import ContactSaveRow, { useFlushOnHide } from "./_components/ContactSaveRow";
 import ContactResultModals from "./_components/ContactResultModals";
 import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 import { useRouter } from "next/navigation";
@@ -305,9 +305,18 @@ export default function ContactPage() {
     showToast,
   });
 
+  // 날짜·주 이동: 남은 숫자를 먼저 저장하고 넘어간다(묻지 않음). 저장이 실패할 때만 기존 확인 창.
+  // 화면이 가려질 때(앱 닫기·다른 앱)도 남은 숫자를 바로 보낸다(belie 2026-10-09).
+  useFlushOnHide(metrics.flush, metrics.dirty);
+  const registerDirty = useDirtyRegister();
+  const saveThenNav = (move: () => void) => {
+    if (!metrics.dirty) return guardedNav(move);
+    // 저장이 끝나면 숫자 가드를 바로 내려(다음 렌더를 기다리지 않음) 다른 미저장(미팅 카드)만 확인한다.
+    void metrics.flush().then(() => { registerDirty("contact-metrics", null); guardedNav(move); }, () => guardedNav(move));
+  };
   const weekSwipe = useSwipe({
-    onSwipeLeft: () => guardedNav(() => moveWeek(1)),
-    onSwipeRight: () => guardedNav(() => moveWeek(-1)),
+    onSwipeLeft: () => saveThenNav(() => moveWeek(1)),
+    onSwipeRight: () => saveThenNav(() => moveWeek(-1)),
   });
 
   // 숫자 미저장 가드 — unsent/invalid 만 등록. 저장 성공분은 조용히 해제.
@@ -394,9 +403,9 @@ export default function ContactPage() {
             todayISO={TODAY_ISO}
             cohortName={undefined}
             countsByDay={countsByDay}
-            onPrevWeek={() => guardedNav(() => moveWeek(-1))}
-            onNextWeek={() => guardedNav(() => moveWeek(1))}
-            onSelectDay={(d) => guardedNav(() => setDate(d))}
+            onPrevWeek={() => saveThenNav(() => moveWeek(-1))}
+            onNextWeek={() => saveThenNav(() => moveWeek(1))}
+            onSelectDay={(d) => saveThenNav(() => setDate(d))}
             slideDir={slideDir}
           /></div>}
           active={activeChannel}
@@ -418,11 +427,8 @@ export default function ContactPage() {
           <div className="mb-1 flex flex-wrap gap-x-3 text-xs text-slate-500">주차합계 · 생산 {weekFunnel.생산} · 유입 {weekFunnel.유입} · 컨택진행 {weekFunnel.컨택진행} · 미팅예약 {weekFunnel.미팅예약}</div>
           <WeeklyGoalSummary compact date={date} metrics={["inflow", "contacts"]} />
         </div>
-        <div className="mb-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-1.5">
-          <span className="text-xs text-slate-500">숫자는 자동으로 저장돼요</span>
-          <AutosaveStatus status={metrics.status} error={metrics.error}
-            savedAt={metrics.savedAt} onRetry={metrics.retry} />
-        </div>
+        <ContactSaveRow status={metrics.status} error={metrics.error} savedAt={metrics.savedAt}
+          dirty={metrics.dirty} onSave={metrics.flush} onRetry={metrics.retry} />
         </div>
         <div className="min-w-0">
         <MeetingSlotList
