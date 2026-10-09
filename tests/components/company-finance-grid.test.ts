@@ -62,8 +62,10 @@ const groupEl = (name: string) => el!.querySelector<HTMLElement>(`[role="group"]
 const byKey = (scope: HTMLElement, key: string) => scope.querySelector<HTMLInputElement>(`[id$="-${key}"]`);
 const labelOf = (input: HTMLElement) => el!.querySelector(`label[for="${input.id}"]`)?.textContent;
 const staged = () => stage.mock.calls.at(-1)![0] as CompanyInfo;
-const rowOf = (i: number) => groupEl("연도별 매출").querySelector<HTMLElement>(`[data-sales-row="${i}"]`)!;
 // 연도별 안내(한쪽만·이전 합계·옛 글)는 표 아래 연도별 줄에 모인다(2026-10-09 피벗).
+/** 연매출(0)·상반기(1)·하반기(2) 줄의 i번째 연도 칸. */
+const cellOf = (line: number, i: number) =>
+  groupEl("연도별 매출").querySelectorAll("tbody tr")[line]!.querySelector<HTMLElement>(`[data-sales-cell="${i}"]`)!;
 const noteOf = (i: number) => el!.querySelector<HTMLElement>(`[data-sales-note="${i}"]`)!;
 /** 금액 칸 하나(라벨·입력·도움말·옛 글 안내)를 감싼 상자. */
 const fieldBox = (input: HTMLInputElement) => input.closest("div.min-w-0")!.parentElement!;
@@ -165,16 +167,16 @@ describe("A 금액 칸 — 백만원", () => {
 describe("B 연도별 매출 합계", () => {
   it("상·하반기 → 합계 읽기 전용(반기 합) + '약 …'", () => {
     render({ 매출Y1상: "120", 매출Y1하: "130.5" });
-    const total = byKey(rowOf(1), "과년도매출")!;
+    const total = byKey(groupEl("연도별 매출"), "과년도매출")!;
     expect(total.readOnly).toBe(true);
     expect(total.value).toBe("250.5");
-    expect(rowOf(1).textContent).toContain("자동 · 약 2.5억"); // 읽기 전용 합계는 "자동" 이라고 보인다
+    expect(cellOf(0, 1).textContent).toContain("자동 · 약 2.5억"); // 읽기 전용 합계는 "자동" 이라고 보인다
     expect(stage).not.toHaveBeenCalled(); // 표시만 — 저장은 다음 편집 때
   });
 
   it("한쪽만 → 그 반기만 더하고 안내, 저장하면 합계도 함께", () => {
     render();
-    typeInto(byKey(rowOf(2), "매출Y2상")!, "80");
+    typeInto(byKey(groupEl("연도별 매출"), "매출Y2상")!, "80");
     expect(staged().과년도매출Y2).toBe("80");
     unmount();
     render({ 매출Y2상: "80" });
@@ -183,7 +185,7 @@ describe("B 연도별 매출 합계", () => {
 
   it("반기에 읽을 수 없는 글 → 합계를 덮지 않고 알림(합계는 직접 적는 칸)", () => {
     render({ 매출Y1상: "모름", 과년도매출: "300" });
-    const total = byKey(rowOf(1), "과년도매출")!;
+    const total = byKey(groupEl("연도별 매출"), "과년도매출")!;
     expect(total.readOnly).toBe(false);
     expect(total.value).toBe("300");
     expect(noteOf(1).textContent).toContain("합계를 자동으로 더하지 않아요");
@@ -191,7 +193,7 @@ describe("B 연도별 매출 합계", () => {
 
   it("반기가 둘 다 비면 합계를 직접 적는다(재무제표 연 매출)", () => {
     render();
-    const total = byKey(rowOf(3), "과년도매출Y3")!;
+    const total = byKey(groupEl("연도별 매출"), "과년도매출Y3")!;
     expect(total.readOnly).toBe(false);
     typeInto(total, "300");
     expect(staged().과년도매출Y3).toBe("300");
@@ -205,15 +207,14 @@ describe("B 연도별 매출 합계", () => {
     expect(staged().업체기타메모).toBe("매출 Y-1(2025) 이전 합계: 25' 260백만");
   });
 
-  it("375px 폰에서도 네 연도가 한 줄 — 연도가 가로(grid-cols-4), 아래로 연매출·상반기·하반기, 칸은 숫자만", () => {
-    render();
-    const cols = rowOf(0).parentElement!;
-    expect(cols.className).toContain("grid-cols-4");
-    expect(cols.className).toContain("min-w-0");
-    expect(cols.children).toHaveLength(4);
-    for (const c of cols.children) expect((c as HTMLElement).className).toContain("min-w-0");
-    expect(groupEl("연도별 매출").textContent).toContain("연매출상반기하반기");
-    expect(groupEl("연도별 매출").textContent).not.toContain("백만원"); // 단위는 표 머리에 한 번만
+  it("375px 폰에서도 네 연도가 한 줄 — 연도가 가로(표 4열), 아래로 연매출·상반기·하반기, 칸 안 옅은 '백만'", () => {
+    render({ 매출Y1상: "120" });
+    const table = groupEl("연도별 매출").querySelector("table")!;
+    expect(table.className).toContain("table-fixed");
+    expect(table.querySelectorAll("thead [data-sales-row]")).toHaveLength(4);
+    expect([...table.querySelectorAll("tbody th")].map((t) => t.textContent)).toEqual(["연매출", "상반기", "하반기"]);
+    for (const line of [0, 1, 2]) expect(table.querySelectorAll("tbody tr")[line]!.querySelectorAll("[data-sales-cell]")).toHaveLength(4);
+    expect(cellOf(1, 1).textContent).toContain("백만");
   });
 });
 

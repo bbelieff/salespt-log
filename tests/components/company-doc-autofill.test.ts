@@ -187,7 +187,7 @@ describe("CompanyDocAutofillDialog", () => {
     mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
     await pickFiles(png("lease.png"));
     expect(document.body.textContent).not.toContain("곧 지원돼요");
-    expect(document.querySelector("table")!.textContent).toContain("10,000,000"); // 원 단위 숫자
+    expect(document.querySelector('[role="dialog"] table')!.textContent).toContain("10,000,000"); // 원 단위 숫자
     expect(buttonByText("선택 항목 적용").disabled).toBe(false);
   });
 
@@ -282,7 +282,7 @@ describe("CompanyInfoEditor 헤더 「문서로 자동입력」", () => {
       await act(async () => buttonByText("문서로 자동입력").click());
       await flush();
       await pickFiles(png("vat.png"));
-      const table = document.querySelector("table")!.textContent!;
+      const table = document.querySelector('[role="dialog"] table')!.textContent!;
       expect(table).toContain("상반기");
       expect(table).not.toContain("반기별 매출");
       // 금액은 백만원 + 문서 원문(원) — 저장값은 백만원 숫자뿐.
