@@ -44,10 +44,10 @@ describe("업체 보기 진행건 목록", () => {
     ];
     const records = [todo("오늘할일", "2026-09-28", "todo"), todo("내일할일", "2026-09-29", "todo"),
       todo("최근한일", "2026-09-28", "history"), todo("오래된한일", "2026-09-26", "history")];
-    const items = buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-09-28"));
-    expect(sortCompanyWorkItems(items, "dday").map(({ cp, work }) => [cp.업체명, work.activityLabel])).toEqual([
-      ["진행없음", "D-??"], ["날짜없음", "D-??"], ["최근한일", "D+00"],
-      ["오래된한일", "D+02"], ["오늘할일", "D-00"], ["내일할일", "D-01"],
+    const items = buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-09-28"), "2026-09-28");
+    expect(sortCompanyWorkItems(items, "dday", "2026-09-28").map(({ cp, work }) => [cp.업체명, work.activityLabel])).toEqual([
+      ["진행없음", "D?"], ["날짜없음", "D?"], ["오늘할일", "D0"],
+      ["오래된한일", "H+02"], ["최근한일", "H+00"], ["내일할일", "D-01"],
     ]);
   });
 
@@ -60,4 +60,13 @@ describe("업체 보기 진행건 목록", () => {
     expect(sortCompanyWorkItems(items, "date-asc").map((item) => item.cp.업체명)).toEqual(["먼저등록", "늦게등록"]);
     expect(sortCompanyWorkItems(items, "date-desc").map((item) => item.cp.업체명)).toEqual(["늦게등록", "먼저등록"]);
   });
+});
+
+it("representative across multiple works follows the same D-day order", () => {
+  const rows = [contract(3, "합성", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })])];
+  const records = [todo("합성", "2026-10-11", "todo"), { ...todo("합성", "2026-10-08", "history"), institutionRef: "소진공" }];
+  const works = buildInstitutionWorkItems(rows, "", records, "2026-10-10");
+  expect(buildCompanyWorkItems(rows, works, "2026-10-10")[0]?.work.slot).toBe(2);
+  records.push({ ...todo("합성", "2026-10-01", "todo"), institutionRef: "신보" });
+  expect(buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-10-10"), "2026-10-10")[0]?.work.slot).toBe(1);
 });

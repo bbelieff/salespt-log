@@ -3,11 +3,10 @@ import type { WorkActivitySummary } from "../_lib/institution-view";
 
 export type ActivityLoadState = "loading" | "ready" | "error";
 
-/** D-day 색 — belie 2026-09-28: 다음 일정은 항상 D- 로 돌아가야 한다.
- *  D-?? = 일정 없음(회색) · D-NN = 다가오는 일정(노랑, 임박) · D+NN = 날짜가 지났거나 다음 일정이 없음(빨강). */
+/** 미지정/History는 중립, 오늘·미래 Todo는 노랑, 연체 Todo는 빨강. */
 export function ddayTone(label: string): "none" | "upcoming" | "overdue" {
   if (label.startsWith("D+")) return "overdue";
-  if (/^D-\d/.test(label)) return "upcoming";
+  if (label === "D0" || /^D-\d/.test(label)) return "upcoming";
   return "none";
 }
 
@@ -22,7 +21,7 @@ export default function WorkActivityBadge({ activity, state = "ready" }: {
   state?: ActivityLoadState;
 }) {
   const kind = activity?.activityKind ?? "none";
-  const label = activity?.activityLabel ?? "D-??";
+  const label = activity?.activityLabel ?? "D?";
   const description = state === "loading" ? "활동 불러오는 중" : state === "error" ? "활동 조회 실패" :
     kind === "none" ? "Todo·History 없음" : kind === "history" ? `최근 History ${label}` : `미완료 Todo ${label}`;
   if (state !== "ready") {
@@ -32,7 +31,7 @@ export default function WorkActivityBadge({ activity, state = "ready" }: {
       </span>
     );
   }
-  // 「Todo/History」 종류와 D-day 는 따로 떼어 보여 준다 — 색은 D-day 부호만 따른다.
+  // 「Todo/History」 종류와 D-day 는 따로 떼어 보여 준다 — History는 중립, Todo는 기한에 따라 색을 구분한다.
   // 종류 칩 테두리는 ring(inset)으로 — border 는 높이·폭을 2px 늘려 D-day 칩과 키가 달라지고 좁은 목록에서 넘친다.
   return (
     <span aria-label={description} className="inline-flex shrink-0 items-center gap-0.5">

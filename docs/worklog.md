@@ -7,6 +7,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-10 · 경영일지 UI 설계·검증 · PAYMENT-DDAY-20261010
+- 소유: payment 활동 정렬 3개 helper·WorkActivityBadge·page 연결·관련 테스트/디자인 정본. base 92e54e1, 전용 payment-dday-261010. 총괄 위임, 보호 PR #1002/#798 무접촉.
+- D? → 연체 Todo → 오늘 Todo → History → 미래 Todo. 그룹 날짜 오름차순·동률 저장 순서. History 표시는 H, 오늘 D0. 데이터 저장·완료/해지 정책 유지.
+- 집중 37·단위/통합 3341 PASS(기존 45 SKIP), production build PASS. 합성 UI 업체/기관 320·375·430·1280px 넘침 없음·순서 확인. check.sh 최종 결과와 head CI·배포 SHA/run·운영 확인은 해당 PR에 기록. 운영 새소식은 닫지 않으며 실데이터 쓰기 없음.
+
+
 ### 2026-10-09 · 경영일지 개발 총괄 · 실무/수납 1뎁스 기본 너비
 - 요청: 1뎁스 목록 기본값을 기존 최소 너비로 줄인다. base 910d9033, 소유 useMasterPaneWidth.ts·payment/page.tsx·해당 plan/디자인 정본.
 - 변경: 기본 360→300px. 초기값·「기본 너비」 복원·드래그 하한이 같은 MASTER_PANE_MIN_WIDTH를 사용한다. 2뎁스 6:4·드래그 상한·모바일·데이터 저장은 유지.

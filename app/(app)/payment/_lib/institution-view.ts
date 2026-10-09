@@ -1,5 +1,5 @@
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
-import { compareWorkActivity, progressPct } from "./payment-progress";
+import { activityTodayISO, compareWorkActivity, progressPct } from "./payment-progress";
 import { slotHasData } from "@/lib/analytics/payment-work-status";
 import { normalizeInstitution } from "@/lib/util/institution-match";
 
@@ -26,18 +26,12 @@ export function companyActivityKey(cp: Pick<ContractPayment, "row" | "계약일"
   return cp.row != null ? `row:${cp.row}` : `contract:${cp.계약일}|${cp.업체명}`;
 }
 
-/** 업체 카드는 전체 진행의 가장 이른 미완료 Todo, 없으면 가장 최근 History를 대표로 보여준다. */
-export function buildCompanyActivities(items: InstitutionWorkItem[]): Map<string, WorkActivitySummary> {
+/** 회사 대표도 목록과 같은 활동 우선순위를 적용한다. */
+export function buildCompanyActivities(items: InstitutionWorkItem[], todayISO = activityTodayISO()): Map<string, WorkActivitySummary> {
   const byCompany = new Map<string, WorkActivitySummary>();
-  const priority = { none: 0, history: 1, todo: 2 };
   for (const item of items) {
     const current = byCompany.get(item.contractKey);
-    const next = { activityKind: item.activityKind, activityDate: item.activityDate, activityLabel: item.activityLabel };
-    if (!current || priority[next.activityKind] > priority[current.activityKind] ||
-      (next.activityKind === current.activityKind && (
-        next.activityKind === "todo" ? next.activityDate < current.activityDate :
-          next.activityKind === "history" && next.activityDate > current.activityDate
-      ))) byCompany.set(item.contractKey, next);
+    if (!current || compareWorkActivity(item, current, todayISO) < 0) byCompany.set(item.contractKey, item);
   }
   return byCompany;
 }
@@ -57,9 +51,10 @@ function dayDifference(fromISO: string, toISO: string): number {
 }
 
 function activityLabel(kind: WorkActivityKind, date: string, todayISO: string): string {
-  if (kind === "none") return "D-??";
+  if (kind === "none") return "D?";
   const days = dayDifference(todayISO, date);
-  if (kind === "history") return `D+${String(Math.max(0, -days)).padStart(2, "0")}`;
+  if (kind === "history") return `H+${String(Math.max(0, -days)).padStart(2, "0")}`;
+  if (days === 0) return "D0";
   return `${days < 0 ? "D+" : "D-"}${String(Math.abs(days)).padStart(2, "0")}`;
 }
 
@@ -71,6 +66,7 @@ function activityKey(contractRef: string, institution: string): string {
 function activityDates(todos: Todo[]): Map<string, { todo: string; history: string }> {
   const dates = new Map<string, { todo: string; history: string }>();
   for (const record of todos) {
+    if (!record.예정일자.trim()) continue;
     const key = activityKey(record.contractRef, record.institutionRef);
     const current = dates.get(key) ?? { todo: "", history: "" };
     if (record.기록종류 === "history") {
@@ -92,7 +88,7 @@ function sortNamedLast(a: string, b: string): number {
 /** 계약의 저장된 진행 슬롯을 기관→진행건으로 투영한다. 원본은 바꾸지 않는다. */
 export function buildInstitutionWorkItems(
   rows: ContractPayment[], _courseStartISO = "", todos: Todo[] = [],
-  todayISO = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }),
+  todayISO = activityTodayISO(),
 ): InstitutionWorkItem[] {
   const out: InstitutionWorkItem[] = [];
   const dates = activityDates(todos);
@@ -133,6 +129,7 @@ export function groupInstitutionWorkItems(
   items: InstitutionWorkItem[],
   query = "",
   sortBy: "product" | "activity" = "product",
+  todayISO = activityTodayISO(),
 ): InstitutionGroup[] {
   const needle = query.toLocaleLowerCase("ko").replace(/\s+/g, "");
   const groups = new Map<string, InstitutionWorkItem[]>();
@@ -146,9 +143,9 @@ export function groupInstitutionWorkItems(
   return Array.from(groups, ([institution, matches]) => ({
     institution,
     count: matches.length,
-    // 모바일은 활동 우선순위, PC는 기존 상품명순을 유지한다.
+    // 활동 정렬 동률은 입력(저장) 순서를 유지한다. 상품 정렬은 별도 선택에만 사용.
     items: [...matches].sort((a, b) =>
-      (sortBy === "activity" ? compareWorkActivity(a, b) : 0) ||
+      sortBy === "activity" ? compareWorkActivity(a, b, todayISO) :
       sortNamedLast(a.product, b.product) || ko.compare(a.company, b.company) ||
       a.slot - b.slot || (a.row ?? 0) - (b.row ?? 0)),
   })).sort((a, b) => sortNamedLast(a.institution, b.institution));

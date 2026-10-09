@@ -86,14 +86,19 @@ export interface ActivitySortValue {
   activityDate: string;
 }
 
-/** D-?? → 최근 History → 임박 Todo. 조회 전 활동은 미기록으로 취급한다. */
-export function compareWorkActivity(a?: ActivitySortValue, b?: ActivitySortValue): number {
-  const priority = { none: 0, history: 1, todo: 2 };
-  const aKind = a?.activityKind ?? "none";
-  const bKind = b?.activityKind ?? "none";
-  const category = priority[aKind] - priority[bKind];
-  if (category) return category;
-  if (aKind === "history") return (b?.activityDate ?? "").localeCompare(a?.activityDate ?? "");
-  if (aKind === "todo") return (a?.activityDate ?? "").localeCompare(b?.activityDate ?? "");
-  return 0;
+export function activityTodayISO(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
+/** 미지정 → 연체 Todo → 오늘 Todo → History → 미래 Todo. 동률은 저장 순서. */
+export function compareWorkActivity(a?: ActivitySortValue, b?: ActivitySortValue, todayISO = activityTodayISO()): number {
+  // 조회되지 않은 값은 실제 미지정으로 분류하지 않는다.
+  if (!a || !b) return 0;
+  const rank = (value: ActivitySortValue): number => {
+    if (value.activityKind === "none" || !value.activityDate) return 0;
+    if (value.activityKind === "history") return 3;
+    return value.activityDate < todayISO ? 1 : value.activityDate === todayISO ? 2 : 4;
+  };
+  const category = rank(a) - rank(b);
+  return category || (rank(a) === 0 ? 0 : a.activityDate.localeCompare(b.activityDate));
 }
