@@ -74,7 +74,8 @@ export default function MeetingSlotList({
               onRemove={() => onRemoveSaved(entry.meeting)}
             />
           ) : (
-            <div key={entry.slot.tempId} tabIndex={-1} className="scroll-mt-80"
+            // 새로 생긴(아직 등록 전) 미팅 카드는 빨간 테두리로 눈에 띄게(belie 2026-10-09 분할 화면).
+            <div key={entry.slot.tempId} tabIndex={-1} className="scroll-mt-80 rounded-xl ring-2 ring-red-300 ring-offset-2"
               data-incomplete-slot={missingSlotFields(entry.slot).length > 0 ? "true" : undefined}
               aria-label={`미팅 #${i + 1} 입력`}>
             {missingSlotFields(entry.slot).length > 0 && <p className="mb-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">

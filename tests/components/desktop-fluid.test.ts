@@ -261,11 +261,9 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     expect(workspaceSrc).not.toContain("overflow-hidden");
   });
 
-  it("contact: date→channel→input before the slot list, same DOM order", () => {
+  it("contact: PC(1024+) 5:5 split — date→channel→input before the slot list, same DOM order", () => {
     const src = read("app/(app)/contact/page.tsx");
-    expect(src).toContain(
-      "min-[1440px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]",
-    );
+    expect(src).toContain("pc:grid pc:grid-cols-2");
     const panel = src.indexOf("<ChannelTabsAndPanel");
     const list = src.indexOf("<MeetingSlotList");
     expect(panel).toBeGreaterThan(-1);
