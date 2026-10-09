@@ -19,6 +19,10 @@
 
 import type { DashboardChannelMatrix } from "@/types";
 import { STATS_WEEKS } from "@/config/cohort-dates";
+import { useFirstPlay } from "@/components/motion/useMotion";
+import CountUp from "@/components/motion/CountUp";
+
+const pctText = (n: number) => `${n.toFixed(1)}%`;
 
 interface Props {
   weeks?: number;
@@ -49,6 +53,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
   const meetingExecuteRate = ratio(meetingCompleted, meetingReservation); // 미팅완료 ÷ 미팅예약
   const meetingSkill = ratio(contract, meetingCompleted); // 계약 ÷ 미팅완료
   const salesProductivity = ratio(contract, contactProgress); // 계약 ÷ 컨택진행
+  // 처음 한 번만 막대가 차례로 차고 % 가 올라간다(belie 2026-10-09).
+  const play = useFirstPlay("productivity");
 
   return (
     <section className={`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}>
@@ -60,6 +66,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         <Row
+          play={play}
+          order={0}
           label="DB 퀄리티"
           formula="유입 → 컨택진행"
           value={dbQuality}
@@ -67,6 +75,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           pctCls="text-indigo-600"
         />
         <Row
+          play={play}
+          order={1}
           label="컨택성공률"
           formula="컨택진행 → 미팅예약"
           value={contactSuccessRate}
@@ -74,6 +84,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           pctCls="text-indigo-600"
         />
         <Row
+          play={play}
+          order={2}
           label="미팅실행률"
           formula="미팅예약 → 미팅완료"
           value={meetingExecuteRate}
@@ -81,6 +93,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           pctCls="text-indigo-700"
         />
         <Row
+          play={play}
+          order={3}
           label="미팅숙련도"
           formula="미팅완료(계약+완료) → 계약"
           value={meetingSkill}
@@ -102,13 +116,13 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
               className="text-base font-bold text-purple-700"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
-              {salesProductivity.toFixed(1)}%
+              <CountUp value={salesProductivity} play={play} decimals={1} format={pctText} />
             </span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-indigo-100/60">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600"
-              style={{ width: `${Math.max(0, Math.min(100, salesProductivity))}%` }}
+              className={`h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 ${play ? "fx-grow-x" : ""}`}
+              style={{ width: `${Math.max(0, Math.min(100, salesProductivity))}%`, animationDelay: "480ms" }}
             />
           </div>
         </div>
@@ -123,7 +137,11 @@ function Row({
   value,
   barCls,
   pctCls,
+  play,
+  order,
 }: {
+  play: boolean;
+  order: number;
   label: string;
   formula: string;
   value: number;
@@ -141,13 +159,13 @@ function Row({
           className={`text-sm font-bold ${pctCls}`}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          {value.toFixed(1)}%
+          <CountUp value={value} play={play} decimals={1} format={pctText} />
         </span>
       </div>
       <div className="h-1 w-full rounded-full bg-gray-100">
         <div
-          className={`h-full rounded-full ${barCls}`}
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+          className={`h-full rounded-full ${barCls} ${play ? "fx-grow-x" : ""}`}
+          style={{ width: `${Math.max(0, Math.min(100, value))}%`, animationDelay: `${order * 120}ms` }}
         />
       </div>
     </div>

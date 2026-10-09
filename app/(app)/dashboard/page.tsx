@@ -18,6 +18,7 @@ import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
 import DashboardWorkStatus from "@/components/dashboard/DashboardWorkStatus";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 
 /** 모바일 차트 카드: 다음 카드가 살짝 보이는 폭 + 한 장씩 멈춤. PC 는 그리드 칸(폭 자동). */
 const CHART_SLIDE = "min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto";
@@ -130,6 +131,8 @@ export default function DashboardPage() {
       <div className="space-y-3 p-3">
         {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
+        {/* 불러오는 동안 카드 자리를 먼저 잡아 둔다(belie 2026-10-09). */}
+        {!dash.data && !dash.isError && <DashboardSkeleton />}
         {dash.data && (
           <>
             {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).

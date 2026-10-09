@@ -81,7 +81,8 @@ export default function MobileChartCarousel({ labels, children }: Props) {
       </div>
       <div className="flex justify-center gap-1.5 pc:hidden" aria-hidden="true">
         {Array.from({ length: count }, (_, i) => (
-          <span key={i} className={`h-1.5 w-1.5 rounded-full ${active === i ? "bg-blue-700" : "bg-slate-300"}`} />
+          // 지금 카드 점은 길게 늘어나 위치가 한눈에 보인다(belie 2026-10-09).
+          <span key={i} className={`h-1.5 rounded-full transition-all duration-200 motion-reduce:transition-none ${active === i ? "w-4 bg-blue-700" : "w-1.5 bg-slate-300"}`} />
         ))}
       </div>
     </div>
