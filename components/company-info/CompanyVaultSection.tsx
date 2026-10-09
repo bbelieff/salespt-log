@@ -2,7 +2,7 @@
  * CompanyVaultSection — 업체정보 안 「계정 보관함」(company-vault, belie 2026-10-08).
  *
  * 고객 아이디·비밀번호·계좌·주민번호 전체를 업체별로 잠가 보관한다. PIN 하나로 한 번 열면
- * 모든 업체 보관함이 10분 열리고(쓸 때마다 연장), 편집은 800ms 뒤 자동 저장한다.
+ * 모든 업체 보관함이 30분 열리고(쓸 때마다 연장), 편집은 800ms 뒤 자동 저장한다.
  * 저장 도중 잠기면 입력하던 값은 화면에 남겨 두고, 다시 열면 그 값을 저장한다.
  * incoming = 미팅 메모에서 뽑은 항목 — 열려 있으면 바로, 잠겨 있으면 PIN 을 넣은 뒤 같은 값이 없을 때만 더한다.
  * 초안: Muse(muse-spark-1.3-contributor) — 총괄 검수·수정.
@@ -68,7 +68,6 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
   const [saveError, setSaveError] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const [shown, setShown] = useState<Record<number, boolean>>({});
-  const [copied, setCopied] = useState<string | null>(null);
   const [pinEdit, setPinEdit] = useState(false);
   const [curPin, setCurPin] = useState("");
   const [addedNote, setAddedNote] = useState("");
@@ -190,21 +189,6 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
     post("/api/vault/unlock", { pin: pin1 }, "열지 못했어요. 잠시 뒤 다시 해 주세요.");
   };
 
-  const lockNow = async () => {
-    await fetch("/api/vault/unlock", { method: "DELETE" }).catch(() => undefined);
-    load();
-  };
-
-  const copy = async (key: string, text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(key);
-      setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
-    } catch {
-      setCopied(null);
-    }
-  };
-
   // 메모에서 온 항목은 열려 있고 불러오기가 끝났을 때 한 번만 더한다.
   const ready0 = !loading && view?.unlocked;
   useEffect(() => {
@@ -216,6 +200,24 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 열린 직후·새 항목이 왔을 때만
   }, [ready0, incoming]);
 
+  // 지운 항목은 바로 저장(기다리지 않음) + 잠깐 「되돌리기」. 보기/복사 표시는 번호 기준이라 함께 비운다.
+  const [removed, setRemoved] = useState<{ item: VaultItem; at: number } | null>(null);
+  const remove = (i: number) => {
+    const next = items.filter((_, n) => n !== i);
+    setRemoved({ item: items[i]!, at: i });
+    setShown({});
+    setItems(next);
+    unsaved.current = next;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    save(next);
+  };
+  const restore = () => {
+    if (!removed) return;
+    const next = [...items.slice(0, removed.at), removed.item, ...items.slice(removed.at)];
+    setRemoved(null);
+    edit(next);
+  };
+
   const patch = (i: number, k: keyof VaultItem, v: string) =>
     edit(items.map((it, n) => (n === i ? { ...it, [k]: v } : it)));
 
@@ -225,9 +227,19 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
 
   return (
     <section aria-label="계정 보관함" className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-gray-900">계정 보관함</h3>
-        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">잠금 저장</span>
+      {/* 제목 한 줄: 「계정 보관함 · 열림 · mm:ss 뒤 잠겨요」 + PIN 바꾸기(belie 2026-10-09 — 잠금 저장 배지·지금 잠그기 뺌). */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="min-w-0 text-sm font-bold text-gray-900">
+          계정 보관함
+          {ready && view.unlocked && (
+            <span className="ml-1.5 text-xs font-semibold text-emerald-700">
+              · 열림 · <span className="tabular-nums">{mm}:{ss}</span> 뒤 잠겨요
+            </span>
+          )}
+        </h3>
+        {ready && view.unlocked && (
+          <button type="button" onClick={() => { setPinEdit((v) => !v); setPinError(""); }} className={btnCls}>PIN 바꾸기</button>
+        )}
       </div>
 
       {loading && !view && <p className="animate-pulse text-xs text-gray-400">보관함 불러오는 중…</p>}
@@ -254,7 +266,7 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
             <PinInput id={`${idBase}-unlock`} label="PIN" value={pin1} onChange={setPin1} auto="current-password" />
             <button type="submit" disabled={busy || pin1.length < 4} className={primaryCls}>{busy ? "여는 중…" : "열기"}</button>
           </div>
-          <p className="text-xs text-gray-500">한 번 열면 모든 업체 보관함이 10분 동안 열려요.</p>
+          <p className="text-xs text-gray-500">한 번 열면 모든 업체 보관함이 30분 동안 열려요.</p>
           {incoming.length > 0 && (
             <p className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">
               메모에서 가져온 {incoming.length}건 — PIN을 넣으면 보관함에 들어가요.
@@ -266,16 +278,6 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
 
       {ready && view.unlocked && (
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-emerald-700">
-              열림 · <span className="tabular-nums">{mm}:{ss}</span> 뒤 잠겨요
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => { setPinEdit((v) => !v); setPinError(""); }} className={btnCls}>PIN 바꾸기</button>
-              <button type="button" onClick={lockNow} className={btnCls}>지금 잠그기</button>
-            </div>
-          </div>
-
           {pinEdit && (
             <form onSubmit={(e) => submitNewPin(e, curPin)} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2">
               <PinInput id={`${idBase}-cur`} label="지금 PIN" value={curPin} onChange={setCurPin} auto="current-password" />
@@ -287,6 +289,12 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
             </form>
           )}
 
+          {removed && (
+            <p className="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700" role="status">
+              <span className="min-w-0 truncate">「{removed.item.label || "이름 없는 항목"}」을 지웠어요</span>
+              <button type="button" onClick={restore} className="shrink-0 font-semibold underline underline-offset-2">되돌리기</button>
+            </p>
+          )}
           {addedNote && <p className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">{addedNote}</p>}
           {items.length === 0 && (
             <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">아직 보관한 항목이 없어요. 아래 [+ 항목 추가]로 넣어 주세요.</p>
@@ -300,27 +308,30 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
                 <input id={`${idBase}-label-${i}`} value={it.label} onChange={(e) => patch(i, "label", e.target.value)}
                   placeholder={LABEL_PH[it.kind]} className={`${inputCls} min-w-0 flex-1 font-semibold`} />
                 <label htmlFor={`${idBase}-kind-${i}`} className="sr-only">항목 {i + 1} 종류</label>
-                <select id={`${idBase}-kind-${i}`} value={it.kind} onChange={(e) => patch(i, "kind", e.target.value)} className={`${kindCls} w-24 shrink-0`}>
+                <select id={`${idBase}-kind-${i}`} value={it.kind} onChange={(e) => patch(i, "kind", e.target.value)} className={`${kindCls} w-20 shrink-0 px-1`}>
                   {VAULT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
                 </select>
-                <button type="button" onClick={() => edit(items.filter((_, n) => n !== i))}
-                  aria-label={`항목 ${i + 1} 삭제`} className="shrink-0 px-1 text-xs text-gray-500 hover:text-red-600">삭제</button>
+                {/* 삭제 — 손가락으로 누를 수 있는 크기(h-8)·테두리로 분명하게(belie 2026-10-09 「삭제가 안 됨」). */}
+                <button type="button" onClick={() => remove(i)}
+                  aria-label={`항목 ${i + 1} 삭제`} className="h-8 shrink-0 rounded-md border border-gray-300 bg-white px-2 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600">삭제</button>
               </div>
+              {/* 아이디 | 비밀번호 한 줄 + 보기(복사 없음, belie 2026-10-09). */}
               <div className="flex items-center gap-1.5">
                 <label htmlFor={`${idBase}-id-${i}`} className="sr-only">항목 {i + 1} {ID_PH[it.kind]}</label>
                 <input id={`${idBase}-id-${i}`} value={it.id} onChange={(e) => patch(i, "id", e.target.value)}
-                  placeholder={ID_PH[it.kind]} className={inputCls} />
-                <button type="button" onClick={() => copy(`${i}-id`, it.id)} className={btnCls}>{copied === `${i}-id` ? "복사됨" : "복사"}</button>
-              </div>
-              <div className="flex items-center gap-1.5">
+                  placeholder={ID_PH[it.kind]} className={`${inputCls} min-w-0 flex-1`} />
                 <label htmlFor={`${idBase}-secret-${i}`} className="sr-only">항목 {i + 1} {SECRET_PH[it.kind]}</label>
                 <input id={`${idBase}-secret-${i}`} type={shown[i] ? "text" : "password"} value={it.secret} autoComplete="off"
-                  onChange={(e) => patch(i, "secret", e.target.value)} placeholder={SECRET_PH[it.kind]} className={`${inputCls} tabular-nums`} />
+                  onChange={(e) => patch(i, "secret", e.target.value)} placeholder={SECRET_PH[it.kind]} className={`${inputCls} min-w-0 flex-1 tabular-nums`} />
                 <button type="button" onClick={() => setShown((p) => ({ ...p, [i]: !p[i] }))} className={btnCls}>{shown[i] ? "가리기" : "보기"}</button>
-                <button type="button" onClick={() => copy(`${i}-secret`, it.secret)} className={btnCls}>{copied === `${i}-secret` ? "복사됨" : "복사"}</button>
               </div>
-              <label htmlFor={`${idBase}-note-${i}`} className="sr-only">항목 {i + 1} 메모</label>
-              <input id={`${idBase}-note-${i}`} value={it.note} onChange={(e) => patch(i, "note", e.target.value)} placeholder="메모" className={inputCls} />
+              {/* 메모 칸은 뺐다 — 예전에 적은 메모가 있는 항목만 그대로 보여 고칠 수 있게(값을 숨기지 않음). */}
+              {it.note.trim() && (
+                <>
+                  <label htmlFor={`${idBase}-note-${i}`} className="sr-only">항목 {i + 1} 메모</label>
+                  <input id={`${idBase}-note-${i}`} value={it.note} onChange={(e) => patch(i, "note", e.target.value)} placeholder="메모" className={inputCls} />
+                </>
+              )}
             </div>
           ))}
 

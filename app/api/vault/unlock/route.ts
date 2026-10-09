@@ -1,5 +1,5 @@
 /**
- * POST   /api/vault/unlock { pin } → PIN 이 맞으면 10분 열림
+ * POST   /api/vault/unlock { pin } → PIN 이 맞으면 30분 열림
  * DELETE /api/vault/unlock         → 지금 잠그기
  */
 import { NextRequest, NextResponse } from "next/server";

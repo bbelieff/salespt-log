@@ -27,7 +27,7 @@ describe("[2] 계정 보관함 한 줄", () => {
     expect(label).toBeGreaterThan(0);
     expect(label).toBeLessThan(kind);
     expect(vault).toContain("className={`${inputCls} min-w-0 flex-1 font-semibold`}");
-    expect(vault).toContain("className={`${kindCls} w-24 shrink-0`}");
+    expect(vault).toContain("className={`${kindCls} w-20 shrink-0 px-1`}");
     expect(vault).toContain('const kindCls = inputCls.replace("w-full ", "");');
   });
 });

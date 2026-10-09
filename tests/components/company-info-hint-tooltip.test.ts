@@ -50,7 +50,7 @@ function renderOpen() {
     커스텀: { 업체: { 메모칸: "" }, 대표자: {} },
   });
   act(() => {
-    root?.render(h(CompanyInfoEditor, { value, onSave: () => undefined, hideSave: true }));
+    root?.render(h(CompanyInfoEditor, { value, onSave: () => undefined, hideSave: true, defaultLayout: "extended" }));
   });
 }
 

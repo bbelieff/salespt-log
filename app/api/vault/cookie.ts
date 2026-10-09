@@ -1,4 +1,4 @@
-/** 보관함 열림표 쿠키 — 10분짜리, 자바스크립트에서 못 읽게(httpOnly). */
+/** 보관함 열림표 쿠키 — 30분짜리, 자바스크립트에서 못 읽게(httpOnly). */
 import type { NextRequest, NextResponse } from "next/server";
 import { VAULT_UNLOCK_MS } from "@/types/company-vault";
 import { VaultError } from "@/service/company-vault";

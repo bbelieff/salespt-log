@@ -1,8 +1,8 @@
 /**
  * Layer: service — 업체 계정 보관함 (company-vault, belie 2026-10-08).
  *
- * 시트(수강생)마다 PIN 하나. PIN 으로 한 번 열면 그 시트의 모든 업체 보관함이 10분 열린다.
- * 열림 상태는 서명된 열림표(쿠키)로 들고 다니고, 쓸 때마다 10분으로 다시 늘린다.
+ * 시트(수강생)마다 PIN 하나. PIN 으로 한 번 열면 그 시트의 모든 업체 보관함이 30분 열린다.
+ * 열림 상태는 서명된 열림표(쿠키)로 들고 다니고, 쓸 때마다 30분으로 다시 늘린다.
  * 업체 키: 미팅 id 가 있으면 `m:<id>`, 계약일+업체명만 있으면 그 계약의 미팅을 찾아 같은 키를 쓰고,
  * 미팅이 없는(영업기록 없이 추가한) 업체만 `c:<계약일>|<업체명>` 을 쓴다.
  * 쿠키를 읽고 쓰는 일은 라우트가 맡는다 — 여기서는 열림표 글만 주고받는다.
@@ -68,7 +68,7 @@ function unlockedUntil(owner: Owner, ticket: string | undefined, now: number): n
   return readUnlockTicket(ticket, owner.sheetId, now);
 }
 
-/** 보관함 보기. 열려 있으면 항목을 풀어 주고 열림 시간을 다시 10분으로 늘린다. */
+/** 보관함 보기. 열려 있으면 항목을 풀어 주고 열림 시간을 다시 30분으로 늘린다. */
 export async function loadVault(email: string, target: VaultTarget, ticket: string | undefined, now = Date.now()): Promise<VaultResult> {
   const owner = await ownerOf(email);
   const [pin, row] = await Promise.all([readPinRow(owner.sheetId), readVaultRow(owner.sheetId, await companyKeyOf(owner, target))]);

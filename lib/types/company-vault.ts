@@ -3,7 +3,7 @@
  *
  * 수강생이 고객 대신 관리하는 아이디·비밀번호·계좌·주민번호 뒷자리를 업체별로 보관한다.
  * 저장은 서버에서 암호화(AES-256-GCM)하고 구글시트 사본에는 보내지 않는다.
- * 보려면 수강생이 정한 PIN(4~8자리 숫자)으로 한 번 열고, 열린 상태는 10분 유지된다.
+ * 보려면 수강생이 정한 PIN(4~8자리 숫자)으로 한 번 열고, 열린 상태는 30분 유지된다.
  */
 import { z } from "zod";
 
@@ -49,8 +49,8 @@ export interface VaultView {
   items: VaultItem[] | null;
 }
 
-/** 열린 상태 유지 시간 — 쓸 때마다 다시 10분으로 늘어난다. */
-export const VAULT_UNLOCK_MS = 10 * 60 * 1000;
+/** 열린 상태 유지 시간 — 쓸 때마다 다시 30분으로 늘어난다(belie 2026-10-09 10분→30분). */
+export const VAULT_UNLOCK_MS = 30 * 60 * 1000;
 /** PIN 연속 실패 허용 횟수와 잠금 시간. */
 export const VAULT_MAX_FAILS = 5;
 export const VAULT_LOCKOUT_MS = 5 * 60 * 1000;

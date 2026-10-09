@@ -1674,3 +1674,9 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **기업정보**: 4대보험 직원 | 특허 및 인증 한 줄(`pair`).
 - **DesktopNav**: 캘린더 바로 아래 「주간목표」(`/weekly-goals`, Target 아이콘).
 
+### 업체정보 기본보기 / 확장보기 (2026-10-09 belie)
+- **CompanyInfoLayoutToggle** (`components/company-info/CompanyInfoLayoutToggle.tsx`): 편집기 본문 위 [기본보기 | 확장보기] 두 칸 버튼(`aria-label="업체정보 보기 범위"`, 고른 칸 slate-800 채움). `useInfoLayout(defaultLayout)` — 화면이 정한 기본값으로 열고, 바꾸면 그 화면 종류(`salespt:company-info-layout:{basic|extended}`)에서만 기억.
+- **CompanyInfoEditor** `defaultLayout` prop(기본 `basic`): 컨택관리·일정계약 미팅카드 = 기본보기, 실무/수납(`CompanyInfoContractSection`) = `extended`. 기본보기 = `기본_대표자_ITEMS`(이름·신용점수 / 기대출 개인) + `기본_사업자_ITEMS`(개업일 · 사업자구분 · 업종·주요품목 · 연매출 4칸 · 사업자 대출 · 4대보험|특허 · 소재지 · 기타메모) — 컨택가이드 순서 그대로(적은 것 위로 올리기·거르기 없음). 확장보기 = 기존 전체 화면 + 「전체/적은 것/안 적은 것」 거르기(확장보기 안에서만). 기본보기에서 안 보이는데 적힌 칸이 있으면 아래 점선 버튼 「▾ 확장보기에 적힌 항목 N개 더 있어요 · 보기」(`hiddenFilledCount` + 사용자 추가 필드).
+- **CompanyInfoSalesTotals** (`components/company-info/CompanyInfoSalesTotals.tsx`): 기본보기 연매출 한 줄 — 올해·Y-1·Y-2·Y-3 합계 칸(`data-sales-totals`, `bg-blue-50` 띠, 375px 이상 4열·그 미만 2열). 반기 칸에 값이 있으면 읽기 전용 자동 합계. 상·하반기·기준 연도는 확장보기.
+- **CompanyVaultSection** (2026-10-09 다듬기): 제목 한 줄 「계정 보관함 · 열림 · mm:ss 뒤 잠겨요」 + [PIN 바꾸기] — 「잠금 저장」 배지·[지금 잠그기] 제거. 항목 = ① 이름(flex-1) · 종류 select `w-20` · [삭제](`h-8` 테두리, 누르면 바로 저장 + 「「이름」을 지웠어요 · 되돌리기」 `role=status`) ② 아이디 | 비밀번호(password) 한 줄 + [보기] — 복사 버튼 없음. 메모 칸은 뺐고, 예전에 메모가 적힌 항목만 메모 칸을 보여 준다(값 보존). 열림 유지 30분(`VAULT_UNLOCK_MS`, 쓸 때마다 연장).
+
