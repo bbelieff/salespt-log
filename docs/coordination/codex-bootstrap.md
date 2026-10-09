@@ -1,39 +1,12 @@
-# Codex 부트스트랩 — 새 Codex 작업 생성 시 이 프롬프트를 붙여넣는다
+# 개발 세션 시작
+> **요약**: 과거 controller/registry 전체 대신 현재 요청에서 시작한다.
+> **관련**: [AGENTS](../../AGENTS.md)·[CLAUDE](../../CLAUDE.md)·[worklog](../worklog.md).
 
-> **📄 이 문서는 무엇인가요?**
-> - **한 줄 요약**: Codex 세션(트랙 또는 Failover-Control)을 시작할 때 그대로 붙여넣는 표준 프롬프트.
-> - **관련 문서**: AGENTS.md(정본 실행 규약), coordination/README, takeover-runbook
+1. 현재 목표·범위·완료조건 확인.
+2. AGENTS·CLAUDE·worklog 최근 관련 항목·해당 plan/SSOT/ADR 읽기.
+3. 실제 저장소·환경·모델·gh 인증·master·열린 PR·현재 소유 확인.
+4. 메인 수정 금지, 전용 worktree. 이미 있는 기능 중복 구현 금지.
+5. 필요한 변경·검증·PR·CI·병합·배포·live 확인. 제한된 요청은 그 제한 유지.
+6. 병렬이 실제 필요할 때만 담당·파일·전달/ACK·반환처 지정.
 
----
-
-```
-너는 salespt-log(dev-harness)에서 작업하는 Codex 트랙이다. 아래 순서를 그대로 따른다.
-
-[읽기 — 순서대로]
-1. CLAUDE.md 전체 (하네스·도메인·배포 정본)
-2. AGENTS.md 전체 (Codex 실행 규약 — worktree·공용 계약·직렬 머지)
-3. docs/coordination/README.md → provider-status.yaml → session-registry.yaml → dispatch-queue.yaml
-4. docs/worklog.md 최근 10개 항목 + 활성 트랙 보드
-5. 자기 트랙의 handoff 파일(registry의 handoff_file)과 관련 plan·SSOT·ADR
-
-[확인 — 작업 전 필수]
-- provider-status: openai.active_controller가 CODEX-FAILOVER-CONTROL인가? 아니라면(Claude active) 배정받은 단일 태스크 외 지휘 행동 금지.
-- session-registry: 내 트랙의 writer_session이 나인가? 아니면 중단하고 보고.
-- dispatch-queue: 내 task_id·file_leases·blocked_by·acceptance_criteria 확인. lease 밖 파일은 읽기만.
-- GitHub 실측: Open PR·최신 master SHA. 문서와 다르면 실측 우선.
-
-[작업 규칙]
-- 메인 체크아웃 수정 금지. `git worktree add -b <type>/<slug> wt/codex-<slug> origin/master` 전용 worktree만 사용.
-- Claude worktree(wt/의 비-codex 폴더)·다른 writer의 lease 파일 수정 금지.
-- 공용 계약(lib/types·lib/config·scripts·.github·SSOT 4문서) 변경은 그 변경만 단독 선행 PR.
-- HANDOFF.md·scratchpad/·.env*·logs/는 읽기만. 비밀값은 어떤 문서에도 기록 금지.
-- 완료 기준(정상환경): bash scripts/check.sh 초록 → npx next build → squash PR(Changelog: 포함) → 직렬 머지(한 번에 하나, 선행 머지 시 rebase+check.sh 재통과) → 배포 run conclusion=success + https://salesptlog.online HTTP 200 → plan을 completed/로 이동 → worklog·handoff·session-registry(checkpoint) 갱신.
-- **환경 블로커 → relay(강제 우회·실패 선언 금지)**: check.sh 또는 git fetch/push 가 **환경 사유**(파일 접근 거부·네트워크/HTTPS 차단 = 오프라인 샌드박스 징후)로 막히면 코드/규약 문제가 아니다. 그때는 **worktree 작성 + checkpoint 까지만 완주**하고, 게이트·PR·머지·배포는 Claude 정상환경에 relay 위임한다(takeover-runbook §C). 자기 슬롯에 실패 명령과 원인(환경)·`base_sha`·staged 목록·다음 원자 행동을 기입하면 Claude 가 이어받아 §6.8 까지 완주한다.
-
-[checkpoint — 다음 시점마다 session-registry와 handoff 파일 갱신]
-착수/중요 결정/원자 구현 완료/검사 성패/PR 오픈/리뷰 반영/머지 직전·직후/배포/블로커/사용자 결정 대기/세션 종료 전.
-필수 필드: task_id·feature_owner·branch·worktree·base_sha·head_sha·변경 파일·staged/unstaged/untracked·마지막 성공 검사·실패 명령과 원인·다음 원자 행동·수정 금지 범위·복구/롤백 방법·시각.
-
-[Claude 복귀 시]
-사용자 지시가 오면: 거의 완료분은 마무리, 구현 중이면 원자 checkpoint 후 반환, 조사분은 결과+근거 반환. 반환 전 registry writer를 임의로 바꾸지 않는다 (Claude 디스패치의 독립 검증 후 변경).
-```
+과거 provider-status/session-registry/dispatch-queue·takeover는 역사 자료다. 사용자 요청/현재 과업이 특정 큐를 명시한 경우만 읽고 최신 상태를 확인한다. 자동 controller 교대·옛 미완료 재개·writer 변경 근거로 쓰지 않는다.
