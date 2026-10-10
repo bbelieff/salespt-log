@@ -23,6 +23,8 @@ const MetricsBody = z.record(
     inflow: z.number().int().nonnegative(),
     contactProgress: z.number().int().nonnegative(),
     meetingReservation: z.number().int().nonnegative(),
+    dbSheetInflow: z.number().int().nonnegative().optional(),
+    dbSheetContacts: z.number().int().nonnegative().optional(),
   }),
 );
 
@@ -54,6 +56,9 @@ async function GET_handler(_req: NextRequest, ctx: RouteContext) {
         { error: error.code, code: error.code },
         { status: error.status },
       );
+    }
+    if (msg.startsWith("[db-sheet-metrics-conflict]")) {
+      return NextResponse.json({ error: "DB관리시트 집계가 변경되었습니다. 새로고침 후 다시 입력해 주세요.", code: "db_sheet_metrics_conflict" }, { status: 409 });
     }
     if (msg.startsWith("[no-sheet]")) {
       // 시트 없는 계정(트레이너 임퍼스네이션 등) — 500 아닌 명시 404 (P1 2026-07-28)
@@ -108,6 +113,9 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
         { error: error.code, code: error.code },
         { status: error.status },
       );
+    }
+    if (msg.startsWith("[db-sheet-metrics-conflict]")) {
+      return NextResponse.json({ error: "DB관리시트 집계가 변경되었습니다. 새로고침 후 다시 입력해 주세요.", code: "db_sheet_metrics_conflict" }, { status: 409 });
     }
     if (msg.startsWith("[no-sheet]")) {
       // 시트 없는 계정(트레이너 임퍼스네이션 등) — 500 아닌 명시 404 (P1 2026-07-28)

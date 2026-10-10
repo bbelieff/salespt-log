@@ -200,8 +200,8 @@ describe("PC 사이드탭 계층과 축소 모드", () => {
     const links = Array.from(nav.querySelectorAll("a"));
     const labels = links.map((link) => link.getAttribute("aria-label"));
     // 주간목표는 캘린더 바로 아래(belie 2026-10-09).
-    expect(labels.slice(0, 7)).toEqual([
-      "대시보드", "캘린더", "주간목표", "STEP 1 DB생산", "STEP 2 컨택관리",
+    expect(labels.slice(0, 8)).toEqual([
+      "대시보드", "캘린더", "주간목표", "STEP 1 DB생산", "STEP 1.5 DB관리시트", "STEP 2 컨택관리",
       "STEP 3 일정·계약", "STEP 4 실무/수납",
     ]);
     expect(links[2]!.getAttribute("href")).toBe("/weekly-goals");
@@ -223,9 +223,9 @@ describe("PC 사이드탭 계층과 축소 모드", () => {
     expect(localStorage.getItem("salespt:desktop-nav:collapsed")).toBe("1");
     const steps = Array.from(nav.querySelectorAll('a[aria-label^="STEP "]'));
     expect(steps.map((link) => link.getAttribute("aria-label"))).toEqual([
-      "STEP 1 DB생산", "STEP 2 컨택관리", "STEP 3 일정·계약", "STEP 4 실무/수납",
+      "STEP 1 DB생산", "STEP 1.5 DB관리시트", "STEP 2 컨택관리", "STEP 3 일정·계약", "STEP 4 실무/수납",
     ]);
-    expect(steps.map((link) => link.textContent?.trim())).toEqual(["1", "2", "3", "4"]);
+    expect(steps.map((link) => link.textContent?.trim())).toEqual(["1", "1.5", "2", "3", "4"]);
     expect(nav.querySelector('section[aria-label="업무도구"] a[title="업무매뉴얼 (새 탭)"]')).not.toBeNull();
 
     act(() => root.unmount());

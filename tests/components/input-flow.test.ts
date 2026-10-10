@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DbPage from "@/app/(app)/db/page";
 import ContactPage from "@/app/(app)/contact/page";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import DirtyProvider from "@/components/DirtyGuard";
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const mocks = vi.hoisted(() => ({ save: vi.fn().mockResolvedValue({}), append: vi.fn().mockResolvedValue({}) }));
@@ -25,10 +26,10 @@ vi.mock("@/query/contact-hooks", () => ({
  useAppendMeeting: () => ({ mutateAsync: vi.fn() }), usePatchMeeting: () => ({ mutateAsync: vi.fn() }),
  useMoveDailyMetrics: () => ({ mutateAsync: vi.fn() }), useRemoveMeeting: () => ({ mutateAsync: vi.fn() }),
 }));
-let root: Root, el: HTMLDivElement;
-beforeEach(() => { vi.clearAllMocks(); sessionStorage.clear(); history.replaceState({}, "", "/"); el=document.createElement("div"); document.body.append(el); root=createRoot(el); });
-afterEach(() => { act(() => root.unmount()); el.remove(); });
-function render(page: React.ReactNode) { act(() => root.render(h(DirtyProvider, null, page))); }
+let root: Root, el: HTMLDivElement, queryClient: QueryClient;
+beforeEach(() => { queryClient = new QueryClient({defaultOptions:{queries:{retry:false,staleTime:Infinity}}}); queryClient.setQueryData(["db-sheet"],{leads:[]}); vi.clearAllMocks(); sessionStorage.clear(); history.replaceState({}, "", "/"); el=document.createElement("div"); document.body.append(el); root=createRoot(el); });
+afterEach(() => { act(() => root.unmount()); queryClient.clear(); el.remove(); });
+function render(page: React.ReactNode) { act(() => root.render(h(QueryClientProvider, {client:queryClient}, h(DirtyProvider, null, page)))); }
 function button(text: string) { const b=[...el.querySelectorAll("button")].find(x => x.textContent?.trim() === text && !x.closest("[hidden]")); if(!b) throw Error(`Missing ${text}`); return b; }
 function click(b: HTMLElement) { act(() => b.click()); }
 function input(node: HTMLInputElement, value: string) { act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")!.set!.call(node,value); node.dispatchEvent(new Event("input",{bubbles:true})); }); }

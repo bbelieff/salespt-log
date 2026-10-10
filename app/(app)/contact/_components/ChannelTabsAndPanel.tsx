@@ -1,6 +1,5 @@
 /** 채널 탭(4) + 채널별 4지표 입력 패널(6:4 그리드). 정본: prototypes/contact-daily-input.html v7 §2-2·§2-3. */
 "use client";
-
 import { useLeadCandidates } from "@/query/db-hooks";
 import { countUnmatchedLeads } from "../_lib/lead-backlog";
 import { type ReactNode, useEffect, useState } from "react";
@@ -10,6 +9,7 @@ import type { ChannelDailyRowMetrics } from "@/service";
 import { useDBOverview } from "@/query/db-hooks";
 import { loadChannelOrder, moveChannel, saveChannelOrder } from "../_lib/channel-order";
 import { CHANNEL_META } from "../_lib/channel-meta";
+import { metricMinimum, type MetricKey } from "../_lib/metrics-autosave";
 const COLOR_CLASS: Record<
   "blue" | "green" | "amber" | "purple",
   { bg50: string; bg100: string; bg500: string; text700: string; under: string; hover: string; border: string }
@@ -51,18 +51,16 @@ const COLOR_CLASS: Record<
     border: "border-purple-200",
   },
 };
-
 const METRICS: Array<{
-  key: keyof ChannelDailyRowMetrics;
+  key: MetricKey;
   label: string;
-  upstream?: keyof ChannelDailyRowMetrics;
+  upstream?: MetricKey;
 }> = [
   { key: "production", label: "생산" },
   { key: "inflow", label: "유입" },
   { key: "contactProgress", label: "컨택진행" },
   { key: "meetingReservation", label: "미팅예약", upstream: "contactProgress" },
 ];
-
 interface Props {
   contextHeader?: ReactNode;
   active: Channel;
@@ -76,20 +74,17 @@ interface Props {
   /** 현수막 재고 base = Σ주문장수 − Σ게시누적 + 오늘 저장 게시. UI: max(0, base − draft.게시)(ADR-0025). */
   bannerStockBase: number;
   onSelectChannel: (ch: Channel) => void;
-  onStep: (key: keyof ChannelDailyRowMetrics, delta: number) => void;
-  onSetVal: (key: keyof ChannelDailyRowMetrics, value: number) => void;
+  onStep: (key: MetricKey, delta: number) => void;
+  onSetVal: (key: MetricKey, value: number) => void;
   /** 교차탭 이동 도착 시 잠깐 강조할 지표 행 (예: DB관리→컨택 시 "production"). */
-  highlightKey?: keyof ChannelDailyRowMetrics;
+  highlightKey?: MetricKey;
 }
-
 // 합계·탭 배지는 유입~미팅예약만 (생산 첫 행은 합산 제외).
 function totalOf(m: ChannelDailyRowMetrics): number {
   return m.inflow + m.contactProgress + m.meetingReservation;
 }
-
 const numF = (r: Record<string, unknown>, k: string) => Number(r[k] ?? 0) || 0;
 const strF = (r: Record<string, unknown>, k: string) => String(r[k] ?? "");
-
 /** 생산 첫 행 채널별 파생 표시(매입DB·콜). 직접생산·현수막은 별도 렌더. */
 function firstRowText(
   ch: Channel,
@@ -115,7 +110,6 @@ function firstRowText(
   const n = ov.leads.filter((l) => strF(l as never, "접수일") === date).length;
   return `발굴 ${n}건`;
 }
-
 export default function ChannelTabsAndPanel({
   contextHeader,
   active,
@@ -139,19 +133,16 @@ export default function ChannelTabsAndPanel({
     active === "매입DB"
       ? `유입대기 ${Math.max(0, inflowWaitBase - (cell?.inflow ?? 0))}건`
       : firstRowText(active, date, overview.data);
-
   // 콜·지·기·소 유입 표시값 = 오늘 발굴(접수) 수 = 생산(ADR-0029 파생). 생산 행 "발굴 N건"과 **동일 소스**.
   // 잠긴 행·오늘합계·탭 배지가 **모두 이 값**을 써야 화면이 "생산과 동일"을 실제로 지킨다(draft 는 저장 안 됨).
   // DBOverview 로딩 전엔 저장된 값(draft)으로 폴백 — 0 으로 단정 표시하면 생산 행("—")과 어긋난다.
   const leadInflow = overview.data
     ? overview.data.leads.filter((l) => strF(l as never, "접수일") === date).length
     : draft["콜·지·기·소"].inflow;
-
   // 아직 미팅으로 안 이어진 영업기회 — 접수일 무관 누적(belie 선택 A). 규칙·근거는 _lib/lead-backlog.ts.
   // 저장값(01 영업관리 F)은 ADR-0029 그대로 — 화면 표시만 추가라 통계 불변.
   const leadPool = useLeadCandidates(active === "콜·지·기·소");
   const leadBacklog = countUnmatchedLeads(leadPool.data);
-
   // 직접생산: 선택 날짜 포함 활성 레코드(유일). 생산수 = 동기화 M ± 오늘 draft 라이브.
   const directProductions = overview.data?.productions ?? [];
   const directIdx = directProductions.findIndex(
@@ -161,16 +152,13 @@ export default function ChannelTabsAndPanel({
   const directLiveCount = directActive
     ? Math.max(0, numF(directActive as never, "생산개수") - savedInflow + (cell?.inflow ?? 0))
     : 0;
-
   // 사용자별 채널 순서 (localStorage) — hydration mismatch 방지 위해 mount 후 적용.
   const [order, setOrder] = useState<Channel[]>(() => [...CHANNEL_ORDER]);
   const [dragFrom, setDragFrom] = useState<Channel | null>(null);
   const [dragOver, setDragOver] = useState<Channel | null>(null);
-
   useEffect(() => {
     setOrder(loadChannelOrder());
   }, []);
-
   const handleDrop = (target: Channel) => {
     if (!dragFrom || dragFrom === target) {
       setDragFrom(null);
@@ -183,11 +171,9 @@ export default function ChannelTabsAndPanel({
     setDragFrom(null);
     setDragOver(null);
   };
-
   // 합계 계산은 순서 무관 — CHANNEL_ORDER로 4채널 모두 sum
-  const channelSum = (key: keyof ChannelDailyRowMetrics): number =>
+  const channelSum = (key: MetricKey): number =>
     CHANNEL_ORDER.reduce((acc, c) => acc + draft[c][key], 0);
-
   return (
     <div className="mb-3 overflow-hidden rounded-2xl bg-white shadow-sm">
       {contextHeader}
@@ -270,14 +256,12 @@ export default function ChannelTabsAndPanel({
           );
         })}
       </div>
-
       {/* 채널 헤더 (배지 + 설명) */}
       <div className={`flex items-center gap-2 border-b ${cls.border} ${cls.bg50} px-3 py-2`}>
         <span className="shrink-0 text-xs font-semibold text-slate-700">{Number(date.slice(5, 7))}/{Number(date.slice(8))}</span>
         <span className={`${ch.badgeClass} shrink-0 whitespace-nowrap`}>{active}</span>
         <span className="break-keep text-xs text-gray-500">{ch.desc} · 이 채널에 기록합니다</span>
       </div>
-
       {/* 입력 헤더 + 생산 첫 행 — 우측 '⭐ 오늘 합계' 제목 셀이 헤더+생산행 높이를 세로 병합 */}
       <div className="flex items-stretch border-b border-gray-100">
         <div className="min-w-0 flex-1">
@@ -389,7 +373,6 @@ export default function ChannelTabsAndPanel({
           <span className="whitespace-nowrap text-xs font-bold text-indigo-700">⭐ 오늘합계</span>
         </div>
       </div>
-
       {/* 유입·컨택진행·미팅예약 (스테퍼) — 좌 라벨+도움말·스테퍼, 우 오늘 합계(슬림 64px) */}
       {METRICS.filter((m) => m.key !== "production").map((m, mi, arr) => {
         // 유입 합계: 콜지기소 몫은 draft(저장 안 되는 값) 대신 라이브 파생값 leadInflow 로 대체(ADR-0029).
@@ -400,6 +383,7 @@ export default function ChannelTabsAndPanel({
                 0,
               )
             : channelSum(m.key);
+        const minimum = metricMinimum(cell, m.key);
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
         const atLimit = m.upstream && cell[m.key] >= upstreamVal;
         const plusClass = atLimit
@@ -442,6 +426,8 @@ export default function ChannelTabsAndPanel({
                   <button
                     type="button"
                     className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    disabled={cell[m.key] <= minimum}
+                    title={minimum > 0 ? "DB관리시트 자동 집계는 DB관리시트에서 변경" : undefined}
                     onClick={() => onStep(m.key, -1)}
                     aria-label={`${m.label} 감소`}
                   >
@@ -450,12 +436,12 @@ export default function ChannelTabsAndPanel({
                   <input
                     type="number"
                     inputMode="numeric"
-                    min={0}
+                    min={minimum}
                     className="stepper-val"
                     value={cell[m.key]}
                     onChange={(e) => {
                       const n = Number(e.target.value);
-                      if (!Number.isNaN(n)) onSetVal(m.key, Math.max(0, n));
+                      if (!Number.isNaN(n)) onSetVal(m.key, Math.max(minimum, n));
                     }}
                     aria-label={`${m.label} 수치`}
                   />

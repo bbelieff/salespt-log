@@ -75,6 +75,8 @@ export interface DailyMetricRow {
   inflow: number;
   contactProgress: number;
   meetingReservation: number;
+  dbSheetInflow?: number;
+  dbSheetContacts?: number;
 }
 
 export interface DayChannelMetrics {
@@ -82,6 +84,8 @@ export interface DayChannelMetrics {
   inflow: number;
   contactProgress: number;
   meetingReservation: number;
+  dbSheetInflow?: number;
+  dbSheetContacts?: number;
 }
 
 /** 한 날짜의 4채널 4지표 — 시트/DB 양 경로가 공유하는 유일한 집계 지점. */
@@ -101,6 +105,8 @@ export function dayChannelsFromRows(
       inflow: r.inflow,
       contactProgress: r.contactProgress,
       meetingReservation: r.meetingReservation,
+      ...(r.dbSheetInflow !== undefined ? { dbSheetInflow: r.dbSheetInflow } : {}),
+      ...(r.dbSheetContacts !== undefined ? { dbSheetContacts: r.dbSheetContacts } : {}),
     };
   }
   return out;

@@ -75,6 +75,11 @@ export function useRecordMove(deps: Deps): {
     const d = attempt.current?.decision ?? decision;
     const slot = newSlots.find((x) => x.tempId === d.key);
     if (!slot || lock.current) return;
+    const places = [draft[slot.channel], d.to.metrics ?? (d.to.date === date ? draft[d.to.channel] : undefined)];
+    if (places.some((m) => (m?.dbSheetInflow ?? 0) > 0 || (m?.dbSheetContacts ?? 0) > 0)) {
+      setError("DB관리시트 자동 집계가 있는 기록은 DB관리시트에서 변경해 주세요");
+      return;
+    }
     attempt.current ??= { decision: d, source: draft[slot.channel] };
     lock.current = true;
     setError("");

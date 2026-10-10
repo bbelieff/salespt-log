@@ -30,6 +30,8 @@ export function salesDbPayload(r: ChannelDailyRow): SalesRowForDb {
     channel: r.channel,
     contactProgress: r.contactProgress,
     meetingReservation: r.meetingReservation,
+    ...(r.dbSheetInflow !== undefined ? { dbSheetInflow: r.dbSheetInflow } : {}),
+    ...(r.dbSheetContacts !== undefined ? { dbSheetContacts: r.dbSheetContacts } : {}),
   };
   // 콜·지·기·소: 생산·유입 둘 다 03 접수 파생 — 컨택 저장은 두 키를 안 쓴다.
   if (r.channel === "콜·지·기·소") return base;

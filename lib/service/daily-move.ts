@@ -20,8 +20,13 @@
  * ADR-0029 파생값이라 애초에 저장되지 않는다(시트 G:H·DB toDbRows 가 제외). 호출부가
  * 유입 델타를 안 보내는 게 정본이고, 보내더라도 저장 단계에서 무시된다.
  */
+import { dbEnabled } from "@/repo/db/client";
+import { moveDailyRowsInDb } from "@/repo/db/sales-move";
+import { chooseWriteSource } from "./daily-source";
+import { queueDbSheetProductionSync } from "./db-sheet-sync";
+import { queueSalesRowSync } from "./sales-write";
 import type { Channel } from "@/types";
-import { loadDay, saveContactMetrics, type ChannelDailyRowMetrics } from "./contact";
+import { loadDay, resolveCtx, saveContactMetrics, type ChannelDailyRowMetrics } from "./contact";
 
 /** 옮길 수 있는 지표 — 미팅예약(파생)·생산(무관)은 없다. */
 export interface MoveMetricDeltas {
@@ -86,6 +91,18 @@ export async function moveDailyMetrics(
     throw new Error("[daily-move] 옮길 자리가 지금 자리와 같습니다");
   }
 
+  if (dbEnabled()) {
+    const ctx = await resolveCtx(email);
+    if (chooseWriteSource(ctx.cohort, true) === "db") {
+      const result = await moveDailyRowsInDb(ctx, input);
+      queueSalesRowSync(ctx, from.date, from.channel);
+      queueSalesRowSync(ctx, to.date, to.channel);
+      for (const place of [from, to]) {
+        if (place.channel === "직접생산") queueDbSheetProductionSync(ctx, place.date);
+      }
+      return result;
+    }
+  }
   const cache = new Map<string, Record<Channel, ChannelDailyRowMetrics>>();
   const src = await readMetrics(email, from, cache);
   const dst = await readMetrics(email, to, cache);

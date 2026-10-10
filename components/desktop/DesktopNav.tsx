@@ -17,7 +17,7 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { BookOpen, CalendarDays, FolderOpen, LayoutDashboard, Newspaper, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
+import { Table2, BookOpen, CalendarDays, FolderOpen, LayoutDashboard, Newspaper, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
 import { NAV_STEPS } from "@/components/TabBar";
 import { useGuardedRouter } from "@/components/DirtyGuard";
 import { WORK_MANUAL_URL } from "@/config/links";
@@ -226,16 +226,20 @@ export default function DesktopNav() {
         {collapsed && <div className="mx-2 my-3 border-t border-slate-200" aria-hidden="true" />}
         {NAV_STEPS.map((tab) => (
           <div key={tab.href}>
-            <SideLink href={tab.href} active={tab.match(pathname)} activeClass={STEP_ACTIVE[tab.color]} label={`STEP ${tab.step} ${tab.label}`} compact={collapsed}>
+            <SideLink href={tab.href} active={tab.match(pathname) && pathname !== "/db-sheet"} activeClass={STEP_ACTIVE[tab.color]} label={`STEP ${tab.step} ${tab.label}`} compact={collapsed}>
               <span
                 aria-hidden="true"
                 className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tab.match(pathname) ? "bg-white shadow-sm" : ""}`}
               >
-                <tab.Icon active={tab.match(pathname)} />
+                <tab.Icon active={tab.match(pathname) && pathname !== "/db-sheet"} />
                 {collapsed && <span className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-white text-px-10 font-bold ${STEP_BADGE[tab.color] ?? "bg-slate-100 text-slate-600"}`}>{tab.step}</span>}
               </span>
               {!collapsed && <><span aria-hidden="true" className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${STEP_BADGE[tab.color] ?? "bg-slate-100 text-slate-600"}`}>STEP {tab.step}</span><span className="truncate">{tab.label}</span></>}
             </SideLink>
+            {tab.href === "/db" && <SideLink href={"/db-sheet" as Route} active={pathname === "/db-sheet"} label="STEP 1.5 DB관리시트" compact={collapsed} activeClass="bg-blue-50 font-semibold text-blue-700">
+              <span aria-hidden="true" className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"><Table2 className="h-4 w-4"/>{collapsed&&<span className="absolute -bottom-1 -right-1 rounded-full bg-gradient-to-b from-blue-100 to-emerald-100 text-px-10 font-bold px-0.5">1.5</span>}</span>
+              {!collapsed&&<><span className="rounded-full bg-gradient-to-b from-blue-100 to-emerald-100 px-1.5 py-0.5 text-xs font-bold text-teal-800">STEP 1.5</span><span className="truncate">DB관리시트</span></>}
+            </SideLink>}
           </div>
         ))}
         <WorkTools pathname={pathname} compact={collapsed} />

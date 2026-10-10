@@ -11,6 +11,8 @@
  * 파일럿 스키마 = jsonb 미러(sheet_rows) — 정규화는 P2 에서(YAGNI).
  */
 import { Pool } from "pg";
+import { lockedMeetingCounts } from "./sales-meeting-counts";
+import { reconcileDbSheetMetrics } from "./sales-db-sheet-baseline";
 
 let pool: Pool | null = null;
 let schemaReady: Promise<void> | null = null;
@@ -136,6 +138,8 @@ export type SalesRowForDb = {
   inflow?: number;
   contactProgress: number;
   meetingReservation: number;
+  dbSheetInflow?: number;
+  dbSheetContacts?: number;
 }
 export async function writeSalesRowsToDb(p: {
   spreadsheetId: string;
@@ -149,9 +153,17 @@ export async function writeSalesRowsToDb(p: {
   const client = await getPool().connect();
   try {
     await client.query("begin");
+    await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [`db-sheet:${p.spreadsheetId}`]);
+    const meetingCounts = await lockedMeetingCounts(client, p.spreadsheetId);
     for (const r of p.rows) {
+      const current = await client.query(
+        "select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2 for update",
+        [p.spreadsheetId, `${r.date}:${r.channel}`],
+      );
+      const payload = reconcileDbSheetMetrics(r, current.rows[0]?.payload ?? {});
+      payload.meetingReservation = meetingCounts.get(`${r.date}:${r.channel}`) ?? 0;
       await client.query(UPSERT_SHEET_ROW_SQL, [
-        p.cohort, p.email, p.spreadsheetId, "sales", `${r.date}:${r.channel}`, JSON.stringify(r),
+        p.cohort, p.email, p.spreadsheetId, "sales", `${r.date}:${r.channel}`, JSON.stringify(payload),
       ]);
     }
     await client.query("commit");
@@ -203,6 +215,8 @@ export interface DbSalesRow {
   inflow: number;
   contactProgress: number;
   meetingReservation: number;
+  dbSheetInflow?: number;
+  dbSheetContacts?: number;
 }
 
 function toNum(v: unknown): number {
@@ -227,6 +241,8 @@ export async function readSalesRowsFromDb(spreadsheetId: string): Promise<DbSale
       inflow: toNum(p.inflow),
       contactProgress: toNum(p.contactProgress),
       meetingReservation: toNum(p.meetingReservation),
+      ...(p._dbSheetInflow !== undefined ? { dbSheetInflow: toNum(p._dbSheetInflow) } : {}),
+      ...(p._dbSheetContacts !== undefined ? { dbSheetContacts: toNum(p._dbSheetContacts) } : {}),
     }))
     .filter((r) => r.date !== "" && r.channel !== "");
 }
@@ -256,6 +272,8 @@ export async function readSalesRowFromDb(
     inflow: toNum(p.inflow),
     contactProgress: toNum(p.contactProgress),
     meetingReservation: toNum(p.meetingReservation),
+      ...(p._dbSheetInflow !== undefined ? { dbSheetInflow: toNum(p._dbSheetInflow) } : {}),
+      ...(p._dbSheetContacts !== undefined ? { dbSheetContacts: toNum(p._dbSheetContacts) } : {}),
   };
 }
 

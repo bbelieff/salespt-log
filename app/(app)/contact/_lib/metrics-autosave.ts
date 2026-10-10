@@ -15,6 +15,13 @@ export const METRIC_KEYS = [
   "meetingReservation",
 ] as const;
 
+export type MetricKey = (typeof METRIC_KEYS)[number];
+
+/** Automatically counted records are edited at their originating DB-sheet row. */
+export function metricMinimum(row: ChannelDailyRowMetrics, key: MetricKey): number {
+  return key === "inflow" ? (row.dbSheetInflow ?? 0) : key === "contactProgress" ? (row.dbSheetContacts ?? 0) : 0;
+}
+
 /** Channels-only snapshot for POST /api/daily/:date — no meeting data, ever. */
 export function metricsSavePayload(
   draft: Record<Channel, ChannelDailyRowMetrics>,
@@ -36,7 +43,8 @@ export function isMetricsOnlyPayload(value: unknown): boolean {
     const row = rec[ch];
     if (typeof row !== "object" || row === null) return false;
     const keys = Object.keys(row).sort();
-    if (JSON.stringify(keys) !== JSON.stringify([...METRIC_KEYS].sort())) return false;
+    const allowed = [...METRIC_KEYS, "dbSheetInflow", "dbSheetContacts"] as readonly string[];
+    if (METRIC_KEYS.some((key) => !keys.includes(key)) || keys.some((key) => !allowed.includes(key))) return false;
     for (const k of keys) {
       if (typeof (row as Record<string, unknown>)[k] !== "number") return false;
     }
