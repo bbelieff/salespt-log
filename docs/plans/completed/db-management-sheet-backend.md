@@ -32,8 +32,13 @@
 8. check.sh, production build, 독립 검토, CI, 배포 SHA 및 health, 운영 검증을 각각 증거화.
 
 ## 현재 상태
-구현 및 로컬 브라우저·PostgreSQL(PGlite) 검증 완료. 기존 Supabase에 0008 신규 4테이블 적용 완료, 체크섬·RLS·브라우저 권한 회수·실행 앱 DB 대상/역할 일치 확인. 실제 PostgreSQL 격리 통합 및 브라우저→Supabase→reload 통과. production build·check.sh(구조 92, 단위/통합 3,436) 통과. CI/배포 확인 진행 중.
+구현 및 로컬 브라우저·PostgreSQL(PGlite) 검증 완료. 기존 Supabase에 0008 신규 4테이블 적용 완료, 체크섬·RLS·브라우저 권한 회수·실행 앱 DB 대상/역할 일치 확인. 실제 PostgreSQL 격리 통합 및 브라우저→Supabase→reload 통과. production build·check.sh(구조 92, 단위/통합 3,436) 통과. CI/배포 및 안전한 운영 읽기 확인 완료. 증거는 docs/qa/db-management-sheet.md 참조.
 
 ## 사용자 집계 확정
 - 2026-10-11: 메타 직접 DB는 직접생산. 같은 업체도 상담한 날짜마다 1건, 같은 날짜 중복 저장은 증가하지 않음.
-
+## 운영 완료 — 2026-10-11
+- 구현 PR #1129, head e1d64f51f1f57c16d0e0a1af702dbe4066f6badc. 독립 검토 승인, CI 38079221398 success.
+- squash 47728f16b561b311801a20a56b43b5a967867f18. Deploy to VPS 38079487265 success, 공개 root HTTP 200.
+- 로그인된 운영 /db-sheet에서 저장됨·DB 목록 0 및 새 메뉴 확인, 브라우저 오류 없음. 새소식 팝업은 닫지 않았고 실계정 쓰기는 하지 않음.
+- Linux 배포 migration 0008 SHA256이 적용본 d1e03284fc82ce10f4a733475cfe6c7aa1c9a5f2f74940ffa35645aadac60459와 일치.
+- 실제 화면→Supabase 쓰기/재조회는 별도 합성 계정·격리 schema에서 확인. 실사용자 OAuth 쓰기·외부 Sheets/GCal E2E는 NOT_RUN이며 성공으로 확대하지 않음.
