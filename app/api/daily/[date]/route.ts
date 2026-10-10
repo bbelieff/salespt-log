@@ -8,8 +8,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Channel } from "@/types";
 import { loadDay, saveContactMetrics } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  getWritableUserEmail,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const DateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
@@ -35,16 +37,32 @@ async function GET_handler(_req: NextRequest, ctx: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getCurrentUserEmail();
-    const view = await loadDay(email, parsed.data);
+    const context = await requireStudentViewContext();
+    const view = await loadDay(context.email, parsed.data);
     return NextResponse.json(view);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (
+      e instanceof Error &&
+      "code" in e &&
+      "status" in e &&
+      ["unauthenticated", "invalid_student_target", "student_target_required", "student_view_forbidden"].includes(String(e.code)) &&
+      (e.status === 401 || e.status === 403)
+    ) {
+      const error = e as Error & { code: string; status: number };
+      return NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      );
+    }
     if (msg.startsWith("[no-sheet]")) {
       // 시트 없는 계정(트레이너 임퍼스네이션 등) — 500 아닌 명시 404 (P1 2026-07-28)
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "student_view_unavailable", code: "student_view_unavailable" },
+      { status: 503 },
+    );
   }
 }
 
@@ -66,16 +84,39 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail(); // 쓰기 진입점(ADR-0029: archived 차단 폐지)
-    const result = await saveContactMetrics(email, dateParsed.data, bodyParsed.data);
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: "invalid_student_target", code: "invalid_student_target" },
+        { status: 403 },
+      );
+    }
+    const result = await saveContactMetrics(context.email, dateParsed.data, bodyParsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (
+      e instanceof Error &&
+      "code" in e &&
+      "status" in e &&
+      ["unauthenticated", "invalid_student_target", "student_target_required", "student_view_forbidden"].includes(String(e.code)) &&
+      (e.status === 401 || e.status === 403)
+    ) {
+      const error = e as Error & { code: string; status: number };
+      return NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      );
+    }
     if (msg.startsWith("[no-sheet]")) {
       // 시트 없는 계정(트레이너 임퍼스네이션 등) — 500 아닌 명시 404 (P1 2026-07-28)
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "student_view_unavailable", code: "student_view_unavailable" },
+      { status: 503 },
+    );
   }
 }
 

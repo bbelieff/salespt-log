@@ -75,21 +75,56 @@ export async function findArenaSheetIdByName(name: string): Promise<string | nul
 
 /**
  * 수강생출신 트레이너의 본인 아레나 시트 — **단일 resolver**(me.ts 토글·dashboard override 공용).
- * 1) 본인 이메일의 활성 아레나 행(findActiveArenaRowByEmail) — 중복/동명이인/다중행 안전(우선).
- * 2) 폴백: 이름 추정매칭(findArenaSheetIdByName). 둘 다 없으면 null.
+ * 1) 본인 이메일의 현재 아레나 행 — 정확히 하나이고 active+mapped 일 때만 허용.
+ * 2) 같은 이메일 아레나 행이 0개일 때만, registry 의 기존 active trainer 행 이름으로
+ *    현재 active 아레나 행을 유일하게 찾는 legacy 폴백을 허용한다.
  * (두 호출처가 따로 구현하면 divergence — 실제 그래서 dashboard 만 null 나던 버그.)
  */
 export async function resolveOwnArenaSheetId(
   email: string,
   _name: string,
 ): Promise<string | null> {
-  const byEmail = await findActiveArenaRowByEmail(email);
-  if (byEmail?.spreadsheetId) return byEmail.spreadsheetId;
-  // A newly chosen application name must never unlock somebody else's student record.
-  // Preserve name fallback only for a pre-existing trusted registry trainer row.
-  const raw = await cachedRegistryRows();
-  const legacy = raw.map(parseRow).find(u => u?.email.toLowerCase() === email.toLowerCase() && u.role === "trainer" && u.status === "active");
-  return legacy?.name ? (await findArenaSheetIdByName(legacy.name)) ?? null : null;
+  const lc = email.trim().toLowerCase();
+  const all = await listAllUsers();
+  const candidates = all.filter(
+    (u) =>
+      u.email.toLowerCase() === lc &&
+      u.role === "trainee" &&
+      isArenaCohort(u.cohort),
+  );
+  if (candidates.length > 0) {
+    if (candidates.length !== 1) return null;
+    const candidate = candidates[0]!;
+    return candidate.status === "active" && candidate.spreadsheetId
+      ? candidate.spreadsheetId
+      : null;
+  }
+
+  // 새 프로필/전역 이름은 권한이 아니다. raw registry 에 이미 존재하는 active trainer
+  // 행이 정확히 하나일 때만 그 행의 이름을 legacy 연결 키로 사용할 수 있다.
+  const trustedTrainers = (await cachedRegistryRows())
+    .map(parseRow)
+    .filter(
+      (u): u is User =>
+        !!u &&
+        u.email.toLowerCase() === lc &&
+        u.role === "trainer" &&
+        u.status === "active" &&
+        !!u.name,
+    );
+  if (trustedTrainers.length !== 1) return null;
+
+  const legacyMatches = all.filter(
+    (u) =>
+      u.role === "trainee" &&
+      isArenaCohort(u.cohort) &&
+      nameMatches(u.name, trustedTrainers[0]!.name),
+  );
+  if (legacyMatches.length !== 1) return null;
+  const legacy = legacyMatches[0]!;
+  return legacy.status === "active" && legacy.spreadsheetId
+    ? legacy.spreadsheetId
+    : null;
 }
 
 /** 같은 email 의 archived 행 — "이전 N기 일지 보기" 링크용 (carryover §1). */

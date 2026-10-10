@@ -15,11 +15,10 @@ import { NextResponse } from "next/server";
 import { loadMe } from "@/service";
 import { findUserByEmail } from "@/repo/users";
 import {
-  getActiveUserEmail,
   getSessionEmail,
   getEffectiveRole,
   isAdminEmail,
-  isArenaSelfView,
+  resolveStudentViewContext,
 } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
@@ -29,21 +28,40 @@ async function GET_handler() {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
   const admin = isAdminEmail(sessionEmail);
-  const activeEmail = await getActiveUserEmail();
+  const context = await resolveStudentViewContext();
+  const { role: sessionRole } = await getEffectiveRole(sessionEmail);
+
+  if (!context.ok) {
+    // 기존 관리자 무대상 landing과 신규 수강생 claim 흐름은 유지한다.
+    const own = await findUserByEmail(sessionEmail);
+    if (admin && !own) {
+      return NextResponse.json({
+        status: "admin_no_target",
+        isAdmin: true,
+        sessionRole,
+      });
+    }
+    if (!admin && sessionRole === "trainee" && !own) {
+      return NextResponse.json({ status: "needs_claim" }, { status: 200 });
+    }
+    return NextResponse.json(
+      { error: context.code, code: context.code },
+      { status: context.status },
+    );
+  }
+  const activeEmail = context.email;
 
   const user = await findUserByEmail(activeEmail);
-  const { role: sessionRole } = await getEffectiveRole(sessionEmail);
 
   // 비-Admin + 미등록 = claim 필요
   if (!user && !admin) {
-    return NextResponse.json({ status: "needs_claim", email: activeEmail }, { status: 200 });
+    return NextResponse.json({ status: "needs_claim" }, { status: 200 });
   }
 
   // Admin + 본인 미등록 + 아무도 impersonate 안 함 → admin landing
   if (!user && admin && activeEmail === sessionEmail) {
     return NextResponse.json({
       status: "admin_no_target",
-      email: sessionEmail,
       isAdmin: true,
       sessionRole,
     });
@@ -51,7 +69,7 @@ async function GET_handler() {
 
   // 정상 프로필 로드
   try {
-    const me = await loadMe(activeEmail, await isArenaSelfView());
+    const me = await loadMe(activeEmail, context.mode === "arena");
     const res = NextResponse.json({
       ...me,
       isAdmin: admin,
@@ -69,9 +87,11 @@ async function GET_handler() {
       "private, no-store, no-cache, must-revalidate",
     );
     return res;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "unknown";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: "student_view_unavailable", code: "student_view_unavailable" },
+      { status: 503 },
+    );
   }
 }
 

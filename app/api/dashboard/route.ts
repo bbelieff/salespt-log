@@ -5,22 +5,30 @@
  * 현재는 prototype 더미 반환. 시트 디스커버리 후 실제 wiring.
  */
 import { NextResponse } from "next/server";
-import { loadDashboard, resolveArenaOverride } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
-import { isArenaSelfView } from "@/auth/identity";
+import { loadDashboard } from "@/service";
+import { requireStudentViewContext } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function GET_handler() {
   try {
-    const email = await getCurrentUserEmail();
-    // 수강생출신 트레이너 "내 아레나 일지" self-view → 본인 아레나 시트로 override(P14).
-    const override = (await isArenaSelfView())
-      ? await resolveArenaOverride(email)
-      : undefined;
-    const view = await loadDashboard(email, override);
+    const context = await requireStudentViewContext();
+    const view = await loadDashboard(context.email, context.sheetOverride);
     return NextResponse.json(view);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (
+      e instanceof Error &&
+      "code" in e &&
+      "status" in e &&
+      ["unauthenticated", "invalid_student_target", "student_target_required", "student_view_forbidden"].includes(String(e.code)) &&
+      (e.status === 401 || e.status === 403)
+    ) {
+      const error = e as Error & { code: string; status: number };
+      return NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      );
+    }
     if (msg.startsWith("[auth]")) {
       return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
     }
@@ -28,7 +36,10 @@ async function GET_handler() {
       // 시트 없는 계정(트레이너 임퍼스네이션 등) — 500 아닌 명시 404 (P1 2026-07-28)
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "student_view_unavailable", code: "student_view_unavailable" },
+      { status: 503 },
+    );
   }
 }
 

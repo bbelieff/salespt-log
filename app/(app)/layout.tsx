@@ -21,9 +21,10 @@ import DesktopNav from "@/components/desktop/DesktopNav";
 import DirtyProvider from "@/components/DirtyGuard";
 import {
   getSessionEmail,
-  getActiveUserEmail,
   isAdminEmail,
   isArenaSelfView,
+  resolveStudentViewContext,
+  getEffectiveRole,
 } from "@/auth/identity";
 import { findUserByEmail } from "@/repo/users";
 import { shouldRedirectToClaim } from "@/repo/user-priority";
@@ -42,8 +43,14 @@ export default async function AppLayout({
 
   // admin 본인은 통과 (impersonation 으로 누구든 진입 가능).
   if (!isAdminEmail(sessionEmail)) {
-    // 활성 대상(impersonation 적용)이 pending 이면 대기 화면.
-    const activeEmail = await getActiveUserEmail();
+    const context = await resolveStudentViewContext();
+    const sessionRole = await getEffectiveRole(sessionEmail);
+    // 트레이너의 잘못되었거나 만료된 대상 쿠키, 혹은 권한이 사라진 자기보기는
+    // 학생 셸을 렌더하지 않고 기존 담당 수강생 목록으로 복구한다.
+    if (!context.ok && sessionRole.role === "trainer") redirect("/trainer");
+
+    // 일반 수강생의 미등록/승인대기 판정은 기존 경로를 그대로 보존한다.
+    const activeEmail = context.ok ? context.email : sessionEmail;
     const u = await findUserByEmail(activeEmail);
     // 수강생출신 트레이너(시트 없음)는 "내 아레나 일지" self-view(쿠키)일 때만 (app)
     // 대시보드 허용 — 아니면 /trainer(빈 대시보드 방지, P14).

@@ -17,15 +17,16 @@ import { auth } from "@/auth";
 import { isDevStubAuthed } from "@/auth/dev-stub";
 import { adminEmails } from "@/config";
 import { findUserByEmail, findTrainerByEmail, parseAssignedTrainers } from "@/repo/users";
+import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 
 const AS_COOKIE = "salespt_as";
 const ARENA_SELF_COOKIE = "salespt_arena_self";
 
-/** 수강생출신 트레이너 "내 아레나 일지" self-view 모드 여부(P14). flag 쿠키만 —
- * 실제 sheetId 는 서버가 me.ownArenaSheetId 로 계산(임의 sheetId 주입 차단). */
+/** 수강생출신 트레이너의 현재 유효한 자기보기 여부(P14).
+ * raw flag만 보지 않고 매 요청 현재 학생/아레나 자격에 다시 결박한다. */
 export async function isArenaSelfView(): Promise<boolean> {
-  const jar = await cookies();
-  return jar.get(ARENA_SELF_COOKIE)?.value === "1";
+  const context = await resolveStudentViewContext();
+  return context.ok && (context.mode === "own" || context.mode === "arena");
 }
 
 /** 아레나 self-view 토글 set/unset. */
@@ -65,6 +66,31 @@ export async function getSessionEmail(): Promise<string | null> {
 }
 
 export type EffectiveRole = "admin" | "trainer" | "trainee";
+
+export type StudentViewContextCode =
+  | "unauthenticated"
+  | "invalid_student_target"
+  | "student_target_required"
+  | "student_view_forbidden";
+
+export type StudentViewContext =
+  | {
+      ok: true;
+      mode: "own" | "assigned" | "arena";
+      email: string;
+      sheetOverride?: string;
+    }
+  | { ok: false; status: 401 | 403; code: StudentViewContextCode };
+
+export class StudentViewContextError extends Error {
+  constructor(
+    public readonly code: StudentViewContextCode,
+    public readonly status: 401 | 403,
+  ) {
+    super(code);
+    this.name = "StudentViewContextError";
+  }
+}
 
 /**
  * 관리부서 멤버 — registry trainer row 중 B 컬럼(cohort)="관리".
@@ -106,6 +132,84 @@ export async function getEffectiveRole(
 }
 
 /**
+ * 학생 화면의 현재 신원·권한을 서버에서 매 요청 다시 해석한다.
+ *
+ * 쿠키는 의도만 전달한다. `salespt_as` 는 canImpersonate()와 현재 대상 시트,
+ * `salespt_arena_self` 는 현재 본인 수강생/아레나 자격과 다시 결박돼야 한다.
+ * 옵션은 self-view를 켜기 직전의 검증용이며 권한 원천을 바꾸지 않는다.
+ */
+export async function resolveStudentViewContext(options?: {
+  selfViewRequested?: boolean;
+  ignoreTarget?: boolean;
+}): Promise<StudentViewContext> {
+  const sessionEmail = await getSessionEmail();
+  if (!sessionEmail) {
+    return { ok: false, status: 401, code: "unauthenticated" };
+  }
+
+  const jar = await cookies();
+  const requestedTarget = jar.get(AS_COOKIE)?.value?.trim() ?? "";
+  if (requestedTarget && !options?.ignoreTarget) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedTarget)) {
+      return { ok: false, status: 403, code: "invalid_student_target" };
+    }
+    if (!(await canImpersonate(sessionEmail, requestedTarget))) {
+      return { ok: false, status: 403, code: "invalid_student_target" };
+    }
+    const target = await findUserByEmail(requestedTarget, { fresh: true });
+    if (!target || target.role !== "trainee" || !target.spreadsheetId) {
+      return { ok: false, status: 403, code: "invalid_student_target" };
+    }
+    return { ok: true, mode: "assigned", email: target.email.toLowerCase() };
+  }
+
+  const [role, user, trainer] = await Promise.all([
+    getEffectiveRole(sessionEmail),
+    findUserByEmail(sessionEmail, { fresh: true }),
+    findTrainerByEmail(sessionEmail),
+  ]);
+  const ownStudent =
+    user?.role === "trainee" && user.status !== "pending" && !!user.spreadsheetId;
+
+  if (role.role !== "trainer") {
+    return ownStudent
+      ? { ok: true, mode: "own", email: sessionEmail.toLowerCase() }
+      : { ok: false, status: 403, code: "student_view_forbidden" };
+  }
+
+  const selfViewRequested =
+    options?.selfViewRequested ?? jar.get(ARENA_SELF_COOKIE)?.value === "1";
+  if (!selfViewRequested) {
+    return { ok: false, status: 403, code: "student_target_required" };
+  }
+  if (ownStudent) {
+    return { ok: true, mode: "own", email: sessionEmail.toLowerCase() };
+  }
+  if (!trainer || trainer.status !== "active") {
+    return { ok: false, status: 403, code: "student_view_forbidden" };
+  }
+  const ownArenaSheet = await resolveOwnArenaSheetId(sessionEmail, trainer.name);
+  return ownArenaSheet
+    ? {
+        ok: true,
+        mode: "arena",
+        email: sessionEmail.toLowerCase(),
+        sheetOverride: ownArenaSheet,
+      }
+    : { ok: false, status: 403, code: "student_view_forbidden" };
+}
+
+export async function requireStudentViewContext(): Promise<
+  Extract<StudentViewContext, { ok: true }>
+> {
+  const context = await resolveStudentViewContext();
+  if (!context.ok) {
+    throw new StudentViewContextError(context.code, context.status);
+  }
+  return context;
+}
+
+/**
  * impersonation 권한 게이트.
  *   - 본인 (self): OK
  *   - admin: 누구든
@@ -121,7 +225,7 @@ export async function canImpersonate(
   if (isAdminEmail(sessionEmail)) return true;
   const session = await findTrainerByEmail(sessionEmail);
   if (!session || session.role !== "trainer" || session.status !== "active") return false;
-  const target = await findUserByEmail(targetEmail);
+  const target = await findUserByEmail(targetEmail, { fresh: true });
   if (!target || target.role !== "trainee") return false;
   return parseAssignedTrainers(target.assignedTrainer).includes(
     sessionEmail.toLowerCase(),

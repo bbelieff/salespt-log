@@ -23,7 +23,11 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { findUserByEmail } from "@/repo/users";
-import { getSessionEmail, getEffectiveRole, isArenaSelfView } from "@/auth/identity";
+import {
+  getSessionEmail,
+  getEffectiveRole,
+  resolveStudentViewContext,
+} from "@/auth/identity";
 import LoginScene from "@/components/auth/LoginScene";
 import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import { restoreRolePath } from "@/service/role-view";
@@ -59,8 +63,9 @@ export default async function HomePage({
   if (remembered) redirect(remembered as Route);
 
   if (role === "trainer") {
-    // 수강생출신 트레이너 "내 아레나 일지" self-view 중이면 대시보드로(토글 상태 유지, P14).
-    if (await isArenaSelfView()) redirect("/dashboard");
+    // raw 쿠키가 아니라 현재 권한·본인 행까지 다시 확인된 자기보기만 복원한다.
+    const context = await resolveStudentViewContext();
+    if (context.ok && context.mode !== "assigned") redirect("/dashboard");
     redirect("/trainer"); // pending 이면 /trainer 가 대기 화면 렌더
   }
 

@@ -1,6 +1,9 @@
-import { getSessionEmail, getActiveUserEmail, isAdminEmail } from "@/auth/identity";
+import {
+  getSessionEmail,
+  isAdminEmail,
+  resolveStudentViewContext,
+} from "@/auth/identity";
 import { findUserByEmail, findTrainerByEmail } from "@/repo/users";
-import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { listTrainerQualifications } from "@/repo/db/trainer-recruitment";
 import { auth } from "@/auth";
 
@@ -11,14 +14,18 @@ export async function trainerStatus() {
   const [user,trainer,qualification,session] = await Promise.all([
     findUserByEmail(email), findTrainerByEmail(email), listTrainerQualifications(email), auth(),
   ]);
-  const ownStudent = user?.role === "trainee" && user.status !== "pending";
-  const legacyArena = !ownStudent && trainer?.status === "active" ? !!(await resolveOwnArenaSheetId(email,trainer.name)) : false;
+  const [currentContext, selfContext] = await Promise.all([
+    resolveStudentViewContext(),
+    resolveStudentViewContext({ selfViewRequested: true, ignoreTarget: true }),
+  ]);
+  const canStudent =
+    selfContext.ok && (selfContext.mode === "own" || selfContext.mode === "arena");
   return {
     email, name: user?.name || trainer?.name || session?.user?.name || "",
     status: qualification[0]?.status ?? trainer?.status ?? "none",
-    canStudent: !!ownStudent || legacyArena,
+    canStudent,
     canTrainer: trainer?.status === "active",
     isAdmin: isAdminEmail(email),
-    impersonating: (await getActiveUserEmail()).toLowerCase() !== email.toLowerCase(),
+    impersonating: currentContext.ok && currentContext.mode === "assigned",
   };
 }
