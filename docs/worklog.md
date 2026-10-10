@@ -1,12 +1,12 @@
 > **📄 이 문서는 무엇인가요?**
 
-## 2026-10-11 · DB관리시트 실제 저장/일별 집계 연결 (진행 중)
+## 2026-10-11 · DB관리시트 실제 저장/일별 집계 연결 완료
 - 목표: 승인 목업 v0.31 → 서버 인증 API → 기존 경영일지 Supabase persistence → 일별 유입/상담/미팅 왕복 검증.
 - base: 9abae99e6e06381aad4f35e05b64190cb712dc75, 전용 worktree db-management-sheet-mockup-261010.
 - 파일 소유: 총괄 app/(app)/db-sheet, app/api/db-sheet, lib/service/db-sheet 및 탐색 연결. storage 역할 lib/types/db-sheet, lib/repo/db/db-sheet, migration 0008 및 PGlite test. daily 역할 기존 daily client/service/UI와 sales-* helper. 독립검증 tests/api/db-sheet 및 계약 검토. 실제 모델 실행 메타데이터 외 명칭으로 실행을 추정하지 않음.
 - 확인: 메타=직접생산, 업체별 상담 날짜마다 1건. 운영 연결 프로젝트는 기존 문서/서버 확인, 모아워크 별개.
 - 구현: DB 정본 API/저장소/자동집계·미팅·실무상태 연결, 수동 실적 보존, tenant/revision/중복요청 보호. 검증 상세: docs/qa/db-management-sheet.md.
-- 완료: 실제 Supabase 0008 적용 및 RLS/ACL/체크섬/실행 DB 일치. 실제 PG 격리 API 왕복·다중 연결 동시 revision 보호·시험 schema 정리 PASS. 브라우저 합성 입력/reload 및 PC·모바일 PASS. CI/배포 운영 확인 진행.
+- 완료: 실제 Supabase 0008 적용 및 RLS/ACL/체크섬/실행 DB 일치. 실제 PG 격리 API 왕복·다중 연결 동시 revision 보호·시험 schema 정리 PASS. 브라우저 합성 입력/reload 및 PC·모바일 PASS. check.sh 92+3,436 PASS, build PASS. PR #1129 → squash 47728f16, CI 38079221398·Deploy 38079487265 success·public 200. 로그인 운영 DB시트 읽기·console 오류 없음 확인. 새소식 미조작·실계정 쓰기 없음. 계획은 completed로 이동.
 > - **한 줄 요약**: 모든 세션(Cowork·Claude Code)이 공유하는 작업 일지 — 세션 시작 시 읽고, 끝날 때 쓴다. 핸드오프 문서를 대체한다.
 > - **누가 읽나요**: 모든 에이전트 세션(필수), 운영자(belie)
 > - **어떤 기능·작업과 연결?**: 전체 트랙 공통 (AGENTS.md의 작업 시작·완료 규칙)

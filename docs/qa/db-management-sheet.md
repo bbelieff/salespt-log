@@ -35,3 +35,10 @@ CI·배포 SHA·인증된 운영 페이지 확인은 후속 결과로 기록한�
 - UI 직접입력 10/8 직접생산·유입 1, 10/9와 10/10 상담 각 1, 10/10 예약 1(미팅 일정 10/15 14:00), 휴대전화 하이픈 및 소재지 자동 반영 확인.
 - 예약됨/미팅예약 상태가 새로고침 후 유지됨. 브라우저 시험 schema 제거까지 PASS. OAuth/외부 미러는 합성 경계이며 public 업무 자료는 변경하지 않음.
 - 격리 브라우저 재현은 probe bundle --serve <전용 포트>, 127.0.0.1 SSH 터널 61112, 로컬 DB_SHEET_PROBE_PORT=61112로만 연결. 10분 자동 정리, 종료 시 소유 schema 삭제.
+
+## 운영 완료 — 2026-10-11
+- 구현 PR #1129, head e1d64f51f1f57c16d0e0a1af702dbe4066f6badc. 독립 검토 승인, CI 38079221398 success.
+- squash 47728f16b561b311801a20a56b43b5a967867f18. Deploy to VPS 38079487265 success, 공개 root HTTP 200.
+- 로그인된 운영 /db-sheet에서 저장됨·DB 목록 0 및 새 메뉴 확인, 브라우저 오류 없음. 새소식 팝업은 닫지 않았고 실계정 쓰기는 하지 않음.
+- Linux 배포 migration 0008 SHA256이 적용본 d1e03284fc82ce10f4a733475cfe6c7aa1c9a5f2f74940ffa35645aadac60459와 일치.
+- 실제 화면→Supabase 쓰기/재조회는 별도 합성 계정·격리 schema에서 확인. 실사용자 OAuth 쓰기·외부 Sheets/GCal E2E는 NOT_RUN이며 성공으로 확대하지 않음.
