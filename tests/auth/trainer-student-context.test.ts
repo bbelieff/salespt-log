@@ -7,6 +7,7 @@ const m = vi.hoisted(() => ({
   own: { email: "trainer@example.test", role: "trainer", status: "active", name: "T", spreadsheetId: "trainer-sheet" } as Record<string, unknown> | null,
   target: { email: "student@example.test", role: "trainee", status: "active", assignedTrainer: "trainer@example.test", spreadsheetId: "student-sheet" } as Record<string, unknown> | null,
   allUsers: [] as Array<Record<string, unknown>>,
+  registryRows: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("next/headers", () => ({
@@ -26,6 +27,8 @@ vi.mock("@/repo/users", () => ({
   parseAssignedTrainers: (raw: string) =>
     String(raw ?? "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean),
   listAllUsers: async () => m.allUsers,
+  cachedRegistryRows: async () => m.registryRows,
+  parseRow: (row: Record<string, unknown>) => row,
 }));
 
 import { resolveStudentViewContext } from "@/auth/identity";
@@ -38,6 +41,7 @@ describe("resolved student-view context", () => {
     m.own = { email: m.session, role: "trainer", status: "active", name: "T", spreadsheetId: "trainer-sheet" };
     m.target = { email: "student@example.test", role: "trainee", status: "active", assignedTrainer: m.session, spreadsheetId: "student-sheet" };
     m.allUsers = [];
+    m.registryRows = [];
   });
 
   it("does not treat a raw self flag as authorization", async () => {
@@ -118,6 +122,106 @@ describe("resolved student-view context", () => {
       cohort: "A2-2",
       spreadsheetId: "second-arena-sheet",
     });
+    await expect(resolveStudentViewContext()).resolves.toMatchObject({
+      ok: false,
+      code: "student_view_forbidden",
+    });
+  });
+
+  it("preserves the trusted legacy arena fallback when no same-email candidate exists", async () => {
+    m.jar.set("salespt_arena_self", "1");
+    m.registryRows = [{
+      email: m.session,
+      role: "trainer",
+      status: "active",
+      name: "T",
+    }];
+    m.allUsers = [{
+      email: "legacy-student@example.test",
+      role: "trainee",
+      status: "active",
+      cohort: "A2-1",
+      name: "T",
+      spreadsheetId: "legacy-arena-sheet",
+    }];
+
+    await expect(resolveStudentViewContext()).resolves.toEqual({
+      ok: true,
+      mode: "arena",
+      email: "trainer@example.test",
+      sheetOverride: "legacy-arena-sheet",
+    });
+  });
+
+  it("denies duplicate or archived-only legacy name matches", async () => {
+    m.jar.set("salespt_arena_self", "1");
+    m.registryRows = [{
+      email: m.session,
+      role: "trainer",
+      status: "active",
+      name: "T",
+    }];
+    m.allUsers = [
+      {
+        email: "legacy-one@example.test",
+        role: "trainee",
+        status: "active",
+        cohort: "A2-1",
+        name: "T",
+        spreadsheetId: "legacy-one-sheet",
+      },
+      {
+        email: "legacy-two@example.test",
+        role: "trainee",
+        status: "active",
+        cohort: "A2-2",
+        name: "T",
+        spreadsheetId: "legacy-two-sheet",
+      },
+    ];
+
+    await expect(resolveStudentViewContext()).resolves.toMatchObject({
+      ok: false,
+      code: "student_view_forbidden",
+    });
+
+    m.allUsers = [{
+      email: "legacy-student@example.test",
+      role: "trainee",
+      status: "archived",
+      cohort: "A2-1",
+      name: "T",
+      spreadsheetId: "legacy-arena-sheet",
+    }];
+    await expect(resolveStudentViewContext()).resolves.toMatchObject({
+      ok: false,
+      code: "student_view_forbidden",
+    });
+  });
+
+  it("denies the legacy fallback for an inactive or untrusted registry trainer", async () => {
+    m.jar.set("salespt_arena_self", "1");
+    m.allUsers = [{
+      email: "legacy-student@example.test",
+      role: "trainee",
+      status: "active",
+      cohort: "A2-1",
+      name: "T",
+      spreadsheetId: "legacy-arena-sheet",
+    }];
+    m.registryRows = [{
+      email: m.session,
+      role: "trainer",
+      status: "archived",
+      name: "T",
+    }];
+
+    await expect(resolveStudentViewContext()).resolves.toMatchObject({
+      ok: false,
+      code: "student_view_forbidden",
+    });
+
+    m.registryRows = [];
     await expect(resolveStudentViewContext()).resolves.toMatchObject({
       ok: false,
       code: "student_view_forbidden",
