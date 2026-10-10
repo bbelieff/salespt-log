@@ -10,6 +10,7 @@ const m = vi.hoisted(() => {
     ContextError,
     requireContext: vi.fn(),
     resolveContext: vi.fn(),
+    getWritableUserEmail: vi.fn(),
     setArenaSelfView: vi.fn(),
     getSessionEmail: vi.fn(),
     getEffectiveRole: vi.fn(),
@@ -25,6 +26,7 @@ const m = vi.hoisted(() => {
 vi.mock("@/auth/identity", () => ({
   requireStudentViewContext: m.requireContext,
   resolveStudentViewContext: m.resolveContext,
+  getWritableUserEmail: m.getWritableUserEmail,
   setArenaSelfView: m.setArenaSelfView,
   getSessionEmail: m.getSessionEmail,
   getEffectiveRole: m.getEffectiveRole,
@@ -42,7 +44,7 @@ vi.mock("@/lib/analytics/api-timing", () => ({
   withApiTiming: (_label: string, handler: unknown) => handler,
 }));
 
-import { GET as dailyGET } from "@/app/api/daily/[date]/route";
+import { GET as dailyGET, POST as dailyPOST } from "@/app/api/daily/[date]/route";
 import { GET as weekGET } from "@/app/api/meetings/week/[weekStart]/route";
 import { POST as arenaSelfPOST } from "@/app/api/arena-self/route";
 import { GET as meGET } from "@/app/api/me/route";
@@ -56,6 +58,7 @@ describe("student-context protected routes", () => {
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
     m.isAdminEmail.mockReturnValue(false);
     m.findUserByEmail.mockResolvedValue({ role: "trainer", status: "active" });
+    m.getWritableUserEmail.mockResolvedValue("legacy-alumni@example.test");
   });
 
   it.each([
@@ -98,6 +101,44 @@ describe("student-context protected routes", () => {
       "student@example.test",
       "2026-10-09",
     );
+  });
+
+  it("uses the actual arena trainee identity for daily/week reads and daily writes", async () => {
+    const email = "legacy-alumni@example.test";
+    m.requireContext.mockResolvedValue({
+      ok: true,
+      mode: "arena",
+      email,
+      sheetOverride: "legacy-sheet",
+    });
+    m.loadDay.mockResolvedValue({ date: "2026-10-10" });
+    m.loadWeekMeetings.mockResolvedValue({ weekStart: "2026-10-09" });
+    m.saveContactMetrics.mockResolvedValue({ source: "sheet" });
+
+    await dailyGET(request, {
+      params: Promise.resolve({ date: "2026-10-10" }),
+    });
+    await weekGET(request, {
+      params: Promise.resolve({ weekStart: "2026-10-09" }),
+    });
+    const metrics = Object.fromEntries(
+      ["매입DB", "직접생산", "현수막", "콜·지·기·소"].map((channel) => [
+        channel,
+        { production: 0, inflow: 0, contactProgress: 0, meetingReservation: 0 },
+      ]),
+    );
+    const written = await dailyPOST(
+      new Request("https://app.example.test/api/daily/2026-10-10", {
+        method: "POST",
+        body: JSON.stringify(metrics),
+      }) as never,
+      { params: Promise.resolve({ date: "2026-10-10" }) },
+    );
+
+    expect(written.status).toBe(200);
+    expect(m.loadDay).toHaveBeenCalledWith(email, "2026-10-10");
+    expect(m.loadWeekMeetings).toHaveBeenCalledWith(email, "2026-10-09");
+    expect(m.saveContactMetrics).toHaveBeenCalledWith(email, "2026-10-10", metrics);
   });
 
   it("does not expose an internal failure", async () => {

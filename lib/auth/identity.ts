@@ -17,7 +17,7 @@ import { auth } from "@/auth";
 import { isDevStubAuthed } from "@/auth/dev-stub";
 import { adminEmails } from "@/config";
 import { findUserByEmail, findTrainerByEmail, parseAssignedTrainers } from "@/repo/users";
-import { resolveOwnArenaSheetId } from "@/repo/users-arena";
+import { resolveOwnArenaIdentity } from "@/repo/users-arena";
 
 const AS_COOKIE = "salespt_as";
 const ARENA_SELF_COOKIE = "salespt_arena_self";
@@ -188,13 +188,13 @@ export async function resolveStudentViewContext(options?: {
   if (!trainer || trainer.status !== "active") {
     return { ok: false, status: 403, code: "student_view_forbidden" };
   }
-  const ownArenaSheet = await resolveOwnArenaSheetId(sessionEmail, trainer.name);
-  return ownArenaSheet
+  const ownArenaIdentity = await resolveOwnArenaIdentity(sessionEmail, trainer.name);
+  return ownArenaIdentity
     ? {
         ok: true,
         mode: "arena",
-        email: sessionEmail.toLowerCase(),
-        sheetOverride: ownArenaSheet,
+        email: ownArenaIdentity.email,
+        sheetOverride: ownArenaIdentity.spreadsheetId,
       }
     : { ok: false, status: 403, code: "student_view_forbidden" };
 }
@@ -262,6 +262,8 @@ export async function getActiveUserEmail(): Promise<string> {
  * 미인증 throw 는 동일 — 인증 자체는 그대로 요구한다.
  */
 export async function getWritableUserEmail(): Promise<string> {
+  const context = await resolveStudentViewContext();
+  if (context.ok && context.mode === "arena") return context.email;
   return getActiveUserEmail();
 }
 

@@ -73,30 +73,33 @@ export async function findArenaSheetIdByName(name: string): Promise<string | nul
   return hit.length === 1 ? hit[0]!.spreadsheetId : null;
 }
 
+export interface OwnArenaIdentity {
+  email: string;
+  spreadsheetId: string;
+}
+
 /**
- * 수강생출신 트레이너의 본인 아레나 시트 — **단일 resolver**(me.ts 토글·dashboard override 공용).
- * 1) 본인 이메일의 현재 아레나 행 — 정확히 하나이고 active+mapped 일 때만 허용.
- * 2) 같은 이메일 아레나 행이 0개일 때만, registry 의 기존 active trainer 행 이름으로
- *    현재 active 아레나 행을 유일하게 찾는 legacy 폴백을 허용한다.
- * (두 호출처가 따로 구현하면 divergence — 실제 그래서 dashboard 만 null 나던 버그.)
+ * 수강생출신 트레이너의 본인 아레나 신원 — self-view 공용 단일 resolver.
+ * 1) 본인 이메일의 trainee 행이 정확히 하나이고 pending 이 아니며 mapped 일 때 허용.
+ * 2) 같은 이메일 trainee 행이 0개일 때만, registry 의 기존 active trainer 행 이름으로
+ *    non-pending trainee 행을 유일하게 찾아 legacy 신원과 시트를 함께 반환한다.
  */
-export async function resolveOwnArenaSheetId(
+export async function resolveOwnArenaIdentity(
   email: string,
   _name: string,
-): Promise<string | null> {
+): Promise<OwnArenaIdentity | null> {
   const lc = email.trim().toLowerCase();
   const all = await listAllUsers();
   const candidates = all.filter(
     (u) =>
       u.email.toLowerCase() === lc &&
-      u.role === "trainee" &&
-      isArenaCohort(u.cohort),
+      u.role === "trainee",
   );
   if (candidates.length > 0) {
     if (candidates.length !== 1) return null;
     const candidate = candidates[0]!;
-    return candidate.status === "active" && candidate.spreadsheetId
-      ? candidate.spreadsheetId
+    return candidate.status !== "pending" && candidate.spreadsheetId
+      ? { email: candidate.email.toLowerCase(), spreadsheetId: candidate.spreadsheetId }
       : null;
   }
 
@@ -117,14 +120,21 @@ export async function resolveOwnArenaSheetId(
   const legacyMatches = all.filter(
     (u) =>
       u.role === "trainee" &&
-      isArenaCohort(u.cohort) &&
       nameMatches(u.name, trustedTrainers[0]!.name),
   );
   if (legacyMatches.length !== 1) return null;
   const legacy = legacyMatches[0]!;
-  return legacy.status === "active" && legacy.spreadsheetId
-    ? legacy.spreadsheetId
+  return legacy.status !== "pending" && legacy.spreadsheetId
+    ? { email: legacy.email.toLowerCase(), spreadsheetId: legacy.spreadsheetId }
     : null;
+}
+
+/** 기존 sheet-only 호출자 호환 래퍼. */
+export async function resolveOwnArenaSheetId(
+  email: string,
+  name: string,
+): Promise<string | null> {
+  return (await resolveOwnArenaIdentity(email, name))?.spreadsheetId ?? null;
 }
 
 /** 같은 email 의 archived 행 — "이전 N기 일지 보기" 링크용 (carryover §1). */

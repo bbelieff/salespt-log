@@ -71,6 +71,21 @@ describe("resolved student-view context", () => {
 
   it("passes an active trainer's currently assigned mapped target", async () => {
     m.jar.set("salespt_as", "student@example.test");
+    m.jar.set("salespt_arena_self", "1");
+    m.registryRows = [{
+      email: m.session,
+      role: "trainer",
+      status: "active",
+      name: "T",
+    }];
+    m.allUsers = [{
+      email: "legacy-student@example.test",
+      role: "trainee",
+      status: "archived",
+      cohort: "7",
+      name: "T",
+      spreadsheetId: "legacy-arena-sheet",
+    }];
 
     await expect(resolveStudentViewContext()).resolves.toEqual({
       ok: true,
@@ -128,7 +143,26 @@ describe("resolved student-view context", () => {
     });
   });
 
-  it("preserves the trusted legacy arena fallback when no same-email candidate exists", async () => {
+  it("preserves a unique same-email archived numeric trainee identity", async () => {
+    m.jar.set("salespt_arena_self", "1");
+    m.allUsers = [{
+      email: m.session,
+      role: "trainee",
+      status: "archived",
+      cohort: "7",
+      name: "T",
+      spreadsheetId: "same-email-alumni-sheet",
+    }];
+
+    await expect(resolveStudentViewContext()).resolves.toEqual({
+      ok: true,
+      mode: "arena",
+      email: "trainer@example.test",
+      sheetOverride: "same-email-alumni-sheet",
+    });
+  });
+
+  it("binds a trusted legacy archived numeric row to its actual trainee identity", async () => {
     m.jar.set("salespt_arena_self", "1");
     m.registryRows = [{
       email: m.session,
@@ -139,8 +173,8 @@ describe("resolved student-view context", () => {
     m.allUsers = [{
       email: "legacy-student@example.test",
       role: "trainee",
-      status: "active",
-      cohort: "A2-1",
+      status: "archived",
+      cohort: "7",
       name: "T",
       spreadsheetId: "legacy-arena-sheet",
     }];
@@ -148,12 +182,12 @@ describe("resolved student-view context", () => {
     await expect(resolveStudentViewContext()).resolves.toEqual({
       ok: true,
       mode: "arena",
-      email: "trainer@example.test",
+      email: "legacy-student@example.test",
       sheetOverride: "legacy-arena-sheet",
     });
   });
 
-  it("denies duplicate or archived-only legacy name matches", async () => {
+  it("denies duplicate, pending, or unmapped legacy name matches", async () => {
     m.jar.set("salespt_arena_self", "1");
     m.registryRows = [{
       email: m.session,
@@ -173,8 +207,8 @@ describe("resolved student-view context", () => {
       {
         email: "legacy-two@example.test",
         role: "trainee",
-        status: "active",
-        cohort: "A2-2",
+        status: "archived",
+        cohort: "10",
         name: "T",
         spreadsheetId: "legacy-two-sheet",
       },
@@ -188,10 +222,23 @@ describe("resolved student-view context", () => {
     m.allUsers = [{
       email: "legacy-student@example.test",
       role: "trainee",
-      status: "archived",
-      cohort: "A2-1",
+      status: "pending",
+      cohort: "7",
       name: "T",
       spreadsheetId: "legacy-arena-sheet",
+    }];
+    await expect(resolveStudentViewContext()).resolves.toMatchObject({
+      ok: false,
+      code: "student_view_forbidden",
+    });
+
+    m.allUsers = [{
+      email: "legacy-student@example.test",
+      role: "trainee",
+      status: "archived",
+      cohort: "7",
+      name: "T",
+      spreadsheetId: "",
     }];
     await expect(resolveStudentViewContext()).resolves.toMatchObject({
       ok: false,
