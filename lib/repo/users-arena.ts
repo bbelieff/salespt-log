@@ -9,6 +9,7 @@ import { User } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
 import { listAllUsers, invalidateRegistry, cachedRegistryRows, parseRow } from "./users";
 import { pickActiveArenaRow } from "./user-priority";
+import { pickCrmUser } from "./trainer-qualification";
 import { nameMatches } from "./name-match";
 import { mirrorUserCells } from "./db/registry-mirror";
 
@@ -120,10 +121,23 @@ export async function resolveOwnArenaIdentity(
   const legacyMatches = all.filter(
     (u) =>
       u.role === "trainee" &&
+      isArenaCohort(u.cohort) &&
       nameMatches(u.name, trustedTrainers[0]!.name),
   );
   if (legacyMatches.length !== 1) return null;
   const legacy = legacyMatches[0]!;
+  const effective = pickCrmUser(
+    all.filter((u) => u.email.toLowerCase() === legacy.email.toLowerCase()),
+  );
+  if (
+    !effective ||
+    effective.role !== "trainee" ||
+    effective.spreadsheetId !== legacy.spreadsheetId ||
+    normalizeArenaCohort(effective.cohort) !== normalizeArenaCohort(legacy.cohort) ||
+    effective.status !== legacy.status
+  ) {
+    return null;
+  }
   return legacy.status !== "pending" && legacy.spreadsheetId
     ? { email: legacy.email.toLowerCase(), spreadsheetId: legacy.spreadsheetId }
     : null;

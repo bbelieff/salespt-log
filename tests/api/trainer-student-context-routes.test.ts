@@ -141,6 +141,38 @@ describe("student-context protected routes", () => {
     expect(m.saveContactMetrics).toHaveBeenCalledWith(email, "2026-10-10", metrics);
   });
 
+  it("keeps all daily/week loaders at zero when arena authority fails closed", async () => {
+    m.requireContext.mockRejectedValue(
+      new m.ContextError("student_view_forbidden", 403),
+    );
+    const metrics = Object.fromEntries(
+      ["매입DB", "직접생산", "현수막", "콜·지·기·소"].map((channel) => [
+        channel,
+        { production: 0, inflow: 0, contactProgress: 0, meetingReservation: 0 },
+      ]),
+    );
+
+    const daily = await dailyGET(request, {
+      params: Promise.resolve({ date: "2026-10-10" }),
+    });
+    const week = await weekGET(request, {
+      params: Promise.resolve({ weekStart: "2026-10-09" }),
+    });
+    const write = await dailyPOST(
+      new Request("https://app.example.test/api/daily/2026-10-10", {
+        method: "POST",
+        body: JSON.stringify(metrics),
+      }) as never,
+      { params: Promise.resolve({ date: "2026-10-10" }) },
+    );
+
+    expect([daily.status, week.status, write.status]).toEqual([403, 403, 403]);
+    expect(m.loadDay).not.toHaveBeenCalled();
+    expect(m.loadWeekMeetings).not.toHaveBeenCalled();
+    expect(m.getWritableUserEmail).not.toHaveBeenCalled();
+    expect(m.saveContactMetrics).not.toHaveBeenCalled();
+  });
+
   it("does not expose an internal failure", async () => {
     m.requireContext.mockResolvedValue({ ok: true, mode: "assigned", email: "student@example.test" });
     m.loadDay.mockRejectedValue(new Error("private email or sheet detail"));
