@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.fn();
 const findUserByEmail = vi.fn();
+const findTrainerByEmail = vi.fn();
+const resolveOwnArenaIdentity = vi.fn();
 const cookiesGet = vi.fn();
 
 vi.mock("next/headers", () => ({
@@ -18,7 +20,13 @@ vi.mock("@/auth/dev-stub", () => ({ isDevStubAuthed: () => false }));
 vi.mock("@/config", () => ({ adminEmails: () => ["admin@x.y"] }));
 vi.mock("@/repo/users", () => ({
   findUserByEmail: (...a: unknown[]) => findUserByEmail(...(a as [])),
+  findTrainerByEmail: (...a: unknown[]) => findTrainerByEmail(...(a as [])),
   parseAssignedTrainers: () => [],
+}));
+vi.mock("@/repo/users-arena", () => ({
+  resolveOwnArenaIdentity: (...a: unknown[]) => resolveOwnArenaIdentity(...(a as [])),
+  resolveOwnArenaSheetId: async (...a: unknown[]) =>
+    (await resolveOwnArenaIdentity(...(a as [])))?.spreadsheetId ?? null,
 }));
 
 import { getWritableUserEmail } from "@/auth/identity";
@@ -26,9 +34,11 @@ import { getWritableUserEmail } from "@/auth/identity";
 const GRAD = "graduate@x.y";
 
 beforeEach(() => {
-  for (const m of [auth, findUserByEmail, cookiesGet]) m.mockReset();
+  for (const m of [auth, findUserByEmail, findTrainerByEmail, resolveOwnArenaIdentity, cookiesGet]) m.mockReset();
   cookiesGet.mockReturnValue(undefined); // impersonation 없음
   auth.mockResolvedValue({ user: { email: GRAD } });
+  findTrainerByEmail.mockResolvedValue(null);
+  resolveOwnArenaIdentity.mockResolvedValue(null);
   findUserByEmail.mockResolvedValue({
     email: GRAD,
     status: "archived", // 수료(보관)
@@ -48,6 +58,33 @@ describe("getWritableUserEmail — 수료 후 쓰기 허용(ADR-0029 G1)", () =>
       email: GRAD, status: "active", role: "trainee", cohort: "9", spreadsheetId: "s",
     });
     await expect(getWritableUserEmail()).resolves.toBe(GRAD);
+  });
+
+  it("arena self-view 쓰기는 실제 legacy trainee identity 를 반환한다", async () => {
+    const trainer = "trainer@x.y";
+    const alumni = "legacy-alumni@x.y";
+    auth.mockResolvedValue({ user: { email: trainer } });
+    cookiesGet.mockImplementation((key: string) =>
+      key === "salespt_arena_self" ? { value: "1" } : undefined,
+    );
+    findTrainerByEmail.mockResolvedValue({
+      email: trainer,
+      status: "active",
+      role: "trainer",
+      name: "T",
+    });
+    findUserByEmail.mockResolvedValue({
+      email: trainer,
+      status: "active",
+      role: "trainer",
+      name: "T",
+    });
+    resolveOwnArenaIdentity.mockResolvedValue({
+      email: alumni,
+      spreadsheetId: "legacy-sheet",
+    });
+
+    await expect(getWritableUserEmail()).resolves.toBe(alumni);
   });
 
   it("레지스트리에 없는 사용자도 통과(미등록 판정은 라우팅 몫)", async () => {
