@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isMetricsOnlyPayload,
+  metricMinimum,
   isSameDayMeeting,
   metricsSavePayload,
   shouldSkipRegister,
@@ -29,6 +30,16 @@ const slot = (over: Partial<NewSlot> = {}): NewSlot => ({
 });
 
 describe("metrics autosave payload", () => {
+  it("echoes DB-sheet baselines and retains a manual-count floor", () => {
+    const draft = EMPTY_BY_CHANNEL();
+    draft.직접생산 = {...draft.직접생산, inflow:5, contactProgress:3, dbSheetInflow:2, dbSheetContacts:1};
+    const payload = metricsSavePayload(draft);
+    expect(isMetricsOnlyPayload(payload)).toBe(true);
+    expect(payload.직접생산.dbSheetContacts).toBe(1);
+    expect(metricMinimum(payload.직접생산,"inflow")).toBe(2);
+    expect(metricMinimum(payload.직접생산,"contactProgress")).toBe(1);
+    expect(metricMinimum(payload.직접생산,"meetingReservation")).toBe(0);
+  });
   it("contains only the four numeric keys per channel — no meeting data", () => {
     const draft = EMPTY_BY_CHANNEL();
     draft.매입DB.inflow = 3;

@@ -1680,3 +1680,10 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **CompanyInfoSalesTotals** (`components/company-info/CompanyInfoSalesTotals.tsx`): 기본보기 연매출 한 줄 — 올해·Y-1·Y-2·Y-3 합계 칸(`data-sales-totals`, `bg-blue-50` 띠, 375px 이상 4열·그 미만 2열). 반기 칸에 값이 있으면 읽기 전용 자동 합계. 상·하반기·기준 연도는 확장보기.
 - **CompanyVaultSection** (2026-10-09 다듬기): 제목 한 줄 「계정 보관함 · 열림 · mm:ss 뒤 잠겨요」 + [PIN 바꾸기] — 「잠금 저장」 배지·[지금 잠그기] 제거. 항목 = ① 이름(flex-1) · 종류 select `w-20` · [삭제](`h-8` 테두리, 누르면 바로 저장 + 「「이름」을 지웠어요 · 되돌리기」 `role=status`) ② 아이디 | 비밀번호(password) 한 줄 + [보기] — 복사 버튼 없음. 메모 칸은 뺐고, 예전에 메모가 적힌 항목만 메모 칸을 보여 준다(값 보존). 열림 유지 30분(`VAULT_UNLOCK_MS`, 쓸 때마다 연장).
 
+
+## DB관리시트
+- `Grid`: 셀 편집, 제목 정렬/드래그 이동, 모든 열 너비·전체 행 높이 조절, 모바일 카드/표 전환.
+- `ImportDialog`: CSV/TSV·엑셀 블록·카카오톡·메타 CSV 미리보기와 검증 후 가져오기.
+- `DbDetail`: 원본 DB정보와 확인된 업체정보를 구분하는 크기 조절 패널.
+- `ContactPanel`: 기존 CompanyInfoEditor 재사용, 날짜별 상담 기록 및 미팅 생성. 등록 후 연결 정보는 기존 미팅 편집 경로가 정본.
+- `ContactDbLeads`: 컨택관리의 날짜·채널별 DB관리시트 바로가기. 유입일 이후부터 표시.

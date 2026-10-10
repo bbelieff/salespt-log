@@ -168,6 +168,8 @@ export const ChannelDailyRow = z.object({
   inflow: z.number().int().nonnegative().default(0), // F
   contactProgress: z.number().int().nonnegative().default(0), // G
   meetingReservation: z.number().int().nonnegative().default(0), // H
+  dbSheetInflow: z.number().int().nonnegative().optional(),
+  dbSheetContacts: z.number().int().nonnegative().optional(),
 });
 export type ChannelDailyRow = z.infer<typeof ChannelDailyRow>;
 

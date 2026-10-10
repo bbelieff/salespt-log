@@ -734,3 +734,11 @@ Trainer qualification is independent of enrollment: `trainer_qualifications` key
 - 신규 할 일의 `operationId`는 동일 범위·동일 내용 재시도를 1행으로 수렴시킨다. 멱등 저장이 불가능한 경로에서는 키를 무시하지 않고 쓰기 전에 실패한다.
 - 비용 원장의 `one_time` 응답은 `originalAmountWon`(원본 전액)을 추가로 제공한다. `amountWon`은 선택 범위에서 인식한 비용이므로 수정 원금으로 사용하지 않는다. 구형 응답의 부분 인식 항목은 원본 전액이 없으면 금액 편집을 막는다.
 - 메모리 초안은 탭 종료 후 복원을 보장하지 않는다. 공지/업데이트 초안은 계정·편집 슬롯별 sessionStorage에 보존하며 게시 버튼은 유지한다.
+
+## DB관리시트 저장 계약 (2026-10-11)
+- `DbSheetDate`: 실제 달력 날짜를 검증하는 ISO 날짜. `DbSheetResult`: 미컨택·부재·단순거절·재통화·컨택진행·상담 후 거절.
+- `DbSheetLeadInput`: 원본 DB정보와 유입일·매입DB/직접생산 채널. `DbSheetContact`: 상담일·상담메모·확인된 CompanyInfo·미팅 초안. 원본과 확인 정보는 서로 덮어쓰지 않는다.
+- `DbSheetLead`: 서버 revision·최초상담일·현재상태·원본 meetingId·조회용 effectiveMeetingId. `0008_db_sheet.sql`의 leads/contacts/imports/history는 spreadsheet_id별 격리, 브라우저 역할 권한 회수와 RLS 적용.
+- 유입일에 유입 1건, 메타는 직접생산(생산에도 반영). 컨택진행/상담 후 거절은 업체×날짜마다 1건, 부재·단순거절·재통화는 상담 실적에서 제외. 미팅 예약은 같은 트랜잭션에서 상담/미팅/카운트를 기록한다.
+- 자동 집계 기여분을 기존 일일 수동 카운트와 분리해 유지한다. revision 충돌은 409. batch UUID와 내용 해시로 재전송 중복을 막고 변경 이력을 보존한다.
+- 현재상태는 연결 미팅과 계약/수납 정본에서 조회한다. 실무 슬롯 상태가 다르면 고유 상태를 함께 표시하여 부분 수납을 전체 완료로 오인하지 않게 한다.

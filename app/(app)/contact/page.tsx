@@ -2,7 +2,6 @@
 "use client";
 import PageContainer from "@/components/PageContainer";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
-
 import { useEffect, useMemo, useState } from "react";
 import { CHANNEL_ORDER, type Channel, type Meeting } from "@/types";
 import {
@@ -21,6 +20,7 @@ import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
+import ContactDbLeads from "../db-sheet/_components/ContactDbLeads";
 import { useGuardedNav, useDirtyEntry, useDirtyRegister } from "@/components/DirtyGuard";
 import ContactSaveRow, { useFlushOnHide } from "./_components/ContactSaveRow";
 import ContactResultModals from "./_components/ContactResultModals";
@@ -37,13 +37,13 @@ import { useSlotRegister } from "./_lib/use-slot-register";
 import {
   channelConsistencyWarnings,
   metricsSavePayload,
+  metricMinimum,
+  type MetricKey,
 } from "./_lib/metrics-autosave";
 import RecordMoveReceipt from "./_components/RecordMoveReceipt";
 import { useRecordMove } from "./_lib/use-record-move";
 import { discardUnsaved } from "@/components/weekly-goals/weeklyGoalAutosave";
-
 const TODAY_ISO = fmtISO(new Date());
-
 export default function ContactPage() {
   const router = useRouter();
   const [date, setDate] = useState<string>(TODAY_ISO);
@@ -54,7 +54,6 @@ export default function ContactPage() {
   const [pickerMeetings, setPickerMeetings] = useState<Meeting[] | null>(null);
   // 「잘못 적었어요」 옮기기 (2026-09-03 belie) — 숫자 확인 모달 없음, 자동 저장.
   const [moveOpen, setMoveOpen] = useState(false);
-
   const dayQuery = useDay(date);
   const weekStartISO = useMemo(() => fmtISO(friOf(parseISO(date))), [date]);
   const weekQuery = useWeekMeetings(weekStartISO);
@@ -67,12 +66,10 @@ export default function ContactPage() {
   const autosaveMeeting = usePatchMeeting({ silent: true });
   const removeMeeting = useRemoveMeeting();
   const moveMetrics = useMoveDailyMetrics();
-
   const countsByDay =
     weekQuery.data?.daysByReservationDate.map((d) => d.meetings.length) ??
     (Array(7).fill(0) as number[]);
   const weekFunnel = weekQuery.data?.weekFunnel ?? { 생산: 0, 유입: 0, 컨택진행: 0, 미팅예약: 0 };
-
   // 숫자 지표 자동 저장 — 채널 숫자만 POST, 미팅 드래프트·dirty 카드와 무관.
   // 서버 스냅샷 병합은 훅 안에서 content-keyed syncServer 로 처리.
   const metrics = useContactMetrics({
@@ -81,14 +78,12 @@ export default function ContactPage() {
     saveMetrics,
     onProductionHold: () => setShowProductionHold(true),
   });
-
   // 날짜 교체 = 신규 슬롯 비움 + 일관성 안내. 숫자 기준 이동은 훅이 담당.
   useEffect(() => {
     const server = dayQuery.data;
     if (!server || server.date !== date) return;
     setNewSlots([]); // 날짜 바뀌면 신규 슬롯도 비움
     clearRegisterErrors();
-
     const bad = channelConsistencyWarnings(server);
     if (bad.length > 0) {
       setToast("⚠ 시트 일관성 경고: " + bad.join(", ") + ". '−' 버튼으로 정정 가능");
@@ -96,9 +91,7 @@ export default function ContactPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayQuery.data?.date]);
-
   useCrossTabParams({ setActiveChannel, setDate, setHighlightProduction });
-
   const savedByChannel = useMemo(() => {
     const result: Record<Channel, Meeting[]> = {
       매입DB: [],
@@ -111,58 +104,54 @@ export default function ContactPage() {
     }
     return result;
   }, [dayQuery.data]);
-
   const newSlotsForChannel = (ch: Channel) =>
     newSlots.filter((s) => s.channel === ch);
-
   const meetingCardCount = (ch: Channel) =>
     savedByChannel[ch].length + newSlotsForChannel(ch).length;
-
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2200);
   };
-
   // Per-draft 예약 등록 (실패해도 폼 유지 + 인라인 재시도, 중복 방지).
   const { registerSlot, registering, registerErrors, clearRegisterErrors } = useSlotRegister({
     date, newSlots, serverMeetings: dayQuery.data?.meetings ?? [], appendMeeting, setNewSlots, showToast,
     refetchMeetings: async () => (await dayQuery.refetch?.())?.data?.meetings ?? [],
   });
-
   const setMetric = (
     channel: Channel,
-    key: keyof ChannelDailyRowMetrics,
+    key: MetricKey,
     nextValue: number,
   ) => {
     const cur = metrics.draft[channel];
-    const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(0, nextValue) };
+    const next: ChannelDailyRowMetrics = { ...cur, [key]: Math.max(metricMinimum(cur, key), nextValue) };
     if (next.meetingReservation > next.contactProgress) {
       next.meetingReservation = next.contactProgress;
     }
     metrics.update({ ...metrics.draft, [channel]: next });
   };
-
   /** 채널 metric ±delta 조정 (functional 대신 최신 draft 읽기 — stale closure 안전). */
   const adjustMetric = (
     channel: Channel,
-    key: keyof ChannelDailyRowMetrics,
+    key: MetricKey,
     delta: number,
   ) => {
     const cur = metrics.draft[channel];
-    const newValue = Math.max(0, cur[key] + delta);
+    const newValue = Math.max(metricMinimum(cur, key), cur[key] + delta);
     const next: ChannelDailyRowMetrics = { ...cur, [key]: newValue };
     if (next.meetingReservation > next.contactProgress) {
       next.meetingReservation = next.contactProgress;
     }
     metrics.update({ ...metrics.draft, [channel]: next });
   };
-
   /** step(key, delta): 미팅예약 +1 → 신규 슬롯 생성, -1 → 슬롯 제거 또는 API DELETE. */
-  const step = (key: keyof ChannelDailyRowMetrics, delta: number) => {
+  const step = (key: MetricKey, delta: number) => {
     const ch = activeChannel;
     const cur = metrics.draft[ch];
     const cur2 = cur[key];
-
+    if (delta < 0 && cur2 + delta < metricMinimum(cur, key)) {
+      showToast("DB관리시트 자동 집계는 DB관리시트에서 변경해 주세요");
+      return;
+    }
     if (key === "meetingReservation") {
       if (delta > 0) {
         if (cur2 >= cur.contactProgress) {
@@ -202,7 +191,6 @@ export default function ContactPage() {
       }
       return;
     }
-
     if (key === "contactProgress" && delta < 0) {
       const cards = meetingCardCount(ch);
       if (cur2 + delta < cards) {
@@ -212,7 +200,6 @@ export default function ContactPage() {
         return;
       }
     }
-
     // 현수막 게시(production): 재고 0 이면 + 불가(ADR-0025).
     if (ch === "현수막" && key === "production" && delta > 0) {
       if ((dayQuery.data?.bannerStockBase ?? 0) - cur2 <= 0) {
@@ -224,8 +211,10 @@ export default function ContactPage() {
     adjustMetric(ch, key, delta);
   };
 
-  const setVal = (key: keyof ChannelDailyRowMetrics, value: number) => {
-    const v = Math.max(0, value);
+  const setVal = (key: MetricKey, value: number) => {
+    const minimum = metricMinimum(metrics.draft[activeChannel], key);
+    if (value < minimum) showToast("DB관리시트 자동 집계는 DB관리시트에서 변경해 주세요");
+    const v = Math.max(minimum, value);
     if (key === "contactProgress") {
       const cards = meetingCardCount(activeChannel);
       if (v < cards) {
@@ -431,6 +420,7 @@ export default function ContactPage() {
           dirty={metrics.dirty} onSave={metrics.flush} onRetry={metrics.retry} />
         </div>
         <div className="min-w-0">
+        <ContactDbLeads date={date} channel={activeChannel} />
         <MeetingSlotList
           slots={allSlots}
           reservationDate={date}

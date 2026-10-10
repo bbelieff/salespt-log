@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+const {outputFiles}=await build({entryPoints:['tests/browser/db-sheet/model.ts'],bundle:true,platform:'node',format:'esm',write:false});
+const m=await import('data:text/javascript;base64,'+Buffer.from(outputFiles[0].text).toString('base64'));
+const rows=m.parse(m.tsvSample);assert.equal(rows[0].funds,'5,000만원');assert.equal(rows[0].phone,'010-0000-2001');assert.equal(rows[0].arrears,'미확인');
+for(const outcome of ['부재','단순거절','재통화'])assert.equal(m.recordContact(m.blank(),outcome,'2026-10-10').first,'');
+let row=m.recordContact(m.blank(),'컨택진행','2026-10-08');assert.equal(m.recordContact(row,'단순거절','2026-10-10').first,'2026-10-08');
+for(const stage of ['미팅예약','실무진행'])assert.equal(m.recordContact({...row,stage},'재통화','2026-10-10').stage,stage);
+assert.equal(m.duplicate(m.initial[0],m.initial),true);
+console.log('PASS: 10 assertions (TSV money, leading zero, unknown arrears, consultation dates, stage preservation, duplicate)');

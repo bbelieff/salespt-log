@@ -80,6 +80,8 @@ export interface ChannelDailyRowMetrics {
   inflow: number;
   contactProgress: number;
   meetingReservation: number;
+  dbSheetInflow?: number;
+  dbSheetContacts?: number;
 }
 
 const EMPTY_METRICS: ChannelDailyRowMetrics = {
@@ -277,6 +279,8 @@ export async function saveContactMetrics(
         channel,
         production: m.production,
         inflow: m.inflow,
+        dbSheetInflow: m.dbSheetInflow,
+        dbSheetContacts: m.dbSheetContacts,
         contactProgress: m.contactProgress,
         meetingReservation: cardCount[channel], // 카드 수 = 진실
       }),

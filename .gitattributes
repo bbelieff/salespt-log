@@ -27,3 +27,7 @@
 # Windows 배치 스크립트는 CRLF 유지(현재 레포에 없지만 향후 추가 대비 안전판)
 *.bat   text eol=crlf
 *.cmd   text eol=crlf
+
+# 0008 was applied from the reviewed Windows artifact. Freeze its exact bytes:
+# the migration ledger checksum must remain immutable across Linux checkouts.
+lib/repo/db/migrations/0008_db_sheet.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
