@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
-import { getSessionEmail, setArenaSelfView, setImpersonation, getActiveUserEmail } from "@/auth/identity";
+import {
+  getSessionEmail,
+  resolveStudentViewContext,
+  setArenaSelfView,
+  setImpersonation,
+} from "@/auth/identity";
 import { trainerStatus } from "./trainer-status";
 import { RecruitmentError } from "./trainer-recruitment";
 import { parseViewMemory, safeRolePath, type ViewRole } from "@/util/role-view";
@@ -10,7 +15,8 @@ export async function restoreRolePath(email: string): Promise<string | null> {
   if (!memory) return null;
   const state = await trainerStatus();
   if (!state || (memory.role === "trainer" ? !state.canTrainer : !state.canStudent)) return null;
-  if ((await getActiveUserEmail()).toLowerCase() !== email.toLowerCase()) return state.canTrainer ? "/trainer" : null;
+  const context = await resolveStudentViewContext();
+  if (!context.ok || context.mode === "assigned") return state.canTrainer ? "/trainer" : null;
   return memory[memory.role] ?? (memory.role === "student" ? "/dashboard" : "/trainer");
 }
 export async function changeRoleView(raw: unknown) {
@@ -30,6 +36,15 @@ export async function changeRoleView(raw: unknown) {
   if (path) memory[input.role] = path;
   memory.role = input.role;
   if (input.switch === true) {
+    if (input.role === "student") {
+      const context = await resolveStudentViewContext({
+        selfViewRequested: true,
+        ignoreTarget: true,
+      });
+      if (!context.ok || context.mode === "assigned") {
+        throw new RecruitmentError(403,"이 화면을 사용할 수 없습니다.");
+      }
+    }
     await setImpersonation(null);
     await setArenaSelfView(input.role === "student");
   }

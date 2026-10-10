@@ -7,7 +7,7 @@
 import { registry } from "@/config";
 import { User } from "@/types";
 import { readRange, sheetsClient } from "./sheets-client";
-import { listAllUsers, invalidateRegistry, cachedRegistryRows, parseRow } from "./users";
+import { listAllUsers, invalidateRegistry } from "./users";
 import { pickActiveArenaRow } from "./user-priority";
 import { nameMatches } from "./name-match";
 import { mirrorUserCells } from "./db/registry-mirror";
@@ -83,13 +83,18 @@ export async function resolveOwnArenaSheetId(
   email: string,
   _name: string,
 ): Promise<string | null> {
-  const byEmail = await findActiveArenaRowByEmail(email);
-  if (byEmail?.spreadsheetId) return byEmail.spreadsheetId;
-  // A newly chosen application name must never unlock somebody else's student record.
-  // Preserve name fallback only for a pre-existing trusted registry trainer row.
-  const raw = await cachedRegistryRows();
-  const legacy = raw.map(parseRow).find(u => u?.email.toLowerCase() === email.toLowerCase() && u.role === "trainer" && u.status === "active");
-  return legacy?.name ? (await findArenaSheetIdByName(legacy.name)) ?? null : null;
+  const lc = email.trim().toLowerCase();
+  const candidates = (await listAllUsers()).filter(
+    (u) =>
+      u.email.toLowerCase() === lc &&
+      u.role === "trainee" &&
+      u.status === "active" &&
+      isArenaCohort(u.cohort) &&
+      !!u.spreadsheetId,
+  );
+  // 자기보기 권한은 이메일로 결박된 현재 활성 아레나 행이 정확히 하나일 때만.
+  // 이름 폴백·보관 행·중복 후보는 다른 사람/옛 시트를 열 수 있어 fail-closed 한다.
+  return candidates.length === 1 ? candidates[0]!.spreadsheetId : null;
 }
 
 /** 같은 email 의 archived 행 — "이전 N기 일지 보기" 링크용 (carryover §1). */

@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   getSessionEmail: vi.fn(), getEffectiveRole: vi.fn(), isArenaSelfView: vi.fn(),
-  findUserByEmail: vi.fn(), signIn: vi.fn(), restoreRolePath: vi.fn(),
+  resolveStudentViewContext: vi.fn(), isAdminEmail: vi.fn(), findUserByEmail: vi.fn(), signIn: vi.fn(), restoreRolePath: vi.fn(),
 }));
 vi.stubGlobal("React", React);
 vi.mock("@/auth", () => ({ auth: (handler: unknown) => handler }));
@@ -17,6 +17,7 @@ vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Erro
 vi.mock("@/components/auth/WebviewWarning", () => ({ default: () => null }));
 
 import HomePage from "@/app/page";
+import AppLayout from "@/app/(app)/layout";
 import LoginScene from "@/components/auth/LoginScene";
 import middleware from "@/middleware";
 
@@ -28,6 +29,12 @@ describe("recruitment login entry", () => {
     mocks.getEffectiveRole.mockResolvedValue({ role: "trainee", status: "active" });
     mocks.findUserByEmail.mockResolvedValue({ role: "trainee", status: "active" });
     mocks.isArenaSelfView.mockResolvedValue(false);
+    mocks.isAdminEmail.mockReturnValue(false);
+    mocks.resolveStudentViewContext.mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: "student_target_required",
+    });
   });
 
   it("preserves invitation path and query when an unauthenticated user hits middleware", async () => {
@@ -81,7 +88,36 @@ describe("recruitment login entry", () => {
   ])("preserves ordinary %s landing (own-view=%s)", async (role, ownView, destination) => {
     mocks.getEffectiveRole.mockResolvedValue({ role, status: "active" });
     mocks.isArenaSelfView.mockResolvedValue(ownView);
+    mocks.resolveStudentViewContext.mockResolvedValue(
+      ownView
+        ? { ok: true, mode: "arena", email: "student@example.test", sheetOverride: "sheet" }
+        : { ok: false, status: 403, code: "student_target_required" },
+    );
     await expect(HomePage({})).rejects.toThrow(`redirect:${destination}`);
+  });
+
+  it("does not let a stale raw self flag restore a revoked student view", async () => {
+    mocks.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    mocks.isArenaSelfView.mockResolvedValue(true);
+    mocks.resolveStudentViewContext.mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: "student_view_forbidden",
+    });
+
+    await expect(HomePage({})).rejects.toThrow("redirect:/trainer");
+  });
+
+  it("recovers a trainer with invalid target context from the app shell", async () => {
+    mocks.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    mocks.resolveStudentViewContext.mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: "invalid_student_target",
+    });
+
+    await expect(AppLayout({ children: null })).rejects.toThrow("redirect:/trainer");
+    expect(mocks.findUserByEmail).not.toHaveBeenCalled();
   });
 
   it("ignores an external destination instead of redirecting a student off-site", async () => {

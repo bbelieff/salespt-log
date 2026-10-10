@@ -6,6 +6,7 @@ const originalFreeze = process.env[FREEZE_ENV];
 
 const api = vi.hoisted(() => ({
   getActiveUserEmail: vi.fn(),
+  requireStudentViewContext: vi.fn(),
   getWritableUserEmail: vi.fn(),
   getCurrentUserEmail: vi.fn(),
   isArenaSelfView: vi.fn(),
@@ -20,6 +21,7 @@ const api = vi.hoisted(() => ({
 
 vi.mock("@/auth/identity", () => ({
   getActiveUserEmail: api.getActiveUserEmail,
+  requireStudentViewContext: api.requireStudentViewContext,
   getWritableUserEmail: api.getWritableUserEmail,
   isArenaSelfView: api.isArenaSelfView,
 }));
@@ -70,6 +72,11 @@ describe("R6 migration-freeze API compatibility", () => {
     process.env[FREEZE_ENV] = "1";
     vi.clearAllMocks();
     api.getActiveUserEmail.mockResolvedValue("owner@example.com");
+    api.requireStudentViewContext.mockResolvedValue({
+      ok: true,
+      mode: "own",
+      email: "owner@example.com",
+    });
     api.getWritableUserEmail.mockResolvedValue("owner@example.com");
     api.getCurrentUserEmail.mockResolvedValue("owner@example.com");
     api.isArenaSelfView.mockResolvedValue(false);
