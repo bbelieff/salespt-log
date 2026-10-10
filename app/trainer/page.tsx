@@ -37,6 +37,7 @@ export default async function TrainerPage() {
   const isAdmin = role === "admin";
   if (!isAdmin && role !== "trainer") redirect("/");
   if (!isAdmin && status === "pending") redirect("/trainer/apply");
+  if (!isAdmin && status !== "active") redirect("/");
 
   const trainer = await findUserByEmail(sessionEmail);
 
