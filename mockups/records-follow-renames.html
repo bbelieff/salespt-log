@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>기록 따라오기 설명</title>
+<!--
+  F 항목(#1 업체 고유번호 + #9 변경 기록) — belie 승인용 동작 전/후 설명.
+  새 화면이 없는 항목이라 목업 대신 이 설명을 승인받는다. 외부 파일·글꼴·스크립트 없음.
+  예시 업체·메모는 모두 가짜(샘플 달빛공방 등). 근거 = 코드 판독(실행 재현 전).
+-->
+<style>
+:root{
+  --bg:#f5f6fa;--surface:#fff;--sunken:#f8fafc;--ink:#0f172a;--muted:#64748b;--faint:#94a3b8;--line:#e2e8f0;
+  --accent:#1d4ed8;--accent-bg:#eff6ff;--accent-line:#bfdbfe;
+  --now:#b91c1c;--now-bg:#fef2f2;--now-line:#fecaca;
+  --after:#047857;--after-bg:#ecfdf5;--after-line:#a7f3d0;
+  --risk:#b45309;--risk-bg:#fffbeb;--risk-line:#fde68a;
+  --todo:#a16207;--todo-bg:#fef9c3;--on-solid:#fff;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 4px 14px -8px rgba(15,23,42,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1020;--surface:#141a2c;--sunken:#0f1526;--ink:#e5e7eb;--muted:#9aa6bd;--faint:#6b7790;--line:#263049;
+    --accent:#93b4ff;--accent-bg:rgba(59,130,246,.14);--accent-line:rgba(147,180,255,.35);
+    --now:#fca5a5;--now-bg:rgba(239,68,68,.12);--now-line:rgba(252,165,165,.32);
+    --after:#6ee7b7;--after-bg:rgba(16,185,129,.12);--after-line:rgba(110,231,183,.32);
+    --risk:#fcd34d;--risk-bg:rgba(245,158,11,.12);--risk-line:rgba(252,211,77,.3);
+    --todo:#fde68a;--todo-bg:rgba(234,179,8,.18);--on-solid:#0b1020;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1020;--surface:#141a2c;--sunken:#0f1526;--ink:#e5e7eb;--muted:#9aa6bd;--faint:#6b7790;--line:#263049;
+  --accent:#93b4ff;--accent-bg:rgba(59,130,246,.14);--accent-line:rgba(147,180,255,.35);
+  --now:#fca5a5;--now-bg:rgba(239,68,68,.12);--now-line:rgba(252,165,165,.32);
+  --after:#6ee7b7;--after-bg:rgba(16,185,129,.12);--after-line:rgba(110,231,183,.32);
+  --risk:#fcd34d;--risk-bg:rgba(245,158,11,.12);--risk-line:rgba(252,211,77,.3);
+  --todo:#fde68a;--todo-bg:rgba(234,179,8,.18);--on-solid:#0b1020;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 "Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;word-break:keep-all;overflow-wrap:anywhere}
+.wrap{max-width:780px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:23px;line-height:1.35;margin:6px 0 10px;letter-spacing:-.01em}
+h2{font-size:19px;margin:0 0 4px;letter-spacing:-.01em}
+h3{font-size:16px;margin:0 0 6px}
+p{margin:0 0 10px}
+ul{margin:6px 0 0;padding-left:20px}
+li{margin:3px 0}
+b,strong{font-weight:700}
+.eyebrow{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.lead{color:var(--muted);margin:0 0 14px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.tag{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.tag.ok{color:var(--after);border-color:var(--after-line);background:var(--after-bg)}
+.tag.ask{color:var(--accent);border-color:var(--accent-line);background:var(--accent-bg)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.summary{border-left:4px solid var(--accent)}
+.summary ol{margin:8px 0 0;padding-left:22px}
+.summary li{margin:6px 0}
+.toc{display:flex;gap:6px;overflow-x:auto;padding:12px 0 4px;margin:0 0 4px;scrollbar-width:none}
+.toc a{flex:0 0 auto;font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+section{margin-top:36px;scroll-margin-top:12px}
+.sec-sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 12px;box-shadow:var(--shadow);scroll-margin-top:12px}
+.card.now{border-top:4px solid var(--now)}
+.card.after{border-top:4px solid var(--after)}
+.card-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.num{flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--on-solid);background:var(--muted)}
+.now .num{background:var(--now)}
+.after .num{background:var(--after)}
+.path{font-size:13px;color:var(--muted);margin:0 0 8px}
+.path b{color:var(--ink);font-weight:600}
+.ex{font-size:13px;background:var(--sunken);border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin:0 0 8px}
+.sub-h{font-size:13px;font-weight:700;margin:12px 0 0;color:var(--muted)}
+.jump{display:inline-block;margin-top:10px;font-size:13px;font-weight:600;text-decoration:none}
+.now .jump{color:var(--after)}
+.after .jump{color:var(--now)}
+.label{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;margin-right:4px;vertical-align:1px}
+.label.now{background:var(--now-bg);color:var(--now);border:0}
+.label.after{background:var(--after-bg);color:var(--after);border:0}
+.term{border-bottom:1px dotted var(--faint)}
+.note{font-size:13px;color:var(--muted);margin-top:8px}
+/* 그림(실제 화면 아님) */
+.sketch{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--sunken);padding:10px}
+.sketch-cap{font-size:11px;color:var(--faint);margin:0 0 6px}
+.pair{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:620px){.pair{grid-template-columns:1fr 1fr}}
+.mini{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px}
+.mini-top{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+.badge{font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;white-space:nowrap}
+.badge.none{background:var(--sunken);color:var(--faint);border:1px solid var(--line)}
+.badge.todo{background:var(--todo-bg);color:var(--todo)}
+.badge.state{background:var(--accent-bg);color:var(--accent)}
+.empty{color:var(--faint);font-size:12px;text-align:center;border:1px dashed var(--line);border-radius:8px;padding:10px 6px}
+.rec{display:flex;gap:6px;align-items:baseline;font-size:12px;padding:3px 0;border-top:1px solid var(--line)}
+.mini-top+.rec{border-top:0}
+.rec small{color:var(--faint)}
+details.hist{margin-top:6px}
+details.hist>summary{cursor:pointer;font-size:12px;color:var(--muted);list-style:revert}
+.hist-list{margin:6px 0 0;padding:8px 10px;background:var(--sunken);border-radius:8px;font-size:12px}
+.hist-list div{padding:2px 0}
+.reason{white-space:pre-wrap;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);color:var(--muted)}
+.field{border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12px;background:var(--surface)}
+.field.ph{color:var(--faint)}
+.btnlike{display:inline-block;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:7px;padding:3px 9px;background:var(--surface)}
+.dialog{font-size:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px;white-space:pre-wrap}
+/* 목록형 */
+.keep{list-style:none;padding:0;margin:0}
+.keep li{position:relative;padding:9px 0 9px 28px;border-top:1px solid var(--line)}
+.keep li:first-child{border-top:0}
+.keep li::before{content:"✓";position:absolute;left:4px;top:9px;font-weight:700;color:var(--after)}
+/* 작업 순서 */
+.steps{list-style:none;margin:0;padding:0;position:relative}
+.steps>li{position:relative;padding:0 0 16px 40px;margin:0}
+.steps>li::before{content:"";position:absolute;left:13px;top:28px;bottom:0;width:2px;background:var(--line)}
+.steps>li:last-child::before{display:none}
+.dot{position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-line)}
+.step-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.step-card h3{margin-bottom:4px}
+.kv{display:grid;grid-template-columns:72px 1fr;gap:2px 8px;font-size:13px;margin-top:6px}
+.kv dt{color:var(--muted);font-weight:600}
+.kv dd{margin:0}
+.callout{border:1px solid var(--risk-line);background:var(--risk-bg);border-radius:12px;padding:12px 14px;margin:0 0 16px 40px;font-size:14px}
+.callout b{color:var(--risk)}
+.rule{font-size:13px;background:var(--accent-bg);border:1px solid var(--accent-line);border-radius:10px;padding:10px 12px;margin:0 0 16px}
+/* 위험 */
+.risk{border-left:4px solid var(--risk)}
+.risk .kv{grid-template-columns:84px 1fr}
+/* 질문 */
+.q{border-top:4px solid var(--accent)}
+.opt{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px}
+.opt.rec-opt{border-color:var(--after-line);background:var(--after-bg)}
+.opt-h{display:flex;align-items:center;gap:6px;font-weight:700;margin-bottom:4px}
+.pill{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--after);color:var(--on-solid)}
+.opt ol{margin:4px 0 0;padding-left:20px}
+.later{font-size:13px;margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--sunken);border:1px solid var(--line)}
+/* 용어·근거 */
+.gloss{display:grid;grid-template-columns:1fr;gap:6px;font-size:14px}
+@media (min-width:620px){.gloss{grid-template-columns:1fr 1fr}}
+.gloss div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.gloss b{display:block;font-size:13px}
+.gloss span{font-size:13px;color:var(--muted)}
+details.dev{margin-top:12px}
+details.dev>summary{cursor:pointer;font-weight:600;font-size:14px}
+details.dev ul{font-size:13px;color:var(--muted)}
+code{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--sunken);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+footer{margin-top:40px;font-size:12px;color:var(--faint);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">F 항목 · #1 업체 고유번호 + #9 변경 기록 · 동작 전/후 설명</div>
+  <h1>업체 이름을 고쳐도 기록이 따라오고, 지난 기록은 지워지지 않게</h1>
+  <p class="lead">새 화면은 없어요. 지금 쓰는 화면에서 <b>사라진 것처럼 보이던 기록</b>이 그대로 보이게 바뀌어요. 예시 업체는 모두 가짜(샘플 달빛공방)예요.</p>
+  <div class="tags">
+    <span class="tag ok">새 화면 없음</span>
+    <span class="tag ok">작은 접이식 줄 2곳만 추가</span>
+    <span class="tag">구글 시트 열 추가 없음</span>
+    <span class="tag ask">belie 결정 2가지 · 답 없으면 권장안대로</span>
+  </div>
+  <div class="box summary">
+    <h3>결론 먼저</h3>
+    <ol>
+      <li>업체마다 처음 생길 때 <b>업체 고유번호(=주민번호처럼 바뀌지 않는 번호)</b>를 붙이고, 기록은 이름 대신 이 번호로 찾아요. 업체명·계약일을 고쳐도 Todo 및 History, 날짜 배지, 업체정보, 계정 보관함이 따라와요.</li>
+      <li>미팅 상태가 바뀔 때마다 미팅 카드 안 <b>「지난 기록」</b>에 날짜와 「이전 → 이후」가 쌓여요. 결과를 되돌려도 사유가 지워지지 않아요.</li>
+      <li>DB관리시트에서 같은 날 여러 번 상담을 기록해도 상담메모 아래 <b>「지난 상담 기록」</b>에 모두 남아요. 컨택진행 숫자는 지금처럼 하루 1건으로 세요.</li>
+      <li>DB관리시트 상담 기록용 새 표는 <b>표를 먼저 만들고 확인한 뒤에</b> 그 표를 쓰는 기능을 내보내요. 상담 저장이 잠깐이라도 막히는 일을 피하려는 순서예요.</li>
+    </ol>
+  </div>
+  <nav class="toc" aria-label="목차">
+    <a href="#now">1. 지금</a><a href="#after">2. 바뀐 뒤</a><a href="#keep">3. 안 바뀌는 것</a><a href="#order">4. 작업 순서</a><a href="#risk">5. 위험·되돌리기</a><a href="#ask">6. 물을 것</a>
+  </nav>
+</header>
+
+<!-- ───────────────── 1. 지금 ───────────────── -->
+<section id="now">
+  <h2><span class="label now">지금</span>지금 무슨 일이 일어나나</h2>
+  <p class="sec-sub">기록은 지워진 게 아니라 <b>옛 이름표에 묶여 안 보이는</b> 경우가 대부분이에요. 일부(되돌리기 사유, 같은 날 상담)는 실제로 지워져요.</p>
+
+  <article class="card now" id="now-1">
+    <div class="card-head"><span class="num">1</span><h3>실무/수납에서 업체명이나 계약일을 고칠 때</h3></div>
+    <p class="path">실무/수납 › 업체 카드 › <b>✎ 계약정보 수정</b></p>
+    <p class="ex">예: 업체명 「샘플 달빛공방」 → 「샘플 달빛공방(주)」</p>
+    <ul>
+      <li>그 카드의 <b>Todo 및 History 목록이 텅 비어</b> 보여요.</li>
+      <li>업체 목록의 날짜 배지가 <b>「D?」·「Todo·History 없음」</b>으로 바뀌어요.</li>
+      <li>대시보드 「전체 진행건」에서도 할 일이 없는 업체로 분류돼요.</li>
+      <li>「영업기록 없이 추가」한 업체라면 <b>계정 보관함도 비어</b> 보여요.</li>
+    </ul>
+    <p class="sub-h">계약일만 고쳤다면 여기에 더해</p>
+    <ul>
+      <li>계정 보관함이 비어 보여요(바뀐 날짜로는 원래 미팅을 못 찾아요).</li>
+      <li>이 카드에서 업체정보를 고쳐도 일정·계약의 미팅 카드에는 반영되지 않아요.</li>
+      <li>일정·계약 위쪽의 「계약」 수와 수납 합계가 어긋나요.</li>
+      <li>그 미팅을 <b>↩️ 미팅 결과 되돌리기</b> 하면 미팅만 예약으로 돌아가고 계약카드는 남아요.</li>
+      <li>반대로 실무/수납에서 계약카드를 지우면 미팅은 「계약」으로 남아요.</li>
+    </ul>
+    <a class="jump" href="#after-1">바뀐 뒤 보기 →</a>
+  </article>
+
+  <article class="card now" id="now-2">
+    <div class="card-head"><span class="num">2</span><h3>컨택관리·일정·계약에서 미팅을 손볼 때</h3></div>
+    <p class="path">일정·계약 › 미팅 카드 › 날짜·업체명 수정 / <b>📅 변경</b></p>
+    <ul>
+      <li><b>계약된 미팅의 날짜나 업체명을 고치면</b> 계약카드의 계약일은 따라가지만, Todo 및 History는 사라진 것처럼 보여요. 날짜만 바꾸면 업체정보가 옛 날짜 이름표에 남아요.</li>
+      <li><b>예약 미팅을 📅 변경으로 다른 날로 옮기면</b> 새 카드가 「(변경) 샘플 달빛공방」이라는 새 카드로 생겨서, 원래 카드에 넣어 둔 계정 보관함이 빈 것처럼 보여요.</li>
+      <li>실무/수납에서 계약일을 따로 고친 뒤 일정·계약에서 그 미팅의 업체명만 고치면, <b>따로 고친 계약일이 미팅 날짜로 조용히 되돌아가요.</b></li>
+    </ul>
+    <a class="jump" href="#after-2">바뀐 뒤 보기 →</a>
+  </article>
+
+  <article class="card now" id="now-3">
+    <div class="card-head"><span class="num">3</span><h3>미팅 결과를 되돌리거나 다시 기록할 때</h3></div>
+    <p class="path">일정·계약 › 미팅 카드 › <b>↩️ 미팅 결과 되돌리기</b></p>
+    <ul>
+      <li>완료·취소·변경을 예약으로 되돌리면 <b>적어 둔 사유가 통째로 지워져요.</b> 확인창에도 「완료 → 예약 (사유 초기화)」라고 나와요.</li>
+      <li>언제 어떤 상태였는지 어디에도 남지 않아요.</li>
+      <li>완료·취소를 다시 기록할 때 입력칸이 <b>예전 사유로 미리 채워져</b> 있어서, 그대로 저장하면 같은 사유가 「2회차」로 한 번 더 붙어요. 지금은 되돌리기가 사유를 지워서 드물지만, 사유를 남기게 바꾸면 자주 생기므로 함께 고쳐요.</li>
+    </ul>
+    <a class="jump" href="#after-3">바뀐 뒤 보기 →</a>
+  </article>
+
+  <article class="card now" id="now-4">
+    <div class="card-head"><span class="num">4</span><h3>DB관리시트에서 같은 날 상담을 두 번 기록할 때</h3></div>
+    <p class="path">DB관리시트 › 업체 상세 › 컨택내용 › <b>이 날짜로 상담 기록</b></p>
+    <p class="ex">예: 같은 업체에 오전 「부재」, 오후 「재통화」</p>
+    <ul>
+      <li>오전 기록이 <b>오후 기록에 덮여 사라져요.</b></li>
+      <li>지난 날의 상담 결과·메모는 화면 어디에도 나오지 않아요.</li>
+    </ul>
+    <a class="jump" href="#after-4">바뀐 뒤 보기 →</a>
+  </article>
+</section>
+
+<!-- ───────────────── 2. 바뀐 뒤 ───────────────── -->
+<section id="after">
+  <h2><span class="label after">바뀐 뒤</span>같은 상황, 바뀐 뒤</h2>
+  <p class="sec-sub">번호는 위 1~4와 같아요. 그림은 설명용이고 실제 화면 모양은 구현 뒤 합성 데이터 화면으로 다시 보여 드려요.</p>
+
+  <article class="card after" id="after-1">
+    <div class="card-head"><span class="num">1</span><h3>업체명·계약일을 고쳐도 그대로 보여요</h3></div>
+    <ul>
+      <li>Todo 및 History 목록, 날짜 배지, 대시보드 「전체 진행건」 분류가 <b>고치기 전과 같아요.</b></li>
+      <li>계정 보관함 항목도 그대로 보여요(「영업기록 없이 추가」한 업체 포함).</li>
+      <li>계약일만 고친 경우의 다섯 가지(보관함, 업체정보 반영, 일정·계약 위쪽 계약 수·수납 합계, 결과 되돌리기 때 계약카드 정리, 계약카드 지울 때 미팅 되돌림)도 모두 <b>같은 업체로 바르게 찾아요.</b></li>
+    </ul>
+    <div class="sketch" aria-label="그림: 업체 카드 전과 후">
+      <p class="sketch-cap">그림 · 업체명을 고친 직후의 업체 카드 (실제 화면 아님)</p>
+      <div class="pair">
+        <div class="mini">
+          <div class="mini-top"><span><span class="label now">지금</span><b>샘플 달빛공방(주)</b></span><span class="badge none">D?</span></div>
+          <div class="empty">Todo 및 History가 비어 보임</div>
+        </div>
+        <div class="mini">
+          <div class="mini-top"><span><span class="label after">바뀐 뒤</span><b>샘플 달빛공방(주)</b></span><span class="badge todo">Todo D-2</span></div>
+          <div class="rec"><span class="badge todo">Todo</span><span>서류 보완 요청 전화</span><small>10/14</small></div>
+          <div class="rec"><span class="badge none">History</span><span>1차 서류 접수</span><small>10/10</small></div>
+        </div>
+      </div>
+    </div>
+    <a class="jump" href="#now-1">← 지금 모습</a>
+  </article>
+
+  <article class="card after" id="after-2">
+    <div class="card-head"><span class="num">2</span><h3>미팅을 손봐도 같은 업체로 이어져요</h3></div>
+    <ul>
+      <li>계약된 미팅의 날짜·업체명을 고쳐도 <b>Todo 및 History와 업체정보가 따라와요.</b></li>
+      <li><b>📅 변경</b>으로 옮겨 생긴 새 카드와 원래 카드는 <b>같은 계정 보관함</b>을 봐요. 두 카드에 따로 넣어 둔 항목이 있었다면 한곳에 모아 보여 줘요(같은 항목은 한 번만).</li>
+      <li>업체명만 고치면 계약일은 건드리지 않아요. <b>실제로 바꾼 칸만</b> 반영해요.</li>
+    </ul>
+    <a class="jump" href="#now-2">← 지금 모습</a>
+  </article>
+
+  <article class="card after" id="after-3">
+    <div class="card-head"><span class="num">3</span><h3>되돌려도 사유가 남고, 바뀐 날짜가 쌓여요</h3></div>
+    <ul>
+      <li>미팅 카드를 펼치면 사유 아래에 접힌 줄 <b>「지난 기록 N건」</b>이 생겨요. 누르면 날짜와 「이전 → 이후」가 최신순으로 보여요. 기록도 사유도 없으면 아무것도 안 보여요.</li>
+      <li>되돌리기 확인창은 「완료 → 예약 (사유는 '지난 기록'에 남아요)」로 바뀌어요. 계약을 되돌릴 때는 「계약카드 삭제」 안내 뒤에 「지난 기록은 남아요」가 붙어요.</li>
+      <li>완료·취소 입력칸은 <b>빈 칸으로 열려요.</b> 저장하면 새 줄 하나(「2회차 · 10/12 · …」)만 붙어요. 빠른 선택 버튼은 그대로예요.</li>
+      <li>되돌린 예약 미팅의 <b>구글 캘린더 메모에는 지난 사유가 들어가지 않아요</b>(예약 메모만).</li>
+      <li>📅 변경으로 생긴 새 카드는 지난 기록 0건으로 시작해요. 원래 카드의 기록은 원래 카드에 남아요.</li>
+    </ul>
+    <div class="sketch">
+      <p class="sketch-cap">그림 · 완료였다가 예약으로 되돌린 미팅 카드 — 「지난 기록 2건」을 눌러 보세요 (실제 화면 아님)</p>
+      <div class="mini">
+        <div class="mini-top"><b>샘플 달빛공방</b><span class="badge state">예약</span></div>
+        <details class="hist">
+          <summary>지난 기록 2건</summary>
+          <div class="hist-list">
+            <div>10월 10일 · 완료 → 예약 (되돌림)</div>
+            <div>10월 8일 · 예약 → 완료</div>
+            <div class="reason">사유: 10/8 · 예산 부족, 다음 분기 재검토</div>
+          </div>
+        </details>
+      </div>
+      <div class="pair" style="margin-top:8px">
+        <div class="dialog"><span class="label now">지금</span> 확인창
+완료 → 예약 (사유 초기화)</div>
+        <div class="dialog"><span class="label after">바뀐 뒤</span> 확인창
+완료 → 예약 (사유는 '지난 기록'에 남아요)</div>
+      </div>
+      <div class="pair" style="margin-top:8px">
+        <div class="mini"><span class="label now">지금</span> 완료 입력칸
+          <div class="field" style="margin-top:6px">10/8 · 예산 부족, 다음 분기 재검토</div>
+          <div class="note" style="margin-top:4px">예전 사유가 미리 들어 있음 → 저장하면 같은 내용이 「2회차」로 또 붙음</div>
+        </div>
+        <div class="mini"><span class="label after">바뀐 뒤</span> 완료 입력칸
+          <div class="field ph" style="margin-top:6px">이번 미팅 사유를 적어 주세요</div>
+          <div class="note" style="margin-top:4px">빈 칸으로 열림 → 새 줄 「2회차 · 10/12 · …」 하나만 붙음</div>
+        </div>
+      </div>
+    </div>
+    <a class="jump" href="#now-3">← 지금 모습</a>
+  </article>
+
+  <article class="card after" id="after-4">
+    <div class="card-head"><span class="num">4</span><h3>같은 날 두 번 기록해도 둘 다 남아요</h3></div>
+    <ul>
+      <li>상담메모 칸 바로 아래 <b>「지난 상담 기록 N건」</b>에 두 번 모두 날짜·결과·메모와 함께 보여요. 처음부터 펼쳐져 있고, 최신 5건을 보여 준 뒤 「더 보기」로 나머지를 펼쳐요.</li>
+      <li>미팅을 잡은 날은 「미팅 예약」 줄로 남아요.</li>
+      <li>같은 내용을 실수로 연달아 눌러도 <b>한 줄만</b> 늘어요.</li>
+      <li><b>컨택진행 숫자는 하루 1건 그대로</b>예요. 기록만 늘고 집계는 안 바뀌어요.</li>
+      <li>이미 덮어써진 예전 기록도, 저장할 때마다 따로 남겨 둔 사본(=사진첩)에서 꺼내 채울 계획이에요. 몇 건이 되살아날지는 <span class="term">모의 실행(=실제로 바꾸지 않고 숫자만 세 보기)</span> 때 확인해요.</li>
+    </ul>
+    <div class="sketch">
+      <p class="sketch-cap">그림 · DB관리시트 컨택내용 칸 (실제 화면 아님)</p>
+      <div class="mini">
+        <div style="font-size:12px;font-weight:600;margin-bottom:4px">상담메모</div>
+        <div class="field">오후 3시에 다시 연락 달라고 함</div>
+        <details class="hist" open>
+          <summary>지난 상담 기록 3건</summary>
+          <div class="hist-list">
+            <div><b>10월 12일 · 재통화</b><br>오후 3시에 다시 연락 달라고 함</div>
+            <div style="margin-top:6px"><b>10월 12일 · 부재</b><br><span style="color:var(--faint)">메모 없음</span></div>
+            <div style="margin-top:6px"><b>10월 8일 · 미팅 예약</b><br>사무실 방문 미팅 희망</div>
+          </div>
+        </details>
+      </div>
+    </div>
+    <a class="jump" href="#now-4">← 지금 모습</a>
+  </article>
+</section>
+
+<!-- ───────────────── 3. 안 바뀌는 것 ───────────────── -->
+<section id="keep">
+  <h2>안 바뀌는 것</h2>
+  <p class="sec-sub">이번 작업으로 달라지지 않는 것들이에요.</p>
+  <div class="box">
+    <ul class="keep">
+      <li><b>화면 배치</b> — 대시보드·실무/수납·캘린더의 카드 순서와 높이 그대로. 새 페이지로 이동하는 곳도 없어요.</li>
+      <li><b>컨택진행 숫자</b> — 하루 1건으로 세는 방식 그대로.</li>
+      <li><b>구글 시트</b> — 새 열을 만들지 않고, 시트에 쓰는 내용도 그대로. 번호와 기록은 앱 저장소(DB)에만 둬요.</li>
+      <li><b>업체정보 이름표</b> — 「계약일 + 업체명」으로 붙이는 방식 그대로. 내용만 새 이름표로 따라 옮겨요.</li>
+      <li><b>업체별 통합 타임라인(#2)</b> — 만들지 않아요(belie가 거절한 대로). 기록은 지금 보던 자리(미팅 카드, 상담메모 아래)에만 보여요.</li>
+      <li><b>분할 정산 회차·자동 「지연」 상태(#5)</b> — 이번에 다루지 않아요.</li>
+      <li><b>같은 업체의 두 번째 계약</b> — Todo 및 History는 지금처럼 계약 카드별로 따로예요.</li>
+      <li><b>계정 보관함 사용법</b> — PIN, 30분 열림, 자동 저장 그대로.</li>
+      <li><b>대시보드 「전체 진행건」에서 업체로 가는 링크</b> — 이번에는 그대로 둬요.</li>
+      <li><b>1·2·3·5기(예전 방식으로 남은 기수)</b> — 이번 범위 밖이에요. 상태 기록·상담 기록이 남지 않아요.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ───────────────── 4. 작업 순서 ───────────────── -->
+<section id="order">
+  <h2>작업 순서</h2>
+  <p class="sec-sub">한 번에 크게 바꾸지 않고 작은 묶음(PR) 7개로 나눠요. 어느 단계도 기존 기록을 지우지 않아요.</p>
+  <p class="rule">각 단계 공통: 자동 검사 통과 → 합치기(머지) → 자동 배포 성공·사이트 정상(응답 200) 확인 → 작업기록 남기기 → 다음 단계.</p>
+
+  <ol class="steps">
+    <li><span class="dot">1</span>
+      <div class="step-card">
+        <h3>약속 정하기</h3>
+        <p>업체 기록에 「업체 고유번호」 칸, 미팅에 「상태 기록」 칸을 <b>정의만</b> 추가하고 설명서·계획서를 써요.</p>
+        <dl class="kv"><dt>화면</dt><dd>변화 없음</dd><dt>주의</dt><dd>업체정보 이메일 칸(D 항목)과 같은 파일을 고쳐서, 이 단계를 먼저 단독으로 합친 뒤 D와 차례로 진행해요.</dd></dl>
+      </div>
+    </li>
+    <li><span class="dot">2</span>
+      <div class="step-card">
+        <h3>번호 붙이기 + 이름 대신 번호로 찾기</h3>
+        <p>새 계약은 처음 생길 때 번호를 받아요. 이름·계약일을 고치기 <b>직전에</b> 옛 이름 기준 번호를 고정(=도장 찍기)해요. Todo 및 History·날짜 배지·전체 진행건·업체정보·일정·계약 위쪽 합계·되돌리기 짝 찾기가 번호를 먼저 보고, 번호가 없으면 지금처럼 이름으로 찾아요.</p>
+        <dl class="kv"><dt>화면</dt><dd>위 1·2번 상황이 고쳐짐(보관함 제외)</dd><dt>확인</dt><dd>이름·계약일을 고친 뒤에도 Todo 수·배지·합계가 같음</dd></dl>
+      </div>
+    </li>
+    <li><span class="dot">3</span>
+      <div class="step-card">
+        <h3>기존 업체에 번호 채우기</h3>
+        <p><span class="term">백필(=비어 있는 칸 채우기)</span>을 <b>모의 실행</b>부터 해요. 「부여 예정 / 이미 있음 / 번호 겹쳐 건너뜀 / 연결 못 찾은 할 일」 건수만 작업기록에 남긴 뒤 실제 적용해요.</p>
+        <dl class="kv"><dt>규칙</dt><dd>빈 칸에만 추가 · 시트 0건 · 이미 있는 번호 그대로 · 애매하면 추측하지 않고 건너뜀 · 업체명·메모는 기록에 안 남김</dd><dt>확인</dt><dd>같은 명령을 다시 돌리면 0건</dd></dl>
+      </div>
+    </li>
+    <li><span class="dot">4</span>
+      <div class="step-card">
+        <h3>계정 보관함이 번호를 따라오게</h3>
+        <p>보관함에 겹치지 않는 <b>새 서랍(번호 기준)</b>을 둬요. 새 서랍이 아직 없으면 옛 서랍들(미팅 카드별·이름별)을 읽어 합쳐 보여 주고, 저장은 새 서랍에만 해요. 이름을 고치기 직전에는 옛 서랍 내용을 새 서랍으로 복사해 둬요.</p>
+        <dl class="kv"><dt>화면</dt><dd>위 1·2번의 보관함 문제가 고쳐짐</dd><dt>확인</dt><dd>새 서랍을 비우고 저장하면 옛 항목이 다시 나타나지 않음</dd></dl>
+      </div>
+    </li>
+    <li><span class="dot">5</span>
+      <div class="step-card">
+        <h3>미팅 「지난 기록」 + 사유 안 지우기</h3>
+        <p>미팅 상태가 바뀔 때 기록 한 줄 추가, 되돌리기에서 사유 유지, 완료·취소 입력칸 빈 칸, 캘린더 메모 정리. 미팅 기록 안에 칸을 더하는 것이라 <b>새 표가 필요 없어요.</b></p>
+        <dl class="kv"><dt>화면</dt><dd>위 3번 상황이 고쳐짐</dd></dl>
+      </div>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <b>여기서 순서가 중요해요.</b> 합치면 자동 배포가 바로 돌고, DB에 새 표를 만드는 작업(DB Migrate)은 <b>합친 뒤에만</b> 돌릴 수 있어요. 새 표와 그 표를 쓰는 기능을 한 번에 합치면, 배포가 끝나고 표가 생기기 전까지 <b>DB관리시트에서 상담 저장이 막혀요.</b> 그래서 표만 먼저 → 만들고 확인 → 기능 순서로 나눠요.
+  </div>
+
+  <ol class="steps">
+    <li><span class="dot">6a</span>
+      <div class="step-card">
+        <h3>상담 기록용 새 표 만들기 (표만)</h3>
+        <p>새 표 설계도와 시험만 합쳐요. 앱은 아직 이 표를 쓰지 않으므로 배포돼도 아무것도 안 바뀌어요. 합친 뒤 DB Migrate를 <b>모의 실행 → 실제 적용</b> 순으로 돌리고, 표가 생겼는지 확인해요. 지난 기록 채우기(사진첩에서 꺼내기)도 이때 같이 해요.</p>
+        <dl class="kv"><dt>화면</dt><dd>변화 없음</dd><dt>확인</dt><dd>표 있음 · 상담 저장 정상 · 다시 돌려도 중복 없음</dd></dl>
+      </div>
+    </li>
+    <li><span class="dot">6b</span>
+      <div class="step-card">
+        <h3>상담 기록 남기기·보여 주기</h3>
+        <p>표가 있는 것을 확인한 <b>뒤에만</b> 합쳐요. 그리고 기록 남기기가 혹시 실패해도 <b>상담 저장 자체는 계속</b>되게 따로 떼어 저장해요. 표시용 기록 때문에 본래 저장이 막히면 안 되니까요.</p>
+        <dl class="kv"><dt>화면</dt><dd>위 4번 상황이 고쳐짐</dd><dt>확인</dt><dd>같은 날 두 번 기록 → 두 줄 · 컨택진행 1건 그대로</dd></dl>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<!-- ───────────────── 5. 위험·되돌리기 ───────────────── -->
+<section id="risk">
+  <h2>위험과 되돌리는 법</h2>
+  <p class="sec-sub">공통으로, 문제가 생기면 그 단계의 묶음을 <span class="term">revert(=그 변경을 취소하는 기록)</span> 한 건으로 되돌리고 자동 재배포 뒤 사이트 정상을 확인해요. 옛 이름표·옛 서랍·하루 1건 집계는 지우지 않으므로 되돌리면 지금 모습으로 돌아가요.</p>
+
+  <article class="card risk">
+    <h3>상담 기록 표보다 기능이 먼저 나가는 경우</h3>
+    <dl class="kv">
+      <dt>무엇이 걱정</dt><dd>DB관리시트에서 「이 날짜로 상담 기록」이 실패해요.</dd>
+      <dt>어떻게 막나</dt><dd>6a(표) → 적용·확인 → 6b(기능) 순서. 기록 남기기가 실패해도 상담 저장은 계속되게 함.</dd>
+      <dt>잘못되면</dt><dd>6b만 되돌리면 지금처럼 동작. 만들어 둔 표는 남아 있어도 해가 없어요.</dd>
+    </dl>
+  </article>
+
+  <article class="card risk">
+    <h3>업체 고유번호가 빈 값으로 덮이거나, 도장 찍기를 빠뜨린 경로</h3>
+    <dl class="kv">
+      <dt>무엇이 걱정</dt><dd>번호가 사라지거나 이름을 바꿀 때 번호가 달라져서 Todo가 다른 카드에 안 붙어요.</dd>
+      <dt>어떻게 막나</dt><dd>번호는 「없을 때만 쓰기」로만 저장하고, 도장 찍기를 저장 직전 한 곳에 모아요. 경로마다 시험을 두고, 3단계에서 기존 업체 번호를 모두 채워 고정해요.</dd>
+      <dt>잘못되면</dt><dd>번호가 없어도 지금처럼 이름으로 다시 찾아요. Todo의 옛 이름표도 새 이름으로 함께 고쳐 두므로, 되돌려도 지금 방식으로 계속 보여요.</dd>
+    </dl>
+  </article>
+
+  <article class="card risk">
+    <h3>기존 업체 번호 채우기가 수강생 실데이터를 건드림</h3>
+    <dl class="kv">
+      <dt>무엇이 걱정</dt><dd>여러 수강생의 기록에 한꺼번에 칸이 더해져요.</dd>
+      <dt>어떻게 막나</dt><dd>모의 실행 먼저, 건수만 기록. 빈 칸에만 추가하고 수정 시각도 바꾸지 않아요. 번호가 겹치거나 연결이 애매하면 건너뛰고 보고해요.</dd>
+      <dt>잘못되면</dt><dd>채운 칸마다 「이번 실행에서 채움」 표식을 남겨, 표식 붙은 것만 지우는 명령 한 줄로 되돌려요. 단 이 명령은 <b>채운 직후, 이름 고치기·Todo 연결이 생기기 전까지만</b> 그대로 써요. 그 뒤에는 Todo 번호까지 함께 지우는 절차로 되돌려요.</dd>
+    </dl>
+  </article>
+
+  <article class="card risk">
+    <h3>계정 보관함: 지운 비밀값이 되살아나거나, 항목이 합쳐져 보임</h3>
+    <dl class="kv">
+      <dt>무엇이 걱정</dt><dd>새 서랍에서 지운 항목이 옛 서랍에서 다시 나타나는 일. 같은 줄기의 미팅 카드 항목이 한곳에 모여 보이는 것은 의도한 변화예요.</dd>
+      <dt>어떻게 막나</dt><dd>새 서랍이 한 번이라도 저장되면 옛 서랍은 다시 보지 않아요(시험 필수). 미팅·계약을 찾지 못하면 보기는 지금 방식으로, 저장은 잠시 막아 엉뚱한 서랍에 쓰지 않게 해요.</dd>
+      <dt>잘못되면</dt><dd>4단계를 되돌리면 옛 서랍이 그대로 다시 보여요. 다만 되돌린 동안에는 새 서랍에만 저장한 항목이 안 보여요(지워지지 않아서 다시 적용하면 보여요).</dd>
+    </dl>
+  </article>
+
+  <article class="card risk">
+    <h3>업체정보: 옛 내용이 새 내용을 덮음</h3>
+    <dl class="kv">
+      <dt>무엇이 걱정</dt><dd>이름을 고치며 업체정보를 옮길 때 오래된 미팅 카드 내용이 더 최신 내용을 덮는 일.</dd>
+      <dt>어떻게 막나</dt><dd>바꾸기 직전의 업체정보를 먼저 쓰고, 그게 비었을 때만 미팅 카드 내용을 써요. 둘 다 비면 옮기지 않아요(지금처럼 시트 사본에서 읽음).</dd>
+      <dt>잘못되면</dt><dd>옮기기가 실패해도 지금처럼 시트 사본에서 읽는 상태로 돌아갈 뿐, 내용이 사라지지 않아요.</dd>
+    </dl>
+  </article>
+
+  <article class="card risk">
+    <h3>작게 남는 한계</h3>
+    <ul>
+      <li>거의 동시에 미팅 상태를 두 번 바꾸면 「지난 기록」 한 줄이 빠질 수 있어요. 다른 칸도 같은 성질이라 영향이 작다고 보고 받아들여요.</li>
+      <li>기록이 너무 많아져 미팅이 안 보이는 일을 막으려고, 보여 줄 때는 개수 제한을 두지 않고 저장할 때 최근 200건만 남겨요.</li>
+    </ul>
+  </article>
+</section>
+
+<!-- ───────────────── 6. 물을 것 ───────────────── -->
+<section id="ask">
+  <h2>belie에게 물을 것 (2가지)</h2>
+  <p class="sec-sub">둘 다 답이 없으면 권장안대로 진행하고, 나중에 바꿀 수 있어요. 어느 쪽도 데이터를 지우지 않아요.</p>
+
+  <article class="card q">
+    <h3>Q1. 계약카드를 지웠다가 같은 미팅으로 다시 계약하면, 예전 Todo 및 History를 다시 붙일까요?</h3>
+    <div class="opt rec-opt">
+      <div class="opt-h">A. 다시 붙인다 <span class="pill">권장</span></div>
+      <ol>
+        <li>지금과 같은 동작이에요. 같은 미팅이면 같은 번호가 나와요.</li>
+        <li>실수로 계약카드를 지웠다가 다시 만들면 예전 Todo 및 History가 돌아와요.</li>
+        <li>미팅에서 생긴 계약만 해당돼요. 「영업기록 없이 추가」 업체를 미팅에 연결했다가 지우고 다시 계약하면 새로 시작해요. 나중에 B로 바꿀 수 있어요.</li>
+      </ol>
+    </div>
+    <div class="opt">
+      <div class="opt-h">B. 새로 시작한다</div>
+      <ol>
+        <li>다시 계약하면 빈 목록에서 시작해요.</li>
+        <li>예전 Todo 및 History는 저장소에 남지만 그 카드에는 안 보여요.</li>
+        <li>실수로 지운 경우 기록이 안 돌아와요. 나중에 A로 바꿀 수 있어요.</li>
+      </ol>
+    </div>
+    <p class="later"><b>권장 이유:</b> 지금 수강생이 겪는 동작을 바꾸지 않고, 실수 복구가 쉬워요. <b>결정을 미루면:</b> A(권장안)로 진행해요.</p>
+  </article>
+
+  <article class="card q">
+    <h3>Q2. 같은 업체가 추가미팅으로 계약을 두 번 하면, 계정 보관함을 하나로 합칠까요?</h3>
+    <div class="opt rec-opt">
+      <div class="opt-h">A. 계약 카드마다 따로 둔다 <span class="pill">권장</span></div>
+      <ol>
+        <li>Todo 및 History도 계약별이라 같은 규칙으로 맞춰져요.</li>
+        <li>계약 카드마다 자기 보관함을 보고, 미팅 카드에서는 그 미팅과 연결된 계약의 보관함을 보여 줘요.</li>
+        <li>같은 아이디를 두 번 넣어야 할 수 있어요. 드문 경우라 영향이 작아요.</li>
+      </ol>
+    </div>
+    <div class="opt">
+      <div class="opt-h">B. 업체 하나로 합친다</div>
+      <ol>
+        <li>한 번만 넣으면 두 계약 카드 모두에서 보여요.</li>
+        <li>「같은 업체」를 판단할 규칙(이름이 같으면? 사업자번호?)이 새로 필요해서 작업이 늘어요.</li>
+        <li>이름이 같은 다른 업체가 잘못 묶이면 비밀값이 엉뚱한 카드에 보일 수 있어요.</li>
+      </ol>
+    </div>
+    <p class="later"><b>권장 이유:</b> 드문 경우이고, 비밀값이 잘못 묶이는 위험이 없어요. <b>결정을 미루면:</b> A(권장안)로 가고, 실제 사례가 생기면 다시 여쭤요.</p>
+  </article>
+</section>
+
+<!-- ───────────────── 용어·근거 ───────────────── -->
+<section id="terms">
+  <h2>이 문서의 말</h2>
+  <div class="gloss">
+    <div><b>업체 고유번호</b><span>= 주민번호처럼 업체가 처음 생길 때 받고 바뀌지 않는 번호</span></div>
+    <div><b>도장 찍기(고정)</b><span>= 이름을 바꾸기 직전, 옛 이름 기준 번호를 확정해 두는 일</span></div>
+    <div><b>백필</b><span>= 이미 있는 업체들의 빈 번호 칸을 한 번에 채우는 일</span></div>
+    <div><b>모의 실행</b><span>= 실제로 바꾸지 않고 몇 건이 바뀔지 숫자만 세 보기</span></div>
+    <div><b>새 표(DB Migrate)</b><span>= 앱 저장소에 새 장부를 만드는 작업. 합친 뒤에만 실행돼요</span></div>
+    <div><b>revert</b><span>= 이미 합친 변경을 취소하는 기록. 역사를 지우지 않고 되돌려요</span></div>
+  </div>
+
+  <div class="box" style="margin-top:16px">
+    <h3>확인한 것과 아직 아닌 것</h3>
+    <ul>
+      <li><b>확인함</b>: 위 「지금」 내용은 현재 코드를 읽어 정리했어요. 아래 개발 근거에 위치를 적었어요.</li>
+      <li><b>아직 아님</b>: 실제 화면에서 재현해 보지는 않았어요. 구현하면서 가짜 데이터 화면(폰 375px·PC 1280px)으로 확인해 보여 드려요.</li>
+      <li><b>아직 아님</b>: 지난 상담 기록이 몇 건 되살아날지, 번호 채우기가 몇 건일지는 모의 실행 전이라 몰라요.</li>
+      <li>사전 검토에서 나온 지적(순서 문제 1건, 큰 문제 9건, 작은 문제 6건)을 모두 이 순서와 막는 법에 반영했어요.</li>
+    </ul>
+    <details class="dev">
+      <summary>개발 근거 (개발자용)</summary>
+      <ul>
+        <li>업체명·계약일 수정이 Todo를 옮기지 않음: <code>lib/service/contract-payment.ts:107-178</code>, 할 일은 <code>계약일|업체명</code> 문자열로 연결 <code>lib/types/todo.ts</code>, 배지 「D?」 <code>app/(app)/payment/_components/WorkActivityBadge.tsx:24</code></li>
+        <li>보관함 키 = <code>m:&lt;미팅id&gt;</code> 또는 <code>c:&lt;계약일&gt;|&lt;업체명&gt;</code>: <code>lib/service/company-vault.ts:46-59</code></li>
+        <li>미팅 이름만 고쳐도 계약일을 미팅 날짜로 덮음: <code>lib/service/contact.ts:330-334</code> → <code>lib/repo/contract-payment-link.ts:54</code></li>
+        <li>되돌리기가 사유를 비움: <code>lib/service/contact-cascade.ts:137-148</code>, 확인창 「사유 초기화」 <code>MeetingResultCard.tsx:381-382</code></li>
+        <li>같은 날 상담 덮어씀: <code>lib/repo/db/db-sheet.ts:101-102</code>(하루 1행), 저장마다 사본 <code>:27</code>(<code>db_sheet_history</code>)</li>
+        <li>DB Migrate 「installed」는 master에서만: <code>.github/workflows/db-migrate.yml:72-73</code>, 상담 저장은 한 트랜잭션 <code>lib/repo/db/db-sheet.ts:96-107</code></li>
+        <li>설계 원본: 스펙 F-records-follow-renames(spec + review, verdict fix-needed). 새 표 번호(0009)는 머지 시점에 비어 있는 번호로 정해요.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<footer>F 항목 동작 설명 · 예시 업체·메모는 모두 가짜 · 코드 판독 기준(실행 재현 전)</footer>
+</div>
+</body>
+</html>

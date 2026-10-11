@@ -2,7 +2,7 @@
  * 업체정보 확장3 15필드 (company-info-restructure, belie 2026-09-28) — 저장 좌표·경로 회귀.
  *  ① 스키마: 15키 default "" · 옛 행(키 없음) 파싱
  *  ② 04 코덱: BO(66)~CC(80) · 기존 열(AU~BN·AT) 불변 · 옛 폭(A~BN) 행도 읽힘 · apostrophe 벗기기
- *  ③ 04 쓰기: grid 82열 보장(CD = 확장4 매출기준연도) · AU1:CD1 헤더는 빈 셀에만 · 행은 AU:CD 한 범위 · 지우기도 AU:CD
+ *  ③ 04 쓰기: grid 83열 보장(CD = 확장4 매출기준연도 · CE = 확장5 이메일) · AU1:CE1 헤더는 빈 셀에만 · 행은 AU:CE 한 범위 · 지우기도 AU:CE
  *  ④ 06: AW(48)~BK(62) 미러 · 읽기
  *  ⑤ 이월: 확장 병합·DB payload 열문자(BO~CC)·아레나 시트 쓰기 apostrophe
  *  ⑥ DB payload(열문자) → Meeting / CompanyInfo 복원
@@ -116,13 +116,13 @@ describe("② 04 코덱 좌표 BO~CC", () => {
     expect(COMPANY_EXT3_START).toBe(COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.length);
     expect(colName(COMPANY_EXT3_START)).toBe("BO");
     expect(colName(COMPANY_EXT3_START + COMPANY_FIELDS_EXT3.length - 1)).toBe("CC");
-    expect(MEETING_ROW_WIDTH).toBe(82); // + CD 확장4(매출기준연도)
+    expect(MEETING_ROW_WIDTH).toBe(83); // + CD 확장4(매출기준연도) + CE 확장5(이메일)
     expect([...COMPANY_FIELDS_EXT3]).toEqual(Object.keys(EXT3));
   });
 
   it("값은 apostrophe 텍스트로 BO~CC, AT·확장2 자리 불변", () => {
     const row = meetingToRow(BASE);
-    expect(row).toHaveLength(82);
+    expect(row).toHaveLength(83);
     expect(row[GCAL_MAP_COL]).toBe("");
     expect(row[COMPANY_EXT2_START]).toBe("'일반과세자");
     expect(row[COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.indexOf("매출증가율")]).toBe("'12%");
@@ -149,37 +149,38 @@ describe("② 04 코덱 좌표 BO~CC", () => {
 });
 
 describe("③ 04 쓰기 — grid·헤더·행·지우기", () => {
-  it("appendMeeting: grid 82열 보장, AU1:CD1 빈 헤더 셀에만 라벨, 행은 AU:CD 한 범위", async () => {
+  it("appendMeeting: grid 83열 보장, AU1:CE1 빈 헤더 셀에만 라벨, 행은 AU:CE 한 범위", async () => {
     const header = [...COMPANY_FIELDS_EXT2, "내가 적은 제목"]; // AU~BN 채움 + BO1 사용자 문구
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
       if (range.endsWith("!A2:A")) return { data: { values: [["m-a"]] } };
-      if (range.endsWith("!AU1:CD1")) return { data: { values: [header] } };
+      if (range.endsWith("!AU1:CE1")) return { data: { values: [header] } };
       throw new Error(`unexpected ${range}`);
     });
     await appendMeeting("sheet-rs-1", BASE, { mirror: false });
-    expect(ensureGridColumns).toHaveBeenCalledWith("sheet-rs-1", "04 업체관리(앱자동작성용)", 82);
+    expect(ensureGridColumns).toHaveBeenCalledWith("sheet-rs-1", "04 업체관리(앱자동작성용)", 83);
     const [hdr, rowCall] = valuesBatchUpdate.mock.calls.map(
       (c) => (c[0] as { requestBody: { data: { range: string; values: unknown[][] }[] } }).requestBody.data,
     );
     const hdrRanges = hdr!.map((d) => d.range.split("!")[1]);
     expect(hdrRanges).not.toContain("BO1"); // 사용자 문구 보존
     expect(hdrRanges).not.toContain("AU1"); // 이미 있는 라벨 보존
-    expect(hdrRanges).toHaveLength(15); // BP1~CD1
+    expect(hdrRanges).toHaveLength(16); // BP1~CE1
     expect(hdr!.find((d) => d.range.endsWith("!CC1"))!.values).toEqual([["매출증가율Y1Y"]]);
     expect(hdr!.find((d) => d.range.endsWith("!CD1"))!.values).toEqual([["매출기준연도"]]);
-    const ext = rowCall!.find((d) => d.range.endsWith("!AU3:CD3"))!;
-    expect(ext.values[0]).toHaveLength(36);
+    expect(hdr!.find((d) => d.range.endsWith("!CE1"))!.values).toEqual([["이메일"]]);
+    const ext = rowCall!.find((d) => d.range.endsWith("!AU3:CE3"))!;
+    expect(ext.values[0]).toHaveLength(37);
     expect(ext.values[0]![COMPANY_FIELDS_EXT2.length]).toBe("'포장용 필름");
     expect(rowCall!.some((d) => /!AT3/.test(d.range))).toBe(false); // gcal 맵 비접촉
   });
 
-  it("clearMeeting: AU:CD 36칸을 비우고 AT 는 건드리지 않는다", async () => {
+  it("clearMeeting: AU:CE 37칸을 비우고 AT 는 건드리지 않는다", async () => {
     valuesGet.mockResolvedValue({ data: { values: [["x"], ["m-rs-001"]] } });
     await clearMeeting("sheet-rs-2", "m-rs-001", { mirror: false });
     const data = (valuesBatchUpdate.mock.calls[0]![0] as { requestBody: { data: { range: string; values: unknown[][] }[] } })
       .requestBody.data;
-    const ext = data.find((d) => d.range.endsWith("!AU3:CD3"))!;
-    expect(ext.values[0]).toEqual(Array(36).fill(""));
+    const ext = data.find((d) => d.range.endsWith("!AU3:CE3"))!;
+    expect(ext.values[0]).toEqual(Array(37).fill(""));
     expect(data.some((d) => /!AT3/.test(d.range))).toBe(false);
   });
 });
@@ -190,7 +191,7 @@ describe("④ 06 업체정보 AW~BK", () => {
   it("행 빌더: 확장3 = AV 다음 AW(48)부터 15칸", () => {
     const row = companyInfoToArchiveRow("예시상사", "2026-09-28", BASE.업체정보, "T");
     expect(colName(AW)).toBe("AW");
-    expect(row).toHaveLength(64); // + BL 확장4
+    expect(row).toHaveLength(65); // + BL 확장4 + BM 확장5
     expect(row[AW - 1]).toBe("'12%"); // AV = 옛 매출증가율 자리 그대로
     COMPANY_FIELDS_EXT3.forEach((f, i) => expect(row[AW + i]).toBe(EXT3[f] ? `'${EXT3[f]}` : ""));
     expect(colName(62)).toBe("BK");
@@ -199,9 +200,9 @@ describe("④ 06 업체정보 AW~BK", () => {
   it("읽기: E~BK 에서 확장3 복원, 옛 48열 행은 ''", async () => {
     const full = userEntered(companyInfoToArchiveRow("예시상사", "2026-09-28", BASE.업체정보, "T"));
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.endsWith("!A1:BL1")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.endsWith("!A1:BM1")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("!C2:C")) return { data: { values: [["2026-09-28|예시상사"]] } };
-      if (range.endsWith("!E2:BL2")) return { data: { values: [full.slice(4)] } };
+      if (range.endsWith("!E2:BM2")) return { data: { values: [full.slice(4)] } };
       throw new Error(`unexpected ${range}`);
     });
     const ci = (await readCompanyInfoArchiveRow("sheet-rs-3", "2026-09-28", "예시상사"))!;
@@ -209,9 +210,9 @@ describe("④ 06 업체정보 AW~BK", () => {
     expect(ci.매출증가율).toBe("12%");
 
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.endsWith("!A1:BL1")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.endsWith("!A1:BM1")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("!C2:C")) return { data: { values: [["2026-09-28|예시상사"]] } };
-      if (range.endsWith("!E2:BL2")) return { data: { values: [full.slice(4, 48)] } }; // 옛 A~AV 행
+      if (range.endsWith("!E2:BM2")) return { data: { values: [full.slice(4, 48)] } }; // 옛 A~AV 행
       throw new Error(`unexpected ${range}`);
     });
     const old = (await readCompanyInfoArchiveRow("sheet-rs-4", "2026-09-28", "예시상사"))!;
@@ -234,14 +235,14 @@ describe("⑤ 이월 · ⑥ DB payload", () => {
     for (const f of COMPANY_FIELDS_EXT3) expect(m.업체정보![f]).toBe(EXT3[f]);
   });
 
-  it("아레나 시트 이월 쓰기 — AU:CD 한 범위, 확장3 문자열 apostrophe", async () => {
+  it("아레나 시트 이월 쓰기 — AU:CE 한 범위, 확장3 문자열 apostrophe", async () => {
     valuesGet.mockResolvedValue({ data: { values: [["m-a"]] } });
     await appendCarriedMeeting("arena", { 원본id: "m-rs-001", raw: sheetRaw }, "new-rs");
     const data = (valuesBatchUpdate.mock.calls[0]![0] as { requestBody: { data: { range: string; values: unknown[][] }[] } })
       .requestBody.data;
-    const ext = data.find((d) => d.range.endsWith("!AU3:CD3"))!;
+    const ext = data.find((d) => d.range.endsWith("!AU3:CE3"))!;
     expect(ext.values[0]![COMPANY_FIELDS_EXT2.length]).toBe("'포장용 필름");
     expect(ext.values[0]![34]).toBe("'-3.0%");
-    expect(ensureGridColumns).toHaveBeenCalledWith("arena", "04 업체관리(앱자동작성용)", 82);
+    expect(ensureGridColumns).toHaveBeenCalledWith("arena", "04 업체관리(앱자동작성용)", 83);
   });
 });

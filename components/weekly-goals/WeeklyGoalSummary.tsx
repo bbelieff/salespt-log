@@ -6,18 +6,22 @@ import { useGuardedRouter } from "@/components/DirtyGuard";
 import { GOAL_KEYS, type GoalKey } from "@/types/weekly-goals";
 import { addDays, fmtISO, friOf, parseISO, todayKST } from "@/util/week";
 import { goalReturnTarget } from "@/util/weekly-goal-navigation";
+import CardHeadline from "@/components/ui/CardHeadline";
 import { useGoalView } from "./client";
 import GoalCompactMetrics from "./GoalCompactMetrics";
 import GoalRings from "./GoalRings";
+import { goalHeadline } from "./goal-headline";
 
 interface Props {
   date?: string; metrics?: readonly GoalKey[]; student?: string; className?: string; compact?: boolean;
+  /** 제목 아래 한 줄 문장(belie 2026-10-12 #8) — 대시보드만 켠다. 트레이너 보기·compact 는 그대로. */
+  headline?: boolean;
 }
 export default function WeeklyGoalSummary(props: Props) {
   // Reset navigation when the business date/student changes.
   return <Summary key={`${props.student ?? "self"}:${props.date ?? todayKST()}`} {...props} />;
 }
-function Summary({ date, metrics, student, className = "m-4", compact = false }: Props) {
+function Summary({ date, metrics, student, className = "m-4", compact = false, headline = false }: Props) {
   const router = useGuardedRouter();
   const pathname = usePathname();
   const [selectedDate, setSelectedDate] = useState<string>();
@@ -28,6 +32,10 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
   const entry = new URLSearchParams(p);
   entry.set("returnTo", goalReturnTarget(pathname).href);
   const current = !q.isError ? q.data?.current : undefined;
+  // 주차를 넘기면 「불러오는 중…」 뒤 그 주 문장, 저장 뒤 같은 주 재조회 동안은 이전 문장이 남는다.
+  const sentence = headline && current
+    ? goalHeadline({ goals: current.record.goals, actuals: current.actuals, metrics, ended: current.end < todayKST() })
+    : null;
   const anchorStart = fmtISO(friOf(parseISO(date ?? todayKST())));
   const move = (days: number) => {
     if (!current) return;
@@ -60,6 +68,7 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
       {navigation}
     </div>
     {status ?? (current && <>
+      {sentence && <CardHeadline headline={sentence} className="mb-1" />}
       <p className="mb-2 text-xs text-gray-500">{current.start} ~ {current.end}</p>
       <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
       {/* 옆 카드와 높이를 맞춰 늘어나면 PT과제 상자를 바닥에 붙인다(mt-auto) — 평소 간격은 pt-3. */}

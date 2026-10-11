@@ -548,6 +548,8 @@
       <div class="grid md:grid-cols-2 gap-6">
         <div class="space-y-4">
           <h3 class="text-lg font-semibold">양수 (이익) 케이스</h3>
+          <!-- CardHeadline 한 줄 문장 (2026-10-12 #8) — tone profit -->
+          <p class="break-keep text-sm font-bold leading-snug text-blue-700">지금까지 4,000,000원을 남겼어요 <span aria-hidden="true">💰</span></p>
           <div class="bg-white p-3 rounded-lg border text-gray-900">
             <div class="text-sm text-gray-600">총매출 (+)</div>
             <div class="text-xl font-bold">1,250만원</div>
@@ -564,6 +566,8 @@
         
         <div class="space-y-4">
           <h3 class="text-lg font-semibold">음수 (손실) 케이스</h3>
+          <!-- CardHeadline 한 줄 문장 (2026-10-12 #8) — tone loss -->
+          <p class="break-keep text-sm font-bold leading-snug text-violet-600">지금까지 비용이 매출보다 2,000,000원 많아요</p>
           <div class="bg-white p-3 rounded-lg border text-gray-900">
             <div class="text-sm text-gray-600">총매출 (+)</div>
             <div class="text-xl font-bold">750만원</div>
@@ -572,11 +576,30 @@
             <div class="text-sm">총비용 (−)</div>
             <div class="text-xl font-bold">-950만원</div>
           </div>
-          <div class="bg-red-50 text-red-600 p-3 rounded-lg">
+          <div class="bg-violet-50 text-violet-600 p-3 rounded-lg">
             <div class="text-sm">영업이익 (=)</div>
             <div class="text-xl font-bold">-200만원</div>
           </div>
         </div>
+      </div>
+
+      <!-- 영업이익 상세 「채널별 남은 돈」 (ChannelProfitBreakdown, 2026-10-12 #7) — 합성 숫자 -->
+      <div class="bg-white rounded-lg border p-3 max-w-lg">
+        <div class="flex items-center justify-between text-xs text-slate-500"><span>전체 · 계약 8건</span><span class="rounded-full bg-slate-100 px-2 py-1">이익률 <b class="text-blue-700">48.9%</b></span></div>
+        <p class="mt-2 text-sm font-bold text-slate-800">현수막에 쓴 돈의 3.4배를 벌었어요</p>
+        <table class="mt-1 w-full text-xs" style="font-variant-numeric: tabular-nums">
+          <thead><tr class="text-gray-400"><th class="text-left font-medium">채널</th><th class="pl-1.5 text-right font-medium">매출</th><th class="pl-1.5 text-right font-medium">비용</th><th class="pl-1.5 text-right font-medium">남은 돈</th></tr></thead>
+          <tbody>
+            <tr class="border-t border-slate-100"><th class="py-1 text-left font-semibold text-gray-700">매입DB</th><td class="pl-1.5 text-right text-gray-700">350만</td><td class="pl-1.5 text-right text-gray-700">400만</td><td class="pl-1.5 text-right text-violet-600">−50만</td></tr>
+            <tr class="border-t border-slate-100"><th class="py-1 text-left font-semibold text-gray-700">직접생산</th><td class="pl-1.5 text-right text-gray-700">50만</td><td class="pl-1.5 text-right text-gray-700">250만</td><td class="pl-1.5 text-right text-violet-600">−200만</td></tr>
+            <tr class="border-t border-slate-100 bg-blue-50"><th class="py-1 text-left font-semibold text-gray-700">현수막</th><td class="pl-1.5 text-right text-gray-700">750만</td><td class="pl-1.5 text-right text-gray-700">220만</td><td class="pl-1.5 text-right text-blue-700">530만</td></tr>
+            <tr class="border-t border-slate-100"><th class="py-1 text-left font-semibold text-gray-700">콜·지·기·소</th><td class="pl-1.5 text-right text-gray-700">550만</td><td class="pl-1.5 text-right text-gray-400">—</td><td class="pl-1.5 text-right text-blue-700">550만</td></tr>
+            <tr class="border-t border-slate-200"><th class="py-1 text-left font-semibold text-slate-600">영업기록 없음 ›</th><td class="pl-1.5 text-right text-gray-700">120만</td><td class="pl-1.5 text-right text-gray-400">—</td><td class="pl-1.5 text-right text-blue-700">120만</td></tr>
+            <tr><th class="py-1 text-left font-semibold text-slate-600">추가 비용 ›</th><td class="pl-1.5 text-right text-gray-400">—</td><td class="pl-1.5 text-right text-gray-700">60만</td><td class="pl-1.5 text-right text-violet-600">−60만</td></tr>
+          </tbody>
+          <tfoot><tr class="border-t-2 border-slate-200 font-bold"><th class="py-1 text-left text-slate-800">영업이익</th><td class="pl-1.5 text-right">1,820만</td><td class="pl-1.5 text-right">930만</td><td class="pl-1.5 text-right text-blue-700">890만</td></tr></tfoot>
+        </table>
+        <p class="mt-1 text-xs text-gray-400">추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요</p>
       </div>
     </section>
 

@@ -17,6 +17,7 @@ import ProductivityIndicators from "@/components/dashboard/ProductivityIndicator
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
 import DashboardWorkStatus from "@/components/dashboard/DashboardWorkStatus";
+import DashboardFollowUps from "@/components/dashboard/DashboardFollowUps";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 
@@ -138,12 +139,17 @@ export default function DashboardPage() {
             {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).
                 아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
-            <DashboardFinance onOpenExpenseLedger={() => setExpenseLedgerOpen(true)} />
+            <DashboardFinance
+              onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
+              contractChannels={dash.data.contractChannels}
+              onRefreshChannels={dash.refetch}
+              channelsRefreshing={dash.isFetching}
+            />
 
-            {/* pc(1024~1599): 좌측(생산성+진행건+주간목표 stacked) | 우측 퍼널, 아래 추이 | 채널 2열.
+            {/* pc(1024~1599): 좌측(생산성+오늘 챙길 일+진행건+주간목표 stacked) | 우측 퍼널, 아래 추이 | 채널 2열.
                 wide1600+(뷰포트−사이드바 224 ≥1376, 6칸 그리드 — 2026-09-28 belie 안):
-                윗줄 [생산성+전체 진행건 | 주간목표] 반반, 아랫줄 [퍼널 | 추이 | 채널] 3등분.
-                좌측 래퍼를 contents 로 풀어 DOM 순서(생산성→진행건→목표→퍼널→추이→채널)는
+                윗줄 [생산성+오늘 챙길 일+전체 진행건 | 주간목표] 반반, 아랫줄 [퍼널 | 추이 | 채널] 3등분.
+                좌측 래퍼를 contents 로 풀어 DOM 순서(생산성→챙길 일→진행건→목표→퍼널→추이→채널)는
                 그대로다. 모바일은 원래 stacked 순서.
                 높이 정렬(2026-09-28 belie): items-stretch 로 같은 줄 카드의 바닥선을 맞춘다.
                 줄 높이는 카드 내용(차트 영역 최소 14rem 포함)이 정하고, 퍼널·추이 차트는
@@ -154,9 +160,10 @@ export default function DashboardPage() {
               <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:contents min-[1600px]:space-y-0">
                 <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:col-span-3">
                   <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} className="min-[1600px]:flex-1" />
+                  <DashboardFollowUps todayISO={today} />
                   <DashboardWorkStatus todayISO={today} />
                 </div>
-                <WeeklyGoalSummary className="pc:flex-none min-[1600px]:col-span-3" />
+                <WeeklyGoalSummary headline className="pc:flex-none min-[1600px]:col-span-3" />
               </div>
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={CHART_LABELS}>

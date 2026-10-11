@@ -32,7 +32,7 @@ export const SUPPORTED_DOCS: readonly (readonly [string, string])[] = [
   ["재무제표(표준재무제표증명)", "영업이익·당기순이익·이자비용·자산/부채/자본총계"],
   ["신분증(주민등록증·운전면허증)", "대표자 이름·주민등록번호 앞자리·자택주소"],
   ["임대차계약서", "소유여부(임차)·보증금·월세·면적"],
-  ["미팅 메모(txt·붙여넣기)", "업체·대표자 칸·연도별 매출 + 아이디·비번·계좌·주민번호는 계정 보관함으로"],
+  ["미팅 메모(txt·붙여넣기)", "업체·대표자 칸(이메일 포함)·연도별 매출 + 아이디·비번·계좌·주민번호는 계정 보관함으로"],
 ];
 import { resolveBaseYear } from "@/util/company-sales";
 import { companyInfoFieldList } from "@/components/company-info-defs";

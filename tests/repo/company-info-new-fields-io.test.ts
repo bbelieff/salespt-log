@@ -1,6 +1,6 @@
 /**
  * 업체정보 확장2 — 시트 I/O 회귀 (company-info-new-fields 리뷰 수정, 2026-09-28).
- *  ① 04 읽기 경로는 grid 를 넓히지 않는다 — 범위 초과 400 이면 한 단계씩 좁혀(CD → CC → BN → AS) 폴백
+ *  ① 04 읽기 경로는 grid 를 넓히지 않는다 — 범위 초과 400 이면 한 단계씩 좁혀(CE → CD → CC → BN → AS) 폴백
  *  ② 이월: 이전 시트가 45~46열이어도 AQ~AS 값은 살아남는다(AQ:BN 실패 → AQ:AS 재읽기)
  *  ③ 이월: 주민등록번호(BA)는 DB payload·아레나 시트 모두 앞 6자리만
  *  ④ 이월 시트 쓰기: 확장 열 문자열에 apostrophe — USER_ENTERED 날짜·숫자 오변환 방지
@@ -51,21 +51,22 @@ beforeEach(() => {
   mirrorSheetRow.mockReset();
 });
 
-describe("① 04 읽기 — grid 확장 없이 한 단계씩 폴백(CD → CC → BN → AS)", () => {
-  it("CD 범위 초과 400 → A2:CC 로 다시 읽고(확장3 값 보존), grid 는 건드리지 않는다", async () => {
+describe("① 04 읽기 — grid 확장 없이 한 단계씩 폴백(CE → CD → CC → BN → AS)", () => {
+  it("CE 범위 초과 400 → A2:CD 로 다시 읽고(확장4 값 보존), grid 는 건드리지 않는다", async () => {
     valuesGet.mockRejectedValueOnce(gridError()).mockResolvedValueOnce({ data: { values: [["x"]] } });
     const rows = await readMeetingRows("sid", (last) => `R!A2:${last}`);
     expect(rows).toEqual([["x"]]);
     expect(valuesGet.mock.calls.map((c) => (c[0] as { range: string }).range)).toEqual([
+      "R!A2:CE",
       "R!A2:CD",
-      "R!A2:CC",
     ]);
     expect(ensureGridColumns).not.toHaveBeenCalled();
     expect(spreadsheetsGet).not.toHaveBeenCalled();
   });
 
-  it("CC·BN 도 범위 초과(46열 이전 시트) → A2:AS 까지 한 단계씩 좁혀 읽는다", async () => {
+  it("CD·CC·BN 도 범위 초과(46열 이전 시트) → A2:AS 까지 한 단계씩 좁혀 읽는다", async () => {
     valuesGet
+      .mockRejectedValueOnce(gridError())
       .mockRejectedValueOnce(gridError())
       .mockRejectedValueOnce(gridError())
       .mockRejectedValueOnce(gridError())
@@ -73,6 +74,7 @@ describe("① 04 읽기 — grid 확장 없이 한 단계씩 폴백(CD → CC �
     const rows = await readMeetingRows("sid", (last) => `R!A2:${last}`);
     expect(rows).toEqual([["y"]]);
     expect(valuesGet.mock.calls.map((c) => (c[0] as { range: string }).range)).toEqual([
+      "R!A2:CE",
       "R!A2:CD",
       "R!A2:CC",
       "R!A2:BN",
@@ -83,7 +85,7 @@ describe("① 04 읽기 — grid 확장 없이 한 단계씩 폴백(CD → CC �
   it("AS 까지 범위 초과면 그 오류를 그대로 던진다", async () => {
     valuesGet.mockRejectedValue(gridError());
     await expect(readMeetingRows("sid", (l) => `R!A2:${l}`)).rejects.toThrow("exceeds grid limits");
-    expect(valuesGet).toHaveBeenCalledTimes(4);
+    expect(valuesGet).toHaveBeenCalledTimes(5);
   });
 
   it("grid 외 오류는 그대로 던진다(폴백 없음)", async () => {
@@ -101,12 +103,13 @@ describe("① 04 읽기 — grid 확장 없이 한 단계씩 폴백(CD → CC �
 });
 
 describe("② 이월 원본 읽기 — 46열 이전 시트", () => {
-  it("AQ2:CD·AQ2:CC·AQ2:BN 이 범위 초과면 AQ2:AS 로 다시 읽어 AQ~AS 값을 살린다", async () => {
+  it("AQ2:CE·AQ2:CD·AQ2:CC·AQ2:BN 이 범위 초과면 AQ2:AS 로 다시 읽어 AQ~AS 값을 살린다", async () => {
     const base = Array.from({ length: 40 }, () => "");
     base[0] = "m-old-1";
     base[9] = "예약";
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
       if (range.endsWith("!A2:AN")) return { data: { values: [base] } };
+      if (range.endsWith("!AQ2:CE")) throw gridError();
       if (range.endsWith("!AQ2:CD")) throw gridError();
       if (range.endsWith("!AQ2:CC")) throw gridError();
       if (range.endsWith("!AQ2:BN")) throw gridError();
@@ -145,7 +148,7 @@ describe("③④ 이월 쓰기 — 주민등록번호 앞자리 · apostrophe", 
     const aq = body.requestBody.data.find((d) => d.range.endsWith("!AQ3:AS3"))!;
     expect(aq.values[0]![0]).toBe("'1988-01-24");
     expect(aq.values[0]![1]).toBe(""); // 빈 칸은 접두 없음
-    const au = body.requestBody.data.find((d) => d.range.endsWith("!AU3:CD3"))!;
+    const au = body.requestBody.data.find((d) => d.range.endsWith("!AU3:CE3"))!;
     expect(au.values[0]![RRN_IDX - COMPANY_EXT2_START]).toBe("'800101-");
     expect(au.values[0]![COMPANY_FIELDS_EXT2.indexOf("부채비율")]).toBe("'120%");
     const payload = mirrorSheetRow.mock.calls[0]![0] as { payload: Record<string, unknown> };

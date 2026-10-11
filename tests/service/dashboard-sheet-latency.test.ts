@@ -219,6 +219,8 @@ describe("dashboard sheet fallback latency", () => {
         { 채널: "현수막", 비용: 3_000 },
       ],
       콜지기소수임비: 0,
+      // 2026-10-12 #7 — 이미 읽은 계약·미팅으로 만든 계약별 채널(새 읽기 없음, 아래 7회 그대로).
+      contractChannels: [{ key: "|ak:meeting-1", channel: "매입DB" }],
     });
 
     const sheetsReads = [

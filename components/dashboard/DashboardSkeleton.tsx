@@ -22,6 +22,8 @@ export default function DashboardSkeleton() {
     <div className="space-y-3" aria-busy="true" aria-label="대시보드 불러오는 중">
       <div className="rounded-2xl border border-slate-200 bg-slate-100 p-2">
         <Bar className="mb-2 h-4 w-32" />
+        {/* 한 줄 문장 자리 — DashboardFinance 의 CardHeadline(mb-2 min-h-5)과 같은 높이(belie 2026-10-12 #8). */}
+        <Bar className="mb-2 h-5 w-2/3" />
         <div className="grid grid-cols-3 gap-2">
           {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-xl bg-white p-3">

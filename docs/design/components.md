@@ -46,7 +46,7 @@
 
 ## 주간 목표 (#947)
 
-- **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule/트레이너의 같은 주간 집계 API를 사용하는 요약. 대시보드에서는 생산성 아래 목표 링·기간·PT과제 미리보기, compact 모드는 DB OverallCard/컨택 WeekHeader/일정 SummaryBar 안에 숫자 배지와 목표·PT 진입 버튼을 배치한다. `date`가 없으면 KST 이번 주, 있으면 선택 날짜의 금~목 주간을 기본으로 표시한다. 전체 카드(non-compact)에만 이전/다음/현재 주 탐색 버튼을 둔다. 이전/다음은 서버가 반환한 주 시작일에서 7일씩 이동하며 1주차 이전·기준 주 이후는 막는다. `이번 주`(`date` 제공 시 `선택 주`)로 기준 주에 복귀한다. compact에는 별도 주차 탐색 버튼을 추가하지 않으며, 컨택·일정의 상위 날짜 선택을 그대로 따라가 고정 헤더 높이 증가를 피한다. 조회 중에는 이전/다음 이동을 막고, 실패 시 오류 안내와 `다시 시도`를 제공하며 남은 캐시 숫자를 성공 결과처럼 표시하지 않는다. `student` 또는 기준 `date`가 바뀌면 내부 탐색 상태를 초기화한다(`date` 미제공은 렌더 시 KST 날짜 키 사용). 목표 화면 진입에는 현재 탐색 날짜·학생과 허용된 `returnTo`를 전달하고 `useGuardedRouter`로 업무탭 미저장 입력을 보호한다.
+- **WeeklyGoalSummary**: dashboard/DB생산/contact/schedule/트레이너의 같은 주간 집계 API를 사용하는 요약. 대시보드에서는 생산성 아래 목표 링·기간·PT과제 미리보기, compact 모드는 DB OverallCard/컨택 WeekHeader/일정 SummaryBar 안에 숫자 배지와 목표·PT 진입 버튼을 배치한다. `date`가 없으면 KST 이번 주, 있으면 선택 날짜의 금~목 주간을 기본으로 표시한다. 전체 카드(non-compact)에만 이전/다음/현재 주 탐색 버튼을 둔다. 이전/다음은 서버가 반환한 주 시작일에서 7일씩 이동하며 1주차 이전·기준 주 이후는 막는다. `이번 주`(`date` 제공 시 `선택 주`)로 기준 주에 복귀한다. compact에는 별도 주차 탐색 버튼을 추가하지 않으며, 컨택·일정의 상위 날짜 선택을 그대로 따라가 고정 헤더 높이 증가를 피한다. 조회 중에는 이전/다음 이동을 막고, 실패 시 오류 안내와 `다시 시도`를 제공하며 남은 캐시 숫자를 성공 결과처럼 표시하지 않는다. `student` 또는 기준 `date`가 바뀌면 내부 탐색 상태를 초기화한다(`date` 미제공은 렌더 시 KST 날짜 키 사용). 목표 화면 진입에는 현재 탐색 날짜·학생과 허용된 `returnTo`를 전달하고 `useGuardedRouter`로 업무탭 미저장 입력을 보호한다. `headline`(기본 false, 대시보드만 켬)이면 제목 아래 `CardHeadline` 한 줄 문장(§9 「대시보드 한 줄 문장」, 2026-10-12 #8).
 - **GoalRings**: 생산·유입·컨택완료·미팅완료·계약 실적/목표. null은 미기재, 0은 목표 0, 양수만 달성률. 기존 brand-red/green/gray 토큰.
 - **WeeklyGoalPage**, **WeeklyGoalEditor**: 학생/담당 트레이너 공통 화면. 지난 목표·지난 성과·이번 목표(입력)를 '목표달성 및 수립' 한 박스의 한 표로 묶는다. 주차 내비게이터는 1행이며 페이지 배너 바로 아래 sticky로 고정한다. 탭 안 복귀 버튼은 두지 않고 TopHeader 우상단 버튼만 쓴다. 공용 목표·PT과제와 내부 성과·특이사항은 각자의 revision으로 자동저장한다. 최하단 저장 푸터는 없으며 관련 제목 옆에 작은 상태를 표시한다. 모바일390의 다섯 링·입력·주요 버튼 최소44px. DirtyGuard와 revision 충돌 보호, 일시적 읽기 실패는 초안 보존/권한 거부는 내부 편집 제거.
 - **GoalTaskRows**: PT과제 1개=1 row 단일행 입력과 '과제 추가'/행 삭제. 행은 기존 text 컬럼에 줄 단위로 저장하므로 행 안에 줄바꿈을 허용하지 않는다. 이번 주 행 수는 지난주 행 수와 연동하지 않는다.
@@ -68,7 +68,7 @@
 - **CountUp** / `useCountUp` (`components/motion/CountUp.tsx`): 숫자를 처음엔 0에서 700ms 동안 올라가며 멈추게, 값이 바뀌면 이전 값에서 이어서 움직인다(easeOutCubic, requestAnimationFrame). 동작 줄이기면 즉시 최종 값, 화면낭독기는 최종 값(aria-label). SVG 글자 안에서는 훅을 직접 쓴다.
 - **usePlayOnOpen** (`components/motion/useMotion.ts`): 대시보드를 열 때마다 true(belie 2026-10-09 — 처음 한 번만에서 바꿈). 동작 줄이기면 false.
 - 움직임 클래스는 `app/globals.css` 의 `fx-*`(fx-grow-x/y·fx-draw·fx-ring·fx-pop·fx-fade·fx-rise·fx-ping·fx-glow·fx-skeleton, transform·opacity·stroke 만, 1초 안, 동작 줄이기면 끔). 적용: GoalRings(링 차오름·% 올라감·100% 달성 반짝), DashboardProgressBanner(진행바·%·지금 위치 맥박 3번), ProductivityIndicators(막대 차례로·%), FunnelChart(단계 차례로·합계), WeeklyDualChart(막대 차례로·계약수 선 그리기·점), ChannelPerformance(도넛 나타남), FinanceSummaryBoxes(금액 올라감·기간 바꾸면 이전 금액에서 이어짐 — 칸 너비는 최종 금액으로 잡음), MobileChartCarousel(지금 카드 점 길게).
-- **DashboardSkeleton** (`components/dashboard/DashboardSkeleton.tsx`): 대시보드 숫자를 불러오는 동안 재무 3칸 + 카드 4개 자리를 반짝이는 회색 상자로 먼저 잡아 둔다(`aria-busy`).
+- **DashboardSkeleton** (`components/dashboard/DashboardSkeleton.tsx`): 대시보드 숫자를 불러오는 동안 재무 3칸 + 카드 4개 자리를 반짝이는 회색 상자로 먼저 잡아 둔다(`aria-busy`). 재무 묶음엔 한 줄 문장 자리(`mb-2 h-5`)도 같은 높이로 잡는다(2026-10-12 #8).
 
 ## 컨택관리 저장 (2026-10-09)
 
@@ -1061,16 +1061,40 @@ app/(app)/dashboard/page.tsx
   sticky top-app-content z-30 래퍼
     PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
   PageContainer > 일반 본문
-    FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
-    [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
+    FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장) — 위에 CardHeadline 한 줄 문장(DashboardFinance)
+    [생산성 + DashboardFollowUps + DashboardWorkStatus] + WeeklyGoalSummary(headline)  # ≥1600px 윗줄 반반
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
 
-**카드 서식 통일(2026-09-28)**: 대시보드 본문 카드 6종(생산성·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨을 그대로 쓴다.
+**카드 서식 통일(2026-09-28, 2026-10-12 7종)**: 대시보드 본문 카드 7종(생산성·오늘 챙길 일·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 오늘 챙길 일·전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨(`strong text-xs` + `b text-base tabular-nums`)을 그대로 쓴다.
 
 **높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간 목표의 PT과제 상자는 `mt-auto`로 바닥, ≥1600px 생산성 카드는 진행건 위 남는 칸을 `flex-1`로 채운다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
 `DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다. 해지·숨김 계약을 동일하게 제외하고(이월은 포함, ADR-0034), 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
+
+`DashboardFollowUps`(「오늘 챙길 일」, 2026-10-12 #3·#4)는 생산성 카드와 `DashboardWorkStatus` 사이에 둔다. 이미 있는 조회 4종(계약 `cpKey` · 전체 할 일 `['todos','all']` · 월 미팅 `['month',yyyy-MM]` 1~3개 · DB관리시트 `['db-sheet']`)을 `lib/analytics/dashboard-follow-ups.ts` 순수 함수로 계산한다. 월 미팅·DB관리시트는 계약·할 일 조회가 끝난 뒤 읽고(5분 신선), `meta.background`라 전역 로딩 오버레이 대신 카드 자체 스켈레톤(`fx-skeleton`)만 보인다.
+- **칩 6종**(건수 0이면 렌더 안 함, 점 색 = 도착 탭 색): 밀린 할 일(rose, 숫자 red) · 오늘 할 일(rose) · 미팅 결과(violet, 상태 '예약'인 오늘−30~어제 미팅) · 다시 연락(blue-700, 결과 부재·단순거절·상담 후 거절·재통화이고 다음 연락일 ≤ 오늘, 그날 이후 상담 기록이 있으면 제외) · 멈춘 업체(rose, 업체 단위 — 미완료 할 일 없이 마지막 일정이 7일 이상 지난 진행대기·진행, 기록이 없으면 계약 후 7일, 이월 포함) · 보조 칩 7일 안 할 일(`border-dashed text-slate-500`, 총건수 제외). 휴대폰 칩 `min-h-11`(44px), PC `pc:min-h-0 pc:py-1`.
+- **한 줄 문구 우선순위**: 밀린 할 일 > 지난 미팅 > 오늘 할 일 > 다시 연락 > 멈춘 업체. 모든 조회가 성공했고 0건이면 「오늘 챙길 일이 없어요 👏」 한 줄(보조 칩만 옆에). 일부 실패면 「일부 항목을 불러오지 못했어요 · 다시 시도」(실패한 조회만 다시 읽음), 전부 실패면 그 한 줄만. DB관리시트가 「지원하지 않는 계정」 503이면 DB 칩만 숨긴다.
+- **목록**: 칩을 누르면 하나만 열린다(같은 칩·Esc·카드 밖 누름으로 닫힘). 휴대폰은 카드 안에 펼치고, PC는 카드 폭으로 위로 띄운다(`pc:absolute pc:bottom-full`). 위쪽이 고정 머리(헤더·배너·진행바)에 가려 160px보다 좁으면 아래로 펴고 높이를 남은 공간에 맞춘다(최대 `max-h-64`). 배지: 밀림 `D+NN`(실무/수납과 같은 두 자리) · 오늘 「오늘」 · 7일 안 `D-NN` · 멈춤 「N일째」/「계약 후 N일」.
+- **딥링크 4종**: 할 일 `/payment?row=<행>&slot=<회차>&focus=<todoId>` · 미팅 `/schedule?date=<미팅날짜>&focus=<id>` · DB `/db-sheet?lead=<id>` · 멈춘 업체 `/payment?row=<행>&slot=<회차>`. 계약을 찾지 못한 할 일(업체명·계약일 변경 등)은 링크로 열 수 없어 칩·총건수에서 빼고 「업체 연결이 끊긴 할 일 N건」 회색 안내만 둔다. 전화번호는 대시보드에 보이지 않는다.
+
+### 대시보드 한 줄 문장 (2026-10-12, belie #8)
+
+재무 묶음과 주간 목표 카드 맨 위에 쉬운 말 한 줄(`CardHeadline`, §10-1)을 둔다. 새 조회·서버 변경 없이 화면에 이미 있는 숫자만 쓴다.
+문구는 순수 함수가 정한다 — 재무 `components/dashboard/finance-headline.ts`, 주간 목표 `components/weekly-goals/goal-headline.ts`.
+말줄임·잘림 없이 어절 단위(`break-keep`)로만 줄을 바꾸고, 이모지는 `aria-hidden`.
+
+- **재무**(기간 칩을 따라 같은 렌더에서 바뀜, `aria-live="polite"` 자리는 항상 붙어 있음): 접두어 P = 지금까지(전체·날짜 덜 고른 직접 설정) / N월에 / 이번 주에 / 고른 기간에.
+  영업이익 = 매출 − 비용을 칸과 같이 한 번 반올림해 칸 숫자와 1원도 다르지 않다. 순서: 추가 비용(경비장부) 못 읽음 → 매출 > 0이면 「P 매출 N원을 올렸어요」(영업이익은 말하지 않음), 아니면 문장 없음 ·
+  매출·비용 0 「P 기록된 매출·비용이 없어요」 · 그 기간 반환으로 매출 < 0 「P 계약해지 반환으로 매출이 마이너스예요」(보라) ·
+  영업이익 > 0 「P N원을 남겼어요 💰」(파랑) · 0 「P 매출과 비용이 같아요」 · 매출 0 「P 비용 N원을 먼저 썼어요」(보라) · 그 외 「P 비용이 매출보다 N원 많아요」(보라, 절대값).
+- **주간 목표**(`WeeklyGoalSummary headline` — 대시보드만, 트레이너 보기·compact 요약은 그대로): 목표 > 0인 칸 중 실적 < 목표인 첫 칸을
+  계약 → 미팅완료 → 컨택완료 → 유입 → 생산 순서로 골라 「{라벨} 목표까지 N건 남았어요 💪」, 지난 주는 「{라벨} 목표에 N건 못 미쳤어요」.
+  모두 채움(초과 포함) 「세운 목표를 모두 달성했어요 🎉」(초록), 전부 미기재 「아직 목표를 정하지 않았어요」/지난 주 「이 주는 목표를 정하지 않았어요」, 0과 미기재만이면 문장 없음.
+  링 아래 칸별 「N 남음/초과」 줄은 계속 숨긴다. 주차를 넘기면 「불러오는 중…」 뒤 그 주 문장, 저장 뒤 같은 주 재조회 동안은 이전 문장이 남는다.
+- **넣지 않은 것**: 매출 목표 문장(저장된 매출 목표 값 없음), 생산성·전체 진행건·차트 카드 문장(보이는 숫자의 되풀이), 카드별 「관련 가이드」 링크
+  (앱 안 주제별 가이드 페이지가 없다 — `(app)` 페이지 라우트 9개(payment/news 포함)에 가이드 없음, 외부는 카페 게시판 목록 `GUIDE_URL`·노션 `WORK_MANUAL_URL`뿐이고 계정 메뉴·/updates에 상시 진입점이 있다).
+- 목업: `node tests/browser/dashboard-followups-server.mjs` → `/dashboard?finance=…&goals=…`, 모든 문구 승인표 `/headlines`(「지금까지」/「전체 기간에」 접두어 비교 포함).
 
 ### 9-1. DashboardProgressBanner
 
@@ -1113,12 +1137,41 @@ app/(app)/dashboard/page.tsx
 - `additionalCost: number | null`: 추가 비용. null은 조회 실패 안내를 표시하며 0원으로 대신하지 않는다.
 - `onOpenExpenseLedger: () => void`: 비용 상세 안 추가 비용 행 클릭 시 같은 페이지의 경비장부 모달 열기.
 - `periodLabel?` (기본 「전체」), `contractCount?`: 영업이익 상세의 기간·계약건수 부연.
+- `profitDetail?: ReactNode` (2026-10-12 #7): 영업이익 상세에서 기존 줄 아래에 붙는 내용(`ChannelProfitBreakdown`). 없으면 기존 그대로.
 - 2026-10-08 시즌/이월/전체 분리 props·표 삭제 — 기간 선택이 대신한다(ADR-0034).
 
 **DashboardFinance** (`components/dashboard/DashboardFinance.tsx`, 2026-10-08): 대시보드 매출·비용·영업이익
 묶음(slate-100 section) 제목 줄에 `PeriodPicker`(기본 「전체」= 기록된 기간 전체)를 두고, `useContractPayments`·
 `useDBOverview`·`useExpenseLedger("all")`를 `@/util/finance-period`로 기간 합산해 `FinanceSummaryBoxes`에 넘긴다.
 불러오는 중·실패(다시 시도) 상태를 보인다. 서버 `/api/dashboard` KPI는 쓰지 않는다.
+기간 칩 줄 아래에 `CardHeadline` 한 줄 문장(§9 「대시보드 한 줄 문장」)을 둔다. 문장 자리는 불러오는 중(회색 줄)·
+문장 없음일 때도 `mb-2 min-h-5`로 붙어 있어 3칸이 덜컹이지 않고(`DashboardSkeleton`도 같은 h-5 줄), 실패면 없다.
+2026-10-12 #7: props `contractChannels?`(`/api/dashboard` 계약별 채널)·`onRefreshChannels?`·`channelsRefreshing?`를
+받아 영업이익 상세에 `ChannelProfitBreakdown`을 넘긴다(같은 기간·같은 계약 행, 칩을 바꿔도 새 요청 없음).
+`contractChannels`가 없으면(배포 직후 캐시된 옛 응답) 표를 그리지 않는다. 계약 목록에는 있는데 응답에 없는 키가
+생기면(방금 추가·AK 없는 계약 이름 변경) 그 어긋남마다 **한 번만** `onRefreshChannels`(대시보드 다시 불러오기)를 부른다
+— `GET /api/dashboard`는 원장 반복 지출을 만드는 쓰기를 포함하므로 반복 호출 금지.
+
+**ChannelProfitBreakdown** (`components/dashboard/ChannelProfitBreakdown.tsx`, 2026-10-12 #7 「채널별 남은 돈」):
+영업이익 상세 패널 안, 기존 「기간 · 계약 N건 | 이익률」 줄 아래. 표시만 하고 계산은 `components/dashboard/channel-profit.ts`
+(순수 — 버킷·합계·문장·짧은 금액).
+- Props: `table: ChannelProfitTable`, `revenue`, `dbCost`, `additionalCost: number | null`, `onOpenExpenseLedger`, `refreshing?`.
+- 문장(`mt-2 text-sm font-bold text-slate-800`): 돈 쓴 채널(매입DB·직접생산·현수막 중 비용 > 0) 가운데 매출÷비용이
+  가장 큰 채널(같으면 남은 돈, 그다음 채널 순서)이 흑자면 「{채널}에 쓴 돈의 N.N배를 벌었어요」, 모두 적자면 「아직 쓴 돈보다
+  더 번 채널이 없어요」, 돈 쓴 채널이 없으면 「이 기간엔 DB에 쓴 돈이 없어요」. 매출·DB 비용·추가 비용이 **모두 0**일 때만
+  「이 기간에는 매출·비용 기록이 없어요」 + 표 숨김(추가 비용을 못 읽었으면 빈 기간이라 하지 않는다).
+- 표 `data-testid="fin-channel-profit"`(`w-full text-xs tabular-nums pc:max-w-lg`, caption sr-only 「채널별 남은 돈」):
+  채널 | 매출 | 비용 | 남은 돈. 4채널 줄은 **채널 순서 고정**(칩을 바꿔도 줄이 움직이지 않음), 색 네모(`ChannelPerformance`의
+  `CH_COLOR`) + 이름 + 「계약 N건」. 문장이 고른 채널 줄만 `bg-blue-50`. 비용 0 → 「—」. 남은 돈 0 이상 `text-blue-700`,
+  음수 `text-violet-600`(영업이익 칸과 같은 파랑·보라).
+- 구분선 뒤 보조 줄(매출이 있거나 기간 안 계약이 있을 때만): 「영업기록 없음 ›」(AK `manual:` 계약만 — `/payment` 링크,
+  그곳의 「영업기록 없음 ＋」로 연결) · 「채널 모름」(AK 빈 값·못 찾은 미팅 — 연결할 화면이 없어 설명만) · 「확인 중…/확인 못 함」
+  (응답에 아직 없는 계약 — 링크 없음). 「추가 비용 ›」(0이 아니거나 못 읽었을 때) = 같은 페이지 비용 원장 버튼, 못 읽었으면
+  비용 칸 「확인 못 했어요」(amber-700)·합계 비용에서 빠짐.
+- 합계 줄 「영업이익」(`border-t-2`, bold) = 위 세 칸(매출·비용·영업이익)과 원 단위까지 같다. 칸 숫자는 만원으로 먼저 반올림한 뒤
+  0이 아닐 때만 「−」(「−0만」 없음), 1억 이상은 0.1억 단위(「1.9억」) — 320px에서 가로 스크롤 없음. 전체 금액은 `title` +
+  sr-only 글자. 각주 「추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요」.
+- 패널 글에 「이월」·「시즌」 없음. 계약 한 건마다의 이익은 만들지 않는다(DB 비용 행에 계약 연결 키가 없다).
 
 **디자인 / 동작**:
 
@@ -1131,7 +1184,7 @@ app/(app)/dashboard/page.tsx
   `aria-controls`와 컬럼별 `focus-visible:ring-2`를 둔다. 상세 패널은 버튼의 형제이므로
   중첩 버튼이 생기지 않는다.
 - 상세 내용: 매출 = 수임비·수수료(·반환) / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
-  hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·기간·계약건수.
+  hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·기간·계약건수 + `profitDetail`(채널별 남은 돈).
 - 금액은 `formatMoney` 전체 금액(축약·절단 없음). ₩99,999,999·₩-99,999,999까지
   320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
   `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
@@ -1216,6 +1269,10 @@ app/(app)/dashboard/page.tsx
 - 비용이 없거나(콜·지·기·소) 계약이 0건이면 "—"
 - "비용 ÷ 건수" 보조는 셀에 마우스를 올리면 보인다(`title`)
 
+**기간 기준 채널 매출·남은 돈은 여기 없다** (2026-10-12 #7): 이 카드는 N주 누적 비용·유입·계약단가만 보인다.
+위 기간 선택을 따르는 채널별 매출·비용·남은 돈은 §9-2 영업이익 상세의 `ChannelProfitBreakdown`에 있다.
+`CH_COLOR`는 그 표도 같은 색을 쓰도록 export 만 했다(화면 변화 없음).
+
 ---
 
 ## 10. Page-Local Components (탭별 전용)
@@ -1241,6 +1298,7 @@ app/(app)/dashboard/page.tsx
 | **HintTooltip** | `components/ui/HintTooltip.tsx` | 라벨 옆 (?) 설명 버튼(h-4 원, slate 테두리) + 다크 말풍선(bg-slate-800·text-xs·max-w-60). Props: `label`(aria-label "<라벨> 설명 보기"), `text`(`\n` 줄바꿈 표시). 스크롤되면 닫힘(버튼이 가려진 뒤 말풍선만 남지 않게), 입력칸 화면낭독 설명은 사용처가 sr-only + aria-describedby 로 따로 둔다. 마우스 올림·키보드 포커스로 열림, 터치/클릭은 토글 고정, Esc·blur·바깥 누르기로 닫힘, 한 번에 하나만. 말풍선은 body portal + fixed 좌표(가로 8px clamp, 아래 공간 없으면 위로) → overflow 부모에 안 잘림. role=tooltip + aria-describedby/aria-expanded. 첫 사용처: `CompanyInfoEditor` 필드 설명(2026-09-28). |
 | **LoadingOverlay** | `components/ui/LoadingOverlay.tsx` | 전역 로딩 팝업(loading-overlay/v3 글로우 링). Props: `message?`(기본 "불러오고 있어요"). **라이트 프로스트 글래스 카드**+회전 conic 링(96px)+궤도 점+**세일즈PT 로고 원본 호흡**(`/salespt-logo.png`, 무가공·`alt=""` 장식)+문구 페이드(다크 잉크)+하단 sweep. fixed z-[400] 중앙·dim(어둡게 유지), role=status, prefers-reduced-motion 정적 폴백. 스타일=globals.css `.lo-*`(tokens.md overlay 토큰). ※2026-07-15 이전: 다크 카드 + 가운데 'S' 글자. |
 | **LoadingProvider** | `components/ui/LoadingProvider.tsx` | 전역 로딩 상태 + `useGlobalLoading()` 훅. providers.tsx(QueryClientProvider 안)에서 1회 마운트, 내부 `<LoadingOverlay>` 렌더. 명령형 show(문구)/hide(카운터) + `useIsMutating()>0` 자동("저장하고 있어요"). useIsFetching 은 안 검(과노출 방지). |
+| **CardHeadline** | `components/ui/CardHeadline.tsx` | 카드 맨 위 쉬운 말 한 줄(2026-10-12 #8, §9 「대시보드 한 줄 문장」). 표시 전용 — 문구는 부르는 쪽 순수 함수. Props: `headline: Headline \| null`(`{ text, emoji?, tone }`), `loading?`(자리에 `fx-skeleton` h-5 줄), `className?`, `aria-live?`. `<p data-card-headline>` `text-sm font-bold leading-snug break-keep`(말줄임·잘림 금지). tone 색(tokens.md): profit `text-blue-700` · loss `text-violet-600` · done `text-green-700` · neutral `text-slate-800`. 이모지는 `aria-hidden` span. 첫 사용처: `DashboardFinance`·`WeeklyGoalSummary headline` |
 
 ### 10-2. contact 탭 (`app/(app)/contact/_components/`)
 
@@ -1365,12 +1423,12 @@ app/(app)/dashboard/page.tsx
 | **AwardPodium** | 전광판 캡쳐 탭 지표별 시상대 (arena-scoreboard-v2). Props: `metric`(라벨), `unit`, `color: "blue"\|"purple"\|"teal"\|"amber"\|"rose"`, `entries: RankingEntry[]`. 1·2·3등 큰 카드(이름 공개·큰 숫자, 1등 중앙·강조) + 4~6등 리스트. 색만 지표별로 바꿔 재사용(미팅=blue·계약=purple·매출=teal·앱사용량=amber·공유왕=rose). |
 | **CohortSummaryBoard** | 전광판 메인 종합요약 보드 (arena-scoreboard-v2, 1안). Props: `cohorts: {cohort,paidMembers,total:{생산,유입,컨택,미팅,계약}}[]`, `week`. 기수별 5지표 평균을 계약 평균 desc 순위로 정렬, 1위 강조. 캡쳐 친화 고정폭·큰 숫자. |
 | **ScoreboardView** | 전광판 클라이언트 뷰 (arena-scoreboard-v2). Props: `data: {byCohort, rankings, seasonWeek, season}`. 상단 [관리자 대시보드]/[캡쳐 모드] 토글. 대시보드=기수 평균 표+5지표 개인 랭킹 표 밀도형. 캡쳐=탭(메인 종합/미팅/계약/매출/앱사용량/공유왕), 메인=CohortSummaryBoard·지표탭=AwardPodium, 공통 헤더 `"아레나 시즌N · M주차 · {지표}왕"` — **시즌 번호는 SSOT(`lib/service/arena-season-config`)가 준 `data.season` 만 사용, 하드코딩 금지**(AR-2b). 표기=`seasonDisplayLabel`(미상 0 이면 "아레나"), 주차 미상(0)이면 주차 칸 생략. 표·랭킹·공유왕 모수도 같은 SSOT(`isInSeason`)로 현재 시즌만 — 헤더/데이터 시즌 불일치 금지. **시즌 정본 = cohorts 탭 J열 `seasonStartISO`**(admin 입력, SeasonStartInput): 개강일이 오늘(KST) 이하인 활성 아레나 시즌 중 최대. 더 높은 시즌의 개강일이 **미입력**이면 옛 시즌으로 고정하지 않고 0 → 라벨 "아레나" + 스코프 미적용(새 시즌 참가자를 숨기지 않음). 참가자별 registry K 는 템플릿 O1 스탬프라 판정에서 배제. 탭 전환=hydration 후 useState(스트리밍 중 display:none 아님). |
-| **CompanyInfoEditor** | 헤더 「편집」 왼쪽에 「문서로 자동입력」(`CompanyDocAutofillButton`, 2026-09-28 — 체크한 칸만 같은 set 경로로 반영). 미팅 업체정보(04 T~AN + AQ~AS + AU~CD, 59필드) 드롭다운+팝업 편집 — 필드 정의는 `components/company-info-defs.ts`(대표자_ITEMS·기업정보_ITEMS·재무_ITEMS = EditorItem 목록: field·bizType·ownership·row·pair·hidden·money·ratio·sales, `salesDefs(baseYear)`·`companyInfoFieldList(baseYear)`), 항목 그리기는 `components/company-info/CompanyInfoItem`(→ CompanyInfoField·CompanyInfoChoiceFields·CompanyInfoFinanceFields·CompanyInfoSalesFields). **2026-09-28 company-finance-won-grid**: [재무] 금액 = 백만원(칸 옆 "백만원"·"약 2.5억"·옛 자유 글 안내+「백만원으로 바꾸기」), 연도별 매출 = 상반기·하반기·합계 표(반기별 매출 묶음 삭제), Y 줄 연도 = 저장 가능한 매출 기준 연도, 부채비율·이자보상배율·당기순이익률 자동(읽기 전용). [기업정보] 업종 줄을 등록번호 뒤·4대보험 직원을 소유여부 뒤로, [대표자] 생년월일 칸 삭제(값 유지) + 이름·주민등록번호 / 신용점수·연락처 한 줄(375px 에서도, 입력칸 아래 정렬). 저장 경로 `apply()` = `deriveCompanyInfo`(lib/service/company-finance.ts — 합계·증가율·비율·기준 연도·주민등록번호 앞자리, 덮이는 옛 합계는 기타메모로), TXT 내보내기 = `companyInfoForExport`. **2026-09-28 재구성(company-info-restructure)**: 섹션 순서 [대표자] → [기업정보](옛 [업체], 커스텀 저장 키 "업체" 유지) → [재무], 2xl 좌우 2단 = [대표자]\|[기업정보]. 사업자구분·과세유형 한 칸 조합 select, 법인등록번호는 법인일 때만(이미 값이 있으면 늘 보임), 소유여부·대표소유여부 자가/임차 select + 임차 한 줄(보증금 원·월세 원·면적 ㎡), 업종·업태·주생산품목 한 줄, 매출·기대출(사업자)은 [재무]. 저장 경로 `apply()` 가 매출증가율 3칸을 연도 매출에서 다시 계산(PR-7 부터 `deriveCompanyInfo` — lib/service/company-finance.ts) — 직접 입력·문서 자동입력 공통, TXT 내보내기도 계산값 포함. 2026-09-28 확장2: [업체]·[대표자]에 새 칸 + 두 그룹 아래 전폭 **[재무]** 섹션(같은 카드·그리드, 사용자 필드 추가 없음, `role=group`), 주민등록번호 앞자리는 입력 중 6자리 초과분 즉시 절단·blur 에 `NNNNNN-` 마무리. 혼합 그리드(2026-06-11 §3-2 확정: 기본 1열 → sm 2열 short=span1/long=span2 → 2xl [업체]\|[대표자] 좌우 2단, 모달 2xl:max-w-3xl). placeholder 확정 문구, 기대출 2필드 textarea 자동높이(
+| **CompanyInfoEditor** | 헤더 「편집」 왼쪽에 「문서로 자동입력」(`CompanyDocAutofillButton`, 2026-09-28 — 체크한 칸만 같은 set 경로로 반영). 미팅 업체정보(04 T~AN + AQ~AS + AU~CD + 이메일, 60필드 — 2026-10 company-info-email: [대표자] 신용점수·연락처 줄 바로 아래 전폭 「이메일」, 기본보기엔 없음, 지금은 DB payload 전용·시트 열 미정) 드롭다운+팝업 편집 — 필드 정의는 `components/company-info-defs.ts`(대표자_ITEMS·기업정보_ITEMS·재무_ITEMS = EditorItem 목록: field·bizType·ownership·row·pair·hidden·money·ratio·sales, `salesDefs(baseYear)`·`companyInfoFieldList(baseYear)`), 항목 그리기는 `components/company-info/CompanyInfoItem`(→ CompanyInfoField·CompanyInfoChoiceFields·CompanyInfoFinanceFields·CompanyInfoSalesFields). **2026-09-28 company-finance-won-grid**: [재무] 금액 = 백만원(칸 옆 "백만원"·"약 2.5억"·옛 자유 글 안내+「백만원으로 바꾸기」), 연도별 매출 = 상반기·하반기·합계 표(반기별 매출 묶음 삭제), Y 줄 연도 = 저장 가능한 매출 기준 연도, 부채비율·이자보상배율·당기순이익률 자동(읽기 전용). [기업정보] 업종 줄을 등록번호 뒤·4대보험 직원을 소유여부 뒤로, [대표자] 생년월일 칸 삭제(값 유지) + 이름·주민등록번호 / 신용점수·연락처 한 줄(375px 에서도, 입력칸 아래 정렬). 저장 경로 `apply()` = `deriveCompanyInfo`(lib/service/company-finance.ts — 합계·증가율·비율·기준 연도·주민등록번호 앞자리, 덮이는 옛 합계는 기타메모로), TXT 내보내기 = `companyInfoForExport`. **2026-09-28 재구성(company-info-restructure)**: 섹션 순서 [대표자] → [기업정보](옛 [업체], 커스텀 저장 키 "업체" 유지) → [재무], 2xl 좌우 2단 = [대표자]\|[기업정보]. 사업자구분·과세유형 한 칸 조합 select, 법인등록번호는 법인일 때만(이미 값이 있으면 늘 보임), 소유여부·대표소유여부 자가/임차 select + 임차 한 줄(보증금 원·월세 원·면적 ㎡), 업종·업태·주생산품목 한 줄, 매출·기대출(사업자)은 [재무]. 저장 경로 `apply()` 가 매출증가율 3칸을 연도 매출에서 다시 계산(PR-7 부터 `deriveCompanyInfo` — lib/service/company-finance.ts) — 직접 입력·문서 자동입력 공통, TXT 내보내기도 계산값 포함. 2026-09-28 확장2: [업체]·[대표자]에 새 칸 + 두 그룹 아래 전폭 **[재무]** 섹션(같은 카드·그리드, 사용자 필드 추가 없음, `role=group`), 주민등록번호 앞자리는 입력 중 6자리 초과분 즉시 절단·blur 에 `NNNNNN-` 마무리. 혼합 그리드(2026-06-11 §3-2 확정: 기본 1열 → sm 2열 short=span1/long=span2 → 2xl [업체]\|[대표자] 좌우 2단, 모달 2xl:max-w-3xl). placeholder 확정 문구, 기대출 2필드 textarea 자동높이(
  저장). Props: `value?: CompanyInfo`, `onSave(ci)`, `busy?`, `txtCompanyName?`(있으면 [📄 업체정보생성] — POST /api/company-info/export 로 O 폴더 TXT 1본 덮어쓰기 + 성공/실패 메시지·파일 링크, §3-3/ADR-0016). [업체]12+[대표자]8+커스텀(필드추가+). 사용처: schedule MeetingResultCard·contact SavedItem+NewItem(미팅예약+1 신규 슬롯 — 예약비고 자리 교체, 등록 시 04 포함)·payment(CompanyInfoContractSection 경유). consultation-log §3. |
 | **CompanyDocAutofillButton** | `components/company-doc/CompanyDocAutofillButton.tsx` — CompanyInfoEditor 헤더(「편집」 왼쪽)의 「문서로 자동입력」 버튼(`aria-haspopup=dialog`, 편집 버튼과 같은 회색 테두리 xs). Props: `current: CompanyInfo`, `onApply(patch)`. 누르면 `CompanyDocAutofillDialog` 를 React.lazy 로 내려받아 연다 — 업체정보를 열기만 하면 OCR 코드는 받지 않는다. 편집기는 onApply 를 기존 `apply()`(자동저장 update / 임베드 stage)에 연결 — 새 저장 경로 없음. company-doc-autofill 2026-09-28. |
 | **CompanyDocAutofillDialog** | `components/company-doc/CompanyDocAutofillDialog.tsx` — 「문서로 자동입력」 팝업(body portal, `fixed inset-0 z-50`, `max-w-2xl`, 375px 1열). Props: `current`, `onApply(patch)`, `onClose`. 머리말 "파일은 이 기기 안에서만 읽고 저장하지 않아요." · 점선 끌어놓기 칸 + [파일 고르기](JPG/PNG/WebP/PDF, 15MB, PDF 첫 페이지, 여러 개) · 파일 행 = 이름 + 문서 종류 고르기 상자(자동 판별, 바꾸면 다시 해석) + 진행 막대(role=progressbar)/오류(role=alert)/모르는 문서 안내("어떤 서류인지 알아보지 못했어요…")/참고 정보(상호·금액 단위 등, 저장 안 함) · `CompanyDocDiffTable` · 바닥 "N개 선택" 「취소」「선택 항목 적용」(0개면 비활성). OCR 은 한 번에 한 파일, `@/lib/document-ocr/ocr-client` 를 읽는 순간 dynamic import, 닫으면 진행 중 OCR 취소. 파서(2026-09-28 company-doc-parsers): 사업자등록증·부가세 과세표준증명·재무제표·신분증·임대차계약서 5종 모두 `lib/document-ocr/registry.ts` PARSERS 등록 — "곧 지원돼요" 상태 없음. 신분증은 가린 원문(주민등록번호 `앞6-*******`·운전면허번호 통째 가림)으로 읽는다. 접근성: role=dialog·aria-modal·aria-labelledby/-describedby, 열리면 제목 포커스, Tab 순환, Esc 닫기, 닫히면 여는 버튼으로 포커스 복귀. |
 | **CompanyDocDiffTable** | `components/company-doc/CompanyDocDiffTable.tsx` — 비교표 `table-fixed text-xs`: 항목 \| 지금 값 \| 문서에서 읽은 값 \| 정확도(높음 emerald·보통 amber·낮음 red 칩) \| 적용 체크(라벨=항목명). 행·기본 체크는 `lib/document-ocr/diff.ts` 가 정함(빈 칸만 체크, 지금 값 있으면 해제+"지금 값이 있어 기본으로 안 덮어요", 검증 실패 번호 해제, 빈 읽은 값은 행 없음). 충돌(문서마다 다른 값)은 값 칸이 amber 고르기 상자(`<값> (<파일명>)`), 기본은 정확도 높은 값. 경고는 ⚠ amber 줄. |
-| **CompanyInfoField** | `components/company-info/CompanyInfoField.tsx` — 업체정보 편집기 한 칸(default) + `FieldLabel`(라벨 + (?) HintTooltip + sr-only 설명, 버튼은 label 밖, 선택 `tag` = 라벨 옆 회색 "(자동)" — 칸 이름엔 안 들어감) + `inputCls`·`readOnlyCls`·`hintIdOf`. Props: `def: FieldDef`, `value`, `onChange(k, v)`, `id`(패널·모달 구분 고유 id), `className`. 여러 줄 칸 = textarea 자동높이, 연락처통신사 = blur 에 formatPhone, 주민등록번호 = 입력 중 6자리 초과분 절단·blur `NNNNNN-`·자른/비운 이유 role=status(amber), placeholder 없음. company-info-restructure 2026-09-28 에 CompanyInfoEditor 에서 분리. |
+| **CompanyInfoField** | `components/company-info/CompanyInfoField.tsx` — 업체정보 편집기 한 칸(default) + `FieldLabel`(라벨 + (?) HintTooltip + sr-only 설명, 버튼은 label 밖, 선택 `tag` = 라벨 옆 회색 "(자동)" — 칸 이름엔 안 들어감) + `inputCls`·`readOnlyCls`·`hintIdOf`. Props: `def: FieldDef`, `value`, `onChange(k, v)`, `id`(패널·모달 구분 고유 id), `className`. 여러 줄 칸 = textarea 자동높이, 연락처통신사 = blur 에 formatPhone, 주민등록번호 = 입력 중 6자리 초과분 절단·blur `NNNNNN-`·자른/비운 이유 role=status(amber), 이메일(company-info-email 2026-10) = type=text·`inputMode=email`·`autoComplete=off`·`autoCapitalize=none`·`spellCheck=false`, blur 에 `tidyContactEmail`(lib/util/contact-email — 공백·전각 ＠·mailto: 정리, 대소문자 유지), 모양이 아니면 저장은 막지 않고 포커스가 없을 때 값에서 계산한 role=status(amber) "이메일 모양이 아니에요(예: ceo@example.com). 적은 그대로 저장돼요."(불러온 값·자동입력 값도), placeholder 없음. company-info-restructure 2026-09-28 에 CompanyInfoEditor 에서 분리. |
 | **CompanyInfoChoiceFields** | `components/company-info/CompanyInfoChoiceFields.tsx` — 업체정보 선택형 칸 두 개(named export). **BizTypeField**: 사업자구분 · 과세유형 한 칸 select(선택 · 개인·일반과세 / 개인·간이과세 / 개인·면세 / 법인·일반과세 / 법인·면세) — 고르면 두 저장 키를 함께, 옛 값(과세유형 빈칸·목록 밖 글)은 disabled "지금 값" 선택지로 선택된 채 표시("개인 · 과세유형 선택"), 목록 밖 글은 바꿀 때 기업정보 기타메모로 옮김. **OwnershipField**(Props `spec: OwnershipSpec`·`draft`·`onPatch`·`idBase`·`className`): 소유여부 선택/자가/임차 select, 임차면(또는 임차 칸에 값이 있으면) `role=group aria-label="임차 조건"` 한 줄 `grid-cols-1 xs:grid-cols-3`(360px 미만 세로) — 보증금·월세(숫자만 친 값은 칸을 떠날 때(blur) 천 단위 쉼표 — 입력 중 커서 튐 방지, 옆에 "원")·면적(옆에 "㎡"), 단위가 이미 적힌 옛 값("1,000만")엔 단위 안 붙임. 옛 자유 글은 선택을 짐작 + 아래 `role=note` "이전에 적은 내용: … · 선택하면 기타메모로 옮겨 둬요" + 짐작한 선택이 있으면 「임차로 확정」(「자가로 확정」) 버튼(같은 값을 다시 고르면 change 가 안 나므로 — 누르면 선택값 저장 + 원문을 기타메모로). 기업정보(소유여부)·대표자(대표소유여부) 공용. company-info-restructure 2026-09-28. |
 | **CompanyInfoSalesFields** | `components/company-info/CompanyInfoSalesFields.tsx` — 업체정보 [재무] 「연도별 매출」 표(company-finance-won-grid 2026-09-28). Props: `draft`, `onField`, `onPatch`, `idBase`, `today`(기준 연도가 비었을 때), `className`. 제목 줄 "연도별 매출 (?)" + "단위: 백만원", `role=group aria-label="연도별 매출"` **2026-10-09 피벗: 연도가 가로** — `table-fixed` 표(첫 열 `w-11` 줄 이름 연매출·상반기·하반기 + 연도 4열, 줄 높이 자동 맞춤 — 글자 크기를 키워도 "약 …" 줄이 안 잘림, 2026-10-09 보정), 연도 머리 `data-sales-row` 4개·칸 `data-sales-cell`(Y·Y-1·Y-2·Y-3; 머리 = 연도 토큰 + Y 는 네 자리 기준 연도 입력·(?) "기준 연도를 바꾸면 칸 이름만 바뀌어요. 값은 그대로예요.", 그 밖은 연도 숫자), 아래로 연매출(굵게)·상반기·하반기 칸. 칸 안 오른쪽에 옅은 "백만"(`MillionWonInput bare`, gray-300) + 제목 줄 "단위: 백만원"(gray-400). 연도별 안내(한쪽만·읽을 수 없음·이전 합계·옛 글)는 표 아래 `data-sales-note`. 2000~2100 밖이면 저장 안 하고 표 아래 `role=alert`, 칸 라벨은 sr-only "Y(2026) 상반기"·"매출 Y(2026)". 합계 = 반기 칸에 값이 있으면 읽기 전용 반기 합(bg-gray-50) + "자동 · 약 …", 한쪽만이면 줄 아래 "하반기가 비어 있어 상반기만 더했어요", 반기에 읽을 수 없는 글이면 amber 안내 + 합계 직접 입력, 둘 다 비면 합계 직접 입력, 반기 합과 다른 옛 합계는 "이전 합계 … — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요"(#1068 자동입력의 백만 반올림·반기로 드러나는 6월/12월 표시는 같은 값). 기준 연도 칸은 sr-only 설명 연결, 틀린 연도 `role=alert` 는 Y 줄 바로 아래(칸에 다시 들어가면 거둠). 칸마다 옛 자유 글 안내(MoneyLegacyNote). 아래 매출증가율 `role=group aria-label="매출증가율"` `grid-cols-1 xs:grid-cols-3` 읽기 전용 3칸(줄 합계에서 계산, Y 상반기만이면 Y-1→Y 설명에 안내). 옛 한 칸 반기별매출·매출증가율은 값이 있을 때만 읽기 전용 메모. |
 | **CompanyInfoFinanceFields** | `components/company-info/CompanyInfoFinanceFields.tsx` — [재무] 금액·비율 칸(named export, company-finance-won-grid 2026-09-28). **MillionWonInput**(Props `id`·`value`·`signed`·`onChange`·`suffix?`·`describedBy?` — 원 단위 공용 `components/ui/MoneyInput` 과 다른 칸, 값은 글): 백만원 입력 `tabular-nums`(숫자는 오른쪽·옛 글은 왼쪽 정렬), 숫자만 친 값은 소수 한 자리까지(넘치면 자르고 `role=status` "소수는 한 자리까지만 적어요" — blur 에 거둠), 손익 칸만 앞 "-", blur 에 천 단위 쉼표, 칸 아래 "약 2.5억"·"약 3,200만". **MoneyLegacyNote**: 옛 자유 글 `role=note` amber — "글로 적힌 값이에요 — 계산에는 X백만원으로 써요"(1,000,000 이상 숫자는 "원 단위로 적은 숫자 같아요 — …") + 「백만원으로 바꾸기」(표 안에선 `aria-label` "<칸 이름> 백만원으로 바꾸기") / "읽을 수 없어 계산에서 빠져요". **MoneyField**: 라벨+(?)+MillionWonInput+"백만원"+옛 글 안내(영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세 수입금액). **RatioField**: 자동 비율 읽기 전용(bg-gray-50, 라벨 옆 "(자동)" — `FieldLabel` `tag`, 비었으면 placeholder "금액을 적으면 자동 계산") + 저장된 옛 값이 다른 값이면 "이전에 적은 값: …"(숫자가 같고 모양만 다르면 안 보임). |
@@ -1616,7 +1674,7 @@ button:focus, input:focus, select:focus {
 
 ### 2026-09-14 대시보드 정리 / 2026-09-15 헤더 회귀 복원
 - PR980의 헤더 단일행·표식 제거는 #956 승인 계약 복원으로 대체한다. 모바일 두 행·대리접속 표식과 공유 sticky offset은 위 TopHeader 계약을 따른다. 대시보드 카드 정리는 유지한다.
-- 대시보드 주간 목표는 초과/남음 상태 줄을 숨긴다. PT과제는 민트 구획과 명시적 제목으로 분리. 카드 전체 상세 버튼과 주차/재시도 버튼은 독립 포커스·클릭 영역이다. 업무탭 compact 진입은 유지.
+- 대시보드 주간 목표는 칸별 초과/남음 상태 줄을 계속 숨기고, 카드 맨 위에 `CardHeadline` 한 줄만 둔다(2026-10-12 belie #8). PT과제는 민트 구획과 명시적 제목으로 분리. 카드 전체 상세 버튼과 주차/재시도 버튼은 독립 포커스·클릭 영역이다. 업무탭 compact 진입은 유지.
 
 ### STEP 1·2 입력 대상 선택 (2026-09-15)
 DB생산은 전체 4채널 종합 바로 아래에 채널 선택을 두고, 선택한 채널의 추가 폼을 바로 연다. 방문 채널 폼은 hidden 상태로 유지해 전환 시 초안을 보존한다. 컨택관리는 날짜·채널을 한 카드에 배치하며 입력 상단에 날짜와 채널을 표시한다. 최근 채널은 sessionStorage 선호값, 명시적 URL이 우선이다. 저장 버튼은 해당 날짜의 모든 채널 저장 범위를 표현한다. 날짜 변경의 미저장 보호·미팅 등록 확인은 유지한다.
@@ -1687,3 +1745,10 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `DbDetail`: 원본 DB정보와 확인된 업체정보를 구분하는 크기 조절 패널.
 - `ContactPanel`: 기존 CompanyInfoEditor 재사용, 날짜별 상담 기록 및 미팅 생성. 등록 후 연결 정보는 기존 미팅 편집 경로가 정본.
 - `ContactDbLeads`: 컨택관리의 날짜·채널별 DB관리시트 바로가기. 유입일 이후부터 표시.
+- `SupplierSummary` (2026-10-12, 유입 경로 #10 — `app/(app)/db-sheet/_components/SupplierSummary.tsx`, 계산 `supplier-summary.ts`): 「공급처별 성과」.
+  - 위치·열기: DB 목록 머리 `.sheet-table-tools` 안 [공급처별 보기](「표시할 열」 앞, 켜지면 `.sheet-btn.is-on` 파랑)로 열 설정 띠와 표 사이에 연다. 펼침 기억 `localStorage 'db-sheet-v3-supplier-summary'`('1'/'0', 읽기·쓰기 모두 try/catch). `/db-sheet?view=suppliers` 는 기억과 상관없이 펼치고 기억은 바꾸지 않는다.
+  - 내용: 공급처(원래 글자 그대로 = 필터와 같은 비교)마다 들어온 DB · 상담 · 미팅 · 계약(각 % of 들어온 DB) · 계약률(계약 ÷ 들어온 DB, 소수 한 자리). 단계는 서버 `lead.funnel`을 누적해 센다. 유입일 기간만 따르고 검색어·공급처 선택은 무시. 들어온 DB 많은 순, 공급처 미입력은 늘 마지막·못 누름. 처음 8곳 + 「나머지 N곳 더 보기」(선택한 공급처는 늘 보임). 20건 미만 계약률은 회색.
+  - 한 줄 요약(조사 없는 문구): 「전체 기간/이 기간 계약률 1위 공급처 ‘X’ · DB N건 중 계약 M건」 → 계약 0이면 상담률 1위 → 상담도 0이면 「아직 상담까지 간 DB가 없어요」 → 20건 넘는 공급처가 없으면 대기 문구. 1위 줄은 「1위」 진회색 칩.
+  - PC(pc:) 표 / 모바일 카드(`min-h-11`, 375px 가로 스크롤 없음). 막대 = 상담·미팅·계약 겹친 6px, 색은 그 공급처 채널색(매입DB 파랑·직접생산 초록, 섞이면 회색). 파랑 배경은 선택 줄(`tr[data-selected]` · 카드 `aria-pressed`, 왼쪽 3px 안쪽 그림자 — db-sheet.css)에만.
+  - 누르기: 공급처 줄 = 기존 공급처 필터 설정(다시 누르면 해제), 합계 = 해제. 모바일은 목록 첫 줄로 내려 준다.
+  - 상태: 불러오는 중 · 첫 조회 실패(「불러오지 못했어요 · 새로고침」, 가져오기 버튼 없음 — 중복 가져오기 방지) · DB 없음(+DB 가져오기) · 기간 안에 없음(+기간 초기화). 저장 실패 뒤에도 마지막 숫자 유지.

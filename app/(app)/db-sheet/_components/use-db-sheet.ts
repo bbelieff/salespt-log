@@ -50,7 +50,7 @@ export function useDbSheet() {
       const saved = rows.find(r => r.id === row.id);
       if (!saved) return row;
       return versions.current.get(row.id) === snapshots.get(row.id) ? saved : {
-        ...row, revision: saved.revision, result: saved.result, first: saved.first, stage: saved.stage, meetingId: saved.meetingId,
+        ...row, revision: saved.revision, result: saved.result, first: saved.first, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel,
       };
     }));
   }

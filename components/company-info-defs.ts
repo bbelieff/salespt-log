@@ -86,6 +86,7 @@ export const LEASE_PARTS = {
 } as const;
 
 export const RRN_HINT = "앞 6자리(생년월일)만 저장해요. 뒷자리는 비워 두고 저장하지 않아요.";
+export const EMAIL_HINT = "자료·서류를 주고받을 이메일. 예: ceo@example.com";
 /** 주민등록번호가 비어 생년월일에서 보여 주는 값일 때의 설명. */
 export const RRN_DERIVED_HINT = `생년월일에서 자동으로 채운 값이에요. 무엇이든 고치면 함께 저장돼요. 지우면 생년월일도 함께 지워져요. ${RRN_HINT}`;
 
@@ -107,6 +108,10 @@ export const 대표자_ITEMS: EditorItem[] = [
     ],
     wideSecond: true,
   },
+  // 이메일 — 연락처 줄 바로 아래 전폭 한 칸(company-info-email 2026-10). 짝 칸이 아닌 이유: 신용점수|연락처
+  // 한 줄은 belie 결정(2026-09-28)이고, 이메일은 길어 375px 의 2:3 칸에서 잘린다. 기본보기에는 넣지 않는다
+  // (연락처와 같은 기준) — 적혀 있으면 「확장보기에 적힌 항목 N개」에 들어간다.
+  f(["이메일", "이메일", EMAIL_HINT, 2]),
   f(["기대출개인", "기대출 개인", "캐피탈 38백만\n카드론 10백만\n00은행 20백만", 2, true]),
   f(["자택주소지", "자택주소지", "주소지", 2]),
   { kind: "ownership", spec: 대표자_OWNERSHIP },

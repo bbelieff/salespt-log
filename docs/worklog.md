@@ -15,6 +15,15 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-12 · 경영일지 DC · 플러그 벤치마킹 수락분 목업 1차 (승인 대기)
+- 주문: belie 가 플러그(Pluuug) 벤치마킹 11개 중 #1·3·4·7·8·9·10·11 수락, #2 타임라인·#5 정산회차/자동지연 기각, #6 진행매출 보류(권장: 하지 않음).
+- base b51d04b8, 전용 _wt/salespt-log/dashboard-followups-261012, 가지 feat/dashboard-followups(커밋만, PR 없음). 비교 분석 17명·스펙+반박검토 12명·목업 제작/독립검증 12명(Claude Opus 5.5 워크플로, Muse 1단계라 위임 없음).
+- 목업(실제 컴포넌트+합성 fixture): A 대시보드 「오늘 챙길 일」(밀린/오늘 할 일·미팅 결과·다시 연락·멈춘 업체, 화면별 딥링크) · B 카드 한 줄 문장 · C 영업이익 패널 채널별 남은 돈 · D 업체정보 이메일 칸 · E DB관리시트 공급처별 보기 · F 고유번호+변경기록 전/후 설명(mockups/records-follow-renames.html). 각 plan = docs/plans/active/{dashboard-follow-ups,dashboard-card-headlines,dashboard-channel-profit,company-info-email,db-sheet-supplier-summary}.md.
+- 검증: tsc 0 · vitest 369 파일 3,754 통과(45 기존 skip) · 항목별 독립검증 PASS(D 결함 4건 수정 후). 합성 화면 375/1280 캡처. 운영·시트·DB 쓰기 없음.
+- 승인 자료: https://claude.ai/artifact/MKmsiGtAPy9iouKWiHB2QG (정할 것 ①~⑦ + F 질문 2). 📥 belie 결정함: 위 링크의 7+2개(답 없으면 권장안).
+- 별도: 보관함·메모 붙여넣기 세션 리플레이 녹화 제외 PR #1131 CI 초록 — 머지는 자동 안전검사가 막아 belie 지시 대기.
+- 배포 전 남은 일: D 는 04 CE·06 BM 시트 열 census(읽기 전용) 먼저 · F 는 7단계(PR 분리, 0009 표 선적용) · A 는 주간목표 첫화면 노출(2026-09-11) 충돌 여부 belie 확인.
+
 ### 2026-10-10 · 경영일지 개발 총괄 · 목업 중심 개발 세션 구축
 - 사용자 승인: 총괄 창구 하나, 주문→설계→정교한 목업→사용자 승인→구현/독립 검증→배포/운영 확인. 승인 범위의 후속 단계 재승인 없음. 기존 2개 활용+검증 1개 신설.
 - base 1bc0324, 전용 development-workflow-261010. 소유 AGENTS/CLAUDE·개발 workflow/과업 양식·역할 playbook·bootstrap 연결. 제품 코드·데이터·보호 PR #1002/#798 변경 없음.

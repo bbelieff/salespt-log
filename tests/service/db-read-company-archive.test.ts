@@ -10,6 +10,7 @@ import {
   COMPANY_FIELDS_EXT2,
   COMPANY_FIELDS_EXT3,
   COMPANY_FIELDS_EXT4,
+  COMPANY_FIELDS_EXT5,
 } from "@/repo/meetings";
 import { companyInfoFromDbPayload } from "@/repo/db/read-daily";
 
@@ -30,6 +31,7 @@ const FILLED: Record<string, string> = {
   매출Y1상: "1.2억", // EXT3
   매출증가율Y1Y: "+12.5%", // EXT3 마지막 칸(BK)
   매출기준연도: "2026", // EXT4(BL)
+  이메일: "ceo@example.com", // EXT5(BM)
 };
 // CompanyInfo.커스텀 정식 스키마 = {업체:{라벨:값}, 대표자:{라벨:값}} (types/index.ts AN)
 const CUSTOM = { 업체: { 메모1: "커스텀 값" }, 대표자: {} };
@@ -42,6 +44,7 @@ function expected(): Record<string, unknown> {
   for (const f of COMPANY_FIELDS_EXT2) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT3) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT4) ci[f] = FILLED[f] ?? "";
+  for (const f of COMPANY_FIELDS_EXT5) ci[f] = FILLED[f] ?? "";
   ci.커스텀 = CUSTOM;
   return ci;
 }
@@ -76,7 +79,12 @@ describe("R2-4b company_archive: DB payload ↔ 시트 read 정합", () => {
     COMPANY_FIELDS_EXT4.forEach((f, i) => {
       if (FILLED[f]) p[colName(ext4 + i)] = FILLED[f]; // BL
     });
+    const ext5 = ext4 + COMPANY_FIELDS_EXT4.length;
+    COMPANY_FIELDS_EXT5.forEach((f, i) => {
+      if (FILLED[f]) p[colName(ext5 + i)] = FILLED[f]; // BM
+    });
     expect(colName(ext4)).toBe("BL");
+    expect(colName(ext5)).toBe("BM");
     expect(colName(4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length)).toBe("AC");
     expect(colName(ext3)).toBe("AW");
     expect(colName(ext3 + COMPANY_FIELDS_EXT3.length - 1)).toBe("BK");
@@ -92,10 +100,19 @@ describe("R2-4b company_archive: DB payload ↔ 시트 read 정합", () => {
       ...COMPANY_FIELDS_EXT2,
       ...COMPANY_FIELDS_EXT3,
       ...COMPANY_FIELDS_EXT4,
+      ...COMPANY_FIELDS_EXT5,
     ]) {
       expect(ci[f as keyof typeof ci] ?? "").toBe("");
     }
     expect(ci.커스텀).toBeUndefined();
+  });
+
+  it("⑤ 이메일(확장5) — 필드명 키 우선, backfill 열문자 BM 대체, 옛 행(키·열 없음)은 빈 값", () => {
+    const ci = companyInfoFromDbPayload({ ...FILLED, 이메일: " ceo@example.com ", BM: "old@example.com" })!;
+    expect(ci.이메일).toBe("ceo@example.com");
+    const letterOnly: Record<string, unknown> = { _backfill: true, BM: "letter@example.com" };
+    expect(companyInfoFromDbPayload(letterOnly)!.이메일).toBe("letter@example.com");
+    expect(companyInfoFromDbPayload({ ...FILLED, 이메일: undefined })!.이메일).toBe("");
   });
 
   it("④ 손상 커스텀 JSON 은 무시 (시트 read 와 동일 관용)", () => {

@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import { lockedMeetingCounts } from "./sales-meeting-counts";
 export class DbSheetLinkedMeetingReadOnly extends Error { constructor(){super("예약된 업체정보와 일정은 컨택관리에서 수정해 주세요.");} }
@@ -21,7 +21,7 @@ async function expected(c:PoolClient,ctx:DbSheetContext,id:string,revision:numbe
  const lead=await read(c,ctx,id);if(!lead||lead.revision!==revision)throw new DbSheetConflict();return lead;
 }
 async function persist(c:PoolClient,ctx:DbSheetContext,lead:DbSheetLead){
- const stored={...lead};delete stored.effectiveMeetingId;delete stored.meetingLineageIds; // read projection only; stable original link is persisted.
+ const stored={...lead};delete stored.effectiveMeetingId;delete stored.meetingLineageIds;delete stored.funnel; // read projection only; stable original link is persisted.
  await c.query(`insert into db_sheet_leads(spreadsheet_id,id,revision,data,meeting_id) values($1,$2,$3,$4::jsonb,$5)
  on conflict(spreadsheet_id,id) do update set revision=excluded.revision,data=excluded.data,meeting_id=excluded.meeting_id,updated_at=now()`,[ctx.spreadsheetId,lead.id,lead.revision,JSON.stringify(stored),lead.meetingId]);
  await c.query("insert into db_sheet_history(spreadsheet_id,lead_id,revision,data) values($1,$2,$3,$4::jsonb)",[ctx.spreadsheetId,lead.id,lead.revision,JSON.stringify(stored)]);
@@ -49,10 +49,10 @@ async function contributions(c:PoolClient,ctx:DbSheetContext,lead:DbSheetLead,si
 }
 function normalizePhone(value:string){const d=value.replace(/^p:/i,"").replace(/^\+82/,"0").replace(/[^0-9]/g,"");return /^01[016789]\d{8}$/.test(d)?d.replace(/^(\d{3})(\d{4})(\d{4})$/,"$1-$2-$3"):value;}
 function projectMeeting(data:DbSheetLead,meeting:unknown,lineage:string[]=[]):DbSheetLead {
- if(meeting&&typeof meeting==='object'&&(meeting as {_cleared?:boolean})._cleared)return {...data,stage:"미팅 삭제됨"};
+ if(meeting&&typeof meeting==='object'&&(meeting as {_cleared?:boolean})._cleared)return {...data,stage:DB_SHEET_MEETING_DELETED};
  const parsed=Meeting.safeParse(meeting);if(!parsed.success)return data;
- const m=parsed.data;const stage:Record<Meeting["상태"],string>={예약:"미팅예약",변경:"미팅변경",계약:"계약",완료:"완료",취소:"미팅취소"};
- return {...data,effectiveMeetingId:m.id,meetingLineageIds:lineage,stage:stage[m.상태],contact:{...data.contact,ci:m.업체정보??data.contact.ci,companyName:m.업체명,meetingDate:m.미팅날짜,time:m.미팅시간,place:m.장소,reservationNote:m.예약비고}};
+ const m=parsed.data;
+ return {...data,effectiveMeetingId:m.id,meetingLineageIds:lineage,stage:DB_SHEET_MEETING_STAGE[m.상태],contact:{...data.contact,ci:m.업체정보??data.contact.ci,companyName:m.업체명,meetingDate:m.미팅날짜,time:m.미팅시간,place:m.장소,reservationNote:m.예약비고}};
 }
 type MeetingRow={row_key:string;payload:Record<string,unknown>};
 function effectiveMeeting(rows:MeetingRow[],id:string|null):{meeting:unknown;lineage:string[]} {
@@ -80,7 +80,9 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
   current=await linkedProjection(c,ctx,old);
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
- const lead:DbSheetLead={...input,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",stage:current?.stage??"미컨택",meetingId:old?.meetingId??null};
+ const lead:DbSheetLead={...input,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
+  // Response-only lineage (persist strips it): lets the status projector match a contract linked to a rescheduled child meeting.
+  ...(current?.effectiveMeetingId?{effectiveMeetingId:current.effectiveMeetingId,meetingLineageIds:current.meetingLineageIds??[]}:{})};
  // Once a meeting owns its channel, changes must follow the meeting editor contract.
  if(old?.meetingId&&old.channel!==lead.channel)throw new Error("Linked meeting channel cannot change here");
  const before=old?await contributions(c,ctx,old,-1):[];await persist(c,ctx,lead);

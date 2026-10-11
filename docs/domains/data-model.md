@@ -565,7 +565,13 @@ interface DashboardWeeklyPoint {
 
 interface DashboardCostBreakdown {
   채널: '매입DB' | '직접생산' | '현수막';   // 콜·지·기·소는 비용 0이라 도넛 제외
-  비용: number;
+  비용: number;                              // 원 (화면이 만원으로 줄여 보인다)
+}
+
+// 2026-10-12 #7 — 영업이익 상세 「채널별 남은 돈」. 금액은 싣지 않는다(화면이 기간 함수로 계산).
+interface DashboardContractChannel {
+  key: string;              // contractChannelKey(@/util/contract-link): AK 있으면 `행|ak:AK`, 없으면 `행|계약일|업체명`
+  channel: Channel | null;  // 연결 미팅의 채널. null = manual:·AK 빈 값·못 찾은 미팅
 }
 
 interface DashboardView {
@@ -574,8 +580,14 @@ interface DashboardView {
   weeklyTrend: DashboardWeeklyPoint[];       // 길이 8
   costBreakdown: DashboardCostBreakdown[];   // 길이 3 (콜·지·기·소 제외)
   콜지기소수임비: number;                    // 0 (UI에서 박스 제거됨)
+  contractChannels?: DashboardContractChannel[]; // 계약 행마다 1개. optional — 배포 직후 캐시된 옛 응답엔 없다
 }
 ```
+
+**계약 → 채널 연결 규칙** (`lib/service/contract-channel.ts` — 해지 계약수 차감 `termination-count`와 공용):
+1차 AK(`linkedMeetingId`) → `meeting.id`, 2차 `계약일|업체명` → 첫 일치 미팅(미팅 연결 시 계약일 = 미팅날짜),
+`manual:`(영업기록 없이 추가) → 미팅 없음. 미팅 상태·이월로 거르지 않는다. DB 경로·시트 경로 모두 이미 읽은
+계약·미팅 배열로 만든다(새 DB·시트 읽기 0). 유입 경로(#10)가 생기면 그 값을 먼저 쓰고 미팅 채널은 대체값으로 둔다.
 
 ### Phase 2 후속 (선택)
 
@@ -597,7 +609,7 @@ interface DashboardView {
 | `RankingEntry` | interface | 개인 랭킹 1행: `{name, cohort, value, rank}`. value desc·동점 동순위·이름 asc, rank 1부터. 이름 공개(아레나 경쟁) |
 | `MeetingState` | z.enum | 5상태 enum: `예약` / `계약` / `완료` / `변경` / `취소` |
 | `Meeting` | z.object | 1미팅=1행 (04 업체관리, A~S 미팅 + T~AN·AQ~AS·AU~CC 업체정보 + AO~AP 이월깃발 + AT gcal맵). `업체정보?: CompanyInfo`, `구분`(이월\|빈값=native)·`이월원본행id` (arena-carryover §3) + **`발굴id?`**(DB payload 전용·시트 컬럼 없음, lead-chain §4-5 v2 — 어느 03 발굴에서 왔나. optional 고정=R11) |
-| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS + AU~CD, 미팅 단위): 59필드 고정(43 + 확장3 15 + 확장4 1) + `커스텀`(비정형 JSON). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. **확장2 20필드(2026-09-28, 04 AU~BN · 06 AC~AV)**: [업체] `과세유형`·`업태`·`법인등록번호`·`임차보증금`·`임차월세`·`임차면적` / [대표자] `주민등록번호`(**앞 6자리만 `NNNNNN-` — zod transform `normalizeRrnFront` 가 서버에서 강제, 뒷자리 저장 불가**) / [재무] `결산연도`·`영업이익`·`당기순이익`·`이자비용`·`자산총계`·`부채총계`·`자본총계`·`반기별매출`·`면세수입금액`·`부채비율`·`이자보상배율`·`당기순이익률`·`매출증가율` — 전부 자유 텍스트 default ""(비율도 직접 입력). DB payload JSONB 라 마이그레이션 없음 — 옛 행은 키 부재 → "" 로 파싱. 기대출 2필드·반기별매출은 셀 내 `\n` 허용. **확장3 15필드(2026-09-28 company-info-restructure, 04 BO~CC · 06 AW~BK)**: [기업정보] `주생산품목` / [대표자] `대표임차보증금`·`대표임차월세`·`대표임차면적`(자택 임차 — 보증금·월세 원 숫자, 면적 ㎡) / [재무] 반기 매출 8칸 `매출Y상`·`매출Y하`·`매출Y1상`·`매출Y1하`·`매출Y2상`·`매출Y2하`·`매출Y3상`·`매출Y3하` + 매출증가율 3칸 `매출증가율Y3Y2`·`매출증가율Y2Y1`·`매출증가율Y1Y`(**편집기가 연도 매출에서 자동 계산해 저장** — `lib/service/company-finance.ts` `deriveCompanyInfo`(편집기 apply 경로: 합계·증가율·비율·기준 연도·주민등록번호 앞자리), "+12.5%"). 모두 자유 텍스트 default "" — 옛 행은 "" 로 파싱. 같은 재구성으로 옛 키 뜻이 바뀜(값 보존): `소유여부`·`대표소유여부` = "자가"/"임차" 선택(옛 자유 글 호환 표시), `사업자구분`+`과세유형` = 한 칸 조합 선택, `업종주생산품목` = 표시 "업종", `반기별매출`·`매출증가율` = 편집기에서 숨김(값 있으면 읽기 전용 메모). **확장4 1필드(2026-09-28 company-finance-won-grid, 04 CD · 06 BL)**: [재무] `매출기준연도`("2026" — 연도별 매출 Y 줄의 연도, 비었으면 화면은 오늘 연도·재무 칸을 처음 고칠 때 편집기가 저장). 같은 작업으로 [재무] 금액 19칸(반기 8·연도 합계 4·영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세수입금액)의 새 값 모양 = **백만원 숫자 글**("250.1"·"1,234"·"-3.2", 소수 한 자리, 음수는 손익 3칸만 — `lib/util/company-money.ts`), 옛 자유 글은 그대로 두고 읽기만(단위 없는 숫자 = 백만원, 단 1,000,000 이상 숫자는 원으로 적은 값 · 괄호 숫자는 손익 칸 음수). 연도 합계는 반기 칸이 있으면 반기 합, `부채비율`·`이자보상배율`·`당기순이익률`은 편집기가 금액에서 계산해 저장(`lib/service/company-finance.ts` `deriveCompanyInfo`). `대표자생년월일`은 편집기에서 숨김(값 유지 — 주민등록번호가 비면 앞자리를 보여 주고 편집 때 함께 저장). 스키마는 여전히 자유 텍스트 default "". consultation-log §1-1 (2026-06-11 확정) |
+| `CompanyInfo` | z.object | 업체정보(04 T~AN + AQ~AS + AU~CE, 미팅 단위): 60필드 고정(43 + 확장3 15 + 확장4 1 + 확장5 1) + `커스텀`(비정형 JSON). **확장5 1필드(2026-10 company-info-email)**: [대표자] `이메일` — 자유 텍스트 default "", `.email()` 같은 차단 검증 없음(모양은 편집기 amber 안내만, `lib/util/contact-email.ts`), 여러 주소 허용. 04 CE · 06 BM 시트 미러(`COMPANY_FIELDS_EXT5`, 04 폭 83 · 06 폭 65, 읽기 폴백 CE→CD→CC→BN→AS) — 계약 업체 개명(06 시트 대체 읽기)·아레나 이월(열문자 payload)에도 남는다. 배포 전 라이브 04!CE·06!BM 빈 열 census(읽기 전용) 필요(`docs/plans/active/company-info-email.md`). 확장 3필드(대표자생년월일·과년도매출Y2·Y3)는 AQ~AS — AO~AP 이월깃발 뒤 append. **확장2 20필드(2026-09-28, 04 AU~BN · 06 AC~AV)**: [업체] `과세유형`·`업태`·`법인등록번호`·`임차보증금`·`임차월세`·`임차면적` / [대표자] `주민등록번호`(**앞 6자리만 `NNNNNN-` — zod transform `normalizeRrnFront` 가 서버에서 강제, 뒷자리 저장 불가**) / [재무] `결산연도`·`영업이익`·`당기순이익`·`이자비용`·`자산총계`·`부채총계`·`자본총계`·`반기별매출`·`면세수입금액`·`부채비율`·`이자보상배율`·`당기순이익률`·`매출증가율` — 전부 자유 텍스트 default ""(비율도 직접 입력). DB payload JSONB 라 마이그레이션 없음 — 옛 행은 키 부재 → "" 로 파싱. 기대출 2필드·반기별매출은 셀 내 `\n` 허용. **확장3 15필드(2026-09-28 company-info-restructure, 04 BO~CC · 06 AW~BK)**: [기업정보] `주생산품목` / [대표자] `대표임차보증금`·`대표임차월세`·`대표임차면적`(자택 임차 — 보증금·월세 원 숫자, 면적 ㎡) / [재무] 반기 매출 8칸 `매출Y상`·`매출Y하`·`매출Y1상`·`매출Y1하`·`매출Y2상`·`매출Y2하`·`매출Y3상`·`매출Y3하` + 매출증가율 3칸 `매출증가율Y3Y2`·`매출증가율Y2Y1`·`매출증가율Y1Y`(**편집기가 연도 매출에서 자동 계산해 저장** — `lib/service/company-finance.ts` `deriveCompanyInfo`(편집기 apply 경로: 합계·증가율·비율·기준 연도·주민등록번호 앞자리), "+12.5%"). 모두 자유 텍스트 default "" — 옛 행은 "" 로 파싱. 같은 재구성으로 옛 키 뜻이 바뀜(값 보존): `소유여부`·`대표소유여부` = "자가"/"임차" 선택(옛 자유 글 호환 표시), `사업자구분`+`과세유형` = 한 칸 조합 선택, `업종주생산품목` = 표시 "업종", `반기별매출`·`매출증가율` = 편집기에서 숨김(값 있으면 읽기 전용 메모). **확장4 1필드(2026-09-28 company-finance-won-grid, 04 CD · 06 BL)**: [재무] `매출기준연도`("2026" — 연도별 매출 Y 줄의 연도, 비었으면 화면은 오늘 연도·재무 칸을 처음 고칠 때 편집기가 저장). 같은 작업으로 [재무] 금액 19칸(반기 8·연도 합계 4·영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세수입금액)의 새 값 모양 = **백만원 숫자 글**("250.1"·"1,234"·"-3.2", 소수 한 자리, 음수는 손익 3칸만 — `lib/util/company-money.ts`), 옛 자유 글은 그대로 두고 읽기만(단위 없는 숫자 = 백만원, 단 1,000,000 이상 숫자는 원으로 적은 값 · 괄호 숫자는 손익 칸 음수). 연도 합계는 반기 칸이 있으면 반기 합, `부채비율`·`이자보상배율`·`당기순이익률`은 편집기가 금액에서 계산해 저장(`lib/service/company-finance.ts` `deriveCompanyInfo`). `대표자생년월일`은 편집기에서 숨김(값 유지 — 주민등록번호가 비면 앞자리를 보여 주고 편집 때 함께 저장). 스키마는 여전히 자유 텍스트 default "". consultation-log §1-1 (2026-06-11 확정) |
 | `ChannelDailyRow` | z.object | (날짜, 채널) 4지표 카운트 행 (영업관리 E~H) |
 | `User` | z.object | 마스터 레지스트리 row (A~R). A~M 기존 + N=driveParentPath + O=feedbackFolderId + P=driveLinkStatus(ok/""/error). Q=memo(아레나 회장/입금 — 전광판 입금자 모수 필터) + R=captainOf(아레나 회장 cohort `A1-1`, 빈값=일반). ADR-0007/0014 |
 
@@ -641,7 +653,8 @@ interface DashboardView {
 | `DashboardChannelMatrix` | interface | 채널별 funnel matrix (4채널 × N단계). 6단계 확장은 별도 PR |
 | `DashboardWeeklyPoint` | interface | 주차별 추이 1점 (주차/영업이익/활동량) |
 | `DashboardCostBreakdown` | interface | 채널별 비용 1행 (3채널, 콜·지·기·소 제외) |
-| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost) |
+| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost + `contractChannels?`) |
+| `DashboardContractChannel` | interface | 계약 행 → 연결 미팅 채널 `{ key, channel: Channel \| null }` (2026-10-12 #7, 영업이익 상세 채널 표). key = `contractChannelKey` |
 
 ## API 엔드포인트 (예정)
 
@@ -737,8 +750,11 @@ Trainer qualification is independent of enrollment: `trainer_qualifications` key
 
 ## DB관리시트 저장 계약 (2026-10-11)
 - `DbSheetDate`: 실제 달력 날짜를 검증하는 ISO 날짜. `DbSheetResult`: 미컨택·부재·단순거절·재통화·컨택진행·상담 후 거절.
+- `isDbSheetFollowUpResult(result)`: 다음 연락일을 쓰는 결과 4종(부재·단순거절·상담 후 거절·재통화) — DbDetail·Grid(`model.ts showsNextContact`)와 대시보드 「오늘 챙길 일」 다시 연락 칩이 같은 목록을 쓴다(2026-10-12, 목록은 `lib/types/db-sheet.ts` 한 곳).
 - `DbSheetLeadInput`: 원본 DB정보와 유입일·매입DB/직접생산 채널. `DbSheetContact`: 상담일·상담메모·확인된 CompanyInfo·미팅 초안. 원본과 확인 정보는 서로 덮어쓰지 않는다.
 - `DbSheetLead`: 서버 revision·최초상담일·현재상태·원본 meetingId·조회용 effectiveMeetingId. `0008_db_sheet.sql`의 leads/contacts/imports/history는 spreadsheet_id별 격리, 브라우저 역할 권한 회수와 RLS 적용.
+- `DbSheetFunnelStep` (2026-10-12, 공급처별 성과): 유입 < 연락 < 상담 < 미팅 < 계약 — DB 한 건이 닿은 가장 높은 단계. `DbSheetLead.funnel`(선택)은 **읽기 전용 투영**: GET·POST 응답마다 `lib/service/db-sheet-status.ts dbSheetFunnelStep` 이 계산하고 저장하지 않는다(`persist` 가 effectiveMeetingId·meetingLineageIds 와 함께 지움). 규칙(위에서 처음 맞는 것): 살아 있는 연결 계약 → 계약 · 연결 계약이 모두 해지/숨김 → 미팅 · 미팅 상태 계약 → 계약 · 예약/변경/완료 → 미팅 · 취소·삭제된 미팅은 아래로 · 최초상담일 → 상담 · 미컨택 아닌 결과 → 연락 · 그 외 유입. 현재상태 열(「계약해지」 등)과 같은 기준이며 대시보드 계약 수(미팅 상태·해지일 기준, 해지숨김만으로는 빼지 않음)와 일부러 다를 수 있다. `save()` 응답도 effectiveMeetingId·meetingLineageIds 를 실어 일정 변경 뒤 새 미팅에 연결된 계약을 놓치지 않는다(응답 전용).
+- `DB_SHEET_MEETING_STAGE`·`DB_SHEET_MEETING_DELETED`: 미팅 상태 → 현재상태 글자(예약 미팅예약 · 변경 미팅변경 · 계약 계약 · 완료 완료 · 취소 미팅취소 · 지운 미팅 「미팅 삭제됨」). 저장소 `projectMeeting` 과 `dbSheetFunnelStep` 이 같은 상수를 쓴다.
 - 유입일에 유입 1건, 메타는 직접생산(생산에도 반영). 컨택진행/상담 후 거절은 업체×날짜마다 1건, 부재·단순거절·재통화는 상담 실적에서 제외. 미팅 예약은 같은 트랜잭션에서 상담/미팅/카운트를 기록한다.
 - 자동 집계 기여분을 기존 일일 수동 카운트와 분리해 유지한다. revision 충돌은 409. batch UUID와 내용 해시로 재전송 중복을 막고 변경 이력을 보존한다.
 - 현재상태는 연결 미팅과 계약/수납 정본에서 조회한다. 실무 슬롯 상태가 다르면 고유 상태를 함께 표시하여 부분 수납을 전체 완료로 오인하지 않게 한다.

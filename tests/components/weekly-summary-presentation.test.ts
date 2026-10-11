@@ -18,6 +18,25 @@ describe("dashboard weekly goal presentation", () => {
     expect(html).not.toContain("남음");
     expect(html).not.toContain("목표·PT과제 열기");
   });
+  // belie 2026-10-12 #8 — 대시보드만 제목 아래 한 줄 문장. 칸별 「N 남음/초과」 줄은 계속 숨긴다.
+  it("shows one headline only when opted in, in present or past form, still without remainder rows", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-09-15T03:00:00Z")); // 그 주(~09-17) 진행 중
+      const present = renderToStaticMarkup(React.createElement(WeeklyGoalSummary, { headline: true }));
+      expect(present).toContain("data-card-headline");
+      expect(present).toContain("미팅완료 목표까지 9건 남았어요");
+      expect(present).not.toMatch(/\d+ 남음/);
+      expect(present).not.toContain("초과");
+      vi.setSystemTime(new Date("2026-10-12T03:00:00Z")); // 그 주가 끝난 뒤
+      const past = renderToStaticMarkup(React.createElement(WeeklyGoalSummary, { headline: true }));
+      expect(past).toContain("미팅완료 목표에 9건 못 미쳤어요");
+      expect(past).not.toContain("💪");
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(renderToStaticMarkup(React.createElement(WeeklyGoalSummary))).not.toContain("data-card-headline");
+  });
   it("preserves the explicit entry for compact business-tab summaries", () => {
     expect(renderToStaticMarkup(React.createElement(WeeklyGoalSummary,{compact:true}))).toContain('aria-label="목표·PT과제 열기"');
   });
