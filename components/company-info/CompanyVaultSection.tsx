@@ -226,7 +226,8 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
   const ready = !loading && !loadError && view;
 
   return (
-    <section aria-label="계정 보관함" className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+    <section aria-label="계정 보관함" className="ph-no-capture rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+      {/* ph-no-capture: 세션 리플레이(PostHog)가 펼친 비밀번호·계좌·주민번호를 녹화하지 않게 영역째 제외. */}
       {/* 제목 한 줄: 「계정 보관함 · 열림 · mm:ss 뒤 잠겨요」 + PIN 바꾸기(belie 2026-10-09 — 잠금 저장 배지·지금 잠그기 뺌). */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="min-w-0 text-sm font-bold text-gray-900">

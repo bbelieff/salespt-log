@@ -23,7 +23,8 @@ interface Props {
 export default function CompanyDocMemoExtras({ vault, vaultOn, onVault, leftover, leftoverOn, onLeftover }: Props) {
   if (vault.length === 0 && !leftover) return null;
   return (
-    <div className="mt-3 space-y-2">
+    // ph-no-capture: 보관함으로 보낼 계정·남은 메모가 세션 리플레이에 녹화되지 않게.
+    <div className="ph-no-capture mt-3 space-y-2">
       {vault.length > 0 && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2 text-xs">
           <p className="font-bold text-emerald-800">계정 보관함으로 보낼 항목</p>

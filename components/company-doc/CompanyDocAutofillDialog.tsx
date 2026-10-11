@@ -308,7 +308,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
               onChange={(e) => setPasteText(e.target.value)}
               rows={6}
               placeholder="메모장에 적은 미팅 메모를 그대로 붙여넣어 주세요."
-              className="w-full rounded-md border border-gray-300 p-2 text-xs text-gray-900 focus:border-gray-900 focus:outline-none"
+              className="ph-no-capture w-full rounded-md border border-gray-300 p-2 text-xs text-gray-900 focus:border-gray-900 focus:outline-none"
             />
             <button
               type="button"
