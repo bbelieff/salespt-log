@@ -104,3 +104,29 @@ it("migration enables RLS and leaves browser/public roles without privileges",as
  await fixture.db!.exec("create role db_sheet_browser; grant usage on schema public to db_sheet_browser; set role db_sheet_browser;");
  await expect(query("select * from db_sheet_leads")).rejects.toThrow();await fixture.db!.exec("reset role");
 });
+
+it("supports four source types and moves only this lead's inflow/contact contributions",async()=>{
+ const channels=["매입DB","직접생산","현수막","콜·지·기·소"] as const;
+ const date="2027-01-01",contactDate="2027-01-02",meetingDate="2027-01-05";
+ for(const channel of channels){
+  let lead=(await saveDbSheetLead(ctx,{...input(),date,channel,supplier:"합성 출처"},null)).lead;
+  lead=(await saveDbSheetContact(ctx,lead.id,{date:contactDate,result:"컨택진행",note:"합성 상담"},lead.revision)).lead;
+  const meeting=Meeting.parse({id:"ignored",예약일:contactDate,예약시각:"09:00",미팅날짜:meetingDate,미팅시간:"14:00",channel,업체명:"합성 업체",장소:"합성 소재지"});
+  const booked=await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision);
+  const rows=await query("select row_key,payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key in ($2,$3)",[ctx.spreadsheetId,date+":"+channel,contactDate+":"+channel]);
+  expect(rows.rows).toEqual(expect.arrayContaining([expect.objectContaining({row_key:date+":"+channel,payload:expect.objectContaining({inflow:1})}),expect.objectContaining({row_key:contactDate+":"+channel,payload:expect.objectContaining({contactProgress:1,meetingReservation:1})})]));
+  expect(booked.lead.channel).toBe(channel);
+  await expect(saveDbSheetLead(ctx,{...booked.lead,channel:channels[(channels.indexOf(channel)+1)%4]},booked.lead.revision)).rejects.toThrow("Linked meeting channel");
+ }
+ let moving=(await saveDbSheetLead(ctx,{...input(),date,channel:"매입DB"},null)).lead;
+ moving=(await saveDbSheetContact(ctx,moving.id,{date:contactDate,result:"컨택진행",note:"채널 이동"},moving.revision)).lead;
+ for(const channel of ["직접생산","현수막","콜·지·기·소"] as const){moving=(await saveDbSheetLead(ctx,{...moving,channel,supplier:"수정 출처"},moving.revision)).lead;}
+ const totals=await query("select row_key,payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and (row_key like $2 or row_key like $3)",[ctx.spreadsheetId,date+":%",contactDate+":%"]);
+ for(const channel of channels){
+  const expected=channel==="콜·지·기·소"?2:1;
+  const data=totals.rows as {row_key:string;payload:Record<string,number>}[];
+  expect(data.find(r=>r.row_key===date+":"+channel)?.payload.inflow).toBe(expected);
+  expect(data.find(r=>r.row_key===contactDate+":"+channel)?.payload.contactProgress).toBe(expected);
+ }
+ expect((await listDbSheet(ctx)).find(l=>l.id===moving.id)).toMatchObject({channel:"콜·지·기·소",supplier:"수정 출처"});
+});

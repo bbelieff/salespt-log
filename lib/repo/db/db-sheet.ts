@@ -73,7 +73,7 @@ async function linkedProjection(c:PoolClient,ctx:DbSheetContext,old:DbSheetLead)
 }
 const linkedKeys=["ci","companyName","meetingDate","time","place","reservationNote"] as const;
 async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|null):Promise<DbSheetChange>{
- const input=DbSheetLeadInput.parse(raw);if(!["매입DB","직접생산"].includes(input.channel))throw new Error("Unsupported import channel");
+ const input=DbSheetLeadInput.parse(raw);
  const old=await read(c,ctx,input.id);if(revision===null?!!old:!old||old.revision!==revision)throw new DbSheetConflict();
  let current=old;
  if(old?.meetingId){

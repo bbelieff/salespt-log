@@ -10,7 +10,7 @@ export const DbSheetContact = z.object({
  meetingDate:text,time:text,place:text,reservationNote:text,registered:z.boolean().default(false),companyName:text,
 });
 export const DbSheetLeadInput = z.object({
- id:z.string().uuid(), supplier:text,date:DbSheetDate,channel:z.enum(["매입DB","직접생산"]),
+ id:z.string().uuid(), supplier:text,date:DbSheetDate,channel:Channel,
  company:text,owner:text,phone:text,biz:text,address:text,industry:text,credit:text,sales:text,arrears:text,funds:text,
  next:z.union([DbSheetDate,z.literal("")]).default(""),memo:text,
  contact:DbSheetContact.default({}),
