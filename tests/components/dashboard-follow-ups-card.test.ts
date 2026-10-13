@@ -152,6 +152,23 @@ describe("DashboardFollowUps 카드", () => {
 });
 
 describe("STEP summary detail boundaries", () => {
+  it("keeps the open popup inside the viewport when resizing or scrolling its anchor offscreen", () => {
+    vi.stubGlobal("innerWidth", 320); vi.stubGlobal("innerHeight", 800);
+    let anchorTop = 980;
+    const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function(this: HTMLElement) {
+      return this.matches("[role=dialog]") ? new DOMRect(0, 0, 296, 520) : new DOMRect(280, anchorTop, 40, 28);
+    });
+    try {
+      seed(rich); render();
+      act(() => (host.querySelector(".follow-ups-total") as HTMLButtonElement).click());
+      const panel = document.querySelector<HTMLElement>("[role=dialog]")!;
+      expect(panel.style.top).toBe("268px");
+      expect(panel.style.left).toBe("12px");
+      anchorTop = -200;
+      act(() => window.dispatchEvent(new Event("scroll")));
+      expect(panel.style.top).toBe("12px");
+    } finally { bounds.mockRestore(); }
+  });
   it("the total opens every urgent item oldest first; future tasks remain separate", () => {
     seed(rich); render();
     act(() => (host.querySelector(".follow-ups-total") as HTMLButtonElement).click());

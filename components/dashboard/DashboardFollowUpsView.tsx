@@ -43,7 +43,8 @@ export default function DashboardFollowUpsView({ items, notice, incomplete = fal
       if (!anchor || !panel) return;
       const left = Math.max(12, Math.min(anchor.x + anchor.width / 2 - panel.width / 2, window.innerWidth - panel.width - 12));
       const below = anchor.bottom + 8;
-      const top = below + panel.height <= window.innerHeight - 12 ? below : Math.max(12, anchor.top - panel.height - 8);
+      const preferredTop = below + panel.height <= window.innerHeight - 12 ? below : anchor.top - panel.height - 8;
+      const top = Math.max(12, Math.min(preferredTop, window.innerHeight - panel.height - 12));
       setPosition({ left, top });
     };
     place();
