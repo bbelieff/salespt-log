@@ -189,13 +189,8 @@ export default function DesktopNav() {
       data-collapsed={collapsed}
       className="desktop-nav sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-slate-200 bg-white pc:flex"
     >
-      {/* 로고 블록 */}
-      <div className={`flex shrink-0 items-center border-b border-slate-100 ${collapsed ? "h-20 flex-col justify-center gap-1 px-1" : "h-16 gap-2 px-4"}`}>
-        <img
-          src="/salespt-logo.png"
-          alt="세일즈PT"
-          className={`h-6 shrink-0 object-contain ${collapsed ? "w-8" : "w-auto"}`}
-        />
+      {/* 로고는 메인 TopHeader에만 표시한다. */}
+      <div className={`flex h-16 shrink-0 items-center border-b border-slate-100 ${collapsed ? "justify-center px-1" : "gap-2 px-4"}`}>
         {!collapsed && <span className="truncate text-sm font-black text-slate-900">경영일지</span>}
         <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? "사이드탭 펼치기" : "사이드탭 축소하기"} title={collapsed ? "펼치기" : "축소하기"} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 ${collapsed ? "" : "ml-auto"}`}>
           {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}

@@ -1,3 +1,6 @@
+## 2026-10-14 · 사이드바 중복 로고 제거
+- 사용자 직접 수정 요청. base22343edb, fix/sidebar-brand-dedup 전용 worktree. DesktopNav·디자인 문서만 수정, 메인 로고·계정 메뉴·접기/펼치기 보존. 검사·합성 화면·CI 후 운영 반영 예정.
+
 ## 2026-10-13 22:59 KST · C 채널별 남은 돈 운영 확인 완료
 - PR #1137 → squash 625f14d2. 정상 check.sh 구조92·단위3539 PASS(기존45 skip), production build·동일 head 독립검토·CI PASS.
 - 실제 컴포넌트 합성 CUA PC1600/모바일320·375·430 가로 넘침 없음, 4채널·미연결·추가비용 분리 및 합계·상세 버튼 확인.
