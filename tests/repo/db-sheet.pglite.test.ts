@@ -99,6 +99,22 @@ it("meeting descendant projection and readonly guard preserve editable raw field
  await query("update sheet_rows set payload=payload || $2::jsonb where row_key=$1",[r.meetingId,JSON.stringify({_cleared:true})]);
  expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)!.stage).toBe("미팅 삭제됨");
 });
+it("save() response keeps the rescheduled lineage; stored rows never hold projection-only keys",async()=>{
+ const raw=input();const [imported]=await importDbSheetLeads(ctx,randomUUID(),[raw]);
+ const contacted=(await saveDbSheetContact(ctx,raw.id,{date:"2026-12-10",result:"부재",note:"투영 확인"},imported!.lead.revision)).lead;
+ const meeting=Meeting.parse({id:"ignored",예약일:"2026-12-10",예약시각:"09:00",미팅날짜:"2026-12-12",미팅시간:"10:00",channel:"직접생산",업체명:"투영 합성",장소:"합성"});
+ const booked=await registerDbSheetMeeting(ctx,raw.id,meeting,contacted.revision);
+ const child={...meeting,id:randomUUID(),previousMeetingId:booked.meetingId,상태:"계약"};
+ await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,child.id,JSON.stringify(child)]);
+ const projected=(await listDbSheet(ctx)).find(x=>x.id===raw.id)!;
+ const saved=await saveDbSheetLead(ctx,{...projected,phone:"01000009999",funnel:"계약"},projected.revision);
+ expect(saved.lead.stage).toBe("계약");expect(saved.lead.effectiveMeetingId).toBe(child.id);expect(saved.lead.meetingLineageIds).toEqual([booked.meetingId,child.id]);
+ const projectionOnly=["effectiveMeetingId","meetingLineageIds","funnel"];
+ const stored=await query("select data from db_sheet_leads where spreadsheet_id=$1 and id=$2",[ctx.spreadsheetId,raw.id]);
+ const history=await query("select data from db_sheet_history where spreadsheet_id=$1 and lead_id=$2",[ctx.spreadsheetId,raw.id]);
+ expect(history.rows.length).toBeGreaterThanOrEqual(4);
+ for(const row of [...stored.rows,...history.rows] as {data:Record<string,unknown>}[])for(const key of projectionOnly)expect(row.data).not.toHaveProperty(key);
+});
 it("migration enables RLS and leaves browser/public roles without privileges",async()=>{
  const r=await query("select relrowsecurity from pg_class where relname like 'db_sheet_%' and relkind='r'");expect(r.rows).toHaveLength(4);expect(r.rows.every(x=>(x as {relrowsecurity:boolean}).relrowsecurity)).toBe(true);
  await fixture.db!.exec("create role db_sheet_browser; grant usage on schema public to db_sheet_browser; set role db_sheet_browser;");

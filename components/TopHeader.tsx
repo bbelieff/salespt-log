@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
@@ -21,6 +21,8 @@ interface Props {
   pageEmoji: string;
   pageTitle: string;
   pageSubtitle?: string;
+  /** 페이지 제목 대신 같은 배너에 표시하는 관련 화면 이동. */
+  pageNavigation?: ReactNode;
   roleMode?: "student" | "trainer";
   /** 서버가 확인한 접속 계정. 트레이너 화면에서는 대리접속 대상과 구분한다. */
   sessionIdentity?: { name: string; email: string };
@@ -52,6 +54,7 @@ export default function TopHeader({
   pageEmoji,
   pageTitle,
   pageSubtitle,
+  pageNavigation,
   roleMode,
   pageAction,
   sessionIdentity,
@@ -318,10 +321,11 @@ export default function TopHeader({
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"
         >
           <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
-          <h1 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
+          <h1 className={pageNavigation ? "sr-only" : "flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2"}>
             <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
             <span className="truncate">{pageTitle}</span>
           </h1>
+          {pageNavigation}
           {pageSubtitle && (
             <span className="ml-auto shrink-0 truncate text-px-10 text-slate-500 sm:text-xs">
               {pageSubtitle}

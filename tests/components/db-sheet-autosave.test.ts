@@ -54,11 +54,13 @@ describe("DB sheet real hook persistence", () => {
     await act(async () => { job = action === "record" ? api.record(id, "컨택진행", "2026-10-11") : api.register(id); });
     expect(requests[1]!.body?.action).toBe(action === "record" ? "contact" : "meeting");
     act(() => api.contact(id, { ...api.leads[0]!.contact, note: "응답 대기 중 새 메모" }));
-    const saved = lead({ revision: 2, result: "컨택진행", first: "2026-10-11", stage: action === "record" ? "상담 중" : "미팅예약", meetingId: action === "register" ? "synthetic-meeting" : null });
+    const saved = lead({ revision: 2, result: "컨택진행", first: "2026-10-11", stage: action === "record" ? "상담 중" : "미팅예약", meetingId: action === "register" ? "synthetic-meeting" : null, funnel: action === "record" ? "상담" : "미팅" });
     await act(async () => { answer(1, [saved]); await job; });
     expect(api.leads[0]!.contact.note).toBe("응답 대기 중 새 메모");
     expect(api.leads[0]!.revision).toBe(2);
     expect(api.leads[0]!.meetingId).toBe(saved.meetingId);
+    // 공급처별 성과가 새로고침 없이 바뀌도록 서버가 계산한 단계도 함께 받는다.
+    expect(api.leads[0]!.funnel).toBe(saved.funnel);
     await debounce();
     expect(requests[2]!.body).toMatchObject({ action: "save", revision: 2, lead: { contact: { note: "응답 대기 중 새 메모" } } });
     await act(async () => { answer(2, [{ ...saved, revision: 3, contact: { ...saved.contact, note: "응답 대기 중 새 메모" } }]); });
