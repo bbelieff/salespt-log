@@ -111,3 +111,21 @@ body.db-sheet-route .sheet-mobile-sort{max-width:145px;border:1px solid #e2e8f0;
 @media(max-width:1023px){body.db-sheet-route .sheet-mobile-switch{align-items:center;justify-content:space-between;gap:8px;padding:0 16px 10px;margin:0}body.db-sheet-route .sheet-mobile-switch>span{display:none}body.db-sheet-route .sheet-mobile-switch .sheet-text-btn{min-height:36px}body.db-sheet-route .sheet-resizable .column-heading{touch-action:pan-x}body.db-sheet-route .sheet-resizable .column-title{min-height:44px}}
 
 body.db-sheet-route .sheet-import-mapping{margin-top:12px;font-size:12px}body.db-sheet-route .sheet-import-mapping summary{cursor:pointer;color:#2563eb}body.db-sheet-route .sheet-import-mapping p{color:#64748b;margin:8px 0}body.db-sheet-route .sheet-import-mapping label{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center;margin:6px 0}body.db-sheet-route .sheet-import-mapping label>span{overflow-wrap:anywhere}
+
+/* Freeze headers and identity columns inside the sheet's own scroll area. */
+body.db-sheet-route .sheet-grid.mobile-table-on {
+ isolation:isolate;
+ scroll-padding-block-start:72px;
+ scroll-padding-inline-start:calc(var(--sheet-frozen-width, 0px) + 8px);
+}
+body.db-sheet-route .sheet-grid .sheet-resizable thead th {position:sticky;top:0;z-index:4}
+body.db-sheet-route .sheet-grid .sheet-resizable .sheet-number {position:relative;left:auto;z-index:auto}
+body.db-sheet-route .sheet-grid .sheet-resizable thead .sheet-number {position:sticky;top:0;z-index:4}
+body.db-sheet-route .has-frozen-number .sheet-resizable .sheet-number {position:sticky;left:0;z-index:2}
+body.db-sheet-route .has-frozen-company .sheet-resizable .sheet-company-column {
+ position:sticky;left:var(--sheet-number-width);z-index:2;background:#fff;
+ box-shadow:2px 0 0 #cbd5e1,5px 0 8px -5px #64748b;
+}
+body.db-sheet-route .has-frozen-company .sheet-resizable tr:hover td.sheet-company-column {background:#f8fafc}
+body.db-sheet-route .has-frozen-number .sheet-resizable thead .sheet-number,
+body.db-sheet-route .has-frozen-company .sheet-resizable thead .sheet-company-column {top:0;z-index:5;background:#f8fafc}
