@@ -1587,6 +1587,7 @@ button:focus, input:focus, select:focus {
 - 관리자 항목은 `useMe()` 가 준 `isAdmin`/`sessionRole` 로만 판정한다. `isAdminEmail` 같은
   **서버 전용 판정을 클라이언트에서 흉내내지 않는다**(판단이 안 서면 숨기는 쪽).
 - 파일: `components/desktop/DesktopNav.tsx` · 회귀 테스트 `tests/components/desktop-nav.test.ts`.
+- 브랜드 로고는 메인 `TopHeader`에만 표시한다. 사이드바는 펼쳤을 때 `경영일지` 제목과 접기 버튼, 접었을 때 펼치기 버튼만 표시하며 헤더 높이는 모두 `h-16`이다.
 
 ### Desktop glass polish — scoped 도장 (2026-09-25)
 
