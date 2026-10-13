@@ -1,5 +1,5 @@
 /**
- * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~CD) 드롭다운 + 팝업 편집.
+ * CompanyInfoEditor — 미팅 업체정보(04 T~AN + AQ~AS + AU~CE) 드롭다운 + 팝업 편집.
  * 정본: consultation-log-and-calendar.md §3-2 (2026-06-11 혼합 그리드 확정)
  *       + company-info-restructure · company-finance-won-grid(belie 2026-09-28).
  * contact/schedule/payment 공용 — 탭별 분기 금지.

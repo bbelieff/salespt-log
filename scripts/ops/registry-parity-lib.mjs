@@ -107,3 +107,20 @@ export function missingInDbAsClassified(keys, label) {
 // classifyDiff 를 직접 쓰는 소비자를 위해 재노출(레지스트리는 현재 fieldMismatches 전용 분류만
 // 쓰지만, 후속에 로직차이형 필드가 생기면 이 경로를 바로 확장할 수 있게 열어둔다).
 export { classifyDiff };
+
+/** Aggregate-only audit: never include keys, IDs or field values in returned output. */
+export function registryAggregateReport(result) {
+  return { sheetKeys: result.uniqueSheetKeys, dbRows: result.dbCount,
+    missingInDb: result.missingInDb.length, missingInSheet: result.missingInSheet.length,
+    fieldMismatches: result.fieldMismatches.length };
+}
+
+/** Exact set comparison for the Sheets census trainee target population. */
+export function registryTargetCounts(sheetRows, dbRows) {
+  const targets = (rows) => new Set(rows.filter((row) => String(row.role ?? "").trim() === "trainee")
+    .map((row) => String(row.spreadsheet_id ?? "").trim()).filter(Boolean));
+  const sheet = targets(sheetRows), db = targets(dbRows);
+  return { sheetTargets: sheet.size, dbTargets: db.size,
+    onlyInSheet: [...sheet].filter((id) => !db.has(id)).length,
+    onlyInDb: [...db].filter((id) => !sheet.has(id)).length };
+}

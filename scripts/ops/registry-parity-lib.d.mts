@@ -37,3 +37,6 @@ export function classifyFieldMismatches(mismatches: FieldMismatch[], label: stri
 export function missingInDbAsClassified(keys: string[], label: string): ClassifiedItem[];
 export function normalizeSortOrder(raw: unknown): string;
 export function normalizeCohortType(raw: unknown): string;
+
+export function registryAggregateReport(result: DiffByKeyResult): Record<string, number>;
+export function registryTargetCounts(sheetRows: Array<{ role?: unknown; spreadsheet_id?: unknown }>, dbRows: Array<{ role?: unknown; spreadsheet_id?: unknown }>): Record<string, number>;

@@ -79,6 +79,22 @@ describe("업체정보 TXT 포맷 (정렬형)", () => {
     expect(txt).toContain("VIP");
     expect(txt).toContain("[대표자]"); // 섹션 헤더는 유지
   });
+
+  it("이메일 — [대표자]에서 연락처/통신사 바로 다음 줄, 같은 값 열 · 비면 줄 없음 (company-info-email)", () => {
+    const ci = CompanyInfo.parse({
+      대표자이름: "홍길동",
+      연락처통신사: "010-0000-0000(SKT)",
+      이메일: "ceo@example.com",
+      기대출개인: "캐피탈 10백만",
+    });
+    const lines = formatCompanyInfoTxt("샘플상사", ci, "T").split("\n");
+    const phone = lines.findIndex((l) => l.startsWith("● 연락처/통신사"));
+    expect(phone).toBeGreaterThan(0);
+    expect(lines[phone + 1]).toMatch(/^● 이메일 +ceo@example\.com$/);
+    expect(valueStartCol(lines[phone + 1]!)).toBe(valueStartCol(lines[phone]!));
+    const empty = formatCompanyInfoTxt("샘플상사", CompanyInfo.parse({ ...ci, 이메일: "  " }), "T");
+    expect(empty).not.toContain("● 이메일");
+  });
 });
 
 describe("classifyDriveAuthError (txt-export-admin-oauth)", () => {

@@ -31,6 +31,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-13 · [병렬트랙] email-release · 업체정보 이메일 D
+- 사용자 확장보기 승인 및 병렬 운영 반영 지시. base d4bc80a0, feat/company-email-release.
+- 소유: CompanyInfo 이메일 타입/편집기·메모 자동입력·TXT, 04 CE/06 BM 미러 어댑터와 관련 테스트, census 및 D 문서. A/C/F 코드 무접촉. 원본 ecf241c2 및 수정 목업 보존.
+- 추가 소유(총괄 승인): registry-parity aggregate-only·DB Audit 분기(운영 파일 수정 없음·DB read-only), dashboard-motion 테스트 root cleanup(앱 불변). 초기 check 3551/45skip + teardown unhandled 1건으로 FAIL, cleanup 후 정상 pre-commit에서 전체 재검.
+- census 헤더/값 검사·registry 대상 대조가 필수. DB 쓰기·migration 없음. 병합/배포는 총괄 직렬 수행.
+
 ### 2026-10-10 · 경영일지 개발 총괄 · 목업 중심 개발 세션 구축
 - 사용자 승인: 총괄 창구 하나, 주문→설계→정교한 목업→사용자 승인→구현/독립 검증→배포/운영 확인. 승인 범위의 후속 단계 재승인 없음. 기존 2개 활용+검증 1개 신설.
 - base 1bc0324, 전용 development-workflow-261010. 소유 AGENTS/CLAUDE·개발 workflow/과업 양식·역할 playbook·bootstrap 연결. 제품 코드·데이터·보호 PR #1002/#798 변경 없음.

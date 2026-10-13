@@ -16,7 +16,8 @@ export type MeetingState = z.infer<typeof MeetingState>;
 // + 확장 3(AQ~AS — AO~AP 이월깃발 뒤 append, field-grid 2026-06-11)
 // + 확장2 20(AU~BN — AT gcal맵 뒤 append, company-info-new-fields 2026-09-28)
 // + 확장3 15(BO~CC — 확장2 뒤 append, company-info-restructure 2026-09-28)
-// + 확장4 1(CD — 확장3 뒤 append, company-finance-won-grid 2026-09-28).
+// + 확장4 1(CD — 확장3 뒤 append, company-finance-won-grid 2026-09-28)
+// + 확장5 1(CE — 확장4 뒤 append, company-info-email 2026-10).
 // 모두 자유 텍스트, 빈값 허용. 기대출 2필드는 셀 내 `\n` 허용(Sheets 표준).
 // 키는 식별자 안전형(업종주생산품목/사대보험직원). UI 라벨은 별도 매핑
 // (과년도매출 = 표시 "과년도 매출 Y-1" — 키 유지로 라이브 데이터 보존).
@@ -97,6 +98,10 @@ export const CompanyInfo = z.object({
   // 확장4 1필드 (04 CD · 06 BL — company-finance-won-grid 2026-09-28). 연도별 매출 Y 칸의 연도("2026").
   // 비었으면 화면은 오늘 연도로 보이고, 재무 칸을 처음 고칠 때 편집기가 함께 저장한다.
   매출기준연도: z.string().default(""),
+  // 확장5 1필드 (04 CE · 06 BM — company-info-email 2026-10). [대표자] 이메일, 자유 텍스트: .email() 같은
+  // 차단 검증을 넣지 않는다(서버 safeParse 실패 = 저장·TXT 전체 400). 모양은 편집기가 amber 안내만
+  // (lib/util/contact-email.ts). 시트 미러가 있어 개명(06 시트 대체 읽기)·이월(열문자 payload)에도 남는다.
+  이메일: z.string().default(""),
   // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
   커스텀: z
     .object({

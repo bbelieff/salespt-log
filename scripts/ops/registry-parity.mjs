@@ -38,6 +38,8 @@ import {
   missingInDbAsClassified,
   normalizeCohortType,
   normalizeSortOrder,
+  registryTargetCounts,
+  registryAggregateReport,
 } from "./registry-parity-lib.mjs";
 
 function loadEnv() {
@@ -63,6 +65,7 @@ const COHORTS_TAB = env("SHEETS_COHORTS_TAB") || "cohorts";
 const SA_EMAIL = env("GOOGLE_SERVICE_ACCOUNT_EMAIL");
 const SA_KEY = env("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\\n/g, "\n");
 const DB_URL = env("DATABASE_URL");
+const aggregateOnly = process.env.REGISTRY_PARITY_AGGREGATE_ONLY === "1";
 
 let sheets, pool;
 function initClients() {
@@ -70,7 +73,8 @@ function initClients() {
     "https://www.googleapis.com/auth/spreadsheets.readonly",
   ]);
   sheets = google.sheets({ version: "v4", auth });
-  pool = new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false }, max: 3 });
+  pool = new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false }, max: 3,
+    ...(aggregateOnly ? { options: "-c default_transaction_read_only=on" } : {}) });
 }
 
 const s = (r, i) => String(r?.[i] ?? "").trim();
@@ -161,6 +165,10 @@ async function dbCohorts() {
 }
 
 function report(result, label) {
+  if (aggregateOnly) {
+    console.log(JSON.stringify({ label, ...registryAggregateReport(result) }));
+    return;
+  }
   console.log(`\n=== ${label} 대조 ===`);
   console.log(`시트 고유키 ${result.uniqueSheetKeys} · DB ${result.dbCount}`);
   console.log(`DB 에 없음(시트에만): ${result.missingInDb.length}${result.missingInDb.length ? " → " + result.missingInDb.slice(0, 50).join(", ") : ""}`);
@@ -184,6 +192,7 @@ async function main() {
     sort_order: normalizeSortOrder,
   });
   const cResult = diffByKey(sc, dc, (r) => r.label, COHORT_COLS.slice(1), { type: normalizeCohortType });
+  if (aggregateOnly) console.log(JSON.stringify({ label: "trainee_sheet_targets", ...registryTargetCounts(su, du) }));
   report(uResult, "users");
   report(cResult, "cohorts");
 
@@ -193,7 +202,7 @@ async function main() {
     ...missingInDbAsClassified(cResult.missingInDb, "cohorts"),
     ...classifyFieldMismatches(cResult.fieldMismatches, "cohorts"),
   ];
-  if (classified.length > 0) console.log(summarizeClassification(classified).text);
+  if (!aggregateOnly && classified.length > 0) console.log(summarizeClassification(classified).text);
 
   const total = uResult.missingInDb.length + uResult.missingInSheet.length + uResult.fieldMismatches.length
     + cResult.missingInDb.length + cResult.missingInSheet.length + cResult.fieldMismatches.length;
@@ -204,12 +213,13 @@ async function main() {
   process.exitCode = total === 0 ? 0 : 1;
 }
 
-const isMainModule = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] && (resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  || (process.argv[1] === "-" && aggregateOnly));
 if (isMainModule) {
   main()
     .catch((e) => {
       const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/gi, "[DATABASE_URL]");
-      console.error(`registry-parity 실패: ${msg}`);
+      console.error(aggregateOnly ? "registry-parity 실패(원문 오류 비공개)" : `registry-parity 실패: ${msg}`);
       process.exitCode = 1;
     })
     .finally(() => pool?.end().catch(() => {}));

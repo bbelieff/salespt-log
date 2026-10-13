@@ -703,5 +703,6 @@
 <h2>DB관리시트 상단 · 승인 구성</h2><p>DB생산 / DB관리시트 탭은 상단 배너. DB목록을 먼저 표시합니다.</p>
 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><strong>DB 목록</strong><input aria-label="업체 검색" placeholder="업체·대표자·전화번호" style="max-width:220px"><button>공급처별 보기 ⌄</button><button>보여줄 항목 ⌄</button><button>+ 직접 입력</button><button>DB 가져오기</button></div>
 <p>모바일: 정렬 항목 선택 + 오름/내림 버튼. 공급처 패널은 기본 접힘.</p><p>정확한 production CSS·글꼴 화면은 tests/browser/db-sheet-supplier-server.mjs 합성 fixture에서 검증합니다.</p></section>
+<section class="mx-auto max-w-3xl rounded-xl border border-gray-200 bg-white p-4 my-4"><h2 class="font-bold">업체정보 확장보기 · 대표자</h2><p class="text-sm text-gray-600">연락처 아래 이메일 한 칸 · 기본보기에서는 숨김</p><label class="block text-sm mt-3" for="company-email-preview">이메일</label><input id="company-email-preview" class="w-full rounded-lg border border-gray-300 p-2" type="text" inputmode="email" autocomplete="off" value="ceo@example.com"><p class="text-xs text-gray-500 mt-2">실제 편집·저장·TXT·메모 확인은 tests/browser/company-info-email-server.mjs 합성 화면을 사용합니다.</p></section>
 </body>
 </html>
