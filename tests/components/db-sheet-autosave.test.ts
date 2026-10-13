@@ -91,3 +91,14 @@ describe("DB sheet real hook persistence", () => {
     expect(mocks.dirty.mock.lastCall?.[1]).toBe(true);
   });
 });
+it("next date uses an explicit atomic schedule flag; duplicate DOM input events create only one save",async()=>{
+ await loaded();
+ act(()=>{api.edit(id,"next","2026-10-12");api.edit(id,"next","2026-10-12");});
+ await debounce();expect(requests).toHaveLength(2);expect(requests[1]!.body).toMatchObject({action:"save",scheduleNext:true,lead:{next:"2026-10-12"}});
+ const saved=lead({revision:2,next:"2026-10-12",followUp:{generation:1,completedGeneration:null,lastContactDate:""}});
+ await act(async()=>{answer(1,[saved]);});
+ act(()=>api.contact(id,{...api.leads[0]!.contact,date:"2026-10-12"}));await debounce();
+ expect(requests[2]!.body).not.toHaveProperty("scheduleNext");
+ await act(async()=>{answer(2,[{...saved,revision:3}]);});
+ expect(mocks.invalidateQueries).toHaveBeenCalledWith({queryKey:["meeting-follow-ups"]});
+});

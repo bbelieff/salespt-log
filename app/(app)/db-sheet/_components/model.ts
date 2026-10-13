@@ -1,3 +1,4 @@
+import { isDbSheetFollowUpResult } from "@/types/db-sheet";
 import {CHANNEL_ORDER} from '@/types/channel';
 export type Row = { meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; stage:string; next:string; memo:string };
 export type Key = Exclude<keyof Row,'id'|'meetingId'>;
@@ -28,6 +29,6 @@ export function recordContact(row:Row,result:string,date:string):Row {
  return {...row,result,first,stage:['미컨택','상담 중'].includes(row.stage)?(first?'상담 중':'미컨택'):row.stage};
 }
 
-export const showsNextContact=(result:string)=>["부재","단순거절","상담 후 거절","재통화"].includes(result);
+export const showsNextContact=(result:string)=>isDbSheetFollowUpResult(result);
 
 export function formatPhone(value:string){const raw=value.replace(/^p:/i,'').trim();const local=raw.startsWith('+82')?'0'+raw.slice(3).replace(/[^0-9]/g,'').replace(/^0/,''):raw;const digits=local.replace(/[^0-9]/g,'');if(/^01[016789]\d{8}$/.test(digits))return digits.replace(/^(\d{3})(\d{4})(\d{4})$/,'$1-$2-$3');if(/^02\d{7,8}$/.test(digits))return digits.replace(/^(02)(\d{3,4})(\d{4})$/,'$1-$2-$3');if(/^0[3-9]\d{8,9}$/.test(digits))return digits.replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');return value;}

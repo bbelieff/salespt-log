@@ -73,6 +73,10 @@ try {
   const page = await context.newPage();
   page.on("pageerror", e => errors.push(e.message));
   await page.route("**/api/contract-payment**", route => route.fulfill({ json: { rows: [] } }));
+  // 대시보드 「오늘 챙길 일」(DashboardFollowUps)이 읽는 조회 — 빈 응답이면 「오늘 챙길 일이 없어요 👏」 한 줄 카드.
+  await page.route("**/api/todos**", route => route.fulfill({ json: { todos: [] } }));
+  await page.route("**/api/meetings/month/**", route => route.fulfill({ json: { daysByMeetingDate: [], daysByTodoDate: [] } }));
+  await page.route("**/api/db-sheet", route => route.fulfill({ json: { leads: [] } }));
   await page.route("**/api/me", route => route.fulfill({ json: {courseStartISO: "2026-09-04", graduationISO: "2026-10-24"} }));
   await page.route("**/api/dashboard", route => route.fulfill({ json: {
     kpi: { 총매출: 12000000, 총비용: 3000000, 수임비합: 8000000, 수수료합: 4000000, 이월매출: 2000000, 전체매출: 14000000, 이월비용: 100000, 전체비용: 3100000 },

@@ -1,0 +1,16 @@
+.weekly-goals-task-line { display:flex; align-items:center; gap:6px; min-width:0; padding:6px 8px; margin-bottom:10px; border-radius:6px; background:#f0fdfa; color:#115e59; font-size:11px; }
+.weekly-goals-task-line b { flex-shrink:0; font-weight:600; }
+.weekly-goals-task-line>span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#475569; }
+.weekly-goals-flow [aria-label="주간 목표 실적"]>div { position:relative; }
+.weekly-goals-flow [aria-label="주간 목표 실적"]>div:not(:last-child)::after { content:""; position:absolute; top:21px; right:-5px; width:6px; height:6px; border-top:1.5px solid #94a3b8; border-right:1.5px solid #94a3b8; transform:rotate(45deg); }
+@media(min-width:1024px) {
+  .weekly-goals-flow [aria-label="주간 목표 실적"]>div:not(:last-child)::after { top:28px; right:-11px; width:8px; height:8px; }
+  @container dashboard-goals (max-width:420px) {
+    .weekly-goals-flow [aria-label="주간 목표 실적"] { row-gap:24px; }
+    .weekly-goals-flow [aria-label="주간 목표 실적"]>div:nth-child(4) { grid-column:3; grid-row:2; }
+    .weekly-goals-flow [aria-label="주간 목표 실적"]>div:nth-child(5) { grid-column:2; grid-row:2; }
+    .weekly-goals-flow [aria-label="주간 목표 실적"]>div:not(:last-child)::after { right:-8px; }
+    .weekly-goals-flow [aria-label="주간 목표 실적"]>div:nth-child(3)::after { top:auto; bottom:-15px; right:calc(50% - 4px); transform:rotate(135deg); }
+    .weekly-goals-flow [aria-label="주간 목표 실적"]>div:nth-child(4)::after { right:auto; left:-8px; transform:rotate(225deg); }
+  }
+}

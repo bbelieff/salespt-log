@@ -1,27 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ContractPayment } from "@/types";
-import { parsePaymentSlotTarget, type PaymentSlotTarget } from "@/util/payment-focus";
+import { paymentFocusedSlot, parsePaymentRowTarget, type PaymentRowTarget } from "@/util/payment-focus";
 
-/** 캘린더 Todo와 대시보드 진행 회차의 진입 링크를 열고 표시 위치로 이동한다. */
+/** Resolve once after rows arrive, so a cold mobile entry selects its actual company too. */
 export default function usePaymentFocus(rows: ContractPayment[] | undefined, isPc: boolean) {
   const [focusTodoId, setFocusTodoId] = useState<string | null>(null);
-  const [focusPayment, setFocusPayment] = useState<PaymentSlotTarget | null>(null);
-
+  const [requested, setRequested] = useState<PaymentRowTarget | null>(null);
+  const [focusPayment, setFocusPayment] = useState<PaymentRowTarget | null>(null);
   useEffect(() => {
     const search = window.location.search;
-    const todoId = new URLSearchParams(search).get("focus");
-    if (todoId) setFocusTodoId(todoId);
-    const target = parsePaymentSlotTarget(search);
-    if (target) setFocusPayment(target);
+    setFocusTodoId(new URLSearchParams(search).get("focus"));
+    setRequested(parsePaymentRowTarget(search));
   }, []);
-
   useEffect(() => {
-    if (!focusPayment || !rows?.some((cp) => cp.row === focusPayment.row)) return;
+    if (!requested || !rows?.some(cp => cp.row === requested.row && !cp.해지숨김)) return;
+    setFocusPayment(requested);
+    setRequested(null);
+  }, [requested, rows]);
+  const clearPaymentFocus = useCallback(() => {
+    setRequested(null); setFocusPayment(null); setFocusTodoId(null);
+  }, []);
+  useEffect(() => {
+    if (!focusPayment?.slot) return;
     const timer = window.setTimeout(() => document.getElementById(`payment-slot-${focusPayment.row}-${focusPayment.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 180);
     return () => window.clearTimeout(timer);
-  }, [focusPayment, rows, isPc]);
+  }, [focusPayment, isPc]);
+  const companyOnlyTodoFocus = !!focusTodoId && focusPayment?.slot === null;
+  const safeFocusTodoId = companyOnlyTodoFocus ? null : focusTodoId;
+  return { safeFocusTodoId, companyOnlyTodoFocus, focusPayment, clearPaymentFocus };
+}
 
-  return { focusTodoId, focusPayment };
+/** Apply a resolved entry once; data refresh and callback identity never reset user selection. */
+export function usePaymentFocusSelection(target: PaymentRowTarget | null, onSelect: (target: PaymentRowTarget) => void) {
+  const selectRef = useRef(onSelect);
+  selectRef.current = onSelect;
+  useEffect(() => { if (target) selectRef.current(target); }, [target]);
+}
+
+/** Header uses the same target as the open form, including company-only ambiguity. */
+export function paymentCompanyDetailLabel(target: PaymentRowTarget | null, cp: ContractPayment | undefined, fallback: 1 | 2 | 3 | null): string {
+  const slot = paymentFocusedSlot(target, cp?.row, fallback);
+  const data = slot && cp ? cp[`수납${slot}`] : null;
+  return data
+    ? `진행 ${slot} · ${data.진행기관 || "기관 미입력"}${data.진행상품 ? ` · ${data.진행상품}` : ""}`
+    : target?.row === cp?.row ? "연결 진행건 확인 필요" : "진행건 미등록";
 }

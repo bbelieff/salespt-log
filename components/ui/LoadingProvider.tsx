@@ -7,6 +7,8 @@
  *    (컨택 수치·미팅 자동저장만 opt-in). 그 외 모든 값(미지정 포함)은 차단 표시.
  *  - 쿼리 '초기 로딩'(status==='pending' && fetchStatus==='fetching', 즉 데이터 없음) → 표시.
  *    ※ 백그라운드 refetch(데이터 있음)·창 포커스 refetch 는 제외 → 깜빡임 방지.
+ *    ※ meta.background === true 인 쿼리도 제외 — 화면을 막지 않는 보조 조회(대시보드 「오늘 챙길 일」의
+ *      월 미팅·DB관리시트)는 카드 자체 스켈레톤만 보인다(2026-10-12). 미지정·다른 값은 그대로 표시.
  *  - 명령형 show()/hide(): React Query 밖 비동기(클레임 후 풀리로드 등)용 카운터.
  * 플리커 가드: show 150ms 디바운스(그 안에 끝나면 안 띄움) + 일단 뜨면 최소 350ms 유지.
  * 문구: 활성 mutation/query 의 meta.loadingMessage > 명령형 문구 > 기본(뮤테이션 저장/쿼리 불러오기).
@@ -59,6 +61,15 @@ function isSilentMutation(meta: unknown): boolean {
   );
 }
 
+/** 화면을 막지 않는 보조 조회 — meta.background === true 일 때만 초기 로딩 집계에서 뺀다(엄격한 opt-out). */
+export function isBackgroundQuery(meta: unknown): boolean {
+  return (
+    !!meta &&
+    typeof meta === "object" &&
+    (meta as { background?: unknown }).background === true
+  );
+}
+
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
@@ -93,12 +104,14 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
       // silent 백그라운드 자동저장은 차단 집계에서 제외. 전경 뮤테이션이
       // 하나라도 있으면 그대로 차단 표시(혼합 pending → 차단).
       const mutations = pending.filter((m) => !isSilentMutation(m.meta));
-      // 초기 로딩 쿼리 = 데이터 없음(pending) + 실제 fetching. refetch(success+fetching) 제외.
+      // 초기 로딩 쿼리 = 데이터 없음(pending) + 실제 fetching. refetch(success+fetching)·보조 조회 제외.
       const queries = qc
         .getAll()
         .filter(
           (q) =>
-            q.state.status === "pending" && q.state.fetchStatus === "fetching",
+            q.state.status === "pending" &&
+            q.state.fetchStatus === "fetching" &&
+            !isBackgroundQuery(q.meta),
         );
       const message =
         mutations.map((m) => metaMessage(m.meta)).find(Boolean) ??

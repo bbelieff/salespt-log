@@ -761,3 +761,10 @@ Trainer qualification is independent of enrollment: `trainer_qualifications` key
 DbSheetFunnelStep = 유입 | 연락 | 상담 | 미팅 | 계약. DbSheetLead.funnel은 서버 응답에서만 계산하는 선택 필드로 저장 payload/이력에서 제거한다. 입력 스키마·DB 테이블 변경 없음.
 DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서 공유한다. 유효한 연결 계약이 있으면 계약, 해지/숨김 계약뿐이면 미팅, 예약/변경/완료는 미팅, 최초상담일은 상담, 미컨택 이외 결과는 연락, 나머지는 유입이다.
 저장 응답도 effectiveMeetingId/meetingLineageIds를 유지해 변경된 미팅에 연결된 계약을 동일하게 투영한다. 공급처 집계는 각 리드의 최고 단계를 누적해 상담·미팅·계약 건수를 센다. 대시보드의 일자별 수동 합산과 별개이다.
+
+
+### DB관리시트 후속 연락 메타 · 2026-10-13
+- DbSheetLead.followUp?: {generation:number, completedGeneration:number|null, lastContactDate:string}는 서버 소유 JSONB 메타다. 클라이언트 임의 값은 받아들이지 않는다.
+- 명시적 다음 연락일 예약(scheduleNext)이 새 세대를 만들고 상담 기록 저장이 해당 세대를 완료한다. 상담일 초안 수정은 상담 완료가 아니다. 늦은 메모 자동저장이 소비된 연락일을 복원하지 않는다.
+- 첫 연락은 유입 당일, 미팅 결과는 미팅 당일, 진행건 기관/다음 투두 누락은 확인 가능한 계약/활동일부터 처리 대상. 미래 7일 분리·날짜 불명은 경과로 추정하지 않는다.
+- 미팅 후속 조회는 인증된 StudentViewContext와 기존 데이터 소스 선택/Sheets 대체 읽기를 유지하며 지난 예약에 30일 하한을 두지 않는다. 개인정보는 테스트/로그에 기록하지 않는다.

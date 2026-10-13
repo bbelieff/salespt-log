@@ -199,30 +199,23 @@ describe("④ all six student tabs use the full available width", () => {
 });
 
 describe("⑤ desktop arrangements keep order, workflow, and natural scroll", () => {
-  it("dashboard: 1600 6-col grid — top 생산성+진행건 | 목표, bottom 퍼널 | 추이 | 채널 (DOM order kept)", () => {
+  it("dashboard: PC two-column overview above funnel, trend and channel charts", () => {
     const src = read("app/(app)/dashboard/page.tsx");
-    expect(src).toContain("min-[1600px]:grid-cols-6");
-    expect(src.match(/min-\[1600px\]:col-span-3/g)?.length).toBe(2);
-    expect(src.match(/min-\[1600px\]:col-span-2/g)?.length).toBe(3);
-    expect(src).toContain("min-[1600px]:contents");
-    const body = src.slice(src.indexOf("<ProductivityIndicators"));
-    expect(body.indexOf("<ProductivityIndicators")).toBeLessThan(
-      body.indexOf("<WeeklyGoalSummary"),
-    );
-    expect(body.indexOf("<WeeklyGoalSummary")).toBeLessThan(
-      body.indexOf("<FunnelChart"),
-    );
+    const overview = read("components/dashboard/DashboardActionOverview.tsx");
+    const overviewCss = read("components/dashboard/dashboard-action-overview.css");
+    expect(overviewCss).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+    expect(overviewCss).toContain(".dashboard-action-work { grid-column: 2; grid-row: 1 / span 2; }");
+    expect(overviewCss).toContain(".dashboard-action-goals { grid-column: 1; grid-row: 2; }");
+    expect(src.indexOf("<DashboardActionOverview")).toBeLessThan(src.indexOf("<FunnelChart"));
+    expect(src).toContain("pc:grid-cols-3");
     // Charts side by side below, legibility untouched (no height flattening).
     expect(src).toContain("<WeeklyDualChart");
     expect(src).toContain("<ChannelPerformance");
     expect(src).not.toMatch(/h-\[\d+px\]/);
-    // Same-row cards share one bottom line (belie 2026-09-28): the grid stretches
-    // and each card absorbs the extra height inside — charts fill it (.chart-fill),
-    // the PT box sits at the bottom (mt-auto), the wide-screen productivity card
-    // grows above the work status (flex-1). No fixed pixel heights.
+    // Cards stretch naturally; goal rings retain their sizes and no fixed heights.
     expect(src).toContain("pc:items-stretch");
     expect(src).not.toContain("pc:items-start");
-    expect(src).toContain('className="min-[1600px]:flex-1"');
+    expect(overview).toContain('className="h-full min-w-0"');
     for (const rel of [
       "components/dashboard/FunnelChart.tsx",
       "components/dashboard/WeeklyDualChart.tsx",
@@ -230,7 +223,11 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     ]) {
       expect(read(rel)).toContain("flex h-full flex-col");
     }
-    expect(read("components/weekly-goals/WeeklyGoalSummary.tsx")).toContain("mt-auto");
+    const goals = read("components/weekly-goals/WeeklyGoalSummary.tsx");
+    const taskLine = goals.indexOf('className="weekly-goals-task-line"');
+    expect(taskLine).toBeGreaterThan(-1);
+    expect(taskLine).toBeLessThan(goals.indexOf('className="weekly-goals-flow"'));
+    expect(goals).toContain("<GoalRings");
     // Short content must not force viewport height (shell reserves nothing).
     expect(src).toContain("pc:min-h-0");
   });

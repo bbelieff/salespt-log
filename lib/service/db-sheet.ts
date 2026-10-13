@@ -12,8 +12,9 @@ import { projectDbSheetWorkStatus, loadDbSheetWorkProjector } from "./db-sheet-s
 
 const revision = z.number().int().positive();
 export const DbSheetCommand = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("save"), lead: DbSheetLeadInput, revision: revision.nullable() }),
+  z.object({ action: z.literal("save"), lead: DbSheetLeadInput, revision: revision.nullable(), scheduleNext: z.boolean().optional() }),
   z.object({ action: z.literal("contact"), id: z.string().uuid(), revision, date: DbSheetDate, result: DbSheetResult, note: z.string().max(20000) }),
+  z.object({ action: z.literal("schedule"), id: z.string().uuid(), revision, next: z.union([DbSheetDate, z.literal("")]) }),
   z.object({ action: z.literal("meeting"), id: z.string().uuid(), revision }),
   z.object({ action: z.literal("import"), batchId: z.string().uuid(), leads: z.array(DbSheetLeadInput).min(1).max(500) }),
 ]);
@@ -50,8 +51,11 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
   const projectStatus = await loadDbSheetWorkProjector(ctx);
   let changes: DbSheetChange[];
   switch (command.action) {
-    case "save": changes = [await ledger.saveDbSheetLead(ctx, command.lead, command.revision)]; break;
+    case "save": changes = [command.scheduleNext
+      ? await ledger.saveDbSheetLead(ctx, command.lead, command.revision, true)
+      : await ledger.saveDbSheetLead(ctx, command.lead, command.revision)]; break;
     case "contact": changes = [await ledger.saveDbSheetContact(ctx, command.id, command, command.revision)]; break;
+    case "schedule": changes = [await ledger.scheduleDbSheetContact(ctx, command.id, command.next, command.revision)]; break;
     case "import": changes = await ledger.importDbSheetLeads(ctx, command.batchId, command.leads); break;
     case "meeting": {
       const lead = (await ledger.listDbSheet(ctx)).find(row => row.id === command.id);

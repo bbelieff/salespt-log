@@ -21,6 +21,7 @@ export function useDbSheet() {
   const local = useRef<DbSheetLead[]>([]), server = useRef(new Map<string, DbSheetLead>());
   const tail = useRef(Promise.resolve()), blocked = useRef(false), versions = useRef(new Map<string, number>());
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const scheduleVersions = useRef(new Map<string, number>());
   const queryClient = useQueryClient();
   function show(rows: DbSheetLead[]) { local.current = rows; setLeads(rows); }
   useEffect(() => {
@@ -39,7 +40,7 @@ export function useDbSheet() {
     const job = tail.current.then(async () => {
       if (blocked.current) throw new Error("앞선 저장이 실패했습니다. 입력 내용을 보관한 뒤 새로고침해 주세요.");
       await work();
-      await Promise.all(["day", "week", "month", "dashboard", "db-sheet", "db"].map(key => queryClient.invalidateQueries({ queryKey: [key] })));
+      await Promise.all(["day", "week", "month", "dashboard", "db-sheet", "db", "meeting-follow-ups"].map(key => queryClient.invalidateQueries({ queryKey: [key] })));
     });
     tail.current = job.catch(e => { blocked.current = true; setError(e.message); }).finally(() => setPending(n => n - 1));
     return job;
@@ -50,13 +51,15 @@ export function useDbSheet() {
       const saved = rows.find(r => r.id === row.id);
       if (!saved) return row;
       return versions.current.get(row.id) === snapshots.get(row.id) ? saved : {
-        ...row, revision: saved.revision, result: saved.result, first: saved.first, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel,
+        ...row, next: scheduleVersions.current.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel, followUp: saved.followUp,
       };
     }));
   }
   function saveSnapshot(row: DbSheetLead, version: number) {
+    const scheduleNext = (scheduleVersions.current.get(row.id) ?? 0) > 0 && (scheduleVersions.current.get(row.id) ?? 0) <= version;
+    if (scheduleNext) scheduleVersions.current.delete(row.id);
     return enqueue(async () => {
-      const rows = await request({ action: "save", lead: DbSheetLeadInput.parse(row), revision: server.current.get(row.id)?.revision ?? null });
+      const rows = await request({ action: "save", lead: DbSheetLeadInput.parse(row), revision: server.current.get(row.id)?.revision ?? null, ...(scheduleNext ? { scheduleNext: true } : {}) });
       accept(rows, new Map([[row.id, version]]));
     });
   }
@@ -83,6 +86,10 @@ export function useDbSheet() {
   }
   function edit(id: string, key: Key, value: string) {
     if (key === "result") { void record(id, value, todayKST()).catch(() => {}); return; }
+    if (key === "next") {
+      if (local.current.find(row => row.id === id)?.next === value) return;
+      scheduleVersions.current.set(id, (versions.current.get(id) ?? 0) + 1);
+    }
     if (["first", "stage", "memo"].includes(key)) return;
     mutate(id, row => ({ ...row, [key]: value }));
   }

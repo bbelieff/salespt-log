@@ -1,0 +1,6 @@
+@media(min-width:1024px) {
+  .dashboard-two-column-preview { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:auto 1fr; align-items:start; }
+  .dashboard-two-column-preview>.dashboard-action-productivity { grid-column:1; grid-row:1; }
+  .dashboard-two-column-preview>.dashboard-action-goals { grid-column:1; grid-row:2; }
+  .dashboard-two-column-preview>.dashboard-action-work { grid-column:2; grid-row:1 / span 2; }
+}

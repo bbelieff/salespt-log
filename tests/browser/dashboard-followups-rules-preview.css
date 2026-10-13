@@ -1,0 +1,68 @@
+.rules-preview-card { position:relative; border:1px solid #e2e8f0; border-radius:16px; background:#fff; padding:12px; box-shadow:0 1px 2px #0f172a0d; color:#334155; font-size:12px; }
+.dashboard-action-overview:has(.rules-preview-card) { align-items:start; }
+.rules-preview-card header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rules-preview-card h2 { font-size:14px; font-weight:700; color:#0f172a; }
+.rules-preview-card h2 span { margin-left:6px; color:#e11d48; }
+.rules-preview-help { padding:4px 8px; color:#64748b; }
+.rules-preview-list { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:0 2px 2px; }
+.rules-preview-list li+li { border-top:1px solid #f1f5f9; }
+.rules-preview-list a { display:block; border-radius:6px; padding:9px 2px; }
+.rules-preview-list a:hover { background:#f8fafc; }
+.rules-preview-line { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.rules-preview-step { font-size:10px; font-weight:700; color:#64748b; }
+.rules-preview-line strong { color:#0f172a; font-size:12px; }
+.rules-preview-badge { margin-left:auto; padding:2px 5px; border-radius:4px; font-size:10px; white-space:nowrap; background:#eff6ff; color:#1d4ed8; }
+.rules-preview-badge[data-tone=overdue] { background:#fff1f2; color:#be123c; }
+.rules-preview-badge[data-tone=long] { background:#fff1f2; color:#be123c; }
+.rules-preview-company { display:block; font-size:12px; font-weight:500; margin-top:3px; }
+.rules-preview-company>span { color:#64748b; }
+.rules-preview-reason { display:block; color:#64748b; font-size:11px; overflow-wrap:anywhere; margin-top:1px; }
+.rules-preview-more { width:100%; color:#475569; font-weight:600; padding:7px; border-top:1px solid #f1f5f9; }
+.rules-preview-guide { background:#f8fafc; border-radius:8px; padding:8px; line-height:1.7; margin-top:8px; }
+.rules-preview-guide p+p { margin-top:4px; }
+.rules-preview-card footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px; padding-top:5px; font-size:10px; color:#64748b; }
+.rules-preview-card footer button { text-decoration:underline; padding:4px; }
+.rules-preview-empty { padding:24px 0; text-align:center; }
+.rules-preview-card :is(a,button):focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+@media(max-width:1023px) { .rules-preview-card button { min-height:44px; }  }
+
+.rules-preview-panel { position:fixed; z-index:80; display:flex; flex-direction:column; width:min(440px, calc(100vw - 24px)); max-height:min(520px, calc(100dvh - 24px)); overflow:hidden; overscroll-behavior:contain; background:white; padding:10px; border:1px solid #cbd5e1; border-radius:12px; box-shadow:0 10px 28px #0f172a26; color:#334155; font-size:12px; outline:none; }
+.rules-preview-panel :is(a,button):focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+@media(max-width:1023px) { .rules-preview-panel button { min-height:44px; } }
+.rules-preview-panel-head { display:flex; align-items:center; gap:8px; padding:8px 2px; color:#64748b; font-size:11px; }
+.rules-preview-panel-head p{flex:1;}
+.rules-preview-panel-head button{flex-shrink:0; padding:4px;}
+
+ .rules-preview-steps { margin-top:4px; }
+.rules-preview-step-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; column-gap:12px; padding:5px 0; }
+.rules-preview-step-row + .rules-preview-step-row { border-top:1px solid #f1f5f9; }
+.rules-preview-step-row h3 { font-size:12px; font-weight:600; color:#334155; line-height:24px; }
+.rules-preview-counts { display:flex; align-items:center; flex-wrap:wrap; gap:2px 8px; }
+.rules-preview-counts button { display:inline-flex; align-items:center; gap:4px; min-height:28px; border-radius:5px; padding:2px 3px; font-size:12px; font-weight:600; white-space:nowrap; }
+.rules-preview-counts i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.rules-preview-counts button:hover,.rules-preview-counts button[aria-expanded=true] { background:#f1f5f9; text-decoration:underline; text-underline-offset:3px; }
+.rules-preview-counts [data-tone=long] { color:#be123c; }
+.rules-preview-counts [data-tone=overdue] { color:#92400e; }
+.rules-preview-counts [data-tone=today] { color:#1d4ed8; }
+@media(max-width:1023px) { .rules-preview-counts button { min-height:44px; } }
+.rules-preview-upcoming { display:flex; width:100%; align-items:center; gap:6px; padding:7px 3px; font-weight:600; }
+.rules-preview-upcoming span { font-size:11px; color:#64748b; font-weight:400; }
+.rules-preview-upcoming b { margin-left:auto; }
+
+
+.rules-preview-card .rules-preview-total { display:inline-flex; align-items:center; gap:4px; margin-left:6px; color:#e11d48; border-radius:6px; padding:2px 5px; text-decoration:underline; text-underline-offset:3px; }
+.rules-preview-card .rules-preview-total span { margin:0; font-size:15px; }
+.rules-preview-total:hover { background:#fff1f2; }
+.rules-preview-panel-head { flex-shrink:0; padding:2px 2px 10px; align-items:flex-start; }
+.rules-preview-panel-head strong { display:block; font-size:13px; color:#0f172a; }
+.rules-preview-panel-head p>span { display:block; font-size:10px; margin-top:3px; }
+.rules-preview-detail { padding:12px 3px; }
+.rules-preview-detail h3 { font-size:15px; color:#0f172a; font-weight:700; margin-top:5px; overflow-wrap:anywhere; }
+.rules-preview-detail-action { font-size:13px; font-weight:600; color:#1d4ed8; margin-top:5px; }
+.rules-preview-detail .rules-preview-reason { margin-top:3px; line-height:1.5; }
+.rules-preview-detail dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; padding:10px; background:#f8fafc; border-radius:8px; margin:10px 0 8px; }
+.rules-preview-detail dt { font-size:10px; color:#64748b; }
+.rules-preview-detail dd { font-size:12px; margin-top:2px; color:#334155; overflow-wrap:anywhere; }
+.rules-preview-list .rules-preview-detail-link { display:flex; align-items:center; justify-content:center; min-height:36px; padding:8px 10px; background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe; border-radius:7px; font-weight:600; }
+.rules-preview-list .rules-preview-detail-link:hover { background:#dbeafe; }
+@media(max-width:1023px) { .rules-preview-list .rules-preview-detail-link { min-height:44px; } }

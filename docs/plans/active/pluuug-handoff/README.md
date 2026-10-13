@@ -6,14 +6,14 @@
 > - **관련 문서**: 항목 정본 [A](../dashboard-follow-ups.md) · [B](../dashboard-card-headlines.md) · [C](../dashboard-channel-profit.md) · [D](../company-info-email.md) · [E](../db-sheet-supplier-summary.md) · [F](../records-follow-renames.md) · [workflow](../../../development/workflow.md) · [task-template](../../../development/task-template.md) · [deploy-vps](../../../playbooks/deploy-vps.md) · [총괄](../../../playbooks/codex-lead.md)·[제작](../../../playbooks/codex-worker.md)·[검증](../../../playbooks/codex-reviewer.md)
 
 ## 진행 현황 (대시보드용)
-갱신: 2026-10-13 21:47 KST
+갱신: 2026-10-13 23:18 KST
 
 | 항목 | 단계 | 다음 할 일 | 막힌 것·belie 결정 대기 |
 |---|---|---|---|
-| A 오늘 챙길 일 | 승인 대기 | 간결한 STEP 요약·풍부한 상세 팝업 목업 확인 | 방향 확정; 전체 급한 순·투두 연결·PC/모바일·타입검사 통과, 실제 집계·운영 미완료 |
-| B 카드 문장·주간목표 여백 | 승인 대기 | 화살표·PT과제 상단 한 줄 수정 목업 확인 | PC·모바일 원 크기 보존·주차 이동·타입검사 통과; 운영 미반영 |
-| C 채널별 남은 돈 | 구현·검증 중 | C 전용 PR·독립 검증 후 총괄 직렬 배포 | 위치 승인, channel-profit-release; 운영 미반영 |
-| D 업체정보 이메일 | 승인됨·구현 대기 | 확장보기 반영·기존 시트 열 검사 | [5] 확장보기 확정; 시트 검사 미완료 |
+| A 오늘 챙길 일 | PR 검증 중 | 파일 분리·문서 보완 후 최종 게이트 | 단위3604·구조92 통과; 파일 길이·문서 등록 수정 중 |
+| B 카드 문장·주간목표 여백 | PR 검증 중 | A와 함께 빌드·최종 화면·독립 검증 | 2열·퍼널 화살표·과제 한 줄 반영, 운영 미반영 |
+| C 채널별 남은 돈 | 완료 | 후속 요청 시 확인 | #1137 625f14d2·Deploy 성공·HTTP200·운영 표 노출 확인 |
+| D 업체정보 이메일 | 보류 | Draft #1136·시트 접근 및 빌드 환경 해결 후 재검 | 검사·CI·합성 화면 통과 / census 403 2·429 5와 빌드 OOM 미해결 |
 | E 공급처별 보기·DB목록 상단 | 완료 | 후속 요청 시 확인 | #1134 d4bc80a0 배포 성공·health 200·운영 PC/모바일 확인 |
 | F 업체 고유번호·지난 기록 | 설계 보완 중 | 복원 선택 팝업·진행건별 기록 보존 설계 확정 | 합쳐진 타임라인은 제외; 최종 설계 승인 대기 |
 | #1131 보관함·메모 녹화 제외 | 완료 | 없음·사용자 요청으로 취소 종결 | PR 닫힘(2026-10-13 16:52 KST), 미병합·미배포 |

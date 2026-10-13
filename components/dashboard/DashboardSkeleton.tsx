@@ -31,11 +31,10 @@ export default function DashboardSkeleton() {
           ))}
         </div>
       </div>
-      <div className="grid gap-3 pc:grid-cols-2">
+      <div className="grid gap-3 pc:grid-cols-3">
         <Card rows={5} />
+        <div className="space-y-3"><Card rows={4} /><Card rows={2} /></div>
         <Card rows={6} />
-        <Card rows={4} />
-        <Card rows={4} />
       </div>
     </div>
   );

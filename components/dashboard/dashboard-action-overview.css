@@ -1,0 +1,22 @@
+/* Two desktop columns; container queries preserve ring sizes in narrow columns. */
+.dashboard-action-productivity { container: dashboard-productivity / inline-size; }
+.dashboard-action-goals { container: dashboard-goals / inline-size; }
+@media (min-width: 1024px) {
+  .dashboard-action-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr; align-items: start; }
+  .dashboard-action-productivity { grid-column: 1; grid-row: 1; }
+  .dashboard-action-work { grid-column: 2; grid-row: 1 / span 2; }
+  .dashboard-action-goals { grid-column: 1; grid-row: 2; }
+}
+@media (min-width: 1024px) {
+@container dashboard-productivity (max-width: 420px) {
+  .dashboard-action-productivity > .grid { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-action-productivity > .grid > .col-span-2 { grid-column: auto; }
+  .dashboard-action-productivity .justify-between { flex-wrap: wrap; gap: 4px; }
+}
+@container dashboard-goals (max-width: 420px) {
+  [aria-label="주간 목표 실적"] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  [aria-label="주간 목표 실적"] > div { width: 100%; max-width: none; }
+  [aria-label="주간 목표"] > .justify-between { flex-wrap: wrap; }
+}
+
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ContractPayment, PaymentSlot, Todo } from "@/types";
-import { activeWorkContracts, buildWorkStatusItems, classifyWorkStatus } from "@/lib/analytics/payment-work-status";
+import { activeWorkContracts, buildSlotActivityIndex, buildWorkStatusItems, classifyWorkStatus, slotActivityKey } from "@/lib/analytics/payment-work-status";
 
 const slot = (over: Partial<PaymentSlot> = {}): PaymentSlot => ({ 진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "", ...over });
 const contract = (over: Partial<ContractPayment> = {}): ContractPayment => ({ row: 3, 계약일: "2026-09-01", 업체명: "한빛", 수임비: 100, 계약비고: "", 공동인증서: false, 임대차계약서: false, 신분증: false, 드라이브업로드: false, 사업계획서초안발송: false, 컨설팅5종서류발송: false, 플러그이관: false, 수납1: slot(), 수납2: slot(), 수납3: slot(), 로드맵메모: "", 해지일: "", 해지사유: "", 반환액: 0, 해지숨김: false, ...over } as ContractPayment);
@@ -22,5 +22,16 @@ describe("업무현황 분류", () => {
     const cp = contract({ 수납1: slot({ 진행기관: "소진공" }) });
     const todo = { contractRef: "2026-09-01|한빛", institutionRef: "소진공" } as Todo;
     expect(buildWorkStatusItems([cp], [todo], "2026-09-27")[0]?.status).toBe("progress");
+  });
+  it("활동 색인: 기관명 양끝 공백은 같은 진행, 미완료 Todo 최소일·History 최대일·완료 Todo 최대 예정일, 빈 날짜는 건너뜀", () => {
+    const rec = (over: Partial<Todo>) => ({ contractRef: "2026-09-01|한빛", institutionRef: "소진공", 예정일자: "", 완료여부: false, 기록종류: "todo", ...over }) as Todo;
+    const index = buildSlotActivityIndex([
+      rec({ 예정일자: "2026-10-05" }), rec({ institutionRef: " 소진공 ", 예정일자: "2026-10-02" }),
+      rec({ 기록종류: "history", 예정일자: "2026-09-20" }), rec({ 기록종류: "history", 예정일자: "2026-09-25" }),
+      rec({ 완료여부: true, 예정일자: "2026-09-28" }), rec({ 완료여부: true, 예정일자: "2026-09-10" }),
+      rec({ 예정일자: "" }),
+    ]);
+    expect(index.get(slotActivityKey("2026-09-01|한빛", "소진공 "))).toEqual({ todo: "2026-10-02", history: "2026-09-25", done: "2026-09-28" });
+    expect(index.size).toBe(1);
   });
 });

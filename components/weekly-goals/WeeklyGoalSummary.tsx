@@ -1,4 +1,5 @@
 "use client";
+import "./weekly-goals-flow.css";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Target, ChevronRight, ChevronLeft } from "lucide-react";
@@ -6,9 +7,9 @@ import { useGuardedRouter } from "@/components/DirtyGuard";
 import { GOAL_KEYS, type GoalKey } from "@/types/weekly-goals";
 import { addDays, fmtISO, friOf, parseISO, todayKST } from "@/util/week";
 import { goalReturnTarget } from "@/util/weekly-goal-navigation";
-import { useGoalView } from "./client";
-import GoalCompactMetrics from "./GoalCompactMetrics";
-import GoalRings from "./GoalRings";
+import { useGoalView } from "@/components/weekly-goals/client";
+import GoalCompactMetrics from "@/components/weekly-goals/GoalCompactMetrics";
+import GoalRings from "@/components/weekly-goals/GoalRings";
 
 interface Props {
   date?: string; metrics?: readonly GoalKey[]; student?: string; className?: string; compact?: boolean;
@@ -53,7 +54,7 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
     </div>
     <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
   </section>;
-  return <section className={className + " relative isolate flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"} aria-label="주간 목표">
+  return <section className={className + " weekly-goals-flow-card relative isolate flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"} aria-label="주간 목표">
     <button type="button" aria-label="주간 목표·PT과제 상세 보기" onClick={() => router.push("/weekly-goals?" + entry)} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />
     <div className="flex flex-wrap items-center justify-between gap-x-2">
       <h2 className="flex items-center gap-2 text-base font-extrabold text-gray-900"><span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" /><span>주간 목표 {current && <span className="text-sm text-gray-500">· {current.week}주차</span>}</span></h2>
@@ -61,12 +62,14 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
     </div>
     {status ?? (current && <>
       <p className="mb-2 text-xs text-gray-500">{current.start} ~ {current.end}</p>
-      <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
-      {/* 옆 카드와 높이를 맞춰 늘어나면 PT과제 상자를 바닥에 붙인다(mt-auto) — 평소 간격은 pt-3. */}
-      <div className="mt-auto pt-3"><div className="rounded-xl border border-teal-100 bg-teal-50/60 p-3">
-        <div className="mb-1 flex items-center justify-between text-xs font-bold text-teal-800"><span>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</span><ChevronRight className="h-4 w-4" aria-hidden /></div>
-        <p className="line-clamp-2 whitespace-pre-line break-words text-xs leading-relaxed text-slate-700">{current.record.task?.trim() || "등록된 PT과제가 없어요"}</p>
-      </div></div>
+      <div className="weekly-goals-task-line">
+        <b>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</b>
+        <span>{current.record.task?.trim() || "등록된 과제 없음"}</span>
+        <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
+      </div>
+      <div className="weekly-goals-flow" aria-label="생산 → 유입 → 컨택완료 → 미팅완료 → 계약">
+        <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
+      </div>
     </>)}
   </section>;
 }
