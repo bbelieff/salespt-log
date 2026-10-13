@@ -86,6 +86,7 @@ describe("미팅 뮤테이션 → 월 미팅·계약 무효화", () => {
       const hooks = mount();
       const keys = await keysInvalidatedBy(() => run(hooks));
       expect(keys).toContain('["month"]');
+      expect(keys).toContain('["meeting-follow-ups"]');
       expect(keys).toContain('["contract-payment"]');
       expect(keys).not.toContain('["payments"]');
     });

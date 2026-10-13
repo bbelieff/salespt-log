@@ -7,9 +7,8 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import DashboardFollowUps from "@/components/dashboard/DashboardFollowUps";
 import { LoadingProvider } from "@/components/ui/LoadingProvider";
 import { cpKey } from "@/lib/query/contract-payment-hooks";
-import { monthKey } from "@/lib/query/contact-hooks";
+import { followUpMeetingsKey } from "@/lib/query/follow-up-hooks";
 import { dbSheetKey } from "@/lib/query/db-sheet-hooks";
-import { meetingLookbackMonths } from "@/lib/analytics/dashboard-follow-ups";
 import type { ContractPayment, Meeting, Todo } from "@/types";
 import type { DbSheetLead } from "@/types/db-sheet";
 import { TODAY, contract, lead, meeting, slot, todo } from "./follow-ups-factories";
@@ -43,10 +42,7 @@ interface Seed { contracts?: ContractPayment[]; todos?: Todo[]; meetings?: Meeti
 function seed({ contracts = [], todos = [], meetings = [], leads = [] }: Seed) {
   client.setQueryData(cpKey(), { rows: contracts });
   client.setQueryData(["todos", "all"], { todos });
-  for (const m of meetingLookbackMonths(TODAY)) {
-    const own = meetings.filter((x) => x.미팅날짜.startsWith(m));
-    client.setQueryData(monthKey(m), { yyyyMM: m, daysByMeetingDate: [{ date: `${m}-01`, meetings: own }], daysByTodoDate: [] });
-  }
+  client.setQueryData([...followUpMeetingsKey(), TODAY], { meetings });
   if (leads) client.setQueryData(dbSheetKey(), { leads });
 }
 
@@ -54,8 +50,9 @@ function render(tree: React.ReactElement = h(DashboardFollowUps, { todayISO: TOD
   act(() => root.render(h(QueryClientProvider, { client }, tree)));
 }
 const card = () => host.querySelector("[data-dashboard-follow-ups]") as HTMLElement;
-const chip = (kind: string) => host.querySelector(`[data-follow-up-chip="${kind}"]`) as HTMLButtonElement | null;
-const links = () => [...host.querySelectorAll("[role=region] a")].map((a) => a.getAttribute("href"));
+const labels: Record<string,string> = {overdue:"STEP 4 실무/수납 경과 1건", today:"STEP 4 실무/수납 오늘 1건", meeting:"STEP 3 일정·계약 경과 1건", recontact:"STEP 2 컨택관리 경과 1건", stalled:"STEP 4 실무/수납 장기누락 1건"};
+const chip = (kind: string) => host.querySelector(kind === "upcoming" ? ".follow-ups-upcoming" : `[aria-label="${labels[kind]}"]`) as HTMLButtonElement | null;
+const links = () => [...document.querySelectorAll("[role=dialog] a")].map((a) => a.getAttribute("href"));
 
 const rich: Seed = {
   contracts: [
@@ -72,14 +69,15 @@ const rich: Seed = {
 };
 
 describe("DashboardFollowUps 카드", () => {
-  it("건수가 있는 칩만, 총건수(7일 안 제외)와 우선 문구를 보인다", () => {
+  it("STEP별 양수 칩만, 총건수는 미래 제외, 반복 안내문은 생략한다", () => {
     seed(rich);
     render();
     expect(card().textContent).toContain("오늘 챙길 일");
     expect(card().textContent).toContain("5건"); // 밀림1 + 오늘1 + 미팅1 + 재연락1 + 멈춤1(푸른제작 계약 후 10일)
-    expect(card().textContent).toContain("밀린 할 일 1건부터 정리해요");
+    expect(card().textContent).not.toContain("부터 정리");
+    expect(card().querySelectorAll(".follow-ups-step-row")).toHaveLength(3);
     expect(["overdue", "today", "meeting", "recontact", "stalled", "upcoming"].map((k) => chip(k) !== null)).toEqual([true, true, true, true, true, true]);
-    expect(card().textContent).not.toContain("오늘 챙길 일이 없어요");
+    expect(card().textContent).not.toContain("지금 챙길 일이 없습니다.");
   });
 
   it("칩을 누르면 그 목록만 열리고, 같은 칩·Esc·카드 밖 누름으로 닫힌다. 항목 링크는 정확한 도착 주소다", () => {
@@ -89,29 +87,29 @@ describe("DashboardFollowUps 카드", () => {
     expect(chip("overdue")!.getAttribute("aria-expanded")).toBe("true");
     expect(links()).toEqual(["/payment?row=3&slot=1&focus=late"]);
     act(() => chip("overdue")!.click());
-    expect(host.querySelector("[role=region]")).toBeNull();
+    expect(document.querySelector("[role=dialog]")).toBeNull();
 
     act(() => chip("meeting")!.click());
     expect(links()).toEqual(["/schedule?date=2026-10-10&focus=m1"]);
     act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
-    expect(host.querySelector("[role=region]")).toBeNull();
+    expect(document.querySelector("[role=dialog]")).toBeNull();
 
     act(() => chip("recontact")!.click());
     expect(links()).toEqual(["/db-sheet?lead=l1"]);
     act(() => { document.body.dispatchEvent(new Event("pointerdown", { bubbles: true })); });
-    expect(host.querySelector("[role=region]")).toBeNull();
+    expect(document.querySelector("[role=dialog]")).toBeNull();
 
     act(() => chip("stalled")!.click());
     expect(links()).toEqual(["/payment?row=5&slot=1"]);
-    expect(host.querySelector("[role=region]")!.textContent).toContain("계약 후 10일");
+    expect(document.querySelector("[role=dialog]")!.textContent).toContain("진행기관 없음");
   });
 
-  it("모든 조회가 성공했고 챙길 일이 없으면 칭찬 한 줄만 — 7일 안 할 일은 보조 칩 하나", () => {
-    seed({ contracts: [contract({ 계약일: "2026-10-10" })], todos: [todo({ contractRef: "2026-10-10|샘플상사", 예정일자: "2026-10-15" })] });
+  it("모든 조회가 성공했고 챙길 일이 없으면 간결한 빈 상태 — 7일 안 할 일은 보조 칩 하나", () => {
+    seed({ contracts: [contract({ 계약일: "2026-10-10", 수납1: slot({진행기관:"기관A"}) })], todos: [todo({ contractRef: "2026-10-10|샘플상사", institutionRef:"기관A", 예정일자: "2026-10-15" })] });
     render();
-    expect(card().textContent).toContain("오늘 챙길 일이 없어요 👏");
+    expect(card().textContent).toContain("지금 챙길 일이 없습니다.");
     expect(chip("upcoming")).not.toBeNull();
-    expect(host.querySelectorAll("[data-follow-up-chip]")).toHaveLength(1);
+    expect(host.querySelectorAll(".follow-ups-step-row")).toHaveLength(0);
   });
 
   it("계약을 못 찾은 할 일은 셈에서 빼고 안내 한 줄만 남긴다", () => {
@@ -119,17 +117,17 @@ describe("DashboardFollowUps 카드", () => {
     render();
     expect(chip("overdue")).toBeNull();
     expect(card().textContent).toContain("업체 연결이 끊긴 할 일 1건");
-    expect(card().textContent).toContain("오늘 챙길 일이 없어요 👏");
+    expect(card().textContent).toContain("지금 챙길 일이 없습니다.");
   });
 
-  it("DB관리시트 조회가 일시 장애로 실패하면 칭찬 문구 대신 안내와 다시 시도(실패한 조회만 다시 읽음)", async () => {
+  it("DB관리시트 조회가 일시 장애로 실패하면 빈 상태 안내 대신 안내와 다시 시도(실패한 조회만 다시 읽음)", async () => {
     const reply = { ok: false, status: 503, json: async () => ({ error: "저장소에 연결하지 못했습니다. 입력 내용을 유지하고 다시 시도해 주세요." }) };
     fetchMock.mockImplementation(async () => reply);
     seed({ leads: null });
     render();
     await act(async () => { await sleep(20); });
     expect(card().textContent).toContain("일부 항목을 불러오지 못했어요");
-    expect(card().textContent).not.toContain("오늘 챙길 일이 없어요");
+    expect(card().textContent).not.toContain("지금 챙길 일이 없습니다.");
     const before = fetchMock.mock.calls.length;
     const retry = [...card().querySelectorAll("button")].find((b) => b.textContent === "다시 시도")!;
     await act(async () => { retry.click(); await sleep(20); });
@@ -146,15 +144,43 @@ describe("DashboardFollowUps 카드", () => {
     expect(chip("meeting")).not.toBeNull();
   });
 
-  it("불러오는 동안 카드 자리만 잡고(aria-busy) 칭찬 문구는 보이지 않는다", () => {
+  it("불러오는 동안 카드 자리만 잡고(aria-busy) 빈 상태 안내는 보이지 않는다", () => {
     render(); // 아무것도 채우지 않음 — 조회가 끝나지 않는다
     expect(card().getAttribute("aria-busy")).toBe("true");
     expect(card().textContent).not.toContain("없어요");
   });
 });
 
+describe("STEP summary detail boundaries", () => {
+  it("the total opens every urgent item oldest first; future tasks remain separate", () => {
+    seed(rich); render();
+    act(() => (host.querySelector(".follow-ups-total") as HTMLButtonElement).click());
+    expect(document.querySelectorAll(".follow-ups-detail")).toHaveLength(5);
+    expect(links()[0]).toBe("/payment?row=5&slot=1");
+    expect(links()).not.toContain("/payment?row=3&slot=1&focus=soon");
+    expect(document.querySelector("[role=dialog]")!.textContent).toContain("샘플 푸른제작");
+    act(() => (document.querySelector('[aria-label="목록 닫기"]') as HTMLButtonElement).click());
+    expect(document.activeElement).toBe(host.querySelector(".follow-ups-total"));
+  });
+  it("unknown contact dates have their own count and are never invented as long overdue", () => {
+    seed({leads:[lead({next:"",result:"부재"})]}); render();
+    expect(card().textContent).toContain("날짜 확인 1");
+    expect(card().querySelector('[data-tone="long-overdue"]')).toBeNull();
+    act(() => (card().querySelector('[data-tone="unknown"]') as HTMLButtonElement).click());
+    expect(document.querySelector("[role=dialog]")!.textContent).toContain("다음 연락일 없음");
+  });
+  it("complete source failure cannot appear as zero or a completed queue", async () => {
+    fetchMock.mockImplementation(async () => ({ok:false,status:503,json:async()=>({error:"합성 실패"})}));
+    render(); await act(async()=>{await sleep(80);});
+    await act(async()=>{await sleep(40);});
+    expect(card().textContent).toContain("불러오지 못했어요");
+    expect(card().textContent).not.toContain("0건");
+    expect(card().textContent).not.toContain("챙길 일이 없습니다");
+  });
+});
+
 describe("보조 조회와 전역 로딩 오버레이", () => {
-  it("월 미팅·DB관리시트 조회(meta.background)는 오버레이를 띄우지 않고, 일반 첫 조회는 띄운다", async () => {
+  it("후속 미팅·DB관리시트 조회(meta.background)는 오버레이를 띄우지 않고, 일반 첫 조회는 띄운다", async () => {
     client.setQueryData(cpKey(), { rows: [] });
     client.setQueryData(["todos", "all"], { todos: [] });
     render(h(LoadingProvider, null, h(DashboardFollowUps, { todayISO: TODAY })));

@@ -1,0 +1,70 @@
+.follow-ups-card { position:relative; border:1px solid #e2e8f0; border-radius:16px; background:#fff; padding:12px; box-shadow:0 1px 2px #0f172a0d; color:#334155; font-size:12px; }
+.dashboard-action-overview:has(.follow-ups-card) { align-items:start; }
+.follow-ups-card header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.follow-ups-card h2 { font-size:14px; font-weight:700; color:#0f172a; }
+.follow-ups-card h2 span { margin-left:6px; color:#e11d48; }
+.follow-ups-help { padding:4px 8px; color:#64748b; }
+.follow-ups-list { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:0 2px 2px; }
+.follow-ups-list li+li { border-top:1px solid #f1f5f9; }
+.follow-ups-list a { display:block; border-radius:6px; padding:9px 2px; }
+.follow-ups-list a:hover { background:#f8fafc; }
+.follow-ups-line { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.follow-ups-step { font-size:10px; font-weight:700; color:#64748b; }
+.follow-ups-line strong { color:#0f172a; font-size:12px; }
+.follow-ups-badge { margin-left:auto; padding:2px 5px; border-radius:4px; font-size:10px; white-space:nowrap; background:#eff6ff; color:#1d4ed8; }
+.follow-ups-badge[data-tone=overdue] { background:#fffbeb; color:#92400e; }
+.follow-ups-badge[data-tone=long-overdue] { background:#fff1f2; color:#be123c; }
+.follow-ups-company { display:block; font-size:12px; font-weight:500; margin-top:3px; }
+.follow-ups-company>span { color:#64748b; }
+.follow-ups-reason { display:block; color:#64748b; font-size:11px; overflow-wrap:anywhere; margin-top:1px; }
+.follow-ups-more { width:100%; color:#475569; font-weight:600; padding:7px; border-top:1px solid #f1f5f9; }
+.follow-ups-guide { background:#f8fafc; border-radius:8px; padding:8px; line-height:1.7; margin-top:8px; }
+.follow-ups-guide p+p { margin-top:4px; }
+.follow-ups-card footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px; padding-top:5px; font-size:10px; color:#64748b; }
+.follow-ups-card footer button { text-decoration:underline; padding:4px; }
+.follow-ups-empty { padding:24px 0; text-align:center; }
+.follow-ups-card :is(a,button):focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+@media(max-width:1023px) { .follow-ups-card button { min-height:44px; }  }
+
+.follow-ups-panel { position:fixed; z-index:80; display:flex; flex-direction:column; width:min(440px, calc(100vw - 24px)); max-height:min(520px, calc(100dvh - 24px)); overflow:hidden; overscroll-behavior:contain; background:white; padding:10px; border:1px solid #cbd5e1; border-radius:12px; box-shadow:0 10px 28px #0f172a26; color:#334155; font-size:12px; outline:none; }
+.follow-ups-panel :is(a,button):focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+@media(max-width:1023px) { .follow-ups-panel button { min-height:44px; } }
+.follow-ups-panel-head { display:flex; align-items:center; gap:8px; padding:8px 2px; color:#64748b; font-size:11px; }
+.follow-ups-panel-head p{flex:1;}
+.follow-ups-panel-head button{flex-shrink:0; padding:4px;}
+
+ .follow-ups-steps { margin-top:4px; }
+.follow-ups-step-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; column-gap:12px; padding:5px 0; }
+.follow-ups-step-row + .follow-ups-step-row { border-top:1px solid #f1f5f9; }
+.follow-ups-step-row h3 { font-size:12px; font-weight:600; color:#334155; line-height:24px; }
+.follow-ups-counts { display:flex; align-items:center; flex-wrap:wrap; gap:2px 8px; }
+.follow-ups-counts button { display:inline-flex; align-items:center; gap:4px; min-height:28px; border-radius:5px; padding:2px 3px; font-size:12px; font-weight:600; white-space:nowrap; }
+.follow-ups-counts i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.follow-ups-counts button:hover,.follow-ups-counts button[aria-expanded=true] { background:#f1f5f9; text-decoration:underline; text-underline-offset:3px; }
+.follow-ups-counts [data-tone=long-overdue] { color:#be123c; }
+.follow-ups-counts [data-tone=overdue] { color:#92400e; }
+.follow-ups-counts [data-tone=today] { color:#1d4ed8; }
+@media(max-width:1023px) { .follow-ups-counts button { min-height:44px; } }
+.follow-ups-upcoming { display:flex; width:100%; align-items:center; gap:6px; padding:7px 3px; font-weight:600; }
+.follow-ups-upcoming span { font-size:11px; color:#64748b; font-weight:400; }
+.follow-ups-upcoming b { margin-left:auto; }
+
+
+.follow-ups-card .follow-ups-total { display:inline-flex; align-items:center; gap:4px; margin-left:6px; color:#e11d48; border-radius:6px; padding:2px 5px; text-decoration:underline; text-underline-offset:3px; }
+.follow-ups-card .follow-ups-total span { margin:0; font-size:15px; }
+.follow-ups-total:hover { background:#fff1f2; }
+.follow-ups-panel-head { flex-shrink:0; padding:2px 2px 10px; align-items:flex-start; }
+.follow-ups-panel-head strong { display:block; font-size:13px; color:#0f172a; }
+.follow-ups-panel-head p>span { display:block; font-size:10px; margin-top:3px; }
+.follow-ups-detail { padding:12px 3px; }
+.follow-ups-detail h3 { font-size:15px; color:#0f172a; font-weight:700; margin-top:5px; overflow-wrap:anywhere; }
+.follow-ups-detail-action { font-size:13px; font-weight:600; color:#1d4ed8; margin-top:5px; }
+.follow-ups-detail .follow-ups-reason { margin-top:3px; line-height:1.5; }
+.follow-ups-detail dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; padding:10px; background:#f8fafc; border-radius:8px; margin:10px 0 8px; }
+.follow-ups-detail dt { font-size:10px; color:#64748b; }
+.follow-ups-detail dd { font-size:12px; margin-top:2px; color:#334155; overflow-wrap:anywhere; }
+.follow-ups-list .follow-ups-detail-link { display:flex; align-items:center; justify-content:center; min-height:36px; padding:8px 10px; background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe; border-radius:7px; font-weight:600; }
+.follow-ups-list .follow-ups-detail-link:hover { background:#dbeafe; }
+@media(max-width:1023px) { .follow-ups-list .follow-ups-detail-link { min-height:44px; } }
+
+.follow-ups-counts [data-tone=unknown] { color:#475569; }

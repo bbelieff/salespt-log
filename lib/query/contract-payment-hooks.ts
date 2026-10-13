@@ -46,6 +46,7 @@ interface ListResponse {
 function invalidateContractLinked(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ["todos"] });
   qc.invalidateQueries({ queryKey: ["month"] });
+  qc.invalidateQueries({ queryKey: ["meeting-follow-ups"] });
 }
 
 export function useContractPayments(): UseQueryResult<ListResponse> {

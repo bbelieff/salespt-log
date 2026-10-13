@@ -146,3 +146,41 @@ it("supports four source types and moves only this lead's inflow/contact contrib
  }
  expect((await listDbSheet(ctx)).find(l=>l.id===moving.id)).toMatchObject({channel:"콜·지·기·소",supplier:"수정 출처"});
 });
+it("follow-up generation survives drafts/reload, completes only an explicit contact, and reopens same-day scheduling",async()=>{
+ const {scheduleDbSheetContact}=await import("@/repo/db/db-sheet");
+ let lead=(await saveDbSheetLead(ctx,{...input(),next:"2026-10-12"},null)).lead;
+ const generation=lead.followUp!.generation;
+ lead=(await saveDbSheetLead(ctx,{...lead,contact:{...lead.contact,date:"2026-10-12"},followUp:{generation:99,completedGeneration:99,lastContactDate:"2099-01-01"}},lead.revision)).lead;
+ expect(lead.followUp).toEqual({generation,completedGeneration:null,lastContactDate:""});
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"부재",note:"합성"},lead.revision)).lead;
+ expect(lead.next).toBe("");expect(lead.followUp!.completedGeneration).toBe(generation);
+ lead=(await scheduleDbSheetContact(ctx,lead.id,"2026-10-12",lead.revision)).lead;
+ expect(lead.followUp!.generation).toBe(generation+1);expect(lead.followUp!.completedGeneration).toBe(generation);
+ const reloaded=(await listDbSheet(ctx)).find(r=>r.id===lead.id)!;
+ expect(reloaded.followUp).toEqual(lead.followUp);expect(reloaded.next).toBe("2026-10-12");
+ await expect(scheduleDbSheetContact(ctx,lead.id,"2026-10-13",lead.revision-1)).rejects.toThrow("CONFLICT");
+ await expect(scheduleDbSheetContact(other,lead.id,"2026-10-13",lead.revision)).rejects.toThrow("CONFLICT");
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-11",result:"부재",note:"이전 연락"},lead.revision)).lead;
+ expect(lead.next).toBe("2026-10-12");expect(lead.followUp!.completedGeneration).toBe(generation);
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"단순거절",note:"완료"},lead.revision)).lead;
+ expect(lead.next).toBe("");expect(lead.followUp!.completedGeneration).toBe(generation+1);
+});
+it("legacy real contact dates are read from the ledger, never from draft dates, and scheduling preserves them",async()=>{
+ const {scheduleDbSheetContact}=await import("@/repo/db/db-sheet");
+ let lead=(await saveDbSheetLead(ctx,input(),null)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-09",result:"부재",note:""},lead.revision)).lead;
+ await query("update db_sheet_leads set data=data-'followUp' where id=$1",[lead.id]);
+ const reloaded=(await listDbSheet(ctx)).find(r=>r.id===lead.id)!;
+ expect(reloaded.followUp?.lastContactDate).toBe("2026-10-09");
+ lead=(await scheduleDbSheetContact(ctx,lead.id,"2026-10-15",lead.revision)).lead;
+ expect(lead.followUp?.lastContactDate).toBe("2026-10-09");
+});
+it("draft autosave after a completed contact cannot restore the consumed next date",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),next:"2026-10-12"},null)).lead;
+ const staleDraft={...lead,company:"새 합성 이름"};
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"부재",note:""},lead.revision)).lead;
+ lead=(await saveDbSheetLead(ctx,staleDraft,lead.revision)).lead;
+ expect(lead.next).toBe("");expect(lead.followUp!.completedGeneration).toBe(lead.followUp!.generation);
+ lead=(await saveDbSheetLead(ctx,{...lead,next:"2026-10-12"},lead.revision,true)).lead;
+ expect(lead.next).toBe("2026-10-12");expect(lead.followUp!.completedGeneration).not.toBe(lead.followUp!.generation);
+});

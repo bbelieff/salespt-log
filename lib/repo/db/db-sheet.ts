@@ -71,16 +71,23 @@ async function linkedProjection(c:PoolClient,ctx:DbSheetContext,old:DbSheetLead)
  const resolved=effectiveMeeting(await meetingRows(c,ctx,true),old.meetingId);
  return projectMeeting(old,resolved.meeting,resolved.lineage);
 }
+async function followUpState(c:Pick<PoolClient,"query">,ctx:DbSheetContext,lead:DbSheetLead){
+ if(lead.followUp)return lead.followUp;
+ const r=await c.query("select max(contact_date)::text as date from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2",[ctx.spreadsheetId,lead.id]);
+ return {generation:0,completedGeneration:null,lastContactDate:r.rows[0]?.date??""};
+}
 const linkedKeys=["ci","companyName","meetingDate","time","place","reservationNote"] as const;
-async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|null):Promise<DbSheetChange>{
+async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|null,scheduleNext=false):Promise<DbSheetChange>{
  const input=DbSheetLeadInput.parse(raw);
  const old=await read(c,ctx,input.id);if(revision===null?!!old:!old||old.revision!==revision)throw new DbSheetConflict();
+ if(old)old.followUp=await followUpState(c,ctx,old);
  let current=old;
  if(old?.meetingId){
   current=await linkedProjection(c,ctx,old);
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
- const lead:DbSheetLead={...input,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
+ const lead:DbSheetLead={...input,next:old&&!scheduleNext?old.next:input.next,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
+  followUp:{generation:(old?.followUp?.generation??0)+(old&&scheduleNext?1:0),completedGeneration:old?.followUp?.completedGeneration??null,lastContactDate:old?.followUp?.lastContactDate??""},
   // Response-only lineage (persist strips it): lets the status projector match a contract linked to a rescheduled child meeting.
   ...(current?.effectiveMeetingId?{effectiveMeetingId:current.effectiveMeetingId,meetingLineageIds:current.meetingLineageIds??[]}:{})};
  // Once a meeting owns its channel, changes must follow the meeting editor contract.
@@ -92,19 +99,30 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
 export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
  guard(ctx);const c=getDbPool();const r=await c.query("select data from db_sheet_leads where spreadsheet_id=$1 order by data->>'date' desc,id",[ctx.spreadsheetId]);
  const meetings=await meetingRows(c,ctx);
- return r.rows.map(({data}:{data:DbSheetLead})=>{const resolved=effectiveMeeting(meetings,data.meetingId);return projectMeeting(data,resolved.meeting,resolved.lineage);});
+ const contacts=await c.query("select lead_id,max(contact_date)::text as date from db_sheet_contacts where spreadsheet_id=$1 group by lead_id",[ctx.spreadsheetId]);
+ const lastDates=new Map(contacts.rows.map((row:{lead_id:string;date:string})=>[row.lead_id,row.date]));
+ return r.rows.map(({data}:{data:DbSheetLead})=>{const resolved=effectiveMeeting(meetings,data.meetingId);return projectMeeting({...data,followUp:data.followUp??{generation:0,completedGeneration:null,lastContactDate:lastDates.get(data.id)??""}},resolved.meeting,resolved.lineage);});
 }
-export async function saveDbSheetLead(ctx:DbSheetContext,input:unknown,expectedRevision:number|null){return transaction(ctx,c=>save(c,ctx,input,expectedRevision));}
+export async function saveDbSheetLead(ctx:DbSheetContext,input:unknown,expectedRevision:number|null,scheduleNext=false){return transaction(ctx,c=>save(c,ctx,input,expectedRevision,scheduleNext));}
 export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:{date:string;result:string;note:string},expectedRevision:number){
  z.string().uuid().parse(leadId);const event=z.object({date:DbSheetDate,result:DbSheetResult,note:z.string().max(20000)}).parse(input);
  return transaction(ctx,async c=>{
- const stored=await expected(c,ctx,leadId,expectedRevision);const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;const before=await contributions(c,ctx,old,-1);
+ const stored=await expected(c,ctx,leadId,expectedRevision);const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;old.followUp=await followUpState(c,ctx,old);const before=await contributions(c,ctx,old,-1);
  const qualified=["컨택진행","상담 후 거절"].includes(event.result);
  await c.query(`insert into db_sheet_contacts(spreadsheet_id,lead_id,contact_date,qualified,result,note) values($1,$2,$3,$4,$5,$6)
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
- const first=dates.rows[0]?.first??"";const lead:DbSheetLead={...old,revision:old.revision+1,result:event.result,first,stage:old.meetingId?old.stage:first?"상담 중":"미컨택",contact:{...old.contact,date:event.date,note:event.note}};
+ const first=dates.rows[0]?.first??"";const lead:DbSheetLead={...old,next:!old.next||event.date>=old.next?"":old.next,revision:old.revision+1,result:event.result,first,stage:old.meetingId?old.stage:first?"상담 중":"미컨택",contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:old.followUp?.generation??0,completedGeneration:!old.next||event.date>=old.next?old.followUp?.generation??0:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
  await persist(c,ctx,lead);return {lead,changedSales:await applyDeltas(c,ctx,[...before,...await contributions(c,ctx,lead,1)])};
+ });
+}
+/** Explicit scheduling also reopens a reservation for the same calendar day. */
+export async function scheduleDbSheetContact(ctx:DbSheetContext,leadId:string,next:string,expectedRevision:number){
+ z.string().uuid().parse(leadId);z.union([DbSheetDate,z.literal("")]).parse(next);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,leadId,expectedRevision);old.followUp=await followUpState(c,ctx,old);
+  const lead:DbSheetLead={...old,next,revision:old.revision+1,followUp:{generation:(old.followUp?.generation??0)+1,completedGeneration:old.followUp?.completedGeneration??null,lastContactDate:old.followUp?.lastContactDate??""}};
+  await persist(c,ctx,lead);return {lead,changedSales:[]};
  });
 }
 export async function registerDbSheetMeeting(ctx:DbSheetContext,leadId:string,raw:Meeting,expectedRevision:number):Promise<DbSheetChange>{

@@ -30,6 +30,11 @@ const bundle = await context({
   platform: "browser", jsx: "automatic", logLevel: "warning",
   define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
   plugins: [{ name: "fixture-next", setup(b) {
+    if (process.env.FOLLOW_UPS_RULES_PREVIEW === "1") {
+      b.onResolve({ filter: /^@\/components\/dashboard\/DashboardActionOverview$/ }, () => ({ path: join(process.cwd(), "tests/browser/dashboard-two-column-preview.tsx") }));
+      b.onResolve({ filter: /^@\/components\/weekly-goals\/WeeklyGoalSummary$/ }, () => ({ path: join(process.cwd(), "tests/browser/weekly-goals-flow-preview.tsx") }));
+      b.onResolve({ filter: /^\.\/DashboardFollowUps$/ }, () => ({ path: join(process.cwd(), "tests/browser/dashboard-followups-rules-preview.tsx") }));
+    }
     b.onResolve({ filter: /^next\/(navigation|link)$/ }, (args) => ({ path: args.path, namespace: "fixture" }));
     b.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => ({ loader: "js", resolveDir: process.cwd(), contents: args.path.endsWith("navigation")
       ? "export const useRouter=()=>({push:p=>window.__fixtureNavigate(p),replace:p=>window.__fixtureNavigate(p,true),back:()=>history.back(),forward:()=>history.forward(),refresh:()=>{},prefetch:()=>{}});"
@@ -113,6 +118,12 @@ function someData(t) {
     lead(5, "샘플 바다수산", { result: "부재", next: "" }),
     lead(6, "샘플 새봄꽃집", { result: "단순거절", next: shift(t, -4), contact: contacted(shift(t, -2)) }),
   ];
+  {
+    Object.assign(leads[1], { date: t, result: "미컨택", next: "", contact: contacted("") });
+    Object.assign(leads[2], { date: shift(t, -1), result: "미컨택", next: "", contact: contacted("") });
+    Object.assign(meetings[0], { 미팅날짜: t });
+    Object.assign(leads[4], { followUp: {generation:0, completedGeneration:0,lastContactDate:t} });
+  }
   return { contracts, todos, meetings, leads };
 }
 
@@ -228,6 +239,10 @@ const server = createServer(async (req, res) => {
   }
 
   // 미팅
+  if (path === "/api/meetings/follow-ups") {
+    if (slow) await sleep(1500);
+    return reply({ meetings: data.meetings.filter(m => m.상태 === "예약" && m.미팅날짜 <= shift(todayKST(), 7)) });
+  }
   if (path.startsWith("/api/meetings/month/")) {
     if (slow) await sleep(1500);
     const yyyyMM = path.slice("/api/meetings/month/".length);
@@ -262,8 +277,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST") {
       const body = await readBody(req);
       const bump = (id, change) => { data.leads = data.leads.map((l) => (l.id === id ? { ...change(l), revision: l.revision + 1 } : l)); return data.leads.filter((l) => l.id === id); };
-      if (body.action === "save") return reply({ leads: bump(body.lead.id, (l) => ({ ...l, ...body.lead })) });
-      if (body.action === "contact") return reply({ leads: bump(body.id, (l) => ({ ...l, result: body.result, contact: { ...l.contact, date: body.date, note: body.note } })) });
+      if (body.action === "save") return reply({ leads: bump(body.lead.id, (l) => ({ ...l, ...body.lead, next:body.scheduleNext ? body.lead.next : l.next, followUp:body.scheduleNext ? { ...l.followUp,generation:(l.followUp?.generation??0)+1 } : l.followUp })) });
+      if (body.action === "contact") return reply({ leads: bump(body.id, (l) => ({ ...l, result: body.result, next:"", followUp:{generation:l.followUp?.generation??0,completedGeneration:l.followUp?.generation??0,lastContactDate:body.date}, contact: { ...l.contact, date: body.date, note: body.note } })) });
       return reply({ leads: [] });
     }
     return reply({ leads: data.leads });

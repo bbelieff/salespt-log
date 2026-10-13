@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   view: vi.fn(), writable: vi.fn(), user: vi.fn(), enabled: vi.fn(),
-  list: vi.fn(), save: vi.fn(), contact: vi.fn(), meeting: vi.fn(), batch: vi.fn(),
+  list: vi.fn(), save: vi.fn(), schedule: vi.fn(), contact: vi.fn(), meeting: vi.fn(), batch: vi.fn(),
   salesSync: vi.fn(), meetingSync: vi.fn(),
   contracts: vi.fn(), todos: vi.fn(),
 }));
@@ -20,7 +20,7 @@ vi.mock("@/repo/db/client", () => ({ dbEnabled: mocks.enabled }));
 vi.mock("@/repo/db/db-sheet", () => ({
   DbSheetLinkedMeetingReadOnly: class extends Error { constructor() { super("예약된 업체정보와 일정은 컨택관리에서 수정해 주세요."); } },
   DbSheetConflict: class extends Error {}, listDbSheet: mocks.list,
-  saveDbSheetLead: mocks.save, saveDbSheetContact: mocks.contact,
+  saveDbSheetLead: mocks.save, scheduleDbSheetContact: mocks.schedule, saveDbSheetContact: mocks.contact,
   registerDbSheetMeeting: mocks.meeting, importDbSheetLeads: mocks.batch,
 }));
 vi.mock("@/service/sales-write", () => ({ queueSalesRowSync: mocks.salesSync }));
@@ -45,7 +45,7 @@ const request = (body: unknown) => new NextRequest("https://app.example.test/api
 });
 const save = () => request({ action: "save", lead: input, revision: null });
 function expectNoWrites() {
-  for (const fn of [mocks.save, mocks.contact, mocks.meeting, mocks.batch, mocks.salesSync, mocks.meetingSync]) expect(fn).not.toHaveBeenCalled();
+  for (const fn of [mocks.save, mocks.schedule, mocks.contact, mocks.meeting, mocks.batch, mocks.salesSync, mocks.meetingSync]) expect(fn).not.toHaveBeenCalled();
 }
 beforeEach(() => {
   vi.resetAllMocks();
@@ -53,7 +53,7 @@ beforeEach(() => {
   mocks.contracts.mockResolvedValue([]); mocks.todos.mockResolvedValue([]);
   mocks.view.mockResolvedValue({ email: ctx.email }); mocks.writable.mockResolvedValue(ctx.email);
   mocks.user.mockResolvedValue(ctx); mocks.enabled.mockReturnValue(true);
-  mocks.list.mockResolvedValue([lead]); mocks.save.mockResolvedValue(change);
+  mocks.list.mockResolvedValue([lead]); mocks.save.mockResolvedValue(change); mocks.schedule.mockResolvedValue(change);
   mocks.contact.mockResolvedValue(change); mocks.batch.mockResolvedValue([change]);
   mocks.meeting.mockResolvedValue({ ...change, meetingId: batchId });
 });
@@ -180,4 +180,11 @@ describe("DB sheet HTTP + real service boundary", () => {
     const invalid = save(); invalid.headers.set("origin", "https://configured.example.test");
     expect((await POST(invalid)).status).toBe(403); expectNoWrites();
   });
+});
+
+it("explicit schedule and atomic next edit carry the server revision and authorized tenant",async()=>{
+ const response=await POST(request({action:"schedule",id,revision:2,next:"2026-10-12"}));
+ expect(response.status).toBe(200);expect(mocks.schedule).toHaveBeenCalledWith(ctx,id,"2026-10-12",2);
+ const edited=await POST(request({action:"save",lead:{...input,next:"2026-10-12",followUp:{generation:99}},revision:2,scheduleNext:true}));
+ expect(edited.status).toBe(200);expect(mocks.save).toHaveBeenCalledWith(ctx,expect.not.objectContaining({followUp:expect.anything()}),2,true);
 });

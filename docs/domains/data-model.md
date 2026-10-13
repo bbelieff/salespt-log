@@ -565,7 +565,13 @@ interface DashboardWeeklyPoint {
 
 interface DashboardCostBreakdown {
   채널: '매입DB' | '직접생산' | '현수막';   // 콜·지·기·소는 비용 0이라 도넛 제외
-  비용: number;
+  비용: number;                              // 원 (화면이 만원으로 줄여 보인다)
+}
+
+// 2026-10-12 #7 — 영업이익 상세 「채널별 남은 돈」. 금액은 싣지 않는다(화면이 기간 함수로 계산).
+interface DashboardContractChannel {
+  key: string;              // contractChannelKey(@/util/contract-link): AK 있으면 `행|ak:AK`, 없으면 `행|계약일|업체명`
+  channel: Channel | null;  // 연결 미팅의 채널. null = manual:·AK 빈 값·못 찾은 미팅
 }
 
 interface DashboardView {
@@ -574,8 +580,14 @@ interface DashboardView {
   weeklyTrend: DashboardWeeklyPoint[];       // 길이 8
   costBreakdown: DashboardCostBreakdown[];   // 길이 3 (콜·지·기·소 제외)
   콜지기소수임비: number;                    // 0 (UI에서 박스 제거됨)
+  contractChannels?: DashboardContractChannel[]; // 계약 행마다 1개. optional — 배포 직후 캐시된 옛 응답엔 없다
 }
 ```
+
+**계약 → 채널 연결 규칙** (`lib/service/contract-channel.ts` — 해지 계약수 차감 `termination-count`와 공용):
+1차 AK(`linkedMeetingId`) → `meeting.id`, 2차 `계약일|업체명` → 첫 일치 미팅(미팅 연결 시 계약일 = 미팅날짜),
+`manual:`(영업기록 없이 추가) → 미팅 없음. 미팅 상태·이월로 거르지 않는다. DB 경로·시트 경로 모두 이미 읽은
+계약·미팅 배열로 만든다(새 DB·시트 읽기 0). 유입 경로(#10)가 생기면 그 값을 먼저 쓰고 미팅 채널은 대체값으로 둔다.
 
 ### Phase 2 후속 (선택)
 
@@ -641,7 +653,8 @@ interface DashboardView {
 | `DashboardChannelMatrix` | interface | 채널별 funnel matrix (4채널 × N단계). 6단계 확장은 별도 PR |
 | `DashboardWeeklyPoint` | interface | 주차별 추이 1점 (주차/영업이익/활동량) |
 | `DashboardCostBreakdown` | interface | 채널별 비용 1행 (3채널, 콜·지·기·소 제외) |
-| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost) |
+| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost + `contractChannels?`) |
+| `DashboardContractChannel` | interface | 계약 행 → 연결 미팅 채널 `{ key, channel: Channel \| null }` (2026-10-12 #7, 영업이익 상세 채널 표). key = `contractChannelKey` |
 
 ## API 엔드포인트 (예정)
 
@@ -750,7 +763,8 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 저장 응답도 effectiveMeetingId/meetingLineageIds를 유지해 변경된 미팅에 연결된 계약을 동일하게 투영한다. 공급처 집계는 각 리드의 최고 단계를 누적해 상담·미팅·계약 건수를 센다. 대시보드의 일자별 수동 합산과 별개이다.
 
 
-### 대시보드 후속 업무 투영 — 2026-10-13
-- isDbSheetFollowUpResult: 부재·단순거절·상담 후 거절·재통화의 다음 연락일 입력/표시 정본. 다음연락일 이후 상담기록이 있으면 다시연락 카드에서 제외.
-- FollowUpSummary는 기존 ContractPayment/Todo/Meeting/DbSheetLead로 클라이언트 계산. DB쓰기/스키마변경 없음. 멈춘업체는 activeWorkContracts와 진행슬롯 마지막일정/미완료todo 기준.
-- 월미팅/DB 보조회는 계약·todo 조회 후 시작,5분 신선·저장후 query무효화. background metadata는 전역로딩 오버레이에서 제외.
+### DB관리시트 후속 연락 메타 · 2026-10-13
+- DbSheetLead.followUp?: {generation:number, completedGeneration:number|null, lastContactDate:string}는 서버 소유 JSONB 메타다. 클라이언트 임의 값은 받아들이지 않는다.
+- 명시적 다음 연락일 예약(scheduleNext)이 새 세대를 만들고 상담 기록 저장이 해당 세대를 완료한다. 상담일 초안 수정은 상담 완료가 아니다. 늦은 메모 자동저장이 소비된 연락일을 복원하지 않는다.
+- 첫 연락은 유입 당일, 미팅 결과는 미팅 당일, 진행건 기관/다음 투두 누락은 확인 가능한 계약/활동일부터 처리 대상. 미래 7일 분리·날짜 불명은 경과로 추정하지 않는다.
+- 미팅 후속 조회는 인증된 StudentViewContext와 기존 데이터 소스 선택/Sheets 대체 읽기를 유지하며 지난 예약에 30일 하한을 두지 않는다. 개인정보는 테스트/로그에 기록하지 않는다.

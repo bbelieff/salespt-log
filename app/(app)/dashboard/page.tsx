@@ -137,7 +137,12 @@ export default function DashboardPage() {
             {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).
                 아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
-            <DashboardFinance onOpenExpenseLedger={() => setExpenseLedgerOpen(true)} />
+            <DashboardFinance
+              onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
+              contractChannels={dash.data.contractChannels}
+              onRefreshChannels={dash.refetch}
+              channelsRefreshing={dash.isFetching}
+            />
 
             <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
               todayISO={today} courseStartISO={me.data?.courseStartISO} />

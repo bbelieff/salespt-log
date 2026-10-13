@@ -1075,7 +1075,7 @@ app/(app)/dashboard/page.tsx
 
 **카드 서식 통일(2026-09-28)**: 대시보드 본문 카드 6종(생산성·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨을 그대로 쓴다.
 
-**높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간 목표의 PT과제 상자는 `mt-auto`로 바닥, ≥1600px 생산성 카드는 진행건 위 남는 칸을 `flex-1`로 채운다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
+**높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간목표 PT과제는 날짜 아래 한 줄로 표시하고 상단 두 열은 콘텐츠 높이에 맞춘다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
 `DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다. 해지·숨김 계약을 동일하게 제외하고(이월은 포함, ADR-0034), 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
 
@@ -1120,12 +1120,39 @@ app/(app)/dashboard/page.tsx
 - `additionalCost: number | null`: 추가 비용. null은 조회 실패 안내를 표시하며 0원으로 대신하지 않는다.
 - `onOpenExpenseLedger: () => void`: 비용 상세 안 추가 비용 행 클릭 시 같은 페이지의 경비장부 모달 열기.
 - `periodLabel?` (기본 「전체」), `contractCount?`: 영업이익 상세의 기간·계약건수 부연.
+- `profitDetail?: ReactNode` (2026-10-12 #7): 영업이익 상세에서 기존 줄 아래에 붙는 내용(`ChannelProfitBreakdown`). 없으면 기존 그대로.
 - 2026-10-08 시즌/이월/전체 분리 props·표 삭제 — 기간 선택이 대신한다(ADR-0034).
 
 **DashboardFinance** (`components/dashboard/DashboardFinance.tsx`, 2026-10-08): 대시보드 매출·비용·영업이익
 묶음(slate-100 section) 제목 줄에 `PeriodPicker`(기본 「전체」= 기록된 기간 전체)를 두고, `useContractPayments`·
 `useDBOverview`·`useExpenseLedger("all")`를 `@/util/finance-period`로 기간 합산해 `FinanceSummaryBoxes`에 넘긴다.
 불러오는 중·실패(다시 시도) 상태를 보인다. 서버 `/api/dashboard` KPI는 쓰지 않는다.
+2026-10-12 #7: props `contractChannels?`(`/api/dashboard` 계약별 채널)·`onRefreshChannels?`·`channelsRefreshing?`를
+받아 영업이익 상세에 `ChannelProfitBreakdown`을 넘긴다(같은 기간·같은 계약 행, 칩을 바꿔도 새 요청 없음).
+`contractChannels`가 없으면(배포 직후 캐시된 옛 응답) 표를 그리지 않는다. 계약 목록에는 있는데 응답에 없는 키가
+생기면(방금 추가·AK 없는 계약 이름 변경) 같은 탭의 그 어긋남마다 **한 번만** `onRefreshChannels`(대시보드 다시 불러오기)를 부른다
+— `GET /api/dashboard`는 원장 반복 지출을 만드는 쓰기를 포함하므로 반복 호출 금지.
+
+**ChannelProfitBreakdown** (`components/dashboard/ChannelProfitBreakdown.tsx`, 2026-10-12 #7 「채널별 남은 돈」):
+영업이익 상세 패널 안, 기존 「기간 · 계약 N건 | 이익률」 줄 아래. 표시만 하고 계산은 `components/dashboard/channel-profit.ts`
+(순수 — 버킷·합계·문장·짧은 금액).
+- Props: `table: ChannelProfitTable`, `revenue`, `dbCost`, `additionalCost: number | null`, `onOpenExpenseLedger`, `refreshing?`.
+- 문장(`mt-2 text-sm font-bold text-slate-800`): 돈 쓴 채널(매입DB·직접생산·현수막 중 비용 > 0) 가운데 매출÷비용이
+  가장 큰 채널(같으면 남은 돈, 그다음 채널 순서)이 흑자면 「{채널}에 쓴 돈의 N.N배를 벌었어요」, 모두 적자면 「아직 쓴 돈보다
+  더 번 채널이 없어요」, 돈 쓴 채널이 없으면 「이 기간엔 DB에 쓴 돈이 없어요」. 매출·DB 비용·추가 비용이 **모두 0**일 때만
+  「이 기간에는 매출·비용 기록이 없어요」 + 표 숨김(추가 비용을 못 읽었으면 빈 기간이라 하지 않는다).
+- 표 `data-testid="fin-channel-profit"`(`w-full text-xs tabular-nums pc:max-w-lg`, caption sr-only 「채널별 남은 돈」):
+  채널 | 매출 | 비용 | 남은 돈. 4채널 줄은 **채널 순서 고정**(칩을 바꿔도 줄이 움직이지 않음), 색 네모(`ChannelPerformance`의
+  `CH_COLOR`) + 이름 + 「계약 N건」. 문장이 고른 채널 줄만 `bg-blue-50`. 비용 0 → 「—」. 남은 돈 0 이상 `text-blue-700`,
+  음수 `text-violet-600`(영업이익 칸과 같은 파랑·보라).
+- 구분선 뒤 보조 줄(매출이 있거나 기간 안 계약이 있을 때만): 「영업기록 없음 ›」(AK `manual:` 계약만 — `/payment` 링크,
+  그곳의 「영업기록 없음 ＋」로 연결) · 「채널 모름」(AK 빈 값·못 찾은 미팅 — 연결할 화면이 없어 설명만) · 「확인 중…/확인 못 함」
+  (응답에 아직 없는 계약 — 링크 없음). 「추가 비용 ›」(0이 아니거나 못 읽었을 때) = 같은 페이지 비용 원장 버튼, 못 읽었으면
+  비용 칸 「확인 못 했어요」(amber-700)·합계 비용에서 빠짐.
+- 합계 줄 「영업이익」(`border-t-2`, bold) = 위 세 칸(매출·비용·영업이익)과 원 단위까지 같다. 칸 숫자는 만원으로 먼저 반올림한 뒤
+  0이 아닐 때만 「−」(「−0만」 없음), 1억 이상은 0.1억 단위(「1.9억」) — 320px에서 가로 스크롤 없음. 전체 금액은 `title` +
+  sr-only 글자. 각주 「추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요」.
+- 패널 글에 「이월」·「시즌」 없음. 계약 한 건마다의 이익은 만들지 않는다(DB 비용 행에 계약 연결 키가 없다).
 
 **디자인 / 동작**:
 
@@ -1138,7 +1165,7 @@ app/(app)/dashboard/page.tsx
   `aria-controls`와 컬럼별 `focus-visible:ring-2`를 둔다. 상세 패널은 버튼의 형제이므로
   중첩 버튼이 생기지 않는다.
 - 상세 내용: 매출 = 수임비·수수료(·반환) / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
-  hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·기간·계약건수.
+  hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·기간·계약건수 + `profitDetail`(채널별 남은 돈).
 - 금액은 `formatMoney` 전체 금액(축약·절단 없음). ₩99,999,999·₩-99,999,999까지
   320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
   `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
@@ -1222,6 +1249,10 @@ app/(app)/dashboard/page.tsx
 - 공식: `채널 비용 ÷ 채널 계약건수` (1계약당 들어간 비용 — 낮을수록 효율적). 열 제목에 마우스를 올리면 설명이 뜬다
 - 비용이 없거나(콜·지·기·소) 계약이 0건이면 "—"
 - "비용 ÷ 건수" 보조는 셀에 마우스를 올리면 보인다(`title`)
+
+**기간 기준 채널 매출·남은 돈은 여기 없다** (2026-10-12 #7): 이 카드는 N주 누적 비용·유입·계약단가만 보인다.
+위 기간 선택을 따르는 채널별 매출·비용·남은 돈은 §9-2 영업이익 상세의 `ChannelProfitBreakdown`에 있다.
+`CH_COLOR`는 그 표도 같은 색을 쓰도록 export 만 했다(화면 변화 없음).
 
 ---
 
@@ -1707,8 +1738,13 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - 합성 화면: tests/browser/db-sheet-supplier-server.mjs, empty/few/many/error 시나리오 지원. 운영 API 접근 없이 PGlite로 저장·조회 검증.
 
 
-### DashboardActionOverview / DashboardFollowUps — 2026-10-13
-- 대시보드 PC1024+ 3열: 생산성 지표 / 오늘 챙길 일+전체 진행건 / 주간 목표. 모바일은 모두 표시하면서 실제교육8주까지 목표우선, 9주부터 챙길일우선. 시작일 미확인은 목표우선. 조회주차 변경은 배치에 영향 없음.
-- 목표 링은 크기를 유지하며 좁은 칸에서 줄바꿈, 생산성 지표는 좁은 컨테이너에서1열. dashboard-action-overview.css 컨테이너쿼리.
-- 오늘 챙길 일: 밀린/오늘/7일안 할 일, 지난30일 미입력 미팅결과, 다시 연락할DB, 다음할일없이7일이상 멈춘업체. 7일안은 보조건수(총합 제외). 0건칩 숨김, 일부오류 안내/재시도, 백그라운드조회는 전역로딩 제외.
-- 칩→목록→해당 todo/미팅/DB 링크, 모바일44px·PC목록은 공간에 따라 위/아래. 연결끊긴 todo는 합계 제외하고 안내.
+### DashboardFollowUps STEP별 요약 · 2026-10-13 사용자 수정
+
+- **DashboardActionOverview**: PC의 왼쪽 생산성 지표·주간목표, 오른쪽 진행건·오늘 챙길 일을 묶는 2열 배치. 모바일에서는 실제 교육 주차에 따라 목표/업무 순서를 정하며 모든 카드는 처음부터 표시한다.
+- **DashboardFollowUpsView**: STEP별 장기누락·경과·오늘 건수를 작은 칩으로 표시하는 화면 컴포넌트. 숫자를 누르면 해당 위치에 상세 목록을 띄우며 데이터 조회·재시도는 DashboardFollowUps가 담당한다.
+- PC는 두 열: 좌측 생산성→주간목표, 우측 전체진행건→오늘 챙길 일. 높이는 콘텐츠만큼, 모바일 실제 교육주차 우선순위는 유지한다.
+- STEP별 제목과 장기누락(7일~)·경과(1~6일)·오늘 숫자 버튼. 0건 항목/처리할 일 없는 STEP는 생략. 날짜 근거 없는 항목은 날짜 확인으로 따로 표시한다.
+- 숫자/전체 건수 클릭 → 누른 위치의 440px 이하 portal 팝업, 화면 밖으로 넘치지 않게 배치. 모든 항목을 긴급순으로 스크롤; 업체명·이유·기한·진행기관/회차·해당 입력화면 링크. 바깥 클릭·Esc·닫기 지원. 미래 7일은 별도 버튼.
+- 부분 조회 실패는 확인된 건수와 재시도 표시. 모두 실패했을 때 0건/완료로 표시하지 않는다. DB 미지원은 조용히 제외. 재조회는 5분 및 저장 무효화.
+- 주간목표 원 크기 보존, 5단계 화살표 연결, PT과제는 날짜 아래 한 줄. 좁은 PC 3+2 배열은 순서를 화살표로 이어 준다.
+- 진행건 hover는 진행바와 팝업의 합집합 밖으로 나가면 닫힘(간격 통과 유예120ms), window blur도 닫힘. 클릭형 오늘 챙길 일 팝업은 hover와 별개다.

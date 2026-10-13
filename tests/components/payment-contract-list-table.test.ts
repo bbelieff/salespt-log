@@ -113,7 +113,8 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain('forceOpen inline');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
-    expect(src).toContain("focusedSlot={item.hasProgress ? item.work.slot : null}");
+    expect(src).toContain("focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, item.hasProgress ? item.work.slot : null)}");
+    expect(src).toContain("focusedSlot={item.slot}");
   });
 });
 

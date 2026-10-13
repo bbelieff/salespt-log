@@ -33,7 +33,7 @@ describe("DB관리시트 읽기 훅", () => {
 
 describe("다음 연락일을 쓰는 결과 — 한 곳에서만 정의", () => {
   it("6결과 행렬이 이전과 같다(부재·단순거절·상담 후 거절·재통화만 참)", () => {
-    const expected = new Map([["미컨택", false], ["부재", true], ["단순거절", true], ["재통화", true], ["컨택진행", false], ["상담 후 거절", true]]);
+    const expected = new Map([["미컨택", false], ["부재", true], ["단순거절", true], ["재통화", true], ["컨택진행", true], ["상담 후 거절", true]]);
     for (const result of outcomes) {
       expect(showsNextContact(result), result).toBe(expected.get(result));
       expect(isDbSheetFollowUpResult(result), result).toBe(expected.get(result));

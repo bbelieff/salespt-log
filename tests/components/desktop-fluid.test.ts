@@ -199,10 +199,13 @@ describe("④ all six student tabs use the full available width", () => {
 });
 
 describe("⑤ desktop arrangements keep order, workflow, and natural scroll", () => {
-  it("dashboard: PC three-column overview above funnel, trend and channel charts", () => {
+  it("dashboard: PC two-column overview above funnel, trend and channel charts", () => {
     const src = read("app/(app)/dashboard/page.tsx");
     const overview = read("components/dashboard/DashboardActionOverview.tsx");
-    expect(overview).toContain("pc:grid-cols-3 pc:items-stretch");
+    const overviewCss = read("components/dashboard/dashboard-action-overview.css");
+    expect(overviewCss).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+    expect(overviewCss).toContain(".dashboard-action-work { grid-column: 2; grid-row: 1 / span 2; }");
+    expect(overviewCss).toContain(".dashboard-action-goals { grid-column: 1; grid-row: 2; }");
     expect(src.indexOf("<DashboardActionOverview")).toBeLessThan(src.indexOf("<FunnelChart"));
     expect(src).toContain("pc:grid-cols-3");
     // Charts side by side below, legibility untouched (no height flattening).
@@ -220,7 +223,11 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     ]) {
       expect(read(rel)).toContain("flex h-full flex-col");
     }
-    expect(read("components/weekly-goals/WeeklyGoalSummary.tsx")).toContain("mt-auto");
+    const goals = read("components/weekly-goals/WeeklyGoalSummary.tsx");
+    const taskLine = goals.indexOf('className="weekly-goals-task-line"');
+    expect(taskLine).toBeGreaterThan(-1);
+    expect(taskLine).toBeLessThan(goals.indexOf('className="weekly-goals-flow"'));
+    expect(goals).toContain("<GoalRings");
     // Short content must not force viewport height (shell reserves nothing).
     expect(src).toContain("pc:min-h-0");
   });

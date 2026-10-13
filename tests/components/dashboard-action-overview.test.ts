@@ -23,6 +23,6 @@ describe("dashboard shows all action cards from the first week", () => {
     const html = renderToStaticMarkup(createElement(DashboardActionOverview, { matrix: [], weeks, todayISO, courseStartISO }));
     for (const name of ["productivity", "weekly-goals", "follow-ups", "work-status"]) expect(html.match(new RegExp(`>${name}<`, "g"))).toHaveLength(1);
     expect(html.indexOf(">follow-ups<") < html.indexOf(">weekly-goals<")).toBe(workFirst);
-    expect(html.indexOf(">follow-ups<")).toBeLessThan(html.indexOf(">work-status<"));
+    expect(html.indexOf(">work-status<")).toBeLessThan(html.indexOf(">follow-ups<"));
   });
 });

@@ -3,6 +3,7 @@
  * index.ts 배럴에서 재수출(2026-07-19, 500줄 캡 분리). 소비자는 `@/types` 유지.
  * SSOT: data-model.md §대시보드 데이터 출처.
  */
+import type { Channel } from "./channel";
 
 // ── Dashboard view types (PR 12 dashboard-page) ─────────────────
 // SSOT: docs/domains/data-model.md §대시보드 데이터 출처
@@ -44,7 +45,19 @@ export interface DashboardWeeklyPoint {
 /** 비용 구성 — 3 비용 채널 (콜·지·기·소 제외) PieChart/Donut */
 export interface DashboardCostBreakdown {
   채널: "매입DB" | "직접생산" | "현수막";
-  비용: number; // 만원
+  비용: number; // 원 (화면이 만원으로 줄여 보인다 — ChannelPerformance fmtMan)
+}
+
+/**
+ * 계약 행 → 연결 미팅의 채널(2026-10-12 #7, 영업이익 상세 「채널별 남은 돈」).
+ * 브라우저는 `/api/contract-payment` 행을 같은 키(`@/util/contract-link` contractChannelKey)로 맞춘다.
+ * 금액은 싣지 않는다 — 매출·비용 계산은 화면이 기존 기간 함수로 한다.
+ */
+export interface DashboardContractChannel {
+  /** contractChannelKey — AK 가 있으면 `행|ak:AK`, 없으면 `행|계약일|업체명`. */
+  key: string;
+  /** 연결 미팅의 채널. null = 미팅 없음(`manual:` 영업기록 없이 추가·AK 빈 값·못 찾은 미팅). */
+  channel: Channel | null;
 }
 
 /** 대시보드 1회 read 응답 — Recharts/카드에 그대로 매핑 가능. */
@@ -57,6 +70,8 @@ export interface DashboardView {
   costBreakdown: DashboardCostBreakdown[]; // 길이 3
   /** 콜·지·기·소 수임비 별도 (도넛 외부 표시) */
   콜지기소수임비: number;
+  /** 계약 행별 채널(영업이익 상세 채널 표). 배포 직후 캐시된 옛 응답엔 없다 → 표를 그리지 않는다. */
+  contractChannels?: DashboardContractChannel[];
 }
 
 /**

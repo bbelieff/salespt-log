@@ -578,6 +578,25 @@
           </div>
         </div>
       </div>
+
+      <!-- 영업이익 상세 「채널별 남은 돈」 (ChannelProfitBreakdown, 2026-10-12 #7) — 합성 숫자 -->
+      <div class="bg-white rounded-lg border p-3 max-w-lg">
+        <div class="flex items-center justify-between text-xs text-slate-500"><span>전체 · 계약 8건</span><span class="rounded-full bg-slate-100 px-2 py-1">이익률 <b class="text-blue-700">48.9%</b></span></div>
+        <p class="mt-2 text-sm font-bold text-slate-800">현수막에 쓴 돈의 3.4배를 벌었어요</p>
+        <table class="mt-1 w-full text-xs" style="font-variant-numeric: tabular-nums">
+          <thead><tr class="text-gray-400"><th class="text-left font-medium">채널</th><th class="pl-1.5 text-right font-medium">매출</th><th class="pl-1.5 text-right font-medium">비용</th><th class="pl-1.5 text-right font-medium">남은 돈</th></tr></thead>
+          <tbody>
+            <tr class="border-t border-slate-100"><th class="py-1 text-left font-semibold text-gray-700">매입DB</th><td class="pl-1.5 text-right text-gray-700">350만</td><td class="pl-1.5 text-right text-gray-700">400만</td><td class="pl-1.5 text-right text-violet-600">−50만</td></tr>
+            <tr class="border-t border-slate-100"><th class="py-1 text-left font-semibold text-gray-700">직접생산</th><td class="pl-1.5 text-right text-gray-700">50만</td><td class="pl-1.5 text-right text-gray-700">250만</td><td class="pl-1.5 text-right text-violet-600">−200만</td></tr>
+            <tr class="border-t border-slate-100 bg-blue-50"><th class="py-1 text-left font-semibold text-gray-700">현수막</th><td class="pl-1.5 text-right text-gray-700">750만</td><td class="pl-1.5 text-right text-gray-700">220만</td><td class="pl-1.5 text-right text-blue-700">530만</td></tr>
+            <tr class="border-t border-slate-100"><th class="py-1 text-left font-semibold text-gray-700">콜·지·기·소</th><td class="pl-1.5 text-right text-gray-700">550만</td><td class="pl-1.5 text-right text-gray-400">—</td><td class="pl-1.5 text-right text-blue-700">550만</td></tr>
+            <tr class="border-t border-slate-200"><th class="py-1 text-left font-semibold text-slate-600">영업기록 없음 ›</th><td class="pl-1.5 text-right text-gray-700">120만</td><td class="pl-1.5 text-right text-gray-400">—</td><td class="pl-1.5 text-right text-blue-700">120만</td></tr>
+            <tr><th class="py-1 text-left font-semibold text-slate-600">추가 비용 ›</th><td class="pl-1.5 text-right text-gray-400">—</td><td class="pl-1.5 text-right text-gray-700">60만</td><td class="pl-1.5 text-right text-violet-600">−60만</td></tr>
+          </tbody>
+          <tfoot><tr class="border-t-2 border-slate-200 font-bold"><th class="py-1 text-left text-slate-800">영업이익</th><td class="pl-1.5 text-right">1,820만</td><td class="pl-1.5 text-right">930만</td><td class="pl-1.5 text-right text-blue-700">890만</td></tr></tfoot>
+        </table>
+        <p class="mt-1 text-xs text-gray-400">추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요</p>
+      </div>
     </section>
 
     <!-- 채널 탭 전환 데모 -->
@@ -703,5 +722,10 @@
 <h2>DB관리시트 상단 · 승인 구성</h2><p>DB생산 / DB관리시트 탭은 상단 배너. DB목록을 먼저 표시합니다.</p>
 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><strong>DB 목록</strong><input aria-label="업체 검색" placeholder="업체·대표자·전화번호" style="max-width:220px"><button>공급처별 보기 ⌄</button><button>보여줄 항목 ⌄</button><button>+ 직접 입력</button><button>DB 가져오기</button></div>
 <p>모바일: 정렬 항목 선택 + 오름/내림 버튼. 공급처 패널은 기본 접힘.</p><p>정확한 production CSS·글꼴 화면은 tests/browser/db-sheet-supplier-server.mjs 합성 fixture에서 검증합니다.</p></section>
-<section style="margin:24px;padding:16px;border:1px solid #dbe3ef;border-radius:12px"><h2>대시보드 업무 영역</h2><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px"><section><h3>생산성 지표</h3>DB 퀄리티 · 컨택성공률 · 미팅실행률 · 미팅숙련도 · 영업생산성</section><section><h3>오늘 챙길 일 4건</h3><button>밀린 할 일 1</button> <button>오늘 할 일 2</button> <button>미팅 결과 1</button><p>샘플상사 · 서류 확인 D+02</p><p>샘플식당 · 접수 확인 오늘</p><h3>전체 진행건</h3></section><section><h3>주간 목표</h3>생산 · 유입 · 컨택완료 · 미팅완료 · 계약</section></div><p>PC 세 칸 고정. 모바일 8주까지 목표먼저,9주부터 챙길일먼저. 모두 항상 표시. 실제 화면은 dashboard-followups-server.mjs.</p></section></body>
+<section style="margin:24px;padding:16px;border:1px solid #dbe3ef;border-radius:12px"><h2>대시보드 업무 영역</h2><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px"><section><h3>생산성 지표</h3>DB 퀄리티 · 컨택성공률 · 미팅실행률 · 미팅숙련도 · 영업생산성</section><section><h3>오늘 챙길 일 4건</h3><button>밀린 할 일 1</button> <button>오늘 할 일 2</button> <button>미팅 결과 1</button><p>샘플상사 · 서류 확인 D+02</p><p>샘플식당 · 접수 확인 오늘</p><h3>전체 진행건</h3></section><section><h3>주간 목표</h3>생산 · 유입 · 컨택완료 · 미팅완료 · 계약</section></div><p>PC 세 칸 고정. 모바일 8주까지 목표먼저,9주부터 챙길일먼저. 모두 항상 표시. 실제 화면은 dashboard-followups-server.mjs.</p></section><section style="max-width:640px;margin:24px auto;padding:12px;border:1px solid #e2e8f0;border-radius:16px;background:white" aria-label="오늘 챙길 일 서식 예시">
+<h2 style="font-size:14px;font-weight:700">오늘 챙길 일</h2>
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:5px 0;font-size:12px"><strong>STEP 1.5 · DB관리시트</strong><span><b style="color:#be123c">● 장기누락 2</b>　<b style="color:#92400e">● 경과 3</b>　<b style="color:#1d4ed8">● 오늘 1</b></span></div>
+<p style="font-size:11px;color:#64748b">실제 동작 미리보기: tests/browser/dashboard-followups-server.mjs (프로덕션 컴포넌트 + 합성 API)</p>
+</section>
+</body>
 </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import type { WorkStatusItem, WorkStatusKey } from "@/lib/analytics/payment-work-status";
 
 const STATUS: Array<{ key: WorkStatusKey; label: string; color: string; text: string }> = [
@@ -25,10 +25,26 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
   // 팝업은 마우스(또는 누른 버튼)가 있는 가로 위치에서 뜬다 — 막대 오른쪽 끝에 고정되지 않게(belie 2026-09-29).
   const [anchorX, setAnchorX] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    // 막대와 팝업 사이 8px 간격을 건너는 동안만 잠깐 기다린다.
+    closeTimer.current = setTimeout(() => { setOpen(null); closeTimer.current = null; }, 120);
+  };
+  useEffect(() => {
+    const close = () => { cancelClose(); setOpen(null); };
+    window.addEventListener("blur", close);
+    return () => { cancelClose(); window.removeEventListener("blur", close); };
+  }, []);
   const active = open ? items.filter((item) => item.status === open) : [];
   const status = STATUS.find((s) => s.key === open);
 
   const openAt = (key: WorkStatusKey, e: MouseEvent<HTMLElement>) => {
+    cancelClose();
     const root = rootRef.current?.getBoundingClientRect();
     // 키보드로 누르면 clientX 가 0 — 그땐 버튼 가운데를 기준으로 삼는다.
     const target = e.currentTarget.getBoundingClientRect();
@@ -43,7 +59,7 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
   const left = anchorX === null ? null : Math.max(0, Math.min(anchorX - 16, rootWidth - popoverWidth));
 
   return (
-    <div ref={rootRef} className="relative min-w-0 self-center" data-work-status-bar>
+    <div ref={rootRef} className="relative min-w-0 self-center" data-work-status-bar onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <strong className="whitespace-nowrap text-xs text-slate-800">전체 진행건</strong>
         <b className="whitespace-nowrap text-base tabular-nums text-slate-950">{items.length}건</b>
@@ -57,7 +73,7 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-px-11 text-slate-500">
         {STATUS.map((s) => <button type="button" key={s.key} onClick={(e) => openAt(s.key, e)} className="inline-flex items-center gap-1 hover:text-slate-900"><span className={`h-2 w-2 rounded-full ${s.color}`}/>{s.label} <b className="tabular-nums text-slate-700">{items.filter((item) => item.status === s.key).length}</b></button>)}
       </div>
-      {open && status && <div data-work-status-popover className={`absolute z-[500] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl ${left === null ? "right-0" : ""} ${popoverPlacement === "top" ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]"}`} style={{ width: popoverWidth, ...(left === null ? {} : { left }) }} onMouseLeave={() => setOpen(null)}>
+      {open && status && <div data-work-status-popover className={`absolute z-[500] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl ${left === null ? "right-0" : ""} ${popoverPlacement === "top" ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]"}`} style={{ width: popoverWidth, ...(left === null ? {} : { left }) }}>
         {/* 제목줄을 해당 상태의 막대 색으로 채워 어떤 상태 목록인지 바로 알아보게. */}
         <div data-work-status-banner className={`mb-1 flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-bold ${status.color} ${status.text}`}><span>{status.label} {active.length}건</span><button type="button" onClick={() => setOpen(null)} className="rounded p-0.5 leading-none opacity-80 hover:opacity-100" aria-label="닫기">×</button></div>
         {active.map((item) => <button type="button" key={item.key} onClick={() => { onNavigate(item.row, item.slot); setOpen(null); }} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-blue-50"><span className="block truncate text-xs font-semibold text-slate-800">{item.company} · 진행 {item.slot} · {item.product || "상품 미정"}</span><span className="block truncate text-px-11 text-slate-400">{item.institution || "기관 미정"}</span></button>)}

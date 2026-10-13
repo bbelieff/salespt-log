@@ -1,288 +1,174 @@
-/**
- * 대시보드 「오늘 챙길 일」 — 이미 있는 조회 4종(계약·할 일·월 미팅·DB관리시트)을 화면에서 계산하는 순수 함수.
- * React·fetch 없음. 기준일은 호출부가 넘기는 todayKST()(대시보드 page.tsx). 날짜 리터럴 금지(G5).
- * SSOT: docs/design/components.md §9 DashboardFollowUps.
- */
+/** Pure follow-up rules shared by the dashboard and its acceptance tests. */
 import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
 import { isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
-import {
-  activeWorkContracts,
-  buildSlotActivityIndex,
-  classifyWorkStatus,
-  slotActivityKey,
-  slotHasData,
-} from "@/lib/analytics/payment-work-status";
+import { activeWorkContracts, classifyWorkStatus, slotHasData } from "./payment-work-status";
 
-/** 다음 할 일 없이 이만큼(이상) 지나면 「멈춘 업체」. belie 기본안 2026-10-12(7일·이월 포함). */
 export const STALL_DAYS = 7;
-/** 결과를 안 적은 지난 미팅을 이 기간까지만 본다(그보다 오래된 예약은 정리 대상이 아니라 기록 누락). */
-export const UNRESULTED_LOOKBACK_DAYS = 30;
-/** 보조 칩 「7일 안 할 일」 범위. */
 export const UPCOMING_DAYS = 7;
-
-export type FollowUpKind = "overdue" | "today" | "meeting" | "recontact" | "stalled" | "upcoming";
-/** 칩·목록 순서. upcoming 은 보조 칩이라 총건수에서 뺀다. */
-export const FOLLOW_UP_KINDS: readonly FollowUpKind[] = ["overdue", "today", "meeting", "recontact", "stalled", "upcoming"];
-
+/** Legacy calendar helper only. Dashboard uses the unbounded pending-meetings endpoint. */
+export const UNRESULTED_LOOKBACK_DAYS = 30;
+export type FollowUpKind = "initial" | "overdue" | "today" | "meeting" | "recontact" | "stalled" | "upcoming";
+export const FOLLOW_UP_KINDS: readonly FollowUpKind[] = ["initial", "overdue", "today", "meeting", "recontact", "stalled", "upcoming"];
+export type FollowUpStep = "1.5" | "2" | "3" | "4";
+export type FollowUpGroup = "today" | "overdue" | "long-overdue" | "upcoming" | "unknown";
 export interface FollowUpItem {
-  key: string;
-  kind: FollowUpKind;
-  title: string;
-  detail: string;
-  badge: string;
-  href: string;
+  key: string; kind: FollowUpKind; step: FollowUpStep; group: FollowUpGroup;
+  title: string; company: string; detail: string; badge: string; href: string;
+  dueISO: string | null; overdueDays: number | null; action: string; reasons: string[];
+  facts: Array<{ label: string; value: string }>; slot?: 1 | 2 | 3;
 }
-
 export type FollowUpCounts = Record<FollowUpKind, number>;
-
-const KO_DAY = ["일", "월", "화", "수", "목", "금", "토"];
 const SLOTS = [1, 2, 3] as const;
-const RESCHEDULED_PREFIX = /^\(변경\)\s*/;
-
 const shiftISO = (iso: string, days: number) => fmtISO(addDays(parseISO(iso), days));
-/** later − earlier (일). */
-const daysBetween = (laterISO: string, earlierISO: string) => diffDays(parseISO(laterISO), parseISO(earlierISO));
-const fmtMD = (iso: string) => { const d = parseISO(iso); return `${d.getMonth() + 1}/${d.getDate()}`; };
-const weekdayOf = (iso: string) => KO_DAY[parseISO(iso).getDay()] ?? "";
-/**
- * D 배지는 실무/수납 목록(institution-view.ts activityLabel)과 같은 두 자리 형식(D+03)으로 통일한다 —
- * 대시보드에서 눌러 들어간 같은 할 일이 두 화면에서 같은 배지로 보이게. 오늘은 쉬운 말 「오늘」.
- */
-const dPlus = (days: number) => `D+${String(days).padStart(2, "0")}`;
-const dMinus = (days: number) => `D-${String(days).padStart(2, "0")}`;
-const contractRefOf = (cp: Pick<ContractPayment, "계약일" | "업체명">) => `${cp.계약일}|${cp.업체명}`;
+const daysBetween = (later: string, earlier: string) => diffDays(parseISO(later), parseISO(earlier));
+const contractRefOf = (cp: ContractPayment) => `${cp.계약일}|${cp.업체명}`;
 const slotOf = (cp: ContractPayment, slot: 1 | 2 | 3): PaymentSlot => cp[`수납${slot}`];
-/** 데이터가 있는 진행 슬롯, 없으면 진행 1(실무/수납 institution-view.ts 와 같은 규칙). */
 const visibleSlots = (cp: ContractPayment): Array<1 | 2 | 3> => {
-  const populated = SLOTS.filter((slot) => slotHasData(slotOf(cp, slot)));
+  const populated = SLOTS.filter(slot => slotHasData(slotOf(cp, slot)));
   return populated.length ? populated : [1];
 };
-
-// ── ① 할 일 ────────────────────────────────────────────────────
-
-export interface TodoFollowUps {
-  overdue: FollowUpItem[];
-  today: FollowUpItem[];
-  upcoming: FollowUpItem[];
-  /** 계약을 찾지 못한(업체명·계약일이 바뀌었거나 행이 없는) 미완료 할 일 — 링크로 열 수 없어 칩·총건수에서 뺀다. */
-  unlinked: number;
+function timing(due: string | null, today: string) {
+  const dueISO = due && isValidISODate(due) ? due : null;
+  const overdueDays = dueISO ? daysBetween(today, dueISO) : null;
+  const group: FollowUpGroup = overdueDays === null ? "unknown" : overdueDays < 0 ? "upcoming" : overdueDays === 0 ? "today" : overdueDays >= STALL_DAYS ? "long-overdue" : "overdue";
+  const badge = overdueDays === null ? "날짜 확인" : overdueDays === 0 ? "오늘" : `D${overdueDays > 0 ? "+" : "-"}${String(Math.abs(overdueDays)).padStart(2, "0")}`;
+  return { dueISO, overdueDays, group, badge };
 }
-
-function slotForTodo(cp: ContractPayment, institutionRef: string): 1 | 2 | 3 {
-  const wanted = normalizeInstitution(institutionRef);
-  return SLOTS.find((slot) => normalizeInstitution(slotOf(cp, slot).진행기관) === wanted)
-    ?? SLOTS.find((slot) => slotHasData(slotOf(cp, slot)))
-    ?? 1;
+function item(base: Omit<FollowUpItem, "dueISO" | "overdueDays" | "group" | "badge" | "company">, due: string | null, today: string): FollowUpItem {
+  return { ...base, company: base.title, ...timing(due, today) };
 }
-
-const byScheduleTime = (a: Todo, b: Todo) =>
-  a.예정일자.localeCompare(b.예정일자) ||
-  (a.예정시각 ? (b.예정시각 ? a.예정시각.localeCompare(b.예정시각) : -1) : b.예정시각 ? 1 : 0);
-
-export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], todayISO: string): TodoFollowUps {
-  const byRef = new Map(contracts.map((cp) => [contractRefOf(cp), cp] as const));
+export function compareFollowUpUrgency(a: FollowUpItem, b: FollowUpItem): number {
+  const rank: Record<FollowUpGroup, number> = { "long-overdue": 0, overdue: 1, today: 2, unknown: 3, upcoming: 4 };
+  return rank[a.group] - rank[b.group] || (a.dueISO ?? "9999").localeCompare(b.dueISO ?? "9999") || a.key.localeCompare(b.key);
+}
+export interface TodoFollowUps { overdue: FollowUpItem[]; today: FollowUpItem[]; upcoming: FollowUpItem[]; unlinked: number }
+function slotForTodo(cp: ContractPayment, institution: string): 1 | 2 | 3 | undefined {
+  const matches = visibleSlots(cp).filter(slot => normalizeInstitution(slotOf(cp, slot).진행기관) === normalizeInstitution(institution));
+  return matches.length === 1 ? matches[0] : undefined;
+}
+export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], today: string): TodoFollowUps {
+  const byRef = new Map(contracts.map(cp => [contractRefOf(cp), cp]));
   const active = new Set(activeWorkContracts(contracts));
-  const upcomingEnd = shiftISO(todayISO, UPCOMING_DAYS);
   const out: TodoFollowUps = { overdue: [], today: [], upcoming: [], unlinked: 0 };
-  const open = todos
-    .filter((t) => (t.기록종류 ?? "todo") === "todo" && !t.완료여부 && t.type !== "일반" && isValidISODate(t.예정일자))
-    .filter((t) => t.예정일자 <= upcomingEnd)
-    .sort(byScheduleTime);
-  for (const todo of open) {
-    const cp = byRef.get(todo.contractRef);
-    if (cp && !active.has(cp)) continue; // 해지·숨김 계약의 할 일은 챙길 일이 아니다
+  const seen = new Set<string>();
+  for (const t of [...todos].sort((a, b) => a.예정일자.localeCompare(b.예정일자) || (a.예정시각 || "99").localeCompare(b.예정시각 || "99"))) {
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
+    if ((t.기록종류 ?? "todo") !== "todo" || t.완료여부 || t.type === "일반" || !isValidISODate(t.예정일자) || t.예정일자 > shiftISO(today, UPCOMING_DAYS)) continue;
+    const cp = byRef.get(t.contractRef);
+    if (cp && !active.has(cp)) continue;
     if (!cp || cp.row == null) { out.unlinked++; continue; }
-    const slot = slotForTodo(cp, todo.institutionRef);
-    const company = todo.업체명.trim() || cp.업체명;
-    const item: FollowUpItem = {
-      key: `todo:${todo.id}`,
-      kind: "overdue",
-      title: company || todo.제목,
-      detail: [company ? todo.제목 : "", normalizeInstitution(todo.institutionRef), todo.예정시각].filter(Boolean).join(" · "),
-      badge: "",
-      href: `/payment?row=${cp.row}&slot=${slot}&focus=${encodeURIComponent(todo.id)}`,
-    };
-    if (todo.예정일자 < todayISO) out.overdue.push({ ...item, kind: "overdue", badge: dPlus(daysBetween(todayISO, todo.예정일자)) });
-    else if (todo.예정일자 === todayISO) out.today.push({ ...item, kind: "today", badge: "오늘" });
-    else out.upcoming.push({ ...item, kind: "upcoming", badge: dMinus(daysBetween(todo.예정일자, todayISO)) });
+    const slot = slotForTodo(cp, t.institutionRef);
+    if (slot ? classifyWorkStatus(slotOf(cp, slot), true, today) === "collected" : visibleSlots(cp).every(n => classifyWorkStatus(slotOf(cp, n), true, today) === "collected")) continue;
+    const kind = t.예정일자 < today ? "overdue" : t.예정일자 === today ? "today" : "upcoming";
+    out[kind].push(item({ key: `todo:${t.id}`, kind, step: "4", slot,
+      title: t.업체명.trim() || cp.업체명 || t.제목,
+      detail: [t.제목, normalizeInstitution(t.institutionRef), t.예정시각].filter(Boolean).join(" · "),
+      action: t.제목, reasons: ["미완료 할 일", ...(!slot ? ["연결 진행건 확인 필요"] : [])], facts: [{ label: "예정일", value: t.예정일자 }, { label: "진행", value: slot ? String(slot) : "확인 필요" }],
+      href: `/payment?row=${cp.row}${slot ? `&slot=${slot}` : ""}&focus=${encodeURIComponent(t.id)}`,
+    }, t.예정일자, today));
   }
   return out;
 }
-
-// ── ② 결과를 안 적은 지난 미팅 ─────────────────────────────────
-
-/** today−30 ~ today−1 이 걸치는 서로 다른 yyyy-MM(1~3개, 오래된 달부터). */
-export function meetingLookbackMonths(todayISO: string): string[] {
-  const from = parseISO(shiftISO(todayISO, -UNRESULTED_LOOKBACK_DAYS));
-  const to = parseISO(shiftISO(todayISO, -1));
+/** Kept for other calendar consumers, never used to limit pending follow-ups. */
+export function meetingLookbackMonths(today: string): string[] {
+  const from = parseISO(shiftISO(today, -UNRESULTED_LOOKBACK_DAYS)), to = parseISO(shiftISO(today, -1));
   const months: string[] = [];
   for (let y = from.getFullYear(), m = from.getMonth(); y < to.getFullYear() || (y === to.getFullYear() && m <= to.getMonth());) {
-    months.push(`${y}-${String(m + 1).padStart(2, "0")}`);
-    m += 1;
-    if (m === 12) { m = 0; y += 1; }
+    months.push(`${y}-${String(m + 1).padStart(2, "0")}`); m++; if (m === 12) { m = 0; y++; }
   }
   return months;
 }
-
-/**
- * 상태 '예약'인 지난 미팅만 — 계약·완료·취소는 결과가 있고, 변경은 원본 무효(새 예약 행이 대신한다).
- */
-export function buildUnresultedMeetings(meetings: Meeting[], todayISO: string): FollowUpItem[] {
-  const from = shiftISO(todayISO, -UNRESULTED_LOOKBACK_DAYS);
+export function buildUnresultedMeetings(meetings: Meeting[], today: string): FollowUpItem[] {
   const seen = new Set<string>();
-  return meetings
-    .filter((m) => {
-      if (seen.has(m.id)) return false;
-      seen.add(m.id);
-      return m.상태 === "예약" && isValidISODate(m.미팅날짜) && m.미팅날짜 >= from && m.미팅날짜 < todayISO;
-    })
-    .sort((a, b) => a.미팅날짜.localeCompare(b.미팅날짜) || a.미팅시간.localeCompare(b.미팅시간))
-    .map((m) => ({
-      key: `meeting:${m.id}`,
-      kind: "meeting" as const,
-      title: m.업체명.replace(RESCHEDULED_PREFIX, ""),
-      detail: [`${fmtMD(m.미팅날짜)}(${weekdayOf(m.미팅날짜)}) ${m.미팅시간}`.trim(), m.장소.trim()].filter(Boolean).join(" · "),
-      badge: dPlus(daysBetween(todayISO, m.미팅날짜)),
-      href: `/schedule?date=${m.미팅날짜}&focus=${encodeURIComponent(m.id)}`,
-    }));
+  return meetings.filter(m => {
+    if (seen.has(m.id)) return false; seen.add(m.id);
+    return m.상태 === "예약" && isValidISODate(m.미팅날짜) && m.미팅날짜 <= shiftISO(today, UPCOMING_DAYS);
+  }).sort((a, b) => a.미팅날짜.localeCompare(b.미팅날짜) || a.미팅시간.localeCompare(b.미팅시간)).map(m => item({
+    key: `meeting:${m.id}`, kind: "meeting", step: "3", title: m.업체명.replace(/^\(변경\)\s*/, ""),
+    detail: [m.미팅날짜, m.미팅시간, m.장소.trim()].filter(Boolean).join(" · "),
+    action: m.미팅날짜 > today ? "미팅 준비" : "미팅 결과 입력", reasons: [m.미팅날짜 > today ? "미팅 예정" : "미팅 결과 미입력"], facts: [{ label: "미팅일", value: m.미팅날짜 }, { label: "시간", value: m.미팅시간 }],
+    href: `/schedule?date=${m.미팅날짜}&focus=${encodeURIComponent(m.id)}`,
+  }, m.미팅날짜, today));
 }
-
-// ── ③ 다시 연락할 DB ───────────────────────────────────────────
-
-/**
- * 다음 연락일이 오늘이거나 지난 업체. 다음 연락일은 손으로 고치는 칸이라, 그날 이후에 상담 기록이
- * 있으면(이미 다시 연락함) 뺀다. 전화번호는 대시보드에 내보내지 않는다.
- */
-export function buildRecontactLeads(leads: DbSheetLead[], todayISO: string): FollowUpItem[] {
-  return leads
-    .filter((lead) => {
-      if (!isDbSheetFollowUpResult(lead.result) || !isValidISODate(lead.next) || lead.next > todayISO) return false;
-      const contacted = lead.contact?.date ?? "";
-      return !(isValidISODate(contacted) && contacted >= lead.next);
-    })
-    .sort((a, b) => a.next.localeCompare(b.next))
-    .map((lead) => ({
-      key: `lead:${lead.id}`,
-      kind: "recontact" as const,
-      title: lead.company.trim() || lead.owner.trim() || "이름 없는 업체",
-      detail: `${lead.result} · ${lead.channel}`,
-      badge: lead.next === todayISO ? "오늘" : dPlus(daysBetween(todayISO, lead.next)),
-      href: `/db-sheet?lead=${encodeURIComponent(lead.id)}`,
-    }));
+function leadIsActive(lead: DbSheetLead) { return !lead.meetingId && lead.funnel !== "계약" && lead.stage !== "계약해지"; }
+function leadItem(lead: DbSheetLead, today: string, initial: boolean, due: string | null, reason: string): FollowUpItem {
+  return item({ key: `lead:${lead.id}`, kind: initial ? "initial" : "recontact", step: initial ? "1.5" : "2",
+    title: lead.company.trim() || "이름 없는 업체", detail: `${lead.result} · ${lead.channel}`,
+    action: initial ? "첫 연락하기" : reason === "다음 연락일 없음" ? "다음 연락일 정하기" : "다시 연락하기",
+    reasons: [reason], facts: [{ label: "유입일", value: lead.date }, { label: "연락 결과", value: lead.result }, { label: "다음 연락일", value: lead.next || "미정" }],
+    href: `/db-sheet?lead=${encodeURIComponent(lead.id)}`,
+  }, due, today);
 }
-
-// ── ④ 멈춘 업체 ────────────────────────────────────────────────
-
-/**
- * 「다음 할 일을 정하지 않은 채 멈춘 업체」. 업체(계약) 단위로 세고 가장 오래 멈춘 진행 1건으로 연결한다.
- * - 범위: 해지·숨김 제외, 이월 포함(ADR-0034). 계약일이 없는 계약은 할 일을 붙일 수 없어 뺀다.
- * - 진행대기·진행만 본다. 승인·수납대기·수납완료는 수납 단계라 넣지 않는다(#5 반려).
- * - 예정된(미완료) 할 일이 있는 진행은 멈춤이 아니다. 어느 진행과도 기관명이 맞지 않는 미완료 할 일이
- *   있는 계약도 뺀다(같은 업체가 할 일 칩과 멈춤 칩에 겹쳐 보이지 않게).
- * - 마지막 일정 = max(History 날짜, 완료한 할 일의 예정일(미래면 오늘로 자름)). Todo 에 완료 시각이 없어
- *   「실제로 한 날」이 아니라 「마지막으로 잡혀 있던 일정」이다 — 화면 문구도 「마지막 일정」.
- */
-export function buildStalledWork(
-  contracts: ContractPayment[], todos: Todo[], todayISO: string, stallDays = STALL_DAYS,
-): FollowUpItem[] {
-  const index = buildSlotActivityIndex(todos);
-  const openRefs = new Map<string, Set<string>>(); // contractRef → 미완료 할 일 기관명들
-  for (const t of todos) {
-    if ((t.기록종류 ?? "todo") !== "todo" || t.완료여부 || !t.예정일자.trim()) continue;
-    const set = openRefs.get(t.contractRef) ?? new Set<string>();
-    set.add(normalizeInstitution(t.institutionRef));
-    openRefs.set(t.contractRef, set);
-  }
-  const ranked: Array<{ item: FollowUpItem; diff: number }> = [];
-  for (const cp of activeWorkContracts(contracts)) {
-    if (!isValidISODate(cp.계약일)) continue;
-    const ref = contractRefOf(cp);
-    const slots = visibleSlots(cp);
-    const slotInstitutions = new Set(slots.map((slot) => normalizeInstitution(slotOf(cp, slot).진행기관)));
-    if ([...(openRefs.get(ref) ?? [])].some((inst) => !slotInstitutions.has(inst))) continue;
-    const stalled: Array<{ slot: 1 | 2 | 3; diff: number; last: string }> = [];
-    for (const slot of slots) {
-      const data = slotOf(cp, slot);
-      const activity = index.get(slotActivityKey(ref, data.진행기관));
-      if (activity?.todo) continue;
-      const status = classifyWorkStatus(data, false, todayISO);
-      if (status !== "waiting" && status !== "progress") continue;
-      const done = activity?.done ? (activity.done > todayISO ? todayISO : activity.done) : "";
-      const last = [activity?.history ?? "", done].reduce((a, b) => (b > a ? b : a), "");
-      const diff = daysBetween(todayISO, last || cp.계약일);
-      if (diff >= stallDays) stalled.push({ slot, diff, last });
+export function buildInitialLeads(leads: DbSheetLead[], today: string): FollowUpItem[] {
+  return leads.filter(l => leadIsActive(l) && l.result === "미컨택" && !l.first && !l.followUp?.lastContactDate && (!isValidISODate(l.date) || l.date <= today))
+    .map(l => leadItem(l, today, true, l.date, "첫 연락 전")).sort(compareFollowUpUrgency);
+}
+export function buildRecontactLeads(leads: DbSheetLead[], today: string): FollowUpItem[] {
+  return leads.filter(l => leadIsActive(l) && l.result !== "미컨택" && isDbSheetFollowUpResult(l.result)).flatMap(l => {
+    const completed = l.followUp && l.followUp.completedGeneration === l.followUp.generation;
+    if (isValidISODate(l.next) && !completed) {
+      return l.next <= shiftISO(today, UPCOMING_DAYS) ? [leadItem(l, today, false, l.next, "다시 연락 예정")] : [];
     }
-    if (!stalled.length) continue;
-    const worst = stalled.reduce((a, b) => (b.diff > a.diff ? b : a));
-    const data = slotOf(cp, worst.slot);
-    const product = data.진행상품.trim();
-    const parts = [
-      `진행 ${worst.slot} · ${normalizeInstitution(data.진행기관) || "기관 미정"}${product ? ` · ${product}` : ""}`,
-      worst.last ? `마지막 일정 ${fmtMD(worst.last)}` : "아직 일정 없음",
-      stalled.length > 1 ? `멈춘 진행 ${stalled.length}건` : "",
-    ];
-    ranked.push({
-      diff: worst.diff,
-      item: {
-        key: `stalled:${cp.row ?? ref}`,
-        kind: "stalled",
-        title: cp.업체명,
-        detail: parts.filter(Boolean).join(" · "),
-        badge: worst.last ? `${worst.diff}일째` : `계약 후 ${worst.diff}일`,
-        href: cp.row == null ? "/payment" : `/payment?row=${cp.row}&slot=${worst.slot}`,
-      },
-    });
+    if (!["부재", "컨택진행", "재통화"].includes(l.result)) return [];
+    // A completed contact consumes its old reservation. A fresh reservation is a new generation.
+    return [leadItem(l, today, false, l.followUp?.lastContactDate || null, "다음 연락일 없음")];
+  }).sort(compareFollowUpUrgency);
+}
+/** One row per active work slot; missing institution and missing next task are reasons on that row. */
+export function buildStalledWork(contracts: ContractPayment[], todos: Todo[], today: string, stallDays = STALL_DAYS): FollowUpItem[] {
+  const out: FollowUpItem[] = [];
+  for (const cp of activeWorkContracts(contracts)) {
+    for (const slot of visibleSlots(cp)) {
+      const data = slotOf(cp, slot), institution = normalizeInstitution(data.진행기관);
+      if (classifyWorkStatus(data, false, today) === "collected") continue;
+      const records = todos.filter(t => t.contractRef === contractRefOf(cp) && slotForTodo(cp, t.institutionRef) === slot && t.type !== "일반");
+      const open = records.filter(t => (t.기록종류 ?? "todo") === "todo" && !t.완료여부 && isValidISODate(t.예정일자));
+      const activity = records.filter(t => t.기록종류 === "history" || t.완료여부).map(t => t.예정일자)
+        .filter(d => isValidISODate(d) && d <= today).sort().at(-1);
+      const last = activity || (isValidISODate(cp.계약일) ? cp.계약일 : null);
+      const reasons = [!institution ? "진행기관 없음" : "", !open.length ? "다음 할 일 없음" : ""].filter(Boolean);
+      const stalled = last !== null && daysBetween(today, last) >= stallDays;
+      if (!reasons.length) continue;
+      if (stalled) reasons.push(`${stallDays}일 이상 진행 정체`);
+      out.push(item({ key: `stalled:${cp.row ?? contractRefOf(cp)}:${slot}`, kind: "stalled", step: "4", slot,
+        title: cp.업체명, detail: [`진행 ${slot}`, institution || "기관 미정", data.진행상품.trim(), ...reasons].filter(Boolean).join(" · "),
+        action: !institution ? "진행기관과 다음 할 일 확인" : "다음 할 일 정하기", reasons,
+        facts: [{ label: "진행", value: String(slot) }, { label: "기관", value: institution || "미정" }, { label: activity ? "마지막 일정" : "계약일", value: last ?? "확인 필요" }],
+        href: cp.row == null ? "/payment" : `/payment?row=${cp.row}&slot=${slot}`,
+      }, last, today));
+    }
   }
-  return ranked.sort((a, b) => b.diff - a.diff).map((r) => r.item);
+  return out.sort(compareFollowUpUrgency);
 }
-
-// ── 총건수·한 줄 문구 ──────────────────────────────────────────
-
-/** 총건수 = 보조 칩(7일 안 할 일)을 뺀 5종의 합. */
-export function followUpTotal(counts: FollowUpCounts): number {
-  return counts.overdue + counts.today + counts.meeting + counts.recontact + counts.stalled;
-}
-
-/** 우선순위: 밀린 할 일 > 지난 미팅 > 오늘 할 일 > 다시 연락 > 멈춘 업체. */
+export function followUpTotal(counts: FollowUpCounts): number { return FOLLOW_UP_KINDS.filter(k => k !== "upcoming").reduce((sum, key) => sum + (counts[key] ?? 0), 0); }
 export function followUpHeadline(counts: FollowUpCounts): string {
-  if (counts.overdue > 0) return `밀린 할 일 ${counts.overdue}건부터 정리해요`;
-  if (counts.meeting > 0) return `지난 미팅 ${counts.meeting}건 결과를 적어 주세요`;
-  if (counts.today > 0) return `오늘 할 일 ${counts.today}건, 하나씩 끝내 봐요`;
-  if (counts.recontact > 0) return `다시 연락할 DB가 ${counts.recontact}곳 있어요`;
-  if (counts.stalled > 0) return `${counts.stalled}곳이 ${STALL_DAYS}일 이상 다음 할 일 없이 멈춰 있어요`;
+  if (counts.overdue) return `밀린 할 일 ${counts.overdue}건부터 정리해요`;
+  if (counts.meeting) return `미팅 ${counts.meeting}건 결과를 적어 주세요`;
+  if (counts.today) return `오늘 할 일 ${counts.today}건, 하나씩 끝내 봐요`;
+  if (counts.initial) return `첫 연락할 DB가 ${counts.initial}곳 있어요`;
+  if (counts.recontact) return `다시 연락할 DB가 ${counts.recontact}곳 있어요`;
+  if (counts.stalled) return `다음 진행을 정할 일이 ${counts.stalled}건 있어요`;
   return "오늘 챙길 일이 없어요 👏";
 }
-
-export interface FollowUpSources {
-  /** 조회에 실패했거나 아직 없으면 undefined — 그 종류는 비워 둔다(카드가 실패 줄을 따로 보인다). */
-  contracts?: ContractPayment[];
-  todos?: Todo[];
-  meetings?: Meeting[];
-  leads?: DbSheetLead[];
-}
-
+export interface FollowUpSources { contracts?: ContractPayment[]; todos?: Todo[]; meetings?: Meeting[]; leads?: DbSheetLead[] }
 export interface FollowUpSummary {
-  groups: Record<FollowUpKind, FollowUpItem[]>;
-  counts: FollowUpCounts;
-  total: number;
-  headline: string;
-  unlinkedTodos: number;
+  groups: Record<FollowUpKind, FollowUpItem[]>; counts: FollowUpCounts; total: number; headline: string; unlinkedTodos: number;
+  items: FollowUpItem[]; urgent: FollowUpItem[]; stepCounts: Record<FollowUpStep, number>; groupCounts: Record<FollowUpGroup, number>;
 }
-
-export function summarizeFollowUps(src: FollowUpSources, todayISO: string): FollowUpSummary {
-  const todoGroups = src.contracts && src.todos
-    ? buildTodoFollowUps(src.todos, src.contracts, todayISO)
-    : { overdue: [], today: [], upcoming: [], unlinked: 0 };
-  const groups: Record<FollowUpKind, FollowUpItem[]> = {
-    overdue: todoGroups.overdue,
-    today: todoGroups.today,
-    meeting: src.meetings ? buildUnresultedMeetings(src.meetings, todayISO) : [],
-    recontact: src.leads ? buildRecontactLeads(src.leads, todayISO) : [],
-    stalled: src.contracts && src.todos ? buildStalledWork(src.contracts, src.todos, todayISO) : [],
-    upcoming: todoGroups.upcoming,
-  };
-  const counts = Object.fromEntries(FOLLOW_UP_KINDS.map((kind) => [kind, groups[kind].length])) as FollowUpCounts;
-  return { groups, counts, total: followUpTotal(counts), headline: followUpHeadline(counts), unlinkedTodos: todoGroups.unlinked };
+export function summarizeFollowUps(src: FollowUpSources, today: string): FollowUpSummary {
+  const todo = src.contracts && src.todos ? buildTodoFollowUps(src.todos, src.contracts, today) : { overdue: [], today: [], upcoming: [], unlinked: 0 };
+  const all = [...todo.overdue, ...todo.today, ...todo.upcoming,
+    ...(src.meetings ? buildUnresultedMeetings(src.meetings, today) : []),
+    ...(src.leads ? [...buildInitialLeads(src.leads, today), ...buildRecontactLeads(src.leads, today)] : []),
+    ...(src.contracts && src.todos ? buildStalledWork(src.contracts, src.todos, today) : [])];
+  const items = [...new Map(all.map(i => [i.key, i])).values()].sort(compareFollowUpUrgency);
+  const urgent = items.filter(i => i.group !== "upcoming");
+  const groups = Object.fromEntries(FOLLOW_UP_KINDS.map(k => [k, items.filter(i => k === "upcoming" ? i.group === "upcoming" : i.kind === k && i.group !== "upcoming")])) as Record<FollowUpKind, FollowUpItem[]>;
+  const counts = Object.fromEntries(FOLLOW_UP_KINDS.map(k => [k, groups[k].length])) as FollowUpCounts;
+  const stepCounts = Object.fromEntries((["1.5", "2", "3", "4"] as const).map(step => [step, urgent.filter(i => i.step === step).length])) as Record<FollowUpStep, number>;
+  const groupCounts = Object.fromEntries((["today", "overdue", "long-overdue", "upcoming", "unknown"] as const).map(group => [group, items.filter(i => i.group === group).length])) as Record<FollowUpGroup, number>;
+  return { groups, counts, total: urgent.length, headline: followUpHeadline(counts), unlinkedTodos: todo.unlinked, items, urgent, stepCounts, groupCounts };
 }

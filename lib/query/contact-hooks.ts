@@ -204,6 +204,7 @@ const silentMeta = (opts?: SilentAutosaveOpt) =>
  */
 function invalidateMeetingDerived(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ["month"] });
+  qc.invalidateQueries({ queryKey: ["meeting-follow-ups"] });
   qc.invalidateQueries({ queryKey: cpKey() });
 }
 

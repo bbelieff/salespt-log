@@ -1,7 +1,22 @@
+## 2026-10-13 22:59 KST · C 채널별 남은 돈 운영 확인 완료
+- PR #1137 → squash 625f14d2. 정상 check.sh 구조92·단위3539 PASS(기존45 skip), production build·동일 head 독립검토·CI PASS.
+- 실제 컴포넌트 합성 CUA PC1600/모바일320·375·430 가로 넘침 없음, 4채널·미연결·추가비용 분리 및 합계·상세 버튼 확인.
+- Deploy38408408795 success, 이후 공개 HTTP200. 로그인된 운영 대시보드에서 영업이익을 눌러 '채널별 남은 돈' 표 노출 확인. 운영 데이터 쓰기 없음.
+- A/B는 C 병합 코드를 통합해 전체 게이트 진행 중. 실제 PostgreSQL 저장 시험13개 PASS; 모바일 연결 소스 배선의 옛 기대문구 1개 수정 후 재검 필요.
+## 2026-10-13 22:00 KST · 승인 범위 병렬 구현 및 직렬 배포
+- 사용자 요청: 병렬 가능한 작업은 나누어 운영 적용까지. A/B 총괄 UI, followups_backend 집계/저장/query, C channel-profit-release, D company-email-release 각각 소유. 공용 파일 동시 수정 금지.
+- A 최신 화면: STEP별 장기누락·경과·오늘 숫자 칩으로 압축, 0건 생략. 상세 팝업 유지. B 2열·진행 화살표·PT과제 한 줄. C/D는 기존 승인 범위.
+- 현재 운영 미반영. 각 검사/정확한 head 독립검증 후 CI·직렬 병합·Deploy·health·운영 확인까지 이어간다. F는 설계 잔여/데이터 범위를 별도 확인.
+
 ## 2026-10-13 · 오늘 챙길 일 운영 반영
 - 사용자 제작·배포 승인 및 PC3열(생산성/챙길일+진행건/목표). 최초부터 전부표시, 모바일8주까지 목표먼저·9주부터 챙길일먼저.
 - base d4bc80a0, 전용 dashboard-followups-release. A카드/집계/query무효화/LoadingProvider·대시보드배치 소유, 나머지 목업/운영데이터 보존.
 - 총괄 구현·검증·배포, 독립 source_release_review 읽기검토. 검사·화면·배포 진행중.
+## 2026-10-13 · [병렬트랙] C 채널별 남은 돈 운영 구현
+- 사용자 승인: 영업이익 상세 위치 유지, 2026-10-13 병렬 작업·운영 적용 요청. base d4bc80a0; 전용 channel-profit-release / feat/channel-profit-release. 원본 ecf241c2·목업 작업본 보존.
+- 소유: ChannelProfitBreakdown/channel-profit·DashboardFinance C 연결·FinanceSummaryBoxes·ChannelPerformance export·contract-channel/termination-count/dashboard 서비스·dashboard 타입·contract-link/finance-period 유틸·C 시험·관련 정본. page.tsx는 재무 props 3개만. A/B/D 및 실데이터 무접촉.
+- 화면은 승인본 유지; 동일 어긋남 재조회 가드를 탭 단위로 옮겨 화면 재진입의 중복 GET 방지. 검증·PR은 제작, 독립 검증·병합·배포는 총괄 담당. 필수 check/build 및 화면 확인 진행 중.
+- 첫 check.sh: typecheck·lint·구조92 PASS, C 채널표/재마운트 시험 PASS. 공유 머신의 다른 작업 PGlite timeout 대응을 위해 총괄 지시로 전체 단위/통합 진행 중 자기 검사만 중단(전체 게이트 NOT_COMPLETE). D 검사·빌드 후 정상 pre-commit의 check.sh로 직렬 재실행(수동 검사와 중복 수행하지 않음). dashboard-motion 시험의 미해제 root 정리는 D 검증본65ad6e92에서 단일파일로 이식, 기존 assertions 보존.
 
 ## 2026-10-13 · DB관리시트 상단·공급처별 보기 운영 반영
 - 승인: 작은 버튼·상단 압축·방향버튼·접히는 공급처별 보기·보여줄 항목을 현재 목업대로 운영 반영.

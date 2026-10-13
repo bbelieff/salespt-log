@@ -97,6 +97,15 @@ describe("terminatedByChannel — 해지→미팅 채널 귀속 (raw 미팅 포�
     expect(byChannel["직접생산"]).toBe(2);
     expect(byChannel["매입DB"]).toBe(0);
   });
+
+  it("「영업기록 없이 추가」(manual:) 해지 계약은 건너뛴다 — unknown 0(대시보드 로그 이벤트 없음)", () => {
+    // 같은 계약일·업체명 미팅이 있어도 manual 은 미팅에 붙이지 않는다(공용 조회 contractMeetingResolver).
+    const payments = [cp({ 업체명: "M", 해지일: "2026-07-15", linkedMeetingId: "manual:req-1" })];
+    const meetings = [mt({ id: "m1", channel: "현수막", 업체명: "M" })];
+    const { byChannel, unknown } = terminatedByChannel(payments, meetings);
+    expect(unknown).toBe(0);
+    expect(Object.values(byChannel).reduce((a, b) => a + b, 0)).toBe(0);
+  });
 });
 
 describe("applyTerminationExclusion — 오버레이(차감·클램프·원본 무변)", () => {
