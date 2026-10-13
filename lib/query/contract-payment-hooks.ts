@@ -10,6 +10,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { ContractPayment } from "@/types";
@@ -36,6 +37,15 @@ async function fetchJSON<T>(input: string, init?: RequestInit): Promise<T> {
 
 interface ListResponse {
   rows: ContractPayment[];
+}
+
+/**
+ * 계약 핵심필드 수정(업체명·계약일 → 할 일 contractRef 재연결)과 행 삭제 cascade(미팅 계약→예약)는
+ * 할 일(['todos'] 전체)과 월 미팅(['month'] — 캘린더·대시보드 「오늘 챙길 일」)도 바꾼다.
+ */
+function invalidateContractLinked(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ["todos"] });
+  qc.invalidateQueries({ queryKey: ["month"] });
 }
 
 export function useContractPayments(): UseQueryResult<ListResponse> {
@@ -142,6 +152,7 @@ export function useEditContractLinkedFields() {
     onSuccess: () => {
       track(EVENTS.CONTRACT_PAYMENT_UPDATED);
       qc.invalidateQueries({ queryKey: cpKey() });
+      invalidateContractLinked(qc);
     },
   });
 }
@@ -216,6 +227,7 @@ export function useRemoveContractPayment() {
     onSuccess: (_res, { cascade }) => {
       track(EVENTS.CONTRACT_PAYMENT_REMOVED, { cascade: Boolean(cascade) });
       qc.invalidateQueries({ queryKey: cpKey() });
+      invalidateContractLinked(qc);
     },
   });
 }

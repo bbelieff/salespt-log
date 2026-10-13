@@ -748,3 +748,9 @@ Trainer qualification is independent of enrollment: `trainer_qualifications` key
 DbSheetFunnelStep = 유입 | 연락 | 상담 | 미팅 | 계약. DbSheetLead.funnel은 서버 응답에서만 계산하는 선택 필드로 저장 payload/이력에서 제거한다. 입력 스키마·DB 테이블 변경 없음.
 DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서 공유한다. 유효한 연결 계약이 있으면 계약, 해지/숨김 계약뿐이면 미팅, 예약/변경/완료는 미팅, 최초상담일은 상담, 미컨택 이외 결과는 연락, 나머지는 유입이다.
 저장 응답도 effectiveMeetingId/meetingLineageIds를 유지해 변경된 미팅에 연결된 계약을 동일하게 투영한다. 공급처 집계는 각 리드의 최고 단계를 누적해 상담·미팅·계약 건수를 센다. 대시보드의 일자별 수동 합산과 별개이다.
+
+
+### 대시보드 후속 업무 투영 — 2026-10-13
+- isDbSheetFollowUpResult: 부재·단순거절·상담 후 거절·재통화의 다음 연락일 입력/표시 정본. 다음연락일 이후 상담기록이 있으면 다시연락 카드에서 제외.
+- FollowUpSummary는 기존 ContractPayment/Todo/Meeting/DbSheetLead로 클라이언트 계산. DB쓰기/스키마변경 없음. 멈춘업체는 activeWorkContracts와 진행슬롯 마지막일정/미완료todo 기준.
+- 월미팅/DB 보조회는 계약·todo 조회 후 시작,5분 신선·저장후 query무효화. background metadata는 전역로딩 오버레이에서 제외.

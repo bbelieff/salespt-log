@@ -5,6 +5,9 @@ import { CompanyInfo, type MeetingState } from "./meeting";
 export const DbSheetDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v, "Invalid date");
 const text = z.string().max(20000).default("");
 export const DbSheetResult = z.enum(["미컨택", "부재", "단순거절", "재통화", "컨택진행", "상담 후 거절"]);
+/** 다음 연락일을 사용하는 컨택 결과: 상세 입력과 대시보드가 공유한다. */
+const DB_SHEET_FOLLOW_UP_RESULTS: ReadonlySet<string> = new Set(["부재", "단순거절", "상담 후 거절", "재통화"]);
+export function isDbSheetFollowUpResult(result: string): boolean { return DB_SHEET_FOLLOW_UP_RESULTS.has(result); }
 export const DbSheetContact = z.object({
  ci: CompanyInfo.default({}), note:text, date:z.union([DbSheetDate,z.literal("")]).default(""),
  meetingDate:text,time:text,place:text,reservationNote:text,registered:z.boolean().default(false),companyName:text,

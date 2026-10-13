@@ -199,30 +199,20 @@ describe("④ all six student tabs use the full available width", () => {
 });
 
 describe("⑤ desktop arrangements keep order, workflow, and natural scroll", () => {
-  it("dashboard: 1600 6-col grid — top 생산성+진행건 | 목표, bottom 퍼널 | 추이 | 채널 (DOM order kept)", () => {
+  it("dashboard: PC three-column overview above funnel, trend and channel charts", () => {
     const src = read("app/(app)/dashboard/page.tsx");
-    expect(src).toContain("min-[1600px]:grid-cols-6");
-    expect(src.match(/min-\[1600px\]:col-span-3/g)?.length).toBe(2);
-    expect(src.match(/min-\[1600px\]:col-span-2/g)?.length).toBe(3);
-    expect(src).toContain("min-[1600px]:contents");
-    const body = src.slice(src.indexOf("<ProductivityIndicators"));
-    expect(body.indexOf("<ProductivityIndicators")).toBeLessThan(
-      body.indexOf("<WeeklyGoalSummary"),
-    );
-    expect(body.indexOf("<WeeklyGoalSummary")).toBeLessThan(
-      body.indexOf("<FunnelChart"),
-    );
+    const overview = read("components/dashboard/DashboardActionOverview.tsx");
+    expect(overview).toContain("pc:grid-cols-3 pc:items-stretch");
+    expect(src.indexOf("<DashboardActionOverview")).toBeLessThan(src.indexOf("<FunnelChart"));
+    expect(src).toContain("pc:grid-cols-3");
     // Charts side by side below, legibility untouched (no height flattening).
     expect(src).toContain("<WeeklyDualChart");
     expect(src).toContain("<ChannelPerformance");
     expect(src).not.toMatch(/h-\[\d+px\]/);
-    // Same-row cards share one bottom line (belie 2026-09-28): the grid stretches
-    // and each card absorbs the extra height inside — charts fill it (.chart-fill),
-    // the PT box sits at the bottom (mt-auto), the wide-screen productivity card
-    // grows above the work status (flex-1). No fixed pixel heights.
+    // Cards stretch naturally; goal rings retain their sizes and no fixed heights.
     expect(src).toContain("pc:items-stretch");
     expect(src).not.toContain("pc:items-start");
-    expect(src).toContain('className="min-[1600px]:flex-1"');
+    expect(overview).toContain('className="h-full min-w-0"');
     for (const rel of [
       "components/dashboard/FunnelChart.tsx",
       "components/dashboard/WeeklyDualChart.tsx",

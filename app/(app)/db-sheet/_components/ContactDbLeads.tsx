@@ -1,19 +1,11 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import type { Channel } from "@/types";
-import type { DbSheetLead } from "@/types/db-sheet";
+import { useDbSheetLeads } from "@/query/db-sheet-hooks";
 
 export default function ContactDbLeads({ date, channel }: { date: string; channel: Channel }) {
-  const query = useQuery<{ leads: DbSheetLead[] }>({
-    queryKey: ["db-sheet"],
-    queryFn: async () => {
-      const response = await fetch("/api/db-sheet", { cache: "no-store" });
-      if (!response.ok) throw new Error("DB 목록을 불러오지 못했습니다.");
-      return response.json();
-    }, retry: false,
-  });
+  const query = useDbSheetLeads();
   const rows = (query.data?.leads ?? []).filter(row => row.channel === channel && row.date <= date);
   if (!rows.length) return null;
   return <details className="rounded-xl border border-slate-200 bg-white p-3">

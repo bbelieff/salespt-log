@@ -1,7 +1,8 @@
 /** 대시보드: 공용 헤더 → 날짜/진행 sticky → 재무 3종 본문 → 분석/주간목표. SSOT: docs/design/components.md §8–9. */
 "use client";
 import PageContainer from "@/components/PageContainer";
-import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
+import DashboardActionOverview from "@/components/dashboard/DashboardActionOverview";
+import "@/components/dashboard/dashboard-action-overview.css";
 
 import { useMemo, useState } from "react";
 import { courseWeeksForCohort, courseEndISO, ceremonyISO, isExtendedCourseCohort } from "@/config/cohort-dates";
@@ -13,10 +14,8 @@ import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBan
 import DashboardFinance from "@/components/dashboard/DashboardFinance";
 import MobileChartCarousel from "@/components/dashboard/MobileChartCarousel";
 import FunnelChart from "@/components/dashboard/FunnelChart";
-import ProductivityIndicators from "@/components/dashboard/ProductivityIndicators";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
-import DashboardWorkStatus from "@/components/dashboard/DashboardWorkStatus";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 
@@ -140,29 +139,14 @@ export default function DashboardPage() {
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
             <DashboardFinance onOpenExpenseLedger={() => setExpenseLedgerOpen(true)} />
 
-            {/* pc(1024~1599): 좌측(생산성+진행건+주간목표 stacked) | 우측 퍼널, 아래 추이 | 채널 2열.
-                wide1600+(뷰포트−사이드바 224 ≥1376, 6칸 그리드 — 2026-09-28 belie 안):
-                윗줄 [생산성+전체 진행건 | 주간목표] 반반, 아랫줄 [퍼널 | 추이 | 채널] 3등분.
-                좌측 래퍼를 contents 로 풀어 DOM 순서(생산성→진행건→목표→퍼널→추이→채널)는
-                그대로다. 모바일은 원래 stacked 순서.
-                높이 정렬(2026-09-28 belie): items-stretch 로 같은 줄 카드의 바닥선을 맞춘다.
-                줄 높이는 카드 내용(차트 영역 최소 14rem 포함)이 정하고, 퍼널·추이 차트는
-                .desktop-shell .chart-fill 로 남은 높이를 채운다(차트 비율이 줄을 키우지 않음,
-                meet 스케일·클리핑 없음). 범례·PT과제는 바닥, 넓은 화면 생산성 카드는 진행건 위
-                남는 칸을 채운다(flex-1). 채널별 성과는 도넛 제목을 좌측에 붙이고 표 1개로 합쳐 줄였다. */}
-            <div className="space-y-3 pc:grid pc:grid-cols-2 pc:items-stretch pc:gap-3 pc:space-y-0 min-[1600px]:grid-cols-6">
-              <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:contents min-[1600px]:space-y-0">
-                <div className="space-y-3 pc:flex pc:flex-col pc:gap-3 pc:space-y-0 min-[1600px]:col-span-3">
-                  <ProductivityIndicators weeks={weeks} matrix={dash.data.channelMatrix} className="min-[1600px]:flex-1" />
-                  <DashboardWorkStatus todayISO={today} />
-                </div>
-                <WeeklyGoalSummary className="pc:flex-none min-[1600px]:col-span-3" />
-              </div>
+            <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
+              todayISO={today} courseStartISO={me.data?.courseStartISO} />
+            <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-3 pc:space-y-0">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={CHART_LABELS}>
-                <div className={CHART_SLIDE + " min-[1600px]:col-span-2"}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
-                <div className={CHART_SLIDE + " min-[1600px]:col-span-2"}><WeeklyDualChart points={dash.data.weeklyTrend} /></div>
-                <div className={CHART_SLIDE + " min-[1600px]:col-span-2"}>
+                <div className={CHART_SLIDE}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
+                <div className={CHART_SLIDE}><WeeklyDualChart points={dash.data.weeklyTrend} /></div>
+                <div className={CHART_SLIDE}>
                   <ChannelPerformance weeks={weeks}
                     costBreakdown={dash.data.costBreakdown}
                     matrix={dash.data.channelMatrix}

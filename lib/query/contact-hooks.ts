@@ -19,6 +19,7 @@ import {
   useQuery,
   useQueries,
   useQueryClient,
+  type QueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { Channel, Meeting } from "@/types";
@@ -30,6 +31,7 @@ import type {
 } from "@/service";
 import { track, EVENTS } from "@/analytics";
 import { leadsPickerKey } from "./db-hooks";
+import { cpKey } from "./contract-payment-hooks";
 
 // ── 키 ────────────────────────────────────────────────────────
 export const dayKey = (date: string) => ["day", date] as const;
@@ -106,6 +108,55 @@ export function useMonthMeetings(
   });
 }
 
+export interface MonthsMeetingsOptions {
+  /** 대시보드: 계약·할 일 조회가 끝난 뒤에만 읽는다(첫 화면 조회 몰림 완화). */
+  enabled?: boolean;
+  /** 대시보드 관찰자는 5분 — 미팅 뮤테이션의 ['month'] 무효화로만 갱신한다. */
+  staleTime?: number;
+}
+
+export interface MonthsMeetingsResult {
+  /** 모든 달을 받았을 때만 채운다(일부만 받은 목록으로 셈하지 않게). 응답 모양이 어긋나도 빈 배열로 읽는다. */
+  meetings: Meeting[] | undefined;
+  isPending: boolean;
+  isError: boolean;
+  /** 실패한 달만 다시 읽는다. */
+  refetchFailed: () => void;
+}
+
+type MonthQueryResult = { data?: Partial<CalendarMonthView>; isPending: boolean; isError: boolean; refetch: () => Promise<unknown> };
+
+/** 모듈 상수(참조 고정) — useQueries 가 결과가 바뀔 때만 다시 계산한다. */
+function combineMonths(results: MonthQueryResult[]): MonthsMeetingsResult {
+  const complete = results.every((r) => r.data);
+  return {
+    meetings: complete
+      ? results.flatMap((r) => (r.data?.daysByMeetingDate ?? []).flatMap((day) => day?.meetings ?? []))
+      : undefined,
+    isPending: results.some((r) => r.isPending),
+    isError: results.some((r) => r.isError),
+    refetchFailed: () => results.forEach((r) => { if (r.isError) void r.refetch(); }),
+  };
+}
+
+/**
+ * 대시보드 「오늘 챙길 일」 — 여러 달의 미팅을 캘린더와 같은 키(['month', yyyy-MM])로 읽는다.
+ * meta.background: 전역 로딩 오버레이 집계에서 빼고 카드 자체 스켈레톤만 보인다(LoadingProvider).
+ */
+export function useMonthsMeetings(months: string[], opts: MonthsMeetingsOptions = {}): MonthsMeetingsResult {
+  return useQueries({
+    queries: months.map((yyyyMM) => ({
+      queryKey: monthKey(yyyyMM),
+      queryFn: () => fetchJSON<CalendarMonthView>(`/api/meetings/month/${yyyyMM}`),
+      enabled: opts.enabled ?? true,
+      staleTime: opts.staleTime ?? 60_000,
+      gcTime: 10 * 60_000,
+      meta: { background: true },
+    })),
+    combine: combineMonths,
+  });
+}
+
 // 수납 탭(useDailyRevenue / useSaveDailyRevenue / paymentKey)은
 // PR #38·39·40에서 contract-payment로 모델 재정의되어 폐기됨.
 // 새 훅: lib/query/contract-payment-hooks.ts
@@ -145,6 +196,16 @@ export interface SilentAutosaveOpt {
 
 const silentMeta = (opts?: SilentAutosaveOpt) =>
   opts?.silent === true ? { silent: true } : undefined;
+
+/**
+ * 미팅이 바뀌면 함께 달라지는 캐시 — 캘린더·대시보드 「오늘 챙길 일」의 월 미팅(['month'])과
+ * 계약 목록(cpKey: 계약↔예약 되돌림·삭제·케이스 되살리기가 02 행을 cascade 로 바꾼다).
+ * 예전 ['payments'] 키는 어떤 쿼리도 쓰지 않는 죽은 키였다(2026-10-12 정리).
+ */
+function invalidateMeetingDerived(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ["month"] });
+  qc.invalidateQueries({ queryKey: cpKey() });
+}
 
 export function useSaveMetrics(opts?: SilentAutosaveOpt) {
   const qc = useQueryClient();
@@ -215,6 +276,7 @@ export function useAppendMeeting() {
       // 2026-05-19 fix: 일정탭 week view 도 invalidate — 추가미팅이 일정탭에
       // 안 보이던 버그. weekStart 계산 없이 전체 week 무효화.
       qc.invalidateQueries({ queryKey: ["week"] });
+      invalidateMeetingDerived(qc);
       // 발굴 피커: 이 미팅이 발굴을 소비했을 수 있음 → matched 재계산(전환된 발굴 숨김, KPI-④).
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
@@ -235,8 +297,8 @@ export function usePatchMeeting(opts?: SilentAutosaveOpt) {
       if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
       if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
       // 2026-05-19 Phase 2: 계약→非계약 transition 시 02 row cascade →
-      // 수납탭 캐시도 무효화.
-      qc.invalidateQueries({ queryKey: ["payments"] });
+      // 수납탭(cpKey)·캘린더/대시보드(['month']) 캐시도 무효화.
+      invalidateMeetingDerived(qc);
       // 콜지기소 미팅 업체명 변경 시 vendor-name 폴백 matched 재계산(KPI-④ 대칭).
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
@@ -267,6 +329,7 @@ export function useRevertMeeting() {
       track(EVENTS.MEETING_REVERTED);
       if (date) qc.invalidateQueries({ queryKey: dayKey(date) });
       if (weekStart) qc.invalidateQueries({ queryKey: weekKey(weekStart) });
+      invalidateMeetingDerived(qc); // 상태별 cascade(계약 행 삭제 등) — 수납·캘린더·대시보드
       // 되돌리기=미팅 소비 취소 → 발굴 matched 재계산(재선택 가능하게, KPI-④ 대칭).
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
@@ -285,7 +348,7 @@ export function useReviveCaseClosure() {
     onSuccess: () => {
       track(EVENTS.CASE_REVIVED);
       qc.invalidateQueries({ queryKey: ["week"] });
-      qc.invalidateQueries({ queryKey: ["payments"] });
+      invalidateMeetingDerived(qc);
       // 자식 미팅 삭제=소비 취소 가능 → 발굴 matched 재계산(KPI-④ 대칭).
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
@@ -301,8 +364,8 @@ export function useRemoveMeeting() {
       track(EVENTS.MEETING_REMOVED);
       qc.invalidateQueries({ queryKey: dayKey(date) });
       qc.invalidateQueries({ queryKey: ["week"] });
-      // 02 계약수납관리 cascade (PR #241) 후 수납탭도 무효화.
-      qc.invalidateQueries({ queryKey: ["payments"] });
+      // 02 계약수납관리 cascade (PR #241) 후 수납탭·캘린더/대시보드도 무효화.
+      invalidateMeetingDerived(qc);
       // 미팅 삭제=발굴 소비 취소 → matched 재계산(전환됐던 발굴 재선택 가능, KPI-④ 대칭).
       qc.invalidateQueries({ queryKey: leadsPickerKey() });
     },
