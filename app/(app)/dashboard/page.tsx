@@ -138,7 +138,12 @@ export default function DashboardPage() {
             {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).
                 아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
-            <DashboardFinance onOpenExpenseLedger={() => setExpenseLedgerOpen(true)} />
+            <DashboardFinance
+              onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
+              contractChannels={dash.data.contractChannels}
+              onRefreshChannels={dash.refetch}
+              channelsRefreshing={dash.isFetching}
+            />
 
             {/* pc(1024~1599): 좌측(생산성+진행건+주간목표 stacked) | 우측 퍼널, 아래 추이 | 채널 2열.
                 wide1600+(뷰포트−사이드바 224 ≥1376, 6칸 그리드 — 2026-09-28 belie 안):

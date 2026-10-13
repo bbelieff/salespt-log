@@ -7,8 +7,11 @@
  * 기간 전체. 숫자는 화면에서 계산한다 — 계약(useContractPayments), DB 비용(useDBOverview),
  * 추가 비용(useExpenseLedger "all")을 `@/util/finance-period` 로 기간 합산한다.
  * 아레나 순위표 매출은 서버(scoreboard)가 따로 계산한다(ADR-0034).
+ * 2026-10-12 #7: 영업이익 상세에 「채널별 남은 돈」(ChannelProfitBreakdown) — 같은 기간·같은 행으로
+ *   다시 계산만 한다(칩 전환 시 새 요청 없음). 계약별 채널은 /api/dashboard 의 contractChannels.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { DashboardContractChannel } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
 import { useDBOverview } from "@/query/db-hooks";
 import { useExpenseLedger } from "@/query/expense-ledger-hooks";
@@ -24,8 +27,23 @@ import {
 } from "@/util/finance-period";
 import PeriodPicker from "@/components/ui/PeriodPicker";
 import FinanceSummaryBoxes from "./FinanceSummaryBoxes";
+import ChannelProfitBreakdown from "./ChannelProfitBreakdown";
+import { channelBucketOf, missingChannelKeys, periodChannelProfit } from "./channel-profit";
 
-export default function DashboardFinance({ onOpenExpenseLedger }: { onOpenExpenseLedger: () => void }) {
+// 같은 탭에서 화면을 다시 열어도 동일한 어긋남은 한 번만 재조회한다.
+const refreshedChannelGroups = new Set<string>();
+
+interface Props {
+  onOpenExpenseLedger: () => void;
+  /** /api/dashboard 의 계약별 채널. 없으면(배포 직후 캐시된 옛 응답) 채널 표를 그리지 않는다. */
+  contractChannels?: DashboardContractChannel[];
+  /** 계약 목록에 있는데 contractChannels 에 없는 행이 생기면 부른다 — 어긋난 묶음마다 최대 1번. */
+  onRefreshChannels?: () => unknown;
+  /** 대시보드를 다시 불러오는 중(「확인 중」 줄 문구). */
+  channelsRefreshing?: boolean;
+}
+
+export default function DashboardFinance({ onOpenExpenseLedger, contractChannels, onRefreshChannels, channelsRefreshing = false }: Props) {
   const [period, setPeriod] = useState<FinancePeriod>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -36,15 +54,27 @@ export default function DashboardFinance({ onOpenExpenseLedger }: { onOpenExpens
   const db = useDBOverview();
   const ledger = useExpenseLedger("all", today.slice(0, 7));
 
+  const rows = contracts.data?.rows;
+  const bucketOf = useMemo(() => (contractChannels ? channelBucketOf(contractChannels) : null), [contractChannels]);
+  // 방금 추가·이름 바꾼 계약은 대시보드 캐시(5분)에 아직 없다 → 「확인 중」으로 두고 한 번만 다시 불러온다.
+  // GET /api/dashboard 는 원장 반복 지출을 만드는 쓰기를 포함하므로 같은 어긋남으로는 다시 부르지 않는다.
+  const missing = useMemo(() => (rows && contractChannels ? missingChannelKeys(rows, contractChannels).join("\n") : ""), [rows, contractChannels]);
+  useEffect(() => {
+    if (!missing || !onRefreshChannels || refreshedChannelGroups.has(missing)) return;
+    refreshedChannelGroups.add(missing);
+    void onRefreshChannels();
+  }, [missing, onRefreshChannels]);
+
   const totals = useMemo(() => {
     if (!contracts.data || !db.data) return null;
     const revenue = periodRevenue(contracts.data.rows ?? [], range);
     const dbCost = periodDbCost(db.data, range);
     const additional = ledger.data ? periodLedgerCost(ledger.data.entries, range, today) : null;
-    return { revenue, dbCost, additional, cost: dbCost + (additional ?? 0) };
+    const channels = bucketOf ? periodChannelProfit(contracts.data.rows ?? [], bucketOf, db.data, range) : null;
+    return { revenue, dbCost, additional, cost: dbCost + (additional ?? 0), channels };
     // range 는 period/from/to/today 로 결정된다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contracts.data, db.data, ledger.data, period, from, to, today]);
+  }, [contracts.data, db.data, ledger.data, bucketOf, period, from, to, today]);
 
   const failed = contracts.isError || db.isError;
   const label = range ? `${PERIOD_LABEL[period]} ${range[0].slice(5).replace("-", "/")}~${range[1].slice(5).replace("-", "/")}` : PERIOD_LABEL.all;
@@ -82,6 +112,16 @@ export default function DashboardFinance({ onOpenExpenseLedger }: { onOpenExpens
           onOpenExpenseLedger={onOpenExpenseLedger}
           periodLabel={label}
           contractCount={totals.revenue.contracts}
+          profitDetail={totals.channels ? (
+            <ChannelProfitBreakdown
+              table={totals.channels}
+              revenue={totals.revenue.revenue}
+              dbCost={totals.dbCost}
+              additionalCost={totals.additional}
+              onOpenExpenseLedger={onOpenExpenseLedger}
+              refreshing={channelsRefreshing}
+            />
+          ) : undefined}
         />
       )}
     </section>

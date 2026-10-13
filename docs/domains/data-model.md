@@ -565,7 +565,13 @@ interface DashboardWeeklyPoint {
 
 interface DashboardCostBreakdown {
   채널: '매입DB' | '직접생산' | '현수막';   // 콜·지·기·소는 비용 0이라 도넛 제외
-  비용: number;
+  비용: number;                              // 원 (화면이 만원으로 줄여 보인다)
+}
+
+// 2026-10-12 #7 — 영업이익 상세 「채널별 남은 돈」. 금액은 싣지 않는다(화면이 기간 함수로 계산).
+interface DashboardContractChannel {
+  key: string;              // contractChannelKey(@/util/contract-link): AK 있으면 `행|ak:AK`, 없으면 `행|계약일|업체명`
+  channel: Channel | null;  // 연결 미팅의 채널. null = manual:·AK 빈 값·못 찾은 미팅
 }
 
 interface DashboardView {
@@ -574,8 +580,14 @@ interface DashboardView {
   weeklyTrend: DashboardWeeklyPoint[];       // 길이 8
   costBreakdown: DashboardCostBreakdown[];   // 길이 3 (콜·지·기·소 제외)
   콜지기소수임비: number;                    // 0 (UI에서 박스 제거됨)
+  contractChannels?: DashboardContractChannel[]; // 계약 행마다 1개. optional — 배포 직후 캐시된 옛 응답엔 없다
 }
 ```
+
+**계약 → 채널 연결 규칙** (`lib/service/contract-channel.ts` — 해지 계약수 차감 `termination-count`와 공용):
+1차 AK(`linkedMeetingId`) → `meeting.id`, 2차 `계약일|업체명` → 첫 일치 미팅(미팅 연결 시 계약일 = 미팅날짜),
+`manual:`(영업기록 없이 추가) → 미팅 없음. 미팅 상태·이월로 거르지 않는다. DB 경로·시트 경로 모두 이미 읽은
+계약·미팅 배열로 만든다(새 DB·시트 읽기 0). 유입 경로(#10)가 생기면 그 값을 먼저 쓰고 미팅 채널은 대체값으로 둔다.
 
 ### Phase 2 후속 (선택)
 
@@ -641,7 +653,8 @@ interface DashboardView {
 | `DashboardChannelMatrix` | interface | 채널별 funnel matrix (4채널 × N단계). 6단계 확장은 별도 PR |
 | `DashboardWeeklyPoint` | interface | 주차별 추이 1점 (주차/영업이익/활동량) |
 | `DashboardCostBreakdown` | interface | 채널별 비용 1행 (3채널, 콜·지·기·소 제외) |
-| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost) |
+| `DashboardView` | interface | 대시보드 1회 read 응답 (KPI + Matrix + Weekly + Cost + `contractChannels?`) |
+| `DashboardContractChannel` | interface | 계약 행 → 연결 미팅 채널 `{ key, channel: Channel \| null }` (2026-10-12 #7, 영업이익 상세 채널 표). key = `contractChannelKey` |
 
 ## API 엔드포인트 (예정)
 

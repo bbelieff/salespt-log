@@ -24,7 +24,8 @@ interface Props {
   matrix: DashboardChannelMatrix[]; // 4 채널 (유입 추출)
 }
 
-const CH_COLOR: Record<string, string> = {
+/** 채널 4색(tokens.md 고정) — 영업이익 상세 채널 표(ChannelProfitBreakdown)도 같은 색을 쓴다. */
+export const CH_COLOR: Record<string, string> = {
   매입DB: "#3b82f6",
   직접생산: "#16a34a",
   현수막: "#f59e0b",
