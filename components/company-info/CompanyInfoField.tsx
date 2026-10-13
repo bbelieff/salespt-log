@@ -7,6 +7,10 @@
  * - 연락처통신사: blur 에만 formatPhone(괄호 통신사 보존).
  * - 주민등록번호: 앞 6자리만(belie 결정). 입력 중 6자리 초과분 즉시 절단, blur 에 "NNNNNN-" 마무리
  *   (6자리 미만이면 비움) — 자르거나 비운 이유를 칸 아래에 알린다. 서버 스키마도 한 번 더 자른다.
+ * - 이메일: blur 에만 tidyContactEmail(공백·전각 ＠·mailto: 정리, 대소문자 유지). 모양이 아니어도 막지 않고
+ *   적은 그대로 저장 — 칸에 포커스가 없을 때 값에서 계산한 amber 안내(role=status)만 보인다(불러온 값·
+ *   문서 자동입력 값도 같은 기준). type=text(type=email 은 브라우저가 값을 고쳐 커서가 튄다) + 모바일 @ 키보드
+ *   (inputMode=email). 자동완성(수강생 본인 주소가 채워지지 않게)·맞춤법 밑줄·첫 글자 대문자는 끈다.
  */
 "use client";
 
@@ -17,6 +21,7 @@ import HintTooltip from "@/components/ui/HintTooltip";
 import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
 import type { FieldDef } from "@/components/company-info-defs";
 import { bizNoTyping } from "@/util/live-format";
+import { looksLikeContactEmail, tidyContactEmail } from "@/util/contact-email";
 import { useLiveInput } from "./useLiveInput";
 
 /** 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게. */
@@ -28,6 +33,7 @@ export const readOnlyCls =
 
 const RRN_CUT_MSG = "여기엔 앞 6자리만 저장해요. 뒷자리는 아래 계정 보관함에 넣어 주세요.";
 const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
+export const EMAIL_SHAPE_MSG = "이메일 모양이 아니에요(예: ceo@example.com). 적은 그대로 저장돼요.";
 
 /** 설명이 라벨과 다를 때만 (?) 와 sr-only 설명을 단다 — 그 설명 요소 id. */
 export function hintIdOf(inputId: string, label: string, hint?: string): string | undefined {
@@ -71,17 +77,22 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
   const [k, label, hint, , multi] = def;
   // 주민등록번호 칸이 입력을 잘랐거나 비웠을 때 그 이유(말없이 사라지지 않게).
   const [rrnNotice, setRrnNotice] = useState("");
+  // 이메일 칸에 포커스가 있는 동안은 모양 안내를 감춘다(적는 도중 깜빡이지 않게) — 벗어나면 값으로 다시 판정.
+  const [focused, setFocused] = useState(false);
   const isPhone = k === "연락처통신사";
   const isRrn = k === "주민등록번호";
+  const isEmail = k === "이메일";
   const hintId = hintIdOf(id, label, hint);
-  const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrnFront : null;
+  const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrnFront : isEmail ? tidyContactEmail : null;
   const onBlur = normalizeOnBlur
     ? () => {
+        if (isEmail) setFocused(false);
         const next = normalizeOnBlur(v);
         if (isRrn && v.trim() !== "" && next === "") setRrnNotice(RRN_SHORT_MSG);
         if (next !== v) onChange(k, next);
       }
     : undefined;
+  const emailNotice = isEmail && !focused && v.trim() !== "" && !looksLikeContactEmail(v);
   const isBizNo = k === "사업자등록번호";
   // 사업자등록번호는 입력하는 동시에 000-00-00000(belie 2026-09-29). 숫자 아닌 글이면 그대로.
   const bizLive = useLiveInput((raw, caret, prev) => (isBizNo ? bizNoTyping(raw, caret, prev) : null), v, (next) => onChange(k, next));
@@ -108,17 +119,25 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
           id={id}
           className={inputCls}
           aria-describedby={hintId}
-          inputMode={isPhone ? "tel" : isRrn || isBizNo ? "numeric" : undefined}
-          autoComplete={isRrn ? "off" : undefined}
+          inputMode={isPhone ? "tel" : isRrn || isBizNo ? "numeric" : isEmail ? "email" : undefined}
+          autoComplete={isRrn || isEmail ? "off" : undefined}
+          autoCapitalize={isEmail ? "none" : undefined}
+          spellCheck={isEmail ? false : undefined}
           ref={isBizNo ? bizLive.ref : undefined}
           value={v}
           onChange={isBizNo ? bizLive.onChange : (e) => onInput(e.target.value)}
+          onFocus={isEmail ? () => setFocused(true) : undefined}
           onBlur={onBlur}
         />
       )}
       {isRrn && rrnNotice && (
         <p className="mt-0.5 text-xs text-amber-700" role="status">
           {rrnNotice}
+        </p>
+      )}
+      {emailNotice && (
+        <p className="mt-0.5 text-xs text-amber-700" role="status">
+          {EMAIL_SHAPE_MSG}
         </p>
       )}
     </div>

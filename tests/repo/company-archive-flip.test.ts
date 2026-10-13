@@ -76,7 +76,7 @@ beforeEach(() => {
   });
   valuesGet.mockImplementation(async ({ range }: { range: string }) => {
     if (range.includes("!A1:")) {
-      return { data: { values: [Array(64).fill("h")] } }; // 헤더 완비
+      return { data: { values: [Array(65).fill("h")] } }; // 헤더 완비
     }
     if (range.endsWith("C2:C")) return { data: { values: [] } }; // 기존 행 검색 — 기본 없음
     if (range.endsWith("A2:A")) return { data: { values: [] } }; // 빈 행 탐색 — 기본 처음부터
@@ -111,15 +111,16 @@ describe("upsertCompanyInfoArchive — 파일럿(syncDb:true) 진짜 flip", () =
     expect(res).toEqual({ row: -1, created: false });
   });
 
-  it("성공 후 큐잉된 수렴 잡이 최신 DB 상태로 A:BL find-or-append 쓴다", async () => {
+  it("성공 후 큐잉된 수렴 잡이 최신 DB 상태로 A:BM find-or-append 쓴다(BM = 이메일)", async () => {
     readCompanyArchiveRowPayload.mockResolvedValue({
       _cleared: false,
       업체명: "가나상사",
       계약일: "2026-07-10",
       개업일: "2020-01-01",
+      이메일: "ceo@example.com",
     });
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.includes("!A1:")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.includes("!A1:")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("C2:C")) return { data: { values: [["2026-07-10|가나상사"]] } }; // row 2 = 기존 키
       return { data: {} };
     });
@@ -129,9 +130,10 @@ describe("upsertCompanyInfoArchive — 파일럿(syncDb:true) 진짜 flip", () =
       spreadsheetId: string; range: string; requestBody: { values: string[][] };
     };
     expect(call.spreadsheetId).toBe(SHEET);
-    expect(call.range).toBe("'06 업체정보'!A2:BL2");
+    expect(call.range).toBe("'06 업체정보'!A2:BM2");
     expect(call.requestBody.values[0]![0]).toBe("가나상사");
     expect(call.requestBody.values[0]![2]).toBe("2026-07-10|가나상사");
+    expect(call.requestBody.values[0]![64]).toBe("'ceo@example.com"); // BM — 개명 후 시트 대체 읽기의 원천
   });
 
   it("DB 행이 _cleared(rename 으로 지워짐) → 시트 반영 스킵(no-op, 그래도 성공 취급)", async () => {
@@ -212,7 +214,7 @@ describe("hasCompanyInfoArchiveRow — fromDb(파일럿) read-your-writes 회귀
   it("fromDb:true + DB 공백(미러 갭) → 시트 확인으로 self-heal(기존 동작)", async () => {
     readCompanyArchiveRowPayload.mockResolvedValue(null);
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.includes("!A1:")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.includes("!A1:")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("C2:C")) return { data: { values: [["2026-07-10|가나상사"]] } };
       return { data: {} };
     });
@@ -223,7 +225,7 @@ describe("hasCompanyInfoArchiveRow — fromDb(파일럿) read-your-writes 회귀
   it("fromDb:true + DB _cleared → 시트 확인으로 폴백(DB만으로 확정 안 함)", async () => {
     readCompanyArchiveRowPayload.mockResolvedValue({ _cleared: true });
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.includes("!A1:")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.includes("!A1:")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("C2:C")) return { data: { values: [] } };
       return { data: {} };
     });
@@ -233,7 +235,7 @@ describe("hasCompanyInfoArchiveRow — fromDb(파일럿) read-your-writes 회귀
 
   it("fromDb 생략(기본) → DB 미호출, 시트로만 확인(비파일럿 불변)", async () => {
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.includes("!A1:")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.includes("!A1:")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("C2:C")) return { data: { values: [["2026-07-10|가나상사"]] } };
       return { data: {} };
     });
@@ -245,7 +247,7 @@ describe("hasCompanyInfoArchiveRow — fromDb(파일럿) read-your-writes 회귀
   it("fromDb:true + DB 조회 실패 → 시트 폴백(삼킴)", async () => {
     readCompanyArchiveRowPayload.mockRejectedValue(new Error("db down"));
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-      if (range.includes("!A1:")) return { data: { values: [Array(64).fill("h")] } };
+      if (range.includes("!A1:")) return { data: { values: [Array(65).fill("h")] } };
       if (range.endsWith("C2:C")) return { data: { values: [] } };
       return { data: {} };
     });

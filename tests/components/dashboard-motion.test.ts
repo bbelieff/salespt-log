@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as React from "react";
 import { act, createElement as h } from "react";
 import { createRoot } from "react-dom/client";
@@ -9,12 +9,26 @@ import { usePlayOnOpen } from "@/components/motion/useMotion";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 (globalThis as { React?: typeof React }).React = React;
 
+const mounted = new Set<() => void>();
+
+afterEach(async () => {
+  await act(async () => {
+    for (const unmount of mounted) unmount();
+  });
+});
+
 function mount(node: ReturnType<typeof h>) {
   const el = document.createElement("div");
   document.body.appendChild(el);
   const root = createRoot(el);
   act(() => root.render(node));
-  return { el, unmount: () => act(() => root.unmount()) };
+  const unmount = () => {
+    act(() => root.unmount());
+    el.remove();
+    mounted.delete(unmount);
+  };
+  mounted.add(unmount);
+  return { el, unmount };
 }
 
 describe("대시보드 움직임", () => {

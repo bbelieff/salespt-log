@@ -5,8 +5,15 @@
  * - "● 라벨 <탭/공백 2칸+> 값" 줄을 항목으로 읽고, 들여쓴 다음 줄은 위 항목 값에 잇는다(매출 여러 해).
  * - 아이디·비번·계좌·주민번호 전체는 칸이 아니라 vault 로만 보낸다 — fields·info·경고·leftover 에는 싣지 않는다.
  * - 칸에 안 맞는 줄(">>" 질문, "=====" 아래 자유 메모, 모르는 라벨)은 leftover — 「기타메모에 붙이기」 용.
+ * - 이메일(company-info-email 2026-10): 라벨이 이메일/메일/E-mail 이거나 값 첫 줄이 이메일 모양뿐이면 [대표자]
+ *   이메일 칸 제안. 대표·사업장·연락처 분기보다 **먼저** 본다("대표 이메일"이 대표자이름으로 가지 않게). 계정 라벨
+ *   ("이메일 아이디 / 비번"·"이메일 id/pw"·"이메일 로그인" — 영문은 대소문자 무시)은 그대로 보관함. 이메일 칸에는
+ *   "@" 조각만 넣고, 같은 줄의 영문·숫자 조각(비밀번호일 수 있음)은 보관함으로, 한글 메모는 버린다.
+ *   "연락처/이메일" 한 줄은 주소 모양(로컬부@도메인) 조각만 이메일 칸, 나머지는 연락처 칸("@카톡"은 연락처에 남는다).
+ *   모양이 아닌 이메일 후보는 valid:false — 비교표에서 기본으로 체크하지 않는다.
  * 초안: Muse(muse-spark-1.3-contributor) — 총괄 검수.
  */
+import { looksLikeContactEmail, tidyContactEmail } from "@/util/contact-email";
 import { wonToMillion, parseSalesAmount } from "@/util/company-money";
 import { salesSlotOf, SALES_YEAR_KEYS, SALES_HALF_KEYS } from "@/util/company-sales";
 import { formatBizNo, isValidBizNo } from "./bizno";
@@ -22,7 +29,14 @@ export type MemoParseResult = DocParseResult & {
 };
 
 const BANKS = ["농협", "국민", "기업", "신한", "우리", "하나", "카카오", "IBK", "NH", "수협", "우체국", "토스", "부산", "대구"];
-const ACCOUNT_LABELS = ["공동인증서", "인증서", "소진공", "홈택스", "위택스", "정부24", "은행", "아이디", "비번", "비밀번호", "ID", "PW"];
+// 계정 기관 이름 — 아이디·비번 같은 말은 isCredentialLabel(아래)이 따로 본다.
+const ACCOUNT_LABELS = ["공동인증서", "인증서", "소진공", "홈택스", "위택스", "정부24", "은행"];
+// 영문 계정 라벨 — 대소문자 무시, 영문 단어 경계로만("id/pw"·"공동인증서ID"는 계정, "video" 의 id 는 아님).
+const LATIN_ID = /(?:^|[^a-z])(?:id|idpw|login)(?:[^a-z]|$)/i;
+const LATIN_SECRET = /(?:^|[^a-z])(?:pw|idpw|password|passwd)(?:[^a-z]|$)/i;
+const PHONE_LABELS = ["휴대폰", "휴대전화", "전화번호", "연락처"];
+const EMAIL_WARN = "이메일 모양이 아니에요. 확인해 주세요.";
+const AT = /[@＠]/;
 
 function isBullet(line: string): boolean {
   return /^\s*[●•-]/.test(line);
@@ -45,6 +59,22 @@ function has(hay: string, ...needs: string[]): boolean {
   return needs.some((n) => h.includes(noSpace(n)));
 }
 
+const isEmailLabel = (label: string) => has(label, "이메일", "메일") || /e-?mail/i.test(noSpace(label));
+const isSecretLabel = (label: string) => has(label, "비번", "비밀번호", "패스워드") || LATIN_SECRET.test(label);
+const isIdLabel = (label: string) => has(label, "아이디") || LATIN_ID.test(label);
+/** 아이디·비번·로그인을 직접 말하는 라벨 — 다른 칸 분기보다 먼저 보관함으로. */
+const isCredentialLabel = (label: string) => isIdLabel(label) || isSecretLabel(label) || has(label, "로그인", "계정");
+/** 계정 라벨(기관 이름 포함) — 이 줄은 칸이 아니라 보관함으로만 간다. */
+const isAccountLabel = (label: string) => has(label, ...ACCOUNT_LABELS) || isCredentialLabel(label);
+
+/** 값 한 줄을 조각으로 — 공백·쉼표·세미콜론·"/" 로 나눈다("010-0000-0000(KT) / a@b.co"). */
+const wordsOf = (line: string) => line.split(/[\s,;/]+/).filter(Boolean);
+/** 로컬부·도메인이 다 있는 이메일 조각("a@b.co") — "@카톡" 같은 메모는 아니다. */
+const isEmailPiece = (w: string) => AT.test(w) && looksLikeContactEmail(tidyContactEmail(w));
+/** 이메일 줄의 "@" 없는 조각 중 비밀번호일 수 있는 것 — 한글이 없고 괄호만도 아닌 조각. */
+const secretWordsOf = (words: string[]) =>
+  words.filter((w) => !AT.test(w) && !/[가-힣]/.test(w) && w.replace(/[()（）[\]]/g, "") !== "");
+
 const fullYear = (yy: string) => (yy.length === 4 ? Number(yy) : 2000 + Number(yy));
 const pad2 = (s: string) => String(Number(s)).padStart(2, "0");
 
@@ -62,9 +92,10 @@ function toOpenDate(raw: string): string {
 // 계정 라벨에서 이름만 남긴다
 function cleanAccountLabel(label: string): string {
   const c = label
-    .replace(/비밀번호|비번|아이디/gi, " ")
+    .replace(/비밀번호|비번|아이디|패스워드/gi, " ")
     .replace(/\bID\b|\bPW\b/gi, " ")
     .replace(/\s{2,}/g, " ")
+    .replace(/^[\s/]+|[\s/]+$/g, "") // "이메일 id / pw" → "이메일"(남은 "/" 정리)
     .trim();
   return c || label.trim();
 }
@@ -98,8 +129,8 @@ function loginOf(label: string, value: string): VaultItem {
     const parts = value.split("/").map((s) => s.trim());
     const back = parts.slice(1).join("/").replace(/^\/+/, "").trim();
     if (back) { id = parts[0] ?? ""; secret = back; } else secret = parts[0] ?? "";
-  } else if (has(label, "비번", "비밀번호", "PW")) secret = value;
-  else if (has(label, "아이디", "ID")) id = value;
+  } else if (isSecretLabel(label)) secret = value;
+  else if (isIdLabel(label) || AT.test(value)) id = value; // "이메일 로그인  a@b.co" — 주소는 아이디 쪽
   else secret = value;
   return { kind: "login", label: cleanAccountLabel(label), id, secret, note: "" };
 }
@@ -152,12 +183,60 @@ export function parseMeetingMemo(text: string, ctx?: DocParseContext): MemoParse
   const push = (key: ParsedField["key"], value: string, confidence = 0.8, warnings: string[] = []) => {
     if (value) fields.push({ key, value, confidence, warnings });
   };
+  // 이메일은 적은 그대로 제안 — 모양이 아니면 정확도를 낮추고 확인을 요청하며 기본 체크를 끈다(valid:false).
+  const pushEmail = (raw: string) => {
+    const v = tidyContactEmail(raw);
+    if (!v) return;
+    const ok = looksLikeContactEmail(v);
+    fields.push({ key: "이메일", value: v, confidence: ok ? 0.9 : 0.5, warnings: ok ? [] : [EMAIL_WARN], ...(ok ? {} : { valid: false }) });
+  };
+  // 계정은 칸으로 안 가고 보관함으로 — 같은 이름에 빈 쪽만 채우고, 다 찼으면 원래 라벨로 따로 둔다.
+  const addLogin = (label: string, value: string) => {
+    if (!value) return;
+    const item = loginOf(label, value);
+    const same = vault.find((x) => x.kind === "login" && x.label === item.label);
+    if (same && !(same.id && item.id) && !(same.secret && item.secret)) {
+      same.id ||= item.id;
+      same.secret ||= item.secret;
+    } else vault.push(same ? { ...item, label: label.trim() } : item);
+  };
+  // 이메일 라벨 줄 — 이메일 칸에는 "@" 조각만. 영문·숫자 조각(비밀번호일 수 있음)은 보관함, 한글 메모는 버린다.
+  const pushEmailLine = (label: string, first: string, words: string[]) => {
+    const at = words.filter((w) => AT.test(w));
+    if (at.length === 0) {
+      if (isPasswordLine(first)) vault.push({ kind: "other", label: `${label.trim()}(어느 계정인지 확인)`, id: "", secret: first, note: "" });
+      else pushEmail(first); // "ceo.example.com" 같은 오타 — 모양 안내와 함께 제안(기본 체크 없음)
+      return;
+    }
+    pushEmail(at.join(", "));
+    const secret = secretWordsOf(words);
+    if (secret.length > 0) {
+      vault.push({ kind: "login", label: cleanAccountLabel(label), id: at.join(", "), secret: secret.join(" "), note: "" });
+    }
+  };
 
   for (const { label, value: rawValue } of items) {
     const value = rawValue.trim();
     if (!label) continue;
+    const first = value.split("\n")[0]!.trim();
+    const words = wordsOf(first);
+    const phoneLabel = has(label, ...PHONE_LABELS);
+    const emailOnly = words.length > 0 && words.every(isEmailPiece);
 
-    if (has(label, "대표자", "대표")) {
+    if (!isAccountLabel(label) && (isEmailLabel(label) || emailOnly || (phoneLabel && words.some(isEmailPiece)))) {
+      // 대표·사업장·연락처 분기보다 먼저 — "대표 이메일"·"사업장 메일"이 대표자이름·소재지로 가지 않게.
+      if (phoneLabel) {
+        // 「연락처/이메일」처럼 라벨이 이메일을 말하면 "@" 조각은 모양이 틀려도 이메일 후보(안내·기본 체크 없음),
+        // 연락처만 말하면 주소 모양 조각만 — "@카톡" 같은 메모는 연락처에 남긴다.
+        const pick = isEmailLabel(label) ? (w: string) => AT.test(w) : isEmailPiece;
+        pushEmail(words.filter(pick).join(", "));
+        push("연락처통신사", words.filter((w) => !pick(w)).join(" ").replace(/\(\s*\)/g, "").trim());
+      } else pushEmailLine(label, first, words);
+    } else if (isCredentialLabel(label)) {
+      // 아이디·비번·로그인 라벨은 대표·연락처 분기보다 먼저 보관함으로("대표 이메일 id/pw"가 대표자이름으로 가지 않게).
+      // 기관 이름만 있는 라벨(은행·홈택스 …)은 아래 원래 자리 — "기존 은행 대출"은 기대출 칸 그대로.
+      addLogin(label, value);
+    } else if (has(label, "대표자", "대표")) {
       repName = value.split("\n")[0]!.trim() || repName;
       push("대표자이름", repName);
     } else if (has(label, "창업일자", "창업연월", "개업일")) {
@@ -181,7 +260,7 @@ export function parseMeetingMemo(text: string, ctx?: DocParseContext): MemoParse
       const m = value.match(/^\((자가|전세|월세)\)\s*/);
       push("자택주소지", m ? value.slice(m[0].length).trim() : value);
       if (m) info.push({ label: "자택 소유", value: m[1]! });
-    } else if (has(label, "휴대폰", "휴대전화", "전화번호", "연락처")) {
+    } else if (phoneLabel) {
       push("연락처통신사", value.replace(/\(\s*\)/g, "").trim());
     } else if (has(label, "주민등록번호")) {
       const m = value.match(/\d{6}\s*-?\s*\d{7}/);
@@ -201,19 +280,10 @@ export function parseMeetingMemo(text: string, ctx?: DocParseContext): MemoParse
       push("기대출사업자", value, 0.6, ["개인·사업자 대출을 나눠 확인해 주세요."]);
     } else if (has(label, "4대보험", "직원수")) {
       push("사대보험직원", value);
-    } else if (has(label, ...ACCOUNT_LABELS)) {
-      // 계정은 칸으로 안 가고 보관함으로 — 같은 이름에 빈 쪽만 채우고, 다 찼으면 원래 라벨로 따로 둔다.
-      if (!value) continue;
-      const item = loginOf(label, value);
-      const same = vault.find((x) => x.kind === "login" && x.label === item.label);
-      if (same && !(same.id && item.id) && !(same.secret && item.secret)) {
-        same.id ||= item.id;
-        same.secret ||= item.secret;
-      } else vault.push(same ? { ...item, label: label.trim() } : item);
+    } else if (isAccountLabel(label)) {
+      addLogin(label, value);
     } else if (has(label, "인증", "특허")) {
       push("특허및인증", value);
-    } else if (has(label, "이메일", "메일")) {
-      if (value) info.push({ label: "이메일", value });
     } else if (has(label, "매출") || /^(20)?\d{2}년/.test(noSpace(label))) {
       readSales(label, value);
     } else {

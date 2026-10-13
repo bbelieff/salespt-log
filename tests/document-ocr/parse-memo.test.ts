@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseMeetingMemo } from "@/lib/document-ocr/parse-memo";
+import { buildDiffRows, INVALID_NOTE } from "@/lib/document-ocr/diff";
 
 // 합성 메모 — 실제 미팅 메모와 같은 모양(탭으로 라벨·값 구분, 들여쓴 매출 줄, ===== 아래 자유 메모).
 const MEMO = `가나다식품 / 홍길동
@@ -86,6 +87,103 @@ describe("미팅 메모 읽기", () => {
     expect(f?.value).toBe("20");
     expect(f?.confidence).toBe(0.4);
     expect(f?.warnings.some((w) => w.includes("만원"))).toBe(true);
+  });
+
+  it("● 이메일주소 → [대표자] 이메일 칸 제안(참고 정보로 버리지 않음)", () => {
+    const res = parseMeetingMemo(MEMO, { baseYear: 2026 });
+    expect(field(res, "이메일")).toMatchObject({ value: "sample@example.com", confidence: 0.9, warnings: [] });
+    expect(res.info?.some((i) => i.label.includes("메일"))).toBe(false);
+  });
+
+  it("대표·사업장·연락처가 붙은 이메일 라벨도 이메일 칸으로 — 대표자이름·소재지·연락처를 덮지 않는다", () => {
+    const memo = [
+      "샘플상사 / 홍길동",
+      "● 대표 이메일\t\tceo@example.com",
+      "● 사업장 소재지\t\t가상시 예시로 1",
+      "● 사업장 메일\t\toffice@example.com",
+    ].join("\n");
+    const res = parseMeetingMemo(memo, { baseYear: 2026 });
+    expect(res.fields.filter((f) => f.key === "대표자이름").map((f) => f.value)).toEqual(["홍길동"]);
+    expect(res.fields.filter((f) => f.key === "소재지").map((f) => f.value)).toEqual(["가상시 예시로 1"]);
+    expect(res.fields.filter((f) => f.key === "이메일").map((f) => f.value)).toEqual(["ceo@example.com", "office@example.com"]);
+  });
+
+  it("E-mail·메일 라벨, 전각 ＠·mailto: 정리, 라벨이 달라도 값이 이메일뿐이면 이메일 칸", () => {
+    expect(field(parseMeetingMemo("가상식품\n● E-mail\t\tmailto:CEO＠Example.com"), "이메일")?.value).toBe("CEO@Example.com");
+    expect(field(parseMeetingMemo("가상식품\n● 메일  a@example.com"), "이메일")?.value).toBe("a@example.com");
+    const res = parseMeetingMemo("가상식품\n● 담당\t\tstaff@example.co.kr");
+    expect(field(res, "이메일")?.value).toBe("staff@example.co.kr");
+    expect(res.leftover).not.toContain("staff@");
+  });
+
+  it("모양이 아니면 정확도 낮춤 + 확인 경고 + 비교표 기본 체크 없음(막지 않음, 적은 그대로)", () => {
+    const f = field(parseMeetingMemo("가상식품\n● 이메일\t\tceo@example"), "이메일");
+    expect(f).toMatchObject({ value: "ceo@example", confidence: 0.5, valid: false });
+    expect(f?.warnings).toEqual(["이메일 모양이 아니에요. 확인해 주세요."]);
+    const [row] = buildDiffRows({}, [{ fileName: "memo.txt", fields: [f!] }]);
+    expect(row).toMatchObject({ key: "이메일", defaultChecked: false, note: INVALID_NOTE });
+    const ok = field(parseMeetingMemo("가상식품\n● 이메일\t\tceo@example.com"), "이메일")!;
+    expect(ok.valid).toBeUndefined();
+    expect(buildDiffRows({}, [{ fileName: "memo.txt", fields: [ok] }])[0]!.defaultChecked).toBe(true);
+  });
+
+  it("「연락처/이메일」 한 줄은 이메일 조각만 이메일 칸, 나머지는 연락처 칸", () => {
+    const res = parseMeetingMemo("가상식품\n● 연락처/이메일\t\t010-0000-0000(KT) / ceo@example.com");
+    expect(field(res, "이메일")?.value).toBe("ceo@example.com");
+    expect(field(res, "연락처통신사")?.value).toBe("010-0000-0000(KT)");
+    const phoneOnly = parseMeetingMemo("가상식품\n● 휴대폰번호(통신사)\t\t010 0000 0000 SKT");
+    expect(field(phoneOnly, "연락처통신사")?.value).toBe("010 0000 0000 SKT");
+    expect(field(phoneOnly, "이메일")).toBeUndefined();
+  });
+
+  it("연락처 줄의 「@카톡」 같은 메모는 이메일이 아니다 — 연락처 칸에 그대로", () => {
+    const res = parseMeetingMemo("가상식품\n● 연락처\t\t010-0000-0000 @카톡");
+    expect(field(res, "이메일")).toBeUndefined();
+    expect(field(res, "연락처통신사")?.value).toBe("010-0000-0000 @카톡");
+    // 라벨이 이메일도 말하면 "@" 조각은 모양이 틀려도 이메일 후보(기본 체크 없음) — 연락처 칸에 섞지 않는다.
+    const both = parseMeetingMemo("가상식품\n● 연락처/이메일\t\t010-0000-0000(KT) / ceo@example");
+    expect(field(both, "이메일")).toMatchObject({ value: "ceo@example", valid: false });
+    expect(field(both, "연락처통신사")?.value).toBe("010-0000-0000(KT)");
+  });
+
+  it("「이메일 아이디 / 비번」 같은 계정 라벨은 칸이 아니라 계정 보관함", () => {
+    const res = parseMeetingMemo("가상식품\n● 이메일 아이디 / 비번\t\tsample@example.com / Sample!pw9");
+    expect(field(res, "이메일")).toBeUndefined();
+    expect(res.vault).toContainEqual(expect.objectContaining({ kind: "login", id: "sample@example.com", secret: "Sample!pw9" }));
+    expect(JSON.stringify([res.fields, res.info, res.leftover])).not.toContain("Sample!pw9");
+  });
+
+  it.each([
+    ["이메일 id / pw", "이메일"],
+    ["이메일 ID/PW", "이메일"],
+    ["이메일 로그인", "이메일 로그인"],
+    ["E-mail Password", "E-mail Password"],
+    ["대표 이메일 아이디/비번", "대표 이메일"],
+  ])("계정 라벨 「%s」(영문 대소문자 무시) — 이메일·대표자 칸에 비밀번호 없이 보관함으로", (label, vaultLabel) => {
+    const res = parseMeetingMemo(`샘플상사 / 홍길동\n● ${label}\t\tsample@example.com / Sample!pw9`);
+    expect(field(res, "이메일")).toBeUndefined();
+    expect(res.fields.filter((f) => f.key === "대표자이름").map((f) => f.value)).toEqual(["홍길동"]);
+    expect(res.vault).toContainEqual(
+      expect.objectContaining({ kind: "login", label: vaultLabel, id: "sample@example.com", secret: "Sample!pw9" }),
+    );
+    expect(JSON.stringify([res.fields, res.info, res.leftover])).not.toContain("Sample!pw9");
+  });
+
+  it("이메일 라벨 줄에 비밀번호가 붙어 있으면 이메일 칸엔 주소만, 나머지는 보관함 · 한글 메모는 버린다", () => {
+    const res = parseMeetingMemo("가상식품\n● 이메일\t\tsample@example.com / Sample!pw9");
+    expect(field(res, "이메일")).toMatchObject({ value: "sample@example.com", confidence: 0.9 });
+    expect(res.vault).toContainEqual(expect.objectContaining({ kind: "login", label: "이메일", id: "sample@example.com", secret: "Sample!pw9" }));
+    expect(JSON.stringify([res.fields, res.info, res.leftover])).not.toContain("Sample!pw9");
+
+    const note = parseMeetingMemo("가상식품\n● 이메일\t\tceo@example.com (대표 개인)");
+    expect(field(note, "이메일")?.value).toBe("ceo@example.com");
+    expect(note.vault).toEqual([]);
+  });
+
+  it("기관 이름만 있는 라벨은 원래 순서 — 「기존 은행 대출」은 기대출 칸, 「홈택스」는 보관함", () => {
+    const res = parseMeetingMemo("가상식품\n● 기존 은행 대출\t\t3천만원\n● 홈택스\t\tsample / Sample!pw9");
+    expect(field(res, "기대출사업자")?.value).toBe("3천만원");
+    expect(res.vault).toContainEqual(expect.objectContaining({ kind: "login", label: "홈택스", id: "sample", secret: "Sample!pw9" }));
   });
 
   it("「26년 상반기」처럼 라벨에 연도·반기가 있으면 그 반기 칸에 넣는다", () => {
