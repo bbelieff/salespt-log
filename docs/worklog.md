@@ -1,3 +1,9 @@
+## 2026-10-13 · [병렬트랙] C 채널별 남은 돈 운영 구현
+- 사용자 승인: 영업이익 상세 위치 유지, 2026-10-13 병렬 작업·운영 적용 요청. base d4bc80a0; 전용 channel-profit-release / feat/channel-profit-release. 원본 ecf241c2·목업 작업본 보존.
+- 소유: ChannelProfitBreakdown/channel-profit·DashboardFinance C 연결·FinanceSummaryBoxes·ChannelPerformance export·contract-channel/termination-count/dashboard 서비스·dashboard 타입·contract-link/finance-period 유틸·C 시험·관련 정본. page.tsx는 재무 props 3개만. A/B/D 및 실데이터 무접촉.
+- 화면은 승인본 유지; 동일 어긋남 재조회 가드를 탭 단위로 옮겨 화면 재진입의 중복 GET 방지. 검증·PR은 제작, 독립 검증·병합·배포는 총괄 담당. 필수 check/build 및 화면 확인 진행 중.
+- 첫 check.sh: typecheck·lint·구조92 PASS, C 채널표/재마운트 시험 PASS. 공유 머신의 다른 작업 PGlite timeout 대응을 위해 총괄 지시로 전체 단위/통합 진행 중 자기 검사만 중단(전체 게이트 NOT_COMPLETE). D 검사·빌드 후 정상 pre-commit의 check.sh로 직렬 재실행(수동 검사와 중복 수행하지 않음). dashboard-motion 시험의 미해제 root 정리는 D 검증본65ad6e92에서 단일파일로 이식, 기존 assertions 보존.
+
 ## 2026-10-13 · DB관리시트 상단·공급처별 보기 운영 반영
 - 승인: 작은 버튼·상단 압축·방향버튼·접히는 공급처별 보기·보여줄 항목을 현재 목업대로 운영 반영.
 - base3cb67af4, feat/db-sheet-toolbar-suppliers 전용 worktree. 승인 파일만 이식; 최신 CSV 유형 검증·틀고정·저장/집계 보존.

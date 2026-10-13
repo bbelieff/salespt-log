@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { formatMoney } from "@/lib/format/money";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
@@ -27,6 +27,7 @@ import { useCountUp } from "@/components/motion/CountUp";
  * 변경 (2026-10-08, ADR-0034): 시즌/이월/전체 표를 없앴다. 숫자는 부모(DashboardFinance)가
  *   고른 기간(전체·이번 달·이번 주·직접 설정)으로 계산해 넘기고, 이 컴포넌트는 표시만 한다.
  *   매출 상세에 반환(계약해지)이 있으면 따로 보인다.
+ * 변경 (2026-10-12 #7): 영업이익 상세의 기존 줄 아래에 profitDetail(채널별 남은 돈 표)을 그린다.
  */
 interface Props {
   revenue: number;
@@ -41,6 +42,8 @@ interface Props {
   /** 영업이익 상세의 기간 표시(예: 「전체」, 「이번 달 10/01~10/31」). */
   periodLabel?: string;
   contractCount?: number; // 기간 안 계약 건수 (없으면 부연 우측 비움)
+  /** 영업이익 상세에서 기존 줄 아래에 붙는 내용(ChannelProfitBreakdown). 없으면 기존 그대로. */
+  profitDetail?: ReactNode;
 }
 
 /** 실측 맞춤 하한 — 그 아래로는 줄이지 않는다(가독성). */
@@ -245,6 +248,7 @@ export default function FinanceSummaryBoxes({
   refunded = 0,
   periodLabel = "전체",
   contractCount,
+  profitDetail,
 }: Props) {
   const [open, setOpen] = useState<Panel | null>(null);
   // 처음엔 금액이 올라가며 멈추고, 기간을 바꾸면 이전 금액에서 이어서 바뀐다(belie 2026-10-09).
@@ -378,10 +382,13 @@ export default function FinanceSummaryBoxes({
           </div>
         )}
         {open === "profit" && (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-slate-500">{periodLabel}{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}</span>
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">이익률 <b style={{ color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}>{profitRate.toFixed(1)}%</b></span>
-          </div>
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="text-slate-500">{periodLabel}{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}</span>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">이익률 <b style={{ color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}>{profitRate.toFixed(1)}%</b></span>
+            </div>
+            {profitDetail}
+          </>
         )}
       </div>
     </div>

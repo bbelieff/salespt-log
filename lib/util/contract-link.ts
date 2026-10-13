@@ -23,3 +23,22 @@ export function meetingIdFromLink(link: string | null | undefined): string | und
   if (!link || isManualContractLink(link)) return undefined;
   return link;
 }
+
+/**
+ * 대시보드 채널 표에서 계약 행 하나를 가리키는 키 — 서버(`contractChannels`)와 브라우저
+ * (`/api/contract-payment` 행)가 **이 함수 하나**로 만든다(2026-10-12 #7).
+ *  - AK(연결 미팅 id 또는 `manual:` 표식)가 있으면 `행|ak:AK` — 업체명·계약일을 고쳐도 그대로다.
+ *  - AK 가 비면(이전 계약 직접등록 등) `행|계약일|업체명`.
+ * 행 번호를 함께 넣어, 지운 행 자리에 새로 적힌 계약이 옛 채널을 물려받지 않게 한다.
+ * 업체 고유번호(#1)가 생기면 이 함수만 바꾼다.
+ */
+export function contractChannelKey(c: {
+  row?: number | null;
+  linkedMeetingId?: string | null;
+  계약일: string;
+  업체명: string;
+}): string {
+  const row = c.row ?? "";
+  const link = (c.linkedMeetingId ?? "").trim();
+  return link ? `${row}|ak:${link}` : `${row}|${c.계약일}|${c.업체명}`;
+}

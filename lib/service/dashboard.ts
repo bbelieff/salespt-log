@@ -51,6 +51,7 @@ import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { isCarryoverContract } from "./contract-payment";
 import { findByDateRange } from "@/repo/meetings";
 import { terminatedByChannel, terminatedByWeek } from "./termination-count";
+import { contractChannels } from "./contract-channel";
 import { chooseDailySource, sourceCohort } from "./daily-source";
 import { computeDbAggregates } from "./dashboard-aggregates";
 import { recognizedAmountForRange, recognizeRecurringOccurrencesForRange } from "./expense-ledger";
@@ -250,6 +251,7 @@ function assembleView(input: {
   weeklyActivity: number[]; // 8주
   costRows: { 매입DB: DatedCostRow[]; 직접생산: DatedCostRow[]; 현수막: DatedCostRow[] };
   payments: ContractPayment[];
+  meetings: Meeting[]; // 이미 읽은 04 미팅 — 계약별 채널(영업이익 상세 표)에만 쓴다
   additionalCost: DashboardAdditionalCost;
 }): DashboardView {
   const split = splitContractRevenue(input.payments, input.courseStartISO);
@@ -295,6 +297,7 @@ function assembleView(input: {
       { 채널: "현수막", 비용: bSplit.season },
     ],
     콜지기소수임비: 0,
+    contractChannels: contractChannels(input.payments, input.meetings),
   };
 }
 
@@ -363,6 +366,7 @@ async function loadDashboardFromDb(
       현수막: bannersToDatedCost(dbTab.banners),
     },
     payments: contracts,
+    meetings,
     additionalCost,
   });
   // 해지 계약수 오버레이 입력(채널별·주차별 차감) — 미팅·계약 이미 손안(추가 read 0).
@@ -417,6 +421,7 @@ async function loadDashboardFromSheet(sheetId: string, actorEmail: string): Prom
       현수막: bannersToDatedCost(banners.rows),
     },
     payments,
+    meetings,
     additionalCost,
   });
   // 해지 계약수 오버레이 — 시트경로는 채널귀속용 04 미팅이 없어 1회 read(읽기전용).

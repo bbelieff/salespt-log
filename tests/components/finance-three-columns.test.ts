@@ -289,6 +289,21 @@ describe("finance three-column row", () => {
     expect(document.querySelector('[data-testid="fin-profit-table"]')).toBeNull();
   });
 
+  it("renders profitDetail only inside the profit panel, below the existing line (2026-10-12 #7)", () => {
+    const detail = createElement("div", { "data-testid": "profit-detail" }, "채널 표 자리");
+    render(createElement(FinanceSummaryBoxes, { ...baseProps, profitDetail: detail }));
+    expect(document.querySelector('[data-testid="profit-detail"]')).toBeNull(); // 닫혀 있으면 그리지 않는다
+    clickColumn("fin-col-revenue");
+    expect(document.querySelector('[data-testid="profit-detail"]')).toBeNull();
+    clickColumn("fin-col-cost");
+    expect(document.querySelector('[data-testid="profit-detail"]')).toBeNull();
+    clickColumn("fin-col-profit");
+    const slot = panel().querySelector('[data-testid="profit-detail"]');
+    expect(slot).not.toBeNull();
+    expect(slot?.previousElementSibling?.textContent).toContain("계약 12건"); // 기존 줄 아래
+    expect(document.querySelectorAll("button button").length).toBe(0);
+  });
+
   it("keeps fee/commission revenue detail and the ledger entry inside cost detail", () => {
     const onOpenExpenseLedger = vi.fn();
     render(createElement(FinanceSummaryBoxes, { ...baseProps, onOpenExpenseLedger }));

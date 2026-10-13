@@ -12,6 +12,7 @@ import type { ContractPayment, Meeting } from "@/types";
 import { weekIndexOf } from "@/repo/sales";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { isManualContractLink } from "@/util/contract-link";
+import { contractMeetingResolver } from "./contract-channel";
 
 /** "YYYY-MM-DD" → 로컬 자정 Date (dashboard-aggregates.parseISO 와 동일 규칙 — 주차 버킷 패리티). */
 function parseISO(s: string): Date {
@@ -47,22 +48,16 @@ export function terminatedByChannel(
   payments: ContractPayment[],
   meetings: Meeting[],
 ): TerminatedByChannel {
-  const byId = new Map<string, Meeting>();
-  const byKey = new Map<string, Meeting>(); // `${미팅날짜}|${업체명}` — 첫 매칭 우선
-  for (const m of meetings) {
-    if (m.id) byId.set(m.id, m);
-    const key = `${m.미팅날짜}|${m.업체명}`;
-    if (!byKey.has(key)) byKey.set(key, m);
-  }
+  const meetingOf = contractMeetingResolver(meetings); // 1차 AK, 2차 계약일|업체명(첫 매칭)
 
   const byChannel = emptyChannelCount();
   let unknown = 0;
   for (const p of payments) {
     if (!isTerminatedContract(p)) continue;
     // 「영업기록 없이 추가」 계약은 미팅이 없어 raw 채널 계약수에 없다 → 차감도 안 한다.
+    // ⚠️ 조회 전에 건너뛴다 — 조회는 manual 에 undefined 를 돌려줘 unknown(로그 이벤트)으로 셀 수 있다.
     if (isManualContractLink(p.linkedMeetingId)) continue;
-    const linked = p.linkedMeetingId ? byId.get(p.linkedMeetingId) : undefined;
-    const m = linked ?? byKey.get(`${p.계약일}|${p.업체명}`);
+    const m = meetingOf(p);
     if (!m) {
       unknown += 1; // 귀속 실패 — 채널별 미반영
       continue;

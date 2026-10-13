@@ -103,19 +103,54 @@ export interface DbCostOverview {
   banners?: ReadonlyArray<{ 날짜?: unknown; 주문금액?: unknown }>;
 }
 
+/** 비용이 드는 세 채널의 기간 DB 비용(키 = 채널 이름). 콜·지·기·소는 비용이 없다. */
+export interface DbCostByChannel {
+  매입DB: number;
+  직접생산: number;
+  현수막: number;
+}
+
+const sumInRange = <T>(rows: ReadonlyArray<T> | undefined, date: (r: T) => unknown, amount: (r: T) => unknown, range: DateRange): number =>
+  (rows ?? []).reduce((sum, r) => sum + (inRange(date(r), range) ? num(amount(r)) : 0), 0);
+
 /**
- * DB 비용 — 서버 dashboard-cost-carryover 와 같은 날짜·금액: 매입DB 구매일·주문금액,
+ * DB 비용(채널별) — 서버 dashboard-cost-carryover 와 같은 날짜·금액: 매입DB 구매일·주문금액,
  * 직접생산 시작일·기간예산(ADR-0022 §3), 현수막 날짜·주문금액. 나눠 배분하지 않는다.
  * 날짜가 비었거나 깨진 행은 「전체」에서만 센다.
  */
+export function periodDbCostByChannel(overview: DbCostOverview | undefined, range: DateRange): DbCostByChannel {
+  return {
+    매입DB: sumInRange(overview?.purchases, (p) => p.구매일, (p) => p.주문금액, range),
+    직접생산: sumInRange(overview?.productions, (p) => p.시작일, (p) => p.기간예산, range),
+    현수막: sumInRange(overview?.banners, (b) => b.날짜, (b) => b.주문금액, range),
+  };
+}
+
+/** DB 비용 합계 = 채널별 세 값의 합(정의 하나 — periodDbCostByChannel). */
 export function periodDbCost(overview: DbCostOverview | undefined, range: DateRange): number {
-  if (!overview) return 0;
-  const rows: Array<{ date: unknown; amount: unknown }> = [
-    ...(overview.purchases ?? []).map((p) => ({ date: p.구매일, amount: p.주문금액 })),
-    ...(overview.productions ?? []).map((p) => ({ date: p.시작일, amount: p.기간예산 })),
-    ...(overview.banners ?? []).map((b) => ({ date: b.날짜, amount: b.주문금액 })),
-  ];
-  return rows.reduce((sum, r) => sum + (inRange(r.date, range) ? num(r.amount) : 0), 0);
+  const c = periodDbCostByChannel(overview, range);
+  return c.매입DB + c.직접생산 + c.현수막;
+}
+
+/**
+ * 행마다 버킷 하나(bucketOf)를 골라 버킷별 periodRevenue 를 낸다. 행을 나눠 더하기만 하므로
+ * Σ버킷 = periodRevenue(rows, range) 가 항상 성립한다(대시보드 채널 표 합계 = 매출 칸).
+ */
+export function periodRevenueByBucket<R extends RevenueContract, K extends string>(
+  rows: readonly R[],
+  bucketOf: (row: R) => K,
+  range: DateRange,
+): Map<K, PeriodRevenue> {
+  const groups = new Map<K, R[]>();
+  for (const r of rows) {
+    const key = bucketOf(r);
+    const group = groups.get(key);
+    if (group) group.push(r);
+    else groups.set(key, [r]);
+  }
+  const out = new Map<K, PeriodRevenue>();
+  for (const [key, group] of groups) out.set(key, periodRevenue(group, range));
+  return out;
 }
 
 /** 양끝 포함, 나머지 원은 앞선 날에 배정한다. 서버 원장·대시보드와 같은 함수. */
