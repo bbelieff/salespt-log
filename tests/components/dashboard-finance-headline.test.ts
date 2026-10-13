@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
-// belie 2026-10-12 #8 — DashboardFinance 의 한 줄 문장: 기간 칩 전환·경비장부 실패·불러오는 중·실패.
+// belie 2026-10-13 — 문장과 빈 자리 없이 기존 기간 계산·숫자·실패 안내를 유지한다.
 const slot = { 진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "" };
 const contract = (계약일: string, 수임비: number) => ({ 계약일, 업체명: "샘플상사", 수임비, 수납1: slot, 수납2: slot, 수납3: slot, 반환액: 0, 해지일: "" });
 
@@ -71,56 +71,67 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("DashboardFinance headline", () => {
-  it("기본 「전체」 → 지금까지 + 영업이익, 이모지는 aria-hidden, polite 알림 자리", () => {
+const amount = (name: "revenue" | "cost" | "profit") => container?.querySelector(`#fin-col-${name}`)?.textContent;
+
+describe("DashboardFinance without the deferred headline", () => {
+  it("문장·예약 공간 없이 전체 기간 매출·비용·영업이익을 표시한다", () => {
     render();
-    const p = headline();
-    expect(p?.textContent).toBe("지금까지 1,194,520원을 남겼어요 💰");
-    expect(p?.getAttribute("aria-live")).toBe("polite");
-    expect(p?.querySelector('span[aria-hidden="true"]')?.textContent).toBe(" 💰");
+    expect(headline()).toBeNull();
+    expect(amount("revenue")).toContain("₩2,500,000");
+    expect(amount("cost")).toContain("₩1,305,480");
+    expect(amount("profit")).toContain("₩1,194,520");
+    expect(container?.querySelector(".fx-skeleton")).toBeNull();
   });
 
-  it("기간 칩을 바꾸면 같은 자리에서 접두어·금액이 바로 바뀐다", () => {
+  it("기간 변경 시 세 숫자를 다시 계산하고 문장 자리를 만들지 않는다", () => {
     render();
-    const before = headline();
     act(() => chip("이번 달").click());
-    expect(headline()?.textContent).toBe("10월에 594,520원을 남겼어요 💰");
+    expect(amount("revenue")).toContain("₩1,500,000");
+    expect(amount("cost")).toContain("₩905,480");
+    expect(amount("profit")).toContain("₩594,520");
     act(() => chip("이번 주").click());
-    expect(headline()?.textContent).toBe("이번 주에 기록된 매출·비용이 없어요");
+    for (const name of ["revenue", "cost", "profit"] as const) expect(amount(name)).toContain("₩0");
     act(() => chip("직접 설정").click());
-    expect(headline()?.textContent).toBe("지금까지 1,194,520원을 남겼어요 💰"); // 날짜를 덜 고르면 전체 기간
-    expect(headline()).toBe(before); // live region 은 갈아끼우지 않는다
+    expect(amount("profit")).toContain("₩1,194,520"); // 날짜를 덜 고르면 전체 기간
+    expect(headline()).toBeNull();
   });
 
-  it("경비장부를 못 읽으면 영업이익 대신 매출만 말한다", () => {
+  it("경비장부 실패 시 기존 매출을 유지하고 비용 상세에 확인 실패를 알린다", () => {
     state.ledger = "error";
     render();
-    expect(headline()?.textContent).toBe("지금까지 매출 2,500,000원을 올렸어요");
+    expect(headline()).toBeNull();
+    expect(amount("revenue")).toContain("₩2,500,000");
+    act(() => container?.querySelector<HTMLButtonElement>("#fin-col-cost")?.click());
+    expect(container?.textContent).toContain("추가 비용을 확인하지 못했습니다");
   });
 
-  it("불러오는 중엔 문장 대신 회색 줄 — 다 불러오면 같은 자리(노드)에 문장", () => {
+  it("불러오는 중엔 로딩 안내만, 응답 뒤 세 숫자를 표시한다", () => {
     state.contracts = "pending";
     render();
-    const p = headline();
-    expect(p?.textContent).toBe("");
-    expect(p?.querySelector(".fx-skeleton")).not.toBeNull();
+    expect(headline()).toBeNull();
+    expect(container?.querySelector(".fx-skeleton")).toBeNull();
     expect(container?.textContent).toContain("불러오는 중…");
+    expect(amount("revenue")).toBeUndefined();
     state.contracts = "ok";
     rerender();
-    expect(headline()).toBe(p);
-    expect(p?.textContent).toBe("지금까지 1,194,520원을 남겼어요 💰");
+    expect(headline()).toBeNull();
+    expect(amount("profit")).toContain("₩1,194,520");
   });
 
-  it("경비장부만 불러오는 중이어도 문장은 아직 없다", () => {
+  it("경비장부만 불러오는 중이어도 로딩 안내를 유지한다", () => {
     state.ledger = "pending";
     render();
-    expect(headline()?.textContent).toBe("");
+    expect(headline()).toBeNull();
+    expect(container?.textContent).toContain("불러오는 중…");
+    expect(amount("cost")).toBeUndefined();
   });
 
-  it("실패하면 문장 자리 없이 「다시 시도」만", () => {
+  it("실패하면 숫자 대신 실패 안내와 다시 시도를 제공한다", () => {
     state.contracts = "error";
     render();
     expect(headline()).toBeNull();
+    expect(amount("revenue")).toBeUndefined();
+    expect(container?.textContent).toContain("매출·비용을 불러오지 못했어요.");
     expect(container?.textContent).toContain("다시 시도");
   });
 });

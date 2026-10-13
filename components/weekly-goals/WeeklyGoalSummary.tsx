@@ -64,17 +64,20 @@ function Summary({ date, metrics, student, className = "m-4", compact = false, h
   return <section className={className + " relative isolate flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"} aria-label="주간 목표">
     <button type="button" aria-label="주간 목표·PT과제 상세 보기" onClick={() => router.push("/weekly-goals?" + entry)} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />
     <div className="flex flex-wrap items-center justify-between gap-x-2">
-      <h2 className="flex items-center gap-2 text-base font-extrabold text-gray-900"><span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" /><span>주간 목표 {current && <span className="text-sm text-gray-500">· {current.week}주차</span>}</span></h2>
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-2 text-base font-extrabold text-gray-900"><span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" /><span>주간 목표 {current && <span className="text-sm text-gray-500">· {current.week}주차</span>}</span></h2>
+        {current && <p className="pl-3 text-xs tabular-nums text-gray-500">{current.start} ~ {current.end}</p>}
+      </div>
       {navigation}
     </div>
     {status ?? (current && <>
-      {sentence && <CardHeadline headline={sentence} className="mb-1" />}
-      <p className="mb-2 text-xs text-gray-500">{current.start} ~ {current.end}</p>
+      {sentence && <CardHeadline headline={sentence} className="mb-2" />}
       <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
-      {/* 옆 카드와 높이를 맞춰 늘어나면 PT과제 상자를 바닥에 붙인다(mt-auto) — 평소 간격은 pt-3. */}
-      <div className="mt-auto pt-3"><div className="rounded-xl border border-teal-100 bg-teal-50/60 p-3">
-        <div className="mb-1 flex items-center justify-between text-xs font-bold text-teal-800"><span>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</span><ChevronRight className="h-4 w-4" aria-hidden /></div>
-        <p className="line-clamp-2 whitespace-pre-line break-words text-xs leading-relaxed text-slate-700">{current.record.task?.trim() || "등록된 PT과제가 없어요"}</p>
+      {/* 링은 원래 크기를 유지하고 날짜·과제 주변의 세로 공간만 줄인다. */}
+      <div className="mt-auto pt-2"><div className="flex items-start gap-2 rounded-xl border border-teal-100 bg-teal-50/60 px-2 py-2">
+        <span className="shrink-0 text-xs font-bold leading-relaxed text-teal-800">{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</span>
+        <p className="min-w-0 flex-1 line-clamp-2 whitespace-pre-line break-words text-xs leading-relaxed text-slate-700">{current.record.task?.trim() || "등록된 PT과제가 없어요"}</p>
+        <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-teal-800" aria-hidden />
       </div></div>
     </>)}
   </section>;

@@ -106,13 +106,15 @@ describe("source guards", () => {
     }
   });
 
-  it("puts the toggle inside the table tools before 표시할 열 and wires the deep link + guarded storage", () => {
+  it("puts supplier and visible-field toggles together, starts collapsed, and permits the explicit supplier deep link", () => {
     const tools = page.slice(page.indexOf('className="sheet-table-tools"'));
     expect(tools.indexOf("공급처별 보기")).toBeGreaterThan(-1);
-    expect(tools.indexOf("공급처별 보기")).toBeLessThan(tools.indexOf("표시할 열"));
+    expect(tools.indexOf("공급처별 보기")).toBeLessThan(tools.indexOf("보여줄 항목"));
     expect(page).toContain('aria-controls="db-supplier-summary"');
     expect(page).toMatch(/params\.get\('view'\)==='suppliers'\)setSummaryOpen\(true\)/);
-    expect(page).toMatch(/try\{setSummaryOpen\(localStorage\.getItem\(SUMMARY_KEY\)==='1'\);\}catch\{\}/);
-    expect(page).toMatch(/try\{localStorage\.setItem\(SUMMARY_KEY,open\?'1':'0'\);\}catch\{\}/);
+    expect(page).toContain('[summaryOpen,setSummaryOpen]=useState(false)');
+    expect(page).not.toContain('SUMMARY_KEY');
+    expect(page).toContain('pageNavigation=');
+    expect(page).not.toContain('className="sheet-subnav"');
   });
 });

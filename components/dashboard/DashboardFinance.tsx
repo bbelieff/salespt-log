@@ -7,7 +7,7 @@
  * 기간 전체. 숫자는 화면에서 계산한다 — 계약(useContractPayments), DB 비용(useDBOverview),
  * 추가 비용(useExpenseLedger "all")을 `@/util/finance-period` 로 기간 합산한다.
  * 아레나 순위표 매출은 서버(scoreboard)가 따로 계산한다(ADR-0034).
- * 2026-10-12 belie #8: 기간 칩 아래 한 줄 문장(CardHeadline, 문구 = ./finance-headline).
+ * 2026-10-13 belie: 영업이익 한 줄 문장은 보류하고 기간 선택 바로 아래 숫자를 표시한다.
  * 2026-10-12 #7: 영업이익 상세에 「채널별 남은 돈」(ChannelProfitBreakdown) — 같은 기간·같은 행으로
  *   다시 계산만 한다(칩 전환 시 새 요청 없음). 계약별 채널은 /api/dashboard 의 contractChannels.
  */
@@ -27,9 +27,7 @@ import {
   type FinancePeriod,
 } from "@/util/finance-period";
 import PeriodPicker from "@/components/ui/PeriodPicker";
-import CardHeadline from "@/components/ui/CardHeadline";
 import FinanceSummaryBoxes from "./FinanceSummaryBoxes";
-import { financeHeadline } from "./finance-headline";
 import ChannelProfitBreakdown from "./ChannelProfitBreakdown";
 import { channelBucketOf, missingChannelKeys, periodChannelProfit } from "./channel-profit";
 
@@ -79,10 +77,6 @@ export default function DashboardFinance({ onOpenExpenseLedger, contractChannels
 
   const failed = contracts.isError || db.isError;
   const loading = !totals || ledger.isLoading;
-  // 한 줄 문장(belie 2026-10-12 #8) — 위에서 고른 기간의 숫자 그대로. 칩을 바꾸면 같은 렌더에서 다시 만든다.
-  const headline = totals
-    ? financeHeadline({ period, range, revenue: totals.revenue.revenue, cost: totals.cost, additionalKnown: totals.additional !== null })
-    : null;
   const label = range ? `${PERIOD_LABEL[period]} ${range[0].slice(5).replace("-", "/")}~${range[1].slice(5).replace("-", "/")}` : PERIOD_LABEL.all;
 
   return (
@@ -99,11 +93,6 @@ export default function DashboardFinance({ onOpenExpenseLedger, contractChannels
           incomplete={customIncomplete(period, range)}
         />
       </div>
-      {/* 문장 자리는 불러오는 중·문장 없음일 때도 같은 높이로 붙어 있다 — 아래 3칸이 덜컹이지 않고,
-          polite 알림은 기간을 바꿔 글자가 달라질 때만 읽힌다. 실패면 안내만 보인다. */}
-      {!failed && (
-        <CardHeadline headline={loading ? null : headline} loading={loading} className="mb-2 min-h-5 px-1" aria-live="polite" />
-      )}
       {failed ? (
         <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-3 text-xs text-slate-600">
           <span>매출·비용을 불러오지 못했어요.</span>

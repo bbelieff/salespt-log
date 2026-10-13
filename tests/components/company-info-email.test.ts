@@ -96,6 +96,23 @@ describe("배치 — [대표자] 연락처 줄 바로 아래 전폭", () => {
     expect(el!.querySelector('[id$="-이메일"]')).toBeNull();
     expect(el!.textContent).toContain("확장보기에 적힌 항목 1개 더 있어요");
   });
+
+  it("확장보기를 열 때 이메일을 표시하고 기본보기로 돌아가도 값은 보존한다", () => {
+    render({ 이메일: "ceo@example.com" }, "basic");
+    const choose = (label: string) => {
+      const button = [...el!.querySelectorAll<HTMLButtonElement>('[aria-label="업체정보 보기 범위"] button')]
+        .find((candidate) => candidate.textContent === label)!;
+      act(() => button.click());
+    };
+    expect(el!.querySelector('[id$="-이메일"]')).toBeNull();
+    choose("확장보기");
+    expect(byKey(groupEl("대표자"), "이메일")?.value).toBe("ceo@example.com");
+    choose("기본보기");
+    expect(el!.querySelector('[id$="-이메일"]')).toBeNull();
+    expect(stage).not.toHaveBeenCalled();
+    choose("확장보기");
+    expect(byKey(groupEl("대표자"), "이메일")?.value).toBe("ceo@example.com");
+  });
 });
 
 describe("입력 — 정리·막지 않는 모양 안내", () => {

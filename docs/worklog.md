@@ -1,5 +1,13 @@
 > **📄 이 문서는 무엇인가요?**
 
+## 2026-10-13 · 경영일지 총괄 · Pluuug 수정 목업(승인 대기)
+- 주문: 주간목표 원 크기 유지/밀도 개선, 멈춤 7일, 재무 문장 제외, 채널표 유지, 이메일 확장보기, DB 목록 우선 툴바·공급처 접기, 재계약 선택 팝업, 진행건별 Todo·History 보존.
+- 기준: origin/master b51d04b8, 원본 ecf241c2 및 인계 21df48d9 보존. 전용 worktree pluuug-revision-mockup-261013 / feat/pluuug-revision-mockup. gh bbelieff 확인. #1131·#1002·#798 미조작.
+- 소유: 제작 AB=WeeklyGoalSummary/DashboardFinance/Skeleton 및 관련 시험; 제작 E=DB page/CSS 및 관련 시험; 총괄=TopHeader 슬롯, F 설명 목업, plan/인계/검증. 독립 파일 위임, 운영 데이터는 사용하지 않음.
+- 검증: npm ci, check.sh(구조92 + 단위/통합3,663 PASS,45 skip), build PASS. DB 도구 PC1600/1280/1024·모바일320/375/430 가로넘침 없음; 공급처 접기/열기와 항목 표시 전환 확인. 이메일 기본↔확장 값 보존 확인. F 팝업은 합성 HTML 선택/취소 동작만 검증, 실제 복원 API는 NOT_RUN(미구현).
+- 한계: 주간목표 원 소스 불변, 모바일 실측48px/PC 실측54px(기존 밀도CSS). PC1366×768 카드 하단858px, 모바일390×844 하단1089px로 첫 화면 안에 전부 들어오지는 않는다. 이 배치를 수정 목업에서 재확인받는다. 증거는 세일즈PT/artifacts/pluuug-revision-261013. 원본/운영 변경 없음, 최종 목업 승인·구현 PR·머지·운영 반영 대기.
+- Muse 단계: 주간 사용률12%, 1단계. 설계/목업은 GPT 직접 및 GPT 하위 제작. Muse 실행 없음. 사용량은 실행 로그 기준 최종 보고.
+
 ## 2026-10-11 · DB관리시트 실제 저장/일별 집계 연결 완료
 - 목표: 승인 목업 v0.31 → 서버 인증 API → 기존 경영일지 Supabase persistence → 일별 유입/상담/미팅 왕복 검증.
 - base: 9abae99e6e06381aad4f35e05b64190cb712dc75, 전용 worktree db-management-sheet-mockup-261010.

@@ -95,10 +95,49 @@ body.db-sheet-route .db-contact-pane{container-name:db-company}body.db-sheet-rou
 /* v0.27: use the same rem typography and icon scale as NAV_STEPS. */
 body.db-sheet-route .desktop-nav a[href="/db-sheet"]{font-size:1rem;line-height:1.5rem}body.db-sheet-route .desktop-nav .db-step-badge{font-size:.75rem;line-height:1rem;padding:.125rem .375rem}body.db-sheet-route .desktop-nav .db-nav-icon,body.db-sheet-route .desktop-nav[data-collapsed="true"] .db-nav-icon{width:1.25rem;height:1.25rem;stroke-width:1.7;color:#334155}body.db-sheet-route .desktop-nav a[href="/db-sheet"][aria-current="page"] .db-nav-icon-wrap{background:white;border-radius:.5rem;box-shadow:0 1px 2px #0000000d}body.db-sheet-route .desktop-nav .db-step-mini{font-size:.625rem;line-height:1rem}
 
-/* v0.28: one toolbar on wide screens, wrap only when needed. */
-body.db-sheet-route .db-sheet-panel .sheet-panel-head{display:flex;flex-wrap:wrap;align-items:center;padding:12px 16px;gap:10px 14px}body.db-sheet-route .db-sheet-panel .sheet-panel-head>div:first-child{flex:0 0 auto}body.db-sheet-route .db-sheet-panel .sheet-panel-head h2{white-space:nowrap}body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;padding:0;gap:8px}body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{min-width:160px;max-width:280px;flex:1}body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-table-tools{margin-left:auto}body.db-sheet-route .db-sheet-panel .sheet-add-actions{margin-left:auto}body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:calc(100dvh - 225px)}
-@media(max-width:1199px){body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{order:3;flex-basis:100%}body.db-sheet-route .db-sheet-panel .sheet-add-actions{order:2}body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:calc(100dvh - 265px)}}
-@media(max-width:1023px){body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{min-width:100px}body.db-sheet-route .db-sheet-panel .sheet-panel-head{flex-wrap:wrap}body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters:not(.filters-open)>select,body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters:not(.filters-open)>.sheet-dates{display:none}body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:60dvh}}
+/* DB 목록 우선: 메뉴는 배너, 조회·보기·입력은 목록의 한 도구행. */
+body.db-sheet-route .sheet-page{padding-top:12px!important}
+body.db-sheet-route .sheet-banner-tabs{display:flex;align-items:stretch;align-self:stretch;gap:4px;margin-left:12px}
+body.db-sheet-route .sheet-banner-tabs button{padding:0 10px;border-bottom:2px solid transparent;color:#64748b;font-size:12px;font-weight:600;white-space:nowrap}
+body.db-sheet-route .sheet-banner-tabs button[aria-current="page"]{color:#2563eb;border-bottom-color:#3b82f6}
+body.db-sheet-route .sheet-banner-tabs button:focus-visible{outline:2px solid #3b82f6;outline-offset:-3px;border-radius:4px}
+body.db-sheet-route .db-sheet-panel{container-type:inline-size;container-name:db-list}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head{display:flex;flex-wrap:wrap;align-items:center;padding:10px 12px;gap:8px}
+body.db-sheet-route .db-sheet-panel .sheet-list-title{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:0}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head h2{font-size:14px;white-space:nowrap}
+body.db-sheet-route .sheet-save-status{font-size:10px;line-height:14px;color:#94a3b8}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{flex:1;min-width:0;display:flex;flex-wrap:nowrap;align-items:center;padding:0;gap:6px}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{width:144px;min-width:120px;max-width:180px;flex:1}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters>select{width:106px;min-width:0;padding-left:6px;padding-right:6px}
+body.db-sheet-route .db-sheet-panel .sheet-dates{gap:4px;flex-shrink:0}
+body.db-sheet-route .db-sheet-panel .sheet-dates input{width:116px;min-width:0;padding-left:5px;padding-right:3px}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head>.sheet-table-tools{flex:0 0 auto;display:flex;align-items:center;padding:0;border:0;margin:0;gap:6px}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-add-actions{display:flex;flex:0 0 auto;gap:6px;margin-left:auto;order:0}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-btn{padding-left:8px;padding-right:8px;font-size:12px}
+body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:calc(100dvh - 190px)}
+@container db-list (max-width:1140px){
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{order:4;flex-basis:100%;flex-wrap:wrap}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head>.sheet-table-tools{margin-left:auto}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-add-actions{margin-left:0}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{max-width:240px}
+}
+@media(max-width:1023px){
+ body.db-sheet-route .sheet-banner-tabs{margin-left:12px;gap:0}
+ body.db-sheet-route .sheet-banner-tabs button{padding:0 8px;font-size:12px}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters:not(.filters-open)>select,body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters:not(.filters-open)>.sheet-dates{display:none}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{max-width:none}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters.filters-open>select{flex-basis:auto}
+ body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:65dvh}
+}
+@container db-list (max-width:580px){
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head{gap:8px;padding:10px}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-add-actions{margin-left:auto}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head>.sheet-table-tools{order:3;flex-basis:100%;margin:0;justify-content:flex-start}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head>.sheet-table-tools .sheet-btn{flex:1;min-height:44px}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{order:4}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .sheet-dates{flex-basis:100%;min-width:0}
+ body.db-sheet-route .db-sheet-panel .sheet-dates input{width:0;flex:1;min-width:0}
+}
 
 /* v29: compact column headings; keep labels readable at minimum width. */
 body.db-sheet-route .sheet-resizable .column-heading{padding:0 5px;height:auto;min-height:40px;container-type:inline-size;container-name:column-head}
@@ -114,3 +153,6 @@ body.db-sheet-route .sheet-import-mapping{margin-top:12px;font-size:12px}body.db
 
 /* 공급처별 성과(SupplierSummary, 유입 경로 #10): 켜진 토글 · 열 설정과 같은 띠 · 선택한 공급처 줄(파랑은 선택·토글에만). */
 body.db-sheet-route .db-sheet-panel .sheet-table-tools .sheet-btn.is-on{border-color:#3b82f6;color:#1d4ed8;background:#eff6ff}body.db-sheet-route .sheet-supplier-summary{padding:16px 20px;background:#f8fafc;border-top:1px solid #e2e8f0}body.db-sheet-route .sheet-supplier-summary tr[data-selected]{background:#eff6ff}body.db-sheet-route .sheet-supplier-summary tr[data-selected]>th{box-shadow:inset 3px 0 #3b82f6}body.db-sheet-route .sheet-supplier-summary .sheet-supplier-card[aria-pressed=true]{background:#eff6ff;border-color:#93c5fd;box-shadow:inset 3px 0 #3b82f6}@media(max-width:1023px){body.db-sheet-route .sheet-supplier-summary{padding:12px 16px}}
+
+/* 터치 화면의 목록 도구는 44px 탭 영역을 유지한다. */
+@media(max-width:1023px){body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-btn{min-height:44px;height:44px}}

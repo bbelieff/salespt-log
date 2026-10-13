@@ -1080,6 +1080,8 @@ app/(app)/dashboard/page.tsx
 
 ### 대시보드 한 줄 문장 (2026-10-12, belie #8)
 
+**2026-10-13 수정 목업 우선 규칙:** 재무 묶음 영업이익 문장 및 skeleton 예약 공간은 제외한다. 아래 재무 문구표는 이전 검토 기록이며 현재 표시 계약이 아니다. 주간 목표 문장만 유지한다. WeeklyGoalSummary는 날짜를 제목 블록으로, PT과제 제목·내용을 병렬로 모아 압축하며 GoalRings 크기·반지름·선 굵기는 바꾸지 않는다. `/headlines`도 주간 목표 문장만 표시한다.
+
 재무 묶음과 주간 목표 카드 맨 위에 쉬운 말 한 줄(`CardHeadline`, §10-1)을 둔다. 새 조회·서버 변경 없이 화면에 이미 있는 숫자만 쓴다.
 문구는 순수 함수가 정한다 — 재무 `components/dashboard/finance-headline.ts`, 주간 목표 `components/weekly-goals/goal-headline.ts`.
 말줄임·잘림 없이 어절 단위(`break-keep`)로만 줄을 바꾸고, 이모지는 `aria-hidden`.
@@ -1144,8 +1146,7 @@ app/(app)/dashboard/page.tsx
 묶음(slate-100 section) 제목 줄에 `PeriodPicker`(기본 「전체」= 기록된 기간 전체)를 두고, `useContractPayments`·
 `useDBOverview`·`useExpenseLedger("all")`를 `@/util/finance-period`로 기간 합산해 `FinanceSummaryBoxes`에 넘긴다.
 불러오는 중·실패(다시 시도) 상태를 보인다. 서버 `/api/dashboard` KPI는 쓰지 않는다.
-기간 칩 줄 아래에 `CardHeadline` 한 줄 문장(§9 「대시보드 한 줄 문장」)을 둔다. 문장 자리는 불러오는 중(회색 줄)·
-문장 없음일 때도 `mb-2 min-h-5`로 붙어 있어 3칸이 덜컹이지 않고(`DashboardSkeleton`도 같은 h-5 줄), 실패면 없다.
+2026-10-13: 기간 칩 아래 재무 문장은 표시하지 않고 숫자 3칸이 바로 이어진다. `DashboardSkeleton`에도 문장용 h-5 공간을 두지 않는다.
 2026-10-12 #7: props `contractChannels?`(`/api/dashboard` 계약별 채널)·`onRefreshChannels?`·`channelsRefreshing?`를
 받아 영업이익 상세에 `ChannelProfitBreakdown`을 넘긴다(같은 기간·같은 계약 행, 칩을 바꿔도 새 요청 없음).
 `contractChannels`가 없으면(배포 직후 캐시된 옛 응답) 표를 그리지 않는다. 계약 목록에는 있는데 응답에 없는 키가
@@ -1746,7 +1747,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `ContactPanel`: 기존 CompanyInfoEditor 재사용, 날짜별 상담 기록 및 미팅 생성. 등록 후 연결 정보는 기존 미팅 편집 경로가 정본.
 - `ContactDbLeads`: 컨택관리의 날짜·채널별 DB관리시트 바로가기. 유입일 이후부터 표시.
 - `SupplierSummary` (2026-10-12, 유입 경로 #10 — `app/(app)/db-sheet/_components/SupplierSummary.tsx`, 계산 `supplier-summary.ts`): 「공급처별 성과」.
-  - 위치·열기: DB 목록 머리 `.sheet-table-tools` 안 [공급처별 보기](「표시할 열」 앞, 켜지면 `.sheet-btn.is-on` 파랑)로 열 설정 띠와 표 사이에 연다. 펼침 기억 `localStorage 'db-sheet-v3-supplier-summary'`('1'/'0', 읽기·쓰기 모두 try/catch). `/db-sheet?view=suppliers` 는 기억과 상관없이 펼치고 기억은 바꾸지 않는다.
+  - 위치·열기(2026-10-13): DB 목록 첫 도구행 [공급처별 보기]와 [보여줄 항목]을 나란히 둔다. 기본 접힘, `/db-sheet?view=suppliers` 명시 진입만 펼침. 펼침 localStorage 기억은 사용하지 않는다. 펼치면 열 설정 띠와 목록 사이에 표시한다. DB생산/DB관리시트 탭은 TopHeader의 `pageNavigation` 슬롯으로 페이지 배너에 넣고 중복 h1은 sr-only로 유지한다. 좁은 화면은 필터가 다음 행으로 흐르며 모바일 도구 버튼은 최소44px이다.
   - 내용: 공급처(원래 글자 그대로 = 필터와 같은 비교)마다 들어온 DB · 상담 · 미팅 · 계약(각 % of 들어온 DB) · 계약률(계약 ÷ 들어온 DB, 소수 한 자리). 단계는 서버 `lead.funnel`을 누적해 센다. 유입일 기간만 따르고 검색어·공급처 선택은 무시. 들어온 DB 많은 순, 공급처 미입력은 늘 마지막·못 누름. 처음 8곳 + 「나머지 N곳 더 보기」(선택한 공급처는 늘 보임). 20건 미만 계약률은 회색.
   - 한 줄 요약(조사 없는 문구): 「전체 기간/이 기간 계약률 1위 공급처 ‘X’ · DB N건 중 계약 M건」 → 계약 0이면 상담률 1위 → 상담도 0이면 「아직 상담까지 간 DB가 없어요」 → 20건 넘는 공급처가 없으면 대기 문구. 1위 줄은 「1위」 진회색 칩.
   - PC(pc:) 표 / 모바일 카드(`min-h-11`, 375px 가로 스크롤 없음). 막대 = 상담·미팅·계약 겹친 6px, 색은 그 공급처 채널색(매입DB 파랑·직접생산 초록, 섞이면 회색). 파랑 배경은 선택 줄(`tr[data-selected]` · 카드 `aria-pressed`, 왼쪽 3px 안쪽 그림자 — db-sheet.css)에만.

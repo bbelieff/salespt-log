@@ -149,6 +149,15 @@ details.dev>summary{cursor:pointer;font-weight:600;font-size:14px}
 details.dev ul{font-size:13px;color:var(--muted)}
 code{font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--sunken);border:1px solid var(--line);border-radius:4px;padding:0 4px}
 footer{margin-top:40px;font-size:12px;color:var(--faint);text-align:center}
+.choice-dialog{width:min(480px,calc(100% - 32px));max-height:85dvh;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--surface);color:var(--ink);box-sizing:border-box}
+.choice-dialog::backdrop{background:rgba(15,23,42,.45)}
+.choice-button{display:block;width:100%;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-top:12px;background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer;text-align:left}
+.choice-button.primary{background:var(--accent);color:var(--on-solid);border-color:var(--accent)}
+.choice-button:hover{filter:brightness(.96)}
+.choice-button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.case-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.case-grid article{padding:16px;background:var(--sunken);border:1px solid var(--line);border-radius:10px}
+@media(max-width:480px){.case-grid{grid-template-columns:1fr}.choice-dialog{padding:20px}}
 </style>
 </head>
 <body>
@@ -494,49 +503,33 @@ footer{margin-top:40px;font-size:12px;color:var(--faint);text-align:center}
 
 <!-- ───────────────── 6. 물을 것 ───────────────── -->
 <section id="ask">
-  <h2>belie에게 물을 것 (2가지)</h2>
-  <p class="sec-sub">둘 다 답이 없으면 권장안대로 진행하고, 나중에 바꿀 수 있어요. 어느 쪽도 데이터를 지우지 않아요.</p>
+  <h2>재계약할 때 선택 · 진행건별 기록은 그대로</h2>
+  <p class="sec-sub">2026-10-13 수정 목업 · 합성 데이터로 선택 흐름만 체험합니다. 실제 저장은 하지 않습니다.</p>
 
   <article class="card q">
-    <h3>Q1. 계약카드를 지웠다가 같은 미팅으로 다시 계약하면, 예전 Todo 및 History를 다시 붙일까요?</h3>
-    <div class="opt rec-opt">
-      <div class="opt-h">A. 다시 붙인다 <span class="pill">권장</span></div>
-      <ol>
-        <li>지금과 같은 동작이에요. 같은 미팅이면 같은 번호가 나와요.</li>
-        <li>실수로 계약카드를 지웠다가 다시 만들면 예전 Todo 및 History가 돌아와요.</li>
-        <li>미팅에서 생긴 계약만 해당돼요. 「영업기록 없이 추가」 업체를 미팅에 연결했다가 지우고 다시 계약하면 새로 시작해요. 나중에 B로 바꿀 수 있어요.</li>
-      </ol>
+    <h3>샘플 달빛공방 · 이전 계약 기록이 있어요</h3>
+    <p>같은 미팅에서 다시 계약할 때, 이전 내용을 불러올지 새로 시작할지 고릅니다.</p>
+    <button class="choice-button primary" id="open-recontract" type="button">재계약 선택 체험</button>
+    <p id="choice-status" role="status">아래는 이전 계약의 진행건별 기록입니다.</p>
+    <div class="case-grid" id="previous-cases">
+      <article><h3>재단 · 운전자금</h3><p><b>할 일</b><br>보완 서류 보내기 · 10/16</p><p><b>히스토리</b><br>10/12 서류 검토 완료</p></article>
+      <article><h3>소진공 · 시설자금</h3><p><b>할 일</b><br>접수 확인하기 · 10/19</p><p><b>히스토리</b><br>10/13 온라인 접수</p></article>
     </div>
-    <div class="opt">
-      <div class="opt-h">B. 새로 시작한다</div>
-      <ol>
-        <li>다시 계약하면 빈 목록에서 시작해요.</li>
-        <li>예전 Todo 및 History는 저장소에 남지만 그 카드에는 안 보여요.</li>
-        <li>실수로 지운 경우 기록이 안 돌아와요. 나중에 A로 바꿀 수 있어요.</li>
-      </ol>
-    </div>
-    <p class="later"><b>권장 이유:</b> 지금 수강생이 겪는 동작을 바꾸지 않고, 실수 복구가 쉬워요. <b>결정을 미루면:</b> A(권장안)로 진행해요.</p>
+    <div class="box" id="fresh-case" hidden>새 계약의 진행기관과 할 일을 등록하세요. 이전 계약 기록은 보존됩니다.</div>
+    <p class="later">불러와도 기관·진행건별 구분과 기존 마감일은 그대로입니다. 새로 시작해도 과거 기록을 지우지 않습니다.</p>
   </article>
 
   <article class="card q">
-    <h3>Q2. 같은 업체가 추가미팅으로 계약을 두 번 하면, 계정 보관함을 하나로 합칠까요?</h3>
+    <h3>보관함도 계약 카드마다 따로 둡니다</h3>
     <div class="opt rec-opt">
-      <div class="opt-h">A. 계약 카드마다 따로 둔다 <span class="pill">권장</span></div>
+      <div class="opt-h">계약 카드마다 따로 둡니다</div>
       <ol>
         <li>Todo 및 History도 계약별이라 같은 규칙으로 맞춰져요.</li>
         <li>계약 카드마다 자기 보관함을 보고, 미팅 카드에서는 그 미팅과 연결된 계약의 보관함을 보여 줘요.</li>
         <li>같은 아이디를 두 번 넣어야 할 수 있어요. 드문 경우라 영향이 작아요.</li>
       </ol>
     </div>
-    <div class="opt">
-      <div class="opt-h">B. 업체 하나로 합친다</div>
-      <ol>
-        <li>한 번만 넣으면 두 계약 카드 모두에서 보여요.</li>
-        <li>「같은 업체」를 판단할 규칙(이름이 같으면? 사업자번호?)이 새로 필요해서 작업이 늘어요.</li>
-        <li>이름이 같은 다른 업체가 잘못 묶이면 비밀값이 엉뚱한 카드에 보일 수 있어요.</li>
-      </ol>
-    </div>
-    <p class="later"><b>권장 이유:</b> 드문 경우이고, 비밀값이 잘못 묶이는 위험이 없어요. <b>결정을 미루면:</b> A(권장안)로 가고, 실제 사례가 생기면 다시 여쭤요.</p>
+    <p class="later">기존 Q2는 보관함 공유 여부를 묻던 내용입니다. 진행건별 할 일·히스토리를 합치는 변경은 하지 않습니다.</p>
   </article>
 </section>
 
@@ -577,5 +570,33 @@ footer{margin-top:40px;font-size:12px;color:var(--faint);text-align:center}
 
 <footer>F 항목 동작 설명 · 예시 업체·메모는 모두 가짜 · 코드 판독 기준(실행 재현 전)</footer>
 </div>
+<dialog class="choice-dialog" id="recontract-dialog" aria-labelledby="recontract-title">
+  <h2 id="recontract-title">이전 기록을 불러올까요?</h2>
+  <p>샘플 달빛공방의 이전 계약 기록이 있습니다.</p>
+  <p>재단·소진공 2개 진행건<br>할 일 2개 · 히스토리 2개</p>
+  <button class="choice-button primary" id="restore-records" type="button">이전 기록 불러오기</button>
+  <button class="choice-button" id="start-fresh" type="button">새로 시작하기</button>
+  <p class="sec-sub">어느 쪽을 골라도 이전 기록은 삭제되지 않습니다.</p>
+  <button class="choice-button" id="cancel-recontract" type="button">취소</button>
+</dialog>
+<script>
+  const dialog = document.getElementById('recontract-dialog');
+  document.getElementById('open-recontract').onclick = () => dialog.showModal();
+  document.getElementById('cancel-recontract').onclick = () => dialog.close();
+  document.getElementById('restore-records').onclick = () => {
+    document.getElementById('previous-cases').hidden = false;
+    document.getElementById('previous-cases').style.display = '';
+    document.getElementById('fresh-case').hidden = true;
+    document.getElementById('choice-status').textContent = '이전 기록을 진행건별로 불러왔습니다. (목업)';
+    dialog.close();
+  };
+  document.getElementById('start-fresh').onclick = () => {
+    document.getElementById('previous-cases').hidden = true;
+    document.getElementById('previous-cases').style.display = 'none';
+    document.getElementById('fresh-case').hidden = false;
+    document.getElementById('choice-status').textContent = '새 계약은 빈 목록에서 시작합니다. 이전 기록은 보존됩니다. (목업)';
+    dialog.close();
+  };
+</script>
 </body>
 </html>
