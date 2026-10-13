@@ -63,7 +63,8 @@ describe("DB sheet HTTP + real service boundary", () => {
   it("GET resolves authenticated tenant freshly and prevents caching", async () => {
     const response = await GET();
     expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toContain("no-store");
-    expect(await response.json()).toEqual({ leads: [lead] });
+    // Projection contract: GET adds the derived funnel step (untouched lead → 유입); nothing else changes.
+    expect(await response.json()).toEqual({ leads: [{ ...lead, funnel: "유입" }] });
     expect(mocks.user).toHaveBeenCalledWith(ctx.email, { fresh: true });
     expect(mocks.list).toHaveBeenCalledWith(ctx); expectNoWrites();
   });

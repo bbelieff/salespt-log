@@ -1695,3 +1695,13 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `DbDetail`: 원본 DB정보와 확인된 업체정보를 구분하는 크기 조절 패널.
 - `ContactPanel`: 기존 CompanyInfoEditor 재사용, 날짜별 상담 기록 및 미팅 생성. 등록 후 연결 정보는 기존 미팅 편집 경로가 정본.
 - `ContactDbLeads`: 컨택관리의 날짜·채널별 DB관리시트 바로가기. 유입일 이후부터 표시.
+
+
+## DB관리시트 상단·SupplierSummary (2026-10-13)
+- TopHeader의 선택적 pageNavigation에 DB생산/DB관리시트 탭 배치. 기존 호출 화면은 그대로 유지.
+- 목록 우선: 첫 행 검색·공급처별 보기·보여줄 항목·입력·가져오기. 좁은 폭에서는 필터를 다음 행으로 줄바꿈. 버튼은 공통 app-header-pill, SVG 펼침 아이콘 사용.
+- 공급처 패널은 기본 접힘, 명시적인 ?view=suppliers 진입만 펼침. 사용자 펼침 상태를 영구 저장하지 않음.
+- SupplierSummary는 유입일 기간 안의 리드를 공급처별로 DB/상담/미팅/계약/계약률로 비교. 검색·공급처 선택으로 비교 모수가 바뀌지 않음. 행 선택은 기존 공급처 필터와 연결.
+- PC 표/모바일 카드, 공급처 미입력은 마지막 비선택 행. 기본 8곳과 선택한 공급처 표시. 20건 이상만 순위 계산하며 요약문에도 표본 기준 표시. 4채널 모두 표시.
+- Grid 모바일 정렬: 항목을 한 번씩만 선택, 옆 버튼으로 오름/내림 전환. 기본 순서는 방향 버튼 비활성. 기존 표 정렬·틀고정·크기 저장 유지.
+- 합성 화면: tests/browser/db-sheet-supplier-server.mjs, empty/few/many/error 시나리오 지원. 운영 API 접근 없이 PGlite로 저장·조회 검증.

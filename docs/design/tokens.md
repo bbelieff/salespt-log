@@ -373,3 +373,7 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 | 헤어라인 | `rgb(15 23 42 / 9%)` | inset 하이라이트 `rgb(255 255 255 / 55%)` 동반 |
 | 배경 | `#eef2f6` + blue/lilac/mint radial 각 10% | quiet 유지, reduced-transparency 시 `#f1f5f9` 평면 |
 | 사이드바 폭 | `224px` 고정 | `w-60` 은 13.5px 루트에서 ~202px 로 줄어 명시 |
+
+
+### DB관리시트 압축 도구 (2026-10-13)
+기존 app-header-pill 재사용: 보이는 높이 26px, 글자 11px, 클릭 영역 최소 44px. 펼침 아이콘 12px SVG, 열림 180도 회전. 모바일 정렬 선택 높이 26px, 검색·도구 간격 6px. 글자·선·선택 색은 기존 sheet 변수와 공통 slate/blue 토큰을 유지한다.
