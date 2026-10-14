@@ -96,3 +96,10 @@ describe("미팅 메모 읽기", () => {
     expect(field(res, "과년도매출Y2")?.value).toBe("110");
   });
 });
+
+describe("parseMeetingMemo — 줄임 라벨", () => {
+  it("'사업자번호' 라벨도 사업자등록번호 칸으로", () => {
+    const r = parseMeetingMemo("● 사업자번호\t\t123-45-67891");
+    expect(r.fields.find((f) => f.key === "사업자등록번호")?.value).toBe("123-45-67891");
+  });
+});

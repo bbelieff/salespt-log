@@ -98,6 +98,9 @@ const AMOUNT_RUN = new RegExp(
 
 type AmountCand = { won: number; form: "digit" | "word" };
 
+/** 괄호 안 숫자 금액(앞 기호 2자까지 허용) — findAmounts 의 사진 OCR 보완. */
+const PAREN_AMOUNT = /[(（]\s*[^\d\s()（）]{0,2}\s*(\d{1,3}(?:[,.]\d{3})+|\d{5,})\s*원?\s*[)）]/g;
+
 /** 한 구간 안의 금액 후보. 숫자형은 접두(금·₩)·"원"·만/억 단위 중 하나, 한글·한자 수사는 접두나 "원"이 있어야 인정. */
 export function findAmounts(segment: string): AmountCand[] {
   const out: AmountCand[] = [];
@@ -112,6 +115,13 @@ export function findAmounts(segment: string): AmountCand[] {
     const v = parseKoreanAmount(run);
     if (v === null || v < 1e4) continue; // 1만원 미만은 보증금·월세가 아니다
     out.push({ won: v, form: hasDigit ? "digit" : "word" });
+  }
+  // 괄호 안 숫자 금액 "( ₩10,000,000 )" — 사진 OCR 은 ₩ 를 ¥·%·#·\ 로 읽어 위 규칙(접두·원·단위)을
+  // 못 지나간다. 괄호 + 천 단위 묶음(또는 5자리 이상)이면 접두 글자 2개까지는 무시하고 금액으로 본다.
+  // 출처: 원페이지 경영진단 doc-parsers.js amountOfLine(2026-10-14 비교 보고).
+  for (const m of segment.matchAll(PAREN_AMOUNT)) {
+    const v = Number(m[1]!.replace(/[^\d]/g, ""));
+    if (v >= 1e4 && !out.some((c) => c.won === v && c.form === "digit")) out.push({ won: v, form: "digit" });
   }
   return out;
 }
@@ -242,6 +252,17 @@ function pickMoney(lines: string[], labels: string[], what: string): MoneyPick |
   return { won: values[0]!, confidence, warnings };
 }
 
+type LeaseKeys = { addr: CompanyInfoKey; deposit: CompanyInfoKey; rent: CompanyInfoKey; area: CompanyInfoKey; own: CompanyInfoKey };
+const BUSINESS_KEYS: LeaseKeys = { addr: "소재지", deposit: "임차보증금", rent: "임차월세", area: "임차면적", own: "소유여부" };
+const RESIDENTIAL_KEYS: LeaseKeys = { addr: "자택주소지", deposit: "대표임차보증금", rent: "대표임차월세", area: "대표임차면적", own: "대표소유여부" };
+
+/** 주택 임대차인지 — 제목 "주택임대차" 또는 주거 건물 용어. "상가" 가 함께 있으면 사업장으로 본다. */
+export function isResidentialLease(text: string): boolean {
+  const c = compactText(text);
+  if (/상가건물|근린생활|사무실|점포/.test(c)) return false;
+  return /주택임대차|아파트|공동주택|다세대|다가구|연립주택|원룸|주거용/.test(c);
+}
+
 export function parseLeaseContract(rawText: string): DocParseResult {
   const normalized = normalizeOcrText(rawText);
   const fields: ParsedField[] = [];
@@ -259,6 +280,10 @@ export function parseLeaseContract(rawText: string): DocParseResult {
   THIRTEEN_DIGIT_ID.lastIndex = 0;
   const text = normalized.replace(THIRTEEN_DIGIT_ID, " ");
   const lines = toLines(text);
+  // 주거용(주택·아파트) 계약은 업체 사업장이 아니라 대표자 자택 조건이다 → [대표자] 칸으로 보낸다.
+  const residential = isResidentialLease(text);
+  const K = residential ? RESIDENTIAL_KEYS : BUSINESS_KEYS;
+  if (residential) documentWarnings.push("주거용 계약이라 대표자 자택 칸에 넣었어요. 대표자 본인 계약인지 확인해 주세요.");
 
   // 소재지 — 첫 "소재지" 라벨(부동산의 표시). 임대인·임차인 "주소" 는 보지 않는다.
   const addrHit = findLabelLines(lines, ["소재지"])[0];
@@ -268,19 +293,19 @@ export function parseLeaseContract(rawText: string): DocParseResult {
     const opens = (value.match(/\(/g) ?? []).length - (value.match(/\)/g) ?? []).length;
     const v = (opens > 0 ? `${value})` : value).slice(0, 120);
     const warnings = multiline ? ["라벨 다음 줄에서 읽었어요. 확인해 주세요."] : [];
-    push("소재지", v, v.length >= 5 ? (multiline ? 0.65 : 0.75) : 0.4, warnings);
+    push(K.addr, v, v.length >= 5 ? (multiline ? 0.65 : 0.75) : 0.4, warnings);
   }
 
   // 보증금 / 월세(차임)
   const deposit = pickMoney(lines, ["보증금"], "보증금");
-  if (deposit) push("임차보증금", groupThousands(deposit.won), deposit.confidence, deposit.warnings);
+  if (deposit) push(K.deposit, groupThousands(deposit.won), deposit.confidence, deposit.warnings);
   const rent = pickMoney(lines, ["월차임", "차임", "월세", "임대료"], "월세");
   if (rent) {
     const vat = detectVat(text);
     const warnings = [...rent.warnings];
     if (vat === "separate") warnings.push("월세는 부가세 별도로 적혀 있어요. 실제로 내는 돈은 10% 더 많아요.");
     if (vat === "ambiguous") warnings.push("부가세 포함 여부 체크를 읽지 못했어요. 계약서를 확인해 주세요.");
-    push("임차월세", groupThousands(rent.won), rent.confidence, warnings);
+    push(K.rent, groupThousands(rent.won), rent.confidence, warnings);
   }
 
   // 면적 — "임대할 부분" 줄(+다음 두 줄) 우선, 없으면 문서 전체에서.
@@ -307,14 +332,14 @@ export function parseLeaseContract(rawText: string): DocParseResult {
       areaWarn.push("㎡와 평 숫자가 서로 맞지 않아요. 확인해 주세요.");
       areaConf = Math.min(areaConf, 0.4);
     }
-    push("임차면적", formatSqm(area.sqm, area.pyeong), areaConf, areaWarn);
+    push(K.area, formatSqm(area.sqm, area.pyeong), areaConf, areaWarn);
     if (area.pyeong !== null) info.push({ label: "임차 면적(평 병기)", value: formatArea(area.sqm, area.pyeong) });
   }
 
   // 소유여부 — 보증금·월세가 읽혔으면 임차(편집기 선택형 칸의 값 그대로 "임차").
   if (deposit || rent) {
     const conf = Math.min(deposit?.confidence ?? 1, rent?.confidence ?? 1, 0.8);
-    push("소유여부", "임차", conf, conf < 0.5 ? ["금액이 맞는지 확인해 주세요."] : []);
+    push(K.own, "임차", conf, conf < 0.5 ? ["금액이 맞는지 확인해 주세요."] : []);
   }
 
   if (fields.length === 0) {

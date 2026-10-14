@@ -23,7 +23,8 @@ const KEYWORDS: [Exclude<DocType, "unknown">, string[]][] = [
   ["부가세과세표준증명", ["부가가치세과세표준증명", "과세표준증명", "과세표준중명", "부가가치세과세표준"]],
   ["재무제표", ["표준재무제표증명", "재무상태표", "손익계산서", "대차대조표"]],
   ["신분증", ["주민등록증", "자동차운전면허증", "운전면허증"]],
-  ["임대차계약서", ["부동산임대차계약서", "임대차계약서", "부동산임대차", "상가건물임대차"]],
+  // 주택 표준계약서 제목은 "주택임대차표준계약서" — "임대차계약서" 가 끊겨 있어 따로 둔다(2026-10-14 원페이지 경영진단 비교).
+  ["임대차계약서", ["부동산임대차계약서", "임대차계약서", "부동산임대차", "상가건물임대차", "주택임대차", "임대차표준계약서"]],
   ["사업자등록증", ["사업자등록증", "사업자등록증명"]],
 ];
 
@@ -36,7 +37,25 @@ export function classifyDocumentText(text: string): DocType {
       if (at >= 0 && at < best.at) best = { type, at };
     }
   }
+  if (best.type === "unknown" && looksLikeIdCard(text, compact)) return "신분증";
   return best.type;
+}
+
+/** 주민등록번호 꼴(가려진 것 포함) — 앞 6자리가 날짜 꼴일 때만. */
+const RRN_SHAPE = /(?<!\d)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\s*[-~]\s*[\d*]{1,7}/;
+const ID_ISSUER = /(시장|구청장|군수|도지사|경찰청장|도로교통공단)/;
+/** "홍길동(洪吉童)" — 한글 이름 뒤 괄호 한자. */
+const NAME_WITH_HANJA = /[가-힣]{2,4}\s*[(（]\s*[一-鿿]{2,4}\s*[)）]/;
+
+/**
+ * 신분증 사진은 제목("주민등록증")이 자주 깨진다 → 제목을 못 찾았을 때만, 짧은 글 + 주민등록번호 꼴 +
+ * (발급기관 또는 한자 이름)이 함께 있으면 신분증으로 본다. 계약서 같은 긴 서류는 글 길이로 거른다.
+ * 출처: 원페이지 경영진단 doc-parsers.js 판별 보완(2026-10-14 비교 보고).
+ */
+function looksLikeIdCard(text: string, compact: string): boolean {
+  if (compact.length > 400) return false;
+  if (!RRN_SHAPE.test(text)) return false;
+  return ID_ISSUER.test(compact) || NAME_WITH_HANJA.test(text);
 }
 
 export const PARSERS: Partial<Record<DocType, DocParser>> = {
