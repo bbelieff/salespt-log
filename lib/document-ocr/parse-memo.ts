@@ -166,7 +166,7 @@ export function parseMeetingMemo(text: string, ctx?: DocParseContext): MemoParse
       push("업종주생산품목", value);
     } else if (has(label, "아이템") && !has(label, "특허", "인증")) {
       push("주생산품목", value);
-    } else if (has(label, "사업자등록번호")) {
+    } else if (has(label, "사업자등록번호", "사업자번호")) {
       const ok = isValidBizNo(value);
       fields.push({
         key: "사업자등록번호",

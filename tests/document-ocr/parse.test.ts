@@ -46,6 +46,16 @@ describe("classifyDocumentText", () => {
   ])("%#", (text, want) => {
     expect(classifyDocumentText(text)).toBe(want);
   });
+  it("제목이 깨진 신분증 사진 — 주민번호 꼴 + 발급기관/한자 이름으로 판별(원페이지 경영진단 비교)", () => {
+    expect(classifyDocumentText("주믿등룩즈\n홍길동(洪吉童)\n800101-*******\n서울특별시 중구 예시로 1")).toBe("신분증");
+    expect(classifyDocumentText("즈민듣록증\n홍길동\n800101-*******\n2020.1.1\n서울특별시 중구청장")).toBe("신분증");
+    // 번호만 있고 발급기관·한자 이름이 없으면 모른다 / 긴 서류(계약서 등)는 신분증으로 보지 않는다
+    expect(classifyDocumentText("홍길동\n800101-*******")).toBe("unknown");
+    expect(classifyDocumentText(`${"계약 조항 ".repeat(120)}\n홍길동(洪吉童) 800101-*******`)).toBe("unknown");
+  });
+  it("주택임대차표준계약서 제목", () => {
+    expect(classifyDocumentText("주택임대차표준계약서\n보증금 금 일억원정")).toBe("임대차계약서");
+  });
   it("제목(먼저 나온 키워드)이 이긴다 — 임대차계약서 본문의 '사업자등록증' 언급", () => {
     expect(classifyDocumentText(`${LEASE_TEXT}\n첨부: 사업자등록증 사본`)).toBe("임대차계약서");
   });

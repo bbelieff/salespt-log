@@ -8,6 +8,7 @@ import {
   findAreas,
   formatArea,
   formatSqm,
+  isResidentialLease,
   parseKoreanAmount,
   parseLeaseContract,
 } from "@/lib/document-ocr/parse-lease";
@@ -191,5 +192,43 @@ describe("parseLeaseContract — 불확실", () => {
     const r = parseLeaseContract("아무 글자\n임대인은 보증금을 반환한다\n위약금 금 오백만원");
     expect(r.fields).toEqual([]);
     expect(r.documentWarnings.join(" ")).toContain("찾지 못했어요");
+  });
+});
+
+describe("parseLeaseContract — 사진 OCR·주거용 (원페이지 경영진단 비교, 2026-10-14)", () => {
+  it("₩ 가 ¥·%·# 로 잘못 읽혀도 괄호 안 금액을 읽는다", () => {
+    const text = [
+      "부동산임대차계약서",
+      "보 증 금  금 일천만원졍 ( ¥10,000,000 )",
+      "차 임  금 오십마눤 ( %500,000 ) 은 매월 25일에 지불한다.",
+    ].join("\n");
+    const f = byKey(parseLeaseContract(text).fields);
+    expect(f.임차보증금?.value).toBe("10,000,000");
+    expect(f.임차월세?.value).toBe("500,000");
+  });
+  it("괄호 안 짧은 숫자(층·호)는 금액이 아니다", () => {
+    expect(findAmounts("임대할부분 (101) 호 (3층)")).toEqual([]);
+  });
+  it("주택 계약은 대표자 자택 칸으로 — 업체 소재지·임차 칸은 건드리지 않는다", () => {
+    const text = [
+      "주택임대차표준계약서",
+      "소 재 지  서울특별시 중구 예시로 1, 101동 1001호 (예시아파트)",
+      "보 증 금  금 일억원정 ( ₩100,000,000 )",
+      "차 임  금 오십만원정 ( ₩500,000 ) 은 매월 1일에 지불한다.",
+      "임대할부분  전용면적 84 ㎡",
+    ].join("\n");
+    const r = parseLeaseContract(text);
+    const f = byKey(r.fields);
+    expect(f.대표임차보증금?.value).toBe("100,000,000");
+    expect(f.대표임차월세?.value).toBe("500,000");
+    expect(f.대표임차면적?.value).toBe("84");
+    expect(f.대표소유여부?.value).toBe("임차");
+    expect(f.자택주소지?.value).toContain("예시로 1");
+    expect(f.소재지 ?? f.임차보증금 ?? f.소유여부).toBeUndefined();
+    expect(r.documentWarnings.join(" ")).toContain("대표자 자택");
+  });
+  it("상가 계약은 '주거용' 언급이 있어도 업체 칸", () => {
+    expect(isResidentialLease("상가건물 임대차계약서\n주거용으로 사용하지 아니한다")).toBe(false);
+    expect(isResidentialLease("부동산임대차계약서\n구조·용도 철근콘크리트 / 공동주택(아파트)")).toBe(true);
   });
 });
