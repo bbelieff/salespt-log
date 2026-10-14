@@ -36,12 +36,8 @@ import { STATS_WEEKS, courseWeeksForCohort } from "@/config/cohort-dates";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
+import { parseISO } from "@/util/week";
 
-/** "YYYY-MM-DD" → 로컬 자정 Date (write-path parseISO 와 동일 규칙 — 배치-집계 패리티). */
-function parseISO(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
 const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
 

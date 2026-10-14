@@ -13,12 +13,8 @@ import { weekIndexOf } from "@/repo/sales";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { isManualContractLink } from "@/util/contract-link";
 import { contractMeetingResolver } from "./contract-channel";
+import { parseISO } from "@/util/week";
 
-/** "YYYY-MM-DD" → 로컬 자정 Date (dashboard-aggregates.parseISO 와 동일 규칙 — 주차 버킷 패리티). */
-function parseISO(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
 
 /** 빈 채널×0 레코드 (Channel enum 정본). */
 function emptyChannelCount(): Record<Channel, number> {

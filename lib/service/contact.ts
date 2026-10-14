@@ -1,4 +1,5 @@
 /** Layer: service — 컨택탭 유스케이스. 화면은 하루 단위지만 시트는 주차 블록 → 한 주 read 후 그 날 4채널 추출. */
+import { parseISO } from "@/util/week";
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
 import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
@@ -47,10 +48,6 @@ import {
   Meeting,
 } from "@/types";
 
-function parseISO(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
 
 export async function resolveCtx(email: string): Promise<MeetingCtx> {
   const user = await findUserByEmail(email);
@@ -325,7 +322,7 @@ export async function patchMeeting(
     const cur = await getMeetingRecord(ctx, id);
     if (cur?.상태 === "계약" && cur.미팅날짜 && cur.업체명) {
       if (droppingContract) {
-        await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명, { syncDb });
+        await clearContractPaymentByLink(spreadsheetId, cur.미팅날짜, cur.업체명, { syncDb }, id);
       } else {
         const oldKey = { 계약일: cur.미팅날짜, 업체명: cur.업체명 };
         const next = { 계약일: partial.미팅날짜 ?? cur.미팅날짜, 업체명: partial.업체명 ?? cur.업체명 };

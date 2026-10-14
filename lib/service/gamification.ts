@@ -14,6 +14,7 @@ import type {
   Meeting,
   MetricKey,
 } from "@/types";
+import { todayKST } from "@/util/week";
 
 // XP 가중치 — 4지표 기반. 미팅 단계는 별도 배수.
 export const XP_WEIGHT: Record<MetricKey, number> = {
@@ -67,7 +68,7 @@ function computeStreak(dates: string[]): { current: number; best: number } {
       cur = 1;
     }
   }
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayKST();
   const lastStr = sorted[sorted.length - 1]!;
   const gapFromToday = Math.round(
     (new Date(todayStr).getTime() - new Date(lastStr).getTime()) / 86_400_000,

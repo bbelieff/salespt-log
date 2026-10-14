@@ -20,6 +20,7 @@ import AddMeetingForm from "./AddMeetingForm";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { formatMoney } from "@/lib/format/money";
+import { todayKST } from "@/util/week";
 
 type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 
@@ -436,7 +437,7 @@ export default function MeetingResultCard({
                 {addOpen && (
                   <AddMeetingForm
                     vendor={meeting.업체명.replace(/^\(변경\)\s*/, "")}
-                    defaultDate={new Date().toISOString().slice(0, 10)}
+                    defaultDate={todayKST()}
                     minDate={meeting.미팅날짜}
                     onConfirm={(d2, t2) => {
                       onAddMeeting(d2, t2);

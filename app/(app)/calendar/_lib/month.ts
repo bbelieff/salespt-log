@@ -2,6 +2,7 @@
  * 캘린더 탭 월 단위 유틸.
  * 한 달의 6×7 그리드 셀 데이터를 만든다 (앞뒤 공백 + 그 달 + 트레일).
  */
+import { parseISO } from "@/util/week";
 
 const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -12,10 +13,7 @@ export function fmtISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function parseISO(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
+export { parseISO };
 
 export function fmtYMD(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

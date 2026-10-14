@@ -109,9 +109,9 @@ function lastClearOpts(): unknown {
 describe("① 계약→비계약 수정 (patchMeeting)", () => {
   const DROP = { 상태: "예약" } as Partial<Omit<Meeting, "id">>;
 
-  it("파일럿 → clearRowByLink(…, {syncDb:true})", async () => {
+  it("파일럿 → clearRowByLink(…, {syncDb:true}, 미팅 id) — 같은 업체·같은 날 계약이 둘이어도 내 계약만", async () => {
     await patchMeeting(EMAIL, "m1", DROP);
-    expect(clearRowByLink).toHaveBeenCalledWith(SHEET, "2026-07-10", "가나상사", { syncDb: true });
+    expect(clearRowByLink).toHaveBeenCalledWith(SHEET, "2026-07-10", "가나상사", { syncDb: true }, "m1");
   });
 
   it("비파일럿(7기) → {syncDb:false} (R2 async 미러 불변)", async () => {
