@@ -38,7 +38,9 @@ const DB_READ_COHORTS = new Set(["8", "9", "연습", "4", "10", "7", "6", "11", 
  */
 export function sourceCohort(u: { cohort: string; cohortLabel?: string }): string {
   const label = (u.cohortLabel ?? "").trim();
-  return u.cohort.trim() === "유보" && label && label !== "유보" ? label : u.cohort;
+  // 기수 칸이 빈 계정(시험 계정 A1-0·0 — 2026-10-15 「DB관리시트 미지원」 오표시)도 원래 기수로 본다.
+  const c = u.cohort.trim();
+  return (c === "유보" || c === "") && label && label !== "유보" ? label : u.cohort;
 }
 
 /** 단일 게이트 — cohort 정규화("8기"→"8") 후 판정. null/빈값 = false.
