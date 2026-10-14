@@ -6,10 +6,11 @@
 > - **관련 문서**: 항목 정본 [A](../dashboard-follow-ups.md) · [B](../dashboard-card-headlines.md) · [C](../dashboard-channel-profit.md) · [D](../company-info-email.md) · [E](../db-sheet-supplier-summary.md) · [F](../records-follow-renames.md) · [workflow](../../../development/workflow.md) · [task-template](../../../development/task-template.md) · [deploy-vps](../../../playbooks/deploy-vps.md) · [총괄](../../../playbooks/codex-lead.md)·[제작](../../../playbooks/codex-worker.md)·[검증](../../../playbooks/codex-reviewer.md)
 
 ## 진행 현황 (대시보드용)
-갱신: 2026-10-14 00:40 KST
+갱신: 2026-10-14 20:03 KST
 
 | 항목 | 단계 | 다음 할 일 | 막힌 것·belie 결정 대기 |
 |---|---|---|---|
+| 표·날짜·하단 정렬 | PR 검증 중 | 최종 검사·빌드·독립 검증 | PC 하단 일치·7행 무스크롤·320/375/430 확인 |
 | A 오늘 챙길 일 | 완료 | 후속 요청 시 확인 | #1135 22343edb·Deploy38422543949 성공·HTTP200·운영 팝업 확인 |
 | B 카드 문장·주간목표 여백 | 완료 | 후속 요청 시 확인 | A와 함께 운영 반영, 2열·퍼널 화살표·과제 한 줄 |
 | C 채널별 남은 돈 | 완료 | 후속 요청 시 확인 | #1137 625f14d2·Deploy 성공·HTTP200·운영 표 노출 확인 |

@@ -31,8 +31,8 @@ const bundle = await context({
   define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
   plugins: [{ name: "fixture-next", setup(b) {
     if (process.env.FOLLOW_UPS_RULES_PREVIEW === "1") {
-      b.onResolve({ filter: /^@\/components\/dashboard\/DashboardActionOverview$/ }, () => ({ path: join(process.cwd(), "tests/browser/dashboard-two-column-preview.tsx") }));
-      b.onResolve({ filter: /^@\/components\/weekly-goals\/WeeklyGoalSummary$/ }, () => ({ path: join(process.cwd(), "tests/browser/weekly-goals-flow-preview.tsx") }));
+      if (process.env.FOLLOW_UPS_PRODUCTION_LAYOUT !== "1") b.onResolve({ filter: /^@\/components\/dashboard\/DashboardActionOverview$/ }, () => ({ path: join(process.cwd(), "tests/browser/dashboard-two-column-preview.tsx") }));
+      if (process.env.FOLLOW_UPS_PRODUCTION_LAYOUT !== "1") b.onResolve({ filter: /^@\/components\/weekly-goals\/WeeklyGoalSummary$/ }, () => ({ path: join(process.cwd(), "tests/browser/weekly-goals-flow-preview.tsx") }));
       b.onResolve({ filter: /^\.\/DashboardFollowUps$/ }, () => ({ path: join(process.cwd(), "tests/browser/dashboard-followups-rules-preview.tsx") }));
     }
     b.onResolve({ filter: /^next\/(navigation|link)$/ }, (args) => ({ path: args.path, namespace: "fixture" }));
@@ -90,6 +90,11 @@ function someData(t) {
   const goun = contract(9, "샘플 고운상사", shift(t, -30), { 수납1: slot({ 진행기관: "신용보증기금", 진행상품: "시설자금", 메모: "보완 서류" }) });
   const iwol = contract(10, "샘플 이월상사", shift(t, -90), { 구분: "이월", 수납1: slot({ 진행기관: "중진공", 메모: "상담" }), 수납2: slot({ 진행기관: "신용보증기금", 진행상품: "운전자금" }) });
   const contracts = [hanbit, dalbit, pureun, onyu, byeolbit, eunha, goun, iwol];
+  if (process.env.FOLLOW_UPS_TABLE_PREVIEW === "1") contracts.push(
+    contract(21, "샘플 늘봄상사", shift(t, -26)),
+    contract(22, "샘플 은하제작", shift(t, -40), { 수납2: slot({ 진행기관: "중진공", 진행상품: "운전자금", 메모: "보완 서류 확인" }) }),
+    contract(23, "샘플 푸른유통", shift(t, -40), { 수납1: slot({ 진행기관: "기술보증기금", 진행상품: "보증", 메모: "심사 결과 확인" }) }),
+  );
   const todos = [
     todo("todo-overdue", hanbit, { institutionRef: "신용보증기금", 제목: "서류 보완 요청", 예정일자: shift(t, -3), 예정시각: "10:00" }),
     todo("todo-today", dalbit, { institutionRef: "소진공", 제목: "현장실사 일정 확인", 예정일자: t, 예정시각: "15:00" }),

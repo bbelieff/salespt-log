@@ -12,7 +12,7 @@ export default function DashboardActionOverview({ matrix, weeks, todayISO, cours
   matrix: DashboardChannelMatrix[]; weeks: number; todayISO: string; courseStartISO?: string;
 }) {
   const actualWeek = courseStartISO ? weekIndexOf(parseISO(todayISO), parseISO(courseStartISO)) : 0;
-  const work = <div key="work" className="dashboard-action-work min-w-0 space-y-3">
+  const work = <div key="work" className="dashboard-action-work min-w-0 flex flex-col gap-3">
     <DashboardWorkStatus todayISO={todayISO} />
     <DashboardFollowUps todayISO={todayISO} />
   </div>;

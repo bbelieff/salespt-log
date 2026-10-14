@@ -56,12 +56,14 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
   </section>;
   return <section className={className + " weekly-goals-flow-card relative isolate flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"} aria-label="주간 목표">
     <button type="button" aria-label="주간 목표·PT과제 상세 보기" onClick={() => router.push("/weekly-goals?" + entry)} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />
-    <div className="flex flex-wrap items-center justify-between gap-x-2">
+    <div className="weekly-goals-heading">
+      <div className="weekly-goals-heading-label">
       <h2 className="flex items-center gap-2 text-base font-extrabold text-gray-900"><span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" /><span>주간 목표 {current && <span className="text-sm text-gray-500">· {current.week}주차</span>}</span></h2>
+      {current && <p className="weekly-goals-dates">{current.start} ~ {current.end}</p>}
+      </div>
       {navigation}
     </div>
     {status ?? (current && <>
-      <p className="mb-2 text-xs text-gray-500">{current.start} ~ {current.end}</p>
       <div className="weekly-goals-task-line">
         <b>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</b>
         <span>{current.record.task?.trim() || "등록된 과제 없음"}</span>
