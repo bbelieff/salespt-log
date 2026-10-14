@@ -19,6 +19,12 @@ describe("sourceCohort", () => {
     expect(sourceCohort({ cohort: "유보", cohortLabel: "" })).toBe("유보");
     expect(sourceCohort({ cohort: "유보" })).toBe("유보");
   });
+  it("기수 칸이 비면 원래 기수(cohortLabel) — 시험 계정 A1-0 의 DB관리시트 미지원 오표시(2026-10-15)", () => {
+    expect(sourceCohort({ cohort: "", cohortLabel: "A1-0" })).toBe("A1-0");
+    expect(chooseWriteSource(sourceCohort({ cohort: "", cohortLabel: "A1-0" }), true)).toBe("db");
+    expect(sourceCohort({ cohort: " ", cohortLabel: "0" })).toBe("0");
+    expect(sourceCohort({ cohort: "", cohortLabel: "" })).toBe("");
+  });
   it("0기는 DB 정본", () => {
     expect(isDbReadPilot("0")).toBe(true);
     expect(isDbReadPilot("0기")).toBe(true);
