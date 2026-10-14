@@ -32,3 +32,10 @@ B1·B2·B3(시트→DB 전환 마무리·스키마·런타임 DDL), B4(큰 파�
 
 - `check.sh`(pre-commit) 전체, 구조 테스트 94개.
 - 되돌리기: squash revert 1건. 데이터 변경 없음.
+
+## 4. 2차 (2026-10-15, chore/ci-build-and-architecture-doc)
+
+- **C8**: CI(	ypecheck.yml)에 uild 잡 추가 — PR 마다 운영과 같은 
+pm run build(Node 22, 비밀값 없음, SKIP_BUILD_CHECKS=1). 로컬 실측 약 6분·성공.
+- **B10**: docs/architecture.md 현행화 — 옛 판은 "시트가 유일 SSOT · Docker 배포"(2026-08 이전). DB 정본·시트 미러·pm2 배포·구조 테스트·알려진 숙제로 다시 씀.
+- **C2 보류 사유**: 미팅 부분 수정은 DB 를 읽고 앱에서 합친 뒤 행 전체를 다시 쓴다(`meetings-write.ts patchMeetingRecord`). 잠금 트랜잭션으로 감싸는 길은 확인했으나 이 저장 경로를 흉내 낸 서비스 테스트 10여 개를 함께 바꿔야 하고 실제 DB 동시성 시험이 필요해 이번 기준(90%) 미달 → 별도 PR.

@@ -57,3 +57,31 @@ jobs:
           # Test starts/destroys its own Unix-socket-only cluster. No production DB credentials.
           TRAINER_CONCURRENCY_PG: '1'
         run: bash scripts/check.sh
+
+  # 2026-10-15 실사 C8: 지금까지 `next build` 는 master 머지 뒤 운영 VPS 에서 처음 돌았다 — 빌드가 깨진 커밋이
+  # master 에 들어가고 배포 단계에서야 알았다(자동 롤백은 있음). PR 에서 같은 빌드를 미리 돌린다.
+  # 비밀값 없이 빌드되는 것을 로컬에서 확인했다(2026-10-15, 약 6분). 배포와 같이 SKIP_BUILD_CHECKS=1(타입·린트는 check 잡이 함).
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Production build (no secrets)
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          SKIP_BUILD_CHECKS: '1'
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build
