@@ -6,11 +6,12 @@
 > - **관련 문서**: 항목 정본 [A](../dashboard-follow-ups.md) · [B](../dashboard-card-headlines.md) · [C](../dashboard-channel-profit.md) · [D](../company-info-email.md) · [E](../db-sheet-supplier-summary.md) · [F](../records-follow-renames.md) · [workflow](../../../development/workflow.md) · [task-template](../../../development/task-template.md) · [deploy-vps](../../../playbooks/deploy-vps.md) · [총괄](../../../playbooks/codex-lead.md)·[제작](../../../playbooks/codex-worker.md)·[검증](../../../playbooks/codex-reviewer.md)
 
 ## 진행 현황 (대시보드용)
-갱신: 2026-10-14 20:03 KST
+갱신: 2026-10-15 01:28 KST
 
 | 항목 | 단계 | 다음 할 일 | 막힌 것·belie 결정 대기 |
 |---|---|---|---|
-| 표·날짜·하단 정렬 | PR 검증 중 | 최종 검사·빌드·독립 검증 | PC 하단 일치·7행 무스크롤·320/375/430 확인 |
+| 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |
+| 표·날짜·하단 정렬 | 완료 | 후속 요청 반영 | #1140 ff067b2e·Deploy38555661778·운영 확인 |
 | A 오늘 챙길 일 | 완료 | 후속 요청 시 확인 | #1135 22343edb·Deploy38422543949 성공·HTTP200·운영 팝업 확인 |
 | B 카드 문장·주간목표 여백 | 완료 | 후속 요청 시 확인 | A와 함께 운영 반영, 2열·퍼널 화살표·과제 한 줄 |
 | C 채널별 남은 돈 | 완료 | 후속 요청 시 확인 | #1137 625f14d2·Deploy 성공·HTTP200·운영 표 노출 확인 |
@@ -55,6 +56,7 @@ belie(운영자, 비개발자)가 SaaS 플러그를 살펴보고 경영일지에
 
 | 플러그 # | 내용 | belie 결정 | 이 작업에서 |
 |---|---|---|---|
+| 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |
 | #1 | 업체 고유번호(이름을 고쳐도 기록이 따라옴) | 수락 | F |
 | #2 | 업체별 통합 타임라인 | **기각** | 없음 |
 | #3 | 재컨택 할 일 + D-day를 대시보드에, 누르면 그 화면으로 | 수락 | A |
@@ -111,7 +113,8 @@ git -C $src push origin feat/dashboard-followups   # force 금지. 거절되면 
 - 항목이 끝나면 그 사실은 각 PR의 worklog 항목과 plan(completed로 이동)에 남는다. F까지 끝나면 마지막 worklog 항목에 「인계 지도 = `feat/dashboard-followups`의 `docs/plans/active/pluuug-handoff/README.md`」 한 줄을 남긴다.
 
 | 항목 | 무엇 | plan · spec | 만든 것 | 실제 vs 목업 | 막힌 것 |
-|---|---|---|---|---|---|
+|---|---|---|---|
+| 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |---|---|
 | **A** | 대시보드 「오늘 챙길 일」 카드: 밀린/오늘/7일 안 할 일, 결과 안 적은 미팅, 다시 연락할 DB, 멈춘 업체(#3·#4) | [plan](../dashboard-follow-ups.md) · `specs/A-followups-card.json` | `DashboardFollowUps.tsx`(269줄), 계산 `lib/analytics/dashboard-follow-ups.ts`(`STALL_DAYS=7` :19), 캐시 무효화, `LoadingProvider` background 제외, 시험 7파일 59건 PASS | 제품 코드. 기존 GET 4종만 읽고 서버·DB·시트 변경 0. 가짜는 목업 서버·fixture뿐 | 결정 ①② + 주간목표 첫 화면 규칙 확인. B·C 뒤 권장 |
 | **B** | 재무 묶음·주간 목표 카드 맨 위 한 줄 문장(#8) | [plan](../dashboard-card-headlines.md) · `specs/B-headlines.json` | `CardHeadline.tsx`, `finance-headline.ts`(`ALL_PERIOD_PREFIX` :21), `goal-headline.ts`(순서 :14), 시험 9파일 112건 PASS | 제품 코드. 기존 훅 값만 사용, 새 요청 0 | 결정 ③ + 승인 페이지에 없는 질문 2개(§3) |
 | **C** | 영업이익 칸 → 「채널별 남은 돈」 표(#7) | [plan](../dashboard-channel-profit.md) · `specs/C-channel-profit.json` | 서버 `contractChannels`(optional, 이미 읽은 배열만), `ChannelProfitBreakdown.tsx`, 시험 10파일 86건 PASS | 제품 코드. 목업은 데이터만 합성 | 결정 ④. B 뒤 권장. 「다시 불러오기 1번」 탭 단위 가드를 같은 PR에서(§4) |
@@ -158,6 +161,7 @@ belie님, 플러그 배울점 목업 6장이 승인을 기다리고 있어요.
 
 | 결정 | 항목 | 권장(코드 변경 0) | 대안을 고르면 |
 |---|---|---|---|
+| 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |
 | ① 카드 위치 | A | 생산성 아래·전체 진행건 위 (`page.tsx:163`) | 「휴대폰은 재무 바로 아래」 — A plan 인계 §2. 375·390 스크린샷을 붙인다 |
 | ② 멈춤 기준 | A | 7일·이월 포함 (`dashboard-follow-ups.ts:19`) | N일 또는 이월 제외 — A plan 인계 §2 |
 | (숨은) 주간목표 첫 화면 규칙 | A·B | 목표가 첫 화면 아래로 내려가도 된다고 기록 (`docs/plans/completed/weekly-goals-polish.md:3`) | 「목표는 첫 화면 유지」 → A는 **새 목업 → 재승인**부터. **B도 머지 전에 B만 넣은 상태를 잰다**(아래 「목표 첫 화면 측정」). 넘치면 B도 새 목업·재승인에 넣는다 |
@@ -216,6 +220,7 @@ belie님, 플러그 배울점 목업 6장이 승인을 기다리고 있어요.
 
 | 순번 | PR | 새 가지 | 앞에 끝나 있어야 하는 것 |
 |---|---|---|---|
+| 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |
 | 0 | #1131 | (기존) `fix/vault-no-recording` | belie의 「머지」. 현재 head CI 재확인. D와 `CompanyDocAutofillDialog.tsx`(다른 줄 :311 / D :35), F PR-4와 `CompanyVaultSection.tsx`(다른 줄 :229 / F :28-31)가 겹친다 — 나중에 머지하는 쪽이 rebase |
 | 1 | B 한 줄 문장 | `feat/dashboard-card-headlines` | 승인(「목표 유지」를 골랐으면 §3 측정 통과) |
 | 2 | C 채널별 남은 돈 | 구현·검증 중 | C 전용 PR·독립 검증 후 총괄 직렬 배포 | 위치 승인, channel-profit-release; 운영 미반영 |
@@ -261,6 +266,7 @@ belie님, 플러그 배울점 목업 6장이 승인을 기다리고 있어요.
 
 | PR | 가져갈 것 | Changelog(squash 본문) | 이 PR만의 확인 |
 |---|---|---|---|
+| 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |
 | B | B plan 인계 §3-4 | `Changelog: 대시보드를 열면 이번에 얼마 남겼는지, 주간 목표까지 얼마 남았는지 한 줄로 바로 알 수 있어요.` + 전/후 (B plan 「커밋 메시지」) | 서버·fixture 넣지 않음. `student-dashboard-followup.md`를 completed로 `git mv`. 동일성 diff 비어야 함(B plan 인계 §5). 「목표 유지」면 §3 측정 |
 | C | C plan 인계 §3-4·5 | `Changelog: 영업이익을 누르면 채널마다 번 돈·쓴 돈·남은 돈을 볼 수 있어요.` + 전/후 (C plan 「커밋 메시지」) | **필수(같은 PR)**: 「다시 불러오기 1번」 가드를 화면 단위(`DashboardFinance.tsx:62` `useRef`)에서 탭 단위(모듈 상수)로 + 「다시 마운트해도 1번」 시험(C plan 인계 §3-6). 화면 변화 없음. `fin-profit-table` 0줄 |
 | A | A plan 인계 §3-5·6 | `Changelog: 대시보드에서 밀린 할 일·결과를 안 적은 미팅·다시 연락할 DB·멈춘 업체를 한눈에 보고 바로 그 화면으로 갈 수 있어요.` (A plan 인계 §3-12) | `preview.html`에 예시 추가(빠져 있음). `"payments"` 0줄. 도착 화면 3종(할 일 강조 링·미팅 3초 링·DbDetail 열림). `/api/db-sheet` `withApiTiming`은 **하지 않는다** — 배포 뒤 db-sheet p95는 NOT_RUN으로 기록(A plan 인계 §3-9) |

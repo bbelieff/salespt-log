@@ -1,3 +1,11 @@
+## 2026-10-15 · 최종 대시보드 목업 운영 승인
+- 사용자 목업 전체 운영배포 승인. baseff067b2e 유지, weekly-goals-split-mockup 전용. 정성/정량 분리·도넛확대·좌우열교체·오른쪽팝업.
+- root 최종검증/배포, compact_release_review 독립검토. 데이터/API 무변경. 정상check/build/CI/배포/live 진행.
+
+## 2026-10-14 · 주간목표 정성·정량 분리 목업
+- baseff067b2e, feat/weekly-goals-split-mockup. 총괄 단독: 기존 WeeklyGoalSummary/CSS+합성 fixture만 변경.
+- 좌 정성(PT과제)·우 정량, 날짜 제목행, PC링58~77px·두 열 하단 일치. 모바일320/375/430·주차이동·타입검사 PASS. 새 목업4523 승인 대기, 운영 미변경.
+
 ## 2026-10-14 · 오늘 챙길 일 표·주간목표 날짜·좌우 하단 정렬
 - 사용자 운영배포 승인. base9fab4c5c, feat/dashboard-compact-followups 전용.
 - root: 주간목표/header·layout·fixture·docs·배포, followups_table_release: 표 view/새CSS·관련시험. 실제 집계/API/DB 무변경.
@@ -3920,3 +3928,5 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 ### 2026-09-25 · Codex/Muse · 회의록 직전 주 실적 집계
 - 사용자 확인: 목표 주차의 직전 주 실적. 기존 서버 오늘 기준 기간이 선택 주차와 분리되어 금요일에 복사값이0으로 바뀌던 원인 수정.
 - 소유: weekly-goals service·type·GoalCopyPanel 및 관련 테스트/문서. DB 쓰기·권한 변경 없음. Muse 분석·구현·회귀 초안, Codex 읽기 감사·통합·검증·배포.
+
+- 주간목표 목업 추가: 사용자 좌우 교체 요청 반영. 좌 진행건·오늘챙길일, 우 생산성·목표. 하단 일치·상세 팝업 열기닫기 확인, 4523 목업 승인 대기.

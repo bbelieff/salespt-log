@@ -13,6 +13,7 @@ import DashboardPage from "../../app/(app)/dashboard/page";
 import PaymentPage from "../../app/(app)/payment/page";
 import SchedulePage from "../../app/(app)/schedule/page";
 import DbSheetPage from "../../app/(app)/db-sheet/page";
+import WeeklyGoalSummary from "../../components/weekly-goals/WeeklyGoalSummary";
 import DesktopNav from "../../components/desktop/DesktopNav";
 import TabBar from "../../components/TabBar";
 import DirtyProvider from "../../components/DirtyGuard";
@@ -53,6 +54,7 @@ window.__fixtureNavigate = (href, replace = false) => {
 const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 }, mutations: { retry: 0 } } });
 
 const PAGES: Record<string, React.ComponentType> = {
+  "/weekly-summary-check": () => <div className="p-4"><WeeklyGoalSummary /></div>,
   "/": DashboardPage,
   "/dashboard": DashboardPage,
   "/payment": PaymentPage,

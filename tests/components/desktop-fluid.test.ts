@@ -204,8 +204,8 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     const overview = read("components/dashboard/DashboardActionOverview.tsx");
     const overviewCss = read("components/dashboard/dashboard-action-overview.css");
     expect(overviewCss).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
-    expect(overviewCss).toContain(".dashboard-action-work { grid-column: 2; grid-row: 1 / span 2; }");
-    expect(overviewCss).toContain(".dashboard-action-goals { grid-column: 1; grid-row: 2; }");
+    expect(overviewCss).toContain(".dashboard-action-work { grid-column: 1; grid-row: 1 / span 2; }");
+    expect(overviewCss).toContain(".dashboard-action-goals { grid-column: 2; grid-row: 2; }");
     expect(src.indexOf("<DashboardActionOverview")).toBeLessThan(src.indexOf("<FunnelChart"));
     expect(src).toContain("pc:grid-cols-3");
     // Charts side by side below, legibility untouched (no height flattening).
@@ -224,7 +224,7 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
       expect(read(rel)).toContain("flex h-full flex-col");
     }
     const goals = read("components/weekly-goals/WeeklyGoalSummary.tsx");
-    const taskLine = goals.indexOf('className="weekly-goals-task-line"');
+    const taskLine = goals.indexOf('className="weekly-goals-qualitative"');
     expect(taskLine).toBeGreaterThan(-1);
     expect(taskLine).toBeLessThan(goals.indexOf('className="weekly-goals-flow"'));
     expect(goals).toContain("<GoalRings");

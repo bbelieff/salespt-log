@@ -61,10 +61,11 @@ export function useFollowUpsPopover(active: Selection | null, setActive: (value:
             const a = anchor.current?.getBoundingClientRect(), p = panel.current?.getBoundingClientRect(), c = card.current?.getBoundingClientRect();
             if (!a || !p || !c)
                 return;
-            const side = c.left >= 624;
-            const width = Math.min(740, window.innerWidth - 24, side ? c.left - 24 : 740);
-            const left = side ? c.left - width - 10 : Math.max(12, Math.min(a.left + a.width / 2 - width / 2, window.innerWidth - width - 12));
-            const desired = side ? c.top : a.bottom + p.height + 8 <= window.innerHeight - 12 ? a.bottom + 8 : a.top - p.height - 8;
+            const rightSpace = window.innerWidth - c.right - 22;
+            const rightSide = window.innerWidth >= 1024 && rightSpace >= 300;
+            const width = Math.min(740, window.innerWidth - 24, rightSide ? rightSpace : 740);
+            const left = rightSide ? c.right + 10 : Math.max(12, Math.min(a.left + a.width / 2 - width / 2, window.innerWidth - width - 12));
+            const desired = rightSide ? a.top : a.bottom + p.height + 8 <= window.innerHeight - 12 ? a.bottom + 8 : a.top - p.height - 8;
             const top = Math.max(12, Math.min(desired, window.innerHeight - p.height - 12));
             setPosition(previous => previous.left === left && previous.top === top && previous.width === width ? previous : { left, width, top });
         };

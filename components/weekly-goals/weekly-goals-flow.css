@@ -24,3 +24,33 @@
   .weekly-goals-heading > [aria-label] button:last-child { width:36px; }
   .weekly-goals-heading > [aria-label] button:nth-child(2) { padding-inline:4px; font-size:11px; }
 }
+/* Shared title/date row; qualitative task and quantitative funnel use the same vertical space. */
+.weekly-goals-flow-card { container: weekly-goals-summary / inline-size; }
+.weekly-goals-split { display:grid; grid-template-columns:minmax(104px, 1fr) minmax(0, 4fr); gap:12px; flex:1; align-items:stretch; }
+.weekly-goals-split h3 { margin:0 0 8px; color:#64748b; font-size:11px; font-weight:700; }
+.weekly-goals-qualitative { min-width:0; display:flex; flex-direction:column; }
+.weekly-goals-task { flex:1; padding:10px; border-radius:8px; background:#f0fdfa; display:flex; flex-direction:column; gap:7px; }
+.weekly-goals-task b { color:#115e59; font-size:11px; white-space:nowrap; }
+.weekly-goals-task p { color:#334155; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+.weekly-goals-task-link { display:flex; align-items:center; gap:2px; margin-top:auto; color:#0f766e; font-size:11px; padding-top:4px; }
+.weekly-goals-quantitative { min-width:0; display:flex; flex-direction:column; }
+.weekly-goals-quantitative .weekly-goals-flow { margin-block:auto; padding:0; }
+.weekly-goals-quantitative [aria-label="주간 목표 실적"] { display:flex; gap:10px; }
+.weekly-goals-quantitative [aria-label="주간 목표 실적"]>div { max-width:none; }
+.weekly-goals-quantitative [aria-label="주간 목표 실적"]>div>.relative { width:var(--weekly-ring,64px); height:var(--weekly-ring,64px); }
+.weekly-goals-quantitative [aria-label="주간 목표 실적"]>div:not(:last-child)::after { top:calc(var(--weekly-ring,64px) / 2 - 4px); right:-8px; width:6px; height:6px; }
+.weekly-goals-split { --weekly-ring:clamp(48px, 12cqi, 80px); }
+@container weekly-goals-summary (max-width:450px) {
+  .weekly-goals-split { grid-template-columns:minmax(0,1fr); gap:10px; --weekly-ring:clamp(44px, 12cqi, 54px); }
+  .weekly-goals-qualitative { display:grid; grid-template-columns:64px minmax(0,1fr); align-items:center; gap:8px; }
+  .weekly-goals-qualitative h3 { margin:0; }
+  .weekly-goals-task { padding:7px 9px; gap:3px; }
+  .weekly-goals-task-link { display:none; }
+  .weekly-goals-quantitative h3 { margin-bottom:6px; }
+  .weekly-goals-quantitative [aria-label="주간 목표 실적"] { display:flex; gap:6px; }
+  .weekly-goals-quantitative [aria-label="주간 목표 실적"]>div:nth-child(n)::after { top:calc(var(--weekly-ring) / 2 - 3px); bottom:auto; right:-5px; left:auto; transform:rotate(45deg); }
+}
+@container weekly-goals-summary (max-width:260px) {
+  .weekly-goals-split { --weekly-ring:40px; }
+  .weekly-goals-quantitative [aria-label="주간 목표 실적"] { gap:6px; }
+}
