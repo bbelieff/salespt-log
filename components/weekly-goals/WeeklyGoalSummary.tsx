@@ -63,15 +63,21 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
       </div>
       {navigation}
     </div>
-    {status ?? (current && <>
-      <div className="weekly-goals-task-line">
-        <b>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</b>
-        <span>{current.record.task?.trim() || "등록된 과제 없음"}</span>
-        <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
+    {status ?? (current && <div className="weekly-goals-split">
+      <div className="weekly-goals-qualitative">
+        <h3>정성목표</h3>
+        <div className="weekly-goals-task">
+          <b>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</b>
+          <p>{current.record.task?.trim() || "등록된 과제 없음"}</p>
+          <span className="weekly-goals-task-link">과제 보기 <ChevronRight className="h-3 w-3" aria-hidden /></span>
+        </div>
       </div>
-      <div className="weekly-goals-flow" aria-label="생산 → 유입 → 컨택완료 → 미팅완료 → 계약">
-        <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
+      <div className="weekly-goals-quantitative">
+        <h3>정량목표</h3>
+        <div className="weekly-goals-flow" aria-label="생산 → 유입 → 컨택완료 → 미팅완료 → 계약">
+          <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
+        </div>
       </div>
-    </>)}
+    </div>)}
   </section>;
 }

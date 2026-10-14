@@ -28,6 +28,25 @@ function pointer(element: Element, type: string, relatedTarget: Element | null =
 }
 const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 describe("follow-up table interactions", () => {
+  it("opens to the right on desktop and stays inside the viewport after a mobile resize", () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("ft-card")) return { left: 220, right: 700, top: 200, bottom: 600, width: 480, height: 400 } as DOMRect;
+      if (this.classList.contains("ft-panel")) return { left: 0, right: 500, top: 0, bottom: 200, width: 500, height: 200 } as DOMRect;
+      return { left: 230, right: 690, top: 300, bottom: 340, width: 460, height: 40 } as DOMRect;
+    });
+    try {
+      render(); click(row().querySelector("button")!);
+      expect(parseFloat(dialog()!.style.left)).toBeGreaterThan(700);
+      expect(parseFloat(dialog()!.style.left) + parseFloat(dialog()!.style.width)).toBeLessThanOrEqual(1280);
+      act(() => { Object.defineProperty(window, "innerWidth", { configurable: true, value: 320 }); window.dispatchEvent(new Event("resize")); });
+      expect(parseFloat(dialog()!.style.left)).toBeGreaterThanOrEqual(12);
+      expect(parseFloat(dialog()!.style.left) + parseFloat(dialog()!.style.width)).toBeLessThanOrEqual(308);
+    } finally {
+      rect.mockRestore(); Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth });
+    }
+  });
   it("shows seven urgency-sorted rows with exact links and expandable reasons", () => {
     render(); click(row().querySelector("button")!);
     expect(dialog()!.querySelectorAll("tbody > tr")).toHaveLength(7);

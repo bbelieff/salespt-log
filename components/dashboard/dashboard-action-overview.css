@@ -3,9 +3,9 @@
 .dashboard-action-goals { container: dashboard-goals / inline-size; }
 @media (min-width: 1024px) {
   .dashboard-action-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr; align-items: stretch; }
-  .dashboard-action-productivity { grid-column: 1; grid-row: 1; }
-  .dashboard-action-work { grid-column: 2; grid-row: 1 / span 2; }
-  .dashboard-action-goals { grid-column: 1; grid-row: 2; }
+  .dashboard-action-productivity { grid-column: 2; grid-row: 1; }
+  .dashboard-action-work { grid-column: 1; grid-row: 1 / span 2; }
+  .dashboard-action-goals { grid-column: 2; grid-row: 2; }
 }
 @media (min-width: 1024px) {
 @container dashboard-productivity (max-width: 420px) {
