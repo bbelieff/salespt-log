@@ -1,5 +1,5 @@
 .follow-ups-card { position:relative; border:1px solid #e2e8f0; border-radius:16px; background:#fff; padding:12px; box-shadow:0 1px 2px #0f172a0d; color:#334155; font-size:12px; }
-.dashboard-action-overview:has(.follow-ups-card) { align-items:start; }
+
 .follow-ups-card header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .follow-ups-card h2 { font-size:14px; font-weight:700; color:#0f172a; }
 .follow-ups-card h2 span { margin-left:6px; color:#e11d48; }

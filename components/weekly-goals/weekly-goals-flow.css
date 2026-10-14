@@ -1,3 +1,6 @@
+.weekly-goals-heading { display:flex; align-items:center; justify-content:space-between; gap:4px 8px; margin-bottom:4px; }
+.weekly-goals-heading-label { display:flex; align-items:center; flex-wrap:wrap; gap:2px 10px; min-width:0; }
+.weekly-goals-dates { color:#64748b; font-size:11px; white-space:nowrap; }
 .weekly-goals-task-line { display:flex; align-items:center; gap:6px; min-width:0; padding:6px 8px; margin-bottom:10px; border-radius:6px; background:#f0fdfa; color:#115e59; font-size:11px; }
 .weekly-goals-task-line b { flex-shrink:0; font-weight:600; }
 .weekly-goals-task-line>span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#475569; }
@@ -13,4 +16,11 @@
     .weekly-goals-flow [aria-label="주간 목표 실적"]>div:nth-child(3)::after { top:auto; bottom:-15px; right:calc(50% - 4px); transform:rotate(135deg); }
     .weekly-goals-flow [aria-label="주간 목표 실적"]>div:nth-child(4)::after { right:auto; left:-8px; transform:rotate(225deg); }
   }
+}
+@media(max-width:767px) {
+  .weekly-goals-heading h2 { font-size:14px; gap:6px; white-space:nowrap; }
+  .weekly-goals-heading h2 .text-sm { font-size:12px; }
+  .weekly-goals-heading > [aria-label] button:first-child,
+  .weekly-goals-heading > [aria-label] button:last-child { width:36px; }
+  .weekly-goals-heading > [aria-label] button:nth-child(2) { padding-inline:4px; font-size:11px; }
 }

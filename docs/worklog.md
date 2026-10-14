@@ -1,3 +1,8 @@
+## 2026-10-14 · 오늘 챙길 일 표·주간목표 날짜·좌우 하단 정렬
+- 사용자 운영배포 승인. base9fab4c5c, feat/dashboard-compact-followups 전용.
+- root: 주간목표/header·layout·fixture·docs·배포, followups_table_release: 표 view/새CSS·관련시험. 실제 집계/API/DB 무변경.
+- check/build/동일head 독립검토/CI/운영 확인 예정. 계획 active/dashboard-compact-followups.md.
+
 ## 2026-10-14 · 사이드바 중복 로고 제거
 - 사용자 직접 수정 요청. base22343edb, fix/sidebar-brand-dedup 전용 worktree. DesktopNav·디자인 문서만 수정, 메인 로고·계정 메뉴·접기/펼치기 보존. 검사·합성 화면·CI 후 운영 반영 예정.
 

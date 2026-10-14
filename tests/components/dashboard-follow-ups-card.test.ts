@@ -69,13 +69,13 @@ const rich: Seed = {
 };
 
 describe("DashboardFollowUps 카드", () => {
-  it("STEP별 양수 칩만, 총건수는 미래 제외, 반복 안내문은 생략한다", () => {
+  it("STEP 4개와 0건을 항상 표시하고 총건수는 미래 제외한다", () => {
     seed(rich);
     render();
     expect(card().textContent).toContain("오늘 챙길 일");
     expect(card().textContent).toContain("5건"); // 밀림1 + 오늘1 + 미팅1 + 재연락1 + 멈춤1(푸른제작 계약 후 10일)
     expect(card().textContent).not.toContain("부터 정리");
-    expect(card().querySelectorAll(".follow-ups-step-row")).toHaveLength(3);
+    expect(card().querySelectorAll(".ft-summary-row")).toHaveLength(4);
     expect(["overdue", "today", "meeting", "recontact", "stalled", "upcoming"].map((k) => chip(k) !== null)).toEqual([true, true, true, true, true, true]);
     expect(card().textContent).not.toContain("지금 챙길 일이 없습니다.");
   });
@@ -101,15 +101,16 @@ describe("DashboardFollowUps 카드", () => {
 
     act(() => chip("stalled")!.click());
     expect(links()).toEqual(["/payment?row=5&slot=1"]);
+    act(() => (document.querySelector(".ft-action") as HTMLButtonElement).click());
     expect(document.querySelector("[role=dialog]")!.textContent).toContain("진행기관 없음");
   });
 
   it("모든 조회가 성공했고 챙길 일이 없으면 간결한 빈 상태 — 7일 안 할 일은 보조 칩 하나", () => {
     seed({ contracts: [contract({ 계약일: "2026-10-10", 수납1: slot({진행기관:"기관A"}) })], todos: [todo({ contractRef: "2026-10-10|샘플상사", institutionRef:"기관A", 예정일자: "2026-10-15" })] });
     render();
-    expect(card().textContent).toContain("지금 챙길 일이 없습니다.");
+    expect(card().textContent).toContain("0건");
     expect(chip("upcoming")).not.toBeNull();
-    expect(host.querySelectorAll(".follow-ups-step-row")).toHaveLength(0);
+    expect(host.querySelectorAll(".ft-summary-row")).toHaveLength(4);
   });
 
   it("계약을 못 찾은 할 일은 셈에서 빼고 안내 한 줄만 남긴다", () => {
@@ -117,7 +118,7 @@ describe("DashboardFollowUps 카드", () => {
     render();
     expect(chip("overdue")).toBeNull();
     expect(card().textContent).toContain("업체 연결이 끊긴 할 일 1건");
-    expect(card().textContent).toContain("지금 챙길 일이 없습니다.");
+    expect(card().textContent).toContain("0건");
   });
 
   it("DB관리시트 조회가 일시 장애로 실패하면 빈 상태 안내 대신 안내와 다시 시도(실패한 조회만 다시 읽음)", async () => {
@@ -172,7 +173,7 @@ describe("STEP summary detail boundaries", () => {
   it("the total opens every urgent item oldest first; future tasks remain separate", () => {
     seed(rich); render();
     act(() => (host.querySelector(".follow-ups-total") as HTMLButtonElement).click());
-    expect(document.querySelectorAll(".follow-ups-detail")).toHaveLength(5);
+    expect(document.querySelectorAll(".ft-table tbody > tr")).toHaveLength(5);
     expect(links()[0]).toBe("/payment?row=5&slot=1");
     expect(links()).not.toContain("/payment?row=3&slot=1&focus=soon");
     expect(document.querySelector("[role=dialog]")!.textContent).toContain("샘플 푸른제작");
@@ -182,8 +183,9 @@ describe("STEP summary detail boundaries", () => {
   it("unknown contact dates have their own count and are never invented as long overdue", () => {
     seed({leads:[lead({next:"",result:"부재"})]}); render();
     expect(card().textContent).toContain("날짜 확인 1");
-    expect(card().querySelector('[data-tone="long-overdue"]')).toBeNull();
+    expect([...card().querySelectorAll('.ft-count[data-tone="long-overdue"]')].map(node => node.textContent)).toEqual(["0", "0", "0", "0"]);
     act(() => (card().querySelector('[data-tone="unknown"]') as HTMLButtonElement).click());
+    act(() => (document.querySelector(".ft-action") as HTMLButtonElement).click());
     expect(document.querySelector("[role=dialog]")!.textContent).toContain("다음 연락일 없음");
   });
   it("complete source failure cannot appear as zero or a completed queue", async () => {
