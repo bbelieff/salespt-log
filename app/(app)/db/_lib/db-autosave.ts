@@ -18,6 +18,7 @@
  *   flight, exact-signature dedup, manual retry only (no auto retry).
  */
 import type { ChannelKey } from "./channels";
+import { todayKST } from "@/util/week";
 
 export type DbDraftStatus = "empty" | "partial" | "invalid" | "valid";
 
@@ -162,7 +163,7 @@ export function isTouchedDraft(
     }
     if (typeof value === "boolean" && value) return true;
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKST();
   if (channelDateKeys(channel).some((k) => textOf(draft, k) !== "" && textOf(draft, k) !== today)) {
     return true;
   }

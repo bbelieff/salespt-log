@@ -9,7 +9,7 @@ import {
   CHANNEL_ORDER,
   Channel,
 } from "@/types";
-import { diffDays, weekIndexOf, weekStartOf } from "@/util/week";
+import { diffDays, weekIndexOf, weekStartOf, parseISO } from "@/util/week";
 import { sheetsClient } from "./sheets-client";
 import { parseWeekRows } from "./week-parse";
 import { mirrorSheetRow } from "./db/mirror";
@@ -107,10 +107,7 @@ function fmtISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function parseISO(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
-}
+export { parseISO };
 
 function tabRef(tab: string): string {
   // 탭 이름에 공백·괄호가 있으면 작은따옴표 wrapping

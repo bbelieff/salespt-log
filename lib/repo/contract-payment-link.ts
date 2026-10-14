@@ -11,7 +11,9 @@ import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear
 import { queueContractRowSync } from "./contract-sheet-sync";
 
 /**
- * (계약일, 업체명) 매칭 row clear. 미팅 계약 되돌리기 cascade 용 (2026-05-17 [2a]).
+ * 미팅 계약 되돌리기 cascade 용 row clear (2026-05-17 [2a]). **meetingId 우선**(AK 연결 미팅 id) —
+ * 같은 업체·같은 계약일 계약이 2건이면 (계약일, 업체명) 만으로는 엉뚱한 계약을 지울 수 있었다
+ * (2026-10-15 실사 C4). id 로 못 찾으면 예전처럼 (계약일, 업체명) 폴백(레거시 행).
  * 매칭되는 row 없으면 null 반환, 있으면 clearRow 후 row 번호 반환.
  *
  * BBE-246: clearRow 자체가 opts.syncDb 분기를 전담(DB 동기 정본 + 시트 비동기 수렴잡) —
@@ -24,8 +26,9 @@ export async function clearRowByLink(
   계약일: string,
   업체명: string,
   opts?: ContractWriteOpts,
+  meetingId?: string,
 ): Promise<number | null> {
-  const row = await findRowByLink(spreadsheetId, { 계약일, 업체명 });
+  const row = await findRowByLink(spreadsheetId, { meetingId, 계약일, 업체명 });
   if (row === null) return null;
   await clearRow(spreadsheetId, row, opts);
   return row;

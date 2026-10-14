@@ -19,6 +19,7 @@ import { fmtWon } from "../_lib/channels";
 import { rowFormDirty } from "../_lib/dirty";
 import MoneyInput from "@/components/ui/MoneyInput";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { todayKST } from "@/util/week";
 
 interface Props {
   channel: ChannelMeta;
@@ -29,7 +30,7 @@ interface Props {
 }
 
 export default function RowForm({ channel, initial = {}, onChange, onDirtyChange }: Props) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKST();
   // 추가(생산 시작) 모드 = initial 없음. 2단계 필드(hideInAdd) 숨김 판단용.
   const isAdd = Object.keys(initial).length === 0;
   const blank = useMemo(() => {

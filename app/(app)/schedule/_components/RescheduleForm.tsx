@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 import TimePicker15 from "@/components/ui/TimePicker15";
+import { todayKST } from "@/util/week";
 
 interface Props {
   initialDate: string; // YYYY-MM-DD
@@ -41,7 +42,7 @@ export default function RescheduleForm({
   pending,
   bindSubmit,
 }: Props) {
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = todayKST();
   const [newDate, setNewDate] = useState(initialDate);
   const [newTime, setNewTime] = useState(initialTime);
   const [reason, setReason] = useState("");

@@ -6,6 +6,7 @@
  * exact-payload signatures, revision guard, and single-flight coalescing that
  * preserves the latest edit while a save is pending.
  */
+import { todayKST } from "@/util/week";
 import { describe, expect, it, vi } from "vitest";
 import {
   createRevisionGuard,
@@ -18,7 +19,7 @@ import {
 } from "@/app/(app)/db/_lib/db-autosave";
 import { createSaveCoalescer } from "@/util/save-coalesce";
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = todayKST(); // 화면 기본 날짜와 같은 한국 시간(2026-10-15 C5)
 
 const PURCHASE_DEFAULTS = {
   구매일: TODAY,

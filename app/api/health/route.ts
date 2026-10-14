@@ -21,6 +21,8 @@ export function GET() {
     AUTH_GOOGLE_ID: !!process.env.AUTH_GOOGLE_ID,
     AUTH_GOOGLE_SECRET: !!process.env.AUTH_GOOGLE_SECRET,
     ADMIN_EMAILS: adminEmails().length > 0,
+    // DB 가 정본(2026-08-24~). 주소가 비면 저장 경로가 경고 없이 시트로 되돌아간다 → 배포를 실패시킨다(2026-10-15 실사 C1).
+    DATABASE_URL: !!process.env.DATABASE_URL?.trim(),
   };
   const ok = Object.values(checks).every(Boolean);
   // 캐시 워밍 관측 — "돌고 있나"를 밖에서 확인할 유일한 창(2026-08-30, §0 Observability).

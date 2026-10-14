@@ -32,7 +32,7 @@ export async function cascadeDescendantMeetings(
     if (c.상태 === "계약" && c.미팅날짜 && c.업체명) {
       const row = await clearContractPaymentByLink(ctx.spreadsheetId, c.미팅날짜, c.업체명, {
         syncDb: syncDbOf(ctx),
-      });
+      }, c.id);
       if (row !== null) paymentRows++;
     }
     // 자손 gcal 은 R2 무호출(gcal-2b) 보존 — 파일럿은 수렴 잡 cleared 브랜치가 멱등 제거.
@@ -74,7 +74,7 @@ export async function removeMeetingWithCascade(
   if (m.상태 === "계약" && m.미팅날짜 && m.업체명) {
     removedPaymentRow = await clearContractPaymentByLink(spreadsheetId, m.미팅날짜, m.업체명, {
       syncDb: syncDbOf(ctx),
-    });
+    }, id);
   }
   // 3) 본인 clear(클리어 전 구글 이벤트 삭제 포함) + 4) 영업관리 H -1 (좌표 실패 시 skip).
   await clearMeetingRecord(ctx, id, { gcalRemove: true });
@@ -123,6 +123,7 @@ export async function revertMeeting(
       m.미팅날짜,
       m.업체명,
       { syncDb: syncDbOf(ctx) },
+      id,
     );
     return {
       status: "예약",
@@ -178,7 +179,7 @@ export async function reviveCaseClosure(
   if (child.상태 === "계약" && child.미팅날짜 && child.업체명) {
     const row = await clearContractPaymentByLink(ctx.spreadsheetId, child.미팅날짜, child.업체명, {
       syncDb: syncDbOf(ctx),
-    });
+    }, child.id);
     if (row !== null) cascade02 = ` + 02 row ${row}`;
   }
   await clearMeetingRecord(ctx, child.id, { gcalRemove: true }); // 이벤트 삭제(클리어 전) 포함

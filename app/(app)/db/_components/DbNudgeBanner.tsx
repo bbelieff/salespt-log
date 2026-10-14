@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useDBOverview } from "@/query/db-hooks";
+import { todayKST } from "@/util/week";
 
 const DISMISS_KEY = "db-nudge-dismissed-on";
 const num = (r: Record<string, unknown>, k: string) => Number(r[k] ?? 0) || 0;
@@ -21,7 +22,7 @@ export default function DbNudgeBanner({ onGoDirect }: Props) {
   const overview = useDBOverview();
   const [dismissed, setDismissed] = useState(true); // SSR 기본 숨김 → mount 후 판정
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKST();
   useEffect(() => {
     try {
       setDismissed(localStorage.getItem(DISMISS_KEY) === today);
