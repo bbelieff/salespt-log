@@ -368,12 +368,3 @@ export {
   reviveCaseClosure,
   revertMeeting,
 } from "./contact-cascade";
-
-/** id로 미팅 조회. */
-export async function getMeetingById(
-  email: string,
-  id: string,
-): Promise<Meeting | null> {
-  const ctx = await resolveCtx(email);
-  return getMeetingRecord(ctx, id);
-}

@@ -138,17 +138,17 @@ describe("G1: grad-offset 상수화 (50/57)", () => {
     expect(
       bad,
       `offset 문맥에 50/57 리터럴.\n` +
-        `→ 고치는 법: @/config/cohort-dates 의 GRADUATION_OFFSET_DAYS(_LEGACY)/ALLOWED_GRAD_OFFSETS 사용.\n` +
+        `→ 고치는 법: @/config/cohort-dates 의 GRADUATION_OFFSET_DAYS(_LEGACY) 또는 기수별 ceremonyISO 사용.\n` +
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);
   });
 });
 
 // ═════════════════════════════════════════════════════════════
-// G2 — 편집 유예 69일 상수화
+// G2 — 폐지된 편집 유예(69일) 재유입 금지 (ADR-0031, 2026-10-15 상수 삭제)
 // ═════════════════════════════════════════════════════════════
-describe("G2: 편집 유예(69일) 상수화", () => {
-  it("숫자 69 는 lib/config/cohort-dates.ts(EDIT_WINDOW_DAYS) 밖 금지", () => {
+describe("G2: 폐지된 편집 유예(69일) 재유입 금지", () => {
+  it("숫자 69 는 앱 코드에 쓰지 않는다", () => {
     const bad: string[] = [];
     for (const file of appFiles()) {
       const r = rel(file);
@@ -158,8 +158,8 @@ describe("G2: 편집 유예(69일) 상수화", () => {
     }
     expect(
       bad,
-      `편집 유예 69 하드코딩 재출현.\n` +
-        `→ 고치는 법: @/config/cohort-dates 의 EDIT_WINDOW_DAYS 를 import 하세요.\n` +
+      `편집 유예 69 가 다시 나타났어요.\n` +
+        `→ 수강시작+69일 편집 잠금은 ADR-0031 로 폐지됐어요(수료 후에도 계속 입력). 되살리지 말고, 다른 뜻의 69 라면 이름 있는 상수로 쓰세요.\n` +
         bad.map((b) => "  • " + b).join("\n"),
     ).toEqual([]);
   });
@@ -405,8 +405,8 @@ describe("cohort-dates 계약값", () => {
     const c = await import("@/config/cohort-dates");
     expect(c.GRADUATION_OFFSET_DAYS).toBe(50);
     expect(c.GRADUATION_OFFSET_DAYS_LEGACY).toBe(57);
-    expect(c.ALLOWED_GRAD_OFFSETS).toEqual([50, 57]);
-    expect(c.EDIT_WINDOW_DAYS).toBe(69);
+    // ALLOWED_GRAD_OFFSETS·EDIT_WINDOW_DAYS(69) 는 2026-10-15 삭제 — 편집 유예는 ADR-0031 로 폐지.
+    expect("EDIT_WINDOW_DAYS" in c).toBe(false);
     expect(c.MAX_SHEET_WEEK).toBe(10);
     expect(c.STATS_WEEKS).toBe(8);
   });

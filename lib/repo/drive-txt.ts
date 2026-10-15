@@ -14,51 +14,6 @@ import { Readable } from "node:stream";
 import { noticeImageFolderId } from "@/config";
 import { driveCreatorClient } from "./drive-client";
 
-/** 폴더 내 같은 이름 TXT 검색 → 있으면 내용 교체(update), 없으면 생성(create). */
-export async function upsertTxtInFolder(
-  folderId: string,
-  fileName: string,
-  content: string,
-): Promise<{ fileId: string; webViewLink: string; updated: boolean }> {
-  const drive = driveCreatorClient();
-  const escaped = fileName.replace(/'/g, "\\'");
-  const found = await drive.files.list({
-    q: `name = '${escaped}' and '${folderId}' in parents and trashed = false`,
-    fields: "files(id, webViewLink)",
-    pageSize: 2,
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
-  });
-  const existing = found.data.files?.[0];
-
-  if (existing?.id) {
-    const res = await drive.files.update({
-      fileId: existing.id,
-      media: { mimeType: "text/plain", body: content },
-      fields: "id, webViewLink",
-      supportsAllDrives: true,
-    });
-    return {
-      fileId: res.data.id ?? existing.id,
-      webViewLink: res.data.webViewLink ?? existing.webViewLink ?? "",
-      updated: true,
-    };
-  }
-
-  const res = await drive.files.create({
-    requestBody: { name: fileName, parents: [folderId], mimeType: "text/plain" },
-    media: { mimeType: "text/plain", body: content },
-    fields: "id, webViewLink",
-    supportsAllDrives: true,
-  });
-  if (!res.data.id) throw new Error("[drive-txt] TXT 생성 결과 id 없음");
-  return {
-    fileId: res.data.id,
-    webViewLink: res.data.webViewLink ?? "",
-    updated: false,
-  };
-}
-
 /**
  * 공지 이미지 업로드 (announcement-popup §4) — 공지 이미지 폴더(config 기본값,
  * env NOTICE_IMAGE_FOLDER_ID 오버라이드)에 생성 + anyoneWithLink reader 권한

@@ -4,10 +4,6 @@
  */
 import { findUserByEmail } from "@/repo/users";
 
-export async function resolveUser(email: string) {
-  return findUserByEmail(email);
-}
-
 export { summarize, type Stats } from "./gamification";
 
 // Self-claim 유스케이스 (PR-B2)
@@ -23,7 +19,6 @@ export {
   removeMeetingWithCascade,
   revertMeeting,
   reviveCaseClosure,
-  getMeetingById,
   type ContactDayView,
   type ChannelDailyRowMetrics,
 } from "./contact";

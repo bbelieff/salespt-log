@@ -37,7 +37,6 @@ const GRANDFATHERED = new Set<string>([
   "app/api/admin/set-trainee-team/route.ts",
   "app/api/admin/set-user-sort-orders/route.ts",
   "app/api/admin/switch/route.ts",
-  "app/api/admin/users/route.ts",
   "app/api/db-sheet/route.ts",
   "app/api/db/[channel]/route.ts",
   "app/api/drive-link/route.ts",

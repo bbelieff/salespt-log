@@ -159,15 +159,6 @@ export function parseAssignedTrainers(field: string | null | undefined): string[
   return out;
 }
 
-/** 트레이너 한 명이 담당하는 수강생 목록 (다중 배정 inclusion 검사). */
-export async function listTraineesForTrainer(trainerEmail: string): Promise<User[]> {
-  const all = await listAllUsers();
-  const lc = trainerEmail.toLowerCase();
-  return all.filter(
-    (u) => u.role === "trainee" && parseAssignedTrainers(u.assignedTrainer).includes(lc),
-  );
-}
-
 /** 승인 대기 중인 트레이너 목록. */
 export async function listPendingTrainers(): Promise<User[]> {
   const all = await listAllUsers();
@@ -234,11 +225,6 @@ export async function updateUserCell(
   }
 }
 
-/** Admin 전용: 트레이너 승인 (status pending → active) */
-export async function approveTrainer(email: string): Promise<void> {
-  await updateUserCell(email, "F", "active");
-}
-
 /** Admin 전용: 수강생 승인 (status pending → active). 트레이너 승인과 동일 로직. */
 export async function approveTrainee(email: string): Promise<void> {
   await updateUserCell(email, "F", "active");
@@ -258,14 +244,6 @@ export async function setTraineeAssignments(
   await updateUserCell(traineeEmail, "G", normalized.join(","));
 }
 
-/** @deprecated 단일 배정용. setTraineeAssignments 권장. */
-export async function assignTrainerToTrainee(
-  traineeEmail: string,
-  trainerEmail: string,
-): Promise<void> {
-  await updateUserCell(traineeEmail, "G", trainerEmail.toLowerCase());
-}
-
 /**
  * Admin 전용: 수강생 팀 (H 컬럼) 설정. 빈 문자열 = 미배정 (기수 박스 내 개별 카드).
  * trim 후 저장 — admin 이 같은 팀명 다른 띄어쓰기로 입력해도 같은 그룹.
@@ -275,11 +253,6 @@ export async function setTraineeTeam(
   team: string,
 ): Promise<void> {
   await updateUserCell(traineeEmail, "H", team.trim());
-}
-
-/** Admin 전용: 역할 변경 (trainee ↔ trainer ↔ admin) */
-export async function setUserRole(email: string, role: User["role"]): Promise<void> {
-  await updateUserCell(email, "E", role);
 }
 
 /**
@@ -408,45 +381,6 @@ export {
   removeTrainerCompletely,
 } from "./users-delete";
 
-export async function registerUser(u: User): Promise<void> {
-  const reg = registry();
-  const validated = User.parse(u);
-  // 결정적 좌표 + RAW(PR D) — values.append 열밀림과 ISO/숫자 자동변환을 방지.
-  const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId: reg.spreadsheetId,
-    range: `${reg.tab}!A${nextRegistryRowNumber(rows.length)}`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[
-        validated.email,
-        validated.cohort,
-        validated.name,
-        validated.spreadsheetId,
-        validated.role,
-        validated.status,
-        validated.assignedTrainer,
-        validated.team,
-        validated.cohortLabel,
-        validated.nameLabel,
-        validated.courseStartISO,
-        validated.graduationISO,
-        String(validated.sortOrder),
-        validated.driveParentPath,
-        validated.feedbackFolderId,
-        validated.driveLinkStatus,
-      ]],
-    },
-  });
-  invalidateRegistry();
-  // 시트에는 A~P 만 append 한다 — Q~T(memo·captainOf·gcal)는 쓰지 않으므로 미러도 비운다
-  // (시트에 없는 값을 DB 에만 남기면 정합 대조가 영구히 어긋난다).
-  mirrorUserRow(registryRowFromUser({
-    ...validated,
-    memo: "", captainOf: "", gcalToken: "", gcalSettings: "",
-  }));
-}
-
 // PR C-1: sortOrder(M) 일괄 update 는 lib/repo/users-sort.ts 로 분리 (500줄 cap).
 export { setUserSortOrders } from "./users-sort";
 
@@ -476,25 +410,4 @@ export { findSheetByCohortName } from "./users-sheet-lookup";
 // 500줄 cap 분리 — 호환 re-export.
 export { claimRegistry } from "./users-claim";
 export { addTraineePrepRow } from "./users-prep";
-
-// 레지스트리 시트 헤더 1회 생성.
-export async function ensureRegistryHeader(): Promise<void> {
-  const reg = registry();
-  const existing = await readRange(reg.spreadsheetId, HEADER_RANGE(reg.tab));
-  if (existing[0]?.[0] === "email") return;
-  // 헤더는 row 1 고정 좌표에 직접 쓴다.
-  await sheetsClient().spreadsheets.values.update({
-    spreadsheetId: reg.spreadsheetId,
-    range: HEADER_RANGE(reg.tab),
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [["email", "cohort", "name", "spreadsheetId", "role", "status", "assignedTrainer", "team", "cohort_label", "name_label", "course_start_iso", "graduation_iso", "sort_order", "drive_parent_path", "feedback_folder_id", "drive_link_status", "memo", "captain_of"]],
-    },
-  });
-}
-
-export async function listCohortMembers(cohort: string): Promise<User[]> {
-  const all = await listAllUsers();
-  return all.filter((u) => String(u.cohort) === String(cohort) && u.role === "trainee");
-}
 export { findOwnerBySpreadsheetId } from "./users-owner";

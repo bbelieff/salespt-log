@@ -25,11 +25,9 @@ import {
   parseProductionRow,
   parsePurchaseRow,
 } from "../db";
+import { colName } from "@/util/sheet-column";
 import { dbEnabled, ensureSchema, getDbPool } from "./client";
 
-function colName(i: number): string {
-  return i < 26 ? String.fromCharCode(65 + i) : "A" + String.fromCharCode(65 + i - 26);
-}
 function coerce(v: unknown): unknown {
   if (typeof v !== "string") return v;
   if (v === "true" || v === "TRUE") return true;
