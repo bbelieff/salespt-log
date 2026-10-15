@@ -1,3 +1,7 @@
+## 2026-10-15 · D-day 총회일 기준·수료 후 N주 (fix/dday-ceremony-and-graduate-weeks)
+- belie 권장안 승인(D1·D2·D7): 대시보드 D-day·수료 판정·진행바를 종강총회일 하나로(10기 10/26~29 'D-3' 오표시 해소), 수료 뒤 '수료 후 N주', 일정 탭 '매출'→'이번 주 계약'. 계산값 불변.
+
+
 ## 2026-10-15 · 화석 코드 정비 A2 (chore/fossil-a2-oneoff-scripts)
 - 끝난 1회용 스크립트 22개 + 10기 1회 백필 워크플로 삭제(3,696줄). 옛 10기 총회일(9/26)을 박은 finalize-cohort10·실명 파일 4개 포함. 감사 워크플로가 이름으로 부르는 스크립트는 유지.
 - 상세 = docs/plans/active/fossil-a2-oneoff-scripts.md.

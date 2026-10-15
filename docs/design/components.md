@@ -1099,9 +1099,10 @@ app/(app)/dashboard/page.tsx
 | `graduated` | boolean, 기본 false | 실제 종강일 경과 여부 |
 | `startDate`, `graduationDate` | string | 시작일·종강총회일 M/D 표시 |
 | `progressPercent` | number | `(오늘 − 시작일) / (종강일 − 시작일) × 100`, 표시 범위 0~100 |
-| `graduationISO` | string, 선택 | `DDayBadge`에 전달하는 실제 수료일(O2) |
+| `graduationISO` | string, 선택 | `DDayBadge`에 전달하는 종강총회일(없으면 수강 종료일) — D-day·수료 판정·진행바 끝이 모두 이 날 기준(2026-10-15 D1) |
+| `weeksAfterGraduation` | number, 선택 | 수료 다음 날부터 1·2·…주. 0 이면 표시 안 함(D2) |
 
-- 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료`. 오른쪽: `DDayBadge`.
+- 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료 후 N주`. 오른쪽: `DDayBadge`. 계산은 `app/(app)/dashboard/_lib/course-banner.ts`.
 - 진행바: `h-1.5 bg-slate-100 rounded-full`, 파란 그라데이션과 amber SVG 끝점. 위아래 `mb-3`, 컨테이너 `pt-3 pb-2.5`.
 - 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
 - 진행 배너의 코스 주차(시작일 앵커)와 주간목표의 금~목 주차는 서로 다른 계약이다.
@@ -1300,7 +1301,7 @@ app/(app)/dashboard/page.tsx
 | 컴포넌트 | 역할 / Props |
 |---|---|
 | **WeekHeader** | 일정·계약 주차 네비 (컨택과 변형: 일자 클릭 = `scrollIntoView`, 주차 변경 X) |
-| **SummaryBar** | 주간 5칸 카운터 (미팅총건/미팅예정/미팅완료/미팅취소/계약) + 매출 합계 배너. WeekHeader와 sticky 부모로 묶고, 1440px 이상에서 이 상단 묶음만 중앙 50% 폭으로 표시한다. 아래 WeekBody는 전폭 2열 유지 |
+| **SummaryBar** | 주간 5칸 카운터 (미팅총건/미팅예정/미팅완료/미팅취소/계약) + 「이번 주 계약」 합계 배너(이번 주 계약 수임비+그 계약 수납액 — 기간 매출 아님, 2026-10-15 이름 변경). WeekHeader와 sticky 부모로 묶고, 1440px 이상에서 이 상단 묶음만 중앙 50% 폭으로 표시한다. 아래 WeekBody는 전폭 2열 유지 |
 | **WeekFallback** | 일정·계약 주간 로딩/에러 상태 (schedule/page.tsx 500줄 분리). Props: `state:"loading"\|"error"`, `onRetry`, `retrying`. 에러 시 "다시 시도"(refetch) 버튼 — 네트워크 단절 새로고침 없이 재요청 (2026-06 PostHog P2). |
 | **DaySection** | 일별 미팅 섹션. 오늘 강조 좌측바 (`border-l-blue-500`). 토요일 좌측바 빨강 |
 | **MeetingResultCard** | Full 미팅 카드 (4종 액션 버튼 — 계약/완료/변경/취소 + 기본편집). Props: `meeting` / 액션 콜백 |
