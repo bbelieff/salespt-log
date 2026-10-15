@@ -21,8 +21,10 @@ import { chooseDailySource, chooseWriteSource } from "./daily-source";
 import { dbEnabled, writeRowToDb } from "@/repo/db/client";
 import {
   listCarriedMeetingKeysFromDb,
+  readContractsFromDb,
   readMeetingsFromDb,
 } from "@/repo/db/read-daily";
+import type { ContractPayment } from "@/types";
 import { meetingToRow, stripUserEnteredEscapes } from "@/repo/meetings-rows";
 import { queueMeetingSheetSync } from "./meetings-write";
 import {
@@ -86,8 +88,8 @@ export async function migrateArenaCarryover(
   // 통째로 누락된다(read-your-writes 위반 — 재실행 없이는 영구 소실). 이전 기수가 DB 읽기
   // 파일럿이면 DB 를 직접 union — meetingToRow 는 appendMeeting 과 동일한 코덱이라
   // Meeting 필드(A~AN 전체, 수식열 제외)를 손실 없이 raw 행으로 되돌린다.
-  // (계약 readAllContracts 는 여기 포함 안 함 — 02 append/update 는 시트에 동기 즉시 쓰기라
-  //  같은 비동기 지연 창이 없음, 실측: appendFromContract/updateUserFields 모두 await 직접 update.)
+  // (계약도 같은 문제가 있다 — BBE-246 이후 02 편집(F:AH)은 DB 먼저 + 시트 수렴 큐라, 시트만 읽으면 밀린
+  //  수납값이 옮겨진다. 아래 02 이월이 DB 를 정본으로 읽는다 — 화석 조사 B4, 2026-10-15.)
   // BBE-65(2차, 적대검증) — meetingToRow 는 USER_ENTERED 오변환 방지용 선행 apostrophe 를
   // 붙인다(예약비고/미팅사유/계약조건/업체정보 등). listCarrySourceMeetings(시트 읽기)는
   // Sheets 가 이미 그 apostrophe 를 벗겨낸 값이라 형식이 다르다 — carriedMeetingPayload 는
@@ -134,12 +136,21 @@ export async function migrateArenaCarryover(
   }
 
   // ── 02 계약 행 이월 (멱등: AJ 원본키 = "02:{이전행번호}") ──
-  const [oldContracts, arenaContracts] = await Promise.all([
+  // 이전 기수가 DB 읽기 파일럿이면 DB 계약이 정본(시트는 밀린 미러일 수 있다) — DB 행을 쓰고, DB 에 없는 줄만
+  // 시트에서 보탠다(백필 공백 안전). 멱등키(AJ 원본키)는 아레나 시트 ∪ DB 합집합으로 판정(미팅과 같은 방식).
+  const priorFromDb = chooseDailySource(prior.cohort, dbEnabled()) === "db";
+  const [sheetOld, dbOld, arenaSheetContracts, arenaDbContracts] = await Promise.all([
     readAllContracts(prior.spreadsheetId),
+    priorFromDb ? readContractsFromDb(prior.spreadsheetId) : Promise.resolve<ContractPayment[]>([]),
     readAllContracts(arenaSheetId),
+    dbPrimary ? readContractsFromDb(arenaSheetId) : Promise.resolve<ContractPayment[]>([]),
   ]);
+  const dbRows = new Set(dbOld.map((c) => c.row));
+  const oldContracts = [...dbOld, ...sheetOld.filter((c) => !dbRows.has(c.row))].sort(
+    (a, b) => (a.row ?? 0) - (b.row ?? 0),
+  );
   const carriedC = new Set(
-    arenaContracts.map((c) => (c.이월원본행id ?? "").trim()).filter(Boolean),
+    [...arenaSheetContracts, ...arenaDbContracts].map((c) => (c.이월원본행id ?? "").trim()).filter(Boolean),
   );
   for (const cp of oldContracts) {
     const key = `02:${cp.row}`;

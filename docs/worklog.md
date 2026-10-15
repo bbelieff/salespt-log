@@ -1,3 +1,8 @@
+## 2026-10-15 · 계약 줄 찾기·아레나 이월 DB 정본으로 (fix/contract-row-lookup-from-db)
+- 화석 B1·B4: 파일럿 기수의 계약 수정·삭제·수임비 동기가 시트 전체를 읽어 줄을 찾던 것 → DB 먼저(같은 규칙), 없으면 시트. 아레나 이월이 이전 기수 계약을 시트에서 읽어 밀린 수납값을 옮기던 것 → DB 정본 + DB 공백만 시트 보충.
+- 상세 = docs/plans/active/contract-row-lookup-from-db.md. 되돌리기 = squash revert.
+
+
 ## 2026-10-15 · 연습장(가짜로 바꾼 운영 DB 사본) 도구 (chore/masked-sandbox-snapshot)
 - belie 승인. VPS 에서 운영 DB 를 읽기만 해 가린 사본을 /tmp 에 만들고(원본 흔적 검사), 이 PC PGlite 에 실어 실측. 가리기 규칙 테스트 12개. 앱 동작 변화 없음.
 - 상세 = docs/plans/active/masked-sandbox-snapshot.md.

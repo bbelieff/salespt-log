@@ -6,7 +6,8 @@
  * `@/repo/contract-payment` 에서 재수출되므로 호출부·기존 테스트 모킹 경로는 바뀌지 않는다.
  */
 import { sheetsClient } from "./sheets-client";
-import { clearRow, findRowByLink, resolveLayout, tabRef } from "./contract-payment";
+import { clearRow, resolveLayout, tabRef } from "./contract-payment";
+import { findContractRow } from "./contract-row-lookup";
 import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
 import { queueContractRowSync } from "./contract-sheet-sync";
 
@@ -28,7 +29,7 @@ export async function clearRowByLink(
   opts?: ContractWriteOpts,
   meetingId?: string,
 ): Promise<number | null> {
-  const row = await findRowByLink(spreadsheetId, { meetingId, 계약일, 업체명 });
+  const row = await findContractRow(spreadsheetId, { meetingId, 계약일, 업체명 }, opts);
   if (row === null) return null;
   await clearRow(spreadsheetId, row, opts);
   return row;
@@ -48,11 +49,11 @@ export async function updateLinkFields(
   next: { 계약일: string; 업체명: string },
   opts?: ContractWriteOpts,
 ): Promise<number | null> {
-  const row = await findRowByLink(spreadsheetId, {
+  const row = await findContractRow(spreadsheetId, {
     meetingId: old.meetingId,
     계약일: old.계약일,
     업체명: old.업체명,
-  });
+  }, opts);
   if (row === null) return null;
   const payload = { 계약일: next.계약일, 업체명: next.업체명 };
   if (opts?.syncDb) {

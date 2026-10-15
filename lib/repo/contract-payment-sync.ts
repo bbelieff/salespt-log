@@ -1,6 +1,7 @@
 /** Layer: repo — 04→02 수임비 동기화 (contract-payment.ts 에서 분리 — 500줄 캡). */
 import { sheetsClient } from "./sheets-client";
-import { findRowByLink, resolveLayout, tabRef } from "./contract-payment";
+import { resolveLayout, tabRef } from "./contract-payment";
+import { findContractRow } from "./contract-row-lookup";
 import { type ContractWriteOpts, persistContractRow } from "./db/contracts-clear";
 import { queueContractRowSync } from "./contract-sheet-sync";
 
@@ -19,11 +20,11 @@ export async function syncFeeFromContract(
   data: { 계약일: string; 업체명: string; 수임비: number; meetingId?: string },
   opts?: ContractWriteOpts,
 ): Promise<{ row: number } | null> {
-  const row = await findRowByLink(spreadsheetId, {
+  const row = await findContractRow(spreadsheetId, {
     meetingId: data.meetingId,
     계약일: data.계약일,
     업체명: data.업체명,
-  });
+  }, opts);
   if (!row) return null;
   if (opts?.syncDb) {
     await persistContractRow(spreadsheetId, row, { 수임비: data.수임비 }, opts);
