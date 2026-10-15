@@ -37,3 +37,6 @@ branch: chore/fossil-a1-dead-code
 
 - typecheck 통과, `check.sh`(pre-commit) 전체. 동작 변화 없음(삭제·주석·사본 교체만).
 - 되돌리기: squash revert 1건.
+
+## 후속 (2026-10-15) — 연습장 실측 근거 삭제
+- 옛 이월 payload `{_carryRaw}` 분기(`read-daily.ts readMeetingRowStateFromDb`) — 가짜로 바꾼 운영 사본에서 meetings 탭 `_carryRaw` **0행**. 열문자 legacy 복원 분기는 그대로.
