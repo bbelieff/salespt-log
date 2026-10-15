@@ -3,6 +3,11 @@
 - 수용/검증: docs/plans/active/db-sheet-excel-files.md.
 - 컨택결과 드롭다운: 네 결과 집계 제외, 두 결과 STEP 2 컨택진행 +1, 활동OFF 별도안내. 저장값/계산은 유지. check.sh3701 PASS·build PASS·합성 API/PGlite 등록/집계/재접속 확인·PC/320/375/430 확인. 최종head 독립검토/CI/배포 후 결과 추가.
 
+## 2026-10-15 · 가짜 사본 — 키 이름도 가리기 (fix/masked-snapshot-keys)
+- 첫 실행이 원본 흔적 검사에 걸려 안전하게 중단(파일 삭제). 원인 = jsonb 키(이메일·번호를 키로 쓰는 맵). 키도 가리고, 실패 시 표·경로만 출력.
+
+
+
 ## 2026-10-15 DB관리시트 기록 선택·중복·미팅 복원 운영 구현 검증
 - feat/db-sheet-recording-safety, 기준2c046944. 사용자 ‘여기까지 먼저 운영에 배포’ 승인으로 운영 구현. 행별 기록선택/사후반영·미팅ID별 기여보존·공급처이력·유입상태·중복경고·삭제영향확인·단순예약복원·모바일/가져오기밀도 반영.
 - Git Bash check.sh PASS(구조94, 단위/통합3692·45skip), production build PASS. 별도검증57시험+최종archive8 PASS. 실제API/PGlite 브라우저 등록/새로고침/전체·행별반영/중복/복원, PC·320/375/430 확인.

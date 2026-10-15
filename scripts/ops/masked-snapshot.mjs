@@ -16,7 +16,7 @@ import { randomBytes } from "node:crypto";
 import { createGzip } from "node:zlib";
 import { once } from "node:events";
 import { Pool } from "pg";
-import { DROP_ROW_TABLES, assertNoPii, makeMasker } from "./mask-snapshot-core.mjs";
+import { DROP_ROW_TABLES, assertNoPii, makeMasker, piiPaths } from "./mask-snapshot-core.mjs";
 
 function loadEnv() {
   const out = {};
@@ -85,7 +85,16 @@ async function main() {
       let done = 0;
       for (let off = 0; off < total; off += BATCH) {
         const rows = (await db.query(`select * from "${t}" order by ctid limit ${BATCH} offset ${off}`)).rows;
-        for (const r of rows) await write({ kind: "row", t, r: masker.maskRow(r) });
+        for (const r of rows) {
+          const masked = masker.maskRow(r);
+          try {
+            await write({ kind: "row", t, r: masked });
+          } catch (e) {
+            // 값은 내보내지 않고 위치(표·경로)만 알린다 — 규칙 보완용.
+            const where = [...new Set(piiPaths(masked))].slice(0, 5).join(", ");
+            throw new Error(`${e instanceof Error ? e.message : e} (표 ${t}, 위치 ${where || "알 수 없음"})`);
+          }
+        }
         done += rows.length;
       }
       console.log(`  ${t}: ${done}`);
