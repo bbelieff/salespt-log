@@ -71,6 +71,13 @@ describe("makeMasker", () => {
     expect(() => assertNoPii(JSON.stringify(out))).not.toThrow();
   });
 
+  it("이메일·번호 꼴을 키로 쓰는 맵도 가린다(키 자체가 개인정보)", () => {
+    const rrnKey = ["800101", "2234567"].join("-"); // 합성값 — 조각으로 만든다
+    const o = m.maskRow({ payload: { "hong@example.com": 1, [rrnKey]: "x", 업체명: "예시상사", A: "46042" } });
+    expect(() => assertNoPii(JSON.stringify(o))).not.toThrow();
+    expect(Object.keys(o.payload)).toEqual(expect.arrayContaining(["업체명", "A"]));
+  });
+
   it("salt 가 짧으면 거부", () => {
     expect(() => makeMasker("short")).toThrow();
   });
