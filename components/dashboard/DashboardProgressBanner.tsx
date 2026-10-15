@@ -20,6 +20,8 @@ interface Props {
   currentWeek: number;
   hasDates?: boolean;
   graduated?: boolean;
+  /** 수료 다음 날부터 1, 2, … 주 (수료 전 0) — D2 「수료 후 N주」. */
+  weeksAfterGraduation?: number;
   startDate: string;
   progressPercent: number;
   graduationDate: string;
@@ -32,6 +34,7 @@ export default function DashboardProgressBanner({
   currentWeek,
   hasDates = true,
   graduated = false,
+  weeksAfterGraduation = 0,
   startDate,
   progressPercent,
   graduationDate,
@@ -66,7 +69,7 @@ export default function DashboardProgressBanner({
               현재 {today} ({weekday})
             </span>
             {graduated ? (
-              <span className="text-sm font-extrabold text-emerald-600">🎓 수료</span>
+              <span className="text-sm font-extrabold text-emerald-600">🎓 수료{weeksAfterGraduation > 0 ? ` 후 ${weeksAfterGraduation}주` : ""}</span>
             ) : (
               <span className="text-sm font-extrabold text-blue-600">
                 {currentWeek}주차 진행중

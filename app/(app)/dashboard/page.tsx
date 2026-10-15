@@ -5,8 +5,9 @@ import DashboardActionOverview from "@/components/dashboard/DashboardActionOverv
 import "@/components/dashboard/dashboard-action-overview.css";
 
 import { useMemo, useState } from "react";
-import { courseWeeksForCohort, courseEndISO, ceremonyISO, isExtendedCourseCohort } from "@/config/cohort-dates";
-import { parseISO, todayKST, weekIndexOf } from "@/util/week";
+import { courseWeeksForCohort } from "@/config/cohort-dates";
+import { todayKST } from "@/util/week";
+import { computeCourseBanner } from "./_lib/course-banner";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
@@ -30,14 +31,6 @@ function fmtMD(iso: string): string {
 
 const KO_DAY = ["일", "월", "화", "수", "목", "금", "토"];
 
-function daysBetween(fromISO: string, toISO: string): number {
-  const [fy, fm, fd] = fromISO.split("-").map(Number) as [number, number, number];
-  const [ty, tm, td] = toISO.split("-").map(Number) as [number, number, number];
-  return Math.round(
-    (Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000,
-  );
-}
-
 export default function DashboardPage() {
   const [expenseLedgerOpen, setExpenseLedgerOpen] = useState(false);
   const me = useMe();
@@ -50,31 +43,15 @@ export default function DashboardPage() {
   // ⚠️ 날짜가 없어도 **배너 자체는 렌더**한다(hasDates=false 로 진행도 줄만 숨김) — me 시트 read 가
   // 실패해도(200+빈문자열 강등, me.ts) 본문의 매출/비용과 경비장부 진입점은 유지한다.
   const banner = useMemo(() => {
-    const courseStart = me.data?.courseStartISO;
-    const ceremony = ceremonyISO(me.data?.courseStartISO ?? "", me.data?.cohort) || me.data?.graduationISO;
-    const graduation = isExtendedCourseCohort(me.data?.cohort) ? courseEndISO(courseStart ?? "", me.data?.cohort) : ceremony;
-    if (!courseStart || !graduation) return { hasDates: false as const };
-    const elapsed = daysBetween(courseStart, today);
-    const total = daysBetween(courseStart, graduation); // O2−O1 (7기+ 50일)
-    // 주차 앵커 = weekIndexOf 정본(시작일, lib/util/week.ts).
-    // 코스주차 = 통계 창 1~STATS_WEEKS clamp / 수료 = 종강일(O2) 경과 — 주차 산술 아님(8주차 도중 종강 가능).
-    const actualWeek = weekIndexOf(parseISO(today), parseISO(courseStart));
-    const courseWeek = Math.max(1, Math.min(weeks, actualWeek));
-    const graduated = daysBetween(graduation, today) > 0;
-    const progressPercent = Math.max(0, Math.min(100, (elapsed / total) * 100));
-    const weekday = KO_DAY[new Date(today + "T00:00").getDay()] ?? "";
-    return {
-      hasDates: true as const,
-      today: fmtMD(today),
-      weekday,
-      currentWeek: courseWeek,
-      graduated,
-      startDate: fmtMD(courseStart),
-      progressPercent,
-      graduationDate: fmtMD(ceremony || graduation),
-      endISO: graduation,
-    };
-  }, [me.data, today, weeks]);
+    const b = computeCourseBanner({
+      courseStartISO: me.data?.courseStartISO,
+      graduationISO: me.data?.graduationISO,
+      cohort: me.data?.cohort,
+      todayISO: today,
+      weeks,
+    });
+    if (!b.hasDates) return b;
+    return { ...b, startDate: fmtMD(me.data?.courseStartISO ?? ""), graduationDate: fmtMD(b.endISO) };  }, [me.data, today, weeks]);
 
   // pc:min-h-0: short content must not force viewport height — the (app)
   // shell reserves no desktop tabbar space and page bottom padding stays small.
@@ -90,6 +67,7 @@ export default function DashboardPage() {
             weekday={KO_DAY[new Date(today + "T00:00").getDay()] ?? ""}
             currentWeek={banner.hasDates ? banner.currentWeek : 0}
             graduated={banner.hasDates ? banner.graduated : false}
+            weeksAfterGraduation={banner.hasDates ? banner.weeksAfterGraduation : 0}
             startDate={banner.hasDates ? banner.startDate : ""}
             progressPercent={banner.hasDates ? banner.progressPercent : 0}
             graduationDate={banner.hasDates ? banner.graduationDate : ""}

@@ -32,7 +32,8 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
   const done = meetings.filter((m) => m.상태 === "완료").length;
   const canceled = meetings.filter((m) => m.상태 === "취소").length;
 
-  // 이월(arena-carryover §4) 계약은 매출 합계에서 제외 — 아레나 점수 비합산.
+  // "이번 주 계약" = 이번 주 계약 수임비 + 그 계약의 수납액(2026-10-15 D7 — 기간 매출과 구분해 이름을 바꿈).
+// 이월(arena-carryover §4) 계약은 제외 — 아레나 점수 비합산. 기간 매출은 대시보드·실무수납(ADR-0034).
   const feeSum = meetings
     .filter((m) => m.계약여부 && m.구분 !== "이월")
     .reduce((s, m) => s + (m.수임비 || 0), 0);
@@ -85,7 +86,7 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
         </div>
         {revenueSum > 0 && (
           <div className="mt-1.5 flex items-baseline justify-end gap-2 border-t border-gray-100 pt-1.5 text-xs">
-            <span className="font-medium text-green-700">💰 매출</span>
+            <span className="font-medium text-green-700">💰 이번 주 계약</span>
             <span
               className="text-sm font-extrabold text-green-700"
               style={{ fontVariantNumeric: "tabular-nums" }}
