@@ -1,3 +1,8 @@
+## 2026-10-15 DB관리시트 XLS/XLSX 직접 가져오기
+- 사용자 직접 수정 요청·직전 배포 후속. 기준32219da9, feat/db-sheet-excel-import. 총괄 소유 ImportDialog/import-file/xls, 테스트·패키지·문서. 기존 xlsx 안내 누락 및 xls 차단 보완. 실데이터 미사용.
+- 수용/검증: docs/plans/active/db-sheet-excel-files.md.
+- 컨택결과 드롭다운: 네 결과 집계 제외, 두 결과 STEP 2 컨택진행 +1, 활동OFF 별도안내. 저장값/계산은 유지. check.sh3701 PASS·build PASS·합성 API/PGlite 등록/집계/재접속 확인·PC/320/375/430 확인. 최종head 독립검토/CI/배포 후 결과 추가.
+
 ## 2026-10-15 · 가짜 사본 — 키 이름도 가리기 (fix/masked-snapshot-keys)
 - 첫 실행이 원본 흔적 검사에 걸려 안전하게 중단(파일 삭제). 원인 = jsonb 키(이메일·번호를 키로 쓰는 맵). 키도 가리고, 실패 시 표·경로만 출력.
 

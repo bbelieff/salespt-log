@@ -4,7 +4,7 @@ import React,{useState} from 'react';
 import CompanyInfoEditor from '@/components/CompanyInfoEditor';
 import {CompanyInfo} from '@/types';
 import {DateTimeRow,FieldNote} from '@/app/(app)/contact/_components/MeetingSlotForm';
-import {Row,outcomes} from './model';
+import {Row,outcomes,outcomeLabel} from './model';
 
 export type ContactDraft={editorRevision?:number;ci:CompanyInfo;note:string;date:string;meetingDate:string;time:string;place:string;reservationNote:string;registered:boolean;companyName?:string};
 export const contactDraft=(r:Row):ContactDraft=>({ci:CompanyInfo.parse({대표자이름:r.owner,신용점수:r.credit,업종주생산품목:r.industry,소재지:r.address}),note:'',date:todayKST(),meetingDate:'',time:'',place:r.address,reservationNote:'',registered:false});
@@ -34,7 +34,7 @@ export function ContactPanel({row,draft,onChange,onResult,onRegister,onOpen,onCo
 export function ContactFields({row,draft,onChange,onResult}:{row:Row;draft:ContactDraft;onChange:(v:ContactDraft)=>void;onResult:(v:string,date:string)=>void}){
  const patch=(p:Partial<ContactDraft>)=>onChange({...draft,...p});
  return <div className="db-call-fields">  <div className="db-contact-summary"><strong>{row.company}</strong><span>{row.owner} · {row.phone}</span></div>
-  <div className="db-contact-controls"><label>컨택일<input aria-label="컨택일" className="sheet-input" type="date" value={draft.date} onInput={e=>patch({date:e.currentTarget.value})} onChange={e=>patch({date:e.target.value})}/></label><label>컨택결과<select aria-label="컨택내용 결과" className="sheet-input" value={row.result} onChange={e=>onResult(e.target.value,draft.date)}>{outcomes.map(v=><option key={v}>{v}</option>)}</select></label></div>
-  <button className="sheet-btn" onClick={()=>onResult(row.result,draft.date)}>이 날짜로 상담 기록</button><label className="db-note-label">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={2} placeholder="통화하며 확인한 내용·고객 요청사항" value={draft.note} onChange={e=>patch({note:e.target.value})}/></label>
+  <div className="db-contact-controls"><label>컨택일<input aria-label="컨택일" className="sheet-input" type="date" value={draft.date} onInput={e=>patch({date:e.currentTarget.value})} onChange={e=>patch({date:e.target.value})}/></label><label className="db-result-field">컨택결과<select aria-label="컨택내용 결과" className="sheet-input" value={row.result} onChange={e=>onResult(e.target.value,draft.date)}>{outcomes.map(v=><option key={v} value={v}>{outcomeLabel(v,row.recording?.activities!==false)}</option>)}</select></label></div>
+  <p className="text-xs text-slate-500">업체별 하루 1건 · 이미 반영된 기록은 유지돼요.</p><button className="sheet-btn" onClick={()=>onResult(row.result,draft.date)}>이 날짜로 상담 기록</button><label className="db-note-label">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={2} placeholder="통화하며 확인한 내용·고객 요청사항" value={draft.note} onChange={e=>patch({note:e.target.value})}/></label>
 </div>;
 }

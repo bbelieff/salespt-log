@@ -1721,7 +1721,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 ## DB관리시트
 - 공급처 유형은 `Channel` 4종 드롭다운, 공급처는 출처 이름 자유입력. 새 업체·표·상세·가져오기에 동일 적용. 표 기본 유형/공급처 인접 표시, 미팅 연결 후 유형 편집은 잠금.
 - `Grid`: 셀 편집, 제목 정렬/드래그 이동, 모든 열 너비·전체 행 높이 조절, 모바일 카드/표 전환.
-- `ImportDialog`: CSV/TSV·엑셀 블록·카카오톡·메타 CSV 미리보기와 검증 후 가져오기.
+- `ImportDialog`: XLSX/XLS(첫 시트, 최대 5MB) 파일선택·끌어놓기, CSV/TSV·엑셀 블록·카카오톡·메타 CSV 미리보기와 검증 후 가져오기.
 - `DbDetail`: 원본 DB정보와 확인된 업체정보를 구분하는 크기 조절 패널.
 - `ContactPanel`: 기존 CompanyInfoEditor 재사용, 날짜별 상담 기록 및 미팅 생성. 등록 후 연결 정보는 기존 미팅 편집 경로가 정본.
 - `ContactDbLeads`: 컨택관리의 날짜·채널별 DB관리시트 바로가기. 유입일 이후부터 표시.
@@ -1758,3 +1758,5 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `ImportResultNotice`: 저장 성공 후 목록 추가건수·유입 반영건수·날짜/채널별 결과. 닫기 전 유지.
 - `ImportDialog`: 가져오기 선택과 유입기록 체크 분리, 기본 전체 체크·부분 체크·전체 해제, 상담/미팅 설정. PC 전체 열·5행 기준, 모바일 라벨 필드.
 - `DeletedMeetings`, `MeetingSafetyDialog`, `use-meeting-delete-confirm`: 삭제 전 일정 변경 우선 안내. 삭제된 단순 예약은 원래 ID로 복원; 계약·후속 미팅 이력이 연결된 복합건은 별도 안내로 개별 복원 차단.
+
+- DB관리시트 컨택결과 선택지: 집계 제외 / STEP 2 컨택진행 +1 표시. 활동 기록 OFF는 기록 꺼짐. 저장하는 결과 문자열은 기존값을 유지하고 업체별 하루 1건 안내.

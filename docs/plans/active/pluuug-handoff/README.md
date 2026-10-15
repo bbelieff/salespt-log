@@ -6,13 +6,14 @@
 > - **관련 문서**: 항목 정본 [A](../dashboard-follow-ups.md) · [B](../dashboard-card-headlines.md) · [C](../dashboard-channel-profit.md) · [D](../company-info-email.md) · [E](../db-sheet-supplier-summary.md) · [F](../records-follow-renames.md) · [workflow](../../../development/workflow.md) · [task-template](../../../development/task-template.md) · [deploy-vps](../../../playbooks/deploy-vps.md) · [총괄](../../../playbooks/codex-lead.md)·[제작](../../../playbooks/codex-worker.md)·[검증](../../../playbooks/codex-reviewer.md)
 
 ## 진행 현황 (대시보드용)
-갱신: 2026-10-15 20:41 KST
+갱신: 2026-10-15 21:55 KST
 
 | 항목 | 단계 | 다음 할 일 | 막힌 것·belie 결정 대기 |
 |---|---|---|---|
+| DB 엑셀파일·컨택 집계 안내 | PR 검증 중 | 최종head 독립검토·CI 후 배포 | 전체3701시험·빌드·PC/모바일·합성 저장집계 확인 |
 | 목업 열기 안정화 | 설계 보완 중 | 재발 시 앱 탭 오류와 서버 종료 구분 | 재시작·서버 복구 후 앱 PC/모바일 정상; 앱 내부 원인 미확정 |
 | 중복 DB 1건 영구삭제·집계 정리 | 완료 | 없음 | 사용자 지정 첫 카드 삭제·두 번째 예약 유지·DB와 시트 대조 완료 |
-| DB관리시트 모바일·미팅 복구·중복 경고 | PR 검증 중 | 독립 검토 경계 수정 후 전체 검사·빌드 | 실제 API 등록·반영·중복·복원 및 PC/모바일 확인 |
+| DB관리시트 모바일·미팅 복구·중복 경고 | 완료 | 후속 요청 반영 | #1155 32219da9·Deploy38731507000 성공·health200·운영 확인 |
 | 주간목표 정성·정량 분리 | PR 검증 중 | 최종 검사·빌드·독립검토 후 배포 | 10/15 목업 전체 운영배포 승인 |
 | 표·날짜·하단 정렬 | 완료 | 후속 요청 반영 | #1140 ff067b2e·Deploy38555661778·운영 확인 |
 | A 오늘 챙길 일 | 완료 | 후속 요청 시 확인 | #1135 22343edb·Deploy38422543949 성공·HTTP200·운영 팝업 확인 |

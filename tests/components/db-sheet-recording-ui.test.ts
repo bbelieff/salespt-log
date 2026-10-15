@@ -4,7 +4,8 @@ import {createRoot,type Root} from 'react-dom/client';
 import {beforeEach,afterEach,it,expect,vi} from 'vitest';
 import {RecordingDialog} from '@/app/(app)/db-sheet/_components/RecordingDialog';
 import InflowStatusCell from '@/app/(app)/db-sheet/_components/InflowStatusCell';
-import {blank} from '@/app/(app)/db-sheet/_components/model';
+import {blank,outcomes} from '@/app/(app)/db-sheet/_components/model';
+import {ContactFields,contactDraft} from '@/app/(app)/db-sheet/_components/ContactPanel';
 import {ImportDialog} from '@/app/(app)/db-sheet/_components/ImportDialog';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 let host:HTMLDivElement,root:Root;
@@ -41,4 +42,20 @@ it('imports selected rows independently from all/partial inflow choices and pass
  expect(check('가져오기 1 선택').checked).toBe(true);
  await act(async()=>button('확인한 2건 추가').click());
  expect(apply).toHaveBeenCalledWith([expect.objectContaining({company:'합성 A',recording:{inflow:false,activities:true}}),expect.objectContaining({company:'합성 B',recording:{inflow:true,activities:true}})],[]);
+});
+
+it('explains contact counting without changing saved outcome values, including recording off',async()=>{
+ const row={...blank(),company:'합성 업체'},onResult=vi.fn();
+ const render=async(activities:boolean)=>act(async()=>root.render(createElement(ContactFields,{row:{...row,recording:{inflow:true,activities}},draft:contactDraft(row),onChange:vi.fn(),onResult})));
+ await render(true);
+ const select=()=>host.querySelector<HTMLSelectElement>('select[aria-label="컨택내용 결과"]')!;
+ expect([...select().options].map(o=>o.value)).toEqual(outcomes);
+ expect([...select().options].slice(0,4).every(o=>o.textContent?.endsWith('집계 제외'))).toBe(true);
+ expect([...select().options].slice(4).every(o=>o.textContent?.endsWith('STEP 2 컨택진행 +1'))).toBe(true);
+ act(()=>{select().value='컨택진행';select().dispatchEvent(new Event('change',{bubbles:true}));});
+ expect(onResult).toHaveBeenCalledWith('컨택진행',contactDraft(row).date);
+ expect(host.textContent).toContain('업체별 하루 1건');
+ await render(false);
+ expect([...select().options].slice(4).every(o=>o.textContent?.endsWith('STEP 2 기록 꺼짐'))).toBe(true);
+ expect(host.textContent).not.toContain('+1');
 });
