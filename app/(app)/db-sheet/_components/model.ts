@@ -1,7 +1,7 @@
-import { isDbSheetFollowUpResult } from "@/types/db-sheet";
+import { isDbSheetFollowUpResult, recordsDbSheetFirstContact } from "@/types/db-sheet";
 import {CHANNEL_ORDER} from '@/types/channel';
-export type Row = { recording?:{inflow:boolean;activities:boolean}; inflowStatus?:{state:"recorded"|"excluded"|"unknown";date?:string;channel?:string;count:0|1}; inflow?:string; effectiveMeetingId?:string; meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; stage:string; next:string; memo:string };
-export type Key = Exclude<keyof Row,'id'|'meetingId'|'recording'|'inflowStatus'|'effectiveMeetingId'>;
+export type Row = { recording?:{inflow:boolean;activities:boolean}; inflowStatus?:{state:"recorded"|"excluded"|"unknown";date?:string;channel?:string;count:0|1}; inflow?:string; effectiveMeetingId?:string; meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; hasQualifiedContact?:boolean; stage:string; next:string; memo:string };
+export type Key = Exclude<keyof Row,'id'|'meetingId'|'recording'|'inflowStatus'|'effectiveMeetingId'|'hasQualifiedContact'>;
 export const columns: {key:Key;label:string;auto?:boolean;width:number}[] = [
 {key:'channel',label:'공급처 유형',width:110},{key:'supplier',label:'공급처',width:118},{key:'date',label:'유입일',width:115},{key:'inflow',label:'유입 반영',auto:true,width:90},{key:'company',label:'사업자명',width:154},{key:'owner',label:'대표자',width:100},{key:'phone',label:'전화번호',width:143},{key:'result',label:'컨택결과',width:110},{key:'next',label:'다음 연락일',width:120},{key:'funds',label:'필요자금',width:125},{key:'first',label:'최초상담일',auto:true,width:122},{key:'stage',label:'현재상태',auto:true,width:122},{key:'biz',label:'사업자등록번호',width:145},{key:'address',label:'주소',width:210},{key:'industry',label:'업종',width:115},{key:'credit',label:'신용점수·기관',width:135},{key:'sales',label:'매출·기준',width:150},{key:'arrears',label:'체납여부',width:105},{key:'memo',label:'상담메모',auto:true,width:220}];
 export const defaults:Key[]=['channel','supplier','date','inflow','company','owner','phone','result','first','stage'];
@@ -38,8 +38,9 @@ export function outcomeLabel(result:string,activities=true):string {
 }
 
 export function recordContact(row:Row,result:string,date:string):Row {
- const first=row.first||(['컨택진행','상담 후 거절'].includes(result)?date:'');
- return {...row,result,first,stage:['미컨택','상담 중'].includes(row.stage)?(first?'상담 중':'미컨택'):row.stage};
+ const first=row.first||(recordsDbSheetFirstContact(result)?date:'');
+ const hasQualifiedContact=(row.hasQualifiedContact??!!row.first)||['컨택진행','상담 후 거절'].includes(result);
+ return {...row,result,first,hasQualifiedContact,stage:['미컨택','상담 중'].includes(row.stage)?(hasQualifiedContact?'상담 중':'미컨택'):row.stage};
 }
 
 export const showsNextContact=(result:string)=>isDbSheetFollowUpResult(result);

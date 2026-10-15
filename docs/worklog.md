@@ -1,3 +1,8 @@
+## 2026-10-15 — 최초상담일 자동기록 범위 확대 (검증 중)
+- 사용자 확정: 단순거절·재통화·컨택진행·상담 후 거절에 선택 컨택일 자동기록, 기존 최초 날짜 보존. STEP2 컨택진행과 공급처 상담성과는 기존 qualified 이력 기준 유지.
+- 전용 fix/db-sheet-first-contact-date, base22e15350. 총괄 types/repo/service/UI/tests 변경, excel_count_review 읽기전용 독립 검증. 운영 백필·실데이터 시험 없음.
+- 실제 repo/서비스/모델/autosave 77건 통과, 합성 UI 날짜 자동기록 확인. 전체검사·빌드·PR/CI·배포 확인 진행. [plan](plans/active/db-sheet-first-contact-date.md)
+
 ## 2026-10-15 · 비용 원장 요약 = 대시보드 비용 칸 (fix/expense-ledger-cost-matches-dashboard)
 - 화석 B5: 원장 창 'DB 비용·총비용'이 서버의 옛 시즌 값이라 대시보드 비용 칸(기간 기준)과 달랐다 → 같은 기간·같은 계산 값을 넘겨 일치. '요약 기간' 표시.
 

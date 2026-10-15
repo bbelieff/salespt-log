@@ -16,17 +16,18 @@ const MEETING_HELD = new Set([DB_SHEET_MEETING_STAGE.예약, DB_SHEET_MEETING_ST
 /**
  * DB 한 건이 닿은 가장 높은 단계(공급처별 성과용, 저장 안 함). 위에서부터 처음 맞는 규칙:
  * 살아 있는 연결 계약 → 계약 · 연결 계약이 모두 해지/숨김 → 미팅 · 미팅 상태 계약 → 계약 ·
- * 미팅 예약/변경/완료 → 미팅 · (취소·삭제된 미팅은 아래 규칙으로) · 최초상담일 → 상담 · 미컨택 아닌 결과 → 연락 · 그 외 유입.
+ * 미팅 예약/변경/완료 → 미팅 · (취소·삭제된 미팅은 아래 규칙으로) · 실적 대상 상담 이력 → 상담 · 미컨택 아닌 결과 → 연락 · 그 외 유입.
  * stage 는 저장소가 미팅 상태로 붙인 값이어야 한다(작업상태 라벨로 덮기 전).
  */
 export function dbSheetFunnelStep(
-  lead: Pick<DbSheetLead, "meetingId" | "stage" | "first" | "result">,
+  lead: Pick<DbSheetLead, "meetingId" | "stage" | "first" | "hasQualifiedContact" | "result">,
   linked: readonly ContractState[] = [],
 ): DbSheetFunnelStep {
   if (linked.length) return linked.some(isLiveContract) ? "계약" : "미팅";
   if (lead.meetingId && lead.stage === DB_SHEET_MEETING_STAGE.계약) return "계약";
   if (lead.meetingId && MEETING_HELD.has(lead.stage)) return "미팅";
-  if (lead.first) return "상담";
+  // 이전 버전의 first는 실적 대상 상담에만 생겼다. 새 기록은 별도 이력을 사용한다.
+  if (lead.hasQualifiedContact ?? !!lead.first) return "상담";
   return lead.result !== "미컨택" ? "연락" : "유입";
 }
 
