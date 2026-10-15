@@ -7,6 +7,9 @@
 >   - 상태 전이를 트리거하는 사용자 액션과 시스템 이벤트
 > - **관련 문서**: [ER 다이어그램](./er-diagram.md), [데이터 모델](./data-model.md), [API 명세](./api-spec.md)
 
+> ⚠️ **낡은 문서(2026-10-15 점검)** — 2026-04~05 초기 설계 기록이다. 그 뒤 바뀐 것: 데이터 정본은 Postgres(시트는 미러·백업, 2026-08-24), 숫자 10기 이후 12주 과정(ADR-0032), 수료 후에도 계속 입력(ADR-0031 — '완전 종료=읽기 전용' 폐지), 기간 상수 정본 `lib/config/cohort-dates.ts`. **현재 구조는 [architecture.md](/docs/architecture.md)·CLAUDE.md·`docs/domains/data-model.md`·`sheet-structure.md` 를 본다.** 이 문서는 이력으로만 남긴다.
+
+
 # 상태 전이 다이어그램
 
 ## 1. Meeting 상태 전이 (5상태) ⭐

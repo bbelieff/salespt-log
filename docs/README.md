@@ -9,7 +9,7 @@
 
 # 📚 Documentation Index
 
-⚠️ **이 프로젝트는 8주 수강생 전용 MVP입니다. 스코프는 [scope.md](./scope.md) 참조**
+> **2026-10-15 점검**: 지금 구조의 정본은 [architecture.md](./architecture.md)·[CLAUDE.md](../CLAUDE.md) 다. 데이터 정본은 Postgres(시트는 미러·백업), 숫자 10기 이후 12주 과정(ADR-0032), 수료 후에도 계속 입력(ADR-0031). 아래 표에서 **stale** 로 표시한 문서는 2026-04~05 초기 설계 기록이다.
 
 세일즈PT 영업일지 프로젝트의 모든 문서를 정리한 인덱스입니다.
 
@@ -17,7 +17,7 @@
 
 | 폴더 | 설명 | 대상 독자 | 수정 권한 |
 |------|------|-----------|-----------|
-| **`scope.md`** | **MVP 스코프 정의와 용어** | **전체 팀** | **핵심 문서** |
+| `scope.md` | 초기 MVP 스코프(stale — 현행 기간 규칙은 CLAUDE.md §2.5·`lib/config/cohort-dates.ts`) | 전체 팀 | 이력 |
 | `domains/` | 기능별 설계 문서 | 개발자 | status에 따라 |
 | `design/` | 디자인 토큰·컴포넌트 카탈로그·쇼케이스 | 개발자, 디자이너 | 토큰 변경 시 컴포넌트·preview 함께 업데이트 |
 | `decisions/` | 아키텍처 결정 기록 (ADR) | 전체 팀 | 불변 (새 ADR로 supersede) |
@@ -29,19 +29,19 @@
 
 ### 🏗️ 개발을 시작할 때
 1. **프로젝트 개요**: [CLAUDE.md](../CLAUDE.md) - 하네스 철학과 전체 구조
-2. **MVP 스코프**: [scope.md](./scope.md) - 8주 수강생 전용 경계와 용어
-3. **아키텍처**: [architecture.md](./architecture.md) - 레이어 규칙과 제약
+2. **기간·대상 규칙**: CLAUDE.md §2.5 + `lib/config/cohort-dates.ts` (옛 [scope.md](./scope.md) 는 stale)
+3. **아키텍처**: [architecture.md](./architecture.md) - 지금 구조(스택·레이어·데이터 흐름·배포·숙제)
 4. **작업 시작**: [start-task.md](./playbooks/start-task.md) - Git Worktree 설정
 
 ### 📊 데이터 모델을 이해하고 싶을 때
-1. **전체 개요**: [data-model.md](./domains/data-model.md) - Google Sheets 매핑
+1. **전체 개요**: [data-model.md](./domains/data-model.md) - Zod 모델(DB 정본·시트 미러 공통)
 2. **시트 구조**: [sheet-structure.md](./domains/sheet-structure.md) - 탭별 컬럼 정의
 3. **관계 구조**: [er-diagram.md](./domains/er-diagram.md) - 엔티티 관계도
 4. **상태 흐름**: [state-machines.md](./domains/state-machines.md) - 비즈니스 로직
 5. **API 연동**: [api-spec.md](./domains/api-spec.md) - 엔드포인트 명세
 
 ### 🔧 기능 구현할 때
-1. **MVP 범위**: [scope.md](./scope.md) - 8주 수강생 전용 IN/OUT 테이블
+1. **범위**: CLAUDE.md §2.5 (옛 [scope.md](./scope.md) 는 stale)
 2. **화면별 기능**: [storyboard-mvp.md](./domains/storyboard-mvp.md) - 스토리보드
 3. **사용자 여정**: [user-journeys.md](./domains/user-journeys.md) - 7개 핵심 시나리오
 4. **화면 설계**: [wireframes.md](./domains/wireframes.md) - 4개 탭 와이어프레임
@@ -73,17 +73,17 @@
 ### 📋 핵심 문서
 | 문서 | 한 줄 요약 | 대상 |
 |------|------------|------|
-| **[scope.md](./scope.md)** | **8주 수강생 전용 MVP 스코프 및 용어 정의** | **전체 팀** |
+| [scope.md](./scope.md) | stale — 2026-04 MVP 스코프·용어(8주 기준) | 전체 팀 |
 
 ### 🎯 domains/ (기능별 설계)
 | 문서 | Status | 한 줄 요약 | 대상 |
 |------|--------|------------|------|
-| [data-model.md](./domains/data-model.md) | verified | Google Sheets 1:1 매핑과 TypeScript 모델 (업체관리/수납관리 분리) | 개발자 |
+| [data-model.md](./domains/data-model.md) | verified | Zod 모델 — DB 정본·시트 미러 공통 (업체관리/수납관리 분리) | 개발자 |
 | [sheet-structure.md](./domains/sheet-structure.md) | verified | 시트 탭별 컬럼 정의와 수식 명세 | 개발자 |
-| [er-diagram.md](./domains/er-diagram.md) | verified | 엔티티 관계도와 시트 매핑 | 개발자 |
-| [state-machines.md](./domains/state-machines.md) | verified | Meeting/Payment/DBOrder 상태 전이 | 개발자 |
-| [api-spec.md](./domains/api-spec.md) | verified | REST API 엔드포인트 명세 (동적 계산 원칙) | 개발자 |
-| [storyboard-mvp.md](./domains/storyboard-mvp.md) | draft | 화면별 기능과 사용자 스토리 | PM, 개발자 |
+| [er-diagram.md](./domains/er-diagram.md) | stale | 엔티티 관계도와 시트 매핑 | 개발자 |
+| [state-machines.md](./domains/state-machines.md) | stale | Meeting/Payment/DBOrder 상태 전이 | 개발자 |
+| [api-spec.md](./domains/api-spec.md) | stale | REST API 엔드포인트 명세 (동적 계산 원칙) | 개발자 |
+| [storyboard-mvp.md](./domains/storyboard-mvp.md) | stale | 화면별 기능과 사용자 스토리 | PM, 개발자 |
 | [user-journeys.md](./domains/user-journeys.md) | draft | 7개 핵심 사용자 시나리오 (유예 기간 포함) | 개발자, 기획자 |
 | [wireframes.md](./domains/wireframes.md) | draft | 4개 탭별 와이어프레임 (편집 제한 포함) | 개발자, 디자이너 |
 | [edge-cases.md](./domains/edge-cases.md) | draft | 예외 상황 (기간 제한 케이스 보강) | 개발자, QA |
@@ -141,7 +141,7 @@
 ## 🎯 이런 상황엔 이 문서를 읽으세요
 
 - **"이 기능이 MVP 스코프에 포함되나?"** → [scope.md](./scope.md)
-- **"8주/10주 기간 제한을 어떻게 구현하지?"** → [scope.md](./scope.md) + [edge-cases.md](./domains/edge-cases.md)
+- **"기간 제한을 어떻게 구현하지?"** → `lib/config/cohort-dates.ts`·`lib/util/week.ts` (ADR-0005·0031·0032)
 - **"사용자 입장에서 화면을 그리고 싶다"** → [wireframes.md](./domains/wireframes.md)
 - **"예외 상황을 어떻게 처리할지 모르겠다"** → [edge-cases.md](./domains/edge-cases.md)
 - **"새 기능 설계 전 비슷한 시나리오 찾고 싶다"** → [user-journeys.md](./domains/user-journeys.md)

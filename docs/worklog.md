@@ -1,3 +1,6 @@
+## 2026-10-15 · 코드 정비 2차 (chore/ci-build-and-architecture-doc)
+- #1142 머지(3391d44f). 이어서 C8 CI 에 운영 빌드 잡 추가(로컬 비밀값 없이 빌드 6분 성공 확인) · B10 architecture.md 를 현재 구조로 다시 씀. C2 는 테스트 경로 변경이 커서 별도 PR 로 보류.
+
 ## 2026-10-15 · 코드 정비 1차 (chore/yc-hardening-safe-fixes)
 - belie: 외부 실사 관점 리뷰의 B·C 중 안정성 90% 넘는 것만 진행. B5 parseISO 복사본 6곳 통합 · C5 오늘 날짜 KST 6곳 · C4 계약카드 지우기 미팅 id 우선 · C1 health 에 DB 주소 확인 · B7 화면→repo 직접 import 구조 테스트(기존 34곳 박제).
 - 미룬 것·이유 = docs/plans/active/yc-hardening-safe-fixes.md §2. 되돌리기 = squash revert.
