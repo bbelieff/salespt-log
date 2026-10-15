@@ -12,7 +12,7 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
-import DashboardFinance from "@/components/dashboard/DashboardFinance";
+import DashboardFinance, { type LedgerPeriodTotals } from "@/components/dashboard/DashboardFinance";
 import MobileChartCarousel from "@/components/dashboard/MobileChartCarousel";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
@@ -33,6 +33,8 @@ const KO_DAY = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function DashboardPage() {
   const [expenseLedgerOpen, setExpenseLedgerOpen] = useState(false);
+  // 원장 창 요약 = 비용 칸과 같은 기간·같은 계산(화석 B5). 아직 계산 전이면 서버 값으로.
+  const [ledgerTotals, setLedgerTotals] = useState<LedgerPeriodTotals | null>(null);
   const me = useMe();
   const dash = useDashboard();
 
@@ -117,6 +119,7 @@ export default function DashboardPage() {
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
             <DashboardFinance
               onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
+              onPeriodTotals={setLedgerTotals}
               contractChannels={dash.data.contractChannels}
               onRefreshChannels={dash.refetch}
               channelsRefreshing={dash.isFetching}
@@ -144,8 +147,9 @@ export default function DashboardPage() {
         <ExpenseLedgerDialog
           open={expenseLedgerOpen}
           onClose={() => setExpenseLedgerOpen(false)}
-          dbCostTotal={dash.data.additionalCost.dbCostTotal}
-          additionalCost={dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
+          dbCostTotal={ledgerTotals ? ledgerTotals.dbCost : dash.data.additionalCost.dbCostTotal}
+          additionalCost={ledgerTotals ? ledgerTotals.additional : dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
+          periodLabel={ledgerTotals?.label}
         />
       )}
       </PageContainer>

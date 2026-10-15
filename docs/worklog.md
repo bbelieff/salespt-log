@@ -1,3 +1,9 @@
+## 2026-10-15 · 비용 원장 요약 = 대시보드 비용 칸 (fix/expense-ledger-cost-matches-dashboard)
+- 화석 B5: 원장 창 'DB 비용·총비용'이 서버의 옛 시즌 값이라 대시보드 비용 칸(기간 기준)과 달랐다 → 같은 기간·같은 계산 값을 넘겨 일치. '요약 기간' 표시.
+
+
+
+
 ## 2026-10-15 DB관리시트 XLS/XLSX 직접 가져오기
 - 사용자 직접 수정 요청·직전 배포 후속. 기준32219da9, feat/db-sheet-excel-import. 총괄 소유 ImportDialog/import-file/xls, 테스트·패키지·문서. 기존 xlsx 안내 누락 및 xls 차단 보완. 실데이터 미사용.
 - 수용/검증: docs/plans/active/db-sheet-excel-files.md.
