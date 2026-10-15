@@ -47,7 +47,8 @@ const cachedWeekly = unstable_cache(
 );
 
 /** 시트 1개 02 계약수납 read(매출용) — 동일 30분 캐시 태그. 매출은 대시보드 셀(승인 포함
- *  가능)이 아니라 splitContractRevenue(수임비+수납액, 이월 제외)로 계산 → KPI 와 동일 정의. */
+ *  가능)이 아니라 splitContractRevenue(수임비+수납액, 이월 제외)로 계산 — 아레나 매출(순위표 전용).
+ *  화면의 기간 매출(대시보드·실무수납, ADR-0034)과는 정의가 다르다. */
 const cachedContractPayments = unstable_cache(
   async (sheetId: string) => readContractPayments(sheetId),
   ["arena-scoreboard-payments-v1"],

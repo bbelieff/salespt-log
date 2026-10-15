@@ -181,9 +181,8 @@ export function arenaFeeFromDb(
   let fee = 0;
   for (const c of contracts) {
     if (isCarryoverContract(c, courseStartISO)) continue;
-    // ★이 파일의 inSheetWindow()는 MAX_SHEET_WEEK(10) 클램프 — R1:U6 채널매트릭스 전용
-    // (실측 근거 다름, :68-74 주석). B21/O4 는 8개 stride 항(O38..O276)만 합산하므로
-    // STATS_WEEKS(8) 직접 비교를 쓴다 — weeklyContractsFromDb/weeklyActivityFromDb 와 동일 패턴.
+    // 이 합계(누적수임비)는 시트 B21/O4 수식과 맞추려고 8개 stride 항(O38..O276)만 더한다 — 그래서
+    // 8주 고정(STATS_WEEKS). 채널매트릭스의 inSheetWindow()는 기수 통계 창(span)을 쓴다(별개).
     if (!/^\d{4}-\d{2}-\d{2}$/.test(c.계약일 ?? "")) continue;
     const w = weekIndexOf(parseISO(c.계약일!), courseStart);
     if (w < 1 || w > span) continue;

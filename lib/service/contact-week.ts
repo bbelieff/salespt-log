@@ -89,7 +89,7 @@ export async function loadWeekMeetings(
   const spreadsheetId = user.spreadsheetId;
   const wsDate = parseISO(weekStart);
 
-  // 편집 가능 기간 가드는 쓰기 시점(saveContactMetrics/appendNewMeeting)에만 적용.
+  // 시트 좌표 범위 가드는 쓰기 시점(saveContactMetrics/appendNewMeeting)에만 적용.
   // 조회는 항상 가능 — weekIndex 는 표시용이므로 음수/10 초과도 그대로 노출.
   let courseStart: Date | null = null;
   let both: ReturnType<typeof groupMeetingsBoth> | null = null;

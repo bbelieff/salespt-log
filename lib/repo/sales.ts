@@ -34,7 +34,7 @@ export function salesRowFor(
   const week = weekIndexOf(date, courseStart);
   if (week < 1 || week > MAX_SHEET_WEEK) {
     throw new Error(
-      `영업관리 좌표 계산 실패: 날짜 ${fmtISO(date)}는 편집 가능 기간(1~${MAX_SHEET_WEEK}주) 밖입니다.`,
+      `영업관리 좌표 계산 실패: 날짜 ${fmtISO(date)}는 시트 좌표 범위(1~${MAX_SHEET_WEEK}주) 밖입니다.`,
     );
   }
   const weekStart = weekStartOf(date, courseStart);

@@ -95,14 +95,14 @@ describe("salesRowFor", () => {
   it("범위 밖(11주차)은 throw", () => {
     const d = new Date(2026, 5, 27); // 6/27, 11주차 시작 (4/18 + 70일)
     expect(() => salesRowFor(d, "매입DB", COURSE_START)).toThrow(
-      /편집 가능 기간/,
+      /시트 좌표 범위/,
     );
   });
 
   it("시작일 이전은 throw", () => {
     const d = new Date(2026, 3, 17);
     expect(() => salesRowFor(d, "매입DB", COURSE_START)).toThrow(
-      /편집 가능 기간/,
+      /시트 좌표 범위/,
     );
   });
 });
