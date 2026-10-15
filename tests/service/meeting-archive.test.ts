@@ -1,0 +1,14 @@
+import {beforeEach,it,expect,vi} from "vitest";
+const mock=vi.hoisted(()=>({ctx:vi.fn(),archive:vi.fn(),list:vi.fn(),meetingSync:vi.fn(),salesSync:vi.fn()}));
+vi.mock("@/service/contact",()=>({resolveCtx:mock.ctx}));
+vi.mock("@/repo/db/client",()=>({dbEnabled:()=>true}));
+vi.mock("@/service/daily-source",()=>({chooseWriteSource:()=>"db"}));
+vi.mock("@/repo/db/meeting-archive",()=>({setSimpleMeetingArchived:mock.archive,listArchivedMeetings:mock.list}));
+vi.mock("@/service/meetings-write",()=>({queueMeetingSheetSync:mock.meetingSync}));
+vi.mock("@/service/sales-write",()=>({queueSalesRowSync:mock.salesSync}));
+import {restoreDeletedMeeting,archiveSimpleMeeting} from "@/service/meeting-archive";
+const ctx={spreadsheetId:'synthetic-sheet',cohort:'12',email:'owner@example.test'};
+beforeEach(()=>{vi.resetAllMocks();mock.ctx.mockResolvedValue(ctx);mock.archive.mockResolvedValue({id:'same-id',예약일:'2026-10-10',channel:'매입DB'});});
+it("restoration queues canonical meeting sheet/calendar and original reservation date sales convergence",async()=>{await restoreDeletedMeeting(ctx.email,'same-id');expect(mock.archive).toHaveBeenCalledWith(ctx,'same-id',false);expect(mock.meetingSync).toHaveBeenCalledWith(ctx,'same-id');expect(mock.salesSync).toHaveBeenCalledWith(ctx,'2026-10-10','매입DB');});
+it("archive queues deletion convergence and failures never queue mirrors",async()=>{await archiveSimpleMeeting(ctx,'same-id');expect(mock.archive).toHaveBeenCalledWith(ctx,'same-id',true);mock.meetingSync.mockClear();mock.salesSync.mockClear();mock.archive.mockRejectedValue(new Error('failed'));await expect(restoreDeletedMeeting(ctx.email,'same-id')).rejects.toThrow('failed');expect(mock.meetingSync).not.toHaveBeenCalled();expect(mock.salesSync).not.toHaveBeenCalled();});
+it("rejects mismatched sheet override before any write",async()=>{await expect(restoreDeletedMeeting(ctx.email,'same-id','another-sheet')).rejects.toThrow('UNAVAILABLE');expect(mock.archive).not.toHaveBeenCalled();});

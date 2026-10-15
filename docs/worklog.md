@@ -1,3 +1,14 @@
+## 2026-10-15 DB관리시트 기록 선택·중복·미팅 복원 운영 구현 검증
+- feat/db-sheet-recording-safety, 기준2c046944. 사용자 ‘여기까지 먼저 운영에 배포’ 승인으로 운영 구현. 행별 기록선택/사후반영·미팅ID별 기여보존·공급처이력·유입상태·중복경고·삭제영향확인·단순예약복원·모바일/가져오기밀도 반영.
+- Git Bash check.sh PASS(구조94, 단위/통합3692·45skip), production build PASS. 별도검증57시험+최종archive8 PASS. 실제API/PGlite 브라우저 등록/새로고침/전체·행별반영/중복/복원, PC·320/375/430 확인.
+- 운영DB 일괄수정/백필/복원/삭제 없음. 시트·캘린더 미러 실전송은 합성검증에서차단. PR/CI/배포/운영확인 이어서기록.
+
+## 2026-10-15 승인: DB관리시트 기록 선택·중복 안전 운영 반영
+- 사용자: “여기까지 먼저 운영에 배포 해보자”. 승인 목업 localhost4525/db-sheet?embed=1 및 동일 흐름 duplicate-safety/meeting-safety. 기준 구현 2c046944, 승인 목업은 sibling db-sheet-mobile-meeting-safety 작업본/외부 캡처 보존.
+- 전용 feat/db-sheet-recording-safety. root 총괄/설계/통합/문서/검증·직렬 배포; recording_backend=types/db-sheet,repo DB기록/service/API/집계 테스트; recording_ui=db-sheet page/CSS/components(ContactPanel 제외); meeting_safety=ContactPanel/contact/schedule/미팅복구 전용 API·repo·service/tests. 겹치는 파일은 사전 조율, root docs 단독.
+- 유입+활동 기본ON, 유입만 제외/전체제외/사후선택, 기여원장·수동숫자보존·반복반영방지; 기존DB 유입상태; 공급처 계정별불러오기; 중복등록 경고/기존수정 선택 및 영구삭제영향확인; 모바일/가져오기밀도·결과안내; 일정변경안내·삭제미팅복원.
+- 운영 실데이터 일괄 복원/삭제/백필은 이 배포에 포함하지 않는다. 기능을 배포하고 사용자가 명시적으로 조작할 때만 해당 레코드 변경. 과거 개별 삭제 요청 완료건 재실행 금지.
+- 게이트: focused unit/PGlite/API, Git Bash check.sh, production build, 현재head 합성PC·320/375/430, 독립검증PASS, CI, squash, Deploy success+health+안전한 운영화면.
 ## 2026-10-15 · 계약 줄 찾기·아레나 이월 DB 정본으로 (fix/contract-row-lookup-from-db)
 - 화석 B1·B4: 파일럿 기수의 계약 수정·삭제·수임비 동기가 시트 전체를 읽어 줄을 찾던 것 → DB 먼저(같은 규칙), 없으면 시트. 아레나 이월이 이전 기수 계약을 시트에서 읽어 밀린 수납값을 옮기던 것 → DB 정본 + DB 공백만 시트 보충.
 - 상세 = docs/plans/active/contract-row-lookup-from-db.md. 되돌리기 = squash revert.

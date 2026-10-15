@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { requireStudentViewContext, getWritableUserEmail, StudentViewContextError } from "@/auth/identity";
-import { DbSheetConflict, DbSheetLinkedMeetingReadOnly } from "@/repo/db/db-sheet";
-import { DbSheetCommand, DbSheetUnavailable, resolveDbSheetContext, loadDbSheet, executeDbSheet } from "@/service/db-sheet";
+import { DbSheetConflict, DbSheetLinkedMeetingReadOnly, DbSheetDuplicate, DbSheetOperationBlocked } from "@/repo/db/db-sheet";
+import { DbSheetCommand, DbSheetUnavailable, resolveDbSheetContext, loadDbSheet, loadDbSheetSuppliers, executeDbSheet } from "@/service/db-sheet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 function failure(error: unknown) {
   if (error instanceof StudentViewContextError) return NextResponse.json({ error: error.code }, { status: error.status });
+  if (error instanceof DbSheetDuplicate) return NextResponse.json({error:error.message,code:"duplicate",duplicates:error.duplicates,duplicateLeadId:error.duplicateLeadId},{status:409});
   if (error instanceof DbSheetConflict) return NextResponse.json({ error: "다른 화면에서 변경되었습니다. 입력 내용을 보관한 뒤 새로고침해 주세요." }, { status: 409 });
-  if (error instanceof DbSheetLinkedMeetingReadOnly) return NextResponse.json({ error: error.message }, { status: 409 });
+  if (error instanceof DbSheetLinkedMeetingReadOnly || error instanceof DbSheetOperationBlocked) return NextResponse.json({ error: error.message }, { status: 409 });
   if (error instanceof ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "날짜·유입채널·필수 입력값을 확인해 주세요." }, { status: 400 });
   if (error instanceof DbSheetUnavailable) return NextResponse.json({ error: error.message }, { status: 503 });
   // Never expose database errors or customer payloads to a browser/log.
@@ -19,7 +20,7 @@ export async function GET() {
   try {
     const view = await requireStudentViewContext();
     const ctx = await resolveDbSheetContext(view.email, view.sheetOverride);
-    return NextResponse.json({ leads: await loadDbSheet(ctx) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ leads: await loadDbSheet(ctx),suppliers:await loadDbSheetSuppliers(ctx) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return failure(error); }
 }
 export async function POST(req: NextRequest) {
@@ -44,6 +45,6 @@ export async function POST(req: NextRequest) {
     }
     const command = DbSheetCommand.parse(await req.json());
     const ctx = await resolveDbSheetContext(view.email, view.sheetOverride);
-    return NextResponse.json({ leads: await executeDbSheet(ctx, command) });
+    return NextResponse.json(await executeDbSheet(ctx, command));
   } catch (error) { return failure(error); }
 }

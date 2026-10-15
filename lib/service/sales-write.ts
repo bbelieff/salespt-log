@@ -20,7 +20,7 @@ import {
   writeSalesRowsToDb,
   type SalesRowForDb,
 } from "@/repo/db/client";
-import { readMeetingsFromDb } from "@/repo/db/read-daily";
+import { persistSelectedMeetingCount } from "@/repo/db/selected-meeting-counts";
 import {
   clearMirrorPending,
   listMirrorPending,
@@ -247,8 +247,6 @@ export async function persistMeetingReservationCount(
     return;
   }
   const onSheet = await isWithinSalesWindow(ctx.spreadsheetId, date, channel).catch(() => true);
-  const meetings = await readMeetingsFromDb(ctx.spreadsheetId);
-  const cardCount = meetings.filter((m) => m.예약일 === date && m.channel === channel).length;
-  await upsertSalesCells(ctx, date, channel, { meetingReservation: cardCount }); // 11주+ 도 DB 기록
+  await persistSelectedMeetingCount(ctx,date,channel); // 선택한 실제 카드만, 동일 원장 잠금 안에서 재집계
   if (onSheet) queueSalesRowSync(ctx, date, channel); // 시트 좌표 있는 행만 미러
 }

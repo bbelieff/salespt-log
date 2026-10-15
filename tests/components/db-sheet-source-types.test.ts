@@ -14,7 +14,7 @@ describe("DB supplier type and source",()=>{
   expect(issues(row)).toBe("공급처 유형");expect(issues({...row,channel:"현수막"})).toBe("");
  });
  it.each(CHANNEL_ORDER)("imports %s with new and legacy headers",channel=>{
-  for(const header of ["공급처 유형,공급처","유입채널,DB공급처"]){
+  for(const header of ["공급처 유형,공급처","유입채널,DB공급처","채널,공급처","channel,공급처"]){
    const [row]=parse(`${header},사업자명,유입일\n${channel},합성 출처,합성 상사,2026-10-13`);
    expect(DbSheetLeadInput.parse(row)).toMatchObject({channel,supplier:"합성 출처"});
   }

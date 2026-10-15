@@ -8,10 +8,11 @@ import { Meeting } from "@/types/meeting";
 const fixture=vi.hoisted(()=>({db:null as PGlite|null}));
 vi.mock("@/repo/db/client",()=>({dbEnabled:()=>true,getDbPool:()=>({query:query,connect:async()=>({query,release(){}})})}));
 async function query(sql:string,params:unknown[]=[]){const r=await fixture.db!.query(sql,params);return {rows:r.rows,rowCount:r.affectedRows??r.rows.length};}
-import {listDbSheet,saveDbSheetLead,saveDbSheetContact,registerDbSheetMeeting,importDbSheetLeads} from "@/repo/db/db-sheet";
+import {listDbSheet,saveDbSheetLead,saveDbSheetContact,registerDbSheetMeeting,importDbSheetLeads,changeDbSheetRecording,deleteDbSheetLead,listDbSheetSuppliers,DbSheetDuplicate} from "@/repo/db/db-sheet";
 const ctx={spreadsheetId:"synthetic-sheet-a",cohort:"fixture",email:"owner@example.test"};
 const other={...ctx,spreadsheetId:"synthetic-sheet-b"};
-const input=()=>DbSheetLeadInput.parse({id:randomUUID(),date:"2026-10-08",channel:"직접생산",company:"합성 원본업체",phone:"01012345678",memo:"원본 응답"});
+let serial=0;
+const input=()=>DbSheetLeadInput.parse({id:randomUUID(),date:"2026-10-08",channel:"직접생산",company:"합성 원본업체 "+(++serial),phone:"0101234"+String(serial).padStart(4,"0"),memo:"원본 응답"});
 async function sales(date:string){const r=await query("select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2",[ctx.spreadsheetId,date+":직접생산"]);return (r.rows[0] as {payload:Record<string,number>}|undefined)?.payload;}
 beforeAll(async()=>{
  fixture.db=new PGlite();await fixture.db.exec(`create table sheet_rows(cohort text,email text,spreadsheet_id text,tab text,row_key text,payload jsonb,mirror_pending boolean default false,updated_at timestamptz default now(),unique(spreadsheet_id,tab,row_key));`);
@@ -22,7 +23,7 @@ beforeAll(async()=>{
 },60000);
 afterAll(async()=>{await fixture.db?.close();});
 it("persists original source and verified info separately; tenant/revision guards",async()=>{
- const raw=input();const created=await saveDbSheetLead(ctx,raw,null);expect(created.lead.phone).toBe("010-1234-5678");
+ const raw=input();const created=await saveDbSheetLead(ctx,raw,null);expect(created.lead.phone).toBe("010-1234-"+String(serial).padStart(4,"0"));
  expect((await sales(raw.date))?.inflow).toBe(1);expect((await sales(raw.date))?.production).toBe(1);
  const updated=await saveDbSheetLead(ctx,{...created.lead,contact:{...created.lead.contact,companyName:"확인 업체",ci:{대표자이름:"확인 대표"}},first:"2099-01-01",stage:"완료"},1);
  expect(updated.lead.company).toBe(raw.company);expect(updated.lead.contact.companyName).toBe("확인 업체");expect(updated.lead.first).toBe("");expect(updated.lead.stage).toBe("미컨택");expect(updated.lead.memo).toBe("원본 응답");
@@ -62,7 +63,7 @@ it("projects linked meeting edits only inside the tenant without changing origin
  const result=await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision);
  await query("update sheet_rows set payload=payload || $2::jsonb where row_key=$1",[result.meetingId,JSON.stringify({상태:"계약",업체명:"변경확인업체",업체정보:{대표자이름:"변경대표"},미팅날짜:"2026-10-16"})]);
  const projected=(await listDbSheet(ctx)).find(x=>x.id===lead.id)!;
- expect(projected.stage).toBe("계약");expect(projected.contact.companyName).toBe("변경확인업체");expect(projected.contact.meetingDate).toBe("2026-10-16");expect(projected.contact.ci.대표자이름).toBe("변경대표");expect(projected.company).toBe("합성 원본업체");
+ expect(projected.stage).toBe("계약");expect(projected.contact.companyName).toBe("변경확인업체");expect(projected.contact.meetingDate).toBe("2026-10-16");expect(projected.contact.ci.대표자이름).toBe("변경대표");expect(projected.company).toBe(lead.company);
  expect(await listDbSheet(other)).toEqual([]);
  await query("update sheet_rows set payload=payload || '{\"_cleared\":true}'::jsonb where row_key=$1",[result.meetingId]);
  expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)!.stage).toBe("미팅 삭제됨");
@@ -87,8 +88,8 @@ it("meeting descendant projection and readonly guard preserve editable raw field
  const child={...meeting,id:randomUUID(),previousMeetingId:r.meetingId,상태:"계약",업체명:"변경 업체",업체정보:{대표자이름:"변경대표"}};
  await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,child.id,JSON.stringify(child)]);
  const projected=(await listDbSheet(ctx)).find(x=>x.id===lead.id)!;expect(projected.stage).toBe("계약");expect(projected.contact.companyName).toBe("변경 업체");expect(projected.meetingId).toBe(r.meetingId);expect(projected.effectiveMeetingId).toBe(child.id);expect(projected.meetingLineageIds).toEqual([r.meetingId,child.id]);
- await expect(saveDbSheetLead(ctx,{...projected,contact:{...projected.contact,companyName:"불가"}},projected.revision)).rejects.toThrow("컨택관리");
- await expect(saveDbSheetLead(ctx,{...projected,contact:{...projected.contact,ci:{...projected.contact.ci,대표자이름:"불가"}}},projected.revision)).rejects.toThrow("컨택관리");
+ await expect(saveDbSheetLead(ctx,{...projected,contact:{...projected.contact,companyName:"불가"}},projected.revision)).rejects.toThrow("STEP 3");
+ await expect(saveDbSheetLead(ctx,{...projected,contact:{...projected.contact,ci:{...projected.contact.ci,대표자이름:"불가"}}},projected.revision)).rejects.toThrow("STEP 3");
  const saved=await saveDbSheetLead(ctx,{...projected,company:"원본수정",contact:{...projected.contact,note:"추가상담"}},projected.revision);expect(saved.lead.company).toBe("원본수정");expect(saved.lead.contact.note).toBe("추가상담");expect(saved.lead.contact.companyName).toBe("변경 업체");
  const grandchild={...child,id:randomUUID(),previousMeetingId:child.id,상태:"변경"};
  await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,grandchild.id,JSON.stringify(grandchild)]);
@@ -183,4 +184,114 @@ it("draft autosave after a completed contact cannot restore the consumed next da
  expect(lead.next).toBe("");expect(lead.followUp!.completedGeneration).toBe(lead.followUp!.generation);
  lead=(await saveDbSheetLead(ctx,{...lead,next:"2026-10-12"},lead.revision,true)).lead;
  expect(lead.next).toBe("2026-10-12");expect(lead.followUp!.completedGeneration).not.toBe(lead.followUp!.generation);
+});
+
+
+it("import records only selected inflows and preserves explicit activity selection across retry",async()=>{
+ const day="2028-01-01",batch=randomUUID();const rows=[{...input(),date:day,recording:{inflow:true,activities:true}},{...input(),date:day,recording:{inflow:false,activities:false}}];
+ const added=await importDbSheetLeads(ctx,batch,rows);expect((await sales(day))?.inflow).toBe(1);
+ expect(added.map(x=>x.lead.inflowStatus?.state)).toEqual(['recorded','excluded']);expect(added.map(x=>x.impact?.inflow)).toEqual([1,0]);
+ const retry=await importDbSheetLeads(ctx,batch,rows);expect(retry.every(x=>!x.impact?.inflow)).toBe(true);expect((await sales(day))?.inflow).toBe(1);
+ await expect(importDbSheetLeads(ctx,batch,[{...rows[0],recording:{inflow:false,activities:true}},rows[1]])).rejects.toThrow('CONFLICT');
+});
+it("retroactive activities are real events, selected once, and disabling never subtracts",async()=>{
+ const day="2028-02-01";let lead=(await saveDbSheetLead(ctx,{...input(),date:day,recording:{inflow:false,activities:false}},null)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:day,result:'부재',note:''},lead.revision)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:'2028-02-02',result:'컨택진행',note:''},lead.revision)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:'2028-02-03',result:'상담 후 거절',note:''},lead.revision)).lead;
+ const meeting=Meeting.parse({id:'ignored',예약일:'2028-02-02',예약시각:'09:00',미팅날짜:'2028-02-05',미팅시간:'14:00',channel:'직접생산',업체명:'합성 선택 예약',장소:'합성'});
+ lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
+ expect((await sales('2028-02-02'))?.meetingReservation).toBe(0);expect((await sales('2028-02-02'))?.contactProgress??0).toBe(0);
+ const preview=await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:true},true);expect(preview.impact).toMatchObject({inflow:0,contacts:2,meetings:1});expect((await sales('2028-02-02'))?.meetingReservation).toBe(0);
+ let changed=await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:true});lead=changed.lead;expect(changed.impact).toMatchObject({inflow:0,contacts:2,meetings:1});expect((await sales('2028-02-02'))?.meetingReservation).toBe(1);
+ changed=await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:true});lead=changed.lead;expect(changed.impact).toMatchObject({inflow:0,contacts:0,meetings:0});
+ changed=await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true});lead=changed.lead;expect(changed.impact).toMatchObject({inflow:1,contacts:0,meetings:0});
+ lead=(await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:false})).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:'2028-02-04',result:'컨택진행',note:''},lead.revision)).lead;
+ expect((await sales(day))?.inflow).toBe(1);expect((await sales('2028-02-04'))?.contactProgress??0).toBe(0);expect(lead.inflowStatus?.state).toBe('recorded');
+ await expect(changeDbSheetRecording(ctx,lead.id,lead.revision-1,{inflow:true,activities:true})).rejects.toThrow('CONFLICT');
+ await expect(changeDbSheetRecording(other,lead.id,lead.revision,{inflow:true,activities:true})).rejects.toThrow('CONFLICT');
+});
+it("move and permanent delete remove only own evidence, never manual inflow/contact totals",async()=>{
+ const day='2028-03-01';await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'sales',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,day+':직접생산',JSON.stringify({date:day,channel:'직접생산',inflow:10,contactProgress:8})]);
+ let lead=(await saveDbSheetLead(ctx,{...input(),date:day},null)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:day,result:'컨택진행',note:''},lead.revision)).lead;
+ lead=(await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:false})).lead;
+ lead=(await saveDbSheetLead(ctx,{...lead,date:'2028-03-02',_recorded:{inflow:false,contacts:[],meeting:true}},lead.revision)).lead;
+ expect((await sales(day))?.inflow).toBe(10);expect((await sales(day))?.contactProgress).toBe(9);
+ const preview=await deleteDbSheetLead(ctx,lead.id,lead.revision,true);expect(preview.impact).toMatchObject({inflow:-1,contacts:-1});
+ await deleteDbSheetLead(ctx,lead.id,lead.revision);expect((await sales(day))?.contactProgress).toBe(8);expect((await sales('2028-03-02'))?.inflow).toBe(0);
+ await expect(deleteDbSheetLead(ctx,lead.id,lead.revision)).rejects.toThrow('CONFLICT');
+});
+it("normalized duplicates need explicit override and duplicate batch is atomic",async()=>{
+ const original={...input(),company:'합성 중복 회사',phone:'010-9000-1234'};const first=await saveDbSheetLead(ctx,original,null);
+ const duplicate={...input(),company:'다른 합성 이름',phone:'+821090001234'};
+ await expect(saveDbSheetLead(ctx,duplicate,null)).rejects.toBeInstanceOf(DbSheetDuplicate);
+ await expect(saveDbSheetLead(ctx,{...duplicate,phone:'',company:'합성중복회사'},null)).rejects.toBeInstanceOf(DbSheetDuplicate);
+ await expect(saveDbSheetLead(other,duplicate,null)).resolves.toBeDefined();
+ const allowed=await saveDbSheetLead(ctx,duplicate,null,false,true);expect(allowed.lead.id).not.toBe(first.lead.id);
+ const one=input(),two={...one,id:randomUUID()};await expect(importDbSheetLeads(ctx,randomUUID(),[one,two])).rejects.toBeInstanceOf(DbSheetDuplicate);expect((await listDbSheet(ctx)).some(x=>x.id===one.id)).toBe(false);
+ await expect(importDbSheetLeads(ctx,randomUUID(),[one,two],[two.id])).resolves.toHaveLength(2);
+});
+it("deleted reservations do not resurrect on settings activation; linked active/descendant rows block lead deletion",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),date:'2028-04-01',recording:{inflow:false,activities:false}},null)).lead;
+ const meeting=Meeting.parse({id:'ignored',예약일:'2028-04-01',예약시각:'09:00',미팅날짜:'2028-04-05',미팅시간:'14:00',channel:'직접생산',업체명:'합성 삭제 예약',장소:'합성'});
+ lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
+ expect((await deleteDbSheetLead(ctx,lead.id,lead.revision,true)).impact.blockedReason).toBeTruthy();
+ await expect(deleteDbSheetLead(ctx,lead.id,lead.revision)).rejects.toThrow();
+ await query("update sheet_rows set payload=payload||'{\"_cleared\":true}'::jsonb where spreadsheet_id=$1 and row_key=$2",[ctx.spreadsheetId,lead.meetingId]);
+ const enabled=await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true});lead=enabled.lead;expect(enabled.impact.meetings).toBe(0);expect(lead._recorded?.meeting).toBe(false);
+ const child={...meeting,id:randomUUID(),previousMeetingId:lead.meetingId,_cleared:true};await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,child.id,JSON.stringify(child)]);
+ expect((await deleteDbSheetLead(ctx,lead.id,lead.revision,true)).impact.blockedReason).toContain('연결');
+});
+it("legacy evidence is projected without backfill and supplier history is tenant scoped",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),supplier:'합성 이전 공급처',date:'2028-05-01'},null)).lead;
+ lead=(await saveDbSheetLead(ctx,{...lead,supplier:'합성 새 공급처'},lead.revision)).lead;
+ await query("update db_sheet_leads set data=data-'_recorded'-'recording' where spreadsheet_id=$1 and id=$2",[ctx.spreadsheetId,lead.id]);
+ expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)?.inflowStatus?.state).toBe('recorded');
+ expect(await listDbSheetSuppliers(ctx)).toEqual(expect.arrayContaining(['합성 이전 공급처','합성 새 공급처']));expect(await listDbSheetSuppliers(other)).not.toContain('합성 이전 공급처');
+ await query('delete from db_sheet_history where spreadsheet_id=$1 and lead_id=$2',[ctx.spreadsheetId,lead.id]);
+ expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)?.inflowStatus?.state).toBe('unknown');expect((await sales('2028-05-01'))?.inflow).toBe(1);
+ expect((await deleteDbSheetLead(ctx,lead.id,lead.revision,true)).impact.blockedReason).toBeTruthy();await expect(deleteDbSheetLead(ctx,lead.id,lead.revision)).rejects.toThrow('확인');
+ expect((await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true},true)).impact.inflow).toBe(0);
+});
+it("general meeting recomputation respects excluded rescheduled lineage and unrelated tenants",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),date:'2028-06-01',recording:{inflow:false,activities:false}},null)).lead;
+ const meeting=Meeting.parse({id:'ignored',예약일:'2028-06-01',예약시각:'09:00',미팅날짜:'2028-06-05',미팅시간:'14:00',channel:'직접생산',업체명:'합성 연속 예약',장소:'합성'});
+ lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
+ const child={...meeting,id:randomUUID(),previousMeetingId:lead.meetingId};await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,child.id,JSON.stringify(child)]);
+ const {lockedMeetingCounts}=await import('@/repo/db/sales-meeting-counts');expect((await lockedMeetingCounts({query} as never,ctx.spreadsheetId)).get('2028-06-01:직접생산')??0).toBe(0);
+ const {persistSelectedMeetingCount}=await import('@/repo/db/selected-meeting-counts');await persistSelectedMeetingCount(ctx,'2028-06-01','직접생산');expect((await sales('2028-06-01'))?.meetingReservation).toBe(0);
+ lead=(await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:true})).lead;expect((await sales('2028-06-01'))?.meetingReservation).toBe(2);
+});
+
+it("OFF snapshots prior reservation IDs, excludes later descendants, and ON adds only missing active meetings",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),date:'2029-01-01'},null)).lead;
+ const meeting=Meeting.parse({id:'ignored',예약일:'2029-01-01',예약시각:'09:00',미팅날짜:'2029-01-05',미팅시간:'14:00',channel:'직접생산',업체명:'합성 후속 일정',장소:'합성'});
+ lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
+ const child={...meeting,id:randomUUID(),previousMeetingId:lead.meetingId};
+ await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,child.id,JSON.stringify(child)]);
+ const {lockedMeetingCounts}=await import('@/repo/db/sales-meeting-counts');
+ expect((await lockedMeetingCounts({query} as never,ctx.spreadsheetId,true)).get('2029-01-01:직접생산')).toBe(2);
+ await expect(changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:false})).rejects.toThrow('CONFLICT');
+ lead=(await listDbSheet(ctx)).find(x=>x.id===lead.id)!;
+ await query("update sheet_rows set payload=payload||'{\"_cleared\":true}'::jsonb where spreadsheet_id=$1 and row_key=$2",[ctx.spreadsheetId,child.id]);
+ lead=(await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:false})).lead;expect(lead._recorded?.meetingIds).toContain(child.id);
+ const later={...child,id:randomUUID()};await query("insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload) values($1,$2,$3,'meetings',$4,$5::jsonb)",[ctx.cohort,ctx.email,ctx.spreadsheetId,later.id,JSON.stringify(later)]);
+ expect((await lockedMeetingCounts({query} as never,ctx.spreadsheetId)).get('2029-01-01:직접생산')).toBe(1);
+ await query("update sheet_rows set payload=payload||'{\"_cleared\":false}'::jsonb where spreadsheet_id=$1 and row_key=$2",[ctx.spreadsheetId,child.id]);
+ expect((await lockedMeetingCounts({query} as never,ctx.spreadsheetId)).get('2029-01-01:직접생산')).toBe(2);
+ const preview=await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true},true);expect(preview.impact.meetings).toBe(1);
+ lead=(await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true})).lead;expect((await sales('2029-01-01'))?.meetingReservation).toBe(3);
+ expect((await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true},true)).impact.meetings).toBe(0);
+});
+it("permanent lead deletion retains a non-restorable tombstone for pending mirror convergence",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),date:'2029-02-01'},null)).lead;
+ const meeting=Meeting.parse({id:'ignored',예약일:'2029-02-01',예약시각:'09:00',미팅날짜:'2029-02-05',미팅시간:'14:00',channel:'직접생산',업체명:'합성 영구삭제',장소:'합성'});
+ lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
+ await query("update sheet_rows set payload=payload||'{\"_cleared\":true}'::jsonb where spreadsheet_id=$1 and row_key=$2",[ctx.spreadsheetId,lead.meetingId]);
+ await deleteDbSheetLead(ctx,lead.id,lead.revision);
+ const tombstone=await query("select payload,mirror_pending from sheet_rows where spreadsheet_id=$1 and tab='meetings' and row_key=$2",[ctx.spreadsheetId,lead.meetingId]);
+ expect(tombstone.rows).toHaveLength(1);expect(tombstone.rows[0]).toMatchObject({payload:{_cleared:true,_dbSheetLeadDeleted:true},mirror_pending:true});
+ expect((await listDbSheet(ctx)).some(x=>x.id===lead.id)).toBe(false);
 });

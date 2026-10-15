@@ -1,6 +1,6 @@
 "use client"; // MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useEffect, useState } from "react";
 import type { Channel, Meeting, CompanyInfo } from "@/types";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import { CHANNEL_BADGE } from "../_lib/badges";
@@ -56,6 +56,7 @@ export default function MeetingResultCard({
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>(null);
   const [editMode, setEditMode] = useState(false);
+  useEffect(()=>{if(focus&&new URLSearchParams(window.location.search).get("edit")==="schedule"){setOpen(true);setAction("reschedule");}},[focus]);
   const [addOpen, setAddOpen] = useState(false);
   const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(meeting.업체정보);
   const [ciTouched, setCiTouched] = useState(false);

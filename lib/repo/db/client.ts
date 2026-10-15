@@ -155,7 +155,7 @@ export async function writeSalesRowsToDb(p: {
   try {
     await client.query("begin");
     await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [`db-sheet:${p.spreadsheetId}`]);
-    const meetingCounts = await lockedMeetingCounts(client, p.spreadsheetId);
+    const meetingCounts = await lockedMeetingCounts(client, p.spreadsheetId, true);
     for (const r of p.rows) {
       const current = await client.query(
         "select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2 for update",
