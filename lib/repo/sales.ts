@@ -199,26 +199,6 @@ export async function readGraduation(spreadsheetId: string): Promise<Date> {
 }
 
 /**
- * 영업관리 B3/C3에서 사용자 프로필(기수/이름) 읽기.
- * 사용자가 시트에 직접 입력한 값 — 마스터 레지스트리(users 탭)와 별개의 SSOT.
- * 헤더 컴포넌트가 "{기수} {이름}" 표시에 사용.
- */
-export async function readProfile(
-  spreadsheetId: string,
-): Promise<{ cohort: string; name: string }> {
-  const range = `${tabRef(SHEET_RANGES.sales.tab)}!B3:C3`;
-  const res = await sheetsClient().spreadsheets.values.get({
-    spreadsheetId,
-    range,
-  });
-  const row = res.data.values?.[0] ?? [];
-  return {
-    cohort: String(row[0] ?? "").trim(),
-    name: String(row[1] ?? "").trim(),
-  };
-}
-
-/**
  * loadMe + enrichUsersWithDates 공용 — B3:C3 + O1 + O2 + 8주 funnel 데이터
  * 블록을 단일 batchGet 으로. stats 는 데이터 컬럼 직접 합산 (sumFunnelDataRows).
  */

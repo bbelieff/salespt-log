@@ -50,14 +50,6 @@ export const registry = () => ({
 export const cohortsTab = (): string => process.env.SHEETS_COHORTS_TAB ?? "cohorts";
 
 /**
- * 기수 전체 현황 마스터 시트 (트레이너·관리자 조회용).
- * registry 와는 별개 — 사람·시트 매핑은 registry, 기수 단위 KPI/대시보드는 여기.
- * env SHEETS_COHORT_MASTER_ID 미설정 시 빈 문자열 → UI 에서 링크 미노출.
- */
-export const cohortMasterSheetId = (): string =>
-  process.env.SHEETS_COHORT_MASTER_ID ?? "";
-
-/**
  * Admin (마스터) 이메일 목록.
  * env ADMIN_EMAILS="a@x.com,b@y.com" (콤마 구분). 미설정 시 빈 배열.
  *
@@ -149,11 +141,10 @@ export const SHEET_RANGES = {
   // ── 대시보드 (읽기 전용) ───────────────────────────────────
   dashboard: {
     tab: "대시보드(자동작성)",
-    summary: "B2:N20", // 요약 카드 영역 (Recharts 입력)
   },
 
   // ── 영업관리 (8주차 × 28행 블록) ───────────────────────────
-  // 웹 직접 쓰기: E~H (4지표) + Q~T (실적관리/수납)
+  // 웹 직접 쓰기: E~H (4지표). (옛 Q~T 실적관리 입력 칸은 폐기 — 2026-10-15 좌표도 삭제)
   // 시트 수식 자동: I~P (절대 쓰기 금지 — formulaCols로 가드)
   //
   // 좌표 측정 (사용자 시트 2026-04-28):
@@ -173,12 +164,6 @@ export const SHEET_RANGES = {
       inflow: "F",
       contactProgress: "G",
       meetingReservation: "H", // 시트 헤더 "미팅 예약건 수" (구 "컨택성공")
-    },
-    revenueCols: {
-      approvalCount: "Q",
-      paymentCount: "R",
-      paymentAmount: "S",
-      agencyNote: "T",
     },
     // ⚠️ 시트 수식 자동 — 웹 쓰기 금지. repo가 런타임 가드로 차단.
     formulaCols: ["I", "J", "K", "L", "M", "N", "O", "P"] as const,
@@ -246,8 +231,6 @@ export const SHEET_RANGES = {
       { startCol: "S", endCol: "X" }, // 수납2: S~X
       { startCol: "Y", endCol: "AD" }, // 수납3: Y~AD
     ] as const,
-    // 진행률 dropdown 컬럼 (시트 data validation: "0%/20%/40%/60%/80%/100%" 텍스트)
-    progressCols: ["N", "T", "Z"] as const,
   },
 
   // ── DB관리 (4채널 raw log, 비용 + 영업기회) ───────────────
@@ -269,25 +252,21 @@ export const SHEET_RANGES = {
         startCol: "B",
         endCol: "G",
         cols: ["구매일", "업체명", "개당단가", "주문개수", "부가세여부", "기타"] as const,
-        formulaCols: [] as const,
       },
       직접생산: {
         startCol: "I",
         endCol: "O",
         cols: ["시작일", "종료일", "소재", "기간예산", "생산개수", "부가세여부", "기타"] as const,
-        formulaCols: [] as const,
       },
       현수막: {
         startCol: "P",
         endCol: "V",
         cols: ["날짜", "업체명", "도착일", "개당단가", "주문개수", "부가세여부", "기타"] as const,
-        formulaCols: [] as const,
       },
       "콜·지·기·소": {
         startCol: "X",
         endCol: "AD",
         cols: ["구분", "접수일", "대표자명", "업체명", "소개처", "연락처", "조건"] as const,
-        formulaCols: [] as const, // 비용 X, 정보만 — 수식 없음
       },
       // (현수막게시 AF:AI 섹션 — ADR-0023 폐기, ADR-0025: 게시=생산은 컨택 영업관리 E 소유.)
     },

@@ -65,15 +65,6 @@ export async function listArenaParticipants(): Promise<User[]> {
   return all.filter((u) => u.role === "trainee" && isArenaCohort(u.cohort));
 }
 
-/** 트레이너 이름과 일치하는 아레나 trainee 행의 spreadsheetId(동명이인 가드 — 유일할
- * 때만). 수강생출신 트레이너의 "내 아레나 일지" self-view 연결용(P14). 데이터 쓰기 없음.
- * 부부 행("류서하(심나영)")도 nameMatches 로 흡수. */
-export async function findArenaSheetIdByName(name: string): Promise<string | null> {
-  const parts = await listArenaParticipants();
-  const hit = parts.filter((u) => u.spreadsheetId && nameMatches(u.name, name));
-  return hit.length === 1 ? hit[0]!.spreadsheetId : null;
-}
-
 export interface OwnArenaIdentity {
   email: string;
   spreadsheetId: string;

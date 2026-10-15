@@ -1,3 +1,7 @@
+## 2026-10-15 · 화석 코드 정비 A1 (chore/fossil-a1-dead-code)
+- belie: 화석 조사 결과 A 진행·D 권장안 승인. A1 = 안 쓰는 컴포넌트 3·API 1·시트 시절 함수 약 20·실행 불가 코드·옛 좌표·폐지된 69일 상수 삭제(동작 불변). chooseWriteSource 는 쓰기 롤백 스위치라 유지.
+- 상세 = docs/plans/active/fossil-a1-dead-code.md. 되돌리기 = squash revert.
+
 ## 2026-10-15 · 코드 정비 2차 (chore/ci-build-and-architecture-doc)
 - #1142 머지(3391d44f). 이어서 C8 CI 에 운영 빌드 잡 추가(로컬 비밀값 없이 빌드 6분 성공 확인) · B10 architecture.md 를 현재 구조로 다시 씀. C2 는 테스트 경로 변경이 커서 별도 PR 로 보류.
 

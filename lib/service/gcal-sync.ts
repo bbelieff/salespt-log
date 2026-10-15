@@ -181,15 +181,6 @@ export function onMeetingCreated(
   }, `meeting-create ${m.id}`);
 }
 
-/** 미팅 수정/상태전이 직후(reconcile) — fire-and-forget(시트 정본 경로용). */
-export function onMeetingChanged(
-  email: string,
-  spreadsheetId: string,
-  id: string,
-): void {
-  void reconcileMeetingEvent(email, spreadsheetId, id);
-}
-
 /** R3-2: **awaitable** 미팅 reconcile — 수렴 동기화 잡이 행 보장 후 await 해서 gcal 작업을
  * 미러 큐 직렬화 안에 가둔다(탈출 시 삭제 잡과 경합 → 이벤트ID 미기록 고아 이벤트).
  * `known` 전달 시 재조회 생략(DB 정본 경로 — 시트 재조회는 stale 레이스).

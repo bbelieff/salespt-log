@@ -139,24 +139,6 @@ function combineMonths(results: MonthQueryResult[]): MonthsMeetingsResult {
   };
 }
 
-/**
- * 대시보드 「오늘 챙길 일」 — 여러 달의 미팅을 캘린더와 같은 키(['month', yyyy-MM])로 읽는다.
- * meta.background: 전역 로딩 오버레이 집계에서 빼고 카드 자체 스켈레톤만 보인다(LoadingProvider).
- */
-export function useMonthsMeetings(months: string[], opts: MonthsMeetingsOptions = {}): MonthsMeetingsResult {
-  return useQueries({
-    queries: months.map((yyyyMM) => ({
-      queryKey: monthKey(yyyyMM),
-      queryFn: () => fetchJSON<CalendarMonthView>(`/api/meetings/month/${yyyyMM}`),
-      enabled: opts.enabled ?? true,
-      staleTime: opts.staleTime ?? 60_000,
-      gcTime: 10 * 60_000,
-      meta: { background: true },
-    })),
-    combine: combineMonths,
-  });
-}
-
 // 수납 탭(useDailyRevenue / useSaveDailyRevenue / paymentKey)은
 // PR #38·39·40에서 contract-payment로 모델 재정의되어 폐기됨.
 // 새 훅: lib/query/contract-payment-hooks.ts

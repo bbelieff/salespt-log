@@ -121,15 +121,6 @@ export async function listCohorts(): Promise<Cohort[]> {
     }));
 }
 
-/** 한 기수 label 의 status 반환 (시트에 없으면 default "active"). */
-export async function getCohortStatus(label: string): Promise<CohortStatus> {
-  const trimmed = label.trim();
-  if (!trimmed) return "active";
-  const list = await listCohorts();
-  const found = list.find((c) => c.label === trimmed);
-  return found?.status ?? "active";
-}
-
 /** archived 기수 label set — 빠른 멤버십 검사용. */
 export async function getArchivedCohortSet(): Promise<Set<string>> {
   const list = await listCohorts();

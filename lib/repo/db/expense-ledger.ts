@@ -81,59 +81,6 @@ export function ensureExpenseLedgerSchema(): Promise<void> {
       const marker = ready.rows[0] as Row | undefined;
       if (marker?.state !== "ready" || marker.script_sha256 !== EXPENSE_CATEGORY_LIFECYCLE_SQL_SHA256) throw new Error("expense_schema_not_ready");
       return;
-      await ensureSchema();
-      const pool = getDbPool();
-      await pool.query(`create table if not exists expense_categories (
-        id uuid primary key, spreadsheet_id text not null, name text not null, name_normalized text not null,
-        archived_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
-        created_by_email text not null, updated_by_email text not null, unique (spreadsheet_id, name_normalized)
-      )`);
-      await pool.query(`create table if not exists expense_category_audits (
-        id uuid primary key, category_id uuid not null references expense_categories(id), spreadsheet_id text not null,
-        action text not null check (action in ('created','renamed','archived','restored')),
-        previous_name text, next_name text, actor_email text not null, created_at timestamptz not null default now()
-      )`);
-      await pool.query(`create table if not exists expense_entries (
-        id uuid primary key, spreadsheet_id text not null, category_id uuid not null references expense_categories(id),
-        category_name_at_entry text not null, item_name text not null, amount_won bigint not null check (amount_won > 0),
-        period_start date not null, period_end date not null, deleted_at timestamptz,
-        created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
-        created_by_email text not null, updated_by_email text not null, check (period_end >= period_start)
-      )`);
-      await pool.query(`create table if not exists expense_recurring_rules (
-        id uuid primary key, spreadsheet_id text not null, category_id uuid not null references expense_categories(id),
-        category_name_at_rule text not null, item_name text not null, amount_won bigint not null check (amount_won > 0),
-        frequency text not null default 'monthly' check (frequency = 'monthly'), anchor_day int not null check (anchor_day between 1 and 31),
-        starts_on date not null, ends_on date, status text not null default 'active' check (status in ('active','paused','archived')),
-        supersedes_rule_id uuid references expense_recurring_rules(id),
-        created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
-        created_by_email text not null, updated_by_email text not null, check (ends_on is null or ends_on >= starts_on)
-      )`);
-      await pool.query(`create table if not exists expense_recurring_occurrences (
-        id uuid primary key, rule_id uuid not null references expense_recurring_rules(id), spreadsheet_id text not null,
-        occurrence_date date not null, occurrence_month date not null, category_id uuid not null references expense_categories(id),
-        category_name_at_occurrence text not null, item_name text not null, amount_won bigint not null check (amount_won > 0),
-        status text not null default 'active' check (status in ('active','skipped','voided')), is_override boolean not null default false,
-        created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
-        created_by_email text not null, updated_by_email text not null, unique (rule_id, occurrence_month)
-      )`);
-      await pool.query(`create table if not exists expense_recurring_skips (
-        id uuid primary key, rule_id uuid not null references expense_recurring_rules(id), spreadsheet_id text not null,
-        occurrence_month date not null, reason text not null default '', created_by_email text not null,
-        created_at timestamptz not null default now(), unique (rule_id, occurrence_month)
-      )`);
-      await pool.query(`create table if not exists expense_recurring_pauses (
-        id uuid primary key, rule_id uuid not null references expense_recurring_rules(id), spreadsheet_id text not null,
-        paused_on date not null, resumed_on date, created_by_email text not null, resumed_by_email text,
-        created_at timestamptz not null default now(), resumed_at timestamptz,
-        check (resumed_on is null or resumed_on >= paused_on)
-      )`);
-      await Promise.all([
-        pool.query("create index if not exists expense_entries_scope_period on expense_entries (spreadsheet_id, period_start, period_end) where deleted_at is null"),
-        pool.query("create index if not exists expense_rules_scope on expense_recurring_rules (spreadsheet_id, status, starts_on)"),
-        pool.query("create index if not exists expense_occurrences_scope_month on expense_recurring_occurrences (spreadsheet_id, occurrence_month)"),
-        pool.query("create index if not exists expense_pauses_scope_rule on expense_recurring_pauses (spreadsheet_id, rule_id, paused_on)"),
-      ]);
     })().catch((error) => { ledgerSchemaReady = null; throw error; });
   }
   return ledgerSchemaReady;

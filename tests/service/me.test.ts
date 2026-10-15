@@ -42,11 +42,12 @@ vi.mock("@/repo/sales", async (importOriginal) => ({
 
 import {
   GRADUATION_OFFSET_DAYS,
-  computeGraduationISO,
   enrichUsersWithDates,
   enrichUsersWithStats,
   _resetBundleCacheForTest,
 } from "@/service/me";
+// 총회일 계산 정본(me.ts 의 테스트용 사본은 2026-10-15 삭제).
+import { computeGraduationISO } from "@/service/cohort-dates";
 
 // BBE-249 — readBundle 이 SWR 인메모리 캐시(spreadsheetId 키)로 바뀌어 테스트 간 상태가
 // 새 지 않으면 서로 오염될 수 있다. 각 테스트는 고유 spreadsheetId 를 쓰지만 안전하게 리셋.
