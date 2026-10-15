@@ -204,3 +204,7 @@ body.db-sheet-route .has-frozen-company .sheet-resizable .sheet-company-column {
 body.db-sheet-route .has-frozen-company .sheet-resizable tr:hover td.sheet-company-column {background:#f8fafc}
 body.db-sheet-route .has-frozen-number .sheet-resizable thead .sheet-number,
 body.db-sheet-route .has-frozen-company .sheet-resizable thead .sheet-company-column {top:0;z-index:5;background:#f8fafc}
+
+/* Keep the count explanation readable in narrow detail panes. */
+body.db-sheet-route .db-contact-controls .db-result-field{grid-column:1 / -1}
+@media(max-width:360px){body.db-sheet-route .db-contact-controls .db-result-field select{font-size:14px;padding-inline:6px}}

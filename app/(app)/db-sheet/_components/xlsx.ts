@@ -57,17 +57,18 @@ const colIndex = (ref: string) => {
 const quote = (s: string) => (/[\t\n\r"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 
 /** 엑셀 날짜 일련번호 → YYYY-MM-DD (1900 체계). */
-function serialDate(n: number): string {
-  const ms = Math.round((n - 25569) * 86_400_000);
+function serialDate(n: number, date1904: boolean): string {
+  const ms = Math.round((n + (date1904 ? 1462 : 0) - 25569) * 86_400_000);
   return new Date(ms).toISOString().slice(0, 10);
 }
 
 export async function xlsxToText(buf: ArrayBuffer): Promise<string> {
-  const files = await readZip(buf, (n) => /^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|worksheets\/[^/]+\.xml)$/.test(n));
+  const files = await readZip(buf, (n) => /^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|styles\.xml|worksheets\/[^/]+\.xml)$/.test(n));
   // 첫 번째 시트 경로 — workbook 의 첫 <sheet r:id> → rels Target. 못 찾으면 sheet1.
   let sheetPath = "xl/worksheets/sheet1.xml";
   const wb = files.get("xl/workbook.xml");
   const rels = files.get("xl/_rels/workbook.xml.rels");
+  const date1904 = !!wb && ["1", "true"].includes(xml(wb).getElementsByTagNameNS(MAIN, "workbookPr")[0]?.getAttribute("date1904") ?? "");
   if (wb && rels) {
     const first = xml(wb).getElementsByTagNameNS(MAIN, "sheet")[0];
     const rid = first?.getAttributeNS(REL, "id");
@@ -80,11 +81,18 @@ export async function xlsxToText(buf: ArrayBuffer): Promise<string> {
   const shared = files.has("xl/sharedStrings.xml")
     ? Array.from(xml(files.get("xl/sharedStrings.xml")!).getElementsByTagNameNS(MAIN, "si")).map(textOf)
     : [];
+  const styles = files.get("xl/styles.xml");
+  const styleXml = styles ? xml(styles) : null;
+  const formats = new Map(Array.from(styleXml?.getElementsByTagNameNS(MAIN, "numFmt") ?? []).map(el => [el.getAttribute("numFmtId"), el.getAttribute("formatCode") ?? ""]));
+  const cellFormats = Array.from(styleXml?.getElementsByTagNameNS(MAIN, "cellXfs")[0]?.children ?? []).map(el => formats.get(el.getAttribute("numFmtId")) ?? "");
+  const { SSF } = await import('xlsx');
+  const numberFormats: string[][] = [];
   const grid: string[][] = [];
   const numeric: boolean[][] = [];
   for (const row of Array.from(xml(sheet).getElementsByTagNameNS(MAIN, "row"))) {
     const cells: string[] = [];
     const nums: boolean[] = [];
+    const rowFormats: string[] = [];
     for (const c of Array.from(row.getElementsByTagNameNS(MAIN, "c"))) {
       const i = colIndex(c.getAttribute("r") ?? "A1");
       const t = c.getAttribute("t");
@@ -92,9 +100,11 @@ export async function xlsxToText(buf: ArrayBuffer): Promise<string> {
       const val = t === "s" ? shared[Number(v)] ?? "" : t === "inlineStr" ? textOf(c) : t === "b" ? (v === "1" ? "TRUE" : "FALSE") : v;
       cells[i] = val;
       nums[i] = !t || t === "n";
+      rowFormats[i] = cellFormats[Number(c.getAttribute("s"))] ?? "";
     }
     grid.push(Array.from(cells, (x) => x ?? ""));
     numeric.push(nums);
+    numberFormats.push(rowFormats);
   }
   while (grid.length && grid[grid.length - 1]!.every((x) => !x.trim())) grid.pop();
   const width = Math.max(0, ...grid.map((r) => r.length));
@@ -106,7 +116,9 @@ export async function xlsxToText(buf: ArrayBuffer): Promise<string> {
         const s = r[ci] ?? "";
         const n = Number(s);
         const asDate = ri > 0 && dateCol[ci] && numeric[ri]?.[ci] && s !== "" && Number.isFinite(n) && n > 20_000 && n < 80_000;
-        return quote(asDate ? serialDate(n) : s);
+        const format = numberFormats[ri]?.[ci];
+        const formatted = !dateCol[ci] && numeric[ri]?.[ci] && s !== "" && format && Number.isFinite(n) ? SSF.format(format, n) : s;
+        return quote(asDate ? serialDate(n, date1904) : formatted);
       }).join("\t"),
     )
     .join("\n");
