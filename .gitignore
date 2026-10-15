@@ -42,3 +42,6 @@ scripts/_backup-*.json
 # 연습장(가짜로 바꾼 운영 DB 사본·PGlite) — scripts/ops/sandbox-load.mjs. 커밋 금지.
 /.sandbox/
 *.ndjson.gz
+
+# graphify 코드 산개도 결과물(로컬 생성, 2026-10-15) — 공개 레포라 커밋하지 않는다
+graphify-out/
