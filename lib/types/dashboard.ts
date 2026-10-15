@@ -13,9 +13,9 @@ import type { Channel } from "./channel";
 export interface DashboardKPI {
   영업이익: number; // = 총매출 − 총비용
   영업이익률: number; // (영업이익 / 총매출) × 100
-  총매출: number; // 대시보드 D21 (= '01 영업관리'!N6)
-  총비용: number; // 대시보드 E21 (좌표 디스커버리 필요)
-  누적수임비: number; // TODO: 셀 좌표 디스커버리
+  총매출: number; // 아레나 기준(이월 제외) — 화면 매출은 클라이언트 periodRevenue(ADR-0034)
+  총비용: number; // 시즌 비용(이월 제외)
+  누적수임비: number; // 1~8주 수임비 합(시트 B21 과 같은 규칙)
   수임비합: number; // 총매출 분해: Σ수임비 (배너 표시)
   수수료합: number; // 총매출 분해: Σ수납액(수수료). 총매출 = 수임비합 + 수수료합
   이월매출: number; // 아레나 시작일 이전 계약(이월·비집계) 매출 — 표시용 (arena-start-revenue-split)

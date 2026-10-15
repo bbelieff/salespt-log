@@ -14,7 +14,7 @@ const T = /[\s()]/.test(SHEET_RANGES.sales.tab)
   ? `'${SHEET_RANGES.sales.tab}'`
   : SHEET_RANGES.sales.tab;
 
-/** 생산(E) 기입 — 항상 overwrite, 편집기간(1~10주) 밖은 skip.
+/** 생산(E) 기입 — 항상 overwrite, 시트 좌표 범위(1~10주) 밖은 skip.
  *  콜·지·기·소면 유입(F)도 같은 값으로 동시 기입(ADR-0029). */
 export async function writeProductionCell(
   spreadsheetId: string,
@@ -27,7 +27,7 @@ export async function writeProductionCell(
   try {
     sheetRow = salesRowFor(parseISO(date), channel, courseStart);
   } catch {
-    return; // 편집 가능 기간 밖 — 영업관리 E 대상 아님
+    return; // 시트 좌표 범위 밖 — 영업관리 E 대상 아님
   }
   const cols = SHEET_RANGES.sales.metricCols;
   assertWritableCol(cols.production, "writeProductionCell");

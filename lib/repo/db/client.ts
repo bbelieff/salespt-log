@@ -7,8 +7,9 @@
  *   • URL·비밀번호를 로그/에러 메시지에 절대 포함하지 않는다(§3 secret 원칙).
  *
  * 연결: Supabase Session Pooler URI(sslmode=require) 1개 — pg Pool.
- * 스키마: 첫 사용 시 CREATE TABLE IF NOT EXISTS 자동 실행(멱등, 수동 마이그레이션 불필요).
- * 파일럿 스키마 = jsonb 미러(sheet_rows) — 정규화는 P2 에서(YAGNI).
+ * 스키마: sheet_rows 등 일부 표는 첫 사용 시 CREATE TABLE IF NOT EXISTS 로 만든다(파일럿 시절 방식).
+ *   새 스키마 변경은 번호 붙은 마이그레이션 파일로(scripts/db-migrate.mjs) — 앱 실행 중 DDL 을 늘리지 않는다.
+ * sheet_rows = 시트 행을 담는 jsonb 표(필드명 키·열문자 키 공존 — read-daily.ts 헤더). 정규화는 미정.
  */
 import { Pool } from "pg";
 import { lockedMeetingCounts } from "./sales-meeting-counts";

@@ -8,7 +8,7 @@
  *     - 직접생산: production == inflow (PR-1 매핑, 시트 E=유입 규칙과 동일)
  *     - 현수막: production = 게시
  *
- * **편집 가능 기간(1~10주) 밖이면 아무것도 쓰지 않는다**(좌표 없음) — DB 에만 있고 시트엔 없는
+ * **시트 좌표 범위(1~10주) 밖이면 아무것도 쓰지 않는다**(좌표 없음) — DB 에만 있고 시트엔 없는
  * 상태가 정상. 호출부(수렴 잡)는 false 를 받고 재시도하지 않는다.
  *
  * DB 재미러 없음(정본이 이미 DB) — mirrorSheetRow 호출 안 함.
@@ -29,7 +29,7 @@ export interface SalesRowCells {
   meetingReservation: number;
 }
 
-/** 한 행의 E:H 를 값 그대로 기입. 편집기간 밖이면 **쓰지 않고 false**. */
+/** 한 행의 E:H 를 값 그대로 기입. 시트 좌표 범위 밖이면 **쓰지 않고 false**. */
 export async function writeSalesRowCells(
   spreadsheetId: string,
   date: string,
@@ -41,7 +41,7 @@ export async function writeSalesRowCells(
   try {
     sheetRow = salesRowFor(parseISO(date), channel, courseStart);
   } catch {
-    return false; // 편집 가능 기간(1~10주) 밖 — 시트 좌표 없음
+    return false; // 시트 좌표 범위(1~10주) 밖 — 시트 좌표 없음
   }
   const cols = SHEET_RANGES.sales.metricCols;
   for (const c of [cols.production, cols.inflow, cols.contactProgress, cols.meetingReservation]) {
@@ -58,7 +58,7 @@ export async function writeSalesRowCells(
   return true;
 }
 
-/** 편집 가능 기간 안인지(= 시트에 좌표가 있는지). DB 쓰기 전 가드에 사용.
+/** 시트 좌표 범위 안인지(= 시트에 좌표가 있는지). DB 쓰기 전 가드에 사용.
  *  precomputedCourseStart: 같은 spreadsheetId 로 여러 채널을 연속 판정하는 호출부(예:
  *  persistSalesRows 의 4채널 루프)가 courseStart 를 채널마다 매번 다시 읽지 않도록 재사용
  *  가능 — 생략 시 이전과 동일하게 이 함수가 직접 읽는다(BBE-242 SLO, sales-write.ts:187). */

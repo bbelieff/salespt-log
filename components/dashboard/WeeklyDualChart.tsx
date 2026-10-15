@@ -1,9 +1,8 @@
 /**
  * WeeklyDualChart — 코스 주차 추이 (활동량 bar + 계약수 line, 2축).
  *
- * R4 W1-3: 코스 통계 창(STATS_WEEKS=8) **한정** — 9주+(마감유예·수료 후) 기록은 집계 자체가
- * 코스 통계 밖(dashboard-aggregates 가 w>8 제외)이라 이 차트에 나타나지 않는다.
- * 실렌더 확장은 wave-2(집계+시트 물리 8행 제약 동반) — 여기선 경계만 명시한다.
+ * 기수 통계 창만큼 그린다 — 9기 이하·아레나 8주, 숫자 10기+ 12주(ADR-0032). points 길이를 그대로 쓴다.
+ * 창 밖(수료 후) 기록은 집계에서 빠진다(dashboard-aggregates).
  *
  * SSOT: docs/design/components.md §9-6
  *
@@ -25,7 +24,7 @@ import { STATS_WEEKS } from "@/config/cohort-dates";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 
 interface Props {
-  points: DashboardWeeklyPoint[]; // 길이 STATS_WEEKS
+  points: DashboardWeeklyPoint[]; // 길이 = 기수 통계 창(8 또는 12주)
 }
 
 const X0 = 30;

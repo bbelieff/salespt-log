@@ -65,7 +65,7 @@ export function queueSalesRowSync(ctx: SalesCtx, date: string, channel: Channel)
 }
 
 /** 수렴 동기화 — **실행 시점 최신 DB 행** → 시트 E:H. 선형 백오프 3회.
- *  성공(무예외 완료, 편집기간 밖 no-op 포함) → mirror_pending 해제. 최종 실패 → 마킹 + Sentry(§2.2·§7-3).
+ *  성공(무예외 완료, 시트 좌표 범위 밖 no-op 포함) → mirror_pending 해제. 최종 실패 → 마킹 + Sentry(§2.2·§7-3).
  *  정본은 DB, 저장은 이미 성공. */
 async function runSalesRowSync(ctx: SalesCtx, date: string, channel: Channel): Promise<void> {
   const ref = { spreadsheetId: ctx.spreadsheetId, tab: "sales" as const, rowKey: `${date}:${channel}` };
@@ -77,7 +77,7 @@ async function runSalesRowSync(ctx: SalesCtx, date: string, channel: Channel): P
         await clearMirrorPending(ref).catch(() => {});
         return; // DB 에 정본 행 없음 — 시트에 반영할 것 없음
       }
-      await writeSalesRowCells(ctx.spreadsheetId, date, channel, row); // false = 편집기간 밖(정상)
+      await writeSalesRowCells(ctx.spreadsheetId, date, channel, row); // false = 시트 좌표 범위 밖(정상)
       await clearMirrorPending(ref).catch(() => {});
       return;
     } catch (e) {
@@ -211,7 +211,7 @@ export async function persistSalesRows(
 
 /** 생산(E) 집계 기입 — 매입DB·콜지기소(03 파생, ADR-0020/0029).
  *  파일럿: **DB 동기 정본**(실패 throw) + 시트 수렴 미러. 그 외: R2(시트 정본 + async DB 미러) 불변.
- *  편집 가능 기간(1~10주) 밖이면 **DB 에도 쓰지 않는다** — 시트가 담을 수 없는 행이 DB 에 생기면
+ *  시트 좌표 범위(1~10주) 밖이면 **DB 에도 쓰지 않는다** — 시트가 담을 수 없는 행이 DB 에 생기면
  *  무필터 집계(대시보드 채널생산·유입대기)가 영구히 부풀기 때문. */
 export async function persistProductionCell(
   ctx: SalesCtx,

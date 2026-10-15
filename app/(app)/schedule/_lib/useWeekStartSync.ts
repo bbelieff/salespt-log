@@ -9,7 +9,7 @@
  *  2) ?date= 없으면 첫 데이터(courseStart) 로드 후 오늘이 속한 주의 금요일로 정렬.
  *     예: 사용자가 4/30(목)에 접속 → weekStart = 4/24(금).
  *
- * (서버는 input weekStart 를 그대로 사용 — 편집기간 밖 날짜여도 해당 주를 read.)
+ * (서버는 input weekStart 를 그대로 사용 — 시트 좌표 범위 밖 날짜여도 해당 주를 read.)
  */
 import { useEffect, useRef } from "react";
 import { fmtISO, friOf, parseISO } from "./week";

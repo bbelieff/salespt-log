@@ -160,7 +160,7 @@ export function applyAdditionalCostToDashboard(
 
 /**
  * 총매출 = 수임비합 + 수수료합(수납1/2/3 수납액) − 반환액합(계약해지, contract-termination).
- * 수납탭(payment/page.tsx)의 totalRevenue 와 **동일 정의** → 두 화면 매출 일치.
+ * ⚠️ 운영 호출 0 — 화면 매출은 `lib/util/finance-period.ts` periodRevenue(ADR-0034). 이 함수는 테스트가 이월·해지 규칙을 고정하는 용도로만 남았다.
  * 해지 계약도 수임비·수납은 그대로 합산하고 **반환액만 차감**(soft delete 여도 유지 — 스펙).
  * (과거: 대시보드가 수임비만 합산해 수수료 누락 → 수납탭과 어긋남.)
  */
@@ -247,8 +247,8 @@ function assembleView(input: {
   courseStartISO: string;
   fee: number; // 누적수임비 (시트 B21 or DB 재계산)
   channelMatrix: DashboardChannelMatrix[]; // 4채널 6단계
-  weeklyContracts: number[]; // 8주
-  weeklyActivity: number[]; // 8주
+  weeklyContracts: number[]; // 기수 통계 창(8 또는 12주)
+  weeklyActivity: number[]; // 기수 통계 창(8 또는 12주)
   costRows: { 매입DB: DatedCostRow[]; 직접생산: DatedCostRow[]; 현수막: DatedCostRow[] };
   payments: ContractPayment[];
   meetings: Meeting[]; // 이미 읽은 04 미팅 — 계약별 채널(영업이익 상세 표)에만 쓴다

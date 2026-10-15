@@ -74,7 +74,7 @@ export const CHANNELS: Record<ChannelKey, ChannelMeta> = {
       { key: "구매일", label: "구매일", type: "date" },
       { key: "업체명", label: "업체명", type: "text", placeholder: "예: 디비딩프로" },
       // 부가세 역산: 총액+개수+부가세토글 → 개당단가. 총액은 입력 도우미(저장 X),
-      // 부가세여부는 H열에 저장(재편집 시 토글 복원).
+      // 부가세여부는 매입DB F열에 저장(재편집 시 토글 복원, ADR-0021).
       { key: "총액", label: "결제 총액", type: "number", unit: "원", formOnly: true, placeholder: "실제 결제한 금액" },
       { key: "부가세여부", label: "부가세 포함 금액", type: "toggle" },
       { key: "주문개수", label: "주문개수", type: "number", unit: "건" },
