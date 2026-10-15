@@ -1,3 +1,7 @@
+## 2026-10-15 · 화석 코드 정비 A2 (chore/fossil-a2-oneoff-scripts)
+- 끝난 1회용 스크립트 22개 + 10기 1회 백필 워크플로 삭제(3,696줄). 옛 10기 총회일(9/26)을 박은 finalize-cohort10·실명 파일 4개 포함. 감사 워크플로가 이름으로 부르는 스크립트는 유지.
+- 상세 = docs/plans/active/fossil-a2-oneoff-scripts.md.
+
 ## 2026-10-15 · 화석 코드 정비 A1 (chore/fossil-a1-dead-code)
 - belie: 화석 조사 결과 A 진행·D 권장안 승인. A1 = 안 쓰는 컴포넌트 3·API 1·시트 시절 함수 약 20·실행 불가 코드·옛 좌표·폐지된 69일 상수 삭제(동작 불변). chooseWriteSource 는 쓰기 롤백 스위치라 유지.
 - 상세 = docs/plans/active/fossil-a1-dead-code.md. 되돌리기 = squash revert.
