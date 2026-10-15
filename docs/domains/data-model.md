@@ -759,7 +759,7 @@ Trainer qualification is independent of enrollment: `trainer_qualifications` key
 
 ### DB관리시트 공급처 집계용 응답 투영 (2026-10-13)
 DbSheetFunnelStep = 유입 | 연락 | 상담 | 미팅 | 계약. DbSheetLead.funnel은 서버 응답에서만 계산하는 선택 필드로 저장 payload/이력에서 제거한다. 입력 스키마·DB 테이블 변경 없음.
-DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서 공유한다. 유효한 연결 계약이 있으면 계약, 해지/숨김 계약뿐이면 미팅, 예약/변경/완료는 미팅, 최초상담일은 상담, 미컨택 이외 결과는 연락, 나머지는 유입이다.
+DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서 공유한다. 유효한 연결 계약이 있으면 계약, 해지/숨김 계약뿐이면 미팅, 예약/변경/완료는 미팅, 실적 대상 상담 이력(hasQualifiedContact)이 있으면 상담, 미컨택 이외 결과는 연락, 나머지는 유입이다.
 저장 응답도 effectiveMeetingId/meetingLineageIds를 유지해 변경된 미팅에 연결된 계약을 동일하게 투영한다. 공급처 집계는 각 리드의 최고 단계를 누적해 상담·미팅·계약 건수를 센다. 대시보드의 일자별 수동 합산과 별개이다.
 
 
@@ -778,3 +778,9 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - 기존 `sheet_rows`와 `db_sheet_*` JSONB를 사용한다. 단순 삭제 미팅은 `_cleared:false`로 같은 ID 복원 후 예약 재계산·기존 비동기 미러/캘린더 수렴을 호출한다. 계약/계보가 있는 복합 미팅은 부분 복원하지 않는다.
 
 - 예약 반영 증거는 미팅ID별 `meetingIds`로 저장한다. 활동OFF 전 이미 반영한 ID는 보존하고 이후 신규 후속 미팅은 제외한다. 증거 변경은 같은 tenant 잠금 안에서 revision·history도 갱신한다. 삭제한 DB의 미팅은 삭제용 tombstone을 남기고 `_dbSheetLeadDeleted`로 재복원을 차단하여 시트·캘린더 미러가 정리될 근거를 보존한다.
+
+### DB관리시트 최초상담일 · 2026-10-15
+- first는 단순거절·재통화·컨택진행·상담 후 거절을 처음 기록할 때 선택한 컨택일로 자동 설정한다. 미컨택·부재는 시작하지 않는다. 이후 과거일 재기록·미팅등록에도 기존 first를 보존한다.
+- hasQualifiedContact?:boolean는 서버 소유 JSONB 메타다. db_sheet_contacts.qualified 이력 존재로 결정하며 일반 입력으로 변경할 수 없다. 새 리드는 false, qualified 상담 이후 true를 유지한다.
+- STEP 2 컨택진행은 기존처럼 컨택진행·상담 후 거절만 업체/일자별 1건이다. 활동 기록 OFF여도 상담 이력 메타는 유지하되 집계 기여는 추가하지 않는다.
+- 공급처 성과의 상담은 hasQualifiedContact로 판정한다. 해당 필드가 없는 기존 버전은 당시 qualified만 기록하던 first를 호환 기준으로 사용한다. 운영 백필·스키마 migration 없음.
