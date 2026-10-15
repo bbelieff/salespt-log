@@ -1,6 +1,11 @@
 ## 2026-10-15 · 마이그레이션 0009 서버 전용 표 잠그기 (chore/lock-down-server-only-tables)
 - 화석 B6: 앱이 실행 중에 만든 표(보관함·PIN·구글 토큰·sheet_rows 등)에 공개 역할 권한 회수+RLS. 연습장에서 두 번 적용·읽기 확인. **파일만 추가 — 운영 적용은 belie 승인 후 db-migrate 로.**
 
+## 2026-10-15 — 최초상담일 자동기록 범위 확대 (검증 중)
+- 사용자 확정: 단순거절·재통화·컨택진행·상담 후 거절에 선택 컨택일 자동기록, 기존 최초 날짜 보존. STEP2 컨택진행과 공급처 상담성과는 기존 qualified 이력 기준 유지.
+- 전용 fix/db-sheet-first-contact-date, base22e15350. 총괄 types/repo/service/UI/tests 변경, excel_count_review 읽기전용 독립 검증. 운영 백필·실데이터 시험 없음.
+- 실제 repo/서비스/모델/autosave 77건 통과, 합성 UI 날짜 자동기록 확인. 전체검사·빌드·PR/CI·배포 확인 진행. [plan](plans/active/db-sheet-first-contact-date.md)
+
 ## 2026-10-15 · 옛 이월 _carryRaw 분기 삭제 (chore/remove-legacy-carryraw)
 - 연습장(가짜 사본) 실측: meetings _carryRaw 0행 → 읽기 분기 삭제. 연습장 실측 요약: 미팅 열문자-only 822/1308, 계약 키 전부 줄번호 799/799, DB관리 줄번호 키 1005/1067, 미러 대기 0, 수강생 시작일 DB 147/147.
 

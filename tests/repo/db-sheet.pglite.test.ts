@@ -75,9 +75,9 @@ it("booking qualifies absence and counts same/other consultation days exactly on
  const before=(await sales("2026-11-01"))?.contactProgress??0;
  const meeting=Meeting.parse({id:"ignored",예약일:"2026-11-01",예약시각:"09:00",미팅날짜:"2026-11-05",미팅시간:"14:00",channel:"직접생산",업체명:"예약 합성",장소:"합성 소재지"});
  const result=await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision);
- expect(result.lead.result).toBe("컨택진행");expect(result.lead.first).toBe("2026-11-01");expect((await sales("2026-11-01"))!.contactProgress).toBe(before+1);
+ expect(result.lead.result).toBe("컨택진행");expect(result.lead.first).toBe(prior);expect((await sales("2026-11-01"))!.contactProgress).toBe(before+1);
  await registerDbSheetMeeting(ctx,lead.id,meeting,result.lead.revision);expect((await sales("2026-11-01"))!.contactProgress).toBe(before+1);
- const again=await saveDbSheetContact(ctx,lead.id,{date:"2026-11-01",result:"컨택진행",note:"다시"},result.lead.revision);expect((await sales("2026-11-01"))!.contactProgress).toBe(before+1);expect(again.lead.first).toBe("2026-11-01");
+ const again=await saveDbSheetContact(ctx,lead.id,{date:"2026-11-01",result:"컨택진행",note:"다시"},result.lead.revision);expect((await sales("2026-11-01"))!.contactProgress).toBe(before+1);expect(again.lead.first).toBe(prior);
  }
 });
 it("meeting descendant projection and readonly guard preserve editable raw fields",async()=>{
@@ -294,4 +294,43 @@ it("permanent lead deletion retains a non-restorable tombstone for pending mirro
  const tombstone=await query("select payload,mirror_pending from sheet_rows where spreadsheet_id=$1 and tab='meetings' and row_key=$2",[ctx.spreadsheetId,lead.meetingId]);
  expect(tombstone.rows).toHaveLength(1);expect(tombstone.rows[0]).toMatchObject({payload:{_cleared:true,_dbSheetLeadDeleted:true},mirror_pending:true});
  expect((await listDbSheet(ctx)).some(x=>x.id===lead.id)).toBe(false);
+});
+
+// Display dates are deliberately broader than STEP 2 qualified consultation counts.
+it.each([
+ ["미컨택", false, false], ["부재", false, false],
+ ["단순거절", true, false], ["재통화", true, false],
+ ["컨택진행", true, true], ["상담 후 거절", true, true],
+] as const)("first contact date for %s survives save/reload without changing qualification", async (result, recordsFirst, qualified) => {
+ const date="2027-01-11", before=(await sales(date))?.contactProgress??0;
+ let lead=(await saveDbSheetLead(ctx,input(),null)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date,result,note:"합성 날짜 검증"},lead.revision)).lead;
+ expect(lead.first).toBe(recordsFirst?date:"");expect(lead.hasQualifiedContact).toBe(qualified);
+ expect(lead.stage).toBe(qualified?"상담 중":"미컨택");
+ expect((await sales(date))?.contactProgress??0).toBe(before+Number(qualified));
+ lead=(await saveDbSheetLead(ctx,{...lead,supplier:"합성 공급처",hasQualifiedContact:!qualified,first:"2099-01-01"},lead.revision)).lead;
+ const reloaded=(await listDbSheet(ctx)).find(row=>row.id===lead.id)!;
+ expect(reloaded).toMatchObject({first:recordsFirst?date:"",hasQualifiedContact:qualified});
+});
+it("keeps the first entered date through later/backdated contacts, nonqualified results and booking",async()=>{
+ let lead=(await saveDbSheetLead(ctx,input(),null)).lead;
+ for(const [date,result] of [["2027-02-10","단순거절"],["2027-02-11","재통화"],["2027-02-12","컨택진행"],["2027-02-09","상담 후 거절"],["2027-02-12","부재"],["2027-02-13","미컨택"]]){
+  lead=(await saveDbSheetContact(ctx,lead.id,{date:date!,result:result!,note:"합성"},lead.revision)).lead;
+  expect(lead.first).toBe("2027-02-10");
+ }
+ expect(lead.hasQualifiedContact).toBe(true);expect(lead.stage).toBe("상담 중");
+ const meeting=Meeting.parse({id:"ignored",예약일:"2027-02-14",예약시각:"09:00",미팅날짜:"2027-02-15",미팅시간:"10:00",channel:"직접생산",업체명:"합성 예약",장소:"합성"});
+ lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
+ expect(lead.first).toBe("2027-02-10");expect(lead.hasQualifiedContact).toBe(true);
+ expect((await listDbSheet(ctx)).find(row=>row.id===lead.id)!.first).toBe("2027-02-10");
+});
+it("activity recording OFF still keeps display date and qualified history for the funnel",async()=>{
+ let lead=(await saveDbSheetLead(ctx,{...input(),recording:{inflow:false,activities:false}},null)).lead;
+ const date="2027-03-10",before=(await sales(date))?.contactProgress??0;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date,result:"재통화",note:"합성"},lead.revision)).lead;
+ expect(lead).toMatchObject({first:date,hasQualifiedContact:false});
+ lead=(await saveDbSheetContact(ctx,lead.id,{date,result:"컨택진행",note:"합성"},lead.revision)).lead;
+ expect(lead).toMatchObject({first:date,hasQualifiedContact:true});expect(lead._recorded?.contacts).toEqual([]);
+ expect((await sales(date))?.contactProgress??0).toBe(before);
+ expect((await listDbSheet(ctx)).find(row=>row.id===lead.id)!.hasQualifiedContact).toBe(true);
 });
