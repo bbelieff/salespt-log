@@ -153,3 +153,16 @@ describe("DashboardFinance — 영업이익 상세 채널 표", () => {
     expect(onRefreshChannels).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("비용 원장 창 요약 = 비용 칸과 같은 기간·같은 숫자 (화석 B5, 2026-10-15)", () => {
+  it("기간을 바꾸면 원장 요약 값도 그 기간으로 따라간다", () => {
+    const onPeriodTotals = vi.fn();
+    render({ contractChannels: CHANNELS, onPeriodTotals });
+    const last = () => onPeriodTotals.mock.calls.at(-1)?.[0] as { dbCost: number; additional: number | null; label: string };
+    expect(last().dbCost).toBe(1_900_000); // 전체: 매입 90만 + 현수막 100만
+    expect(last().additional).toBe(100_000);
+    act(() => chip("이번 주").click());
+    expect(last().dbCost).toBe(0); // 이번 주(10/12~18)엔 DB 비용 없음
+    expect(last().label).toMatch(/^이번 주/);
+  });
+});

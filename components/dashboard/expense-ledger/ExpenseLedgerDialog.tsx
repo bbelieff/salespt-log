@@ -34,6 +34,8 @@ interface Props {
   onClose: () => void;
   dbCostTotal: number;
   additionalCost: number | null;
+  /** 요약이 가리키는 기간(대시보드 비용 칸과 같은 기간 — 예: "전체"). */
+  periodLabel?: string;
 }
 
 type Workspace = "record" | "view";
@@ -75,7 +77,7 @@ function safeQueryMessage(resource: "카테고리" | "반복 비용", error: unk
   return `${object} 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.`;
 }
 
-export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additionalCost }: Props) {
+export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additionalCost, periodLabel }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [workspace, setWorkspace] = useState<Workspace>("record");
   const [view, setView] = useState<ExpenseViewMode>("month");
@@ -254,7 +256,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
     <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 pc:items-start pc:overflow-y-auto pc:p-6" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="expense-ledger-title" className="flex h-screen w-full max-w-3xl flex-col overflow-hidden bg-slate-50 shadow-xl pc:my-4 pc:h-auto pc:max-h-screen pc:rounded-2xl">
         <header className="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-3 pc:px-6">
-          <div className="min-w-0"><h2 id="expense-ledger-title" className="text-base font-black text-gray-900">비용 원장</h2><p className="truncate text-xs text-gray-500">부가세 제외 금액 · 기록부터 관리까지 한곳에서</p></div>
+          <div className="min-w-0"><h2 id="expense-ledger-title" className="text-base font-black text-gray-900">비용 원장</h2><p className="truncate text-xs text-gray-500">부가세 제외 금액 · {periodLabel ? `요약 기간: ${periodLabel}` : "기록부터 관리까지 한곳에서"}</p></div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label="비용 원장 닫기" className="min-h-11 min-w-11 rounded-full text-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700">×</button>
         </header>
 

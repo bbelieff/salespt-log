@@ -33,8 +33,17 @@ import { channelBucketOf, missingChannelKeys, periodChannelProfit } from "./chan
 // 같은 탭에서 화면을 다시 열어도 동일한 어긋남은 한 번만 재조회한다.
 const refreshedChannelGroups = new Set<string>();
 
+/** 비용 원장 창이 대시보드와 같은 기간·같은 숫자를 보이도록 넘기는 값(화석 B5, 2026-10-15). */
+export interface LedgerPeriodTotals {
+  dbCost: number;
+  additional: number | null;
+  label: string;
+}
+
 interface Props {
   onOpenExpenseLedger: () => void;
+  /** 기간·합계가 바뀔 때마다 — 원장 창 요약(DB 비용·추가 비용·총비용)이 비용 칸과 같은 값을 쓴다. */
+  onPeriodTotals?: (t: LedgerPeriodTotals | null) => void;
   /** /api/dashboard 의 계약별 채널. 없으면(배포 직후 캐시된 옛 응답) 채널 표를 그리지 않는다. */
   contractChannels?: DashboardContractChannel[];
   /** 계약 목록에 있는데 contractChannels 에 없는 행이 생기면 부른다 — 어긋난 묶음마다 최대 1번. */
@@ -43,7 +52,7 @@ interface Props {
   channelsRefreshing?: boolean;
 }
 
-export default function DashboardFinance({ onOpenExpenseLedger, contractChannels, onRefreshChannels, channelsRefreshing = false }: Props) {
+export default function DashboardFinance({ onOpenExpenseLedger, onPeriodTotals, contractChannels, onRefreshChannels, channelsRefreshing = false }: Props) {
   const [period, setPeriod] = useState<FinancePeriod>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -78,6 +87,11 @@ export default function DashboardFinance({ onOpenExpenseLedger, contractChannels
 
   const failed = contracts.isError || db.isError;
   const label = range ? `${PERIOD_LABEL[period]} ${range[0].slice(5).replace("-", "/")}~${range[1].slice(5).replace("-", "/")}` : PERIOD_LABEL.all;
+  const ledgerTotals = totals && !ledger.isLoading ? { dbCost: totals.dbCost, additional: totals.additional, label } : null;
+  useEffect(() => {
+    onPeriodTotals?.(ledgerTotals);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ledgerTotals?.dbCost, ledgerTotals?.additional, ledgerTotals?.label]);
 
   return (
     <section aria-label="매출·비용·영업이익" className="rounded-2xl border border-slate-200 bg-slate-100 p-2">
