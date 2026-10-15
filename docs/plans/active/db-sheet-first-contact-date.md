@@ -4,7 +4,7 @@
 
 - 사용자 요청: ‘최초상담일은 단순거절 이후이하면 설정한 날로 다 자동으로 찍히도록’.
 - 사용자 확정: 단순거절·재통화·컨택진행·상담 후 거절 포함. 선택한 컨택일을 최초 1회 기록하고 이후 보존한다. 2026-10-15 답변 승인.
-- 현재: db-sheet repo saveDbSheetContact/registerDbSheetMeeting 모두 qualified 날짜의 최솟값을 first로 사용한다. qualified는 컨택진행/상담 후 거절만 포함한다.
+- 변경 전: db-sheet repo saveDbSheetContact/registerDbSheetMeeting 모두 qualified 날짜의 최솟값을 first로 사용한다. qualified는 컨택진행/상담 후 거절만 포함한다.
 - 유지: STEP 2 컨택진행 집계 두 결과만, 업체별 날짜별 1건, 기록OFF 동작, 미팅연동. 신규 first 기준을 qualified 집계와 분리해야 한다.
 - 확인할 경계: 결과 변경/이 날짜로 기록/과거일자/같은날 하위결과 변경/미팅등록 시 기존 first 보존/저장 후 재조회/현재상태 자동분류 영향.
 - 승인범위: 직접수정·기존 배포 요청 후속. 대상결과 확정으로 구현·검증·배포 진행. 기존 운영기록 일괄 백필 없음.
@@ -20,3 +20,11 @@
 - 총괄이 types/repo/service/UI/tests 구현. 독립 검증자 excel_count_review는 읽기 전용 검토. 전체검사·빌드·head 검토·CI·운영배포는 진행 중.
 
 - production build PASS. PC1280 / 모바일320·375·430에서 날짜 표시·가로 넘침 없음. API/PGlite 실제 저장 뒤 reload에서 first10/14 유지, 10/15 컨택진행 반복 기록에도 해당일 contactProgress1 유지. 증거: artifacts/db-sheet-first-contact-release/first-contact-pc.png 및 first-contact-mobile.png (사용자 산출물 폴더).
+
+- d4808af: check.sh PASS(구조94, 단위/통합3721·45skip), build PASS. 배포된 #1153 e7ba9a61을 병합하며 worklog 양쪽 기록 보존. 최종 통합 head 검사·빌드·독립검토·CI 재확인.
+
+- e7ba9a61 통합 작업본: production build PASS, 단위/통합3726 PASS·45skip. 정적검사 및 최종 head/CI/배포 확인 진행.
+
+- 통합 check 1회 FAIL: build와 tsc 병렬 실행으로 .next/types가 교체되는 TS6053. 기능시험3726·빌드는 PASS. 이후 빌드→check를 순차 실행한다. 그사이 배포 완료된7305f3f0까지 통합, 양쪽 worklog 보존.
+
+- 7305f3f0 통합 작업본 최종 production build PASS, 이후 순차 check에서 타입·lint·구조94·단위통합3726(45skip) PASS. 파일크기·문서검사 완료 후 커밋 확정.

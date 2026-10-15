@@ -3,6 +3,15 @@
 - 전용 fix/db-sheet-first-contact-date, base22e15350. 총괄 types/repo/service/UI/tests 변경, excel_count_review 읽기전용 독립 검증. 운영 백필·실데이터 시험 없음.
 - 실제 repo/서비스/모델/autosave 77건 통과, 합성 UI 날짜 자동기록 확인. 전체검사·빌드·PR/CI·배포 확인 진행. [plan](plans/active/db-sheet-first-contact-date.md)
 
+## 2026-10-15 · 옛 이월 _carryRaw 분기 삭제 (chore/remove-legacy-carryraw)
+- 연습장(가짜 사본) 실측: meetings _carryRaw 0행 → 읽기 분기 삭제. 연습장 실측 요약: 미팅 열문자-only 822/1308, 계약 키 전부 줄번호 799/799, DB관리 줄번호 키 1005/1067, 미러 대기 0, 수강생 시작일 DB 147/147.
+
+
+## 2026-10-15 · 미팅 조회 '없음'이면 시트 안 훑기 (fix/meeting-lookups-db-only)
+- 화석 B2: 그날 미팅 0건·자식 없음 때 시트 04 전체를 다시 읽던 R2 보충 제거(파일럿). 근거 = a2-db-parity 2026-10-15 DB≥시트 전 탭. 단건 id 보충은 유지.
+
+
+
 ## 2026-10-15 · 비용 원장 요약 = 대시보드 비용 칸 (fix/expense-ledger-cost-matches-dashboard)
 - 화석 B5: 원장 창 'DB 비용·총비용'이 서버의 옛 시즌 값이라 대시보드 비용 칸(기간 기준)과 달랐다 → 같은 기간·같은 계산 값을 넘겨 일치. '요약 기간' 표시.
 
