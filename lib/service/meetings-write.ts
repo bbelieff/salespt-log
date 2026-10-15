@@ -239,10 +239,9 @@ export async function findMeetingsByDateRecord(
     const hits = all.filter((m) =>
       type === "reservation" ? m.예약일 === date : m.미팅날짜 === date,
     );
-    if (hits.length > 0) return hits;
-    // DB 미러 공백(R2 fire-and-forget 누락분) self-heal — 단건 리더(getMeetingRecord)와 동일 원칙.
-    // 그 날짜 행이 DB 에 전무하면 시트 보충(cascade·계약연결 탐색 누락 방지, 적대리뷰).
-    return findByDate(ctx.spreadsheetId, date, type);
+    // DB 가 정본 — 그날 미팅 0건은 정상 결과다. 예전엔 0건이면 시트 전체를 다시 훑었다(R2 미러 공백 대비).
+    // 2026-10-15 대조(a2-db-parity run 38687219295): 모든 탭에서 DB 행수 ≥ 시트, 시트에만 있는 행 0 → 보충 제거(화석 B2).
+    return hits;
   }
   return findByDate(ctx.spreadsheetId, date, type);
 }
@@ -255,10 +254,9 @@ export async function findChildMeetingRecord(
   if (isDb(ctx)) {
     const all = await readMeetingsFromDb(ctx.spreadsheetId);
     const hit = all.find((m) => m.previousMeetingId === parentId);
-    if (hit) return hit;
-    // DB 미러 공백(R2 누락분) self-heal — cascade walk 이 시트-only 자식을 놓쳐 자손·고아 계약카드가
-    // 정리 안 되는 회귀 방지(적대리뷰 cascade-regression). 자식 없음(정상 종료)도 시트로 최종 확인.
-    return findByPreviousMeetingId(ctx.spreadsheetId, parentId);
+    // 자식 없음은 정상 종료 — 예전엔 매번 시트를 다시 훑었다(R2 미러 공백 대비). DB ≥ 시트 대조 확인 후 제거(화석 B2).
+    // 단건 id 조회(getMeetingRecord)의 시트 보충은 이월 raw·레거시 공백 대비로 남겨 둔다.
+    return hit ?? null;
   }
   return findByPreviousMeetingId(ctx.spreadsheetId, parentId);
 }
