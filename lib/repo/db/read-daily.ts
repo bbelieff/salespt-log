@@ -93,7 +93,7 @@ export async function readMeetingsFromDb(
 /** R3-2: 미팅 1건의 DB 상태 — **_cleared 포함** 단건 조회. 없으면 null.
  * 쓰기 경로 전용: patch 의 "삭제됨 vs DB 공백" 구분(삭제면 self-heal 금지) +
  * 시트 수렴 동기화(최신 DB 상태 → 시트) 판단 기준.
- * carryRaw = 구형 이월 payload({_carryRaw})의 raw 행 — meeting 복원 불가 시 시트 수렴용. */
+ * carryRaw = 열문자 형태인데 Meeting 복원이 안 되는 불완전 legacy 행의 raw — 시트 수렴용. */
 export async function readMeetingRowStateFromDb(
   spreadsheetId: string,
   id: string,
@@ -114,14 +114,9 @@ export async function readMeetingRowStateFromDb(
   if (!payload) return null;
   const meeting = meetingFromDbPayload(payload);
   let carryRaw: { raw: unknown[]; 원본id: string } | undefined;
+  // 옛 {_carryRaw} 이월 모양 분기는 2026-10-15 삭제 — 가짜로 바꾼 운영 사본 실측 0행(화석 정리).
   if (meeting === null) {
-    if (Array.isArray(payload._carryRaw)) {
-      // 구형 이월 payload — raw 배열 그대로.
-      carryRaw = {
-        raw: payload._carryRaw as unknown[],
-        원본id: String(payload.원본행id ?? ""),
-      };
-    } else if (typeof payload.A === "string" && payload.A) {
+    if (typeof payload.A === "string" && payload.A) {
       // 열문자 형태인데 Meeting 복원 실패(불완전 legacy 행) — raw 재구성으로 시트 수렴은 가능하게.
       const raw: unknown[] = [];
       for (let i = 0; i <= 39; i++) raw.push(payload[colName(i)] ?? "");

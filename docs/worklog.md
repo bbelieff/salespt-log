@@ -1,6 +1,10 @@
 ## 2026-10-15 · 마이그레이션 0009 서버 전용 표 잠그기 (chore/lock-down-server-only-tables)
 - 화석 B6: 앱이 실행 중에 만든 표(보관함·PIN·구글 토큰·sheet_rows 등)에 공개 역할 권한 회수+RLS. 연습장에서 두 번 적용·읽기 확인. **파일만 추가 — 운영 적용은 belie 승인 후 db-migrate 로.**
 
+## 2026-10-15 · 옛 이월 _carryRaw 분기 삭제 (chore/remove-legacy-carryraw)
+- 연습장(가짜 사본) 실측: meetings _carryRaw 0행 → 읽기 분기 삭제. 연습장 실측 요약: 미팅 열문자-only 822/1308, 계약 키 전부 줄번호 799/799, DB관리 줄번호 키 1005/1067, 미러 대기 0, 수강생 시작일 DB 147/147.
+
+
 ## 2026-10-15 · 미팅 조회 '없음'이면 시트 안 훑기 (fix/meeting-lookups-db-only)
 - 화석 B2: 그날 미팅 0건·자식 없음 때 시트 04 전체를 다시 읽던 R2 보충 제거(파일럿). 근거 = a2-db-parity 2026-10-15 DB≥시트 전 탭. 단건 id 보충은 유지.
 
