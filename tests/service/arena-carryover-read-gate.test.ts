@@ -19,6 +19,7 @@ const dbEnabled = vi.fn(() => true);
 const writeRowToDb = vi.fn();
 const listCarriedMeetingKeysFromDb = vi.fn();
 const readMeetingsFromDb = vi.fn();
+const readContractsFromDb = vi.fn();
 const queueMeetingSheetSync = vi.fn();
 const appendFromContract = vi.fn();
 const readAllContracts = vi.fn();
@@ -46,6 +47,7 @@ vi.mock("@/repo/db/client", () => ({
 vi.mock("@/repo/db/read-daily", () => ({
   listCarriedMeetingKeysFromDb: (...a: unknown[]) => listCarriedMeetingKeysFromDb(...(a as [])),
   readMeetingsFromDb: (...a: unknown[]) => readMeetingsFromDb(...(a as [])),
+  readContractsFromDb: (...a: unknown[]) => readContractsFromDb(...(a as [])),
 }));
 vi.mock("@/repo/meetings-rows", () => ({
   meetingToRow: (m: Meeting) => ["ROW_FOR", m.id],
@@ -91,6 +93,8 @@ beforeEach(() => {
   listCarriedMeetingKeys.mockResolvedValue(new Set());
   listCarriedMeetingKeysFromDb.mockResolvedValue(new Set());
   readAllContracts.mockResolvedValue([]);
+  readContractsFromDb.mockResolvedValue([]);
+  appendFromContract.mockResolvedValue({ row: 50 });
   markPriorRowArchived.mockResolvedValue(undefined);
 });
 
@@ -143,5 +147,57 @@ describe("migrateArenaCarryover — 이전 기수 예약 미팅 읽기 (BBE-65)"
 
     expect(readMeetingsFromDb).not.toHaveBeenCalled();
     expect(report.meetings.copied).toBe(0);
+  });
+});
+
+describe("migrateArenaCarryover — 이전 기수 계약은 DB 정본으로 (화석 B4, 2026-10-15)", () => {
+  const cpRow = (row: number, 수납액: number, extra: Record<string, unknown> = {}) => ({
+    row, 계약일: "2026-08-10", 업체명: "예시상사", 수임비: 1000, 수납1: { 수납액 }, ...extra,
+  });
+
+  it("시트가 밀려 수납액이 옛 값이어도 DB 값으로 이월한다", async () => {
+    findPriorCohortRow.mockResolvedValue({ cohort: "8", spreadsheetId: PRIOR_SHEET, status: "active" });
+    listCarrySourceMeetings.mockResolvedValue([]);
+    readMeetingsFromDb.mockResolvedValue([]);
+    readAllContracts.mockImplementation(async (sid: string) => (sid === PRIOR_SHEET ? [cpRow(7, 0)] : []));
+    readContractsFromDb.mockImplementation(async (sid: string) => (sid === PRIOR_SHEET ? [cpRow(7, 300)] : []));
+
+    const report = await migrateArenaCarryover(EMAIL);
+
+    expect(report.contracts.copied).toBe(1);
+    const copied = updateUserFields.mock.calls[0]![1] as { 수납1: { 수납액: number }; row: number };
+    expect(copied.수납1.수납액).toBe(300); // DB(최신) 값
+    expect(copied.row).toBe(50);
+  });
+
+  it("DB 에 없는 줄은 시트에서 보탠다(백필 공백 안전)", async () => {
+    findPriorCohortRow.mockResolvedValue({ cohort: "8", spreadsheetId: PRIOR_SHEET, status: "active" });
+    listCarrySourceMeetings.mockResolvedValue([]);
+    readMeetingsFromDb.mockResolvedValue([]);
+    readAllContracts.mockImplementation(async (sid: string) => (sid === PRIOR_SHEET ? [cpRow(7, 0), cpRow(8, 0)] : []));
+    readContractsFromDb.mockImplementation(async (sid: string) => (sid === PRIOR_SHEET ? [cpRow(7, 300)] : []));
+
+    const report = await migrateArenaCarryover(EMAIL);
+    expect(report.contracts.copied).toBe(2);
+  });
+
+  it("아레나 DB 에 이미 이월된 계약(원본키)은 다시 옮기지 않는다", async () => {
+    findPriorCohortRow.mockResolvedValue({ cohort: "8", spreadsheetId: PRIOR_SHEET, status: "active" });
+    listCarrySourceMeetings.mockResolvedValue([]);
+    readMeetingsFromDb.mockResolvedValue([]);
+    readContractsFromDb.mockImplementation(async (sid: string) =>
+      sid === PRIOR_SHEET ? [cpRow(7, 300)] : [cpRow(50, 300, { 이월원본행id: "02:7" })],
+    );
+
+    const report = await migrateArenaCarryover(EMAIL);
+    expect(report.contracts.skipped).toBe(1);
+    expect(appendFromContract).not.toHaveBeenCalled();
+  });
+
+  it("이전 기수가 비파일럿이면 DB 계약을 읽지 않는다", async () => {
+    findPriorCohortRow.mockResolvedValue({ cohort: "3", spreadsheetId: PRIOR_SHEET, status: "active" });
+    listCarrySourceMeetings.mockResolvedValue([]);
+    await migrateArenaCarryover(EMAIL);
+    expect(readContractsFromDb).not.toHaveBeenCalledWith(PRIOR_SHEET);
   });
 });
