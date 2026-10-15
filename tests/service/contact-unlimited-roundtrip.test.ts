@@ -8,6 +8,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const selectedCounts=vi.fn(async()=>new Map<string,number>());
+vi.mock("@/repo/db/selected-meeting-counts",()=>({readSelectedMeetingCounts:(...a:unknown[])=>selectedCounts(...(a as []))}));
 const findUserByEmail = vi.fn();
 const dbEnabled = vi.fn(() => true);
 const readSalesRowsFromDb = vi.fn();
@@ -62,6 +64,7 @@ beforeEach(() => {
     readBannerOrderQtyFromDb, readCourseStart, readWeek, readChannelStacking,
     findByDate, readWeekFunnel, readBanners,
   ]) m.mockReset();
+  selectedCounts.mockReset().mockResolvedValue(new Map());
   dbEnabled.mockReturnValue(true);
   findUserByEmail.mockResolvedValue({
     email: EMAIL, spreadsheetId: SHEET, cohort: "8", // 파일럿
@@ -170,4 +173,12 @@ describe("BBE-49 — 비파일럿(7기) 수료자의 11주+ 읽기 대칭", () =
     expect(readSalesRowsFromDb).not.toHaveBeenCalled();
     expect(view.channels["매입DB"]).toMatchObject({ production: 0, inflow: 0, contactProgress: 0 });
   });
+});
+
+it("STEP 2 reservation count uses selected ledger count while keeping schedule cards visible",async()=>{
+ readSalesRowsFromDb.mockResolvedValue([{date:WEEK12,channel:'매입DB',inflow:1,contactProgress:1,production:1,meetingReservation:99}]);
+ readMeetingsFromDb.mockResolvedValue([{id:'synthetic-excluded',예약일:WEEK12,channel:'매입DB'}] as never);
+ selectedCounts.mockResolvedValue(new Map([[WEEK12+':매입DB',0]]));
+ const view=await loadDay(EMAIL,WEEK12);expect(view.meetings).toHaveLength(1);expect(view.channels.매입DB.meetingReservation).toBe(0);
+ expect(selectedCounts).toHaveBeenCalledWith(SHEET);
 });

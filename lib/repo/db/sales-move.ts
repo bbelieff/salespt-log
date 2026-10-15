@@ -28,7 +28,7 @@ export async function moveDailyRowsInDb(ctx:{spreadsheetId:string;cohort:string;
       if (!amount) continue;
       applied[key]=amount; from[key]-=amount; to[key]+=amount;
     }
-    const counts=await lockedMeetingCounts(c,ctx.spreadsheetId);
+    const counts=await lockedMeetingCounts(c,ctx.spreadsheetId,true);
     for (const [i,place] of [input.from,input.to].entries()) {
       const metric=i===0?from:to;
       if (place.channel === "직접생산") metric.production = metric.inflow;

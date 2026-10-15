@@ -10,6 +10,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const selectedCount=vi.fn(async (..._args:unknown[])=>{});
+vi.mock("@/repo/db/selected-meeting-counts",()=>({persistSelectedMeetingCount:(...args:unknown[])=>selectedCount(...args)}));
 const dbEnabled = vi.fn(() => true);
 const upsertSheetRow = vi.fn(async (_p: unknown) => ({ skipped: false }));
 const readSalesRowFromDb = vi.fn(async (_s: string, _d: string, _c: string) => null as unknown);
@@ -55,7 +57,7 @@ const nonPilot: SalesCtx = { spreadsheetId: SHEET, cohort: "1", email: "u@x.y" }
 
 beforeEach(() => {
   for (const m of [
-    upsertSheetRow, readSalesRowFromDb, writeSalesRowsToDb, readMeetingsFromDb,
+    selectedCount,upsertSheetRow, readSalesRowFromDb, writeSalesRowsToDb, readMeetingsFromDb,
     writeProductionCell, decrementMeetingReservation, batchWriteChannelDailyRows,
     isWithinSalesWindow, writeSalesRowCells, dbEnabled,
   ]) m.mockReset();
@@ -121,43 +123,29 @@ describe("persistProductionCell — 생산(E) DB 정본 전환", () => {
 });
 
 describe("persistMeetingReservationCount — H 는 카드수 절대 재계산(ADR-0010)", () => {
-  it("④ 파일럿 → readMeetingsFromDb 로 카드수 재계산 후 절대값 upsert(±1 RMW 아님)", async () => {
-    readMeetingsFromDb.mockResolvedValue([
-      { 예약일: DATE, channel: "매입DB" },
-      { 예약일: DATE, channel: "매입DB" },
-      { 예약일: DATE, channel: "현수막" }, // 다른 채널 — 세지 않음
-      { 예약일: "2026-04-19", channel: "매입DB" }, // 다른 날짜 — 세지 않음
-    ]);
-    await persistMeetingReservationCount(pilot, DATE, "매입DB");
-    expect(upsertSheetRow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rowKey: `${DATE}:매입DB`,
-        payload: { date: DATE, channel: "매입DB", meetingReservation: 2 },
-      }),
-    );
-    expect(decrementMeetingReservation).not.toHaveBeenCalled();
+  it("④ 파일럿 → 원장 잠금 안에서 선택한 실제 카드 수를 재계산하는 DB writer 호출", async () => {
+    await persistMeetingReservationCount(pilot,DATE,"매입DB");
+    expect(selectedCount).toHaveBeenCalledWith(pilot,DATE,"매입DB");
+    expect(upsertSheetRow).not.toHaveBeenCalled();expect(readMeetingsFromDb).not.toHaveBeenCalled();expect(decrementMeetingReservation).not.toHaveBeenCalled();
   });
-
-  it("④ 카드 0건 → H=0 절대 기입(부재키 no-op 아님 — 마지막 카드 삭제도 반영)", async () => {
-    readMeetingsFromDb.mockResolvedValue([]);
-    await persistMeetingReservationCount(pilot, DATE, "매입DB");
-    expect(upsertSheetRow).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: { date: DATE, channel: "매입DB", meetingReservation: 0 } }),
-    );
+  it("④ 재계산 실패는 그대로 전달하고 시트 차감으로 폴백하지 않는다",async()=>{
+    selectedCount.mockRejectedValueOnce(new Error('selected count unavailable'));
+    await expect(persistMeetingReservationCount(pilot,DATE,'매입DB')).rejects.toThrow('selected count unavailable');
+    expect(decrementMeetingReservation).not.toHaveBeenCalled();
   });
 
   it("② 비파일럿 → decrementMeetingReservation 그대로(완전 불변)", async () => {
     await persistMeetingReservationCount(nonPilot, DATE, "매입DB");
     expect(decrementMeetingReservation).toHaveBeenCalledWith(SHEET, DATE, "매입DB");
     expect(upsertSheetRow).not.toHaveBeenCalled();
-    expect(readMeetingsFromDb).not.toHaveBeenCalled();
+    expect(readMeetingsFromDb).not.toHaveBeenCalled();expect(selectedCount).not.toHaveBeenCalled();
   });
 
   // 계약 전환 (R4 W1-1 / ADR-0029 G1) — 위 persistProductionCell ③ 과 동일 원리.
   it("③ 창 밖(11주+) → DB 정본 기입, 시트 미러 skip (DB-only)", async () => {
     isWithinSalesWindow.mockResolvedValue(false);
     await persistMeetingReservationCount(pilot, DATE, "매입DB");
-    expect(upsertSheetRow).toHaveBeenCalledTimes(1);
+    expect(selectedCount).toHaveBeenCalledWith(pilot,DATE,"매입DB");
     await new Promise((r) => setTimeout(r, 20));
     expect(writeSalesRowCells).not.toHaveBeenCalled();
   });

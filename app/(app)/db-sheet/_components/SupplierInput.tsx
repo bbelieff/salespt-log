@@ -1,0 +1,14 @@
+import React,{useContext,useEffect,useId,useRef,useState,type InputHTMLAttributes} from 'react';
+import {createPortal} from 'react-dom';
+export const SupplierOptions=React.createContext<string[]>([]);
+type Props=Omit<InputHTMLAttributes<HTMLInputElement>,'value'|'onChange'> & {value:string;onValueChange:(value:string)=>void;options?:string[]};
+export default function SupplierInput({value,onValueChange,options=[],onFocus,onBlur,onKeyDown,...props}:Props){
+ const id=useId(),ref=useRef<HTMLInputElement>(null);
+ const saved=useContext(SupplierOptions);
+ const [open,setOpen]=useState(false),[query,setQuery]=useState(''),[active,setActive]=useState(-1),[rect,setRect]=useState({left:0,top:0,width:240,maxHeight:180});
+ const names=[...new Set([...options,...saved].map(v=>v.trim()).filter(Boolean))].filter(v=>v.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+ function position(){const r=ref.current?.getBoundingClientRect();if(!r)return;const width=Math.min(Math.max(r.width,220),window.innerWidth-16),below=window.innerHeight-r.bottom-8;setRect({left:Math.max(8,Math.min(r.left,window.innerWidth-width-8)),top:below>=180?r.bottom+4:Math.max(8,r.top-184),width,maxHeight:180});}
+ useEffect(()=>{if(!open)return;window.addEventListener('resize',position);window.addEventListener('scroll',position,true);return()=>{window.removeEventListener('resize',position);window.removeEventListener('scroll',position,true);};},[open]);
+ function choose(name:string){onValueChange(name);setOpen(false);setActive(-1);ref.current?.focus();}
+ return <><input {...props} ref={ref} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open?id:undefined} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} autoComplete="off" value={value} onFocus={e=>{position();setQuery('');setActive(-1);setOpen(true);onFocus?.(e);}} onClick={()=>{position();setOpen(true);}} onBlur={e=>{setOpen(false);onBlur?.(e);}} onChange={e=>{onValueChange(e.target.value);setQuery(e.target.value);setActive(-1);position();setOpen(true);}} onKeyDown={e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();position();setOpen(true);setActive(i=>names.length?(e.key==='ArrowDown'?(i+1)%names.length:(i-1+names.length)%names.length):-1);return;}if(e.key==='Escape'&&open){e.preventDefault();e.stopPropagation();setOpen(false);return;}if(e.key==='Enter'&&open&&active>=0&&names[active]){e.preventDefault();choose(names[active]!);return;}onKeyDown?.(e);}}/>{open&&createPortal(<div className="dbs-supplier-menu" style={rect}><div className="dbs-supplier-hint">이전에 쓴 공급처 · 새 이름도 입력 가능</div><div id={id} role="listbox" aria-label="이전 공급처">{names.length?names.map((name,i)=><button type="button" key={name} id={`${id}-${i}`} role="option" aria-selected={i===active} onMouseDown={e=>e.preventDefault()} onClick={()=>choose(name)}>{name}</button>):<p>새 공급처로 입력돼요.</p>}</div></div>,ref.current?.closest("dialog")??document.body)}</>;
+}

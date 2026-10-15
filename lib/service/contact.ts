@@ -1,3 +1,4 @@
+import {readSelectedMeetingCounts} from "@/repo/db/selected-meeting-counts";
 /** Layer: service — 컨택탭 유스케이스. 화면은 하루 단위지만 시트는 주차 블록 → 한 주 read 후 그 날 4채널 추출. */
 import { parseISO } from "@/util/week";
 import * as Sentry from "@sentry/nextjs";
@@ -207,6 +208,7 @@ export async function loadDay(
     "콜·지·기·소": 0,
   };
   for (const mtg of meetings) cardCount[mtg.channel] += 1;
+  if(pilotDb&&dbCanonicalRead){const selected=await readSelectedMeetingCounts(spreadsheetId);for(const ch of CHANNEL_ORDER)cardCount[ch]=selected.get(date+":"+ch)??0;}
   for (const ch of CHANNEL_ORDER) channels[ch].meetingReservation = cardCount[ch];
 
   const cs = courseStart!;
@@ -263,6 +265,8 @@ export async function saveContactMetrics(
     "콜·지·기·소": 0,
   };
   for (const mtg of meetings) cardCount[mtg.channel] += 1;
+
+  if(chooseDailySource(sourceCohort(user),dbEnabled())==="db"){const selected=await readSelectedMeetingCounts(spreadsheetId);for(const ch of CHANNEL_ORDER)cardCount[ch]=selected.get(date+":"+ch)??0;}
 
   // 4채널 1회 batchUpdate (readCourseStart 1회).
   const rows: ChannelDailyRow[] = [];

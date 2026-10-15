@@ -1,5 +1,7 @@
 /** 컨택관리 탭 — 4채널 4지표 + 미팅 슬롯. SSOT: docs/design/prototypes/contact-daily-input.html v7. */
 "use client";
+import DeletedMeetings from "@/components/meeting-safety/DeletedMeetings";
+import { useMeetingDeleteConfirm } from "@/components/meeting-safety/use-meeting-delete-confirm";
 import PageContainer from "@/components/PageContainer";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { useEffect, useMemo, useState } from "react";
@@ -30,7 +32,6 @@ import { uuid } from "./_lib/contactDefaults";
 import { useContactMetrics } from "./_lib/use-contact-metrics";
 import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
-import { formatMoney } from "@/lib/format/money";
 import RecordMoveModal from "./_components/RecordMoveModal";
 import { slotComplete } from "./_lib/meeting-draft";
 import { useSlotRegister } from "./_lib/use-slot-register";
@@ -45,6 +46,7 @@ import { useRecordMove } from "./_lib/use-record-move";
 import { discardUnsaved } from "@/components/weekly-goals/weeklyGoalAutosave";
 const TODAY_ISO = fmtISO(new Date());
 export default function ContactPage() {
+  const deleteConfirm=useMeetingDeleteConfirm();
   const router = useRouter();
   const [date, setDate] = useState<string>(TODAY_ISO);
   const [showProductionHold, setShowProductionHold] = useState(false); // ADR-0024 보류 모달
@@ -247,13 +249,11 @@ export default function ContactPage() {
 
   const handleRemoveSavedMeeting = async (meeting: Meeting) => {
     const hasContract = meeting.상태 === "계약";
-    const extra = hasContract ? `\n· 수납탭 계약카드 1건 (₩${formatMoney(meeting.수임비)})` : "";
-    if (!confirm(`'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`)) return;
+    if (!await deleteConfirm.request(meeting)) return;
     const dateAtClick = date;
     try {
       await removeMeeting.mutateAsync({ date: dateAtClick, id: meeting.id });
-      adjustMetric(meeting.channel, "meetingReservation", -1);
-      showToast(hasContract ? "✕ 미팅 + 계약카드 삭제 (미팅예약 -1)" : "✕ 삭제 · 미팅예약 -1");
+      showToast(hasContract ? "미팅 + 계약카드를 삭제했어요." : "미팅을 삭제했어요. 유입·컨택 기록은 유지돼요.");
     } catch (e) {
       showToast(`삭제 실패: ${(e as Error).message}`);
     }
@@ -374,6 +374,8 @@ export default function ContactPage() {
 
   return (
     <>
+      {deleteConfirm.element}
+      <div className="mx-auto flex w-full justify-end px-4 py-2"><DeletedMeetings /></div>
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
       {/* 백그라운드 refetch 로 본문을 dim 하지 않는다 — 자동저장 invalidate 마다
           화면이 깜빡여 느리게 느껴진 원인. 초기 로딩은 전역 오버레이+조기 반환이 담당. */}

@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   view: vi.fn(), writable: vi.fn(), user: vi.fn(), enabled: vi.fn(),
-  list: vi.fn(), save: vi.fn(), schedule: vi.fn(), contact: vi.fn(), meeting: vi.fn(), batch: vi.fn(),
+  suppliers:vi.fn(),recording:vi.fn(),deletion:vi.fn(),list: vi.fn(), save: vi.fn(), schedule: vi.fn(), contact: vi.fn(), meeting: vi.fn(), batch: vi.fn(),
   salesSync: vi.fn(), meetingSync: vi.fn(),
   contracts: vi.fn(), todos: vi.fn(),
 }));
@@ -18,7 +18,8 @@ vi.mock("@/auth/identity", () => ({
 vi.mock("@/repo/users", () => ({ findUserByEmail: mocks.user }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: mocks.enabled }));
 vi.mock("@/repo/db/db-sheet", () => ({
-  DbSheetLinkedMeetingReadOnly: class extends Error { constructor() { super("예약된 업체정보와 일정은 컨택관리에서 수정해 주세요."); } },
+  DbSheetLinkedMeetingReadOnly: class extends Error { constructor() { super("예약된 업체정보와 일정은 STEP 3 일정·계약에서 수정해 주세요."); } },
+  DbSheetOperationBlocked:class extends Error {},DbSheetDuplicate:class extends Error {},listDbSheetSuppliers:mocks.suppliers,changeDbSheetRecording:mocks.recording,deleteDbSheetLead:mocks.deletion,
   DbSheetConflict: class extends Error {}, listDbSheet: mocks.list,
   saveDbSheetLead: mocks.save, scheduleDbSheetContact: mocks.schedule, saveDbSheetContact: mocks.contact,
   registerDbSheetMeeting: mocks.meeting, importDbSheetLeads: mocks.batch,
@@ -53,6 +54,7 @@ beforeEach(() => {
   mocks.contracts.mockResolvedValue([]); mocks.todos.mockResolvedValue([]);
   mocks.view.mockResolvedValue({ email: ctx.email }); mocks.writable.mockResolvedValue(ctx.email);
   mocks.user.mockResolvedValue(ctx); mocks.enabled.mockReturnValue(true);
+  mocks.suppliers.mockResolvedValue([]);mocks.recording.mockResolvedValue(change);mocks.deletion.mockResolvedValue(change);
   mocks.list.mockResolvedValue([lead]); mocks.save.mockResolvedValue(change); mocks.schedule.mockResolvedValue(change);
   mocks.contact.mockResolvedValue(change); mocks.batch.mockResolvedValue([change]);
   mocks.meeting.mockResolvedValue({ ...change, meetingId: batchId });
@@ -64,7 +66,7 @@ describe("DB sheet HTTP + real service boundary", () => {
     const response = await GET();
     expect(response.status).toBe(200); expect(response.headers.get("cache-control")).toContain("no-store");
     // Projection contract: GET adds the derived funnel step (untouched lead → 유입); nothing else changes.
-    expect(await response.json()).toEqual({ leads: [{ ...lead, funnel: "유입" }] });
+    expect(await response.json()).toEqual({ leads: [{ ...lead, funnel: "유입" }],suppliers:[] });
     expect(mocks.user).toHaveBeenCalledWith(ctx.email, { fresh: true });
     expect(mocks.list).toHaveBeenCalledWith(ctx); expectNoWrites();
   });
@@ -141,7 +143,7 @@ describe("DB sheet HTTP + real service boundary", () => {
     mocks.save.mockRejectedValue(new DbSheetLinkedMeetingReadOnly());
     const response = await POST(save());
     expect(response.status).toBe(409);
-    expect(await response.json()).toEqual({ error: "예약된 업체정보와 일정은 컨택관리에서 수정해 주세요." });
+    expect(await response.json()).toEqual({ error: "예약된 업체정보와 일정은 STEP 3 일정·계약에서 수정해 주세요." });
     expect(mocks.salesSync).not.toHaveBeenCalled(); expect(mocks.meetingSync).not.toHaveBeenCalled();
   });
   it("fails before committing if required work-status reads fail", async () => {
@@ -187,4 +189,16 @@ it("explicit schedule and atomic next edit carry the server revision and authori
  expect(response.status).toBe(200);expect(mocks.schedule).toHaveBeenCalledWith(ctx,id,"2026-10-12",2);
  const edited=await POST(request({action:"save",lead:{...input,next:"2026-10-12",followUp:{generation:99}},revision:2,scheduleNext:true}));
  expect(edited.status).toBe(200);expect(mocks.save).toHaveBeenCalledWith(ctx,expect.not.objectContaining({followUp:expect.anything()}),2,true);
+});
+
+it("recording and deletion previews cannot write or mirror and require revisions/confirmation",async()=>{
+ mocks.recording.mockResolvedValue({...change,changedSales:[],impact:{inflow:1,contacts:0,meetings:0,rows:[]}});
+ const result=await POST(request({action:'recording-preview',id,revision:1,recording:{inflow:true,activities:false}}));expect(result.status).toBe(200);expect((await result.json()).impact.inflow).toBe(1);
+ expect(mocks.recording).toHaveBeenCalledWith(ctx,id,1,{inflow:true,activities:false},true);expect(mocks.salesSync).not.toHaveBeenCalled();
+ expect((await POST(request({action:'delete',id,revision:1}))).status).toBe(400);expect(mocks.deletion).not.toHaveBeenCalled();
+ expect((await POST(request({action:'delete',id,revision:1,confirmed:true}))).status).toBe(200);expect(mocks.deletion).toHaveBeenCalledWith(ctx,id,1,false);
+});
+it("strips forged ledger evidence while preserving recording choice",async()=>{
+ const response=await POST(request({action:'save',lead:{...input,recording:{inflow:false,activities:true},_recorded:{inflow:true,contacts:['2020-01-01'],meeting:true},inflowStatus:{state:'recorded'}},revision:null}));
+ expect(response.status).toBe(200);const actual=mocks.save.mock.calls[0]?.[1];expect(actual.recording).toEqual({inflow:false,activities:true});expect(actual).not.toHaveProperty('_recorded');expect(actual).not.toHaveProperty('inflowStatus');
 });

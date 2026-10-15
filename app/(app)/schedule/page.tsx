@@ -10,6 +10,8 @@
  */
 "use client";
 
+import DeletedMeetings from "@/components/meeting-safety/DeletedMeetings";
+import { useMeetingDeleteConfirm } from "@/components/meeting-safety/use-meeting-delete-confirm";
 import PageContainer from "@/components/PageContainer";
 import WeekBody from "./_components/WeekBody";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
@@ -35,7 +37,6 @@ import WeekFallback from "./_components/WeekFallback";
 import TopHeader from "@/components/TopHeader";
 import { addDays, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useWeekStartSync } from "./_lib/useWeekStartSync";
-import { formatMoney } from "@/lib/format/money";
 
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -47,6 +48,7 @@ function uuid(): string {
 const TODAY_ISO = fmtISO(new Date());
 
 export default function SchedulePage() {
+  const deleteConfirm=useMeetingDeleteConfirm();
   // weekStart 초기값=오늘. 동기화(?date= 우선 / 없으면 today 주차 정렬)는
   // useWeekStartSync 훅이 담당. 서버는 input weekStart 를 그대로 사용.
   const [weekStart, setWeekStart] = useState<string>(TODAY_ISO);
@@ -317,15 +319,7 @@ export default function SchedulePage() {
    */
   const handleDelete = async (meeting: Meeting) => {
     const hasContract = meeting.상태 === "계약";
-    const extra = hasContract
-      ? `\n· 수납탭 계약카드 1건 (₩${formatMoney(meeting.수임비)})`
-      : "";
-    if (
-      !confirm(
-        `'${meeting.업체명}' 미팅을 삭제할까요?\n\n함께 사라지는 것:\n· 일정탭 미팅카드 1건\n· 컨택탭 미팅예약 -1 (${meeting.channel})${extra}`,
-      )
-    )
-      return;
+    if (!await deleteConfirm.request(meeting)) return;
     setPendingId(meeting.id);
     try {
       // DELETE 라우트가 cascade 처리 (PR #241). UI 측은 invalidate 만 의존.
@@ -460,6 +454,8 @@ export default function SchedulePage() {
 
   return (
     <>
+      {deleteConfirm.element}
+      <div className="mx-auto flex w-full justify-end px-4 py-2"><DeletedMeetings /></div>
       <TopHeader
         pageEmoji="📋"
         pageTitle="일정·계약"

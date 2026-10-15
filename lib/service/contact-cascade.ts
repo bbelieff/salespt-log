@@ -7,6 +7,7 @@
  * R3-3 잔여: 이 파일의 02 쓰기는 파일럿(화면=DB read)에서 **DB 동기 정본**이다 — `syncDbOf(ctx)` 게이트.
  * 미러 최종 실패가 "시트엔 없는데 DB엔 남은 유령 계약"으로 굳는 것을 막는다(read-your-writes).
  */
+import { archiveSimpleMeeting } from "./meeting-archive";
 import {
   clearMeetingRecord,
   findChildMeetingRecord,
@@ -65,6 +66,11 @@ export async function removeMeetingWithCascade(
   const spreadsheetId = ctx.spreadsheetId;
   const m = await getMeetingRecord(ctx, id);
   if (!m) throw new Error(`[removeMeetingWithCascade] 미팅 못 찾음: ${id}`);
+  // Fast eligibility check only; archive re-reads and checks links inside its transaction.
+  if(m.상태 === "예약" && !m.previousMeetingId && !m.계약여부) {
+    const simple=await archiveSimpleMeeting(ctx,id);
+    if(simple)return {cascade:"미팅 보관함으로 이동 · 유입/컨택 기록 유지",removedPaymentRow:null,removedDescendantCount:0,업체명:simple.업체명,미팅날짜:simple.미팅날짜,상태:simple.상태};
+  }
 
   // 1) Descendants 재귀 삭제.
   const { count: descCount, paymentRows: descPaymentRows } =

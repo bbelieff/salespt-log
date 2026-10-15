@@ -37,6 +37,42 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe("DB sheet real hook persistence", () => {
+  it("suggests only acknowledged suppliers and preserves entry after a duplicate rejection", async () => {
+    await loaded();
+    act(()=>api.edit(id,"supplier","저장 전 공급처"));
+    expect(api.suppliers).not.toContain("저장 전 공급처");
+    await debounce();
+    await act(async()=>{answer(1,[lead({supplier:"저장된 공급처",revision:2})]);});
+    expect(api.suppliers).toContain("저장된 공급처");
+    const newRow=lead({id:"d020a334-1011-4000-8000-000000000002"});
+    let job!:Promise<void>;
+    await act(async()=>{job=api.add([newRow],newRow.id);});
+    await act(async()=>{requests[2]!.resolve({ok:false,json:async()=>({error:"중복 업체",code:"duplicate",duplicates:[{id,company:"합성 회사",phone:"010-0000-0001"}]})} as Response);await expect(job).rejects.toMatchObject({code:"duplicate"});});
+    expect(api.leads).toHaveLength(1);expect(api.error).toBe("");
+    await act(async()=>{job=api.add([newRow],newRow.id,[newRow.id]);});
+    expect(requests[3]!.body).toMatchObject({allowDuplicateIds:[newRow.id]});
+    await act(async()=>{answer(3,[newRow]);await job;});
+    expect(api.leads).toHaveLength(2);
+  });
+
+  it("uses the server outcome rather than requested inflow flags in its success notice",async()=>{
+    await loaded();const newRow=lead({id:"d020a334-1011-4000-8000-000000000002",recording:{inflow:true,activities:true}});
+    let job!:Promise<void>;await act(async()=>{job=api.add([newRow],newRow.id);});
+    const impact={inflow:0,contacts:0,meetings:0,rows:[]};
+    await act(async()=>{requests[1]!.resolve({ok:true,json:async()=>({leads:[newRow],impact})} as Response);await job;});
+    expect(api.addition).toEqual({total:1,impact});
+  });
+
+  it("requires another preview if a saved edit changed the revision after the impact was shown",async()=>{
+    await loaded();const recording={inflow:true,activities:true};let preview!:ReturnType<Api['recordingPreview']>;
+    await act(async()=>{preview=api.recordingPreview(id,recording);});
+    await act(async()=>{requests[1]!.resolve({ok:true,json:async()=>({impact:{inflow:1,contacts:0,meetings:0,rows:[]}})} as Response);await preview;});
+    act(()=>api.edit(id,'date','2026-10-12'));await debounce();
+    await act(async()=>{answer(2,[lead({revision:2,date:'2026-10-12'})]);});
+    await act(async()=>{await expect(api.configure(id,recording)).rejects.toThrow('다시 확인');});
+    expect(requests).toHaveLength(3);expect(api.error).toBe('');
+  });
+
   it("loads canonical normalized server data without an initial write", async () => {
     await mount(); expect(api.loading).toBe(true); expect(requests).toHaveLength(1);
     const canonical = lead();
