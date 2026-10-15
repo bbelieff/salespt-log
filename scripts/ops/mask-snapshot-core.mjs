@@ -62,6 +62,11 @@ export function makeMasker(salt) {
     return `가짜-${h(v).slice(0, 8)}`;
   }
 
+  /** 보통 키(필드명·열문자)는 그대로, 이메일·긴 숫자·하이픈 번호 꼴 키만 가린다. */
+  function maskKey(k) {
+    return /@|\d{6}/.test(k) ? maskString(k) : k;
+  }
+
   function maskValue(v) {
     if (v === null || v === undefined) return v;
     if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return v;
@@ -71,7 +76,8 @@ export function makeMasker(salt) {
     if (Buffer.isBuffer(v)) return null; // 바이너리(암호문 등) 는 비운다
     if (typeof v === "object") {
       const out = {};
-      for (const [k, x] of Object.entries(v)) out[k] = maskValue(x);
+      // 키 자체가 개인정보인 맵(이메일·번호를 키로 쓰는 jsonb)도 있다 — 2026-10-15 첫 실행에서 원본 흔적 검사가 잡음.
+      for (const [k, x] of Object.entries(v)) out[maskKey(k)] = maskValue(x);
       return out;
     }
     return null;
@@ -90,4 +96,19 @@ export function assertNoPii(text) {
   if (/(?<!\d)\d{3}-\d{2}-\d{5}(?!\d)/.test(text)) problems.push("사업자등록번호 꼴");
   if (/[가-힣]{2,4}(님|대표|사장)/.test(text)) problems.push("호칭 붙은 이름 꼴");
   if (problems.length) throw new Error(`가짜 사본에 원본 흔적: ${problems.join(", ")} — 내보내지 않음`);
+}
+
+/** 원본 흔적이 남은 위치(경로만 — 값은 돌려주지 않는다). 실패 원인을 값 노출 없이 찾기 위함. */
+export function piiPaths(value, path = "$") {
+  const out = [];
+  const hit = (s) => { try { assertNoPii(JSON.stringify(s)); return false; } catch { return true; } };
+  if (typeof value === "string") { if (hit(value)) out.push(path); return out; }
+  if (Array.isArray(value)) { value.forEach((x, i) => out.push(...piiPaths(x, `${path}[${i}]`))); return out; }
+  if (value && typeof value === "object") {
+    for (const [k, x] of Object.entries(value)) {
+      if (hit(k)) out.push(`${path}.<키>`);
+      out.push(...piiPaths(x, `${path}.${/^[\w가-힣]{1,30}$/.test(k) ? k : "<키>"}`));
+    }
+  }
+  return out;
 }
