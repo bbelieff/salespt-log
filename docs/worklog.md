@@ -1,3 +1,8 @@
+## 2026-10-15 · 연습장(가짜로 바꾼 운영 DB 사본) 도구 (chore/masked-sandbox-snapshot)
+- belie 승인. VPS 에서 운영 DB 를 읽기만 해 가린 사본을 /tmp 에 만들고(원본 흔적 검사), 이 PC PGlite 에 실어 실측. 가리기 규칙 테스트 12개. 앱 동작 변화 없음.
+- 상세 = docs/plans/active/masked-sandbox-snapshot.md.
+
+
 ## 2026-10-15 · 화석 코드 정비 A3 (chore/fossil-a3-stale-comments)
 - 옛 정책·설계 주석·문구 정정 17파일: '편집 가능 기간'→'시트 좌표 범위', 8주 고정→기수 통계 창, 02·03 '앱 사용 X'·시트 셀 좌표·부가세 H열 등. 화면 문구 1곳(아레나 순위표 매출 설명). 동작 불변.
 
