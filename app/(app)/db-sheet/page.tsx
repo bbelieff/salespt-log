@@ -14,6 +14,7 @@ import {ImportDialog} from './_components/ImportDialog';
 import {DbDetail} from './_components/DbDetail';
 import {useDbSheet} from './_components/use-db-sheet';
 import {SupplierSummary} from './_components/SupplierSummary';
+import {STATUS_FILTERS,filterDbSheetRows,hasStatusRestriction,toggleStatusFilter,type StatusFilterId} from './_components/status-filter';
 import './db-sheet.css';
 import './recording.css';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
@@ -21,13 +22,13 @@ export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads;
  const [mounted,setMounted]=useState(false),[draft,setDraft]=useState<Row|null>(null);
  const [visible,setVisible]=useState<Key[]>(defaults);
- const [filtersOpen,setFiltersOpen]=useState(false),[settings,setSettings]=useState(false),[importing,setImporting]=useState(false),[search,setSearch]=useState(''),[supplier,setSupplier]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[detail,setDetail]=useState('');
+ const [filtersOpen,setFiltersOpen]=useState(false),[settings,setSettings]=useState(false),[importing,setImporting]=useState(false),[search,setSearch]=useState(''),[supplier,setSupplier]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[selectedStatuses,setSelectedStatuses]=useState<StatusFilterId[]>([]),[detail,setDetail]=useState('');
  const [recording,setRecording]=useState<{id:string;deleting:boolean}|null>(null);
  const [summaryOpen,setSummaryOpen]=useState(false),listTop=useRef<HTMLSpanElement>(null);
  useEffect(()=>{setMounted(true);const params=new URLSearchParams(window.location.search),requested=params.get('lead');if(requested)setDetail(requested);if(params.get('view')==='suppliers')setSummaryOpen(true);document.body.classList.add('db-sheet-route');try{const saved=localStorage.getItem('db-sheet-v5-columns');const v=JSON.parse(saved||localStorage.getItem('db-sheet-v4-columns')||localStorage.getItem('db-sheet-v3-columns')||'null');if(Array.isArray(v)){const keys=v.filter(k=>columns.some(c=>c.key===k));if(!saved&&!keys.includes('inflow'))keys.splice(Math.max(0,keys.indexOf('date')+1),0,'inflow');if(!saved&&!keys.includes('channel'))keys.splice(Math.max(0,keys.indexOf('supplier')),0,'channel');setVisible(keys);}}catch{}return()=>document.body.classList.remove('db-sheet-route');},[]);
  useEffect(()=>{if(mounted)localStorage.setItem('db-sheet-v5-columns',JSON.stringify(visible));},[visible,mounted]);
- const filtered=rows.filter(r=>(!search||[r.company,r.owner,r.phone].some(x=>x.includes(search)))&&(!supplier||r.supplier===supplier)&&(!from||r.date>=from)&&(!to||r.date<=to));
- const selected=rows.find(r=>r.id===detail),activeFilters=!!(search||supplier||from||to);
+ const filtered=filterDbSheetRows(rows,{search,supplier,from,to,selectedStatuses});
+ const selected=rows.find(r=>r.id===detail),statusRestricted=hasStatusRestriction(selectedStatuses),activeFilters=!!(search||supplier||from||to||selectedStatuses.length);
  function toggleSummary(open:boolean){setSummaryOpen(open);}
  // 공급처 줄을 누르면 기존 공급처 필터만 바꾼다. 모바일은 요약 아래로 밀려난 목록 첫 줄로 내려 준다.
  function pickSupplier(value:string){setSupplier(value);if(value&&window.matchMedia?.('(max-width: 1023px)').matches)listTop.current?.scrollIntoView({block:'start'});}
@@ -42,13 +43,20 @@ export default function DbSheetPage(){
    <button className="sheet-btn sheet-filter-toggle" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(!filtersOpen)}><span className="app-header-pill sheet-toolbar-pill">필터{(supplier||from||to)?" •":""}</span></button>
    <select aria-label="공급처 필터" className="sheet-input" value={supplier} onChange={e=>setSupplier(e.target.value)}><option value="">전체 공급처</option>{[...new Set(rows.map(r=>r.supplier))].map(v=><option key={v}>{v}</option>)}</select>
    <div className="sheet-dates"><span>유입일</span><input className="sheet-input" type="date" aria-label="유입 시작일" value={from} onInput={e=>setFrom(e.currentTarget.value)} onChange={e=>setFrom(e.target.value)}/><span>~</span><input className="sheet-input" type="date" aria-label="유입 종료일" value={to} onInput={e=>setTo(e.currentTarget.value)} onChange={e=>setTo(e.target.value)}/></div>
-   {activeFilters&&<button className="sheet-text-btn" onClick={()=>{setSearch('');setSupplier('');setFrom('');setTo('');}}>초기화</button>}
+   {activeFilters&&<button className="sheet-text-btn" onClick={()=>{setSearch('');setSupplier('');setFrom('');setTo('');setSelectedStatuses([]);}}>초기화</button>}
   </div>
   <div className="sheet-table-tools">
    <button className={`sheet-btn${summaryOpen?' is-on':''}`} aria-expanded={summaryOpen} aria-controls="db-supplier-summary" onClick={()=>toggleSummary(!summaryOpen)}><span className="app-header-pill sheet-toolbar-pill">공급처별 보기 <svg className="sheet-disclosure-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span></button>
    <button className={`sheet-btn${settings?' is-on':''}`} aria-expanded={settings} aria-controls="db-visible-fields" onClick={()=>setSettings(!settings)}><span className="app-header-pill sheet-toolbar-pill">보여줄 항목 <svg className="sheet-disclosure-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span></button>
   </div>
   <div className="sheet-add-actions"><button className="sheet-btn" onClick={()=>setDraft({...blank(),date:todayKST()})}><span className="app-header-pill sheet-toolbar-pill">＋ 직접 입력</span></button><button className="sheet-btn primary" onClick={()=>setImporting(true)}><span className="app-header-pill sheet-toolbar-pill">DB 가져오기</span></button></div>
+ </div>
+ <div className="sheet-status-filter-row">
+  <span className="sheet-status-filter-label">상태</span>
+  <div className="sheet-status-filter-chips" role="group" aria-label="DB 상태 필터">
+   {STATUS_FILTERS.map(filter=>{const pressed=selectedStatuses.includes(filter.id);return <button key={filter.id} type="button" className="sheet-status-chip" aria-pressed={pressed} onClick={()=>setSelectedStatuses(current=>toggleStatusFilter(current,filter.id))}><span className="sheet-status-chip-check" aria-hidden="true">{pressed?'✓':''}</span>{filter.label}</button>;})}
+  </div>
+  <span className="sheet-status-filter-summary" aria-live="polite">{statusRestricted?`${filtered.length}건 표시`:'전체 표시'}</span>
  </div>
 
  {settings&&<div id="db-visible-fields" className="sheet-column-settings"><strong>목록에서 보고 싶은 항목</strong><div>{columns.map(c=><label key={c.key}><input type="checkbox" checked={visible.includes(c.key)} onChange={e=>setVisible(e.target.checked?[...visible,c.key]:visible.filter(k=>k!==c.key))}/>{c.label}</label>)}</div><button className="sheet-text-btn" onClick={()=>{setVisible([...defaults]);window.dispatchEvent(new Event('db-sheet-reset-view'));}}>기본 항목으로 되돌리기</button></div>}
