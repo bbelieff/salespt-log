@@ -3,7 +3,7 @@ import { EMPTY_GOALS } from "@/types/weekly-goals";
 
 const m = vi.hoisted(() => ({
   grant: vi.fn(),
-  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
+  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), resolveStudentViewContext: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
   findUserByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort,
   readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoal: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
@@ -44,6 +44,7 @@ beforeEach(() => {
   m.getSessionEmail.mockResolvedValue(student.email);
   m.getActiveUserEmail.mockResolvedValue(student.email);
   m.getEffectiveRole.mockResolvedValue({ role: "trainee", status: "active" });
+  m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "own", email: student.email });
   m.findActiveArenaRowByEmail.mockResolvedValue(null);
   m.findUserByEmail.mockResolvedValue({ ...student });
   m.listAllUsers.mockResolvedValue([{ ...student }]);
@@ -75,6 +76,7 @@ describe("weekly saves are allowed for past, current and future weeks", () => {
   });
   it("internal save succeeds for a future week with empty or filled prior outcomes", async () => {
     m.getEffectiveRole.mockResolvedValue({ role: "admin", status: "active" });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: student.email });
     await expect(updateWeeklyGoalInternal(params("12"), { specialNotes: "", priorOutcome: "", revision: 0 })).resolves.toEqual({ revision: 1 });
     await expect(updateWeeklyGoalInternal(params("12"), { specialNotes: "future notes", priorOutcome: "previous outcome", revision: 0 })).resolves.toEqual({ revision: 1 });
     expect(m.saveWeeklyGoalPrivate).toHaveBeenCalledTimes(2);

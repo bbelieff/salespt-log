@@ -1,4 +1,4 @@
-import { getSessionEmail, getActiveUserEmail, getEffectiveRole } from "@/auth/identity";
+import { getSessionEmail, getEffectiveRole, resolveStudentViewContext } from "@/auth/identity";
 import { findUserByEmail, listAllUsers, listDistinctUsers, parseAssignedTrainers } from "@/repo/users";
 import { pickCrmUser } from "@/repo/trainer-qualification";
 import { findActiveArenaRowByEmail } from "@/repo/users-arena";
@@ -104,11 +104,23 @@ export async function listGoalStudents(): Promise<GoalStudent[]> {
 /** Resolve every request on the server; never trust a submitted cohort, role or sheet id. */
 async function context(params: URLSearchParams, operation: TrainerAccessOperation = "read") {
   const a = await actor();
-  const target = params.get("student") || await getActiveUserEmail();
+  const explicitTarget = params.get("student")?.trim() ?? "";
+  const view = await resolveStudentViewContext();
+  if (!explicitTarget && !view.ok) throw new WeeklyGoalError(view.status, "학생 화면 권한을 확인해 주세요.");
+  const target = explicitTarget || (view.ok ? view.email : "");
   const resolved = await resolveGoalStudent(target);
   const u = resolved?.role !== "trainee" && a.role === "admin" ? await adminOwnTraineeRow(target) ?? resolved : resolved;
   if (!u || u.role !== "trainee" || u.status === "pending") throw new WeeklyGoalError(403, "수강생 계정을 확인해 주세요.");
-  const checkedActor = await assertGoalStudentAccess(u, operation);
+  const viewMatchesUser = view.ok && (view.mode === "own" || view.mode === "arena") &&
+    view.email.toLowerCase() === u.email.toLowerCase();
+  if (viewMatchesUser && view.mode === "arena" && view.sheetOverride !== u.spreadsheetId) {
+    throw new WeeklyGoalError(403, "수강생 계정을 확인해 주세요.");
+  }
+  // An own/arena student view may edit public goals, but never inherits trainer-only notes.
+  // A different explicit target remains governed by the saved managed-student ACL.
+  const checkedActor = viewMatchesUser
+    ? { ...await actor(), internal: false }
+    : await assertGoalStudentAccess(u, operation);
   if (!isValidISODate(u.courseStartISO)) throw new WeeklyGoalError(422, "수강 시작일 확인이 필요해요.");
   if (!u.spreadsheetId || chooseDailySource(sourceCohort(u), dbEnabled()) !== "db") {
     throw new WeeklyGoalError(503, "이 계정의 주간 목표를 아직 불러올 수 없어요.");
