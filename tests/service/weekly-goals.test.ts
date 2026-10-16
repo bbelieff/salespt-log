@@ -3,7 +3,7 @@ import { EMPTY_GOALS } from "@/types/weekly-goals";
 
 const m = vi.hoisted(() => ({
   grant: vi.fn(),
-  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
+  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), resolveStudentViewContext: vi.fn(), findActiveArenaRowByEmail: vi.fn(),
   findUserByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(), dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort,
   readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoal: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
@@ -59,6 +59,7 @@ beforeEach(() => {
   m.getSessionEmail.mockResolvedValue(student.email);
   m.getActiveUserEmail.mockResolvedValue(student.email);
   m.getEffectiveRole.mockResolvedValue({ role: "trainee", status: "active" });
+  m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "own", email: student.email });
   m.findActiveArenaRowByEmail.mockResolvedValue(null);
   m.findUserByEmail.mockResolvedValue({ ...student });
   m.listAllUsers.mockResolvedValue([{ ...student }]);
@@ -90,6 +91,7 @@ describe("weekly goals server access and public projection", () => {
   it("checks saved grants for the real actor, not submitted role or active target", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: student.email });
     m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "other-trainer@example.test" });
     m.grant.mockReturnValue(false);
     const p = params(); p.set("role", "admin");
@@ -113,6 +115,7 @@ describe("weekly goals server access and public projection", () => {
   it("allows assigned trainer private reads but still excludes private data from common view", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: student.email });
     expect(await loadWeeklyGoalInternal(params())).toMatchObject({ specialNotes: "PRIVATE-NOTE" });
     const view = await loadWeeklyGoals(params());
     expect(view.canReadInternal).toBe(true);
@@ -121,6 +124,7 @@ describe("weekly goals server access and public projection", () => {
   it("denies revoked grants in fresh policy data despite an obsolete impersonation approval", async () => {
     m.getSessionEmail.mockResolvedValue("trainer@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "trainer", status: "active" });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: student.email });
     m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "new-trainer@example.test" });
     m.grant.mockReturnValue(false);
     await expect(loadWeeklyGoals(params())).rejects.toMatchObject({ status: 403 });
@@ -130,6 +134,7 @@ describe("weekly goals server access and public projection", () => {
   });
   it("denies a student targeting another account despite an obsolete impersonation approval", async () => {
     m.getSessionEmail.mockResolvedValue("other-student@example.test");
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "own", email: "other-student@example.test" });
     await expect(updateWeeklyGoals(params(), input())).rejects.toMatchObject({ status: 403 });
     expect(m.saveWeeklyGoal).not.toHaveBeenCalled();
   });
@@ -141,6 +146,7 @@ describe("weekly goals server access and public projection", () => {
   it("preserves administrator access to an unassigned trainee", async () => {
     m.getSessionEmail.mockResolvedValue("admin@example.test");
     m.getEffectiveRole.mockResolvedValue({ role: "admin", status: "active" });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: student.email });
     m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "" });
     await expect(loadWeeklyGoals(params())).resolves.toMatchObject({ canReadInternal: true });
   });
@@ -360,6 +366,7 @@ describe("weekly goals validation, key isolation, and failure semantics", () => 
   });
   it("reports internal concurrent save conflict independently", async () => {
     m.getEffectiveRole.mockResolvedValue({ role: "admin", status: "active" });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: student.email });
     m.saveWeeklyGoalPrivate.mockResolvedValue(false);
     await expect(updateWeeklyGoalInternal(params(), { specialNotes: "test", priorOutcome: "", revision: 1 })).rejects.toMatchObject({ status: 409 });
     expect(m.saveWeeklyGoal).not.toHaveBeenCalled();

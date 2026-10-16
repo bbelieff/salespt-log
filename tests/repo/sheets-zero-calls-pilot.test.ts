@@ -22,19 +22,23 @@
  * 스코프(게이트 구축) 밖이라 고치지 않는다(후속 카드 후보).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { clearRow, resolveLayout, updateUserFields } from "@/repo/contract-payment";
+import { updatePurchase } from "@/repo/db-write";
 
-const sheetsClientMock = vi.fn(() => {
-  throw new Error("sheetsClient() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
-});
-const readRangeMock = vi.fn(() => {
-  throw new Error("readRange() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
-});
-const appendRowsMock = vi.fn(() => {
-  throw new Error("appendRows() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
-});
-const ensureGridColumnsMock = vi.fn(() => {
-  throw new Error("ensureGridColumns() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
-});
+const { sheetsClientMock, readRangeMock, appendRowsMock, ensureGridColumnsMock } = vi.hoisted(() => ({
+  sheetsClientMock: vi.fn(() => {
+    throw new Error("sheetsClient() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
+  }),
+  readRangeMock: vi.fn(() => {
+    throw new Error("readRange() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
+  }),
+  appendRowsMock: vi.fn(() => {
+    throw new Error("appendRows() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
+  }),
+  ensureGridColumnsMock: vi.fn(() => {
+    throw new Error("ensureGridColumns() 가 파일럿(syncDb) 경로에서 호출됨 — 재유입");
+  }),
+}));
 
 vi.mock("@/repo/sheets-client", () => ({
   sheetsClient: sheetsClientMock,
@@ -68,7 +72,6 @@ beforeEach(() => {
 
 describe("계약(02) 파일럿 쓰기 경로 — 시트 호출 0회 (BBE-246 이 걷어낸 것 실행 시점 재확인)", () => {
   it("updateUserFields(syncDb=true) 는 sheetsClient 계열을 전혀 안 부른다", async () => {
-    const { updateUserFields } = await import("@/repo/contract-payment");
     await updateUserFields(
       "fake-sheet-id",
       {
@@ -85,7 +88,6 @@ describe("계약(02) 파일럿 쓰기 경로 — 시트 호출 0회 (BBE-246 이
   });
 
   it("clearRow(syncDb=true) — resolveLayout 워밍 후엔 syncDb 분기 자체가 시트를 0회 부른다", async () => {
-    const { clearRow, resolveLayout } = await import("@/repo/contract-payment");
     // ★부수 발견(위 헤더 설명): resolveLayout 은 콜드 캐시면 시트 1회 읽는다 — 여기서
     // 그 1회를 먼저 소모(워밍)하고 counter 를 리셋해, "syncDb 분기 자체" 만 측정한다.
     sheetsClientMock.mockImplementationOnce(
@@ -106,7 +108,6 @@ describe("계약(02) 파일럿 쓰기 경로 — 시트 호출 0회 (BBE-246 이
 
 describe("DB관리(03) 파일럿 쓰기 경로 — 시트 호출 0회", () => {
   it("updatePurchase(syncDb=true) 는 sheetsClient 계열을 전혀 안 부른다", async () => {
-    const { updatePurchase } = await import("@/repo/db-write");
     await updatePurchase(
       "fake-sheet-id-3",
       3,
