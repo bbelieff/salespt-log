@@ -32,6 +32,9 @@
 .weekly-goals-task { flex:1; padding:10px; border-radius:8px; background:#f0fdfa; display:flex; flex-direction:column; gap:7px; }
 .weekly-goals-task b { color:#115e59; font-size:11px; white-space:nowrap; }
 .weekly-goals-task p { color:#334155; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+.weekly-goals-task-copy-shell { position:relative; min-width:0; }
+.weekly-goals-task-copy { display:-webkit-box; overflow:hidden; white-space:pre-line; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.weekly-goals-task-measure { position:absolute; top:0; left:0; width:100%; max-height:3em; overflow:hidden; visibility:hidden; pointer-events:none; white-space:pre-line; }
 .weekly-goals-task-link { display:flex; align-items:center; gap:2px; margin-top:auto; color:#0f766e; font-size:11px; padding-top:4px; }
 .weekly-goals-quantitative { min-width:0; display:flex; flex-direction:column; }
 .weekly-goals-quantitative .weekly-goals-flow { margin-block:auto; padding:0; }

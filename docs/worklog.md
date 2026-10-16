@@ -4016,3 +4016,6 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 - 소유: weekly-goals service·type·GoalCopyPanel 및 관련 테스트/문서. DB 쓰기·권한 변경 없음. Muse 분석·구현·회귀 초안, Codex 읽기 감사·통합·검증·배포.
 
 - 주간목표 목업 추가: 사용자 좌우 교체 요청 반영. 좌 진행건·오늘챙길일, 우 생산성·목표. 하단 일치·상세 팝업 열기닫기 확인, 4523 목업 승인 대기.
+
+### 2026-10-16 · 대시보드 정성목표 긴 본문 건수 요약
+- WORK-ID `SALES-PT-DASHBOARD-QUALITATIVE-COUNT-R1`, branch `codex/dashboard-qualitative-count-r1`, base `d039317175f6b16a2a13d4dea3b9afef34ddc54c`. 실제 카드 폭에서 2줄 이하 원문은 보존하고, 넘치면 유효 PT과제 행 수 `N건`으로 대체하는 요약 전용 변경을 시작했다. API·service·운영 데이터 변경 없음. 계획: `docs/plans/active/dashboard-qualitative-count-r1.md`.
