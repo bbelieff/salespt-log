@@ -11,12 +11,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   email: vi.fn(),
+  requireContext: vi.fn(),
   addPurchase: vi.fn(),
   addProduction: vi.fn(),
   addBanner: vi.fn(),
   addLead: vi.fn(),
 }));
-vi.mock("@/auth/identity", () => ({ getWritableUserEmail: db.email }));
+vi.mock("@/auth/identity", () => ({
+  getWritableUserEmail: db.email,
+  requireStudentViewContext: db.requireContext,
+  StudentViewContextError: class StudentViewContextError extends Error {},
+}));
 vi.mock("@/service", () => ({
   addPurchase: db.addPurchase,
   addProduction: db.addProduction,
@@ -49,6 +54,11 @@ describe("E3 fail closed — POST /api/db/:channel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     db.email.mockResolvedValue("owner@example.com");
+    db.requireContext.mockResolvedValue({
+      ok: true,
+      mode: "own",
+      email: "owner@example.com",
+    });
   });
 
   it("keyed + DB down ⇒ 503 db_idempotency_unavailable (no unsafe fallback)", async () => {

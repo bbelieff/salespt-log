@@ -20,7 +20,11 @@ import {
   removeProduction,
   removePurchase,
 } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const RowParam = z.coerce.number().int().min(2);
@@ -40,8 +44,13 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      throw new StudentViewContextError("student_view_forbidden", 403);
+    }
+    const email = context.email;
     const body = await req.json();
-    const email = await getWritableUserEmail();
 
     switch (decoded) {
       case "매입DB": {
@@ -93,6 +102,12 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -109,7 +124,12 @@ async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail();
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      throw new StudentViewContextError("student_view_forbidden", 403);
+    }
+    const email = context.email;
 
     switch (decoded) {
       case "매입DB":
@@ -132,6 +152,12 @@ async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

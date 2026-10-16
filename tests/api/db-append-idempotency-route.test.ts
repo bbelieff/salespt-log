@@ -10,12 +10,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   email: vi.fn(),
+  requireContext: vi.fn(),
   addPurchase: vi.fn(),
   addProduction: vi.fn(),
   addBanner: vi.fn(),
   addLead: vi.fn(),
 }));
-vi.mock("@/auth/identity", () => ({ getWritableUserEmail: api.email }));
+vi.mock("@/auth/identity", () => ({
+  getWritableUserEmail: api.email,
+  requireStudentViewContext: api.requireContext,
+  StudentViewContextError: class StudentViewContextError extends Error {},
+}));
 vi.mock("@/service", () => ({
   addPurchase: api.addPurchase,
   addProduction: api.addProduction,
@@ -48,6 +53,11 @@ describe("POST /api/db/:channel idempotency contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.email.mockResolvedValue("owner@example.com");
+    api.requireContext.mockResolvedValue({
+      ok: true,
+      mode: "own",
+      email: "owner@example.com",
+    });
     api.addPurchase.mockResolvedValue({ row: 9, idempotent: true, replayed: false });
   });
 

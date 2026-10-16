@@ -5,15 +5,24 @@
  */
 import { NextResponse } from "next/server";
 import { loadDBOverview } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function GET_handler() {
   try {
-    const email = await getCurrentUserEmail();
+    const { email } = await requireStudentViewContext();
     const view = await loadDBOverview(email);
     return NextResponse.json(view);
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
