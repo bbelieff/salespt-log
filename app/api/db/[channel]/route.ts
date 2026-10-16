@@ -28,7 +28,11 @@ import {
   addProduction,
   addPurchase,
 } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 import { normalizeIdempotencyKey } from "@/repo/db/idempotency-keys";
 import {
@@ -55,8 +59,13 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
   try {
     const { channel } = await ctx.params;
     const decoded = decodeURIComponent(channel);
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      throw new StudentViewContextError("student_view_forbidden", 403);
+    }
+    const email = context.email;
     const body: unknown = await req.json();
-    const email = await getWritableUserEmail();
     // Scope B autosave: append-only creates are server-idempotent per
     // Idempotency-Key header (ambiguous ACK retry replays the original row).
     // Body fallback is plucked BEFORE zod parse — the channel schemas strip
@@ -129,6 +138,12 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
     }
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     if (e instanceof Error && e.message === DB_IDEMPOTENCY_CONFLICT) {
       return conflictResponse(e);
     }

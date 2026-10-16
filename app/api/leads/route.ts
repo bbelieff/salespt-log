@@ -6,16 +6,25 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { listLeadCandidates } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function GET_handler(req: NextRequest) {
   try {
-    const email = await getCurrentUserEmail();
+    const { email } = await requireStudentViewContext();
     const q = req.nextUrl.searchParams.get("q") ?? "";
     const leads = await listLeadCandidates(email, q);
     return NextResponse.json({ leads });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
