@@ -5,7 +5,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { patchTodo, removeTodo } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { TodoType } from "@/types";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
@@ -39,11 +43,29 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getWritableUserEmail();
-    await patchTodo(email, id, parsed.data);
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: "invalid_student_target", code: "invalid_student_target" },
+        { status: 403 },
+      );
+    }
+    await patchTodo(
+      context.email,
+      id,
+      parsed.data,
+      context.sheetOverride,
+    );
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
@@ -55,11 +77,24 @@ async function DELETE_handler(_req: NextRequest, ctx: RouteContext) {
   try {
     const { id } = await ctx.params;
     if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
-    const email = await getWritableUserEmail();
-    await removeTodo(email, id);
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: "invalid_student_target", code: "invalid_student_target" },
+        { status: 403 },
+      );
+    }
+    await removeTodo(context.email, id, context.sheetOverride);
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
