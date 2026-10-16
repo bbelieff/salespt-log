@@ -7,8 +7,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createTodo, listAllTodos, listTodos, TodoOperationConflict } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { TodoRecordKind, TodoType } from "@/types";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
@@ -42,15 +45,29 @@ async function GET_handler(req: NextRequest) {
   try {
     const contractRef = req.nextUrl.searchParams.get("contractRef");
     const all = req.nextUrl.searchParams.get("all") === "1";
-    const email = await getCurrentUserEmail();
-    if (all) return NextResponse.json({ todos: await listAllTodos(email) });
+    const context = await requireStudentViewContext();
+    if (all) {
+      return NextResponse.json({
+        todos: await listAllTodos(context.email, context.sheetOverride),
+      });
+    }
     if (!contractRef) {
       return NextResponse.json({ error: "contractRef 필수" }, { status: 400 });
     }
-    const todos = await listTodos(email, contractRef);
+    const todos = await listTodos(
+      context.email,
+      contractRef,
+      context.sheetOverride,
+    );
     return NextResponse.json({ todos });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
@@ -65,15 +82,31 @@ async function POST_handler(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getWritableUserEmail(); // 쓰기 진입점(ADR-0029: archived 차단 폐지)
+    const context = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.toLowerCase() !== context.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: "invalid_student_target", code: "invalid_student_target" },
+        { status: 403 },
+      );
+    }
     const { operationId, ...input } = parsed.data;
-    const todo = await createTodo(email, input, { operationId });
+    const todo = await createTodo(context.email, input, {
+      operationId,
+      spreadsheetIdOverride: context.sheetOverride,
+    });
     return NextResponse.json({ ok: true, todo });
   } catch (e) {
     if (e instanceof TodoOperationConflict) {
       return NextResponse.json(
         { error: e.message, todo: e.existing },
         { status: 409 },
+      );
+    }
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
       );
     }
     const msg = e instanceof Error ? e.message : "unknown";

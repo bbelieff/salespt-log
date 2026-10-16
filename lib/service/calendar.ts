@@ -56,6 +56,7 @@ export interface CalendarMonthView {
 export async function loadMonthMeetings(
   email: string,
   yyyyMM: string,
+  spreadsheetIdOverride?: string,
 ): Promise<CalendarMonthView> {
   const m = yyyyMM.match(/^(\d{4})-(\d{2})$/);
   if (!m) throw new Error(`[calendar] yyyyMM 포맷 오류: ${yyyyMM}`);
@@ -63,8 +64,8 @@ export async function loadMonthMeetings(
   const month = Number(m[2]); // 1~12
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[calendar] 등록되지 않은 사용자: ${email}`);
-  if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
-  const spreadsheetId = user.spreadsheetId;
+  const spreadsheetId = spreadsheetIdOverride?.trim() || user.spreadsheetId;
+  if (!spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
 
   // 그 달의 모든 날짜 생성 (1일 ~ 마지막날)
   const lastDay = new Date(year, month, 0).getDate();

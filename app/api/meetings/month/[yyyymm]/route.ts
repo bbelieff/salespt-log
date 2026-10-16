@@ -7,7 +7,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { loadMonthMeetings } from "@/service";
-import { getCurrentUserEmail } from "@/auth/stub";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const Param = z.string().regex(/^\d{4}-\d{2}$/, "YYYY-MM");
@@ -26,11 +29,21 @@ async function GET_handler(_req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getCurrentUserEmail();
-    const view = await loadMonthMeetings(email, parsed.data);
+    const context = await requireStudentViewContext();
+    const view = await loadMonthMeetings(
+      context.email,
+      parsed.data,
+      context.sheetOverride,
+    );
     return NextResponse.json(view);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
     }
