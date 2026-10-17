@@ -44,6 +44,8 @@ import usePaymentFocus, { paymentCompanyDetailLabel, usePaymentFocusSelection } 
 import { buildCompanyWorkItems, companyKeyOfRow, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
 import TopHeader from "@/components/TopHeader";
 import DriveLinkBar from "./_components/DriveLinkBar";
+import MobileTools from "./_components/MobileTools";
+import "./payment-company-compact.css";
 import { contractAccentFamily } from "./_lib/contractAccent";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { activityTodayISO } from "./_lib/payment-progress";
@@ -281,9 +283,8 @@ export default function PaymentPage() {
           pageEmoji="💰"
           pageTitle="실무/수납"
         />
-
         {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
-        <main className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <main data-payment-mobile-compact className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PaymentPerformanceSummary
           rows={allRows}
@@ -295,16 +296,14 @@ export default function PaymentPage() {
           }}
         />
 
-        {/* Drive 바로가기 */}
-        <DriveLinkBar />
-
-        {/* 모바일 업무매뉴얼·정책자금 뉴스 바로가기 */}
-        <PriorContractSection />
-
+        {isPc ? <DriveLinkBar /> : <MobileTools value={companyQuery} onChange={(v) => guardedNav(() => setCompanyQuery(v))} onNews={() => guardedNav(() => router.push("/payment/news"))}
+          matchCount={listMode === "company" ? companyItems.length : institutionVisible.length} total={institutionItems.length}
+          placeholder={listMode === "company" ? "업체명 검색" : "기관·상품·업체 검색"} unit={listMode === "company" ? "개 항목" : "건 진행"} matchUnit={listMode === "company" ? "개 항목" : "건"} />}
+        {isPc && <PriorContractSection />}
         {/* 업체 검색·정렬: PC에서는 한 줄, 모바일에서는 기존 순서. */}
         {!list.isLoading && !list.isError && rows.length > 0 && (
           <div className="mb-3 space-y-2 min-[1280px]:mb-2 min-[1280px]:flex min-[1280px]:items-center min-[1280px]:gap-3 min-[1280px]:space-y-0">
-            <CompanySearchBar
+            {isPc && <CompanySearchBar
               value={companyQuery}
               onChange={(v) => guardedNav(() => setCompanyQuery(v))}
               matchCount={listMode === "company" ? companyItems.length : institutionVisible.length}
@@ -312,7 +311,7 @@ export default function PaymentPage() {
               placeholder={listMode === "company" ? "업체명 검색" : "기관·상품·업체 검색"}
               unit={listMode === "company" ? "개 항목" : "건 진행"}
               matchUnit={listMode === "company" ? "개 항목" : "건"}
-            />
+            />}
             {listMode === "company" && <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} />}
           </div>
         )}
@@ -395,6 +394,7 @@ export default function PaymentPage() {
                 <ContractRow
                   key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
+                  companyInfoDefaultOpen={false}
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={safeFocusTodoId}
                   focusedSlot={item.slot} courseStartISO={courseStartISO}
@@ -410,6 +410,7 @@ export default function PaymentPage() {
                 {focusPayment?.row === item.cp.row && focusNotice}
                 <ContractRow key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
                   pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
+                  companyInfoDefaultOpen={false}
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
                   onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={safeFocusTodoId}
                   focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, item.hasProgress ? item.work.slot : null)} courseStartISO={courseStartISO}

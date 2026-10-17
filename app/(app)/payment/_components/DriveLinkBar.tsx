@@ -5,11 +5,17 @@
  */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, type ReactNode } from "react";
 import { useMe } from "@/query/me-hook";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
 
-export default function DriveLinkBar() {
+interface Props {
+  /** 모바일 표현만 교체. 연결 요청은 기존 명시 버튼만 담당한다. */
+  renderTrigger?: (tool: { linked: boolean; label: string; href: string; panelOpen: boolean; togglePanel: () => void }) => ReactNode;
+  mobileExpanded?: boolean;
+}
+
+export default function DriveLinkBar({ renderTrigger, mobileExpanded }: Props = {}) {
   const me = useMe();
   // 아레나(cohort A 접두) — 폴더 구조·문구 분기 (fix/drive-connect-arena).
   const isArena = /^A/i.test(String(me.data?.cohort ?? "").trim());
@@ -23,6 +29,9 @@ export default function DriveLinkBar() {
   const [errorKind, setErrorKind] = useState("");
   const [saEmail, setSaEmail] = useState("");
   const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (mobileExpanded === false) setShowRelink(false);
+  }, [mobileExpanded]);
 
   const driveUrl = feedbackFolderId
     ? `https://drive.google.com/drive/folders/${feedbackFolderId}`
@@ -94,8 +103,8 @@ export default function DriveLinkBar() {
   return (
     // id="drive-link" — 사이드바 미연결 폴백(/payment#drive-link)이 여기로 온다.
     // scroll-mt 로 sticky 헤더+배너(도합 6.5rem) 아래에 정확히 멈춘다.
-    <div id="drive-link" className={`mb-3 space-y-2 scroll-mt-28 ${isLinked ? "min-[1280px]:hidden" : ""}`}>
-      <div className="flex gap-2">
+    <div id="drive-link" className={renderTrigger ? "payment-mobile-drive" : `mb-3 space-y-2 scroll-mt-28 ${isLinked ? "min-[1280px]:hidden" : ""}`}>
+      {renderTrigger ? renderTrigger({ linked: isLinked, label: isLinked ? "Drive 바로가기" : driveLinkStatus === "error" ? "다시 연결" : "Drive 연결", href: driveUrl, panelOpen: showRelink, togglePanel: () => setShowRelink((v) => !v) }) : <div className="flex gap-2">
         {isLinked ? (
           <a
             href={driveUrl}
@@ -124,7 +133,7 @@ export default function DriveLinkBar() {
             <span className="text-xs text-amber-500" aria-hidden>{showRelink ? "⌃" : "⌄"}</span>
           </button>
         )}
-      </div>
+      </div>}
 
       {showRelink && (
         <div id="drive-link-panel" className="space-y-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
