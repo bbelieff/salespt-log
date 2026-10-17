@@ -4,15 +4,23 @@
  */
 import { NextResponse } from "next/server";
 import { listLinkableMeetings } from "@/service";
-import { getSessionEmail, getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function GET_handler() {
-  if (!(await getSessionEmail())) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   try {
-    const email = await getWritableUserEmail();
+    const { email } = await requireStudentViewContext();
     return NextResponse.json({ meetings: await listLinkableMeetings(email) });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     return NextResponse.json({ error: e instanceof Error ? e.message : "unknown" }, { status: 500 });
   }
 }

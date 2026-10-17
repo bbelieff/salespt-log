@@ -10,8 +10,22 @@ import {
   removeContractPayment,
   removeContractPaymentWithCascade,
 } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+
+// 학생 컨텍스트 오류와 기존 쓰기 권한 결정은 각각 보존한다.
+function studentContextFailure(error: unknown) {
+  return error instanceof StudentViewContextError
+    ? NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      )
+    : null;
+}
 
 const RowParam = z.coerce.number().int().min(3);
 
@@ -21,6 +35,14 @@ interface RouteContext {
 
 async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
   try {
+    const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const { row } = await ctx.params;
     const rowParsed = RowParam.safeParse(row);
     if (!rowParsed.success) {
@@ -39,10 +61,11 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail();
     await patchContractPayment(email, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
@@ -53,6 +76,14 @@ async function PATCH_handler(req: NextRequest, ctx: RouteContext) {
 
 async function DELETE_handler(req: NextRequest, ctx: RouteContext) {
   try {
+    const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const { row } = await ctx.params;
     const rowParsed = RowParam.safeParse(row);
     if (!rowParsed.success) {
@@ -61,7 +92,6 @@ async function DELETE_handler(req: NextRequest, ctx: RouteContext) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail();
     // 2026-05-17 [3]: ?cascade=meeting 이면 매칭 미팅 계약→예약 revert
     const cascade = req.nextUrl.searchParams.get("cascade") === "meeting";
     if (cascade) {
@@ -74,6 +104,8 @@ async function DELETE_handler(req: NextRequest, ctx: RouteContext) {
     await removeContractPayment(email, rowParsed.data);
     return NextResponse.json({ ok: true });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
