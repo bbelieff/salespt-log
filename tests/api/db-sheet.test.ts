@@ -29,7 +29,7 @@ vi.mock("@/service/meetings-write", () => ({ queueMeetingSheetSync: mocks.meetin
 
 import { GET, POST } from "../../app/api/db-sheet/route";
 import { StudentViewContextError } from "@/auth/identity";
-import { DbSheetConflict, DbSheetLinkedMeetingReadOnly } from "@/repo/db/db-sheet";
+import { DbSheetConflict, DbSheetLinkedMeetingReadOnly, DbSheetOperationBlocked } from "@/repo/db/db-sheet";
 import { DbSheetLeadInput, type DbSheetLead } from "@/types/db-sheet";
 
 const id = "11111111-1111-4111-8111-111111111111";
@@ -224,4 +224,15 @@ it("routes inflow preview/apply through tenant and revision guard",async()=>{
  expect(mocks.inflow).toHaveBeenLastCalledWith(ctx,id,1,false,false);
  mocks.writable.mockResolvedValue("other@example.test");
  expect((await POST(request({action:"inflow",id,revision:1,inflow:false}))).status).toBe(403);expect(mocks.inflow).toHaveBeenCalledTimes(2);
+});
+it.each(['inflow-preview','inflow'])('keeps strict %s validation failures at 409 without mirror writes',async action=>{
+ mocks.inflow.mockRejectedValue(new DbSheetOperationBlocked('유입 기여 기록과 설정이 맞지 않아 처리할 수 없습니다.'));
+ const response=await POST(request({action,id,revision:1,inflow:false}));
+ expect(response.status).toBe(409);expect(await response.json()).toEqual({error:'유입 기여 기록과 설정이 맞지 않아 처리할 수 없습니다.'});
+ expect(mocks.salesSync).not.toHaveBeenCalled();expect(mocks.meetingSync).not.toHaveBeenCalled();
+});
+it('keeps an isolated projection absent through service/HTTP while preserving a normal sibling',async()=>{
+ const bad={...lead},good={...lead,id:batchId,inflowStatus:{state:'recorded' as const,count:1 as const}};
+ mocks.list.mockResolvedValue([bad,good]);const response=await GET();expect(response.status).toBe(200);
+ const body=await response.json();expect(body.leads).toHaveLength(2);expect(body.leads[0]).not.toHaveProperty('inflowStatus');expect(body.leads[1].inflowStatus).toEqual({state:'recorded',count:1});expectNoWrites();
 });

@@ -16,7 +16,7 @@ export const DbSheetContact = z.object({
 });
 export const DbSheetRecording = z.object({inflow:z.boolean(),activities:z.boolean()});
 export type DbSheetRecording = z.infer<typeof DbSheetRecording>;
-export type DbSheetInflowStatus = {state:"recorded"|"excluded"|"unknown";date?:string;channel?:z.infer<typeof Channel>;count:0|1};
+export type DbSheetInflowStatus = {state:"recorded"|"excluded";date?:string;channel?:z.infer<typeof Channel>;count:0|1};
 export type DbSheetImpact = {inflow:number;contacts:number;meetings:number;rows:{date:string;channel:z.infer<typeof Channel>;inflow:number;contacts:number;meetings:number}[];blockedReason?:string};
 export const DbSheetLeadInput = z.object({
  id:z.string().uuid(), supplier:text,date:DbSheetDate,channel:Channel,

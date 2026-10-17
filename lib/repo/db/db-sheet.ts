@@ -5,12 +5,12 @@ import { z } from "zod";
 import { Meeting } from "@/types/meeting";
 import { DbSheetLeadInput, DbSheetDate, DbSheetResult, recordsDbSheetFirstContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
-import {hydrateRecording,settleRecording,withInflowStatus,contributionImpact,meetingImpact} from "./db-sheet-recording";
+import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
+export {DbSheetOperationBlocked} from './db-sheet-recording';
 import { assertNotDuplicate } from "./db-sheet-safety";
 export {DbSheetDuplicate} from "./db-sheet-safety";
 import { lockedMeetingCounts } from "./sales-meeting-counts";
 export class DbSheetLinkedMeetingReadOnly extends Error { constructor(){super("예약된 업체정보와 일정은 STEP 3 일정·계약에서 수정해 주세요.");} }
-export class DbSheetOperationBlocked extends Error {}
 export class DbSheetConflict extends Error { constructor(){super("DB_SHEET_CONFLICT");} }
 function guard(ctx:DbSheetContext){if(!dbEnabled())throw new Error("DB unavailable");if(!ctx.spreadsheetId||!ctx.cohort||!ctx.email)throw new Error("Tenant required");}
 async function transaction<T>(ctx:DbSheetContext,work:(c:PoolClient)=>Promise<T>):Promise<T>{
@@ -108,7 +108,17 @@ export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
  const lastDates=new Map(contacts.rows.map((row:{lead_id:string;date:string})=>[row.lead_id,row.date]));
  const history=await c.query('select lead_id from db_sheet_history where spreadsheet_id=$1 and revision=1',[ctx.spreadsheetId]);const evidence=new Set(history.rows.map((r:{lead_id:string})=>r.lead_id));
  const qualified=new Map(contacts.rows.map((r:{lead_id:string;qualified_dates:string[]|null})=>[r.lead_id,r.qualified_dates??[]]));
- return r.rows.map(({data:raw}:{data:DbSheetLead})=>{const data=withInflowStatus({...raw,recording:raw.recording??{inflow:true,activities:true},_recorded:raw._recorded??{inflow:true,contacts:qualified.get(raw.id)??[],meeting:!!raw.meetingId,legacyUnknown:!evidence.has(raw.id)}});const resolved=effectiveMeeting(meetings,data.meetingId);return projectMeeting({...data,followUp:data.followUp??{generation:0,completedGeneration:null,lastContactDate:lastDates.get(data.id)??""}},resolved.meeting,resolved.lineage);});
+ return r.rows.map(({data:raw}:{data:DbSheetLead})=>{
+  let data:DbSheetLead;
+  try{data=withInflowStatus({...raw,recording:raw.recording??{inflow:recordedInflow(raw),activities:true},_recorded:raw._recorded??{inflow:recordedInflow(raw),contacts:qualified.get(raw.id)??[],meeting:!!raw.meetingId,legacyUnknown:!evidence.has(raw.id)}});}
+  catch(error){
+   if(!(error instanceof DbSheetOperationBlocked))throw error;
+   // List-only pure projection isolation: never keep a stale status or invent OFF. Mutations still use strict read().
+   data={...raw};delete data.inflowStatus;
+  }
+  const resolved=effectiveMeeting(meetings,data.meetingId);
+  return projectMeeting({...data,followUp:data.followUp??{generation:0,completedGeneration:null,lastContactDate:lastDates.get(data.id)??""}},resolved.meeting,resolved.lineage);
+ });
 }
 export async function saveDbSheetLead(ctx:DbSheetContext,input:unknown,expectedRevision:number|null,scheduleNext=false,allowDuplicate=false){return transaction(ctx,c=>save(c,ctx,input,expectedRevision,scheduleNext,allowDuplicate));}
 export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:{date:string;result:string;note:string},expectedRevision:number){
@@ -193,12 +203,7 @@ export async function changeDbSheetInflow(ctx:DbSheetContext,id:string,revision:
   const old=await expected(c,ctx,id,revision);
   const lead:DbSheetLead={...old,revision:old.revision+1,recording:{inflow,activities:old.recording?.activities??true},_recorded:{...old._recorded!,inflow}};
   const impact=contributionImpact(old,lead);
-  if(old._recorded?.legacyUnknown)impact.blockedReason="이 DB의 기존 유입 기록을 확인할 수 없어 변경할 수 없습니다.";
-  if(!impact.blockedReason&&impact.inflow<0){
-   const row=await c.query("select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2 for update",[ctx.spreadsheetId,old.date+":"+old.channel]);
-   const total=Number(row.rows[0]?.payload?.inflow??0);
-   if(!Number.isFinite(total)||total<1)impact.blockedReason="해당 날짜의 유입 기록이 맞지 않아 변경할 수 없습니다.";
-  }
+  impact.blockedReason=await inflowBlockReason(c,ctx,old,inflow);
   if(preview)return {lead:old,changedSales:[],impact};
   if(impact.blockedReason)throw new DbSheetOperationBlocked(impact.blockedReason);
   await persist(c,ctx,lead);

@@ -1,9 +1,12 @@
 ---
 slug: db-mobile-client-ui-release
-status: implementing_release_b
+status: completed
 created: 2026-10-18
 ---
 # DB 모바일 순수 화면 변경 독립 배포 B
+
+- 완료 원본 [PR1169](https://github.com/bbelieff/salespt-log/pull/1169): head c2c00faf/tree4f9c7495, F PASS_RELEASE_B_EXACT_HEAD, 정상 hook exit0(구조94·단위3951/45skip). 공식 CI39047245567 check/build 및 GitGuardian SUCCESS. local build NOT_RUN은 아래 환경 예외와 동일하다.
+- merge df91e388bd487aa6647c5004a9de2ef893abedf1, 자동 deploy39047747290/job117439787421 SUCCESS. 로그 remote HEAD=df91e388·cutover/exit0·health200, 실제 공개 root initial RSC buildId는 -M7q4q9-bwrPThP5oJT-P→MsNnyfW7zvpGfhOK58PGY. 공개 root/health200(oktrue)와 served version PASS, 인증 DB UI/save는 login redirect로 NOT_RUN. 고객 쓰기0. Root도 별도 운영 확인했다.
 
 - 사용자 독립 UI 순차 배포 승인, A PR1168/deploy39044662674 SUCCESS 확인 뒤 시작. writer/release019fe6a6, 독립 F019fe6a9, Pages Root 소유. 최신 base/master facefd99a748c404139c3835921a923e6953d4c3. 기존 clean release WT/동일 Node24·lockff033cd1·own node_modules를 정상 새 branch feat/db-mobile-client-ui-release로 재사용, 설치 반복/강제 reset/dirty 덮기0.
 - product9 manifest: app/(app)/db-sheet/page.tsx; compact.css; db-sheet.css; _components/Grid.tsx, InflowPeriod.tsx, SupplierFilter.tsx, MobileViewOptions.tsx, MobileFilterMenu.tsx; _components/InflowStatusCell.tsx의 optional iconOnly 표시 hunk만. 앞8파일은 기존 검수 목업에서 정확 추출, 마지막 파일은 현행 base의 3상태/unknown guard를 그대로 보존해 아이콘 표시만 추가한다. source의 2state 정책/valid 오류 승격은 복사하지 않는다.

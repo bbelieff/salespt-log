@@ -251,7 +251,7 @@ it("legacy evidence is projected without backfill and supplier history is tenant
  expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)?.inflowStatus?.state).toBe('recorded');
  expect(await listDbSheetSuppliers(ctx)).toEqual(expect.arrayContaining(['합성 이전 공급처','합성 새 공급처']));expect(await listDbSheetSuppliers(other)).not.toContain('합성 이전 공급처');
  await query('delete from db_sheet_history where spreadsheet_id=$1 and lead_id=$2',[ctx.spreadsheetId,lead.id]);
- expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)?.inflowStatus?.state).toBe('unknown');expect((await sales('2028-05-01'))?.inflow).toBe(1);
+ expect((await listDbSheet(ctx)).find(x=>x.id===lead.id)?.inflowStatus?.state).toBe('recorded');expect((await sales('2028-05-01'))?.inflow).toBe(1);
  expect((await deleteDbSheetLead(ctx,lead.id,lead.revision,true)).impact.blockedReason).toBeTruthy();await expect(deleteDbSheetLead(ctx,lead.id,lead.revision)).rejects.toThrow('확인');
  expect((await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:true,activities:true},true)).impact.inflow).toBe(0);
 });

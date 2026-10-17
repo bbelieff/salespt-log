@@ -1,6 +1,10 @@
+## 2026-10-18 · DB 유입 실제 기여 두 상태 C
+- B PR1169/deploy39047747290 SUCCESS 후 최신 master df91e388의 clean 전용 WT·기존 완전 설치에서 feat/db-inflow-two-state-release. writer/release019fe6a6, 독립 F019fe6a9, Root Pages 소유.
+- 소유는 core5와 관련 tests/SSOT 의미·plan뿐. 실제 ledger 두 상태·수동숫자/strict guard 보존 및 목록의 오염 행만 명시 오류로 격리한다. [plan](plans/active/db-inflow-two-state-release.md)에 정확 lease·검사/실패·직렬 배포 계약. 원본 dirty·A/B UI·고객 데이터 불변, 옛129 현재 PASS 재사용0.
+
 ## 2026-10-18 · DB 모바일 client-only 독립 배포 B
 - A PR1168/deploy39044662674 SUCCESS 후 clean WT·기존 설치를 새 feat/db-mobile-client-ui-release로 재사용, base facefd99. writer/release019fe6a6, 독립 F019fe6a9. product9의 toolbar/filter/options40/density 표시만 추출하며 unknown/3상태 guard 및 저장·집계는 보존한다.
-- 정확 manifest/제외 lane·공식 분리 CI·검수/배포 경계는 [plan](plans/active/db-mobile-client-ui-release.md). model/repo/service/api/types/2state 정책 변경과 관련 source tests는 복사하지 않는다.
+- 정확 manifest/제외 lane·공식 분리 CI·검수/배포 경계는 [완료 plan](plans/completed/db-mobile-client-ui-release.md). PR1169 merge df91e388/deploy39047747290 SUCCESS·served buildId 전환/health PASS, 인증 UI/save NOT_RUN. B에서 model/repo/service/api/types/2state 정책 변경과 관련 source tests는 복사하지 않았다.
 
 ## 2026-10-17 · 수납 모바일 UI 독립 배포 A
 - 사용자 독립 UI 순차 배포 승인. writer/release019fe6a6, 독립 F019fe6a9. 최신 master a8287d36에서 clean feat/payment-mobile-ui-release, source 목업 전체 dirty 보존. payment4도구 최신 검색잔여폭/Liquid Glass 및 업체정보 compact/defaultclosed/header39 presentation만 추출한다.

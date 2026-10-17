@@ -55,6 +55,10 @@ for(const [company,phone,recording] of [
  const response=await api.POST(new NextRequest('http://localhost/api/db-sheet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'save',revision:null,lead:{id:randomUUID(),company,phone,supplier:'샘플 공급처',date:'2026-10-15',channel:'매입DB',recording}})}));
  if(response.status!==200)throw new Error('Synthetic seed failed: '+await response.text());
 }
+// Opt-in C boundary fixture: corrupt only the isolated third row, including a stale projection. Never a production connection.
+if(process.env.DB_SHEET_INFLOW_ERROR_FIXTURE==='1'){
+ await database.query("update db_sheet_leads set data=(data-'_recorded')||$1::jsonb where data->>'company'=$2",[JSON.stringify({inflowStatus:{state:'recorded',count:1}}),'샘플 라온공방']);
+}
 const ctx=await context({entryPoints:['tests/browser/recording-release/App.tsx'],bundle:true,outfile:join(dir,'app.js'),platform:'browser',jsx:'automatic',define:{'process.env':'{}','process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-mock',setup(b){
  b.onResolve({filter:/.*/},args=>{if(mocks[args.path])return {path:args.path,namespace:'mock'};if(/^next\/(link|navigation)$/.test(args.path))return{path:'navigation',namespace:'mock'};if(args.path.endsWith('auth/RoleViewSwitch'))return{path:'role',namespace:'mock'};if(args.path.endsWith('announcements/AnnouncementsGate'))return{path:'ann',namespace:'mock'};});
  b.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:args.path==='navigation'?nav:args.path==='role'?`export default function RoleViewSwitch(){return null};export const useTrainerState=()=>({data:{canStudent:true,canTrainer:false}});`:args.path==='ann'?`export const ANNOUNCEMENTS_SEEN_EVENT='mock-ann';export const hasUnseenUpdates=()=>false;export default function AnnouncementsGate(){return null};`:mocks[args.path],loader:'tsx',resolveDir:process.cwd()}));

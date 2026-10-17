@@ -18,7 +18,7 @@
 ## DB관리시트 틀 고정
 
 - 모바일 client-only B: `MobileViewOptions`는 설정/공급처 성과/보기 항목/기존 정렬·표 전환을 centered popup40에 모으며 Grid 상태는 재마운트하지 않는다. `MobileFilterMenu`는 유입일/상태의 기존 상태와 선택 callback을 anchored menu로 표시한다. focus trap/inert/Escape·중첩 portal·초점 복귀를 보존한다.
-- `Grid` 모바일은 48px 두 줄 목록으로 긴 식별정보를 title/접근성 이름에 보존하고 기존 상세 경로만 연다. `InflowStatusCell.iconOnly`는 선택적 표시만 바꾸며 recorded/excluded/unknown·missing fallback의 기존 의미와 unknown 편집 차단을 유지한다. DB 저장·집계/model/types 및 null→2state 정책은 B 범위가 아니다.
+- `Grid` 모바일은 48px 두 줄 목록으로 긴 식별정보를 title/접근성 이름에 보존하고 기존 상세 경로만 연다. `InflowStatusCell.iconOnly`는 recorded/count1·excluded/count0의 선택적 아이콘 표시만 바꾼다. C의 투영 누락/오염은 명시 alert·편집/write0이며 정상 제3상태나 추정 미반영이 아니다. 목록 행별 오류 격리 후 정상 행은 유지하고 A/B 레이아웃은 그대로 사용한다.
 
 - 표 내부에서 제목행은 상단, 번호와 사업자명은 왼쪽에 고정한다. 사업자명의 고정 위치는 변경된 번호 열 너비를 따른다. 열 경계 드래그/키보드 너비 조절·저장·기본값 복원은 유지한다.
 - 고정 영역을 제외한 표 폭이120px 미만이면 사업자명, 번호 순서로 가로 고정을 해제한다. 모바일 기본 카드 보기는 유지하며 표 보기에서 같은 규칙을 적용한다.
@@ -1762,7 +1762,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `DirectInputDialog`, `RecordingOptions`: 직접 등록 기본 STEP 2 기록 ON. 유입/활동 범위를 구분한다.
 - `DuplicateDialog`: 동일 연락처/업체 후보를 알리고 기존 업체 열기 또는 별도 업체 추가를 명시적으로 선택.
 - `RecordingDialog`: 서버 계산 미리보기 후 사후 반영/영구삭제 확인. 실패 시 입력 유지, 복잡한 연결건 삭제 차단.
-- `InflowStatusCell`: 서버 증거로 반영됨/미반영/확인 필요 표시. 목록 배지는 DB정보만 열고, 유일한 편집 토글은 업체명 옆에 배치. preview 차단 사유 확인 후 기존 revision-bound configure를 호출하며 pending 중 중복 입력·닫기 차단, 실패 시 기존 상태 유지, unknown은 편집 불가.
+- `InflowStatusCell`: 실제 서버 기여의 반영됨/count1·미반영/count0만 정상 표시. 투영 누락/모순은 새로고침 안내 alert·편집/write0. 모바일 iconOnly는 기존 48px 행을 보존하는 경고 아이콘+오류 짧은 표기이며 전체 안내를 aria-label/title에 보존한다. 정상 목록 배지는 DB정보만 열고, 유일한 편집 토글은 업체명 옆에 배치. preview 차단 사유 확인 후 기존 revision-bound configure를 호출하며 pending 중 중복 입력·닫기 차단, 실패 시 기존 상태를 유지한다.
 - `InflowRecordingDialog`: 기존 standalone 영향 미리보기·확인 컴포넌트는 보존한다. 현재 DB관리시트의 기본 진입에는 연결하지 않으며, 목록 배지→DB정보의 헤더 편집과 기존 상담·미팅 설정 경로가 현행 UI다.
 - `ImportResultNotice`: 저장 성공 후 목록 추가건수·유입 반영건수·날짜/채널별 결과. 닫기 전 유지.
 - `ImportDialog`: 가져오기 선택과 유입기록 체크 분리, 기본 전체 체크·부분 체크·전체 해제, 상담/미팅 설정. PC 전체 열·5행 기준, 모바일 라벨 필드.
