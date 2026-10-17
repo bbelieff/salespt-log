@@ -50,7 +50,7 @@ export function useDbSheet() {
       const saved = rows.find(r => r.id === row.id);
       if (!saved) return row;
       return versions.current.get(row.id) === snapshots.get(row.id) ? saved : {
-        ...row, next: scheduleVersions.current.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, hasQualifiedContact: saved.hasQualifiedContact, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel, followUp: saved.followUp, recording:saved.recording,inflowStatus:saved.inflowStatus,
+        ...row, next: scheduleVersions.current.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, firstManual:saved.firstManual, hasQualifiedContact: saved.hasQualifiedContact, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel, followUp: saved.followUp, recording:saved.recording,inflowStatus:saved.inflowStatus,
       };
     }));
   }
@@ -84,13 +84,25 @@ export function useDbSheet() {
     if (blocked.current) throw new Error("저장 오류를 먼저 확인해 주세요.");
   }
   function edit(id: string, key: Key, value: string) {
+    if (key === "first") { void firstDate(id,value).catch(() => {}); return; }
     if (key === "result") { void record(id, value, todayKST()).catch(() => {}); return; }
     if (key === "next") {
       if (local.current.find(row => row.id === id)?.next === value) return;
       scheduleVersions.current.set(id, (versions.current.get(id) ?? 0) + 1);
     }
-    if (["first", "stage", "memo", "inflow"].includes(key)) return;
+    if (["stage", "memo", "inflow"].includes(key)) return;
     mutate(id, row => ({ ...row, [key]: value }));
+  }
+  function asInfo(id:string,patch:{asReceived?:boolean;asNote?:string}) {
+    mutate(id,row=>({...row,...patch}));
+  }
+  async function firstDate(id:string,first:string) {
+    await flush(id);
+    return enqueue(async()=>{
+      const version=versions.current.get(id)??0;
+      const rows=await request({action:"first-date",id,first,revision:server.current.get(id)!.revision});
+      accept(rows,new Map([[id,version]]));
+    });
   }
   function contact(id: string, value: ContactDraft) {
     mutate(id, row => ({ ...row, contact: { ...value, companyName: value.companyName ?? row.company } }));
@@ -135,8 +147,23 @@ export function useDbSheet() {
       previews.current.delete(id);if(deleting){server.current.delete(id);versions.current.delete(id);show(local.current.filter(r=>r.id!==id));}else accept(payload.leads,new Map([[id,version]]));
     },true);
   }
+  async function inflowPreview(id:string,inflow:boolean):Promise<RecordingImpact>{
+    await flush(id);const revision=server.current.get(id)!.revision;
+    const payload=await sheetRequest({action:'inflow-preview',id,revision,inflow});
+    previews.current.set('inflow:'+id,{revision,recording:JSON.stringify(inflow),deleting:false});
+    if(!payload.impact)throw new SheetRequestError('반영 내용을 확인하지 못했습니다. 다시 시도해 주세요.');return payload.impact;
+  }
+  async function configureInflow(id:string,inflow:boolean){
+    await flush(id);return enqueue(async()=>{
+      const preview=previews.current.get('inflow:'+id);
+      if(!preview||preview.revision!==server.current.get(id)?.revision||preview.recording!==JSON.stringify(inflow))throw new Error('기록이 바뀌었어요. 변경 내용을 다시 확인해 주세요.');
+      const version=versions.current.get(id)??0;
+      const payload=await sheetRequest({action:'inflow',id,revision:preview.revision,inflow});
+      previews.current.delete('inflow:'+id);accept(payload.leads,new Map([[id,version]]));
+    },true);
+  }
   async function flushAll() { for(const id of [...timers.current.keys()]) await flush(id); await tail.current; if(blocked.current)throw new Error("저장 실패"); }
   function discard() { for(const timer of timers.current.values())clearTimeout(timer);timers.current.clear();show([...server.current.values()]); }
   useDirtyEntry("db-sheet", pending>0||!!error, flushAll, discard, "DB관리시트 변경사항");
-  return { leads, suppliers,addition,clearAddition:()=>setAddition(null), loading, pending, error, edit, contact, record, register, add, flush,recordingPreview,configure,reload };
+  return { leads, suppliers,addition,clearAddition:()=>setAddition(null), loading, pending, error, edit, asInfo, contact, record, register, add, flush,recordingPreview,configure,inflowPreview,configureInflow,reload };
 }

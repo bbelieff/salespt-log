@@ -128,7 +128,7 @@ export function SupplierSummary({ leads, from, to, selected, loading, error, onS
         <thead><tr className="text-px-11 text-slate-500">
           <th scope="col" className="py-2 pl-3 pr-2 text-left font-semibold">공급처</th>
           <th scope="col" className={HEAD}>들어온 DB</th>
-          <th scope="col" className={HEAD} title="최초상담일이 있는 DB (컨택진행·상담 후 거절)">상담</th>
+          <th scope="col" className={HEAD} title="컨택진행·상담 후 거절 이력이 있는 DB">상담</th>
           <th scope="col" className={HEAD} title="미팅을 잡은 DB (취소·삭제 제외)">미팅</th>
           <th scope="col" className={HEAD} title="계약한 DB (해지 제외)">계약</th>
           <th scope="col" className={`${HEAD} pr-3`} title="계약 ÷ 들어온 DB">계약률</th>
@@ -146,10 +146,10 @@ export function SupplierSummary({ leads, from, to, selected, loading, error, onS
       <Card {...totalProps} />
     </ul>
     {named > SUPPLIER_TOP_LIMIT && (expanded || hidden > 0) && <button type="button" className="sheet-text-btn mt-1" onClick={() => setExpanded(!expanded)}>{expanded ? "접기" : `나머지 ${hidden}곳 더 보기`}</button>}
-    <p className="mt-2 text-px-11 leading-relaxed text-slate-400">
-      상담 = 최초상담일이 있는 DB · 미팅 = 잡은 미팅(취소·삭제 제외) · 계약 = 해지 제외 · 계약률 = 계약 ÷ 들어온 DB<br />
+    <details className="sheet-supplier-note"><summary>집계 기준</summary><p className="mt-2 text-px-11 leading-relaxed text-slate-400">
+      상담 = 컨택진행·상담 후 거절 이력이 있는 DB · 미팅 = 잡은 미팅(취소·삭제 제외) · 계약 = 해지 제외 · 계약률 = 계약 ÷ 들어온 DB<br />
       DB관리시트에 들어온 DB만 세요. 컨택관리에 숫자로만 적은 실적은 빠져서 대시보드 숫자와 다를 수 있어요. 줄을 누르면 그 공급처 DB만 아래 목록에 보여요.
-    </p>
+    </p></details>
   </>;
   return <section id="db-supplier-summary" aria-label="공급처별 성과" className="sheet-supplier-summary">
     <div className="flex items-center gap-2">

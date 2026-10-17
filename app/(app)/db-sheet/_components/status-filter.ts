@@ -4,6 +4,7 @@ export const STATUS_FILTERS = [
   { id: "simple-refusal", label: "단순거절", results: ["단순거절"] },
   { id: "recall", label: "재통화", results: ["재통화"] },
   { id: "progress", label: "컨택진행(미팅·거절)", results: ["컨택진행", "상담 후 거절"] },
+  { id: "as-planned", label: "AS예정", results: ["AS예정"] },
 ] as const;
 
 export type StatusFilterId = (typeof STATUS_FILTERS)[number]["id"];

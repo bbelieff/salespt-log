@@ -24,6 +24,7 @@ const fixtureResults = [
   ["recall", "재통화"],
   ["progress", "컨택진행"],
   ["post-consult-refusal", "상담 후 거절"],
+  ["as-planned", "AS예정"],
   ["unknown", "새 결과"],
 ] as const;
 const rows: FixtureRow[] = fixtureResults.map(([id, result], index) => ({
@@ -43,11 +44,12 @@ const expectedResultByFilter: Record<StatusFilterId, string[]> = {
   "simple-refusal": ["단순거절"],
   recall: ["재통화"],
   progress: ["컨택진행", "상담 후 거절"],
+  "as-planned": ["AS예정"],
 };
 
 describe("DB관리시트 상태 보기 필터", () => {
-  it.each(Array.from({ length: 32 }, (_, mask) => mask))(
-    "5개 칩 조합 %i를 OR 필터로 계산한다",
+  it.each(Array.from({ length: 2 ** filterIds.length }, (_, mask) => mask))(
+    "6개 칩 조합 %i를 OR 필터로 계산한다",
     mask => {
       const selected = filterIds.filter((_, index) => mask & (1 << index));
       const actual = filterDbSheetRows(rows, { selectedStatuses: selected });
@@ -62,7 +64,7 @@ describe("DB관리시트 상태 보기 필터", () => {
     },
   );
 
-  it("unknown 결과는 0개·5개 선택에서만 전체 보기의 일부로 유지한다", () => {
+  it("unknown 결과는 0개·전체 선택에서만 전체 보기의 일부로 유지한다", () => {
     expect(filterDbSheetRows(rows, { selectedStatuses: [] }).at(-1)?.id).toBe("unknown");
     expect(filterDbSheetRows(rows, { selectedStatuses: filterIds }).at(-1)?.id).toBe("unknown");
     expect(filterDbSheetRows(rows, { selectedStatuses: ["progress"] }).some(row => row.id === "unknown")).toBe(false);

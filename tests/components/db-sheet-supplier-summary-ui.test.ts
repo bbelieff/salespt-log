@@ -108,8 +108,8 @@ describe("source guards", () => {
 
   it("puts supplier and visible-field toggles together, starts collapsed, and permits the explicit supplier deep link", () => {
     const tools = page.slice(page.indexOf('className="sheet-table-tools"'));
-    expect(tools.indexOf("공급처별 보기")).toBeGreaterThan(-1);
-    expect(tools.indexOf("공급처별 보기")).toBeLessThan(tools.indexOf("보여줄 항목"));
+    expect(tools.indexOf("공급처별 성과")).toBeGreaterThan(-1);
+    expect(tools.indexOf("공급처별 성과")).toBeLessThan(tools.indexOf("보여줄 항목"));
     expect(page).toContain('aria-controls="db-supplier-summary"');
     expect(page).toMatch(/params\.get\('view'\)==='suppliers'\)setSummaryOpen\(true\)/);
     expect(page).toContain('[summaryOpen,setSummaryOpen]=useState(false)');
