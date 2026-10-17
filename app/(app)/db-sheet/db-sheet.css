@@ -143,9 +143,9 @@ body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:calc(100dvh - 190px)}
 body.db-sheet-route .sheet-resizable .column-heading{padding:0 5px;height:auto;min-height:40px;container-type:inline-size;container-name:column-head}
 body.db-sheet-route .sheet-resizable .column-title{padding:4px 0;gap:3px;height:auto;min-height:40px;justify-content:flex-start;flex-wrap:wrap;align-content:center;line-height:14px;overflow:visible}
 body.db-sheet-route .sheet-resizable .column-label{white-space:normal;overflow-wrap:anywhere}
-body.db-sheet-route .sheet-resizable .sort-direction{margin-left:0;font-size:12px;line-height:14px;width:10px;text-align:center}
+body.db-sheet-route .sheet-resizable .sort-direction{margin-left:0;font-size:12px;line-height:14px;width:12px;text-align:center}
 body.db-sheet-route .sheet-resizable .auto-label{padding:0 2px;line-height:12px;border-radius:3px}
-@container column-head (max-width:105px){body.db-sheet-route .column-title .auto-label{order:3}body.db-sheet-route .column-title:has(.auto-label) .column-label{flex-basis:calc(100% - 14px)}}
+@container column-head (max-width:105px){body.db-sheet-route .column-title .auto-label{order:3}body.db-sheet-route .column-title:has(.auto-label) .column-label{flex-basis:calc(100% - 16px)}}
 body.db-sheet-route .sheet-mobile-sort{max-width:145px;border:1px solid #e2e8f0;border-radius:7px;background:white;padding:7px 6px;font-size:12px;color:#475569;min-height:36px}
 @media(max-width:1023px){body.db-sheet-route .sheet-mobile-switch{align-items:center;justify-content:space-between;gap:8px;padding:0 16px 10px;margin:0}body.db-sheet-route .sheet-mobile-switch>span{display:none}body.db-sheet-route .sheet-mobile-switch .sheet-text-btn{min-height:36px}body.db-sheet-route .sheet-resizable .column-heading{touch-action:pan-x}body.db-sheet-route .sheet-resizable .column-title{min-height:44px}}
 
@@ -226,3 +226,6 @@ body.db-sheet-route .sheet-status-chip:focus-visible{outline:3px solid #93c5fd;o
 body.db-sheet-route .sheet-status-chip-check{display:inline-flex;align-items:center;justify-content:center;width:12px;min-width:12px;font-size:12px;font-weight:900}
 body.db-sheet-route .sheet-status-filter-summary{flex:0 0 auto;font-size:11px;font-weight:600;color:#64748b;white-space:nowrap}
 @media(max-width:640px){body.db-sheet-route .sheet-status-filter-row{align-items:flex-start;flex-wrap:wrap;padding:10px;gap:8px}body.db-sheet-route .sheet-status-filter-label{width:100%}body.db-sheet-route .sheet-status-filter-chips{flex-basis:100%}body.db-sheet-route .sheet-status-chip{min-height:44px;padding:8px 12px}body.db-sheet-route .sheet-status-filter-summary{margin-left:auto}}
+
+/* Content-fitted columns must not keep the old inner 300px clipping limit. */
+body.db-sheet-route .sheet-resizable .sheet-cell{max-width:none}
