@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   view: vi.fn(), writable: vi.fn(), user: vi.fn(), enabled: vi.fn(),
-  suppliers:vi.fn(),recording:vi.fn(),deletion:vi.fn(),list: vi.fn(), save: vi.fn(), schedule: vi.fn(), contact: vi.fn(), meeting: vi.fn(), batch: vi.fn(),
+  firstDate:vi.fn(),inflow:vi.fn(),suppliers:vi.fn(),recording:vi.fn(),deletion:vi.fn(),list: vi.fn(), save: vi.fn(), schedule: vi.fn(), contact: vi.fn(), meeting: vi.fn(), batch: vi.fn(),
   salesSync: vi.fn(), meetingSync: vi.fn(),
   contracts: vi.fn(), todos: vi.fn(),
 }));
@@ -21,7 +21,7 @@ vi.mock("@/repo/db/db-sheet", () => ({
   DbSheetLinkedMeetingReadOnly: class extends Error { constructor() { super("예약된 업체정보와 일정은 STEP 3 일정·계약에서 수정해 주세요."); } },
   DbSheetOperationBlocked:class extends Error {},DbSheetDuplicate:class extends Error {},listDbSheetSuppliers:mocks.suppliers,changeDbSheetRecording:mocks.recording,deleteDbSheetLead:mocks.deletion,
   DbSheetConflict: class extends Error {}, listDbSheet: mocks.list,
-  saveDbSheetLead: mocks.save, scheduleDbSheetContact: mocks.schedule, saveDbSheetContact: mocks.contact,
+  setDbSheetFirstDate:mocks.firstDate,changeDbSheetInflow:mocks.inflow,saveDbSheetLead: mocks.save, scheduleDbSheetContact: mocks.schedule, saveDbSheetContact: mocks.contact,
   registerDbSheetMeeting: mocks.meeting, importDbSheetLeads: mocks.batch,
 }));
 vi.mock("@/service/sales-write", () => ({ queueSalesRowSync: mocks.salesSync }));
@@ -46,7 +46,7 @@ const request = (body: unknown) => new NextRequest("https://app.example.test/api
 });
 const save = () => request({ action: "save", lead: input, revision: null });
 function expectNoWrites() {
-  for (const fn of [mocks.save, mocks.schedule, mocks.contact, mocks.meeting, mocks.batch, mocks.salesSync, mocks.meetingSync]) expect(fn).not.toHaveBeenCalled();
+  for (const fn of [mocks.firstDate,mocks.inflow,mocks.save, mocks.schedule, mocks.contact, mocks.meeting, mocks.batch, mocks.salesSync, mocks.meetingSync]) expect(fn).not.toHaveBeenCalled();
 }
 beforeEach(() => {
   vi.resetAllMocks();
@@ -55,6 +55,7 @@ beforeEach(() => {
   mocks.view.mockResolvedValue({ email: ctx.email }); mocks.writable.mockResolvedValue(ctx.email);
   mocks.user.mockResolvedValue(ctx); mocks.enabled.mockReturnValue(true);
   mocks.suppliers.mockResolvedValue([]);mocks.recording.mockResolvedValue(change);mocks.deletion.mockResolvedValue(change);
+  mocks.firstDate.mockResolvedValue({...change,changedSales:[]});mocks.inflow.mockResolvedValue(change);
   mocks.list.mockResolvedValue([lead]); mocks.save.mockResolvedValue(change); mocks.schedule.mockResolvedValue(change);
   mocks.contact.mockResolvedValue(change); mocks.batch.mockResolvedValue([change]);
   mocks.meeting.mockResolvedValue({ ...change, meetingId: batchId });
@@ -201,4 +202,26 @@ it("recording and deletion previews cannot write or mirror and require revisions
 it("strips forged ledger evidence while preserving recording choice",async()=>{
  const response=await POST(request({action:'save',lead:{...input,recording:{inflow:false,activities:true},_recorded:{inflow:true,contacts:['2020-01-01'],meeting:true},inflowStatus:{state:'recorded'}},revision:null}));
  expect(response.status).toBe(200);const actual=mocks.save.mock.calls[0]?.[1];expect(actual.recording).toEqual({inflow:false,activities:true});expect(actual).not.toHaveProperty('_recorded');expect(actual).not.toHaveProperty('inflowStatus');
+});
+
+it("validates first-date command and keeps display edit out of sales sync",async()=>{
+ for(const first of ["2026-02-30","not-date"]){expect((await POST(request({action:"first-date",id,revision:1,first}))).status).toBe(400);}
+ expect(mocks.firstDate).not.toHaveBeenCalled();
+ for(const first of ["2026-10-01",""]){expect((await POST(request({action:"first-date",id,revision:1,first}))).status).toBe(200);expect(mocks.firstDate).toHaveBeenLastCalledWith(ctx,id,first,1);}
+ expect(mocks.salesSync).not.toHaveBeenCalled();expect(mocks.meetingSync).not.toHaveBeenCalled();
+});
+it("validates AS input without defaulting omitted fields",async()=>{
+ expect(DbSheetLeadInput.parse(input)).not.toHaveProperty("asReceived");
+ expect(DbSheetLeadInput.safeParse({...input,asReceived:"true"}).success).toBe(false);
+ expect(DbSheetLeadInput.safeParse({...input,asNote:"x".repeat(20001)}).success).toBe(false);
+ const response=await POST(request({action:"contact",id,revision:1,date:input.date,result:"AS예정",note:"AS 요청"}));expect(response.status).toBe(200);
+ expect(mocks.contact).toHaveBeenCalledWith(ctx,id,expect.objectContaining({result:"AS예정"}),1);
+});
+it("routes inflow preview/apply through tenant and revision guard",async()=>{
+ expect((await POST(request({action:"inflow-preview",id,revision:1,inflow:false}))).status).toBe(200);
+ expect(mocks.inflow).toHaveBeenLastCalledWith(ctx,id,1,false,true);expect(mocks.salesSync).not.toHaveBeenCalled();
+ expect((await POST(request({action:"inflow",id,revision:1,inflow:false}))).status).toBe(200);
+ expect(mocks.inflow).toHaveBeenLastCalledWith(ctx,id,1,false,false);
+ mocks.writable.mockResolvedValue("other@example.test");
+ expect((await POST(request({action:"inflow",id,revision:1,inflow:false}))).status).toBe(403);expect(mocks.inflow).toHaveBeenCalledTimes(2);
 });

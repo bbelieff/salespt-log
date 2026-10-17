@@ -1,3 +1,8 @@
+## 2026-10-17 DB관리시트 자동 가져오기·편의 개선 운영 승인
+- 사용자 목업 승인 및 실제 연결·테스트·운영 배포 지시. feat/db-sheet-adaptive-release, 기준20ee41d3.
+- 소유: root types/service/repo/DB정보/model/통합·문서; import_release 가져오기 전용; compact_ui_release 상단/기간/상태필터·공급처. 공용 계약 root, 별도 검증 예정.
+- 상세 범위·수용조건: [plan](plans/active/db-sheet-adaptive-release.md). 실데이터 백필·일괄 수정 없음.
+
 ## 2026-10-15 — 최초상담일 자동기록 범위 확대 (검증 중)
 - 사용자 확정: 단순거절·재통화·컨택진행·상담 후 거절에 선택 컨택일 자동기록, 기존 최초 날짜 보존. STEP2 컨택진행과 공급처 상담성과는 기존 qualified 이력 기준 유지.
 - 전용 fix/db-sheet-first-contact-date, base22e15350. 총괄 types/repo/service/UI/tests 변경, excel_count_review 읽기전용 독립 검증. 운영 백필·실데이터 시험 없음.

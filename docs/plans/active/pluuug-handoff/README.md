@@ -6,10 +6,11 @@
 > - **관련 문서**: 항목 정본 [A](../dashboard-follow-ups.md) · [B](../dashboard-card-headlines.md) · [C](../dashboard-channel-profit.md) · [D](../company-info-email.md) · [E](../db-sheet-supplier-summary.md) · [F](../records-follow-renames.md) · [workflow](../../../development/workflow.md) · [task-template](../../../development/task-template.md) · [deploy-vps](../../../playbooks/deploy-vps.md) · [총괄](../../../playbooks/codex-lead.md)·[제작](../../../playbooks/codex-worker.md)·[검증](../../../playbooks/codex-reviewer.md)
 
 ## 진행 현황 (대시보드용)
-갱신: 2026-10-15 23:11 KST
+갱신: 2026-10-17 15:17 KST
 
 | 항목 | 단계 | 다음 할 일 | 막힌 것·belie 결정 대기 |
 |---|---|---|---|
+| DB시트 자동 배치·편의 개선 | PR 검증 중 | 저장·집계·전체 검사 및 화면 검증 | 없음·목업 승인/추가 상단요청 포함 |
 | 최초상담일 자동기록 | PR 검증 중 | 최종 head 검토·CI 후 배포 | 3726시험·빌드·PC/모바일 저장재조회 확인 |
 | DB 엑셀파일·컨택 집계 안내 | 완료 | 후속 요청 반영 | #1156·076805dd·Deploy38742431216 성공·운영 확인 |
 | 목업 열기 안정화 | 설계 보완 중 | 재발 시 앱 탭 오류와 서버 종료 구분 | 재시작·서버 복구 후 앱 PC/모바일 정상; 앱 내부 원인 미확정 |

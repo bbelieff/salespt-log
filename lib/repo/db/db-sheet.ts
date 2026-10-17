@@ -91,7 +91,7 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
   current=await linkedProjection(c,ctx,old);
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
- const lead:DbSheetLead={...input,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
+ const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
   followUp:{generation:(old?.followUp?.generation??0)+(old&&scheduleNext?1:0),completedGeneration:old?.followUp?.completedGeneration??null,lastContactDate:old?.followUp?.lastContactDate??""},
   // Response-only lineage (persist strips it): lets the status projector match a contract linked to a rescheduled child meeting.
   ...(current?.effectiveMeetingId?{effectiveMeetingId:current.effectiveMeetingId,meetingLineageIds:current.meetingLineageIds??[]}:{})};
@@ -119,8 +119,18 @@ export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:
  await c.query(`insert into db_sheet_contacts(spreadsheet_id,lead_id,contact_date,qualified,result,note) values($1,$2,$3,$4,$5,$6)
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
- const hasQualifiedContact=!!dates.rows[0]?.first;const first=old.first||(recordsDbSheetFirstContact(event.result)?event.date:"");const lead:DbSheetLead={...old,next:!old.next||event.date>=old.next?"":old.next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:hasQualifiedContact?"상담 중":"미컨택",contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:old.followUp?.generation??0,completedGeneration:!old.next||event.date>=old.next?old.followUp?.generation??0:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
+ const hasQualifiedContact=!!dates.rows[0]?.first;const first=old.firstManual?old.first:old.first||(recordsDbSheetFirstContact(event.result)?event.date:"");const lead:DbSheetLead={...old,next:!old.next||event.date>=old.next?"":old.next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:hasQualifiedContact?"상담 중":"미컨택",contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:old.followUp?.generation??0,completedGeneration:!old.next||event.date>=old.next?old.followUp?.generation??0:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
  await persist(c,ctx,lead);return {lead,impact:contributionImpact(old,lead),changedSales:await applyDeltas(c,ctx,[...before,...await contributions(c,ctx,lead,1)])};
+ });
+}
+/** Display date editing does not create/move contact events or STEP 2 contributions. */
+export async function setDbSheetFirstDate(ctx:DbSheetContext,leadId:string,first:string,expectedRevision:number):Promise<DbSheetChange>{
+ z.string().uuid().parse(leadId);z.union([DbSheetDate,z.literal("")]).parse(first);
+ return transaction(ctx,async c=>{
+  const stored=await expected(c,ctx,leadId,expectedRevision);
+  const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;
+  const lead:DbSheetLead={...old,first,firstManual:true,hasQualifiedContact:old.hasQualifiedContact??!!old.first,revision:old.revision+1};
+  await persist(c,ctx,lead);return {lead,changedSales:[]};
  });
 }
 /** Explicit scheduling also reopens a reservation for the same calendar day. */
@@ -142,7 +152,7 @@ export async function registerDbSheetMeeting(ctx:DbSheetContext,leadId:string,ra
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=true,result='컨택진행'`,[ctx.spreadsheetId,leadId,meeting.예약일,old.contact.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
  await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'meetings',$4,$5::jsonb,true)`,[ctx.cohort,ctx.email,ctx.spreadsheetId,meeting.id,JSON.stringify(meeting)]);
- const lead:DbSheetLead={...old,revision:old.revision+1,result:"컨택진행",first:old.first||dates.rows[0].first,hasQualifiedContact:true,stage:"미팅예약",meetingId:meeting.id,contact:{...old.contact,registered:true,date:meeting.예약일,ci:meeting.업체정보??old.contact.ci,companyName:meeting.업체명,reservationNote:meeting.예약비고,meetingDate:meeting.미팅날짜,time:meeting.미팅시간,place:meeting.장소}};
+ const lead:DbSheetLead={...old,revision:old.revision+1,result:"컨택진행",first:old.firstManual?old.first:old.first||dates.rows[0].first,hasQualifiedContact:true,stage:"미팅예약",meetingId:meeting.id,contact:{...old.contact,registered:true,date:meeting.예약일,ci:meeting.업체정보??old.contact.ci,companyName:meeting.업체명,reservationNote:meeting.예약비고,meetingDate:meeting.미팅날짜,time:meeting.미팅시간,place:meeting.장소}};
  await persist(c,ctx,lead);
  const count=(await lockedMeetingCounts(c,ctx.spreadsheetId,true)).get(meeting.예약일+":"+old.channel)??0;
  await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'sales',$4,$5::jsonb,true)
@@ -174,6 +184,25 @@ export async function changeDbSheetRecording(ctx:DbSheetContext,id:string,revisi
    const key=row.date+':'+row.channel;await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'sales',$4,$5::jsonb,true) on conflict(spreadsheet_id,tab,row_key) do update set payload=sheet_rows.payload||excluded.payload,mirror_pending=true,updated_at=now()`,[ctx.cohort,ctx.email,ctx.spreadsheetId,key,JSON.stringify({date:row.date,channel:row.channel,meetingReservation:counts.get(key)??0})]);changedSales.push({date:row.date,channel:row.channel});
   }}
   return {lead,changedSales,impact};
+ });
+}
+/** Explicit reconciliation removes/adds only this lead's proven inflow contribution. */
+export async function changeDbSheetInflow(ctx:DbSheetContext,id:string,revision:number,inflow:boolean,preview=false):Promise<DbSheetChange>{
+ z.string().uuid().parse(id);z.boolean().parse(inflow);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,id,revision);
+  const lead:DbSheetLead={...old,revision:old.revision+1,recording:{inflow,activities:old.recording?.activities??true},_recorded:{...old._recorded!,inflow}};
+  const impact=contributionImpact(old,lead);
+  if(old._recorded?.legacyUnknown)impact.blockedReason="이 DB의 기존 유입 기록을 확인할 수 없어 변경할 수 없습니다.";
+  if(!impact.blockedReason&&impact.inflow<0){
+   const row=await c.query("select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2 for update",[ctx.spreadsheetId,old.date+":"+old.channel]);
+   const total=Number(row.rows[0]?.payload?.inflow??0);
+   if(!Number.isFinite(total)||total<1)impact.blockedReason="해당 날짜의 유입 기록이 맞지 않아 변경할 수 없습니다.";
+  }
+  if(preview)return {lead:old,changedSales:[],impact};
+  if(impact.blockedReason)throw new DbSheetOperationBlocked(impact.blockedReason);
+  await persist(c,ctx,lead);
+  return {lead,impact,changedSales:await applyDeltas(c,ctx,[...await contributions(c,ctx,old,-1),...await contributions(c,ctx,lead,1)])};
  });
 }
 export async function deleteDbSheetLead(ctx:DbSheetContext,id:string,revision:number,preview=false){

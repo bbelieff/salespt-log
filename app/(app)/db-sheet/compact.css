@@ -1,0 +1,45 @@
+/* 승인 목업의 26px 도구와 공급처 요약 밀도를 실제 필터에 적용. */
+body.db-sheet-route .db-sheet-panel .sheet-panel-head{padding:10px 12px;gap:8px}
+body.db-sheet-route .db-sheet-panel .sheet-panel-head .search{max-width:240px}
+body.db-sheet-route .sheet-panel-head .sheet-btn:has(.sheet-toolbar-pill){height:26px;min-height:26px;padding:0;border:0;line-height:26px}
+body.db-sheet-route .sheet-panel-head .sheet-toolbar-pill{height:26px;min-height:26px;font-size:12px;padding:0 11px;border-radius:999px}
+body.db-sheet-route .sheet-quick-filters{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:6px 12px;border-top:1px solid #f1f5f9;border-bottom:1px solid #e2e8f0}
+body.db-sheet-route .sheet-status-filter-row{padding:0;gap:6px;min-height:0;border:0;background:white;flex:1 1 auto}
+body.db-sheet-route .sheet-status-filter-label{font-size:11px;width:auto;color:#64748b}
+body.db-sheet-route .sheet-status-filter-chips{gap:5px;flex-basis:auto}
+body.db-sheet-route .sheet-status-chip{height:26px;min-height:26px;border:1px solid #cbd5e1;border-radius:999px;padding:0 11px;background:white;font-size:12px;font-weight:600;line-height:24px;color:#475569;white-space:nowrap}
+body.db-sheet-route .sheet-status-chip[aria-pressed=true]{background:#7c3aed;color:white;border-color:#7c3aed;box-shadow:none}
+body.db-sheet-route .sheet-status-filter-summary{font-size:11px;margin-left:auto}
+body.db-sheet-route .sheet-inflow-period{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:11px;min-width:0}
+body.db-sheet-route .sheet-inflow-period>span:first-child{color:#64748b;margin-right:3px}
+body.db-sheet-route .sheet-inflow-period button{height:26px;min-height:26px;font-size:12px}
+body.db-sheet-route .sheet-inflow-period button[aria-pressed=true]{background:#3b82f6;color:white;border-color:#3b82f6}
+body.db-sheet-route .sheet-inflow-period button:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+body.db-sheet-route .sheet-inflow-period small{color:#a16207}
+body.db-sheet-route .sheet-inflow-period input{max-width:145px;min-width:0}
+body.db-sheet-route .sheet-inflow-period button:nth-of-type(1){order:2}
+body.db-sheet-route .sheet-inflow-period button:nth-of-type(2){order:1}
+body.db-sheet-route .sheet-inflow-period button:nth-of-type(3){order:4}
+body.db-sheet-route .sheet-inflow-period button:nth-of-type(4){order:3}
+body.db-sheet-route .sheet-inflow-period button:nth-of-type(5){order:5}
+body.db-sheet-route .sheet-inflow-period input,body.db-sheet-route .sheet-inflow-period>span:not(:first-child),body.db-sheet-route .sheet-inflow-period small{order:6}
+body.db-sheet-route .sheet-supplier-summary{padding:8px 12px}
+body.db-sheet-route .sheet-supplier-summary>p{font-size:12px;margin:4px 0}
+body.db-sheet-route .sheet-supplier-summary>.overflow-hidden{margin-top:6px}
+body.db-sheet-route .sheet-supplier-summary td,body.db-sheet-route .sheet-supplier-summary th{padding:4px 6px}
+body.db-sheet-route .sheet-supplier-summary .sheet-supplier-card{padding:8px;font-size:12px}
+body.db-sheet-route .sheet-supplier-note{font-size:11px;color:#64748b;margin-top:6px}
+body.db-sheet-route .sheet-supplier-note summary{cursor:pointer}
+body.db-sheet-route .sheet-supplier-note p{margin-top:4px}
+body.db-sheet-route .sheet-supplier-summary>ul{gap:4px;margin-top:6px}
+@media(max-width:650px){
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head{padding:8px}
+ body.db-sheet-route .sheet-quick-filters{padding:5px 8px;gap:6px}
+ body.db-sheet-route .sheet-status-filter-row{gap:5px;flex-basis:100%;align-items:center}
+ body.db-sheet-route .sheet-status-filter-chips{flex-wrap:wrap;gap:4px}
+ body.db-sheet-route .sheet-status-chip{padding:0 9px;font-size:11px}
+ body.db-sheet-route .sheet-status-filter-summary{display:none}
+ body.db-sheet-route .sheet-inflow-period{gap:4px}
+ body.db-sheet-route .sheet-inflow-period button{font-size:11px;padding:0 8px}
+ body.db-sheet-route .sheet-inflow-period>span:first-child{font-size:10px}
+}
