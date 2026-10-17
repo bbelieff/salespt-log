@@ -7,12 +7,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { editContractLinkedFields } from "@/service";
 import {
+  getWritableUserEmail,
   requireStudentViewContext,
   StudentViewContextError,
 } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
-// getWritableUserEmail legacy gate is superseded here by the stricter student-view gate.
+// 학생 컨텍스트 오류와 기존 쓰기 권한 결정은 각각 보존한다.
 function studentContextFailure(error: unknown) {
   return error instanceof StudentViewContextError
     ? NextResponse.json(
@@ -35,6 +36,13 @@ const Body = z.object({
 async function POST_handler(req: NextRequest) {
   try {
     const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });

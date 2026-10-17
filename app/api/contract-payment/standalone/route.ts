@@ -3,12 +3,13 @@
  * 실무/수납에서 04 미팅 없이 계약 업체를 만든다. 이월을 강제하지 않는다(매출 귀속은 계약일로
  * isCarryoverContract 가 가른다). body = { 계약일, 업체명, 수임비, requestKey(uuid) }.
  * requestKey 는 폼을 열 때 한 번 만들어 재시도에도 같게 보낸다 → 같은 행 upsert(중복 0).
- * 권한 = prior 라우트와 동일(getWritableUserEmail — 임퍼스네이션 대상 시트에 쓰기).
+ * 권한 = prior와 동일(학생 컨텍스트와 getWritableUserEmail의 대상 일치).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { addStandaloneContract } from "@/service";
 import {
+  getWritableUserEmail,
   requireStudentViewContext,
   StudentViewContextError,
 } from "@/auth/identity";
@@ -24,6 +25,13 @@ const StandaloneContractBody = z.object({
 async function POST_handler(req: NextRequest) {
   try {
     const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const parsed = StandaloneContractBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(

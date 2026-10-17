@@ -1,7 +1,7 @@
 /**
  * POST /api/contract-payment/standalone — 「영업기록 없이 업체추가」 라우트 계약(서비스 목).
  * 인증 401 · 입력검증 400 · 성공 200{row} · 서비스 실패 500.
- * 학생-view 정본(requireStudentViewContext)의 해석 이메일로 쓴다.
+ * 학생-view 정본과 기존 writable 대상이 일치할 때만 해석 이메일로 쓴다.
  */
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,11 +15,13 @@ const api = vi.hoisted(() => {
   return {
     ContextError,
     requireContext: vi.fn(),
+    writable: vi.fn(),
     add: vi.fn(),
   };
 });
 vi.mock("@/auth/identity", () => ({
   requireStudentViewContext: api.requireContext,
+  getWritableUserEmail: api.writable,
   StudentViewContextError: api.ContextError,
 }));
 vi.mock("@/service", () => ({ addStandaloneContract: api.add }));
@@ -49,6 +51,7 @@ beforeEach(() => {
     mode: "own",
     email: "hong@example.com",
   });
+  api.writable.mockResolvedValue("hong@example.com");
   api.add.mockResolvedValue({ row: 12 });
 });
 
@@ -60,6 +63,7 @@ describe("POST /api/contract-payment/standalone", () => {
     const r = await out(await POST(req(OK)));
     expect(r.status).toBe(401);
     expect(r.body.error).toBe("unauthenticated");
+    expect(api.writable).not.toHaveBeenCalled();
     expect(api.add).not.toHaveBeenCalled();
   });
 
@@ -101,5 +105,35 @@ describe("POST /api/contract-payment/standalone", () => {
     const r = await out(await POST(req(OK)));
     expect(r.status).toBe(500);
     expect(r.body.error).toBe("시트 오류");
+  });
+
+  it("writable 대상 불일치 → 본문을 읽기 전 안정된 403, 서비스 호출 없음", async () => {
+    api.writable.mockResolvedValue("other@example.test");
+    const request = req(OK);
+    const readBody = vi.spyOn(request, "json");
+    const r = await out(await POST(request));
+
+    expect(r.status).toBe(403);
+    expect(r.body).toEqual({ error: "student_write_target_mismatch", code: "student_write_target_mismatch" });
+    expect(api.requireContext.mock.invocationCallOrder[0]).toBeLessThan(api.writable.mock.invocationCallOrder[0]!);
+    expect(readBody).not.toHaveBeenCalled();
+    expect(api.add).not.toHaveBeenCalled();
+  });
+
+  it("writable 이메일의 대소문자·양끝 공백은 정규화하되 trusted 이메일로 전달", async () => {
+    api.writable.mockResolvedValue(" HONG@EXAMPLE.COM ");
+    const r = await out(await POST(req(OK)));
+
+    expect(r.status).toBe(200);
+    expect(api.add).toHaveBeenCalledWith("hong@example.com", OK);
+  });
+
+  it("기존 writable 권한 결정이 throw하면 서비스에 도달하지 않음", async () => {
+    api.writable.mockRejectedValue(new Error("write denied"));
+    const r = await out(await POST(req(OK)));
+
+    expect(r.status).toBe(500);
+    expect(r.body.error).toBe("write denied");
+    expect(api.add).not.toHaveBeenCalled();
   });
 });

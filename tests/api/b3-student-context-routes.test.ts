@@ -346,4 +346,46 @@ describe("B3 student-context routes", () => {
       업체명: "Fixture",
     });
   });
+
+  const mutations: [string, string, (request: NextRequest) => Promise<Response>][] = [
+    ["company-info POST", "POST", request => companyPOST(request)],
+    ["contract-payment POST", "POST", request => paymentsPOST(request)],
+    ["contract-payment PATCH", "PATCH", request => paymentsPATCH(request)],
+    ["contract-payment row PATCH", "PATCH", request => paymentPATCH(request, rowContext)],
+    ["contract-payment row DELETE cascade", "DELETE", request => paymentDELETE(request, rowContext)],
+    ["contract-payment terminate POST", "POST", request => terminatePOST(request, rowContext)],
+    ["contract-payment link-meeting POST", "POST", request => linkPOST(request, rowContext)],
+    ["contract-payment edit-linked POST", "POST", request => editLinkedPOST(request)],
+    ["contract-payment prior POST", "POST", request => priorPOST(request)],
+    ["contract-payment standalone POST", "POST", request => standalonePOST(request)],
+  ];
+
+  it.each(mutations)("%s rejects a changed writable target before body/service calls", async (_name, method, invoke) => {
+    setAssignedContext();
+    let trainerReads = 0;
+    // The real context gate allows the target, then the real writable gate sees revoked authority.
+    m.findTrainerByEmail.mockImplementation(async () => {
+      trainerReads += 1;
+      return trainerReads === 1 ? m.trainer : { ...m.trainer, status: "inactive" };
+    });
+    const request = new NextRequest("https://app.example.test/api/fixture?cascade=meeting", {
+      method,
+      ...(method === "DELETE" ? {} : { body: "{}" }),
+    });
+    const readBody = vi.spyOn(request, "json");
+
+    const response = await invoke(request);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "student_write_target_mismatch",
+      code: "student_write_target_mismatch",
+    });
+    expect(trainerReads).toBe(3);
+    expect(readBody).not.toHaveBeenCalled();
+    for (const downstream of downstreamMocks()) {
+      expect(downstream).not.toHaveBeenCalled();
+    }
+    expect(m.removeContractPaymentWithCascade).not.toHaveBeenCalled();
+  });
 });

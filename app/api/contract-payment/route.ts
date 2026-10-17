@@ -16,12 +16,13 @@ import {
   syncContractFee,
 } from "@/service";
 import {
+  getWritableUserEmail,
   requireStudentViewContext,
   StudentViewContextError,
 } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
-// getWritableUserEmail legacy gate is superseded here by the stricter student-view gate.
+// 학생 컨텍스트 오류와 기존 쓰기 권한 결정은 각각 보존한다.
 function studentContextFailure(error: unknown) {
   return error instanceof StudentViewContextError
     ? NextResponse.json(
@@ -56,6 +57,13 @@ async function GET_handler() {
 async function POST_handler(req: NextRequest) {
   try {
     const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const body = await req.json();
     const parsed = ContractFeeBody.safeParse(body);
     if (!parsed.success) {
@@ -80,6 +88,13 @@ async function POST_handler(req: NextRequest) {
 async function PATCH_handler(req: NextRequest) {
   try {
     const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const body = await req.json();
     const parsed = ContractFeeBody.safeParse(body);
     if (!parsed.success) {

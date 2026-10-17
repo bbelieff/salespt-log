@@ -10,6 +10,7 @@ import {
   saveCompanyInfoByContract,
 } from "@/service/contract-payment";
 import {
+  getWritableUserEmail,
   requireStudentViewContext,
   StudentViewContextError,
 } from "@/auth/identity";
@@ -45,8 +46,15 @@ async function GET_handler(req: NextRequest) {
 
 async function POST_handler(req: NextRequest) {
   try {
-    // getWritableUserEmail보다 엄격한 학생-view 권한을 매 요청 다시 검증한다.
+    // 학생 컨텍스트와 기존 쓰기 권한을 모두 확인한다.
     const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const body = await req.json();
     const 계약일 = String(body?.계약일 ?? "").trim();
     const 업체명 = String(body?.업체명 ?? "").trim();
