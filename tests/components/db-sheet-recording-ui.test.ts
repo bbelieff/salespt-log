@@ -5,7 +5,8 @@ import {beforeEach,afterEach,it,expect,vi} from 'vitest';
 import {RecordingDialog} from '@/app/(app)/db-sheet/_components/RecordingDialog';
 import InflowStatusCell from '@/app/(app)/db-sheet/_components/InflowStatusCell';
 import {blank,outcomes} from '@/app/(app)/db-sheet/_components/model';
-import {ContactFields,contactDraft} from '@/app/(app)/db-sheet/_components/ContactPanel';
+import {contactDraft} from '@/app/(app)/db-sheet/_components/ContactPanel';
+import {DbContactActions} from '@/app/(app)/db-sheet/_components/DbContactActions';
 import {ImportDialog} from '@/app/(app)/db-sheet/_components/ImportDialog';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 let host:HTMLDivElement,root:Root;
@@ -13,8 +14,13 @@ beforeEach(()=>{host=document.createElement('div');document.body.append(host);ro
 afterEach(()=>{act(()=>root.unmount());host.remove();vi.restoreAllMocks();});
 const button=(text:string)=>[...host.querySelectorAll('button')].find(b=>b.textContent===text)!;
 it('shows unknown for an unlinked historical row instead of claiming it was counted',async()=>{
- await act(async()=>root.render(createElement(InflowStatusCell,{row:{...blank(),company:'합성 업체'}})));
- expect(host.textContent).toBe('확인 필요');act(()=>button('확인 필요').click());expect(host.textContent).toContain('이전 유입 집계와 연결된 기록이 없어요');expect(host.textContent).not.toContain('유입 1건');
+ const row={...blank(),company:'합성 업체'},open=vi.fn(),persist=vi.fn(async()=>{});
+ await act(async()=>root.render(createElement(InflowStatusCell,{row,onOpen:open})));
+ expect(host.textContent).toBe('확인 필요');act(()=>button('확인 필요').click());expect(open).toHaveBeenCalledOnce();expect(host.querySelector('dialog')).toBeNull();expect(host.textContent).not.toContain('유입 1건');
+ await act(async()=>root.render(createElement(InflowStatusCell,{row,onToggle:persist})));
+ expect(host.textContent).toContain('확인 필요 · 기존 유입 기록을 확인해 주세요.');
+ const choices=[...host.querySelectorAll<HTMLButtonElement>('[role=radio]')];expect(choices).toHaveLength(2);expect(choices.every(choice=>choice.disabled)).toBe(true);
+ act(()=>choices[0]!.click());expect(persist).not.toHaveBeenCalled();expect(host.textContent).not.toContain('유입 1건');
 });
 it('previews a retrospective change before confirming, and invalidates preview when settings change',async()=>{
  const preview=vi.fn(async()=>({inflow:1,contacts:2,meetings:0,rows:[]})),confirm=vi.fn(async()=>{});
@@ -46,9 +52,9 @@ it('imports selected rows independently from all/partial inflow choices and pass
 
 it('explains contact counting without changing saved outcome values, including recording off',async()=>{
  const row={...blank(),company:'합성 업체'},onResult=vi.fn();
- const render=async(activities:boolean)=>act(async()=>root.render(createElement(ContactFields,{row:{...row,recording:{inflow:true,activities}},draft:contactDraft(row),onChange:vi.fn(),onResult})));
+ const render=async(activities:boolean)=>act(async()=>root.render(createElement(DbContactActions,{row:{...row,recording:{inflow:true,activities}},date:contactDraft(row).date,contact:false,onResult,onAsInfo:vi.fn(),onToggleContact:vi.fn()})));
  await render(true);
- const select=()=>host.querySelector<HTMLSelectElement>('select[aria-label="컨택내용 결과"]')!;
+ const select=()=>host.querySelector<HTMLSelectElement>('select[aria-label="DB정보 컨택결과"]')!;
  expect([...select().options].map(o=>o.value)).toEqual(outcomes);
  expect([...select().options].find(o=>o.value==='AS예정')?.textContent).toContain('집계 제외');
  expect([...select().options].slice(0,4).every(o=>o.textContent?.endsWith('집계 제외'))).toBe(true);

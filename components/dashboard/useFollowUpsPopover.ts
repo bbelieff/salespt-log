@@ -18,6 +18,7 @@ export function useFollowUpsPopover(active: Selection | null, setActive: (value:
     const focusOnOpen = useRef(false);
     const explicitOpen = useRef(false);
     const [position, setPosition] = useState({ left: 12, top: 12, width: 740 });
+    const [connector, setConnector] = useState<{ left: number; top: number; width: number; height: number; sourceY: number; targetY: number } | null>(null);
     const cancelClose = useCallback(() => { clearTimeout(timers.current.close); timers.current.close = undefined; }, []);
     const cancelOpen = useCallback(() => { clearTimeout(timers.current.open); timers.current.open = undefined; }, []);
     const close = useCallback((restoreFocus = true) => {
@@ -68,6 +69,11 @@ export function useFollowUpsPopover(active: Selection | null, setActive: (value:
             const desired = rightSide ? a.top : a.bottom + p.height + 8 <= window.innerHeight - 12 ? a.bottom + 8 : a.top - p.height - 8;
             const top = Math.max(12, Math.min(desired, window.innerHeight - p.height - 12));
             setPosition(previous => previous.left === left && previous.top === top && previous.width === width ? previous : { left, width, top });
+            // Keep both endpoints truthful even when the panel is vertically clamped.
+            const y = a.top + a.height / 2;
+            const targetY = Math.max(top + 16, Math.min(y, top + p.height - 16));
+            const lineTop = Math.min(y, targetY) - 3;
+            setConnector(rightSide && y >= 12 && y <= window.innerHeight - 12 ? { left: c.right - 1, top: lineTop, width: left - c.right + 2, height: Math.abs(y - targetY) + 6, sourceY: y - lineTop, targetY: targetY - lineTop } : null);
         };
         place();
         const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
@@ -117,5 +123,5 @@ export function useFollowUpsPopover(active: Selection | null, setActive: (value:
         };
     }, [active, cancelClose, close, leave]);
     useEffect(() => () => { cancelOpen(); cancelClose(); }, [cancelOpen, cancelClose]);
-    return { card, panel, position, open, close, hover, leave, cancelClose };
+    return { card, panel, position, connector, open, close, hover, leave, cancelClose };
 }

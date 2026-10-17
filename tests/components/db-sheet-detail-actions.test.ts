@@ -11,9 +11,9 @@ let host:HTMLDivElement,root:Root;
 beforeEach(()=>{host=document.createElement('div');document.body.append(host);root=createRoot(host);HTMLDialogElement.prototype.showModal=vi.fn();HTMLDialogElement.prototype.close=vi.fn();});
 afterEach(()=>{act(()=>root.unmount());host.remove();vi.restoreAllMocks();});
 const button=(text:string)=>[...host.querySelectorAll('button')].find(b=>b.textContent===text)!;
-it('opens the inflow change from the status popup and closes the old popup',async()=>{
- const change=vi.fn();await act(async()=>root.render(createElement(InflowStatusCell,{row:{...blank(),inflowStatus:{state:'recorded',count:1}},onRecording:change})));
- expect(button('반영 변경')).toBeUndefined();act(()=>button('반영됨').click());act(()=>button('반영 변경').click());expect(change).toHaveBeenCalledOnce();expect(host.querySelector('dialog')).toBeNull();
+it('opens DB information directly from the inflow status without another popup',async()=>{
+ const open=vi.fn();await act(async()=>root.render(createElement(InflowStatusCell,{row:{...blank(),inflowStatus:{state:'recorded',count:1}},onOpen:open})));
+ expect(button('반영 변경')).toBeUndefined();act(()=>button('반영됨').click());expect(open).toHaveBeenCalledOnce();expect(host.querySelector('dialog')).toBeNull();expect(host.querySelector('[role=radio]')).toBeNull();
 });
 it('previews removal and requires another preview after changing the choice',async()=>{
  const preview=vi.fn(async()=>({inflow:-1,contacts:0,meetings:0,rows:[]})),confirm=vi.fn(async()=>{});

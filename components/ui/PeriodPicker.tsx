@@ -20,14 +20,17 @@ interface Props {
   incomplete?: boolean;
   /** 화면별 짧은 이름. 계산/선택 항목은 그대로 유지한다. */
   labels?: Partial<Record<FinancePeriod, string>>;
+  /** Separate-range callers opt out; all existing callers retain inline inputs. */
+  showRangeInputs?: boolean;
 }
 
-export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo, incomplete, labels }: Props) {
+export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo, incomplete, labels, showRangeInputs = true }: Props) {
   return (
     <>
       {ORDER.map((p) => (
         <button
           key={p}
+          data-period={p}
           type="button"
           aria-pressed={period === p}
           onClick={() => onPeriod(p)}
@@ -36,7 +39,7 @@ export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo,
           {labels?.[p] ?? PERIOD_LABEL[p]}
         </button>
       ))}
-      {period === "custom" && (
+      {period === "custom" && showRangeInputs && (
         <>
           <input aria-label="조회 시작일" type="date" value={from} onChange={(e) => onFrom(e.target.value)} className="h-7 rounded-md border border-slate-200 px-1.5 text-xs" />
           <span className="text-slate-300">–</span>
