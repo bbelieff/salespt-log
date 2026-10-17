@@ -1,3 +1,7 @@
+## 2026-10-17 · 대시보드 연결·DB 필터/정보 조작 운영 승인
+- 제작 writer/release owner: 019fe6a6-eb86-7081-a88b-8b3a7ad1a8c5, 독립 검수019fe6a9-52ec-7fa3-89e6-6837c815295e, root 반환. 최신base a72160b5, feat/dashboard-db-controls. 목업 FOLLOWUPS R4/DBR2 승인 범위만 실제 렌더·상태로 구현.
+- 정확 파일 lease·수용·안전/검사/직렬 배포 계약은 [plan](plans/active/dashboard-db-controls.md). 운영 시험 쓰기·집계/권한/스키마 변경 없음.
+
 ## 2026-10-17 DB관리시트 자동 가져오기·편의 개선 운영 승인
 - 사용자 목업 승인 및 실제 연결·테스트·운영 배포 지시. feat/db-sheet-adaptive-release, 기준20ee41d3.
 - 소유: root types/service/repo/DB정보/model/통합·문서; import_release 가져오기 전용; compact_ui_release 상단/기간/상태필터·공급처. 공용 계약 root, 별도 검증 예정.

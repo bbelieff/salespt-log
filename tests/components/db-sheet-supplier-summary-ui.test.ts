@@ -130,3 +130,20 @@ it("does not offer zero more suppliers when the selected ninth supplier is alrea
  expect(table().tBodies[0]!.rows).toHaveLength(9);
  expect(host.textContent).not.toContain("0곳 더 보기");
 });
+
+it("right-aligns the unchanged 10/6/3/1 funnel and removes only the explanation UI", async()=>{
+ await render({leads:[...many(4,"합성 출처","유입"),...many(3,"합성 출처","상담"),...many(2,"합성 출처","미팅"),...many(1,"합성 출처","계약")]});
+ const bar=table().querySelector('[role="img"]')!;
+ expect(bar.getAttribute('aria-label')).toBe('유입 10 → 상담 6 → 미팅 3 → 계약 1');
+ expect([...bar.children].map(span=>(span as HTMLElement).style.width)).toEqual(['60%','30%','10%']);
+ expect([...bar.children].every(span=>span.classList.contains('right-0'))).toBe(true);
+ expect(host.querySelector('details')).toBeNull();
+});
+
+it("keeps all selected supplier rows visible and delegates multi-selection toggles without clearing other suppliers",async()=>{
+ await render({leads:Array.from({length:10},(_,i)=>lead(`공급처${i}`,"유입")),selectedSuppliers:['공급처8','공급처9']});
+ expect(table().tBodies[0]!.rows).toHaveLength(10);
+ expect([...table().querySelectorAll('[aria-pressed=true]')]).toHaveLength(2);
+ act(()=>rowButton(table(),'공급처8').click());expect(handlers.onSelect).toHaveBeenLastCalledWith('공급처8');
+ expect(host.textContent).not.toContain('0곳 더 보기');
+});

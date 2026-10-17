@@ -48,6 +48,12 @@ const expectedResultByFilter: Record<StatusFilterId, string[]> = {
 };
 
 describe("DB관리시트 상태 보기 필터", () => {
+  it("공급처 다중 선택을 합집합으로, 날짜/검색/상태와 교집합으로 계산한다", () => {
+    expect(filterDbSheetRows(rows, { selectedStatuses: [], selectedSuppliers: ["기본 공급처", "선택 공급처"] })).toEqual(rows);
+    expect(filterDbSheetRows(rows, { selectedStatuses: ["progress"], selectedSuppliers: ["선택 공급처"], search: "선택", from: "2026-10-16", to: "2026-10-16" })).toEqual([rows[4]]);
+    expect(filterDbSheetRows(rows, { selectedStatuses: [], selectedSuppliers: ["없는 공급처"] })).toEqual([]);
+    expect(filterDbSheetRows(rows, { selectedStatuses: [], selectedSuppliers: [] })).toEqual(rows);
+  });
   it.each(Array.from({ length: 2 ** filterIds.length }, (_, mask) => mask))(
     "6개 칩 조합 %i를 OR 필터로 계산한다",
     mask => {

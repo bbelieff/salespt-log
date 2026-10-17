@@ -31,10 +31,12 @@ export const kakaoSample='사업자명: 샘플 은하상사\n대표자: 조가�
 
 export const tsvSample='사업자명\t대표자\t전화번호\t필요자금\t체납여부\n샘플 달빛공방\t한가상\t010-0000-2001\t5,000만원\t\n샘플 온유상사\t김가상\t010-0000-1001\t3천만원\t없음\n샘플 푸른제작\t윤가상\t확인 필요\t\t미확인';
 export const outcomes=['미컨택','부재','단순거절','재통화','컨택진행','상담 후 거절','AS예정'];
+/** AS legacy storage stays unchanged; only its customer-facing label changes. */
+export const outcomeDisplayLabel=(value:string)=>value==='AS예정'?'AS신청':value;
 /** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
  const qualified=['컨택진행','상담 후 거절'].includes(result);
- return `${result} · ${qualified?(activities?'STEP 2 컨택진행 +1':'STEP 2 기록 꺼짐'):'집계 제외'}`;
+ return `${outcomeDisplayLabel(result)} · ${qualified?(activities?'STEP 2 컨택진행 +1':'STEP 2 기록 꺼짐'):'집계 제외'}`;
 }
 
 export function recordContact(row:Row,result:string,date:string):Row {

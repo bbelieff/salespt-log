@@ -9,13 +9,13 @@ export function DbContactActions({row,date,contact,onResult,onAsInfo,onToggleCon
  return <section className="db-contact-actions">
   <div className="db-contact-action-row">
    <label>컨택결과<select aria-label="DB정보 컨택결과" className="sheet-input" value={row.result} onChange={e=>onResult(e.target.value,date||todayKST())}>
-    {outcomes.map(value=><option key={value} value={value}>{value}</option>)}
+    {outcomes.map(value=><option key={value} value={value}>{outcomeLabel(value,row.recording?.activities!==false)}</option>)}
    </select></label>
    <button type="button" className="db-contact-open" aria-expanded={contact} aria-controls="db-contact-pane" onClick={onToggleContact}>
     <MessageSquare size={15}/><span>컨택내용</span><ChevronRight size={14} className={contact?'rotate-90':''}/>
    </button>
   </div>
-  <small className="db-contact-count">{outcomeLabel(row.result,row.recording?.activities!==false).split(' · ').slice(1).join(' · ')}</small>
+  <small className="db-contact-count">업체별 하루 1건 · 기존 기록 유지</small>
   {row.result==='AS예정'&&<div className="db-as-box">
    <div><strong>AS 확인</strong><span>컨택진행 집계 제외</span></div>
    <label className="db-as-check"><input aria-label="AS 받았어요" type="checkbox" checked={!!row.asReceived} onChange={e=>onAsInfo({asReceived:e.target.checked})}/>{row.asReceived?'AS 받았어요':'AS 받으면 체크하세요'}</label>

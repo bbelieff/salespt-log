@@ -4,7 +4,7 @@ export const STATUS_FILTERS = [
   { id: "simple-refusal", label: "단순거절", results: ["단순거절"] },
   { id: "recall", label: "재통화", results: ["재통화"] },
   { id: "progress", label: "컨택진행(미팅·거절)", results: ["컨택진행", "상담 후 거절"] },
-  { id: "as-planned", label: "AS예정", results: ["AS예정"] },
+  { id: "as-planned", label: "AS신청", results: ["AS예정"] },
 ] as const;
 
 export type StatusFilterId = (typeof STATUS_FILTERS)[number]["id"];
@@ -22,6 +22,7 @@ export type DbSheetViewFilters = {
   selectedStatuses: readonly StatusFilterId[];
   search?: string;
   supplier?: string;
+  selectedSuppliers?: readonly string[];
   from?: string;
   to?: string;
 };
@@ -63,6 +64,7 @@ export function filterDbSheetRows<T extends FilterableDbSheetRow>(
   return rows.filter(row =>
     (!search || [row.company, row.owner, row.phone].some(value => value.includes(search)))
     && (!supplier || row.supplier === supplier)
+    && (!filters.selectedSuppliers?.length || filters.selectedSuppliers.includes(row.supplier))
     && (!from || row.date >= from)
     && (!to || row.date <= to)
     && (!acceptedResults || acceptedResults.has(row.result)),

@@ -1754,7 +1754,8 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `DirectInputDialog`, `RecordingOptions`: 직접 등록 기본 STEP 2 기록 ON. 유입/활동 범위를 구분한다.
 - `DuplicateDialog`: 동일 연락처/업체 후보를 알리고 기존 업체 열기 또는 별도 업체 추가를 명시적으로 선택.
 - `RecordingDialog`: 서버 계산 미리보기 후 사후 반영/영구삭제 확인. 실패 시 입력 유지, 복잡한 연결건 삭제 차단.
-- `InflowStatusCell`: 서버 증거로 반영됨/미반영/확인 필요 표시, 누르면 날짜·채널·반영 위치와 건수. 모바일은 목록 배지와 상세 버튼.
+- `InflowStatusCell`: 서버 증거로 반영됨/미반영/확인 필요 표시. 목록 배지는 DB정보만 열고, 유일한 편집 토글은 업체명 옆에 배치. preview 차단 사유 확인 후 기존 revision-bound configure를 호출하며 pending 중 중복 입력·닫기 차단, 실패 시 기존 상태 유지, unknown은 편집 불가.
+- `InflowRecordingDialog`: 기존 standalone 영향 미리보기·확인 컴포넌트는 보존한다. 현재 DB관리시트의 기본 진입에는 연결하지 않으며, 목록 배지→DB정보의 헤더 편집과 기존 상담·미팅 설정 경로가 현행 UI다.
 - `ImportResultNotice`: 저장 성공 후 목록 추가건수·유입 반영건수·날짜/채널별 결과. 닫기 전 유지.
 - `ImportDialog`: 가져오기 선택과 유입기록 체크 분리, 기본 전체 체크·부분 체크·전체 해제, 상담/미팅 설정. PC 전체 열·5행 기준, 모바일 라벨 필드.
 - `DeletedMeetings`, `MeetingSafetyDialog`, `use-meeting-delete-confirm`: 삭제 전 일정 변경 우선 안내. 삭제된 단순 예약은 원래 ID로 복원; 계약·후속 미팅 이력이 연결된 복합건은 별도 안내로 개별 복원 차단.
@@ -1764,8 +1765,11 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 ## DB관리시트 자동 가져오기·편의 개선 (2026-10-17 승인)
 - 제목행 없는 파일·텍스트는 같은 분석기를 사용해 첫 고객행부터 배치. 모호한 값은 후보를 확인하며 원문 유지. 양식 기억은 브라우저·계정 범위에서 개인정보 없는 필드 연결 규칙만 보관.
-- 유입일(파랑)·상태(보라) 필터는 같은 행에서 자연 줄바꿈. 상태칩은 DB가져오기와 같은 26px pill, 체크 아이콘 없이 채움색으로 선택 표시. 공급처별 성과 버튼과 접히는 집계 기준.
-- DB정보: 기본640px·최소420px(모바일 화면폭), 좁게 보기440px, 2열 입력. 강조 컨택결과+작은 컨택내용 버튼이 공급처 위 첫 행. AS예정은 집계 제외, 받은 여부·메모 저장.
+- 유입일(파랑)·상태(보라)는 중립 업무도구 스타일의 두 그룹, PC 한 행·필터 내부 가로 스크롤, 모바일 줄바꿈. label12/600/18, chip12/600/24·높이26·좌우9·pill. `SupplierFilter`는 다중선택 합집합(0선택=전체)이며 검색·기간·상태와 교집합. 제한 시에만 N건 표시.
+- `InflowPeriod`: 직접 날짜는 독립 portal로 표시해 필터 행 높이 불변. 공용 `PeriodPicker.showRangeInputs=false`는 날짜 입력만 외부로 분리하며 기본 true의 기존 호출은 불변. portal은 화면 내 clamp·외부 클릭·Escape·초점 복귀.
+- DB정보: 좌 기본640/최소360px, 우 기본560/400~680px, 모바일 stack. 좌 바깥 grip은 좌만·우 고정. 중앙 grip 우 확대는 좌 여유를 min360까지 먼저 소모해 total 고정, min 후만 전체 확대·오른쪽 끝 고정; 우 축소는 좌 복구. 각각 px 저장·키보드·viewport clamp·접기 후 복원. 컨택내용 상단10px·표시명 컨택일(최초컨택일), 옆 최초일 안내 badge만 제거하고 실제 최초일 편집 입력 유지. `AS예정`은 저장값으로 유지하되 UI는 `AS신청`, 집계 제외·받은 여부·메모 계약 불변.
 - 최초상담일은 수정/비우기 가능하며 실적 이력과 독립. 명시적으로 비운 날짜는 후속 상담에서 자동 복구하지 않음.
-- 반영됨/미반영 상세 팝업 안의 반영 변경 → 서버 영향 확인 → 적용. 해당 DB의 유입 기여만 취소/추가하고 수동 숫자·상담·미팅 보존. 근거 불명확한 기존 DB는 변경 차단.
-- `DbContactActions`: DB정보 상단 컨택결과·컨택내용 병렬 조작과 AS 체크·메모 저장. `InflowPeriod`: 유입일 기간 필터. `InflowRecordingDialog`: 반영 상태 팝업에서 유입 변경 영향 확인 및 적용.
+- `DbContactActions`: 상단 결과 select 한 곳의 각 option에 기존 outcomeLabel 집계 안내. 컨택내용 중복 select·명시적 상담기록 버튼 제거. 선택 컨택일 또는 현재 KST로 기존 명령만 사용하며 날짜만 수정한 기록 트리거는 추가하지 않는다. firstManual·기존 최초일·예약 성공 계약 유지. DB정보 하단의 비파괴 “상담·미팅 반영 설정”은 기존 RecordingDialog(onRecording)로 연결하며 영구삭제와 분리한다.
+- SupplierSummary는 toolbar 뒤·필터 앞, 검색/선택과 독립된 기간 모수·기존 순위 계산 유지. 다중선택 행 강조와 숨은 선택 행 유지. 막대는 오른쪽 누적(예: 10/6/3/1→60/30/10%), 계약 진한 부분 우측. 집계기준 설명 UI만 제거.
+- DB 경로만 100dvh flex frame을 소유하고 목록 내부 x/y 스크롤·overscroll contain, 성과 panel cap·표 최소140px 확보. 다른 경로의 document scroll과 sticky/freeze/resize/키보드 동작 보존. 모달·필터 portal은 frame 밖 렌더.
+- FOLLOWUPS PC 목록은 42px 행·단일 제목/inline 긴급순·STEP별 중복 badge 제거. 긴 값은 줄임+title/기존 펼침으로 보존. 선택 요약 장식 네모 제거·키보드 중립 이중 밑줄. 선택행 중앙점→오른쪽 popup 연결선은 viewport clamp 후 끝점 보정, 모바일은 기존 배치로 선 생략. 집계·정렬 변경 없음.

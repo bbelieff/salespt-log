@@ -28,6 +28,13 @@ function pointer(element: Element, type: string, relatedTarget: Element | null =
 }
 const tick = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 describe("follow-up table interactions", () => {
+  it("uses a single heading and omits repeated STEP labels in a step-specific list", () => {
+    render(); click(row().querySelector("button")!);
+    expect(dialog()!.querySelector("h3")!.textContent).toContain("실무/수납 · 전체");
+    expect([...dialog()!.querySelectorAll("tbody small")].some(e => e.textContent?.includes("STEP"))).toBe(false);
+    click(dialog()!.querySelector(".ft-action")!);
+    expect(dialog()!.querySelector(".ft-expanded")!.textContent).toContain("기준일");
+  });
   it("opens to the right on desktop and stays inside the viewport after a mobile resize", () => {
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });

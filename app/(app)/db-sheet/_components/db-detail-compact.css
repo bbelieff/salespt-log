@@ -1,6 +1,14 @@
 body.db-sheet-route .db-detail-shell,body.db-sheet-route .db-detail-shell.with-contact{min-width:0;width:min(var(--db-panel-width),calc(100vw - 16px));max-width:calc(100vw - 16px)}
 body.db-sheet-route .db-info-pane{min-width:0;container-type:inline-size}
-body.db-sheet-route .db-info-fields,body.db-sheet-route .with-contact .db-info-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+/* Saved px survive contact toggles. Center growth consumes left slack before widening the shell. */
+@media(min-width:1024px){body.db-sheet-route .db-detail-shell .db-detail-columns>.db-info-pane{flex:0 0 var(--db-left-width);width:var(--db-left-width)}body.db-sheet-route .db-detail-shell .db-detail-columns>.db-contact-pane{flex:0 0 var(--db-right-width);width:var(--db-right-width)}body.db-sheet-route .db-detail-shell .db-detail-columns>.db-split-grip{flex:0 0 1px}}
+.db-detail-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;min-width:0}.db-detail-title h2{min-width:0;overflow-wrap:anywhere}.db-title-inflow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}.db-title-inflow>span{font-size:11px;color:#64748b;white-space:nowrap}
+body.db-sheet-route .db-detail-header{flex-wrap:wrap;gap:8px}body.db-sheet-route .db-detail-header>div:first-child{flex:1 1 240px;min-width:0}
+.db-inflow-control{display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center;max-width:240px}.db-inflow-toggle{display:inline-flex;gap:2px;border:1px solid #cbd5e1;border-radius:6px;padding:2px;background:#f8fafc;white-space:nowrap}.db-inflow-toggle button{min-height:24px;padding:0 6px;border:1px solid transparent;border-radius:4px;font-size:11px;font-weight:500;color:#64748b;line-height:1.4}.db-inflow-toggle button[aria-checked=true]{background:white;color:#334155;box-shadow:0 1px 2px #0f172a1a;border-color:#cbd5e1}.db-inflow-toggle button:first-child[aria-checked=true]{background:#ecfdf5;color:#047857;border-color:#6ee7b7}.db-inflow-toggle button:disabled{cursor:not-allowed;opacity:.6}.db-inflow-toggle button:focus-visible{outline:2px solid #64748b;outline-offset:2px}.db-inflow-control small{font-size:10px;color:#64748b;line-height:1.4}.db-inflow-control [role=alert]{color:#b91c1c}
+body.db-sheet-route .db-call-fields .db-contact-controls{grid-template-columns:minmax(0,180px)}
+body.db-sheet-route .db-detail-shell .db-call-left{margin-top:10px}
+@media(max-width:767px){.db-detail-title{gap:6px}.db-title-inflow{width:100%}.db-inflow-toggle button{min-height:30px}body.db-sheet-route .db-detail-header>div:first-child{flex-basis:calc(100% - 48px)}}
+body.db-sheet-route .db-detail-shell .db-info-fields,body.db-sheet-route .db-detail-shell.with-contact .db-info-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 body.db-sheet-route .db-info-fields .db-field-full-narrow{grid-column:auto!important}
 body.db-sheet-route .db-info-fields input,body.db-sheet-route .db-info-fields select{min-width:0;width:100%}
 .db-detail-header>.db-width-toggle{margin-left:auto;margin-right:12px;font-size:12px;white-space:nowrap}
