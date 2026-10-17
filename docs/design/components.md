@@ -17,6 +17,9 @@
 
 ## DB관리시트 틀 고정
 
+- 모바일 client-only B: `MobileViewOptions`는 설정/공급처 성과/보기 항목/기존 정렬·표 전환을 centered popup40에 모으며 Grid 상태는 재마운트하지 않는다. `MobileFilterMenu`는 유입일/상태의 기존 상태와 선택 callback을 anchored menu로 표시한다. focus trap/inert/Escape·중첩 portal·초점 복귀를 보존한다.
+- `Grid` 모바일은 48px 두 줄 목록으로 긴 식별정보를 title/접근성 이름에 보존하고 기존 상세 경로만 연다. `InflowStatusCell.iconOnly`는 선택적 표시만 바꾸며 recorded/excluded/unknown·missing fallback의 기존 의미와 unknown 편집 차단을 유지한다. DB 저장·집계/model/types 및 null→2state 정책은 B 범위가 아니다.
+
 - 표 내부에서 제목행은 상단, 번호와 사업자명은 왼쪽에 고정한다. 사업자명의 고정 위치는 변경된 번호 열 너비를 따른다. 열 경계 드래그/키보드 너비 조절·저장·기본값 복원은 유지한다.
 - 고정 영역을 제외한 표 폭이120px 미만이면 사업자명, 번호 순서로 가로 고정을 해제한다. 모바일 기본 카드 보기는 유지하며 표 보기에서 같은 규칙을 적용한다.
 - 헤더/고정 열 교차점이 본문 위에 오고, 불투명 배경과 오른쪽 경계로 겹침을 구분한다.

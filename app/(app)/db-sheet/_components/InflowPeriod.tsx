@@ -15,12 +15,14 @@ export function InflowPeriod({ period, from, to, onPeriod, onFrom, onTo }: Props
     const place = () => {
       const rect = group.current?.querySelector('[data-period="custom"]')?.getBoundingClientRect(); if (!rect) return;
       const width = Math.min(304, window.innerWidth - 24);
-      const next = { left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)), top: Math.max(12, Math.min(rect.bottom + 7, window.innerHeight - 170)), width };
+      const nav=document.querySelector('[aria-label="업무 단계 내비게이션"]')?.getBoundingClientRect(),bottom=nav&&nav.height>0?Math.min(window.innerHeight,nav.top):window.innerHeight;
+      const height=panel.current?.getBoundingClientRect().height||170;
+      const next = { left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)), top: Math.max(12, Math.min(rect.bottom + 7, bottom-height-8)), width };
       setPosition(old => old.left === next.left && old.top === next.top && old.width === next.width ? old : next);
     };
     place(); window.addEventListener("resize", place); window.addEventListener("scroll", place, true);
     return () => { window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
-  }, [open, period]);
+  }, [open, period, incomplete]);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !group.current?.contains(event.target) && !panel.current?.contains(event.target)) setOpen(false); };

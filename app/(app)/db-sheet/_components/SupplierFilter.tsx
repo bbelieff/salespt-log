@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ChevronDown } from "lucide-react";
 
 type Props = { options: readonly string[]; selected: readonly string[]; onChange: (value: string[]) => void };
 const label = (value: string) => value || "공급처 미입력";
@@ -18,13 +19,14 @@ export default function SupplierFilter({ options, selected, onChange }: Props) {
     const place = () => {
       const rect = trigger.current?.getBoundingClientRect(); if (!rect) return;
       const width = Math.min(320, window.innerWidth - 24);
-      const top = Math.min(rect.bottom + 7, Math.max(12, window.innerHeight - 180));
-      const next = { left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)), top, width, maxHeight: window.innerHeight - top - 12 };
+      const nav=document.querySelector('[aria-label="업무 단계 내비게이션"]')?.getBoundingClientRect(),bottom=nav&&nav.height>0?Math.min(window.innerHeight,nav.top):window.innerHeight;
+      const height=Math.min(panel.current?.scrollHeight||180,420,bottom-24),top=Math.max(12,Math.min(rect.bottom+7,bottom-height-8));
+      const next = { left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)), top, width, maxHeight: bottom-top-8 };
       setPosition(old => Object.keys(next).every(key => old[key as keyof typeof next] === next[key as keyof typeof next]) ? old : next);
     };
     place(); window.addEventListener("resize", place); window.addEventListener("scroll", place, true);
     return () => { window.removeEventListener("resize", place); window.removeEventListener("scroll", place, true); };
-  }, [open]);
+  }, [open,query,values.length,selected.length]);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => { if (event.target instanceof Node && !trigger.current?.contains(event.target) && !panel.current?.contains(event.target)) setOpen(false); };
@@ -34,7 +36,7 @@ export default function SupplierFilter({ options, selected, onChange }: Props) {
   }, [open]);
   return <>
     <button ref={trigger} type="button" className="sheet-status-chip sheet-supplier-filter" aria-pressed={selected.length > 0} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} title={selected.map(label).join(" · ")} onClick={() => { setQuery(""); setOpen(!open); }}>
-      <span>{selected.length ? `공급처 ${selected.length}곳` : "전체 공급처"}</span><span aria-hidden>⌄</span>
+      <span>{selected.length ? `공급처 ${selected.length}곳` : "전체 공급처"}</span><ChevronDown size={14} className="sheet-supplier-chevron shrink-0" aria-hidden="true" focusable="false"/>
     </button>
     {open && createPortal(<div ref={panel} id={id} className="sheet-filter-popover sheet-supplier-popover" role="dialog" aria-label="공급처 다중선택" style={position}>
       <header><strong>공급처 선택</strong><button type="button" aria-label="공급처 선택 닫기" onClick={() => close(true)}>✕</button></header>
