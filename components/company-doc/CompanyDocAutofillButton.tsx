@@ -7,6 +7,7 @@
 "use client";
 
 import { lazy, Suspense, useState } from "react";
+import { FileInput } from "lucide-react";
 import type { CompanyInfo } from "@/types";
 import type { CompanyInfoKey } from "@/lib/document-ocr/types";
 import type { VaultItem } from "@/types/company-vault";
@@ -17,9 +18,10 @@ interface Props {
   current: CompanyInfo;
   onApply: (patch: Partial<Record<CompanyInfoKey, string>>) => void;
   onVault?: (items: VaultItem[]) => void;
+  compactMobile?: boolean;
 }
 
-export default function CompanyDocAutofillButton({ current, onApply, onVault }: Props) {
+export default function CompanyDocAutofillButton({ current, onApply, onVault, compactMobile = false }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -27,9 +29,10 @@ export default function CompanyDocAutofillButton({ current, onApply, onVault }: 
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
+        aria-label={compactMobile ? "문서로 자동입력" : undefined} title={compactMobile ? "문서로 자동입력" : undefined}
         className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
       >
-        문서로 자동입력
+        {compactMobile && <FileInput className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden /> }<span className={compactMobile ? "payment-ci-action-label" : undefined}>문서로 자동입력</span>
       </button>
       {open && (
         <Suspense fallback={null}>

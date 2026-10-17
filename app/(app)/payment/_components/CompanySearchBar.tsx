@@ -6,6 +6,7 @@
  * 입력 중 X 버튼 = 초기화 → 전체 목록 복귀. 시트·데이터 로직 무변경.
  */
 "use client";
+import type { RefObject } from "react";
 
 interface Props {
   value: string;
@@ -16,10 +17,17 @@ interface Props {
   placeholder?: string;
   unit?: string;
   matchUnit?: string;
+  compact?: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
 }
 
-export default function CompanySearchBar({ value, onChange, matchCount, total, placeholder = "업체명 검색", unit = "개 업체", matchUnit = "개 업체" }: Props) {
+export default function CompanySearchBar({ value, onChange, matchCount, total, placeholder = "업체명 검색", unit = "개 업체", matchUnit = "개 업체", compact = false, inputRef }: Props) {
   const active = value.trim() !== "";
+  if (compact) return <div className="payment-mobile-search">
+    <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} aria-describedby="payment-mobile-search-count" />
+    <span id="payment-mobile-search-count" className="sr-only" role="status">{active ? `${matchCount}${matchUnit} 일치` : `${total}${unit}`}</span>
+    {active && <button type="button" aria-label="검색 초기화" onClick={() => { onChange(""); inputRef?.current?.focus(); }}>✕</button>}
+  </div>;
   return (
     <div className="sticky top-app-content z-30 mb-3 min-[1280px]:static min-[1280px]:mb-0 min-[1280px]:min-w-[180px] min-[1280px]:max-w-[360px] min-[1280px]:flex-1">
       <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm min-[1280px]:py-1">

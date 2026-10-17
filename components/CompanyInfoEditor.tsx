@@ -16,6 +16,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FileDown, Maximize2 } from "lucide-react";
 import { CompanyInfo } from "@/types";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
@@ -57,6 +58,9 @@ interface Props {
   onChange?: (ci: CI) => void;
   /** true 면 자체 자동 저장 없음 — 영속화는 부모가 담당(중복 요청 방지). */
   hideSave?: boolean;
+  /** 초기 펼침만 지정. 생략하면 기존 hideSave 기반 동작을 유지한다. */
+  defaultOpen?: boolean;
+  compactMobile?: boolean;
   /** PC 실무/수납의 다른 1레벨 섹션과 같은 헤더 규격. */
   desktopHeading?: boolean;
   splitInline?: boolean;
@@ -68,9 +72,9 @@ interface Props {
 
 export default function CompanyInfoEditor({
   value, onSave, busy, txtCompanyName, identityKey, onChange,
-  hideSave, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic",
+  hideSave, defaultOpen, compactMobile = false, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic",
 }: Props) {
-  const [open, setOpen] = useState(hideSave === true);
+  const [open, setOpen] = useState(defaultOpen ?? (hideSave === true));
   const [modal, setModal] = useState(false);
   const [newLabel, setNewLabel] = useState<Record<Grp, string>>({
     업체: "",
@@ -266,7 +270,7 @@ export default function CompanyInfoEditor({
     ordered = false,
   ) => (
     <div
-      className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm"
+      data-company-info-group className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm"
       role="group"
       aria-label={title}
     >
@@ -331,10 +335,10 @@ export default function CompanyInfoEditor({
   // 기업정보의 커스텀 저장 키는 "업체"(기존 데이터 호환).
   const body = (inline: boolean, where: "panel" | "modal") => (
     <>
-    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-      <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} />
+    <div data-company-info-views className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} compactMobile={compactMobile} />
       {/* 「전체 / 적은 것 / 안 적은 것」 거르기는 확장보기 안에서만. */}
-      {!basic && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} />}
+      {!basic && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} compactMobile={compactMobile} />}
     </div>
     {basic ? (
       <div className="space-y-2">
@@ -362,19 +366,20 @@ export default function CompanyInfoEditor({
   const fontControl = <FontScaleControl step={fontStep} onChange={setFontStep} label="업체정보" />;
   const ciSaving = busy || (auto && status === "pending");
   return (
-    // 글자 크기 단계(belie 2026-09-29 — 업체정보는 작게 느껴져 +−). 글자만 커지고 배치는 그대로.
-    <div className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
+    <div data-payment-company-header={desktopHeading || compactMobile ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? "rounded-t-lg" : "rounded-lg"}` : "px-2.5 py-1.5"}`}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
+          data-payment-ci-toggle={desktopHeading || compactMobile ? "" : undefined} aria-expanded={desktopHeading || compactMobile ? open : undefined}
+          aria-label={desktopHeading || compactMobile ? `업체정보 ${open ? "접기" : "펼치기"}` : undefined} aria-controls={desktopHeading || compactMobile ? `${uid}-body` : undefined}
           className={`flex min-w-0 flex-1 items-center gap-1.5 ${desktopHeading ? "text-sm" : "text-xs"}`}
         >
           <span className={`truncate ${desktopHeading ? "font-bold text-slate-800" : "font-semibold text-gray-700"}`}>
             🏢 업체정보{" "}
             <span className="font-normal text-gray-400">{summary}</span>
           </span>
-          <span className="shrink-0 text-gray-400">{open ? "▴" : "▾"}</span>
+          <span data-payment-ci-fold={desktopHeading || compactMobile ? "" : undefined} className="shrink-0 text-gray-400">{desktopHeading || compactMobile ? open ? "접기 " : "펼치기 " : ""}{open ? "▴" : "▾"}</span>
         </button>
         <div
           data-company-info-header-actions
@@ -388,40 +393,40 @@ export default function CompanyInfoEditor({
               {auto && !ciSaving && status === "error" && (
                 <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span>
               )}
-              {/* 서류 OCR 로 칸 채우기 — 체크한 칸만 같은 set 경로(apply)로 반영 → 기존 자동저장이 영속화. */}
               <CompanyDocAutofillButton
+                compactMobile={compactMobile}
                 current={draft}
                 onApply={(p) => apply((d) => ({ ...d, ...p }))}
                 onVault={vaultTarget ? (items) => setVaultIncoming((v) => [...v, ...items]) : undefined}
               />
-              {/* 업체정보생성(TXT) — 편집 옆, 흰 바탕(belie 2026-09-29). */}
               {txtCompanyName && (
                 <button
                   type="button"
                   onClick={exportTxt}
+                  data-payment-ci-action="txt" aria-label={compactMobile ? "업체정보 TXT 생성" : undefined} title={compactMobile ? "업체정보 TXT 생성" : undefined}
                   disabled={txtBusy}
                   className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {txtBusy ? "생성 중…" : "업체정보생성(TXT)"}
+                  {compactMobile && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={compactMobile ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : "업체정보생성(TXT)"}</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setModal(true)}
+                data-payment-ci-action="popup" aria-label={compactMobile ? "업체정보 팝업" : undefined} title={compactMobile ? "업체정보 팝업" : undefined}
                 className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
               >
-                팝업
+                {compactMobile && <Maximize2 className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={compactMobile ? "payment-ci-action-label" : undefined}>팝업</span>
               </button>
             </>
           )}
-          {/* 실무/수납은 도구 마지막(우측), 컨택관리·일정·계약도 기존 오른쪽 정렬을 유지한다. */}
           {fontControl}
         </div>
       </div>
 
       {open && (
         <div
-          className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2"
+          id={desktopHeading || compactMobile ? `${uid}-body` : undefined} data-company-info-body className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2"
           onBlur={(e) => {
             if (auto && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commit(true);
@@ -456,13 +461,10 @@ export default function CompanyInfoEditor({
         </div>
       )}
 
-      {/* overflow-hidden·sticky 부모(실무수납 상세패널)에 fixed 모달이 클리핑되는 문제 →
-          document.body 로 portal 해 화면 전체를 덮는다. (컨택탭엔 해당 부모 없어 무관) */}
       {modal &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
-          {/* PC(2xl+) 모달은 좌우 2단이 펼쳐지도록 넓게 */}
+          <div data-payment-company-compact-modal={compactMobile ? "" : undefined} className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
           <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-black text-gray-900">업체정보 편집</h3>

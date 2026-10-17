@@ -377,6 +377,7 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 
 
 ### DB관리시트 압축 도구 (2026-10-13)
+수납 독립 UI A는 아래 DB 규격/consumer를 변경하지 않는다.
 기존 app-header-pill 재사용: 보이는 높이 26px, 글자 11px, 클릭 영역 최소 44px. 펼침 아이콘 12px SVG, 열림 180도 회전. 모바일 정렬 선택 높이 26px, 검색·도구 간격 6px. 글자·선·선택 색은 기존 sheet 변수와 공통 slate/blue 토큰을 유지한다.
 
 ### 대시보드 후속 업무 압축 규격 (2026-10-13)
@@ -384,3 +385,8 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 - STEP 요약: PC 숫자 버튼 높이28, 모바일44; 행간 padding5. 상세 popover 폭440 이하·화면여백12·최대높이520, 작은 화면은 100dvh-24. 숫자 앵커와 간격8.
 - 상세 본문: 업체명15/700, 행동13/600, 설명11. 관련정보2열, 항목gap8×12, 정보영역padding10. 상세CTA PC36/모바일44. 그림자 #0f172a26은 떠 있는 목록에만 적용한다.
 - 주간목표: PT과제 한줄 padding6×8·글씨11, 목표간 화살표 slate-400. 원 지름은 기존 모바일48/PC64를 그대로 사용한다.
+
+### 수납 Liquid Glass 모바일 도구 (2026-10-17)
+- 공통 `components/ui/liquid-glass-tools.css`의 명시 group scope만 사용한다. ink#334155, 투명 중간층/얇은 흰 반사·이중 rim, blur18/saturate180, 하단 slate20%/radial10%/base10%·shadow28%/6%. pseudo는 pointer-events:none. backdrop 미지원/투명도 줄이기/대비 강화는 불투명 대체, forced-colors는 시스템색·blur/반사/전환0, reduced-motion 전환0.
+- payment 4도구: 높이·최소폭44px/radius13/아이콘19/stroke1.7, gap0·하단12. 앞3 고정44, 검색 접힘/editor 모두 나머지 폭 flex·기존 검색 label 표시. 다른 도구 확장 시 검색과 나머지 폭 분배/최소44/한 줄. 320 row304에서44/44/44/172,375 row359에서44/44/44/227. 검색 활성 blue6px점/ring·focus2px 유지.
+- payment compact 업체정보는 optional opt-in·<=767px만: page gutter8/inline6/body·group6, 도구3각44/아이콘18stroke1.75+기존fontcontrol32×36 한 줄, native선택2각34/gap6/radius9/글자12. 입력13px×기존fontscale. PC/tablet/기본 공용은 기존 표현, header39는 title44/shrink0 명시 접기/도구 별도행·wrap이다.

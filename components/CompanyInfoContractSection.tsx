@@ -14,6 +14,8 @@ interface Props {
   업체명: string;
   /** true 면 자체 저장 버튼 숨김 — 영속화는 부모(계약 카드 파란 저장)가 담당(#411 통합저장). */
   hideSave?: boolean;
+  defaultOpen?: boolean;
+  compactMobile?: boolean;
   desktopHeading?: boolean;
   /** PC 상세의 업체정보 열이 55% 이상일 때 업체·대표자 그룹을 병렬로 표시. */
   splitInline?: boolean;
@@ -34,6 +36,8 @@ export default function CompanyInfoContractSection({
   계약일,
   업체명,
   hideSave,
+  defaultOpen,
+  compactMobile,
   desktopHeading,
   splitInline,
   onChange,
@@ -131,6 +135,8 @@ export default function CompanyInfoContractSection({
       vaultTarget={{ 계약일, 업체명 }}
       defaultLayout="extended"
       hideSave={hideSave}
+      defaultOpen={defaultOpen}
+      compactMobile={compactMobile}
       desktopHeading={desktopHeading}
       splitInline={splitInline}
       onChange={onChange}

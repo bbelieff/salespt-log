@@ -10,6 +10,11 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
+## 수납 모바일 도구·업체정보 표현 (2026-10-17)
+- `MobileTools` (`app/(app)/payment/_components/MobileTools.tsx`): 기존 DriveLinkBar/CompanySearchBar를 조합한다. 모바일 앞3각44px·검색잔여폭·gap0, touch2tap/mousehover/keyboard/Escape, query·clear·guardedNav 기존 경계. Drive 연결 요청은 기존 명시 버튼만 수행한다.
+- `CompanyInfoContractSection`→`CompanyInfoEditor`의 optional `defaultOpen`은 초기 열림만 지정(생략 시 hideSave 기존값). payment mobile inline은 false, optional `compactMobile`만 mobile compact 도구3/native2와 portal scope에 적용한다. 기본 공용 호출·저장·신원·초안 계약은 불변이다.
+- `CompanyDocAutofillButton`, `CompanyInfoLayoutToggle`, `CompanyInfoViewToggle`은 compactMobile 생략 시 기존 표현을 유지한다. payment header는 제목/명시 접기44px와 도구 행을 분리하고 aria-expanded/controls를 연결한다. 시각 정본은 tokens의 수납 Liquid Glass 항목이다.
+
 ## DB관리시트 틀 고정
 
 - 표 내부에서 제목행은 상단, 번호와 사업자명은 왼쪽에 고정한다. 사업자명의 고정 위치는 변경된 번호 열 너비를 따른다. 열 경계 드래그/키보드 너비 조절·저장·기본값 복원은 유지한다.

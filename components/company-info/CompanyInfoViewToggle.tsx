@@ -42,12 +42,15 @@ interface Props {
   mode: ViewMode;
   onChange: (m: ViewMode) => void;
   counts: [number, number];
+  compactMobile?: boolean;
 }
 
-export default function CompanyInfoViewToggle({ mode, onChange, counts }: Props) {
+export default function CompanyInfoViewToggle({ mode, onChange, counts, compactMobile = false }: Props) {
   const countOf: Record<ViewMode, number | null> = { all: null, filled: counts[0], empty: counts[1] };
   return (
-    <div className="flex w-full rounded-lg border border-gray-200 bg-white p-0.5 sm:w-auto" role="group" aria-label="업체정보 보기">
+    <>
+    {compactMobile && <select className="payment-ci-native" aria-label="업체정보 항목 보기" value={mode} onChange={(e) => onChange(e.target.value as ViewMode)}>{VIEW_MODES.map(m => <option key={m} value={m}>{VIEW_LABEL[m]}{countOf[m] === null ? "" : ` ${countOf[m]}`}</option>)}</select>}
+    <div data-payment-ci-segmented className="flex w-full rounded-lg border border-gray-200 bg-white p-0.5 sm:w-auto" role="group" aria-label="업체정보 보기">
       {VIEW_MODES.map((m) => (
         <button
           key={m}
@@ -63,5 +66,6 @@ export default function CompanyInfoViewToggle({ mode, onChange, counts }: Props)
         </button>
       ))}
     </div>
+    </>
   );
 }

@@ -1,3 +1,7 @@
+## 2026-10-17 · 수납 모바일 UI 독립 배포 A
+- 사용자 독립 UI 순차 배포 승인. writer/release019fe6a6, 독립 F019fe6a9. 최신 master a8287d36에서 clean feat/payment-mobile-ui-release, source 목업 전체 dirty 보존. payment4도구 최신 검색잔여폭/Liquid Glass 및 업체정보 compact/defaultclosed/header39 presentation만 추출한다.
+- product13·검사·불변·A→B 직렬 경계는 [plan](plans/active/payment-mobile-glass-tools.md). DB repo/service/api/model/types/2state 저장·집계 제외. 실제 PR head 검수·전체 hook/build·CI/보안·배포·servedversion/health/UI를 각각 기록한다.
+
 ## 2026-10-17 · 대시보드 연결·DB 필터/정보 조작 운영 승인
 - 제작 writer/release owner: 019fe6a6-eb86-7081-a88b-8b3a7ad1a8c5, 독립 검수019fe6a9-52ec-7fa3-89e6-6837c815295e, root 반환. 최신base a72160b5, feat/dashboard-db-controls. 목업 FOLLOWUPS R4/DBR2 승인 범위만 실제 렌더·상태로 구현.
 - 정확 파일 lease·수용·안전/검사/직렬 배포 계약은 [plan](plans/active/dashboard-db-controls.md). 운영 시험 쓰기·집계/권한/스키마 변경 없음.

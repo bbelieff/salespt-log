@@ -38,9 +38,11 @@ export function useInfoLayout(defaultLayout: InfoLayout) {
   return { layout, setLayout };
 }
 
-export default function CompanyInfoLayoutToggle({ layout, onChange }: { layout: InfoLayout; onChange: (l: InfoLayout) => void }) {
+export default function CompanyInfoLayoutToggle({ layout, onChange, compactMobile = false }: { layout: InfoLayout; onChange: (l: InfoLayout) => void; compactMobile?: boolean }) {
   return (
-    <div className="inline-flex shrink-0 rounded-lg border border-gray-300 bg-white p-0.5" role="group" aria-label="업체정보 보기 범위">
+    <>
+    {compactMobile && <select className="payment-ci-native" aria-label="업체정보 보기 범위 선택" value={layout} onChange={(e) => onChange(e.target.value as InfoLayout)}>{(["basic", "extended"] as const).map(l => <option key={l} value={l}>{LAYOUT_LABEL[l]}</option>)}</select>}
+    <div data-payment-ci-segmented className="inline-flex shrink-0 rounded-lg border border-gray-300 bg-white p-0.5" role="group" aria-label="업체정보 보기 범위">
       {(["basic", "extended"] as const).map((l) => (
         <button
           key={l}
@@ -53,6 +55,7 @@ export default function CompanyInfoLayoutToggle({ layout, onChange }: { layout: 
         </button>
       ))}
     </div>
+    </>
   );
 }
 
