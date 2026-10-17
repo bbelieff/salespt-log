@@ -199,7 +199,13 @@ body.db-sheet-route .sheet-grid .sheet-resizable thead .sheet-number {position:s
 body.db-sheet-route .has-frozen-number .sheet-resizable .sheet-number {position:sticky;left:0;z-index:2}
 body.db-sheet-route .has-frozen-company .sheet-resizable .sheet-company-column {
  position:sticky;left:var(--sheet-number-width);z-index:2;background:#fff;
- box-shadow:2px 0 0 #cbd5e1,5px 0 8px -5px #64748b;
+ border-right-color:rgba(148,163,184,.35);
+}
+/* A horizontal-only fade spans the cell border; no per-row vertical blur or drag-marker reuse. */
+body.db-sheet-route .has-frozen-company .sheet-resizable .sheet-company-column::before {
+ content:'';position:absolute;top:0;bottom:-1px;right:-7px;width:6px;
+ background:linear-gradient(to right,rgba(100,116,139,.08),rgba(100,116,139,0));
+ pointer-events:none;
 }
 body.db-sheet-route .has-frozen-company .sheet-resizable tr:hover td.sheet-company-column {background:#f8fafc}
 body.db-sheet-route .has-frozen-number .sheet-resizable thead .sheet-number,

@@ -1,6 +1,10 @@
+## 2026-10-18 · DB 모바일 client-only 독립 배포 B
+- A PR1168/deploy39044662674 SUCCESS 후 clean WT·기존 설치를 새 feat/db-mobile-client-ui-release로 재사용, base facefd99. writer/release019fe6a6, 독립 F019fe6a9. product9의 toolbar/filter/options40/density 표시만 추출하며 unknown/3상태 guard 및 저장·집계는 보존한다.
+- 정확 manifest/제외 lane·공식 분리 CI·검수/배포 경계는 [plan](plans/active/db-mobile-client-ui-release.md). model/repo/service/api/types/2state 정책 변경과 관련 source tests는 복사하지 않는다.
+
 ## 2026-10-17 · 수납 모바일 UI 독립 배포 A
 - 사용자 독립 UI 순차 배포 승인. writer/release019fe6a6, 독립 F019fe6a9. 최신 master a8287d36에서 clean feat/payment-mobile-ui-release, source 목업 전체 dirty 보존. payment4도구 최신 검색잔여폭/Liquid Glass 및 업체정보 compact/defaultclosed/header39 presentation만 추출한다.
-- product13·검사·불변·A→B 직렬 경계는 [plan](plans/active/payment-mobile-glass-tools.md). DB repo/service/api/model/types/2state 저장·집계 제외. 실제 PR head 검수·전체 hook/build·CI/보안·배포·servedversion/health/UI를 각각 기록한다.
+- product13·검사·불변·A→B 직렬 경계는 [완료 plan](plans/completed/payment-mobile-glass-tools.md). 최종 원본 PR1168: merge facefd99·deploy39044662674 SUCCESS·새CSS/health PASS, 인증 UI/save NOT_RUN. DB 저장·집계 제외 및 환경별 build FAIL/공식 CI PASS를 구분한다.
 
 ## 2026-10-17 · 대시보드 연결·DB 필터/정보 조작 운영 승인
 - 제작 writer/release owner: 019fe6a6-eb86-7081-a88b-8b3a7ad1a8c5, 독립 검수019fe6a9-52ec-7fa3-89e6-6837c815295e, root 반환. 최신base a72160b5, feat/dashboard-db-controls. 목업 FOLLOWUPS R4/DBR2 승인 범위만 실제 렌더·상태로 구현.

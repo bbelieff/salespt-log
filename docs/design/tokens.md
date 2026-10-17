@@ -377,8 +377,9 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 
 
 ### DB관리시트 압축 도구 (2026-10-13)
-수납 독립 UI A는 아래 DB 규격/consumer를 변경하지 않는다.
-기존 app-header-pill 재사용: 보이는 높이 26px, 글자 11px, 클릭 영역 최소 44px. 펼침 아이콘 12px SVG, 열림 180도 회전. 모바일 정렬 선택 높이 26px, 검색·도구 간격 6px. 글자·선·선택 색은 기존 sheet 변수와 공통 slate/blue 토큰을 유지한다.
+독립 UI B: 모바일(<=1023) 제목줄 설정·추가·붙여넣기3각44px 원형/아이콘18stroke1.75, A의 기존 scoped Liquid Glass 값을 소비한다. 아래 검색·유입일·상태는 실제 접점34px/한 줄, 목록48px 두 줄·업체13/식별12. PC는 기존26px app-header-pill·글자11과 필터 상태를 보존한다.
+- 날짜 강조 teal700 #0f766e, 상태 보라 #7c3aed·공용 PeriodPicker 기본색 불변. 날짜/상태 그룹은 중립 slate200/65·선 slate200/80, 모바일 불필요 inset0·PC inner 음영 유지. 고정 업체 열 경계는 slate fade8%→0/6px이며 drag 삽입 after와 별도 before/pointer-events:none.
+- 보기 옵션40: centered/viewport 여백12/radius16/내용 높이·최대100dvh-24, body만 overflow auto. close/reset 버튼44, 정렬/표와 보기 항목2열. 유입일·상태 anchored110, 보기 옵션100, 기존 중첩 portal120. 선택/초점/disabled 규칙 유지. unknown 상태는 시각적 아이콘이어도 확인 필요 의미를 보존한다.
 
 ### 대시보드 후속 업무 압축 규격 (2026-10-13)
 - 기존 slate 카드(테두리 slate-200, radius16, padding12), 장기누락 rose-700·경과 amber-800·오늘 blue-700 색을 재사용한다.
