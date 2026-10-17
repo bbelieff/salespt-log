@@ -13,7 +13,7 @@ import {
 } from "./supplier-summary";
 
 type Props = {
-  leads: DbSheetLead[]; from: string; to: string; selected: string; loading: boolean; error: string;
+  leads: DbSheetLead[]; from: string; to: string; selected: string; selectedSuppliers?: readonly string[]; loading: boolean; error: string;
   onSelect(supplier: string): void; onImport(): void; onResetRange(): void; onClose(): void;
 };
 /** supplier = 누를 수 있는 공급처 줄 · blank = 공급처 미입력(못 누름) · total = 합계(누르면 필터 해제). */
@@ -36,10 +36,10 @@ const CARD_BG: Record<Kind, string> = { supplier: "bg-white", blank: "bg-white",
 function FunnelBar({ row }: { row: SupplierRow }) {
   const tone = BAR_TONE[row.channels.length === 1 ? row.channels[0]! : "mixed"];
   const width = (n: number) => ({ width: `${row.total ? (n / row.total) * 100 : 0}%` });
-  return <span className="relative mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-    <span className={`absolute inset-y-0 left-0 rounded-full ${tone[0]}`} style={width(row.consulted)} />
-    <span className={`absolute inset-y-0 left-0 rounded-full ${tone[1]}`} style={width(row.meetings)} />
-    <span className={`absolute inset-y-0 left-0 rounded-full ${tone[2]}`} style={width(row.contracts)} />
+  return <span className="relative mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-slate-100" title={`유입 ${row.total} → 상담 ${row.consulted} → 미팅 ${row.meetings} → 계약 ${row.contracts}`} aria-label={`유입 ${row.total} → 상담 ${row.consulted} → 미팅 ${row.meetings} → 계약 ${row.contracts}`} role="img">
+    <span className={`absolute inset-y-0 right-0 rounded-full ${tone[0]}`} style={width(row.consulted)} />
+    <span className={`absolute inset-y-0 right-0 rounded-full ${tone[1]}`} style={width(row.meetings)} />
+    <span className={`absolute inset-y-0 right-0 rounded-full ${tone[2]}`} style={width(row.contracts)} />
   </span>;
 }
 
@@ -104,14 +104,17 @@ function Notice({ children }: { children: ReactNode }) {
   return <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">{children}</div>;
 }
 
-export function SupplierSummary({ leads, from, to, selected, loading, error, onSelect, onImport, onResetRange, onClose }: Props) {
+export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, loading, error, onSelect, onImport, onResetRange, onClose }: Props) {
   const [expanded, setExpanded] = useState(false);
   const summary = useMemo(() => summarizeSuppliers(leads, { from, to }), [leads, from, to]);
-  const { shown, blank, hidden } = visibleSupplierRows(summary.rows, selected, expanded);
+  const selection = selectedSuppliers ?? (selected ? [selected] : []);
+  const visible = visibleSupplierRows(summary.rows, selected, expanded);
+  const extra = summary.rows.filter(row => !!row.supplier && selection.includes(row.supplier) && !visible.shown.includes(row));
+  const shown = [...visible.shown, ...extra], blank = visible.blank, hidden = Math.max(0, visible.hidden - extra.length);
   const named = summary.rows.length - (blank ? 1 : 0);
   const rowProps = (row: SupplierRow): RowProps => ({
-    row, kind: "supplier", best: row.supplier === summary.best, selected: row.supplier === selected,
-    onToggle: () => onSelect(row.supplier === selected ? "" : row.supplier),
+    row, kind: "supplier", best: row.supplier === summary.best, selected: selection.includes(row.supplier),
+    onToggle: () => onSelect(selectedSuppliers ? row.supplier : row.supplier === selected ? "" : row.supplier),
   });
   const totalProps: RowProps = { row: summary.total, kind: "total", onToggle: () => onSelect("") };
   let body: ReactNode;
@@ -146,10 +149,6 @@ export function SupplierSummary({ leads, from, to, selected, loading, error, onS
       <Card {...totalProps} />
     </ul>
     {named > SUPPLIER_TOP_LIMIT && (expanded || hidden > 0) && <button type="button" className="sheet-text-btn mt-1" onClick={() => setExpanded(!expanded)}>{expanded ? "접기" : `나머지 ${hidden}곳 더 보기`}</button>}
-    <details className="sheet-supplier-note"><summary>집계 기준</summary><p className="mt-2 text-px-11 leading-relaxed text-slate-400">
-      상담 = 컨택진행·상담 후 거절 이력이 있는 DB · 미팅 = 잡은 미팅(취소·삭제 제외) · 계약 = 해지 제외 · 계약률 = 계약 ÷ 들어온 DB<br />
-      DB관리시트에 들어온 DB만 세요. 컨택관리에 숫자로만 적은 실적은 빠져서 대시보드 숫자와 다를 수 있어요. 줄을 누르면 그 공급처 DB만 아래 목록에 보여요.
-    </p></details>
   </>;
   return <section id="db-supplier-summary" aria-label="공급처별 성과" className="sheet-supplier-summary">
     <div className="flex items-center gap-2">

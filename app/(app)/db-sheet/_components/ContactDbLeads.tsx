@@ -1,4 +1,5 @@
 "use client";
+import { outcomeDisplayLabel } from "./model";
 import type { Route } from "next";
 import Link from "next/link";
 import type { Channel } from "@/types";
@@ -13,7 +14,7 @@ export default function ContactDbLeads({ date, channel }: { date: string; channe
     <div className="mt-2 max-h-64 overflow-auto divide-y divide-slate-100">
       {rows.map(row => <Link key={row.id} href={`/db-sheet?lead=${row.id}` as Route} className="flex items-center justify-between gap-3 py-3 text-sm hover:bg-blue-50">
         <span className="min-w-0"><strong className="block truncate">{row.company || row.owner}</strong><span className="text-xs text-slate-500">{row.phone} · 유입 {row.date}</span></span>
-        <span className="shrink-0 rounded bg-slate-100 px-2 py-1 text-xs">{row.result} ›</span>
+        <span className="shrink-0 rounded bg-slate-100 px-2 py-1 text-xs">{outcomeDisplayLabel(row.result)} ›</span>
       </Link>)}
     </div>
   </details>;
