@@ -10,7 +10,7 @@ import { PERIOD_LABEL, type FinancePeriod } from "@/util/finance-period";
 const ORDER: FinancePeriod[] = ["all", "month", "week", "custom"];
 
 interface Props {
-  period: FinancePeriod;
+  period: FinancePeriod | "today";
   from: string;
   to: string;
   onPeriod: (p: FinancePeriod) => void;
@@ -18,9 +18,11 @@ interface Props {
   onTo: (v: string) => void;
   /** 직접 설정인데 날짜가 덜 골라져 전체로 계산 중일 때 안내를 띄운다. */
   incomplete?: boolean;
+  /** 화면별 짧은 이름. 계산/선택 항목은 그대로 유지한다. */
+  labels?: Partial<Record<FinancePeriod, string>>;
 }
 
-export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo, incomplete }: Props) {
+export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo, incomplete, labels }: Props) {
   return (
     <>
       {ORDER.map((p) => (
@@ -31,7 +33,7 @@ export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo,
           onClick={() => onPeriod(p)}
           className={`h-7 whitespace-nowrap rounded-full border px-2.5 text-xs font-semibold ${period === p ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-500"}`}
         >
-          {PERIOD_LABEL[p]}
+          {labels?.[p] ?? PERIOD_LABEL[p]}
         </button>
       ))}
       {period === "custom" && (

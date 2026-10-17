@@ -34,13 +34,13 @@ it('imports selected rows independently from all/partial inflow choices and pass
  await act(async()=>root.render(createElement(ImportDialog,{rows:[],onApply:apply,onClose:vi.fn(),onExisting:vi.fn()})));
  const area=host.querySelector('textarea')!;
  act(()=>{Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(area,'사업자명,전화번호,유입일,공급처\n합성 A,010-0000-1201,2026-10-15,합성공급\n합성 B,010-0000-1202,2026-10-15,합성공급');area.dispatchEvent(new Event('input',{bubbles:true}));});
- act(()=>button('내용 확인하기').click());
+ act(()=>button('자동 배치').click());
  const check=(label:string)=>host.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
- expect(check('전체 STEP 2 유입에 기록').checked).toBe(true);
- act(()=>check('가져오기 1 유입 기록').click());
- expect(check('전체 STEP 2 유입에 기록').indeterminate).toBe(true);
- expect(check('가져오기 1 선택').checked).toBe(true);
- await act(async()=>button('확인한 2건 추가').click());
+ expect(check('유입 기록 전체 선택').checked).toBe(true);
+ act(()=>check('1번 유입 기록').click());
+ expect(check('유입 기록 전체 선택').indeterminate).toBe(true);
+ expect(check('1번 추가 선택').checked).toBe(true);
+ await act(async()=>button('선택한 2건 추가').click());
  expect(apply).toHaveBeenCalledWith([expect.objectContaining({company:'합성 A',recording:{inflow:false,activities:true}}),expect.objectContaining({company:'합성 B',recording:{inflow:true,activities:true}})],[]);
 });
 
@@ -50,12 +50,13 @@ it('explains contact counting without changing saved outcome values, including r
  await render(true);
  const select=()=>host.querySelector<HTMLSelectElement>('select[aria-label="컨택내용 결과"]')!;
  expect([...select().options].map(o=>o.value)).toEqual(outcomes);
+ expect([...select().options].find(o=>o.value==='AS예정')?.textContent).toContain('집계 제외');
  expect([...select().options].slice(0,4).every(o=>o.textContent?.endsWith('집계 제외'))).toBe(true);
- expect([...select().options].slice(4).every(o=>o.textContent?.endsWith('STEP 2 컨택진행 +1'))).toBe(true);
+ expect([...select().options].filter(o=>['컨택진행','상담 후 거절'].includes(o.value)).every(o=>o.textContent?.endsWith('STEP 2 컨택진행 +1'))).toBe(true);
  act(()=>{select().value='컨택진행';select().dispatchEvent(new Event('change',{bubbles:true}));});
  expect(onResult).toHaveBeenCalledWith('컨택진행',contactDraft(row).date);
  expect(host.textContent).toContain('업체별 하루 1건');
  await render(false);
- expect([...select().options].slice(4).every(o=>o.textContent?.endsWith('STEP 2 기록 꺼짐'))).toBe(true);
+ expect([...select().options].filter(o=>['컨택진행','상담 후 거절'].includes(o.value)).every(o=>o.textContent?.endsWith('STEP 2 기록 꺼짐'))).toBe(true);
  expect(host.textContent).not.toContain('+1');
 });

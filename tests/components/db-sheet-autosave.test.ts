@@ -138,3 +138,41 @@ it("next date uses an explicit atomic schedule flag; duplicate DOM input events 
  await act(async()=>{answer(2,[{...saved,revision:3}]);});
  expect(mocks.invalidateQueries).toHaveBeenCalledWith({queryKey:["meeting-follow-ups"]});
 });
+
+it("persists AS fields with newer edits retained while the older save is pending",async()=>{
+ await loaded();act(()=>api.asInfo(id,{asReceived:true,asNote:"첫 메모"}));await debounce();
+ expect(requests[1]!.body).toMatchObject({action:"save",lead:{asReceived:true,asNote:"첫 메모"}});
+ act(()=>api.asInfo(id,{asNote:"최종 메모"}));await debounce();
+ await act(async()=>{answer(1,[lead({revision:2,asReceived:true,asNote:"첫 메모"})]);});
+ expect(api.leads[0]).toMatchObject({asReceived:true,asNote:"최종 메모"});
+ expect(requests[2]!.body).toMatchObject({action:"save",revision:2,lead:{asReceived:true,asNote:"최종 메모"}});
+ await act(async()=>{answer(2,[lead({revision:3,asReceived:true,asNote:"최종 메모"})]);});
+ expect(api.pending).toBe(0);expect(api.error).toBe("");
+});
+it("flushes source edits before explicit first date and preserves manual clear on later saves",async()=>{
+ await loaded();act(()=>api.edit(id,"supplier","공급"));
+ await act(async()=>{api.edit(id,"first","");});
+ expect(requests[1]!.body).toMatchObject({action:"save",lead:{supplier:"공급"}});
+ await act(async()=>{answer(1,[lead({revision:2,supplier:"공급"})]);});
+ expect(requests[2]!.body).toEqual({action:"first-date",id,revision:2,first:""});
+ await act(async()=>{answer(2,[lead({revision:3,supplier:"공급",first:"",firstManual:true})]);});
+ expect(api.leads[0]).toMatchObject({first:"",firstManual:true});
+ act(()=>api.edit(id,"company","합성 수정"));await debounce();
+ expect(requests[3]!.body).toMatchObject({action:"save",revision:3});
+ expect((requests[3]!.body!.lead as Record<string,unknown>)).not.toHaveProperty("firstManual");
+ await act(async()=>{answer(3,[lead({revision:4,first:"",firstManual:true})]);});
+ expect(api.error).toBe("");
+});
+it("binds inflow apply to the previewed revision and chosen value",async()=>{
+ await loaded();let preview!:Promise<unknown>;
+ await act(async()=>{preview=api.inflowPreview(id,false);});
+ expect(requests[1]!.body).toEqual({action:"inflow-preview",id,revision:1,inflow:false});
+ const impact={inflow:-1,contacts:0,meetings:0,rows:[]};
+ await act(async()=>{requests[1]!.resolve({ok:true,json:async()=>({leads:[lead()],impact})} as Response);await preview;});
+ await act(async()=>{await expect(api.configureInflow(id,true)).rejects.toThrow("다시 확인");});
+ let apply!:Promise<void>;await act(async()=>{apply=api.configureInflow(id,false);});
+ expect(requests[2]!.body).toEqual({action:"inflow",id,revision:1,inflow:false});
+ await act(async()=>{answer(2,[lead({revision:2,recording:{inflow:false,activities:true},inflowStatus:{state:"excluded",count:0}})]);await apply;});
+ expect(api.leads[0]!.inflowStatus?.state).toBe("excluded");expect(api.error).toBe("");
+ await act(async()=>{await expect(api.configureInflow(id,false)).rejects.toThrow("다시 확인");});
+});

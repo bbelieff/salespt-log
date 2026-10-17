@@ -63,12 +63,11 @@ it.each([['xlsx','change'],['biff8','drop']] as const)('%s %s reaches preview wi
     else Object.defineProperty(target,'files',{value:[file],configurable:true});
     target.dispatchEvent(event);
   });
-  await act(async()=>{await vi.waitFor(()=>expect(host.querySelector('textarea')!.value).toContain('합성 엑셀상사'));});
-  act(()=>button('내용 확인하기').click());
-  expect(host.textContent).toContain('목록 1건 추가 · 유입 +1');
+  await act(async()=>{await vi.waitFor(()=>expect(host.querySelector<HTMLInputElement>('input[aria-label="1번 company"]')?.value).toBe('합성 엑셀상사'));});
+  expect(host.textContent).toContain('목록 1건 · STEP 2 유입 1건');
   expect(apply).not.toHaveBeenCalled();
-  act(()=>host.querySelector<HTMLInputElement>('input[aria-label="전체 STEP 2 유입에 기록"]')!.click());
-  expect(host.textContent).toContain('목록 1건 추가 · 유입 +0');
-  await act(async()=>button('확인한 1건 추가').click());
+  act(()=>host.querySelector<HTMLInputElement>('input[aria-label="유입 기록 전체 선택"]')!.click());
+  expect(host.textContent).toContain('목록 1건 · STEP 2 유입 0건');
+  await act(async()=>button('선택한 1건 추가').click());
   expect(apply).toHaveBeenCalledWith([expect.objectContaining({company:'합성 엑셀상사',recording:{inflow:false,activities:true}})],[]);
 });

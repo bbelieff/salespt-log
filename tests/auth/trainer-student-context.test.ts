@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
   target: { email: "student@example.test", role: "trainee", status: "active", assignedTrainer: "trainer@example.test", spreadsheetId: "student-sheet" } as Record<string, unknown> | null,
   allUsers: [] as Array<Record<string, unknown>>,
   registryRows: [] as Array<Record<string, unknown>>,
+  adminEmails: [] as string[],
 }));
 
 vi.mock("next/headers", () => ({
@@ -19,7 +20,7 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("@/auth", () => ({ auth: async () => m.session ? { user: { email: m.session } } : null }));
 vi.mock("@/auth/dev-stub", () => ({ isDevStubAuthed: () => false }));
-vi.mock("@/config", () => ({ adminEmails: () => [] }));
+vi.mock("@/config", () => ({ adminEmails: () => m.adminEmails }));
 vi.mock("@/repo/users", () => ({
   findTrainerByEmail: async () => m.trainer,
   findUserByEmail: async (email: string) =>
@@ -43,6 +44,26 @@ describe("resolved student-view context", () => {
     m.target = { email: "student@example.test", role: "trainee", status: "active", assignedTrainer: m.session, spreadsheetId: "student-sheet" };
     m.allUsers = [];
     m.registryRows = [];
+    m.adminEmails = [];
+  });
+
+  it("returns student_target_required for an active trainer with no student-view cookies", async () => {
+    await expect(resolveStudentViewContext()).resolves.toEqual({
+      ok: false,
+      status: 403,
+      code: "student_target_required",
+    });
+  });
+
+  it("returns student_view_forbidden for an admin without an own trainee row or view cookies", async () => {
+    m.adminEmails = [m.session!];
+    m.own = null;
+
+    await expect(resolveStudentViewContext()).resolves.toEqual({
+      ok: false,
+      status: 403,
+      code: "student_view_forbidden",
+    });
   });
 
   it("does not treat a raw self flag as authorization", async () => {

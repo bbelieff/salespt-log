@@ -6,8 +6,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { editContractLinkedFields } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+
+// 학생 컨텍스트 오류와 기존 쓰기 권한 결정은 각각 보존한다.
+function studentContextFailure(error: unknown) {
+  return error instanceof StudentViewContextError
+    ? NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      )
+    : null;
+}
 
 const Body = z.object({
   meetingId: z.string().optional(),
@@ -21,14 +35,23 @@ const Body = z.object({
 
 async function POST_handler(req: NextRequest) {
   try {
+    const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
-    const email = await getWritableUserEmail();
     const { failures } = await editContractLinkedFields(email, parsed.data);
     return NextResponse.json({ ok: failures.length === 0, failures });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

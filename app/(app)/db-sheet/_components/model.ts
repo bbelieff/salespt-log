@@ -1,9 +1,9 @@
 import { isDbSheetFollowUpResult, recordsDbSheetFirstContact } from "@/types/db-sheet";
 import {CHANNEL_ORDER} from '@/types/channel';
-export type Row = { recording?:{inflow:boolean;activities:boolean}; inflowStatus?:{state:"recorded"|"excluded"|"unknown";date?:string;channel?:string;count:0|1}; inflow?:string; effectiveMeetingId?:string; meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; hasQualifiedContact?:boolean; stage:string; next:string; memo:string };
-export type Key = Exclude<keyof Row,'id'|'meetingId'|'recording'|'inflowStatus'|'effectiveMeetingId'|'hasQualifiedContact'>;
+export type Row = { asReceived?:boolean; asNote?:string; firstManual?:boolean; recording?:{inflow:boolean;activities:boolean}; inflowStatus?:{state:"recorded"|"excluded"|"unknown";date?:string;channel?:string;count:0|1}; inflow?:string; effectiveMeetingId?:string; meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; hasQualifiedContact?:boolean; stage:string; next:string; memo:string };
+export type Key = Exclude<keyof Row,'id'|'meetingId'|'recording'|'inflowStatus'|'effectiveMeetingId'|'hasQualifiedContact'|'asReceived'|'asNote'|'firstManual'>;
 export const columns: {key:Key;label:string;auto?:boolean;width:number}[] = [
-{key:'channel',label:'공급처 유형',width:110},{key:'supplier',label:'공급처',width:118},{key:'date',label:'유입일',width:115},{key:'inflow',label:'유입 반영',auto:true,width:90},{key:'company',label:'사업자명',width:154},{key:'owner',label:'대표자',width:100},{key:'phone',label:'전화번호',width:143},{key:'result',label:'컨택결과',width:110},{key:'next',label:'다음 연락일',width:120},{key:'funds',label:'필요자금',width:125},{key:'first',label:'최초상담일',auto:true,width:122},{key:'stage',label:'현재상태',auto:true,width:122},{key:'biz',label:'사업자등록번호',width:145},{key:'address',label:'주소',width:210},{key:'industry',label:'업종',width:115},{key:'credit',label:'신용점수·기관',width:135},{key:'sales',label:'매출·기준',width:150},{key:'arrears',label:'체납여부',width:105},{key:'memo',label:'상담메모',auto:true,width:220}];
+{key:'channel',label:'공급처 유형',width:110},{key:'supplier',label:'공급처',width:118},{key:'date',label:'유입일',width:115},{key:'inflow',label:'유입 반영',auto:true,width:90},{key:'company',label:'사업자명',width:154},{key:'owner',label:'대표자',width:100},{key:'phone',label:'전화번호',width:143},{key:'result',label:'컨택결과',width:110},{key:'next',label:'다음 연락일',width:120},{key:'funds',label:'필요자금',width:125},{key:'first',label:'최초상담일',width:122},{key:'stage',label:'현재상태',auto:true,width:122},{key:'biz',label:'사업자등록번호',width:145},{key:'address',label:'주소',width:210},{key:'industry',label:'업종',width:115},{key:'credit',label:'신용점수·기관',width:135},{key:'sales',label:'매출·기준',width:150},{key:'arrears',label:'체납여부',width:105},{key:'memo',label:'상담메모',auto:true,width:220}];
 export const defaults:Key[]=['channel','supplier','date','inflow','company','owner','phone','result','first','stage'];
 export const supplierPlaceholder=(channel:string)=>({'매입DB':'DB업체명','직접생산':'광고매체 · 예: 메타, 네이버','현수막':'현수막 제작업체','콜·지·기·소':'콜·지·기·소의 출처'}[channel]??'공급처 이름');
 export const blank = ():Row => ({id:crypto.randomUUID(),supplier:'',date:'',channel:'매입DB',company:'',owner:'',phone:'',biz:'',address:'',industry:'',credit:'',sales:'',arrears:'미확인',funds:'',result:'미컨택',first:'',stage:'미컨택',next:'',memo:''});
@@ -30,7 +30,7 @@ export const csvSample='사업자명,대표자,전화번호,필요자금,체납�
 export const kakaoSample='사업자명: 샘플 은하상사\n대표자: 조가상\n연락처: 010-0000-3001\n필요자금: 7천만원\n체납: 미확인\n\n사업자명: 샘플 별빛식품\n대표자: 오가상\n전화번호: 확인 필요';
 
 export const tsvSample='사업자명\t대표자\t전화번호\t필요자금\t체납여부\n샘플 달빛공방\t한가상\t010-0000-2001\t5,000만원\t\n샘플 온유상사\t김가상\t010-0000-1001\t3천만원\t없음\n샘플 푸른제작\t윤가상\t확인 필요\t\t미확인';
-export const outcomes=['미컨택','부재','단순거절','재통화','컨택진행','상담 후 거절'];
+export const outcomes=['미컨택','부재','단순거절','재통화','컨택진행','상담 후 거절','AS예정'];
 /** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
  const qualified=['컨택진행','상담 후 거절'].includes(result);
@@ -38,7 +38,7 @@ export function outcomeLabel(result:string,activities=true):string {
 }
 
 export function recordContact(row:Row,result:string,date:string):Row {
- const first=row.first||(recordsDbSheetFirstContact(result)?date:'');
+ const first=row.firstManual?row.first:row.first||(recordsDbSheetFirstContact(result)?date:'');
  const hasQualifiedContact=(row.hasQualifiedContact??!!row.first)||['컨택진행','상담 후 거절'].includes(result);
  return {...row,result,first,hasQualifiedContact,stage:['미컨택','상담 중'].includes(row.stage)?(hasQualifiedContact?'상담 중':'미컨택'):row.stage};
 }

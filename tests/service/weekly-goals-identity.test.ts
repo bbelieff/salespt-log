@@ -5,7 +5,7 @@ import { EMPTY_GOALS, type WeeklyGoalInput, type WeeklyGoalKey, type WeeklyGoalP
 
 const m = vi.hoisted(() => ({
   grant: vi.fn(),
-  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(),
+  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), resolveStudentViewContext: vi.fn(),
   findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(),
   dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort, readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), saveWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
@@ -66,6 +66,7 @@ function login(email: string, role: "trainee" | "trainer" | "admin" = "trainee")
   m.getSessionEmail.mockResolvedValue(email);
   m.getActiveUserEmail.mockResolvedValue(email);
   m.getEffectiveRole.mockResolvedValue({ role, status: "active" });
+  m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: role === "trainee" ? "own" : "assigned", email });
 }
 beforeEach(() => {
   vi.resetAllMocks();
@@ -123,6 +124,35 @@ describe("explicit save target never falls back to the active impersonation targ
     await expect(updateWeeklyGoals(p, publicInput())).rejects.toMatchObject({ status: 409 });
     await expect(updateWeeklyGoalInternal(p, privateInput())).rejects.toMatchObject({ status: 409 });
     expect(m.saveWeeklyGoal).not.toHaveBeenCalled(); expect(m.saveWeeklyGoalPrivate).not.toHaveBeenCalled();
+  });
+});
+
+describe("explicit managed links survive the real resolver's no-cookie outcomes", () => {
+  it.each([
+    ["trainer", "student_target_required"],
+    ["trainer", "student_view_forbidden"],
+    ["admin", "student_view_forbidden"],
+  ] as const)("%s explicit target reaches its saved ACL when resolver returns %s", async (role, code) => {
+    login(trainerEmail, role);
+    m.resolveStudentViewContext.mockResolvedValue({ ok: false, status: 403, code });
+
+    await expect(loadWeeklyGoals(params(e1))).resolves.toMatchObject({ student: { email: e1.email } });
+    await expect(loadWeeklyGoalInternal(params(e1))).resolves.toMatchObject({ revision: 0 });
+
+    expect(m.findUserByEmail).toHaveBeenCalledWith(e1.email);
+    if (role === "trainer") expect(m.grant).toHaveBeenCalled();
+    else expect(m.grant).not.toHaveBeenCalled();
+  });
+
+  it("keeps a resolver-assigned explicit target on the managed ACL instead of treating it as own", async () => {
+    login(trainerEmail, "trainer");
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: e1.email });
+    m.grant.mockReturnValue(false);
+
+    await expect(loadWeeklyGoals(params(e1))).rejects.toMatchObject({ status: 403 });
+    await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
+    expect(m.readWeeklyGoal).not.toHaveBeenCalled();
+    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
   });
 });
 
@@ -186,7 +216,11 @@ describe("stable enrollment identity across distinct-roster aliases (synthetic s
 
 describe("trainer login with same-email active arena enrollment", () => {
   const ownArena = trainee(trainerEmail, { cohort: "A1-1", spreadsheetId: "own-arena-sheet", assignedTrainer: "other-trainer@example.test" });
-  beforeEach(() => { login(trainerEmail, "trainer"); arenas.set(trainerEmail, { ...ownArena }); });
+  beforeEach(() => {
+    login(trainerEmail, "trainer");
+    arenas.set(trainerEmail, { ...ownArena });
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "arena", email: ownArena.email, sheetOverride: ownArena.spreadsheetId });
+  });
   it("resolves own public student enrollment and permits self save without internal rights", async () => {
     await updateWeeklyGoals(params(ownArena), publicInput());
     expect(await loadWeeklyGoals(params(ownArena))).toMatchObject({ student: { cohort: "A1-1" }, canReadInternal: false, current: { record: { revision: 1 } } });
@@ -204,6 +238,7 @@ describe("trainer login with same-email active arena enrollment", () => {
   it("own enrollment alias cannot bypass private denial even if the trainer is assigned to that alias", async () => {
     const ownAlias = { ...ownArena, email: "arena-alias@example.test", assignedTrainer: trainerEmail };
     users.set(ownAlias.email, ownAlias);
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "arena", email: ownAlias.email, sheetOverride: ownAlias.spreadsheetId });
     expect((await loadWeeklyGoals(params(ownAlias))).canReadInternal).toBe(false);
     await expect(loadWeeklyGoalInternal(params(ownAlias))).rejects.toMatchObject({ status: 403 });
     await expect(updateWeeklyGoalInternal(params(ownAlias), privateInput())).rejects.toMatchObject({ status: 403 });
@@ -247,6 +282,7 @@ describe("all own enrollments deny private alias access, including archived rows
     const currentArena = trainee(trainerEmail, { cohort: "A2-1", spreadsheetId: "different-current-arena", courseStartISO: "2026-09-11" });
     m.listAllUsers.mockResolvedValue([instructor, oldSelf, currentArena, e1, e2, other]);
     m.findActiveArenaRowByEmail.mockResolvedValue(currentArena);
+    m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "arena", email: e1.email, sheetOverride: e1.spreadsheetId });
     expect((await loadWeeklyGoals(params(e1))).canReadInternal).toBe(false);
     await expect(loadWeeklyGoalInternal(params(e1))).rejects.toMatchObject({ status: 403 });
     await expect(updateWeeklyGoalInternal(params(e1), privateInput())).rejects.toMatchObject({ status: 403 });
@@ -271,6 +307,62 @@ describe("all own enrollments deny private alias access, including archived rows
     m.listAllUsers.mockResolvedValue([instructor, trainee(trainerEmail, { status: "archived" }), e1]);
     await updateWeeklyGoalInternal(params(e1), privateInput());
     expect((await loadWeeklyGoalInternal(params(e1))).revision).toBe(1);
+  });
+});
+
+describe("cross-email arena student-view authority", () => {
+  const legacyArena = trainee("legacy-arena@example.test", {
+    status: "archived",
+    cohort: "A1-1",
+    spreadsheetId: "legacy-arena-sheet",
+    assignedTrainer: "different-trainer@example.test",
+  });
+
+  beforeEach(() => {
+    login(trainerEmail, "trainer");
+    users.set(legacyArena.email, { ...legacyArena });
+    m.resolveStudentViewContext.mockResolvedValue({
+      ok: true,
+      mode: "arena",
+      email: legacyArena.email,
+      sheetOverride: legacyArena.spreadsheetId,
+    });
+    m.grant.mockReturnValue(false);
+  });
+
+  it("uses the resolved arena target on the initial request without operator fallback", async () => {
+    const view = await loadWeeklyGoals(new URLSearchParams({ week: "1" }));
+    expect(view).toMatchObject({ student: { email: legacyArena.email, cohort: legacyArena.cohort }, canReadInternal: false });
+    expect(m.readWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({
+      studentId: legacyArena.spreadsheetId,
+      cohort: legacyArena.cohort,
+      courseStart: legacyArena.courseStartISO,
+    }));
+    expect(m.getActiveUserEmail).not.toHaveBeenCalled();
+    expect(m.grant).not.toHaveBeenCalled();
+  });
+
+  it("allows own public save but denies private authority without managed grants", async () => {
+    await expect(updateWeeklyGoals(params(legacyArena), publicInput())).resolves.toEqual({ revision: 1 });
+    await expect(loadWeeklyGoalInternal(params(legacyArena))).rejects.toMatchObject({ status: 403 });
+    await expect(updateWeeklyGoalInternal(params(legacyArena), privateInput())).rejects.toMatchObject({ status: 403 });
+    expect(m.saveWeeklyGoal).toHaveBeenCalledWith(expect.objectContaining({ studentId: legacyArena.spreadsheetId }), publicInput());
+    expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+    expect(m.saveWeeklyGoalPrivate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the arena sheet binding does not match the resolved user", async () => {
+    m.grant.mockReturnValue(true);
+    m.resolveStudentViewContext.mockResolvedValue({
+      ok: true,
+      mode: "arena",
+      email: legacyArena.email,
+      sheetOverride: "different-sheet",
+    });
+    await expect(loadWeeklyGoals(new URLSearchParams({ week: "1" }))).rejects.toMatchObject({ status: 403 });
+    await expect(updateWeeklyGoals(params(legacyArena), publicInput())).rejects.toMatchObject({ status: 403 });
+    expect(m.readWeeklyGoal).not.toHaveBeenCalled();
+    expect(m.saveWeeklyGoal).not.toHaveBeenCalled();
   });
 });
 

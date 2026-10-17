@@ -4,7 +4,7 @@ import { Channel } from "./channel";
 import { CompanyInfo, type MeetingState } from "./meeting";
 export const DbSheetDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v, "Invalid date");
 const text = z.string().max(20000).default("");
-export const DbSheetResult = z.enum(["미컨택", "부재", "단순거절", "재통화", "컨택진행", "상담 후 거절"]);
+export const DbSheetResult = z.enum(["미컨택", "부재", "단순거절", "재통화", "컨택진행", "상담 후 거절", "AS예정"]);
 /** 표시용 최초상담일: 실적 집계(컨택진행·상담 후 거절)와 별도 기준. */
 export function recordsDbSheetFirstContact(result: string): boolean { return ["단순거절", "재통화", "컨택진행", "상담 후 거절"].includes(result); }
 /** 다음 연락일을 사용하는 컨택 결과: 상세 입력과 대시보드가 공유한다. */
@@ -22,6 +22,7 @@ export const DbSheetLeadInput = z.object({
  id:z.string().uuid(), supplier:text,date:DbSheetDate,channel:Channel,
  company:text,owner:text,phone:text,biz:text,address:text,industry:text,credit:text,sales:text,arrears:text,funds:text,
  next:z.union([DbSheetDate,z.literal("")]).default(""),memo:text,
+ asReceived:z.boolean().optional(),asNote:z.string().max(20000).optional(),
  contact:DbSheetContact.default({}), recording:DbSheetRecording.optional(),
 });
 export type DbSheetLeadInput = z.infer<typeof DbSheetLeadInput>;
@@ -33,6 +34,6 @@ export const DbSheetFunnelStep = z.enum(["유입", "연락", "상담", "미팅",
 export type DbSheetFunnelStep = z.infer<typeof DbSheetFunnelStep>;
 /** Server-owned action generations. Draft contact dates never complete a scheduled action. */
 export type DbSheetFollowUp = { generation: number; completedGeneration: number | null; lastContactDate: string };
-export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;first:string;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp};
+export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp};
 export type DbSheetContext = { spreadsheetId:string;cohort:string;email:string };
 export type DbSheetChange = {lead:DbSheetLead;changedSales:{date:string;channel:z.infer<typeof Channel>}[];meetingId?:string;impact?:DbSheetImpact};

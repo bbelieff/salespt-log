@@ -60,11 +60,15 @@ interface SheetCtx {
   email: string;
 }
 
-async function resolveSheet(email: string): Promise<SheetCtx> {
+async function resolveSheet(
+  email: string,
+  spreadsheetIdOverride?: string,
+): Promise<SheetCtx> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[todos] 등록되지 않은 사용자: ${email}`);
-  if (!user.spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
-  return { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email };
+  const spreadsheetId = spreadsheetIdOverride?.trim() || user.spreadsheetId;
+  if (!spreadsheetId) throw new Error(`[no-sheet] 개인 시트가 없는 계정: ${email}`);
+  return { spreadsheetId, cohort: sourceCohort(user), email };
 }
 
 // ── R3-2 시트 수렴 동기화 (DB 정본 경로 전용) ──────────────────────
@@ -154,8 +158,9 @@ async function drainPendingTodoSheet(ctx: SheetCtx, justSyncedId: string): Promi
 export async function listTodos(
   email: string,
   contractRef: string,
+  spreadsheetIdOverride?: string,
 ): Promise<Todo[]> {
-  const ctx = await resolveSheet(email);
+  const ctx = await resolveSheet(email, spreadsheetIdOverride);
   if (chooseDailySource(ctx.cohort, dbEnabled()) === "db") {
     return (await readTodosFromDb(ctx.spreadsheetId))
       .filter((t) => t.contractRef === contractRef)
@@ -168,8 +173,11 @@ export async function listTodos(
 }
 
 /** 상단 업무현황용 전체 기록. 현재 사용자 소유 시트/DB 범위만 반환한다. */
-export async function listAllTodos(email: string): Promise<Todo[]> {
-  const ctx = await resolveSheet(email);
+export async function listAllTodos(
+  email: string,
+  spreadsheetIdOverride?: string,
+): Promise<Todo[]> {
+  const ctx = await resolveSheet(email, spreadsheetIdOverride);
   const todos = chooseDailySource(ctx.cohort, dbEnabled()) === "db"
     ? await readTodosFromDb(ctx.spreadsheetId)
     : await listAllTodosFromSheet(ctx.spreadsheetId);
@@ -187,6 +195,7 @@ export type CreateTodoInput = Omit<
  * 없으면 기존 동작(서버 randomUUID) — 하위 호환. */
 export interface CreateTodoOptions {
   operationId?: string;
+  spreadsheetIdOverride?: string;
 }
 
 /** 같은 operation 으로 이미 커밋된 행과 내용이 다를 때 — route 가 409 로 매핑. */
@@ -240,7 +249,7 @@ export async function createTodo(
   input: CreateTodoInput,
   opts: CreateTodoOptions = {},
 ): Promise<Todo> {
-  const ctx = await resolveSheet(email);
+  const ctx = await resolveSheet(email, opts.spreadsheetIdOverride);
   const { operationId } = opts;
   if (operationId !== undefined && !UUID_RE.test(operationId)) {
     throw new Error("[todos] operationId 형식 오류(UUID)");
@@ -315,8 +324,9 @@ export async function patchTodo(
   email: string,
   id: string,
   partial: Partial<Omit<Todo, "id">>,
+  spreadsheetIdOverride?: string,
 ): Promise<void> {
-  const ctx = await resolveSheet(email);
+  const ctx = await resolveSheet(email, spreadsheetIdOverride);
   if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
     // 병합기반 = DB(정본). "삭제됨(_cleared)" 과 "DB 공백" 을 구분 — 삭제된 ToDo 는 self-heal 금지
     // (시트 fallback 으로 200 을 주면 삭제가 조용히 무효화된 척 되고 gcal 이벤트가 부활 — r2 #3·#5).
@@ -336,8 +346,12 @@ export async function patchTodo(
 }
 
 /** ToDo 삭제 (행 clear). */
-export async function removeTodo(email: string, id: string): Promise<void> {
-  const ctx = await resolveSheet(email);
+export async function removeTodo(
+  email: string,
+  id: string,
+  spreadsheetIdOverride?: string,
+): Promise<void> {
+  const ctx = await resolveSheet(email, spreadsheetIdOverride);
   // 행 클리어 전 구글 이벤트 삭제(맵이 행에 있음) — 양 경로 동일. 멱등이라 DB 경로는 잡에서 한 번 더 수행.
   await syncTodoRemoved(ctx.spreadsheetId, id);
   if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {

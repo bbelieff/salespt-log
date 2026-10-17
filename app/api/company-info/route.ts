@@ -9,13 +9,25 @@ import {
   loadCompanyInfoByContract,
   saveCompanyInfoByContract,
 } from "@/service/contract-payment";
-import { getCurrentUserEmail } from "@/auth/stub";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  getWritableUserEmail,
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+
+function studentContextFailure(error: unknown) {
+  return error instanceof StudentViewContextError
+    ? NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      )
+    : null;
+}
 
 async function GET_handler(req: NextRequest) {
   try {
-    const email = await getCurrentUserEmail();
+    const { email } = await requireStudentViewContext();
     const sp = req.nextUrl.searchParams;
     const 계약일 = String(sp.get("계약일") ?? "").trim();
     const 업체명 = String(sp.get("업체명") ?? "").trim();
@@ -25,6 +37,8 @@ async function GET_handler(req: NextRequest) {
     const 업체정보 = await loadCompanyInfoByContract(email, { 계약일, 업체명 });
     return NextResponse.json({ 업체정보 });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -32,7 +46,15 @@ async function GET_handler(req: NextRequest) {
 
 async function POST_handler(req: NextRequest) {
   try {
-    const email = await getWritableUserEmail(); // 쓰기 진입점(ADR-0029: archived 차단 폐지)
+    // 학생 컨텍스트와 기존 쓰기 권한을 모두 확인한다.
+    const { email } = await requireStudentViewContext();
+    const writableEmail = await getWritableUserEmail();
+    if (writableEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: "student_write_target_mismatch", code: "student_write_target_mismatch" },
+        { status: 403 },
+      );
+    }
     const body = await req.json();
     const 계약일 = String(body?.계약일 ?? "").trim();
     const 업체명 = String(body?.업체명 ?? "").trim();
@@ -47,6 +69,8 @@ async function POST_handler(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

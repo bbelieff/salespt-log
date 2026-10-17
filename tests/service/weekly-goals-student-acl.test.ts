@@ -6,7 +6,7 @@ import { User } from "@/types";
  * Assignment alone must not authorize a trainer: the saved grade/grants decide.
  * Admin and self keep their pre-existing identity boundary. */
 const m = vi.hoisted(() => ({
-  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(),
+  getSessionEmail: vi.fn(), getActiveUserEmail: vi.fn(), getEffectiveRole: vi.fn(), resolveStudentViewContext: vi.fn(),
   findUserByEmail: vi.fn(), findActiveArenaRowByEmail: vi.fn(), listAllUsers: vi.fn(), listDistinctUsers: vi.fn(),
   dbEnabled: vi.fn(), chooseDailySource: vi.fn(), sourceCohort: (u: { cohort: string }) => u.cohort, readSalesRowsFromDb: vi.fn(), readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn(),
   readWeeklyGoal: vi.fn(), saveWeeklyGoal: vi.fn(), readWeeklyGoalPrivate: vi.fn(), saveWeeklyGoalPrivate: vi.fn(),
@@ -34,6 +34,7 @@ function actAs(role: "trainer" | "admin", email = TRAINER) {
   m.getSessionEmail.mockResolvedValue(email);
   m.getActiveUserEmail.mockResolvedValue(email);
   m.getEffectiveRole.mockResolvedValue({ role, status: "active" });
+  m.resolveStudentViewContext.mockResolvedValue({ ok: true, mode: "assigned", email: TARGET.email });
 }
 beforeEach(() => {
   vi.clearAllMocks();

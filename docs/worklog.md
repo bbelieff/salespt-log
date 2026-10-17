@@ -1,6 +1,11 @@
 ## 2026-10-15 · 마이그레이션 0009 서버 전용 표 잠그기 (chore/lock-down-server-only-tables)
 - 화석 B6: 앱이 실행 중에 만든 표(보관함·PIN·구글 토큰·sheet_rows 등)에 공개 역할 권한 회수+RLS. 연습장에서 두 번 적용·읽기 확인. **파일만 추가 — 운영 적용은 belie 승인 후 db-migrate 로.**
 
+## 2026-10-17 DB관리시트 자동 가져오기·편의 개선 운영 승인
+- 사용자 목업 승인 및 실제 연결·테스트·운영 배포 지시. feat/db-sheet-adaptive-release, 기준20ee41d3.
+- 소유: root types/service/repo/DB정보/model/통합·문서; import_release 가져오기 전용; compact_ui_release 상단/기간/상태필터·공급처. 공용 계약 root, 별도 검증 예정.
+- 상세 범위·수용조건: [plan](plans/active/db-sheet-adaptive-release.md). 실데이터 백필·일괄 수정 없음.
+
 ## 2026-10-15 — 최초상담일 자동기록 범위 확대 (검증 중)
 - 사용자 확정: 단순거절·재통화·컨택진행·상담 후 거절에 선택 컨택일 자동기록, 기존 최초 날짜 보존. STEP2 컨택진행과 공급처 상담성과는 기존 qualified 이력 기준 유지.
 - 전용 fix/db-sheet-first-contact-date, base22e15350. 총괄 types/repo/service/UI/tests 변경, excel_count_review 읽기전용 독립 검증. 운영 백필·실데이터 시험 없음.
@@ -4019,3 +4024,6 @@ User-reported save403 reproduced using unauthenticated empty JSON: production Or
 - 소유: weekly-goals service·type·GoalCopyPanel 및 관련 테스트/문서. DB 쓰기·권한 변경 없음. Muse 분석·구현·회귀 초안, Codex 읽기 감사·통합·검증·배포.
 
 - 주간목표 목업 추가: 사용자 좌우 교체 요청 반영. 좌 진행건·오늘챙길일, 우 생산성·목표. 하단 일치·상세 팝업 열기닫기 확인, 4523 목업 승인 대기.
+
+### 2026-10-16 · 대시보드 정성목표 긴 본문 건수 요약
+- WORK-ID `SALES-PT-DASHBOARD-QUALITATIVE-COUNT-R1`, branch `codex/dashboard-qualitative-count-r1`, base `d039317175f6b16a2a13d4dea3b9afef34ddc54c`. 실제 카드 폭에서 2줄 이하 원문은 보존하고, 넘치면 유효 PT과제 행 수 `N건`으로 대체하는 요약 전용 변경을 시작했다. API·service·운영 데이터 변경 없음. 계획: `docs/plans/active/dashboard-qualitative-count-r1.md`.

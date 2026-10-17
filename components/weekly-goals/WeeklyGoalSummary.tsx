@@ -1,6 +1,6 @@
 "use client";
 import "./weekly-goals-flow.css";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Target, ChevronRight, ChevronLeft } from "lucide-react";
 import { useGuardedRouter } from "@/components/DirtyGuard";
@@ -10,10 +10,54 @@ import { goalReturnTarget } from "@/util/weekly-goal-navigation";
 import { useGoalView } from "@/components/weekly-goals/client";
 import GoalCompactMetrics from "@/components/weekly-goals/GoalCompactMetrics";
 import GoalRings from "@/components/weekly-goals/GoalRings";
+import { splitTaskRows } from "@/util/weekly-goal-tasks";
 
 interface Props {
   date?: string; metrics?: readonly GoalKey[]; student?: string; className?: string; compact?: boolean;
 }
+
+function TaskSummaryCopy({ task, refreshKey }: { task?: string; refreshKey: string }) {
+  const measureRef = useRef<HTMLParagraphElement>(null);
+  const [overflowsTwoLines, setOverflowsTwoLines] = useState(false);
+  const rows = splitTaskRows(task ?? "");
+  const text = task?.trim() ?? "";
+
+  useEffect(() => {
+    const element = measureRef.current;
+    if (!element) return;
+    let disposed = false;
+    let frame = 0;
+    const measure = () => {
+      if (disposed) return;
+      setOverflowsTwoLines(element.scrollHeight > element.clientHeight + 1);
+    };
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    setOverflowsTwoLines(false);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(element);
+    window.addEventListener("resize", scheduleMeasure);
+    void document.fonts?.ready.then(scheduleMeasure);
+
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", scheduleMeasure);
+    };
+  }, [text, refreshKey]);
+
+  const visibleText = rows.length === 0 ? "0건" : overflowsTwoLines ? `${rows.length}건` : text;
+  return <div className="weekly-goals-task-copy-shell">
+    <p className="weekly-goals-task-copy">{visibleText}</p>
+    <p ref={measureRef} className="weekly-goals-task-measure" aria-hidden="true">{text}</p>
+  </div>;
+}
+
 export default function WeeklyGoalSummary(props: Props) {
   // Reset navigation when the business date/student changes.
   return <Summary key={`${props.student ?? "self"}:${props.date ?? todayKST()}`} {...props} />;
@@ -68,7 +112,7 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
         <h3>정성목표</h3>
         <div className="weekly-goals-task">
           <b>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</b>
-          <p>{current.record.task?.trim() || "등록된 과제 없음"}</p>
+          <TaskSummaryCopy task={current.record.task} refreshKey={`${student ?? "self"}:${current.start}:${current.week}`} />
           <span className="weekly-goals-task-link">과제 보기 <ChevronRight className="h-3 w-3" aria-hidden /></span>
         </div>
       </div>

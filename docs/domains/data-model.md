@@ -784,3 +784,12 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - hasQualifiedContact?:boolean는 서버 소유 JSONB 메타다. db_sheet_contacts.qualified 이력 존재로 결정하며 일반 입력으로 변경할 수 없다. 새 리드는 false, qualified 상담 이후 true를 유지한다.
 - STEP 2 컨택진행은 기존처럼 컨택진행·상담 후 거절만 업체/일자별 1건이다. 활동 기록 OFF여도 상담 이력 메타는 유지하되 집계 기여는 추가하지 않는다.
 - 공급처 성과의 상담은 hasQualifiedContact로 판정한다. 해당 필드가 없는 기존 버전은 당시 qualified만 기록하던 first를 호환 기준으로 사용한다. 운영 백필·스키마 migration 없음.
+
+
+### DB관리시트 편의 입력 (2026-10-17)
+- DbSheetResult에 `AS예정`: qualified 상담집계 제외, 최초상담일 자동생성 제외. 과거 qualified 상담 기여는 보존.
+- DbSheetLeadInput의 optional `asReceived`(boolean), `asNote`(최대20,000자): db_sheet_leads JSONB에 저장. 구버전 클라이언트에서 생략하면 기존값 유지.
+- DbSheetLead의 서버 소유 `firstManual`: 명시 최초상담일 편집/비우기 뒤 자동 날짜 덮어쓰기 방지. 클라이언트 save input에서는 받지 않음.
+- `first-date` 명령: id/revision/first(날짜 또는 빈값), 실제 상담 이력/집계는 변경하지 않음.
+- `inflow-preview`, `inflow`: id/revision/inflow(boolean). 해당 DB의 유입 기여만 추가/제거. 날짜·채널별 수동값과 기존 상담/미팅 기여 보존. 불확실한 legacy 기여·음수위험 차단. 기존 `recording`은 사후 활동반영 정책을 유지.
+- 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.

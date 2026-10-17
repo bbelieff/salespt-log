@@ -1,11 +1,14 @@
 /**
  * GET /api/export → 로그인한 사용자 본인 기록 xlsx 다운로드 (BBE-71, R7-#22).
  *
- * 인증 = getCurrentUserEmail()(dashboard route 와 동일 패턴) — 세션의 실제 사용자만,
- * 파라미터로 타 사용자 이메일을 넘길 방법 자체가 없다(URL 에 이메일 없음).
+ * 인증 = fail-closed 수강생 보기 context. 본인·담당 수강생·arena 자기보기의
+ * 해석된 CRM 대상만 내보내고, 무효하거나 선택되지 않은 대상은 저장소 조회 전 거부한다.
  */
 import { NextResponse } from "next/server";
-import { getCurrentUserEmail } from "@/auth/stub";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import {
   buildExportWorkbookData,
   exportFileName,
@@ -15,7 +18,7 @@ import { withApiTiming } from "@/lib/analytics/api-timing";
 
 async function GET_handler() {
   try {
-    const email = await getCurrentUserEmail();
+    const { email } = await requireStudentViewContext();
     const data = await buildExportWorkbookData(email);
     const buf = serializeExportWorkbook(data);
     const fileName = exportFileName();
@@ -31,6 +34,12 @@ async function GET_handler() {
       },
     });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[auth]")) {
       return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
