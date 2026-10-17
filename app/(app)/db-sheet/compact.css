@@ -70,9 +70,9 @@ body.db-sheet-route .sheet-filter-group :is(.sheet-inflow-period>span:first-chil
 body.db-sheet-route .sheet-filter-group :is(.sheet-inflow-period button,.sheet-status-chip){font-family:inherit;font-size:12px;font-weight:600;line-height:24px;height:26px;min-height:26px;padding:0 9px;border-radius:9999px}
 body.db-sheet-route .sheet-filter-group .sheet-status-filter-summary{font-size:11px;line-height:18px;margin-left:5px;white-space:nowrap}
 .sheet-supplier-filter{display:inline-flex;align-items:center;gap:6px;max-width:180px}.sheet-supplier-filter>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sheet-supplier-chevron{display:block;flex:0 0 14px;align-self:center;transition:transform 120ms ease}.sheet-supplier-filter[aria-expanded=true]>.sheet-supplier-chevron{transform:rotate(180deg)}
-/* Date theme is route/group scoped; status purple and shared PeriodPicker defaults stay unchanged. */
-body.db-sheet-route .sheet-date-group .sheet-inflow-period>span:first-child{color:#0f766e}
-body.db-sheet-route .sheet-date-group .sheet-inflow-period button{color:#0f766e;border-color:#cbd5e1;background:#fff}
+/* Date text matches status; selected fills and shared PeriodPicker defaults stay unchanged. */
+body.db-sheet-route .sheet-date-group .sheet-inflow-period>span:first-child{color:#64748b}
+body.db-sheet-route .sheet-date-group .sheet-inflow-period button{color:#475569;border-color:#cbd5e1;background:#fff}
 body.db-sheet-route .sheet-date-group .sheet-inflow-period button:hover{background:#f1f5f9}
 body.db-sheet-route .sheet-date-group .sheet-inflow-period button[aria-pressed=true]{background:#0f766e;border-color:#0f766e;color:#fff}
 body.db-sheet-route .sheet-date-group .sheet-inflow-period button:focus-visible{outline-color:#0f766e}
