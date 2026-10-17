@@ -15,8 +15,21 @@ import {
   loadContractPayments,
   syncContractFee,
 } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+
+// getWritableUserEmail legacy gate is superseded here by the stricter student-view gate.
+function studentContextFailure(error: unknown) {
+  return error instanceof StudentViewContextError
+    ? NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      )
+    : null;
+}
 
 const ContractFeeBody = z.object({
   계약일: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
@@ -26,10 +39,12 @@ const ContractFeeBody = z.object({
 
 async function GET_handler() {
   try {
-    const email = await getWritableUserEmail();
+    const { email } = await requireStudentViewContext();
     const rows = await loadContractPayments(email);
     return NextResponse.json({ rows });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
@@ -40,6 +55,7 @@ async function GET_handler() {
 
 async function POST_handler(req: NextRequest) {
   try {
+    const { email } = await requireStudentViewContext();
     const body = await req.json();
     const parsed = ContractFeeBody.safeParse(body);
     if (!parsed.success) {
@@ -48,10 +64,11 @@ async function POST_handler(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail();
     const result = await addFromContract(email, parsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });
@@ -62,6 +79,7 @@ async function POST_handler(req: NextRequest) {
 
 async function PATCH_handler(req: NextRequest) {
   try {
+    const { email } = await requireStudentViewContext();
     const body = await req.json();
     const parsed = ContractFeeBody.safeParse(body);
     if (!parsed.success) {
@@ -70,13 +88,14 @@ async function PATCH_handler(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail();
     const result = await syncContractFee(email, parsed.data);
     if (!result) {
       return NextResponse.json({ ok: true, synced: false });
     }
     return NextResponse.json({ ok: true, synced: true, row: result.row });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });

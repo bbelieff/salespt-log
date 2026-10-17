@@ -1,17 +1,27 @@
 /**
  * POST /api/contract-payment/standalone — 「영업기록 없이 업체추가」 라우트 계약(서비스 목).
  * 인증 401 · 입력검증 400 · 성공 200{row} · 서비스 실패 500.
- * 403 경로는 없다 — prior 라우트와 같은 권한(getWritableUserEmail, 임퍼스네이션 대상에 쓰기)을 쓴다.
+ * 학생-view 정본(requireStudentViewContext)의 해석 이메일로 쓴다.
  */
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({
-  session: vi.fn(),
-  writable: vi.fn(),
-  add: vi.fn(),
+const api = vi.hoisted(() => {
+  class ContextError extends Error {
+    constructor(public code: string, public status: 401 | 403) {
+      super(code);
+    }
+  }
+  return {
+    ContextError,
+    requireContext: vi.fn(),
+    add: vi.fn(),
+  };
+});
+vi.mock("@/auth/identity", () => ({
+  requireStudentViewContext: api.requireContext,
+  StudentViewContextError: api.ContextError,
 }));
-vi.mock("@/auth/identity", () => ({ getSessionEmail: api.session, getWritableUserEmail: api.writable }));
 vi.mock("@/service", () => ({ addStandaloneContract: api.add }));
 vi.mock("@/lib/analytics/api-timing", () => ({
   withApiTiming: (_label: string, handler: unknown) => handler,
@@ -34,14 +44,19 @@ async function out(r: Response) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  api.session.mockResolvedValue("hong@example.com");
-  api.writable.mockResolvedValue("hong@example.com");
+  api.requireContext.mockResolvedValue({
+    ok: true,
+    mode: "own",
+    email: "hong@example.com",
+  });
   api.add.mockResolvedValue({ row: 12 });
 });
 
 describe("POST /api/contract-payment/standalone", () => {
   it("로그인 안 됨 → 401, 서비스 호출 없음", async () => {
-    api.session.mockResolvedValue(null);
+    api.requireContext.mockRejectedValue(
+      new api.ContextError("unauthenticated", 401),
+    );
     const r = await out(await POST(req(OK)));
     expect(r.status).toBe(401);
     expect(r.body.error).toBe("unauthenticated");

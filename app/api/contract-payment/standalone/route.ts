@@ -8,7 +8,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { addStandaloneContract } from "@/service";
-import { getSessionEmail, getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const StandaloneContractBody = z.object({
@@ -19,20 +22,24 @@ const StandaloneContractBody = z.object({
 });
 
 async function POST_handler(req: NextRequest) {
-  const session = await getSessionEmail();
-  if (!session) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  const parsed = StandaloneContractBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "invalid_input" },
-      { status: 400 },
-    );
-  }
   try {
-    const email = await getWritableUserEmail();
+    const { email } = await requireStudentViewContext();
+    const parsed = StandaloneContractBody.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? "invalid_input" },
+        { status: 400 },
+      );
+    }
     const result = await addStandaloneContract(email, parsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    if (e instanceof StudentViewContextError) {
+      return NextResponse.json(
+        { error: e.code, code: e.code },
+        { status: e.status },
+      );
+    }
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

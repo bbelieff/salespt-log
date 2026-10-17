@@ -6,11 +6,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ContractPayment } from "@/types";
 import { addPriorContract } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+
+// getWritableUserEmail legacy gate is superseded here by the stricter student-view gate.
+function studentContextFailure(error: unknown) {
+  return error instanceof StudentViewContextError
+    ? NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      )
+    : null;
+}
 
 async function POST_handler(req: NextRequest) {
   try {
+    const { email } = await requireStudentViewContext();
     const body = await req.json();
     const parsed = ContractPayment.safeParse(body);
     if (!parsed.success) {
@@ -23,10 +37,11 @@ async function POST_handler(req: NextRequest) {
         { status: 400 },
       );
     }
-    const email = await getWritableUserEmail();
     const result = await addPriorContract(email, parsed.data);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

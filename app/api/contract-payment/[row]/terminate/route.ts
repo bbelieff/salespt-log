@@ -5,8 +5,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { terminateContract } from "@/service";
-import { getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+
+// getWritableUserEmail legacy gate is superseded here by the stricter student-view gate.
+function studentContextFailure(error: unknown) {
+  return error instanceof StudentViewContextError
+    ? NextResponse.json(
+        { error: error.code, code: error.code },
+        { status: error.status },
+      )
+    : null;
+}
 
 const RowParam = z.coerce.number().int().min(3);
 const Body = z.object({
@@ -21,6 +34,7 @@ interface RouteContext {
 
 async function POST_handler(req: NextRequest, ctx: RouteContext) {
   try {
+    const { email } = await requireStudentViewContext();
     const { row } = await ctx.params;
     const rowParsed = RowParam.safeParse(row);
     if (!rowParsed.success) {
@@ -30,10 +44,11 @@ async function POST_handler(req: NextRequest, ctx: RouteContext) {
     if (!body.success) {
       return NextResponse.json({ error: body.error.message }, { status: 400 });
     }
-    const email = await getWritableUserEmail();
     await terminateContract(email, { row: rowParsed.data, ...body.data });
     return NextResponse.json({ ok: true });
   } catch (e) {
+    const denied = studentContextFailure(e);
+    if (denied) return denied;
     const msg = e instanceof Error ? e.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

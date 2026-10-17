@@ -7,7 +7,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ContractLinkError, linkMeetingToContract, previewMeetingLink } from "@/service";
-import { getSessionEmail, getWritableUserEmail } from "@/auth/identity";
+import {
+  requireStudentViewContext,
+  StudentViewContextError,
+} from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 
 const RowParam = z.coerce.number().int().min(3);
@@ -23,18 +26,23 @@ interface RouteContext {
 }
 
 function fail(e: unknown) {
+  if (e instanceof StudentViewContextError) {
+    return NextResponse.json(
+      { error: e.code, code: e.code },
+      { status: e.status },
+    );
+  }
   if (e instanceof ContractLinkError) return NextResponse.json({ error: e.message }, { status: e.status });
   const msg = e instanceof Error ? e.message : "unknown";
   return NextResponse.json({ error: msg }, { status: 500 });
 }
 
 async function GET_handler(req: NextRequest, ctx: RouteContext) {
-  if (!(await getSessionEmail())) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  const row = RowParam.safeParse((await ctx.params).row);
-  const meetingId = req.nextUrl.searchParams.get("meetingId") ?? "";
-  if (!row.success || !meetingId) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   try {
-    const email = await getWritableUserEmail();
+    const { email } = await requireStudentViewContext();
+    const row = RowParam.safeParse((await ctx.params).row);
+    const meetingId = req.nextUrl.searchParams.get("meetingId") ?? "";
+    if (!row.success || !meetingId) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
     return NextResponse.json(await previewMeetingLink(email, row.data, meetingId));
   } catch (e) {
     return fail(e);
@@ -42,12 +50,11 @@ async function GET_handler(req: NextRequest, ctx: RouteContext) {
 }
 
 async function POST_handler(req: NextRequest, ctx: RouteContext) {
-  if (!(await getSessionEmail())) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  const row = RowParam.safeParse((await ctx.params).row);
-  const body = LinkBody.safeParse(await req.json().catch(() => null));
-  if (!row.success || !body.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   try {
-    const email = await getWritableUserEmail();
+    const { email } = await requireStudentViewContext();
+    const row = RowParam.safeParse((await ctx.params).row);
+    const body = LinkBody.safeParse(await req.json().catch(() => null));
+    if (!row.success || !body.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
     const result = await linkMeetingToContract(email, { row: row.data, ...body.data });
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
