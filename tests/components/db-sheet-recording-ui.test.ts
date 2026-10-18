@@ -16,7 +16,7 @@ const button=(text:string)=>[...host.querySelectorAll('button')].find(b=>b.textC
 it('reports a missing projection as an error and preserves both authoritative inflow states',async()=>{
  const row={...blank(),company:'합성 업체'},open=vi.fn(),persist=vi.fn(async()=>{});
  await act(async()=>root.render(createElement(InflowStatusCell,{row,onOpen:open})));
- expect(host.querySelector('[role=alert]')!.textContent).toContain('유입 표시를 불러오지 못했습니다');expect(host.querySelector('button')).toBeNull();expect(open).not.toHaveBeenCalled();expect(host.querySelector('dialog')).toBeNull();expect(host.textContent).not.toContain('유입 1건');
+ expect(host.querySelector('[role=alert]')!.textContent).toBe('오류');expect(host.querySelector('[role=alert]')!.getAttribute('aria-label')).toContain('유입 표시를 불러오지 못했습니다');expect(host.querySelector('[role=alert]')!.getAttribute('title')).toContain('새로고침해 주세요');expect(host.querySelector('button')).toBeNull();expect(open).not.toHaveBeenCalled();expect(host.querySelector('dialog')).toBeNull();expect(host.textContent).not.toContain('유입 1건');
  await act(async()=>root.render(createElement(InflowStatusCell,{row,onToggle:persist})));
  expect(host.querySelector('[role=alert]')!.textContent).toContain('새로고침해 주세요');expect(host.textContent).not.toMatch(/확인 필요|유입\?/);
  expect(host.querySelectorAll('[role=radio]')).toHaveLength(0);expect(persist).not.toHaveBeenCalled();expect(host.textContent).not.toContain('유입 1건');

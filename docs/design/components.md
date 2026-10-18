@@ -1762,7 +1762,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `DirectInputDialog`, `RecordingOptions`: 직접 등록 기본 STEP 2 기록 ON. 유입/활동 범위를 구분한다.
 - `DuplicateDialog`: 동일 연락처/업체 후보를 알리고 기존 업체 열기 또는 별도 업체 추가를 명시적으로 선택.
 - `RecordingDialog`: 서버 계산 미리보기 후 사후 반영/영구삭제 확인. 실패 시 입력 유지, 복잡한 연결건 삭제 차단.
-- `InflowStatusCell`: 실제 서버 기여의 반영됨/count1·미반영/count0만 정상 표시. 투영 누락/모순은 새로고침 안내 alert·편집/write0. 모바일 iconOnly는 기존 48px 행을 보존하는 경고 아이콘+오류 짧은 표기이며 전체 안내를 aria-label/title에 보존한다. 정상 목록 배지는 DB정보만 열고, 유일한 편집 토글은 업체명 옆에 배치. preview 차단 사유 확인 후 기존 revision-bound configure를 호출하며 pending 중 중복 입력·닫기 차단, 실패 시 기존 상태를 유지한다.
+- `InflowStatusCell`: 실제 서버 기여의 반영됨/count1·미반영/count0만 정상 표시. 투영 누락/모순은 새로고침 안내 alert·편집/write0. PC 비편집 목록과 모바일 iconOnly는 기존 열너비/48px 행을 보존하는 경고 아이콘+오류 짧은 표기이며 전체 안내를 aria-label/title에 보존한다. 상세의 오류 안내는 전체 문장을 표시하고 유입 편집 선택지를 만들지 않는다. 정상 목록 배지는 DB정보만 열고, 유일한 편집 토글은 업체명 옆에 배치. preview 차단 사유 확인 후 기존 revision-bound configure를 호출하며 pending 중 중복 입력·닫기 차단, 실패 시 기존 상태를 유지한다.
 - `InflowRecordingDialog`: 기존 standalone 영향 미리보기·확인 컴포넌트는 보존한다. 현재 DB관리시트의 기본 진입에는 연결하지 않으며, 목록 배지→DB정보의 헤더 편집과 기존 상담·미팅 설정 경로가 현행 UI다.
 - `ImportResultNotice`: 저장 성공 후 목록 추가건수·유입 반영건수·날짜/채널별 결과. 닫기 전 유지.
 - `ImportDialog`: 가져오기 선택과 유입기록 체크 분리, 기본 전체 체크·부분 체크·전체 해제, 상담/미팅 설정. PC 전체 열·5행 기준, 모바일 라벨 필드.
@@ -1772,6 +1772,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 
 ## DB관리시트 자동 가져오기·편의 개선 (2026-10-17 승인)
+- 표 기본 너비는 실제 폰트로 제목·정렬/자동 표시와 전체 DB의 가장 넓은 셀을 측정해 결정한다. 유입 반영은 배지·아이콘에 맞추며 사용하지 않는 자동 표시 여백은 추가하지 않는다. 사업자명은 굵은 글씨 기준으로 측정하고 셀 내부 300px 제한을 두지 않는다. 필터로 너비가 바뀌지 않으며 폰트 로드·입력 변경 후 다시 측정한다. 기존 직접 조절 너비는 보존하고 제목 오른쪽 경계 더블클릭/Home은 해당 열을 내용 맞춤으로 전환한다. 전체 보기 초기화도 내용 맞춤 기본값으로 복구한다. 기존 드래그 한계 42~800px·행 높이·틀고정 보존.
 - 제목행 없는 파일·텍스트는 같은 분석기를 사용해 첫 고객행부터 배치. 모호한 값은 후보를 확인하며 원문 유지. 양식 기억은 브라우저·계정 범위에서 개인정보 없는 필드 연결 규칙만 보관.
 - 유입일(파랑)·상태(보라)는 중립 업무도구 스타일의 두 그룹, PC 한 행·필터 내부 가로 스크롤, 모바일 줄바꿈. label12/600/18, chip12/600/24·높이26·좌우9·pill. `SupplierFilter`는 다중선택 합집합(0선택=전체)이며 검색·기간·상태와 교집합. 제한 시에만 N건 표시.
 - `InflowPeriod`: 직접 날짜는 독립 portal로 표시해 필터 행 높이 불변. 공용 `PeriodPicker.showRangeInputs=false`는 날짜 입력만 외부로 분리하며 기본 true의 기존 호출은 불변. portal은 화면 내 clamp·외부 클릭·Escape·초점 복귀.

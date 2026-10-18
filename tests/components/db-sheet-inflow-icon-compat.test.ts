@@ -35,3 +35,10 @@ it('keeps the good row usable beside an isolated error row',async()=>{
  const choices=host.querySelectorAll<HTMLButtonElement>('[role=radio]');expect(choices).toHaveLength(2);expect(choices[0]!.getAttribute('aria-checked')).toBe('true');
  await act(async()=>choices[1]!.click());expect(persist).toHaveBeenCalledOnce();expect(persist).toHaveBeenCalledWith(false);
 });
+it('keeps an invalid PC table projection bounded with the full error accessible and no editor/persistence',()=>{
+ const row={...blank(),company:'합성 오류'},open=vi.fn();
+ act(()=>root.render(createElement(InflowStatusCell,{row,onOpen:open})));
+ const alert=host.querySelector('[role=alert]')!;expect(alert.textContent).toBe('오류');expect(alert.classList.contains('dbs-inflow-badge')).toBe(true);expect(alert.classList.contains('sheet-error')).toBe(false);
+ expect(alert.getAttribute('aria-label')).toContain('유입 표시를 불러오지 못했습니다');expect(alert.getAttribute('title')).toContain('새로고침해 주세요');expect(alert.getAttribute('tabindex')).toBe('0');
+ expect(host.querySelectorAll('button,[role=radio],[role=img]')).toHaveLength(0);act(()=>host.click());expect(open).not.toHaveBeenCalled();
+});

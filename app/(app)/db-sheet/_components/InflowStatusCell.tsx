@@ -18,7 +18,7 @@ export default function InflowStatusCell({row,compact=false,iconOnly=false,onOpe
  }
  if(!valid){
   const message='유입 표시를 불러오지 못했습니다. 새로고침해 주세요.';
-  if(compact&&iconOnly)return <span role="alert" className="dbs-inflow-badge sheet-inflow-icon" aria-label={message} title={message}><AlertCircle size={13} aria-hidden="true"/>오류</span>;
+  if((compact&&iconOnly)||!onToggle)return <span role="alert" className={`dbs-inflow-badge${compact&&iconOnly?' sheet-inflow-icon':''}`} tabIndex={compact&&iconOnly?undefined:0} aria-label={message} title={message}><AlertCircle size={13} aria-hidden="true"/>오류</span>;
   return <span role="alert" className="sheet-error">{message}</span>;
  }
  if(compact&&iconOnly)return <span className={`dbs-inflow-badge sheet-inflow-icon ${status!.state}`} role="img" aria-label={`유입 ${label}`} title={`유입 ${label}`}><Icon size={13} aria-hidden="true"/></span>;

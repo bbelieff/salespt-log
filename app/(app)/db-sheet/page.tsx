@@ -4,7 +4,7 @@ import {RecordingDialog} from './_components/RecordingDialog';
 import SupplierFilter from './_components/SupplierFilter';
 import {SupplierOptions} from './_components/SupplierInput';
 import ImportResultNotice from './_components/ImportResultNotice';
-import React,{useState,useEffect,useRef} from 'react';
+import React,{useState,useEffect,useRef,useMemo} from 'react';
 import {useGuardedRouter} from '@/components/DirtyGuard';
 import TopHeader from '@/components/TopHeader';
 import PageContainer from '@/components/PageContainer';
@@ -28,6 +28,7 @@ import './compact.css';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
 export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads,me=useMe();
+ const sizingRows=useMemo(()=>rows.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''})),[rows]);
  const accountKey=me.isSuccess&&me.data.email?JSON.stringify([me.data.email,me.data.cohort,me.data.spreadsheetId]):'';
  const [period,setPeriod]=useState<InflowPeriodId>('all');
  const [mounted,setMounted]=useState(false),[draft,setDraft]=useState<Row|null>(null);
@@ -88,7 +89,7 @@ export default function DbSheetPage(){
 
  <span ref={listTop} aria-hidden="true" className="block scroll-mt-app-content"/>
  {data.addition&&<ImportResultNotice key={JSON.stringify(data.addition)} result={data.addition} onClose={data.clearAddition}/>}
- <Grid mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onOpen={setDetail} onChange={data.edit}/>
+ <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onOpen={setDetail} onChange={data.edit}/>
  </section></PageContainer></div>
  {selected&&<DbDetail key={selected.id} row={selected} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onRecording={()=>setRecording({id:selected.id,deleting:false})} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
  {draft&&<DirectInputDialog initial={draft} rows={rows} onClose={()=>setDraft(null)} onExisting={id=>{setDraft(null);setDetail(id);}} onSave={async(row,allow)=>{await data.add([row],row.id,allow?[row.id]:[]);setDraft(null);}}/>}
