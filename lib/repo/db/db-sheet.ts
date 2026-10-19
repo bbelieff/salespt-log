@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, recordsDbSheetFirstContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, isQualifiedDbSheetContact, recordsDbSheetFirstContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -125,7 +125,7 @@ export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:
  z.string().uuid().parse(leadId);const event=z.object({date:DbSheetDate,result:DbSheetResult,note:z.string().max(20000)}).parse(input);
  return transaction(ctx,async c=>{
  const stored=await expected(c,ctx,leadId,expectedRevision);const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;old.followUp=await followUpState(c,ctx,old);const before=await contributions(c,ctx,old,-1);
- const qualified=["컨택진행","상담 후 거절"].includes(event.result);
+ const qualified=isQualifiedDbSheetContact(event.result);
  await c.query(`insert into db_sheet_contacts(spreadsheet_id,lead_id,contact_date,qualified,result,note) values($1,$2,$3,$4,$5,$6)
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);

@@ -18,7 +18,7 @@
  *   flight, exact-signature dedup, manual retry only (no auto retry).
  */
 import type { ChannelKey } from "./channels";
-import { todayKST } from "@/util/week";
+import { isValidISODate, todayKST } from "@/util/week";
 
 export type DbDraftStatus = "empty" | "partial" | "invalid" | "valid";
 
@@ -39,18 +39,9 @@ const SELECT_DEFAULTS: Record<string, string> = {
   구분: "콜드콜",
 };
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 /** Well-formed AND a real calendar day (rejects 2026-02-30 etc.). */
 export function isValidIsoDate(value: unknown): boolean {
-  if (typeof value !== "string" || !ISO_DATE.test(value)) return false;
-  const [y, m, d] = value.split("-").map(Number);
-  const dt = new Date(Date.UTC(y!, m! - 1, d!));
-  return (
-    dt.getUTCFullYear() === y &&
-    dt.getUTCMonth() === m! - 1 &&
-    dt.getUTCDate() === d!
-  );
+  return typeof value === "string" && value === value.trim() && isValidISODate(value);
 }
 
 function textOf(draft: Record<string, unknown>, key: string): string {

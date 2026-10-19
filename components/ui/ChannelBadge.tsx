@@ -4,7 +4,8 @@
  */
 import type { Channel } from "@/types";
 
-const CLASS_MAP: Record<Channel, string> = {
+/** 채널 4색 배지 클래스 — 화면 곳곳이 이 표 하나를 쓴다. */
+export const CHANNEL_BADGE_CLASS: Record<Channel, string> = {
   매입DB: "badge badge-purchase",
   직접생산: "badge badge-direct",
   현수막: "badge badge-banner",
@@ -12,5 +13,5 @@ const CLASS_MAP: Record<Channel, string> = {
 };
 
 export default function ChannelBadge({ channel }: { channel: Channel }) {
-  return <span className={CLASS_MAP[channel]}>{channel}</span>;
+  return <span className={CHANNEL_BADGE_CLASS[channel]}>{channel}</span>;
 }

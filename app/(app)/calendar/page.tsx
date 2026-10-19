@@ -27,12 +27,12 @@ import {
 } from "./_lib/state-map";
 import { fmtYM, fmtYMD, parseISO, shiftMonth } from "./_lib/month";
 import { formatMoney } from "@/lib/format/money";
+import { DAY_KO as KO_DAY } from "@/util/week";
 
 const TODAY = new Date();
 const TODAY_ISO = fmtYMD(TODAY);
 const TODAY_YYYYMM = fmtYM(TODAY);
 
-const KO_DAY = ["일", "월", "화", "수", "목", "금", "토"];
 
 // 일자상세 좌측바 — 채널 4색 진한값(tokens.md), 실무는 진회색. inline style.
 const CHANNEL_HEX: Record<Channel, string> = {

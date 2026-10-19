@@ -5,6 +5,11 @@ import { CompanyInfo, type MeetingState } from "./meeting";
 export const DbSheetDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v, "Invalid date");
 const text = z.string().max(20000).default("");
 export const DbSheetResult = z.enum(["미컨택", "부재", "단순거절", "재통화", "컨택진행", "상담 후 거절", "AS예정"]);
+/** 선택지 순서 그대로의 컨택 결과 목록 — 화면 선택지·검증이 같이 쓴다. */
+export const DB_SHEET_RESULTS = DbSheetResult.options;
+/** 실적(STEP 2 컨택진행)으로 세는 결과 — 서버 집계·화면 라벨·상태 필터가 이 하나를 쓴다. */
+export const DB_SHEET_QUALIFIED_RESULTS = ["컨택진행", "상담 후 거절"] as const;
+export function isQualifiedDbSheetContact(result: string): boolean { return (DB_SHEET_QUALIFIED_RESULTS as readonly string[]).includes(result); }
 /** 표시용 최초상담일: 실적 집계(컨택진행·상담 후 거절)와 별도 기준. */
 export function recordsDbSheetFirstContact(result: string): boolean { return ["단순거절", "재통화", "컨택진행", "상담 후 거절"].includes(result); }
 /** 다음 연락일을 사용하는 컨택 결과: 상세 입력과 대시보드가 공유한다. */

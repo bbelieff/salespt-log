@@ -7,3 +7,8 @@ export function missingSlotFields(slot: NewSlot): string[] {
     ["업체명", "회사명"], ["장소", "장소"],
   ] as const).filter(([key]) => !slot[key].trim()).map(([, label]) => label);
 }
+
+/** 필수 입력이 모두 찬 미팅 카드인가 — 저장 게이트·확인 모달·기록 옮기기가 같이 쓴다. */
+export function isSlotComplete(slot: NewSlot): boolean {
+  return missingSlotFields(slot).length === 0;
+}

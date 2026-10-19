@@ -1,9 +1,11 @@
+import { DB_SHEET_QUALIFIED_RESULTS } from "@/types/db-sheet";
+
 export const STATUS_FILTERS = [
   { id: "uncontacted", label: "미컨택", results: ["미컨택"] },
   { id: "absent", label: "부재", results: ["부재"] },
   { id: "simple-refusal", label: "단순거절", results: ["단순거절"] },
   { id: "recall", label: "재통화", results: ["재통화"] },
-  { id: "progress", label: "컨택진행(미팅·거절)", results: ["컨택진행", "상담 후 거절"] },
+  { id: "progress", label: "컨택진행(미팅·거절)", results: DB_SHEET_QUALIFIED_RESULTS },
   { id: "as-planned", label: "AS신청", results: ["AS예정"] },
 ] as const;
 

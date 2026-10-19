@@ -26,13 +26,8 @@ import {
   FieldNote,
   FieldText,
 } from "./MeetingSlotForm";
+import { CHANNEL_BADGE_CLASS as CHANNEL_BADGE } from "@/components/ui/ChannelBadge";
 
-const CHANNEL_BADGE: Record<Channel, string> = {
-  매입DB: "badge badge-purchase",
-  직접생산: "badge badge-direct",
-  현수막: "badge badge-banner",
-  "콜·지·기·소": "badge badge-referral",
-};
 
 export interface NewSlot {
   tempId: string;

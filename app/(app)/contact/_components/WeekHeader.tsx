@@ -8,8 +8,8 @@
 
 import { addDays, dayLabelKO, fmtMD, friOf, parseISO } from "../_lib/week";
 import type { ReactNode } from "react";
+import { DAY_KO as JS_DAY_KO } from "@/util/week";
 
-const JS_DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 interface Props {
   goalSummary?: ReactNode;

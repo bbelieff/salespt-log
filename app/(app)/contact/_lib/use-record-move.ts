@@ -24,7 +24,7 @@ import type {
 import type { Meeting } from "@/types";
 import type { NewSlot } from "../_components/MeetingSlotItem";
 import type { MoveCandidate, MoveDecision } from "../_components/RecordMoveModal";
-import { isSlotComplete } from "../_components/SaveConfirmModal";
+import { isSlotComplete } from "./slot-validation";
 import { buildMeetingFromSlot } from "./meeting-draft";
 import { fmtMD, parseISO } from "./week";
 

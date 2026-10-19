@@ -2,9 +2,8 @@
  * 캘린더 탭 월 단위 유틸.
  * 한 달의 6×7 그리드 셀 데이터를 만든다 (앞뒤 공백 + 그 달 + 트레일).
  */
-import { parseISO } from "@/util/week";
+import { parseISO, DAY_KO } from "@/util/week";
 
-const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 export function fmtISO(d: Date): string {
   const y = d.getFullYear();
@@ -83,7 +82,7 @@ export function buildMonthGrid(yyyyMM: string): CalendarCell[] {
 }
 
 export function dayLabelHeader(): string[] {
-  return DAY_KO;
+  return [...DAY_KO];
 }
 
 /** 월 +/- 이동 (yyyyMM 입력 → yyyyMM 반환). */
