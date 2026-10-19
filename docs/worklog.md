@@ -1,3 +1,6 @@
+## 2026-10-19 · 구조 개선 7/11 — 상단바·메뉴 권한 판정 한 곳 (refactor/nav-entitlements)
+- `headerEntitlements`·`isAdminSession`·`viewModeFor` 로 통일. 관리자 항목이 사이드 메뉴엔 있고 상단 팝업엔 없던 어긋남 해소.
+
 ## 2026-10-19 · 구조 개선 6/11 — 계약 연결 키 한 곳 (refactor/contract-ref-key)
 - 「계약일|업체명」 10곳 → `contractRef()`, 비교는 공백 무시(저장값 무변경). 업체명 공백으로 할 일 연결이 끊기던 잠재 문제 해소.
 
