@@ -27,24 +27,25 @@ describe("헤더 수강생 대시보드 진입점", () => {
     expect(header).toMatch(/\{showStudentDashboardLink && \(\s*<Link href="\/dashboard"/);
   });
 
+  // 2026-10-19 구조 개선 ⑨: 판정은 components/auth/nav-entitlements.ts 하나 — 헤더와 역할 전환이 같이 부른다.
+  const ent = read("components/auth/nav-entitlements.ts");
+
   it("학생 권한 확인과 dual-role 트레이너 진입점 중복 방지를 모두 적용한다", () => {
     // 기존 조건은 trainer-only에도 가짜 학생 진입점을 노출했다.
     // 실제 capability/이동 회귀는 components/top-header-regression.test.ts에서 검증한다.
-    expect(header).toMatch(/const roleToggleShown\s*=\s*!!trainer\.data\?\.canStudent && !!trainer\.data\?\.canTrainer/);
-    expect(header).toMatch(
-      /const showStudentDashboardLink\s*=\s*roleView === "student" \|\| \(trainer\.data\?\.canStudent === true &&\s*!roleToggleShown\)/,
-    );
+    expect(header).toMatch(/headerEntitlements\(\{ me: me\.data, trainer: trainer\.data, pathname, roleMode \}\)/);
+    expect(ent).toMatch(/const roleToggleShown\s*=\s*!!trainer\?\.canStudent && !!trainer\?\.canTrainer/);
+    expect(ent).toMatch(/showStudentDashboardLink: roleView === "student" \|\| \(trainer\?\.canStudent === true && !roleToggleShown\)/);
   });
 
   it("화면 판정은 roleMode 가 없을 때 pathname 으로 폴백한다", () => {
-    expect(header).toMatch(
-      /const roleView\s*=\s*roleMode \?\? \(pathname\?\.startsWith\("\/trainer"\) \? "trainer" : "student"\)/,
-    );
+    expect(ent).toMatch(/return hint \?\? \(pathname\?\.startsWith\("\/trainer"\) \? "trainer" : "student"\)/);
+    expect(ent).toMatch(/const roleView = viewModeFor\(pathname, roleMode\)/);
   });
 
   it("폴백 규칙이 RoleViewSwitch 와 같다 — 두 컴포넌트가 다른 화면으로 판정하면 안 된다", () => {
     const sw = read("components/auth/RoleViewSwitch.tsx");
-    expect(sw).toMatch(/pathname\.startsWith\("\/trainer"\) \? "trainer" : "student"/);
+    expect(sw).toMatch(/viewModeFor\(pathname,\s*modeHint\)/);
   });
 
   it("토글 렌더 조건이 RoleViewSwitch 의 실제 가드와 일치한다", () => {

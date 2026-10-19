@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { safeRolePath, type ViewRole } from "@/util/role-view";
+import { viewModeFor } from "./nav-entitlements";
 export type TrainerState = {email:string;name:string;status:string;canStudent:boolean;canTrainer:boolean;isAdmin:boolean;impersonating:boolean};
 export function useTrainerState() {
   return useQuery<TrainerState>({queryKey:["trainer-state"],queryFn:async () => {
@@ -15,7 +16,7 @@ export function useTrainerState() {
 export default function RoleViewSwitch({modeHint}:{modeHint?:ViewRole}) {
   const {data} = useTrainerState();
   const pathname=usePathname();
-  const mode:ViewRole=modeHint ?? (pathname.startsWith("/trainer") ? "trainer" : "student");
+  const mode:ViewRole=viewModeFor(pathname,modeHint);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const guard=useGuardedNav();

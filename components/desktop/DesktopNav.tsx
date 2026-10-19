@@ -13,6 +13,7 @@
 "use client";
 
 import Link from "next/link";
+import { isAdminSession } from "@/components/auth/nav-entitlements";
 import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
@@ -182,7 +183,7 @@ export default function DesktopNav() {
   }
   // 관리자 항목 노출 — 서버가 준 값(useMe)으로만 판정. 클라이언트에서 이메일
   // 직접 판정 같은 임의 판단 금지. 둘 다 없으면 숨긴다(생략이 오판보다 낫다).
-  const isAdmin = me.data?.isAdmin === true || me.data?.sessionRole === "admin";
+  const isAdmin = isAdminSession(me.data);
   return (
     <nav
       aria-label="주 메뉴"

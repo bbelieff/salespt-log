@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { headerEntitlements } from "@/components/auth/nav-entitlements";
 import type { Route } from "next";
 import RoleViewSwitch, { useTrainerState } from "./auth/RoleViewSwitch";
 import { usePathname } from "next/navigation";
@@ -68,11 +69,8 @@ export default function TopHeader({
   // 수강생 화면에는 항상 복귀 링크를 표시한다. Dual-role 트레이너 화면은 안전한 토글만 사용한다.
   //  - 일반 수강생(canTrainer=false): 토글이 안 뜨므로 Link 유지(9개 화면의 유일한 복귀 동선).
   //  - roleMode 는 WeeklyGoalPage 한 곳에서만 넘어온다 → RoleViewSwitch 와 **같은** pathname 폴백.
-  const roleView = roleMode ?? (pathname?.startsWith("/trainer") ? "trainer" : "student");
-  const roleToggleShown = !!trainer.data?.canStudent && !!trainer.data?.canTrainer;
-  // Student-page navigation must not depend on the separate trainer recruitment query.
-  const showStudentDashboardLink = roleView === "student" || (trainer.data?.canStudent === true &&
-    !roleToggleShown);
+  const nav = headerEntitlements({ me: me.data, trainer: trainer.data, pathname, roleMode });
+  const { roleView, roleToggleShown, showStudentDashboardLink } = nav;
   // PostHog 식별 + 내부 트래픽 태깅 (ADR-0009/0013).
   //  - 관리자 본인 또는 대리접속(impersonating) = 내부 → is_internal super property.
   //  - 대리접속 중에는 대상 학생 PII 로 identify 하지 않음(ADR-0009). 비-대리 관리자는
@@ -230,12 +228,12 @@ export default function TopHeader({
                 <span>📚 사용 가이드</span>
               </a>
             )}
-            {trainer.data && !trainer.data.canTrainer && !trainer.data.isAdmin && (
+            {nav.showTrainerApply && (
               <Link href="/trainer/apply" onClick={()=>setPopupOpen(false)} className="flex h-11 items-center border-t border-gray-100 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                {trainer.data.status === "pending" ? "승인 대기 · 신청 확인" : "트레이너 신청"}
+                {nav.trainerApplyPending ? "승인 대기 · 신청 확인" : "트레이너 신청"}
               </Link>
             )}
-            {me.data?.sessionRole === "admin" && (
+            {nav.isAdmin && (
               <Link
                 href="/admin"
                 onClick={() => setPopupOpen(false)}
@@ -247,7 +245,7 @@ export default function TopHeader({
                 <span>관리자 페이지 →</span>
               </Link>
             )}
-            {me.data?.sessionRole === "trainer" && (
+            {nav.showTrainerPage && (
               <Link
                 href="/trainer"
                 onClick={() => setPopupOpen(false)}
