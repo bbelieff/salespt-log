@@ -1,3 +1,6 @@
+## 2026-10-19 · 구조 개선 3/11 — DB관리시트 업체 동일성 한 곳 (refactor/db-sheet-lead-identity)
+- 화면 중복 경고와 서버 저장 차단의 「같은 업체」 판정, 국제 번호 변환을 `lib/util/db-sheet-identity.ts` 로. 「+82 010」 꼴 번호 중복 누락 해소.
+
 ## 2026-10-19 · 구조 개선 2/11 — 수납 칸 규칙 한 곳 (refactor/contract-slot-rules)
 - 「입력됨·보일 칸 수·진행률 평균·합계·완료」 3벌 → `lib/analytics/contract-slots.ts`. 메모만 있는 칸이 상세 카드에서 숨던 어긋남 해소.
 

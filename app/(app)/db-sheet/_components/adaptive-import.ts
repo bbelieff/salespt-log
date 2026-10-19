@@ -1,3 +1,4 @@
+import { domesticPhoneDigits } from "@/util/db-sheet-identity";
 import {blank,cleanCell,delimited,formatPhone,headerKey,parse,validDate,type Row,type Key} from './model';
 
 export type ImportField = Exclude<Key,'inflow'|'stage'|'result'|'first'|'next'>;
@@ -14,7 +15,7 @@ export const importFields: {key:ImportField;label:string}[] = [
 ];
 export function normalizeImportPhone(value:string) {
  const raw=value.replace(/^p:/i,'').trim();
- const digits=raw.replace(/^\+82\s*0?/,'0').replace(/[\s()-]/g,'');
+ const digits=/^\+82/.test(raw)?domesticPhoneDigits(raw):raw.replace(/[\s()-]/g,'');
  return formatPhone(/^10\d{8}$/.test(digits)?'0'+digits:/^\d+$/.test(digits)?digits:raw);
 }
 function normalizedDate(value:string) {

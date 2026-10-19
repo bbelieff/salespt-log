@@ -1,4 +1,5 @@
 /** Server-only DB sheet ledger. Never falls back to Sheets; migration 0008 must already exist. */
+import { formatMobilePhone } from "@/util/db-sheet-identity";
 import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
@@ -51,7 +52,6 @@ async function contributions(c:PoolClient,ctx:DbSheetContext,lead:DbSheetLead,si
  const recorded=lead._recorded;
  return [...(recorded?.inflow?[{date:lead.date,channel:lead.channel,inflow:sign,contacts:0}]:[]),...(recorded?.contacts??[]).map(date=>({date,channel:lead.channel,inflow:0,contacts:sign}))];
 }
-function normalizePhone(value:string){const d=value.replace(/^p:/i,"").replace(/^\+82/,"0").replace(/[^0-9]/g,"");return /^01[016789]\d{8}$/.test(d)?d.replace(/^(\d{3})(\d{4})(\d{4})$/,"$1-$2-$3"):value;}
 function projectMeeting(data:DbSheetLead,meeting:unknown,lineage:string[]=[]):DbSheetLead {
  if(meeting&&typeof meeting==='object'&&(meeting as {_cleared?:boolean})._cleared)return {...data,stage:DB_SHEET_MEETING_DELETED};
  const parsed=Meeting.safeParse(meeting);if(!parsed.success)return data;
@@ -91,7 +91,7 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
   current=await linkedProjection(c,ctx,old);
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
- const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:normalizePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
+ const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:formatMobilePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
   followUp:{generation:(old?.followUp?.generation??0)+(old&&scheduleNext?1:0),completedGeneration:old?.followUp?.completedGeneration??null,lastContactDate:old?.followUp?.lastContactDate??""},
   // Response-only lineage (persist strips it): lets the status projector match a contract linked to a rescheduled child meeting.
   ...(current?.effectiveMeetingId?{effectiveMeetingId:current.effectiveMeetingId,meetingLineageIds:current.meetingLineageIds??[]}:{})};
