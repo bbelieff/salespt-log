@@ -13,14 +13,22 @@ let host:HTMLDivElement,root:Root;
 beforeEach(()=>{host=document.createElement('div');document.body.append(host);root=createRoot(host);HTMLDialogElement.prototype.showModal=vi.fn();HTMLDialogElement.prototype.close=vi.fn();});
 afterEach(()=>{act(()=>root.unmount());host.remove();vi.restoreAllMocks();});
 const button=(text:string)=>[...host.querySelectorAll('button')].find(b=>b.textContent===text)!;
-it('shows unknown for an unlinked historical row instead of claiming it was counted',async()=>{
+it('reports a missing projection as an error and preserves both authoritative inflow states',async()=>{
  const row={...blank(),company:'합성 업체'},open=vi.fn(),persist=vi.fn(async()=>{});
  await act(async()=>root.render(createElement(InflowStatusCell,{row,onOpen:open})));
- expect(host.textContent).toBe('확인 필요');act(()=>button('확인 필요').click());expect(open).toHaveBeenCalledOnce();expect(host.querySelector('dialog')).toBeNull();expect(host.textContent).not.toContain('유입 1건');
+ expect(host.querySelector('[role=alert]')!.textContent).toBe('오류');expect(host.querySelector('[role=alert]')!.getAttribute('aria-label')).toContain('유입 표시를 불러오지 못했습니다');expect(host.querySelector('[role=alert]')!.getAttribute('title')).toContain('새로고침해 주세요');expect(host.querySelector('button')).toBeNull();expect(open).not.toHaveBeenCalled();expect(host.querySelector('dialog')).toBeNull();expect(host.textContent).not.toContain('유입 1건');
  await act(async()=>root.render(createElement(InflowStatusCell,{row,onToggle:persist})));
- expect(host.textContent).toContain('확인 필요 · 기존 유입 기록을 확인해 주세요.');
- const choices=[...host.querySelectorAll<HTMLButtonElement>('[role=radio]')];expect(choices).toHaveLength(2);expect(choices.every(choice=>choice.disabled)).toBe(true);
- act(()=>choices[0]!.click());expect(persist).not.toHaveBeenCalled();expect(host.textContent).not.toContain('유입 1건');
+ expect(host.querySelector('[role=alert]')!.textContent).toContain('새로고침해 주세요');expect(host.textContent).not.toMatch(/확인 필요|유입\?/);
+ expect(host.querySelectorAll('[role=radio]')).toHaveLength(0);expect(persist).not.toHaveBeenCalled();expect(host.textContent).not.toContain('유입 1건');
+ for(const state of ['recorded','excluded'] as const){
+  const known={...row,inflowStatus:{state,count:state==='recorded'?1 as const:0 as const}};
+  await act(async()=>root.render(createElement(InflowStatusCell,{row:known,onOpen:open})));
+  expect(host.querySelector('[role=alert]')).toBeNull();act(()=>button(state==='recorded'?'반영됨':'미반영').click());expect(host.querySelector('dialog')).toBeNull();
+  await act(async()=>root.render(createElement(InflowStatusCell,{row:known,onToggle:persist})));
+  const choices=[...host.querySelectorAll<HTMLButtonElement>('[role=radio]')];expect(choices).toHaveLength(2);expect(choices.every(choice=>!choice.disabled)).toBe(true);expect(choices[state==='recorded'?0:1]!.getAttribute('aria-checked')).toBe('true');
+  await act(async()=>choices[state==='recorded'?1:0]!.click());expect(persist).toHaveBeenLastCalledWith(state==='excluded');
+ }
+ expect(open).toHaveBeenCalledTimes(2);expect(persist).toHaveBeenCalledTimes(2);
 });
 it('previews a retrospective change before confirming, and invalidates preview when settings change',async()=>{
  const preview=vi.fn(async()=>({inflow:1,contacts:2,meetings:0,rows:[]})),confirm=vi.fn(async()=>{});

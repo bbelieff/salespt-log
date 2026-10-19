@@ -66,10 +66,9 @@ it("shows accounting guidance on each option while keeping AS storage and date p
  expect(recordsDbSheetFirstContact('AS예정')).toBe(false);
 });
 
-it("disables unknown inflow without calling persistence",()=>{
- const toggle=vi.fn(async()=>{});act(()=>root.render(React.createElement(InflowStatusCell,{row:{...row,inflowStatus:{state:'unknown',count:0}},onToggle:toggle})));
- const options=host.querySelectorAll<HTMLButtonElement>('[role=radio]');expect([...options].every(button=>button.disabled)).toBe(true);
- click(options[0]!);expect(toggle).not.toHaveBeenCalled();
+it("treats a missing projection as an explicit response error, never as a third state or guessed OFF",()=>{
+ const toggle=vi.fn(async()=>{});act(()=>root.render(React.createElement(InflowStatusCell,{row:{...row,inflowStatus:undefined},onToggle:toggle})));
+ expect(host.querySelector('[role=alert]')!.textContent).toContain('불러오지 못했습니다');expect(host.querySelectorAll('[role=radio]')).toHaveLength(0);expect(host.textContent).not.toMatch(/확인 필요|유입\?/);expect(toggle).not.toHaveBeenCalled();
 });
 
 it("includes blank and long suppliers, supports all/clear, and closes its portal on Escape",()=>{

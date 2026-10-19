@@ -771,7 +771,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 
 ### DB관리시트 기록 범위·반영 증거 (2026-10-15)
 - `DbSheetRecording` = {inflow:boolean, activities:boolean}. 새 등록 기본 모두 true. 유입 제외 또는 전체 제외를 저장한다. 기존 행의 생략 필드는 기존 집계 의미를 보존한다.
-- `DbSheetLead.inflowStatus`는 서버 증거 투영: recorded/excluded/unknown, date/channel/count. `_recorded`는 서버 소유 JSONB 기여 증거이며 입력 스키마가 받지 않는다. 사용자가 임의 원장 값을 보내도 반영하지 않는다.
+- `DbSheetLead.inflowStatus`는 실제 서버 기여 증거의 두 상태 투영: recorded(반영,count1)/excluded(미반영,count0), date/channel. `_recorded.inflow`가 정본이며 `recording.inflow`는 향후 정책이라 OFF만으로 기여 취소를 뜻하지 않는다. 생성 유입+1 및 저장 시 ON 정책의 기여 확정 불변식에 따라 `_recorded`가 없고 정책이 누락/true인 legacy는 ON으로 읽기 투영하고, rev1 이력 부재만으로 제3상태를 만들지 않는다(조회 시 원장수정·백필0). 기여 누락+OFF 정책, 명시 모순·오염은 엄격 조회/변경에서 오류로 거부한다. 목록만 순수 행별 투영의 `DbSheetOperationBlocked`를 격리해 그 행의 stale 값 포함 inflowStatus를 생략하고 UI 명시 오류/write0로 표시하며 정상 행은 유지한다(SQL/권한/전체 읽기·다른 오류는 전파). `_recorded`는 서버 소유 JSONB 증거로 입력 스키마가 받지 않아 사용자가 보낸 원장은 반영하지 않는다.
 - 사후 ON은 실제 저장된 상담/미팅 기록에만 적용, 이미 반영한 항목을 재가산하지 않는다. OFF/범위 축소는 이미 반영된 기여를 차감하지 않는다. 날짜/채널 변경·영구삭제는 실제 자동 기여만 이동/제거한다.
 - 유입·컨택 수동 숫자는 유지. 예약수는 기존 ADR-0010의 실제 미팅 정본 재계산을 유지하되 DB관리시트에서 기록 제외한 미팅은 세지 않는다. 예약수의 수동 baseline이라는 새 정책은 만들지 않는다.
 - 삭제/사후반영 미리보기는 인증 사용자·revision 기준으로 서버 계산. 영구삭제 실행은 다시 검증하며 활성 미팅·계약·복합 계보 연결 건은 차단한다. 배포 시 과거 데이터 일괄 삭제·복원·백필하지 않는다.
@@ -791,5 +791,5 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - DbSheetLeadInput의 optional `asReceived`(boolean), `asNote`(최대20,000자): db_sheet_leads JSONB에 저장. 구버전 클라이언트에서 생략하면 기존값 유지.
 - DbSheetLead의 서버 소유 `firstManual`: 명시 최초상담일 편집/비우기 뒤 자동 날짜 덮어쓰기 방지. 클라이언트 save input에서는 받지 않음.
 - `first-date` 명령: id/revision/first(날짜 또는 빈값), 실제 상담 이력/집계는 변경하지 않음.
-- `inflow-preview`, `inflow`: id/revision/inflow(boolean). 해당 DB의 유입 기여만 추가/제거. 날짜·채널별 수동값과 기존 상담/미팅 기여 보존. 불확실한 legacy 기여·음수위험 차단. 기존 `recording`은 사후 활동반영 정책을 유지.
+- `inflow-preview`, `inflow`: id/revision/inflow(boolean). 기존 tenant/revision·트랜잭션 잠금 아래 해당 날짜·채널의 실제 DB 기여 수와 `_dbSheetInflow`를 exact 대조하고, 전후 전체/DB 수의 안전 정수·비음수 및 직접생산 합계 일치를 확인한 뒤 해당 한 건만 증감한다. 수동분(전체−DB 기여)·기존 상담/미팅 기여를 보존하며, 양수인데 생산값이 없거나 기여/합계가 모순되면 preview/저장 모두 거부한다(없는 0 baseline은 허용). 이력 부재만으로 정상 legacy를 잠그지 않으며, 연결 복구/고객 백필/집계 조정은 수행하지 않는다. 기존 `recording`은 사후 활동반영 정책을 유지하고 삭제 안전 가드는 별도 보존한다.
 - 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.

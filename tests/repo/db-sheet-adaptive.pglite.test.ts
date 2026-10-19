@@ -84,13 +84,13 @@ it("reconciles only own inflow once, preserving manual counts and activity histo
  lead=(await changeDbSheetRecording(ctx,lead.id,lead.revision,{inflow:false,activities:false})).lead;
  expect((await counts()).payload).toMatchObject({inflow:10,contactProgress:5,meetingReservation:3});
 });
-it("blocks uncertain legacy inflow and preserves saved data",async()=>{
+it("history absence alone does not block a consistent legacy contribution",async()=>{
  const lead=(await saveDbSheetLead(ctx,input(),null)).lead;
  await query("update db_sheet_leads set data=data #- '{_recorded}' where spreadsheet_id=$1 and id=$2",[ctx.spreadsheetId,lead.id]);
  await query("delete from db_sheet_history where spreadsheet_id=$1 and lead_id=$2",[ctx.spreadsheetId,lead.id]);
  const before=await sales();const preview=await changeDbSheetInflow(ctx,lead.id,lead.revision,false,true);
- expect(preview.impact?.blockedReason).toContain("확인할 수 없어");
- await expect(changeDbSheetInflow(ctx,lead.id,lead.revision,false)).rejects.toThrow("확인할 수 없어");expect(await sales()).toBe(before);
+ expect(preview.impact?.blockedReason).toBeUndefined();expect(preview.impact?.inflow).toBe(-1);expect(await sales()).toBe(before);
+ const changed=await changeDbSheetInflow(ctx,lead.id,lead.revision,false);expect(changed.lead.inflowStatus?.state).toBe('excluded');expect((await get(lead.id)).inflowStatus?.state).toBe('excluded');
 });
 
 it("refuses subtraction when the daily inflow total no longer contains the proven contribution",async()=>{
