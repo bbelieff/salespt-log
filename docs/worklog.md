@@ -1,3 +1,6 @@
+## 2026-10-19 · 구조 개선 8/11 — DB관리시트 저장 엔진 분리 (refactor/db-sheet-store)
+- 화면 훅 안 ref 7개에 숨어 있던 저장 규칙을 `db-sheet-store.ts` 로(동작 동일). 화면 없이 시험 6개 + 실화면 장치로 저장 흐름 확인.
+
 ## 2026-10-19 · 구조 개선 7/11 — 상단바·메뉴 권한 판정 한 곳 (refactor/nav-entitlements)
 - `headerEntitlements`·`isAdminSession`·`viewModeFor` 로 통일. 관리자 항목이 사이드 메뉴엔 있고 상단 팝업엔 없던 어긋남 해소.
 
