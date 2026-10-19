@@ -1,4 +1,5 @@
 /** Pure follow-up rules shared by the dashboard and its acceptance tests. */
+import { contractRef, normalizeContractRef, sameContractRef } from "@/util/contract-ref";
 import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
 import { isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
@@ -23,7 +24,7 @@ export type FollowUpCounts = Record<FollowUpKind, number>;
 const SLOTS = [1, 2, 3] as const;
 const shiftISO = (iso: string, days: number) => fmtISO(addDays(parseISO(iso), days));
 const daysBetween = (later: string, earlier: string) => diffDays(parseISO(later), parseISO(earlier));
-const contractRefOf = (cp: ContractPayment) => `${cp.계약일}|${cp.업체명}`;
+const contractRefOf = (cp: ContractPayment) => contractRef(cp.계약일, cp.업체명);
 const slotOf = (cp: ContractPayment, slot: 1 | 2 | 3): PaymentSlot => cp[`수납${slot}`];
 const visibleSlots = (cp: ContractPayment): Array<1 | 2 | 3> => {
   const populated = SLOTS.filter(slot => slotHasData(slotOf(cp, slot)));
@@ -57,7 +58,7 @@ export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], 
     if (seen.has(t.id)) continue;
     seen.add(t.id);
     if ((t.기록종류 ?? "todo") !== "todo" || t.완료여부 || t.type === "일반" || !isValidISODate(t.예정일자) || t.예정일자 > shiftISO(today, UPCOMING_DAYS)) continue;
-    const cp = byRef.get(t.contractRef);
+    const cp = byRef.get(normalizeContractRef(t.contractRef));
     if (cp && !active.has(cp)) continue;
     if (!cp || cp.row == null) { out.unlinked++; continue; }
     const slot = slotForTodo(cp, t.institutionRef);
@@ -124,7 +125,7 @@ export function buildStalledWork(contracts: ContractPayment[], todos: Todo[], to
     for (const slot of visibleSlots(cp)) {
       const data = slotOf(cp, slot), institution = normalizeInstitution(data.진행기관);
       if (classifyWorkStatus(data, false, today) === "collected") continue;
-      const records = todos.filter(t => t.contractRef === contractRefOf(cp) && slotForTodo(cp, t.institutionRef) === slot && t.type !== "일반");
+      const records = todos.filter(t => sameContractRef(t.contractRef, contractRefOf(cp)) && slotForTodo(cp, t.institutionRef) === slot && t.type !== "일반");
       const open = records.filter(t => (t.기록종류 ?? "todo") === "todo" && !t.완료여부 && isValidISODate(t.예정일자));
       const activity = records.filter(t => t.기록종류 === "history" || t.완료여부).map(t => t.예정일자)
         .filter(d => isValidISODate(d) && d <= today).sort().at(-1);

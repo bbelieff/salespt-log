@@ -1,3 +1,4 @@
+import { contractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { activityTodayISO, compareWorkActivity, progressPct } from "./payment-progress";
 import { buildSlotActivityIndex, slotActivityKey, slotHasData } from "@/lib/analytics/payment-work-status";
@@ -22,7 +23,7 @@ export interface InstitutionWorkItem {
 export type WorkActivitySummary = Pick<InstitutionWorkItem, "activityKind" | "activityDate" | "activityLabel">;
 
 export function companyActivityKey(cp: Pick<ContractPayment, "row" | "계약일" | "업체명">): string {
-  return cp.row != null ? `row:${cp.row}` : `contract:${cp.계약일}|${cp.업체명}`;
+  return cp.row != null ? `row:${cp.row}` : `contract:${contractRef(cp.계약일, cp.업체명)}`;
 }
 
 /** 회사 대표도 목록과 같은 활동 우선순위를 적용한다. */
@@ -81,11 +82,11 @@ export function buildInstitutionWorkItems(
       // 예전 자유입력은 "소진공 신취"처럼 상품을 기관 칸에 함께 적었다.
       // 보기에서만 분리한다. 원본 기관 키는 Todo/캘린더 연결을 위해 그대로 둔다.
       const legacyProduct = /^소진공\s+(.+)$/u.exec(storedInstitution)?.[1]?.trim() ?? "";
-      const activity = dates.get(slotActivityKey(`${cp.계약일}|${cp.업체명}`, storedInstitution));
+      const activity = dates.get(slotActivityKey(contractRef(cp.계약일, cp.업체명), storedInstitution));
       const kind: WorkActivityKind = activity?.todo ? "todo" : activity?.history ? "history" : "none";
       const date = kind === "todo" ? activity!.todo : kind === "history" ? activity!.history : "";
       out.push({
-        key: `${cp.row ?? `${cp.계약일}|${cp.업체명}`}-${slot}`,
+        key: `${cp.row ?? contractRef(cp.계약일, cp.업체명)}-${slot}`,
         contractKey: companyActivityKey(cp),
         row: cp.row ?? null,
         slot,

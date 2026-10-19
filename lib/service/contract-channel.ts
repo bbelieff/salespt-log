@@ -12,6 +12,7 @@
  */
 import type { ContractPayment, DashboardContractChannel, Meeting } from "@/types";
 import { contractChannelKey, isManualContractLink } from "@/util/contract-link";
+import { contractRef } from "@/util/contract-ref";
 
 type ContractRef = Pick<ContractPayment, "linkedMeetingId" | "계약일" | "업체명">;
 
@@ -21,13 +22,13 @@ export function contractMeetingResolver(meetings: readonly Meeting[]): (p: Contr
   const byKey = new Map<string, Meeting>(); // `${미팅날짜}|${업체명}` — 첫 매칭 우선
   for (const m of meetings) {
     if (m.id) byId.set(m.id, m);
-    const key = `${m.미팅날짜}|${m.업체명}`;
+    const key = contractRef(m.미팅날짜, m.업체명);
     if (!byKey.has(key)) byKey.set(key, m);
   }
   return (p) => {
     if (isManualContractLink(p.linkedMeetingId)) return undefined;
     const linked = p.linkedMeetingId ? byId.get(p.linkedMeetingId) : undefined;
-    return linked ?? byKey.get(`${p.계약일}|${p.업체명}`);
+    return linked ?? byKey.get(contractRef(p.계약일, p.업체명));
   };
 }
 

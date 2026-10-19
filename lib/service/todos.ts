@@ -18,6 +18,7 @@
  *   • 미러 최종 실패는 저장 실패가 아님(정본=DB) — Sentry(sheet_mirror_error)로만 계수하고,
  *     다음 어떤 쓰기든 같은 행을 다시 최신 상태로 동기화한다(자기치유).
  */
+import { sameContractRef } from "@/util/contract-ref";
 import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
@@ -163,7 +164,7 @@ export async function listTodos(
   const ctx = await resolveSheet(email, spreadsheetIdOverride);
   if (usesDbStorage(ctx.cohort)) {
     return (await readTodosFromDb(ctx.spreadsheetId))
-      .filter((t) => t.contractRef === contractRef)
+      .filter((t) => sameContractRef(t.contractRef, contractRef))
       .sort(
         (a, b) =>
           a.생성시각.localeCompare(b.생성시각) || a.id.localeCompare(b.id),
