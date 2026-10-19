@@ -12,6 +12,7 @@
  *
  * SSOT: docs/domains/sheet-structure.md §5-2
  */
+import { sameContractRef } from "@/util/contract-ref";
 import { SHEET_RANGES } from "@/config";
 import { Todo, type TodoType } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
@@ -374,7 +375,7 @@ export async function listTodosByContract(
   const seen = new Set<string>();
   for (const r of all) {
     const t = rowToTodo(r);
-    if (!t || t.contractRef !== contractRef) continue;
+    if (!t || !sameContractRef(t.contractRef, contractRef)) continue;
     if (seen.has(t.id)) continue;
     seen.add(t.id);
     out.push(t);

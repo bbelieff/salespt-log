@@ -1,3 +1,4 @@
+import { contractRef, normalizeContractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
 import { slotHasData, slotsOf } from "./contract-slots";
@@ -36,7 +37,7 @@ export interface SlotActivity {
 
 /** 슬롯의 저장된 기관명과 Todo/History 를 잇는 키 — 기관명 양끝 공백은 같은 것으로 본다. */
 export function slotActivityKey(contractRef: string, institution: string): string {
-  return `${contractRef}\u0000${normalizeInstitution(institution)}`;
+  return `${normalizeContractRef(contractRef)}\u0000${normalizeInstitution(institution)}`;
 }
 
 /**
@@ -81,14 +82,14 @@ export function buildWorkStatusItems(
   todos: Todo[],
   todayISO: string,
 ): WorkStatusItem[] {
-  const todoKeys = new Set(todos.map((t) => `${t.contractRef}|${t.institutionRef.trim()}`));
+  const todoKeys = new Set(todos.map((t) => `${normalizeContractRef(t.contractRef)}|${t.institutionRef.trim()}`));
   const out: WorkStatusItem[] = [];
   for (const cp of contracts) {
-    const contractRef = `${cp.계약일}|${cp.업체명}`;
+    const ref = contractRef(cp.계약일, cp.업체명);
     const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot));
     const effective = populated.length ? populated : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
     for (const [slotNo, slot] of effective) {
-      const hasTodo = todoKeys.has(`${contractRef}|${slot.진행기관.trim()}`);
+      const hasTodo = todoKeys.has(`${ref}|${slot.진행기관.trim()}`);
       out.push({
         key: `${cp.row ?? cp.업체명}-${slotNo}`,
         status: classifyWorkStatus(slot, hasTodo, todayISO),

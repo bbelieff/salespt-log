@@ -10,6 +10,7 @@
  */
 "use client";
 
+import { contractRef as contractRefOf } from "@/util/contract-ref";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
 import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
@@ -218,7 +219,7 @@ export default function ContractRow({
     }
   }, [focusedSlot, selectable]);
 
-  const contractRef = cp.계약일 && cp.업체명 ? `${cp.계약일}|${cp.업체명}` : "";
+  const contractRef = cp.계약일 && cp.업체명 ? contractRefOf(cp.계약일, cp.업체명) : "";
   const todosQuery = useTodosByContract(contractRef);
   const allTodos = useMemo(() => todosQuery.data?.todos ?? [], [todosQuery.data?.todos]);
 

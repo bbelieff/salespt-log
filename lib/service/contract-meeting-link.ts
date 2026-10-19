@@ -169,7 +169,7 @@ export async function linkMeetingToContract(email: string, input: LinkInput): Pr
   }
 
   try {
-    const oldRefs = new Set([`${cp.계약일}|${cp.업체명}`, companyContractRef(cp.계약일, cp.업체명)]);
+    const oldRefs = new Set([companyContractRef(cp.계약일, cp.업체명)]); // 조회가 공백 차이를 무시한다(contract-ref)
     const newRef = companyContractRef(계약일, 업체명);
     const todos = (await Promise.all([...oldRefs].map((r) => listTodos(email, r)))).flat();
     const seen = new Set<string>();

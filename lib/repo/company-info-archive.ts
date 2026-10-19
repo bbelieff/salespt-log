@@ -12,6 +12,7 @@
  * §2.5 가드: append 는 A열 빈 행 탐색 + 그 행 FORMULA pre-read 로 raw 값 있으면
  * 다음 빈 행 재탐색(타 데이터 덮어쓰기 방지). update 는 자기 키(계약ref) 행만 타격.
  */
+import { contractRef } from "@/util/contract-ref";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { SHEET_RANGES } from "@/config";
@@ -59,7 +60,7 @@ const EXT_HEADER_START = 4 + COMPANY_FIELDS.length + 1; // 25 (Z)
 
 /** 계약ref 합성키 — 05 contractRef 와 동일 포맷. */
 export function companyContractRef(계약일: string, 업체명: string): string {
-  return `${계약일}|${업체명.trim()}`;
+  return contractRef(계약일, 업체명);
 }
 
 /** (업체명·계약일·업체정보) → 06 1행 배열 (A~BL, 64컬럼). 순수 — 테스트 대상. */

@@ -10,6 +10,7 @@
  */
 "use client";
 
+import { contractRef } from "@/util/contract-ref";
 import { useMemo, type ReactNode } from "react";
 import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
@@ -46,12 +47,12 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
     const terminatedKeys = new Set(
       rows
         .filter(isTerminatedContract)
-        .map((cp) => `${cp.계약일}|${cp.업체명.trim()}`),
+        .map((cp) => contractRef(cp.계약일, cp.업체명)),
     );
     return meetings.filter(
       (m) =>
         m.상태 === "계약" &&
-        !terminatedKeys.has(`${m.미팅날짜}|${m.업체명.trim()}`),
+        !terminatedKeys.has(contractRef(m.미팅날짜, m.업체명)),
     ).length;
   }, [cpQuery.data, meetings]);
   const commissionSum = useMemo(() => {
@@ -59,11 +60,11 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
     const weekContractKeys = new Set(
       meetings
         .filter((m) => m.계약여부 && m.구분 !== "이월")
-        .map((m) => `${m.미팅날짜}|${m.업체명.trim()}`),
+        .map((m) => contractRef(m.미팅날짜, m.업체명)),
     );
     return rows
       .filter((cp) =>
-        weekContractKeys.has(`${cp.계약일}|${cp.업체명.trim()}`),
+        weekContractKeys.has(contractRef(cp.계약일, cp.업체명)),
       )
       .reduce(
         (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
