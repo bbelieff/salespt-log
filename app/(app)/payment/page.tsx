@@ -14,7 +14,7 @@
 import PageContainer from "@/components/PageContainer";
 import usePcBreakpoint from "./_components/usePcBreakpoint";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useReducer, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import { type ContractPayment } from "@/types";
@@ -50,6 +50,7 @@ import "./payment-company-compact.css";
 import { contractAccentFamily } from "./_lib/contractAccent";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { activityTodayISO } from "./_lib/payment-progress";
+import { INITIAL_PAYMENT_SELECTION, paymentSelectionReducer, scrollToPaymentSlot } from "./_lib/payment-selection";
 import { useAllTodos } from "@/query/todos-hooks";
 
 interface ConfirmTarget {
@@ -74,12 +75,10 @@ export default function PaymentPage() {
 
   const [pendingRow, setPendingRow] = useState<number | null>(null);
   // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
-  const [companyQuery, setCompanyQuery] = useState("");
-  const [listMode, setListMode] = useState<"company" | "institution">("company");
-  const [selectedWorkKey, setSelectedWorkKey] = useState<string | null>(null);
-  const [selectedCompanyKey, setSelectedCompanyKey] = useState<string | null>(null);
-  const [mobileDetailExpanded, setMobileDetailExpanded] = useState(true);
-  const [focusRequestId, setFocusRequestId] = useState(0);
+  // 선택 상태는 순수 전이 하나로(구조 개선 ⑩) — 스크롤·미저장 가드·외부 포커스 해제는 여기서 그대로.
+  const [selection, dispatch] = useReducer(paymentSelectionReducer, INITIAL_PAYMENT_SELECTION);
+  const { listMode, query: companyQuery, workKey: selectedWorkKey, companyKey: selectedCompanyKey, row: selectedRow, focusId: focusRequestId, detailExpanded: mobileDetailExpanded } = selection;
+  const setCompanyQuery = (value: string) => dispatch({ type: "query", value });
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
@@ -92,7 +91,6 @@ export default function PaymentPage() {
     null,
   );
   const isPc = usePcBreakpoint();
-  const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const guardedNav = useGuardedNav();
   const allTodos = useAllTodos();
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -104,9 +102,7 @@ export default function PaymentPage() {
   const { safeFocusTodoId, companyOnlyTodoFocus, focusPayment, clearPaymentFocus } = usePaymentFocus(list.data?.rows, isPc);
   const focusNotice = companyOnlyTodoFocus ? <p role="status" className="px-4 py-2 text-xs text-amber-800">할 일의 연결 진행건을 확인해 주세요. 기관이 일치하는 진행건을 직접 선택할 수 있어요.</p> : null;
   usePaymentFocusSelection(focusPayment, (target) => {
-    setSelectedRow(target.row);
-    setSelectedCompanyKey(companyKeyOfRow(list.data?.rows, target.row));
-    setFocusRequestId((id) => id + 1);
+    dispatch({ type: "focusTarget", row: target.row, companyKey: companyKeyOfRow(list.data?.rows, target.row) });
   });
 
   const showToast = (msg: string) => {
@@ -241,29 +237,24 @@ export default function PaymentPage() {
   const selFamily = selectedCp ? contractAccentFamily(selectedCp) : "slate";
   const selectWork = (item: InstitutionWorkItem) => guardedNav(() => {
     clearPaymentFocus();
-    setSelectedWorkKey(item.key);
-    setSelectedRow(item.row);
-    setMobileDetailExpanded(true);
-    setFocusRequestId((id) => id + 1);
+    dispatch({ type: "selectWork", key: item.key, row: item.row });
     // 모바일은 선택 업체 바로 아래에 상세가 열리므로 슬롯으로 강제 점프하지 않는다.
-    if (isPc) window.setTimeout(() => document.getElementById(`payment-slot-${item.row}-${item.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    if (isPc) scrollToPaymentSlot(item.row, item.slot);
   });
   const selectCompany = (item: CompanyWorkItem) => guardedNav(() => {
     clearPaymentFocus();
-    setSelectedCompanyKey(item.key); setSelectedRow(item.cp.row ?? null);
-    setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1);
-    if (isPc && item.hasProgress) window.setTimeout(() => document.getElementById(`payment-slot-${item.cp.row}-${item.work.slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    dispatch({ type: "selectCompany", key: item.key, row: item.cp.row ?? null });
+    if (isPc && item.hasProgress) scrollToPaymentSlot(item.cp.row, item.work.slot);
   });
   const changeListMode = (mode: "company" | "institution") => guardedNav(() => {
     if (mode === listMode) return;
     clearPaymentFocus();
-    if (mode === "institution") setSelectedWorkKey(selectedCompany?.work.key ?? null); // 업체 카드 = 계약 1건 → 대표 진행건으로
-    else { setSelectedCompanyKey(selectedWork?.contractKey ?? null); setSelectedRow(selectedWork?.row ?? null); }
-    setMobileDetailExpanded(true); setCompanyQuery(""); setListMode(mode);
+    // 업체 카드 = 계약 1건 → 대표 진행건으로, 진행건 → 그 계약 업체로.
+    dispatch({ type: "switchMode", mode, workKey: selectedCompany?.work.key ?? null, companyKey: selectedWork?.contractKey ?? null, row: selectedWork?.row ?? null });
   });
   const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
 
-  const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { clearPaymentFocus(); setCompanyQuery(""); setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true); setFocusRequestId((id) => id + 1); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
+  const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { clearPaymentFocus(); dispatch({ type: "created", row }); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
       <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
@@ -282,8 +273,8 @@ export default function PaymentPage() {
           workState={activityState}
           onRetry={() => { void list.refetch(); void allTodos.refetch(); }}
           onNavigate={(row, slot) => {
-            guardedNav(() => { clearPaymentFocus(); setListMode("company"); setCompanyQuery(""); setSelectedRow(row); setSelectedCompanyKey(companyKeyOfRow(allRows, row)); setFocusRequestId((id) => id + 1); });
-            window.setTimeout(() => document.getElementById(`payment-slot-${row}-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+            guardedNav(() => { clearPaymentFocus(); dispatch({ type: "navigate", row, companyKey: companyKeyOfRow(allRows, row) }); });
+            scrollToPaymentSlot(row, slot);
           }}
         />
 
@@ -380,7 +371,7 @@ export default function PaymentPage() {
             ) : listMode === "institution" ? <InstitutionWorkList
               groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
               activityState={activityState}
-              detailExpanded={mobileDetailExpanded} onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
+              detailExpanded={mobileDetailExpanded} onToggleDetail={() => dispatch({ type: "toggleDetail" })}
               renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
                 <ContractRow
                   key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
@@ -389,13 +380,13 @@ export default function PaymentPage() {
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={safeFocusTodoId}
                   focusedSlot={item.slot} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId} onCollapse={() => setMobileDetailExpanded(false)}
+                  focusRequestId={focusRequestId} onCollapse={() => dispatch({ type: "collapseDetail" })}
                 />
               </> : null}
             /> : <ContractListTable
               items={companyItems} selectedKey={selectedCompanyKey} onSelect={selectCompany}
               activityState={activityState} detailExpanded={mobileDetailExpanded}
-              onToggleDetail={() => setMobileDetailExpanded((value) => !value)}
+              onToggleDetail={() => dispatch({ type: "toggleDetail" })}
               highlight={companyQuery} courseStartISO={courseStartISO}
               renderDetail={(item) => selectedCompanyKey === item.key ? <>
                 {focusPayment?.row === item.cp.row && focusNotice}
@@ -405,7 +396,7 @@ export default function PaymentPage() {
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
                   onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={safeFocusTodoId}
                   focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, item.hasProgress ? item.work.slot : null)} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId} onCollapse={() => setMobileDetailExpanded(false)}
+                  focusRequestId={focusRequestId} onCollapse={() => dispatch({ type: "collapseDetail" })}
                 />
               </> : null}
             />}

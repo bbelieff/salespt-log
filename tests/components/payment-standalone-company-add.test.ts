@@ -132,7 +132,10 @@ describe("추가 후 새 업체 선택 — 진행건 목록(#1060)의 선택 모
   const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
   it("page: 키 대신 행으로 선택하고 상세를 펼친 뒤 새 행에 포커스한다(PC·모바일 공통 data-row)", () => {
     const src = read("app/(app)/payment/page.tsx");
-    expect(src).toContain('setSelectedCompanyKey(null); setSelectedRow(row); setMobileDetailExpanded(true);');
+    // 구조 개선 ⑩: 전이는 payment-selection 하나 — created = 업체 키 비움·행 선택·상세 펼침.
+    expect(src).toContain('dispatch({ type: "created", row })');
+    const sel = read("app/(app)/payment/_lib/payment-selection.ts");
+    expect(sel).toContain('return { ...s, query: "", companyKey: null, row: a.row, detailExpanded: true, focusId: s.focusId + 1 };');
     expect(src).toContain('b?.focus({ preventScroll: true })');
     expect(src).not.toContain("openedRow");
   });

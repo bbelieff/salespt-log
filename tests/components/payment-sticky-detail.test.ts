@@ -33,7 +33,7 @@ describe("모바일 업체 이름 줄", () => {
     expect(row).toContain("anchor?.focus({ preventScroll: true });");
     expect(row).toContain('matchMedia?.("(prefers-reduced-motion: reduce)")');
     expect(row).toContain('[id^="payment-company-detail-"], [id^="payment-inline-detail-"]');
-    expect((page.match(/onCollapse=\{\(\) => setMobileDetailExpanded\(false\)\}/g) ?? []).length).toBe(2);
+    expect((page.match(/onCollapse=\{\(\) => dispatch\(\{ type: "collapseDetail" \}\)\}/g) ?? []).length).toBe(2);
     // 목록 행은 위에 붙은 헤더+배너 밑으로 숨지 않게 그만큼 여백을 두고 스크롤된다.
     expect(read("app/(app)/payment/_components/ContractListTable.tsx")).toContain("scroll-mt-app-content");
     expect(read("app/(app)/payment/_components/InstitutionWorkList.tsx")).toContain("scroll-mt-app-content");
