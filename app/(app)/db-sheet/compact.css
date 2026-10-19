@@ -166,3 +166,25 @@ body.db-sheet-route .sheet-save-status.is-error{color:#b91c1c}
  body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-mobile-status-trigger:focus-visible{outline-color:#7c3aed}
  body.db-sheet-route :is(.sheet-panel-head,.sheet-mobile-filter-menu,.sheet-mobile-options) button:disabled{opacity:.45;cursor:not-allowed}
 }
+
+/* Supplier performance: values, ratios and progress bars share each metric cell. */
+body.db-sheet-route .supplier-performance-head{column-gap:10px;row-gap:4px}
+body.db-sheet-route .supplier-performance-headline{flex:1 1 auto;min-width:0;margin:0;font-size:12px;line-height:18px;color:#475569}
+body.db-sheet-route .supplier-performance-table{table-layout:fixed}
+body.db-sheet-route .supplier-performance-table th:first-child{width:26%}
+body.db-sheet-route .supplier-performance-table td{vertical-align:middle}
+body.db-sheet-route .supplier-metric{display:block;min-width:0}
+body.db-sheet-route .supplier-metric-values{display:flex;justify-content:space-between;align-items:baseline;gap:6px;min-width:0;line-height:18px}
+body.db-sheet-route .supplier-metric-values strong{font-size:12px;font-weight:700;color:#0f172a;white-space:nowrap}
+body.db-sheet-route .supplier-metric-values strong small{margin-left:2px;font-size:10px;font-weight:500;color:#475569}
+body.db-sheet-route .supplier-metric-rate{font-size:11px;font-weight:600;color:#334155;white-space:nowrap}
+body.db-sheet-route .supplier-metric-track{display:block;height:4px;margin-top:3px;background:#cbd5e1;border-radius:999px;overflow:hidden}
+body.db-sheet-route .supplier-metric-track>span{display:block;height:100%;border-radius:inherit}
+body.db-sheet-route .supplier-mobile-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:8px}
+body.db-sheet-route .supplier-metric-label{display:block;font-size:10px;line-height:16px;font-weight:600;color:#475569}
+body.db-sheet-route .supplier-mobile-metrics .supplier-metric-values{display:block}
+body.db-sheet-route .supplier-mobile-metrics .supplier-metric-values strong,body.db-sheet-route .supplier-mobile-metrics .supplier-metric-rate{display:block}
+@media(max-width:767px){body.db-sheet-route .supplier-performance-headline{flex-basis:100%;order:4;font-size:11px}}
+
+body.db-sheet-route .supplier-mobile-metrics .supplier-metric-rate{white-space:normal;font-size:10px}
+body.db-sheet-route .supplier-mobile-metrics .supplier-rate-rank{display:block;width:max-content;margin-right:0}

@@ -23,28 +23,31 @@ const SMALL_SAMPLE = `들어온 DB가 ${SUPPLIER_MIN_SAMPLE}건 미만이라 비
 const TITLE: Record<Kind, string | undefined> = { supplier: undefined, blank: "공급처를 적으면 따로 비교할 수 있어요", total: "전체 공급처 보기" };
 // 막대 색 = 그 공급처 채널색(매입DB 파랑 · 직접생산 초록, tokens.md 고정 4색). 여러 채널이 섞이면 회색.
 const BAR_TONE: Record<DbSheetLead["channel"] | "mixed", readonly [string, string, string]> = {
-  매입DB: ["bg-blue-200", "bg-blue-400", "bg-blue-600"],
-  직접생산: ["bg-green-200", "bg-green-400", "bg-green-600"],
-  현수막: ["bg-amber-200", "bg-amber-400", "bg-amber-600"],
-  "콜·지·기·소": ["bg-purple-200", "bg-purple-400", "bg-purple-600"],
-  mixed: ["bg-slate-300", "bg-slate-500", "bg-slate-700"],
+  매입DB: ["bg-blue-500", "bg-blue-600", "bg-blue-700"],
+  직접생산: ["bg-green-500", "bg-green-600", "bg-green-700"],
+  현수막: ["bg-amber-500", "bg-amber-600", "bg-amber-700"],
+  "콜·지·기·소": ["bg-purple-500", "bg-purple-600", "bg-purple-700"],
+  mixed: ["bg-slate-500", "bg-slate-600", "bg-slate-700"],
 };
-const HEAD = "px-2 py-2 text-right font-semibold";
+const HEAD = "px-2 py-2 text-left font-semibold";
 const CARD = "sheet-supplier-card block min-h-11 w-full rounded-xl border border-slate-200 p-3 text-left";
 const CARD_BG: Record<Kind, string> = { supplier: "bg-white", blank: "bg-white", total: "bg-slate-100" };
 
-function FunnelBar({ row }: { row: SupplierRow }) {
-  const tone = BAR_TONE[row.channels.length === 1 ? row.channels[0]! : "mixed"];
-  const width = (n: number) => ({ width: `${row.total ? (n / row.total) * 100 : 0}%` });
-  return <span className="relative mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-slate-100" title={`유입 ${row.total} → 상담 ${row.consulted} → 미팅 ${row.meetings} → 계약 ${row.contracts}`} aria-label={`유입 ${row.total} → 상담 ${row.consulted} → 미팅 ${row.meetings} → 계약 ${row.contracts}`} role="img">
-    <span className={`absolute inset-y-0 right-0 rounded-full ${tone[0]}`} style={width(row.consulted)} />
-    <span className={`absolute inset-y-0 right-0 rounded-full ${tone[1]}`} style={width(row.meetings)} />
-    <span className={`absolute inset-y-0 right-0 rounded-full ${tone[2]}`} style={width(row.contracts)} />
-  </span>;
+type MetricKey = 'total'|'consulted'|'meetings'|'contracts';
+const METRIC_LABEL:Record<MetricKey,string>={total:'들어온 DB',consulted:'상담',meetings:'미팅',contracts:'계약'};
+function Metric({row,metric,best=false,showLabel=false}:{row:SupplierRow;metric:MetricKey;best?:boolean;showLabel?:boolean}){
+ const n=row[metric],ratio=pct(n,row.total),tone=BAR_TONE[row.channels.length===1?row.channels[0]!:'mixed'];
+ return <span className="supplier-metric" data-metric={metric} title={`${METRIC_LABEL[metric]} ${n}건 · 유입 대비 ${ratio}`}>
+  {showLabel&&<span className="supplier-metric-label">{METRIC_LABEL[metric]}</span>}
+  <span className="supplier-metric-values"><strong>{n}<small>건</small></strong>
+   {metric==='contracts'?<Rate row={row} best={best} className="supplier-metric-rate"/>:metric==='total'?<span className="supplier-metric-rate">{row.untouched>0?`미연락 ${row.untouched}`:'100%'}</span>:<span className="supplier-metric-rate">{ratio}</span>}
+  </span>
+  <span className="supplier-metric-track" aria-hidden="true"><span className={tone[metric==='contracts'?2:metric==='meetings'?1:0]} style={{width:`${row.total?n/row.total*100:0}%`}}/></span>
+ </span>;
 }
 
 function Name({ row, kind }: { row: SupplierRow; kind: Kind }) {
-  const tone = kind === "supplier" ? "font-semibold text-slate-800" : kind === "total" ? "font-bold text-slate-800" : "text-slate-500";
+  const tone = kind === "supplier" ? "font-semibold text-slate-800" : kind === "total" ? "font-bold text-slate-800" : "text-slate-600";
   return <span className="flex min-w-0 items-center gap-1.5">
     {kind !== "total" && row.channels.map(channel => <ChannelBadge key={channel} channel={channel} />)}
     <span className={`min-w-0 truncate ${tone}`}>{row.label}</span>
@@ -53,15 +56,12 @@ function Name({ row, kind }: { row: SupplierRow; kind: Kind }) {
 
 function Rate({ row, best, className }: { row: SupplierRow; best: boolean; className: string }) {
   const small = row.total < SUPPLIER_MIN_SAMPLE;
-  return <span className={`${className} ${small ? "text-slate-400" : "text-slate-900"}`} title={small ? SMALL_SAMPLE : undefined}>
-    {best && <span className="mr-1 inline-block rounded bg-slate-800 px-1 py-0.5 align-middle text-px-10 font-bold leading-none text-white">1위</span>}
+  return <span className={`${className} text-slate-800`} title={small ? SMALL_SAMPLE : undefined}>
+    {best && <span className="supplier-rate-rank mr-1 inline-block rounded bg-slate-800 px-1 py-0.5 align-middle text-px-10 font-bold leading-none text-white">1위</span>}
     {pct(row.contracts, row.total)}
   </span>;
 }
 
-function Count({ n, total }: { n: number; total: number }) {
-  return <td className="px-2 py-2 text-right align-top"><span className="block font-semibold text-slate-800">{n}</span><span className="block text-px-11 text-slate-400">{pct(n, total)}</span></td>;
-}
 
 type RowProps = { row: SupplierRow; kind: Kind; best?: boolean; selected?: boolean; onToggle?: () => void };
 
@@ -73,20 +73,15 @@ function TableRow({ row, kind, best = false, selected = false, onToggle }: RowPr
       {onToggle
         ? <button type="button" aria-pressed={kind === "supplier" ? selected : undefined} className="block w-full text-left"><Name row={row} kind={kind} /></button>
         : <Name row={row} kind={kind} />}
-      <FunnelBar row={row} />
     </th>
-    <td className="px-2 py-2 text-right align-top"><span className="block font-semibold text-slate-800">{row.total}</span>{row.untouched > 0 && <span className="block text-px-11 text-slate-400">미연락 {row.untouched}</span>}</td>
-    <Count n={row.consulted} total={row.total} /><Count n={row.meetings} total={row.total} /><Count n={row.contracts} total={row.total} />
-    <td className="py-2 pl-2 pr-3 text-right align-top"><Rate row={row} best={best} className="font-bold" /></td>
+    {(['total','consulted','meetings','contracts'] as const).map(metric=><td key={metric} className="px-2 py-2 align-top"><Metric row={row} metric={metric} best={best}/></td>)}
   </tr>;
 }
 
 function Card({ row, kind, best = false, selected = false, onToggle }: RowProps) {
   const body = <>
-    <span className="flex items-center gap-2"><span className="min-w-0 flex-1"><Name row={row} kind={kind} /></span><Rate row={row} best={best} className="shrink-0 text-lg font-extrabold" /></span>
-    <FunnelBar row={row} />
-    <span className="mt-2 block text-xs text-slate-600">DB {row.total} · 상담 {row.consulted} · 미팅 {row.meetings} · 계약 {row.contracts}</span>
-    {row.untouched > 0 && <span className="block text-px-11 text-slate-400">미연락 {row.untouched}</span>}
+    <Name row={row} kind={kind}/>
+    <span className="supplier-mobile-metrics">{(['total','consulted','meetings','contracts'] as const).map(metric=><Metric key={metric} row={row} metric={metric} best={best} showLabel/>)}</span>
   </>;
   const className = `${CARD} ${CARD_BG[kind]}`;
   return <li>{onToggle
@@ -95,7 +90,7 @@ function Card({ row, kind, best = false, selected = false, onToggle }: RowProps)
 }
 
 function Headline({ headline }: { headline: SupplierHeadline }) {
-  return <p aria-live="polite" aria-label={headlineText(headline)} className="mt-1 text-sm text-slate-700">
+  return <p aria-live="polite" aria-label={headlineText(headline)} className="supplier-performance-headline text-slate-700">
     {headline.before}{headline.name !== undefined && <>‘<strong className="font-bold text-slate-900">{headline.name}</strong>’</>}{headline.after}
   </p>;
 }
@@ -124,17 +119,15 @@ export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, 
   else if (!leads.length) body = <Notice><span>아직 DB가 없어요. DB를 가져오면 공급처별로 상담·미팅·계약을 비교해 드려요.</span><button type="button" className="sheet-btn primary" onClick={onImport}>DB 가져오기</button></Notice>;
   else if (!summary.total.total) body = <Notice><span>이 유입 기간에 들어온 DB가 없어요.</span><button type="button" className="sheet-btn" onClick={onResetRange}>기간 초기화</button></Notice>;
   else body = <>
-    <Headline headline={summary.headline} />
-    <div className="mt-3 hidden overflow-hidden rounded-xl border border-slate-200 bg-white pc:block">
-      <table className="w-full text-xs tabular-nums">
+    <div className="mt-2 hidden overflow-hidden rounded-xl border border-slate-200 bg-white pc:block">
+      <table className="supplier-performance-table w-full text-xs tabular-nums">
         <caption className="sr-only">공급처별 들어온 DB · 상담 · 미팅 · 계약</caption>
-        <thead><tr className="text-px-11 text-slate-500">
+        <thead><tr className="text-px-11 text-slate-700">
           <th scope="col" className="py-2 pl-3 pr-2 text-left font-semibold">공급처</th>
           <th scope="col" className={HEAD}>들어온 DB</th>
           <th scope="col" className={HEAD} title="컨택진행·상담 후 거절 이력이 있는 DB">상담</th>
           <th scope="col" className={HEAD} title="미팅을 잡은 DB (취소·삭제 제외)">미팅</th>
-          <th scope="col" className={HEAD} title="계약한 DB (해지 제외)">계약</th>
-          <th scope="col" className={`${HEAD} pr-3`} title="계약 ÷ 들어온 DB">계약률</th>
+          <th scope="col" className={`${HEAD} pr-3`} title="계약한 DB (해지 제외) · 계약률 = 계약 ÷ 들어온 DB">계약 · 계약률</th>
         </tr></thead>
         <tbody>
           {shown.map(row => <TableRow key={row.supplier} {...rowProps(row)} />)}
@@ -151,9 +144,10 @@ export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, 
     {named > SUPPLIER_TOP_LIMIT && (expanded || hidden > 0) && <button type="button" className="sheet-text-btn mt-1" onClick={() => setExpanded(!expanded)}>{expanded ? "접기" : `나머지 ${hidden}곳 더 보기`}</button>}
   </>;
   return <section id="db-supplier-summary" aria-label="공급처별 성과" className="sheet-supplier-summary">
-    <div className="flex items-center gap-2">
+    <div className="supplier-performance-head flex flex-wrap items-center gap-2">
       <h3 className="text-sm font-bold text-slate-800">공급처별 성과</h3>
       <span className="rounded-full border border-slate-200 bg-white px-2 text-px-11 text-slate-600">{periodLabel(from, to)}</span>
+      {!loading&&leads.length>0&&summary.total.total>0&&<Headline headline={summary.headline}/>}
       <button type="button" className="sheet-text-btn ml-auto" onClick={onClose}>닫기</button>
     </div>
     {body}
