@@ -1,3 +1,6 @@
+## 2026-10-19 · 구조 개선 2/11 — 수납 칸 규칙 한 곳 (refactor/contract-slot-rules)
+- 「입력됨·보일 칸 수·진행률 평균·합계·완료」 3벌 → `lib/analytics/contract-slots.ts`. 메모만 있는 칸이 상세 카드에서 숨던 어긋남 해소.
+
 ## 2026-10-19 · 구조 개선 1/11 — 실적 컨택 판정·작은 중복 정리 (refactor/shared-rules-qualified-contact)
 - 「컨택진행·상담 후 거절」 판정 4곳 → `isQualifiedDbSheetContact` 하나. 요일 배열 8벌·날짜 검증 3벌·미팅 카드 완료 판정 2벌·채널 배지 표 3벌 → 하나씩. 컨택 주 이동은 week.ts addDays 사용.
 - 계획: `docs/plans/active/structure-deepening-program.md` (12건, 11 PR 직렬).

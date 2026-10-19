@@ -45,41 +45,13 @@ export const EMPTY_SLOT: Slot = {
   메모: "",
 };
 
-/** 진행률 문자열("80%"/"0%"/"") → 숫자(%). */
-export function progressPct(p: string): number {
-  if (!p || p === "0%") return 0;
-  return parseInt(p, 10) || 0;
-}
-
-/** 슬롯에 의미있는 데이터가 있는지 (visiblePayments 초기값 계산용). */
-export function hasSlotData(slot: Slot): boolean {
-  return Boolean(
-    slot.진행기관 ||
-      slot.진행상품 ||
-      slot.현황 ||
-      slot.수납일 ||
-      slot.승인금액 > 0 ||
-      slot.수납액 > 0 ||
-      (slot.진행률 && slot.진행률 !== "0%"),
-  );
-}
-
-/** 데이터 기반 초기 보이는 슬롯 수 — 슬롯3 데이터 있으면 3, 슬롯2 있으면 2, else 1. */
-export function initialVisiblePayments(cp: ContractPayment): 1 | 2 | 3 {
-  if (hasSlotData(cp.수납3)) return 3;
-  if (hasSlotData(cp.수납2)) return 2;
-  return 1;
-}
-
-/** 계약 진행도(%) — 보이는 슬롯 진행률 평균. 정렬·표시 공용. */
-export function contractProgress(cp: ContractPayment): number {
-  const n = initialVisiblePayments(cp);
-  const slots = [cp.수납1, cp.수납2, cp.수납3].slice(0, n);
-  if (!slots.length) return 0;
-  return Math.round(
-    slots.reduce((s, sl) => s + progressPct(sl.진행률), 0) / slots.length,
-  );
-}
+// 칸 규칙(입력됨·보일 칸 수·진행률)은 lib/analytics/contract-slots.ts 한 곳 — 기존 이름은 재수출로 유지.
+export {
+  progressPct,
+  slotHasData as hasSlotData,
+  visibleSlotCount as initialVisiblePayments,
+  contractProgress,
+} from "@/lib/analytics/contract-slots";
 
 export interface ActivitySortValue {
   activityKind: "none" | "history" | "todo";

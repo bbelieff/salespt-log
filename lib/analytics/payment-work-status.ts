@@ -1,5 +1,6 @@
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
+import { slotHasData, slotsOf } from "./contract-slots";
 
 /**
  * 실무/수납 성과 요약과 대시보드 업무 현황의 동일한 계약 범위 — 숨김·해지만 뺀다.
@@ -21,17 +22,7 @@ export interface WorkStatusItem {
   institution: string;
 }
 
-const slotsOf = (cp: ContractPayment): Array<[1 | 2 | 3, PaymentSlot]> => [
-  [1, cp.수납1], [2, cp.수납2], [3, cp.수납3],
-];
-
-export function slotHasData(slot: PaymentSlot): boolean {
-  return Boolean(
-    slot.진행기관.trim() || slot.진행상품.trim() || slot.메모.trim() || slot.현황.trim() ||
-    (slot.진행률 && slot.진행률 !== "0%") || slot.승인금액 > 0 ||
-    slot.수납액 > 0 || slot.수납일,
-  );
-}
+export { slotHasData } from "./contract-slots";
 
 /** 계약×기관 단위 활동 날짜(빈 값 = 기록 없음). */
 export interface SlotActivity {

@@ -9,45 +9,17 @@
  */
 import type { ContractPayment } from "@/types";
 import { checkedCount, TOTAL_CHECKBOXES } from "../_components/CheckboxList";
+import { averageProgress, isContractComplete, progressPct, visibleSlotCount } from "@/lib/analytics/contract-slots";
 
 export type AccentFamily = "green" | "emerald" | "blue" | "violet" | "slate";
 
-type Slot = ContractPayment["수납1"];
-
-function pct(p: string): number {
-  return !p || p === "0%" ? 0 : parseInt(p, 10);
-}
-
-function hasData(s: Slot): boolean {
-  return Boolean(
-    s.진행기관 ||
-      s.현황 ||
-      s.수납일 ||
-      s.승인금액 > 0 ||
-      s.수납액 > 0 ||
-      (s.진행률 && s.진행률 !== "0%"),
-  );
-}
-
-function visibleCount(cp: ContractPayment): 1 | 2 | 3 {
-  if (hasData(cp.수납3)) return 3;
-  if (hasData(cp.수납2)) return 2;
-  return 1;
-}
-
 export function contractAccentFamily(cp: ContractPayment): AccentFamily {
-  const slots: Slot[] = [cp.수납1, cp.수납2, cp.수납3];
-  const vis = visibleCount(cp);
-  const visSlots = slots.slice(0, vis);
-  const avg = visSlots.length
-    ? Math.round(visSlots.reduce((s, x) => s + pct(x.진행률), 0) / visSlots.length)
-    : 0;
-  const isComplete =
-    checkedCount(cp) === TOTAL_CHECKBOXES && vis >= 1 && avg >= 100;
-  if (isComplete) return "green";
+  const vis = visibleSlotCount(cp);
+  const visSlots = [cp.수납1, cp.수납2, cp.수납3].slice(0, vis);
+  if (isContractComplete(checkedCount(cp), TOTAL_CHECKBOXES, averageProgress(visSlots))) return "green";
   const fam = ["emerald", "blue", "violet"] as const;
   for (let i = vis - 1; i >= 0; i--) {
-    if (pct(visSlots[i]?.진행률 ?? "") > 0) return fam[i] ?? "slate";
+    if (progressPct(visSlots[i]?.진행률 ?? "") > 0) return fam[i] ?? "slate";
   }
   return "slate";
 }
