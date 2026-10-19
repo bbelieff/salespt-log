@@ -19,6 +19,8 @@ import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
+import Link from 'next/link';
+import {hasDashboardChartRecords} from '@/components/dashboard/chart-records';
 
 /** 모바일 차트 카드: 다음 카드가 살짝 보이는 폭 + 한 장씩 멈춤. PC 는 그리드 칸(폭 자동). */
 const CHART_SLIDE = "min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto";
@@ -58,7 +60,7 @@ export default function DashboardPage() {
   // pc:min-h-0: short content must not force viewport height — the (app)
   // shell reserves no desktop tabbar space and page bottom padding stays small.
   return (
-    <main className="min-h-screen bg-slate-50 pb-20 pc:min-h-0 pc:pb-6">
+    <section className="min-h-screen bg-slate-50 pb-20 pc:min-h-0 pc:pb-6">
       <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${weeks}주 누적`} />
 
       <div className="sticky top-app-content z-30 bg-white" aria-label="오늘 날짜와 수강 진행">
@@ -127,11 +129,11 @@ export default function DashboardPage() {
 
             <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
               todayISO={today} courseStartISO={me.data?.courseStartISO} />
-            <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-3 pc:space-y-0">
+            {hasDashboardChartRecords(dash.data) ? <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-3 pc:space-y-0">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
-              <MobileChartCarousel labels={CHART_LABELS}>
+              <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
                 <div className={CHART_SLIDE}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
-                <div className={CHART_SLIDE}><WeeklyDualChart points={dash.data.weeklyTrend} /></div>
+                <div className={CHART_SLIDE}><WeeklyDualChart points={dash.data.weeklyTrend} period={dash.data.weeklyTrendPeriod} onRetry={() => { void dash.refetch(); }} /></div>
                 <div className={CHART_SLIDE}>
                   <ChannelPerformance weeks={weeks}
                     costBreakdown={dash.data.costBreakdown}
@@ -139,7 +141,7 @@ export default function DashboardPage() {
                   />
                 </div>
               </MobileChartCarousel>
-            </div>
+            </div> : <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
           </>
         )}
       </div>
@@ -153,6 +155,6 @@ export default function DashboardPage() {
         />
       )}
       </PageContainer>
-    </main>
+    </section>
   );
 }

@@ -14,6 +14,27 @@ const item = (key: string, status: WorkStatusItem["status"]): WorkStatusItem =>
 
 describe("전체 진행건 호버 팝업 (belie 2026-09-29)", () => {
   afterEach(() => vi.useRealTimers());
+  it("키보드로 연 목록은 Escape로 닫히고 원래 범례로 포커스가 돌아온다", () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    act(() => root.render(h(WorkStatusBar, { items: [item("a", "waiting")], onNavigate: vi.fn() })));
+    const trigger = [...host.querySelectorAll("button")].find((button) => button.textContent === "진행대기 1")!;
+    try {
+      act(() => { trigger.focus(); trigger.click(); });
+      const popup = host.querySelector<HTMLElement>("[data-work-status-popover]")!;
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      expect(trigger.getAttribute("aria-controls")).toBe(popup.id);
+      const close = popup.querySelector<HTMLButtonElement>('[aria-label="닫기"]')!;
+      act(() => close.focus());
+      act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+      expect(host.querySelector("[data-work-status-popover]")).toBeNull();
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(trigger);
+      act(() => trigger.click());
+      act(() => (host.querySelector('[data-work-status-popover] [aria-label="닫기"]') as HTMLButtonElement).click());
+      expect(document.activeElement).toBe(trigger);
+    } finally { act(() => root.unmount()); host.remove(); }
+  });
   it.each(["top", "bottom"] as const)("%s: 막대·팝업 왕복 후 어느 쪽에서 나가도 닫히며 사이 간격에서는 유지된다", (popoverPlacement) => {
     vi.useFakeTimers();
     const host = document.createElement("div"); document.body.append(host);

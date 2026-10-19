@@ -379,7 +379,7 @@ export default function ContactPage() {
       <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
       {/* 백그라운드 refetch 로 본문을 dim 하지 않는다 — 자동저장 invalidate 마다
           화면이 깜빡여 느리게 느껴진 원인. 초기 로딩은 전역 오버레이+조기 반환이 담당. */}
-      <main className="px-4 pt-4 pb-6 pc:px-0"
+      <section className="px-4 pt-4 pb-6 pc:px-0"
       ><PageContainer width="fluid">
         {/* PC(1024+) 5:5 분할(belie 2026-10-09, 옛 1440+): 좌 날짜→채널→수치 입력 | 우 미팅 슬롯 목록.
             DOM 순서는 입력→목록 그대로라 모바일 stacked 순서·날짜→채널→입력
@@ -438,7 +438,7 @@ export default function ContactPage() {
         </div>
         </div>
       </PageContainer>
-      </main>
+      </section>
 
       {moveOpen && (
         <RecordMoveModal

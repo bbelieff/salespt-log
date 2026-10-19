@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContractPayment } from "@/types";
 import { loadDashboard } from "@/service/dashboard";
 
@@ -121,6 +121,9 @@ function seoulTodayISO(): string {
 }
 
 beforeEach(() => {
+  // This suite exercises the in-course source/latency contract, not graduated trends.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-01-10T03:00:00Z"));
   vi.clearAllMocks();
   mocks.findUserByEmail.mockResolvedValue({
     email: "student@example.com",
@@ -144,6 +147,7 @@ beforeEach(() => {
   mocks.listExpenseEntries.mockResolvedValue([]);
   mocks.listRecurringOccurrences.mockResolvedValue([]);
 });
+afterEach(() => vi.useRealTimers());
 
 describe("dashboard sheet fallback latency", () => {
   it("starts the profile-dependent meetings read while another initial read is still pending", async () => {

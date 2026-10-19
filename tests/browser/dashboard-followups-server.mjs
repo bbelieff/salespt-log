@@ -77,7 +77,7 @@ const refOf = (cp) => `${cp.계약일}|${cp.업체명}`;
 const todo = (id, cp, o = {}) => ({ id, contractRef: cp ? refOf(cp) : "", institutionRef: "", 업체명: cp?.업체명 ?? "", type: "전화", 제목: "확인 전화", 예정일자: todayKST(), 예정시각: "", 장소: "", 상세: "", showOnCalendar: true, 완료여부: false, 생성시각: "", 분류: "", 기록종류: "todo", ...o });
 const meeting = (id, 업체명, 미팅날짜, o = {}) => ({ id, 예약일: shift(미팅날짜, -3), 예약시각: "10:00", 미팅날짜, 미팅시간: "14:00", channel: "매입DB", 업체명, 장소: "가상 카페", 예약비고: "", 상태: "예약", 계약여부: false, 수임비: 0, 미팅사유: "", 계약조건: "", ...o });
 const lead = (n, company, o = {}) => ({ id: uuid(n), supplier: "가상 DB공급처", date: shift(todayKST(), -20), channel: "매입DB", company, owner: "김가상", phone: "010-0000-0000", biz: "", address: "", industry: "", credit: "", sales: "", arrears: "미확인", funds: "", next: "", memo: "",
-  contact: { ci: {}, note: "", date: "", meetingDate: "", time: "", place: "", reservationNote: "", registered: false, companyName: "" }, revision: 1, result: "미컨택", first: "", stage: "미컨택", meetingId: null, ...o });
+  contact: { ci: {}, note: "", date: "", meetingDate: "", time: "", place: "", reservationNote: "", registered: false, companyName: "" }, inflowStatus: "recorded", inflowCount: 1, revision: 1, result: "미컨택", first: "", stage: "미컨택", meetingId: null, ...o });
 
 /** 기본(some) — 기대 칩: 밀린 할 일 1 · 오늘 할 일 1 · 미팅 결과 2 · 다시 연락 2 · 멈춘 업체 3 · 7일 안 할 일 1 (총 9건) + 연결 끊긴 할 일 1건 안내. */
 function someData(t) {
@@ -207,6 +207,17 @@ const server = createServer(async (req, res) => {
   if (path === "/api/me") return reply({ email: "fixture@example.invalid", name: "가상 수강생", cohort: "연습", sessionRole: "student", courseStartISO: fixtureWeek === 0 ? "" : courseStart, graduationISO: shift(courseStart, 84) });
   if (path === "/api/trainer/recruitment") return reply({ email: "fixture@example.invalid", name: "가상 수강생", status: "none", canStudent: true, canTrainer: false, isAdmin: false });
   if (path === "/api/announcements") return reply({ latestPr: 0, announcements: [], updates: [] });
+  if (path === "/api/dashboard" && cookieOf(req, "quality")) {
+    const kind = cookieOf(req, "quality"), empty = kind === "empty";
+    const startISO = shift(friOf(t), -49);
+    return reply({
+      kpi: {}, additionalCost: {dbCostTotal:0,additionalCost:0,status:"available"},
+      channelMatrix: empty ? [] : [{채널:"매입DB",생산:120,유입:80,컨택진행:40,미팅예약:20,미팅완료:15,계약:5}],
+      weeklyTrend: empty || kind === "unavailable" ? [] : Array.from({length:8},(_,i)=>({주차:i+1,활동량:[0,8,52,9,10,14,4,2][i],계약수:[0,1,5,1,1,4,1,0][i],startISO:shift(startISO,i*7),endISO:shift(startISO,i*7+6)})),
+      ...(kind === "recent" || kind === "unavailable" ? {weeklyTrendPeriod:{kind:"recent",startISO,endISO:t,status:kind === "unavailable" ? "unavailable":"available"}} : {}),
+      costBreakdown: empty ? [] : [{채널:"매입DB",비용:200000}], contractChannels:[]
+    });
+  }
   if (path === "/api/dashboard") return reply({
     kpi: { 총매출: 12_000_000, 총비용: 3_000_000, 수임비합: 8_000_000, 수수료합: 4_000_000, 이월매출: 2_000_000, 전체매출: 14_000_000, 이월비용: 100_000, 전체비용: 3_100_000 },
     additionalCost: { dbCostTotal: 2_000_000, additionalCost: 1_000_000, status: "available" }, channelMatrix: [], weeklyTrend: [], costBreakdown: [] });
@@ -224,6 +235,10 @@ const server = createServer(async (req, res) => {
   }
 
   // 계약·할 일
+  if (["/api/contract-payment", "/api/todos"].includes(path) && req.method === "GET") {
+    if(cookieOf(req,"quality") === "payment-error")return reply({error:"fixture_unavailable"},503);
+    if(cookieOf(req,"quality") === "payment-slow")await sleep(8000);
+  }
   if (path === "/api/contract-payment") return req.method === "GET" ? reply({ rows: [...data.contracts.map((c) => ({ ...c, 수임비: 0 })), ...fin.contracts] }) : reply({ ok: true, row: 3, synced: false });
   if (path.startsWith("/api/contract-payment/")) return reply({ ok: true, failures: [] });
   if (path === "/api/todos" && req.method === "GET") {

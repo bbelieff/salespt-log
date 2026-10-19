@@ -76,7 +76,7 @@ export default function UpdatesArchivePage() {
   return (
     <>
       <TopHeader pageEmoji="✨" pageTitle="새소식 보관함" pageSubtitle="업데이트 모아보기" />
-      <main className="px-4 pt-3">
+      <section className="px-4 pt-3">
         <PageContainer width="narrow">
           {/* 사용 가이드(노션) 상시 진입점 — env 설정 시 노출. 팝업과 달리 항상 보임. */}
           {guideUrl() && (
@@ -153,7 +153,7 @@ export default function UpdatesArchivePage() {
             </button>
           )}
         </PageContainer>
-      </main>
+      </section>
     </>
   );
 }

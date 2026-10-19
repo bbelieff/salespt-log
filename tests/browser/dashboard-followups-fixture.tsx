@@ -34,6 +34,7 @@ function syncScenarioCookie() {
   if (params.has("slow") || onDashboard) document.cookie = `followups_slow=${params.get("slow") === "1" ? "1" : "0"}; path=/`;
 }
 syncScenarioCookie();
+if(location.pathname === "/dashboard")document.cookie = `quality=${new URLSearchParams(location.search).get("quality") ?? ""}; path=/`;
 const fixtureWeek = new URLSearchParams(location.search).get("week");
 if (location.pathname === "/dashboard" || location.pathname === "/") {
   document.cookie = `followups_week=${fixtureWeek ?? "7"}; path=/`;

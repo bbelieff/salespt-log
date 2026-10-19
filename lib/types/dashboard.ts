@@ -37,6 +37,9 @@ export interface DashboardChannelMatrix {
 
 /** 주차별 추이 — 8주 LineChart (사용자 결정 2026-05-08: 영업이익 → 계약수) */
 export interface DashboardWeeklyPoint {
+  /** Recent-window calendar range, absent for the course-week series. */
+  startISO?: string;
+  endISO?: string;
   주차: number; // 1~8
   계약수: number; // 시트 01 영업관리!N{38,72,106,140,174,208,242,276}
   활동량: number; // 시트 대시보드(자동작성) III. 주차별 마지막 컬럼
@@ -67,6 +70,12 @@ export interface DashboardView {
   additionalCost: DashboardAdditionalCost;
   channelMatrix: DashboardChannelMatrix[]; // 길이 4
   weeklyTrend: DashboardWeeklyPoint[]; // 길이 8
+  weeklyTrendPeriod?: {
+    kind: "recent";
+    startISO: string;
+    endISO: string;
+    status: "available" | "unavailable";
+  };
   costBreakdown: DashboardCostBreakdown[]; // 길이 3
   /** 콜·지·기·소 수임비 별도 (도넛 외부 표시) */
   콜지기소수임비: number;

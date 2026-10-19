@@ -2,7 +2,7 @@
  * WeeklyDualChart — 코스 주차 추이 (활동량 bar + 계약수 line, 2축).
  *
  * 기수 통계 창만큼 그린다 — 9기 이하·아레나 8주, 숫자 10기+ 12주(ADR-0032). points 길이를 그대로 쓴다.
- * 창 밖(수료 후) 기록은 집계에서 빠진다(dashboard-aggregates).
+ * 수료 후에는 서버가 보낸 최근 8주(이번 주 포함) 기록·날짜를 그린다.
  *
  * SSOT: docs/design/components.md §9-6
  *
@@ -19,12 +19,14 @@
  */
 "use client";
 
-import type { DashboardWeeklyPoint } from "@/types";
+import type { DashboardWeeklyPoint, DashboardView } from "@/types";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 
 interface Props {
   points: DashboardWeeklyPoint[]; // 길이 = 기수 통계 창(8 또는 12주)
+  period?: DashboardView['weeklyTrendPeriod'];
+  onRetry?: () => void;
 }
 
 const X0 = 30;
@@ -33,9 +35,12 @@ const Y_TOP = 16;
 const Y_BOT = 160;
 
 
-export default function WeeklyDualChart({ points }: Props) {
+export default function WeeklyDualChart({ points, period, onRetry }: Props) {
   // 열 때마다: 막대가 차례로 올라오고, 계약수 선이 왼쪽부터 그려지고, 점이 톡 나타난다(belie 2026-10-09).
   const play = usePlayOnOpen("weekly-trend");
+  const recent = period?.kind === 'recent';
+  const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+  const title = recent ? '지난 8주간 추이' : '주차 추이';
   const weeks = Math.max(STATS_WEEKS, points.length);
   const step = (X1 - X0) / weeks;
   const BAR_W = Math.min(24, step * 0.65);
@@ -66,8 +71,8 @@ export default function WeeklyDualChart({ points }: Props) {
       {/* 섹션 제목 + 범례 */}
       <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-slate-500" />
-        <h2 className="text-base font-extrabold text-gray-900">주차 추이</h2>
-        <span className="text-xs text-gray-400">코스 {weeks}주 기준</span>
+        <h2 className="text-base font-extrabold text-gray-900">{title}</h2>
+        {!recent && <span className="text-xs text-slate-600">코스 {weeks}주 기준</span>}
         <div className="ml-auto flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-300" />
@@ -79,10 +84,14 @@ export default function WeeklyDualChart({ points }: Props) {
           </span>
         </div>
       </div>
+      {recent && <p className="mb-2 text-xs text-slate-600">{md(period.startISO)} ~ {md(period.endISO)} · 금~목 · 이번 주 포함</p>}
 
       {/* chart-fill: 데스크탑에서만 카드의 남은 높이를 채운다(globals.css ④). 모바일 무변경. */}
+      {period?.status === 'unavailable' ? <div role="status" className="py-5 text-center text-sm text-slate-600"><p>최근 8주 기록을 불러오지 못했어요.</p>{onRetry && <button type="button" onClick={onRetry} className="mt-2 rounded-lg border border-slate-300 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">다시 불러오기</button>}</div> : <>
       <div className="chart-fill flex flex-1 items-center">
-      <svg viewBox="0 0 358 200" preserveAspectRatio="xMidYMid meet" className="weekly-trend-svg w-full" aria-label={`코스 ${weeks}주 주차 추이`}>
+      <svg role="img" viewBox="0 0 358 200" preserveAspectRatio="xMidYMid meet" className="weekly-trend-svg w-full" aria-label={recent ? `${title}, ${period.startISO}부터 ${period.endISO}까지` : `코스 ${weeks}주 주차 추이`}>
+        <title>{title}</title>
+        <desc>{data.map(d => `${d.startISO || `${d.주차}주`}: 활동량 ${d.활동량}건, 계약 ${d.계약수}건`).join('; ')}</desc>
         {/* 가로 그리드 (활동량 50%, 100%) */}
         <line
           x1={X0}
@@ -104,7 +113,7 @@ export default function WeeklyDualChart({ points }: Props) {
         />
 
         {/* 좌 Y축 라벨 (활동량) */}
-        <text x={26} y={Y_TOP + 4} textAnchor="end" fontSize="9" fill="#94a3b8">
+        <text x={26} y={Y_TOP + 4} textAnchor="end" fontSize="9" fill="#64748b">
           {actScale}
         </text>
         <text
@@ -112,22 +121,22 @@ export default function WeeklyDualChart({ points }: Props) {
           y={yAct(actScale * 0.5) + 4}
           textAnchor="end"
           fontSize="9"
-          fill="#94a3b8"
+          fill="#64748b"
         >
           {Math.round(actScale * 0.5)}
         </text>
-        <text x={26} y={Y_BOT + 4} textAnchor="end" fontSize="9" fill="#94a3b8">
+        <text x={26} y={Y_BOT + 4} textAnchor="end" fontSize="9" fill="#64748b">
           0
         </text>
 
         {/* 우 Y축 라벨 (계약수) */}
-        <text x={332} y={Y_TOP + 4} fontSize="9" fill="#94a3b8">
+        <text x={332} y={Y_TOP + 4} fontSize="9" fill="#64748b">
           {contractScale}
         </text>
-        <text x={332} y={yContract(contractScale * 0.5) + 4} fontSize="9" fill="#94a3b8">
+        <text x={332} y={yContract(contractScale * 0.5) + 4} fontSize="9" fill="#64748b">
           {Math.round(contractScale * 0.5)}
         </text>
-        <text x={332} y={Y_BOT + 4} fontSize="9" fill="#94a3b8">
+        <text x={332} y={Y_BOT + 4} fontSize="9" fill="#64748b">
           0
         </text>
 
@@ -188,19 +197,20 @@ export default function WeeklyDualChart({ points }: Props) {
             fill={i === data.length - 1 ? "#1d4ed8" : "#64748b"}
             fontWeight={i === data.length - 1 ? 700 : undefined}
           >
-            {d.주차}주
+            {recent ? (i === data.length - 1 ? '이번 주' : d.startISO ? md(d.startISO) : `${data.length - i - 1}주 전`) : `${d.주차}주`}
           </text>
         ))}
 
         {/* 단위 표시 */}
-        <text x={2} y={194} fontSize="9" fill="#94a3b8">
+        <text x={2} y={194} fontSize="9" fill="#64748b">
           활동량(건)
         </text>
-        <text x={356} y={194} textAnchor="end" fontSize="9" fill="#94a3b8">
+        <text x={356} y={194} textAnchor="end" fontSize="9" fill="#64748b">
           계약수(건)
         </text>
       </svg>
       </div>
+      </>}
     </section>
   );
 }

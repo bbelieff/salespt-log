@@ -46,7 +46,9 @@ describe("payment desktop viewport boundary", () => {
 
   it("모바일 분기는 그대로 문서 흐름과 아코디언을 유지한다", () => {
     const src = page();
-    expect(src).toContain('window.matchMedia("(min-width: 1280px)")');
+    expect(src).toContain('usePcBreakpoint()');
+    const breakpoint = fs.readFileSync(path.join(process.cwd(), 'app/(app)/payment/_components/usePcBreakpoint.ts'), 'utf8');
+    expect(breakpoint).toContain('window.matchMedia("(min-width: 1280px)")');
     expect(src).toContain("/* 모바일(<pc): 기존 아코디언 (회귀 금지) */");
     expect(src).toContain('!isPc && rows.length > 0 && <TerminationArchive contracts={archivedRows} />');
     expect(src).toContain('className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden"');
