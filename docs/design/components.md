@@ -1141,6 +1141,7 @@ app/(app)/dashboard/page.tsx
 `contractChannels`가 없으면(배포 직후 캐시된 옛 응답) 표를 그리지 않는다. 계약 목록에는 있는데 응답에 없는 키가
 생기면(방금 추가·AK 없는 계약 이름 변경) 같은 탭의 그 어긋남마다 **한 번만** `onRefreshChannels`(대시보드 다시 불러오기)를 부른다
 — `GET /api/dashboard`는 원장 반복 지출을 만드는 쓰기를 포함하므로 반복 호출 금지.
+  2026-10-19 구조 개선 ③④: 비용 원장 창(ExpenseLedgerDialog)도 이 컴포넌트가 연다 — 페이지가 합계를 받아 다시 넘기던 `onPeriodTotals`·`onOpenExpenseLedger` props 는 없어졌다. 서버 `/api/dashboard` 는 원장을 계산·생성하지 않는다.
 
 **ChannelProfitBreakdown** (`components/dashboard/ChannelProfitBreakdown.tsx`, 2026-10-12 #7 「채널별 남은 돈」):
 영업이익 상세 패널 안, 기존 「기간 · 계약 N건 | 이익률」 줄 아래. 표시만 하고 계산은 `components/dashboard/channel-profit.ts`

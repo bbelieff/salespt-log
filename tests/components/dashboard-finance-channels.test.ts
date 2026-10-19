@@ -15,7 +15,7 @@ const slot = (수납액 = 0, 수납일 = "") => ({ 진행기관: "", 진행상�
 const contract = (row: number, 업체명: string, 계약일: string, 수임비: number, over: Record<string, unknown> = {}) =>
   ({ row, 계약일, 업체명, 수임비, 수납1: slot(), 수납2: slot(), 수납3: slot(), 반환액: 0, 해지일: "", linkedMeetingId: "", ...over });
 
-const state = vi.hoisted(() => ({ extraRow: false }));
+const state = vi.hoisted(() => ({ extraRow: false, dialog: null as null | { dbCostTotal: number; additionalCost: number | null; periodLabel?: string } }));
 const ROWS = [
   contract(3, "가상상사A", "2026-10-13", 3_000_000, { linkedMeetingId: "m-a", 수납1: slot(2_000_000, "2026-10-14") }),
   contract(4, "가상상사B", "2026-09-25", 1_000_000, { linkedMeetingId: "m-b" }),
@@ -44,6 +44,10 @@ vi.mock("@/query/expense-ledger-hooks", () => ({
   }),
 }));
 
+vi.mock("@/components/dashboard/expense-ledger/ExpenseLedgerDialog", () => ({
+  default: (p: { dbCostTotal: number; additionalCost: number | null; periodLabel?: string }) => { state.dialog = p; return null; },
+}));
+
 let DashboardFinance: typeof import("@/components/dashboard/DashboardFinance").default;
 
 const CHANNELS: DashboardContractChannel[] = [
@@ -60,10 +64,10 @@ function render(props: Partial<Props> = {}) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  act(() => root?.render(createElement(DashboardFinance, { onOpenExpenseLedger: () => {}, ...props })));
+  act(() => root?.render(createElement(DashboardFinance, props)));
   return container;
 }
-const rerender = (props: Partial<Props>) => act(() => root?.render(createElement(DashboardFinance, { onOpenExpenseLedger: () => {}, ...props })));
+const rerender = (props: Partial<Props>) => act(() => root?.render(createElement(DashboardFinance, props)));
 const chip = (label: string) => {
   const el = [...(container?.querySelectorAll("button[aria-pressed]") ?? [])].find((b) => b.textContent === label);
   if (!(el instanceof HTMLButtonElement)) throw new Error(`chip '${label}' is missing`);
@@ -154,15 +158,13 @@ describe("DashboardFinance — 영업이익 상세 채널 표", () => {
   });
 });
 
-describe("비용 원장 창 요약 = 비용 칸과 같은 기간·같은 숫자 (화석 B5, 2026-10-15)", () => {
-  it("기간을 바꾸면 원장 요약 값도 그 기간으로 따라간다", () => {
-    const onPeriodTotals = vi.fn();
-    render({ contractChannels: CHANNELS, onPeriodTotals });
-    const last = () => onPeriodTotals.mock.calls.at(-1)?.[0] as { dbCost: number; additional: number | null; label: string };
-    expect(last().dbCost).toBe(1_900_000); // 전체: 매입 90만 + 현수막 100만
-    expect(last().additional).toBe(100_000);
+describe("비용 원장 창 요약 = 비용 칸과 같은 기간·같은 숫자 (화석 B5 → 구조 개선 ③④: 창도 여기서 연다)", () => {
+  it("기간을 바꾸면 원장 창 값도 그 기간으로 따라간다", () => {
+    render({ contractChannels: CHANNELS });
+    expect(state.dialog?.dbCostTotal).toBe(1_900_000); // 전체: 매입 90만 + 현수막 100만
+    expect(state.dialog?.additionalCost).toBe(100_000);
     act(() => chip("이번 주").click());
-    expect(last().dbCost).toBe(0); // 이번 주(10/12~18)엔 DB 비용 없음
-    expect(last().label).toMatch(/^이번 주/);
+    expect(state.dialog?.dbCostTotal).toBe(0); // 이번 주(10/12~18)엔 DB 비용 없음
+    expect(state.dialog?.periodLabel).toMatch(/^이번 주/);
   });
 });

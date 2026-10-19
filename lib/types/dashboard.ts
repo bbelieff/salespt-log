@@ -9,19 +9,13 @@ import type { Channel } from "./channel";
 // SSOT: docs/domains/data-model.md §대시보드 데이터 출처
 // 대시보드 탭은 read-only (시트 수식 자동 집계). 코드는 service에서 1회 batchGet 후 매핑.
 
-/** 4 KPI 카드 — 영업이익/이익률/총매출/총비용/누적수임비 */
+/**
+ * 서버가 싣는 KPI — 누적수임비 하나(시트 B21 과 같은 규칙, DB 전환 그림자 대조용).
+ * 매출·비용·영업이익은 화면이 기간별로 계산한다(lib/util/finance-period, ADR-0034) —
+ * 서버 사본은 읽는 화면이 없어 2026-10-19 구조 개선 ③에서 걷어냈다.
+ */
 export interface DashboardKPI {
-  영업이익: number; // = 총매출 − 총비용
-  영업이익률: number; // (영업이익 / 총매출) × 100
-  총매출: number; // 아레나 기준(이월 제외) — 화면 매출은 클라이언트 periodRevenue(ADR-0034)
-  총비용: number; // 시즌 비용(이월 제외)
   누적수임비: number; // 1~8주 수임비 합(시트 B21 과 같은 규칙)
-  수임비합: number; // 총매출 분해: Σ수임비 (배너 표시)
-  수수료합: number; // 총매출 분해: Σ수납액(수수료). 총매출 = 수임비합 + 수수료합
-  이월매출: number; // 아레나 시작일 이전 계약(이월·비집계) 매출 — 표시용 (arena-start-revenue-split)
-  전체매출: number; // 총매출(아레나) + 이월매출 — "전체" 줄
-  이월비용: number; // 시작일 이전 발생 비용(이월·비집계) — 표시용, 영업이익 제외 (belie 결정 2026-08-07, BBE-83)
-  전체비용: number; // 총비용(시즌) + 이월비용 — "전체" 줄
 }
 
 /** 채널별 6단계 funnel matrix — stacked bar 데이터 */
@@ -66,8 +60,6 @@ export interface DashboardContractChannel {
 /** 대시보드 1회 read 응답 — Recharts/카드에 그대로 매핑 가능. */
 export interface DashboardView {
   kpi: DashboardKPI;
-  /** Manual/recurring ledger contribution, separate from acquisition channels. */
-  additionalCost: DashboardAdditionalCost;
   channelMatrix: DashboardChannelMatrix[]; // 길이 4
   weeklyTrend: DashboardWeeklyPoint[]; // 길이 8
   weeklyTrendPeriod?: {
@@ -83,21 +75,3 @@ export interface DashboardView {
   contractChannels?: DashboardContractChannel[];
 }
 
-/**
- * Explicit state prevents a failed ledger read from being represented as zero.
- * dbCostTotal = 03 DB관리 시즌분 비용만(BBE-83 이후, courseStart 이전 이월 제외) — "전체" 아님.
- */
-export type DashboardAdditionalCost =
-  | {
-    status: "available";
-    dbCostTotal: number;
-    additionalCost: number;
-    recognizedThrough: string;
-  }
-  | {
-    status: "unavailable";
-    dbCostTotal: number;
-    additionalCost: null;
-    recognizedThrough: string;
-    errorCode: "expense_ledger_unavailable" | "expense_ledger_read_failed" | "expense_ledger_course_start_invalid";
-  };
