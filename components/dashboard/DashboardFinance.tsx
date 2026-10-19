@@ -22,9 +22,9 @@ import {
   periodDbCost,
   periodLedgerCost,
   periodRevenue,
-  todayKst,
   type FinancePeriod,
 } from "@/util/finance-period";
+import { todayKST } from "@/util/week";
 import PeriodPicker from "@/components/ui/PeriodPicker";
 import FinanceSummaryBoxes from "./FinanceSummaryBoxes";
 import ChannelProfitBreakdown from "./ChannelProfitBreakdown";
@@ -56,7 +56,7 @@ export default function DashboardFinance({ onOpenExpenseLedger, onPeriodTotals, 
   const [period, setPeriod] = useState<FinancePeriod>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const today = todayKst();
+  const today = todayKST();
   const range = periodBounds(period, from, to, today);
 
   const contracts = useContractPayments();

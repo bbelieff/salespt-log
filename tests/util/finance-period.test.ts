@@ -6,9 +6,9 @@ import {
   periodDbCost,
   periodLedgerCost,
   periodRevenue,
-  todayKst,
   type RevenueContract,
 } from "@/util/finance-period";
+import { todayKST } from "@/util/week";
 
 const slot = (수납액 = 0, 수납일 = "") => ({ 수납액, 수납일 });
 const contract = (over: Partial<RevenueContract> = {}): RevenueContract => ({
@@ -33,8 +33,8 @@ describe("periodBounds — 브라우저 시간대와 무관한 KST 날짜 계산
     expect(customIncomplete("all", null)).toBe(false);
   });
   it("todayKst 는 UTC 15시 이후를 다음 날로 본다", () => {
-    expect(todayKst(new Date("2026-10-07T15:30:00Z"))).toBe("2026-10-08");
-    expect(todayKst(new Date("2026-10-07T14:59:00Z"))).toBe("2026-10-07");
+    expect(todayKST(new Date("2026-10-07T15:30:00Z"))).toBe("2026-10-08");
+    expect(todayKST(new Date("2026-10-07T14:59:00Z"))).toBe("2026-10-07");
   });
 });
 

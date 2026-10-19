@@ -16,7 +16,7 @@ vi.mock("@/repo/users-arena", () => m);
 vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
-vi.mock("@/service/daily-source", () => m);
+vi.mock("@/service/daily-source", () => ({ ...m, usesDbStorage: (...a: unknown[]) => m.chooseDailySource(...a) === "db" }));
 // #958: seed the trainer-access facts these legacy trainer fixtures imply. Without an explicit
 // grant the new ACL is fail-closed by design, so the intent must be stated rather than assumed.
 vi.mock("@/repo/db/trainer-student-access", () => ({

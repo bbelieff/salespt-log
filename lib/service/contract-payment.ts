@@ -8,12 +8,12 @@
  */
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
-import { dbEnabled } from "@/repo/db/client";
+
 import {
   readCompanyInfoFromDb,
   readContractsFromDb,
 } from "@/repo/db/read-daily";
-import { chooseDailySource, chooseWriteSource, sourceCohort } from "./daily-source";
+import { chooseDailySource, chooseWriteSource, sourceCohort, usesDbStorage } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import {
   clearRow,
@@ -66,7 +66,7 @@ export async function loadContractPayments(
 ): Promise<ContractPayment[]> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
-  if (chooseDailySource(sourceCohort(user), dbEnabled()) !== "db") {
+  if (!usesDbStorage(user)) {
     return readAll(user.spreadsheetId);
   }
   const [dbRes, presenceRes] = await Promise.allSettled([
@@ -209,7 +209,7 @@ export async function loadCompanyInfoByContract(
   const spreadsheetId = user.spreadsheetId;
   // R2-4b: 파일럿은 06 미러 DB 조회 먼저. 실질 값이 있으면 그대로(시트 read 0회),
   // 빈 결과(rename 새 키 = 스냅샷 미보유 부류)·실패는 기존 시트 경로로 자연 fallback.
-  if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
+  if (usesDbStorage(user)) {
     try {
       const fromDb = await readCompanyInfoFromDb(spreadsheetId, data.계약일, data.업체명);
       if (hasCompanyInfo(fromDb)) return fromDb;
@@ -323,7 +323,7 @@ export async function resolveSheetWithSyncDb(
   if (!user) throw new Error(`[contract-payment] 등록되지 않은 사용자: ${email}`);
   return {
     spreadsheetId: user.spreadsheetId,
-    syncDb: chooseWriteSource(sourceCohort(user), dbEnabled()) === "db",
+    syncDb: usesDbStorage(user),
     ctx: { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email },
   };
 }

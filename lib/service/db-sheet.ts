@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { findUserByEmail } from "@/repo/users";
-import { dbEnabled } from "@/repo/db/client";
+
 import * as ledger from "@/repo/db/db-sheet";
 import { DbSheetLeadInput, DbSheetRecording, DbSheetDate, DbSheetResult, type DbSheetContext, type DbSheetChange, type DbSheetImpact } from "@/types/db-sheet";
 import { Meeting } from "@/types/meeting";
-import { chooseWriteSource, sourceCohort } from "./daily-source";
+import { sourceCohort, usesDbStorage } from "./daily-source";
 import { queueSalesRowSync } from "./sales-write";
 import { queueDbSheetProductionSync } from "./db-sheet-sync";
 import { queueMeetingSheetSync } from "./meetings-write";
@@ -33,7 +33,7 @@ export async function resolveDbSheetContext(email: string, sheetOverride?: strin
     throw new DbSheetUnavailable("개인 DB 연결을 확인할 수 없습니다.");
   }
   const cohort = sourceCohort(user);
-  if (chooseWriteSource(cohort, dbEnabled()) !== "db") {
+  if (!usesDbStorage(cohort)) {
     throw new DbSheetUnavailable("이 계정은 아직 DB관리시트를 지원하지 않습니다.");
   }
   return { spreadsheetId: user.spreadsheetId, cohort, email };

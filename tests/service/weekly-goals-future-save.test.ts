@@ -14,7 +14,7 @@ vi.mock("@/repo/users", () => ({ ...m, parseAssignedTrainers: (s: string) => s.t
 vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
-vi.mock("@/service/daily-source", () => m);
+vi.mock("@/service/daily-source", () => ({ ...m, usesDbStorage: (...a: unknown[]) => m.chooseDailySource(...a) === "db" }));
 vi.mock("@/repo/db/trainer-student-access", () => ({
   readTrainerStudentAccessFacts: async (actor: string, target: string | { email: string; spreadsheetId: string; cohort: string; courseStart: string }) => {
     const found = (m.listAllUsers.getMockImplementation() ? await m.listAllUsers() : []) as { email: string; role: string; status: string; cohort?: string; spreadsheetId?: string; courseStartISO?: string }[];

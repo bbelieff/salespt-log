@@ -34,7 +34,7 @@ import { captureServerEvent } from "@/lib/analytics/api-timing";
 import type { Channel, ChannelDailyRow } from "@/types";
 import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
 import { parseISO, weekIndexOf } from "@/util/week";
-import { chooseWriteSource } from "./daily-source";
+import { chooseWriteSource, usesDbStorage } from "./daily-source";
 
 export interface SalesCtx {
   spreadsheetId: string;
@@ -44,7 +44,7 @@ export interface SalesCtx {
 
 /** 파일럿(DB 정본) 여부 — 쓰기 게이트. 단일 판정 지점. */
 function isDbCanonical(cohort: string): boolean {
-  return chooseWriteSource(cohort, dbEnabled()) === "db";
+  return usesDbStorage(cohort);
 }
 
 // ── 시트 수렴 미러 (시트별 직렬 큐) ───────────────────────────────

@@ -17,8 +17,8 @@ import {
   listCarriedMeetingKeys,
   listCarrySourceMeetings,
 } from "@/repo/carryover";
-import { chooseDailySource, chooseWriteSource } from "./daily-source";
-import { dbEnabled, writeRowToDb } from "@/repo/db/client";
+import { usesDbStorage } from "./daily-source";
+import { writeRowToDb } from "@/repo/db/client";
 import {
   listCarriedMeetingKeysFromDb,
   readContractsFromDb,
@@ -75,7 +75,7 @@ export async function migrateArenaCarryover(
   // ── 04 예약 미팅 이월 (멱등: AP 원본키 — 파일럿은 시트∪DB 양 키 합집합) ──
   // R3-2: 아레나(항상 파일럿)는 DB 동기 정본 + 시트 수렴 잡. 전환기 재실행 중복 방지를 위해
   // 멱등키를 시트 AP 와 DB(신형 AP·구형 원본행id) 합집합으로 판정.
-  const dbPrimary = chooseWriteSource(arenaUser.cohort, dbEnabled()) === "db";
+  const dbPrimary = usesDbStorage(arenaUser);
   const [sheetSources, carried] = await Promise.all([
     listCarrySourceMeetings(prior.spreadsheetId),
     listCarriedMeetingKeys(arenaSheetId),
@@ -97,7 +97,7 @@ export async function migrateArenaCarryover(
   // 형식으로 정규화해 넘긴다. sheetSources 쪽 진짜 데이터(사용자가 실제로 apostrophe 로 시작하는
   // 텍스트를 입력했을 가능성)는 손대지 않는다.
   const sources = [...sheetSources];
-  if (chooseDailySource(prior.cohort, dbEnabled()) === "db") {
+  if (usesDbStorage(prior)) {
     const seen = new Set(sheetSources.map((s) => s.원본id));
     for (const m of await readMeetingsFromDb(prior.spreadsheetId)) {
       if (m.상태 !== "예약" || seen.has(m.id)) continue;
@@ -138,7 +138,7 @@ export async function migrateArenaCarryover(
   // ── 02 계약 행 이월 (멱등: AJ 원본키 = "02:{이전행번호}") ──
   // 이전 기수가 DB 읽기 파일럿이면 DB 계약이 정본(시트는 밀린 미러일 수 있다) — DB 행을 쓰고, DB 에 없는 줄만
   // 시트에서 보탠다(백필 공백 안전). 멱등키(AJ 원본키)는 아레나 시트 ∪ DB 합집합으로 판정(미팅과 같은 방식).
-  const priorFromDb = chooseDailySource(prior.cohort, dbEnabled()) === "db";
+  const priorFromDb = usesDbStorage(prior);
   const [sheetOld, dbOld, arenaSheetContracts, arenaDbContracts] = await Promise.all([
     readAllContracts(prior.spreadsheetId),
     priorFromDb ? readContractsFromDb(prior.spreadsheetId) : Promise.resolve<ContractPayment[]>([]),

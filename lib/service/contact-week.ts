@@ -12,14 +12,12 @@ import { findByDateRangeBoth } from "@/repo/meetings";
 import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import {
-  chooseDailySource,
   weekFunnelFromRows,
   type DailyMetricRow,
-  sourceCohort,
+  usesDbStorage,
 } from "./daily-source";
 import { CHANNEL_ORDER, Meeting } from "@/types";
 import { parseISO } from "@/util/week";
-
 
 function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -98,7 +96,7 @@ export async function loadWeekMeetings(
   // 7일 ISO 날짜 생성 (양 경로 공용 — 카드 슬롯 기준)
   const dates = sevenDays(wsDate);
 
-  const pilotDb = chooseDailySource(sourceCohort(user), dbEnabled()) === "db";
+  const pilotDb = usesDbStorage(user);
 
   if (pilotDb) {
     try {

@@ -1,3 +1,6 @@
+## 2026-10-19 · 구조 개선 4/11 — 주차 창·오늘 날짜·DB/시트 갈림길 한 곳 (refactor/week-windows-today)
+- 주간목표 주차 창 `goalWeekWindow`, 오늘(KST) `todayKST` 5벌→1, 「DB 로 읽고 쓰나」 37곳 → `usesDbStorage(수강생)`. 유보 수강생이 코치 개요·아레나 이월·최근 추이에서 시트로 가던 어긋남 해소.
+
 ## 2026-10-19 · 구조 개선 3/11 — DB관리시트 업체 동일성 한 곳 (refactor/db-sheet-lead-identity)
 - 화면 중복 경고와 서버 저장 차단의 「같은 업체」 판정, 국제 번호 변환을 `lib/util/db-sheet-identity.ts` 로. 「+82 010」 꼴 번호 중복 누락 해소.
 

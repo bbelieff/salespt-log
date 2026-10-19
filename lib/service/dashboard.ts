@@ -39,14 +39,14 @@ import {
 } from "./dashboard-cost-carryover";
 import { findUserByEmail } from "@/repo/users";
 import { ceremonyISO, courseWeeksForCohort } from "@/config/cohort-dates";
-import { isValidISODate } from "@/util/week";
+import { isValidISODate, todayKST } from "@/util/week";
 import { buildRecentTrend, readRecentTrendForSource, recentTrendPeriod, unavailableRecentTrend, type RecentTrend } from "./dashboard-recent-trend";
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
 import { readAll as readContractPayments } from "@/repo/contract-payment";
 import { readProfileBundle } from "@/repo/sales";
-import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
+import { readSalesRowsFromDb } from "@/repo/db/client";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
@@ -54,7 +54,7 @@ import { isCarryoverContract } from "./contract-payment";
 import { findByDateRange } from "@/repo/meetings";
 import { terminatedByChannel, terminatedByWeek } from "./termination-count";
 import { contractChannels } from "./contract-channel";
-import { chooseDailySource, sourceCohort } from "./daily-source";
+import { sourceCohort, usesDbStorage } from "./daily-source";
 import { computeDbAggregates } from "./dashboard-aggregates";
 import { recognizedAmountForRange, recognizeRecurringOccurrencesForRange } from "./expense-ledger";
 import {
@@ -69,14 +69,6 @@ const num = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
 
 type RecurringOccurrence = Awaited<ReturnType<typeof listRecurringOccurrences>>[number];
-
-function seoulTodayISO(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
-  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${value("year")}-${value("month")}-${value("day")}`;
-}
 
 function isISODate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -117,7 +109,7 @@ async function loadDashboardAdditionalCost(
   actorEmail: string,
   courseStartISO: string,
 ): Promise<DashboardAdditionalCost> {
-  const recognizedThrough = seoulTodayISO();
+  const recognizedThrough = todayKST();
   try {
     if (!isISODate(courseStartISO)) throw new Error("expense_ledger_course_start_invalid");
     await materializeOccurrences(spreadsheetId, actorEmail, recognizedThrough.slice(0, 7));
@@ -318,7 +310,7 @@ export async function loadDashboard(
 
   // R2-7b: 파일럿 기수는 DB 집계 서빙(대시보드 시트 왕복 0). 실패 시 시트 경로로 강등
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
-  if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
+  if (usesDbStorage(user)) {
     try {
       const { view, termByChannel, termByWeek, recentTrend } = await loadDashboardFromDb(sheetId, overrideSheetId ? undefined : user.courseStartISO, email, overrideSheetId ? undefined : sourceCohort(user), overrideSheetId ? undefined : user.graduationISO);
       reverseShadowCompare(sheetId, view); // 기본 off — 아래 함수 주석(R3 종료) 참고
@@ -331,7 +323,7 @@ export async function loadDashboard(
     }
   }
 
-  return loadDashboardFromSheet(sheetId, email, chooseDailySource(sourceCohort(user), dbEnabled()) === "db");
+  return loadDashboardFromSheet(sheetId, email, usesDbStorage(user));
 }
 
 /** DB 서빙 경로 (R2-7b) — 대시보드 시트 read 0. 집계·비용·매출 전부 DB 미러에서. */
@@ -356,7 +348,7 @@ async function loadDashboardFromDb(
     try { profile = await readProfileBundle(sheetId); }
     catch { captureServerEvent("dashboard_recent_graduation_unavailable", { count: 1 }); }
   }
-  const period = recentTrendPeriod(courseStartISO, graduationISOCache || (profile ? toISODate(profile.graduation) : ""), cohort ?? profile?.cohort, seoulTodayISO());
+  const period = recentTrendPeriod(courseStartISO, graduationISOCache || (profile ? toISODate(profile.graduation) : ""), cohort ?? profile?.cohort, todayKST());
   const [salesRows, meetings, contracts, dbTab] = await Promise.all([
     readSalesRowsFromDb(sheetId),
     readMeetingsFromDb(sheetId),
@@ -444,7 +436,7 @@ async function loadDashboardFromSheet(sheetId: string, actorEmail: string, dbFal
   }
   const termByWeek = terminatedByWeek(payments, profile.courseStart);
   const courseView = applyTerminationExclusion(view, term.byChannel, termByWeek);
-  const period = recentTrendPeriod(courseStartISO, toISODate(profile.graduation), profile.cohort, seoulTodayISO());
+  const period = recentTrendPeriod(courseStartISO, toISODate(profile.graduation), profile.cohort, todayKST());
   if (!period) return courseView;
   if (dbFallback) return { ...courseView, ...unavailableRecentTrend(period) };
   try {

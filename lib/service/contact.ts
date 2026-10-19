@@ -14,6 +14,7 @@ import {
   stackingSumsFromRows,
   type DailyMetricRow,
   sourceCohort,
+  usesDbStorage,
 } from "./daily-source";
 import { persistMeetingReservationCount, persistSalesRows } from "./sales-write";
 import {
@@ -117,7 +118,7 @@ export async function loadDay(
   let bannerOrderQty: number | null = null;
   let dbCanonicalRead = false; // R4 W1-1: DB 정본 read 성공 → 주차상한 지우기 해제(안 그러면 11주+ 화면 0 → draft 0 시드 → 다음 저장이 정본을 덮음)
 
-  const pilotDb = chooseDailySource(sourceCohort(user), dbEnabled()) === "db";
+  const pilotDb = usesDbStorage(user);
 
   // 🔧 P0(BBE-49): 비파일럿(예: 7기)이라도 이 날짜가 시트 물리 상한(MAX_SHEET_WEEK)을 넘으면
   // 그 날 4지표만 DB 에서 읽는다 — persistSalesRows 의 쓰기측 우회(같은 BBE-49)와 대칭.
@@ -266,7 +267,7 @@ export async function saveContactMetrics(
   };
   for (const mtg of meetings) cardCount[mtg.channel] += 1;
 
-  if(chooseDailySource(sourceCohort(user),dbEnabled())==="db"){const selected=await readSelectedMeetingCounts(spreadsheetId);for(const ch of CHANNEL_ORDER)cardCount[ch]=selected.get(date+":"+ch)??0;}
+  if(usesDbStorage(user)){const selected=await readSelectedMeetingCounts(spreadsheetId);for(const ch of CHANNEL_ORDER)cardCount[ch]=selected.get(date+":"+ch)??0;}
 
   // 4채널 1회 batchUpdate (readCourseStart 1회).
   const rows: ChannelDailyRow[] = [];
@@ -361,7 +362,7 @@ export async function patchMeeting(
 
 /** 파일럿(02·06 화면이 DB read) 여부 — 미팅 화면발 계약 쓰기의 dual-sync 게이트(R3-3 잔여). */
 export function syncDbOf(ctx: MeetingCtx): boolean {
-  return chooseDailySource(ctx.cohort, dbEnabled()) === "db";
+  return usesDbStorage(ctx.cohort);
 }
 
 // 미팅 삭제·되돌리기 cascade — 500줄 캡으로 분리(R3-3 잔여). 공개 API 경로는 유지.

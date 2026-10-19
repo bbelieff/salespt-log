@@ -9,6 +9,7 @@
 import { parseNumericCohort } from "@/config/cohort-dates";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import { isArenaCohortLabel } from "@/repo/user-priority";
+import { dbEnabled } from "@/repo/db/client";
 
 /** R2 파일럿 기수 — backfill(#487·#488) 완료 + 9기(첫날부터 dual-write).
  * 4기(2026-08-20 편입, belie 직접 집행 지시): BBE-252 전환 GO 결정판(전수 1명, parity
@@ -59,14 +60,20 @@ export function chooseDailySource(
   return dbOn && isDbReadPilot(cohort) ? "db" : "sheet";
 }
 
-/** 쓰기 정본 결정 — 읽기 게이트(chooseDailySource)와 **대칭**. R3-1(db-write-flip §2·§4).
- * DB 활성 && 파일럿 기수 → "db"(동기 정본, 시트는 비동기 미러). 그 외 → "sheet"(R2: 시트 정본).
- * 롤백 = 이 게이트 한 곳만 뒤집으면 즉시 R2 복귀. 파일럿 집합은 isDbReadPilot 단일 원천 공유. */
-export function chooseWriteSource(
-  cohort: string | null | undefined,
-  dbOn: boolean,
-): "db" | "sheet" {
-  return dbOn && isDbReadPilot(cohort) ? "db" : "sheet";
+/** 쓰기 정본 결정 — 읽기 게이트와 **같은 판정**(R3-1 db-write-flip §2·§4). 롤백 레버는 DB_READ_COHORTS 한 곳.
+ * 이름만 남겨 둔 별칭 — 새 코드는 usesDbStorage 를 쓴다. */
+export const chooseWriteSource = chooseDailySource;
+
+type StorageOwner = { cohort: string; cohortLabel?: string } | string | null | undefined;
+
+/**
+ * 이 수강생의 정본이 DB 인가(읽기·쓰기 공통) — **수강생을 넘기면** 유보 보정(sourceCohort)과
+ * 운영 스위치(dbEnabled)를 안에서 처리한다. 이미 sourceCohort 로 고른 기수 문자열(ctx.cohort)도 받는다.
+ * (2026-10-19 구조 개선 ②: 34곳이 이 조립을 손으로 하다 일부가 유보 보정을 빠뜨렸다.)
+ */
+export function usesDbStorage(owner: StorageOwner, dbOn: boolean = dbEnabled()): boolean {
+  const cohort = owner && typeof owner === "object" ? sourceCohort(owner) : owner;
+  return chooseDailySource(cohort, dbOn) === "db";
 }
 
 /** 두 경로 공통 행 형태 — 시트 ChannelDailyRow 와 DB payload 매핑 결과의 교집합. */
