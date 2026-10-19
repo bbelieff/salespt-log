@@ -18,7 +18,7 @@ vi.mock("@/repo/users-arena", () => m);
 vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
-vi.mock("@/service/daily-source", () => m);
+vi.mock("@/service/daily-source", () => ({ ...m, usesDbStorage: (...a: unknown[]) => m.chooseDailySource(...a) === "db" }));
 vi.mock("@/service/trainer-student-access", () => ({ canAccessManagedStudent: m.canAccess }));
 import { listGoalStudents, loadWeeklyGoals, loadWeeklyGoalInternal, updateWeeklyGoals, updateWeeklyGoalInternal } from "@/service/weekly-goals";
 

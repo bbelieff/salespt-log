@@ -29,7 +29,7 @@ import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readAllMeetings } from "@/repo/meetings";
-import { chooseDailySource, chooseWriteSource, sourceCohort } from "./daily-source";
+import { chooseDailySource, chooseWriteSource, sourceCohort, usesDbStorage } from "./daily-source";
 import { backfillMissingRows } from "./sheet-backfill";
 import { sumChannelInflowOverPeriod } from "@/repo/sales";
 import { persistProductionCell, type SalesCtx } from "./sales-write"; // R3⑤ 생산(E) DB 정본
@@ -62,8 +62,8 @@ export async function resolveWriteCtx(
   const on = dbEnabled();
   return {
     sid: user.spreadsheetId,
-    fromDb: chooseDailySource(sourceCohort(user), on) === "db",
-    syncDb: chooseWriteSource(sourceCohort(user), on) === "db",
+    fromDb: usesDbStorage(user, on),
+    syncDb: usesDbStorage(user, on),
     salesCtx: { spreadsheetId: user.spreadsheetId, cohort: sourceCohort(user), email },
   };
 }
@@ -129,7 +129,7 @@ export async function loadDBOverview(email: string): Promise<DBOverview> {
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const spreadsheetId = user.spreadsheetId;
-  if (chooseDailySource(sourceCohort(user), dbEnabled()) !== "db") {
+  if (!usesDbStorage(user)) {
     return readAllSheetSections(spreadsheetId);
   }
   const [dbSettled, presence] = await Promise.all([
@@ -189,7 +189,7 @@ export async function loadLeadsForPicker(
   if (!user) throw new Error(`[db] 등록되지 않은 사용자: ${email}`);
   const spreadsheetId = user.spreadsheetId;
 
-  if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
+  if (usesDbStorage(user)) {
     const [dbSettled, sheetLeads] = await Promise.all([
       readDbTabFromDb(spreadsheetId).then(
         (value) => ({ ok: true, value }) as const,
@@ -256,7 +256,7 @@ async function readMeetingLinkSets(email: string): Promise<MeetingLinkSets> {
   if (!user) return { ids, names };
   try {
     const meetings =
-      chooseDailySource(sourceCohort(user), dbEnabled()) === "db"
+      usesDbStorage(user)
         ? await readMeetingsFromDb(user.spreadsheetId)
         : await readAllMeetings(user.spreadsheetId);
     for (const m of meetings) {
@@ -406,7 +406,7 @@ export async function syncDirectProductionForDate(
   if (!active) return { recordFound: false, count: 0 };
   const on = dbEnabled();
   const count = await syncDirectCount(
-    sid, active, chooseDailySource(cohort, on) === "db", chooseWriteSource(cohort, on) === "db",
+    sid, active, usesDbStorage(cohort, on), usesDbStorage(cohort, on),
   );
   return { recordFound: true, count };
 }

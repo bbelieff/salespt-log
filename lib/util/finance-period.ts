@@ -24,11 +24,6 @@ const num = (v: unknown): number => {
 const parseUtc = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const toIso = (d: Date) => d.toISOString().slice(0, 10);
 
-/** 오늘(KST) "YYYY-MM-DD" — 브라우저 시간대와 무관. */
-export function todayKst(now: Date = new Date()): string {
-  return new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
-}
-
 /**
  * 기간 → [시작, 끝] (양끝 포함). 주 = 월~일, 달 = 1일~말일. 계산은 날짜 문자열만으로 해서
  * 브라우저 시간대에 흔들리지 않는다. 직접 설정은 두 날짜가 모두 있고 순서가 맞을 때만.

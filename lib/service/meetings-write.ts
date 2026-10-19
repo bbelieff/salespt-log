@@ -26,7 +26,7 @@ import {
   upsertMeetingRowSnapshot,
 } from "@/repo/meetings";
 import { upsertCarriedRawSnapshot } from "@/repo/carryover";
-import { chooseWriteSource } from "./daily-source";
+import { chooseWriteSource, usesDbStorage } from "./daily-source";
 import { clearRowInDb, dbEnabled, writeRowToDb } from "@/repo/db/client";
 import {
   clearMirrorPending,
@@ -53,7 +53,7 @@ export interface MeetingCtx {
 }
 
 function isDb(ctx: MeetingCtx): boolean {
-  return chooseWriteSource(ctx.cohort, dbEnabled()) === "db";
+  return usesDbStorage(ctx.cohort);
 }
 
 // ── 시트 수렴 동기화 (DB 정본 경로 전용) ──────────────────────────

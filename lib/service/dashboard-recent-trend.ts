@@ -6,7 +6,7 @@ import { readWeek } from "@/repo/sales";
 import { dbEnabled, readSalesRowsFromDb, type DbSalesRow } from "@/repo/db/client";
 import { findByDateRange } from "@/repo/meetings";
 import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
-import { chooseDailySource } from "./daily-source";
+import { usesDbStorage } from "./daily-source";
 import { weeklyActivityFromDb, weeklyContractsFromDb } from "./dashboard-aggregates";
 import { terminatedByWeek } from "./termination-count";
 
@@ -83,7 +83,7 @@ export async function readRecentSheetTrend(
 export async function readRecentTrendForSource(
   sheetId: string, courseStart: Date, cohort: string, period: RecentPeriod, payments: ContractPayment[],
 ): Promise<RecentTrend> {
-  if (chooseDailySource(cohort, dbEnabled()) !== "db") return readRecentSheetTrend(sheetId, courseStart, period, payments);
+  if (!usesDbStorage(cohort)) return readRecentSheetTrend(sheetId, courseStart, period, payments);
   const [sales, meetings, contracts] = await Promise.all([
     readSalesRowsFromDb(sheetId), readMeetingsFromDb(sheetId), readContractsFromDb(sheetId),
   ]);

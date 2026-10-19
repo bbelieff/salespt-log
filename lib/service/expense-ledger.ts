@@ -1,4 +1,5 @@
 /** Layer: service — 비용 원장 규칙(일할 인식·소유 범위·월 반복 materialization). */
+import { todayKST } from "@/util/week";
 import { createHash } from "node:crypto";
 import type { CreateExpenseBody, CreateRecurringRuleBody, ExpenseLedgerView, ExpenseReclassificationRef, PatchRecurringRuleBody, RecognizedExpense, ReclassifyUnclassifiedBody, RecurringRule } from "@/types/expense-ledger";
 import { findUserByEmail } from "@/repo/users";
@@ -28,12 +29,7 @@ export async function resolveExpenseScope(email: string): Promise<ExpenseScope> 
 
 function parseUtc(iso: string): Date { return new Date(`${iso}T00:00:00Z`); }
 function iso(d: Date): string { return d.toISOString().slice(0, 10); }
-function todaySeoul(): string {
-  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const get = (type: string) => p.find((x) => x.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-function currentMonth(): string { return todaySeoul().slice(0, 7); }
+function currentMonth(): string { return todayKST().slice(0, 7); }
 function nextMonth(month: string): string { const d = new Date(`${month}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); }
 function dayCount(start: string, end: string): number { return Math.floor((parseUtc(end).getTime() - parseUtc(start).getTime()) / 86_400_000) + 1; }
 
@@ -101,7 +97,7 @@ export function recognizeRecurringOccurrencesForRange(
   });
 }
 function viewRange(view: "month" | "all" | "category", month: string | undefined): { from: string; through: string; month: string | null } {
-  const today = todaySeoul();
+  const today = todayKST();
   if (view !== "month") return { from: "0001-01-01", through: today, month: null };
   const m = month ?? currentMonth(); const next = new Date(`${m}-01T00:00:00Z`); next.setUTCMonth(next.getUTCMonth() + 1); next.setUTCDate(0);
   return { from: `${m}-01`, through: iso(next), month: m };
@@ -109,7 +105,7 @@ function viewRange(view: "month" | "all" | "category", month: string | undefined
 
 export async function getExpenseLedger(email: string, query: { view: "month" | "all" | "category"; month?: string; categoryId?: string }): Promise<ExpenseLedgerView> {
   const scope = await resolveExpenseScope(email); const range = viewRange(query.view, query.month);
-  await materializeOccurrences(scope.spreadsheetId, scope.actorEmail, todaySeoul().slice(0, 7));
+  await materializeOccurrences(scope.spreadsheetId, scope.actorEmail, todayKST().slice(0, 7));
   const [categories, entries, occurrences] = await Promise.all([listExpenseCategories(scope.spreadsheetId, true), listExpenseEntries(scope.spreadsheetId), listRecurringOccurrences(scope.spreadsheetId)]);
   const recognized: RecognizedExpense[] = [];
   for (const e of entries) {
@@ -131,7 +127,7 @@ export async function getExpenseLedger(email: string, query: { view: "month" | "
 
 export async function getRecurringExpenseRules(email: string): Promise<{ asOfDate: string; rules: ManagedRecurringRule[] }> {
   const scope = await resolveExpenseScope(email);
-  const asOfDate = todaySeoul();
+  const asOfDate = todayKST();
   await materializeOccurrences(scope.spreadsheetId, scope.actorEmail, nextMonth(asOfDate.slice(0, 7)));
   const [rules, occurrences] = await Promise.all([
     listRecurringRules(scope.spreadsheetId),
@@ -191,4 +187,4 @@ export async function pauseRecurringExpense(email: string, id: string, pausedOn:
 export async function resumeRecurringExpense(email: string, id: string, resumedOn: string) { const s = await resolveExpenseScope(email); return resumeRecurringRule(s.spreadsheetId, s.actorEmail, id, resumedOn); }
 export async function skipRecurringExpense(email: string, id: string, occurrenceMonth: string) { const s = await resolveExpenseScope(email); return skipRecurringOccurrence(s.spreadsheetId, s.actorEmail, id, occurrenceMonth); }
 export async function editRecurringExpense(email: string, id: string, input: PatchRecurringRuleBody) { const s = await resolveExpenseScope(email); if (input.scope === "occurrence") return patchRecurringOccurrence(s.spreadsheetId, s.actorEmail, id, input.occurrenceMonth, input.patch); return splitRecurringRuleFromMonth(s.spreadsheetId, s.actorEmail, id, input.effectiveMonth, input.patch); }
-export async function removeRecurringExpense(email: string, id: string, stoppedOn = todaySeoul()) { const s = await resolveExpenseScope(email); return archiveRecurringRule(s.spreadsheetId, s.actorEmail, id, stoppedOn); }
+export async function removeRecurringExpense(email: string, id: string, stoppedOn = todayKST()) { const s = await resolveExpenseScope(email); return archiveRecurringRule(s.spreadsheetId, s.actorEmail, id, stoppedOn); }

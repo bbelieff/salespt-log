@@ -31,7 +31,7 @@ import {
   listAllTodos as listAllTodosFromSheet,
   updateTodo as updateTodoRow,
 } from "@/repo/todos";
-import { chooseDailySource, chooseWriteSource, sourceCohort } from "./daily-source";
+import { chooseWriteSource, sourceCohort, usesDbStorage } from "./daily-source";
 import {
   clearRowInDb,
   dbEnabled,
@@ -161,7 +161,7 @@ export async function listTodos(
   spreadsheetIdOverride?: string,
 ): Promise<Todo[]> {
   const ctx = await resolveSheet(email, spreadsheetIdOverride);
-  if (chooseDailySource(ctx.cohort, dbEnabled()) === "db") {
+  if (usesDbStorage(ctx.cohort)) {
     return (await readTodosFromDb(ctx.spreadsheetId))
       .filter((t) => t.contractRef === contractRef)
       .sort(
@@ -178,7 +178,7 @@ export async function listAllTodos(
   spreadsheetIdOverride?: string,
 ): Promise<Todo[]> {
   const ctx = await resolveSheet(email, spreadsheetIdOverride);
-  const todos = chooseDailySource(ctx.cohort, dbEnabled()) === "db"
+  const todos = usesDbStorage(ctx.cohort)
     ? await readTodosFromDb(ctx.spreadsheetId)
     : await listAllTodosFromSheet(ctx.spreadsheetId);
   return todos.sort((a, b) => a.생성시각.localeCompare(b.생성시각) || a.id.localeCompare(b.id));
@@ -261,7 +261,7 @@ export async function createTodo(
       완료여부: false,
       생성시각: new Date().toISOString(),
     });
-    if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
+    if (usesDbStorage(ctx.cohort)) {
       await writeRowToDb({ ...ctx, tab: "todos", rowKey: todo.id, payload: todo });
       queueSheetSync(ctx, todo.id); // 시트 반영 + (행 보장 후) gcal 등록
       return todo;
@@ -277,7 +277,7 @@ export async function createTodo(
     완료여부: false,
     생성시각: new Date().toISOString(),
   });
-  if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
+  if (usesDbStorage(ctx.cohort)) {
     // 기존 unique(spreadsheet_id, tab, row_key) 그대로 — 마이그레이션 없이 원자적 선점.
     // writeRowToDb(upsert·병합)는 재시도 시 생성시각을 덮어써 원본 반환을 깨므로
     // 멱등 경로에서는 쓰지 않는다.
@@ -327,7 +327,7 @@ export async function patchTodo(
   spreadsheetIdOverride?: string,
 ): Promise<void> {
   const ctx = await resolveSheet(email, spreadsheetIdOverride);
-  if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
+  if (usesDbStorage(ctx.cohort)) {
     // 병합기반 = DB(정본). "삭제됨(_cleared)" 과 "DB 공백" 을 구분 — 삭제된 ToDo 는 self-heal 금지
     // (시트 fallback 으로 200 을 주면 삭제가 조용히 무효화된 척 되고 gcal 이벤트가 부활 — r2 #3·#5).
     const state = await readTodoRowStateFromDb(ctx.spreadsheetId, id);
@@ -354,7 +354,7 @@ export async function removeTodo(
   const ctx = await resolveSheet(email, spreadsheetIdOverride);
   // 행 클리어 전 구글 이벤트 삭제(맵이 행에 있음) — 양 경로 동일. 멱등이라 DB 경로는 잡에서 한 번 더 수행.
   await syncTodoRemoved(ctx.spreadsheetId, id);
-  if (chooseWriteSource(ctx.cohort, dbEnabled()) === "db") {
+  if (usesDbStorage(ctx.cohort)) {
     await clearRowInDb({ ...ctx, tab: "todos", rowKey: id });
     queueSheetSync(ctx, id); // cleared 상태로 수렴(행 클리어·이벤트 재확인)
     return;

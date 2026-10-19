@@ -15,7 +15,7 @@ vi.mock("@/repo/users", () => ({ ...m, parseAssignedTrainers: (s: string) => s.t
 vi.mock("@/repo/db/client", () => m);
 vi.mock("@/repo/db/read-daily", () => m);
 vi.mock("@/repo/db/weekly-goals", () => m);
-vi.mock("@/service/daily-source", () => m);
+vi.mock("@/service/daily-source", () => ({ ...m, usesDbStorage: (...a: unknown[]) => m.chooseDailySource(...a) === "db" }));
 vi.mock("@/util/week", async importOriginal => ({
   ...await importOriginal<typeof import("@/util/week")>(),
   todayKST: () => m.todayKST(),

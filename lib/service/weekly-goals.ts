@@ -2,12 +2,12 @@ import { getSessionEmail, getEffectiveRole, resolveStudentViewContext } from "@/
 import { findUserByEmail, listAllUsers, listDistinctUsers, parseAssignedTrainers } from "@/repo/users";
 import { pickCrmUser } from "@/repo/trainer-qualification";
 import { findActiveArenaRowByEmail } from "@/repo/users-arena";
-import { dbEnabled, readSalesRowsFromDb } from "@/repo/db/client";
+import { readSalesRowsFromDb } from "@/repo/db/client";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readWeeklyGoal, readWeeklyGoalPrivate, saveWeeklyGoal, saveWeeklyGoalPrivate } from "@/repo/db/weekly-goals";
-import { chooseDailySource, sourceCohort } from "./daily-source";
+import { usesDbStorage } from "./daily-source";
 import { weeklyGoalActuals } from "./weekly-goals-actuals";
-import { addDays, fmtISO, friOf, friWeekIndexOf, isValidISODate, parseISO, todayKST } from "@/util/week";
+import { addDays, fmtISO, goalWeekOf, goalWeekWindow, isValidISODate, parseISO, todayKST } from "@/util/week";
 import { WeeklyGoalInput, WeeklyGoalPrivateInput, type WeeklyGoalKey, type WeeklyGoalView, type GoalStudent } from "@/types/weekly-goals";
 import { canAccessManagedStudent } from "./trainer-student-access";
 import type { TrainerAccessOperation, TrainerStudentTarget } from "@/types/trainer-access";
@@ -122,16 +122,15 @@ async function context(params: URLSearchParams, operation: TrainerAccessOperatio
     ? { ...await actor(), internal: false }
     : await assertGoalStudentAccess(u, operation);
   if (!isValidISODate(u.courseStartISO)) throw new WeeklyGoalError(422, "수강 시작일 확인이 필요해요.");
-  if (!u.spreadsheetId || chooseDailySource(sourceCohort(u), dbEnabled()) !== "db") {
+  if (!u.spreadsheetId || !usesDbStorage(u)) {
     throw new WeeklyGoalError(503, "이 계정의 주간 목표를 아직 불러올 수 없어요.");
   }
-  const courseStart = parseISO(u.courseStartISO);
   const date = params.get("date") || todayKST();
   if (!isValidISODate(date)) throw new WeeklyGoalError(400, "날짜를 확인해 주세요.");
   const selected = params.get("week");
-  const week = selected === null ? Math.max(1, friWeekIndexOf(parseISO(date), courseStart)) : Number(selected);
+  const week = selected === null ? goalWeekOf(date, u.courseStartISO) : Number(selected);
   if (!Number.isSafeInteger(week) || week < 1 || week > 5200) throw new WeeklyGoalError(400, "주차를 확인해 주세요.");
-  const start = fmtISO(addDays(friOf(courseStart), (week - 1) * 7));
+  const start = goalWeekWindow(u.courseStartISO, week).start;
   // Enrollment echo prevents an old open editor silently writing into a newly assigned cohort.
   const enrollment = params.get("enrollment");
   if (enrollment !== null && enrollment !== JSON.stringify([u.cohort, u.courseStartISO])) {
@@ -143,7 +142,8 @@ async function context(params: URLSearchParams, operation: TrainerAccessOperatio
 
 export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGoalView> {
   const { a, u, key, week } = await context(params);
-  const previousStart = fmtISO(addDays(parseISO(key.weekStart), -7));
+  const window = goalWeekWindow(key.courseStart, week);
+  const previousStart = window.prevStart;
   const [record, previous, sales, meetings] = await Promise.all([
     readWeeklyGoal(key),
     week > 1 ? readWeeklyGoal({ ...key, weekStart: previousStart }) : Promise.resolve(null),
@@ -160,11 +160,10 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
   // (week4 goals -> week3 actuals), never server today or selected current actuals.
   // Week 1 reports the genuine immediately preceding Fri-Thu raw records (0 if none).
   const reportingStart = previousStart;
-  const reportingEnd = fmtISO(addDays(parseISO(previousStart), 6));
+  const reportingEnd = window.prevEnd;
   // Same metric definitions, widened to week 1 … end of the previous week. Week 1 has no history.
-  const firstStart = fmtISO(friOf(parseISO(key.courseStart)));
   const cumulative = week > 1
-    ? weeklyGoalActuals(sales, meetings, [], firstStart, fmtISO(addDays(parseISO(previousStart), 6)))
+    ? weeklyGoalActuals(sales, meetings, [], window.firstStart, window.prevEnd)
     : { production: 0, inflow: 0, contacts: 0, meetings: 0, contracts: 0 };
   // Explicit public projection: never spread User (tokens) or private record into a response.
   return {

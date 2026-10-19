@@ -58,9 +58,9 @@ export interface ActivitySortValue {
   activityDate: string;
 }
 
-export function activityTodayISO(): string {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-}
+/** 실무/수납 정렬의 오늘(KST) — 정의는 week.ts 하나. */
+export { todayKST as activityTodayISO } from "@/util/week";
+import { todayKST as activityTodayISO } from "@/util/week";
 
 /** 미지정 → 연체 Todo → 오늘 Todo → History → 미래 Todo. 동률은 저장 순서. */
 export function compareWorkActivity(a?: ActivitySortValue, b?: ActivitySortValue, todayISO = activityTodayISO()): number {

@@ -2,7 +2,7 @@ import {beforeEach,it,expect,vi} from "vitest";
 const mock=vi.hoisted(()=>({ctx:vi.fn(),archive:vi.fn(),list:vi.fn(),meetingSync:vi.fn(),salesSync:vi.fn()}));
 vi.mock("@/service/contact",()=>({resolveCtx:mock.ctx}));
 vi.mock("@/repo/db/client",()=>({dbEnabled:()=>true}));
-vi.mock("@/service/daily-source",()=>({chooseWriteSource:()=>"db"}));
+vi.mock("@/service/daily-source",()=>({chooseWriteSource:()=>"db",usesDbStorage:()=>true}));
 vi.mock("@/repo/db/meeting-archive",()=>({setSimpleMeetingArchived:mock.archive,listArchivedMeetings:mock.list}));
 vi.mock("@/service/meetings-write",()=>({queueMeetingSheetSync:mock.meetingSync}));
 vi.mock("@/service/sales-write",()=>({queueSalesRowSync:mock.salesSync}));

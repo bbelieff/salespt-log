@@ -22,7 +22,7 @@
  */
 import { dbEnabled } from "@/repo/db/client";
 import { moveDailyRowsInDb } from "@/repo/db/sales-move";
-import { chooseWriteSource } from "./daily-source";
+import { usesDbStorage } from "./daily-source";
 import { queueDbSheetProductionSync } from "./db-sheet-sync";
 import { queueSalesRowSync } from "./sales-write";
 import type { Channel } from "@/types";
@@ -93,7 +93,7 @@ export async function moveDailyMetrics(
 
   if (dbEnabled()) {
     const ctx = await resolveCtx(email);
-    if (chooseWriteSource(ctx.cohort, true) === "db") {
+    if (usesDbStorage(ctx.cohort, true)) {
       const result = await moveDailyRowsInDb(ctx, input);
       queueSalesRowSync(ctx, from.date, from.channel);
       queueSalesRowSync(ctx, to.date, to.channel);

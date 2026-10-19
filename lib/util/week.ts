@@ -21,8 +21,8 @@ export const DAY_KO: readonly string[] = ["일", "월", "화", "수", "목", "�
  * 서버 로컬(UTC) 로 재면 KST 09:00 까지 전날로 읽혀 개막일·기간 경계가 하루 어긋난다.
  * (service/announcements 가 여기서 재수출 — 정의는 이 파일 하나.)
  */
-export function todayKST(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+export function todayKST(now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 }
 
 /** "YYYY-MM-DD" 형식이며 실제 달력에 존재하는 날짜인지 UTC 왕복으로 검증한다. */
@@ -113,4 +113,26 @@ export function dayLabelKO(d: Date): string {
 
 export function fmtMD(d: Date): string {
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+/** [금~목 앵커] 주간목표 N주차 — 그 날짜가 든 주차(시작 전이면 1주차). */
+export function goalWeekOf(dateISO: string, courseStartISO: string): number {
+  return Math.max(1, friWeekIndexOf(parseISO(dateISO), parseISO(courseStartISO)));
+}
+
+/**
+ * [금~목 앵커] 주간목표 N주차의 창 — 이번 주·지난주·누적 시작을 한 번에.
+ * 서버 목표 조회·코치 개요가 같은 계산을 쓴다.
+ */
+export function goalWeekWindow(courseStartISO: string, week: number) {
+  const first = friOf(parseISO(courseStartISO));
+  const start = addDays(first, (week - 1) * 7);
+  return {
+    week,
+    start: fmtISO(start),
+    end: fmtISO(addDays(start, 6)),
+    prevStart: fmtISO(addDays(start, -7)),
+    prevEnd: fmtISO(addDays(start, -1)),
+    firstStart: fmtISO(first),
+  };
 }

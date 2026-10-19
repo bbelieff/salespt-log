@@ -10,9 +10,9 @@ import {
   customIncomplete,
   periodBounds,
   periodRevenue,
-  todayKst,
   type FinancePeriod,
 } from "@/util/finance-period";
+import { todayKST } from "@/util/week";
 
 interface Props {
   /** 매출·계약 건수 집계 대상 — 숨김·해지·이월 구분 없이 모든 계약(대시보드와 같은 정의, ADR-0034). */
@@ -30,7 +30,7 @@ export default function PaymentPerformanceSummary({ rows, workRows, todos, onNav
   const [period, setPeriod] = useState<FinancePeriod>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const today = todayKst();
+  const today = todayKST();
   const range = periodBounds(period, from, to, today);
   // 매출 = 수임비(계약일) + 수납액(수납일) − 반환액(해지일). 대시보드와 같은 함수.
   const summary = periodRevenue(rows, range);
