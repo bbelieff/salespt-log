@@ -21,6 +21,7 @@ import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
+import { averageProgress, isContractComplete, slotTotals } from "@/lib/analytics/contract-slots";
 import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -243,24 +244,14 @@ export default function ContractRow({
     return Array.from(set).sort();
   }, [institutionOptions, allTodos, cp]);
 
-  const totalApproved =
-    draft.수납1.승인금액 + draft.수납2.승인금액 + draft.수납3.승인금액;
-  const totalReceived =
-    draft.수납1.수납액 + draft.수납2.수납액 + draft.수납3.수납액;
+  const { approved: totalApproved, received: totalReceived } = slotTotals(draft);
   const docsDone = checkedCount(draft);
 
   const visibleSlots = useMemo(
     () => [draft.수납1, draft.수납2, draft.수납3].slice(0, visiblePayments),
     [draft, visiblePayments],
   );
-  const avgPct = useMemo(() => {
-    if (!visibleSlots.length) return 0;
-    const sum = visibleSlots.reduce(
-      (s, slot) => s + progressPct(slot.진행률),
-      0,
-    );
-    return Math.round(sum / visibleSlots.length);
-  }, [visibleSlots]);
+  const avgPct = useMemo(() => averageProgress(visibleSlots), [visibleSlots]);
 
   const ongoingAgencies = useMemo(() => {
     return visibleSlots
@@ -272,8 +263,7 @@ export default function ContractRow({
       .join(" · ");
   }, [visibleSlots]);
 
-  const isComplete =
-    docsDone === TOTAL_CHECKBOXES && visiblePayments >= 1 && avgPct >= 100;
+  const isComplete = isContractComplete(docsDone, TOTAL_CHECKBOXES, avgPct);
 
   const family = accentFamily ?? contractAccentFamily(draft);
   const accent = ACCENT[family];
