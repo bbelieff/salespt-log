@@ -391,3 +391,6 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 - 공통 `components/ui/liquid-glass-tools.css`의 명시 group scope만 사용한다. ink#334155, 투명 중간층/얇은 흰 반사·이중 rim, blur18/saturate180, 하단 slate20%/radial10%/base10%·shadow28%/6%. pseudo는 pointer-events:none. backdrop 미지원/투명도 줄이기/대비 강화는 불투명 대체, forced-colors는 시스템색·blur/반사/전환0, reduced-motion 전환0.
 - payment 4도구: 높이·최소폭44px/radius13/아이콘19/stroke1.7, gap0·하단12. 앞3 고정44, 검색 접힘/editor 모두 나머지 폭 flex·기존 검색 label 표시. 다른 도구 확장 시 검색과 나머지 폭 분배/최소44/한 줄. 320 row304에서44/44/44/172,375 row359에서44/44/44/227. 검색 활성 blue6px점/ring·focus2px 유지.
 - payment compact 업체정보는 optional opt-in·<=767px만: page gutter8/inline6/body·group6, 도구3각44/아이콘18stroke1.75+기존fontcontrol32×36 한 줄, native선택2각34/gap6/radius9/글자12. 입력13px×기존fontscale. PC/tablet/기본 공용은 기존 표현, header39는 title44/shrink0 명시 접기/도구 별도행·wrap이다.
+
+### 공급처 성과 통합 셀 (2026-10-19)
+- 수치12px/700/slate900, 비율11px/600/slate700, 보조10px/slate600. 지표 막대4px·상단간격3px·바탕slate300, 상담/미팅/계약은 기존 채널 blue/green/amber/purple의500/600/700, 혼합은slate500/600/700. 표 첫 열26%, 나머지4열 균등. 제목 옆 안내12px/18px/slate600·간격10px, 모바일11px로 다음 줄. 모바일 지표4열·간격4px, 셀 안 숫자와 비율(10px)은 세로 배치하고 순위 배지는 별도 줄로 두어 320px에서 잘림을 방지한다.
