@@ -109,16 +109,6 @@ const linkedMeeting = {
   계약여부: true,
 };
 
-function seoulTodayISO(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${value("year")}-${value("month")}-${value("day")}`;
-}
 
 beforeEach(() => {
   // This suite exercises the in-course source/latency contract, not graduated trends.
@@ -182,31 +172,13 @@ describe("dashboard sheet fallback latency", () => {
     const result = await resultPromise;
 
     expect(result).toEqual({
-      kpi: {
-        영업이익: -6_000,
-        영업이익률: 0,
-        총매출: 0,
-        총비용: 6_000,
-        누적수임비: 700,
-        수임비합: 0,
-        수수료합: 0,
-        이월매출: 0,
-        전체매출: 0,
-        이월비용: 0,
-        전체비용: 6_000,
-      },
+      kpi: { 누적수임비: 700 },
       channelMatrix: [
         { 채널: "매입DB", 생산: 10, 유입: 9, 컨택진행: 8, 미팅예약: 7, 미팅완료: 6, 계약: 1 },
         { 채널: "직접생산", 생산: 20, 유입: 19, 컨택진행: 18, 미팅예약: 17, 미팅완료: 16, 계약: 1 },
         { 채널: "현수막", 생산: 30, 유입: 29, 컨택진행: 28, 미팅예약: 27, 미팅완료: 26, 계약: 0 },
         { 채널: "콜·지·기·소", 생산: 40, 유입: 39, 컨택진행: 38, 미팅예약: 37, 미팅완료: 36, 계약: 0 },
       ],
-      additionalCost: {
-        status: "available",
-        dbCostTotal: 6_000,
-        additionalCost: 0,
-        recognizedThrough: seoulTodayISO(),
-      },
       weeklyTrend: [
         { 주차: 1, 계약수: 1, 활동량: 100 },
         { 주차: 2, 계약수: 1, 활동량: 200 },
@@ -226,6 +198,8 @@ describe("dashboard sheet fallback latency", () => {
       // 2026-10-12 #7 — 이미 읽은 계약·미팅으로 만든 계약별 채널(새 읽기 없음, 아래 7회 그대로).
       contractChannels: [{ key: "|ak:meeting-1", channel: "매입DB" }],
     });
+    // 구조 개선 ④: 대시보드 조회는 읽기만 — 비용 원장의 반복 지출을 만들지 않는다.
+    expect(mocks.materializeOccurrences).not.toHaveBeenCalled();
 
     const sheetsReads = [
       mocks.readDashboard,

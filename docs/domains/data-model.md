@@ -528,22 +528,10 @@ type Slot = {
 ```typescript
 // lib/types/index.ts
 interface DashboardKPI {
-  // 매출 = Σ수임료 + Σ수납액(이월 제외). **승인총액은 기록용 — 매출에 미포함**(ADR-0026).
-  // SSOT = service/dashboard splitContractRevenue.arena. 전광판 매출도 동일 정의.
-  영업이익: number;       // D21 − E21
-  영업이익률: number;     // (D21−E21) / D21 × 100
-  총매출: number;         // D21 (←영업관리!N6)
-  총비용: number;         // E21
-  누적수임비: number;     // TODO: 셀 좌표 디스커버리
-  // arena-start-revenue-split: 시작일(O1) 기준 분리. 총매출=아레나(이월 제외, 점수 동일).
-  이월매출: number;       // 시작일 이전 계약(이월·비집계) 매출 — 표시용
-  전체매출: number;       // 총매출(아레나) + 이월매출
-  // BBE-83(belie 결정 2026-08-07): 비용도 매출과 동일 경계로 분리 — 03 DB관리 3섹션만
-  // (매입DB 구매일/직접생산 시작일 — ADR-0022 §3, 완료집계=종료일과 별개/현수막 날짜).
-  // expense-ledger(추가비용)는 이미 recognizedAmountForRange 로 courseStart 이후만
-  // 인식해 무변경. SSOT = lib/service/dashboard-cost-carryover.ts (splitDbCost).
-  이월비용: number;       // 시작일 이전 발생 03 DB관리 비용 — 표시용, 영업이익 제외
-  전체비용: number;       // 총비용(시즌) + 이월비용
+  // 2026-10-19 구조 개선 ③: 서버는 누적수임비만 싣는다(DB 전환 그림자 대조용).
+  // 매출·비용·영업이익은 화면이 기간별로 계산(lib/util/finance-period, ADR-0034).
+  // 아레나 순위표 매출은 splitContractRevenue().arena(scoreboard) — 여기 없음.
+  누적수임비: number;
 }
 
 interface DashboardChannelMatrix {

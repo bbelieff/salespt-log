@@ -5,7 +5,10 @@
  * 불변식: computeContractRevenue(payments).revenue == Σ수임비 + Σ(수납1+2+3 수납액).
  */
 import { describe, expect, it } from "vitest";
-import { computeContractRevenue } from "@/service/dashboard";
+import { splitContractRevenue } from "@/service/dashboard";
+
+/** 옛 computeContractRevenue(테스트 전용, 구조 개선 ③에서 삭제)의 규칙 = 구분「이월」 깃발만 빼는 아레나 매출. */
+const computeContractRevenue = (payments: Parameters<typeof splitContractRevenue>[0]) => splitContractRevenue(payments, "1900-01-01").arena;
 import { ContractPayment } from "@/types";
 
 function cp(

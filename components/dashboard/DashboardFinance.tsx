@@ -7,6 +7,7 @@
  * 기간 전체. 숫자는 화면에서 계산한다 — 계약(useContractPayments), DB 비용(useDBOverview),
  * 추가 비용(useExpenseLedger "all")을 `@/util/finance-period` 로 기간 합산한다.
  * 아레나 순위표 매출은 서버(scoreboard)가 따로 계산한다(ADR-0034).
+ * 2026-10-19 구조 개선 ③④: 비용 원장 창도 여기서 연다 — 서버 대시보드는 원장을 계산·생성하지 않는다.
  * 2026-10-12 #7: 영업이익 상세에 「채널별 남은 돈」(ChannelProfitBreakdown) — 같은 기간·같은 행으로
  *   다시 계산만 한다(칩 전환 시 새 요청 없음). 계약별 채널은 /api/dashboard 의 contractChannels.
  */
@@ -27,23 +28,14 @@ import {
 import { todayKST } from "@/util/week";
 import PeriodPicker from "@/components/ui/PeriodPicker";
 import FinanceSummaryBoxes from "./FinanceSummaryBoxes";
+import ExpenseLedgerDialog from "./expense-ledger/ExpenseLedgerDialog";
 import ChannelProfitBreakdown from "./ChannelProfitBreakdown";
 import { channelBucketOf, missingChannelKeys, periodChannelProfit } from "./channel-profit";
 
 // 같은 탭에서 화면을 다시 열어도 동일한 어긋남은 한 번만 재조회한다.
 const refreshedChannelGroups = new Set<string>();
 
-/** 비용 원장 창이 대시보드와 같은 기간·같은 숫자를 보이도록 넘기는 값(화석 B5, 2026-10-15). */
-export interface LedgerPeriodTotals {
-  dbCost: number;
-  additional: number | null;
-  label: string;
-}
-
 interface Props {
-  onOpenExpenseLedger: () => void;
-  /** 기간·합계가 바뀔 때마다 — 원장 창 요약(DB 비용·추가 비용·총비용)이 비용 칸과 같은 값을 쓴다. */
-  onPeriodTotals?: (t: LedgerPeriodTotals | null) => void;
   /** /api/dashboard 의 계약별 채널. 없으면(배포 직후 캐시된 옛 응답) 채널 표를 그리지 않는다. */
   contractChannels?: DashboardContractChannel[];
   /** 계약 목록에 있는데 contractChannels 에 없는 행이 생기면 부른다 — 어긋난 묶음마다 최대 1번. */
@@ -52,7 +44,9 @@ interface Props {
   channelsRefreshing?: boolean;
 }
 
-export default function DashboardFinance({ onOpenExpenseLedger, onPeriodTotals, contractChannels, onRefreshChannels, channelsRefreshing = false }: Props) {
+export default function DashboardFinance({ contractChannels, onRefreshChannels, channelsRefreshing = false }: Props) {
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const onOpenExpenseLedger = () => setLedgerOpen(true);
   const [period, setPeriod] = useState<FinancePeriod>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -66,7 +60,7 @@ export default function DashboardFinance({ onOpenExpenseLedger, onPeriodTotals, 
   const rows = contracts.data?.rows;
   const bucketOf = useMemo(() => (contractChannels ? channelBucketOf(contractChannels) : null), [contractChannels]);
   // 방금 추가·이름 바꾼 계약은 대시보드 캐시(5분)에 아직 없다 → 「확인 중」으로 두고 한 번만 다시 불러온다.
-  // GET /api/dashboard 는 원장 반복 지출을 만드는 쓰기를 포함하므로 같은 어긋남으로는 다시 부르지 않는다.
+  // 같은 어긋남으로는 다시 부르지 않는다(끝내 안 맞는 행이 있어도 새로고침이 반복되지 않게).
   const missing = useMemo(() => (rows && contractChannels ? missingChannelKeys(rows, contractChannels).join("\n") : ""), [rows, contractChannels]);
   useEffect(() => {
     if (!missing || !onRefreshChannels || refreshedChannelGroups.has(missing)) return;
@@ -87,11 +81,6 @@ export default function DashboardFinance({ onOpenExpenseLedger, onPeriodTotals, 
 
   const failed = contracts.isError || db.isError;
   const label = range ? `${PERIOD_LABEL[period]} ${range[0].slice(5).replace("-", "/")}~${range[1].slice(5).replace("-", "/")}` : PERIOD_LABEL.all;
-  const ledgerTotals = totals && !ledger.isLoading ? { dbCost: totals.dbCost, additional: totals.additional, label } : null;
-  useEffect(() => {
-    onPeriodTotals?.(ledgerTotals);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ledgerTotals?.dbCost, ledgerTotals?.additional, ledgerTotals?.label]);
 
   return (
     <section aria-label="매출·비용·영업이익" className="rounded-2xl border border-slate-200 bg-slate-100 p-2">
@@ -136,6 +125,16 @@ export default function DashboardFinance({ onOpenExpenseLedger, onPeriodTotals, 
               refreshing={channelsRefreshing}
             />
           ) : undefined}
+        />
+      )}
+      {/* 비용 원장 창 — 비용 칸과 같은 기간·같은 숫자(전에는 페이지가 값을 받아 다시 넘겼다). */}
+      {totals && (
+        <ExpenseLedgerDialog
+          open={ledgerOpen}
+          onClose={() => setLedgerOpen(false)}
+          dbCostTotal={totals.dbCost}
+          additionalCost={totals.additional}
+          periodLabel={label}
         />
       )}
     </section>

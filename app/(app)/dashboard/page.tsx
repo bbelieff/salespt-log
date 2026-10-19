@@ -12,12 +12,11 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
-import DashboardFinance, { type LedgerPeriodTotals } from "@/components/dashboard/DashboardFinance";
+import DashboardFinance from "@/components/dashboard/DashboardFinance";
 import MobileChartCarousel from "@/components/dashboard/MobileChartCarousel";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
-import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import Link from 'next/link';
 import {hasDashboardChartRecords} from '@/components/dashboard/chart-records';
@@ -33,9 +32,7 @@ function fmtMD(iso: string): string {
 
 
 export default function DashboardPage() {
-  const [expenseLedgerOpen, setExpenseLedgerOpen] = useState(false);
   // 원장 창 요약 = 비용 칸과 같은 기간·같은 계산(화석 B5). 아직 계산 전이면 서버 값으로.
-  const [ledgerTotals, setLedgerTotals] = useState<LedgerPeriodTotals | null>(null);
   const me = useMe();
   const dash = useDashboard();
 
@@ -119,8 +116,6 @@ export default function DashboardPage() {
                 아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
             <DashboardFinance
-              onOpenExpenseLedger={() => setExpenseLedgerOpen(true)}
-              onPeriodTotals={setLedgerTotals}
               contractChannels={dash.data.contractChannels}
               onRefreshChannels={dash.refetch}
               channelsRefreshing={dash.isFetching}
@@ -144,15 +139,6 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-      {dash.data && (
-        <ExpenseLedgerDialog
-          open={expenseLedgerOpen}
-          onClose={() => setExpenseLedgerOpen(false)}
-          dbCostTotal={ledgerTotals ? ledgerTotals.dbCost : dash.data.additionalCost.dbCostTotal}
-          additionalCost={ledgerTotals ? ledgerTotals.additional : dash.data.additionalCost.status === "available" ? dash.data.additionalCost.additionalCost : null}
-          periodLabel={ledgerTotals?.label}
-        />
-      )}
       </PageContainer>
     </section>
   );
