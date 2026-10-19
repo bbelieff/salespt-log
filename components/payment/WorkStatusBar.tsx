@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import type { WorkStatusItem, WorkStatusKey } from "@/lib/analytics/payment-work-status";
 
 const STATUS: Array<{ key: WorkStatusKey; label: string; color: string; text: string }> = [
@@ -25,26 +25,42 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
   // 팝업은 마우스(또는 누른 버튼)가 있는 가로 위치에서 뜬다 — 막대 오른쪽 끝에 고정되지 않게(belie 2026-09-29).
   const [anchorX, setAnchorX] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const popoverId = useId();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelClose = () => {
+  const cancelClose = useCallback(() => {
     if (closeTimer.current !== null) clearTimeout(closeTimer.current);
     closeTimer.current = null;
-  };
+  }, []);
+  const close = useCallback((restoreFocus = false) => {
+    cancelClose();
+    setOpen(null);
+    if (restoreFocus) triggerRef.current?.focus({ preventScroll: true });
+  }, [cancelClose]);
   const scheduleClose = () => {
     cancelClose();
     // 막대와 팝업 사이 8px 간격을 건너는 동안만 잠깐 기다린다.
     closeTimer.current = setTimeout(() => { setOpen(null); closeTimer.current = null; }, 120);
   };
   useEffect(() => {
-    const close = () => { cancelClose(); setOpen(null); };
-    window.addEventListener("blur", close);
-    return () => { cancelClose(); window.removeEventListener("blur", close); };
-  }, []);
+    const onWindowBlur = () => close();
+    window.addEventListener("blur", onWindowBlur);
+    return () => { cancelClose(); window.removeEventListener("blur", onWindowBlur); };
+  }, [cancelClose, close]);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(true); }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, close]);
   const active = open ? items.filter((item) => item.status === open) : [];
   const status = STATUS.find((s) => s.key === open);
 
   const openAt = (key: WorkStatusKey, e: MouseEvent<HTMLElement>) => {
     cancelClose();
+    triggerRef.current = e.currentTarget;
     const root = rootRef.current?.getBoundingClientRect();
     // 키보드로 누르면 clientX 가 0 — 그땐 버튼 가운데를 기준으로 삼는다.
     const target = e.currentTarget.getBoundingClientRect();
@@ -66,16 +82,17 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
         <div className="flex h-4 w-full min-w-12 overflow-hidden rounded-full border border-white/80 bg-slate-100 p-[2px] shadow-inner min-[1280px]:w-auto min-[1280px]:flex-1" role="group" aria-label="업무 상태">
           {STATUS.map((s) => {
             const count = items.filter((item) => item.status === s.key).length;
-            return count > 0 ? <button key={s.key} type="button" onClick={(e) => openAt(s.key, e)} onMouseEnter={(e) => openAt(s.key, e)} className={`${s.color} h-full min-w-[8px] rounded-full transition-[filter] hover:brightness-105`} style={{ width: `${count / items.length * 100}%` }} aria-label={`${s.label} ${count}건`} /> : null;
+            return count > 0 ? <button key={s.key} type="button" onClick={(e) => openAt(s.key, e)} onMouseEnter={(e) => openAt(s.key, e)} className={`${s.color} h-full min-w-[8px] rounded-full transition-[filter] hover:brightness-105`} style={{ width: `${count / items.length * 100}%` }} aria-label={`${s.label} ${count}건`} aria-expanded={open === s.key} aria-controls={open === s.key ? popoverId : undefined} /> : null;
           })}
         </div>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-px-11 text-slate-500">
-        {STATUS.map((s) => <button type="button" key={s.key} onClick={(e) => openAt(s.key, e)} className="inline-flex items-center gap-1 hover:text-slate-900"><span className={`h-2 w-2 rounded-full ${s.color}`}/>{s.label} <b className="tabular-nums text-slate-700">{items.filter((item) => item.status === s.key).length}</b></button>)}
+      <div className="mt-1 flex flex-wrap gap-x-3 text-px-11 text-slate-500">
+        {/* 작은 막대와 같은 목록을 여는 범례에는 충분한 터치 높이를 준다. */}
+        {STATUS.map((s) => <button type="button" key={s.key} onClick={(e) => openAt(s.key, e)} aria-expanded={open === s.key} aria-controls={open === s.key ? popoverId : undefined} className="inline-flex min-h-8 items-center gap-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 hover:text-slate-900"><span className={`h-2 w-2 rounded-full ${s.color}`}/>{s.label} <b className="tabular-nums text-slate-700">{items.filter((item) => item.status === s.key).length}</b></button>)}
       </div>
-      {open && status && <div data-work-status-popover className={`absolute z-[500] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl ${left === null ? "right-0" : ""} ${popoverPlacement === "top" ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]"}`} style={{ width: popoverWidth, ...(left === null ? {} : { left }) }}>
+      {open && status && <div id={popoverId} role="region" aria-label={`${status.label} 진행 목록`} data-work-status-popover className={`absolute z-[500] max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl ${left === null ? "right-0" : ""} ${popoverPlacement === "top" ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]"}`} style={{ width: popoverWidth, ...(left === null ? {} : { left }) }}>
         {/* 제목줄을 해당 상태의 막대 색으로 채워 어떤 상태 목록인지 바로 알아보게. */}
-        <div data-work-status-banner className={`mb-1 flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-bold ${status.color} ${status.text}`}><span>{status.label} {active.length}건</span><button type="button" onClick={() => setOpen(null)} className="rounded p-0.5 leading-none opacity-80 hover:opacity-100" aria-label="닫기">×</button></div>
+        <div data-work-status-banner className={`mb-1 flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-bold ${status.color} ${status.text}`}><span>{status.label} {active.length}건</span><button type="button" onClick={() => close(true)} className="-my-1 inline-flex h-8 w-8 items-center justify-center rounded leading-none opacity-80 hover:opacity-100" aria-label="닫기">×</button></div>
         {active.map((item) => <button type="button" key={item.key} onClick={() => { onNavigate(item.row, item.slot); setOpen(null); }} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-blue-50"><span className="block truncate text-xs font-semibold text-slate-800">{item.company} · 진행 {item.slot} · {item.product || "상품 미정"}</span><span className="block truncate text-px-11 text-slate-400">{item.institution || "기관 미정"}</span></button>)}
       </div>}
     </div>

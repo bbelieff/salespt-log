@@ -21,6 +21,7 @@ import type { DashboardChannelMatrix } from "@/types";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 import CountUp from "@/components/motion/CountUp";
+import HintTooltip from "@/components/ui/HintTooltip";
 
 const pctText = (n: number) => `${n.toFixed(1)}%`;
 
@@ -61,7 +62,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
       <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-indigo-500" />
         <h2 className="text-base font-extrabold text-gray-900">생산성 지표</h2>
-        <span className="ml-auto text-xs text-gray-400">{weeks}주 누적</span>
+        <HintTooltip label="생산성 지표 계산 안내" text="각 항목의 도착 단계 건수 ÷ 시작 단계 건수입니다. 아래에 실제 건수를 표시하며, 분모가 0이면 계산할 기록이 없어 —로 표시합니다." />
+        <span className="ml-auto text-px-11 text-slate-600">{weeks}주 누적</span>
       </div>
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -71,6 +73,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           label="DB 퀄리티"
           formula="유입 → 컨택진행"
           value={dbQuality}
+          numerator={contactProgress} denominator={inflow}
           barCls="bg-indigo-300"
           pctCls="text-indigo-600"
         />
@@ -80,6 +83,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           label="컨택성공률"
           formula="컨택진행 → 미팅예약"
           value={contactSuccessRate}
+          numerator={meetingReservation} denominator={contactProgress}
           barCls="bg-indigo-400"
           pctCls="text-indigo-600"
         />
@@ -89,6 +93,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           label="미팅실행률"
           formula="미팅예약 → 미팅완료"
           value={meetingExecuteRate}
+          numerator={meetingCompleted} denominator={meetingReservation}
           barCls="bg-indigo-500"
           pctCls="text-indigo-700"
         />
@@ -98,6 +103,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
           label="미팅숙련도"
           formula="미팅완료(계약+완료) → 계약"
           value={meetingSkill}
+          numerator={contract} denominator={meetingCompleted}
           barCls="bg-indigo-700"
           pctCls="text-indigo-800"
         />
@@ -105,10 +111,11 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
         {/* 영업생산성 — 종합 강조 */}
         <div className="col-span-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-2.5">
           <div className="mb-1 flex items-center justify-between">
-            <div className="flex items-center gap-1 text-xs">
+            <div className="flex items-center gap-1 text-px-11">
               <span className="font-bold text-indigo-900">영업생산성</span>
-              <span className="ml-1 text-indigo-600">컨택진행 → 계약</span>
-              <span className="ml-1 rounded bg-indigo-200/70 px-1.5 py-0.5 text-xs font-medium text-indigo-800">
+              <span className="hidden pc:inline ml-1 text-indigo-700">컨택진행 → 계약</span>
+              <HintTooltip label="영업생산성 계산 기준" text={`계약 ${contract.toLocaleString()}건 ÷ 컨택진행 ${contactProgress.toLocaleString()}건. ${contactProgress > 0 ? '컨택진행 중 계약으로 이어진 비율입니다.' : '컨택진행 기록이 없어 아직 계산할 수 없습니다.'}`} />
+              <span className="ml-1 rounded bg-indigo-200/70 px-1.5 py-0.5 text-px-11 font-medium text-indigo-800">
                 종합
               </span>
             </div>
@@ -116,9 +123,10 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
               className="text-base font-bold text-purple-700"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
-              <CountUp value={salesProductivity} play={play} decimals={1} format={pctText} />
+              {contactProgress > 0 ? <CountUp value={salesProductivity} play={play} decimals={1} format={pctText} /> : <span aria-label="계산할 기록 없음">—</span>}
             </span>
           </div>
+          <p className="mb-1 text-right text-px-11 tabular-nums text-indigo-800">{contract.toLocaleString()} / {contactProgress.toLocaleString()}건</p>
           <div className="h-1.5 w-full rounded-full bg-indigo-100/60">
             <div
               className={`h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 ${play ? "fx-grow-x" : ""}`}
@@ -139,6 +147,8 @@ function Row({
   pctCls,
   play,
   order,
+  numerator,
+  denominator,
 }: {
   play: boolean;
   order: number;
@@ -147,20 +157,24 @@ function Row({
   value: number;
   barCls: string;
   pctCls: string;
+  numerator: number;
+  denominator: number;
 }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <div className="text-xs">
-          <span className="font-semibold text-gray-700">{label}</span>
-          <span className="hidden pc:inline ml-1 text-gray-400">{formula}</span>
+        <div className="flex min-w-0 items-center gap-1 text-px-11">
+          <span className="whitespace-nowrap text-px-12 font-semibold text-gray-700">{label}</span>
         </div>
         <span
           className={`text-sm font-bold ${pctCls}`}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
-          <CountUp value={value} play={play} decimals={1} format={pctText} />
+          {denominator > 0 ? <CountUp value={value} play={play} decimals={1} format={pctText} /> : <span aria-label="계산할 기록 없음">—</span>}
         </span>
+      </div>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-1 text-px-11 text-slate-600">
+        <span>{formula}</span><span className="tabular-nums">{numerator.toLocaleString()} / {denominator.toLocaleString()}건</span>
       </div>
       <div className="h-1 w-full rounded-full bg-gray-100">
         <div

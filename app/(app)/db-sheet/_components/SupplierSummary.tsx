@@ -46,11 +46,20 @@ function Metric({row,metric,best=false,showLabel=false}:{row:SupplierRow;metric:
  </span>;
 }
 
-function Name({ row, kind }: { row: SupplierRow; kind: Kind }) {
+function Name({ row, kind, selected = false }: { row: SupplierRow; kind: Kind; selected?: boolean }) {
   const tone = kind === "supplier" ? "font-semibold text-slate-800" : kind === "total" ? "font-bold text-slate-800" : "text-slate-600";
-  return <span className="flex min-w-0 items-center gap-1.5">
-    {kind !== "total" && row.channels.map(channel => <ChannelBadge key={channel} channel={channel} />)}
-    <span className={`min-w-0 truncate ${tone}`}>{row.label}</span>
+  const mixed = kind !== "total" && row.channels.length > 1;
+  return <span className="block min-w-0">
+    <span className="flex min-w-0 items-start gap-1.5">
+      {mixed
+        ? <span className="shrink-0 whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-px-10 font-medium text-slate-700"
+            aria-label={`채널 ${row.channels.length}개: ${row.channels.join(", ")}`} title={row.channels.join(" · ")}>{row.channels.length}채널</span>
+        : kind !== "total" && <span className="shrink-0"><ChannelBadge channel={row.channels[0]!} /></span>}
+      <span className={`min-w-0 break-words ${tone}`}>{row.label}</span>
+    </span>
+    {mixed && (selected || kind === "blank") && <span className="mt-1 flex flex-wrap gap-1" aria-label="공급처의 전체 채널">
+      {row.channels.map(channel => <ChannelBadge key={channel} channel={channel} />)}
+    </span>}
   </span>;
 }
 
@@ -71,7 +80,7 @@ function TableRow({ row, kind, best = false, selected = false, onToggle }: RowPr
     <th scope="row" className="py-2 pl-3 pr-2 text-left align-top font-normal">
       {/* 키보드·낭독용 버튼. 클릭은 줄 전체(tr onClick) 한 곳에서 받는다 — 버튼을 눌러도 그리로 올라간다. */}
       {onToggle
-        ? <button type="button" aria-pressed={kind === "supplier" ? selected : undefined} className="block w-full text-left"><Name row={row} kind={kind} /></button>
+        ? <button type="button" aria-pressed={kind === "supplier" ? selected : undefined} className="block w-full text-left"><Name row={row} kind={kind} selected={selected} /></button>
         : <Name row={row} kind={kind} />}
     </th>
     {(['total','consulted','meetings','contracts'] as const).map(metric=><td key={metric} className="px-2 py-2 align-top"><Metric row={row} metric={metric} best={best}/></td>)}
@@ -80,7 +89,7 @@ function TableRow({ row, kind, best = false, selected = false, onToggle }: RowPr
 
 function Card({ row, kind, best = false, selected = false, onToggle }: RowProps) {
   const body = <>
-    <Name row={row} kind={kind}/>
+    <Name row={row} kind={kind} selected={selected}/>
     <span className="supplier-mobile-metrics">{(['total','consulted','meetings','contracts'] as const).map(metric=><Metric key={metric} row={row} metric={metric} best={best} showLabel/>)}</span>
   </>;
   const className = `${CARD} ${CARD_BG[kind]}`;

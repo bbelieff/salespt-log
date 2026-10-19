@@ -12,8 +12,9 @@
 "use client";
 
 import PageContainer from "@/components/PageContainer";
+import usePcBreakpoint from "./_components/usePcBreakpoint";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import { type ContractPayment } from "@/types";
@@ -50,19 +51,6 @@ import { contractAccentFamily } from "./_lib/contractAccent";
 import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionWorkItem } from "./_lib/institution-view";
 import { activityTodayISO } from "./_lib/payment-progress";
 import { useAllTodos } from "@/query/todos-hooks";
-
-/** 데스크탑(pc:1024) 여부 — 마스터-디테일 분기용. SSR/하이드레이션은 모바일 기준으로 시작. */
-function usePcBreakpoint(): boolean {
-  const [isPc, setIsPc] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1280px)");
-    const sync = () => setIsPc(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return isPc;
-}
 
 interface ConfirmTarget {
   row: number;
@@ -284,12 +272,15 @@ export default function PaymentPage() {
           pageTitle="실무/수납"
         />
         {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
-        <main data-payment-mobile-compact className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <div data-payment-mobile-compact className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
         <PaymentPerformanceSummary
           rows={allRows}
           workRows={activeWorkContracts(allRows)}
           todos={allTodos.data?.todos ?? []}
+          dataState={list.isError ? "error" : list.data ? "ready" : "loading"}
+          workState={activityState}
+          onRetry={() => { void list.refetch(); void allTodos.refetch(); }}
           onNavigate={(row, slot) => {
             guardedNav(() => { clearPaymentFocus(); setListMode("company"); setCompanyQuery(""); setSelectedRow(row); setSelectedCompanyKey(companyKeyOfRow(allRows, row)); setFocusRequestId((id) => id + 1); });
             window.setTimeout(() => document.getElementById(`payment-slot-${row}-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
@@ -423,7 +414,7 @@ export default function PaymentPage() {
         {/* 모바일은 기존 문서 흐름, PC는 위 목록 pane 안에서 해지 보관함을 읽는다. */}
         {!isPc && rows.length > 0 && <TerminationArchive contracts={archivedRows} />}
         </PageContainer>
-        </main>
+        </div>
       </div>
 
       {/* 토스트 */}

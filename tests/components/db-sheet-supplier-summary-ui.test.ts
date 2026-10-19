@@ -149,3 +149,29 @@ it("keeps all selected supplier rows visible and delegates multi-selection toggl
  act(()=>rowButton(table(),'공급처8').click());expect(handlers.onSelect).toHaveBeenLastCalledWith('공급처8');
  expect(host.textContent).not.toContain('0곳 더 보기');
 });
+
+it("keeps a long mixed-channel supplier name readable and reveals every channel when selected", async () => {
+  const supplier = "주식회사 전국소상공인성장지원마케팅센터 수도권사업본부";
+  const channels: DbSheetLead["channel"][] = ["매입DB", "직접생산", "현수막", "콜·지·기·소"];
+  const mixed = channels.map(channel => lead(supplier, "계약", undefined, channel));
+  await render({ leads: mixed });
+  const mobile = host.querySelector("ul")!;
+  const button = rowButton(mobile, supplier);
+  const label = [...button.querySelectorAll("span")].find(node => node.textContent === supplier)!;
+  expect(label.className).toContain("break-words");
+  expect(label.className).not.toContain("truncate");
+  const badge = button.querySelector('[aria-label^="채널 4개"]')!;
+  expect(badge.textContent).toBe("4채널");
+  expect(badge.className).toContain("shrink-0");
+  for (const channel of channels) expect(badge.getAttribute("aria-label")).toContain(channel);
+  expect(button.querySelector('[aria-label="공급처의 전체 채널"]')).toBeNull();
+  const metrics = [...button.querySelectorAll("[data-metric]")].map(node => node.textContent);
+  act(() => button.click());
+  expect(handlers.onSelect).toHaveBeenLastCalledWith(supplier);
+  await render({ leads: mixed, selected: supplier });
+  const selected = rowButton(mobile, supplier);
+  expect(selected.getAttribute("aria-pressed")).toBe("true");
+  expect([...selected.querySelector('[aria-label="공급처의 전체 채널"]')!.children].map(node => node.textContent)).toEqual(channels);
+  expect([...selected.querySelectorAll("[data-metric]")].map(node => node.textContent)).toEqual(metrics);
+  expect(selected.querySelector("button")).toBeNull();
+});

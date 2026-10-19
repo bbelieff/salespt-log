@@ -38,7 +38,9 @@ import {
   type DatedCostRow,
 } from "./dashboard-cost-carryover";
 import { findUserByEmail } from "@/repo/users";
-import { courseWeeksForCohort } from "@/config/cohort-dates";
+import { ceremonyISO, courseWeeksForCohort } from "@/config/cohort-dates";
+import { isValidISODate } from "@/util/week";
+import { buildRecentTrend, readRecentTrendForSource, recentTrendPeriod, unavailableRecentTrend, type RecentTrend } from "./dashboard-recent-trend";
 import { resolveOwnArenaSheetId } from "@/repo/users-arena";
 import { readDashboard } from "@/repo/dashboard";
 import { readBanners, readProductions, readPurchases } from "@/repo/db";
@@ -318,17 +320,18 @@ export async function loadDashboard(
   // (안전밸브 — 사용자 화면 에러 금지). 서빙=DB 후에도 역방향 그림자로 시트 대조 감시(R3 전까지).
   if (chooseDailySource(sourceCohort(user), dbEnabled()) === "db") {
     try {
-      const { view, termByChannel, termByWeek } = await loadDashboardFromDb(sheetId, user.courseStartISO, email, sourceCohort(user));
+      const { view, termByChannel, termByWeek, recentTrend } = await loadDashboardFromDb(sheetId, overrideSheetId ? undefined : user.courseStartISO, email, overrideSheetId ? undefined : sourceCohort(user), overrideSheetId ? undefined : user.graduationISO);
       reverseShadowCompare(sheetId, view); // 기본 off — 아래 함수 주석(R3 종료) 참고
       // 해지 계약수 제외: 그림자 dispatch 이후 렌더 직전 오버레이(원본 view 무변 → diff 0 사수).
-      return applyTerminationExclusion(view, termByChannel, termByWeek);
+      const courseView = applyTerminationExclusion(view, termByChannel, termByWeek);
+      return recentTrend ? { ...courseView, ...recentTrend } : courseView;
     } catch (e) {
       Sentry.captureException(e, { tags: { where: "loadDashboard-db-serve" } });
       // ↓ 시트 경로로 강등
     }
   }
 
-  return loadDashboardFromSheet(sheetId, email);
+  return loadDashboardFromSheet(sheetId, email, chooseDailySource(sourceCohort(user), dbEnabled()) === "db");
 }
 
 /** DB 서빙 경로 (R2-7b) — 대시보드 시트 read 0. 집계·비용·매출 전부 DB 미러에서. */
@@ -337,15 +340,23 @@ async function loadDashboardFromDb(
   courseStartISOCache?: string,
   actorEmail = "",
   cohort?: string,
+  graduationISOCache?: string,
 ): Promise<{
   view: DashboardView;
   termByChannel: Record<Channel, number>;
   termByWeek: number[];
+  recentTrend?: RecentTrend;
 }> {
+  let profile = courseStartISOCache ? undefined : await readProfileBundle(sheetId);
   const courseStart = courseStartISOCache
     ? new Date(`${courseStartISOCache}T00:00:00`)
-    : (await readProfileBundle(sheetId)).courseStart;
+    : profile!.courseStart;
   const courseStartISO = toISODate(courseStart);
+  if (!profile && !isValidISODate(ceremonyISO(courseStartISO, cohort) || graduationISOCache || "")) {
+    try { profile = await readProfileBundle(sheetId); }
+    catch { captureServerEvent("dashboard_recent_graduation_unavailable", { count: 1 }); }
+  }
+  const period = recentTrendPeriod(courseStartISO, graduationISOCache || (profile ? toISODate(profile.graduation) : ""), cohort ?? profile?.cohort, seoulTodayISO());
   const [salesRows, meetings, contracts, dbTab] = await Promise.all([
     readSalesRowsFromDb(sheetId),
     readMeetingsFromDb(sheetId),
@@ -378,11 +389,12 @@ async function loadDashboardFromDb(
     view,
     termByChannel: term.byChannel,
     termByWeek: terminatedByWeek(contracts, courseStart, courseWeeksForCohort(cohort)),
+    recentTrend: period ? buildRecentTrend(period, salesRows, meetings, contracts) : undefined,
   };
 }
 
 /** 시트 서빙 경로 (비파일럿 + DB 강등 fallback) — 기존 동작 무변경. */
-async function loadDashboardFromSheet(sheetId: string, actorEmail: string): Promise<DashboardView> {
+async function loadDashboardFromSheet(sheetId: string, actorEmail: string, dbFallback = false): Promise<DashboardView> {
   const profilePromise = readProfileBundle(sheetId);
   const meetingsPromise = profilePromise.then((profile) =>
     readCourseMeetings(sheetId, profile.courseStart),
@@ -431,7 +443,18 @@ async function loadDashboardFromSheet(sheetId: string, actorEmail: string): Prom
     captureServerEvent("dashboard_term_unknown", { count: term.unknown, path: "sheet" });
   }
   const termByWeek = terminatedByWeek(payments, profile.courseStart);
-  return applyTerminationExclusion(view, term.byChannel, termByWeek);
+  const courseView = applyTerminationExclusion(view, term.byChannel, termByWeek);
+  const period = recentTrendPeriod(courseStartISO, toISODate(profile.graduation), profile.cohort, seoulTodayISO());
+  if (!period) return courseView;
+  if (dbFallback) return { ...courseView, ...unavailableRecentTrend(period) };
+  try {
+    const recent = await readRecentTrendForSource(sheetId, profile.courseStart, profile.cohort, period, payments);
+    return { ...courseView, ...recent };
+  }
+  catch {
+    captureServerEvent("dashboard_recent_unavailable", { count: 1, path: "sheet" });
+    return { ...courseView, ...unavailableRecentTrend(period) };
+  }
 }
 
 /** 채널귀속용 04 미팅 전량 read (시트경로 전용) — 수강기간(넉넉히 84일) 날짜 리스트로

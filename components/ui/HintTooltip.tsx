@@ -117,9 +117,9 @@ export default function HintTooltip({ label, text }: Props) {
           if (open && pinned.current) close();
           else show(true);
         }}
-        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-300 text-xs font-semibold leading-none text-slate-500 hover:border-slate-400 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        className="group -my-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold leading-none text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
       >
-        ?
+        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 group-hover:border-slate-400">?</span>
       </button>
       {open &&
         typeof document !== "undefined" &&

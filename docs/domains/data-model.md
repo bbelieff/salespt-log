@@ -558,7 +558,9 @@ interface DashboardChannelMatrix {
 // 6필드 — 시트 01 영업관리!R1:U6 (24셀 stacking) 에서 read.
 
 interface DashboardWeeklyPoint {
-  주차: number;           // 1~8
+  주차: number;           // 코스 8/12주 또는 최근 8주 내 순번
+  startISO?: string;      // 수료 후 최근 추이의 실제 금요일 시작일
+  endISO?: string;        // 목요일 종료일(이번 주는 오늘 KST까지)
   계약수: number;         // 사용자 결정 2026-05-08: 영업이익 → 계약수
   활동량: number;         // 대시보드 H33:H40 (영업관리 가중치 합계)
 }
@@ -577,12 +579,19 @@ interface DashboardContractChannel {
 interface DashboardView {
   kpi: DashboardKPI;
   channelMatrix: DashboardChannelMatrix[];   // 길이 4 (R1:U6 stacking)
-  weeklyTrend: DashboardWeeklyPoint[];       // 길이 8
+  weeklyTrend: DashboardWeeklyPoint[];       // 코스 8/12주, 수료 후 최근 8주. 조회 실패 시 []
+  weeklyTrendPeriod?: { kind: 'recent'; startISO: string; endISO: string; status: 'available' | 'unavailable' };
   costBreakdown: DashboardCostBreakdown[];   // 길이 3 (콜·지·기·소 제외)
   콜지기소수임비: number;                    // 0 (UI에서 박스 제거됨)
   contractChannels?: DashboardContractChannel[]; // 계약 행마다 1개. optional — 배포 직후 캐시된 옛 응답엔 없다
 }
 ```
+
+**수료 후 주차 추이** (`dashboard-recent-trend.ts`): 종강총회일 다음 날부터 이번 주를 포함한 최근 8개 금~목 주를 표시한다.
+최신 기수의 총회는 `ceremonyISO`, legacy는 저장된 O2/registry graduationISO를 쓴다. 이번 주는 KST 오늘까지 포함하고 미래 기록은 제외한다.
+활동량의 생산×1 + 컨택진행×1.5 + 완료 미팅×2, 계약/해지 차감 정의는 기존 함수 그대로다. 코스 KPI·퍼널·비용 기간은 바꾸지 않는다.
+DB 정본은 이미 읽은 원시 기록을 재사용한다. 시트 정본은 겹치는 물리 주차(1~MAX_SHEET_WEEK)만 원시 읽기하고, 물리 범위 밖만 DB 기록을 붙인다.
+DB 정본 실패 후 시트 강등에서는 stale 미러로 최근 기록을 대체하지 않는다. 최근 조회 실패는 `status: unavailable`로 내보내며, 0건이나 옛 코스 그래프로 위장하지 않는다.
 
 **계약 → 채널 연결 규칙** (`lib/service/contract-channel.ts` — 해지 계약수 차감 `termination-count`와 공용):
 1차 AK(`linkedMeetingId`) → `meeting.id`, 2차 `계약일|업체명` → 첫 일치 미팅(미팅 연결 시 계약일 = 미팅날짜),

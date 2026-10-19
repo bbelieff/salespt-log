@@ -1,5 +1,5 @@
 // 2026-10-12 #7 — DB 경로 대시보드가 이미 읽은 계약·미팅으로 contractChannels 를 만든다(새 읽기 없음).
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContractPayment } from "@/types";
 import { loadDashboard } from "@/service/dashboard";
 
@@ -54,7 +54,7 @@ const meeting = (id: string, 업체명: string, channel: string) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.findUserByEmail.mockResolvedValue({
-    email: "student@example.invalid", name: "가상 수강생", cohort: "연습", spreadsheetId: "sheet-db", role: "trainee", courseStartISO: "2026-07-10",
+    email: "student@example.invalid", name: "가상 수강생", cohort: "연습", spreadsheetId: "sheet-db", role: "trainee", courseStartISO: "2026-07-10", graduationISO: "2026-08-29",
   });
   mocks.readSalesRowsFromDb.mockResolvedValue([]);
   mocks.readMeetingsFromDb.mockResolvedValue([meeting("m-1", "가상상사A", "현수막"), meeting("m-2", "가상상사B", "매입DB")]);
@@ -69,8 +69,30 @@ beforeEach(() => {
   mocks.listRecurringOccurrences.mockResolvedValue([]);
   mocks.sheetRead.mockRejectedValue(new Error("sheet path must not run"));
 });
+afterEach(() => vi.useRealTimers());
 
 describe("dashboard DB path — contractChannels", () => {
+  it("leaves in-course chart and KPI semantics unchanged", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-15T03:00:00Z"));
+    const view = await loadDashboard("student@example.invalid");
+    expect(view.weeklyTrendPeriod).toBeUndefined();
+    expect(view.weeklyTrend).toHaveLength(8);
+    expect(view.weeklyTrend[0]).toEqual({ 주차: 1, 계약수: 2, 활동량: 4 });
+  });
+  it("serves recent records after graduation without changing course totals or reading again", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-19T03:00:00Z"));
+    mocks.readSalesRowsFromDb.mockResolvedValue([{ date: "2026-10-19", channel: "매입DB", production: 4, contactProgress: 2, inflow: 3, meetingReservation: 0 }]);
+    mocks.readMeetingsFromDb.mockResolvedValue([meeting("new", "합성 최근 업체", "매입DB")].map(m => ({ ...m, 미팅날짜: "2026-10-19", 예약일: "2026-10-19" })));
+    const view = await loadDashboard("student@example.invalid");
+    expect(view.weeklyTrendPeriod).toEqual({ kind: "recent", startISO: "2026-08-28", endISO: "2026-10-19", status: "available" });
+    expect(view.weeklyTrend[7]).toMatchObject({ 계약수: 1, 활동량: 9 });
+    expect(view.channelMatrix[0]).toMatchObject({ 생산: 0, 유입: 0, 컨택진행: 0, 계약: 0 });
+    expect(mocks.readSalesRowsFromDb).toHaveBeenCalledTimes(1);
+    expect(mocks.readMeetingsFromDb).toHaveBeenCalledTimes(1);
+    expect(mocks.sheetRead).not.toHaveBeenCalled();
+  });
   it("AK → 미팅, 계약일|업체명 대체, manual → null", async () => {
     const view = await loadDashboard("student@example.invalid");
     expect(mocks.sheetRead).not.toHaveBeenCalled();

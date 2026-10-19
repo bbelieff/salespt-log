@@ -225,7 +225,7 @@ export default function CalendarPage() {
         </div>
       </header>
 
-      <main className="pb-[80px] pc:pb-6">
+      <section className="pb-[80px] pc:pb-6">
       <PageContainer width="fluid">
         <div className="px-4 pt-3 pc:px-0">
           <GcalConnectCard />
@@ -439,7 +439,7 @@ export default function CalendarPage() {
           </div>
         )}
       </PageContainer>
-      </main>
+      </section>
       {eventModal && (
         <GeneralEventModal
           defaultDate={selectedDate}
