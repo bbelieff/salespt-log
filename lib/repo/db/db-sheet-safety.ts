@@ -1,14 +1,13 @@
 /** Tenant-scoped duplicate checks and conservative permanent deletion guards. */
 import type { PoolClient } from "pg";
 import type { DbSheetContext,DbSheetLead,DbSheetLeadInput } from "@/types/db-sheet";
+import { isSameLead } from "@/util/db-sheet-identity";
 export class DbSheetDuplicate extends Error {
  constructor(public duplicates:Pick<DbSheetLead,'id'|'company'|'phone'>[],public duplicateLeadId?:string){super("같은 업체가 이미 있어요. 기존 업체를 수정하거나 별도로 등록해 주세요.");}
 }
-const phone=(s:string)=>s.replace(/^p:/i,'').replace(/^\+82/,'0').replace(/\D/g,'');
-const company=(s:string)=>s.normalize('NFKC').replace(/\s/g,'').toLowerCase();
 export async function assertNotDuplicate(c:Pick<PoolClient,'query'>,ctx:DbSheetContext,input:DbSheetLeadInput){
  const rows=await c.query('select data from db_sheet_leads where spreadsheet_id=$1 and id<>$2',[ctx.spreadsheetId,input.id]);
- const duplicates=rows.rows.map((r:{data:DbSheetLead})=>r.data).filter((l:DbSheetLead)=>(phone(input.phone).length>=9&&phone(l.phone)===phone(input.phone))||(company(input.company)&&company(l.company)===company(input.company))||(input.biz.replace(/\D/g,'').length===10&&input.biz.replace(/\D/g,'')===l.biz.replace(/\D/g,'')));
+ const duplicates=rows.rows.map((r:{data:DbSheetLead})=>r.data).filter((l:DbSheetLead)=>isSameLead(input,l));
  if(duplicates.length)throw new DbSheetDuplicate(duplicates.map(({id,company,phone}:DbSheetLead)=>({id,company,phone})),input.id);
 }
 export async function deleteBlockReason(c:Pick<PoolClient,'query'>,ctx:DbSheetContext,lead:DbSheetLead):Promise<string|undefined>{
