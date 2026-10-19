@@ -1,3 +1,6 @@
+## 2026-10-19 · 구조 개선 9/11 — 실무/수납 선택 상태 한 곳 (refactor/payment-selection)
+- useState 7개·복사된 선택 묶음 4벌 → `paymentSelectionReducer`. 화면 동작 동일(실화면 장치로 모바일·PC 확인). page.tsx 482줄.
+
 ## 2026-10-19 · 구조 개선 8/11 — DB관리시트 저장 엔진 분리 (refactor/db-sheet-store)
 - 화면 훅 안 ref 7개에 숨어 있던 저장 규칙을 `db-sheet-store.ts` 로(동작 동일). 화면 없이 시험 6개 + 실화면 장치로 저장 흐름 확인.
 
