@@ -1,3 +1,7 @@
+## 2026-10-19 · 구조 개선 1/11 — 실적 컨택 판정·작은 중복 정리 (refactor/shared-rules-qualified-contact)
+- 「컨택진행·상담 후 거절」 판정 4곳 → `isQualifiedDbSheetContact` 하나. 요일 배열 8벌·날짜 검증 3벌·미팅 카드 완료 판정 2벌·채널 배지 표 3벌 → 하나씩. 컨택 주 이동은 week.ts addDays 사용.
+- 계획: `docs/plans/active/structure-deepening-program.md` (12건, 11 PR 직렬).
+
 ## 2026-10-18 · DB 유입 실제 기여 두 상태 C
 - B PR1169/deploy39047747290 SUCCESS 후 최신 master df91e388의 clean 전용 WT·기존 완전 설치에서 feat/db-inflow-two-state-release. writer/release019fe6a6, 독립 F019fe6a9, Root Pages 소유.
 - 소유는 core5와 관련 tests/SSOT 의미·plan뿐. 실제 ledger 두 상태·수동숫자/strict guard 보존 및 목록의 오염 행만 명시 오류로 격리한다. [plan](plans/active/db-inflow-two-state-release.md)에 정확 lease·검사/실패·직렬 배포 계약. 원본 dirty·A/B UI·고객 데이터 불변, 옛129 현재 PASS 재사용0.

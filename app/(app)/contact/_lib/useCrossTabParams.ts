@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
+import { isValidISODate } from "@/util/week";
 
 /**
  * DB관리→컨택 교차탭 진입(2026-06-03 [교차탭1]): ?channel=&date=&focus= 를 파싱해
@@ -21,7 +22,7 @@ export function useCrossTabParams(opts: {
     const d = params.get("date");
     const focus = params.get("focus");
     if (ch && (CHANNEL_ORDER as readonly string[]).includes(ch)) setActiveChannel(ch as Channel);
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d);
+    if (d && isValidISODate(d)) setDate(d);
     if (focus === "production") {
       setHighlightProduction(true);
       const t = setTimeout(() => setHighlightProduction(false), 4000);

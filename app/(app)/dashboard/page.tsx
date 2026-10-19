@@ -6,7 +6,7 @@ import "@/components/dashboard/dashboard-action-overview.css";
 
 import { useMemo, useState } from "react";
 import { courseWeeksForCohort } from "@/config/cohort-dates";
-import { todayKST } from "@/util/week";
+import { todayKST, DAY_KO as KO_DAY } from "@/util/week";
 import { computeCourseBanner } from "./_lib/course-banner";
 import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
@@ -31,7 +31,6 @@ function fmtMD(iso: string): string {
   return `${m}/${d}`;
 }
 
-const KO_DAY = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function DashboardPage() {
   const [expenseLedgerOpen, setExpenseLedgerOpen] = useState(false);

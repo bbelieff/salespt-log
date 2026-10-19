@@ -30,7 +30,7 @@ import CrossTabHintModal from "@/components/ui/CrossTabHintModal";
 import { useRouter } from "next/navigation";
 import { uuid } from "./_lib/contactDefaults";
 import { useContactMetrics } from "./_lib/use-contact-metrics";
-import { friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
+import { addDays, friOf, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useCrossTabParams } from "./_lib/useCrossTabParams";
 import RecordMoveModal from "./_components/RecordMoveModal";
 import { slotComplete } from "./_lib/meeting-draft";
@@ -271,9 +271,7 @@ export default function ContactPage() {
   const moveWeek = (deltaWeeks: number) => {
     if (!dayQuery.data) return;
     setSlideDir(deltaWeeks > 0 ? "right" : "left");
-    const cur = new Date(date);
-    cur.setDate(cur.getDate() + deltaWeeks * 7);
-    setDate(fmtISO(cur));
+    setDate(fmtISO(addDays(parseISO(date), deltaWeeks * 7)));
     setTimeout(() => setSlideDir(null), 260);
   };
 

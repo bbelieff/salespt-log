@@ -13,7 +13,8 @@
  * `WEEK-INDEX-SSOT-COPY` 마커 의무 (G8 이 마커 없는 사본을 차단).
  */
 
-const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+/** 요일 한 글자 — JS getDay() 순서(일=0). 화면 곳곳의 요일 표기가 이 배열 하나를 쓴다. */
+export const DAY_KO: readonly string[] = ["일", "월", "화", "수", "목", "금", "토"];
 
 /**
  * KST 기준 오늘 "YYYY-MM-DD" — 날짜 경계 판정 SSOT.

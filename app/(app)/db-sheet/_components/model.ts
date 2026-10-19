@@ -1,5 +1,6 @@
-import { isDbSheetFollowUpResult, recordsDbSheetFirstContact } from "@/types/db-sheet";
+import { DB_SHEET_RESULTS, isDbSheetFollowUpResult, isQualifiedDbSheetContact, recordsDbSheetFirstContact } from "@/types/db-sheet";
 import {CHANNEL_ORDER} from '@/types/channel';
+import { isValidISODate } from "@/util/week";
 export type Row = { asReceived?:boolean; asNote?:string; firstManual?:boolean; recording?:{inflow:boolean;activities:boolean}; inflowStatus?:{state:"recorded"|"excluded";date?:string;channel?:string;count:0|1}; inflow?:string; effectiveMeetingId?:string; meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; hasQualifiedContact?:boolean; stage:string; next:string; memo:string };
 export type Key = Exclude<keyof Row,'id'|'meetingId'|'recording'|'inflowStatus'|'effectiveMeetingId'|'hasQualifiedContact'|'asReceived'|'asNote'|'firstManual'>;
 export const columns: {key:Key;label:string;auto?:boolean;width:number}[] = [
@@ -23,25 +24,26 @@ export function duplicate(r:Row,existing:Row[]){
  const company=(v:string)=>v.normalize('NFKC').replace(/\s/g,'').toLowerCase(),phone=(v:string)=>norm(v.replace(/^p:/i,'').replace(/^\+82/,'0'));
  return existing.some(e=>(norm(r.biz).length===10&&norm(r.biz)===norm(e.biz))||(!!company(r.company)&&company(r.company)===company(e.company))||(phone(r.phone).length>=9&&phone(r.phone)===phone(e.phone)));
 }
-export function validDate(value:string){return /^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;}
+/** 앞뒤 공백 없이 실제 달력에 있는 YYYY-MM-DD 인가 — 판정 정본은 lib/util/week.ts. */
+export function validDate(value:string){return value===value.trim()&&isValidISODate(value);}
 export const validChannel=(value:string)=>CHANNEL_ORDER.some(channel=>channel===value);
 export function issues(r:Row){return [!validChannel(r.channel)?'공급처 유형':null,!r.company&&!r.owner?'이름/사업자명':null,!/^0[0-9-]{8,14}$/.test(r.phone)?'전화번호':null,!validDate(r.date)?'유입일':null,!r.supplier?'공급처':null].filter(Boolean).join(' · ');}
 export const csvSample='사업자명,대표자,전화번호,필요자금,체납여부\n샘플 달빛공방,한가상,010-0000-2001,"5,000만원",\n샘플 온유상사,김가상,010-0000-1001,3천만원,없음\n샘플 푸른제작,윤가상,확인 필요,,미확인';
 export const kakaoSample='사업자명: 샘플 은하상사\n대표자: 조가상\n연락처: 010-0000-3001\n필요자금: 7천만원\n체납: 미확인\n\n사업자명: 샘플 별빛식품\n대표자: 오가상\n전화번호: 확인 필요';
 
 export const tsvSample='사업자명\t대표자\t전화번호\t필요자금\t체납여부\n샘플 달빛공방\t한가상\t010-0000-2001\t5,000만원\t\n샘플 온유상사\t김가상\t010-0000-1001\t3천만원\t없음\n샘플 푸른제작\t윤가상\t확인 필요\t\t미확인';
-export const outcomes=['미컨택','부재','단순거절','재통화','컨택진행','상담 후 거절','AS예정'];
+export const outcomes:readonly string[]=DB_SHEET_RESULTS;
 /** AS legacy storage stays unchanged; only its customer-facing label changes. */
 export const outcomeDisplayLabel=(value:string)=>value==='AS예정'?'AS신청':value;
 /** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
- const qualified=['컨택진행','상담 후 거절'].includes(result);
+ const qualified=isQualifiedDbSheetContact(result);
  return `${outcomeDisplayLabel(result)} · ${qualified?(activities?'STEP 2 컨택진행 +1':'STEP 2 기록 꺼짐'):'집계 제외'}`;
 }
 
 export function recordContact(row:Row,result:string,date:string):Row {
  const first=row.firstManual?row.first:row.first||(recordsDbSheetFirstContact(result)?date:'');
- const hasQualifiedContact=(row.hasQualifiedContact??!!row.first)||['컨택진행','상담 후 거절'].includes(result);
+ const hasQualifiedContact=(row.hasQualifiedContact??!!row.first)||isQualifiedDbSheetContact(result);
  return {...row,result,first,hasQualifiedContact,stage:['미컨택','상담 중'].includes(row.stage)?(hasQualifiedContact?'상담 중':'미컨택'):row.stage};
 }
 

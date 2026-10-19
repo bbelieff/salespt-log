@@ -5,11 +5,7 @@
  */
 import type { Meeting } from "@/types";
 import type { NewSlot } from "../_components/MeetingSlotItem";
-import { missingSlotFields } from "./slot-validation";
-
-export function slotComplete(s: NewSlot): boolean {
-  return missingSlotFields(s).length === 0;
-}
+export { isSlotComplete as slotComplete } from "./slot-validation";
 
 /** 슬롯 → 04 업체관리 1행. `reservationDate` 가 예약일(B) = 기록하는 날짜.
  *  「잘못 적었어요」로 다른 날짜에 옮겨 저장할 때는 호출부가 그 날짜를 넘긴다. */

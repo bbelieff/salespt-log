@@ -27,8 +27,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { DAY_KO } from "@/util/week";
 
-const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 /* ────────────────────────── 순수 날짜 유틸 (타임존 무관) ──────────────────────────
    `new Date(iso)` 는 UTC 로 파싱돼 한국 시간대에서 하루 밀린다 — 문자열로만 다룬다. */

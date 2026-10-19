@@ -27,6 +27,7 @@ import { fmtISO, friOf, parseISO } from "../_lib/week";
 import MetricComparison from "./MetricComparison";
 import type { NewSlot } from "./MeetingSlotItem";
 import { missingSlotFields } from "../_lib/slot-validation";
+import { DAY_KO as DOW } from "@/util/week";
 
 /** 채널 4색(고정, components.md) — Tailwind 는 클래스를 **정적으로** 훑어 만든다.
  *  `text-${color}-700` 처럼 조립하면 빌드 결과물에 그 클래스가 없어 색이 안 나온다. */
@@ -37,7 +38,6 @@ export const CHANNEL_TEXT: Record<Channel, string> = {
   "콜·지·기·소": "text-violet-700",
 };
 
-const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
 /** "9월 2일" / "화" — 기록하는 날짜를 사람이 읽는 말로. */
 export function formatKoreanDate(iso: string): { label: string; dow: string } {
@@ -46,9 +46,8 @@ export function formatKoreanDate(iso: string): { label: string; dow: string } {
   return { label: `${m}월 ${d}일`, dow: DOW[new Date(y, m - 1, d).getDay()] ?? "" };
 }
 
-export function isSlotComplete(s: NewSlot): boolean {
-  return missingSlotFields(s).length === 0;
-}
+export { isSlotComplete } from "../_lib/slot-validation";
+import { isSlotComplete } from "../_lib/slot-validation";
 
 interface Props {
   open: boolean;
