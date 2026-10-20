@@ -1370,7 +1370,7 @@ D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-sl
 | **PriorContractSection** | 모바일의 업무매뉴얼·정책자금 뉴스 외부 링크 2개. 아레나/이월 매출 보조 카드는 성과 요약과 중복되어 제거했다. Props 없음. |
 | **PriorContractRegister** | 「이전 계약업체 등록」 흐름(버튼 + 2단계 모달 + 토스트). **2026-09-05 belie 요청으로 화면에서 뗐다** — 실무·수납 탭 그 자리는 업무매뉴얼(노션) 버튼이 차지. 기능은 **지우지 않고 통째로 보존**: 되살리려면 `page.tsx` 에 import 한 줄 + `<PriorContractRegister courseStartISO={courseStartISO} />` 한 줄(파일 머리말에 안내). 서버(POST /api/contract-payment/prior · lib/service/contract-payment-add.ts)는 손대지 않아 붙이는 즉시 동작한다. **이미 등록된 이월 계약 데이터는 계약 목록에 그대로 보인다.** Props: `courseStartISO`. |
 | **CheckboxList** | 6개 서류·진행 체크. 과거 `플러그이관` 값은 표시·완료 집계에서 제외. Props: `value: ContractPayment` 부분 |
-| **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia |
+| **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia. 진행기관·진행상품·현황·메모는 입력 중 draft만 보관하고 칸 blur 시 저장한다. 로드맵·계약 비고도 같으며 진행률·체크 선택은 기존 자동저장 유지. 실패·재시도·이탈 보호는 공유 큐를 사용한다. |
 | **LinkedFieldsEditor** | 계약 핵심필드(업체명·계약일·수임비) 수정 토글(payment_contract_edit_toggle). Props: `cp: ContractPayment`. **평소 = [✎ 계약정보 수정] 버튼만**(값 미표시 — 업체명·계약일·수임비는 ContractRow 헤더가 이미 표시. 중복 박스 제거 2026-07-14; 헤더가 `<button>`이라 버튼 중첩 불가 → 펼침 본문 최상단 우측 배치). 클릭 시 이 카드만 편집모드(input+[저장]/[취소]+배지). 변경 없으면 시트 쓰기 0. 저장 시 연결 미팅 id(AK)로 대상 특정해 02↔04↔06 양방향 연동(업체명→02 D+04 G+06 / 계약일→02 C만, 미팅날짜·통계 불변 / 수임비→02 E+04 L). `useEditContractLinkedFields`, DirtyGuard(편집중 변경 시), 일부 시트 실패 시 시트명 안내+save throw. contract-edit-linked-fields. |
 | **DriveLinkBar** | Drive 바로가기 버튼. 미연결 시 재연결 폼. |
 | **TodoSection** | 진행 슬롯 내 ToDo 목록 + 추가 버튼 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). Props: `contractRef/institutionRef/companyName/todos`. 완료 토글·삭제. |

@@ -1,3 +1,5 @@
+## 2026-10-20 · 실무/수납 입력 중 저장 방해 수정
+- base fda90c4b, fix/payment-input-save 전용. 작성자는 진행건 입력 배선 2파일·React 합성 회귀 및 plan만 소유. 기존 #1185 저장 피드백과 타 변경 보존. 입력 중 요청 0/blur 최종값/늦은 응답/실패·전환을 확인한다. [plan](plans/active/payment-input-save.md).
 ## 2026-10-19 · ECC 선택 적용·가져오기 안전성
 - 사용자: 기존 지침과 중복 없는 ECC 차용·계획·실행. base c637adb5, test/ecc-import-assurance 전용. 소유 root: XLSX reader/ZIP helper·파일 오류 전달·합성 평가2개·관련 문서, reviewer는 읽기전용. UI/집계/DB 정책 불변.
 - Codex·Claude에 공식 security-review/eval-harness 문서만 설치·공통 선택 지침 저장(Claude 실행 로드는 별도 미확인). 6개 누락 경계 재현 후 압축해제 총20MiB·데이터10000행/200열·첫시트 지연읽기/ZIP 구조 방어. 기존90+새37 집중시험 PASS(중복 security10 제외 총117).
