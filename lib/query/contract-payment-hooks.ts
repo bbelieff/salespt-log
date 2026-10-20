@@ -142,9 +142,10 @@ export interface EditLinkedArgs {
   next: { 계약일?: string; 업체명?: string; 수임비?: number };
 }
 /** 계약 핵심필드(업체명·계약일·수임료) 편집 — id 기반 02↔04↔06 양방향. failures=실패 시트명. */
-export function useEditContractLinkedFields() {
+export function useEditContractLinkedFields(options?: { silent?: boolean }) {
   const qc = useQueryClient();
   return useMutation({
+    meta: options?.silent === true ? { silent: true } : undefined,
     mutationFn: (args: EditLinkedArgs) =>
       fetchJSON<{ ok: boolean; failures: string[] }>(
         `/api/contract-payment/edit-linked`,
@@ -164,9 +165,10 @@ export interface PatchArgs {
 }
 
 /** 사용자 입력 영역(F~AA) patch. */
-export function usePatchContractPayment() {
+export function usePatchContractPayment(options?: { silent?: boolean }) {
   const qc = useQueryClient();
   return useMutation({
+    meta: options?.silent === true ? { silent: true } : undefined,
     mutationFn: ({ row, data }: PatchArgs) =>
       fetchJSON<{ ok: true }>(`/api/contract-payment/${row}`, {
         method: "PATCH",

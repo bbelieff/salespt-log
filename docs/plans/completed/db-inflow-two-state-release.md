@@ -1,9 +1,12 @@
 ---
 slug: db-inflow-two-state-release
-status: implementing
+status: completed
 created: 2026-10-18
 ---
 # DB 유입 실제 기여 두 상태 · C 릴리스
+
+- 완료 정본 [PR1172](https://github.com/bbelieff/salespt-log/pull/1172): 최종head55ec927b/treecc328/base72, F PASS_RELEASE_C_EXACT_HEAD/REWORK1 CLOSED0. 정상fullhook44916 exit0(type/lint·구조94·단위3990PASS/45기존skip·cap/drift), 공식CI39178583926 check/build+GitGuardian SUCCESS(단위3997PASS/38skip), local build NOT_RUN 환경 예외 구분.
+- merge29dccd90f7eaf365bccc69c6231f305e25e71527, 자동deploy39178982464/job117827504199 SUCCESS. actualremoteHEAD29dcc·무중단컷오버/exit0·health200, 실제 공개buildID -YZyYTQN0yQpxh-pIpPdY→yqJKONCsgJQh1G7JfhDvq 전환/root200/health200oktrue. 인증 DB화면은 login redirect로 UI/save NOT_RUN, 고객쓰기·백필0. 종료 기록은 다음 소유 D목업 문서 후보에 묶어 보존하며 별도 중복 전체검사 커밋을 만들지 않았다.
 
 - 사용자 두 정상 상태 확정 및 Root 승인 A→B→C 순차 배포 계약. writer/release owner019fe6a6, 독립 F019fe6a9, Root019f758e. B PR1169 merge df91e388bd487aa6647c5004a9de2ef893abedf1/deploy39047747290 SUCCESS 뒤 같은 clean 전용 WT에서 feat/db-inflow-two-state-release 시작. base는 해당 origin/master. Node24·lockff033cd1·own 완전 설치 재사용, npm ci 반복0.
 - 제품 lease 정확5: lib/repo/db/db-sheet-recording.ts, lib/repo/db/db-sheet.ts, lib/types/db-sheet.ts, app/(app)/db-sheet/_components/model.ts, app/(app)/db-sheet/_components/InflowStatusCell.tsx. 원본 db-sheet-date-theme-mock dirty는 읽기만 하고 core 후보를 좁게 추출한다. A/B 레이아웃·iconOnly 표시 계약, auth/service/API/schema/config/lock/workflow 불변.

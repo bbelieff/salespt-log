@@ -13,7 +13,8 @@
 ## 수납 모바일 도구·업체정보 표현 (2026-10-17)
 - `MobileTools` (`app/(app)/payment/_components/MobileTools.tsx`): 기존 DriveLinkBar/CompanySearchBar를 조합한다. 모바일 앞3각44px·검색잔여폭·gap0, touch2tap/mousehover/keyboard/Escape, query·clear·guardedNav 기존 경계. Drive 연결 요청은 기존 명시 버튼만 수행한다.
 - `CompanyInfoContractSection`→`CompanyInfoEditor`의 optional `defaultOpen`은 초기 열림만 지정(생략 시 hideSave 기존값). payment mobile inline은 false, optional `compactMobile`만 mobile compact 도구3/native2와 portal scope에 적용한다. 기본 공용 호출·저장·신원·초안 계약은 불변이다.
-- `CompanyDocAutofillButton`, `CompanyInfoLayoutToggle`, `CompanyInfoViewToggle`은 compactMobile 생략 시 기존 표현을 유지한다. payment header는 제목/명시 접기44px와 도구 행을 분리하고 aria-expanded/controls를 연결한다. 시각 정본은 tokens의 수납 Liquid Glass 항목이다.
+  - `CompanyDocAutofillButton`, `CompanyInfoLayoutToggle`, `CompanyInfoViewToggle`은 compactMobile 생략 시 기존 표현을 유지한다. D R6 payment header는 명시 접기 글씨 없이 제목/여백 toggle과 독립 도구를 공간에 맞춰 배치하고 aria-expanded/controls를 연결한다. PC title44·모바일36/38 예외와 시각 정본은 tokens의 수납 Liquid Glass 항목 및 현재 목업 plan을 따른다.
+- D R4 작은 기준 수정 목업(사용자 승인 전): 767px 이하 compact 업체정보만 아래 기존 계약정보/서류 제목과 같은 native36px·padding8×12·닫힌 외곽38px로 줄인다. 아래 두 칸은 확대하지 않는다. 일반44 접근성 가이드는 유지하며 이번 세 제목의 사용자 명시 예외 근거는 [목업 plan](../plans/active/payment-mobile-details-mock.md)의 R4를 따른다. 가짜44/음수margin/겹침0, PC/비compact와 열린 도구44px는 보존한다. 기존 화살표·전체 제목 클릭/ARIA/focus·상태24/retry·undo36·전체 요약 카드 토글·고유 입력/linked 별도큐/저장 경계는 불변이다. 합성 목업은 운영 저장 검증이 아니다.
 
 ## DB관리시트 틀 고정
 
@@ -1352,9 +1353,16 @@ app/(app)/dashboard/page.tsx
 
 > 02 계약수납관리 — 1계약 = 1행, 자동연동 3 + 체크박스 7 + 분할 수납 슬롯 3.
 
+R8/R9 현재: payment 헤더는 대표/항목수 요약 없이 업체정보 제목과 짧은 `TXT 생성`을 사용한다(정확한 TXT aria-label/title 유지). PC 약385px는 한줄, 모바일320/375/430은 작은 제목36/외곽38+도구44의 안전 두 행이다. 상세 상단 이월 note/wrapper만 사용자 요청으로 제거했고 목록 배지·판정·계산은 보존한다. `components/company-info/payment-header.ts`의 `shouldTogglePaymentHeader`는 DOM 내부의 비interactive 공백만 판정하는 pure helper로, 파일 크기 제한을 위한 기존 조건 추출이며 옵션/저장 추상화가 아니다.
+
+D R6 미승인 목업의 payment 업체정보 헤더는 별도 접기 텍스트/테두리 없이 native 제목 button(제목+대표요약 ellipsis·방향 chevron)을 쓴다. header의 padding/도구 사이·옆 비interactive 공백도 한 번 toggle하되 button/input/select/textarea/a/label/role button·link/contenteditable/폰트 그룹은 제외한다. 포털의 DOM 밖 클릭도 제외한다. 도구는 제목 button 밖 형제이며 원래 행동을 소유한다. 닫히면 payment 도구 전체를 숨기고, PC는 공간에 맞게 flex-wrap·모바일은 제목36/닫힌 outer38·별도 도구44를 유지한다. 다른 화면의 공용 editor는 이 payment opt-in 밖에서 불변이다. 실화면 미확인 범위와 검수 상태는 [현재 plan](../plans/active/payment-mobile-details-mock.md)을 따른다.
+
+D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-slot`에 ContractRow의 가용 상태/undo를 portal로 배치한다. idle/undo불가/CI상태 없음이면 null, 본문전용 상태행은 없다. 원래 canUndo/onUndo/retry 소유를 유지하며 exact 현재 owner의 포털 진입만 blur commit 예외다. 실패 사유는 본문에 지속하고 CI-only retry도 명시한다. 이월note와 모바일 R5는 유지하며 source PASS와 R7 PC actual만으로 기존 R6 미확인/전체목업 승인을 대체하지 않는다.
+
 | 컴포넌트 | 역할 / Props |
 |---|---|
-| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동). `courseStartISO?` — 이월 판정(isCarryoverContract: 계약일<시작일 OR 깃발)으로 뱃지·배지 표시(흐림은 해지만 — ADR-0034)(arena-start-revenue-split). 모바일 inline 상세(2026-10-09): 맨 위 고정 업체 이름 줄(`data-payment-sticky-bar`, `sticky top-app-content z-20 h-12` — 업체명·계약일·수임비·📋·저장 상태 항상 표시·「접기」→ 목록의 업체 행으로 스크롤, 움직임 줄이기 존중). 계약정보·서류·로드맵·실무진행·업체정보 제목은 `.payment-sticky-title`로 붙는다(1280 이상 PC 열은 열 맨 위). |
+| **ContractRow** | 1계약 row 표시. 자동연동(C/D/E) + 체크박스 + 슬롯 3 인라인 확장. `highlight?` prop — 업체명에서 검색어 일치 부분 `<mark>`(yellow-100) 표시 (CompanySearchBar 연동). `courseStartISO?` — 이월 판정(isCarryoverContract: 계약일<시작일 OR 깃발)으로 뱃지·배지 표시(흐림은 해지만 — ADR-0034)(arena-start-revenue-split). D R5 승인 대기 목업은 <=767 inline의 일반 저장 rail/예약 margin을 제거하고 PaymentMobileSaveFeedback을 연결한다. 제목·상세 토글은 전체 요약 카드가 맡고 오류 사유·명시 retry는 기존 본문에 지속한다. PC 2뎁스 제목과 >=768 저장 rail은 유지한다. `.payment-sticky-title`은 <=767에서 `top-app-content`, 768~1279에서 기존 상태 높이 아래, 1280 이상 PC 열에서는 맨 위다. |
+| **PaymentMobileSaveFeedback** | D R5 승인 대기 payment 전용 표시층. <=767 선택된 가시 상세만 body portal에 알림1개(`저장중`→실제 ACK `저장완료`)와 별도 undo44를 표시한다. Props: `ownerId/status/savedAt/dirty/ciSaving/ciDirty/ciError/resetEpoch/canUndo/onUndo`. 본문 공간0, 상단 제목 띠 우측·고정88px 알림 슬롯/최소44px 그룹·undo는 왼쪽이다. pending180ms 지연·success1000ms+fade160ms·작은 체크 pop/은은한 초록빛, reduced-motion 정지. 초기 가짜 saved/포커스 이동/오류 transient0, hidden/media/owner/reset/unmount는 이전 timer를 취소한다. `canUndo`는 기존 코어 가용성 그대로이며 저장중·dirty·error 실행은 비활성. 정확한 owner portal로 들어갈 때만 외부 blur commit을 생략하고 portal 밖/타 owner/null은 기존 commit을 보존한다. 전역 Toast·API·큐·linked 별도 저장 소유는 바꾸지 않는다. |
 | **TerminationModal** | 계약해지 입력 모달 (contract-termination). 사유(필수 textarea) + 반환 라디오(없음/일부/전액 — 일부=금액 input) + 처리 라디오(해지 상태 보존/카드 숨김 soft delete). 확인 시 POST /api/contract-payment/[row]/terminate. Props: `cp: ContractPayment`, `onClose`, `onDone`. 해지 카드엔 ContractRow 가 "해지" 뱃지+사유·반환액 노출. |
 | **DeleteConfirmModal** | 계약수납 삭제 확인 모달(cascade 옵션) — page.tsx 500줄 캡으로 분리(contract-termination PR), 마크업·동작 무변경. Props: `label`, `cascadeOpt`, `onCascadeChange`, `onCancel`, `onConfirm`. |
 | **TerminationArchive** | 해지 보관함 (contract-termination 스펙) — 숨김(soft delete) 해지 계약을 접힌 아코디언에서 열람. 행: 업체명·해지일·사유·반환액(읽기전용). 기본 접힘, 숨김 건 0이면 미표시. Props: `contracts: ContractPayment[]`(숨김 해지만). |

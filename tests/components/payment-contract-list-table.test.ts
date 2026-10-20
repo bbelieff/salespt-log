@@ -14,6 +14,7 @@ import PaymentSelectionBridge, { syncPaymentSelectionBridge, watchDevicePixelRat
 import WorkActivityBadge, { ddayTone } from "@/app/(app)/payment/_components/WorkActivityBadge";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
+vi.mock("@/app/(app)/payment/_components/MeetingLinkPicker", () => ({ default: () => h("div", { role: "dialog" }, "합성 영업기록 연결") }));
 const slot = (over: Record<string, unknown> = {}) => ({ 진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "", ...over });
 const cp = (over: Record<string, unknown> = {}): ContractPayment => ({
   row: 3, 계약일: "2026-09-04", 업체명: "한빛상사", 수임비: 5_000_000, 계약비고: "",
@@ -83,6 +84,37 @@ describe("ContractListTable 1뎁스 카드", () => {
     const node = renderList({ items: itemsFor([cp()]), selectedKey: "row:3", onSelect: vi.fn(), renderDetail: () => h("div", null, "진행 상세") });
     expect(node.querySelector('[data-work-key="row:3"]')?.getAttribute("aria-expanded")).toBe("true");
     expect(node.querySelector('[id="payment-company-detail-row:3"]')?.textContent).toBe("진행 상세");
+  });
+  it("전체 요약 카드 본문의 반복 클릭이 상세를 토글하고 닫힌 상태에도 controls와 포커스를 유지한다", () => {
+    const items = itemsFor([cp()]); const onSelect = vi.fn();
+    function ToggleList() {
+      const [expanded, setExpanded] = React.useState(true);
+      return h(ContractListTable, { items, selectedKey: "row:3", onSelect, detailExpanded: expanded, onToggleDetail: () => setExpanded((value) => !value), renderDetail: () => h("div", null, "진행 상세") });
+    }
+    el = document.createElement("div"); document.body.append(el); root = createRoot(el);
+    act(() => root?.render(h(ToggleList)));
+    const summary = el.querySelector<HTMLButtonElement>('[data-payment-company-summary]')!;
+    const detail = el.querySelector<HTMLElement>('[id="payment-company-detail-row:3"]')!;
+    expect(summary.tagName).toBe("BUTTON"); expect(summary.type).toBe("button"); summary.focus();
+    for (const expected of [false, true, false, true]) {
+      act(() => summary.querySelector('span')!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+      expect(summary.getAttribute("aria-expanded")).toBe(String(expected));
+      expect(summary.getAttribute("aria-controls")).toBe(detail.id); expect(detail.hidden).toBe(!expected);
+      expect(document.activeElement).toBe(summary);
+    }
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+  it("내부 영업기록 연결의 클릭과 Enter/Space는 summary 선택·토글로 버블링하지 않는다", () => {
+    const onSelect = vi.fn(), onToggleDetail = vi.fn();
+    const node = renderList({ items: itemsFor([cp({ linkedMeetingId: "manual:synthetic" })]), selectedKey: "row:3", onSelect, onToggleDetail, renderDetail: () => h("div", null, "진행 상세") });
+    const action = node.querySelector<HTMLElement>('[aria-label="한빛상사 영업기록과 연결"]')!;
+    for (const key of ["Enter", " "]) {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+      act(() => action.dispatchEvent(event)); expect(event.defaultPrevented).toBe(true);
+    }
+    act(() => action.click());
+    expect(node.querySelector('[role="dialog"]')?.textContent).toContain("합성 영업기록 연결");
+    expect(onSelect).not.toHaveBeenCalled(); expect(onToggleDetail).not.toHaveBeenCalled();
   });
 });
 

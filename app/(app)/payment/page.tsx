@@ -65,8 +65,9 @@ interface PostDeleteNavTarget {
 
 export default function PaymentPage() {
   const router = useRouter();
+  const isPc = usePcBreakpoint();
   const list = useContractPayments();
-  const patch = usePatchContractPayment();
+  const patch = usePatchContractPayment({ silent: !isPc }); // Mobile routine autosave only; PC and explicit actions retain foreground loading.
   const remove = useRemoveContractPayment();
   const terminate = useTerminateContract();
   // 시작일(courseStart=O1 SSOT) — 매출 아레나/이월 분리·이월 뱃지 판정용(동적).
@@ -74,6 +75,7 @@ export default function PaymentPage() {
   const courseStartISO = me.data?.courseStartISO ?? "";
 
   const [pendingRow, setPendingRow] = useState<number | null>(null);
+  const [detailStatusTarget, setDetailStatusTarget] = useState<HTMLSpanElement | null>(null);
   // 업체 검색 — 표시 필터 전용(부분일치, 대소문자·공백 무시). 데이터 로직 무변경.
   // 선택 상태는 순수 전이 하나로(구조 개선 ⑩) — 스크롤·미저장 가드·외부 포커스 해제는 여기서 그대로.
   const [selection, dispatch] = useReducer(paymentSelectionReducer, INITIAL_PAYMENT_SELECTION);
@@ -90,7 +92,6 @@ export default function PaymentPage() {
   const [postDeleteNav, setPostDeleteNav] = useState<PostDeleteNavTarget | null>(
     null,
   );
-  const isPc = usePcBreakpoint();
   const guardedNav = useGuardedNav();
   const allTodos = useAllTodos();
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -335,7 +336,7 @@ export default function PaymentPage() {
               <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
                 <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
                   <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{companyDetailLabel}</p>}</div>
-                  <button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>
+                  <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button></div>
                 </div>
                 {focusPayment?.row === selectedCp.row && focusNotice}
                 <ContractRow
@@ -345,6 +346,7 @@ export default function PaymentPage() {
                   pending={pendingRow === selectedCp.row}
                   institutionOptions={institutionOptions}
                   bare
+                  statusTarget={detailStatusTarget}
                   forceOpen
                   detailLeftPct={detailLeftPct}
                   onDetailLeftPctChange={setDetailLeftPct}
@@ -380,7 +382,7 @@ export default function PaymentPage() {
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={safeFocusTodoId}
                   focusedSlot={item.slot} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId} onCollapse={() => dispatch({ type: "collapseDetail" })}
+                  focusRequestId={focusRequestId}
                 />
               </> : null}
             /> : <ContractListTable
@@ -396,7 +398,7 @@ export default function PaymentPage() {
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
                   onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={safeFocusTodoId}
                   focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, item.hasProgress ? item.work.slot : null)} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId} onCollapse={() => dispatch({ type: "collapseDetail" })}
+                  focusRequestId={focusRequestId}
                 />
               </> : null}
             />}
