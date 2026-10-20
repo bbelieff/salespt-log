@@ -2,7 +2,7 @@
  * ContractRow v2 — 1 계약수납 row 카드 (접힘/펼침).
  *
  * 루틴 편집(체크박스·슬롯·메모·금액·날짜)은 자동 저장 — 일반 저장 버튼 없음.
- * 텍스트/카운트는 디바운스, 금액/날짜 그룹 blur 시 즉시 flush. 무효하면
+ * 텍스트는 칸 blur, 선택은 디바운스, 금액/날짜는 그룹 blur 저장. 무효하면
  * 저장하지 않고 DirtyGuard 가 보호한다. 계약해지·삭제는 명시적 액션 유지.
  *
  * 시트 매핑: 02 계약수납관리 1 row (C/D/E 자동 연동 read-only 표시,
@@ -28,7 +28,7 @@ import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
-import PaymentMobileSaveFeedback, { shouldCommitPaymentBlur } from "./PaymentMobileSaveFeedback";
+import PaymentMobileSaveFeedback, { isPaymentFeedbackTarget, shouldCommitPaymentBlur } from "./PaymentMobileSaveFeedback";
 import { useTodosByContract } from "@/query/todos-hooks";
 import { isManualContractLink } from "@/util/contract-link";
 import {
@@ -140,8 +140,11 @@ export default function ContractRow({
     syncServer(JSON.parse(cpKey) as ContractPayment);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cpKey]);
-  const commitGroup = () =>
-    commit(validContractDraft(draft), "금액·날짜를 확인해주세요");
+  const commitGroup = () => {
+    const valid = validContractDraft(draft);
+    commit(valid, "금액·날짜를 확인해주세요");
+    if (valid) void flush().catch(() => {}); // 실패 초안/재시도는 공유 큐가 보존한다.
+  };
 
   // 업체정보(04·06) 디바운스 영속화 — 계약 PATCH 와 별도 키, 각 1회씩.
   const { ciDirty, ciPending, ciState, flushCi, onCiChange, resetCi } =
@@ -150,7 +153,7 @@ export default function ContractRow({
       업체명: cp.업체명,
     });
 
-  // 텍스트/카운트 → 디바운스 저장, 금액/날짜 → stage 후 그룹 blur 커밋.
+  // 선택만 디바운스. 입력 중인 텍스트·금액·날짜는 stage로만 보관한다.
   const editDraft = (fn: (d: ContractPayment) => ContractPayment) => {
     update(fn(draft));
   };
@@ -397,7 +400,8 @@ export default function ContractRow({
           data-payment-inline-detail={inline ? "" : undefined}
           data-payment-status-action={inline && (status === "error" || ciState.error || canUndo) ? "" : undefined}
           onBlur={(e) => {
-            if (shouldCommitPaymentBlur(e.currentTarget, e.relatedTarget, dirtyEntryId)) {
+            if (isPaymentFeedbackTarget(e.relatedTarget, dirtyEntryId)) return;
+            if (e.target.matches("[data-payment-draft-input]") || shouldCommitPaymentBlur(e.currentTarget, e.relatedTarget, dirtyEntryId)) {
               commitGroup();
               if (ciDirty) void flushCi(false);
             }
@@ -433,7 +437,7 @@ export default function ContractRow({
                 <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">
                   <span className="shrink-0">📑 계약정보</span><span data-payment-contract-summary className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span><span data-payment-contract-caret aria-hidden="true" className="hidden">›</span>
                 </summary>
-                <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} initiallyEditing compactMobile={inline} /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} value={draft.계약비고} onChange={(e) => editDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
+                <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} initiallyEditing compactMobile={inline} /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} data-payment-draft-input value={draft.계약비고} onChange={(e) => stageDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
               </details>
               <details className="group rounded-lg border border-slate-200 bg-white">
                 <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800"><span>📋 서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
@@ -441,13 +445,13 @@ export default function ContractRow({
               </details>
               <details open className="group rounded-lg border border-amber-200 bg-amber-50">
                 <summary className="payment-sticky-title cursor-pointer list-none rounded-lg bg-amber-50 group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">🗺️ 로드맵 메모</summary>
-                <div className="px-3 pb-3"><textarea rows={1} value={draft.로드맵메모} onChange={(e) => editDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
+                <div className="px-3 pb-3"><textarea rows={1} data-payment-draft-input value={draft.로드맵메모} onChange={(e) => stageDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
               </details>
               <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
                   const prev = draft[`수납${index}`];
-                  const moneyDateOnly = next.진행기관 === prev.진행기관 && next.진행상품 === prev.진행상품 && next.메모 === prev.메모 && next.현황 === prev.현황 && next.진행률 === prev.진행률 && (next.승인금액 !== prev.승인금액 || next.수납액 !== prev.수납액 || next.수납일 !== prev.수납일);
-                  (moneyDateOnly ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
+                  const typing = next.진행률 === prev.진행률;
+                  (typing ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
                 }} onEnsureSaved={commitGroup}/>
               </section>
               {bare && actionButtons}

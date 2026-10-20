@@ -362,7 +362,7 @@ function FieldText({
     <div>
       <label className={FIELD_LABEL_CLASS}>{label}</label>
       <input
-        type="text"
+        data-payment-draft-input type="text"
         value={value}
         placeholder={placeholder ?? "-"}
         onChange={(e) => onChange(e.target.value)}
@@ -373,7 +373,7 @@ function FieldText({
 }
 
 function FieldTextarea({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) {
-  return <div><label className={FIELD_LABEL_CLASS}>{label}</label><textarea rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
+  return <div><label className={FIELD_LABEL_CLASS}>{label}</label><textarea data-payment-draft-input rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
 }
 
 /** [3] 자유입력 + 과거값 자동완성(구글시트 드롭다운형). native datalist 사용. */
@@ -395,7 +395,7 @@ function FieldCombo({
     <div>
       <label className={FIELD_LABEL_CLASS}>{label}</label>
       <input
-        type="text"
+        data-payment-draft-input type="text"
         list={listId}
         value={value}
         placeholder={placeholder ?? "-"}
