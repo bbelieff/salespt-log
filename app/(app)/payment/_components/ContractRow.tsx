@@ -12,6 +12,7 @@
 
 import { contractRef as contractRefOf } from "@/util/contract-ref";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { isCarryoverContract, isTerminatedContract, type ContractPayment } from "@/types";
 import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
 import { useDirtyEntry } from "@/components/DirtyGuard";
@@ -27,6 +28,7 @@ import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
+import PaymentMobileSaveFeedback, { shouldCommitPaymentBlur } from "./PaymentMobileSaveFeedback";
 import { useTodosByContract } from "@/query/todos-hooks";
 import { isManualContractLink } from "@/util/contract-link";
 import {
@@ -53,10 +55,10 @@ interface Props {
   companyInfoDefaultOpen?: boolean;
   accentFamily?: AccentFamily;
   bare?: boolean;
+  /** Existing PC heading slot; never used by inline mobile feedback. */
+  statusTarget?: HTMLElement | null;
   /** 모바일 기관 행에 붙는 상세: 중복 업체 헤더·외곽 카드를 그리지 않는다. */
   inline?: boolean;
-  /** inline 상세의 고정 업체 이름 줄 「접기」 — 부모가 상세를 접는다(그 뒤 목록의 업체 행으로 돌아간다). */
-  onCollapse?: () => void;
   detailLeftPct?: number;
   onDetailLeftPctChange?: (pct: number) => void;
   focusTodoId?: string | null;
@@ -83,8 +85,8 @@ export default function ContractRow({
   companyInfoDefaultOpen,
   accentFamily,
   bare = false,
+  statusTarget,
   inline = false,
-  onCollapse,
   detailLeftPct = 60,
   onDetailLeftPctChange,
   focusTodoId,
@@ -128,6 +130,7 @@ export default function ContractRow({
       Promise.resolve(onSaveRef.current(payload, { quiet: true })),
   });
   const cpKey = JSON.stringify(cp);
+  const [feedbackResetEpoch, setFeedbackResetEpoch] = useState(0);
   // refetch 재기준은 clean 일 때만 — 편집 중 호출은 큐 예약분을 취소해
   // 미전송분이 고착된다(공유 syncServer 이슈, REPORT-C2).
   const dirtyRef = useRef(dirty);
@@ -163,6 +166,7 @@ export default function ContractRow({
   // 파기는 큐 예약 취소 + draft=saved 강제인 discard() — syncServer(saved) 는
   // dirty draft 를 유지해 파기가 화면 초안을 되돌리지 못한다.
   const discardAll = () => {
+    setFeedbackResetEpoch((value) => value + 1);
     resetCi();
     discard();
   };
@@ -179,20 +183,8 @@ export default function ContractRow({
     retry();
   };
 
-  // 모바일 inline 상세의 고정 업체 이름 줄(2026-10-09, payment-sticky-detail).
-  // 길게 스크롤해도 어느 업체를 고치는지·저장됐는지 보이게 한다. 상태는 항상 한 단어로 보인다.
-  const barRef = useRef<HTMLDivElement | null>(null);
-  const collapseToList = () => {
-    const detail = barRef.current?.closest<HTMLElement>('[id^="payment-company-detail-"], [id^="payment-inline-detail-"]');
-    const anchor = (detail?.previousElementSibling ?? detail?.parentElement) as HTMLElement | null | undefined;
-    onCollapse?.();
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    requestAnimationFrame(() => {
-      anchor?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
-      // 접기 버튼이 숨겨지므로 키보드·화면낭독기 사용자의 위치를 목록의 그 업체 행으로 옮긴다.
-      anchor?.focus({ preventScroll: true });
-    });
-  };
+  // 모바일에서는 목록의 전체 요약 카드가 제목·상세 토글을 맡는다.
+  // 이 영역은 별도 제목/접기 없이 contract/업체정보 저장 상태만 유지한다(linked 큐는 자체 표시).
   const barStatus = status === "error" || ciState.error ? (
     <span title={ciState.error || error || undefined} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-red-600">
       저장 실패
@@ -286,6 +278,13 @@ export default function ContractRow({
     {!isTerminated && <button type="button" onClick={onTerminateRequest} disabled={pending} className="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-50">계약해지</button>}
     <button type="button" onClick={onDeleteRequest} disabled={pending} className="h-11 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 disabled:opacity-50">🗑 삭제</button>
   </div>;
+  const pcStatus = !inline && (status !== "idle" || canUndo || ciState.error || ciState.saving) ? (
+    <div data-payment-pc-status data-payment-feedback-dock data-payment-feedback-owner={dirtyEntryId} className="flex min-w-0 flex-col items-end gap-1">
+      <AutosaveStatus status={status} error={error} savedAt={savedAt} onRetry={retryAll} canUndo={canUndo} onUndo={undo} />
+      {ciState.error && status !== "error" && <button type="button" onClick={retryAll} className="min-h-11 text-px-11 underline underline-offset-2">다시 시도</button>}
+      {ciState.saving && status === "idle" && !ciState.error && <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>}
+    </div>
+  ) : null;
 
   return (
     <div
@@ -396,54 +395,29 @@ export default function ContractRow({
         <div
           className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : `card-open-anim space-y-3 ${inline ? "p-2.5" : "p-3"}`}
           data-payment-inline-detail={inline ? "" : undefined}
+          data-payment-status-action={inline && (status === "error" || ciState.error || canUndo) ? "" : undefined}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            if (shouldCommitPaymentBlur(e.currentTarget, e.relatedTarget, dirtyEntryId)) {
               commitGroup();
               if (ciDirty) void flushCi(false);
             }
           }}
         >
+          {inline && <PaymentMobileSaveFeedback ownerId={dirtyEntryId} status={status} savedAt={savedAt} dirty={dirty} ciSaving={ciState.saving} ciDirty={ciDirty} ciError={ciState.error} resetEpoch={feedbackResetEpoch} canUndo={canUndo} onUndo={undo} />}
           {inline && (
-            <div ref={barRef} data-payment-sticky-bar className="sticky top-app-content z-20 -mx-2.5 -mt-2.5 flex h-12 items-center gap-2 border-b border-slate-200 bg-white px-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-slate-900">{cp.업체명}</p>
-                <p className="truncate text-px-11 text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {fmtDate(cp.계약일)} · 수임비 ₩{fmtMoney(cp.수임비)} · 📋 {docsDone}/{TOTAL_CHECKBOXES}
-                </p>
-              </div>
+            <div data-payment-sticky-bar data-payment-save-status className="sticky top-app-content z-20 -mx-2.5 -mt-2.5 flex min-h-6 items-center justify-end gap-2 bg-white px-2.5">
               <span aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>
-              {onCollapse && (
-                <button type="button" onClick={collapseToList} aria-label={`${cp.업체명} 상세 접기`} className="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">접기 ▴</button>
-              )}
             </div>
           )}
           {inline && (ciState.error || (status === "error" && error)) && (
-            <p className="text-px-11 font-medium text-red-600" aria-live="polite">
+            <p data-payment-inline-error className="text-px-11 font-medium text-red-600" aria-live="polite">
               ⚠ {ciState.error ? `업체정보: ${ciState.error}` : error} — 입력은 유지됩니다
+              <button type="button" onClick={retryAll} className="payment-mobile-feedback-retry min-h-11 px-2 underline underline-offset-2">다시 시도</button>
             </p>
           )}
-          {!inline && (status !== "idle" || canUndo || ciState.error || ciState.saving) && (
-            <div className="flex flex-col gap-1">
-              <AutosaveStatus
-                status={status}
-                error={error}
-                savedAt={savedAt}
-                onRetry={retryAll}
-                canUndo={canUndo}
-                onUndo={undo}
-              />
-              {ciState.saving && status === "idle" && !ciState.error && (
-                <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>
-              )}
-              {ciState.error && (
-                <p className="text-px-11 font-medium text-red-600" aria-live="polite">
-                  ⚠ 업체정보: {ciState.error} — 입력은 유지됩니다
-                </p>
-              )}
-            </div>
-          )}
-          <CarryoverBadge 구분={isCarryover ? "이월" : ""} variant="note" />
-          <div className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
+          {bare && statusTarget ? createPortal(pcStatus, statusTarget) : pcStatus}
+          {!inline && (ciState.error || (status === "error" && error)) && <p data-payment-pc-error className="text-px-11 font-medium text-red-600" aria-live="polite">⚠ {ciState.error ? `업체정보: ${ciState.error}` : error} — 입력은 유지됩니다</p>}
+          <div data-payment-main-content className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
               <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} pendingValue={ciPending} hideSave defaultOpen={companyInfoDefaultOpen} compactMobile={inline} onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading splitInline={bare && detailLeftPct >= 55} />
             </div>
@@ -455,11 +429,11 @@ export default function ContractRow({
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200 group-hover:bg-blue-400 group-focus-visible:bg-blue-400"/><span className="absolute left-1/2 top-1/2 h-8 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"/>
             </button>}
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
-              <details className="group rounded-lg border border-slate-200 bg-white">
+              <details data-payment-contract-info={inline ? "" : undefined} className="group rounded-lg border border-slate-200 bg-white">
                 <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">
-                  <span className="shrink-0">📑 계약정보</span><span className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span>
+                  <span className="shrink-0">📑 계약정보</span><span data-payment-contract-summary className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span><span data-payment-contract-caret aria-hidden="true" className="hidden">›</span>
                 </summary>
-                <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} initiallyEditing /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} value={draft.계약비고} onChange={(e) => editDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
+                <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} initiallyEditing compactMobile={inline} /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} value={draft.계약비고} onChange={(e) => editDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
               </details>
               <details className="group rounded-lg border border-slate-200 bg-white">
                 <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800"><span>📋 서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>

@@ -35,6 +35,11 @@ function syncScenarioCookie() {
 }
 syncScenarioCookie();
 if(location.pathname === "/dashboard")document.cookie = `quality=${new URLSearchParams(location.search).get("quality") ?? ""}; path=/`;
+// D mock-only, non-sensitive localhost fixture controls. Never used by production pages.
+for(const [param,cookie] of [['paymentDelay','payment_delay'],['paymentFail','payment_fail'],['paymentManual','payment_manual']]){
+ const value=new URLSearchParams(location.search).get(param!);
+ if(value!==null)document.cookie=`${cookie}=${encodeURIComponent(value)}; path=/`;
+}
 const fixtureWeek = new URLSearchParams(location.search).get("week");
 if (location.pathname === "/dashboard" || location.pathname === "/") {
   document.cookie = `followups_week=${fixtureWeek ?? "7"}; path=/`;
@@ -87,11 +92,23 @@ function useLocationKey(): string {
   return key;
 }
 
+/** Same actual mutation cache on both sides; visible only after a synthetic request remains pending for 400ms. */
+function PaymentPendingProbe(){
+ const [pending,setPending]=React.useState(false),[long,setLong]=React.useState(false);
+ const [failure,setFailure]=React.useState(()=>document.cookie.split('; ').some(c=>c==='payment_fail=1'));
+ React.useEffect(()=>{const cache=client.getMutationCache();const sync=()=>setPending(cache.getAll().some(m=>m.state.status==='pending'));sync();return cache.subscribe(sync);},[]);
+ React.useEffect(()=>{setLong(false);if(!pending)return;const timer=setTimeout(()=>setLong(true),400);return()=>clearTimeout(timer);},[pending]);
+ return <aside style={{position:'fixed',bottom:4,right:4,zIndex:500,background:'white',border:'1px solid #94a3b8',padding:'3px 6px',fontSize:10}} aria-label="합성 저장 검증 도구">
+  <button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>{const next=!failure;document.cookie=`payment_fail=${next?'1':'0'}; path=/`;setFailure(next);}}>합성 저장: {failure?'실패':'정상'} (전환)</button>
+  {long&&<span data-fixture-mutation-pending> · 응답 대기 400ms+</span>}
+ </aside>;
+}
 function Fixture() {
   const key = useLocationKey();
   const Page = PAGES[location.pathname] ?? Missing;
   return (
     <QueryClientProvider client={client}>
+      {new URLSearchParams(location.search).has('paymentDelay')&&<PaymentPendingProbe/>}
       <LoadingProvider>
         <DirtyProvider>
           <div className="desktop-shell pc:flex"><DesktopNav />

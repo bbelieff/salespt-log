@@ -17,12 +17,15 @@ import { context } from "esbuild";
 
 import { mkdtempSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 
 const dir = mkdtempSync(join(tmpdir(), "dashboard-followups-"));
+const paymentDetailsMock=process.env.PAYMENT_DETAILS_MOCK==='1';
+const paymentBaseline=paymentDetailsMock&&process.env.PAYMENT_DETAILS_BASELINE==='1';
+const baselinePaths=new Set(['components/CompanyInfoEditor.tsx','app/(app)/payment/payment-company-compact.css','app/(app)/payment/_components/ContractRow.tsx','app/(app)/payment/_components/LinkedFieldsEditor.tsx','app/(app)/payment/_components/ContractListTable.tsx','app/(app)/payment/page.tsx','lib/query/contract-payment-hooks.ts']);
 const css = spawnSync(process.execPath, ["node_modules/tailwindcss/lib/cli.js", "-i", "app/globals.css", "-o", join(dir, "style.css")], { encoding: "utf8" });
 assert.equal(css.status, 0, css.stderr);
 const bundle = await context({
@@ -30,6 +33,13 @@ const bundle = await context({
   platform: "browser", jsx: "automatic", logLevel: "warning",
   define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
   plugins: [{ name: "fixture-next", setup(b) {
+    if(paymentBaseline)b.onLoad({filter:/\.(tsx?|css)$/},args=>{
+      const file=args.path.replaceAll('\\','/').replace(process.cwd().replaceAll('\\','/')+'/','');
+      if(!baselinePaths.has(file))return;
+      const source=spawnSync('git',['show','29dccd90f7eaf365bccc69c6231f305e25e71527:'+file],{encoding:'utf8'});
+      assert.equal(source.status,0,'Baseline source must exist');
+      return {contents:source.stdout,loader:file.endsWith('.css')?'css':file.endsWith('.tsx')?'tsx':'ts',resolveDir:dirname(args.path)};
+    });
     if (process.env.FOLLOW_UPS_RULES_PREVIEW === "1") {
       if (process.env.FOLLOW_UPS_PRODUCTION_LAYOUT !== "1") b.onResolve({ filter: /^@\/components\/dashboard\/DashboardActionOverview$/ }, () => ({ path: join(process.cwd(), "tests/browser/dashboard-two-column-preview.tsx") }));
       if (process.env.FOLLOW_UPS_PRODUCTION_LAYOUT !== "1") b.onResolve({ filter: /^@\/components\/weekly-goals\/WeeklyGoalSummary$/ }, () => ({ path: join(process.cwd(), "tests/browser/weekly-goals-flow-preview.tsx") }));
@@ -189,6 +199,7 @@ const readBody = (req) => new Promise((resolve) => { let raw = ""; req.on("data"
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const server = createServer(async (req, res) => {
+  if(paymentDetailsMock)res.setHeader('Content-Security-Policy',"default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; form-action 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'");
   const url = new URL(req.url, "http://localhost");
   const path = url.pathname;
   const reply = (body, status = 200) => { res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify(body)); };
@@ -201,6 +212,31 @@ const server = createServer(async (req, res) => {
   const financeKind = FINANCE_KINDS.find((k) => k === cookieOf(req, "headline_finance")) ?? (scenario === "empty" ? "none" : "profit");
   const goalKind = Object.hasOwn(GOAL_SETS, cookieOf(req, "headline_goals") ?? "") ? cookieOf(req, "headline_goals") : scenario === "empty" ? "unset" : "remaining";
   const fin = financeData(financeKind, t);
+
+  // Opt-in D fixture: actual client hooks/components, in-memory synthetic persistence only.
+  if(paymentDetailsMock&&(path.startsWith('/api/contract-payment')||path==='/api/company-info')){
+    data.paymentRows??=[...data.contracts,...fin.contracts].map(row=>structuredClone(row));
+    data.companyInfos??={};
+    if(req.method!=='GET'){
+      await sleep(Math.max(400,Math.min(3000,Number(cookieOf(req,'payment_delay'))||700)));
+      if(cookieOf(req,'payment_fail')==='1')return reply({error:'합성 저장 실패 — 입력은 유지됩니다.'},503);
+    }
+    if(path==='/api/contract-payment'&&req.method==='GET')return reply({rows:cookieOf(req,'payment_manual')==='1'?data.paymentRows.map(row=>row.row===10?{...row,linkedMeetingId:'manual:synthetic'}:row):data.paymentRows});
+    if(path==='/api/company-info'){
+      const body=req.method==='GET'?Object.fromEntries(url.searchParams):await readBody(req);
+      const key=String(body.계약일)+'|'+String(body.업체명);
+      if(req.method!=='GET')data.companyInfos[key]=body.업체정보;
+      return reply({ok:true,업체정보:data.companyInfos[key]??{대표자이름:'가상 대표',업체명:body.업체명}});
+    }
+    if(path==='/api/contract-payment/edit-linked'){
+      const body=await readBody(req);data.paymentRows=data.paymentRows.map(row=>row.계약일===body.old?.계약일&&row.업체명===body.old?.업체명?{...row,...body.next}:row);
+      return reply({ok:true,failures:[]});
+    }
+    if(req.method==='PATCH'&&/^\/api\/contract-payment\/\d+$/.test(path)){
+      const body=await readBody(req),rowKey=Number(path.split('/').at(-1));data.paymentRows=data.paymentRows.map(row=>row.row===rowKey?{...row,...body}:row);
+      return reply({ok:true});
+    }
+  }
 
   if (path === "/fixture/reset") { stores.clear(); return reply({ ok: true }); }
   // C 채널별 남은 돈(?channels=…): 계약·DB·원장·대시보드 4곳만 C 데이터로(아니면 null → 아래 A·B 응답 그대로).

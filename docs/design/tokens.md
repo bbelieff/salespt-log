@@ -231,8 +231,8 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 | 1 | `TopHeader` 브랜드 바 | `z-50` | `top-0` | `h-app-header`: <768px 두 행 6rem, >=768px 한 행 3.5rem |
 | 2 | 페이지 배너(TopHeader 내부) | `z-40` | `top-app-header` | `h-12` 3rem |
 | 3 | 대시보드 날짜·진행 / 컨택 주차 / 일정 WeekHeader + SummaryBar / 캘린더 월 이동 / 수납 검색·상세 / 트레이너 기수 | 기존 소비자 z-index 유지 | `top-app-content` | 내용에 따라 가변 |
-| 3a | 실무/수납 모바일 상세 업체 이름 줄(ContractRow inline, 2026-10-09) | `z-20` | `top-app-content` | `h-12` 3rem |
-| 3b | 실무/수납 상세 섹션 제목 `.payment-sticky-title`(globals.css) | `z-10` | 1280 미만 `calc(var(--app-header-height) + 6rem)` = 배너 아래 + 업체 줄 3rem · 1280 이상 PC 열 안 `0` | 내용 |
+| 3a | 실무/수납 D R5 승인 대기: <=767 전용 알림 portal / >=768 기존 상세 상태 줄 | portal `z-40` / 기존 줄 `z-20` | portal `calc(var(--app-header-height) + 2px)`·right12 / 기존 줄 `top-app-content` | portal 최소44px·알림30px·undo44px, 본문 예약0 / 기존 줄24px·행동36px |
+| 3b | 실무/수납 상세 섹션 제목 `.payment-sticky-title` | `z-10` | D R5 <=767 `top-app-content` / 768~1279 inline `calc(var(--app-header-height) + 4.5rem)`, 상태 행동 `+ 5.25rem` / 1280 이상 PC 열 안 `0` | 내용 |
 | 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상(별도) | — | — |
 | 0 | 본문 `main`, 대시보드 매출·비용·영업이익 | 없음 | — | 일반 흐름 |
 | -1 | `BottomNav`(모바일) | `z-50`(fixed bottom) | bottom-0 | `h-[60px]` |
@@ -388,9 +388,14 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 - 주간목표: PT과제 한줄 padding6×8·글씨11, 목표간 화살표 slate-400. 원 지름은 기존 모바일48/PC64를 그대로 사용한다.
 
 ### 수납 Liquid Glass 모바일 도구 (2026-10-17)
+- R8/R9 현재 payment 헤더는 title flex basis104/요약0·TXT 생성 축약으로 PC385px 한줄44를 유지한다. <=767은 제목36/닫힌outer38·도구44/열린header82의 안전두행이며 축소·숨김·overflow로 한줄을 강제하지 않는다. 상세 상단 이월 note/wrapper/빈행만 제거, 목록 badge·계산 불변이다. 아래 R6 basis128/note유지 서술은 당시 비교 이력이며 현재 이 규격으로 대체한다.
+- D R7 PC status는 기존 제목줄/기본너비 옆 slot에만 배치해 별도 본문 높이를 예약하지 않는다. `[data-payment-pc-status] button` 최소높이44px(PC rem 축소와 무관), overlay/absolute0·실패본문사유/원래 undo조건 유지. PC1280에서 제목줄7.25px 증가를 포함한 순 본문절감40px 실측이며 다른 폭의 절감값으로 일반화하지 않는다. 모바일R5 토큰/portal과 R6 제목 규격은 불변이다.
+- D R6 미승인 payment 제목행: PC header 중복 padding/gap0·native title 최소44/padding8×10/flex basis128, 독립 도구 auto폭/gap4/padding0 6 2px·좁으면 자연 줄바꿈. fold는 글자14/line18·border0/padding0/transparent의 chevron만이다. <=767 compact는 title36/padding8×12·닫힌outer38을 보존하고 open 도구 행 gap0/하단2px로 압축한다. 닫힌 도구 display:none은 payment opt-in 전 폭에만 적용한다. R5 portal/저장 토큰은 불변이며 R6 actual 확인 범위는 plan에 분리한다.
 - 공통 `components/ui/liquid-glass-tools.css`의 명시 group scope만 사용한다. ink#334155, 투명 중간층/얇은 흰 반사·이중 rim, blur18/saturate180, 하단 slate20%/radial10%/base10%·shadow28%/6%. pseudo는 pointer-events:none. backdrop 미지원/투명도 줄이기/대비 강화는 불투명 대체, forced-colors는 시스템색·blur/반사/전환0, reduced-motion 전환0.
 - payment 4도구: 높이·최소폭44px/radius13/아이콘19/stroke1.7, gap0·하단12. 앞3 고정44, 검색 접힘/editor 모두 나머지 폭 flex·기존 검색 label 표시. 다른 도구 확장 시 검색과 나머지 폭 분배/최소44/한 줄. 320 row304에서44/44/44/172,375 row359에서44/44/44/227. 검색 활성 blue6px점/ring·focus2px 유지.
-- payment compact 업체정보는 optional opt-in·<=767px만: page gutter8/inline6/body·group6, 도구3각44/아이콘18stroke1.75+기존fontcontrol32×36 한 줄, native선택2각34/gap6/radius9/글자12. 입력13px×기존fontscale. PC/tablet/기본 공용은 기존 표현, header39는 title44/shrink0 명시 접기/도구 별도행·wrap이다.
+- payment compact 업체정보는 optional opt-in·<=767px만: page gutter8/inline6/body·group6, 도구3각44/아이콘18stroke1.75+기존fontcontrol32×36 한 줄, native선택2각34/gap6/radius9/글자12. 입력13px×기존fontscale. 기본 공용은 기존 표현을 유지하고 payment 헤더만 위 R6의 공간 배치/방향 chevron/닫힌 도구 숨김을 따른다.
+- D R4의 세 제목 규격은 [plan R4/R5/R6](../plans/active/payment-mobile-details-mock.md)에 기록한 사용자 명시 예외를 따른다. 일반 터치 최소44 규칙 자체는 변경하지 않는다. <=767 compact title36/padding8×12·닫힌 outer38, CI header padding0·gap0/actions none(닫힘), R6 open 도구 별도행 padding0 6 2px/도구44·글자크기32×36이다. 가짜44/겹침 확장은 없고 fold `›`/`⌄`·ARIA/native동작·PC/비compact44는 보존한다. 새 Tailwind arbitrary token은 추가하지 않는다.
+- D R5 승인 대기 저장 알림은 같은 `.payment-mobile-tools` optical scope의 공통 glass 변수/폴백을 재사용한다. payment 전용 portal은 right12/top=header+2·최소높이44·gap6·최대폭viewport−140, 오른쪽 live 슬롯88px/왼쪽 독립 undo44로 알림 전중후 x/y를 고정한다(본문 예약0). pill은 padding5×8/radius999/글자12·600·line18/높이30, 체크16·stroke1.7/fx-pop .24s·진입fx-fade .16s/성공#047857·emerald12% glow9px·공통 rim glint, 사라짐160ms다. 텍스트는 저장중/실제 ACK 저장완료 한 줄만, reduced-motion은 animation/transition0·forced-colors는 시스템색/반사0. <=767 기존 일반 rail·margin·추가 sticky offset은 제거하고 >=768 기존 표현은 유지한다.
 
 ### 공급처 성과 통합 셀 (2026-10-19)
 - 수치12px/700/slate900, 비율11px/600/slate700, 보조10px/slate600. 지표 막대4px·상단간격3px·바탕slate300, 상담/미팅/계약은 기존 채널 blue/green/amber/purple의500/600/700, 혼합은slate500/600/700. 표 첫 열26%, 나머지4열 균등. 제목 옆 안내12px/18px/slate600·간격10px, 모바일11px로 다음 줄. 모바일 지표4열·간격4px, 셀 안 숫자와 비율(10px)은 세로 배치하고 순위 배지는 별도 줄로 두어 320px에서 잘림을 방지한다.

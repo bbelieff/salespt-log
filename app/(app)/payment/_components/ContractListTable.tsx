@@ -50,8 +50,8 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
           <div key={item.key}>
             <button type="button" role={renderDetail ? undefined : "option"} aria-selected={renderDetail ? undefined : selected}
               aria-current={renderDetail && selected ? "true" : undefined} aria-expanded={renderDetail ? inlineOpen : undefined}
-              aria-controls={inlineOpen ? `payment-company-detail-${item.key}` : undefined}
-              data-row={cp.row ?? undefined} data-work-key={item.key}
+              aria-controls={renderDetail && selected ? `payment-company-detail-${item.key}` : undefined}
+              data-payment-company-summary data-row={cp.row ?? undefined} data-work-key={item.key}
               onClick={() => selected && renderDetail ? onToggleDetail?.() : !selected ? onSelect(item) : undefined}
               className={`relative w-full scroll-mt-app-content border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? `z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-[0_8px_24px_rgba(37,99,235,.12)] ${inlineOpen ? "rounded-t-xl border-b-blue-100" : renderDetail ? "rounded-xl" : "rounded-l-xl"} pc:rounded-r-none pc:border-r-0` : "rounded-xl border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted && !selected ? "opacity-60" : ""}`}>
               <span className="flex min-w-0 items-center gap-2">

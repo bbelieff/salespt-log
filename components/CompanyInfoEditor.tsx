@@ -34,6 +34,7 @@ import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
 import { fontScaleOf } from "@/util/font-scale";
+import { shouldTogglePaymentHeader } from "./company-info/payment-header";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
@@ -365,9 +366,11 @@ export default function CompanyInfoEditor({
   const [fontStep, setFontStep] = useFontStep("company-info");
   const fontControl = <FontScaleControl step={fontStep} onChange={setFontStep} label="업체정보" />;
   const ciSaving = busy || (auto && status === "pending");
+  const paymentHeading = desktopHeading || compactMobile;
   return (
-    <div data-payment-company-header={desktopHeading || compactMobile ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
-      <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? "rounded-t-lg" : "rounded-lg"}` : "px-2.5 py-1.5"}`}>
+    <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
+      <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? "rounded-t-lg" : "rounded-lg"}` : "px-2.5 py-1.5"}`}
+        onClick={paymentHeading ? (event) => { if (shouldTogglePaymentHeader(event.currentTarget, event.target)) setOpen((v) => !v); } : undefined}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -377,9 +380,9 @@ export default function CompanyInfoEditor({
         >
           <span className={`truncate ${desktopHeading ? "font-bold text-slate-800" : "font-semibold text-gray-700"}`}>
             🏢 업체정보{" "}
-            <span className="font-normal text-gray-400">{summary}</span>
+            {!paymentHeading && <span className="font-normal text-gray-400">{summary}</span>}
           </span>
-          <span data-payment-ci-fold={desktopHeading || compactMobile ? "" : undefined} className="shrink-0 text-gray-400">{desktopHeading || compactMobile ? open ? "접기 " : "펼치기 " : ""}{open ? "▴" : "▾"}</span>
+          <span data-payment-ci-fold={paymentHeading ? "" : undefined} aria-hidden={paymentHeading ? true : undefined} className="shrink-0 text-gray-400"><span data-payment-ci-fold-legacy>{paymentHeading ? open ? "⌄" : "›" : open ? "▴" : "▾"}</span></span>
         </button>
         <div
           data-company-info-header-actions
@@ -403,11 +406,11 @@ export default function CompanyInfoEditor({
                 <button
                   type="button"
                   onClick={exportTxt}
-                  data-payment-ci-action="txt" aria-label={compactMobile ? "업체정보 TXT 생성" : undefined} title={compactMobile ? "업체정보 TXT 생성" : undefined}
+                  data-payment-ci-action="txt" aria-label={paymentHeading ? "업체정보 TXT 생성" : undefined} title={paymentHeading ? "업체정보 TXT 생성" : undefined}
                   disabled={txtBusy}
                   className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {compactMobile && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={compactMobile ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : "업체정보생성(TXT)"}</span>
+                  {compactMobile && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={compactMobile ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : paymentHeading ? "TXT 생성" : "업체정보생성(TXT)"}</span>
                 </button>
               )}
               <button

@@ -31,9 +31,9 @@ const isValidDraft = (d: LinkedDraft): boolean =>
   Number.isFinite(d.수임비) &&
   d.수임비 >= 0;
 
-export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { cp: ContractPayment; initiallyEditing?: boolean }) {
+export default function LinkedFieldsEditor({ cp, initiallyEditing = false, compactMobile = false }: { cp: ContractPayment; initiallyEditing?: boolean; compactMobile?: boolean }) {
   const [editing, setEditing] = useState(initiallyEditing);
-  const edit = useEditContractLinkedFields();
+  const edit = useEditContractLinkedFields({ silent: compactMobile });
   const mutateRef = useRef(edit.mutateAsync);
   mutateRef.current = edit.mutateAsync;
   const meetingIdRef = useRef(cp.linkedMeetingId || undefined);
@@ -127,6 +127,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { c
     "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
   return (
     <div
+      data-payment-linked-compact={compactMobile ? "" : undefined}
       className="rounded-lg border border-blue-200 bg-blue-50 p-3"
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
@@ -134,8 +135,8 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { c
         }
       }}
     >
-      <div className="mb-2 flex items-center justify-between gap-1.5">
-        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+      <div data-payment-linked-status className="mb-2 flex items-center justify-between gap-1.5">
+        <span data-payment-linked-note className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
           🔗 일정·계약·시트 연동
         </span>
         <span className="flex items-center gap-1.5">
@@ -188,7 +189,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false }: { c
           />
         </div>
       </div>
-      <p className="mt-2 text-px-11 leading-tight text-gray-500">
+      <p data-payment-linked-note className="mt-2 text-px-11 leading-tight text-gray-500">
         업체명·수임비는 일정·계약 미팅과 시트에 함께 반영돼요. 계약일은 이 계약카드에만 적용돼요
         (미팅 날짜·달력·주차 통계는 그대로).
       </p>
