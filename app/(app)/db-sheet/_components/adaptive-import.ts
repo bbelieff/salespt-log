@@ -40,7 +40,8 @@ function tokens(line:string):string[] {
 /** Fingerprint contains only structural categories. It never contains source values. */
 function hash(value:string){let h=2166136261;for(const ch of value){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);}
 export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Rules={}):Analysis {
- const raw=text.replace(/^\uFEFF/,'').trim();if(!raw)throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
+ // A tab is a column delimiter: trim() would shift only the first heading row.
+ const raw=text.replace(/^\uFEFF/,'').replace(/^(?:[ \t]*\r?\n)+/,'').replace(/(?:\r?\n[ \t]*)+$/,'');if(!raw.trim())throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
  if(raw.length>5*1024*1024)throw new Error('5MB 이하 내용을 가져와 주세요.');
  const lines=raw.split(/\r?\n/).filter(s=>s.trim());
  const labeled=lines.some(s=>/^\s*(대표자|이름|사업자명|업체명|전화번호|연락처)\s*[:：]/.test(s));
@@ -94,7 +95,8 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
   // Original content is retained, including values that were normalized or assigned.
   item.lead.memo=[item.lead.memo,'[가져온 원문]',cells.join(tabular?' | ':'\n')].filter(Boolean).join('\n');
   return item;
- });
+ }).filter(item=>item.raw.some(cell=>!/^[-—–－−\s]*$/.test(cleanCell(cell))));
+ if(!items.length)throw new Error('가져올 고객 정보가 없어요. 공란 표시가 아닌 실제 업체 내용을 넣어 주세요.');
  return {items,header,headings:header?headings:Array.from({length:Math.max(...matrix.map(r=>r.length))},(_,i)=>`${i+1}열`),signature,format:labeled?'항목별 텍스트':tabular?'표 형식':'줄별 텍스트',tabular};
 }
 export function resolveImportQuestion(item:Item,qid:string,key:ImportField|'keep'):Item {
