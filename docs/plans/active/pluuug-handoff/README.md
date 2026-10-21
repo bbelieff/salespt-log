@@ -6,10 +6,11 @@
 > - **관련 문서**: 항목 정본 [A](../dashboard-follow-ups.md) · [B](../dashboard-card-headlines.md) · [C](../dashboard-channel-profit.md) · [D](../company-info-email.md) · [E](../db-sheet-supplier-summary.md) · [F](../records-follow-renames.md) · [workflow](../../../development/workflow.md) · [task-template](../../../development/task-template.md) · [deploy-vps](../../../playbooks/deploy-vps.md) · [총괄](../../../playbooks/codex-lead.md)·[제작](../../../playbooks/codex-worker.md)·[검증](../../../playbooks/codex-reviewer.md)
 
 ## 진행 현황 (대시보드용)
-갱신: 2026-10-22 01:53 KST
+갱신: 2026-10-22 02:33 KST
 
 | 항목 | 단계 | 다음 할 일 | 막힌 것·belie 결정 대기 |
 |---|---|---|---|
+| DB 가져오기 입력 경계 점검 | PR 검증 중 | 전체 검사·CI·최종 검증 | 신규51+기존80 PASS·고객 기록 보존 |
 | DB 붙여넣기 열 밀림 | PR 검증 중 | 전체 검사·최종 head 검증·배포 | 합성 재현·수정·모의 저장 통과, 수강생 원문 대기 |
 | 실무/수납 입력 중 저장 | PR 검증 중 | 입력 중 중간 저장 재현·수정 시험 | 운영 데이터 변경 없음 |
 | 화면 품질·수료 후 최근 8주 | PR 검증 중 | 승인된 9건 개선·최근 기록 집계와 화면 검증 | 없음·애니메이션 검토 제외 |
@@ -585,4 +586,3 @@ belie가 새 Codex 세션에 그대로 붙여 넣는다.
 7) belie에게는 쉬운 말로 결론부터 말한다. 확인한 것과 하지 않은 것(NOT_RUN)을 나눠 보고한다.
    모델별 토큰·시간 보고와 Muse 위임 단계는 네 전역 지침을 따른다.
 ```
-

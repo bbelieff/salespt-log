@@ -1,3 +1,4 @@
+import {normalizeImportText,blankImportText,importTextFormat} from './import-text';
 import { domesticPhoneDigits } from "@/util/db-sheet-identity";
 import {blank,cleanCell,delimited,formatPhone,headerKey,parse,validDate,type Row,type Key} from './model';
 
@@ -41,15 +42,20 @@ function tokens(line:string):string[] {
 function hash(value:string){let h=2166136261;for(const ch of value){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);}
 export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Rules={}):Analysis {
  // A tab is a column delimiter: trim() would shift only the first heading row.
- const raw=text.replace(/^\uFEFF/,'').replace(/^(?:[ \t]*\r?\n)+/,'').replace(/(?:\r?\n[ \t]*)+$/,'');if(!raw.trim())throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
- if(raw.length>5*1024*1024)throw new Error('5MB 이하 내용을 가져와 주세요.');
- const lines=raw.split(/\r?\n/).filter(s=>s.trim());
- const labeled=lines.some(s=>/^\s*(대표자|이름|사업자명|업체명|전화번호|연락처)\s*[:：]/.test(s));
+ if(text.length>5*1024*1024)throw new Error('5MB 이하 내용을 가져와 주세요.');
+ const normalized=normalizeImportText(text);if(blankImportText(normalized))throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
+ const {separator,firstRecord,offset,unterminated}=importTextFormat(normalized);
+ const raw=normalized.slice(offset);
+ const lines=raw.split('\n').filter(s=>!blankImportText(s));
+ const labelStart=/^\s*(대표자|이름|사업자명|업체명|전화번호|연락처)\s*[:：]/;
  // Commas inside a free-text amount must not turn a whole message into CSV.
- const parts=lines[0]!.split(',');
- const commaTable=parts.length>=3||parts.length===2&&(!parts[0]!.includes(' ')||!!headerKey(parts[0]!)||/^010-\d{4}-\d{4}$/.test(normalizeImportPhone(parts[1]!)));
- const tabular=!labeled&&(/\t|;/.test(lines[0]!)||commaTable||lines.length>1&&lines.every(s=>s.includes(',')));
- let matrix=tabular?delimited(raw):labeled?raw.split(/\r?\n\s*\r?\n/).map(s=>s.split(/\r?\n/).filter(Boolean)):lines.map(tokens);
+ if(unterminated&&/[\t,;]/.test(firstRecord))throw new Error('닫히지 않은 CSV 따옴표를 확인해 주세요.');
+ const parts=firstRecord.split(',');
+ const commaTable=separator===','&&(parts.length>=3||parts.length===2&&(!parts[0]!.includes(' ')||!!headerKey(parts[0]!)||/^010-\d{4}-\d{4}$/.test(normalizeImportPhone(parts[1]!))));
+ const tableFirst=separator==='\t'||separator===';'||commaTable;
+ const labeled=labelStart.test(lines[0]!)||!tableFirst&&lines.some(s=>labelStart.test(s));
+ const tabular=!labeled&&(tableFirst||lines.length>1&&lines.every(s=>s.includes(',')));
+ let matrix=tabular?delimited(raw):labeled?raw.split(/\n[\s\u200B\u2060]*\n/).map(s=>s.split(/\r?\n/).filter(Boolean)):lines.map(tokens);
  const first=matrix[0]||[];
  const recognized=first.filter(v=>headerKey(v)).length;
  const header=tabular&&(mode==='yes'||mode==='auto'&&recognized>=2&&(recognized>=first.filter(Boolean).length/2||first.some(h=>/^(ad_id|form_id|created_time|lead_id)$/i.test(h.trim()))));
@@ -95,7 +101,7 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
   // Original content is retained, including values that were normalized or assigned.
   item.lead.memo=[item.lead.memo,'[가져온 원문]',cells.join(tabular?' | ':'\n')].filter(Boolean).join('\n');
   return item;
- }).filter(item=>item.raw.some(cell=>!/^[-—–－−\s]*$/.test(cleanCell(cell))));
+ }).filter(item=>item.raw.some(cell=>!/^[-—–－−\s\u200B\u2060]*$/.test(cleanCell(cell))));
  if(!items.length)throw new Error('가져올 고객 정보가 없어요. 공란 표시가 아닌 실제 업체 내용을 넣어 주세요.');
  return {items,header,headings:header?headings:Array.from({length:Math.max(...matrix.map(r=>r.length))},(_,i)=>`${i+1}열`),signature,format:labeled?'항목별 텍스트':tabular?'표 형식':'줄별 텍스트',tabular};
 }

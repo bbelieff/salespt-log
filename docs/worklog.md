@@ -1,3 +1,5 @@
+## 2026-10-22 · DB 가져오기 입력 경계 점검
+- fix/db-import-input-boundaries, base d55057fe. root 소유: 입력 전처리·관련 파서·합성 평가. 첫 실제 내용·줄바꿈·인용부호 경계 점검, 운영 고객 기록 보존. [plan](plans/active/db-import-input-boundaries.md).
 ## 2026-10-22 · DB 붙여넣기 열 밀림 진단
 - fix/db-import-paste-alignment, base3c463a05. root는 가져오기 분석기·합성 회귀·관련 안내만 소유. 앞 빈 열/공란 행/날짜·전화번호 배치를 재현하며 원문 회신 대기. 고객 기록 변경0. [plan](plans/active/db-import-paste-alignment.md).
 ## 2026-10-20 · 실무/수납 입력 중 저장 방해 수정
