@@ -12,14 +12,16 @@ const req = (headers: Record<string, string>) => new NextRequest("http://127.0.0
 beforeEach(() => { dispatchDuePush.mockClear(); process.env.PUSH_CRON_SECRET = SECRET; });
 
 describe("POST /api/internal/push/dispatch", () => {
-  it("runs with the local secret", async () => {
-    const res = await POST(req({ "x-push-cron": SECRET }));
-    expect(res.status).toBe(200);
-    expect(dispatchDuePush).toHaveBeenCalledOnce();
+  it("runs with the local secret, with or without the loopback X-Forwarded-For next start adds", async () => {
+    expect((await POST(req({ "x-push-cron": SECRET }))).status).toBe(200);
+    expect((await POST(req({ "x-push-cron": SECRET, "x-forwarded-for": "127.0.0.1" }))).status).toBe(200);
+    expect((await POST(req({ "x-push-cron": SECRET, "x-forwarded-for": "::ffff:127.0.0.1" }))).status).toBe(200);
+    expect(dispatchDuePush).toHaveBeenCalledTimes(3);
   });
   it("hides itself for a wrong secret, a request through Caddy, or a missing/short secret", async () => {
     expect((await POST(req({ "x-push-cron": "nope" }))).status).toBe(404);
     expect((await POST(req({ "x-push-cron": SECRET, "x-forwarded-for": "1.2.3.4" }))).status).toBe(404);
+    expect((await POST(req({ "x-push-cron": SECRET, "x-forwarded-for": "127.0.0.1, 1.2.3.4" }))).status).toBe(404);
     process.env.PUSH_CRON_SECRET = "short";
     expect((await POST(req({ "x-push-cron": "short" }))).status).toBe(404);
     expect(dispatchDuePush).not.toHaveBeenCalled();
