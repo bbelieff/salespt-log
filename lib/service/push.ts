@@ -35,11 +35,15 @@ function requirePilot(email: string) {
   if (!isPushPilot(email)) throw new PushNotAvailable("push_not_available");
 }
 
-export interface PushState { available: boolean; publicKey: string | null; preferences: PushPreferences | null; devices: PushDevice[] }
-export async function getPushState(email: string): Promise<PushState> {
-  if (!isPushPilot(email)) return { available: false, publicKey: null, preferences: null, devices: [] };
+/**
+ * viewingOther = an admin or trainer is looking at someone else's screen. Push always belongs to
+ * the signed-in person, so the screens hide their push prompts in that case (2026-10-22 belie).
+ */
+export interface PushState { available: boolean; publicKey: string | null; preferences: PushPreferences | null; devices: PushDevice[]; viewingOther: boolean }
+export async function getPushState(email: string, viewingOther = false): Promise<PushState> {
+  if (!isPushPilot(email)) return { available: false, publicKey: null, preferences: null, devices: [], viewingOther };
   const [preferences, devices] = await Promise.all([store.getPreferences(email), store.listDevices(email)]);
-  return { available: true, publicKey: vapidPublicKey(), preferences, devices };
+  return { available: true, publicKey: vapidPublicKey(), preferences, devices, viewingOther };
 }
 
 export async function savePushPreferences(email: string, input: unknown): Promise<PushPreferences> {

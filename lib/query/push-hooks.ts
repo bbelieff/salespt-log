@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PushDevice, PushPreferences } from "@/types/push";
 import { describeDevice, platformLabel, pushReadiness, urlBase64ToBytes, type DeviceInfo, type PushReadiness } from "@/util/push-device";
 
-export interface PushStateView { available: boolean; publicKey: string | null; preferences: PushPreferences | null; devices: PushDevice[] }
+export interface PushStateView { available: boolean; publicKey: string | null; preferences: PushPreferences | null; devices: PushDevice[]; viewingOther: boolean }
 const pushKey = ["push"] as const;
 
 async function json<T>(res: Response): Promise<T> {
@@ -115,4 +115,25 @@ export function useThisDevicePush(state: PushStateView | undefined) {
   }, [registration]);
 
   return { device, readiness, endpoint, subscribe, forgetThisBrowser };
+}
+
+/**
+ * Logout turns off push on this browser only (2026-10-22 belie): the server row goes first while
+ * the session still exists, then the browser subscription. Other devices keep receiving.
+ * Never blocks logout for more than ~2 seconds; if the server call fails, the dropped browser
+ * subscription makes the next send return 410 and the server disables the row then.
+ */
+export async function forgetPushOnThisDevice(): Promise<void> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  const work = (async () => {
+    const reg = await navigator.serviceWorker.getRegistration("/");
+    const sub = await reg?.pushManager.getSubscription();
+    if (!sub) return;
+    await fetch("/api/push/subscriptions", {
+      method: "DELETE", headers: { "content-type": "application/json" }, keepalive: true,
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    }).catch(() => undefined);
+    await sub.unsubscribe().catch(() => false);
+  })().catch(() => undefined);
+  await Promise.race([work, new Promise(resolve => setTimeout(resolve, 2000))]);
 }

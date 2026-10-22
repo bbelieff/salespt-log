@@ -6,6 +6,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { forgetPushOnThisDevice } from "@/query/push-hooks";
 
 export default function LogoutButton({
   className,
@@ -17,7 +18,7 @@ export default function LogoutButton({
   return (
     <button
       type="button"
-      onClick={() => signOut({ callbackUrl: "/" })}
+      onClick={async () => { await forgetPushOnThisDevice(); signOut({ callbackUrl: "/" }); }}
       className={
         className ??
         "text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"

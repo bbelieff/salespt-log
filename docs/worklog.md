@@ -1,3 +1,5 @@
+## 2026-10-22 · 웹 푸시 기기·계정 보호 보완
+- fix/push-device-privacy. belie 질문(관리자·트레이너가 다른 수강생 화면을 보면? 다른 기기에서 로그인하면?) 대응: 알림은 로그인한 본인 기준임을 확인, 다른 사람 화면 볼 때 초대 카드·메뉴 숨김 + 설정 안내, 로그아웃 시 그 기기 알림 해제. [plan](plans/active/web-push-notifications.md) §12.
 ## 2026-10-22 · 웹 푸시 시범판 운영 반영
 - #1191 f2862a5c 배포 run 39740430309 success → 0009 적용(대기 1건만) → 서버 안 발송 호출 404 발견 → #1192 b4865f1c(루프백 홉만 허용) 배포 success, health 200. 서버 안 호출 `{"tick":"2026-10-22 16:45","candidates":0,…}`, 공개 주소(위조 XFF 포함) 404, /sw.js no-cache, /settings/notifications 비로그인 307.
 - VPS: .env 에 VAPID_*·PUSH_CRON_SECRET·PUSH_PILOT_EMAILS(4개 주소) 추가(백업 .env.bak-20261022-161822-push), .env.push-cron, /etc/cron.d/salespt-push(07~21시 15분). pm2 수동 재시작 없음(배포 reload 로 반영).

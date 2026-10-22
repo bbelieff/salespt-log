@@ -23,7 +23,7 @@ export default function PushPrompt() {
   const shown = useRef(false);
 
   useEffect(() => {
-    if (!state.data?.available || snoozed()) return;
+    if (!state.data?.available || state.data.viewingOther || snoozed()) return;
     let cancelled = false;
     (async () => {
       let receiving = false;
