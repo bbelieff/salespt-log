@@ -6,6 +6,7 @@ import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import ProductivityIndicators from "./ProductivityIndicators";
 import DashboardFollowUps from "./DashboardFollowUps";
 import DashboardWorkStatus from "./DashboardWorkStatus";
+import PushPrompt from "@/components/push/PushPrompt";
 
 /** PC 좌열은 진행건→오늘 챙길 일, 우열은 생산성→목표. 모바일은 실제 교육 주차로 두 카드의 순서만 바꾼다. */
 export default function DashboardActionOverview({ matrix, weeks, todayISO, courseStartISO }: {
@@ -15,6 +16,7 @@ export default function DashboardActionOverview({ matrix, weeks, todayISO, cours
   const work = <div key="work" className="dashboard-action-work min-w-0 flex flex-col gap-3">
     <DashboardWorkStatus todayISO={todayISO} />
     <DashboardFollowUps todayISO={todayISO} />
+    <PushPrompt />
   </div>;
   const goals = <div key="goals" className="dashboard-action-goals min-w-0">
     <WeeklyGoalSummary className="h-full min-w-0" />

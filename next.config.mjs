@@ -17,6 +17,13 @@ const nextConfig = {
   // 코드만 배포되므로, 배포 빌드에서만(SKIP_BUILD_CHECKS=1) 중복 검사를 건너뛴다. 로컬·CI 빌드는 그대로 검사.
   eslint: { ignoreDuringBuilds: process.env.SKIP_BUILD_CHECKS === "1" },
   typescript: { ignoreBuildErrors: process.env.SKIP_BUILD_CHECKS === "1" },
+  // 푸시 전용 서비스워커(web-push-notifications §5): 업데이트가 바로 반영되게 캐시하지 않는다.
+  async headers() {
+    return [{ source: "/sw.js", headers: [
+      { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+      { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+    ] }];
+  },
 };
 
 // Sentry wrapper — DSN 미설정 시에도 무해.

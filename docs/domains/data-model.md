@@ -790,3 +790,10 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - `first-date` 명령: id/revision/first(날짜 또는 빈값), 실제 상담 이력/집계는 변경하지 않음.
 - `inflow-preview`, `inflow`: id/revision/inflow(boolean). 기존 tenant/revision·트랜잭션 잠금 아래 해당 날짜·채널의 실제 DB 기여 수와 `_dbSheetInflow`를 exact 대조하고, 전후 전체/DB 수의 안전 정수·비음수 및 직접생산 합계 일치를 확인한 뒤 해당 한 건만 증감한다. 수동분(전체−DB 기여)·기존 상담/미팅 기여를 보존하며, 양수인데 생산값이 없거나 기여/합계가 모순되면 preview/저장 모두 거부한다(없는 0 baseline은 허용). 이력 부재만으로 정상 legacy를 잠그지 않으며, 연결 복구/고객 백필/집계 조정은 수행하지 않는다. 기존 `recording`은 사후 활동반영 정책을 유지하고 삭제 안전 가드는 별도 보존한다.
 - 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.
+
+## 웹 푸시 알림 (2026-10-22, `lib/types/push.ts` · migration 0009)
+- `PushPreferences`: enabled · morningEnabled/`MorningTime`(07:00~11:00, 15분) · eveningEnabled/`EveningTime`(17:00~21:00, 15분) · weekdays(요일 비트 월=1…일=64, 기본 31=평일) · kinds(`PushContentKind`[] = overdue·today·meeting·initial·recontact·stalled) · showCompanyNames(기본 true, belie 결정). 기본값 `DEFAULT_PUSH_PREFERENCES`(아침 08:45, 저녁 18:00). 저장 = `push_preferences`(email PK).
+- `PushSubscriptionInput`: 브라우저 PushSubscription(endpoint https, keys.p256dh/auth) + `PushPlatform`(android·ios_pwa·desktop·other) + browser 라벨. 저장 = `push_subscriptions`(endpoint unique, 404/410 또는 연속 5회 실패 시 disabled_at).
+- `PushDevice`: 설정 화면 기기 목록 투영(id·platform·browser·createdAt·lastSuccessAt·endpointTail = endpoint 끝 16자, 이 브라우저 식별용).
+- `push_deliveries`: idempotency_key `<email>:<KST 날짜>:<morning|evening|test[:n]>` unique로 한 번만 발송. message_id·item_count·status(pending·sent·skipped_zero·failed)·opened_at(알림 탭 출처 꼬리표)만 저장하고 **문구 원문·업체명은 저장하지 않는다.**
+- 사용자 키는 로그인 email(소문자). 관리자 보기 전환(impersonation)과 무관하게 본인 것만 다룬다.

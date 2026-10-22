@@ -45,6 +45,13 @@ export const EVENTS = {
   TODO_CREATED: "todo_created",
   TODO_UPDATED: "todo_updated",
   TODO_REMOVED: "todo_removed",
+  // 웹 푸시 알림 시범 (web-push-notifications §6)
+  PUSH_PROMPT_SHOWN: "push_prompt_shown",
+  PUSH_PROMPT_RESULT: "push_prompt_result",
+  PUSH_SUBSCRIBED: "push_subscribed",
+  PUSH_UNSUBSCRIBED: "push_unsubscribed",
+  PUSH_SETTINGS_CHANGED: "push_settings_changed",
+  PUSH_TEST_SENT: "push_test_sent",
   // 식별·에러
   USER_IDENTIFIED: "user_identified",
   API_ERROR: "api_error",
