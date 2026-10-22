@@ -1,5 +1,6 @@
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { formatMoney } from "@/lib/format/money";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
@@ -286,7 +287,7 @@ export default function FinanceSummaryBoxes({
               ＋
             </span>
             <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">매출</span>
-            <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "revenue" ? "rotate-180" : ""}`}>⌄</span>
+            <DisclosureChevron open={open === "revenue"} className="ml-auto hidden text-slate-400 sm:inline-block" />
           </span>
           <span ref={revenueAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-slate-900" style={amountStyle}>
             <Amount value={revenue} play={play} />
@@ -308,7 +309,7 @@ export default function FinanceSummaryBoxes({
               －
             </span>
             <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">비용</span>
-            <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "cost" ? "rotate-180" : ""}`}>⌄</span>
+            <DisclosureChevron open={open === "cost"} className="ml-auto hidden text-slate-400 sm:inline-block" />
           </span>
           <span ref={costAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-red-600" style={amountStyle}>
             <Amount value={cost} play={play} />
@@ -330,7 +331,7 @@ export default function FinanceSummaryBoxes({
               ＝
             </span>
             <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">영업이익</span>
-            <span aria-hidden="true" className={`ml-auto hidden shrink-0 text-xs text-slate-400 transition-transform sm:inline ${open === "profit" ? "rotate-180" : ""}`}>⌄</span>
+            <DisclosureChevron open={open === "profit"} className="ml-auto hidden text-slate-400 sm:inline-block" />
           </span>
           <span
             ref={profitAmountRef}

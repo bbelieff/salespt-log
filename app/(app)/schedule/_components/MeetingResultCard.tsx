@@ -1,5 +1,6 @@
 "use client"; // MeetingResultCard — 일정·계약 탭 미팅 카드 (5상태). 닫힌 카드: 되돌리기/추가미팅.
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useId, useRef, useEffect, useState } from "react";
 import type { Channel, Meeting, CompanyInfo } from "@/types";
 import { useDirtyEntry } from "@/components/DirtyGuard";
@@ -160,9 +161,7 @@ export default function MeetingResultCard({
           {meeting.장소}
         </span>
         {feeSummary}
-        <svg className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <DisclosureChevron open={open} />
       </button>
 
       {open && (

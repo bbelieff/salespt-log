@@ -5,6 +5,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useState } from "react";
 import type { ContractPayment } from "@/types";
 import { fmtMoney } from "./nameHighlight";
@@ -29,7 +30,7 @@ export default function TerminationArchive({ contracts }: Props) {
           🗂 해지 보관함{" "}
           <span className="text-red-500">{contracts.length}건</span>
         </span>
-        <span className="text-xs text-gray-400">{open ? "접기 ▲" : "펼치기 ▼"}</span>
+        <span className="text-xs text-gray-400">{open ? "접기" : "펼치기"} <DisclosureChevron open={open} /></span>
       </button>
       {open && (
         <ul className="divide-y divide-gray-100 border-t border-gray-100">

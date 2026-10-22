@@ -13,6 +13,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import PersistentDetails from "./PersistentDetails";
 
 export default function CollapsibleSection({
@@ -36,18 +37,17 @@ export default function CollapsibleSection({
       defaultOpen={defaultOpen}
       className="group w-full overflow-hidden rounded-2xl border border-gray-200 bg-white"
     >
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50">
+      <summary className="disclosure-summary flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50">
         <span>{title}</span>
         {badge && (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-px-11 font-bold text-gray-600">
             {badge}
           </span>
         )}
-        <span className="ml-auto shrink-0 text-xs font-semibold text-gray-400 group-open:hidden">
-          펼치기 ▾
-        </span>
-        <span className="ml-auto hidden shrink-0 text-xs font-semibold text-gray-400 group-open:inline">
-          접기 ▴
+        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-gray-400">
+          <span className="group-open:hidden">펼치기</span>
+          <span className="hidden group-open:inline">접기</span>
+          <DisclosureChevron />
         </span>
       </summary>
       <div className="border-t border-gray-100 px-4 pb-4 pt-3">{children}</div>

@@ -10,6 +10,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { contractRef as contractRefOf } from "@/util/contract-ref";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -376,7 +377,7 @@ export default function ContractRow({
           </span>
         </div>
         {!forceOpen && (
-          <svg
+          <>{selectable ? (<svg
             className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
               !selectable && open ? "rotate-180" : ""
             } ${selectable ? "-rotate-90" : ""}`}
@@ -390,7 +391,7 @@ export default function ContractRow({
               strokeWidth={2}
               d="M19 9l-7 7-7-7"
             />
-          </svg>
+          </svg>) : <DisclosureChevron open={open} className="text-gray-400" />}</>
         )}
       </button>}
 
@@ -434,13 +435,13 @@ export default function ContractRow({
             </button>}
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
               <details data-payment-contract-info={inline ? "" : undefined} className="group rounded-lg border border-slate-200 bg-white">
-                <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">
-                  <span className="shrink-0">📑 계약정보</span><span data-payment-contract-summary className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} ›</span><span data-payment-contract-caret aria-hidden="true" className="hidden">›</span>
+                <summary className="disclosure-summary payment-sticky-title flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">
+                  <span className="shrink-0">📑 계약정보</span><span data-payment-contract-summary className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} <DisclosureChevron /></span><span data-payment-contract-caret aria-hidden="true" className="hidden"><DisclosureChevron /></span>
                 </summary>
                 <div className="space-y-2 border-t border-slate-100 p-3"><LinkedFieldsEditor cp={cp} initiallyEditing compactMobile={inline} /><label className="block text-xs font-medium text-slate-600">비고<textarea rows={2} data-payment-draft-input value={draft.계약비고} onChange={(e) => stageDraft((d) => ({ ...d, 계약비고: e.target.value }))} placeholder="계약 관련 특약·지급 조건" className="mt-1 w-full resize-y rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"/></label></div>
               </details>
               <details className="group rounded-lg border border-slate-200 bg-white">
-                <summary className="payment-sticky-title flex cursor-pointer list-none items-center justify-between rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800"><span>📋 서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} ›</span></summary>
+                <summary className="disclosure-summary payment-sticky-title flex cursor-pointer list-none items-center justify-between rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800"><span>📋 서류·진행 체크</span><span className="text-xs font-normal text-slate-500">{docsDone} / {TOTAL_CHECKBOXES} <DisclosureChevron /></span></summary>
                 <div className="border-t border-slate-100 p-3"><CheckboxList compact={bare} draft={draft} onChange={(key, next) => editDraft((d) => ({ ...d, [key]: next }))}/></div>
               </details>
               <details open className="group rounded-lg border border-amber-200 bg-amber-50">

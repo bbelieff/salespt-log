@@ -90,7 +90,9 @@ describe("섹션 제목 고정", () => {
     expect(row).not.toContain("bg-amber-50/80");
     expect(read("app/(app)/payment/_components/ContractSlots.tsx")).toContain("payment-sticky-title -mx-3 -mt-3 mb-2 flex items-center justify-between rounded-t-lg bg-amber-50");
     // 업체정보 헤더는 실무/수납(desktopHeading)에서만 — 컨택·일정 화면은 그대로.
-    expect(read("components/CompanyInfoEditor.tsx")).toContain('desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? "rounded-t-lg" : "rounded-lg"}` : "px-2.5 py-1.5"');
+    expect(read("components/CompanyInfoEditor.tsx")).toContain('<CompanyInfoHeader open={open}');
+    expect(read("components/CompanyInfoEditor.tsx")).toContain('desktopHeading={desktopHeading} payment={paymentHeading}');
+    expect(read("components/company-info/CompanyInfoHeader.tsx")).toContain("desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? 'rounded-t-lg' : 'rounded-lg'}` : 'px-2.5 py-1.5'");
   });
   it("CSS: 모바일은 헤더+배너+업체 줄 아래, 1280 이상 PC 열은 맨 위, 터치 입력 중엔 고정 해제", () => {
     const block = css.slice(css.indexOf("payment-sticky-detail"), css.indexOf("Desktop glass shell"));

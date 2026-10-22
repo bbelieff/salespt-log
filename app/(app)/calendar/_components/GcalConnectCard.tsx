@@ -5,6 +5,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useCallback, useEffect, useState } from "react";
 
 interface Cal { id: string; summary: string; primary: boolean }
@@ -116,7 +117,7 @@ export default function GcalConnectCard() {
         {state.account && <span className="min-w-0 flex-1 truncate text-xs text-neutral-400" title={state.account}>{state.account}</span>}
         {!state.account && <span className="min-w-0 flex-1" />}
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${statusClass}`}>{status}</span>
-        <span className="shrink-0 text-xs text-neutral-400" aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+        <span className="shrink-0 text-xs text-neutral-400" aria-hidden="true"><DisclosureChevron open={expanded} /></span>
         <span className="sr-only">{expanded ? "접기" : "펼치기"}</span>
       </button>
 

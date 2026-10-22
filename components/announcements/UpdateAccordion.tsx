@@ -8,6 +8,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useState } from "react";
 import type { UpdateItem } from "@/types";
 import {
@@ -95,18 +96,7 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
                 </span>
                 <span className="mt-0.5 block text-xs text-gray-400">{groupMetaLine(g)}</span>
               </span>
-              <svg
-                className={`mt-1 h-3 w-3 shrink-0 text-gray-400 transition-transform ${
-                  expanded ? "rotate-180" : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <DisclosureChevron open={expanded} />
             </button>
             {expanded && <GroupBody g={g} />}
           </li>

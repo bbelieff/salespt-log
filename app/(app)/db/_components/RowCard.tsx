@@ -19,6 +19,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ChannelKey, ChannelMeta } from "../_lib/channels";
 import { makeSummary } from "../_lib/row-summary";
@@ -300,6 +301,8 @@ export default function RowCard({
       <div
         className="row-card flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white p-3 transition-all hover:border-slate-300"
         onClick={onExpand}
+        role="button" tabIndex={0} aria-expanded={false}
+        onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onExpand(); } }}
       >
         <span className="row-num shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold tracking-wider text-slate-600 num-mono">
           {displayNum}
@@ -321,7 +324,7 @@ export default function RowCard({
         {s.rightBadge && (
           <span className={`badge ${badgeCls} shrink-0`}>{s.rightBadge}</span>
         )}
-        <span className="shrink-0 text-lg leading-none text-gray-300">›</span>
+        <DisclosureChevron open={false} className="text-gray-300" />
       </div>
     );
   }
@@ -413,7 +416,7 @@ export default function RowCard({
             {displayNum}
           </span>
           <span className={`badge ${badgeCls}`}>{channel.name}</span>
-          <span aria-hidden="true" className="text-xs text-gray-400">▴</span>
+          <DisclosureChevron open className="text-gray-400" />
         </button>
         <div className="flex items-center gap-1">
           <button

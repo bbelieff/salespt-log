@@ -1,4 +1,5 @@
 "use client";
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import {DirectInputDialog} from './_components/DirectInputDialog';
 import {RecordingDialog} from './_components/RecordingDialog';
 import SupplierFilter from './_components/SupplierFilter';
@@ -20,7 +21,7 @@ import {useDbSheet} from './_components/use-db-sheet';
 import {SupplierSummary} from './_components/SupplierSummary';
 import MobileViewOptions from './_components/MobileViewOptions';
 import MobileFilterMenu from './_components/MobileFilterMenu';
-import {Plus,ClipboardPaste,SlidersHorizontal,ChevronDown} from 'lucide-react';
+import {Plus,ClipboardPaste,SlidersHorizontal} from 'lucide-react';
 import {STATUS_FILTERS,filterDbSheetRows,hasStatusRestriction,toggleStatusFilter,type StatusFilterId} from './_components/status-filter';
 import './db-sheet.css';
 import './recording.css';
@@ -53,8 +54,8 @@ export default function DbSheetPage(){
  function pickSupplier(value:string){setSelectedSuppliers(current=>value?(current.includes(value)?current.filter(item=>item!==value):[...current,value]):[]);if(value&&window.matchMedia?.('(max-width: 1023px)').matches)listTop.current?.scrollIntoView({block:'start'});}
  if(!mounted)return null;
  const tableTools=<div className="sheet-table-tools">
-   <button className={`sheet-btn${summaryOpen?' is-on':''}`} aria-expanded={summaryOpen} aria-controls="db-supplier-summary" onClick={()=>toggleSummary(!summaryOpen)}><span className="app-header-pill sheet-toolbar-pill">공급처별 성과 <svg className="sheet-disclosure-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span></button>
-   <button className={`sheet-btn${settings?' is-on':''}`} aria-expanded={settings} aria-controls="db-visible-fields" onClick={()=>setSettings(!settings)}><span className="app-header-pill sheet-toolbar-pill">보여줄 항목 <svg className="sheet-disclosure-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span></button>
+   <button className={`sheet-btn${summaryOpen?' is-on':''}`} aria-expanded={summaryOpen} aria-controls="db-supplier-summary" onClick={()=>toggleSummary(!summaryOpen)}><span className="app-header-pill sheet-toolbar-pill">공급처별 성과 <DisclosureChevron open={summaryOpen} /></span></button>
+   <button className={`sheet-btn${settings?' is-on':''}`} aria-expanded={settings} aria-controls="db-visible-fields" onClick={()=>setSettings(!settings)}><span className="app-header-pill sheet-toolbar-pill">보여줄 항목 <DisclosureChevron open={settings} /></span></button>
   </div>;
  const summary=summaryOpen&&<SupplierSummary leads={rows} from={rangeFrom} to={rangeTo} selected="" selectedSuppliers={selectedSuppliers} loading={data.loading} error={data.error} onSelect={pickSupplier} onImport={()=>{setOptionsOpen(false);setImporting(true);}} onResetRange={()=>{setFrom('');setTo('');setPeriod('all');}} onClose={()=>toggleSummary(false)}/>;
  const dateFilter=<div className="sheet-filter-group sheet-date-group rounded-xl border border-slate-200/80 bg-slate-200/65 p-2 shadow-inner shadow-white/70">
@@ -76,7 +77,7 @@ export default function DbSheetPage(){
   <div className="sheet-list-title"><h2>DB 목록 <span>{rows.length}</span></h2><span aria-live="polite" className={`sheet-save-status${data.error?' is-error':''}`}>{data.loading?'불러오는 중…':data.pending?'저장 중…':data.error?'오류':'저장됨'}</span></div>
   <div className="sheet-filters">
    <input aria-label="DB 검색" className="sheet-input search" placeholder={mobile?'검색':'업체·대표자·전화번호'} value={search} onChange={e=>setSearch(e.target.value)}/>
-   {mobile&&<><button ref={dateTrigger} type="button" className={`sheet-btn sheet-mobile-date-trigger${period!=='all'?' is-on':''}`} aria-label={`유입일 필터${period!=='all'?' 선택됨':''}`} aria-haspopup="dialog" aria-expanded={mobileFilter==='date'} onClick={()=>setMobileFilter(mobileFilter==='date'?null:'date')}>유입일<ChevronDown size={12} strokeWidth={1.75} aria-hidden="true"/></button><button ref={statusTrigger} type="button" className={`sheet-btn sheet-mobile-status-trigger${selectedStatuses.length||selectedSuppliers.length?' is-on':''}`} aria-label={`상태 필터${selectedStatuses.length||selectedSuppliers.length?' 선택됨':''}`} aria-haspopup="dialog" aria-expanded={mobileFilter==='status'} onClick={()=>setMobileFilter(mobileFilter==='status'?null:'status')}>상태<ChevronDown size={12} strokeWidth={1.75} aria-hidden="true"/></button></>}
+   {mobile&&<><button ref={dateTrigger} type="button" className={`sheet-btn sheet-mobile-date-trigger${period!=='all'?' is-on':''}`} aria-label={`유입일 필터${period!=='all'?' 선택됨':''}`} aria-haspopup="dialog" aria-expanded={mobileFilter==='date'} onClick={()=>setMobileFilter(mobileFilter==='date'?null:'date')}>유입일<DisclosureChevron open={mobileFilter==='date'} /></button><button ref={statusTrigger} type="button" className={`sheet-btn sheet-mobile-status-trigger${selectedStatuses.length||selectedSuppliers.length?' is-on':''}`} aria-label={`상태 필터${selectedStatuses.length||selectedSuppliers.length?' 선택됨':''}`} aria-haspopup="dialog" aria-expanded={mobileFilter==='status'} onClick={()=>setMobileFilter(mobileFilter==='status'?null:'status')}>상태<DisclosureChevron open={mobileFilter==='status'} /></button></>}
 
    {!mobile&&activeFilters&&<button className="sheet-text-btn" onClick={resetFilters}>초기화</button>}
   </div>

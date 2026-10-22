@@ -12,6 +12,7 @@
 
 
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import {
@@ -292,7 +293,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
               className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <span>{ch.recordsLabel}</span>
-              <span className="text-xs font-medium text-slate-500">{rows.length}건 <span aria-hidden="true">{listOpen ? "▴" : "▾"}</span></span>
+              <span className="text-xs font-medium text-slate-500">{rows.length}건 <span aria-hidden="true"><DisclosureChevron open={listOpen} /></span></span>
             </button>
           </h3>
           <div id={`db-${activeCh}-records`} hidden={!listOpen}>

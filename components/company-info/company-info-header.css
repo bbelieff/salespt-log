@@ -1,0 +1,28 @@
+/* Payment-only one-line layout; shared non-payment editors retain their original tool layout. */
+[data-payment-company-header] [data-payment-ci-responsive][data-company-info-header]{display:flex;flex-wrap:nowrap;align-items:center;min-height:44px;gap:4px;padding:0 4px;cursor:pointer}
+[data-payment-ci-responsive][data-company-info-header]>[data-payment-ci-toggle]{flex:1 1 auto;min-width:0;min-height:44px;padding:6px 4px;gap:6px;justify-content:space-between}
+[data-payment-ci-responsive] [data-payment-ci-toggle]>span:first-child{min-width:0;text-align:left}
+[data-payment-company-header] [data-payment-ci-responsive] [data-company-info-header-actions]{display:block;flex:none;width:auto;max-width:none;margin:0;padding:0}
+[data-ci-header-tools],[data-ci-tools-primary]{display:flex;align-items:center;gap:4px}
+[data-ci-header-tools]{position:relative}
+[data-ci-header-status]{flex:none;max-width:64px;white-space:nowrap}
+[data-ci-tools-primary]>button,[data-ci-more]{display:flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
+[data-ci-header-tools]:not([data-mode="text"]) [data-ci-tools-primary]>button{width:44px;padding:0;border-radius:8px}
+[data-payment-ci-responsive] [data-ci-tools-primary] [data-font-scale-control]{height:44px}
+[data-payment-company-header] [data-payment-ci-responsive] [data-font-scale-control]>button{width:44px;height:44px;flex:none}
+[data-ci-header-tools]:not([data-mode="text"]) [data-ci-tools-primary] .payment-ci-action-label{display:none}
+[data-payment-ci-responsive] [data-ci-tools-primary] .payment-ci-icon{display:block}
+[data-ci-header-tools][data-mode="text"] [data-ci-tools-primary] .payment-ci-action-label{display:inline}
+[data-ci-header-tools][data-mode="text"] [data-ci-tools-primary] .payment-ci-icon{display:none}
+[data-ci-more]{border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569}
+[data-ci-more]:hover{background:#f1f5f9}
+[data-ci-tools-menu]{position:absolute;right:0;top:48px;z-index:40;display:flex;flex-direction:column;gap:8px;min-width:220px;max-width:calc(100vw - 24px);padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;box-shadow:0 8px 24px #0f172a20;cursor:default}
+[data-ci-tools-menu]>button{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:8px}
+[data-payment-ci-responsive] [data-ci-tools-menu] .payment-ci-action-label{display:inline}
+[data-payment-ci-responsive] [data-ci-tools-menu] .payment-ci-icon{display:block}
+[data-payment-ci-responsive] [data-ci-tools-menu] [data-font-scale-control]{height:44px;align-self:flex-start}
+[data-payment-ci-responsive] :is(button,select):focus-visible{outline:2px solid #64748b;outline-offset:2px}
+@media(max-width:767px){
+ [data-payment-company-header][data-payment-ci-expanded="false"] [data-payment-ci-responsive]{min-height:36px}
+ [data-payment-company-header][data-payment-ci-expanded="false"] [data-payment-ci-responsive]>[data-payment-ci-toggle]{min-height:36px;height:36px;padding:8px 12px}
+}

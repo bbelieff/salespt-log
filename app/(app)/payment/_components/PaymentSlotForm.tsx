@@ -12,6 +12,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useState } from "react";
 import type { PaymentSlot, Progress, Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
@@ -146,7 +147,9 @@ export default function PaymentSlotForm({
         }`}
         onClick={() => setOpen((v) => !v)}
         role="button"
+        tabIndex={0}
         aria-expanded={open}
+        onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setOpen(value => !value); } }}
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <div
@@ -199,21 +202,7 @@ export default function PaymentSlotForm({
               ✕
             </button>
           )}
-          <svg
-            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
+          <DisclosureChevron open={open} />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   useExpenseCategoryUsage,
@@ -160,7 +161,7 @@ export default function ExpenseCategoryPicker(props: Props) {
   return (
     <div className="relative">
       <button type="button" role="combobox" aria-controls={listId} aria-expanded={open} aria-haspopup="listbox" aria-label="비용 카테고리" onClick={() => { setOpen((value) => !value); setActionError(null); }} className={`${controlClass} flex items-center justify-between gap-3 font-semibold`}>
-        <span className={selected ? "" : "text-gray-400"}>{selected?.name ?? (visible.length === 0 ? "첫 카테고리를 추가하세요" : "카테고리를 선택하세요")}</span><span aria-hidden="true" className="text-gray-400">⌄</span>
+        <span className={selected ? "" : "text-gray-400"}>{selected?.name ?? (visible.length === 0 ? "첫 카테고리를 추가하세요" : "카테고리를 선택하세요")}</span><DisclosureChevron open={open} className="text-gray-400" />
       </button>
       {visible.length === 0 && <p className="mt-2 text-xs text-gray-500">등록된 카테고리가 없습니다. 목록을 열어 새 카테고리를 추가해 주세요.</p>}
 
