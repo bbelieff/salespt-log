@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
+import { usePushState } from "@/query/push-hooks";
 import { useAnnouncements } from "@/query/announcements-hook";
 import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
@@ -61,6 +62,7 @@ export default function TopHeader({
   sessionIdentity,
 }: Props) {
   const me = useMe();
+  const push = usePushState(!sessionIdentity);
   const trainer = useTrainerState();
   const pathname = usePathname();
   // 트레이너 화면의 `← 수강생 대시보드` Link 는 /dashboard 로 직행해서 (app)/layout 의
@@ -201,6 +203,19 @@ export default function TopHeader({
                 {hasNews && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" />}
               </span>
             </Link>
+            {/* 알림 설정 — 웹 푸시 시범 대상에게만 (web-push-notifications §2-2 4번) */}
+            {push.data?.available && (
+              <Link
+                href="/settings/notifications"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
+                </svg>
+                <span>알림 설정</span>
+              </Link>
+            )}
             {/* 내 기록 다운로드 — BBE-71(R7-#22). 본인 세션 인증만으로 xlsx 다운로드,
                   Content-Disposition:attachment 를 브라우저가 그대로 처리(별도 JS fetch 불요). */}
             <a

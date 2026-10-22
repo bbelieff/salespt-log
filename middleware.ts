@@ -27,6 +27,7 @@ export default auth((req) => {
     pathname.startsWith("/payment") ||
     pathname.startsWith("/db") ||
     pathname.startsWith("/admin") ||
+    pathname.startsWith("/settings") ||
     (pathname.startsWith("/trainer") && pathname !== "/trainer/invite");
   if (isProtected && !req.auth && !isDevStubAuthed()) {
     const url = new URL("/", req.url);
@@ -43,7 +44,8 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
+    // sw.js = 푸시 전용 서비스워커(web-push-notifications §5) — 인증 없이 그대로 서빙.
     // document-ocr = 브라우저 OCR 정적 에셋(약 12MB, 공개 라이브러리) — 인증 확인 없이 바로 서빙.
-    "/((?!api|_next/static|_next/image|favicon.ico|salespt-logo.png|document-ocr/).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|salespt-logo.png|document-ocr/|sw\.js$).*)",
   ],
 };

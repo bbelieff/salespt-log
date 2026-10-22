@@ -1,3 +1,6 @@
+## 2026-10-22 · 웹 푸시 알림 시범판 (단계 2, belie 승인)
+- feat/web-push-pilot, base 84405f84. 테이블 3개(0009, 추가만)·web-push 발송·15분 발송 시계 API·서비스워커(푸시 전용)·`/settings/notifications`(종류·시간·요일·받을 내용·업체명·기기·시험 알림)·대시보드 초대 카드·상단 메뉴. 시범 대상만(PUSH_PILOT_EMAILS, 실명은 VPS .env 에만), 킬 스위치 PUSH_ENABLED=0.
+- 검증: check.sh PASS(4244 tests), build PASS, 실제 Chromium 서비스워커 등록·CDP 푸시 → 알림 표시(깨진 데이터도 기본 문구) PASS, 320/1280 가로 넘침 0. 실기기 T1~T10 은 시범 대상 폰에서 NOT_RUN. [plan](plans/active/web-push-notifications.md) §11.
 ## 2026-10-22 · 웹 푸시 알림 설계 (단계 1, 승인 대기)
 - docs/web-push-notifications-plan, base 2e6e1208. 문서만(코드 0). 앱 밖 알림이 belie 전화를 대신한다는 돋보기 결론에 따라 08시 「오늘 챙길 일 N건」 웹 푸시 2주 시범안(흐름·문구·테이블 3개·VPS cron→내부 API·측정·위험·시범 체크리스트 T1~T8). 「오늘 챙길 일」 순수함수 재사용, 업체명 기본 숨김, 서비스워커 푸시 전용. belie 결정 반영(08:45·업체명 보임·수강생이 종류·시간·주기·내용 종류 설정·저녁 알림 포함·VAPID 는 에이전트가 VPS 생성), 단계 2 착수 승인만 대기. [plan](plans/active/web-push-notifications.md).
 ## 2026-10-22 · DB 가져오기 입력 경계 점검

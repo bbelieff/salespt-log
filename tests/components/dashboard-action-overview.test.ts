@@ -7,6 +7,7 @@ vi.mock("@/components/weekly-goals/WeeklyGoalSummary", () => ({ default: () => c
 vi.mock("@/components/dashboard/ProductivityIndicators", () => ({ default: () => createElement("section", {}, "productivity") }));
 vi.mock("@/components/dashboard/DashboardFollowUps", () => ({ default: () => createElement("section", {}, "follow-ups") }));
 vi.mock("@/components/dashboard/DashboardWorkStatus", () => ({ default: () => createElement("section", {}, "work-status") }));
+vi.mock("@/components/push/PushPrompt", () => ({ default: () => null }));
 vi.stubGlobal("React", React);
 import DashboardActionOverview from "@/components/dashboard/DashboardActionOverview";
 

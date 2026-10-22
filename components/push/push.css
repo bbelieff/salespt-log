@@ -1,0 +1,55 @@
+/* Web push settings + dashboard prompt. Same card language as dashboard-follow-ups.css. */
+.push-page { display:flex; flex-direction:column; gap:12px; padding:12px 0 32px; color:#334155; font-size:14px; line-height:1.55; }
+.push-card { display:flex; flex-direction:column; gap:10px; border:1px solid #e2e8f0; border-radius:16px; background:#fff; padding:14px; box-shadow:0 1px 2px #0f172a0d; }
+.push-card h2 { font-size:15px; font-weight:700; color:#0f172a; }
+.push-card h3 { font-size:14px; font-weight:600; color:#0f172a; }
+.push-card[aria-disabled=true] { opacity:.6; }
+.push-muted { color:#64748b; font-size:12px; }
+.push-ok { color:#047857; font-weight:600; }
+.push-stack { display:flex; flex-direction:column; gap:8px; }
+.push-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.push-line { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
+.push-line > div { min-width:0; }
+.push-list { display:flex; flex-direction:column; }
+.push-list > li + li { border-top:1px solid #f1f5f9; padding-top:6px; margin-top:6px; }
+.push-steps { list-style:decimal; padding-left:20px; display:flex; flex-direction:column; gap:4px; }
+.push-next { display:flex; flex-wrap:wrap; gap:6px; background:#f8fafc; border-radius:10px; padding:8px 10px; font-size:13px; }
+.push-next dt { color:#64748b; }
+.push-next dd { font-weight:600; color:#0f172a; font-variant-numeric:tabular-nums; }
+
+.push-primary, .push-secondary { min-height:44px; border-radius:12px; padding:0 16px; font-weight:700; font-size:14px; }
+.push-primary { background:#d71617; color:#fff; }
+.push-primary:hover { background:#b91213; }
+.push-secondary { background:#fff; color:#0f172a; border:1px solid #cbd5e1; }
+.push-secondary:hover { background:#f8fafc; }
+.push-link { min-height:44px; padding:0 8px; color:#1d4ed8; font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+.push-primary:disabled, .push-secondary:disabled, .push-link:disabled { opacity:.5; cursor:not-allowed; }
+
+.push-switch { flex:none; position:relative; width:48px; height:28px; border-radius:999px; background:#cbd5e1; transition:background-color .18s ease-out; }
+.push-switch > span { position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:999px; background:#fff; box-shadow:0 1px 3px #0f172a33; transition:transform .18s ease-out; }
+.push-switch[data-on=true] { background:#d71617; }
+.push-switch[data-on=true] > span { transform:translateX(20px); }
+.push-switch:disabled { opacity:.5; cursor:not-allowed; }
+/* 48×28 visual, 44px tall hit area */
+.push-switch::after { content:""; position:absolute; inset:-8px -2px; }
+
+.push-select { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; color:#475569; }
+.push-select select { min-height:44px; min-width:128px; border:1px solid #cbd5e1; border-radius:10px; padding:0 10px; background:#fff; color:#0f172a; font-size:14px; font-variant-numeric:tabular-nums; }
+
+.push-chips { display:flex; flex-wrap:wrap; gap:6px; }
+/* 7 days always on one row: at 320px each button is ~34px wide, still 44px tall. */
+.push-days { display:grid; grid-template-columns:repeat(7, minmax(0, 44px)); gap:6px; }
+.push-chip, .push-day { min-height:44px; border:1px solid #cbd5e1; border-radius:999px; background:#fff; color:#334155; font-weight:600; }
+.push-chip { padding:0 14px; }
+.push-day { min-width:0; }
+.push-chip[aria-pressed=true], .push-day[aria-pressed=true] { background:#fef2f2; border-color:#d71617; color:#b91213; }
+.push-chip:disabled, .push-day:disabled { opacity:.5; }
+
+.push-status { min-height:20px; text-align:center; color:#64748b; font-size:12px; }
+.push-page :is(a,button,select):focus-visible, .push-prompt :is(a,button):focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+
+.push-prompt { display:flex; flex-direction:column; gap:8px; border:1px solid #fecaca; border-radius:16px; background:#fff; padding:12px; color:#334155; font-size:13px; }
+.push-prompt h2 { font-size:14px; font-weight:700; color:#0f172a; }
+.push-prompt .push-row { justify-content:flex-start; }
+
+@media (prefers-reduced-motion: reduce) { .push-switch, .push-switch > span { transition:none; } }

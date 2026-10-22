@@ -299,6 +299,34 @@ VPS cron (salespt-log 영역만, 매 15분 07:00~21:00 KST)
 - 알림 → 컨택 → 계약 매출 환산 → `push_deliveries.id` 출처 꼬리표.
 - 하루 쉼 허용 연속 기록·점수·익명 등수·되찾기 이벤트(듀오링고 스트릭·복귀 이벤트) → 별도 설계.
 
+## 11. 단계 2 구현 (2026-10-22 belie 승인 — 「이 설계대로 시범판 만들고 배포까지」)
+
+브랜치 `feat/web-push-pilot`, base 84405f84.
+
+| 영역 | 파일 |
+|---|---|
+| DB | `lib/repo/db/migrations/0009_web_push.sql`(테이블 3개, 추가만) · `lib/repo/db/push.ts` |
+| 발송 | `lib/repo/push-sender.ts`(web-push 3.6.7, aes128gcm, TTL·Topic) |
+| 규칙(순수) | `lib/service/push-schedule.ts`(KST 15분 눈금·요일·다음 알림) · `lib/service/push-messages.ts`(문구·변형 돌려쓰기·업체명 숨김) |
+| 서비스 | `lib/service/push.ts`(시범 허용 목록·멱등 발송·410 정리·시험 알림 하루 3회) |
+| API | `app/api/push`(GET 상태·PUT 설정) · `/subscriptions`(POST·DELETE) · `/test` · `/opened` · `app/api/internal/push/dispatch`(비밀 헤더 + Caddy 경유 거절) |
+| 화면 | `/settings/notifications` · `components/push/*` · 대시보드 `PushPrompt` · 상단 메뉴 「알림 설정」(시범 대상만) |
+| 서비스워커 | `public/sw.js`(push·notificationclick·pushsubscriptionchange만, fetch 처리기 없음) · `next.config.mjs` no-cache 헤더 · middleware 제외 |
+
+### 운영 적용 절차 (배포 후, 에이전트 수행)
+1. `/opt/salespt-log/.env` 에 추가(값 미출력, chmod 600 유지): `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`(= `npx web-push generate-vapid-keys --json` 을 VPS 에서 실행), `VAPID_SUBJECT=mailto:<운영 메일>`, `PUSH_CRON_SECRET`(openssl rand 48), `PUSH_PILOT_EMAILS`(belie + 지정 3명의 로그인 이메일, registry 읽기로 확인). 이 키들은 deploy.yml INJECT_KEYS 밖이라 배포가 덮어쓰지 않는다.
+2. `node scripts/db-migrate.mjs --dry-run` → `node scripts/db-migrate.mjs` (0009 만 새로 적용되는지 확인).
+3. `pm2 reload salespt-log --update-env` 로 새 env 반영 → health 200.
+4. root crontab 한 줄(salespt-log 전용, flock):
+   `*/15 7-21 * * * flock -n /tmp/salespt-push.lock sh -c '. /opt/salespt-log/.env.push-cron; curl -fsS -m 120 -X POST -H "x-push-cron: $PUSH_CRON_SECRET" http://127.0.0.1:3000/api/internal/push/dispatch' >> /var/log/salespt-push.log 2>&1`
+   (`.env.push-cron` = PUSH_CRON_SECRET 한 줄, chmod 600. 로그에는 집계 숫자만 남는다.)
+5. 확인: 내부 호출 1회 → `{"tick":…,"candidates":0…}` 응답, 공개 주소로 같은 경로 POST → 404.
+- 킬 스위치: `.env` 에 `PUSH_ENABLED=0` + `pm2 reload --update-env` → 모든 발송 즉시 중단. cron 줄 삭제로 시계 정지.
+
+### 검증 기록
+- 집중시험: push-schedule·push-messages·push-device·push-dispatch·dispatch route·sw 구조 = 30+개 PASS. 구조시험 20파일 103개 PASS. tsc·lint PASS. doc-drift PASS.
+- 실기기 T1~T10: belie·시범 3명 폰에서 확인 필요(에이전트는 실제 폰이 없어 NOT_RUN).
+
 ## 진행 기록
 
 - 2026-10-22 belie 결정 반영: 08:45·업체명 보임·수강생 설정(종류·시간·주기·내용 종류)·저녁 알림 시범 포함·VAPID 는 에이전트가 VPS 에서 생성(§0.5).
