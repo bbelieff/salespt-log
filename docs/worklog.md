@@ -1,3 +1,7 @@
+## 2026-10-22 · 웹 푸시 시범판 운영 반영
+- #1191 f2862a5c 배포 run 39740430309 success → 0009 적용(대기 1건만) → 서버 안 발송 호출 404 발견 → #1192 b4865f1c(루프백 홉만 허용) 배포 success, health 200. 서버 안 호출 `{"tick":"2026-10-22 16:45","candidates":0,…}`, 공개 주소(위조 XFF 포함) 404, /sw.js no-cache, /settings/notifications 비로그인 307.
+- VPS: .env 에 VAPID_*·PUSH_CRON_SECRET·PUSH_PILOT_EMAILS(4개 주소) 추가(백업 .env.bak-20261022-161822-push), .env.push-cron, /etc/cron.d/salespt-push(07~21시 15분). pm2 수동 재시작 없음(배포 reload 로 반영).
+- 남은 일: 시범 3명(GM=belie·문병규·김재원)이 폰에서 알림 켜기 → 실기기 T1~T10. 아직 구독 0대라 실제 발송은 0건.
 ## 2026-10-22 · 웹 푸시 알림 시범판 (단계 2, belie 승인)
 - feat/web-push-pilot, base 84405f84. 테이블 3개(0009, 추가만)·web-push 발송·15분 발송 시계 API·서비스워커(푸시 전용)·`/settings/notifications`(종류·시간·요일·받을 내용·업체명·기기·시험 알림)·대시보드 초대 카드·상단 메뉴. 시범 대상만(PUSH_PILOT_EMAILS, 실명은 VPS .env 에만), 킬 스위치 PUSH_ENABLED=0.
 - 검증: check.sh PASS(4244 tests), build PASS, 실제 Chromium 서비스워커 등록·CDP 푸시 → 알림 표시(깨진 데이터도 기본 문구) PASS, 320/1280 가로 넘침 0. 실기기 T1~T10 은 시범 대상 폰에서 NOT_RUN. [plan](plans/active/web-push-notifications.md) §11.

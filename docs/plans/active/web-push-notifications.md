@@ -326,6 +326,7 @@ VPS cron (salespt-log 영역만, 매 15분 07:00~21:00 KST)
 ### 검증 기록
 - 2026-10-22 운영 실측: #1191 배포·0009 적용 후 서버 안 호출이 404 — `next start` 가 로컬 curl 에도 X-Forwarded-For(127.0.0.1)를 붙여 「헤더 없음」 조건이 막았다. 「모든 홉이 루프백일 때만」으로 수정(fix/push-dispatch-local-check). 공개 주소 POST 는 404 유지.
 - 집중시험: push-schedule·push-messages·push-device·push-dispatch·dispatch route·sw 구조 = 30+개 PASS. 구조시험 20파일 103개 PASS. tsc·lint PASS. doc-drift PASS.
+- 운영 반영 2026-10-22: #1191·#1192 배포 success, 0009 적용, cron 가동, 서버 안 호출 200·공개 404 확인. 구독 0대.
 - 실기기 T1~T10: belie·시범 3명 폰에서 확인 필요(에이전트는 실제 폰이 없어 NOT_RUN).
 
 ## 진행 기록
