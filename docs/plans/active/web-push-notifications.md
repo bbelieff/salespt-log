@@ -324,6 +324,7 @@ VPS cron (salespt-log 영역만, 매 15분 07:00~21:00 KST)
 - 킬 스위치: `.env` 에 `PUSH_ENABLED=0` + `pm2 reload --update-env` → 모든 발송 즉시 중단. cron 줄 삭제로 시계 정지.
 
 ### 검증 기록
+- 2026-10-22 운영 실측: #1191 배포·0009 적용 후 서버 안 호출이 404 — `next start` 가 로컬 curl 에도 X-Forwarded-For(127.0.0.1)를 붙여 「헤더 없음」 조건이 막았다. 「모든 홉이 루프백일 때만」으로 수정(fix/push-dispatch-local-check). 공개 주소 POST 는 404 유지.
 - 집중시험: push-schedule·push-messages·push-device·push-dispatch·dispatch route·sw 구조 = 30+개 PASS. 구조시험 20파일 103개 PASS. tsc·lint PASS. doc-drift PASS.
 - 실기기 T1~T10: belie·시범 3명 폰에서 확인 필요(에이전트는 실제 폰이 없어 NOT_RUN).
 
