@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
-import { usePushState } from "@/query/push-hooks";
+import { forgetPushOnThisDevice, usePushState } from "@/query/push-hooks";
 import { useAnnouncements } from "@/query/announcements-hook";
 import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
@@ -204,7 +204,7 @@ export default function TopHeader({
               </span>
             </Link>
             {/* 알림 설정 — 웹 푸시 시범 대상에게만 (web-push-notifications §2-2 4번) */}
-            {push.data?.available && (
+            {push.data?.available && !push.data.viewingOther && (
               <Link
                 href="/settings/notifications"
                 onClick={() => setPopupOpen(false)}
@@ -303,9 +303,10 @@ export default function TopHeader({
             )}
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 setPopupOpen(false);
                 resetUser(); // 식별 해제 (다음 로그인과 세션 분리)
+                await forgetPushOnThisDevice(); // 이 기기 알림 끄기 — 다른 기기는 그대로
                 signOut({ callbackUrl: "/" });
               }}
               className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"

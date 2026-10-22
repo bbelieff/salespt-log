@@ -88,6 +88,7 @@ export default function NotificationSettings() {
   const off = !p.enabled;
 
   return <div className="push-page">
+    {state.data.viewingOther && <p className="push-notice" role="note">지금 다른 사람 화면을 보고 있어요. 이 화면의 알림 설정은 로그인한 본인 것이고, 보고 있는 사람에게는 영향이 없어요.</p>}
     <section className="push-card" aria-labelledby="push-device">
       <h2 id="push-device">이 기기</h2>
       <ThisDevicePush device={device} />
