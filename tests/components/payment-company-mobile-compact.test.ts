@@ -28,7 +28,7 @@ it("opts in explicitly and uses the same layout/view state, counts and memory wi
  expect(save).not.toHaveBeenCalled();expect(change).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();
 });
 it("keeps font limits and popup opening on original callbacks without saving",()=>{
- render(true);const smaller=host.querySelector<HTMLButtonElement>('[aria-label="업체정보 글자 작게"]')!,bigger=host.querySelector<HTMLButtonElement>('[aria-label="업체정보 글자 크게"]')!;
+ render(true);click(host.querySelector('[data-ci-more]')!);const smaller=host.querySelector<HTMLButtonElement>('[aria-label="업체정보 글자 작게"]')!,bigger=host.querySelector<HTMLButtonElement>('[aria-label="업체정보 글자 크게"]')!;
  expect(smaller.disabled).toBe(true);for(let i=0;i<3;i++)click(bigger);expect(bigger.disabled).toBe(true);click(smaller);expect(bigger.disabled).toBe(false);
  click(host.querySelector('[data-payment-ci-action="popup"]')!);expect(document.querySelector('[data-payment-company-compact-modal]')).not.toBeNull();
  expect(save).not.toHaveBeenCalled();expect(change).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();
@@ -37,6 +37,7 @@ it("document first click opens only the lazy mock dialog and TXT calls only the 
  render(true);await act(async()=>click(host.querySelector('[aria-label="문서로 자동입력"]')!));
  expect(host.querySelector('[aria-label="합성 문서 창"]')).not.toBeNull();expect(fetch).not.toHaveBeenCalled();
  click(host.querySelector('[aria-label="합성 문서 창"] button')!);
+ click(host.querySelector('[data-ci-more]')!);
  vi.mocked(fetch).mockResolvedValueOnce({ok:false,status:503,json:async()=>({error:"합성 export 차단"})} as Response);
  await act(async()=>click(host.querySelector('[data-payment-ci-action="txt"]')!));
  expect(fetch).toHaveBeenCalledTimes(1);expect(vi.mocked(fetch).mock.calls[0]![0]).toBe("/api/company-info/export");

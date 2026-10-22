@@ -1,7 +1,8 @@
 "use client";
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+
 
 type Props = { options: readonly string[]; selected: readonly string[]; onChange: (value: string[]) => void };
 const label = (value: string) => value || "공급처 미입력";
@@ -36,7 +37,7 @@ export default function SupplierFilter({ options, selected, onChange }: Props) {
   }, [open]);
   return <>
     <button ref={trigger} type="button" className="sheet-status-chip sheet-supplier-filter" aria-pressed={selected.length > 0} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} title={selected.map(label).join(" · ")} onClick={() => { setQuery(""); setOpen(!open); }}>
-      <span>{selected.length ? `공급처 ${selected.length}곳` : "전체 공급처"}</span><ChevronDown size={14} className="sheet-supplier-chevron shrink-0" aria-hidden="true" focusable="false"/>
+      <span>{selected.length ? `공급처 ${selected.length}곳` : "전체 공급처"}</span><DisclosureChevron open={open} />
     </button>
     {open && createPortal(<div ref={panel} id={id} className="sheet-filter-popover sheet-supplier-popover" role="dialog" aria-label="공급처 다중선택" style={position}>
       <header><strong>공급처 선택</strong><button type="button" aria-label="공급처 선택 닫기" onClick={() => close(true)}>✕</button></header>

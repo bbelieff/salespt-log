@@ -5,6 +5,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useState, useCallback, useEffect, type ReactNode } from "react";
 import { useMe } from "@/query/me-hook";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
@@ -130,7 +131,7 @@ export default function DriveLinkBar({ renderTrigger, mobileExpanded }: Props = 
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             {driveLinkStatus === "error" ? "다시 연결" : "Drive 연결"}
-            <span className="text-xs text-amber-500" aria-hidden>{showRelink ? "⌃" : "⌄"}</span>
+            <span className="text-xs text-amber-500" aria-hidden><DisclosureChevron open={showRelink} /></span>
           </button>
         )}
       </div>}

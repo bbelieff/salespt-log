@@ -1353,9 +1353,11 @@ app/(app)/dashboard/page.tsx
 
 > 02 계약수납관리 — 1계약 = 1행, 자동연동 3 + 체크박스 7 + 분할 수납 슬롯 3.
 
-R8/R9 현재: payment 헤더는 대표/항목수 요약 없이 업체정보 제목과 짧은 `TXT 생성`을 사용한다(정확한 TXT aria-label/title 유지). PC 약385px는 한줄, 모바일320/375/430은 작은 제목36/외곽38+도구44의 안전 두 행이다. 상세 상단 이월 note/wrapper만 사용자 요청으로 제거했고 목록 배지·판정·계산은 보존한다. `components/company-info/payment-header.ts`의 `shouldTogglePaymentHeader`는 DOM 내부의 비interactive 공백만 판정하는 pure helper로, 파일 크기 제한을 위한 기존 조건 추출이며 옵션/저장 추상화가 아니다.
+승인 A 현재: payment 헤더는 대표/항목수 요약 없이 업체정보 제목과 짧은 `TXT 생성`을 사용한다(정확한 TXT aria-label/title 유지). `CompanyInfoHeader`가 실제 칸 폭으로 한 줄 도구를 배치하고, 모바일 닫힌 제목36/외곽38 및 열린 도구44를 보존한다. 상세 상단 이월 note/wrapper와 목록·계산은 이번에 바꾸지 않는다. `components/company-info/payment-header.ts`의 `shouldTogglePaymentHeader`는 DOM 내부의 비interactive 공백만 판정하며 포털 DOM 밖은 제외한다.
 
-D R6 미승인 목업의 payment 업체정보 헤더는 별도 접기 텍스트/테두리 없이 native 제목 button(제목+대표요약 ellipsis·방향 chevron)을 쓴다. header의 padding/도구 사이·옆 비interactive 공백도 한 번 toggle하되 button/input/select/textarea/a/label/role button·link/contenteditable/폰트 그룹은 제외한다. 포털의 DOM 밖 클릭도 제외한다. 도구는 제목 button 밖 형제이며 원래 행동을 소유한다. 닫히면 payment 도구 전체를 숨기고, PC는 공간에 맞게 flex-wrap·모바일은 제목36/닫힌 outer38·별도 도구44를 유지한다. 다른 화면의 공용 editor는 이 payment opt-in 밖에서 불변이다. 실화면 미확인 범위와 검수 상태는 [현재 plan](../plans/active/payment-mobile-details-mock.md)을 따른다.
+`CompanyInfoHeader`(`components/company-info/CompanyInfoHeader.tsx`)는 원래 editor의 저장/문서/TXT/팝업/폰트 콜백을 받는 표현 컴포넌트다. payment는 available=실제 칸 폭−저장 상태64px, 560px 이상 텍스트/350px 이상 아이콘3+더보기/미만 문서+더보기다. 더보기는 TXT·팝업의 전체 문구·폰트44px를 표시하며 Escape로 닫고 trigger focus를 돌려준다. 상태 문구는 별도 슬롯이므로 도구 첫 항목으로 오인하거나 숨기지 않는다. 닫힌 payment는 모든 도구를 숨기며, non-payment는 원래 도구 배치/요약/닫힌 font를 유지한다. OCR은 원래 body portal, 자동저장/오류/undo와 실제 폰트 설정·다운로드 경로는 그대로다. [출시 plan](../plans/active/payment-header-chevron-release.md).
+
+`DisclosureChevron`(`components/ui/DisclosureChevron.tsx`)은 Lucide ChevronDown 16px/stroke1.75/currentColor의 장식 아이콘이다. `open` false/true는 down/up180, 생략은 실제 native `details > summary.disclosure-summary`의 open CSS에 맡긴다. `.disclosure-summary`에만 native marker를 숨겨 중복을 막고 중첩 group 상태에 의존하지 않는다. 아이콘에 focus/events/aria-expanded를 주지 않고 실제 부모 button/summary가 소유한다. reduced-motion은 transition:none. fold/menu 기존48개소→공통46표시(조건부 대체2쌍 통합)이며 좌우 이동·정렬·download·native select는 교체 대상이 아니다.
 
 D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-slot`에 ContractRow의 가용 상태/undo를 portal로 배치한다. idle/undo불가/CI상태 없음이면 null, 본문전용 상태행은 없다. 원래 canUndo/onUndo/retry 소유를 유지하며 exact 현재 owner의 포털 진입만 blur commit 예외다. 실패 사유는 본문에 지속하고 CI-only retry도 명시한다. 이월note와 모바일 R5는 유지하며 source PASS와 R7 PC actual만으로 기존 R6 미확인/전체목업 승인을 대체하지 않는다.
 

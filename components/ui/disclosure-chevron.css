@@ -1,0 +1,6 @@
+/* Opt-in only: do not change markers of unrelated native summaries. */
+.disclosure-summary{list-style:none}
+.disclosure-summary::marker{content:''}
+.disclosure-summary::-webkit-details-marker{display:none}
+details>.disclosure-summary [data-disclosure-native]{transform:rotate(0deg)}
+details[open]>.disclosure-summary [data-disclosure-native]{transform:rotate(180deg)}

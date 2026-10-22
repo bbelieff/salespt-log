@@ -8,6 +8,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useState } from "react";
 import type { CompanyInfo } from "@/types";
 import { 기본_대표자_ITEMS, 기본_사업자_ITEMS, 기업정보_ITEMS, 대표자_ITEMS, 재무_ITEMS } from "@/components/company-info-defs";
@@ -73,7 +74,7 @@ export function HiddenFilledNotice({ draft, onOpen }: { draft: CompanyInfo; onOp
       onClick={onOpen}
       className="w-full rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:border-slate-500 hover:text-slate-800"
     >
-      ▾ 확장보기에 적힌 항목 {n}개 더 있어요 · 보기
+      <DisclosureChevron open={false} /> 확장보기에 적힌 항목 {n}개 더 있어요 · 보기
     </button>
   );
 }

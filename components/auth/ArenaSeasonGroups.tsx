@@ -12,6 +12,7 @@
 "use client";
 
 import PersistentDetails from "./PersistentDetails";
+import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import { CohortSection, type Trainee, type Trainer } from "./AdminUserPickerSections";
 import { fmtDateYY, cohortProgress } from "./AdminUserPickerTypes";
 import { groupArenaBySeason } from "./arena-season";
@@ -75,8 +76,8 @@ export default function ArenaSeasonGroups({
         const { dday } = cohortProgress(s.startISO, s.endISO);
         // group/season(named) 필수 — 시즌은 기수 카드(CohortSection)의 **조상**이라, 익명
         // `group` 을 쓰면 Tailwind 가 뽑는 `.group[open] .group-open\:*` 가 descendant
-        // 셀렉터여서 시즌이 열려 있는 동안 **접힌 기수 박스까지** 펼침 모양(흰 헤더·셰브론
-        // 90°)이 된다. 이름을 붙여 시즌 전용으로 격리한다(적대 리뷰 CONFIRMED).
+        // 셀렉터여서 시즌이 열려 있는 동안 **접힌 기수 박스까지** 흰 헤더가 된다.
+        // 헤더 색은 이름으로 격리하고, 펼침 아이콘은 actual details[open]의 별도 scoped CSS를 따른다.
         return (
           <PersistentDetails
             key={s.season}
@@ -84,17 +85,8 @@ export default function ArenaSeasonGroups({
             defaultOpen
             className="group/season overflow-hidden rounded-2xl border-2 border-purple-200 bg-purple-50/40 open:bg-white"
           >
-            <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-purple-500 bg-purple-50 px-4 py-3 group-open/season:bg-white hover:bg-purple-100">
-              <svg
-                className="h-3.5 w-3.5 shrink-0 text-purple-500 transition-transform group-open/season:rotate-90"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
+            <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-purple-500 bg-purple-50 px-4 py-3 group-open/season:bg-white hover:bg-purple-100">
+              <DisclosureChevron className="text-purple-500" />
               <span className="text-base font-black tracking-tight text-gray-900">
                 시즌{s.season}
               </span>

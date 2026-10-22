@@ -2,6 +2,9 @@
 - fix/db-import-input-boundaries, base d55057fe. root 소유: 입력 전처리·관련 파서·합성 평가. 첫 실제 내용·줄바꿈·인용부호 경계 점검, 운영 고객 기록 보존. [plan](plans/active/db-import-input-boundaries.md).
 ## 2026-10-22 · DB 붙여넣기 열 밀림 진단
 - fix/db-import-paste-alignment, base3c463a05. root는 가져오기 분석기·합성 회귀·관련 안내만 소유. 앞 빈 열/공란 행/날짜·전화번호 배치를 재현하며 원문 회신 대기. 고객 기록 변경0. [plan](plans/active/db-import-paste-alignment.md).
+## 2026-10-21 · 승인 A 업체정보 헤더·공통 펼침 아이콘 출시
+- 사용자 운영승인 HeaderR2 기준, base2e6e1208로 최신 DB 가져오기 수정2건을 보존 통합. feat/payment-header-chevron-release 전용, writer019fe6a6/F019fe6a9/배포writer. [plan](plans/active/payment-header-chevron-release.md)에 실제48소비자·공유아이콘/header·회귀/design 범위 선언. 이메일PR1136 필드·nav/native select·B 데이터 불변, mock/승인캡처·59884 보존(53369는 Root가 자기 구목업만 정상 종료). 공유계약 F선검수→필수게이트/직렬배포까지 연속 실행, 고객시험쓰기0.
+
 ## 2026-10-20 · 실무/수납 입력 중 저장 방해 수정
 - base fda90c4b, fix/payment-input-save 전용. 작성자는 진행건 입력 배선 2파일·React 합성 회귀 및 plan만 소유. 기존 #1185 저장 피드백과 타 변경 보존. 입력 중 요청 0/blur 최종값/늦은 응답/실패·전환을 확인한다. [plan](plans/active/payment-input-save.md).
 ## 2026-10-19 · ECC 선택 적용·가져오기 안전성

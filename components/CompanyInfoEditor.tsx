@@ -34,7 +34,7 @@ import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
 import { fontScaleOf } from "@/util/font-scale";
-import { shouldTogglePaymentHeader } from "./company-info/payment-header";
+import CompanyInfoHeader from "./company-info/CompanyInfoHeader";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
@@ -369,67 +369,42 @@ export default function CompanyInfoEditor({
   const paymentHeading = desktopHeading || compactMobile;
   return (
     <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
-      <div data-company-info-header className={`flex flex-wrap items-center gap-2 ${desktopHeading ? `payment-sticky-title bg-white px-3 py-2 ${open ? "rounded-t-lg" : "rounded-lg"}` : "px-2.5 py-1.5"}`}
-        onClick={paymentHeading ? (event) => { if (shouldTogglePaymentHeader(event.currentTarget, event.target)) setOpen((v) => !v); } : undefined}>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          data-payment-ci-toggle={desktopHeading || compactMobile ? "" : undefined} aria-expanded={desktopHeading || compactMobile ? open : undefined}
-          aria-label={desktopHeading || compactMobile ? `업체정보 ${open ? "접기" : "펼치기"}` : undefined} aria-controls={desktopHeading || compactMobile ? `${uid}-body` : undefined}
-          className={`flex min-w-0 flex-1 items-center gap-1.5 ${desktopHeading ? "text-sm" : "text-xs"}`}
-        >
-          <span className={`truncate ${desktopHeading ? "font-bold text-slate-800" : "font-semibold text-gray-700"}`}>
-            🏢 업체정보{" "}
-            {!paymentHeading && <span className="font-normal text-gray-400">{summary}</span>}
-          </span>
-          <span data-payment-ci-fold={paymentHeading ? "" : undefined} aria-hidden={paymentHeading ? true : undefined} className="shrink-0 text-gray-400"><span data-payment-ci-fold-legacy>{paymentHeading ? open ? "⌄" : "›" : open ? "▴" : "▾"}</span></span>
-        </button>
-        <div
-          data-company-info-header-actions
-          className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? "basis-full justify-end sm:basis-auto sm:flex-1" : "shrink-0"}`}
-        >
-          {open && (
-            <>
-              {auto && ciSaving && (
-                <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>
-              )}
-              {auto && !ciSaving && status === "error" && (
-                <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span>
-              )}
-              <CompanyDocAutofillButton
-                compactMobile={compactMobile}
+      <CompanyInfoHeader open={open} onToggle={() => setOpen(value => !value)} controlsId={`${uid}-body`}
+        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl}
+        status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
+        tools={[
+              <CompanyDocAutofillButton key="document"
+                compactMobile={paymentHeading}
                 current={draft}
                 onApply={(p) => apply((d) => ({ ...d, ...p }))}
                 onVault={vaultTarget ? (items) => setVaultIncoming((v) => [...v, ...items]) : undefined}
-              />
-              {txtCompanyName && (
+              />,
+              txtCompanyName ? (
                 <button
+                  key="txt"
                   type="button"
                   onClick={exportTxt}
                   data-payment-ci-action="txt" aria-label={paymentHeading ? "업체정보 TXT 생성" : undefined} title={paymentHeading ? "업체정보 TXT 생성" : undefined}
                   disabled={txtBusy}
                   className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {compactMobile && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={compactMobile ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : paymentHeading ? "TXT 생성" : "업체정보생성(TXT)"}</span>
+                  {paymentHeading && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : paymentHeading ? "TXT 생성" : "업체정보생성(TXT)"}</span>
                 </button>
-              )}
+              ) : null,
               <button
+                key="popup"
                 type="button"
                 onClick={() => setModal(true)}
-                data-payment-ci-action="popup" aria-label={compactMobile ? "업체정보 팝업" : undefined} title={compactMobile ? "업체정보 팝업" : undefined}
+                data-payment-ci-action="popup" aria-label={paymentHeading ? "업체정보 팝업" : undefined} title={paymentHeading ? "업체정보 팝업" : undefined}
                 className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
               >
-                {compactMobile && <Maximize2 className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={compactMobile ? "payment-ci-action-label" : undefined}>팝업</span>
+                {paymentHeading && <Maximize2 className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>팝업</span>
               </button>
-            </>
-          )}
-          {fontControl}
-        </div>
-      </div>
+        ]} />
 
       {open && (
         <div
-          id={desktopHeading || compactMobile ? `${uid}-body` : undefined} data-company-info-body className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2"
+          id={`${uid}-body`} data-company-info-body className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2"
           onBlur={(e) => {
             if (auto && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commit(true);

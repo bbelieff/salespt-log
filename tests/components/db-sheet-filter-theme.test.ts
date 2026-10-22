@@ -6,15 +6,16 @@ import {expect,it,vi} from 'vitest';
 import SupplierFilter from '@/app/(app)/db-sheet/_components/SupplierFilter';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 
-it('uses the existing 14px decorative ChevronDown without changing supplier selection',()=>{
+it('uses the shared 16px decorative disclosure without changing supplier selection',()=>{
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host),change=vi.fn();
  try{
   act(()=>root.render(createElement(SupplierFilter,{options:['합성 공급처'],selected:[],onChange:change})));
   const trigger=host.querySelector('button')!,icon=trigger.querySelector('svg')!;
-  expect(trigger.textContent).toBe('전체 공급처');expect(icon.getAttribute('width')).toBe('14');expect(icon.getAttribute('height')).toBe('14');
+  expect(trigger.textContent).toBe('전체 공급처');expect(icon.getAttribute('width')).toBe('16');expect(icon.getAttribute('height')).toBe('16');
+  expect(icon.hasAttribute('data-disclosure-chevron')).toBe(true);expect(icon.getAttribute('stroke-width')).toBe('1.75');expect(icon.style.transform).toBe('rotate(0deg)');
   expect(icon.getAttribute('aria-hidden')).toBe('true');expect(icon.classList.contains('shrink-0')).toBe(true);expect(trigger.getAttribute('aria-expanded')).toBe('false');
-  act(()=>trigger.click());expect(trigger.getAttribute('aria-expanded')).toBe('true');expect(change).not.toHaveBeenCalled();
-  act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  act(()=>trigger.click());expect(trigger.getAttribute('aria-expanded')).toBe('true');expect(icon.style.transform).toBe('rotate(180deg)');expect(change).not.toHaveBeenCalled();
+  act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));expect(trigger.getAttribute('aria-expanded')).toBe('false');expect(icon.style.transform).toBe('rotate(0deg)');
  }finally{act(()=>root.unmount());host.remove();}
 });
 
@@ -47,9 +48,10 @@ it('keeps compact parallel filters and save signals without shipping synthetic l
 });
 it('keeps three neutral circular actions above one 34px filter row without changing existing actions or 48px rows',()=>{
  const page=readFileSync('app/(app)/db-sheet/page.tsx','utf8'),css=readFileSync('app/(app)/db-sheet/compact.css','utf8');
- expect(page).toContain('Plus,ClipboardPaste,SlidersHorizontal,ChevronDown');expect(page).not.toContain('<Upload');
+ expect(page).toContain("import {Plus,ClipboardPaste,SlidersHorizontal} from 'lucide-react'");expect(page).not.toContain('<Upload');
  expect(page).toContain('<ClipboardPaste className="sheet-mobile-action-icon" size={18} strokeWidth={1.75}');
- expect(page.match(/size=\{18\} strokeWidth=\{1\.75\}/g)).toHaveLength(3);expect(page.match(/size=\{12\} strokeWidth=\{1\.75\}/g)).toHaveLength(2);
+ expect(page.match(/size=\{18\} strokeWidth=\{1\.75\}/g)).toHaveLength(3);
+ expect(page).toContain("유입일<DisclosureChevron open={mobileFilter==='date'} />");expect(page).toContain("상태<DisclosureChevron open={mobileFilter==='status'} />");
  expect(css).toContain('border-radius:10px;background:white;padding:0 10px');
  expect(css).toContain('.sheet-panel-head :is(.sheet-btn,.sheet-btn.is-on){display:inline-flex');
  expect(css).toContain('.sheet-add-actions .sheet-btn{width:44px;min-width:44px;padding:0;border-radius:50%');

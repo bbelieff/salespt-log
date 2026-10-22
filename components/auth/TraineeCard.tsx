@@ -19,6 +19,7 @@
 "use client";
 
 import Link from "next/link";
+import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
 import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
@@ -294,6 +295,7 @@ export default function TraineeCard({
               <button
                 type="button"
                 onClick={() => setTrainerOpen((v) => !v)}
+                aria-expanded={trainerOpen}
                 className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-px-11 font-bold text-indigo-700 hover:bg-indigo-100"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
@@ -301,15 +303,7 @@ export default function TraineeCard({
                 <span className="min-w-0 flex-1 break-words font-bold">
                   {trainerNames}
                 </span>
-                <svg
-                  className={`mt-0.5 h-3 w-3 shrink-0 transition-transform ${trainerOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                <DisclosureChevron open={trainerOpen} className="mt-0.5" />
               </button>
             ) : (
               <span className="flex min-w-0 flex-1 items-start gap-1">

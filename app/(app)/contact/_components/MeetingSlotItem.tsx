@@ -8,6 +8,7 @@
  */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useState } from "react";
 import type { Channel, DBLead, Meeting } from "@/types";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
@@ -272,21 +273,7 @@ function SavedItem({ index, meeting, reservationDate, onPatch, onRemove }: Saved
             <span className="shrink-0 truncate text-xs text-gray-500">{meeting.장소}</span>
           </div>
         </div>
-        <svg
-          className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
+        <DisclosureChevron open={open} />
       </button>
 
       {open && (

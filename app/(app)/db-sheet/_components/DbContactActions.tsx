@@ -1,4 +1,5 @@
-import {MessageSquare,ChevronRight} from 'lucide-react';
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
+import {MessageSquare} from 'lucide-react';
 import {todayKST} from '@/util/week';
 import {outcomes,outcomeLabel,type Row} from './model';
 
@@ -12,7 +13,7 @@ export function DbContactActions({row,date,contact,onResult,onAsInfo,onToggleCon
     {outcomes.map(value=><option key={value} value={value}>{outcomeLabel(value,row.recording?.activities!==false)}</option>)}
    </select></label>
    <button type="button" className="db-contact-open" aria-expanded={contact} aria-controls="db-contact-pane" onClick={onToggleContact}>
-    <MessageSquare size={15}/><span>컨택내용</span><ChevronRight size={14} className={contact?'rotate-90':''}/>
+    <MessageSquare size={15}/><span>컨택내용</span><DisclosureChevron open={contact} />
    </button>
   </div>
   <small className="db-contact-count">업체별 하루 1건 · 기존 기록 유지</small>

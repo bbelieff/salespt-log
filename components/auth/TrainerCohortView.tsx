@@ -13,6 +13,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import PageContainer from "@/components/PageContainer";
 import { useMe } from "@/query/me-hook";
 import { useQueryClient } from "@tanstack/react-query";
@@ -244,19 +245,11 @@ export default function TrainerCohortView({
         {/* 보관된 기수 — collapsed (details) */}
         {archivedGroups.length > 0 && (
           <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
-            <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
+            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
               <span className="text-sm font-bold text-gray-700">
                 📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)
               </span>
-              <svg
-                className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <DisclosureChevron className="text-gray-400" />
             </summary>
             <div className="space-y-6 border-t border-gray-200 px-4 py-4">
               {archivedGroups.map(([cohort, list]) => (

@@ -1,6 +1,7 @@
 /** 진행기관을 1뎁스로 표시한다. PC는 상품순, 모바일은 활동 우선순위로 정렬한다. */
 "use client";
 
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useState, type ReactNode } from "react";
 import type { InstitutionGroup, InstitutionWorkItem } from "../_lib/institution-view";
 import WorkActivityBadge from "./WorkActivityBadge";
@@ -45,7 +46,7 @@ export default function InstitutionWorkList({ groups, selectedKey, onSelect, ren
               className={`flex min-h-9 w-full items-center gap-2 px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${open ? "rounded-t-[11px]" : "rounded-[11px]"} ${open || active ? "bg-red-50 text-red-900" : "text-slate-800 hover:bg-red-50/50"}`}>
               <span className="min-w-0 flex-1 truncate font-bold">{group.institution || "기관 미입력"}</span>
               <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-px-11 font-semibold text-red-700">{group.count}건</span>
-              {!active && <span className="shrink-0 text-xs text-slate-400" aria-hidden>{open ? "⌃" : "⌄"}</span>}
+              {!active && <span className="shrink-0 text-xs text-slate-400" aria-hidden><DisclosureChevron open={open} /></span>}
             </button>
             {(open || (renderDetail && active)) && (
               <div hidden={!open} className="space-y-1 border-t border-red-100 p-1.5" role={renderDetail ? "group" : "listbox"} aria-label={`${group.institution || "기관 미입력"} 진행건`}>

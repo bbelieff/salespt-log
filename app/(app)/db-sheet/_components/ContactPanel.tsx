@@ -1,3 +1,4 @@
+import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import DeletedMeetings from "@/components/meeting-safety/DeletedMeetings";
 import {todayKST} from '@/util/week';
 import React,{useState} from 'react';
@@ -16,7 +17,7 @@ export function ContactPanel({row,draft,onChange,onResult,onRegister,onOpen,onCo
   <fieldset disabled={draft.registered}><label className="db-note-label">확인한 업체명<input className="sheet-input" aria-label="확인한 업체명" value={draft.companyName??row.company} onChange={e=>patch({companyName:e.target.value})}/></label><div className="db-company-form"><CompanyInfoEditor key={`${row.id}-${draft.editorRevision||0}`} identityKey={row.id} value={draft.ci} hideSave defaultLayout="basic" onChange={ci=>patch({ci,place:ci.소재지||''})} onSave={ci=>patch({ci,place:ci.소재지||''})}/></div>
   {(draft.ci.업체기타메모||draft.ci.대표기타메모)&&<details className="db-previous-notes"><summary>기존 업체 메모 보기</summary><p>{draft.ci.업체기타메모}</p><p>{draft.ci.대표기타메모}</p></details>}
   <section className="db-meeting-form db-meeting-accordion" aria-label="미팅카드">
-   <button type="button" className="db-meeting-heading db-meeting-toggle" aria-label="미팅예약" aria-expanded={booking} aria-controls={`meeting-body-${row.id}`} onClick={()=>setBooking(!booking)}><span>미팅예약</span><span className="db-meeting-heading-end">{draft.registered&&<span className="sheet-badge is-active">예약됨</span>}<span aria-hidden="true">{booking?'▴':'▾'}</span></span></button>
+   <button type="button" className="db-meeting-heading db-meeting-toggle" aria-label="미팅예약" aria-expanded={booking} aria-controls={`meeting-body-${row.id}`} onClick={()=>setBooking(!booking)}><span>미팅예약</span><span className="db-meeting-heading-end">{draft.registered&&<span className="sheet-badge is-active">예약됨</span>}<span aria-hidden="true"><DisclosureChevron open={booking} /></span></span></button>
    {booking&&<div className="db-meeting-body" id={`meeting-body-${row.id}`}>
    <div className="db-meeting-inputs"><DateTimeRow 미팅날짜={draft.meetingDate} 미팅시간={draft.time} onDate={meetingDate=>patch({meetingDate})} onTime={time=>patch({time})}/>
    <FieldNote value={draft.reservationNote} onChange={reservationNote=>patch({reservationNote})}/></div>

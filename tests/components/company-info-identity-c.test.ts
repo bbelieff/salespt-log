@@ -173,7 +173,7 @@ describe("CompanyInfoEditor identity", () => {
     expect(control.previousElementSibling?.textContent).toContain("팝업");
   });
 
-  it("실무/수납 헤더는 도구 순서와 좁은 폭 줄바꿈을 유지하고, 헤더 제어는 자동저장을 만들지 않는다", () => {
+  it("실무/수납 한 줄 헤더는 좁은 폭에서 더보기로 도구 순서를 유지하고, 헤더 제어는 자동저장을 만들지 않는다", () => {
     const onChange = vi.fn();
     renderEditor({ txtCompanyName: "가나상사", identityKey: "contract-row:7", desktopHeading: true, onChange });
     toggleOpen();
@@ -181,6 +181,14 @@ describe("CompanyInfoEditor identity", () => {
 
     const header = el!.querySelector("[data-company-info-header]")!;
     const actions = el!.querySelector("[data-company-info-header-actions]")!;
+    expect(header.hasAttribute("data-payment-ci-responsive")).toBe(true);
+    expect(actions.querySelector("[data-ci-header-tools]")?.getAttribute("data-mode")).toBe("more");
+    expect(actions.querySelector("[data-ci-tools-primary]")?.textContent).toContain("문서로 자동입력");
+    expect(actions.querySelector('[aria-label="업체정보 TXT 생성"]')).toBeNull();
+    const more = actions.querySelector<HTMLButtonElement>("[data-ci-more]")!;
+    act(() => more.click());
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(actions.querySelector('[role="dialog"][aria-label="업체정보 도구"]')).not.toBeNull();
     const buttons = [...actions.querySelectorAll("button")];
     const documentButton = buttons.find((button) => button.textContent === "문서로 자동입력")!;
     const txtButton = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 TXT 생성")!;
@@ -189,9 +197,6 @@ describe("CompanyInfoEditor identity", () => {
     const fontUp = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 크게")!;
 
     expect(header.firstElementChild?.textContent).toContain("업체정보");
-    expect(header.className).toContain("flex-wrap");
-    expect(actions.className).toContain("basis-full"); // 360/390에서는 제목과 도구가 줄바꿈된다.
-    expect(actions.className).toContain("sm:basis-auto");
     expect(txtButton).toBeDefined();
     expect(txtButton.textContent).toBe("TXT 생성");
     expect(documentButton.compareDocumentPosition(txtButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

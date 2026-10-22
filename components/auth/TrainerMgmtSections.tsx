@@ -9,6 +9,7 @@
 "use client";
 
 import SortableList from "./SortableList";
+import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import TrainerAssignCard from "./TrainerAssignCard";
 
 export interface PanelUser {
@@ -196,19 +197,11 @@ export function SectionTraineeList({
             key={cohort}
             className="group overflow-hidden rounded-xl border border-gray-200 bg-white open:bg-gray-50"
           >
-            <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
+            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
               <span className="text-sm font-bold text-gray-900">
                 {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
               </span>
-              <svg
-                className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <DisclosureChevron className="text-gray-400" />
             </summary>
             <div className="border-t border-gray-100 p-3">
               <ul className="ml-3 space-y-1 text-xs">
