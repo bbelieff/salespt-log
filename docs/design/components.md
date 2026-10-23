@@ -1812,3 +1812,6 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `PushPrompt`: 대시보드 「오늘 챙길 일」 아래 초대 카드(시범 대상·이 기기 미수신일 때만). [알림 켜기]는 설정 화면으로 이동(권한 팝업 없음), [나중에]는 7일 숨김(브라우저 저장).
 - 다른 사람 화면을 보는 중(관리자 보기 전환·트레이너 담당 수강생 보기)이면 `PushPrompt`·상단 「알림 설정」을 숨기고, 설정 화면 맨 위에 「로그인한 본인 설정이에요」 안내(`push-notice`)를 둔다. 로그아웃(상단 메뉴·`LogoutButton`)은 이 기기 알림만 끈다(2026-10-22 belie).
 - 상단 로고 메뉴의 「알림 설정」 항목은 시범 대상에게만 보인다. 스타일은 `components/push/push.css`(대시보드 카드와 같은 slate·16px 라운드·brand red 주 버튼).
+
+## 모바일 대시보드 첫 시선 순서 (2026-10-23 belie)
+- `DashboardActionOverview`: 모바일(<1024px)은 주차와 상관없이 오늘 챙길 일 → 주간 목표 → 진행건(`dashboard-work-status-slot`) → 생산성 순. CSS `order`·`display: contents`로만 바꾸며 PC grid 배치는 그대로. 대시보드 페이지는 매출·비용을 액션 영역 뒤에 두고 PC에서만 `pc:order-first`로 맨 위에 올린다.
