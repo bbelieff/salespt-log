@@ -2,7 +2,7 @@
 import { todoSlotOf } from "./todo-slot";
 import { contractRef, normalizeContractRef, sameContractRef } from "@/util/contract-ref";
 import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
-import { dbSheetResultLabel, isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
+import { dbSheetResultLabel, isDbSheetFollowUpResult, isDbSheetParkedStage, type DbSheetLead } from "@/types/db-sheet";
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
 import { activeWorkContracts, isSlotClosed, slotHasData } from "./payment-work-status";
@@ -96,7 +96,8 @@ export function buildUnresultedMeetings(meetings: Meeting[], today: string): Fol
     href: `/schedule?date=${m.미팅날짜}&focus=${encodeURIComponent(m.id)}`,
   }, m.미팅날짜, today));
 }
-function leadIsActive(lead: DbSheetLead) { return !lead.meetingId && lead.funnel !== "계약" && lead.stage !== "계약해지"; }
+/** 미팅이 연결됐거나(STEP 3 가 챙김) 계약·해지·장기관리·진행종료인 DB 는 다시 연락할 대상이 아니다. */
+function leadIsActive(lead: DbSheetLead) { return !lead.meetingId && lead.funnel !== "계약" && lead.stage !== "계약해지" && !isDbSheetParkedStage(lead.stage); }
 function leadItem(lead: DbSheetLead, today: string, initial: boolean, due: string | null, reason: string): FollowUpItem {
   return item({ key: `lead:${lead.id}`, kind: initial ? "initial" : "recontact", step: initial ? "1.5" : "2",
     title: lead.company.trim() || "이름 없는 업체", detail: `${dbSheetResultLabel(lead.result)} · ${lead.channel}`,

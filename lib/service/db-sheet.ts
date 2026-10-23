@@ -2,7 +2,7 @@ import { z } from "zod";
 import { findUserByEmail } from "@/repo/users";
 
 import * as ledger from "@/repo/db/db-sheet";
-import { DbSheetLeadInput, DbSheetRecording, DbSheetDate, DbSheetResult, type DbSheetContext, type DbSheetChange, type DbSheetImpact } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetRecording, DbSheetDate, DbSheetResult, DbSheetManualStage, type DbSheetContext, type DbSheetChange, type DbSheetImpact } from "@/types/db-sheet";
 import { Meeting } from "@/types/meeting";
 import { sourceCohort, usesDbStorage } from "./daily-source";
 import { queueSalesRowSync } from "./sales-write";
@@ -19,6 +19,7 @@ export const DbSheetCommand = z.discriminatedUnion("action", [
   z.object({action:z.literal("inflow"),id:z.string().uuid(),revision,inflow:z.boolean()}),
   z.object({ action: z.literal("schedule"), id: z.string().uuid(), revision, next: z.union([DbSheetDate, z.literal("")]) }),
   z.object({ action: z.literal("meeting"), id: z.string().uuid(), revision }),
+  z.object({ action: z.literal("stage"), id: z.string().uuid(), revision, stage: DbSheetManualStage }),
   z.object({ action: z.literal("import"), batchId: z.string().uuid(), leads: z.array(DbSheetLeadInput).min(1).max(500),allowDuplicateIds:z.array(z.string().uuid()).max(500).optional() }),
   z.object({action:z.literal("recording-preview"),id:z.string().uuid(),revision,recording:DbSheetRecording}),
   z.object({action:z.literal("recording"),id:z.string().uuid(),revision,recording:DbSheetRecording}),
@@ -67,6 +68,7 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
     case "contact": changes = [await ledger.saveDbSheetContact(ctx, command.id, command, command.revision)]; break;
     case "first-date": changes = [await ledger.setDbSheetFirstDate(ctx, command.id, command.first, command.revision)]; break;
     case "inflow-preview": case "inflow": changes=[await ledger.changeDbSheetInflow(ctx,command.id,command.revision,command.inflow,command.action==="inflow-preview")];break;
+    case "stage": changes = [await ledger.setDbSheetManualStage(ctx, command.id, command.stage, command.revision)]; break;
     case "schedule": changes = [await ledger.scheduleDbSheetContact(ctx, command.id, command.next, command.revision)]; break;
     case "import": changes = command.allowDuplicateIds?await ledger.importDbSheetLeads(ctx,command.batchId,command.leads,command.allowDuplicateIds):await ledger.importDbSheetLeads(ctx, command.batchId, command.leads); break;
     case "meeting": {

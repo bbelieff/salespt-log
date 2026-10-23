@@ -18,7 +18,7 @@ afterEach(()=>{act(()=>root.unmount());host.remove();vi.restoreAllMocks();vi.uns
 const handle=(name:string)=>host.querySelector<HTMLElement>(`[aria-label="${name} 너비 조절"]`)!;
 const width=(name:string)=>Number(handle(name).getAttribute('aria-valuenow'));
 const noop=()=>{};
-function render(rows:Row[],sizingRows=rows){act(()=>root.render(React.createElement(Grid,{rows,sizingRows,visible:['inflow','company','owner'],onChange:noop,onOpen:noop,onDetail:noop,fail:false})));}
+function render(rows:Row[],sizingRows=rows){act(()=>root.render(React.createElement(Grid,{rows,sizingRows,visible:['inflow','company','owner'],onChange:noop,onDetail:noop,fail:false})));}
 
 it('fits the widest rendered text rather than the text with most characters',()=>{
  const rows=[row('iiiiiiii'),row('WWW')];

@@ -25,14 +25,16 @@ export function useDbSheet() {
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
   useEffect(() => store.load(), [store]);
   useEffect(() => {
-    const prevent = (event: BeforeUnloadEvent) => { if (state.pending || state.error) event.preventDefault(); };
+    const prevent = (event: BeforeUnloadEvent) => { if (state.pending || state.error || state.deleting) event.preventDefault(); };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [state.pending, state.error]);
-  useDirtyEntry("db-sheet", state.pending > 0 || !!state.error, store.flushAll, store.discard, "DB관리시트 변경사항");
+  }, [state.pending, state.error, state.deleting]);
+  // 10초 되돌리기 중인 삭제도 「변경사항」 — 다른 화면으로 가면 저장(=삭제 확정) 또는 버리기(=되돌리기)를 고른다.
+  useDirtyEntry("db-sheet", state.pending > 0 || !!state.error || !!state.deleting, store.flushAll, store.discard, "DB관리시트 변경사항");
   return {
     ...state,
-    clearAddition: store.clearAddition,
+    clearAddition: store.clearAddition, clearNotice: store.clearNotice,
+    stage: store.stage, bulkInflow: store.bulkInflow, scheduleDelete: store.scheduleDelete, undoDelete: store.undoDelete, commitDelete: store.commitDelete,
     edit: store.edit, asInfo: store.asInfo, contact: store.contact, record: store.record, register: store.register,
     add: store.add, flush: store.flush, recordingPreview: store.recordingPreview, configure: store.configure,
     inflowPreview: store.inflowPreview, configureInflow: store.configureInflow, reload: store.reload,

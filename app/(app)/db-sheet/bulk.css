@@ -1,0 +1,45 @@
+/* DB관리시트 — 줄 선택·여러 줄 작업·삭제 되돌리기·재통화 안내 줄·현재상태 끝내기(2026-10-23). 기존 sheet-btn/표 토큰을 그대로 쓴다. */
+body.db-sheet-route .sheet-number-inner{display:flex;align-items:stretch;height:100%;min-width:0}
+body.db-sheet-route .sheet-number-inner .sheet-row-open{flex:1 1 auto;min-width:0;width:auto}
+body.db-sheet-route .sheet-number-label{flex:1 1 auto;display:flex;align-items:center;justify-content:center}
+body.db-sheet-route .sheet-row-check{flex:0 0 30px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+body.db-sheet-route .sheet-row-check input{width:15px;height:15px;margin:0;accent-color:#2563eb;cursor:pointer}
+body.db-sheet-route .sheet-row-check input:disabled{cursor:default;opacity:.4}
+body.db-sheet-route .sheet-row-check input:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+body.db-sheet-route .sheet-table tr[data-selected] td,body.db-sheet-route .sheet-table tr[data-selected] td.sheet-number{background:#eff6ff}
+body.db-sheet-route .sheet-table td.sheet-quick .sheet-cell{cursor:text}
+
+body.db-sheet-route .sheet-bulk-bar{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:0 0 8px;padding:4px 4px 4px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-size:12px;color:#64748b}
+body.db-sheet-route .sheet-bulk-bar[data-on]{background:#eff6ff;border-color:#bfdbfe;color:#1e40af}
+body.db-sheet-route .sheet-bulk-count b{font-variant-numeric:tabular-nums;margin-right:1px}
+body.db-sheet-route .sheet-bulk-actions{display:flex;gap:6px;margin-left:auto}
+body.db-sheet-route .sheet-btn.sheet-btn-danger{color:#be123c;border-color:#fecdd3}
+body.db-sheet-route .sheet-btn.sheet-btn-danger:hover:not(:disabled){background:#fff1f2}
+body.db-sheet-route .sheet-bulk-message{flex:1 0 100%;margin:0;padding:0 0 4px;font-size:12px;color:#334155}
+
+body.db-sheet-route .sheet-undo-bar{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:4px 4px 4px 12px;border-radius:8px;background:#1e293b;color:#f8fafc;font-size:12px}
+body.db-sheet-route .sheet-undo-bar>span:first-child{flex:1 1 auto;min-width:0}
+body.db-sheet-route .sheet-undo-bar b{font-variant-numeric:tabular-nums}
+body.db-sheet-route .sheet-undo-left{font-variant-numeric:tabular-nums;color:#cbd5e1}
+body.db-sheet-route .sheet-undo-bar .sheet-btn{background:#fff;color:#1e293b;border-color:#fff}
+
+body.db-sheet-route .sheet-table tr.sheet-recall-row td{padding:0;height:auto;background:#fffbeb;border-bottom:1px solid #fde68a}
+body.db-sheet-route .sheet-recall-notice{position:sticky;left:0;display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;padding:6px 12px;font-size:12px;box-sizing:border-box}
+body.db-sheet-route .sheet-recall-notice>div{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;min-width:0}
+body.db-sheet-route .sheet-recall-notice strong{font-size:12px;color:#92400e}
+body.db-sheet-route .sheet-recall-notice span{font-size:11px;color:#a16207}
+body.db-sheet-route .sheet-recall-action{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border:1px solid #fcd34d;border-radius:8px;background:#fff;color:#92400e;font-size:12px;font-weight:600;white-space:nowrap}
+body.db-sheet-route .sheet-recall-action:hover{background:#fef3c7}
+body.db-sheet-route .sheet-recall-action:focus-visible{outline:2px solid #f59e0b;outline-offset:2px}
+
+body.db-sheet-route .db-stage-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 8px;margin-top:6px;padding:8px 10px;border:1px dashed #cbd5e1;border-radius:8px;font-size:12px;color:#64748b}
+body.db-sheet-route .db-stage-controls.is-parked{border-style:solid;border-color:#fde68a;background:#fffbeb;color:#a16207}
+body.db-sheet-route .db-stage-controls.is-parked strong{color:#92400e}
+body.db-sheet-route .db-stage-buttons{display:flex;gap:6px;flex-wrap:wrap}
+body.db-sheet-route .db-stage-controls .sheet-error{flex:1 0 100%;padding:0}
+
+@media (max-width:1023px){
+ body.db-sheet-route .sheet-bulk-bar{padding:6px}
+ body.db-sheet-route .sheet-bulk-actions{margin-left:0;width:100%}
+ body.db-sheet-route .sheet-bulk-actions .sheet-btn{flex:1 1 0;min-width:0}
+}

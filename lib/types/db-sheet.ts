@@ -22,13 +22,22 @@ export function nextDbSheetFirstContact(first: string, result: string, date: str
 const DB_SHEET_RESULT_LABELS: Readonly<Record<string, string>> = { 컨택진행: "미팅예약", "상담 후 거절": "컨택 후 거절", AS예정: "AS신청" };
 export function dbSheetResultLabel(result: string): string { return DB_SHEET_RESULT_LABELS[result] ?? result; }
 /** 현재상태 중 컨택결과로 자동 계산하는 값. 미팅·계약 단계는 미팅/계약 기록이 정한다. */
-export const DB_SHEET_CONTACT_STAGES = ["미컨택", "DB컨택중", "상담 중", "진행종료"] as const;
+export const DB_SHEET_CONTACT_STAGES = ["미컨택", "DB컨택중", "상담 중", "장기관리", "진행종료"] as const;
+/**
+ * 사용자가 직접 정하는 현재상태(2026-10-23 belie): 장기관리(가벼운 거절·나중에 다시) · 진행종료(다시 연락 안 함) ·
+ * DB컨택중(장기관리·진행종료에서 되돌림). 새 컨택결과를 기록하면 풀리고, 미팅이 연결되면 미팅 단계가 우선한다.
+ */
+export const DbSheetManualStage = z.enum(["장기관리", "진행종료", "DB컨택중"]);
+export type DbSheetManualStage = z.infer<typeof DbSheetManualStage>;
+/** 오늘 챙길 일·다시 연락 대상에서 빠지는 현재상태. */
+export function isDbSheetParkedStage(stage: string): boolean { return stage === "장기관리" || stage === "진행종료"; }
 /**
  * 미팅이 없는 DB 의 현재상태: AS신청 → 진행종료 · 실적 상담 이력 → 상담 중 ·
  * 단순거절/재통화 → DB컨택중 · 그 외 미컨택. 미팅 연결 행이나 다른 단계 이름은 그대로 둔다.
  */
-export function dbSheetContactStage(lead: { meetingId?: string | null; stage: string; result: string; hasQualifiedContact?: boolean }): string {
+export function dbSheetContactStage(lead: { meetingId?: string | null; stage: string; result: string; hasQualifiedContact?: boolean; manualStage?: DbSheetManualStage }): string {
   if (lead.meetingId || (lead.stage && !(DB_SHEET_CONTACT_STAGES as readonly string[]).includes(lead.stage))) return lead.stage;
+  if (lead.manualStage) return lead.manualStage;
   if (lead.result === "AS예정") return "진행종료";
   if (lead.hasQualifiedContact) return "상담 중";
   if (lead.result === "단순거절" || lead.result === "재통화") return "DB컨택중";
@@ -63,6 +72,6 @@ export const DbSheetFunnelStep = z.enum(["유입", "연락", "상담", "미팅",
 export type DbSheetFunnelStep = z.infer<typeof DbSheetFunnelStep>;
 /** Server-owned action generations. Draft contact dates never complete a scheduled action. */
 export type DbSheetFollowUp = { generation: number; completedGeneration: number | null; lastContactDate: string };
-export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp};
+export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;manualStage?:DbSheetManualStage;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp};
 export type DbSheetContext = { spreadsheetId:string;cohort:string;email:string };
 export type DbSheetChange = {lead:DbSheetLead;changedSales:{date:string;channel:z.infer<typeof Channel>}[];meetingId?:string;impact?:DbSheetImpact};

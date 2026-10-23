@@ -7,16 +7,27 @@
  *  - 서버 응답을 받을 때 그 사이 더 고친 칸은 화면 값을 지키고 서버 결과 칸만 반영(accept).
  *  - 앞선 저장이 실패하면 이후 저장을 막는다(blocked) — 복구 가능한 작업(가져오기·기록 설정)은 예외.
  *  - 기록 설정·삭제는 미리보기를 본 그 버전 그대로일 때만 확정(previews).
+ *  - 여러 줄 삭제는 10초 동안 화면에서만 숨기고(서버 무변경) 「되돌리기」가 없으면 그때 확정한다.
  * 화면(use-db-sheet)은 subscribe/getState 로 읽고, 쿼리 무효화·오늘 날짜·전송은 바깥에서 넣는다.
  */
-import { DbSheetLeadInput, type DbSheetLead } from "@/types/db-sheet";
+import { DbSheetLeadInput, type DbSheetLead, type DbSheetManualStage } from "@/types/db-sheet";
 import type { Row, Key } from "./model";
 import type { ContactDraft } from "./ContactPanel";
 import { SheetRequestError, type Recording, type RecordingImpact, type sheetRequest } from "./recording-client";
 import type { ImportResult } from "./ImportResultNotice";
 
+/** 10초 되돌리기 동안 숨겨 둔 삭제 — 확정 전이라 서버에는 아직 그대로 있다. 숫자는 함께 정리될 STEP 2 기록. */
+export type PendingDelete = { count: number; inflow: number; contacts: number; meetings: number };
+/** 여러 줄 작업 결과 — 바꾼 수 · 이미 그 상태 · 바꾸지 못한 줄(이유). */
+export type BulkOutcome = { done: number; unchanged: number; blocked: { id: string; company: string; reason: string }[] };
+export const DELETE_UNDO_MS = 10_000;
+const DEFAULT_RECORDING = { inflow: true, activities: true };
+
 export type DbSheetState = {
   leads: DbSheetLead[];
+  deleting: PendingDelete | null;
+  /** 저장 오류와 별개로 보여 줄 안내(예: 삭제 확정 실패). */
+  notice: string;
   suppliers: string[];
   addition: ImportResult | null;
   loading: boolean;
@@ -39,7 +50,7 @@ export type DbSheetStoreDeps = {
 export function createDbSheetStore(deps: DbSheetStoreDeps) {
   const setTimer = deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   const clearTimer = deps.clearTimer ?? ((t) => clearTimeout(t));
-  let state: DbSheetState = { leads: [], suppliers: [], addition: null, loading: true, pending: 0, error: "" };
+  let state: DbSheetState = { leads: [], deleting: null, notice: "", suppliers: [], addition: null, loading: true, pending: 0, error: "" };
   const listeners = new Set<() => void>();
   const set = (patch: Partial<DbSheetState>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()); };
   const bumpPending = (n: number) => set({ pending: state.pending + n });
@@ -52,6 +63,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   const previews = new Map<string, { revision: number; recording: string; deleting: boolean }>();
   const scheduleVersions = new Map<string, number>();
+  let hidden: { rows: { row: DbSheetLead; index: number }[]; timer: ReturnType<typeof setTimeout> } | null = null;
 
   const request = async (body?: unknown) => (await deps.transport(body)).leads;
   function remember(rows: DbSheetLead[]) {
@@ -91,7 +103,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
       const saved = rows.find((r) => r.id === row.id);
       if (!saved) return row;
       return versions.get(row.id) === snapshots.get(row.id) ? saved : {
-        ...row, next: scheduleVersions.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, firstManual: saved.firstManual, hasQualifiedContact: saved.hasQualifiedContact, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel, followUp: saved.followUp, recording: saved.recording, inflowStatus: saved.inflowStatus,
+        ...row, next: scheduleVersions.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, firstManual: saved.firstManual, hasQualifiedContact: saved.hasQualifiedContact, manualStage: saved.manualStage, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel, followUp: saved.followUp, recording: saved.recording, inflowStatus: saved.inflowStatus,
       };
     }));
   }
@@ -181,6 +193,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
     }, true);
   }
   async function flushAll() {
+    await commitDelete();
     for (const id of [...timers.keys()]) await flush(id);
     await tail;
     if (blocked) throw new Error("저장 실패");
@@ -231,7 +244,82 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
       accept(payload.leads, new Map([[id, version]]));
     }, true);
   }
+  async function stage(id: string, value: DbSheetManualStage) {
+    await flush(id);
+    return enqueue(async () => {
+      const version = versions.get(id) ?? 0;
+      const rows = await request({ action: "stage", id, revision: server.get(id)!.revision, stage: value });
+      accept(rows, new Map([[id, version]]));
+    }, true);
+  }
+  /** 고른 줄의 유입 반영을 한 줄씩 미리보기 → 확정. 이미 그 상태이거나 막힌 줄은 건너뛴다. */
+  async function bulkInflow(ids: readonly string[], inflow: boolean): Promise<BulkOutcome> {
+    const out: BulkOutcome = { done: 0, unchanged: 0, blocked: [] };
+    for (const id of ids) {
+      const row = local.find((r) => r.id === id); if (!row) continue;
+      const status = row.inflowStatus;
+      if (!status) { out.blocked.push({ id, company: row.company, reason: "유입 표시를 불러오지 못했어요" }); continue; }
+      if ((status.state === "recorded") === inflow) { out.unchanged++; continue; }
+      try {
+        const impact = await inflowPreview(id, inflow);
+        if (impact.blockedReason) { out.blocked.push({ id, company: row.company, reason: impact.blockedReason }); continue; }
+        await configureInflow(id, inflow); out.done++;
+      } catch (e) { out.blocked.push({ id, company: row.company, reason: (e as Error).message }); }
+    }
+    return out;
+  }
+  /**
+   * 여러 줄 삭제 — 줄마다 삭제 미리보기(막힘 확인)만 하고 목록에서 숨긴다. 10초 뒤 확정, 그 전에 undoDelete 면
+   * 서버에 아무것도 보내지 않았으므로 같은 줄이 같은 자리로 그대로 돌아온다.
+   */
+  async function scheduleDelete(ids: readonly string[]): Promise<BulkOutcome> {
+    if (hidden) await commitDelete().catch(() => {});
+    const out: BulkOutcome = { done: 0, unchanged: 0, blocked: [] };
+    const ok: DbSheetLead[] = [], total = { inflow: 0, contacts: 0, meetings: 0 };
+    for (const id of ids) {
+      const row = local.find((r) => r.id === id); if (!row) continue;
+      try {
+        const impact = await recordingPreview(id, row.recording ?? DEFAULT_RECORDING, true);
+        if (impact.blockedReason) { out.blocked.push({ id, company: row.company, reason: impact.blockedReason }); continue; }
+        ok.push(row); total.inflow -= impact.inflow; total.contacts -= impact.contacts; total.meetings -= impact.meetings;
+      } catch (e) { out.blocked.push({ id, company: row.company, reason: (e as Error).message }); }
+    }
+    if (!ok.length) return out;
+    const gone = new Set(ok.map((r) => r.id));
+    hidden = { rows: ok.map((row) => ({ row, index: local.findIndex((r) => r.id === row.id) })), timer: setTimer(() => { void commitDelete().catch(() => {}); }, DELETE_UNDO_MS) };
+    show(local.filter((r) => !gone.has(r.id)));
+    set({ deleting: { count: ok.length, ...total }, notice: "" });
+    out.done = ok.length;
+    return out;
+  }
+  function restore(rows: { row: DbSheetLead; index: number }[]) {
+    const next = [...local];
+    for (const { row, index } of [...rows].sort((a, b) => a.index - b.index)) if (!next.some((r) => r.id === row.id)) next.splice(Math.min(index, next.length), 0, row);
+    show(next);
+  }
+  function undoDelete() {
+    const current = hidden; if (!current) return;
+    hidden = null; clearTimer(current.timer);
+    for (const { row } of current.rows) previews.delete(row.id);
+    restore(current.rows);
+    set({ deleting: null });
+  }
+  /** 숨겨 둔 삭제를 지금 확정한다(10초가 지났거나 화면을 떠날 때). 실패한 줄은 목록에 되살린다. */
+  async function commitDelete() {
+    const current = hidden; if (!current) return;
+    hidden = null; clearTimer(current.timer); set({ deleting: null });
+    const failed: { row: DbSheetLead; index: number }[] = [];
+    for (const item of current.rows) {
+      try { await configure(item.row.id, item.row.recording ?? DEFAULT_RECORDING, true); } catch { failed.push(item); }
+    }
+    if (failed.length) {
+      restore(failed);
+      set({ notice: `${failed.map((f) => f.row.company || "이름 없는 업체").join(", ")} 삭제를 확정하지 못해 목록에 되돌렸어요. 새로고침 뒤 다시 시도해 주세요.` });
+      throw new Error("삭제 확정 실패");
+    }
+  }
   function discard() {
+    undoDelete();
     for (const timer of timers.values()) clearTimer(timer);
     timers.clear();
     show([...server.values()]);
@@ -242,6 +330,8 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     load,
     clearAddition: () => set({ addition: null }),
+    clearNotice: () => set({ notice: "" }),
+    stage, bulkInflow, scheduleDelete, undoDelete, commitDelete,
     edit, asInfo, contact, record, register, add, flush, flushAll, discard, reload,
     recordingPreview, configure, inflowPreview, configureInflow,
   };

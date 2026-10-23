@@ -19,6 +19,8 @@ import {ImportDialog} from './_components/ImportDialog';
 import {DbDetail} from './_components/DbDetail';
 import {useDbSheet} from './_components/use-db-sheet';
 import {SupplierSummary} from './_components/SupplierSummary';
+import {BulkBar,DeleteUndoBar,bulkOutcomeText} from './_components/BulkBar';
+import {restoreVisibleColumns} from './_components/visible-columns';
 import MobileViewOptions from './_components/MobileViewOptions';
 import MobileFilterMenu from './_components/MobileFilterMenu';
 import {Plus,ClipboardPaste,SlidersHorizontal} from 'lucide-react';
@@ -26,6 +28,7 @@ import {STATUS_FILTERS,filterDbSheetRows,hasStatusRestriction,toggleStatusFilter
 import './db-sheet.css';
 import './recording.css';
 import './compact.css';
+import './bulk.css';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
 export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads,me=useMe();
@@ -38,17 +41,23 @@ export default function DbSheetPage(){
  const [mobile,setMobile]=useState(false),[optionsOpen,setOptionsOpen]=useState(false),[mobileToolsTarget,setMobileToolsTarget]=useState<HTMLDivElement|null>(null);
  const [mobileFilter,setMobileFilter]=useState<'date'|'status'|null>(null),dateTrigger=useRef<HTMLButtonElement>(null),statusTrigger=useRef<HTMLButtonElement>(null);
  const [recording,setRecording]=useState<{id:string;deleting:boolean}|null>(null);
+ const [picked,setPicked]=useState<ReadonlySet<string>>(()=>new Set()),[bulkBusy,setBulkBusy]=useState(false),[bulkMessage,setBulkMessage]=useState('');
  const [summaryOpen,setSummaryOpen]=useState(false),listTop=useRef<HTMLSpanElement>(null);
- useEffect(()=>{setMounted(true);const params=new URLSearchParams(window.location.search),requested=params.get('lead');if(requested)setDetail(requested);if(params.get('view')==='suppliers')setSummaryOpen(true);document.body.classList.add('db-sheet-route');try{const saved=localStorage.getItem('db-sheet-v5-columns');const v=JSON.parse(saved||localStorage.getItem('db-sheet-v4-columns')||localStorage.getItem('db-sheet-v3-columns')||'null');if(Array.isArray(v)){const keys=v.filter(k=>columns.some(c=>c.key===k));if(!saved&&!keys.includes('inflow'))keys.splice(Math.max(0,keys.indexOf('date')+1),0,'inflow');if(!saved&&!keys.includes('channel'))keys.splice(Math.max(0,keys.indexOf('supplier')),0,'channel');setVisible(keys);}}catch{}return()=>document.body.classList.remove('db-sheet-route');},[]);
- useEffect(()=>{if(mounted)localStorage.setItem('db-sheet-v5-columns',JSON.stringify(visible));},[visible,mounted]);
+ useEffect(()=>{setMounted(true);const params=new URLSearchParams(window.location.search),requested=params.get('lead');if(requested)setDetail(requested);if(params.get('view')==='suppliers')setSummaryOpen(true);document.body.classList.add('db-sheet-route');try{const keys=restoreVisibleColumns(key=>localStorage.getItem(key));if(keys)setVisible(keys);}catch{}return()=>document.body.classList.remove('db-sheet-route');},[]);
+ useEffect(()=>{if(mounted)localStorage.setItem('db-sheet-v6-columns',JSON.stringify(visible));},[visible,mounted]);
  useEffect(()=>{const mq=window.matchMedia('(max-width:1023px)');const change=()=>{setMobile(mq.matches);if(!mq.matches){setOptionsOpen(false);setMobileFilter(null);}};change();if(mq.matches&&new URLSearchParams(window.location.search).get('view')==='suppliers')setOptionsOpen(true);mq.addEventListener('change',change);return()=>mq.removeEventListener('change',change);},[]);
  const range=inflowPeriodBounds(period,from,to),rangeFrom=range?.[0]??'',rangeTo=range?.[1]??'';
  const filtered=filterDbSheetRows(rows,{search,selectedSuppliers,from:rangeFrom,to:rangeTo,selectedStatuses});
+ const shownIds=new Set(filtered.map(r=>r.id)),chosen=new Set([...picked].filter(id=>shownIds.has(id)));
  const selected=rows.find(r=>r.id===detail),statusRestricted=hasStatusRestriction(selectedStatuses),activeFilters=!!(search||selectedSuppliers.length||period!=='all'||selectedStatuses.length);
  const suppliers=[...new Set(rows.map(r=>r.supplier))];
  const restricted=!!(search||rangeFrom||rangeTo||statusRestricted||(selectedSuppliers.length&&suppliers.some(value=>!selectedSuppliers.includes(value))));
  async function changeInflow(id:string,value:boolean){const impact=await data.inflowPreview(id,value);if(impact.blockedReason)throw new Error(impact.blockedReason);await data.configureInflow(id,value);}
  function toggleSummary(open:boolean){setSummaryOpen(open);}
+ function pick(ids:string[],checked:boolean){setBulkMessage('');setPicked(current=>{const next=new Set(current);for(const id of ids){if(checked)next.add(id);else next.delete(id);}return next;});}
+ // 보이는(필터에 걸린) 줄 중 체크한 것만 바꾼다 — 숨은 줄이 몰래 바뀌지 않게.
+ async function bulkInflow(value:boolean){setBulkBusy(true);setBulkMessage('');try{const out=await data.bulkInflow([...chosen],value);setBulkMessage(bulkOutcomeText(value?'유입 반영':'유입 미반영',out));}finally{setBulkBusy(false);}}
+ async function bulkDelete(){setBulkBusy(true);setBulkMessage('');try{const ids=[...chosen];const out=await data.scheduleDelete(ids);setPicked(current=>new Set([...current].filter(id=>!ids.includes(id)||out.blocked.some(b=>b.id===id))));if(out.blocked.length)setBulkMessage(bulkOutcomeText('삭제',out));}finally{setBulkBusy(false);}}
  function resetFilters(){setSearch('');setSelectedSuppliers([]);setFrom('');setTo('');setPeriod('all');setSelectedStatuses([]);}
  // 공급처 줄은 같은 다중선택에 더하거나 뺀다. 합계는 전체 선택을 해제한다. 모바일은 요약 아래로 밀려난 목록 첫 줄로 내려 준다.
  function pickSupplier(value:string){setSelectedSuppliers(current=>value?(current.includes(value)?current.filter(item=>item!==value):[...current,value]):[]);if(value&&window.matchMedia?.('(max-width: 1023px)').matches)listTop.current?.scrollIntoView({block:'start'});}
@@ -89,10 +98,12 @@ export default function DbSheetPage(){
  {mobile&&mobileFilter&&(mobileFilter==='date'?dateTrigger.current:statusTrigger.current)&&<MobileFilterMenu key={mobileFilter} title={mobileFilter==='date'?'유입일':'상태'} anchor={(mobileFilter==='date'?dateTrigger.current:statusTrigger.current)!} onClose={()=>setMobileFilter(null)}>{mobileFilter==='date'?dateFilter:statusFilter}</MobileFilterMenu>}
 
  <span ref={listTop} aria-hidden="true" className="block scroll-mt-app-content"/>
+ {data.deleting&&<DeleteUndoBar key={JSON.stringify(data.deleting)} deleting={data.deleting} onUndo={data.undoDelete}/>}
+ {data.notice&&<p role="alert" className="sheet-error">{data.notice} <button type="button" className="sheet-text-btn" onClick={data.clearNotice}>닫기</button></p>}
  {data.addition&&<ImportResultNotice key={JSON.stringify(data.addition)} result={data.addition} onClose={data.clearAddition}/>}
- <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onOpen={setDetail} onChange={data.edit}/>
+ <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onChange={data.edit} selected={chosen} onSelect={pick} bulkBar={<BulkBar count={chosen.size} busy={bulkBusy} message={bulkMessage} onInflow={v=>void bulkInflow(v)} onDelete={()=>void bulkDelete()} onClear={()=>{setPicked(new Set());setBulkMessage('');}}/>}/>
  </section></PageContainer></div>
- {selected&&<DbDetail key={selected.id} row={selected} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onRecording={()=>setRecording({id:selected.id,deleting:false})} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
+ {selected&&<DbDetail key={selected.id} row={selected} onStage={v=>data.stage(selected.id,v)} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onRecording={()=>setRecording({id:selected.id,deleting:false})} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
  {draft&&<DirectInputDialog initial={draft} rows={rows} onClose={()=>setDraft(null)} onExisting={id=>{setDraft(null);setDetail(id);}} onSave={async(row,allow)=>{await data.add([row],row.id,allow?[row.id]:[]);setDraft(null);}}/>}
  {importing&&<ImportDialog accountKey={accountKey} rows={rows} onExisting={id=>{setImporting(false);setDetail(id);}} onClose={()=>setImporting(false)} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);}}/>}
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
