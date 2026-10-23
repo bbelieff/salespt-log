@@ -1,8 +1,8 @@
 /** 업체 보기 목록. PC와 모바일 모두 진행건 단위이며 진행이 없는 계약만 업체 단위다. */
 "use client";
 
-import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { isTerminatedContract } from "@/types";
+import { Fragment, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { isTerminatedContract, WAITING_PROGRESS } from "@/types";
 import { formatMoney } from "@/lib/format/money";
 import { allHalted, averageProgress, isHaltedSlot } from "@/lib/analytics/contract-slots";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
@@ -10,6 +10,7 @@ import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { isManualContractLink } from "@/util/contract-link";
 import MeetingLinkPicker from "./MeetingLinkPicker";
+import { WaitBadge } from "./ProgressWaitFields";
 
 interface Props {
   items: CompanyWorkItem[];
@@ -66,13 +67,16 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
               </span>
               {hasProgress ? works.map((w) => {
-                const halted = isHaltedSlot(cp[`수납${w.slot}`]);
-                return (
-                <span key={w.key} className={`mt-1 flex min-w-0 items-center gap-1.5 pl-7 text-px-11 font-semibold ${halted ? "text-slate-400" : w.key === work.key ? "text-blue-700" : "text-blue-600/80"}`}>
+                const data = cp[`수납${w.slot}`];
+                const halted = isHaltedSlot(data);
+                return (<Fragment key={w.key}>
+                <span className={`mt-1 flex min-w-0 items-center gap-1.5 pl-7 text-px-11 font-semibold ${halted ? "text-slate-400" : w.key === work.key ? "text-blue-700" : "text-blue-600/80"}`}>
                   <span className="min-w-0 truncate">{`진행 ${w.slot} · ${w.institution || "기관 미입력"}${w.product ? ` · ${w.product}` : ""}`}</span>
                   {halted && <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-px-10 font-semibold text-slate-600">중도중지</span>}
+                  <WaitBadge slot={data} size="10" />
                 </span>
-              );}) : <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">진행건 미등록</span>}
+                {data.진행률 === WAITING_PROGRESS && data.대기사유?.trim() && <span className="block truncate pl-7 text-px-11 text-violet-700">사유: {data.대기사유}</span>}
+              </Fragment>);}) : <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">진행건 미등록</span>}
               <span className="mt-0.5 grid grid-cols-[1fr_auto] gap-x-2 pl-7 text-px-11 tabular-nums">
                 <span className="truncate text-slate-500">{fmtDate(cp.계약일)} · 수임비 ₩{formatMoney(cp.수임비)}</span>
                 <span className="font-semibold text-emerald-600">수수료 ₩{formatMoney(fee)}</span>

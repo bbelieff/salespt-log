@@ -5,8 +5,9 @@
  * - FieldLabel: 라벨 + (?) 툴팁(HintTooltip) + 화면낭독기용 상시 설명(sr-only). 회색 설명 줄 없음.
  * - 기대출 같은 여러 줄 칸 = textarea 자동높이(줄 수 따라) — 시트에 \n 그대로 저장.
  * - 연락처통신사: blur 에만 formatPhone(괄호 통신사 보존).
- * - 주민등록번호: 앞 6자리만(belie 결정). 입력 중 6자리 초과분 즉시 절단, blur 에 "NNNNNN-" 마무리
- *   (6자리 미만이면 비움) — 자르거나 비운 이유를 칸 아래에 알린다. 서버 스키마도 한 번 더 자른다.
+ * - 주민등록번호: 13자리 전체(ADR-0035, belie 2026-10-23). 입력 중 7번째 숫자에서 하이픈 자동,
+ *   13자리 초과분은 버림, blur 에 normalizeRrn 마무리(6자리 미만이면 비움) — 버리거나 비운 이유를
+ *   칸 아래에 알린다. 서버 스키마도 같은 모양으로 한 번 더 맞춘다.
  */
 "use client";
 
@@ -14,7 +15,7 @@ import { useState } from "react";
 import type { CompanyInfo } from "@/types";
 import { formatPhone } from "@/lib/format/phone";
 import HintTooltip from "@/components/ui/HintTooltip";
-import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
+import { RRN_MAX_DIGITS, normalizeRrn, sanitizeRrnTyping } from "@/util/rrn-front";
 import type { FieldDef } from "@/components/company-info-defs";
 import { bizNoTyping } from "@/util/live-format";
 import { useLiveInput } from "./useLiveInput";
@@ -26,7 +27,7 @@ export const inputCls =
 export const readOnlyCls =
   "w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:outline-none";
 
-const RRN_CUT_MSG = "여기엔 앞 6자리만 저장해요. 뒷자리는 아래 계정 보관함에 넣어 주세요.";
+const RRN_CUT_MSG = "주민등록번호는 13자리까지만 적을 수 있어요.";
 const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
 
 /** 설명이 라벨과 다를 때만 (?) 와 sr-only 설명을 단다 — 그 설명 요소 id. */
@@ -69,12 +70,12 @@ interface Props {
 
 export default function CompanyInfoField({ def, value: v, onChange, id, className = "block" }: Props) {
   const [k, label, hint, , multi] = def;
-  // 주민등록번호 칸이 입력을 잘랐거나 비웠을 때 그 이유(말없이 사라지지 않게).
+  // 주민등록번호 칸이 13자리 초과분을 버렸거나 비웠을 때 그 이유(말없이 사라지지 않게).
   const [rrnNotice, setRrnNotice] = useState("");
   const isPhone = k === "연락처통신사";
   const isRrn = k === "주민등록번호";
   const hintId = hintIdOf(id, label, hint);
-  const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrnFront : null;
+  const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrn : null;
   const onBlur = normalizeOnBlur
     ? () => {
         const next = normalizeOnBlur(v);
@@ -87,9 +88,9 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
   const bizLive = useLiveInput((raw, caret, prev) => (isBizNo ? bizNoTyping(raw, caret, prev) : null), v, (next) => onChange(k, next));
   const onInput = (raw: string) => {
     if (!isRrn) return onChange(k, raw);
-    // 숫자가 6자리를 넘으면 뒷자리는 잘린다 — 잘린 이유를 칸 아래에 알린다.
-    setRrnNotice(raw.replace(/\D/g, "").length > 6 ? RRN_CUT_MSG : "");
-    onChange(k, sanitizeRrnFrontTyping(raw));
+    // 숫자가 13자리를 넘으면 넘는 숫자는 버린다 — 버린 이유를 칸 아래에 알린다.
+    setRrnNotice(raw.replace(/\D/g, "").length > RRN_MAX_DIGITS ? RRN_CUT_MSG : "");
+    onChange(k, sanitizeRrnTyping(raw));
   };
   return (
     <div className={className}>

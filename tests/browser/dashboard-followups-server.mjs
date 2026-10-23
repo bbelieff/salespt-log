@@ -105,6 +105,15 @@ function someData(t) {
     contract(22, "샘플 은하제작", shift(t, -40), { 수납2: slot({ 진행기관: "중진공", 진행상품: "운전자금", 메모: "보완 서류 확인" }) }),
     contract(23, "샘플 푸른유통", shift(t, -40), { 수납1: slot({ 진행기관: "기술보증기금", 진행상품: "보증", 메모: "심사 결과 확인" }) }),
   );
+  // PAYMENT_WAIT_PREVIEW=1 — 조건 대기(단기/장기관리)·업체 장기관리(자동·직접) 화면 확인용(2026-10-23).
+  const waitPreview = process.env.PAYMENT_WAIT_PREVIEW === "1";
+  const gana = contract(31, "샘플 가나산업", shift(t, -60), { 수납1: slot({ 진행기관: "신용보증기금", 진행상품: "운전자금", 진행률: "60%", 메모: "보증 심사" }),
+    수납2: slot({ 진행기관: "기술보증기금", 진행상품: "시설자금", 진행률: "조건 대기", 대기사유: "담보 설정 완료 기다림", 대기기간: "단기" }) });
+  if (waitPreview) contracts.push(gana,
+    contract(32, "샘플 다라식품", shift(t, -80), { 수납1: slot({ 진행기관: "중진공", 진행률: "중도중지" }), 수납2: slot({ 진행기관: "소진공", 진행률: "100%", 승인금액: 30_000_000, 수납액: 900_000, 수납일: shift(t, -20) }) }),
+    contract(33, "샘플 마바환경", shift(t, -70), { 수납1: slot({ 진행기관: "신용보증기금", 진행률: "40%" }), 관리상태: "장기관리", 관리상태진행건: [1] }),
+    contract(34, "샘플 사아물산", shift(t, -75), { 수납1: slot({ 진행기관: "기술보증기금", 진행률: "조건 대기", 대기사유: "공장 준공 후 재신청", 대기기간: "장기" }) }),
+  );
   const todos = [
     todo("todo-overdue", hanbit, { institutionRef: "신용보증기금", 제목: "서류 보완 요청", 예정일자: shift(t, -3), 예정시각: "10:00" }),
     todo("todo-today", dalbit, { institutionRef: "소진공", 제목: "현장실사 일정 확인", 예정일자: t, 예정시각: "15:00" }),
@@ -115,6 +124,7 @@ function someData(t) {
     todo("todo-renamed", { 계약일: shift(t, -50), 업체명: "샘플 옛이름상사" }, { 제목: "옛 이름으로 남은 할 일", 예정일자: shift(t, -4) }),
     todo("hist-goun", goun, { 기록종류: "history", institutionRef: "신용보증기금", 제목: "보완 서류 제출", 예정일자: shift(t, -9) }),
     todo("hist-iwol", iwol, { 기록종류: "history", institutionRef: "중진공", 제목: "상담", 예정일자: shift(t, -15) }),
+    ...(waitPreview ? [todo("todo-gana-wait", gana, { institutionRef: "기술보증기금", slot: 2, 제목: "담보 설정 진행 확인", 예정일자: shift(t, -2) }), todo("todo-gana", gana, { institutionRef: "신용보증기금", slot: 1, 제목: "보증 심사 결과 확인", 예정일자: shift(t, 1) })] : []),
   ];
   const meetings = [
     meeting("mtg-garam", "샘플 가람식당", shift(t, -2), { 미팅시간: "14:00", 장소: "가상 카페 본점" }),
@@ -276,6 +286,12 @@ const server = createServer(async (req, res) => {
     if(cookieOf(req,"quality") === "payment-slow")await sleep(8000);
   }
   if (path === "/api/contract-payment") return req.method === "GET" ? reply({ rows: [...data.contracts.map((c) => ({ ...c, 수임비: 0 })), ...fin.contracts] }) : reply({ ok: true, row: 3, synced: false });
+  // 계약 수정(진행률·업체 상태 등)은 서버 메모리에 남겨 새로고침 뒤에도 보이게 한다(POST /fixture/reset 으로 초기화).
+  if (req.method === "PATCH" && /^\/api\/contract-payment\/\d+$/.test(path)) {
+    const row = Number(path.split("/").pop()); const body = await readBody(req);
+    data.contracts = data.contracts.map((c) => (c.row === row ? { ...c, ...body, row } : c));
+    return reply({ ok: true, failures: [] });
+  }
   if (path.startsWith("/api/contract-payment/")) return reply({ ok: true, failures: [] });
   if (path === "/api/todos" && req.method === "GET") {
     const ref = url.searchParams.get("contractRef");

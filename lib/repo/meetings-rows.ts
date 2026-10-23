@@ -7,7 +7,7 @@
  * SSOT: docs/domains/sheet-structure.md §3
  */
 import { Meeting, MeetingState } from "@/types";
-import { normalizeRrnFront } from "@/util/rrn-front";
+import { normalizeRrn } from "@/util/rrn-front";
 
 // ── 시트 직렬값 ↔ ISO 변환 — USER_ENTERED 자동 변환분을 SERIAL_NUMBER 로 받아 ISO 복원.
 
@@ -273,8 +273,8 @@ export function meetingToRow(m: Meeting): (string | number | boolean)[] {
   // 확장2 20필드 AU~BN (AT gcal 맵은 빈 문자열 — split write 가 비접촉)
   COMPANY_FIELDS_EXT2.forEach((f, i) => {
     const raw = ci ? String(ci[f] ?? "").trim() : "";
-    // 스키마 우회 호출 방어 — 주민등록번호는 코덱에서도 앞 6자리만(뒷자리 시트 기록 불가).
-    const v = f === "주민등록번호" ? normalizeRrnFront(raw) : raw;
+    // 스키마 우회 호출 방어 — 주민등록번호는 코덱에서도 NNNNNN-NNNNNNN 최대 13자리(ADR-0035).
+    const v = f === "주민등록번호" ? normalizeRrn(raw) : raw;
     row[COMPANY_EXT2_START + i] = v ? `'${v}` : "";
   });
   // 확장3 15필드 BO~CC — 같은 apostrophe 규약("+12.5%"·"10,000,000" 이 숫자로 바뀌지 않게).

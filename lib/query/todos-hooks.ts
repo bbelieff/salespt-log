@@ -53,11 +53,14 @@ export function useTodosByContract(
 }
 
 /** 실무/수납 상단 업무현황용 전체 기록. */
-export function useAllTodos(): UseQueryResult<ListResponse> {
+/** background = 화면을 막지 않는 보조 조회(좌하단 「오늘 챙길 일」). 미지정 = 기존 그대로. */
+export function useAllTodos(opts: { enabled?: boolean; background?: boolean } = {}): UseQueryResult<ListResponse> {
   return useQuery({
     queryKey: ["todos", "all"],
     queryFn: () => fetchJSON<ListResponse>("/api/todos?all=1"),
     gcTime: 10 * 60_000,
+    ...(opts.enabled === undefined ? {} : { enabled: opts.enabled }),
+    ...(opts.background ? { meta: { background: true } } : {}),
   });
 }
 

@@ -20,6 +20,9 @@ import { useRouter } from "next/navigation";
 import { type ContractPayment } from "@/types";
 import { paymentFocusedSlot } from "@/util/payment-focus";
 import { activeWorkContracts } from "@/lib/analytics/payment-work-status";
+import { companyStage, isLongTermContract, stagePatch, type CompanyStage } from "@/lib/analytics/long-term";
+import LongTermToggle from "./_components/LongTermToggle";
+import PostDeleteNavModal, { type PostDeleteNavTarget } from "./_components/PostDeleteNavModal";
 import {
   usePatchContractPayment,
   useRemoveContractPayment,
@@ -58,11 +61,6 @@ interface ConfirmTarget {
   label: string;
 }
 
-interface PostDeleteNavTarget {
-  미팅날짜: string;
-  업체명: string;
-}
-
 export default function PaymentPage() {
   const router = useRouter();
   const isPc = usePcBreakpoint();
@@ -82,6 +80,8 @@ export default function PaymentPage() {
   const { listMode, query: companyQuery, workKey: selectedWorkKey, companyKey: selectedCompanyKey, row: selectedRow, focusId: focusRequestId, detailExpanded: mobileDetailExpanded } = selection;
   const setCompanyQuery = (value: string) => dispatch({ type: "query", value });
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
+  /** 「장기관리」 칩 — 켜면 장기관리 업체만, 끄면 장기관리 업체를 숨긴다(업체·기관 보기 공통). */
+  const [longTermOnly, setLongTermOnly] = useState(false);
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   /** 계약해지 모달 대상 (contract-termination). */
@@ -114,8 +114,11 @@ export default function PaymentPage() {
   const handleSave = async (next: ContractPayment, opts?: { quiet?: boolean }) => {
     if (!next.row) return;
     setPendingRow(next.row);
+    // 업체 상태(진행/장기관리)는 배너 토글만 바꾼다 — 상세 카드의 오래된 초안이 되돌리지 않게 최신 저장값을 씌운다.
+    const saved = list.data?.rows.find((r) => r.row === next.row);
+    const data = saved ? { ...next, 관리상태: saved.관리상태, 관리상태진행건: saved.관리상태진행건 } : next;
     try {
-      await patch.mutateAsync({ row: next.row, data: next });
+      await patch.mutateAsync({ row: next.row, data });
       if (!opts?.quiet) showToast("✓ 저장 완료");
     } catch (e) {
       if (!opts?.quiet) showToast(`저장하지 못했어요: ${(e as Error).message}`);
@@ -131,6 +134,19 @@ export default function PaymentPage() {
         row: cp.row,
         label: cp.업체명 || `시트 row ${cp.row}`,
       });
+    }
+  };
+
+  const handleStage = async (cp: ContractPayment, stage: CompanyStage) => {
+    if (!cp.row) return;
+    setPendingRow(cp.row);
+    try {
+      await patch.mutateAsync({ row: cp.row, data: { ...cp, ...stagePatch(cp, stage) } });
+      showToast(stage === "장기관리" ? (longTermOnly ? "장기관리로 옮겼어요" : "장기관리로 옮겼어요 · 「장기관리」 칩에서 볼 수 있어요") : (longTermOnly ? "진행으로 옮겼어요 · 칩을 끄면 볼 수 있어요" : "진행으로 옮겼어요"));
+    } catch (e) {
+      showToast(`옮기지 못했어요: ${(e as Error).message}`);
+    } finally {
+      setPendingRow(null);
     }
   };
 
@@ -192,13 +208,16 @@ export default function PaymentPage() {
     ),
   ).sort();
 
+  // 장기관리 칩 — 업체·기관 보기 모두 같은 범위(scopedRows). 성과 요약·진행기관 후보는 전체(rows) 그대로.
+  const longTermCount = rows.filter(isLongTermContract).length;
+  const scopedRows = rows.filter((cp) => isLongTermContract(cp) === longTermOnly);
   // 업체 검색 필터 — 합계·진행기관 후보는 전체(rows) 기준 유지(표시만 필터).
   const normq = (x: string) => x.toLowerCase().replace(/\s+/g, "");
   const filteredRows = companyQuery.trim()
-    ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
-    : rows;
+    ? scopedRows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
+    : scopedRows;
   const today = activityTodayISO();
-  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? [], today);
+  const institutionItems = buildInstitutionWorkItems(scopedRows, courseStartISO, allTodos.data?.todos ?? [], today);
   const activityState = allTodos.isError ? "error" : allTodos.data ? "ready" : "loading";
   const unsortedCompanyItems = buildCompanyWorkItems(filteredRows, institutionItems, today);
   const companyItems = sortKey === "dday" && activityState !== "ready" ? unsortedCompanyItems
@@ -254,6 +273,11 @@ export default function PaymentPage() {
     dispatch({ type: "switchMode", mode, workKey: selectedCompany?.work.key ?? null, companyKey: selectedWork?.contractKey ?? null, row: selectedWork?.row ?? null });
   });
   const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
+  const emptyListText = longTermOnly && !companyQuery.trim() ? "장기관리 업체가 없어요. 진행건이 모두 수납완료·중도중지가 되면 저절로 옮겨져요."
+    : "검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.";
+  const selectedLong = selectedCp ? companyStage(selectedCp) === "장기관리" : false;
+  const stageToggle = (cp: ContractPayment) => <LongTermToggle value={companyStage(cp)} pending={pendingRow === cp.row} onChange={(next) => void handleStage(cp, next)} />;
+  const mobileStageBar = (cp: ContractPayment) => <div className={`flex items-center justify-between gap-2 border-b px-2.5 py-1.5 ${companyStage(cp) === "장기관리" ? "border-amber-200 bg-amber-50" : "border-blue-100 bg-blue-50/60"}`}><span className="text-px-11 font-semibold text-slate-600">이 업체 상태</span>{stageToggle(cp)}</div>;
 
   const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { clearPaymentFocus(); dispatch({ type: "created", row }); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
@@ -295,7 +319,8 @@ export default function PaymentPage() {
               unit={listMode === "company" ? "개 항목" : "건 진행"}
               matchUnit={listMode === "company" ? "개 항목" : "건"}
             />}
-            {listMode === "company" && <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} />}
+            <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} showSort={listMode === "company"}
+              longTermCount={longTermCount} longTermOnly={longTermOnly} onLongTermToggle={() => guardedNav(() => { clearPaymentFocus(); setLongTermOnly((v) => !v); })} />
           </div>
         )}
 
@@ -319,7 +344,7 @@ export default function PaymentPage() {
               <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
               {standaloneAdd}
               {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
-                <p className="p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
+                <p className="p-5 text-center text-xs text-slate-400">{emptyListText}</p>
               ) : listMode === "company" ? <ContractListTable
                 items={companyItems} activityState={activityState}
                 selectedKey={selectedCompany?.key ?? null} onSelect={selectCompany}
@@ -334,9 +359,9 @@ export default function PaymentPage() {
             </button>
             {selectedCp && (
               <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
-                <div className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
-                  <div className="min-w-0"><h2 className={`truncate text-base font-black ${listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{companyDetailLabel}</p>}</div>
-                  <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button></div>
+                <div data-payment-detail-banner={selectedLong ? "long-term" : "active"} className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${selectedLong ? "border-amber-200 from-amber-100/95 via-amber-50/95 to-white/95" : listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
+                  <div className="min-w-0"><h2 className={`truncate text-base font-black ${selectedLong ? "text-amber-950" : listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{selectedLong ? <p className="truncate text-px-11 text-amber-800">장기관리 · {listMode === "institution" && selectedWork ? `${selectedWork.institution || "기관 미입력"} · 진행 ${selectedWork.slot}` : companyDetailLabel}</p> : listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{companyDetailLabel}</p>}</div>
+                  <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>{stageToggle(selectedCp)}</div>
                 </div>
                 {focusPayment?.row === selectedCp.row && focusNotice}
                 <ContractRow
@@ -369,12 +394,13 @@ export default function PaymentPage() {
           <div>
             <div className="mb-2">{listModeTabs}</div>{standaloneAdd}
             {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.</p>
+              <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">{emptyListText}</p>
             ) : listMode === "institution" ? <InstitutionWorkList
               groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
               activityState={activityState}
               detailExpanded={mobileDetailExpanded} onToggleDetail={() => dispatch({ type: "toggleDetail" })}
               renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
+                {mobileStageBar(selectedCp)}
                 <ContractRow
                   key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
@@ -391,6 +417,7 @@ export default function PaymentPage() {
               onToggleDetail={() => dispatch({ type: "toggleDetail" })}
               highlight={companyQuery} courseStartISO={courseStartISO}
               renderDetail={(item) => selectedCompanyKey === item.key ? <>
+                {mobileStageBar(item.cp)}
                 {focusPayment?.row === item.cp.row && focusNotice}
                 <ContractRow key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
                   pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
@@ -437,48 +464,8 @@ export default function PaymentPage() {
         />
       )}
 
-      {/* 삭제 후 바로가기 팝업 — 2026-05-17 [3] */}
-      {postDeleteNav && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setPostDeleteNav(null)}
-        >
-          <div
-            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-1 text-base font-semibold text-gray-900">
-              지웠어요 · 미팅도 되돌렸어요
-            </h3>
-            <p className="mb-4 text-sm leading-relaxed text-gray-600">
-              <b>{postDeleteNav.업체명}</b> 미팅이
-              <br />
-              예약 상태로 돌아갔어요 ({postDeleteNav.미팅날짜}).
-              <br />
-              그 미팅 카드로 이동할까요?
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPostDeleteNav(null)}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                현재 화면 유지
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPostDeleteNav(null);
-                  router.push("/schedule");
-                }}
-                className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600"
-              >
-                📅 일정·계약으로 이동
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 삭제 후 바로가기 팝업 — 2026-05-17 [3] (PostDeleteNavModal 로 분리, 500줄 캡) */}
+      {postDeleteNav && <PostDeleteNavModal target={postDeleteNav} onClose={() => setPostDeleteNav(null)} onGo={() => { setPostDeleteNav(null); router.push("/schedule"); }} />}
     </>
   );
 }

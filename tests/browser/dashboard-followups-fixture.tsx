@@ -16,6 +16,7 @@ import DbSheetPage from "../../app/(app)/db-sheet/page";
 import WeeklyGoalSummary from "../../components/weekly-goals/WeeklyGoalSummary";
 import DesktopNav from "../../components/desktop/DesktopNav";
 import TabBar from "../../components/TabBar";
+import FollowUpsLauncher from "../../components/dashboard/FollowUpsLauncher";
 import DirtyProvider from "../../components/DirtyGuard";
 import { LoadingProvider } from "../../components/ui/LoadingProvider";
 
@@ -115,6 +116,7 @@ function Fixture() {
             <div className="min-w-0 pc:flex-1"><main className="app-shell-main"><Page key={key} /></main></div>
             <TabBar />
           </div>
+          <FollowUpsLauncher />
         </DirtyProvider>
       </LoadingProvider>
     </QueryClientProvider>

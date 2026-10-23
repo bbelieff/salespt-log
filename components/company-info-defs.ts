@@ -85,7 +85,7 @@ export const LEASE_PARTS = {
   area: ["면적", "㎡", "빌린 면적을 ㎡ 숫자로. 예: 33 (1평 = 3.3058㎡)"],
 } as const;
 
-export const RRN_HINT = "앞 6자리(생년월일)만 저장해요. 뒷자리는 비워 두고 저장하지 않아요.";
+export const RRN_HINT = "13자리를 적어 주세요. 앞 6자리 뒤에 하이픈(-)이 자동으로 들어가요.";
 /** 주민등록번호가 비어 생년월일에서 보여 주는 값일 때의 설명. */
 export const RRN_DERIVED_HINT = `생년월일에서 자동으로 채운 값이에요. 무엇이든 고치면 함께 저장돼요. 지우면 생년월일도 함께 지워져요. ${RRN_HINT}`;
 

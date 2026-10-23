@@ -18,6 +18,10 @@ vi.mock("@/repo/db/mirror", () => ({
   mirrorSheetRow: (...a: unknown[]) => mirrorSheetRow(...(a as [])),
   mirrorSheetRowAwaitable: (...a: unknown[]) => mirrorSheetRowAwaitable(...(a as [])),
 }));
+const queueDbTabRowSync = vi.fn();
+vi.mock("@/repo/db-tab-sheet-sync", () => ({
+  queueDbTabRowSync: (...a: unknown[]) => queueDbTabRowSync(...(a as [])),
+}));
 vi.mock("@/repo/db/row-key", () => ({
   resolveWriteKey: (...a: Parameters<typeof resolveWriteKey>) => resolveWriteKey(...a),
 }));
@@ -27,6 +31,7 @@ import { writeProductionCountCell } from "@/repo/db-production-cell";
 beforeEach(() => {
   valuesUpdate.mockReset().mockResolvedValue({});
   mirrorSheetRow.mockReset();
+  queueDbTabRowSync.mockReset();
   mirrorSheetRowAwaitable.mockReset().mockResolvedValue(true);
   resolveWriteKey.mockReset().mockImplementation(
     async (_sid: string, section: string, row: number) => `${section}:resolved-${row}`,
@@ -63,5 +68,27 @@ describe("writeProductionCountCell — syncDb 게이트(BBE-61)", () => {
       spreadsheetId: "sheet-1", tab: "db", rowKey: "직접생산:resolved-7", payload: { 생산개수: 3 },
     });
     expect(mirrorSheetRowAwaitable).not.toHaveBeenCalled();
+  });
+
+  it("syncDb+sheetViaQueue — DB 반영 후 시트 셀은 요청 경로에서 안 씀(큐로 수렴)", async () => {
+    await writeProductionCountCell("sheet-1", 5, 12, { syncDb: true, sheetViaQueue: true });
+    expect(mirrorSheetRowAwaitable).toHaveBeenCalledWith({
+      spreadsheetId: "sheet-1", tab: "db", rowKey: "직접생산:resolved-5", payload: { 생산개수: 12 },
+    });
+    expect(valuesUpdate).not.toHaveBeenCalled();
+    expect(queueDbTabRowSync).toHaveBeenCalledWith("sheet-1", "직접생산", 5);
+  });
+
+  it("syncDb+sheetViaQueue 인데 DB 반영 실패 — 시트 셀 직접 쓰기로 폴백(값 유실 방지), 큐 미사용", async () => {
+    mirrorSheetRowAwaitable.mockResolvedValue(false);
+    await writeProductionCountCell("sheet-1", 5, 12, { syncDb: true, sheetViaQueue: true });
+    expect(valuesUpdate).toHaveBeenCalledTimes(1);
+    expect(queueDbTabRowSync).not.toHaveBeenCalled();
+  });
+
+  it("sheetViaQueue 단독(syncDb 없음) — 무시, 기존 비파일럿 경로", async () => {
+    await writeProductionCountCell("sheet-1", 5, 12, { sheetViaQueue: true });
+    expect(valuesUpdate).toHaveBeenCalledTimes(1);
+    expect(queueDbTabRowSync).not.toHaveBeenCalled();
   });
 });

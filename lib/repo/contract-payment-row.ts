@@ -3,7 +3,7 @@
  * 500줄 캡, BBE-246 이 cpToFullRow 추가로 캡 초과시켜 R3-3 잔여 분리 선례(-link/-sync/-termination)
  * 와 같은 이유로 뗐다). googleapis 비의존 — 시트 셀 배열 ↔ 타입 변환만 담당.
  */
-import { ContractPayment, HALTED_PROGRESS, type PaymentSlot, Progress } from "@/types";
+import { ContractPayment, HALTED_PROGRESS, type PaymentSlot, Progress, WAITING_PROGRESS } from "@/types";
 
 // ── 시트 직렬값 ↔ 표시값 변환 ──────────────────────────────────
 export function serialToISODate(v: unknown): string {
@@ -84,10 +84,10 @@ function toProgress(v: unknown): Progress {
   return "";
 }
 
-/** 시트 미러용 진행률 — 시트 dropdown(0~100%)에 없는 「중도중지」는 빈 칸으로 쓴다.
+/** 시트 미러용 진행률 — 시트 dropdown(0~100%)에 없는 「중도중지」·「조건 대기」는 빈 칸으로 쓴다.
  *  정본은 DB 라 값은 잃지 않는다. 시트가 입력을 거부해 미러 전체가 막히는 것을 막는다. */
 function sheetProgress(p: Progress): string {
-  return p === HALTED_PROGRESS ? "" : p;
+  return p === HALTED_PROGRESS || p === WAITING_PROGRESS ? "" : p;
 }
 
 // ── A~AD 한 행을 ContractPayment 객체로 ───────────────────────

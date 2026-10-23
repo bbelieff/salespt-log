@@ -100,14 +100,13 @@ describe("CompanyInfoEditor 확장2 칸", () => {
     }
   });
 
-  it("주민등록번호 — 전체 번호를 붙여넣어도 앞 6자리만 저장 대상이 된다", () => {
+  it("주민등록번호 — 13자리 전체가 저장 대상이 된다(ADR-0035, 합성 값)", () => {
     render();
     const input = groupEl("대표자")!.querySelector<HTMLInputElement>('input[id$="-주민등록번호"]')!;
     expect(input).not.toBeNull();
-    typeInto(input, "800101-1234567");
+    typeInto(input, "8001010234567");
     const staged = stage.mock.calls.at(-1)![0] as CompanyInfo;
-    expect(staged.주민등록번호).toBe("800101-");
-    expect(JSON.stringify(stage.mock.calls)).not.toContain("1234567");
+    expect(staged.주민등록번호).toBe("800101-0234567");
   });
 
   it("주민등록번호 — blur 에서 6자리 숫자를 NNNNNN- 로 마무리", () => {
@@ -122,12 +121,12 @@ describe("CompanyInfoEditor 확장2 칸", () => {
     expect(staged.주민등록번호).toBe("800101-");
   });
 
-  it("주민등록번호 — 뒷자리가 잘리면 칸 아래에 이유를 보여준다", () => {
+  it("주민등록번호 — 13자리를 넘으면 칸 아래에 이유를 보여준다", () => {
     render();
     const input = groupEl("대표자")!.querySelector<HTMLInputElement>('input[id$="-주민등록번호"]')!;
-    typeInto(input, "8001011");
+    typeInto(input, "80010102345678");
     const notice = groupEl("대표자")!.querySelector('[role="status"]');
-    expect(notice?.textContent).toContain("앞 6자리만 저장해요");
+    expect(notice?.textContent).toContain("13자리까지만");
   });
 
   it("주민등록번호 — 6자리 미만으로 blur 하면 비우면서 이유를 알린다", () => {
