@@ -42,10 +42,20 @@ export function visibleSlotCount(cp: Pick<ContractPayment, "수납1" | "수납2"
   return 1;
 }
 
-/** 보이는 칸들의 진행률 평균(반올림, 칸이 없으면 0). */
+/** 칸이 있고 전부 중도중지인가 — 화면은 퍼센트 대신 「중도중지」를 보여 준다. */
+export function allHalted(slots: readonly PaymentSlot[]): boolean {
+  return slots.length > 0 && slots.every(isHaltedSlot);
+}
+
+/**
+ * 보이는 칸들의 진행률 평균(반올림, 칸이 없으면 0).
+ * 중도중지 칸은 평균에서 뺀다(끝난 일 — 2026-10-23 belie). 전부 중도중지면 100 = 끝남.
+ */
 export function averageProgress(slots: readonly PaymentSlot[]): number {
   if (!slots.length) return 0;
-  return Math.round(slots.reduce((sum, slot) => sum + progressPct(slot.진행률), 0) / slots.length);
+  const live = slots.filter((slot) => !isHaltedSlot(slot));
+  if (!live.length) return 100;
+  return Math.round(live.reduce((sum, slot) => sum + progressPct(slot.진행률), 0) / live.length);
 }
 
 /** 계약 진행도(%) — 보이는 칸 진행률 평균. 정렬·표시 공용. */

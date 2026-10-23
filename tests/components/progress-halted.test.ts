@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { PaymentSlot, Progress } from "@/types";
-import { isHaltedSlot, progressPct, slotHasData } from "@/lib/analytics/contract-slots";
+import { allHalted, averageProgress, contractProgress, isContractComplete, isHaltedSlot, progressPct, slotHasData } from "@/lib/analytics/contract-slots";
+import { contractAccentFamily } from "@/app/(app)/payment/_lib/contractAccent";
 import { buildWorkStatusItems, isSlotClosed } from "@/lib/analytics/payment-work-status";
 import { buildStalledWork, buildTodoFollowUps } from "@/lib/analytics/dashboard-follow-ups";
 import { cpToRow, rowToCP } from "@/repo/contract-payment-row";
@@ -59,5 +60,23 @@ describe("진행률 중도중지", () => {
     const back = [...row];
     back[13] = "중도중지";
     expect(rowToCP(back, 3)?.수납1.진행률).toBe("중도중지");
+  });
+
+  it("평균 진행률·완료 판정: 중도중지 칸은 빼고, 전부 중도중지면 끝난 것으로", () => {
+    const done = slot({ 진행기관: "기관A", 진행률: "100%", 수납액: 1 });
+    const halted = slot({ 진행기관: "기관B", 진행률: "중도중지" });
+    expect(averageProgress([done, halted])).toBe(100);
+    expect(averageProgress([slot({ 진행률: "40%" }), halted])).toBe(40);
+    expect(averageProgress([halted, halted])).toBe(100);
+    expect(averageProgress([])).toBe(0);
+    expect(allHalted([halted])).toBe(true);
+    expect(allHalted([halted, done])).toBe(false);
+    expect(allHalted([])).toBe(false);
+    expect(contractProgress(contract({ 수납1: done, 수납2: halted }))).toBe(100);
+    expect(isContractComplete(7, 7, averageProgress([done, halted]))).toBe(true);
+    // 서류 체크 전부 + 남은 진행건이 끝났으면 초록(완료).
+    const docs = { 공동인증서: true, 임대차계약서: true, 신분증: true, 드라이브업로드: true, 사업계획서초안발송: true, 컨설팅5종서류발송: true, 플러그이관: true };
+    expect(contractAccentFamily(contract({ ...docs, 수납1: done, 수납2: halted }))).toBe("green");
+    expect(contractAccentFamily(contract({ ...docs, 수납1: slot({ 진행기관: "기관A", 진행률: "60%" }), 수납2: halted }))).not.toBe("green");
   });
 });

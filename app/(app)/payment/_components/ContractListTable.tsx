@@ -4,8 +4,7 @@
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { isTerminatedContract } from "@/types";
 import { formatMoney } from "@/lib/format/money";
-import { progressPct } from "../_lib/payment-progress";
-import { isHaltedSlot } from "@/lib/analytics/contract-slots";
+import { allHalted, averageProgress, isHaltedSlot } from "@/lib/analytics/contract-slots";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
@@ -41,8 +40,10 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
         const { cp, work, works, hasProgress } = item;
         const selected = item.key === selectedKey;
         // 업체당 한 장 — 진행건이 여럿이면 줄마다 보여 주고, 수수료는 합계·진행률은 평균(belie 2026-09-29).
-        const pcts = works.map((w) => progressPct(cp[`수납${w.slot}`].진행률));
-        const pct = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
+        // 중도중지 진행건은 평균에서 뺀다 — 전부 중도중지면 퍼센트 대신 「중도중지」(2026-10-23 belie).
+        const workSlots = works.map((w) => cp[`수납${w.slot}`]);
+        const allStopped = allHalted(workSlots);
+        const pct = allStopped ? 0 : averageProgress(workSlots);
         const fee = works.reduce((sum, w) => sum + cp[`수납${w.slot}`].수납액, 0);
         // 해지만 흐리게 — 이월(아레나 시작 전) 계약도 또렷하게(2026-10-08 belie).
         const muted = isTerminatedContract(cp);
@@ -75,7 +76,7 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
               <span className="mt-0.5 grid grid-cols-[1fr_auto] gap-x-2 pl-7 text-px-11 tabular-nums">
                 <span className="truncate text-slate-500">{fmtDate(cp.계약일)} · 수임비 ₩{formatMoney(cp.수임비)}</span>
                 <span className="font-semibold text-emerald-600">수수료 ₩{formatMoney(fee)}</span>
-                <span className="col-span-2 mt-1 flex items-center gap-2 text-blue-600"><span>진행 {pct}%{works.length > 1 ? ` (평균 · ${works.length}건)` : ""}</span><span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200"><span className="block h-full rounded-full bg-gradient-to-r from-sky-400 to-blue-600" style={{ width: `${pct}%` }}/></span></span>
+                <span className="col-span-2 mt-1 flex items-center gap-2 text-blue-600"><span>{allStopped ? "진행 중도중지" : `진행 ${pct}%${works.length > 1 ? ` (평균 · ${works.length}건)` : ""}`}</span><span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200"><span className="block h-full rounded-full bg-gradient-to-r from-sky-400 to-blue-600" style={{ width: `${pct}%` }}/></span></span>
               </span>
             </button>
             {renderDetail && selected && <div id={`payment-company-detail-${item.key}`} hidden={!detailExpanded} className="rounded-b-xl border border-t-0 border-blue-400 bg-white">{renderDetail(item)}</div>}

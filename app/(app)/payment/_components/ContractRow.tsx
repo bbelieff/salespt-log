@@ -24,7 +24,7 @@ import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
-import { averageProgress, isContractComplete, isHaltedSlot, slotTotals } from "@/lib/analytics/contract-slots";
+import { allHalted, averageProgress, isContractComplete, isHaltedSlot, slotTotals } from "@/lib/analytics/contract-slots";
 import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -249,6 +249,7 @@ export default function ContractRow({
     [draft, visiblePayments],
   );
   const avgPct = useMemo(() => averageProgress(visibleSlots), [visibleSlots]);
+  const halted = useMemo(() => allHalted(visibleSlots), [visibleSlots]);
 
   const ongoingAgencies = useMemo(() => {
     return visibleSlots
@@ -371,9 +372,9 @@ export default function ContractRow({
             📋 {docsDone}/{TOTAL_CHECKBOXES}
           </span>
           <span
-            className={`rounded px-1.5 py-0.5 text-xs font-medium ${payBadgeClass(avgPct)}`}
+            className={`rounded px-1.5 py-0.5 text-xs font-medium ${halted ? "bg-slate-100 text-slate-600" : payBadgeClass(avgPct)}`}
           >
-            💰 {avgPct === 0 ? "—" : `${avgPct}%`}
+            💰 {halted ? "중도중지" : avgPct === 0 ? "—" : `${avgPct}%`}
           </span>
         </div>
         {!forceOpen && (
