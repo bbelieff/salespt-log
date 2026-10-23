@@ -1,10 +1,11 @@
 /** Server-only DB sheet ledger. Never falls back to Sheets; migration 0008 must already exist. */
 import { formatMobilePhone } from "@/util/db-sheet-identity";
+import { addDays, fmtISO, parseISO, todayKST } from "@/util/week";
 import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, isQualifiedDbSheetContact, recordsDbSheetFirstContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -117,6 +118,8 @@ export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
    data={...raw};delete data.inflowStatus;
   }
   const resolved=effectiveMeeting(meetings,data.meetingId);
+  // 현재상태는 저장값을 고치지 않고 읽을 때 컨택결과 기준으로 다시 계산한다(예전 행의 「미컨택」 표시 보정).
+  if(!data.meetingId)data={...data,stage:dbSheetContactStage({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first})};
   return projectMeeting({...data,followUp:data.followUp??{generation:0,completedGeneration:null,lastContactDate:lastDates.get(data.id)??""}},resolved.meeting,resolved.lineage);
  });
 }
@@ -129,7 +132,11 @@ export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:
  await c.query(`insert into db_sheet_contacts(spreadsheet_id,lead_id,contact_date,qualified,result,note) values($1,$2,$3,$4,$5,$6)
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
- const hasQualifiedContact=!!dates.rows[0]?.first;const first=old.firstManual?old.first:old.first||(recordsDbSheetFirstContact(event.result)?event.date:"");const lead:DbSheetLead={...old,next:!old.next||event.date>=old.next?"":old.next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:hasQualifiedContact?"상담 중":"미컨택",contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:old.followUp?.generation??0,completedGeneration:!old.next||event.date>=old.next?old.followUp?.generation??0:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
+ const hasQualifiedContact=!!dates.rows[0]?.first;const first=nextDbSheetFirstContact(old.first,event.result,event.date);
+ // 이 컨택이 잡혀 있던 다음 연락일을 소비하면 비운다. 부재는 빈 다음 연락일을 내일(KST)로 새로 잡는다(새 예약 세대).
+ const consumed=!old.next||event.date>=old.next,generation=old.followUp?.generation??0,kept=consumed?"":old.next;
+ const next=autoDbSheetNextContact(event.result,kept,fmtISO(addDays(parseISO(todayKST()),1))),scheduled=next!==kept;
+ const lead:DbSheetLead={...old,next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:dbSheetContactStage({stage:"",result:event.result,hasQualifiedContact}),contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:generation+(scheduled?1:0),completedGeneration:consumed?generation:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
  await persist(c,ctx,lead);return {lead,impact:contributionImpact(old,lead),changedSales:await applyDeltas(c,ctx,[...before,...await contributions(c,ctx,lead,1)])};
  });
 }
@@ -139,7 +146,7 @@ export async function setDbSheetFirstDate(ctx:DbSheetContext,leadId:string,first
  return transaction(ctx,async c=>{
   const stored=await expected(c,ctx,leadId,expectedRevision);
   const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;
-  const lead:DbSheetLead={...old,first,firstManual:true,hasQualifiedContact:old.hasQualifiedContact??!!old.first,revision:old.revision+1};
+  const lead:DbSheetLead={...old,first,firstManual:first!=="",hasQualifiedContact:old.hasQualifiedContact??!!old.first,revision:old.revision+1};
   await persist(c,ctx,lead);return {lead,changedSales:[]};
  });
 }
@@ -162,7 +169,7 @@ export async function registerDbSheetMeeting(ctx:DbSheetContext,leadId:string,ra
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=true,result='컨택진행'`,[ctx.spreadsheetId,leadId,meeting.예약일,old.contact.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
  await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'meetings',$4,$5::jsonb,true)`,[ctx.cohort,ctx.email,ctx.spreadsheetId,meeting.id,JSON.stringify(meeting)]);
- const lead:DbSheetLead={...old,revision:old.revision+1,result:"컨택진행",first:old.firstManual?old.first:old.first||dates.rows[0].first,hasQualifiedContact:true,stage:"미팅예약",meetingId:meeting.id,contact:{...old.contact,registered:true,date:meeting.예약일,ci:meeting.업체정보??old.contact.ci,companyName:meeting.업체명,reservationNote:meeting.예약비고,meetingDate:meeting.미팅날짜,time:meeting.미팅시간,place:meeting.장소}};
+ const lead:DbSheetLead={...old,revision:old.revision+1,result:"컨택진행",first:old.first||dates.rows[0].first,hasQualifiedContact:true,stage:"미팅예약",meetingId:meeting.id,contact:{...old.contact,registered:true,date:meeting.예약일,ci:meeting.업체정보??old.contact.ci,companyName:meeting.업체명,reservationNote:meeting.예약비고,meetingDate:meeting.미팅날짜,time:meeting.미팅시간,place:meeting.장소}};
  await persist(c,ctx,lead);
  const count=(await lockedMeetingCounts(c,ctx.spreadsheetId,true)).get(meeting.예약일+":"+old.channel)??0;
  await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'sales',$4,$5::jsonb,true)

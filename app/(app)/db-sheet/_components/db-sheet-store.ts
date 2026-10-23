@@ -143,7 +143,11 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
     });
   }
   function edit(id: string, key: Key, value: string) {
-    if (key === "first") { void firstDate(id, value).catch(() => {}); return; }
+    if (key === "first") {
+      // 칸을 눌렀다 떼기만 한 경우(값 그대로)는 저장하지 않는다 — 빈 「직접 입력」이 자동 기록을 막던 원인.
+      if ((local.find((row) => row.id === id)?.first ?? "") === value) return;
+      void firstDate(id, value).catch(() => {}); return;
+    }
     if (key === "result") { void record(id, value, deps.today()).catch(() => {}); return; }
     if (key === "next") {
       if (local.find((row) => row.id === id)?.next === value) return;

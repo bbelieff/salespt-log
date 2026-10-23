@@ -784,10 +784,16 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - 공급처 성과의 상담은 hasQualifiedContact로 판정한다. 해당 필드가 없는 기존 버전은 당시 qualified만 기록하던 first를 호환 기준으로 사용한다. 운영 백필·스키마 migration 없음.
 
 
+### DB관리시트 컨택결과 규칙 (2026-10-23, `lib/types/db-sheet.ts`)
+- `dbSheetResultLabel`: 저장값은 그대로, 화면 이름만 바꾼다 — 컨택진행→「미팅예약」, 상담 후 거절→「컨택 후 거절」, AS예정→「AS신청」. 선택지·필터·모바일 카드·대시보드 할 일 문구가 함께 쓴다.
+- `dbSheetContactStage` + `DB_SHEET_CONTACT_STAGES`(미컨택·DB컨택중·상담 중·진행종료): 미팅 없는 행의 현재상태. AS신청→진행종료, 실적 상담 이력→상담 중, 단순거절·재통화→DB컨택중, 그 외 미컨택. 미팅·계약 단계는 그대로. 저장 때 계산하고, 목록 읽기 때도 다시 계산해 예전 행을 고친다(저장값 일괄 수정 없음).
+- `autoDbSheetNextContact`: 부재 기록 시 다음 연락일이 비어 있으면 내일(KST)로 잡고 새 예약 세대(generation+1)로 남긴다. 이미 있는 날짜는 바꾸지 않는다.
+
 ### DB관리시트 편의 입력 (2026-10-17)
 - DbSheetResult에 `AS예정`: qualified 상담집계 제외, 최초상담일 자동생성 제외. 과거 qualified 상담 기여는 보존.
 - DbSheetLeadInput의 optional `asReceived`(boolean), `asNote`(최대20,000자): db_sheet_leads JSONB에 저장. 구버전 클라이언트에서 생략하면 기존값 유지.
 - DbSheetLead의 서버 소유 `firstManual`: 명시 최초상담일 편집/비우기 뒤 자동 날짜 덮어쓰기 방지. 클라이언트 save input에서는 받지 않음.
+  - 2026-10-23 개정: 날짜를 **넣은** 직접 입력만 잠근다. 빈 값(비우기·칸을 눌렀다 떼기)은 `firstManual=false` 로 저장하고, 옛 `firstManual=true·first=""` 도 자동으로 본다(`nextDbSheetFirstContact`).
 - `first-date` 명령: id/revision/first(날짜 또는 빈값), 실제 상담 이력/집계는 변경하지 않음.
 - `inflow-preview`, `inflow`: id/revision/inflow(boolean). 기존 tenant/revision·트랜잭션 잠금 아래 해당 날짜·채널의 실제 DB 기여 수와 `_dbSheetInflow`를 exact 대조하고, 전후 전체/DB 수의 안전 정수·비음수 및 직접생산 합계 일치를 확인한 뒤 해당 한 건만 증감한다. 수동분(전체−DB 기여)·기존 상담/미팅 기여를 보존하며, 양수인데 생산값이 없거나 기여/합계가 모순되면 preview/저장 모두 거부한다(없는 0 baseline은 허용). 이력 부재만으로 정상 legacy를 잠그지 않으며, 연결 복구/고객 백필/집계 조정은 수행하지 않는다. 기존 `recording`은 사후 활동반영 정책을 유지하고 삭제 안전 가드는 별도 보존한다.
 - 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.

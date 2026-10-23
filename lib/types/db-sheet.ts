@@ -12,6 +12,30 @@ export const DB_SHEET_QUALIFIED_RESULTS = ["컨택진행", "상담 후 거절"] 
 export function isQualifiedDbSheetContact(result: string): boolean { return (DB_SHEET_QUALIFIED_RESULTS as readonly string[]).includes(result); }
 /** 표시용 최초상담일: 실적 집계(컨택진행·상담 후 거절)와 별도 기준. */
 export function recordsDbSheetFirstContact(result: string): boolean { return ["단순거절", "재통화", "컨택진행", "상담 후 거절"].includes(result); }
+/**
+ * 컨택 기록 뒤 최초상담일. 이미 있는 날짜는 보존하고, 비어 있으면 네 결과에서 그 컨택일로 채운다.
+ * 빈 「직접 입력」(firstManual=true·first="")은 잠금으로 보지 않는다 — 표 칸을 눌렀다 떼기만 해도
+ * 빈 값이 직접 입력으로 저장돼 자동 기록이 영영 멈추던 문제(2026-10-23)를 막는다.
+ */
+export function nextDbSheetFirstContact(first: string, result: string, date: string): string { return first || (recordsDbSheetFirstContact(result) ? date : ""); }
+/** 화면에 보이는 컨택결과 이름 — 저장값(enum)은 그대로 두고 이름만 바꾼다(2026-10-23 belie). */
+const DB_SHEET_RESULT_LABELS: Readonly<Record<string, string>> = { 컨택진행: "미팅예약", "상담 후 거절": "컨택 후 거절", AS예정: "AS신청" };
+export function dbSheetResultLabel(result: string): string { return DB_SHEET_RESULT_LABELS[result] ?? result; }
+/** 현재상태 중 컨택결과로 자동 계산하는 값. 미팅·계약 단계는 미팅/계약 기록이 정한다. */
+export const DB_SHEET_CONTACT_STAGES = ["미컨택", "DB컨택중", "상담 중", "진행종료"] as const;
+/**
+ * 미팅이 없는 DB 의 현재상태: AS신청 → 진행종료 · 실적 상담 이력 → 상담 중 ·
+ * 단순거절/재통화 → DB컨택중 · 그 외 미컨택. 미팅 연결 행이나 다른 단계 이름은 그대로 둔다.
+ */
+export function dbSheetContactStage(lead: { meetingId?: string | null; stage: string; result: string; hasQualifiedContact?: boolean }): string {
+  if (lead.meetingId || (lead.stage && !(DB_SHEET_CONTACT_STAGES as readonly string[]).includes(lead.stage))) return lead.stage;
+  if (lead.result === "AS예정") return "진행종료";
+  if (lead.hasQualifiedContact) return "상담 중";
+  if (lead.result === "단순거절" || lead.result === "재통화") return "DB컨택중";
+  return "미컨택";
+}
+/** 부재는 다음 연락일이 비어 있으면 내일로 잡는다. 이미 정한 날짜는 바꾸지 않는다. */
+export function autoDbSheetNextContact(result: string, next: string, tomorrow: string): string { return result === "부재" && !next ? tomorrow : next; }
 /** 다음 연락일을 사용하는 컨택 결과: 상세 입력과 대시보드가 공유한다. */
 const DB_SHEET_FOLLOW_UP_RESULTS: ReadonlySet<string> = new Set(["부재", "단순거절", "상담 후 거절", "재통화", "컨택진행"]);
 export function isDbSheetFollowUpResult(result: string): boolean { return DB_SHEET_FOLLOW_UP_RESULTS.has(result); }

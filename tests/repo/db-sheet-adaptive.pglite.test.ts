@@ -43,7 +43,7 @@ it("AS after qualified consultation preserves historical daily contributions",as
  for(const date of ["2027-03-03","2027-03-04"]){lead=(await saveDbSheetContact(ctx,lead.id,{date,result:"AS예정",note:"교환"},lead.revision)).lead;expect(await sales()).toBe(before);}
  expect(lead.hasQualifiedContact).toBe(true);expect(lead.first).toBe("2027-03-03");
 });
-it("first date can be edited/cleared without shifting totals; manual clear survives save/contact/meeting",async()=>{
+it("first date can be edited/cleared without shifting totals; a cleared date returns to automatic recording",async()=>{
  let lead=(await saveDbSheetLead(ctx,input(),null)).lead;
  lead=(await saveDbSheetContact(ctx,lead.id,{date:"2027-03-05",result:"단순거절",note:""},lead.revision)).lead;
  const before=await sales();
@@ -54,12 +54,17 @@ it("first date can be edited/cleared without shifting totals; manual clear survi
  await expect(setDbSheetFirstDate(ctx,lead.id,"",1)).rejects.toThrow("CONFLICT");
  lead=(await setDbSheetFirstDate(ctx,lead.id,"",lead.revision)).lead;
  lead=(await saveDbSheetLead(ctx,{...lead,first:"2099-01-01",firstManual:false,supplier:"합성"},lead.revision)).lead;
- expect(lead.first).toBe("");expect(lead.firstManual).toBe(true);expect(await sales()).toBe(before);
+ expect(lead.first).toBe("");expect(lead.firstManual).toBe(false);expect(await sales()).toBe(before);
+ // 2026-10-23: 빈 최초상담일은 잠금이 아니다 — 다음 기록 결과(재통화)의 컨택일로 다시 채운다.
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2027-03-06",result:"재통화",note:"상담"},lead.revision)).lead;
+ expect(lead.first).toBe("2027-03-06");expect(lead.hasQualifiedContact).toBe(false);
+ lead=(await setDbSheetFirstDate(ctx,lead.id,"",lead.revision)).lead;
  lead=(await saveDbSheetContact(ctx,lead.id,{date:"2027-03-06",result:"컨택진행",note:"상담"},lead.revision)).lead;
- expect(lead.first).toBe("");expect(lead.hasQualifiedContact).toBe(true);
+ expect(lead.first).toBe("2027-03-06");expect(lead.hasQualifiedContact).toBe(true);
+ lead=(await setDbSheetFirstDate(ctx,lead.id,"",lead.revision)).lead;
  const meeting=Meeting.parse({id:"ignored",예약일:"2027-03-06",예약시각:"09:00",미팅날짜:"2027-03-08",미팅시간:"14:00",channel:lead.channel,업체명:"합성 예약",장소:"합성 장소"});
  lead=(await registerDbSheetMeeting(ctx,lead.id,meeting,lead.revision)).lead;
- expect(await get(lead.id)).toMatchObject({first:"",firstManual:true,hasQualifiedContact:true});
+ expect(await get(lead.id)).toMatchObject({first:"2027-03-06",firstManual:false,hasQualifiedContact:true});
  const booked=lead.meetingId;lead=(await setDbSheetFirstDate(ctx,lead.id,"2027-03-01",lead.revision)).lead;
  expect(lead.meetingId).toBe(booked);expect(lead.stage).toBe("미팅예약");
 });
