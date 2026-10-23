@@ -14,11 +14,12 @@
 
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useState } from "react";
-import type { PaymentSlot, Progress, Todo } from "@/types";
+import type { ContractPayment, PaymentSlot, Progress, Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
 import { sameInstitution } from "@/util/institution-match";
+import { todoSlotOf } from "@/lib/analytics/todo-slot";
 
 const SLOT_STYLES = {
   1: {
@@ -91,6 +92,8 @@ interface Props {
   focusTodoId?: string | null; // 캘린더 포커스 ToDo → TodoSection 전달.
   /** 저장본(cp) 진행기관 — ToDo 키(draft 아닌 저장값과만 묶어 새로고침 후 매칭 유지). */
   savedInstitution?: string;
+  /** 저장본 계약 — 기록을 진행건 번호로 나눌 때 쓴다(todo-slot). 없으면 옛 방식(기관 이름). */
+  savedContract?: Pick<ContractPayment, "수납1" | "수납2" | "수납3">;
   /** [3] 진행기관 콤보박스 후보 (자유입력 + 과거값 자동완성). */
   institutionOptions?: string[];
   /** [4] ToDo 추가 시 미저장 진행기관이면 이 콜백으로 슬롯(계약)을 먼저 저장. */
@@ -115,6 +118,7 @@ export default function PaymentSlotForm({
   todos,
   focusTodoId,
   savedInstitution,
+  savedContract,
   institutionOptions,
   onEnsureSaved,
   autoOpen = false,
@@ -284,9 +288,11 @@ export default function PaymentSlotForm({
             companyName={companyName ?? ""}
             onEnsureSaved={onEnsureSaved}
             focusId={focusTodoId}
+            slot={index}
             todos={(todos ?? []).filter((t) =>
-              sameInstitution(t.institutionRef, savedInstitution),
+              savedContract ? todoSlotOf(savedContract, t).slot === index : sameInstitution(t.institutionRef, savedInstitution),
             )}
+            ambiguousIds={savedContract ? new Set((todos ?? []).filter((t) => todoSlotOf(savedContract, t).ambiguous).map((t) => t.id)) : undefined}
           />
         )}
         <div className="grid grid-cols-2 gap-2">

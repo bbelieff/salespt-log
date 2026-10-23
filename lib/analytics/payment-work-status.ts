@@ -2,6 +2,7 @@ import { contractRef, normalizeContractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
 import { slotHasData, slotsOf } from "./contract-slots";
+import { todoSlotOf } from "./todo-slot";
 
 /**
  * 실무/수납 성과 요약과 대시보드 업무 현황의 동일한 계약 범위 — 숨김·해지만 뺀다.
@@ -82,14 +83,13 @@ export function buildWorkStatusItems(
   todos: Todo[],
   todayISO: string,
 ): WorkStatusItem[] {
-  const todoKeys = new Set(todos.map((t) => `${normalizeContractRef(t.contractRef)}|${t.institutionRef.trim()}`));
   const out: WorkStatusItem[] = [];
   for (const cp of contracts) {
     const ref = contractRef(cp.계약일, cp.업체명);
     const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot));
     const effective = populated.length ? populated : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
     for (const [slotNo, slot] of effective) {
-      const hasTodo = todoKeys.has(`${ref}|${slot.진행기관.trim()}`);
+      const hasTodo = todos.some((t) => normalizeContractRef(t.contractRef) === ref && todoSlotOf(cp, t).slot === slotNo);
       out.push({
         key: `${cp.row ?? cp.업체명}-${slotNo}`,
         status: classifyWorkStatus(slot, hasTodo, todayISO),

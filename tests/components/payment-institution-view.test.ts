@@ -17,7 +17,7 @@ const todo = (company: string, institution: string, date: string, over: Partial<
   id: `${company}-${institution}-${date}`, contractRef: `2026-09-04|${company}`,
   institutionRef: institution, 업체명: company, type: "기타", 제목: "연락",
   예정일자: date, 예정시각: "09:00", 장소: "", 상세: "", showOnCalendar: true,
-  완료여부: false, 생성시각: "", 분류: "", 기록종류: "todo", ...over,
+  완료여부: false, 생성시각: "", 분류: "", 기록종류: "todo", slot: null, ...over,
 });
 
 describe("진행기관 보기의 계약→진행건 투영", () => {
