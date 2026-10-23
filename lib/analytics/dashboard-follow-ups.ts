@@ -5,7 +5,7 @@ import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
 import { dbSheetResultLabel, isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
-import { activeWorkContracts, classifyWorkStatus, slotHasData } from "./payment-work-status";
+import { activeWorkContracts, isSlotClosed, slotHasData } from "./payment-work-status";
 
 export const STALL_DAYS = 7;
 export const UPCOMING_DAYS = 7;
@@ -64,7 +64,7 @@ export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], 
     if (cp && !active.has(cp)) continue;
     if (!cp || cp.row == null) { out.unlinked++; continue; }
     const slot = slotForTodo(cp, t);
-    if (slot ? classifyWorkStatus(slotOf(cp, slot), true, today) === "collected" : visibleSlots(cp).every(n => classifyWorkStatus(slotOf(cp, n), true, today) === "collected")) continue;
+    if (slot ? isSlotClosed(slotOf(cp, slot), today) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today))) continue;
     const kind = t.예정일자 < today ? "overdue" : t.예정일자 === today ? "today" : "upcoming";
     out[kind].push(item({ key: `todo:${t.id}`, kind, step: "4", slot,
       title: t.업체명.trim() || cp.업체명 || t.제목,
@@ -126,7 +126,7 @@ export function buildStalledWork(contracts: ContractPayment[], todos: Todo[], to
   for (const cp of activeWorkContracts(contracts)) {
     for (const slot of visibleSlots(cp)) {
       const data = slotOf(cp, slot), institution = normalizeInstitution(data.진행기관);
-      if (classifyWorkStatus(data, false, today) === "collected") continue;
+      if (isSlotClosed(data, today)) continue;
       const records = todos.filter(t => sameContractRef(t.contractRef, contractRefOf(cp)) && slotForTodo(cp, t) === slot && t.type !== "일반");
       const open = records.filter(t => (t.기록종류 ?? "todo") === "todo" && !t.완료여부 && isValidISODate(t.예정일자));
       const activity = records.filter(t => t.기록종류 === "history" || t.완료여부).map(t => t.예정일자)

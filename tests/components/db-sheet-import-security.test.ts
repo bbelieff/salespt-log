@@ -45,7 +45,8 @@ describe('XLSX input resource limits', () => {
     const zip = workbook([{ ...entry(' '.repeat(21 * 1024 * 1024)), compressed: true, declaredSize: 1 }]);
     expect(zip.byteLength).toBeLessThan(5 * 1024 * 1024);
     await expect(xlsxToText(zip)).rejects.toThrow();
-  });
+    // 21MiB 압축·해제라 CPU 를 쓴다 — 개발 PC 가 바쁠 때 기본 5초를 넘겨 pre-commit 이 거짓 실패(2026-10-23).
+  }, 30_000);
   it('rejects the 201st column rather than allocating a sparse grid', async () => {
     await expect(xlsxToText(workbook([entry(sheet('<row r="1"><c r="GS1"><v>1</v></c></row>'))]))).rejects.toThrow();
   });

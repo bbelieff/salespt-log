@@ -45,7 +45,7 @@ describe("업체정보 TXT 재구성", () => {
     expect(txt).not.toContain("[업체]");
   });
 
-  it("① 매출·기대출(사업자)은 [재무], 업종·업태·주생산품목은 [기업정보]", () => {
+  it("① 매출·기대출(사업자)은 [재무], 업종·업태·아이템은 [기업정보]", () => {
     const 기업 = part("[기업정보]", "[재무]");
     const 재무 = part("[재무]");
     expect(기업).not.toContain("기대출(사업자)");
@@ -53,7 +53,7 @@ describe("업체정보 TXT 재구성", () => {
     expect(재무).toContain("기대출(사업자)");
     expect(기업).toMatch(/● 업종 +제조\/필름/);
     expect(기업).toMatch(/● 업태 +제조/);
-    expect(기업).toMatch(/● 주생산품목 +포장용 필름/);
+    expect(기업).toMatch(/● 아이템 +포장용 필름/);
   });
 
   it("② 매출 라벨 연도는 추출시각 기준", () => {

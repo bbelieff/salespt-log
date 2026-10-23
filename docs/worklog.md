@@ -1,3 +1,6 @@
+## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
+- fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
+
 ## 2026-10-23 · DB관리시트 컨택결과 규칙 5종
 - fix/db-sheet-contact-rules, base ecbbdbe4. belie 요청: 재통화·단순거절 최초상담일 자동 + 재통화 일정 안내, 컨택내용 열 때 업체정보 안 잘리는 기본 너비, 현재상태(단순거절·재통화=DB컨택중, AS신청=진행종료), 이름(컨택진행→미팅예약, 상담 후 거절→컨택 후 거절, 저장값 그대로), 부재=다음날 자동.
 - 최초상담일 원인: 표 칸을 눌렀다 떼기만 해도 빈 값이 「직접 입력」으로 저장돼 자동 기록이 잠겼다. 자율결정: 빈 직접 입력은 잠금 아님(10-17 규칙 개정, revert 로 복구). 운영 데이터 무변경. [plan](plans/active/db-sheet-contact-rules.md)

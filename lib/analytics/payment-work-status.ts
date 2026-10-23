@@ -1,7 +1,7 @@
 import { contractRef, normalizeContractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
-import { slotHasData, slotsOf } from "./contract-slots";
+import { isHaltedSlot, slotHasData, slotsOf } from "./contract-slots";
 import { todoSlotOf } from "./todo-slot";
 
 /**
@@ -24,7 +24,7 @@ export interface WorkStatusItem {
   institution: string;
 }
 
-export { slotHasData } from "./contract-slots";
+export { isHaltedSlot, slotHasData } from "./contract-slots";
 
 /** 계약×기관 단위 활동 날짜(빈 값 = 기록 없음). */
 export interface SlotActivity {
@@ -78,6 +78,15 @@ export function classifyWorkStatus(
   return acted ? "progress" : "waiting";
 }
 
+/**
+ * 이 진행건은 끝났나 — 수납 완료 또는 중도중지(2026-10-23 belie).
+ * 오늘 챙길 일은 끝난 진행건의 할 일·정체를 세지 않는다.
+ */
+export function isSlotClosed(slot: PaymentSlot, todayISO: string): boolean {
+  return isHaltedSlot(slot) || classifyWorkStatus(slot, true, todayISO) === "collected";
+}
+
+/** 중도중지한 진행건은 업무 현황에 넣지 않는다 — 진행건이 전부 중도중지면 그 계약은 빠진다. */
 export function buildWorkStatusItems(
   contracts: ContractPayment[],
   todos: Todo[],
@@ -87,7 +96,9 @@ export function buildWorkStatusItems(
   for (const cp of contracts) {
     const ref = contractRef(cp.계약일, cp.업체명);
     const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot));
-    const effective = populated.length ? populated : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
+    const live = populated.filter(([, slot]) => !isHaltedSlot(slot));
+    if (populated.length && !live.length) continue;
+    const effective = live.length ? live : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
     for (const [slotNo, slot] of effective) {
       // 기관 이름이 어느 진행건과도 맞지 않는 옛 기록(unmatched)은 화면에 보이게만 하고 상태는 바꾸지 않는다.
       const hasTodo = todos.some((t) => {

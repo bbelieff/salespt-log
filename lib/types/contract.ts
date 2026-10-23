@@ -10,7 +10,9 @@ import { z } from "zod";
 // 자동 연동: 일정·계약 탭 계약 액션 시 04 업체관리!D/G/L에서 C/D/E
 // 사용자 입력: F~L (체크박스 7, "ㅇ"/"" 표기) + M~AD (분할수납 3슬롯 × 6필드)
 
-/** 진행률 dropdown — 시트 N/T/Z 컬럼 data validation과 정확히 일치. */
+/** 진행률 dropdown — 숫자 6단계는 시트 N/T/Z 컬럼 data validation과 일치.
+ *  "중도중지"(2026-10-23 belie) = 수납 없이 끝난 진행건. 오늘 챙길 일·업무 현황에서 빠진다.
+ *  enum 확장만 — 옛 값은 그대로 통과한다. 시트 미러에는 빈 칸으로 쓴다(시트 dropdown 에 없는 값). */
 export const Progress = z.enum([
   "",
   "0%",
@@ -19,7 +21,10 @@ export const Progress = z.enum([
   "60%",
   "80%",
   "100%",
+  "중도중지",
 ]);
+/** 진행률 「중도중지」 값 — 비교는 이 상수로. */
+export const HALTED_PROGRESS = "중도중지" as const;
 export type Progress = z.infer<typeof Progress>;
 
 /** 분할 수납 1 슬롯 (v3, 2026-05-17): 메모 추가 — 총 7필드.

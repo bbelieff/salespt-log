@@ -47,7 +47,7 @@ describe("기본보기 — 컨택가이드 순서", () => {
     expect(labels("대표자")).toEqual(["이름", "신용점수(KCB/NCB)", "기대출 개인"]);
     const biz = labels("사업자").map((l) => l.replace(/ 매출 Y.*$/, ""));
     expect(biz).toEqual([
-      "개업일", "사업자구분 · 과세유형", "업종", "주요품목",
+      "개업일", "사업자구분 · 과세유형", "업종", "아이템",
       expect.stringMatching(/^올해 \d{4}/), expect.stringMatching(/^Y-1 /), expect.stringMatching(/^Y-2 /), expect.stringMatching(/^Y-3 /),
       "사업자 대출", "4대보험 직원", "특허 및 인증", "소재지", "기타메모",
     ]);
