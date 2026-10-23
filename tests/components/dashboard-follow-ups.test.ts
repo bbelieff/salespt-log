@@ -76,3 +76,29 @@ it("unmatched or ambiguous task institutions never guess a work slot",()=>{
  }
  expect(buildStalledWork([cp],[todo({institutionRef:"기관A"})],TODAY)).toHaveLength(2);
 });
+
+/**
+ * 2026-10-23 「todo 를 잡아도 챙길 일에서 안 사라진다」 — 남는 것은 진행기관 칸을 고치기 전의 옛 할 일이다.
+ * 새 할 일(진행건 번호 있음)은 「다음 할 일 없음」을 없애고, 옛 할 일은 미완료라 「밀린 할 일」로 남는다.
+ * 옛 할 일은 이제 실무/수납의 진행건에 보이므로(todo-slot) 거기서 완료하면 사라진다.
+ */
+describe("renamed institution — old open task stays until it is completed", () => {
+  const cp=contract({수납1:slot({진행기관:"기관A "}),수납2:slot({진행기관:"기관B"})});
+  const old=todo({id:"old",institutionRef:"기관B 세부",예정일자:"2026-10-06"});
+  const fresh=todo({id:"new",institutionRef:"기관B",slot:2,예정일자:"2026-10-15"});
+  it("old task is still an overdue item without a guessed slot; the new task clears 「다음 할 일 없음」", () => {
+    const s=summarizeFollowUps({contracts:[cp],todos:[old,fresh,todo({id:"a",institutionRef:"기관A",slot:1,예정일자:"2026-10-20"})]},TODAY);
+    expect(s.groups.stalled).toEqual([]);
+    const item=s.items.find(i=>i.key==="todo:old");
+    expect(item).toMatchObject({kind:"overdue",slot:undefined,href:"/payment?row=3&focus=old"});
+    expect(item?.reasons).toContain("연결 진행건 확인 필요");
+  });
+  it("completing the old task removes it", () => {
+    const s=summarizeFollowUps({contracts:[cp],todos:[{...old,완료여부:true},fresh,todo({id:"a",institutionRef:"기관A",slot:1,예정일자:"2026-10-20"})]},TODAY);
+    expect(s.items.find(i=>i.key==="todo:old")).toBeUndefined();
+    expect(s.total).toBe(0);
+  });
+  it("a guessed (unmatched) link never counts as the slot's next task", () => {
+    expect(buildStalledWork([cp],[old],TODAY).map(i=>i.slot)).toEqual([1,2]);
+  });
+});
