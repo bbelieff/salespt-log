@@ -32,6 +32,7 @@ import PendingApprovalScreen from "@/components/auth/PendingApprovalScreen";
 import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
 import PullToRefresh from "@/components/PullToRefresh";
 import IdentityGuard from "@/components/auth/IdentityGuard";
+import FollowUpsLauncher from "@/components/dashboard/FollowUpsLauncher";
 
 export default async function AppLayout({
   children,
@@ -41,8 +42,12 @@ export default async function AppLayout({
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) redirect("/");
 
+  // 좌하단 「오늘 챙길 일」 — 수강생 화면 맥락(본인·대리접속·아레나)이 있을 때만. 관리자 본인 화면은 조회할 수강생이 없어 숨김.
+  let showFollowUpsLauncher = true;
   // admin 본인은 통과 (impersonation 으로 누구든 진입 가능).
-  if (!isAdminEmail(sessionEmail)) {
+  if (isAdminEmail(sessionEmail)) {
+    showFollowUpsLauncher = (await resolveStudentViewContext()).ok;
+  } else {
     const context = await resolveStudentViewContext();
     const sessionRole = await getEffectiveRole(sessionEmail);
     // 트레이너의 잘못되었거나 만료된 대상 쿠키, 혹은 권한이 사라진 자기보기는
@@ -102,6 +107,8 @@ export default async function AppLayout({
           </div>
         </div>
         <TabBar />
+        {/* 좌하단 오늘 챙길 일 빠른 보기 — 대시보드는 카드가 있어 컴포넌트가 스스로 숨는다. */}
+        {showFollowUpsLauncher && <FollowUpsLauncher />}
       </DirtyProvider>
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}
       <AnnouncementsGate />
