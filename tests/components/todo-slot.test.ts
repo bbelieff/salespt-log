@@ -19,10 +19,34 @@ describe("todoSlotOf", () => {
     expect(todoSlotOf(cp("소진공", "신보"), { institutionRef: "신보 " })).toEqual({ slot: 2, ambiguous: false });
   });
   it("옛 기록: 같은 기관 진행건이 여럿이면 첫 진행건에 한 번만 + 확인 필요", () => {
-    expect(todoSlotOf(cp("소진공", "소진공"), { institutionRef: "소진공" })).toEqual({ slot: 1, ambiguous: true });
+    expect(todoSlotOf(cp("소진공", "소진공"), { institutionRef: "소진공" })).toEqual({ slot: 1, ambiguous: true, reason: "shared" });
   });
-  it("맞는 기관이 없으면 어디에도 안 붙음", () => {
-    expect(todoSlotOf(cp("소진공"), { institutionRef: "기보" })).toEqual({ slot: null, ambiguous: false });
+});
+
+/**
+ * 2026-10-23 「실무수납에서 todo 를 잡아도 챙길 일에서 안 사라진다」 — 실제 3건을 합성으로 재현.
+ * 진행기관 칸을 나중에 짧게 고쳐(「소진공 혁신」→「소진공」) 옛 기록이 어느 진행건에도 안 붙어
+ * 실무/수납 화면 어디에도 안 보였다 → 완료할 수 없으니 대시보드 「밀린 할 일」에 계속 남았다.
+ */
+describe("todoSlotOf — 기관 이름이 진행건과 다른 옛 기록도 한 진행건에 보인다", () => {
+  it("업체 1: 진행건 「소진공 」(끝 공백) · 기록 「소진공 혁신」 → 진행 1, 확인 필요", () => {
+    expect(todoSlotOf(cp("소진공 "), { institutionRef: "소진공 혁신" })).toEqual({ slot: 1, ambiguous: true, reason: "unmatched" });
+  });
+  it("업체 2: 진행건 「소진공」 · 기록 「소진공 일반경영안정자금」 → 진행 1, 확인 필요", () => {
+    expect(todoSlotOf(cp("소진공"), { institutionRef: "소진공 일반경영안정자금" })).toEqual({ slot: 1, ambiguous: true, reason: "unmatched" });
+  });
+  it("업체 3: 진행 1 「신용보증기금 」 · 진행 2 「소진공」 · 기록 「소진공 신취」 → 진행 2(첫 진행건 아님)", () => {
+    expect(todoSlotOf(cp("신용보증기금 ", "소진공"), { institutionRef: "소진공 신취" })).toEqual({ slot: 2, ambiguous: true, reason: "unmatched" });
+  });
+  it("단어 경계까지만 — 「소진공사」는 「소진공」 진행건으로 가지 않고 내용 있는 첫 진행건", () => {
+    expect(todoSlotOf(cp("신보", "소진공"), { institutionRef: "소진공사" })).toEqual({ slot: 1, ambiguous: true, reason: "unmatched" });
+  });
+  it("전혀 다른 기관·빈 진행 1 이면 내용 있는 첫 진행건, 전부 비면 진행 1", () => {
+    expect(todoSlotOf(cp("", "소진공"), { institutionRef: "기보" })).toEqual({ slot: 2, ambiguous: true, reason: "unmatched" });
+    expect(todoSlotOf(cp(""), { institutionRef: "기보" })).toEqual({ slot: 1, ambiguous: true, reason: "unmatched" });
+  });
+  it("번호가 저장된 기록은 기관 이름과 상관없이 그 진행건으로 확정", () => {
+    expect(todoSlotOf(cp("소진공"), { institutionRef: "소진공 혁신", slot: 1 })).toEqual({ slot: 1, ambiguous: false });
   });
 });
 
@@ -31,6 +55,11 @@ describe("업무 현황 — 기록이 붙은 진행건만 「진행」", () => {
     const todo = { id: "t", contractRef: "2026-10-07|예시상사", institutionRef: "소진공", slot: 2 } as never;
     const items = buildWorkStatusItems([cp("소진공", "소진공")], [todo], "2026-10-23");
     expect(items.map((i) => i.slot)).toEqual([1, 2]);
+  });
+  it("기관 이름이 다른 옛 기록(추정 연결)은 「대기」를 「진행」으로 바꾸지 않는다", () => {
+    const orphan = { id: "o", contractRef: "2026-10-07|예시상사", institutionRef: "소진공 혁신", slot: null } as never;
+    const bare = { ...cp("소진공"), 수납1: { ...empty, 진행기관: "소진공" } } as ContractPayment;
+    expect(buildWorkStatusItems([bare], [orphan], "2026-10-23")[0]?.status).toBe("waiting");
   });
 });
 
