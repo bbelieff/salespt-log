@@ -14,7 +14,7 @@ const updateProduction = vi.fn(async () => {});
 const readProductions = vi.fn(async () => ({ rows: [] as Array<DBProduction & { row: number }> }));
 const writeProductionCountCell = vi.fn(async () => {});
 const sumChannelInflowOverPeriod = vi.fn(async () => 7);
-const readDbTabFromDb = vi.fn(async () => ({ purchases: [], productions: [], banners: [], leads: [] }));
+const readDbTabFromDb = vi.fn(async () => ({ purchases: [] as unknown[], productions: [] as Array<DBProduction & { row: number }>, banners: [] as unknown[], leads: [] as unknown[] }));
 
 vi.mock("@/repo/users", () => ({
   findUserByEmail: (...a: unknown[]) => findUserByEmail(...(a as [])),
@@ -101,6 +101,46 @@ describe("syncDirectProductionForDate — 컨택경로, syncDb 게이트(BBE-61)
     const r = await syncDirectProductionForDate(SHEET, "2026-07-10", "8");
     expect(r).toEqual({ recordFound: false, count: 0 });
     expect(writeProductionCountCell).not.toHaveBeenCalled();
+  });
+});
+
+describe("syncDirectProductionForDate — 파일럿은 DB 에서 레코드 조회(컨택 저장 지연 수정)", () => {
+  it("DB 에 활성 레코드 있음 — 시트 read 0회, M 셀은 큐 경유(sheetViaQueue)", async () => {
+    readDbTabFromDb.mockResolvedValue({ purchases: [], productions: [{ ...mkProd(), row: 5 }], banners: [], leads: [] });
+    const r = await syncDirectProductionForDate(SHEET, "2026-07-10", "8", { inflow: 3 });
+    expect(r).toEqual({ recordFound: true, count: 7 });
+    expect(readProductions).not.toHaveBeenCalled();
+    expect(writeProductionCountCell).toHaveBeenCalledWith(SHEET, 5, 7, { syncDb: true, sheetViaQueue: true });
+  });
+
+  it("DB 에 없음 + 유입 0 — 시트 read 생략, 보류 아님", async () => {
+    const r = await syncDirectProductionForDate(SHEET, "2026-07-10", "8", { inflow: 0 });
+    expect(r).toEqual({ recordFound: false, count: 0 });
+    expect(readProductions).not.toHaveBeenCalled();
+    expect(writeProductionCountCell).not.toHaveBeenCalled();
+  });
+
+  it("DB 에 없음 + 유입>0 — 시트 안전망 read(append 미러 누락 대비), 시트 셀 동기 쓰기 유지", async () => {
+    readProductions.mockResolvedValue({ rows: [{ ...mkProd(), row: 6 }] });
+    const r = await syncDirectProductionForDate(SHEET, "2026-07-10", "8", { inflow: 2 });
+    expect(r).toEqual({ recordFound: true, count: 7 });
+    expect(readProductions).toHaveBeenCalledTimes(1);
+    expect(writeProductionCountCell).toHaveBeenCalledWith(SHEET, 6, 7, { syncDb: true });
+  });
+
+  it("DB read 실패 — 유입 0 이어도 시트 경로로 폴백", async () => {
+    readDbTabFromDb.mockRejectedValue(new Error("db down"));
+    readProductions.mockResolvedValue({ rows: [{ ...mkProd(), row: 5 }] });
+    const r = await syncDirectProductionForDate(SHEET, "2026-07-10", "8", { inflow: 0 });
+    expect(r).toEqual({ recordFound: true, count: 7 });
+    expect(writeProductionCountCell).toHaveBeenCalledWith(SHEET, 5, 7, { syncDb: true });
+  });
+
+  it("비파일럿 — DB 조회 없이 기존 시트 경로", async () => {
+    readProductions.mockResolvedValue({ rows: [{ ...mkProd(), row: 5 }] });
+    await syncDirectProductionForDate(SHEET, "2026-07-10", "1", { inflow: 0 });
+    expect(readDbTabFromDb).not.toHaveBeenCalled();
+    expect(writeProductionCountCell).toHaveBeenCalledWith(SHEET, 5, 7, { syncDb: false });
   });
 });
 

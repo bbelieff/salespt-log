@@ -278,6 +278,11 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-23 · Claude(경영일지 DC 하위 에이전트) · 컨택 숫자 저장 지연 (fix/contact-save-speed)
+- 증상: STEP 2 숫자 저장이 오래 걸림. 운영 `api_timing` 실측 — POST /api/daily 평시 850~1,200ms 중 시트 620~1,000ms(sheets_calls=2), 10-23 09:58~10:00 시트 읽기 할당량 초과로 20~26초·503 2건.
+- 원인: `syncDirectProductionForDate` 가 매 저장마다 03 직접생산 시트 read + M 셀 시트 동기 write. 파일 단위 화이트리스트라 구조 테스트가 못 잡음.
+- 결정(자율): DB 정본 기수는 레코드를 DB 에서 찾고 M 셀 시트 반영은 기존 수렴 큐로. DB 에 없고 유입>0·DB 실패·비DB 기수는 기존 시트 경로 유지. 상세 = `docs/plans/active/contact-save-speed.md`. 되돌리기 = revert.
+
 ### 2026-10-15 · DC 총괄(데탑 C총괄 260927) · DB관리시트 「미지원」 오표시 + 공급업체 엑셀 가져오기
 - belie 신고: A1-0 테스터 계정에서 DB관리시트가 「이 계정은 아직 DB관리시트를 지원하지 않습니다」. 공급업체 엑셀(.xlsx)·셀 블럭 붙여넣기가 제대로 인식 안 됨.
 - 원인 ①: 운영 DB 실측(읽기 전용) — 테스터 행은 cohort 빈칸·cohort_label=A1-0. `sourceCohort` 가 유보만 label 로 대체해 빈칸이 시트 경로로 판정. 같은 상태 = 시험 계정 2개(A1-0·0)뿐. → 빈칸도 label 로(`lib/service/daily-source.ts`).
