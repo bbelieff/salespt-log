@@ -88,13 +88,25 @@ it("keeps total width while the center grip consumes left slack before growing t
  act(()=>root.render(React.createElement(DbDetail,props)));click(host.querySelector('.db-contact-open')!);
  const shell=host.querySelector<HTMLElement>('.db-detail-shell')!;
  const widths=()=>[shell.style.getPropertyValue('--db-left-width'),shell.style.getPropertyValue('--db-right-width')];
- expect(widths()).toEqual(['640px','560px']);
+ // 2026-10-23: 업체정보(우열) 기본 680 — 1280 에서는 좌열이 남는 폭(575)으로 줄어든다.
+ expect(widths()).toEqual(['575px','680px']);
  const grips=host.querySelectorAll('[role=separator]');
- act(()=>grips[0]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));expect(widths()).toEqual(['624px','560px']);
- act(()=>grips[1]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true})));expect(widths()).toEqual(['608px','576px']);
- for(let i=0;i<20;i++)act(()=>grips[1]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true})));
- expect(widths()).toEqual(['504px','680px']);
- click(host.querySelector('.db-contact-open')!);click(host.querySelector('.db-contact-open')!);expect(widths()).toEqual(['504px','680px']);
+ act(()=>grips[0]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));expect(widths()).toEqual(['559px','680px']);
+ act(()=>grips[1]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));expect(widths()).toEqual(['575px','664px']);
+ for(let i=0;i<3;i++)act(()=>grips[1]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));
+ expect(widths()).toEqual(['623px','616px']);
+ click(host.querySelector('.db-contact-open')!);click(host.querySelector('.db-contact-open')!);expect(widths()).toEqual(['623px','616px']);
+});
+
+it("treats the old saved default right width (560) as the new 680 default but keeps a user-dragged width",()=>{
+ const noop=vi.fn(),props={row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onRecording:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}};
+ Object.defineProperty(window,'innerWidth',{configurable:true,value:1440});
+ for(const [saved,expected] of [['560','680px'],['500','500px']] as const){
+  localStorage.setItem('db-sheet-panel-left-width','640');localStorage.setItem('db-sheet-panel-right-width',saved);
+  act(()=>root.render(React.createElement(DbDetail,{...props,key:saved})));click(host.querySelector('.db-contact-open')!);
+  expect(host.querySelector<HTMLElement>('.db-detail-shell')!.style.getPropertyValue('--db-right-width')).toBe(expected);
+  act(()=>root.render(React.createElement('div')));
+ }
 });
 
 it("preserves the non-destructive activity settings entry for records with activities disabled",()=>{
@@ -105,14 +117,14 @@ it("preserves the non-destructive activity settings entry for records with activ
  expect(host.querySelectorAll('.db-info-pane [role=radio]')).toHaveLength(0);
 });
 
-it("keeps 520/560 → 440/640 in 1081px, restores left on shrink, and grows only after minLeft",()=>{
- const noop=vi.fn();localStorage.setItem('db-sheet-panel-left-width','520');localStorage.setItem('db-sheet-panel-right-width','560');Object.defineProperty(window,'innerWidth',{configurable:true,value:1280});
+it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only after minLeft",()=>{
+ const noop=vi.fn();localStorage.setItem('db-sheet-panel-left-width','480');localStorage.setItem('db-sheet-panel-right-width','600');Object.defineProperty(window,'innerWidth',{configurable:true,value:1280});
  act(()=>root.render(React.createElement(DbDetail,{row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onRecording:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}})));click(host.querySelector('.db-contact-open')!);
  const shell=host.querySelector<HTMLElement>('.db-detail-shell')!,center=host.querySelector('[aria-label="우열 중앙 경계 너비 조절"]')!;
  const press=(key:string)=>act(()=>center.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true})));
- for(let i=0;i<5;i++)press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('440px');expect(shell.style.getPropertyValue('--db-right-width')).toBe('640px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('1081px');
- for(let i=0;i<5;i++)press('ArrowLeft');expect(shell.style.getPropertyValue('--db-left-width')).toBe('520px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('1081px');
+ for(let i=0;i<5;i++)press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('400px');expect(shell.style.getPropertyValue('--db-right-width')).toBe('680px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('1081px');
+ for(let i=0;i<5;i++)press('ArrowLeft');expect(shell.style.getPropertyValue('--db-left-width')).toBe('480px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('1081px');
  const left=host.querySelector('[aria-label="좌열 왼쪽 바깥 테두리 너비 조절"]')!;for(let i=0;i<10;i++)act(()=>left.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));
- expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('937px');
+ expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('977px');
  expect(host.textContent).toContain('컨택일(최초컨택일)');expect(host.querySelector('.db-call-heading .db-first-contact')).toBeNull();expect(host.querySelector('[aria-label="DB정보 최초상담일"]')).not.toBeNull();
 });

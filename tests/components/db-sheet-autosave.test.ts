@@ -149,18 +149,23 @@ it("persists AS fields with newer edits retained while the older save is pending
  await act(async()=>{answer(2,[lead({revision:3,asReceived:true,asNote:"최종 메모"})]);});
  expect(api.pending).toBe(0);expect(api.error).toBe("");
 });
-it("flushes source edits before explicit first date and preserves manual clear on later saves",async()=>{
- await loaded();act(()=>api.edit(id,"supplier","공급"));
+it("skips unchanged first-date edits (blur without change) so auto recording is never locked",async()=>{
+ await loaded();
+ await act(async()=>{api.edit(id,"first","");});
+ expect(requests).toHaveLength(1);expect(api.pending).toBe(0);
+});
+it("flushes source edits before explicit first date clear and keeps later saves server-owned",async()=>{
+ await mount();await act(async()=>{answer(0,[lead({first:"2026-10-12"})]);});act(()=>api.edit(id,"supplier","공급"));
  await act(async()=>{api.edit(id,"first","");});
  expect(requests[1]!.body).toMatchObject({action:"save",lead:{supplier:"공급"}});
- await act(async()=>{answer(1,[lead({revision:2,supplier:"공급"})]);});
+ await act(async()=>{answer(1,[lead({revision:2,supplier:"공급",first:"2026-10-12"})]);});
  expect(requests[2]!.body).toEqual({action:"first-date",id,revision:2,first:""});
- await act(async()=>{answer(2,[lead({revision:3,supplier:"공급",first:"",firstManual:true})]);});
- expect(api.leads[0]).toMatchObject({first:"",firstManual:true});
+ await act(async()=>{answer(2,[lead({revision:3,supplier:"공급",first:"",firstManual:false})]);});
+ expect(api.leads[0]).toMatchObject({first:"",firstManual:false});
  act(()=>api.edit(id,"company","합성 수정"));await debounce();
  expect(requests[3]!.body).toMatchObject({action:"save",revision:3});
  expect((requests[3]!.body!.lead as Record<string,unknown>)).not.toHaveProperty("firstManual");
- await act(async()=>{answer(3,[lead({revision:4,first:"",firstManual:true})]);});
+ await act(async()=>{answer(3,[lead({revision:4,first:"",firstManual:false})]);});
  expect(api.error).toBe("");
 });
 it("binds inflow apply to the previewed revision and chosen value",async()=>{

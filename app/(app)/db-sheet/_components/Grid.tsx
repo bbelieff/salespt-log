@@ -22,7 +22,7 @@ export function Grid({rows,sizingRows=rows,visible,onChange,onOpen,onDetail,fail
  const [dragging,setDragging]=useState<Key|null>(null),[over,setOver]=useState<Key|null>(null);
  const [sort,setSort]=useState<{key:Key;desc:boolean}|null>(null);
  const sortable:Key[]=['date','result','first','stage'];
- const stages=['미컨택','상담 중','미팅예약','실무진행','완료'];
+ const stages=['미컨택','DB컨택중','상담 중','미팅예약','실무진행','완료','진행종료'];
  const sorted=sort?[...rows].sort((a,b)=>{const av=a[sort.key],bv=b[sort.key];if(!av||!bv)return av? -1:bv?1:0;const rank=sort.key==='result'?outcomes:sort.key==='stage'?stages:null;const n=rank?rank.indexOf(av)-rank.indexOf(bv):av.localeCompare(bv);return sort.desc?-n:n;}):rows;
  const drag=useRef<Key|null>(null),target=useRef<Key|null>(null);const start=useRef({x:0,y:0}),moved=useRef(false),suppressClick=useRef(false);
  useEffect(()=>{localStorage.setItem('db-sheet-v3-order',JSON.stringify(order));},[order]);
