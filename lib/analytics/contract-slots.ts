@@ -6,7 +6,7 @@
  * (2026-10-19 구조 개선 ①: 전에는 3벌이 따로 있어 메모만 적힌 칸을 목록은 보이고
  *  상세 카드는 숨겼다.)
  */
-import type { ContractPayment, PaymentSlot } from "@/types";
+import { HALTED_PROGRESS, type ContractPayment, type PaymentSlot } from "@/types";
 
 export type SlotNo = 1 | 2 | 3;
 
@@ -15,10 +15,15 @@ export function slotsOf(cp: Pick<ContractPayment, "수납1" | "수납2" | "수�
   return [[1, cp.수납1], [2, cp.수납2], [3, cp.수납3]];
 }
 
-/** 진행률 문자열("80%"·"0%"·"") → 숫자(%). */
+/** 진행률 문자열("80%"·"0%"·"") → 숫자(%). 「중도중지」는 0. */
 export function progressPct(p: string): number {
   if (!p || p === "0%") return 0;
   return parseInt(p, 10) || 0;
+}
+
+/** 중도중지한 진행건인가 — 수납 없이 끝난 일. 오늘 챙길 일·업무 현황에서 뺀다. */
+export function isHaltedSlot(slot: Pick<PaymentSlot, "진행률">): boolean {
+  return slot.진행률 === HALTED_PROGRESS;
 }
 
 /** 칸에 사용자가 적은 것이 있나 — 공백만 있는 글은 없음, 메모만 있어도 있음. */

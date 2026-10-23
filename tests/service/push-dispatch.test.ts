@@ -24,7 +24,7 @@ vi.mock("@/service/todos", () => ({ listAllTodos: async () => todos }));
 vi.mock("@/service/meeting-follow-ups", () => ({ loadFollowUpMeetings: async () => [] }));
 vi.mock("@/service/db-sheet", () => ({ resolveDbSheetContext: async () => { throw new Error("no db sheet"); }, loadDbSheet: async () => [] }));
 // The real rule decides which todos count; keep the classification simple for the fixture.
-vi.mock("@/lib/analytics/payment-work-status", () => ({ activeWorkContracts: (cs: unknown[]) => cs, classifyWorkStatus: () => "working", slotHasData: () => false }));
+vi.mock("@/lib/analytics/payment-work-status", () => ({ activeWorkContracts: (cs: unknown[]) => cs, classifyWorkStatus: () => "working", isSlotClosed: () => false, slotHasData: () => false }));
 
 const { dispatchDuePush, sendTestPush } = await import("@/service/push");
 const AT_0845 = new Date("2026-10-22T23:45:00Z"); // Fri 08:45 KST

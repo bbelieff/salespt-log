@@ -102,4 +102,10 @@ describe("parseMeetingMemo — 줄임 라벨", () => {
     const r = parseMeetingMemo("● 사업자번호\t\t123-45-67891");
     expect(r.fields.find((f) => f.key === "사업자등록번호")?.value).toBe("123-45-67891");
   });
+  it("옛 라벨 '주생산품목'과 새 라벨 '아이템' 모두 같은 칸으로", () => {
+    for (const label of ["주생산품목", "아이템"]) {
+      const r = parseMeetingMemo(`● ${label}		포장용 필름`);
+      expect(r.fields.find((f) => f.key === "주생산품목")?.value).toBe("포장용 필름");
+    }
+  });
 });

@@ -3,7 +3,7 @@
  * 500줄 캡, BBE-246 이 cpToFullRow 추가로 캡 초과시켜 R3-3 잔여 분리 선례(-link/-sync/-termination)
  * 와 같은 이유로 뗐다). googleapis 비의존 — 시트 셀 배열 ↔ 타입 변환만 담당.
  */
-import { ContractPayment, type PaymentSlot, Progress } from "@/types";
+import { ContractPayment, HALTED_PROGRESS, type PaymentSlot, Progress } from "@/types";
 
 // ── 시트 직렬값 ↔ 표시값 변환 ──────────────────────────────────
 export function serialToISODate(v: unknown): string {
@@ -84,6 +84,12 @@ function toProgress(v: unknown): Progress {
   return "";
 }
 
+/** 시트 미러용 진행률 — 시트 dropdown(0~100%)에 없는 「중도중지」는 빈 칸으로 쓴다.
+ *  정본은 DB 라 값은 잃지 않는다. 시트가 입력을 거부해 미러 전체가 막히는 것을 막는다. */
+function sheetProgress(p: Progress): string {
+  return p === HALTED_PROGRESS ? "" : p;
+}
+
 // ── A~AD 한 행을 ContractPayment 객체로 ───────────────────────
 export function rowToCP(r: unknown[], rowNumber: number): ContractPayment | null {
   // C/D/E (계약일/업체명/수임비) 중 하나라도 의미있게 채워진 row만 인정.
@@ -158,21 +164,21 @@ export function cpToRow(cp: ContractPayment): (string | number | boolean)[] {
   out[11] = boolToCheck(cp.플러그이관);
   // 수납1 (M~R = 12~17): 진행기관/진행률/현황/승인금액/수납액/수납일
   out[12] = cp.수납1.진행기관;
-  out[13] = cp.수납1.진행률;
+  out[13] = sheetProgress(cp.수납1.진행률);
   out[14] = cp.수납1.현황;
   out[15] = cp.수납1.승인금액;
   out[16] = cp.수납1.수납액;
   out[17] = cp.수납1.수납일;
   // 수납2 (S~X = 18~23)
   out[18] = cp.수납2.진행기관;
-  out[19] = cp.수납2.진행률;
+  out[19] = sheetProgress(cp.수납2.진행률);
   out[20] = cp.수납2.현황;
   out[21] = cp.수납2.승인금액;
   out[22] = cp.수납2.수납액;
   out[23] = cp.수납2.수납일;
   // 수납3 (Y~AD = 24~29)
   out[24] = cp.수납3.진행기관;
-  out[25] = cp.수납3.진행률;
+  out[25] = sheetProgress(cp.수납3.진행률);
   out[26] = cp.수납3.현황;
   out[27] = cp.수납3.승인금액;
   out[28] = cp.수납3.수납액;

@@ -5,6 +5,7 @@ import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "r
 import { isTerminatedContract } from "@/types";
 import { formatMoney } from "@/lib/format/money";
 import { progressPct } from "../_lib/payment-progress";
+import { isHaltedSlot } from "@/lib/analytics/contract-slots";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
@@ -63,11 +64,14 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600">진행 없음</span>}
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
               </span>
-              {hasProgress ? works.map((w) => (
-                <span key={w.key} className={`mt-1 block truncate pl-7 text-px-11 font-semibold ${w.key === work.key ? "text-blue-700" : "text-blue-600/80"}`}>
-                  {`진행 ${w.slot} · ${w.institution || "기관 미입력"}${w.product ? ` · ${w.product}` : ""}`}
+              {hasProgress ? works.map((w) => {
+                const halted = isHaltedSlot(cp[`수납${w.slot}`]);
+                return (
+                <span key={w.key} className={`mt-1 flex min-w-0 items-center gap-1.5 pl-7 text-px-11 font-semibold ${halted ? "text-slate-400" : w.key === work.key ? "text-blue-700" : "text-blue-600/80"}`}>
+                  <span className="min-w-0 truncate">{`진행 ${w.slot} · ${w.institution || "기관 미입력"}${w.product ? ` · ${w.product}` : ""}`}</span>
+                  {halted && <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-px-10 font-semibold text-slate-600">중도중지</span>}
                 </span>
-              )) : <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">진행건 미등록</span>}
+              );}) : <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">진행건 미등록</span>}
               <span className="mt-0.5 grid grid-cols-[1fr_auto] gap-x-2 pl-7 text-px-11 tabular-nums">
                 <span className="truncate text-slate-500">{fmtDate(cp.계약일)} · 수임비 ₩{formatMoney(cp.수임비)}</span>
                 <span className="font-semibold text-emerald-600">수수료 ₩{formatMoney(fee)}</span>

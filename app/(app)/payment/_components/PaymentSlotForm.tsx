@@ -14,7 +14,7 @@
 
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useState } from "react";
-import type { ContractPayment, PaymentSlot, Progress, Todo } from "@/types";
+import { HALTED_PROGRESS, type ContractPayment, type PaymentSlot, type Progress, type Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
@@ -57,10 +57,12 @@ const SLOT_STYLES = {
   },
 } as const;
 
-const PROGRESS_OPTIONS: Progress[] = ["", "0%", "20%", "40%", "60%", "80%", "100%"];
+// 「중도중지」 = 수납 없이 끝난 진행건 — 오늘 챙길 일·업무 현황에서 빠진다(2026-10-23 belie).
+const PROGRESS_OPTIONS: Progress[] = ["", "0%", "20%", "40%", "60%", "80%", "100%", HALTED_PROGRESS];
+const HALTED_BADGE = "shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600";
 
 function progressToPct(p: Progress): number {
-  if (p === "" || p === "0%") return 0;
+  if (p === "" || p === "0%" || p === HALTED_PROGRESS) return 0;
   return parseInt(p, 10);
 }
 
@@ -136,8 +138,9 @@ export default function PaymentSlotForm({
   const segments = [20, 40, 60, 80, 100] as const;
 
   // 완료 슬롯(100% 또는 승인>0 && 수납>=승인) 기본 접힘 / 진행 중 펼침.
+  const halted = slot.진행률 === HALTED_PROGRESS;
   const isDone =
-    pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
+    halted || pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
   const [open, setOpen] = useState(!isDone);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
   const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
@@ -170,7 +173,7 @@ export default function PaymentSlotForm({
               <span className="truncate font-medium text-gray-600">
                 {slot.진행기관 || "기관 미입력"}
               </span>
-              <span className={`shrink-0 font-semibold ${pctColor}`}>· {pct}%</span>
+              {halted ? <span className={HALTED_BADGE}>중도중지</span> : <span className={`shrink-0 font-semibold ${pctColor}`}>· {pct}%</span>}
               {(slot.승인금액 > 0 || slot.수납액 > 0) && (
                 <span
                   className="shrink-0"
@@ -215,14 +218,10 @@ export default function PaymentSlotForm({
 
 
       {/* 진행도 볼륨바 (5등분 클릭) */}
-      <div className="mb-3">
+      <div className={`mb-3 ${halted ? "opacity-60" : ""}`} data-halted={halted || undefined}>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-xs text-gray-500">진행도</span>
-          <span
-            className={`text-xs font-semibold ${pctColor}`}
-          >
-            {pct}%
-          </span>
+          {halted ? <span className={HALTED_BADGE}>중도중지</span> : <span className={`text-xs font-semibold ${pctColor}`}>{pct}%</span>}
         </div>
         <div className="relative h-3 overflow-hidden rounded-full bg-gray-200">
           <div

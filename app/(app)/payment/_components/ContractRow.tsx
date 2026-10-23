@@ -24,7 +24,7 @@ import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
-import { averageProgress, isContractComplete, slotTotals } from "@/lib/analytics/contract-slots";
+import { averageProgress, isContractComplete, isHaltedSlot, slotTotals } from "@/lib/analytics/contract-slots";
 import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -254,7 +254,7 @@ export default function ContractRow({
     return visibleSlots
       .filter((slot) => {
         const pct = progressPct(slot.진행률);
-        return slot.진행기관.trim() !== "" && pct < 100;
+        return slot.진행기관.trim() !== "" && pct < 100 && !isHaltedSlot(slot);
       })
       .map((slot) => `${slot.진행기관}(${progressPct(slot.진행률)}%)`)
       .join(" · ");
