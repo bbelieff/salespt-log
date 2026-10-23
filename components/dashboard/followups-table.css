@@ -13,7 +13,7 @@
 .follow-ups-card :is(.ft-step,.ft-count,.follow-ups-total,.ft-upcoming,.ft-unknown){outline:none;box-shadow:none;border:0}
 .follow-ups-card :is(.ft-step,.ft-count,.follow-ups-total,.ft-upcoming,.ft-unknown):focus-visible{outline:none;box-shadow:none;text-decoration:underline double #334155;text-decoration-thickness:1px;text-underline-offset:4px}
 .follow-ups-card :is(.ft-step,.ft-count,.follow-ups-total,.ft-upcoming,.ft-unknown):focus-visible :is(span,b){text-decoration:underline double #334155;text-decoration-thickness:1px;text-underline-offset:4px}
-.ft-panel[data-selection-tone]{border-color:var(--ft-line);border-top:3px solid var(--ft-accent)}
+.ft-panel[data-selection-tone]{border:2px solid var(--ft-accent);box-shadow:0 0 0 3px var(--ft-tint),0 16px 48px #0f172a26}
 .ft-panel-head{padding:10px 12px;gap:8px;align-items:center}.ft-panel-head>div{min-width:0}.ft-panel-head .ft-source-title{color:var(--ft-accent);flex-wrap:wrap;gap:4px 7px;line-height:1.5}.ft-panel-head .ft-source-title b{color:var(--ft-accent);background:var(--ft-tint);white-space:nowrap}.ft-panel-head p{margin-top:2px;font-size:10px}.ft-panel-head>button{min-width:32px;min-height:32px;display:grid;place-items:center;flex-shrink:0}
 .ft-source-connector{position:fixed;z-index:91;overflow:visible;pointer-events:none;color:var(--ft-accent)}
 .ft-source-connector path{fill:none;stroke:currentColor;stroke-width:1.5}.ft-source-connector circle{fill:currentColor}

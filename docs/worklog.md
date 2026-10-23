@@ -1,3 +1,5 @@
+## 2026-10-23 · 오늘 챙길 일 목록 창 전체 테두리
+- fix/followups-panel-border. belie 요청: 위쪽만 굵던 강조 테두리를 네 변 전체(2px 강조색 + 연한 고리)로. 실화면 1280 확인. [plan](plans/active/followups-panel-border.md).
 ## 2026-10-23 · 업체정보 머리줄 한글 버튼
 - fix/company-info-header-labels. belie 요청: 아이콘 4개 → 작은 한글 버튼(문서입력·TXT·팝업·더보기, PC 24px·모바일 28px — 주변 버튼 크기에 맞춤). 더보기 메뉴 안 중복 이름 숨김. 실화면 1280·375 확인. [plan](plans/active/company-info-header-labels.md).
 
