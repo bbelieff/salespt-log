@@ -29,3 +29,4 @@ body.db-sheet-route .db-contact-action-row select.sheet-input{width:100%;min-wid
 .db-inflow-choices button[aria-pressed=true]{background:#eff6ff;color:#2563eb;border-color:#3b82f6}
 .db-detail-bottom-actions{display:flex;justify-content:flex-end;margin-top:16px}
 @media(max-width:699px){body.db-sheet-route .db-detail-shell,body.db-sheet-route .db-detail-shell.with-contact{width:100%;max-width:100%;border-radius:0}.db-detail-header>.db-width-toggle{display:none}body.db-sheet-route .db-contact-actions{padding:9px 12px 7px}.db-contact-action-row{gap:7px}.db-contact-open{padding:0 8px;gap:4px}body.db-sheet-route .db-info-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+body.db-sheet-route .db-recall-notice .db-contact-open{justify-self:start}

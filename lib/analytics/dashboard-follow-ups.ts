@@ -2,7 +2,7 @@
 import { todoSlotOf } from "./todo-slot";
 import { contractRef, normalizeContractRef, sameContractRef } from "@/util/contract-ref";
 import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
-import { isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
+import { dbSheetResultLabel, isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
 import { activeWorkContracts, classifyWorkStatus, slotHasData } from "./payment-work-status";
@@ -99,9 +99,9 @@ export function buildUnresultedMeetings(meetings: Meeting[], today: string): Fol
 function leadIsActive(lead: DbSheetLead) { return !lead.meetingId && lead.funnel !== "계약" && lead.stage !== "계약해지"; }
 function leadItem(lead: DbSheetLead, today: string, initial: boolean, due: string | null, reason: string): FollowUpItem {
   return item({ key: `lead:${lead.id}`, kind: initial ? "initial" : "recontact", step: initial ? "1.5" : "2",
-    title: lead.company.trim() || "이름 없는 업체", detail: `${lead.result} · ${lead.channel}`,
+    title: lead.company.trim() || "이름 없는 업체", detail: `${dbSheetResultLabel(lead.result)} · ${lead.channel}`,
     action: initial ? "첫 연락하기" : reason === "다음 연락일 없음" ? "다음 연락일 정하기" : "다시 연락하기",
-    reasons: [reason], facts: [{ label: "유입일", value: lead.date }, { label: "연락 결과", value: lead.result }, { label: "다음 연락일", value: lead.next || "미정" }],
+    reasons: [reason], facts: [{ label: "유입일", value: lead.date }, { label: "연락 결과", value: dbSheetResultLabel(lead.result) }, { label: "다음 연락일", value: lead.next || "미정" }],
     href: `/db-sheet?lead=${encodeURIComponent(lead.id)}`,
   }, due, today);
 }

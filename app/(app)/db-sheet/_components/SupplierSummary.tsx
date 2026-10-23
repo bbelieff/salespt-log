@@ -134,7 +134,7 @@ export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, 
         <thead><tr className="text-px-11 text-slate-700">
           <th scope="col" className="py-2 pl-3 pr-2 text-left font-semibold">공급처</th>
           <th scope="col" className={HEAD}>들어온 DB</th>
-          <th scope="col" className={HEAD} title="컨택진행·상담 후 거절 이력이 있는 DB">상담</th>
+          <th scope="col" className={HEAD} title="미팅예약·컨택 후 거절 이력이 있는 DB">상담</th>
           <th scope="col" className={HEAD} title="미팅을 잡은 DB (취소·삭제 제외)">미팅</th>
           <th scope="col" className={`${HEAD} pr-3`} title="계약한 DB (해지 제외) · 계약률 = 계약 ÷ 들어온 DB">계약 · 계약률</th>
         </tr></thead>

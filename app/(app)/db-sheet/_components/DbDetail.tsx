@@ -12,12 +12,14 @@ function PanelGrip({label,value,min,max,scale=1,readValue,onChange}:{label:strin
  const apply=(n:number)=>onChange(Math.max(min,Math.min(max,n)));
  return <div className="db-panel-grip" role="separator" aria-label={label} aria-orientation="vertical" aria-valuenow={Math.round(value)} aria-valuemin={min} aria-valuemax={max} tabIndex={0} title={`${label} · 드래그로 조절`} onPointerDown={e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();start.current={x:e.clientX,value:readValue?readValue():value};e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{if(start.current)apply(start.current.value+(e.clientX-start.current.x)*(typeof scale==='function'?scale():scale));}} onPointerUp={e=>{start.current=null;if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);}} onPointerCancel={()=>{start.current=null;}} onKeyDown={e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();apply((readValue?readValue():value)+(e.key==='ArrowLeft'?-1:1)*(max<=100?2:16));}}}/>;
 }
+const RIGHT_DEFAULT=680,LEGACY_RIGHT_DEFAULT=560;
 export function DbDetail({row,draft,onChange,onEdit,onResult,onRegister,onOpen,onClose,onRecording,onDelete,onRestored,onAsInfo,onInflowChange}:{row:Row;draft:ContactDraft;onChange:(v:ContactDraft)=>void;onEdit:(k:Key,v:string)=>void;onResult:(v:string,date:string)=>void;onRegister:()=>void;onOpen:()=>void;onClose:()=>void;onRecording:()=>void;onDelete:()=>void;onAsInfo:(v:{asReceived?:boolean;asNote?:string})=>void;onRestored?:()=>void|Promise<void>;onInflowChange?:(value:boolean)=>Promise<void>}){
  const [contact,setContact]=useState(false);
  const shell=useRef<HTMLElement>(null);
  const readWidth=(key:string,fallback:number,min:number,max:number)=>{try{const n=Number(localStorage.getItem(key));return n>=min&&n<=max?n:fallback;}catch{return fallback;}};
  const [preferredLeft,setPreferredLeft]=useState(()=>readWidth('db-sheet-panel-left-width',readWidth('db-sheet-panel-closed-width',640,360,1200),360,1200));
- const [preferredRight,setPreferredRight]=useState(()=>readWidth('db-sheet-panel-right-width',560,400,680));
+ // 업체정보(우열) 기본 680px — 560px 에서는 업체정보 확장보기가 좁아 잘렸다(2026-10-23). 예전 기본값 560 이 그대로 저장된 경우도 새 기본으로 본다.
+ const [preferredRight,setPreferredRight]=useState(()=>{const saved=readWidth('db-sheet-panel-right-width',RIGHT_DEFAULT,400,680);return saved===LEGACY_RIGHT_DEFAULT?RIGHT_DEFAULT:saved;});
  const [viewport,setViewport]=useState(()=>typeof window==='undefined'?1280:window.innerWidth),[writing,setWriting]=useState(false);
  useEffect(()=>{const update=()=>setViewport(window.innerWidth);window.addEventListener('resize',update);return()=>window.removeEventListener('resize',update);},[]);
  useEffect(()=>{try{localStorage.setItem('db-sheet-panel-left-width',String(preferredLeft));localStorage.setItem('db-sheet-panel-right-width',String(preferredRight));}catch{}},[preferredLeft,preferredRight]);

@@ -1,5 +1,5 @@
 import {normalizeImportText,blankImportText,importTextFormat} from './import-text';
-import { DB_SHEET_RESULTS, isDbSheetFollowUpResult, isQualifiedDbSheetContact, recordsDbSheetFirstContact } from "@/types/db-sheet";
+import { DB_SHEET_RESULTS, dbSheetContactStage, dbSheetResultLabel, isDbSheetFollowUpResult, isQualifiedDbSheetContact, nextDbSheetFirstContact } from "@/types/db-sheet";
 import {CHANNEL_ORDER} from '@/types/channel';
 import { isValidISODate } from "@/util/week";
 import { domesticPhoneDigits, isSameLead } from "@/util/db-sheet-identity";
@@ -33,8 +33,8 @@ export const kakaoSample='사업자명: 샘플 은하상사\n대표자: 조가�
 
 export const tsvSample='사업자명\t대표자\t전화번호\t필요자금\t체납여부\n샘플 달빛공방\t한가상\t010-0000-2001\t5,000만원\t\n샘플 온유상사\t김가상\t010-0000-1001\t3천만원\t없음\n샘플 푸른제작\t윤가상\t확인 필요\t\t미확인';
 export const outcomes:readonly string[]=DB_SHEET_RESULTS;
-/** AS legacy storage stays unchanged; only its customer-facing label changes. */
-export const outcomeDisplayLabel=(value:string)=>value==='AS예정'?'AS신청':value;
+/** 저장값은 그대로 두고 화면 이름만 바꾼다(AS예정→AS신청 · 컨택진행→미팅예약 · 상담 후 거절→컨택 후 거절). */
+export const outcomeDisplayLabel=dbSheetResultLabel;
 /** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
  const qualified=isQualifiedDbSheetContact(result);
@@ -42,11 +42,13 @@ export function outcomeLabel(result:string,activities=true):string {
 }
 
 export function recordContact(row:Row,result:string,date:string):Row {
- const first=row.firstManual?row.first:row.first||(recordsDbSheetFirstContact(result)?date:'');
+ const first=nextDbSheetFirstContact(row.first,result,date);
  const hasQualifiedContact=(row.hasQualifiedContact??!!row.first)||isQualifiedDbSheetContact(result);
- return {...row,result,first,hasQualifiedContact,stage:['미컨택','상담 중'].includes(row.stage)?(hasQualifiedContact?'상담 중':'미컨택'):row.stage};
+ return {...row,result,first,hasQualifiedContact,stage:dbSheetContactStage({meetingId:row.meetingId,stage:row.stage,result,hasQualifiedContact})};
 }
 
 export const showsNextContact=(result:string)=>isDbSheetFollowUpResult(result);
+/** 재통화인데 다음 연락일이 비었으면 일정 안내를 띄운다. */
+export const needsRecallDate=(row:Pick<Row,'result'|'next'>)=>row.result==='재통화'&&!row.next;
 
 export function formatPhone(value:string){const digits=domesticPhoneDigits(value);if(/^01[016789]\d{8}$/.test(digits))return digits.replace(/^(\d{3})(\d{4})(\d{4})$/,'$1-$2-$3');if(/^02\d{7,8}$/.test(digits))return digits.replace(/^(02)(\d{3,4})(\d{4})$/,'$1-$2-$3');if(/^0[3-9]\d{8,9}$/.test(digits))return digits.replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');return value;}

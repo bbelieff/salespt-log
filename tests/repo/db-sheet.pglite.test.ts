@@ -153,7 +153,7 @@ it("follow-up generation survives drafts/reload, completes only an explicit cont
  const generation=lead.followUp!.generation;
  lead=(await saveDbSheetLead(ctx,{...lead,contact:{...lead.contact,date:"2026-10-12"},followUp:{generation:99,completedGeneration:99,lastContactDate:"2099-01-01"}},lead.revision)).lead;
  expect(lead.followUp).toEqual({generation,completedGeneration:null,lastContactDate:""});
- lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"부재",note:"합성"},lead.revision)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"단순거절",note:"합성"},lead.revision)).lead;
  expect(lead.next).toBe("");expect(lead.followUp!.completedGeneration).toBe(generation);
  lead=(await scheduleDbSheetContact(ctx,lead.id,"2026-10-12",lead.revision)).lead;
  expect(lead.followUp!.generation).toBe(generation+1);expect(lead.followUp!.completedGeneration).toBe(generation);
@@ -179,7 +179,7 @@ it("legacy real contact dates are read from the ledger, never from draft dates, 
 it("draft autosave after a completed contact cannot restore the consumed next date",async()=>{
  let lead=(await saveDbSheetLead(ctx,{...input(),next:"2026-10-12"},null)).lead;
  const staleDraft={...lead,company:"새 합성 이름"};
- lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"부재",note:""},lead.revision)).lead;
+ lead=(await saveDbSheetContact(ctx,lead.id,{date:"2026-10-12",result:"단순거절",note:""},lead.revision)).lead;
  lead=(await saveDbSheetLead(ctx,staleDraft,lead.revision)).lead;
  expect(lead.next).toBe("");expect(lead.followUp!.completedGeneration).toBe(lead.followUp!.generation);
  lead=(await saveDbSheetLead(ctx,{...lead,next:"2026-10-12"},lead.revision,true)).lead;
@@ -306,7 +306,7 @@ it.each([
  let lead=(await saveDbSheetLead(ctx,input(),null)).lead;
  lead=(await saveDbSheetContact(ctx,lead.id,{date,result,note:"합성 날짜 검증"},lead.revision)).lead;
  expect(lead.first).toBe(recordsFirst?date:"");expect(lead.hasQualifiedContact).toBe(qualified);
- expect(lead.stage).toBe(qualified?"상담 중":"미컨택");
+ expect(lead.stage).toBe(qualified?"상담 중":recordsFirst?"DB컨택중":"미컨택");
  expect((await sales(date))?.contactProgress??0).toBe(before+Number(qualified));
  lead=(await saveDbSheetLead(ctx,{...lead,supplier:"합성 공급처",hasQualifiedContact:!qualified,first:"2099-01-01"},lead.revision)).lead;
  const reloaded=(await listDbSheet(ctx)).find(row=>row.id===lead.id)!;
