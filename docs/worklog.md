@@ -1,3 +1,6 @@
+## 2026-10-23 · 투두 바로 추가 + 완료 결과 메모 (feat/todo-inline-add-result)
+- belie 승인 목업 [4]: 진행건 칸 Todo/History 를 제목·날짜만으로 Enter 즉시 저장(팝업은 「자세히」), 완료 Todo 에 결과 한 줄 — `Todo.result`(시트 R 「결과」), 완료 Todo·History 에 「+ 다음」 연계 할 일 — `Todo.prevId`(시트 S 「이전 기록」). P:S 분리 write, DB payload. 운영 데이터 무변경. [plan](plans/active/todo-inline-add-result.md).
+
 ## 2026-10-23 · 조건 대기 · 업체 장기관리
 - feat/payment-wait-longterm, base 6592f72c. belie 목업 [1]·[5] A안(정정 반영): 진행률 「조건 대기」(사유 + 단기관리 2개월 내/장기관리 3개월 이상), 업체 상세 배너 「진행 | 장기관리」 토글 + 정렬 줄 「장기관리 N」 칩. 자동 이동 = 진행건이 모두 수납완료·중도중지·조건 대기(장기관리), 직접 장기관리 뒤 새 진행건이 생기면 진행 복귀(둘 다 belie 확정). 단기관리는 오늘 챙길 일 맨 뒤, 장기관리 진행건·업체는 제외. 저장은 DB JSONB 만(시트 열 없음, 진행률 빈 칸). 운영 데이터 무변경. [plan](plans/active/payment-wait-longterm.md).
 

@@ -1,6 +1,6 @@
 /**
  * Layer: repo — 05 실무투두 탭 I/O.
- * 1행 = 1투두. 앱 본문 A~N, O는 gcal_event_ids, P는 Todo/History 구분.
+ * 1행 = 1투두. 앱 본문 A~N, O는 gcal_event_ids, P는 Todo/History 구분, Q 진행건, R 결과, S 이전 기록 id.
  *
  * 04 미팅·02 수납과 완전 격리 (미팅 집계 수식 영향 0, ADR-0006).
  * 수식 컬럼 없음 → meetings 의 split-write 불필요, 전체 행 A:M 한 번에 write.
@@ -67,10 +67,12 @@ function toISO(d: Date): string {
 }
 
 const TAB = SHEET_RANGES.todos.tab;
-const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.todos.range}`; // A2:Q
+const RANGE_ALL = `${tabRef(TAB)}!${SHEET_RANGES.todos.range}`; // A2:S
 const HEADER_RANGE = `${tabRef(TAB)}!${SHEET_RANGES.todos.headerRow}`; // A1:N1
 const KIND_HEADER_RANGE = `${tabRef(TAB)}!P1`;
 const SLOT_HEADER_RANGE = `${tabRef(TAB)}!Q1`;
+const RESULT_HEADER_RANGE = `${tabRef(TAB)}!R1`;
+const PREV_HEADER_RANGE = `${tabRef(TAB)}!S1`;
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`;
 
 // 컬럼 인덱스 (0-based, A=0)
@@ -91,6 +93,8 @@ const COL = {
   분류: 13, // N — 일반이벤트 카테고리(기존/기타), consultation-log §1-3
   기록종류: 15, // P — O(gcal_event_ids)를 보존, 기존 빈칸은 todo
   slot: 16, // Q — 진행건 번호(1~3). 빈칸 = 옛 기록(기관 이름으로만 묶임)
+  result: 17, // R — 완료한 할 일의 결과 한 줄. 빈칸 = 결과 없음
+  prevId: 18, // S — 「+ 다음」으로 이어 만든 할 일의 원래 기록 id. 빈칸 = 연결 없음
 } as const;
 
 const HEADER: string[] = [
@@ -167,6 +171,8 @@ export function rowToTodo(r: unknown[]): Todo | null {
     분류: String(r[COL.분류] ?? "").trim(),
     기록종류: String(r[COL.기록종류] ?? "todo").trim() || "todo",
     slot: slotFromCell(r[COL.slot]),
+    result: String(r[COL.result] ?? ""),
+    prevId: String(r[COL.prevId] ?? "").trim(),
   });
   return parsed.success ? parsed.data : null;
 }
@@ -229,7 +235,7 @@ async function doEnsureTodoTab(spreadsheetId: string): Promise<void> {
       requestBody: { values: [HEADER] },
     });
   }
-  await ensureGridColumns(spreadsheetId, TAB, 17);
+  await ensureGridColumns(spreadsheetId, TAB, 19);
   const kindHeader = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range: KIND_HEADER_RANGE });
   if (!kindHeader.data.values?.[0]?.[0]) {
     await sheetsClient().spreadsheets.values.update({
@@ -246,6 +252,17 @@ async function doEnsureTodoTab(spreadsheetId: string): Promise<void> {
       range: SLOT_HEADER_RANGE,
       valueInputOption: "RAW",
       requestBody: { values: [["진행건"]] },
+    });
+  }
+  // R1·S1 머리글 — 비었을 때만 쓴다(사람이 적은 머리글 보존).
+  for (const [range, label] of [[RESULT_HEADER_RANGE, "결과"], [PREV_HEADER_RANGE, "이전 기록"]] as const) {
+    const header = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range });
+    if (header.data.values?.[0]?.[0]) continue;
+    await sheetsClient().spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: "RAW",
+      requestBody: { values: [[label]] },
     });
   }
 }
@@ -279,13 +296,15 @@ export async function findRowById(
   return idx < 0 ? null : idx + 2;
 }
 
-/** A~N + P·Q 분리 write. O(gcal_event_ids)는 캘린더 연동 정본/미러라 비접촉. */
+/** A~N + P~S 분리 write. O(gcal_event_ids)는 캘린더 연동 정본/미러라 비접촉. */
 async function writeTodoRow(
   spreadsheetId: string,
   sheetRow: number,
   row: (string | number | boolean)[],
   recordKind: Todo["기록종류"],
   slot: Todo["slot"] = null,
+  result = "",
+  prevId = "",
 ): Promise<void> {
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId,
@@ -293,7 +312,7 @@ async function writeTodoRow(
       valueInputOption: "USER_ENTERED",
       data: [
         { range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`, values: [row] },
-        { range: `${tabRef(TAB)}!P${sheetRow}:Q${sheetRow}`, values: [[recordKind, slot ?? ""]] },
+        { range: `${tabRef(TAB)}!P${sheetRow}:S${sheetRow}`, values: [[recordKind, slot ?? "", text(result), text(prevId)]] },
       ],
     },
   });
@@ -310,7 +329,7 @@ export async function findById(
   if (sheetRow === null) return null;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
-    range: `${tabRef(TAB)}!A${sheetRow}:Q${sheetRow}`,
+    range: `${tabRef(TAB)}!A${sheetRow}:S${sheetRow}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "SERIAL_NUMBER",
   });
@@ -327,7 +346,7 @@ export async function appendTodo(
   await ensureTodoTab(spreadsheetId);
   const validated = Todo.parse(todo);
   const targetRow = await findFirstEmptyRow(spreadsheetId);
-  await writeTodoRow(spreadsheetId, targetRow, todoToRow(validated), validated.기록종류, validated.slot);
+  await writeTodoRow(spreadsheetId, targetRow, todoToRow(validated), validated.기록종류, validated.slot, validated.result, validated.prevId);
   // dual-write 미러 (P1) — fire-and-forget. R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기).
   if (opts.mirror !== false) mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: validated.id, payload: validated });
   return validated;
@@ -350,7 +369,7 @@ export async function updateTodo(
     throw new Error(`[todos.ts] id로 행은 찾았으나 파싱 실패: ${id}`);
   }
   const merged: Todo = Todo.parse({ ...current, ...partial });
-  await writeTodoRow(spreadsheetId, sheetRow, todoToRow(merged), merged.기록종류, merged.slot);
+  await writeTodoRow(spreadsheetId, sheetRow, todoToRow(merged), merged.기록종류, merged.slot, merged.result, merged.prevId);
   // R3-2: DB 정본 경로는 mirror:false(시트만, DB 는 서비스가 동기 저장).
   if (opts.mirror !== false) mirrorSheetRow({ spreadsheetId, tab: "todos", rowKey: id, payload: merged }); // P1
 }
@@ -369,7 +388,7 @@ export async function clearTodo(
       valueInputOption: "USER_ENTERED",
       data: [
         { range: `${tabRef(TAB)}!A${sheetRow}:N${sheetRow}`, values: [Array(14).fill("")] },
-        { range: `${tabRef(TAB)}!P${sheetRow}:Q${sheetRow}`, values: [["", ""]] },
+        { range: `${tabRef(TAB)}!P${sheetRow}:S${sheetRow}`, values: [["", "", "", ""]] },
       ],
     },
   });

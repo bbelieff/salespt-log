@@ -274,7 +274,7 @@ export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
     if (direct.success) return direct.data;
   }
   const r: unknown[] = [];
-  for (let i = 0; i <= 16; i++) r.push(coerce(p[colName(i)])); // A..Q
+  for (let i = 0; i <= 18; i++) r.push(coerce(p[colName(i)])); // A..S
   return rowToTodo(r);
 }
 

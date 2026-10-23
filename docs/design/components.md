@@ -1378,7 +1378,8 @@ D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-sl
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia. 진행기관·진행상품·현황·메모는 입력 중 draft만 보관하고 칸 blur 시 저장한다. 로드맵·계약 비고도 같으며 진행률·체크 선택은 기존 자동저장 유지. 실패·재시도·이탈 보호는 공유 큐를 사용한다. |
 | **LinkedFieldsEditor** | 계약 핵심필드(업체명·계약일·수임비) 수정 토글(payment_contract_edit_toggle). Props: `cp: ContractPayment`. **평소 = [✎ 계약정보 수정] 버튼만**(값 미표시 — 업체명·계약일·수임비는 ContractRow 헤더가 이미 표시. 중복 박스 제거 2026-07-14; 헤더가 `<button>`이라 버튼 중첩 불가 → 펼침 본문 최상단 우측 배치). 클릭 시 이 카드만 편집모드(input+[저장]/[취소]+배지). 변경 없으면 시트 쓰기 0. 저장 시 연결 미팅 id(AK)로 대상 특정해 02↔04↔06 양방향 연동(업체명→02 D+04 G+06 / 계약일→02 C만, 미팅날짜·통계 불변 / 수임비→02 E+04 L). `useEditContractLinkedFields`, DirtyGuard(편집중 변경 시), 일부 시트 실패 시 시트명 안내+save throw. contract-edit-linked-fields. |
 | **DriveLinkBar** | Drive 바로가기 버튼. 미연결 시 재연결 폼. |
-| **TodoSection** | 진행 슬롯 내 ToDo 목록 + 추가 버튼 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). Props: `contractRef/institutionRef/companyName/todos`. 완료 토글·삭제. |
+| **TodoSection** | 진행 슬롯 내 ToDo 목록 + 한 줄 바로 추가 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). 제목·날짜 Enter/「추가」 = 팝업 없이 저장(날짜 비면 할 일 내일·한 일 오늘, 09:00), 「자세히」 = TodoFormModal. 새 줄 2초 강조·제목 칸 재포커스. Props: `contractRef/institutionRef/companyName/todos/slot`. |
+| **TodoRow** | TodoSection 의 기록 한 줄. 완료 토글·삭제·「진행 N 기록으로」. 완료 Todo 는 점선 「+ 결과」 → 한 줄 입력(Enter 저장·Esc/빈 blur 취소), 결과는 초록 「결과 · …」 눌러 고침. 완료 Todo·History 는 점선 「+ 다음」 → 제목+날짜(기본 내일) 한 줄, Enter = 같은 진행건에 새 할 일(prevId=원래 기록). |
 | **TodoFormModal** | 실무 ToDo 생성 팝업 (Pluuug 모티브, 담당자 없음). type 4종·제목·예정일자·예정시각(시08~20/분00·30)·상세·캘린더표시 ON. Props: `contractRef/institutionRef/companyName/onClose`. |
 
 > **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):

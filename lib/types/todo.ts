@@ -9,7 +9,7 @@ import { z } from "zod";
 // 시트 매핑: docs/domains/sheet-structure.md §5-2 (A~M 13컬럼)
 //   A=id, B=contractRef, C=institutionRef, D=업체명, E=type, F=제목,
 //   G=예정일자, H=예정시각, I=장소, J=상세, K=showOnCalendar,
-//   L=완료여부, M=생성시각, (N=분류, O=캘린더ID, P=기록종류, Q=진행건 번호)
+//   L=완료여부, M=생성시각, (N=분류, O=캘린더ID, P=기록종류, Q=진행건 번호, R=결과, S=이전 기록 id)
 // (계약 × 기관) 단위. 04 미팅·02 수납과 격리(미팅 집계 수식 영향 0).
 // 수식 컬럼 없음 → split-write 불필요.
 // "일반" = 캘린더 일반이벤트(기존고객/개인 일정, 통계·아레나 비집계 — consultation-log §1-3).
@@ -43,5 +43,9 @@ export const Todo = z.object({
   /** 몇 번째 진행건(수납1~3)의 기록인가 — Q 컬럼. null = 진행건 번호 없이 기관 이름으로만 묶이던 옛 기록
    *  (2026-10-23: 같은 기관을 쓰는 진행건 1·2에 기록이 함께 붙던 문제 → 새 기록부터 번호로 연결). */
   slot: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable().default(null),
+  /** 완료한 할 일의 결과 한 줄 — R 컬럼(2026-10-23). 옛 기록·null = 빈값. */
+  result: z.string().nullish().transform((v) => v ?? ""),
+  /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록의 id — S 컬럼(2026-10-23). 빈값 = 연결 없음. 화면에는 표시 안 함. */
+  prevId: z.string().nullish().transform((v) => v ?? ""),
 });
 export type Todo = z.infer<typeof Todo>;

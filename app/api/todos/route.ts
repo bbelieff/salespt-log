@@ -35,6 +35,8 @@ const CreateBody = z.object({
   기록종류: TodoRecordKind.default("todo"),
   /** 몇 번째 진행건(1~3)의 기록인가. 없으면 옛 방식(기관 이름으로만 연결). */
   slot: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable().optional(),
+  /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록 id(S 컬럼). */
+  prevId: z.string().max(100).optional(),
   // 초안당 클라이언트 발행 안정 키(UUID) — 있으면 Todo id 로 사용해
   // 커밋 후 응답 유실 재시도·동시 같은 키를 정확히 1행으로 수렴시킨다.
   // 없으면 기존 동작(서버 발행 id) — 하위 호환.

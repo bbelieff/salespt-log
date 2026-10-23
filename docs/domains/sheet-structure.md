@@ -544,7 +544,7 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 
 **SHEET_RANGES.todos 키 매핑**:
 - `todos` (JS 키) ↔ "05 실무투두" (시트 탭명)
-- 범위: `A2:Q` (A~N 앱 본문, O 캘린더 이벤트 ID, P Todo/History 구분, Q 진행건 번호)
+- 범위: `A2:S` (A~N 앱 본문, O 캘린더 이벤트 ID, P Todo/History 구분, Q 진행건 번호, R 결과, S 이전 기록 id)
 - `headerRow = A1:N1`
 - **앱 자동 생성** (`ensureTodoTab`): 탭이 없으면 `addSheet` + 헤더행 write. 04처럼 사전 존재 가정 안 함 — 신규 탭이라 전 수강생 시트에 **lazy 생성**(첫 접근 시). in-process 캐시로 중복 호출 회피.
 
@@ -568,11 +568,13 @@ H / O / W / AE: spacer (비움). A: 비움. (부가세여부는 매입DB F·현�
 | **N** | 분류 | text | 일반이벤트 카테고리 `기존`(기존 고객) \| `기타`(개인 일정). 그 외 type 은 빈값 |
 | **O** | gcal_event_ids | text | 사용자별 JSON 맵 `{"salesptEmail":"eventId"}` (gcal-2, google-calendar-sync §2). **`lib/repo/gcal-event-ids.ts` 만 read-merge-write** — writeTodoRow(A:N) 범위 밖이라 투두 행 쓰기와 독립 보존. 미연결 사용자 빈값 |
 | **P** | 기록종류 | enum | `todo` / `history`. 기존 빈값은 `todo`로 읽는다. 앱은 A:N과 P를 분리 write하여 O를 보존한다. |
-| **Q** | 진행건 | 1·2·3 | 몇 번째 진행건(수납1~3)의 기록인가(2026-10-23). 빈값 = 옛 기록 — 기관 이름으로 추정(`lib/analytics/todo-slot.ts`). P와 함께 `P:Q`로 write. |
+| **Q** | 진행건 | 1·2·3 | 몇 번째 진행건(수납1~3)의 기록인가(2026-10-23). 빈값 = 옛 기록 — 기관 이름으로 추정(`lib/analytics/todo-slot.ts`). P와 함께 `P:S`로 write. |
+| **R** | 결과 | text | 완료한 할 일의 결과 한 줄(2026-10-23, ≤200자). 빈값 = 결과 없음. 머리글 「결과」는 R1 이 비었을 때만 쓴다. 기존에 사람이 적은 값은 결과로 읽고 그대로 다시 쓴다. |
+| **S** | 이전 기록 | text | 「+ 다음」으로 이어 만든 할 일이면 원래 기록의 id(2026-10-23). 빈값 = 연결 없음. 머리글 「이전 기록」(S1 비었을 때만). 화면 표시 없음. |
 
 **키 설계** (design §6.1): `contractRef` = `${계약일}|${업체명}` 합성키(행 이동에 강건), `institutionRef` = 슬롯 진행기관 텍스트. 슬롯 ToDo 조회 = (contractRef 일치 && institutionRef 일치).
 
-앱 본문 `A:N`과 기록종류·진행건 `P:Q`를 분리 write한다. `O`의 캘린더 이벤트 ID 맵은 절대 덮어쓰지 않는다. update는 자기 `id` 행만(findById→merge), append는 A열 기준 빈 행만 사용한다.
+앱 본문 `A:N`과 기록종류·진행건·결과·이전 기록 `P:S`를 분리 write한다. `O`의 캘린더 이벤트 ID 맵은 절대 덮어쓰지 않는다. update는 자기 `id` 행만(findById→merge), append는 A열 기준 빈 행만 사용한다.
 
 **자동 연동 없음** — 앱이 직접 append/update/clear (id = UUID).
 
