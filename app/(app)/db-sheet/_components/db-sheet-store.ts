@@ -10,7 +10,7 @@
  *  - 여러 줄 삭제는 10초 동안 화면에서만 숨기고(서버 무변경) 「되돌리기」가 없으면 그때 확정한다.
  * 화면(use-db-sheet)은 subscribe/getState 로 읽고, 쿼리 무효화·오늘 날짜·전송은 바깥에서 넣는다.
  */
-import { DbSheetLeadInput, type DbSheetLead, type DbSheetManualStage } from "@/types/db-sheet";
+import { DbSheetLeadInput, type DbSheetLead, type DbSheetManualStage, type DbSheetAbsence } from "@/types/db-sheet";
 import type { Row, Key } from "./model";
 import type { ContactDraft } from "./ContactPanel";
 import { SheetRequestError, type Recording, type RecordingImpact, type sheetRequest } from "./recording-client";
@@ -103,7 +103,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
       const saved = rows.find((r) => r.id === row.id);
       if (!saved) return row;
       return versions.get(row.id) === snapshots.get(row.id) ? saved : {
-        ...row, next: scheduleVersions.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, firstManual: saved.firstManual, hasQualifiedContact: saved.hasQualifiedContact, manualStage: saved.manualStage, stage: saved.stage, meetingId: saved.meetingId, funnel: saved.funnel, followUp: saved.followUp, recording: saved.recording, inflowStatus: saved.inflowStatus,
+        ...row, next: scheduleVersions.has(row.id) ? row.next : saved.next, revision: saved.revision, result: saved.result, first: saved.first, firstManual: saved.firstManual, hasQualifiedContact: saved.hasQualifiedContact, manualStage: saved.manualStage, absences: saved.absences, linkedExisting: saved.linkedExisting, stage: saved.stage, meetingId: saved.meetingId, effectiveMeetingId: saved.effectiveMeetingId, funnel: saved.funnel, followUp: saved.followUp, recording: saved.recording, inflowStatus: saved.inflowStatus,
       };
     }));
   }
@@ -252,6 +252,25 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
       accept(rows, new Map([[id, version]]));
     }, true);
   }
+  /** 부재 기록 한 줄 더하기·빼기(2026-10-23) — 표 값과 무관하게 바로 저장. */
+  async function absence(id: string, entry: DbSheetAbsence, remove = false) {
+    await flush(id);
+    return enqueue(async () => {
+      const version = versions.get(id) ?? 0;
+      const rows = await request({ action: "absence", id, revision: server.get(id)!.revision, entry, ...(remove ? { remove: true } : {}) });
+      accept(rows, new Map([[id, version]]));
+    }, true);
+  }
+  /** 따로 잡은 미팅 연결·풀기(2026-10-23) — 표시만 바꾸고 실적은 그대로. */
+  async function linkMeeting(id: string, meetingId: string | null) {
+    await flush(id);
+    return enqueue(async () => {
+      const version = versions.get(id) ?? 0;
+      const revision = server.get(id)!.revision;
+      const rows = await request(meetingId ? { action: "link-meeting", id, revision, meetingId } : { action: "unlink-meeting", id, revision });
+      accept(rows, new Map([[id, version]]));
+    }, true);
+  }
   /** 고른 줄의 유입 반영을 한 줄씩 미리보기 → 확정. 이미 그 상태이거나 막힌 줄은 건너뛴다. */
   async function bulkInflow(ids: readonly string[], inflow: boolean): Promise<BulkOutcome> {
     const out: BulkOutcome = { done: 0, unchanged: 0, blocked: [] };
@@ -331,7 +350,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
     load,
     clearAddition: () => set({ addition: null }),
     clearNotice: () => set({ notice: "" }),
-    stage, bulkInflow, scheduleDelete, undoDelete, commitDelete,
+    stage, absence, linkMeeting, bulkInflow, scheduleDelete, undoDelete, commitDelete,
     edit, asInfo, contact, record, register, add, flush, flushAll, discard, reload,
     recordingPreview, configure, inflowPreview, configureInflow,
   };

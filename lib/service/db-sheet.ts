@@ -2,7 +2,7 @@ import { z } from "zod";
 import { findUserByEmail } from "@/repo/users";
 
 import * as ledger from "@/repo/db/db-sheet";
-import { DbSheetLeadInput, DbSheetRecording, DbSheetDate, DbSheetResult, DbSheetManualStage, type DbSheetContext, type DbSheetChange, type DbSheetImpact } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetRecording, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, type DbSheetContext, type DbSheetChange, type DbSheetImpact } from "@/types/db-sheet";
 import { Meeting } from "@/types/meeting";
 import { sourceCohort, usesDbStorage } from "./daily-source";
 import { queueSalesRowSync } from "./sales-write";
@@ -20,6 +20,9 @@ export const DbSheetCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("schedule"), id: z.string().uuid(), revision, next: z.union([DbSheetDate, z.literal("")]) }),
   z.object({ action: z.literal("meeting"), id: z.string().uuid(), revision }),
   z.object({ action: z.literal("stage"), id: z.string().uuid(), revision, stage: DbSheetManualStage }),
+  z.object({ action: z.literal("absence"), id: z.string().uuid(), revision, entry: DbSheetAbsence, remove: z.boolean().optional() }),
+  z.object({ action: z.literal("link-meeting"), id: z.string().uuid(), revision, meetingId: z.string().uuid() }),
+  z.object({ action: z.literal("unlink-meeting"), id: z.string().uuid(), revision }),
   z.object({ action: z.literal("import"), batchId: z.string().uuid(), leads: z.array(DbSheetLeadInput).min(1).max(500),allowDuplicateIds:z.array(z.string().uuid()).max(500).optional() }),
   z.object({action:z.literal("recording-preview"),id:z.string().uuid(),revision,recording:DbSheetRecording}),
   z.object({action:z.literal("recording"),id:z.string().uuid(),revision,recording:DbSheetRecording}),
@@ -41,6 +44,7 @@ export async function resolveDbSheetContext(email: string, sheetOverride?: strin
 }
 
 export const loadDbSheetSuppliers=ledger.listDbSheetSuppliers;
+export async function loadDbSheetMeetingCandidates(ctx: DbSheetContext, leadId: string) { return ledger.listDbSheetMeetingCandidates(ctx, leadId); }
 export async function loadDbSheet(ctx: DbSheetContext) {
   return projectDbSheetWorkStatus(ctx, (await ledger.listDbSheet(ctx)).map(row=>{const {_recorded,...lead}=row;void _recorded;return lead;}));
 }
@@ -69,6 +73,9 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
     case "first-date": changes = [await ledger.setDbSheetFirstDate(ctx, command.id, command.first, command.revision)]; break;
     case "inflow-preview": case "inflow": changes=[await ledger.changeDbSheetInflow(ctx,command.id,command.revision,command.inflow,command.action==="inflow-preview")];break;
     case "stage": changes = [await ledger.setDbSheetManualStage(ctx, command.id, command.stage, command.revision)]; break;
+    case "absence": changes = [command.remove ? await ledger.removeDbSheetAbsence(ctx, command.id, command.entry, command.revision) : await ledger.addDbSheetAbsence(ctx, command.id, command.entry, command.revision)]; break;
+    case "link-meeting": changes = [await ledger.linkDbSheetMeeting(ctx, command.id, command.meetingId, command.revision)]; break;
+    case "unlink-meeting": changes = [await ledger.unlinkDbSheetMeeting(ctx, command.id, command.revision)]; break;
     case "schedule": changes = [await ledger.scheduleDbSheetContact(ctx, command.id, command.next, command.revision)]; break;
     case "import": changes = command.allowDuplicateIds?await ledger.importDbSheetLeads(ctx,command.batchId,command.leads,command.allowDuplicateIds):await ledger.importDbSheetLeads(ctx, command.batchId, command.leads); break;
     case "meeting": {

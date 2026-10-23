@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -249,4 +249,69 @@ export async function deleteDbSheetLead(ctx:DbSheetContext,id:string,revision:nu
 }
 export async function listDbSheetSuppliers(ctx:DbSheetContext){
  guard(ctx);const r=await getDbPool().query("select distinct trim(data->>'supplier') as supplier from db_sheet_history where spreadsheet_id=$1 and trim(coalesce(data->>'supplier',''))<>'' order by supplier",[ctx.spreadsheetId]);return r.rows.map((x:{supplier:string})=>x.supplier);
+}
+
+/** 부재 기록 추가(2026-10-23 belie) — 같은 날짜·시각은 한 번만, 최근 60줄까지. 컨택결과·실적은 바꾸지 않는다. */
+export async function addDbSheetAbsence(ctx:DbSheetContext,leadId:string,entry:DbSheetAbsence,expectedRevision:number):Promise<DbSheetChange>{
+ z.string().uuid().parse(leadId);const add=DbSheetAbsence.parse(entry);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,leadId,expectedRevision);
+  const list=[...(old.absences??[]).filter(a=>!(a.date===add.date&&a.hour===add.hour)),add].sort((a,b)=>a.date.localeCompare(b.date)||a.hour-b.hour).slice(-60);
+  const lead:DbSheetLead={...old,absences:list,revision:old.revision+1};
+  await persist(c,ctx,lead);return {lead:old.meetingId?await linkedProjection(c,ctx,lead):lead,changedSales:[]};
+ });
+}
+export async function removeDbSheetAbsence(ctx:DbSheetContext,leadId:string,entry:DbSheetAbsence,expectedRevision:number):Promise<DbSheetChange>{
+ z.string().uuid().parse(leadId);const del=DbSheetAbsence.parse(entry);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,leadId,expectedRevision);
+  const lead:DbSheetLead={...old,absences:(old.absences??[]).filter(a=>!(a.date===del.date&&a.hour===del.hour)),revision:old.revision+1};
+  await persist(c,ctx,lead);return {lead:old.meetingId?await linkedProjection(c,ctx,lead):lead,changedSales:[]};
+ });
+}
+export type DbSheetMeetingCandidate={id:string;company:string;reservedOn:string;meetingDate:string;state:string};
+/**
+ * 따로 잡은 미팅 연결 후보(2026-10-23 belie): STEP 2 에서 직접 잡아 어느 DB 에도 이어지지 않은 미팅 중
+ * 업체명이 같거나 비슷한 것. 취소·삭제된 미팅, 다른 미팅의 이전 기록(변경 이력)은 뺀다.
+ */
+export async function listDbSheetMeetingCandidates(ctx:DbSheetContext,leadId:string):Promise<DbSheetMeetingCandidate[]>{
+ guard(ctx);z.string().uuid().parse(leadId);const c=getDbPool();
+ const lead=await read(c,ctx,leadId);if(!lead||lead.meetingId)return [];
+ const names=[lead.company,lead.contact.companyName].filter(n=>n&&n.trim());
+ const linked=new Set((await c.query("select meeting_id from db_sheet_leads where spreadsheet_id=$1 and meeting_id is not null",[ctx.spreadsheetId])).rows.map((r:{meeting_id:string})=>r.meeting_id));
+ const rows=await meetingRows(c,ctx);
+ const superseded=new Set(rows.map(r=>String(r.payload.previousMeetingId??"")).filter(Boolean));
+ return rows.flatMap(r=>{
+  // db_sheet_leads.meeting_id 는 uuid 열 — 예전 브라우저가 만든 uuid 아닌 id 는 연결할 수 없어 후보에서 뺀다.
+  if(r.payload._cleared||linked.has(r.row_key)||superseded.has(r.row_key)||!z.string().uuid().safeParse(r.row_key).success)return [];
+  const parsed=Meeting.safeParse(r.payload);if(!parsed.success)return [];
+  const m=parsed.data;if(m.상태==="취소"||!names.some(n=>isSimilarDbSheetCompany(n,m.업체명)))return [];
+  return [{id:m.id,company:m.업체명,reservedOn:m.예약일,meetingDate:m.미팅날짜,state:m.상태}];
+ }).slice(0,10);
+}
+/** 후보 미팅을 이 DB 에 연결 — 표시만 단다. 미팅 날짜·결과·STEP 2·STEP 3 실적은 바꾸지 않는다. 「연결 풀기」로 되돌린다. */
+export async function linkDbSheetMeeting(ctx:DbSheetContext,leadId:string,meetingId:string,expectedRevision:number):Promise<DbSheetChange>{
+ z.string().uuid().parse(leadId);z.string().uuid().parse(meetingId);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,leadId,expectedRevision);
+  if(old.meetingId)throw new DbSheetOperationBlocked("이미 미팅이 연결된 업체예요.");
+  const row=(await meetingRows(c,ctx,true)).find(r=>r.row_key===meetingId);
+  if(!row||row.payload._cleared||!Meeting.safeParse(row.payload).success)throw new DbSheetOperationBlocked("연결할 미팅을 찾지 못했어요. 새로고침해 주세요.");
+  const taken=await c.query("select 1 from db_sheet_leads where spreadsheet_id=$1 and meeting_id=$2 limit 1",[ctx.spreadsheetId,meetingId]);
+  if(taken.rows.length)throw new DbSheetOperationBlocked("이 미팅은 이미 다른 DB 에 연결돼 있어요.");
+  const lead:DbSheetLead={...withoutManualStage(old),meetingId,linkedExisting:true,contact:{...old.contact,registered:true},revision:old.revision+1};
+  await persist(c,ctx,lead);return {lead:await linkedProjection(c,ctx,lead),changedSales:[]};
+ });
+}
+/** 연결 풀기 — 「연결」로 붙인 미팅만 푼다(DB관리시트에서 직접 등록한 미팅은 STEP 3 에서 관리). */
+export async function unlinkDbSheetMeeting(ctx:DbSheetContext,leadId:string,expectedRevision:number):Promise<DbSheetChange>{
+ z.string().uuid().parse(leadId);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,leadId,expectedRevision);
+  if(!old.meetingId||!old.linkedExisting)throw new DbSheetOperationBlocked("이 DB 에서 직접 등록한 미팅은 연결을 풀 수 없어요. STEP 3 일정·계약에서 관리해 주세요.");
+  const lead:DbSheetLead={...old,meetingId:null,contact:{...old.contact,registered:false},revision:old.revision+1};
+  delete lead.linkedExisting;
+  lead.stage=dbSheetContactStage({...lead,stage:"",hasQualifiedContact:lead.hasQualifiedContact??!!lead.first});
+  await persist(c,ctx,lead);return {lead,changedSales:[]};
+ });
 }

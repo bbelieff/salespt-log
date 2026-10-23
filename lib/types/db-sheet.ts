@@ -48,6 +48,30 @@ export function autoDbSheetNextContact(result: string, next: string, tomorrow: s
 /** 다음 연락일을 사용하는 컨택 결과: 상세 입력과 대시보드가 공유한다. */
 const DB_SHEET_FOLLOW_UP_RESULTS: ReadonlySet<string> = new Set(["부재", "단순거절", "상담 후 거절", "재통화", "컨택진행"]);
 export function isDbSheetFollowUpResult(result: string): boolean { return DB_SHEET_FOLLOW_UP_RESULTS.has(result); }
+/** 부재 기록 한 줄(2026-10-23 belie): 전화를 건 날짜와 시각(08~21시). 다음 통화 시간대를 바꿔 보는 데 쓴다. */
+export const DbSheetAbsence = z.object({ date: DbSheetDate, hour: z.number().int().min(8).max(21) });
+export type DbSheetAbsence = z.infer<typeof DbSheetAbsence>;
+export const DB_SHEET_CALL_HOURS = [8,9,10,11,12,13,14,15,16,17,18,19,20,21] as const;
+/** 걸어 본 시간대와 안 걸어 본 시간대(오전 8~11 · 점심 12~13 · 오후 14~17 · 저녁 18~21) 안내 한 줄. */
+export function dbSheetAbsenceHint(absences: readonly DbSheetAbsence[]): string {
+  if (!absences.length) return "";
+  const tried = new Set(absences.map(a => a.hour));
+  const bands: [string, number[]][] = [["오전", [8,9,10,11]], ["점심", [12,13]], ["오후", [14,15,16,17]], ["저녁", [18,19,20,21]]];
+  const untried = bands.filter(([, hs]) => hs.every(h => !tried.has(h))).map(([n]) => n);
+  const hours = [...tried].sort((x, y) => x - y).map(h => `${h}시`).join("·");
+  return untried.length ? `지금까지 ${hours}에 걸었어요. ${untried.join("·")}에 걸어 보세요.` : `지금까지 ${hours}에 걸었어요. 모든 시간대를 걸어 봤어요.`;
+}
+/** 업체명 비교용 — (주)·㈜·주식회사·공백·기호를 빼고 소문자로. 미팅 연결 후보 찾기에 쓴다. */
+export function normalizeDbSheetCompany(name: string): string {
+  return name.replace(/\(주\)|㈜|주식회사|\(유\)|유한회사/g, "").replace(/[\s.,·\-_()]/g, "").toLowerCase();
+}
+/** 같거나 비슷한 업체명(정규화 후 같거나, 2글자 이상에서 한쪽이 다른 쪽을 포함). */
+export function isSimilarDbSheetCompany(a: string, b: string): boolean {
+  const x = normalizeDbSheetCompany(a), y = normalizeDbSheetCompany(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  return Math.min(x.length, y.length) >= 2 && (x.includes(y) || y.includes(x));
+}
 export const DbSheetContact = z.object({
  ci: CompanyInfo.default({}), note:text, date:z.union([DbSheetDate,z.literal("")]).default(""),
  meetingDate:text,time:text,place:text,reservationNote:text,registered:z.boolean().default(false),companyName:text,
@@ -72,6 +96,6 @@ export const DbSheetFunnelStep = z.enum(["유입", "연락", "상담", "미팅",
 export type DbSheetFunnelStep = z.infer<typeof DbSheetFunnelStep>;
 /** Server-owned action generations. Draft contact dates never complete a scheduled action. */
 export type DbSheetFollowUp = { generation: number; completedGeneration: number | null; lastContactDate: string };
-export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;manualStage?:DbSheetManualStage;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp};
+export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;manualStage?:DbSheetManualStage;absences?:DbSheetAbsence[];linkedExisting?:boolean;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp};
 export type DbSheetContext = { spreadsheetId:string;cohort:string;email:string };
 export type DbSheetChange = {lead:DbSheetLead;changedSales:{date:string;channel:z.infer<typeof Channel>}[];meetingId?:string;impact?:DbSheetImpact};

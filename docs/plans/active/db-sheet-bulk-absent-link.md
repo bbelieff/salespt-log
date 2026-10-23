@@ -27,8 +27,17 @@
 - [x] 오늘 챙길 일(첫 연락·다시 연락)에서 장기관리·진행종료 제외(`leadIsActive`).
 - [x] 「DB컨택중으로 되돌리기」 — 부재 결과여도 DB컨택중(직접 정한 값).
 
-## B. 부재 기록 (PR 2) · D. 미팅 연결 (PR 2)
-- PR 2 문서 갱신 때 기록.
+## B. 부재 기록 (PR 2, `feat/db-sheet-absence-meeting-link`)
+- [x] 리드 `absences`(날짜·시각 08~21) — `absence` 명령, 같은 날짜·시각 한 번, 최근 60줄. 컨택결과·실적 무변경.
+- [x] DB정보 「부재 기록」 상자: 목록·추가·지우기·시간 막대·안 걸어 본 시간대 안내. 미팅 연결 행엔 없음.
+## D. 따로 잡은 미팅 연결 (PR 2)
+- [x] 후보 `GET /api/db-sheet/meeting-candidates?lead=` — 안 이어진 STEP 2 미팅 중 같거나 비슷한 업체명((주)·공백 무시), 취소·삭제·이전 기록·uuid 아닌 옛 id 제외, 최대 10.
+- [x] `link-meeting` — meetingId 만 채움(`linkedExisting`), 실적(sales 행) 무변경 시험으로 확인, 다른 DB 에 연결된 미팅 거부. 지연(다시 연락) 목록에서 빠짐.
+- [x] `unlink-meeting` — 「연결」로 붙인 것만, 현재상태 다시 계산.
+- [x] 실제 1건(지연 알림 업체)은 belie 결정대로 수강생이 직접 연결 — 에이전트가 운영 데이터를 바꾸지 않는다.
+
+## 검증 (PR 2)
+- `tests/repo/db-sheet-absence-meeting-link.pglite.test.ts`(6) + DB관리시트 시험 424개 통과. 실화면(db-sheet-live, 합성 미팅 2건) 1280: 부재 2건 기록·시간 막대·안내, 후보 2건 → 연결(현재상태 미팅예약·부재 상자 숨김) → 풀기(미컨택·후보 다시 표시).
 
 ## 검증
 - PR 1: `tests/components/db-sheet-bulk-store.test.ts`(7) · `tests/components/db-sheet-grid-selection.test.ts`(10) · `tests/repo/db-sheet-manual-stage.pglite.test.ts`(5) + 기존 DB관리시트 시험 33파일 통과.
