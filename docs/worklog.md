@@ -1,5 +1,10 @@
 ## 2026-10-23 · 업체정보 넓은 화면 버튼 크기
 - fix/company-info-wide-buttons. belie 요청: 풀사이즈일 때 위쪽 버튼이 커짐 → 원인은 작은 버튼 규칙이 좁은 화면에만 걸려 있던 것. 모든 너비 24px 로. [plan](plans/active/company-info-wide-buttons.md).
+
+## 2026-10-22 · 영업활동일 판정 함수 (심리장치 단계 0)
+- feat/activity-days-stage0, base b4865f1c. 소유: `lib/analytics/activity-days.ts`·`tests/analytics/activity-days.test.ts`·plan만. 화면·API·DB·gamification.ts 무변경. 매일 기록 동기 장치의 공통 판정(연락 결과·미팅·계약·업무 완료=영업활동일, 일일 실적·특이사항 한 줄=기록일). [plan](plans/active/activity-days-stage0.md).
+## 2026-10-23 · 모바일 대시보드 첫 시선 순서
+- feat/dashboard-mobile-first-look, base 09ed48f1. belie 「모바일만 이렇게 바꿔줘」: 모바일은 오늘 챙길 일 맨 앞(1018→209px), PC 불변(위치 동일·PSNR 74dB). CSS order 방식, 데이터 변화 0. [plan](plans/active/dashboard-mobile-first-look.md).
 ## 2026-10-23 · 생산성 지표 두 줄
 - fix/productivity-two-line. belie 요청: 지표당 세 줄 → 두 줄(이름·흐름·비율 / 막대·건수). 실화면 1280·375 확인. [plan](plans/active/productivity-two-line.md).
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지

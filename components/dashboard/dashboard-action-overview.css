@@ -26,3 +26,14 @@
   .dashboard-action-work .follow-ups-upcoming { margin-top:auto; }
   .dashboard-action-goals .weekly-goals-flow { margin-block:auto; padding-top:4px; }
 }
+
+/* Mobile first look (belie 2026-10-23): 오늘 챙길 일 → 주간 목표 → 진행건 → 생산성.
+   PC(≥1024px)는 위 grid 배치 그대로라 이 블록의 영향을 받지 않는다. */
+@media (max-width: 1023.98px) {
+  .dashboard-action-work { display: contents; }
+  .dashboard-action-work > [data-dashboard-follow-ups] { order: 1; }
+  .dashboard-action-work > .push-prompt { order: 2; }
+  .dashboard-action-goals { order: 3; }
+  .dashboard-work-status-slot { order: 4; }
+  .dashboard-action-productivity { order: 5; }
+}
