@@ -384,9 +384,10 @@ export async function syncDirectCount(
   record: { row: number; 시작일: string; 종료일: string },
   fromDb: boolean,
   syncDb: boolean,
+  sheetViaQueue = false,
 ): Promise<number> {
   const count = await sumChannelInflowOverPeriod(sid, "직접생산", record.시작일, record.종료일, { fromDb });
-  await writeProductionCountCell(sid, record.row, count, { syncDb });
+  await writeProductionCountCell(sid, record.row, count, sheetViaQueue ? { syncDb, sheetViaQueue } : { syncDb });
   return count;
 }
 
@@ -398,17 +399,24 @@ export async function syncDirectProductionForDate(
   sid: string,
   date: string,
   cohort: string | null | undefined,
+  opts: { inflow?: number } = {},
 ): Promise<{ recordFound: boolean; count: number }> {
-  const { rows } = await readProductions(sid);
-  const active = rows.find(
-    (r) => r.시작일 && r.종료일 && r.시작일 <= date && date <= r.종료일,
-  );
-  if (!active) return { recordFound: false, count: 0 };
   const on = dbEnabled();
-  const count = await syncDirectCount(
-    sid, active, usesDbStorage(cohort, on), usesDbStorage(cohort, on),
-  );
-  return { recordFound: true, count };
+  const pilot = usesDbStorage(cohort, on);
+  const activeOf = (rows: Array<DBProduction & { row: number }>) =>
+    rows.find((r) => r.시작일 && r.종료일 && r.시작일 <= date && date <= r.종료일);
+  // 컨택 저장 지연 수정(2026-10-23): 파일럿은 레코드를 DB 정본에서 찾는다 — 저장마다 시트 read
+  // (+M 셀 동기 write)가 요청 경로에 있어 평시 ~0.7초, 시트 할당량 초과 시 20초+/503 이었다.
+  if (pilot) {
+    const fromDb = await readDbTabFromDb(sid).then((t) => activeOf(t.productions), () => null);
+    if (fromDb) return { recordFound: true, count: await syncDirectCount(sid, fromDb, true, true, true) };
+    // DB 에 없음 + 유입 0 이면 보류 모달·M 동기화 대상이 없다 → 시트 안전망 read 생략.
+    if (fromDb === undefined && opts.inflow === 0) return { recordFound: false, count: 0 };
+  }
+  // 비파일럿 / DB read 실패 / DB 에 없는데 유입>0(append 미러 누락 안전망) → 기존 시트 경로.
+  const active = activeOf((await readProductions(sid)).rows);
+  if (!active) return { recordFound: false, count: 0 };
+  return { recordFound: true, count: await syncDirectCount(sid, active, pilot, pilot) };
 }
 
 export async function patchProduction(email: string, row: number, p: DBProduction) {

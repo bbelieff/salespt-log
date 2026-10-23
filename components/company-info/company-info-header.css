@@ -9,9 +9,10 @@
 [data-ci-tools-primary]>button,[data-ci-more]{display:flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
 .payment-ci-short{display:none}
 /* 좁은 폭: 아이콘 대신 짧은 한글 글자 + 작은 버튼(2026-10-23 belie). */
-[data-ci-header-tools]:not([data-mode="text"]) [data-ci-tools-primary]>button,[data-ci-more]{width:auto;min-width:0;min-height:24px;height:24px;padding:0 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#475569;font-size:11px;font-weight:600;line-height:1;letter-spacing:-.01em;white-space:nowrap;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
-[data-ci-header-tools]:not([data-mode="text"]) [data-ci-tools-primary]>button:hover,[data-ci-more]:hover,[data-ci-more][aria-expanded="true"]{background:#f8fafc;border-color:#cbd5e1;color:#1e293b}
-[data-payment-ci-responsive] [data-ci-tools-primary] [data-font-scale-control]{height:44px}
+[data-ci-header-tools] [data-ci-tools-primary]>button,[data-ci-more]{width:auto;min-width:0;min-height:24px;height:24px;padding:0 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#475569;font-size:11px;font-weight:600;line-height:1;letter-spacing:-.01em;white-space:nowrap;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+[data-ci-header-tools] [data-ci-tools-primary]>button:hover,[data-ci-more]:hover,[data-ci-more][aria-expanded="true"]{background:#f8fafc;border-color:#cbd5e1;color:#1e293b}
+[data-payment-ci-responsive] [data-ci-tools-primary] [data-font-scale-control]{height:24px}
+[data-payment-company-header] [data-payment-ci-responsive] [data-ci-tools-primary] [data-font-scale-control]>button{width:24px;height:24px}
 [data-payment-company-header] [data-payment-ci-responsive] [data-font-scale-control]>button{width:44px;height:44px;flex:none}
 [data-ci-header-tools]:not([data-mode="text"]) [data-ci-tools-primary] .payment-ci-action-label{display:none}
 [data-ci-header-tools]:not([data-mode="text"]) [data-ci-tools-primary] .payment-ci-short{display:inline}
