@@ -110,8 +110,8 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
 
         {/* 영업생산성 — 종합 강조 */}
         <div className="col-span-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-2.5">
-          <div className="mb-1 flex items-center justify-between">
-            <div className="flex items-center gap-1 text-px-11">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1 text-px-11">
               <span className="font-bold text-indigo-900">영업생산성</span>
               <span className="hidden pc:inline ml-1 text-indigo-700">컨택진행 → 계약</span>
               <HintTooltip label="영업생산성 계산 기준" text={`계약 ${contract.toLocaleString()}건 ÷ 컨택진행 ${contactProgress.toLocaleString()}건. ${contactProgress > 0 ? '컨택진행 중 계약으로 이어진 비율입니다.' : '컨택진행 기록이 없어 아직 계산할 수 없습니다.'}`} />
@@ -126,12 +126,14 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
               {contactProgress > 0 ? <CountUp value={salesProductivity} play={play} decimals={1} format={pctText} /> : <span aria-label="계산할 기록 없음">—</span>}
             </span>
           </div>
-          <p className="mb-1 text-right text-px-11 tabular-nums text-indigo-800">{contract.toLocaleString()} / {contactProgress.toLocaleString()}건</p>
-          <div className="h-1.5 w-full rounded-full bg-indigo-100/60">
-            <div
-              className={`h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 ${play ? "fx-grow-x" : ""}`}
-              style={{ width: `${Math.max(0, Math.min(100, salesProductivity))}%`, animationDelay: "480ms" }}
-            />
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 min-w-0 flex-1 rounded-full bg-indigo-100/60">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 ${play ? "fx-grow-x" : ""}`}
+                style={{ width: `${Math.max(0, Math.min(100, salesProductivity))}%`, animationDelay: "480ms" }}
+              />
+            </div>
+            <span className="shrink-0 text-px-11 tabular-nums text-indigo-800">{contract.toLocaleString()} / {contactProgress.toLocaleString()}건</span>
           </div>
         </div>
       </div>
@@ -160,27 +162,29 @@ function Row({
   numerator: number;
   denominator: number;
 }) {
+  // 두 줄: ① 이름·흐름·비율 ② 막대·건수 (belie 2026-10-23 — 지표당 세 줄 → 두 줄).
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-1 text-px-11">
-          <span className="whitespace-nowrap text-px-12 font-semibold text-gray-700">{label}</span>
+    <div className="min-w-0">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <span className="shrink-0 whitespace-nowrap text-px-12 font-semibold text-gray-700">{label}</span>
+          <span className="min-w-0 truncate text-px-11 text-slate-500" title={formula}>{formula}</span>
         </div>
         <span
-          className={`text-sm font-bold ${pctCls}`}
+          className={`shrink-0 text-sm font-bold ${pctCls}`}
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
           {denominator > 0 ? <CountUp value={value} play={play} decimals={1} format={pctText} /> : <span aria-label="계산할 기록 없음">—</span>}
         </span>
       </div>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-1 text-px-11 text-slate-600">
-        <span>{formula}</span><span className="tabular-nums">{numerator.toLocaleString()} / {denominator.toLocaleString()}건</span>
-      </div>
-      <div className="h-1 w-full rounded-full bg-gray-100">
-        <div
-          className={`h-full rounded-full ${barCls} ${play ? "fx-grow-x" : ""}`}
-          style={{ width: `${Math.max(0, Math.min(100, value))}%`, animationDelay: `${order * 120}ms` }}
-        />
+      <div className="flex items-center gap-2">
+        <div className="h-1 min-w-0 flex-1 rounded-full bg-gray-100">
+          <div
+            className={`h-full rounded-full ${barCls} ${play ? "fx-grow-x" : ""}`}
+            style={{ width: `${Math.max(0, Math.min(100, value))}%`, animationDelay: `${order * 120}ms` }}
+          />
+        </div>
+        <span className="shrink-0 text-px-11 tabular-nums text-slate-600">{numerator.toLocaleString()} / {denominator.toLocaleString()}건</span>
       </div>
     </div>
   );
