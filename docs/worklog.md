@@ -1,3 +1,5 @@
+## 2026-10-23 · 업체정보 기타 칸 지우기 되돌리기
+- fix/custom-field-undo. belie 요청: 기타(사용자 추가) 칸이 ✕ 한 번에 너무 쉽게 지워짐 → 지운 직후 10초간 「되돌리기」 줄, 누르면 같은 값·같은 자리로 복원. 확인 팝업 대신 되돌리기(입력 흐름을 끊지 않음). [plan](plans/active/custom-field-undo.md).
 ## 2026-10-23 · 오늘 챙길 일 목록 창 전체 테두리
 - fix/followups-panel-border. belie 요청: 위쪽만 굵던 강조 테두리를 네 변 전체(2px 강조색 + 연한 고리)로. 실화면 1280 확인. [plan](plans/active/followups-panel-border.md).
 ## 2026-10-23 · 업체정보 머리줄 한글 버튼
