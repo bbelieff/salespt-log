@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -92,7 +92,7 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
   current=await linkedProjection(c,ctx,old);
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
- const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:formatMobilePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,
+ const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:formatMobilePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,...(old?.manualStage?{manualStage:old.manualStage}:{}),
   followUp:{generation:(old?.followUp?.generation??0)+(old&&scheduleNext?1:0),completedGeneration:old?.followUp?.completedGeneration??null,lastContactDate:old?.followUp?.lastContactDate??""},
   // Response-only lineage (persist strips it): lets the status projector match a contract linked to a rescheduled child meeting.
   ...(current?.effectiveMeetingId?{effectiveMeetingId:current.effectiveMeetingId,meetingLineageIds:current.meetingLineageIds??[]}:{})};
@@ -136,8 +136,23 @@ export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:
  // 이 컨택이 잡혀 있던 다음 연락일을 소비하면 비운다. 부재는 빈 다음 연락일을 내일(KST)로 새로 잡는다(새 예약 세대).
  const consumed=!old.next||event.date>=old.next,generation=old.followUp?.generation??0,kept=consumed?"":old.next;
  const next=autoDbSheetNextContact(event.result,kept,fmtISO(addDays(parseISO(todayKST()),1))),scheduled=next!==kept;
- const lead:DbSheetLead={...old,next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:dbSheetContactStage({stage:"",result:event.result,hasQualifiedContact}),contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:generation+(scheduled?1:0),completedGeneration:consumed?generation:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
+ // 새 컨택결과를 기록하면 직접 정한 현재상태(장기관리·진행종료)는 풀린다 — 다시 연락을 시작했다는 뜻.
+ const lead:DbSheetLead={...withoutManualStage(old),next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:dbSheetContactStage({stage:"",result:event.result,hasQualifiedContact}),contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:generation+(scheduled?1:0),completedGeneration:consumed?generation:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
  await persist(c,ctx,lead);return {lead,impact:contributionImpact(old,lead),changedSales:await applyDeltas(c,ctx,[...before,...await contributions(c,ctx,lead,1)])};
+ });
+}
+function withoutManualStage(lead:DbSheetLead):DbSheetLead{const copy={...lead};delete copy.manualStage;return copy;}
+/**
+ * 현재상태 직접 정하기(장기관리·진행종료·DB컨택중으로 되돌리기). 컨택결과·STEP 2 기록·다음 연락일은 그대로 둔다.
+ * 미팅이 연결된 업체는 미팅 단계가 현재상태라 여기서 바꾸지 않는다.
+ */
+export async function setDbSheetManualStage(ctx:DbSheetContext,leadId:string,manualStage:DbSheetManualStage,expectedRevision:number):Promise<DbSheetChange>{
+ z.string().uuid().parse(leadId);DbSheetManualStage.parse(manualStage);
+ return transaction(ctx,async c=>{
+  const old=await expected(c,ctx,leadId,expectedRevision);
+  if(old.meetingId)throw new DbSheetOperationBlocked("미팅이 연결된 업체는 STEP 3 일정·계약에서 상태를 바꿔 주세요.");
+  const lead:DbSheetLead={...old,manualStage,stage:manualStage,revision:old.revision+1};
+  await persist(c,ctx,lead);return {lead,changedSales:[]};
  });
 }
 /** Display date editing does not create/move contact events or STEP 2 contributions. */
@@ -169,7 +184,7 @@ export async function registerDbSheetMeeting(ctx:DbSheetContext,leadId:string,ra
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=true,result='컨택진행'`,[ctx.spreadsheetId,leadId,meeting.예약일,old.contact.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
  await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'meetings',$4,$5::jsonb,true)`,[ctx.cohort,ctx.email,ctx.spreadsheetId,meeting.id,JSON.stringify(meeting)]);
- const lead:DbSheetLead={...old,revision:old.revision+1,result:"컨택진행",first:old.first||dates.rows[0].first,hasQualifiedContact:true,stage:"미팅예약",meetingId:meeting.id,contact:{...old.contact,registered:true,date:meeting.예약일,ci:meeting.업체정보??old.contact.ci,companyName:meeting.업체명,reservationNote:meeting.예약비고,meetingDate:meeting.미팅날짜,time:meeting.미팅시간,place:meeting.장소}};
+ const lead:DbSheetLead={...withoutManualStage(old),revision:old.revision+1,result:"컨택진행",first:old.first||dates.rows[0].first,hasQualifiedContact:true,stage:"미팅예약",meetingId:meeting.id,contact:{...old.contact,registered:true,date:meeting.예약일,ci:meeting.업체정보??old.contact.ci,companyName:meeting.업체명,reservationNote:meeting.예약비고,meetingDate:meeting.미팅날짜,time:meeting.미팅시간,place:meeting.장소}};
  await persist(c,ctx,lead);
  const count=(await lockedMeetingCounts(c,ctx.spreadsheetId,true)).get(meeting.예약일+":"+old.channel)??0;
  await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,'sales',$4,$5::jsonb,true)

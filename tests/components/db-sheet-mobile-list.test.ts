@@ -32,7 +32,7 @@ it('traps options focus, defers Escape to nested portals, then restores trigger 
 it('moves existing sort/table controls without remounting or duplicating Grid state',()=>{
  const target=document.createElement('div');target.dataset.testExtra='';document.body.append(target);
  const a={...blank(),id:'a',company:'합성 회사 가',owner:'합성 대표',phone:'000-0000-0000',date:'2026-10-01'},b={...a,id:'b',company:'합성 회사 나',date:'2026-10-02'};
- const onDetail=vi.fn(),onChange=vi.fn(),render=(mobileToolsTarget:HTMLElement|null)=>act(()=>root.render(React.createElement(Grid,{rows:[a,b],visible:['company'],fail:false,onChange,onOpen:vi.fn(),onDetail,mobileToolsTarget})));
+ const onDetail=vi.fn(),onChange=vi.fn(),render=(mobileToolsTarget:HTMLElement|null)=>act(()=>root.render(React.createElement(Grid,{rows:[a,b],visible:['company'],fail:false,onChange,onDetail,mobileToolsTarget})));
  render(target);expect(host.querySelector('.sheet-mobile-switch')).toBeNull();
  const select=target.querySelector('select')!;
  act(()=>{select.value='date';select.dispatchEvent(new Event('change',{bubbles:true}));});
@@ -62,7 +62,7 @@ it.each(['recorded','excluded'] as const)('preserves %s meaning in optional comp
 });
 it('retains full long identifiers and status in titles, accessible name and the original detail route',()=>{
  const row={...blank(),company:'합성 긴 업체명 '.repeat(12),owner:'합성 대표자명 '.repeat(5),phone:'000-0000-0000 / 내선 0000 '.repeat(4),result:'합성 긴 상태 '.repeat(8)},detail=vi.fn();
- act(()=>root.render(React.createElement(Grid,{rows:[row],visible:['company'],fail:false,onChange:vi.fn(),onOpen:vi.fn(),onDetail:detail,mobileToolsTarget:null})));
+ act(()=>root.render(React.createElement(Grid,{rows:[row],visible:['company'],fail:false,onChange:vi.fn(),onDetail:detail,mobileToolsTarget:null})));
  const card=host.querySelector<HTMLButtonElement>('.sheet-mobile-card')!;
  for(const value of [row.company,row.phone,row.result])expect(card.getAttribute('aria-label')).toContain(value);
  expect(card.querySelector('strong')!.getAttribute('title')).toBe(row.company);expect(card.querySelector('.sheet-row-identity')!.getAttribute('title')).toContain(row.phone);expect(card.querySelector('.sheet-badge')!.getAttribute('title')).toBe(row.result);

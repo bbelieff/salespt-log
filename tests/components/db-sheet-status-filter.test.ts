@@ -45,6 +45,7 @@ const expectedResultByFilter: Record<StatusFilterId, string[]> = {
   recall: ["재통화"],
   progress: ["컨택진행", "상담 후 거절"],
   "as-planned": ["AS예정"],
+  "long-term": [],
 };
 
 describe("DB관리시트 상태 보기 필터", () => {
@@ -55,7 +56,7 @@ describe("DB관리시트 상태 보기 필터", () => {
     expect(filterDbSheetRows(rows, { selectedStatuses: [], selectedSuppliers: [] })).toEqual(rows);
   });
   it.each(Array.from({ length: 2 ** filterIds.length }, (_, mask) => mask))(
-    "6개 칩 조합 %i를 OR 필터로 계산한다",
+    "상태 칩 조합 %i를 OR 필터로 계산한다",
     mask => {
       const selected = filterIds.filter((_, index) => mask & (1 << index));
       const actual = filterDbSheetRows(rows, { selectedStatuses: selected });

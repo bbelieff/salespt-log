@@ -1,3 +1,7 @@
+## 2026-10-23 · DB관리시트 일괄 작업·장기관리 (PR 1/2 — A+C)
+- feat/db-sheet-bulk-absent-link, base 6592f72c. belie 승인 목업: 표 체크칸·전체 선택 → 「유입 반영」「유입 미반영」「삭제」(삭제는 확인 팝업 대신 10초 되돌리기, 확정 전 서버 무변경). 줄 아무 곳이나 누르면 DB정보, 표 안 편집은 컨택결과·다음 연락일만(재통화+빈 다음 연락일이면 줄 아래 안내). 「장기관리로 넘기기」「진행종료」(manualStage, 새 컨택결과 기록 시 풀림) — 오늘 챙길 일 제외·상태 칩 「장기관리」.
+- 자율결정: 다음 연락일 칸을 기본 표시에 추가 + 예전 저장값에 한 번 넣음(v6). 운영 데이터 무변경(선택 필드만 추가). 실화면 db-sheet-live 1280·375 확인. [plan](plans/active/db-sheet-bulk-absent-link.md). PR 2(B 부재 기록·D 미팅 연결)는 이 위에 쌓음.
+
 ## 2026-10-23 · 투두 바로 추가 + 완료 결과 메모 (feat/todo-inline-add-result)
 - belie 승인 목업 [4]: 진행건 칸 Todo/History 를 제목·날짜만으로 Enter 즉시 저장(팝업은 「자세히」), 완료 Todo 에 결과 한 줄 — `Todo.result`(시트 R 「결과」), 완료 Todo·History 에 「+ 다음」 연계 할 일 — `Todo.prevId`(시트 S 「이전 기록」). P:S 분리 write, DB payload. 운영 데이터 무변경. [plan](plans/active/todo-inline-add-result.md).
 
