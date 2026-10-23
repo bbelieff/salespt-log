@@ -20,7 +20,8 @@ export type ActivityEvent =
   | { kind: "noteOnly"; date: string };
 
 export type DayKind = "sales" | "record";
-export type WeekDayState = "sales" | "record" | "empty" | "today" | "off";
+/** off = 영업 요일이 아닌 날(쉬는 날), upcoming = 아직 오지 않은 영업 요일. 둘을 섞지 않는다. */
+export type WeekDayState = "sales" | "record" | "empty" | "today" | "upcoming" | "off";
 
 /** 고객에게 실제로 연락한 결과로 보는 컨택 결과. 미컨택·AS예정은 연락이 아니다. */
 const CONTACT_RESULTS: ReadonlySet<string> = new Set(["부재", "단순거절", "재통화", "컨택진행", "상담 후 거절"]);
@@ -46,7 +47,10 @@ export function activityDays(events: readonly ActivityEvent[], today: string): M
   return days;
 }
 
-/** 기본 영업 요일 = 월~금(getDay 기준). 알림 설정의 '받는 요일'을 넘기면 그 요일만 영업일로 본다. */
+/**
+ * 기본 영업 요일 = 월~금(getDay 기준). 표시용 요일 구분일 뿐 목표가 아니다.
+ * 알림 '받는 요일'과 묶지 않는다 — 알림을 줄였다고 영업 요일·목표가 바뀌면 안 된다(출처는 belie 결정 전).
+ */
 export const DEFAULT_WORKDAYS: readonly number[] = [1, 2, 3, 4, 5];
 
 function isOffDay(date: string, workdays: readonly number[]): boolean {
@@ -71,7 +75,7 @@ export function summarizeWeek(days: ReadonlyMap<string, DayKind>, window: { star
   const dates = eachDate(window.start, window.end);
   const cells = dates.map(date => {
     const kind = days.get(date);
-    const state: WeekDayState = kind ?? (date === today ? "today" : isOffDay(date, workdays) || date > today ? "off" : "empty");
+    const state: WeekDayState = kind ?? (date === today ? "today" : isOffDay(date, workdays) ? "off" : date > today ? "upcoming" : "empty");
     return { date, state };
   });
   return {

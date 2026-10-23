@@ -49,13 +49,13 @@ describe("summarizeWeek (goal week Fri~Thu)", () => {
     expect(week.cells.map(c => c.state)).toEqual(["sales", "off", "off", "empty", "record", "sales", "today"]);
     expect(week).toMatchObject({ salesDays: 2, recordDays: 1, weekdays: 5 });
   });
-  it("weekend activity shows but the denominator stays weekdays; future days are off", () => {
+  it("weekend activity shows but the denominator stays weekdays; future workdays are 'upcoming', not rest days", () => {
     const days = activityDays([{ kind: "contact", date: "2026-10-18", result: "컨택진행" }], "2026-10-19");
     const week = summarizeWeek(days, window, "2026-10-19");
-    expect(week.cells.map(c => c.state)).toEqual(["empty", "off", "sales", "today", "off", "off", "off"]);
+    expect(week.cells.map(c => c.state)).toEqual(["empty", "off", "sales", "today", "upcoming", "upcoming", "upcoming"]);
     expect(week.weekdays).toBe(5);
   });
-  it("custom workdays (notification 'receive days') change off days and the denominator", () => {
+  it("custom workdays (display-only, not tied to notification days) change off days and the count", () => {
     const days = activityDays([], TODAY);
     const week = summarizeWeek(days, window, TODAY, [1, 2, 3, 4, 5, 6]); // 토요일도 영업
     expect(week.cells.map(c => c.state)).toEqual(["empty", "empty", "off", "empty", "empty", "empty", "today"]);
