@@ -188,8 +188,8 @@ export async function listAllTodos(
 /** 생성 입력 — id/생성시각/완료여부는 서버 기본값. */
 export type CreateTodoInput = Omit<
   Todo,
-  "id" | "생성시각" | "완료여부" | "기록종류" | "slot"
-> & { 기록종류?: TodoRecordKind; slot?: Todo["slot"] };
+  "id" | "생성시각" | "완료여부" | "기록종류" | "slot" | "result" | "prevId"
+> & { 기록종류?: TodoRecordKind; slot?: Todo["slot"]; result?: string; prevId?: string };
 
 /** 생성 옵션 — operationId: 클라이언트가 초안당 1회 발행한 안정 키(UUID).
  * 있으면 Todo id 로 그대로 사용해 같은 scope+같은 operation 은 정확히 1행으로 수렴한다.
@@ -220,6 +220,7 @@ export function sameTodoBusiness(a: CreateTodoInput, b: Todo): boolean {
     a.contractRef === b.contractRef &&
     (a.institutionRef ?? "") === (b.institutionRef ?? "") &&
     (a.slot ?? null) === (b.slot ?? null) &&
+    (a.prevId ?? "") === (b.prevId ?? "") &&
     (a.업체명 ?? "") === (b.업체명 ?? "") &&
     (a.type ?? "기타") === (b.type ?? "기타") &&
     (a.분류 ?? "") === (b.분류 ?? "") &&

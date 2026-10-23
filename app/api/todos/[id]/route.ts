@@ -35,6 +35,8 @@ const PatchBody = z.object({
   상세: z.string().optional(),
   showOnCalendar: z.boolean().optional(),
   완료여부: z.boolean().optional(),
+  /** 완료한 할 일의 결과 한 줄(R 컬럼). 빈 문자열 = 결과 지우기. */
+  result: z.string().max(200).optional(),
 });
 
 async function PATCH_handler(req: NextRequest, ctx: RouteContext) {

@@ -1,3 +1,6 @@
+## 2026-10-23 · 투두 바로 추가 + 완료 결과 메모 (feat/todo-inline-add-result)
+- belie 승인 목업 [4]: 진행건 칸 Todo/History 를 제목·날짜만으로 Enter 즉시 저장(팝업은 「자세히」), 완료 Todo 에 결과 한 줄 — `Todo.result`(시트 R 「결과」), 완료 Todo·History 에 「+ 다음」 연계 할 일 — `Todo.prevId`(시트 S 「이전 기록」). P:S 분리 write, DB payload. 운영 데이터 무변경. [plan](plans/active/todo-inline-add-result.md).
+
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
 - fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
 

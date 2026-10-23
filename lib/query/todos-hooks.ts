@@ -75,6 +75,8 @@ export interface CreateTodoArgs {
   기록종류?: TodoRecordKind;
   /** 몇 번째 진행건(1~3)의 기록인가. */
   slot?: 1 | 2 | 3 | null;
+  /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록 id. */
+  prevId?: string;
   /** 초안당 안정 멱등 키(UUID) — 있으면 서버가 Todo id 로 사용한다.
    * 같은 키 재시도는 원본 반환, 다른 내용이면 409. 없으면 서버 발행 id(하위 호환). */
   operationId?: string;
