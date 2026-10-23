@@ -55,6 +55,12 @@ describe("summarizeWeek (goal week Fri~Thu)", () => {
     expect(week.cells.map(c => c.state)).toEqual(["empty", "off", "sales", "today", "off", "off", "off"]);
     expect(week.weekdays).toBe(5);
   });
+  it("custom workdays (notification 'receive days') change off days and the denominator", () => {
+    const days = activityDays([], TODAY);
+    const week = summarizeWeek(days, window, TODAY, [1, 2, 3, 4, 5, 6]); // 토요일도 영업
+    expect(week.cells.map(c => c.state)).toEqual(["empty", "empty", "off", "empty", "empty", "empty", "today"]);
+    expect(week.weekdays).toBe(6);
+  });
   it("a sales action today replaces the 'today' marker", () => {
     const days = activityDays([{ kind: "todoDone", date: TODAY }], TODAY);
     expect(summarizeWeek(days, window, TODAY).cells.at(-1)?.state).toBe("sales");

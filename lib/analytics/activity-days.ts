@@ -46,9 +46,11 @@ export function activityDays(events: readonly ActivityEvent[], today: string): M
   return days;
 }
 
-function isWeekend(date: string): boolean {
-  const d = parseISO(date).getDay();
-  return d === 0 || d === 6;
+/** 기본 영업 요일 = 월~금(getDay 기준). 알림 설정의 '받는 요일'을 넘기면 그 요일만 영업일로 본다. */
+export const DEFAULT_WORKDAYS: readonly number[] = [1, 2, 3, 4, 5];
+
+function isOffDay(date: string, workdays: readonly number[]): boolean {
+  return !workdays.includes(parseISO(date).getDay());
 }
 
 function eachDate(start: string, end: string): string[] {
@@ -63,20 +65,20 @@ function eachDate(start: string, end: string): string[] {
 
 /**
  * 한 주(창은 호출부가 정한다 — 주간목표 카드는 goalWeekWindow의 금~목)의 점 표시.
- * 주말은 활동이 있으면 그대로 보여 주되 분모(평일 수)에는 넣지 않는다 — 쉬는 날은 빈칸이 아니다.
+ * 쉬는 요일은 활동이 있으면 그대로 보여 주되 분모(영업 요일 수)에는 넣지 않는다 — 쉬는 날은 빈칸이 아니다.
  */
-export function summarizeWeek(days: ReadonlyMap<string, DayKind>, window: { start: string; end: string }, today: string) {
+export function summarizeWeek(days: ReadonlyMap<string, DayKind>, window: { start: string; end: string }, today: string, workdays: readonly number[] = DEFAULT_WORKDAYS) {
   const dates = eachDate(window.start, window.end);
   const cells = dates.map(date => {
     const kind = days.get(date);
-    const state: WeekDayState = kind ?? (date === today ? "today" : isWeekend(date) || date > today ? "off" : "empty");
+    const state: WeekDayState = kind ?? (date === today ? "today" : isOffDay(date, workdays) || date > today ? "off" : "empty");
     return { date, state };
   });
   return {
     cells,
     salesDays: cells.filter(c => c.state === "sales").length,
     recordDays: cells.filter(c => c.state === "record").length,
-    weekdays: dates.filter(d => !isWeekend(d)).length,
+    weekdays: dates.filter(d => !isOffDay(d, workdays)).length,
   };
 }
 
