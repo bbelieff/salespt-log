@@ -1770,6 +1770,8 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - 주간목표 날짜는 제목 영역에서 주차명 옆에 표시, 좁을 때 같은 제목 영역에서 자연 줄바꿈. 주차 이동·화살표·PT과제 유지. 정성목표(PT과제)는 왼쪽, 정량목표(생산→계약)는 오른쪽. 가용 폭에 따라 링48~80px, 좁은 칸은 정성목표 위·정량목표 아래 및 링44~54px.
 - PC 오늘 챙길 일 팝업은 카드 오른쪽 공간300px 이상에서 우측10px에 표시. 선택행 높이 기준·뷰포트 내부로 보정. 좁은 표는 열 너비 축소, 420px 이하는 기준일/기관을 펼침으로 확인. 모바일은 화면 내부 배치 유지.
 - 진행건 hover 동작은 기존 유지. 표 화면만 바꾸며 실제 집계·DB 저장에는 변경 없음.
+- **2026-10-23 카드 옷·강조**: 카드는 영업생산성 상자와 같은 indigo-50→purple-50·indigo-200 테두리·제목 indigo-900·전체 숫자 purple-700. 경과·장기누락이 있으면 `data-emphasis=flow` — 3px 사선(135°) 무지개 테두리가 3.5초 한 바퀴(움직임 줄이기 = 정지). 조회·집계는 `useTodayFollowUps`(카드·빠른 보기 공용 훅).
+- **FollowUpsLauncher** / **FollowUpsLauncherView** (2026-10-23): 대시보드 밖 로그인 화면 좌하단 56px 원형 버튼(indigo→purple, 달력+체크) + 빨간 건수 배지(0이면 숨김). 누르면 버튼에서 원형으로 퍼지는 창(clip-path 0.48s) — 긴급순 5건(배지·업체·할 일·STEP, 「열기」=표와 같은 목적지)·나머지 N건·대시보드에서 전체 보기. ×·Esc 닫기 후 초점 버튼 복귀, 바깥 누르기 닫기, `aria-expanded`/`aria-controls`. 대시보드·관리자 본인 화면은 숨김. 모바일은 탭바 위, PC는 사이드탭 오른쪽. 스타일 `components/dashboard/followups-launcher.css`.
 
 ## DB관리시트 기록 선택·삭제 안전 (2026-10-15)
 - `SheetDialog`: 기존 제품 색·폰트·간격을 사용하는 접근 가능한 팝업, 닫기/초점 복귀.
@@ -1813,3 +1815,6 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `PushPrompt`: 대시보드 「오늘 챙길 일」 아래 초대 카드(시범 대상·이 기기 미수신일 때만). [알림 켜기]는 설정 화면으로 이동(권한 팝업 없음), [나중에]는 7일 숨김(브라우저 저장).
 - 다른 사람 화면을 보는 중(관리자 보기 전환·트레이너 담당 수강생 보기)이면 `PushPrompt`·상단 「알림 설정」을 숨기고, 설정 화면 맨 위에 「로그인한 본인 설정이에요」 안내(`push-notice`)를 둔다. 로그아웃(상단 메뉴·`LogoutButton`)은 이 기기 알림만 끈다(2026-10-22 belie).
 - 상단 로고 메뉴의 「알림 설정」 항목은 시범 대상에게만 보인다. 스타일은 `components/push/push.css`(대시보드 카드와 같은 slate·16px 라운드·brand red 주 버튼).
+
+## 모바일 대시보드 첫 시선 순서 (2026-10-23 belie)
+- `DashboardActionOverview`: 모바일(<1024px)은 주차와 상관없이 오늘 챙길 일 → 주간 목표 → 진행건(`dashboard-work-status-slot`) → 생산성 순. CSS `order`·`display: contents`로만 바꾸며 PC grid 배치는 그대로. 대시보드 페이지는 매출·비용을 액션 영역 뒤에 두고 PC에서만 `pc:order-first`로 맨 위에 올린다.

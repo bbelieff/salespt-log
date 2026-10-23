@@ -25,7 +25,7 @@ import {
 } from "./meetings";
 import { headerBackfillPlan } from "./meetings-rows";
 import { colName } from "@/util/sheet-column";
-import { normalizeRrnFront } from "@/util/rrn-front";
+import { normalizeRrn } from "@/util/rrn-front";
 import { CompanyInfo } from "@/types";
 import { dbEnabled } from "./db/client";
 import {
@@ -73,8 +73,8 @@ export function companyInfoToArchiveRow(
   const c = (ci ?? {}) as Record<string, unknown>;
   const toCell = (f: string) => {
     const raw = String(c[f] ?? "").trim();
-    // 스키마 우회 호출 방어 — 주민등록번호는 앞 6자리만(04 코덱과 동일).
-    const v = f === "주민등록번호" ? normalizeRrnFront(raw) : raw;
+    // 스키마 우회 호출 방어 — 주민등록번호는 NNNNNN-NNNNNNN 최대 13자리(04 코덱과 동일, ADR-0035).
+    const v = f === "주민등록번호" ? normalizeRrn(raw) : raw;
     return v ? `'${v}` : ""; // plain text 강제 (USER_ENTERED 오변환 방지)
   };
   const custom = ci?.커스텀 ? JSON.stringify(ci.커스텀) : "";

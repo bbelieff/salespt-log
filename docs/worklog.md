@@ -1,6 +1,21 @@
 ## 2026-10-23 · 조건 대기 · 업체 장기관리
 - feat/payment-wait-longterm, base 6592f72c. belie 목업 [1]·[5] A안(정정 반영): 진행률 「조건 대기」(사유 + 단기관리 2개월 내/장기관리 3개월 이상), 업체 상세 배너 「진행 | 장기관리」 토글 + 정렬 줄 「장기관리 N」 칩. 자동 이동 = 진행건이 모두 수납완료·중도중지·조건 대기(장기관리), 직접 장기관리 뒤 새 진행건이 생기면 진행 복귀(둘 다 belie 확정). 단기관리는 오늘 챙길 일 맨 뒤, 장기관리 진행건·업체는 제외. 저장은 DB JSONB 만(시트 열 없음, 진행률 빈 칸). 운영 데이터 무변경. [plan](plans/active/payment-wait-longterm.md).
 
+## 2026-10-23 · 주민등록번호 13자리 (ADR-0035)
+- feat/rrn-full-digits. belie 결정(위험 설명 후): 13자리 그대로 저장·표시. 문서 자동입력은 계속 앞 6자리만. [plan](plans/active/rrn-full-digits.md).
+
+## 2026-10-23 · 오늘 챙길 일 카드 옷 + 좌하단 빠른 보기
+- feat/followups-card-and-launcher. belie 승인 목업: 카드 = 영업생산성 상자 색(남보라), 지연(경과·장기누락) 있으면 사선 무지개 테두리 3.5초 순환(움직임 줄이기 = 정지). 대시보드 밖 로그인 화면 좌하단 원형 버튼 + 건수 배지 → 긴급순 5건 창. belie 결정: 대시보드에서는 버튼 숨김. 같은 조회 훅·캐시, 새 API·데이터 변경 없음. 자율결정: 관리자 본인 화면 숨김, 본문 아래 여백 추가(높이 고정 화면 제외), 바깥 누르기 닫힘은 초점 이동 안 함(×·Esc만 복귀). [plan](plans/active/followups-card-and-launcher.md).
+
+## 2026-10-23 · 업체정보 넓은 화면 버튼 크기
+- fix/company-info-wide-buttons. belie 요청: 풀사이즈일 때 위쪽 버튼이 커짐 → 원인은 작은 버튼 규칙이 좁은 화면에만 걸려 있던 것. 모든 너비 24px 로. [plan](plans/active/company-info-wide-buttons.md).
+
+## 2026-10-22 · 영업활동일 판정 함수 (심리장치 단계 0)
+- feat/activity-days-stage0, base b4865f1c. 소유: `lib/analytics/activity-days.ts`·`tests/analytics/activity-days.test.ts`·plan만. 화면·API·DB·gamification.ts 무변경. 매일 기록 동기 장치의 공통 판정(연락 결과·미팅·계약·업무 완료=영업활동일, 일일 실적·특이사항 한 줄=기록일). [plan](plans/active/activity-days-stage0.md).
+## 2026-10-23 · 모바일 대시보드 첫 시선 순서
+- feat/dashboard-mobile-first-look, base 09ed48f1. belie 「모바일만 이렇게 바꿔줘」: 모바일은 오늘 챙길 일 맨 앞(1018→209px), PC 불변(위치 동일·PSNR 74dB). CSS order 방식, 데이터 변화 0. [plan](plans/active/dashboard-mobile-first-look.md).
+## 2026-10-23 · 생산성 지표 두 줄
+- fix/productivity-two-line. belie 요청: 지표당 세 줄 → 두 줄(이름·흐름·비율 / 막대·건수). 실화면 1280·375 확인. [plan](plans/active/productivity-two-line.md).
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
 - fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
 
@@ -268,6 +283,11 @@
 > - **관련 문서**: AGENTS.md·CLAUDE.md, docs/plans/active/* (각 트랙 정본)
 
 # 세션 워크로그 (Session Worklog)
+
+### 2026-10-23 · Claude(경영일지 DC 하위 에이전트) · 컨택 숫자 저장 지연 (fix/contact-save-speed)
+- 증상: STEP 2 숫자 저장이 오래 걸림. 운영 `api_timing` 실측 — POST /api/daily 평시 850~1,200ms 중 시트 620~1,000ms(sheets_calls=2), 10-23 09:58~10:00 시트 읽기 할당량 초과로 20~26초·503 2건.
+- 원인: `syncDirectProductionForDate` 가 매 저장마다 03 직접생산 시트 read + M 셀 시트 동기 write. 파일 단위 화이트리스트라 구조 테스트가 못 잡음.
+- 결정(자율): DB 정본 기수는 레코드를 DB 에서 찾고 M 셀 시트 반영은 기존 수렴 큐로. DB 에 없고 유입>0·DB 실패·비DB 기수는 기존 시트 경로 유지. 상세 = `docs/plans/active/contact-save-speed.md`. 되돌리기 = revert.
 
 ### 2026-10-15 · DC 총괄(데탑 C총괄 260927) · DB관리시트 「미지원」 오표시 + 공급업체 엑셀 가져오기
 - belie 신고: A1-0 테스터 계정에서 DB관리시트가 「이 계정은 아직 DB관리시트를 지원하지 않습니다」. 공급업체 엑셀(.xlsx)·셀 블럭 붙여넣기가 제대로 인식 안 됨.

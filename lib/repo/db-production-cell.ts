@@ -11,6 +11,7 @@ import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "./sheets-client";
 import { mirrorSheetRow, mirrorSheetRowAwaitable } from "./db/mirror";
 import { resolveWriteKey } from "./db/row-key";
+import { queueDbTabRowSync } from "./db-tab-sheet-sync";
 
 const T = /[s()]/.test(SHEET_RANGES.dbManagement.tab)
   ? `'${SHEET_RANGES.dbManagement.tab}'`
@@ -19,6 +20,10 @@ const T = /[s()]/.test(SHEET_RANGES.dbManagement.tab)
 export interface ProductionCellWriteOpts {
   /** true = 파일럿(쓰기 정본 DB) — DB 반영을 **기다린 뒤** 반환(non-throw). 생략/false = 기존 R2 미러(fire-and-forget). */
   syncDb?: boolean;
+  /** true = 레코드가 DB 에 있음이 확인됨(호출측이 DB 에서 읽음) — DB 반영 성공 시 시트 M 셀은
+   *  요청 경로에서 쓰지 않고 수렴 미러 큐(queueDbTabRowSync)로 넘긴다(컨택 저장 지연 수정 2026-10-23).
+   *  syncDb 일 때만 의미. DB 반영 실패면 기존처럼 시트에 직접 쓴다(값 유실 방지). */
+  sheetViaQueue?: boolean;
 }
 
 /** 직접생산 생산개수(M) 단일 셀 동기화 — app-owned 유입 기간합(ADR-0024). 항상 overwrite, §2.5 비대상. */
@@ -33,6 +38,15 @@ export async function writeProductionCountCell(
   const col = String.fromCharCode(
     sec.startCol.charCodeAt(0) + sec.cols.indexOf("생산개수"),
   );
+  if (opts?.syncDb && opts.sheetViaQueue) {
+    const key = await resolveWriteKey(spreadsheetId, "직접생산", row);
+    const ok = await mirrorSheetRowAwaitable({ spreadsheetId, tab: "db", rowKey: key, payload: { 생산개수: count } });
+    if (ok) {
+      queueDbTabRowSync(spreadsheetId, "직접생산", row); // 시트는 응답 뒤 DB 최신값으로 수렴
+      return;
+    }
+    // DB 반영 실패 → 기존 경로로 폴백(시트 셀 직접 쓰기 + DB 재시도). 드문 경로라 지연 감수.
+  }
   await sheetsClient().spreadsheets.values.update({
     spreadsheetId,
     range: `${T}!${col}${row}`,
