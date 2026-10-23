@@ -18,7 +18,7 @@ const todo = (name: string, date: string, kind: "todo" | "history"): Todo => ({
   id: `${name}-${date}`, contractRef: `2026-09-04|${name}`, institutionRef: "신보",
   업체명: name, type: "기타", 제목: "연락", 예정일자: date, 예정시각: "09:00",
   장소: "", 상세: "", showOnCalendar: true, 완료여부: false,
-  생성시각: "", 분류: "", 기록종류: kind,
+  생성시각: "", 분류: "", 기록종류: kind, slot: null,
 });
 
 describe("업체 보기 진행건 목록", () => {

@@ -21,12 +21,14 @@ export interface TodoDraftSeed {
 interface Props {
   contractRef: string;
   institutionRef: string;
+  /** 몇 번째 진행건의 기록인가(없으면 옛 방식). */
+  slot?: 1 | 2 | 3;
   companyName: string;
   initial: TodoDraftSeed;
   onClose: () => void;
 }
 
-export default function TodoFormModal({ contractRef, institutionRef, companyName, initial, onClose }: Props) {
+export default function TodoFormModal({ contractRef, institutionRef, slot, companyName, initial, onClose }: Props) {
   const create = useCreateTodo();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [kind, setKind] = useState<TodoRecordKind>(initial.기록종류);
@@ -43,7 +45,7 @@ export default function TodoFormModal({ contractRef, institutionRef, companyName
   const doCreate = async () => {
     if (!title.trim()) throw new Error("제목을 입력해주세요.");
     if (!date) throw new Error("날짜를 선택해주세요.");
-    await create.mutateAsync({ contractRef, institutionRef, 업체명: companyName, 기록종류: kind, type, 제목: title.trim(), 예정일자: date, 예정시각: `${hour}:${hour === "20" ? "00" : minute}`, 장소: "", 상세: detail.trim(), showOnCalendar, operationId: opId });
+    await create.mutateAsync({ contractRef, institutionRef, slot: slot ?? null, 업체명: companyName, 기록종류: kind, type, 제목: title.trim(), 예정일자: date, 예정시각: `${hour}:${hour === "20" ? "00" : minute}`, 장소: "", 상세: detail.trim(), showOnCalendar, operationId: opId });
     onClose();
   };
   useDirtyEntry(`todo-${contractRef}-${institutionRef}`, true, doCreate, onClose, `${kind === "todo" ? "Todo" : "History"} · ${companyName}`);

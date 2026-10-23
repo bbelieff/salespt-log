@@ -65,6 +65,7 @@ export default function ContractSlots({
           contractRef={contractRef}
           companyName={cp.업체명}
           savedInstitution={cp.수납1.진행기관}
+          savedContract={cp}
           institutionOptions={slotInstitutionOptions}
           todos={todos}
           focusTodoId={focusTodoId}
@@ -82,6 +83,7 @@ export default function ContractSlots({
             contractRef={contractRef}
             companyName={cp.업체명}
             savedInstitution={cp.수납2.진행기관}
+            savedContract={cp}
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
@@ -101,6 +103,7 @@ export default function ContractSlots({
             contractRef={contractRef}
             companyName={cp.업체명}
             savedInstitution={cp.수납3.진행기관}
+            savedContract={cp}
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
