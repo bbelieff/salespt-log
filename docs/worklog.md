@@ -1,3 +1,6 @@
+## 2026-10-23 · 업체정보 머리줄 한글 버튼
+- fix/company-info-header-labels. belie 요청: 아이콘 4개 → 작은 한글 버튼(문서입력·TXT·팝업·더보기, PC 24px·모바일 28px — 주변 버튼 크기에 맞춤). 더보기 메뉴 안 중복 이름 숨김. 실화면 1280·375 확인. [plan](plans/active/company-info-header-labels.md).
+
 ## 2026-10-23 · 기록을 진행건 번호로 연결 (fix/todo-slot-link)
 - belie [1]: 같은 기관을 쓰는 진행 1·2 에 Todo·History 가 함께 붙던 문제. `Todo.slot`(시트 Q) 추가, 판정 `todoSlotOf` 한 곳. 옛 기록은 읽을 때 추정 + 「진행 N 기록으로」 버튼. 운영 데이터 무변경.
 

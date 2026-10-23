@@ -32,7 +32,7 @@ export default function CompanyDocAutofillButton({ current, onApply, onVault, co
         aria-label={compactMobile ? "문서로 자동입력" : undefined} title={compactMobile ? "문서로 자동입력" : undefined}
         className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
       >
-        {compactMobile && <FileInput className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden /> }<span className={compactMobile ? "payment-ci-action-label" : undefined}>문서로 자동입력</span>
+        {compactMobile && <FileInput className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden /> }<span className={compactMobile ? "payment-ci-action-label" : undefined}>문서로 자동입력</span>{compactMobile && <span className="payment-ci-short" aria-hidden>문서입력</span>}
       </button>
       {open && (
         <Suspense fallback={null}>

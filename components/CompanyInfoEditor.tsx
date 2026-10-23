@@ -388,7 +388,7 @@ export default function CompanyInfoEditor({
                   disabled={txtBusy}
                   className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {paymentHeading && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : paymentHeading ? "TXT 생성" : "업체정보생성(TXT)"}</span>
+                  {paymentHeading && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : paymentHeading ? "TXT 생성" : "업체정보생성(TXT)"}</span>{paymentHeading && <span className="payment-ci-short" aria-hidden>{txtBusy ? "생성 중" : "TXT"}</span>}
                 </button>
               ) : null,
               <button
@@ -398,7 +398,7 @@ export default function CompanyInfoEditor({
                 data-payment-ci-action="popup" aria-label={paymentHeading ? "업체정보 팝업" : undefined} title={paymentHeading ? "업체정보 팝업" : undefined}
                 className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
               >
-                {paymentHeading && <Maximize2 className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>팝업</span>
+                {paymentHeading && <Maximize2 className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>팝업</span>{paymentHeading && <span className="payment-ci-short" aria-hidden>팝업</span>}
               </button>
         ]} />
 
