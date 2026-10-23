@@ -1,3 +1,5 @@
+## 2026-10-23 · 업체정보 넓은 화면 버튼 크기
+- fix/company-info-wide-buttons. belie 요청: 풀사이즈일 때 위쪽 버튼이 커짐 → 원인은 작은 버튼 규칙이 좁은 화면에만 걸려 있던 것. 모든 너비 24px 로. [plan](plans/active/company-info-wide-buttons.md).
 ## 2026-10-23 · 생산성 지표 두 줄
 - fix/productivity-two-line. belie 요청: 지표당 세 줄 → 두 줄(이름·흐름·비율 / 막대·건수). 실화면 1280·375 확인. [plan](plans/active/productivity-two-line.md).
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
