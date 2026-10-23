@@ -100,7 +100,12 @@ export function buildWorkStatusItems(
     if (populated.length && !live.length) continue;
     const effective = live.length ? live : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
     for (const [slotNo, slot] of effective) {
-      const hasTodo = todos.some((t) => normalizeContractRef(t.contractRef) === ref && todoSlotOf(cp, t).slot === slotNo);
+      // 기관 이름이 어느 진행건과도 맞지 않는 옛 기록(unmatched)은 화면에 보이게만 하고 상태는 바꾸지 않는다.
+      const hasTodo = todos.some((t) => {
+        if (normalizeContractRef(t.contractRef) !== ref) return false;
+        const linked = todoSlotOf(cp, t);
+        return linked.slot === slotNo && linked.reason !== "unmatched";
+      });
       out.push({
         key: `${cp.row ?? cp.업체명}-${slotNo}`,
         status: classifyWorkStatus(slot, hasTodo, todayISO),

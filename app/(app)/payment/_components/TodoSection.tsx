@@ -27,7 +27,7 @@ interface Props {
   accentFamily?: keyof typeof SLOT_ACCENT;
   /** 이 칸이 몇 번째 진행건인가 — 새 기록에 함께 저장한다. */
   slot?: 1 | 2 | 3;
-  /** 진행건 번호 없는 옛 기록 중 같은 기관을 쓰는 진행건이 여럿이라 어디 것인지 모르는 기록. */
+  /** 진행건 번호 없는 옛 기록 중 어디 것인지 확실하지 않은 기록 — 같은 기관 진행건이 여럿이거나, 기관 이름이 어느 진행건과도 같지 않음(todo-slot). */
   ambiguousIds?: Set<string>;
 }
 
@@ -59,7 +59,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
         <span className={`rounded px-1.5 py-0.5 text-px-11 ${TYPE_BADGE[t.type]}`}>{t.type}</span>
         <span className={`min-w-0 flex-1 truncate text-xs ${t.완료여부 && !history ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</span>
         <span className="shrink-0 text-px-11 tabular-nums text-slate-400">{t.예정일자.slice(5).replace("-", "/")} {t.예정시각}</span>
-        {slot && ambiguousIds?.has(t.id) && <button type="button" onClick={() => patch.mutate({ contractRef, id: t.id, partial: { slot } })} title="같은 기관을 쓰는 진행건이 여럿이에요. 이 진행건 기록이면 눌러 주세요." className="shrink-0 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-px-11 font-semibold text-amber-800 hover:bg-amber-100">진행 {slot} 기록으로</button>}
+        {slot && ambiguousIds?.has(t.id) && <button type="button" onClick={() => patch.mutate({ contractRef, id: t.id, partial: { slot } })} title={`어느 진행건 기록인지 확실하지 않아요${t.institutionRef.trim() ? ` (기록의 기관: ${t.institutionRef.trim()})` : ""}. 이 진행건 기록이면 눌러 주세요.`} className="shrink-0 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-px-11 font-semibold text-amber-800 hover:bg-amber-100">진행 {slot} 기록으로</button>}
         <button type="button" onClick={() => remove.mutate({ contractRef, id: t.id })} className="text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
       </div>; })}</div>}
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">

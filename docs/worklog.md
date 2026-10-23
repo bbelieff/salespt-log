@@ -1,6 +1,12 @@
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
 - fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
 
+## 2026-10-23 · 챙길 일에서 안 사라지는 할 일 (fix/followup-todo-recognition)
+- belie 신고: 실무/수납에 Todo 를 잡아도 일부 업체가 「오늘 챙길 일」에 남음. 운영 DB 읽기 전용 확인 — 남은 건 진행기관 칸을 고치기 전 이름(「소진공 혁신」 등)의 옛 미완료 Todo 라 어느 진행건에도 안 붙어 실무/수납에 안 보였다. `todoSlotOf` 가 그런 기록도 한 진행건에 「확인 필요」로 보이게(상태 판정엔 미사용). 데이터 무변경. [plan](plans/active/followup-todo-recognition.md).
+
+## 2026-10-23 · 업체정보 기타 칸 지우기 되돌리기
+- fix/custom-field-undo. belie 요청: 기타(사용자 추가) 칸이 ✕ 한 번에 너무 쉽게 지워짐 → 지운 직후 10초간 「되돌리기」 줄, 누르면 같은 값·같은 자리로 복원. 확인 팝업 대신 되돌리기(입력 흐름을 끊지 않음). [plan](plans/active/custom-field-undo.md).
+
 ## 2026-10-23 · 오늘 챙길 일 목록 창 전체 테두리
 - fix/followups-panel-border. belie 요청: 위쪽만 굵던 강조 테두리를 네 변 전체(2px 강조색 + 연한 고리)로. 실화면 1280 확인. [plan](plans/active/followups-panel-border.md).
 

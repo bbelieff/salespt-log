@@ -14,7 +14,7 @@
  */
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FileDown, Maximize2 } from "lucide-react";
 import { CompanyInfo } from "@/types";
@@ -24,6 +24,7 @@ import { resolveBaseYear } from "@/util/company-sales";
 import { companyInfoForExport, deriveCompanyInfo } from "@/service/company-finance";
 import { type EditorItem, companyInfoFieldList, 기업정보_ITEMS, 대표자_ITEMS, 재무_ITEMS, 기본_대표자_ITEMS, 기본_사업자_ITEMS } from "./company-info-defs";
 import { inputCls } from "./company-info/CompanyInfoField";
+import CustomFieldUndo from "./company-info/CustomFieldUndo";
 import CompanyInfoItem from "./company-info/CompanyInfoItem";
 import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 import CompanyVaultSection from "./company-info/CompanyVaultSection";
@@ -81,6 +82,7 @@ export default function CompanyInfoEditor({
     업체: "",
     대표자: "",
   });
+  const [removed, setRemoved] = useState<{ g: Grp; label: string; value: string; index: number } | null>(null);
   const [txtMsg, setTxtMsg] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
   const [txtBusy, setTxtBusy] = useState(false);
   // 미팅 메모에서 뽑아 계정 보관함에 넣을 항목 — 보관함이 열리면 넣고 비운다(메모리에만).
@@ -209,7 +211,9 @@ export default function CompanyInfoEditor({
         [g]: { ...(d.커스텀?.[g] ?? {}), [label]: v },
       },
     }));
-  const removeCustom = (g: Grp, label: string) =>
+  const removeCustom = (g: Grp, label: string) => {
+    const entries = Object.entries(customOf(g));
+    setRemoved({ g, label, value: customOf(g)[label] ?? "", index: entries.findIndex(([k]) => k === label) });
     apply((d) => {
       const next = { ...(d.커스텀?.[g] ?? {}) };
       delete next[label];
@@ -218,6 +222,17 @@ export default function CompanyInfoEditor({
         커스텀: { 업체: d.커스텀?.업체 ?? {}, 대표자: d.커스텀?.대표자 ?? {}, [g]: next },
       };
     });
+  };
+  // 지운 칸을 원래 순서 자리에 그대로 되살린다.
+  const restoreCustom = ({ g, label, value, index }: NonNullable<typeof removed>) => {
+    apply((d) => {
+      const entries = Object.entries(d.커스텀?.[g] ?? {}).filter(([k]) => k !== label);
+      entries.splice(index < 0 ? entries.length : Math.min(index, entries.length), 0, [label, value]);
+      return { ...d, 커스텀: { 업체: d.커스텀?.업체 ?? {}, 대표자: d.커스텀?.대표자 ?? {}, [g]: Object.fromEntries(entries) } };
+    });
+    setRemoved(null);
+  };
+  const dismissUndo = useCallback(() => setRemoved(null), []);
   const addCustom = (g: Grp) => {
     const label = newLabel[g].trim();
     if (!label) return;
@@ -297,6 +312,7 @@ export default function CompanyInfoEditor({
               <button
                 type="button"
                 onClick={() => removeCustom(g, label)}
+                aria-label={`${label} 칸 지우기`} title="칸 지우기 (지운 뒤 되돌릴 수 있어요)"
                 className="text-gray-300 hover:text-red-500"
               >
                 ✕
@@ -309,6 +325,7 @@ export default function CompanyInfoEditor({
             />
           </label>
         ))}
+        {g && removed?.g === g && <CustomFieldUndo label={removed.label} inline={inline} onUndo={() => restoreCustom(removed)} onDismiss={dismissUndo} />}
       </div>
       {g && (
         <div className="flex gap-1">
