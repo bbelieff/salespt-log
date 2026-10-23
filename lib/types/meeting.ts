@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { Channel } from "./channel";
-import { normalizeRrnFront } from "@/util/rrn-front";
+import { normalizeRrn } from "@/util/rrn-front";
 
 // ── 미팅 상태 (5종) ─────────────────────────────────────────
 export const MeetingState = z.enum(["예약", "계약", "완료", "변경", "취소"]);
@@ -57,7 +57,7 @@ export const CompanyInfo = z.object({
   임차면적: z.string().default(""),
   // [대표자] — 앞 6자리만 저장(belie 결정). 어떤 입력이 와도 "NNNNNN-" 또는 "" 로 잘린다
   // — 화면을 우회한 요청도 이 스키마를 지나므로 뒷자리는 저장 경로에 도달하지 못한다.
-  주민등록번호: z.string().default("").transform(normalizeRrnFront),
+  주민등록번호: z.string().default("").transform(normalizeRrn), // 13자리 NNNNNN-NNNNNNN(옛 앞자리 NNNNNN- 도 유효, ADR-0035)
   // [재무] — 금액 칸은 백만원 숫자("250.1" · "1,234" · "-3.2", company-finance-won-grid). 옛 자유 글은
   // 그대로 두고 읽기만 한다. 비율 3칸은 편집기가 금액에서 계산해 저장(lib/service/company-finance.ts).
   결산연도: z.string().default(""),

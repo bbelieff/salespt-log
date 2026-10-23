@@ -55,7 +55,7 @@ export const KEEP_NOTE = "지금 값이 있어 기본으로 안 덮어요";
 export const SAME_NOTE = "지금 값과 같아요";
 export const INVALID_NOTE = "번호가 맞지 않아 기본으로 안 넣어요";
 
-/** 반영 직전 값 정리 — 주민등록번호 칸은 어떤 경로로도 앞 6자리만. */
+/** 반영 직전 값 정리 — 문서에서 읽은 주민등록번호는 앞 6자리만(뒷자리는 문서에서 읽지 않는다, ADR-0035 §범위). */
 export function sanitizeForKey(key: CompanyInfoKey, value: string): string {
   const v = value.trim();
   return key === "주민등록번호" ? normalizeRrnFront(v) : v;
@@ -116,7 +116,10 @@ export function buildDiffRows(
       (a, b) => Number(b.valid !== false) - Number(a.valid !== false) || b.confidence - a.confidence,
     );
     const cur = String(current[key] ?? "");
-    const { checked, note } = checkState(cur, candidates[0]!);
+    // 주민등록번호: 문서는 앞 6자리만 준다 — 지금 값(13자리, ADR-0035)의 앞자리와 같으면 「같아요」로 두어
+    // 기본 체크로 뒷자리를 지우지 않게 한다.
+    const sameRrnFront = key === "주민등록번호" && cur.trim() !== "" && normalizeRrnFront(cur) === candidates[0]!.value;
+    const { checked, note } = sameRrnFront ? { checked: false, note: SAME_NOTE } : checkState(cur, candidates[0]!);
     rows.push({ key, current: cur, candidates, conflict: candidates.length > 1, defaultChecked: checked, note });
   }
   return rows.sort((a, b) => rank(a.key) - rank(b.key));

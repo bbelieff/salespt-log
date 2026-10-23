@@ -3,15 +3,15 @@
  * 앞 6자리만 "NNNNNN-" 로 저장 — 화면 정규화 + 서버 스키마(CompanyInfo transform) 이중 강제.
  */
 import { describe, expect, it } from "vitest";
-import { normalizeRrnFront, sanitizeRrnFrontTyping } from "@/util/rrn-front";
+import { normalizeRrn, normalizeRrnFront, sanitizeRrnFrontTyping, sanitizeRrnTyping } from "@/util/rrn-front";
 import { CompanyInfo, Meeting } from "@/types";
 import { companyInfoToArchiveRow } from "@/repo/company-info-archive";
 import { meetingToRow } from "@/repo/meetings-rows";
 
 describe("normalizeRrnFront (저장 정규화)", () => {
   it.each([
-    ["800101-1234567", "800101-"],
-    ["8001011234567", "800101-"],
+    ["800101-0234567", "800101-"],
+    ["8001010234567", "800101-"],
     ["800101 - 1", "800101-"],
     ["800101", "800101-"],
     ["800101-", "800101-"],
@@ -27,7 +27,7 @@ describe("normalizeRrnFront (저장 정규화)", () => {
   it("null·undefined·숫자도 안전", () => {
     expect(normalizeRrnFront(undefined)).toBe("");
     expect(normalizeRrnFront(null)).toBe("");
-    expect(normalizeRrnFront(8001011234567)).toBe("800101-");
+    expect(normalizeRrnFront(8001010234567)).toBe("800101-");
   });
 });
 
@@ -38,8 +38,8 @@ describe("sanitizeRrnFrontTyping (입력 중 정규화)", () => {
   });
   it("6자리 초과(뒷자리 입력·붙여넣기) → 즉시 앞자리만", () => {
     expect(sanitizeRrnFrontTyping("800101-1")).toBe("800101-");
-    expect(sanitizeRrnFrontTyping("8001011234567")).toBe("800101-");
-    expect(sanitizeRrnFrontTyping("800101-1234567")).toBe("800101-");
+    expect(sanitizeRrnFrontTyping("8001010234567")).toBe("800101-");
+    expect(sanitizeRrnFrontTyping("800101-0234567")).toBe("800101-");
   });
   it("정확히 6자리는 하이픈 지우기를 허용(되돌려 붙이지 않음)", () => {
     expect(sanitizeRrnFrontTyping("800101")).toBe("800101");
@@ -50,24 +50,26 @@ describe("sanitizeRrnFrontTyping (입력 중 정규화)", () => {
   });
 });
 
-describe("서버 강제 — 전체 번호가 와도 저장 경로에 뒷자리가 닿지 않는다", () => {
-  it("CompanyInfo 스키마(POST /api/company-info 파싱)가 앞자리만 남긴다", () => {
-    expect(CompanyInfo.parse({ 주민등록번호: "800101-1234567" }).주민등록번호).toBe("800101-");
-    expect(CompanyInfo.parse({ 주민등록번호: "8001011" }).주민등록번호).toBe("800101-");
+describe("서버 정규화 — 13자리 NNNNNN-NNNNNNN (ADR-0035, 합성 값)", () => {
+  it("CompanyInfo 스키마(POST /api/company-info 파싱)가 13자리를 그대로 남긴다", () => {
+    expect(CompanyInfo.parse({ 주민등록번호: "800101-0234567" }).주민등록번호).toBe("800101-0234567");
+    expect(CompanyInfo.parse({ 주민등록번호: "8001010234567" }).주민등록번호).toBe("800101-0234567");
+    expect(CompanyInfo.parse({ 주민등록번호: "800101-02345679" }).주민등록번호).toBe("800101-0234567");
+    expect(CompanyInfo.parse({ 주민등록번호: "800101-" }).주민등록번호).toBe("800101-");
     expect(CompanyInfo.parse({}).주민등록번호).toBe("");
   });
 
-  it("미팅 PATCH 본문 스키마(Meeting.omit.partial)도 중첩 업체정보를 자른다", () => {
+  it("미팅 PATCH 본문 스키마(Meeting.omit.partial)도 같은 모양으로 맞춘다", () => {
     const PatchBody = Meeting.omit({ id: true }).partial();
-    const out = PatchBody.parse({ 업체정보: { 주민등록번호: "8001011234567" } });
-    expect(out.업체정보?.주민등록번호).toBe("800101-");
+    const out = PatchBody.parse({ 업체정보: { 주민등록번호: "8001010234567" } });
+    expect(out.업체정보?.주민등록번호).toBe("800101-0234567");
   });
 
-  it("스키마를 우회한 객체도 04·06 코덱이 한 번 더 자른다", () => {
-    const leaky = { ...CompanyInfo.parse({}), 주민등록번호: "800101-1234567" } as CompanyInfo;
+  it("스키마를 우회한 객체도 04·06 코덱이 같은 모양으로 맞춘다", () => {
+    const leaky = { ...CompanyInfo.parse({}), 주민등록번호: "8001010234567999" } as CompanyInfo;
     const archive = companyInfoToArchiveRow("예시상사", "2026-09-28", leaky, "T");
-    expect(archive.join("|")).not.toContain("1234567");
-    expect(archive).toContain("'800101-");
+    expect(archive).toContain("'800101-0234567");
+    expect(archive.join("|")).not.toContain("999");
     const m = Meeting.parse({
       id: "m-rrn",
       예약일: "2026-09-28",
@@ -79,7 +81,28 @@ describe("서버 강제 — 전체 번호가 와도 저장 경로에 뒷자리�
       장소: "사무실",
     });
     const row = meetingToRow({ ...m, 업체정보: leaky });
-    expect(row.join("|")).not.toContain("1234567");
-    expect(row).toContain("'800101-");
+    expect(row).toContain("'800101-0234567");
+  });
+});
+
+describe("normalizeRrn / sanitizeRrnTyping (13자리, ADR-0035, 합성 값)", () => {
+  it.each([
+    ["800101-0234567", "800101-0234567"],
+    ["8001010234567", "800101-0234567"],
+    [" 800101 - 0234567 ", "800101-0234567"],
+    ["800101", "800101-"],
+    ["800101-", "800101-"],
+    ["800101-02345678", "800101-0234567"],
+    ["80010", ""],
+    ["abc", ""],
+  ])("normalizeRrn(%s) → %s", (input, out) => {
+    expect(normalizeRrn(input)).toBe(out);
+  });
+  it("입력 중: 7번째 숫자에서 하이픈, 13자리 초과 버림, 6자리는 하이픈 지우기 허용", () => {
+    expect(sanitizeRrnTyping("8001010")).toBe("800101-0");
+    expect(sanitizeRrnTyping("80010102345678")).toBe("800101-0234567");
+    expect(sanitizeRrnTyping("800101")).toBe("800101");
+    expect(sanitizeRrnTyping("800101-")).toBe("800101-");
+    expect(sanitizeRrnTyping("80a01")).toBe("8001");
   });
 });
