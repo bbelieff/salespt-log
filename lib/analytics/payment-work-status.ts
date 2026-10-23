@@ -1,7 +1,7 @@
 import { contractRef, normalizeContractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
-import { isHaltedSlot, slotHasData, slotsOf } from "./contract-slots";
+import { isHaltedSlot, isLongWaitSlot, isWaitingSlot, slotHasData, slotsOf } from "./contract-slots";
 import { todoSlotOf } from "./todo-slot";
 
 /**
@@ -24,7 +24,7 @@ export interface WorkStatusItem {
   institution: string;
 }
 
-export { isHaltedSlot, slotHasData } from "./contract-slots";
+export { isHaltedSlot, isLongWaitSlot, isShortWaitSlot, isWaitingSlot, slotHasData } from "./contract-slots";
 
 /** 계약×기관 단위 활동 날짜(빈 값 = 기록 없음). */
 export interface SlotActivity {
@@ -79,10 +79,12 @@ export function classifyWorkStatus(
 }
 
 /**
- * 이 진행건은 끝났나 — 수납 완료 또는 중도중지(2026-10-23 belie).
- * 오늘 챙길 일은 끝난 진행건의 할 일·정체를 세지 않는다.
+ * 이 진행건은 지금 챙길 일이 아닌가 — 수납 완료 · 중도중지 · 조건 대기·장기관리(2026-10-23 belie).
+ * 오늘 챙길 일은 이런 진행건의 할 일·정체를 세지 않고, 업체 장기관리 자동 이동도 이 규칙을 쓴다.
+ * 조건 대기·단기관리는 수납액이 있어도 진행 중이다(남은 조건을 기다린다).
  */
 export function isSlotClosed(slot: PaymentSlot, todayISO: string): boolean {
+  if (isWaitingSlot(slot)) return isLongWaitSlot(slot);
   return isHaltedSlot(slot) || classifyWorkStatus(slot, true, todayISO) === "collected";
 }
 

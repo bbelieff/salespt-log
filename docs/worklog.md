@@ -1,3 +1,6 @@
+## 2026-10-23 · 조건 대기 · 업체 장기관리
+- feat/payment-wait-longterm, base 6592f72c. belie 목업 [1]·[5] A안(정정 반영): 진행률 「조건 대기」(사유 + 단기관리 2개월 내/장기관리 3개월 이상), 업체 상세 배너 「진행 | 장기관리」 토글 + 정렬 줄 「장기관리 N」 칩. 자동 이동 = 진행건이 모두 수납완료·중도중지·조건 대기(장기관리), 직접 장기관리 뒤 새 진행건이 생기면 진행 복귀(둘 다 belie 확정). 단기관리는 오늘 챙길 일 맨 뒤, 장기관리 진행건·업체는 제외. 저장은 DB JSONB 만(시트 열 없음, 진행률 빈 칸). 운영 데이터 무변경. [plan](plans/active/payment-wait-longterm.md).
+
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
 - fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
 
