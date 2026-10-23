@@ -124,31 +124,29 @@ describe("③④ 이월 쓰기 — 주민등록번호 앞자리 · apostrophe", 
   raw[0] = "m-old-1";
   raw[1] = "예시상사";
   raw[42] = "1988-01-24"; // 대표자생년월일 — USER_ENTERED 면 날짜로 바뀔 문자열
-  raw[RRN_IDX] = "800101-1234567"; // 이전 시트에 직접 친 전체 번호
+  raw[RRN_IDX] = "8001010234567"; // 이전 시트에 하이픈 없이 친 전체 번호(합성 값)
   raw[COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.indexOf("부채비율")] = "120%";
   const src = { 원본id: "m-old-1", raw };
 
-  it("sanitizeCarryRaw/carriedMeetingPayload — BA 는 NNNNNN- 만", () => {
-    expect(sanitizeCarryRaw(raw)[RRN_IDX]).toBe("800101-");
+  it("sanitizeCarryRaw/carriedMeetingPayload — BA 는 NNNNNN-NNNNNNN 으로 맞춘다(ADR-0035)", () => {
+    expect(sanitizeCarryRaw(raw)[RRN_IDX]).toBe("800101-0234567");
     const p = carriedMeetingPayload(src, "new-1");
-    expect(p.BA).toBe("800101-");
-    expect(JSON.stringify(p)).not.toContain("1234567");
+    expect(p.BA).toBe("800101-0234567");
   });
 
-  it("appendCarriedMeeting — 시트 BA·미러 payload 모두 뒷자리 없음, 확장 문자열은 ' 접두", async () => {
+  it("appendCarriedMeeting — 시트 BA·미러 payload 같은 모양, 확장 문자열은 ' 접두", async () => {
     valuesGet.mockResolvedValue({ data: { values: [["m-a"]] } }); // A2:A → 다음 빈 행 3
     await appendCarriedMeeting("arena", src, "new-1");
     const body = valuesBatchUpdate.mock.calls[0]![0] as {
       requestBody: { valueInputOption: string; data: { range: string; values: unknown[][] }[] };
     };
-    expect(JSON.stringify(body)).not.toContain("1234567");
     const aq = body.requestBody.data.find((d) => d.range.endsWith("!AQ3:AS3"))!;
     expect(aq.values[0]![0]).toBe("'1988-01-24");
     expect(aq.values[0]![1]).toBe(""); // 빈 칸은 접두 없음
     const au = body.requestBody.data.find((d) => d.range.endsWith("!AU3:CD3"))!;
-    expect(au.values[0]![RRN_IDX - COMPANY_EXT2_START]).toBe("'800101-");
+    expect(au.values[0]![RRN_IDX - COMPANY_EXT2_START]).toBe("'800101-0234567");
     expect(au.values[0]![COMPANY_FIELDS_EXT2.indexOf("부채비율")]).toBe("'120%");
     const payload = mirrorSheetRow.mock.calls[0]![0] as { payload: Record<string, unknown> };
-    expect(payload.payload.BA).toBe("800101-");
+    expect(payload.payload.BA).toBe("800101-0234567");
   });
 });

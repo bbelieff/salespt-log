@@ -6,6 +6,8 @@ import { dbSheetResultLabel, isDbSheetFollowUpResult, isDbSheetParkedStage, type
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
 import { activeWorkContracts, isSlotClosed, slotHasData } from "./payment-work-status";
+import { isShortWaitSlot } from "./contract-slots";
+import { isLongTermContract } from "./long-term";
 
 export const STALL_DAYS = 7;
 export const UPCOMING_DAYS = 7;
@@ -20,6 +22,8 @@ export interface FollowUpItem {
   title: string; company: string; detail: string; badge: string; href: string;
   dueISO: string | null; overdueDays: number | null; action: string; reasons: string[];
   facts: Array<{ label: string; value: string }>; slot?: 1 | 2 | 3;
+  /** 조건 대기·단기관리 진행건 — 세기는 하되 목록 맨 뒤로(2026-10-23 belie). */
+  deferred?: boolean;
 }
 export type FollowUpCounts = Record<FollowUpKind, number>;
 const SLOTS = [1, 2, 3] as const;
@@ -27,6 +31,9 @@ const shiftISO = (iso: string, days: number) => fmtISO(addDays(parseISO(iso), da
 const daysBetween = (later: string, earlier: string) => diffDays(parseISO(later), parseISO(earlier));
 const contractRefOf = (cp: ContractPayment) => contractRef(cp.계약일, cp.업체명);
 const slotOf = (cp: ContractPayment, slot: 1 | 2 | 3): PaymentSlot => cp[`수납${slot}`];
+/** 오늘 챙길 일 대상 계약 — 숨김·해지·장기관리 업체는 뺀다(장기관리: long-term.ts). */
+const followUpContracts = (contracts: ContractPayment[]) => activeWorkContracts(contracts).filter(cp => !isLongTermContract(cp));
+const WAIT_REASON = "조건 대기(단기관리)";
 const visibleSlots = (cp: ContractPayment): Array<1 | 2 | 3> => {
   const populated = SLOTS.filter(slot => slotHasData(slotOf(cp, slot)));
   return populated.length ? populated : [1];
@@ -43,7 +50,8 @@ function item(base: Omit<FollowUpItem, "dueISO" | "overdueDays" | "group" | "bad
 }
 export function compareFollowUpUrgency(a: FollowUpItem, b: FollowUpItem): number {
   const rank: Record<FollowUpGroup, number> = { "long-overdue": 0, overdue: 1, today: 2, unknown: 3, upcoming: 4 };
-  return rank[a.group] - rank[b.group] || (a.dueISO ?? "9999").localeCompare(b.dueISO ?? "9999") || a.key.localeCompare(b.key);
+  // 조건 대기·단기관리는 어떤 급한 정도보다도 뒤.
+  return Number(Boolean(a.deferred)) - Number(Boolean(b.deferred)) || rank[a.group] - rank[b.group] || (a.dueISO ?? "9999").localeCompare(b.dueISO ?? "9999") || a.key.localeCompare(b.key);
 }
 export interface TodoFollowUps { overdue: FollowUpItem[]; today: FollowUpItem[]; upcoming: FollowUpItem[]; unlinked: number }
 /** 기록의 진행건 — 번호가 있으면 그대로, 옛 기록은 기관이 한 진행건에만 맞을 때만(정본: todo-slot). */
@@ -53,7 +61,7 @@ function slotForTodo(cp: ContractPayment, todo: Todo): 1 | 2 | 3 | undefined {
 }
 export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], today: string): TodoFollowUps {
   const byRef = new Map(contracts.map(cp => [contractRefOf(cp), cp]));
-  const active = new Set(activeWorkContracts(contracts));
+  const active = new Set(followUpContracts(contracts));
   const out: TodoFollowUps = { overdue: [], today: [], upcoming: [], unlinked: 0 };
   const seen = new Set<string>();
   for (const t of [...todos].sort((a, b) => a.예정일자.localeCompare(b.예정일자) || (a.예정시각 || "99").localeCompare(b.예정시각 || "99"))) {
@@ -66,10 +74,11 @@ export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], 
     const slot = slotForTodo(cp, t);
     if (slot ? isSlotClosed(slotOf(cp, slot), today) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today))) continue;
     const kind = t.예정일자 < today ? "overdue" : t.예정일자 === today ? "today" : "upcoming";
-    out[kind].push(item({ key: `todo:${t.id}`, kind, step: "4", slot,
+    const deferred = slot ? isShortWaitSlot(slotOf(cp, slot)) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today) || isShortWaitSlot(slotOf(cp, n)));
+    out[kind].push(item({ key: `todo:${t.id}`, kind, step: "4", slot, ...(deferred ? { deferred } : {}),
       title: t.업체명.trim() || cp.업체명 || t.제목,
       detail: [t.제목, normalizeInstitution(t.institutionRef), t.예정시각].filter(Boolean).join(" · "),
-      action: t.제목, reasons: ["미완료 할 일", ...(!slot ? ["연결 진행건 확인 필요"] : [])], facts: [{ label: "예정일", value: t.예정일자 }, { label: "진행", value: slot ? String(slot) : "확인 필요" }],
+      action: t.제목, reasons: ["미완료 할 일", ...(!slot ? ["연결 진행건 확인 필요"] : []), ...(deferred ? [WAIT_REASON] : [])], facts: [{ label: "예정일", value: t.예정일자 }, { label: "진행", value: slot ? String(slot) : "확인 필요" }],
       href: `/payment?row=${cp.row}${slot ? `&slot=${slot}` : ""}&focus=${encodeURIComponent(t.id)}`,
     }, t.예정일자, today));
   }
@@ -124,7 +133,7 @@ export function buildRecontactLeads(leads: DbSheetLead[], today: string): Follow
 /** One row per active work slot; missing institution and missing next task are reasons on that row. */
 export function buildStalledWork(contracts: ContractPayment[], todos: Todo[], today: string, stallDays = STALL_DAYS): FollowUpItem[] {
   const out: FollowUpItem[] = [];
-  for (const cp of activeWorkContracts(contracts)) {
+  for (const cp of followUpContracts(contracts)) {
     for (const slot of visibleSlots(cp)) {
       const data = slotOf(cp, slot), institution = normalizeInstitution(data.진행기관);
       if (isSlotClosed(data, today)) continue;
@@ -137,7 +146,9 @@ export function buildStalledWork(contracts: ContractPayment[], todos: Todo[], to
       const stalled = last !== null && daysBetween(today, last) >= stallDays;
       if (!reasons.length) continue;
       if (stalled) reasons.push(`${stallDays}일 이상 진행 정체`);
-      out.push(item({ key: `stalled:${cp.row ?? contractRefOf(cp)}:${slot}`, kind: "stalled", step: "4", slot,
+      const deferred = isShortWaitSlot(data);
+      if (deferred) reasons.push(WAIT_REASON);
+      out.push(item({ key: `stalled:${cp.row ?? contractRefOf(cp)}:${slot}`, kind: "stalled", step: "4", slot, ...(deferred ? { deferred } : {}),
         title: cp.업체명, detail: [`진행 ${slot}`, institution || "기관 미정", data.진행상품.trim(), ...reasons].filter(Boolean).join(" · "),
         action: !institution ? "진행기관과 다음 할 일 확인" : "다음 할 일 정하기", reasons,
         facts: [{ label: "진행", value: String(slot) }, { label: "기관", value: institution || "미정" }, { label: activity ? "마지막 일정" : "계약일", value: last ?? "확인 필요" }],
@@ -175,4 +186,17 @@ export function summarizeFollowUps(src: FollowUpSources, today: string): FollowU
   const stepCounts = Object.fromEntries((["1.5", "2", "3", "4"] as const).map(step => [step, urgent.filter(i => i.step === step).length])) as Record<FollowUpStep, number>;
   const groupCounts = Object.fromEntries((["today", "overdue", "long-overdue", "upcoming", "unknown"] as const).map(group => [group, items.filter(i => i.group === group).length])) as Record<FollowUpGroup, number>;
   return { groups, counts, total: urgent.length, headline: followUpHeadline(counts), unlinkedTodos: todo.unlinked, items, urgent, stepCounts, groupCounts };
+}
+/** 경과·장기누락이 한 건이라도 있으면 카드 테두리를 움직여 강조한다(오늘·예정·날짜 확인만 있으면 정지). */
+export function hasOverdueFollowUps(items: readonly FollowUpItem[]): boolean {
+  return items.some(i => i.group === "overdue" || i.group === "long-overdue");
+}
+/** 좌하단 빠른 보기 — 대시보드 전체 숫자와 같은 범위(예정 제외)를 긴급순으로 자른다. */
+export function topUrgentFollowUps(items: readonly FollowUpItem[], limit = 5): { top: FollowUpItem[]; rest: number; total: number } {
+  const urgent = items.filter(i => i.group !== "upcoming").sort(compareFollowUpUrgency);
+  return { top: urgent.slice(0, limit), rest: Math.max(0, urgent.length - limit), total: urgent.length };
+}
+/** 옛 「N일 미처리」 표기도 D+N 으로 맞춘다(표·빠른 보기 공통). */
+export function followUpBadgeLabel(badge: string): string {
+  return badge.replace(/^(\d+)일 미처리$/, "D+$1");
 }

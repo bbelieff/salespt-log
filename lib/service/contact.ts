@@ -296,7 +296,7 @@ export async function saveContactMetrics(
   let directProductionHold = false;
   const direct = channels["직접생산"];
   if (direct) {
-    const { recordFound } = await syncDirectProductionForDate(spreadsheetId, date, sourceCohort(user));
+    const { recordFound } = await syncDirectProductionForDate(spreadsheetId, date, sourceCohort(user), { inflow: direct.inflow });
     directProductionHold = !recordFound && direct.inflow > 0;
   }
   return { directProductionHold };

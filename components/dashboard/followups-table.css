@@ -34,3 +34,18 @@
  .ft-col-context,.ft-table th:nth-child(4),.ft-table td:nth-child(4) { display:none; }
  .ft-col-company { width:90px; } .ft-col-link { width:54px; }
 }
+
+/* 2026-10-23 영업생산성 상자와 같은 옷 — indigo-50→purple-50, indigo-200 테두리, 제목 indigo-900, 전체 숫자 purple-700. */
+.follow-ups-card.ft-card{border-color:#c7d2fe;background:linear-gradient(90deg,#eef2ff,#faf5ff)}
+.follow-ups-card.ft-card h2{color:#312e81}
+.follow-ups-card.ft-card .follow-ups-total{color:#7e22ce;font-size:16px;font-weight:700;text-decoration-color:#d8b4fe}
+.follow-ups-card.ft-card .follow-ups-total:hover{background:#e0e7ff}
+.ft-card .ft-summary-row{border-top-color:#c7d2fe99}.ft-card .ft-summary-row:hover{background:#e0e7ff80}
+.ft-card .ft-step-id{background:#fff;border-color:#c7d2fe;color:#4338ca}
+.ft-card .ft-upcoming{border-top-color:#c7d2fe}
+.ft-card .follow-ups-guide{background:#ffffffb3}
+/* 사선 무지개 — 경과·장기누락이 있을 때만. 3px 테두리 안쪽 배경·숫자는 그대로, 3.5초에 한 바퀴. 안쪽 위치는 padding 을 2px 줄여 고정. */
+.follow-ups-card.ft-card[data-emphasis=flow]{border:3px solid transparent;padding:10px 12px;background:linear-gradient(90deg,#eef2ff,#faf5ff) padding-box,linear-gradient(135deg,#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#6366f1,#a855f7,#ec4899,#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#6366f1,#a855f7,#ec4899,#ef4444) 0 0/200% 200% border-box;animation:ft-rainbow-flow 3.5s linear infinite}
+@keyframes ft-rainbow-flow{to{background-position:0 0,100% 100%}}
+@media(max-width:767px){.follow-ups-card.ft-card[data-emphasis=flow]{padding:10px}}
+@media(prefers-reduced-motion:reduce){.follow-ups-card.ft-card[data-emphasis=flow]{animation:none}}

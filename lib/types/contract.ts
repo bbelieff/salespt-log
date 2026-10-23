@@ -12,7 +12,9 @@ import { z } from "zod";
 
 /** 진행률 dropdown — 숫자 6단계는 시트 N/T/Z 컬럼 data validation과 일치.
  *  "중도중지"(2026-10-23 belie) = 수납 없이 끝난 진행건. 오늘 챙길 일·업무 현황에서 빠진다.
- *  enum 확장만 — 옛 값은 그대로 통과한다. 시트 미러에는 빈 칸으로 쓴다(시트 dropdown 에 없는 값). */
+ *  "조건 대기"(2026-10-23 belie) = 조건(담보 설정 등)이 풀릴 때까지 기다리는 진행건. 「단기관리(2개월 내)」는
+ *  진행 중(오늘 챙길 일 맨 뒤), 「장기관리(3개월 이상)」는 중도중지처럼 오늘 챙길 일에서 빠진다.
+ *  enum 확장만 — 옛 값은 그대로 통과한다. 시트 미러에는 둘 다 빈 칸으로 쓴다(시트 dropdown 에 없는 값). */
 export const Progress = z.enum([
   "",
   "0%",
@@ -21,10 +23,13 @@ export const Progress = z.enum([
   "60%",
   "80%",
   "100%",
+  "조건 대기",
   "중도중지",
 ]);
 /** 진행률 「중도중지」 값 — 비교는 이 상수로. */
 export const HALTED_PROGRESS = "중도중지" as const;
+/** 진행률 「조건 대기」 값 — 비교는 이 상수로. */
+export const WAITING_PROGRESS = "조건 대기" as const;
 export type Progress = z.infer<typeof Progress>;
 
 /** 분할 수납 1 슬롯 (v3, 2026-05-17): 메모 추가 — 총 7필드.
@@ -45,6 +50,10 @@ export const PaymentSlot = z.object({
   수납일: z.string().default(""), // YYYY-MM-DD 또는 빈 문자열
   /** 슬롯별 메모 — 진행기관 다음 위치 표시 (2026-05-17). 시트 AF/AG/AH. */
   메모: z.string().default(""),
+  /** 「조건 대기」 사유 한 줄(예: 담보 설정 완료). DB JSONB 확장 필드 — 시트 열 없음. 옛 기록엔 없다. */
+  대기사유: z.string().optional(),
+  /** 「조건 대기」 기간 — 단기(2개월 내, 진행 중) / 장기(3개월 이상, 오늘 챙길 일 제외). 없으면 단기로 본다. DB JSONB 확장 필드. */
+  대기기간: z.enum(["단기", "장기"]).optional(),
 });
 export type PaymentSlot = z.infer<typeof PaymentSlot>;
 
@@ -94,6 +103,11 @@ export const ContractPayment = z.object({
   해지사유: z.string().default(""), // AM — 해지 시 필수(서비스 검증)
   반환액: z.number().nonnegative().default(0), // AN (원) — 매출 차감, soft delete 여도 유지
   해지숨김: z.boolean().default(false), // AO — soft delete 카드 숨김(데이터 보존)
+  /** 업체 상태 직접 지정(2026-10-23 belie) — 없으면 자동(진행건이 전부 수납완료·중도중지면 장기관리).
+   *  상세 배너의 「진행 | 장기관리」 토글만 쓴다. DB JSONB 확장 필드 — 시트 열 없음. */
+  관리상태: z.enum(["진행", "장기관리"]).optional(),
+  /** 직접 「장기관리」로 보낼 때 진행 중이던 진행건 번호. 그 밖의 진행건이 새로 진행 중이 되면 저절로 「진행」으로 돌아온다. */
+  관리상태진행건: z.array(z.number().int().min(1).max(3)).optional(),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 

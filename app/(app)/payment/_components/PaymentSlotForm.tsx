@@ -14,10 +14,11 @@
 
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useState } from "react";
-import { HALTED_PROGRESS, type ContractPayment, type PaymentSlot, type Progress, type Todo } from "@/types";
+import { HALTED_PROGRESS, WAITING_PROGRESS, type ContractPayment, type PaymentSlot, type Progress, type Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
+import ProgressWaitFields, { WaitBadge } from "./ProgressWaitFields";
 import { sameInstitution } from "@/util/institution-match";
 import { todoSlotOf } from "@/lib/analytics/todo-slot";
 
@@ -58,12 +59,13 @@ const SLOT_STYLES = {
 } as const;
 
 // 「중도중지」 = 수납 없이 끝난 진행건 — 오늘 챙길 일·업무 현황에서 빠진다(2026-10-23 belie).
-const PROGRESS_OPTIONS: Progress[] = ["", "0%", "20%", "40%", "60%", "80%", "100%", HALTED_PROGRESS];
+// 「조건 대기」 = 조건이 풀리길 기다리는 진행건 — 사유·기간(단기/장기관리)을 함께 적는다.
+const PROGRESS_OPTIONS: Progress[] = ["", "0%", "20%", "40%", "60%", "80%", "100%", WAITING_PROGRESS, HALTED_PROGRESS];
 const HALTED_BADGE = "shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600";
 
 function progressToPct(p: Progress): number {
-  if (p === "" || p === "0%" || p === HALTED_PROGRESS) return 0;
-  return parseInt(p, 10);
+  if (p === "" || p === "0%" || p === HALTED_PROGRESS || p === WAITING_PROGRESS) return 0;
+  return parseInt(p, 10) || 0;
 }
 
 function pctToProgress(pct: number): Progress {
@@ -139,6 +141,7 @@ export default function PaymentSlotForm({
 
   // 완료 슬롯(100% 또는 승인>0 && 수납>=승인) 기본 접힘 / 진행 중 펼침.
   const halted = slot.진행률 === HALTED_PROGRESS;
+  const waiting = slot.진행률 === WAITING_PROGRESS;
   const isDone =
     halted || pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
   const [open, setOpen] = useState(!isDone);
@@ -173,7 +176,8 @@ export default function PaymentSlotForm({
               <span className="truncate font-medium text-gray-600">
                 {slot.진행기관 || "기관 미입력"}
               </span>
-              {halted ? <span className={HALTED_BADGE}>중도중지</span> : <span className={`shrink-0 font-semibold ${pctColor}`}>· {pct}%</span>}
+              {halted ? <span className={HALTED_BADGE}>중도중지</span> : waiting ? <WaitBadge slot={slot} /> : <span className={`shrink-0 font-semibold ${pctColor}`}>· {pct}%</span>}
+              {waiting && slot.대기사유?.trim() && <span className="truncate text-violet-700">사유: {slot.대기사유}</span>}
               {(slot.승인금액 > 0 || slot.수납액 > 0) && (
                 <span
                   className="shrink-0"
@@ -221,7 +225,7 @@ export default function PaymentSlotForm({
       <div className={`mb-3 ${halted ? "opacity-60" : ""}`} data-halted={halted || undefined}>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="text-xs text-gray-500">진행도</span>
-          {halted ? <span className={HALTED_BADGE}>중도중지</span> : <span className={`text-xs font-semibold ${pctColor}`}>{pct}%</span>}
+          {halted ? <span className={HALTED_BADGE}>중도중지</span> : waiting ? <WaitBadge slot={slot} /> : <span className={`text-xs font-semibold ${pctColor}`}>{pct}%</span>}
         </div>
         <div className="relative h-3 overflow-hidden rounded-full bg-gray-200">
           <div
@@ -299,7 +303,7 @@ export default function PaymentSlotForm({
             label="진행률"
             value={slot.진행률}
             options={PROGRESS_OPTIONS}
-            onChange={(v) => set("진행률", v as Progress)}
+            onChange={(v) => onChange(v === WAITING_PROGRESS ? { ...slot, 진행률: v, 대기기간: slot.대기기간 ?? "단기" } : { ...slot, 진행률: v as Progress })}
           />
           <FieldText
             label="현황"
@@ -308,6 +312,7 @@ export default function PaymentSlotForm({
             onChange={(v) => set("현황", v)}
           />
         </div>
+        {waiting && <ProgressWaitFields slot={slot} onChange={(patch) => onChange({ ...slot, ...patch })} />}
         <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-2">
           <FieldMoney
             label="승인금액 (원)"

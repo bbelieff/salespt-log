@@ -49,12 +49,15 @@ function invalidateContractLinked(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ["meeting-follow-ups"] });
 }
 
-export function useContractPayments(): UseQueryResult<ListResponse> {
+/** background = 화면을 막지 않는 보조 조회(좌하단 「오늘 챙길 일」 — 전역 로딩 팝업 제외). 미지정 = 기존 그대로. */
+export function useContractPayments(opts: { enabled?: boolean; background?: boolean } = {}): UseQueryResult<ListResponse> {
   return useQuery({
     queryKey: cpKey(),
     queryFn: () => fetchJSON<ListResponse>(`/api/contract-payment`),
     // BBE-242 처방4(2026-08-27) — lib/query/contact-hooks.ts useDay 주석 참고.
     gcTime: 10 * 60_000,
+    ...(opts.enabled === undefined ? {} : { enabled: opts.enabled }),
+    ...(opts.background ? { meta: { background: true } } : {}),
   });
 }
 

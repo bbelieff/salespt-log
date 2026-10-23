@@ -53,11 +53,14 @@ export function useTodosByContract(
 }
 
 /** 실무/수납 상단 업무현황용 전체 기록. */
-export function useAllTodos(): UseQueryResult<ListResponse> {
+/** background = 화면을 막지 않는 보조 조회(좌하단 「오늘 챙길 일」). 미지정 = 기존 그대로. */
+export function useAllTodos(opts: { enabled?: boolean; background?: boolean } = {}): UseQueryResult<ListResponse> {
   return useQuery({
     queryKey: ["todos", "all"],
     queryFn: () => fetchJSON<ListResponse>("/api/todos?all=1"),
     gcTime: 10 * 60_000,
+    ...(opts.enabled === undefined ? {} : { enabled: opts.enabled }),
+    ...(opts.background ? { meta: { background: true } } : {}),
   });
 }
 
@@ -75,6 +78,8 @@ export interface CreateTodoArgs {
   기록종류?: TodoRecordKind;
   /** 몇 번째 진행건(1~3)의 기록인가. */
   slot?: 1 | 2 | 3 | null;
+  /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록 id. */
+  prevId?: string;
   /** 초안당 안정 멱등 키(UUID) — 있으면 서버가 Todo id 로 사용한다.
    * 같은 키 재시도는 원본 반환, 다른 내용이면 409. 없으면 서버 발행 id(하위 호환). */
   operationId?: string;

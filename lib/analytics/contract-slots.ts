@@ -6,7 +6,7 @@
  * (2026-10-19 구조 개선 ①: 전에는 3벌이 따로 있어 메모만 적힌 칸을 목록은 보이고
  *  상세 카드는 숨겼다.)
  */
-import { HALTED_PROGRESS, type ContractPayment, type PaymentSlot } from "@/types";
+import { HALTED_PROGRESS, WAITING_PROGRESS, type ContractPayment, type PaymentSlot } from "@/types";
 
 export type SlotNo = 1 | 2 | 3;
 
@@ -15,7 +15,7 @@ export function slotsOf(cp: Pick<ContractPayment, "수납1" | "수납2" | "수�
   return [[1, cp.수납1], [2, cp.수납2], [3, cp.수납3]];
 }
 
-/** 진행률 문자열("80%"·"0%"·"") → 숫자(%). 「중도중지」는 0. */
+/** 진행률 문자열("80%"·"0%"·"") → 숫자(%). 「중도중지」·「조건 대기」는 0. */
 export function progressPct(p: string): number {
   if (!p || p === "0%") return 0;
   return parseInt(p, 10) || 0;
@@ -26,10 +26,33 @@ export function isHaltedSlot(slot: Pick<PaymentSlot, "진행률">): boolean {
   return slot.진행률 === HALTED_PROGRESS;
 }
 
+/** 「조건 대기」 진행건인가 — 조건이 풀리길 기다리는 중(2026-10-23 belie). */
+export function isWaitingSlot(slot: Pick<PaymentSlot, "진행률">): boolean {
+  return slot.진행률 === WAITING_PROGRESS;
+}
+
+/** 조건 대기 기간 — 고르지 않았으면 단기(진행 중으로 둔다 — 잊히지 않게). 조건 대기가 아니면 null. */
+export function waitTermOf(slot: Pick<PaymentSlot, "진행률" | "대기기간">): "단기" | "장기" | null {
+  if (!isWaitingSlot(slot)) return null;
+  return slot.대기기간 === "장기" ? "장기" : "단기";
+}
+
+/** 조건 대기·장기관리 — 중도중지처럼 오늘 챙길 일에서 빠진다. */
+export function isLongWaitSlot(slot: Pick<PaymentSlot, "진행률" | "대기기간">): boolean {
+  return waitTermOf(slot) === "장기";
+}
+
+/** 조건 대기·단기관리 — 진행 중이지만 오늘 챙길 일에서 맨 뒤로 보낸다. */
+export function isShortWaitSlot(slot: Pick<PaymentSlot, "진행률" | "대기기간">): boolean {
+  return waitTermOf(slot) === "단기";
+}
+
 /** 칸에 사용자가 적은 것이 있나 — 공백만 있는 글은 없음, 메모만 있어도 있음. */
 export function slotHasData(slot: PaymentSlot): boolean {
+  // 빈 칸 객체({})가 그대로 와도 깨지지 않게 — 업체 장기관리 판정이 모든 계약의 세 칸을 읽는다.
+  const text = (v: string | undefined) => (v ?? "").trim();
   return Boolean(
-    slot.진행기관.trim() || slot.진행상품.trim() || slot.메모.trim() || slot.현황.trim() ||
+    text(slot.진행기관) || text(slot.진행상품) || text(slot.메모) || text(slot.현황) ||
     (slot.진행률 && slot.진행률 !== "0%") || slot.승인금액 > 0 ||
     slot.수납액 > 0 || slot.수납일,
   );

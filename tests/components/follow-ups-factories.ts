@@ -19,7 +19,7 @@ let seq = 0;
 export const todo = (over: Partial<Todo> = {}): Todo => ({
   id: `todo-${++seq}`, contractRef: "2026-09-01|샘플상사", institutionRef: "", 업체명: "샘플상사", type: "기타",
   제목: "서류 확인", 예정일자: TODAY, 예정시각: "", 장소: "", 상세: "", showOnCalendar: true, 완료여부: false,
-  생성시각: "", 분류: "", 기록종류: "todo", slot: null, ...over,
+  생성시각: "", 분류: "", 기록종류: "todo", slot: null, result: "", prevId: "", ...over,
 });
 
 export const meeting = (over: Partial<Meeting> = {}): Meeting => ({

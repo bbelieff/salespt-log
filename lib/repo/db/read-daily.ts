@@ -212,6 +212,8 @@ export function contractFromDbPayload(
   return ContractPayment.parse({
     ...parsed,
     계약비고: p.계약비고 ?? parsed.계약비고,
+    관리상태: p.관리상태 === "진행" || p.관리상태 === "장기관리" ? p.관리상태 : undefined,
+    관리상태진행건: Array.isArray(p.관리상태진행건) ? p.관리상태진행건 : undefined,
     수납1: { ...parsed.수납1, ...((p.수납1 as Record<string, unknown> | undefined) ?? {}) },
     수납2: { ...parsed.수납2, ...((p.수납2 as Record<string, unknown> | undefined) ?? {}) },
     수납3: { ...parsed.수납3, ...((p.수납3 as Record<string, unknown> | undefined) ?? {}) },
@@ -272,7 +274,7 @@ export function todoFromDbPayload(p: Record<string, unknown>): Todo | null {
     if (direct.success) return direct.data;
   }
   const r: unknown[] = [];
-  for (let i = 0; i <= 16; i++) r.push(coerce(p[colName(i)])); // A..Q
+  for (let i = 0; i <= 18; i++) r.push(coerce(p[colName(i)])); // A..S
   return rowToTodo(r);
 }
 
