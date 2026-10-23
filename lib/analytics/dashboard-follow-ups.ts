@@ -1,4 +1,5 @@
 /** Pure follow-up rules shared by the dashboard and its acceptance tests. */
+import { todoSlotOf } from "./todo-slot";
 import { contractRef, normalizeContractRef, sameContractRef } from "@/util/contract-ref";
 import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
 import { isDbSheetFollowUpResult, type DbSheetLead } from "@/types/db-sheet";
@@ -45,9 +46,10 @@ export function compareFollowUpUrgency(a: FollowUpItem, b: FollowUpItem): number
   return rank[a.group] - rank[b.group] || (a.dueISO ?? "9999").localeCompare(b.dueISO ?? "9999") || a.key.localeCompare(b.key);
 }
 export interface TodoFollowUps { overdue: FollowUpItem[]; today: FollowUpItem[]; upcoming: FollowUpItem[]; unlinked: number }
-function slotForTodo(cp: ContractPayment, institution: string): 1 | 2 | 3 | undefined {
-  const matches = visibleSlots(cp).filter(slot => normalizeInstitution(slotOf(cp, slot).진행기관) === normalizeInstitution(institution));
-  return matches.length === 1 ? matches[0] : undefined;
+/** 기록의 진행건 — 번호가 있으면 그대로, 옛 기록은 기관이 한 진행건에만 맞을 때만(정본: todo-slot). */
+function slotForTodo(cp: ContractPayment, todo: Todo): 1 | 2 | 3 | undefined {
+  const { slot, ambiguous } = todoSlotOf(cp, todo);
+  return slot && !ambiguous ? slot : undefined;
 }
 export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], today: string): TodoFollowUps {
   const byRef = new Map(contracts.map(cp => [contractRefOf(cp), cp]));
@@ -61,7 +63,7 @@ export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], 
     const cp = byRef.get(normalizeContractRef(t.contractRef));
     if (cp && !active.has(cp)) continue;
     if (!cp || cp.row == null) { out.unlinked++; continue; }
-    const slot = slotForTodo(cp, t.institutionRef);
+    const slot = slotForTodo(cp, t);
     if (slot ? classifyWorkStatus(slotOf(cp, slot), true, today) === "collected" : visibleSlots(cp).every(n => classifyWorkStatus(slotOf(cp, n), true, today) === "collected")) continue;
     const kind = t.예정일자 < today ? "overdue" : t.예정일자 === today ? "today" : "upcoming";
     out[kind].push(item({ key: `todo:${t.id}`, kind, step: "4", slot,
@@ -125,7 +127,7 @@ export function buildStalledWork(contracts: ContractPayment[], todos: Todo[], to
     for (const slot of visibleSlots(cp)) {
       const data = slotOf(cp, slot), institution = normalizeInstitution(data.진행기관);
       if (classifyWorkStatus(data, false, today) === "collected") continue;
-      const records = todos.filter(t => sameContractRef(t.contractRef, contractRefOf(cp)) && slotForTodo(cp, t.institutionRef) === slot && t.type !== "일반");
+      const records = todos.filter(t => sameContractRef(t.contractRef, contractRefOf(cp)) && slotForTodo(cp, t) === slot && t.type !== "일반");
       const open = records.filter(t => (t.기록종류 ?? "todo") === "todo" && !t.완료여부 && isValidISODate(t.예정일자));
       const activity = records.filter(t => t.기록종류 === "history" || t.완료여부).map(t => t.예정일자)
         .filter(d => isValidISODate(d) && d <= today).sort().at(-1);
