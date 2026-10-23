@@ -1,3 +1,6 @@
+## 2026-10-23 · 업체정보 넓은 화면 버튼 크기
+- fix/company-info-wide-buttons. belie 요청: 풀사이즈일 때 위쪽 버튼이 커짐 → 원인은 작은 버튼 규칙이 좁은 화면에만 걸려 있던 것. 모든 너비 24px 로. [plan](plans/active/company-info-wide-buttons.md).
+
 ## 2026-10-22 · 영업활동일 판정 함수 (심리장치 단계 0)
 - feat/activity-days-stage0, base b4865f1c. 소유: `lib/analytics/activity-days.ts`·`tests/analytics/activity-days.test.ts`·plan만. 화면·API·DB·gamification.ts 무변경. 매일 기록 동기 장치의 공통 판정(연락 결과·미팅·계약·업무 완료=영업활동일, 일일 실적·특이사항 한 줄=기록일). [plan](plans/active/activity-days-stage0.md).
 ## 2026-10-23 · 모바일 대시보드 첫 시선 순서
