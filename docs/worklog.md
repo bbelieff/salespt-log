@@ -1,3 +1,5 @@
+## 2026-10-23 · 생산성 지표 두 줄
+- fix/productivity-two-line. belie 요청: 지표당 세 줄 → 두 줄(이름·흐름·비율 / 막대·건수). 실화면 1280·375 확인. [plan](plans/active/productivity-two-line.md).
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
 - fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
 
