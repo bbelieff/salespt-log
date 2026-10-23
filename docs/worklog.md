@@ -1,3 +1,5 @@
+## 2026-10-23 · 업체정보 머리줄 한글 버튼
+- fix/company-info-header-labels. belie 요청: 아이콘 4개 → 작은 한글 버튼(문서입력·TXT·팝업·더보기, PC 24px·모바일 28px — 주변 버튼 크기에 맞춤). 더보기 메뉴 안 중복 이름 숨김. 실화면 1280·375 확인. [plan](plans/active/company-info-header-labels.md).
 ## 2026-10-22 · 웹 푸시 기기·계정 보호 보완
 - fix/push-device-privacy. belie 질문(관리자·트레이너가 다른 수강생 화면을 보면? 다른 기기에서 로그인하면?) 대응: 알림은 로그인한 본인 기준임을 확인, 다른 사람 화면 볼 때 초대 카드·메뉴 숨김 + 설정 안내, 로그아웃 시 그 기기 알림 해제. [plan](plans/active/web-push-notifications.md) §12.
 ## 2026-10-22 · 웹 푸시 시범판 운영 반영

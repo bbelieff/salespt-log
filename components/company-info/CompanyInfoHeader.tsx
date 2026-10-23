@@ -1,7 +1,6 @@
 "use client";
 
 import React, { Children, useEffect, useRef, useState, type ReactNode } from 'react';
-import { MoreHorizontal } from 'lucide-react';
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { shouldTogglePaymentHeader } from './payment-header';
 import './company-info-header.css';
@@ -59,7 +58,7 @@ export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHe
       {!payment ? <>{open && status}{open && actions}{fontControl}</> : open && <div data-ci-header-tools data-mode={mode}>
         {status && <span data-ci-header-status>{status}</span>}
         <div data-ci-tools-primary>{mode === 'more' ? actions.slice(0, 1) : actions}{mode === 'text' && fontControl}</div>
-        {mode !== 'text' && <button ref={moreButton} type="button" data-ci-more aria-label="업체정보 더보기" title="업체정보 더보기" aria-expanded={more} aria-controls={`${controlsId}-tools`} aria-haspopup="dialog" onClick={() => setMore(value => !value)}><MoreHorizontal size={18} strokeWidth={1.75} aria-hidden="true" /></button>}
+        {mode !== 'text' && <button ref={moreButton} type="button" data-ci-more aria-label="업체정보 더보기" title="업체정보 더보기" aria-expanded={more} aria-controls={`${controlsId}-tools`} aria-haspopup="dialog" onClick={() => setMore(value => !value)}>더보기</button>}
         {more && mode !== 'text' && <div id={`${controlsId}-tools`} role="dialog" aria-label="업체정보 도구" data-ci-tools-menu onClick={event => event.stopPropagation()}>
           <div className="text-xs font-semibold text-slate-600">업체정보 도구</div>
           {mode === 'more' && actions.slice(1)}

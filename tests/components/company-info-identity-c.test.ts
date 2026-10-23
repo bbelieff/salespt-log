@@ -190,15 +190,16 @@ describe("CompanyInfoEditor identity", () => {
     expect(more.getAttribute("aria-expanded")).toBe("true");
     expect(actions.querySelector('[role="dialog"][aria-label="업체정보 도구"]')).not.toBeNull();
     const buttons = [...actions.querySelectorAll("button")];
-    const documentButton = buttons.find((button) => button.textContent === "문서로 자동입력")!;
+    const documentButton = buttons.find((button) => button.querySelector(".payment-ci-action-label")?.textContent === "문서로 자동입력")!;
     const txtButton = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 TXT 생성")!;
-    const popupButton = buttons.find((button) => button.textContent === "팝업")!;
+    const popupButton = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 팝업")!;
     const fontDown = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 작게")!;
     const fontUp = buttons.find((button) => button.getAttribute("aria-label") === "업체정보 글자 크게")!;
 
     expect(header.firstElementChild?.textContent).toContain("업체정보");
     expect(txtButton).toBeDefined();
-    expect(txtButton.textContent).toBe("TXT 생성");
+    expect(txtButton.querySelector(".payment-ci-action-label")?.textContent).toBe("TXT 생성");
+    expect(txtButton.querySelector(".payment-ci-short")?.getAttribute("aria-hidden")).toBe("true");
     expect(documentButton.compareDocumentPosition(txtButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(txtButton.compareDocumentPosition(popupButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(popupButton.compareDocumentPosition(fontDown) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
