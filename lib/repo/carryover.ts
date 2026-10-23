@@ -26,7 +26,7 @@ import {
 } from "./meetings-rows";
 import { isGridLimitsError } from "./grid-limits";
 import { colName } from "@/util/sheet-column";
-import { normalizeRrnFront } from "@/util/rrn-front";
+import { normalizeRrn } from "@/util/rrn-front";
 
 const TAB = SHEET_RANGES.meetings.tab;
 const ref = `'${TAB}'`;
@@ -45,18 +45,18 @@ const EXT_FIRST = colName(COMPANY_EXT_START); // AQ
 const EXT_LAST = colName(MEETING_ROW_WIDTH - 1); // CD
 /** 확장 읽기 끝 열 후보(넓은 것부터) — CD → CC → BN → AS. 안 넓혀진 이전 시트는 한 단계씩 좁혀 읽는다. */
 const EXT_READ_LASTS = MEETING_READ_WIDTHS.map((w) => colName(w - 1));
-/** 주민등록번호 앞자리 열(BA) — 이월 쓰기 전 앞 6자리만 남긴다(belie 결정, 다른 저장 경로와 동일). */
+/** 주민등록번호 열(BA) — 이월 쓰기 전 다른 저장 경로와 같은 모양(NNNNNN-NNNNNNN, 최대 13자리)으로 맞춘다(ADR-0035). */
 const RRN_IDX = COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.indexOf("주민등록번호");
 
 /**
- * 이월 raw 저장 직전 정규화 — 순수. 주민등록번호(BA)는 앞 6자리 "NNNNNN-" 만(뒷자리 저장 불가).
- * 이전 시트는 학생이 직접 고칠 수 있어 BA 에 전체 번호가 있을 수 있다 — DB payload·아레나 시트
- * 어느 쪽에도 뒷자리가 넘어가지 않게 두 쓰기 경로가 이 함수를 공유한다.
+ * 이월 raw 저장 직전 정규화 — 순수. 주민등록번호(BA)는 normalizeRrn("NNNNNN-NNNNNNN", 최대 13자리 —
+ * ADR-0035). 이전 시트는 학생이 직접 고칠 수 있어 BA 모양이 제각각일 수 있다 — DB payload·아레나
+ * 시트 두 쓰기 경로가 이 함수를 공유해 같은 모양으로 맞춘다.
  */
 export function sanitizeCarryRaw(raw: readonly unknown[]): unknown[] {
   const out = [...raw];
   if (RRN_IDX < out.length && String(out[RRN_IDX] ?? "").trim() !== "") {
-    out[RRN_IDX] = normalizeRrnFront(out[RRN_IDX]);
+    out[RRN_IDX] = normalizeRrn(out[RRN_IDX]);
   }
   return out;
 }
@@ -191,7 +191,7 @@ async function writeCarriedRowAt(
   // T~AN(업체정보 20 + 커스텀 JSON)도 meetingToRow 처럼 문자열은 apostrophe — 백만원 매출 칸
   // (과년도매출 "1,234" · 금년도매출 "250.1", company-finance-won-grid)이 숫자로 바뀌지 않게.
   const t2an = Array.from({ length: 21 }, (_, i) => extCell(src.raw[19 + i]));
-  // 확장 열: 주민등록번호 앞자리 정규화 + 문자열은 apostrophe(USER_ENTERED 가 "1988-01-24"·
+  // 확장 열: 주민등록번호 정규화 + 문자열은 apostrophe(USER_ENTERED 가 "1988-01-24"·
   // "120%"·"1,000"·"250.1"·"2026"(매출기준연도) 을 날짜·숫자로 바꾸지 않게 — UNFORMATTED 읽기는
   // 원래 apostrophe 를 떼고 준다).
   const extRaw = sanitizeCarryRaw(src.raw);

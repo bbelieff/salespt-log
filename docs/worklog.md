@@ -1,3 +1,5 @@
+## 2026-10-23 · 주민등록번호 13자리 (ADR-0035)
+- feat/rrn-full-digits. belie 결정(위험 설명 후): 13자리 그대로 저장·표시. 문서 자동입력은 계속 앞 6자리만. [plan](plans/active/rrn-full-digits.md).
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지
 - fix/item-label-progress-halt. belie 요청: 업체정보 「주생산품목/주요품목」 라벨 → 「아이템」(저장 키·시트 머리글 그대로). 진행률에 「중도중지」 추가(Progress enum 확장, 옛 데이터 그대로) — 오늘 챙길 일·업무 현황 제외(`isSlotClosed`), 시트 미러는 빈 칸. [plan](plans/active/item-label-progress-halt.md).
 

@@ -81,14 +81,13 @@ describe("06 확장2 20필드 (AC~AV — company-info-new-fields)", () => {
     const ci = CompanyInfo.parse({
       과년도매출Y3: "23' 70백만",
       과세유형: "일반과세자",
-      주민등록번호: "800101-1234567", // 스키마가 앞자리만 남김
+      주민등록번호: "800101-0234567", // 합성 값 — 13자리 그대로(ADR-0035)
       매출증가율: "12%",
     });
     const row = companyInfoToArchiveRow("예시상사", "2026-09-28", ci, "T");
     expect(row[CUSTOM_IDX + 1 + COMPANY_FIELDS_EXT.indexOf("과년도매출Y3")]).toBe("'23' 70백만");
     expect(row[EXT2_START]).toBe("'일반과세자");
-    expect(row[EXT2_START + COMPANY_FIELDS_EXT2.indexOf("주민등록번호")]).toBe("'800101-");
+    expect(row[EXT2_START + COMPANY_FIELDS_EXT2.indexOf("주민등록번호")]).toBe("'800101-0234567");
     expect(row[47]).toBe("'12%"); // AV
-    expect(row.join("|")).not.toContain("1234567");
   });
 });
