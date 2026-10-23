@@ -1,3 +1,5 @@
+## 2026-10-23 · 모바일 대시보드 첫 시선 순서
+- feat/dashboard-mobile-first-look, base 09ed48f1. belie 「모바일만 이렇게 바꿔줘」: 모바일은 오늘 챙길 일 맨 앞(1018→209px), PC 불변(위치 동일·PSNR 74dB). CSS order 방식, 데이터 변화 0. [plan](plans/active/dashboard-mobile-first-look.md).
 ## 2026-10-23 · 생산성 지표 두 줄
 - fix/productivity-two-line. belie 요청: 지표당 세 줄 → 두 줄(이름·흐름·비율 / 막대·건수). 실화면 1280·375 확인. [plan](plans/active/productivity-two-line.md).
 ## 2026-10-23 · 아이템 라벨 · 진행률 중도중지

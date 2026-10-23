@@ -105,24 +105,25 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="space-y-3 p-3">
+      <div className="flex flex-col gap-3 p-3">
         {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {/* 불러오는 동안 카드 자리를 먼저 잡아 둔다(belie 2026-10-09). */}
         {!dash.data && !dash.isError && <DashboardSkeleton />}
         {dash.data && (
           <>
+            <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
+              todayISO={today} courseStartISO={me.data?.courseStartISO} />
             {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).
                 아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
-            <DashboardFinance
+            {/* 모바일: 오늘 챙길 일·목표 아래 · PC: 맨 위 한 줄(pc:order-first). belie 2026-10-23 */}
+            <div className="pc:order-first"><DashboardFinance
               contractChannels={dash.data.contractChannels}
               onRefreshChannels={dash.refetch}
               channelsRefreshing={dash.isFetching}
-            />
+            /></div>
 
-            <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
-              todayISO={today} courseStartISO={me.data?.courseStartISO} />
             {hasDashboardChartRecords(dash.data) ? <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-3 pc:space-y-0">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
