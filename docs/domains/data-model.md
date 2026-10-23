@@ -615,8 +615,9 @@ DB 정본 실패 후 시트 강등에서는 stale 미러로 최근 기록을 대
 |---|---|---|
 | `Progress` | z.enum | 진행률: `""` / `0%` / `20%` / `40%` / `60%` / `80%` / `100%` / `중도중지`(2026-10-23 추가 — 수납 없이 끝난 진행건. 오늘 챙길 일·업무 현황 제외, 시트 미러는 빈 칸. 옛 값 그대로 통과) |
 | `HALTED_PROGRESS` | const | `"중도중지"` — 비교용 상수(`isHaltedSlot`) |
-| `PaymentSlot` | z.object | 분할 수납 1슬롯. 기존 필드에 `진행상품`을 추가한다. 기존 시트의 고정 열은 그대로 두고 Postgres `sheet_rows.payload` JSONB에 필드명으로 저장한다. |
-| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. |
+| `WAITING_PROGRESS` | const | `"조건 대기"`(2026-10-23) — 조건이 풀리길 기다리는 진행건. 슬롯 `대기사유`(한 줄)·`대기기간`(`단기`=2개월 내, 진행 중·오늘 챙길 일 맨 뒤 / `장기`=3개월 이상, 중도중지처럼 오늘 챙길 일 제외, 없으면 단기). 판정: `isWaitingSlot`·`waitTermOf`·`isShortWaitSlot`·`isLongWaitSlot`(contract-slots) |
+| `PaymentSlot` | z.object | 분할 수납 1슬롯. 기존 필드에 `진행상품`을 추가한다. 기존 시트의 고정 열은 그대로 두고 Postgres `sheet_rows.payload` JSONB에 필드명으로 저장한다. 2026-10-23: 선택 필드 `대기사유?: string`·`대기기간?: "단기" \| "장기"`(조건 대기 전용, 옛 기록엔 없음 — 시트 열 없음). |
+| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. 2026-10-23: 선택 필드 `관리상태?: "진행" \| "장기관리"`(업체 상태 직접 지정, 없으면 자동)·`관리상태진행건?: number[]`(직접 장기관리로 보낼 때 진행 중이던 진행건 번호 — 그 밖의 진행건이 진행 중이 되면 저절로 진행). 둘 다 JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음. 판정 정본 = `lib/analytics/long-term.ts`(`companyStage`·`isLongTermContract`·`slotKeepsCompanyActive`). |
 | `isTerminatedContract` | function | 해지 판정 단일 결정점 — `해지일` 존재 = 해지. 클라·서버 공용 (contract-termination) |
 | `TERMINATED_IN_CONTRACT_COUNT` | const | 해지 계약의 건수 포함 여부 (기본 `false` = 제외 + "해지 N건" 별도 표시. belie 미확정 — 정책 변경 시 이 상수만) |
 

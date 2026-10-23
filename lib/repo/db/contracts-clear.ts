@@ -119,6 +119,9 @@ const USER_AREA_KEYS = [
   "로드맵메모",
   // DB JSONB 확장: 기존 시트 열을 침범하지 않는 계약 메모
   "계약비고",
+  // DB JSONB 확장: 업체 상태 직접 지정(진행/장기관리) — 시트 열 없음
+  "관리상태",
+  "관리상태진행건",
 ] as const;
 
 export function userFieldsMirrorPayload(

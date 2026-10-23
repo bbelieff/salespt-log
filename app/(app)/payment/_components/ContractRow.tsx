@@ -452,7 +452,8 @@ export default function ContractRow({
               <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
                   const prev = draft[`수납${index}`];
-                  const typing = next.진행률 === prev.진행률;
+                  // 진행률·조건 대기 기간(칩)은 고르는 즉시 저장, 글자 칸은 칸을 떠날 때 저장.
+                  const typing = next.진행률 === prev.진행률 && next.대기기간 === prev.대기기간;
                   (typing ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
                 }} onEnsureSaved={commitGroup}/>
               </section>
