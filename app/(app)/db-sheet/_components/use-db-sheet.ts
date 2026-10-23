@@ -34,7 +34,7 @@ export function useDbSheet() {
   return {
     ...state,
     clearAddition: store.clearAddition, clearNotice: store.clearNotice,
-    stage: store.stage, bulkInflow: store.bulkInflow, scheduleDelete: store.scheduleDelete, undoDelete: store.undoDelete, commitDelete: store.commitDelete,
+    stage: store.stage, absence: store.absence, linkMeeting: store.linkMeeting, bulkInflow: store.bulkInflow, scheduleDelete: store.scheduleDelete, undoDelete: store.undoDelete, commitDelete: store.commitDelete,
     edit: store.edit, asInfo: store.asInfo, contact: store.contact, record: store.record, register: store.register,
     add: store.add, flush: store.flush, recordingPreview: store.recordingPreview, configure: store.configure,
     inflowPreview: store.inflowPreview, configureInflow: store.configureInflow, reload: store.reload,
