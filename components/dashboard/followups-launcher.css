@@ -1,0 +1,46 @@
+/* 좌하단 「오늘 챙길 일」 빠른 보기 (2026-10-23 belie 승인 목업).
+ * 위치: 모바일·태블릿(<1024) = 하단 STEP 탭바 위(안전영역 포함) · PC = 사이드탭 오른쪽(펼침 224px / 접힘 68px) 아래.
+ * 적층: 버튼 45 = 본문 위·헤더/탭바(z-50)·모달 아래. 열린 창 55 = 사용자가 연 떠 있는 창이라 고정 요약줄(실무/수납 성과 요약 등) 위. 색은 영업생산성 상자와 같은 indigo→purple. */
+.fl-root{--fl-left:calc(16px + env(safe-area-inset-left,0px));--fl-bottom:calc(var(--app-tabbar-height) + 12px)}
+@media(min-width:1024px){
+  .fl-root{--fl-left:240px;--fl-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+  .desktop-shell:has(.desktop-nav[data-collapsed=true])~.fl-root{--fl-left:84px}
+}
+.fl-fab{position:fixed;left:var(--fl-left);bottom:var(--fl-bottom);z-index:45;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;padding:0;background:linear-gradient(135deg,#6366f1,#9333ea);box-shadow:0 8px 22px #4f46e559;transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.fl-fab svg{width:40px;height:40px}
+.fl-fab:hover{transform:translateY(-2px)}.fl-fab:active{transform:scale(.96)}
+.fl-fab:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
+.fl-count{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#e11d48;color:#fff;font-size:11px;font-weight:700;line-height:16px;border:2px solid #fff;font-variant-numeric:tabular-nums;text-align:center}
+
+.fl-pop{position:fixed;left:var(--fl-left);bottom:calc(var(--fl-bottom) + 66px);z-index:55;width:min(360px,calc(100vw - 32px));max-height:calc(100dvh - var(--fl-bottom) - 66px - var(--app-header-height) - 16px);display:flex;flex-direction:column;background:#fff;border:1px solid #c7d2fe;border-radius:12px;box-shadow:0 18px 48px #0f172a38;overflow:hidden;outline:none;color:#334155;font-size:12px;
+  clip-path:circle(0 at 28px calc(100% + 38px));visibility:hidden;transition:clip-path .48s cubic-bezier(.2,.8,.2,1),visibility 0s linear .48s}
+.fl-pop[data-open=true]{clip-path:circle(150% at 28px calc(100% + 38px));visibility:visible;transition:clip-path .48s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.fl-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 14px;background:linear-gradient(90deg,#eef2ff,#faf5ff);border-bottom:1px solid #c7d2fe}
+.fl-head h2{font-size:13px;font-weight:700;color:#312e81}
+.fl-head small{margin-left:6px;font-size:11px;font-weight:400;color:#64748b}
+.fl-close{min-width:32px;min-height:32px;display:grid;place-items:center;border-radius:6px;color:#64748b}
+.fl-close:hover{background:#e0e7ff}
+.fl-body{min-height:0;overflow:auto;overscroll-behavior:contain}
+.fl-list{padding:4px 0}
+.fl-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 14px}
+.fl-item+.fl-item{border-top:1px solid #f1f5f9}
+.fl-item .ft-badge{text-align:center}
+.fl-text{min-width:0}
+.fl-text strong{display:block;font-size:12px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl-text small{display:block;font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fl-loading{display:flex;flex-direction:column;gap:8px;padding:12px 14px}
+.fl-skeleton{height:28px;border-radius:6px}
+.fl-notice{display:flex;align-items:center;gap:8px;padding:6px 14px 8px;font-size:11px;color:#64748b}
+.fl-notice button{font-weight:600;color:#1d4ed8}
+.fl-foot{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b}
+.fl-all{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;font-size:11px;font-weight:600;white-space:nowrap}
+.fl-all:hover{background:#f8fafc}
+.fl-pop :is(a,button):focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+/* 터치 화면은 주변 조작부와 같은 44px 누름 영역(오늘 챙길 일 표의 열기·닫기와 동일). */
+@media(max-width:1023px){.fl-all,.fl-notice button{min-height:44px}.fl-item .ft-go{min-height:44px}}
+@media(max-width:767px){.fl-item{padding:4px 12px}.fl-head{padding-left:12px}.fl-foot{padding:4px 12px}}
+@media(prefers-reduced-motion:reduce){.fl-fab{transition:none}.fl-fab:hover,.fl-fab:active{transform:none}.fl-pop,.fl-pop[data-open=true]{transition:none}}
+/* 본문 끝 줄이 버튼 밑에 깔리지 않게 아래 여백을 더한다(높이 고정 화면 — DB관리시트·PC 실무/수납 — 제외). */
+@media(max-width:1023px){.desktop-shell:has(~ .fl-root) .app-shell-main:not(:has(.db-sheet-frame)){padding-bottom:calc(var(--app-tabbar-height) + 76px)}}
+@media(min-width:1024px){.desktop-shell:has(~ .fl-root) .app-shell-main:not(:has(.db-sheet-frame,[data-payment-desktop-shell])){padding-bottom:84px}}
+@media(min-width:1280px){.desktop-shell:has(~ .fl-root) .payment-list-scroll{padding-bottom:76px}}

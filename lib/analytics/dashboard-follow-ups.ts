@@ -175,3 +175,16 @@ export function summarizeFollowUps(src: FollowUpSources, today: string): FollowU
   const groupCounts = Object.fromEntries((["today", "overdue", "long-overdue", "upcoming", "unknown"] as const).map(group => [group, items.filter(i => i.group === group).length])) as Record<FollowUpGroup, number>;
   return { groups, counts, total: urgent.length, headline: followUpHeadline(counts), unlinkedTodos: todo.unlinked, items, urgent, stepCounts, groupCounts };
 }
+/** 경과·장기누락이 한 건이라도 있으면 카드 테두리를 움직여 강조한다(오늘·예정·날짜 확인만 있으면 정지). */
+export function hasOverdueFollowUps(items: readonly FollowUpItem[]): boolean {
+  return items.some(i => i.group === "overdue" || i.group === "long-overdue");
+}
+/** 좌하단 빠른 보기 — 대시보드 전체 숫자와 같은 범위(예정 제외)를 긴급순으로 자른다. */
+export function topUrgentFollowUps(items: readonly FollowUpItem[], limit = 5): { top: FollowUpItem[]; rest: number; total: number } {
+  const urgent = items.filter(i => i.group !== "upcoming").sort(compareFollowUpUrgency);
+  return { top: urgent.slice(0, limit), rest: Math.max(0, urgent.length - limit), total: urgent.length };
+}
+/** 옛 「N일 미처리」 표기도 D+N 으로 맞춘다(표·빠른 보기 공통). */
+export function followUpBadgeLabel(badge: string): string {
+  return badge.replace(/^(\d+)일 미처리$/, "D+$1");
+}
