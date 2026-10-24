@@ -1,3 +1,5 @@
+## 2026-10-24 · 배지 수집 1단계 (화면 + 로고 메뉴)
+- feat/badge-collection, base 01f1ca39. belie 승인 목업 「배지 수집창」 + 「1단계부터 개발·운영반영까지」. 31개 중 24개를 지금 기록으로 판정(읽기 전용, 저장 테이블·마이그레이션 없음), 7개는 「준비 중」. `/badges` + 로고 메뉴 「배지 수집 N/31」 + 새 배지 점. 소유: lib/analytics/badge*·lib/repo/db/badge-reads·lib/service/badges·app/api/badges·app/(app)/badges·components/badges·public/badges·TopHeader 메뉴 한 칸. [plan](plans/active/badge-collection.md).
 ## 2026-10-24 · 모바일 스크롤 2차 — 안드로이드 (passive 터치)
 - fix/android-scroll-passive. belie 「특히 안드로이드가 더」. 원인 = 당겨서 새로고침의 passive:false touchmove 가 안드로이드 크롬 스크롤을 JS 대기로 만듦. 리스너 passive + CSS overscroll-behavior-y:none(모바일 터치)로 기본 당김 차단. [plan](plans/active/pull-to-refresh-inner-scroll.md).
 ## 2026-10-24 · 모바일 위아래 스크롤 — 당겨서 새로고침 가드

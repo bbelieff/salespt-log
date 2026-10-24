@@ -12,6 +12,10 @@ import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
 import { forgetPushOnThisDevice, usePushState } from "@/query/push-hooks";
 import { useAnnouncements } from "@/query/announcements-hook";
+import { useBadges } from "@/query/badge-hooks";
+import { BADGES_SEEN_EVENT, newBadgeIds, readSeen } from "./badges/badge-seen";
+import { BADGES } from "@/lib/analytics/badge-catalog";
+import { todayKST } from "@/util/week";
 import PageContainer from "./PageContainer";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
@@ -138,6 +142,20 @@ export default function TopHeader({
     return () => window.removeEventListener(ANNOUNCEMENTS_SEEN_EVENT, recompute);
   }, [ann.data?.latestPr]);
 
+  // 배지 수집 — 수강생 화면에서만(트레이너 화면은 sessionIdentity). 안 본 새 배지가 있으면 로고 점을 함께 켠다.
+  const badgeMenuShown = !sessionIdentity;
+  const badges = useBadges({ enabled: badgeMenuShown && !!me.data?.email });
+  const badgeOwner = me.data?.email ?? "";
+  const badgeList = Array.isArray(badges.data?.badges) ? badges.data.badges : null;
+  const [hasNewBadge, setHasNewBadge] = useState(false);
+  useEffect(() => {
+    const recompute = () => setHasNewBadge(!!badgeList && newBadgeIds(badgeList, readSeen(badgeOwner), todayKST()).length > 0);
+    recompute();
+    window.addEventListener(BADGES_SEEN_EVENT, recompute);
+    return () => window.removeEventListener(BADGES_SEEN_EVENT, recompute);
+  }, [badgeList, badgeOwner]);
+  const badgeCount = badgeList ? badgeList.filter(b => b.earned).length : null;
+
   return (
     <>
       <header className="desktop-glass-header sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
@@ -145,7 +163,7 @@ export default function TopHeader({
           <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/salespt-logo.png" alt="세일즈PT" className="h-5 w-auto sm:h-6" />
-            {hasNews && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label="새소식 있음" />}
+            {(hasNews || hasNewBadge) && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label={hasNews ? "새소식 있음" : "새 배지 있음"} />}
           </button>
           {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
           <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
@@ -203,6 +221,22 @@ export default function TopHeader({
                 {hasNews && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" />}
               </span>
             </Link>
+            {/* 배지 수집 — 승인 목업 2026-10-24: 새소식 아래, 트로피 + 모은 개수 */}
+            {badgeMenuShown && (
+              <Link
+                href="/badges"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 border-t border-gray-100 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-amber-100"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/badges/trophy.png" alt="" className="h-5 w-5" />
+                <span className="flex items-center gap-1.5">
+                  배지 수집
+                  {hasNewBadge && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" aria-label="새 배지 있음" />}
+                </span>
+                {badgeCount !== null && <span className="ml-auto text-xs font-bold tabular-nums text-amber-800">{badgeCount} / {BADGES.length}</span>}
+              </Link>
+            )}
             {/* 알림 설정 — 웹 푸시 시범 대상에게만 (web-push-notifications §2-2 4번) */}
             {push.data?.available && !push.data.viewingOther && (
               <Link
