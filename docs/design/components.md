@@ -1083,7 +1083,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 app/(app)/dashboard/page.tsx
   TopHeader                                  # 공용 반응형 헤더 + 페이지 배너
   sticky top-app-content z-30 래퍼
-    PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day
+    PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day (PC 1024+ 한 줄: 날짜·주차|시작|진행바|진행률|종강총회|D-day, 좁으면 세 줄)
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반

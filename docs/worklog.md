@@ -1,3 +1,6 @@
+## 2026-10-24 · 대시보드 수강 진행 배너 PC 한 줄
+- fix/course-progress-one-line. belie 「풀사이즈면 한 줄」. PC(1024+)에서 날짜·주차|시작|진행바|진행률|종강총회|D-day 한 줄, 좁은 화면 세 줄 유지. [plan](plans/active/course-progress-one-line.md).
+
 ## 2026-10-24 · 대시보드 배지 칩 병합·배포 완료
 - #1224 squash 7524e28b, Deploy 40083335010 success, health 200. 로그인 화면 실물 확인 NOT_RUN(belie 확인 필요). [plan](plans/completed/badge-dashboard-chip.md).
 ## 2026-10-24 · 대시보드 배지 칩
