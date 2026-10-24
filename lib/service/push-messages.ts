@@ -85,7 +85,7 @@ export function buildPushMessage(slot: DispatchSlot, summary: Pick<FollowUpSumma
     const left = choose(urgent);
     if (!left) return null;
     const body = !show ? `오늘 남은 일이 ${urgent.length}건 있어요. 하나만 정리하고 마무리해요.`
-      : isTodayMeeting(left.item) ? `오늘 ${clip(left.item.title)} 미팅이 남아 있어요. 끝나면 결과를 적어 두세요.`
+      : isTodayMeeting(left.item) ? `오늘 ${clip(left.item.title)} 미팅, 끝나면 결과를 적어 두세요.`
       : `${clip(left.item.title)} 「${clip(left.item.action, 16)}」 오늘 마무리해 볼까요?`;
     return { messageId: `evening.left.v1`, body: body + (show ? tail(urgent.length) : ""), url: show ? left.item.href : "/dashboard", itemCount: urgent.length };
   }

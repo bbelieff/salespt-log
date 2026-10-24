@@ -1,4 +1,4 @@
-/** 당일 미팅은 시작 1시간 뒤부터 「미팅 결과 입력」 — 아침부터 결과를 묻던 버그(belie 2026-10-25) 회귀 방지. 합성 업체. */
+/** 당일 미팅은 시작 3시간 뒤부터 「미팅 결과 입력」 — 아침부터 결과를 묻던 버그(belie 2026-10-25) 회귀 방지. 합성 업체. */
 import { describe, expect, it } from "vitest";
 import { TODAY_MEETING_REASON, buildUnresultedMeetings, meetingResultDue, nowKSTClock, summarizeFollowUps } from "@/lib/analytics/dashboard-follow-ups";
 import { buildPushMessage } from "@/service/push-messages";
@@ -12,10 +12,10 @@ describe("meetingResultDue", () => {
     expect(meetingResultDue("2026-10-11", "14:00", TODAY, "08:45")).toBe(true);
     expect(meetingResultDue("2026-10-13", "09:00", TODAY, "23:00")).toBe(false);
   });
-  it("today asks only from one hour after the start", () => {
+  it("today asks only from three hours after the start", () => {
     expect(meetingResultDue(TODAY, "14:00", TODAY, "08:45")).toBe(false);
-    expect(meetingResultDue(TODAY, "14:00", TODAY, "14:59")).toBe(false);
-    expect(meetingResultDue(TODAY, "14:00", TODAY, "15:00")).toBe(true);
+    expect(meetingResultDue(TODAY, "14:00", TODAY, "16:59")).toBe(false);
+    expect(meetingResultDue(TODAY, "14:00", TODAY, "17:00")).toBe(true);
   });
   it("today without a known time or clock does not ask", () => {
     expect(meetingResultDue(TODAY, "", TODAY, "20:00")).toBe(false);
@@ -55,9 +55,11 @@ describe("push copy for a meeting not yet held", () => {
     const hidden = buildPushMessage("morning", { items: [todayMeeting], urgent: [todayMeeting] }, { ...all, showCompanyNames: false }, TODAY)!;
     expect(hidden.body).not.toContain("비어 있어요");
   });
-  it("evening with a meeting still ahead does not say 「오늘 미팅」 as a task to wrap up", () => {
+  it("evening with a meeting not yet past three hours does not list 「오늘 미팅」 as a task to wrap up", () => {
     const late = one(meeting({ 미팅날짜: TODAY, 미팅시간: "19:00", 업체명: "샘플 가람식당" }), "18:00");
     const m = buildPushMessage("evening", { items: [late], urgent: [late] }, all, TODAY)!;
-    expect(m.body).toBe("오늘 샘플 가람식당 미팅이 남아 있어요. 끝나면 결과를 적어 두세요.");
+    expect(m.body).toBe("오늘 샘플 가람식당 미팅, 끝나면 결과를 적어 두세요.");
+    const earlier = one(meeting({ 미팅날짜: TODAY, 미팅시간: "16:00", 업체명: "샘플 가람식당" }), "18:00");
+    expect(earlier.action).toBe("오늘 미팅");
   });
 });

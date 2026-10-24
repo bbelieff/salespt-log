@@ -99,8 +99,8 @@ export const TODAY_MEETING_REASON = "오늘 미팅 예정";
 export function nowKSTClock(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
 }
-/** 결과를 물어도 되는 미팅인가 — 지난 날짜, 또는 오늘이면 시작 1시간 뒤부터. 시간을 모르면 오늘은 묻지 않는다. */
-export const MEETING_RESULT_AFTER_MIN = 60;
+/** 결과를 물어도 되는 미팅인가 — 지난 날짜, 또는 오늘이면 시작 3시간 뒤부터(belie 2026-10-25). 시간을 모르면 오늘은 묻지 않는다. */
+export const MEETING_RESULT_AFTER_MIN = 180;
 export function meetingResultDue(date: string, time: string, today: string, nowHHMM?: string): boolean {
   if (date < today) return true;
   if (date > today || !nowHHMM || !/^\d{2}:\d{2}$/.test(time) || !/^\d{2}:\d{2}$/.test(nowHHMM)) return false;
