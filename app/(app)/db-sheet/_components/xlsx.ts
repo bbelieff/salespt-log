@@ -10,6 +10,14 @@ import { xlsxZipReader, XlsxImportLimitError } from './xlsx-zip';
 const MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
+/** 표시 형식 글이 날짜·시각 형식인지(y·d 와 m 이 있고 숫자 형식 기호가 아닌 것). */
+function isDateFormat(format: string | undefined): boolean {
+  if (!format) return false;
+  // 따옴표 글자·\ 뒤 한 글자·[$-412] 같은 꺾쇠 묶음은 빼고 본다.
+  const f = format.replace(/"[^"]*"|\\.|\[[^\]]*\]/g, "");
+  return /[yd]/i.test(f) && /m/i.test(f) && !/[#?]|0\.0|^0+$/.test(f);
+}
+
 function xml(s: string) {
   const doc = new DOMParser().parseFromString(s, "application/xml");
   if (doc.getElementsByTagName('parsererror').length) throw new Error('엑셀 XML이 손상되었습니다. .xlsx로 다시 저장해 주세요.');
@@ -83,17 +91,24 @@ export async function xlsxToText(buf: ArrayBuffer): Promise<string> {
   while (grid.length && grid[grid.length - 1]!.every((x) => !x.trim())) grid.pop();
   const width = Math.max(0, ...grid.map((r) => r.length));
   const header = grid[0] ?? [];
-  const dateCol = header.map((h) => /일시|날짜|일자|유입일|신청일|date|time/i.test(h));
+  const dateCol = header.map((h) => /일시|날짜|일자|유입일|신청일|접수|등록일|배정일|date|time/i.test(h));
   const encoder = new TextEncoder(); let outputBytes = 0;
   return grid
     .map((r, ri) =>
       Array.from({ length: width }, (_, ci) => {
         const s = r[ci] ?? "";
         const n = Number(s);
-        const asDate = ri > 0 && dateCol[ci] && numeric[ri]?.[ci] && s !== "" && Number.isFinite(n) && n > 20_000 && n < 80_000;
         const format = numberFormats[ri]?.[ci];
         if (format && format.length > 1024) throw new XlsxImportLimitError('엑셀 표시 형식이 너무 깁니다. 필요한 범위를 일반 형식으로 다시 저장해 주세요.');
-        const formatted = !dateCol[ci] && numeric[ri]?.[ci] && s !== "" && format && Number.isFinite(n) ? SSF.format(format, n) : s;
+        const dateLike = ri > 0 && numeric[ri]?.[ci] && s !== "" && Number.isFinite(n) && n > 20_000 && n < 80_000;
+        // 머리글이 날짜가 아니어도 칸 형식이 날짜(「yyyy. m. d am/pm h:mm:ss」 등)면 날짜로 읽는다(2026-10-24).
+        const asDate = dateLike && (dateCol[ci] || isDateFormat(format));
+        // 큰 정수는 XML 에 「1.014237775E9」처럼 저장된다 — 사업자번호·전화번호가 지수 표기로 읽히지 않게 정수 글로.
+        let formatted = numeric[ri]?.[ci] && /e/i.test(s) && Number.isSafeInteger(n) ? String(n) : s;
+        if (!asDate && numeric[ri]?.[ci] && s !== "" && format && Number.isFinite(n)) {
+          // SSF 가 읽지 못하는 표시 형식이 있어도 파일 전체를 실패시키지 않고 원래 값을 쓴다.
+          try { formatted = SSF.format(format, n); } catch { formatted = s; }
+        }
         const value = quote(asDate ? serialDate(n, date1904) : formatted);
         // Shared strings may reference the same large value thousands of times.
         // Budget the rendered cells, including separators, before joining them.
