@@ -12,7 +12,7 @@ const DASHBOARD_STALE_MS = 5 * 60_000;
 /** enabled=false 면 조회하지 않는다(빠른 보기의 지연 시작). background=true 면 전역 로딩 팝업에서 뺀다. */
 export function useTodayFollowUps(todayISO: string, opts: { enabled?: boolean; background?: boolean } = {}) {
   const enabled = opts.enabled ?? true;
-  // 당일 미팅은 시작 1시간 뒤부터 「결과 입력」 — 화면을 켜 둔 채로도 넘어가도록 5분마다 시각을 갱신한다.
+  // 당일 미팅은 시작 3시간 뒤부터 「결과 입력」 — 화면을 켜 둔 채로도 넘어가도록 5분마다 시각을 갱신한다.
   const [clock, setClock] = useState(() => nowKSTClock());
   useEffect(() => { const t = setInterval(() => setClock(nowKSTClock()), 5 * 60_000); return () => clearInterval(t); }, []);
   const contracts = useContractPayments(opts);
