@@ -19,6 +19,7 @@ import { appendArenaRoster } from "@/repo/cohorts";
 import { addTraineePrepRow } from "@/repo/users-prep";
 import { findExistingSheetIdByCohortName } from "@/repo/users";
 import { writeCourseDates } from "@/repo/course-dates";
+import { writeProfile } from "@/repo/sales";
 import { computeGraduationISO, isValidISODate } from "@/service/cohort-dates";
 
 const sheetUrlOf = (id: string) => `https://docs.google.com/spreadsheets/d/${id}/edit`;
@@ -47,6 +48,7 @@ export async function completeOnePending(job: PendingCohortRow): Promise<string>
   // 1) 기존 시트 재사용(부분 성공/재시도 멱등).
   const existing = await findExistingSheetIdByCohortName(job.cohortLabel, job.name);
   let sheetId = existing ?? job.sheetId;
+  let copied = false;
 
   // 2) 없으면 복제(create 모드). link 모드는 job.sheetId 가 정본이라 여기 안 옴.
   //    제목은 enqueue 시 라우트가 계산한 sheetTitle 을 그대로 사용(일반/아레나 규칙 divergence 방지).
@@ -56,20 +58,29 @@ export async function completeOnePending(job: PendingCohortRow): Promise<string>
     if (!job.templateId) throw new Error("템플릿 id 빈값");
     if (!job.sheetTitle) throw new Error("시트 제목 미저장(sheetTitle 빈값)");
     sheetId = await copyTemplateSheet(job.templateId, job.sheetTitle, job.folderId);
+    copied = true;
   }
 
-  // 3) 레지스트리 prep row(멱등 upsert — #546 결정좌표).
-  await addTraineePrepRow(job.cohortLabel, job.name, sheetId);
+  // 3) 갓 복제한 시트면 B3:C3(기수·이름)를 찍는다 — 템플릿(8기 사본) 잔재 덮기. 숫자 기수만
+  //    (아레나 라벨은 create-arena-members 규칙). 재사용 시트·link 모드는 건드리지 않는다.
+  if (copied && job.cohortType === "cohort") {
+    try {
+      await writeProfile(sheetId, job.cohortLabel, job.name);
+    } catch (e) {
+      console.warn(`[cohort-create] B3:C3 기록 실패: ${job.name}`, e instanceof Error ? e.message : e);
+    }
+  }
 
-  // 4) 새 시트 O1/O2 날짜 세팅(R3-5). O2=O1+50(ADR-0005). §2.5 가드로 사용자 수기값 보존.
-  //    DB 값 방어: 외부 경로(백필·수동편집)로 course_start_iso 가 오염될 수 있어 재검증.
-  //    실패해도 prep 은 이미 성공이므로 흡수(warn).
+  // 4) 새 시트 O1/O2 날짜 세팅(R3-5). O2=O1+50(ADR-0005). §2.5 가드로 사용자 수기값 보존 —
+  //    단 갓 복제한 시트의 O1/O2 는 템플릿 잔재라 덮는다(create-cohort-members 와 같은 처방).
+  //    DB 값 방어: 외부 경로(백필·수동편집)로 course_start_iso 가 오염될 수 있어 재검증. 실패는 흡수(warn).
   if (job.courseStartISO && isValidISODate(job.courseStartISO)) {
     try {
       const r = await writeCourseDates(
         sheetId,
         job.courseStartISO,
         ceremonyISO(job.courseStartISO, job.cohortLabel) || computeGraduationISO(job.courseStartISO),
+        copied ? { allowTemplateOverwrite: true } : undefined,
       );
       if (r.written.length === 0 && r.preserved.length > 0) {
         console.warn(
@@ -84,7 +95,11 @@ export async function completeOnePending(job: PendingCohortRow): Promise<string>
     }
   }
 
-  // 5) 아레나 roster 1행(있으면).
+  // 5) 레지스트리 prep row(멱등 upsert — #546 결정좌표). ★시트를 다 찍은 **뒤에** — 이 함수가 시트를
+  //    읽어 기수·이름·날짜 캐시(registry I~L)를 박으므로 먼저 부르면 템플릿 잔재가 굳는다(2026-10-24).
+  await addTraineePrepRow(job.cohortLabel, job.name, sheetId);
+
+  // 6) 아레나 roster 1행(있으면).
   if (job.cohortType === "arena" && job.rosterSheetId) {
     await appendArenaRoster(job.rosterSheetId, {
       name: job.name,

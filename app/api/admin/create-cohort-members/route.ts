@@ -305,8 +305,6 @@ async function POST_handler(req: Request) {
         newSheetId = plan.sheetId;
       }
 
-      await addTraineePrepRow(parsed.label, name, newSheetId);
-
       // 새 시트 O1/O2 날짜 세팅(R3-5) — **create 모드만**(복제된 새 시트). link 은 제외(남의 시트 비접촉).
       // 실패해도 생성은 성공이므로 흡수하되, 결과는 응답 dates[] 로 **화면에 올린다**(로그만 남기고
       // 조용히 넘어가다 개막 후에야 발견된 사고 2회 — 연습용2·10기 6명).
@@ -376,6 +374,11 @@ async function POST_handler(req: Request) {
           reason: reason || undefined,
         });
       }
+
+      // ★사전등록 행은 B3:C3·O1/O2 를 **찍은 뒤에** 만든다(2026-10-24 사고). addTraineePrepRow 가
+      // 그 순간 시트를 읽어 기수·이름·날짜 캐시(registry I~L)를 박는데, 먼저 부르면 갓 복제한
+      // 시트의 템플릿 잔재(8 / 빈 이름 / 6/12)가 박혀 굳는다 — 12기 수강생이 주간 목표 「20주차」.
+      await addTraineePrepRow(parsed.label, name, newSheetId);
 
       if (parsed.type === "arena" && cfg?.rosterSheetId) {
         await appendArenaRoster(cfg.rosterSheetId, {
