@@ -12,6 +12,9 @@
  *   · 모달/시트(fixed 컨테이너) 내부 터치 무시 — 내부 스크롤과 충돌 방지.
  *   · 페이지가 최상단 아닐 때 미발동. 당김 중 preventDefault 로 iOS 고무줄과
  *     이중 동작 차단(passive:false).
+ *   · ★안쪽 스크롤 영역(표·목록·패널)이 맨 위가 아니면 미발동(2026-10-24 belie 「모바일 위아래
+ *     스크롤이 잘 안 됨」). 높이 고정 화면은 페이지 자체가 늘 최상단이라, 이 가드가 없으면
+ *     안쪽 목록을 위로 올리는 손가락(아래로 끌기)마다 preventDefault 가 걸려 스크롤이 멈췄다.
  */
 "use client";
 
@@ -20,6 +23,18 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 const THRESHOLD = 70; // px — 당김 임계
+
+/** 터치 지점에서 위로 올라가며, 세로로 스크롤되는 안쪽 영역이 맨 위가 아니면 true(페이지 루트 제외). */
+export function insideScrolledArea(target: EventTarget | null): boolean {
+  const rootEl = document.scrollingElement ?? document.documentElement;
+  for (let el = target instanceof Element ? target : null; el && el !== rootEl && el !== document.body; el = el.parentElement) {
+    if (el.scrollTop > 0 && el.scrollHeight > el.clientHeight) {
+      const oy = getComputedStyle(el).overflowY;
+      if (oy === "auto" || oy === "scroll" || oy === "overlay") return true;
+    }
+  }
+  return false;
+}
 const MAX_PULL = 110; // 표시 상한 (저항감)
 
 export default function PullToRefresh() {
@@ -44,6 +59,7 @@ export default function PullToRefresh() {
       if (root().scrollTop > 0) return; // 최상단에서만
       const t = e.target as HTMLElement | null;
       if (t?.closest(".fixed")) return; // 모달/시트/토스트 내부 무시
+      if (insideScrolledArea(t)) return; // 안쪽 목록이 내려가 있으면 그 목록 스크롤이 우선
       const touch = e.touches[0];
       if (touch) start.current = { x: touch.clientX, y: touch.clientY };
     };
@@ -60,7 +76,8 @@ export default function PullToRefresh() {
         setPull(0);
         return;
       }
-      if (dy <= 0 || root().scrollTop > 0) {
+      // 같은 터치 안에서 먼저 위로 밀어 안쪽 목록이 내려갔다면, 되돌아오는 손가락은 목록 스크롤이다.
+      if (dy <= 0 || root().scrollTop > 0 || insideScrolledArea(e.target)) {
         setPull(0);
         return;
       }

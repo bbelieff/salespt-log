@@ -1,3 +1,5 @@
+## 2026-10-24 · 모바일 위아래 스크롤 — 당겨서 새로고침 가드
+- fix/pull-to-refresh-inner-scroll. belie 「모바일에서 위아래 스크롤이 잘 안 됨」. 원인 = 당겨서 새로고침이 페이지 맨 위 기준으로만 판단해, 높이 고정 화면의 안쪽 목록을 위로 올리는 손가락을 preventDefault 로 막음. 안쪽 스크롤 영역이 맨 위가 아니면 제스처 미발동. [plan](plans/active/pull-to-refresh-inner-scroll.md).
 ## 2026-10-24 · 새 기수 사전등록 캐시 순서 (12기 「20주차」)
 - fix/cohort-prep-after-profile. belie: 12기 수강생 주간 목표가 20주차로 보임(정답 4주차). 원인 = 복제 직후 사전등록이 템플릿 8기 값(8·6/12)을 캐시에 박고 굳음. 세 경로 모두 시트 도장 뒤 사전등록으로. 운영 교정: 해당 수강생 캐시 4칸 + 주간 목표·메모 4건 시작일 이전(이전값 plan 기록). 전수 점검 137시트 — 유보 1명 외 불일치 없음. [plan](plans/active/cohort-prep-after-profile.md).
 ## 2026-10-24 · DB 가져오기 — 상담 신청 표·구글시트 주소
