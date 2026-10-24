@@ -1,3 +1,5 @@
+## 2026-10-24 · DB 가져오기 — 상담 신청 표·구글시트 주소
+- fix/db-import-header-url. belie: 구글시트 공유 주소로 가져오기 + 같은 엑셀 제목행째 붙여넣기 시 사업자번호 「확인 필요」 해결 + 엑셀/구글시트 붙여넣기(메모 포함) 정확 인식. 머리글 별칭·제목행 판정·반복 제목행/#REF! 건너뛰기·중복 칸 합치기·xlsx 날짜 형식/지수 표기 처리, 주소는 서버가 CSV 로 내려받아(구글 도메인만) 같은 분석 길로. 저장 경로·데이터 무변경. [plan](plans/active/db-import-header-url.md).
 ## 2026-10-24 · 운영 기록 → 영업활동일 이벤트 변환 (심리장치 단계 0 둘째)
 - feat/activity-events-adapter, base af8400ea. 소유: `lib/analytics/activity-events.ts`·`tests/analytics/activity-events.test.ts`·plan만. 순수 함수, 화면·API·DB 무변경. [plan](plans/active/activity-events-adapter.md).
 ## 2026-10-24 · 웹 푸시 전 수강생 배포

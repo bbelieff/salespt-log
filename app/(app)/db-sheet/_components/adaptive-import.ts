@@ -1,6 +1,6 @@
 import {normalizeImportText,blankImportText,importTextFormat} from './import-text';
 import { domesticPhoneDigits } from "@/util/db-sheet-identity";
-import {blank,cleanCell,delimited,formatPhone,headerKey,parse,validDate,type Row,type Key} from './model';
+import {blank,cleanCell,delimited,formatPhone,headerKey,parse,validDate,normalizeImportDate,normalizeImportArrears,isJunkImportRow,type Row,type Key} from './model';
 
 export type ImportField = Exclude<Key,'inflow'|'stage'|'result'|'first'|'next'>;
 export type Rules = Record<number,ImportField|'keep'>;
@@ -19,16 +19,13 @@ export function normalizeImportPhone(value:string) {
  const digits=/^\+82/.test(raw)?domesticPhoneDigits(raw):raw.replace(/[\s()-]/g,'');
  return formatPhone(/^10\d{8}$/.test(digits)?'0'+digits:/^\d+$/.test(digits)?digits:raw);
 }
-function normalizedDate(value:string) {
- const match=value.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})\.?(?:T|\s|$)/);
- return match?`${match[1]}-${match[2]!.padStart(2,'0')}-${match[3]!.padStart(2,'0')}`:value;
-}
+const normalizedDate=normalizeImportDate;
 export function setImportValue(row:Row,key:ImportField|'keep',value:string):Row {
  if(key==='keep'||key==='memo')return {...row,memo:[row.memo,value].filter(Boolean).join('\n')};
  let v=value;
  if(key==='phone')v=normalizeImportPhone(v);
  if(key==='date')v=normalizedDate(v);
- if(key==='arrears')v=/^(x|n|no|없음|무)$/i.test(v)?'없음':/^(o|y|yes|있음|유)$/i.test(v)?'있음':v;
+ if(key==='arrears')v=normalizeImportArrears(v);
  return {...row,[key]:v};
 }
 function tokens(line:string):string[] {
@@ -58,8 +55,11 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
  let matrix=tabular?delimited(raw):labeled?raw.split(/\n[\s\u200B\u2060]*\n/).map(s=>s.split(/\r?\n/).filter(Boolean)):lines.map(tokens);
  const first=matrix[0]||[];
  const recognized=first.filter(v=>headerKey(v)).length;
- const header=tabular&&(mode==='yes'||mode==='auto'&&recognized>=2&&(recognized>=first.filter(Boolean).length/2||first.some(h=>/^(ad_id|form_id|created_time|lead_id)$/i.test(h.trim()))));
- const headings=header?first:[];if(header)matrix=matrix.slice(1);
+ const keysFirst=first.map(h=>headerKey(h));
+ // 전화번호 + (이름·업체·사업자번호) 머리글이 함께 있으면 제목행이다 — 모르는 머리글이 섞여도(신청 폼 질문 등).
+ const core=keysFirst.includes('phone')&&keysFirst.some(k=>k==='owner'||k==='company'||k==='biz');
+ const header=tabular&&(mode==='yes'||mode==='auto'&&recognized>=2&&(core||recognized>=first.filter(Boolean).length/2||first.some(h=>/^(ad_id|form_id|created_time|lead_id)$/i.test(h.trim()))));
+ const headings=header?first:[];if(header)matrix=matrix.slice(1).filter(cells=>!isJunkImportRow(cells,headings));
  if(!matrix.length)throw new Error('제목행 아래에 고객 정보를 넣어 주세요.');
  if(matrix.length>500)throw new Error('한 번에 500건 이하로 나눠 가져와 주세요.');
  const shape=(v:string)=>/^\+?\d[\d\s()+.-]*$/.test(v)?'number':validDate(normalizedDate(v))?'date':/[가-힣A-Za-z]/.test(v)?'text':'other';
