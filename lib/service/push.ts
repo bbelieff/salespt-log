@@ -16,6 +16,7 @@ import { listAllTodos } from "./todos";
 import { loadFollowUpMeetings } from "./meeting-follow-ups";
 import { loadDbSheet, resolveDbSheetContext } from "./db-sheet";
 import { buildPushMessage, withDeliveryTag } from "./push-messages";
+import { buildSeedMessage, type SeedSources } from "./push-seed";
 import { addDaysISO, dueSlots, kstNow, nextNotification, WEEKDAY_LABELS } from "./push-schedule";
 
 const TTL_SECONDS: Record<PushSlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600 };
@@ -82,6 +83,11 @@ export async function markPushOpened(email: string, deliveryId: string): Promise
 
 /** Same sources and failure handling as components/dashboard/DashboardFollowUps.tsx. */
 export async function loadFollowUpSummary(email: string, today: string): Promise<FollowUpSummary> {
+  return (await loadFollowUpSources(email, today)).summary;
+}
+
+/** The four dashboard sources plus their summary; the seed reuses the same reads. */
+export async function loadFollowUpSources(email: string, today: string): Promise<{ summary: FollowUpSummary; seed: SeedSources }> {
   const [contracts, todos, meetings, leads] = await Promise.allSettled([
     loadContractPayments(email),
     listAllTodos(email),
@@ -90,12 +96,13 @@ export async function loadFollowUpSummary(email: string, today: string): Promise
   ]);
   const work = contracts.status === "fulfilled" && todos.status === "fulfilled";
   if (!work && meetings.status === "rejected" && leads.status === "rejected") throw new Error("follow_up_sources_failed");
-  return summarizeFollowUps({
+  const src = {
     contracts: work ? contracts.value : undefined,
     todos: work ? todos.value : undefined,
     meetings: meetings.status === "fulfilled" ? meetings.value : undefined,
     leads: leads.status === "fulfilled" ? leads.value : undefined,
-  }, today);
+  };
+  return { summary: summarizeFollowUps(src, today), seed: { leads: src.leads, contracts: src.contracts, todos: src.todos } };
 }
 
 interface Fanout { sent: number; failed: number; fatal: boolean }
@@ -142,8 +149,11 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
       const id = await store.claimDelivery(`${email}:${kst.date}:${slot}`, email, slot, kst.date);
       if (!id) { stats.duplicate++; continue; }
       try {
-        const summary = await loadFollowUpSummary(email, kst.date);
-        const msg = buildPushMessage(slot, summary, prefs, kst.date, await store.recentMessageIds(email));
+        const { summary, seed } = await loadFollowUpSources(email, kst.date);
+        const recent = await store.recentMessageIds(email);
+        // 「오늘의 씨앗」: only on a morning with nothing to follow up, and only if the person keeps it on.
+        const msg = buildPushMessage(slot, summary, prefs, kst.date, recent)
+          ?? (slot === "morning" && prefs.kinds.includes("seed") ? buildSeedMessage(seed, prefs.showCompanyNames, kst.date, recent) : null);
         if (!msg) {
           await store.finishDelivery(id, { status: "skipped_zero", messageId: "", itemCount: 0, devicesSent: 0, devicesFailed: 0 });
           stats.skippedZero++;

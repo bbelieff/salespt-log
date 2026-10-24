@@ -18,6 +18,7 @@ const KIND_LABEL: Record<PushContentKind, [string, string]> = {
   initial: ["첫 연락 DB", "아직 연락 전인 새 DB"],
   recontact: ["다시 연락할 DB", "다시 연락할 날이 된 업체"],
   stalled: ["진행 멈춤", "다음 할 일이 비어 있는 진행건"],
+  seed: ["오늘의 씨앗", "챙길 일이 없는 날 아침, 다시 걸어 볼 곳 하나"],
 };
 const PLATFORM_LABEL: Record<PushDevice["platform"], string> = { android: "안드로이드", ios_pwa: "아이폰 홈 화면 앱", desktop: "PC", other: "기타 기기" };
 const BROWSER_LABEL: Record<string, string> = { chrome: "크롬", safari: "사파리", edge: "엣지" };

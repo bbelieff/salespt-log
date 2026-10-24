@@ -1,7 +1,8 @@
 /** Web push pilot models (web-push-notifications plan §2-2·§4). */
 import { z } from "zod";
 
-export const PUSH_CONTENT_KINDS = ["overdue", "today", "meeting", "initial", "recontact", "stalled"] as const;
+/** seed = 「오늘의 씨앗」: 챙길 일이 0건인 아침에만 쓰는 다시 걸어 볼 거리(belie 2026-10-24). */
+export const PUSH_CONTENT_KINDS = ["overdue", "today", "meeting", "initial", "recontact", "stalled", "seed"] as const;
 export const PushContentKind = z.enum(PUSH_CONTENT_KINDS);
 export type PushContentKind = z.infer<typeof PushContentKind>;
 

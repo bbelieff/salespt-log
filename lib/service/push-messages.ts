@@ -8,10 +8,11 @@ import { addDaysISO, type DispatchSlot } from "./push-schedule";
 
 export interface PushMessage { messageId: string; body: string; url: string; itemCount: number }
 
-const PRIORITY: readonly PushContentKind[] = ["overdue", "meeting", "today", "initial", "recontact", "stalled"];
+type FollowUpContentKind = Exclude<PushContentKind, "seed">;
+const PRIORITY: readonly FollowUpContentKind[] = ["overdue", "meeting", "today", "initial", "recontact", "stalled"];
 
 /** Future todos carry kind "upcoming"; for settings they belong to 「오늘 할 일」. */
-export function contentKindOf(item: FollowUpItem): PushContentKind {
+export function contentKindOf(item: FollowUpItem): FollowUpContentKind {
   return item.kind === "upcoming" ? "today" : item.kind;
 }
 
@@ -19,7 +20,7 @@ const clip = (s: string, n = 24) => { const t = s.replace(/\s+/g, " ").trim(); r
 
 type Copy = (it: FollowUpItem, n: number) => string;
 /** [shown company, hidden company] per variant. */
-const MORNING: Record<PushContentKind, Array<[Copy, Copy]>> = {
+const MORNING: Record<FollowUpContentKind, Array<[Copy, Copy]>> = {
   overdue: [
     [it => `${clip(it.title)} 「${clip(it.action, 16)}」 하기로 한 건 연락해 보셨어요?`, (_, n) => `밀린 약속 ${n}건이 있어요. 하나만 먼저 정리해 볼까요?`],
     [it => `${clip(it.title)} 약속이 기한을 지났어요. 오늘 하나만 챙겨 볼까요?`, (_, n) => `기한이 지난 약속이 ${n}건 있어요. 오늘 하나만 챙겨 볼까요?`],
@@ -51,7 +52,7 @@ function pickVariant(prefix: string, count: number, recent: readonly string[]): 
   return 0;
 }
 
-function choose(items: FollowUpItem[]): { kind: PushContentKind; item: FollowUpItem; sameKind: number } | null {
+function choose(items: FollowUpItem[]): { kind: FollowUpContentKind; item: FollowUpItem; sameKind: number } | null {
   for (const kind of PRIORITY) {
     const of = items.filter(i => contentKindOf(i) === kind);
     if (of.length) return { kind, item: of[0]!, sameKind: of.length };

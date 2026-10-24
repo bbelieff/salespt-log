@@ -803,7 +803,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.
 
 ## 웹 푸시 알림 (2026-10-22, `lib/types/push.ts` · migration 0009)
-- `PushPreferences`: enabled · morningEnabled/`MorningTime`(07:00~11:00, 15분) · eveningEnabled/`EveningTime`(17:00~21:00, 15분) · weekdays(요일 비트 월=1…일=64, 기본 31=평일) · kinds(`PushContentKind`[] = overdue·today·meeting·initial·recontact·stalled) · showCompanyNames(기본 true, belie 결정). 기본값 `DEFAULT_PUSH_PREFERENCES`(아침 08:45, 저녁 18:00). 저장 = `push_preferences`(email PK).
+- `PushPreferences`: enabled · morningEnabled/`MorningTime`(07:00~11:00, 15분) · eveningEnabled/`EveningTime`(17:00~21:00, 15분) · weekdays(요일 비트 월=1…일=64, 기본 31=평일) · kinds(`PushContentKind`[] = overdue·today·meeting·initial·recontact·stalled·seed — seed = 0건 아침의 「오늘의 씨앗」, 2026-10-24) · showCompanyNames(기본 true, belie 결정). 기본값 `DEFAULT_PUSH_PREFERENCES`(아침 08:45, 저녁 18:00). 저장 = `push_preferences`(email PK).
 - `PushSubscriptionInput`: 브라우저 PushSubscription(endpoint https, keys.p256dh/auth) + `PushPlatform`(android·ios_pwa·desktop·other) + browser 라벨. 저장 = `push_subscriptions`(endpoint unique, 404/410 또는 연속 5회 실패 시 disabled_at).
 - `PushDevice`: 설정 화면 기기 목록 투영(id·platform·browser·createdAt·lastSuccessAt·endpointTail = endpoint 끝 16자, 이 브라우저 식별용).
 - `push_deliveries`: idempotency_key `<email>:<KST 날짜>:<morning|evening|test[:n]>` unique로 한 번만 발송. message_id·item_count·status(pending·sent·skipped_zero·failed)·opened_at(알림 탭 출처 꼬리표)만 저장하고 **문구 원문·업체명은 저장하지 않는다.**

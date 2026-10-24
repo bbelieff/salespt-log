@@ -24,7 +24,8 @@ let contracts: unknown[] = [];
 vi.mock("@/service/contract-payment", () => ({ loadContractPayments: async () => contracts }));
 vi.mock("@/service/todos", () => ({ listAllTodos: async () => todos }));
 vi.mock("@/service/meeting-follow-ups", () => ({ loadFollowUpMeetings: async () => [] }));
-vi.mock("@/service/db-sheet", () => ({ resolveDbSheetContext: async () => { throw new Error("no db sheet"); }, loadDbSheet: async () => [] }));
+let leads: unknown[] | null = null;
+vi.mock("@/service/db-sheet", () => ({ resolveDbSheetContext: async () => { if (!leads) throw new Error("no db sheet"); return {}; }, loadDbSheet: async () => leads }));
 // The real rule decides which todos count; keep the classification simple for the fixture.
 vi.mock("@/lib/analytics/payment-work-status", () => ({ activeWorkContracts: (cs: unknown[]) => cs, classifyWorkStatus: () => "working", isSlotClosed: () => false, slotHasData: () => false }));
 
@@ -38,6 +39,7 @@ beforeEach(() => {
   delete process.env.PUSH_AUDIENCE;
   findUserByEmail.mockResolvedValue(null);
   todos = [todo];
+  leads = null;
   contracts = [contract];
   store.listCandidates.mockResolvedValue([{ email: "pilot@example.com", prefs: DEFAULT_PUSH_PREFERENCES }]);
   store.claimDelivery.mockResolvedValue("11111111-1111-1111-1111-111111111111");
@@ -120,5 +122,28 @@ describe("audience switch (belie 2026-10-24 전 수강생 배포)", () => {
     await expect(sendTestPush("pending@example.com", AT_0845)).rejects.toThrow("push_not_available");
     findUserByEmail.mockResolvedValueOnce(null);
     await expect(sendTestPush("stranger@example.com", AT_0845)).rejects.toThrow("push_not_available");
+  });
+});
+
+describe("오늘의 씨앗 (belie 2026-10-24)", () => {
+  const quietLead = { id: "11111111-2222-4333-8444-555555555555", supplier: "", date: "2026-07-01", channel: "매입DB", company: "새봄유통", next: "", memo: "", result: "단순거절", stage: "DB컨택중", meetingId: null, first: "", revision: 1 };
+  it("a zero morning sends the seed instead of nothing", async () => {
+    todos = []; contracts = []; leads = [quietLead];
+    const stats = await dispatchDuePush(AT_0845);
+    expect(stats.sent).toBe(1);
+    expect((sendPush.mock.calls[0]![1] as { body: string }).body).toContain("최근 일주일 새 DB가 없어요");
+    expect(store.finishDelivery).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ status: "sent", messageId: "morning.seed.inflow.v1" }));
+  });
+  it("respects the seed switch and stays silent when it is off", async () => {
+    todos = []; contracts = []; leads = [quietLead];
+    store.listCandidates.mockResolvedValue([{ email: "pilot@example.com", prefs: { ...DEFAULT_PUSH_PREFERENCES, kinds: DEFAULT_PUSH_PREFERENCES.kinds.filter(k => k !== "seed") } }]);
+    const stats = await dispatchDuePush(AT_0845);
+    expect(sendPush).not.toHaveBeenCalled();
+    expect(stats.skippedZero).toBe(1);
+  });
+  it("never sends a seed in the evening", async () => {
+    todos = []; contracts = []; leads = [quietLead];
+    await dispatchDuePush(new Date("2026-10-23T09:00:00Z")); // 18:00 KST Fri
+    expect(sendPush).not.toHaveBeenCalled();
   });
 });

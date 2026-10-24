@@ -341,6 +341,13 @@ VPS cron (salespt-log 영역만, 매 15분 07:00~21:00 KST)
 - 남은 결함(목업 승인 대기): 오늘 미팅 표시(DC 세션 파일과 겹쳐 그쪽 머지 뒤), 저녁 21:00 경계, 끈 내용과 건수 문구.
 - 되돌리기: VPS `.env` 의 `PUSH_AUDIENCE` 를 지우고 `pm2 reload salespt-log --update-env` → 시범 대상만. 모든 발송 정지는 `PUSH_ENABLED=0`.
 
+## 14. 오늘의 씨앗 (2026-10-24 belie 결정·목업 승인 「배포하고 운영반영하자」, 처음 값 켜짐)
+- 아침 슬롯에서 챙길 일이 0건일 때만 `buildSeedMessage`(lib/service/push-seed.ts)로 대체. 저녁·상한·시간·요일·업체명 설정 불변. 씨앗도 없으면 발송 없음.
+- 씨앗: ① 최근 7일 새 DB 0건(DB 기록이 있는 사람만, → /db-sheet) ② 14일 넘게 기록·다음 할 일 없는 진행 중 계약(장기관리·끝난 진행건 제외, → /payment?row=).
+- 명세의 「부재·재통화로 30일 넘게 끊긴 DB」는 넣지 않았다: 진행 중인 그런 DB는 모두 「다시 연락할 DB」 follow-up 이라 0건 아침이 될 수 없다(dashboard-follow-ups.ts `buildRecontactLeads`). 대체 기준은 belie 결정 대기.
+- 같은 씨앗은 최근 두 번 안에 보냈으면 쉰다(사흘에 한 번까지). 메시지 id `morning.seed.inflow.v1` · `morning.seed.work.v1`.
+- 설정 「받을 내용」에 `seed`(오늘의 씨앗) 추가. 마이그레이션 0010: 기존 설정에 seed 추가 + 기본값 갱신.
+
 ## 진행 기록
 
 - 2026-10-22 belie 결정 반영: 08:45·업체명 보임·수강생 설정(종류·시간·주기·내용 종류)·저녁 알림 시범 포함·VAPID 는 에이전트가 VPS 에서 생성(§0.5).
