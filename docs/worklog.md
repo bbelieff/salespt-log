@@ -1,3 +1,5 @@
+## 2026-10-25 · 웹 푸시 「오늘의 씨앗」
+- feat/push-morning-seed, base 1c42ec72. belie 결정(듀오링고 세션 전달)·목업 승인: 챙길 일 0건 아침에 씨앗(최근 7일 새 DB 0건 / 14일 조용한 진행건). 30일 끊긴 부재 DB 씨앗은 기존 follow-up 과 겹쳐 제외(대체 기준 belie 결정 대기). 마이그레이션 0010. [plan](plans/active/web-push-notifications.md) §14.
 ## 2026-10-24 · 오늘 챙길 일 빠른 보기 우하단으로
 - fix/followups-launcher-right. belie 「비서 플로팅 아이콘은 우측하단으로 이동」. 버튼·창·펼침 기준점 오른쪽, PC 실무/수납 여백 상세 칸으로. [plan](plans/active/followups-launcher-right.md).
 
