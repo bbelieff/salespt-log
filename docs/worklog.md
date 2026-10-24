@@ -1,5 +1,8 @@
 ## 2026-10-24 · 대시보드 수강 진행 배너 PC 한 줄
 - fix/course-progress-one-line. belie 「풀사이즈면 한 줄」. PC(1024+)에서 날짜·주차|시작|진행바|진행률|종강총회|D-day 한 줄, 좁은 화면 세 줄 유지. [plan](plans/active/course-progress-one-line.md).
+
+## 2026-10-24 · 전체 진행건 막대에 장기관리 칸
+- feat/work-status-longterm. belie(알림 세션 경유) 「수납완료 옆에 장기관리건 집계, 대시보드·실무/수납 똑같이」. 조건 대기·장기관리 진행건 + 장기관리 업체의 미수납 진행건 = 장기관리. 공용 함수라 두 화면 동시 반영. [plan](plans/active/work-status-longterm.md).
 ## 2026-10-24 · DB관리시트 검색칸 제목 줄로
 - fix/db-sheet-search-inline. belie 「검색바를 위로 올려 공백 낭비 말 것」. 1140px 이하 규칙이 검색칸을 둘째 줄로 밀던 것을 제목 옆으로. 1024·1100·1600 확인, 모바일 무변화. [plan](plans/active/db-sheet-search-inline.md).
 ## 2026-10-24 · 배지 수집 1단계 병합·배포 완료
