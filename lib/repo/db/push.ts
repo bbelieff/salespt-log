@@ -80,13 +80,13 @@ export async function savePreferences(email: string, p: PushPreferences): Promis
 }
 
 export interface PushCandidate { email: string; prefs: PushPreferences }
-/** Users in `emails` with at least one active device, with their preferences (defaults when unset). */
-export async function listCandidates(emails: string[]): Promise<PushCandidate[]> {
-  if (!emails.length) return [];
+/** Users with at least one active device (only those in `emails` unless null = everyone), with preferences (defaults when unset). */
+export async function listCandidates(emails: string[] | null): Promise<PushCandidate[]> {
+  if (emails && !emails.length) return [];
   const r = await pool().query<PrefRow & { email: string; has_prefs: boolean }>(
     `select s.email, p.email is not null as has_prefs, ${PREF_COLS.split(", ").map(c => `p.${c}`).join(", ")}
-     from (select distinct email from public.push_subscriptions where disabled_at is null and email = any($1)) s
-     left join public.push_preferences p on p.email = s.email`, [emails.map(key)]);
+     from (select distinct email from public.push_subscriptions where disabled_at is null and ($1::text[] is null or email = any($1))) s
+     left join public.push_preferences p on p.email = s.email`, [emails ? emails.map(key) : null]);
   return r.rows.map(row => ({ email: row.email, prefs: row.has_prefs ? toPrefs(row) : { ...DEFAULT_PUSH_PREFERENCES, kinds: [...DEFAULT_PUSH_PREFERENCES.kinds] } }));
 }
 

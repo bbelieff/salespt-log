@@ -2,12 +2,13 @@
  * Layer: service — web push pilot (docs/plans/active/web-push-notifications.md).
  *
  * The notification says exactly what the dashboard 「오늘 챙길 일」 card says: both run
- * `summarizeFollowUps` over the same four loaders. Only allow-listed pilot users are ever
- * sent anything (PUSH_PILOT_EMAILS), and PUSH_ENABLED=0 stops every send at once.
+ * `summarizeFollowUps` over the same four loaders. Who may subscribe is `isPushEligible`
+ * (PUSH_AUDIENCE=all → every trainee, else PUSH_PILOT_EMAILS), and PUSH_ENABLED=0 stops every send.
  */
 import * as Sentry from "@sentry/nextjs";
 import { summarizeFollowUps, UPCOMING_DAYS, type FollowUpSummary } from "@/lib/analytics/dashboard-follow-ups";
 import * as store from "@/repo/db/push";
+import { findUserByEmail } from "@/repo/users";
 import { pushConfigured, sendPush, vapidPublicKey } from "@/repo/push-sender";
 import { PushPreferences, type PushDevice, type PushSlot, type PushSubscriptionInput } from "@/types/push";
 import { loadContractPayments } from "./contract-payment";
@@ -26,13 +27,26 @@ export function pilotEmails(): string[] {
 export function isPushPilot(email: string): boolean {
   return pilotEmails().includes(email.trim().toLowerCase());
 }
+/**
+ * PUSH_AUDIENCE=all opens push to every registered trainee, active or graduated (belie 2026-10-24,
+ * 전 수강생 배포). Anything else keeps it to PUSH_PILOT_EMAILS — the rollback switch.
+ */
+export function pushAudience(): "all" | "pilot" {
+  return process.env.PUSH_AUDIENCE?.trim() === "all" ? "all" : "pilot";
+}
+export async function isPushEligible(email: string): Promise<boolean> {
+  if (isPushPilot(email)) return true;
+  if (pushAudience() !== "all") return false;
+  const user = await findUserByEmail(email);
+  return !!user && user.role === "trainee" && user.status !== "pending";
+}
 function sendingOn(): boolean {
   return process.env.PUSH_ENABLED !== "0" && pushConfigured();
 }
 
 export class PushNotAvailable extends Error {}
-function requirePilot(email: string) {
-  if (!isPushPilot(email)) throw new PushNotAvailable("push_not_available");
+async function requireEligible(email: string) {
+  if (!(await isPushEligible(email))) throw new PushNotAvailable("push_not_available");
 }
 
 /**
@@ -41,20 +55,20 @@ function requirePilot(email: string) {
  */
 export interface PushState { available: boolean; publicKey: string | null; preferences: PushPreferences | null; devices: PushDevice[]; viewingOther: boolean }
 export async function getPushState(email: string, viewingOther = false): Promise<PushState> {
-  if (!isPushPilot(email)) return { available: false, publicKey: null, preferences: null, devices: [], viewingOther };
+  if (!(await isPushEligible(email))) return { available: false, publicKey: null, preferences: null, devices: [], viewingOther };
   const [preferences, devices] = await Promise.all([store.getPreferences(email), store.listDevices(email)]);
   return { available: true, publicKey: vapidPublicKey(), preferences, devices, viewingOther };
 }
 
 export async function savePushPreferences(email: string, input: unknown): Promise<PushPreferences> {
-  requirePilot(email);
+  await requireEligible(email);
   const prefs = PushPreferences.parse(input);
   await store.savePreferences(email, prefs);
   return prefs;
 }
 
 export async function subscribePush(email: string, input: PushSubscriptionInput): Promise<string> {
-  requirePilot(email);
+  await requireEligible(email);
   return store.upsertSubscription(email, input);
 }
 
@@ -98,7 +112,7 @@ async function fanout(email: string, payload: { title: string; body: string; url
 
 export type TestPushResult = { ok: true; devices: number } | { ok: false; reason: "limit" | "no_device" | "not_configured" | "send_failed" };
 export async function sendTestPush(email: string, now = new Date()): Promise<TestPushResult> {
-  requirePilot(email);
+  await requireEligible(email);
   if (!sendingOn()) return { ok: false, reason: "not_configured" };
   const kst = kstNow(now);
   const used = await store.countDeliveries(email, kst.date, "test");
@@ -121,7 +135,7 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
   const kst = kstNow(now);
   const stats: DispatchStats = { tick: `${kst.date} ${kst.time}`, candidates: 0, sent: 0, skippedZero: 0, failed: 0, duplicate: 0 };
   if (!sendingOn()) return stats;
-  const candidates = await store.listCandidates(pilotEmails());
+  const candidates = await store.listCandidates(pushAudience() === "all" ? null : pilotEmails());
   for (const { email, prefs } of candidates) {
     for (const slot of dueSlots(prefs, kst)) {
       stats.candidates++;
