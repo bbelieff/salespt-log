@@ -23,7 +23,8 @@ let todos: unknown[] = [];
 let contracts: unknown[] = [];
 vi.mock("@/service/contract-payment", () => ({ loadContractPayments: async () => contracts }));
 vi.mock("@/service/todos", () => ({ listAllTodos: async () => todos }));
-vi.mock("@/service/meeting-follow-ups", () => ({ loadFollowUpMeetings: async () => [] }));
+let meetings: unknown[] = [];
+vi.mock("@/service/meeting-follow-ups", () => ({ loadFollowUpMeetings: async () => meetings }));
 let leads: unknown[] | null = null;
 vi.mock("@/service/db-sheet", () => ({ resolveDbSheetContext: async () => { if (!leads) throw new Error("no db sheet"); return {}; }, loadDbSheet: async () => leads }));
 // The real rule decides which todos count; keep the classification simple for the fixture.
@@ -39,6 +40,7 @@ beforeEach(() => {
   delete process.env.PUSH_AUDIENCE;
   findUserByEmail.mockResolvedValue(null);
   todos = [todo];
+  meetings = [];
   leads = null;
   contracts = [contract];
   store.listCandidates.mockResolvedValue([{ email: "pilot@example.com", prefs: DEFAULT_PUSH_PREFERENCES }]);
@@ -147,3 +149,40 @@ describe("오늘의 씨앗 (belie 2026-10-24)", () => {
     expect(sendPush).not.toHaveBeenCalled();
   });
 });
+
+describe("meeting result push — three hours after the meeting starts", () => {
+  const AT_1700 = new Date("2026-10-23T08:00:00Z"); // Fri 17:00 KST
+  const meet = (over: Record<string, unknown> = {}) => ({ id: "m1", 예약일: "2026-10-20", 예약시각: "10:00", 미팅날짜: "2026-10-23", 미팅시간: "14:00", 상태: "예약", 업체명: "샘플 가람식당", 장소: "", channel: "매입DB", ...over });
+  it("sends once per meeting, naming the company and linking the meeting", async () => {
+    meetings = [meet()];
+    const stats = await dispatchDuePush(AT_1700);
+    expect(store.claimDelivery).toHaveBeenCalledWith("pilot@example.com:2026-10-23:meeting:m1", "pilot@example.com", "meeting", "2026-10-23");
+    const payload = sendPush.mock.calls[0]![1] as { body: string; url: string };
+    expect(payload.body).toBe("샘플 가람식당 미팅은 어떻게 됐어요? 결과를 적어 두면 다음 연락이 쉬워져요.");
+    expect(payload.url).toContain("/schedule?date=2026-10-23&focus=m1");
+    expect(sendPush.mock.calls[0]![2]).toEqual({ ttlSeconds: 10800, topic: "meeting" });
+    expect(stats.sent).toBe(1);
+  });
+  it("not before three hours, not for results already saved, not when meeting alerts are off", async () => {
+    meetings = [meet({ 미팅시간: "14:15" }), meet({ id: "m2", 상태: "완료" })];
+    await dispatchDuePush(AT_1700);
+    expect(sendPush).not.toHaveBeenCalled();
+    meetings = [meet()];
+    store.listCandidates.mockResolvedValue([{ email: "pilot@example.com", prefs: { ...DEFAULT_PUSH_PREFERENCES, kinds: ["overdue"] } }]);
+    await dispatchDuePush(AT_1700);
+    expect(sendPush).not.toHaveBeenCalled();
+  });
+  it("an already-claimed meeting is not sent again", async () => {
+    meetings = [meet()];
+    store.claimDelivery.mockResolvedValue(null);
+    await dispatchDuePush(AT_1700);
+    expect(sendPush).not.toHaveBeenCalled();
+  });
+  it("before the 0011 migration the claim fails — the run survives and sends nothing extra", async () => {
+    meetings = [meet()];
+    store.claimDelivery.mockRejectedValueOnce(new Error("violates check constraint"));
+    const stats = await dispatchDuePush(AT_1700);
+    expect(stats.sent).toBe(0);
+  });
+});
+

@@ -90,8 +90,10 @@ export async function listCandidates(emails: string[] | null): Promise<PushCandi
   return r.rows.map(row => ({ email: row.email, prefs: row.has_prefs ? toPrefs(row) : { ...DEFAULT_PUSH_PREFERENCES, kinds: [...DEFAULT_PUSH_PREFERENCES.kinds] } }));
 }
 
+/** 정기 슬롯 + 미팅 끝 결과 알림(0011). */
+export type DeliverySlot = PushSlot | "meeting";
 /** Claims the (email, date, slot) send once. Null = already claimed by an earlier run. */
-export async function claimDelivery(idempotencyKey: string, email: string, slot: PushSlot, localDate: string): Promise<string | null> {
+export async function claimDelivery(idempotencyKey: string, email: string, slot: DeliverySlot, localDate: string): Promise<string | null> {
   const r = await pool().query<{ id: string }>(
     `insert into public.push_deliveries (id, idempotency_key, email, slot, local_date) values ($1,$2,$3,$4,$5)
      on conflict (idempotency_key) do nothing returning id::text`, [randomUUID(), idempotencyKey, key(email), slot, localDate]);

@@ -14,7 +14,7 @@ import "./push.css";
 const KIND_LABEL: Record<PushContentKind, [string, string]> = {
   overdue: ["밀린 약속", "기한이 지난 할 일"],
   today: ["오늘 할 일", "오늘 하기로 한 일"],
-  meeting: ["미팅 결과", "결과를 아직 안 적은 미팅"],
+  meeting: ["미팅 결과", "결과를 아직 안 적은 미팅 · 미팅 시작 3시간 뒤에도 한 번"],
   initial: ["첫 연락 DB", "아직 연락 전인 새 DB"],
   recontact: ["다시 연락할 DB", "다시 연락할 날이 된 업체"],
   stalled: ["진행 멈춤", "다음 할 일이 비어 있는 진행건"],

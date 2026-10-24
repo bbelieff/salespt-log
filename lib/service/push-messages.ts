@@ -2,7 +2,8 @@
  * Pure push copy (plan §3-1·§3-3). One notification names the single most pressing item
  * plus the total, in the order `followUpHeadline()` uses. Nothing here scolds or compares.
  */
-import { TODAY_MEETING_REASON, type FollowUpItem, type FollowUpSummary } from "@/lib/analytics/dashboard-follow-ups";
+import { TODAY_MEETING_REASON, meetingResultDue, type FollowUpItem, type FollowUpSummary } from "@/lib/analytics/dashboard-follow-ups";
+import type { Meeting } from "@/types";
 import type { PushContentKind, PushPreferences } from "@/types/push";
 import { addDaysISO, type DispatchSlot } from "./push-schedule";
 
@@ -103,4 +104,23 @@ export function buildPushMessage(slot: DispatchSlot, summary: Pick<FollowUpSumma
 export function withDeliveryTag(url: string, deliveryId: string): string {
   const safe = url.startsWith("/") && !url.startsWith("//") ? url : "/dashboard";
   return `${safe}${safe.includes("?") ? "&" : "?"}from=push&d=${encodeURIComponent(deliveryId)}`;
+}
+
+/** 미팅 끝 결과 알림은 이 시각까지만 — 늦은 밤 미팅은 다음 날 아침 알림이 결과를 묻는다. */
+export const MEETING_RESULT_PUSH_UNTIL = "21:00";
+/**
+ * 오늘 미팅 중 지금 결과를 물을 때가 된 것(시작 3시간 뒤, belie 2026-10-25) — 아직 「예약」(결과 미입력)인 것만.
+ * 시간 순서대로; 발송 쪽이 미팅마다 한 번만 보낸다.
+ */
+export function dueMeetingResults(meetings: readonly Meeting[], today: string, nowHHMM: string): Meeting[] {
+  if (nowHHMM > MEETING_RESULT_PUSH_UNTIL) return [];
+  return meetings
+    .filter(m => m.상태 === "예약" && m.미팅날짜 === today && meetingResultDue(m.미팅날짜, m.미팅시간, today, nowHHMM))
+    .sort((a, b) => a.미팅시간.localeCompare(b.미팅시간));
+}
+export function buildMeetingResultMessage(m: Meeting, showCompanyNames: boolean): PushMessage {
+  const body = showCompanyNames
+    ? `${clip(m.업체명.replace(/^\(변경\)\s*/, ""))} 미팅은 어떻게 됐어요? 결과를 적어 두면 다음 연락이 쉬워져요.`
+    : "오늘 미팅은 어떻게 됐어요? 결과를 적어 두면 다음 연락이 쉬워져요.";
+  return { messageId: "meeting.result.v1", body, url: showCompanyNames ? `/schedule?date=${m.미팅날짜}&focus=${encodeURIComponent(m.id)}` : "/schedule", itemCount: 1 };
 }
