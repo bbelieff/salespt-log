@@ -1,3 +1,5 @@
+## 2026-10-24 · 대시보드 배지 칩 병합·배포 완료
+- #1224 squash 7524e28b, Deploy 40083335010 success, health 200. 로그인 화면 실물 확인 NOT_RUN(belie 확인 필요). [plan](plans/completed/badge-dashboard-chip.md).
 ## 2026-10-24 · 대시보드 배지 칩
 - feat/badge-dashboard-chip, base 29546031. belie 승인 칩 목업: 「오늘 챙길 일」 상자 맨 아래 「배지 N/31 · 다음 ○○까지 N일」(새 배지면 주황·점, 0개면 첫 행동) → /badges, 로고 메뉴 NEW(배지 화면 처음 열 때까지). 화면만, 데이터 무변경. 소유: components/badges/BadgeChip·badge-next, DashboardFollowUps 한 줄, TopHeader NEW 한 줄, badges page 리팩터. [plan](plans/active/badge-dashboard-chip.md).
 ## 2026-10-24 · 전체 진행건 막대에 장기관리 칸
