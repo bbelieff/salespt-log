@@ -87,7 +87,7 @@ export async function loadFollowUpSummary(email: string, today: string): Promise
 }
 
 /** The four dashboard sources plus their summary; the seed reuses the same reads. */
-export async function loadFollowUpSources(email: string, today: string): Promise<{ summary: FollowUpSummary; seed: SeedSources }> {
+export async function loadFollowUpSources(email: string, today: string, nowHHMM?: string): Promise<{ summary: FollowUpSummary; seed: SeedSources }> {
   const [contracts, todos, meetings, leads] = await Promise.allSettled([
     loadContractPayments(email),
     listAllTodos(email),
@@ -102,7 +102,7 @@ export async function loadFollowUpSources(email: string, today: string): Promise
     meetings: meetings.status === "fulfilled" ? meetings.value : undefined,
     leads: leads.status === "fulfilled" ? leads.value : undefined,
   };
-  return { summary: summarizeFollowUps(src, today), seed: { leads: src.leads, contracts: src.contracts, todos: src.todos } };
+  return { summary: summarizeFollowUps(src, today, nowHHMM), seed: { leads: src.leads, contracts: src.contracts, todos: src.todos } };
 }
 
 interface Fanout { sent: number; failed: number; fatal: boolean }
@@ -149,7 +149,7 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
       const id = await store.claimDelivery(`${email}:${kst.date}:${slot}`, email, slot, kst.date);
       if (!id) { stats.duplicate++; continue; }
       try {
-        const { summary, seed } = await loadFollowUpSources(email, kst.date);
+        const { summary, seed } = await loadFollowUpSources(email, kst.date, kst.time);
         const recent = await store.recentMessageIds(email);
         // 「오늘의 씨앗」: only on a morning with nothing to follow up, and only if the person keeps it on.
         const msg = buildPushMessage(slot, summary, prefs, kst.date, recent)
