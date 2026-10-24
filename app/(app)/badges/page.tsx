@@ -13,21 +13,13 @@ import PageContainer from "@/components/PageContainer";
 import BadgeMedal from "@/components/badges/BadgeMedal";
 import BadgeDetailSheet, { badgeDateLabel } from "@/components/badges/BadgeDetailSheet";
 import { markSeen, newBadgeIds, readSeen } from "@/components/badges/badge-seen";
-import { BADGES, BADGE_GROUPS, type BadgeDef, type BadgeGroup } from "@/lib/analytics/badge-catalog";
-import type { BadgeState } from "@/lib/analytics/badges";
+import { badgeRows, pickNext, type BadgeRow } from "@/components/badges/badge-next";
+import { BADGES, BADGE_GROUPS, type BadgeGroup } from "@/lib/analytics/badge-catalog";
 import { useBadges } from "@/query/badge-hooks";
 import { useMe } from "@/query/me-hook";
 import { todayKST } from "@/util/week";
 
-type Row = { def: BadgeDef; state: BadgeState };
-
-/** 가장 가까운 다음 배지 — 진행 막대가 있는 것 중 남은 비율이 가장 작은 것, 없으면 처음 할 일 하나. */
-function pickNext(rows: readonly Row[]): Row | null {
-  const open = rows.filter(r => r.def.ready && !r.state.earned && r.def.group !== "secret");
-  const withBar = open.filter(r => r.state.progress)
-    .sort((a, b) => (1 - a.state.progress!.cur / a.state.progress!.max) - (1 - b.state.progress!.cur / b.state.progress!.max));
-  return withBar[0] ?? open.find(r => r.def.cta) ?? null;
-}
+type Row = BadgeRow;
 
 function TileStatus({ row }: { row: Row }) {
   const { def, state } = row;
@@ -51,10 +43,7 @@ export default function BadgesPage() {
   const who = me.data?.email ?? "";
   const today = todayKST();
 
-  const rows = useMemo<Row[]>(() => {
-    const byId = new Map((q.data?.badges ?? []).map(s => [s.id, s]));
-    return BADGES.map(def => ({ def, state: byId.get(def.id) ?? { id: def.id, earned: false, earnedOn: null, progress: null } }));
-  }, [q.data]);
+  const rows = useMemo<Row[]>(() => badgeRows(q.data?.badges ?? []), [q.data]);
 
   // 이번 방문에 보여 줄 NEW 를 잡아 두고, 바로 「본 것」으로 기억해 헤더 점을 끈다.
   useEffect(() => {

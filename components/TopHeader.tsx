@@ -148,8 +148,14 @@ export default function TopHeader({
   const badgeOwner = me.data?.email ?? "";
   const badgeList = Array.isArray(badges.data?.badges) ? badges.data.badges : null;
   const [hasNewBadge, setHasNewBadge] = useState(false);
+  // 「배지 수집」 NEW — 이 기기에서 배지 화면을 한 번 열 때까지(본 기록이 생기면 끔).
+  const [badgesVisited, setBadgesVisited] = useState(true);
   useEffect(() => {
-    const recompute = () => setHasNewBadge(!!badgeList && newBadgeIds(badgeList, readSeen(badgeOwner), todayKST()).length > 0);
+    const recompute = () => {
+      const seen = readSeen(badgeOwner);
+      setBadgesVisited(!badgeOwner || seen !== null);
+      setHasNewBadge(!!badgeList && newBadgeIds(badgeList, seen, todayKST()).length > 0);
+    };
     recompute();
     window.addEventListener(BADGES_SEEN_EVENT, recompute);
     return () => window.removeEventListener(BADGES_SEEN_EVENT, recompute);
@@ -233,6 +239,7 @@ export default function TopHeader({
                 <span className="flex items-center gap-1.5">
                   배지 수집
                   {hasNewBadge && <span className="h-1.5 w-1.5 rounded-full bg-brand-red" aria-label="새 배지 있음" />}
+                  {!badgesVisited && <span className="inline-flex shrink-0 items-center rounded-full bg-brand-red px-1.5 text-xs font-bold leading-tight text-white">NEW</span>}
                 </span>
                 {badgeCount !== null && <span className="ml-auto text-xs font-bold tabular-nums text-amber-800">{badgeCount} / {BADGES.length}</span>}
               </Link>
