@@ -1,5 +1,8 @@
 ## 2026-10-25 · 오늘 챙길 일 테두리 바깥 빛 번짐
 - fix/followups-border-glow. belie 비교 시안 후 「D 인데 바깥 테두리만 6px」「번짐 색상은 테두리와 동일」. 같은 무지개 두 겹(2·6px 흐림)을 카드 뒤에, 안쪽 면은 ::after 로 덮어 바깥으로만. [plan](plans/active/followups-border-glow.md).
+
+## 2026-10-25 · 당일 미팅 결과 요청 기준 1시간 → 3시간
+- fix/meeting-result-after-3h. belie 「미팅 후 3시간으로」. 시작 3시간 뒤부터 「미팅 결과 입력」. #1229 병합 751aff75·Deploy 40111318377 success·health 200 기록 포함. [plan](plans/completed/today-meeting-before-time.md).
 ## 2026-10-25 · 당일 미팅 「결과 입력」 조기 표시 수정
 - fix/today-meeting-before-time, base e2b59162. belie 지시. 오늘 챙길 일·아침 알림이 미팅 전에도 결과를 묻던 문제 — 시작 1시간 뒤부터만 결과 요청, 그 전엔 「오늘 미팅」. 데이터 무변경. [plan](plans/completed/today-meeting-before-time.md).
 ## 2026-10-25 · 웹 푸시 「오늘의 씨앗」
