@@ -45,6 +45,24 @@ export function dbSheetContactStage(lead: { meetingId?: string | null; stage: st
 }
 /** 부재는 다음 연락일이 비어 있으면 내일로 잡는다. 이미 정한 날짜는 바꾸지 않는다. */
 export function autoDbSheetNextContact(result: string, next: string, tomorrow: string): string { return result === "부재" && !next ? tomorrow : next; }
+/**
+ * 예전 기록 보정(읽을 때만, 2026-10-25 belie): 규칙이 생기기 전에 기록된 업체도 같은 모습으로 보이게.
+ * · 단순거절인데 최초상담일이 비었으면 → 마지막 컨택일(=단순거절로 바뀐 날)
+ * · 부재인데 다음 연락일이 비었으면 → 마지막 부재(컨택일·부재 기록 중 늦은 날) 다음날
+ * 최초상담일을 직접 지운 값(firstManual)은 건드리지 않는다. 부재의 빈 다음 연락일은 전부 채운다(belie 「전부」).
+ * 컨택 기록이 없으면 그대로 둔다.
+ */
+export function backfillDbSheetDates<T extends { result: string; first: string; next: string; firstManual?: boolean; absences?: { date: string }[] }>(
+  lead: T, lastContactDate: string, dayAfter: (date: string) => string,
+): T {
+  let out = lead;
+  if (lead.result === "단순거절" && !lead.first && !lead.firstManual && lastContactDate) out = { ...out, first: lastContactDate };
+  if (lead.result === "부재" && !lead.next) {
+    const last = [lastContactDate, ...(lead.absences ?? []).map(a => a.date)].filter(Boolean).sort().at(-1);
+    if (last) out = { ...out, next: dayAfter(last) };
+  }
+  return out;
+}
 /** 다음 연락일을 사용하는 컨택 결과: 상세 입력과 대시보드가 공유한다. */
 const DB_SHEET_FOLLOW_UP_RESULTS: ReadonlySet<string> = new Set(["부재", "단순거절", "상담 후 거절", "재통화", "컨택진행"]);
 export function isDbSheetFollowUpResult(result: string): boolean { return DB_SHEET_FOLLOW_UP_RESULTS.has(result); }

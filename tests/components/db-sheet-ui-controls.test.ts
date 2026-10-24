@@ -128,3 +128,11 @@ it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only
  expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('977px');
  expect(host.textContent).toContain('컨택일(최초컨택일)');expect(host.querySelector('.db-call-heading .db-first-contact')).toBeNull();expect(host.querySelector('[aria-label="DB정보 최초상담일"]')).not.toBeNull();
 });
+it("hides 부재 기록 once the result is 단순거절 (2026-10-25)", () => {
+  const noop = vi.fn();
+  const render = (result: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onRecording: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {}, onAbsence: async () => {} })));
+  render("부재");
+  expect(host.querySelector('[aria-label="부재 기록"]')).not.toBeNull();
+  render("단순거절");
+  expect(host.querySelector('[aria-label="부재 기록"]')).toBeNull();
+});

@@ -1,11 +1,11 @@
 /** Server-only DB sheet ledger. Never falls back to Sheets; migration 0008 must already exist. */
 import { formatMobilePhone } from "@/util/db-sheet-identity";
-import { addDays, fmtISO, parseISO, todayKST } from "@/util/week";
+import { addDays, fmtISO, parseISO } from "@/util/week";
 import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, backfillDbSheetDates, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -120,6 +120,10 @@ export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
   const resolved=effectiveMeeting(meetings,data.meetingId);
   // 현재상태는 저장값을 고치지 않고 읽을 때 컨택결과 기준으로 다시 계산한다(예전 행의 「미컨택」 표시 보정).
   if(!data.meetingId)data={...data,stage:dbSheetContactStage({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first})};
+  // 예전 기록 보정(읽을 때만): 실적 여부는 보정 전 값으로 고정한 뒤 날짜만 채운다.
+  // 부재는 비어 있는 다음 연락일을 전부 채운다(2026-10-25 belie 「이미 잡혀 있는 부재 전부」). 채운 날은 아직 안 한 새 예약이다.
+  {const before=data.next;data=backfillDbSheetDates({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first},lastDates.get(data.id)??"",d=>fmtISO(addDays(parseISO(d),1)));
+  if(data.next&&data.next!==before){const g=data.followUp?.generation??0;data={...data,followUp:{generation:g+1,completedGeneration:data.followUp?.completedGeneration??null,lastContactDate:data.followUp?.lastContactDate??lastDates.get(data.id)??""}};}}
   return projectMeeting({...data,followUp:data.followUp??{generation:0,completedGeneration:null,lastContactDate:lastDates.get(data.id)??""}},resolved.meeting,resolved.lineage);
  });
 }
@@ -133,9 +137,9 @@ export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
  const hasQualifiedContact=!!dates.rows[0]?.first;const first=nextDbSheetFirstContact(old.first,event.result,event.date);
- // 이 컨택이 잡혀 있던 다음 연락일을 소비하면 비운다. 부재는 빈 다음 연락일을 내일(KST)로 새로 잡는다(새 예약 세대).
+ // 이 컨택이 잡혀 있던 다음 연락일을 소비하면 비운다. 부재는 빈 다음 연락일을 부재를 적은 날의 다음날로 새로 잡는다(새 예약 세대, 2026-10-25 belie).
  const consumed=!old.next||event.date>=old.next,generation=old.followUp?.generation??0,kept=consumed?"":old.next;
- const next=autoDbSheetNextContact(event.result,kept,fmtISO(addDays(parseISO(todayKST()),1))),scheduled=next!==kept;
+ const next=autoDbSheetNextContact(event.result,kept,fmtISO(addDays(parseISO(event.date),1))),scheduled=next!==kept;
  // 새 컨택결과를 기록하면 직접 정한 현재상태(장기관리·진행종료)는 풀린다 — 다시 연락을 시작했다는 뜻.
  const lead:DbSheetLead={...withoutManualStage(old),next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:dbSheetContactStage({stage:"",result:event.result,hasQualifiedContact}),contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:generation+(scheduled?1:0),completedGeneration:consumed?generation:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
  await persist(c,ctx,lead);return {lead,impact:contributionImpact(old,lead),changedSales:await applyDeltas(c,ctx,[...before,...await contributions(c,ctx,lead,1)])};
@@ -257,7 +261,11 @@ export async function addDbSheetAbsence(ctx:DbSheetContext,leadId:string,entry:D
  return transaction(ctx,async c=>{
   const old=await expected(c,ctx,leadId,expectedRevision);
   const list=[...(old.absences??[]).filter(a=>!(a.date===add.date&&a.hour===add.hour)),add].sort((a,b)=>a.date.localeCompare(b.date)||a.hour-b.hour).slice(-60);
-  const lead:DbSheetLead={...old,absences:list,revision:old.revision+1};
+  // 부재를 적으면 다음 연락일을 그 다음날로(2026-10-25 belie) — 비었거나 이미 지난(그날까지인) 예약일 때만. 새 예약 세대.
+  const reschedule=!old.next||old.next<=add.date;
+  const next=reschedule?fmtISO(addDays(parseISO(add.date),1)):old.next;
+  const followUp=reschedule?{generation:(old.followUp?.generation??0)+1,completedGeneration:old.followUp?.completedGeneration??null,lastContactDate:old.followUp?.lastContactDate??""}:old.followUp;
+  const lead:DbSheetLead={...old,absences:list,next,...(followUp?{followUp}:{}),revision:old.revision+1};
   await persist(c,ctx,lead);return {lead:old.meetingId?await linkedProjection(c,ctx,lead):lead,changedSales:[]};
  });
 }

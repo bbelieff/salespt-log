@@ -23,6 +23,12 @@ describe("approved follow-up rules", () => {
     }
     expect(buildRecontactLeads([lead({result:"단순거절",next:""}),lead({result:"상담 후 거절",next:""})],TODAY)).toEqual([]);
   });
+  it("재통화 without 다음 연락일 counts D+ from 최초상담일 and asks to set the date (2026-10-25)", () => {
+    const [it0] = buildRecontactLeads([lead({result:"재통화",next:"",first:"2026-10-02",followUp:{generation:1,completedGeneration:1,lastContactDate:TODAY}})],TODAY);
+    expect(it0).toMatchObject({ reasons:["재통화 · 다음 연락일 없음"], action:"다음 연락일 정하기", dueISO:"2026-10-02" });
+    expect(it0!.badge).toMatch(/^D\+\d{2}$/);
+    expect(it0!.facts).toContainEqual({ label:"최초상담일", value:"2026-10-02" });
+  });
   it("booked/closed leads leave the contact queue, even when an old next date remains", () => {
     expect(buildRecontactLeads([lead({next:TODAY,meetingId:"m"}),lead({next:TODAY,stage:"계약해지"}),lead({next:TODAY,funnel:"계약"})],TODAY)).toEqual([]);
   });
