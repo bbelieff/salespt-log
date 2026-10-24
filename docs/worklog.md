@@ -1,3 +1,5 @@
+## 2026-10-24 · 오늘 챙길 일 빠른 보기 우하단으로
+- fix/followups-launcher-right. belie 「비서 플로팅 아이콘은 우측하단으로 이동」. 버튼·창·펼침 기준점 오른쪽, PC 실무/수납 여백 상세 칸으로. [plan](plans/active/followups-launcher-right.md).
 ## 2026-10-24 · 대시보드 배지 칩
 - feat/badge-dashboard-chip, base 29546031. belie 승인 칩 목업: 「오늘 챙길 일」 상자 맨 아래 「배지 N/31 · 다음 ○○까지 N일」(새 배지면 주황·점, 0개면 첫 행동) → /badges, 로고 메뉴 NEW(배지 화면 처음 열 때까지). 화면만, 데이터 무변경. 소유: components/badges/BadgeChip·badge-next, DashboardFollowUps 한 줄, TopHeader NEW 한 줄, badges page 리팩터. [plan](plans/active/badge-dashboard-chip.md).
 ## 2026-10-24 · 전체 진행건 막대에 장기관리 칸

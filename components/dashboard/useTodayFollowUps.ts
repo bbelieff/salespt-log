@@ -1,5 +1,5 @@
 "use client";
-/** 「오늘 챙길 일」 조회·집계 단일 진입점 — 대시보드 카드와 좌하단 빠른 보기가 같은 쿼리 캐시를 공유한다. */
+/** 「오늘 챙길 일」 조회·집계 단일 진입점 — 대시보드 카드와 우하단 빠른 보기가 같은 쿼리 캐시를 공유한다. */
 import { useMemo } from "react";
 import { useContractPayments } from "@/query/contract-payment-hooks";
 import { useAllTodos } from "@/query/todos-hooks";

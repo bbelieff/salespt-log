@@ -234,7 +234,7 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 | 3a | 실무/수납 D R5 승인 대기: <=767 전용 알림 portal / >=768 기존 상세 상태 줄 | portal `z-40` / 기존 줄 `z-20` | portal `calc(var(--app-header-height) + 2px)`·right12 / 기존 줄 `top-app-content` | portal 최소44px·알림30px·undo44px, 본문 예약0 / 기존 줄24px·행동36px |
 | 3b | 실무/수납 상세 섹션 제목 `.payment-sticky-title` | `z-10` | D R5 <=767 `top-app-content` / 768~1279 inline `calc(var(--app-header-height) + 4.5rem)`, 상태 행동 `+ 5.25rem` / 1280 이상 PC 열 안 `0` | 내용 |
 | 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상(별도) | — | — |
-| 3c | 좌하단 「오늘 챙길 일」 빠른 보기 버튼 / 창 (`followups-launcher.css`) | 버튼 `45`(헤더·탭바·모달 아래) / 열린 창 `55`(고정 요약줄 위, 로딩 팝업 아래) | 모바일 bottom `var(--app-tabbar-height) + 12px` · PC bottom 20px, left 240px(접힘 84px) | 버튼 56px · 창 최대 360px |
+| 3c | 우하단 「오늘 챙길 일」 빠른 보기 버튼 / 창 (`followups-launcher.css`) | 버튼 `45`(헤더·탭바·모달 아래) / 열린 창 `55`(고정 요약줄 위, 로딩 팝업 아래) | 모바일 bottom `var(--app-tabbar-height) + 12px` · PC bottom 20px · 오른쪽 모바일 16px / PC 24px(안전영역 더함) | 버튼 56px · 창 최대 360px |
 | 0 | 본문 `main`, 대시보드 매출·비용·영업이익 | 없음 | — | 일반 흐름 |
 | -1 | `BottomNav`(모바일) | `z-50`(fixed bottom) | bottom-0 | `h-[60px]` |
 
