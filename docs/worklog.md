@@ -331,6 +331,12 @@
 
 # 세션 워크로그 (Session Worklog)
 
+### 2026-10-25 · DC 총괄(데탑 C총괄 260927) · DB관리시트 단순거절·부재·재통화 날짜 규칙
+- belie 요청: ① 단순거절이면 부재 기록 칸 숨김 ② 단순거절은 바뀐 날로 최초상담일 자동(이미 단순거절인 업체 포함) ③ 부재는 부재를 적은 날 다음날로 다음 연락일 자동(이미 부재인 업체 전부) ④ 재통화인데 다음 연락일이 없으면 오늘 챙길 일에 최초상담일부터 D+N.
+- 구역: `lib/types/db-sheet.ts`(backfillDbSheetDates) · `lib/repo/db/db-sheet.ts`(부재 기준일=컨택일 다음날, 부재 기록도 다음 연락일, 목록 읽을 때 보정) · `lib/analytics/dashboard-follow-ups.ts` · `app/(app)/db-sheet/_components/DbDetail.tsx` · 테스트.
+- 결정: 기존 기록은 운영 DB를 일괄 수정하지 않고 **읽을 때 보정**(값을 고치면 그대로 저장됨) — 비가역 일괄 쓰기 없이 화면·오늘 챙길 일에 같은 결과. 보정한 다음 연락일은 「아직 안 한 예약」으로 표시. 최초상담일을 직접 정한 값(firstManual)은 그대로. 단순거절 보정 때 실적(STEP 2) 여부는 보정 전 값 유지.
+- 되돌리기: 이 squash 커밋 revert.
+
 ### 2026-10-23 · Claude(경영일지 DC 하위 에이전트) · 컨택 숫자 저장 지연 (fix/contact-save-speed)
 - 증상: STEP 2 숫자 저장이 오래 걸림. 운영 `api_timing` 실측 — POST /api/daily 평시 850~1,200ms 중 시트 620~1,000ms(sheets_calls=2), 10-23 09:58~10:00 시트 읽기 할당량 초과로 20~26초·503 2건.
 - 원인: `syncDirectProductionForDate` 가 매 저장마다 03 직접생산 시트 read + M 셀 시트 동기 write. 파일 단위 화이트리스트라 구조 테스트가 못 잡음.

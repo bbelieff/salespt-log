@@ -27,7 +27,7 @@ it.each(["장기관리", "진행종료"] as const)("%s persists, survives a plai
   lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-09", result: "부재", note: "" }, lead.revision)).lead;
   expect(buildRecontactLeads([await get(lead.id)], "2027-05-11")).toHaveLength(1);
   lead = (await setDbSheetManualStage(ctx, lead.id, stage, lead.revision)).lead;
-  expect(lead).toMatchObject({ stage, manualStage: stage, result: "부재", next: "2027-05-11" });
+  expect(lead).toMatchObject({ stage, manualStage: stage, result: "부재", next: "2027-05-10" }); // 부재를 적은 날(05-09) 다음날 — 2026-10-25 규칙
   lead = (await saveDbSheetLead(ctx, { ...lead, memo: "메모만 수정" }, lead.revision)).lead;
   const read = await get(lead.id);
   expect(read).toMatchObject({ stage, manualStage: stage });

@@ -127,8 +127,8 @@ function leadIsActive(lead: DbSheetLead) { return !lead.meetingId && lead.funnel
 function leadItem(lead: DbSheetLead, today: string, initial: boolean, due: string | null, reason: string): FollowUpItem {
   return item({ key: `lead:${lead.id}`, kind: initial ? "initial" : "recontact", step: initial ? "1.5" : "2",
     title: lead.company.trim() || "이름 없는 업체", detail: `${dbSheetResultLabel(lead.result)} · ${lead.channel}`,
-    action: initial ? "첫 연락하기" : reason === "다음 연락일 없음" ? "다음 연락일 정하기" : "다시 연락하기",
-    reasons: [reason], facts: [{ label: "유입일", value: lead.date }, { label: "연락 결과", value: dbSheetResultLabel(lead.result) }, { label: "다음 연락일", value: lead.next || "미정" }],
+    action: initial ? "첫 연락하기" : reason.endsWith("다음 연락일 없음") ? "다음 연락일 정하기" : "다시 연락하기",
+    reasons: [reason], facts: [{ label: "유입일", value: lead.date }, { label: "연락 결과", value: dbSheetResultLabel(lead.result) }, ...(lead.first ? [{ label: "최초상담일", value: lead.first }] : []), { label: "다음 연락일", value: lead.next || "미정" }],
     href: `/db-sheet?lead=${encodeURIComponent(lead.id)}`,
   }, due, today);
 }
@@ -144,7 +144,9 @@ export function buildRecontactLeads(leads: DbSheetLead[], today: string): Follow
     }
     if (!["부재", "컨택진행", "재통화"].includes(l.result)) return [];
     // A completed contact consumes its old reservation. A fresh reservation is a new generation.
-    return [leadItem(l, today, false, l.followUp?.lastContactDate || null, "다음 연락일 없음")];
+    // 재통화는 다음 연락일을 꼭 잡아야 한다 — 안 잡았으면 최초상담일부터 지난 날수(D+N)로 오늘 챙길 일에(2026-10-25 belie).
+    const since = l.result === "재통화" && isValidISODate(l.first) ? l.first : l.followUp?.lastContactDate || null;
+    return [leadItem(l, today, false, since, l.result === "재통화" ? "재통화 · 다음 연락일 없음" : "다음 연락일 없음")];
   }).sort(compareFollowUpUrgency);
 }
 /** One row per active work slot; missing institution and missing next task are reasons on that row. */
