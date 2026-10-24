@@ -1,3 +1,5 @@
+## 2026-10-25 · 미팅 시작 3시간 뒤 결과 알림
+- feat/meeting-result-push, base c6506d24. belie 지시. 미팅마다 한 번, 결과 미입력·21시 전·미팅 알림 켬. 마이그레이션 0011(slot 'meeting' 추가) — 운영 적용 필요. [plan](plans/completed/meeting-result-push.md).
 ## 2026-10-25 · 오늘 챙길 일 테두리 바깥 빛 번짐
 - fix/followups-border-glow. belie 비교 시안 후 「D 인데 바깥 테두리만 6px」「번짐 색상은 테두리와 동일」. 같은 무지개 두 겹(2·6px 흐림)을 카드 뒤에, 안쪽 면은 ::after 로 덮어 바깥으로만. [plan](plans/active/followups-border-glow.md).
 

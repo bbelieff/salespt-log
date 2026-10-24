@@ -61,3 +61,20 @@ describe("withDeliveryTag", () => {
     expect(withDeliveryTag("//evil.example", "abc")).toBe("/dashboard?from=push&d=abc");
   });
 });
+
+describe("dueMeetingResults", () => {
+  const m = (over: Record<string, unknown>) => ({ id: "x", 미팅날짜: TODAY, 미팅시간: "14:00", 상태: "예약", 업체명: "샘플상사", ...over }) as never;
+  it("today's unrecorded meetings from three hours after start, until 21:00", async () => {
+    const { dueMeetingResults } = await import("@/service/push-messages");
+    expect(dueMeetingResults([m({})], TODAY, "16:45")).toEqual([]);
+    expect(dueMeetingResults([m({})], TODAY, "17:00")).toHaveLength(1);
+    expect(dueMeetingResults([m({ 상태: "완료" }), m({ 미팅날짜: "2026-10-22" })], TODAY, "17:00")).toEqual([]);
+    expect(dueMeetingResults([m({ 미팅시간: "18:00" })], TODAY, "21:15")).toEqual([]);
+  });
+  it("hidden company names keep the message generic", async () => {
+    const { buildMeetingResultMessage } = await import("@/service/push-messages");
+    const msg = buildMeetingResultMessage(m({ id: "m9" }), false);
+    expect(msg.body).not.toContain("샘플상사");
+    expect(msg.url).toBe("/schedule");
+  });
+});

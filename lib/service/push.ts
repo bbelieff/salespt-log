@@ -15,11 +15,11 @@ import { loadContractPayments } from "./contract-payment";
 import { listAllTodos } from "./todos";
 import { loadFollowUpMeetings } from "./meeting-follow-ups";
 import { loadDbSheet, resolveDbSheetContext } from "./db-sheet";
-import { buildPushMessage, withDeliveryTag } from "./push-messages";
+import { buildMeetingResultMessage, buildPushMessage, dueMeetingResults, withDeliveryTag } from "./push-messages";
 import { buildSeedMessage, type SeedSources } from "./push-seed";
-import { addDaysISO, dueSlots, kstNow, nextNotification, WEEKDAY_LABELS } from "./push-schedule";
+import { addDaysISO, dueSlots, kstNow, nextNotification, onWeekday, WEEKDAY_LABELS, type KstNow } from "./push-schedule";
 
-const TTL_SECONDS: Record<PushSlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600 };
+const TTL_SECONDS: Record<store.DeliverySlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600, meeting: 3 * 3600 };
 export const TEST_PUSH_DAILY_LIMIT = 3;
 
 export function pilotEmails(): string[] {
@@ -106,7 +106,7 @@ export async function loadFollowUpSources(email: string, today: string, nowHHMM?
 }
 
 interface Fanout { sent: number; failed: number; fatal: boolean }
-async function fanout(email: string, payload: { title: string; body: string; url: string; d: string }, slot: PushSlot): Promise<Fanout> {
+async function fanout(email: string, payload: { title: string; body: string; url: string; d: string }, slot: store.DeliverySlot): Promise<Fanout> {
   const subs = await store.listActiveSubscriptions(email);
   const out: Fanout = { sent: 0, failed: 0, fatal: false };
   for (const sub of subs) {
@@ -173,6 +173,33 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
         Sentry.captureException(error, { tags: { where: "push-dispatch", slot } });
       }
     }
+    if (await dispatchMeetingResult(email, prefs, kst, stats) === "fatal") return stats;
   }
   return stats;
+}
+
+/**
+ * 미팅 시작 3시간 뒤 결과 알림(belie 2026-10-25) — 정기 아침·저녁과 별개로, 미팅마다 한 번.
+ * 알림을 켜 두고 「미팅」 내용과 그 요일을 받는 사람만. 한 번에 한 건만 보내고 나머지는 다음 15분에.
+ */
+async function dispatchMeetingResult(email: string, prefs: PushPreferences, kst: KstNow, stats: DispatchStats): Promise<"ok" | "fatal"> {
+  if (!prefs.enabled || !prefs.kinds.includes("meeting") || !onWeekday(prefs, kst.weekday)) return "ok";
+  try {
+    const due = dueMeetingResults(await loadFollowUpMeetings(email, kst.date), kst.date, kst.time);
+    for (const m of due) {
+      const id = await store.claimDelivery(`${email}:${kst.date}:meeting:${m.id}`, email, "meeting", kst.date);
+      if (!id) continue;
+      stats.candidates++;
+      const msg = buildMeetingResultMessage(m, prefs.showCompanyNames);
+      const r = await fanout(email, { title: "경영일지", body: msg.body, url: withDeliveryTag(msg.url, id), d: id }, "meeting");
+      await store.finishDelivery(id, { status: r.sent ? "sent" : "failed", messageId: msg.messageId, itemCount: 1, devicesSent: r.sent, devicesFailed: r.failed });
+      if (r.sent) stats.sent++; else stats.failed++;
+      if (r.fatal) { Sentry.captureMessage("push_vapid_rejected", { level: "error", tags: { where: "push-meeting-result" } }); return "fatal"; }
+      break;
+    }
+  } catch (error) {
+    // 운영 DB 에 0011 이 아직 없으면 claim 이 제약에 걸린다 — 정기 알림은 그대로 두고 이 알림만 쉰다.
+    Sentry.captureException(error, { tags: { where: "push-meeting-result" } });
+  }
+  return "ok";
 }
