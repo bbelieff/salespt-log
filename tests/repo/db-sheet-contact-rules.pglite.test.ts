@@ -106,6 +106,28 @@ it("read backfills old 단순거절 rows without 최초상담일 to the refusal 
   expect(await get(lead.id)).toMatchObject({ first: "2027-05-06", hasQualifiedContact: false, stage: "DB컨택중" });
 });
 
+it("read fills a blank 최초상담일 with the first consult-type contact, skipping 부재 days, for any result", async () => {
+  let a = await fresh(); // 재통화 → 단순거절: 첫 상담(재통화) 날
+  a = (await saveDbSheetContact(ctx, a.id, { date: "2027-04-15", result: "재통화", note: "" }, a.revision)).lead;
+  a = (await saveDbSheetContact(ctx, a.id, { date: "2027-04-19", result: "단순거절", note: "" }, a.revision)).lead;
+  let b = await fresh(); // 부재 → 단순거절: 부재 날은 상담이 아님
+  b = (await saveDbSheetContact(ctx, b.id, { date: "2027-04-19", result: "부재", note: "" }, b.revision)).lead;
+  b = (await saveDbSheetContact(ctx, b.id, { date: "2027-04-22", result: "단순거절", note: "" }, b.revision)).lead;
+  let c = await fresh(); // 컨택진행도 같은 보정
+  c = (await saveDbSheetContact(ctx, c.id, { date: "2027-04-23", result: "컨택진행", note: "" }, c.revision)).lead;
+  for (const l of [a, b, c]) await query("update db_sheet_leads set data = data || '{\"first\":\"\",\"firstManual\":true}'::jsonb where spreadsheet_id=$1 and id=$2", [ctx.spreadsheetId, l.id]);
+  expect((await get(a.id)).first).toBe("2027-04-15");
+  expect((await get(b.id)).first).toBe("2027-04-22");
+  expect(await get(c.id)).toMatchObject({ first: "2027-04-23", hasQualifiedContact: true });
+});
+
+it("read backfills 단순거절 even when an old empty manual first-date save left firstManual=true", async () => {
+  let lead = await fresh();
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-05", result: "단순거절", note: "" }, lead.revision)).lead;
+  await query("update db_sheet_leads set data = data || '{\"first\":\"\",\"firstManual\":true}'::jsonb where spreadsheet_id=$1 and id=$2", [ctx.spreadsheetId, lead.id]);
+  expect((await get(lead.id)).first).toBe("2027-05-05");
+});
+
 it("read fills every 부재 row without 다음 연락일 with the day after the 부재, as a pending (not completed) reservation", async () => {
   let lead = await fresh();
   lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-06", result: "부재", note: "" }, lead.revision)).lead;
