@@ -3,6 +3,8 @@ import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo
 import { normalizeInstitution } from "@/util/institution-match";
 import { isHaltedSlot, isLongWaitSlot, isWaitingSlot, slotHasData, slotsOf } from "./contract-slots";
 import { todoSlotOf } from "./todo-slot";
+// long-term.ts 도 이 파일의 isSlotClosed 를 쓴다(서로 참조) — 둘 다 함수 안에서만 불러 순환 문제 없음.
+import { isLongTermContract } from "./long-term";
 
 /**
  * 실무/수납 성과 요약과 대시보드 업무 현황의 동일한 계약 범위 — 숨김·해지만 뺀다.
@@ -12,7 +14,8 @@ export function activeWorkContracts(contracts: ContractPayment[]): ContractPayme
   return contracts.filter((cp) => !cp.해지숨김 && !isTerminatedContract(cp));
 }
 
-export type WorkStatusKey = "waiting" | "progress" | "approved" | "collection-waiting" | "collected";
+/** longterm = 장기관리건(2026-10-24 belie) — 조건 대기·장기관리 진행건 + 직접 「장기관리」로 보낸 업체의 끝나지 않은 진행건. */
+export type WorkStatusKey = "waiting" | "progress" | "approved" | "collection-waiting" | "collected" | "longterm";
 
 export interface WorkStatusItem {
   key: string;
@@ -88,6 +91,16 @@ export function isSlotClosed(slot: PaymentSlot, todayISO: string): boolean {
   return isHaltedSlot(slot) || classifyWorkStatus(slot, true, todayISO) === "collected";
 }
 
+/**
+ * 업무 현황 칸 — 조건 대기·장기관리 진행건은 「장기관리」(수납액이 있어도 — isSlotClosed 와 같은 우선순위),
+ * 업체가 장기관리(long-term.ts)면 수납완료가 아닌 진행건도 「장기관리」. 나머지는 classifyWorkStatus.
+ */
+export function workStatusOf(slot: PaymentSlot, hasTodo: boolean, todayISO: string, longTermCompany: boolean): WorkStatusKey {
+  if (isLongWaitSlot(slot)) return "longterm";
+  const status = classifyWorkStatus(slot, hasTodo, todayISO);
+  return longTermCompany && status !== "collected" ? "longterm" : status;
+}
+
 /** 중도중지한 진행건은 업무 현황에 넣지 않는다 — 진행건이 전부 중도중지면 그 계약은 빠진다. */
 export function buildWorkStatusItems(
   contracts: ContractPayment[],
@@ -101,6 +114,7 @@ export function buildWorkStatusItems(
     const live = populated.filter(([, slot]) => !isHaltedSlot(slot));
     if (populated.length && !live.length) continue;
     const effective = live.length ? live : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
+    const longTermCompany = isLongTermContract(cp);
     for (const [slotNo, slot] of effective) {
       // 기관 이름이 어느 진행건과도 맞지 않는 옛 기록(unmatched)은 화면에 보이게만 하고 상태는 바꾸지 않는다.
       const hasTodo = todos.some((t) => {
@@ -110,7 +124,7 @@ export function buildWorkStatusItems(
       });
       out.push({
         key: `${cp.row ?? cp.업체명}-${slotNo}`,
-        status: classifyWorkStatus(slot, hasTodo, todayISO),
+        status: workStatusOf(slot, hasTodo, todayISO, longTermCompany),
         row: cp.row ?? null,
         slot: slotNo,
         company: cp.업체명,

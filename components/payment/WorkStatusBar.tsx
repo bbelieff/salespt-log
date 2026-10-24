@@ -9,6 +9,8 @@ const STATUS: Array<{ key: WorkStatusKey; label: string; color: string; text: st
   { key: "approved", label: "승인", color: "bg-gradient-to-r from-violet-400 to-fuchsia-400", text: "text-white" },
   { key: "collection-waiting", label: "수납대기", color: "bg-gradient-to-r from-amber-300 to-orange-400", text: "text-amber-950" },
   { key: "collected", label: "수납완료", color: "bg-gradient-to-r from-emerald-400 to-teal-400", text: "text-white" },
+  // 장기관리건(2026-10-24 belie) — 조건 대기·장기관리 + 장기관리 업체의 끝나지 않은 진행건. 쉬는 일이라 차분한 돌색.
+  { key: "longterm", label: "장기관리", color: "bg-gradient-to-r from-stone-400 to-stone-500", text: "text-white" },
 ];
 
 /** 팝업 폭(px) — 마우스 지점에 띄울 때 좌우로 넘치지 않게 계산하는 기준. */

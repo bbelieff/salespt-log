@@ -5,7 +5,7 @@ import { DB_SHEET_MEETING_STAGE, type DbSheetContext, type DbSheetFunnelStep, ty
 
 const labels: Record<WorkStatusKey, string> = {
   waiting: "진행대기", progress: "진행", approved: "승인",
-  "collection-waiting": "수납대기", collected: "수납완료",
+  "collection-waiting": "수납대기", collected: "수납완료", longterm: "장기관리",
 };
 
 type ContractState = Pick<ContractPayment, "해지일" | "해지숨김">;
