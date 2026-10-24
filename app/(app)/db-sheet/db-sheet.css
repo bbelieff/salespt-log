@@ -116,10 +116,11 @@ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-add-actions{display
 body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-btn{padding-left:8px;padding-right:8px;font-size:12px}
 body.db-sheet-route .db-sheet-panel .sheet-grid{max-height:calc(100dvh - 190px)}
 @container db-list (max-width:1140px){
- body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{order:4;flex-basis:100%;flex-wrap:wrap}
+ /* 검색칸은 제목 옆 같은 줄에 둔다(2026-10-24 belie 「검색바를 위로 올려 공백 낭비 말 것」) — 자리가 모자랄 때만 줄바꿈. */
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters{order:0;flex:1 1 150px;flex-wrap:nowrap}
  body.db-sheet-route .db-sheet-panel .sheet-panel-head>.sheet-table-tools{margin-left:auto}
  body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-add-actions{margin-left:0}
- body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{max-width:240px}
+ body.db-sheet-route .db-sheet-panel .sheet-panel-head .sheet-filters .search{min-width:150px;max-width:280px}
 }
 @media(max-width:1023px){
  body.db-sheet-route .sheet-banner-tabs{margin-left:12px;gap:0}
