@@ -1,6 +1,6 @@
 ---
 slug: activity-days-stage0
-status: active
+status: completed
 created: 2026-10-22
 worktree: ../wt/claude-activity-days
 ---
@@ -21,7 +21,7 @@ worktree: ../wt/claude-activity-days
 - [x] 주 창은 호출부가 정한다(주간목표의 금~목 `goalWeekWindow`). 영업 요일은 인자(`workdays`, 기본 월~금)로 받는다. **알림 '받는 요일'과 묶지 않는다**(GPT 검수: 알림을 줄여도 영업 요일·목표가 바뀌면 안 됨). 출처는 belie 결정 전. 영업 요일이 아닌 날 = off, 아직 오지 않은 영업 요일 = upcoming(쉬는 날과 구분)
 - [x] `weekdays`는 "이번 주 영업 요일 수"라는 사실값일 뿐이다. 주 목표 일수(주 2·3·5일)는 belie 결정 전이라 이 함수가 정하지 않는다
 - [x] 화면·API·DB 변경 없음. 기존 `gamification.ts`(XP 가중치) 무변경 → ADR 불요
-- [ ] `bash scripts/check.sh` 통과
+- [x] `bash scripts/check.sh` 통과 · CI 성공 · GPT 재검수 PASS
 
 ## 열린 결정 (belie)
 - 일일 실적 숫자 직접 입력을 sales로 셀지(현재 record로 둠, 실제 연락 검증 불가).
@@ -34,3 +34,4 @@ worktree: ../wt/claude-activity-days
 
 ## Log
 - 2026-10-22 함수·시험 작성(Claude, GPT 협업 스레드 #05-경영일지).
+- 2026-10-23 #1195 squash 243de16c 머지 → Deploy run 39923970538 success, health 200. belie 결정: 일일 실적 직접 입력=기록일, 주 목표=본인 2·3·5일 선택(후속 화면).

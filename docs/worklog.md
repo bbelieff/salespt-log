@@ -1,3 +1,5 @@
+## 2026-10-23 · 영업활동일 판정 함수 머지·배포 완료
+- #1195 squash 243de16c, Deploy 39923970538 success, health 200. 화면·API·DB 변경 없음(호출부 없음). 다음: 실제 기록→판정 이벤트 어댑터(업무 완료일 출처 결정 포함). [plan](plans/completed/activity-days-stage0.md).
 ## 2026-10-24 · DB관리시트 부재 기록 · 따로 잡은 미팅 연결 (PR 2)
 - feat/db-sheet-absence-meeting-link. belie 목업 [8]·[5]: 부재 기록(날짜·시각, 안 걸어 본 시간대 안내) + STEP 2 에서 따로 잡은 미팅을 같거나 비슷한 업체명으로 찾아 연결/풀기(실적 무변경). 실데이터 연결은 수강생이 직접. [plan](plans/active/db-sheet-bulk-absent-link.md).
 ## 2026-10-23 · DB관리시트 일괄 작업·장기관리 (PR 1/2 — A+C)
