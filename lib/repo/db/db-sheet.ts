@@ -105,7 +105,8 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
 export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
  guard(ctx);const c=getDbPool();const r=await c.query("select data from db_sheet_leads where spreadsheet_id=$1 order by data->>'date' desc,id",[ctx.spreadsheetId]);
  const meetings=await meetingRows(c,ctx);
- const contacts=await c.query("select lead_id,max(contact_date)::text as date,array_agg(contact_date::text) filter (where qualified) as qualified_dates from db_sheet_contacts where spreadsheet_id=$1 group by lead_id",[ctx.spreadsheetId]);
+ const contacts=await c.query("select lead_id,max(contact_date)::text as date,min(contact_date) filter (where result in ('단순거절','재통화','컨택진행','상담 후 거절'))::text as first_consult,array_agg(contact_date::text) filter (where qualified) as qualified_dates from db_sheet_contacts where spreadsheet_id=$1 group by lead_id",[ctx.spreadsheetId]);
+ const firstConsult=new Map(contacts.rows.map((row:{lead_id:string;first_consult:string|null})=>[row.lead_id,row.first_consult??""]));
  const lastDates=new Map(contacts.rows.map((row:{lead_id:string;date:string})=>[row.lead_id,row.date]));
  const history=await c.query('select lead_id from db_sheet_history where spreadsheet_id=$1 and revision=1',[ctx.spreadsheetId]);const evidence=new Set(history.rows.map((r:{lead_id:string})=>r.lead_id));
  const qualified=new Map(contacts.rows.map((r:{lead_id:string;qualified_dates:string[]|null})=>[r.lead_id,r.qualified_dates??[]]));
@@ -122,7 +123,7 @@ export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
   if(!data.meetingId)data={...data,stage:dbSheetContactStage({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first})};
   // 예전 기록 보정(읽을 때만): 실적 여부는 보정 전 값으로 고정한 뒤 날짜만 채운다.
   // 부재는 비어 있는 다음 연락일을 전부 채운다(2026-10-25 belie 「이미 잡혀 있는 부재 전부」). 채운 날은 아직 안 한 새 예약이다.
-  {const before=data.next;data=backfillDbSheetDates({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first},lastDates.get(data.id)??"",d=>fmtISO(addDays(parseISO(d),1)));
+  {const before=data.next;data=backfillDbSheetDates({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first},lastDates.get(data.id)??"",d=>fmtISO(addDays(parseISO(d),1)),firstConsult.get(data.id)??"");
   if(data.next&&data.next!==before){const g=data.followUp?.generation??0;data={...data,followUp:{generation:g+1,completedGeneration:data.followUp?.completedGeneration??null,lastContactDate:data.followUp?.lastContactDate??lastDates.get(data.id)??""}};}}
   return projectMeeting({...data,followUp:data.followUp??{generation:0,completedGeneration:null,lastContactDate:lastDates.get(data.id)??""}},resolved.meeting,resolved.lineage);
  });
