@@ -1,6 +1,6 @@
 ---
 slug: badge-collection
-status: active
+status: completed
 created: 2026-10-24
 worktree: ../wt/claude-activity-days (branch feat/badge-collection)
 ---
@@ -15,9 +15,9 @@ worktree: ../wt/claude-activity-days (branch feat/badge-collection)
 - [x] 읽기 전용 repo `lib/repo/db/badge-reads.ts`(연락 기록·DB관리시트 업체 3칸·첫 주간목표·첫 알림) + service `loadBadges` — DB 정본 기수만 읽음(시트 동기 호출 없음), 한 출처 실패는 partial
 - [x] `GET /api/badges` — requireStudentViewContext(대리 보기·아레나 시트 포함), no-store
 - [x] `/badges` 화면 + `BadgeMedal`·`BadgeDetailSheet` + 로고 메뉴 「배지 수집 N/31」 + 안 본 새 배지 점
-- [ ] 화면 확인 PC·모바일 320/375/430
-- [ ] `bash scripts/check.sh` + production build
-- [ ] 병합·배포·운영 확인
+- [x] 화면 확인 PC 1280·모바일 320/375/430·0개·메뉴·크게 보기(합성 데이터 임시 미리보기) — 숨은 배지 조건 노출 버그 발견·수정
+- [x] `bash scripts/check.sh`(시험 4522) + production build
+- [x] #1220 squash 785a5bfa, Deploy 40079147429 success, health 200, /api/badges 401(비로그인)·/badges/trophy.png 200. 로그인 화면 실물 확인은 NOT_RUN(Claude 로그인 불가) — belie 확인 필요
 
 ## 1단계에서 얻을 수 없는 배지 7개(「준비 중」 표시)
 주 목표 첫 달성·4번(주 목표 일수 저장 칸 없음), 홈 화면 추가·씨앗에서 시작·비서에게 답하기(기록 없음), 약속 지킨 주(지난 주 놓친 약속 이력 없음), 아침형 영업인(연락 시각 저장 안 됨).
@@ -30,3 +30,4 @@ worktree: ../wt/claude-activity-days (branch feat/badge-collection)
 
 ## Log
 - 2026-10-24 판정·API·화면·메뉴 구현(Claude). 시험: 판정 14·API 3·service 4.
+- 2026-10-24 #1220 병합·배포(785a5bfa, last-good f6ba1a5a). 남은 일: 빌드 경고 2건(쓰지 않는 eslint-disable 주석) 정리, 2단계(획득 알림·축하 화면) 착수 전 획득 기록 저장 여부 결정.
