@@ -2,7 +2,7 @@
  * Pure push copy (plan §3-1·§3-3). One notification names the single most pressing item
  * plus the total, in the order `followUpHeadline()` uses. Nothing here scolds or compares.
  */
-import type { FollowUpItem, FollowUpSummary } from "@/lib/analytics/dashboard-follow-ups";
+import { TODAY_MEETING_REASON, type FollowUpItem, type FollowUpSummary } from "@/lib/analytics/dashboard-follow-ups";
 import type { PushContentKind, PushPreferences } from "@/types/push";
 import { addDaysISO, type DispatchSlot } from "./push-schedule";
 
@@ -16,6 +16,8 @@ export function contentKindOf(item: FollowUpItem): FollowUpContentKind {
   return item.kind === "upcoming" ? "today" : item.kind;
 }
 
+/** 당일·아직 끝나지 않은 미팅 — 결과를 묻지 않고 오늘 미팅이 있다고만 알린다. */
+const isTodayMeeting = (it: FollowUpItem) => it.reasons.includes(TODAY_MEETING_REASON);
 const clip = (s: string, n = 24) => { const t = s.replace(/\s+/g, " ").trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 
 type Copy = (it: FollowUpItem, n: number) => string;
@@ -26,8 +28,10 @@ const MORNING: Record<FollowUpContentKind, Array<[Copy, Copy]>> = {
     [it => `${clip(it.title)} 약속이 기한을 지났어요. 오늘 하나만 챙겨 볼까요?`, (_, n) => `기한이 지난 약속이 ${n}건 있어요. 오늘 하나만 챙겨 볼까요?`],
   ],
   meeting: [
-    [it => it.overdueDays === 0 ? `오늘 ${clip(it.title)} 미팅이 있어요. 끝나면 결과를 적어 두세요.` : `${clip(it.title)} 미팅은 어떻게 됐어요?`, (_, n) => `미팅 결과가 ${n}건 비어 있어요. 어떻게 됐는지 적어 둘까요?`],
-    [it => `${clip(it.title)} 미팅 결과를 남겨 두면 다음 연락이 쉬워져요.`, (_, n) => `결과를 기다리는 미팅이 ${n}건 있어요.`],
+    [it => isTodayMeeting(it) ? `오늘 ${clip(it.title)} 미팅이 있어요. 끝나면 결과를 적어 두세요.` : it.overdueDays === 0 ? `오늘 ${clip(it.title)} 미팅은 어떻게 됐어요?` : `${clip(it.title)} 미팅은 어떻게 됐어요?`,
+      (it, n) => isTodayMeeting(it) ? "오늘 미팅이 있어요. 끝나면 결과를 적어 두세요." : `미팅 결과가 ${n}건 비어 있어요. 어떻게 됐는지 적어 둘까요?`],
+    [it => isTodayMeeting(it) ? `오늘 ${clip(it.title)} 미팅, 준비는 잘 되셨어요?` : `${clip(it.title)} 미팅 결과를 남겨 두면 다음 연락이 쉬워져요.`,
+      (it, n) => isTodayMeeting(it) ? "오늘 미팅이 있어요. 잘 다녀오세요." : `결과를 기다리는 미팅이 ${n}건 있어요.`],
   ],
   today: [
     [it => `오늘 ${clip(it.title)} 「${clip(it.action, 16)}」 하기로 하셨어요.`, (_, n) => `오늘 하기로 한 일이 ${n}건 있어요.`],
@@ -80,7 +84,9 @@ export function buildPushMessage(slot: DispatchSlot, summary: Pick<FollowUpSumma
     }
     const left = choose(urgent);
     if (!left) return null;
-    const body = show ? `${clip(left.item.title)} 「${clip(left.item.action, 16)}」 오늘 마무리해 볼까요?` : `오늘 남은 일이 ${urgent.length}건 있어요. 하나만 정리하고 마무리해요.`;
+    const body = !show ? `오늘 남은 일이 ${urgent.length}건 있어요. 하나만 정리하고 마무리해요.`
+      : isTodayMeeting(left.item) ? `오늘 ${clip(left.item.title)} 미팅이 남아 있어요. 끝나면 결과를 적어 두세요.`
+      : `${clip(left.item.title)} 「${clip(left.item.action, 16)}」 오늘 마무리해 볼까요?`;
     return { messageId: `evening.left.v1`, body: body + (show ? tail(urgent.length) : ""), url: show ? left.item.href : "/dashboard", itemCount: urgent.length };
   }
   const pick = choose(urgent);

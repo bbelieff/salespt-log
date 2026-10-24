@@ -93,7 +93,21 @@ export function meetingLookbackMonths(today: string): string[] {
   }
   return months;
 }
-export function buildUnresultedMeetings(meetings: Meeting[], today: string): FollowUpItem[] {
+/** 당일·아직 결과를 물을 때가 아닌 미팅 — 알림 문구가 이 이유로 구분한다. */
+export const TODAY_MEETING_REASON = "오늘 미팅 예정";
+/** 서울 지금 시각 HH:MM — 당일 미팅이 끝났는지 볼 때만 쓴다. */
+export function nowKSTClock(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+}
+/** 결과를 물어도 되는 미팅인가 — 지난 날짜, 또는 오늘이면 시작 1시간 뒤부터. 시간을 모르면 오늘은 묻지 않는다. */
+export const MEETING_RESULT_AFTER_MIN = 60;
+export function meetingResultDue(date: string, time: string, today: string, nowHHMM?: string): boolean {
+  if (date < today) return true;
+  if (date > today || !nowHHMM || !/^\d{2}:\d{2}$/.test(time) || !/^\d{2}:\d{2}$/.test(nowHHMM)) return false;
+  const min = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  return min(nowHHMM) >= min(time) + MEETING_RESULT_AFTER_MIN;
+}
+export function buildUnresultedMeetings(meetings: Meeting[], today: string, nowHHMM?: string): FollowUpItem[] {
   const seen = new Set<string>();
   return meetings.filter(m => {
     if (seen.has(m.id)) return false; seen.add(m.id);
@@ -101,7 +115,10 @@ export function buildUnresultedMeetings(meetings: Meeting[], today: string): Fol
   }).sort((a, b) => a.미팅날짜.localeCompare(b.미팅날짜) || a.미팅시간.localeCompare(b.미팅시간)).map(m => item({
     key: `meeting:${m.id}`, kind: "meeting", step: "3", title: m.업체명.replace(/^\(변경\)\s*/, ""),
     detail: [m.미팅날짜, m.미팅시간, m.장소.trim()].filter(Boolean).join(" · "),
-    action: m.미팅날짜 > today ? "미팅 준비" : "미팅 결과 입력", reasons: [m.미팅날짜 > today ? "미팅 예정" : "미팅 결과 미입력"], facts: [{ label: "미팅일", value: m.미팅날짜 }, { label: "시간", value: m.미팅시간 }],
+    // 당일 미팅은 끝나기 전까지 「오늘 미팅」 — 아침부터 결과를 묻지 않는다(belie 2026-10-25).
+    ...(meetingResultDue(m.미팅날짜, m.미팅시간, today, nowHHMM) ? { action: "미팅 결과 입력", reasons: ["미팅 결과 미입력"] }
+      : m.미팅날짜 === today ? { action: "오늘 미팅", reasons: [TODAY_MEETING_REASON] } : { action: "미팅 준비", reasons: ["미팅 예정"] }),
+    facts: [{ label: "미팅일", value: m.미팅날짜 }, { label: "시간", value: m.미팅시간 }],
     href: `/schedule?date=${m.미팅날짜}&focus=${encodeURIComponent(m.id)}`,
   }, m.미팅날짜, today));
 }
@@ -173,10 +190,10 @@ export interface FollowUpSummary {
   groups: Record<FollowUpKind, FollowUpItem[]>; counts: FollowUpCounts; total: number; headline: string; unlinkedTodos: number;
   items: FollowUpItem[]; urgent: FollowUpItem[]; stepCounts: Record<FollowUpStep, number>; groupCounts: Record<FollowUpGroup, number>;
 }
-export function summarizeFollowUps(src: FollowUpSources, today: string): FollowUpSummary {
+export function summarizeFollowUps(src: FollowUpSources, today: string, nowHHMM?: string): FollowUpSummary {
   const todo = src.contracts && src.todos ? buildTodoFollowUps(src.todos, src.contracts, today) : { overdue: [], today: [], upcoming: [], unlinked: 0 };
   const all = [...todo.overdue, ...todo.today, ...todo.upcoming,
-    ...(src.meetings ? buildUnresultedMeetings(src.meetings, today) : []),
+    ...(src.meetings ? buildUnresultedMeetings(src.meetings, today, nowHHMM) : []),
     ...(src.leads ? [...buildInitialLeads(src.leads, today), ...buildRecontactLeads(src.leads, today)] : []),
     ...(src.contracts && src.todos ? buildStalledWork(src.contracts, src.todos, today) : [])];
   const items = [...new Map(all.map(i => [i.key, i])).values()].sort(compareFollowUpUrgency);

@@ -1,3 +1,5 @@
+## 2026-10-25 · 당일 미팅 「결과 입력」 조기 표시 수정
+- fix/today-meeting-before-time, base e2b59162. belie 지시. 오늘 챙길 일·아침 알림이 미팅 전에도 결과를 묻던 문제 — 시작 1시간 뒤부터만 결과 요청, 그 전엔 「오늘 미팅」. 데이터 무변경. [plan](plans/completed/today-meeting-before-time.md).
 ## 2026-10-25 · 웹 푸시 「오늘의 씨앗」
 - feat/push-morning-seed, base 1c42ec72. belie 결정(듀오링고 세션 전달)·목업 승인: 챙길 일 0건 아침에 씨앗(최근 7일 새 DB 0건 / 14일 조용한 진행건). 30일 끊긴 부재 DB 씨앗은 기존 follow-up 과 겹쳐 제외(대체 기준 belie 결정 대기). 마이그레이션 0010. [plan](plans/active/web-push-notifications.md) §14.
 ## 2026-10-24 · 오늘 챙길 일 빠른 보기 우하단으로
