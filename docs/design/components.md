@@ -84,7 +84,8 @@
 - **BadgeMedal** (`components/badges/BadgeMedal.tsx` + `badge-medal.css`): 배지 메달 — Fluent Emoji 3D 그림(`public/badges/<img>.png`, MIT) + 금속 테(conic-gradient) + 리본. 등급(기본 청록·bronze·silver·gold·navy·secret)은 테·리본 색만 바꾼다. 잠긴 배지 = 회색 테 + 흑백 반투명 그림, 아직 못 얻은 숨은 배지 = 그림 대신 보라 「?」. 크기 `sm`(배지판 칸)·`lg`(크게 보기). 글자는 `--font-scale` 배율.
 - **BadgeDetailSheet** (`components/badges/BadgeDetailSheet.tsx`): 배지 하나 크게 보기. 모바일 = 아래에서 올라오는 시트, 768px 이상 = 가운데 창(z-[60], slate-900/40 바탕). 얻음 = 얻은 날, 진행 중 = 초록 진행 막대 + 「N일 남았어요」, 준비 중 = 「곧 얻을 수 있게 열어 드릴게요」, 숨은 배지 = 조건 비밀. 버튼은 닫기 + 바로 할 행동 하나(`BadgeDef.cta`). 열면 첫 버튼에 초점, Esc·바깥 누르기로 닫고 초점 복귀, 움직임 줄이기면 올라오는 효과 없음.
 - 화면 `/badges`(app/(app)/badges/page.tsx): 모은 개수(금색 막대 + 최근 3개) · 다음 배지(amber 상자, 남은 양 + 행동 버튼) · 그룹 칩(전체/꾸준함/첫 성과/첫 걸음/비서와 함께/졸업생/숨은 배지, 가로 스크롤) · 그룹별 3열(768px 이상 6열) 배지판. 안 본 새 배지는 칸 오른쪽 위 빨간 「NEW」(이 기기 localStorage `badgesSeen:v1:<email>`, 처음 쓰는 기기는 최근 7일 배지만).
-- TopHeader 로고 메뉴: 새소식 아래 「🏆 배지 수집 N/31」(amber-50 줄). 안 본 새 배지가 있으면 로고 옆 빨간 점(새소식 점과 같은 자리). 트레이너 화면(sessionIdentity)에는 없음.
+- **BadgeChip** (`components/badges/BadgeChip.tsx` + `badge-next.ts`): 대시보드 「오늘 챙길 일」 상자 맨 아래 한 줄 링크(→ /badges, belie 승인 칩 목업 2026-10-24). 금색 작은 원판 그림 + 「배지 N/31 · 문구」 + 진행 막대 + ›. 문구 우선순위 = 안 본 새 배지(가장 최근, 주황 바탕 orange-50/300 + 빨간 점) > 다음 배지까지 남은 양(배지 수집 화면 「다음 배지」와 같은 pickNext, 초록 막대) > 0개면 「첫 배지: 오늘 연락 1건 기록」 > 모두 모음. 좁은 화면은 줄바꿈(남은 양이 잘리지 않게). 불러오는 중·실패면 렌더하지 않음. 챙길 일 0건이어도 남는다.
+- TopHeader 로고 메뉴: 새소식 아래 「🏆 배지 수집 N/31」(amber-50 줄), 이 기기에서 배지 화면을 처음 열 때까지 brand-red 「NEW」. 안 본 새 배지가 있으면 로고 옆 빨간 점(새소식 점과 같은 자리). 트레이너 화면(sessionIdentity)에는 없음.
 
 ## 대시보드 움직임 (2026-10-09)
 
