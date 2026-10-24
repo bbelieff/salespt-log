@@ -220,9 +220,10 @@ async function POST_handler(req: Request) {
       }
 
       const memo = participantMemo({ isPresident, isDeposit });
-      await addTraineePrepRow(plan.cohortLabel, name, sheetId, "", folderId, memo);
       // 복제본 B3/C3 를 아레나 라벨로 기록 (claim 시 writeProfile skip 되므로 여기서).
+      // ★사전등록 행보다 **먼저** — addTraineePrepRow 가 시트를 읽어 캐시(registry I~L)를 박는다(2026-10-24).
       await writeProfile(sheetId, plan.cohortLabel, name);
+      await addTraineePrepRow(plan.cohortLabel, name, sheetId, "", folderId, memo);
       created.push({ name, cohort: plan.cohortLabel, sheetId });
     } catch (e) {
       failed.push({

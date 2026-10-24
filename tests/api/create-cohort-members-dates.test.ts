@@ -24,6 +24,7 @@ const api = vi.hoisted(() => ({
   writeCourseDates: vi.fn(),
   readCourseDateCells: vi.fn(),
   dbEnabled: vi.fn(),
+  writeProfile: vi.fn(),
 }));
 
 vi.mock("@/auth/identity", () => ({
@@ -54,6 +55,7 @@ vi.mock("@/repo/course-dates", () => ({
   readCourseDateCells: api.readCourseDateCells,
 }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: api.dbEnabled }));
+vi.mock("@/repo/sales", () => ({ writeProfile: api.writeProfile }));
 vi.mock("@/repo/db/cohort-pending", () => ({
   enqueueCohortCreate: vi.fn(),
   buildPendingCohortJob: vi.fn(),
@@ -99,6 +101,16 @@ describe("POST /api/admin/create-cohort-members — 수강시작일", () => {
     api.writeCourseDates.mockResolvedValue({ written: ["O1", "O2"], preserved: [] });
     api.readCourseDateCells.mockResolvedValue(TEMPLATE_RESIDUE);
     api.dbEnabled.mockReturnValue(false);
+    api.writeProfile.mockResolvedValue(undefined);
+  });
+
+  it("★사전등록 행은 기수·이름·날짜를 찍은 뒤에 만든다 — 템플릿 잔재가 캐시에 굳지 않게(2026-10-24)", async () => {
+    const { status } = await post({ token: "10", mode: "create", courseStartISO: "2026-08-07", members: [{ name: "김도연" }] });
+    expect(status).toBe(200);
+    const prep = api.addTraineePrepRow.mock.invocationCallOrder[0]!;
+    expect(api.writeProfile).toHaveBeenCalledWith(NEW_SHEET, "10", "김도연");
+    expect(api.writeProfile.mock.invocationCallOrder[0]!).toBeLessThan(prep);
+    expect(api.writeCourseDates.mock.invocationCallOrder[0]!).toBeLessThan(prep);
   });
 
   it("★갓 복제한 시트는 allowTemplateOverwrite=true 로 쓴다 (템플릿 잔재가 입력 날짜를 이기지 못하게)", async () => {
