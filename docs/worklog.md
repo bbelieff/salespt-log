@@ -1,6 +1,8 @@
 ## 2026-10-24 · 대시보드 수강 진행 배너 PC 한 줄
 - fix/course-progress-one-line. belie 「풀사이즈면 한 줄」. PC(1024+)에서 날짜·주차|시작|진행바|진행률|종강총회|D-day 한 줄, 좁은 화면 세 줄 유지. [plan](plans/active/course-progress-one-line.md).
 
+## 2026-10-24 · 대시보드 배지 칩
+- feat/badge-dashboard-chip, base 29546031. belie 승인 칩 목업: 「오늘 챙길 일」 상자 맨 아래 「배지 N/31 · 다음 ○○까지 N일」(새 배지면 주황·점, 0개면 첫 행동) → /badges, 로고 메뉴 NEW(배지 화면 처음 열 때까지). 화면만, 데이터 무변경. 소유: components/badges/BadgeChip·badge-next, DashboardFollowUps 한 줄, TopHeader NEW 한 줄, badges page 리팩터. [plan](plans/active/badge-dashboard-chip.md).
 ## 2026-10-24 · 전체 진행건 막대에 장기관리 칸
 - feat/work-status-longterm. belie(알림 세션 경유) 「수납완료 옆에 장기관리건 집계, 대시보드·실무/수납 똑같이」. 조건 대기·장기관리 진행건 + 장기관리 업체의 미수납 진행건 = 장기관리. 공용 함수라 두 화면 동시 반영. [plan](plans/active/work-status-longterm.md).
 ## 2026-10-24 · DB관리시트 검색칸 제목 줄로
