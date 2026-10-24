@@ -31,10 +31,16 @@ describe("toActivityEvents", () => {
     ] });
     expect(events).toEqual([{ kind: "todoDone", date: "2026-10-03" }]);
   });
-  it("daily metric rows with all zeros (pre-filled sheet rows) are skipped; non-zero rows are record days, not sales days", () => {
-    const zero = { production: 0, inflow: 0, contactProgress: 0, meetingReservation: 0 };
-    const days = activityDays(toActivityEvents({ dailyMetrics: [{ date: "2026-10-06", ...zero }, { date: "2026-10-07", ...zero, inflow: 2 }] }), TODAY);
-    expect([...days.entries()]).toEqual([["2026-10-07", "record"]]);
+  it("personal schedule history (type 일반 · 분류 기타) is not a sales action; customer events still count", () => {
+    const events = toActivityEvents({ todos: [
+      todo({ 기록종류: "history", type: "일반", 분류: "기타", 예정일자: "2026-10-03" }),
+      todo({ 기록종류: "history", type: "일반", 분류: "기존", 예정일자: "2026-10-04" }),
+    ] });
+    expect(events).toEqual([{ kind: "todoDone", date: "2026-10-04" }]);
+  });
+  it("daily metric rows are not a source: blank pre-filled rows and explicit zeros look the same", () => {
+    const days = activityDays(toActivityEvents({ contacts: [], meetings: [], contracts: [], todos: [] }), TODAY);
+    expect(days.size).toBe(0);
     expect(cumulativeSalesDays(days)).toBe(0);
   });
   it("back-filled records land on their own past dates, never on today", () => {
