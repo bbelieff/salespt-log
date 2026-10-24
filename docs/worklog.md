@@ -1,3 +1,5 @@
+## 2026-10-24 · 모바일 스크롤 2차 — 안드로이드 (passive 터치)
+- fix/android-scroll-passive. belie 「특히 안드로이드가 더」. 원인 = 당겨서 새로고침의 passive:false touchmove 가 안드로이드 크롬 스크롤을 JS 대기로 만듦. 리스너 passive + CSS overscroll-behavior-y:none(모바일 터치)로 기본 당김 차단. [plan](plans/active/pull-to-refresh-inner-scroll.md).
 ## 2026-10-24 · 모바일 위아래 스크롤 — 당겨서 새로고침 가드
 - fix/pull-to-refresh-inner-scroll. belie 「모바일에서 위아래 스크롤이 잘 안 됨」. 원인 = 당겨서 새로고침이 페이지 맨 위 기준으로만 판단해, 높이 고정 화면의 안쪽 목록을 위로 올리는 손가락을 preventDefault 로 막음. 안쪽 스크롤 영역이 맨 위가 아니면 제스처 미발동. [plan](plans/active/pull-to-refresh-inner-scroll.md).
 ## 2026-10-24 · 새 기수 사전등록 캐시 순서 (12기 「20주차」)

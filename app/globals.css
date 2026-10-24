@@ -132,6 +132,15 @@ body {
   /* iOS Safari 텍스트 자동 확대 방지 (가로/세로 회전 시 폰트 확대되는 현상). */
   -webkit-text-size-adjust: 100%;
 }
+/* 모바일 터치 화면: 브라우저 기본 당겨서 새로고침·고무줄을 끈다 — 자체 당겨서 새로고침(components/PullToRefresh)이
+ * passive 리스너만 쓰도록(2026-10-24 안드로이드 스크롤 뻑뻑함). 막을 수 있는 touchmove 가 없어야 안드로이드 크롬이
+ * 스크롤을 JS 응답 없이 바로 처리한다. PC 는 무변경. */
+@media (max-width: 1023px) and (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+}
 
 /* ── 위클리 슬라이드 인터랙션 (2026-05-18) ─────────────────
  * 좌우 스와이프 / [이전·다음 주] 클릭 시 7-day 그리드가 옆으로 슬라이드.
