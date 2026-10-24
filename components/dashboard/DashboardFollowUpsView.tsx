@@ -35,6 +35,7 @@ export default function DashboardFollowUpsView({ items, notice, incomplete = fal
     const sourceTrail = `오늘 챙길 일 › ${source}${selectionLabel ? ` › ${selectionLabel}` : ""} ${countLabel}`;
     const heading = active?.group === "all" ? "전체 처리목록" : active?.group === "upcoming" ? "예정된 일" : active?.group === "unknown" ? "날짜 확인" : `${steps.find(s => s.id === active?.step)?.label ?? ""} · ${selectionLabel}`;
     return <section data-dashboard-follow-ups data-selection-tone={tone} data-emphasis={hasOverdueFollowUps(items) ? "flow" : undefined} ref={card} className="follow-ups-card ft-card" aria-label="오늘 챙길 일">
+  {hasOverdueFollowUps(items) && <span aria-hidden className="ft-glow" />}
   <header><h2>오늘 챙길 일 <button type="button" className="follow-ups-total" aria-label={`전체 처리목록 ${incomplete&&!now?"확인 필요":`${now}건`}`} aria-expanded={active?.group === "all"} aria-controls={active?.group === "all" ? id : undefined} onClick={e => open(e.currentTarget, "", "all", true)} aria-haspopup="dialog">{incomplete && !now ? "확인 필요" : `${incomplete ? "확인된 " : ""}${now}건`} <DisclosureChevron open={active?.group === "all"} /></button></h2><button type="button" className="follow-ups-help" onClick={() => setRules(!rules)} aria-expanded={rules}>기준</button></header>
   <div className="ft-summary" role="table" aria-label="STEP별 미처리 건수">
    <div className="ft-summary-head" role="row"><span role="columnheader">단계</span>{groups.map(g => <span role="columnheader" key={g.id} data-tone={g.id}>{g.label}</span>)}</div>
