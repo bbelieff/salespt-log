@@ -1,3 +1,5 @@
+## 2026-10-24 · 운영 기록 → 영업활동일 이벤트 변환 (심리장치 단계 0 둘째)
+- feat/activity-events-adapter, base af8400ea. 소유: `lib/analytics/activity-events.ts`·`tests/analytics/activity-events.test.ts`·plan만. 순수 함수, 화면·API·DB 무변경. [plan](plans/active/activity-events-adapter.md).
 ## 2026-10-24 · 웹 푸시 전 수강생 배포
 - feat/web-push-all-students, base af8400ea. belie 「테스트 끝났으니 이제 전 수강생들에게 알람기능 배포해」. 시범 9건 성공·실패 0·열람 4. `PUSH_AUDIENCE=all` 스위치로 수강생 전원(진행·수료, 대기·트레이너 제외) 개방, 새소식 그룹 공개. 되돌리기 = 스위치 삭제. [plan](plans/active/web-push-notifications.md) §13.
 ## 2026-10-23 · 영업활동일 판정 함수 머지·배포 완료
