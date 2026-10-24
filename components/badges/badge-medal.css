@@ -1,0 +1,29 @@
+/* 배지 메달 — 3D 그림 + 금속 테 + 리본(승인 목업 2026-10-24). 등급은 테·리본 색만 바꾼다. */
+.badge-medal { --rim1: #9fe3d8; --rim2: #0f766e; --disc1: #ffffff; --disc2: #d9f3ee; --rib: #0f766e; position: relative; width: 76px; height: 84px; flex-shrink: 0; isolation: isolate; }
+.badge-medal__rim { position: absolute; left: 4px; top: 0; width: 68px; height: 68px; border-radius: 50%; background: conic-gradient(from 210deg, var(--rim1), var(--rim2), var(--rim1), var(--rim2), var(--rim1)); box-shadow: 0 3px 6px rgb(15 23 42 / 0.22), inset 0 1px 1px rgb(255 255 255 / 0.6); }
+.badge-medal__disc { position: absolute; inset: 5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--disc1), var(--disc2) 75%); box-shadow: inset 0 2px 4px rgb(15 23 42 / 0.18); }
+.badge-medal__img { position: absolute; left: 38px; top: 34px; width: 54px; height: 54px; transform: translate(-50%, -50%); filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.25)); }
+.badge-medal__q { position: absolute; left: 38px; top: 34px; transform: translate(-50%, -50%); font-size: calc(28px * var(--font-scale, 1)); font-weight: 900; color: #6d4bc2; line-height: 1; }
+.badge-medal__rib { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 40px; height: 22px; z-index: -1; }
+.badge-medal__rib::before, .badge-medal__rib::after { content: ""; position: absolute; top: 0; width: 15px; height: 22px; background: var(--rib); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+.badge-medal__rib::before { left: 3px; transform: rotate(14deg); }
+.badge-medal__rib::after { right: 3px; transform: rotate(-14deg); }
+.badge-medal--bronze { --rim1: #f0c39a; --rim2: #9a5b28; --disc2: #f6e2cf; --rib: #9a5b28; }
+.badge-medal--silver { --rim1: #f2f5f8; --rim2: #8a96a3; --disc2: #e3e8ee; --rib: #5b6773; }
+.badge-medal--gold { --rim1: #ffe9a3; --rim2: #b8860b; --disc2: #fff1c2; --rib: #b8860b; }
+.badge-medal--navy { --rim1: #ffe9a3; --rim2: #b8860b; --disc1: #3b4f73; --disc2: #1e2b45; --rib: #24334b; }
+.badge-medal--secret { --rim1: #e3d7ff; --rim2: #6d4bc2; --disc2: #ece5ff; --rib: #6d4bc2; }
+.badge-medal--locked { --rim1: #eef0f3; --rim2: #c5cbd3; --disc1: #f8fafc; --disc2: #eceff3; --rib: #cbd2da; }
+.badge-medal--locked .badge-medal__img { filter: grayscale(1) opacity(0.35); }
+.badge-medal--locked.badge-medal--secret { --rim1: #efe9ff; --rim2: #b9a6ea; --disc2: #f3eeff; --rib: #c9b8f2; }
+.badge-medal--sm { transform: scale(0.86); margin: -4px 0 -8px; }
+.badge-medal--lg { transform: scale(1.6); transform-origin: center top; margin: 4px 0 56px; }
+.badge-meter { height: 6px; border-radius: 999px; background: #f1f5f9; overflow: hidden; }
+.badge-meter > i { display: block; height: 100%; border-radius: inherit; background: #94a3b8; }
+.badge-meter--total > i { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.badge-meter--next > i { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.badge-new { position: absolute; top: 6px; right: 6px; border-radius: 999px; background: #d71617; padding: 0 5px; color: #fff; font-size: calc(9.5px * var(--font-scale, 1)); font-weight: 900; line-height: 15px; }
+@media (prefers-reduced-motion: no-preference) {
+  .badge-sheet { animation: badge-sheet-up 0.28s cubic-bezier(0.2, 0.9, 0.2, 1); }
+  @keyframes badge-sheet-up { from { transform: translateY(16px); opacity: 0; } }
+}

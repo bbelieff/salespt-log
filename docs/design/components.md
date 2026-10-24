@@ -79,6 +79,13 @@
 - **CompanyInfoViewToggle** (`components/company-info/CompanyInfoViewToggle.tsx` + `view-filter.ts`, 2026-10-09): 업체정보 편집기(패널·팝업) 맨 위 오른쪽 [전체 | 적은 것 N | 안 적은 것 N] (흰 바탕 테두리 상자, 고른 칸 slate-800 채움, 개수 tabular-nums). 전체 = 묶음마다 적은 항목 위·안 적은 항목 아래·자동 비율 맨 끝, 적은 것/안 적은 것 = 해당 항목만(한 줄 여러 칸은 하나라도 맞으면), 묶음이 비면 「다 적었어요 ✓」/「아직 적은 칸이 없어요」. 보일 칸은 편집기를 열 때·보기를 바꿀 때의 값으로 고정(적는 도중 안 움직임), 개수는 지금 값. 자동 계산 칸 제외, 연도별 매출은 해마다 합계·반기 중 하나라도 있으면 적은 것. 고른 보기는 기기에 기억(localStorage `salespt:company-info-view`).
 - **CompanyDocMemoExtras** (`components/company-doc/CompanyDocMemoExtras.tsx`): 「문서로 자동입력」에서 미팅 메모(txt·붙여넣기)를 읽었을 때만 — 계정 보관함으로 보낼 항목(emerald 상자, 기본 체크, 값은 앞 2자 + •• 로 가림)과 「나머지 메모를 업체 기타메모에 붙이기」(기본 꺼짐).
 
+## 배지 수집 (2026-10-24)
+
+- **BadgeMedal** (`components/badges/BadgeMedal.tsx` + `badge-medal.css`): 배지 메달 — Fluent Emoji 3D 그림(`public/badges/<img>.png`, MIT) + 금속 테(conic-gradient) + 리본. 등급(기본 청록·bronze·silver·gold·navy·secret)은 테·리본 색만 바꾼다. 잠긴 배지 = 회색 테 + 흑백 반투명 그림, 아직 못 얻은 숨은 배지 = 그림 대신 보라 「?」. 크기 `sm`(배지판 칸)·`lg`(크게 보기). 글자는 `--font-scale` 배율.
+- **BadgeDetailSheet** (`components/badges/BadgeDetailSheet.tsx`): 배지 하나 크게 보기. 모바일 = 아래에서 올라오는 시트, 768px 이상 = 가운데 창(z-[60], slate-900/40 바탕). 얻음 = 얻은 날, 진행 중 = 초록 진행 막대 + 「N일 남았어요」, 준비 중 = 「곧 얻을 수 있게 열어 드릴게요」, 숨은 배지 = 조건 비밀. 버튼은 닫기 + 바로 할 행동 하나(`BadgeDef.cta`). 열면 첫 버튼에 초점, Esc·바깥 누르기로 닫고 초점 복귀, 움직임 줄이기면 올라오는 효과 없음.
+- 화면 `/badges`(app/(app)/badges/page.tsx): 모은 개수(금색 막대 + 최근 3개) · 다음 배지(amber 상자, 남은 양 + 행동 버튼) · 그룹 칩(전체/꾸준함/첫 성과/첫 걸음/비서와 함께/졸업생/숨은 배지, 가로 스크롤) · 그룹별 3열(768px 이상 6열) 배지판. 안 본 새 배지는 칸 오른쪽 위 빨간 「NEW」(이 기기 localStorage `badgesSeen:v1:<email>`, 처음 쓰는 기기는 최근 7일 배지만).
+- TopHeader 로고 메뉴: 새소식 아래 「🏆 배지 수집 N/31」(amber-50 줄). 안 본 새 배지가 있으면 로고 옆 빨간 점(새소식 점과 같은 자리). 트레이너 화면(sessionIdentity)에는 없음.
+
 ## 대시보드 움직임 (2026-10-09)
 
 - **CountUp** / `useCountUp` (`components/motion/CountUp.tsx`): 숫자를 처음엔 0에서 700ms 동안 올라가며 멈추게, 값이 바뀌면 이전 값에서 이어서 움직인다(easeOutCubic, requestAnimationFrame). 동작 줄이기면 즉시 최종 값, 화면낭독기는 최종 값(aria-label). SVG 글자 안에서는 훅을 직접 쓴다.
