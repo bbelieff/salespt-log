@@ -42,7 +42,7 @@ export default async function AppLayout({
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) redirect("/");
 
-  // 좌하단 「오늘 챙길 일」 — 수강생 화면 맥락(본인·대리접속·아레나)이 있을 때만. 관리자 본인 화면은 조회할 수강생이 없어 숨김.
+  // 우하단 「오늘 챙길 일」 — 수강생 화면 맥락(본인·대리접속·아레나)이 있을 때만. 관리자 본인 화면은 조회할 수강생이 없어 숨김.
   let showFollowUpsLauncher = true;
   // admin 본인은 통과 (impersonation 으로 누구든 진입 가능).
   if (isAdminEmail(sessionEmail)) {
@@ -107,7 +107,7 @@ export default async function AppLayout({
           </div>
         </div>
         <TabBar />
-        {/* 좌하단 오늘 챙길 일 빠른 보기 — 대시보드는 카드가 있어 컴포넌트가 스스로 숨는다. */}
+        {/* 우하단 오늘 챙길 일 빠른 보기 — 대시보드는 카드가 있어 컴포넌트가 스스로 숨는다. */}
         {showFollowUpsLauncher && <FollowUpsLauncher />}
       </DirtyProvider>
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}

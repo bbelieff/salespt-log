@@ -42,7 +42,7 @@ describe("오늘 챙길 일 강조 규칙", () => {
   });
 });
 
-describe("좌하단 빠른 보기", () => {
+describe("우하단 빠른 보기", () => {
   it("예정을 뺀 긴급순 5건과 나머지 건수", () => {
     const { top, rest, total } = topUrgentFollowUps(mixed);
     expect(total).toBe(7);

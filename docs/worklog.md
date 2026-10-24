@@ -1,3 +1,6 @@
+## 2026-10-24 · 오늘 챙길 일 빠른 보기 우하단으로
+- fix/followups-launcher-right. belie 「비서 플로팅 아이콘은 우측하단으로 이동」. 버튼·창·펼침 기준점 오른쪽, PC 실무/수납 여백 상세 칸으로. [plan](plans/active/followups-launcher-right.md).
+
 ## 2026-10-24 · 대시보드 수강 진행 배너 PC 한 줄
 - fix/course-progress-one-line. belie 「풀사이즈면 한 줄」. PC(1024+)에서 날짜·주차|시작|진행바|진행률|종강총회|D-day 한 줄, 좁은 화면 세 줄 유지. [plan](plans/active/course-progress-one-line.md).
 
