@@ -14,6 +14,8 @@ const sendPush = vi.fn();
 vi.mock("@/repo/db/push", () => store);
 vi.mock("@/repo/push-sender", () => ({ sendPush: (...a: unknown[]) => sendPush(...a), pushConfigured: () => true, vapidPublicKey: () => "pub" }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(), captureMessage: vi.fn() }));
+const findUserByEmail = vi.fn();
+vi.mock("@/repo/users", () => ({ findUserByEmail: (...a: unknown[]) => findUserByEmail(...a) }));
 
 const todo = { id: "t1", 업체명: "가나상사", 제목: "서류 보완 요청", 예정일자: "2026-10-20", 예정시각: "", 완료여부: false, type: "실무", 기록종류: "todo", contractRef: "2026-10-01|가나상사", institutionRef: "" };
 const contract = { row: 3, 계약일: "2026-10-01", 업체명: "가나상사", 수납1: { 진행기관: "", 진행상품: "" }, 수납2: {}, 수납3: {} };
@@ -33,6 +35,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.PUSH_PILOT_EMAILS = "pilot@example.com";
   delete process.env.PUSH_ENABLED;
+  delete process.env.PUSH_AUDIENCE;
+  findUserByEmail.mockResolvedValue(null);
   todos = [todo];
   contracts = [contract];
   store.listCandidates.mockResolvedValue([{ email: "pilot@example.com", prefs: DEFAULT_PUSH_PREFERENCES }]);
@@ -92,5 +96,29 @@ describe("sendTestPush", () => {
   it("tells the person when the next notification comes", async () => {
     expect(await sendTestPush("pilot@example.com", AT_0845)).toEqual({ ok: true, devices: 2 });
     expect((sendPush.mock.calls[0]![1] as { body: string }).body).toBe("알림이 잘 와요. 다음 알림은 오늘 18:00에 보내 드릴게요.");
+  });
+});
+
+describe("audience switch (belie 2026-10-24 전 수강생 배포)", () => {
+  it("PUSH_AUDIENCE=all sends to every subscriber; otherwise only the pilot list", async () => {
+    process.env.PUSH_AUDIENCE = "all";
+    await dispatchDuePush(AT_0845);
+    expect(store.listCandidates).toHaveBeenLastCalledWith(null);
+    process.env.PUSH_AUDIENCE = "pilot";
+    await dispatchDuePush(AT_0845);
+    expect(store.listCandidates).toHaveBeenLastCalledWith(["pilot@example.com"]);
+  });
+  it("opens to registered trainees only (active or graduated), never trainers or pending sign-ups", async () => {
+    process.env.PUSH_AUDIENCE = "all";
+    findUserByEmail.mockResolvedValueOnce({ role: "trainee", status: "active" });
+    expect(await sendTestPush("student@example.com", AT_0845)).toEqual({ ok: true, devices: 2 });
+    findUserByEmail.mockResolvedValueOnce({ role: "trainee", status: "archived" });
+    expect((await sendTestPush("graduate@example.com", AT_0845)).ok).toBe(true);
+    findUserByEmail.mockResolvedValueOnce({ role: "trainer", status: "active" });
+    await expect(sendTestPush("trainer@example.com", AT_0845)).rejects.toThrow("push_not_available");
+    findUserByEmail.mockResolvedValueOnce({ role: "trainee", status: "pending" });
+    await expect(sendTestPush("pending@example.com", AT_0845)).rejects.toThrow("push_not_available");
+    findUserByEmail.mockResolvedValueOnce(null);
+    await expect(sendTestPush("stranger@example.com", AT_0845)).rejects.toThrow("push_not_available");
   });
 });

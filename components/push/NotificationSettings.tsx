@@ -57,7 +57,7 @@ export default function NotificationSettings() {
 
   if (state.isPending) return <div className="push-page"><p className="push-muted" role="status">알림 설정을 불러오고 있어요…</p></div>;
   if (state.isError) return <div className="push-page"><p role="alert">알림 설정을 불러오지 못했어요. <button type="button" className="push-link" onClick={() => state.refetch()}>다시 시도</button></p></div>;
-  if (!state.data.available) return <div className="push-page"><section className="push-card"><h2>알림은 시범 운영 중이에요</h2><p>지금은 일부 수강생과 먼저 써 보고 있어요. 곧 모두가 쓸 수 있게 열어 드릴게요.</p></section></div>;
+  if (!state.data.available) return <div className="push-page"><section className="push-card"><h2>이 계정에서는 알림을 쓸 수 없어요</h2><p>알림은 수강생 계정에서 받을 수 있어요. 수강생 계정으로 로그인해 주세요.</p></section></div>;
 
   const p = prefs ?? DEFAULT_PUSH_PREFERENCES;
   function update(patch: Partial<PushPreferences>, field: string) {

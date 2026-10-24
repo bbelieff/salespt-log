@@ -1,3 +1,5 @@
+## 2026-10-24 · 웹 푸시 전 수강생 배포
+- feat/web-push-all-students, base af8400ea. belie 「테스트 끝났으니 이제 전 수강생들에게 알람기능 배포해」. 시범 9건 성공·실패 0·열람 4. `PUSH_AUDIENCE=all` 스위치로 수강생 전원(진행·수료, 대기·트레이너 제외) 개방, 새소식 그룹 공개. 되돌리기 = 스위치 삭제. [plan](plans/active/web-push-notifications.md) §13.
 ## 2026-10-23 · 영업활동일 판정 함수 머지·배포 완료
 - #1195 squash 243de16c, Deploy 39923970538 success, health 200. 화면·API·DB 변경 없음(호출부 없음). 다음: 실제 기록→판정 이벤트 어댑터(업무 완료일 출처 결정 포함). [plan](plans/completed/activity-days-stage0.md).
 ## 2026-10-24 · DB관리시트 부재 기록 · 따로 잡은 미팅 연결 (PR 2)
