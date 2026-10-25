@@ -3,6 +3,7 @@ import TopHeader from "@/components/TopHeader";
 import PageContainer from "@/components/PageContainer";
 import { POLICY_NEWS_URL } from "@/config/links";
 import PolicyNewsEmbed from "./PolicyNewsEmbed";
+import PolicyNewsMatches from "./PolicyNewsMatches";
 
 export default function PolicyNewsPage() {
   return (
@@ -13,6 +14,7 @@ export default function PolicyNewsPage() {
       <TopHeader pageEmoji="📰" pageTitle="정책자금 데일리" pageSubtitle="매일 자동 수집" />
       <div className="px-4 pb-10 pt-3 pc:flex pc:min-h-0 pc:flex-1 pc:flex-col pc:overflow-hidden pc:pb-3">
         <PageContainer width="xwide" className="pc:flex pc:h-full pc:min-h-0 pc:flex-col">
+          <PolicyNewsMatches />
           <div className="pc:min-h-0 pc:flex-1">
             <PolicyNewsEmbed src={POLICY_NEWS_URL} />
           </div>
