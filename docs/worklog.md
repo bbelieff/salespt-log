@@ -1,3 +1,5 @@
+## 2026-10-26 · 업체정보 맞춤공고 줄 잘림·줄바뀜
+- fix/company-grant-narrow. belie 스크린샷(DB관리시트 DB정보+업체정보 「사업자」). DB관리시트 입력칸 100% 폭 규칙이 대분류·시·도·시·군·구·체크박스까지 늘리고 눌러 「자/동」 세로 깨짐 → 맞춤공고 줄 예외 + 줄바꿈 금지. 화면만. [plan](plans/active/company-grant-narrow.md).
 ## 2026-10-25 · [병렬트랙] 맞춤공고 1단계 — 업체정보 지역·대분류·공고 특성
 - feat/company-grant-fields. 개발가이드 세션 핸드오프(belie 승인 목업). 구역: `lib/analytics/company-grant*`·`lib/util/admin-regions.ts`·`components/company-info/CompanyGrantFields.tsx`·CompanyInfo 확장5(04 CE~CI·06 BM~BQ). 자동 값은 저장 안 함(읽을 때 계산), 직접 고른 값만 저장. 다음: 1b 서류 주소 읽기 → 공고 JSON 계약 → 매칭 → 실무/수납·데일리·오늘 챙길 일. [plan](plans/active/company-grant-fields.md).
 

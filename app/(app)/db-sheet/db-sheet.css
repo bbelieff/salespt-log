@@ -245,3 +245,5 @@ body.db-sheet-route .sheet-step-cell:hover .sheet-step-link{text-decoration:unde
 body.db-sheet-route .sheet-step-state{font-size:10.5px;font-weight:600;color:#64748b}
 body.db-sheet-route .sheet-step-state.is-active{color:#1d4ed8}body.db-sheet-route .sheet-step-state.is-wait{color:#b45309}
 body.db-sheet-route .sheet-step-cell:focus-visible{outline:2px solid #3b82f6;outline-offset:-2px}
+/* 업체정보 맞춤공고 줄(대분류·시·도·시·군·구)과 체크박스는 위 100% 폭 규칙에서 뺀다 — 좁은 칸에서 고르기 칸이 잘리고 「자동」「제외 업종」이 글자마다 줄바뀜되던 문제(2026-10-26 belie). */
+body.db-sheet-route .db-company-form .cg-inline select,body.db-sheet-route .db-company-form input[type=checkbox]{width:auto}
