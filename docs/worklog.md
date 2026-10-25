@@ -1,3 +1,6 @@
+## 2026-10-26 · 맞춤공고 4c — 정책자금 데일리 「🎯 내 업체에 맞는 공고」
+- feat/grant-news-matches. iframe 그대로, 위에 접는 상자 하나. 공고별 맞는 업체·담음 표시. [plan](plans/active/grant-match-ui.md).
+
 ## 2026-10-26 · 맞춤공고 4b — 「할 일로 담기」
 - feat/grant-todo. 업체 단위 공고 할 일(분류 "공고:<id>", 진행건 미지정 정상 — todoSlotOf·챙길 일 예외), 담은 공고 칸, 칩 숫자 차감. 스키마·마이그레이션 없음(기존 N열 사용). [plan](plans/active/grant-match-ui.md).
 
