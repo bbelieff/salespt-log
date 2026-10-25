@@ -146,3 +146,23 @@ it("read fills every 부재 row without 다음 연락일 with the day after the 
   expect(seen.next).toBe("2027-05-09"); // 컨택일(05-06)·부재 기록(05-08) 중 늦은 날 다음날
   expect(seen.followUp!.completedGeneration).not.toBe(seen.followUp!.generation);
 });
+
+it("★같은 날 컨택 후 거절→재통화: 실적(STEP 2)은 유지하되 현재상태는 DB컨택중(2026-10-25 belie 「규칙 유지 + 표시만 분리」)", async () => {
+  let lead = await fresh();
+  const sales = async () => ((await query("select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2", [ctx.spreadsheetId, "2027-05-07:매입DB"])).rows[0] as { payload?: { contactProgress?: number } } | undefined)?.payload;
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-07", result: "상담 후 거절", note: "" }, lead.revision)).lead;
+  const counted = (await sales())?.contactProgress;
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-07", result: "재통화", note: "" }, lead.revision)).lead;
+  expect(lead.stage).toBe("DB컨택중");
+  expect((await get(lead.id)).stage).toBe("DB컨택중");
+  expect(lead.hasQualifiedContact).toBe(true); // 실적 규칙은 그대로
+  expect((await sales())?.contactProgress).toBe(counted);
+});
+
+it("다른 날의 실적 상담 뒤 단순거절은 상담 중 유지", async () => {
+  let lead = await fresh();
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-06", result: "컨택진행", note: "" }, lead.revision)).lead;
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-08", result: "단순거절", note: "" }, lead.revision)).lead;
+  expect(lead.stage).toBe("상담 중");
+  expect((await get(lead.id)).stage).toBe("상담 중");
+});
