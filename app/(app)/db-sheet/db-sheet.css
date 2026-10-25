@@ -234,3 +234,7 @@ body.db-sheet-route .sheet-resizable .sheet-cell{max-width:none}
 /* 미팅예약 날짜가 「2026-10-23 (금)」 두 줄로 내려가지 않게(2026-10-25 belie) — DB정보 안에서만 글자를 줄이고 한 줄 고정. */
 body.db-sheet-route .db-meeting-inputs .custom-date-wrapper{padding:8px 10px;gap:6px}
 body.db-sheet-route .db-meeting-inputs .custom-date-display{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* 컨택결과 옆 꼬리표(2026-10-25 belie 「현재상태 칸 없애고 필요한 것만 접기」): 미팅 뒤 진행(→ 계약·미팅취소…)·장기관리·진행종료. 배지보다 한 단계 작게. */
+body.db-sheet-route .sheet-result-tag{display:inline-block;margin-left:5px;font-size:10.5px;font-weight:600;color:#64748b;white-space:nowrap;vertical-align:middle}
+body.db-sheet-route .sheet-result-tag.is-active{color:#1d4ed8}
+body.db-sheet-route .sheet-result-tag.is-wait{color:#b45309}

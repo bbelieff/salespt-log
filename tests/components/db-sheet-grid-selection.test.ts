@@ -96,7 +96,7 @@ it('stage controls: two end buttons, a return button when parked, nothing for me
  await click('장기관리로 넘기기');await click('진행종료');
  expect(onStage.mock.calls).toEqual([['장기관리'],['진행종료']]);
  render({stage:'장기관리',manualStage:'장기관리',meetingId:null,result:'부재'});
- expect(host.textContent).toContain('오늘 챙길 일에서 빠져 있어요');await click('DB컨택중으로 되돌리기');expect(onStage).toHaveBeenLastCalledWith('DB컨택중');
+ expect(host.textContent).toContain('오늘 챙길 일에서 빠져 있어요');await click('다시 챙기기');expect(onStage).toHaveBeenLastCalledWith('DB컨택중');
  render({stage:'미팅예약',meetingId:'m1',result:'컨택진행'});expect(host.textContent).toBe('');
  render({stage:'진행종료',meetingId:null,result:'AS예정'});expect(host.textContent).toBe('');
 });
@@ -107,8 +107,19 @@ it('shows a save failure from the stage buttons',async()=>{
 });
 it('adds 다음 연락일 once to an older saved column choice',()=>{
  const store=(v:Record<string,string>)=>(k:string)=>v[k]??null;
- expect(restoreVisibleColumns(store({'db-sheet-v5-columns':JSON.stringify(['company','result','stage'])}))).toEqual(['company','result','next','stage']);
+ expect(restoreVisibleColumns(store({'db-sheet-v5-columns':JSON.stringify(['company','result','stage'])}))).toEqual(['company','result','next']); // 현재상태 칸은 2026-10-25 제거 — 예전에 저장한 선택에서도 빠진다
  expect(restoreVisibleColumns(store({'db-sheet-v6-columns':JSON.stringify(['company','result'])}))).toEqual(['company','result']);
  expect(restoreVisibleColumns(store({'db-sheet-v3-columns':JSON.stringify(['supplier','date','result'])}))).toEqual(['channel','supplier','date','inflow','result','next']);
  expect(restoreVisibleColumns(store({}))).toBeNull();
+});
+
+it('컨택결과 꼬리표: 컨택결과를 다시 말하는 상태는 숨기고 미팅 뒤 진행·장기관리만(2026-10-25)',async()=>{
+ const {resultTag}=await import('@/app/(app)/db-sheet/_components/model');
+ expect(resultTag({stage:'DB컨택중',result:'재통화',meetingId:null})).toBe('');
+ expect(resultTag({stage:'상담 중',result:'단순거절',meetingId:null})).toBe('');
+ expect(resultTag({stage:'미팅예약',result:'컨택진행',meetingId:'m1'})).toBe('');
+ expect(resultTag({stage:'미팅예약',result:'단순거절',meetingId:'m1'})).toBe('→ 미팅예약');
+ expect(resultTag({stage:'계약',result:'컨택진행',meetingId:'m1'})).toBe('→ 계약');
+ expect(resultTag({stage:'장기관리',result:'단순거절',meetingId:null})).toBe('장기관리');
+ expect(resultTag({stage:'진행종료',result:'AS예정',meetingId:null})).toBe('');
 });

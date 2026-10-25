@@ -1,3 +1,5 @@
+## 2026-10-25 · DB관리시트 현재상태 칸 정리
+- feat/db-sheet-merge-stage-into-result. belie 「칸 없애고 필요한 것만 접기」. 컨택결과 중복(203/221) 제거, 미팅 뒤 진행·장기관리·진행종료만 컨택결과 옆 꼬리표. 내부 상태값·필터 그대로. [plan](plans/active/db-sheet-merge-stage-into-result.md).
 ## 2026-10-25 · 아이폰 빛 번짐 모서리·DB정보 날짜칸
 - fix/followups-glow-corners. belie 스크린샷: 빛 번짐 모서리 네모 잘림(사파리 흐림 잘림 → 빛 층 20px 여유), 날짜칸 크기 불일치(appearance:none + 다른 칸과 같은 높이·폭). [plan](plans/active/ios-glow-corners-date-fields.md).
 ## 2026-10-25 · DB관리시트 상담 중 = 실제 결과 기준

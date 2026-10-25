@@ -6,8 +6,8 @@ import { domesticPhoneDigits, isSameLead } from "@/util/db-sheet-identity";
 export type Row = { manualStage?:DbSheetManualStage; absences?:DbSheetAbsence[]; linkedExisting?:boolean; asReceived?:boolean; asNote?:string; firstManual?:boolean; recording?:{inflow:boolean;activities:boolean}; inflowStatus?:{state:"recorded"|"excluded";date?:string;channel?:string;count:0|1}; inflow?:string; effectiveMeetingId?:string; meetingId?:string|null; id:string; supplier:string; date:string; channel:string; company:string; owner:string; phone:string; biz:string; address:string; industry:string; credit:string; sales:string; arrears:string; funds:string; result:string; first:string; hasQualifiedContact?:boolean; stage:string; next:string; memo:string };
 export type Key = Exclude<keyof Row,'manualStage'|'absences'|'linkedExisting'|'id'|'meetingId'|'recording'|'inflowStatus'|'effectiveMeetingId'|'hasQualifiedContact'|'asReceived'|'asNote'|'firstManual'>;
 export const columns: {key:Key;label:string;auto?:boolean;width:number}[] = [
-{key:'channel',label:'공급처 유형',width:110},{key:'supplier',label:'공급처',width:118},{key:'date',label:'유입일',width:115},{key:'inflow',label:'유입 반영',auto:true,width:90},{key:'company',label:'사업자명',width:154},{key:'owner',label:'대표자',width:100},{key:'phone',label:'전화번호',width:143},{key:'result',label:'컨택결과',width:110},{key:'next',label:'다음 연락일',width:120},{key:'funds',label:'필요자금',width:125},{key:'first',label:'최초상담일',width:122},{key:'stage',label:'현재상태',auto:true,width:122},{key:'biz',label:'사업자등록번호',width:145},{key:'address',label:'주소',width:210},{key:'industry',label:'업종',width:115},{key:'credit',label:'신용점수·기관',width:135},{key:'sales',label:'매출·기준',width:150},{key:'arrears',label:'체납여부',width:105},{key:'memo',label:'상담메모',auto:true,width:220}];
-export const defaults:Key[]=['channel','supplier','date','inflow','company','owner','phone','result','next','first','stage'];
+{key:'channel',label:'공급처 유형',width:110},{key:'supplier',label:'공급처',width:118},{key:'date',label:'유입일',width:115},{key:'inflow',label:'유입 반영',auto:true,width:90},{key:'company',label:'사업자명',width:154},{key:'owner',label:'대표자',width:100},{key:'phone',label:'전화번호',width:143},{key:'result',label:'컨택결과',width:110},{key:'next',label:'다음 연락일',width:120},{key:'funds',label:'필요자금',width:125},{key:'first',label:'최초상담일',width:122},{key:'biz',label:'사업자등록번호',width:145},{key:'address',label:'주소',width:210},{key:'industry',label:'업종',width:115},{key:'credit',label:'신용점수·기관',width:135},{key:'sales',label:'매출·기준',width:150},{key:'arrears',label:'체납여부',width:105},{key:'memo',label:'상담메모',auto:true,width:220}];
+export const defaults:Key[]=['channel','supplier','date','inflow','company','owner','phone','result','next','first'];
 /** 표에서 바로 고치는 칸(2026-10-23 belie 「keep-quick」) — 나머지 칸은 누르면 DB정보가 열린다. */
 export const QUICK_EDIT_KEYS:readonly Key[]=['result','next'];
 /** 컨택결과·현재상태 배지 색: 진행 중(파랑) · 기다림(재통화·장기관리, 주황) · 그 외 회색. */
@@ -53,6 +53,17 @@ export const tsvSample='사업자명\t대표자\t전화번호\t필요자금\t체
 export const outcomes:readonly string[]=DB_SHEET_RESULTS;
 /** 저장값은 그대로 두고 화면 이름만 바꾼다(AS예정→AS신청 · 컨택진행→미팅예약 · 상담 후 거절→컨택 후 거절). */
 export const outcomeDisplayLabel=dbSheetResultLabel;
+/** 컨택결과를 다시 말할 뿐인 현재상태 값 — 표에 따로 보이지 않는다(2026-10-25 belie 「현재상태 칸 없애고 필요한 것만 접기」). */
+const CONTACT_DERIVED_STAGES=['미컨택','DB컨택중','상담 중'];
+/**
+ * 컨택결과 옆 꼬리표 — 현재상태 중 컨택결과에 없는 정보만: 미팅이 잡힌 뒤의 진행(→ 미팅변경·미팅취소·계약·수납대기…)과
+ * 직접 정한 장기관리·진행종료. 컨택결과와 같은 말(미팅예약=미팅예약, AS신청→진행종료)은 붙이지 않는다.
+ */
+export function resultTag(row:Pick<Row,'stage'|'result'|'meetingId'>):string{
+ const s=(row.stage??'').trim();
+ if(!s||CONTACT_DERIVED_STAGES.includes(s)||s===outcomeDisplayLabel(row.result)||(row.result==='AS예정'&&s==='진행종료'))return '';
+ return row.meetingId?`→ ${s}`:s;
+}
 /** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
  const qualified=isQualifiedDbSheetContact(result);
