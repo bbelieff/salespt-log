@@ -1,3 +1,6 @@
+## 2026-10-26 · 「공고매칭 n/3」 칩 누르면 빈 조건 안내
+- feat/grant-ready-popover. 개발가이드 세션 경유 belie 승인. 칩 → ✓/– 세 줄 + 「채우기 →」(그 칸으로 이동·포커스), 3/3이면 한 줄. 4단계에 「맞는 공고 N」으로 전환. 화면만. [plan](plans/active/grant-ready-popover.md).
+
 ## 2026-10-26 · DB정보 상담메모·부재 기록·컨택결과 아래로
 - feat/db-info-contact-bottom. belie 「컨택내용 섹션·중복 컨택일 없애고, 날짜 아래 상담메모 → 부재 기록 → 컨택결과 상자, 아이콘 오른쪽 화살표」. 화면만. [plan](plans/active/db-info-contact-bottom.md).
 
