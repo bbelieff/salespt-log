@@ -1,5 +1,11 @@
 ## 2026-10-26 · 업체정보 맞춤공고 줄 잘림·줄바뀜
 - fix/company-grant-narrow. belie 스크린샷(DB관리시트 DB정보+업체정보 「사업자」). DB관리시트 입력칸 100% 폭 규칙이 대분류·시·도·시·군·구·체크박스까지 늘리고 눌러 「자/동」 세로 깨짐 → 맞춤공고 줄 예외 + 줄바꿈 금지. 화면만. [plan](plans/active/company-grant-narrow.md).
+## 2026-10-25 · 오류신고 캡처를 실제 화면으로
+- feat/bug-report(#1240 추가 커밋). belie 「다시 그린 캡처가 실제와 다르면 없는 오류가 신고되고 혼동」 → 결정 「실제 화면 찍기」. PC = 브라우저 탭 공유 허락 후 실제 탭 한 장(찍는 순간 가림), 휴대폰·거절 = 캡처하러 가기→사진 붙이기, 그림판에 가리기 추가, 신고에 그림 출처 기록. html-to-image 제거. 실제 탭 찍기는 내장 브라우저에서 막혀 NOT_RUN — 배포 후 PC 크롬 확인 필요. [plan](plans/active/bug-report.md).
+## 2026-10-25 · 오류신고 1단계 (빠른 보기 창 · 캡처 그리기)
+- feat/bug-report. belie 목업 승인 「좋다」. 빠른 보기 아래 줄 정리(오류신고 · N건 더 보기) + 캡처(개인정보 가림)·빨간 표시·문제 종류·설명 → 운영 DB `bug_reports`(처음 쓸 때 생성) + 관리자 웹 푸시. 카톡 알림은 앱에서 불가라 웹 푸시로 대체. 2단계(관리자 오류신고함·해결 알림) 대기. [plan](plans/active/bug-report.md).
+## 2026-10-26 · 맞춤공고 1b — 부가세 과세표준증명 소재지 읽기
+- feat/company-doc-address. 부가세 증명 머리의 사업장 소재지를 소재지 제안으로(지역 자동). 사업자등록증명은 기존 판독기로 이미 읽음 — 시험으로 확인. [plan](plans/active/company-grant-fields.md).
 ## 2026-10-25 · [병렬트랙] 맞춤공고 1단계 — 업체정보 지역·대분류·공고 특성
 - feat/company-grant-fields. 개발가이드 세션 핸드오프(belie 승인 목업). 구역: `lib/analytics/company-grant*`·`lib/util/admin-regions.ts`·`components/company-info/CompanyGrantFields.tsx`·CompanyInfo 확장5(04 CE~CI·06 BM~BQ). 자동 값은 저장 안 함(읽을 때 계산), 직접 고른 값만 저장. 다음: 1b 서류 주소 읽기 → 공고 JSON 계약 → 매칭 → 실무/수납·데일리·오늘 챙길 일. [plan](plans/active/company-grant-fields.md).
 

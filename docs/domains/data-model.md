@@ -808,3 +808,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - `PushDevice`: 설정 화면 기기 목록 투영(id·platform·browser·createdAt·lastSuccessAt·endpointTail = endpoint 끝 16자, 이 브라우저 식별용).
 - `push_deliveries`: idempotency_key `<email>:<KST 날짜>:<morning|evening|test[:n]>` unique로 한 번만 발송. message_id·item_count·status(pending·sent·skipped_zero·failed)·opened_at(알림 탭 출처 꼬리표)만 저장하고 **문구 원문·업체명은 저장하지 않는다.**
 - 사용자 키는 로그인 email(소문자). 관리자 보기 전환(impersonation)과 무관하게 본인 것만 다룬다.
+
+## 오류신고 (2026-10-25, `lib/types/bug-report.ts` · 표 `bug_reports` 런타임 생성)
+- `BugReportInput` = 문제 종류(`BugReportCategory` = `BUG_REPORT_CATEGORIES` 6개) · 설명(≤2000자) · 그림(JPEG/PNG data URL ≤3MB, 빈 값 허용) · 맥락 `BugReportContext`(화면 주소·제목·화면 크기·브라우저·재생 링크·최근 오류 ≤10·그림 출처 `captureMethod` tab|upload|none·표시 수).
+- 표 `public.bug_reports`: id · created_at · email · name · cohort · category · body · image · context(jsonb) · status(`new`|`checking`|`done`, 기본 new). `lib/repo/db/bug-reports.ts` 가 처음 쓸 때 만든다. 운영 DB 에만 저장, 관리자만 열람(2단계 화면).
