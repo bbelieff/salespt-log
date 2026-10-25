@@ -26,11 +26,22 @@ function startsWithInstitution(record: string, slotInstitution: string): boolean
   return slotInstitution !== "" && record.startsWith(`${slotInstitution} `);
 }
 
+/** 맞춤공고 「할 일로 담기」로 만든 업체 단위 할 일 — 분류(N) = "공고:<공고 id>"(2026-10-26 맞춤공고 4b). */
+export const GRANT_TODO_PREFIX = "공고:";
+export function isGrantTodo(todo: { 분류?: string }): boolean {
+  return (todo.분류 ?? "").startsWith(GRANT_TODO_PREFIX);
+}
+export function grantIdOfTodo(todo: { 분류?: string }): string {
+  return isGrantTodo(todo) ? (todo.분류 ?? "").slice(GRANT_TODO_PREFIX.length) : "";
+}
+
 export function todoSlotOf(
   cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">,
-  todo: Pick<Todo, "institutionRef"> & { slot?: Todo["slot"] },
+  todo: Pick<Todo, "institutionRef"> & { slot?: Todo["slot"]; 분류?: string },
 ): TodoSlot {
   if (todo.slot) return { slot: todo.slot, ambiguous: false };
+  // 공고 할 일은 업체 단위 — 진행건 미지정이 정상이다(「진행건 확인 필요」에 걸지 않는다, 핸드오프 §5).
+  if (isGrantTodo(todo)) return { slot: null, ambiguous: false };
   const institution = normalizeInstitution(todo.institutionRef);
   const slots = slotsOf(cp);
   const matches = slots.filter(([, s]) => normalizeInstitution(s.진행기관) === institution).map(([n]) => n);

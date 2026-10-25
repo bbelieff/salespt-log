@@ -10,6 +10,7 @@ const guard = vi.hoisted(() => ({ id: "", save: undefined as undefined | (() => 
 vi.mock("@/components/DirtyGuard", () => ({ useDirtyEntry: (id: string, dirty: boolean, save: () => Promise<void>) => { guard.id = id; guard.save = dirty ? save : undefined; } }));
 vi.mock("@/query/todos-hooks", () => ({ useTodosByContract: () => ({ data: { todos: [] } }) }));
 vi.mock("@/app/(app)/payment/_components/TodoSection", () => ({ default: () => null }));
+vi.mock("@/app/(app)/payment/_components/GrantMatchBox", () => ({ default: () => null }));
 vi.mock("@/app/(app)/payment/_components/LinkedFieldsEditor", () => ({ default: () => null }));
 vi.mock("@/components/CompanyInfoContractSection", () => ({ default: () => null }));
 vi.mock("@/app/(app)/payment/_components/useContractCompanyInfo", () => ({ useContractCompanyInfo: () => ({ ciDirty: false, ciPending: false, ciState: {}, flushCi: vi.fn(), onCiChange: vi.fn(), resetCi: vi.fn() }) }));

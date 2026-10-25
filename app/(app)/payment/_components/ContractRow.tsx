@@ -453,7 +453,7 @@ export default function ContractRow({
                 <summary className="payment-sticky-title cursor-pointer list-none rounded-lg bg-amber-50 group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">🗺️ 로드맵 메모</summary>
                 <div className="px-3 pb-3"><textarea rows={1} data-payment-draft-input value={draft.로드맵메모} onChange={(e) => stageDraft((d) => ({ ...d, 로드맵메모: e.target.value }))} placeholder="전체 진행 로드맵" className="w-full resize-y rounded-md border border-amber-300 bg-white px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none"/></div>
               </details>
-              <GrantMatchBox 계약일={cp.계약일} 업체명={cp.업체명} grants={grants}/>
+              <GrantMatchBox 계약일={cp.계약일} 업체명={cp.업체명} grants={grants} todos={allTodos}/>
               <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
                   const prev = draft[`수납${index}`];
