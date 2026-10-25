@@ -49,3 +49,16 @@ body.db-sheet-route .db-detail-shell .db-absence-add input[type=date]{width:auto
 /* 칸 순서(2026-10-25): 3열일 때 「공급처」가 줄 끝까지 — 공급처 유형·공급처 한 줄, 업체 정보는 다음 줄부터. 날짜 셋은 원본 메모 아래 따로. */
 @container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-fields .db-fill-row{grid-column:span 2}}
 body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:10px}
+/* 날짜 셋 강조(2026-10-26 belie 「[강조] 유입>최초상담>다음연락」): 옅은 파랑 상자 + 3열이면 칸 사이 「›」. */
+body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:12px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff80}
+body.db-sheet-route .db-detail-shell .db-info-dates>label{position:relative;font-weight:700;color:#1e3a8a}
+@container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-dates>label:not(:last-child)::after{content:"›";position:absolute;right:-9px;bottom:7px;color:#60a5fa;font-size:16px;font-weight:700;pointer-events:none}}
+/* 컨택결과 묶음이 아래로 — 위쪽 고정(sticky)·맨 위용 아래 테두리를 풀고 위 테두리로 가른다. */
+body.db-sheet-route .db-detail-shell .db-contact-bottom{margin-top:14px;display:grid;gap:8px}
+body.db-sheet-route .db-detail-shell .db-contact-bottom .db-contact-actions{border:1px solid #e2e8f0;border-radius:10px}
+body.db-sheet-route .db-detail-shell .db-contact-bottom .db-call-left{position:static;margin-bottom:0}
+/* 부재 기록 한 줄 */
+body.db-sheet-route .db-absence-add.db-absence-head strong{margin-right:4px;white-space:nowrap}
+/* 상담메모(컨택결과 묶음 안, 2026-10-26): 아래 테두리를 끌어 줄여도 한 줄 글자보다 작아지지 않게(글자 잘림·밑으로 숨음 방지). */
+body.db-sheet-route .db-contact-memo textarea{height:auto;min-height:calc(1.5em + 14px);resize:vertical;line-height:1.5;padding:6px 10px;field-sizing:content;max-height:240px}
+body.db-sheet-route .db-contact-open svg:last-child{transition:transform .15s}body.db-sheet-route .db-contact-open .db-contact-open-on{transform:rotate(180deg)}
