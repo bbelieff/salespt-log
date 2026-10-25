@@ -7,6 +7,7 @@ const ci = (p: Partial<CompanyInfo>) => CompanyInfo.parse(p);
 const keysOf = (items: EditorItem[], idx: number[]) =>
   idx.map((i) => {
     const it = items[i]!;
+    if (it.kind === "grantAddress") return "소재지"; // 소재지 + 맞춤공고 지역(2026-10-25)
     return it.kind === "field" || it.kind === "money" ? it.def[0] : it.kind;
   });
 

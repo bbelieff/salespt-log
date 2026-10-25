@@ -23,6 +23,7 @@ import { BizTypeField, OwnershipField } from "./CompanyInfoChoiceFields";
 import { MoneyField, RatioField } from "./CompanyInfoFinanceFields";
 import CompanyInfoSalesFields from "./CompanyInfoSalesFields";
 import CompanyInfoSalesTotals from "./CompanyInfoSalesTotals";
+import { FeatureChips, IndustryLine, RegionAddress } from "./CompanyGrantFields";
 
 type CI = CompanyInfo;
 
@@ -71,16 +72,22 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
       // 두 칸을 늘 한 줄 — wideSecond 면 2:3(신용점수 | 연락처/통신사). 좁은 칸의 긴 라벨이 두 줄로
       // 접혀도 입력칸 높이가 맞도록 아래 정렬(items-end).
       return (
-        <div className={`${wide} grid min-w-0 items-end gap-1.5 ${it.wideSecond ? "grid-cols-5" : "grid-cols-2"}`}>
-          {field(it.defs[0], it.wideSecond ? "col-span-2 min-w-0" : "block min-w-0")}
-          {field(it.defs[1], it.wideSecond ? "col-span-3 min-w-0" : "block min-w-0")}
+        <div className={`${wide} grid min-w-0 gap-1`}>
+          <div className={`grid min-w-0 items-end gap-1.5 ${it.wideSecond ? "grid-cols-5" : "grid-cols-2"}`}>
+            {field(it.defs[0], it.wideSecond ? "col-span-2 min-w-0" : "block min-w-0")}
+            {field(it.defs[1], it.wideSecond ? "col-span-3 min-w-0" : "block min-w-0")}
+          </div>
+          {it.grant === "features" && <FeatureChips draft={draft} className="" onPatch={onPatch} />}
         </div>
       );
     case "row":
       // 좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 한 줄 — 가로 넘침 없음.
       return (
-        <div className={`${wide} grid min-w-0 grid-cols-1 gap-1.5 xs:grid-cols-3`}>
-          {it.defs.map((d) => field(d, "block min-w-0"))}
+        <div className={`${wide} grid min-w-0 gap-1`}>
+          <div className="grid min-w-0 grid-cols-1 gap-1.5 xs:grid-cols-3">
+            {it.defs.map((d) => field(d, "block min-w-0"))}
+          </div>
+          {it.grant === "industry" && <IndustryLine draft={draft} className="" onPatch={onPatch} />}
         </div>
       );
     case "bizType":
@@ -121,5 +128,8 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
       );
     case "salesTotals":
       return <CompanyInfoSalesTotals draft={draft} onField={onField} idBase={idBase} today={today} className={wide} />;
+    case "grantAddress":
+      return <RegionAddress draft={draft} id={idOf("소재지")} className={wide} onField={onField} onPatch={onPatch} />;
+
   }
 }
