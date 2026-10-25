@@ -1,6 +1,6 @@
 /**
  * Layer: types — 오류신고(2026-10-25 belie). 수강생이 「오늘 챙길 일」 창의 오류신고로 보내는 한 건.
- * 캡처는 전화번호·이름·계좌 칸을 가린 뒤 표시(박스·펜·글자)를 합친 JPEG 한 장(data URL).
+ * 그림은 실제 화면(탭 찍기, 전화번호·이름·계좌 칸 가림) 또는 직접 찍은 사진에 표시(박스·펜·글자)를 합친 JPEG 한 장(data URL).
  */
 import { z } from "zod";
 
@@ -20,6 +20,8 @@ export const BugReportContext = z.object({
   replayUrl: z.string().max(600).default(""),
   /** 최근 오류 메시지(최대 10개, 각 300자). */
   errors: z.array(z.string().max(300)).max(10).default([]),
+  /** 그림 출처: tab = 실제 탭을 찍음 · upload = 직접 찍은 사진을 붙임 · none = 그림 없음. */
+  captureMethod: z.enum(["tab", "upload", "none"]).default("none"),
   /** 그린 표시 개수(박스·펜·글자). */
   marks: z.number().int().min(0).max(200).default(0),
 });

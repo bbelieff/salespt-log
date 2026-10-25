@@ -1,15 +1,16 @@
 "use client";
 /**
- * 캡처 위에 빨간 표시를 그리는 그림판 — 박스(끌기) · 펜(체크·동그라미) · 글자(누른 자리에 입력 후 Enter).
+ * 캡처 위에 빨간 표시를 그리는 그림판 — 박스(끌기) · 펜(체크·동그라미) · 글자(누른 자리에 입력 후 Enter)
+ * · 가리기(끌어서 진한 회색으로 덮기 — 직접 올린 사진의 전화번호·이름용).
  * 되돌리기·전체 지우기 · 「완료」를 누르면 표시를 합친 JPEG 와 표시 개수를 돌려준다. 색은 빨강 하나.
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 type Pt = { x: number; y: number };
-type Shape = { t: "box"; x: number; y: number; w: number; h: number } | { t: "pen"; pts: Pt[] } | { t: "text"; x: number; y: number; s: string };
-type Tool = "box" | "pen" | "text";
+type Shape = { t: "box" | "hide"; x: number; y: number; w: number; h: number } | { t: "pen"; pts: Pt[] } | { t: "text"; x: number; y: number; s: string };
+type Tool = "box" | "pen" | "text" | "hide";
 const RED = "#dc2626";
-const TOOLS: { id: Tool; label: string }[] = [{ id: "box", label: "□ 박스" }, { id: "pen", label: "✎ 펜" }, { id: "text", label: "T 글자" }];
+const TOOLS: { id: Tool; label: string }[] = [{ id: "box", label: "□ 박스" }, { id: "pen", label: "✎ 펜" }, { id: "text", label: "T 글자" }, { id: "hide", label: "■ 가리기" }];
 
 export default function AnnotateCanvas({ src, onDone, onCancel }: { src: string; onDone: (image: string, marks: number) => void; onCancel: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -34,8 +35,9 @@ export default function AnnotateCanvas({ src, onDone, onCancel }: { src: string;
     ctx.strokeStyle = RED; ctx.lineWidth = 4 * k; ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const s of draft.current ? [...list, draft.current] : list) {
       if (s.t === "box") ctx.strokeRect(s.x, s.y, s.w, s.h);
+      else if (s.t === "hide") { ctx.fillStyle = "#334155"; ctx.fillRect(s.x, s.y, s.w, s.h); }
       else if (s.t === "pen") { ctx.beginPath(); s.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); }
-      else {
+      else if (s.t === "text") {
         ctx.font = `bold ${Math.round(20 * k)}px sans-serif`;
         const w = ctx.measureText(s.s).width;
         ctx.fillStyle = "#ffffffee"; ctx.fillRect(s.x - 4 * k, s.y - 20 * k, w + 8 * k, 28 * k);
@@ -72,20 +74,20 @@ export default function AnnotateCanvas({ src, onDone, onCancel }: { src: string;
       return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
-    draft.current = tool === "box" ? { t: "box", x: p.x, y: p.y, w: 0, h: 0, ox: p.x, oy: p.y } : { t: "pen", pts: [p] };
+    draft.current = tool === "box" || tool === "hide" ? { t: tool, x: p.x, y: p.y, w: 0, h: 0, ox: p.x, oy: p.y } : { t: "pen", pts: [p] };
   };
   const move = (e: ReactPointerEvent) => {
     const d = draft.current;
     if (!d) return;
     const p = pos(e);
-    if (d.t === "box") { d.x = Math.min(p.x, d.ox!); d.y = Math.min(p.y, d.oy!); d.w = Math.abs(p.x - d.ox!); d.h = Math.abs(p.y - d.oy!); }
+    if (d.t === "box" || d.t === "hide") { d.x = Math.min(p.x, d.ox!); d.y = Math.min(p.y, d.oy!); d.w = Math.abs(p.x - d.ox!); d.h = Math.abs(p.y - d.oy!); }
     else if (d.t === "pen") d.pts.push(p);
     redraw(shapes);
   };
   const up = () => {
     const d = draft.current;
     draft.current = null;
-    if (d && (d.t === "pen" ? d.pts.length > 1 : d.t === "box" && d.w > 4 && d.h > 4)) {
+    if (d && (d.t === "pen" ? d.pts.length > 1 : (d.t === "box" || d.t === "hide") && d.w > 4 && d.h > 4)) {
       const { ox: _ox, oy: _oy, ...shape } = d;
       setShapes(list => [...list, shape as Shape]);
     } else redraw(shapes);
@@ -124,6 +126,6 @@ export default function AnnotateCanvas({ src, onDone, onCancel }: { src: string;
       {typing && <input ref={textbox} className="br-textbox" style={{ left: typing.left, top: typing.top }} value={text} maxLength={40} aria-label="표시할 글자"
         onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commitText(); } if (e.key === "Escape") { e.stopPropagation(); setTyping(null); setText(""); } }} onBlur={commitText} />}
     </div>
-    <p className="br-hint">박스: 끌어서 네모 · 펜: 체크·동그라미 · 글자: 누른 자리에 입력 후 Enter · 🔒 전화번호·이름 칸은 이미 가려졌어요</p>
+    <p className="br-hint">박스: 끌어서 네모 · 펜: 체크·동그라미 · 글자: 누른 자리에 입력 후 Enter · 가리기: 끌어서 덮기(전화번호·이름)</p>
   </div>;
 }
