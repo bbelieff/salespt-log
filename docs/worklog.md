@@ -1,3 +1,6 @@
+## 2026-10-26 · 맞춤공고 4a — 실무/수납 「공고 N」 칩 · 「🎯 맞는 공고」 상자
+- feat/grant-match-ui. GET `/api/grant-matches`(DB 업체정보 한 번에 + 공고 피드 → 계약별 판정, 저장 없음), 목록 칩·실무 칸 상자. 「할 일로 담기」·데일리·오늘 챙길 일 탭은 4b~4d. [plan](plans/active/grant-match-ui.md).
+
 ## 2026-10-26 · 맞춤공고 3단계 — 매칭 판정 함수
 - feat/grant-match. `lib/analytics/grant-match.ts`(맞음/확인 필요/안 맞음 + 이유 + 급함). 화면 무변경. 실데이터 38건 × 합성 업체 3종 점검 후 청년·「자금별 상이」 단정 완화. [plan](plans/active/grant-match.md).
 

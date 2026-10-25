@@ -55,6 +55,7 @@ import { buildInstitutionWorkItems, groupInstitutionWorkItems, type InstitutionW
 import { activityTodayISO } from "./_lib/payment-progress";
 import { INITIAL_PAYMENT_SELECTION, paymentSelectionReducer, scrollToPaymentSlot } from "./_lib/payment-selection";
 import { useAllTodos } from "@/query/todos-hooks";
+import { useGrantMatches } from "@/query/grant-match-hooks";
 
 interface ConfirmTarget {
   row: number;
@@ -94,6 +95,7 @@ export default function PaymentPage() {
   );
   const guardedNav = useGuardedNav();
   const allTodos = useAllTodos();
+  const { data: grants } = useGrantMatches();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const listPaneRef = useRef<HTMLDivElement>(null);
   const bridgeRef = useRef<SVGSVGElement>(null);
@@ -345,7 +347,7 @@ export default function PaymentPage() {
               {standaloneAdd}
               {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">{emptyListText}</p>
-              ) : listMode === "company" ? <ContractListTable
+              ) : listMode === "company" ? <ContractListTable grants={grants}
                 items={companyItems} activityState={activityState}
                 selectedKey={selectedCompany?.key ?? null} onSelect={selectCompany}
                 highlight={companyQuery}
@@ -364,7 +366,7 @@ export default function PaymentPage() {
                   <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>{stageToggle(selectedCp)}</div>
                 </div>
                 {focusPayment?.row === selectedCp.row && focusNotice}
-                <ContractRow
+                <ContractRow grants={grants}
                   key={`detail-${selectedCp.row}`}
                   cp={selectedCp}
                   ordinal={listMode === "company" ? companyItems.findIndex((item) => item.key === selectedCompany?.key) + 1 : rows.findIndex((r) => r.row === selectedCp.row) + 1}
@@ -401,7 +403,7 @@ export default function PaymentPage() {
               detailExpanded={mobileDetailExpanded} onToggleDetail={() => dispatch({ type: "toggleDetail" })}
               renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
                 {mobileStageBar(selectedCp)}
-                <ContractRow
+                <ContractRow grants={grants}
                   key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
                   pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
                   companyInfoDefaultOpen={false}
@@ -411,7 +413,7 @@ export default function PaymentPage() {
                   focusRequestId={focusRequestId}
                 />
               </> : null}
-            /> : <ContractListTable
+            /> : <ContractListTable grants={grants}
               items={companyItems} selectedKey={selectedCompanyKey} onSelect={selectCompany}
               activityState={activityState} detailExpanded={mobileDetailExpanded}
               onToggleDetail={() => dispatch({ type: "toggleDetail" })}
@@ -419,7 +421,7 @@ export default function PaymentPage() {
               renderDetail={(item) => selectedCompanyKey === item.key ? <>
                 {mobileStageBar(item.cp)}
                 {focusPayment?.row === item.cp.row && focusNotice}
-                <ContractRow key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
+                <ContractRow grants={grants} key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
                   pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
                   companyInfoDefaultOpen={false}
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}

@@ -11,6 +11,8 @@ import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { isManualContractLink } from "@/util/contract-link";
 import MeetingLinkPicker from "./MeetingLinkPicker";
 import { WaitBadge } from "./ProgressWaitFields";
+import { GrantChip } from "./GrantMatchBox";
+import type { GrantMatchesResponse } from "@/lib/analytics/grant-match";
 
 interface Props {
   items: CompanyWorkItem[];
@@ -22,9 +24,11 @@ interface Props {
   renderDetail?: (item: CompanyWorkItem) => ReactNode;
   detailExpanded?: boolean;
   onToggleDetail?: () => void;
+  /** 맞춤공고 판정(실무/수납 page) — 카드 칩 「공고 N」. */
+  grants?: GrantMatchesResponse;
 }
 
-export default function ContractListTable({ items, selectedKey, onSelect, highlight, activityState, renderDetail, detailExpanded = true, onToggleDetail }: Props) {
+export default function ContractListTable({ items, selectedKey, onSelect, highlight, activityState, renderDetail, detailExpanded = true, onToggleDetail, grants }: Props) {
   // 「영업기록 없음」 을 누르면 미팅 고르기 → 연결(belie 2026-09-29). 행 선택 버튼 안이라 클릭을 행으로 넘기지 않는다.
   const [linking, setLinking] = useState<{ row: number; 업체명: string } | null>(null);
   const openLink = (row: number | undefined, 업체명: string) => (e: MouseEvent | KeyboardEvent) => {
@@ -63,6 +67,7 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
                 {isManualContractLink(cp.linkedMeetingId) && <span role="button" tabIndex={0} title="눌러서 영업기록(미팅)과 연결" aria-label={`${cp.업체명} 영업기록과 연결`}
                   onClick={openLink(cp.row, cp.업체명)} onKeyDown={openLink(cp.row, cp.업체명)}
                   className="shrink-0 rounded border border-dashed border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700">영업기록 없음 ＋</span>}
+                <GrantChip 계약일={cp.계약일} 업체명={cp.업체명} grants={grants}/>
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600">진행 없음</span>}
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
               </span>
