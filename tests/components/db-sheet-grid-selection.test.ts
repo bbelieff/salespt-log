@@ -105,21 +105,24 @@ it('shows a save failure from the stage buttons',async()=>{
  await act(async()=>[...host.querySelectorAll('button')].find(x=>x.textContent==='진행종료')!.click());
  expect(host.querySelector('[role=alert]')!.textContent).toBe('다른 화면에서 변경되었습니다.');
 });
-it('adds 다음 연락일 once to an older saved column choice',()=>{
+it('adds 다음 연락일·진행 단계 once to an older saved column choice',()=>{
  const store=(v:Record<string,string>)=>(k:string)=>v[k]??null;
- expect(restoreVisibleColumns(store({'db-sheet-v5-columns':JSON.stringify(['company','result','stage'])}))).toEqual(['company','result','next']); // 현재상태 칸은 2026-10-25 제거 — 예전에 저장한 선택에서도 빠진다
- expect(restoreVisibleColumns(store({'db-sheet-v6-columns':JSON.stringify(['company','result'])}))).toEqual(['company','result']);
- expect(restoreVisibleColumns(store({'db-sheet-v3-columns':JSON.stringify(['supplier','date','result'])}))).toEqual(['channel','supplier','date','inflow','result','next']);
+ expect(restoreVisibleColumns(store({'db-sheet-v5-columns':JSON.stringify(['company','result','stage'])}))).toEqual(['company','result','step','next']); // 현재상태 칸은 2026-10-25 제거
+ expect(restoreVisibleColumns(store({'db-sheet-v6-columns':JSON.stringify(['company','result'])}))).toEqual(['company','result','step']);
+ expect(restoreVisibleColumns(store({'db-sheet-v7-columns':JSON.stringify(['company','result'])}))).toEqual(['company','result']); // v7 에서 끈 선택은 존중
+ expect(restoreVisibleColumns(store({'db-sheet-v3-columns':JSON.stringify(['supplier','date','result'])}))).toEqual(['channel','supplier','date','inflow','result','step','next']);
  expect(restoreVisibleColumns(store({}))).toBeNull();
 });
 
-it('컨택결과 꼬리표: 컨택결과를 다시 말하는 상태는 숨기고 미팅 뒤 진행·장기관리만(2026-10-25)',async()=>{
- const {resultTag}=await import('@/app/(app)/db-sheet/_components/model');
+it('컨택결과 꼬리표는 장기관리·진행종료만, 미팅 뒤는 진행 단계 바로가기(2026-10-25)',async()=>{
+ const {resultTag,stepShortcut}=await import('@/app/(app)/db-sheet/_components/model');
  expect(resultTag({stage:'DB컨택중',result:'재통화',meetingId:null})).toBe('');
- expect(resultTag({stage:'상담 중',result:'단순거절',meetingId:null})).toBe('');
- expect(resultTag({stage:'미팅예약',result:'컨택진행',meetingId:'m1'})).toBe('');
- expect(resultTag({stage:'미팅예약',result:'단순거절',meetingId:'m1'})).toBe('→ 미팅예약');
- expect(resultTag({stage:'계약',result:'컨택진행',meetingId:'m1'})).toBe('→ 계약');
+ expect(resultTag({stage:'계약',result:'컨택진행',meetingId:'m1'})).toBe('');
  expect(resultTag({stage:'장기관리',result:'단순거절',meetingId:null})).toBe('장기관리');
  expect(resultTag({stage:'진행종료',result:'AS예정',meetingId:null})).toBe('');
+ expect(stepShortcut({stage:'DB컨택중',meetingId:null})).toBeNull();
+ expect(stepShortcut({stage:'미팅예약',meetingId:'m1',contact:{meetingDate:'2026-10-23'}})).toEqual({label:'STEP 3 일정',href:'/schedule?date=2026-10-23&focus=m1',state:'미팅예약'});
+ expect(stepShortcut({stage:'미팅변경',meetingId:'m1',effectiveMeetingId:'m2'})?.href).toBe('/schedule?focus=m2');
+ expect(stepShortcut({stage:'수납대기',meetingId:'m1',contractRow:7})).toEqual({label:'STEP 4 실무/수납',href:'/payment?row=7',state:'수납대기'});
+ expect(stepShortcut({stage:'미팅 삭제됨',meetingId:'m1'})).toBeNull();
 });

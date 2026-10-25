@@ -27,7 +27,7 @@ async function expected(c:PoolClient,ctx:DbSheetContext,id:string,revision:numbe
  const lead=await read(c,ctx,id);if(!lead||lead.revision!==revision)throw new DbSheetConflict();return lead;
 }
 async function persist(c:PoolClient,ctx:DbSheetContext,lead:DbSheetLead){
- await settleRecording(c,ctx,lead);const stored={...lead};delete stored.inflowStatus;delete stored.effectiveMeetingId;delete stored.meetingLineageIds;delete stored.funnel; // read projection only; stable original link is persisted.
+ await settleRecording(c,ctx,lead);const stored={...lead};delete stored.inflowStatus;delete stored.effectiveMeetingId;delete stored.meetingLineageIds;delete stored.funnel;delete stored.contractRow; // read projection only; stable original link is persisted.
  await c.query(`insert into db_sheet_leads(spreadsheet_id,id,revision,data,meeting_id) values($1,$2,$3,$4::jsonb,$5)
  on conflict(spreadsheet_id,id) do update set revision=excluded.revision,data=excluded.data,meeting_id=excluded.meeting_id,updated_at=now()`,[ctx.spreadsheetId,lead.id,lead.revision,JSON.stringify(stored),lead.meetingId]);
  await c.query("insert into db_sheet_history(spreadsheet_id,lead_id,revision,data) values($1,$2,$3,$4::jsonb)",[ctx.spreadsheetId,lead.id,lead.revision,JSON.stringify(stored)]);

@@ -2,6 +2,8 @@
 - feat/bug-report(#1240 추가 커밋). belie 「다시 그린 캡처가 실제와 다르면 없는 오류가 신고되고 혼동」 → 결정 「실제 화면 찍기」. PC = 브라우저 탭 공유 허락 후 실제 탭 한 장(찍는 순간 가림), 휴대폰·거절 = 캡처하러 가기→사진 붙이기, 그림판에 가리기 추가, 신고에 그림 출처 기록. html-to-image 제거. 실제 탭 찍기는 내장 브라우저에서 막혀 NOT_RUN — 배포 후 PC 크롬 확인 필요. [plan](plans/active/bug-report.md).
 ## 2026-10-25 · 오류신고 1단계 (빠른 보기 창 · 캡처 그리기)
 - feat/bug-report. belie 목업 승인 「좋다」. 빠른 보기 아래 줄 정리(오류신고 · N건 더 보기) + 캡처(개인정보 가림)·빨간 표시·문제 종류·설명 → 운영 DB `bug_reports`(처음 쓸 때 생성) + 관리자 웹 푸시. 카톡 알림은 앱에서 불가라 웹 푸시로 대체. 2단계(관리자 오류신고함·해결 알림) 대기. [plan](plans/active/bug-report.md).
+## 2026-10-25 · DB관리시트 진행 단계 바로가기
+- feat/db-sheet-step-shortcut. belie 「어느 탭으로 가서 이어 갈지 바로가기, 진행 단계 칸 따로」. STEP 3 일정 → / STEP 4 실무/수납 → + 상태, 미팅 전은 —. [plan](plans/active/db-sheet-step-shortcut.md).
 ## 2026-10-25 · DB관리시트 현재상태 칸 정리
 - feat/db-sheet-merge-stage-into-result. belie 「칸 없애고 필요한 것만 접기」. 컨택결과 중복(203/221) 제거, 미팅 뒤 진행·장기관리·진행종료만 컨택결과 옆 꼬리표. 내부 상태값·필터 그대로. [plan](plans/active/db-sheet-merge-stage-into-result.md).
 ## 2026-10-25 · 아이폰 빛 번짐 모서리·DB정보 날짜칸
