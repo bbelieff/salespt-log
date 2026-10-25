@@ -29,3 +29,16 @@ describe("grantReadyLines", () => {
     expect(chip).toContain('"pointerdown"');
   });
 });
+
+describe("4단계 — 맞는 공고 N", () => {
+  it("실무/수납에서 맞는 공고가 있으면 「맞는 공고 N」 버튼, 없으면 「공고매칭 n/3」", async () => {
+    const React = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { GrantReadyChip } = await import("@/components/company-info/GrantReadyChip");
+    (globalThis as { React?: unknown }).React = React;
+    const html = (n?: number) => renderToStaticMarkup(React.createElement(GrantReadyChip, { draft: {} as never, onFill: () => {}, matchCount: n }));
+    expect(html(2).replace(/<!-- -->/g, "")).toContain(">맞는 공고 2</button>");
+    expect(html(0)).toContain("공고매칭");
+    expect(html()).toContain("공고매칭");
+  });
+});

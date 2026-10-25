@@ -1,7 +1,9 @@
 /**
  * 헤더 칩 「공고매칭 n/3」(2026-10-26 belie 승인 — 맞춤공고 1단계 보완).
  * 누르면 작은 펼침: 조건마다 ✓/– 한 줄, 빈 조건은 「채우기 →」로 그 칸까지 데려간다. 3/3이면 한 줄만.
- * Esc·바깥 누르기로 닫힌다. 값은 다시 길게 적지 않는다(핸드오프 §3). 4단계에서 「맞는 공고 N」으로 바뀐다.
+ * Esc·바깥 누르기로 닫힌다. 값은 다시 길게 적지 않는다(핸드오프 §3).
+ * 4단계(2026-10-26): 실무/수납에서 맞는 공고가 있으면(matchCount ≥ 1) 「맞는 공고 N」 — 누르면 같은 화면의 「🎯 맞는 공고」 상자를 열고 그리로 이동.
+ * 그 밖의 화면(팝업 편집기 등)은 맞는 공고를 모르므로 「공고매칭 n/3」 그대로.
  */
 "use client";
 
@@ -29,7 +31,7 @@ export function grantReadyLines(draft: CI): Line[] {
   return [region, industry, size];
 }
 
-export function GrantReadyChip({ draft, onFill }: { draft: CI; onFill: (key: keyof CI) => void }) {
+export function GrantReadyChip({ draft, onFill, matchCount }: { draft: CI; onFill: (key: keyof CI) => void; matchCount?: number }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLSpanElement>(null);
   const chip = useRef<HTMLButtonElement>(null);
@@ -47,6 +49,21 @@ export function GrantReadyChip({ draft, onFill }: { draft: CI; onFill: (key: key
   }, [open]);
 
   const close = () => { setOpen(false); chip.current?.focus(); };
+  if (matchCount && matchCount > 0) {
+    const go = () => {
+      const scope = chip.current?.closest("[data-payment-ci-expanded]")?.parentElement ?? document;
+      const box = scope.querySelector<HTMLDetailsElement>("details[data-grant-match-box]") ?? document.querySelector<HTMLDetailsElement>("details[data-grant-match-box]");
+      if (!box) return;
+      box.open = true;
+      box.scrollIntoView({ block: "start", behavior: "smooth" });
+      box.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
+    };
+    return (
+      <button ref={chip} type="button" onClick={go} className="inline-flex min-h-6 items-center rounded-full bg-emerald-50 px-2 text-px-11 font-bold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100">
+        맞는 공고 {matchCount}
+      </button>
+    );
+  }
   return (
     <span ref={box} className="relative inline-block" onKeyDown={(e) => { if (open && e.key === "Escape") { e.stopPropagation(); close(); } }}>
       <button ref={chip} type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}
