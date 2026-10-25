@@ -1,6 +1,7 @@
 /**
  * document-ocr/parse-vat — 부가가치세 과세표준증명 OCR 텍스트 → 업체정보 매출 칸 제안.
  *
+ * 소재지: 증명 머리의 「사업장 소재지」 줄(2026-10-25 맞춤공고 — 지역 자동 선택용).
  * 채우는 칸(모두 백만원 정본 — wonToMillion, company-finance-won-grid 2026-09-28): 반기 매출 8칸
  *   (매출Y상·매출Y하 … 매출Y3상·매출Y3하 — "120") · 연도 합계 금년도매출·과년도매출·과년도매출Y2·Y3("250") ·
  *   면세수입금액("32"). 칸마다 원문 원 금액(sourceWon)을 같이 실어 비교표가 "원문 250,123,456원" 을 보여 준다.
@@ -18,7 +19,7 @@
  *
  * 개인정보: 13자리 등록번호 꼴은 읽기 전에 원문에서 지운다. 원문은 결과·경고에 싣지 않는다.
  */
-import { THIRTEEN_DIGIT_ID, compactText, normalizeOcrText, toLines } from "./text-utils";
+import { THIRTEEN_DIGIT_ID, compactText, findLabelLines, normalizeOcrText, toLines, valueAfter } from "./text-utils";
 import type { CompanyInfoKey, DocParseResult, ParsedField, ParsedInfo } from "./types";
 import { SALES_HALF_KEYS, SALES_YEAR_KEYS, salesSlotOf } from "@/util/company-sales";
 import { wonToMillion } from "@/util/company-money";
@@ -365,6 +366,14 @@ export function parseVatCertificate(rawText: string, opts: VatParseOptions = {})
 
   if (fields.length === 0) {
     documentWarnings.push("과세기간별 금액을 찾지 못했어요. 문서 종류가 맞는지 확인해 주세요.");
+  }
+  // 사업장 소재지(2026-10-25 맞춤공고 — 서류를 읽히면 공고용 지역이 함께 잡히게). 증명 머리의 「사업장 소재지」 줄만 읽는다.
+  const addrStops = ["상호", "법인명", "성명", "대표자", "업태", "종목", "사업자등록번호", "등록번호", "과세기간", "발급", "용도", "제출처"];
+  const addrHit = findLabelLines(lines, ["사업장소재지", "사업장주소"])[0];
+  if (addrHit) {
+    const { value, multiline } = valueAfter(lines, addrHit, ["사업장소재지", "사업장주소"], addrStops);
+    const v = value.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (v.length >= 5) fields.push({ key: "소재지", value: v, confidence: multiline ? 0.6 : 0.7, warnings: multiline ? ["라벨 다음 줄에서 읽었어요. 확인해 주세요."] : [] });
   }
   return { fields, documentWarnings, ...(info.length > 0 ? { info } : {}) };
 }
