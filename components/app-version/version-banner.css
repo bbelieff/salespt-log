@@ -1,0 +1,18 @@
+/* 새 버전 알림(2026-10-26 belie 「중앙 하단」). 모바일·태블릿(<1024)은 탭바와 오른쪽 아래 빠른 보기 버튼(56px) 위,
+ * PC 는 화면 아래 가운데. 적층 50 = 본문·빠른 보기 버튼(45) 위, 모달(60) 아래. 색은 앱 기본 남색 + 파랑 버튼. */
+.vu-banner{position:fixed;left:50%;bottom:calc(var(--app-tabbar-height) + 80px);z-index:50;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:999px;background:#1e293b;color:#fff;box-shadow:0 12px 32px #0f172a4d;animation:vu-in .28s cubic-bezier(.2,.8,.2,1)}
+@media(min-width:1024px){.vu-banner{bottom:calc(20px + env(safe-area-inset-bottom,0px))}}
+.vu-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px #34d39940}
+.vu-text{display:flex;align-items:baseline;gap:6px;min-width:0;white-space:nowrap}
+.vu-text strong{font-size:13px;font-weight:700}
+.vu-text small{font-size:11px;color:#cbd5e1;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.vu-reload{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;min-height:32px;padding:0 12px;border-radius:999px;background:#3b82f6;color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.vu-reload:hover{background:#2563eb}
+.vu-close{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border-radius:50%;color:#cbd5e1}
+.vu-close:hover{background:#334155;color:#fff}
+.vu-banner :is(button):focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+@media(max-width:1023px){.vu-reload,.vu-close{min-height:44px}.vu-close{width:44px;height:44px}}
+/* 좁은 화면: 버전명을 둘째 줄로(잘리지 않게). */
+@media(max-width:479px){.vu-banner{border-radius:20px}.vu-text{flex-direction:column;align-items:flex-start;gap:0}.vu-text small{font-size:11px}}
+@keyframes vu-in{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(prefers-reduced-motion:reduce){.vu-banner{animation:none}}
