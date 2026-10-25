@@ -1,3 +1,6 @@
+## 2026-10-26 · 맞춤공고 — 업체정보 칩 「맞는 공고 N」
+- feat/grant-chip-matches. 실무/수납 업체정보 머리 칩이 맞는 공고 수로 바뀌고 누르면 「🎯 맞는 공고」 상자로. 다른 화면은 n/3 유지. 맞춤공고 4단계(핸드오프 §7) 화면 작업 끝. [plan](plans/active/grant-match-ui.md).
+
 ## 2026-10-26 · 맞춤공고 4d — 오늘 챙길 일 창 「새 공고」 칸
 - feat/grant-launcher-tab. 창 머리 「챙길 일 N | 새 공고 N」, 담으면 새 공고에서 빠지고 챙길 일로(4b 할 일). 버튼 숫자 그대로. [plan](plans/active/grant-match-ui.md).
 

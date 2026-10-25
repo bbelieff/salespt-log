@@ -30,6 +30,8 @@ interface Props {
    * 업체명(가변 표시명)을 신원으로 쓰면 빠른 전환·개명 때 다른 레코드로 필드가
    * 전송되므로, 기존 행은 업체명 폴백을 쓰지 않는다. */
   identityKey: string;
+  /** 실무/수납 맞는 공고 수 — CompanyInfoEditor 칩 「맞는 공고 N」. */
+  grantMatchCount?: number;
 }
 
 export default function CompanyInfoContractSection({
@@ -43,6 +45,7 @@ export default function CompanyInfoContractSection({
   onChange,
   pendingValue,
   identityKey,
+  grantMatchCount,
 }: Props) {
   const requestKey = `${계약일}\u0000${업체명}`;
   const pendingValueRef = useRef(pendingValue);
@@ -141,6 +144,7 @@ export default function CompanyInfoContractSection({
       splitInline={splitInline}
       onChange={onChange}
       onSave={save}
+      grantMatchCount={grantMatchCount}
     />
   );
 }

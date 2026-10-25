@@ -41,7 +41,6 @@ import CompanyInfoHeader from "./company-info/CompanyInfoHeader";
 
 type CI = CompanyInfo;
 type Grp = "업체" | "대표자";
-
 const emptyCi = (): CI => CompanyInfo.parse({});
 
 interface Props {
@@ -72,11 +71,12 @@ interface Props {
   vaultTarget?: VaultTarget;
   /** 처음 여는 보기 — 계약 전 화면(컨택·일정계약)은 basic, 계약 후(실무/수납)는 extended (belie 2026-10-09). */
   defaultLayout?: InfoLayout;
+  /** 실무/수납 맞는 공고 수(맞춤공고 4단계) — 1 이상이면 머리 칩이 「맞는 공고 N」(누르면 「🎯 맞는 공고」 상자로). */
+  grantMatchCount?: number;
 }
 
-export default function CompanyInfoEditor({
-  value, onSave, busy, txtCompanyName, identityKey, onChange,
-  hideSave, defaultOpen, compactMobile = false, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic",
+export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName, identityKey, onChange,
+  hideSave, defaultOpen, compactMobile = false, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic", grantMatchCount,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen ?? (hideSave === true));
   const [modal, setModal] = useState(false);
@@ -395,7 +395,7 @@ export default function CompanyInfoEditor({
   return (
     <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <CompanyInfoHeader open={open} onToggle={() => setOpen(value => !value)} controlsId={`${uid}-body`}
-        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip draft={draft} onFill={fillField} />}
+        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip draft={draft} onFill={fillField} matchCount={grantMatchCount} />}
         status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
         tools={[
               <CompanyDocAutofillButton key="document"

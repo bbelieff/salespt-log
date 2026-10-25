@@ -19,7 +19,7 @@ import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import ContractSlots from "./ContractSlots";
-import GrantMatchBox from "./GrantMatchBox";
+import GrantMatchBox, { grantMatchCount } from "./GrantMatchBox";
 import type { GrantMatchesResponse } from "@/lib/analytics/grant-match";
 import { useContractCompanyInfo } from "./useContractCompanyInfo";
 import LinkedFieldsEditor from "./LinkedFieldsEditor";
@@ -429,7 +429,7 @@ export default function ContractRow({
           {!inline && (ciState.error || (status === "error" && error)) && <p data-payment-pc-error className="text-px-11 font-medium text-red-600" aria-live="polite">⚠ {ciState.error ? `업체정보: ${ciState.error}` : error} — 입력은 유지됩니다</p>}
           <div data-payment-main-content className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
             <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
-              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} pendingValue={ciPending} hideSave defaultOpen={companyInfoDefaultOpen} compactMobile={inline} onChange={onCiChange} identityKey={`contract-row:${cp.row}`} desktopHeading splitInline={bare && detailLeftPct >= 55} />
+              <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} pendingValue={ciPending} hideSave defaultOpen={companyInfoDefaultOpen} compactMobile={inline} onChange={onCiChange} identityKey={`contract-row:${cp.row}`} grantMatchCount={grantMatchCount(grants, cp.계약일, cp.업체명, allTodos)} desktopHeading splitInline={bare && detailLeftPct >= 55} />
             </div>
             {bare && <button type="button" role="separator" aria-label="업체정보와 실무정보 열 너비 조절" aria-orientation="vertical" aria-valuemin={38} aria-valuemax={62} aria-valuenow={detailLeftPct} title="드래그하거나 화살표 키로 열 너비 조절" className="group relative h-full w-2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
               onPointerDown={(e) => { const grid = e.currentTarget.parentElement; if (!grid || !onDetailLeftPctChange) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const gap = parseFloat(getComputedStyle(grid).columnGap) || 0; detailResizeStart.current = { x: e.clientX, pct: detailLeftPct, width: Math.max(1, grid.clientWidth - 8 - 2 * gap) }; }}

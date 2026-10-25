@@ -118,3 +118,11 @@ export function GrantChip({ 계약일, 업체명, grants: data }: { 계약일: s
   if (n === 0) return null;
   return <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-px-11 font-bold text-emerald-700 ring-1 ring-emerald-200">공고 {n}</span>;
 }
+
+/** 머리 칩 「맞는 공고 N」의 N — 상자와 같은 규칙(담은 공고는 뺀다). */
+export function grantMatchCount(data: GrantMatchesResponse | undefined, 계약일: string, 업체명: string, todos: Todo[] = []): number {
+  const mine = data && !data.unavailable ? data.companies[contractRef(계약일, 업체명)] : undefined;
+  if (!mine) return 0;
+  const taken = new Set(todos.filter(isGrantTodo).map(grantIdOfTodo));
+  return mine.matches.filter((m) => data!.announcements[m.id] && !taken.has(m.id)).length;
+}
