@@ -1,3 +1,5 @@
+## 2026-10-25 · 아이폰 빛 번짐 모서리·DB정보 날짜칸
+- fix/followups-glow-corners. belie 스크린샷: 빛 번짐 모서리 네모 잘림(사파리 흐림 잘림 → 빛 층 20px 여유), 날짜칸 크기 불일치(appearance:none + 다른 칸과 같은 높이·폭). [plan](plans/active/ios-glow-corners-date-fields.md).
 ## 2026-10-25 · DB관리시트 상담 중 = 실제 결과 기준
 - fix/db-sheet-stage-by-result. belie 「규칙 유지 + 표시만 분리」. 같은 날 결과를 바꿔 남은 실적 표시는 STEP 2 규칙대로 두고, 현재상태만 기록된 결과로 판정. 데이터·숫자 무변경. [plan](plans/active/db-sheet-stage-by-result.md).
 ## 2026-10-25 · STEP 2 기록 설정 제거 (유입 토글만)
