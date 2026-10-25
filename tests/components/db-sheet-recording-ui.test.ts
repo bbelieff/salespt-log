@@ -30,13 +30,9 @@ it('reports a missing projection as an error and preserves both authoritative in
  }
  expect(open).toHaveBeenCalledTimes(2);expect(persist).toHaveBeenCalledTimes(2);
 });
-it('previews a retrospective change before confirming, and invalidates preview when settings change',async()=>{
- const preview=vi.fn(async()=>({inflow:1,contacts:2,meetings:0,rows:[]})),confirm=vi.fn(async()=>{});
- await act(async()=>root.render(createElement(RecordingDialog,{row:{...blank(),recording:{inflow:false,activities:false}},onPreview:preview,onConfirm:confirm,onClose:vi.fn()})));
- act(()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
- await act(async()=>button('변경 내용 확인').click());expect(preview).toHaveBeenCalledWith({inflow:true,activities:true});expect(confirm).not.toHaveBeenCalled();expect(host.textContent).toContain('유입 1건 · 상담 2건');
- act(()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());expect(button('확인하고 반영')).toBeUndefined();
- await act(async()=>button('변경 내용 확인').click());await act(async()=>button('확인하고 반영').click());expect(confirm).toHaveBeenCalledWith({inflow:false,activities:false});
+it('영구삭제 창에는 STEP 2 기록 설정 스위치가 없다(2026-10-25 belie: 상담·미팅 반영 설정 제거)',async()=>{
+ await act(async()=>root.render(createElement(RecordingDialog,{row:blank(),deleting:true,onPreview:async()=>({inflow:0,contacts:0,meetings:0,rows:[]}),onConfirm:vi.fn(async()=>{}),onClose:vi.fn()})));
+ expect(host.querySelector('input[type=checkbox]')).toBeNull();expect(host.textContent).toContain('되살릴 수 없어요');
 });
 it('prevents permanent deletion when the server reports an active linked record',async()=>{
  const confirm=vi.fn(async()=>{});

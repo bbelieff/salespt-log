@@ -38,7 +38,7 @@ it("keeps the acknowledged inflow state and blocks duplicate input until a faile
 });
 it("renders one contact result and one header inflow editor, without the old explicit contact button", () => {
   const noop = vi.fn();
-  act(() => root.render(React.createElement(DbDetail, { row, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onRecording: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {} })));
+  act(() => root.render(React.createElement(DbDetail, { row, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {} })));
   click(host.querySelector(".db-contact-open")!);
   expect(host.querySelectorAll('[aria-label="DB정보 컨택결과"]')).toHaveLength(1);
   expect(host.querySelector('[aria-label="컨택내용 결과"]')).toBeNull();
@@ -83,7 +83,7 @@ it("includes blank and long suppliers, supports all/clear, and closes its portal
 });
 
 it("keeps total width while the center grip consumes left slack before growing the shell",()=>{
- const noop=vi.fn(),props={row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onRecording:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}};
+ const noop=vi.fn(),props={row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}};
  Object.defineProperty(window,'innerWidth',{configurable:true,value:1280});
  act(()=>root.render(React.createElement(DbDetail,props)));click(host.querySelector('.db-contact-open')!);
  const shell=host.querySelector<HTMLElement>('.db-detail-shell')!;
@@ -99,7 +99,7 @@ it("keeps total width while the center grip consumes left slack before growing t
 });
 
 it("treats the old saved default right width (560) as the new 680 default but keeps a user-dragged width",()=>{
- const noop=vi.fn(),props={row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onRecording:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}};
+ const noop=vi.fn(),props={row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}};
  Object.defineProperty(window,'innerWidth',{configurable:true,value:1440});
  for(const [saved,expected] of [['560','680px'],['500','500px']] as const){
   localStorage.setItem('db-sheet-panel-left-width','640');localStorage.setItem('db-sheet-panel-right-width',saved);
@@ -109,17 +109,16 @@ it("treats the old saved default right width (560) as the new 680 default but ke
  }
 });
 
-it("preserves the non-destructive activity settings entry for records with activities disabled",()=>{
- const noop=vi.fn(),recording=vi.fn(),remove=vi.fn();
- act(()=>root.render(React.createElement(DbDetail,{row:{...row,recording:{inflow:true,activities:false}},draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onRecording:recording,onDelete:remove,onAsInfo:noop,onInflowChange:async()=>{}})));
- click([...host.querySelectorAll('button')].find(button=>button.textContent==='상담·미팅 반영 설정')!);
- expect(recording).toHaveBeenCalledOnce();expect(remove).not.toHaveBeenCalled();
- expect(host.querySelectorAll('.db-info-pane [role=radio]')).toHaveLength(0);
+it("DB정보 아래에는 영구삭제만 남고 상담·미팅 반영 설정은 없다(2026-10-25 belie)",()=>{
+ const noop=vi.fn(),remove=vi.fn();
+ act(()=>root.render(React.createElement(DbDetail,{row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onDelete:remove,onAsInfo:noop})));
+ expect([...host.querySelectorAll('button')].some(button=>button.textContent==='상담·미팅 반영 설정')).toBe(false);
+ click([...host.querySelectorAll('button')].find(button=>button.textContent==='영구삭제')!);expect(remove).toHaveBeenCalledOnce();
 });
 
 it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only after minLeft",()=>{
  const noop=vi.fn();localStorage.setItem('db-sheet-panel-left-width','480');localStorage.setItem('db-sheet-panel-right-width','600');Object.defineProperty(window,'innerWidth',{configurable:true,value:1280});
- act(()=>root.render(React.createElement(DbDetail,{row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onRecording:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}})));click(host.querySelector('.db-contact-open')!);
+ act(()=>root.render(React.createElement(DbDetail,{row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}})));click(host.querySelector('.db-contact-open')!);
  const shell=host.querySelector<HTMLElement>('.db-detail-shell')!,center=host.querySelector('[aria-label="우열 중앙 경계 너비 조절"]')!;
  const press=(key:string)=>act(()=>center.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true})));
  for(let i=0;i<5;i++)press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('400px');expect(shell.style.getPropertyValue('--db-right-width')).toBe('680px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('1081px');
@@ -130,7 +129,7 @@ it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only
 });
 it("hides 부재 기록 once the result is 단순거절 (2026-10-25)", () => {
   const noop = vi.fn();
-  const render = (result: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onRecording: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {}, onAbsence: async () => {} })));
+  const render = (result: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {}, onAbsence: async () => {} })));
   render("부재");
   expect(host.querySelector('[aria-label="부재 기록"]')).not.toBeNull();
   render("단순거절");
@@ -138,7 +137,7 @@ it("hides 부재 기록 once the result is 단순거절 (2026-10-25)", () => {
 });
 it("부재·재통화 highlight the 다음 연락일 field with an auto-schedule hint instead of a separate notice box (2026-10-25)", () => {
   const noop = vi.fn();
-  const render = (result: string, next: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result, next }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onRecording: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {} })));
+  const render = (result: string, next: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result, next }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {} })));
   render("재통화", "2026-10-26");
   const field = host.querySelector('input[aria-label="DB정보 다음 연락일"]')!.closest("label")!;
   expect(field.className).toContain("db-next-auto");

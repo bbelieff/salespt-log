@@ -1785,9 +1785,9 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 ## DB관리시트 기록 선택·삭제 안전 (2026-10-15)
 - `SheetDialog`: 기존 제품 색·폰트·간격을 사용하는 접근 가능한 팝업, 닫기/초점 복귀.
 - `SupplierInput`: 계정별 저장된 공급처 선택·부분검색·키보드 이동 및 자유 입력. 선택을 강제하지 않는다.
-- `DirectInputDialog`, `RecordingOptions`: 직접 등록 기본 STEP 2 기록 ON. 유입/활동 범위를 구분한다.
+- `DirectInputDialog`: 직접 등록 — 「STEP 2 유입에 반영」 체크 하나(기본 켬). 상담·미팅은 항상 STEP 2에 기록(2026-10-25 belie: 「상담·미팅 반영 설정」 제거, `RecordingOptions` 삭제 — 유입 토글과 중복, 운영 사용 0건).
 - `DuplicateDialog`: 동일 연락처/업체 후보를 알리고 기존 업체 열기 또는 별도 업체 추가를 명시적으로 선택.
-- `RecordingDialog`: 서버 계산 미리보기 후 사후 반영/영구삭제 확인. 실패 시 입력 유지, 복잡한 연결건 삭제 차단.
+- `RecordingDialog`: 서버 계산 미리보기 후 영구삭제 확인(2026-10-25부터 삭제 전용 — 기록 설정 진입 제거). 실패 시 입력 유지, 복잡한 연결건 삭제 차단.
 - `InflowStatusCell`: 실제 서버 기여의 반영됨/count1·미반영/count0만 정상 표시. 투영 누락/모순은 새로고침 안내 alert·편집/write0. PC 비편집 목록과 모바일 iconOnly는 기존 열너비/48px 행을 보존하는 경고 아이콘+오류 짧은 표기이며 전체 안내를 aria-label/title에 보존한다. 상세의 오류 안내는 전체 문장을 표시하고 유입 편집 선택지를 만들지 않는다. 정상 목록 배지는 DB정보만 열고, 유일한 편집 토글은 업체명 옆에 배치. preview 차단 사유 확인 후 기존 revision-bound configure를 호출하며 pending 중 중복 입력·닫기 차단, 실패 시 기존 상태를 유지한다.
 - `InflowRecordingDialog`: 기존 standalone 영향 미리보기·확인 컴포넌트는 보존한다. 현재 DB관리시트의 기본 진입에는 연결하지 않으며, 목록 배지→DB정보의 헤더 편집과 기존 상담·미팅 설정 경로가 현행 UI다.
 - `ImportResultNotice`: 저장 성공 후 목록 추가건수·유입 반영건수·날짜/채널별 결과. 닫기 전 유지.
