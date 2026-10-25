@@ -1,3 +1,5 @@
+## 2026-10-26 · 맞춤공고 1b — 부가세 과세표준증명 소재지 읽기
+- feat/company-doc-address. 부가세 증명 머리의 사업장 소재지를 소재지 제안으로(지역 자동). 사업자등록증명은 기존 판독기로 이미 읽음 — 시험으로 확인. [plan](plans/active/company-grant-fields.md).
 ## 2026-10-25 · [병렬트랙] 맞춤공고 1단계 — 업체정보 지역·대분류·공고 특성
 - feat/company-grant-fields. 개발가이드 세션 핸드오프(belie 승인 목업). 구역: `lib/analytics/company-grant*`·`lib/util/admin-regions.ts`·`components/company-info/CompanyGrantFields.tsx`·CompanyInfo 확장5(04 CE~CI·06 BM~BQ). 자동 값은 저장 안 함(읽을 때 계산), 직접 고른 값만 저장. 다음: 1b 서류 주소 읽기 → 공고 JSON 계약 → 매칭 → 실무/수납·데일리·오늘 챙길 일. [plan](plans/active/company-grant-fields.md).
 
