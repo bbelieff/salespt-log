@@ -33,6 +33,7 @@ import AnnouncementsGate from "@/components/announcements/AnnouncementsGate";
 import PullToRefresh from "@/components/PullToRefresh";
 import IdentityGuard from "@/components/auth/IdentityGuard";
 import FollowUpsLauncher from "@/components/dashboard/FollowUpsLauncher";
+import VersionUpdateBanner from "@/components/app-version/VersionUpdateBanner";
 
 export default async function AppLayout({
   children,
@@ -112,6 +113,8 @@ export default async function AppLayout({
       </DirtyProvider>
       {/* 새소식 자동 팝업 (announcement-popup §3) — 조건 미충족 시 null. */}
       <AnnouncementsGate />
+      {/* 새 버전 알림 — 배포가 끝나면 아래 가운데에 「새 버전이 나왔어요 · 새로고침」. */}
+      <VersionUpdateBanner />
       {/* 모바일 당겨서 새로고침 — PC/모달/가로 스와이프 가드 내장. */}
       <PullToRefresh />
       {/* 탭 신원 가드 — 다른 탭에서 대리접속 대상이 바뀌면 이 탭을 막는다(잘못된 사람에게 저장 방지). */}

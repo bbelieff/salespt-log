@@ -1,7 +1,13 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
+// 새 버전 알림(2026-10-26 belie): 빌드할 때의 한국 시각을 버전명으로 박는다(예 2026.10.26-1405).
+// 화면 번들과 /api/version 에 같은 값이 들어가므로, 배포 뒤 둘이 다르면 「새 버전이 나왔어요」를 띄운다.
+const kst = new Date(Date.now() + 9 * 3600_000).toISOString();
+const APP_VERSION = process.env.APP_VERSION || `${kst.slice(0, 10).replaceAll("-", ".")}-${kst.slice(11, 13)}${kst.slice(14, 16)}`;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: { NEXT_PUBLIC_APP_VERSION: APP_VERSION },
   // ⚠️ output: "standalone" 제거됨 — PM2 + `next start` 호환 안 됨
   //    (모든 dynamic route 가 silently 404 반환). 필요 시 standalone 으로 가려면
   //    PM2 ecosystem 의 script 를 ".next/standalone/server.js" 로 변경.
