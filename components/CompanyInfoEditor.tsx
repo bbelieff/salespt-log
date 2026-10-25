@@ -35,7 +35,8 @@ import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
 import { fontScaleOf } from "@/util/font-scale";
-import { GrantReadyChip } from "./company-info/CompanyGrantFields";
+import { GrantReadyChip } from "./company-info/GrantReadyChip";
+import { useFillField } from "./company-info/useFillField";
 import CompanyInfoHeader from "./company-info/CompanyInfoHeader";
 
 type CI = CompanyInfo;
@@ -255,6 +256,12 @@ export default function CompanyInfoEditor({
   const { layout, setLayout } = useInfoLayout(defaultLayout);
   const basic = layout === "basic";
 
+  const fillField = useFillField(`${uid}-body`, () => {
+    setOpen(true);
+    if (basic) setLayout("extended");
+    if (view.mode !== "all") view.setMode("all");
+  });
+
   const counts = countFields([대표자_ITEMS, 기업정보_ITEMS, 재무_ITEMS], draft);
 
   const closeModal = () => {
@@ -388,7 +395,7 @@ export default function CompanyInfoEditor({
   return (
     <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <CompanyInfoHeader open={open} onToggle={() => setOpen(value => !value)} controlsId={`${uid}-body`}
-        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip draft={draft} />}
+        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip draft={draft} onFill={fillField} />}
         status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
         tools={[
               <CompanyDocAutofillButton key="document"

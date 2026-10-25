@@ -98,14 +98,3 @@ export function FeatureChips({ draft, className, onPatch }: { draft: CI; classNa
     </div>
   );
 }
-
-/** 헤더 칩 「공고매칭 n/3」 — 지역·대분류·규모 판정이 되는가. */
-export function GrantReadyChip({ draft }: { draft: CI }) {
-  const n = grantProfile(draft).ready;
-  const full = n === 3;
-  return (
-    <span className={`inline-block rounded-full px-2 text-px-11 font-bold ring-1 ${full ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-800 ring-amber-200"}`}>
-      공고매칭 {n}/3{full ? " ✓" : ""}
-    </span>
-  );
-}

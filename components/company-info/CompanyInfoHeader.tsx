@@ -54,9 +54,9 @@ export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHe
       aria-expanded={open} aria-label={`업체정보 ${open ? '접기' : '펼치기'}`} aria-controls={controlsId}
       className={`flex min-w-0 flex-1 items-center gap-1.5 ${desktopHeading ? 'text-sm' : 'text-xs'}`}>
       <span className={`truncate ${desktopHeading ? 'font-bold text-slate-800' : 'font-semibold text-gray-700'}`}>🏢 업체정보{' '}{!payment && <span className="font-normal text-gray-400">{summary}</span>}</span>
-      {badge && <span className="shrink-0">{badge}</span>}
       <span data-payment-ci-fold={payment ? '' : undefined} aria-hidden="true" className="shrink-0 text-gray-400"><DisclosureChevron open={open} /></span>
     </button>
+    {badge && <span data-company-info-badge className="shrink-0">{badge}</span>}
     <div data-company-info-header-actions className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? 'basis-full justify-end sm:basis-auto sm:flex-1' : 'shrink-0'}`}>
       {!payment ? <>{open && status}{open && actions}{fontControl}</> : open && <div data-ci-header-tools data-mode={mode}>
         {status && <span data-ci-header-status>{status}</span>}

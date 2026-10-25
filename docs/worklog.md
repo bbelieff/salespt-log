@@ -1,3 +1,5 @@
+## 2026-10-26 · 「공고매칭 n/3」 칩 누르면 빈 조건 안내
+- feat/grant-ready-popover. 개발가이드 세션 경유 belie 승인. 칩 → ✓/– 세 줄 + 「채우기 →」(그 칸으로 이동·포커스), 3/3이면 한 줄. 4단계에 「맞는 공고 N」으로 전환. 화면만. [plan](plans/active/grant-ready-popover.md).
 ## 2026-10-26 · 맞춤공고 1b — 부가세 과세표준증명 소재지 읽기
 - feat/company-doc-address. 부가세 증명 머리의 사업장 소재지를 소재지 제안으로(지역 자동). 사업자등록증명은 기존 판독기로 이미 읽음 — 시험으로 확인. [plan](plans/active/company-grant-fields.md).
 ## 2026-10-25 · [병렬트랙] 맞춤공고 1단계 — 업체정보 지역·대분류·공고 특성
