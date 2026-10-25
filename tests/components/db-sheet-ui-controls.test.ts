@@ -125,7 +125,8 @@ it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only
  for(let i=0;i<5;i++)press('ArrowLeft');expect(shell.style.getPropertyValue('--db-left-width')).toBe('480px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('1081px');
  const left=host.querySelector('[aria-label="좌열 왼쪽 바깥 테두리 너비 조절"]')!;for(let i=0;i<10;i++)act(()=>left.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));
  expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');press('ArrowRight');expect(shell.style.getPropertyValue('--db-left-width')).toBe('360px');expect(shell.style.getPropertyValue('--db-panel-width')).toBe('977px');
- expect(host.textContent).toContain('컨택일(최초컨택일)');expect(host.querySelector('.db-call-heading .db-first-contact')).toBeNull();expect(host.querySelector('[aria-label="DB정보 최초상담일"]')).not.toBeNull();
+ expect(host.textContent).not.toContain('컨택일(최초컨택일)');expect(host.querySelector('[aria-label="상담메모"]')).not.toBeNull(); // 2026-10-26: 컨택일 칸·「컨택내용」 제목 제거, 상담메모는 컨택결과 묶음 안
+ expect(host.querySelector('.db-call-heading .db-first-contact')).toBeNull();expect(host.querySelector('[aria-label="DB정보 최초상담일"]')).not.toBeNull();
 });
 it("hides 부재 기록 once the result is 단순거절 (2026-10-25)", () => {
   const noop = vi.fn();
