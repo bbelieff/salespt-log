@@ -44,14 +44,17 @@ export type EditorItem =
   | { kind: "field"; def: FieldDef; onlyCorporation?: boolean }
   | { kind: "bizType" }
   | { kind: "ownership"; spec: OwnershipSpec }
-  | { kind: "row"; defs: FieldDef[] }
-  | { kind: "pair"; defs: [FieldDef, FieldDef]; wideSecond?: boolean }
+  /** grant = 맞춤공고 줄을 이 항목 아래에 붙인다(industry: 대분류·제외 업종 / features: 공고 특성 칩) — 보기 정렬에도 함께 움직인다. */
+  | { kind: "row"; defs: FieldDef[]; grant?: "industry" }
+  | { kind: "pair"; defs: [FieldDef, FieldDef]; wideSecond?: boolean; grant?: "features" }
   | { kind: "hidden"; key: Key; label: string }
   | { kind: "money"; def: FieldDef; signed?: boolean }
   | { kind: "ratio"; def: FieldDef }
   | { kind: "sales" }
   /** 기본보기의 연도별 연매출 한 줄(올해·Y-1·Y-2·Y-3 합계만) — 상·하반기는 확장보기. */
-  | { kind: "salesTotals" };
+  | { kind: "salesTotals" }
+  /** 맞춤공고(2026-10-25): 소재지 + 같은 줄 시·도/시·군·구 · 업종 아래 대분류·제외 업종 · 공고 특성 칩. */
+  | { kind: "grantAddress" };
 
 const f = (def: FieldDef, onlyCorporation?: boolean): EditorItem =>
   onlyCorporation ? { kind: "field", def, onlyCorporation } : { kind: "field", def };
@@ -127,8 +130,9 @@ export const 기업정보_ITEMS: EditorItem[] = [
       ["업태", "업태", "사업자등록증의 업태. 예: 도소매, 제조", 1],
       ["주생산품목", "아이템", "주로 만들거나 파는 물건. 예: 포장용 필름", 1],
     ],
+    grant: "industry",
   },
-  f(["소재지", "소재지", "주소지", 2]),
+  { kind: "grantAddress" },
   { kind: "ownership", spec: 기업_OWNERSHIP },
   // 4대보험 직원 | 특허 및 인증 — 늘 한 줄(belie 2026-10-09).
   {
@@ -137,6 +141,7 @@ export const 기업정보_ITEMS: EditorItem[] = [
       ["사대보험직원", "4대보험 직원", "0명 + 프리0명", 1],
       ["특허및인증", "특허 및 인증", "특허, ISO, 연구소, 벤처, 메인/이노비즈 등", 1],
     ],
+    grant: "features",
   },
   f(["업체기타메모", "기타메모", "자유 메모", 2, true]),
 ];
@@ -212,6 +217,7 @@ export function companyInfoFieldList(baseYear: number): [Key, string][] {
       if (it.kind === "field" || it.kind === "money" || it.kind === "ratio") out.push([it.def[0], it.def[1]]);
       else if (it.kind === "row" || it.kind === "pair") for (const d of it.defs) out.push([d[0], d[1]]);
       else if (it.kind === "hidden") out.push([it.key, it.label]);
+      else if (it.kind === "grantAddress") out.push(["소재지", "소재지"]);
       else if (it.kind === "bizType") out.push(["사업자구분", "사업자구분"], ["과세유형", "과세유형"]);
       else if (it.kind === "ownership") {
         out.push(
@@ -266,7 +272,7 @@ export const 기본_사업자_ITEMS: EditorItem[] = [
       ["특허및인증", "특허 및 인증", "특허, ISO, 연구소, 벤처, 메인/이노비즈 등", 1],
     ],
   },
-  f(["소재지", "소재지", "주소지", 2]),
+  { kind: "grantAddress" },
   f(["업체기타메모", "기타메모", "자유 메모", 2, true]),
 ];
 

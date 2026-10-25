@@ -31,6 +31,8 @@ export function itemKeys(it: EditorItem, ci: CompanyInfo): Key[] {
       return it.defs.map((d) => d[0]);
     case "bizType":
       return ["사업자구분", "과세유형"];
+    case "grantAddress":
+      return ["소재지"];
     case "ownership":
       return [it.spec.key];
     case "sales":
