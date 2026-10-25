@@ -1,3 +1,5 @@
+## 2026-10-25 · STEP 2 기록 설정 제거 (유입 토글만)
+- feat/db-sheet-remove-recording-settings. belie 결정 「없애고 유입 토글만」. 상담·미팅 끈 DB 0/221 실측. 화면만 정리, 저장 형식·숫자 무변경. [plan](plans/active/db-sheet-remove-recording-settings.md).
 ## 2026-10-25 · DB정보 컨택일·상담메모 한 줄, 미팅 날짜 한 줄
 - fix/db-sheet-detail-compact. belie 「공간 낭비」「미팅 일정 칸 내려오는 것 보기 싫음」. 화면만 변경. 상담 중/DB컨택중 기준·유원테크 미팅예약·STEP 2 기록 설정 필요성은 분석 보고(코드 무변경) — [plan](plans/active/db-sheet-detail-compact.md).
 ## 2026-10-25 · 미팅 시작 3시간 뒤 결과 알림
