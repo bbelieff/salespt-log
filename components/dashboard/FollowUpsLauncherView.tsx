@@ -4,12 +4,15 @@
  * 긴급순 5건(배지·업체·할 일·STEP) + 「열기」(대시보드 표와 같은 목적지).
  * 아래 줄: 왼쪽 「오류신고」(창을 닫고 실제 화면을 찍은 뒤 신고 창) · 오른쪽 「대시보드에서 N건 더 보기」.
  * 닫기: ×·Esc(초점은 버튼으로) · 바깥 누르기. 조회·집계는 FollowUpsLauncher(useTodayFollowUps) 책임.
+ * 맞춤공고 4d(2026-10-26 목업 ④): 머리에 「챙길 일 N | 새 공고 N」 두 칸. 새 공고 = 아직 담지 않은 맞는 공고(실무/수납에서 담는다).
+ * 버튼 숫자는 지금처럼 챙길 일 건수.
  */
 import { useEffect, useId, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { ArrowUpRight, X } from "lucide-react";
 import { followUpBadgeLabel, topUrgentFollowUps, type FollowUpItem } from "@/lib/analytics/dashboard-follow-ups";
+import type { GrantInboxItem } from "@/lib/analytics/grant-match";
 import { captureTab } from "@/components/bug-report/capture";
 import { installErrorLog } from "@/components/bug-report/error-log";
 import "./followups-table.css";
@@ -19,13 +22,20 @@ type DialogProps = { capture: string; onClose: () => void };
 
 const STEP_LABEL: Record<FollowUpItem["step"], string> = { "1.5": "DB관리시트", "2": "컨택관리", "3": "일정·계약", "4": "실무/수납" };
 
-export default function FollowUpsLauncherView({ items, loading = false, incomplete = false, onRetry }: {
+const GRANT_BADGE = { urgent: ["소진", "long-overdue"], match: ["맞음", "upcoming"], check: ["확인", "unknown"] } as const;
+const GRANT_TOP = 5;
+
+export default function FollowUpsLauncherView({ items, loading = false, incomplete = false, onRetry, grantItems }: {
   items: FollowUpItem[];
   loading?: boolean;
   incomplete?: boolean;
   onRetry?: () => void;
+  /** 새 공고(아직 담지 않은 맞는 공고). undefined = 맞춤공고를 못 읽음 → 칸을 그리지 않는다. */
+  grantItems?: (GrantInboxItem & { href: string })[];
 }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"todo" | "grant">("todo");
+  const showGrant = tab === "grant" && grantItems !== undefined;
   const [report, setReport] = useState<{ capture: string; Dialog: ComponentType<DialogProps> } | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -79,11 +89,24 @@ export default function FollowUpsLauncherView({ items, loading = false, incomple
     </button>
     <div ref={panel} id={id} className="fl-pop" data-open={open} role="dialog" aria-label={`오늘 챙길 일 ${countText}`} tabIndex={-1} inert={!open}>
       <div className="fl-head">
-        <h2>오늘 챙길 일<small>{countText}{total > 0 ? " · 긴급순" : ""}</small></h2>
+        {grantItems === undefined ? <h2>오늘 챙길 일<small>{countText}{total > 0 ? " · 긴급순" : ""}</small></h2>
+          : <div className="fl-tabs" role="group" aria-label="오늘 챙길 일 보기">
+            <button type="button" aria-pressed={!showGrant} onClick={() => setTab("todo")}>챙길 일 <b>{loading ? "…" : total}</b></button>
+            <button type="button" aria-pressed={showGrant} onClick={() => setTab("grant")}>새 공고 <b>{grantItems.length}</b></button>
+          </div>}
         <button type="button" className="fl-close" onClick={() => close(true)} aria-label="빠른 보기 닫기"><X size={17} aria-hidden /></button>
       </div>
       <div className="fl-body">
-        {loading ? <div className="fl-loading" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="fx-skeleton fl-skeleton" />)}</div>
+        {showGrant ? (grantItems!.length ? <ul className="fl-list">{grantItems!.slice(0, GRANT_TOP).map(g => {
+            const [label, tone] = GRANT_BADGE[g.urgent ? "urgent" : g.verdict];
+            return <li key={g.key} className="fl-item">
+              <span className="ft-badge" data-tone={tone}>{label}</span>
+              <span className="fl-text"><strong title={g.company}>{g.company}</strong><small title={g.title}>{g.title}</small></span>
+              <Link href={g.href as Route} className="ft-go" aria-label={`${g.company} ${g.title} 실무/수납에서 보기`} onClick={() => close(false)}>열기<ArrowUpRight size={13} aria-hidden /></Link>
+            </li>;
+          })}</ul>
+          : <div className="ft-empty"><span aria-hidden>✓</span><strong>새 공고가 없어요</strong><p>맞는 공고는 실무/수납 「🎯 맞는 공고」에서 담을 수 있어요.</p></div>)
+        : loading ? <div className="fl-loading" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="fx-skeleton fl-skeleton" />)}</div>
           : top.length ? <ul className="fl-list">{top.map(item => <li key={item.key} className="fl-item">
             <span className="ft-badge" data-tone={item.group}>{followUpBadgeLabel(item.badge)}</span>
             <span className="fl-text"><strong title={item.company}>{item.company}</strong><small title={`${item.action} · ${STEP_LABEL[item.step]}`}>{item.action} · {STEP_LABEL[item.step]}</small></span>

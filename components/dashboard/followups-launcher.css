@@ -17,6 +17,10 @@
 .fl-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 14px;background:linear-gradient(90deg,#eef2ff,#faf5ff);border-bottom:1px solid #c7d2fe}
 .fl-head h2{font-size:13px;font-weight:700;color:#312e81}
 .fl-head small{margin-left:6px;font-size:11px;font-weight:400;color:#64748b}
+.fl-tabs{display:flex;gap:2px;padding:2px;border-radius:8px;background:#e0e7ff80}
+.fl-tabs button{min-height:28px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600;color:#475569;white-space:nowrap}
+.fl-tabs button b{margin-left:2px;font-weight:700}
+.fl-tabs button[aria-pressed=true]{background:#fff;color:#312e81;box-shadow:0 1px 2px #312e8126}
 .fl-close{min-width:32px;min-height:32px;display:grid;place-items:center;border-radius:6px;color:#64748b}
 .fl-close:hover{background:#e0e7ff}
 .fl-body{min-height:0;overflow:auto;overscroll-behavior:contain}
@@ -38,7 +42,7 @@
 .fl-all:hover{background:#f8fafc}
 .fl-pop :is(a,button):focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 /* 터치 화면은 주변 조작부와 같은 44px 누름 영역(오늘 챙길 일 표의 열기·닫기와 동일). */
-@media(max-width:1023px){.fl-all,.fl-report,.fl-notice button{min-height:44px}.fl-item .ft-go{min-height:44px}}
+@media(max-width:1023px){.fl-all,.fl-report,.fl-notice button,.fl-tabs button{min-height:44px}.fl-item .ft-go{min-height:44px}}
 @media(max-width:767px){.fl-item{padding:4px 12px}.fl-head{padding-left:12px}.fl-foot{padding:4px 12px}}
 @media(prefers-reduced-motion:reduce){.fl-fab{transition:none}.fl-fab:hover,.fl-fab:active{transform:none}.fl-pop,.fl-pop[data-open=true]{transition:none}}
 /* 본문 끝 줄이 버튼 밑에 깔리지 않게 아래 여백을 더한다(높이 고정 화면 — DB관리시트·PC 실무/수납 — 제외). */
