@@ -17,7 +17,7 @@ export function StageControls({row,onStage}:{row:Pick<Row,'stage'|'meetingId'|'r
  return <div className={`db-stage-controls${parked?' is-parked':''}`}>
   {parked?<>
    <span><strong>{row.manualStage}</strong>{row.manualStage==='장기관리'?' · 오늘 챙길 일에서 빠져 있어요':' · 다시 연락하지 않는 업체예요'}</span>
-   <button type="button" className="sheet-btn" disabled={busy} onClick={()=>void go('DB컨택중')}>DB컨택중으로 되돌리기</button>
+   <button type="button" className="sheet-btn" disabled={busy} onClick={()=>void go('DB컨택중')}>다시 챙기기</button>
   </>:<>
    <span>더 이상 걸지 않을 거라면</span>
    <span className="db-stage-buttons">
