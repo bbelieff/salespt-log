@@ -40,3 +40,9 @@ body.db-sheet-route .db-contact-action-row select.sheet-input{width:100%;min-wid
 body.db-sheet-route .db-detail-shell .db-info-fields .db-next-auto .sheet-input{background:#fffbeb;border-color:#fbbf24}
 body.db-sheet-route .db-detail-shell .db-info-fields .db-next-auto{color:#92400e}
 .db-next-hint{display:block;margin-top:3px;font-size:11px;color:#a16207;line-height:1.35}
+/* 아이폰 날짜칸(2026-10-25 belie 「날짜칸이 전체 필드 크기와 일관성 있게」): 사파리 기본 날짜칸은 높이·폭 지정을 무시해 옆 칸보다
+   크고(칸 밖으로 삐져나옴) 글자가 가운데로 간다 → 기본 모양을 끄고 다른 칸과 같은 높이·폭·왼쪽 정렬. 높이는 각 칸의 기존 규칙을 그대로 따른다. */
+body.db-sheet-route .db-detail-shell input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;text-align:left;line-height:normal}
+body.db-sheet-route .db-detail-shell input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.2em}
+body.db-sheet-route .db-detail-shell input[type=date]::-webkit-calendar-picker-indicator{margin:0}
+body.db-sheet-route .db-detail-shell .db-absence-add input[type=date]{width:auto;display:inline-block}
