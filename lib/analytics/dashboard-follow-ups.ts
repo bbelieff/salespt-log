@@ -1,5 +1,5 @@
 /** Pure follow-up rules shared by the dashboard and its acceptance tests. */
-import { todoSlotOf } from "./todo-slot";
+import { isGrantTodo, todoSlotOf } from "./todo-slot";
 import { contractRef, normalizeContractRef, sameContractRef } from "@/util/contract-ref";
 import type { ContractPayment, Meeting, PaymentSlot, Todo } from "@/types";
 import { dbSheetResultLabel, isDbSheetFollowUpResult, isDbSheetParkedStage, type DbSheetLead } from "@/types/db-sheet";
@@ -71,15 +71,17 @@ export function buildTodoFollowUps(todos: Todo[], contracts: ContractPayment[], 
     const cp = byRef.get(normalizeContractRef(t.contractRef));
     if (cp && !active.has(cp)) continue;
     if (!cp || cp.row == null) { out.unlinked++; continue; }
-    const slot = slotForTodo(cp, t);
-    if (slot ? isSlotClosed(slotOf(cp, slot), today) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today))) continue;
+    // 공고 할 일(맞춤공고 「할 일로 담기」)은 업체 단위 — 진행건이 끝났어도·없어도 챙긴다.
+    const grant = isGrantTodo(t);
+    const slot = grant ? undefined : slotForTodo(cp, t);
+    if (!grant && (slot ? isSlotClosed(slotOf(cp, slot), today) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today)))) continue;
     const kind = t.예정일자 < today ? "overdue" : t.예정일자 === today ? "today" : "upcoming";
-    const deferred = slot ? isShortWaitSlot(slotOf(cp, slot)) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today) || isShortWaitSlot(slotOf(cp, n)));
+    const deferred = grant ? false : slot ? isShortWaitSlot(slotOf(cp, slot)) : visibleSlots(cp).every(n => isSlotClosed(slotOf(cp, n), today) || isShortWaitSlot(slotOf(cp, n)));
     out[kind].push(item({ key: `todo:${t.id}`, kind, step: "4", slot, ...(deferred ? { deferred } : {}),
       title: t.업체명.trim() || cp.업체명 || t.제목,
       detail: [t.제목, normalizeInstitution(t.institutionRef), t.예정시각].filter(Boolean).join(" · "),
-      action: t.제목, reasons: ["미완료 할 일", ...(!slot ? ["연결 진행건 확인 필요"] : []), ...(deferred ? [WAIT_REASON] : [])], facts: [{ label: "예정일", value: t.예정일자 }, { label: "진행", value: slot ? String(slot) : "확인 필요" }],
-      href: `/payment?row=${cp.row}${slot ? `&slot=${slot}` : ""}&focus=${encodeURIComponent(t.id)}`,
+      action: t.제목, reasons: [grant ? "공고 신청 준비" : "미완료 할 일", ...(!slot && !grant ? ["연결 진행건 확인 필요"] : []), ...(deferred ? [WAIT_REASON] : [])], facts: [{ label: "예정일", value: t.예정일자 }, { label: "진행", value: slot ? String(slot) : grant ? "업체" : "확인 필요" }],
+      href: grant ? `/payment?row=${cp.row}` : `/payment?row=${cp.row}${slot ? `&slot=${slot}` : ""}&focus=${encodeURIComponent(t.id)}`,
     }, t.예정일자, today));
   }
   return out;

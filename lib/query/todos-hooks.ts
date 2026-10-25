@@ -80,6 +80,8 @@ export interface CreateTodoArgs {
   slot?: 1 | 2 | 3 | null;
   /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록 id. */
   prevId?: string;
+  /** N 열 — 일반이벤트 분류, 또는 공고 할 일 "공고:<id>"(맞춤공고 4b). */
+  분류?: string;
   /** 초안당 안정 멱등 키(UUID) — 있으면 서버가 Todo id 로 사용한다.
    * 같은 키 재시도는 원본 반환, 다른 내용이면 409. 없으면 서버 발행 id(하위 호환). */
   operationId?: string;

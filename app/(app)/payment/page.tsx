@@ -14,7 +14,7 @@
 import PageContainer from "@/components/PageContainer";
 import usePcBreakpoint from "./_components/usePcBreakpoint";
 
-import { useLayoutEffect, useReducer, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useGuardedNav } from "@/components/DirtyGuard";
 import { useRouter } from "next/navigation";
 import { type ContractPayment } from "@/types";
@@ -56,6 +56,9 @@ import { activityTodayISO } from "./_lib/payment-progress";
 import { INITIAL_PAYMENT_SELECTION, paymentSelectionReducer, scrollToPaymentSlot } from "./_lib/payment-selection";
 import { useAllTodos } from "@/query/todos-hooks";
 import { useGrantMatches } from "@/query/grant-match-hooks";
+import { withoutTaken } from "@/lib/analytics/grant-match";
+import { grantIdOfTodo, isGrantTodo } from "@/lib/analytics/todo-slot";
+import { normalizeContractRef } from "@/util/contract-ref";
 
 interface ConfirmTarget {
   row: number;
@@ -95,7 +98,16 @@ export default function PaymentPage() {
   );
   const guardedNav = useGuardedNav();
   const allTodos = useAllTodos();
-  const { data: grants } = useGrantMatches();
+  const grantData = useGrantMatches().data;
+  // 담은 공고(할 일로 만든 것)는 칩 숫자에서 뺀다 — 상자는 계약별 할 일로 직접 거른다.
+  const grants = useMemo(() => {
+    const taken = new Map<string, Set<string>>();
+    for (const t of allTodos.data?.todos ?? []) if (isGrantTodo(t)) {
+      const ref = normalizeContractRef(t.contractRef);
+      taken.set(ref, (taken.get(ref) ?? new Set()).add(grantIdOfTodo(t)));
+    }
+    return withoutTaken(grantData, taken);
+  }, [grantData, allTodos.data?.todos]);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const listPaneRef = useRef<HTMLDivElement>(null);
   const bridgeRef = useRef<SVGSVGElement>(null);

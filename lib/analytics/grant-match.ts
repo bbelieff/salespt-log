@@ -189,6 +189,8 @@ export interface GrantAnnouncementView {
   regionText: string;
   maxAmount: string;
   deadlineText: string;
+  /** 마감 날짜(YYYY-MM-DD) — 예산 소진형·상시·모름이면 "". 「할 일로 담기」 날짜 계산용. */
+  deadlineDate: string;
   link: string;
   lastSeen: string;
 }
@@ -204,4 +206,24 @@ export interface GrantMatchesResponse {
   companies: Record<string, GrantCompanyMatches>;
   /** 공고 피드를 못 읽었거나 DB 정본이 아니면 true — 화면은 칩·상자를 숨긴다. */
   unavailable: boolean;
+}
+
+/** 「할 일로 담기」 날짜(핸드오프 §4-E1) — 마감일이 있으면 마감 3일 전(오늘 이전이면 내일), 없으면(예산 소진형 등) 내일. */
+export function grantTodoDue(deadlineDate: string, today: string): string {
+  const shift = (iso: string, d: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + d * 86400000).toISOString().slice(0, 10);
+  const tomorrow = shift(today, 1);
+  if (!deadlineDate) return tomorrow;
+  const before = shift(deadlineDate, -3);
+  return before > tomorrow ? before : tomorrow;
+}
+
+/** 담은 공고(할 일로 만든 것)는 맞는 공고 목록·칩 숫자에서 뺀다 — 한 공고는 한 곳에만(핸드오프 §4-B). */
+export function withoutTaken(res: GrantMatchesResponse | undefined, taken: ReadonlyMap<string, ReadonlySet<string>>): GrantMatchesResponse | undefined {
+  if (!res || taken.size === 0) return res;
+  const companies: GrantMatchesResponse["companies"] = {};
+  for (const [ref, c] of Object.entries(res.companies)) {
+    const ids = taken.get(ref);
+    companies[ref] = ids ? { ...c, matches: c.matches.filter((m) => !ids.has(m.id)) } : c;
+  }
+  return { ...res, companies };
 }

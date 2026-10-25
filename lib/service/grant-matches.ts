@@ -49,7 +49,7 @@ export async function loadGrantMatches(email: string, today: string, sheetOverri
   const announcements: GrantMatchesResponse["announcements"] = {};
   for (const a of list) {
     if (!used.has(a.id)) continue;
-    announcements[a.id] = { id: a.id, title: a.title, agency: a.agency, regionText: a.regionText, maxAmount: a.maxAmount, deadlineText: a.deadlineText, link: a.link, lastSeen: a.lastSeen };
+    announcements[a.id] = { id: a.id, title: a.title, agency: a.agency, regionText: a.regionText, maxAmount: a.maxAmount, deadlineText: a.deadlineText, deadlineDate: a.deadline.kind === "date" ? a.deadline.date : "", link: a.link, lastSeen: a.lastSeen };
   }
   return { announcements, companies, unavailable: false };
 }

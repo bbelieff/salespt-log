@@ -1,3 +1,6 @@
+## 2026-10-26 · 맞춤공고 4b — 「할 일로 담기」
+- feat/grant-todo. 업체 단위 공고 할 일(분류 "공고:<id>", 진행건 미지정 정상 — todoSlotOf·챙길 일 예외), 담은 공고 칸, 칩 숫자 차감. 스키마·마이그레이션 없음(기존 N열 사용). [plan](plans/active/grant-match-ui.md).
+
 ## 2026-10-26 · 맞춤공고 4a — 실무/수납 「공고 N」 칩 · 「🎯 맞는 공고」 상자
 - feat/grant-match-ui. GET `/api/grant-matches`(DB 업체정보 한 번에 + 공고 피드 → 계약별 판정, 저장 없음), 목록 칩·실무 칸 상자. 「할 일로 담기」·데일리·오늘 챙길 일 탭은 4b~4d. [plan](plans/active/grant-match-ui.md).
 
