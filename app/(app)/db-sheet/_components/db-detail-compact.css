@@ -46,3 +46,6 @@ body.db-sheet-route .db-detail-shell input[type=date]{-webkit-appearance:none;ap
 body.db-sheet-route .db-detail-shell input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.2em}
 body.db-sheet-route .db-detail-shell input[type=date]::-webkit-calendar-picker-indicator{margin:0}
 body.db-sheet-route .db-detail-shell .db-absence-add input[type=date]{width:auto;display:inline-block}
+/* 칸 순서(2026-10-25): 3열일 때 「공급처」가 줄 끝까지 — 공급처 유형·공급처 한 줄, 업체 정보는 다음 줄부터. 날짜 셋은 원본 메모 아래 따로. */
+@container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-fields .db-fill-row{grid-column:span 2}}
+body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:10px}
