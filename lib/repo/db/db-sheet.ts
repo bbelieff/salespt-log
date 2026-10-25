@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, backfillDbSheetDates, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, DB_SHEET_QUALIFIED_RESULTS, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, backfillDbSheetDates, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -105,7 +105,8 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
 export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
  guard(ctx);const c=getDbPool();const r=await c.query("select data from db_sheet_leads where spreadsheet_id=$1 order by data->>'date' desc,id",[ctx.spreadsheetId]);
  const meetings=await meetingRows(c,ctx);
- const contacts=await c.query("select lead_id,max(contact_date)::text as date,min(contact_date) filter (where result in ('단순거절','재통화','컨택진행','상담 후 거절'))::text as first_consult,array_agg(contact_date::text) filter (where qualified) as qualified_dates from db_sheet_contacts where spreadsheet_id=$1 group by lead_id",[ctx.spreadsheetId]);
+ const contacts=await c.query("select lead_id,max(contact_date)::text as date,min(contact_date) filter (where result in ('단순거절','재통화','컨택진행','상담 후 거절'))::text as first_consult,array_agg(contact_date::text) filter (where qualified) as qualified_dates,bool_or(result=any($2)) as consulted from db_sheet_contacts where spreadsheet_id=$1 group by lead_id",[ctx.spreadsheetId,[...DB_SHEET_QUALIFIED_RESULTS]]);
+ const consulted=new Map(contacts.rows.map((row:{lead_id:string;consulted:boolean|null})=>[row.lead_id,row.consulted===true]));
  const firstConsult=new Map(contacts.rows.map((row:{lead_id:string;first_consult:string|null})=>[row.lead_id,row.first_consult??""]));
  const lastDates=new Map(contacts.rows.map((row:{lead_id:string;date:string})=>[row.lead_id,row.date]));
  const history=await c.query('select lead_id from db_sheet_history where spreadsheet_id=$1 and revision=1',[ctx.spreadsheetId]);const evidence=new Set(history.rows.map((r:{lead_id:string})=>r.lead_id));
@@ -120,7 +121,9 @@ export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
   }
   const resolved=effectiveMeeting(meetings,data.meetingId);
   // 현재상태는 저장값을 고치지 않고 읽을 때 컨택결과 기준으로 다시 계산한다(예전 행의 「미컨택」 표시 보정).
-  if(!data.meetingId)data={...data,stage:dbSheetContactStage({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first})};
+  // 「상담 중」은 기록에 실제로 남은 결과(미팅예약·컨택 후 거절)로 판정한다(2026-10-25 belie 「규칙 유지 + 표시만 분리」) — 같은 날 결과를 바꿔도
+  // STEP 2 실적 표시(qualified)는 남지만, 현재상태는 마지막 결과를 따른다. 컨택 기록이 없는 옛 행만 저장값으로.
+  if(!data.meetingId)data={...data,stage:dbSheetContactStage({...data,hasQualifiedContact:consulted.get(data.id)??data.hasQualifiedContact??!!data.first})};
   // 예전 기록 보정(읽을 때만): 실적 여부는 보정 전 값으로 고정한 뒤 날짜만 채운다.
   // 부재는 비어 있는 다음 연락일을 전부 채운다(2026-10-25 belie 「이미 잡혀 있는 부재 전부」). 채운 날은 아직 안 한 새 예약이다.
   {const before=data.next;data=backfillDbSheetDates({...data,hasQualifiedContact:data.hasQualifiedContact??!!data.first},lastDates.get(data.id)??"",d=>fmtISO(addDays(parseISO(d),1)),firstConsult.get(data.id)??"");
@@ -138,11 +141,13 @@ export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);
  const dates=await c.query("select min(contact_date)::text as first from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2 and qualified",[ctx.spreadsheetId,leadId]);
  const hasQualifiedContact=!!dates.rows[0]?.first;const first=nextDbSheetFirstContact(old.first,event.result,event.date);
+ const consultedRow=await c.query("select bool_or(result=any($3)) as consulted from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2",[ctx.spreadsheetId,leadId,[...DB_SHEET_QUALIFIED_RESULTS]]);
+ const consulted=consultedRow.rows[0]?.consulted===true;
  // 이 컨택이 잡혀 있던 다음 연락일을 소비하면 비운다. 부재는 빈 다음 연락일을 부재를 적은 날의 다음날로 새로 잡는다(새 예약 세대, 2026-10-25 belie).
  const consumed=!old.next||event.date>=old.next,generation=old.followUp?.generation??0,kept=consumed?"":old.next;
  const next=autoDbSheetNextContact(event.result,kept,fmtISO(addDays(parseISO(event.date),1))),scheduled=next!==kept;
  // 새 컨택결과를 기록하면 직접 정한 현재상태(장기관리·진행종료)는 풀린다 — 다시 연락을 시작했다는 뜻.
- const lead:DbSheetLead={...withoutManualStage(old),next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:dbSheetContactStage({stage:"",result:event.result,hasQualifiedContact}),contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:generation+(scheduled?1:0),completedGeneration:consumed?generation:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
+ const lead:DbSheetLead={...withoutManualStage(old),next,revision:old.revision+1,result:event.result,first,hasQualifiedContact,stage:old.meetingId?old.stage:dbSheetContactStage({stage:"",result:event.result,hasQualifiedContact:consulted}),contact:{...old.contact,date:event.date,note:event.note},followUp:{generation:generation+(scheduled?1:0),completedGeneration:consumed?generation:old.followUp?.completedGeneration??null,lastContactDate:[old.followUp?.lastContactDate??"",event.date].sort().at(-1)!}};
  await persist(c,ctx,lead);return {lead,impact:contributionImpact(old,lead),changedSales:await applyDeltas(c,ctx,[...before,...await contributions(c,ctx,lead,1)])};
  });
 }
