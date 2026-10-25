@@ -227,3 +227,19 @@ export function withoutTaken(res: GrantMatchesResponse | undefined, taken: Reado
   }
   return { ...res, companies };
 }
+
+/** 오늘 챙길 일 창 「새 공고」 줄 — 업체 × 아직 담지 않은 맞는 공고(맞춤공고 4d). 급함 → 맞음 → 확인 필요 → 최근 순. */
+export interface GrantInboxItem { key: string; ref: string; company: string; id: string; title: string; verdict: Exclude<Verdict, "no">; urgent: boolean }
+export function grantInbox(res: GrantMatchesResponse | undefined): GrantInboxItem[] {
+  if (!res || res.unavailable) return [];
+  const out: (GrantInboxItem & { seen: string })[] = [];
+  for (const [ref, c] of Object.entries(res.companies)) {
+    for (const m of c.matches) {
+      const a = res.announcements[m.id];
+      if (!a) continue;
+      out.push({ key: `${ref}#${m.id}`, ref, company: ref.slice(ref.indexOf("|") + 1), id: m.id, title: a.title, verdict: m.verdict, urgent: m.urgent, seen: a.lastSeen });
+    }
+  }
+  const rank = (x: GrantInboxItem) => (x.urgent ? 0 : x.verdict === "match" ? 1 : 2);
+  return out.sort((a, b) => rank(a) - rank(b) || b.seen.localeCompare(a.seen) || a.key.localeCompare(b.key)).map(({ seen: _seen, ...x }) => x);
+}

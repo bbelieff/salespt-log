@@ -253,6 +253,14 @@ const server = createServer(async (req, res) => {
 
   if (path === "/fixture/reset") { stores.clear(); return reply({ ok: true }); }
   // C 채널별 남은 돈(?channels=…): 계약·DB·원장·대시보드 4곳만 C 데이터로(아니면 null → 아래 A·B 응답 그대로).
+  // 맞춤공고(2026-10-26) — 첫 계약 업체에 합성 공고 둘(급함 1·확인 필요 1). 오늘 챙길 일 창 「새 공고」·실무/수납 상자 확인용.
+  if (path === "/api/grant-matches") {
+    const c = data.contracts[0];
+    const ref = c ? `${c.계약일}|${c.업체명}` : "";
+    const ann = (id, title, deadlineText) => ({ id, title, agency: "가상재단", regionText: "전국", maxAmount: "업체당 최대 5천만원", deadlineText, deadlineDate: "", link: "", lastSeen: todayKST() });
+    return reply({ unavailable: false, announcements: { G1: ann("G1", "가상 경영안정자금(하반기)", "예산 소진 시까지"), G2: ann("G2", "가상 청년 창업 특례보증", "2026-12-31") },
+      companies: ref ? { [ref]: { hasInfo: true, noRegion: false, matches: [{ id: "G1", verdict: "match", reasons: [], urgent: true }, { id: "G2", verdict: "check", reasons: ["대표자 나이 확인 필요"], urgent: false }] } } : {} });
+  }
   if (path === "/api/me") return reply({ email: "fixture@example.invalid", name: "가상 수강생", cohort: "연습", sessionRole: "student", courseStartISO: fixtureWeek === 0 ? "" : courseStart, graduationISO: shift(courseStart, 84) });
   if (path === "/api/trainer/recruitment") return reply({ email: "fixture@example.invalid", name: "가상 수강생", status: "none", canStudent: true, canTrainer: false, isAdmin: false });
   if (path === "/api/announcements") return reply({ latestPr: 0, announcements: [], updates: [] });

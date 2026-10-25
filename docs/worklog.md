@@ -1,3 +1,6 @@
+## 2026-10-26 · 맞춤공고 4d — 오늘 챙길 일 창 「새 공고」 칸
+- feat/grant-launcher-tab. 창 머리 「챙길 일 N | 새 공고 N」, 담으면 새 공고에서 빠지고 챙길 일로(4b 할 일). 버튼 숫자 그대로. [plan](plans/active/grant-match-ui.md).
+
 ## 2026-10-26 · 맞춤공고 4c — 정책자금 데일리 「🎯 내 업체에 맞는 공고」
 - feat/grant-news-matches. iframe 그대로, 위에 접는 상자 하나. 공고별 맞는 업체·담음 표시. [plan](plans/active/grant-match-ui.md).
 
