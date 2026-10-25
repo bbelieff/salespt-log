@@ -41,6 +41,8 @@ export const GUIDE_URL =
  */
 export const POLICY_NEWS_ORIGIN = "https://salesptlog.online";
 export const POLICY_NEWS_URL = "https://salesptlog.online/news/latest";
+/** 정책자금뉴스 공고별 JSON(맞춤공고, 2026-10-26) — VPS export_news_json.py 가 index.json·<날짜>.json 을 쓴다. 계약: docs/domains/policy-news-feed.md. */
+export const POLICY_NEWS_DATA_URL = `${POLICY_NEWS_ORIGIN}/news/data`;
 
 /**
  * 주간 목표 회의록 — 내부 기록 권한 사용자가 14열 복사 후 붙여넣는 canonical Notion 페이지.

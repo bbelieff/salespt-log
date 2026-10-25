@@ -1,3 +1,6 @@
+## 2026-10-26 · [병렬트랙] 맞춤공고 2단계 — 공고 JSON 계약
+- feat/policy-news-feed. 구역: `lib/types/policy-news.ts`·`lib/repo/policy-news.ts`·`lib/analytics/policy-announcement.ts`·`docs/domains/policy-news-feed.md`. VPS `export_news_json.py` 신설(읽기 전용, data/ 에만 씀, 카페 게시 무관) — 수동 1회 실행 11일치 공개 확인, 크론 등록은 자동 승인 검토에서 막혀 belie 승인 대기. [plan](plans/active/policy-news-feed.md).
+
 ## 2026-10-26 · 새 버전 알림 (배포 뒤 새로고침)
 - feat/version-update-banner. belie 「운영반영 완료되어 새 버전이 나오면 중앙 하단에 버전명 + 새로고침」. 버전명 = 빌드 한국 시각(next.config `NEXT_PUBLIC_APP_VERSION`), `/api/version` 과 화면 번들 비교 → 아래 가운데 알림(1분 뒤·5분마다·돌아올 때 확인). [plan](plans/active/version-update-banner.md).
 ## 2026-10-26 · DB관리시트 진행 단계 분류·정렬 (#1248)
