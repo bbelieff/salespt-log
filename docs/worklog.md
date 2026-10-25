@@ -1,3 +1,6 @@
+## 2026-10-26 · [병렬트랙] 맞춤공고 2단계 — 공고 JSON 계약
+- feat/policy-news-feed. 구역: `lib/types/policy-news.ts`·`lib/repo/policy-news.ts`·`lib/analytics/policy-announcement.ts`·`docs/domains/policy-news-feed.md`. VPS `export_news_json.py` 신설(읽기 전용, data/ 에만 씀, 카페 게시 무관) — 수동 1회 실행 11일치 공개 확인, 크론 등록은 자동 승인 검토에서 막혀 belie 승인 대기. [plan](plans/active/policy-news-feed.md).
+
 ## 2026-10-26 · DB정보 상담메모·부재 기록·컨택결과 아래로
 - feat/db-info-contact-bottom. belie 「컨택내용 섹션·중복 컨택일 없애고, 날짜 아래 상담메모 → 부재 기록 → 컨택결과 상자, 아이콘 오른쪽 화살표」. 화면만. [plan](plans/active/db-info-contact-bottom.md).
 
