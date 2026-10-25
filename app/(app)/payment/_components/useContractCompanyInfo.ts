@@ -63,6 +63,8 @@ async function drainQueue(queue: OwnerQueue) {
       }),
     }).catch(() => null);
     if (!res?.ok) throw new Error("업체정보를 저장하지 못했어요");
+    // 맞춤공고 칩·상자가 새 소재지·업태로 다시 판정하게 알린다(lib/query/grant-match-hooks.ts).
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("company-info:saved"));
 
     const current = queue.drafts.get(key);
     if (current?.id === attempt.id) queue.drafts.delete(key);

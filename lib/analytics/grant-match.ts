@@ -180,3 +180,28 @@ export function matchesFor(company: GrantMatchCompany, list: readonly PolicyAnno
     .filter((x) => x.m.verdict !== "no")
     .sort((x, y) => rank(x.m) - rank(y.m) || y.a.lastSeen.localeCompare(x.a.lastSeen));
 }
+
+/** /api/grant-matches 응답 — 공고 요약(한 번만) + 계약ref(계약일|업체명)별 판정. */
+export interface GrantAnnouncementView {
+  id: string;
+  title: string;
+  agency: string;
+  regionText: string;
+  maxAmount: string;
+  deadlineText: string;
+  link: string;
+  lastSeen: string;
+}
+export interface GrantCompanyMatches {
+  /** 업체정보가 없으면 false — 칩을 붙이지 않는다. */
+  hasInfo: boolean;
+  /** 업체 지역(시·도)을 못 정했으면 true — 칩 「지역 없음」. */
+  noRegion: boolean;
+  matches: { id: string; verdict: Exclude<Verdict, "no">; reasons: string[]; urgent: boolean }[];
+}
+export interface GrantMatchesResponse {
+  announcements: Record<string, GrantAnnouncementView>;
+  companies: Record<string, GrantCompanyMatches>;
+  /** 공고 피드를 못 읽었거나 DB 정본이 아니면 true — 화면은 칩·상자를 숨긴다. */
+  unavailable: boolean;
+}

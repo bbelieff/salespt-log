@@ -11,6 +11,7 @@ vi.mock("next/navigation",()=>({useRouter:()=>({push:vi.fn()})}));
 vi.mock("@/query/contract-payment-hooks",()=>({useContractPayments:()=>({data:state.rows?{rows:state.rows}:undefined,isLoading:!state.rows,isError:false}),usePatchContractPayment:()=>({}),useRemoveContractPayment:()=>({}),useTerminateContract:()=>({})}));
 vi.mock("@/query/me-hook",()=>({useMe:()=>({data:{courseStartISO:"2026-09-01"}})}));
 vi.mock("@/query/todos-hooks",()=>({useAllTodos:()=>({data:{todos:[]},isError:false})}));
+vi.mock("@/query/grant-match-hooks",()=>({useGrantMatches:()=>({data:undefined})}));
 vi.mock("@/components/PageContainer",()=>({default:({children}:{children:React.ReactNode})=>h("div",null,children)}));
 vi.mock("@/components/TopHeader",()=>({default:()=>null}));
 vi.mock("@/app/(app)/payment/_components/ContractRow",()=>({default:(p:{cp:ContractPayment;focusedSlot?:number|null;focusTodoId?:string|null})=>h("div",{"data-detail-row":p.cp.row,"data-slot":p.focusedSlot??"none","data-todo":p.focusTodoId??"none"},p.cp.업체명)}));
