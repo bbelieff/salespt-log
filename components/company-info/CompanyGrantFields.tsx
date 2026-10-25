@@ -16,11 +16,12 @@ import { grantProfile, 대분류_목록, 공고특성_목록, splitFeatures } fr
 import CompanyInfoField from "./CompanyInfoField";
 
 type CI = CompanyInfo;
-const selCls = "rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-900 focus:border-brand-red focus:outline-none";
+/** 고르기 칸은 글자 길이만큼(좁은 칸에서도 늘어나거나 잘리지 않게, 너무 길면 칸 안에서 줄임). */
+const selCls = "min-w-0 max-w-full shrink rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-900 focus:border-brand-red focus:outline-none";
 const AUTO = "자동으로";
 
 export function AutoTag() {
-  return <span className="rounded bg-blue-50 px-1 text-px-10 font-bold text-blue-700">자동</span>;
+  return <span className="shrink-0 whitespace-nowrap rounded bg-blue-50 px-1 text-px-10 font-bold text-blue-700">자동</span>;
 }
 
 export function RegionAddress({ draft, id, className, onField, onPatch }: { draft: CI; id: string; className: string; onField: (k: keyof CI, v: string) => void; onPatch: (p: Partial<CI>) => void }) {
@@ -31,7 +32,7 @@ export function RegionAddress({ draft, id, className, onField, onPatch }: { draf
   return (
     <div className={`${className} flex min-w-0 flex-wrap items-end gap-1.5`}>
       <CompanyInfoField def={def} value={String(draft.소재지 ?? "")} onChange={onField} id={id} className="block min-w-48 flex-1" />
-      <span className="inline-flex shrink-0 items-center gap-1 pb-0.5">
+      <span className="cg-inline flex min-w-0 max-w-full items-center gap-1 pb-0.5">
         <select aria-label="시·도" className={selCls} value={sido} onChange={(e) => {
           const v = e.target.value;
           onPatch(v === AUTO ? { 지역시도: "", 지역시군구: "" } : { 지역시도: v, 지역시군구: v === sido ? p.region.시군구 : "" });
@@ -59,15 +60,15 @@ export function RegionAddress({ draft, id, className, onField, onPatch }: { draf
 export function IndustryLine({ draft, className, onPatch }: { draft: CI; className: string; onPatch: (p: Partial<CI>) => void }) {
   const p = grantProfile(draft);
   return (
-    <div className={`${className} flex flex-wrap items-center gap-1.5`}>
-      <span className="text-px-11 text-gray-500">대분류</span>
+    <div className={`${className} cg-inline flex flex-wrap items-center gap-x-1.5 gap-y-1`}>
+      <span className="shrink-0 whitespace-nowrap text-px-11 text-gray-500">대분류</span>
       <select aria-label="대분류" className={selCls} value={p.industry} onChange={(e) => onPatch({ 대분류: e.target.value === AUTO ? "" : e.target.value })}>
         {!p.industry && <option value="">대분류</option>}
         {!p.industryAuto && <option value={AUTO}>{AUTO}</option>}
         {대분류_목록.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
       {p.industryAuto && p.industry && <AutoTag />}
-      <label className="ml-1 inline-flex items-center gap-1 text-px-11 text-gray-600">
+      <label className="ml-1 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-px-11 text-gray-600">
         <input type="checkbox" className="h-3.5 w-3.5 accent-brand-red" checked={p.excluded} onChange={(e) => onPatch({ 제외업종: e.target.checked ? "예" : "아니오" })} />
         제외 업종
       </label>
@@ -84,13 +85,13 @@ export function FeatureChips({ draft, className, onPatch }: { draft: CI; classNa
   };
   return (
     <div className={`${className} flex flex-wrap items-center gap-1`} role="group" aria-label="공고 특성">
-      <span className="mr-0.5 text-px-11 text-gray-500">공고 특성</span>
+      <span className="mr-0.5 whitespace-nowrap text-px-11 text-gray-500">공고 특성</span>
       {공고특성_목록.map((f) => {
         const on = p.features.includes(f);
         const auto = p.autoFeatures.includes(f);
         return (
           <button key={f} type="button" aria-pressed={on} disabled={auto} title={auto ? "특허 및 인증에서 읽음" : undefined} onClick={() => toggle(f)}
-            className={`min-h-6 rounded-full border px-2 text-px-11 font-semibold ${on ? "border-blue-300 bg-blue-50 text-blue-800" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"} ${auto ? "cursor-default" : ""}`}>
+            className={`min-h-6 whitespace-nowrap rounded-full border px-2 text-px-11 font-semibold ${on ? "border-blue-300 bg-blue-50 text-blue-800" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"} ${auto ? "cursor-default" : ""}`}>
             {f}{auto && <span className="ml-0.5 text-px-10 text-blue-600">·자동</span>}
           </button>
         );
