@@ -73,6 +73,23 @@ export function stepShortcut(row:Pick<Row,'stage'|'meetingId'|'effectiveMeetingI
  const date=row.contact?.meetingDate??'';
  return {label:'STEP 3 일정',href:`/schedule?${date?`date=${encodeURIComponent(date)}&`:''}focus=${encodeURIComponent(id)}`,state};
 }
+/**
+ * 「진행 단계」 칸 분류(2026-10-26 belie 「재통화 이하는 1.5, 미팅예약·컨택 후 거절은 2」) — 가장 멀리 간 단계 하나.
+ * 계약 연결 = STEP 4 · 미팅 연결 = STEP 3 · 컨택결과 미팅예약/컨택 후 거절 = STEP 2 · 그 밖(미컨택·부재·단순거절·재통화·AS신청) = STEP 1.5.
+ * href 는 다른 화면으로 이어 갈 때만(1.5 는 지금 이 화면이라 없음). rank = 정렬 순서(단계 → 단계 안 진행 순서).
+ */
+const STEP_STATE_ORDER=['미팅예약','미팅변경','미팅완료','계약','실무진행','수납대기','완료','장기관리','진행종료'];
+export function stepStage(row:Pick<Row,'result'|'stage'|'meetingId'|'effectiveMeetingId'|'contact'|'contractRow'>):{step:'1.5'|'2'|'3'|'4';label:string;href:string|null;state:string;rank:number}{
+ const link=stepShortcut(row);
+ if(link){
+  const four=link.label.startsWith('STEP 4');
+  const i=STEP_STATE_ORDER.indexOf(link.state);
+  return {step:four?'4':'3',label:link.label,href:link.href,state:link.state,rank:(four?400:300)+(i<0?STEP_STATE_ORDER.length:i)};
+ }
+ if(isQualifiedDbSheetContact(row.result))return {step:'2',label:'STEP 2 컨택관리',href:'/contact',state:outcomeDisplayLabel(row.result),rank:200+(row.result==='컨택진행'?0:1)};
+ const i=outcomes.indexOf(row.result);
+ return {step:'1.5',label:'STEP 1.5 DB관리시트',href:null,state:'',rank:100+(i<0?outcomes.length:i)};
+}
 /** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
  const qualified=isQualifiedDbSheetContact(result);
