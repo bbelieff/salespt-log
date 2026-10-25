@@ -70,7 +70,8 @@ describe("우하단 빠른 보기", () => {
     expect(items).toHaveLength(5);
     expect(items[0]?.querySelector(".ft-badge")?.textContent).toBe("D+15");
     expect(items[0]?.querySelector("a")?.getAttribute("href")).toBe("/payment?row=5&slot=1");
-    expect(pop().querySelector(".fl-foot")?.textContent).toContain("나머지 2건");
+    expect(pop().querySelector(".fl-foot")?.textContent).toContain("대시보드에서 2건 더 보기");
+    expect(pop().querySelector(".fl-foot .fl-report")?.textContent).toContain("오류신고");
     click(pop().querySelector(".fl-close")!);
     expect(fab().getAttribute("aria-expanded")).toBe("false");
     expect(document.activeElement).toBe(fab());

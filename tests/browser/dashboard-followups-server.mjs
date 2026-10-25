@@ -223,6 +223,9 @@ const server = createServer(async (req, res) => {
   const goalKind = Object.hasOwn(GOAL_SETS, cookieOf(req, "headline_goals") ?? "") ? cookieOf(req, "headline_goals") : scenario === "empty" ? "unset" : "remaining";
   const fin = financeData(financeKind, t);
 
+  // 오류신고(합성) — 받은 크기만 기록하고 저장하지 않는다.
+  if(path==='/api/bug-reports'&&req.method==='POST'){const body=await readBody(req);data.lastBugReport={category:body.category,text:body.text,imageBytes:String(body.image??'').length,context:body.context};return reply({id:'synthetic'},201);}
+  if(path==='/fixture/last-bug-report')return reply(data.lastBugReport??null);
   // Opt-in D fixture: actual client hooks/components, in-memory synthetic persistence only.
   if(paymentDetailsMock&&(path.startsWith('/api/contract-payment')||path==='/api/company-info')){
     data.paymentRows??=[...data.contracts,...fin.contracts].map(row=>structuredClone(row));
