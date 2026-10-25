@@ -6,7 +6,6 @@ const inventory: Array<[string,number,number]> = [
  ['app/(app)/calendar/_components/GcalConnectCard.tsx',1,1],
  ['app/(app)/contact/_components/MeetingSlotItem.tsx',1,1],
  ['app/(app)/db-sheet/_components/ContactPanel.tsx',1,1],
- ['app/(app)/db-sheet/_components/DbContactActions.tsx',1,1],
  ['app/(app)/db-sheet/_components/DbDetail.tsx',1,1],
  ['app/(app)/db-sheet/_components/ImportDialog.tsx',2,2],
  ['app/(app)/db-sheet/_components/ImportResultNotice.tsx',1,1],
@@ -44,9 +43,9 @@ describe('approved disclosure migration boundary',()=>{
   expect(source).toContain('aria-expanded={rawOpen} onClick={()=>setRawOpen(!rawOpen)}');
   expect(source).toContain('<DisclosureChevron open={rawOpen} />');
  });
- it('maps exactly 47 legacy positions to 45 shared indicators without forcing alternate pairs',()=>{
-  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(47);
-  expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(45);
+ it('maps exactly 46 legacy positions to 44 shared indicators without forcing alternate pairs',()=>{
+  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(46);
+  expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(44);
   for(const [file,,after] of inventory){
    const source=readFileSync(file,'utf8');
    expect((source.match(/<DisclosureChevron(?:\s|\/|>)/g)??[]).length,file).toBe(after);

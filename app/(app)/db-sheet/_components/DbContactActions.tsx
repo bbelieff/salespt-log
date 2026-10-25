@@ -1,22 +1,26 @@
-import DisclosureChevron from '@/components/ui/DisclosureChevron';
-import {MessageSquare} from 'lucide-react';
+import {ChevronRight,MessageSquare} from 'lucide-react';
 import {todayKST} from '@/util/week';
 import {outcomes,outcomeLabel,type Row} from './model';
 import type {DbSheetManualStage} from '@/types/db-sheet';
 import {StageControls} from './StageControls';
 
 
-export function DbContactActions({row,date,contact,onResult,onAsInfo,onToggleContact,onStage}:{
- row:Row;date:string;contact:boolean;onResult:(value:string,date:string)=>void;onStage?:(stage:DbSheetManualStage)=>Promise<unknown>;
+/**
+ * 컨택결과 묶음(2026-10-26 belie): 결과 드롭다운·컨택내용 버튼(오른쪽 칸을 여는 → 화살표) → 장기관리·진행종료. DB정보 맨 아래(날짜·상담메모·부재 기록 다음).
+ * 결과는 늘 오늘 날짜로 기록한다 — 예전 「컨택일」 칸(마지막 통화일이 남아 있던 값)으로 기록하면 다른 날 고친 결과가
+ * 그 옛날 기록을 덮었다. date 는 하위 호환용으로만 받고 쓰지 않는다.
+ */
+export function DbContactActions({row,contact,onResult,onAsInfo,onToggleContact,onStage}:{
+ row:Row;date?:string;contact:boolean;onResult:(value:string,date:string)=>void;onStage?:(stage:DbSheetManualStage)=>Promise<unknown>;
  onAsInfo:(value:{asReceived?:boolean;asNote?:string})=>void;onToggleContact:()=>void;
 }){
  return <section className="db-contact-actions">
   <div className="db-contact-action-row">
-   <label>컨택결과<select aria-label="DB정보 컨택결과" className="sheet-input" value={row.result} onChange={e=>onResult(e.target.value,date||todayKST())}>
+   <label>컨택결과<select aria-label="DB정보 컨택결과" className="sheet-input" value={row.result} onChange={e=>onResult(e.target.value,todayKST())}>
     {outcomes.map(value=><option key={value} value={value}>{outcomeLabel(value,row.recording?.activities!==false)}</option>)}
    </select></label>
    <button type="button" className="db-contact-open" aria-expanded={contact} aria-controls="db-contact-pane" onClick={onToggleContact}>
-    <MessageSquare size={15}/><span>컨택내용</span><DisclosureChevron open={contact} />
+    <MessageSquare size={15}/><span>컨택내용</span><ChevronRight size={15} aria-hidden="true" className={contact?'db-contact-open-on':''}/>
    </button>
   </div>
   <small className="db-contact-count">업체별 하루 1건 · 기존 기록 유지</small>

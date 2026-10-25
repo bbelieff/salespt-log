@@ -29,7 +29,14 @@ export function AbsenceLog({ row, onAbsence }: { row: Pick<Row, "id" | "meetingI
     try { await onAbsence(entry, remove); } catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했어요. 다시 시도해 주세요."); } finally { setBusy(false); }
   }
   return <section className="db-absence" aria-label="부재 기록">
-    <div className="db-absence-head"><strong>부재 기록</strong>{list.length > 0 && <span>{list.length}번</span>}</div>
+    {/* 한 줄(2026-10-26 belie): 「부재 기록 [날짜] [시간] [+ 추가]」 */}
+    <div className="db-absence-add db-absence-head"><strong>부재 기록</strong>{list.length > 0 && <span>{list.length}번</span>}
+      <input type="date" className="sheet-input" aria-label="통화한 날짜" value={date} max={todayKST()} onChange={e => setDate(e.target.value)} />
+      <select className="sheet-input" aria-label="통화한 시각" value={hour} onChange={e => setHour(Number(e.target.value))}>
+        {DB_SHEET_CALL_HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, "0")}시</option>)}
+      </select>
+      <button type="button" className="sheet-btn" disabled={busy || !date} onClick={() => void run({ date, hour })}>+ 추가</button>
+    </div>
     {list.length > 0 && <ol className="db-absence-list">
       {shown.map(a => <li key={`${a.date}-${a.hour}`}>
         <span>{a.date.slice(5).replace("-", "/")}</span><span>{String(a.hour).padStart(2, "0")}시</span><span className="db-absence-tag">부재</span>
@@ -37,13 +44,6 @@ export function AbsenceLog({ row, onAbsence }: { row: Pick<Row, "id" | "meetingI
       </li>)}
       {list.length > SHOWN && <li><button type="button" className="sheet-text-btn" onClick={() => setAll(!all)}>{all ? "접기" : `전체 ${list.length}번 보기`}</button></li>}
     </ol>}
-    <div className="db-absence-add">
-      <input type="date" className="sheet-input" aria-label="통화한 날짜" value={date} max={todayKST()} onChange={e => setDate(e.target.value)} />
-      <select className="sheet-input" aria-label="통화한 시각" value={hour} onChange={e => setHour(Number(e.target.value))}>
-        {DB_SHEET_CALL_HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, "0")}시</option>)}
-      </select>
-      <button type="button" className="sheet-btn" disabled={busy || !date} onClick={() => void run({ date, hour })}>부재 기록</button>
-    </div>
     {list.length > 0 && <>
       <div className="db-absence-hours" aria-hidden="true">{DB_SHEET_CALL_HOURS.map(h => <i key={h} className={tried.has(h) ? "is-tried" : ""} title={`${h}시`} />)}</div>
       <div className="db-absence-scale" aria-hidden="true"><span>08시</span><span>부재 걸었던 시간</span><span>21시</span></div>

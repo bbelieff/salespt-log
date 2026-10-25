@@ -4,6 +4,7 @@ import {createRoot,type Root} from 'react-dom/client';
 import {beforeEach,afterEach,it,expect,vi} from 'vitest';
 import {InflowRecordingDialog} from '@/app/(app)/db-sheet/_components/InflowRecordingDialog';
 import {DbContactActions} from '@/app/(app)/db-sheet/_components/DbContactActions';
+import {todayKST} from '@/util/week';
 import InflowStatusCell from '@/app/(app)/db-sheet/_components/InflowStatusCell';
 import {blank} from '@/app/(app)/db-sheet/_components/model';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
@@ -28,8 +29,8 @@ it('keeps failed or blocked changes open without claiming success',async()=>{
  act(()=>root.unmount());root=createRoot(host);await act(async()=>root.render(createElement(InflowRecordingDialog,{row:blank(),onPreview:async()=>({inflow:0,contacts:0,meetings:0,rows:[],blockedReason:'연결 근거 확인 필요'}),onConfirm:confirm,onClose:close})));
  await act(async()=>button('변경 내용 확인').click());expect(button('확인하고 변경').disabled).toBe(true);
 });
-it('sends AS completion independently and uses the selected contact date',async()=>{
+it('sends AS completion independently and records the result on today (2026-10-26 — 컨택일 칸 제거)',async()=>{
  const result=vi.fn(),asInfo=vi.fn(),toggle=vi.fn();await act(async()=>root.render(createElement(DbContactActions,{row:{...blank(),result:'AS예정'},date:'2026-10-16',contact:false,onResult:result,onAsInfo:asInfo,onToggleContact:toggle})));
  act(()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());expect(asInfo).toHaveBeenCalledWith({asReceived:true});expect(result).not.toHaveBeenCalled();
- const select=host.querySelector('select')!;act(()=>{select.value='컨택진행';select.dispatchEvent(new Event('change',{bubbles:true}));});expect(result).toHaveBeenCalledWith('컨택진행','2026-10-16');act(()=>button('컨택내용').click());expect(toggle).toHaveBeenCalledOnce();
+ const select=host.querySelector('select')!;act(()=>{select.value='컨택진행';select.dispatchEvent(new Event('change',{bubbles:true}));});expect(result).toHaveBeenCalledWith('컨택진행',todayKST());act(()=>button('컨택내용').click());expect(toggle).toHaveBeenCalledOnce();
 });
