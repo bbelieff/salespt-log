@@ -1,12 +1,10 @@
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
-import {CalendarDays,MessageSquare} from 'lucide-react';
+import {MessageSquare} from 'lucide-react';
 import {todayKST} from '@/util/week';
-import {needsRecallDate,outcomes,outcomeLabel,type Row} from './model';
+import {outcomes,outcomeLabel,type Row} from './model';
 import type {DbSheetManualStage} from '@/types/db-sheet';
 import {StageControls} from './StageControls';
 
-/** 상세 화면의 「다음 연락일」 칸으로 이동해 달력을 연다. */
-function focusNextContact(){const input=document.querySelector<HTMLInputElement>('input[aria-label="DB정보 다음 연락일"]');if(!input)return;input.scrollIntoView({block:'center'});input.focus();try{input.showPicker();}catch{}}
 
 export function DbContactActions({row,date,contact,onResult,onAsInfo,onToggleContact,onStage}:{
  row:Row;date:string;contact:boolean;onResult:(value:string,date:string)=>void;onStage?:(stage:DbSheetManualStage)=>Promise<unknown>;
@@ -22,10 +20,6 @@ export function DbContactActions({row,date,contact,onResult,onAsInfo,onToggleCon
    </button>
   </div>
   <small className="db-contact-count">업체별 하루 1건 · 기존 기록 유지</small>
-  {needsRecallDate(row)&&<div className="db-as-box db-recall-notice" role="status">
-   <div><strong>재통화 일정을 정해 주세요</strong><span>다음 연락일을 넣으면 그날 다시 알려 드려요</span></div>
-   <button type="button" className="db-contact-open" onClick={focusNextContact}><CalendarDays size={15} aria-hidden="true"/>다음 연락일 정하기</button>
-  </div>}
   {onStage&&<StageControls row={row} onStage={onStage}/>}
   {row.result==='AS예정'&&<div className="db-as-box">
    <div><strong>AS 확인</strong><span>컨택진행 집계 제외</span></div>
