@@ -35,7 +35,8 @@ export function ContactPanel({row,draft,onChange,onResult,onRegister,onOpen,onCo
 export function ContactFields({row,draft,onChange}:{row:Row;draft:ContactDraft;onChange:(v:ContactDraft)=>void;onResult:(v:string,date:string)=>void}){
  const patch=(p:Partial<ContactDraft>)=>onChange({...draft,...p});
  return <div className="db-call-fields">  <div className="db-contact-summary"><strong>{row.company}</strong><span>{row.owner} · {row.phone}</span></div>
-  <div className="db-contact-controls"><label>컨택일(최초컨택일)<input aria-label="컨택일" className="sheet-input" type="date" value={draft.date} onInput={e=>patch({date:e.currentTarget.value})} onChange={e=>patch({date:e.target.value})}/></label></div>
-  <label className="db-note-label">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={2} placeholder="통화하며 확인한 내용·고객 요청사항" value={draft.note} onChange={e=>patch({note:e.target.value})}/></label>
+  {/* 컨택일·상담메모 한 줄(2026-10-25 belie 「한 줄 병렬로, 공간 낭비」) — 메모는 한 줄 높이로 시작해 글이 길면 늘어난다. */}
+  <div className="db-contact-controls db-contact-inline"><label>컨택일(최초컨택일)<input aria-label="컨택일" className="sheet-input" type="date" value={draft.date} onInput={e=>patch({date:e.currentTarget.value})} onChange={e=>patch({date:e.target.value})}/></label>
+  <label className="db-note-label">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={1} placeholder="통화 내용·요청사항" value={draft.note} onChange={e=>patch({note:e.target.value})}/></label></div>
 </div>;
 }

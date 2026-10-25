@@ -1,3 +1,5 @@
+## 2026-10-25 · DB정보 컨택일·상담메모 한 줄, 미팅 날짜 한 줄
+- fix/db-sheet-detail-compact. belie 「공간 낭비」「미팅 일정 칸 내려오는 것 보기 싫음」. 화면만 변경. 상담 중/DB컨택중 기준·유원테크 미팅예약·STEP 2 기록 설정 필요성은 분석 보고(코드 무변경) — [plan](plans/active/db-sheet-detail-compact.md).
 ## 2026-10-25 · 미팅 시작 3시간 뒤 결과 알림
 - feat/meeting-result-push, base c6506d24. belie 지시. 미팅마다 한 번, 결과 미입력·21시 전·미팅 알림 켬. 마이그레이션 0011(slot 'meeting' 추가) — 운영 적용 필요. [plan](plans/completed/meeting-result-push.md).
 ## 2026-10-25 · 오늘 챙길 일 테두리 바깥 빛 번짐

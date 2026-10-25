@@ -230,3 +230,7 @@ body.db-sheet-route .sheet-status-filter-summary{flex:0 0 auto;font-size:11px;fo
 
 /* Content-fitted columns must not keep the old inner 300px clipping limit. */
 body.db-sheet-route .sheet-resizable .sheet-cell{max-width:none}
+
+/* 미팅예약 날짜가 「2026-10-23 (금)」 두 줄로 내려가지 않게(2026-10-25 belie) — DB정보 안에서만 글자를 줄이고 한 줄 고정. */
+body.db-sheet-route .db-meeting-inputs .custom-date-wrapper{padding:8px 10px;gap:6px}
+body.db-sheet-route .db-meeting-inputs .custom-date-display{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
