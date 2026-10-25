@@ -15,10 +15,12 @@ interface Props {
   status?: ReactNode;
   tools: ReactNode;
   fontControl: ReactNode;
+  /** 제목 옆 작은 표시(맞춤공고 「공고매칭 n/3」, 2026-10-25). */
+  badge?: ReactNode;
 }
 
 /** Presentation only. Callers retain real save, document, TXT, popup and preference callbacks. */
-export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHeading, payment, summary, status, tools, fontControl}: Props) {
+export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHeading, payment, summary, status, tools, fontControl, badge}: Props) {
   const heading = useRef<HTMLDivElement>(null);
   const moreButton = useRef<HTMLButtonElement>(null);
   const [width, setWidth] = useState(0);
@@ -52,6 +54,7 @@ export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHe
       aria-expanded={open} aria-label={`업체정보 ${open ? '접기' : '펼치기'}`} aria-controls={controlsId}
       className={`flex min-w-0 flex-1 items-center gap-1.5 ${desktopHeading ? 'text-sm' : 'text-xs'}`}>
       <span className={`truncate ${desktopHeading ? 'font-bold text-slate-800' : 'font-semibold text-gray-700'}`}>🏢 업체정보{' '}{!payment && <span className="font-normal text-gray-400">{summary}</span>}</span>
+      {badge && <span className="shrink-0">{badge}</span>}
       <span data-payment-ci-fold={payment ? '' : undefined} aria-hidden="true" className="shrink-0 text-gray-400"><DisclosureChevron open={open} /></span>
     </button>
     <div data-company-info-header-actions className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? 'basis-full justify-end sm:basis-auto sm:flex-1' : 'shrink-0'}`}>

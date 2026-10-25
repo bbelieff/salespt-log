@@ -83,14 +83,14 @@ beforeEach(() => {
 });
 
 describe("① 스키마 · 04 코덱 CD", () => {
-  it("default '' · 확장3(CC) 바로 뒤 CD(81) · 전체 82열", () => {
+  it("default '' · 확장3(CC) 바로 뒤 CD(81) · 전체 87열(확장5 CE~CI 포함)", () => {
     expect(CompanyInfo.parse({}).매출기준연도).toBe("");
     expect([...COMPANY_FIELDS_EXT4]).toEqual(["매출기준연도"]);
     expect(COMPANY_EXT4_START).toBe(81);
     expect(colName(COMPANY_EXT4_START)).toBe("CD");
     expect(colName(COMPANY_EXT3_START + 14)).toBe("CC");
-    expect(MEETING_ROW_WIDTH).toBe(82);
-    expect(MEETING_READ_WIDTHS.map((w) => colName(w - 1))).toEqual(["CD", "CC", "BN", "AS"]);
+    expect(MEETING_ROW_WIDTH).toBe(87);
+    expect(MEETING_READ_WIDTHS.map((w) => colName(w - 1))).toEqual(["CI", "CD", "CC", "BN", "AS"]);
   });
 
   it("apostrophe 텍스트 — 연도·백만원 숫자가 숫자로 바뀌지 않게, 라운드트립", () => {
@@ -111,50 +111,50 @@ describe("① 스키마 · 04 코덱 CD", () => {
 });
 
 describe("② 04 쓰기·읽기", () => {
-  it("appendMeeting: grid 82열, CD1 헤더는 빈 셀에만, 행은 AU:CD", async () => {
-    const header = [...COMPANY_FIELDS_EXT2, ...Array(15).fill("h"), "내 제목"]; // CD1 사용자 문구
+  it("appendMeeting: grid 87열, CD1 헤더는 빈 셀에만, 행은 AU:CI", async () => {
+    const header = [...COMPANY_FIELDS_EXT2, ...Array(15).fill("h"), "내 제목", ...Array(5).fill("h")]; // CD1 사용자 문구 (CE~CI 확장5는 채워져 있음)
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
       if (range.endsWith("!A2:A")) return { data: { values: [["m-a"]] } };
-      if (range.endsWith("!AU1:CD1")) return { data: { values: [header] } };
+      if (range.endsWith("!AU1:CI1")) return { data: { values: [header] } };
       throw new Error(`unexpected ${range}`);
     });
     await appendMeeting("sheet-by-1", BASE, { mirror: false });
-    expect(ensureGridColumns).toHaveBeenCalledWith("sheet-by-1", "04 업체관리(앱자동작성용)", 82);
+    expect(ensureGridColumns).toHaveBeenCalledWith("sheet-by-1", "04 업체관리(앱자동작성용)", 87);
     const calls = valuesBatchUpdate.mock.calls.map(
       (c) => (c[0] as { requestBody: { data: { range: string; values: unknown[][] }[] } }).requestBody.data,
     );
     // 헤더가 다 차 있으면(사용자 문구 포함) 헤더 쓰기 없음 — 행 쓰기 한 번뿐.
     expect(calls).toHaveLength(1);
-    const ext = calls[0]!.find((d) => d.range.endsWith("!AU3:CD3"))!;
-    expect(ext.values[0]).toHaveLength(36);
+    const ext = calls[0]!.find((d) => d.range.endsWith("!AU3:CI3"))!;
+    expect(ext.values[0]).toHaveLength(41);
     expect(ext.values[0]![35]).toBe("'2026");
   });
 
-  it("읽기: CD 범위 초과면 A:CC 로 — 확장3 값은 살아 있다(단계를 건너뛰지 않음)", async () => {
-    valuesGet.mockRejectedValueOnce(gridError()).mockResolvedValueOnce({ data: { values: [["x"]] } });
+  it("읽기: CI·CD 범위 초과면 A:CC 로 — 확장3 값은 살아 있다(단계를 건너뛰지 않음)", async () => {
+    valuesGet.mockRejectedValueOnce(gridError()).mockRejectedValueOnce(gridError()).mockResolvedValueOnce({ data: { values: [["x"]] } });
     const rows = await readMeetingRows("sid", (last) => `R!A2:${last}`);
     expect(rows).toEqual([["x"]]);
-    expect(valuesGet.mock.calls.map((c) => (c[0] as { range: string }).range)).toEqual(["R!A2:CD", "R!A2:CC"]);
+    expect(valuesGet.mock.calls.map((c) => (c[0] as { range: string }).range)).toEqual(["R!A2:CI", "R!A2:CD", "R!A2:CC"]);
     expect(ensureGridColumns).not.toHaveBeenCalled();
   });
 });
 
 describe("③ 06 BL", () => {
-  it("행 빌더: BL(63) = 매출기준연도, 64열", () => {
+  it("행 빌더: BL(63) = 매출기준연도, 69열(확장5 BM~BQ 포함)", () => {
     const row = companyInfoToArchiveRow("예시상사", "2026-09-28", BASE.업체정보, "T");
-    expect(ARCHIVE_ROW_WIDTH).toBe(64);
-    expect(row).toHaveLength(64);
+    expect(ARCHIVE_ROW_WIDTH).toBe(69);
+    expect(row).toHaveLength(69);
     expect(colName(63)).toBe("BL");
     expect(row[63]).toBe("'2026");
   });
 
-  it("읽기: E~BL 에서 복원, 옛 63열(A~BK) 행은 ''", async () => {
+  it("읽기: E~BQ 에서 복원, 옛 63열(A~BK) 행은 ''", async () => {
     const full = userEntered(companyInfoToArchiveRow("예시상사", "2026-09-28", BASE.업체정보, "T"));
     const mock = (cells: unknown[]) =>
       valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-        if (range.endsWith("!A1:BL1")) return { data: { values: [Array(64).fill("h")] } };
+        if (range.endsWith("!A1:BQ1")) return { data: { values: [Array(69).fill("h")] } };
         if (range.endsWith("!C2:C")) return { data: { values: [["2026-09-28|예시상사"]] } };
-        if (range.endsWith("!E2:BL2")) return { data: { values: [cells] } };
+        if (range.endsWith("!E2:BQ2")) return { data: { values: [cells] } };
         throw new Error(`unexpected ${range}`);
       });
     mock(full.slice(4));
@@ -175,12 +175,12 @@ describe("④ 이월 · DB 복원", () => {
     expect(meetingFromDbPayload(p)!.업체정보!.매출기준연도).toBe("2026");
   });
 
-  it("아레나 시트 이월 쓰기 — 백만원 값·기준 연도 모두 apostrophe 텍스트, grid 82열", async () => {
+  it("아레나 시트 이월 쓰기 — 백만원 값·기준 연도 모두 apostrophe 텍스트, grid 87열", async () => {
     valuesGet.mockResolvedValue({ data: { values: [["m-a"]] } });
     await appendCarriedMeeting("arena", { 원본id: "m-by-001", raw: sheetRaw }, "new-by");
     const data = (valuesBatchUpdate.mock.calls[0]![0] as { requestBody: { data: { range: string; values: unknown[][] }[] } })
       .requestBody.data;
-    const ext = data.find((d) => d.range.endsWith("!AU3:CD3"))!;
+    const ext = data.find((d) => d.range.endsWith("!AU3:CI3"))!;
     expect(ext.values[0]![35]).toBe("'2026"); // CD
     expect(ext.values[0]![COMPANY_FIELDS_EXT2.length + 6]).toBe("'250.1"); // 매출Y1상(BU)
     expect(ext.values[0]![COMPANY_FIELDS_EXT2.length + 7]).toBe(""); // 빈 칸은 접두 없음
@@ -188,7 +188,7 @@ describe("④ 이월 · DB 복원", () => {
     const t = data.find((d) => d.range.endsWith("!T3:AN3"))!;
     expect(t.values[0]).toContain("'1,234");
     expect(t.values[0]).toContain("'홍길동");
-    expect(ensureGridColumns).toHaveBeenCalledWith("arena", "04 업체관리(앱자동작성용)", 82);
+    expect(ensureGridColumns).toHaveBeenCalledWith("arena", "04 업체관리(앱자동작성용)", 87);
   });
 
   it("06 DB backfill 열문자 BL → CompanyInfo", () => {
