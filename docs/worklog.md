@@ -1,3 +1,5 @@
+## 2026-10-25 · DB관리시트 진행 단계 바로가기
+- feat/db-sheet-step-shortcut. belie 「어느 탭으로 가서 이어 갈지 바로가기, 진행 단계 칸 따로」. STEP 3 일정 → / STEP 4 실무/수납 → + 상태, 미팅 전은 —. [plan](plans/active/db-sheet-step-shortcut.md).
 ## 2026-10-25 · DB관리시트 현재상태 칸 정리
 - feat/db-sheet-merge-stage-into-result. belie 「칸 없애고 필요한 것만 접기」. 컨택결과 중복(203/221) 제거, 미팅 뒤 진행·장기관리·진행종료만 컨택결과 옆 꼬리표. 내부 상태값·필터 그대로. [plan](plans/active/db-sheet-merge-stage-into-result.md).
 ## 2026-10-25 · 아이폰 빛 번짐 모서리·DB정보 날짜칸

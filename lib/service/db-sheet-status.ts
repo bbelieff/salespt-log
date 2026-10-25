@@ -51,6 +51,7 @@ export async function loadDbSheetWorkProjector(ctx: DbSheetContext) {
     const active = linked.filter(isLiveContract);
     if (!active.length) return { ...lead, funnel, stage: "계약해지" };
     const statuses = new Set(buildWorkStatusItems(active, todos, today).map(item => item.status));
-    return { ...lead, funnel, stage: Object.entries(labels).filter(([key]) => statuses.has(key as WorkStatusKey)).map(([, label]) => label).join(" · ") };
+    const contractRow = active.find(cp => cp.row)?.row;
+    return { ...lead, funnel, ...(contractRow ? { contractRow } : {}), stage: Object.entries(labels).filter(([key]) => statuses.has(key as WorkStatusKey)).map(([, label]) => label).join(" · ") };
   });
 }
