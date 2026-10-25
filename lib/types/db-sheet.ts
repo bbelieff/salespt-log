@@ -44,7 +44,9 @@ export function dbSheetContactStage(lead: { meetingId?: string | null; stage: st
   return "미컨택";
 }
 /** 부재는 다음 연락일이 비어 있으면 내일로 잡는다. 이미 정한 날짜는 바꾸지 않는다. */
-export function autoDbSheetNextContact(result: string, next: string, tomorrow: string): string { return result === "부재" && !next ? tomorrow : next; }
+/** 다음 연락일을 컨택한 날 다음날로 자동으로 잡는 결과(부재 2026-10-23 · 재통화 2026-10-25 belie). */
+export const DB_SHEET_AUTO_NEXT_RESULTS: readonly string[] = ["부재", "재통화"];
+export function autoDbSheetNextContact(result: string, next: string, tomorrow: string): string { return DB_SHEET_AUTO_NEXT_RESULTS.includes(result) && !next ? tomorrow : next; }
 /**
  * 예전 기록 보정(읽을 때만, 2026-10-25 belie): 규칙이 생기기 전에 기록된 업체도 같은 모습으로 보이게.
  * · 최초상담일이 비었으면(결과와 상관없이) → 상담으로 치는 첫 컨택(단순거절·재통화·컨택진행·상담 후 거절)의 날짜.
@@ -59,7 +61,7 @@ export function backfillDbSheetDates<T extends { result: string; first: string; 
 ): T {
   let out = lead;
   if (!lead.first && firstConsultDate) out = { ...out, first: firstConsultDate };
-  if (lead.result === "부재" && !lead.next) {
+  if (DB_SHEET_AUTO_NEXT_RESULTS.includes(lead.result) && !lead.next) {
     const last = [lastContactDate, ...(lead.absences ?? []).map(a => a.date)].filter(Boolean).sort().at(-1);
     if (last) out = { ...out, next: dayAfter(last) };
   }

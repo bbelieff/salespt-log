@@ -136,3 +136,16 @@ it("hides 부재 기록 once the result is 단순거절 (2026-10-25)", () => {
   render("단순거절");
   expect(host.querySelector('[aria-label="부재 기록"]')).toBeNull();
 });
+it("부재·재통화 highlight the 다음 연락일 field with an auto-schedule hint instead of a separate notice box (2026-10-25)", () => {
+  const noop = vi.fn();
+  const render = (result: string, next: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result, next }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onRecording: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {} })));
+  render("재통화", "2026-10-26");
+  const field = host.querySelector('input[aria-label="DB정보 다음 연락일"]')!.closest("label")!;
+  expect(field.className).toContain("db-next-auto");
+  expect(field.textContent).toContain("다음날로 자동 입력");
+  expect(field.textContent).toContain("바꿀 수 있어요");
+  expect(host.textContent).not.toContain("재통화 일정을 정해 주세요");
+  render("단순거절", "2026-10-26");
+  expect(host.querySelector('input[aria-label="DB정보 다음 연락일"]')!.closest("label")!.className).not.toContain("db-next-auto");
+});
+

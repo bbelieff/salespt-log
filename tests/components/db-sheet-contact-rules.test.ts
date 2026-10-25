@@ -54,7 +54,8 @@ describe("부재 다음 연락일", () => {
   it("sets tomorrow only when empty", () => {
     expect(autoDbSheetNextContact("부재", "", "2027-01-11")).toBe("2027-01-11");
     expect(autoDbSheetNextContact("부재", "2027-01-20", "2027-01-11")).toBe("2027-01-20");
-    for (const r of ["재통화", "단순거절", "컨택진행", "미컨택"]) expect(autoDbSheetNextContact(r, "", "2027-01-11")).toBe("");
+    expect(autoDbSheetNextContact("재통화", "", "2027-01-11")).toBe("2027-01-11"); // 재통화도 자동(2026-10-25)
+    for (const r of ["단순거절", "컨택진행", "미컨택"]) expect(autoDbSheetNextContact(r, "", "2027-01-11")).toBe("");
   });
 });
 

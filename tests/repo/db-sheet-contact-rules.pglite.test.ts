@@ -77,8 +77,16 @@ it("부재 never overwrites a 다음 연락일 that is already set", async () =>
 
 it("other results keep the old rule: a consumed 다음 연락일 is cleared, not auto-filled", async () => {
   let lead = await fresh();
-  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-10", result: "재통화", note: "" }, lead.revision)).lead;
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-10", result: "단순거절", note: "" }, lead.revision)).lead;
   expect(lead.next).toBe("");
+});
+
+it("재통화 also schedules the day after the contact when 다음 연락일 is empty (2026-10-25), and old empty rows read filled", async () => {
+  let lead = await fresh();
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-07", result: "재통화", note: "" }, lead.revision)).lead;
+  expect(lead.next).toBe("2027-05-08");
+  await query("update db_sheet_leads set data = data || '{\"next\":\"\"}'::jsonb where spreadsheet_id=$1 and id=$2", [ctx.spreadsheetId, lead.id]);
+  expect((await get(lead.id)).next).toBe("2027-05-08");
 });
 
 // ── 2026-10-25 belie: 부재 다음 연락일은 「부재를 적은 날」 다음날, 부재 기록도 같은 규칙, 예전 기록 보정 ──
