@@ -1,5 +1,7 @@
 ## 2026-10-25 · 오류신고 1단계 (빠른 보기 창 · 캡처 그리기)
 - feat/bug-report. belie 목업 승인 「좋다」. 빠른 보기 아래 줄 정리(오류신고 · N건 더 보기) + 캡처(개인정보 가림)·빨간 표시·문제 종류·설명 → 운영 DB `bug_reports`(처음 쓸 때 생성) + 관리자 웹 푸시. 카톡 알림은 앱에서 불가라 웹 푸시로 대체. 2단계(관리자 오류신고함·해결 알림) 대기. [plan](plans/active/bug-report.md).
+## 2026-10-25 · DB관리시트 현재상태 칸 정리
+- feat/db-sheet-merge-stage-into-result. belie 「칸 없애고 필요한 것만 접기」. 컨택결과 중복(203/221) 제거, 미팅 뒤 진행·장기관리·진행종료만 컨택결과 옆 꼬리표. 내부 상태값·필터 그대로. [plan](plans/active/db-sheet-merge-stage-into-result.md).
 ## 2026-10-25 · 아이폰 빛 번짐 모서리·DB정보 날짜칸
 - fix/followups-glow-corners. belie 스크린샷: 빛 번짐 모서리 네모 잘림(사파리 흐림 잘림 → 빛 층 20px 여유), 날짜칸 크기 불일치(appearance:none + 다른 칸과 같은 높이·폭). [plan](plans/active/ios-glow-corners-date-fields.md).
 ## 2026-10-25 · DB관리시트 상담 중 = 실제 결과 기준
