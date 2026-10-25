@@ -1,3 +1,11 @@
+## 2026-10-26 · 새 버전 알림 (배포 뒤 새로고침)
+- feat/version-update-banner. belie 「운영반영 완료되어 새 버전이 나오면 중앙 하단에 버전명 + 새로고침」. 버전명 = 빌드 한국 시각(next.config `NEXT_PUBLIC_APP_VERSION`), `/api/version` 과 화면 번들 비교 → 아래 가운데 알림(1분 뒤·5분마다·돌아올 때 확인). [plan](plans/active/version-update-banner.md).
+## 2026-10-26 · DB관리시트 진행 단계 분류·정렬 (#1248)
+- feat/db-sheet-step-sort. belie 「진행 단계도 오름내림차순」「재통화 이하 1.5, 미팅예약·컨택 후 거절 2」. 모든 DB 를 STEP 1.5/2/3/4 로(가장 멀리 간 단계), 제목 정렬. 병합 ec27eac9 · Deploy 40215192061 success · health 200. [plan](plans/active/db-sheet-step-sort.md).
+## 2026-10-26 · 업체정보 맞춤공고 줄 잘림·줄바뀜 (#1247)
+- fix/company-grant-narrow. belie 스크린샷. DB관리시트 입력칸 100% 폭 규칙이 대분류·지역 고르기 칸·체크박스까지 늘려 「자/동」 세로 깨짐 → 예외 + 줄바꿈 금지. 병합 32b1da25 · Deploy 40214178511 success · health 200. [plan](plans/active/company-grant-narrow.md).
+## 2026-10-26 · 오류신고 1단계 배포 (#1240)
+- 병합 fd5801ef · Deploy 40210952872 success · health 200 · `/api/bug-reports` 비로그인 401 확인. 실제 탭 찍기(PC 크롬 공유 허락)는 belie 확인 필요(NOT_RUN). 하네스 메모: worklog 맨 위 동시 추가로 PR 마다 충돌 → 이번 묶음은 마지막 PR 에서 한 번에 기록.
 ## 2026-10-26 · 「공고매칭 n/3」 칩 누르면 빈 조건 안내
 - feat/grant-ready-popover. 개발가이드 세션 경유 belie 승인. 칩 → ✓/– 세 줄 + 「채우기 →」(그 칸으로 이동·포커스), 3/3이면 한 줄. 4단계에 「맞는 공고 N」으로 전환. 화면만. [plan](plans/active/grant-ready-popover.md).
 
