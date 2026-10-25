@@ -1,10 +1,11 @@
-import {columns,outcomeDisplayLabel,resultTag,type Key,type Row} from './model';
+import {columns,outcomeDisplayLabel,resultTag,stepShortcut,type Key,type Row} from './model';
 
 export const MIN_COLUMN_WIDTH=42,MAX_COLUMN_WIDTH=800;
 export const clampColumnWidth=(value:number)=>Math.max(MIN_COLUMN_WIDTH,Math.min(MAX_COLUMN_WIDTH,Math.ceil(value)));
 export function columnText(row:Row,key:Key){
  if(key==='inflow')return row.inflowStatus?.state==='recorded'?'반영됨':row.inflowStatus?.state==='excluded'?'미반영':'확인 필요';
  // 컨택결과 칸은 꼬리표(→ 계약·장기관리 등)까지 한 칸에 들어가게 잰다.
+ if(key==='step'){const s=stepShortcut(row);return s?`${s.label} →  ${s.state}`:'—';}
  if(key==='result'){const tag=resultTag(row);return outcomeDisplayLabel(row.result)+(tag?'  '+tag:'');}
  return (row[key]||'—').replace(/[\t\r\n\f ]+/g,' ').trim();
 }

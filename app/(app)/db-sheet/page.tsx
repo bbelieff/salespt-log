@@ -45,7 +45,7 @@ export default function DbSheetPage(){
  const [picked,setPicked]=useState<ReadonlySet<string>>(()=>new Set()),[bulkBusy,setBulkBusy]=useState(false),[bulkMessage,setBulkMessage]=useState('');
  const [summaryOpen,setSummaryOpen]=useState(false),listTop=useRef<HTMLSpanElement>(null);
  useEffect(()=>{setMounted(true);const params=new URLSearchParams(window.location.search),requested=params.get('lead');if(requested)setDetail(requested);if(params.get('view')==='suppliers')setSummaryOpen(true);document.body.classList.add('db-sheet-route');try{const keys=restoreVisibleColumns(key=>localStorage.getItem(key));if(keys)setVisible(keys);}catch{}return()=>document.body.classList.remove('db-sheet-route');},[]);
- useEffect(()=>{if(mounted)localStorage.setItem('db-sheet-v6-columns',JSON.stringify(visible));},[visible,mounted]);
+ useEffect(()=>{if(mounted)localStorage.setItem('db-sheet-v7-columns',JSON.stringify(visible));},[visible,mounted]);
  useEffect(()=>{const mq=window.matchMedia('(max-width:1023px)');const change=()=>{setMobile(mq.matches);if(!mq.matches){setOptionsOpen(false);setMobileFilter(null);}};change();if(mq.matches&&new URLSearchParams(window.location.search).get('view')==='suppliers')setOptionsOpen(true);mq.addEventListener('change',change);return()=>mq.removeEventListener('change',change);},[]);
  const range=inflowPeriodBounds(period,from,to),rangeFrom=range?.[0]??'',rangeTo=range?.[1]??'';
  const filtered=filterDbSheetRows(rows,{search,selectedSuppliers,from:rangeFrom,to:rangeTo,selectedStatuses});
