@@ -81,6 +81,18 @@ const 업종_낱말: ReadonlyArray<[string, RegExp]> = [
   ["정보통신", /정보통신|소프트웨어|\bICT\b|IT|콘텐츠|디지털/i],
 ];
 
+/**
+ * 특정 업계만 받는 공고(업종 칸이 아니라 제목·지원대상에 적힌 경우가 많다 — 2026-10-26 belie 캡처: 에너지·환경·관광·문화 공고가 도소매 업체에 걸림).
+ * 공고 글에 이 업계 말이 있고 업체 업태·업종·아이템에 같은 업계 말이 없으면 뺀다. 업체 업종을 모르면 확인 필요.
+ */
+const 업계: ReadonlyArray<[string, RegExp, RegExp]> = [
+  ["관광", /관광\s*(사업|진흥|업체|기업)|여행업|호텔업|야영장업/, /관광|여행|호텔|숙박|야영|펜션|리조트/],
+  ["에너지", /에너지\s*(절약|효율|이용\s*합리화)|ESCO/i, /에너지|ESCO|설비|전기|보일러|태양광|단열/i],
+  ["환경산업", /환경\s*산업|환경\s*기업|녹색\s*산업/, /환경|재활용|폐기물|정화|녹색/],
+  ["문화콘텐츠", /문화\s*산업|콘텐츠|게임|방송|애니메이션|영화|공연|출판|캐릭터|만화/, /콘텐츠|게임|방송|영상|애니|영화|음악|공연|출판|캐릭터|만화|디자인|미디어/],
+  ["농림수산", /농업인|농식품|농어업|어업인|수산|임업|축산/, /농업|농산|농식품|수산|어업|임업|축산|양식/],
+];
+
 function inScope(p: GrantProfile, a: PolicyAnnouncement, why: string[]): Verdict {
   if (a.regions.some((r) => r.kind === "nation")) return "match";
   if (a.regions.length === 0) { why.push("공고 지역 확인 필요"); return "check"; }
@@ -114,7 +126,9 @@ export function matchAnnouncement(company: GrantMatchCompany, a: PolicyAnnouncem
   if (extra.length && a.regions.some((r) => r.kind === "nation")) {
     const w: string[] = [];
     const v = inScope(p, { ...a, regions: extra, regionText: "지원대상 지역" }, w);
-    if (v !== "match") check.push(v === "no" ? "지원대상에 지역 조건(다른 지역)" : w[0] ?? "지원대상 지역 확인");
+    // 업체 지역을 알면 다른 지역 대상 공고는 뺀다(2026-10-26 belie 「해당 없는 공고가 다 검색됨」).
+    if (v === "no") no.push("지원대상 지역 다름");
+    else if (v === "check") check.push(w[0] ?? "지원대상 지역 확인");
   }
 
   // ② 규모 — 「소상공인」이 대상이면.
@@ -128,11 +142,21 @@ export function matchAnnouncement(company: GrantMatchCompany, a: PolicyAnnouncem
 
   // ④ 업종 — 공고가 업종을 좁힌 경우만.
   const lim = a.industryLimit;
-  if (known(lim) && !/제외/.test(lim.replace(/\(.*?\)/g, ""))) {
+  if (known(lim) && !/제외/.test(lim.replace(/\(.*?\)/g, "")) && !/전\s*업종|업종\s*(무관|제한\s*없)|모든\s*업종/.test(lim)) {
     const named = 업종_낱말.filter(([, re]) => re.test(lim)).map(([n]) => n);
-    if (named.length === 0) check.push("업종 조건 확인");
+    // 공고가 업종을 좁혔는데 업체 대분류가 그 안에 없으면 뺀다 — 업체 대분류를 모를 때만 확인 필요(2026-10-26 belie).
+    if (named.length === 0) (p.industry ? no : check).push(p.industry ? "업종 다름" : "업종 조건 확인");
     else if (!p.industry) check.push("업체 대분류가 비어 있어요");
     else if (!named.includes(p.industry)) no.push(`업종 다름(${named.join("·")})`);
+  }
+
+  // ④-2 특정 업계 공고.
+  const announced = `${a.title} ${a.target} ${a.special} ${a.industryLimit.replace(/[^,·(]*제외/g, "")}`;
+  const own = `${company.업태 ?? ""} ${company.업종주생산품목 ?? ""} ${company.주생산품목 ?? ""} ${p.industry}`;
+  for (const [name, wants, mine] of no.some((r) => r.startsWith("업종 다름")) ? [] : 업계) {
+    if (!wants.test(announced) || mine.test(own)) continue;
+    (p.industry || own.trim() ? no : check).push(p.industry || own.trim() ? `업종 다름(${name})` : `${name} 업종인지 확인`);
+    break;
   }
 
   // ⑤ 업력 — 「N년 이내/미만」「N년 이상」.
@@ -153,9 +177,9 @@ export function matchAnnouncement(company: GrantMatchCompany, a: PolicyAnnouncem
   if (/청년/.test(who)) {
     const by = birthYear(company, Number(today.slice(0, 4)));
     const limit = Number(who.match(/만?\s*(\d{2})\s*세\s*이하/)?.[1] ?? 39);
-    // 청년은 여러 대상 중 하나로 적히는 일이 많다(「청년창업은 …」) — 나이가 넘어도 단정하지 않는다.
+    // 생년월일(주민등록번호 앞자리 포함)로 나이를 알면 판정한다 — 넘으면 뺀다(2026-10-26 belie 「생년월일이 있는데 청년인지 확인하라는 게 이상해」).
     if (by === null) check.push("대표자 나이 확인 필요");
-    else if (Number(today.slice(0, 4)) - by - 1 > limit) check.push(`청년(만 ${limit}세 이하) 조건 확인`);
+    else if (Number(today.slice(0, 4)) - by - 1 > limit) no.push(`청년(만 ${limit}세 이하) 대상`);
   }
 
   // ⑦ 특성 — 업체가 켜지 않았다고 아닌 것은 아니다(안 적었을 수 있음) → 확인 필요만.
@@ -174,7 +198,7 @@ function daysBetween(from: string, to: string): number {
 
 /** 한 업체에 맞는 공고(맞음·확인 필요)만, 소진 임박 → 맞음 → 확인 필요 → 최근 순. */
 export function matchesFor(company: GrantMatchCompany, list: readonly PolicyAnnouncement[], today: string) {
-  const rank = (m: GrantMatch) => (m.urgent ? 0 : m.verdict === "match" ? 1 : 2);
+  const rank = (m: GrantMatch) => (m.verdict === "match" ? (m.urgent ? 0 : 1) : 2);
   return list
     .map((a) => ({ a, m: matchAnnouncement(company, a, today) }))
     .filter((x) => x.m.verdict !== "no")
@@ -240,6 +264,6 @@ export function grantInbox(res: GrantMatchesResponse | undefined): GrantInboxIte
       out.push({ key: `${ref}#${m.id}`, ref, company: ref.slice(ref.indexOf("|") + 1), id: m.id, title: a.title, verdict: m.verdict, urgent: m.urgent, seen: a.lastSeen });
     }
   }
-  const rank = (x: GrantInboxItem) => (x.urgent ? 0 : x.verdict === "match" ? 1 : 2);
+  const rank = (x: GrantInboxItem) => (x.verdict === "match" ? (x.urgent ? 0 : 1) : 2);
   return out.sort((a, b) => rank(a) - rank(b) || b.seen.localeCompare(a.seen) || a.key.localeCompare(b.key)).map(({ seen: _seen, ...x }) => x);
 }

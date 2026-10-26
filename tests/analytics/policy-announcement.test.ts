@@ -17,6 +17,9 @@ describe("지역 범위", () => {
     ["확인안됨", []],
     ["", []],
   ])("%s", (t, out) => expect(parseScopes(t)).toEqual(out));
+  it("시·도 뒤 「시」 뗀 시·군 이름(경기 안산)", () => {
+    expect(parseScopes("경기 안산")).toEqual([{ kind: "area", 시도: "경기", 시군구: "안산시" }]);
+  });
   it("시·군을 떼고 쓴 이름(여수·서산)", () => {
     expect(parseScopes("여수·서산")).toEqual([{ kind: "area", 시도: "전남", 시군구: "여수시" }, { kind: "area", 시도: "충남", 시군구: "서산시" }]);
   });

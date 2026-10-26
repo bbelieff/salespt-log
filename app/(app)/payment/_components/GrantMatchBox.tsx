@@ -68,7 +68,8 @@ export default function GrantMatchBox({ 계약일, 업체명, grants: data, todo
       {rows.length > 0 && <ul className="divide-y divide-slate-100 border-t border-slate-100">
         {rows.map((m) => {
           const a = data!.announcements[m.id]!;
-          const [label, tone] = BADGE[m.urgent ? "urgent" : m.verdict];
+          // 「소진 임박」은 맞는 공고에만 — 확인 필요 공고는 마감이 가까워도 「확인 필요」(2026-10-26 belie).
+          const [label, tone] = BADGE[m.urgent && m.verdict === "match" ? "urgent" : m.verdict];
           const line = [a.regionText, a.maxAmount, a.deadlineText && `마감 ${a.deadlineText}`].filter(Boolean).join(" · ");
           return (
             <li key={m.id} className="flex items-start gap-2 px-3 py-2">

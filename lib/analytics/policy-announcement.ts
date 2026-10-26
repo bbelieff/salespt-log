@@ -62,6 +62,8 @@ export function parseScopes(text: string): RegionScope[] {
     let r = parseRegion(tok);
     // 「여수」「서산」처럼 시·군을 떼고 쓴 이름.
     if (!r.시도) for (const suffix of ["시", "군"]) { r = parseRegion(`${tok}${suffix}`); if (r.시도) break; }
+    // 「경기 안산」처럼 시·도 뒤 시·군 이름에서 「시」「군」을 뗀 꼴(2026-10-26 — 경기 전체로 읽혀 광주시 업체에도 걸렸다).
+    if (r.시도 && !r.시군구 && /\s/.test(tok)) for (const suffix of ["시", "군", "구"]) { const again = parseRegion(`${tok}${suffix}`); if (again.시도 === r.시도 && again.시군구) { r = again; break; } }
     if (!r.시도) continue;
     const key = `${r.시도}|${r.시군구}`;
     if (seen.has(key)) continue;

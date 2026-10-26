@@ -98,7 +98,7 @@ export default function FollowUpsLauncherView({ items, loading = false, incomple
       </div>
       <div className="fl-body">
         {showGrant ? (grantItems!.length ? <ul className="fl-list">{grantItems!.slice(0, GRANT_TOP).map(g => {
-            const [label, tone] = GRANT_BADGE[g.urgent ? "urgent" : g.verdict];
+            const [label, tone] = GRANT_BADGE[g.urgent && g.verdict === "match" ? "urgent" : g.verdict];
             return <li key={g.key} className="fl-item">
               <span className="ft-badge" data-tone={tone}>{label}</span>
               <span className="fl-text"><strong title={g.company}>{g.company}</strong><small title={g.title}>{g.title}</small></span>
