@@ -17,9 +17,10 @@ import { loadFollowUpMeetings } from "./meeting-follow-ups";
 import { loadDbSheet, resolveDbSheetContext } from "./db-sheet";
 import { buildMeetingResultMessage, buildPushMessage, dueMeetingResults, withDeliveryTag } from "./push-messages";
 import { buildSeedMessage, type SeedSources } from "./push-seed";
+import { dueReminders, REMINDER_DAILY_LIMIT, type ReminderSources } from "./push-reminders";
 import { addDaysISO, dueSlots, kstNow, nextNotification, onWeekday, WEEKDAY_LABELS, type KstNow } from "./push-schedule";
 
-const TTL_SECONDS: Record<store.DeliverySlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600, meeting: 3 * 3600 };
+const TTL_SECONDS: Record<store.DeliverySlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600, meeting: 3 * 3600, reminder: 30 * 60 };
 export const TEST_PUSH_DAILY_LIMIT = 3;
 
 export function pilotEmails(): string[] {
@@ -174,6 +175,7 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
       }
     }
     if (await dispatchMeetingResult(email, prefs, kst, stats) === "fatal") return stats;
+    if (await dispatchReminders(email, prefs, kst, stats) === "fatal") return stats;
   }
   return stats;
 }
@@ -200,6 +202,48 @@ async function dispatchMeetingResult(email: string, prefs: PushPreferences, kst:
   } catch (error) {
     // 운영 DB 에 0011 이 아직 없으면 claim 이 제약에 걸린다 — 정기 알림은 그대로 두고 이 알림만 쉰다.
     Sentry.captureException(error, { tags: { where: "push-meeting-result" } });
+  }
+  return "ok";
+}
+
+/** Reads only what the person's switched-on reminders need. Failed reads simply yield no reminder. */
+async function loadReminderSources(email: string, today: string, prefs: PushPreferences): Promise<ReminderSources> {
+  const k = prefs.reminderKinds;
+  const [meetings, todos, contracts, leads] = await Promise.allSettled([
+    k.includes("meeting_before") ? loadFollowUpMeetings(email, today) : Promise.resolve(undefined),
+    k.includes("todo_before") ? listAllTodos(email) : Promise.resolve(undefined),
+    k.includes("todo_before") ? loadContractPayments(email) : Promise.resolve(undefined),
+    k.includes("absence_retry") ? resolveDbSheetContext(email).then(loadDbSheet) : Promise.resolve(undefined),
+  ]);
+  const ok = <T,>(r: PromiseSettledResult<T | undefined>) => (r.status === "fulfilled" ? r.value : undefined);
+  return { meetings: ok(meetings), todos: ok(todos), contracts: ok(contracts), leads: ok(leads) };
+}
+
+/**
+ * 미리 알림 1단계 (belie 2026-10-26) — 미팅 N분 전·할 일 15분 전·부재 다시 걸기. 약속 시각에 묶인
+ * 알림이라 요일 설정 대신 실제 일정 날짜를 따른다. 사람마다 하루 REMINDER_DAILY_LIMIT 건, 일정마다 한 번.
+ */
+async function dispatchReminders(email: string, prefs: PushPreferences, kst: KstNow, stats: DispatchStats): Promise<"ok" | "fatal"> {
+  if (!prefs.enabled || !prefs.remindersEnabled || !prefs.reminderKinds.length) return "ok";
+  if (kst.time < "07:00" || kst.time >= "21:00") return "ok";
+  try {
+    const due = dueReminders(await loadReminderSources(email, kst.date, prefs), prefs, kst);
+    if (!due.length) return "ok";
+    let used = await store.countDeliveries(email, kst.date, "reminder");
+    for (const rem of due) {
+      if (used >= REMINDER_DAILY_LIMIT) break;
+      const id = await store.claimDelivery(`${email}:${kst.date}:rem:${rem.key}`, email, "reminder", kst.date);
+      if (!id) { stats.duplicate++; continue; }
+      stats.candidates++;
+      used++;
+      const r = await fanout(email, { title: "경영일지", body: rem.body, url: withDeliveryTag(rem.url, id), d: id }, "reminder");
+      await store.finishDelivery(id, { status: r.sent ? "sent" : "failed", messageId: rem.messageId, itemCount: 1, devicesSent: r.sent, devicesFailed: r.failed });
+      if (r.sent) stats.sent++; else stats.failed++;
+      if (r.fatal) { Sentry.captureMessage("push_vapid_rejected", { level: "error", tags: { where: "push-reminder" } }); return "fatal"; }
+    }
+  } catch (error) {
+    // 운영 DB 에 0012 가 아직 없으면 claim 이 제약에 걸린다 — 정기 알림은 그대로 두고 미리 알림만 쉰다.
+    Sentry.captureException(error, { tags: { where: "push-reminder" } });
   }
   return "ok";
 }

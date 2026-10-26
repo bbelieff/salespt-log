@@ -10,6 +10,12 @@ const quarter = /^([01]\d|2[0-3]):(00|15|30|45)$/;
 export const MorningTime = z.string().regex(quarter).refine(t => t >= "07:00" && t <= "11:00", "07:00~11:00");
 export const EveningTime = z.string().regex(quarter).refine(t => t >= "17:00" && t <= "21:00", "17:00~21:00");
 
+/** 미리 알림 1단계 (belie 2026-10-26). */
+export const REMINDER_KINDS = ["meeting_before", "todo_before", "absence_retry"] as const;
+export const ReminderKind = z.enum(REMINDER_KINDS);
+export type ReminderKind = z.infer<typeof ReminderKind>;
+export const MEETING_LEAD_MINUTES = [30, 60, 120] as const;
+
 export const PushPreferences = z.object({
   enabled: z.boolean(),
   morningEnabled: z.boolean(),
@@ -20,12 +26,17 @@ export const PushPreferences = z.object({
   weekdays: z.number().int().min(1).max(127),
   kinds: z.array(PushContentKind),
   showCompanyNames: z.boolean(),
+  // Defaults keep a settings page loaded before this field existed from failing to save.
+  remindersEnabled: z.boolean().default(true),
+  meetingLeadMinutes: z.union([z.literal(30), z.literal(60), z.literal(120)]).default(60),
+  reminderKinds: z.array(ReminderKind).default([...REMINDER_KINDS]),
 });
 export type PushPreferences = z.infer<typeof PushPreferences>;
 
 export const DEFAULT_PUSH_PREFERENCES: PushPreferences = {
   enabled: true, morningEnabled: true, morningTime: "08:45", eveningEnabled: true, eveningTime: "18:00",
   weekdays: 31, kinds: [...PUSH_CONTENT_KINDS], showCompanyNames: true,
+  remindersEnabled: true, meetingLeadMinutes: 60, reminderKinds: [...REMINDER_KINDS],
 };
 
 export const PushPlatform = z.enum(["android", "ios_pwa", "desktop", "other"]);
@@ -42,4 +53,4 @@ export type PushSubscriptionInput = z.infer<typeof PushSubscriptionInput>;
 
 /** endpointTail = last 16 chars of the endpoint, so a browser can recognise its own row. */
 export interface PushDevice { id: string; platform: PushPlatform; browser: string; createdAt: string; lastSuccessAt: string | null; endpointTail: string }
-export type PushSlot = "morning" | "evening" | "test";
+export type PushSlot = "morning" | "evening" | "test" | "reminder";
