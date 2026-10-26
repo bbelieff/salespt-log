@@ -57,7 +57,9 @@ function projectMeeting(data:DbSheetLead,meeting:unknown,lineage:string[]=[]):Db
  if(meeting&&typeof meeting==='object'&&(meeting as {_cleared?:boolean})._cleared)return {...data,stage:DB_SHEET_MEETING_DELETED};
  const parsed=Meeting.safeParse(meeting);if(!parsed.success)return data;
  const m=parsed.data;
- return {...data,effectiveMeetingId:m.id,meetingLineageIds:lineage,stage:DB_SHEET_MEETING_STAGE[m.상태],contact:{...data.contact,ci:m.업체정보??data.contact.ci,companyName:m.업체명,meetingDate:m.미팅날짜,time:m.미팅시간,place:m.장소,reservationNote:m.예약비고}};
+ // 미컨택(또는 빈칸)이던 DB 가 STEP 3·4 기록에 나중에 연결되면 컨택결과를 「미팅예약」으로 보인다(2026-10-26 belie). 읽을 때만 — 저장값·STEP 2 실적은 그대로(연결 해제 시 원래대로).
+ const result=!data.result||data.result==="미컨택"?"컨택진행":data.result;
+ return {...data,result,effectiveMeetingId:m.id,meetingLineageIds:lineage,stage:DB_SHEET_MEETING_STAGE[m.상태],contact:{...data.contact,ci:m.업체정보??data.contact.ci,companyName:m.업체명,meetingDate:m.미팅날짜,time:m.미팅시간,place:m.장소,reservationNote:m.예약비고}};
 }
 type MeetingRow={row_key:string;payload:Record<string,unknown>};
 function effectiveMeeting(rows:MeetingRow[],id:string|null):{meeting:unknown;lineage:string[]} {
@@ -93,6 +95,8 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
  const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:formatMobilePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,...(old?.manualStage?{manualStage:old.manualStage}:{}),
+  // 입력 칸에 없는 기록(부재 시각·「연결」 표시)은 그대로 둔다 — 고쳐 저장하면 사라져 연결을 못 풀던 문제(2026-10-26).
+  ...(old?.absences?{absences:old.absences}:{}),...(old?.linkedExisting?{linkedExisting:true}:{}),
   followUp:{generation:(old?.followUp?.generation??0)+(old&&scheduleNext?1:0),completedGeneration:old?.followUp?.completedGeneration??null,lastContactDate:old?.followUp?.lastContactDate??""},
   // Response-only lineage (persist strips it): lets the status projector match a contract linked to a rescheduled child meeting.
   ...(current?.effectiveMeetingId?{effectiveMeetingId:current.effectiveMeetingId,meetingLineageIds:current.meetingLineageIds??[]}:{})};

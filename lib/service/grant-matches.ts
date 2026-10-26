@@ -38,7 +38,9 @@ export async function loadGrantMatches(email: string, today: string, sheetOverri
     const ref = contractRef(cp.계약일, cp.업체명);
     const ci = infos.get(ref);
     if (!ci) { companies[ref] = { hasInfo: false, noRegion: false, matches: [] }; continue; }
-    const found = matchesFor(ci, list, today);
+    // 맞는 공고가 하나도 없으면 「확인 필요」만으로 추천하지 않는다 — 「맞는 공고 0 · 확인 22」는 허탈하고 도움이 안 된다(2026-10-26 belie).
+    const all = matchesFor(ci, list, today);
+    const found = all.some((f) => f.m.verdict === "match") ? all : [];
     for (const f of found) used.add(f.a.id);
     companies[ref] = {
       hasInfo: true,
