@@ -40,6 +40,8 @@ describe("loadGrantMatches", () => {
     expect(r.unavailable).toBe(false);
     expect(r.companies["2026-10-01|가상정밀"]).toMatchObject({ hasInfo: true, noRegion: false, matches: [{ id: "P1", verdict: "match" }] });
     expect(r.companies["2026-10-01|빈상사"]).toMatchObject({ hasInfo: true, noRegion: true });
+    // 맞는 공고가 0이면 「확인 필요」만으로 추천하지 않는다(2026-10-26 belie).
+    expect(r.companies["2026-10-01|빈상사"]!.matches).toEqual([]);
     expect(r.companies["2026-10-01|무정보"]).toEqual({ hasInfo: false, noRegion: false, matches: [] });
     expect(r.companies["2026-10-01|해지상사"]).toBeUndefined();
     expect(Object.keys(r.announcements)).toContain("P1");

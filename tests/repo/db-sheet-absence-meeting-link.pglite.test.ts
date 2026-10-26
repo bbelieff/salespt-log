@@ -86,6 +86,23 @@ describe("따로 잡은 미팅 연결", () => {
     expect(back.stage).toBe("DB컨택중");
     expect(await salesSnapshot()).toBe(before);
   });
+  it("shows 미컨택 leads linked later as 미팅예약(컨택진행) without changing STEP 2, keeps other results, and reverts on unlink", async () => {
+    let lead = await fresh("합성사후연결");
+    lead = (await addDbSheetAbsence(ctx, lead.id, { date: "2027-05-02", hour: 10 }, lead.revision)).lead;
+    const mid = await step2Meeting("합성사후연결");
+    const before = await salesSnapshot();
+    lead = (await linkDbSheetMeeting(ctx, lead.id, mid, lead.revision)).lead;
+    expect((await get(lead.id)).result).toBe("컨택진행");
+    expect(await salesSnapshot()).toBe(before);
+    lead = (await saveDbSheetLead(ctx, { ...input("합성사후연결"), id: lead.id, contact: (await get(lead.id)).contact }, lead.revision)).lead;
+    expect((await get(lead.id)).absences).toEqual([{ date: "2027-05-02", hour: 10 }]);
+    lead = (await unlinkDbSheetMeeting(ctx, lead.id, lead.revision)).lead;
+    expect((await get(lead.id)).result).toBe("미컨택");
+    let kept = await fresh("합성거절연결");
+    kept = (await saveDbSheetContact(ctx, kept.id, { date: "2027-05-03", result: "단순거절", note: "" }, kept.revision)).lead;
+    kept = (await linkDbSheetMeeting(ctx, kept.id, await step2Meeting("합성거절연결"), kept.revision)).lead;
+    expect((await get(kept.id)).result).toBe("단순거절");
+  });
   it("refuses to link a meeting already linked elsewhere, or to unlink a meeting registered from the DB sheet", async () => {
     const mid = await step2Meeting("합성중복상사");
     let a = await fresh("합성중복상사");
