@@ -38,6 +38,7 @@
 ## 검증·UI·기록
 - PR 전 bash scripts/check.sh는 문서 변경도 필수다. runtime/app bytes 변경은 production build 필수; docs-only build 생략은 이유와 NOT_RUN을 기록한다.
 - 제품·데이터·레이어·SSOT는 CLAUDE.md를 따른다. 검사 통과를 위한 테스트 약화·삭제 금지.
+- 코드 작성·수정·검토는 프로젝트 스킬 `ponytail`(.claude/skills/ponytail/SKILL.md, 가장 작은 완전한 변경)을 따른다. 검토는 ponytail-review, 점검은 ponytail-audit. 이 문서·CLAUDE.md·SSOT가 스킬보다 우선한다(출처·제외 범위: .claude/skills/ponytail/SOURCE.md).
 - 목업부터 실제 공통 컴포넌트·CSS·폰트·토큰을 재사용하고 합성 데이터/모의 요청으로 운영을 격리한다. 기준 SHA·승인 버전을 남겨 구현·운영과 비교한다. 모바일 320/375/430px·PC, 합성 경계값의 잘림·넘침·동작을 확인한다.
 - 목업과 운영 검증, 저장 버튼 존재와 저장 지속성은 구분한다. 사용자 화면 안내 전에 실제 visibility·URL을 확인한다.
 - 준비된 Graft는 영어/심볼로 범위를 좁힌다. 그래프 없음·미인덱싱 문서는 rg로 찾는다. 호출 관계 빈 결과는 미사용 증거가 아니다.
