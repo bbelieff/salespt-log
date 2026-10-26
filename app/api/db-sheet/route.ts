@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { requireStudentViewContext, getWritableUserEmail, StudentViewContextError } from "@/auth/identity";
 import { DbSheetConflict, DbSheetLinkedMeetingReadOnly, DbSheetDuplicate, DbSheetOperationBlocked } from "@/repo/db/db-sheet";
-import { DbSheetCommand, DbSheetUnavailable, resolveDbSheetContext, loadDbSheet, loadDbSheetSuppliers, executeDbSheet } from "@/service/db-sheet";
+import { DbSheetCommand, DbSheetUnavailable, resolveDbSheetContext, loadDbSheet, loadDbSheetSuppliers, loadDbSheetTrash, executeDbSheet } from "@/service/db-sheet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,10 +16,12 @@ function failure(error: unknown) {
   // Never expose database errors or customer payloads to a browser/log.
   return NextResponse.json({ error: "저장소에 연결하지 못했습니다. 입력 내용을 유지하고 다시 시도해 주세요." }, { status: 503 });
 }
-export async function GET() {
+export async function GET(req?: NextRequest) {
   try {
     const view = await requireStudentViewContext();
     const ctx = await resolveDbSheetContext(view.email, view.sheetOverride);
+    // 휴지통 목록(2026-10-26) — ?trash=1
+    if (req?.nextUrl.searchParams.get("trash") === "1") return NextResponse.json({ trash: await loadDbSheetTrash(ctx) }, { headers: { "Cache-Control": "no-store" } });
     return NextResponse.json({ leads: await loadDbSheet(ctx),suppliers:await loadDbSheetSuppliers(ctx) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return failure(error); }
 }

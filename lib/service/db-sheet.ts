@@ -28,6 +28,9 @@ export const DbSheetCommand = z.discriminatedUnion("action", [
   z.object({action:z.literal("recording"),id:z.string().uuid(),revision,recording:DbSheetRecording}),
   z.object({action:z.literal("delete-preview"),id:z.string().uuid(),revision}),
   z.object({action:z.literal("delete"),id:z.string().uuid(),revision,confirmed:z.literal(true)}),
+  // 휴지통(2026-10-26): 되돌리기·영구 삭제(ids 없으면 비우기).
+  z.object({action:z.literal("trash-restore"),ids:z.array(z.string().uuid()).min(1).max(500),allowDuplicate:z.boolean().optional()}),
+  z.object({action:z.literal("trash-empty"),ids:z.array(z.string().uuid()).max(500).optional()}),
 ]);
 export class DbSheetUnavailable extends Error {}
 
@@ -44,6 +47,7 @@ export async function resolveDbSheetContext(email: string, sheetOverride?: strin
 }
 
 export const loadDbSheetSuppliers=ledger.listDbSheetSuppliers;
+export const loadDbSheetTrash=ledger.listDbSheetTrash;
 export async function loadDbSheetMeetingCandidates(ctx: DbSheetContext, leadId: string) { return ledger.listDbSheetMeetingCandidates(ctx, leadId); }
 export async function loadDbSheet(ctx: DbSheetContext) {
   return projectDbSheetWorkStatus(ctx, (await ledger.listDbSheet(ctx)).map(row=>{const {_recorded,...lead}=row;void _recorded;return lead;}));
@@ -69,6 +73,8 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
       :command.scheduleNext?await ledger.saveDbSheetLead(ctx,command.lead,command.revision,true):await ledger.saveDbSheetLead(ctx,command.lead,command.revision)];break;
     case "recording-preview": case "recording": changes=[await ledger.changeDbSheetRecording(ctx,command.id,command.revision,command.recording,command.action==='recording-preview')];break;
     case "delete-preview": case "delete": changes=[await ledger.deleteDbSheetLead(ctx,command.id,command.revision,command.action==='delete-preview')];break;
+    case "trash-restore": changes=await ledger.restoreDbSheetTrash(ctx,command.ids,!!command.allowDuplicate);break;
+    case "trash-empty": return {leads:[],impact:{inflow:0,contacts:0,meetings:0,rows:[]},emptied:await ledger.emptyDbSheetTrash(ctx,command.ids)};
     case "contact": changes = [await ledger.saveDbSheetContact(ctx, command.id, command, command.revision)]; break;
     case "first-date": changes = [await ledger.setDbSheetFirstDate(ctx, command.id, command.first, command.revision)]; break;
     case "inflow-preview": case "inflow": changes=[await ledger.changeDbSheetInflow(ctx,command.id,command.revision,command.inflow,command.action==="inflow-preview")];break;

@@ -817,3 +817,5 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 ## 정책자금뉴스 공고 피드 (2026-10-26, `lib/types/policy-news.ts`)
 
 - `PolicyNewsRow`: VPS `xlsx_to_rows` 줄(한국어 칸 이름, 모르는 칸 통과·빠진 칸 빈 글). `PolicyNewsDay`(schema 1 · date · rows) · `PolicyNewsIndex`(schema 1 · dates). 계약 = `docs/domains/policy-news-feed.md`. 저장 없음(읽기 전용, 30분 캐시).
+
+- `DbSheetTrashItem`(2026-10-26, `lib/types/db-sheet.ts`): 휴지통 한 줄 요약(id·업체·대표·전화·유형·공급처·유입일·deletedAt). 보관본 = `sheet_rows`(tab `db_sheet_trash`, row_key = DB id, mirror_pending=false — 시트 미러 아님) payload `{lead, contacts, history, deletedAt}`.

@@ -1,7 +1,7 @@
-/** 여러 줄 작업(2026-10-23 belie) — 유입 반영 일괄·삭제 10초 되돌리기·현재상태 직접 정하기. 가짜 전송·가짜 타이머, 합성값. */
+/** 여러 줄 작업(2026-10-23 belie) — 유입 반영 일괄·삭제(2026-10-26 바로 휴지통)·공급처 바꾸기·현재상태 직접 정하기. 가짜 전송·가짜 타이머, 합성값. */
 import { describe, expect, it, vi } from "vitest";
 import { DbSheetLeadInput, type DbSheetLead } from "@/types/db-sheet";
-import { createDbSheetStore, DELETE_UNDO_MS } from "@/app/(app)/db-sheet/_components/db-sheet-store";
+import { createDbSheetStore } from "@/app/(app)/db-sheet/_components/db-sheet-store";
 import { bulkOutcomeText } from "@/app/(app)/db-sheet/_components/BulkBar";
 
 const ids = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"];
@@ -51,50 +51,54 @@ describe("bulk inflow", () => {
   });
 });
 
-describe("bulk delete with 10-second undo", () => {
-  it("hides rows without deleting, and undo restores the exact same rows in place", async () => {
+describe("bulk delete goes straight to the trash (2026-10-26)", () => {
+  it("previews, then deletes each row on the server right away — no hidden 10-second window", async () => {
     const rows = [lead(0), lead(1), lead(2)];
     const { store, calls } = setup(rows); store.load(); await settle();
-    const before = store.getState().leads;
     const out = await store.scheduleDelete([ids[0]!, ids[2]!]);
     expect(out.done).toBe(2);
     expect(store.getState().leads.map((r) => r.id)).toEqual([ids[1]]);
     expect(store.getState().deleting).toEqual({ count: 2, inflow: 2, contacts: 0, meetings: 0 });
+    expect(calls.filter((c) => c.action === "delete").map((c) => c.id)).toEqual([ids[0], ids[2]]);
     store.undoDelete();
-    expect(store.getState().leads).toEqual(before);
-    expect(store.getState().leads[0]).toBe(before[0]);
     expect(store.getState().deleting).toBeNull();
-    expect(calls.every((c) => c.action === "delete-preview")).toBe(true);
   });
-  it("commits the deletes when the 10 seconds pass", async () => {
-    const { store, calls, fire } = setup([lead(0), lead(1)]); store.load(); await settle();
-    await store.scheduleDelete([ids[0]!]);
-    fire(DELETE_UNDO_MS); await settle(); await settle();
-    expect(calls.filter((c) => c.action === "delete").map((c) => c.id)).toEqual([ids[0]]);
-    expect(store.getState().leads.map((r) => r.id)).toEqual([ids[1]]);
-  });
-  it("leaving the page (flushAll) commits a pending delete; discard undoes it", async () => {
-    const a = setup([lead(0), lead(1)]); a.store.load(); await settle();
-    await a.store.scheduleDelete([ids[0]!]); await a.store.flushAll();
-    expect(a.calls.filter((c) => c.action === "delete")).toHaveLength(1);
-    const b = setup([lead(0), lead(1)]); b.store.load(); await settle();
-    await b.store.scheduleDelete([ids[0]!]); b.store.discard();
-    expect(b.calls.filter((c) => c.action === "delete")).toHaveLength(0);
-    expect(b.store.getState().leads.map((r) => r.id)).toEqual([ids[0], ids[1]]);
-  });
-  it("keeps blocked rows visible and restores rows whose final delete fails", async () => {
-    const { store, fire } = setup([lead(0), lead(1)], (b) => {
+  it("keeps blocked rows and rows whose delete fails, with the reason", async () => {
+    const { store } = setup([lead(0), lead(1)], (b) => {
       if (b.action === "delete-preview" && b.id === ids[1]) return { impact: { inflow: 0, contacts: 0, meetings: 0, rows: [], blockedReason: "미팅이 남아 있어요. STEP 3에서 먼저 확인해 주세요." } };
       if (b.action === "delete") throw new Error("동시 수정");
       return undefined;
     });
     store.load(); await settle();
     const out = await store.scheduleDelete([ids[0]!, ids[1]!]);
-    expect(out.blocked.map((x) => x.id)).toEqual([ids[1]]);
-    expect(store.getState().leads.map((r) => r.id)).toEqual([ids[1]]);
-    fire(DELETE_UNDO_MS); await settle(); await settle();
+    expect(out.done).toBe(0);
+    expect(out.blocked.map((x) => x.id)).toEqual([ids[0], ids[1]]);
     expect(store.getState().leads.map((r) => r.id)).toEqual([ids[0], ids[1]]);
-    expect(store.getState().notice).toContain("예시상사0 삭제를 확정하지 못해");
+    expect(store.getState().deleting).toBeNull();
+  });
+  it("restores from the trash and puts the rows back in the list", async () => {
+    const back = lead(0, { revision: 3 });
+    const { store, calls } = setup([lead(1)], (b) => (b.action === "trash-restore" ? { leads: [back] } : undefined));
+    store.load(); await settle();
+    expect(await store.restoreTrash([ids[0]!])).toBe(1);
+    expect(calls.at(-1)).toMatchObject({ action: "trash-restore", ids: [ids[0]] });
+    expect(store.getState().leads.map((r) => r.id)).toEqual([ids[0], ids[1]]);
+    await store.emptyTrash();
+    expect(calls.at(-1)).toEqual({ action: "trash-empty" });
+  });
+});
+
+describe("bulk supplier change (2026-10-26)", () => {
+  it("changes channel and supplier, skips unchanged rows, never changes a meeting-linked row's channel", async () => {
+    const rows = [lead(0, { supplier: "메타 광고", channel: "직접생산" }), lead(1), lead(2, { meetingId: "m1", channel: "직접생산", supplier: "메타 광고" })];
+    const { store, calls } = setup(rows, (b) => (b.action === "save" ? { leads: [] } : undefined));
+    store.load(); await settle();
+    const out = await store.bulkSupplier([ids[0]!, ids[1]!, ids[2]!], { channel: "매입DB", supplier: "가상공급처" });
+    expect(out.done).toBe(1);
+    expect(out.unchanged).toBe(1);
+    expect(out.blocked).toEqual([{ id: ids[2], company: "예시상사2", reason: "미팅이 연결돼 유형은 STEP 3 일정·계약에서 바꿔 주세요" }]);
+    const saves = calls.filter((c) => c.action === "save") as unknown as { lead: { id: string; channel: string; supplier: string } }[];
+    expect(saves.map((c) => [c.lead.id, c.lead.channel, c.lead.supplier])).toEqual([[ids[0], "매입DB", "가상공급처"], [ids[2], "직접생산", "가상공급처"]]);
   });
 });
 

@@ -10,7 +10,7 @@
  *  - 여러 줄 삭제는 10초 동안 화면에서만 숨기고(서버 무변경) 「되돌리기」가 없으면 그때 확정한다.
  * 화면(use-db-sheet)은 subscribe/getState 로 읽고, 쿼리 무효화·오늘 날짜·전송은 바깥에서 넣는다.
  */
-import { DbSheetLeadInput, type DbSheetLead, type DbSheetManualStage, type DbSheetAbsence } from "@/types/db-sheet";
+import { DbSheetLeadInput, type DbSheetLead, type DbSheetManualStage, type DbSheetAbsence, type DbSheetTrashItem } from "@/types/db-sheet";
 import type { Row, Key } from "./model";
 import type { ContactDraft } from "./ContactPanel";
 import { SheetRequestError, type Recording, type RecordingImpact, type sheetRequest } from "./recording-client";
@@ -20,7 +20,6 @@ import type { ImportResult } from "./ImportResultNotice";
 export type PendingDelete = { count: number; inflow: number; contacts: number; meetings: number };
 /** 여러 줄 작업 결과 — 바꾼 수 · 이미 그 상태 · 바꾸지 못한 줄(이유). */
 export type BulkOutcome = { done: number; unchanged: number; blocked: { id: string; company: string; reason: string }[] };
-export const DELETE_UNDO_MS = 10_000;
 const DEFAULT_RECORDING = { inflow: true, activities: true };
 
 export type DbSheetState = {
@@ -63,7 +62,6 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   const previews = new Map<string, { revision: number; recording: string; deleting: boolean }>();
   const scheduleVersions = new Map<string, number>();
-  let hidden: { rows: { row: DbSheetLead; index: number }[]; timer: ReturnType<typeof setTimeout> } | null = null;
 
   const request = async (body?: unknown) => (await deps.transport(body)).leads;
   function remember(rows: DbSheetLead[]) {
@@ -288,54 +286,70 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
     return out;
   }
   /**
-   * 여러 줄 삭제 — 줄마다 삭제 미리보기(막힘 확인)만 하고 목록에서 숨긴다. 10초 뒤 확정, 그 전에 undoDelete 면
-   * 서버에 아무것도 보내지 않았으므로 같은 줄이 같은 자리로 그대로 돌아온다.
+   * 체크한 줄의 공급처 유형·공급처 이름 한꺼번에(2026-10-26 belie). 빈 값은 그대로. 줄마다 바로 저장한다.
+   * 미팅이 연결된 DB의 유형은 STEP 3 일정·계약이 정본이라 바꾸지 않는다(공급처 이름은 바꾼다).
+   */
+  async function bulkSupplier(ids: readonly string[], patch: { channel?: string; supplier?: string }): Promise<BulkOutcome> {
+    const out: BulkOutcome = { done: 0, unchanged: 0, blocked: [] };
+    for (const id of ids) {
+      const row = local.find((r) => r.id === id); if (!row) continue;
+      const lockedChannel = !!patch.channel && !!row.meetingId && row.channel !== patch.channel;
+      const next = { ...(patch.channel && !lockedChannel ? { channel: patch.channel as DbSheetLead["channel"] } : {}), ...(patch.supplier ? { supplier: patch.supplier } : {}) };
+      const changes = (next.channel !== undefined && next.channel !== row.channel) || (next.supplier !== undefined && next.supplier !== row.supplier);
+      if (lockedChannel) out.blocked.push({ id, company: row.company, reason: "미팅이 연결돼 유형은 STEP 3 일정·계약에서 바꿔 주세요" });
+      if (!changes) { if (!lockedChannel) out.unchanged++; continue; }
+      try { mutate(id, (r) => ({ ...r, ...next })); await flush(id); if (!lockedChannel) out.done++; }
+      catch (e) { if (!lockedChannel) out.blocked.push({ id, company: row.company, reason: (e as Error).message }); }
+    }
+    return out;
+  }
+  /**
+   * 여러 줄 삭제 = 휴지통으로(2026-10-26 belie 「10초가 아니라 휴지통에서 되돌리기」). 줄마다 막힘을 확인하고 바로 서버에서 휴지통으로 옮긴다.
+   * 예전 10초 숨김은 서버에 그대로 남아 있어서, 그 사이 같은 DB를 다시 등록하면 「이미 등록된 업체」로 막혔다.
    */
   async function scheduleDelete(ids: readonly string[]): Promise<BulkOutcome> {
-    if (hidden) await commitDelete().catch(() => {});
     const out: BulkOutcome = { done: 0, unchanged: 0, blocked: [] };
-    const ok: DbSheetLead[] = [], total = { inflow: 0, contacts: 0, meetings: 0 };
+    const total = { inflow: 0, contacts: 0, meetings: 0 };
     for (const id of ids) {
       const row = local.find((r) => r.id === id); if (!row) continue;
       try {
-        const impact = await recordingPreview(id, row.recording ?? DEFAULT_RECORDING, true);
+        const recording = row.recording ?? DEFAULT_RECORDING;
+        const impact = await recordingPreview(id, recording, true);
         if (impact.blockedReason) { out.blocked.push({ id, company: row.company, reason: impact.blockedReason }); continue; }
-        ok.push(row); total.inflow -= impact.inflow; total.contacts -= impact.contacts; total.meetings -= impact.meetings;
+        await configure(id, recording, true);
+        out.done++; total.inflow -= impact.inflow; total.contacts -= impact.contacts; total.meetings -= impact.meetings;
       } catch (e) { out.blocked.push({ id, company: row.company, reason: (e as Error).message }); }
     }
-    if (!ok.length) return out;
-    const gone = new Set(ok.map((r) => r.id));
-    hidden = { rows: ok.map((row) => ({ row, index: local.findIndex((r) => r.id === row.id) })), timer: setTimer(() => { void commitDelete().catch(() => {}); }, DELETE_UNDO_MS) };
-    show(local.filter((r) => !gone.has(r.id)));
-    set({ deleting: { count: ok.length, ...total }, notice: "" });
-    out.done = ok.length;
+    if (out.done) set({ deleting: { count: out.done, ...total }, notice: "" });
     return out;
   }
-  function restore(rows: { row: DbSheetLead; index: number }[]) {
-    const next = [...local];
-    for (const { row, index } of [...rows].sort((a, b) => a.index - b.index)) if (!next.some((r) => r.id === row.id)) next.splice(Math.min(index, next.length), 0, row);
-    show(next);
+  /** 휴지통 안내 줄 닫기. */
+  function undoDelete() { set({ deleting: null }); }
+  /** 예전 10초 숨김 확정 자리 — 이제 삭제는 바로 확정되므로 할 일이 없다(호출부 호환). */
+  async function commitDelete() {}
+  /** 휴지통 목록. */
+  async function listTrash(): Promise<DbSheetTrashItem[]> {
+    const response = await fetch("/api/db-sheet?trash=1", { cache: "no-store" });
+    const body = await response.json().catch(() => ({})) as { trash?: DbSheetTrashItem[]; error?: string };
+    if (!response.ok) throw new SheetRequestError(body.error || "휴지통을 불러오지 못했어요.");
+    return body.trash ?? [];
   }
-  function undoDelete() {
-    const current = hidden; if (!current) return;
-    hidden = null; clearTimer(current.timer);
-    for (const { row } of current.rows) previews.delete(row.id);
-    restore(current.rows);
-    set({ deleting: null });
+  /** 휴지통에서 되돌리기 — 같은 업체가 이미 있으면 SheetRequestError(code=duplicate). */
+  async function restoreTrash(ids: readonly string[], allowDuplicate = false): Promise<number> {
+    let count = 0;
+    await enqueue(async () => {
+      const payload = await deps.transport({ action: "trash-restore", ids: [...ids], ...(allowDuplicate ? { allowDuplicate: true } : {}) });
+      const back = payload.leads; remember(back);
+      for (const row of back) { server.set(row.id, row); versions.set(row.id, 0); }
+      show([...back, ...local.filter((r) => !back.some((b) => b.id === r.id))]);
+      set({ deleting: null });
+      count = back.length;
+    }, true);
+    return count;
   }
-  /** 숨겨 둔 삭제를 지금 확정한다(10초가 지났거나 화면을 떠날 때). 실패한 줄은 목록에 되살린다. */
-  async function commitDelete() {
-    const current = hidden; if (!current) return;
-    hidden = null; clearTimer(current.timer); set({ deleting: null });
-    const failed: { row: DbSheetLead; index: number }[] = [];
-    for (const item of current.rows) {
-      try { await configure(item.row.id, item.row.recording ?? DEFAULT_RECORDING, true); } catch { failed.push(item); }
-    }
-    if (failed.length) {
-      restore(failed);
-      set({ notice: `${failed.map((f) => f.row.company || "이름 없는 업체").join(", ")} 삭제를 확정하지 못해 목록에 되돌렸어요. 새로고침 뒤 다시 시도해 주세요.` });
-      throw new Error("삭제 확정 실패");
-    }
+  /** 영구 삭제(ids 없으면 휴지통 비우기). */
+  async function emptyTrash(ids?: readonly string[]) {
+    await deps.transport({ action: "trash-empty", ...(ids ? { ids: [...ids] } : {}) });
   }
   function discard() {
     undoDelete();
@@ -350,7 +364,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
     load,
     clearAddition: () => set({ addition: null }),
     clearNotice: () => set({ notice: "" }),
-    stage, absence, linkMeeting, bulkInflow, scheduleDelete, undoDelete, commitDelete,
+    stage, absence, linkMeeting, bulkInflow, bulkSupplier, scheduleDelete, undoDelete, commitDelete, listTrash, restoreTrash, emptyTrash,
     edit, asInfo, contact, record, register, add, flush, flushAll, discard, reload,
     recordingPreview, configure, inflowPreview, configureInflow,
   };

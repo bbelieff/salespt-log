@@ -113,7 +113,7 @@ it("DB정보 아래에는 영구삭제만 남고 상담·미팅 반영 설정은
  const noop=vi.fn(),remove=vi.fn();
  act(()=>root.render(React.createElement(DbDetail,{row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onDelete:remove,onAsInfo:noop})));
  expect([...host.querySelectorAll('button')].some(button=>button.textContent==='상담·미팅 반영 설정')).toBe(false);
- click([...host.querySelectorAll('button')].find(button=>button.textContent==='영구삭제')!);expect(remove).toHaveBeenCalledOnce();
+ click([...host.querySelectorAll('button')].find(button=>button.textContent==='삭제')!);expect(remove).toHaveBeenCalledOnce();
 });
 
 it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only after minLeft",()=>{
