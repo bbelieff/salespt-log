@@ -247,5 +247,5 @@ body.db-sheet-route .sheet-step-state.is-active{color:#1d4ed8}body.db-sheet-rout
 body.db-sheet-route .sheet-step-cell:focus-visible{outline:2px solid #3b82f6;outline-offset:-2px}
 /* 업체정보 맞춤공고 줄(대분류·시·도·시·군·구)과 체크박스는 위 100% 폭 규칙에서 뺀다 — 좁은 칸에서 고르기 칸이 잘리고 「자동」「제외 업종」이 글자마다 줄바뀜되던 문제(2026-10-26 belie). */
 body.db-sheet-route .db-company-form .cg-inline select,body.db-sheet-route .db-company-form input[type=checkbox]{width:auto}
-/* 진행 단계 칸(2026-10-26): STEP 1.5(이 화면에서 이어 감)는 회색 글자, STEP 2 는 보라 — 링크(3·4)는 기존 파랑. */
-body.db-sheet-route span.sheet-step-cell{cursor:default}body.db-sheet-route .sheet-step-link.is-step-1-5{color:#64748b;font-weight:600}body.db-sheet-route .sheet-step-link.is-step-2{color:#6d28d9}
+/* 도달 STEP 칸(2026-10-26): 사이드 탭과 같은 STEP 배지(StepBadge) + 탭 이름. 다른 화면으로 이어지면 파랑 글자 + →, 이 화면(1.5)은 회색. */
+body.db-sheet-route span.sheet-step-cell{cursor:default}body.db-sheet-route .sheet-step-name{font-size:11.5px;font-weight:600;color:#64748b}body.db-sheet-route .sheet-step-name.is-link{color:#1d4ed8;font-weight:700}body.db-sheet-route .sheet-step-cell:hover .sheet-step-name.is-link{text-decoration:underline}
