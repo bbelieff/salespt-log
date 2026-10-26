@@ -15,7 +15,7 @@ interface Props {
   status?: ReactNode;
   tools: ReactNode;
   fontControl: ReactNode;
-  /** 제목 옆 작은 표시(맞춤공고 「공고매칭 n/3」, 2026-10-25). */
+  /** 제목 옆 작은 표시(맞춤공고 「공고필터 n/3」, 2026-10-25). */
   badge?: ReactNode;
 }
 
