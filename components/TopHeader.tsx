@@ -11,6 +11,7 @@ import { signOut } from "next-auth/react";
 import { guideUrl } from "@/config";
 import { useMe } from "@/query/me-hook";
 import { forgetPushOnThisDevice, usePushState } from "@/query/push-hooks";
+import { useInbox } from "@/query/inbox-hooks";
 import { useAnnouncements } from "@/query/announcements-hook";
 import { useBadges } from "@/query/badge-hooks";
 import { BADGES_SEEN_EVENT, newBadgeIds, readSeen } from "./badges/badge-seen";
@@ -67,6 +68,8 @@ export default function TopHeader({
 }: Props) {
   const me = useMe();
   const push = usePushState(!sessionIdentity);
+  const ownPush = !!push.data?.available && !push.data.viewingOther;
+  const inboxUnread = useInbox(ownPush).data?.unread ?? 0;
   const trainer = useTrainerState();
   const pathname = usePathname();
   // 트레이너 화면의 `← 수강생 대시보드` Link 는 /dashboard 로 직행해서 (app)/layout 의
@@ -169,7 +172,7 @@ export default function TopHeader({
           <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/salespt-logo.png" alt="세일즈PT" className="h-5 w-auto sm:h-6" />
-            {(hasNews || hasNewBadge) && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label={hasNews ? "새소식 있음" : "새 배지 있음"} />}
+            {(hasNews || hasNewBadge || inboxUnread > 0) && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label={hasNews ? "새소식 있음" : hasNewBadge ? "새 배지 있음" : "새 하루요약 있음"} />}
           </button>
           {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
           <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
@@ -244,8 +247,22 @@ export default function TopHeader({
                 {badgeCount !== null && <span className="ml-auto text-xs font-bold tabular-nums text-amber-800">{badgeCount} / {BADGES.length}</span>}
               </Link>
             )}
+            {/* 비서 사서함 — 아침·저녁 하루요약 (web-push-notifications §16) */}
+            {ownPush && (
+              <Link
+                href="/inbox"
+                onClick={() => setPopupOpen(false)}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M2.25 13.5V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.5M2.25 13.5l2.4-7.2A2.25 2.25 0 016.79 4.75h10.42a2.25 2.25 0 012.14 1.55l2.4 7.2"/>
+                </svg>
+                <span>비서 사서함</span>
+                {inboxUnread > 0 && <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-brand-red px-1.5 text-xs font-bold leading-5 text-white tabular-nums" aria-label={`안 읽은 요약 ${inboxUnread}건`}>{inboxUnread}</span>}
+              </Link>
+            )}
             {/* 알림 설정 — 웹 푸시 시범 대상에게만 (web-push-notifications §2-2 4번) */}
-            {push.data?.available && !push.data.viewingOther && (
+            {ownPush && (
               <Link
                 href="/settings/notifications"
                 onClick={() => setPopupOpen(false)}

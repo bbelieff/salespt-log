@@ -8,9 +8,10 @@
 import * as Sentry from "@sentry/nextjs";
 import { summarizeFollowUps, UPCOMING_DAYS, type FollowUpSummary } from "@/lib/analytics/dashboard-follow-ups";
 import * as store from "@/repo/db/push";
-import { findUserByEmail } from "@/repo/users";
+import type { Meeting } from "@/types";
+import { findUserByEmail, listAllUsers } from "@/repo/users";
 import { pushConfigured, sendPush, vapidPublicKey } from "@/repo/push-sender";
-import { PushPreferences, type PushDevice, type PushSlot, type PushSubscriptionInput } from "@/types/push";
+import { DEFAULT_PUSH_PREFERENCES, PushPreferences, type PushDevice, type PushSlot, type PushSubscriptionInput } from "@/types/push";
 import { loadContractPayments } from "./contract-payment";
 import { listAllTodos } from "./todos";
 import { loadFollowUpMeetings } from "./meeting-follow-ups";
@@ -18,6 +19,7 @@ import { loadDbSheet, resolveDbSheetContext } from "./db-sheet";
 import { buildMeetingResultMessage, buildPushMessage, dueMeetingResults, withDeliveryTag } from "./push-messages";
 import { buildSeedMessage, type SeedSources } from "./push-seed";
 import { dueReminders, REMINDER_DAILY_LIMIT, type ReminderSources } from "./push-reminders";
+import { purgeOldReports, reportDueSlots, reportPushMessage, reportsMadeOn, saveDailyReport } from "./push-inbox";
 import { addDaysISO, dueSlots, kstNow, nextNotification, onWeekday, WEEKDAY_LABELS, type KstNow } from "./push-schedule";
 
 const TTL_SECONDS: Record<store.DeliverySlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600, meeting: 3 * 3600, reminder: 30 * 60 };
@@ -88,7 +90,7 @@ export async function loadFollowUpSummary(email: string, today: string): Promise
 }
 
 /** The four dashboard sources plus their summary; the seed reuses the same reads. */
-export async function loadFollowUpSources(email: string, today: string, nowHHMM?: string): Promise<{ summary: FollowUpSummary; seed: SeedSources }> {
+export async function loadFollowUpSources(email: string, today: string, nowHHMM?: string): Promise<{ summary: FollowUpSummary; seed: SeedSources; meetings: Meeting[] }> {
   const [contracts, todos, meetings, leads] = await Promise.allSettled([
     loadContractPayments(email),
     listAllTodos(email),
@@ -103,7 +105,7 @@ export async function loadFollowUpSources(email: string, today: string, nowHHMM?
     meetings: meetings.status === "fulfilled" ? meetings.value : undefined,
     leads: leads.status === "fulfilled" ? leads.value : undefined,
   };
-  return { summary: summarizeFollowUps(src, today, nowHHMM), seed: { leads: src.leads, contracts: src.contracts, todos: src.todos } };
+  return { summary: summarizeFollowUps(src, today, nowHHMM), seed: { leads: src.leads, contracts: src.contracts, todos: src.todos }, meetings: src.meetings ?? [] };
 }
 
 interface Fanout { sent: number; failed: number; fatal: boolean }
@@ -137,11 +139,18 @@ export async function sendTestPush(email: string, now = new Date()): Promise<Tes
   return r.sent ? { ok: true, devices: r.sent } : { ok: false, reason: "send_failed" };
 }
 
-export interface DispatchStats { tick: string; candidates: number; sent: number; skippedZero: number; failed: number; duplicate: number }
+export interface DispatchStats {
+  tick: string; candidates: number; sent: number; skippedZero: number; failed: number; duplicate: number;
+  /** 비서 사서함 (§16): summaries made this tick, failed, and left for the next tick (time budget). */
+  reports: number; reportsFailed: number; reportsLeft: number;
+}
+/** The cron's curl gives up after 120 s; leave room for the reply. */
+const DISPATCH_BUDGET_MS = 90_000;
 /** Called by the VPS cron every 15 minutes (plan §5). Safe to run twice: each send is claimed once. */
 export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> {
   const kst = kstNow(now);
-  const stats: DispatchStats = { tick: `${kst.date} ${kst.time}`, candidates: 0, sent: 0, skippedZero: 0, failed: 0, duplicate: 0 };
+  const started = Date.now();
+  const stats: DispatchStats = { tick: `${kst.date} ${kst.time}`, candidates: 0, sent: 0, skippedZero: 0, failed: 0, duplicate: 0, reports: 0, reportsFailed: 0, reportsLeft: 0 };
   if (!sendingOn()) return stats;
   const candidates = await store.listCandidates(pushAudience() === "all" ? null : pilotEmails());
   for (const { email, prefs } of candidates) {
@@ -150,17 +159,20 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
       const id = await store.claimDelivery(`${email}:${kst.date}:${slot}`, email, slot, kst.date);
       if (!id) { stats.duplicate++; continue; }
       try {
-        const { summary, seed } = await loadFollowUpSources(email, kst.date, kst.time);
+        const { summary, seed, meetings } = await loadFollowUpSources(email, kst.date, kst.time);
         const recent = await store.recentMessageIds(email);
+        // 비서 사서함: the summary goes to the inbox first and the notification opens it (§16).
+        const report = await saveDailyReport(email, slot, kst, summary, meetings).catch(error => { Sentry.captureException(error, { tags: { where: "push-report" } }); return null; });
         // 「오늘의 씨앗」: only on a morning with nothing to follow up, and only if the person keeps it on.
-        const msg = buildPushMessage(slot, summary, prefs, kst.date, recent)
+        const msg: { title?: string; body: string; url: string; messageId: string; itemCount: number } | null = (report && report.itemCount > 0 ? reportPushMessage(slot, report) : null)
+          ?? buildPushMessage(slot, summary, prefs, kst.date, recent)
           ?? (slot === "morning" && prefs.kinds.includes("seed") ? buildSeedMessage(seed, prefs.showCompanyNames, kst.date, recent) : null);
         if (!msg) {
           await store.finishDelivery(id, { status: "skipped_zero", messageId: "", itemCount: 0, devicesSent: 0, devicesFailed: 0 });
           stats.skippedZero++;
           continue;
         }
-        const r = await fanout(email, { title: "경영일지", body: msg.body, url: withDeliveryTag(msg.url, id), d: id }, slot);
+        const r = await fanout(email, { title: msg.title ?? "경영일지", body: msg.body, url: withDeliveryTag(msg.url, id), d: id }, slot);
         await store.finishDelivery(id, { status: r.sent ? "sent" : "failed", messageId: msg.messageId, itemCount: msg.itemCount, devicesSent: r.sent, devicesFailed: r.failed });
         if (r.sent) stats.sent++; else stats.failed++;
         if (r.fatal) {
@@ -177,7 +189,43 @@ export async function dispatchDuePush(now = new Date()): Promise<DispatchStats> 
     if (await dispatchMeetingResult(email, prefs, kst, stats) === "fatal") return stats;
     if (await dispatchReminders(email, prefs, kst, stats) === "fatal") return stats;
   }
+  await makeDueReports(kst, started + DISPATCH_BUDGET_MS, stats);
   return stats;
+}
+
+/** Who gets a 비서 사서함 — the same people who may turn notifications on. */
+async function reportPeople(): Promise<string[]> {
+  if (pushAudience() !== "all") return pilotEmails().map(e => e.toLowerCase());
+  return (await listAllUsers()).filter(u => u.role === "trainee" && u.status !== "pending").map(u => u.email.toLowerCase());
+}
+
+/** Everyone else's summaries (notifications off or no device), three at a time until the time budget runs out. */
+async function makeDueReports(kst: KstNow, deadline: number, stats: DispatchStats): Promise<void> {
+  try {
+    const people = [...new Set(await reportPeople())];
+    const [prefs, made] = await Promise.all([store.listPreferences(people), reportsMadeOn(kst.date)]);
+    const jobs = people.flatMap(email => reportDueSlots(prefs.get(email) ?? DEFAULT_PUSH_PREFERENCES, kst)
+      .filter(slot => !made.has(`${email}:${slot}`)).map(slot => ({ email, slot })));
+    let next = 0;
+    const worker = async () => {
+      while (next < jobs.length && Date.now() < deadline) {
+        const job = jobs[next++]!;
+        try {
+          const { summary, meetings } = await loadFollowUpSources(job.email, kst.date, kst.time);
+          await saveDailyReport(job.email, job.slot, kst, summary, meetings);
+          stats.reports++;
+        } catch (error) {
+          stats.reportsFailed++;
+          Sentry.captureException(error, { tags: { where: "push-report", slot: job.slot } });
+        }
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    stats.reportsLeft = jobs.length - next;
+    await purgeOldReports(kst.date);
+  } catch (error) {
+    Sentry.captureException(error, { tags: { where: "push-report" } });
+  }
 }
 
 /**
