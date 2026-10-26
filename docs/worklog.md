@@ -1,3 +1,5 @@
+## 2026-10-26 · DB관리시트 「도달 STEP」 + 사이드 탭과 같은 STEP 배지
+- feat/db-sheet-reached-step. belie 「진행단계를 도달STEP 으로, step 표기는 사이드탭과 동일한 이미지로」. 공용 `StepBadge`(사이드 탭·표 같이 사용). [plan](plans/active/db-sheet-step-sort.md).
 ## 2026-10-26 · 맞춤공고 — 업체정보 칩 「맞는 공고 N」
 - feat/grant-chip-matches. 실무/수납 업체정보 머리 칩이 맞는 공고 수로 바뀌고 누르면 「🎯 맞는 공고」 상자로. 다른 화면은 n/3 유지. 맞춤공고 4단계(핸드오프 §7) 화면 작업 끝. [plan](plans/active/grant-match-ui.md).
 
