@@ -225,8 +225,8 @@ function CohortBody({
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
-    <div className="space-y-2 border-t border-gray-100 px-4 py-3">
-      {/* 미배정 trainees — 박스 없이 개별 카드. PR C-1: 박스 단위 dnd. */}
+    <div className="space-y-2 border-t border-gray-100 px-4 py-2">
+      {/* 미배정 trainees — 팀 제목 없이 줄 목록. PR C-1: 박스 단위 dnd. */}
       <SortableTraineeBox
         members={unassigned}
         archived={archived}
@@ -248,12 +248,13 @@ function CohortBody({
           key={teamName}
           persistKey={`team:${cohort}:${teamName}${archived ? ":archived" : ""}`}
           defaultOpen
-          className="overflow-hidden rounded-xl border border-indigo-200 bg-indigo-50/30 open:bg-white"
+          className="pt-1"
         >
-          <summary className="cursor-pointer px-3 py-2 text-px-11 font-bold text-indigo-700 hover:bg-indigo-50">
-            🏷️ {teamName} · {members.length}명
+          {/* 2026-10-26 박스 다이어트: 팀은 상자 대신 제목 줄 + 아래 선(상자 2단 = 기수 박스까지). */}
+          <summary className="cursor-pointer border-b border-indigo-200 py-1.5 text-px-11 font-bold text-indigo-700 hover:text-indigo-900">
+            {teamName} <span className="font-medium text-gray-400">{members.length}명</span>
           </summary>
-          <div className="space-y-2 border-t border-indigo-100 px-3 py-2">
+          <div>
             <SortableTraineeBox
               members={members}
               archived={archived}
