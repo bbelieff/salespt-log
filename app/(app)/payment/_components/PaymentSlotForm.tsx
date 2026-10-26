@@ -419,7 +419,7 @@ function FieldDate({
   value: string;
   onChange: (v: string) => void;
 }) {
-  // iOS Safari date input intrinsic width(yyyy/mm/dd)가 grid 뚫는 것 → min-w-0 + appearance-none 으로 shrink 강제.
+  // iOS Safari date input intrinsic width(yyyy/mm/dd)가 grid 뚫는 것 → 감싼 div·input 둘 다 min-w-0 + appearance-none(globals.css 날짜 칸 규칙도 함께).
   return (
     <div className="min-w-0">
       <label className={FIELD_LABEL_CLASS}>{label}</label>
@@ -427,7 +427,7 @@ function FieldDate({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`${FIELD_INPUT_CLASS} appearance-none`}
+        className={`${FIELD_INPUT_CLASS} min-w-0 appearance-none`}
       />
     </div>
   );
