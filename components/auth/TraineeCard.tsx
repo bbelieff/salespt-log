@@ -138,8 +138,9 @@ export default function TraineeCard({
       ? allChecked.map((e) => nameByEmail.get(e) ?? e).join(", ")
       : "미배정";
 
-  // team input 로컬 state — prop 갱신 시 sync.
+  // team input 로컬 state — prop 갱신 시 sync. 입력칸은 「팀 변경」을 눌렀을 때만 연다.
   const [team, setTeam] = useState(u.team ?? "");
+  const [teamOpen, setTeamOpen] = useState(false);
   useEffect(() => {
     setTeam(u.team ?? "");
   }, [u.team]);
@@ -172,154 +173,143 @@ export default function TraineeCard({
       ref={dragRef}
       style={dragStyle}
       {...(dragAttributes ?? {})}
-      className={`overflow-hidden rounded-xl border ${archived ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"} ${isDragging ? "opacity-50 ring-2 ring-indigo-300" : ""}`}
+      className={`border-b border-gray-100 last:border-b-0 ${archived ? "text-gray-500" : ""} ${isDragging ? "rounded-lg bg-white opacity-50 ring-2 ring-indigo-300" : ""}`}
     >
-      {/* 2행 풀폭 레이아웃 (2026-05-14 재배치) — 이전엔 데스크탑에서 info-block
-          (3줄) 옆에 buttons-block(1줄) 이 세로 중앙 정렬돼 버튼 위아래 빈 공간이
-          컸음. Row1 = 이름↔액션버튼 (justify-between), Row2 = 팀+담당 (flex-1)
-          → 두 행 모두 풀폭, 공간 손실 제거. 담당이 트레이너 다수로 아랫쪽으로
-          늘어나도 Row1 버튼은 위에 고정이라 가려지지 않음. */}
-      <div className="flex items-stretch gap-1 p-3 sm:gap-1.5 sm:p-4">
+      {/* 2026-10-26 박스 다이어트(belie 승인 기획): 카드 상자 대신 줄 + 아래 구분선, 한 사람 2줄.
+          1줄 = 이름·누적 진도 ↔ 주간목표·웹앱 / 2줄 = 담당(눌러서 변경) · 팀 변경(눌러야 입력칸).
+          팀 입력칸은 팀 묶음 제목과 같은 정보라 평소엔 숨긴다 — 끌기는 같은 팀 안 순서만 바꾸므로 팀 이동은 이 입력칸이 유일. */}
+      <div className="flex items-center gap-1.5 py-2">
         {dragListeners && (
-          // 드래그 핸들 — 모바일에서도 노출. touch-action: none 으로 page scroll
-          // 충돌 차단 (dnd-kit TouchSensor long-press 와 연동). (2026-05-14)
+          // 드래그 핸들 — 모바일에서도 노출. touch-action: none 으로 page scroll 충돌 차단(dnd-kit TouchSensor long-press).
           <button
             type="button"
             aria-label="드래그하여 순서 변경"
-            title="드래그하여 박스 내 순서 변경"
+            title="드래그하여 같은 팀 안 순서 변경"
             {...dragListeners}
             style={{ touchAction: "none" }}
-            className="inline-flex w-4 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+            className="inline-flex h-6 w-4 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-300 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing"
           >
-            <span className="text-base leading-none">⋮⋮</span>
+            <span className="text-sm leading-none">⋮⋮</span>
           </button>
         )}
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          {/* Row 1: 이름 + 다중계정 배지 ↔ 액션 버튼 (주간목표/웹앱).
-              email 은 숨김 — 관리 화면 가독성 (시트 공유는 +N 배지 hover). */}
-          <div className="flex items-center justify-between gap-x-2">
-            <div className="flex min-w-0 items-baseline gap-x-2">
-              <span className="truncate text-sm font-black text-gray-900">
-                {u.name || "(이름 없음)"}
-                {u.captainOf ? <span title="회장"> 👑</span> : null}
+        <div className="min-w-0 flex-1">
+          {/* 1줄: 이름 + 다중계정 배지 + 누적 진도. email 은 숨김(시트 공유는 +N 배지 hover).
+              좁은 화면은 「12주 누적」 칩·예정/완료/계약 글자를 숨겨(아이콘·숫자·title 유지) 2줄을 지킨다. */}
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">
+              <span className="flex min-w-0 items-baseline">
+                <span className="truncate text-sm font-black text-gray-900">
+                  {u.name || "(이름 없음)"}
+                  {u.captainOf ? <span title="회장"> 👑</span> : null}
+                </span>
+                <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
               </span>
-              <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
+              {/* 누적 funnel(예정·완료·계약) — stats 없는 trainee(시트 미설정·조회 실패)는 안 그림.
+                  SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
+              {u.stats && (
+                <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-px-11 text-gray-500">
+                  <span className="hidden shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500 2xl:inline">
+                    {courseWeeksForCohort(u.cohort)}주 누적
+                  </span>
+                  <span title={`${courseWeeksForCohort(u.cohort)}주 누적 미팅 예정`}>
+                    📅<span className="hidden 2xl:inline"> 예정</span> <span className="font-bold text-amber-700">{u.stats.미팅예정}</span>
+                  </span>
+                  <span title="미팅 완료">
+                    ✓<span className="hidden 2xl:inline"> 완료</span> <span className="font-bold text-indigo-700">{u.stats.미팅완료}</span>
+                  </span>
+                  <span title="계약">
+                    💼<span className="hidden 2xl:inline"> 계약</span> <span className="font-bold text-green-700">{u.stats.계약}</span>
+                  </span>
+                </span>
+              )}
             </div>
-            {showSheetWebBtns && (
-              <div className="flex shrink-0 items-center gap-1">
-                {/* 2026-05-17 [A5]: 카드별 유보버튼 제거 → 헤더 BulkReserveButton 으로 통합.
-                    onReserve prop 은 컴파일 호환 위해 유지 (호출 측 영향 최소화). */}
-                {/* admin(!viewOnly)·트레이너 담당: 녹색 시트 대신 중립 outlined [주간목표]
-                    (student 인코딩, spreadsheetId 무관). 카드 크기 유지. */}
-                {isAdminGoalView && (
-                  <Link
-                    href={adminGoalHref}
-                    title="주간 목표·PT과제 열기"
-                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
-                  >
-                    주간목표
-                  </Link>
-                )}
-                {isTrainerGoalView && (
-                  <Link
-                    href={trainerGoalHref}
-                    title="주간 목표·PT과제 열기"
-                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
-                  >
-                    주간목표
-                  </Link>
-                )}
-                {showSheetWebBtns && (
-                  <button
-                    type="button"
-                    onClick={() => onPick(u.email)}
-                    disabled={busy !== null}
-                    title="웹앱 (5탭 UI) 으로 진입 — impersonation"
-                    className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
-                  >
-                    {busy === u.email ? "여는 중..." : "웹앱 →"}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          {/* Row 1.5: 8주 누적 funnel (예정·완료·계약) — admin/trainer 빠른 진도 확인용.
-              stats 없는 trainee (spreadsheetId 미설정 / fetch 실패) 는 렌더 안 함.
-              SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
-          {u.stats && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-px-11 text-gray-500">
-              <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500">
-                {courseWeeksForCohort(u.cohort)}주 누적
-              </span>
-              <span>
-                📅 예정{" "}
-                <span className="font-bold text-amber-700">{u.stats.미팅예정}</span>
-              </span>
-              <span>
-                ✓ 완료{" "}
-                <span className="font-bold text-indigo-700">{u.stats.미팅완료}</span>
-              </span>
-              <span>
-                💼 계약{" "}
-                <span className="font-bold text-green-700">{u.stats.계약}</span>
-              </span>
-            </div>
-          )}
-          {/* Row 2: 팀 (compact) + 담당 (flex-1, 카드 우측 끝까지 + 줄바꿈). */}
-          <div className="flex flex-wrap items-start gap-x-2 gap-y-1 text-px-11 text-gray-600">
-            {!viewOnly && (
-              <span className="inline-flex shrink-0 items-center gap-1">
-                <span className="text-gray-400">팀</span>
-                <input
-                  type="text"
-                  value={team}
-                  onChange={(e) => setTeam(e.target.value)}
-                  onBlur={commit}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      (e.target as HTMLInputElement).blur();
-                    }
-                  }}
-                  placeholder="미배정"
-                  className={`rounded border px-1 py-0.5 text-px-11 outline-none ${
-                    dirty
-                      ? "border-indigo-400 bg-indigo-50"
-                      : "border-gray-200 bg-white"
-                  } focus:border-indigo-500`}
-                  style={{ width: `calc(${Math.max(3, team.length + 1)}em + 0.75rem)` }}
-                />
-              </span>
-            )}
+          {/* 2줄: 담당(글자 버튼) · 팀 변경. */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-px-11 text-gray-500">
             {canAssign ? (
               <button
                 type="button"
                 onClick={() => setTrainerOpen((v) => !v)}
                 aria-expanded={trainerOpen}
-                className="flex min-w-0 flex-1 items-start gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-left text-px-11 font-bold text-indigo-700 hover:bg-indigo-100"
+                className="inline-flex min-w-0 items-center gap-1 rounded text-left font-bold text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
-                <span className="shrink-0">담당:</span>
-                <span className="min-w-0 flex-1 break-words font-bold">
-                  {trainerNames}
-                </span>
-                <DisclosureChevron open={trainerOpen} className="mt-0.5" />
+                <span className="shrink-0 font-semibold text-gray-400">담당</span>
+                <span className="min-w-0 break-words">{trainerNames}</span>
+                <DisclosureChevron open={trainerOpen} />
               </button>
             ) : (
-              <span className="flex min-w-0 flex-1 items-start gap-1">
-                <span className="shrink-0 text-gray-400">담당:</span>
-                <span className="min-w-0 flex-1 break-words font-semibold">
-                  {trainerNames}
-                </span>
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <span className="shrink-0 text-gray-400">담당</span>
+                <span className="min-w-0 break-words font-semibold text-gray-600">{trainerNames}</span>
               </span>
             )}
+            {!viewOnly && (teamOpen || dirty ? (
+              <span className="inline-flex shrink-0 items-center gap-1">
+                <span className="text-gray-400">팀</span>
+                <input
+                  type="text"
+                  value={team}
+                  autoFocus={teamOpen}
+                  aria-label={`${u.name || u.email} 팀`}
+                  onChange={(e) => setTeam(e.target.value)}
+                  onBlur={() => { commit(); setTeamOpen(false); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                    if (e.key === "Escape") {
+                      setTeam(u.team ?? "");
+                      setTeamOpen(false);
+                    }
+                  }}
+                  placeholder="미배정"
+                  className={`rounded border px-1 py-0.5 text-px-11 outline-none ${
+                    dirty ? "border-indigo-400 bg-indigo-50" : "border-gray-200 bg-white"
+                  } focus:border-indigo-500`}
+                  style={{ width: `calc(${Math.max(3, team.length + 1)}em + 0.75rem)` }}
+                />
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setTeamOpen(true)}
+                className="shrink-0 rounded text-gray-400 hover:text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                title="이 수강생의 팀을 바꿔요(같은 팀 안 순서는 왼쪽 ⋮⋮ 를 끌어서)"
+              >
+                {u.team?.trim() ? "팀 변경" : "팀 정하기"}
+              </button>
+            ))}
           </div>
         </div>
+        {/* 액션 — 두 줄 높이 가운데, 오른쪽 고정. */}
+        {showSheetWebBtns && (
+          <div className="flex shrink-0 items-center gap-1">
+            {/* admin(!viewOnly)·트레이너 담당: 중립 outlined [주간목표](student 인코딩, spreadsheetId 무관). */}
+            {(isAdminGoalView || isTrainerGoalView) && (
+              <Link
+                href={isAdminGoalView ? adminGoalHref : trainerGoalHref}
+                title="주간 목표·PT과제 열기"
+                className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+              >
+                주간목표
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => onPick(u.email)}
+              disabled={busy !== null}
+              title="웹앱 (5탭 UI) 으로 진입 — impersonation"
+              className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+            >
+              {busy === u.email ? "여는 중..." : "웹앱 →"}
+            </button>
+          </div>
+        )}
       </div>
       {canAssign && trainerOpen && (
-        <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
-          <div className="mb-2 text-px-10 font-bold uppercase tracking-wider text-indigo-700">
-            담당 트레이너 — 토글 즉시 저장
+        <div className="mb-2 ml-5 rounded-lg bg-indigo-50/60 px-3 py-2">
+          <div className="mb-1.5 text-px-10 font-bold text-indigo-700">
+            담당 트레이너 — 누르면 바로 저장
           </div>
           <div className="flex flex-wrap gap-1.5">
             {(activeTrainers ?? []).map((t) => {
