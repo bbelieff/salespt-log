@@ -1837,6 +1837,12 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `NotificationSettings` 「미리 알림」 구역(2026-10-26): 전체 스위치 + 미팅 전(바로 아래 「미팅 알림 시각」 30분·1시간·2시간)·할 일 15분 전·부재 다시 걸기 스위치. 안내 문구에 하루 6건·밤 9시~아침 7시 미발송.
 - 상단 로고 메뉴의 「알림 설정」 항목은 시범 대상에게만 보인다. 스타일은 `components/push/push.css`(대시보드 카드와 같은 slate·16px 라운드·brand red 주 버튼).
 
+## 비서 사서함 (2026-10-26 belie, web-push-notifications §16)
+- `InboxList` (`components/inbox/`, `/inbox`): 하루요약 목록. 날짜(오늘·어제·M월 D일 요일)별 카드, 줄마다 해(아침)·달(저녁) 칸 + 「아침 요약/저녁 요약」 + 시각 + 구역별 건수(구역 색, 0은 회색). 안 읽음 = 빨간 점 + 「새 요약」. 빈 상태·다른 사람 화면 안내 포함.
+- `DailyReportView` (`/inbox/<id>`): 요약 한 건. 날짜·시각 → 「아침 요약」 → 한 문장 브리핑 → 구역 바로가기 알약 → 구역 카드(아이콘 칸 + 제목 + 건수). 연락할 곳 = 상태 꼬리표, 미팅·내일 약속 = 왼쪽 시간(시간 없는 할 일은 「할 일」), 놓친 일 = 「N일 지남」. 끝에 「대시보드에서 지금 상태 보기」.
+- `SECTION_META` (`components/inbox/report-sections.ts`): 구역 짧은 이름·아이콘(lucide)·색·빈 문구. 색은 하단 탭 단계색 — 컨택 emerald, 미팅 violet, 실무 rose, 놓친 일 amber, 남은 일 slate. 스타일 `components/inbox/inbox.css`.
+- 상단 로고 메뉴 「비서 사서함」: 알림 대상 본인일 때만, 안 읽은 수 배지. 로고 옆 빨간 점에도 포함.
+
 ## 모바일 대시보드 첫 시선 순서 (2026-10-23 belie)
 - `DashboardActionOverview`: 모바일(<1024px)은 주차와 상관없이 오늘 챙길 일 → 주간 목표 → 진행건(`dashboard-work-status-slot`) → 생산성 순. CSS `order`·`display: contents`로만 바꾸며 PC grid 배치는 그대로. 대시보드 페이지는 매출·비용을 액션 영역 뒤에 두고 PC에서만 `pc:order-first`로 맨 위에 올린다.
 

@@ -355,6 +355,16 @@ VPS cron (salespt-log 영역만, 매 15분 07:00~21:00 KST)
 - 설정: `remindersEnabled`·`meetingLeadMinutes`·`reminderKinds`(PushPreferences, 기본 켜짐). 마이그레이션 0012: 설정 3칸 + 발송 slot 에 `reminder` 추가(0011 의 `meeting` 유지).
 - 2단계(재통화 「다음 연락 시각」 칸)는 DB관리시트 담당과 별도.
 
+## 16. 비서의 하루요약·사서함 A단계 (2026-10-26 belie 「알림 끈 사람도 사서함에 쌓아」·2차 목업 후 「운영반영」)
+- 목업: [비서 사서함 목업](https://claude.ai/artifact/DXm8xPSE9p1RdLJk7zPUNw) 2차(괄호 번호 제거, 하단 탭 단계색).
+- 아침: 영업(연락할 곳 = 미컨택·부재·재통화 꼬리표 / 오늘 미팅 = 시간순) · 실무(오늘 할 일) · 놓친 일(기한 지남, 위에 없는 것, 「N일 지남」). 저녁: 오늘 남은 일 · 내일 약속 · 놓친 일. 한 업체는 한 구역에만. 만드는 규칙 = `lib/service/push-report.ts`(대시보드 「오늘 챙길 일」과 같은 `summarizeFollowUps`).
+- 누구·언제: 알림 대상과 같은 사람(PUSH_AUDIENCE=all → 승인된 수강생 전원) 모두에게, 알림 켬/끔·기기 유무와 무관하게 그 사람의 아침·저녁 시각(없으면 08:45·18:00)·요일(기본 평일)에 만든다. 놓친 틱은 3시간 안에 따라잡는다(`reportDueSlots`).
+- 저장: 마이그레이션 0013 `push_reports`(email·slot·local_date unique, sections jsonb, item_count, read_at). 빈 요약도 행으로 남겨(item_count=0) 다시 만들지 않고, 목록에는 안 보인다. 90일 지나면 삭제.
+- 알림: 정기 아침·저녁 알림이 요약을 먼저 저장하고 「비서의 아침 요약이 도착했어요 / 컨택 3 · 미팅 2 · …」로 `/inbox/<id>` 를 연다. 저장 실패면 예전 문구, 빈 아침이면 오늘의 씨앗(그대로).
+- 부하: 15분 틱에서 알림 대상 먼저, 나머지는 3명씩 동시에 90초 안에서 처리하고 남은 사람은 다음 틱(`DispatchStats.reports/reportsFailed/reportsLeft`). cron curl 제한 120초.
+- 화면: 상단 로고 메뉴 「비서 사서함」(안 읽은 수 빨간 배지, 로고 점) · `/inbox` 목록 · `/inbox/<id>` 요약(열면 읽음). 다른 사람 화면을 보는 중에는 숨기고, 열어도 읽음으로 바꾸지 않는다.
+- B단계(알림 안 사진 요약)는 별도.
+
 ## 진행 기록
 
 - 2026-10-22 belie 결정 반영: 08:45·업체명 보임·수강생 설정(종류·시간·주기·내용 종류)·저녁 알림 시범 포함·VAPID 는 에이전트가 VPS 에서 생성(§0.5).
