@@ -84,6 +84,14 @@ export async function savePreferences(email: string, p: PushPreferences): Promis
       p.remindersEnabled, p.meetingLeadMinutes, p.reminderKinds]);
 }
 
+/** Saved settings for these people; anyone missing from the map uses the defaults. */
+export async function listPreferences(emails: string[]): Promise<Map<string, PushPreferences>> {
+  if (!emails.length) return new Map();
+  const r = await pool().query<PrefRow & { email: string }>(
+    `select email, ${PREF_COLS} from public.push_preferences where email = any($1)`, [emails.map(key)]);
+  return new Map(r.rows.map(row => [row.email, toPrefs(row)]));
+}
+
 export interface PushCandidate { email: string; prefs: PushPreferences }
 /** Users with at least one active device (only those in `emails` unless null = everyone), with preferences (defaults when unset). */
 export async function listCandidates(emails: string[] | null): Promise<PushCandidate[]> {
