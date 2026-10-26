@@ -1,3 +1,5 @@
+## 2026-10-26 · 웹 푸시 미리 알림 1단계
+- feat/push-pre-alerts, base e36c4785. belie 「1단계부터 진행해 기본값은 1시간전. 알림상한은 6건」. 미팅 N분 전·할 일 15분 전·부재 다시 걸기, 하루 6건, 마이그레이션 0012. 미팅 후 결과는 #1233 과 겹쳐 제외. [plan](plans/active/web-push-notifications.md) §15.
 ## 2026-10-26 · 원본 메모 → 상담메모 · 지역(상호) 나누기
 - fix/db-sheet-memo-to-consult. belie 캡처: #1258 전에 들어온 DB는 「메모: …」가 원본 메모에만 → 읽을 때 상담메모로(저장 안 함). 「서울송파구(소미아)」 = 주소·사업자명으로 자동 구분(비어 있을 때만, 시·도 인식될 때만). [plan](plans/active/db-sheet-memo-to-consult.md).
 

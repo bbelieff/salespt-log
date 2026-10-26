@@ -186,3 +186,27 @@ describe("meeting result push — three hours after the meeting starts", () => {
   });
 });
 
+
+describe("미리 알림 (belie 2026-10-26)", () => {
+  const AT_1300 = new Date("2026-10-23T04:00:00Z"); // Fri 13:00 KST
+  const reserved = { id: "m9", 미팅날짜: "2026-10-23", 미팅시간: "14:00", 업체명: "한빛상사", 장소: "강남", 상태: "예약" };
+  it("sends a meeting reminder once per meeting, under its own slot", async () => {
+    meetings = [reserved];
+    const stats = await dispatchDuePush(AT_1300);
+    expect(store.claimDelivery).toHaveBeenCalledWith("pilot@example.com:2026-10-23:rem:meeting_before:m9", "pilot@example.com", "reminder", "2026-10-23");
+    expect((sendPush.mock.calls[0]![1] as { body: string }).body).toBe("14:00 한빛상사 미팅, 1시간 남았어요. 지난 상담 메모 한 번 볼까요?");
+    expect(sendPush.mock.calls[0]![2]).toEqual({ ttlSeconds: 1800, topic: "reminder" });
+    expect(stats.sent).toBeGreaterThanOrEqual(1);
+  });
+  it("stops at 6 a day and respects the switch", async () => {
+    meetings = [reserved];
+    store.countDeliveries.mockResolvedValue(6);
+    await dispatchDuePush(AT_1300);
+    expect(store.claimDelivery).not.toHaveBeenCalledWith(expect.stringContaining(":rem:"), expect.anything(), "reminder", expect.anything());
+    store.countDeliveries.mockResolvedValue(0);
+    store.listCandidates.mockResolvedValue([{ email: "pilot@example.com", prefs: { ...DEFAULT_PUSH_PREFERENCES, remindersEnabled: false } }]);
+    store.claimDelivery.mockClear();
+    await dispatchDuePush(AT_1300);
+    expect(store.claimDelivery).not.toHaveBeenCalledWith(expect.stringContaining(":rem:"), expect.anything(), "reminder", expect.anything());
+  });
+});
