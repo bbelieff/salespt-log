@@ -1,3 +1,6 @@
+## 2026-10-26 · 통화 메모 읽기 강화(디비스트 실사례 53건)
+- fix/db-sheet-memo-multiline. belie 「유성미 수강생 디비스트 메모를 분류해 DB정보 채우고, 다른 수강생도 손 덜 쓰게」. 실데이터는 읽기만(운영 DB 조회) 해서 꼴 분석 → `parseCallMemo`: 메모 줄 여럿·괄호 안 괄호·지역만(고양시///)·구분자 / // /// _·앞이 빈 메모·부재중N/부재중MMDD/부재중N+MMDD·끝 MMDD 통화일. 53건 중 주소 48·사업자명 47 자동(못 채운 5건은 메모에 지역 없음). 저장 안 함(읽을 때). 부재 기록·최초상담일 쓰기는 시각 없음·STEP 2 영향이라 belie 결정 대기. [plan](plans/active/db-sheet-memo-to-consult.md).
+
 ## 2026-10-26 · 원본 메모 → 상담메모 · 지역(상호) 나누기
 - fix/db-sheet-memo-to-consult. belie 캡처: #1258 전에 들어온 DB는 「메모: …」가 원본 메모에만 → 읽을 때 상담메모로(저장 안 함). 「서울송파구(소미아)」 = 주소·사업자명으로 자동 구분(비어 있을 때만, 시·도 인식될 때만). [plan](plans/active/db-sheet-memo-to-consult.md).
 
