@@ -28,7 +28,7 @@ const gsheetPaste = [
 
 describe("상담 신청 머리글", () => {
   it("모든 머리글을 알아본다", () => {
-    expect(HEAD.map(headerKey)).toEqual(["date", "credit", "arrears", "sales", "biz", "owner", "phone", "memo", "memo"]);
+    expect(HEAD.map(headerKey)).toEqual(["date", "credit", "arrears", "sales", "biz", "owner", "phone", "note", "note"]);
   });
   it("날짜 앞부분만 YYYY-MM-DD — 점·공백·오전/오후·pm", () => {
     expect(normalizeImportDate("2026. 9. 8 pm 4:55:43")).toBe("2026-09-08");
@@ -46,8 +46,9 @@ describe("① 엑셀 붙여넣기", () => {
     const [one, two] = a.items.map(i => i.lead);
     expect(one).toMatchObject({ owner: "가상일", phone: "010-0000-0001", biz: "1000000001", date: "2026-09-08", sales: "5천미만", credit: "700점 이상", arrears: "없음" });
     expect(two).toMatchObject({ credit: "700점 미만", arrears: "있음", owner: "가상이 / Ga Sang (Paul)" });
-    expect(one!.memo).toContain("비고: 연습용");
-    expect(one!.memo).toContain("메모: 서울가구(가상 스튜디오)/ 부재중1 /부재중3");
+    // 메모·비고 열은 상담메모로(2026-10-26 belie) — 두 열이면 「머리글: 값」 줄로.
+    expect(one!.note).toContain("비고: 연습용");
+    expect(one!.note).toContain("메모: 서울가구(가상 스튜디오)/ 부재중1 /부재중3");
   });
 });
 
@@ -61,7 +62,7 @@ describe("② 구글시트 붙여넣기", () => {
     expect(one).toMatchObject({ phone: "010-0000-0001", biz: "1000000001", date: "2026-09-08", credit: "700점 이상", arrears: "없음" });
     // 같은 번호의 두 번째 칸은 메모에 겹쳐 쓰지 않는다.
     expect(one.memo).not.toMatch(/^전화번호:/m);
-    expect(one.memo).toContain("메모: 서울가구(가상 스튜디오)/ 부재중1 /부재중3");
+    expect(one.note).toContain("메모: 서울가구(가상 스튜디오)/ 부재중1 /부재중3");
   });
   it("두 전화번호 칸이 서로 다르면 처음 값을 쓰고 다른 값은 메모에 남긴다", () => {
     const rows = parse([["이름", "전화번호", "전화번호"].join("\t"), ["가상삼", "01000000003", "01000000009"].join("\t")].join("\n"));

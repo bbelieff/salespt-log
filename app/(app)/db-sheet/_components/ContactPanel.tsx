@@ -8,7 +8,7 @@ import {DateTimeRow,FieldNote} from '@/app/(app)/contact/_components/MeetingSlot
 import {Row} from './model';
 
 export type ContactDraft={editorRevision?:number;ci:CompanyInfo;note:string;date:string;meetingDate:string;time:string;place:string;reservationNote:string;registered:boolean;companyName?:string};
-export const contactDraft=(r:Row):ContactDraft=>({ci:CompanyInfo.parse({대표자이름:r.owner,신용점수:r.credit,업종주생산품목:r.industry,소재지:r.address}),note:'',date:todayKST(),meetingDate:'',time:'',place:r.address,reservationNote:'',registered:false});
+export const contactDraft=(r:Row):ContactDraft=>({ci:CompanyInfo.parse({대표자이름:r.owner,신용점수:r.credit,업종주생산품목:r.industry,소재지:r.address}),note:r.note??'',date:todayKST(),meetingDate:'',time:'',place:r.address,reservationNote:'',registered:false});
 export function ContactPanel({row,draft,onChange,onResult,onRegister,onOpen,onCompany,onRestored,showContact=true}:{row:Row;draft:ContactDraft;onChange:(v:ContactDraft)=>void;onResult:(v:string,date:string)=>void;onRegister:()=>void;onOpen?:()=>void;onCompany:(v:string)=>void;onRestored?:()=>void|Promise<void>;showContact?:boolean}){
  const [booking,setBooking]=useState(!!(draft.registered||draft.meetingDate||draft.reservationNote));
  const patch=(p:Partial<ContactDraft>)=>onChange({...draft,...p});

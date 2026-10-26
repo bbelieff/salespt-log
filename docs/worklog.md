@@ -1,3 +1,6 @@
+## 2026-10-26 · DB 가져오기 메타 추정·메모 → 상담메모
+- fix/db-sheet-save-delete(PR A). belie 「매입DB로 적었는데 직접생산·메타광고로 등록」 원인 = 메타 양식 추정이 줄에 박혀 공통 공급처가 못 덮음 → 공통 칸에 추정값을 보여 주고 바꾸게. 메모·비고 열 → 상담메모. 다음: 삭제 휴지통(PR B)·공급처 일괄 변경(PR C). [plan](plans/active/db-sheet-import-meta-memo.md).
+
 ## 2026-10-26 · DB관리시트 「도달 STEP」 + 사이드 탭과 같은 STEP 배지
 - feat/db-sheet-reached-step. belie 「진행단계를 도달STEP 으로, step 표기는 사이드탭과 동일한 이미지로」. 공용 `StepBadge`(사이드 탭·표 같이 사용). [plan](plans/active/db-sheet-step-sort.md).
 ## 2026-10-26 · 맞춤공고 — 업체정보 칩 「맞는 공고 N」

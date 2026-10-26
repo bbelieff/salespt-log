@@ -12,7 +12,7 @@ export const importFields: {key:ImportField;label:string}[] = [
  {key:'biz',label:'사업자번호'},{key:'date',label:'유입일'},{key:'supplier',label:'공급처'},
  {key:'channel',label:'공급처 유형'},{key:'funds',label:'필요자금'},{key:'sales',label:'매출'},
  {key:'address',label:'주소'},{key:'industry',label:'업종'},{key:'credit',label:'신용점수'},
- {key:'arrears',label:'체납여부'},{key:'memo',label:'원본 메모'},
+ {key:'arrears',label:'체납여부'},{key:'note',label:'상담메모'},{key:'memo',label:'원본 메모'},
 ];
 export function normalizeImportPhone(value:string) {
  const raw=value.replace(/^p:/i,'').trim();
@@ -64,14 +64,14 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
  if(matrix.length>500)throw new Error('한 번에 500건 이하로 나눠 가져와 주세요.');
  const shape=(v:string)=>/^\+?\d[\d\s()+.-]*$/.test(v)?'number':validDate(normalizedDate(v))?'date':/[가-힣A-Za-z]/.test(v)?'text':'other';
  const signature='v1-'+hash(header?'h:'+headings.map(h=>headerKey(h)||hash(h)).join('|'):'v:'+Math.max(...matrix.map(r=>r.length))+':'+Array.from({length:Math.max(...matrix.map(r=>r.length))},(_,c)=>[...new Set(matrix.map(r=>shape(r[c]||'')))].sort().join('/')).join('|'));
- const used=Object.values(rules).filter(k=>k!=='keep'&&k!=='memo');
+ const used=Object.values(rules).filter(k=>k!=='keep'&&k!=='memo'&&k!=='note');
  if(new Set(used).size!==used.length)throw new Error('같은 항목에 여러 열이 연결됐습니다. 하나만 선택해 주세요.');
  let parsed:Row[]|null=null;
  if(header){const overrides=Object.fromEntries(Object.entries(rules).map(([k,v])=>[k,v==='keep'?'':v]));parsed=parse(raw,overrides);}
  const items=matrix.map((cells,index)=>{
   const item:Item={lead:parsed?.[index]||blank(),raw:cells,questions:[],selected:true,inflow:true,adjusted:false};
   const put=(key:ImportField|'keep',value:string)=>{
-   if(key!=='keep'&&key!=='memo'&&item.lead[key]&&!['channel','arrears'].includes(key)){
+   if(key!=='keep'&&key!=='memo'&&key!=='note'&&item.lead[key]&&!['channel','arrears'].includes(key)){
     item.questions.push({id:`${index}-collision-${item.questions.length}`,value,column:-1,reason:'이미 배치한 값이 있어요. 원문에 보관하거나 아래에서 직접 수정해 주세요.',choices:[{key:'keep',label:'원문에 보관'}]});return;
    }
    item.lead=setImportValue(item.lead,key,value);
@@ -107,6 +107,6 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
 }
 export function resolveImportQuestion(item:Item,qid:string,key:ImportField|'keep'):Item {
  const q=item.questions.find(v=>v.id===qid);if(!q)return item;
- if(key!=='keep'&&key!=='memo'&&item.lead[key]&&item.lead[key]!==q.value)throw new Error('이미 값이 있는 항목입니다. 직접 수정하거나 원문에 보관해 주세요.');
+ if(key!=='keep'&&key!=='memo'&&key!=='note'&&item.lead[key]&&item.lead[key]!==q.value)throw new Error('이미 값이 있는 항목입니다. 직접 수정하거나 원문에 보관해 주세요.');
  return {...item,lead:setImportValue(item.lead,key,q.value),adjusted:key==='phone'||key==='biz'||key==='keep'?false:item.adjusted,questions:item.questions.filter(v=>v.id!==qid)};
 }
