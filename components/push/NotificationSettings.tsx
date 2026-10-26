@@ -5,12 +5,18 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { track, EVENTS } from "@/analytics";
-import { DEFAULT_PUSH_PREFERENCES, PUSH_CONTENT_KINDS, type PushContentKind, type PushDevice, type PushPreferences } from "@/types/push";
+import { DEFAULT_PUSH_PREFERENCES, MEETING_LEAD_MINUTES, PUSH_CONTENT_KINDS, REMINDER_KINDS, type PushContentKind, type PushDevice, type PushPreferences, type ReminderKind } from "@/types/push";
 import { kstNow, nextNotification, WEEKDAY_LABELS, weekdayBit } from "@/service/push-schedule";
 import { sendTestPush, usePushState, useRemovePushDevice, useSavePushPreferences, useThisDevicePush } from "@/query/push-hooks";
 import ThisDevicePush from "./ThisDevicePush";
 import "./push.css";
 
+const REMINDER_LABEL: Record<ReminderKind, [string, string]> = {
+  meeting_before: ["미팅 전", "미팅 시각 전에 미리"],
+  todo_before: ["할 일 15분 전", "시간을 적어 둔 할 일"],
+  absence_retry: ["부재 다시 걸기", "부재였던 DB, 다음 연락일에 지난번과 다른 시간대로"],
+};
+const leadText = (m: number) => (m % 60 === 0 ? `${m / 60}시간 전` : `${m}분 전`);
 const KIND_LABEL: Record<PushContentKind, [string, string]> = {
   overdue: ["밀린 약속", "기한이 지난 할 일"],
   today: ["오늘 할 일", "오늘 하기로 한 일"],
@@ -68,6 +74,7 @@ export default function NotificationSettings() {
     save.mutate(nextPrefs, { onSuccess: () => setSaved("saved"), onError: () => setSaved("error") });
     track(EVENTS.PUSH_SETTINGS_CHANGED, { field });
   }
+  const toggleReminder = (k: ReminderKind, on: boolean) => update({ reminderKinds: on ? REMINDER_KINDS.filter(x => x === k || p.reminderKinds.includes(x)) : p.reminderKinds.filter(x => x !== k) }, `reminder_${k}`);
   const toggleKind = (k: PushContentKind, on: boolean) => update({ kinds: on ? PUSH_CONTENT_KINDS.filter(x => x === k || p.kinds.includes(x)) : p.kinds.filter(x => x !== k) }, `kind_${k}`);
   const toggleDay = (i: number) => { const bits = p.weekdays ^ weekdayBit(i + 1); if (bits) update({ weekdays: bits }, "weekdays"); };
 
@@ -87,6 +94,7 @@ export default function NotificationSettings() {
   }
   const nextLabel = next ? `${next.daysAhead === 0 ? "오늘" : next.daysAhead === 1 ? "내일" : ""}(${WEEKDAY_LABELS[next.weekday - 1]}) ${timeLabel(next.time)} · ${next.slot === "morning" ? "아침 알림" : "저녁 알림"}` : "받을 알림이 꺼져 있어요";
   const off = !p.enabled;
+  const remOff = off || !p.remindersEnabled;
 
   return <div className="push-page">
     {state.data.viewingOther && <p className="push-notice" role="note">지금 다른 사람 화면을 보고 있어요. 이 화면의 알림 설정은 로그인한 본인 것이고, 보고 있는 사람에게는 영향이 없어요.</p>}
@@ -127,6 +135,26 @@ export default function NotificationSettings() {
           {EVENING_TIMES.map(t => <option key={t} value={t}>{timeLabel(t)}</option>)}
         </select>
       </label>
+    </section>
+
+    <section className="push-card" aria-labelledby="push-reminders" aria-disabled={off}>
+      <div className="push-line">
+        <div><h2 id="push-reminders">미리 알림</h2><p className="push-muted">약속 시각에 맞춰 따로 알려 드려요. 하루 최대 6건, 밤 9시~아침 7시는 보내지 않아요.</p></div>
+        <Switch id="push-reminders-switch" checked={p.remindersEnabled} disabled={off} onChange={v => update({ remindersEnabled: v }, "reminders_enabled")} label="미리 알림" />
+      </div>
+      <ul className="push-list">
+        {REMINDER_KINDS.map(k => <li key={k} className="push-stack">
+          <div className="push-line">
+            <div><h3>{REMINDER_LABEL[k][0]}</h3><p className="push-muted">{REMINDER_LABEL[k][1]}</p></div>
+            <Switch id={`push-rem-${k}`} checked={p.reminderKinds.includes(k)} disabled={remOff} onChange={v => toggleReminder(k, v)} label={REMINDER_LABEL[k][0]} />
+          </div>
+        {k === "meeting_before" && <label className="push-select" htmlFor="push-meeting-lead">미팅 알림 시각
+          <select id="push-meeting-lead" value={p.meetingLeadMinutes} disabled={remOff || !p.reminderKinds.includes("meeting_before")} onChange={e => update({ meetingLeadMinutes: Number(e.target.value) as PushPreferences["meetingLeadMinutes"] }, "meeting_lead_minutes")}>
+            {MEETING_LEAD_MINUTES.map(m => <option key={m} value={m}>{leadText(m)}</option>)}
+          </select>
+        </label>}
+        </li>)}
+      </ul>
     </section>
 
     <section className="push-card" aria-labelledby="push-days">

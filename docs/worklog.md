@@ -1,5 +1,7 @@
 ## 2026-10-26 · 오류신고 API 본문 크기 상한 (리뷰 1번)
 - fix/bug-report-body-limit. ponytail-review 「고칠 것」 1번 — 본문 3.5MB 넘으면 다 읽기 전에 413(헤더·스트림 둘 다). 남은 리뷰 항목 2~7 은 미착수. [plan](plans/active/bug-report.md).
+## 2026-10-26 · 웹 푸시 미리 알림 1단계
+- feat/push-pre-alerts, base e36c4785. belie 「1단계부터 진행해 기본값은 1시간전. 알림상한은 6건」. 미팅 N분 전·할 일 15분 전·부재 다시 걸기, 하루 6건, 마이그레이션 0012. 미팅 후 결과는 #1233 과 겹쳐 제외. [plan](plans/active/web-push-notifications.md) §15.
 ## 2026-10-26 · 프로젝트 스킬 ponytail 추가
 - chore/ponytail-skill. belie 「pony-tail 스킬 찾아서 설치, 이 프로젝트 세션들이 참고」. DietrichGebert/ponytail(MIT, v5.3.2·09c434a) SKILL.md 6개를 `.claude/skills/` 에 그대로 복사(훅·band 보드 제외), AGENTS.md·CLAUDE.md §2.5 에 안내 한 줄. 출처 `.claude/skills/ponytail/SOURCE.md`.
 ## 2026-10-26 · 원본 메모 → 상담메모 · 지역(상호) 나누기
