@@ -36,6 +36,13 @@ export interface GrantMatchCompany {
   개업일?: string;
   대표자생년월일?: string;
   주민등록번호?: string;
+  사업자구분?: string;
+  과년도매출?: string;
+  과년도매출Y2?: string;
+  매출Y1상?: string;
+  매출Y1하?: string;
+  금년도매출?: string;
+  업체기타메모?: string;
 }
 
 const NONE = /^(해당\s*없음|제한\s*없음|없음|무관|전\s*업종)/;
@@ -108,6 +115,37 @@ function inScope(p: GrantProfile, a: PolicyAnnouncement, why: string[]): Verdict
   return "no";
 }
 
+/** 「1억 400만원」·「7천만원」·「3억」·「50억원」 → 백만원 단위. 못 읽으면 null. */
+export function wonToMillion(text: string): number | null {
+  const t = String(text ?? "").replace(/[\s,]/g, "");
+  const m = t.match(/^(?:(\d+(?:\.\d+)?)억)?(?:(\d+(?:\.\d+)?)천만?)?(?:(\d+(?:\.\d+)?)백만?)?(?:(\d+(?:\.\d+)?)만)?원?$/);
+  if (!m || !(m[1] || m[2] || m[3] || m[4])) return null;
+  return Number(m[1] ?? 0) * 100 + Number(m[2] ?? 0) * 10 + Number(m[3] ?? 0) + Number(m[4] ?? 0) / 100;
+}
+
+/** 공고 글의 매출 기준 — 「(연)매출(액) 1억 400만원 미만」. 없으면 null. */
+export function revenueLimit(text: string): { million: number; under: boolean; strict: boolean; label: string } | null {
+  const m = String(text ?? "").match(/매출(?:액)?\s*([\d.,]+\s*억[\d.,\s]*(?:천만|백만|만)?|[\d.,]+\s*(?:천만|백만|만))\s*원?\s*(미만|이하|초과|이상)/);
+  if (!m) return null;
+  const million = wonToMillion(m[1]!);
+  if (million === null) return null;
+  return { million, under: m[2] === "미만" || m[2] === "이하", strict: m[2] === "미만" || m[2] === "초과", label: `${m[1]!.replace(/\s+/g, " ").trim()}원 ${m[2]}` };
+}
+
+/** 업체 연 매출(백만원) — 과년도(Y-1) 연 매출, 없으면 Y-1 반기 합, 없으면 Y-2. 숫자를 못 읽으면 null. */
+export function annualSalesMillion(c: GrantMatchCompany): number | null {
+  const num = (v?: string) => { const n = Number(String(v ?? "").replace(/[^\d.]/g, "")); return String(v ?? "").trim() && Number.isFinite(n) ? n : null; };
+  const y1 = num(c.과년도매출);
+  if (y1 !== null) return y1;
+  const h1 = num(c.매출Y1상), h2 = num(c.매출Y1하);
+  if (h1 !== null || h2 !== null) return (h1 ?? 0) + (h2 ?? 0);
+  const y2 = num(c.과년도매출Y2);
+  if (y2 !== null) return y2;
+  // 매출 칸이 비어 있고 기타메모에 「매출 Y-2(2024) 합계 …: 548.7」처럼 적혀 있으면 그 숫자(서류 자동입력이 남기는 꼴).
+  const memo = String(c.업체기타메모 ?? "").match(/매출[^\n:：]*[:：]\s*([\d.,]+)/);
+  return memo ? num(memo[1]) : null;
+}
+
 /** 업체 × 공고 판정. today = "YYYY-MM-DD"(KST). */
 export function matchAnnouncement(company: GrantMatchCompany, a: PolicyAnnouncement, today: string): GrantMatch {
   const p = grantProfile(company);
@@ -152,7 +190,8 @@ export function matchAnnouncement(company: GrantMatchCompany, a: PolicyAnnouncem
 
   // ④-2 특정 업계 공고.
   const announced = `${a.title} ${a.target} ${a.special} ${a.industryLimit.replace(/[^,·(]*제외/g, "")}`;
-  const own = `${company.업태 ?? ""} ${company.업종주생산품목 ?? ""} ${company.주생산품목 ?? ""} ${p.industry}`;
+  // 대분류(「음식·숙박업」)는 넓어서 넣지 않는다 — 「숙박」 때문에 음식점이 관광 업계로 읽혔다(2026-10-26 belie).
+  const own = `${company.업태 ?? ""} ${company.업종주생산품목 ?? ""} ${company.주생산품목 ?? ""}`;
   for (const [name, wants, mine] of no.some((r) => r.startsWith("업종 다름")) ? [] : 업계) {
     if (!wants.test(announced) || mine.test(own)) continue;
     (p.industry || own.trim() ? no : check).push(p.industry || own.trim() ? `업종 다름(${name})` : `${name} 업종인지 확인`);
@@ -181,6 +220,22 @@ export function matchAnnouncement(company: GrantMatchCompany, a: PolicyAnnouncem
     if (by === null) check.push("대표자 나이 확인 필요");
     else if (Number(today.slice(0, 4)) - by - 1 > limit) no.push(`청년(만 ${limit}세 이하) 대상`);
   }
+
+  // ⑥-2 매출 기준 — 「연 매출 1억 400만원 미만」 같은 글이 있으면 업체 연 매출(백만원)과 비교(2026-10-26 belie).
+  const revenue = revenueLimit(`${a.title} ${a.target} ${a.special}`);
+  if (revenue) {
+    const sales = annualSalesMillion(company);
+    if (sales === null) check.push("매출 확인 필요");
+    else if (revenue.under ? (revenue.strict ? sales >= revenue.million : sales > revenue.million) : (revenue.strict ? sales <= revenue.million : sales < revenue.million)) no.push(`매출 기준(${revenue.label}) 안 맞음`);
+  }
+  // ⑥-3 개인사업자만 — 법인이면 뺀다.
+  if (/개인\s*사업자/.test(who) && !/법인/.test(who)) {
+    const kind = String(company.사업자구분 ?? "");
+    if (/법인/.test(kind)) no.push("개인사업자 대상");
+    else if (!/개인/.test(kind)) check.push("개인사업자인지 확인");
+  }
+  // ⑥-4 특정 피해 기업 대상(「홈플러스 피해」·재난 등) — 업체가 「피해·위기 기업」을 켜지 않았으면 뺀다(2026-10-26 belie).
+  if (/피해|재난|산불|수해|침수|화재|폐업\s*위기/.test(`${a.title} ${who}`) && !p.features.includes("피해·위기 기업")) no.push("피해 기업 대상");
 
   // ⑦ 특성 — 업체가 켜지 않았다고 아닌 것은 아니다(안 적었을 수 있음) → 확인 필요만.
   for (const [word, feature] of [[/여성기업|여성\s*대표/, "여성기업"], [/장애인기업/, "장애인기업"], [/수출/, "수출"], [/재창업|재도전/, "재창업"], [/사회적기업|협동조합/, "사회적기업·협동조합"]] as const) {

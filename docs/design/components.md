@@ -1847,3 +1847,5 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **FollowUpsLauncherView 「챙길 일 | 새 공고」** (2026-10-26 맞춤공고 4d · 목업 ④): 맞춤공고를 읽었으면 창 머리 h2 대신 두 칸 `.fl-tabs`(aria-pressed). 새 공고 = `grantInbox`(아직 담지 않은 업체×공고, 급함→맞음→확인) 상위 5줄 — 배지 소진(rose)/맞음/확인 · 업체 · 공고명 · 열기(/payment?row=). 없으면 빈 상태 한 줄. 못 읽으면 예전 머리 그대로. 버튼 숫자는 챙길 일.
 
 - **TrashDialog · TrashNoticeBar · BulkSupplierDialog** (`app/(app)/db-sheet/_components/`, 2026-10-26 belie): DB관리시트 삭제 = 바로 휴지통(서버 `sheet_rows` tab `db_sheet_trash` 에 DB·상담 기록·이력 보관, STEP 2 기여분은 즉시 정리). 머리 「휴지통」 버튼 → `TrashDialog`(목록·전체 선택 · 「되돌리기」(같은 업체 있으면 「그래도 되돌리기」) · 「영구 삭제」 · 「휴지통 비우기」 — 영구 삭제는 확인 상자). 삭제 직후 `TrashNoticeBar`(건수·정리된 STEP 2 · 「휴지통 열기」). 여러 줄 작업 줄에 「공급처 바꾸기」 → `BulkSupplierDialog`(유형·공급처, 빈 칸은 그대로; 미팅 연결 DB의 유형은 바꾸지 않고 알림). 예전 `DeleteUndoBar`(10초 되돌리기)는 없앰.
+
+- **AbsenceLog `suggested` · DbContactActions `suggestion`** (2026-10-26 belie): 원본 메모(공급처 시트 통화 메모)에서 `memoSuggestion` 이 찾은 날짜 부재를 「메모에서 찾은 부재 [10/14 10시 담기]」 버튼(위에서 고른 시각)으로, 컨택결과가 미컨택일 때 「메모로 보면 ○○ · 날짜 [이 결과로 기록]」 한 줄. 점선 테두리 제안 모양(`.db-absence-suggest`·`.db-memo-suggest`), 기록은 누를 때만.

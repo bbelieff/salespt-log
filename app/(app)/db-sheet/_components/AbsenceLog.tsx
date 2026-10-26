@@ -14,7 +14,8 @@ const nowHour = () => {
   return Math.min(21, Math.max(8, Number.isFinite(h) ? h : 10));
 };
 
-export function AbsenceLog({ row, onAbsence }: { row: Pick<Row, "id" | "meetingId" | "absences">; onAbsence: (entry: DbSheetAbsence, remove?: boolean) => Promise<unknown> }) {
+/** suggested = 메모에 날짜가 적힌 부재(아직 안 담은 것) — 위에서 고른 시각으로 한 번에 담는다(2026-10-26 belie 「메모에서 담기」). */
+export function AbsenceLog({ row, onAbsence, suggested = [] }: { row: Pick<Row, "id" | "meetingId" | "absences">; onAbsence: (entry: DbSheetAbsence, remove?: boolean) => Promise<unknown>; suggested?: readonly string[] }) {
   const [date, setDate] = useState(() => todayKST());
   const [hour, setHour] = useState(nowHour);
   const [busy, setBusy] = useState(false);
@@ -37,6 +38,10 @@ export function AbsenceLog({ row, onAbsence }: { row: Pick<Row, "id" | "meetingI
       </select>
       <button type="button" className="sheet-btn" disabled={busy || !date} onClick={() => void run({ date, hour })}>+ 추가</button>
     </div>
+    {suggested.length > 0 && <div className="db-absence-suggest" role="group" aria-label="메모에서 찾은 부재">
+      <span>메모에서 찾은 부재</span>
+      {suggested.map(d => <button key={d} type="button" className="sheet-btn" disabled={busy} onClick={() => void run({ date: d, hour })}>{d.slice(5).replace("-", "/")} {String(hour).padStart(2, "0")}시 담기</button>)}
+    </div>}
     {list.length > 0 && <ol className="db-absence-list">
       {shown.map(a => <li key={`${a.date}-${a.hour}`}>
         <span>{a.date.slice(5).replace("-", "/")}</span><span>{String(a.hour).padStart(2, "0")}시</span><span className="db-absence-tag">부재</span>

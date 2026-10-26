@@ -147,3 +147,35 @@ export function withImportedConsultNote<T extends { address: string; company: st
   const { row, note } = applyRegionCompanyMemo(lead, found, lead.date ?? "");
   return { ...row, contact: { ...row.contact, note } };
 }
+
+/** 메모 → DB정보 제안(2026-10-26 belie 「부재는 메모에서 담기 버튼, 컨택결과는 제안만」). 기록은 수강생이 누를 때만. */
+export type MemoResult = "단순거절" | "상담 후 거절" | "재통화" | "AS예정";
+export interface MemoSuggestion {
+  /** 메모에 날짜가 적힌 부재 — 이미 부재 기록에 있는 날짜는 뺀다. */
+  absenceDates: string[];
+  /** 메모로 본 컨택결과(마지막으로 적힌 말 기준). 모르면 null. */
+  result: { value: MemoResult; date: string; cue: string } | null;
+}
+const CUES: ReadonlyArray<[MemoResult, RegExp]> = [
+  ["AS예정", /없는\s*번호|결번|\bAS\b/i],
+  ["단순거절", /바로\s*끊|끊(으심|어\s*버|음)|안\s*한다고|필요\s*없다\s*(하고\s*)?(바로\s*)?끊|잘못\s*남겼|아예\s*거절/],
+  ["상담 후 거절", /거절|거부|필요\s*없|괜찮다|안\s*하(기로|신다|고\s*싶)|안할게|X$/],
+  ["재통화", /재통화|다시\s*(연락|통화|전화)|연락\s*(주기로|준다|주겠|드린다|하시겠)|통화\s*예정/],
+];
+export function memoSuggestion(lead: { memo: string; date?: string; absences?: readonly { date: string }[] }, today: string): MemoSuggestion {
+  const raw = consultNoteFromRawMemo(lead.memo);
+  const line = raw.split(/\r?\n/).map((l) => l.match(HEADER_LINE)?.[2] ?? l).find((l) => splitRegionCompanyMemo(l)) ?? raw.split(/\r?\n/).map((l) => l.match(HEADER_LINE)?.[2] ?? l).at(-1) ?? "";
+  if (!line.trim()) return { absenceDates: [], result: null };
+  const memo = parseCallMemo(line, lead.date ?? "");
+  const have = new Set((lead.absences ?? []).map((a) => a.date));
+  const absenceDates = memo.absenceDates.filter((d) => !have.has(d) && d <= today);
+  // 나중에 적은 조각이 최종 결과 — 뒤에서부터 처음 걸리는 말.
+  for (const part of [...memo.parts].reverse()) {
+    if (/미팅/.test(part)) return { absenceDates, result: null }; // 미팅은 STEP 3 에서.
+    const hit = CUES.find(([, re]) => re.test(part));
+    if (!hit) continue;
+    const date = memo.contactDates.at(-1) ?? today;
+    return { absenceDates, result: { value: hit[0], date: date <= today ? date : today, cue: part } };
+  }
+  return { absenceDates, result: null };
+}

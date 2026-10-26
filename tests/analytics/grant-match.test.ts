@@ -1,6 +1,6 @@
 /** 업체 × 공고 판정(2026-10-26 맞춤공고 3단계). 업체·공고 모두 합성 — 실제 공고 문구 꼴만 흉내 냈다. */
 import { describe, expect, it } from "vitest";
-import { birthYear, matchAnnouncement, matchesFor, parseYmd, yearsInBusiness } from "@/lib/analytics/grant-match";
+import { birthYear, matchAnnouncement, matchesFor, parseYmd, revenueLimit, wonToMillion, yearsInBusiness } from "@/lib/analytics/grant-match";
 import { toAnnouncement } from "@/lib/analytics/policy-announcement";
 import { PolicyNewsRow } from "@/types/policy-news";
 
@@ -58,6 +58,33 @@ describe("특정 업계 공고(제목·지원대상에 적힌 업계) — 2026-1
     expect(matchAnnouncement({ ...울산제조, 업태: "숙박", 업종주생산품목: "펜션" }, ann({ 사업명: "가상 관광진흥개발기금" }), TODAY).verdict).toBe("match");
     expect(matchAnnouncement({ 소재지: "울산 남구 1" }, ann({ 사업명: "가상 에너지이용합리화자금" }), TODAY).reasons).toContain("에너지 업종인지 확인");
     expect(matchAnnouncement(도소매, ann({ 업종제한: "관광 관련 사업체 제외" }), TODAY).verdict).toBe("match");
+  });
+});
+
+describe("매출·개인사업자·피해 기업·관광(2026-10-26 belie 캡처)", () => {
+  it("금액 읽기", () => {
+    expect(wonToMillion("1억 400만원")).toBe(104);
+    expect(wonToMillion("7천만원")).toBe(70);
+    expect(wonToMillion("50억")).toBe(5000);
+    expect(revenueLimit("연 매출 1억 400만원 미만 개인사업자")).toMatchObject({ million: 104, under: true, strict: true });
+    expect(revenueLimit("자금 3천 문의")).toBeNull();
+  });
+  it("매출 기준을 넘으면 뺀다, 매출을 모르면 확인 필요", () => {
+    const a = ann({ 사업명: "가상 일시적경영애로자금", 지원대상: "연 매출 1억 400만원 미만 개인사업자" });
+    expect(matchAnnouncement({ ...울산제조, 사업자구분: "개인", 과년도매출: "548.7" }, a, TODAY).reasons).toContain("매출 기준(1억 400만원 미만) 안 맞음");
+    expect(matchAnnouncement({ ...울산제조, 사업자구분: "개인", 과년도매출: "90" }, a, TODAY).verdict).toBe("match");
+    expect(matchAnnouncement({ ...울산제조, 사업자구분: "개인" }, a, TODAY).reasons).toContain("매출 확인 필요");
+    expect(matchAnnouncement({ ...울산제조, 사업자구분: "개인", 업체기타메모: "매출 Y-2(2024) 합계(반기 합과 달라 옮김): 548.7" }, a, TODAY).reasons).toContain("매출 기준(1억 400만원 미만) 안 맞음");
+    expect(matchAnnouncement({ ...울산제조, 사업자구분: "법인", 과년도매출: "90" }, a, TODAY).reasons).toContain("개인사업자 대상");
+  });
+  it("피해 기업 대상은 「피해·위기 기업」을 켜지 않았으면 뺀다", () => {
+    const a = ann({ 사업명: "가상 마트 피해 소상공인 만기연장", 지원대상: "가상 마트 납품 피해 소상공인" });
+    expect(matchAnnouncement(울산제조, a, TODAY).reasons).toContain("피해 기업 대상");
+    expect(matchAnnouncement({ ...울산제조, 공고특성: "피해·위기 기업" }, a, TODAY).reasons).not.toContain("피해 기업 대상");
+  });
+  it("대분류 「음식·숙박업」만으로 관광 업계로 보지 않는다", () => {
+    const 음식점 = { ...울산제조, 업태: "음식점업", 업종주생산품목: "한식", 주생산품목: "고기" };
+    expect(matchAnnouncement(음식점, ann({ 사업명: "가상 관광진흥개발기금", 지원대상: "관광진흥법상 관광사업 운영 중소기업" }), TODAY).reasons).toContain("업종 다름(관광)");
   });
 });
 
