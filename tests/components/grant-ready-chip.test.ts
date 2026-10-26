@@ -1,4 +1,4 @@
-/** 「공고매칭 n/3」 펼침 줄(2026-10-26) — 조건마다 ✓/–, 빈 조건은 채울 칸. 값은 모두 가상. */
+/** 「공고필터 n/3」 펼침 줄(2026-10-26) — 조건마다 ✓/–, 빈 조건은 채울 칸. 값은 모두 가상. */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { grantReadyLines } from "@/components/company-info/GrantReadyChip";
@@ -31,14 +31,14 @@ describe("grantReadyLines", () => {
 });
 
 describe("4단계 — 맞는 공고 N", () => {
-  it("실무/수납에서 맞는 공고가 있으면 「맞는 공고 N」 버튼, 없으면 「공고매칭 n/3」", async () => {
+  it("실무/수납에서 맞는 공고가 있으면 「맞는 공고 N」 버튼, 없으면 「공고필터 n/3」", async () => {
     const React = await import("react");
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { GrantReadyChip } = await import("@/components/company-info/GrantReadyChip");
     (globalThis as { React?: unknown }).React = React;
     const html = (n?: number) => renderToStaticMarkup(React.createElement(GrantReadyChip, { draft: {} as never, onFill: () => {}, matchCount: n }));
     expect(html(2).replace(/<!-- -->/g, "")).toContain(">맞는 공고 2</button>");
-    expect(html(0)).toContain("공고매칭");
-    expect(html()).toContain("공고매칭");
+    expect(html(0)).toContain("공고필터");
+    expect(html()).toContain("공고필터");
   });
 });
