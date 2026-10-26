@@ -29,7 +29,8 @@ it.each(['xlsx','biff8'] as const)('%s reads the first sheet and preserves Korea
   const rows = parse(await readImportFile(fixture(type)));
   expect(rows).toHaveLength(1);
   expect(rows[0]).toMatchObject({ company: '합성 엑셀상사', owner: '김샘플', phone: '010-0000-1234', date:'2026-10-15', channel:'직접생산' });
-  expect(rows[0]!.memo).toContain('상담');
+  // 메모 열은 상담메모로(2026-10-26 belie).
+  expect(rows[0]!.note).toContain('상담');
 });
 it.each(['xlsx','biff8'] as const)('%s reads Excel 1904 dates', async type=>{
   expect(parse(await readImportFile(fixture(type,true)))[0]!.date).toBe('2026-10-15');

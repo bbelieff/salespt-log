@@ -3,7 +3,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {Upload,FileSpreadsheet,ClipboardPaste,ArrowLeft,Check,AlertCircle,X,Search} from 'lucide-react';
 import {readImportFile,IMPORT_FILE_ACCEPT} from './import-file';
 import {parseGoogleSheetUrl} from '@/util/google-sheet-url';
-import {type Row,duplicate,validDate,validChannel,issues} from './model';
+import {type Row,duplicate,validDate,validChannel,issues,META_SUPPLIER_GUESS} from './model';
 import SupplierInput from './SupplierInput';
 import {analyzeImport as analyze,resolveImportQuestion,importFields,type ImportField,type Analysis,type Item,type Rules} from './adaptive-import';
 import {loadImportRules,saveImportRules,removeImportRules} from './adaptive-import-profiles';
@@ -22,7 +22,9 @@ export function ImportDialog({rows,onClose,onApply,onExisting,accountKey=''}:{ro
  const dialog=useRef<HTMLElement>(null),input=useRef<HTMLInputElement>(null),request=useRef(0);
  useEffect(()=>{const before=document.activeElement as HTMLElement;dialog.current?.querySelector<HTMLButtonElement>('.ai-close')?.focus();return()=>before?.focus();},[]);
  function run(raw:string,source:string,mode:'auto'|'yes'|'no'='auto'){
-  try{const base=analyze(raw,mode);let saved=base.tabular?loadImportRules(accountKey,base.signature):null;let result=base;try{if(saved&&base.header)result=analyze(raw,mode,saved);}catch{saved=null;}setPendingRules(saved&&!base.header?saved:null);result.items=result.items.map((item,i)=>({...item,selected:!duplicate(item.lead,rows)&&!duplicate(item.lead,result.items.slice(0,i).map(v=>v.lead))}));setReview(result);setLearned(!!saved&&base.header);setText(raw);setFilename(source);setError('');setActive('');setOnly(false);setRules(base.header?saved||{}:{});setRemember(false);setAllowed([]);}catch(e){setError((e as Error).message);}
+  try{const base=analyze(raw,mode);let saved=base.tabular?loadImportRules(accountKey,base.signature):null;let result=base;try{if(saved&&base.header)result=analyze(raw,mode,saved);}catch{saved=null;}setPendingRules(saved&&!base.header?saved:null);result.items=result.items.map((item,i)=>({...item,selected:!duplicate(item.lead,rows)&&!duplicate(item.lead,result.items.slice(0,i).map(v=>v.lead))}));
+   // 메타 광고 양식은 「직접생산 · 메타 광고」로 추정만 한다 — 줄에 박지 않고 공통 칸에 채워 보여 줘서 매입DB·다른 공급처로 바꿀 수 있게(2026-10-26 belie: 매입DB로 적었는데 직접생산으로 저장됨).
+   if(result.items.length&&result.items.every(x=>x.lead.supplier===META_SUPPLIER_GUESS&&x.lead.channel==='직접생산')){result.items=result.items.map(x=>({...x,lead:{...x.lead,supplier:'',channel:''}}));setChannel(c=>c||'직접생산');setSupplier(v=>v||META_SUPPLIER_GUESS);}setReview(result);setLearned(!!saved&&base.header);setText(raw);setFilename(source);setError('');setActive('');setOnly(false);setRules(base.header?saved||{}:{});setRemember(false);setAllowed([]);}catch(e){setError((e as Error).message);}
  }
  async function file(f?:File){if(!f)return;const id=++request.current;setBusy(true);setError('');try{if(review){setError('다시 가져오기를 누른 뒤 파일을 선택해 주세요.');return;}const raw=await readImportFile(f);if(id===request.current)run(raw,f.name);}catch(e){setError((e as Error).message);}finally{if(id===request.current)setBusy(false);}}
  /** 구글시트 공유 주소면 서버가 CSV 로 내려받아 붙여넣기와 똑같이 배치한다(2026-10-24). */
