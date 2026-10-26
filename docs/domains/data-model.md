@@ -811,7 +811,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - 사용자 키는 로그인 email(소문자). 관리자 보기 전환(impersonation)과 무관하게 본인 것만 다룬다.
 
 ## 오류신고 (2026-10-25, `lib/types/bug-report.ts` · 표 `bug_reports` 런타임 생성)
-- `BugReportInput` = 문제 종류(`BugReportCategory` = `BUG_REPORT_CATEGORIES` 6개) · 설명(≤2000자) · 그림(JPEG/PNG data URL ≤3MB, 빈 값 허용) · 맥락 `BugReportContext`(화면 주소·제목·화면 크기·브라우저·재생 링크·최근 오류 ≤10·그림 출처 `captureMethod` tab|upload|none·표시 수).
+- `BugReportInput` = 문제 종류(`BugReportCategory` = `BUG_REPORT_CATEGORIES` 6개) · 설명(≤2000자) · 그림(JPEG/PNG data URL ≤3MB, 빈 값 허용) · 요청 본문 전체 ≤`BUG_REPORT_BODY_MAX`(3.5MB, 넘으면 API 가 다 읽기 전에 413) · 맥락 `BugReportContext`(화면 주소·제목·화면 크기·브라우저·재생 링크·최근 오류 ≤10·그림 출처 `captureMethod` tab|upload|none·표시 수).
 - 표 `public.bug_reports`: id · created_at · email · name · cohort · category · body · image · context(jsonb) · status(`new`|`checking`|`done`, 기본 new). `lib/repo/db/bug-reports.ts` 가 처음 쓸 때 만든다. 운영 DB 에만 저장, 관리자만 열람(2단계 화면).
 
 

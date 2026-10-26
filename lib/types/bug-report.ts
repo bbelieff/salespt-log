@@ -9,6 +9,8 @@ export const BugReportCategory = z.enum(BUG_REPORT_CATEGORIES);
 
 /** 캡처 한 장 상한 — JPEG 화면 1장은 보통 0.2~1MB. 넘으면 캡처 없이 보내게 안내한다. */
 export const BUG_REPORT_IMAGE_MAX = 3_000_000;
+/** 요청 본문 상한 — 그림 + 글·맥락 여유. API 가 다 읽기 전에 끊어 서버 메모리를 지킨다(Caddy·Next 에 상한 없음). */
+export const BUG_REPORT_BODY_MAX = 3_500_000;
 
 export const BugReportContext = z.object({
   /** 보던 화면 주소(쿼리 포함, 최대 500자) · 화면 제목. */

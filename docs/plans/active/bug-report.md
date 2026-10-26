@@ -44,3 +44,6 @@ belie 지시: 「우측하단 플로팅 아이콘으로 버그리포트 · 나�
 - 관리자 「오류신고함」 화면(새로 들어옴/확인 중/해결) · 해결하면 신고자에게 새소식 알림. 지금은 DB 에서만 볼 수 있다.
 
 되돌리기: squash revert 1회(표는 남아도 무해).
+
+## 리뷰 반영 (2026-10-26, ponytail-review 1번 「고칠 것」)
+- 오류신고 API 가 본문을 다 읽은 뒤에야 크기를 검사했다(Caddy·Next 상한 없음 → 수백 MB 요청이면 VPS 메모리 위험). `BUG_REPORT_BODY_MAX`(3.5MB) 를 넘으면 content-length 로 바로, 길이를 안 밝힌 스트림은 넘는 순간 끊고 413. 시험 `tests/api/bug-reports-route.test.ts`(헤더 초과·스트림 초과·정상 2.9MB 그림 접수).
