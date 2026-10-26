@@ -22,3 +22,11 @@ body.db-sheet-route .db-meeting-link li{display:flex;justify-content:space-betwe
 body.db-sheet-route .db-meeting-link li small{display:block;font-size:11px;color:#64748b}
 body.db-sheet-route .db-meeting-link.is-linked{flex-direction:row;flex-wrap:wrap;justify-content:space-between;align-items:center;border-color:#a7f3d0;background:#ecfdf5;color:#065f46}
 body.db-sheet-route .db-meeting-link .sheet-error,body.db-sheet-route .db-absence .sheet-error{padding:0}
+/* 메모에서 찾은 부재·컨택결과 제안(2026-10-26) */
+.db-absence-suggest{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:#475569}
+.db-absence-suggest span{font-weight:600}
+.db-absence-suggest .sheet-btn{min-height:30px;padding:0 10px;font-size:12px;border-style:dashed}
+.db-memo-suggest{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;margin:6px 0 0;padding:6px 8px;border:1px dashed #c7d2fe;border-radius:8px;background:#eef2ff80;font-size:12px;color:#334155}
+.db-memo-suggest b{color:#3730a3}
+.db-memo-suggest .sheet-btn{min-height:30px;padding:0 10px;font-size:12px}
+@media(max-width:1023px){.db-absence-suggest .sheet-btn,.db-memo-suggest .sheet-btn{min-height:44px}}
