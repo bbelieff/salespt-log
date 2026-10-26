@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { dbEnabled, getDbPool } from "./client";
 import { DEFAULT_PUSH_PREFERENCES } from "@/types/push";
-import type { PushContentKind, PushDevice, PushPlatform, PushPreferences, PushSlot, PushSubscriptionInput } from "@/types/push";
+import type { PushContentKind, PushDevice, PushPlatform, PushPreferences, PushSlot, PushSubscriptionInput, ReminderKind } from "@/types/push";
 
 function pool() {
   if (!dbEnabled()) throw new Error("push_db_unavailable");
@@ -59,12 +59,15 @@ export async function recordSendResult(id: string, ok: boolean, gone: boolean): 
 type PrefRow = {
   enabled: boolean; morning_enabled: boolean; morning_time: string; evening_enabled: boolean; evening_time: string;
   weekdays: number; kinds: string[]; show_company_names: boolean;
+  reminders_enabled: boolean; meeting_lead_minutes: number; reminder_kinds: string[];
 };
 const toPrefs = (r: PrefRow): PushPreferences => ({
   enabled: r.enabled, morningEnabled: r.morning_enabled, morningTime: r.morning_time, eveningEnabled: r.evening_enabled,
   eveningTime: r.evening_time, weekdays: r.weekdays, kinds: r.kinds as PushContentKind[], showCompanyNames: r.show_company_names,
+  remindersEnabled: r.reminders_enabled, meetingLeadMinutes: r.meeting_lead_minutes as PushPreferences["meetingLeadMinutes"],
+  reminderKinds: r.reminder_kinds as ReminderKind[],
 });
-const PREF_COLS = "enabled, morning_enabled, morning_time, evening_enabled, evening_time, weekdays, kinds, show_company_names";
+const PREF_COLS = "enabled, morning_enabled, morning_time, evening_enabled, evening_time, weekdays, kinds, show_company_names, reminders_enabled, meeting_lead_minutes, reminder_kinds";
 
 export async function getPreferences(email: string): Promise<PushPreferences> {
   const r = await pool().query<PrefRow>(`select ${PREF_COLS} from public.push_preferences where email=$1`, [key(email)]);
@@ -73,10 +76,12 @@ export async function getPreferences(email: string): Promise<PushPreferences> {
 
 export async function savePreferences(email: string, p: PushPreferences): Promise<void> {
   await pool().query(
-    `insert into public.push_preferences (email, ${PREF_COLS}, updated_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
+    `insert into public.push_preferences (email, ${PREF_COLS}, updated_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())
      on conflict (email) do update set enabled=$2, morning_enabled=$3, morning_time=$4, evening_enabled=$5,
-       evening_time=$6, weekdays=$7, kinds=$8, show_company_names=$9, updated_at=now()`,
-    [key(email), p.enabled, p.morningEnabled, p.morningTime, p.eveningEnabled, p.eveningTime, p.weekdays, p.kinds, p.showCompanyNames]);
+       evening_time=$6, weekdays=$7, kinds=$8, show_company_names=$9, reminders_enabled=$10, meeting_lead_minutes=$11,
+       reminder_kinds=$12, updated_at=now()`,
+    [key(email), p.enabled, p.morningEnabled, p.morningTime, p.eveningEnabled, p.eveningTime, p.weekdays, p.kinds, p.showCompanyNames,
+      p.remindersEnabled, p.meetingLeadMinutes, p.reminderKinds]);
 }
 
 export interface PushCandidate { email: string; prefs: PushPreferences }
