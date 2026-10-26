@@ -70,3 +70,15 @@ it("representative across multiple works follows the same D-day order", () => {
   records.push({ ...todo("합성", "2026-10-01", "todo"), institutionRef: "신보" });
   expect(buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-10-10"), "2026-10-10")[0]?.work.slot).toBe(1);
 });
+
+it("중도중지 진행건은 대표에서 빠진다 — 새 진행건의 할 일이 D-day 로(2026-10-26 belie)", () => {
+  const halted = slot({ 진행기관: "신보", 진행률: "중도중지" });
+  const rows = [contract(3, "합성", "2026-09-04", [halted, slot({ 진행기관: "소진공" })])];
+  const records = [{ ...todo("합성", "2026-10-05", "history"), institutionRef: "신보", slot: 1 as const }, { ...todo("합성", "2026-10-28", "todo"), institutionRef: "소진공", slot: 2 as const }];
+  const item = buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-10-26"), "2026-10-26")[0]!;
+  expect(item.work.slot).toBe(2);
+  expect(item.works.map((w) => w.slot)).toEqual([1, 2]);
+  // 전부 멈췄으면 그대로 첫 진행건.
+  const allHalted = [contract(4, "합성2", "2026-09-04", [halted])];
+  expect(buildCompanyWorkItems(allHalted, buildInstitutionWorkItems(allHalted, "", [], "2026-10-26"), "2026-10-26")[0]?.work.slot).toBe(1);
+});
