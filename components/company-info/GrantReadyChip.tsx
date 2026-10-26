@@ -1,9 +1,9 @@
 /**
- * 헤더 칩 「공고매칭 n/3」(2026-10-26 belie 승인 — 맞춤공고 1단계 보완).
+ * 헤더 칩 「공고필터 n/3」(2026-10-26 belie 승인 — 맞춤공고 1단계 보완. 같은 날 「공고매칭」→「공고필터」로 이름 변경).
  * 누르면 작은 펼침: 조건마다 ✓/– 한 줄, 빈 조건은 「채우기 →」로 그 칸까지 데려간다. 3/3이면 한 줄만.
  * Esc·바깥 누르기로 닫힌다. 값은 다시 길게 적지 않는다(핸드오프 §3).
  * 4단계(2026-10-26): 실무/수납에서 맞는 공고가 있으면(matchCount ≥ 1) 「맞는 공고 N」 — 누르면 같은 화면의 「🎯 맞는 공고」 상자를 열고 그리로 이동.
- * 그 밖의 화면(팝업 편집기 등)은 맞는 공고를 모르므로 「공고매칭 n/3」 그대로.
+ * 그 밖의 화면(팝업 편집기 등)은 맞는 공고를 모르므로 「공고필터 n/3」 그대로.
  */
 "use client";
 
@@ -68,10 +68,10 @@ export function GrantReadyChip({ draft, onFill, matchCount }: { draft: CI; onFil
     <span ref={box} className="relative inline-block" onKeyDown={(e) => { if (open && e.key === "Escape") { e.stopPropagation(); close(); } }}>
       <button ref={chip} type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}
         className={`inline-flex min-h-6 items-center rounded-full px-2 text-px-11 font-bold ring-1 ${full ? "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100"}`}>
-        공고매칭 {n}/3{full ? " ✓" : ""}
+        공고필터 {n}/3{full ? " ✓" : ""}
       </button>
       {open && (
-        <span id={panelId} role="dialog" aria-label="공고매칭 조건" data-grant-ready-panel
+        <span id={panelId} role="dialog" aria-label="공고필터 조건" data-grant-ready-panel
           className="absolute left-0 top-full z-30 mt-1 block w-max max-w-72 rounded-lg border border-gray-200 bg-white p-2 text-left text-xs shadow-lg">
           {full ? (
             <span className="block font-semibold text-emerald-700">✓ 준비 완료 · 공고가 들어오면 맞는 공고를 보여 드려요</span>

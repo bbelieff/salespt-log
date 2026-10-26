@@ -101,7 +101,7 @@ export interface GrantProfile {
   /** 자동으로 켜진 특성(직접 고른 목록에 없는 것). */
   autoFeatures: 공고특성[];
   smallBusiness: boolean | null;
-  /** 헤더 「공고매칭 n/3」 — 지역·대분류·규모 판정이 되는가. */
+  /** 헤더 「공고필터 n/3」 — 지역·대분류·규모 판정이 되는가. */
   ready: number;
 }
 
