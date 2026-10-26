@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { Meeting } from "@/types/meeting";
-import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, DB_SHEET_QUALIFIED_RESULTS, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, backfillDbSheetDates, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetChange } from "@/types/db-sheet";
+import { DbSheetLeadInput, DbSheetDate, DbSheetResult, DbSheetManualStage, DbSheetAbsence, isSimilarDbSheetCompany, isQualifiedDbSheetContact, DB_SHEET_QUALIFIED_RESULTS, nextDbSheetFirstContact, dbSheetContactStage, autoDbSheetNextContact, backfillDbSheetDates, DB_SHEET_MEETING_STAGE, DB_SHEET_MEETING_DELETED, type DbSheetLead, type DbSheetContext, type DbSheetTrashItem, type DbSheetChange } from "@/types/db-sheet";
 import { getDbPool, dbEnabled } from "./client";
 import {hydrateRecording,settleRecording,withInflowStatus,recordedInflow,inflowBlockReason,contributionImpact,meetingImpact,DbSheetOperationBlocked} from "./db-sheet-recording";
 export {DbSheetOperationBlocked} from './db-sheet-recording';
@@ -248,11 +248,13 @@ export async function deleteDbSheetLead(ctx:DbSheetContext,id:string,revision:nu
   const blockedReason=await deleteBlockReason(c,ctx,old);const impact=contributionImpact(old,null);if(blockedReason)impact.blockedReason=blockedReason;
   if(preview)return {lead:old,changedSales:[],impact};
   if(blockedReason)throw new DbSheetOperationBlocked(blockedReason);
+  // 지우기 전에 휴지통에 그대로 보관한다(되돌리기용). STEP 2 기여분은 지금 뺀다.
+  await moveToTrash(c,ctx,old);
   const changedSales=await applyDeltas(c,ctx,await contributions(c,ctx,old,-1));
   await c.query('delete from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2',[ctx.spreadsheetId,id]);
   await c.query('delete from db_sheet_history where spreadsheet_id=$1 and lead_id=$2',[ctx.spreadsheetId,id]);
   await c.query('delete from db_sheet_leads where spreadsheet_id=$1 and id=$2',[ctx.spreadsheetId,id]);
-  // Keep the tombstone until Sheets/Calendar convergence; permanent DB deletion forbids restoration.
+  // Keep the tombstone until Sheets/Calendar convergence; 휴지통에서 되돌리면 표시를 지운다.
   if(old.meetingId)await c.query("update sheet_rows set payload=payload||'{\"_dbSheetLeadDeleted\":true}'::jsonb,mirror_pending=true,updated_at=now() where spreadsheet_id=$1 and tab='meetings' and row_key=$2 and coalesce((payload->>'_cleared')::boolean,false)",[ctx.spreadsheetId,old.meetingId]);
   return {lead:old,changedSales,impact,meetingId:old.meetingId??undefined};
  });
@@ -328,4 +330,51 @@ export async function unlinkDbSheetMeeting(ctx:DbSheetContext,leadId:string,expe
   lead.stage=dbSheetContactStage({...lead,stage:"",hasQualifiedContact:lead.hasQualifiedContact??!!lead.first});
   await persist(c,ctx,lead);return {lead,changedSales:[]};
  });
+}
+
+/** 휴지통(2026-10-26 belie 「10초가 아니라 휴지통에서 되돌리기, 비우기도」) — 삭제 직전 DB·상담 기록·이력을 sheet_rows(tab=db_sheet_trash)에 그대로 보관한다.
+ *  시트 미러 대상이 아니다(mirror_pending=false). 되돌리면 같은 id 로 다시 넣고 STEP 2 기여분을 되살린다. 비우면 보관본만 지운다. */
+const TRASH_TAB="db_sheet_trash";
+type TrashSnapshot={lead:DbSheetLead;contacts:Record<string,unknown>[];history:Record<string,unknown>[];deletedAt:string};
+async function moveToTrash(c:PoolClient,ctx:DbSheetContext,old:DbSheetLead){
+ const contacts=(await c.query("select contact_date::text as contact_date,qualified,result,note from db_sheet_contacts where spreadsheet_id=$1 and lead_id=$2",[ctx.spreadsheetId,old.id])).rows;
+ const history=(await c.query("select revision,data,recorded_at::text as recorded_at from db_sheet_history where spreadsheet_id=$1 and lead_id=$2",[ctx.spreadsheetId,old.id])).rows;
+ const raw=(await c.query("select data from db_sheet_leads where spreadsheet_id=$1 and id=$2",[ctx.spreadsheetId,old.id])).rows[0]?.data??old;
+ const snapshot:TrashSnapshot={lead:{...raw,_recorded:old._recorded},contacts,history,deletedAt:new Date().toISOString()};
+ await c.query(`insert into sheet_rows(cohort,email,spreadsheet_id,tab,row_key,payload,mirror_pending) values($1,$2,$3,$4,$5,$6::jsonb,false)
+  on conflict(spreadsheet_id,tab,row_key) do update set payload=excluded.payload,updated_at=now()`,[ctx.cohort,ctx.email,ctx.spreadsheetId,TRASH_TAB,old.id,JSON.stringify(snapshot)]);
+}
+export async function listDbSheetTrash(ctx:DbSheetContext):Promise<DbSheetTrashItem[]>{
+ guard(ctx);const r=await getDbPool().query("select payload from sheet_rows where spreadsheet_id=$1 and tab=$2 order by payload->>'deletedAt' desc",[ctx.spreadsheetId,TRASH_TAB]);
+ return r.rows.map(({payload:p}:{payload:TrashSnapshot})=>({id:p.lead.id,company:p.lead.company,owner:p.lead.owner,phone:p.lead.phone,channel:p.lead.channel,supplier:p.lead.supplier,date:p.lead.date,deletedAt:p.deletedAt}));
+}
+/** 되돌리기 — 같은 업체가 이미 있으면(allowDuplicate 아니면) DbSheetDuplicate. 한 건이라도 막히면 전부 되돌리지 않는다. */
+export async function restoreDbSheetTrash(ctx:DbSheetContext,ids:string[],allowDuplicate=false):Promise<DbSheetChange[]>{
+ z.array(z.string().uuid()).min(1).max(500).parse(ids);
+ return transaction(ctx,async c=>{
+  const out:DbSheetChange[]=[];
+  for(const id of ids){
+   const row=(await c.query("select payload from sheet_rows where spreadsheet_id=$1 and tab=$2 and row_key=$3 for update",[ctx.spreadsheetId,TRASH_TAB,id])).rows[0];
+   if(!row)continue;const snap=row.payload as TrashSnapshot;
+   if(await read(c,ctx,id)){await c.query("delete from sheet_rows where spreadsheet_id=$1 and tab=$2 and row_key=$3",[ctx.spreadsheetId,TRASH_TAB,id]);continue;}
+   if(!allowDuplicate)await assertNotDuplicate(c,ctx,snap.lead);
+   const stored={...snap.lead};
+   await c.query(`insert into db_sheet_leads(spreadsheet_id,id,revision,data,meeting_id) values($1,$2,$3,$4::jsonb,$5)`,[ctx.spreadsheetId,id,stored.revision,JSON.stringify(stored),stored.meetingId??null]);
+   for(const h of snap.history)await c.query("insert into db_sheet_history(spreadsheet_id,lead_id,revision,data,recorded_at) values($1,$2,$3,$4::jsonb,$5::timestamptz)",[ctx.spreadsheetId,id,h.revision,JSON.stringify(h.data),h.recorded_at]);
+   for(const x of snap.contacts)await c.query("insert into db_sheet_contacts(spreadsheet_id,lead_id,contact_date,qualified,result,note) values($1,$2,$3::date,$4,$5,$6) on conflict do nothing",[ctx.spreadsheetId,id,x.contact_date,x.qualified,x.result,x.note]);
+   if(stored.meetingId)await c.query("update sheet_rows set payload=payload-'_dbSheetLeadDeleted',updated_at=now() where spreadsheet_id=$1 and tab='meetings' and row_key=$2",[ctx.spreadsheetId,stored.meetingId]);
+   const changedSales=await applyDeltas(c,ctx,await contributions(c,ctx,snap.lead,1));
+   await c.query("delete from sheet_rows where spreadsheet_id=$1 and tab=$2 and row_key=$3",[ctx.spreadsheetId,TRASH_TAB,id]);
+   const lead=await read(c,ctx,id);if(!lead)throw new DbSheetConflict();
+   out.push({lead:withInflowStatus(lead),changedSales,impact:contributionImpact(null,lead)});
+  }
+  return out;
+ });
+}
+/** 영구 삭제 — ids 가 없으면 휴지통 전체. 보관본만 지운다(STEP 2 기여분은 휴지통으로 옮길 때 이미 뺐다). */
+export async function emptyDbSheetTrash(ctx:DbSheetContext,ids?:string[]):Promise<number>{
+ guard(ctx);if(ids)z.array(z.string().uuid()).max(500).parse(ids);
+ const r=ids?await getDbPool().query("delete from sheet_rows where spreadsheet_id=$1 and tab=$2 and row_key=any($3::text[])",[ctx.spreadsheetId,TRASH_TAB,ids])
+  :await getDbPool().query("delete from sheet_rows where spreadsheet_id=$1 and tab=$2",[ctx.spreadsheetId,TRASH_TAB]);
+ return r.rowCount??0;
 }

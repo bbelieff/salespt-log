@@ -4,7 +4,7 @@ import React,{act,createElement} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {Grid} from '@/app/(app)/db-sheet/_components/Grid';
-import {BulkBar,DeleteUndoBar} from '@/app/(app)/db-sheet/_components/BulkBar';
+import {BulkBar,TrashNoticeBar} from '@/app/(app)/db-sheet/_components/BulkBar';
 import {StageControls} from '@/app/(app)/db-sheet/_components/StageControls';
 import {blank,type Key} from '@/app/(app)/db-sheet/_components/model';
 import {restoreVisibleColumns} from '@/app/(app)/db-sheet/_components/visible-columns';
@@ -72,21 +72,21 @@ it('selects rows by checkbox without opening DB정보 and selects all visible ro
  view({selected:new Set(['a','b'])});expect(all.checked).toBe(true);
 });
 it('renders the bulk bar above the table and disables actions until something is selected',()=>{
- const onInflow=vi.fn(),onDelete=vi.fn(),onClear=vi.fn();
- const bar=(count:number)=>createElement(BulkBar,{count,busy:false,message:'',onInflow,onDelete,onClear});
+ const onInflow=vi.fn(),onDelete=vi.fn(),onClear=vi.fn(),onSupplier=vi.fn();
+ const bar=(count:number)=>createElement(BulkBar,{count,busy:false,message:'',onInflow,onSupplier,onDelete,onClear});
  renderGrid({bulkBar:bar(0)});
  const btn=(t:string)=>[...host.querySelectorAll<HTMLButtonElement>('.sheet-bulk-bar button')].find(x=>x.textContent===t);
  expect(btn('유입 반영')!.disabled).toBe(true);expect(btn('삭제')!.disabled).toBe(true);
  renderGrid({bulkBar:bar(2)});
  expect(host.querySelector('.sheet-bulk-bar')!.textContent).toContain('2줄 선택됨');
- act(()=>btn('유입 반영')!.click());act(()=>btn('유입 미반영')!.click());act(()=>btn('삭제')!.click());act(()=>btn('선택 해제')!.click());
- expect(onInflow.mock.calls).toEqual([[true],[false]]);expect(onDelete).toHaveBeenCalledOnce();expect(onClear).toHaveBeenCalledOnce();
+ act(()=>btn('유입 반영')!.click());act(()=>btn('유입 미반영')!.click());act(()=>btn('공급처 바꾸기')!.click());act(()=>btn('삭제')!.click());act(()=>btn('선택 해제')!.click());
+ expect(onInflow.mock.calls).toEqual([[true],[false]]);expect(onSupplier).toHaveBeenCalledOnce();expect(onDelete).toHaveBeenCalledOnce();expect(onClear).toHaveBeenCalledOnce();
 });
-it('undo bar shows the STEP 2 cleanup and calls undo',()=>{
- const onUndo=vi.fn();
- act(()=>root.render(createElement(DeleteUndoBar,{deleting:{count:3,inflow:2,contacts:1,meetings:0},onUndo})));
- expect(host.textContent).toContain('3건을 삭제했어요 · STEP 2 유입 2건·상담 1건도 함께 정리돼요');
- act(()=>[...host.querySelectorAll('button')].find(x=>x.textContent==='되돌리기')!.click());expect(onUndo).toHaveBeenCalledOnce();
+it('trash notice shows the STEP 2 cleanup and opens the trash (2026-10-26)',()=>{
+ const onOpen=vi.fn(),onClose=vi.fn();
+ act(()=>root.render(createElement(TrashNoticeBar,{deleting:{count:3,inflow:2,contacts:1,meetings:0},onOpen,onClose})));
+ expect(host.textContent).toContain('3건을 휴지통으로 옮겼어요 · STEP 2 유입 2건·상담 1건도 함께 정리돼요');
+ act(()=>[...host.querySelectorAll('button')].find(x=>x.textContent==='휴지통 열기')!.click());expect(onOpen).toHaveBeenCalledOnce();
 });
 it('stage controls: two end buttons, a return button when parked, nothing for meeting-linked rows',async()=>{
  const onStage=vi.fn(async()=>{});

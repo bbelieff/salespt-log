@@ -19,11 +19,13 @@ import {ImportDialog} from './_components/ImportDialog';
 import {DbDetail} from './_components/DbDetail';
 import {useDbSheet} from './_components/use-db-sheet';
 import {SupplierSummary} from './_components/SupplierSummary';
-import {BulkBar,DeleteUndoBar,bulkOutcomeText} from './_components/BulkBar';
+import {BulkBar,TrashNoticeBar,bulkOutcomeText} from './_components/BulkBar';
+import {TrashDialog} from './_components/TrashDialog';
+import {BulkSupplierDialog} from './_components/BulkSupplierDialog';
 import {restoreVisibleColumns} from './_components/visible-columns';
 import MobileViewOptions from './_components/MobileViewOptions';
 import MobileFilterMenu from './_components/MobileFilterMenu';
-import {Plus,ClipboardPaste,SlidersHorizontal} from 'lucide-react';
+import {Plus,ClipboardPaste,SlidersHorizontal,Trash2} from 'lucide-react';
 import {STATUS_FILTERS,filterDbSheetRows,hasStatusRestriction,toggleStatusFilter,type StatusFilterId} from './_components/status-filter';
 import './db-sheet.css';
 import './recording.css';
@@ -42,6 +44,7 @@ export default function DbSheetPage(){
  const [mobile,setMobile]=useState(false),[optionsOpen,setOptionsOpen]=useState(false),[mobileToolsTarget,setMobileToolsTarget]=useState<HTMLDivElement|null>(null);
  const [mobileFilter,setMobileFilter]=useState<'date'|'status'|null>(null),dateTrigger=useRef<HTMLButtonElement>(null),statusTrigger=useRef<HTMLButtonElement>(null);
  const [recording,setRecording]=useState<{id:string;deleting:boolean}|null>(null);
+ const [trashOpen,setTrashOpen]=useState(false),[supplierOpen,setSupplierOpen]=useState(false);
  const [picked,setPicked]=useState<ReadonlySet<string>>(()=>new Set()),[bulkBusy,setBulkBusy]=useState(false),[bulkMessage,setBulkMessage]=useState('');
  const [summaryOpen,setSummaryOpen]=useState(false),listTop=useRef<HTMLSpanElement>(null);
  useEffect(()=>{setMounted(true);const params=new URLSearchParams(window.location.search),requested=params.get('lead');if(requested)setDetail(requested);if(params.get('view')==='suppliers')setSummaryOpen(true);document.body.classList.add('db-sheet-route');try{const keys=restoreVisibleColumns(key=>localStorage.getItem(key));if(keys)setVisible(keys);}catch{}return()=>document.body.classList.remove('db-sheet-route');},[]);
@@ -58,6 +61,7 @@ export default function DbSheetPage(){
  function pick(ids:string[],checked:boolean){setBulkMessage('');setPicked(current=>{const next=new Set(current);for(const id of ids){if(checked)next.add(id);else next.delete(id);}return next;});}
  // 보이는(필터에 걸린) 줄 중 체크한 것만 바꾼다 — 숨은 줄이 몰래 바뀌지 않게.
  async function bulkInflow(value:boolean){setBulkBusy(true);setBulkMessage('');try{const out=await data.bulkInflow([...chosen],value);setBulkMessage(bulkOutcomeText(value?'유입 반영':'유입 미반영',out));}finally{setBulkBusy(false);}}
+ async function bulkSupplier(patch:{channel?:string;supplier?:string}){setBulkBusy(true);setBulkMessage('');try{const out=await data.bulkSupplier([...chosen],patch);setBulkMessage(bulkOutcomeText('공급처 변경',out));}finally{setBulkBusy(false);}}
  async function bulkDelete(){setBulkBusy(true);setBulkMessage('');try{const ids=[...chosen];const out=await data.scheduleDelete(ids);setPicked(current=>new Set([...current].filter(id=>!ids.includes(id)||out.blocked.some(b=>b.id===id))));if(out.blocked.length)setBulkMessage(bulkOutcomeText('삭제',out));}finally{setBulkBusy(false);}}
  function resetFilters(){setSearch('');setSelectedSuppliers([]);setFrom('');setTo('');setPeriod('all');setSelectedStatuses([]);}
  // 공급처 줄은 같은 다중선택에 더하거나 뺀다. 합계는 전체 선택을 해제한다. 모바일은 요약 아래로 밀려난 목록 첫 줄로 내려 준다.
@@ -92,21 +96,23 @@ export default function DbSheetPage(){
    {!mobile&&activeFilters&&<button className="sheet-text-btn" onClick={resetFilters}>초기화</button>}
   </div>
   {!mobile&&tableTools}
-  <div className="sheet-add-actions">{mobile&&<button type="button" className="sheet-btn sheet-view-options-trigger" aria-label={`설정(보기 옵션)${activeFilters?' 선택됨':''}`} title="설정(보기 옵션)" aria-haspopup="dialog" aria-expanded={optionsOpen} onClick={()=>{setMobileFilter(null);setOptionsOpen(true);}}><SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true"/></button>}<button className="sheet-btn" aria-label="직접 입력" title="직접 입력" onClick={()=>setDraft({...blank(),date:todayKST()})}><Plus className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">＋ 직접 입력</span></button><button className="sheet-btn primary" aria-label={mobile?'DB 붙여넣기/가져오기':'DB 가져오기'} title={mobile?'DB 붙여넣기/가져오기':'DB 가져오기'} onClick={()=>setImporting(true)}><ClipboardPaste className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">DB 가져오기</span></button></div>
+  <div className="sheet-add-actions">{mobile&&<button type="button" className="sheet-btn sheet-view-options-trigger" aria-label={`설정(보기 옵션)${activeFilters?' 선택됨':''}`} title="설정(보기 옵션)" aria-haspopup="dialog" aria-expanded={optionsOpen} onClick={()=>{setMobileFilter(null);setOptionsOpen(true);}}><SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true"/></button>}{!mobile&&<button className="sheet-btn" aria-label="휴지통" title="휴지통" onClick={()=>setTrashOpen(true)}><span className="app-header-pill sheet-toolbar-pill">휴지통</span></button>}<button className="sheet-btn" aria-label="직접 입력" title="직접 입력" onClick={()=>setDraft({...blank(),date:todayKST()})}><Plus className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">＋ 직접 입력</span></button><button className="sheet-btn primary" aria-label={mobile?'DB 붙여넣기/가져오기':'DB 가져오기'} title={mobile?'DB 붙여넣기/가져오기':'DB 가져오기'} onClick={()=>setImporting(true)}><ClipboardPaste className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">DB 가져오기</span></button></div>
  </div>
  {!mobile&&<>{summary}{quickFilters}{columnSettings}</>}
- {mobile&&<MobileViewOptions open={optionsOpen} count={filtered.length} onClose={()=>setOptionsOpen(false)} onReset={resetFilters}><div ref={setMobileToolsTarget}/>{tableTools}{summary}{columnSettings}</MobileViewOptions>}
+ {mobile&&<MobileViewOptions open={optionsOpen} count={filtered.length} onClose={()=>setOptionsOpen(false)} onReset={resetFilters}><div ref={setMobileToolsTarget}/>{tableTools}{summary}{columnSettings}<button type="button" className="sheet-btn sheet-trash-open" onClick={()=>{setOptionsOpen(false);setTrashOpen(true);}}><Trash2 size={16} aria-hidden="true"/>휴지통</button></MobileViewOptions>}
  {mobile&&mobileFilter&&(mobileFilter==='date'?dateTrigger.current:statusTrigger.current)&&<MobileFilterMenu key={mobileFilter} title={mobileFilter==='date'?'유입일':'상태'} anchor={(mobileFilter==='date'?dateTrigger.current:statusTrigger.current)!} onClose={()=>setMobileFilter(null)}>{mobileFilter==='date'?dateFilter:statusFilter}</MobileFilterMenu>}
 
  <span ref={listTop} aria-hidden="true" className="block scroll-mt-app-content"/>
- {data.deleting&&<DeleteUndoBar key={JSON.stringify(data.deleting)} deleting={data.deleting} onUndo={data.undoDelete}/>}
+ {data.deleting&&<TrashNoticeBar key={JSON.stringify(data.deleting)} deleting={data.deleting} onOpen={()=>setTrashOpen(true)} onClose={data.undoDelete}/>}
  {data.notice&&<p role="alert" className="sheet-error">{data.notice} <button type="button" className="sheet-text-btn" onClick={data.clearNotice}>닫기</button></p>}
  {data.addition&&<ImportResultNotice key={JSON.stringify(data.addition)} result={data.addition} onClose={data.clearAddition}/>}
- <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onChange={data.edit} selected={chosen} onSelect={pick} bulkBar={<BulkBar count={chosen.size} busy={bulkBusy} message={bulkMessage} onInflow={v=>void bulkInflow(v)} onDelete={()=>void bulkDelete()} onClear={()=>{setPicked(new Set());setBulkMessage('');}}/>}/>
+ <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onChange={data.edit} selected={chosen} onSelect={pick} bulkBar={<BulkBar count={chosen.size} busy={bulkBusy} message={bulkMessage} onInflow={v=>void bulkInflow(v)} onSupplier={()=>setSupplierOpen(true)} onDelete={()=>void bulkDelete()} onClear={()=>{setPicked(new Set());setBulkMessage('');}}/>}/>
  </section></PageContainer></div>
  {selected&&<DbDetail key={selected.id} row={selected} onStage={v=>data.stage(selected.id,v)} onAbsence={(entry,remove)=>data.absence(selected.id,entry,remove)} onLink={id=>data.linkMeeting(selected.id,id)} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
  {draft&&<DirectInputDialog initial={draft} rows={rows} onClose={()=>setDraft(null)} onExisting={id=>{setDraft(null);setDetail(id);}} onSave={async(row,allow)=>{await data.add([row],row.id,allow?[row.id]:[]);setDraft(null);}}/>}
  {importing&&<ImportDialog accountKey={accountKey} rows={rows} onExisting={id=>{setImporting(false);setDetail(id);}} onClose={()=>setImporting(false)} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);}}/>}
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
+ {trashOpen&&<TrashDialog onList={data.listTrash} onRestore={data.restoreTrash} onEmpty={data.emptyTrash} onClose={()=>setTrashOpen(false)}/>}
+ {supplierOpen&&<BulkSupplierDialog count={chosen.size} suppliers={data.suppliers} onApply={bulkSupplier} onClose={()=>setSupplierOpen(false)}/>}
  </SupplierOptions.Provider>;
 }

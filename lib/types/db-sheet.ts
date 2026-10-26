@@ -121,3 +121,5 @@ export type DbSheetFollowUp = { generation: number; completedGeneration: number 
 export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;manualStage?:DbSheetManualStage;absences?:DbSheetAbsence[];linkedExisting?:boolean;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp;/** 읽기 투영 전용 — 연결된 살아 있는 계약의 실무/수납 행(「STEP 4 실무/수납 →」 바로가기, 2026-10-25). 저장하지 않는다. */contractRow?:number};
 export type DbSheetContext = { spreadsheetId:string;cohort:string;email:string };
 export type DbSheetChange = {lead:DbSheetLead;changedSales:{date:string;channel:z.infer<typeof Channel>}[];meetingId?:string;impact?:DbSheetImpact};
+/** 휴지통 한 줄(2026-10-26) — 삭제한 DB 보관본 요약. 되돌리면 같은 id 로 돌아온다. */
+export type DbSheetTrashItem = {id:string;company:string;owner:string;phone:string;channel:string;supplier:string;date:string;deletedAt:string};

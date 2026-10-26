@@ -23,6 +23,7 @@ vi.mock("@/repo/db/db-sheet", () => ({
   DbSheetConflict: class extends Error {}, listDbSheet: mocks.list,
   setDbSheetFirstDate:mocks.firstDate,changeDbSheetInflow:mocks.inflow,saveDbSheetLead: mocks.save, scheduleDbSheetContact: mocks.schedule, saveDbSheetContact: mocks.contact,
   registerDbSheetMeeting: mocks.meeting, importDbSheetLeads: mocks.batch,
+  listDbSheetTrash: vi.fn(async () => []), restoreDbSheetTrash: vi.fn(async () => []), emptyDbSheetTrash: vi.fn(async () => 0),
 }));
 vi.mock("@/service/sales-write", () => ({ queueSalesRowSync: mocks.salesSync }));
 vi.mock("@/service/meetings-write", () => ({ queueMeetingSheetSync: mocks.meetingSync }));

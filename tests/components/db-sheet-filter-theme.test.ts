@@ -48,7 +48,7 @@ it('keeps compact parallel filters and save signals without shipping synthetic l
 });
 it('keeps three neutral circular actions above one 34px filter row without changing existing actions or 48px rows',()=>{
  const page=readFileSync('app/(app)/db-sheet/page.tsx','utf8'),css=readFileSync('app/(app)/db-sheet/compact.css','utf8');
- expect(page).toContain("import {Plus,ClipboardPaste,SlidersHorizontal} from 'lucide-react'");expect(page).not.toContain('<Upload');
+ expect(page).toContain("import {Plus,ClipboardPaste,SlidersHorizontal,Trash2} from 'lucide-react'");expect(page).not.toContain('<Upload');
  expect(page).toContain('<ClipboardPaste className="sheet-mobile-action-icon" size={18} strokeWidth={1.75}');
  expect(page.match(/size=\{18\} strokeWidth=\{1\.75\}/g)).toHaveLength(3);
  expect(page).toContain("유입일<DisclosureChevron open={mobileFilter==='date'} />");expect(page).toContain("상태<DisclosureChevron open={mobileFilter==='status'} />");

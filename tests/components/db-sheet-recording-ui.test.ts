@@ -32,12 +32,12 @@ it('reports a missing projection as an error and preserves both authoritative in
 });
 it('영구삭제 창에는 STEP 2 기록 설정 스위치가 없다(2026-10-25 belie: 상담·미팅 반영 설정 제거)',async()=>{
  await act(async()=>root.render(createElement(RecordingDialog,{row:blank(),deleting:true,onPreview:async()=>({inflow:0,contacts:0,meetings:0,rows:[]}),onConfirm:vi.fn(async()=>{}),onClose:vi.fn()})));
- expect(host.querySelector('input[type=checkbox]')).toBeNull();expect(host.textContent).toContain('되살릴 수 없어요');
+ expect(host.querySelector('input[type=checkbox]')).toBeNull();expect(host.textContent).toContain('휴지통에서 되돌릴 수 있어요');
 });
 it('prevents permanent deletion when the server reports an active linked record',async()=>{
  const confirm=vi.fn(async()=>{});
  await act(async()=>root.render(createElement(RecordingDialog,{row:blank(),deleting:true,onPreview:async()=>({inflow:0,contacts:0,meetings:0,rows:[],blockedReason:'진행 중 미팅은 STEP 3에서 확인하세요.'}),onConfirm:confirm,onClose:vi.fn()})));
- await act(async()=>button('변경 내용 확인').click());expect(button('영구삭제').disabled).toBe(true);expect(confirm).not.toHaveBeenCalled();expect(host.textContent).toContain('진행 중 미팅');
+ await act(async()=>button('변경 내용 확인').click());expect(button('휴지통으로').disabled).toBe(true);expect(confirm).not.toHaveBeenCalled();expect(host.textContent).toContain('진행 중 미팅');
 });
 it('imports selected rows independently from all/partial inflow choices and passes row-level policy',async()=>{
  const apply=vi.fn(async()=>{});
