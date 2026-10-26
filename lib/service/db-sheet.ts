@@ -9,6 +9,7 @@ import { queueSalesRowSync } from "./sales-write";
 import { queueDbSheetProductionSync } from "./db-sheet-sync";
 import { queueMeetingSheetSync } from "./meetings-write";
 import { projectDbSheetWorkStatus, loadDbSheetWorkProjector } from "./db-sheet-status";
+import { withImportedConsultNote } from "@/lib/analytics/db-sheet-memo";
 
 const revision = z.number().int().positive();
 export const DbSheetCommand = z.discriminatedUnion("action", [
@@ -50,7 +51,7 @@ export const loadDbSheetSuppliers=ledger.listDbSheetSuppliers;
 export const loadDbSheetTrash=ledger.listDbSheetTrash;
 export async function loadDbSheetMeetingCandidates(ctx: DbSheetContext, leadId: string) { return ledger.listDbSheetMeetingCandidates(ctx, leadId); }
 export async function loadDbSheet(ctx: DbSheetContext) {
-  return projectDbSheetWorkStatus(ctx, (await ledger.listDbSheet(ctx)).map(row=>{const {_recorded,...lead}=row;void _recorded;return lead;}));
+  return projectDbSheetWorkStatus(ctx, (await ledger.listDbSheet(ctx)).map(row=>{const {_recorded,...lead}=row;void _recorded;return withImportedConsultNote(lead);}));
 }
 
 function sync(ctx: DbSheetContext, changes: DbSheetChange[]) {
@@ -103,5 +104,5 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
   if(!command.action.endsWith('-preview'))sync(ctx, changes);
   const impact:DbSheetImpact={inflow:0,contacts:0,meetings:0,rows:[]};
   for(const change of changes){if(!change.impact)continue;for(const row of change.impact.rows){const target=impact.rows.find(x=>x.date===row.date&&x.channel===row.channel);if(target){target.inflow+=row.inflow;target.contacts+=row.contacts;target.meetings+=row.meetings;}else impact.rows.push({...row});}impact.inflow+=change.impact.inflow;impact.contacts+=change.impact.contacts;impact.meetings+=change.impact.meetings;if(change.impact.blockedReason)impact.blockedReason=change.impact.blockedReason;}
-  return {leads:command.action==='delete'?[]:projectStatus(changes.map(change => {const {_recorded,...lead}=change.lead;void _recorded;return lead;})),impact,...(command.action==='delete'?{deletedId:command.id}:{})};
+  return {leads:command.action==='delete'?[]:projectStatus(changes.map(change => {const {_recorded,...lead}=change.lead;void _recorded;return withImportedConsultNote(lead);})),impact,...(command.action==='delete'?{deletedId:command.id}:{})};
 }
