@@ -12,3 +12,11 @@
 - 검증자가 찾은 다른 구분자만 있는 앞 빈 행(;;; 뒤 CSV 등) 불일치도 교차51개 사례로 회귀. 도구/의존성 준비 오류와 제품 RED를 구분함.
 - 최종 집중: 신규51+기존80=131 PASS, tsc --noEmit PASS. 전체 hook/CI build/정확한 head 독립 검증·운영 확인은 진행 중.
 - 프로덕션 ImportDialog를 격리한 브라우저에서 NBSP 앞빈줄+CSV의 메모 내 대표자 문구를 올바른 1건으로 배치·공급처 입력 뒤 추가 활성 확인. 최종 head의 모의 저장 확인은 이후 수행. 운영 고객 시험쓰기 없음.
+- 최종 head17b3234e4868992e24bda52e68429f6606801223/treecd016138c10ee842b3feaa82e622cfcace2672a9. 정상 hook check95+4217=4312 PASS, 기존45skip·타입/린트/크기/docdrift PASS, 같은 head 독립 검증 PASS.
+- 최종 head 프로덕션 컴포넌트/CSS 합성 브라우저: NBSP 빈줄+;;; 빈행 뒤 CSV+메모 속 대표자 문구 → 올바른1건·공급처 입력·추가 활성·모의onApply 완료. PC CSS1280에서 dialog좌우50~1230(폭1180), 모바일320/375/430 각각 문서너비 동일·1행. 모바일430에서 완료 출력의 업체/전화010-0000-2001/날짜/공급처 확인. 운영 쓰기0.
+- 브라우저 DOM의 전화값 비교는 도구의 마스킹 영향으로 직접 검증 근거에서 제외하고 실제 화면·모의 저장 출력으로 확인. PC PNG는 캡처 도구가 오른쪽을 자르는 한계, 모바일375 PNG는 전체 확인. 서버/탭/임시 viewport 정리.
+- PR#1188, CI39646317632 build/check 진행 중. actual 학생 원문 대조는 아직 미수신.
+- #1188 squash2e6e12087232d9cfe0c2ceaa5eade7dde27a42a5 병합. CI39646317632 check/build·GitGuardian PASS. 운영 배포 확인 중.
+- 운영 완료: #1188 merge2e6e12087232d9cfe0c2ceaa5eade7dde27a42a5, Deploy39647086934 success, master QA39647086830 success. root/health200·buildzjA8sa8NppDnxoWqTiNc9·새page-5450d60ba0df8c52.js200과 firstRecord/offset/unterminated helper 확인.
+- 운영 가져오기 창: ZW빈줄+;;;빈행+CRLF CSV·메모 속 대표자 문구가 사업자명/대표자/전화/날짜 정상1건. 미완성 첫 CSV 따옴표는 안내 후 입력 단계 유지. 추가 없이 닫음(운영 쓰기0). screenshot artifacts/db-import-boundaries-production.png, live-proof.json.
+- 새 경계51개 및 기존80 집중검사 통과는 결정적 parser 평가이며 실제 모든 자료의 인식률이나 모델 정확도 수치가 아니다. 임의 안내문/불명확 값은 고객 정보일 수 있으므로 무조건 삭제·확정하지 않으며 기존 확인 단계 유지. 원본 수강생 원문 미수신으로 동일 사건 대조는 NOT_RUN.
