@@ -394,7 +394,7 @@ export default function PaymentPage() {
                   onDeleteRequest={() => makeDeleteRequest(selectedCp)}
                   onTerminateRequest={() => setTerminateTarget(selectedCp)}
                   focusTodoId={safeFocusTodoId}
-                  focusedSlot={paymentFocusedSlot(focusPayment, selectedCp.row, listMode === "institution" ? selectedWork?.slot : selectedCompany?.hasProgress ? selectedCompany.work.slot : null)}
+                  focusedSlot={paymentFocusedSlot(focusPayment, selectedCp.row, listMode === "institution" ? selectedWork?.slot : null)}
                   focusRequestId={focusRequestId}
                   highlight={companyQuery}
                   courseStartISO={courseStartISO}
@@ -438,7 +438,7 @@ export default function PaymentPage() {
                   companyInfoDefaultOpen={false}
                   onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
                   onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={safeFocusTodoId}
-                  focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, item.hasProgress ? item.work.slot : null)} courseStartISO={courseStartISO}
+                  focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, null)} courseStartISO={courseStartISO}
                   focusRequestId={focusRequestId}
                 />
               </> : null}

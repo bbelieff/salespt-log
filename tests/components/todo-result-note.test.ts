@@ -71,11 +71,13 @@ describe("「+ 다음」 연계 할 일", () => {
     await act(async () => { next()!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
     expect(createNext).toHaveBeenCalledWith("보완 서류 받기", "2026-10-30"); expect(next()).toBeNull();
   });
-  it("Esc·빈 채로 밖을 누르면 저장 없이 닫힘, 실패면 입력 유지 + 이유", async () => {
+  it("Esc·취소로 저장 없이 닫힘, 바깥(달력)으로 초점이 가도 입력칸 유지, 실패면 입력 유지 + 이유", async () => {
     render(); act(() => q('[aria-label$="다음 할 일 적기"]')!.click()); fill(next()!, "쓰다 말았음");
     act(() => { next()!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
     expect(next()).toBeNull(); expect(createNext).not.toHaveBeenCalled();
     act(() => q('[aria-label$="다음 할 일 적기"]')!.click()); act(() => { next()!.blur(); });
+    expect(next()).not.toBeNull(); // 2026-10-27: 휴대폰에서 달력을 열면 초점이 빠져도 빈 입력칸이 닫히지 않아야 한다
+    act(() => q('[aria-label="다음 할 일 적기 취소"]')!.click());
     expect(next()).toBeNull(); expect(createNext).not.toHaveBeenCalled();
     createNext.mockRejectedValueOnce(new Error("네트워크 오류"));
     act(() => q('[aria-label$="다음 할 일 적기"]')!.click()); fill(next()!, "다시 전화");

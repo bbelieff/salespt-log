@@ -18,7 +18,10 @@ vi.mock("@/app/(app)/payment/_components/useContractCompanyInfo", () => ({ useCo
 let host: HTMLDivElement, root: Root;
 let cp: ContractPayment;
 let save: ReturnType<typeof vi.fn<(next: ContractPayment) => Promise<void>>>;
-const render = () => act(() => root.render(h(ContractRow, { cp, ordinal: 1, pending: false, forceOpen: true, onSave: save, onDeleteRequest: vi.fn(), onTerminateRequest: vi.fn() })));
+const renderOnly = () => act(() => root.render(h(ContractRow, { cp, ordinal: 1, pending: false, forceOpen: true, onSave: save, onDeleteRequest: vi.fn(), onTerminateRequest: vi.fn() })));
+/** 진행건은 접힌 채 시작한다(2026-10-27) — 입력 시험은 펼친 뒤에 한다. */
+const openSlots = () => act(() => host.querySelectorAll<HTMLElement>('[id^="payment-slot-"] [role="button"][aria-expanded="false"]').forEach((b) => b.click()));
+const render = () => { renderOnly(); openSlots(); };
 const field = (placeholder: string) => host.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[placeholder="${placeholder}"]`)!;
 const type = (input: HTMLInputElement | HTMLTextAreaElement, value: string) => act(() => {
   const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -108,4 +111,12 @@ it("does not commit a new draft while moving to its own undo/retry portal", asyn
     const input = field("이 기관 진행 메모"); type(input, "아직 입력 중"); blur(input, button); await wait();
     expect(save).not.toHaveBeenCalled(); expect(input.value).toBe("아직 입력 중");
   } finally { dock.remove(); }
+});
+
+it("진행건은 접힌 채 시작하고, 방금 추가한 빈 진행건만 펼쳐 둔다(2026-10-27)", () => {
+  act(() => root.unmount()); root = createRoot(host); // beforeEach 가 펼쳐 둔 상태를 버리고 처음 연 화면으로
+  cp = contract({ 수납1: slot({ 진행기관: "샘플기관" }), 수납2: slot({}) }); renderOnly();
+  const header = (n: number) => host.querySelector<HTMLElement>(`#payment-slot-${cp.row}-${n} [role="button"][aria-expanded]`);
+  expect(header(1)?.getAttribute("aria-expanded")).toBe("false");
+  if (header(2)) expect(header(2)!.getAttribute("aria-expanded")).toBe("true");
 });

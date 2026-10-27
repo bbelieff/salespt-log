@@ -1,3 +1,5 @@
+## 2026-10-27 · 실무/수납 Todo 고치기·기본 접힘·휴대폰 「+ 다음」 버그·칸 줄이기
+- fix/payment-todo-edit. belie 휴대폰 스크린샷 [1]~[5]. 제목 눌러 고치기(PATCH), 진행건 기본 접힘, 「+ 다음」 달력 열면 초기화되던 버그(blur 닫기 제거), 기록 한 줄·추가 칸 2줄, 「자세히」 날짜·시·분 정렬. [plan](plans/active/payment-todo-edit.md).
 ## 2026-10-27 · 아이폰 날짜 칸 넘침(오류신고) · 오류신고 매일 0시 수집
 - fix/payment-slot-border-mobile. 오류신고 「진행건 파란색 테두리가 끊겨요」(아이폰 440폭, 실무/수납 진행 2). 원인 후보: 사파리 date 입력 고유 최소 너비로 칸이 카드 밖으로 넘침 → globals.css 모든 date 입력 min-width:0 + 수납일 칸 min-w-0. 실제 아이폰 화면은 못 봄(합성 화면에서 넘침 흉내로만 확인) — belie 확인 대기.
 - belie 「하루에 한 번 오전 12시 오류 자동 수집」: 데스크톱 앱 예약 작업 `gyeongnyeong-ilji-bug-report-daily`(매일 00:00, 읽기 전용 SELECT, `개발프로젝트/_bug_reports/<날짜>.md` 요약, 이메일·이름 제외, 상태 변경·수정·발송 없음). 앱이 꺼져 있으면 다음 실행 때 돈다.

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Todo, TodoRecordKind } from "@/types";
 import { newTodoOperationId, useCreateTodo, usePatchTodo, useRemoveTodo } from "@/query/todos-hooks";
 import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
-import TodoFormModal, { type TodoDraftSeed } from "./TodoFormModal";
+import TodoFormModal, { seedFromTodo, type TodoDraftSeed } from "./TodoFormModal";
 import TodoRow from "./TodoRow";
 
 const SLOT_ACCENT = {
@@ -46,6 +46,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
   const [freshId, setFreshId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [seed, setSeed] = useState<TodoDraftSeed | null>(null);
+  const [editTodo, setEditTodo] = useState<Todo | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const saved = institutionRef.trim();
   const effective = saved || (draftInstitution ?? "").trim();
@@ -90,8 +91,9 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
 
   return (
     <div className={`rounded-lg border border-dashed p-2.5 ${accent.shell}`}>
-      <div className="mb-1.5 flex items-center justify-between"><span className="text-xs font-bold text-slate-700">Todo 및 History</span><span className="text-px-11 text-slate-400">캘린더 연동</span></div>
-      {todos.length > 0 && <div className="mb-2 space-y-1.5">{todos.map((t) => (
+      <div className="mb-1.5 text-xs font-bold text-slate-700">할 일</div>
+      {/* 목록은 흰 판 하나 + 줄 구분선(상자 다이어트: 기록마다 상자를 치지 않는다). */}
+      {todos.length > 0 && <div className="mb-2 divide-y divide-slate-100 overflow-hidden rounded-md bg-white ring-1 ring-slate-200">{todos.map((t) => (
         <TodoRow
           key={t.id}
           ref={t.id === focusId ? focusedRef : undefined}
@@ -103,22 +105,25 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
           onToggleDone={(done) => patch.mutate({ contractRef, id: t.id, partial: { 완료여부: done } })}
           onSaveResult={(result) => patch.mutate({ contractRef, id: t.id, partial: { result } })}
           onCreateNext={effective ? (nextTitle, nextDate) => createNext(t, nextTitle, nextDate) : undefined}
+          onEdit={() => setEditTodo(t)}
           onAssignSlot={() => { if (slot) patch.mutate({ contractRef, id: t.id, partial: { slot } }); }}
           onRemove={() => remove.mutate({ contractRef, id: t.id })}
         />
       ))}</div>}
-      <form className="flex min-w-0 flex-wrap items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); void quickAdd(); }}>
-        <div className="flex rounded-md bg-white p-0.5 ring-1 ring-slate-200">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button type="button" key={k} onClick={() => pickKind(k)} aria-pressed={kind === k} className={`h-8 rounded px-2 text-px-11 font-bold ${kind === k ? `${accent.active} text-white` : "text-slate-500"}`}>{k === "todo" ? "Todo" : "History"}</button>)}</div>
-        <input ref={titleRef} aria-label="기록 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={effective ? (kind === "todo" ? "할 일 (예: 재무제표 받기)" : "한 일 (예: 담당자 통화)") : "진행기관 입력 필요"} disabled={!effective} autoComplete="off" enterKeyHint="done" className="h-9 min-w-[140px] flex-[1_1_180px] rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none disabled:bg-slate-100"/>
-        <div className="flex min-w-0 max-w-full items-center gap-1.5">
-          <input aria-label="기록 날짜" type="date" value={date} onChange={(e) => { setDate(e.target.value); setDateTouched(true); }} className="h-9 w-32 min-w-0 rounded-md border border-slate-300 bg-white px-1.5 text-xs"/>
+      {/* 추가 칸 2줄(2026-10-27 belie 「칸 사용이 주먹구구」): 1줄 Todo/History + 제목, 2줄 날짜·추가·자세히. */}
+      <form className="flex min-w-0 flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); void quickAdd(); }}>
+        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex shrink-0 rounded-md bg-white p-0.5 ring-1 ring-slate-200">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button type="button" key={k} onClick={() => pickKind(k)} aria-pressed={kind === k} className={`h-8 rounded px-2 text-px-11 font-bold ${kind === k ? `${accent.active} text-white` : "text-slate-500"}`}>{k === "todo" ? "Todo" : "History"}</button>)}</div>
+        <input ref={titleRef} aria-label="기록 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={effective ? (kind === "todo" ? "할 일" : "한 일") : "진행기관 먼저 입력"} disabled={!effective} autoComplete="off" enterKeyHint="done" className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none disabled:bg-slate-100"/>
+        </div>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <input aria-label="기록 날짜" type="date" value={date} onChange={(e) => { setDate(e.target.value); setDateTouched(true); }} className="h-9 w-32 min-w-0 appearance-none rounded-md border border-slate-300 bg-white px-1.5 text-xs"/>
           <button type="submit" disabled={!canAdd} className="h-9 shrink-0 whitespace-nowrap rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{create.isPending ? "저장 중" : "추가"}</button>
           <button type="button" onClick={openDetail} disabled={!effective} title="시각·종류·상세 내용까지 적기" className="h-9 shrink-0 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">자세히</button>
         </div>
       </form>
-      {error
-        ? <p role="alert" className="mt-1 text-px-11 font-medium text-red-600">{error}</p>
-        : effective && <p className="mt-1 text-px-11 text-slate-500">Enter로 바로 추가 · 날짜를 비우면 {kind === "todo" ? "내일" : "오늘"}로 · 시각은 「자세히」</p>}
+      {error && <p role="alert" className="mt-1 text-px-11 font-medium text-red-600">{error}</p>}
+      {editTodo && <TodoFormModal contractRef={contractRef} institutionRef={editTodo.institutionRef || effective} slot={slot} companyName={companyName} initial={seedFromTodo(editTodo)} editing={editTodo} onClose={() => setEditTodo(null)}/>}
       {seed && <TodoFormModal contractRef={contractRef} institutionRef={effective} slot={slot} companyName={companyName} initial={seed} onClose={() => { setSeed(null); resetDraft(); }}/>}
     </div>
   );
