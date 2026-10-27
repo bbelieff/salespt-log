@@ -301,7 +301,8 @@ export default function ContractRow({
         bare
           ? "flex min-h-0 flex-1 flex-col bg-transparent transition-all duration-200"
           : inline
-            ? "bg-white"
+            // 바탕은 감싼 선택 틀(둥근 아래 모서리·흰 바탕)이 칠한다 — 여기서 네모난 흰 바탕을 깔면 틀의 둥근 모서리 선을 덮어 끊겨 보였다(2026-10-27 오류신고, 아이폰).
+            ? ""
           : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
