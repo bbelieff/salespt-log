@@ -12,6 +12,7 @@
 
 
 
+import AppToast from "@/components/ui/AppToast";
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
@@ -405,9 +406,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
       </div>
       {/* 토스트 */}
       {toast && (
-        <div className="fixed left-1/2 top-5 z-[200] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
+        <AppToast>{toast}</AppToast>
       )}
 
       {/* 삭제 확인 모달 */}

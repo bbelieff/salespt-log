@@ -1,5 +1,6 @@
 /** 컨택관리 탭 — 4채널 4지표 + 미팅 슬롯. SSOT: docs/design/prototypes/contact-daily-input.html v7. */
 "use client";
+import AppToast from "@/components/ui/AppToast";
 import DeletedMeetings from "@/components/meeting-safety/DeletedMeetings";
 import { useMeetingDeleteConfirm } from "@/components/meeting-safety/use-meeting-delete-confirm";
 import PageContainer from "@/components/PageContainer";
@@ -456,9 +457,7 @@ export default function ContactPage() {
       {receipt && <RecordMoveReceipt receipt={receipt} onClose={clearReceipt} />}
 
       {toast && (
-        <div className="fixed bottom-[152px] left-1/2 z-[100] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
+        <AppToast raised>{toast}</AppToast>
       )}
 
       <ContactResultModals

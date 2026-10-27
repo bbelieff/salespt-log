@@ -5,6 +5,7 @@
  */
 "use client";
 
+import SkeletonBars from "@/components/ui/SkeletonBars";
 import { useEffect, useRef, useState } from "react";
 import type { CompanyInfo } from "@/types";
 import CompanyInfoEditor from "./CompanyInfoEditor";
@@ -109,8 +110,8 @@ export default function CompanyInfoContractSection({
   if (!계약일 || !업체명) return null;
   if (load.key !== requestKey || load.status === "loading")
     return (
-      <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-400">
-        🏢 업체정보 불러오는 중…
+      <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2">
+        <SkeletonBars label="업체정보 불러오는 중…" rows={2} />
       </div>
     );
   if (load.status === "error")

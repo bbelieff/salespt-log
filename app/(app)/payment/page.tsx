@@ -11,6 +11,7 @@
  */
 "use client";
 
+import AppToast from "@/components/ui/AppToast";
 import PageContainer from "@/components/PageContainer";
 import usePcBreakpoint from "./_components/usePcBreakpoint";
 
@@ -455,9 +456,7 @@ export default function PaymentPage() {
 
       {/* 토스트 */}
       {toast && (
-        <div className="fixed left-1/2 top-5 z-[200] -translate-x-1/2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
+        <AppToast>{toast}</AppToast>
       )}
 
       {terminateTarget && (  /* 계약해지 모달 (contract-termination) */

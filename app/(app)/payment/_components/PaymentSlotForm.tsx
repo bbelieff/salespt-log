@@ -218,7 +218,7 @@ export default function PaymentSlotForm({
       </div>
 
       {open && (
-        <>
+        <div className="card-open-anim">
 
 
       {/* 진행도 볼륨바 (5등분 클릭) */}
@@ -333,7 +333,7 @@ export default function PaymentSlotForm({
           />
         </div>
       </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -4,6 +4,7 @@
  * 계산은 supplier-summary.ts(순수 함수). 줄을 누르면 기존 공급처 필터(onSelect)가 바뀌고 아래 목록이 그 공급처만 남는다.
  * PC(pc: 1024px~) 표 · 모바일 카드. 정본: docs/design/components.md「DB관리시트」.
  */
+import SkeletonBars from "@/components/ui/SkeletonBars";
 import { useMemo, useState, type ReactNode } from "react";
 import ChannelBadge from "@/components/ui/ChannelBadge";
 import type { DbSheetLead } from "@/types/db-sheet";
@@ -122,7 +123,7 @@ export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, 
   });
   const totalProps: RowProps = { row: summary.total, kind: "total", onToggle: () => onSelect("") };
   let body: ReactNode;
-  if (loading) body = <p className="mt-2 text-sm text-slate-500">불러오는 중…</p>;
+  if (loading) body = <SkeletonBars label="불러오는 중…" rows={3} className="mt-2" />;
   // 첫 조회가 실패하면 leads 가 비어 있다 — 「DB가 없어요 · 가져오기」를 보이면 이미 있는 DB를 또 가져오게 된다.
   else if (!leads.length && error) body = <Notice><span>공급처 요약을 불러오지 못했어요. 새로고침해 주세요.</span></Notice>;
   else if (!leads.length) body = <Notice><span>아직 DB가 없어요. DB를 가져오면 공급처별로 상담·미팅·계약을 비교해 드려요.</span><button type="button" className="sheet-btn primary" onClick={onImport}>DB 가져오기</button></Notice>;

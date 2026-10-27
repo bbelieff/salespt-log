@@ -249,3 +249,5 @@ body.db-sheet-route .sheet-step-cell:focus-visible{outline:2px solid #3b82f6;out
 body.db-sheet-route .db-company-form .cg-inline select,body.db-sheet-route .db-company-form input[type=checkbox]{width:auto}
 /* 도달 STEP 칸(2026-10-26): 사이드 탭과 같은 STEP 배지(StepBadge) + 탭 이름. 다른 화면으로 이어지면 파랑 글자 + →, 이 화면(1.5)은 회색. */
 body.db-sheet-route span.sheet-step-cell{cursor:default}body.db-sheet-route .sheet-step-name{font-size:11.5px;font-weight:600;color:#64748b}body.db-sheet-route .sheet-step-name.is-link{color:#1d4ed8;font-weight:700}body.db-sheet-route .sheet-step-cell:hover .sheet-step-name.is-link{text-decoration:underline}
+/* 도달 STEP 배지를 누르면 한 줄 설명(효과 ④, 2026-10-28) — 배지는 설명 단추, 이름·→ 는 이동 링크로 나눴다. */
+body.db-sheet-route .sheet-step-go{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:inherit}body.db-sheet-route .sheet-step-go:focus-visible{outline:2px solid #3b82f6;outline-offset:2px;border-radius:4px}

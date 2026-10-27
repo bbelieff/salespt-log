@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const EDGE = 8;
@@ -26,9 +26,11 @@ interface Props {
   label: string;
   /** 말풍선 본문 (\n 은 줄바꿈으로 표시). */
   text: string;
+  /** 있으면 (?) 대신 이것(예: STEP 배지)을 눌러 연다(효과 ④, 2026-10-28). 바깥 줄 클릭·링크로 번지지 않는다. */
+  trigger?: ReactNode;
 }
 
-export default function HintTooltip({ label, text }: Props) {
+export default function HintTooltip({ label, text, trigger }: Props) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const pinned = useRef(false);
@@ -113,13 +115,14 @@ export default function HintTooltip({ label, text }: Props) {
         }}
         onFocus={() => show(false)}
         onBlur={close}
-        onClick={() => {
+        onClick={(e) => {
+          if (trigger) { e.preventDefault(); e.stopPropagation(); }
           if (open && pinned.current) close();
           else show(true);
         }}
-        className="group -my-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold leading-none text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        className={trigger ? "inline-flex shrink-0 cursor-help items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400" : "group -my-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold leading-none text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"}
       >
-        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 group-hover:border-slate-400">?</span>
+        {trigger ?? <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 group-hover:border-slate-400">?</span>}
       </button>
       {open &&
         typeof document !== "undefined" &&
