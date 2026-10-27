@@ -57,6 +57,7 @@ branch: feat/company-doc-autofill
 ## 7. 배포 · 에셋
 
 - `npm run build` = `npm run vendor:document-ocr && next build`. `.github/workflows/deploy.yml` 은 VPS 에서 `npm ci`(또는 lock 해시 동일 시 스킵 — 새 lock 이라 이번엔 실행) 후 `BUILD_DIST_DIR=.next-build npm run build` 를 부르므로 vendor 가 매 배포 실행된다. 스크립트는 로컬 node_modules 만 복사(네트워크 없음) → `public/document-ocr/`(약 12MB: worker·core simd-lstm·kor/eng best_int gz·pdf.worker). `git reset --hard` 는 untracked 를 지우지 않지만 매 빌드 재생성이라 무관.
+- **PaddleOCR 추가(2026-10-28, `docs/plans/completed/document-ocr-paddle.md`)**: vendor 가 Paddle 워커 번들·ort wasm·모델(공식 배포, sha256 고정, `.cache/document-ocr/` 재사용)을 `public/document-ocr/paddle/` 에 더한다(+42MB). 모델 받기는 이 스크립트의 유일한 네트워크 예외 — 실패하면 경고 후 tesseract 만.
 - `public/document-ocr/` 는 gitignore. `middleware.ts` matcher 에서 `document-ocr/` 제외(정적 에셋에 인증 확인 생략).
 - 데이터 패키지 `@tesseract.js-data/kor`·`eng` 는 MoaWork 처럼 devDependencies — VPS `npm ci` 는 dev 포함(빌드에 typescript 등 필요)이라 설치됨.
 - `check.sh`(CI) 는 build 를 돌리지 않으므로 네트워크·에셋 없이 통과. 로컬 `npm run dev`·`dev:no-watch`·`dev:fresh` 는 `predev*` 훅으로 vendor 를 먼저 돌린다(0.4초, 로컬 복사만).

@@ -20,6 +20,8 @@ export const OCR_LIMITS = {
   pdfRenderScale: 3.5,
   ocrTimeoutMs: 120_000,
   pdfTimeoutMs: 60_000,
+  /** Paddle 한 번 더 읽기 상한 — 첫 사용은 모델·wasm(약 40MB) 받기가 들어간다. 넘으면 tesseract 결과만. */
+  paddleTimeoutMs: 90_000,
   /** same-origin 에셋 경로 — 런타임 CDN 호출 금지. scripts/vendor-document-ocr.mjs 가 채운다. */
   assetBasePath: "/document-ocr",
 } as const;

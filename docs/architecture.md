@@ -55,7 +55,7 @@ types → config → repo → service → app(api·ui) → components
   (`DB_READ_COHORTS`). 기수 하나를 Set 에서 빼면 그 기수만 시트 정본으로 되돌아가는 안전선으로 남겨 둠.
 - **수강생마다 개별 시트**, `email → spreadsheetId` 는 마스터 레지스트리. DB 행도 `spreadsheet_id` 로 사용자 경계를 긋는다.
 - **사용자 입력 보존 가드**: 시트 일괄 쓰기는 대상 셀을 `FORMULA` 로 먼저 읽어 값이 있으면 건너뛴다(CLAUDE.md §2-5).
-- **문서 자동입력**: 서류 OCR(tesseract.js·pdfjs)은 **브라우저 안에서만** — 서버 업로드·외부 API 없음(`lib/document-ocr`).
+- **문서 자동입력**: 서류 OCR(tesseract.js·PaddleOCR·pdfjs)은 **브라우저 안에서만** — 서버 업로드·외부 API 없음(`lib/document-ocr`). 사진·스캔은 두 엔진으로 읽어 칸마다 합친다(`merge.ts`, 2026-10-28).
 
 ## 퍼시스턴스: Google Sheets
 

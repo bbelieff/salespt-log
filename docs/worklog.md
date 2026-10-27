@@ -1,3 +1,7 @@
+## 2026-10-28 · 문서 자동입력에 PaddleOCR 추가 (tesseract 유지 + 칸별 합치기)
+- feat/document-ocr-paddle. belie 「PaddleOCR 도입 고려, 지금 잘 읽는 부분은 살리고 붙여라」. 합성 서류 실측: tesseract 한글 오독 다수, 공식 PaddleOCR(PP-OCRv5 한국어, 브라우저 wasm) 거의 정확. → PDF 텍스트층·tesseract·파서 그대로 두고, 사진·스캔만 Paddle 로 한 번 더 읽어 칸마다 합침(`merge.ts`). 워커로 돌려 화면 안 멈춤, 실패 시 지금과 동일.
+- 에셋: 공식 SDK+ort wasm 을 esbuild 워커 1파일로, 모델 2개는 공식 주소 sha256 고정(벤더의 유일한 네트워크 예외, 실패 시 경고 후 tesseract 만). 첫 사용 기기 +42MB 1회. 계획: [document-ocr-paddle](plans/completed/document-ocr-paddle.md). 되돌리기 = squash revert.
+
 ## 2026-10-28 · 운영 미반영 점검 · 마감 안 된 계획 정리 · 디스크 정리
 - docs/close-out-merged-plans. belie 「운영반영 안 된 거 찾아 반영」: master 최신 e7247980 배포 성공 확인. 열린 PR 3건 = #1136(이메일, census 시트 403·429 미해소로 Draft — 막힘 그대로), #1158(RLS 잠금 migration 파일, 운영 적용은 보안 결정 필요), #798(머지 보류 명시). 그 밖에 미배포 코드 없음.
 - 머지·배포 끝났는데 계획이 active 에 남은 3건(#1186·#1187·#1188)을 completed 로 옮기고, pluuug-handoff 진행표의 「PR 검증 중」 8줄을 PR 이력으로 대조해 완료 처리.

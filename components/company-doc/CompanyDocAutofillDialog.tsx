@@ -19,6 +19,7 @@ import { OCR_ACCEPT_ATTR, OCR_UNAVAILABLE_MESSAGE, validateOcrFile } from "@/lib
 import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
 import { buildDiffRows, defaultCheckFor, selectedPatch, withBaseYear } from "@/lib/document-ocr/diff";
+import { mergeParseResults } from "@/lib/document-ocr/merge";
 import { DOC_TYPES, DOC_TYPE_LABEL, type CompanyInfoKey, type DocType } from "@/lib/document-ocr/types";
 import { MEMO_MAX_BYTES, decodeMemoBytes, isMemoFile } from "@/lib/document-ocr/memo-file";
 import type { MemoParseResult } from "@/lib/document-ocr/parse-memo";
@@ -47,8 +48,17 @@ type Row = {
   ratio: number;
   message: string;
   text: string;
+  /** PaddleOCR 로 한 번 더 읽은 글(가린 뒤) — 있으면 tesseract 결과와 칸마다 합친다. */
+  altText?: string;
   docType: DocType;
 };
+
+/** Paddle 결과가 있으면 같은 문서 종류로 둘 다 읽어 칸마다 합친다(Paddle 이 동점 우선). */
+function parseBoth(f: Row, baseYear: number) {
+  const main = parseDocument(f.docType, f.text, { baseYear });
+  const alt = f.altText ? parseDocument(f.docType, f.altText, { baseYear }) : null;
+  return main && alt ? mergeParseResults([alt, main]) : main ?? alt;
+}
 
 /** 비교표 행 순서·라벨 = 편집기 화면 순서([대표자] → [기업정보] → [재무]) · 같은 라벨(매출은 기준 연도 포함). */
 function fieldOrder(baseYear: number) {
@@ -91,6 +101,8 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
     document.getElementById(titleId)?.focus({ preventScroll: true });
     return () => {
       abortRef.current?.abort();
+      // Paddle 모델이 잡은 메모리를 돌려준다(팝업을 다시 열면 새로 띄운다).
+      void import("@/lib/document-ocr/ocr-paddle").then((m) => m.releasePaddle());
       opener?.focus?.();
     };
   }, [titleId]);
@@ -132,7 +144,10 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
         if (ac.signal.aborted) return;
         // 원문은 가린 뒤에만 state 에 둔다(주민등록번호 뒷자리 등이 메모리·DevTools 에 남지 않게).
         const text = redactOcrText(out.text);
-        patch({ status: "done", ratio: 1, message: "다 읽었어요", text, docType: classifyDocumentText(text) });
+        const altText = out.altText ? redactOcrText(out.altText) : undefined;
+        const kind = classifyDocumentText(text);
+        const docType = kind === "unknown" && altText ? classifyDocumentText(altText) : kind;
+        patch({ status: "done", ratio: 1, message: "다 읽었어요", text, altText, docType });
       } catch (e) {
         if (ac.signal.aborted) return;
         // 실행기가 사용자용으로 정리한 오류(code 있음)만 그대로 보여 준다.
@@ -174,7 +189,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
     () =>
       files
         .filter((f) => f.status === "done")
-        .map((f) => ({ f, result: parseDocument(f.docType, f.text, { baseYear }) })),
+        .map((f) => ({ f, result: parseBoth(f, baseYear) })),
     [files, baseYear],
   );
   const rows = useMemo(
