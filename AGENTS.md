@@ -1,11 +1,11 @@
 # 경영일지 — 개발 실행 지침
 
 > **요약**: Codex·Claude 및 개발 에이전트의 작업 진입점.
-> **관련**: [제품·검증](CLAUDE.md), [작업일지](docs/worklog.md), [배포](docs/playbooks/deploy-vps.md).
+> **관련**: [제품·검증](CLAUDE.md), [작업일지](docs/worklog/README.md), [배포](docs/playbooks/deploy-vps.md).
 
 ## 시작과 정본
 - 최신 사용자 목표·범위·완료조건을 따른다. 이 문서는 플랫폼 권한·승인 검사를 대체하지 않는다.
-- CLAUDE.md, worklog 최근 관련 5~10건, 해당 plan·SSOT·ADR만 읽는다. 과거 전체 이력·고정 세션 편제를 자동 주입하지 않는다.
+- CLAUDE.md, worklog 최근 관련 5~10건(`docs/worklog/` 항목별 파일, 2026-10-26 이전은 `docs/worklog.md`), 해당 plan·SSOT·ADR만 읽는다. 과거 전체 이력·고정 세션 편제를 자동 주입하지 않는다.
 - git fetch 후 origin/master·열린 PR·현재 소유를 확인한다. 옛 로컬본·세션 요약을 현재 구현으로 단정하지 않는다.
 - 세션 이름은 경영일지로 시작하고 담당 업무를 표시한다. 실제 thread·환경·모델은 별도로 확인한다.
 - 다른 PC의 절대 경로 문서는 필수 선행 조건이 아니다. 현재 저장소 지침으로 진행한다.
@@ -17,7 +17,7 @@
 - 기본 책임은 총괄·제작(목업/구현)·독립 검증이다. 작은 업무는 역할을 겸할 수 있으며 목업 승인은 유지한다. 독립 병렬 조율만 과업에서 정한다. [총괄](docs/playbooks/codex-lead.md)·[제작](docs/playbooks/codex-worker.md)·[검증](docs/playbooks/codex-reviewer.md).
 - 병렬 작업은 worklog에 좁은 담당 파일·선행조건을 선언한다. 겹치거나 애매하면 순차로 처리한다.
 - 공용 계약은 별도 검토하고 의존 PR보다 먼저 병합한다. 타인 브랜치·worktree·변경·미완료 의무를 임의 인수하지 않는다.
-- 병합~배포 확인은 직렬이다. 선행 병합 후 최신 master를 반영하고 현재 head 검사·CI를 확인한다. worklog 충돌은 양쪽 기록을 보존한다.
+- 병합~배포 확인은 직렬이다. 선행 병합 후 최신 master를 반영하고 현재 head 검사·CI를 확인한다. worklog 는 항목마다 새 파일(`docs/worklog/YYYY-MM-DD-HHMM-<slug>.md`)이라 충돌하지 않는다. 옛 `docs/worklog.md` 는 고치지 않는다.
 
 ## 작업 환경
 - 메인은 읽기 전용이다. tracked 파일 수정·pull/rebase/commit은 전용 worktree에서만 한다.
