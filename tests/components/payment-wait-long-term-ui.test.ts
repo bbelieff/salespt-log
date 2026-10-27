@@ -99,7 +99,7 @@ describe("실무/수납 화면 연결", () => {
   const page = readFileSync(join(process.cwd(), "app/(app)/payment/page.tsx"), "utf8");
   const form = readFileSync(join(process.cwd(), "app/(app)/payment/_components/PaymentSlotForm.tsx"), "utf8");
   it("목록은 장기관리 칩 범위로만, 배너는 장기관리면 호박색 + 「기본 너비」 옆 토글", () => {
-    expect(page).toContain("rows.filter((cp) => isLongTermContract(cp) === longTermOnly)");
+    expect(page).toContain("paymentListScope(rows, longTermOnly, companyQuery)");
     expect(page).toContain("buildInstitutionWorkItems(scopedRows");
     expect(page).toMatch(/기본 너비<\/button>\{stageToggle\(selectedCp\)\}/);
     expect(page).toContain("from-amber-100/95");

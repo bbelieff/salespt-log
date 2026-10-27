@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { type ContractPayment } from "@/types";
 import { paymentFocusedSlot } from "@/util/payment-focus";
 import { activeWorkContracts } from "@/lib/analytics/payment-work-status";
-import { companyStage, isLongTermContract, stagePatch, type CompanyStage } from "@/lib/analytics/long-term";
+import { companyStage, isLongTermContract, movedToLongTerm, paymentListScope, stagePatch, type CompanyStage } from "@/lib/analytics/long-term";
 import LongTermToggle from "./_components/LongTermToggle";
 import PostDeleteNavModal, { type PostDeleteNavTarget } from "./_components/PostDeleteNavModal";
 import {
@@ -133,7 +133,9 @@ export default function PaymentPage() {
     const data = saved ? { ...next, 관리상태: saved.관리상태, 관리상태진행건: saved.관리상태진행건 } : next;
     try {
       await patch.mutateAsync({ row: next.row, data });
-      if (!opts?.quiet) showToast("✓ 저장 완료");
+      // 수납을 다 받아 저절로 장기관리가 되면 목록에서 빠진다 — 사라진 줄 모르게 알린다(2026-10-27).
+      if (saved && !longTermOnly && movedToLongTerm(saved, data)) showToast("진행건이 모두 끝나 「장기관리」로 옮겼어요 · 「장기관리」 칩에서 볼 수 있어요");
+      else if (!opts?.quiet) showToast("✓ 저장 완료");
     } catch (e) {
       if (!opts?.quiet) showToast(`저장하지 못했어요: ${(e as Error).message}`);
       throw e; // 재전파: 미저장 가드·자동 저장 큐가 붙잡도록
@@ -222,9 +224,9 @@ export default function PaymentPage() {
     ),
   ).sort();
 
-  // 장기관리 칩 — 업체·기관 보기 모두 같은 범위(scopedRows). 성과 요약·진행기관 후보는 전체(rows) 그대로.
+  // 장기관리 칩 — 업체·기관 보기 모두 같은 범위(scopedRows), 검색 중엔 둘 다. 성과 요약·진행기관 후보는 전체(rows) 그대로.
   const longTermCount = rows.filter(isLongTermContract).length;
-  const scopedRows = rows.filter((cp) => isLongTermContract(cp) === longTermOnly);
+  const scopedRows = paymentListScope(rows, longTermOnly, companyQuery);
   // 업체 검색 필터 — 합계·진행기관 후보는 전체(rows) 기준 유지(표시만 필터).
   const normq = (x: string) => x.toLowerCase().replace(/\s+/g, "");
   const filteredRows = companyQuery.trim()
