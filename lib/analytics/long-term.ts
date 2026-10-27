@@ -55,3 +55,17 @@ export function isLongTermContract(cp: StageInput): boolean {
 export function stagePatch(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">, stage: CompanyStage): Pick<ContractPayment, "관리상태" | "관리상태진행건"> {
   return stage === "장기관리" ? { 관리상태: "장기관리", 관리상태진행건: activeSlotNumbers(cp) } : { 관리상태: "진행", 관리상태진행건: [] };
 }
+
+/**
+ * 목록 범위 — 칩에 맞춰 진행/장기관리 중 한쪽만. 단 검색 중에는 둘 다 찾는다
+ * (장기관리로 저절로 옮겨진 업체를 못 찾아 같은 업체를 또 만들던 문제, 2026-10-27).
+ */
+export function paymentListScope<T extends StageInput>(rows: T[], longTermOnly: boolean, query: string): T[] {
+  if (query.trim()) return rows;
+  return rows.filter((cp) => isLongTermContract(cp) === longTermOnly);
+}
+
+/** 저장으로 진행 → 장기관리가 됐나 — 목록에서 사라지는 이유를 알려 주는 데 쓴다. */
+export function movedToLongTerm(before: StageInput, after: StageInput): boolean {
+  return !isLongTermContract(before) && isLongTermContract(after);
+}
