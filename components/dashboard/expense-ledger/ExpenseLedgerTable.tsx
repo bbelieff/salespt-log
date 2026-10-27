@@ -1,5 +1,6 @@
 "use client";
 
+import SkeletonBars from "@/components/ui/SkeletonBars";
 import { formatMoney } from "@/lib/format/money";
 import type { ExpenseLedgerView } from "@/types";
 import type { ExpenseViewMode } from "@/query/expense-ledger-hooks";
@@ -47,7 +48,7 @@ function share(amountWon: number, total: number): string {
 }
 
 export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenRecord }: Props) {
-  if (loading) return <p className="py-8 text-center text-xs text-gray-400">비용 내역을 불러오는 중입니다.</p>;
+  if (loading) return <SkeletonBars label="비용 내역을 불러오는 중입니다." rows={4} className="py-4" />;
   if (error) return <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-700">비용 내역을 불러오지 못했습니다: {error.message}</p>;
   if (!data) return null;
   if (mode === "category") return <CategorySummary data={data} />;

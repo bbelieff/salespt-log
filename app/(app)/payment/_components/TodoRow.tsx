@@ -36,6 +36,8 @@ interface Props {
 const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ring, fresh, assignSlot, assignTitle, onToggleDone, onSaveResult, onCreateNext, onEdit, onAssignSlot, onRemove }, ref) {
   const history = t.기록종류 === "history";
   const done = t.완료여부 && !history;
+  // 방금 완료로 바꾼 체크만 톡 튄다(효과 ③ — 처음 그릴 때 이미 완료인 줄은 가만히).
+  const [pop, setPop] = useState(false);
   const result = (t.result ?? "").trim(); // 옛 캐시·합성 데이터 방어
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -57,7 +59,7 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
   return (
     <div ref={ref} data-todo-id={t.id} className={`px-2 py-1.5 transition-colors duration-700 ${tint}`}>
       <div className="flex min-w-0 items-center gap-1.5">
-        {!history && <input type="checkbox" aria-label="완료 토글" checked={t.완료여부} onChange={(e) => onToggleDone(e.target.checked)} className="h-4 w-4 shrink-0 accent-blue-600"/>}
+        {!history && <input type="checkbox" aria-label="완료 토글" checked={t.완료여부} onChange={(e) => { setPop(e.target.checked); onToggleDone(e.target.checked); }} onAnimationEnd={() => setPop(false)} className={`h-4 w-4 shrink-0 accent-blue-600 ${pop ? "fx-check-pop" : ""}`}/>}
         {history && <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-px-11 font-bold text-amber-700">History</span>}
         {t.type !== "기타" && <span className={`shrink-0 rounded px-1.5 py-0.5 text-px-11 ${TYPE_BADGE[t.type]}`}>{t.type}</span>}
         {onEdit ? (

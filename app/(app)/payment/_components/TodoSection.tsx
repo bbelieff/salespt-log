@@ -93,7 +93,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
     <div className={`rounded-lg border border-dashed p-2.5 ${accent.shell}`}>
       <div className="mb-1.5 text-xs font-bold text-slate-700">할 일</div>
       {/* 목록은 흰 판 하나 + 줄 구분선(상자 다이어트: 기록마다 상자를 치지 않는다). */}
-      {todos.length > 0 && <div className="mb-2 divide-y divide-slate-100 overflow-hidden rounded-md bg-white ring-1 ring-slate-200">{todos.map((t) => (
+      {todos.length > 0 && <div className="fx-stagger mb-2 divide-y divide-slate-100 overflow-hidden rounded-md bg-white ring-1 ring-slate-200">{todos.map((t) => (
         <TodoRow
           key={t.id}
           ref={t.id === focusId ? focusedRef : undefined}

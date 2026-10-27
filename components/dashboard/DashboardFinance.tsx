@@ -102,7 +102,10 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
           <button type="button" onClick={() => { void contracts.refetch(); void db.refetch(); }} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 font-semibold text-blue-700">다시 시도</button>
         </div>
       ) : !totals || ledger.isLoading ? (
-        <div className="rounded-xl bg-white px-3 py-3 text-xs text-slate-500">불러오는 중…</div>
+        <div role="status" aria-busy="true" className="grid grid-cols-3 gap-2">
+          <span className="sr-only">불러오는 중…</span>
+          {[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"><div className="fx-skeleton h-3 w-10 rounded-md" /><div className="fx-skeleton h-5 w-full rounded-md" /></div>)}
+        </div>
       ) : (
         <FinanceSummaryBoxes
           revenue={totals.revenue.revenue}

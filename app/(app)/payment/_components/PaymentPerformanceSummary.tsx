@@ -38,7 +38,7 @@ export default function PaymentPerformanceSummary({ rows, workRows, todos, onNav
   const periodLabel = range ? (period === "month" ? "이번 달" : period === "week" ? "이번 주" : "직접 설정") : "전체";
   const progressState = dataState === "ready" ? workState : dataState;
   const unavailable = (state: "loading" | "error", label: string) => <div role={state === "error" ? "alert" : "status"} className="flex min-h-12 min-w-0 flex-wrap items-center gap-1.5 px-2 text-xs text-slate-600">
-    <span>{label}{state === "loading" ? " 불러오는 중…" : "을 불러오지 못했어요."}</span>
+    {state === "loading" ? <><span className="sr-only">{label} 불러오는 중…</span><span aria-hidden="true" className="fx-skeleton h-3 w-40 max-w-full rounded-md" /></> : <span>{label}을 불러오지 못했어요.</span>}
     {state === "error" && onRetry && <button type="button" onClick={onRetry} className="min-h-8 rounded px-1 font-semibold text-blue-700 underline underline-offset-2">다시 시도</button>}
   </div>;
 

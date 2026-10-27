@@ -1,5 +1,6 @@
 "use client";
 
+import SkeletonBars from "@/components/ui/SkeletonBars";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useContractPayments } from "@/query/contract-payment-hooks";
@@ -29,7 +30,7 @@ export default function DashboardWorkStatus({ todayISO }: Props) {
           <button type="button" onClick={() => { void contracts.refetch(); void todos.refetch(); }} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 font-semibold text-blue-700">다시 시도</button>
         </div>
       ) : !contracts.data || !todos.data ? (
-        <div className="flex items-center gap-3 text-xs text-slate-500"><strong className="text-slate-800">전체 진행건</strong><span>불러오는 중…</span></div>
+        <div className="flex items-center gap-3 text-xs text-slate-500"><strong className="text-slate-800">전체 진행건</strong><SkeletonBars label="불러오는 중…" rows={1} className="flex-1" /></div>
       ) : (
         <WorkStatusBar items={items} popoverPlacement="top" onNavigate={(row, slot) => router.push(row == null ? "/payment" : `/payment?row=${row}&slot=${slot}`)} />
       )}

@@ -17,6 +17,7 @@
  */
 "use client";
 
+import AppToast from "@/components/ui/AppToast";
 import { useState } from "react";
 import { ContractPayment } from "@/types";
 import { useAddPriorContract } from "@/query/contract-payment-hooks";
@@ -182,9 +183,7 @@ export default function PriorContractRegister({
       )}
 
       {toast && (
-        <div className="fixed bottom-20 left-1/2 z-[400] -translate-x-1/2 rounded-xl bg-slate-900/95 px-5 py-3 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
+        <AppToast>{toast}</AppToast>
       )}
     </>
   );

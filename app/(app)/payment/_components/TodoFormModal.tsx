@@ -91,14 +91,14 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
   const minutes = MINUTES.includes(minute) || hour === "20" ? MINUTES : [...MINUTES, minute].sort();
   const pending = create.isPending || patch.isPending;
   const modal = (
-    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={close}>
+    <div className="fx-sheet-wrap fixed inset-0 z-[400] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={close}>
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={`${kind === "todo" ? "Todo" : "History"} ${editing ? "고치기" : "상세"}`}
         tabIndex={-1}
-        className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl focus:outline-none"
+        className="fx-sheet max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between"><div><p className="text-px-11 font-semibold text-blue-600">{institutionRef}</p><h3 className="text-lg font-black text-slate-950">{kind === "todo" ? "할 일" : "한 일"}</h3></div><button type="button" onClick={close} className="p-2 text-slate-400" aria-label="닫기">×</button></div>

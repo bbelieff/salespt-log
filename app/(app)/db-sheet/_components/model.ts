@@ -83,6 +83,8 @@ export function stepShortcut(row:Pick<Row,'stage'|'meetingId'|'effectiveMeetingI
  */
 const STEP_STATE_ORDER=['미팅예약','미팅변경','미팅완료','계약','실무진행','수납대기','완료','장기관리','진행종료'];
 export const STEP_NAMES={'1.5':'DB관리시트','2':'컨택관리','3':'일정·계약','4':'실무/수납'} as const;
+/** 도달 STEP 배지를 누르면 보이는 한 줄 설명(효과 ④, 2026-10-28). */
+export const STEP_HINTS={'1.5':'아직 컨택 전이거나 재통화를 기다리는 업체예요.','2':'통화가 닿아 미팅을 잡았거나 컨택을 진행한 업체예요.','3':'미팅이 잡혀 일정·계약 단계에 있는 업체예요.','4':'계약해서 실무·수납을 진행하는 업체예요.'} as const;
 type ReachedStep=keyof typeof STEP_NAMES;
 const reached=(step:ReachedStep,href:string|null,state:string,rank:number)=>({step,name:STEP_NAMES[step],label:`STEP ${step} ${STEP_NAMES[step]}`,href,state,rank});
 export function stepStage(row:Pick<Row,'result'|'stage'|'meetingId'|'effectiveMeetingId'|'contact'|'contractRow'>):{step:ReachedStep;name:string;label:string;href:string|null;state:string;rank:number}{

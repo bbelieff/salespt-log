@@ -271,7 +271,7 @@ export default function FinanceSummaryBoxes({
 
   return (
     <div ref={containerRef} style={{ containerType: "inline-size" }}>
-      <div role="group" aria-label="매출·비용·영업이익" className="grid min-w-0 grid-cols-3 gap-2">
+      <div role="group" aria-label="매출·비용·영업이익" className="grid min-w-0 grid-cols-3 gap-2 pc:grid-cols-4">
         {/* 매출 컬럼 */}
         <button
           type="button"
@@ -280,7 +280,7 @@ export default function FinanceSummaryBoxes({
           aria-controls="fin-detail-panel"
           onClick={() => toggle("revenue")}
           style={columnStyle}
-          className={columnClass(open === "revenue", "focus-visible:ring-slate-500")}
+          className={`${columnClass(open === "revenue", "focus-visible:ring-slate-500")} pc:col-span-2`}
         >
           <span className="flex min-w-0 items-center gap-1">
             <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-gray-200 text-xs font-bold leading-none text-gray-700">
