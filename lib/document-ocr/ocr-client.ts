@@ -8,6 +8,8 @@
  *   (scripts/vendor-document-ocr.mjs 가 `npm run build` 전에 복사). 런타임 CDN 호출 없음.
  * - 취소(AbortSignal)·타임아웃·worker 종료·objectURL 해제를 보장한다.
  * - 인식 결과 텍스트는 로그로 남기지 않는다(개인정보).
+ * - 사진·스캔 PDF 는 tesseract 다음에 PaddleOCR(ocr-paddle.ts)로 한 번 더 읽어 altText 로 함께 돌려준다.
+ *   팝업이 두 결과를 칸마다 합친다(merge.ts). Paddle 이 없거나 실패하면 tesseract 결과만 — 지금과 같다.
  */
 
 import {
@@ -20,12 +22,15 @@ import {
 } from "./limits";
 import type { OcrProgress, OcrStage } from "./types";
 import { readPdfTextLayer, renderPdfFirstPageToBlob } from "./ocr-pdf";
+import { recognizeWithPaddle, type PaddleManifest } from "./ocr-paddle";
 
 export type OcrEngineText = {
   text: string;
   sourceKind: "ocr" | "pdf-text";
   /** 0~1. tesseract 평균 확신도(없으면 undefined). */
   confidence?: number;
+  /** PaddleOCR 로 같은 이미지를 읽은 글(읽었을 때만). */
+  altText?: string;
 };
 
 export type RunOcrOptions = {
@@ -44,6 +49,8 @@ type Manifest = {
   langs: string[];
   /** true면 `<lang>.traineddata.gz` 파일명으로 받는다 (best_int + gzip 벤더). */
   gzip?: boolean;
+  /** 벤더가 Paddle 에셋을 만들었을 때만 있다(모델을 못 받으면 없음 → tesseract 만). */
+  paddle?: PaddleManifest;
 };
 
 export type OcrAssetUrls = {
@@ -277,6 +284,33 @@ async function recognizeBlob(
   }
 }
 
+/**
+ * Paddle 로 한 번 더 읽기 — 실패·시간 초과·없음은 조용히 undefined(사용자 취소만 그대로 던진다).
+ * 전체 OCR 시간 상한과 따로 잰다: tesseract 가 이미 읽은 결과를 Paddle 지연 때문에 버리지 않게.
+ */
+async function tryPaddle(
+  blob: Blob,
+  manifest: Manifest,
+  signal: AbortSignal | undefined,
+  onProgress: RunOcrOptions["onProgress"],
+): Promise<string | undefined> {
+  if (!manifest.paddle || typeof Worker === "undefined") return undefined;
+  emit(onProgress, "recognizing", 0.96, "한 번 더 정밀하게 읽는 중");
+  const guard = withTimeout(signal, OCR_LIMITS.paddleTimeoutMs);
+  try {
+    const text = await recognizeWithPaddle(blob, manifest.paddle, guard.signal);
+    return text.trim() ? text : undefined;
+  } catch (error) {
+    throwIfAborted(signal);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[document-ocr] paddle", error instanceof Error ? error.message : error);
+    }
+    return undefined;
+  } finally {
+    guard.dispose();
+  }
+}
+
 export async function runDocumentOcr(
   file: File | Blob & { name?: string; type: string; size: number },
   opts: RunOcrOptions = {},
@@ -333,7 +367,8 @@ export async function runDocumentOcr(
           guard.signal,
           opts.onProgress,
         );
-        return { text: out.text, sourceKind: "ocr", confidence: out.confidence };
+        const altText = await tryPaddle(capped.blob, manifest, opts.signal, opts.onProgress);
+        return { text: out.text, sourceKind: "ocr", confidence: out.confidence, ...(altText ? { altText } : {}) };
       } finally {
         capped.objectUrls.forEach((u) => URL.revokeObjectURL(u));
       }
@@ -347,7 +382,8 @@ export async function runDocumentOcr(
         guard.signal,
         opts.onProgress,
       );
-      return { text: out.text, sourceKind: "ocr", confidence: out.confidence };
+      const altText = await tryPaddle(capped.blob, manifest, opts.signal, opts.onProgress);
+      return { text: out.text, sourceKind: "ocr", confidence: out.confidence, ...(altText ? { altText } : {}) };
     } finally {
       capped.objectUrls.forEach((u) => URL.revokeObjectURL(u));
     }

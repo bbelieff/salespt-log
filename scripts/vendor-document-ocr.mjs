@@ -28,10 +28,18 @@
  *   안내되며 (조용히 틀린 값을 내지 않는다), 필요시 plain-lstm 쌍을 추가
  *   벤더하도록 manifest.core에 확장한다.
  * - kor best_int .gz 약 1.6MB, eng best_int .gz 약 2.9MB.
+ *
+ * PaddleOCR(2026-10-28, 사진·스캔을 tesseract 와 함께 한 번 더 읽는다 — lib/document-ocr/ocr-paddle.ts):
+ * - @paddleocr/paddleocr-js 0.4.2(공식 PaddlePaddle, Apache-2.0) + onnxruntime-web 1.31.1(MIT)을
+ *   scripts/document-ocr/paddle-worker.mjs 에서 esbuild 로 워커 한 파일로 묶는다(약 10MB, opencv 포함).
+ * - 모델(PP-OCRv5 mobile det 4.8MB · korean rec 13.5MB)은 npm 에 없어 공식 배포 주소에서 받는다 —
+ *   **이 스크립트의 유일한 네트워크 예외.** sha256 을 아래에 고정해 바뀐 파일은 거부하고,
+ *   `.cache/document-ocr/` 에 보관해 다음 빌드는 받지 않는다. 받기에 실패하면 경고만 남기고
+ *   manifest 에서 paddle 을 빼 tesseract 만으로 동작한다(빌드는 깨지지 않는다).
  */
 
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -63,6 +71,67 @@ function pkgVersion(name) {
 
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+/** Paddle 모델 — 공식 배포 파일, sha256 고정(2026-10-28 받은 값). */
+const PADDLE_BASE = "https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0";
+const PADDLE_MODELS = [
+  { role: "det", name: "PP-OCRv5_mobile_det", file: "PP-OCRv5_mobile_det_onnx_infer.tar", sha256: "781056046c9ed77a15c94681605db6a0f62317c2e9cce6931c71da2478d4bc30" },
+  { role: "rec", name: "korean_PP-OCRv5_mobile_rec", file: "korean_PP-OCRv5_mobile_rec_onnx_infer.tar", sha256: "568ed8b43a260adc9f484d92105e425ea8cddf8ce16940c177bc12864cfb0eb0" },
+].map((m) => ({ ...m, url: `${PADDLE_BASE}/${m.file}` }));
+const paddleDir = join(outDir, "paddle");
+const modelCache = join(appDir, ".cache", "document-ocr");
+
+async function cachedModel(m) {
+  const path = join(modelCache, m.file);
+  if (existsSync(path) && sha256(path) === m.sha256) return path;
+  mkdirSync(modelCache, { recursive: true });
+  const res = await fetch(m.url, { signal: AbortSignal.timeout(180_000) });
+  if (!res.ok) throw new Error(`${m.file} HTTP ${res.status}`);
+  const tmp = `${path}.part`;
+  writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+  if (sha256(tmp) !== m.sha256) throw new Error(`${m.file} sha256 불일치 — 배포 파일이 바뀌었습니다.`);
+  renameSync(tmp, path);
+  return path;
+}
+
+/** Paddle 워커 번들 + ort wasm + 모델. 실패하면 null(경고) — tesseract 만으로 동작. */
+async function vendorPaddle() {
+  try {
+    const models = [];
+    for (const m of PADDLE_MODELS) models.push([await cachedModel(m), join(paddleDir, m.file)]);
+    const ortDist = join(findPackageDir("onnxruntime-web"), "dist");
+    const ort = ["ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.wasm"].map((f) => [join(ortDist, f), join(paddleDir, f)]);
+    const workerOut = join(modelCache, "paddle-worker.js");
+    if (!CHECK) {
+      const { build } = await import("esbuild");
+      await build({
+        entryPoints: [join(here, "document-ocr", "paddle-worker.mjs")],
+        outfile: workerOut,
+        bundle: true,
+        format: "esm",
+        minify: true,
+        platform: "browser",
+        legalComments: "none",
+        logLevel: "warning",
+        // opencv.js 의 Node 분기만 부르는 모듈 — 브라우저에선 안 닿는다.
+        external: ["fs", "path", "crypto", "worker_threads"],
+        // 기본 onnxruntime-web 은 WebGPU(jsep) wasm 29MB 를 부른다 — wasm 전용 빌드(14.8MB)로.
+        alias: { "onnxruntime-web": "onnxruntime-web/wasm" },
+      });
+    }
+    return {
+      plan: [[workerOut, join(paddleDir, "paddle-worker.js")], ...ort, ...models],
+      manifest: {
+        worker: "paddle-worker.js",
+        detModel: { name: PADDLE_MODELS[0].name, file: PADDLE_MODELS[0].file },
+        recModel: { name: PADDLE_MODELS[1].name, file: PADDLE_MODELS[1].file },
+      },
+    };
+  } catch (error) {
+    console.warn(`vendor:document-ocr: ⚠ PaddleOCR 에셋 준비 실패 — tesseract 만 씁니다 (${error instanceof Error ? error.message : error})`);
+    return null;
+  }
 }
 
 /** [소스패키지/소스경로, 출력경로] */
@@ -144,6 +213,14 @@ if (CHECK) {
 
 mkdirSync(tesseractDir, { recursive: true });
 const files = [];
+const paddle = await vendorPaddle();
+if (paddle) {
+  manifest.paddle = paddle.manifest;
+  manifest.sources["@paddleocr/paddleocr-js"] = `https://registry.npmjs.org/@paddleocr/paddleocr-js/-/paddleocr-js-${pkgVersion("@paddleocr/paddleocr-js")}.tgz`;
+  manifest.sources["onnxruntime-web"] = `https://registry.npmjs.org/onnxruntime-web/-/onnxruntime-web-${pkgVersion("onnxruntime-web")}.tgz`;
+  for (const m of PADDLE_MODELS) manifest.sources[m.file] = m.url;
+  plan.push(...paddle.plan);
+}
 for (const [src, dest] of plan) {
   mkdirSync(dirname(dest), { recursive: true });
   cpSync(src, dest);
