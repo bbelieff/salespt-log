@@ -139,18 +139,18 @@ export default function PaymentSlotForm({
   // 5등분 클릭 영역 (각 영역 = 20%, 동일 % 재클릭 시 0%)
   const segments = [20, 40, 60, 80, 100] as const;
 
-  // 완료 슬롯(100% 또는 승인>0 && 수납>=승인) 기본 접힘 / 진행 중 펼침.
+  // 진행건은 모두 접힌 채 시작(2026-10-27 belie 「실무/수납 열면 모든 진행건 기본 접힘」). 예외: 캘린더·알림으로 찾아온 진행건(autoOpen),
+  // 방금 「진행 추가」로 만든 빈 진행건(기관·상품 없음 — 바로 적어야 하므로).
   const halted = slot.진행률 === HALTED_PROGRESS;
   const waiting = slot.진행률 === WAITING_PROGRESS;
-  const isDone =
-    halted || pct >= 100 || (slot.승인금액 > 0 && slot.수납액 >= slot.승인금액);
-  const [open, setOpen] = useState(!isDone);
+  const blank = !slot.진행기관?.trim() && !slot.진행상품?.trim();
+  const [open, setOpen] = useState(autoOpen || blank);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
   const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
 
   return (
     <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
-      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 완료 슬롯은 기본 접힘. */}
+      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘(위 주석). */}
       <div
         className={`flex cursor-pointer items-center justify-between gap-2 ${
           open ? "mb-2.5" : ""

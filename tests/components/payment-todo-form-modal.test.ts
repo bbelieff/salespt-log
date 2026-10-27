@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   guardedNav: vi.fn((action: () => void) => action()),
   mutateAsync: vi.fn().mockResolvedValue(undefined),
+  patchAsync: vi.fn().mockResolvedValue(undefined),
   registerDirty: vi.fn(),
 }));
 
@@ -18,9 +19,11 @@ vi.mock("@/components/DirtyGuard", () => ({
 vi.mock("@/query/todos-hooks", () => ({
   newTodoOperationId: () => "todo-op-test",
   useCreateTodo: () => ({ isPending: false, mutateAsync: mocks.mutateAsync }),
+  usePatchTodo: () => ({ isPending: false, mutateAsync: mocks.patchAsync }),
 }));
 
-import TodoFormModal, { type TodoDraftSeed } from "@/app/(app)/payment/_components/TodoFormModal";
+import TodoFormModal, { seedFromTodo, type TodoDraftSeed } from "@/app/(app)/payment/_components/TodoFormModal";
+import type { Todo } from "@/types";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -130,7 +133,7 @@ describe("payment Todo/History 상세 모달", () => {
     background.addEventListener("click", backgroundClick);
     document.body.append(background);
     const { dialog, onClose, overlay } = mountModal();
-    const historyTab = [...dialog!.querySelectorAll("button")].find((button) => button.textContent?.includes("History"))!;
+    const historyTab = [...dialog!.querySelectorAll("button")].find((button) => button.textContent === "한 일")!;
 
     click(historyTab);
     expect(historyTab.className).toContain("bg-white");
@@ -150,5 +153,26 @@ describe("payment Todo/History 상세 모달", () => {
     act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(mocks.guardedNav).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("payment Todo 고치기(수정 모드, 2026-10-27)", () => {
+  const todo = { id: "t-1", 기록종류: "todo", type: "전화", 제목: "재단방문", 예정일자: "2026-10-27", 예정시각: "14:20", 상세: "담당자 확인", showOnCalendar: false, 완료여부: false, institutionRef: "소진공" } as unknown as Todo;
+  it("기존 값으로 채우고, 저장하면 새로 만들지 않고 그 기록을 고친다(목록에 없는 14:20 도 유지)", async () => {
+    mocks.patchAsync.mockClear(); mocks.mutateAsync.mockClear();
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    const onClose = vi.fn();
+    act(() => { root?.render(h(TodoFormModal, { contractRef: "c-1", institutionRef: "소진공", companyName: "가상", initial: seedFromTodo(todo), editing: todo, onClose })); });
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]')!;
+    expect(dialog.querySelector("h3")?.textContent).toBe("할 일"); // 고치기도 만들기와 같은 모양(티 나지 않게)
+    expect([...dialog.querySelectorAll("button")].some((b) => b.textContent === "한 일")).toBe(false); // 종류는 못 바꿈
+    const title = dialog.querySelector<HTMLInputElement>("label input:not([type])")!;
+    expect(title.value).toBe("재단방문");
+    act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(title, "재단 방문 (오후)"); title.dispatchEvent(new Event("input", { bubbles: true })); });
+    const saveBtn = [...dialog.querySelectorAll("button")].find((b) => b.textContent === "저장")!;
+    await act(async () => { saveBtn.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(mocks.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.patchAsync).toHaveBeenCalledWith({ contractRef: "c-1", id: "t-1", partial: { type: "전화", 제목: "재단 방문 (오후)", 예정일자: "2026-10-27", 예정시각: "14:20", 상세: "담당자 확인", showOnCalendar: false } });
+    expect(onClose).toHaveBeenCalled();
   });
 });

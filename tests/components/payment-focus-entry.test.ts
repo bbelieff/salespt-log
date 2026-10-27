@@ -53,7 +53,7 @@ it.each([false,true])("explicit slot 2 survives row refresh; later user company 
  if(pc)expect(host.textContent).toContain("진행 2 · 기관B");
  state.rows=rows();await render();expect(host.querySelector("[data-detail-row]")?.getAttribute("data-slot")).toBe("2");
  await act(async()=>{host.querySelector<HTMLButtonElement>('[data-select-row="3"]')!.click();});
- expect(host.querySelector("[data-detail-row]")?.getAttribute("data-detail-row")).toBe("3");expect(host.querySelector("[data-detail-row]")?.getAttribute("data-slot")).toBe("1");
+ expect(host.querySelector("[data-detail-row]")?.getAttribute("data-detail-row")).toBe("3");expect(host.querySelector("[data-detail-row]")?.getAttribute("data-slot")).toBe("none"); // 2026-10-27: 업체를 직접 고르면 진행건은 접힌 채(자동 펼침 없음)
  state.rows=rows();await render();expect(host.querySelector("[data-detail-row]")?.getAttribute("data-detail-row")).toBe("3");
 });
 it("refreshing data does not repeat the deep-link scroll after initial arrival",async()=>{

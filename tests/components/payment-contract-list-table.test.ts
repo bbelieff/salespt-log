@@ -145,7 +145,8 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain('forceOpen inline');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);
-    expect(src).toContain("focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, item.hasProgress ? item.work.slot : null)}");
+    // 2026-10-27 belie 「진행건은 기본 접힘」: 업체 모드는 링크로 찾아온 진행건만 펼친다(대표 진행건 자동 펼침 없음).
+    expect(src).toContain("focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, null)}");
     expect(src).toContain("focusedSlot={item.slot}");
   });
 });

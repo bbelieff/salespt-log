@@ -22,12 +22,18 @@ interface Props {
   onSaveResult: (result: string) => void;
   /** 「+ 다음」 — 이 기록에 이어지는 새 할 일을 같은 진행건에 만든다. 실패하면 throw(입력 유지). */
   onCreateNext?: (title: string, date: string) => Promise<void>;
+  /** 제목을 누르면 내용·일정 고치기(「자세히」 창 수정 모드). */
+  onEdit?: () => void;
   onAssignSlot?: () => void;
   onRemove: () => void;
 }
 
-/** Todo/History 한 줄 — 완료한 할 일에는 결과 한 줄(R 컬럼), 끝난 기록에는 이어지는 할 일(「+ 다음」)을 바로 적는다. */
-const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ring, fresh, assignSlot, assignTitle, onToggleDone, onSaveResult, onCreateNext, onAssignSlot, onRemove }, ref) {
+/**
+ * Todo/History 한 줄(2026-10-27 belie 「투두 칸을 세 줄씩 쓸 필요 없음」) — 체크·제목·날짜·× 를 한 줄에.
+ * 「Todo」 배지는 체크박스가 이미 말하므로 빼고 History 만, 종류 배지는 「기타」가 아닐 때만.
+ * 아래 줄은 결과·「+ 결과」·「+ 다음」이 있을 때만 생긴다. 제목을 누르면 고치기.
+ */
+const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ring, fresh, assignSlot, assignTitle, onToggleDone, onSaveResult, onCreateNext, onEdit, onAssignSlot, onRemove }, ref) {
   const history = t.기록종류 === "history";
   const done = t.완료여부 && !history;
   const result = (t.result ?? "").trim(); // 옛 캐시·합성 데이터 방어
@@ -46,24 +52,25 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
     close();
   };
   const canNext = !!onCreateNext && (history || done);
-  const shell = ring ? "border-blue-400 ring-2 ring-blue-400" : fresh ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white";
+  const tint = ring ? "ring-2 ring-inset ring-blue-400" : fresh ? "bg-blue-50" : "";
+  const when = `${t.예정일자.slice(5).replace("-", "/")}${t.예정시각 ? ` ${t.예정시각}` : ""}`;
   return (
-    <div ref={ref} data-todo-id={t.id} className={`rounded-md border px-2 py-1.5 transition-colors duration-700 ${shell}`}>
-      {/* 좁은 칸(PC 3단)에서는 날짜·삭제 묶음이 다음 줄 오른쪽으로 내려가 이름이 0폭으로 사라지지 않는다. */}
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+    <div ref={ref} data-todo-id={t.id} className={`px-2 py-1.5 transition-colors duration-700 ${tint}`}>
+      <div className="flex min-w-0 items-center gap-1.5">
         {!history && <input type="checkbox" aria-label="완료 토글" checked={t.완료여부} onChange={(e) => onToggleDone(e.target.checked)} className="h-4 w-4 shrink-0 accent-blue-600"/>}
-        <span className={`shrink-0 rounded px-1.5 py-0.5 text-px-11 font-bold ${history ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{history ? "History" : "Todo"}</span>
-        <span className={`shrink-0 rounded px-1.5 py-0.5 text-px-11 ${TYPE_BADGE[t.type]}`}>{t.type}</span>
-        <span className={`min-w-0 flex-1 basis-20 truncate text-xs ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</span>
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-        <span className="text-px-11 tabular-nums text-slate-400">{t.예정일자.slice(5).replace("-", "/")} {t.예정시각}</span>
-        {assignSlot && <button type="button" onClick={onAssignSlot} title={assignTitle} className="shrink-0 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-px-11 font-semibold text-amber-800 hover:bg-amber-100">진행 {assignSlot} 기록으로</button>}
-        <button type="button" onClick={onRemove} className="text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
-        </span>
+        {history && <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-px-11 font-bold text-amber-700">History</span>}
+        {t.type !== "기타" && <span className={`shrink-0 rounded px-1.5 py-0.5 text-px-11 ${TYPE_BADGE[t.type]}`}>{t.type}</span>}
+        {onEdit ? (
+          <button type="button" onClick={onEdit} aria-label={`${t.제목} 고치기`} className={`min-w-0 flex-1 truncate rounded text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</button>
+        ) : (
+          <span className={`min-w-0 flex-1 truncate text-xs ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</span>
+        )}
+        <span className="shrink-0 text-px-11 tabular-nums text-slate-400">{when}</span>
+        <button type="button" onClick={onRemove} className="-mr-1 inline-flex h-7 w-6 shrink-0 items-center justify-center text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
       </div>
-      {/* 이름 아래 한 줄 — 결과(초록)·「+ 결과」·「+ 다음」. 좁은 칸(PC 3단·폰)에서도 이름이 잘려 사라지지 않게 이름 줄과 나눈다. */}
-      {((done && !editing) || (canNext && !nextOpen)) && (
-        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+      {/* 아래 줄 — 결과(초록)·「+ 결과」·「+ 다음」·진행건 지정. 없으면 줄 자체가 없다. */}
+      {((done && !editing) || (canNext && !nextOpen) || assignSlot) && (
+        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pl-5">
           {done && result && !editing && (
             <button type="button" onClick={open} aria-label="결과 고치기" className="min-w-0 max-w-full truncate rounded px-0.5 text-left text-px-11 text-emerald-700 hover:bg-emerald-50">
               <span className="text-slate-400">결과 · </span>{result}
@@ -71,6 +78,7 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
           )}
           {done && !result && !editing && <button type="button" onClick={open} aria-label={`${t.제목} 결과 적기`} className="group rounded px-0.5 hover:bg-blue-50"><span className={TAG}>+ 결과</span></button>}
           {canNext && !nextOpen && <button type="button" onClick={() => setNextOpen(true)} aria-label={`${t.제목} 다음 할 일 적기`} className="group rounded px-0.5 hover:bg-blue-50"><span className={TAG}>+ 다음</span></button>}
+          {assignSlot && <button type="button" onClick={onAssignSlot} title={assignTitle} className="shrink-0 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-px-11 font-semibold text-amber-800 hover:bg-amber-100">진행 {assignSlot} 기록으로</button>}
         </div>
       )}
       {editing && (
@@ -86,7 +94,7 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
             if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
           }}
           onBlur={(e) => commit(e.currentTarget.value, true)}
-          placeholder="결과 한 줄 (예: 다음 주 재요청)"
+          placeholder="결과"
           className={`mt-1 w-full ${INPUT}`}
         />
       )}
@@ -95,7 +103,10 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
   );
 });
 
-/** 「+ 다음」 한 줄 입력 — 제목 + 날짜(기본 내일). Enter 저장, Esc·빈 채로 밖을 누르면 닫힘. */
+/**
+ * 「+ 다음」 한 줄 입력 — 제목 + 날짜(기본 내일) + 저장·취소. Enter 저장, Esc·취소로 닫힘.
+ * 바깥을 누르면 닫히던 동작은 뺐다(2026-10-27 belie): 휴대폰에서 달력을 열면 초점이 빠져 빈 입력칸이 닫히며 다음 할 일을 못 적었다.
+ */
 function NextTodoInput({ onCreate, onClose }: { onCreate: (title: string, date: string) => Promise<void>; onClose: () => void }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(tomorrowKST);
@@ -109,8 +120,7 @@ function NextTodoInput({ onCreate, onClose }: { onCreate: (title: string, date: 
   };
   return (
     <div
-      className="mt-1"
-      onBlur={(e) => { if (!busy && !title.trim() && !e.currentTarget.contains(e.relatedTarget as Node | null)) onClose(); }}
+      className="mt-1 pl-5"
       onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return;
         if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); }
@@ -118,8 +128,12 @@ function NextTodoInput({ onCreate, onClose }: { onCreate: (title: string, date: 
       }}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <input autoFocus aria-label="다음 할 일" value={title} maxLength={100} disabled={busy} onChange={(e) => setTitle(e.target.value)} placeholder="다음 할 일 (예: 보완 서류 받기)" className={`min-w-0 flex-1 basis-40 ${INPUT}`}/>
-        <input aria-label="다음 할 일 날짜" type="date" value={date} disabled={busy} onChange={(e) => setDate(e.target.value)} className={`w-32 max-w-full shrink-0 px-1.5 ${INPUT}`}/>
+        <input autoFocus aria-label="다음 할 일" value={title} maxLength={100} disabled={busy} onChange={(e) => setTitle(e.target.value)} placeholder="다음 할 일" enterKeyHint="done" className={`min-w-0 flex-1 basis-40 ${INPUT}`}/>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <input aria-label="다음 할 일 날짜" type="date" value={date} disabled={busy} onChange={(e) => setDate(e.target.value)} className={`w-32 min-w-0 appearance-none px-1.5 ${INPUT}`}/>
+          <button type="button" onClick={() => void submit()} disabled={busy || !title.trim()} className="h-9 shrink-0 rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{busy ? "저장 중" : "저장"}</button>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="다음 할 일 적기 취소" className="h-9 shrink-0 rounded-md px-2 text-xs font-semibold text-slate-500 hover:bg-slate-100">취소</button>
+        </div>
       </div>
       {error && <p role="alert" className="mt-1 text-px-11 font-medium text-red-600">{error}</p>}
     </div>
