@@ -5,7 +5,7 @@
 > **운영**: salesptlog.online, /opt/salespt-log, PM2, Caddy. PWA manifest만 제공하며 서비스워커·오프라인 캐시는 없다.
 
 ## 1. 필요한 문서
-- AGENTS → worklog 최근 관련 항목 → 해당 plan·SSOT·ADR. 과거 큐/사고 이력은 필요할 때만 읽는다.
+- AGENTS → worklog 최근 관련 항목(`docs/worklog/` 항목별 파일, 이름순 최신 — 규칙 docs/worklog/README.md) → 해당 plan·SSOT·ADR. 과거 큐/사고 이력은 필요할 때만 읽는다.
 - [architecture](docs/architecture.md)·[quality](docs/quality.md)·[tokens](docs/design/tokens.md)·[components](docs/design/components.md)·[data-model](docs/domains/data-model.md)·[sheet-structure](docs/domains/sheet-structure.md).
 - 같은 실수가 반복되면 좁은 검사·도구를 개선한다. 긴 사고 사례를 매번 자동 주입하지 않는다.
 
@@ -44,7 +44,7 @@
 - worklog에 담당 파일·선행조건을 선언한다. 같은 파일 동시 쓰기 금지.
 - lib/types·lib/config·scripts·.github·SSOT 공용 계약은 별도 검토 후 의존 작업보다 먼저 병합.
 - 공급자 접두사보다 현재 소유·선언이 우선. 타인 작업 임의 인수 금지.
-- 병합~배포 확인은 직렬. 선행 병합 후 rebase·현재 head 검증. worklog 양쪽 기록 보존.
+- 병합~배포 확인은 직렬. 선행 병합 후 rebase·현재 head 검증. worklog 는 항목별 파일이라 충돌 없음(옛 `docs/worklog.md` 는 고정 보관본·수정 시 커밋 차단).
 
 ## 4. 필수 게이트
 - commit/PR 전에 bash scripts/check.sh 통과: typecheck·lint·structural·unit/integration·크기·SSOT drift·정상 pre-commit 유지.

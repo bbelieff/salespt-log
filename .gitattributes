@@ -31,3 +31,6 @@
 # 0008 was applied from the reviewed Windows artifact. Freeze its exact bytes:
 # the migration ledger checksum must remain immutable across Linux checkouts.
 lib/repo/db/migrations/0008_db_sheet.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# 작업 기록 옛 파일 — 2026-10-26부터 고정 보관본(새 기록은 docs/worklog/ 항목별 파일). 옛 규칙 세션이 써도 병합 때 양쪽 줄을 다 살린다.
+docs/worklog.md merge=union

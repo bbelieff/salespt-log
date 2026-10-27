@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # .githooks/pre-commit — Guardrail.
 # 1) main/master 직접 커밋 차단
+# 1.5) docs/worklog.md(고정 보관본) 직접 수정 차단 — 새 기록은 docs/worklog/ 항목별 파일
 # 2) lib/ 또는 app/ 변경이 있는데 docs/plans/active/ 에 계획이 없으면 차단
 # 3) scripts/check.sh 실행
 #
@@ -16,8 +17,18 @@ if [[ "$branch" == "main" || "$branch" == "master" ]]; then
   exit 1
 fi
 
-# 2) 코드 변경 시 active plan 필수
 changed=$(git diff --cached --name-only)
+
+# 1.5) 작업 기록 옛 파일 고정(2026-10-26) — 모든 PR이 맨 위에 끼워 넣어 매번 충돌하던 문제.
+#      master 를 병합하는 커밋(MERGE_HEAD 있음)은 남의 기록이 따라오므로 통과.
+if echo "$changed" | grep -qx 'docs/worklog.md' && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+  echo "❌ pre-commit: docs/worklog.md 는 2026-10-26부터 고정 보관본입니다(PR 끼리 충돌 방지)."
+  echo "   → 새 기록은 docs/worklog/YYYY-MM-DD-HHMM-<브랜치 slug>.md 파일 하나로 남기세요. 규칙: docs/worklog/README.md"
+  echo "   → 이 파일 수정을 빼려면: git restore --staged --worktree docs/worklog.md"
+  exit 1
+fi
+
+# 2) 코드 변경 시 active plan 필수
 code_changed=$(echo "$changed" | grep -E '^(lib/|app/|components/|tests/)' || true)
 plan_present=$(ls -A docs/plans/active 2>/dev/null | grep -v -E '(^\.gitkeep$|^_TEMPLATE)' || true)
 
