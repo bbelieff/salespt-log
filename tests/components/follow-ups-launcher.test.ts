@@ -88,6 +88,36 @@ describe("우하단 빠른 보기", () => {
     act(() => { document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })); });
     expect(pop().dataset.open).toBe("false");
   });
+  it("줄 전체가 링크 · 「열기」 버튼 없음", () => {
+    render(React.createElement(FollowUpsLauncherView, { items: mixed }));
+    click(fab());
+    const link = pop().querySelector<HTMLAnchorElement>(".fl-item > a.fl-link")!;
+    expect(link.querySelector(".ft-badge")).not.toBeNull();
+    expect(link.querySelector(".fl-text")).not.toBeNull();
+    expect(pop().querySelector(".ft-go")).toBeNull();
+    expect(pop().querySelector(".fl-list")?.textContent).not.toContain("열기");
+  });
+  it("이미 실무/수납이면 줄을 누를 때 목적지를 알린다 · 다른 화면이면 알리지 않는다", () => {
+    const heard: unknown[] = [];
+    const listen = (e: Event) => heard.push((e as CustomEvent).detail);
+    window.addEventListener("payment-focus-request", listen);
+    try {
+      window.history.pushState({}, "", "/dashboard");
+      render(React.createElement(FollowUpsLauncherView, { items: mixed }));
+      click(fab());
+      const first = () => pop().querySelector<HTMLAnchorElement>(".fl-link")!;
+      act(() => { first().dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); });
+      expect(heard).toEqual([]);
+      window.history.pushState({}, "", "/payment");
+      click(fab());
+      act(() => { first().dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); });
+      expect(heard).toEqual([first().getAttribute("href")]);
+      expect(pop().dataset.open).toBe("false");
+    } finally {
+      window.removeEventListener("payment-focus-request", listen);
+      window.history.pushState({}, "", "/");
+    }
+  });
   it("0건이면 기존 빈 상태를 보여준다", () => {
     render(React.createElement(FollowUpsLauncherView, { items: [] }));
     click(fab());

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ContractPayment } from "@/types";
-import { paymentFocusedSlot, parsePaymentRowTarget, type PaymentRowTarget } from "@/util/payment-focus";
+import { PAYMENT_FOCUS_EVENT, paymentFocusedSlot, parsePaymentRowTarget, type PaymentRowTarget } from "@/util/payment-focus";
 
 /** Resolve once after rows arrive, so a cold mobile entry selects its actual company too. */
 export default function usePaymentFocus(rows: ContractPayment[] | undefined, isPc: boolean) {
@@ -10,9 +10,18 @@ export default function usePaymentFocus(rows: ContractPayment[] | undefined, isP
   const [requested, setRequested] = useState<PaymentRowTarget | null>(null);
   const [focusPayment, setFocusPayment] = useState<PaymentRowTarget | null>(null);
   useEffect(() => {
-    const search = window.location.search;
-    setFocusTodoId(new URLSearchParams(search).get("focus"));
-    setRequested(parsePaymentRowTarget(search));
+    const read = (search: string) => {
+      setFocusTodoId(new URLSearchParams(search).get("focus"));
+      setRequested(parsePaymentRowTarget(search));
+    };
+    read(window.location.search);
+    // 이미 이 화면일 때 — 주소만 바뀌고 다시 마운트되지 않으므로 알림으로 받는다.
+    const onRequest = (e: Event) => {
+      const href = (e as CustomEvent<unknown>).detail;
+      if (typeof href === "string") read(new URL(href, window.location.origin).search);
+    };
+    window.addEventListener(PAYMENT_FOCUS_EVENT, onRequest);
+    return () => window.removeEventListener(PAYMENT_FOCUS_EVENT, onRequest);
   }, []);
   useEffect(() => {
     if (!requested || !rows?.some(cp => cp.row === requested.row && !cp.해지숨김)) return;

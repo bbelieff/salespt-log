@@ -12,6 +12,13 @@ export function parsePaymentSlotTarget(search: string): PaymentSlotTarget | null
   return { row, slot };
 }
 
+/**
+ * 같은 화면 안 이동 알림 — 실무/수납에 있는 채로 빠른 보기 「오늘 챙길 일」을 누르면 주소만 바뀌고
+ * 화면은 다시 열리지 않아(첫 진입 때만 주소를 읽음) 무반응이었다(2026-10-28). 누른 쪽이 이 이름으로
+ * 목적지 주소(detail = href)를 알리면 실무/수납이 그 업체·진행건으로 간다.
+ */
+export const PAYMENT_FOCUS_EVENT = "payment-focus-request";
+
 export interface PaymentRowTarget {
   row: number;
   /** null means company-only: the receiving page must not guess a work slot. */
