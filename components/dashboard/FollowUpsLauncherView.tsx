@@ -1,7 +1,7 @@
 "use client";
 /**
  * 우하단 「오늘 챙길 일」 빠른 보기 — 원형 버튼(남보라) + 건수 배지, 누르면 버튼에서 원형으로 퍼지는 작은 창.
- * 긴급순 5건(배지·업체·할 일·STEP) + 「열기」(대시보드 표와 같은 목적지).
+ * 긴급순 5건(배지·업체·할 일·STEP) — 줄 전체를 누르면 연다(대시보드 표와 같은 목적지, 눌림 효과).
  * 아래 줄: 왼쪽 「오류신고」(창을 닫고 실제 화면을 찍은 뒤 신고 창) · 오른쪽 「대시보드에서 N건 더 보기」.
  * 닫기: ×·Esc(초점은 버튼으로) · 바깥 누르기. 조회·집계는 FollowUpsLauncher(useTodayFollowUps) 책임.
  * 맞춤공고 4d(2026-10-26 목업 ④): 머리에 「챙길 일 N | 새 공고 N」 두 칸. 새 공고 = 아직 담지 않은 맞는 공고(실무/수납에서 담는다).
@@ -10,9 +10,10 @@
 import { useEffect, useId, useRef, useState, type ComponentType } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight, ChevronRight, X } from "lucide-react";
 import { followUpBadgeLabel, topUrgentFollowUps, type FollowUpItem } from "@/lib/analytics/dashboard-follow-ups";
 import type { GrantInboxItem } from "@/lib/analytics/grant-match";
+import { PAYMENT_FOCUS_EVENT } from "@/util/payment-focus";
 import { captureTab } from "@/components/bug-report/capture";
 import { installErrorLog } from "@/components/bug-report/error-log";
 import "./followups-table.css";
@@ -47,6 +48,13 @@ export default function FollowUpsLauncherView({ items, loading = false, incomple
     if (restoreFocus) button.current?.focus({ preventScroll: true });
   };
   useEffect(() => { installErrorLog(); }, []);
+  /** 줄을 누르면 연다. 이미 실무/수납이면 주소만 바뀌고 화면이 다시 열리지 않으므로 목적지를 직접 알린다. */
+  const go = (href: string) => {
+    close(false);
+    if (new URL(href, window.location.origin).pathname === window.location.pathname) {
+      window.dispatchEvent(new CustomEvent(PAYMENT_FOCUS_EVENT, { detail: href }));
+    }
+  };
   /** 실제 탭을 찍고(브라우저 허락 — 누른 직후에만 뜨므로 맨 먼저 부른다) 신고 창을 연다. 못 찍으면 사진 붙이기로. */
   const startReport = () => {
     setOpen(false);
@@ -99,19 +107,19 @@ export default function FollowUpsLauncherView({ items, loading = false, incomple
       <div className="fl-body">
         {showGrant ? (grantItems!.length ? <ul className="fl-list">{grantItems!.slice(0, GRANT_TOP).map(g => {
             const [label, tone] = GRANT_BADGE[g.urgent && g.verdict === "match" ? "urgent" : g.verdict];
-            return <li key={g.key} className="fl-item">
+            return <li key={g.key} className="fl-item"><Link href={g.href as Route} className="fl-link" aria-label={`${g.company} ${g.title} 실무/수납에서 보기`} onClick={() => go(g.href)}>
               <span className="ft-badge" data-tone={tone}>{label}</span>
               <span className="fl-text"><strong title={g.company}>{g.company}</strong><small title={g.title}>{g.title}</small></span>
-              <Link href={g.href as Route} className="ft-go" aria-label={`${g.company} ${g.title} 실무/수납에서 보기`} onClick={() => close(false)}>열기<ArrowUpRight size={13} aria-hidden /></Link>
-            </li>;
+              <ChevronRight size={15} aria-hidden className="fl-chevron" />
+            </Link></li>;
           })}</ul>
           : <div className="ft-empty"><span aria-hidden>✓</span><strong>새 공고가 없어요</strong><p>맞는 공고는 실무/수납 「🎯 맞는 공고」에서 담을 수 있어요.</p></div>)
         : loading ? <div className="fl-loading" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="fx-skeleton fl-skeleton" />)}</div>
-          : top.length ? <ul className="fl-list">{top.map(item => <li key={item.key} className="fl-item">
+          : top.length ? <ul className="fl-list">{top.map(item => <li key={item.key} className="fl-item"><Link href={item.href as Route} className="fl-link" aria-label={`${item.company} ${item.action} 열기`} onClick={() => go(item.href)}>
             <span className="ft-badge" data-tone={item.group}>{followUpBadgeLabel(item.badge)}</span>
             <span className="fl-text"><strong title={item.company}>{item.company}</strong><small title={`${item.action} · ${STEP_LABEL[item.step]}`}>{item.action} · {STEP_LABEL[item.step]}</small></span>
-            <Link href={item.href as Route} className="ft-go" aria-label={`${item.company} ${item.action} 열기`} onClick={() => close(false)}>열기<ArrowUpRight size={13} aria-hidden /></Link>
-          </li>)}</ul>
+            <ChevronRight size={15} aria-hidden className="fl-chevron" />
+          </Link></li>)}</ul>
           : <div className="ft-empty"><span aria-hidden>{incomplete ? "!" : "✓"}</span><strong>{incomplete ? "아직 확인하지 못한 항목이 있어요" : "지금 처리할 일이 없어요"}</strong><p>{incomplete ? "일부 조회에 실패했어요. 다시 시도한 뒤 확인해 주세요." : "오늘 챙길 일이 0건입니다."}</p></div>}
         {incomplete && !loading && <p className="fl-notice" role="status">일부 항목을 불러오지 못했어요{onRetry && <button type="button" onClick={onRetry}>다시 시도</button>}</p>}
       </div>

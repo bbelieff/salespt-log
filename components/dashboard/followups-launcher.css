@@ -25,7 +25,14 @@
 .fl-close:hover{background:#e0e7ff}
 .fl-body{min-height:0;overflow:auto;overscroll-behavior:contain}
 .fl-list{padding:4px 0}
-.fl-item{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 14px}
+.fl-item{padding:0 6px}
+/* 줄 전체가 「열기」 — 누르면 살짝 눌리고 색이 든다(2026-10-28 belie). */
+.fl-link{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 8px;border-radius:8px;transition:background-color .15s ease,transform .12s ease;-webkit-tap-highlight-color:transparent}
+.fl-link:hover{background:#f5f3ff}
+.fl-link:active{background:#ede9fe;transform:scale(.98)}
+.fl-link:focus-visible{outline:2px solid #6d28d9;outline-offset:-2px}
+.fl-chevron{color:#a78bfa;transition:transform .15s ease}
+.fl-link:hover .fl-chevron{transform:translateX(2px)}
 .fl-item+.fl-item{border-top:1px solid #f1f5f9}
 .fl-item .ft-badge{text-align:center}
 .fl-text{min-width:0}
@@ -42,9 +49,9 @@
 .fl-all:hover{background:#f8fafc}
 .fl-pop :is(a,button):focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 /* 터치 화면은 주변 조작부와 같은 44px 누름 영역(오늘 챙길 일 표의 열기·닫기와 동일). */
-@media(max-width:1023px){.fl-all,.fl-report,.fl-notice button,.fl-tabs button{min-height:44px}.fl-item .ft-go{min-height:44px}}
-@media(max-width:767px){.fl-item{padding:4px 12px}.fl-head{padding-left:12px}.fl-foot{padding:4px 12px}}
-@media(prefers-reduced-motion:reduce){.fl-fab{transition:none}.fl-fab:hover,.fl-fab:active{transform:none}.fl-pop,.fl-pop[data-open=true]{transition:none}}
+@media(max-width:1023px){.fl-all,.fl-report,.fl-notice button,.fl-tabs button{min-height:44px}.fl-link{min-height:44px}}
+@media(max-width:767px){.fl-item{padding:2px 4px}.fl-head{padding-left:12px}.fl-foot{padding:4px 12px}}
+@media(prefers-reduced-motion:reduce){.fl-fab{transition:none}.fl-fab:hover,.fl-fab:active{transform:none}.fl-pop,.fl-pop[data-open=true]{transition:none}.fl-link,.fl-chevron{transition:none}.fl-link:active{transform:none}.fl-link:hover .fl-chevron{transform:none}}
 /* 본문 끝 줄이 버튼 밑에 깔리지 않게 아래 여백을 더한다(높이 고정 화면 — DB관리시트·PC 실무/수납 — 제외). */
 @media(max-width:1023px){.desktop-shell:has(~ .fl-root) .app-shell-main:not(:has(.db-sheet-frame)){padding-bottom:calc(var(--app-tabbar-height) + 76px)}}
 @media(min-width:1024px){.desktop-shell:has(~ .fl-root) .app-shell-main:not(:has(.db-sheet-frame,[data-payment-desktop-shell])){padding-bottom:84px}}
