@@ -175,4 +175,17 @@ describe("payment Todo 고치기(수정 모드, 2026-10-27)", () => {
     expect(mocks.patchAsync).toHaveBeenCalledWith({ contractRef: "c-1", id: "t-1", partial: { type: "전화", 제목: "재단 방문 (오후)", 예정일자: "2026-10-27", 예정시각: "14:20", 상세: "담당자 확인", showOnCalendar: false } });
     expect(onClose).toHaveBeenCalled();
   });
+  it("오류신고 2026-10-28 — 바꾼 게 없으면 나갈 때 묻지 않고, 바꾸면 묻는다 · 확인창(z-[350])이 이 창 위에 뜬다", () => {
+    const { dialog, overlay } = mountModal();
+    const dirtyNow = () => mocks.registerDirty.mock.calls.at(-1)?.[1];
+    expect(dirtyNow()).toBe(false);
+    const input = dialog!.querySelector<HTMLInputElement>("input:not([type])")!;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "후속 연락 2");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(dirtyNow()).toBe(true);
+    const z = Number(/z-\[(\d+)\]/.exec(overlay!.className)?.[1]);
+    expect(z).toBeLessThan(350);
+  });
 });

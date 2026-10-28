@@ -67,7 +67,12 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
         ) : (
           <span className={`min-w-0 flex-1 truncate text-xs ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</span>
         )}
-        <span className="shrink-0 text-px-11 tabular-nums text-slate-400">{when}</span>
+        {/* 일정을 눌러도 고치기(2026-10-28 belie 「다음으로 넣은 투두 일정을 지우고 다시 만들기 번거롭다」). */}
+        {onEdit ? (
+          <button type="button" onClick={onEdit} aria-label={`${t.제목} 일정 고치기 (${when})`} className="shrink-0 rounded px-1 text-px-11 tabular-nums text-slate-500 underline decoration-dotted underline-offset-2 transition-colors hover:bg-blue-50 hover:text-blue-700 active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">{when}</button>
+        ) : (
+          <span className="shrink-0 text-px-11 tabular-nums text-slate-400">{when}</span>
+        )}
         <button type="button" onClick={onRemove} className="-mr-1 inline-flex h-7 w-6 shrink-0 items-center justify-center text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
       </div>
       {/* 아래 줄 — 결과(초록)·「+ 결과」·「+ 다음」·진행건 지정. 없으면 줄 자체가 없다. */}
