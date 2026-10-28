@@ -46,6 +46,7 @@ import {
   markMirrorPending,
 } from "@/repo/db/mirror-pending";
 import { readTodoRowStateFromDb, readTodosFromDb } from "@/repo/db/read-daily";
+import { readDeletedTodosFromDb } from "@/repo/db/todo-trash";
 import { captureServerEvent } from "@/lib/analytics/api-timing";
 import {
   onTodoChanged,
@@ -363,4 +364,23 @@ export async function removeTodo(
     return;
   }
   await clearTodo(ctx.spreadsheetId, id);
+}
+
+/**
+ * 휴지통(2026-10-28) — 지운 ToDo 목록. 삭제가 {_cleared:true} 병합이라 내용이 남아 있다. DB 기수만(시트 기수는 빈 목록).
+ */
+export async function listDeletedTodos(email: string, spreadsheetIdOverride?: string): Promise<{ todo: Todo; deletedAt: string }[]> {
+  const ctx = await resolveSheet(email, spreadsheetIdOverride);
+  if (!usesDbStorage(ctx.cohort)) return [];
+  return readDeletedTodosFromDb(ctx.spreadsheetId);
+}
+
+/** 휴지통에서 되살리기 — 지움 표시만 걷고 시트·구글 캘린더를 지금 상태로 다시 맞춘다(시트 행 다시 쓰기·이벤트 재생성). */
+export async function restoreTodo(email: string, id: string, spreadsheetIdOverride?: string): Promise<void> {
+  const ctx = await resolveSheet(email, spreadsheetIdOverride);
+  if (!usesDbStorage(ctx.cohort)) throw new Error("[todos] 휴지통은 DB 기수만");
+  const state = await readTodoRowStateFromDb(ctx.spreadsheetId, id);
+  if (!state?.cleared || !state.todo) throw new Error(`[todos] 휴지통에 없는 ToDo: ${id}`);
+  await writeRowToDb({ ...ctx, tab: "todos", rowKey: id, payload: { _cleared: false } });
+  queueSheetSync(ctx, id);
 }

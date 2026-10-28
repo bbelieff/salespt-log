@@ -1800,6 +1800,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `InflowRecordingDialog`: 기존 standalone 영향 미리보기·확인 컴포넌트는 보존한다. 현재 DB관리시트의 기본 진입에는 연결하지 않으며, 목록 배지→DB정보의 헤더 편집과 기존 상담·미팅 설정 경로가 현행 UI다.
 - `ImportResultNotice`: 저장 성공 후 목록 추가건수·유입 반영건수·날짜/채널별 결과. 닫기 전 유지.
 - `ImportDialog`: 가져오기 선택과 유입기록 체크 분리, 기본 전체 체크·부분 체크·전체 해제, 상담/미팅 설정. PC 전체 열·5행 기준, 모바일 라벨 필드.
+- `TrashTable`(`app/(app)/trash/_components`, 2026-10-28 앱 휴지통): 지운 할 일·미팅·DB관리시트를 한 표로 — 체크·종류 배지·이름(휴대폰은 내용을 이름 아래)·지운 때. 행을 눌러도 고르기(누름 색), 되살릴 수 없는 줄은 흐리게+이유·선택 불가. 되살리기만(영구 삭제 없음), 아래 붙는 「N개 골랐어요 · 되살리기」 막대. 데이터 `lib/service/trash.ts`, 진입 = 로고 메뉴 「휴지통」.
 - `DeletedMeetings`, `MeetingSafetyDialog`, `use-meeting-delete-confirm`: 삭제 전 일정 변경 우선 안내. 삭제된 단순 예약은 원래 ID로 복원; 계약·후속 미팅 이력이 연결된 복합건은 별도 안내로 개별 복원 차단.
 
 - DB관리시트 컨택결과 선택지: 집계 제외 / STEP 2 컨택진행 +1 표시. 활동 기록 OFF는 기록 꺼짐. 저장하는 결과 문자열은 기존값을 유지하고 업체별 하루 1건 안내.

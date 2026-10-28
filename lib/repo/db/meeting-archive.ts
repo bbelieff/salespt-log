@@ -5,8 +5,9 @@ import { lockedMeetingCounts } from "./sales-meeting-counts";
 import type { Meeting } from "@/types";
 
 type Context = { spreadsheetId:string; cohort:string; email:string };
-type Stored = { tab:string; row_key:string; payload:Record<string,unknown> };
-export type ArchivedMeeting = { meeting:Meeting; restorable:boolean; reason:string };
+type Stored = { tab:string; row_key:string; payload:Record<string,unknown>; updated_at?:Date|string };
+/** deletedAt = 행의 마지막 변경 시각(지운 뒤엔 못 고치므로 = 지운 때) — 앱 휴지통 정렬용. */
+export type ArchivedMeeting = { meeting:Meeting; restorable:boolean; reason:string; deletedAt?:string };
 function reasonFor(meeting:Meeting, rows:Stored[]):string {
   if (meeting.상태 !== "예약" || meeting.계약여부 || meeting.previousMeetingId || meeting.구분 === "이월") return "계약·일정 변경 이력이 있는 미팅은 여기서 복원할 수 없어요.";
   if (rows.some(r => r.tab === "meetings" && meetingFromDbPayload(r.payload)?.previousMeetingId === meeting.id)) return "연결된 미팅 이력이 있어 개별 복원할 수 없어요.";
@@ -16,11 +17,11 @@ function reasonFor(meeting:Meeting, rows:Stored[]):string {
 export async function listArchivedMeetings(ctx:Context):Promise<ArchivedMeeting[]> {
   if (!dbEnabled()) return [];
   await ensureSchema();
-  const result=await getDbPool().query("select tab,row_key,payload from sheet_rows where spreadsheet_id=$1 and tab in ('meetings','contracts')",[ctx.spreadsheetId]);
+  const result=await getDbPool().query("select tab,row_key,payload,updated_at from sheet_rows where spreadsheet_id=$1 and tab in ('meetings','contracts')",[ctx.spreadsheetId]);
   const rows=result.rows as Stored[];
   return rows.filter(r=>r.tab==='meetings' && r.payload._cleared===true && r.payload._dbSheetLeadDeleted!==true).flatMap(r=>{
     const meeting=meetingFromDbPayload(r.payload);if(!meeting)return [];
-    const reason=reasonFor(meeting,rows);return [{meeting,restorable:!reason,reason}];
+    const reason=reasonFor(meeting,rows);return [{meeting,restorable:!reason,reason,...(r.updated_at?{deletedAt:new Date(r.updated_at).toISOString()}:{})}];
   }).sort((a,b)=>b.meeting.미팅날짜.localeCompare(a.meeting.미팅날짜));
 }
 /** Table lock also serializes existing writers which do not take the DB-sheet advisory lock.
