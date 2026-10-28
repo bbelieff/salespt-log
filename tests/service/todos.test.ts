@@ -79,6 +79,7 @@ import {
   listTodos,
   patchTodo,
   removeTodo,
+  restoreTodo,
 } from "@/service/todos";
 
 const SHEET = "sheet-pilot";
@@ -352,5 +353,20 @@ describe("mirror_pending 안전망 (§7-3)", () => {
         rowKey: "t-old",
       }),
     );
+  });
+});
+
+describe("restoreTodo — 앱 휴지통 되살리기(2026-10-28)", () => {
+  it("지움 표시만 걷고(병합 {_cleared:false}) 시트를 다시 맞춘다", async () => {
+    readTodoRowStateFromDb.mockResolvedValue({ cleared: true, todo: mkTodo() });
+    await restoreTodo(EMAIL, "t1");
+    expect(writeRowToDb).toHaveBeenCalledWith({ spreadsheetId: SHEET, cohort: "8", email: EMAIL, tab: "todos", rowKey: "t1", payload: { _cleared: false } });
+  });
+  it("지우지 않은 것·내용 없는 것은 되살리지 않는다", async () => {
+    readTodoRowStateFromDb.mockResolvedValue({ cleared: false, todo: mkTodo() });
+    await expect(restoreTodo(EMAIL, "t1")).rejects.toThrow("휴지통에 없는");
+    readTodoRowStateFromDb.mockResolvedValue({ cleared: true, todo: null });
+    await expect(restoreTodo(EMAIL, "t1")).rejects.toThrow("휴지통에 없는");
+    expect(writeRowToDb).not.toHaveBeenCalled();
   });
 });
