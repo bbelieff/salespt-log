@@ -59,7 +59,11 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
     else await create.mutateAsync({ contractRef, institutionRef, slot: slot ?? null, 업체명: companyName, 기록종류: kind, type, 제목: title.trim(), 예정일자: date, 예정시각, 장소: "", 상세: detail.trim(), showOnCalendar, operationId: opId });
     onClose();
   };
-  useDirtyEntry(`todo-${contractRef}-${institutionRef}${editing ? `-${editing.id}` : ""}`, true, doCreate, onClose, `${kind === "todo" ? "Todo" : "History"} · ${companyName}`);
+  // 바꾼 게 있을 때만 「저장하지 않고 나갈까요?」 — 열어 보고 그냥 닫으면 묻지 않는다(2026-10-28 오류신고).
+  const changed = kind !== initial.기록종류 || type !== (editing?.type ?? "기타") || title !== initial.제목 || date !== initial.예정일자
+    || hour !== initial.hour || minute !== (initial.hour === "20" ? "00" : initial.minute) || detail !== (editing?.상세 ?? "")
+    || showOnCalendar !== (editing?.showOnCalendar ?? true);
+  useDirtyEntry(`todo-${contractRef}-${institutionRef}${editing ? `-${editing.id}` : ""}`, changed, doCreate, onClose, `${kind === "todo" ? "Todo" : "History"} · ${companyName}`);
   const guardedNav = useGuardedNav();
   const close = useCallback(() => guardedNav(onClose), [guardedNav, onClose]);
 
@@ -90,8 +94,10 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
   const hours = HOURS.includes(hour) ? HOURS : [...HOURS, hour].sort();
   const minutes = MINUTES.includes(minute) || hour === "20" ? MINUTES : [...MINUTES, minute].sort();
   const pending = create.isPending || patch.isPending;
+  // 겹침 순서는 다른 확인창들과 같은 z-[300] — 「저장하지 않고 나갈까요?」(z-[350])가 이 창 위에 떠야 누를 수 있다.
+  // (z-[400] 이던 때 확인창이 뒤에 깔려 저장 말고는 빠져나갈 수 없었다 — 2026-10-28 오류신고.)
   const modal = (
-    <div className="fx-sheet-wrap fixed inset-0 z-[400] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={close}>
+    <div className="fx-sheet-wrap fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={close}>
       <div
         ref={dialogRef}
         role="dialog"

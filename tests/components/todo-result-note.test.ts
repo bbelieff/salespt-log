@@ -85,3 +85,18 @@ describe("「+ 다음」 연계 할 일", () => {
     expect(next()!.value).toBe("다시 전화"); expect(el?.querySelector('[role="alert"]')?.textContent).toContain("네트워크 오류");
   });
 });
+
+describe("일정 눌러 고치기 (2026-10-28)", () => {
+  it("고치기를 줄 수 있으면 일정이 버튼 — 누르면 고치기 창, 없으면 그냥 글자", () => {
+    const edit = vi.fn();
+    el = document.createElement("div"); document.body.append(el); root = createRoot(el);
+    act(() => root?.render(h(TodoRow, { todo: { ...base, 완료여부: false }, onToggleDone: vi.fn(), onSaveResult: vi.fn(), onEdit: edit, onRemove: vi.fn() })));
+    const when = q('[aria-label="재무제표 3년치 요청 일정 고치기 (10/22 09:00)"]')!;
+    expect(when.tagName).toBe("BUTTON");
+    act(() => when.click());
+    expect(edit).toHaveBeenCalledTimes(1);
+    act(() => root?.render(h(TodoRow, { todo: base, onToggleDone: vi.fn(), onSaveResult: vi.fn(), onRemove: vi.fn() })));
+    expect(q('[aria-label$="일정 고치기 (10/22 09:00)"]')).toBeNull();
+    expect(el?.textContent).toContain("10/22 09:00");
+  });
+});
