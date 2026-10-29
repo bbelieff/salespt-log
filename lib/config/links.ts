@@ -13,6 +13,12 @@ export const WORK_MANUAL_URL =
   "https://climbing-caraway-ec3.notion.site/65b3fa7fca00835283dd0126f54d2b4f";
 
 /**
+ * 세일즈PT 네이버 카페 — PC 업무도구 바로가기(2026-10-30 belie).
+ * 짧은 정식 주소: `/f-e/...` 형식은 카톡 인앱 브라우저에서 안 열린다.
+ */
+export const SALESPT_CAFE_URL = "https://cafe.naver.com/salespt";
+
+/**
  * 사용 가이드 — **네이버 카페 「경영일지 사용법」 게시판** (2026-09-07 belie).
  *
  * ## 왜 노션에서 카페로 옮겼나

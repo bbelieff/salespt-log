@@ -18,10 +18,10 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Table2, BookOpen, CalendarDays, FolderOpen, LayoutDashboard, Newspaper, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
+import { Table2, BookOpen, CalendarDays, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
 import { NAV_STEPS } from "@/components/TabBar";
 import { useGuardedRouter } from "@/components/DirtyGuard";
-import { WORK_MANUAL_URL } from "@/config/links";
+import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
 import { useMe } from "@/query/me-hook";
 import StepBadge, { type StepId } from "@/components/ui/StepBadge";
 
@@ -165,6 +165,17 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
       >
         <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
         {!compact && <>업무매뉴얼 <ExternalArrow /></>}
+      </a>
+      <a
+        href={SALESPT_CAFE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="세일즈PT 카페 (새 탭에서 열림)"
+        title={compact ? "세일즈PT 카페 (새 탭)" : undefined}
+        className={`flex min-h-9 items-center gap-2 rounded-lg py-1 text-sm font-medium text-slate-700 transition-colors hover:bg-white/75 ${compact ? "justify-center px-0" : "px-2"}`}
+      >
+        <MessagesSquare className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {!compact && <>세일즈PT 카페 <ExternalArrow /></>}
       </a>
     </section>
   );
