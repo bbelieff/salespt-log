@@ -37,10 +37,26 @@ function tokens(line:string):string[] {
 }
 /** Fingerprint contains only structural categories. It never contains source values. */
 function hash(value:string){let h=2166136261;for(const ch of value){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);}
+/**
+ * 제목행 위의 시트 제목·요약 줄 건너뛰기(2026-10-29 belie 「심재선님 디비」 시트: 1행 제목, 2행 잔여 개수, 4행 머리글).
+ * 맨 위 10줄 안에 전화번호 + (이름·업체·사업자번호) 머리글 줄이 있고, 그 위 줄에 전화번호가 없을 때만 그 줄부터 읽는다.
+ */
+const cellsOf=(line:string)=>line.split(line.includes('\t')?'\t':line.includes(',')?',':';').map(c=>c.replace(/^\s*"|"\s*$/g,'').trim());
+const coreHeader=(cells:string[])=>{const keys=cells.map(c=>headerKey(c));return keys.includes('phone')&&keys.some(k=>k==='owner'||k==='company'||k==='biz');};
+export function skipImportPreamble(text:string):string {
+ const lines=text.split('\n');
+ if(coreHeader(cellsOf(lines[0]||'')))return text;
+ for(let i=1;i<Math.min(lines.length,10);i++){
+  if(/01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/.test(lines[i-1]!))return text;
+  if(coreHeader(cellsOf(lines[i]!)))return lines.slice(i).join('\n');
+ }
+ return text;
+}
 export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Rules={}):Analysis {
  // A tab is a column delimiter: trim() would shift only the first heading row.
  if(text.length>5*1024*1024)throw new Error('5MB 이하 내용을 가져와 주세요.');
- const normalized=normalizeImportText(text);if(blankImportText(normalized))throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
+ const cleaned=normalizeImportText(text);if(blankImportText(cleaned))throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
+ const normalized=mode==='no'?cleaned:skipImportPreamble(cleaned);
  const {separator,firstRecord,offset,unterminated}=importTextFormat(normalized);
  const raw=normalized.slice(offset);
  const lines=raw.split('\n').filter(s=>!blankImportText(s));
