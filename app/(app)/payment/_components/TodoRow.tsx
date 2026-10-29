@@ -137,7 +137,7 @@ function NextTodoInput({ onCreate, onClose }: { onCreate: (title: string, date: 
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <input autoFocus aria-label="다음 할 일" value={title} maxLength={100} disabled={busy} onChange={(e) => setTitle(e.target.value)} placeholder="다음 할 일" enterKeyHint="done" className={`min-w-0 flex-1 basis-40 ${INPUT}`}/>
         <div className="flex shrink-0 items-center gap-1.5">
-          <input aria-label="다음 할 일 날짜" type="date" value={date} disabled={busy} onChange={(e) => setDate(e.target.value)} className={`w-32 min-w-0 appearance-none px-1.5 ${INPUT}`}/>
+          <input aria-label="다음 할 일 날짜" type="date" value={date} disabled={busy} onChange={(e) => setDate(e.target.value)} className={`w-32 min-w-0 appearance-none px-1.5 leading-9 ${INPUT}`}/>
           <button type="button" onClick={() => void submit()} disabled={busy || !title.trim()} className="h-9 shrink-0 rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{busy ? "저장 중" : "저장"}</button>
           <button type="button" onClick={onClose} disabled={busy} aria-label="다음 할 일 적기 취소" className="h-9 shrink-0 rounded-md px-2 text-xs font-semibold text-slate-500 hover:bg-slate-100">취소</button>
         </div>
