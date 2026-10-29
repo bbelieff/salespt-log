@@ -1,0 +1,2 @@
+## 2026-10-29 · DB 가져오기 — 같은 시트를 다시 가져와도 새 DB만
+- feat/db-import-new-leads-only. belie: 구글시트를 매번 넣을 때 이미 기록된 명단은 빼고 새 DB만 잡히게. 전에는 이미 있는 업체도 표에 다 나오고(해제만) 노란 확인 칸 개수에 섞였고, 휴지통 업체는 다시 들어갔다. → ImportDialog 가 목록 + 휴지통(창 열 때 1회 조회)과 `isSameLead` 로 대조해 이미 있는 업체를 「이미 있는 N건 제외」로 접고 표·확인 칸·전체 선택에서 뺌. 「보기」로 펼쳐 기존 중복 확인 흐름으로 따로 추가 가능. 테스트 tests/components/db-sheet-import-known-leads.test.ts(가상 값). 되돌리기 = squash revert.
