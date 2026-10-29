@@ -73,7 +73,7 @@ vi.mock("@/components/weekly-goals/WeeklyGoalEditor", () => ({
 
 import DesktopNav from "@/components/desktop/DesktopNav";
 import WeeklyGoalPage from "@/components/weekly-goals/WeeklyGoalPage";
-import { WORK_MANUAL_URL } from "@/config/links";
+import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
 
 const host = document.createElement("div");
 document.body.append(host);
@@ -209,7 +209,7 @@ describe("PC 사이드탭 계층과 축소 모드", () => {
     expect(tools.className).toContain("rounded-xl");
     expect(tools.className).toContain("bg-slate-200/65");
     expect(Array.from(tools.querySelectorAll("a")).map((link) => link.getAttribute("href"))).toEqual([
-      "/payment#drive-link", "/payment/news", WORK_MANUAL_URL,
+      "/payment#drive-link", "/payment/news", WORK_MANUAL_URL, SALESPT_CAFE_URL,
     ]);
   });
 
