@@ -117,7 +117,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
         <input ref={titleRef} aria-label="기록 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={effective ? (kind === "todo" ? "할 일" : "한 일") : "진행기관 먼저 입력"} disabled={!effective} autoComplete="off" enterKeyHint="done" className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none disabled:bg-slate-100"/>
         </div>
         <div className="flex min-w-0 items-center gap-1.5">
-          <input aria-label="기록 날짜" type="date" value={date} onChange={(e) => { setDate(e.target.value); setDateTouched(true); }} className="h-9 w-32 min-w-0 appearance-none rounded-md border border-slate-300 bg-white px-1.5 text-xs"/>
+          <input aria-label="기록 날짜" type="date" value={date} onChange={(e) => { setDate(e.target.value); setDateTouched(true); }} className="h-9 w-32 min-w-0 appearance-none rounded-md leading-9 border border-slate-300 bg-white px-1.5 text-xs"/>
           <button type="submit" disabled={!canAdd} className="h-9 shrink-0 whitespace-nowrap rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{create.isPending ? "저장 중" : "추가"}</button>
           <button type="button" onClick={openDetail} disabled={!effective} title="시각·종류·상세 내용까지 적기" className="h-9 shrink-0 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">자세히</button>
         </div>
