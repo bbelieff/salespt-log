@@ -239,6 +239,8 @@ describe("G5: YYYY-MM-DD 리터럴 금지 (앱 코드)", () => {
     "lib/service/expense-ledger.ts",
     // PostHog defaults: "YYYY-MM-DD" 는 SDK 동작 버전 키 (날짜가 아니라 설정 스위치)
     "app/providers.tsx",
+    // Notion-Version 헤더 "YYYY-MM-DD" = 노션 API 버전 키 (날짜가 아니라 API 계약 고정)
+    "lib/repo/notion-client.ts",
   ]);
 
   it("날짜 리터럴은 테스트 fixture·ops 스크립트에서만", () => {

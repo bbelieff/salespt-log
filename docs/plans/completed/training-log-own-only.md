@@ -1,11 +1,12 @@
 ---
-status: active
+status: completed
 slug: training-log-own-only
 created: 2026-10-30
 owner: belie
+completed: 2026-10-30
 ---
 
-# 트레이닝일지 — 수강생마다 자기 일지만 보기 (기획, 승인 대기)
+# 트레이닝일지 — 수강생마다 자기 일지만 보기 (A안 구현)
 
 ## Intent
 belie(2026-10-30): 업무도구에 트레이닝일지 바로가기. 노션 기수 페이지(예: 「[11기] 세일즈PT 수강생 트레이닝 피드백」)를 통째로 열면 안 되고, **각 수강생이 자기 일지만** 봐야 한다.
@@ -40,3 +41,10 @@ belie(2026-10-30): 업무도구에 트레이닝일지 바로가기. 노션 기�
 - [ ] 합성 2명 데이터로: 수강생 A 세션은 A 페이지만, B의 pageId 직접 요청은 404.
 - [ ] 이름 없음·토큰 없음·노션 장애 → 각각 안내 문구, 앱 다른 화면 영향 없음.
 - [ ] 목업 승인 후 구현, PC/모바일 실제 화면 확인.
+
+## 구현 (2026-10-30, belie 「A안으로」)
+- 토큰: YJ그룹에서 belie 계정은 내부 연결 생성 권한이 없어 **belie 개인 액세스 토큰 「에고라이트」** 로 결정(belie 선택 — 읽기·쓰기 범위 위험 설명 후). 코드는 GET·조회 POST 만 부른다(`lib/repo/notion-client.ts`).
+- `lib/repo/notion-client.ts` → `lib/service/training-log(-blocks).ts` → `GET /api/training-log`, `GET /api/training-log/[id]` → `/training-log`, `/training-log/[id]` 화면, PC 업무도구 「트레이닝일지」.
+- 내 것 판정: 레지스트리 기수 숫자 + 이름(부부 괄호 표기 포함) ↔ DB 의 select 값 또는 제목 앞부분. 본문은 부모 DB 가 내 기수 DB 인지·내 행인지 다시 확인, 아니면 404.
+- 합성 시험: tests/service/training-log.test.ts(남의 것·다른 기수·일지 DB 아닌 표 거절), 화면: tests/browser/training-log-server.mjs.
+- 남은 일: belie 가 VPS `.env.local` 에 `NOTION_TOKEN` 추가 → 다음 배포(pm2 reload)부터 동작. 그 전에는 「연결을 준비하고 있어요」 안내.

@@ -18,7 +18,7 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Table2, BookOpen, CalendarDays, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
+import { Table2, BookOpen, CalendarDays, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, NotebookPen, PanelLeftClose, PanelLeftOpen, Shield, Target } from "lucide-react";
 import { NAV_STEPS } from "@/components/TabBar";
 import { useGuardedRouter } from "@/components/DirtyGuard";
 import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
@@ -124,6 +124,7 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
       ? `https://drive.google.com/drive/folders/${encodeURIComponent(feedbackFolderId)}`
       : "";
   const newsActive = pathname.startsWith("/payment/news");
+  const logActive = pathname.startsWith("/training-log");
   return (
     <section aria-label="업무도구" className={`mt-4 rounded-xl border border-slate-200/80 bg-slate-200/65 shadow-inner shadow-white/70 ${compact ? "p-1" : "p-2"}`}>
       {!compact && <p className="px-2 pb-1 text-xs font-bold text-slate-600">업무도구</p>}
@@ -154,6 +155,11 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
       >
         <Newspaper className="h-4 w-4 shrink-0" aria-hidden="true" />
         {!compact && "정책자금뉴스"}
+      </SideLink>
+      {/* 트레이닝일지 — 노션 기수 페이지 대신 앱 안에서 내 일지만(2026-10-30 belie). */}
+      <SideLink sub compact={compact} href={"/training-log" as Route} active={logActive} label="트레이닝일지">
+        <NotebookPen className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {!compact && "트레이닝일지"}
       </SideLink>
       <a
         href={WORK_MANUAL_URL}

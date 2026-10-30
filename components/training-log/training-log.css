@@ -1,0 +1,52 @@
+/* 트레이닝일지 — 비서 사서함과 같은 카드 언어(inbox.css). 본문은 노션 문서를 차분한 읽기 화면으로. */
+.tlog-page { display:flex; flex-direction:column; gap:16px; padding:16px 0 40px; color:#334155; font-size:14px; line-height:1.6; }
+.tlog-page :is(a,button,summary):focus-visible { outline:2px solid #2563eb; outline-offset:2px; border-radius:8px; }
+.tlog-muted, .tlog-intro { color:#64748b; font-size:13px; padding:0 2px; }
+.tlog-link { color:#1d4ed8; font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+.tlog-empty { display:flex; flex-direction:column; align-items:center; gap:6px; padding:40px 16px; text-align:center; border:1px dashed #cbd5e1; border-radius:16px; color:#64748b; }
+.tlog-empty svg { color:#475569; }
+.tlog-empty h2 { font-size:15px; font-weight:700; color:#0f172a; }
+
+.tlog-entries { border:1px solid #e2e8f0; border-radius:16px; background:#fff; box-shadow:0 1px 2px #0f172a0d; overflow:hidden; }
+.tlog-entries > li + li { border-top:1px solid #f1f5f9; }
+.tlog-entry { display:flex; align-items:center; gap:12px; min-height:60px; padding:10px 12px 10px 14px; transition:background-color .15s ease-out; }
+.tlog-entry:hover { background:#f8fafc; }
+.tlog-entry:active { background:#f1f5f9; }
+.tlog-week { flex:none; display:flex; align-items:baseline; justify-content:center; gap:1px; min-width:52px; height:40px; padding:0 8px; border-radius:12px; background:#f1f5f9; color:#0f172a; font-size:17px; font-weight:800; line-height:40px; font-variant-numeric:tabular-nums; }
+.tlog-week small { font-size:11px; font-weight:600; color:#64748b; }
+.tlog-entry-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15px; font-weight:600; color:#0f172a; }
+.tlog-chevron { flex:none; color:#94a3b8; }
+
+.tlog-back { align-self:flex-start; display:inline-flex; align-items:center; gap:2px; min-height:32px; padding:4px 8px 4px 4px; border-radius:8px; color:#475569; font-size:13px; font-weight:600; }
+.tlog-back:hover { background:#f1f5f9; }
+.tlog-head { display:flex; flex-direction:column; gap:4px; padding:0 2px; }
+.tlog-head-week { color:#64748b; font-size:12px; font-weight:600; }
+.tlog-head h2 { font-size:21px; font-weight:700; color:#0f172a; letter-spacing:-0.01em; text-wrap:balance; overflow-wrap:anywhere; }
+
+.tlog-doc { display:flex; flex-direction:column; gap:6px; padding:16px; border:1px solid #e2e8f0; border-radius:16px; background:#fff; box-shadow:0 1px 2px #0f172a0d; overflow-wrap:anywhere; }
+.tlog-doc .tlog-h1 { margin-top:14px; font-size:18px; font-weight:800; color:#0f172a; }
+.tlog-doc .tlog-h2 { margin-top:12px; font-size:16px; font-weight:700; color:#0f172a; }
+.tlog-doc .tlog-h3 { margin-top:8px; font-size:15px; font-weight:700; color:#1e293b; }
+.tlog-doc > :first-child { margin-top:0; }
+.tlog-doc ul, .tlog-doc ol { display:flex; flex-direction:column; gap:2px; padding-left:20px; }
+.tlog-doc ul { list-style:disc; }
+.tlog-doc ul ul { list-style:circle; }
+.tlog-doc ol { list-style:decimal; }
+.tlog-doc a { color:#1d4ed8; text-decoration:underline; text-underline-offset:3px; }
+.tlog-doc mark { background:#fef3c7; color:inherit; border-radius:3px; padding:0 2px; }
+.tlog-doc code { padding:1px 4px; border-radius:4px; background:#f1f5f9; font-size:13px; }
+.tlog-doc pre { padding:10px 12px; border-radius:10px; background:#f8fafc; overflow-x:auto; font-size:13px; }
+.tlog-doc pre code { padding:0; background:none; }
+.tlog-doc hr { margin:8px 0; border:0; border-top:1px solid #e2e8f0; }
+.tlog-doc blockquote { padding-left:12px; border-left:3px solid #cbd5e1; color:#475569; }
+.tlog-callout { padding:10px 12px; border-radius:10px; background:#f8fafc; }
+.tlog-todo { display:flex; gap:8px; align-items:flex-start; }
+.tlog-todo input { margin-top:5px; accent-color:#2563eb; }
+.tlog-toggle summary { cursor:pointer; font-weight:600; color:#0f172a; padding:2px 0; }
+.tlog-toggle > :not(summary) { margin-left:16px; }
+.tlog-toggle[open] > summary { margin-bottom:4px; }
+.tlog-table { overflow-x:auto; }
+.tlog-table table { border-collapse:collapse; font-size:13px; }
+.tlog-table td { border:1px solid #e2e8f0; padding:6px 8px; vertical-align:top; min-width:72px; }
+.tlog-doc figure img { max-width:100%; height:auto; border-radius:10px; }
+.tlog-doc figcaption { color:#64748b; font-size:12px; margin-top:4px; }
