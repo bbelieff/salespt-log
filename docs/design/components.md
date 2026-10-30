@@ -1606,12 +1606,13 @@ button:focus, input:focus, select:focus {
   (중복 `pc:[--app-tabbar-height:2.5rem]` 변수 덮개는 제거됨). 각 페이지는
   자신의 작은 `pc:pb` 만 유지한다.
 - 데스크탑은 대시보드 바로 아래 캘린더, 그 아래 영업 4단계, 마지막에 업무도구를 배치한다. 축소 버튼은 224px ↔ 68px 폭을 전환하며 선택을 브라우저에 보관한다. 축소 상태에서도 각 단계의 공통 아이콘과 1~4 숫자 배지, 이동 링크의 전체 이름·키보드 접근을 유지한다.
-- **업무도구 4개**는 영업 단계 바깥의 음영 라운드 박스로 묶는다. 축소 상태에서는 아이콘으로 표시한다:
+- **업무도구 5개**는 영업 단계 바깥의 음영 라운드 박스로 묶는다. 축소 상태에서는 아이콘으로 표시한다:
 
   | 소탭 | 이동 | 표시 |
   |---|---|---|
   | 구글드라이브 | `feedbackFolderId` 있으면 Drive 폴더 **새 탭**, 없으면 `/payment` + 「연결 필요」 | ↗ |
   | 정책자금뉴스 | 앱 내부 `/payment/news` | — |
+  | 트레이닝일지 | 앱 내부 `/training-log` (노션 기수 DB 에서 **내 일지만**, 읽기 전용) | — |
   | 업무매뉴얼 | `WORK_MANUAL_URL` **새 탭** | ↗ |
   | 세일즈PT 카페 | `SALESPT_CAFE_URL` **새 탭** | ↗ |
 
@@ -1859,3 +1860,11 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **TrashDialog · TrashNoticeBar · BulkSupplierDialog** (`app/(app)/db-sheet/_components/`, 2026-10-26 belie): DB관리시트 삭제 = 바로 휴지통(서버 `sheet_rows` tab `db_sheet_trash` 에 DB·상담 기록·이력 보관, STEP 2 기여분은 즉시 정리). 머리 「휴지통」 버튼 → `TrashDialog`(목록·전체 선택 · 「되돌리기」(같은 업체 있으면 「그래도 되돌리기」) · 「영구 삭제」 · 「휴지통 비우기」 — 영구 삭제는 확인 상자). 삭제 직후 `TrashNoticeBar`(건수·정리된 STEP 2 · 「휴지통 열기」). 여러 줄 작업 줄에 「공급처 바꾸기」 → `BulkSupplierDialog`(유형·공급처, 빈 칸은 그대로; 미팅 연결 DB의 유형은 바꾸지 않고 알림). 예전 `DeleteUndoBar`(10초 되돌리기)는 없앰.
 
 - **AbsenceLog `suggested` · DbContactActions `suggestion`** (2026-10-26 belie): 원본 메모(공급처 시트 통화 메모)에서 `memoSuggestion` 이 찾은 날짜 부재를 「메모에서 찾은 부재 [10/14 10시 담기]」 버튼(위에서 고른 시각)으로, 컨택결과가 미컨택일 때 「메모로 보면 ○○ · 날짜 [이 결과로 기록]」 한 줄. 점선 테두리 제안 모양(`.db-absence-suggest`·`.db-memo-suggest`), 기록은 누를 때만.
+
+## 트레이닝일지 (2026-10-30)
+
+| 컴포넌트 | 설명 |
+|---|---|
+| **TrainingLogList** | `/training-log` 내 일지 목록(주차 배지·제목, 최신 위). 상태별 빈 안내(연결 전·수강생 아님·기수 DB 없음·불러오기 실패). 비서 사서함과 같은 카드 언어(`training-log.css`). |
+| **TrainingLogView** | `/training-log/[id]` 한 편. 「내 일지 목록」 돌아가기 + 주차·제목 + 본문 카드. 404 면 「이 일지는 볼 수 없어요」. 노션으로 가는 링크는 두지 않는다. |
+| **LogBlocks** | 서버가 줄인 노션 블록(`LogBlock`) 그리기: 제목 3단·목록(이어진 항목 묶음)·체크·토글(details)·인용·콜아웃·구분선·표·이미지·첨부·링크. 형광펜은 `<mark>`. |

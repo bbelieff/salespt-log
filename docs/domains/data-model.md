@@ -826,3 +826,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - `PolicyNewsRow`: VPS `xlsx_to_rows` 줄(한국어 칸 이름, 모르는 칸 통과·빠진 칸 빈 글). `PolicyNewsDay`(schema 1 · date · rows) · `PolicyNewsIndex`(schema 1 · dates). 계약 = `docs/domains/policy-news-feed.md`. 저장 없음(읽기 전용, 30분 캐시).
 
 - `DbSheetTrashItem`(2026-10-26, `lib/types/db-sheet.ts`): 휴지통 한 줄 요약(id·업체·대표·전화·유형·공급처·유입일·deletedAt). 보관본 = `sheet_rows`(tab `db_sheet_trash`, row_key = DB id, mirror_pending=false — 시트 미러 아님) payload `{lead, contacts, history, deletedAt}`.
+
+## 트레이닝일지 (2026-10-30, `lib/types/training-log.ts`)
+
+- `TrainingLogItem`: 노션 기수 「[○○N기] 트레이닝 일지」 DB 의 내 행 한 줄(id·title·week(제목의 N주차, 없으면 null)·createdTime). `TrainingLogDetail` = Item + `blocks: LogBlock[]`(노션 블록을 화면용으로 줄인 모양, `LogText` 글자 조각). `TrainingLogList` = `{status, items}` — status `ok`·`not_configured`(NOTION_TOKEN 없음)·`no_cohort`·`no_database`·`unavailable`. 저장 없음(노션 읽기 전용, 서버 5분 캐시). 소유 판정 = 레지스트리 기수·이름(서버), 계획 `docs/plans/completed/training-log-own-only.md`.
