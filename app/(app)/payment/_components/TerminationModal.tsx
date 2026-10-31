@@ -9,6 +9,7 @@ import { useState } from "react";
 import type { ContractPayment } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoney } from "@/lib/format/money";
+import { slotTotals } from "@/lib/analytics/contract-slots";
 
 type RefundMode = "none" | "partial" | "full";
 
@@ -32,7 +33,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
 
   // 전액 = 이 계약으로 받은 돈 전부(수임비 + 수납액 합) — 반환 상한 안내용이기도.
   const receivedSum =
-    cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액;
+    slotTotals(cp).received;
   const fullAmount = (cp.수임비 || 0) + receivedSum;
   const 반환액 = mode === "none" ? 0 : mode === "full" ? fullAmount : partial;
 

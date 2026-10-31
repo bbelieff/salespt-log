@@ -83,7 +83,8 @@ export function splitContractRevenue(
     const t = isCarryoverContract(p, courseStartISO) ? carryover : arena;
     t.totalFee += num(p.수임비);
     t.totalReceived +=
-      num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액);
+      num(p.수납1.수납액) + num(p.수납2.수납액) + num(p.수납3.수납액) +
+      (p.추가진행 ?? []).reduce((sum, s) => sum + num(s.수납액), 0);
     t.totalRefunded += num(p.반환액); // 계약해지 반환 — 매출 차감(contract-termination)
   }
   arena.revenue = arena.totalFee + arena.totalReceived - arena.totalRefunded;

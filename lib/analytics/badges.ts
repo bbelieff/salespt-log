@@ -113,7 +113,7 @@ export function judgeBadges(src: BadgeSources, today: string): BadgeState[] {
     "first-consult": minDate(src.contacts.filter(c => QUALIFIED.has(c.result)).map(c => c.date), today),
     "first-meeting": minDate(src.meetings.filter(m => m.상태 === "완료" || m.상태 === "계약").map(m => m.미팅날짜), today),
     "first-contract": nth(contractDates, 1),
-    "first-payment": minDate(src.contracts.flatMap(c => [c.수납1, c.수납2, c.수납3]).filter(s => s && s.수납액 > 0).map(s => s.수납일), today),
+    "first-payment": minDate(src.contracts.flatMap(c => [c.수납1, c.수납2, c.수납3, ...(c.추가진행 ?? [])]).filter(s => s && s.수납액 > 0).map(s => s.수납일), today),
     "contracts-5": nth(contractDates, 5),
     "first-db": minDate(src.dbTabDates, today),
     "first-dbsheet": minDate(src.leads.map(l => l.date), today),

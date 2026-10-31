@@ -64,6 +64,8 @@ export interface RevenueContract {
   수납1: RevenueSlot;
   수납2: RevenueSlot;
   수납3: RevenueSlot;
+  /** 진행 4번부터(DB 확장) — 매출 수납액에 함께 더한다. */
+  추가진행?: RevenueSlot[];
   반환액?: number;
   해지일?: string;
 }
@@ -83,7 +85,7 @@ export function periodRevenue(rows: readonly RevenueContract[], range: DateRange
       contracts += 1;
       fee += num(r.수임비);
     }
-    for (const s of [r.수납1, r.수납2, r.수납3]) {
+    for (const s of [r.수납1, r.수납2, r.수납3, ...(r.추가진행 ?? [])]) {
       if (s && inRange(s.수납일, range)) received += num(s.수납액);
     }
     const refund = num(r.반환액);
