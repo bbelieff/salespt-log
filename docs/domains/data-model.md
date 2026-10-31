@@ -617,7 +617,7 @@ DB 정본 실패 후 시트 강등에서는 stale 미러로 최근 기록을 대
 | `HALTED_PROGRESS` | const | `"중도중지"` — 비교용 상수(`isHaltedSlot`) |
 | `WAITING_PROGRESS` | const | `"조건 대기"`(2026-10-23) — 조건이 풀리길 기다리는 진행건. 슬롯 `대기사유`(한 줄)·`대기기간`(`단기`=2개월 내, 진행 중·오늘 챙길 일 맨 뒤 / `장기`=3개월 이상, 중도중지처럼 오늘 챙길 일 제외, 없으면 단기). 판정: `isWaitingSlot`·`waitTermOf`·`isShortWaitSlot`·`isLongWaitSlot`(contract-slots) |
 | `PaymentSlot` | z.object | 분할 수납 1슬롯. 기존 필드에 `진행상품`을 추가한다. 기존 시트의 고정 열은 그대로 두고 Postgres `sheet_rows.payload` JSONB에 필드명으로 저장한다. 2026-10-23: 선택 필드 `대기사유?: string`·`대기기간?: "단기" \| "장기"`(조건 대기 전용, 옛 기록엔 없음 — 시트 열 없음). |
-| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. 2026-10-23: 선택 필드 `관리상태?: "진행" \| "장기관리"`(업체 상태 직접 지정, 없으면 자동)·`관리상태진행건?: number[]`(직접 장기관리로 보낼 때 진행 중이던 진행건 번호 — 그 밖의 진행건이 진행 중이 되면 저절로 진행). 둘 다 JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음. 판정 정본 = `lib/analytics/long-term.ts`(`companyStage`·`isLongTermContract`·`slotKeepsCompanyActive`). |
+| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. 2026-10-23: 선택 필드 `관리상태?: "진행" \| "장기관리"`(업체 상태 직접 지정, 없으면 자동)·`관리상태진행건?: number[]`(직접 장기관리로 보낼 때 진행 중이던 진행건 번호 — 그 밖의 진행건이 진행 중이 되면 저절로 진행). 둘 다 JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음. 판정 정본 = `lib/analytics/long-term.ts`(`companyStage`·`isLongTermContract`·`slotKeepsCompanyActive`). 2026-10-31: 선택 필드 `추가진행?: PaymentSlot[]` — 진행 4번부터(번호 = 4 + 배열 순서, 개수 제한 없음). JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음(시트 백업은 1~3만). 번호로 읽고 쓰기·합계·매출은 `lib/analytics/contract-slots.ts`(`slotsOf`·`slotOf`·`withSlot`·`withoutSlot`·`slotTotals`)와 `periodRevenue` 정본. 시트를 정본으로 읽는 기수는 저장을 막는다(`patchContractPayment`). Todo `slot` 은 1 이상의 정수(4번부터 추가진행). |
 | `isTerminatedContract` | function | 해지 판정 단일 결정점 — `해지일` 존재 = 해지. 클라·서버 공용 (contract-termination) |
 | `TERMINATED_IN_CONTRACT_COUNT` | const | 해지 계약의 건수 포함 여부 (기본 `false` = 제외 + "해지 N건" 별도 표시. belie 미확정 — 정책 변경 시 이 상수만) |
 
@@ -626,7 +626,7 @@ DB 정본 실패 후 시트 강등에서는 stale 미러로 최근 기록을 대
 |---|---|---|
 | `TodoType` | z.enum | 실무투두 종류 4: `기타` / `미팅` / `전화` / `메시지` (캘린더 type 아이콘) |
 | `TodoRecordKind` | z.enum | 기록 의미: `todo`(할 일) / `history`(한 일). 기존 행 기본값은 `todo`. |
-| `Todo` | z.object | (계약×기관) 실무 기록. `기록종류=todo|history`를 추가한다. 시트 A~N은 기존 본문, O는 gcal 이벤트 ID로 보존하고 P에 기록종류를 저장한다. 기존 P 빈값은 `todo`로 읽는다. `slot`(1·2·3|null, Q)은 진행건 번호 — 새 기록은 번호로, null 인 옛 기록은 기관 이름으로 진행건을 추정한다(2026-10-23). `result`(string, R)는 완료한 할 일의 결과 한 줄 — 없거나 null 인 옛 데이터는 빈값으로 읽는다(2026-10-23). `prevId`(string, S)는 「+ 다음」으로 이어 만든 할 일의 원래 기록 id — 빈값 = 연결 없음, 화면 표시 없음(2026-10-23). 캘린더는 04 미팅 + 05 기록을 합쳐 표시한다. |
+| `Todo` | z.object | (계약×기관) 실무 기록. `기록종류=todo|history`를 추가한다. 시트 A~N은 기존 본문, O는 gcal 이벤트 ID로 보존하고 P에 기록종류를 저장한다. 기존 P 빈값은 `todo`로 읽는다. `slot`(1 이상 정수|null, Q — 2026-10-31 전에는 1·2·3)은 진행건 번호 — 새 기록은 번호로, null 인 옛 기록은 기관 이름으로 진행건을 추정한다(2026-10-23). `result`(string, R)는 완료한 할 일의 결과 한 줄 — 없거나 null 인 옛 데이터는 빈값으로 읽는다(2026-10-23). `prevId`(string, S)는 「+ 다음」으로 이어 만든 할 일의 원래 기록 id — 빈값 = 연결 없음, 화면 표시 없음(2026-10-23). 캘린더는 04 미팅 + 05 기록을 합쳐 표시한다. |
 
 ### 새소식 (레지스트리 updates·notices 탭 · announcement-popup §1)
 | 식별자 | 종류 | 의미 |

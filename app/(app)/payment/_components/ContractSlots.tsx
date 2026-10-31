@@ -1,5 +1,5 @@
 /**
- * ContractSlots — 계약 카드의 분할수납 슬롯 목록 (1~3) + 회차 추가 버튼.
+ * ContractSlots — 계약 카드의 진행건 목록(개수 제한 없음 — 4번부터 추가진행) + 회차 추가 버튼.
  * ContractRow 500줄 캡 분리 — 동작·판정은 그대로, 렌더만 위임.
  */
 "use client";
@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { ContractPayment, PaymentSlot, Todo } from "@/types";
 import PaymentSlotForm from "./PaymentSlotForm";
 import { fmtMoney } from "./nameHighlight";
-import { EMPTY_SLOT } from "../_lib/payment-progress";
+import { slotOf } from "@/lib/analytics/contract-slots";
 
 interface Props {
   desktopHeading?: boolean;
@@ -18,14 +18,14 @@ interface Props {
   slotInstitutionOptions: string[];
   todos: Todo[];
   focusTodoId?: string | null;
-  focusedSlot?: 1 | 2 | 3 | null;
+  focusedSlot?: number | null;
   focusRequestId?: number;
-  visiblePayments: 1 | 2 | 3;
+  visiblePayments: number;
   totalApproved: number;
   totalReceived: number;
   onAddSlot: () => void;
-  onRemoveSlot: (slotIdx: 2 | 3) => void;
-  onSlotChange: (index: 1 | 2 | 3, next: PaymentSlot) => void;
+  onRemoveSlot: (slotIdx: number) => void;
+  onSlotChange: (index: number, next: PaymentSlot) => void;
   onEnsureSaved: () => void;
 }
 
@@ -48,8 +48,8 @@ export default function ContractSlots({
   onEnsureSaved,
 }: Props) {
   // 방금 「진행 추가」로 만든 진행건만 펼친 채 — 나머지는 모두 접힘(PaymentSlotForm).
-  const [added, setAdded] = useState<2 | 3 | null>(null);
-  const opens = (n: 1 | 2 | 3) => focusedSlot === n || added === n;
+  const [added, setAdded] = useState<number | null>(null);
+  const opens = (n: number) => focusedSlot === n || added === n;
   return (
     <div>
       {/* 실무/수납 상세(desktopHeading)에서는 제목이 스크롤 중 위에 붙는다 — payment-sticky-title(globals.css). */}
@@ -62,72 +62,36 @@ export default function ContractSlots({
         </span>
       </div>
       <div className="space-y-2">
-        <PaymentSlotForm
-          slotId={`payment-slot-${cp.row}-1`}
-          index={1}
-          slot={draft.수납1}
-          contractRef={contractRef}
-          companyName={cp.업체명}
-          savedInstitution={cp.수납1.진행기관}
-          savedContract={cp}
-          institutionOptions={slotInstitutionOptions}
-          todos={todos}
-          focusTodoId={focusTodoId}
-          autoOpen={opens(1)}
-          focusRequestId={focusRequestId}
-          onEnsureSaved={onEnsureSaved}
-          onChange={(next) => onSlotChange(1, next)}
-        />
-        {visiblePayments >= 2 && (
+        {Array.from({ length: visiblePayments }, (_, i) => i + 1).map((n) => (
           <PaymentSlotForm
-            slotId={`payment-slot-${cp.row}-2`}
-            index={2}
-            slot={draft.수납2}
-            removable={visiblePayments === 2}
+            key={n}
+            slotId={`payment-slot-${cp.row}-${n}`}
+            index={n}
+            slot={slotOf(draft, n)}
+            removable={n > 1 && n === visiblePayments}
             contractRef={contractRef}
             companyName={cp.업체명}
-            savedInstitution={cp.수납2.진행기관}
+            savedInstitution={slotOf(cp, n).진행기관}
             savedContract={cp}
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
-            autoOpen={opens(2)}
+            autoOpen={opens(n)}
             focusRequestId={focusRequestId}
             onEnsureSaved={onEnsureSaved}
-            onChange={(next) => onSlotChange(2, next)}
-            onRemove={() => onRemoveSlot(2)}
+            onChange={(next) => onSlotChange(n, next)}
+            onRemove={n > 1 ? () => onRemoveSlot(n) : undefined}
           />
-        )}
-        {visiblePayments >= 3 && (
-          <PaymentSlotForm
-            slotId={`payment-slot-${cp.row}-3`}
-            index={3}
-            slot={draft.수납3}
-            removable
-            contractRef={contractRef}
-            companyName={cp.업체명}
-            savedInstitution={cp.수납3.진행기관}
-            savedContract={cp}
-            institutionOptions={slotInstitutionOptions}
-            todos={todos}
-            focusTodoId={focusTodoId}
-            autoOpen={opens(3)}
-            focusRequestId={focusRequestId}
-            onEnsureSaved={onEnsureSaved}
-            onChange={(next) => onSlotChange(3, next)}
-            onRemove={() => onRemoveSlot(3)}
-          />
-        )}
-        {visiblePayments < 3 && (
-          <button
-            type="button"
-            onClick={() => { setAdded((visiblePayments + 1) as 2 | 3); onAddSlot(); }}
-            className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
-          >
-            <span className="text-base leading-none">+</span>
-            <span>진행 추가 ({visiblePayments + 1}회차)</span>
-          </button>
-        )}
+        ))}
+        {/* 진행건 개수 제한 없음(2026-10-31 belie). */}
+        <button
+          type="button"
+          onClick={() => { setAdded(visiblePayments + 1); onAddSlot(); }}
+          className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
+        >
+          <span className="text-base leading-none">+</span>
+          <span>진행 추가 ({visiblePayments + 1}회차)</span>
+        </button>
       </div>
     </div>
   );

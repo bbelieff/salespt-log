@@ -1,5 +1,5 @@
 /**
- * 계약의 수납 칸(수납1~3) 규칙 — 정본 한 곳.
+ * 계약의 진행건(수납1~3 + 추가진행 4번부터) 규칙 — 정본 한 곳.
  *
  * 「이 칸에 뭐가 있나 · 몇 칸을 보여 주나 · 진행률 평균 · 합계 · 완료인가」를
  * 기관 목록·상세 카드·강조색·업무 현황·대시보드 후속 업무가 모두 여기서 묻는다.
@@ -8,11 +8,43 @@
  */
 import { HALTED_PROGRESS, WAITING_PROGRESS, type ContractPayment, type PaymentSlot } from "@/types";
 
-export type SlotNo = 1 | 2 | 3;
+/** 진행건 번호(1부터). 1~3 = 시트 열이 있는 고정 칸, 4부터 = 추가진행[번호-4](2026-10-31 belie 「무제한」). */
+export type SlotNo = number;
+export type SlotSource = Pick<ContractPayment, "수납1" | "수납2" | "수납3"> & { 추가진행?: PaymentSlot[] };
 
-/** 수납 칸 세 개를 번호와 함께. */
-export function slotsOf(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">): Array<[SlotNo, PaymentSlot]> {
-  return [[1, cp.수납1], [2, cp.수납2], [3, cp.수납3]];
+const BLANK_SLOT: PaymentSlot = { 진행기관: "", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "" };
+
+/** 진행건 전부를 번호와 함께 — 고정 세 칸 + 추가진행. */
+export function slotsOf(cp: SlotSource): Array<[SlotNo, PaymentSlot]> {
+  return [[1, cp.수납1], [2, cp.수납2], [3, cp.수납3], ...(cp.추가진행 ?? []).map((slot, i): [SlotNo, PaymentSlot] => [4 + i, slot])];
+}
+
+/** 진행건 수 — 고정 세 칸 + 추가진행. */
+export function slotCount(cp: SlotSource): number {
+  return 3 + (cp.추가진행?.length ?? 0);
+}
+
+/** 번호로 진행건 하나(없는 번호면 빈 칸). */
+export function slotOf(cp: SlotSource, n: SlotNo): PaymentSlot {
+  if (n === 1) return cp.수납1;
+  if (n === 2) return cp.수납2;
+  if (n === 3) return cp.수납3;
+  return cp.추가진행?.[n - 4] ?? BLANK_SLOT;
+}
+
+/** 번호의 진행건을 바꾼 새 계약. 4번부터는 추가진행 길이를 그 번호까지 늘린다. */
+export function withSlot<T extends SlotSource>(cp: T, n: SlotNo, slot: PaymentSlot): T {
+  if (n <= 3) return { ...cp, [`수납${n}`]: slot };
+  const extra = [...(cp.추가진행 ?? [])];
+  while (extra.length < n - 4) extra.push(BLANK_SLOT);
+  extra[n - 4] = slot;
+  return { ...cp, 추가진행: extra };
+}
+
+/** 진행건 하나 지우기 — 1~3은 빈 칸으로, 4번부터는 목록에서 빼고 뒤 번호를 당긴다(마지막 진행건만 지울 수 있어 번호가 바뀌지 않는다). */
+export function withoutSlot<T extends SlotSource>(cp: T, n: SlotNo): T {
+  if (n <= 3) return { ...cp, [`수납${n}`]: BLANK_SLOT };
+  return { ...cp, 추가진행: (cp.추가진행 ?? []).filter((_, i) => i !== n - 4) };
 }
 
 /** 진행률 문자열("80%"·"0%"·"") → 숫자(%). 「중도중지」·「조건 대기」는 0. */
@@ -58,8 +90,10 @@ export function slotHasData(slot: PaymentSlot): boolean {
   );
 }
 
-/** 처음 보여 줄 칸 수 — 마지막으로 내용이 있는 칸까지(최소 1). */
-export function visibleSlotCount(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">): SlotNo {
+/** 처음 보여 줄 칸 수 — 마지막으로 내용이 있는 칸까지(최소 1). 추가진행은 있으면 그 번호까지. */
+export function visibleSlotCount(cp: SlotSource): number {
+  const extra = cp.추가진행?.length ?? 0;
+  if (extra > 0) return 3 + extra;
   if (slotHasData(cp.수납3)) return 3;
   if (slotHasData(cp.수납2)) return 2;
   return 1;
@@ -82,13 +116,13 @@ export function averageProgress(slots: readonly PaymentSlot[]): number {
 }
 
 /** 계약 진행도(%) — 보이는 칸 진행률 평균. 정렬·표시 공용. */
-export function contractProgress(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">): number {
-  return averageProgress([cp.수납1, cp.수납2, cp.수납3].slice(0, visibleSlotCount(cp)));
+export function contractProgress(cp: SlotSource): number {
+  return averageProgress(slotsOf(cp).map(([, slot]) => slot).slice(0, visibleSlotCount(cp)));
 }
 
-/** 세 칸의 승인금액·수납액 합계. */
-export function slotTotals(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">): { approved: number; received: number } {
-  const slots = [cp.수납1, cp.수납2, cp.수납3];
+/** 모든 진행건의 승인금액·수납액 합계. */
+export function slotTotals(cp: SlotSource): { approved: number; received: number } {
+  const slots = slotsOf(cp).map(([, slot]) => slot);
   return {
     approved: slots.reduce((sum, slot) => sum + slot.승인금액, 0),
     received: slots.reduce((sum, slot) => sum + slot.수납액, 0),
