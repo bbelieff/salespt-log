@@ -50,7 +50,7 @@ function dayDifference(fromISO: string, toISO: string): number {
   return Math.round((Date.parse(`${toISO}T00:00:00Z`) - Date.parse(`${fromISO}T00:00:00Z`)) / DAY_MS);
 }
 
-function activityLabel(kind: WorkActivityKind, date: string, todayISO: string): string {
+export function activityLabel(kind: WorkActivityKind, date: string, todayISO: string): string {
   if (kind === "none") return "D?";
   const days = dayDifference(todayISO, date);
   if (kind === "history") return `H+${String(Math.max(0, -days)).padStart(2, "0")}`;
