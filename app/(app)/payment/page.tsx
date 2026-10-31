@@ -21,7 +21,8 @@ import { useRouter } from "next/navigation";
 import { type ContractPayment } from "@/types";
 import { paymentFocusedSlot } from "@/util/payment-focus";
 import { activeWorkContracts } from "@/lib/analytics/payment-work-status";
-import { companyStage, isLongTermContract, movedToLongTerm, paymentListScope, stagePatch, type CompanyStage } from "@/lib/analytics/long-term";
+import { companyStage, isLongTermContract, movedToLongTerm, stagePatch, type CompanyStage } from "@/lib/analytics/long-term";
+import LongTermFold, { usePaymentLongTermOpen } from "./_components/LongTermFold";
 import LongTermToggle from "./_components/LongTermToggle";
 import PostDeleteNavModal, { type PostDeleteNavTarget } from "./_components/PostDeleteNavModal";
 import {
@@ -85,8 +86,8 @@ export default function PaymentPage() {
   const { listMode, query: companyQuery, workKey: selectedWorkKey, companyKey: selectedCompanyKey, row: selectedRow, focusId: focusRequestId, detailExpanded: mobileDetailExpanded } = selection;
   const setCompanyQuery = (value: string) => dispatch({ type: "query", value });
   const [sortKey, setSortKey] = useState<PaymentSortKey>("date-asc");
-  /** 「장기관리」 칩 — 켜면 장기관리 업체만, 끄면 장기관리 업체를 숨긴다(업체·기관 보기 공통). */
-  const [longTermOnly, setLongTermOnly] = useState(false);
+  /** 장기관리 업체는 목록 맨 아래 접힌 묶음(2026-10-31) — 펼침은 기기에 기억. */
+  const [longTermPref, setLongTermPref] = usePaymentLongTermOpen();
   const [toast, setToast] = useState("");
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   /** 계약해지 모달 대상 (contract-termination). */
@@ -135,7 +136,7 @@ export default function PaymentPage() {
     try {
       await patch.mutateAsync({ row: next.row, data });
       // 수납을 다 받아 저절로 장기관리가 되면 목록에서 빠진다 — 사라진 줄 모르게 알린다(2026-10-27).
-      if (saved && !longTermOnly && movedToLongTerm(saved, data)) showToast("진행건이 모두 끝나 「장기관리」로 옮겼어요 · 「장기관리」 칩에서 볼 수 있어요");
+      if (saved && movedToLongTerm(saved, data)) { setLongTermPref(true); showToast("진행건이 모두 끝나 아래 「장기관리」로 옮겼어요"); }
       else if (!opts?.quiet) showToast("✓ 저장 완료");
     } catch (e) {
       if (!opts?.quiet) showToast(`저장하지 못했어요: ${(e as Error).message}`);
@@ -159,7 +160,8 @@ export default function PaymentPage() {
     setPendingRow(cp.row);
     try {
       await patch.mutateAsync({ row: cp.row, data: { ...cp, ...stagePatch(cp, stage) } });
-      showToast(stage === "장기관리" ? (longTermOnly ? "장기관리로 옮겼어요" : "장기관리로 옮겼어요 · 「장기관리」 칩에서 볼 수 있어요") : (longTermOnly ? "진행으로 옮겼어요 · 칩을 끄면 볼 수 있어요" : "진행으로 옮겼어요"));
+      if (stage === "장기관리") setLongTermPref(true);
+      showToast(stage === "장기관리" ? "아래 「장기관리」로 옮겼어요" : "진행으로 옮겼어요");
     } catch (e) {
       showToast(`옮기지 못했어요: ${(e as Error).message}`);
     } finally {
@@ -225,22 +227,26 @@ export default function PaymentPage() {
     ),
   ).sort();
 
-  // 장기관리 칩 — 업체·기관 보기 모두 같은 범위(scopedRows), 검색 중엔 둘 다. 성과 요약·진행기관 후보는 전체(rows) 그대로.
-  const longTermCount = rows.filter(isLongTermContract).length;
-  const scopedRows = paymentListScope(rows, longTermOnly, companyQuery);
+  // 장기관리 업체는 목록 맨 아래 접힌 묶음 — 진행/장기관리 묶음은 각자 정렬한다(2026-10-31). 성과 요약·진행기관 후보는 전체(rows) 그대로.
+  const longRows = new Set(rows.filter(isLongTermContract).map((cp) => cp.row));
   // 업체 검색 필터 — 합계·진행기관 후보는 전체(rows) 기준 유지(표시만 필터).
   const normq = (x: string) => x.toLowerCase().replace(/\s+/g, "");
   const filteredRows = companyQuery.trim()
-    ? scopedRows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
-    : scopedRows;
+    ? rows.filter((cp) => normq(cp.업체명 ?? "").includes(normq(companyQuery)))
+    : rows;
   const today = activityTodayISO();
-  const institutionItems = buildInstitutionWorkItems(scopedRows, courseStartISO, allTodos.data?.todos ?? [], today);
+  const institutionItems = buildInstitutionWorkItems(rows, courseStartISO, allTodos.data?.todos ?? [], today);
   const activityState = allTodos.isError ? "error" : allTodos.data ? "ready" : "loading";
   const unsortedCompanyItems = buildCompanyWorkItems(filteredRows, institutionItems, today);
-  const companyItems = sortKey === "dday" && activityState !== "ready" ? unsortedCompanyItems
-    : sortCompanyWorkItems(unsortedCompanyItems, sortKey, today);
-  const institutionGroups = groupInstitutionWorkItems(institutionItems, listMode === "institution" ? companyQuery : "", "activity", today);
-  const institutionVisible = institutionGroups.flatMap((group) => group.items);
+  const sortItems = (items: CompanyWorkItem[]) => sortKey === "dday" && activityState !== "ready" ? items : sortCompanyWorkItems(items, sortKey, today);
+  const activeCompanyItems = sortItems(unsortedCompanyItems.filter((item) => !longRows.has(item.cp.row)));
+  const longCompanyItems = sortItems(unsortedCompanyItems.filter((item) => longRows.has(item.cp.row)));
+  const companyItems = [...activeCompanyItems, ...longCompanyItems];
+  const groupWorks = (items: InstitutionWorkItem[]) => groupInstitutionWorkItems(items, listMode === "institution" ? companyQuery : "", "activity", today);
+  const institutionGroups = groupWorks(institutionItems.filter((item) => !longRows.has(item.row ?? undefined)));
+  const longInstitutionGroups = groupWorks(institutionItems.filter((item) => longRows.has(item.row ?? undefined)));
+  const longInstitutionCount = longInstitutionGroups.reduce((n, group) => n + group.items.length, 0);
+  const institutionVisible = [...institutionGroups, ...longInstitutionGroups].flatMap((group) => group.items);
   const selectedWork = institutionVisible.find((item) => item.key === selectedWorkKey) ?? institutionVisible[0];
   const selectedCompany = companyItems.find((item) => item.key === selectedCompanyKey)
     ?? companyItems.find((item) => item.cp.row === selectedRow) ?? companyItems[0];
@@ -248,6 +254,9 @@ export default function PaymentPage() {
   const selectedCp = listMode === "institution"
     ? selectedWork ? rows.find((r) => r.row === selectedWork.row) : undefined
     : selectedCompany?.cp;
+  // 검색 중이거나 장기관리 업체가 선택돼 있으면 묶음을 펼친다(사라진 줄 모르게).
+  const longTermOpen = longTermPref || !!companyQuery.trim() || (!!selectedCp && longRows.has(selectedCp.row));
+  const toggleLongTerm = () => setLongTermPref(!longTermOpen);
   const companyDetailLabel = paymentCompanyDetailLabel(focusPayment, selectedCp, selectedCompany?.hasProgress ? selectedCompany.work.slot : null);
   // 선택 행이 스크롤 밖으로 나가면 연결부도 숨겨 상세 위에 잔상을 남기지 않는다.
   const syncBridge = () => syncPaymentSelectionBridge(workspaceRef.current, listPaneRef.current, bridgeRef.current);
@@ -290,23 +299,46 @@ export default function PaymentPage() {
     dispatch({ type: "switchMode", mode, workKey: selectedCompany?.work.key ?? null, companyKey: selectedWork?.contractKey ?? null, row: selectedWork?.row ?? null });
   });
   const listModeTabs = <PaymentListModeTabs value={listMode} onChange={changeListMode} />;
-  const emptyListText = longTermOnly && !companyQuery.trim() ? "장기관리 업체가 없어요. 진행건이 모두 수납완료·중도중지가 되면 저절로 옮겨져요."
-    : "검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.";
+  const emptyListText = "검색 결과가 없어요. 검색어를 지우면 전체 목록이 나옵니다.";
   const selectedLong = selectedCp ? companyStage(selectedCp) === "장기관리" : false;
   const stageToggle = (cp: ContractPayment) => <LongTermToggle value={companyStage(cp)} pending={pendingRow === cp.row} onChange={(next) => void handleStage(cp, next)} />;
   const mobileStageBar = (cp: ContractPayment) => <div className={`flex items-center justify-between gap-2 border-b px-2.5 py-1.5 ${companyStage(cp) === "장기관리" ? "border-amber-200 bg-amber-50" : "border-blue-100 bg-blue-50/60"}`}><span className="text-px-11 font-semibold text-slate-600">이 업체 상태</span>{stageToggle(cp)}</div>;
 
+  const mobileWorkDetail = (item: InstitutionWorkItem) => selectedCp && selectedWork?.key === item.key ? <>
+                {mobileStageBar(selectedCp)}
+                <ContractRow grants={grants}
+                  key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
+                  pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
+                  companyInfoDefaultOpen={false}
+                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
+                  onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={safeFocusTodoId}
+                  focusedSlot={item.slot} courseStartISO={courseStartISO}
+                  focusRequestId={focusRequestId}
+                />
+              </> : null;
+  const mobileCompanyDetail = (item: CompanyWorkItem) => selectedCompanyKey === item.key ? <>
+                {mobileStageBar(item.cp)}
+                {focusPayment?.row === item.cp.row && focusNotice}
+                <ContractRow grants={grants} key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
+                  pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
+                  companyInfoDefaultOpen={false}
+                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
+                  onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={safeFocusTodoId}
+                  focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, null)} courseStartISO={courseStartISO}
+                  focusRequestId={focusRequestId}
+                />
+              </> : null;
   const standaloneAdd = <StandaloneCompanyAdd listMode={listMode} className={isPc ? "px-2 pt-2" : "mb-3"} onCreated={(row) => guardedNav(() => { clearPaymentFocus(); dispatch({ type: "created", row }); window.setTimeout(() => { const b = document.querySelector<HTMLElement>(`[data-row="${row}"]`); b?.scrollIntoView({ block: "nearest" }); b?.focus({ preventScroll: true }); }, 80); })} />;
   return (
     <>
-      <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+      <div data-payment-desktop-shell className="min-[1280px]:flex min-[1280px]:h-[100dvh] min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-clip">
         <TopHeader
           pageEmoji="💰"
           pageTitle="실무/수납"
         />
         {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
-        <div data-payment-mobile-compact className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
-        <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-hidden">
+        <div data-payment-mobile-compact className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-clip">
+        <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-clip">
         <PaymentPerformanceSummary
           rows={allRows}
           workRows={activeWorkContracts(allRows)}
@@ -336,8 +368,7 @@ export default function PaymentPage() {
               unit={listMode === "company" ? "개 항목" : "건 진행"}
               matchUnit={listMode === "company" ? "개 항목" : "건"}
             />}
-            <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} showSort={listMode === "company"}
-              longTermCount={longTermCount} longTermOnly={longTermOnly} onLongTermToggle={() => guardedNav(() => { clearPaymentFocus(); setLongTermOnly((v) => !v); })} />
+            <PaymentSortControl value={sortKey} onChange={(k) => guardedNav(() => setSortKey(k))} showSort={listMode === "company"} />
           </div>
         )}
 
@@ -355,19 +386,24 @@ export default function PaymentPage() {
         ) : isPc ? (
           /* PC: 세 열은 한 작업판 높이를 공유하고 각자 휠·스크롤을 소유한다.
              목록 선택은 DirtyGuard를 통과한다. 모바일은 기존 아코디언 유지. */
-          <div ref={workspaceRef} className="payment-workspace relative grid min-h-[320px] min-w-0 items-stretch min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-hidden" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
+          <div ref={workspaceRef} className="payment-workspace relative grid min-h-[320px] min-w-0 items-stretch min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-clip" style={{ gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)` }}>
             <div className="flex min-h-0 min-w-0 flex-col">
               <div className="shrink-0 p-1.5">{listModeTabs}</div>
               <div ref={listPaneRef} onScroll={syncBridge} className="payment-list-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
               {standaloneAdd}
               {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
                 <p className="p-5 text-center text-xs text-slate-400">{emptyListText}</p>
-              ) : listMode === "company" ? <ContractListTable grants={grants}
-                items={companyItems} activityState={activityState}
+              ) : listMode === "company" ? <>{activeCompanyItems.length > 0 && <ContractListTable grants={grants}
+                items={activeCompanyItems} activityState={activityState}
                 selectedKey={selectedCompany?.key ?? null} onSelect={selectCompany}
                 highlight={companyQuery}
                 courseStartISO={courseStartISO}
-              /> : <InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />}
+              />}<LongTermFold count={longCompanyItems.length} open={longTermOpen} onToggle={toggleLongTerm}><ContractListTable grants={grants}
+                items={longCompanyItems} startIndex={activeCompanyItems.length} activityState={activityState}
+                selectedKey={selectedCompany?.key ?? null} onSelect={selectCompany}
+                highlight={companyQuery} courseStartISO={courseStartISO}
+              /></LongTermFold></> : <><InstitutionWorkList groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} />
+              <LongTermFold label="장기관리 진행건" unit="건" count={longInstitutionCount} open={longTermOpen} onToggle={toggleLongTerm}><InstitutionWorkList groups={longInstitutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork} /></LongTermFold></>}
               {archivedRows.length > 0 && <div className="px-2 pt-2"><TerminationArchive contracts={archivedRows} /></div>}
               </div>
             </div>
@@ -376,7 +412,7 @@ export default function PaymentPage() {
             </button>
             {selectedCp && (
               <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
-                <div data-payment-detail-banner={selectedLong ? "long-term" : "active"} className={`flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${selectedLong ? "border-amber-200 from-amber-100/95 via-amber-50/95 to-white/95" : listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
+                <div data-payment-detail-banner={selectedLong ? "long-term" : "active"} className={`sticky top-0 z-20 flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${selectedLong ? "border-amber-200 from-amber-100/95 via-amber-50/95 to-white/95" : listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
                   <div className="min-w-0"><h2 className={`truncate text-base font-black ${selectedLong ? "text-amber-950" : listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{selectedLong ? <p className="truncate text-px-11 text-amber-800">장기관리 · {listMode === "institution" && selectedWork ? `${selectedWork.institution || "기관 미입력"} · 진행 ${selectedWork.slot}` : companyDetailLabel}</p> : listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{companyDetailLabel}</p>}</div>
                   <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>{stageToggle(selectedCp)}</div>
                 </div>
@@ -412,40 +448,22 @@ export default function PaymentPage() {
             <div className="mb-2">{listModeTabs}</div>{standaloneAdd}
             {(listMode === "company" ? companyItems.length : institutionVisible.length) === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-center text-xs text-slate-400">{emptyListText}</p>
-            ) : listMode === "institution" ? <InstitutionWorkList
-              groups={institutionGroups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
-              activityState={activityState}
-              detailExpanded={mobileDetailExpanded} onToggleDetail={() => dispatch({ type: "toggleDetail" })}
-              renderDetail={(item) => selectedCp && selectedWork?.key === item.key ? <>
-                {mobileStageBar(selectedCp)}
-                <ContractRow grants={grants}
-                  key={`institution-detail-${selectedCp.row}`} cp={selectedCp} ordinal={rows.findIndex((r) => r.row === selectedCp.row) + 1}
-                  pending={pendingRow === selectedCp.row} institutionOptions={institutionOptions} forceOpen inline
-                  companyInfoDefaultOpen={false}
-                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(selectedCp)}
-                  onTerminateRequest={() => setTerminateTarget(selectedCp)} focusTodoId={safeFocusTodoId}
-                  focusedSlot={item.slot} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId}
-                />
-              </> : null}
-            /> : <ContractListTable grants={grants}
-              items={companyItems} selectedKey={selectedCompanyKey} onSelect={selectCompany}
-              activityState={activityState} detailExpanded={mobileDetailExpanded}
-              onToggleDetail={() => dispatch({ type: "toggleDetail" })}
-              highlight={companyQuery} courseStartISO={courseStartISO}
-              renderDetail={(item) => selectedCompanyKey === item.key ? <>
-                {mobileStageBar(item.cp)}
-                {focusPayment?.row === item.cp.row && focusNotice}
-                <ContractRow grants={grants} key={`company-detail-${item.key}`} cp={item.cp} ordinal={companyItems.findIndex((entry) => entry.key === item.key) + 1}
-                  pending={pendingRow === item.cp.row} institutionOptions={institutionOptions} forceOpen inline
-                  companyInfoDefaultOpen={false}
-                  onSave={handleSave} onDeleteRequest={() => makeDeleteRequest(item.cp)}
-                  onTerminateRequest={() => setTerminateTarget(item.cp)} focusTodoId={safeFocusTodoId}
-                  focusedSlot={paymentFocusedSlot(focusPayment, item.cp.row, null)} courseStartISO={courseStartISO}
-                  focusRequestId={focusRequestId}
-                />
-              </> : null}
-            />}
+            ) : listMode === "institution" ? <>{([[institutionGroups, false], [longInstitutionGroups, true]] as const).map(([groups, long]) => {
+              const list = <InstitutionWorkList key={String(long)}
+                groups={groups} selectedKey={selectedWork?.key ?? null} onSelect={selectWork}
+                activityState={activityState}
+                detailExpanded={mobileDetailExpanded} onToggleDetail={() => dispatch({ type: "toggleDetail" })}
+                renderDetail={mobileWorkDetail} />;
+              return long ? <LongTermFold key="long" label="장기관리 진행건" unit="건" count={longInstitutionCount} open={longTermOpen} onToggle={toggleLongTerm}>{list}</LongTermFold> : list;
+            })}</> : <>{([[activeCompanyItems, false], [longCompanyItems, true]] as const).map(([items, long]) => {
+              const list = <ContractListTable key={String(long)} grants={grants}
+                items={items} startIndex={long ? activeCompanyItems.length : 0} selectedKey={selectedCompanyKey} onSelect={selectCompany}
+                activityState={activityState} detailExpanded={mobileDetailExpanded}
+                onToggleDetail={() => dispatch({ type: "toggleDetail" })}
+                highlight={companyQuery} courseStartISO={courseStartISO}
+                renderDetail={mobileCompanyDetail} />;
+              return long ? <LongTermFold key="long" count={longCompanyItems.length} open={longTermOpen} onToggle={toggleLongTerm}>{list}</LongTermFold> : items.length > 0 && list;
+            })}</>}
           </div>
         )}
         {/* 모바일은 기존 문서 흐름, PC는 위 목록 pane 안에서 해지 보관함을 읽는다. */}
@@ -454,29 +472,16 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      {/* 토스트 */}
-      {toast && (
-        <AppToast>{toast}</AppToast>
-      )}
+      {toast && <AppToast>{toast}</AppToast>}
 
       {terminateTarget && (  /* 계약해지 모달 (contract-termination) */
-        <TerminationModal
-          cp={terminateTarget}
-          pending={pendingRow === terminateTarget.row}
-          onClose={() => setTerminateTarget(null)}
-          onConfirm={handleTerminate}
-        />
+        <TerminationModal cp={terminateTarget} pending={pendingRow === terminateTarget.row} onClose={() => setTerminateTarget(null)} onConfirm={handleTerminate} />
       )}
 
       {/* 삭제 확인 모달 — DeleteConfirmModal 로 분리(500줄 캡). 동작 무변경 */}
       {confirmTarget && (
-        <DeleteConfirmModal
-          label={confirmTarget.label}
-          cascadeOpt={cascadeOpt}
-          onCascadeChange={setCascadeOpt}
-          onCancel={() => setConfirmTarget(null)}
-          onConfirm={handleConfirmDelete}
-        />
+        <DeleteConfirmModal label={confirmTarget.label} cascadeOpt={cascadeOpt} onCascadeChange={setCascadeOpt}
+          onCancel={() => setConfirmTarget(null)} onConfirm={handleConfirmDelete} />
       )}
 
       {/* 삭제 후 바로가기 팝업 — 2026-05-17 [3] (PostDeleteNavModal 로 분리, 500줄 캡) */}

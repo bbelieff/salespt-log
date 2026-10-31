@@ -62,3 +62,28 @@ body.db-sheet-route .db-absence-add.db-absence-head strong{margin-right:4px;whit
 /* 상담메모(컨택결과 묶음 안, 2026-10-26): 아래 테두리를 끌어 줄여도 한 줄 글자보다 작아지지 않게(글자 잘림·밑으로 숨음 방지). */
 body.db-sheet-route .db-contact-memo textarea{height:auto;min-height:calc(1.5em + 14px);resize:vertical;line-height:1.5;padding:6px 10px;field-sizing:content;max-height:240px}
 body.db-sheet-route .db-contact-open svg:last-child{transition:transform .15s}body.db-sheet-route .db-contact-open .db-contact-open-on{transform:rotate(180deg)}
+/* 날짜 바로 넣기(2026-10-31 belie): 칸 제목 줄 오른쪽 작은 버튼 — 칸 높이를 늘리지 않는다. 최초상담일 당일·익일, 다음 연락일 익일·1주일·1개월 후. */
+.db-date-head{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;white-space:nowrap}
+.db-date-picks{display:inline-flex;gap:2px;flex-wrap:nowrap}
+.db-date-picks button{min-height:20px;padding:0 5px;border:1px solid #bfdbfe;border-radius:5px;background:white;color:#1d4ed8;font-size:10px;font-weight:600;line-height:18px;white-space:nowrap}
+.db-date-picks button:hover{background:#eff6ff}.db-date-picks button[aria-pressed=true]{background:#2563eb;border-color:#2563eb;color:white}
+.db-date-picks button:focus-visible{outline:2px solid #3b82f6;outline-offset:1px}
+@media(max-width:699px){.db-date-head{flex-wrap:wrap;row-gap:3px}.db-date-picks button{min-height:26px;padding:0 7px;font-size:11px}}
+/* 장기관리 다음 연락일(1·3·6개월 후) — 「다시 챙기기」 아래 한 줄. */
+.db-long-next{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:11px;color:#92400e}.db-long-next b{font-variant-numeric:tabular-nums}
+.db-long-next .db-date-picks button{border-color:#fcd34d;color:#92400e}.db-long-next .db-date-picks button[aria-pressed=true]{background:#d97706;border-color:#d97706;color:white}
+/* DB정보 한 화면(2026-10-31 belie 「스크롤 없이 한 프레임」): PC 에서 칸 높이·사이 간격만 줄인다 — 칸 순서·글자 크기는 그대로. */
+@media(min-width:1024px){
+body.db-sheet-route .db-detail-shell .db-detail-header{padding:12px 20px}
+body.db-sheet-route .db-detail-shell .db-info-pane{padding:12px 20px 10px}
+body.db-sheet-route .db-detail-shell .db-info-fields{margin:8px 0;gap:6px 10px}
+body.db-sheet-route .db-detail-shell .db-info-fields label{gap:3px}
+body.db-sheet-route .db-detail-shell .db-info-fields .sheet-input{height:30px;min-height:30px}
+body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:8px;padding:8px 10px}
+body.db-sheet-route .db-detail-shell .db-contact-bottom{margin-top:10px;gap:6px}
+body.db-sheet-route .db-detail-shell .db-contact-bottom .db-contact-actions{padding:8px 12px 6px}
+body.db-sheet-route .db-detail-shell .db-detail-bottom-actions{margin-top:4px}
+}
+/* 왼쪽 칸 안쪽 폭 500px 이상(기본 너비)이면 업체 정보 칸을 4열로 — 5줄 → 4줄. 날짜 셋은 3열 그대로. 상담메모는 한 줄에서 시작해 글만큼 늘어난다. */
+@container (min-width:500px){body.db-sheet-route .db-detail-shell .db-info-fields:not(.db-info-dates),body.db-sheet-route .db-detail-shell.with-contact .db-info-fields:not(.db-info-dates){grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1024px){body.db-sheet-route .db-detail-shell .db-contact-memo textarea{min-height:calc(1.5em + 14px)}}

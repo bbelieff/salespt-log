@@ -32,6 +32,18 @@ describe("approved follow-up rules", () => {
   it("booked/closed leads leave the contact queue, even when an old next date remains", () => {
     expect(buildRecontactLeads([lead({next:TODAY,meetingId:"m"}),lead({next:TODAY,stage:"계약해지"}),lead({next:TODAY,funnel:"계약"})],TODAY)).toEqual([]);
   });
+  it("장기관리는 1·3·6개월 뒤로 잡은 다음 연락일이 다가올 때만 다시 올라온다(2026-10-31)", () => {
+    const parked = (over: Parameters<typeof lead>[0]) => lead({ stage: "장기관리", manualStage: "장기관리", result: "단순거절", ...over });
+    // 마지막 연락 9/12 → 한 달 뒤 10/12(오늘): 다시 연락 예정
+    const due = buildRecontactLeads([parked({ next: TODAY, followUp: { generation: 1, completedGeneration: 0, lastContactDate: "2026-09-12" } })], TODAY);
+    expect(due[0]?.reasons).toEqual(["장기관리 · 다시 연락 예정"]);
+    // 넘기기 전 부재가 남긴 옛 다음 연락일(마지막 연락 다음날)은 올리지 않는다
+    expect(buildRecontactLeads([parked({ result: "부재", next: "2026-10-02", followUp: { generation: 1, completedGeneration: 0, lastContactDate: "2026-10-01" } })], TODAY)).toEqual([]);
+    // 아직 먼 날짜, 다음 연락일 없음, 연락을 마친 장기관리는 조용히
+    expect(buildRecontactLeads([parked({ next: "2027-01-12", followUp: { generation: 1, completedGeneration: 0, lastContactDate: TODAY } })], TODAY)).toEqual([]);
+    expect(buildRecontactLeads([parked({ result: "부재", next: "" })], TODAY)).toEqual([]);
+    expect(buildRecontactLeads([parked({ next: TODAY, followUp: { generation: 1, completedGeneration: 1, lastContactDate: "2026-09-12" } })], TODAY)).toEqual([]);
+  });
   it("pending meeting results include today and older than 30 days, exclude all terminal/rescheduled states", () => {
     const rows=[meeting({id:"old",미팅날짜:"2025-01-01"}),meeting({id:"today",미팅날짜:TODAY}),meeting({id:"future",미팅날짜:"2026-10-19"}),meeting({id:"later",미팅날짜:"2026-10-20"}),meeting({미팅날짜:"2026-02-30"}),...(["취소","변경","완료","계약"] as const).map(상태=>meeting({상태}))];
     expect(buildUnresultedMeetings(rows,TODAY).map(i=>[i.key,i.group])).toEqual([["meeting:old","long-overdue"],["meeting:today","today"],["meeting:future","upcoming"]]);

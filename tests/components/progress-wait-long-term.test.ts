@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { ContractPayment, PaymentSlot, Progress } from "@/types";
 import { averageProgress, isLongWaitSlot, isShortWaitSlot, isWaitingSlot, progressPct, waitTermOf } from "@/lib/analytics/contract-slots";
 import { isSlotClosed } from "@/lib/analytics/payment-work-status";
-import { activeSlotNumbers, autoCompanyStage, companyStage, isLongTermContract, movedToLongTerm, paymentListScope, stagePatch } from "@/lib/analytics/long-term";
+import { activeSlotNumbers, autoCompanyStage, companyStage, isLongTermContract, movedToLongTerm, stagePatch } from "@/lib/analytics/long-term";
 import { buildStalledWork, buildTodoFollowUps, compareFollowUpUrgency, summarizeFollowUps } from "@/lib/analytics/dashboard-follow-ups";
 import { cpToRow } from "@/repo/contract-payment-row";
 import { contractFromDbPayload } from "@/repo/db/read-daily";
@@ -151,12 +151,6 @@ describe("오늘 챙길 일", () => {
 describe("검색은 장기관리 업체도 찾는다 (2026-10-27)", () => {
   const going = contract({ row: 3, 업체명: "샘플진행", 수납1: live });
   const done = contract({ row: 4, 업체명: "샘플끝남", 수납1: collected });
-  it("검색어가 없으면 칩 범위만, 있으면 둘 다", () => {
-    expect(paymentListScope([going, done], false, "").map((c) => c.row)).toEqual([3]);
-    expect(paymentListScope([going, done], true, "").map((c) => c.row)).toEqual([4]);
-    expect(paymentListScope([going, done], false, "샘플").map((c) => c.row)).toEqual([3, 4]);
-    expect(paymentListScope([going, done], false, "  ").map((c) => c.row)).toEqual([3]);
-  });
   it("수납을 다 받아 저절로 장기관리가 된 저장만 알린다", () => {
     expect(movedToLongTerm(going, { ...going, 수납1: collected })).toBe(true);
     expect(movedToLongTerm(done, done)).toBe(false);

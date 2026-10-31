@@ -111,6 +111,14 @@ export function recordContact(row:Row,result:string,date:string):Row {
 }
 
 export const showsNextContact=(result:string)=>isDbSheetFollowUpResult(result);
+/** 날짜 바로 넣기 버튼(2026-10-31 belie): 오늘부터 n일·n달 뒤. 달은 말일을 넘지 않게(1/31 + 1달 = 2/28). */
+export function shiftISODate(iso:string,{days=0,months=0}:{days?:number;months?:number}):string{
+ const [y,m,d]=iso.split('-').map(Number);const first=new Date(Date.UTC(y!,m!-1+months,1));
+ const last=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
+ return new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth(),Math.min(d!,last)+days)).toISOString().slice(0,10);
+}
+/** 칸별 바로 넣기 — 최초상담일: 당일·익일, 다음 연락일: 익일·1주일·1개월 뒤, 장기관리 다음 연락일: 1·3·6개월 뒤. */
+export const DATE_PICKS={first:[['당일',{}],['익일',{days:1}]],next:[['익일',{days:1}],['1주일',{days:7}],['1개월',{months:1}]],longTerm:[['1개월 후',{months:1}],['3개월 후',{months:3}],['6개월 후',{months:6}]]} as const satisfies Record<string,readonly (readonly [string,{days?:number;months?:number}])[]>;
 /** 재통화인데 다음 연락일이 비었으면 일정 안내를 띄운다. */
 export const needsRecallDate=(row:Pick<Row,'result'|'next'>)=>row.result==='재통화'&&!row.next;
 
