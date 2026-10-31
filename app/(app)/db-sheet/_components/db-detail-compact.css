@@ -87,3 +87,8 @@ body.db-sheet-route .db-detail-shell .db-detail-bottom-actions{margin-top:4px}
 /* 왼쪽 칸 안쪽 폭 500px 이상(기본 너비)이면 업체 정보 칸을 4열로 — 5줄 → 4줄. 날짜 셋은 3열 그대로. 상담메모는 한 줄에서 시작해 글만큼 늘어난다. */
 @container (min-width:500px){body.db-sheet-route .db-detail-shell .db-info-fields:not(.db-info-dates),body.db-sheet-route .db-detail-shell.with-contact .db-info-fields:not(.db-info-dates){grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(min-width:1024px){body.db-sheet-route .db-detail-shell .db-contact-memo textarea{min-height:calc(1.5em + 14px)}}
+/* 날짜 셋 줄 맞춤(2026-10-31 belie): 세 칸 제목 줄을 버튼 높이로 같게 · 칸이 줄 높이로 늘지 않게(「›」가 입력칸 옆에) · 자동 입력 안내는 한 줄. */
+body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{align-items:start}
+.db-date-head{min-height:20px}
+@media(max-width:699px){.db-date-head{min-height:26px}}
+.db-next-hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

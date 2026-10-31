@@ -142,8 +142,8 @@ it("부재·재통화 highlight the 다음 연락일 field with an auto-schedule
   render("재통화", "2026-10-26");
   const field = host.querySelector('input[aria-label="DB정보 다음 연락일"]')!.closest("label")!;
   expect(field.className).toContain("db-next-auto");
-  expect(field.textContent).toContain("다음날로 자동 입력");
-  expect(field.textContent).toContain("바꿀 수 있어요");
+  expect(field.textContent).toContain("다음날 자동 입력");
+  expect(field.textContent).not.toContain("바꿀 수 있어요"); // 2026-10-31 belie: 한 줄로 짧게
   expect(host.textContent).not.toContain("재통화 일정을 정해 주세요");
   render("단순거절", "2026-10-26");
   expect(host.querySelector('input[aria-label="DB정보 다음 연락일"]')!.closest("label")!.className).not.toContain("db-next-auto");
