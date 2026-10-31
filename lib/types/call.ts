@@ -6,8 +6,11 @@
 import { z } from "zod";
 import { CompanyInfo } from "./meeting";
 
-/** queued → processing(글자 변환·정리) → review(확인 대기) → confirmed(확정 저장) · failed(사유) · discarded(저장 안 하고 닫음). */
-export const CallStatus = z.enum(["queued", "processing", "review", "confirmed", "failed", "discarded"]);
+/**
+ * dialed(DB관리시트 📞 버튼으로 전화 걸음 — 녹음 아직 없음) → queued(녹음 올림) → processing(글자 변환·정리) → review(확인 대기)
+ * → confirmed(확정 저장) · failed(사유) · discarded(저장 안 하고 닫음).
+ */
+export const CallStatus = z.enum(["dialed", "queued", "processing", "review", "confirmed", "failed", "discarded"]);
 export type CallStatus = z.infer<typeof CallStatus>;
 
 /** 컨택 가이드 질문 번호(1~12) — 확인 화면의 「12개 중 N개 답함」. */
@@ -57,7 +60,7 @@ export type CallRecord = {
   leadId: string;
   email: string;
   status: CallStatus;
-  /** 통화 시각(ISO) — 「다음 주 수요일」 같은 말을 날짜로 바꾸는 기준. */
+  /** 📞 버튼을 누른 시각(ISO) — 「다음 주 수요일」 같은 말을 날짜로 바꾸는 기준. */
   calledAt: string;
   audioSeconds: number | null;
   transcript: string;

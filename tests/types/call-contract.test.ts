@@ -32,6 +32,6 @@ describe("CallMeetingDraft", () => {
   });
 });
 
-it("상태는 6가지", () => {
-  expect(CallStatus.options).toEqual(["queued", "processing", "review", "confirmed", "failed", "discarded"]);
+it("상태는 7가지 — 📞 버튼(dialed)에서 시작", () => {
+  expect(CallStatus.options).toEqual(["dialed", "queued", "processing", "review", "confirmed", "failed", "discarded"]);
 });

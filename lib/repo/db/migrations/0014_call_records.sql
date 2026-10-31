@@ -1,12 +1,12 @@
 -- 통화 정리 (docs/plans/active/call-summary.md, belie 2026-10-31). Additive only: one new table.
--- One row per uploaded call recording on a DB관리시트 lead. Status-based queue (pm2 restart safe).
+-- One row per call started from the DB관리시트 📞 button (dialed), then its uploaded recording. Status-based queue (pm2 restart safe).
 -- The lead row owns its calls: deleting the lead (휴지통 이동) removes them.
 create table if not exists public.call_records (
   id uuid primary key,
   spreadsheet_id text not null,
   lead_id uuid not null,
   email text not null,
-  status text not null check (status in ('queued','processing','review','confirmed','failed','discarded')),
+  status text not null check (status in ('dialed','queued','processing','review','confirmed','failed','discarded')),
   called_at timestamptz not null,
   audio_path text,
   audio_seconds int,
