@@ -29,7 +29,7 @@ interface Props {
   onEnsureSaved?: () => void;
   accentFamily?: keyof typeof SLOT_ACCENT;
   /** 이 칸이 몇 번째 진행건인가 — 새 기록에 함께 저장한다. */
-  slot?: 1 | 2 | 3;
+  slot?: number;
   /** 진행건 번호 없는 옛 기록 중 어디 것인지 확실하지 않은 기록 — 같은 기관 진행건이 여럿이거나, 기관 이름이 어느 진행건과도 같지 않음(todo-slot). */
   ambiguousIds?: Set<string>;
 }

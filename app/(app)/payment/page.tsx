@@ -22,6 +22,7 @@ import { type ContractPayment } from "@/types";
 import { paymentFocusedSlot } from "@/util/payment-focus";
 import { activeWorkContracts } from "@/lib/analytics/payment-work-status";
 import { companyStage, isLongTermContract, movedToLongTerm, stagePatch, type CompanyStage } from "@/lib/analytics/long-term";
+import { slotsOf } from "@/lib/analytics/contract-slots";
 import LongTermFold, { usePaymentLongTermOpen } from "./_components/LongTermFold";
 import LongTermToggle from "./_components/LongTermToggle";
 import PostDeleteNavModal, { type PostDeleteNavTarget } from "./_components/PostDeleteNavModal";
@@ -221,7 +222,7 @@ export default function PaymentPage() {
   const institutionOptions = Array.from(
     new Set(
       rows
-        .flatMap((cp) => [cp.수납1.진행기관, cp.수납2.진행기관, cp.수납3.진행기관])
+        .flatMap((cp) => slotsOf(cp).map(([, slot]) => slot.진행기관))
         .map((s) => (s ?? "").trim())
         .filter(Boolean),
     ),

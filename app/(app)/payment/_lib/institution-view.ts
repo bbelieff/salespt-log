@@ -2,6 +2,7 @@ import { contractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { activityTodayISO, compareWorkActivity, progressPct } from "./payment-progress";
 import { buildSlotActivityIndex, slotActivityKey, slotHasData } from "@/lib/analytics/payment-work-status";
+import { slotOf, slotsOf, type SlotNo } from "@/lib/analytics/contract-slots";
 
 export type WorkActivityKind = "none" | "history" | "todo";
 
@@ -9,7 +10,7 @@ export interface InstitutionWorkItem {
   key: string;
   contractKey: string;
   row: number | null;
-  slot: 1 | 2 | 3;
+  slot: SlotNo;
   company: string;
   institution: string;
   product: string;
@@ -42,7 +43,6 @@ export interface InstitutionGroup {
   items: InstitutionWorkItem[];
 }
 
-const SLOTS = [1, 2, 3] as const;
 const ko = new Intl.Collator("ko");
 const DAY_MS = 86_400_000;
 
@@ -73,11 +73,11 @@ export function buildInstitutionWorkItems(
   // 슬롯의 저장된 기관명과 동일한 키로 Todo/History 를 연결한다(대시보드 「멈춘 업체」와 같은 색인).
   const dates = buildSlotActivityIndex(todos);
   for (const cp of rows) {
-    const populated = SLOTS.filter((slot) => slotHasData(cp[`수납${slot}`]));
+    const populated = slotsOf(cp).filter(([, s]) => slotHasData(s)).map(([n]) => n);
     // 기관을 아직 입력하지 않은 계약도 목록에서 사라지지 않도록 진행 1에 둔다.
-    const visible = populated.length ? populated : ([1] as const);
+    const visible = populated.length ? populated : [1];
     for (const slot of visible) {
-      const data: PaymentSlot = cp[`수납${slot}`];
+      const data: PaymentSlot = slotOf(cp, slot);
       const storedInstitution = data.진행기관.trim();
       // 예전 자유입력은 "소진공 신취"처럼 상품을 기관 칸에 함께 적었다.
       // 보기에서만 분리한다. 원본 기관 키는 Todo/캘린더 연결을 위해 그대로 둔다.

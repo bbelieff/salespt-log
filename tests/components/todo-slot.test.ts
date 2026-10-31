@@ -64,12 +64,15 @@ describe("업무 현황 — 기록이 붙은 진행건만 「진행」", () => {
 });
 
 describe("시트 Q 칸", () => {
-  it("1~3 만 번호로, 빈칸·이상값은 null", () => {
+  it("양의 정수는 번호로(4번부터 추가진행, 2026-10-31), 빈칸·이상값은 null", () => {
     const base = ["id1", "c", "기관", "업체", "기타", "제목", "2026-10-23", "", "", "", true, false, "", "", "", "todo"];
     expect(rowToTodo([...base, 2])?.slot).toBe(2);
     expect(rowToTodo([...base, "3"])?.slot).toBe(3);
     expect(rowToTodo([...base, ""])?.slot).toBeNull();
-    expect(rowToTodo([...base, 7])?.slot).toBeNull();
+    expect(rowToTodo([...base, 7])?.slot).toBe(7);
+    expect(rowToTodo([...base, 0])?.slot).toBeNull();
+    expect(rowToTodo([...base, "2.5"])?.slot).toBeNull();
+    expect(rowToTodo([...base, "x"])?.slot).toBeNull();
     expect(rowToTodo(base)?.slot).toBeNull();
   });
 });
