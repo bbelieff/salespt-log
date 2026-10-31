@@ -646,8 +646,20 @@ body {
 @media (min-width: 1280px) {
   .payment-sticky-title { top: 0; }
 }
+/* 펼친 진행건 제목 줄 — 「실무진행」 제목 바로 아래에 붙는다(2026-10-31 belie). 진행건 카드를 벗어나면 함께 올라간다. */
+.payment-slot-head {
+  position: sticky;
+  /* = 「실무진행」 제목의 top + 제목 높이(2.25rem). 제목 top 이 바뀌는 곳(payment-company-compact.css)은 그 옆에 같이 적는다. */
+  top: calc(var(--app-header-height) + 6rem + 2.25rem);
+  z-index: 9;
+  box-shadow: 0 1px 0 rgb(15 23 42 / 0.06);
+}
+@media (min-width: 1280px) {
+  .payment-slot-head { top: 1.875rem; }
+}
 @media (pointer: coarse) {
   [data-payment-inline-detail]:has(:is(input, textarea, select):focus) .payment-sticky-title { position: static; }
+  [data-payment-inline-detail]:has(:is(input, textarea, select):focus) .payment-slot-head { position: static; }
 }
 
 /* ── Desktop glass shell (desktop-glass-polish 2026-09-25) ──────────
