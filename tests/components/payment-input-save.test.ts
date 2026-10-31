@@ -113,10 +113,16 @@ it("does not commit a new draft while moving to its own undo/retry portal", asyn
   } finally { dock.remove(); }
 });
 
-it("진행건은 접힌 채 시작하고, 방금 추가한 빈 진행건만 펼쳐 둔다(2026-10-27)", () => {
+it("진행건은 비어 있어도 접힌 채 시작하고, 방금 「진행 추가」한 진행건만 펼친다(2026-10-31)", () => {
   act(() => root.unmount()); root = createRoot(host); // beforeEach 가 펼쳐 둔 상태를 버리고 처음 연 화면으로
-  cp = contract({ 수납1: slot({ 진행기관: "샘플기관" }), 수납2: slot({}) }); renderOnly();
+  cp = contract({ 수납1: slot({}), 수납2: slot({ 진행기관: "샘플기관" }) }); renderOnly();
   const header = (n: number) => host.querySelector<HTMLElement>(`#payment-slot-${cp.row}-${n} [role="button"][aria-expanded]`);
   expect(header(1)?.getAttribute("aria-expanded")).toBe("false");
-  if (header(2)) expect(header(2)!.getAttribute("aria-expanded")).toBe("true");
+  if (header(2)) expect(header(2)!.getAttribute("aria-expanded")).toBe("false");
+  const add = [...host.querySelectorAll("button")].find((b) => b.textContent?.includes("진행 추가"));
+  if (add) {
+    const n = Number(add.textContent!.match(/\((\d)회차\)/)![1]);
+    act(() => add.click());
+    expect(header(n)?.getAttribute("aria-expanded")).toBe("true");
+  }
 });

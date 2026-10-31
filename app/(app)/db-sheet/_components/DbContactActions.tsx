@@ -11,9 +11,11 @@ import type {MemoSuggestion} from '@/lib/analytics/db-sheet-memo';
  * 결과는 늘 오늘 날짜로 기록한다 — 예전 「컨택일」 칸(마지막 통화일이 남아 있던 값)으로 기록하면 다른 날 고친 결과가
  * 그 옛날 기록을 덮었다. date 는 하위 호환용으로만 받고 쓰지 않는다.
  */
-export function DbContactActions({row,contact,onResult,onAsInfo,onToggleContact,onStage,suggestion}:{
+export function DbContactActions({row,contact,onResult,onAsInfo,onToggleContact,onStage,onNext,suggestion}:{
  row:Row;date?:string;contact:boolean;onResult:(value:string,date:string)=>void;onStage?:(stage:DbSheetManualStage)=>Promise<unknown>;
  onAsInfo:(value:{asReceived?:boolean;asNote?:string})=>void;onToggleContact:()=>void;
+ /** 장기관리 다음 연락일 1·3·6개월 뒤(StageControls). */
+ onNext?:(iso:string)=>void;
  /** 메모로 본 컨택결과 제안(2026-10-26 belie 「제안만 보여 주기」) — 누를 때만 기록. 아직 결과가 없을 때만 보인다. */
  suggestion?:MemoSuggestion["result"];
 }){
@@ -28,7 +30,7 @@ export function DbContactActions({row,contact,onResult,onAsInfo,onToggleContact,
   </div>
   {suggestion&&row.result==='미컨택'&&<p className="db-memo-suggest"><span>메모로 보면 <b>{suggestion.value}</b>{suggestion.date!==todayKST()?` · ${suggestion.date.slice(5).replace('-','/')}`:''}</span><button type="button" className="sheet-btn" title={suggestion.cue} onClick={()=>onResult(suggestion.value,suggestion.date)}>이 결과로 기록</button></p>}
   <small className="db-contact-count">업체별 하루 1건 · 기존 기록 유지</small>
-  {onStage&&<StageControls row={row} onStage={onStage}/>}
+  {onStage&&<StageControls row={row} onStage={onStage} onNext={onNext}/>}
   {row.result==='AS예정'&&<div className="db-as-box">
    <div><strong>AS 확인</strong><span>컨택진행 집계 제외</span></div>
    <label className="db-as-check"><input aria-label="AS 받았어요" type="checkbox" checked={!!row.asReceived} onChange={e=>onAsInfo({asReceived:e.target.checked})}/>{row.asReceived?'AS 받았어요':'AS 받으면 체크하세요'}</label>

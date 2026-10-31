@@ -46,25 +46,10 @@ describe("업체 상태 토글", () => {
   });
 });
 
-describe("정렬 줄의 장기관리 칩", () => {
-  it("정렬 뒤 구분선 + 「장기관리 N」, 켜면 눌림", () => {
-    const toggle = vi.fn();
-    const c = render(h(PaymentSortControl, { value: "date-asc", onChange: () => {}, longTermCount: 2, longTermOnly: true, onLongTermToggle: toggle }));
-    const chip = c.querySelector<HTMLButtonElement>("[data-payment-long-term-chip]")!;
-    expect(chip.textContent).toBe("장기관리 2");
-    expect(chip.getAttribute("aria-pressed")).toBe("true");
-    expect(chip.className).toContain("bg-amber-50");
-    expect(buttons(c).map((b) => b.textContent)).toEqual(["등록 빠른순", "등록 늦은순", "D-day순", "장기관리 2"]);
-    act(() => chip.click());
-    expect(toggle).toHaveBeenCalledOnce();
-  });
-
-  it("기관 보기는 칩만, 칩이 없으면 예전 그대로", () => {
-    const c = render(h(PaymentSortControl, { value: "date-asc", onChange: () => {}, showSort: false, longTermCount: 0, onLongTermToggle: () => {} }));
-    expect(buttons(c).map((b) => b.textContent)).toEqual(["장기관리 0"]);
-    act(() => root?.unmount()); el?.remove();
-    const plain = render(h(PaymentSortControl, { value: "dday", onChange: () => {} }));
-    expect(plain.querySelector("[data-payment-long-term-chip]")).toBeNull();
+describe("정렬 줄 — 장기관리 칩은 없앴다(목록 맨 아래 묶음으로, 2026-10-31)", () => {
+  it("정렬 버튼만", () => {
+    const c = render(h(PaymentSortControl, { value: "dday", onChange: () => {} }));
+    expect(buttons(c).map((b) => b.textContent)).toEqual(["등록 빠른순", "등록 늦은순", "D-day순"]);
   });
 });
 
@@ -98,9 +83,10 @@ describe("조건 대기 입력", () => {
 describe("실무/수납 화면 연결", () => {
   const page = readFileSync(join(process.cwd(), "app/(app)/payment/page.tsx"), "utf8");
   const form = readFileSync(join(process.cwd(), "app/(app)/payment/_components/PaymentSlotForm.tsx"), "utf8");
-  it("목록은 장기관리 칩 범위로만, 배너는 장기관리면 호박색 + 「기본 너비」 옆 토글", () => {
-    expect(page).toContain("paymentListScope(rows, longTermOnly, companyQuery)");
-    expect(page).toContain("buildInstitutionWorkItems(scopedRows");
+  it("장기관리 업체는 목록 맨 아래 접힌 묶음, 배너는 장기관리면 호박색 + 「기본 너비」 옆 토글", () => {
+    expect(page).toContain("<LongTermFold count={longCompanyItems.length}");
+    expect(page).toContain("startIndex={activeCompanyItems.length}");
+    expect(page).toContain("const companyItems = [...activeCompanyItems, ...longCompanyItems];");
     expect(page).toMatch(/기본 너비<\/button>\{stageToggle\(selectedCp\)\}/);
     expect(page).toContain("from-amber-100/95");
     // 상세 초안 저장이 토글 값을 되돌리지 않는다.

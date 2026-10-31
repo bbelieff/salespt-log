@@ -139,12 +139,11 @@ export default function PaymentSlotForm({
   // 5등분 클릭 영역 (각 영역 = 20%, 동일 % 재클릭 시 0%)
   const segments = [20, 40, 60, 80, 100] as const;
 
-  // 진행건은 모두 접힌 채 시작(2026-10-27 belie 「실무/수납 열면 모든 진행건 기본 접힘」). 예외: 캘린더·알림으로 찾아온 진행건(autoOpen),
-  // 방금 「진행 추가」로 만든 빈 진행건(기관·상품 없음 — 바로 적어야 하므로).
+  // 진행건은 모두 접힌 채 시작(2026-10-27·31 belie 「실무진행은 다 접어 놓기」 — 비어 있는 진행건도 접힘).
+  // 예외(autoOpen): 캘린더·알림으로 찾아온 진행건, 방금 「진행 추가」로 만든 진행건(바로 적어야 하므로 — ContractSlots).
   const halted = slot.진행률 === HALTED_PROGRESS;
   const waiting = slot.진행률 === WAITING_PROGRESS;
-  const blank = !slot.진행기관?.trim() && !slot.진행상품?.trim();
-  const [open, setOpen] = useState(autoOpen || blank);
+  const [open, setOpen] = useState(autoOpen);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
   const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
 

@@ -807,21 +807,24 @@ body {
      ancestors keep visible overflow: then their document box grows even while
      the list and detail panes already scroll internally.  Scope the complete
      containment chain to this marker so all other routes retain document
-     scrolling. */
+     scrolling.
+     clip, not hidden: a hidden box is still a scroll container, so
+     scrollIntoView (맞는 공고·채우기) slid the whole board up and hid the
+     headers (2026-10-31). A clipped box cannot be scrolled by script. */
   .desktop-shell:has([data-payment-desktop-shell]) {
     height: 100dvh;
-    overflow: hidden;
+    overflow: clip;
   }
   .desktop-shell:has(> div > .app-shell-main > [data-payment-desktop-shell]) > div {
     display: flex;
     min-height: 0;
-    overflow: hidden;
+    overflow: clip;
   }
   .desktop-shell:has([data-payment-desktop-shell]) .app-shell-main {
     display: flex;
     flex: 1 1 auto;
     min-height: 0;
-    overflow: hidden;
+    overflow: clip;
   }
   .desktop-shell .payment-workspace { isolation: isolate; }
   .desktop-shell .payment-list-scroll,

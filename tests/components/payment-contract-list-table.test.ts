@@ -139,9 +139,10 @@ describe("payment PC workspace 배선", () => {
     expect(src).toContain("from-blue-100/95 via-indigo-50/95 to-white/95");
   });
   it("모바일 업체·기관 모드 모두 진행 행 아래의 상세와 해당 슬롯을 연결한다", () => {
-    expect(src).toContain('items={companyItems} selectedKey={selectedCompanyKey}');
-    expect(src).toContain('listMode === "institution" ? <InstitutionWorkList');
-    expect(src).toContain('renderDetail={(item) =>');
+    // 2026-10-31: 진행 묶음·장기관리 묶음(LongTermFold) 두 목록이 같은 상세 렌더러를 쓴다.
+    expect(src).toContain('items={items} startIndex={long ? activeCompanyItems.length : 0} selectedKey={selectedCompanyKey}');
+    expect(src).toContain('renderDetail={mobileWorkDetail}');
+    expect(src).toContain('renderDetail={mobileCompanyDetail}');
     expect(src).toContain('forceOpen inline');
     expect(src).toContain("institution-detail-${selectedCp.row}");
     expect((src.match(/<ContractRow/g) ?? []).length).toBe(3);

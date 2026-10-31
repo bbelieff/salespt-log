@@ -26,9 +26,11 @@ interface Props {
   onToggleDetail?: () => void;
   /** 맞춤공고 판정(실무/수납 page) — 카드 칩 「공고 N」. */
   grants?: GrantMatchesResponse;
+  /** 앞 묶음 다음 번호부터(장기관리 묶음, 2026-10-31). */
+  startIndex?: number;
 }
 
-export default function ContractListTable({ items, selectedKey, onSelect, highlight, activityState, renderDetail, detailExpanded = true, onToggleDetail, grants }: Props) {
+export default function ContractListTable({ items, selectedKey, onSelect, highlight, activityState, renderDetail, detailExpanded = true, onToggleDetail, grants, startIndex = 0 }: Props) {
   // 「영업기록 없음」 을 누르면 미팅 고르기 → 연결(belie 2026-09-29). 행 선택 버튼 안이라 클릭을 행으로 넘기지 않는다.
   const [linking, setLinking] = useState<{ row: number; 업체명: string } | null>(null);
   const openLink = (row: number | undefined, 업체명: string) => (e: MouseEvent | KeyboardEvent) => {
@@ -62,7 +64,7 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
               onClick={() => selected && renderDetail ? onToggleDetail?.() : !selected ? onSelect(item) : undefined}
               className={`relative w-full scroll-mt-app-content border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? `z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-[0_8px_24px_rgba(37,99,235,.12)] ${inlineOpen ? "rounded-t-xl border-b-blue-100" : renderDetail ? "rounded-xl" : "rounded-l-xl"} pc:rounded-r-none pc:border-r-0` : "rounded-xl border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted && !selected ? "opacity-60" : ""}`}>
               <span className="flex min-w-0 items-center gap-2">
-                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-px-11 font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-px-11 font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{startIndex + index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>
                 {isManualContractLink(cp.linkedMeetingId) && <span role="button" tabIndex={0} title="눌러서 영업기록(미팅)과 연결" aria-label={`${cp.업체명} 영업기록과 연결`}
                   onClick={openLink(cp.row, cp.업체명)} onKeyDown={openLink(cp.row, cp.업체명)}

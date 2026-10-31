@@ -4,6 +4,7 @@
  */
 "use client";
 
+import { useState } from "react";
 import type { ContractPayment, PaymentSlot, Todo } from "@/types";
 import PaymentSlotForm from "./PaymentSlotForm";
 import { fmtMoney } from "./nameHighlight";
@@ -46,6 +47,9 @@ export default function ContractSlots({
   onSlotChange,
   onEnsureSaved,
 }: Props) {
+  // 방금 「진행 추가」로 만든 진행건만 펼친 채 — 나머지는 모두 접힘(PaymentSlotForm).
+  const [added, setAdded] = useState<2 | 3 | null>(null);
+  const opens = (n: 1 | 2 | 3) => focusedSlot === n || added === n;
   return (
     <div>
       {/* 실무/수납 상세(desktopHeading)에서는 제목이 스크롤 중 위에 붙는다 — payment-sticky-title(globals.css). */}
@@ -69,7 +73,7 @@ export default function ContractSlots({
           institutionOptions={slotInstitutionOptions}
           todos={todos}
           focusTodoId={focusTodoId}
-          autoOpen={focusedSlot === 1}
+          autoOpen={opens(1)}
           focusRequestId={focusRequestId}
           onEnsureSaved={onEnsureSaved}
           onChange={(next) => onSlotChange(1, next)}
@@ -87,7 +91,7 @@ export default function ContractSlots({
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
-            autoOpen={focusedSlot === 2}
+            autoOpen={opens(2)}
             focusRequestId={focusRequestId}
             onEnsureSaved={onEnsureSaved}
             onChange={(next) => onSlotChange(2, next)}
@@ -107,7 +111,7 @@ export default function ContractSlots({
             institutionOptions={slotInstitutionOptions}
             todos={todos}
             focusTodoId={focusTodoId}
-            autoOpen={focusedSlot === 3}
+            autoOpen={opens(3)}
             focusRequestId={focusRequestId}
             onEnsureSaved={onEnsureSaved}
             onChange={(next) => onSlotChange(3, next)}
@@ -117,7 +121,7 @@ export default function ContractSlots({
         {visiblePayments < 3 && (
           <button
             type="button"
-            onClick={onAddSlot}
+            onClick={() => { setAdded((visiblePayments + 1) as 2 | 3); onAddSlot(); }}
             className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-dashed border-slate-300 bg-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
           >
             <span className="text-base leading-none">+</span>
