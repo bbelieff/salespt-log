@@ -1,6 +1,6 @@
 /** 통화 정리 계약(call-summary PR-1) — 제외 칸은 실리지 않고, 미팅 초안은 15분 단위만 받는다. 가상 값만 쓴다. */
 import { describe, expect, it } from "vitest";
-import { CallExtraction, CallMeetingDraft, CallStatus, CALL_EXCLUDED_FIELDS } from "@/types/call";
+import { CallExtraction, CallMeetingDraft, CallSource, CallStatus, CALL_EXCLUDED_FIELDS } from "@/types/call";
 
 describe("CallExtraction", () => {
   it("집 주소·주민번호는 업체정보 제안에서 빠진다", () => {
@@ -34,4 +34,8 @@ describe("CallMeetingDraft", () => {
 
 it("상태는 7가지 — 📞 버튼(dialed)에서 시작", () => {
   expect(CallStatus.options).toEqual(["dialed", "queued", "processing", "review", "confirmed", "failed", "discarded"]);
+});
+
+it("통화 내용은 녹음 파일 또는 붙여 넣은 글자", () => {
+  expect(CallSource.options).toEqual(["audio", "text"]);
 });

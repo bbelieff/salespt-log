@@ -13,6 +13,10 @@ import { CompanyInfo } from "./meeting";
 export const CallStatus = z.enum(["dialed", "queued", "processing", "review", "confirmed", "failed", "discarded"]);
 export type CallStatus = z.infer<typeof CallStatus>;
 
+/** 통화 내용을 받은 방법 — audio(녹음 파일: 안드로이드 기본 녹음·에이닷·익시오 내보내기) · text(통화 녹음 앱이 만든 글자를 붙여 넣음 — 녹음은 밖으로 안 나감). */
+export const CallSource = z.enum(["audio", "text"]);
+export type CallSource = z.infer<typeof CallSource>;
+
 /** 컨택 가이드 질문 번호(1~12) — 확인 화면의 「12개 중 N개 답함」. */
 export const CallGuideQuestion = z.number().int().min(1).max(12);
 
@@ -60,6 +64,8 @@ export type CallRecord = {
   leadId: string;
   email: string;
   status: CallStatus;
+  /** dialed 단계에서는 아직 정해지지 않았다(null). */
+  source: CallSource | null;
   /** 📞 버튼을 누른 시각(ISO) — 「다음 주 수요일」 같은 말을 날짜로 바꾸는 기준. */
   calledAt: string;
   audioSeconds: number | null;

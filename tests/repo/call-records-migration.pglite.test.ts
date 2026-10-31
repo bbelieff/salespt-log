@@ -42,3 +42,9 @@ it("DB 한 건을 지우면 그 통화 기록도 지워진다(휴지통 이동 �
   const left = await db.query("select count(*)::int as n from call_records where lead_id=$1", [id]);
   expect((left.rows[0] as { n: number }).n).toBe(0);
 });
+
+it("source 는 audio·text 또는 빈값(📞 누른 직후)", async () => {
+  const id = await lead();
+  await db.query("insert into call_records(id,spreadsheet_id,lead_id,email,status,called_at,source) values($1,$2,$3,'call@example.test','queued',now(),'text')", [randomUUID(), sheet, id]);
+  await expect(db.query("insert into call_records(id,spreadsheet_id,lead_id,email,status,called_at,source) values($1,$2,$3,'call@example.test','queued',now(),'video')", [randomUUID(), sheet, id])).rejects.toThrow();
+});

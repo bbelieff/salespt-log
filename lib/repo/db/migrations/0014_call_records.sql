@@ -8,6 +8,7 @@ create table if not exists public.call_records (
   email text not null,
   status text not null check (status in ('dialed','queued','processing','review','confirmed','failed','discarded')),
   called_at timestamptz not null,
+  source text check (source in ('audio','text')),
   audio_path text,
   audio_seconds int,
   transcript text not null default '',
